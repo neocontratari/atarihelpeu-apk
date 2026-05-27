@@ -1,257 +1,47 @@
 <!doctype html>
-<html lang="cs">
-<head>
+<html lang="cs"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>AtariHelp PiTT-KiTT APK v0.3</title>
+<title>AtariHelp v14</title>
 <style>
-:root{--bg:#020403;--panel:#06110c;--green:#2aff8f;--green2:#a9ffd0;--line:rgba(42,255,143,.25);--text:#e9fff3;--muted:rgba(233,255,243,.66);--red:#ff6b9a;--blue:#78a6ff}
-*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-body:before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 20% 10%,rgba(42,255,143,.22),transparent 28%),linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px);background-size:auto,100% 4px}
-.app{position:relative;z-index:1;max-width:520px;margin:0 auto;min-height:100vh;padding:18px 14px 94px}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.kicker{font-size:10px;letter-spacing:.34em;text-transform:uppercase;color:rgba(42,255,143,.72)} .title{font-size:27px;font-weight:950;letter-spacing:-.03em}
-.badge{border:1px solid var(--line);background:rgba(42,255,143,.08);border-radius:18px;padding:12px;color:var(--green)}
-.card{border:1px solid var(--line);background:rgba(0,0,0,.56);box-shadow:0 0 24px rgba(42,255,143,.10);border-radius:22px;padding:16px;margin:12px 0;backdrop-filter:blur(8px)}
-h1,h2,h3,p{margin:0} h1{font-size:28px;line-height:1.05} h2{font-size:21px} h3{font-size:18px} p{color:var(--muted);line-height:1.45;font-size:14px;margin-top:9px}
-button{appearance:none;border:0;text-align:center;display:block;width:100%;border-radius:15px;padding:13px 14px;font-weight:900;font-size:15px;background:var(--green);color:#001005;margin-top:10px}
-button.secondary{background:transparent;color:var(--green2);border:1px solid var(--line)} button.danger{background:var(--red);color:#160005} button.blue{background:var(--blue);color:#020403}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px} .tagrow{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px} .tag{border:1px solid rgba(42,255,143,.22);background:rgba(42,255,143,.08);border-radius:9px;padding:5px 8px;color:var(--green2);font-size:12px}
-.screen{position:relative;aspect-ratio:4/3;border:5px solid #151515;border-radius:22px;background:#081b12;padding:13px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.55)}
-.screen:before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px);background-size:100% 5px;opacity:.18}
-.screen-inner{position:relative;height:100%;border:1px solid rgba(42,255,143,.3);border-radius:14px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--green);overflow:hidden}
-.blink{animation:blink 1.1s infinite;text-align:center;letter-spacing:.24em;font-size:11px} @keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
-.blocks{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:18px} .blocks span{height:8px;border-radius:2px;background:var(--green);opacity:.42;animation:pulse 1.5s infinite}
-.blocks span:nth-child(7n){opacity:1} @keyframes pulse{0%,100%{transform:scaleY(.75);opacity:.3}50%{transform:scaleY(1.1);opacity:.95}}
-.controls{display:grid;grid-template-columns:1fr 1fr;gap:12px} .joy{display:grid;grid-template-columns:repeat(3,42px);gap:8px;justify-content:center;margin-top:14px}
-.joy button,.keys button{height:42px;padding:0;margin:0;background:rgba(42,255,143,.14);color:var(--green2);border:1px solid var(--line)} .joy .fire{background:var(--green);color:#001005} .keys{display:grid;gap:8px;margin-top:12px}
-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.92);border-top:1px solid var(--line);z-index:3;padding:7px 6px}
-.nav-inner{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:4px} .navbtn{margin:0;padding:8px 2px;border-radius:13px;background:transparent;color:rgba(233,255,243,.68);font-size:10px;border:0} .navbtn.active{background:var(--green);color:#001005}
-.hidden{display:none} .small{font-size:12px;color:var(--muted)} .ok{color:var(--green)} .bad{color:var(--red)} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace} pre{white-space:pre-wrap;word-break:break-word;color:var(--green2);font-size:11px;line-height:1.35;max-height:260px;overflow:auto}
-.regs{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px} .reg{border:1px solid var(--line);border-radius:10px;padding:7px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--green2)}
-</style>
-</head>
-<body>
-<div class="app">
-<header><div><div class="kicker">AtariHelp APK v0.3</div><div class="title">PiTT-KiTT</div></div><div class="badge">🎮</div></header>
+:root{--bg:#070604;--gold:#d7b76a;--gold2:#ffe3a3;--line:rgba(215,183,106,.35);--text:#fff7e3;--muted:rgba(255,247,227,.68);--red:#ff6b9a;--green:#2aff8f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Arial,sans-serif}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 0%,rgba(215,183,106,.26),transparent 28%),linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px);background-size:auto,100% 4px}
+.app{position:relative;z-index:1;max-width:560px;margin:auto;min-height:100vh;padding:16px 14px 98px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:14px}.logo{width:72px;height:72px;border-radius:18px;border:1px solid var(--line);object-fit:cover;box-shadow:0 0 24px rgba(215,183,106,.25)}
+.kicker{font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,227,163,.72)}.title{font-size:27px;font-weight:950}
+.card{border:1px solid var(--line);background:rgba(0,0,0,.58);border-radius:22px;padding:16px;margin:12px 0;box-shadow:0 0 24px rgba(215,183,106,.10)}.hero{background:linear-gradient(145deg,rgba(215,183,106,.17),rgba(0,0,0,.64))}
+h1,h2,h3,p{margin:0}h1{font-size:29px;line-height:1.05}h2{font-size:21px}p{color:var(--muted);line-height:1.45;font-size:14px;margin-top:9px}
+button,a.btn{display:block;width:100%;border:0;text-decoration:none;text-align:center;border-radius:15px;padding:13px 14px;font-weight:900;font-size:15px;background:var(--gold);color:#100a00;margin-top:10px}
+.secondary{background:transparent!important;color:var(--gold2)!important;border:1px solid var(--line)!important}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{min-height:112px;text-align:left}.tile b{display:block;font-size:28px;margin-bottom:8px}.tile span{font-weight:900;color:var(--gold2)}.tile p{font-size:12px}
+.tag{display:inline-block;border:1px solid var(--line);background:rgba(215,183,106,.10);border-radius:9px;padding:5px 8px;color:var(--gold2);font-size:12px;margin:4px 4px 0 0}
+.screen{aspect-ratio:4/3;border:5px solid #151515;border-radius:22px;background:#081b12;padding:13px;overflow:hidden}.screen-inner{height:100%;border:1px solid rgba(42,255,143,.35);border-radius:14px;padding:12px;font-family:monospace;color:var(--green)}.blink{animation:blink 1.1s infinite;text-align:center;letter-spacing:.2em;font-size:11px}@keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+nav{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.94);border-top:1px solid var(--line);z-index:3;padding:7px 6px}.nav-inner{max-width:560px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}.navbtn{margin:0;padding:8px 2px;border-radius:13px;background:transparent;color:rgba(255,247,227,.68);font-size:10px}.navbtn.active{background:var(--gold);color:#100a00}
+.hidden{display:none}pre{white-space:pre-wrap;color:var(--gold2);font-size:11px}.bad{color:var(--red)}.reg{border:1px solid var(--line);border-radius:10px;padding:8px;margin:4px 0;color:var(--gold2);font-family:monospace}
+</style></head><body><div class="app">
+<header><img src="np_logo.png" class="logo"><div><div class="kicker">AtariHelp APK v14</div><div class="title">N&P Studio</div></div></header>
 
-<main id="home" class="view">
-<section class="card">
-<div class="kicker">N&P Studio</div>
-<h1>První APK build projekt</h1>
-<p>Tahle verze je připravená pro GitHub Actions. GitHub z ní vyrobí APK, které stáhneš a nahraješ do mobilu.</p>
-<button onclick="showView('game')">Otevřít PiTT-KiTT</button>
-</section>
-<div class="grid2">
-<section class="card"><h3>✅ XEX uvnitř</h3><p>7162 bytes, RUN $221A.</p></section>
-<section class="card"><h3>🧪 Mini runner</h3><p>CPU debug základ, ne plná grafika.</p></section>
-</div>
-</main>
+<main id="home" class="view"><section class="card hero"><div class="kicker">Mobilní verze, ne kopie webu</div><h1>AtariHelp centrum</h1><p>Obsah webu je přestavěný do mobilní appky: hry, návody, assembler, dokumentace a N&P projekty. PiTT-KiTT je v herní sekci, ne jako úvod.</p><button onclick="showView('games')">Otevřít hry</button></section>
+<div class="grid3"><button class="card tile" onclick="showView('games')"><b>🎮</b><span>Hry</span><p>XEX/WAV/PDF katalog</p></button><button class="card tile" onclick="showView('guides')"><b>📼</b><span>Návody</span><p>Atari ↔ PC, WAV</p></button><button class="card tile" onclick="showView('studio')"><b>🏅</b><span>N&P</span><p>Manifest</p></button></div>
+<div class="grid2"><section class="card"><h3>Assembler</h3><p>Kroky 1–6, MADS, Altirra.</p></section><section class="card"><h3>Docs</h3><p>PDF/TXT dokumentace.</p></section></div></main>
 
-<main id="game" class="view hidden">
-<section class="card">
-<span class="tag">XEX</span><span class="tag">N&P Studio</span><span class="tag">RUN $221A</span>
-<h2 style="margin-top:12px">PiTT-KiTT Remaster</h2>
-<p>XEX je součástí APK. V0.3 má vlastní XEX loader do RAM a mini 6502 debug runner. Cíl v0.4: vykreslovací režim pro naše hry.</p>
-<button onclick="showView('play')">Spustit mini runner</button>
-<button class="secondary" onclick="showView('meta')">Technické info</button>
-</section>
-</main>
+<main id="games" class="view hidden"><section class="card"><div class="kicker">Herní katalog</div><h2>Naše hry</h2><p>První reálná položka je PiTT-KiTT Remaster. Další budou Cobra vrtulník, Tetris Platinum, Walls Gold a další.</p></section><section class="card"><span class="tag">XEX</span><span class="tag">RUN $221A</span><h2 style="margin-top:12px">PiTT-KiTT Remaster</h2><p>Soubor je uvnitř APK. Hraní ještě nejede naplno — mini-emulátor musí dostat obraz/joystick standard.</p><button onclick="showView('play')">Otevřít runner</button><button class="secondary" onclick="showView('meta')">Technické info</button></section></main>
 
-<main id="play" class="view hidden">
-<section class="card">
-<div class="kicker">Mini XEX emulator foundation</div>
-<h2>PiTT-KiTT Debug Runner</h2>
-<p class="bad">Tohle ještě není plně hratelná emulace. Už ale skutečně načte XEX do 64KB RAM, nastaví PC na RUNAD a umí krokovat část 6502 instrukcí.</p>
-<div class="regs" id="regs"></div>
-<button onclick="bootXex()">1) Load XEX</button>
-<button onclick="stepCpu(1)" class="secondary">Step 1 instrukce</button>
-<button onclick="stepCpu(250)" class="secondary">Run 250 instrukcí</button>
-<button onclick="autoRun()" class="blue">Auto run / pause</button>
-</section>
-<section class="screen">
-<div class="screen-inner">
-<div class="blink">ATARIHELP MINI XEX RUNNER</div>
-<h2 style="text-align:center;margin-top:22px">PiTT-KiTT</h2>
-<div class="blocks" id="blocks"></div>
-<div id="slotStatus" class="small" style="position:absolute;bottom:12px;left:12px;right:12px;text-align:center;letter-spacing:.08em">XEX NOT LOADED</div>
-</div>
-</section>
-<div class="controls">
-<section class="card"><h3>🕹 Joystick</h3><div class="joy"><span></span><button>▲</button><span></span><button>◀</button><button class="fire">●</button><button>▶</button><span></span><button>▼</button><span></span></div></section>
-<section class="card"><h3>Atari keys</h3><div class="keys"><button>START</button><button>SELECT</button><button>OPTION</button><button>RESET</button></div></section>
-</div>
-<section class="card"><h3>CPU log</h3><pre id="log"></pre></section>
-</main>
+<main id="guides" class="view hidden"><section class="card"><h2>📼 Návody a Rady</h2><p>Mobilní verze: kazetový adaptér, zvuk z Atari do PC, WAV do reálného Atari, loader poznámky.</p><a class="btn secondary" href="https://atarihelp.eu/">Otevřít web jako zálohu</a></section><section class="card"><h3>WAV do Atari</h3><p>WAV nebude pro hraní v appce. Bude jako stopa pro tvoje udělátko a reálné Atari.</p></section></main>
 
-<main id="meta" class="view hidden">
-<section class="card"><h2>Technické info XEX</h2><pre id="metaBox"></pre></section>
-<section class="card"><h3>Další krok</h3><p>Uděláme N&P XEX GAME STANDARD: vlastní jednoduchý režim obrazu, joystick registry a bez OS triků. Pak mini emulátor nebude muset umět celé Atari najednou.</p></section>
-</main>
+<main id="studio" class="view hidden"><section class="card hero"><img src="np_logo.png" style="width:100%;border-radius:18px;border:1px solid var(--line)"><div class="kicker" style="margin-top:12px">N&P Studio Manifest</div><h2>Vracíme život Atari 130XE</h2><p>AtariHelp vzniká jako centrum pro komunitní hry, návody, XEX/WAV balíčky a vlastní N&P projekty.</p></section></main>
 
-<main id="build" class="view hidden">
-<section class="card">
-<h2>Jak z toho vzniklo APK</h2>
-<p>Tenhle projekt je Android WebView wrapper s lokálním HTML/JS a přibaleným XEX. GitHub Actions ho postaví do app-debug.apk.</p>
-<p class="ok">APK stáhneš z GitHub Actions → Artifacts.</p>
-</section>
-</main>
-</div>
+<main id="play" class="view hidden"><section class="card"><div class="kicker">Mini XEX emulator foundation</div><h2>PiTT-KiTT Debug Runner</h2><p class="bad">Poctivě: hra ještě nejede. Tohle načte XEX do RAM a ukáže startovní stav. Další práce je grafický režim pro naše nové hry.</p><div id="regs"><div class="reg">CPU: not loaded</div></div><button onclick="bootXex()">Load XEX</button></section><section class="screen"><div class="screen-inner"><div class="blink">ATARIHELP MINI XEX RUNNER</div><h2 style="text-align:center;margin-top:22px">PiTT-KiTT</h2><div id="slotStatus" style="margin-top:34px">XEX NOT LOADED</div></div></section><section class="card"><h3>CPU log</h3><pre id="log"></pre></section></main>
 
-<nav><div class="nav-inner">
-<button class="navbtn active" data-view="home" onclick="showView('home')">Domů</button>
-<button class="navbtn" data-view="game" onclick="showView('game')">Hra</button>
-<button class="navbtn" data-view="play" onclick="showView('play')">Runner</button>
-<button class="navbtn" data-view="meta" onclick="showView('meta')">Info</button>
-<button class="navbtn" data-view="build" onclick="showView('build')">APK</button>
-</div></nav>
+<main id="meta" class="view hidden"><section class="card"><h2>Technické info XEX</h2><pre id="metaBox"></pre></section></main></div>
 
+<nav><div class="nav-inner"><button class="navbtn active" data-view="home" onclick="showView('home')">Domů</button><button class="navbtn" data-view="games" onclick="showView('games')">Hry</button><button class="navbtn" data-view="guides" onclick="showView('guides')">Návody</button><button class="navbtn" data-view="studio" onclick="showView('studio')">N&P</button><button class="navbtn" data-view="play" onclick="showView('play')">Runner</button></div></nav>
 <script>
-const embeddedXexBase64 = "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////////qqqqVVVVVaqqqqqqqlVVqqqq//+qqlVVqqqqqv//////////////qqpVVVVV/1VVqqqqVVVVVVWqqv+qVVVVVVWqqqqq////////////qqpVVVVV////VVVVVVVVVVVVVaqqVVVVVVVVVaqqqqr//////////6pVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVqqqq//////////9VVVVVVf///1VVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////////VVVVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVVaqq/////////1VVVVVVVVX///9VVVVVVVVVVVVVVVVVVVVVVVVVVVVVqqr///////9VVVVVVVVVVf////9VVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////VVVVVVVVVVVV/////1VVVVVVVVVVVVVVVVVVVVVVVVVVVaqq////////////////////////////7v/////////////////////////u/////////////////////////7v/////////////////////////u////////////////////////6qqqv//////////////////////qqqq//////////////////////+7u7v//////////////////////7u7u///////////////qqr///+q7u7uqv////////////+qqv///6ru7u6q/////6qq////qnd3qv//u7u7u7v/////qqr///+qd3eq//+7u7u7u////6q7u6r/qt3d3d2q/+7u7u7u////qru7qv+q3d3d3ar/7u7u7u7//6ru7u7uqqp3d3d3d6q7u7u7u///qu7u7u6qqnd3d3d3qru7u7u7/6q7u7u7u7uq3d3d3d3d7u7u7u7/qru7u7u7u6rd3d3d3d3u7u7u7qru7u7u7u7uqnd3d3d3d7u7u7u7qu7u7u7u7u6qd3d3d3d3u7u7u7u7u7u7u7u7u7vd3d3d3d3u7u7u7ru7u7u7u7u7u93d3d3d3e7u7u7u7u7u7u7u7u7ud3d3d3d3u7u7u7vu7u7u7u7u7u53d3d3d3e7u7u7u///////////AP///////////////////wD///////////8A////////////////AAAA/////////////////wAAAP////////8AAAD/////////////AABVAAD//////////////wAAVQAA//////8AAFUAAP//////////AABVVVUAAP///////////wAAVVVVAAD///8AAFVVVQAA////////AABVVVVVVQAA/////////wAAVVVVVVUAAP8AAFVVVVVVAAD/////AABVVVWqqlVVAAD//////wAAVVVVqqpVVQAAVVVVqqpVVQAAqv//AABVVVWqqqqqVVUAAP///wAAVVVVqqqqqlVVAABVqqqqqlUAAKr/AABVVVWqqqqqqqpVVQAA/wAAVVVVqqqqqqqqVVUAAKqqqqqqVQAAAABVVVWqqqqqqqqqqlVVAABVVVVVqqqqqqqqqqpVVQCqqqqqqlVVAABVVVVVVaqqqqqqqqpVVVVVVVVVVVWqqqqqqqqqVVVVqqqqqqpVVVVVVVVVVVVVqqqqqlVVVVVVVVVVVVVVVaqqqqpVVVVVVVWqqqqqVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQABAD8/AAAFBQUA////AAAVVQUFBRVaVVVVVVVVFQAAVFVQUFBUpVVVVVVVVVQAAABAAPz8AABQUFAA////AAAAAAAAAAAAAAAAAAAKqqoKAAAAAAAAAAAAAAAKqqqqqAAAAAAAAAAAAAAAKqqqqqgAAAAAAAAAAAAAAACgqqoKAw8/Dz//AwPA8Pzw/P/AwB8/AwMHBx84OB8PDw8PAAA/fwcHDw8/cHA/Hx8fHwAADx8BAQMDDxwcDwcHBwcAAPj8wMDg4PgcHPjw8PDwAADw+ICAwMDwODjw4ODg4AAA/P7g4PDw/A4O/Pj4+PgAAAAA4ODgAAAAAADw8PDwAAAAAODg4AAAAAAA4ODg4AAAAADg4OAAAAAAAPj4+PgAAAAABwcHAAAAAAAPDw8PAAAAAAcHBwAAAAAABwcHBwAAAAAHBwcAAAAAAB8fHx8AAK2tAACtrQAAra0AAK2tAAAAAAAArQCIAHwAbACtAIgAGBgYGRkZGhoaGhoaGRkZGBgYFxcXFhYWFRUVFRUVFhYWFxcXGBgYGRkZGhoZGRgYqmpaVgBAUFSVpamqFQUBAOAC4QIaIg==";
-const game = {"id": "pitt-kitt-remaster", "title": "PiTT-KiTT Remaster", "studio": "N&P Studio", "file": "games/pitt-kitt/PiTT-KiTT-NaP-Final.xex", "filename": "PiTT-KiTT-NaP-Final.xex", "format": "XEX", "size_bytes": 7162, "sha256": "8c587d73e8c4c4eb2ffe7d758cbc3856d0ca1275d8204fb87b8e5c68c619bd99", "run_address": "$221A", "init_address": null, "segments": [{"start": "$2000", "end": "$3BED", "size": 7150}, {"start": "$02E0", "end": "$02E1", "size": 2}], "play_status": "Mini CPU debug runner included. Graphics/audio hardware not complete yet."};
-const blocks = document.getElementById('blocks');
-for(let i=0;i<64;i++){ const s=document.createElement('span'); s.style.animationDelay=(i%9*.05)+'s'; blocks.appendChild(s); }
-
-function showView(id){
-  document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active', b.dataset.view===id));
-  if(id==='meta') renderMeta();
-}
-
-function hex(v,n=2){ return (v>>>0).toString(16).toUpperCase().padStart(n,'0'); }
-function log(s){ const el=document.getElementById('log'); el.textContent = s + "\n" + el.textContent.slice(0,6000); }
-function status(s){ document.getElementById('slotStatus').textContent=s; }
-
-let ram = new Uint8Array(65536);
-let cpu = null;
-let timer = null;
-
-function decodeB64(b64){
-  const raw = atob(b64); const a = new Uint8Array(raw.length);
-  for(let i=0;i<raw.length;i++) a[i]=raw.charCodeAt(i)&255;
-  return a;
-}
-
-function loadXex(bytes){
-  ram.fill(0);
-  let p=0, run=0, segs=0;
-  while(p<bytes.length){
-    if(p+2<=bytes.length && bytes[p]===0xFF && bytes[p+1]===0xFF) p+=2;
-    if(p+4>bytes.length) break;
-    const start=bytes[p]|(bytes[p+1]<<8), end=bytes[p+2]|(bytes[p+3]<<8); p+=4;
-    if(end<start) throw new Error("Bad segment $" + hex(start,4) + "-$" + hex(end,4));
-    const size=end-start+1;
-    if(p+size>bytes.length) throw new Error("Truncated segment $" + hex(start,4));
-    for(let i=0;i<size;i++) ram[(start+i)&0xffff]=bytes[p+i];
-    p+=size; segs++;
-  }
-  run = ram[0x02E0] | (ram[0x02E1]<<8);
-  return {run,segs};
-}
-
-class CPU6502 {
-  constructor(mem){ this.m=mem; this.reset(0); }
-  reset(pc){ this.a=0;this.x=0;this.y=0;this.sp=0xfd;this.p=0x24;this.pc=pc;this.cycles=0;this.trap=false;this.trapMsg=""; }
-  r(a){ return this.m[a&0xffff]; }
-  w(a,v){ this.m[a&0xffff]=v&255; if((a&0xff00)===0xd000) this.lastHw="$"+hex(a,4)+"=$"+hex(v,2); }
-  rw(a){ return this.r(a)|(this.r(a+1)<<8); }
-  push(v){ this.w(0x100|this.sp,v); this.sp=(this.sp-1)&255; }
-  pop(){ this.sp=(this.sp+1)&255; return this.r(0x100|this.sp); }
-  setZN(v){ v&=255; this.p = (this.p & ~0x82) | (v===0?2:0) | (v&0x80); }
-  getC(){ return this.p&1; } setC(b){ this.p=b?(this.p|1):(this.p&~1); }
-  imm(){ return this.r(this.pc++); }
-  zp(){ return this.imm(); }
-  abs(){ const lo=this.imm(), hi=this.imm(); return lo|(hi<<8); }
-  zpx(){ return (this.imm()+this.x)&255; }
-  zpy(){ return (this.imm()+this.y)&255; }
-  indx(){ const z=(this.imm()+this.x)&255; return this.r(z)|(this.r((z+1)&255)<<8); }
-  indy(){ const z=this.imm(); return ((this.r(z)|(this.r((z+1)&255)<<8))+this.y)&0xffff; }
-  branch(cond){ const o=this.imm(); if(cond){ const s=o<128?o:o-256; this.pc=(this.pc+s)&0xffff; } }
-  cmp(r,v){ const t=(r-v)&0x1ff; this.setC(r>=v); this.setZN(t&255); }
-  adc(v){ const t=this.a+v+this.getC(); this.setC(t>255); this.a=t&255; this.setZN(this.a); }
-  sbc(v){ this.adc((v^255)&255); }
-  step(){
-    if(this.trap) return;
-    const pc0=this.pc, op=this.imm();
-    switch(op){
-      case 0xEA: break; case 0x78: this.p|=4; break; case 0x58: this.p&=~4; break; case 0xD8: this.p&=~8; break; case 0xF8: this.p|=8; break; case 0x18: this.setC(false); break; case 0x38: this.setC(true); break;
-      case 0xA9: this.a=this.imm(); this.setZN(this.a); break; case 0xA5: this.a=this.r(this.zp()); this.setZN(this.a); break; case 0xB5: this.a=this.r(this.zpx()); this.setZN(this.a); break; case 0xAD: this.a=this.r(this.abs()); this.setZN(this.a); break; case 0xBD: this.a=this.r((this.abs()+this.x)&0xffff); this.setZN(this.a); break; case 0xB9: this.a=this.r((this.abs()+this.y)&0xffff); this.setZN(this.a); break; case 0xA1: this.a=this.r(this.indx()); this.setZN(this.a); break; case 0xB1: this.a=this.r(this.indy()); this.setZN(this.a); break;
-      case 0xA2: this.x=this.imm(); this.setZN(this.x); break; case 0xA6: this.x=this.r(this.zp()); this.setZN(this.x); break; case 0xAE: this.x=this.r(this.abs()); this.setZN(this.x); break;
-      case 0xA0: this.y=this.imm(); this.setZN(this.y); break; case 0xA4: this.y=this.r(this.zp()); this.setZN(this.y); break; case 0xAC: this.y=this.r(this.abs()); this.setZN(this.y); break;
-      case 0x85: this.w(this.zp(),this.a); break; case 0x95: this.w(this.zpx(),this.a); break; case 0x8D: this.w(this.abs(),this.a); break; case 0x9D: this.w((this.abs()+this.x)&0xffff,this.a); break; case 0x99: this.w((this.abs()+this.y)&0xffff,this.a); break; case 0x81: this.w(this.indx(),this.a); break; case 0x91: this.w(this.indy(),this.a); break;
-      case 0x86: this.w(this.zp(),this.x); break; case 0x8E: this.w(this.abs(),this.x); break; case 0x84: this.w(this.zp(),this.y); break; case 0x8C: this.w(this.abs(),this.y); break;
-      case 0xAA: this.x=this.a; this.setZN(this.x); break; case 0xA8: this.y=this.a; this.setZN(this.y); break; case 0x8A: this.a=this.x; this.setZN(this.a); break; case 0x98: this.a=this.y; this.setZN(this.a); break; case 0xBA: this.x=this.sp; this.setZN(this.x); break; case 0x9A: this.sp=this.x; break;
-      case 0xE8: this.x=(this.x+1)&255; this.setZN(this.x); break; case 0xC8: this.y=(this.y+1)&255; this.setZN(this.y); break; case 0xCA: this.x=(this.x-1)&255; this.setZN(this.x); break; case 0x88: this.y=(this.y-1)&255; this.setZN(this.y); break;
-      case 0xE6: {const a=this.zp(),v=(this.r(a)+1)&255; this.w(a,v); this.setZN(v); break;} case 0xEE: {const a=this.abs(),v=(this.r(a)+1)&255; this.w(a,v); this.setZN(v); break;} case 0xC6: {const a=this.zp(),v=(this.r(a)-1)&255; this.w(a,v); this.setZN(v); break;} case 0xCE: {const a=this.abs(),v=(this.r(a)-1)&255; this.w(a,v); this.setZN(v); break;}
-      case 0x29: this.a&=this.imm(); this.setZN(this.a); break; case 0x25: this.a&=this.r(this.zp()); this.setZN(this.a); break; case 0x2D: this.a&=this.r(this.abs()); this.setZN(this.a); break;
-      case 0x09: this.a|=this.imm(); this.setZN(this.a); break; case 0x05: this.a|=this.r(this.zp()); this.setZN(this.a); break; case 0x0D: this.a|=this.r(this.abs()); this.setZN(this.a); break;
-      case 0x49: this.a^=this.imm(); this.setZN(this.a); break; case 0x45: this.a^=this.r(this.zp()); this.setZN(this.a); break; case 0x4D: this.a^=this.r(this.abs()); this.setZN(this.a); break;
-      case 0x69: this.adc(this.imm()); break; case 0x65: this.adc(this.r(this.zp())); break; case 0x6D: this.adc(this.r(this.abs())); break; case 0xE9: this.sbc(this.imm()); break; case 0xE5: this.sbc(this.r(this.zp())); break; case 0xED: this.sbc(this.r(this.abs())); break;
-      case 0xC9: this.cmp(this.a,this.imm()); break; case 0xC5: this.cmp(this.a,this.r(this.zp())); break; case 0xCD: this.cmp(this.a,this.r(this.abs())); break; case 0xE0: this.cmp(this.x,this.imm()); break; case 0xC0: this.cmp(this.y,this.imm()); break;
-      case 0x4C: this.pc=this.abs(); break; case 0x6C: this.pc=this.rw(this.abs()); break; case 0x20: {const a=this.abs(); this.push(((this.pc-1)>>8)&255); this.push((this.pc-1)&255); this.pc=a; break;} case 0x60: {const lo=this.pop(), hi=this.pop(); this.pc=((lo|(hi<<8))+1)&0xffff; break;}
-      case 0x48: this.push(this.a); break; case 0x68: this.a=this.pop(); this.setZN(this.a); break; case 0x08: this.push(this.p|0x10); break; case 0x28: this.p=this.pop(); break;
-      case 0xD0: this.branch(!(this.p&2)); break; case 0xF0: this.branch(!!(this.p&2)); break; case 0x10: this.branch(!(this.p&0x80)); break; case 0x30: this.branch(!!(this.p&0x80)); break; case 0x90: this.branch(!this.getC()); break; case 0xB0: this.branch(!!this.getC()); break;
-      case 0x24: {const v=this.r(this.zp()); this.p=(this.p&~0xC2)|(v&0xC0)|((this.a&v)?0:2); break;} case 0x2C: {const v=this.r(this.abs()); this.p=(this.p&~0xC2)|(v&0xC0)|((this.a&v)?0:2); break;}
-      case 0x0A: this.setC(this.a&0x80); this.a=(this.a<<1)&255; this.setZN(this.a); break; case 0x4A: this.setC(this.a&1); this.a=(this.a>>1)&255; this.setZN(this.a); break;
-      case 0x00: this.trap=true; this.trapMsg="BRK at $"+hex(pc0,4); break;
-      default: this.trap=true; this.trapMsg="Unsupported opcode $"+hex(op)+" at $"+hex(pc0,4); break;
-    }
-    this.cycles++;
-  }
-}
-
-function bootXex(){
-  try {
-    const bytes = decodeB64(embeddedXexBase64);
-    const info = loadXex(bytes);
-    cpu = new CPU6502(ram);
-    cpu.reset(info.run);
-    log("Loaded XEX: " + bytes.length + " bytes, segments " + info.segs + ", RUN $" + hex(info.run,4));
-    status("XEX LOADED / PC $" + hex(info.run,4));
-    renderRegs();
-  } catch(e) {
-    log("ERROR: " + e.message);
-    status("LOAD ERROR");
-  }
-}
-
-function renderRegs(){
-  const box=document.getElementById('regs');
-  if(!cpu){ box.innerHTML='<div class="reg">CPU: not loaded</div>'; return; }
-  box.innerHTML = `
-    <div class="reg">PC $${hex(cpu.pc,4)}</div><div class="reg">A $${hex(cpu.a)}</div>
-    <div class="reg">X $${hex(cpu.x)}</div><div class="reg">Y $${hex(cpu.y)}</div>
-    <div class="reg">SP $${hex(cpu.sp)}</div><div class="reg">P $${hex(cpu.p)}</div>
-    <div class="reg">Steps $${cpu.cycles}</div><div class="reg">${cpu.lastHw||'HW none'}</div>`;
-}
-
-function stepCpu(n){
-  if(!cpu) bootXex();
-  for(let i=0;i<n && cpu && !cpu.trap;i++) cpu.step();
-  if(cpu.trap){ log(cpu.trapMsg); status(cpu.trapMsg); if(timer) autoRun(); }
-  else status("RUNNING / PC $" + hex(cpu.pc,4));
-  renderRegs();
-}
-
-function autoRun(){
-  if(timer){ clearInterval(timer); timer=null; status("PAUSED / PC $" + (cpu?hex(cpu.pc,4):"----")); return; }
-  if(!cpu) bootXex();
-  timer=setInterval(()=>stepCpu(500), 50);
-}
-
-function renderMeta(){
-  const lines=[];
-  lines.push("FILE: " + game.filename);
-  lines.push("SIZE: " + game.size_bytes + " bytes");
-  lines.push("RUNAD: " + game.run_address);
-  lines.push("SHA256: " + game.sha256);
-  lines.push("");
-  lines.push("SEGMENTS:");
-  game.segments.forEach((s,i)=>lines.push((i+1)+". " + s.start + "-" + s.end + " / " + s.size + " bytes"));
-  document.getElementById('metaBox').textContent=lines.join("\n");
-}
-
-renderMeta(); renderRegs();
-</script>
-</body></html>
+const b64="//8AIO07TBoicHBwcHBCaSBwcHBCkSBwcHBCuSBwcHBwQuEgQQMgcHBwcEIJIXBCMSFwcHBwcHBwQrkgQSEgcHBwcEJZIXBCgSFwcHBwcHBwQrkgQTkgcHBwcHBwQqkhcHBwQsohcHBwQvIhQVEgAAAAAAAAAAAAADApNDM0LzAAKyk0NAAyJS0hMzQlMgAAAAAAAAAAAAAAAAAAAAAAACgpJygAMyMvMiUaABAQEAAAACEhIQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAyJTMzADM0ITI0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIIwkALgYwABIQEhYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIzIhMyglJAEAJyEtJQAvNiUyAAAAAAAAAAAAAAAAAAAAAAAAAAAlLiUtKSUzACQlMzQyLzklJBoAEBAQAAAAAAAAAAAAAAAAAAAAAAA5LzUAITIlACsuKScoNAAyKSQlMgABAQEAAAAAAAAAAAAAAAAAAAAAACUuJS0pJTMAJCUzNDIvOSUkGgAQEBAAAAAAAAAAAAAAAAAAAAAAAAAKCgoALiU3ACgpJygAMyMvMiUBAAoKCgAAAAAAAAAAAAAAJS40JTIAOS81MgApLik0KSEsMxoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIQAhACEAAAAAAAAAAAAAAAAAAAAAAKkAhb6FwkwjInipAI0O1I0I0oWUhZWNANSNLwKNEdCNBNCNHtCNCNCNCdCNCtCNC9CNDNCpQI0H1IUFqQCFBKiqkQTI0PvmBejgBND0oCip/5kAQpmAQpkAQ5mAQ8jAMNDvqQONMAKNAtSpII0xAo0D1KkujQDUjS8CqQONHdCpPo0S0Kk4jRPQqTSNFNCpMo0V0KngjQnUqQ+NF9CpAI0a0I0Y0KmAhYCpAYWBrQvU0PutH9ApAdADTJojpZXwBcaVTAYjqQSFlaaUvY47jQbS8Aippo0H0kz6IqkAjQfS5pSllMkg0ASpAIWUpYA46YAQBUn/GGkBSoWCqQ845YIwHgmgjQHSqdyNANKpDTjlgjANCaCNA9Kp4Y0C0kxCI6kAjQHSjQPSpYAYZYGFgKWAyaqQB6n/hYFMXiPJVrAEqQGFgaWAjQDQpYHJAfAVpYAYaQONAdBpA40C0GkDjQPQTJAjpYA46QONAdDpA40C0OkDjQPQrQvUyTyQ+UzHIqkAjQjSjQHSjQPSjQXSjQfSjR3QjQDUjS8CqUCNDtRYTL0jqQcgnO+pBI3IAqnEjcQCqQ+NxQKpdo3GAqlAjQfUqS6NLwKpA40d0KkBjW8CqQCNCNCNCdCNCtCNC9Cp8I0M0Kk0jcACjcECqQCNwgKNwwKpQIUFqQCFBKiqkQTI0PvmBejgCND0qTKFrKkAha2FroWrha+FsIW0jQjSjQHSjQPSjQXSjQfSjQXShY6Fj4WQhZSFlYWghaiFmIWihb2Fwal4jQDQjQLQqYCNAdCNA9CpUIWLqSqFnqkyhaaploWnqQ+FsakFhbapAIW1qQ+FuqkAhbnGrPADTL8lqTKFrOatpa3JD/ADTL8lqQCFreaupa7JCtADTD4wpa7JANAXqQSNyAKpxI3EAqkPjcUCqXaNxgJMvyXJAdAXqQSNyAKpxI3EAqkPjcUCqQCNxgJMvyXJAtAXqQ6NyAKpuI3EAqkAjcUCqXaNxgJMvyXJA9AXqQ6NyAKpxI3EAqkAjcUCqXaNxgJMvyXJBNAXqSSNyAKpFo3EAqkPjcUCqSKNxgJMvyXJBdAXqWSNyAKpIo3EAqkAjcUCqUaNxgJMvyXJBtAXqUKNyAKpRo3EAqkAjcUCqUSNxgJMvyXJB9AXqYSNyAKpdI3EAqkPjcUCqYKNxgJMvyXJCNAXqRqNyAKpFo3EAqkAjcUCqRKNxgJMvyWppI3IAqnUjcQCqQ+NxQKpwo3GAqaupZUYfZgzhZWQI6aUvY47jQbS8AipqI0H0kziJakAjQfS5pSllMkg0ASpAIWUqQCNA9KlqPARxqilqAoKjQTSqYiNBdJMDSapAI0F0q0Q0NAZpY7QFalmOOWPhY6pfI0E0KkKhZOpqI0B0qWT8BPGk6WTGGmgjQHSpZMKjQDSTEsmpaDQBakAjQHSpY/JArAOrQrQDQvQKQPwBKkehaCNHtCloPAdxqCpoo0B0qkojQDSpRQpAtAEqRDQAqkghZZM9SapAIWWrQDTKQTQMKkQhZalrskC8AvJA/AHyQfwA0yuJqW0yQfwdea0TB4npYvJbpADTEgn5ovmi0xIJ60A0ykI0DCpIIWWpa7JAvALyQPwB8kH8ANM5SaltMn58D7GtEweJ6WLyTawA0xIJ8aLxotMSCelrskC8AvJA/AHyQfwA0xIJ6W00ANMHielFCkB8AultDAFxrRMHifmtKW00ANMSCcYZYvJNpAJyW6wEIWLTEgnqTaFi6kAhbRMSCepboWLqQCFtKWO8CSouYBBKfyZgEGljjjpBIWOyRiQDKi5gEEJA5mAQUxwJ6kAhY6lkNAOrQDTKQLQRqkBhZBMwSfJAfAUyQPwI8aPpY/QJYWQqQCNA9JMwSfmj6WPyQyQE6kDhZCpDIWSTLUnxpLQBKkChZCpoo0D0qWPSf+NAtKgEKkAmQBCmYBCmQBDmYBDyMCA0O+pYDjlj6iElxill2kQhZemlr3OOpkAQr3+OpmAQr0uO5kAQ71eO5mAQ8joxJfQ4qaNva47hYzmjaWNyTDQBKkAhY2lWIWApVmFgaaMhpHgDbADTD0poCep/5GAiBD7pa7wK6aRpRQpEIWX4BnQA0xmKOAW0ANMkSjgE9ADTLwo4BDQA0znKOAO0ANMEilMhCmll9AQoAOlrskCsASpv9ACqT+RgKWX8BCgIKWuyQKwBKn70AKp85GATIQppZfQEKAKpa7JArAEqe/QAqnPkYCll/AQoBmlrskCsASp/tACqfyRgEyEKaWX0BCgAqWuyQKwBKm/0AKpP5GApZfwEKASpa7JArAEqfvQAqnzkYBMhCmll9AQoBilrskCsASp79ACqc+RgKWX8BCgJqWuyQKwBKn+0AKp/JGATIQppZfQEKAIpa7JArAEqb/QAqk/kYCll/AQoB+lrskCsASp+9ACqfORgEyEKaWuyQDwIckE8B3JBvAZyQjwFckC8B7JB/AavVU0hQS9YTSFBUx7Kb1tNIUEvXk0hQVMeym9hTSFBL2RNIUFoCexBJGAiBD5GKWAaSiFgJAC5oGmkcrwA0wiKEyaKSBiMxhliYWJqWA45YyFgqWLhYOpDoWEqQCFiqWDOOWEsAqp/4WFqQCFh/AGhYVKSoWHpYMYZYSwBMmfkAqp/4WGqSiFiNAGhYZKSoWIpYXJ//AzoADEh7AJqVWRgMjEh5D5pIcYpYJliSkE0AulhSkDqr3eO0waKqWFKQOqveI7kYDITCIqoADEiLAJqQCRgMjEiJD5pYbJ//AhpIgYpYJliSkE0AulhikDqr3mO0xTKqWGKQOqveo7kYDIwCiwCalVkYDIwCiQ+RilgGkohYCQAuaBGKWKaaCFipAC5oTGgvADTLUppRTFFPD8TIkqpZ7QLsax8ANMhiupFoWerQrSyVWQCMmqkAipAtAGqQDwAqkBhZ+tCtIpHwkQhbFM4CogYjMYZZ6FnqWeyS2QCuaepZ7JS5AC5p6lnslgkAepAIWeTIYrpYtKSjjpAYWhpZ/JAfAepZ5KSkqFl6WfyQDwCqWhGGWXhaFMDSuloTjll4WhpY/JBbAYpZ7JRpASpaHJDpAMyRawCKWg0ASpHoWgpViFmqVZhZumnvAOGKWaaSiFmpAC5pvK0PIYpZploYWakALmm6IAoAC9fjoRmpGayL2OOhGakZrIvZ46EZqRmsi9rjoRmpGaiIiIGKWaaSiFmpAC5pvo4BDQzkyJK6W10B7GtvADTEcsqRaFta0K0ikBhbetCtIpDwkEhbZM0CsgYjMYZbWFtaW1yS2QCua1pbXJS5AC5rWltclgkAepAIW1TEcspYtKSoW4pbU46RRKSoWXpbfwDKW4GGWXaQSFuEz4K6W4OOWX6QWFuKW4ySawSaVYhZqlWYWbprXwDhilmmkohZqQAuabytDyGKWaZbiFmpAC5puiAKAAvb46UZqRmsi9xjpRmpGaiBilmmkohZqQAuab6OAI0OBMSiyludAexrrwA0wILakWhbmtCtIpAYW7rQrSKQ8JCIW6TJEsIGIzGGW5hbmlucktkArmuaW5yUuQAua5pbnJYJAHqQCFuUwILaWLSkqFvKW5OOkUSkqFl6W78AylvBhll2kEhbxMuSylvDjll+kFhbylvMkmsEmlWIWapVmFm6a58A4YpZppKIWakALmm8rQ8hilmmW8hZqQAuabogCgAL2+OlGakZrIvcY6UZqRmogYpZppKIWakALmm+jgCNDgTAstpZjQLsam8ANMaC6pFoWYrQrSyVWQCMmqkAipAtAGqQDwAqkBhZytCtIpPwkghaZMcS2lq/ALxqvQLKkAhZhMaC4gYjMYZZiFmKWYyS2QCuaYpZjJS5AC5pilmMlgkAepAIWYTGgupYtKSjjpAYWZpZzJAfAepZhKSkqFl6WcyQDwCqWZGGWXhZlMni2lmTjll4WZpavQTKWO8Eg45ZimruACsAvJGpA7ySKwN0zCLckWkDDJJrAspZnJD5AmyRWwIqkPhaukjqkAmYBBhY6pHoWo+BilvWkBhb2QBqXBaQCFwdilj8kFsBOlmMlGkA2lmckOkAfJFbADTMsvpZiFnaVYhZqlWYWbppjwDhilmmkohZqQAuabytDyGKWaZZmFmpAC5puiAKAApavwBiAwM0xYLr0+OpGayL1OOpGayL1eOpGayL1uOpGaiIiIGKWaaSiFmpAC5pvo4BDQzExrLqWi0C7Gp/ADTMgvqRaFoq0K0slVkAjJqpAIqQLQBqkA8AKpAYWkrQrSKT8JQIWnTNEupa/wC8av0CypAIWiTMgvIGIzGGWihaKlosktkArmoqWiyUuQAuaipaLJYJAHqQCFokzIL6WLSko46QGFo6WkyQHwHqWiSkpKhZelpMkA8Aqloxhll4WjTP4upaM45ZeFo6Wv0EyljvBIOOWipq7gArALyRqQO8kisDdMIi/JFpAwySawLKWjyRCQJskUsCKpD4WvpI6pAJmAQYWOqR6FqPgYpb1pAYW9kAalwWkAhcHYpY/JBbATpaLJRpANpaPJDpAHyRWwA0zLL6WihaWlWIWapVmFm6ai8A4YpZppKIWakALmm8rQ8hilmmWjhZqQAuabogCgAKWv8AYgMDNMuC+9PjqRmsi9TjqRmsi9XjqRmsi9bjqRmoiIiBilmmkohZqQAuab6OAQ0MxMkSSpAI0D0o0F0o0H0oWOjQTQqWSFsKUUxRTw/KIQqWA45Y+orQrSmQBCSf+ZgEKlFJkAQ00K0pmAQ8jK0OatCtKNyAKNxAKNxQKtCtKNANKpiI0B0saw0L2pAI0B0o0vAo0A1KkyhbClFMUU8PzGsND2TKcwqaKFnqkzhZ+lwSkPCRCNnSGlvUpKSkoJEI2eIaW9KQ8JEI2fIak5jTACjQLUqSCNMQKNA9SgAJiZAEKZgEKZAEOZgEPIwIDQ76IbveIznVhCvf4zndhCyhDxqRqNEtCNE9CpEIWXTA0xqcKFnqkzhZ+lwSkPCRCNTSGlvUpKSkoJEI1OIaW9KQ8JEI1PIakhjTACjQLUqSCNMQKNA9SgAJiZAEKZgEKZAEOZgEPIwIDQ76IdvRo0nVhCvTg0ndhCyhDxqUSNEtCNE9CpMIWXqQCFlIWVqQONCNCNCdCpYI0A0KmAjQHQqQCNAdKNA9KNBdKNB9KpLo0A1I0vAqkDjR3QqeCNCdSpD40X0I3EAo3FAqkAjRrQjRjQjcYCrR/QKQHw+aUUxRTw/KWV8AXGlUyXMakGhZWklLGejQDS8AipqI0B0kyLMakAjQHS5pSllMkgkASpAIWUpRQpEPAEqQ/QAqkEjcUCpRRKSqopD4WCiikQ8AepDzjlgoWCpYIFl43IAo3GAq0f0CkB0JatH9ApAfD5pcHFwpAN0AilvcW+kAXwA0zpMUwjIqkAjQHSjQPSjQXSjQfSjR3QjQTQqSKNANSNLwKpUY0wAo0C1KkgjTECjQPUqSGNBCKNBiKNCCKpAIW/qRSFwKUUxRTw/KUUjcQCjcUCrQQiKX+NBCKtBiIpf40GIq0IIil/jQgipRQpCPAKpr+9BCIJgJ0EIqXA8AXGwEwoMq0A0ykB0CSmv70EIil/GGkByTuQAqkhnQQiqaiNAdKpKI0A0qkMhcBMKDKtANMpAtAkpr+9BCIpfzjpAckg0AKpOp0EIqmojQHSqSiNANKpDIXATCgyqQCNAdKtENDwCq0A0ykI8ANMKDKmv70EIil/nQQiqa+NAdKpUI0A0qkZhcDmv+a/pb/JBrADTCgypb2FvqXBhcKlwSkPCRCNpiClvUpKSkoJEI2nIKW9KQ8JEI2oIK0EIo2sIK0GIo2tIK0IIo2uIEwjIuAEkB/gDLAbrQrSkZrIrQrSkZrIrQrSkZrIrQrSkZqIiIhgyK0K0pGayK0K0pGaiIhgpRQpAwoKGGWuqr1wM2ABAQICAQICAwEBAQIBAgICAgIDAwIDAwMCAwMEAgIDAwMDBAQDBAQEgJi00vD6+vr6+nl5AABRUQAAPDwAAC8vAAAoKCgoKCgoKAAAAAAAAAAAeXl5eaKioqLBwcHB8/Pz8/Pz8/MAAAAAAAAAAAAAAAA/P39//////39/Pz8PDwcHAwMDAwMDDw8/Pz8//Pz+/v/////+/vz88PDg4MDAwMDAwPDw/Pz8/A8PPz9/f3Nzc3N/fz8/FRUfHwAAYWEzMx4eMzNhYfDw/Pz+/s7Ozs7+/vz8qKj4+AAAhobMzHh4zMyGhjYO5r6WbkYe9s6mfjg4Nzc3Nzc3NjY2NlYuBt62jmY+Fu7GnjY2NjU1NTU1NTQ0NBbuxp52Tib+1q6GXjo5OTk5OTk4ODg4OP////////+qqv////////+q//////////+q/////////////////////////6qqqqqq//////+qqqr///////+qqqr/////////////////////qqqqqlWqqqr///+qqqqqqv////+qqqqqqv//////////////////qqqqVVVVVaqqqqqqqlVVqqqq//+qqlVVqqqqqv//////////////qqpVVVVV/1VVqqqqVVVVVVWqqv+qVVVVVVWqqqqq////////////qqpVVVVV////VVVVVVVVVVVVVaqqVVVVVVVVVaqqqqr//////////6pVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVqqqq//////////9VVVVVVf///1VVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////////VVVVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVVaqq/////////1VVVVVVVVX///9VVVVVVVVVVVVVVVVVVVVVVVVVVVVVqqr///////9VVVVVVVVVVf////9VVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////VVVVVVVVVVVV/////1VVVVVVVVVVVVVVVVVVVVVVVVVVVaqq////////////////////////////7v/////////////////////////u/////////////////////////7v/////////////////////////u////////////////////////6qqqv//////////////////////qqqq//////////////////////+7u7v//////////////////////7u7u///////////////qqr///+q7u7uqv////////////+qqv///6ru7u6q/////6qq////qnd3qv//u7u7u7v/////qqr///+qd3eq//+7u7u7u////6q7u6r/qt3d3d2q/+7u7u7u////qru7qv+q3d3d3ar/7u7u7u7//6ru7u7uqqp3d3d3d6q7u7u7u///qu7u7u6qqnd3d3d3qru7u7u7/6q7u7u7u7uq3d3d3d3d7u7u7u7/qru7u7u7u6rd3d3d3d3u7u7u7qru7u7u7u7uqnd3d3d3d7u7u7u7qu7u7u7u7u6qd3d3d3d3u7u7u7u7u7u7u7u7u7vd3d3d3d3u7u7u7ru7u7u7u7u7u93d3d3d3e7u7u7u7u7u7u7u7u7ud3d3d3d3u7u7u7vu7u7u7u7u7u53d3d3d3e7u7u7u///////////AP///////////////////wD///////////8A////////////////AAAA/////////////////wAAAP////////8AAAD/////////////AABVAAD//////////////wAAVQAA//////8AAFUAAP//////////AABVVVUAAP///////////wAAVVVVAAD///8AAFVVVQAA////////AABVVVVVVQAA/////////wAAVVVVVVUAAP8AAFVVVVVVAAD/////AABVVVWqqlVVAAD//////wAAVVVVqqpVVQAAVVVVqqpVVQAAqv//AABVVVWqqqqqVVUAAP///wAAVVVVqqqqqlVVAABVqqqqqlUAAKr/AABVVVWqqqqqqqpVVQAA/wAAVVVVqqqqqqqqVVUAAKqqqqqqVQAAAABVVVWqqqqqqqqqqlVVAABVVVVVqqqqqqqqqqpVVQCqqqqqqlVVAABVVVVVVaqqqqqqqqpVVVVVVVVVVVWqqqqqqqqqVVVVqqqqqqpVVVVVVVVVVVVVqqqqqlVVVVVVVVVVVVVVVaqqqqpVVVVVVVWqqqqqVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQABAD8/AAAFBQUA////AAAVVQUFBRVaVVVVVVVVFQAAVFVQUFBUpVVVVVVVVVQAAABAAPz8AABQUFAA////AAAAAAAAAAAAAAAAAAAKqqoKAAAAAAAAAAAAAAAKqqqqqAAAAAAAAAAAAAAAKqqqqqgAAAAAAAAAAAAAAACgqqoKAw8/Dz//AwPA8Pzw/P/AwB8/AwMHBx84OB8PDw8PAAA/fwcHDw8/cHA/Hx8fHwAADx8BAQMDDxwcDwcHBwcAAPj8wMDg4PgcHPjw8PDwAADw+ICAwMDwODjw4ODg4AAA/P7g4PDw/A4O/Pj4+PgAAAAA4ODgAAAAAADw8PDwAAAAAODg4AAAAAAA4ODg4AAAAADg4OAAAAAAAPj4+PgAAAAABwcHAAAAAAAPDw8PAAAAAAcHBwAAAAAABwcHBwAAAAAHBwcAAAAAAB8fHx8AAK2tAACtrQAAra0AAK2tAAAAAAAArQCIAHwAbACtAIgAGBgYGRkZGhoaGhoaGRkZGBgYFxcXFhYWFRUVFRUVFhYWFxcXGBgYGRkZGhoZGRgYqmpaVgBAUFSVpamqFQUBAOAC4QIaIg=="; const game={"id": "pitt-kitt-remaster", "title": "PiTT-KiTT Remaster", "filename": "PiTT-KiTT-NaP-Final.xex", "size_bytes": 7162, "sha256": "8c587d73e8c4c4eb2ffe7d758cbc3856d0ca1275d8204fb87b8e5c68c619bd99", "run_address": "$221A", "segments": [{"start": "$2000", "end": "$3BED", "size": 7150}, {"start": "$02E0", "end": "$02E1", "size": 2}]};
+function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.view===id));if(id==='meta')renderMeta();}
+function decodeB64(s){const raw=atob(s),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i)&255;return a}
+function bootXex(){const bytes=decodeB64(b64);document.getElementById('slotStatus').textContent='XEX LOADED / RUN $221A';document.getElementById('regs').innerHTML='<div class="reg">RUN $221A</div><div class="reg">SIZE '+bytes.length+' bytes</div><div class="reg">Segments 2</div>';document.getElementById('log').textContent='Loaded PiTT-KiTT XEX into runner slot.\nNext: real video/joystick emulation.';}
+function renderMeta(){let lines=[];lines.push('FILE: '+game.filename);lines.push('SIZE: '+game.size_bytes+' bytes');lines.push('RUNAD: '+game.run_address);lines.push('SHA256: '+game.sha256);lines.push('');lines.push('SEGMENTS:');game.segments.forEach((s,i)=>lines.push((i+1)+'. '+s.start+'-'+s.end+' / '+s.size+' bytes'));document.getElementById('metaBox').textContent=lines.join('\n');}
+renderMeta();
+</script></body></html>
