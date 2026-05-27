@@ -5,8 +5,8 @@
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
-        android:icon="@drawable/ic_launcher"
-        android:label="AtariHelp"
+        android:icon="@drawable/app_icon"
+        android:label="AtariHelp.eu"
         android:theme="@style/AppTheme">
 
         <activity
