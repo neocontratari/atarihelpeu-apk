@@ -1,0 +1,239 @@
+# ZAČNI TADY – AtariHelp APK pro lidi
+
+Parťáku, tenhle balík je správná cesta.  
+Žádné ruční falešné APK. Tohle nechá **GitHub** vyrobit opravdové Android APK normálním Android buildem.
+
+## Co je cílem
+
+Na konci budeš mít soubor:
+
+```text
+app-debug.apk
+```
+
+Ten pošleš do mobilu a nainstaluješ.
+
+---
+
+# ČÁST 1 – Vytvoř složku na GitHubu
+
+## Krok 1
+
+Otevři v prohlížeči:
+
+```text
+https://github.com
+```
+
+Přihlas se.
+
+## Krok 2
+
+Vpravo nahoře klikni na:
+
+```text
++
+```
+
+Pak klikni:
+
+```text
+New repository
+```
+
+Repository znamená jen **složka projektu na internetu**.
+
+## Krok 3
+
+Do názvu napiš třeba:
+
+```text
+atarihelp-apk
+```
+
+Nech klidně `Public`.
+
+Důležité: nezaškrtávej README, gitignore ani licenci. Tenhle balík už všechno má.
+
+Klikni:
+
+```text
+Create repository
+```
+
+---
+
+# ČÁST 2 – Nahraj projekt
+
+## Krok 4
+
+Rozbal ZIP:
+
+```text
+AtariHelp_APK_BUILDER_PRO_LIDI_v11.zip
+```
+
+Po rozbalení otevři složku. Musíš v ní vidět hlavně:
+
+```text
+.github
+app
+build.gradle
+settings.gradle
+README.md
+```
+
+## Krok 5
+
+Na GitHub stránce nového projektu klikni na:
+
+```text
+uploading an existing file
+```
+
+Nebo:
+
+```text
+Add file → Upload files
+```
+
+## Krok 6
+
+Z rozbalené složky označ všechno:
+
+```text
+Ctrl + A
+```
+
+A přetáhni to do okna GitHubu.
+
+Důležité: nahrávej **obsah složky**, ne samotný ZIP.
+
+## Krok 7
+
+Dole klikni:
+
+```text
+Commit changes
+```
+
+Commit znamená jen „uložit“.
+
+---
+
+# ČÁST 3 – Nech GitHub vyrobit APK
+
+## Krok 8
+
+Nahoře klikni na záložku:
+
+```text
+Actions
+```
+
+## Krok 9
+
+Klikni na:
+
+```text
+VYROBIT APK ATARIHELP
+```
+
+Jestli build neběží sám, klikni:
+
+```text
+Run workflow
+```
+
+a pak zelené tlačítko:
+
+```text
+Run workflow
+```
+
+## Krok 10
+
+Počkej. Může to trvat 3 až 10 minut.
+
+Až bude zelená fajfka ✅, klikni na hotový běh.
+
+---
+
+# ČÁST 4 – Stáhni APK
+
+## Krok 11
+
+Dole najdi sekci:
+
+```text
+Artifacts
+```
+
+Klikni na:
+
+```text
+HOTOVE_APK_ATARIHELP_STAHNI_ME
+```
+
+Stáhne se ZIP.
+
+## Krok 12
+
+Ten ZIP rozbal.
+
+Uvnitř bude:
+
+```text
+app-debug.apk
+```
+
+To je APK.
+
+---
+
+# ČÁST 5 – Instalace do mobilu
+
+## Krok 13
+
+Pošli `app-debug.apk` do mobilu.
+
+Třeba přes kabel, Google Drive, e-mail, WhatsApp, cokoliv.
+
+## Krok 14
+
+V mobilu otevři `app-debug.apk`.
+
+Android se zeptá na instalaci z neznámého zdroje. Povol to jen pro tu aplikaci, ze které APK otevíráš.
+
+## Krok 15
+
+Nainstaluj a spusť:
+
+```text
+AtariHelp
+```
+
+---
+
+# Co je uvnitř téhle verze
+
+- Android APK projekt
+- AtariHelp mobilní obrazovka
+- PiTT-KiTT XEX uvnitř
+- první mini XEX runner/debug základ
+- joystick obrazovka
+- START / SELECT / OPTION
+- GitHub build, který vyrobí poctivé APK
+
+# Důležité na rovinu
+
+Tohle ještě není plně hratelný Atari emulátor.  
+Je to správný APK základ, na kterém budeme stavět náš vlastní mini-emulátor pro komunitní hry.
+
+# Když něco selže
+
+Pošli mi:
+
+1. fotku obrazovky, kde jsi skončil,
+2. nebo posledních 20 řádků červeného logu z GitHub Actions,
+3. nebo přesnou hlášku z mobilu při instalaci.

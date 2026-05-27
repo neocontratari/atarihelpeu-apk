@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZAČNI TADY - AtariHelp APK</title>
+<style>
+body{margin:0;background:#020403;color:#e9fff3;font-family:Arial,system-ui,sans-serif;line-height:1.45}
+.wrap{max-width:850px;margin:auto;padding:22px}
+h1{font-size:34px;color:#2aff8f;margin:0 0 10px}
+h2{color:#a9ffd0;margin-top:28px}
+.card{border:2px solid rgba(42,255,143,.28);border-radius:18px;padding:18px;margin:16px 0;background:#06110c}
+.step{font-size:22px;font-weight:900;color:#2aff8f}
+code,.code{display:block;background:#000;border:1px solid rgba(42,255,143,.25);border-radius:12px;padding:12px;color:#a9ffd0;margin:10px 0;white-space:pre-wrap}
+.warn{border-color:#ff6b9a;color:#ffd6e2}
+.big{font-size:18px}
+.ok{color:#2aff8f;font-weight:900}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>ZAČNI TADY – AtariHelp APK</h1>
+<p class="big">Tohle je klikací návod pro výrobu opravdového APK přes GitHub. Žádný Android Studio, žádná příkazová řádka.</p>
+
+<div class="card warn">
+<div class="step">Důležité</div>
+<p>Nenahrávej na GitHub ten ZIP. Nejdřív ho rozbal. Na GitHub se nahrává <b>obsah rozbalené složky</b>.</p>
+</div>
+
+<div class="card"><div class="step">1) GitHub</div><p>Otevři github.com, přihlas se, klikni vpravo nahoře na + a dej New repository.</p><div class="code">Název: atarihelp-apk</div></div>
+<div class="card"><div class="step">2) Vytvoř projekt</div><p>Nedávej README. Klikni Create repository.</p></div>
+<div class="card"><div class="step">3) Rozbal ZIP</div><p>Rozbal tenhle ZIP. V rozbalené složce musíš vidět:</p><div class="code">.github
+app
+build.gradle
+settings.gradle
+README.md</div></div>
+<div class="card"><div class="step">4) Nahraj soubory</div><p>Na GitHubu klikni Add file → Upload files. V rozbalené složce dej Ctrl+A a přetáhni všechno do GitHubu.</p></div>
+<div class="card"><div class="step">5) Ulož</div><p>Dole klikni Commit changes.</p></div>
+<div class="card"><div class="step">6) Vyrob APK</div><p>Klikni Actions → VYROBIT APK ATARIHELP. Když to neběží samo, dej Run workflow.</p></div>
+<div class="card"><div class="step">7) Stáhni APK</div><p>Až bude zelená fajfka, otevři běh a dole stáhni artifact:</p><div class="code">HOTOVE_APK_ATARIHELP_STAHNI_ME</div></div>
+<div class="card"><div class="step">8) Instaluj do mobilu</div><p>Rozbal stažený artifact. Uvnitř je:</p><div class="code">app-debug.apk</div><p>Ten nainstaluj do mobilu.</p></div>
+
+<div class="card">
+<div class="step ok">Když se zasekneš</div>
+<p>Pošli mi fotku obrazovky. Neřeš to sám hodinu. To dotlačíme spolu.</p>
+</div>
+</div>
+</body>
+</html>

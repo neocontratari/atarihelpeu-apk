@@ -1,0 +1,19 @@
+KONTROLNI SEZNAM
+
+Pred nahranim na GitHub:
+[ ] ZIP je rozbaleny
+[ ] V rozbalene slozce vidim .github
+[ ] V rozbalene slozce vidim app
+[ ] V rozbalene slozce vidim build.gradle
+[ ] V rozbalene slozce vidim settings.gradle
+
+Na GitHubu:
+[ ] Vytvoril jsem novy projekt atarihelp-apk
+[ ] Klikl jsem Add file / Upload files
+[ ] Pretahl jsem obsah rozbalene slozky
+[ ] Klikl jsem Commit changes
+[ ] Klikl jsem Actions
+[ ] Workflow probehlo se zelenou fajfkou
+[ ] Stahnul jsem HOTOVE_APK_ATARIHELP_STAHNI_ME
+[ ] Rozbalil jsem ZIP s artifactem
+[ ] Mam app-debug.apk

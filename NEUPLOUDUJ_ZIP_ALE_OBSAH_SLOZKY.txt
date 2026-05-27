@@ -1,0 +1,2 @@
+Na GitHub nenahravej tento ZIP jako jeden soubor.
+Nejdrive ZIP rozbal a nahraj OBSAH rozbalene slozky.

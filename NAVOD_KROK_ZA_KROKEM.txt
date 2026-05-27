@@ -1,0 +1,83 @@
+AtariHelp PiTT-KiTT APK v0.3
+
+Parťáku, tohle je balík pro variantu B: GitHub Actions vyrobí APK za tebe.
+
+#Co je uvnitř
+
+- Android WebView aplikace
+- PiTT-KiTT XEX uvnitř APK
+- vlastní mini XEX loader do 64 KB RAM
+- základ 6502 CPU debug runneru
+- joystick/START/SELECT/OPTION obrazovka
+- GitHub Actions workflow, který vytvoří `app-debug.apk`
+
+#Důležité
+
+Tahle v0.3 ještě není plně hratelná emulace. Je to první APK základ s vlastním XEX runnerem.
+Další verze v0.4 bude řešit obrazový režim pro naše komunitní hry.
+
+XEX info:
+
+```text
+PiTT-KiTT-NaP-Final.xex
+size: 7162 bytes
+RUNAD: $221A
+segmenty: 2
+SHA256: 8c587d73e8c4c4eb2ffe7d758cbc3856d0ca1275d8204fb87b8e5c68c619bd99
+```
+
+#Návod krok za krokem přes GitHub web
+
+##1. Vytvoř nový repozitář
+
+1. Otevři GitHub.
+2. Klikni vpravo nahoře na `+`.
+3. Dej `New repository`.
+4. Název třeba: `atarihelp-pitt-kitt-apk`.
+5. Klidně nech `Public` nebo `Private`.
+6. Nedávej README, `.gitignore` ani licenci. Tento ZIP už README má.
+7. Klikni `Create repository`.
+
+##2. Nahraj soubory
+
+1. Rozbal ZIP `AtariHelp_Android_GitHub_APK_v03.zip`.
+2. Otevři složku `AtariHelp_Android_GitHub_APK_v03`.
+3. Na GitHubu klikni `uploading an existing file` nebo `Add file` → `Upload files`.
+4. Přetáhni do okna celý obsah rozbalené složky:
+   - `.github`
+   - `app`
+   - `build.gradle`
+   - `settings.gradle`
+   - `.gitignore`
+   - `README.md`
+5. Dole klikni `Commit changes`.
+
+##3. Počkej na build
+
+1. Klikni nahoře na záložku `Actions`.
+2. Měl by běžet workflow `Build Android APK`.
+3. Počkej, dokud nebude zelená fajfka.
+4. Klikni na hotový běh.
+5. Dole v sekci `Artifacts` stáhni:
+   `AtariHelp-PiTT-KiTT-debug-apk`.
+
+##4. Dostaň APK do mobilu
+
+1. Stažený artifact je ZIP.
+2. Rozbal ho.
+3. Uvnitř bude `app-debug.apk`.
+4. Pošli APK do mobilu.
+5. V mobilu otevři APK.
+6. Android se zeptá na povolení instalace z neznámého zdroje. Povol jen pro tu aplikaci, ze které APK otevíráš.
+7. Nainstaluj.
+
+#Když Actions neodstartuje
+
+V repozitáři:
+1. Klikni `Actions`.
+2. Klikni vlevo `Build Android APK`.
+3. Klikni `Run workflow`.
+
+#Když build spadne
+
+Pošli mi červený log z GitHub Actions. Hlavně posledních 30 řádků.

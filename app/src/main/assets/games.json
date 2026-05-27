@@ -1,0 +1,27 @@
+[
+  {
+    "id": "pitt-kitt-remaster",
+    "title": "PiTT-KiTT Remaster",
+    "studio": "N&P Studio",
+    "file": "games/pitt-kitt/PiTT-KiTT-NaP-Final.xex",
+    "filename": "PiTT-KiTT-NaP-Final.xex",
+    "format": "XEX",
+    "size_bytes": 7162,
+    "sha256": "8c587d73e8c4c4eb2ffe7d758cbc3856d0ca1275d8204fb87b8e5c68c619bd99",
+    "run_address": "$221A",
+    "init_address": null,
+    "segments": [
+      {
+        "start": "$2000",
+        "end": "$3BED",
+        "size": 7150
+      },
+      {
+        "start": "$02E0",
+        "end": "$02E1",
+        "size": 2
+      }
+    ],
+    "play_status": "Mini CPU debug runner included. Graphics/audio hardware not complete yet."
+  }
+]
