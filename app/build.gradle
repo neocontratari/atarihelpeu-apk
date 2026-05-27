@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 17
-        versionName "0.17-playable-pittkitt"
+        versionCode 18
+        versionName "0.18-click-fix"
     }
 }
