@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 20
-        versionName "0.20-native-android-no-webview"
+        versionCode 21
+        versionName "0.21-rollback-v16-working"
     }
 }

@@ -3,97 +3,69 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>AtariHelp.eu v18</title>
+<title>AtariHelp.eu v16</title>
 <style>
 :root{--bg:#070604;--gold:#d7b76a;--gold2:#ffe3a3;--line:rgba(215,183,106,.35);--text:#fff7e3;--muted:rgba(255,247,227,.68);--red:#ff6b9a;--green:#2aff8f;--blue:#78a6ff}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Arial,sans-serif;overscroll-behavior:none}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Arial,sans-serif}
 body:before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 0%,rgba(215,183,106,.26),transparent 28%),linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px);background-size:auto,100% 4px}
-.app{position:relative;z-index:1;max-width:560px;margin:auto;min-height:100vh;padding:16px 14px 106px}
-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.logo{width:74px;height:74px;border-radius:18px;border:1px solid var(--line);object-fit:cover;box-shadow:0 0 24px rgba(215,183,106,.28)}
-.kicker{font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,227,163,.72)}
-.title{font-size:27px;font-weight:950}
-.ver{font-size:12px;color:var(--muted)}
-.card{border:1px solid var(--line);background:rgba(0,0,0,.58);border-radius:22px;padding:16px;margin:12px 0;box-shadow:0 0 24px rgba(215,183,106,.10)}
-.hero{background:linear-gradient(145deg,rgba(215,183,106,.17),rgba(0,0,0,.64))}
-h1,h2,h3,p{margin:0}
-h1{font-size:29px;line-height:1.05}
-h2{font-size:21px}
-h3{font-size:17px}
-p{color:var(--muted);line-height:1.45;font-size:14px;margin-top:9px}
+.app{position:relative;z-index:1;max-width:560px;margin:auto;min-height:100vh;padding:16px 14px 102px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:14px}.logo{width:74px;height:74px;border-radius:18px;border:1px solid var(--line);object-fit:cover;box-shadow:0 0 24px rgba(215,183,106,.28)}
+.kicker{font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,227,163,.72)}.title{font-size:27px;font-weight:950}.ver{font-size:12px;color:var(--muted)}
+.card{border:1px solid var(--line);background:rgba(0,0,0,.58);border-radius:22px;padding:16px;margin:12px 0;box-shadow:0 0 24px rgba(215,183,106,.10)}.hero{background:linear-gradient(145deg,rgba(215,183,106,.17),rgba(0,0,0,.64))}
+h1,h2,h3,p{margin:0}h1{font-size:29px;line-height:1.05}h2{font-size:21px}h3{font-size:17px}p{color:var(--muted);line-height:1.45;font-size:14px;margin-top:9px}
 button,a.btn{display:block;width:100%;border:0;text-decoration:none;text-align:center;border-radius:15px;padding:13px 14px;font-weight:900;font-size:15px;background:var(--gold);color:#100a00;margin-top:10px}
-.secondary{background:transparent!important;color:var(--gold2)!important;border:1px solid var(--line)!important}
-.blue{background:var(--blue)!important;color:#020403!important}
-.red{background:var(--red)!important;color:#160005!important}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.tile{min-height:112px;text-align:left}
-.tile b{display:block;font-size:28px;margin-bottom:8px}
-.tile span{font-weight:900;color:var(--gold2)}
-.tile p{font-size:12px}
+.secondary{background:transparent!important;color:var(--gold2)!important;border:1px solid var(--line)!important}.blue{background:var(--blue)!important;color:#020403!important}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.grid1{display:grid;gap:10px}
+.tile{min-height:112px;text-align:left}.tile b{display:block;font-size:28px;margin-bottom:8px}.tile span{font-weight:900;color:var(--gold2)}.tile p{font-size:12px}
 .tag{display:inline-block;border:1px solid var(--line);background:rgba(215,183,106,.10);border-radius:9px;padding:5px 8px;color:var(--gold2);font-size:12px;margin:4px 4px 0 0}
-.list{display:grid;gap:10px;margin-top:12px}
-.item{border:1px solid rgba(215,183,106,.22);border-radius:16px;padding:12px;background:rgba(215,183,106,.06)}
-.item strong{color:var(--gold2)}
-.item p{font-size:13px}
-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.94);border-top:1px solid var(--line);z-index:20;padding:7px 6px}
-.nav-inner{max-width:560px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
-.navbtn{margin:0;padding:8px 2px;border-radius:13px;background:transparent;color:rgba(255,247,227,.68);font-size:10px}
-.navbtn.active{background:var(--gold);color:#100a00}
-.hidden{display:none!important}
-pre{white-space:pre-wrap;color:var(--gold2);font-size:11px;max-height:260px;overflow:auto}
-.bad{color:var(--red)}
-.ok{color:var(--green)}
-.small{font-size:12px;color:var(--muted)}
-.manual-img{width:100%;border-radius:14px;border:1px solid var(--line);margin:10px 0;background:#111}
-.game-wrap{position:fixed;inset:0;background:#020201;z-index:50;display:none;flex-direction:column}
-.game-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);background:#090805}
-.game-title{font-weight:950;color:var(--gold2);font-size:14px}
-.game-score{font-family:monospace;color:var(--green);font-size:12px}
-#gameCanvas{width:100%;height:calc(100vh - 158px);display:block;background:#000;touch-action:none}
-.game-controls{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding:10px;background:#090805;border-top:1px solid var(--line)}
-.game-controls button{margin:0;padding:14px 4px;user-select:none;-webkit-user-select:none}
-.screen{aspect-ratio:4/3;border:5px solid #151515;border-radius:22px;background:#081b12;padding:13px;overflow:hidden}
-.screen-inner{height:100%;border:1px solid rgba(42,255,143,.35);border-radius:14px;padding:12px;font-family:monospace;color:var(--green)}
-.blink{animation:blink 1.1s infinite;text-align:center;letter-spacing:.2em;font-size:11px}
-@keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+.list{display:grid;gap:10px;margin-top:12px}.item{border:1px solid rgba(215,183,106,.22);border-radius:16px;padding:12px;background:rgba(215,183,106,.06)}.item strong{color:var(--gold2)}.item p{font-size:13px}
+.screen{aspect-ratio:4/3;border:5px solid #151515;border-radius:22px;background:#081b12;padding:13px;overflow:hidden}.screen-inner{height:100%;border:1px solid rgba(42,255,143,.35);border-radius:14px;padding:12px;font-family:monospace;color:var(--green)}.blink{animation:blink 1.1s infinite;text-align:center;letter-spacing:.2em;font-size:11px}@keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+nav{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.94);border-top:1px solid var(--line);z-index:3;padding:7px 6px}.nav-inner{max-width:560px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}.navbtn{margin:0;padding:8px 2px;border-radius:13px;background:transparent;color:rgba(255,247,227,.68);font-size:10px}.navbtn.active{background:var(--gold);color:#100a00}
+.hidden{display:none}pre{white-space:pre-wrap;color:var(--gold2);font-size:11px;max-height:260px;overflow:auto}.bad{color:var(--red)}.ok{color:var(--green)}.reg{border:1px solid var(--line);border-radius:10px;padding:8px;margin:4px 0;color:var(--gold2);font-family:monospace}
+.small{font-size:12px;color:var(--muted)}.banner{border-left:4px solid var(--red);padding-left:12px}
 </style>
 </head>
 <body>
 <div class="app">
-<header><img src="np_logo.png" class="logo"><div><div class="kicker">AtariHelp.eu</div><div class="title">N&P Studio</div><div class="ver">APK v18 click fix + playable port</div></div></header>
+<header><img src="np_logo.png" class="logo"><div><div class="kicker">AtariHelp.eu</div><div class="title">N&P Studio</div><div class="ver">APK v16 native content</div></div></header>
 
 <main id="home" class="view">
-<section class="card hero"><div class="kicker">Mobilní aplikace</div><h1>AtariHelp.eu centrum</h1><p>Opravené ovládání aplikace. Tlačítka už nejsou inline, ale připojují se bezpečně po startu appky.</p><button data-view="games">Otevřít hry</button></section>
+<section class="card hero">
+<div class="kicker">Mobilní aplikace, ne PC web v okně</div>
+<h1>AtariHelp.eu centrum</h1>
+<p>Obsah stavíme jako mobilní aplikaci: karty, sekce, hry, návody, dokumentace a N&P projekty. Web je jen zdroj, ne hlavní obrazovka.</p>
+<button onclick="showView('games')">Otevřít hry</button>
+</section>
 <div class="grid3">
-<button class="card tile" data-view="games"><b>🎮</b><span>Hry</span><p>XEX + mobilní port</p></button>
-<button class="card tile" data-view="manual"><b>📘</b><span>Manuál</span><p>PITSTOP KITT</p></button>
-<button class="card tile" data-view="guides"><b>📼</b><span>Návody</span><p>XEX/WAV/PDF</p></button>
+<button class="card tile" onclick="showView('games')"><b>🎮</b><span>Hry</span><p>XEX/WAV/PDF katalog</p></button>
+<button class="card tile" onclick="showView('guides')"><b>📼</b><span>Návody</span><p>Atari ↔ PC, WAV</p></button>
+<button class="card tile" onclick="showView('studio')"><b>🏅</b><span>N&P</span><p>Logo, manifest, projekty</p></button>
 </div>
-<div class="grid2"><section class="card"><h3>Herní sekce</h3><p>Úvod HRY, XEX, WAV a PDF jsou jako mobilní karty.</p></section><section class="card"><h3>Další krok</h3><p>Pošli Made by N&P Studio a doplním produkci.</p></section></div>
+<div class="grid2">
+<section class="card"><h3>Assembler</h3><p>MADS, Altirra, lekce a příklady přidáme jako mobilní kapitoly.</p></section>
+<section class="card"><h3>Dokumentace</h3><p>PDF/TXT přehledně jako karty, ne rozházené odkazy.</p></section>
+</div>
 </main>
 
 <main id="games" class="view hidden">
-<section class="card"><div class="kicker">Herní katalog</div><h2>Naše hry</h2><p>PiTT-KiTT je první položka. V appce je XEX i první hratelný mobilní port.</p></section>
-<section class="card"><span class="tag">PLAYABLE MOBILE PORT</span><span class="tag">XEX RUN $221A</span><span class="tag">N&P Studio</span><h2 style="margin-top:12px">PiTT-KiTT Remaster</h2><p>Mobilní verze: vlevo/vpravo řídíš, FIRE střílí, JUMP přeskočí díru. 10 levelů a skóre zničených soupeřů.</p><button data-action="open-game">Hrát mobilní PiTT-KiTT</button><button class="secondary" data-view="manual">Otevřít manuál</button><button class="secondary" data-view="xex">XEX technický runner</button></section>
-<section class="card"><h3>Katalog z AtariHelp.eu</h3><div class="list"><div class="item"><strong>HRY-GAMES</strong><p>Mobilní rozcestník: ZIP-XEX, WAV a PDF.</p></div><div class="item"><strong>GAMES – XEX</strong><p>Arkanoid III, air_strike, Asteroids II, Tennis, Bugi_bugi_3, Dawn_raider, Death_race, Deluxe_invaders, Donkey Kong arcade, Galactic chase, International Karate 2014, Mario Bros XE arcade.</p></div><div class="item"><strong>GAMES – WAV</strong><p>Galactic, Moon Patrol 800, Deluxe Invaders, Donkey Arcade 800 speed, PacMan, Arkanoid 3, International Karate, Pitstop 2, River Raid, Super Cobra.</p></div><div class="item"><strong>GAMES – PDF</strong><p>Galactic, Donkey Kong, PAC MAN, Pitstop 2.</p></div></div></section>
-</main>
-
-<main id="manual" class="view hidden">
-<section class="card"><div class="kicker">PITSTOP KITT REMASTER</div><h2>Mobilní manuál</h2><p>V appce je přibalený oficiální deluxe manuál a jeho náhledy.</p></section>
-<section class="card"><h3>Ovládání</h3><div class="list"><div class="item"><strong>Vlevo / vpravo</strong><p>Zatáčení vozu. V ledových úrovních se přidává smyk a setrvačnost.</p></div><div class="item"><strong>FIRE</strong><p>Střelba laserem na soupeře. V mobilním portu je Turbo Jump oddělené tlačítko JUMP.</p></div><div class="item"><strong>START</strong><p>Odstartuje misi z úvodní obrazovky.</p></div></div></section>
-<section class="card"><h3>10 levelů</h3><p>Denní hlídka, Noční město, Zima, Zimní město, Nevadská poušť, Neon Sunset City, Blood Canyon, Midnight Blizzard, Golden Dawn, Cyberpunk Abyss.</p></section>
-<section class="card"><h3>Náhled manuálu</h3><img src="manual_pages/manual_page_1.jpg" class="manual-img" alt="manual page 1"><img src="manual_pages/manual_page_2.jpg" class="manual-img" alt="manual page 2"><img src="manual_pages/manual_page_3.jpg" class="manual-img" alt="manual page 3"><img src="manual_pages/manual_page_4.jpg" class="manual-img" alt="manual page 4"><img src="manual_pages/manual_page_5.jpg" class="manual-img" alt="manual page 5"><img src="manual_pages/manual_page_6.jpg" class="manual-img" alt="manual page 6"></section>
+<section class="card"><div class="kicker">Herní katalog</div><h2>Naše hry</h2><p>PiTT-KiTT je první položka. Další sloty jsou připravené pro Cobra vrtulník, Tetris Platinum, Walls Gold a komunitní hry.</p></section>
+<section class="card"><span class="tag">XEX</span><span class="tag">RUN $221A</span><span class="tag">N&P Studio</span><h2 style="margin-top:12px">PiTT-KiTT Remaster</h2><p>XEX je uvnitř APK. Hraní ještě nejede naplno — tohle nebude maskované. Pro hratelnost musíme dokončit mini-emulátor nebo udělat mobilní port hry do našeho N&P engine.</p><button onclick="showView('play')">Otevřít XEX runner</button><button class="secondary" onclick="showView('meta')">Technické info</button></section>
+<section class="card"><h3>Další hry</h3><div class="list"><div class="item"><strong>Cobra vrtulník</strong><p>Ideální první hra pro náš vlastní mobilní engine: jednoduchá akce, joystick, střelba, scrolling.</p></div><div class="item"><strong>Tetris Platinum</strong><p>Katalog + později hratelná verze.</p></div><div class="item"><strong>Walls Gold</strong><p>Katalog + později hratelná verze.</p></div></div></section>
 </main>
 
 <main id="guides" class="view hidden">
-<section class="card"><h2>📼 Návody a sekce</h2><p>Lokální mobilní přehled. Žádné slepé otevření PC webu jako hlavní obsah.</p></section>
-<section class="card"><h3>Dodané odkazy jako zdroje obsahu</h3><div class="list"><div class="item"><strong>Úvodní HRY-GAMES</strong><p>Rozcestník pro ZIP-XEX, WAV a PDF.</p></div><div class="item"><strong>XEX</strong><p>Seznam XEX balíčků.</p></div><div class="item"><strong>WAV</strong><p>WAV stopa pro reálné Atari / tvoje udělátko.</p></div><div class="item"><strong>PDF</strong><p>Návody a manuály ke hrám.</p></div></div></section>
+<section class="card"><h2>📼 Návody a Rady</h2><p>Tohle je lokální mobilní sekce. Neodskakuje slepě na PC web.</p></section>
+<section class="card"><h3>Kazeta / WAV</h3><div class="list"><div class="item"><strong>WAV do reálného Atari</strong><p>WAV nebude pro hraní v mobilu. Bude jako stopa pro tvoje udělátko a reálné Atari.</p></div><div class="item"><strong>Zvuk z Atari do PC</strong><p>Přidáme fotky, schéma, úrovně hlasitosti a testovací tón.</p></div><div class="item"><strong>Kazetový adaptér</strong><p>Mobilní návod krok za krokem.</p></div></div></section>
+<section class="card"><h3>Co od tebe potřebuji</h3><p>Pošli odkazy na konkrétní stránky, obrázky a soubory, které chceš jako první převést do mobilních karet.</p></section>
 </main>
 
-<main id="xex" class="view hidden">
-<section class="card"><div class="kicker">XEX runner</div><h2>PiTT-KiTT XEX technicky</h2><p class="bad">Tohle není plná Atari emulace. XEX je uvnitř APK, ale skutečné hraní teď běží přes mobilní port.</p><button data-action="load-xex">Load XEX info</button><button class="secondary" data-view="meta">Technické info</button></section>
+<main id="studio" class="view hidden">
+<section class="card hero"><img src="np_logo.png" style="width:100%;border-radius:18px;border:1px solid var(--line)"><div class="kicker" style="margin-top:12px">N&P Studio</div><h2>N&P, ne NP</h2><p>Logo je vložené přímo do aplikace. Ikona APK používá skutečný obraz loga jako app_icon.</p></section>
+<section class="card"><h3>Manifest</h3><p>AtariHelp.eu vzniká jako centrum pro komunitní hry, návody, XEX/WAV balíčky a projekty pro Atari 130XE.</p></section>
+</main>
+
+<main id="play" class="view hidden">
+<section class="card"><div class="kicker">XEX runner</div><h2>PiTT-KiTT Debug Runner</h2><p class="bad banner">Poctivě: hra ještě nejede. XEX se načte, ale plná Atari emulace obrazu/joysticku ještě není hotová.</p><div id="regs"><div class="reg">CPU: not loaded</div></div><button onclick="bootXex()">Load XEX</button><button class="secondary" onclick="showNeed()">Co je potřeba pro hraní?</button></section>
 <section class="screen"><div class="screen-inner"><div class="blink">ATARIHELP.EU XEX RUNNER</div><h2 style="text-align:center;margin-top:22px">PiTT-KiTT</h2><div id="slotStatus" style="margin-top:34px">XEX NOT LOADED</div></div></section>
 <section class="card"><h3>CPU log</h3><pre id="log"></pre></section>
 </main>
@@ -101,107 +73,21 @@ pre{white-space:pre-wrap;color:var(--gold2);font-size:11px;max-height:260px;over
 <main id="meta" class="view hidden"><section class="card"><h2>Technické info XEX</h2><pre id="metaBox"></pre></section></main>
 </div>
 
-<div id="gameWrap" class="game-wrap">
-<div class="game-top"><div><div class="game-title">PiTT-KiTT Mobile Port</div><div class="game-score" id="hud">READY</div></div><button id="closeGameBtn" style="width:auto;margin:0;padding:8px 12px">Zpět</button></div>
-<canvas id="gameCanvas"></canvas>
-<div class="game-controls">
-<button id="btnLeft">◀ LEFT</button>
-<button id="btnRight">RIGHT ▶</button>
-<button id="btnFire" class="red">FIRE</button>
-<button id="btnJump" class="blue">JUMP</button>
-</div>
-</div>
-
 <nav><div class="nav-inner">
-<button class="navbtn active" data-view="home">Domů</button>
-<button class="navbtn" data-view="games">Hry</button>
-<button class="navbtn" data-view="manual">Manuál</button>
-<button class="navbtn" data-view="guides">Sekce</button>
-<button class="navbtn" data-view="xex">XEX</button>
+<button class="navbtn active" data-view="home" onclick="showView('home')">Domů</button>
+<button class="navbtn" data-view="games" onclick="showView('games')">Hry</button>
+<button class="navbtn" data-view="guides" onclick="showView('guides')">Návody</button>
+<button class="navbtn" data-view="studio" onclick="showView('studio')">N&P</button>
+<button class="navbtn" data-view="play" onclick="showView('play')">Runner</button>
 </div></nav>
 
 <script>
-"use strict";
 const b64="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////////qqqqVVVVVaqqqqqqqlVVqqqq//+qqlVVqqqqqv//////////////qqpVVVVV/1VVqqqqVVVVVVWqqv+qVVVVVVWqqqqq////////////qqpVVVVV////VVVVVVVVVVVVVaqqVVVVVVVVVaqqqqr//////////6pVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVqqqq//////////9VVVVVVf///1VVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////////VVVVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVVaqq/////////1VVVVVVVVX///9VVVVVVVVVVVVVVVVVVVVVVVVVVVVVqqr///////9VVVVVVVVVVf////9VVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////VVVVVVVVVVVV/////1VVVVVVVVVVVVVVVVVVVVVVVVVVVaqq////////////////////////////7v/////////////////////////u/////////////////////////7v/////////////////////////u////////////////////////6qqqv//////////////////////qqqq//////////////////////+7u7v//////////////////////7u7u///////////////qqr///+q7u7uqv////////////+qqv///6ru7u6q/////6qq////qnd3qv//u7u7u7v/////qqr///+qd3eq//+7u7u7u////6q7u6r/qt3d3d2q/+7u7u7u////qru7qv+q3d3d3ar/7u7u7u7//6ru7u7uqqp3d3d3d6q7u7u7u///qu7u7u6qqnd3d3d3qru7u7u7/6q7u7u7u7uq3d3d3d3d7u7u7u7/qru7u7u7u6rd3d3d3d3u7u7u7qru7u7u7u7uqnd3d3d3d7u7u7u7qu7u7u7u7u6qd3d3d3d3u7u7u7u7u7u7u7u7u7vd3d3d3d3u7u7u7ru7u7u7u7u7u93d3d3d3e7u7u7u7u7u7u7u7u7ud3d3d3d3u7u7u7vu7u7u7u7u7u53d3d3d3e7u7u7u///////////AP///////////////////wD///////////8A////////////////AAAA/////////////////wAAAP////////8AAAD/////////////AABVAAD//////////////wAAVQAA//////8AAFUAAP//////////AABVVVUAAP///////////wAAVVVVAAD///8AAFVVVQAA////////AABVVVVVVQAA/////////wAAVVVVVVUAAP8AAFVVVVVVAAD/////AABVVVWqqlVVAAD//////wAAVVVVqqpVVQAAVVVVqqpVVQAAqv//AABVVVWqqqqqVVUAAP///wAAVVVVqqqqqlVVAABVqqqqqlUAAKr/AABVVVWqqqqqqqpVVQAA/wAAVVVVqqqqqqqqVVUAAKqqqqqqVQAAAABVVVWqqqqqqqqqqlVVAABVVVVVqqqqqqqqqqpVVQCqqqqqqlVVAABVVVVVVaqqqqqqqqpVVVVVVVVVVVWqqqqqqqqqVVVVqqqqqqpVVVVVVVVVVVVVqqqqqlVVVVVVVVVVVVVVVaqqqqpVVVVVVVWqqqqqVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQABAD8/AAAFBQUA////AAAVVQUFBRVaVVVVVVVVFQAAVFVQUFBUpVVVVVVVVVQAAABAAPz8AABQUFAA////AAAAAAAAAAAAAAAAAAAKqqoKAAAAAAAAAAAAAAAKqqqqqAAAAAAAAAAAAAAAKqqqqqgAAAAAAAAAAAAAAACgqqoKAw8/Dz//AwPA8Pzw/P/AwB8/AwMHBx84OB8PDw8PAAA/fwcHDw8/cHA/Hx8fHwAADx8BAQMDDxwcDwcHBwcAAPj8wMDg4PgcHPjw8PDwAADw+ICAwMDwODjw4ODg4AAA/P7g4PDw/A4O/Pj4+PgAAAAA4ODgAAAAAADw8PDwAAAAAODg4AAAAAAA4ODg4AAAAADg4OAAAAAAAPj4+PgAAAAABwcHAAAAAAAPDw8PAAAAAAcHBwAAAAAABwcHBwAAAAAHBwcAAAAAAB8fHx8AAK2tAACtrQAAra0AAK2tAAAAAAAArQCIAHwAbACtAIgAGBgYGRkZGhoaGhoaGRkZGBgYFxcXFhYWFRUVFRUVFhYWFxcXGBgYGRkZGhoZGRgYqmpaVgBAUFSVpamqFQUBAOAC4QIaIg==";
-const gameMeta={"id": "pitt-kitt-remaster", "title": "PiTT-KiTT Remaster", "filename": "PiTT-KiTT-NaP-Final.xex", "size_bytes": 7162, "sha256": "8c587d73e8c4c4eb2ffe7d758cbc3856d0ca1275d8204fb87b8e5c68c619bd99", "run_address": "$221A", "segments": [{"start": "$2000", "end": "$3BED", "size": 7150}, {"start": "$02E0", "end": "$02E1", "size": 2}], "playable_mobile_port": true, "playable_xex_emulation": false};
-
-function showView(id){
-  document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));
-  const target=document.getElementById(id);
-  if(target) target.classList.remove("hidden");
-  document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("active",b.dataset.view===id));
-  if(id==="meta") renderMeta();
-}
+const game={"id": "pitt-kitt-remaster", "title": "PiTT-KiTT Remaster", "filename": "PiTT-KiTT-NaP-Final.xex", "size_bytes": 7162, "sha256": "8c587d73e8c4c4eb2ffe7d758cbc3856d0ca1275d8204fb87b8e5c68c619bd99", "run_address": "$221A", "segments": [{"start": "$2000", "end": "$3BED", "size": 7150}, {"start": "$02E0", "end": "$02E1", "size": 2}], "playable": false, "note": "XEX je uvnitř APK, plná hratelnost čeká na dokončení mini-emulátoru nebo port hry do N&P mobile engine."};
+function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.view===id));if(id==='meta')renderMeta();}
 function decodeB64(s){const raw=atob(s),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i)&255;return a}
-function bootXex(){const bytes=decodeB64(b64);document.getElementById("slotStatus").textContent="XEX LOADED / RUN $221A";document.getElementById("log").textContent="Loaded PiTT-KiTT XEX into technical slot.\\nSize: "+bytes.length+" bytes\\nRUN: $221A\\nPlayable mobile port is in Hry -> Hrát mobilní PiTT-KiTT.";}
-function renderMeta(){let lines=[];lines.push("APP: AtariHelp.eu");lines.push("FILE: "+gameMeta.filename);lines.push("SIZE: "+gameMeta.size_bytes+" bytes");lines.push("RUNAD: "+gameMeta.run_address);lines.push("SHA256: "+gameMeta.sha256);lines.push("");lines.push("SEGMENTS:");gameMeta.segments.forEach((s,i)=>lines.push((i+1)+". "+s.start+"-"+s.end+" / "+s.size+" bytes"));document.getElementById("metaBox").textContent=lines.join("\\n");}
-
-const levels=[
-  ["Denní hlídka","#73b64a","#56606a","#89b6ff","#ffffff"],
-  ["Noční město","#0b1f16","#30343d","#05060b","#d8d8ff"],
-  ["Zima","#b8d7e8","#53585e","#4b72ef","#ffffff"],
-  ["Zimní město","#d8d8d8","#50545c","#1d263d","#ffffff"],
-  ["Nevadská poušť","#b87b15","#6a3218","#9a270d","#ffe0a0"],
-  ["Neon Sunset City","#331a48","#50304d","#251031","#ff67f2"],
-  ["Blood Canyon","#5b1111","#553333","#210606","#ffdddd"],
-  ["Midnight Blizzard","#14214d","#454a66","#050813","#bbf4ff"],
-  ["Golden Dawn","#b99024","#6e4d22","#2b1707","#fff0b0"],
-  ["Cyberpunk Abyss","#1b0635","#1c1c22","#010006","#00fff0"]
-];
-let gw, cv, ctx, hud, G, raf=0, keys={left:false,right:false,fire:false,jump:false};
-
-function resizeGame(){if(!cv||!ctx)return;const d=window.devicePixelRatio||1;cv.width=Math.floor(cv.clientWidth*d);cv.height=Math.floor(cv.clientHeight*d);ctx.setTransform(d,0,0,d,0,0);}
-function resetGame(){G={running:true,over:false,win:false,t:0,score:0,level:0,levelTime:0,playerX:0.5,carY:0.86,bullet:null,jump:0,jumpV:0,enemies:[],holes:[],trees:[],spawnE:0,spawnH:80,spawnT:20};}
-function openGame(){gw.style.display="flex";resizeGame();resetGame();cancelAnimationFrame(raf);loop();}
-function closeGame(){gw.style.display="none";cancelAnimationFrame(raf);}
-function bindPress(id,key){const e=document.getElementById(id);if(!e)return;["touchstart","mousedown"].forEach(ev=>e.addEventListener(ev,(x)=>{x.preventDefault();keys[key]=true;if(key==="fire")fire();if(key==="jump")jump();},{passive:false}));["touchend","mouseup","mouseleave","touchcancel"].forEach(ev=>e.addEventListener(ev,(x)=>{x.preventDefault();keys[key]=false;},{passive:false}));}
-function fire(){if(G && !G.bullet && !G.over)G.bullet={x:G.playerX,y:0.78};}
-function jump(){if(G && G.jump<=0&&!G.over){G.jump=1;G.jumpV=0.055;}}
-function roadX(y){return 0.5 + Math.sin((G.t*0.012)+y*5)*0.05;}
-function laneX(lane,y){let c=roadX(y), w=0.10+y*0.33; return c + (lane-1)*w*0.42;}
-function spawnEnemy(){G.enemies.push({lane:Math.floor(Math.random()*3),y:0.12,hit:false,boom:0});}
-function spawnHole(){G.holes.push({lane:Math.floor(Math.random()*3),y:0.18});}
-function spawnTree(){G.trees.push({side:Math.random()<0.5?-1:1,y:0.14});}
-function update(){if(!G||G.over)return;G.t++;G.levelTime++;let ice=(G.level===2||G.level===3||G.level===7);let sp=0.0032+G.level*0.00045;
- if(keys.left)G.playerX-=ice?0.004:0.007;if(keys.right)G.playerX+=ice?0.004:0.007;G.playerX=Math.max(0.24,Math.min(0.76,G.playerX));
- if(G.jump>0){G.jump+=G.jumpV;G.jumpV-=0.004;if(G.jump<=0){G.jump=0;G.jumpV=0;}}
- if(G.bullet){G.bullet.y-=0.035;if(G.bullet.y<0.1)G.bullet=null;}
- G.spawnE--;G.spawnH--;G.spawnT--;if(G.spawnE<=0){spawnEnemy();G.spawnE=55-Math.min(35,G.level*3)+Math.random()*35;}if(G.spawnH<=0){spawnHole();G.spawnH=115-Math.min(45,G.level*4)+Math.random()*60;}if(G.spawnT<=0){spawnTree();G.spawnT=18+Math.random()*35;}
- for(const e of G.enemies){e.y+=sp*(1+e.y*2.3);if(G.bullet&&!e.hit){let ex=laneX(e.lane,e.y), dx=Math.abs(G.bullet.x-ex), dy=Math.abs(G.bullet.y-e.y);if(dx<0.055&&dy<0.06){e.hit=true;e.boom=18;G.bullet=null;G.score++;}}}
- for(const h of G.holes)h.y+=sp*(1+h.y*2.2);for(const tr of G.trees)tr.y+=sp*(1+tr.y*2.5);
- G.enemies=G.enemies.filter(e=>e.y<1.05 && (!e.hit || --e.boom>0));G.holes=G.holes.filter(h=>h.y<1.05);G.trees=G.trees.filter(t=>t.y<1.05);
- for(const e of G.enemies)if(!e.hit && e.y>0.78&&e.y<0.93&&Math.abs(laneX(e.lane,e.y)-G.playerX)<0.075&&G.jump<0.28){gameOver(false);}
- for(const h of G.holes)if(h.y>0.78&&h.y<0.93&&Math.abs(laneX(h.lane,h.y)-G.playerX)<0.075&&G.jump<0.42){gameOver(false);}
- if(G.levelTime>900){G.level++;G.levelTime=0;if(G.level>=10)gameOver(true);}
- hud.textContent="SCORE "+G.score+" | LEVEL "+(Math.min(G.level+1,10))+" "+(levels[Math.min(G.level,9)][0]);}
-function gameOver(win){G.over=true;G.win=win;let best=Number(localStorage.getItem("pitt_best")||0);if(G.score>best)localStorage.setItem("pitt_best",String(G.score));}
-function drawCar(x,y,jump){let w=cv.clientWidth,h=cv.clientHeight;let px=x*w,py=y*h-jump*80;ctx.fillStyle="#101010";ctx.fillRect(px-22,py-10,44,42);ctx.fillStyle="#d00080";ctx.fillRect(px-16,py-26,32,26);ctx.fillStyle="#111";ctx.fillRect(px-28,py+18,14,10);ctx.fillRect(px+14,py+18,14,10);ctx.fillStyle="#ff9add";ctx.fillRect(px-9,py-20,18,8);}
-function draw(){let w=cv.clientWidth,h=cv.clientHeight;if(!G)return;let lev=levels[Math.min(G.level,9)];ctx.fillStyle=lev[2];ctx.fillRect(0,0,w,h*0.42);ctx.fillStyle=lev[0];ctx.fillRect(0,h*0.34,w,h*0.66);
- ctx.fillStyle=lev[3];ctx.beginPath();ctx.moveTo(0,h*.34);for(let i=0;i<=12;i++)ctx.lineTo(i*w/12,h*(.26+.06*Math.sin(i*1.7+G.t*.01)));ctx.lineTo(w,h*.42);ctx.lineTo(0,h*.42);ctx.fill();
- ctx.fillStyle=lev[1];ctx.beginPath();ctx.moveTo(w*.45,h*.34);ctx.lineTo(w*.55,h*.34);ctx.lineTo(w*.90,h);ctx.lineTo(w*.10,h);ctx.closePath();ctx.fill();
- ctx.strokeStyle=lev[4];ctx.lineWidth=3;ctx.setLineDash([12,10]);ctx.beginPath();ctx.moveTo(w*.45,h*.34);ctx.lineTo(w*.10,h);ctx.moveTo(w*.55,h*.34);ctx.lineTo(w*.90,h);ctx.stroke();ctx.setLineDash([]);
- for(const t of G.trees){let x=(t.side<0?0.12:0.88)*w + t.side*t.y*35,y=t.y*h,s=8+t.y*24;ctx.fillStyle="#101010";ctx.fillRect(x-2,y,s*.18,s);ctx.fillStyle=lev[3];ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x-s,y+s*.2);ctx.lineTo(x+s,y+s*.2);ctx.fill();}
- for(const ho of G.holes){let x=laneX(ho.lane,ho.y)*w,y=ho.y*h,s=10+ho.y*24;ctx.fillStyle="#050505";ctx.beginPath();ctx.ellipse(x,y,s*1.4,s*.65,0,0,Math.PI*2);ctx.fill();}
- for(const e of G.enemies){let x=laneX(e.lane,e.y)*w,y=e.y*h,s=18+e.y*22;if(e.hit){ctx.fillStyle="#ffdf4c";ctx.beginPath();ctx.arc(x,y,s,0,Math.PI*2);ctx.fill();ctx.fillStyle="#ff4411";ctx.beginPath();ctx.arc(x,y,s*.55,0,Math.PI*2);ctx.fill();}else{ctx.fillStyle="#0b0b0b";ctx.fillRect(x-s*.75,y-s*.35,s*1.5,s*.7);ctx.fillStyle="#ff2e9f";ctx.fillRect(x-s*.45,y-s*.65,s*.9,s*.45);ctx.fillStyle="#111";ctx.fillRect(x-s*.9,y+s*.25,s*.4,s*.25);ctx.fillRect(x+s*.5,y+s*.25,s*.4,s*.25);}}
- if(G.bullet){ctx.fillStyle="#ff3333";ctx.fillRect(G.bullet.x*w-3,G.bullet.y*h-18,6,20);ctx.fillStyle="#ffaaaa";ctx.fillRect(G.bullet.x*w-1,G.bullet.y*h-30,2,12);}
- drawCar(G.playerX,G.carY,G.jump);
- ctx.fillStyle="rgba(0,0,0,.55)";ctx.fillRect(8,8,w-16,44);ctx.fillStyle="#ffe3a3";ctx.font="bold 15px monospace";ctx.fillText("PITSTOP KITT REMASTER MOBILE",18,28);ctx.fillStyle="#2aff8f";ctx.fillText("SCORE "+G.score+"  LEVEL "+(Math.min(G.level+1,10)),18,48);
- if(G.over){ctx.fillStyle="rgba(0,0,0,.78)";ctx.fillRect(0,0,w,h);ctx.fillStyle=G.win?"#2aff8f":"#ff6b9a";ctx.font="bold 28px sans-serif";ctx.textAlign="center";ctx.fillText(G.win?"YOU ARE KNIGHT RIDER!":"CRASHED! GAME OVER",w/2,h*.38);ctx.fillStyle="#ffe3a3";ctx.font="bold 18px monospace";ctx.fillText("ENEMIES DESTROYED: "+G.score,w/2,h*.48);ctx.fillText("BEST: "+(localStorage.getItem("pitt_best")||G.score),w/2,h*.55);ctx.fillStyle="#d7b76a";ctx.font="bold 16px sans-serif";ctx.fillText("Zpět -> Hry -> Hrát pro restart",w/2,h*.65);ctx.textAlign="left";}}
-}
-function loop(){update();draw();raf=requestAnimationFrame(loop);}
-
-document.addEventListener("DOMContentLoaded",()=>{
-  gw=document.getElementById("gameWrap");cv=document.getElementById("gameCanvas");ctx=cv.getContext("2d");hud=document.getElementById("hud");
-  document.querySelectorAll("[data-view]").forEach(el=>el.addEventListener("click",()=>showView(el.dataset.view)));
-  document.querySelectorAll("[data-action='open-game']").forEach(el=>el.addEventListener("click",openGame));
-  document.querySelectorAll("[data-action='load-xex']").forEach(el=>el.addEventListener("click",bootXex));
-  document.getElementById("closeGameBtn").addEventListener("click",closeGame);
-  bindPress("btnLeft","left");bindPress("btnRight","right");bindPress("btnFire","fire");bindPress("btnJump","jump");
-  window.addEventListener("resize",resizeGame);
-  document.addEventListener("keydown",e=>{if(e.key==="ArrowLeft")keys.left=true;if(e.key==="ArrowRight")keys.right=true;if(e.key===" ")fire();if(e.key==="ArrowUp")jump();});
-  document.addEventListener("keyup",e=>{if(e.key==="ArrowLeft")keys.left=false;if(e.key==="ArrowRight")keys.right=false;});
-  renderMeta();
-});
-</script>
-</body>
-</html>
+function bootXex(){const bytes=decodeB64(b64);document.getElementById('slotStatus').textContent='XEX LOADED / RUN $221A';document.getElementById('regs').innerHTML='<div class="reg">RUN $221A</div><div class="reg">SIZE '+bytes.length+' bytes</div><div class="reg">Segments 2</div>';document.getElementById('log').textContent='Loaded PiTT-KiTT XEX into runner slot.\nFull game still needs video/joystick emulation or mobile port.\nNo fake promise here.';}
+function showNeed(){document.getElementById('log').textContent='Pro PiTT-KiTT hraní potřebuji jednu z cest:\n\nA) zdroják hry / pravidla / grafiku -> udělám mobilní port do N&P engine\n\nB) hotové Atari emu jádro -> napojím XEX\n\nC) nový N&P XEX standard -> budoucí komunitní hry budou hratelné v našem mini-emulátoru.';}
+function renderMeta(){let lines=[];lines.push('APP: AtariHelp.eu');lines.push('FILE: '+game.filename);lines.push('SIZE: '+game.size_bytes+' bytes');lines.push('RUNAD: '+game.run_address);lines.push('SHA256: '+game.sha256);lines.push('');lines.push('SEGMENTS:');game.segments.forEach((s,i)=>lines.push((i+1)+'. '+s.start+'-'+s.end+' / '+s.size+' bytes'));document.getElementById('metaBox').textContent=lines.join('\n');}
+renderMeta();
+</script></body></html>

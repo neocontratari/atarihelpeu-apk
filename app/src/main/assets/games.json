@@ -18,7 +18,7 @@
         "size": 2
       }
     ],
-    "playable_mobile_port": true,
-    "playable_xex_emulation": false
+    "playable": false,
+    "note": "XEX je uvnitř APK, plná hratelnost čeká na dokončení mini-emulátoru nebo port hry do N&P mobile engine."
   }
 ]
