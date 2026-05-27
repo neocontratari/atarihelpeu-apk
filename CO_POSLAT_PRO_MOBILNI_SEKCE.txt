@@ -1,0 +1,25 @@
+CO MI POSLAT PRO MOBILNI ATARIHELP.EU
+
+1) HRY
+- nazev hry
+- XEX/WAV/PDF/TXT
+- screenshot
+- kratky popis
+- ovladani
+- jestli ma byt hratelna v appce nebo jen katalog
+
+2) NAVODY
+- odkaz na stranku nebo text
+- obrazky/fotky
+- kratky nadpis
+- co je nejdulezitejsi
+
+3) N&P STUDIO
+- logo ve finalni kvalite
+- manifest text
+- seznam projektu
+
+4) PiTT-KiTT HRANI
+Nejrychlejsi cesta:
+- posli zdrojak, nebo aspon pravidla hry + grafiku/screenshoty.
+- pak udelam mobilni port do N&P engine.
