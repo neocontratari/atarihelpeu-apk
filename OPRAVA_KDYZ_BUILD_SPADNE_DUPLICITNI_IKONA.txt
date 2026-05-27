@@ -1,0 +1,12 @@
+KDYZ BUILD SPADNE NA DUPLICITNI IKONE
+
+V15 uz ma automatickou opravu ve workflow:
+1b - Vycistit stare duplicitni ikony
+
+Kdyz by to presto spadlo:
+1) GitHub -> Code
+2) app/src/main/res/drawable
+3) smaz ic_launcher.png
+4) nech ic_launcher.xml
+5) Commit changes
+6) Actions znovu
