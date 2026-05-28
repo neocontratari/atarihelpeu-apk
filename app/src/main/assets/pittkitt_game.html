@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>PiTT-KiTT v26</title>
+<title>PiTT-KiTT v27</title>
 <style>
 html,body{margin:0;background:#020201;color:#fff7e3;font-family:Arial,Helvetica,sans-serif;overflow:hidden}
 .top{height:56px;background:#070604;border-bottom:1px solid #5b4a22;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;box-sizing:border-box}
@@ -16,7 +16,7 @@ button{border:0;border-radius:14px;background:#d7b76a;color:#100a00;font-weight:
 </style>
 </head>
 <body>
-<div class="top"><div><div class="title">PiTT-KiTT Mobile v26</div><div class="hud" id="hud">PRESS START</div></div><a class="back" href="index.html">Zpět</a></div>
+<div class="top"><div><div class="title">PiTT-KiTT Mobile v27</div><div class="hud" id="hud">PRESS START</div></div><a class="back" href="index.html">Zpět</a></div>
 <canvas id="game"></canvas>
 <div class="controls"><button id="left">◀ LEFT</button><button id="right">RIGHT ▶</button><button id="fire" class="fire">FIRE</button><button id="jump" class="jump">JUMP</button></div>
 <script>
@@ -96,19 +96,66 @@ function update(){
   hud.innerHTML="SCORE "+G.score+" | L"+(Math.min(G.level+1,10))+" "+levels[Math.min(G.level,9)][0]+(G.combo>1?" | COMBO x"+G.combo:"");
 }
 function drawKittCar(px,py){
+  // v27: auto musí být vidět za všech okolností
   py-=G.jump*82;
-  if(G.jump>0){ctx.fillStyle="rgba(0,0,0,.32)";ctx.beginPath();ctx.ellipse(px,py+62,42,12,0,0,Math.PI*2);ctx.fill();}
-  ctx.fillStyle="#020202";ctx.fillRect(px-30,py-9,60,42);
-  ctx.fillStyle="#090909";ctx.fillRect(px-24,py-31,48,27);
-  ctx.fillStyle="#1d1d1d";ctx.fillRect(px-15,py-25,30,12);
-  ctx.fillStyle="#030303";ctx.fillRect(px-37,py+16,16,15);ctx.fillRect(px+21,py+16,16,15);
-  ctx.fillStyle="#151515";ctx.fillRect(px-25,py+24,50,8);
-  var sx=px-20+G.scanner*40;
-  ctx.fillStyle="#ff1515";ctx.fillRect(sx-5,py-34,10,5);
-  ctx.fillStyle="rgba(255,0,0,.42)";ctx.fillRect(sx-13,py-36,26,9);
-  ctx.strokeStyle="#3a3a3a";ctx.lineWidth=2;ctx.strokeRect(px-30,py-9,60,42);
-  if(G.flash>0){ctx.fillStyle="rgba(255,40,40,.28)";ctx.fillRect(px-44,py-44,88,88);}
+
+  // velký stín pod autem
+  ctx.fillStyle="rgba(0,0,0,.60)";
+  ctx.beginPath();
+  ctx.ellipse(px,py+64,52,14,0,0,Math.PI*2);
+  ctx.fill();
+
+  // kontrastní zlatý rámeček kolem auta
+  ctx.fillStyle="rgba(215,183,106,.40)";
+  ctx.fillRect(px-42,py-47,84,92);
+
+  // karoserie KITT
+  ctx.fillStyle="#010101";
+  ctx.fillRect(px-35,py-10,70,48);
+
+  // kabina / kapota
+  ctx.fillStyle="#111111";
+  ctx.fillRect(px-27,py-36,54,31);
+
+  // sklo
+  ctx.fillStyle="#303040";
+  ctx.fillRect(px-17,py-30,34,15);
+
+  // obrysy, aby nesplynul se silnicí
+  ctx.strokeStyle="#ffe3a3";
+  ctx.lineWidth=2;
+  ctx.strokeRect(px-35,py-10,70,48);
+  ctx.strokeStyle="#777777";
+  ctx.strokeRect(px-27,py-36,54,31);
+
+  // kola
+  ctx.fillStyle="#000000";
+  ctx.fillRect(px-45,py+16,19,18);
+  ctx.fillRect(px+26,py+16,19,18);
+  ctx.fillStyle="#262626";
+  ctx.fillRect(px-41,py+20,11,10);
+  ctx.fillRect(px+30,py+20,11,10);
+
+  // červený scanner
+  var sx=px-24+G.scanner*48;
+  ctx.fillStyle="#ff0000";
+  ctx.fillRect(sx-6,py-42,12,7);
+  ctx.fillStyle="rgba(255,0,0,.60)";
+  ctx.fillRect(sx-18,py-45,36,13);
+
+  // pojistný popisek KITT
+  ctx.fillStyle="#ffffff";
+  ctx.font="bold 11px Arial";
+  ctx.textAlign="center";
+  ctx.fillText("KITT",px,py+14);
+  ctx.textAlign="left";
+
+  if(G.flash>0){
+    ctx.fillStyle="rgba(255,40,40,.32)";
+    ctx.fillRect(px-52,py-52,104,104);
+  }
 }
+
 function drawRoad(lev){
   ctx.fillStyle=lev[2];ctx.fillRect(0,0,w,h*.42);
   ctx.fillStyle=lev[0];ctx.fillRect(0,h*.34,w,h*.66);
