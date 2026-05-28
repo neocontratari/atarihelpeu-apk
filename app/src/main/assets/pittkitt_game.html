@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>PiTT-KiTT v25</title>
+<title>PiTT-KiTT v26</title>
 <style>
 html,body{margin:0;background:#020201;color:#fff7e3;font-family:Arial,Helvetica,sans-serif;overflow:hidden}
 .top{height:56px;background:#070604;border-bottom:1px solid #5b4a22;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;box-sizing:border-box}
@@ -16,7 +16,7 @@ button{border:0;border-radius:14px;background:#d7b76a;color:#100a00;font-weight:
 </style>
 </head>
 <body>
-<div class="top"><div><div class="title">PiTT-KiTT Mobile v25</div><div class="hud" id="hud">PRESS START</div></div><a class="back" href="index.html">Zpět</a></div>
+<div class="top"><div><div class="title">PiTT-KiTT Mobile v26</div><div class="hud" id="hud">PRESS START</div></div><a class="back" href="index.html">Zpět</a></div>
 <canvas id="game"></canvas>
 <div class="controls"><button id="left">◀ LEFT</button><button id="right">RIGHT ▶</button><button id="fire" class="fire">FIRE</button><button id="jump" class="jump">JUMP</button></div>
 <script>
@@ -58,13 +58,24 @@ function update(){
   if(G.mode!=="play"){hud.innerHTML=G.mode==="title"?"PRESS FIRE / JUMP":"SCORE "+G.score+" BEST "+G.best;return;}
   G.levelTick++;
   var ice=(G.level===2||G.level===3||G.level===7);
-  var sp=0.0032+G.level*0.00045;
-  if(keys.left)G.x-=ice?0.004:0.007;
-  if(keys.right)G.x+=ice?0.004:0.007;
-  if(G.x<.24)G.x=.24;if(G.x>.76)G.x=.76;
+  var desert=(G.level===4||G.level===6);
+  var cyber=(G.level===5||G.level===9);
+  var sp=0.0030+G.level*0.00048;
+  if(desert)sp+=0.00025;
+  if(cyber)sp+=0.00040;
+  var accel=ice?0.00072:0.00155;
+  var friction=ice?0.988:0.900;
+  if(keys.left)G.vx-=accel;
+  if(keys.right)G.vx+=accel;
+  G.vx*=friction;
+  if(G.vx<-0.010)G.vx=-0.010;
+  if(G.vx>0.010)G.vx=0.010;
+  G.x+=G.vx;
+  if(G.x<.24){G.x=.24;G.vx*= -0.35;}
+  if(G.x>.76){G.x=.76;G.vx*= -0.35;}
   if(G.jump>0){G.jump+=G.jv;G.jv-=.004;if(G.jump<=0){G.jump=0;G.jv=0;}}
   if(G.bullet){G.bullet.y-=.038;if(G.bullet.y<.08)G.bullet=null;}
-  if(G.flash>0)G.flash--;
+  if(G.flash>0)G.flash--; if(G.comboTick>0){G.comboTick--;}else{G.combo=0;}
   G.spawnE--;G.spawnH--;G.spawnT--;
   if(G.spawnE<=0){spawnEnemy();G.spawnE=52-Math.min(32,G.level*3)+Math.floor(Math.random()*30);}
   if(G.spawnH<=0){spawnHole();G.spawnH=120-Math.min(45,G.level*4)+Math.floor(Math.random()*55);}
@@ -82,7 +93,7 @@ function update(){
   for(i=0;i<G.enemies.length;i++){e=G.enemies[i];if(!e.hit&&e.y>.78&&e.y<.93&&Math.abs(laneX(e.lane,e.y)-G.x)<.075&&G.jump<.28)gameOver(false);}
   for(i=0;i<G.holes.length;i++){ho=G.holes[i];if(ho.y>.78&&ho.y<.93&&Math.abs(laneX(ho.lane,ho.y)-G.x)<.075&&G.jump<.42)gameOver(false);}
   if(G.levelTick>900){G.level++;G.levelTick=0;if(G.level>=10)gameOver(true);}
-  hud.innerHTML="ENEMIES "+G.score+" | L"+(Math.min(G.level+1,10))+" "+levels[Math.min(G.level,9)][0];
+  hud.innerHTML="SCORE "+G.score+" | L"+(Math.min(G.level+1,10))+" "+levels[Math.min(G.level,9)][0]+(G.combo>1?" | COMBO x"+G.combo:"");
 }
 function drawKittCar(px,py){
   py-=G.jump*82;
@@ -112,11 +123,11 @@ function draw(){
   for(i=0;i<G.trees.length;i++){tr=G.trees[i];x=(tr.side<0?.12:.88)*w+tr.side*tr.y*35;y=tr.y*h;s=8+tr.y*24;ctx.fillStyle="#101010";ctx.fillRect(x-2,y,s*.18,s);ctx.fillStyle=lev[3];ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x-s,y+s*.2);ctx.lineTo(x+s,y+s*.2);ctx.fill();}
   for(i=0;i<G.holes.length;i++){ho=G.holes[i];x=laneX(ho.lane,ho.y)*w;y=ho.y*h;s=10+ho.y*24;ctx.fillStyle="#050505";ctx.beginPath();ctx.ellipse(x,y,s*1.4,s*.65,0,0,Math.PI*2);ctx.fill();}
   for(i=0;i<G.enemies.length;i++){e=G.enemies[i];x=laneX(e.lane,e.y)*w;y=e.y*h;s=18+e.y*22;if(e.hit){ctx.fillStyle="#ffdf4c";ctx.beginPath();ctx.arc(x,y,s,0,Math.PI*2);ctx.fill();ctx.fillStyle="#ff4411";ctx.beginPath();ctx.arc(x,y,s*.55,0,Math.PI*2);ctx.fill();}else{ctx.fillStyle="#070707";ctx.fillRect(x-s*.82,y-s*.35,s*1.64,s*.76);ctx.fillStyle="#303030";ctx.fillRect(x-s*.50,y-s*.68,s,s*.44);ctx.fillStyle="#ff5050";ctx.fillRect(x-s*.35,y-s*.16,s*.7,4);ctx.fillStyle="#050505";ctx.fillRect(x-s,y+s*.26,s*.38,s*.24);ctx.fillRect(x+s*.62,y+s*.26,s*.38,s*.24);}}
-  if(G.bullet){ctx.fillStyle="#ff2222";ctx.fillRect(G.bullet.x*w-3,G.bullet.y*h-24,6,24);ctx.fillStyle="#ffaaaa";ctx.fillRect(G.bullet.x*w-1,G.bullet.y*h-39,2,18);}
+  if(G.bullet){ctx.fillStyle="rgba(255,0,0,.22)";ctx.fillRect(G.bullet.x*w-9,G.bullet.y*h-54,18,58);ctx.fillStyle="#ff2222";ctx.fillRect(G.bullet.x*w-3,G.bullet.y*h-24,6,24);ctx.fillStyle="#ffaaaa";ctx.fillRect(G.bullet.x*w-1,G.bullet.y*h-44,2,24);}
   drawKittCar(G.x*w,.86*h);
   ctx.fillStyle="rgba(0,0,0,.62)";ctx.fillRect(8,8,w-16,50);
   ctx.fillStyle="#ffe3a3";ctx.font="bold 15px monospace";ctx.fillText("PITSTOP KITT REMASTER",18,29);
-  ctx.fillStyle="#2aff8f";ctx.fillText("ENEMIES "+G.score+"  HI "+G.best+"  L"+(Math.min(G.level+1,10)),18,50);
+  ctx.fillStyle="#2aff8f";ctx.fillText("SCORE "+G.score+"  HI "+G.best+"  L"+(Math.min(G.level+1,10)),18,50); if(G.combo>1){ctx.fillStyle="#ff3d7f";ctx.fillText("COMBO x"+G.combo,w-115,50);} if(G.mode==="play"&&(G.level===2||G.level===3||G.level===7)){ctx.fillStyle="#bbf4ff";ctx.fillText("ICE!",w-58,29);}
   if(G.mode==="play" && G.levelTick<85){ctx.fillStyle="rgba(0,0,0,.65)";ctx.fillRect(0,h*.42,w,64);ctx.textAlign="center";ctx.fillStyle="#ffe3a3";ctx.font="bold 22px Arial";ctx.fillText("LEVEL "+(G.level+1),w/2,h*.42+25);ctx.fillStyle="#2aff8f";ctx.font="bold 15px monospace";ctx.fillText(levels[Math.min(G.level,9)][0],w/2,h*.42+49);ctx.textAlign="left";}
   if(G.mode==="title"){
     ctx.fillStyle="rgba(0,0,0,.70)";ctx.fillRect(0,0,w,h);
@@ -128,7 +139,7 @@ function draw(){
   if(G.over){
     ctx.fillStyle="rgba(0,0,0,.82)";ctx.fillRect(0,0,w,h);
     ctx.textAlign="center";ctx.font="bold 26px Arial";ctx.fillStyle=G.win?"#2aff8f":"#ff6b9a";ctx.fillText(G.win?"YOU ARE KNIGHT RIDER!":"CRASHED! GAME OVER",w/2,h*.38);
-    ctx.fillStyle="#ffe3a3";ctx.font="bold 18px monospace";ctx.fillText("ENEMIES DESTROYED: "+G.score,w/2,h*.49);ctx.fillText("HIGH SCORE: "+G.best,w/2,h*.57);
+    ctx.fillStyle="#ffe3a3";ctx.font="bold 18px monospace";ctx.fillText("FINAL SCORE: "+G.score,w/2,h*.49);ctx.fillText("HIGH SCORE: "+G.best,w/2,h*.57);
     ctx.fillStyle="#d7b76a";ctx.font="bold 15px Arial";ctx.fillText("FIRE / JUMP = RESTART",w/2,h*.68);ctx.textAlign="left";
   }
 }
