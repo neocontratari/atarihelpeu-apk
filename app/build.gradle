@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 109
-        versionName "EMU-09-pmg-gtia-overlay"
+        versionCode 110
+        versionName "EMU-09-fix9-mini-xex-loader"
     }
 }

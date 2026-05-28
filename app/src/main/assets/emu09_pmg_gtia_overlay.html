@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX8 HIGHSCORE CONTROLS / PiTT-KiTT emulator</title>
+<title>EMU-09 FIX9 MINI XEX LOADER / PiTT-KiTT emulator</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -16,20 +16,20 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 .reg{border:1px solid rgba(215,183,106,.35);border-radius:12px;padding:8px;color:#ffe3a3;font-family:monospace}
 .bad{color:#ff6b9a}.ok{color:#2aff8f}
 .playStatus{font-family:monospace;color:#2aff8f;border:1px solid rgba(42,255,143,.28);border-radius:12px;padding:10px;margin-top:10px;background:rgba(42,255,143,.06);white-space:pre-wrap}
-.padgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch}.padgrid button{min-height:58px;font-size:16px}.wide{grid-column:1/4}.halfgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.danger{background:#ff6b9a!important;color:#160006!important}.compact{font-size:12px;padding:9px;margin-top:7px}.muted{opacity:.68}.debugDetails,.settingsDetails{margin-top:10px}.debugDetails summary,.settingsDetails summary{cursor:pointer;color:#ffe3a3;font-weight:bold;padding:10px;border:1px solid rgba(215,183,106,.35);border-radius:12px;background:rgba(215,183,106,.06)}.debugDetails .card{margin-top:8px}.controlPanel{margin-top:12px;border-top:1px solid rgba(215,183,106,.22);padding-top:12px}.controlHint{font-size:13px;color:rgba(255,247,227,.68);margin:6px 0 8px}.inputReadout{font-family:monospace;color:#2aff8f;margin-top:8px;min-height:18px}canvas.gameCanvas{border-radius:16px;border:2px solid rgba(215,183,106,.45);box-shadow:0 0 22px rgba(215,183,106,.16)}button{touch-action:none;user-select:none;-webkit-user-select:none}
+.padgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch}.padgrid button{min-height:58px;font-size:16px}.wide{grid-column:1/4}.halfgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.danger{background:#ff6b9a!important;color:#160006!important}.compact{font-size:12px;padding:9px;margin-top:7px}.muted{opacity:.68}.debugDetails,.settingsDetails{margin-top:10px}.debugDetails summary,.settingsDetails summary{cursor:pointer;color:#ffe3a3;font-weight:bold;padding:10px;border:1px solid rgba(215,183,106,.35);border-radius:12px;background:rgba(215,183,106,.06)}.debugDetails .card{margin-top:8px}.controlPanel{margin-top:12px;border-top:1px solid rgba(215,183,106,.22);padding-top:12px}.controlHint{font-size:13px;color:rgba(255,247,227,.68);margin:6px 0 8px}.inputReadout{font-family:monospace;color:#2aff8f;margin-top:8px;min-height:18px}.fileLine{font-family:monospace;color:#ffe3a3;font-size:12px;margin-top:8px;word-break:break-word}.inlineFile{display:none}canvas.gameCanvas{border-radius:16px;border:2px solid rgba(215,183,106,.45);box-shadow:0 0 22px rgba(215,183,106,.16)}button{touch-action:none;user-select:none;-webkit-user-select:none}
 </style>
 </head>
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX8 HIGHSCORE CONTROLS / PiTT-KiTT</h1>
-<p>Navazuje na FIX7: rychlý start, intro texty, PMG auto a zvuk zůstávají. Nově je Atari ovládání přímo pod obrazovkou a přidal jsem směr NAHORU pro zadávání tří písmen u rekordu.</p>
+<h1>EMU-09 FIX9 MINI XEX LOADER / PiTT-KiTT</h1>
+<p>Navazuje na FIX8: rychlost, intro texty, PMG auto, zvuk i ovládání pod obrazovkou zůstávají. Nově je z toho mini XEX emulátor: můžeš jet vestavěný PiTT-KiTT, nebo si načíst vlastní .XEX soubor.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
 <section class="card">
 <h2>PiTT-KiTT emulator</h2>
-<p>Soubor <b>PiTT-KiTT-NaP-Final.xex</b> je uvnitř APK. Spouštíme od skutečného začátku: nejdřív intro, do hry přejdeš tlačítkem START pod obrazovkou.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako hlavní test. Tlačítkem níže může uživatel vybrat vlastní .XEX z telefonu. Spouštíme od RUNAD, když ho XEX obsahuje.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -38,6 +38,12 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="danger" onclick="resetPlaying()">RESET XEX</button>
 <button class="secondary" onclick="toggleAudio()">ZVUK ON/OFF</button>
 </div>
+<div class="halfgrid">
+<button class="secondary" onclick="pickXexFile()">📂 NAČÍST VLASTNÍ XEX</button>
+<button class="secondary" onclick="loadBuiltinXex()">🎮 VESTAVĚNÝ PiTT-KiTT</button>
+</div>
+<input id="xexFile" class="inlineFile" type="file" accept=".xex,.XEX,application/octet-stream" onchange="handleXexFile(this.files&&this.files[0])">
+<div id="xexName" class="fileLine">XEX: PiTT-KiTT-NaP-Final.xex / vestavěný</div>
 <details class="settingsDetails">
 <summary>Výkon / servisní volby</summary>
 <div class="grid">
@@ -47,7 +53,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX.</div>
 </section>
 
 <section class="card">
@@ -97,7 +103,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX8 navazuje na FIX7: textové obrazovky zůstávají, ovládání je pod obrazovkou a high-score zadávání má i joystick UP pro změnu písmene nahoru.</p>
+<p>FIX9 už míří na malý praktický XEX emulátor: vestavěná hra, ruční načtení .XEX, neblokující běh, textové obrazovky, PMG overlay a spodní mobilní ovládání.</p>
 </section>
 </div>
 
@@ -119,6 +125,8 @@ var playFrameMs=0;
 var fastVideo=true;
 var gameImageData=null;
 var xexCache=null;
+var customXexBytes=null;
+var currentXexName="PiTT-KiTT-NaP-Final.xex / vestavěný";
 var introDl=0x2003, loseDl=0x2021, winDl=0x2036, hiDl=0x204B;
 var audioCtx=null,audioMaster=null,audioNodes=null,audioWanted=true,audioReady=false;
 var rgbCache={};
@@ -131,40 +139,51 @@ var writeSeen=new Uint8Array(65536);
 function hex(v,n){var s=(v>>>0).toString(16).toUpperCase();while(s.length<n)s="0"+s;return s;}
 function log(s){var e=document.getElementById("log");e.textContent=s+"\n"+e.textContent;}
 function decodeB64(s){var raw=atob(s);var a=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i)&255;return a;}
-function renderSegments(){var lines=[];for(var i=0;i<segments.length;i++){var s=segments[i];lines.push((i+1)+". $"+hex(s.start,4)+"-$"+hex(s.end,4)+" / "+s.size+" bytes");}document.getElementById("segments").textContent=lines.join("\n");}
-function renderRegs(){
- var box=document.getElementById("regs");
- if(!cpu){box.innerHTML='<div class="reg">CPU: not loaded</div>';return;}
- box.innerHTML='<div class="reg">PC $'+hex(cpu.pc,4)+'</div>'+
- '<div class="reg">A $'+hex(cpu.a,2)+'</div>'+
- '<div class="reg">X $'+hex(cpu.x,2)+'</div>'+
- '<div class="reg">Y $'+hex(cpu.y,2)+'</div>'+
- '<div class="reg">SP $'+hex(cpu.sp,2)+'</div>'+
- '<div class="reg">P $'+hex(cpu.p,2)+'</div>'+
- '<div class="reg">Steps '+cpu.steps+'</div>'+
- '<div class="reg">VC $'+hex(cpu.vcount||0,2)+'</div>'+
- '<div class="reg">OS '+(cpu.osCalls||0)+'</div>'+
- '<div class="reg">'+(cpu.trap?cpu.trapMsg:"RUN")+'</div>';
+function getActiveXexBytes(){return customXexBytes||(xexCache||(xexCache=decodeB64(b64)));}
+function setXexName(){var e=document.getElementById("xexName");if(e)e.textContent="XEX: "+currentXexName;}
+function renderSegments(){var lines=[];for(var i=0;i<segments.length;i++){var sg=segments[i];lines.push((i+1)+". $"+hex(sg.start,4)+"-$"+hex(sg.end,4)+" / "+sg.size+" bytes");}var el=document.getElementById("segments");if(el)el.textContent=lines.join("\n");setXexName();}
+function pickXexFile(){var f=document.getElementById("xexFile");if(f)f.click();}
+function loadBuiltinXex(){pausePlaying();customXexBytes=null;xexCache=null;currentXexName="PiTT-KiTT-NaP-Final.xex / vestavěný";loadXex(false);updatePlayStatus("Vráceno na vestavěný PiTT-KiTT XEX.");}
+function handleXexFile(file){
+ if(!file)return;
+ var reader=new FileReader();
+ reader.onload=function(ev){
+   try{
+     pausePlaying();
+     customXexBytes=new Uint8Array(ev.target.result);
+     xexCache=null;
+     currentXexName=file.name+" / "+customXexBytes.length+" bytes";
+     loadXex(false);
+     updatePlayStatus("Načten vlastní XEX: "+currentXexName+". Dej SPUSTIT / INTRO.");
+   }catch(e){log("XEX load error: "+e.message);updatePlayStatus("Chyba při načtení XEX: "+e.message);}
+ };
+ reader.onerror=function(){updatePlayStatus("Nepovedlo se přečíst XEX soubor z telefonu.");};
+ reader.readAsArrayBuffer(file);
 }
 function loadXex(light){
- ram.fill(0);writeSeen=new Uint8Array(65536);
- var bytes=xexCache||(xexCache=decodeB64(b64));
- var p=0,count=0;
+ ram.fill(0);writeSeen=new Uint8Array(65536);gameImageData=null;
+ var bytes=getActiveXexBytes();
+ var p=0,count=0,firstStart=0,bad=false;
+ segments=[];
  while(p<bytes.length){
    if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;
    if(p+4>bytes.length)break;
    var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;
    var size=end-start+1;
-   if(end<start||p+size>bytes.length){if(!light)log("BAD XEX segment");break;}
+   if(end<start||p+size>bytes.length){bad=true;if(!light)log("BAD XEX segment at offset "+p);break;}
+   if(count===0)firstStart=start;
    ram.set(bytes.subarray(p,p+size),start&65535);
+   segments.push({start:start,end:end,size:size});
    p+=size;count++;
  }
  ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;
  for(var j=0;j<40*24;j++)ram[screenBase+j]=0;
+ var ra=ram[0x02E0]|(ram[0x02E1]<<8);
+ runAddress=ra||firstStart||runAddress||0x2000;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX8-HIGHSCORE-CONTROLS");
-   renderRegs();renderVideo();
+   log((bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX9-MINI-XEX-LOADER");
+   renderSegments();renderRegs();renderVideo();
  }
 }
 
@@ -234,6 +253,17 @@ CPU6502.prototype.adc=function(v){
  v&=255;
  var a=this.a;
  var c=this.getC();
+ if(this.p&0x08){
+   // 6502 decimal mode: PiTT-KiTT používá SED/CLD pro BCD skóre a rekordy.
+   var lo=(a&0x0F)+(v&0x0F)+c;
+   var hi=(a>>4)+(v>>4);
+   if(lo>9){lo-=10;hi++;}
+   this.setC(hi>9);
+   hi%=10;
+   var r=((hi<<4)|(lo&0x0F))&255;
+   if(((a^r)&(v^r)&0x80)!==0)this.p|=0x40; else this.p&=~0x40;
+   this.a=r;this.zn(this.a);return;
+ }
  var t=a+v+c;
  this.setC(t>255);
  var r=t&255;
@@ -283,7 +313,7 @@ CPU6502.prototype.step=function(){
  var op=this.imm();
  this.traceOp(pc0,op);
  switch(op){
-  case 0xEA:break; case 0x78:break; case 0x58:break; case 0xD8:break; case 0xF8:break; case 0x18:this.setC(false);break; case 0x38:this.setC(true);break; case 0xB8:this.p&=~0x40;break;
+  case 0xEA:break; case 0x78:break; case 0x58:break; case 0xD8:this.p&=~0x08;break; case 0xF8:this.p|=0x08;break; case 0x18:this.setC(false);break; case 0x38:this.setC(true);break; case 0xB8:this.p&=~0x40;break;
   case 0xA9:this.a=this.imm();this.zn(this.a);break; case 0xA5:this.a=this.r(this.zp());this.zn(this.a);break; case 0xB5:this.a=this.r(this.zpx());this.zn(this.a);break; case 0xAD:this.a=this.r(this.abs());this.zn(this.a);break; case 0xBD:this.a=this.r(this.abx());this.zn(this.a);break; case 0xB9:this.a=this.r(this.aby());this.zn(this.a);break; case 0xA1:this.a=this.r(this.izx());this.zn(this.a);break; case 0xB1:this.a=this.r(this.izy());this.zn(this.a);break;
   case 0xA2:this.x=this.imm();this.zn(this.x);break; case 0xA6:this.x=this.r(this.zp());this.zn(this.x);break; case 0xB6:this.x=this.r(this.zpy());this.zn(this.x);break; case 0xAE:this.x=this.r(this.abs());this.zn(this.x);break; case 0xBE:this.x=this.r(this.aby());this.zn(this.x);break;
   case 0xA0:this.y=this.imm();this.zn(this.y);break; case 0xA4:this.y=this.r(this.zp());this.zn(this.y);break; case 0xB4:this.y=this.r(this.zpx());this.zn(this.y);break; case 0xAC:this.y=this.r(this.abs());this.zn(this.y);break; case 0xBC:this.y=this.r(this.abx());this.zn(this.y);break;
@@ -942,24 +972,32 @@ function fadeAudioOff(){
 }
 function isTextDlist(dl){return dl===loseDl||dl===winDl||dl===hiDl||(dl===introDl&&cpu&&cpu.pc<0x2400);}
 
+function bcd3(lo,hi){return ((hi&0x0F)*100)+(((lo>>4)&0x0F)*10)+(lo&0x0F);}
+function scoreValue(){return bcd3(ram[0xBD]||0,ram[0xC1]||0);}
+function hiScoreValue(){return bcd3(ram[0xBE]||0,ram[0xC2]||0);}
+function pad3(v){var s=String(v);while(s.length<3)s="0"+s;return s;}
 function scoreText(){
  if(!cpu)return "000";
- var lo=ram[0xBD]||0, hi=ram[0xC1]||0;
- var v=((hi&0x0F)*100)+(((lo>>4)&0x0F)*10)+(lo&0x0F);
- var s=String(v);while(s.length<3)s="0"+s;return s;
+ return pad3(scoreValue());
 }
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
- var mode=(dl&&isTextDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':'ANTIC text'):'2BPP game';
+ var mode=(dl&&isTextDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC text')):'2BPP game';
+ var hint="";
+ if(dl===hiDl)hint="\nPODPIS REKORDU: ▲/▼ mění písmeno, FIRE nebo RIGHT potvrzuje.";
+ else if(dl===loseDl||dl===winDl){
+   hint=(scoreValue()>hiScoreValue())?"\nREKORD! Na této obrazovce stiskni a pusť START: pak skočí podpis tří písmen.":"\nKonec bez nového rekordu. START vrací do intra.";
+ }
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  kroky "+cpu.steps+
-   "\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)+
+   "\nXEX "+currentXexName+
+   "\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)+
    "\nlast "+playLastRan+" ops / "+playFrameMs.toFixed(1)+"ms  SAVMSC $"+hex(base,4)+"  speed "+playCyclesPerFrame+"  video "+(fastVideo?"FAST":"SAFE")+"  zvuk "+(audioWanted?(audioReady?"ON":"čeká"):"OFF")+
-   (extra?"\n"+extra:"");
+   hint+(extra?"\n"+extra:"");
 }
 function runCpuQuiet(n){
  if(!cpu)loadXex(true);
