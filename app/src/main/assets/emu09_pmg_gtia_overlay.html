@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX10 XEX LOADER V2 / PiTT-KiTT emulator</title>
+<title>EMU-09 FIX11 GENERIC DLIST / PiTT-KiTT emulator</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,8 +22,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX10 XEX LOADER V2 / PiTT-KiTT</h1>
-<p>Navazuje na FIX9: rychlost, intro texty, PMG auto, zvuk i ovládání pod obrazovkou zůstávají. FIX10 opravuje XEX loader: už bere INITAD/RUNAD vektory, resetuje čistě aktivní XEX a ukazuje diagnostiku načteného souboru.</p>
+<h1>EMU-09 FIX11 GENERIC DLIST / PiTT-KiTT</h1>
+<p>Navazuje na FIX10: rychlost, intro texty, PMG auto, zvuk i ovládání dole zůstávají. FIX11 opravuje pád renderRegs, vyměňuje vestavěný PiTT-KiTT za aktuální XEX od Reného a přidává obecnější ANTIC display-list renderer pro cizí XEX soubory.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -53,7 +53,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX10 loader v2.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX11 generic DLIST.</div>
 </section>
 
 <section class="card">
@@ -103,7 +103,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX9 už míří na malý praktický XEX emulátor: vestavěná hra, ruční načtení .XEX, neblokující běh, textové obrazovky, PMG overlay a spodní mobilní ovládání.</p>
+<p>FIX11 už je víc mini-emulátor než jen jedna hra: vestavěný PiTT-KiTT, ruční načtení .XEX, neblokující běh, textové obrazovky, obecnější display-list render, PMG overlay, zvuk a spodní mobilní ovládání.</p>
 </section>
 </div>
 
@@ -129,6 +129,8 @@ var customXexBytes=null;
 var currentXexName="PiTT-KiTT-NaP-Final.xex / vestavěný";
 var xexInfo={run:0,inits:[],entry:0,warnings:[],bad:false};
 var activeEntryWasInit=false;
+var pendingInitAddrs=[];
+var ranInitAddrs=[];
 var introDl=0x2003, loseDl=0x2021, winDl=0x2036, hiDl=0x204B;
 var audioCtx=null,audioMaster=null,audioNodes=null,audioWanted=true,audioReady=false;
 var rgbCache={};
@@ -165,10 +167,29 @@ function renderSegments(){
  if(xexInfo.warnings.length){lines.push("\nVarování:");for(var j=0;j<xexInfo.warnings.length;j++)lines.push("- "+xexInfo.warnings[j]);}
  var el=document.getElementById("segments");if(el)el.textContent=lines.join("\n");setXexName();
 }
+
+function renderRegs(){
+ var box=document.getElementById("regs");
+ if(!box)return;
+ if(!cpu){box.innerHTML='<div class="reg">CPU: not loaded</div>';return;}
+ box.innerHTML='<div class="reg">PC $'+hex(cpu.pc,4)+'</div>'+ 
+ '<div class="reg">A $'+hex(cpu.a,2)+'</div>'+ 
+ '<div class="reg">X $'+hex(cpu.x,2)+'</div>'+ 
+ '<div class="reg">Y $'+hex(cpu.y,2)+'</div>'+ 
+ '<div class="reg">SP $'+hex(cpu.sp,2)+'</div>'+ 
+ '<div class="reg">P $'+hex(cpu.p,2)+'</div>'+ 
+ '<div class="reg">Steps '+cpu.steps+'</div>'+ 
+ '<div class="reg">VC $'+hex(cpu.vcount||0,2)+'</div>'+ 
+ '<div class="reg">OS '+(cpu.osCalls||0)+'</div>'+ 
+ '<div class="reg">ENTRY $'+hex(xexInfo.entry||0,4)+'</div>'+ 
+ '<div class="reg">DL $'+hex(getDlistPtr()||0,4)+'</div>'+ 
+ '<div class="reg">'+(cpu.trap?cpu.trapMsg:"RUN")+'</div>';
+}
+
 function pickXexFile(){var f=document.getElementById("xexFile");if(f)f.click();}
 function fullStop(){playMode=false;fadeAudioOff();if(playLoopId){cancelAnimationFrame(playLoopId);playLoopId=0;}}
 function loadBuiltinXex(){
- fullStop();clearInputState();customXexBytes=null;xexCache=null;currentXexName="PiTT-KiTT-NaP-Final.xex / vestavěný";
+ fullStop();clearInputState();customXexBytes=null;xexCache=null;var ff=document.getElementById("xexFile");if(ff)ff.value="";currentXexName="PiTT-KiTT-NaP-Final.xex / vestavěný";
  loadXex(false);
  updatePlayStatus("Vestavěný PiTT-KiTT je čistě resetovaný. Dej SPUSTIT / INTRO.");
 }
@@ -212,6 +233,8 @@ function parseAndLoadXexBytes(bytes,light){
  else if(goodEntry(firstExec)){entry=firstExec;}
  else entry=0x2000;
  xexInfo={run:runVec||0,inits:inits,entry:entry,warnings:[],bad:bad};
+ pendingInitAddrs=goodEntry(runVec)?inits.slice(0):inits.slice(0,Math.max(0,inits.length-1));
+ ranInitAddrs=[];
  xexInfo.warnings=xexWarningsForEntry(entry);
  return {count:count,bad:bad,entry:entry};
 }
@@ -227,7 +250,7 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX10-XEX-LOADER-V2");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX11-GENERIC-DLIST");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -829,8 +852,52 @@ function renderPMGDebugColors(){
 
 function renderVideo(){
  var d=getDlistPtr();
- if(d && isTextDlist(d))renderAnticDisplay();
+ if(d && shouldRenderDlist(d))renderAnticDisplay();
  else renderGame2bpp();
+}
+function bytesPerMode(mode){
+ // Hrubé šířky pro narrow playfield 40 bytů; pro náš mini-emulátor je to zatím bezpečný default.
+ if(mode===2 || mode===4 || mode===5 || mode===6 || mode===7)return 40;
+ if(mode>=8 && mode<=15)return 40;
+ return 40;
+}
+function scanlinesForMode(mode){
+ if(mode===2 || mode===4)return 8;
+ if(mode===5)return 16;
+ if(mode===6)return 8;
+ if(mode===7)return 16;
+ if(mode>=8 && mode<=15)return 1;
+ return 2;
+}
+function charBaseGuess(){
+ var cb=(ram[0xD409]||ram[0x02F4]||0)<<8;
+ if(cb && countNonZero(cb,1024).n>8)return cb;
+ return 0;
+}
+function drawAntic4Line(g,addr,y,scan,cs){
+ var cols=[cs.bk,cs.p0,cs.p1,cs.p2];
+ var cb=charBaseGuess();
+ for(var col=0;col<40;col++){
+   var code=ram[(addr+col)&65535]&255;
+   var bits=cb?ram[(cb+((code&127)<<3)+(scan&7))&65535]:code;
+   for(var p=0;p<4;p++){
+     var val=(bits>>(6-p*2))&3;
+     g.fillStyle=cols[val];
+     g.fillRect(col*8+p*2,y,2,1);
+   }
+ }
+}
+function drawAnticRawRows(g,addr,y,mode,cs){
+ var h=scanlinesForMode(mode);
+ if(mode===2){drawAtariTextLine(g,addr,y,cs.p1,cs.bk);return 8;}
+ if(mode===4 || mode===5){
+   for(var sy=0;sy<h;sy++)drawAntic4Line(g,addr,y+sy,sy,cs);
+   return h;
+ }
+ // Pixel fallback: opakuje 2bpp řádek do výšky režimu. Není to plná ANTIC emulace,
+ // ale pro cizí XEXy už ukáže display-list obraz místo jednobarevné plochy.
+ for(var yy=0;yy<Math.max(1,h);yy+=2)draw2bppRow(g,addr,y+yy,cs);
+ return Math.max(2,h);
 }
 function renderAnticDisplay(){
  var c=document.getElementById("video");
@@ -840,49 +907,40 @@ function renderAnticDisplay(){
  g.fillStyle=cs.bk;g.fillRect(0,0,320,192);
  var dl=getDlistPtr();
  if(!dl){renderGame2bpp();return;}
- var y=0, safety=0, textLines=0;
+ var y=0, safety=0, textLines=0, scanAddr=0, lastDl=dl;
  g.font="8px monospace";
  g.textBaseline="top";
- while(y<188 && safety++<180){
+ while(y<192 && safety++<220){
+   lastDl=dl;
    var op=ram[dl++&65535];
-   if(op===0x41){
-     var lo=ram[dl++&65535],hi=ram[dl++&65535];
-     dl=lo|(hi<<8);
+   var mode=op&0x0F;
+   if(mode===1){
+     var jlo=ram[dl++&65535],jhi=ram[dl++&65535];
+     // JVB/JMP konec frame. Nehoníme se po smyčce pořád dokola.
      break;
    }
-   if((op&0x70)===0x70 && (op&0x0F)===0){
-     // ANTIC blank instructions: $00..$70 znamená 1..8 scanlines, ne řádků po 8 pixelech.
-     // Ve FIX6 se $70 omylem násobilo další osmičkou, takže text utekl mimo obraz.
+   if(mode===0){
      var blank=((op>>4)&7)+1;
      g.fillStyle=cs.bk;g.fillRect(0,y,320,blank);
      y+=blank;
      continue;
    }
-   var mode=op&0x0F;
-   var addr=0;
    if(op&0x40){
      var lo2=ram[dl++&65535],hi2=ram[dl++&65535];
-     addr=lo2|(hi2<<8);
+     scanAddr=lo2|(hi2<<8);
    }
-   if(mode===2){
-     // ANTIC mode 2: 40 znaků na řádek. Browserový fillText byl na mobilu
-     // skoro nečitelný, proto tady kreslíme vlastní 8x8 bitmapové znaky.
-     drawAtariTextLine(g,addr,y,cs.p1,cs.bk);
-     y+=8;textLines++;
-   }else{
-     // fallback raw mode: 40 bytes as 2bit row
-     if(addr===0)addr=(ram[0x58]|(ram[0x59]<<8))+(textLines*40);
-     draw2bppRow(g,addr,y,cs);
-     y+=2;
-   }
+   if(!scanAddr)scanAddr=((ram[0x58]|(ram[0x59]<<8))+(textLines*40))&65535;
+   var used=drawAnticRawRows(g,scanAddr,y,mode,cs);
+   y+=used;
+   scanAddr=(scanAddr+bytesPerMode(mode))&65535;
+   textLines++;
  }
- // FIX3: žádné ruční červené debug obdélníky; PMG kreslí jen skutečný overlay.
  pmgOnlyContrast=false;
- var pmgPixA=renderPMGOverlay(g,cs,!playMode); // PMG overlay ANTIC
+ var pmgPixA=renderPMGOverlay(g,cs,!playMode);
  if(!playMode){
    g.fillStyle="#ff6b9a";
    g.font="10px monospace";
-   g.fillText("DLIST $"+hex(dl,4)+" SDLST $"+hex(getDlistPtr(),4)+" PMG "+pmgPixA+" PC $"+(cpu?hex(cpu.pc,4):"----"),4,188);
+   g.fillText("DLIST $"+hex(lastDl,4)+" SDLST $"+hex(getDlistPtr(),4)+" PMG "+pmgPixA+" PC $"+(cpu?hex(cpu.pc,4):"----"),4,188);
    log("Rendered ANTIC display list. SDLST=$"+hex(getDlistPtr(),4));
  }
 }
@@ -1021,7 +1079,25 @@ function fadeAudioOff(){
  var t=audioCtx.currentTime;
  for(var i=0;i<audioNodes.length;i++)audioNodes[i].gain.gain.setTargetAtTime(0,t,0.04);
 }
+function isBuiltInPiTT(){return !customXexBytes;}
 function isTextDlist(dl){return dl===loseDl||dl===winDl||dl===hiDl||(dl===introDl&&cpu&&cpu.pc<0x2400);}
+function dlistLooksValid(dl){
+ if(!dl || dl<0x0200 || dl>0xBFFF)return false;
+ var p=dl&65535;
+ for(var i=0;i<80;i++){
+   var op=ram[p++&65535], mode=op&0x0F;
+   if(mode===1)return true;
+   if(mode>15)return false;
+   if(op&0x40)p=(p+2)&65535;
+ }
+ return true;
+}
+function shouldRenderDlist(dl){
+ if(!dl)return false;
+ // PiTT-KiTT má během hry pořád vestavěný 2BPP renderer přes SAVMSC; intro/end/high-score přes DL.
+ if(isBuiltInPiTT())return isTextDlist(dl);
+ return dlistLooksValid(dl);
+}
 
 function bcd3(lo,hi){return ((hi&0x0F)*100)+(((lo>>4)&0x0F)*10)+(lo&0x0F);}
 function scoreValue(){return bcd3(ram[0xBD]||0,ram[0xC1]||0);}
@@ -1034,10 +1110,10 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX10 loader v2.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX11 generic DLIST.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
- var mode=(dl&&isTextDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC text')):'2BPP game';
+ var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
  var hint="";
  if(dl===hiDl)hint="\nPODPIS REKORDU: ▲/▼ mění písmeno, FIRE nebo RIGHT potvrzuje.";
  else if(dl===loseDl||dl===winDl){
@@ -1069,6 +1145,40 @@ function runCpuBudget(target,maxMs){
  playFrameMs=((typeof performance!=="undefined"&&performance.now)?performance.now():Date.now())-t0;
  return i;
 }
+
+function runSingleInit(addr){
+ if(!cpu || !goodEntry(addr))return 0;
+ var savedTrap=cpu.trap, savedMsg=cpu.trapMsg;
+ cpu.trap=false;cpu.trapMsg="";
+ var ret=0x02FD;
+ cpu.push(((ret-1)>>8)&255);cpu.push((ret-1)&255);
+ cpu.pc=addr&65535;
+ var ran=0;
+ for(;ran<12000 && !cpu.trap;ran++){
+   cpu.step();
+   if(cpu.pc===ret)break;
+ }
+ if(cpu.trap){
+   log("INITAD $"+hex(addr,4)+" skončil trapem: "+cpu.trapMsg);
+   cpu.trap=false;cpu.trapMsg="";
+ }
+ ranInitAddrs.push(addr&65535);
+ return ran;
+}
+function runPendingXexInits(){
+ if(!pendingInitAddrs || !pendingInitAddrs.length)return 0;
+ var total=0, oldPc=cpu?cpu.pc:0;
+ for(var i=0;i<pendingInitAddrs.length;i++)total+=runSingleInit(pendingInitAddrs[i]);
+ if(cpu){
+   // Po INITAD chceme zachovat RAM, ale vrátit CPU do čistého stavu pro hlavní ENTRY.
+   cpu=new CPU6502(ram);
+   cpu.pc=oldPc;
+ }
+ pendingInitAddrs=[];
+ if(total)log("INITAD pre-run hotovo: "+ranInitAddrs.map(function(a){return "$"+hex(a,4);}).join(", ")+" / "+total+" instrukcí");
+ return total;
+}
+
 function setPlaySpeed(mode){
  if(mode==='safe'){playCyclesPerFrame=2200;playMaxMsPerFrame=4;}
  else if(mode==='fast'){playCyclesPerFrame=7600;playMaxMsPerFrame=10;}
@@ -1083,9 +1193,10 @@ function toggleFastVideo(){
 function startPlaying(){
  if(!cpu)loadXex(true);
  ensureAudio();
+ runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX10 startuje z RUNAD, nebo z posledního INITAD, když RUNAD chybí.");
+ updatePlayStatus("Emulátor běží. FIX11 startuje z RUNAD/INITAD a cizí XEX zkouší kreslit přes ANTIC display list.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
