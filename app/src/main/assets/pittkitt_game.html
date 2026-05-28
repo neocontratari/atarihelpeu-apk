@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>PiTT-KiTT v24</title>
+<title>PiTT-KiTT v25</title>
 <style>
 html,body{margin:0;background:#020201;color:#fff7e3;font-family:Arial,Helvetica,sans-serif;overflow:hidden}
 .top{height:56px;background:#070604;border-bottom:1px solid #5b4a22;display:flex;align-items:center;justify-content:space-between;padding:6px 8px;box-sizing:border-box}
@@ -16,7 +16,7 @@ button{border:0;border-radius:14px;background:#d7b76a;color:#100a00;font-weight:
 </style>
 </head>
 <body>
-<div class="top"><div><div class="title">PiTT-KiTT Mobile v24</div><div class="hud" id="hud">PRESS START</div></div><a class="back" href="index.html">Zpět</a></div>
+<div class="top"><div><div class="title">PiTT-KiTT Mobile v25</div><div class="hud" id="hud">PRESS START</div></div><a class="back" href="index.html">Zpět</a></div>
 <canvas id="game"></canvas>
 <div class="controls"><button id="left">◀ LEFT</button><button id="right">RIGHT ▶</button><button id="fire" class="fire">FIRE</button><button id="jump" class="jump">JUMP</button></div>
 <script>
@@ -86,14 +86,17 @@ function update(){
 }
 function drawKittCar(px,py){
   py-=G.jump*82;
-  ctx.fillStyle="#030303";ctx.fillRect(px-25,py-12,50,44);
-  ctx.fillStyle="#111";ctx.fillRect(px-19,py-28,38,24);
-  ctx.fillStyle="#070707";ctx.fillRect(px-31,py+16,13,13);ctx.fillRect(px+18,py+16,13,13);
-  ctx.fillStyle="#1d1d1d";ctx.fillRect(px-13,py-23,26,10);
-  var sx=px-18+G.scanner*36;
-  ctx.fillStyle="#ff1515";ctx.fillRect(sx-5,py-31,10,5);
-  ctx.fillStyle="rgba(255,0,0,.35)";ctx.fillRect(sx-11,py-33,22,9);
-  if(G.flash>0){ctx.fillStyle="rgba(255,40,40,.35)";ctx.fillRect(px-35,py-38,70,75);}
+  if(G.jump>0){ctx.fillStyle="rgba(0,0,0,.32)";ctx.beginPath();ctx.ellipse(px,py+62,42,12,0,0,Math.PI*2);ctx.fill();}
+  ctx.fillStyle="#020202";ctx.fillRect(px-30,py-9,60,42);
+  ctx.fillStyle="#090909";ctx.fillRect(px-24,py-31,48,27);
+  ctx.fillStyle="#1d1d1d";ctx.fillRect(px-15,py-25,30,12);
+  ctx.fillStyle="#030303";ctx.fillRect(px-37,py+16,16,15);ctx.fillRect(px+21,py+16,16,15);
+  ctx.fillStyle="#151515";ctx.fillRect(px-25,py+24,50,8);
+  var sx=px-20+G.scanner*40;
+  ctx.fillStyle="#ff1515";ctx.fillRect(sx-5,py-34,10,5);
+  ctx.fillStyle="rgba(255,0,0,.42)";ctx.fillRect(sx-13,py-36,26,9);
+  ctx.strokeStyle="#3a3a3a";ctx.lineWidth=2;ctx.strokeRect(px-30,py-9,60,42);
+  if(G.flash>0){ctx.fillStyle="rgba(255,40,40,.28)";ctx.fillRect(px-44,py-44,88,88);}
 }
 function drawRoad(lev){
   ctx.fillStyle=lev[2];ctx.fillRect(0,0,w,h*.42);
@@ -101,19 +104,20 @@ function drawRoad(lev){
   ctx.fillStyle=lev[3];ctx.beginPath();ctx.moveTo(0,h*.34);var i;for(i=0;i<=12;i++){ctx.lineTo(i*w/12,h*(.26+.06*Math.sin(i*1.7+G.t*.01)));}ctx.lineTo(w,h*.42);ctx.lineTo(0,h*.42);ctx.fill();
   ctx.fillStyle=lev[1];ctx.beginPath();ctx.moveTo(w*.45,h*.34);ctx.lineTo(w*.55,h*.34);ctx.lineTo(w*.91,h);ctx.lineTo(w*.09,h);ctx.closePath();ctx.fill();
   ctx.strokeStyle=lev[4];ctx.lineWidth=3;ctx.setLineDash([13,12]);ctx.beginPath();ctx.moveTo(w*.45,h*.34);ctx.lineTo(w*.09,h);ctx.moveTo(w*.55,h*.34);ctx.lineTo(w*.91,h);ctx.stroke();ctx.setLineDash([]);
-  ctx.strokeStyle="rgba(255,255,255,.30)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(w*.50,h*.36);ctx.lineTo(w*.50,h);ctx.stroke();
+  ctx.strokeStyle="rgba(255,255,255,.34)";ctx.lineWidth=2;ctx.setLineDash([18,16]);ctx.beginPath();ctx.moveTo(w*.50,h*.36);ctx.lineTo(w*.50,h);ctx.stroke();ctx.setLineDash([]);
 }
 function draw(){
   var lev=levels[Math.min(G.level,9)],i,e,ho,tr,x,y,s;
   drawRoad(lev);
   for(i=0;i<G.trees.length;i++){tr=G.trees[i];x=(tr.side<0?.12:.88)*w+tr.side*tr.y*35;y=tr.y*h;s=8+tr.y*24;ctx.fillStyle="#101010";ctx.fillRect(x-2,y,s*.18,s);ctx.fillStyle=lev[3];ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x-s,y+s*.2);ctx.lineTo(x+s,y+s*.2);ctx.fill();}
   for(i=0;i<G.holes.length;i++){ho=G.holes[i];x=laneX(ho.lane,ho.y)*w;y=ho.y*h;s=10+ho.y*24;ctx.fillStyle="#050505";ctx.beginPath();ctx.ellipse(x,y,s*1.4,s*.65,0,0,Math.PI*2);ctx.fill();}
-  for(i=0;i<G.enemies.length;i++){e=G.enemies[i];x=laneX(e.lane,e.y)*w;y=e.y*h;s=18+e.y*22;if(e.hit){ctx.fillStyle="#ffdf4c";ctx.beginPath();ctx.arc(x,y,s,0,Math.PI*2);ctx.fill();ctx.fillStyle="#ff4411";ctx.beginPath();ctx.arc(x,y,s*.55,0,Math.PI*2);ctx.fill();}else{ctx.fillStyle="#080808";ctx.fillRect(x-s*.75,y-s*.35,s*1.5,s*.7);ctx.fillStyle="#3b3b3b";ctx.fillRect(x-s*.45,y-s*.65,s*.9,s*.45);ctx.fillStyle="#ff5050";ctx.fillRect(x-s*.35,y-s*.15,s*.7,4);}}
+  for(i=0;i<G.enemies.length;i++){e=G.enemies[i];x=laneX(e.lane,e.y)*w;y=e.y*h;s=18+e.y*22;if(e.hit){ctx.fillStyle="#ffdf4c";ctx.beginPath();ctx.arc(x,y,s,0,Math.PI*2);ctx.fill();ctx.fillStyle="#ff4411";ctx.beginPath();ctx.arc(x,y,s*.55,0,Math.PI*2);ctx.fill();}else{ctx.fillStyle="#070707";ctx.fillRect(x-s*.82,y-s*.35,s*1.64,s*.76);ctx.fillStyle="#303030";ctx.fillRect(x-s*.50,y-s*.68,s,s*.44);ctx.fillStyle="#ff5050";ctx.fillRect(x-s*.35,y-s*.16,s*.7,4);ctx.fillStyle="#050505";ctx.fillRect(x-s,y+s*.26,s*.38,s*.24);ctx.fillRect(x+s*.62,y+s*.26,s*.38,s*.24);}}
   if(G.bullet){ctx.fillStyle="#ff2222";ctx.fillRect(G.bullet.x*w-3,G.bullet.y*h-24,6,24);ctx.fillStyle="#ffaaaa";ctx.fillRect(G.bullet.x*w-1,G.bullet.y*h-39,2,18);}
   drawKittCar(G.x*w,.86*h);
   ctx.fillStyle="rgba(0,0,0,.62)";ctx.fillRect(8,8,w-16,50);
   ctx.fillStyle="#ffe3a3";ctx.font="bold 15px monospace";ctx.fillText("PITSTOP KITT REMASTER",18,29);
   ctx.fillStyle="#2aff8f";ctx.fillText("ENEMIES "+G.score+"  HI "+G.best+"  L"+(Math.min(G.level+1,10)),18,50);
+  if(G.mode==="play" && G.levelTick<85){ctx.fillStyle="rgba(0,0,0,.65)";ctx.fillRect(0,h*.42,w,64);ctx.textAlign="center";ctx.fillStyle="#ffe3a3";ctx.font="bold 22px Arial";ctx.fillText("LEVEL "+(G.level+1),w/2,h*.42+25);ctx.fillStyle="#2aff8f";ctx.font="bold 15px monospace";ctx.fillText(levels[Math.min(G.level,9)][0],w/2,h*.42+49);ctx.textAlign="left";}
   if(G.mode==="title"){
     ctx.fillStyle="rgba(0,0,0,.70)";ctx.fillRect(0,0,w,h);
     ctx.textAlign="center";ctx.fillStyle="#ffe3a3";ctx.font="bold 28px Arial";ctx.fillText("PITSTOP KITT",w/2,h*.32);
