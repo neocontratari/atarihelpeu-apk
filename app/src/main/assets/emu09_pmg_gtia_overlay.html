@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX7 INTRO TEXT / PiTT-KiTT emulator</title>
+<title>EMU-09 FIX8 HIGHSCORE CONTROLS / PiTT-KiTT emulator</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -16,55 +16,57 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 .reg{border:1px solid rgba(215,183,106,.35);border-radius:12px;padding:8px;color:#ffe3a3;font-family:monospace}
 .bad{color:#ff6b9a}.ok{color:#2aff8f}
 .playStatus{font-family:monospace;color:#2aff8f;border:1px solid rgba(42,255,143,.28);border-radius:12px;padding:10px;margin-top:10px;background:rgba(42,255,143,.06);white-space:pre-wrap}
-.padgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch}.padgrid button{min-height:58px;font-size:16px}.wide{grid-column:1/4}.halfgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.danger{background:#ff6b9a!important;color:#160006!important}.compact{font-size:12px;padding:9px;margin-top:7px}.muted{opacity:.68}.debugDetails{margin-top:10px}.debugDetails summary{cursor:pointer;color:#ffe3a3;font-weight:bold;padding:10px;border:1px solid rgba(215,183,106,.35);border-radius:12px;background:rgba(215,183,106,.06)}.debugDetails .card{margin-top:8px}canvas.gameCanvas{border-radius:16px;border:2px solid rgba(215,183,106,.45);box-shadow:0 0 22px rgba(215,183,106,.16)}button{touch-action:none;user-select:none;-webkit-user-select:none}
+.padgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch}.padgrid button{min-height:58px;font-size:16px}.wide{grid-column:1/4}.halfgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.danger{background:#ff6b9a!important;color:#160006!important}.compact{font-size:12px;padding:9px;margin-top:7px}.muted{opacity:.68}.debugDetails,.settingsDetails{margin-top:10px}.debugDetails summary,.settingsDetails summary{cursor:pointer;color:#ffe3a3;font-weight:bold;padding:10px;border:1px solid rgba(215,183,106,.35);border-radius:12px;background:rgba(215,183,106,.06)}.debugDetails .card{margin-top:8px}.controlPanel{margin-top:12px;border-top:1px solid rgba(215,183,106,.22);padding-top:12px}.controlHint{font-size:13px;color:rgba(255,247,227,.68);margin:6px 0 8px}.inputReadout{font-family:monospace;color:#2aff8f;margin-top:8px;min-height:18px}canvas.gameCanvas{border-radius:16px;border:2px solid rgba(215,183,106,.45);box-shadow:0 0 22px rgba(215,183,106,.16)}button{touch-action:none;user-select:none;-webkit-user-select:none}
 </style>
 </head>
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX7 INTRO TEXT / PiTT-KiTT</h1>
-<p>Navazuje na FIX6: rychlý neblokující start a zvuk zůstávají, nově se textové obrazovky kreslí vlastním 8x8 Atari fontem místo drobného Canvas textu.</p>
+<h1>EMU-09 FIX8 HIGHSCORE CONTROLS / PiTT-KiTT</h1>
+<p>Navazuje na FIX7: rychlý start, intro texty, PMG auto a zvuk zůstávají. Nově je Atari ovládání přímo pod obrazovkou a přidal jsem směr NAHORU pro zadávání tří písmen u rekordu.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
 <section class="card">
 <h2>PiTT-KiTT emulator</h2>
-<p>Soubor <b>PiTT-KiTT-NaP-Final.xex</b> je uvnitř APK. Tlačítko níže spustí emulátor od skutečného začátku — nejdřív intro s texty. Do hry přejdeš tlačítkem START.</p>
+<p>Soubor <b>PiTT-KiTT-NaP-Final.xex</b> je uvnitř APK. Spouštíme od skutečného začátku: nejdřív intro, do hry přejdeš tlačítkem START pod obrazovkou.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
 </div>
 <div class="halfgrid">
-<button class="secondary" onclick="singleFramePlay()">1 SNÍMEK</button>
 <button class="danger" onclick="resetPlaying()">RESET XEX</button>
+<button class="secondary" onclick="toggleAudio()">ZVUK ON/OFF</button>
 </div>
+<details class="settingsDetails">
+<summary>Výkon / servisní volby</summary>
 <div class="grid">
 <button class="secondary compact" onclick="setPlaySpeed('safe')">ÚSPORNĚ</button>
 <button class="secondary compact" onclick="setPlaySpeed('normal')">NORMÁL</button>
 <button class="secondary compact" onclick="setPlaySpeed('fast')">RYCHLEJI</button>
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
-<button class="secondary compact" onclick="toggleAudio()">ZVUK ON/OFF</button>
 </div>
+</details>
 <div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO.</div>
 </section>
 
 <section class="card">
-<h2>Atari ovládání</h2>
-<p>Joystick je aktivní při držení tlačítka. SKOK mapuju na PORTA bit $02, protože hra ho v ASM čte jako druhý směr joysticku.</p>
-<div class="padgrid">
-<button class="secondary" onpointerdown="return pressLeft(true)" onpointerup="return pressLeft(false)" onpointercancel="return pressLeft(false)" onpointerleave="return pressLeft(false)">◀ LEFT</button>
-<button class="secondary" onpointerdown="return pressJump(true)" onpointerup="return pressJump(false)" onpointercancel="return pressJump(false)" onpointerleave="return pressJump(false)">▲ SKOK</button>
-<button class="secondary" onpointerdown="return pressRight(true)" onpointerup="return pressRight(false)" onpointercancel="return pressRight(false)" onpointerleave="return pressRight(false)">RIGHT ▶</button>
-<button class="wide" onpointerdown="return pressFire(true)" onpointerup="return pressFire(false)" onpointercancel="return pressFire(false)" onpointerleave="return pressFire(false)">FIRE / STŘELA</button>
-<button class="wide secondary" onpointerdown="return pressStart(true)" onpointerup="return pressStart(false)" onpointercancel="return pressStart(false)" onpointerleave="return pressStart(false)">START držet</button>
-</div>
-<p id="inputState" class="ok"></p>
-</section>
-
-<section class="card">
 <h2>Obraz Atari</h2>
-<p>Intro/konec jedou přes ANTIC display list a vlastní pixelový Atari font, hra přes SAVMSC $6000 a PMG overlay. V herní smyčce se neplní log, aby se WebView nezadusil.</p>
+<p>Intro/konec jedou přes ANTIC display list a vlastní pixelový Atari font, hra přes SAVMSC $6000 a PMG overlay. Ovládání je schválně hned pod obrazem jako na mobilní konzoli.</p>
 <canvas id="video" class="gameCanvas" width="320" height="192"></canvas>
+<div class="controlPanel">
+<h2>Atari ovládání</h2>
+<p class="controlHint">Při rekordu: ▲ mění písmeno nahoru, ▼ mění dolů, FIRE nebo RIGHT potvrzuje další znak. Ve hře ▼ slouží jako SKOK podle tvého ASM.</p>
+<div class="padgrid">
+<button class="secondary" onpointerdown="return pressUp(true)" onpointerup="return pressUp(false)" onpointercancel="return pressUp(false)" onpointerleave="return pressUp(false)">▲ NAHORU<br><span class="muted">písmeno +</span></button>
+<button class="secondary" onpointerdown="return pressStart(true)" onpointerup="return pressStart(false)" onpointercancel="return pressStart(false)" onpointerleave="return pressStart(false)">START<br><span class="muted">držet</span></button>
+<button class="secondary" onpointerdown="return pressJump(true)" onpointerup="return pressJump(false)" onpointercancel="return pressJump(false)" onpointerleave="return pressJump(false)">▼ DOLŮ / SKOK<br><span class="muted">písmeno -</span></button>
+<button class="secondary" onpointerdown="return pressLeft(true)" onpointerup="return pressLeft(false)" onpointercancel="return pressLeft(false)" onpointerleave="return pressLeft(false)">◀ LEFT</button>
+<button onpointerdown="return pressFire(true)" onpointerup="return pressFire(false)" onpointercancel="return pressFire(false)" onpointerleave="return pressFire(false)">FIRE<br><span class="muted">střela / OK</span></button>
+<button class="secondary" onpointerdown="return pressRight(true)" onpointerup="return pressRight(false)" onpointercancel="return pressRight(false)" onpointerleave="return pressRight(false)">RIGHT ▶<br><span class="muted">OK v rekordu</span></button>
+</div>
+<p id="inputState" class="inputReadout"></p>
+</div>
 </section>
 
 <details class="debugDetails">
@@ -87,6 +89,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <h2>Log</h2>
 <pre id="log"></pre>
 <button class="compact secondary" onclick="stepCpu()">STEP CPU</button>
+<button class="compact secondary" onclick="singleFramePlay()">1 SNÍMEK</button>
 <button class="compact secondary" onclick="runCpu(10000)">RUN 10000</button>
 <button class="compact secondary" onclick="showDisasmHint()">VCOUNT hint</button>
 </section>
@@ -94,7 +97,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX7 navazuje na FIX6: rychlost a první zvuk zůstávají, ale textové intro/smrt/výhra/high-score už nekreslíme browser fontem. Používáme vlastní bitmapový 8x8 renderer, aby byly nápisy na mobilu opravdu vidět.</p>
+<p>FIX8 navazuje na FIX7: textové obrazovky zůstávají, ovládání je pod obrazovkou a high-score zadávání má i joystick UP pro změnu písmene nahoru.</p>
 </section>
 </div>
 
@@ -104,7 +107,7 @@ var segments=[{"start": 8192, "end": 15341, "size": 7150}, {"start": 736, "end":
 var runAddress=8730;
 var ram=new Uint8Array(65536);
 var cpu=null;
-var input={start:false,fire:false,left:false,right:false,jump:false};
+var input={start:false,fire:false,left:false,right:false,up:false,jump:false};
 var playMode=false;
 var playLoopId=0;
 var playBooted=false;
@@ -160,7 +163,7 @@ function loadXex(light){
  for(var j=0;j<40*24;j++)ram[screenBase+j]=0;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX7-INTRO-TEXT");
+   log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX8-HIGHSCORE-CONTROLS");
    renderRegs();renderVideo();
  }
 }
@@ -182,9 +185,10 @@ CPU6502.prototype.r=function(a){
  // $D300 PORTA joystick. Active low bits: 4=L, 8=R, 1=U, 2=D.
  if(a===0xD300){
    var v=0xFF;
+   if(input.up)v&=~0x01;     // joystick UP: high-score písmeno nahoru
+   if(input.jump)v&=~0x02;   // joystick DOWN: ve hře SKOK, v high-score písmeno dolů
    if(input.left)v&=~0x04;
-   if(input.right)v&=~0x08;
-   if(input.jump)v&=~0x02;
+   if(input.right)v&=~0x08;  // v high-score potvrzuje znak stejně jako FIRE
    return v&255;
  }
  // $D010 TRIG0 fire, active low
@@ -950,7 +954,7 @@ function updatePlayStatus(extra){
  if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
- var mode=(dl&&isTextDlist(dl))?'ANTIC text':'2BPP game';
+ var mode=(dl&&isTextDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':'ANTIC text'):'2BPP game';
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  kroky "+cpu.steps+
    "\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)+
@@ -1030,7 +1034,7 @@ function singleFramePlay(){
 }
 function renderInput(){
  var e=document.getElementById("inputState");
- if(e)e.textContent="START="+(input.start?"ON":"off")+" FIRE="+(input.fire?"ON":"off")+" LEFT="+(input.left?"ON":"off")+" RIGHT="+(input.right?"ON":"off")+" JUMP="+(input.jump?"ON":"off");
+ if(e)e.textContent="UP="+(input.up?"ON":"off")+" DOWN/SKOK="+(input.jump?"ON":"off")+" LEFT="+(input.left?"ON":"off")+" RIGHT="+(input.right?"ON":"off")+" FIRE="+(input.fire?"ON":"off")+" START="+(input.start?"ON":"off");
 }
 function pressStart(v){if(v)ensureAudio();input.start=!!v;renderInput();return false;}
 function tapStartLong(){
@@ -1044,6 +1048,7 @@ function showDisasmHint(){
  log("VCOUNT WAIT FOUND:\n$2390 LDA $D40B\n$2393 CMP #$3C\n$2395 BCC $2390\n$2397 JMP $22C7\nTakze EMU-04 visel, protoze VCOUNT byl stale 0.");
 }
 function pressFire(v){if(v)ensureAudio();input.fire=!!v;renderInput();return false;}
+function pressUp(v){input.up=!!v;renderInput();return false;}
 function pressJump(v){input.jump=!!v;renderInput();return false;}
 function pressLeft(v){input.left=!!v;if(v)input.right=false;renderInput();return false;}
 function pressRight(v){input.right=!!v;if(v)input.left=false;renderInput();return false;}
