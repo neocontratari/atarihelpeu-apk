@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EMU-01 XEX Lab</title>
+<style>
+body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
+.wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
+.card{border:1px solid rgba(215,183,106,.35);background:rgba(0,0,0,.62);border-radius:18px;padding:14px;margin:10px 0}
+h1,h2,p{margin:0}h1{font-size:26px}h2{font-size:19px}p{color:rgba(255,247,227,.72);margin-top:8px;line-height:1.4}
+button,a.btn{display:block;width:100%;box-sizing:border-box;text-align:center;text-decoration:none;border:0;border-radius:14px;background:#d7b76a;color:#100a00;font-weight:bold;font-size:15px;padding:12px;margin-top:9px}
+.secondary{background:transparent!important;color:#ffe3a3!important;border:1px solid rgba(215,183,106,.35)!important}
+pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospace;font-size:12px;line-height:1.35;max-height:330px;overflow:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.reg{border:1px solid rgba(215,183,106,.35);border-radius:12px;padding:8px;color:#ffe3a3;font-family:monospace}
+.bad{color:#ff6b9a}.ok{color:#2aff8f}
+</style>
+</head>
+<body>
+<div class="wrap">
+<section class="card">
+<h1>EMU-01 XEX Lab</h1>
+<p>První krok k opravdovému mobilnímu emulátoru. Tohle už neportuje hru. Tohle načítá původní XEX do 64KB RAM obrazu.</p>
+<a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
+</section>
+
+<section class="card">
+<h2>PiTT-KiTT XEX</h2>
+<p>Soubor: PiTT-KiTT-NaP-Final.xex</p>
+<p>Velikost: 7162 bytes</p>
+<p>RUNAD: $221A</p>
+<p>INITAD: none</p>
+<p>SHA256: 8c587d73e8c4c4eb2ffe7d758cbc3856d0ca1275d8204fb87b8e5c68c619bd99</p>
+<button onclick="loadXex()">1) Load XEX into RAM</button>
+<button onclick="stepCpu()">2) STEP CPU</button>
+<button onclick="runCpu(1000)">3) RUN 1000 instrukcí</button>
+</section>
+
+<section class="card">
+<h2>CPU 6502 stav</h2>
+<div class="grid" id="regs"></div>
+</section>
+
+<section class="card">
+<h2>XEX segmenty</h2>
+<pre id="segments"></pre>
+</section>
+
+<section class="card">
+<h2>Log</h2>
+<pre id="log"></pre>
+</section>
+
+<section class="card">
+<h2>Co bude dál</h2>
+<p><b>EMU-02:</b> rozšířit 6502 instrukce.</p>
+<p><b>EMU-03:</b> OS vektory / CIO stub / základní Atari RAM map.</p>
+<p><b>EMU-04:</b> ANTIC/GTIA minimum pro obraz.</p>
+<p><b>EMU-05:</b> joystick PORTA/TRIG0.</p>
+<p><b>EMU-06:</b> POKEY minimum pro zvuk.</p>
+</section>
+</div>
+
+<script>
+var b64="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////////qqqqVVVVVaqqqqqqqlVVqqqq//+qqlVVqqqqqv//////////////qqpVVVVV/1VVqqqqVVVVVVWqqv+qVVVVVVWqqqqq////////////qqpVVVVV////VVVVVVVVVVVVVaqqVVVVVVVVVaqqqqr//////////6pVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVqqqq//////////9VVVVVVf///1VVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////////VVVVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVVaqq/////////1VVVVVVVVX///9VVVVVVVVVVVVVVVVVVVVVVVVVVVVVqqr///////9VVVVVVVVVVf////9VVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////VVVVVVVVVVVV/////1VVVVVVVVVVVVVVVVVVVVVVVVVVVaqq////////////////////////////7v/////////////////////////u/////////////////////////7v/////////////////////////u////////////////////////6qqqv//////////////////////qqqq//////////////////////+7u7v//////////////////////7u7u///////////////qqr///+q7u7uqv////////////+qqv///6ru7u6q/////6qq////qnd3qv//u7u7u7v/////qqr///+qd3eq//+7u7u7u////6q7u6r/qt3d3d2q/+7u7u7u////qru7qv+q3d3d3ar/7u7u7u7//6ru7u7uqqp3d3d3d6q7u7u7u///qu7u7u6qqnd3d3d3qru7u7u7/6q7u7u7u7uq3d3d3d3d7u7u7u7/qru7u7u7u6rd3d3d3d3u7u7u7qru7u7u7u7uqnd3d3d3d7u7u7u7qu7u7u7u7u6qd3d3d3d3u7u7u7u7u7u7u7u7u7vd3d3d3d3u7u7u7ru7u7u7u7u7u93d3d3d3e7u7u7u7u7u7u7u7u7ud3d3d3d3u7u7u7vu7u7u7u7u7u53d3d3d3e7u7u7u///////////AP///////////////////wD///////////8A////////////////AAAA/////////////////wAAAP////////8AAAD/////////////AABVAAD//////////////wAAVQAA//////8AAFUAAP//////////AABVVVUAAP///////////wAAVVVVAAD///8AAFVVVQAA////////AABVVVVVVQAA/////////wAAVVVVVVUAAP8AAFVVVVVVAAD/////AABVVVWqqlVVAAD//////wAAVVVVqqpVVQAAVVVVqqpVVQAAqv//AABVVVWqqqqqVVUAAP///wAAVVVVqqqqqlVVAABVqqqqqlUAAKr/AABVVVWqqqqqqqpVVQAA/wAAVVVVqqqqqqqqVVUAAKqqqqqqVQAAAABVVVWqqqqqqqqqqlVVAABVVVVVqqqqqqqqqqpVVQCqqqqqqlVVAABVVVVVVaqqqqqqqqpVVVVVVVVVVVWqqqqqqqqqVVVVqqqqqqpVVVVVVVVVVVVVqqqqqlVVVVVVVVVVVVVVVaqqqqpVVVVVVVWqqqqqVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQABAD8/AAAFBQUA////AAAVVQUFBRVaVVVVVVVVFQAAVFVQUFBUpVVVVVVVVVQAAABAAPz8AABQUFAA////AAAAAAAAAAAAAAAAAAAKqqoKAAAAAAAAAAAAAAAKqqqqqAAAAAAAAAAAAAAAKqqqqqgAAAAAAAAAAAAAAACgqqoKAw8/Dz//AwPA8Pzw/P/AwB8/AwMHBx84OB8PDw8PAAA/fwcHDw8/cHA/Hx8fHwAADx8BAQMDDxwcDwcHBwcAAPj8wMDg4PgcHPjw8PDwAADw+ICAwMDwODjw4ODg4AAA/P7g4PDw/A4O/Pj4+PgAAAAA4ODgAAAAAADw8PDwAAAAAODg4AAAAAAA4ODg4AAAAADg4OAAAAAAAPj4+PgAAAAABwcHAAAAAAAPDw8PAAAAAAcHBwAAAAAABwcHBwAAAAAHBwcAAAAAAB8fHx8AAK2tAACtrQAAra0AAK2tAAAAAAAArQCIAHwAbACtAIgAGBgYGRkZGhoaGhoaGRkZGBgYFxcXFhYWFRUVFRUVFhYWFxcXGBgYGRkZGhoZGRgYqmpaVgBAUFSVpamqFQUBAOAC4QIaIg==";
+var segments=[{"start": 8192, "end": 15341, "size": 7150}, {"start": 736, "end": 737, "size": 2}];
+var runAddress=8730;
+var ram=new Uint8Array(65536);
+var cpu=null;
+
+function hex(v,n){var s=(v>>>0).toString(16).toUpperCase();while(s.length<n)s="0"+s;return s;}
+function log(s){var e=document.getElementById("log");e.textContent=s+"\n"+e.textContent;}
+function decodeB64(s){var raw=atob(s);var a=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i)&255;return a;}
+function renderSegments(){
+ var lines=[];
+ for(var i=0;i<segments.length;i++){var s=segments[i];lines.push((i+1)+". $"+hex(s.start,4)+"-$"+hex(s.end,4)+" / "+s.size+" bytes");}
+ document.getElementById("segments").textContent=lines.join("\n");
+}
+function renderRegs(){
+ var box=document.getElementById("regs");
+ if(!cpu){box.innerHTML='<div class="reg">CPU: not loaded</div>';return;}
+ box.innerHTML='<div class="reg">PC $'+hex(cpu.pc,4)+'</div><div class="reg">A $'+hex(cpu.a,2)+'</div><div class="reg">X $'+hex(cpu.x,2)+'</div><div class="reg">Y $'+hex(cpu.y,2)+'</div><div class="reg">SP $'+hex(cpu.sp,2)+'</div><div class="reg">P $'+hex(cpu.p,2)+'</div><div class="reg">Steps '+cpu.steps+'</div><div class="reg">'+(cpu.trap?cpu.trapMsg:"RUN")+'</div>';
+}
+function loadXex(){
+ ram.fill(0);
+ var bytes=decodeB64(b64);
+ var p=0,count=0;
+ while(p<bytes.length){
+  if(p+2<=bytes.length && bytes[p]===255 && bytes[p+1]===255)p+=2;
+  if(p+4>bytes.length)break;
+  var start=bytes[p]|(bytes[p+1]<<8);
+  var end=bytes[p+2]|(bytes[p+3]<<8);
+  p+=4;
+  var size=end-start+1;
+  if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}
+  for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];
+  p+=size;count++;
+ }
+ cpu=new CPU6502(ram);
+ cpu.pc=runAddress;
+ log("XEX loaded into RAM. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4));
+ renderRegs();
+}
+function CPU6502(mem){
+ this.m=mem;this.a=0;this.x=0;this.y=0;this.sp=0xFD;this.p=0x24;this.pc=0;this.steps=0;this.trap=false;this.trapMsg="";
+}
+CPU6502.prototype.r=function(a){return this.m[a&65535];};
+CPU6502.prototype.w=function(a,v){this.m[a&65535]=v&255;};
+CPU6502.prototype.imm=function(){return this.r(this.pc++);};
+CPU6502.prototype.abs=function(){var lo=this.imm(),hi=this.imm();return lo|(hi<<8);};
+CPU6502.prototype.zn=function(v){v&=255;this.p=(this.p&~0x82)|(v===0?2:0)|(v&0x80);};
+CPU6502.prototype.step=function(){
+ if(this.trap)return;
+ var pc0=this.pc;
+ var op=this.imm();
+ switch(op){
+  case 0xEA:break;
+  case 0xA9:this.a=this.imm();this.zn(this.a);break;
+  case 0xA2:this.x=this.imm();this.zn(this.x);break;
+  case 0xA0:this.y=this.imm();this.zn(this.y);break;
+  case 0xAD:this.a=this.r(this.abs());this.zn(this.a);break;
+  case 0xAE:this.x=this.r(this.abs());this.zn(this.x);break;
+  case 0xAC:this.y=this.r(this.abs());this.zn(this.y);break;
+  case 0x8D:this.w(this.abs(),this.a);break;
+  case 0x8E:this.w(this.abs(),this.x);break;
+  case 0x8C:this.w(this.abs(),this.y);break;
+  case 0x4C:this.pc=this.abs();break;
+  case 0x20:
+    var a=this.abs();
+    this.pc=a;
+    break;
+  case 0x60:
+    this.trap=true;this.trapMsg="RTS stub at $"+hex(pc0,4);
+    break;
+  case 0x00:
+    this.trap=true;this.trapMsg="BRK at $"+hex(pc0,4);
+    break;
+  default:
+    this.trap=true;this.trapMsg="Unsupported opcode $"+hex(op,2)+" at $"+hex(pc0,4);
+    break;
+ }
+ this.steps++;
+};
+function stepCpu(){
+ if(!cpu)loadXex();
+ cpu.step();
+ renderRegs();
+ if(cpu.trap)log(cpu.trapMsg);
+}
+function runCpu(n){
+ if(!cpu)loadXex();
+ for(var i=0;i<n && !cpu.trap;i++)cpu.step();
+ renderRegs();
+ if(cpu.trap)log(cpu.trapMsg); else log("Ran "+n+" instructions. PC=$"+hex(cpu.pc,4));
+}
+renderSegments();renderRegs();
+</script>
+</body>
+</html>
