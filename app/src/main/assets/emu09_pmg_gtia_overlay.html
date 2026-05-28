@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 PMG / GTIA Overlay</title>
+<title>EMU-09 FIX / Double-line PMG Overlay</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -20,8 +20,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 PMG / GTIA Overlay</h1>
-<p>Reakce na tvůj log: EMU-01 skončil na <b>opcode $85 at $221C</b>. EMU-09 přidává první PMG overlay: auta, oko, střely a scanner bývají mimo playfield, takže je musíme kreslit z Player/Missile Graphics paměti.</p>
+<h1>EMU-09 FIX / Double-line PMG Overlay</h1>
+<p>Reakce na tvůj log: EMU-01 skončil na <b>opcode $85 at $221C</b>. EMU-09 FIX opravuje PMG overlay pro PiTT-KiTT: hra používá double-line PMG layout, takže auta, oko a střela se čtou z PMBASE+$180/$200/$280/$300/$380.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -44,8 +44,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button onclick="renderVideo()">10) REFRESH VIDEO AUTO</button>
 <button onclick="renderAnticDisplay()">11) RENDER INTRO DISPLAY LIST</button>
 <button onclick="renderGame2bpp()">12) RENDER GAME 2BIT RAM</button>
-<button onclick="renderPMGOnly()">13) RENDER PMG ONLY</button>
-<button onclick="showDisasmHint()">8) Ukázat proč visela smyčka</button>
+<button onclick="renderPMGOnly()">13) RENDER PMG ONLY / DOUBLE-LINE</button>
+<button onclick="showDisasmHint()">14) Ukázat proč visela smyčka</button>
 </section>
 
 <section class="card">
@@ -71,6 +71,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <h2>ANTIC / video preview</h2>
 <p>Auto režim: playfield přes ANTIC/SAVMSC + první PMG overlay. Auta/oko/střely mohou být právě v PMG, ne v hlavní obrazové RAM.</p>
 <canvas id="video" width="320" height="192"></canvas>
+<pre id="pmgdebug">PMG debug zatím čeká na render.</pre>
 </section>
 
 <section class="card">
@@ -85,7 +86,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 umí navíc</h2>
-<p>První PMG renderer: čte PMBASE $D407, HPOSP0-3 $D000-$D003, SIZEP0-3 $D008-$D00B a barvy PCOLR0-3. Playfield z EMU-08 zůstává.</p>
+<p>Opravený PMG renderer: čte double-line PMG layout pro SDMCTL/DMACTL $2E. Pro PMBASE $4000 používá missiles $4180, P0 $4200, P1 $4280, P2 $4300, P3 $4380. Playfield z EMU-08 zůstává.</p>
 </section>
 </div>
 
@@ -117,7 +118,7 @@ function renderRegs(){
  '<div class="reg">OS '+(cpu.osCalls||0)+'</div>'+
  '<div class="reg">'+(cpu.trap?cpu.trapMsg:"RUN")+'</div>';
 }
-function loadXex(){ram.fill(0);var bytes=decodeB64(b64);var p=0,count=0;while(p<bytes.length){if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;if(p+4>bytes.length)break;var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;var size=end-start+1;if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];p+=size;count++;}ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;for(var j=0;j<40*24;j++)ram[screenBase+j]=0;cpu=new CPU6502(ram);cpu.pc=runAddress;log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU08");renderRegs();renderVideo();}
+function loadXex(){ram.fill(0);var bytes=decodeB64(b64);var p=0,count=0;while(p<bytes.length){if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;if(p+4>bytes.length)break;var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;var size=end-start+1;if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];p+=size;count++;}ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;for(var j=0;j<40*24;j++)ram[screenBase+j]=0;cpu=new CPU6502(ram);cpu.pc=runAddress;log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX-DLINE-PMG");renderRegs();renderVideo();}
 
 function CPU6502(mem){this.m=mem;this.a=0;this.x=0;this.y=0;this.sp=0xFD;this.p=0x24;this.pc=0;this.steps=0;this.trap=false;this.trapMsg="";this.trace=[];this.rand=0x5A;this.vcount=0;this.osCalls=0;this.rand=0x5A;this.trace=[];this.vcount=0;this.osCalls=0;}
 CPU6502.prototype.r=function(a){
@@ -416,11 +417,44 @@ function colorSet(){
  };
 }
 
+function pmgLayout(){
+ var pm=(ram[0xD407]||0)<<8;
+ var dma=ram[0xD400]||0;
+ var sdm=ram[0x022F]||dma;
+ // Atari PMG: SDMCTL/DMACTL bit $10 rozlišuje single-line PMG.
+ // PiTT-KiTT nastavuje $2E, tedy double-line layout: missiles +$180, players +$200 po $80.
+ var single=(sdm&0x10)!==0;
+ return {
+   pm:pm,
+   dma:dma,
+   sdm:sdm,
+   single:single,
+   label:single?"single-line":"double-line",
+   lineH:single?1:2,
+   yOff:single?48:24,
+   mOff:single?0x300:0x180,
+   pOff:single?0x400:0x200,
+   pStep:single?0x100:0x80,
+   rows:single?256:128
+ };
+}
+function countNonZero(addr,len){
+ var n=0,first=-1,last=-1;
+ for(var i=0;i<len;i++){
+   if(ram[(addr+i)&65535]){n++;if(first<0)first=i;last=i;}
+ }
+ return {n:n,first:first,last:last};
+}
 function pmgInfo(){
- var pm=ram[0xD407]<<8;
+ var l=pmgLayout();
  var h0=ram[0xD000],h1=ram[0xD001],h2=ram[0xD002],h3=ram[0xD003];
+ var hm0=ram[0xD004],hm1=ram[0xD005],hm2=ram[0xD006],hm3=ram[0xD007];
  var s0=ram[0xD008],s1=ram[0xD009],s2=ram[0xD00A],s3=ram[0xD00B];
- return "PMBASE $"+hex(pm,4)+" HPOS "+h0+","+h1+","+h2+","+h3+" SIZE "+s0+","+s1+","+s2+","+s3;
+ var sm=ram[0xD00C];
+ return "PMBASE $"+hex(l.pm,4)+" "+l.label+
+        " DMACTL $"+hex(l.dma,2)+" SDMCTL $"+hex(l.sdm,2)+" GRACTL $"+hex(ram[0xD01D]||0,2)+" PRIOR $"+hex(ram[0x026F]||0,2)+
+        " HPOS P "+h0+","+h1+","+h2+","+h3+" M "+hm0+","+hm1+","+hm2+","+hm3+
+        " SIZE P "+s0+","+s1+","+s2+","+s3+" M $"+hex(sm,2);
 }
 function pmgScale(v){
  v&=3;
@@ -428,31 +462,52 @@ function pmgScale(v){
  if(v===3)return 4;
  return 1;
 }
+function missileScale(mi){
+ return pmgScale((ram[0xD00C]>>(mi*2))&3);
+}
 function playerColor(p,cs){
  var c=ram[0x02C0+p];
  if(c===0)c=ram[0xD012+p]||0;
  if(c===0){
-   if(p===0)return "#ff2020";
+   // Debug fallback: černý PCOLR nesmí zmizet na černém pozadí.
+   if(p===0)return "#ff4040";
    if(p===1)return "#2aff8f";
    if(p===2)return "#78a6ff";
    return "#ffe3a3";
  }
  return atariColor(c);
 }
+function hposToCanvas(h){
+ if(!h)return -9999;
+ return Math.round((h-48)*2);
+}
+function pmgYToCanvas(rawY,l){
+ return (rawY-l.yOff)*l.lineH;
+}
+function setPmgDebug(text){
+ var e=document.getElementById("pmgdebug");
+ if(e)e.textContent=text;
+}
 function renderPMGOverlay(g,cs){
- var pm=ram[0xD407]<<8;
+ var l=pmgLayout();
  var drawn=0;
- // běžné single-line PMG rozložení: missiles + $300, players + $400,$500,$600,$700
- if(pm<0x0400 || pm>0xF000){
-   // Fallback: pokud PMBASE ještě není nastavený, aspoň zobraz HPOS registry jako diagnostiku.
+ var lines=[];
+ var valid=(l.pm>=0x0400 && l.pm<=0xF000);
+ lines.push(pmgInfo());
+ lines.push("Layout: missiles $"+hex((l.pm+l.mOff)&65535,4)+" P0 $"+hex((l.pm+l.pOff)&65535,4)+" P1 $"+hex((l.pm+l.pOff+l.pStep)&65535,4)+" P2 $"+hex((l.pm+l.pOff+l.pStep*2)&65535,4)+" P3 $"+hex((l.pm+l.pOff+l.pStep*3)&65535,4)+" yOff "+l.yOff+" lineH "+l.lineH);
+
+ if(!valid){
+   lines.push("PMBASE zatím není platný; kreslím jen HPOS diagnostiku.");
    for(var fp=0;fp<4;fp++){
      var hx=ram[0xD000+fp];
      if(hx){
        g.fillStyle=playerColor(fp,cs);
-       g.fillRect((hx-48)*2,130+fp*8,22,6);
+       g.fillRect(hposToCanvas(hx),130+fp*8,22,6);
        drawn+=1;
      }
    }
+   lines.push("Drawn diagnostic markers: "+drawn);
+   setPmgDebug(lines.join("\n"));
    return drawn;
  }
 
@@ -460,42 +515,55 @@ function renderPMGOverlay(g,cs){
    var hpos=ram[0xD000+p];
    var size=pmgScale(ram[0xD008+p]);
    var col=playerColor(p,cs);
-   var base=pm+0x400+p*0x100;
-   var x0=(hpos-48)*2;
-   if(hpos===0)x0=0;
+   var base=(l.pm+l.pOff+p*l.pStep)&65535;
+   var stat=countNonZero(base,l.rows);
+   lines.push("P"+p+" base $"+hex(base,4)+" nonzero "+stat.n+" rawY "+(stat.first<0?"--":stat.first+"-"+stat.last)+" HPOS "+hpos+" size "+size);
+   if(!hpos)continue;
+   var x0=hposToCanvas(hpos);
    g.fillStyle=col;
-   for(var y=0;y<192;y++){
+   for(var y=0;y<l.rows;y++){
      var b=ram[(base+y)&65535];
      if(!b)continue;
+     var yy=pmgYToCanvas(y,l);
+     if(yy<-l.lineH || yy>191)continue;
      for(var bit=0;bit<8;bit++){
        if(b&(0x80>>bit)){
-         g.fillRect(x0+bit*size*2,y,size*2,1);
+         g.fillRect(x0+bit*size*2,yy,size*2,l.lineH);
          drawn++;
        }
      }
    }
  }
 
- // Missiles: jednoduché 2bit zobrazení, společná paměť pm+$300
- var mbase=pm+0x300;
- var msize=ram[0xD00C]&3;
- var mscale=pmgScale(msize);
- var mcolors=["#ff2020","#2aff8f","#78a6ff","#ffe3a3"];
- for(var y2=0;y2<192;y2++){
+ var mbase=(l.pm+l.mOff)&65535;
+ var mstat=countNonZero(mbase,l.rows);
+ lines.push("M base $"+hex(mbase,4)+" nonzero "+mstat.n+" rawY "+(mstat.first<0?"--":mstat.first+"-"+mstat.last)+" SIZEM $"+hex(ram[0xD00C]||0,2));
+ var mcolors=["#ff40ff","#40ffff","#ffff40","#ff9a40"];
+ for(var y2=0;y2<l.rows;y2++){
    var mb=ram[(mbase+y2)&65535];
    if(!mb)continue;
+   var my=pmgYToCanvas(y2,l);
+   if(my<-l.lineH || my>191)continue;
    for(var mi=0;mi<4;mi++){
-     var pair=(mb>>(6-mi*2))&3;
-     if(pair){
-       var mh=ram[0xD004+mi];
-       var mx=(mh-48)*2;
-       g.fillStyle=mcolors[mi];
-       g.fillRect(mx,y2,mscale*2,1);
-       drawn++;
+     // Missile 0 je v PiTT-KiTT low two bits: ORA #$03 do $4180,Y.
+     var pair=(mb>>(mi*2))&3;
+     if(!pair)continue;
+     var mh=ram[0xD004+mi];
+     if(!mh)continue;
+     var mx=hposToCanvas(mh);
+     var ms=missileScale(mi);
+     g.fillStyle=mcolors[mi];
+     for(var b2=0;b2<2;b2++){
+       if(pair&(1<<b2)){
+         g.fillRect(mx+b2*ms*2,my,ms*2,l.lineH);
+         drawn++;
+       }
      }
    }
  }
 
+ lines.push("Drawn PMG pixels/rects: "+drawn);
+ setPmgDebug(lines.join("\n"));
  return drawn;
 }
 function renderPMGOnly(){
@@ -615,7 +683,7 @@ function renderGame2bpp(){
 function renderInput(){
  document.getElementById("inputState").textContent="START="+(input.start?"ON":"off")+" FIRE="+(input.fire?"ON":"off")+" LEFT="+(input.left?"ON":"off")+" RIGHT="+(input.right?"ON":"off");
 }
-function pressStart(v){input.start=!!v;
+function pressStart(v){input.start=!!v;renderInput();return false;}
 function tapStartLong(){
  if(!cpu)loadXex();
  input.start=true;renderInput();
@@ -624,10 +692,8 @@ function tapStartLong(){
  log("START long released. PC=$"+hex(cpu.pc,4)+" VC=$"+hex(cpu.vcount||0,2));
 }
 function showDisasmHint(){
- log("VCOUNT WAIT FOUND:\\n$2390 LDA $D40B\\n$2393 CMP #$3C\\n$2395 BCC $2390\\n$2397 JMP $22C7\\nTakze EMU-04 visel, protoze VCOUNT byl stale 0.");
+ log("VCOUNT WAIT FOUND:\n$2390 LDA $D40B\n$2393 CMP #$3C\n$2395 BCC $2390\n$2397 JMP $22C7\nTakze EMU-04 visel, protoze VCOUNT byl stale 0.");
 }
-
-renderInput();return false;}
 function pressFire(v){input.fire=!!v;renderInput();return false;}
 function pressLeft(v){input.left=!!v;if(v)input.right=false;renderInput();return false;}
 function pressRight(v){input.right=!!v;if(v)input.left=false;renderInput();return false;}
