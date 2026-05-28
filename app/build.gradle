@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 103
-        versionName "EMU-03-shift-rotate"
+        versionCode 104
+        versionName "EMU-04-input-loop"
     }
 }
