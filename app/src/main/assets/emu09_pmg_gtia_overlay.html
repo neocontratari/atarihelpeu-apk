@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX2 / Double-line PMG + wheels</title>
+<title>EMU-09 FIX3 / 4-player PMG car + real shadows</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -20,8 +20,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX2 / Double-line PMG + černá kola</h1>
-<p>Reakce na tvůj log: EMU-01 skončil na <b>opcode $85 at $221C</b>. EMU-09 FIX2 drží opravu double-line PMG z EMU09 a navíc vrací reálné PCOLR barvy: P0/P1 tělo auta, P2/P3 černá kola. Missile 0 zůstává přes low two bits v $4180,Y.</p>
+<h1>EMU-09 FIX3 / 4-player PMG auto</h1>
+<p>Reakce na tvůj log: EMU-01 skončil na <b>opcode $85 at $221C</b>. EMU-09 FIX3 drží EMU09 základ, double-line PMG a navíc opravuje shadow/hardware barvy: hra píše P0/P1 tělo do PCOLR0/1 a P2/P3 kola do PCOLR2/3=$00. Auto je teď brané jako 4 hráči: P0+P2 levá půlka, P1+P3 pravá půlka.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -44,8 +44,9 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button onclick="renderVideo()">10) REFRESH VIDEO AUTO</button>
 <button onclick="renderAnticDisplay()">11) RENDER INTRO DISPLAY LIST</button>
 <button onclick="renderGame2bpp()">12) RENDER GAME 2BIT RAM</button>
-<button onclick="renderPMGOnly()">13) RENDER PMG ONLY / REAL COLORS</button>
-<button onclick="showDisasmHint()">14) Ukázat proč visela smyčka</button>
+<button onclick="renderPMGOnly()">13) RENDER PMG ONLY / REAL COLORS + WHEEL HALO</button>
+<button onclick="renderPMGDebugColors()">14) RENDER PMG ONLY / 4-PLAYER DEBUG COLORS</button>
+<button onclick="showDisasmHint()">15) Ukázat proč visela smyčka</button>
 </section>
 
 <section class="card">
@@ -86,7 +87,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 umí navíc</h2>
-<p>Opravený PMG renderer: čte double-line PMG layout pro SDMCTL/DMACTL $2E. Pro PMBASE $4000 používá missiles $4180, P0 $4200, P1 $4280, P2 $4300, P3 $4380. FIX2 navíc respektuje PCOLR0-3, takže P2/P3 mohou být skutečně černé pneumatiky. Playfield z EMU-08 zůstává.</p>
+<p>Opravený PMG renderer: čte double-line PMG layout pro SDMCTL/DMACTL $2E. Pro PMBASE $4000 používá missiles $4180, P0 $4200, P1 $4280, P2 $4300, P3 $4380. FIX3 navíc rozlišuje, jestli hra zapsala shadow registry PCOLR/COLOR, nebo přímo hardware COLP/COLPF. Díky tomu $00 u P2/P3 znamená skutečně černá kola, ne stará barva z intra.</p>
 </section>
 </div>
 
@@ -100,6 +101,8 @@ var input={start:false,fire:false,left:false,right:false};
 var lastPCs=[];
 var screenBase=0x6000;
 var pmgOnlyContrast=false;
+var pmgDebugPalette=false;
+var writeSeen=new Uint8Array(65536);
 
 function hex(v,n){var s=(v>>>0).toString(16).toUpperCase();while(s.length<n)s="0"+s;return s;}
 function log(s){var e=document.getElementById("log");e.textContent=s+"\n"+e.textContent;}
@@ -119,7 +122,7 @@ function renderRegs(){
  '<div class="reg">OS '+(cpu.osCalls||0)+'</div>'+
  '<div class="reg">'+(cpu.trap?cpu.trapMsg:"RUN")+'</div>';
 }
-function loadXex(){ram.fill(0);var bytes=decodeB64(b64);var p=0,count=0;while(p<bytes.length){if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;if(p+4>bytes.length)break;var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;var size=end-start+1;if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];p+=size;count++;}ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;for(var j=0;j<40*24;j++)ram[screenBase+j]=0;cpu=new CPU6502(ram);cpu.pc=runAddress;log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX2-DLINE-PMG-WHEELS");renderRegs();renderVideo();}
+function loadXex(){ram.fill(0);writeSeen=new Uint8Array(65536);var bytes=decodeB64(b64);var p=0,count=0;while(p<bytes.length){if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;if(p+4>bytes.length)break;var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;var size=end-start+1;if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];p+=size;count++;}ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;for(var j=0;j<40*24;j++)ram[screenBase+j]=0;cpu=new CPU6502(ram);cpu.pc=runAddress;log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX3-4PLAYER-PMG-SHADOWS");renderRegs();renderVideo();}
 
 function CPU6502(mem){this.m=mem;this.a=0;this.x=0;this.y=0;this.sp=0xFD;this.p=0x24;this.pc=0;this.steps=0;this.trap=false;this.trapMsg="";this.trace=[];this.rand=0x5A;this.vcount=0;this.osCalls=0;this.rand=0x5A;this.trace=[];this.vcount=0;this.osCalls=0;}
 CPU6502.prototype.r=function(a){
@@ -161,6 +164,7 @@ CPU6502.prototype.w=function(a,v){
  a&=65535; v&=255;
  // WSYNC $D40A: počká na další scanline. Stub: posuň VCOUNT.
  if(a===0xD40A){this.vcount=(this.vcount+1)&0x7F;}
+ if(writeSeen)writeSeen[a]=1;
  this.m[a]=v;
 };
 CPU6502.prototype.push=function(v){this.w(0x100+(this.sp&255),v);this.sp=(this.sp-1)&255;};
@@ -410,13 +414,25 @@ function atariColor(v,fallback){
  var b=Math.min(255,Math.floor(p[2]*f+l));
  return "rgb("+r+","+g+","+b+")";
 }
+function wasWritten(a){return !!(writeSeen && writeSeen[a&65535]);}
+function colorReg(shadowAddr,hwAddr,def){
+ shadowAddr&=65535; hwAddr&=65535;
+ // Atari OS normálně kopíruje shadow registry ($02C0+) do GTIA/ANTIC HW registrů.
+ // Náš mini-emulátor VBI nekopíruje, takže musíme poznat, jestli hra psala shadow.
+ // Důležité: zapsaná nula je platná barva, ne "nenastaveno".
+ if(wasWritten(shadowAddr))return ram[shadowAddr]&255;
+ if(wasWritten(hwAddr))return ram[hwAddr]&255;
+ if(ram[shadowAddr]!==0)return ram[shadowAddr]&255;
+ if(ram[hwAddr]!==0)return ram[hwAddr]&255;
+ return def||0;
+}
 function colorSet(){
  return {
-   p0: atariColor(ram[0x02C4]||0x00, "#202020"),
-   p1: atariColor(ram[0x02C5]||0x0F, "#2aff8f"),
-   p2: atariColor(ram[0x02C6]||0x76, "#fff7e3"),
-   p3: atariColor(ram[0x02C7]||0x34, "#d7b76a"),
-   bk: atariColor(ram[0x02C8]||0x04, "#050403")
+   p0: atariColor(colorReg(0x02C4,0xD016,0x00)),
+   p1: atariColor(colorReg(0x02C5,0xD017,0x0F)),
+   p2: atariColor(colorReg(0x02C6,0xD018,0x76)),
+   p3: atariColor(colorReg(0x02C7,0xD019,0x34)),
+   bk: atariColor(colorReg(0x02C8,0xD01A,0x04))
  };
 }
 
@@ -458,7 +474,7 @@ function pmgInfo(){
         " DMACTL $"+hex(l.dma,2)+" SDMCTL $"+hex(l.sdm,2)+" GRACTL $"+hex(ram[0xD01D]||0,2)+" PRIOR $"+hex(ram[0x026F]||0,2)+
         " HPOS P "+h0+","+h1+","+h2+","+h3+" M "+hm0+","+hm1+","+hm2+","+hm3+
         " SIZE P "+s0+","+s1+","+s2+","+s3+" M $"+hex(sm,2)+
-        " PCOLR P $"+hex(ram[0x02C0]||0,2)+",$"+hex(ram[0x02C1]||0,2)+",$"+hex(ram[0x02C2]||0,2)+",$"+hex(ram[0x02C3]||0,2);
+        " PCOLR P $"+hex(playerColorValue(0),2)+",$"+hex(playerColorValue(1),2)+",$"+hex(playerColorValue(2),2)+",$"+hex(playerColorValue(3),2)+" src "+(wasWritten(0x02C0)?"shadow":"hw/fallback");
 }
 function pmgScale(v){
  v&=3;
@@ -469,13 +485,17 @@ function pmgScale(v){
 function missileScale(mi){
  return pmgScale((ram[0xD00C]>>(mi*2))&3);
 }
+function playerColorValue(p){
+ // P0-P3: shadow PCOLR0-3 $02C0-$02C3, hardware COLP0-3 $D012-$D015.
+ // Pokud hra zapsala shadow PCOLR, bereme shadow i v případě $00.
+ return colorReg(0x02C0+p,0xD012+p,0);
+}
 function playerColor(p,cs){
- // PiTT-KiTT nastavuje PCOLR0/1=$34 a PCOLR2/3=$00.
- // $00 tady není chyba ani "nevyplněná barva" — jsou to černá kola.
- var shadow=ram[0x02C0+p];
- var hw=ram[0xD012+p];
- var c=(shadow!==0 || hw===0) ? shadow : hw;
- return atariColor(c);
+ if(pmgDebugPalette){
+   // Diagnostika vrstev: P0/P1 tělo, P2/P3 pneumatiky.
+   return ["#d7b76a","#ffe3a3","#00e5ff","#ff3cff"][p]||"#ffffff";
+ }
+ return atariColor(playerColorValue(p));
 }
 function hposToCanvas(h){
  if(!h)return -9999;
@@ -495,6 +515,7 @@ function renderPMGOverlay(g,cs){
  var valid=(l.pm>=0x0400 && l.pm<=0xF000);
  lines.push(pmgInfo());
  lines.push("Layout: missiles $"+hex((l.pm+l.mOff)&65535,4)+" P0 $"+hex((l.pm+l.pOff)&65535,4)+" P1 $"+hex((l.pm+l.pOff+l.pStep)&65535,4)+" P2 $"+hex((l.pm+l.pOff+l.pStep*2)&65535,4)+" P3 $"+hex((l.pm+l.pOff+l.pStep*3)&65535,4)+" yOff "+l.yOff+" lineH "+l.lineH);
+ lines.push("PiTT-KiTT car: P0/P2 share left HPOS, P1/P3 share right HPOS; P2/P3 are tire layers.");
 
  if(!valid){
    lines.push("PMBASE zatím není platný; kreslím jen HPOS diagnostiku.");
@@ -511,10 +532,13 @@ function renderPMGOverlay(g,cs){
    return drawn;
  }
 
- for(var p=0;p<4;p++){
+ var playerOrder=[0,2,1,3];
+ for(var oi=0;oi<playerOrder.length;oi++){
+   var p=playerOrder[oi];
    var hpos=ram[0xD000+p];
    var size=pmgScale(ram[0xD008+p]);
    var col=playerColor(p,cs);
+   var rawCol=playerColorValue(p);
    var base=(l.pm+l.pOff+p*l.pStep)&65535;
    var stat=countNonZero(base,l.rows);
    lines.push("P"+p+" base $"+hex(base,4)+" nonzero "+stat.n+" rawY "+(stat.first<0?"--":stat.first+"-"+stat.last)+" HPOS "+hpos+" size "+size);
@@ -529,7 +553,7 @@ function renderPMGOverlay(g,cs){
      for(var bit=0;bit<8;bit++){
        if(b&(0x80>>bit)){
          var rx=x0+bit*size*2, rw=size*2, rh=l.lineH;
-         if(pmgOnlyContrast && col==="#000000"){
+         if(pmgOnlyContrast && rawCol===0 && !pmgDebugPalette){
            g.fillStyle="#6a6a6a";
            g.fillRect(rx-1,yy-1,rw+2,rh+2);
            g.fillStyle=col;
@@ -576,16 +600,32 @@ function renderPMGOnly(){
  var c=document.getElementById("video");
  if(!c)return;
  var g=c.getContext("2d");
- // Ne úplně černé pozadí: černé pneumatiky P2/P3 pak v PMG-only náhledu nezmizí.
+ // Ne úplně černé pozadí + halo: černé pneumatiky P2/P3 pak v PMG-only náhledu nezmizí.
  g.fillStyle="#1a1a1a";g.fillRect(0,0,320,192);
  var cs=colorSet();
+ pmgDebugPalette=false;
  pmgOnlyContrast=true;
  var d=renderPMGOverlay(g,cs);
  pmgOnlyContrast=false;
  g.fillStyle="#ff6b9a";
  g.font="10px monospace";
  g.fillText("PMG ONLY REAL COLORS "+pmgInfo()+" PIX "+d,4,188);
- log("Rendered PMG only. "+pmgInfo()+" pixels="+d);
+ log("Rendered PMG only real colors. "+pmgInfo()+" pixels="+d);
+}
+function renderPMGDebugColors(){
+ var c=document.getElementById("video");
+ if(!c)return;
+ var g=c.getContext("2d");
+ g.fillStyle="#050403";g.fillRect(0,0,320,192);
+ var cs=colorSet();
+ pmgDebugPalette=true;
+ pmgOnlyContrast=false;
+ var d=renderPMGOverlay(g,cs);
+ pmgDebugPalette=false;
+ g.fillStyle="#ff6b9a";
+ g.font="10px monospace";
+ g.fillText("PMG 4 PLAYERS DEBUG COLORS "+pmgInfo()+" PIX "+d,4,188);
+ log("Rendered PMG 4-player debug colors. pixels="+d);
 }
 
 function renderVideo(){
@@ -641,13 +681,7 @@ function renderAnticDisplay(){
      y+=2;
    }
  }
- // PMG scanner hint z intra
- var hp0=ram[0xD000]||0, hp1=ram[0xD001]||0, hp2=ram[0xD002]||0, hp3=ram[0xD003]||0;
- if(hp0||hp1||hp2||hp3){
-   g.fillStyle="rgba(255,0,0,.75)";
-   var yy=70;
-   g.fillRect(hp0,yy,6,8);g.fillRect(hp1,yy,6,8);g.fillRect(hp2,yy,6,8);g.fillRect(hp3,yy,6,8);
- }
+ // FIX3: žádné ruční červené debug obdélníky; PMG kreslí jen skutečný overlay.
  pmgOnlyContrast=false;
  var pmgPixA=renderPMGOverlay(g,cs); // PMG overlay ANTIC
  g.fillStyle="#ff6b9a";
@@ -677,12 +711,7 @@ function renderGame2bpp(){
  for(var row=0;row<96;row++){
    draw2bppRow(g,(base+row*40)&65535,row*2,cs);
  }
- // jednoduchý PMG náhled KITT/scanner, pokud hra zapisuje pozice
- var px=ram[0xD000]||ram[0xD001]||0;
- if(px){
-   g.fillStyle="rgba(255,0,0,.85)";
-   g.fillRect(px,142,24,4);
- }
+ // FIX3: odstraněn starý červený diagnostický pruh; střela/auto jdou přes PMG renderer.
  pmgOnlyContrast=false;
  var pmgPixG=renderPMGOverlay(g,cs); // PMG overlay GAME
  g.fillStyle="#ff6b9a";
