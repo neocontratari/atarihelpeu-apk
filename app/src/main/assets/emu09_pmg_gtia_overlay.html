@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX12 PROFILED XEX / PiTT-KiTT emulator</title>
+<title>EMU-09 FIX13 ORIGINAL XEX + GENERIC DLIST / PiTT-KiTT emulator</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,8 +22,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX12 PROFILED XEX / PiTT-KiTT</h1>
-<p>Navazuje na FIX11: PiTT-KiTT už má vlastní profil i když ho načteš jako externí .XEX, takže po STARTu nesmí zůstat viset intro obraz. Cizí XEXy jedou přes opatrnější obecný ANTIC renderer.</p>
+<h1>EMU-09 FIX13 ORIGINAL XEX + GENERIC DLIST / PiTT-KiTT</h1>
+<p>Navazuje na FIX12: vestavěný PiTT-KiTT je přesně Renéův dodaný původní XEX, emulátor nesmí měnit start/level/skóre. Cizí XEXy používají vlastní DLIST pointer i když zapisují jen HW DLIST.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -53,7 +53,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX12 profiled XEX.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX13 original XEX.</div>
 </section>
 
 <section class="card">
@@ -103,7 +103,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX12 už rozlišuje profil vestavěné/externě načtené hry PiTT-KiTT a obecné XEX soubory. PiTT-KiTT má cílený 2BPP+PMG renderer; ostatní XEXy mají bezpečnější, rychlejší ANTIC náhled.</p>
+<p>FIX13 zachovává původní XEX hry PiTT-KiTT byte-for-byte a opravuje obecný XEX režim: pokud hra zapisuje hardwarový DLIST, renderer ho použije místo nouzového PiTT 2BPP obrazu.</p>
 </section>
 </div>
 
@@ -262,16 +262,19 @@ function loadXex(light){
  var meta=parseAndLoadXexBytes(bytes,light);
  if(activeXexProfile==="generic"){
    // Cizí XEXy zatím kreslíme opatrněji, aby mobilní WebView nezamrzl při složitějším DLISTu.
-   if(playCyclesPerFrame>4200)playCyclesPerFrame=4200;
-   if(playMaxMsPerFrame>7)playMaxMsPerFrame=7;
-   genericRenderEvery=2;
+   if(playCyclesPerFrame>3600)playCyclesPerFrame=3600;
+   if(playMaxMsPerFrame>6)playMaxMsPerFrame=6;
+   genericRenderEvery=3;
  }else{
+   // PiTT-KiTT má optimalizovaný renderer, vracíme rychlost z případného předchozího cizího XEXu.
+   playCyclesPerFrame=7600;
+   playMaxMsPerFrame=10;
    genericRenderEvery=1;
  }
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX12-PROFILED-XEX");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX13-ORIGINAL-XEX-GDLIST");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -539,6 +542,11 @@ function validPtrForMiniAtari(a){return a>=0x0200 && a<=0xBFFF;}
 function getDlistPtr(){
  var s=ram[0x230]|(ram[0x231]<<8);
  var h=ram[0xD402]|(ram[0xD403]<<8);
+ // FIX13: cizí XEXy často zapisují jen hardwarový ANTIC DLIST ($D402/$D403),
+ // zatímco stínové SDLSTL/SDLSTH zůstaly na našem defaultu $2003.
+ // Když CPU opravdu zapsalo hardware DLIST, má přednost. PiTT-KiTT píše oboje stejně.
+ if(writeSeen && (writeSeen[0xD402]||writeSeen[0xD403]) && validPtrForMiniAtari(h))return h;
+ if(!isPiTTProfile() && validPtrForMiniAtari(h) && h!==introDl)return h;
  if(validPtrForMiniAtari(s))return s;
  if(validPtrForMiniAtari(h))return h;
  return 0;
@@ -872,10 +880,42 @@ function renderPMGDebugColors(){
  log("Rendered PMG 4-player debug colors. pixels="+d);
 }
 
+function renderGenericFallback(){
+ var c=document.getElementById("video");
+ if(!c)return;
+ var g=c.getContext("2d");
+ var cs=colorSet();
+ // Nouzový režim pro cizí XEX bez čitelného DLISTu: ukaž 40x96 bajtů od SAVMSC/nejpravděpodobnější obrazové RAM,
+ // ale neaplikuj PiTT-KiTT PMG/score logiku.
+ var base=ram[0x58]|(ram[0x59]<<8);
+ if(!validPtrForMiniAtari(base) || base===screenBase)base=0x4000;
+ if(fastVideo){
+   if(!gameImageData)gameImageData=g.createImageData(320,192);
+   var d=gameImageData.data;
+   var cols=[rgbFromCss(cs.bk),rgbFromCss(cs.p0),rgbFromCss(cs.p1),rgbFromCss(cs.p2)];
+   imgFillRect(d,0,0,320,192,rgbFromCss(cs.bk));
+   for(var row=0;row<96;row++)img2bppLine(d,(base+row*40)&65535,row*2,cols,2);
+   g.putImageData(gameImageData,0,0);
+ }else{
+   g.fillStyle=cs.bk;g.fillRect(0,0,320,192);
+   for(var r=0;r<96;r++)draw2bppRow(g,(base+r*40)&65535,r*2,cs);
+ }
+ if(!playMode){
+   g.fillStyle="#ff6b9a";g.font="10px monospace";
+   g.fillText("GENERIC FALLBACK base $"+hex(base,4)+" PC $"+(cpu?hex(cpu.pc,4):"----"),4,188);
+   log("Rendered GENERIC fallback. base=$"+hex(base,4)+" PC=$"+(cpu?hex(cpu.pc,4):"----"));
+ }
+}
 function renderVideo(){
  var d=getDlistPtr();
- if(d && shouldRenderDlist(d))renderAnticDisplay();
- else renderGame2bpp();
+ if(isPiTTProfile()){
+   if(d && shouldRenderDlist(d))renderAnticDisplay();
+   else renderGame2bpp();
+   return;
+ }
+ // Generic XEX: nikdy nespadnout do PiTT-KiTT herního rendereru, protože ten předpokládá SAVMSC=$6000 a PMG auta.
+ if(d && dlistLooksValid(d)){renderAnticDisplay();return;}
+ renderGenericFallback();
 }
 function bytesPerMode(mode){
  // Hrubé šířky pro narrow playfield 40 bytů; pro náš mini-emulátor je to zatím bezpečný default.
@@ -1207,7 +1247,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX12 profiled XEX.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX13 original XEX.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -1216,11 +1256,13 @@ function updatePlayStatus(extra){
  else if(dl===loseDl||dl===winDl){
    hint=(scoreValue()>hiScoreValue())?"\nREKORD! Na této obrazovce stiskni a pusť START: pak skočí podpis tří písmen.":"\nKonec bez nového rekordu. START vrací do intra.";
  }
+ var gameLine=isPiTTProfile()?
+   ("\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)):
+   ("\nGENERIC XEX  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  profile generic");
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
-   "\nXEX "+currentXexName+
-   "\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)+
-   "\nlast "+playLastRan+" ops / "+playFrameMs.toFixed(1)+"ms  SAVMSC $"+hex(base,4)+"  speed "+playCyclesPerFrame+"  video "+(fastVideo?"FAST":"SAFE")+"  zvuk "+(audioWanted?(audioReady?"ON":"čeká"):"OFF")+
+   "\nXEX "+currentXexName+gameLine+
+   "\nlast "+playLastRan+" ops / "+playFrameMs.toFixed(1)+"ms  speed "+playCyclesPerFrame+"  video "+(fastVideo?"FAST":"SAFE")+"  zvuk "+(audioWanted?(audioReady?"ON":"čeká"):"OFF")+
    hint+(extra?"\n"+extra:"");
 }
 function runCpuQuiet(n){
@@ -1293,7 +1335,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX12: PiTT-KiTT profil používá 2BPP+PMG hru i při externím načtení, cizí XEX zkouší obecný ANTIC renderer.");
+ updatePlayStatus("Emulátor běží. FIX13: PiTT-KiTT běží z původního XEX, cizí XEX používá vlastní ANTIC/DLIST renderer.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
