@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX3 / 4-player PMG car + real shadows</title>
+<title>EMU-09 PLAY / PiTT-KiTT emulator</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -15,79 +15,79 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .reg{border:1px solid rgba(215,183,106,.35);border-radius:12px;padding:8px;color:#ffe3a3;font-family:monospace}
 .bad{color:#ff6b9a}.ok{color:#2aff8f}
+.playStatus{font-family:monospace;color:#2aff8f;border:1px solid rgba(42,255,143,.28);border-radius:12px;padding:10px;margin-top:10px;background:rgba(42,255,143,.06);white-space:pre-wrap}
+.padgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch}.padgrid button{min-height:58px;font-size:16px}.wide{grid-column:1/4}.halfgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.danger{background:#ff6b9a!important;color:#160006!important}.compact{font-size:12px;padding:9px;margin-top:7px}.muted{opacity:.68}.debugDetails{margin-top:10px}.debugDetails summary{cursor:pointer;color:#ffe3a3;font-weight:bold;padding:10px;border:1px solid rgba(215,183,106,.35);border-radius:12px;background:rgba(215,183,106,.06)}.debugDetails .card{margin-top:8px}canvas.gameCanvas{border-radius:16px;border:2px solid rgba(215,183,106,.45);box-shadow:0 0 22px rgba(215,183,106,.16)}button{touch-action:none;user-select:none;-webkit-user-select:none}
 </style>
 </head>
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX3 / 4-player PMG auto</h1>
-<p>Reakce na tvůj log: EMU-01 skončil na <b>opcode $85 at $221C</b>. EMU-09 FIX3 drží EMU09 základ, double-line PMG a navíc opravuje shadow/hardware barvy: hra píše P0/P1 tělo do PCOLR0/1 a P2/P3 kola do PCOLR2/3=$00. Auto je teď brané jako 4 hráči: P0+P2 levá půlka, P1+P3 pravá půlka.</p>
+<h1>EMU-09 PLAY / PiTT-KiTT</h1>
+<p>Čistší herní režim z posledního ověřeného EMU09. Testovací PMG tlačítka jsou uklizená do servisní sekce a hlavní obrazovka už se chová jako malý Atari emulator v aplikaci.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
 <section class="card">
-<h2>PiTT-KiTT XEX</h2>
-<p>Soubor: PiTT-KiTT-NaP-Final.xex</p>
-<p>Velikost: 7162 bytes</p>
-<p>RUNAD: $221A</p>
-<p>INITAD: none</p>
-<p>SHA256: 8c587d73e8c4c4eb2ffe7d758cbc3856d0ca1275d8204fb87b8e5c68c619bd99</p>
-<button onclick="loadXex()">1) Load XEX into RAM</button>
-<button onclick="stepCpu()">2) STEP CPU</button>
-<button onclick="runCpu(1000)">3) RUN 1000 instrukcí</button>
-<button onclick="runCpu(10000)">4) RUN 10000 instrukcí</button>
-<button onclick="runFrame()">5) RUN FRAME</button>
-<button onclick="tapStartLong()">6) DRŽ START + RUN 60000</button>
-<button onclick="runCpu(100000)">7) RUN 100000 instrukcí</button>
-<button onclick="bootGameStart()">8) BOOT GAME / HOLD START</button>
-<button onclick="runVideoFrame()">9) RUN VIDEO FRAME</button>
-<button onclick="renderVideo()">10) REFRESH VIDEO AUTO</button>
-<button onclick="renderAnticDisplay()">11) RENDER INTRO DISPLAY LIST</button>
-<button onclick="renderGame2bpp()">12) RENDER GAME 2BIT RAM</button>
-<button onclick="renderPMGOnly()">13) RENDER PMG ONLY / REAL COLORS + WHEEL HALO</button>
-<button onclick="renderPMGDebugColors()">14) RENDER PMG ONLY / 4-PLAYER DEBUG COLORS</button>
-<button onclick="showDisasmHint()">15) Ukázat proč visela smyčka</button>
+<h2>PiTT-KiTT emulator</h2>
+<p>Soubor <b>PiTT-KiTT-NaP-Final.xex</b> je uvnitř APK. Tlačítko níže načte XEX, podrží START, skočí do hry a spustí průběžný běh CPU + video renderer.</p>
+<div class="halfgrid">
+<button onclick="startPlaying()">▶ SPUSTIT EMULÁTOR</button>
+<button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
+</div>
+<div class="halfgrid">
+<button class="secondary" onclick="singleFramePlay()">1 SNÍMEK</button>
+<button class="danger" onclick="resetPlaying()">RESET XEX</button>
+</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT EMULÁTOR.</div>
 </section>
 
 <section class="card">
-<h2>Atari vstupy</h2>
-<p>Hra pravděpodobně čeká ve smyčce na START/FIRE/joystick. Tady začínáme emulovat reálné vstupy.</p>
-<div class="grid">
-<button onmousedown="pressStart(true)" onmouseup="pressStart(false)" ontouchstart="pressStart(true)" ontouchend="pressStart(false)">START držet</button>
-<button onmousedown="pressFire(true)" onmouseup="pressFire(false)" ontouchstart="pressFire(true)" ontouchend="pressFire(false)">FIRE držet</button>
-<button onmousedown="pressLeft(true)" onmouseup="pressLeft(false)" ontouchstart="pressLeft(true)" ontouchend="pressLeft(false)">LEFT držet</button>
-<button onmousedown="pressRight(true)" onmouseup="pressRight(false)" ontouchstart="pressRight(true)" ontouchend="pressRight(false)">RIGHT držet</button>
+<h2>Atari ovládání</h2>
+<p>Joystick je aktivní při držení tlačítka. SKOK mapuju na PORTA bit $02, protože hra ho v ASM čte jako druhý směr joysticku.</p>
+<div class="padgrid">
+<button class="secondary" onpointerdown="return pressLeft(true)" onpointerup="return pressLeft(false)" onpointercancel="return pressLeft(false)" onpointerleave="return pressLeft(false)">◀ LEFT</button>
+<button class="secondary" onpointerdown="return pressJump(true)" onpointerup="return pressJump(false)" onpointercancel="return pressJump(false)" onpointerleave="return pressJump(false)">▲ SKOK</button>
+<button class="secondary" onpointerdown="return pressRight(true)" onpointerup="return pressRight(false)" onpointercancel="return pressRight(false)" onpointerleave="return pressRight(false)">RIGHT ▶</button>
+<button class="wide" onpointerdown="return pressFire(true)" onpointerup="return pressFire(false)" onpointercancel="return pressFire(false)" onpointerleave="return pressFire(false)">FIRE / STŘELA</button>
+<button class="wide secondary" onpointerdown="return pressStart(true)" onpointerup="return pressStart(false)" onpointercancel="return pressStart(false)" onpointerleave="return pressStart(false)">START držet</button>
 </div>
-<button onclick="tapStart()">TAP START + RUN FRAME</button>
-<button onclick="tapFire()">TAP FIRE + RUN FRAME</button>
 <p id="inputState" class="ok"></p>
 </section>
 
 <section class="card">
+<h2>Obraz Atari</h2>
+<p>Playfield běží ze SAVMSC $6000 a auto/střela přes PMG overlay. Během hraní už do obrazu nepíšu růžové debug texty.</p>
+<canvas id="video" class="gameCanvas" width="320" height="192"></canvas>
+</section>
+
+<details class="debugDetails">
+<summary>Servisní debug / zatím schováno pro vývoj</summary>
+<section class="card">
+<h2>PMG debug</h2>
+<pre id="pmgdebug">PMG debug zatím čeká na render.</pre>
+<button class="compact secondary" onclick="renderPMGOnly()">PMG real colors</button>
+<button class="compact secondary" onclick="renderPMGDebugColors()">PMG 4-player debug</button>
+</section>
+<section class="card">
 <h2>CPU 6502 stav</h2>
 <div class="grid" id="regs"></div>
 </section>
-
-<section class="card">
-<h2>ANTIC / video preview</h2>
-<p>Auto režim: playfield přes ANTIC/SAVMSC + první PMG overlay. Auta/oko/střely mohou být právě v PMG, ne v hlavní obrazové RAM.</p>
-<canvas id="video" width="320" height="192"></canvas>
-<pre id="pmgdebug">PMG debug zatím čeká na render.</pre>
-</section>
-
 <section class="card">
 <h2>XEX segmenty</h2>
 <pre id="segments"></pre>
 </section>
-
 <section class="card">
 <h2>Log</h2>
 <pre id="log"></pre>
+<button class="compact secondary" onclick="stepCpu()">STEP CPU</button>
+<button class="compact secondary" onclick="runCpu(10000)">RUN 10000</button>
+<button class="compact secondary" onclick="showDisasmHint()">VCOUNT hint</button>
 </section>
+</details>
 
 <section class="card">
-<h2>EMU-09 umí navíc</h2>
-<p>Opravený PMG renderer: čte double-line PMG layout pro SDMCTL/DMACTL $2E. Pro PMBASE $4000 používá missiles $4180, P0 $4200, P1 $4280, P2 $4300, P3 $4380. FIX3 navíc rozlišuje, jestli hra zapsala shadow registry PCOLR/COLOR, nebo přímo hardware COLP/COLPF. Díky tomu $00 u P2/P3 znamená skutečně černá kola, ne stará barva z intra.</p>
+<h2>EMU-09 PLAY umí navíc</h2>
+<p>FIX4 nechává ověřený double-line PMG renderer z FIX3, ale přepíná appku do herního režimu: čisté ovládání, průběžná CPU smyčka, skrytý servisní debug, START/FIRE/LEFT/RIGHT/SKOK přes Atari registry.</p>
 </section>
 </div>
 
@@ -97,7 +97,12 @@ var segments=[{"start": 8192, "end": 15341, "size": 7150}, {"start": 736, "end":
 var runAddress=8730;
 var ram=new Uint8Array(65536);
 var cpu=null;
-var input={start:false,fire:false,left:false,right:false};
+var input={start:false,fire:false,left:false,right:false,jump:false};
+var playMode=false;
+var playLoopId=0;
+var playBooted=false;
+var playFrameNo=0;
+var playCyclesPerFrame=12000;
 var lastPCs=[];
 var screenBase=0x6000;
 var pmgOnlyContrast=false;
@@ -122,7 +127,7 @@ function renderRegs(){
  '<div class="reg">OS '+(cpu.osCalls||0)+'</div>'+
  '<div class="reg">'+(cpu.trap?cpu.trapMsg:"RUN")+'</div>';
 }
-function loadXex(){ram.fill(0);writeSeen=new Uint8Array(65536);var bytes=decodeB64(b64);var p=0,count=0;while(p<bytes.length){if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;if(p+4>bytes.length)break;var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;var size=end-start+1;if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];p+=size;count++;}ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;for(var j=0;j<40*24;j++)ram[screenBase+j]=0;cpu=new CPU6502(ram);cpu.pc=runAddress;log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX3-4PLAYER-PMG-SHADOWS");renderRegs();renderVideo();}
+function loadXex(){ram.fill(0);writeSeen=new Uint8Array(65536);var bytes=decodeB64(b64);var p=0,count=0;while(p<bytes.length){if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;if(p+4>bytes.length)break;var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;var size=end-start+1;if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];p+=size;count++;}ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;for(var j=0;j<40*24;j++)ram[screenBase+j]=0;cpu=new CPU6502(ram);cpu.pc=runAddress;log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX4-PLAY-MODE");renderRegs();renderVideo();}
 
 function CPU6502(mem){this.m=mem;this.a=0;this.x=0;this.y=0;this.sp=0xFD;this.p=0x24;this.pc=0;this.steps=0;this.trap=false;this.trapMsg="";this.trace=[];this.rand=0x5A;this.vcount=0;this.osCalls=0;this.rand=0x5A;this.trace=[];this.vcount=0;this.osCalls=0;}
 CPU6502.prototype.r=function(a){
@@ -143,6 +148,7 @@ CPU6502.prototype.r=function(a){
    var v=0xFF;
    if(input.left)v&=~0x04;
    if(input.right)v&=~0x08;
+   if(input.jump)v&=~0x02;
    return v&255;
  }
  // $D010 TRIG0 fire, active low
@@ -714,14 +720,80 @@ function renderGame2bpp(){
  // FIX3: odstraněn starý červený diagnostický pruh; střela/auto jdou přes PMG renderer.
  pmgOnlyContrast=false;
  var pmgPixG=renderPMGOverlay(g,cs); // PMG overlay GAME
- g.fillStyle="#ff6b9a";
- g.font="10px monospace";
- g.fillText("2BPP SAVMSC $"+hex(base,4)+" PMG "+pmgPixG+" PC $"+(cpu?hex(cpu.pc,4):"----")+" SDLST $"+hex(getDlistPtr(),4),4,188);
- log("Rendered GAME 2BPP. SAVMSC=$"+hex(base,4)+" PC=$"+(cpu?hex(cpu.pc,4):"----"));
+ if(!playMode){
+   g.fillStyle="#ff6b9a";
+   g.font="10px monospace";
+   g.fillText("2BPP SAVMSC $"+hex(base,4)+" PMG "+pmgPixG+" PC $"+(cpu?hex(cpu.pc,4):"----")+" SDLST $"+hex(getDlistPtr(),4),4,188);
+   log("Rendered GAME 2BPP. SAVMSC=$"+hex(base,4)+" PC=$"+(cpu?hex(cpu.pc,4):"----"));
+ }
 }
 
+
+function scoreText(){
+ if(!cpu)return "000";
+ var lo=ram[0xBD]||0, hi=ram[0xC1]||0;
+ var v=((hi&0x0F)*100)+(((lo>>4)&0x0F)*10)+(lo&0x0F);
+ var s=String(v);while(s.length<3)s="0"+s;return s;
+}
+function updatePlayStatus(extra){
+ var e=document.getElementById("playStatus");
+ if(!e)return;
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT EMULÁTOR.";return;}
+ e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
+   "  PC $"+hex(cpu.pc,4)+"  kroky "+cpu.steps+
+   "\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)+
+   (extra?"\n"+extra:"");
+}
+function runCpuQuiet(n){
+ if(!cpu)loadXex();
+ for(var i=0;i<n && !cpu.trap;i++)cpu.step();
+}
+function startPlaying(){
+ if(!cpu)loadXex();
+ if(!playBooted){
+   bootGameStart();
+   playBooted=true;
+ }
+ playMode=true;
+ updatePlayStatus("Herní smyčka spuštěná.");
+ if(!playLoopId)playLoop();
+}
+function playLoop(){
+ if(!playMode){playLoopId=0;return;}
+ runCpuQuiet(playCyclesPerFrame);
+ renderGame2bpp();
+ if((playFrameNo++&3)===0)renderRegs();
+ updatePlayStatus();
+ if(cpu && cpu.trap){
+   playMode=false;playLoopId=0;
+   log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));
+   updatePlayStatus(cpu.trapMsg);
+   return;
+ }
+ playLoopId=requestAnimationFrame(playLoop);
+}
+function pausePlaying(){
+ playMode=false;
+ if(playLoopId){cancelAnimationFrame(playLoopId);playLoopId=0;}
+ updatePlayStatus("Pozastaveno.");
+}
+function resetPlaying(){
+ pausePlaying();
+ playBooted=false;
+ loadXex();
+ updatePlayStatus("Resetováno, připraveno znovu spustit.");
+}
+function singleFramePlay(){
+ if(!cpu)loadXex();
+ if(!playBooted){bootGameStart();playBooted=true;}
+ var old=playMode;playMode=true;
+ runCpuQuiet(playCyclesPerFrame);
+ renderGame2bpp();renderRegs();updatePlayStatus("Jeden snímek.");
+ playMode=old;
+}
 function renderInput(){
- document.getElementById("inputState").textContent="START="+(input.start?"ON":"off")+" FIRE="+(input.fire?"ON":"off")+" LEFT="+(input.left?"ON":"off")+" RIGHT="+(input.right?"ON":"off");
+ var e=document.getElementById("inputState");
+ if(e)e.textContent="START="+(input.start?"ON":"off")+" FIRE="+(input.fire?"ON":"off")+" LEFT="+(input.left?"ON":"off")+" RIGHT="+(input.right?"ON":"off")+" JUMP="+(input.jump?"ON":"off");
 }
 function pressStart(v){input.start=!!v;renderInput();return false;}
 function tapStartLong(){
@@ -735,6 +807,7 @@ function showDisasmHint(){
  log("VCOUNT WAIT FOUND:\n$2390 LDA $D40B\n$2393 CMP #$3C\n$2395 BCC $2390\n$2397 JMP $22C7\nTakze EMU-04 visel, protoze VCOUNT byl stale 0.");
 }
 function pressFire(v){input.fire=!!v;renderInput();return false;}
+function pressJump(v){input.jump=!!v;renderInput();return false;}
 function pressLeft(v){input.left=!!v;if(v)input.right=false;renderInput();return false;}
 function pressRight(v){input.right=!!v;if(v)input.left=false;renderInput();return false;}
 function tapStart(){if(!cpu)loadXex();input.start=true;renderInput();runCpu(3000);input.start=false;renderInput();runCpu(3000);}
