@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX9 MINI XEX LOADER / PiTT-KiTT emulator</title>
+<title>EMU-09 FIX10 XEX LOADER V2 / PiTT-KiTT emulator</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,25 +22,25 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX9 MINI XEX LOADER / PiTT-KiTT</h1>
-<p>Navazuje na FIX8: rychlost, intro texty, PMG auto, zvuk i ovládání pod obrazovkou zůstávají. Nově je z toho mini XEX emulátor: můžeš jet vestavěný PiTT-KiTT, nebo si načíst vlastní .XEX soubor.</p>
+<h1>EMU-09 FIX10 XEX LOADER V2 / PiTT-KiTT</h1>
+<p>Navazuje na FIX9: rychlost, intro texty, PMG auto, zvuk i ovládání pod obrazovkou zůstávají. FIX10 opravuje XEX loader: už bere INITAD/RUNAD vektory, resetuje čistě aktivní XEX a ukazuje diagnostiku načteného souboru.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
 <section class="card">
 <h2>PiTT-KiTT emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako hlavní test. Tlačítkem níže může uživatel vybrat vlastní .XEX z telefonu. Spouštíme od RUNAD, když ho XEX obsahuje.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako hlavní test. Tlačítkem níže může uživatel vybrat vlastní .XEX z telefonu. Loader teď rozlišuje segmenty, INITAD ($02E2) a RUNAD ($02E0).</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
 </div>
 <div class="halfgrid">
-<button class="danger" onclick="resetPlaying()">RESET XEX</button>
+<button class="danger" onclick="resetPlaying()">RESET AKTIVNÍ XEX</button>
 <button class="secondary" onclick="toggleAudio()">ZVUK ON/OFF</button>
 </div>
 <div class="halfgrid">
 <button class="secondary" onclick="pickXexFile()">📂 NAČÍST VLASTNÍ XEX</button>
-<button class="secondary" onclick="loadBuiltinXex()">🎮 VESTAVĚNÝ PiTT-KiTT</button>
+<button class="secondary" onclick="loadBuiltinXex()">🎮 RESET + VESTAVĚNÝ PiTT-KiTT</button>
 </div>
 <input id="xexFile" class="inlineFile" type="file" accept=".xex,.XEX,application/octet-stream" onchange="handleXexFile(this.files&&this.files[0])">
 <div id="xexName" class="fileLine">XEX: PiTT-KiTT-NaP-Final.xex / vestavěný</div>
@@ -53,7 +53,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX10 loader v2.</div>
 </section>
 
 <section class="card">
@@ -88,7 +88,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="grid" id="regs"></div>
 </section>
 <section class="card">
-<h2>XEX segmenty</h2>
+<h2>XEX diagnostika</h2>
 <pre id="segments"></pre>
 </section>
 <section class="card">
@@ -127,6 +127,8 @@ var gameImageData=null;
 var xexCache=null;
 var customXexBytes=null;
 var currentXexName="PiTT-KiTT-NaP-Final.xex / vestavěný";
+var xexInfo={run:0,inits:[],entry:0,warnings:[],bad:false};
+var activeEntryWasInit=false;
 var introDl=0x2003, loseDl=0x2021, winDl=0x2036, hiDl=0x204B;
 var audioCtx=null,audioMaster=null,audioNodes=null,audioWanted=true,audioReady=false;
 var rgbCache={};
@@ -141,48 +143,91 @@ function log(s){var e=document.getElementById("log");e.textContent=s+"\n"+e.text
 function decodeB64(s){var raw=atob(s);var a=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i)&255;return a;}
 function getActiveXexBytes(){return customXexBytes||(xexCache||(xexCache=decodeB64(b64)));}
 function setXexName(){var e=document.getElementById("xexName");if(e)e.textContent="XEX: "+currentXexName;}
-function renderSegments(){var lines=[];for(var i=0;i<segments.length;i++){var sg=segments[i];lines.push((i+1)+". $"+hex(sg.start,4)+"-$"+hex(sg.end,4)+" / "+sg.size+" bytes");}var el=document.getElementById("segments");if(el)el.textContent=lines.join("\n");setXexName();}
+function clearInputState(){input.start=false;input.fire=false;input.left=false;input.right=false;input.up=false;input.jump=false;renderInput();}
+function isVectorOnlySegment(sg){return sg.start>=0x0200 && sg.end<=0x02FF;}
+function goodEntry(a){return a && a>=0x0200 && a<=0xBFFF;}
+function xexWarningsForEntry(entry){
+ var w=[];
+ if(entry>=0xA000 && entry<=0xBFFF)w.push("Vstup míří do $A000-$BFFF: některé XEXy jsou původně cartridge/BASIC/packer a budou chtít další emulaci ROM/depackeru.");
+ if(entry>=0xC000)w.push("Vstup míří do ROM oblasti $C000-$FFFF: zatím jen stubujeme část OS, ne plnou Atari ROM.");
+ if(entry && ram[entry]===0)w.push("Na vstupní adrese je $00/BRK. XEX může být zabalený, nebo potřebuje INITAD loader.");
+ return w;
+}
+function renderSegments(){
+ var lines=[];
+ lines.push("ENTRY $"+hex(xexInfo.entry||0,4)+"  RUNAD "+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+"  INITAD "+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(", "):"--"));
+ lines.push("Segmenty: "+segments.length+(xexInfo.bad?"  / POZOR: částečně načteno":""));
+ for(var i=0;i<segments.length;i++){
+   var sg=segments[i];
+   var tag=isVectorOnlySegment(sg)?" vector":"";
+   lines.push((i+1)+". $"+hex(sg.start,4)+"-$"+hex(sg.end,4)+" / "+sg.size+" bytes"+tag);
+ }
+ if(xexInfo.warnings.length){lines.push("\nVarování:");for(var j=0;j<xexInfo.warnings.length;j++)lines.push("- "+xexInfo.warnings[j]);}
+ var el=document.getElementById("segments");if(el)el.textContent=lines.join("\n");setXexName();
+}
 function pickXexFile(){var f=document.getElementById("xexFile");if(f)f.click();}
-function loadBuiltinXex(){pausePlaying();customXexBytes=null;xexCache=null;currentXexName="PiTT-KiTT-NaP-Final.xex / vestavěný";loadXex(false);updatePlayStatus("Vráceno na vestavěný PiTT-KiTT XEX.");}
+function fullStop(){playMode=false;fadeAudioOff();if(playLoopId){cancelAnimationFrame(playLoopId);playLoopId=0;}}
+function loadBuiltinXex(){
+ fullStop();clearInputState();customXexBytes=null;xexCache=null;currentXexName="PiTT-KiTT-NaP-Final.xex / vestavěný";
+ loadXex(false);
+ updatePlayStatus("Vestavěný PiTT-KiTT je čistě resetovaný. Dej SPUSTIT / INTRO.");
+}
 function handleXexFile(file){
  if(!file)return;
  var reader=new FileReader();
  reader.onload=function(ev){
    try{
-     pausePlaying();
+     fullStop();clearInputState();
      customXexBytes=new Uint8Array(ev.target.result);
      xexCache=null;
      currentXexName=file.name+" / "+customXexBytes.length+" bytes";
      loadXex(false);
-     updatePlayStatus("Načten vlastní XEX: "+currentXexName+". Dej SPUSTIT / INTRO.");
+     updatePlayStatus("Načten vlastní XEX: "+currentXexName+". Dej SPUSTIT / INTRO. Když se zastaví na ROM/BRK, pošli XEX diagnostiku.");
    }catch(e){log("XEX load error: "+e.message);updatePlayStatus("Chyba při načtení XEX: "+e.message);}
  };
  reader.onerror=function(){updatePlayStatus("Nepovedlo se přečíst XEX soubor z telefonu.");};
  reader.readAsArrayBuffer(file);
 }
-function loadXex(light){
- ram.fill(0);writeSeen=new Uint8Array(65536);gameImageData=null;
- var bytes=getActiveXexBytes();
- var p=0,count=0,firstStart=0,bad=false;
+function parseAndLoadXexBytes(bytes,light){
+ var p=0,count=0,firstExec=0,bad=false,runVec=0,inits=[];
  segments=[];
  while(p<bytes.length){
-   if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;
+   while(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;
    if(p+4>bytes.length)break;
    var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;
    var size=end-start+1;
-   if(end<start||p+size>bytes.length){bad=true;if(!light)log("BAD XEX segment at offset "+p);break;}
-   if(count===0)firstStart=start;
-   ram.set(bytes.subarray(p,p+size),start&65535);
-   segments.push({start:start,end:end,size:size});
+   if(end<start||p+size>bytes.length){bad=true;if(!light)log("BAD XEX segment at offset "+p+" start=$"+hex(start,4)+" end=$"+hex(end,4));break;}
+   var chunk=bytes.subarray(p,p+size);
+   ram.set(chunk,start&65535);
+   var sg={start:start,end:end,size:size};segments.push(sg);
+   if(!firstExec && !isVectorOnlySegment(sg) && start>=0x0200)firstExec=start;
+   if(start<=0x02E0 && end>=0x02E1){var ro=0x02E0-start;runVec=(chunk[ro]|(chunk[ro+1]<<8))&65535;}
+   if(start<=0x02E2 && end>=0x02E3){var io=0x02E2-start;var ia=(chunk[io]|(chunk[io+1]<<8))&65535;if(ia)inits.push(ia);}
    p+=size;count++;
  }
+ var entry=0;
+ activeEntryWasInit=false;
+ if(goodEntry(runVec)){entry=runVec;}
+ else if(inits.length){entry=inits[inits.length-1];activeEntryWasInit=true;}
+ else if(goodEntry(firstExec)){entry=firstExec;}
+ else entry=0x2000;
+ xexInfo={run:runVec||0,inits:inits,entry:entry,warnings:[],bad:bad};
+ xexInfo.warnings=xexWarningsForEntry(entry);
+ return {count:count,bad:bad,entry:entry};
+}
+function loadXex(light){
+ ram.fill(0);writeSeen=new Uint8Array(65536);gameImageData=null;playBooted=false;playFrameNo=0;playLastRan=0;playFrameMs=0;lastPCs=[];
+ // Bezpečný default: prázdný textový buffer, než si XEX nastaví vlastní obrazovku.
  ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;
+ ram[0x230]=introDl&255;ram[0x231]=(introDl>>8)&255;
+ ram[0xD402]=introDl&255;ram[0xD403]=(introDl>>8)&255;
  for(var j=0;j<40*24;j++)ram[screenBase+j]=0;
- var ra=ram[0x02E0]|(ram[0x02E1]<<8);
- runAddress=ra||firstStart||runAddress||0x2000;
+ var bytes=getActiveXexBytes();
+ var meta=parseAndLoadXexBytes(bytes,light);
+ runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX9-MINI-XEX-LOADER");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX10-XEX-LOADER-V2");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -381,8 +426,10 @@ CPU6502.prototype.step=function(){
   case 0x20:{
     var a=this.abs();
     // Atari OS ROM stub. Např. SETVBV $EF9C v PiTT-KiTT intro.
-    // Zatím ho bereme jako okamžitý návrat, aby CPU neskočilo do prázdné ROM.
-    if(a>=0xE000){this.osCalls++;break;}
+    // Některé starší XEX loadery volají i $A000-$BFFF cartridge/BASIC ROM.
+    // Když tam nemáme skutečnou ROM a je tam $00, bereme JSR jako bezpečný stub,
+    // aby mini-emulátor nespadl hned na prázdné ROM rutině.
+    if(a>=0xE000 || (a>=0xA000 && a<=0xBFFF && this.m[a]===0)){this.osCalls++;break;}
     var ret=(this.pc-1)&65535;
     this.push((ret>>8)&255);this.push(ret&255);this.pc=a;break;
   }
@@ -413,7 +460,11 @@ CPU6502.prototype.step=function(){
   case 0x6E:{var a=this.abs(),v=this.rorVal(this.r(a));this.w(a,v);break;}
   case 0x7E:{var a=this.abx(),v=this.rorVal(this.r(a));this.w(a,v);break;}
 
-  case 0x00:this.trap=true;this.trapMsg="BRK at $"+hex(pc0,4);break;
+  case 0x00:
+    this.trap=true;
+    if(pc0>=0xA000 && pc0<=0xBFFF)this.trapMsg="BRK/empty ROM or cartridge area at $"+hex(pc0,4)+". Tenhle XEX nejspíš potřebuje cartridge/BASIC ROM, nebo vlastní dekompresní loader.";
+    else this.trapMsg="BRK at $"+hex(pc0,4);
+    break;
   default:this.trap=true;this.trapMsg="Unsupported opcode $"+hex(op,2)+" at $"+hex(pc0,4);break;
  }
  // RTCLOK tick: zero page $14
@@ -983,7 +1034,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX10 loader v2.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&isTextDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC text')):'2BPP game';
@@ -993,7 +1044,7 @@ function updatePlayStatus(extra){
    hint=(scoreValue()>hiScoreValue())?"\nREKORD! Na této obrazovce stiskni a pusť START: pak skočí podpis tří písmen.":"\nKonec bez nového rekordu. START vrací do intra.";
  }
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
-   "  "+mode+"  PC $"+hex(cpu.pc,4)+"  kroky "+cpu.steps+
+   "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
    "\nXEX "+currentXexName+
    "\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)+
    "\nlast "+playLastRan+" ops / "+playFrameMs.toFixed(1)+"ms  SAVMSC $"+hex(base,4)+"  speed "+playCyclesPerFrame+"  video "+(fastVideo?"FAST":"SAFE")+"  zvuk "+(audioWanted?(audioReady?"ON":"čeká"):"OFF")+
@@ -1034,7 +1085,7 @@ function startPlaying(){
  ensureAudio();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží od začátku. Intro nechávám žít, do hry přejdi tlačítkem START.");
+ updatePlayStatus("Emulátor běží. FIX10 startuje z RUNAD, nebo z posledního INITAD, když RUNAD chybí.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
@@ -1053,15 +1104,13 @@ function playLoop(){
  playLoopId=requestAnimationFrame(playLoop);
 }
 function pausePlaying(){
- playMode=false;fadeAudioOff();
- if(playLoopId){cancelAnimationFrame(playLoopId);playLoopId=0;}
+ fullStop();
  updatePlayStatus("Pozastaveno.");
 }
 function resetPlaying(){
- pausePlaying();
- playBooted=false;
+ fullStop();clearInputState();
  loadXex(false);
- updatePlayStatus("Resetováno. Dej SPUSTIT / INTRO.");
+ updatePlayStatus("Aktivní XEX je čistě resetovaný. Dej SPUSTIT / INTRO.");
 }
 function singleFramePlay(){
  if(!cpu)loadXex(true);
