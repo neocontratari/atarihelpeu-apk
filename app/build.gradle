@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 105
-        versionName "EMU-05-vcount-os-stub"
+        versionCode 106
+        versionName "EMU-06-adc-indexed"
     }
 }
