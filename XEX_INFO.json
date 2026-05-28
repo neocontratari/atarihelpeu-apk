@@ -1,1 +1,6 @@
-{"version":"EMU09_FIX11_GENERIC_DLIST","builtin_xex":"PiTT-KiTT-NaP-Final(1).xex","builtin_xex_size":7162}
+{
+  "version": "EMU09_FIX12_PROFILED_XEX",
+  "builtin_xex": "PiTT-KiTT-NaP-Final(2).xex",
+  "builtin_xex_size": 7162,
+  "note": "profile detects PiTT-KiTT even when loaded externally"
+}
