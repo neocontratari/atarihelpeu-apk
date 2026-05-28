@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 PLAY / PiTT-KiTT emulator</title>
+<title>EMU-09 FIX5 FAST / PiTT-KiTT emulator</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,14 +22,14 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 PLAY / PiTT-KiTT</h1>
-<p>Čistší herní režim z posledního ověřeného EMU09. Testovací PMG tlačítka jsou uklizená do servisní sekce a hlavní obrazovka už se chová jako malý Atari emulator v aplikaci.</p>
+<h1>EMU-09 FIX5 FAST / PiTT-KiTT</h1>
+<p>Rychlejší herní režim z ověřeného EMU09/FIX4. Debug běží jen na vyžádání, canvas se kreslí rychle přes framebuffer a CPU smyčka má časový limit, aby mobilní WebView nezamrzal.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
 <section class="card">
 <h2>PiTT-KiTT emulator</h2>
-<p>Soubor <b>PiTT-KiTT-NaP-Final.xex</b> je uvnitř APK. Tlačítko níže načte XEX, podrží START, skočí do hry a spustí průběžný běh CPU + video renderer.</p>
+<p>Soubor <b>PiTT-KiTT-NaP-Final.xex</b> je uvnitř APK. Tlačítko níže načte XEX, podrží START, skočí do hry a spustí plynulejší CPU + video smyčku s mobilním časovým limitem.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT EMULÁTOR</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -37,6 +37,12 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="halfgrid">
 <button class="secondary" onclick="singleFramePlay()">1 SNÍMEK</button>
 <button class="danger" onclick="resetPlaying()">RESET XEX</button>
+</div>
+<div class="grid">
+<button class="secondary compact" onclick="setPlaySpeed('safe')">ÚSPORNĚ</button>
+<button class="secondary compact" onclick="setPlaySpeed('normal')">NORMÁL</button>
+<button class="secondary compact" onclick="setPlaySpeed('fast')">RYCHLEJI</button>
+<button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 <div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT EMULÁTOR.</div>
 </section>
@@ -56,7 +62,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Obraz Atari</h2>
-<p>Playfield běží ze SAVMSC $6000 a auto/střela přes PMG overlay. Během hraní už do obrazu nepíšu růžové debug texty.</p>
+<p>Playfield běží ze SAVMSC $6000 a auto/střela přes PMG overlay. FIX5 při hraní neaktualizuje debug DOM a kreslí playfield přes rychlý framebuffer.</p>
 <canvas id="video" class="gameCanvas" width="320" height="192"></canvas>
 </section>
 
@@ -87,7 +93,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX4 nechává ověřený double-line PMG renderer z FIX3, ale přepíná appku do herního režimu: čisté ovládání, průběžná CPU smyčka, skrytý servisní debug, START/FIRE/LEFT/RIGHT/SKOK přes Atari registry.</p>
+<p>FIX5 navazuje na FIX4, ale řeší kousání na mobilu: méně DOM zápisů, rychlejší vykreslování playfieldu, žádné logování během hraní a CPU časový rozpočet na snímek.</p>
 </section>
 </div>
 
@@ -102,7 +108,13 @@ var playMode=false;
 var playLoopId=0;
 var playBooted=false;
 var playFrameNo=0;
-var playCyclesPerFrame=12000;
+var playCyclesPerFrame=4200;
+var playMaxMsPerFrame=7;
+var playLastRan=0;
+var playFrameMs=0;
+var fastVideo=true;
+var gameImageData=null;
+var rgbCache={};
 var lastPCs=[];
 var screenBase=0x6000;
 var pmgOnlyContrast=false;
@@ -127,7 +139,7 @@ function renderRegs(){
  '<div class="reg">OS '+(cpu.osCalls||0)+'</div>'+
  '<div class="reg">'+(cpu.trap?cpu.trapMsg:"RUN")+'</div>';
 }
-function loadXex(){ram.fill(0);writeSeen=new Uint8Array(65536);var bytes=decodeB64(b64);var p=0,count=0;while(p<bytes.length){if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;if(p+4>bytes.length)break;var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;var size=end-start+1;if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];p+=size;count++;}ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;for(var j=0;j<40*24;j++)ram[screenBase+j]=0;cpu=new CPU6502(ram);cpu.pc=runAddress;log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX4-PLAY-MODE");renderRegs();renderVideo();}
+function loadXex(){ram.fill(0);writeSeen=new Uint8Array(65536);var bytes=decodeB64(b64);var p=0,count=0;while(p<bytes.length){if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;if(p+4>bytes.length)break;var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;var size=end-start+1;if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];p+=size;count++;}ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;for(var j=0;j<40*24;j++)ram[screenBase+j]=0;cpu=new CPU6502(ram);cpu.pc=runAddress;log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX5-PLAY-FAST");renderRegs();renderVideo();}
 
 function CPU6502(mem){this.m=mem;this.a=0;this.x=0;this.y=0;this.sp=0xFD;this.p=0x24;this.pc=0;this.steps=0;this.trap=false;this.trapMsg="";this.trace=[];this.rand=0x5A;this.vcount=0;this.osCalls=0;this.rand=0x5A;this.trace=[];this.vcount=0;this.osCalls=0;}
 CPU6502.prototype.r=function(a){
@@ -366,8 +378,8 @@ function bootGameStart(){
    if(cpu.pc>=0x239A && cpu.pc<0x3000 && cpu.steps>1000) break;
  }
  input.start=false;renderInput();
- // Doběhni kus hry po uvolnění START
- for(var j=0;j<120000 && !cpu.trap;j++) cpu.step();
+ // Doběhni kus hry po uvolnění START. FIX5: kratší blok, ať mobil nezamrzne při startu.
+ for(var j=0;j<18000 && !cpu.trap;j++) cpu.step();
  renderRegs();renderVideo();detectLoop();
  if(cpu.trap)log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));
  else log("BOOT GAME done. Ran "+i+" start-held steps. PC=$"+hex(cpu.pc,4)+" OS="+(cpu.osCalls||0)+" SAVMSC=$"+hex((ram[0x58]|(ram[0x59]<<8)),4));
@@ -514,17 +526,19 @@ function setPmgDebug(text){
  var e=document.getElementById("pmgdebug");
  if(e)e.textContent=text;
 }
-function renderPMGOverlay(g,cs){
+function renderPMGOverlay(g,cs,wantDebug){
  var l=pmgLayout();
  var drawn=0;
- var lines=[];
+ var lines=wantDebug?[]:null;
  var valid=(l.pm>=0x0400 && l.pm<=0xF000);
- lines.push(pmgInfo());
- lines.push("Layout: missiles $"+hex((l.pm+l.mOff)&65535,4)+" P0 $"+hex((l.pm+l.pOff)&65535,4)+" P1 $"+hex((l.pm+l.pOff+l.pStep)&65535,4)+" P2 $"+hex((l.pm+l.pOff+l.pStep*2)&65535,4)+" P3 $"+hex((l.pm+l.pOff+l.pStep*3)&65535,4)+" yOff "+l.yOff+" lineH "+l.lineH);
- lines.push("PiTT-KiTT car: P0/P2 share left HPOS, P1/P3 share right HPOS; P2/P3 are tire layers.");
+ if(wantDebug){
+   lines.push(pmgInfo());
+   lines.push("Layout: missiles $"+hex((l.pm+l.mOff)&65535,4)+" P0 $"+hex((l.pm+l.pOff)&65535,4)+" P1 $"+hex((l.pm+l.pOff+l.pStep)&65535,4)+" P2 $"+hex((l.pm+l.pOff+l.pStep*2)&65535,4)+" P3 $"+hex((l.pm+l.pOff+l.pStep*3)&65535,4)+" yOff "+l.yOff+" lineH "+l.lineH);
+   lines.push("PiTT-KiTT car: P0/P2 share left HPOS, P1/P3 share right HPOS; P2/P3 are tire layers.");
+ }
 
  if(!valid){
-   lines.push("PMBASE zatím není platný; kreslím jen HPOS diagnostiku.");
+   if(wantDebug)lines.push("PMBASE zatím není platný; kreslím jen HPOS diagnostiku.");
    for(var fp=0;fp<4;fp++){
      var hx=ram[0xD000+fp];
      if(hx){
@@ -533,8 +547,7 @@ function renderPMGOverlay(g,cs){
        drawn+=1;
      }
    }
-   lines.push("Drawn diagnostic markers: "+drawn);
-   setPmgDebug(lines.join("\n"));
+   if(wantDebug){lines.push("Drawn diagnostic markers: "+drawn);setPmgDebug(lines.join("\n"));}
    return drawn;
  }
 
@@ -546,8 +559,7 @@ function renderPMGOverlay(g,cs){
    var col=playerColor(p,cs);
    var rawCol=playerColorValue(p);
    var base=(l.pm+l.pOff+p*l.pStep)&65535;
-   var stat=countNonZero(base,l.rows);
-   lines.push("P"+p+" base $"+hex(base,4)+" nonzero "+stat.n+" rawY "+(stat.first<0?"--":stat.first+"-"+stat.last)+" HPOS "+hpos+" size "+size);
+   if(wantDebug){var stat=countNonZero(base,l.rows);lines.push("P"+p+" base $"+hex(base,4)+" nonzero "+stat.n+" rawY "+(stat.first<0?"--":stat.first+"-"+stat.last)+" HPOS "+hpos+" size "+size);}
    if(!hpos)continue;
    var x0=hposToCanvas(hpos);
    g.fillStyle=col;
@@ -572,8 +584,7 @@ function renderPMGOverlay(g,cs){
  }
 
  var mbase=(l.pm+l.mOff)&65535;
- var mstat=countNonZero(mbase,l.rows);
- lines.push("M base $"+hex(mbase,4)+" nonzero "+mstat.n+" rawY "+(mstat.first<0?"--":mstat.first+"-"+mstat.last)+" SIZEM $"+hex(ram[0xD00C]||0,2));
+ if(wantDebug){var mstat=countNonZero(mbase,l.rows);lines.push("M base $"+hex(mbase,4)+" nonzero "+mstat.n+" rawY "+(mstat.first<0?"--":mstat.first+"-"+mstat.last)+" SIZEM $"+hex(ram[0xD00C]||0,2));}
  var mcolors=["#ff40ff","#40ffff","#ffff40","#ff9a40"];
  for(var y2=0;y2<l.rows;y2++){
    var mb=ram[(mbase+y2)&65535];
@@ -598,8 +609,7 @@ function renderPMGOverlay(g,cs){
    }
  }
 
- lines.push("Drawn PMG pixels/rects: "+drawn);
- setPmgDebug(lines.join("\n"));
+ if(wantDebug){lines.push("Drawn PMG pixels/rects: "+drawn);setPmgDebug(lines.join("\n"));}
  return drawn;
 }
 function renderPMGOnly(){
@@ -611,7 +621,7 @@ function renderPMGOnly(){
  var cs=colorSet();
  pmgDebugPalette=false;
  pmgOnlyContrast=true;
- var d=renderPMGOverlay(g,cs);
+ var d=renderPMGOverlay(g,cs,true);
  pmgOnlyContrast=false;
  g.fillStyle="#ff6b9a";
  g.font="10px monospace";
@@ -626,7 +636,7 @@ function renderPMGDebugColors(){
  var cs=colorSet();
  pmgDebugPalette=true;
  pmgOnlyContrast=false;
- var d=renderPMGOverlay(g,cs);
+ var d=renderPMGOverlay(g,cs,true);
  pmgDebugPalette=false;
  g.fillStyle="#ff6b9a";
  g.font="10px monospace";
@@ -689,12 +699,51 @@ function renderAnticDisplay(){
  }
  // FIX3: žádné ruční červené debug obdélníky; PMG kreslí jen skutečný overlay.
  pmgOnlyContrast=false;
- var pmgPixA=renderPMGOverlay(g,cs); // PMG overlay ANTIC
+ var pmgPixA=renderPMGOverlay(g,cs,!playMode); // PMG overlay ANTIC
  g.fillStyle="#ff6b9a";
  g.font="10px monospace";
  g.fillText("DLIST $"+hex(dl,4)+" SDLST $"+hex(getDlistPtr(),4)+" PMG "+pmgPixA+" PC $"+(cpu?hex(cpu.pc,4):"----"),4,188);
  log("Rendered ANTIC display list. SDLST=$"+hex(getDlistPtr(),4));
 }
+
+function rgbFromCss(css){
+ if(rgbCache[css])return rgbCache[css];
+ var r=0,g=0,b=0,m;
+ if(css && css[0]==="#"){
+   if(css.length===7){r=parseInt(css.substr(1,2),16);g=parseInt(css.substr(3,2),16);b=parseInt(css.substr(5,2),16);}
+ }else if(css && (m=/rgb\((\d+),(\d+),(\d+)\)/.exec(css.replace(/\s+/g,"")))){
+   r=parseInt(m[1],10);g=parseInt(m[2],10);b=parseInt(m[3],10);
+ }
+ return rgbCache[css]=[r&255,g&255,b&255];
+}
+function draw2bppFrameFast(g,base,cs){
+ var c=document.getElementById("video");
+ if(!gameImageData)gameImageData=g.createImageData(320,192);
+ var d=gameImageData.data;
+ var cols=[rgbFromCss(cs.p0),rgbFromCss(cs.p1),rgbFromCss(cs.p2),rgbFromCss(cs.p3)];
+ var di=0;
+ for(var row=0;row<96;row++){
+   var src=(base+row*40)&65535;
+   var y0=row*2;
+   for(var col=0;col<40;col++){
+     var v=ram[(src+col)&65535];
+     for(var p=0;p<4;p++){
+       var cc=cols[(v>>(6-p*2))&3];
+       var x=(col*4+p)*2;
+       var i=((y0*320+x)*4);
+       d[i]=cc[0];d[i+1]=cc[1];d[i+2]=cc[2];d[i+3]=255;
+       i+=4;
+       d[i]=cc[0];d[i+1]=cc[1];d[i+2]=cc[2];d[i+3]=255;
+       i+=((320-1)*4);
+       d[i]=cc[0];d[i+1]=cc[1];d[i+2]=cc[2];d[i+3]=255;
+       i+=4;
+       d[i]=cc[0];d[i+1]=cc[1];d[i+2]=cc[2];d[i+3]=255;
+     }
+   }
+ }
+ g.putImageData(gameImageData,0,0);
+}
+
 function draw2bppRow(g,addr,y,cs){
  var pixColors=[cs.p0,cs.p1,cs.p2,cs.p3];
  for(var col=0;col<40;col++){
@@ -711,15 +760,17 @@ function renderGame2bpp(){
  if(!c)return;
  var g=c.getContext("2d");
  var cs=colorSet();
- g.fillStyle=cs.bk;g.fillRect(0,0,320,192);
  var base=ram[0x58]|(ram[0x59]<<8);
  if(!base)base=screenBase;
- for(var row=0;row<96;row++){
-   draw2bppRow(g,(base+row*40)&65535,row*2,cs);
+ if(fastVideo){
+   draw2bppFrameFast(g,base,cs);
+ }else{
+   g.fillStyle=cs.bk;g.fillRect(0,0,320,192);
+   for(var row=0;row<96;row++)draw2bppRow(g,(base+row*40)&65535,row*2,cs);
  }
  // FIX3: odstraněn starý červený diagnostický pruh; střela/auto jdou přes PMG renderer.
  pmgOnlyContrast=false;
- var pmgPixG=renderPMGOverlay(g,cs); // PMG overlay GAME
+ var pmgPixG=renderPMGOverlay(g,cs,!playMode); // PMG overlay GAME
  if(!playMode){
    g.fillStyle="#ff6b9a";
    g.font="10px monospace";
@@ -747,6 +798,32 @@ function updatePlayStatus(extra){
 function runCpuQuiet(n){
  if(!cpu)loadXex();
  for(var i=0;i<n && !cpu.trap;i++)cpu.step();
+ return i;
+}
+function runCpuBudget(target,maxMs){
+ if(!cpu)loadXex();
+ var t0=(typeof performance!=="undefined"&&performance.now)?performance.now():Date.now();
+ var i=0;
+ for(;i<target && !cpu.trap;i++){
+   cpu.step();
+   if((i&255)===255){
+     var now=(typeof performance!=="undefined"&&performance.now)?performance.now():Date.now();
+     if(now-t0>=maxMs)break;
+   }
+ }
+ playFrameMs=((typeof performance!=="undefined"&&performance.now)?performance.now():Date.now())-t0;
+ return i;
+}
+function setPlaySpeed(mode){
+ if(mode==='safe'){playCyclesPerFrame=2200;playMaxMsPerFrame=4;}
+ else if(mode==='fast'){playCyclesPerFrame=7600;playMaxMsPerFrame=10;}
+ else {playCyclesPerFrame=4200;playMaxMsPerFrame=7;}
+ updatePlayStatus('Rychlost: '+mode+' / cílové kroky '+playCyclesPerFrame+' / limit '+playMaxMsPerFrame+' ms');
+}
+function toggleFastVideo(){
+ fastVideo=!fastVideo;
+ gameImageData=null;
+ updatePlayStatus('Video renderer: '+(fastVideo?'FAST framebuffer':'SAFE fillRect'));
 }
 function startPlaying(){
  if(!cpu)loadXex();
@@ -760,10 +837,10 @@ function startPlaying(){
 }
 function playLoop(){
  if(!playMode){playLoopId=0;return;}
- runCpuQuiet(playCyclesPerFrame);
+ playLastRan=runCpuBudget(playCyclesPerFrame,playMaxMsPerFrame);
  renderGame2bpp();
- if((playFrameNo++&3)===0)renderRegs();
- updatePlayStatus();
+ playFrameNo++;
+ if((playFrameNo&15)===0)updatePlayStatus();
  if(cpu && cpu.trap){
    playMode=false;playLoopId=0;
    log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));
