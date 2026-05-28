@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EMU-09 PMG / GTIA Overlay</title>
+<style>
+body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
+.wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
+.card{border:1px solid rgba(215,183,106,.35);background:rgba(0,0,0,.62);border-radius:18px;padding:14px;margin:10px 0}
+h1,h2,p{margin:0}h1{font-size:26px}h2{font-size:19px}p{color:rgba(255,247,227,.72);margin-top:8px;line-height:1.4}
+button,a.btn{display:block;width:100%;box-sizing:border-box;text-align:center;text-decoration:none;border:0;border-radius:14px;background:#d7b76a;color:#100a00;font-weight:bold;font-size:15px;padding:12px;margin-top:9px}
+.secondary{background:transparent!important;color:#ffe3a3!important;border:1px solid rgba(215,183,106,.35)!important}
+pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospace;font-size:12px;line-height:1.35;max-height:330px;overflow:auto} canvas{width:100%;image-rendering:pixelated;background:#000;border:1px solid rgba(215,183,106,.35);border-radius:12px;margin-top:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.reg{border:1px solid rgba(215,183,106,.35);border-radius:12px;padding:8px;color:#ffe3a3;font-family:monospace}
+.bad{color:#ff6b9a}.ok{color:#2aff8f}
+</style>
+</head>
+<body>
+<div class="wrap">
+<section class="card">
+<h1>EMU-09 PMG / GTIA Overlay</h1>
+<p>Reakce na tvůj log: EMU-01 skončil na <b>opcode $85 at $221C</b>. EMU-09 přidává první PMG overlay: auta, oko, střely a scanner bývají mimo playfield, takže je musíme kreslit z Player/Missile Graphics paměti.</p>
+<a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
+</section>
+
+<section class="card">
+<h2>PiTT-KiTT XEX</h2>
+<p>Soubor: PiTT-KiTT-NaP-Final.xex</p>
+<p>Velikost: 7162 bytes</p>
+<p>RUNAD: $221A</p>
+<p>INITAD: none</p>
+<p>SHA256: 8c587d73e8c4c4eb2ffe7d758cbc3856d0ca1275d8204fb87b8e5c68c619bd99</p>
+<button onclick="loadXex()">1) Load XEX into RAM</button>
+<button onclick="stepCpu()">2) STEP CPU</button>
+<button onclick="runCpu(1000)">3) RUN 1000 instrukcí</button>
+<button onclick="runCpu(10000)">4) RUN 10000 instrukcí</button>
+<button onclick="runFrame()">5) RUN FRAME</button>
+<button onclick="tapStartLong()">6) DRŽ START + RUN 60000</button>
+<button onclick="runCpu(100000)">7) RUN 100000 instrukcí</button>
+<button onclick="bootGameStart()">8) BOOT GAME / HOLD START</button>
+<button onclick="runVideoFrame()">9) RUN VIDEO FRAME</button>
+<button onclick="renderVideo()">10) REFRESH VIDEO AUTO</button>
+<button onclick="renderAnticDisplay()">11) RENDER INTRO DISPLAY LIST</button>
+<button onclick="renderGame2bpp()">12) RENDER GAME 2BIT RAM</button>
+<button onclick="renderPMGOnly()">13) RENDER PMG ONLY</button>
+<button onclick="showDisasmHint()">8) Ukázat proč visela smyčka</button>
+</section>
+
+<section class="card">
+<h2>Atari vstupy</h2>
+<p>Hra pravděpodobně čeká ve smyčce na START/FIRE/joystick. Tady začínáme emulovat reálné vstupy.</p>
+<div class="grid">
+<button onmousedown="pressStart(true)" onmouseup="pressStart(false)" ontouchstart="pressStart(true)" ontouchend="pressStart(false)">START držet</button>
+<button onmousedown="pressFire(true)" onmouseup="pressFire(false)" ontouchstart="pressFire(true)" ontouchend="pressFire(false)">FIRE držet</button>
+<button onmousedown="pressLeft(true)" onmouseup="pressLeft(false)" ontouchstart="pressLeft(true)" ontouchend="pressLeft(false)">LEFT držet</button>
+<button onmousedown="pressRight(true)" onmouseup="pressRight(false)" ontouchstart="pressRight(true)" ontouchend="pressRight(false)">RIGHT držet</button>
+</div>
+<button onclick="tapStart()">TAP START + RUN FRAME</button>
+<button onclick="tapFire()">TAP FIRE + RUN FRAME</button>
+<p id="inputState" class="ok"></p>
+</section>
+
+<section class="card">
+<h2>CPU 6502 stav</h2>
+<div class="grid" id="regs"></div>
+</section>
+
+<section class="card">
+<h2>ANTIC / video preview</h2>
+<p>Auto režim: playfield přes ANTIC/SAVMSC + první PMG overlay. Auta/oko/střely mohou být právě v PMG, ne v hlavní obrazové RAM.</p>
+<canvas id="video" width="320" height="192"></canvas>
+</section>
+
+<section class="card">
+<h2>XEX segmenty</h2>
+<pre id="segments"></pre>
+</section>
+
+<section class="card">
+<h2>Log</h2>
+<pre id="log"></pre>
+</section>
+
+<section class="card">
+<h2>EMU-09 umí navíc</h2>
+<p>První PMG renderer: čte PMBASE $D407, HPOSP0-3 $D000-$D003, SIZEP0-3 $D008-$D00B a barvy PCOLR0-3. Playfield z EMU-08 zůstává.</p>
+</section>
+</div>
+
+<script>
+var b64="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////////qqqqVVVVVaqqqqqqqlVVqqqq//+qqlVVqqqqqv//////////////qqpVVVVV/1VVqqqqVVVVVVWqqv+qVVVVVVWqqqqq////////////qqpVVVVV////VVVVVVVVVVVVVaqqVVVVVVVVVaqqqqr//////////6pVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVqqqq//////////9VVVVVVf///1VVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////////VVVVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVVaqq/////////1VVVVVVVVX///9VVVVVVVVVVVVVVVVVVVVVVVVVVVVVqqr///////9VVVVVVVVVVf////9VVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////VVVVVVVVVVVV/////1VVVVVVVVVVVVVVVVVVVVVVVVVVVaqq////////////////////////////7v/////////////////////////u/////////////////////////7v/////////////////////////u////////////////////////6qqqv//////////////////////qqqq//////////////////////+7u7v//////////////////////7u7u///////////////qqr///+q7u7uqv////////////+qqv///6ru7u6q/////6qq////qnd3qv//u7u7u7v/////qqr///+qd3eq//+7u7u7u////6q7u6r/qt3d3d2q/+7u7u7u////qru7qv+q3d3d3ar/7u7u7u7//6ru7u7uqqp3d3d3d6q7u7u7u///qu7u7u6qqnd3d3d3qru7u7u7/6q7u7u7u7uq3d3d3d3d7u7u7u7/qru7u7u7u6rd3d3d3d3u7u7u7qru7u7u7u7uqnd3d3d3d7u7u7u7qu7u7u7u7u6qd3d3d3d3u7u7u7u7u7u7u7u7u7vd3d3d3d3u7u7u7ru7u7u7u7u7u93d3d3d3e7u7u7u7u7u7u7u7u7ud3d3d3d3u7u7u7vu7u7u7u7u7u53d3d3d3e7u7u7u///////////AP///////////////////wD///////////8A////////////////AAAA/////////////////wAAAP////////8AAAD/////////////AABVAAD//////////////wAAVQAA//////8AAFUAAP//////////AABVVVUAAP///////////wAAVVVVAAD///8AAFVVVQAA////////AABVVVVVVQAA/////////wAAVVVVVVUAAP8AAFVVVVVVAAD/////AABVVVWqqlVVAAD//////wAAVVVVqqpVVQAAVVVVqqpVVQAAqv//AABVVVWqqqqqVVUAAP///wAAVVVVqqqqqlVVAABVqqqqqlUAAKr/AABVVVWqqqqqqqpVVQAA/wAAVVVVqqqqqqqqVVUAAKqqqqqqVQAAAABVVVWqqqqqqqqqqlVVAABVVVVVqqqqqqqqqqpVVQCqqqqqqlVVAABVVVVVVaqqqqqqqqpVVVVVVVVVVVWqqqqqqqqqVVVVqqqqqqpVVVVVVVVVVVVVqqqqqlVVVVVVVVVVVVVVVaqqqqpVVVVVVVWqqqqqVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQABAD8/AAAFBQUA////AAAVVQUFBRVaVVVVVVVVFQAAVFVQUFBUpVVVVVVVVVQAAABAAPz8AABQUFAA////AAAAAAAAAAAAAAAAAAAKqqoKAAAAAAAAAAAAAAAKqqqqqAAAAAAAAAAAAAAAKqqqqqgAAAAAAAAAAAAAAACgqqoKAw8/Dz//AwPA8Pzw/P/AwB8/AwMHBx84OB8PDw8PAAA/fwcHDw8/cHA/Hx8fHwAADx8BAQMDDxwcDwcHBwcAAPj8wMDg4PgcHPjw8PDwAADw+ICAwMDwODjw4ODg4AAA/P7g4PDw/A4O/Pj4+PgAAAAA4ODgAAAAAADw8PDwAAAAAODg4AAAAAAA4ODg4AAAAADg4OAAAAAAAPj4+PgAAAAABwcHAAAAAAAPDw8PAAAAAAcHBwAAAAAABwcHBwAAAAAHBwcAAAAAAB8fHx8AAK2tAACtrQAAra0AAK2tAAAAAAAArQCIAHwAbACtAIgAGBgYGRkZGhoaGhoaGRkZGBgYFxcXFhYWFRUVFRUVFhYWFxcXGBgYGRkZGhoZGRgYqmpaVgBAUFSVpamqFQUBAOAC4QIaIg==";
+var segments=[{"start": 8192, "end": 15341, "size": 7150}, {"start": 736, "end": 737, "size": 2}];
+var runAddress=8730;
+var ram=new Uint8Array(65536);
+var cpu=null;
+var input={start:false,fire:false,left:false,right:false};
+var lastPCs=[];
+var screenBase=0x6000;
+
+function hex(v,n){var s=(v>>>0).toString(16).toUpperCase();while(s.length<n)s="0"+s;return s;}
+function log(s){var e=document.getElementById("log");e.textContent=s+"\n"+e.textContent;}
+function decodeB64(s){var raw=atob(s);var a=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i)&255;return a;}
+function renderSegments(){var lines=[];for(var i=0;i<segments.length;i++){var s=segments[i];lines.push((i+1)+". $"+hex(s.start,4)+"-$"+hex(s.end,4)+" / "+s.size+" bytes");}document.getElementById("segments").textContent=lines.join("\n");}
+function renderRegs(){
+ var box=document.getElementById("regs");
+ if(!cpu){box.innerHTML='<div class="reg">CPU: not loaded</div>';return;}
+ box.innerHTML='<div class="reg">PC $'+hex(cpu.pc,4)+'</div>'+
+ '<div class="reg">A $'+hex(cpu.a,2)+'</div>'+
+ '<div class="reg">X $'+hex(cpu.x,2)+'</div>'+
+ '<div class="reg">Y $'+hex(cpu.y,2)+'</div>'+
+ '<div class="reg">SP $'+hex(cpu.sp,2)+'</div>'+
+ '<div class="reg">P $'+hex(cpu.p,2)+'</div>'+
+ '<div class="reg">Steps '+cpu.steps+'</div>'+
+ '<div class="reg">VC $'+hex(cpu.vcount||0,2)+'</div>'+
+ '<div class="reg">OS '+(cpu.osCalls||0)+'</div>'+
+ '<div class="reg">'+(cpu.trap?cpu.trapMsg:"RUN")+'</div>';
+}
+function loadXex(){ram.fill(0);var bytes=decodeB64(b64);var p=0,count=0;while(p<bytes.length){if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;if(p+4>bytes.length)break;var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;var size=end-start+1;if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];p+=size;count++;}ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;for(var j=0;j<40*24;j++)ram[screenBase+j]=0;cpu=new CPU6502(ram);cpu.pc=runAddress;log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU08");renderRegs();renderVideo();}
+
+function CPU6502(mem){this.m=mem;this.a=0;this.x=0;this.y=0;this.sp=0xFD;this.p=0x24;this.pc=0;this.steps=0;this.trap=false;this.trapMsg="";this.trace=[];this.rand=0x5A;this.vcount=0;this.osCalls=0;this.rand=0x5A;this.trace=[];this.vcount=0;this.osCalls=0;}
+CPU6502.prototype.r=function(a){
+ a&=65535;
+
+ // Atari VCOUNT $D40B.
+ // Ve tvé intro smyčce je:
+ // $2390 LDA $D40B / CMP #$3C / BCC $2390
+ // Když VCOUNT vrací pořád 0, emulátor visí navždy.
+ if(a===0xD40B){
+   this.vcount=(this.vcount+3)&0x7F;
+   return this.vcount;
+ }
+
+ // Atari hardware input stubs
+ // $D300 PORTA joystick. Active low bits: 4=L, 8=R, 1=U, 2=D.
+ if(a===0xD300){
+   var v=0xFF;
+   if(input.left)v&=~0x04;
+   if(input.right)v&=~0x08;
+   return v&255;
+ }
+ // $D010 TRIG0 fire, active low
+ if(a===0xD010){return input.fire?0:1;}
+ // $D01F CONSOL: START/SELECT/OPTION active low. START bit = 1.
+ if(a===0xD01F){
+   var c=7;
+   if(input.start)c&=~1;
+   return c&7;
+ }
+
+ // RANDOM $D20A pseudo random
+ if(a===0xD20A){this.rand=((this.rand*17+23)&255);return this.rand;}
+ // ANTIC/GTIA/POKEY default read
+ if(a>=0xD000&&a<=0xD7FF)return 0;
+ return this.m[a];
+};
+CPU6502.prototype.w=function(a,v){
+ a&=65535; v&=255;
+ // WSYNC $D40A: počká na další scanline. Stub: posuň VCOUNT.
+ if(a===0xD40A){this.vcount=(this.vcount+1)&0x7F;}
+ this.m[a]=v;
+};
+CPU6502.prototype.push=function(v){this.w(0x100+(this.sp&255),v);this.sp=(this.sp-1)&255;};
+CPU6502.prototype.pull=function(){this.sp=(this.sp+1)&255;return this.r(0x100+(this.sp&255));};
+CPU6502.prototype.imm=function(){return this.r(this.pc++);};
+CPU6502.prototype.zp=function(){return this.imm()&255;};
+CPU6502.prototype.zpx=function(){return (this.imm()+this.x)&255;};
+CPU6502.prototype.zpy=function(){return (this.imm()+this.y)&255;};
+CPU6502.prototype.abs=function(){var lo=this.imm(),hi=this.imm();return lo|(hi<<8);};
+CPU6502.prototype.abx=function(){return (this.abs()+this.x)&65535;};
+CPU6502.prototype.aby=function(){return (this.abs()+this.y)&65535;};
+CPU6502.prototype.ind=function(){var a=this.abs();var lo=this.r(a);var hi=this.r((a&0xFF00)|((a+1)&255));return lo|(hi<<8);};
+CPU6502.prototype.izx=function(){var z=(this.imm()+this.x)&255;return this.r(z)|(this.r((z+1)&255)<<8);};
+CPU6502.prototype.izy=function(){var z=this.imm()&255;return ((this.r(z)|(this.r((z+1)&255)<<8))+this.y)&65535;};
+CPU6502.prototype.zn=function(v){v&=255;this.p=(this.p&~0x82)|(v===0?2:0)|(v&0x80);};
+CPU6502.prototype.setC=function(c){this.p=c?(this.p|1):(this.p&~1);};
+CPU6502.prototype.getC=function(){return this.p&1;};
+CPU6502.prototype.branch=function(cond){var o=this.imm();if(o&128)o-=256;if(cond)this.pc=(this.pc+o)&65535;};
+CPU6502.prototype.cmp=function(r,v){var t=(r-v)&511;this.setC(r>=v);this.zn(t&255);};
+CPU6502.prototype.adc=function(v){
+ v&=255;
+ var a=this.a;
+ var c=this.getC();
+ var t=a+v+c;
+ this.setC(t>255);
+ var r=t&255;
+ // overflow flag: sign of a and v same, sign of result different
+ if(((a^r)&(v^r)&0x80)!==0)this.p|=0x40; else this.p&=~0x40;
+ this.a=r;
+ this.zn(this.a);
+};
+CPU6502.prototype.sbc=function(v){this.adc((v^255)&255);};
+
+
+CPU6502.prototype.traceOp=function(pc,op){
+ var s="$"+hex(pc,4)+"  $"+hex(op,2);
+ this.trace.push(s);
+ if(this.trace.length>18)this.trace.shift();
+};
+CPU6502.prototype.aslVal=function(v){
+ this.setC(v&0x80);
+ v=(v<<1)&255;
+ this.zn(v);
+ return v;
+};
+CPU6502.prototype.lsrVal=function(v){
+ this.setC(v&1);
+ v=(v>>1)&255;
+ this.zn(v);
+ return v;
+};
+CPU6502.prototype.rolVal=function(v){
+ var c=this.getC();
+ this.setC(v&0x80);
+ v=((v<<1)&255)|c;
+ this.zn(v);
+ return v;
+};
+CPU6502.prototype.rorVal=function(v){
+ var c=this.getC();
+ this.setC(v&1);
+ v=(v>>1)|(c?0x80:0);
+ this.zn(v);
+ return v&255;
+};
+
+CPU6502.prototype.step=function(){
+ if(this.trap)return;
+ var pc0=this.pc;
+ var op=this.imm();
+ this.traceOp(pc0,op);
+ switch(op){
+  case 0xEA:break; case 0x78:break; case 0x58:break; case 0xD8:break; case 0xF8:break; case 0x18:this.setC(false);break; case 0x38:this.setC(true);break; case 0xB8:this.p&=~0x40;break;
+  case 0xA9:this.a=this.imm();this.zn(this.a);break; case 0xA5:this.a=this.r(this.zp());this.zn(this.a);break; case 0xB5:this.a=this.r(this.zpx());this.zn(this.a);break; case 0xAD:this.a=this.r(this.abs());this.zn(this.a);break; case 0xBD:this.a=this.r(this.abx());this.zn(this.a);break; case 0xB9:this.a=this.r(this.aby());this.zn(this.a);break; case 0xA1:this.a=this.r(this.izx());this.zn(this.a);break; case 0xB1:this.a=this.r(this.izy());this.zn(this.a);break;
+  case 0xA2:this.x=this.imm();this.zn(this.x);break; case 0xA6:this.x=this.r(this.zp());this.zn(this.x);break; case 0xB6:this.x=this.r(this.zpy());this.zn(this.x);break; case 0xAE:this.x=this.r(this.abs());this.zn(this.x);break; case 0xBE:this.x=this.r(this.aby());this.zn(this.x);break;
+  case 0xA0:this.y=this.imm();this.zn(this.y);break; case 0xA4:this.y=this.r(this.zp());this.zn(this.y);break; case 0xB4:this.y=this.r(this.zpx());this.zn(this.y);break; case 0xAC:this.y=this.r(this.abs());this.zn(this.y);break; case 0xBC:this.y=this.r(this.abx());this.zn(this.y);break;
+  case 0x85:this.w(this.zp(),this.a);break; case 0x95:this.w(this.zpx(),this.a);break; case 0x8D:this.w(this.abs(),this.a);break; case 0x9D:this.w(this.abx(),this.a);break; case 0x99:this.w(this.aby(),this.a);break; case 0x81:this.w(this.izx(),this.a);break; case 0x91:this.w(this.izy(),this.a);break;
+  case 0x86:this.w(this.zp(),this.x);break; case 0x96:this.w(this.zpy(),this.x);break; case 0x8E:this.w(this.abs(),this.x);break;
+  case 0x84:this.w(this.zp(),this.y);break; case 0x94:this.w(this.zpx(),this.y);break; case 0x8C:this.w(this.abs(),this.y);break;
+  case 0xAA:this.x=this.a;this.zn(this.x);break; case 0x8A:this.a=this.x;this.zn(this.a);break; case 0xA8:this.y=this.a;this.zn(this.y);break; case 0x98:this.a=this.y;this.zn(this.a);break; case 0xBA:this.x=this.sp;this.zn(this.x);break; case 0x9A:this.sp=this.x;break;
+  case 0xE8:this.x=(this.x+1)&255;this.zn(this.x);break; case 0xCA:this.x=(this.x-1)&255;this.zn(this.x);break; case 0xC8:this.y=(this.y+1)&255;this.zn(this.y);break; case 0x88:this.y=(this.y-1)&255;this.zn(this.y);break;
+  case 0xE6:{var a=this.zp(),v=(this.r(a)+1)&255;this.w(a,v);this.zn(v);break;} case 0xF6:{var a=this.zpx(),v=(this.r(a)+1)&255;this.w(a,v);this.zn(v);break;} case 0xEE:{var a=this.abs(),v=(this.r(a)+1)&255;this.w(a,v);this.zn(v);break;} case 0xFE:{var a=this.abx(),v=(this.r(a)+1)&255;this.w(a,v);this.zn(v);break;}
+  case 0xC6:{var a=this.zp(),v=(this.r(a)-1)&255;this.w(a,v);this.zn(v);break;} case 0xD6:{var a=this.zpx(),v=(this.r(a)-1)&255;this.w(a,v);this.zn(v);break;} case 0xCE:{var a=this.abs(),v=(this.r(a)-1)&255;this.w(a,v);this.zn(v);break;} case 0xDE:{var a=this.abx(),v=(this.r(a)-1)&255;this.w(a,v);this.zn(v);break;}
+  case 0x29:this.a&=this.imm();this.zn(this.a);break; case 0x25:this.a&=this.r(this.zp());this.zn(this.a);break; case 0x2D:this.a&=this.r(this.abs());this.zn(this.a);break;
+  case 0x09:this.a|=this.imm();this.zn(this.a);break; case 0x05:this.a|=this.r(this.zp());this.zn(this.a);break; case 0x0D:this.a|=this.r(this.abs());this.zn(this.a);break;
+  case 0x49:this.a^=this.imm();this.zn(this.a);break; case 0x45:this.a^=this.r(this.zp());this.zn(this.a);break; case 0x4D:this.a^=this.r(this.abs());this.zn(this.a);break;
+  case 0x69:this.adc(this.imm());break; case 0x65:this.adc(this.r(this.zp()));break; case 0x6D:this.adc(this.r(this.abs()));break;
+
+  // EMU-06 ADC full addressing modes
+  case 0x75:this.adc(this.r(this.zpx()));break;
+  case 0x7D:this.adc(this.r(this.abx()));break;
+  case 0x79:this.adc(this.r(this.aby()));break;
+  case 0x61:this.adc(this.r(this.izx()));break;
+  case 0x71:this.adc(this.r(this.izy()));break;
+
+  // EMU-06 SBC full addressing modes
+  case 0xF5:this.sbc(this.r(this.zpx()));break;
+  case 0xFD:this.sbc(this.r(this.abx()));break;
+  case 0xF9:this.sbc(this.r(this.aby()));break;
+  case 0xE1:this.sbc(this.r(this.izx()));break;
+  case 0xF1:this.sbc(this.r(this.izy()));break;
+
+  // EMU-06 AND/ORA/EOR indexed modes
+  case 0x35:this.a&=this.r(this.zpx());this.zn(this.a);break;
+  case 0x3D:this.a&=this.r(this.abx());this.zn(this.a);break;
+  case 0x39:this.a&=this.r(this.aby());this.zn(this.a);break;
+  case 0x21:this.a&=this.r(this.izx());this.zn(this.a);break;
+  case 0x31:this.a&=this.r(this.izy());this.zn(this.a);break;
+
+  case 0x15:this.a|=this.r(this.zpx());this.zn(this.a);break;
+  case 0x1D:this.a|=this.r(this.abx());this.zn(this.a);break;
+  case 0x19:this.a|=this.r(this.aby());this.zn(this.a);break;
+  case 0x01:this.a|=this.r(this.izx());this.zn(this.a);break;
+  case 0x11:this.a|=this.r(this.izy());this.zn(this.a);break;
+
+  case 0x55:this.a^=this.r(this.zpx());this.zn(this.a);break;
+  case 0x5D:this.a^=this.r(this.abx());this.zn(this.a);break;
+  case 0x59:this.a^=this.r(this.aby());this.zn(this.a);break;
+  case 0x41:this.a^=this.r(this.izx());this.zn(this.a);break;
+  case 0x51:this.a^=this.r(this.izy());this.zn(this.a);break;
+
+  // EMU-06 CMP indexed modes and CPX/CPY memory
+  case 0xD5:this.cmp(this.a,this.r(this.zpx()));break;
+  case 0xDD:this.cmp(this.a,this.r(this.abx()));break;
+  case 0xD9:this.cmp(this.a,this.r(this.aby()));break;
+  case 0xC1:this.cmp(this.a,this.r(this.izx()));break;
+  case 0xD1:this.cmp(this.a,this.r(this.izy()));break;
+  case 0xE4:this.cmp(this.x,this.r(this.zp()));break;
+  case 0xEC:this.cmp(this.x,this.r(this.abs()));break;
+  case 0xC4:this.cmp(this.y,this.r(this.zp()));break;
+  case 0xCC:this.cmp(this.y,this.r(this.abs()));break;
+
+  case 0xE9:this.sbc(this.imm());break; case 0xE5:this.sbc(this.r(this.zp()));break; case 0xED:this.sbc(this.r(this.abs()));break;
+  case 0xC9:this.cmp(this.a,this.imm());break; case 0xC5:this.cmp(this.a,this.r(this.zp()));break; case 0xCD:this.cmp(this.a,this.r(this.abs()));break; case 0xE0:this.cmp(this.x,this.imm());break; case 0xC0:this.cmp(this.y,this.imm());break;
+  case 0x24:{var v=this.r(this.zp());this.p=(this.p&~0xC2)|(v&0xC0)|((this.a&v)?0:2);break;} case 0x2C:{var v=this.r(this.abs());this.p=(this.p&~0xC2)|(v&0xC0)|((this.a&v)?0:2);break;}
+  case 0xD0:this.branch(!(this.p&2));break; case 0xF0:this.branch(this.p&2);break; case 0x90:this.branch(!(this.p&1));break; case 0xB0:this.branch(this.p&1);break; case 0x30:this.branch(this.p&0x80);break; case 0x10:this.branch(!(this.p&0x80));break; case 0x50:this.branch(!(this.p&0x40));break; case 0x70:this.branch(this.p&0x40);break;
+  case 0x4C:this.pc=this.abs();break; case 0x6C:this.pc=this.ind();break;
+  case 0x20:{
+    var a=this.abs();
+    // Atari OS ROM stub. Např. SETVBV $EF9C v PiTT-KiTT intro.
+    // Zatím ho bereme jako okamžitý návrat, aby CPU neskočilo do prázdné ROM.
+    if(a>=0xE000){this.osCalls++;break;}
+    var ret=(this.pc-1)&65535;
+    this.push((ret>>8)&255);this.push(ret&255);this.pc=a;break;
+  }
+  case 0x60:{var lo=this.pull(),hi=this.pull();this.pc=((lo|(hi<<8))+1)&65535;break;}
+  case 0x48:this.push(this.a);break; case 0x68:this.a=this.pull();this.zn(this.a);break; case 0x08:this.push(this.p|0x10);break; case 0x28:this.p=this.pull();break;
+
+  case 0x0A:this.a=this.aslVal(this.a);break;
+  case 0x06:{var a=this.zp(),v=this.aslVal(this.r(a));this.w(a,v);break;}
+  case 0x16:{var a=this.zpx(),v=this.aslVal(this.r(a));this.w(a,v);break;}
+  case 0x0E:{var a=this.abs(),v=this.aslVal(this.r(a));this.w(a,v);break;}
+  case 0x1E:{var a=this.abx(),v=this.aslVal(this.r(a));this.w(a,v);break;}
+
+  case 0x4A:this.a=this.lsrVal(this.a);break;
+  case 0x46:{var a=this.zp(),v=this.lsrVal(this.r(a));this.w(a,v);break;}
+  case 0x56:{var a=this.zpx(),v=this.lsrVal(this.r(a));this.w(a,v);break;}
+  case 0x4E:{var a=this.abs(),v=this.lsrVal(this.r(a));this.w(a,v);break;}
+  case 0x5E:{var a=this.abx(),v=this.lsrVal(this.r(a));this.w(a,v);break;}
+
+  case 0x2A:this.a=this.rolVal(this.a);break;
+  case 0x26:{var a=this.zp(),v=this.rolVal(this.r(a));this.w(a,v);break;}
+  case 0x36:{var a=this.zpx(),v=this.rolVal(this.r(a));this.w(a,v);break;}
+  case 0x2E:{var a=this.abs(),v=this.rolVal(this.r(a));this.w(a,v);break;}
+  case 0x3E:{var a=this.abx(),v=this.rolVal(this.r(a));this.w(a,v);break;}
+
+  case 0x6A:this.a=this.rorVal(this.a);break;
+  case 0x66:{var a=this.zp(),v=this.rorVal(this.r(a));this.w(a,v);break;}
+  case 0x76:{var a=this.zpx(),v=this.rorVal(this.r(a));this.w(a,v);break;}
+  case 0x6E:{var a=this.abs(),v=this.rorVal(this.r(a));this.w(a,v);break;}
+  case 0x7E:{var a=this.abx(),v=this.rorVal(this.r(a));this.w(a,v);break;}
+
+  case 0x00:this.trap=true;this.trapMsg="BRK at $"+hex(pc0,4);break;
+  default:this.trap=true;this.trapMsg="Unsupported opcode $"+hex(op,2)+" at $"+hex(pc0,4);break;
+ }
+ // RTCLOK tick: zero page $14
+ if((this.steps&63)===0){this.m[0x14]=(this.m[0x14]+1)&255;}
+ this.steps++;
+};
+
+function stepCpu(){if(!cpu)loadXex();cpu.step();renderRegs();renderVideo();if(cpu.trap)log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));}
+function runCpu(n){if(!cpu)loadXex();var start=cpu.steps;for(var i=0;i<n&&!cpu.trap;i++)cpu.step();renderRegs();if(cpu.trap)log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));else {log("Ran "+(cpu.steps-start)+" instructions. PC=$"+hex(cpu.pc,4));detectLoop();}}
+
+
+function bootGameStart(){
+ if(!cpu)loadXex();
+ input.start=true;renderInput();
+ var oldTrap=cpu.trap;
+ var i=0;
+ // Drží START, dokud neopustíme intro oblast kolem $22xx/$23xx nebo dokud není OS call.
+ while(i<220000 && !cpu.trap && cpu.osCalls<1){
+   cpu.step(); i++;
+   if(cpu.pc>=0x239A && cpu.pc<0x3000 && cpu.steps>1000) break;
+ }
+ input.start=false;renderInput();
+ // Doběhni kus hry po uvolnění START
+ for(var j=0;j<120000 && !cpu.trap;j++) cpu.step();
+ renderRegs();renderVideo();detectLoop();
+ if(cpu.trap)log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));
+ else log("BOOT GAME done. Ran "+i+" start-held steps. PC=$"+hex(cpu.pc,4)+" OS="+(cpu.osCalls||0)+" SAVMSC=$"+hex((ram[0x58]|(ram[0x59]<<8)),4));
+}
+function runVideoFrame(){
+ if(!cpu)loadXex();
+ runCpu(24000);
+ renderVideo();
+}
+function getDlistPtr(){
+ var s=ram[0x230]|(ram[0x231]<<8);
+ var h=ram[0xD402]|(ram[0xD403]<<8);
+ if(s>=0x2000&&s<0x4000)return s;
+ if(h>=0x2000&&h<0x4000)return h;
+ return 0;
+}
+function screenChar(v){
+ v&=127;
+ if(v===0)return " ";
+ if(v>=0x21&&v<=0x3A)return String.fromCharCode(65+v-0x21);
+ if(v>=0x10&&v<=0x19)return String.fromCharCode(48+v-0x10);
+ if(v===0x0E)return ".";
+ if(v===0x0C)return ",";
+ if(v===0x1A)return ":";
+ if(v===0x1B)return ";";
+ if(v===0x1C)return "!";
+ if(v===0x1D)return "?";
+ if(v===0x1E)return "-";
+ if(v===0x1F)return " ";
+ return " ";
+}
+function atariColor(v,fallback){
+ // Hrubý převod Atari barvy na web barvu. Není to finální GTIA paleta.
+ v&=255;
+ var hue=(v>>4)&15;
+ var lum=v&15;
+ var l=18+lum*4;
+ var palette=[
+  [30,30,30],[70,45,25],[120,35,20],[120,70,20],
+  [120,100,25],[70,120,35],[30,120,70],[25,115,115],
+  [25,75,135],[35,45,135],[70,35,130],[110,35,110],
+  [135,35,70],[150,55,55],[120,100,80],[180,180,180]
+ ];
+ var p=palette[hue]||palette[0];
+ var f=(lum+3)/18;
+ var r=Math.min(255,Math.floor(p[0]*f+l));
+ var g=Math.min(255,Math.floor(p[1]*f+l));
+ var b=Math.min(255,Math.floor(p[2]*f+l));
+ return "rgb("+r+","+g+","+b+")";
+}
+function colorSet(){
+ return {
+   p0: atariColor(ram[0x02C4]||0x00, "#202020"),
+   p1: atariColor(ram[0x02C5]||0x0F, "#2aff8f"),
+   p2: atariColor(ram[0x02C6]||0x76, "#fff7e3"),
+   p3: atariColor(ram[0x02C7]||0x34, "#d7b76a"),
+   bk: atariColor(ram[0x02C8]||0x04, "#050403")
+ };
+}
+
+function pmgInfo(){
+ var pm=ram[0xD407]<<8;
+ var h0=ram[0xD000],h1=ram[0xD001],h2=ram[0xD002],h3=ram[0xD003];
+ var s0=ram[0xD008],s1=ram[0xD009],s2=ram[0xD00A],s3=ram[0xD00B];
+ return "PMBASE $"+hex(pm,4)+" HPOS "+h0+","+h1+","+h2+","+h3+" SIZE "+s0+","+s1+","+s2+","+s3;
+}
+function pmgScale(v){
+ v&=3;
+ if(v===1)return 2;
+ if(v===3)return 4;
+ return 1;
+}
+function playerColor(p,cs){
+ var c=ram[0x02C0+p];
+ if(c===0)c=ram[0xD012+p]||0;
+ if(c===0){
+   if(p===0)return "#ff2020";
+   if(p===1)return "#2aff8f";
+   if(p===2)return "#78a6ff";
+   return "#ffe3a3";
+ }
+ return atariColor(c);
+}
+function renderPMGOverlay(g,cs){
+ var pm=ram[0xD407]<<8;
+ var drawn=0;
+ // běžné single-line PMG rozložení: missiles + $300, players + $400,$500,$600,$700
+ if(pm<0x0400 || pm>0xF000){
+   // Fallback: pokud PMBASE ještě není nastavený, aspoň zobraz HPOS registry jako diagnostiku.
+   for(var fp=0;fp<4;fp++){
+     var hx=ram[0xD000+fp];
+     if(hx){
+       g.fillStyle=playerColor(fp,cs);
+       g.fillRect((hx-48)*2,130+fp*8,22,6);
+       drawn+=1;
+     }
+   }
+   return drawn;
+ }
+
+ for(var p=0;p<4;p++){
+   var hpos=ram[0xD000+p];
+   var size=pmgScale(ram[0xD008+p]);
+   var col=playerColor(p,cs);
+   var base=pm+0x400+p*0x100;
+   var x0=(hpos-48)*2;
+   if(hpos===0)x0=0;
+   g.fillStyle=col;
+   for(var y=0;y<192;y++){
+     var b=ram[(base+y)&65535];
+     if(!b)continue;
+     for(var bit=0;bit<8;bit++){
+       if(b&(0x80>>bit)){
+         g.fillRect(x0+bit*size*2,y,size*2,1);
+         drawn++;
+       }
+     }
+   }
+ }
+
+ // Missiles: jednoduché 2bit zobrazení, společná paměť pm+$300
+ var mbase=pm+0x300;
+ var msize=ram[0xD00C]&3;
+ var mscale=pmgScale(msize);
+ var mcolors=["#ff2020","#2aff8f","#78a6ff","#ffe3a3"];
+ for(var y2=0;y2<192;y2++){
+   var mb=ram[(mbase+y2)&65535];
+   if(!mb)continue;
+   for(var mi=0;mi<4;mi++){
+     var pair=(mb>>(6-mi*2))&3;
+     if(pair){
+       var mh=ram[0xD004+mi];
+       var mx=(mh-48)*2;
+       g.fillStyle=mcolors[mi];
+       g.fillRect(mx,y2,mscale*2,1);
+       drawn++;
+     }
+   }
+ }
+
+ return drawn;
+}
+function renderPMGOnly(){
+ var c=document.getElementById("video");
+ if(!c)return;
+ var g=c.getContext("2d");
+ g.fillStyle="#000";g.fillRect(0,0,320,192);
+ var cs=colorSet();
+ var d=renderPMGOverlay(g,cs);
+ g.fillStyle="#ff6b9a";
+ g.font="10px monospace";
+ g.fillText("PMG ONLY "+pmgInfo()+" PIX "+d,4,188);
+ log("Rendered PMG only. "+pmgInfo()+" pixels="+d);
+}
+
+function renderVideo(){
+ if(cpu && cpu.pc>=0x2400)renderGame2bpp();
+ else {
+   var d=getDlistPtr();
+   if(d)renderAnticDisplay();
+   else renderGame2bpp();
+ }
+}
+function renderAnticDisplay(){
+ var c=document.getElementById("video");
+ if(!c)return;
+ var g=c.getContext("2d");
+ var cs=colorSet();
+ g.fillStyle=cs.bk;g.fillRect(0,0,320,192);
+ var dl=getDlistPtr();
+ if(!dl){renderGame2bpp();return;}
+ var y=0, safety=0, textLines=0;
+ g.font="8px monospace";
+ g.textBaseline="top";
+ while(y<188 && safety++<180){
+   var op=ram[dl++&65535];
+   if(op===0x41){
+     var lo=ram[dl++&65535],hi=ram[dl++&65535];
+     dl=lo|(hi<<8);
+     break;
+   }
+   if((op&0x70)===0x70 && (op&0x0F)===0){
+     var blank=((op>>4)&7)+1;
+     g.fillStyle=cs.bk;g.fillRect(0,y,320,blank*8);
+     y+=blank*8;
+     continue;
+   }
+   var mode=op&0x0F;
+   var addr=0;
+   if(op&0x40){
+     var lo2=ram[dl++&65535],hi2=ram[dl++&65535];
+     addr=lo2|(hi2<<8);
+   }
+   if(mode===2){
+     g.fillStyle=cs.p1;
+     g.fillRect(0,y,320,8);
+     var line="";
+     for(var i=0;i<40;i++)line+=screenChar(ram[(addr+i)&65535]);
+     g.fillStyle="#050403";
+     g.fillText(line,3,y);
+     y+=8;textLines++;
+   }else{
+     // fallback raw mode: 40 bytes as 2bit row
+     if(addr===0)addr=(ram[0x58]|(ram[0x59]<<8))+(textLines*40);
+     draw2bppRow(g,addr,y,cs);
+     y+=2;
+   }
+ }
+ // PMG scanner hint z intra
+ var hp0=ram[0xD000]||0, hp1=ram[0xD001]||0, hp2=ram[0xD002]||0, hp3=ram[0xD003]||0;
+ if(hp0||hp1||hp2||hp3){
+   g.fillStyle="rgba(255,0,0,.75)";
+   var yy=70;
+   g.fillRect(hp0,yy,6,8);g.fillRect(hp1,yy,6,8);g.fillRect(hp2,yy,6,8);g.fillRect(hp3,yy,6,8);
+ }
+ var pmgPixA=renderPMGOverlay(g,cs); // PMG overlay ANTIC
+ g.fillStyle="#ff6b9a";
+ g.font="10px monospace";
+ g.fillText("DLIST $"+hex(dl,4)+" SDLST $"+hex(getDlistPtr(),4)+" PMG "+pmgPixA+" PC $"+(cpu?hex(cpu.pc,4):"----"),4,188);
+ log("Rendered ANTIC display list. SDLST=$"+hex(getDlistPtr(),4));
+}
+function draw2bppRow(g,addr,y,cs){
+ var pixColors=[cs.p0,cs.p1,cs.p2,cs.p3];
+ for(var col=0;col<40;col++){
+   var v=ram[(addr+col)&65535];
+   for(var p=0;p<4;p++){
+     var val=(v>>(6-p*2))&3;
+     g.fillStyle=pixColors[val];
+     g.fillRect((col*4+p)*2,y,2,2);
+   }
+ }
+}
+function renderGame2bpp(){
+ var c=document.getElementById("video");
+ if(!c)return;
+ var g=c.getContext("2d");
+ var cs=colorSet();
+ g.fillStyle=cs.bk;g.fillRect(0,0,320,192);
+ var base=ram[0x58]|(ram[0x59]<<8);
+ if(!base)base=screenBase;
+ for(var row=0;row<96;row++){
+   draw2bppRow(g,(base+row*40)&65535,row*2,cs);
+ }
+ // jednoduchý PMG náhled KITT/scanner, pokud hra zapisuje pozice
+ var px=ram[0xD000]||ram[0xD001]||0;
+ if(px){
+   g.fillStyle="rgba(255,0,0,.85)";
+   g.fillRect(px,142,24,4);
+ }
+ var pmgPixG=renderPMGOverlay(g,cs); // PMG overlay GAME
+ g.fillStyle="#ff6b9a";
+ g.font="10px monospace";
+ g.fillText("2BPP SAVMSC $"+hex(base,4)+" PMG "+pmgPixG+" PC $"+(cpu?hex(cpu.pc,4):"----")+" SDLST $"+hex(getDlistPtr(),4),4,188);
+ log("Rendered GAME 2BPP. SAVMSC=$"+hex(base,4)+" PC=$"+(cpu?hex(cpu.pc,4):"----"));
+}
+
+function renderInput(){
+ document.getElementById("inputState").textContent="START="+(input.start?"ON":"off")+" FIRE="+(input.fire?"ON":"off")+" LEFT="+(input.left?"ON":"off")+" RIGHT="+(input.right?"ON":"off");
+}
+function pressStart(v){input.start=!!v;
+function tapStartLong(){
+ if(!cpu)loadXex();
+ input.start=true;renderInput();
+ runCpu(60000);
+ input.start=false;renderInput();
+ log("START long released. PC=$"+hex(cpu.pc,4)+" VC=$"+hex(cpu.vcount||0,2));
+}
+function showDisasmHint(){
+ log("VCOUNT WAIT FOUND:\\n$2390 LDA $D40B\\n$2393 CMP #$3C\\n$2395 BCC $2390\\n$2397 JMP $22C7\\nTakze EMU-04 visel, protoze VCOUNT byl stale 0.");
+}
+
+renderInput();return false;}
+function pressFire(v){input.fire=!!v;renderInput();return false;}
+function pressLeft(v){input.left=!!v;if(v)input.right=false;renderInput();return false;}
+function pressRight(v){input.right=!!v;if(v)input.left=false;renderInput();return false;}
+function tapStart(){if(!cpu)loadXex();input.start=true;renderInput();runCpu(3000);input.start=false;renderInput();runCpu(3000);}
+function tapFire(){if(!cpu)loadXex();input.fire=true;renderInput();runCpu(3000);input.fire=false;renderInput();runCpu(3000);}
+function runFrame(){if(!cpu)loadXex();runCpu(20000);detectLoop();}
+function detectLoop(){
+ if(!cpu)return;
+ lastPCs.push(cpu.pc);
+ if(lastPCs.length>12)lastPCs.shift();
+ var counts={},i,k,best="",bestn=0;
+ for(i=0;i<lastPCs.length;i++){k=hex(lastPCs[i],4);counts[k]=(counts[k]||0)+1;if(counts[k]>bestn){bestn=counts[k];best=k;}}
+ if(bestn>=4)log("LOOP? PC repeatedly near $"+best+" / try START or FIRE");
+}
+renderInput();
+
+renderSegments();renderRegs();
+</script>
+</body>
+</html>

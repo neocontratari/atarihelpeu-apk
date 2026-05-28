@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 108
-        versionName "EMU-08-antic-display-lab"
+        versionCode 109
+        versionName "EMU-09-pmg-gtia-overlay"
     }
 }
