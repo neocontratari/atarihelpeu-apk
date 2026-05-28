@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX5 FAST / PiTT-KiTT emulator</title>
+<title>EMU-09 FIX6 PLAY INTRO AUDIO / PiTT-KiTT emulator</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,16 +22,16 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX5 FAST / PiTT-KiTT</h1>
-<p>Rychlejší herní režim z ověřeného EMU09/FIX4. Debug běží jen na vyžádání, canvas se kreslí rychle přes framebuffer a CPU smyčka má časový limit, aby mobilní WebView nezamrzal.</p>
+<h1>EMU-09 FIX6 PLAY INTRO AUDIO / PiTT-KiTT</h1>
+<p>Herní režim z EMU09/FIX5, ale už bez tvrdého startovacího skoku přes intro. Emulátor běží postupně přes requestAnimationFrame, umí textové intro/konec přes display list, hru přes 2BPP framebuffer a přidává první jednoduchý POKEY zvuk.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
 <section class="card">
 <h2>PiTT-KiTT emulator</h2>
-<p>Soubor <b>PiTT-KiTT-NaP-Final.xex</b> je uvnitř APK. Tlačítko níže načte XEX, podrží START, skočí do hry a spustí plynulejší CPU + video smyčku s mobilním časovým limitem.</p>
+<p>Soubor <b>PiTT-KiTT-NaP-Final.xex</b> je uvnitř APK. Tlačítko níže spustí emulátor od skutečného začátku — nejdřív intro. Do hry přejdeš tlačítkem START, takže už neděláme velký blokující skok při spuštění.</p>
 <div class="halfgrid">
-<button onclick="startPlaying()">▶ SPUSTIT EMULÁTOR</button>
+<button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
 </div>
 <div class="halfgrid">
@@ -43,8 +43,9 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="setPlaySpeed('normal')">NORMÁL</button>
 <button class="secondary compact" onclick="setPlaySpeed('fast')">RYCHLEJI</button>
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
+<button class="secondary compact" onclick="toggleAudio()">ZVUK ON/OFF</button>
 </div>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT EMULÁTOR.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO.</div>
 </section>
 
 <section class="card">
@@ -62,7 +63,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Obraz Atari</h2>
-<p>Playfield běží ze SAVMSC $6000 a auto/střela přes PMG overlay. FIX5 při hraní neaktualizuje debug DOM a kreslí playfield přes rychlý framebuffer.</p>
+<p>Intro/konec jedou přes ANTIC display list, hra přes SAVMSC $6000 a PMG overlay. V herní smyčce se neplní log, aby se WebView nezadusil.</p>
 <canvas id="video" class="gameCanvas" width="320" height="192"></canvas>
 </section>
 
@@ -93,7 +94,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX5 navazuje na FIX4, ale řeší kousání na mobilu: méně DOM zápisů, rychlejší vykreslování playfieldu, žádné logování během hraní a CPU časový rozpočet na snímek.</p>
+<p>FIX6 navazuje na FIX5: start už není blokovací, intro/konec se renderují jako textové display listy, hra se renderuje jako 2BPP framebuffer a POKEY registry jdou do jednoduchého WebAudio zvuku.</p>
 </section>
 </div>
 
@@ -108,12 +109,15 @@ var playMode=false;
 var playLoopId=0;
 var playBooted=false;
 var playFrameNo=0;
-var playCyclesPerFrame=4200;
-var playMaxMsPerFrame=7;
+var playCyclesPerFrame=7600;
+var playMaxMsPerFrame=10;
 var playLastRan=0;
 var playFrameMs=0;
 var fastVideo=true;
 var gameImageData=null;
+var xexCache=null;
+var introDl=0x2003, loseDl=0x2021, winDl=0x2036, hiDl=0x204B;
+var audioCtx=null,audioMaster=null,audioNodes=null,audioWanted=true,audioReady=false;
 var rgbCache={};
 var lastPCs=[];
 var screenBase=0x6000;
@@ -139,7 +143,27 @@ function renderRegs(){
  '<div class="reg">OS '+(cpu.osCalls||0)+'</div>'+
  '<div class="reg">'+(cpu.trap?cpu.trapMsg:"RUN")+'</div>';
 }
-function loadXex(){ram.fill(0);writeSeen=new Uint8Array(65536);var bytes=decodeB64(b64);var p=0,count=0;while(p<bytes.length){if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;if(p+4>bytes.length)break;var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;var size=end-start+1;if(end<start||p+size>bytes.length){log("BAD XEX segment");break;}for(var i=0;i<size;i++)ram[(start+i)&65535]=bytes[p+i];p+=size;count++;}ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;for(var j=0;j<40*24;j++)ram[screenBase+j]=0;cpu=new CPU6502(ram);cpu.pc=runAddress;log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX5-PLAY-FAST");renderRegs();renderVideo();}
+function loadXex(light){
+ ram.fill(0);writeSeen=new Uint8Array(65536);
+ var bytes=xexCache||(xexCache=decodeB64(b64));
+ var p=0,count=0;
+ while(p<bytes.length){
+   if(p+2<=bytes.length&&bytes[p]===255&&bytes[p+1]===255)p+=2;
+   if(p+4>bytes.length)break;
+   var start=bytes[p]|(bytes[p+1]<<8);var end=bytes[p+2]|(bytes[p+3]<<8);p+=4;
+   var size=end-start+1;
+   if(end<start||p+size>bytes.length){if(!light)log("BAD XEX segment");break;}
+   ram.set(bytes.subarray(p,p+size),start&65535);
+   p+=size;count++;
+ }
+ ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;
+ for(var j=0;j<40*24;j++)ram[screenBase+j]=0;
+ cpu=new CPU6502(ram);cpu.pc=runAddress;
+ if(!light){
+   log("XEX loaded. Segments: "+count+", PC/RUNAD=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex(screenBase,4)+" renderer=EMU09-FIX6-INTRO-AUDIO");
+   renderRegs();renderVideo();
+ }
+}
 
 function CPU6502(mem){this.m=mem;this.a=0;this.x=0;this.y=0;this.sp=0xFD;this.p=0x24;this.pc=0;this.steps=0;this.trap=false;this.trapMsg="";this.trace=[];this.rand=0x5A;this.vcount=0;this.osCalls=0;this.rand=0x5A;this.trace=[];this.vcount=0;this.osCalls=0;}
 CPU6502.prototype.r=function(a){
@@ -368,21 +392,14 @@ function runCpu(n){if(!cpu)loadXex();var start=cpu.steps;for(var i=0;i<n&&!cpu.t
 
 
 function bootGameStart(){
- if(!cpu)loadXex();
+ // Legacy servisní skok: nechávám jen krátký, aby mobil nezamrzl. Hlavní režim používá normální běh přes START.
+ if(!cpu)loadXex(true);
  input.start=true;renderInput();
- var oldTrap=cpu.trap;
- var i=0;
- // Drží START, dokud neopustíme intro oblast kolem $22xx/$23xx nebo dokud není OS call.
- while(i<220000 && !cpu.trap && cpu.osCalls<1){
-   cpu.step(); i++;
-   if(cpu.pc>=0x239A && cpu.pc<0x3000 && cpu.steps>1000) break;
- }
+ var i=runCpuBudget(24000,8);
  input.start=false;renderInput();
- // Doběhni kus hry po uvolnění START. FIX5: kratší blok, ať mobil nezamrzne při startu.
- for(var j=0;j<18000 && !cpu.trap;j++) cpu.step();
  renderRegs();renderVideo();detectLoop();
  if(cpu.trap)log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));
- else log("BOOT GAME done. Ran "+i+" start-held steps. PC=$"+hex(cpu.pc,4)+" OS="+(cpu.osCalls||0)+" SAVMSC=$"+hex((ram[0x58]|(ram[0x59]<<8)),4));
+ else log("BOOT service pulse done. Ran "+i+" steps. PC=$"+hex(cpu.pc,4)+" SAVMSC=$"+hex((ram[0x58]|(ram[0x59]<<8)),4));
 }
 function runVideoFrame(){
  if(!cpu)loadXex();
@@ -645,12 +662,9 @@ function renderPMGDebugColors(){
 }
 
 function renderVideo(){
- if(cpu && cpu.pc>=0x2400)renderGame2bpp();
- else {
-   var d=getDlistPtr();
-   if(d)renderAnticDisplay();
-   else renderGame2bpp();
- }
+ var d=getDlistPtr();
+ if(d && isTextDlist(d))renderAnticDisplay();
+ else renderGame2bpp();
 }
 function renderAnticDisplay(){
  var c=document.getElementById("video");
@@ -700,10 +714,12 @@ function renderAnticDisplay(){
  // FIX3: žádné ruční červené debug obdélníky; PMG kreslí jen skutečný overlay.
  pmgOnlyContrast=false;
  var pmgPixA=renderPMGOverlay(g,cs,!playMode); // PMG overlay ANTIC
- g.fillStyle="#ff6b9a";
- g.font="10px monospace";
- g.fillText("DLIST $"+hex(dl,4)+" SDLST $"+hex(getDlistPtr(),4)+" PMG "+pmgPixA+" PC $"+(cpu?hex(cpu.pc,4):"----"),4,188);
- log("Rendered ANTIC display list. SDLST=$"+hex(getDlistPtr(),4));
+ if(!playMode){
+   g.fillStyle="#ff6b9a";
+   g.font="10px monospace";
+   g.fillText("DLIST $"+hex(dl,4)+" SDLST $"+hex(getDlistPtr(),4)+" PMG "+pmgPixA+" PC $"+(cpu?hex(cpu.pc,4):"----"),4,188);
+   log("Rendered ANTIC display list. SDLST=$"+hex(getDlistPtr(),4));
+ }
 }
 
 function rgbFromCss(css){
@@ -780,6 +796,68 @@ function renderGame2bpp(){
 }
 
 
+
+function ensureAudio(){
+ if(!audioWanted)return false;
+ try{
+   var AC=window.AudioContext||window.webkitAudioContext;
+   if(!AC)return false;
+   if(!audioCtx){
+     audioCtx=new AC();
+     audioMaster=audioCtx.createGain();
+     audioMaster.gain.value=0.22;
+     audioMaster.connect(audioCtx.destination);
+     audioNodes=[];
+     for(var i=0;i<4;i++){
+       var osc=audioCtx.createOscillator();
+       var gain=audioCtx.createGain();
+       osc.type='square';
+       osc.frequency.value=220;
+       gain.gain.value=0;
+       osc.connect(gain);gain.connect(audioMaster);osc.start();
+       audioNodes.push({osc:osc,gain:gain});
+     }
+   }
+   if(audioCtx.state==='suspended')audioCtx.resume();
+   audioReady=true;return true;
+ }catch(e){audioReady=false;return false;}
+}
+function toggleAudio(){
+ audioWanted=!audioWanted;
+ if(audioWanted)ensureAudio();
+ if(audioMaster)audioMaster.gain.value=audioWanted?0.22:0;
+ updatePlayStatus('Zvuk: '+(audioWanted?(audioReady?'ON':'čeká na povolení'):'OFF'));
+}
+function pokeyFreq(auDF){
+ var f=1789790/(28*((auDF&255)+1));
+ if(f<30)f=30;if(f>2400)f=2400;
+ return f;
+}
+function updateAudioFromPokey(){
+ if(!audioWanted||!audioNodes||!audioCtx)return;
+ var regs=[[0xD200,0xD201],[0xD202,0xD203],[0xD204,0xD205],[0xD206,0xD207]];
+ var t=audioCtx.currentTime;
+ for(var i=0;i<4;i++){
+   var auDF=ram[regs[i][0]]&255, auDC=ram[regs[i][1]]&255;
+   var vol=(auDC&15)/15;
+   if(auDC===0)vol=0;
+   var target=vol*0.045;
+   try{
+     audioNodes[i].osc.frequency.setTargetAtTime(pokeyFreq(auDF),t,0.012);
+     audioNodes[i].gain.gain.setTargetAtTime(target,t,0.018);
+   }catch(e){
+     audioNodes[i].osc.frequency.value=pokeyFreq(auDF);
+     audioNodes[i].gain.gain.value=target;
+   }
+ }
+}
+function fadeAudioOff(){
+ if(!audioNodes||!audioCtx)return;
+ var t=audioCtx.currentTime;
+ for(var i=0;i<audioNodes.length;i++)audioNodes[i].gain.gain.setTargetAtTime(0,t,0.04);
+}
+function isTextDlist(dl){return dl===loseDl||dl===winDl||dl===hiDl||(dl===introDl&&cpu&&cpu.pc<0x2400);}
+
 function scoreText(){
  if(!cpu)return "000";
  var lo=ram[0xBD]||0, hi=ram[0xC1]||0;
@@ -789,19 +867,23 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT EMULÁTOR.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO.";return;}
+ var base=ram[0x58]|(ram[0x59]<<8);
+ var dl=getDlistPtr();
+ var mode=(dl&&isTextDlist(dl))?'ANTIC text':'2BPP game';
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
-   "  PC $"+hex(cpu.pc,4)+"  kroky "+cpu.steps+
+   "  "+mode+"  PC $"+hex(cpu.pc,4)+"  kroky "+cpu.steps+
    "\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)+
+   "\nlast "+playLastRan+" ops / "+playFrameMs.toFixed(1)+"ms  SAVMSC $"+hex(base,4)+"  speed "+playCyclesPerFrame+"  video "+(fastVideo?"FAST":"SAFE")+"  zvuk "+(audioWanted?(audioReady?"ON":"čeká"):"OFF")+
    (extra?"\n"+extra:"");
 }
 function runCpuQuiet(n){
- if(!cpu)loadXex();
+ if(!cpu)loadXex(true);
  for(var i=0;i<n && !cpu.trap;i++)cpu.step();
  return i;
 }
 function runCpuBudget(target,maxMs){
- if(!cpu)loadXex();
+ if(!cpu)loadXex(true);
  var t0=(typeof performance!=="undefined"&&performance.now)?performance.now():Date.now();
  var i=0;
  for(;i<target && !cpu.trap;i++){
@@ -826,23 +908,22 @@ function toggleFastVideo(){
  updatePlayStatus('Video renderer: '+(fastVideo?'FAST framebuffer':'SAFE fillRect'));
 }
 function startPlaying(){
- if(!cpu)loadXex();
- if(!playBooted){
-   bootGameStart();
-   playBooted=true;
- }
+ if(!cpu)loadXex(true);
+ ensureAudio();
  playMode=true;
- updatePlayStatus("Herní smyčka spuštěná.");
+ playBooted=true;
+ updatePlayStatus("Emulátor běží od začátku. Intro nechávám žít, do hry přejdi tlačítkem START.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
- if(!playMode){playLoopId=0;return;}
+ if(!playMode){playLoopId=0;fadeAudioOff();return;}
  playLastRan=runCpuBudget(playCyclesPerFrame,playMaxMsPerFrame);
- renderGame2bpp();
+ renderVideo();
+ updateAudioFromPokey();
  playFrameNo++;
  if((playFrameNo&15)===0)updatePlayStatus();
  if(cpu && cpu.trap){
-   playMode=false;playLoopId=0;
+   playMode=false;playLoopId=0;fadeAudioOff();
    log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));
    updatePlayStatus(cpu.trapMsg);
    return;
@@ -850,29 +931,28 @@ function playLoop(){
  playLoopId=requestAnimationFrame(playLoop);
 }
 function pausePlaying(){
- playMode=false;
+ playMode=false;fadeAudioOff();
  if(playLoopId){cancelAnimationFrame(playLoopId);playLoopId=0;}
  updatePlayStatus("Pozastaveno.");
 }
 function resetPlaying(){
  pausePlaying();
  playBooted=false;
- loadXex();
- updatePlayStatus("Resetováno, připraveno znovu spustit.");
+ loadXex(false);
+ updatePlayStatus("Resetováno. Dej SPUSTIT / INTRO.");
 }
 function singleFramePlay(){
- if(!cpu)loadXex();
- if(!playBooted){bootGameStart();playBooted=true;}
+ if(!cpu)loadXex(true);
  var old=playMode;playMode=true;
  runCpuQuiet(playCyclesPerFrame);
- renderGame2bpp();renderRegs();updatePlayStatus("Jeden snímek.");
+ renderVideo();renderRegs();updatePlayStatus("Jeden snímek.");
  playMode=old;
 }
 function renderInput(){
  var e=document.getElementById("inputState");
  if(e)e.textContent="START="+(input.start?"ON":"off")+" FIRE="+(input.fire?"ON":"off")+" LEFT="+(input.left?"ON":"off")+" RIGHT="+(input.right?"ON":"off")+" JUMP="+(input.jump?"ON":"off");
 }
-function pressStart(v){input.start=!!v;renderInput();return false;}
+function pressStart(v){if(v)ensureAudio();input.start=!!v;renderInput();return false;}
 function tapStartLong(){
  if(!cpu)loadXex();
  input.start=true;renderInput();
@@ -883,13 +963,13 @@ function tapStartLong(){
 function showDisasmHint(){
  log("VCOUNT WAIT FOUND:\n$2390 LDA $D40B\n$2393 CMP #$3C\n$2395 BCC $2390\n$2397 JMP $22C7\nTakze EMU-04 visel, protoze VCOUNT byl stale 0.");
 }
-function pressFire(v){input.fire=!!v;renderInput();return false;}
+function pressFire(v){if(v)ensureAudio();input.fire=!!v;renderInput();return false;}
 function pressJump(v){input.jump=!!v;renderInput();return false;}
 function pressLeft(v){input.left=!!v;if(v)input.right=false;renderInput();return false;}
 function pressRight(v){input.right=!!v;if(v)input.left=false;renderInput();return false;}
-function tapStart(){if(!cpu)loadXex();input.start=true;renderInput();runCpu(3000);input.start=false;renderInput();runCpu(3000);}
-function tapFire(){if(!cpu)loadXex();input.fire=true;renderInput();runCpu(3000);input.fire=false;renderInput();runCpu(3000);}
-function runFrame(){if(!cpu)loadXex();runCpu(20000);detectLoop();}
+function tapStart(){if(!cpu)loadXex(true);input.start=true;renderInput();runCpu(3000);input.start=false;renderInput();runCpu(3000);}
+function tapFire(){if(!cpu)loadXex(true);input.fire=true;renderInput();runCpu(3000);input.fire=false;renderInput();runCpu(3000);}
+function runFrame(){if(!cpu)loadXex(true);runCpu(20000);detectLoop();}
 function detectLoop(){
  if(!cpu)return;
  lastPCs.push(cpu.pc);
