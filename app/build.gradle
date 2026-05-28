@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 101
-        versionName "EMU-01-xex-lab"
+        versionCode 102
+        versionName "EMU-02-6502-step"
     }
 }
