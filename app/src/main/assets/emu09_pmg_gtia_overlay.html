@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX21 RIVER WIDE PLAYFIELD / PiTT-KiTT + River Raid</title>
+<title>EMU-09 FIX22 RIVER PMG + TAP INPUTS / PiTT-KiTT + River Raid</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,8 +22,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX21 RIVER WIDE PLAYFIELD</h1>
-<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX21 opravuje další zásadní past u River Raid: DMACTL=$3F znamená široké playfield řádky 48 bajtů, ne 40. Renderer teď u Riveru čte široký obraz a ořízne viditelný střed jako Atari.</p>
+<h1>EMU-09 FIX22 RIVER PMG + TAP INPUTS</h1>
+<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX22 přidává River renderer s PMG po scanline/DLI a přidává krátké TAP START/TAP FIRE pulsy pro hry, které visí na „PRESS START OR FIRE“.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -44,7 +44,11 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 </div>
 <div class="halfgrid">
 <button class="secondary" onclick="loadBuiltinRiverRaid()">🌊 TEST RIVER RAID XEX</button>
+<button class="secondary" onclick="loadBuiltinSuperCobra()">🚁 TEST SUPER COBRA XEX</button>
+</div>
+<div class="halfgrid">
 <button class="secondary" onclick="compatibilitySnapshot()">📋 KOMPATIBILITA / SNAPSHOT</button>
+<button class="secondary" onclick="tapStartPulse();setTimeout(tapFirePulse,180);">TAP START+FIRE</button>
 </div>
 <input id="xexFile" class="inlineFile" type="file" accept=".xex,.XEX,application/octet-stream" onchange="handleXexFile(this.files&&this.files[0])">
 <div id="xexName" class="fileLine">XEX: PiTT-KiTT-NaP-Final.xex / vestavěný</div>
@@ -57,7 +61,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX21 River wide playfield.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX22 River PMG + TAP inputs.</div>
 </section>
 
 <section class="card">
@@ -66,7 +70,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="192"></canvas>
 <div class="controlPanel">
 <h2>Atari ovládání</h2>
-<p class="controlHint">Při rekordu: ▲ mění písmeno nahoru, ▼ mění dolů, FIRE potvrzuje další znak jedním klepnutím. RIGHT je jen joystick ve hře, aby podpis neutekl do intra.</p>
+<p class="controlHint">Při rekordu: ▲/▼ mění písmeno, FIRE potvrzuje jedním klepnutím. Pro cizí hry použij krátké TAP START / TAP FIRE, když visí na PRESS START OR FIRE.</p>
 <div class="padgrid">
 <button class="secondary" onpointerdown="return pressUp(true)" onpointerup="return pressUp(false)" onpointercancel="return pressUp(false)" onpointerleave="return pressUp(false)">▲ NAHORU<br><span class="muted">písmeno +</span></button>
 <button class="secondary" onpointerdown="return pressStart(true)" onpointerup="return pressStart(false)" onpointercancel="return pressStart(false)" onpointerleave="return pressStart(false)">START<br><span class="muted">držet</span></button>
@@ -76,6 +80,10 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary" onpointerdown="return pressRight(true)" onpointerup="return pressRight(false)" onpointercancel="return pressRight(false)" onpointerleave="return pressRight(false)">RIGHT ▶<br><span class="muted">řízení ve hře</span></button>
 </div>
 <p id="inputState" class="inputReadout"></p>
+<div class="halfgrid">
+<button class="secondary compact" onclick="tapStartPulse()">TAP START<br><span class="muted">krátký puls</span></button>
+<button class="secondary compact" onclick="tapFirePulse()">TAP FIRE<br><span class="muted">krátký puls</span></button>
+</div>
 </div>
 </section>
 
@@ -107,7 +115,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX21 nechává PiTT-KiTT jako kontrolní hru a posouvá River Raid dál: ANTIC wide playfield přes DMACTL=$3F už používá 48b stride a viditelný ořez.</p>
+<p>FIX22 nechává PiTT-KiTT jako kontrolní hru, River Raid dostal speciální renderer: wide playfield, DLI snapshot barev a scanline PMG. Pro Cobru a další hry jsou přidané krátké TAP START/TAP FIRE pulsy.</p>
 </section>
 </div>
 
@@ -118,6 +126,7 @@ var segments=[{"start": 8192, "end": 15341, "size": 7150}, {"start": 736, "end":
 var runAddress=8730;
 var ram=new Uint8Array(65536);
 var cpu=null;
+var superCobraB64="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";
 var input={start:false,fire:false,left:false,right:false,up:false,jump:false};
 var playMode=false;
 var playLoopId=0;
@@ -215,8 +224,18 @@ function loadBuiltinRiverRaid(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="River Raid.xex / vestavěný test";
  loadXex(false);
- updatePlayStatus("Načten River Raid test. FIX17 ho spustí automaticky, protože samotné načtení XEXu ještě není běh CPU.");
+ updatePlayStatus("Načten River Raid test. FIX22 ho spustí automaticky. Když stojí na startu, zkus TAP START nebo TAP FIRE.");
  scheduleAutoStartLoadedXex("River Raid");
+}
+function loadBuiltinSuperCobra(){
+ fullStop();clearInputState();
+ customXexBytes=decodeB64(superCobraB64);
+ xexCache=null;
+ var ff=document.getElementById("xexFile");if(ff)ff.value="";
+ currentXexName="Super Cobra.xex / vestavěný test";
+ loadXex(false);
+ updatePlayStatus("Načten Super Cobra test. Autostart běží; pokud zůstane na PRESS START OR FIRE, použij TAP START nebo TAP FIRE.");
+ scheduleAutoStartLoadedXex("Super Cobra");
 }
 function handleXexFile(file){
  if(!file)return;
@@ -255,10 +274,12 @@ function detectXexProfile(bytes,entry,runVec){
  if((runVec&65535)===0x221A && bytes && bytes.length>=6500 && bytes.length<=9000)return "pitt";
  if(nm.indexOf("river")>=0 || nm.indexOf("raid")>=0)return "river";
  if((entry&65535)===0x4000 && bytes && bytes.length>=7000 && bytes.length<=7600)return "river";
+ if(nm.indexOf("cobra")>=0)return "cobra";
  return "generic";
 }
 function isPiTTProfile(){return activeXexProfile==="pitt";}
 function isRiverProfile(){return activeXexProfile==="river";}
+function isCobraProfile(){return activeXexProfile==="cobra";}
 function isHighScoreInputScreen(){
  var dl1=(ram[0x230]|(ram[0x231]<<8))&65535;
  var dl2=(ram[0xD402]|(ram[0xD403]<<8))&65535;
@@ -378,7 +399,7 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX21-RIVER-WIDE-PLAYFIELD");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX22-RIVER-PMG-TAP-INPUTS");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -426,8 +447,12 @@ CPU6502.prototype.r=function(a){
    return 1;
  }
 
- // POKEY SKSTAT $D20F: v klidu jsou důležité bity nahozené. Nula znamenala pro River špatný vstupní stav.
+ // POKEY SKSTAT $D20F: v klidu jsou důležité bity nahozené. Nula znamenala pro River/Cobru špatný vstupní stav.
  if(a===0xD20F){
+   return 0xFF;
+ }
+ // KBCODE $D209: žádná klávesa. Některé hry testují klávesnici před START/FIRE.
+ if(a===0xD209){
    return 0xFF;
  }
 
@@ -913,7 +938,7 @@ function playfield2bppCssColors(cs){
 function playfield2bppRgbColors(cs){return playfield2bppCssColors(cs).map(rgbFromCss);}
 
 function genericBitmapCssColors(mode,cs){
- // PiTT-KiTT má vlastní renderer. River Raid ve FIX21 řeší hlavně DMACTL wide stride 48;
+ // PiTT-KiTT má vlastní renderer. River Raid ve FIX22 řeší hlavně DMACTL wide stride 48;
  // pro první čitelnou verzi Riveru používáme dočasnou River paletu pro mode $E.
  if(isRiverProfile() && (mode===14 || mode===15 || mode===13 || mode===12)){
    var rc=riverModeECssColors(cs); if(rc)return rc;
@@ -1145,6 +1170,9 @@ function renderVideo(){
    else renderGame2bpp();
    return;
  }
+ if(isRiverProfile()){
+   if(renderRiverRaidDisplay())return;
+ }
  // Generic XEX: nikdy nespadnout do PiTT-KiTT herního rendereru, protože ten předpokládá SAVMSC=$6000 a PMG auta.
  if(d && dlistLooksValid(d)){renderAnticDisplay();return;}
  renderGenericFallback();
@@ -1164,6 +1192,9 @@ function playfieldWidthCode(){
  return v||2;
 }
 function lineStrideBytes(mode){
+ // River Raid má wide playfield i ve chvíli, kdy DLI dočasně přepíše DMACTL.
+ // Pro mode $E proto profilově držíme 48 bajtů na scanline, jinak se obraz rozsype do pruhů.
+ if(isRiverProfile() && (mode===14 || mode===15 || mode===13 || mode===12))return 48;
  var base=baseBytesPerMode(mode);
  var w=playfieldWidthCode();
  if(base===40)return w===3?48:(w===1?32:40);
@@ -1173,6 +1204,7 @@ function lineStrideBytes(mode){
 }
 function visibleOffsetBytes(mode){
  // Wide playfield má extra bajty vlevo/vpravo. Canvas ukazuje normální viditelný střed.
+ if(isRiverProfile() && (mode===14 || mode===15 || mode===13 || mode===12))return 4;
  var base=baseBytesPerMode(mode), stride=lineStrideBytes(mode);
  if(stride>base)return ((stride-base)/2)|0;
  return 0;
@@ -1314,6 +1346,169 @@ function img2bppLine(data,addr,y,cols,h){
    }
  }
 }
+
+var riverDliCache=null;
+var riverDliCacheFrame=-999;
+function regsToColorSetFromDli(regs){
+ // regs je snapshot $D000-$D01A. U Riveru je voda často v COLPF1 a břehy/zem v dalších PF registrech.
+ if(!regs)return null;
+ return {
+   p0: atariColor(regs[0x16]||0),
+   p1: atariColor(regs[0x17]||0),
+   p2: atariColor(regs[0x18]||0),
+   p3: atariColor(regs[0x19]||0),
+   bk: atariColor(regs[0x1A]||0)
+ };
+}
+function riverDliColors(regs){
+ // Dočasně držíme čitelnou River paletu, ale DLI snapshotem budeme mít správné PMG/HPOS.
+ // Hodnoty pixelů v River obrazovce: 1=zem, 2=břeh, 3=voda. 0 je hlavně bezpečné pozadí/černá.
+ return [rgbFromCss('#000000'), rgbFromCss(atariColor(0xC4)), rgbFromCss(atariColor(0x32)), rgbFromCss(atariColor(0x8E))];
+}
+function captureRiverDliStates(){
+ if(!isRiverProfile() || !cpu)return [];
+ if(riverDliCache && riverDliCacheFrame===playFrameNo)return riverDliCache;
+ var dli=(ram[0x0200]|(ram[0x0201]<<8))&65535;
+ if(!goodEntry(dli))return [];
+ var origW=CPU6502.prototype.w;
+ var cap=[];
+ var capture=true;
+ CPU6502.prototype.w=function(a,v){
+   origW.call(this,a,v);
+   if(!capture)return;
+   a&=65535;
+   if(a===0xD40A){
+     cap.push({vc:this.vcount&0x7F, regs:Array.prototype.slice.call(ram,0xD000,0xD01B)});
+   }
+ };
+ try{
+   runAsyncAtariRoutine(dli,'RIVER DLI CAP $'+hex(dli,4),18000,0x00);
+ }catch(e){
+   if(!asyncIrqLogOnce['RIVERDLICAPERR']){asyncIrqLogOnce['RIVERDLICAPERR']=true;log('River DLI capture error: '+e);}
+ }
+ capture=false;
+ CPU6502.prototype.w=origW;
+ if(!cap.length){cap.push({vc:0, regs:Array.prototype.slice.call(ram,0xD000,0xD01B)});}
+ riverDliCache=cap;
+ riverDliCacheFrame=playFrameNo;
+ return cap;
+}
+function riverRegsForY(caps,y){
+ if(!caps || !caps.length)return null;
+ // River DLI rutina zapisuje přes WSYNC. Nejstabilnější pro náš mini renderer je mapovat snapshoty podle pořadí řádků.
+ var idx=y|0;
+ if(idx<0)idx=0;
+ if(idx>=caps.length)idx=caps.length-1;
+ return caps[idx].regs;
+}
+function img2bppLineRiver(data,addr,y,cols){
+ if(y<0||y>=192)return;
+ for(var col=0;col<40;col++){
+   var v=ram[(addr+col)&65535]&255;
+   var x=col*8;
+   for(var p=0;p<4;p++){
+     var rgb=cols[(v>>(6-p*2))&3];
+     var off=(y*320+x+p*2)*4;
+     data[off]=rgb[0];data[off+1]=rgb[1];data[off+2]=rgb[2];data[off+3]=255;
+     data[off+4]=rgb[0];data[off+5]=rgb[1];data[off+6]=rgb[2];data[off+7]=255;
+   }
+ }
+}
+function riverPlayerColorFromRegs(regs,p){
+ var v=regs ? (regs[0x12+p]&255) : playerColorValue(p);
+ return rgbFromCss(atariColor(v));
+}
+function riverHposToX(h){return Math.round(((h&255)-48)*2);}
+function imgSetPx(data,x,y,rgb){
+ if(x<0||x>=320||y<0||y>=192)return;
+ var o=(y*320+x)*4;data[o]=rgb[0];data[o+1]=rgb[1];data[o+2]=rgb[2];data[o+3]=255;
+}
+function drawRiverPmgLine(data,y,regs){
+ if(!regs)return 0;
+ var pm=(ram[0xD407]||0)<<8;
+ if(pm<0x0400||pm>0xF000)return 0;
+ var single=true; // River používá single-line PMG při DMACTL=$3F.
+ var rawY=(y+48)&255;
+ var drawn=0;
+ // Missiles: $PMBASE+$300, 2 bity na missile. Použij hpos/size z DLI snapshotu.
+ var mb=ram[(pm+0x300+rawY)&65535]&255;
+ var sizem=regs[0x0C]&255;
+ var mcols=[riverPlayerColorFromRegs(regs,0),riverPlayerColorFromRegs(regs,1),riverPlayerColorFromRegs(regs,2),riverPlayerColorFromRegs(regs,3)];
+ for(var mi=0;mi<4;mi++){
+   var pair=(mb>>(mi*2))&3;
+   if(!pair)continue;
+   var mx=riverHposToX(regs[0x04+mi]||0);
+   var ms=pmgScale((sizem>>(mi*2))&3)*2;
+   for(var b=0;b<2;b++)if(pair&(1<<b)){
+     for(var ww=0;ww<ms;ww++)imgSetPx(data,mx+b*ms+ww,y,mcols[mi]);
+     drawn++;
+   }
+ }
+ // Players: $PMBASE+$400 + p*$100. River je přeposouvá DLI, proto se nesmí brát jen poslední HPOS.
+ for(var pl=0;pl<4;pl++){
+   var bval=ram[(pm+0x400+pl*0x100+rawY)&65535]&255;
+   if(!bval)continue;
+   var h=regs[pl]||0;
+   if(!h)continue;
+   var x0=riverHposToX(h);
+   var scale=pmgScale(regs[0x08+pl]||0)*2;
+   var col=riverPlayerColorFromRegs(regs,pl);
+   for(var bit=0;bit<8;bit++)if(bval&(0x80>>bit)){
+     var xx=x0+bit*scale;
+     for(var ww2=0;ww2<scale;ww2++)imgSetPx(data,xx+ww2,y,col);
+     drawn++;
+   }
+ }
+ return drawn;
+}
+function renderRiverRaidDisplay(){
+ var dl=getDlistPtr();
+ if(!dl || !dlistLooksValid(dl))return false;
+ var c=document.getElementById('video'); if(!c)return false;
+ var g=c.getContext('2d');
+ if(!anticImageData)anticImageData=g.createImageData(320,192);
+ var d=anticImageData.data;
+ imgFillRect(d,0,0,320,192,rgbFromCss('#000000'));
+ var caps=captureRiverDliStates();
+ var y=0,safety=0,scanAddr=0,textLines=0;
+ var p=dl&65535;
+ var pmgDrawn=0;
+ while(y<192 && safety++<260){
+   var op=ram[p++&65535], mode=op&0x0F;
+   if(mode===1){p=(p+2)&65535;break;}
+   if(mode===0){
+     var blank=((op>>4)&7)+1;
+     // PMG může být vidět i přes blank/hud mezery, ale playfield zůstává černý.
+     for(var by=0;by<blank && y<192;by++,y++)pmgDrawn+=drawRiverPmgLine(d,y,riverRegsForY(caps,y));
+     continue;
+   }
+   if(op&0x40){var lo=ram[p++&65535],hi=ram[p++&65535];scanAddr=lo|(hi<<8);}
+   if(!scanAddr)scanAddr=((ram[0x58]|(ram[0x59]<<8))+(textLines*48))&65535;
+   var h=scanlinesForMode(mode);
+   var stride=lineStrideBytes(mode);
+   var visAddr=(scanAddr+visibleOffsetBytes(mode))&65535;
+   for(var sy=0;sy<Math.max(1,h) && y<192;sy++,y++){
+     var regs=riverRegsForY(caps,y);
+     var cs=regsToColorSetFromDli(regs)||colorSet();
+     if(mode===2 || mode===3){imgTextLine(d,visAddr,y,rgbFromCss(cs.p1),rgbFromCss(cs.bk),40,1);}
+     else if(mode===6 || mode===7){imgTextLine(d,visAddr,y,rgbFromCss(cs.p1),rgbFromCss(cs.bk),20,1);}
+     else if(mode===4 || mode===5){imgMode4Line(d,visAddr,y,sy,[rgbFromCss(cs.bk),rgbFromCss(cs.p0),rgbFromCss(cs.p1),rgbFromCss(cs.p2),rgbFromCss(cs.p3)]);}
+     else if(mode===14 || mode===15 || mode===13 || mode===12){img2bppLineRiver(d,visAddr,y,riverDliColors(regs));}
+     else {img2bppLine(d,visAddr,y,genericBitmapRgbColors(mode,cs),1);}
+     pmgDrawn+=drawRiverPmgLine(d,y,regs);
+   }
+   scanAddr=(scanAddr+stride)&65535;
+   textLines++;
+ }
+ g.putImageData(anticImageData,0,0);
+ if(!playMode){
+   var gg=c.getContext('2d');gg.fillStyle='#ff6b9a';gg.font='10px monospace';
+   gg.fillText('RIVER FIX22 DLI '+caps.length+' PMG '+pmgDrawn+' DL $'+hex(dl,4),4,188);
+   log('Rendered River FIX22 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' DL=$'+hex(dl,4));
+ }
+ return true;
+}
+
 function renderAnticDisplayFastGeneric(){
  var c=document.getElementById("video");
  if(!c)return false;
@@ -1568,7 +1763,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX21 River wide playfield.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX22 River PMG + TAP inputs.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -1579,7 +1774,7 @@ function updatePlayStatus(extra){
  }
  var gameLine=isPiTTProfile()?
    ("\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)):
-   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER VIDEO wide PF: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" PMG=$"+hex((ram[0xD407]||0)<<8,4):""));
+   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX22: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" PMG=$"+hex((ram[0xD407]||0)<<8,4)+" DLIcap="+(riverDliCache?riverDliCache.length:0):""));
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
    "\nXEX "+currentXexName+gameLine+
@@ -1691,14 +1886,14 @@ function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
- lines.push("COMPAT SNAPSHOT FIX21");
+ lines.push("COMPAT SNAPSHOT FIX22");
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
  lines.push("DLIST=$"+hex(dl||0,4)+" SAVMSC=$"+hex(base,4)+" NMIEN=$"+hex(ram[0xD40E]||0,2)+" VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" DLI=$"+hex((ram[0x0200]|(ram[0x0201]<<8))&65535,4));
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
- if(isRiverProfile())lines.push("RIVER FIX21: TRIG1-3 vrací 1, SKSTAT $FF. DMACTL wide playfield: mode $E stride 48, crop 4 bytes; voda/země mají dočasnou River paletu.");
+ if(isRiverProfile())lines.push("RIVER FIX22: TRIG1-3=1, SKSTAT=$FF, wide playfield stride/crop, DLI snapshot pro barvy/PMG a scanline PMG overlay.");
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
@@ -1723,7 +1918,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX21: PiTT-KiTT je chráněný referenční profil, River má wide playfield stride/crop.");
+ updatePlayStatus("Emulátor běží. FIX22: PiTT-KiTT je chráněný referenční profil, River má wide playfield + DLI/PMG scanline renderer.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
@@ -1778,8 +1973,19 @@ function pressUp(v){input.up=!!v;renderInput();return false;}
 function pressJump(v){input.jump=!!v;renderInput();return false;}
 function pressLeft(v){input.left=!!v;if(v)input.right=false;renderInput();return false;}
 function pressRight(v){input.right=!!v;if(v)input.left=false;renderInput();return false;}
-function tapStart(){if(!cpu)loadXex(true);input.start=true;renderInput();runCpu(3000);input.start=false;renderInput();runCpu(3000);}
-function tapFire(){if(!cpu)loadXex(true);input.fire=true;renderInput();runCpu(3000);input.fire=false;renderInput();runCpu(3000);}
+function pulseInput(which,ms){
+ if(!cpu)loadXex(true);
+ ensureAudio();
+ if(!playMode)startPlaying();
+ input[which]=true;renderInput();
+ var hold=ms||90;
+ setTimeout(function(){input[which]=false;if(which==='fire')hiFireArmed=true;renderInput();},hold);
+ return false;
+}
+function tapStartPulse(){return pulseInput('start',95);}
+function tapFirePulse(){return pulseInput('fire',95);}
+function tapStart(){return tapStartPulse();}
+function tapFire(){return tapFirePulse();}
 function runFrame(){if(!cpu)loadXex(true);runCpu(20000);detectLoop();}
 function detectLoop(){
  if(!cpu)return;
