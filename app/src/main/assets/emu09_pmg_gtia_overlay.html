@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX22 RIVER PMG + TAP INPUTS / PiTT-KiTT + River Raid</title>
+<title>EMU-09 FIX23 COLLISION + COBRA START / PiTT-KiTT + River Raid</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,8 +22,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX22 RIVER PMG + TAP INPUTS</h1>
-<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX22 přidává River renderer s PMG po scanline/DLI a přidává krátké TAP START/TAP FIRE pulsy pro hry, které visí na „PRESS START OR FIRE“.</p>
+<h1>EMU-09 FIX23 COLLISION + COBRA START</h1>
+<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX23 opravuje čtení GTIA collision registrů, aby River neumíral při řízení, a opravuje profil Cobry + krátké TAP pulsy pro START/FIRE.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -61,7 +61,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX22 River PMG + TAP inputs.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX23 Collision + Cobra start.</div>
 </section>
 
 <section class="card">
@@ -115,7 +115,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX22 nechává PiTT-KiTT jako kontrolní hru, River Raid dostal speciální renderer: wide playfield, DLI snapshot barev a scanline PMG. Pro Cobru a další hry jsou přidané krátké TAP START/TAP FIRE pulsy.</p>
+<p>FIX23 nechává PiTT-KiTT jako kontrolní hru. River má wide playfield + PMG, navíc nulové GTIA collision čtení proti falešné smrti. Cobra má opravenou detekci profilu a START/FIRE pulsy.</p>
 </section>
 </div>
 
@@ -224,7 +224,7 @@ function loadBuiltinRiverRaid(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="River Raid.xex / vestavěný test";
  loadXex(false);
- updatePlayStatus("Načten River Raid test. FIX22 ho spustí automaticky. Když stojí na startu, zkus TAP START nebo TAP FIRE.");
+ updatePlayStatus("Načten River Raid test. FIX23 ho spustí automaticky. Když stojí na startu, zkus TAP START nebo TAP FIRE.");
  scheduleAutoStartLoadedXex("River Raid");
 }
 function loadBuiltinSuperCobra(){
@@ -272,9 +272,10 @@ function detectXexProfile(bytes,entry,runVec){
  var nm=(currentXexName||"").toLowerCase();
  if(nm.indexOf("pitt")>=0 || nm.indexOf("kitt")>=0)return "pitt";
  if((runVec&65535)===0x221A && bytes && bytes.length>=6500 && bytes.length<=9000)return "pitt";
- if(nm.indexOf("river")>=0 || nm.indexOf("raid")>=0)return "river";
- if((entry&65535)===0x4000 && bytes && bytes.length>=7000 && bytes.length<=7600)return "river";
  if(nm.indexOf("cobra")>=0)return "cobra";
+ if(nm.indexOf("river")>=0 || nm.indexOf("raid")>=0)return "river";
+ // River Raid XEX je cca 7.2 KB. Cobra je taky okolo 7 KB, proto musí být Cobra podle jména před touto heuristikou.
+ if((entry&65535)===0x4000 && bytes && bytes.length>=7150 && bytes.length<=7600)return "river";
  return "generic";
 }
 function isPiTTProfile(){return activeXexProfile==="pitt";}
@@ -385,6 +386,11 @@ function loadXex(light){
    playCyclesPerFrame=5200;
    playMaxMsPerFrame=8;
    genericRenderEvery=1;
+ }else if(activeXexProfile==="cobra"){
+   // Cobra už nemá spadnout do River profilu. Běží přes obecný DLIST a lehký frame-sync hack níže.
+   playCyclesPerFrame=5200;
+   playMaxMsPerFrame=8;
+   genericRenderEvery=2;
  }else if(activeXexProfile==="generic"){
    // Cizí XEXy zatím kreslíme opatrněji, aby mobilní WebView nezamrzl při složitějším DLISTu.
    if(playCyclesPerFrame>3600)playCyclesPerFrame=3600;
@@ -399,12 +405,24 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX22-RIVER-PMG-TAP-INPUTS");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX23-COLLISION-COBRA-START");
    renderSegments();renderRegs();renderVideo();
  }
 }
 
 function CPU6502(mem){this.m=mem;this.a=0;this.x=0;this.y=0;this.sp=0xFD;this.p=0x24;this.pc=0;this.steps=0;this.trap=false;this.trapMsg="";this.trace=[];this.rand=0x5A;this.vcount=0;this.osCalls=0;this.rand=0x5A;this.trace=[];this.vcount=0;this.osCalls=0;}
+function emuStick0State(){
+ var v=0xFF;
+ if(input.up)v&=~0x01;
+ if(input.jump)v&=~0x02;
+ if(input.left)v&=~0x04;
+ if(input.right && !isHighScoreInputScreen())v&=~0x08;
+ return v&255;
+}
+function emuTrigState(n){
+ if(n===0 && input.fire)return 0;
+ return 1;
+}
 CPU6502.prototype.r=function(a){
  a&=65535;
 
@@ -420,12 +438,15 @@ CPU6502.prototype.r=function(a){
  // Atari hardware input stubs
  // $D300 PORTA joystick. Active low bits: 4=L, 8=R, 1=U, 2=D.
  if(a===0xD300){
-   var v=0xFF;
-   if(input.up)v&=~0x01;     // joystick UP: high-score písmeno nahoru
-   if(input.jump)v&=~0x02;   // joystick DOWN: ve hře SKOK, v high-score písmeno dolů
-   if(input.left)v&=~0x04;
-   if(input.right && !isHighScoreInputScreen())v&=~0x08;  // ve high-score RIGHT NEPOTVRZUJE; OK je jen FIRE, aby se nepřeskočily všechny 3 znaky
-   return v&255;
+   return emuStick0State();
+ }
+ // OS shadow STICK0-STICK3. Spousta cizích XEXů nečte přímo PORTA, ale tyhle RAM adresy, které by normálně obnovoval Atari OS VBI.
+ if(a>=0x0278 && a<=0x027B){
+   return (a===0x0278)?emuStick0State():0xFF;
+ }
+ // OS shadow STRIG0-STRIG3. Důležité pro obrazovky typu PRESS START OR FIRE.
+ if(a>=0x0284 && a<=0x0287){
+   return emuTrigState(a-0x0284);
  }
  // $D010 TRIG0 fire, active low
  if(a===0xD010){
@@ -439,6 +460,11 @@ CPU6502.prototype.r=function(a){
    }
    hiFireArmed=true;
    return 1;
+ }
+ // GTIA collision registry read area $D000-$D00F. Stejné adresy jsou při zápisu HPOS/SIZE/GRAF, ale při čtení to nejsou tyto hodnoty.
+ // Když jsme vraceli poslední zapsané HPOS/SIZE, River po LEFT/RIGHT viděl falešnou kolizi a okamžitě umíral.
+ if(a>=0xD000 && a<=0xD00F){
+   return 0;
  }
  // $D011-$D013 jsou TRIG1-TRIG3 při čtení. Klidový stav je 1.
  // River Raid je čte hned vedle TRIG0; když jsme tu vraceli 0, hra si myslela, že je stále stisknutý další trigger
@@ -454,6 +480,10 @@ CPU6502.prototype.r=function(a){
  // KBCODE $D209: žádná klávesa. Některé hry testují klávesnici před START/FIRE.
  if(a===0xD209){
    return 0xFF;
+ }
+ // CH / keyboard shadow. V klidu $FF. U některých menu pomůže, když FIRE krátce připomíná SPACE, ale jen přes TAP/aktuální dotyk.
+ if(a===0x02FC){
+   return input.fire ? 0x21 : 0xFF;
  }
 
  // $D01F CONSOL: START/SELECT/OPTION active low. START bit = 1.
@@ -1503,8 +1533,8 @@ function renderRiverRaidDisplay(){
  g.putImageData(anticImageData,0,0);
  if(!playMode){
    var gg=c.getContext('2d');gg.fillStyle='#ff6b9a';gg.font='10px monospace';
-   gg.fillText('RIVER FIX22 DLI '+caps.length+' PMG '+pmgDrawn+' DL $'+hex(dl,4),4,188);
-   log('Rendered River FIX22 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' DL=$'+hex(dl,4));
+   gg.fillText('RIVER FIX23 DLI '+caps.length+' PMG '+pmgDrawn+' DL $'+hex(dl,4),4,188);
+   log('Rendered River FIX23 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' DL=$'+hex(dl,4));
  }
  return true;
 }
@@ -1763,7 +1793,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX22 River PMG + TAP inputs.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX23 Collision + Cobra start.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -1774,7 +1804,7 @@ function updatePlayStatus(extra){
  }
  var gameLine=isPiTTProfile()?
    ("\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)):
-   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX22: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" PMG=$"+hex((ram[0xD407]||0)<<8,4)+" DLIcap="+(riverDliCache?riverDliCache.length:0):""));
+   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX23: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" PMG=$"+hex((ram[0xD407]||0)<<8,4)+" DLIcap="+(riverDliCache?riverDliCache.length:0):""));
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
    "\nXEX "+currentXexName+gameLine+
@@ -1879,6 +1909,11 @@ function runFrameInterrupts(){
      frameIrqRan+=frameDliRan;
    }
  }
+ // Super Cobra port čeká v hlavní smyčce na nulování frame latch $A1. V plném Atari to udělá časování/NMI,
+ // tady zatím dáváme jemný profilový stub, aby se nezasekla na LOOP? $A0E2.
+ if(isCobraProfile() && ram[0x00A1]){
+   ram[0x00A1]=0;
+ }
 }
 
 function nonZeroRange(addr,len){var n=0;for(var i=0;i<len;i++)if(ram[(addr+i)&65535])n++;return n;}
@@ -1886,14 +1921,14 @@ function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
- lines.push("COMPAT SNAPSHOT FIX22");
+ lines.push("COMPAT SNAPSHOT FIX23");
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
  lines.push("DLIST=$"+hex(dl||0,4)+" SAVMSC=$"+hex(base,4)+" NMIEN=$"+hex(ram[0xD40E]||0,2)+" VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" DLI=$"+hex((ram[0x0200]|(ram[0x0201]<<8))&65535,4));
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
- if(isRiverProfile())lines.push("RIVER FIX22: TRIG1-3=1, SKSTAT=$FF, wide playfield stride/crop, DLI snapshot pro barvy/PMG a scanline PMG overlay.");
+ if(isRiverProfile())lines.push("RIVER FIX23: collision registry read $D000-$D00F vrací 0 proti falešné smrti; wide playfield/PMG zůstává.");
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
@@ -1918,7 +1953,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX22: PiTT-KiTT je chráněný referenční profil, River má wide playfield + DLI/PMG scanline renderer.");
+ updatePlayStatus("Emulátor běží. FIX23: PiTT-KiTT chráněný, River má collision fix, Cobra profil + frame latch START/FIRE fix.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
@@ -1982,8 +2017,8 @@ function pulseInput(which,ms){
  setTimeout(function(){input[which]=false;if(which==='fire')hiFireArmed=true;renderInput();},hold);
  return false;
 }
-function tapStartPulse(){return pulseInput('start',95);}
-function tapFirePulse(){return pulseInput('fire',95);}
+function tapStartPulse(){return pulseInput('start',180);}
+function tapFirePulse(){return pulseInput('fire',180);}
 function tapStart(){return tapStartPulse();}
 function tapFire(){return tapFirePulse();}
 function runFrame(){if(!cpu)loadXex(true);runCpu(20000);detectLoop();}
