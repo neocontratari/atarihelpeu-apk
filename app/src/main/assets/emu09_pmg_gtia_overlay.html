@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX27 CORE TEST SUITE / PiTT-KiTT + River + Pitstop + Arkanoid</title>
+<title>EMU-09 FIX28 CORE TEST SUITE / PiTT-KiTT + River + Pitstop + Arkanoid</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,8 +22,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX27 CORE TEST SUITE</h1>
-<p>PiTT-KiTT je zamražený jako referenční hra. FIX27 přidává CORE TEST SUITE: River Raid jako střední test, Pitstop II jako hlavní těžší test a Arkanoid III jako extra tvrdý test. Cíl není lepit jednu hru, ale sbírat stejnou diagnostiku pro obecné Atari jádro.</p>
+<h1>EMU-09 FIX28 CORE TEST SUITE</h1>
+<p>PiTT-KiTT je zamražený jako referenční hra. FIX28 přidává CORE TEST SUITE: River Raid jako střední test, Pitstop II jako hlavní těžší test a Arkanoid III jako extra tvrdý test. Cíl není lepit jednu hru, ale sbírat stejnou diagnostiku pro obecné Atari jádro.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -65,7 +65,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX27 Core Test Suite: PiTT-KiTT / River / Pitstop II / Arkanoid III / vlastní XEX.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX28 Core Rebase: PiTT-KiTT / River / Pitstop II / Arkanoid III / vlastní XEX.</div>
 </section>
 
 <section class="card">
@@ -123,7 +123,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX27 je testovací laboratoř jádra: jedna diagnostika pro více XEXů. Pitstop II jsem vybral jako hlavní těžší test, protože má čistší XEX strukturu než Arkanoid III; Arkanoid III je přibalený jako extra tvrdý test.</p>
+<p>FIX28 je korekce jádra po testu Pitstop II / Arkanoid III: opravený RUNAD i pod $0200, scanline ANTIC renderer a lepší univerzální diagnostika bez River-hackování.</p>
 </section>
 </div>
 
@@ -179,13 +179,14 @@ function log(s){var e=document.getElementById("log");e.textContent=s+"\n"+e.text
 function decodeB64(s){var raw=atob(s);var a=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i)&255;return a;}
 function getActiveXexBytes(){return customXexBytes||(xexCache||(xexCache=decodeB64(b64)));}
 function setXexName(){var e=document.getElementById("xexName");if(e)e.textContent="XEX: "+currentXexName;}
-function clearInputState(){input.start=false;input.fire=false;input.left=false;input.right=false;input.up=false;input.jump=false;hiFireArmed=true;renderInput();}
+function clearInputState(){input.start=false;input.fire=false;input.left=false;input.right=false;input.up=false;input.jump=false;input.select=false;input.option=false;hiFireArmed=true;renderInput();}
 function isVectorOnlySegment(sg){return sg.start>=0x0200 && sg.end<=0x02FF;}
-function goodEntry(a){return a && a>=0x0200 && a<=0xBFFF;}
+function goodEntry(a){return a && a>=0x0100 && a<=0xBFFF;}
 function xexWarningsForEntry(entry){
  var w=[];
  if(entry>=0xA000 && entry<=0xBFFF)w.push("Vstup míří do $A000-$BFFF: některé XEXy jsou původně cartridge/BASIC/packer a budou chtít další emulaci ROM/depackeru.");
  if(entry>=0xC000)w.push("Vstup míří do ROM oblasti $C000-$FFFF: zatím jen stubujeme část OS, ne plnou Atari ROM.");
+ if(entry && entry<0x0200)w.push("RUNAD míří pod $0200 (např. Arkanoid loader ve stránce $0100) — povoleno, není to chyba.");
  if(entry && ram[entry]===0)w.push("Na vstupní adrese je $00/BRK. XEX může být zabalený, nebo potřebuje INITAD loader.");
  return w;
 }
@@ -254,7 +255,7 @@ function loadBuiltinPitstopII(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Pitstop II.xex / vestavěný těžší test";
  loadXex(false);
- updatePlayStatus("Načten Pitstop II. FIX27 ho bere jako hlavní těžší test obecného jádra. Zkus TAP START/FIRE/OPTION/SELECT podle obrazovky.");
+ updatePlayStatus("Načten Pitstop II. FIX28 ho bere jako hlavní těžší test obecného jádra. Zkus TAP START/FIRE/OPTION/SELECT podle obrazovky.");
  scheduleAutoStartLoadedXex("Pitstop II");
 }
 function loadBuiltinArkanoidIII(){
@@ -388,7 +389,7 @@ function parseAndLoadXexBytes(bytes,light){
    var chunk=bytes.subarray(p,p+size);
    ram.set(chunk,start&65535);
    var sg={start:start,end:end,size:size};segments.push(sg);
-   if(!firstExec && !isVectorOnlySegment(sg) && start>=0x0200)firstExec=start;
+   if(!firstExec && !isVectorOnlySegment(sg) && start>=0x0100)firstExec=start;
    if(start<=0x02E0 && end>=0x02E1){var ro=0x02E0-start;runVec=(chunk[ro]|(chunk[ro+1]<<8))&65535;}
    if(start<=0x02E2 && end>=0x02E3){var io=0x02E2-start;var ia=(chunk[io]|(chunk[io+1]<<8))&65535;if(ia)inits.push(ia);}
    p+=size;count++;
@@ -426,11 +427,11 @@ function loadXex(light){
    playCyclesPerFrame=5200;
    playMaxMsPerFrame=8;
    genericRenderEvery=2;
- }else if(activeXexProfile==="generic"){
-   // Cizí XEXy zatím kreslíme opatrněji, aby mobilní WebView nezamrzl při složitějším DLISTu.
-   if(playCyclesPerFrame>3600)playCyclesPerFrame=3600;
-   if(playMaxMsPerFrame>6)playMaxMsPerFrame=6;
-   genericRenderEvery=3;
+ }else if(activeXexProfile==="generic" || activeXexProfile==="pitstop" || activeXexProfile==="arkanoid"){
+   // FIX28: těžší XEXy zatím jedou přes stejné obecné jádro, bez herních patchů.
+   if(playCyclesPerFrame>4200)playCyclesPerFrame=4200;
+   if(playMaxMsPerFrame>7)playMaxMsPerFrame=7;
+   genericRenderEvery=1;
  }else{
    // PiTT-KiTT má optimalizovaný renderer, vracíme rychlost z případného předchozího cizího XEXu.
    playCyclesPerFrame=7600;
@@ -440,7 +441,7 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX27-CORE-TEST-SUITE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX28-CORE-REBASE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -525,6 +526,8 @@ CPU6502.prototype.r=function(a){
  if(a===0xD01F){
    var c=7;
    if(input.start)c&=~1;
+   if(input.select)c&=~2;
+   if(input.option)c&=~4;
    return c&7;
  }
 
@@ -1519,6 +1522,38 @@ function img2bppLineRiver(data,addr,y,cols){
    }
  }
 }
+function img2bppLineVariable(data,addr,y,mode,cols){
+ if(y<0||y>=192)return;
+ var base=baseBytesPerMode(mode);
+ // Normální viditelný Atari playfield je 40 bajtů / 320 px u GTIA/bitmap 4 barev.
+ // Wide/narrow řešíme přes visibleOffsetBytes(), takže tady kreslíme viditelnou část, ne celý stride.
+ var drawBytes=(base===40)?40:(base===20?20:(base===10?10:40));
+ if(mode===8 || mode===9){drawBytes=10;}
+ for(var col=0;col<drawBytes;col++){
+   var v=ram[(addr+col)&65535]&255;
+   if(mode===8 || mode===9){
+     // ANTIC 8/9: 1bpp vysoké rozlišení. 10 bajtů = 80 bitů, každý bit 4 px.
+     for(var bit=0;bit<8;bit++){
+       var rgb=(v&(0x80>>bit))?cols[1]:cols[0];
+       var x=(col*8+bit)*4;
+       for(var xx=0;xx<4;xx++)imgSetPx(data,x+xx,y,rgb);
+     }
+   }else{
+     var x=col*8;
+     for(var p=0;p<4;p++){
+       var rgb=cols[(v>>(6-p*2))&3];
+       var off=(y*320+x+p*2)*4;
+       if(off>=0 && off+7<data.length){
+         data[off]=rgb[0];data[off+1]=rgb[1];data[off+2]=rgb[2];data[off+3]=255;
+         data[off+4]=rgb[0];data[off+5]=rgb[1];data[off+6]=rgb[2];data[off+7]=255;
+       }
+     }
+   }
+ }
+}
+function imgMode8Line(data,addr,y,mode,cs){
+ img2bppLineVariable(data,addr,y,mode,[rgbFromCss(cs.bk),rgbFromCss(cs.p1),rgbFromCss(cs.p2),rgbFromCss(cs.p3)]);
+}
 function riverPlayerColorFromRegs(regs,p){
  var v=regs ? (regs[0x12+p]&255) : playerColorValue(p);
  return rgbFromCss(atariColor(v));
@@ -1638,20 +1673,31 @@ function renderAnticDisplayFastGeneric(){
  var dl=getDlistPtr();
  if(!dl)return false;
  var y=0,safety=0,textLines=0,scanAddr=0;
- while(y<192 && safety++<240){
+ while(y<192 && safety++<320){
    var op=ram[dl++&65535];
    var mode=op&0x0F;
    if(mode===1){dl=(dl+2)&65535;break;}
    if(mode===0){var blank=((op>>4)&7)+1;y+=blank;continue;}
    if(op&0x40){var lo=ram[dl++&65535],hi=ram[dl++&65535];scanAddr=lo|(hi<<8);}
-   if(!scanAddr)scanAddr=((ram[0x58]|(ram[0x59]<<8))+(textLines*40))&65535;
+   if(!scanAddr){
+     var strideGuess=lineStrideBytes(mode);
+     scanAddr=((ram[0x58]|(ram[0x59]<<8))+(textLines*strideGuess))&65535;
+   }
    var h=scanlinesForMode(mode);
+   var stride=lineStrideBytes(mode);
    var visAddr=(scanAddr+visibleOffsetBytes(mode))&65535;
-   if(mode===2 || mode===3 || mode===6 || mode===7){imgAnticTextScanline(d,visAddr,y,mode,sy,cs);}
-   else if(mode===4 || mode===5){for(var sy=0;sy<h;sy++)imgMode4Line(d,visAddr,y+sy,sy,cols);}
-   else img2bppLine(d,visAddr,y,genericBitmapRgbColors(mode,cs),Math.max(1,h));
-   y+=h;
-   scanAddr=(scanAddr+lineStrideBytes(mode))&65535;
+   for(var sy=0;sy<Math.max(1,h) && y<192;sy++,y++){
+     if(mode===2 || mode===3 || mode===6 || mode===7){
+       imgAnticTextScanline(d,visAddr,y,mode,sy,cs);
+     }else if(mode===4 || mode===5){
+       imgMode4Line(d,visAddr,y,sy,cols);
+     }else if(mode===8 || mode===9){
+       imgMode8Line(d,visAddr,y,mode,cs);
+     }else{
+       img2bppLineVariable(d,visAddr,y,mode,genericBitmapRgbColors(mode,cs));
+     }
+   }
+   scanAddr=(scanAddr+stride)&65535;
    textLines++;
  }
  g.putImageData(anticImageData,0,0);
@@ -1878,7 +1924,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. FIX27 Core Test Suite: PiTT-KiTT / River / Pitstop II / Arkanoid III / vlastní XEX.";return;}
+ if(!cpu){e.textContent="Připraveno. FIX28 Core Rebase: PiTT-KiTT / River / Pitstop II / Arkanoid III / vlastní XEX.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -1889,7 +1935,7 @@ function updatePlayStatus(extra){
  }
  var gameLine=isPiTTProfile()?
    ("\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)):
-   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX27: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" yoff -24 PMG=$"+hex((ram[0xD407]||0)<<8,4)+" charDLIST=CHBASE-scanline DLIcap="+(riverDliCache?riverDliCache.length:0):""));
+   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX28: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" yoff -24 PMG=$"+hex((ram[0xD407]||0)<<8,4)+" charDLIST=CHBASE-scanline DLIcap="+(riverDliCache?riverDliCache.length:0):""));
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
    "\nXEX "+currentXexName+gameLine+
@@ -2006,14 +2052,14 @@ function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
- lines.push("COMPAT SNAPSHOT FIX27");
+ lines.push("COMPAT SNAPSHOT FIX28");
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
  lines.push("DLIST=$"+hex(dl||0,4)+" SAVMSC=$"+hex(base,4)+" NMIEN=$"+hex(ram[0xD40E]||0,2)+" VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" DLI=$"+hex((ram[0x0200]|(ram[0x0201]<<8))&65535,4));
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
- if(isRiverProfile())lines.push("RIVER FIX27: obecný ANTIC char/DLIST core; wide PF stride 48 crop 4, viewport -24, PMG overlay, char režimy kreslené po scanline z CHBASE; collision read $D000-$D00F vrací 0 proti falešné smrti.");
+ if(isRiverProfile())lines.push("RIVER FIX28: obecný ANTIC char/DLIST core; wide PF stride 48 crop 4, viewport -24, PMG overlay, char režimy kreslené po scanline z CHBASE; collision read $D000-$D00F vrací 0 proti falešné smrti.");
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
@@ -2038,7 +2084,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX27: Core Test Suite, PiTT-KiTT chráněný, testy River/Pitstop/Arkanoid + TAP vstupy.");
+ updatePlayStatus("Emulátor běží. FIX28: Core Test Suite, PiTT-KiTT chráněný, testy River/Pitstop/Arkanoid + TAP vstupy.");
  if(!playLoopId)playLoop();
 }
 function serviceCobraStartHelper(){
@@ -2085,7 +2131,7 @@ function singleFramePlay(){
 }
 function renderInput(){
  var e=document.getElementById("inputState");
- if(e)e.textContent="UP="+(input.up?"ON":"off")+" DOWN/SKOK="+(input.jump?"ON":"off")+" LEFT="+(input.left?"ON":"off")+" RIGHT="+(input.right?"ON":"off")+" FIRE="+(input.fire?"ON":"off")+" START="+(input.start?"ON":"off");
+ if(e)e.textContent="UP="+(input.up?"ON":"off")+" DOWN/SKOK="+(input.jump?"ON":"off")+" LEFT="+(input.left?"ON":"off")+" RIGHT="+(input.right?"ON":"off")+" FIRE="+(input.fire?"ON":"off")+" START="+(input.start?"ON":"off")+" SELECT="+(input.select?"ON":"off")+" OPTION="+(input.option?"ON":"off");
 }
 function pressStart(v){if(v)ensureAudio();input.start=!!v;renderInput();return false;}
 function tapStartLong(){
