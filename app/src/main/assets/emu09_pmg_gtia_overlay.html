@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX13 ORIGINAL XEX + GENERIC DLIST / PiTT-KiTT emulator</title>
+<title>EMU-09 FIX14 ORIGINAL XEX + PALETTE/DLIST / PiTT-KiTT emulator</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,7 +22,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX13 ORIGINAL XEX + GENERIC DLIST / PiTT-KiTT</h1>
+<h1>EMU-09 FIX14 ORIGINAL XEX + PALETTE/DLIST / PiTT-KiTT</h1>
 <p>Navazuje na FIX12: vestavěný PiTT-KiTT je přesně Renéův dodaný původní XEX, emulátor nesmí měnit start/level/skóre. Cizí XEXy používají vlastní DLIST pointer i když zapisují jen HW DLIST.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
@@ -53,7 +53,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX13 original XEX.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX14 original XEX.</div>
 </section>
 
 <section class="card">
@@ -103,7 +103,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX13 zachovává původní XEX hry PiTT-KiTT byte-for-byte a opravuje obecný XEX režim: pokud hra zapisuje hardwarový DLIST, renderer ho použije místo nouzového PiTT 2BPP obrazu.</p>
+<p>FIX14 zachovává původní XEX hry PiTT-KiTT byte-for-byte, opravuje GTIA/ANTIC mapování barev pro 2BPP obraz a detekuje textové display-listy přímo z načteného XEX.</p>
 </section>
 </div>
 
@@ -134,7 +134,9 @@ var xexInfo={run:0,inits:[],entry:0,warnings:[],bad:false};
 var activeEntryWasInit=false;
 var pendingInitAddrs=[];
 var ranInitAddrs=[];
-var introDl=0x2003, loseDl=0x2021, winDl=0x2036, hiDl=0x204B;
+var introDl=0x2003, loseDl=0x2021, winDl=0x2039, hiDl=0x2051;
+var textDlists=[];
+var textDlistMap={};
 var audioCtx=null,audioMaster=null,audioNodes=null,audioWanted=true,audioReady=false;
 var rgbCache={};
 var lastPCs=[];
@@ -220,6 +222,27 @@ function detectXexProfile(bytes,entry,runVec){
  return "generic";
 }
 function isPiTTProfile(){return activeXexProfile==="pitt";}
+function detectPittTextDlists(){
+ var found=[];
+ for(var a=0x2000;a<0x2140;a++){
+   var first=ram[a]&255;
+   if(first!==0x70 && first!==0x42)continue;
+   for(var off=4;off<96;off++){
+     if((ram[(a+off)&65535]&255)===0x41 && (ram[(a+off+1)&65535]&255)===(a&255) && (ram[(a+off+2)&65535]&255)===((a>>8)&255)){
+       found.push(a&65535);
+       break;
+     }
+   }
+ }
+ var uniq=[];
+ for(var i=0;i<found.length;i++){if(uniq.indexOf(found[i])<0)uniq.push(found[i]);}
+ uniq.sort(function(a,b){return a-b;});
+ if(uniq.length>=4){introDl=uniq[0];loseDl=uniq[1];winDl=uniq[2];hiDl=uniq[3];}
+ textDlists=uniq;
+ textDlistMap={};
+ for(var j=0;j<uniq.length;j++)textDlistMap[uniq[j]]=true;
+ if(uniq.length)log('PiTT text DLIST auto: '+uniq.map(function(a){return '$'+hex(a,4);}).join(', '));
+}
 
 function parseAndLoadXexBytes(bytes,light){
  var p=0,count=0,firstExec=0,bad=false,runVec=0,inits=[];
@@ -249,6 +272,7 @@ function parseAndLoadXexBytes(bytes,light){
  pendingInitAddrs=goodEntry(runVec)?inits.slice(0):inits.slice(0,Math.max(0,inits.length-1));
  ranInitAddrs=[];
  xexInfo.warnings=xexWarningsForEntry(entry);
+ if(activeXexProfile==="pitt")detectPittTextDlists();
  return {count:count,bad:bad,entry:entry};
 }
 function loadXex(light){
@@ -274,7 +298,7 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX13-ORIGINAL-XEX-GDLIST");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX14-ORIGINAL-XEX-PALETTE-DLIST");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -542,7 +566,7 @@ function validPtrForMiniAtari(a){return a>=0x0200 && a<=0xBFFF;}
 function getDlistPtr(){
  var s=ram[0x230]|(ram[0x231]<<8);
  var h=ram[0xD402]|(ram[0xD403]<<8);
- // FIX13: cizí XEXy často zapisují jen hardwarový ANTIC DLIST ($D402/$D403),
+ // FIX14: cizí XEXy často zapisují jen hardwarový ANTIC DLIST ($D402/$D403),
  // zatímco stínové SDLSTL/SDLSTH zůstaly na našem defaultu $2003.
  // Když CPU opravdu zapsalo hardware DLIST, má přednost. PiTT-KiTT píše oboje stejně.
  if(writeSeen && (writeSeen[0xD402]||writeSeen[0xD403]) && validPtrForMiniAtari(h))return h;
@@ -648,25 +672,40 @@ function drawAtariTextLine(g,addr,y,fg,bg){
  }
 }
 function atariColor(v,fallback){
- // Hrubý převod Atari barvy na web barvu. Není to finální GTIA paleta,
- // ale luminance 0 teď nechává opravdu černou kvůli PCOLR2/PCOLR3 pneumatikám.
+ // Hrubá PAL/GTIA paleta pro Atari 8-bit. FIX14: hue $C musí být zelená, $7 modrá, $0 šedá/bílá.
+ // To nebyla chyba XEXu; špatně ji dělal náš webový převod barev.
  v&=255;
  var hue=(v>>4)&15;
  var lum=v&15;
  if(lum===0)return "#000000";
- var l=18+lum*4;
- var palette=[
-  [30,30,30],[70,45,25],[120,35,20],[120,70,20],
-  [120,100,25],[70,120,35],[30,120,70],[25,115,115],
-  [25,75,135],[35,45,135],[70,35,130],[110,35,110],
-  [135,35,70],[150,55,55],[120,100,80],[180,180,180]
- ];
- var p=palette[hue]||palette[0];
- var f=(lum+3)/18;
- var r=Math.min(255,Math.floor(p[0]*f+l));
- var g=Math.min(255,Math.floor(p[1]*f+l));
- var b=Math.min(255,Math.floor(p[2]*f+l));
- return "rgb("+r+","+g+","+b+")";
+ if(hue===0){
+   var g=Math.max(0,Math.min(255,Math.round(lum*17)));
+   return "rgb("+g+","+g+","+g+")";
+ }
+ var base=[
+  [128,128,128], // 0 grayscale, řeší se výše
+  [150,95,20],   // 1 gold
+  [180,90,20],   // 2 orange
+  [185,65,35],   // 3 red/orange
+  [175,55,85],   // 4 pink/red
+  [135,65,160],  // 5 purple
+  [85,85,190],   // 6 blue-purple
+  [55,105,220],  // 7 blue / sky
+  [40,135,215],  // 8 light blue
+  [35,155,180],  // 9 cyan-blue
+  [35,165,135],  // A teal
+  [45,155,90],   // B green-cyan
+  [65,150,25],   // C green / grass
+  [115,145,20],  // D yellow-green
+  [150,120,25],  // E olive/gold
+  [190,190,190]  // F grey
+ ][hue]||[128,128,128];
+ var scale=0.30+(lum/15)*0.95;
+ var lift=lum*3;
+ var r=Math.min(255,Math.round(base[0]*scale+lift));
+ var g2=Math.min(255,Math.round(base[1]*scale+lift));
+ var b=Math.min(255,Math.round(base[2]*scale+lift));
+ return "rgb("+r+","+g2+","+b+")";
 }
 function wasWritten(a){return !!(writeSeen && writeSeen[a&65535]);}
 function colorReg(shadowAddr,hwAddr,def){
@@ -689,6 +728,12 @@ function colorSet(){
    bk: atariColor(colorReg(0x02C8,0xD01A,0x04))
  };
 }
+function playfield2bppCssColors(cs){
+ // ANTIC 4barevný bitmap režim v PiTT-KiTT: 00=COLBK, 01=COLPF0, 10=COLPF1, 11=COLPF2.
+ // Dřív jsme omylem mapovali 00 na COLPF0, proto měla mobilní hra fialovou silnici a špatné louky.
+ return [cs.bk,cs.p0,cs.p1,cs.p2];
+}
+function playfield2bppRgbColors(cs){return playfield2bppCssColors(cs).map(rgbFromCss);}
 
 function pmgLayout(){
  var pm=(ram[0xD407]||0)<<8;
@@ -892,7 +937,7 @@ function renderGenericFallback(){
  if(fastVideo){
    if(!gameImageData)gameImageData=g.createImageData(320,192);
    var d=gameImageData.data;
-   var cols=[rgbFromCss(cs.bk),rgbFromCss(cs.p0),rgbFromCss(cs.p1),rgbFromCss(cs.p2)];
+   var cols=playfield2bppRgbColors(cs);
    imgFillRect(d,0,0,320,192,rgbFromCss(cs.bk));
    for(var row=0;row<96;row++)img2bppLine(d,(base+row*40)&65535,row*2,cols,2);
    g.putImageData(gameImageData,0,0);
@@ -1096,7 +1141,7 @@ function draw2bppFrameFast(g,base,cs){
  var c=document.getElementById("video");
  if(!gameImageData)gameImageData=g.createImageData(320,192);
  var d=gameImageData.data;
- var cols=[rgbFromCss(cs.p0),rgbFromCss(cs.p1),rgbFromCss(cs.p2),rgbFromCss(cs.p3)];
+ var cols=playfield2bppRgbColors(cs);
  var di=0;
  for(var row=0;row<96;row++){
    var src=(base+row*40)&65535;
@@ -1121,7 +1166,7 @@ function draw2bppFrameFast(g,base,cs){
 }
 
 function draw2bppRow(g,addr,y,cs){
- var pixColors=[cs.p0,cs.p1,cs.p2,cs.p3];
+ var pixColors=playfield2bppCssColors(cs);
  for(var col=0;col<40;col++){
    var v=ram[(addr+col)&65535];
    for(var p=0;p<4;p++){
@@ -1216,7 +1261,12 @@ function fadeAudioOff(){
  var t=audioCtx.currentTime;
  for(var i=0;i<audioNodes.length;i++)audioNodes[i].gain.gain.setTargetAtTime(0,t,0.04);
 }
-function isTextDlist(dl){return dl===loseDl||dl===winDl||dl===hiDl||(dl===introDl&&cpu&&cpu.pc<0x2400);}
+function isTextDlist(dl){
+ dl&=65535;
+ if(dl===introDl)return !!(cpu&&cpu.pc<0x2400);
+ if(dl===loseDl||dl===winDl||dl===hiDl)return true;
+ return !!(textDlistMap&&textDlistMap[dl]&&dl!==introDl);
+}
 function dlistLooksValid(dl){
  if(!dl || dl<0x0200 || dl>0xBFFF)return false;
  var p=dl&65535;
@@ -1247,7 +1297,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX13 original XEX.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX14 original XEX.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -1262,7 +1312,7 @@ function updatePlayStatus(extra){
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
    "\nXEX "+currentXexName+gameLine+
-   "\nlast "+playLastRan+" ops / "+playFrameMs.toFixed(1)+"ms  speed "+playCyclesPerFrame+"  video "+(fastVideo?"FAST":"SAFE")+"  zvuk "+(audioWanted?(audioReady?"ON":"čeká"):"OFF")+
+   "\nlast "+playLastRan+" ops / "+playFrameMs.toFixed(1)+"ms  speed "+playCyclesPerFrame+"  video "+(fastVideo?"FAST":"SAFE")+"  zvuk "+(audioWanted?(audioReady?"ON":"čeká"):"OFF")+"  DLs I/L/W/H $"+hex(introDl,4)+"/$"+hex(loseDl,4)+"/$"+hex(winDl,4)+"/$"+hex(hiDl,4)+
    hint+(extra?"\n"+extra:"");
 }
 function runCpuQuiet(n){
@@ -1335,7 +1385,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX13: PiTT-KiTT běží z původního XEX, cizí XEX používá vlastní ANTIC/DLIST renderer.");
+ updatePlayStatus("Emulátor běží. FIX14: původní PiTT-KiTT XEX zůstává beze změny, opravená je jen emulace barev a DLISTů.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
