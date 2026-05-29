@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX14 ORIGINAL XEX + PALETTE/DLIST / PiTT-KiTT emulator</title>
+<title>EMU-09 FIX15 RECORD INPUT DEBOUNCE / PiTT-KiTT emulator</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,8 +22,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX14 ORIGINAL XEX + PALETTE/DLIST / PiTT-KiTT</h1>
-<p>Navazuje na FIX12: vestavěný PiTT-KiTT je přesně Renéův dodaný původní XEX, emulátor nesmí měnit start/level/skóre. Cizí XEXy používají vlastní DLIST pointer i když zapisují jen HW DLIST.</p>
+<h1>EMU-09 FIX15 RECORD INPUT DEBOUNCE / PiTT-KiTT</h1>
+<p>Navazuje na FIX14: původní PiTT-KiTT XEX zůstává byte-for-byte. Opravené je ovládání podpisu rekordu: FIRE udělá jen jedno potvrzení a další písmeno čeká na nové klepnutí.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -53,7 +53,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX14 original XEX.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX15 record input debounce.</div>
 </section>
 
 <section class="card">
@@ -62,14 +62,14 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="192"></canvas>
 <div class="controlPanel">
 <h2>Atari ovládání</h2>
-<p class="controlHint">Při rekordu: ▲ mění písmeno nahoru, ▼ mění dolů, FIRE nebo RIGHT potvrzuje další znak. Ve hře ▼ slouží jako SKOK podle tvého ASM.</p>
+<p class="controlHint">Při rekordu: ▲ mění písmeno nahoru, ▼ mění dolů, FIRE potvrzuje další znak jedním klepnutím. RIGHT je jen joystick ve hře, aby podpis neutekl do intra.</p>
 <div class="padgrid">
 <button class="secondary" onpointerdown="return pressUp(true)" onpointerup="return pressUp(false)" onpointercancel="return pressUp(false)" onpointerleave="return pressUp(false)">▲ NAHORU<br><span class="muted">písmeno +</span></button>
 <button class="secondary" onpointerdown="return pressStart(true)" onpointerup="return pressStart(false)" onpointercancel="return pressStart(false)" onpointerleave="return pressStart(false)">START<br><span class="muted">držet</span></button>
 <button class="secondary" onpointerdown="return pressJump(true)" onpointerup="return pressJump(false)" onpointercancel="return pressJump(false)" onpointerleave="return pressJump(false)">▼ DOLŮ / SKOK<br><span class="muted">písmeno -</span></button>
 <button class="secondary" onpointerdown="return pressLeft(true)" onpointerup="return pressLeft(false)" onpointercancel="return pressLeft(false)" onpointerleave="return pressLeft(false)">◀ LEFT</button>
 <button onpointerdown="return pressFire(true)" onpointerup="return pressFire(false)" onpointercancel="return pressFire(false)" onpointerleave="return pressFire(false)">FIRE<br><span class="muted">střela / OK</span></button>
-<button class="secondary" onpointerdown="return pressRight(true)" onpointerup="return pressRight(false)" onpointercancel="return pressRight(false)" onpointerleave="return pressRight(false)">RIGHT ▶<br><span class="muted">OK v rekordu</span></button>
+<button class="secondary" onpointerdown="return pressRight(true)" onpointerup="return pressRight(false)" onpointercancel="return pressRight(false)" onpointerleave="return pressRight(false)">RIGHT ▶<br><span class="muted">řízení ve hře</span></button>
 </div>
 <p id="inputState" class="inputReadout"></p>
 </div>
@@ -103,7 +103,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX14 zachovává původní XEX hry PiTT-KiTT byte-for-byte, opravuje GTIA/ANTIC mapování barev pro 2BPP obraz a detekuje textové display-listy přímo z načteného XEX.</p>
+<p>FIX15 zachovává původní XEX hry PiTT-KiTT byte-for-byte, navazuje na opravy barev/DLIST z FIX14 a přidává bezpečné ovládání podpisu rekordu bez vícenásobného potvrzení při delším dotyku.</p>
 </section>
 </div>
 
@@ -144,13 +144,14 @@ var screenBase=0x6000;
 var pmgOnlyContrast=false;
 var pmgDebugPalette=false;
 var writeSeen=new Uint8Array(65536);
+var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 
 function hex(v,n){var s=(v>>>0).toString(16).toUpperCase();while(s.length<n)s="0"+s;return s;}
 function log(s){var e=document.getElementById("log");e.textContent=s+"\n"+e.textContent;}
 function decodeB64(s){var raw=atob(s);var a=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i)&255;return a;}
 function getActiveXexBytes(){return customXexBytes||(xexCache||(xexCache=decodeB64(b64)));}
 function setXexName(){var e=document.getElementById("xexName");if(e)e.textContent="XEX: "+currentXexName;}
-function clearInputState(){input.start=false;input.fire=false;input.left=false;input.right=false;input.up=false;input.jump=false;renderInput();}
+function clearInputState(){input.start=false;input.fire=false;input.left=false;input.right=false;input.up=false;input.jump=false;hiFireArmed=true;renderInput();}
 function isVectorOnlySegment(sg){return sg.start>=0x0200 && sg.end<=0x02FF;}
 function goodEntry(a){return a && a>=0x0200 && a<=0xBFFF;}
 function xexWarningsForEntry(entry){
@@ -222,6 +223,11 @@ function detectXexProfile(bytes,entry,runVec){
  return "generic";
 }
 function isPiTTProfile(){return activeXexProfile==="pitt";}
+function isHighScoreInputScreen(){
+ var dl1=(ram[0x230]|(ram[0x231]<<8))&65535;
+ var dl2=(ram[0xD402]|(ram[0xD403]<<8))&65535;
+ return isPiTTProfile() && (dl1===hiDl || dl2===hiDl);
+}
 function detectPittTextDlists(){
  var found=[];
  for(var a=0x2000;a<0x2140;a++){
@@ -298,7 +304,7 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX14-ORIGINAL-XEX-PALETTE-DLIST");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX15-RECORD-INPUT-DEBOUNCE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -323,11 +329,22 @@ CPU6502.prototype.r=function(a){
    if(input.up)v&=~0x01;     // joystick UP: high-score písmeno nahoru
    if(input.jump)v&=~0x02;   // joystick DOWN: ve hře SKOK, v high-score písmeno dolů
    if(input.left)v&=~0x04;
-   if(input.right)v&=~0x08;  // v high-score potvrzuje znak stejně jako FIRE
+   if(input.right && !isHighScoreInputScreen())v&=~0x08;  // ve high-score RIGHT NEPOTVRZUJE; OK je jen FIRE, aby se nepřeskočily všechny 3 znaky
    return v&255;
  }
  // $D010 TRIG0 fire, active low
- if(a===0xD010){return input.fire?0:1;}
+ if(a===0xD010){
+   if(input.fire){
+     if(isHighScoreInputScreen()){
+       // Mobilní dotyk trvá dlouho: bez latch by hra během jednoho držení potvrdila A A A a skočila do intra.
+       if(hiFireArmed){hiFireArmed=false;return 0;}
+       return 1;
+     }
+     return 0;
+   }
+   hiFireArmed=true;
+   return 1;
+ }
  // $D01F CONSOL: START/SELECT/OPTION active low. START bit = 1.
  if(a===0xD01F){
    var c=7;
@@ -1297,12 +1314,12 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX14 original XEX.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX15 record input debounce.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
  var hint="";
- if(dl===hiDl)hint="\nPODPIS REKORDU: ▲/▼ mění písmeno, FIRE nebo RIGHT potvrzuje.";
+ if(dl===hiDl)hint="\nPODPIS REKORDU: ▲/▼ mění písmeno, FIRE jedním klepnutím potvrdí a posune na další znak.";
  else if(dl===loseDl||dl===winDl){
    hint=(scoreValue()>hiScoreValue())?"\nREKORD! Na této obrazovce stiskni a pusť START: pak skočí podpis tří písmen.":"\nKonec bez nového rekordu. START vrací do intra.";
  }
@@ -1385,7 +1402,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX14: původní PiTT-KiTT XEX zůstává beze změny, opravená je jen emulace barev a DLISTů.");
+ updatePlayStatus("Emulátor běží. FIX15: původní PiTT-KiTT XEX zůstává beze změny, opravené je jen ovládání podpisu rekordu.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
@@ -1434,7 +1451,7 @@ function tapStartLong(){
 function showDisasmHint(){
  log("VCOUNT WAIT FOUND:\n$2390 LDA $D40B\n$2393 CMP #$3C\n$2395 BCC $2390\n$2397 JMP $22C7\nTakze EMU-04 visel, protoze VCOUNT byl stale 0.");
 }
-function pressFire(v){if(v)ensureAudio();input.fire=!!v;renderInput();return false;}
+function pressFire(v){if(v)ensureAudio();input.fire=!!v;if(!v)hiFireArmed=true;renderInput();return false;}
 function pressUp(v){input.up=!!v;renderInput();return false;}
 function pressJump(v){input.jump=!!v;renderInput();return false;}
 function pressLeft(v){input.left=!!v;if(v)input.right=false;renderInput();return false;}
