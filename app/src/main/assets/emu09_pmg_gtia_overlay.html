@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX24 RIVER PLAY VIEW + COBRA TAP / PiTT-KiTT + River Raid</title>
+<title>EMU-09 FIX25 GENERIC ANTIC CHAR/DLIST CORE / PiTT-KiTT + River Raid</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,8 +22,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX24 RIVER PLAY VIEW + COBRA TAP</h1>
-<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX24 posouvá River do herního viewportu, aby byl vidět HUD/score, a přidává delší TAP pulsy pro Cobru.</p>
+<h1>EMU-09 FIX25 GENERIC ANTIC CHAR/DLIST CORE</h1>
+<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX25 posiluje obecný ANTIC/DLIST renderer: char módy se kreslí z CHBASE po scanline, ne ručně jako bitmapový font. To pomůže Riveru i dalším XEXům.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -61,7 +61,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX24 River play view + Cobra TAP.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX25 Generic ANTIC char/DLIST core.</div>
 </section>
 
 <section class="card">
@@ -115,7 +115,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX24 nechává PiTT-KiTT jako kontrolní hru. River má wide playfield + PMG + herní viewport posunutý tak, aby se začal objevovat i spodní HUD. Cobra má delší TAP START/FIRE pulsy.</p>
+<p>FIX25 už neopravuje River „ručně po obrázku“, ale posiluje obecný ANTIC/DLIST renderer: znakové režimy se kreslí po scanline z CHBASE, takže HUDy a textové panely cizích XEXů dávají větší smysl. PiTT-KiTT zůstává kontrolní hra.</p>
 </section>
 </div>
 
@@ -224,7 +224,7 @@ function loadBuiltinRiverRaid(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="River Raid.xex / vestavěný test";
  loadXex(false);
- updatePlayStatus("Načten River Raid test. FIX24 ho spustí automaticky. Když stojí na startu, zkus TAP START nebo TAP FIRE.");
+ updatePlayStatus("Načten River Raid test. FIX25 ho spustí automaticky. Když stojí na startu, zkus TAP START nebo TAP FIRE.");
  scheduleAutoStartLoadedXex("River Raid");
 }
 function loadBuiltinSuperCobra(){
@@ -405,7 +405,7 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX24-RIVER-PLAY-VIEW-COBRA-TAP");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX25-GENERIC-ANTIC-CHAR-DLIST");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -1352,6 +1352,46 @@ function imgChar(data,ch,x,y,fg,bg,inverse,sx,sy){
    }
  }
 }
+
+function charsetByteForCode(raw,mode,scan){
+ var cb=charBaseGuess();
+ if(!cb)cb=(ram[0xD409]||ram[0x02F4]||0)<<8;
+ if(!cb)cb=0xE000;
+ var code=raw&127;
+ // ANTIC 6/7 používá 20sloupcový text s barevnými skupinami po 64 znacích.
+ // Spodních 6 bitů je tvar, horní bity vybírají barvu. Je to obecnější než náš starý 5x7 font.
+ if(mode===6 || mode===7)code=raw&0x3F;
+ // ANTIC 3 má 10 scanline; spodní dvě linky držíme prázdné jako hrubý descender fallback.
+ if(mode===3 && scan>=8)return 0;
+ return ram[(cb+((code&127)<<3)+(scan&7))&65535]&255;
+}
+function anticTextFgRgb(raw,mode,cs){
+ if(mode===6 || mode===7){
+   var sel=(raw>>6)&3;
+   var arr=[cs.p0,cs.p1,cs.p2,cs.p3];
+   return rgbFromCss(arr[sel]||cs.p1);
+ }
+ return rgbFromCss(cs.p1);
+}
+function imgAnticTextScanline(data,addr,y,mode,scan,cs){
+ if(y<0||y>=192)return;
+ var cols=(mode===6 || mode===7)?20:40;
+ var sx=(mode===6 || mode===7)?2:1;
+ var cw=8*sx;
+ var bg=rgbFromCss(cs.bk);
+ for(var i=0;i<cols;i++){
+   var raw=ram[(addr+i)&65535]&255;
+   var bits=charsetByteForCode(raw,mode,scan);
+   var inv=(mode===2 || mode===3) && ((raw&0x80)!==0);
+   var fg=anticTextFgRgb(raw,mode,cs);
+   for(var bit=0;bit<8;bit++){
+     var on=(bits&(0x80>>bit))!==0;
+     var rgb=inv?(on?bg:fg):(on?fg:bg);
+     var px=i*cw+bit*sx;
+     for(var xx=0;xx<sx;xx++)imgSetPx(data,px+xx,y,rgb);
+   }
+ }
+}
 function imgTextLine(data,addr,y,fg,bg,cols,sy){
  var sx=cols===20?2:1;
  var cw=cols===20?16:8;
@@ -1450,7 +1490,7 @@ function riverPlayerColorFromRegs(regs,p){
 }
 function riverHposToX(h){return Math.round(((h&255)-48)*2);}
 function riverVisibleY(y){
- // FIX24: River DL začíná několika blank scanline instrukcemi a HUD se pak nevešel do 192px canvasu.
+ // FIX25: River DL má horní blanky a spodní HUD; ponecháváme viewport, ale char režimy už kreslíme po scanline z CHBASE.
  // Posuneme celý River obraz nahoru jako herní viewport, aby byl vidět i score/panel dole.
  return y-24;
 }
@@ -1531,8 +1571,7 @@ function renderRiverRaidDisplay(){
      var cs=regsToColorSetFromDli(regs)||colorSet();
      var dy=riverVisibleY(y);
      if(dy>=0 && dy<192){
-       if(mode===2 || mode===3){imgTextLine(d,visAddr,dy,rgbFromCss(cs.p1),rgbFromCss(cs.bk),40,1);}
-       else if(mode===6 || mode===7){imgTextLine(d,visAddr,dy,rgbFromCss(cs.p1),rgbFromCss(cs.bk),20,1);}
+       if(mode===2 || mode===3 || mode===6 || mode===7){imgAnticTextScanline(d,visAddr,dy,mode,sy,cs);}
        else if(mode===4 || mode===5){imgMode4Line(d,visAddr,dy,sy,[rgbFromCss(cs.bk),rgbFromCss(cs.p0),rgbFromCss(cs.p1),rgbFromCss(cs.p2),rgbFromCss(cs.p3)]);}
        else if(mode===14 || mode===15 || mode===13 || mode===12){img2bppLineRiver(d,visAddr,dy,riverDliColors(regs));}
        else {img2bppLine(d,visAddr,dy,genericBitmapRgbColors(mode,cs),1);}
@@ -1545,8 +1584,8 @@ function renderRiverRaidDisplay(){
  g.putImageData(anticImageData,0,0);
  if(!playMode){
    var gg=c.getContext('2d');gg.fillStyle='#ff6b9a';gg.font='10px monospace';
-   gg.fillText('RIVER FIX24 DLI '+caps.length+' PMG '+pmgDrawn+' DL $'+hex(dl,4),4,188);
-   log('Rendered River FIX24 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' DL=$'+hex(dl,4));
+   gg.fillText('RIVER FIX25 DLI '+caps.length+' PMG '+pmgDrawn+' DL $'+hex(dl,4),4,188);
+   log('Rendered River FIX25 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' DL=$'+hex(dl,4));
  }
  return true;
 }
@@ -1573,8 +1612,7 @@ function renderAnticDisplayFastGeneric(){
    if(!scanAddr)scanAddr=((ram[0x58]|(ram[0x59]<<8))+(textLines*40))&65535;
    var h=scanlinesForMode(mode);
    var visAddr=(scanAddr+visibleOffsetBytes(mode))&65535;
-   if(mode===2 || mode===3){imgTextLine(d,visAddr,y,rgbFromCss(cs.p1),rgbFromCss(cs.bk),40,1);}
-   else if(mode===6 || mode===7){imgTextLine(d,visAddr,y,rgbFromCss(cs.p1),rgbFromCss(cs.bk),20,1);}
+   if(mode===2 || mode===3 || mode===6 || mode===7){imgAnticTextScanline(d,visAddr,y,mode,sy,cs);}
    else if(mode===4 || mode===5){for(var sy=0;sy<h;sy++)imgMode4Line(d,visAddr,y+sy,sy,cols);}
    else img2bppLine(d,visAddr,y,genericBitmapRgbColors(mode,cs),Math.max(1,h));
    y+=h;
@@ -1805,7 +1843,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX24 River play view + Cobra TAP.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX25 Generic ANTIC char/DLIST core.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -1816,7 +1854,7 @@ function updatePlayStatus(extra){
  }
  var gameLine=isPiTTProfile()?
    ("\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)):
-   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX24: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" yoff -24 PMG=$"+hex((ram[0xD407]||0)<<8,4)+" DLIcap="+(riverDliCache?riverDliCache.length:0):""));
+   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX25: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" yoff -24 PMG=$"+hex((ram[0xD407]||0)<<8,4)+" charDLIST=CHBASE-scanline DLIcap="+(riverDliCache?riverDliCache.length:0):""));
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
    "\nXEX "+currentXexName+gameLine+
@@ -1933,14 +1971,14 @@ function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
- lines.push("COMPAT SNAPSHOT FIX24");
+ lines.push("COMPAT SNAPSHOT FIX25");
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
  lines.push("DLIST=$"+hex(dl||0,4)+" SAVMSC=$"+hex(base,4)+" NMIEN=$"+hex(ram[0xD40E]||0,2)+" VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" DLI=$"+hex((ram[0x0200]|(ram[0x0201]<<8))&65535,4));
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
- if(isRiverProfile())lines.push("RIVER FIX24: wide playfield stride 48, crop 4, vertical viewport -24 px, PMG overlay; collision registry read $D000-$D00F vrací 0 proti falešné smrti.");
+ if(isRiverProfile())lines.push("RIVER FIX25: obecný ANTIC char/DLIST core; wide PF stride 48 crop 4, viewport -24, PMG overlay, char režimy kreslené po scanline z CHBASE; collision read $D000-$D00F vrací 0 proti falešné smrti.");
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
@@ -1965,11 +2003,11 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX24: PiTT-KiTT chráněný, River má play viewport/HUD posun, Cobra má delší TAP START/FIRE.");
+ updatePlayStatus("Emulátor běží. FIX25: PiTT-KiTT chráněný, cizí XEXy mají lepší obecný ANTIC char/DLIST renderer a TAP vstupy.");
  if(!playLoopId)playLoop();
 }
 function serviceCobraStartHelper(){
- // FIX24: některé Super Cobra buildy visí na PRESS START/FIRE, ale chtějí krátký reálný puls.
+ // FIX25: některé Super Cobra buildy visí na PRESS START/FIRE, ale chtějí krátký reálný puls.
  // Když se PC drží v okolí známé start smyčky, pošleme jemný START/FIRE puls bez trvalého držení.
  if(!isCobraProfile() || !cpu || !playMode)return;
  if(cpu.pc>=0xA000 && cpu.pc<=0xA220 && (playFrameNo%50)===0){
