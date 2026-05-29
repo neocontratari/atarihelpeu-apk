@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX16 XEX COMPATIBILITY LAB / PiTT-KiTT + River Raid</title>
+<title>EMU-09 FIX17 AUTOSTART XEX LAB / PiTT-KiTT + River Raid</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -23,7 +23,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="wrap">
 <section class="card">
 <h1>EMU-09 FIX16 XEX COMPATIBILITY LAB</h1>
-<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX16 přidává první XEX Compatibility Lab pro další hry: River Raid profil, lepší obecný ANTIC renderer, VBI/DLI servisní běh a stopu posledních instrukcí.</p>
+<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX17 opravuje start cizích XEXů a doplňuje autostart laboratorních her; FIX16 přidal první XEX Compatibility Lab pro další hry: River Raid profil, lepší obecný ANTIC renderer, VBI/DLI servisní běh a stopu posledních instrukcí.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -57,7 +57,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX16 compatibility lab.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX17 autostart XEX lab.</div>
 </section>
 
 <section class="card">
@@ -107,7 +107,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX16 nechává PiTT-KiTT z FIX15 jako kontrolní hru a přidává první kompatibilitní laboratoř pro další XEXy. River Raid je vložený jako testovací cizí hra; cílem je postupně doplňovat CPU, OS, ANTIC, VBI/DLI a PMG podporu bez rozbití KITT profilu.</p>
+<p>FIX17 nechává PiTT-KiTT z FIX15 jako kontrolní hru a přidává první kompatibilitní laboratoř pro další XEXy. River Raid je vložený jako testovací cizí hra; cílem je postupně doplňovat CPU, OS, ANTIC, VBI/DLI a PMG podporu bez rozbití KITT profilu.</p>
 </section>
 </div>
 
@@ -215,7 +215,8 @@ function loadBuiltinRiverRaid(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="River Raid.xex / vestavěný test";
  loadXex(false);
- updatePlayStatus("Načten River Raid test. Dej SPUSTIT / INTRO. U cizích XEXů teď sleduj snapshot a obraz; PiTT-KiTT profil zůstává chráněný.");
+ updatePlayStatus("Načten River Raid test. FIX17 ho spustí automaticky, protože samotné načtení XEXu ještě není běh CPU.");
+ scheduleAutoStartLoadedXex("River Raid");
 }
 function handleXexFile(file){
  if(!file)return;
@@ -227,11 +228,25 @@ function handleXexFile(file){
      xexCache=null;
      currentXexName=file.name+" / "+customXexBytes.length+" bytes";
      loadXex(false);
-     updatePlayStatus("Načten vlastní XEX: "+currentXexName+". Dej SPUSTIT / INTRO. Když se zastaví na ROM/BRK, pošli XEX diagnostiku.");
+     updatePlayStatus("Načten vlastní XEX: "+currentXexName+". FIX17 ho za chvilku spustí sám; PAUZA ho zastaví.");
+     scheduleAutoStartLoadedXex("vlastní XEX");
    }catch(e){log("XEX load error: "+e.message);updatePlayStatus("Chyba při načtení XEX: "+e.message);}
  };
  reader.onerror=function(){updatePlayStatus("Nepovedlo se přečíst XEX soubor z telefonu.");};
  reader.readAsArrayBuffer(file);
+}
+
+function scheduleAutoStartLoadedXex(label){
+ // FIX17: v logu od Reného bylo u River Raid jasně steps=0, tedy XEX byl jen načtený, ale CPU neběželo.
+ // Mobilní režim proto po načtení automaticky spustí emulaci. PiTT-KiTT reset zůstává ruční, aby šel bezpečně kontrolovat.
+ if(playMode)return;
+ updatePlayStatus("Načteno: "+label+". Autostart za okamžik; když chceš jen diagnostiku, zmáčkni PAUZA.");
+ setTimeout(function(){
+   if(cpu && !playMode && !cpu.trap){
+     startPlaying();
+     log("AUTOSTART "+label+" hotovo. PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4));
+   }
+ },80);
 }
 
 function detectXexProfile(bytes,entry,runVec){
@@ -330,7 +345,7 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX16-XEX-COMPAT-LAB");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX17-XEX-AUTOSTART-LAB");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -1418,7 +1433,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX16 compatibility lab.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX17 autostart XEX lab.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -1533,8 +1548,9 @@ function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
- lines.push("COMPAT SNAPSHOT FIX16");
- lines.push("profile="+activeXexProfile+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
+ lines.push("COMPAT SNAPSHOT FIX17");
+ lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
+ if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
  lines.push("DLIST=$"+hex(dl||0,4)+" SAVMSC=$"+hex(base,4)+" NMIEN=$"+hex(ram[0xD40E]||0,2)+" VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" DLI=$"+hex((ram[0x0200]|(ram[0x0201]<<8))&65535,4));
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
@@ -1562,7 +1578,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX16: PiTT-KiTT je chráněný referenční profil, cizí XEXy běží přes compatibility lab.");
+ updatePlayStatus("Emulátor běží. FIX17: PiTT-KiTT je chráněný referenční profil, cizí XEXy běží přes compatibility lab.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
