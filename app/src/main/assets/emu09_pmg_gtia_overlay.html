@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX17 AUTOSTART XEX LAB / PiTT-KiTT + River Raid</title>
+<title>EMU-09 FIX18 XEX COMPAT CORE / PiTT-KiTT + River Raid</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,8 +22,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX17 XEX AUTOSTART LAB</h1>
-<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX17 opravuje start cizích XEXů: po načtení River Raid / vlastního .XEX se CPU opravdu rozběhne. FIX16 byl první compatibility lab, FIX17 je opravený autostart krok.</p>
+<h1>EMU-09 FIX18 XEX COMPAT CORE</h1>
+<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX18 přidává první kompatibilitní jádro pro cizí XEXy: Atari OS charset ROM stub, bezpečnější VBI/DLI návrat a sadu neoficiálních 6502 opcode, které staré hry často používají.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -57,7 +57,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX17 autostart XEX lab.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX18 compat core.</div>
 </section>
 
 <section class="card">
@@ -107,7 +107,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX17 nechává PiTT-KiTT z FIX15 jako kontrolní hru a přidává první kompatibilitní laboratoř pro další XEXy. River Raid je vložený jako testovací cizí hra; cílem je postupně doplňovat CPU, OS, ANTIC, VBI/DLI a PMG podporu bez rozbití KITT profilu.</p>
+<p>FIX18 nechává PiTT-KiTT jako kontrolní hru a přidává první compatibility core pro další XEXy: OS charset stub, lepší VBI/DLI návrat a neoficiální 6502 instrukce. River Raid je pořád laboratorní cizí hra.</p>
 </section>
 </div>
 
@@ -286,6 +286,39 @@ function detectPittTextDlists(){
  if(uniq.length)log('PiTT text DLIST auto: '+uniq.map(function(a){return '$'+hex(a,4);}).join(', '));
 }
 
+
+function fontRowsForScreenCode(code){
+ // Hrubý Atari OS charset stub pro hry, které kopírují ROM $E000-$E3FF do RAM.
+ // River Raid port to dělá hned při startu; bez ROM charsetu měl PMG/text/sprites jen nuly.
+ var ch=screenChar(code&127);
+ var glyph=(typeof FONT5X7!=='undefined' && FONT5X7[ch])?FONT5X7[ch]:null;
+ var rows=[];
+ for(var y=0;y<8;y++){
+   var b=0;
+   if(glyph && y<7){
+     var row=glyph[y];
+     for(var x=0;x<5;x++) if(row.charCodeAt(x)===49) b|=(0x40>>x);
+   }
+   rows.push(b&255);
+ }
+ return rows;
+}
+function seedAtariOsRomCharset(){
+ // Mini-emulátor nem má skutečnou Atari OS ROM. Pro compatibility testy aspoň nasadíme
+ // použitelný 1KB znakový ROM obraz do $E000-$E3FF. XEX segmenty ho můžou přepsat.
+ for(var code=0;code<128;code++){
+   var rows=fontRowsForScreenCode(code);
+   for(var y=0;y<8;y++){
+     var v=rows[y]&255;
+     ram[(0xE000+code*8+y)&65535]=v;
+     ram[(0xE400+code*8+y)&65535]=v;
+     ram[(0xE000+(code|128)*8+y)&65535]=v^255;
+   }
+ }
+ // Trochu nonzero dat i do sousedních OS stránek, aby staré cartridge-porty nekopírovaly samé nuly.
+ for(var a=0xE800;a<=0xEFFF;a++) ram[a&65535]=ram[(0xE000+(a&0x3FF))&65535];
+}
+
 function parseAndLoadXexBytes(bytes,light){
  var p=0,count=0,firstExec=0,bad=false,runVec=0,inits=[];
  segments=[];
@@ -318,7 +351,7 @@ function parseAndLoadXexBytes(bytes,light){
  return {count:count,bad:bad,entry:entry};
 }
 function loadXex(light){
- ram.fill(0);writeSeen=new Uint8Array(65536);gameImageData=null;anticImageData=null;activeXexProfile="generic";playBooted=false;playFrameNo=0;playLastRan=0;playFrameMs=0;lastPCs=[];
+ ram.fill(0);writeSeen=new Uint8Array(65536);seedAtariOsRomCharset();gameImageData=null;anticImageData=null;activeXexProfile="generic";playBooted=false;playFrameNo=0;playLastRan=0;playFrameMs=0;lastPCs=[];
  // Bezpečný default: prázdný textový buffer, než si XEX nastaví vlastní obrazovku.
  ram[0x58]=screenBase&255;ram[0x59]=(screenBase>>8)&255;
  ram[0x230]=introDl&255;ram[0x231]=(introDl>>8)&255;
@@ -345,7 +378,7 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX17-XEX-AUTOSTART-LAB");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX18-XEX-COMPAT-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -483,6 +516,21 @@ CPU6502.prototype.rorVal=function(v){
  return v&255;
 };
 
+
+CPU6502.prototype.memDec=function(a){var v=(this.r(a)-1)&255;this.w(a,v);this.zn(v);return v;};
+CPU6502.prototype.memInc=function(a){var v=(this.r(a)+1)&255;this.w(a,v);this.zn(v);return v;};
+CPU6502.prototype.opDcp=function(a){var v=this.memDec(a);this.cmp(this.a,v);};
+CPU6502.prototype.opIsb=function(a){var v=this.memInc(a);this.sbc(v);};
+CPU6502.prototype.opSlo=function(a){var v=this.aslVal(this.r(a));this.w(a,v);this.a=(this.a|v)&255;this.zn(this.a);};
+CPU6502.prototype.opRla=function(a){var v=this.rolVal(this.r(a));this.w(a,v);this.a=(this.a&v)&255;this.zn(this.a);};
+CPU6502.prototype.opSre=function(a){var v=this.lsrVal(this.r(a));this.w(a,v);this.a=(this.a^v)&255;this.zn(this.a);};
+CPU6502.prototype.opRra=function(a){var v=this.rorVal(this.r(a));this.w(a,v);this.adc(v);};
+CPU6502.prototype.opLax=function(a){this.a=this.x=this.r(a)&255;this.zn(this.a);};
+CPU6502.prototype.opSax=function(a){this.w(a,(this.a&this.x)&255);};
+CPU6502.prototype.opShx=function(a){this.w(a,this.x&(((a>>8)+1)&255));};
+CPU6502.prototype.opShy=function(a){this.w(a,this.y&(((a>>8)+1)&255));};
+CPU6502.prototype.opAhx=function(a){this.w(a,this.a&this.x&(((a>>8)+1)&255));};
+
 CPU6502.prototype.step=function(){
  if(this.trap)return;
  var pc0=this.pc;
@@ -601,6 +649,23 @@ CPU6502.prototype.step=function(){
   case 0x14:case 0x34:case 0x54:case 0x74:case 0xD4:case 0xF4:this.zpx();break;
   case 0x0C:this.abs();break;
   case 0x1C:case 0x3C:case 0x5C:case 0x7C:case 0xDC:case 0xFC:this.abx();break;
+
+
+  // FIX18: běžné neoficiální NMOS 6502 opcodes. Spousta starých Atari her/konverzí je používá.
+  case 0xA7:this.opLax(this.zp());break; case 0xB7:this.opLax(this.zpy());break; case 0xAF:this.opLax(this.abs());break; case 0xBF:this.opLax(this.aby());break; case 0xA3:this.opLax(this.izx());break; case 0xB3:this.opLax(this.izy());break; case 0xAB:this.a=this.x=(this.a&this.x&this.imm())&255;this.zn(this.a);break;
+  case 0x87:this.opSax(this.zp());break; case 0x97:this.opSax(this.zpy());break; case 0x8F:this.opSax(this.abs());break; case 0x83:this.opSax(this.izx());break;
+  case 0xC7:this.opDcp(this.zp());break; case 0xD7:this.opDcp(this.zpx());break; case 0xCF:this.opDcp(this.abs());break; case 0xDF:this.opDcp(this.abx());break; case 0xDB:this.opDcp(this.aby());break; case 0xC3:this.opDcp(this.izx());break; case 0xD3:this.opDcp(this.izy());break;
+  case 0xE7:this.opIsb(this.zp());break; case 0xF7:this.opIsb(this.zpx());break; case 0xEF:this.opIsb(this.abs());break; case 0xFF:this.opIsb(this.abx());break; case 0xFB:this.opIsb(this.aby());break; case 0xE3:this.opIsb(this.izx());break; case 0xF3:this.opIsb(this.izy());break;
+  case 0x07:this.opSlo(this.zp());break; case 0x17:this.opSlo(this.zpx());break; case 0x0F:this.opSlo(this.abs());break; case 0x1F:this.opSlo(this.abx());break; case 0x1B:this.opSlo(this.aby());break; case 0x03:this.opSlo(this.izx());break; case 0x13:this.opSlo(this.izy());break;
+  case 0x27:this.opRla(this.zp());break; case 0x37:this.opRla(this.zpx());break; case 0x2F:this.opRla(this.abs());break; case 0x3F:this.opRla(this.abx());break; case 0x3B:this.opRla(this.aby());break; case 0x23:this.opRla(this.izx());break; case 0x33:this.opRla(this.izy());break;
+  case 0x47:this.opSre(this.zp());break; case 0x57:this.opSre(this.zpx());break; case 0x4F:this.opSre(this.abs());break; case 0x5F:this.opSre(this.abx());break; case 0x5B:this.opSre(this.aby());break; case 0x43:this.opSre(this.izx());break; case 0x53:this.opSre(this.izy());break;
+  case 0x67:this.opRra(this.zp());break; case 0x77:this.opRra(this.zpx());break; case 0x6F:this.opRra(this.abs());break; case 0x7F:this.opRra(this.abx());break; case 0x7B:this.opRra(this.aby());break; case 0x63:this.opRra(this.izx());break; case 0x73:this.opRra(this.izy());break;
+  case 0x0B:case 0x2B:this.a=(this.a&this.imm())&255;this.zn(this.a);this.setC(this.a&0x80);break;
+  case 0x4B:this.a=(this.a&this.imm())&255;this.a=this.lsrVal(this.a);break;
+  case 0x6B:this.a=(this.a&this.imm())&255;this.a=this.rorVal(this.a);break;
+  case 0xCB:{var v=this.imm();var t=(this.a&this.x)-v;this.setC(t>=0);this.x=t&255;this.zn(this.x);break;}
+  case 0xBB:{var v=this.r(this.aby())&this.sp;this.a=this.x=this.sp=v&255;this.zn(v);break;}
+  case 0x9C:this.opShy(this.abx());break; case 0x9E:this.opShx(this.aby());break; case 0x9F:this.opAhx(this.aby());break; case 0x93:this.opAhx(this.izy());break; case 0x9B:{var a=this.aby();this.sp=(this.a&this.x)&255;this.w(a,this.sp&(((a>>8)+1)&255));break;} case 0x8B:this.a=(this.x&this.imm())&255;this.zn(this.a);break;
 
   case 0x00:
     this.trap=true;
@@ -1433,7 +1498,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX17 autostart XEX lab.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX18 compat core.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -1508,11 +1573,18 @@ function runAsyncAtariRoutine(addr,label,limit,vcountValue){
  if(!cpu || !goodEntry(addr))return 0;
  var saved={a:cpu.a,x:cpu.x,y:cpu.y,p:cpu.p,sp:cpu.sp,pc:cpu.pc,trap:cpu.trap,msg:cpu.trapMsg,vc:cpu.vcount};
  cpu.trap=false;cpu.trapMsg="";
+ // FIX18: VBI/DLI nejsou JSR. Atari před vstupem do NMI/IRQ uloží P/PC na stack a rutina končí RTI
+ // nebo skokem do OS XITVBV/XITVB. Bez tohoto rámce DLI občas pokračovala do dat a přepisovala RAM.
+ var sentinel=0x02FE;
+ cpu.push((sentinel>>8)&255);
+ cpu.push(sentinel&255);
+ cpu.push(cpu.p&255);
  cpu.pc=addr&65535;
  if(vcountValue!==undefined)cpu.vcount=vcountValue&0x7F;
  var ran=0;
  for(;ran<(limit||4000) && !cpu.trap;ran++){
    cpu.step();
+   if(cpu.pc===sentinel)break;
    // Atari OS interrupt exit stubs: XITVBV/XITVBL a podobné skoky do ROM.
    if(cpu.pc>=0xE000)break;
  }
@@ -1544,16 +1616,18 @@ function runFrameInterrupts(){
  }
 }
 
+function nonZeroRange(addr,len){var n=0;for(var i=0;i<len;i++)if(ram[(addr+i)&65535])n++;return n;}
 function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
- lines.push("COMPAT SNAPSHOT FIX17");
+ lines.push("COMPAT SNAPSHOT FIX18");
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
  lines.push("DLIST=$"+hex(dl||0,4)+" SAVMSC=$"+hex(base,4)+" NMIEN=$"+hex(ram[0xD40E]||0,2)+" VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" DLI=$"+hex((ram[0x0200]|(ram[0x0201]<<8))&65535,4));
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
+ lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
@@ -1578,7 +1652,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX17: PiTT-KiTT je chráněný referenční profil, cizí XEXy běží přes compatibility lab.");
+ updatePlayStatus("Emulátor běží. FIX18: PiTT-KiTT je chráněný referenční profil, River/cizí XEXy běží přes nové compat jádro.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
