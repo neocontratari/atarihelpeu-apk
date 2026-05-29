@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX20 RIVER INPUT/POKEY STATUS / PiTT-KiTT + River Raid</title>
+<title>EMU-09 FIX21 RIVER WIDE PLAYFIELD / PiTT-KiTT + River Raid</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -22,8 +22,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX20 RIVER INPUT/POKEY STATUS</h1>
-<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX20 opravuje další zásadní past u River Raid: TRIG1-TRIG3 a POKEY SKSTAT nesmí zůstat nulové. Jinak hra pořád resetuje stav a negeneruje obrazová data. PiTT-KiTT zůstává zamražená referenční hra.</p>
+<h1>EMU-09 FIX21 RIVER WIDE PLAYFIELD</h1>
+<p>PiTT-KiTT z FIX15 je zamražený jako referenční hra. FIX21 opravuje další zásadní past u River Raid: DMACTL=$3F znamená široké playfield řádky 48 bajtů, ne 40. Renderer teď u Riveru čte široký obraz a ořízne viditelný střed jako Atari.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -57,7 +57,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX20 River input/POKEY status.</div>
+<div id="playStatus" class="playStatus">Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX21 River wide playfield.</div>
 </section>
 
 <section class="card">
@@ -107,7 +107,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX20 nechává PiTT-KiTT jako kontrolní hru a posouvá River Raid dál: vstupní GTIA triggry a POKEY SKSTAT už vracejí klidový stav jako skutečné Atari.</p>
+<p>FIX21 nechává PiTT-KiTT jako kontrolní hru a posouvá River Raid dál: ANTIC wide playfield přes DMACTL=$3F už používá 48b stride a viditelný ořez.</p>
 </section>
 </div>
 
@@ -378,7 +378,7 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX20-RIVER-INPUT-POKEY");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX21-RIVER-WIDE-PLAYFIELD");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -913,10 +913,11 @@ function playfield2bppCssColors(cs){
 function playfield2bppRgbColors(cs){return playfield2bppCssColors(cs).map(rgbFromCss);}
 
 function genericBitmapCssColors(mode,cs){
- // FIX19: PiTT-KiTT používá vlastní optimalizovaný 2BPP renderer, kde 00=COLBK.
- // River Raid / ANTIC mode $E je jiná past: nulová RAM $2000 není prázdno, ale vodní plocha.
- // Snapshot ukázal DLIST=$3F00, mode $E řádky na $2000 a COLPF1=$8E, takže 00 musí jít na COLPF1.
- if(isRiverProfile() && (mode===14 || mode===15 || mode===13 || mode===12))return [cs.p1,cs.p0,cs.p2,cs.p3];
+ // PiTT-KiTT má vlastní renderer. River Raid ve FIX21 řeší hlavně DMACTL wide stride 48;
+ // pro první čitelnou verzi Riveru používáme dočasnou River paletu pro mode $E.
+ if(isRiverProfile() && (mode===14 || mode===15 || mode===13 || mode===12)){
+   var rc=riverModeECssColors(cs); if(rc)return rc;
+ }
  return playfield2bppCssColors(cs);
 }
 function genericBitmapRgbColors(mode,cs){return genericBitmapCssColors(mode,cs).map(rgbFromCss);}
@@ -1148,15 +1149,40 @@ function renderVideo(){
  if(d && dlistLooksValid(d)){renderAnticDisplay();return;}
  renderGenericFallback();
 }
-function bytesPerMode(mode){
- // ANTIC šířka řádku pro normal playfield.
- // Důležité pro River Raid: mode $E je 40 bytů, mode $6 scoreboard je 20 bytů.
+function baseBytesPerMode(mode){
+ // ANTIC normal playfield width. Skutečný stride mění DMACTL width bits.
  if(mode===2 || mode===3 || mode===4 || mode===5)return 40;
  if(mode===6 || mode===7)return 20;
  if(mode===8 || mode===9)return 10;
  if(mode===10 || mode===11)return 20;
  if(mode===12 || mode===13 || mode===14 || mode===15)return 40;
  return 40;
+}
+function playfieldWidthCode(){
+ // DMACTL/SDMCTL bits 0-1: 1=narrow, 2=normal, 3=wide. River Raid hlásí DMACTL=$3F => wide.
+ var v=(ram[0xD400]||ram[0x022F]||0)&3;
+ return v||2;
+}
+function lineStrideBytes(mode){
+ var base=baseBytesPerMode(mode);
+ var w=playfieldWidthCode();
+ if(base===40)return w===3?48:(w===1?32:40);
+ if(base===20)return w===3?24:(w===1?16:20);
+ if(base===10)return w===3?12:(w===1?8:10);
+ return base;
+}
+function visibleOffsetBytes(mode){
+ // Wide playfield má extra bajty vlevo/vpravo. Canvas ukazuje normální viditelný střed.
+ var base=baseBytesPerMode(mode), stride=lineStrideBytes(mode);
+ if(stride>base)return ((stride-base)/2)|0;
+ return 0;
+}
+function bytesPerMode(mode){return lineStrideBytes(mode);}
+function riverModeECssColors(cs){
+ // Dočasná River paleta, než budeme mít plnou scanline/DLI paletu.
+ // River screen data používají hlavně $55=zem, $AA/$AF=břeh, $FF=voda.
+ if(isRiverProfile())return [cs.bk, atariColor(0xC4), atariColor(0x32), atariColor(0x8E)];
+ return null;
 }
 function scanlinesForMode(mode){
  if(mode===2 || mode===4 || mode===6 || mode===8)return 8;
@@ -1309,12 +1335,13 @@ function renderAnticDisplayFastGeneric(){
    if(op&0x40){var lo=ram[dl++&65535],hi=ram[dl++&65535];scanAddr=lo|(hi<<8);}
    if(!scanAddr)scanAddr=((ram[0x58]|(ram[0x59]<<8))+(textLines*40))&65535;
    var h=scanlinesForMode(mode);
-   if(mode===2 || mode===3){imgTextLine(d,scanAddr,y,rgbFromCss(cs.p1),rgbFromCss(cs.bk),40,1);}
-   else if(mode===6 || mode===7){imgTextLine(d,scanAddr,y,rgbFromCss(cs.p1),rgbFromCss(cs.bk),20,1);}
-   else if(mode===4 || mode===5){for(var sy=0;sy<h;sy++)imgMode4Line(d,scanAddr,y+sy,sy,cols);}
-   else img2bppLine(d,scanAddr,y,genericBitmapRgbColors(mode,cs),Math.max(1,h));
+   var visAddr=(scanAddr+visibleOffsetBytes(mode))&65535;
+   if(mode===2 || mode===3){imgTextLine(d,visAddr,y,rgbFromCss(cs.p1),rgbFromCss(cs.bk),40,1);}
+   else if(mode===6 || mode===7){imgTextLine(d,visAddr,y,rgbFromCss(cs.p1),rgbFromCss(cs.bk),20,1);}
+   else if(mode===4 || mode===5){for(var sy=0;sy<h;sy++)imgMode4Line(d,visAddr,y+sy,sy,cols);}
+   else img2bppLine(d,visAddr,y,genericBitmapRgbColors(mode,cs),Math.max(1,h));
    y+=h;
-   scanAddr=(scanAddr+bytesPerMode(mode))&65535;
+   scanAddr=(scanAddr+lineStrideBytes(mode))&65535;
    textLines++;
  }
  g.putImageData(anticImageData,0,0);
@@ -1355,9 +1382,10 @@ function renderAnticDisplay(){
      scanAddr=lo2|(hi2<<8);
    }
    if(!scanAddr)scanAddr=((ram[0x58]|(ram[0x59]<<8))+(textLines*40))&65535;
-   var used=drawAnticRawRows(g,scanAddr,y,mode,cs);
+   var visAddr2=(scanAddr+visibleOffsetBytes(mode))&65535;
+   var used=drawAnticRawRows(g,visAddr2,y,mode,cs);
    y+=used;
-   scanAddr=(scanAddr+bytesPerMode(mode))&65535;
+   scanAddr=(scanAddr+lineStrideBytes(mode))&65535;
    textLines++;
  }
  pmgOnlyContrast=false;
@@ -1540,7 +1568,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX20 River input/POKEY status.";return;}
+ if(!cpu){e.textContent="Připraveno. Dej SPUSTIT / INTRO, nebo načti vlastní XEX. FIX21 River wide playfield.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -1551,7 +1579,7 @@ function updatePlayStatus(extra){
  }
  var gameLine=isPiTTProfile()?
    ("\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)):
-   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER VIDEO mode $E: 00=COLPF1/voda, PMG=$"+hex((ram[0xD407]||0)<<8,4):""));
+   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER VIDEO wide PF: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" PMG=$"+hex((ram[0xD407]||0)<<8,4):""));
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
    "\nXEX "+currentXexName+gameLine+
@@ -1663,14 +1691,14 @@ function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
- lines.push("COMPAT SNAPSHOT FIX20");
+ lines.push("COMPAT SNAPSHOT FIX21");
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
  lines.push("DLIST=$"+hex(dl||0,4)+" SAVMSC=$"+hex(base,4)+" NMIEN=$"+hex(ram[0xD40E]||0,2)+" VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" DLI=$"+hex((ram[0x0200]|(ram[0x0201]<<8))&65535,4));
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
- if(isRiverProfile())lines.push("RIVER FIX20: TRIG1-3 vrací 1 a SKSTAT $D20F vrací $FF. Mode $E stále mapuje 00 na COLPF1/vodu.");
+ if(isRiverProfile())lines.push("RIVER FIX21: TRIG1-3 vrací 1, SKSTAT $FF. DMACTL wide playfield: mode $E stride 48, crop 4 bytes; voda/země mají dočasnou River paletu.");
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
@@ -1695,7 +1723,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX20: PiTT-KiTT je chráněný referenční profil, River má opravené TRIG1-TRIG3/SKSTAT + mode $E paletu.");
+ updatePlayStatus("Emulátor běží. FIX21: PiTT-KiTT je chráněný referenční profil, River má wide playfield stride/crop.");
  if(!playLoopId)playLoop();
 }
 function playLoop(){
