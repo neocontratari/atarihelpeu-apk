@@ -1,9 +1,3 @@
-# AtariHelp.eu EMU-09 FIX47 AUTO LOG SAVE
+# AtariHelp.eu EMU-09 FIX48 Stable Video Snapshot
 
-Základ vychází z FIX46. Přidané: automatické ukládání logu do mobilu při každém tlačítku KOMPATIBILITA / SNAPSHOT.
-
-V APK se log ukládá do: `Download/AtariHelpLogs/` jako `.txt`.
-
-PiTT-KiTT zůstává referenční hra, XEX test suite zůstává pro River Raid / Pitstop II / Arkanoid III / Super Cobra.
-
-Důležité pro testování: po snapshotu už není potřeba ručně kopírovat dlouhý log; stačí poslat TXT soubor z telefonu, případně screenshot.
+Základ FIX47/FIX45, PiTT-KiTT zůstává referenční. Přidán stabilní video snapshot pro Pitstop II: render bere poslední ověřený snímek místo živé rozdělané RAM. Automatické ukládání logu zůstává.
