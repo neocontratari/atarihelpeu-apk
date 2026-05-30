@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 153
-        versionName "EMU-09-FIX54-gtia-river-pitstop-core"
+        versionCode 155
+        versionName "EMU-09-FIX55-dlist-guard-gtia-brk-core"
     }
 }

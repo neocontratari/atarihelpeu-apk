@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX54 GTIA + RIVER + PITSTOP CORE / vlastní XEX + vestavěné testy</title>
+<title>EMU-09 FIX55 DLIST GUARD + GTIA BRK CORE / vlastní XEX + vestavěné testy</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -23,14 +23,14 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX54 GTIA + RIVER + PITSTOP CORE</h1>
-<p>PiTT-KiTT zůstává referenční test, ale FIX54 míří hlavně na obecný emulátor pro vlastní XEX soubory. Pitstop snapshot je už jen bezpečnostní pojistka a nesmí překrýt neznámou fázi/menu. Řádkový DLI/CHBASE stav zůstává, nově je přidané PMG Y zarovnání a opatrná GTIA collision diagnostika pro obecné XEX hry.</p>
+<h1>EMU-09 FIX55 DLIST GUARD + GTIA BRK CORE</h1>
+<p>PiTT-KiTT zůstává referenční test, ale FIX55 míří hlavně na obecný emulátor pro vlastní XEX soubory. Pitstop snapshot je už jen bezpečnostní pojistka a nesmí překrýt neznámou fázi/menu. Řádkový DLI/CHBASE stav zůstává, nově je přidané PMG Y zarovnání a opatrná GTIA collision diagnostika pro obecné XEX hry.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl FIX54 jsou <b>vlastní .XEX soubory</b> z telefonu. Loader rozlišuje segmenty, INITAD ($02E2) a RUNAD ($02E0); diagnostika víc hlídá DLIST, SAVMSC, DLI a CHBASE.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl FIX55 jsou <b>vlastní .XEX soubory</b> z telefonu. Loader rozlišuje segmenty, INITAD ($02E2) a RUNAD ($02E0); diagnostika víc hlídá DLIST, SAVMSC, DLI a CHBASE.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -70,7 +70,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX54 GTIA + RIVER + PITSTOP CORE: vlastní XEX jsou hlavní cíl, PMG Y zarovnání + hrubé kolize, log se ukládá do mobilu. PiTT-KiTT / River / Pitstop II / Arkanoid III jsou testy.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX55 DLIST GUARD + GTIA BRK CORE: vlastní XEX jsou hlavní cíl, PMG Y zarovnání + hrubé kolize, log se ukládá do mobilu. PiTT-KiTT / River / Pitstop II / Arkanoid III jsou testy.</div>
 </section>
 
 <section class="card">
@@ -143,7 +143,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX54 drží směr obecného XEX jádra: cold reset čistí stav, log se ukládá do mobilu, DLI renderer snímá i CHBASE po řádcích a bitmapové módy posouvají obrazovou paměť po scanline a Pitstop snapshot nesmí maskovat menu ani cizí XEX.</p>
+<p>FIX55 drží směr obecného XEX jádra: cold reset čistí stav, log se ukládá do mobilu, DLI renderer snímá i CHBASE po řádcích a bitmapové módy posouvají obrazovou paměť po scanline a Pitstop snapshot nesmí maskovat menu ani cizí XEX.</p>
 </section>
 </div>
 
@@ -210,6 +210,9 @@ function newGtiaCollisionStats(){
  return {p0pf:0,p1pf:0,p2pf:0,p3pf:0,m0pf:0,m1pf:0,m2pf:0,m3pf:0,reads:0,lastRead:-1,clears:0,readMap:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};
 }
 var gtiaCollisionStats=newGtiaCollisionStats();
+var lastGoodDlist=0;
+var lastGoodDlistProfile="";
+var lastRejectedDlistInfo="";
 function clearGtiaCollisions(resetStats){
  if(gtiaCollisionRegs)for(var i=0;i<16;i++)gtiaCollisionRegs[i]=0;
  if(resetStats || !gtiaCollisionStats)gtiaCollisionStats=newGtiaCollisionStats();
@@ -231,7 +234,7 @@ var screenBase=0x6000;
 var pmgOnlyContrast=false;
 var pmgDebugPalette=false;
 var writeSeen=new Uint8Array(65536);
-var EMU_BUILD_TAG="FIX54_GTIA_RIVER_PITSTOP_CORE";
+var EMU_BUILD_TAG="FIX55_DLIST_GUARD_GTIA_BRK_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -265,7 +268,7 @@ function clearManagedTimers(){
  inputPulseTimers=[];
 }
 function deterministicColdResetState(){
- // FIX54: žádné zbytky po River/Pitstop/Arkanoid/PiTT. Nový XEX musí vždy začít stejně.
+ // FIX55: žádné zbytky po River/Pitstop/Arkanoid/PiTT. Nový XEX musí vždy začít stejně.
  fullStop();
  clearManagedTimers();
  input={start:false,fire:false,left:false,right:false,up:false,jump:false,select:false,option:false,key:0xFF};
@@ -283,14 +286,15 @@ function deterministicColdResetState(){
  xexInfo={run:0,inits:[],entry:0,warnings:[],bad:false};segments=[];
  introDl=0x2003;loseDl=0x2021;winDl=0x2039;hiDl=0x2051;textDlists=[];textDlistMap={};
  rgbCache={};writeSeen=new Uint8Array(65536);
+ lastGoodDlist=0;lastGoodDlistProfile="";lastRejectedDlistInfo="";
  ram.fill(0);
  coldResetSeq++;
- lastColdResetInfo='COLD RESET FIX54 #'+coldResetSeq+' OK: RAM/CPU/DLI/cache/input/timery vyčištěny';
+ lastColdResetInfo='COLD RESET FIX55 #'+coldResetSeq+' OK: RAM/CPU/DLI/cache/input/timery vyčištěny';
 }
 
 function pitstopPhaseFromPc(pc){
  pc=pc&65535;
- // FIX54: Pitstop má několik stabilních čekacích smyček. Snapshot z trati NESMÍ překrýt menu/volbu.
+ // FIX55: Pitstop má několik stabilních čekacích smyček. Snapshot z trati NESMÍ překrýt menu/volbu.
  if(pc>=0x4F78 && pc<=0x4F7B)return "race_wait";
  if(pc>=0x30C9 && pc<=0x30CC)return "select_wait";
  if(pc===0x306E)return "title_wait";
@@ -381,7 +385,7 @@ function renderWithPitstopSnapshot(fn){
  if(!isPitstopProfile() || !pitstopVideoSnapshot || pitstopSnapshotRenderGuard){pitstopLastRenderSource="LIVE";return fn();}
  var phase=cpu?pitstopPhaseFromPc(cpu.pc):"";
  pitstopLastLivePhase=phase||"unknown";
- // FIX54: snapshot je POUZE bezpečnostní pojistka pro stejnou známou fázi Pitstopu.
+ // FIX55: snapshot je POUZE bezpečnostní pojistka pro stejnou známou fázi Pitstopu.
  // Když je fáze neznámá nebo se mění, vždy kreslíme živou RAM. To je důležité pro menu
  // a zároveň to drží směr projektu: obecný emulátor pro vlastní XEX, ne maskování stavů jedné hry.
  var liveRam=ram, liveDli=genericDliCache;
@@ -422,11 +426,11 @@ function makeLogFileName(reason){
  var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
  var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
  var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
- return 'atarihelp-FIX54-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
+ return 'atarihelp-FIX55-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX54 GTIA + RIVER + PITSTOP CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX55 DLIST GUARD + GTIA BRK CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -534,7 +538,7 @@ function loadBuiltinRiverRaid(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="River Raid.xex / vestavěný test";
  loadXex(false);
- updatePlayStatus("Načten River Raid test. FIX54 ho spustí automaticky. Když stojí na startu, zkus TAP START nebo TAP FIRE.");
+ updatePlayStatus("Načten River Raid test. FIX55 ho spustí automaticky. Když stojí na startu, zkus TAP START nebo TAP FIRE.");
  scheduleAutoStartLoadedXex("River Raid");
 }
 function loadBuiltinSuperCobra(){
@@ -554,7 +558,7 @@ function loadBuiltinPitstopII(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Pitstop II.xex / vestavěný těžší test";
  loadXex(false);
- updatePlayStatus("Načten Pitstop II. FIX54 ho bere jako hlavní těžší test obecného jádra. Zkus TAP START/FIRE/OPTION/SELECT podle obrazovky.");
+ updatePlayStatus("Načten Pitstop II. FIX55 ho bere jako hlavní těžší test obecného jádra. Zkus TAP START/FIRE/OPTION/SELECT podle obrazovky.");
  scheduleAutoStartLoadedXex("Pitstop II");
 }
 function loadBuiltinArkanoidIII(){
@@ -578,7 +582,7 @@ function handleXexFile(file){
      xexCache=null;
      currentXexName=file.name+" / "+customXexBytes.length+" bytes";
      loadXex(false);
-     updatePlayStatus("Načten vlastní XEX: "+currentXexName+". FIX54 ho za chvilku spustí sám; PAUZA ho zastaví.");
+     updatePlayStatus("Načten vlastní XEX: "+currentXexName+". FIX55 ho za chvilku spustí sám; PAUZA ho zastaví.");
      scheduleAutoStartLoadedXex("vlastní XEX");
    }catch(e){log("XEX load error: "+e.message);updatePlayStatus("Chyba při načtení XEX: "+e.message);}
  };
@@ -587,7 +591,7 @@ function handleXexFile(file){
 }
 
 function scheduleAutoStartLoadedXex(label){
- // FIX54: autostart timer je řízený a při dalším načtení se ruší. Starý timer už nesmí spustit novou hru.
+ // FIX55: autostart timer je řízený a při dalším načtení se ruší. Starý timer už nesmí spustit novou hru.
  if(playMode)return;
  if(autoStartTimer){clearTimeout(autoStartTimer);autoStartTimer=0;}
  updatePlayStatus("Načteno: "+label+". Autostart za okamžik; když chceš jen diagnostiku, zmáčkni PAUZA.");
@@ -793,7 +797,7 @@ function loadXex(light){
  deterministicColdResetState();
  activeXexProfile="generic";
  seedAtariOsRomCharset();
- // FIX54 obecný XEX default: než si hra nastaví vlastní hardware, držíme použitelný Atari charset
+ // FIX55 obecný XEX default: než si hra nastaví vlastní hardware, držíme použitelný Atari charset
  // a základní ANTIC DMA hodnoty. Vlastní XEX je samozřejmě může okamžitě přepsat.
  ram[0xD409]=0xE0; ram[0x02F4]=0xE0; ram[0xD401]=0x02; ram[0xD400]=0x22; ram[0x022F]=0x22;
  // Bezpečný default: prázdný textový buffer, než si XEX nastaví vlastní obrazovku.
@@ -828,7 +832,7 @@ function loadXex(light){
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX54-GTIA-RIVER-PITSTOP-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX55-DLIST-GUARD-GTIA-BRK-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -901,13 +905,13 @@ CPU6502.prototype.r=function(a){
    return 1;
  }
  // GTIA collision registry read area $D000-$D00F. Stejné adresy jsou při zápisu HPOS/SIZE/GRAF,
- // ale při čtení to nejsou HPOS/SIZE hodnoty. FIX54: pro obecné XEX vracíme opatrné
+ // ale při čtení to nejsou HPOS/SIZE hodnoty. FIX55: pro obecné XEX vracíme opatrné
  // kolize z posledního vykresleného frame. Pořád radši nedáváme falešnou smrt, ale hry jako
  // Donkey/Kong už aspoň vidí, že PMG stojí na playfieldu.
  if(a>=0xD000 && a<=0xD00F){
    var ci=a-0xD000;
    if(gtiaCollisionStats){gtiaCollisionStats.reads=(gtiaCollisionStats.reads||0)+1;gtiaCollisionStats.lastRead=ci;if(gtiaCollisionStats.readMap)gtiaCollisionStats.readMap[ci]=(gtiaCollisionStats.readMap[ci]||0)+1;}
-   if(activeXexProfile==='generic' && gtiaCollisionRegs)return gtiaCollisionRegs[ci]&255;
+   if(gtiaCollisionRegs && activeXexProfile!=='pitstop')return gtiaCollisionRegs[ci]&255;
    return 0;
  }
 
@@ -1070,7 +1074,7 @@ CPU6502.prototype.osKeyboardAtasciiReturn=function(){
  var lo=this.pull(),hi=this.pull();
  this.pc=((lo|(hi<<8))+1)&65535;
  this.steps++;
- if(activeXexProfile==='pitstop')log('FIX54 OS keyboard: scan $'+hex(scan,2)+' -> ATASCII $'+hex(atascii,2));
+ if(activeXexProfile==='pitstop')log('FIX55 OS keyboard: scan $'+hex(scan,2)+' -> ATASCII $'+hex(atascii,2));
 };
 
 CPU6502.prototype.step=function(){
@@ -1222,11 +1226,20 @@ CPU6502.prototype.step=function(){
   case 0xBB:{var v=this.r(this.aby())&this.sp;this.a=this.x=this.sp=v&255;this.zn(v);break;}
   case 0x9C:this.opShy(this.abx());break; case 0x9E:this.opShx(this.aby());break; case 0x9F:this.opAhx(this.aby());break; case 0x93:this.opAhx(this.izy());break; case 0x9B:{var a=this.aby();this.sp=(this.a&this.x)&255;this.w(a,this.sp&(((a>>8)+1)&255));break;} case 0x8B:this.a=(this.x&this.imm())&255;this.zn(this.a);break;
 
-  case 0x00:
-    this.trap=true;
-    if(pc0>=0xA000 && pc0<=0xBFFF)this.trapMsg="BRK/empty ROM or cartridge area at $"+hex(pc0,4)+". Tenhle XEX nejspíš potřebuje cartridge/BASIC ROM, nebo vlastní dekompresní loader.";
-    else this.trapMsg="BRK at $"+hex(pc0,4);
-    break;
+  case 0x00:{
+    // FIX55: část XEXů používá BRK jako skutečný IRQ/monitor návrat. Když je IRQ vector nastavený
+    // na smysluplnou adresu, provedeme 6502 BRK místo okamžitého trapu. Když vector chybí nebo míří
+    // na prázdnou ROM/nulu, pořád zastavíme a log řekne proč.
+    var vlo=this.r(0xFFFE), vhi=this.r(0xFFFF), vec=(vlo|(vhi<<8))&65535;
+    if(vec>=0x0200 && vec<=0xBFFF && vec!==pc0 && this.r(vec)!==0x00){
+      this.push((this.pc>>8)&255);this.push(this.pc&255);this.push((this.p|0x10)&255);
+      this.p|0x04;this.pc=vec;
+    }else{
+      this.trap=true;
+      if(pc0>=0xA000 && pc0<=0xBFFF)this.trapMsg="BRK/empty ROM or cartridge area at $"+hex(pc0,4)+". Tenhle XEX nejspíš potřebuje cartridge/BASIC ROM, nebo vlastní dekompresní loader.";
+      else this.trapMsg="BRK at $"+hex(pc0,4)+" IRQV=$"+hex(vec,4);
+    }
+    break;}
   default:this.trap=true;this.trapMsg="Unsupported opcode $"+hex(op,2)+" at $"+hex(pc0,4);break;
  }
  // RTCLOK tick: zero page $14
@@ -1280,9 +1293,34 @@ function dlistMetricsAt(dl){
  }
  return m;
 }
+function dlistMetricsSuspicious(m){
+ if(!m)return true;
+ if(m.displayOps<=0)return true;
+ // FIX55: náhodná obrazová/PMG/charset data někdy vypadají jako DLIST, hlavně u Pitstopu
+ // ($9A99 měl 18 LMS ve 43 opsech a 261 scanlines). Skutečné herní DLISTy v našich
+ // testech mají málo LMS vůči počtu řádků a buď JVB/JMP, nebo rozumnou výšku obrazu.
+ if(!m.hasEnd && !m.jump && m.visibleScan>235)return true;
+ if(m.lmsOps>=8 && (m.lmsOps*3)>m.displayOps)return true;
+ if(m.lmsOps>=12 && m.visibleScan>220)return true;
+ return false;
+}
 function dlistMetricsLooksDrawable(m){
  if(!m)return false;
- return m.displayOps>0 && (m.visibleScan>=8 || m.lmsOps>0) && (m.hasEnd || m.visibleScan>=80);
+ if(dlistMetricsSuspicious(m))return false;
+ return m.displayOps>0 && (m.visibleScan>=8 || m.lmsOps>0) && (m.hasEnd || m.jump || m.visibleScan>=80);
+}
+function rememberDlistCandidate(dl){
+ dl=(dl||0)&65535;
+ if(!validPtrForMiniAtari(dl))return 0;
+ var r=resolveDlistPtr(dl);
+ if(!validPtrForMiniAtari(r) || !dlistLooksValid(r))return 0;
+ lastGoodDlist=r;lastGoodDlistProfile=activeXexProfile;
+ return r;
+}
+function fallbackGoodDlist(){
+ if(lastGoodDlistProfile===activeXexProfile && validPtrForMiniAtari(lastGoodDlist) && dlistLooksValid(lastGoodDlist))return lastGoodDlist;
+ if(isPitstopProfile() && validPtrForMiniAtari(0x2B00) && dlistLooksValid(0x2B00))return rememberDlistCandidate(0x2B00);
+ return 0;
 }
 function resolveDlistPtr(dl){
  dl=(dl||0)&65535;
@@ -1290,7 +1328,7 @@ function resolveDlistPtr(dl){
  var m=dlistMetricsAt(dl);
  if(m.jump && validPtrForMiniAtari(m.jump)){
    var jm=dlistMetricsAt(m.jump);
-   // FIX54: některé XEXy nechají v SDLST/HW krátkou blankovací listinu typu
+   // FIX55: některé XEXy nechají v SDLST/HW krátkou blankovací listinu typu
    // 70 70 60 01 <addr>. Na skutečném Atari se pointer v čase/VBI stabilizuje,
    // ale náš WebView renderer viděl jen blanky + PMG. Když cíl JVB/JMP vypadá jako
    // opravdový display list s viditelnými řádky, kreslíme ten.
@@ -1301,30 +1339,46 @@ function resolveDlistPtr(dl){
 }
 function dlistQualitySummary(dl){
  var r=resolveDlistPtr(dl),m=dlistMetricsAt(dl),rm=dlistMetricsAt(r);
- return 'raw $'+hex(dl||0,4)+' ops '+m.displayOps+' lms '+m.lmsOps+' vis '+m.visibleScan+' blank '+m.blankScan+' jump $'+hex(m.jump||0,4)+' -> used $'+hex(r||0,4)+' ops '+rm.displayOps+' lms '+rm.lmsOps+' vis '+rm.visibleScan;
+ return 'raw $'+hex(dl||0,4)+' ops '+m.displayOps+' lms '+m.lmsOps+' vis '+m.visibleScan+' blank '+m.blankScan+' jump $'+hex(m.jump||0,4)+' susp '+(dlistMetricsSuspicious(m)?'YES':'no')+' -> used $'+hex(r||0,4)+' ops '+rm.displayOps+' lms '+rm.lmsOps+' vis '+rm.visibleScan+' lastGood $'+hex(lastGoodDlist||0,4)+' rejected '+(lastRejectedDlistInfo||'--');
 }
 function getDlistPtr(){
  var s=ram[0x230]|(ram[0x231]<<8);
  var h=ram[0xD402]|(ram[0xD403]<<8);
- // FIX33: Atari OS běžně kopíruje shadow SDLST $0230/$0231 do hardwarového DLIST $D402/$D403 ve VBI.
- // Pitstop II zapíše nový DLIST jen do shadow SDLST, zatímco starý hardware pointer zůstane na B38F.
- // Proto u obecných XEX preferujeme validní shadow DLIST, když ho hra zapsala.
- if(isPiTTProfile()){
-   if(writeSeen && (writeSeen[0xD402]||writeSeen[0xD403]) && validPtrForMiniAtari(h))return resolveDlistPtr(h);
-   if(validPtrForMiniAtari(s))return resolveDlistPtr(s);
-   if(validPtrForMiniAtari(h))return resolveDlistPtr(h);
-   return 0;
- }
  var sw=(writeSeen && (writeSeen[0x0230]||writeSeen[0x0231]));
  var hw=(writeSeen && (writeSeen[0xD402]||writeSeen[0xD403]));
- if(sw && validPtrForMiniAtari(s) && dlistLooksValid(s))return resolveDlistPtr(s);
- if(hw && validPtrForMiniAtari(h) && dlistLooksValid(h))return resolveDlistPtr(h);
- if(validPtrForMiniAtari(s) && s!==introDl && dlistLooksValid(s))return resolveDlistPtr(s);
- if(validPtrForMiniAtari(h) && dlistLooksValid(h))return resolveDlistPtr(h);
- if(validPtrForMiniAtari(s))return resolveDlistPtr(s);
- if(validPtrForMiniAtari(h))return resolveDlistPtr(h);
- return 0;
+ function tryOne(a,label){
+   if(!validPtrForMiniAtari(a))return 0;
+   var r=rememberDlistCandidate(a);
+   if(r)return r;
+   var m=dlistMetricsAt(a);
+   lastRejectedDlistInfo=label+' $'+hex(a||0,4)+' ops '+m.displayOps+' lms '+m.lmsOps+' vis '+m.visibleScan+' blank '+m.blankScan+' jump $'+hex(m.jump||0,4);
+   return 0;
+ }
+ // FIX55: už nikdy slepě nevracíme pointer jen proto, že je v RAM. Pitstop ukázal, že
+ // obrazová data kolem $9A99 se tvářila jako DLIST a rozsekala trať. Kandidát musí projít metrikou;
+ // když neprojde, vracíme poslední dobrý DLIST stejného profilu nebo nouzově fallback.
+ if(isPiTTProfile()){
+   var pr=0; if(hw)pr=tryOne(h,'hw'); if(pr)return pr; pr=tryOne(s,'shadow'); if(pr)return pr; pr=tryOne(h,'hw2'); if(pr)return pr; return fallbackGoodDlist();
+ }
+ if(isPitstopProfile()){
+   var rr=0;
+   if(sw)rr=tryOne(s,'shadow'); if(rr)return rr;
+   if(hw)rr=tryOne(h,'hw'); if(rr)return rr;
+   rr=tryOne(s,'shadow2'); if(rr)return rr;
+   rr=tryOne(h,'hw2'); if(rr)return rr;
+   rr=tryOne(pitstopLastSnapshotDl,'snap'); if(rr)return rr;
+   rr=tryOne(0x2B00,'pitstop-safe'); if(rr)return rr;
+   return fallbackGoodDlist();
+ }
+ var gr=0;
+ if(sw)gr=tryOne(s,'shadow'); if(gr)return gr;
+ if(hw)gr=tryOne(h,'hw'); if(gr)return gr;
+ if(validPtrForMiniAtari(s) && s!==introDl){gr=tryOne(s,'shadow2'); if(gr)return gr;}
+ gr=tryOne(h,'hw2'); if(gr)return gr;
+ gr=tryOne(s,'shadow3'); if(gr)return gr;
+ return fallbackGoodDlist();
 }
+
 
 function screenChar(v){
  v&=127;
@@ -1593,7 +1647,7 @@ function hposToCanvas(h){
 }
 function pmgEffectiveYOffset(l){
  var y=l.yOff;
- // FIX54: obecné XEX bitmapové hry typu Donkey často kreslí playfield od y=0,
+ // FIX55: obecné XEX bitmapové hry typu Donkey často kreslí playfield od y=0,
  // ale PMG data jsou ukládaná s Atari TV offsetem. Starých 48 řádků posouvalo hráče nad podlahu.
  // PiTT/River/Pitstop si drží svoje specializované cesty; u generic single-line zkusíme bezpečnější 32.
  if(activeXexProfile==='generic' && l.single && !isRiverProfile()){
@@ -1942,7 +1996,7 @@ function modeLineAddr(addr,mode,sy,stride){
 function charBaseGuess(chbaseByte){
  var b=(chbaseByte!==undefined && chbaseByte!==null)?(chbaseByte&255):(ram[0xD409]||ram[0x02F4]||0);
  var cb=(b&255)<<8;
- // FIX54: pro vlastní XEX bereme CHBASE jako skutečný ANTIC registr. Některé hry mají
+ // FIX55: pro vlastní XEX bereme CHBASE jako skutečný ANTIC registr. Některé hry mají
  // vlastní font s mnoha nulovými znaky, takže nesmíme vyžadovat moc nenulových bajtů.
  if(cb && validPtrForMiniAtari(cb) && countNonZero(cb,1024).n>0)return cb;
  if(cb>=0xE000)return cb;
@@ -2191,7 +2245,7 @@ function dliScanlinesFromDlist(dl){
    if(mode===1){break;}
    if(mode===0){
      var blank=((op>>4)&7)+1;
-     // FIX54: DLI bit platí i na blank instrukcích ($F0 apod.).
+     // FIX55: DLI bit platí i na blank instrukcích ($F0 apod.).
      // Pitstop II má právě horní $F0 DLI před první viditelnou řádkou; FIX50 ho ignoroval,
      // takže první řádky běžely se starým CHBASE/COLPF a obraz vypadal ukousnutě/rozebraně.
      if(op&0x80)out.push(y+blank-1);
@@ -2228,7 +2282,7 @@ function runScheduledGenericDlis(limitEach){
  return ran;
 }
 function captureGenericDliStates(){
- // FIX54: renderer už nespouští DLI rutiny. Použije stav nasnímaný během frame,
+ // FIX55: renderer už nespouští DLI rutiny. Použije stav nasnímaný během frame,
  // včetně ANTIC CHBASE/CHACTL/DMACTL, nejen barev GTIA. To pomáhá hlavně vlastním XEXům.
  if(!cpu || isPiTTProfile() || isRiverProfile())return [];
  if(genericDliCache && genericDliCacheFrame===playFrameNo)return genericDliCache;
@@ -2375,7 +2429,7 @@ function renderRiverRaidDisplay(){
    if(op&0x40){var lo=ram[p++&65535],hi=ram[p++&65535];scanAddr=lo|(hi<<8);}
    if(!scanAddr)scanAddr=((ram[0x58]|(ram[0x59]<<8))+(textLines*48))&65535;
    var h=scanlinesForMode(mode);
-   // FIX54: ve FIX53 tady byl překlep dliCaps místo caps. River renderer pak uměl skončit černou obrazovkou.
+   // FIX55: ve FIX53 tady byl překlep dliCaps místo caps. River renderer pak uměl skončit černou obrazovkou.
    var dma0=(ram[0xD400]||ram[0x022F]||0)&255;
    var stride=lineStrideBytesForDma(mode,dma0);
    var visAddr=(scanAddr+visibleOffsetBytesForStride(mode,stride))&65535;
@@ -2397,21 +2451,21 @@ function renderRiverRaidDisplay(){
  }
  var nonBg=countImageNonBg(d,rgbFromCss('#000000'),3);
  riverLastRenderStats={mode:'river-special',dl:dl,caps:caps.length,pmg:pmgDrawn,nonBg:nonBg,fallback:false};
- // FIX54: když River speciální renderer vyrobí skoro černý snímek, vrať false a renderVideo
+ // FIX55: když River speciální renderer vyrobí skoro černý snímek, vrať false a renderVideo
  // nechá běžet obecný ANTIC/DLIST renderer. To je lepší než černá obrazovka.
  if(nonBg<80 && pmgDrawn<4){riverLastRenderStats.fallback=true;return false;}
  g.putImageData(anticImageData,0,0);
  if(!playMode){
    var gg=c.getContext('2d');gg.fillStyle='#ff6b9a';gg.font='10px monospace';
-   gg.fillText('RIVER FIX54 DLI '+caps.length+' PMG '+pmgDrawn+' NB '+nonBg+' DL $'+hex(dl,4),4,188);
-   log('Rendered River FIX54 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' nonBg='+nonBg+' DL=$'+hex(dl,4));
+   gg.fillText('RIVER FIX55 DLI '+caps.length+' PMG '+pmgDrawn+' NB '+nonBg+' DL $'+hex(dl,4),4,188);
+   log('Rendered River FIX55 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' nonBg='+nonBg+' DL=$'+hex(dl,4));
  }
  return true;
 }
 
 
 function shouldDrawGenericPmgOverlay(){
- // FIX54: Pitstop II má v herní části PMBASE/PMG oblast kolidující s obrazovými/znakovými daty.
+ // FIX55: Pitstop II má v herní části PMBASE/PMG oblast kolidující s obrazovými/znakovými daty.
  // Náš mini core zatím neumí přesné GTIA/PMG priority a timing pro tuto hru, takže špatný PMG overlay
  // dělal modrý svislý sloup přes obraz. Raději PMG u Pitstopu v generic rendereru dočasně vypneme.
  // PiTT-KiTT má vlastní profil a River má vlastní PMG renderer, těch se to netýká.
@@ -2706,7 +2760,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. FIX54 GTIA + RIVER + PITSTOP CORE: vlastní XEX jsou hlavní cíl, PMG Y zarovnání + hrubé kolize, log se ukládá do mobilu. PiTT-KiTT / River / Pitstop II / Arkanoid III jsou testy.";return;}
+ if(!cpu){e.textContent="Připraveno. FIX55 DLIST GUARD + GTIA BRK CORE: vlastní XEX jsou hlavní cíl, PMG Y zarovnání + hrubé kolize, log se ukládá do mobilu. PiTT-KiTT / River / Pitstop II / Arkanoid III jsou testy.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -2717,7 +2771,7 @@ function updatePlayStatus(extra){
  }
  var gameLine=isPiTTProfile()?
    ("\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)):
-   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX54: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" yoff -24 PMG=$"+hex((ram[0xD407]||0)<<8,4)+" charDLIST=CHBASE-scanline DLIcap="+(riverDliCache?riverDliCache.length:0):""));
+   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX55: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" yoff -24 PMG=$"+hex((ram[0xD407]||0)<<8,4)+" charDLIST=CHBASE-scanline DLIcap="+(riverDliCache?riverDliCache.length:0):""));
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
    "\nXEX "+currentXexName+gameLine+
@@ -2735,7 +2789,7 @@ function runCpuBudget(target,maxMs){syncInputShadows();
  var i=0;
  for(;i<target && !cpu.trap;i++){
    cpu.step();
-   // FIX54: u Pitstop II nezobrazujeme náhodný mezistav během kreslení. Jakmile se dostane
+   // FIX55: u Pitstop II nezobrazujeme náhodný mezistav během kreslení. Jakmile se dostane
    // do známého čekacího bodu po vykreslení, budget ukončíme a necháme video sejmout stabilní frame.
    if(isPitstopProfile() && markPitstopStableFrame())break;
    if((i&255)===255){
@@ -2880,7 +2934,7 @@ function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
- lines.push("COMPAT SNAPSHOT FIX54 BUILD TAG FIX54_GTIA_RIVER_PITSTOP_CORE / pokud tu vidíš FIX49 nebo starší, běží starý APK/ZIP.");
+ lines.push("COMPAT SNAPSHOT FIX55 BUILD TAG FIX55_DLIST_GUARD_GTIA_BRK_CORE / pokud tu vidíš FIX49 nebo starší, běží starý APK/ZIP.");
  lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu vidíš FIX29-FIX49, běží starý APK/ZIP nebo starý label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
@@ -2889,17 +2943,17 @@ function compatibilitySnapshot(){
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
- lines.push("ANTIC FIX54 modes: "+decodeDlistShort(dl));
- lines.push("DLI CAP FIX54 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / Generic DLI snímá barvy + CHBASE/CHACTL/DMACTL; bitmapové ANTIC módy 8-F posouvají paměť po každé scanline; stride používá DLI/DMA stav.");
- lines.push("DLIST RESOLVE FIX54: "+dlistQualitySummary(dl));
+ lines.push("ANTIC FIX55 modes: "+decodeDlistShort(dl));
+ lines.push("DLI CAP FIX55 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / Generic DLI snímá barvy + CHBASE/CHACTL/DMACTL; bitmapové ANTIC módy 8-F posouvají paměť po každé scanline; stride používá DLI/DMA stav.");
+ lines.push("DLIST RESOLVE FIX55: "+dlistQualitySummary(dl));
  lines.push("DLIST BYTES: "+dumpDlistBytes(dl,72));
- lines.push("DLI SCANLINES FIX54: "+dliScanlineSummary(dl));
+ lines.push("DLI SCANLINES FIX55: "+dliScanlineSummary(dl));
  lines.push("GENERIC DLI STATES: "+dliStateSummary(genericDliCache,12));
  lines.push("PMG INFO: "+pmgInfo());
-lines.push("GTIA COLLISION FIX54: "+gtiaCollisionInfo());
-lines.push("SETVBV FIX54 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
- if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX54: základ FIX48/FIX45/FIX44/FIX39; snapshot-safe video. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
- if(isRiverProfile())lines.push("RIVER FIX54: obecný ANTIC char/DLIST core; wide PF stride 48 crop 4, viewport -24, PMG overlay, char režimy kreslené po scanline z CHBASE. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback));
+lines.push("GTIA COLLISION FIX55: "+gtiaCollisionInfo());
+lines.push("SETVBV FIX55 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
+ if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX55: základ FIX48/FIX45/FIX44/FIX39; snapshot-safe video. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
+ if(isRiverProfile())lines.push("RIVER FIX55: obecný ANTIC char/DLIST core; wide PF stride 48 crop 4, viewport -24, PMG overlay, char režimy kreslené po scanline z CHBASE. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback));
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
@@ -2924,7 +2978,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX54: obecný XEX core, DLI/CHBASE po řádcích, Pitstop snapshot jen ve stejné známé fázi, testy + vlastní XEX.");
+ updatePlayStatus("Emulátor běží. FIX55: obecný XEX core, DLI/CHBASE po řádcích, Pitstop snapshot jen ve stejné známé fázi, testy + vlastní XEX.");
  if(!playLoopId)playLoop();
 }
 function serviceCobraStartHelper(){
