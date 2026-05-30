@@ -1,10 +1,10 @@
-FIX53 upload bez programování:
+FIX54 upload bez programování:
 
 1. Rozbal ZIP.
 2. V GitHub Desktop dej Repository -> Show in Explorer.
-3. Do otevřené složky zkopíruj OBSAH rozbaleného FIX53 balíku.
+3. Do otevřené složky zkopíruj OBSAH rozbaleného FIX54 balíku.
 4. Dej přepsat soubory.
-5. V GitHub Desktop do Summary napiš: FIX53 pmg align collision core
+5. V GitHub Desktop do Summary napiš: FIX54 pmg align collision core
 6. Commit to main.
 7. Push origin.
 8. Na webu GitHub -> Actions -> nejnovější zelený build -> Artifacts -> stáhni APK.
