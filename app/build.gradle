@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 156
-        versionName "EMU-09-FIX57-pitstop-template-river-water-core"
+        versionCode 157
+        versionName "EMU-09-FIX58-pitstop-virtual-dlist-river-collision-core"
     }
 }

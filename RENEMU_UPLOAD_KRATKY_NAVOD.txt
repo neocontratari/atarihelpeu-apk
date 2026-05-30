@@ -1,10 +1,10 @@
-FIX57 upload bez programování:
+FIX58 upload bez programování:
 
 1. Rozbal ZIP.
-2. V GitHub Desktop dej Repository -> Show in Explorer.
-3. Do otevřené složky zkopíruj OBSAH rozbaleného FIX57 balíku.
-4. Dej přepsat soubory.
-5. V GitHub Desktop do Summary napiš: FIX57 pmg align collision core
-6. Commit to main.
-7. Push origin.
-8. Na webu GitHub -> Actions -> nejnovější zelený build -> Artifacts -> stáhni APK.
+2. V GitHub Desktop klikni Repository -> Show in Explorer.
+3. Do otevřené složky zkopíruj OBSAH rozbaleného FIX58 balíku.
+4. Přepiš soubory.
+5. V GitHub Desktop do Summary napiš: FIX58 pitstop virtual dlist river collision core
+6. Klikni Commit to main.
+7. Klikni Push origin.
+8. Na GitHub webu otevři Actions a stáhni APK z Artifacts.
