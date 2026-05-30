@@ -14,6 +14,17 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.os.Build;
+import android.webkit.JavascriptInterface;
+import android.provider.MediaStore;
+import android.content.ContentValues;
+import android.os.Environment;
+import android.widget.Toast;
+import java.io.OutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -35,6 +46,8 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
+
+        webView.addJavascriptInterface(new LogBridge(), "AtariLogBridge");
 
         webView.setWebViewClient(new WebViewClient());
         webView.setWebChromeClient(new WebChromeClient() {
@@ -89,6 +102,59 @@ public class MainActivity extends Activity {
                 filePathCallback.onReceiveValue(results);
                 filePathCallback = null;
             }
+        }
+    }
+
+
+    public class LogBridge {
+        @JavascriptInterface
+        public String saveLog(String text, String suggestedName) {
+            String safeName = sanitizeFileName(suggestedName);
+            if (safeName.length() == 0) {
+                safeName = "atarihelp-log-" + new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(new Date()) + ".txt";
+            }
+            if (!safeName.toLowerCase(Locale.US).endsWith(".txt")) {
+                safeName += ".txt";
+            }
+            if (text == null) text = "";
+            try {
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Downloads.DISPLAY_NAME, safeName);
+                    values.put(MediaStore.Downloads.MIME_TYPE, "text/plain");
+                    values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/AtariHelpLogs");
+                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (uri == null) throw new Exception("MediaStore uri je null");
+                    OutputStream os = getContentResolver().openOutputStream(uri);
+                    if (os == null) throw new Exception("Nelze otevřít OutputStream");
+                    os.write(text.getBytes("UTF-8"));
+                    os.flush();
+                    os.close();
+                    final String msg = "Log uložen: Download/AtariHelpLogs/" + safeName;
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show());
+                    return msg;
+                } else {
+                    File dir = new File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "AtariHelpLogs");
+                    if (!dir.exists()) dir.mkdirs();
+                    File out = new File(dir, safeName);
+                    FileOutputStream fos = new FileOutputStream(out);
+                    fos.write(text.getBytes("UTF-8"));
+                    fos.flush();
+                    fos.close();
+                    final String msg = "Log uložen: " + out.getAbsolutePath();
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show());
+                    return msg;
+                }
+            } catch (Exception e) {
+                final String msg = "Log se nepodařilo uložit: " + e.getMessage();
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show());
+                return msg;
+            }
+        }
+
+        private String sanitizeFileName(String name) {
+            if (name == null) return "";
+            return name.replaceAll("[^A-Za-z0-9._-]", "_");
         }
     }
 
