@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 150
-        versionName "EMU-09-FIX51-blank-dli-pmg-core"
+        versionCode 152
+        versionName "EMU-09-FIX52-bitmap-advance-dlist-core"
     }
 }

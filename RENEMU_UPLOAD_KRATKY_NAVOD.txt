@@ -1,0 +1,7 @@
+FIX52 krátký postup:
+1) Rozbal ZIP.
+2) Zkopíruj OBSAH složky do složky repozitáře, kterou otevře GitHub Desktop přes Repository -> Show in Explorer.
+3) V GitHub Desktop napiš Summary: FIX52 bitmap advance dlist core.
+4) Commit to main.
+5) Push origin.
+6) Na webu GitHub otevři Actions, poslední zelený build, Artifacts, stáhni APK.
