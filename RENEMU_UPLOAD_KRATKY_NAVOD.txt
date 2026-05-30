@@ -1,7 +1,10 @@
-FIX52 krátký postup:
-1) Rozbal ZIP.
-2) Zkopíruj OBSAH složky do složky repozitáře, kterou otevře GitHub Desktop přes Repository -> Show in Explorer.
-3) V GitHub Desktop napiš Summary: FIX52 bitmap advance dlist core.
-4) Commit to main.
-5) Push origin.
-6) Na webu GitHub otevři Actions, poslední zelený build, Artifacts, stáhni APK.
+FIX53 upload bez programování:
+
+1. Rozbal ZIP.
+2. V GitHub Desktop dej Repository -> Show in Explorer.
+3. Do otevřené složky zkopíruj OBSAH rozbaleného FIX53 balíku.
+4. Dej přepsat soubory.
+5. V GitHub Desktop do Summary napiš: FIX53 pmg align collision core
+6. Commit to main.
+7. Push origin.
+8. Na webu GitHub -> Actions -> nejnovější zelený build -> Artifacts -> stáhni APK.
