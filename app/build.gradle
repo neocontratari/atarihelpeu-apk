@@ -11,6 +11,6 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 156
-        versionName "EMU-09-FIX56-race-sync-os-jmp-collision-core"
+        versionName "EMU-09-FIX57-pitstop-template-river-water-core"
     }
 }
