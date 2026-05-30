@@ -1,3 +1,7 @@
+AtariHelp.eu APK BUILDER EMU-09 FIX45 STABLE FRAME CAPTURE
+
+FIX45 vychází z FIX44/FIX39 základu. Cíl: Pitstop II nekreslit uprostřed rozdělaného framebufferu, ale snímat obraz jen ve stabilním čekacím bodu $4F78/$4F7B. PiTT-KiTT zůstává referenční hra.
+
 # ZAČNI TADY – AtariHelp APK pro lidi
 
 Parťáku, tenhle balík je správná cesta.  
