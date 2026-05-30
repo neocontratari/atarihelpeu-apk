@@ -1,5 +1,5 @@
-AtariHelp.eu APK Builder — EMU-09 FIX50 GENERIC XEX CORE
+AtariHelp.eu APK Builder — EMU-09 FIX51 BLANK DLI + PMG CORE
 
-Hlavní soubor: app/src/main/assets/emu09_pmg_gtia_overlay.html
+Směr projektu: obecný Atari XEX emulátor pro vlastní hry z telefonu, ne jen profilové hacky pro vestavěné testy.
 
-FIX50: směr zpět k obecnému XEX emulátoru. Pitstop snapshot už nesmí maskovat neznámé fáze/menu, generic renderer bere DLI + CHBASE po řádcích a log má více diagnostiky pro vlastní XEX soubory.
+FIX51 opravuje zásadní chybu z FIX50: DLI bit se musí obsloužit i na blank instrukcích display listu ($F0 apod.). Pitstop II používá horní blank DLI k nastavení CHBASE/barev před viditelným obrazem, takže FIX50 kreslil horní část špatným stavem. Log nově vypisuje DLI SCANLINES a PMG INFO pro ladění River/Donkey/vlastních XEX.
