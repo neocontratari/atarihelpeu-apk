@@ -1,0 +1,1 @@
+FIX41: návrat na dobrý FIX39/FIX36 základ. Pitstop II generic PMG overlay vypnutý. Oproti FIX40 se neuvolňují oba sync latches $50AE/$50AF, ale jen latch, na který čeká loop $4F78 podle indexu ($EE^1)&1.

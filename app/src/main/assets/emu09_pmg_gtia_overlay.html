@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX40 PITSTOP SYNC LATCH / SAFE PMG / PiTT-KiTT + River + Pitstop + Arkanoid</title>
+<title>EMU-09 FIX41 PITSTOP SINGLE-LATCH / SAFE PMG / PiTT-KiTT + River + Pitstop + Arkanoid</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -23,8 +23,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX40 PITSTOP SYNC LATCH / SAFE PMG</h1>
-<p>PiTT-KiTT je zamražený jako referenční hra. FIX40 vychází z dobrého FIX39/FIX36 základu: Pitstop II má vypnutý chybný generic PMG overlay a nově hlídá zaseknutý synchronizační latch kolem $50AE/$50AF, kde hra po zadání jména čekala v loopu $4F78.</p>
+<h1>EMU-09 FIX41 PITSTOP SINGLE-LATCH / SAFE PMG</h1>
+<p>PiTT-KiTT je zamražený jako referenční hra. FIX41 vychází z dobrého FIX39/FIX36 základu: Pitstop II má vypnutý chybný generic PMG overlay a nově uvolňuje jen ten jeden konkrétní sync latch, na kterém hra čeká v loopu $4F78.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
@@ -66,7 +66,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX40 PITSTOP SYNC LATCH / SAFE PMG: PiTT-KiTT / River / Pitstop II / Arkanoid III / vlastní XEX.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX41 PITSTOP SINGLE-LATCH / SAFE PMG: PiTT-KiTT / River / Pitstop II / Arkanoid III / vlastní XEX.</div>
 </section>
 
 <section class="card">
@@ -137,7 +137,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX40 vychází z FIX39/FIX36: Pitstop klávesnice zůstává oddělená od joysticku/FIRE, generic PMG overlay je u Pitstopu vypnutý a přidal se opatrný sync-latch watchdog pro loop $4F78.</p>
+<p>FIX41 vychází z FIX39/FIX36: Pitstop klávesnice zůstává oddělená od joysticku/FIRE, generic PMG overlay je u Pitstopu vypnutý a sync watchdog uvolňuje jen jeden čekaný latch, ne oba najednou.</p>
 </section>
 </div>
 
@@ -214,9 +214,9 @@ var screenBase=0x6000;
 var pmgOnlyContrast=false;
 var pmgDebugPalette=false;
 var writeSeen=new Uint8Array(65536);
-var EMU_BUILD_TAG="FIX40_PITSTOP_SYNC_LATCH_SAFE_PMG_CORE";
-var pitstopSyncWaitFrames=0;
-var pitstopSyncClears=0;
+var EMU_BUILD_TAG="FIX41_PITSTOP_SINGLE_LATCH_SAFE_PMG_CORE";
+var pitstopSingleLatchWaitFrames=0;
+var pitstopSingleLatchClears=0;
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -571,7 +571,7 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX40-PITSTOP-SYNC-LATCH-SAFE-PMG-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX41-PITSTOP-SINGLE-LATCH-SAFE-PMG-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -806,7 +806,7 @@ CPU6502.prototype.osKeyboardAtasciiReturn=function(){
  var lo=this.pull(),hi=this.pull();
  this.pc=((lo|(hi<<8))+1)&65535;
  this.steps++;
- if(activeXexProfile==='pitstop')log('FIX40 OS keyboard: scan $'+hex(scan,2)+' -> ATASCII $'+hex(atascii,2));
+ if(activeXexProfile==='pitstop')log('FIX41 OS keyboard: scan $'+hex(scan,2)+' -> ATASCII $'+hex(atascii,2));
 };
 
 CPU6502.prototype.step=function(){
@@ -1933,26 +1933,28 @@ function shouldDrawGenericPmgOverlay(){
  return true;
 }
 
-function servicePitstopSyncLatch(){
- // FIX40: Pitstop II po zadání jména uvízl v čekání kolem $4F78:
- //   X = ($EE ^ 1), LDA $50AE,X, BNE zpět.
- // Na skutečném Atari tenhle sync/busy latch shodí přesné časování kreslení/VBI/DLI.
- // Náš mini core už hru dostal do obrazu, ale latch někdy zůstal viset. Nehackujeme grafiku,
- // jen bezpečně uvolníme zaseknutý dvojitý latch $50AE/$50AF po několika snímcích ve stejné smyčce.
+
+function servicePitstopSingleLatch(){
+ // FIX41: vycházíme z dobrého FIX39. FIX40 čistil $50AE i $50AF najednou a hra se sice hnula,
+ // ale rozbil se stav druhého hráče / další fáze. Tady uvolníme jen TEN latch, na který CPU čeká:
+ //   LDA $EE / EOR #1 / TAX / LDA $50AE,X / BNE $4F78
+ // Tedy index = ($EE ^ 1) & 1. Ostatní flag necháme hře.
  if(!cpu || activeXexProfile!=='pitstop')return;
  var pc=cpu.pc&65535;
- if(pc>=0x4F78 && pc<=0x4F82){
-   pitstopSyncWaitFrames++;
-   if(pitstopSyncWaitFrames>=10){
-     if((ram[0x50AE]|ram[0x50AF])!==0){
-       ram[0x50AE]=0;ram[0x50AF]=0;
-       pitstopSyncClears++;
-       if((pitstopSyncClears&3)===1)log('FIX40 Pitstop sync latch release: $50AE/$50AF cleared at PC=$'+hex(pc,4));
+ if(pc===0x4F78 || pc===0x4F7B){
+   pitstopSingleLatchWaitFrames++;
+   if(pitstopSingleLatchWaitFrames>=12){
+     var idx=((ram[0x00EE]||0)^1)&1;
+     var addr=0x50AE+idx;
+     if((ram[addr]&255)!==0){
+       ram[addr]=0;
+       pitstopSingleLatchClears++;
+       if((pitstopSingleLatchClears&7)===1)log('FIX41 Pitstop single latch release: $'+hex(addr,4)+' cleared at PC=$'+hex(pc,4)+' EE=$'+hex(ram[0x00EE]||0,2));
      }
-     pitstopSyncWaitFrames=0;
+     pitstopSingleLatchWaitFrames=0;
    }
  }else{
-   pitstopSyncWaitFrames=0;
+   pitstopSingleLatchWaitFrames=0;
  }
 }
 
@@ -2229,7 +2231,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. FIX40 PITSTOP SYNC LATCH / SAFE PMG: PiTT-KiTT / River / Pitstop II / Arkanoid III / vlastní XEX.";return;}
+ if(!cpu){e.textContent="Připraveno. FIX41 PITSTOP SINGLE-LATCH / SAFE PMG: PiTT-KiTT / River / Pitstop II / Arkanoid III / vlastní XEX.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -2240,7 +2242,7 @@ function updatePlayStatus(extra){
  }
  var gameLine=isPiTTProfile()?
    ("\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)):
-   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX40: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" yoff -24 PMG=$"+hex((ram[0xD407]||0)<<8,4)+" charDLIST=CHBASE-scanline DLIcap="+(riverDliCache?riverDliCache.length:0):""));
+   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX41: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" yoff -24 PMG=$"+hex((ram[0xD407]||0)<<8,4)+" charDLIST=CHBASE-scanline DLIcap="+(riverDliCache?riverDliCache.length:0):""));
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
    "\nXEX "+currentXexName+gameLine+
@@ -2376,7 +2378,7 @@ function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
- lines.push("COMPAT SNAPSHOT FIX40 BUILD TAG FIX40_PITSTOP_SYNC_LATCH_SAFE_PMG_CORE / pokud tu vidíš FIX39 nebo starší, běží starý APK/ZIP.");
+ lines.push("COMPAT SNAPSHOT FIX41 BUILD TAG FIX41_PITSTOP_SINGLE_LATCH_SAFE_PMG_CORE / pokud tu vidíš FIX40 nebo starší, běží starý APK/ZIP.");
  lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu vidíš FIX29/FIX30/FIX31, běží starý APK/ZIP.");
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -2384,11 +2386,11 @@ function compatibilitySnapshot(){
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
- lines.push("ANTIC FIX40 modes: "+decodeDlistShort(dl));
- lines.push("DLI CAP FIX40 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / DLI se u generic XEX nepouští dvojitě v main loopu, jen se snímá pro barvy rendereru.");
-lines.push("SETVBV FIX40 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
- if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX40: rollback na dobrý FIX36/FIX39 základ, generic PMG overlay vypnutý, navíc sync latch watchdog $50AE/$50AF pro loop $4F78. syncClears="+pitstopSyncClears+" flags="+hex(ram[0x50AE]||0,2)+"/"+hex(ram[0x50AF]||0,2)+"");
- if(isRiverProfile())lines.push("RIVER FIX40: obecný ANTIC char/DLIST core; wide PF stride 48 crop 4, viewport -24, PMG overlay, char režimy kreslené po scanline z CHBASE; collision read $D000-$D00F vrací 0 proti falešné smrti.");
+ lines.push("ANTIC FIX41 modes: "+decodeDlistShort(dl));
+ lines.push("DLI CAP FIX41 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / DLI se u generic XEX nepouští dvojitě v main loopu, jen se snímá pro barvy rendereru.");
+lines.push("SETVBV FIX41 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
+ if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX41: vychází z dobrého FIX39/FIX36; generic PMG overlay vypnutý. Single-latch clears="+pitstopSingleLatchClears+" flags="+hex(ram[0x50AE]||0,2)+"/"+hex(ram[0x50AF]||0,2)+" EE="+hex(ram[0x00EE]||0,2));
+ if(isRiverProfile())lines.push("RIVER FIX41: obecný ANTIC char/DLIST core; wide PF stride 48 crop 4, viewport -24, PMG overlay, char režimy kreslené po scanline z CHBASE; collision read $D000-$D00F vrací 0 proti falešné smrti.");
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
@@ -2413,7 +2415,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX40: FIX36/FIX39 základ + Pitstop sync latch, PiTT-KiTT chráněný, testy River/Pitstop/Arkanoid + TAP vstupy.");
+ updatePlayStatus("Emulátor běží. FIX41: FIX39/FIX36 základ + Pitstop single-latch watchdog, PiTT-KiTT chráněný, testy River/Pitstop/Arkanoid + TAP vstupy.");
  if(!playLoopId)playLoop();
 }
 function serviceCobraStartHelper(){
@@ -2430,7 +2432,6 @@ function playLoop(){
  serviceCobraStartHelper();
  playLastRan=runCpuBudget(playCyclesPerFrame,playMaxMsPerFrame);
  runFrameInterrupts();
- servicePitstopSyncLatch();
  if(isPiTTProfile() || genericRenderEvery<=1 || (playFrameNo%genericRenderEvery)===0)renderVideo();
  updateAudioFromPokey();
  playFrameNo++;
