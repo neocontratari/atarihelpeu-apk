@@ -1,10 +1,10 @@
-FIX58 upload bez programování:
+FIX59 upload bez programování:
 
 1. Rozbal ZIP.
-2. V GitHub Desktop klikni Repository -> Show in Explorer.
-3. Do otevřené složky zkopíruj OBSAH rozbaleného FIX58 balíku.
-4. Přepiš soubory.
-5. V GitHub Desktop do Summary napiš: FIX58 pitstop virtual dlist river collision core
-6. Klikni Commit to main.
-7. Klikni Push origin.
-8. Na GitHub webu otevři Actions a stáhni APK z Artifacts.
+2. GitHub Desktop -> Repository -> Show in Explorer.
+3. Do otevřené složky zkopíruj OBSAH rozbaleného FIX59 balíku.
+4. Dej přepsat soubory.
+5. V GitHub Desktop do Summary napiš: FIX59 pitstop split road river clip core
+6. Commit to main.
+7. Push origin.
+8. GitHub web -> Actions -> nejnovější zelený build -> Artifacts -> stáhnout APK.

@@ -1,11 +1,9 @@
-# AtariHelp.eu EMU-09 FIX58 PITSTOP VIRTUAL DLIST + RIVER COLLISION CORE
+# AtariHelp.eu EMU-09 FIX59 PITSTOP SPLIT ROAD + RIVER CLIP CORE
 
-FIX58 navazuje na FIX57 podle mobilních logů:
+FIX59 navazuje na FIX58 podle mobilních logů:
 
-- Pitstop II: v závodě se obě poloviny obrazovky na chvíli ukážou, ale potom se DLIST $2B00 během samomodifikace rozpadne. FIX58 už nepřepisuje trvale RAM; při renderu používá virtuální stabilní závodní DLIST, zatímco obrazová RAM hry zůstává živá.
-- River Raid: mapování DLI snapshotu už nejde prostým indexem y, ale podle VCOUNT/scanline, aby PMG a playfield seděly ve stejném okamžiku.
-- Pac-Man: log stále jasně ukáže XEXy, které skočí do prázdné cartridge/BASIC oblasti a nejsou čistý samostatný XEX.
+- Pitstop II: FIX58 už ukázal hru, ale spodní polovina neseděla. Log ukázal, že aktuální DLIST často míří na $A0D7, zatímco virtuální stabilizace pořád opravovala jen $2B00. FIX59 přidává Pitstop split-road renderer, který kreslí horní a spodní závodní buffer odděleně a nečte rozpadlý DLIST uprostřed frame.
+- River Raid: obraz už běží, ale PMG letadla je vizuálně mimo vodní koridor. FIX59 přidává vodní koridor pro River PMG a drží kolize po HITCLR do dalšího renderovaného frame, dokud nemáme plné scanline GTIA timing.
+- Obecný XEX směr zůstává: Donkey/Pitstop/River/Pac-Man jsou testy ANTIC/DLIST, DLI, PMG, GTIA a OS stubu, ne jediný cíl.
 
-Cíl zůstává obecný XEX emulátor. Pitstop/River/Donkey/Pac-Man jsou testovací případy pro ANTIC DLIST, DLI timing, PMG, GTIA kolize a OS stub.
-
-Build tag: `FIX58_PITSTOP_VIRTUAL_DLIST_RIVER_COLLISION_CORE`.
+Build tag: `FIX59_PITSTOP_SPLIT_ROAD_RIVER_CLIP_CORE`.
