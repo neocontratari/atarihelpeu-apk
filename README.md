@@ -1,9 +1,9 @@
-# AtariHelp.eu EMU-09 FIX59 PITSTOP SPLIT ROAD + RIVER CLIP CORE
+# AtariHelp.eu EMU-09 FIX60 PITSTOP CLEAN SPLIT + RIVER SAFE CORE
 
-FIX59 navazuje na FIX58 podle mobilních logů:
+FIX60 navazuje na mobilní testy FIX59:
 
-- Pitstop II: FIX58 už ukázal hru, ale spodní polovina neseděla. Log ukázal, že aktuální DLIST často míří na $A0D7, zatímco virtuální stabilizace pořád opravovala jen $2B00. FIX59 přidává Pitstop split-road renderer, který kreslí horní a spodní závodní buffer odděleně a nečte rozpadlý DLIST uprostřed frame.
-- River Raid: obraz už běží, ale PMG letadla je vizuálně mimo vodní koridor. FIX59 přidává vodní koridor pro River PMG a drží kolize po HITCLR do dalšího renderovaného frame, dokud nemáme plné scanline GTIA timing.
-- Obecný XEX směr zůstává: Donkey/Pitstop/River/Pac-Man jsou testy ANTIC/DLIST, DLI, PMG, GTIA a OS stubu, ne jediný cíl.
+- Pitstop II: spodní půlka už seděla lépe, ale horní půlka a prostřední bílo-zelené šumy byly z přechodových řádků v road bufferech. FIX60 drží spodní půlku na $7000, horní na $7100 a filtruje transientní text/garbage řádky jen ve speciálním Pitstop split rendereru.
+- River Raid: obraz běžel, ale letadlo bylo vizuálně mimo vodní koridor a kolize zabíjely hned po startu. FIX60 drží aircraft PMG bezpečněji uvnitř detekované vody a změkčuje River player/playfield kolize, když je střed letadla ve vodě.
+- Obecný XEX core zůstává beze změny směrem k univerzálnímu emulátoru: DLIST resolver, DLI/CHBASE po řádcích, bitmapové ANTIC módy a PMG diagnostika.
 
-Build tag: `FIX59_PITSTOP_SPLIT_ROAD_RIVER_CLIP_CORE`.
+Build tag: `FIX60_PITSTOP_CLEAN_SPLIT_RIVER_SAFE_CORE`.
