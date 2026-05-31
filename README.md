@@ -1,17 +1,18 @@
-# AtariHelp.eu EMU-09 FIX63 PITSTOP CLEAN ROAD + RIVER BANK COLLISION
+# AtariHelp.eu EMU-09 FIX64 RIVER DLI SEQ HUD + PITSTOP ROAD CLEAN
 
-FIX63 reaguje na test FIX62:
+FIX64 reaguje na test FIX63:
 
-- Pitstop II: FIX62 hybrid top zhorsil horni pulku. FIX63 se vraci k citelnejsimu split road renderu top $7100 / bottom $7000 a agresivneji cisti bilozelene sumove radky.
-- River Raid: FIX62 potlacil falesne kolize, ale letadlo pak prezilo i mimo reku. FIX63 vraci bank collision jen pro hlavni letadlo P2, kdyz je mimo vodni koridor. Ostatni PMG/fuel/enemy kolize zatim nezabijeji start.
-- Cilem zustava obecny Atari 130XE/XEX emulator, ne jednouherni hack.
+- River Raid: PMG/HPOS se uz nebere podle puleneho VCOUNT. Pouziva relativni sekvenci zachycenych DLI stavu, aby souperi/fuel/letadlo nebyli rozhazeni proti playfieldu.
+- River Raid: viewport je posunuty na yoff -32 a renderer projde vice DLIST scanlines, aby byl lip videt spodni HUD/panel.
+- River Raid: bank collision se vraci pro P2 i P3 cast letadla, protoze hra cte $D006 i $D007.
+- Pitstop II: zustava citelnejsi clean split road top $7100 / bottom $7000 s cistenim bilozelenych sumovych radku.
+- Cil zustava obecny Atari 130XE/XEX emulator pro vetsinu XEX.
 
 GitHub Desktop Summary:
 
-FIX63 pitstop clean road river bank collision
+FIX64 river dli seq hud pitstop road clean
 
-Pri testu uloz log:
-
-- Pitstop II: zavod po 5-10 sekundach.
-- River Raid: po startu a po pokusu letet mimo reku.
-- Donkey Kong: kratce titulka + prvni level.
+Pri testu:
+- River Raid: zkontrolovat spodni panel, fuel/soupere a reakci letadla na breh/skaly.
+- Pitstop II: jen rychle overit, ze se nezhoršil proti FIX63.
+- Donkey Kong: rychla kontrola titulka + prvni level.
