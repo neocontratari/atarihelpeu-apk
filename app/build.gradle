@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 162
-        versionName "EMU-09-FIX62-pitstop-hybrid-top-river-safe-collision"
+        versionCode 163
+        versionName "EMU-09-FIX63-pitstop-clean-road-river-bank-collision"
     }
 }
