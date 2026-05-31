@@ -1,19 +1,18 @@
-# AtariHelp.eu EMU-09 FIX61 PITSTOP SPLIT DIAGNOSTIC + RIVER PMG DEBUG
+# AtariHelp.eu EMU-09 FIX62 PITSTOP HYBRID TOP + RIVER SAFE COLLISION
 
-FIX61 navazuje na FIX60, ale nebere FIX60 jako viditelne potvrzenou opravu.
+FIX62 reaguje na test FIX61: uzivatel spravne hlasil, ze obrazove neni videt posun proti FIX60.
 
 - Cil zustava obecny Atari 130XE/XEX emulator pro vetsinu XEX, ne hack jen pro jednu hru.
-- Pitstop II: split renderer ted loguje zdroj hornich/spodnich bufferu a kontrolni soucty kandidatu $7000/$7100/$7200/$9800/$9900. FIX60 radkovy filtr je v race split renderu vypnuty, aby test ukazal skutecna data.
-- River Raid: aircraft PMG se uz vizualne neclampuje do vody. Log ukazuje PMBASE, P0-P3 HPOS/SIZE/rawY/visY/nonzero a aircraftGuess.
-- GTIA collision log uklada poslednich 20 cteni $D000-$D00F vcetne PC/frame a pocet HITCLR.
+- Pitstop II: FIX61 log ukazal, ze horni pulka nema byt road buffer $7100. FIX62 proto kresli horni cast pres obecny ANTIC/DLIST renderer a stabilizuje jen spodni road cast z $7000.
+- River Raid: FIX61 log ukazal falesne PMG/PF kolize $D006/$D007=$0F i pri letu ve vode. FIX62 tyto River kolize docasne potlaci, aby slo otestovat, jestli hra prezije start a jestli PMG/HUD/fuel davaji smysl.
 - Donkey/Kong obecny smer zustava zachovany: DLIST resolver a obecny ANTIC/PMG core nejsou nahrazeny jednouherni kresbou.
 
 GitHub Desktop Summary:
 
-FIX61 pitstop split diagnostic river pmg debug
+FIX62 pitstop hybrid top river safe collision
 
 Pri testu uloz log:
 
-- Pitstop II: v zavode po tom, co se obraz rozsype.
-- River Raid: po startu, idealne po prvni smrti nebo kdyz letadlo vypada mimo reku.
-- Donkey Kong: po titulce/prvnim levelu, aby bylo videt, ze jsme ho nerozbili.
+- Pitstop II: v zavode po tom, co se obraz ustali nebo rozsype.
+- River Raid: po startu, idealne po 10-20 sekundach letu nebo po smrti.
+- Donkey Kong: rychly kontrolni test titulka + prvni level.

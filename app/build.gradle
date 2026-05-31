@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 161
-        versionName "EMU-09-FIX61-pitstop-split-diagnostic-river-pmg-debug"
+        versionCode 162
+        versionName "EMU-09-FIX62-pitstop-hybrid-top-river-safe-collision"
     }
 }
