@@ -1,6 +1,6 @@
 {
-  "version": "EMU09_FIX65_CORE_COMPAT_OS_130XE_TEST_MATRIX",
-  "builtin_xex": "PiTT-KiTT-NaP-Final.xex",
+  "version": "EMU09_FIX12_PROFILED_XEX",
+  "builtin_xex": "PiTT-KiTT-NaP-Final(2).xex",
   "builtin_xex_size": 7162,
-  "note": "FIX65 focuses on general XEX compatibility: OS stubs, BASIC/cart empty ROM handling, 130XE PORTB, and built-in core smoke matrix"
+  "note": "profile detects PiTT-KiTT even when loaded externally"
 }

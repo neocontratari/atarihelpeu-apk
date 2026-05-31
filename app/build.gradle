@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 165
-        versionName "EMU-09-FIX65-core-compat-os-130xe-test-matrix"
+        versionCode 164
+        versionName "EMU-09-FIX64-river-dli-seq-hud-pitstop-road-clean"
     }
 }

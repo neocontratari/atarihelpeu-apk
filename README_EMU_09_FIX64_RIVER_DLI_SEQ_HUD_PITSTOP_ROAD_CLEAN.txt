@@ -9,4 +9,4 @@ Co se ma testovat:
 - Donkey Kong: kontrola titulka + prvni level.
 
 Poznamka:
-FIX64 uz neni jen diagnostika. Meni realne mapovani River DLI->PMG/HPOS a posouva viewport pro panel.
+FIX64 uz neni jen diagnostika. Meni realne mapovani River DLI->PMG/HPOS, pocita kolize P2/P3 z prekrytych playfield pixelu a posouva viewport pro panel.
