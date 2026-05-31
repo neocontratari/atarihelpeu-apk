@@ -1,6 +1,6 @@
 {
-  "version": "EMU09_FIX12_PROFILED_XEX",
-  "builtin_xex": "PiTT-KiTT-NaP-Final(2).xex",
+  "version": "EMU09_FIX66_PITT_SAFE_CORE_MATRIX_TXT_130XE",
+  "builtin_xex": "PiTT-KiTT-NaP-Final.xex",
   "builtin_xex_size": 7162,
-  "note": "profile detects PiTT-KiTT even when loaded externally"
+  "note": "FIX66 keeps PiTT-KiTT Remaster as protected reference, saves core matrix results to TXT automatically, and continues general XEX compatibility work: OS stubs, BASIC/cart handling, and 130XE PORTB"
 }
