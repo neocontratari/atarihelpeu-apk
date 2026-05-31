@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX60 PITSTOP CLEAN SPLIT + RIVER SAFE CORE / vlastní XEX + vestavěné testy</title>
+<title>EMU-09 FIX61 PITSTOP SPLIT DIAGNOSTIC + RIVER PMG DEBUG / vlastní XEX + vestavěné testy</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -23,14 +23,14 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <body>
 <div class="wrap">
 <section class="card">
-<h1>EMU-09 FIX60 PITSTOP CLEAN SPLIT + RIVER SAFE CORE</h1>
-<p>PiTT-KiTT zůstává referenční test, ale FIX60 míří hlavně na obecný emulátor pro vlastní XEX soubory. Pitstop snapshot je už jen bezpečnostní pojistka a nesmí překrýt neznámou fázi/menu. Řádkový DLI/CHBASE stav zůstává, nově je přidané PMG Y zarovnání a opatrná GTIA collision diagnostika pro obecné XEX hry.</p>
+<h1>EMU-09 FIX61 PITSTOP SPLIT DIAGNOSTIC + RIVER PMG DEBUG</h1>
+<p>PiTT-KiTT zůstává referenční test, ale FIX61 míří hlavně na obecný emulátor pro vlastní XEX soubory. Pitstop přidává měřitelnou split diagnostiku horní/spodní půlky a River ukazuje reálné PMG bez maskujícího clampu.</p>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl FIX60 jsou <b>vlastní .XEX soubory</b> z telefonu. Loader rozlišuje segmenty, INITAD ($02E2) a RUNAD ($02E0); diagnostika víc hlídá DLIST, SAVMSC, DLI a CHBASE.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl FIX61 jsou <b>vlastní .XEX soubory</b> z telefonu. Loader rozlišuje segmenty, INITAD ($02E2) a RUNAD ($02E0); diagnostika víc hlídá DLIST, SAVMSC, DLI, CHBASE a PMG/GTIA kolize.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -70,7 +70,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX60 PITSTOP CLEAN SPLIT + RIVER SAFE CORE: vlastní XEX jsou hlavní cíl, PMG Y zarovnání + hrubé kolize, log se ukládá do mobilu. PiTT-KiTT / River / Pitstop II / Arkanoid III jsou testy.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX61 PITSTOP SPLIT DIAGNOSTIC + RIVER PMG DEBUG: vlastní XEX jsou hlavní cíl, Pitstop/River/Donkey jsou testy jádra. Log se ukládá do mobilu.</div>
 </section>
 
 <section class="card">
@@ -143,7 +143,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX60 drží směr obecného XEX jádra: cold reset čistí stav, log se ukládá do mobilu, DLI renderer snímá i CHBASE po řádcích a bitmapové módy posouvají obrazovou paměť po scanline a Pitstop snapshot nesmí maskovat menu ani cizí XEX.</p>
+<p>FIX61 drží směr obecného XEX jádra: cold reset čistí stav, log se ukládá do mobilu, DLI renderer snímá i CHBASE po řádcích a bitmapové módy posouvají obrazovou paměť po scanline. Pitstop a River jsou diagnostické testy jádra, ne jediný cíl.</p>
 </section>
 </div>
 
@@ -207,7 +207,7 @@ var activeXexProfile="pitt";
 var anticImageData=null;
 var gtiaCollisionRegs=new Uint8Array(16);
 function newGtiaCollisionStats(){
- return {p0pf:0,p1pf:0,p2pf:0,p3pf:0,m0pf:0,m1pf:0,m2pf:0,m3pf:0,reads:0,lastRead:-1,clears:0,readMap:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};
+ return {p0pf:0,p1pf:0,p2pf:0,p3pf:0,m0pf:0,m1pf:0,m2pf:0,m3pf:0,reads:0,lastRead:-1,clears:0,hitclr:0,readMap:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],lastReads:[]};
 }
 var gtiaCollisionStats=newGtiaCollisionStats();
 var lastGoodDlist=0;
@@ -234,7 +234,7 @@ var screenBase=0x6000;
 var pmgOnlyContrast=false;
 var pmgDebugPalette=false;
 var writeSeen=new Uint8Array(65536);
-var EMU_BUILD_TAG="FIX60_PITSTOP_CLEAN_SPLIT_RIVER_SAFE_CORE";
+var EMU_BUILD_TAG="FIX61_PITSTOP_SPLIT_DIAGNOSTIC_RIVER_PMG_DEBUG";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -262,6 +262,12 @@ var pitstopRaceDlistLastReason="";
 var pitstopRaceTemplateLast="--";
 var pitstopRaceVirtualLast="--";
 var pitstopRaceVirtualFrames=0;
+var pitstopSplitDebugLast="--";
+var pitstopSplitDebugFrame=-999;
+var pitstopSplitDebugEvery=24;
+var pitstopSplitCleanRows=0;
+var pitstopSplitCopiedRows=0;
+var pitstopSplitCandidates=[0x7000,0x7100,0x7200,0x9800,0x9900];
 var coldResetSeq=0;
 var lastColdResetInfo="";
 var autoStartTimer=0;
@@ -287,7 +293,7 @@ function deterministicColdResetState(){
  if(typeof riverDliCache!=='undefined'){riverDliCache=null;riverDliCacheFrame=-999;}
  if(typeof genericDliCache!=='undefined'){genericDliCache=null;genericDliCacheFrame=-999;genericDliChainLog=[];}
  pitstopStableRenderPending=false;pitstopStableRenderHits=0;pitstopSkippedMidDrawRenders=0;pitstopLastStablePC=0;
- pitstopVideoSnapshot=null;pitstopSnapshotDliCache=null;pitstopSnapshotHits=0;pitstopSnapshotRejects=0;pitstopLastSnapshotDl=0;pitstopLastSnapshotPC=0;pitstopSnapshotRenderGuard=false;pitstopLastSnapshotInfo="";pitstopLastStablePhase="";pitstopSnapshotPhase="";pitstopLastRenderSource="LIVE";pitstopLastLivePhase="";pitstopRaceSeen=false;pitstopRaceDlistRepairs=0;pitstopRaceDlistLastReason="";pitstopRaceTemplateLast="--";pitstopRaceVirtualLast="--";pitstopRaceVirtualFrames=0;
+ pitstopVideoSnapshot=null;pitstopSnapshotDliCache=null;pitstopSnapshotHits=0;pitstopSnapshotRejects=0;pitstopLastSnapshotDl=0;pitstopLastSnapshotPC=0;pitstopSnapshotRenderGuard=false;pitstopLastSnapshotInfo="";pitstopLastStablePhase="";pitstopSnapshotPhase="";pitstopLastRenderSource="LIVE";pitstopLastLivePhase="";pitstopRaceSeen=false;pitstopRaceDlistRepairs=0;pitstopRaceDlistLastReason="";pitstopRaceTemplateLast="--";pitstopRaceVirtualLast="--";pitstopRaceVirtualFrames=0;pitstopSplitDebugLast="--";pitstopSplitDebugFrame=-999;pitstopSplitCleanRows=0;pitstopSplitCopiedRows=0;
  activeEntryWasInit=false;pendingInitAddrs=[];ranInitAddrs=[];
  xexInfo={run:0,inits:[],entry:0,warnings:[],bad:false};segments=[];
  introDl=0x2003;loseDl=0x2021;winDl=0x2039;hiDl=0x2051;textDlists=[];textDlistMap={};
@@ -295,7 +301,7 @@ function deterministicColdResetState(){
  lastGoodDlist=0;lastGoodDlistProfile="";lastRejectedDlistInfo="";
  ram.fill(0);
  coldResetSeq++;
- lastColdResetInfo='COLD RESET FIX60 #'+coldResetSeq+' OK: RAM/CPU/DLI/cache/input/timery vyčištěny';
+ lastColdResetInfo='COLD RESET FIX61 #'+coldResetSeq+' OK: RAM/CPU/DLI/cache/input/timery vyčištěny';
 }
 
 function pitstopPhaseFromPc(pc){
@@ -439,11 +445,11 @@ function makeLogFileName(reason){
  var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
  var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
  var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
- return 'atarihelp-FIX60-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
+ return 'atarihelp-FIX61-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX60 PITSTOP CLEAN SPLIT + RIVER SAFE CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX61 PITSTOP SPLIT DIAGNOSTIC + RIVER PMG DEBUG');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -551,7 +557,7 @@ function loadBuiltinRiverRaid(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="River Raid.xex / vestavěný test";
  loadXex(false);
- updatePlayStatus("Načten River Raid test. FIX60 ho spustí automaticky. Když stojí na startu, zkus TAP START nebo TAP FIRE.");
+updatePlayStatus("Načten River Raid test. FIX61 ho spustí automaticky a loguje PMG bez clampu. Když stojí na startu, zkus TAP START nebo TAP FIRE.");
  scheduleAutoStartLoadedXex("River Raid");
 }
 function loadBuiltinSuperCobra(){
@@ -571,7 +577,7 @@ function loadBuiltinPitstopII(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Pitstop II.xex / vestavěný těžší test";
  loadXex(false);
- updatePlayStatus("Načten Pitstop II. FIX60 ho bere jako hlavní těžší test obecného jádra. Zkus TAP START/FIRE/OPTION/SELECT podle obrazovky.");
+updatePlayStatus("Načten Pitstop II. FIX61 loguje split top/bottom buffery. Zkus TAP START/FIRE/OPTION/SELECT podle obrazovky.");
  scheduleAutoStartLoadedXex("Pitstop II");
 }
 function loadBuiltinArkanoidIII(){
@@ -595,7 +601,7 @@ function handleXexFile(file){
      xexCache=null;
      currentXexName=file.name+" / "+customXexBytes.length+" bytes";
      loadXex(false);
-     updatePlayStatus("Načten vlastní XEX: "+currentXexName+". FIX60 ho za chvilku spustí sám; PAUZA ho zastaví.");
+     updatePlayStatus("Načten vlastní XEX: "+currentXexName+". FIX61 ho za chvilku spustí sám; PAUZA ho zastaví.");
      scheduleAutoStartLoadedXex("vlastní XEX");
    }catch(e){log("XEX load error: "+e.message);updatePlayStatus("Chyba při načtení XEX: "+e.message);}
  };
@@ -855,7 +861,7 @@ function loadXex(light){
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX60-PITSTOP-CLEAN-SPLIT-RIVER-SAFE-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX61-PITSTOP-SPLIT-DIAGNOSTIC-RIVER-PMG-DEBUG");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -933,8 +939,17 @@ CPU6502.prototype.r=function(a){
  // Donkey/Kong už aspoň vidí, že PMG stojí na playfieldu.
  if(a>=0xD000 && a<=0xD00F){
    var ci=a-0xD000;
-   if(gtiaCollisionStats){gtiaCollisionStats.reads=(gtiaCollisionStats.reads||0)+1;gtiaCollisionStats.lastRead=ci;if(gtiaCollisionStats.readMap)gtiaCollisionStats.readMap[ci]=(gtiaCollisionStats.readMap[ci]||0)+1;}
-   if(gtiaCollisionRegs && activeXexProfile!=='pitstop')return gtiaCollisionRegs[ci]&255;
+   var cv=(gtiaCollisionRegs && activeXexProfile!=='pitstop')?(gtiaCollisionRegs[ci]&255):0;
+   if(gtiaCollisionStats){
+     gtiaCollisionStats.reads=(gtiaCollisionStats.reads||0)+1;
+     gtiaCollisionStats.lastRead=ci;
+     if(gtiaCollisionStats.readMap)gtiaCollisionStats.readMap[ci]=(gtiaCollisionStats.readMap[ci]||0)+1;
+     if(gtiaCollisionStats.lastReads){
+       gtiaCollisionStats.lastReads.push('$D0'+hex(ci,2)+'=$'+hex(cv,2)+' pc=$'+(cpu?hex(cpu.pc,4):'----')+' f'+playFrameNo);
+       if(gtiaCollisionStats.lastReads.length>20)gtiaCollisionStats.lastReads.shift();
+     }
+   }
+   if(gtiaCollisionRegs && activeXexProfile!=='pitstop')return cv;
    return 0;
  }
 
@@ -982,6 +997,7 @@ CPU6502.prototype.w=function(a,v){
  if(a===0xD40A){this.vcount=(this.vcount+1)&0x7F;}
  // HITCLR $D01E: skutečné Atari tím maže GTIA collision registry. Bez toho některé hry čekají/visí.
  if(a===0xD01E){
+   if(gtiaCollisionStats)gtiaCollisionStats.hitclr=(gtiaCollisionStats.hitclr||0)+1;
    // FIX60: River Raid reads collision later in the same emulated frame. We do not have
    // true ANTIC/GTIA scanline-time collision updates yet, so clearing immediately made the
    // plane pass through banks/rocks. Preserve River collisions until the next rendered frame.
@@ -1866,10 +1882,11 @@ function gtiaCollisionInfo(){
  for(var i=0;i<16;i++)if(gtiaCollisionRegs[i])a.push('$D0'+hex(i,2)+'=$'+hex(gtiaCollisionRegs[i],2));
  var rm=[];
  if(gtiaCollisionStats&&gtiaCollisionStats.readMap)for(var r=0;r<16;r++)if(gtiaCollisionStats.readMap[r])rm.push('$D0'+hex(r,2)+':'+gtiaCollisionStats.readMap[r]);
- return (a.length?a.join(' '):'none')+' reads '+((gtiaCollisionStats&&gtiaCollisionStats.reads)||0)+' last '+((gtiaCollisionStats&&gtiaCollisionStats.lastRead>=0)?'$D0'+hex(gtiaCollisionStats.lastRead,2):'--')+' clears '+((gtiaCollisionStats&&gtiaCollisionStats.clears)||0)+
+ return (a.length?a.join(' '):'none')+' reads '+((gtiaCollisionStats&&gtiaCollisionStats.reads)||0)+' last '+((gtiaCollisionStats&&gtiaCollisionStats.lastRead>=0)?'$D0'+hex(gtiaCollisionStats.lastRead,2):'--')+' clears '+((gtiaCollisionStats&&gtiaCollisionStats.clears)||0)+' hitclr '+((gtiaCollisionStats&&gtiaCollisionStats.hitclr)||0)+
         ' readMap '+(rm.length?rm.join(','):'--')+
         ' stats P0PF '+((gtiaCollisionStats&&gtiaCollisionStats.p0pf)||0)+' P1PF '+((gtiaCollisionStats&&gtiaCollisionStats.p1pf)||0)+' P2PF '+((gtiaCollisionStats&&gtiaCollisionStats.p2pf)||0)+' P3PF '+((gtiaCollisionStats&&gtiaCollisionStats.p3pf)||0)+
-        ' M0PF '+((gtiaCollisionStats&&gtiaCollisionStats.m0pf)||0)+' M1PF '+((gtiaCollisionStats&&gtiaCollisionStats.m1pf)||0)+' M2PF '+((gtiaCollisionStats&&gtiaCollisionStats.m2pf)||0)+' M3PF '+((gtiaCollisionStats&&gtiaCollisionStats.m3pf)||0);
+        ' M0PF '+((gtiaCollisionStats&&gtiaCollisionStats.m0pf)||0)+' M1PF '+((gtiaCollisionStats&&gtiaCollisionStats.m1pf)||0)+' M2PF '+((gtiaCollisionStats&&gtiaCollisionStats.m2pf)||0)+' M3PF '+((gtiaCollisionStats&&gtiaCollisionStats.m3pf)||0)+
+        ' lastReads '+((gtiaCollisionStats&&gtiaCollisionStats.lastReads&&gtiaCollisionStats.lastReads.length)?gtiaCollisionStats.lastReads.join(' | '):'--');
 }
 function setPmgDebug(text){
  var e=document.getElementById("pmgdebug");
@@ -1964,6 +1981,7 @@ function renderPMGOverlay(g,cs,wantDebug){
  return drawn;
 }
 function renderPMGOnly(){
+ if(isRiverProfile() && renderRiverPmgOnlyFrame())return;
  var c=document.getElementById("video");
  if(!c)return;
  var g=c.getContext("2d");
@@ -2070,8 +2088,36 @@ function imgCopyPitstopModeELine(data,addr,dy,filter){
  // Only the special Pitstop split renderer uses this cleanup; generic XEX rendering is untouched.
  if(filter){
    var score=pitstopRowWhiteNoise(data,dy);
-   if(score>92)pitstopCopyPrevOrFill(data,dy);
+   if(score>92){pitstopCopyPrevOrFill(data,dy);pitstopSplitCleanRows++;pitstopSplitCopiedRows++;return 1;}
  }
+ return 0;
+}
+function pitstopBufferChecksum(addr,len){
+ var s=0,x=0,n=len||256;
+ for(var i=0;i<n;i++){var v=ram[(addr+i)&65535]&255;s=(s+v)&65535;x^=((v+i)&255);}
+ return hex(s,4)+'/'+hex(x,2);
+}
+function pitstopBufferProbe(addr){
+ var non=0,whiteLike=0,trans=0,prev=-1,n=256;
+ for(var i=0;i<n;i++){
+   var v=ram[(addr+i)&65535]&255;
+   if(v)non++;
+   var wl=(v===0xFF || v===0xF0 || v===0x0F)?1:0;
+   if(wl)whiteLike++;
+   if(prev>=0 && ((v?1:0)!==prev))trans++;
+   prev=v?1:0;
+ }
+ return '$'+hex(addr,4)+' nz='+non+' wl='+whiteLike+' tr='+trans+' sum='+pitstopBufferChecksum(addr,256);
+}
+function pitstopSplitDiagnostic(top,bot,ySplit,current){
+ if(playFrameNo===pitstopSplitDebugFrame)return pitstopSplitDebugLast;
+ pitstopSplitDebugFrame=playFrameNo;
+ var items=[];
+ for(var i=0;i<pitstopSplitCandidates.length;i++)items.push(pitstopBufferProbe(pitstopSplitCandidates[i]));
+ var dl=getDlistPtr();
+ pitstopSplitDebugLast='PITSTOP SPLIT SRC: top=$'+hex(top,4)+' bottom=$'+hex(bot,4)+' ySplit='+ySplit+' cleanRows='+pitstopSplitCleanRows+' copiedRows='+pitstopSplitCopiedRows+' current=$'+hex(current||0,4)+' dl=$'+hex(dl||0,4)+' frame='+playFrameNo+' candidates '+items.join(' ; ');
+ if((playFrameNo%pitstopSplitDebugEvery)===0)log(pitstopSplitDebugLast);
+ return pitstopSplitDebugLast;
 }
 function renderPitstopRaceSplitDisplay(){
  if(!isPitstopProfile() || !pitstopRaceSeen)return false;
@@ -2088,12 +2134,14 @@ function renderPitstopRaceSplitDisplay(){
  var bot=0x7000;
  if(top===bot)top=0x7100;
  var topLines=84, botStart=100, botLines=86;
- for(var y=0;y<topLines;y++)imgCopyPitstopModeELine(d,(top+y*40)&65535,y+6,true);
+ pitstopSplitCleanRows=0;pitstopSplitCopiedRows=0;
+ for(var y=0;y<topLines;y++)imgCopyPitstopModeELine(d,(top+y*40)&65535,y+6,false);
  imgFillRect(d,0,92,320,8,rgbFromCss('#000000'));
- for(var y2=0;y2<botLines;y2++)imgCopyPitstopModeELine(d,(bot+y2*40)&65535,botStart+y2,true);
+ for(var y2=0;y2<botLines;y2++)imgCopyPitstopModeELine(d,(bot+y2*40)&65535,botStart+y2,false);
  g.putImageData(anticImageData,0,0);
  pitstopRaceVirtualFrames++;
- pitstopRaceVirtualLast='SPLIT60 clean top $'+hex(top,4)+' bottom $'+hex(bot,4)+' frames '+pitstopRaceVirtualFrames;
+ pitstopRaceVirtualLast='SPLIT61 diagnostic top $'+hex(top,4)+' bottom $'+hex(bot,4)+' frames '+pitstopRaceVirtualFrames;
+ pitstopSplitDiagnostic(top,bot,botStart,current);
  return true;
 }
 function renderVideo(){
@@ -2384,6 +2432,7 @@ function img2bppLine(data,addr,y,cols,h){
 var riverDliCache=null;
 var riverDliCacheFrame=-999;
 var riverLastRenderStats={mode:"--",dl:0,caps:0,pmg:0,nonBg:0,fallback:false};
+var riverLastPmgDebug="--";
 function regsToColorSetFromDli(regs){
  // regs je snapshot $D000-$D01A. U Riveru je voda často v COLPF1 a břehy/zem v dalších PF registrech.
  if(!regs)return null;
@@ -2447,6 +2496,47 @@ function riverRegsForY(caps,y){
  if(idx<0)idx=0;
  if(idx>=caps.length)idx=caps.length-1;
  return caps[idx].regs;
+}
+function riverPmgPlayerDebug(caps){
+ var pm=(ram[0xD407]||0)<<8;
+ if(pm<0x0400||pm>0xF000)return 'RIVER PMG DEBUG: PMBASE invalid $'+hex(pm,4);
+ var sampleRegs=riverRegsForY(caps||[],96)||Array.prototype.slice.call(ram,0xD000,0xD01B);
+ var best=-1,bestScore=-999,parts=[];
+ for(var pl=0;pl<4;pl++){
+   var base=(pm+0x400+pl*0x100)&65535;
+   var stat=countNonZero(base,256);
+   var h=sampleRegs[pl]||ram[0xD000+pl]||0;
+   var x=riverHposToX(h);
+   var y0=stat.first<0?-1:riverVisibleY((stat.first-48)&255);
+   var y1=stat.last<0?-1:riverVisibleY((stat.last-48)&255);
+   var midScore=(x>=90&&x<=230?50:0)+(y0<=150&&y1>=40?35:0)+Math.min(stat.n,80);
+   if(midScore>bestScore){bestScore=midScore;best=pl;}
+   parts.push('P'+pl+' HPOS='+h+' x='+x+' SIZE='+(sampleRegs[0x08+pl]||0)+' rawY='+(stat.first<0?'--':stat.first+'-'+stat.last)+' visY='+(stat.first<0?'--':y0+'-'+y1)+' nz='+stat.n+' col=$'+hex(sampleRegs[0x12+pl]||0,2));
+ }
+ var mstat=countNonZero((pm+0x300)&65535,256);
+ parts.push('M rawY='+(mstat.first<0?'--':mstat.first+'-'+mstat.last)+' nz='+mstat.n+' SIZEM=$'+hex(sampleRegs[0x0C]||0,2));
+ return 'RIVER PMG DEBUG: PMBASE=$'+hex(pm,4)+' aircraftGuess=P'+best+' '+parts.join(' | ');
+}
+function renderRiverPmgOnlyFrame(){
+ if(!isRiverProfile())return false;
+ var c=document.getElementById('video'); if(!c)return false;
+ var g=c.getContext('2d');
+ if(!anticImageData)anticImageData=g.createImageData(320,192);
+ var d=anticImageData.data;
+ imgFillRect(d,0,0,320,192,rgbFromCss('#111111'));
+ var caps=captureRiverDliStates();
+ var pmgDrawn=0;
+ for(var y=0;y<216;y++){
+   var dy=riverVisibleY(y);
+   if(dy>=0 && dy<192)pmgDrawn+=drawRiverPmgLine(d,y,riverRegsForY(caps,y),dy,true);
+ }
+ g.putImageData(anticImageData,0,0);
+ riverLastPmgDebug=riverPmgPlayerDebug(caps)+' drawn='+pmgDrawn;
+ setPmgDebug(riverLastPmgDebug);
+ g.fillStyle='#ff6b9a';g.font='10px monospace';
+ g.fillText('RIVER PMG ONLY FIX61 '+pmgDrawn,4,188);
+ log(riverLastPmgDebug);
+ return true;
 }
 
 function captureGenericHardwareState(y,vc){
@@ -2623,7 +2713,7 @@ function riverClampAircraftX(data,x,dy,w){
  if(x<safeL || x>safeR)return ((safeL+safeR)>>1);
  return x;
 }
-function drawRiverPmgLine(data,y,regs,destY){
+function drawRiverPmgLine(data,y,regs,destY,pmgOnly){
  if(destY===undefined)destY=y;
  if(!regs)return 0;
  var pm=(ram[0xD407]||0)<<8;
@@ -2641,7 +2731,7 @@ function drawRiverPmgLine(data,y,regs,destY){
    var mx=riverHposToX(regs[0x04+mi]||0);
    var ms=pmgScale((sizem>>(mi*2))&3)*2;
    for(var b=0;b<2;b++)if(pair&(1<<b)){
-     markRiverPfCollision(false,mi,mx+b*ms,destY,ms,1);
+     if(!pmgOnly)markRiverPfCollision(false,mi,mx+b*ms,destY,ms,1);
      for(var ww=0;ww<ms;ww++)imgSetPx(data,mx+b*ms+ww,destY,mcols[mi]);
      drawn++;
    }
@@ -2654,14 +2744,12 @@ function drawRiverPmgLine(data,y,regs,destY){
    if(!h)continue;
    var x0=riverHposToX(h);
    var scale=pmgScale(regs[0x08+pl]||0)*2;
-   // FIX60: River Raid aircraft uses player 2/3. Visual PMG was drifting over green banks
-   // while playfield timing was still approximate. Clamp only the aircraft display to the
-   // detected water corridor; other River objects keep their real HPOS.
-   if((pl===2 || pl===3) && destY>=0 && destY<164)x0=riverClampAircraftX(data,x0,destY,8*scale);
+   // FIX61: do not clamp the aircraft into the water. If PMG/playfield timing is wrong, the
+   // debug log must show the real HPOS/Y mismatch instead of hiding it with display movement.
    var col=riverPlayerColorFromRegs(regs,pl);
    for(var bit=0;bit<8;bit++)if(bval&(0x80>>bit)){
      var xx=x0+bit*scale;
-     markRiverPfCollision(true,pl,xx,destY,scale,1);
+     if(!pmgOnly)markRiverPfCollision(true,pl,xx,destY,scale,1);
      for(var ww2=0;ww2<scale;ww2++)imgSetPx(data,xx+ww2,destY,col);
      drawn++;
    }
@@ -2716,6 +2804,7 @@ function renderRiverRaidDisplay(){
    textLines++;
  }
  var nonBg=countImageNonBg(d,rgbFromCss('#000000'),3);
+ riverLastPmgDebug=riverPmgPlayerDebug(caps)+' drawn='+pmgDrawn;
  riverLastRenderStats={mode:'river-special',dl:dl,caps:caps.length,pmg:pmgDrawn,nonBg:nonBg,fallback:false};
  // FIX60: když River speciální renderer vyrobí skoro černý snímek, vrať false a renderVideo
  // nechá běžet obecný ANTIC/DLIST renderer. To je lepší než černá obrazovka.
@@ -2723,8 +2812,8 @@ function renderRiverRaidDisplay(){
  g.putImageData(anticImageData,0,0);
  if(!playMode){
    var gg=c.getContext('2d');gg.fillStyle='#ff6b9a';gg.font='10px monospace';
-   gg.fillText('RIVER FIX60 DLI '+caps.length+' PMG '+pmgDrawn+' NB '+nonBg+' DL $'+hex(dl,4),4,188);
-   log('Rendered River FIX60 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' nonBg='+nonBg+' DL=$'+hex(dl,4));
+   gg.fillText('RIVER FIX61 DLI '+caps.length+' PMG '+pmgDrawn+' NB '+nonBg+' DL $'+hex(dl,4),4,188);
+   log('Rendered River FIX61 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' nonBg='+nonBg+' DL=$'+hex(dl,4)+' '+riverLastPmgDebug);
  }
  return true;
 }
@@ -3026,7 +3115,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Připraveno. FIX60 PITSTOP CLEAN SPLIT + RIVER SAFE CORE: vlastní XEX jsou hlavní cíl, PMG Y zarovnání + hrubé kolize, log se ukládá do mobilu. PiTT-KiTT / River / Pitstop II / Arkanoid III jsou testy.";return;}
+if(!cpu){e.textContent="Připraveno. FIX61 PITSTOP SPLIT DIAGNOSTIC + RIVER PMG DEBUG: vlastní XEX jsou hlavní cíl, Pitstop/River/Donkey jsou testy jádra. Log se ukládá do mobilu.";return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -3037,7 +3126,7 @@ function updatePlayStatus(extra){
  }
  var gameLine=isPiTTProfile()?
    ("\nLEVEL "+(ram[0xAE]||0)+"  SCORE "+scoreText()+"  HI "+pad3(hiScoreValue())+"  TRACK_X "+(ram[0x8B]||0)+"  JUMP "+(ram[0x8F]||0)+"  BULLET_Y "+(ram[0x8E]||0)):
-   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX60: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" yoff -24 PMG=$"+hex((ram[0xD407]||0)<<8,4)+" charDLIST=CHBASE-scanline DLIcap="+(riverDliCache?riverDliCache.length:0):""));
+   ("\nXEX PROFILE "+activeXexProfile.toUpperCase()+"  DLIST $"+hex(dl||0,4)+"  SAVMSC $"+hex(base,4)+"  NMIEN $"+hex(ram[0xD40E]||0,2)+"  IRQ "+frameIrqRan+" ops"+(isRiverProfile()?"\nRIVER FIX61: stride "+lineStrideBytes(14)+" crop "+visibleOffsetBytes(14)+" yoff -24 PMG=$"+hex((ram[0xD407]||0)<<8,4)+" charDLIST=CHBASE-scanline DLIcap="+(riverDliCache?riverDliCache.length:0):""));
  e.textContent=(playMode?"BĚŽÍ":"PAUZA")+
    "  "+mode+"  PC $"+hex(cpu.pc,4)+"  ENTRY $"+hex(xexInfo.entry||0,4)+"  kroky "+cpu.steps+
    "\nXEX "+currentXexName+gameLine+
@@ -3200,8 +3289,8 @@ function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
- lines.push("COMPAT SNAPSHOT FIX60 BUILD TAG FIX60_PITSTOP_CLEAN_SPLIT_RIVER_SAFE_CORE / pokud tu vidíš FIX49 nebo starší, běží starý APK/ZIP.");
- lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu vidíš FIX29-FIX49, běží starý APK/ZIP nebo starý label.");
+lines.push("COMPAT SNAPSHOT FIX61 BUILD TAG FIX61_PITSTOP_SPLIT_DIAGNOSTIC_RIVER_PMG_DEBUG / pokud tu vidíš FIX60 nebo starší, běží starý APK/ZIP.");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu vidíš FIX60 nebo starší, běží starý APK/ZIP nebo starý label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -3209,19 +3298,20 @@ function compatibilitySnapshot(){
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
- lines.push("ANTIC FIX60 modes: "+decodeDlistShort(dl));
- lines.push("DLI CAP FIX60 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / Generic DLI snímá barvy + CHBASE/CHACTL/DMACTL; bitmapové ANTIC módy 8-F posouvají paměť po každé scanline; stride používá DLI/DMA stav.");
- lines.push("DLIST RESOLVE FIX60: "+dlistQualitySummary(dl));
- if(activeXexProfile==='pitstop')lines.push("PITSTOP RACE DLIST TEMPLATE FIX60: "+(pitstopRaceTemplateLast||"--")+" reason "+(pitstopRaceDlistLastReason||"--"));
-  if(activeXexProfile==='pitstop')lines.push("PITSTOP VIRTUAL DLIST FIX60: "+(pitstopRaceVirtualLast||"--"));
+lines.push("ANTIC FIX61 modes: "+decodeDlistShort(dl));
+lines.push("DLI CAP FIX61 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / Generic DLI snímá barvy + CHBASE/CHACTL/DMACTL; bitmapové ANTIC módy 8-F posouvají paměť po každé scanline; stride používá DLI/DMA stav.");
+lines.push("DLIST RESOLVE FIX61: "+dlistQualitySummary(dl));
+if(activeXexProfile==='pitstop')lines.push("PITSTOP RACE DLIST TEMPLATE FIX61: "+(pitstopRaceTemplateLast||"--")+" reason "+(pitstopRaceDlistLastReason||"--"));
+ if(activeXexProfile==='pitstop')lines.push("PITSTOP VIRTUAL DLIST FIX61: "+(pitstopRaceVirtualLast||"--"));
+ if(activeXexProfile==='pitstop')lines.push("PITSTOP SPLIT DIAG FIX61: "+(pitstopSplitDebugLast||"--"));
  lines.push("DLIST BYTES: "+dumpDlistBytes(dl,72));
- lines.push("DLI SCANLINES FIX60: "+dliScanlineSummary(dl));
+lines.push("DLI SCANLINES FIX61: "+dliScanlineSummary(dl));
  lines.push("GENERIC DLI STATES: "+dliStateSummary(genericDliCache,12));
  lines.push("PMG INFO: "+pmgInfo());
-lines.push("GTIA COLLISION FIX60: "+gtiaCollisionInfo());
-lines.push("SETVBV FIX60 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
- if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX60: základ FIX48/FIX45/FIX44/FIX39; snapshot-safe video. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
- if(isRiverProfile())lines.push("RIVER FIX60: obecný ANTIC char/DLIST core; wide PF stride 48 crop 4, viewport -24, PMG overlay, char režimy kreslené po scanline z CHBASE. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback));
+lines.push("GTIA COLLISION FIX61: "+gtiaCollisionInfo());
+lines.push("SETVBV FIX61 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
+if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX61: základ FIX48/FIX45/FIX44/FIX39; snapshot-safe video plus split diagnostika. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
+ if(isRiverProfile())lines.push("RIVER FIX61: obecný ANTIC char/DLIST core; wide PF stride 48 crop 4, viewport -24, PMG overlay bez clampu, char režimy kreslené po scanline z CHBASE. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
@@ -3246,7 +3336,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
- updatePlayStatus("Emulátor běží. FIX60: obecný XEX core, DLI/CHBASE po řádcích, Pitstop snapshot jen ve stejné známé fázi, testy + vlastní XEX.");
+updatePlayStatus("Emulátor běží. FIX61: obecný XEX core, Pitstop split diagnostika, River PMG bez clampu, testy + vlastní XEX.");
  if(!playLoopId)playLoop();
 }
 function serviceCobraStartHelper(){

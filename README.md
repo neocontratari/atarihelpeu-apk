@@ -1,9 +1,19 @@
-# AtariHelp.eu EMU-09 FIX60 PITSTOP CLEAN SPLIT + RIVER SAFE CORE
+# AtariHelp.eu EMU-09 FIX61 PITSTOP SPLIT DIAGNOSTIC + RIVER PMG DEBUG
 
-FIX60 navazuje na mobilní testy FIX59:
+FIX61 navazuje na FIX60, ale nebere FIX60 jako viditelne potvrzenou opravu.
 
-- Pitstop II: spodní půlka už seděla lépe, ale horní půlka a prostřední bílo-zelené šumy byly z přechodových řádků v road bufferech. FIX60 drží spodní půlku na $7000, horní na $7100 a filtruje transientní text/garbage řádky jen ve speciálním Pitstop split rendereru.
-- River Raid: obraz běžel, ale letadlo bylo vizuálně mimo vodní koridor a kolize zabíjely hned po startu. FIX60 drží aircraft PMG bezpečněji uvnitř detekované vody a změkčuje River player/playfield kolize, když je střed letadla ve vodě.
-- Obecný XEX core zůstává beze změny směrem k univerzálnímu emulátoru: DLIST resolver, DLI/CHBASE po řádcích, bitmapové ANTIC módy a PMG diagnostika.
+- Cil zustava obecny Atari 130XE/XEX emulator pro vetsinu XEX, ne hack jen pro jednu hru.
+- Pitstop II: split renderer ted loguje zdroj hornich/spodnich bufferu a kontrolni soucty kandidatu $7000/$7100/$7200/$9800/$9900. FIX60 radkovy filtr je v race split renderu vypnuty, aby test ukazal skutecna data.
+- River Raid: aircraft PMG se uz vizualne neclampuje do vody. Log ukazuje PMBASE, P0-P3 HPOS/SIZE/rawY/visY/nonzero a aircraftGuess.
+- GTIA collision log uklada poslednich 20 cteni $D000-$D00F vcetne PC/frame a pocet HITCLR.
+- Donkey/Kong obecny smer zustava zachovany: DLIST resolver a obecny ANTIC/PMG core nejsou nahrazeny jednouherni kresbou.
 
-Build tag: `FIX60_PITSTOP_CLEAN_SPLIT_RIVER_SAFE_CORE`.
+GitHub Desktop Summary:
+
+FIX61 pitstop split diagnostic river pmg debug
+
+Pri testu uloz log:
+
+- Pitstop II: v zavode po tom, co se obraz rozsype.
+- River Raid: po startu, idealne po prvni smrti nebo kdyz letadlo vypada mimo reku.
+- Donkey Kong: po titulce/prvnim levelu, aby bylo videt, ze jsme ho nerozbili.
