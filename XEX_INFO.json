@@ -1,6 +1,7 @@
 {
-  "version": "EMU09_FIX68_COBRA_MANUAL_LONG_VBI",
-  "builtin_xex": "PiTT-KiTT-NaP-Final.xex",
-  "builtin_xex_size": 7162,
-  "note": "FIX68 keeps the PiTT-KiTT text fix, disables automatic Super Cobra START/FIRE pulses, raises generic VBI budget so long interrupt routines are not cut mid-update, and adds Atari OS CDTMV frame timer countdowns"
+  "version": "EMU09_FIX69_DLIST_CORE_REFERENCES",
+  "date": "2026-06-01",
+  "protected_references": ["PiTT-KiTT-NaP-Final.xex", "KITT_HRA47_PLUS_LEVEL2_V21_PROMPTY_FLAG_GARAZ.xex"],
+  "builtin_tests": ["PiTT-KiTT Remaster", "Donkey Kong", "Pitstop II", "KiTT Garage", "Super Cobra"],
+  "note": "FIX69 adds the Donkey and KiTT Garage built-in references, separates KiTT Garage from the PiTT profile, accepts valid dense-LMS ANTIC display lists for Super Cobra-style screens, and adds generic PMG overlap collisions."
 }

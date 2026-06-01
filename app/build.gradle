@@ -10,7 +10,7 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 168
-        versionName "EMU-09-FIX68-cobra-manual-long-vbi"
+        versionCode 169
+        versionName "EMU-09-FIX69-dlist-core-references"
     }
 }
