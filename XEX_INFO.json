@@ -1,8 +1,9 @@
 ﻿{
-  "version": "EMU09_FIX70_OSCOLOR_TEXT_COLLISION",
+  "version": "EMU09_FIX71_ACTIONS_RETRY_OSCOLOR_TEXT_COLLISION",
   "date": "2026-06-01",
   "protected_references": ["PiTT-KiTT-NaP-Final.xex", "KITT_HRA47_PLUS_LEVEL2_V21_PROMPTY_FLAG_GARAZ.xex"],
   "builtin_tests": ["PiTT-KiTT Remaster", "Donkey Kong", "Pitstop II", "KiTT Garage", "Super Cobra"],
-  "note": "FIX70 keeps the protected PiTT and KiTT Garage references, restores Atari OS shadow colors before generic DLI capture, renders ANTIC text modes 2/3 with COLPF2, slows KiTT Garage to the generic frame budget, and defers HITCLR collision clearing for generic PMG games such as Super Cobra."
+  "note": "FIX71 keeps the protected PiTT and KiTT Garage references, restores Atari OS shadow colors before generic DLI capture, renders ANTIC text modes 2/3 with COLPF2, slows KiTT Garage to the generic frame budget, and defers HITCLR collision clearing for generic PMG games such as Super Cobra."
 }
+
 

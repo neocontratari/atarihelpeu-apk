@@ -1,6 +1,6 @@
-﻿# AtariHelp.eu EMU-09 FIX70 OSCOLOR + TEXT + COLLISION
+﻿# AtariHelp.eu EMU-09 FIX71 ACTIONS RETRY + OSCOLOR + TEXT + COLLISION
 
-FIX70 reaguje na testy z 2026-06-01:
+FIX71 reaguje na testy z 2026-06-01:
 
 - Hlavni vestavene testy jsou jen PiTT-KiTT Remaster, Donkey Kong, Pitstop II, KiTT Garage a Super Cobra.
 - PiTT-KiTT Remaster zustava chraneny referencni titul.
@@ -13,5 +13,6 @@ FIX70 reaguje na testy z 2026-06-01:
 
 Build:
 
-FIX70_OSCOLOR_TEXT_COLLISION
+FIX71_ACTIONS_RETRY_OSCOLOR_TEXT_COLLISION
+
 
