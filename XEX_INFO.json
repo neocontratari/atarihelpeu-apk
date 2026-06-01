@@ -1,6 +1,6 @@
 {
-  "version": "EMU09_FIX67_PITT_TEXT_COBRA_DLIST_CORE_TXT",
+  "version": "EMU09_FIX68_COBRA_MANUAL_LONG_VBI",
   "builtin_xex": "PiTT-KiTT-NaP-Final.xex",
   "builtin_xex_size": 7162,
-  "note": "FIX67 fixes PiTT-KiTT text scanline overdraw, accepts short valid DLISTs for generic XEX screens such as Super Cobra, and keeps automatic core TXT reports"
+  "note": "FIX68 keeps the PiTT-KiTT text fix, disables automatic Super Cobra START/FIRE pulses, raises generic VBI budget so long interrupt routines are not cut mid-update, and adds Atari OS CDTMV frame timer countdowns"
 }
