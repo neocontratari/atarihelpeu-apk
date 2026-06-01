@@ -1,6 +1,6 @@
 {
-  "version": "EMU09_FIX66_PITT_SAFE_CORE_MATRIX_TXT_130XE",
+  "version": "EMU09_FIX67_PITT_TEXT_COBRA_DLIST_CORE_TXT",
   "builtin_xex": "PiTT-KiTT-NaP-Final.xex",
   "builtin_xex_size": 7162,
-  "note": "FIX66 keeps PiTT-KiTT Remaster as protected reference, saves core matrix results to TXT automatically, and continues general XEX compatibility work: OS stubs, BASIC/cart handling, and 130XE PORTB"
+  "note": "FIX67 fixes PiTT-KiTT text scanline overdraw, accepts short valid DLISTs for generic XEX screens such as Super Cobra, and keeps automatic core TXT reports"
 }
