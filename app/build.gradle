@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     id "com.android.application"
 }
 
@@ -10,7 +10,8 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 169
-        versionName "EMU-09-FIX69-dlist-core-references"
+        versionCode 170
+        versionName "EMU-09-FIX70-oscolor-text-collision"
     }
 }
+
