@@ -1,8 +1,12 @@
-﻿# AtariHelp.eu EMU-09 FIX71 ACTIONS RETRY + OSCOLOR + TEXT + COLLISION
+# AtariHelp.eu EMU-09 FIX72 ACTIONS BOM SAFE
 
-FIX71 reaguje na testy z 2026-06-01:
+FIX72 je build-safe oprava po padu GitHub Actions z 2026-06-01:
 
-- Hlavni vestavene testy jsou jen PiTT-KiTT Remaster, Donkey Kong, Pitstop II, KiTT Garage a Super Cobra.
+- Gradle a textove soubory jsou ulozene jako UTF-8 bez BOM.
+- Android versionName je kratky: EMU-09-FIX72.
+- Actions pri padu vypise podrobnejsi diagnostiku, aby nebyl videt jen cerveny krizek.
+- Jadro emulatoru zustava z FIX71.
+- Hlavni vestavene testy jsou PiTT-KiTT Remaster, Donkey Kong, Pitstop II, KiTT Garage a Super Cobra.
 - PiTT-KiTT Remaster zustava chraneny referencni titul.
 - Nova KiTT Garage reference se uz nedetekuje jako PiTT-KiTT jen kvuli slovu KITT v nazvu.
 - KiTT Garage: obecny core obnovuje Atari OS shadow barvy do GTIA pred DLI snimkem, textove ANTIC 2/3 mody kresli normalni znaky pres COLPF2 a KiTT bezi pomalejsim obecnym taktem.
@@ -13,6 +17,6 @@ FIX71 reaguje na testy z 2026-06-01:
 
 Build:
 
-FIX71_ACTIONS_RETRY_OSCOLOR_TEXT_COLLISION
+FIX72_ACTIONS_BOM_SAFE
 
 

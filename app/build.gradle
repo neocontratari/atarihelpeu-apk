@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id "com.android.application"
 }
 
@@ -10,8 +10,8 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 171
-        versionName "EMU-09-FIX71-actions-retry-oscolor-text-collision"
+        versionCode 172
+        versionName "EMU-09-FIX72"
     }
 }
 

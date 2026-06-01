@@ -43,7 +43,25 @@ jobs:
           gradle-version: "8.9"
 
       - name: 6 - Vyrobit APK
-        run: gradle assembleDebug --stacktrace
+        run: |
+          gradle --version
+          gradle assembleDebug --stacktrace --info --no-daemon
+
+      - name: 6b - Diagnostika pri padu buildu
+        if: failure()
+        run: |
+          echo "=== ROOT FILES ==="
+          ls -la
+          echo "=== APP BUILD FILE ==="
+          sed -n '1,120p' app/build.gradle || true
+          echo "=== ROOT BUILD FILE ==="
+          sed -n '1,120p' build.gradle || true
+          echo "=== SETTINGS ==="
+          sed -n '1,120p' settings.gradle || true
+          echo "=== MANIFEST ==="
+          sed -n '1,160p' app/src/main/AndroidManifest.xml || true
+          echo "=== ASSETS ==="
+          ls -lh app/src/main/assets || true
 
       - name: 7 - Ulozit hotove APK ke stazeni
         uses: actions/upload-artifact@v4
