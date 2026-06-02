@@ -21,7 +21,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 182
-        versionName "EMU-09-FIX82-stable-vjoy-galaxian-safe"
+        versionName "EMU-09-FIX83-cobra-async-safe-galaxian-vjoy"
     }
 
     buildTypes {
