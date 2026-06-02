@@ -8,3 +8,10 @@ FIX59 upload bez programování:
 6. Commit to main.
 7. Push origin.
 8. GitHub web -> Actions -> nejnovější zelený build -> Artifacts -> stáhnout APK.
+
+
+FIX82_STABLE_VJOY_GALAXIAN_SAFE:
+- Vychazi z funkcniho FIX81/FIX77 core, Cobra/Donkey se nema rozbit.
+- Kruhovy joystick ma mensi mrtvou zonu (citlivejsi ovladani), bez timeru a bez zpomalovani CPU.
+- Galaxian (Title Version 2) ma opatrny profil: INIT-only idle a DLI/VBI ochrana jen pro Galaxian/init-only hry.
+- Testovat nejdrive Cobra + Donkey + joystick, potom Galaxian.
