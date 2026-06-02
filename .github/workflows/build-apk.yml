@@ -7,12 +7,8 @@ on:
 
 jobs:
   build:
-    name: Vyrob release APK
+    name: Vyrob debug APK
     runs-on: ubuntu-latest
-    env:
-      ATARIHELP_RELEASE_STORE_PASSWORD: ${{ secrets.ATARIHELP_RELEASE_STORE_PASSWORD }}
-      ATARIHELP_RELEASE_KEY_ALIAS: ${{ secrets.ATARIHELP_RELEASE_KEY_ALIAS }}
-      ATARIHELP_RELEASE_KEY_PASSWORD: ${{ secrets.ATARIHELP_RELEASE_KEY_PASSWORD }}
 
     steps:
       - name: 1 - Stahnout projekt
@@ -46,24 +42,11 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: 5b - Pripravit release podpis
-        env:
-          ATARIHELP_RELEASE_KEYSTORE_B64: ${{ secrets.ATARIHELP_RELEASE_KEYSTORE_B64 }}
-        run: |
-          if [ -n "$ATARIHELP_RELEASE_KEYSTORE_B64" ]; then
-            echo "$ATARIHELP_RELEASE_KEYSTORE_B64" | base64 -d > app/atarihelp-release.p12
-            echo "Pouzivam release podpis z GitHub Secrets."
-          else
-            echo "Pouzivam stabilni release podpis z projektu."
-          fi
-          test -f app/atarihelp-release.p12
-          keytool -list -keystore app/atarihelp-release.p12 -storepass "${ATARIHELP_RELEASE_STORE_PASSWORD:-AtariHelpEuFixRelease2026}" -alias "${ATARIHELP_RELEASE_KEY_ALIAS:-atarihelp}"
-
-      - name: 6 - Vyrobit release APK
+      - name: 6 - Vyrobit APK
         run: |
           gradle --version
-          gradle assembleRelease --stacktrace --info --no-daemon
-          ls -lh app/build/outputs/apk/release
+          gradle assembleDebug --stacktrace --info --no-daemon
+          ls -lh app/build/outputs/apk/debug
 
       - name: 6b - Diagnostika pri padu buildu
         if: failure()
@@ -84,6 +67,6 @@ jobs:
       - name: 7 - Ulozit hotove APK ke stazeni
         uses: actions/upload-artifact@v4
         with:
-          name: HOTOVE_RELEASE_APK_ATARIHELP_STAHNI_ME
-          path: app/build/outputs/apk/release/app-release.apk
+          name: HOTOVE_APK_ATARIHELP_STAHNI_ME
+          path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14

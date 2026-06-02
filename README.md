@@ -1,13 +1,14 @@
-# AtariHelp.eu EMU-09 FIX74 TEXT + OSROM + DPAD/KBD
+# AtariHelp.eu EMU-09 FIX76 FIX69 INSTALL + N&P LOGO + COBRA
 
-FIX74 reaguje na testy z 2026-06-01 / 2026-06-02:
+FIX76 reaguje na testy z 2026-06-02:
 
+- GitHub Actions jsou vratene na overeny FIX69 debug APK styl: `assembleDebug` a artifact `HOTOVE_APK_ATARIHELP_STAHNI_ME`.
+- N&P pecet z `pecet.png` je v launcher ikone i v `assets/np_logo.png`; EMU-09 ji zobrazuje i primo v appce.
+- Manifest je vraceny smerem k FIX69 kvuli instalaci na telefonu: `INTERNET`, `allowBackup=true`, bez `roundIcon`.
 - Mobilni ovladani je prestavene na levy palcovy kriz, pravy velky FIRE a Atari klavesnice je hned pod krizem.
 - PiTT-KiTT Remaster: textove obrazovky maji cisty background a citelny fallback foreground, aby rekord/intro/konec nemizely.
-- Super Cobra: PMG/kolize se pri cteni GTIA registru umeji cerstve prepocitat; missile kolize maji sirsi vzorkovani.
-- Galactic Chase: obecny BRK recovery umi preskocit z BRK tesne pred nactenym segmentem na nejblizsi nacteny kod.
-- Pacman/obecne XEX: prazdna OS ROM oblast $C000-$CFFF/$D800-$FFFF uz neni okamzity BRK pad; status ukazuje OSROM recover count.
-- GitHub Actions a Gradle soubory zustavaji UTF-8 bez BOM z FIX72.
+- Super Cobra: FIRE je kratky puls a missile kolize je uzsi, hlavne podle spicky rakety.
+- Galactic Chase a Pacman nejsou timto balikem prohlasene za opravene; zustavaji jako dalsi OS/loader prace.
 - Hlavni vestavene testy jsou PiTT-KiTT Remaster, Donkey Kong, Pitstop II, KiTT Garage a Super Cobra.
 - PiTT-KiTT Remaster zustava chraneny referencni titul.
 - KiTT Garage zustava druha chranena reference.
@@ -15,6 +16,6 @@ FIX74 reaguje na testy z 2026-06-01 / 2026-06-02:
 
 Build:
 
-FIX74_TEXT_OSROM_DPAD_KBD
+FIX76_FIX69_INSTALL_LOGO_COBRA
 
 
