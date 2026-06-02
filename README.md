@@ -1,22 +1,19 @@
-# AtariHelp.eu EMU-09 FIX72 ACTIONS BOM SAFE
+# AtariHelp.eu EMU-09 FIX73 DPAD + BRK + COBRA + GAL/PAC
 
-FIX72 je build-safe oprava po padu GitHub Actions z 2026-06-01:
+FIX73 reaguje na testy z 2026-06-01 / 2026-06-02:
 
-- Gradle a textove soubory jsou ulozene jako UTF-8 bez BOM.
-- Android versionName je kratky: EMU-09-FIX72.
-- Actions pri padu vypise podrobnejsi diagnostiku, aby nebyl videt jen cerveny krizek.
-- Jadro emulatoru zustava z FIX71.
+- Mobilni ovladani je prestavene na levy palcovy kriz a pravy velky FIRE.
+- Super Cobra renderuje PMG/kolize kazdy frame a male missile kolize maji sirsi playfield vzorkovani.
+- Galactic Chase: obecny BRK recovery umi preskocit z BRK tesne pred nactenym segmentem na nejblizsi nacteny kod.
+- Pacman/obecne XEX: pokud SDLST/HW DLIST pointer selze, renderer opatrne skenuje nactene segmenty na solidni display list.
+- GitHub Actions a Gradle soubory zustavaji UTF-8 bez BOM z FIX72.
 - Hlavni vestavene testy jsou PiTT-KiTT Remaster, Donkey Kong, Pitstop II, KiTT Garage a Super Cobra.
 - PiTT-KiTT Remaster zustava chraneny referencni titul.
-- Nova KiTT Garage reference se uz nedetekuje jako PiTT-KiTT jen kvuli slovu KITT v nazvu.
-- KiTT Garage: obecny core obnovuje Atari OS shadow barvy do GTIA pred DLI snimkem, textove ANTIC 2/3 mody kresli normalni znaky pres COLPF2 a KiTT bezi pomalejsim obecnym taktem.
-- Super Cobra: obecna validace ANTIC display listu uz neodmita korektni DLIST s hustymi LMS radky. To ma opravit cernou/fallback obrazovku bez krajiny.
-- Super Cobra / obecne PMG hry: HITCLR uz nemaze vypoctene GTIA kolize uprostred emulovaneho frame driv, nez si je hra stihne precist.
-- Donkey Kong: obecna PMG vrstva doplnuje player-player a missile-player GTIA kolize, aby hry videly i bonusy/objekty kreslene pres PMG, nejen playfield.
+- KiTT Garage zustava druha chranena reference.
 - CORE TEST TXT se uklada do mobilu automaticky a po testu vraci puvodni hru.
 
 Build:
 
-FIX72_ACTIONS_BOM_SAFE
+FIX73_DPAD_BRK_COBRA_GAL_PAC
 
 

@@ -1,9 +1,9 @@
 {
-  "version": "EMU09_FIX72_ACTIONS_BOM_SAFE",
-  "date": "2026-06-01",
+  "version": "EMU09_FIX73_DPAD_BRK_COBRA_GAL_PAC",
+  "date": "2026-06-02",
   "protected_references": ["PiTT-KiTT-NaP-Final.xex", "KITT_HRA47_PLUS_LEVEL2_V21_PROMPTY_FLAG_GARAZ.xex"],
   "builtin_tests": ["PiTT-KiTT Remaster", "Donkey Kong", "Pitstop II", "KiTT Garage", "Super Cobra"],
-  "note": "FIX72 is a build-safe package: Gradle/text files are UTF-8 without BOM, Android versionName is short, and GitHub Actions prints deeper diagnostics. Emulator core remains the FIX71 protected PiTT/KiTT Garage reference core with OS shadow colors, ANTIC text COLPF2, slower KiTT Garage frame budget, and deferred HITCLR collisions."
+  "note": "FIX73 adds left-thumb D-pad/right FIRE mobile controls, keeps protected PiTT and KiTT Garage references, improves Super Cobra PMG collision cadence, adds generic BRK recovery near loaded XEX segments for loader/trampoline cases such as Galactic Chase, and adds a cautious loaded-segment DLIST scan fallback for hard generic XEX files such as De Re Pac-Man."
 }
 
 
