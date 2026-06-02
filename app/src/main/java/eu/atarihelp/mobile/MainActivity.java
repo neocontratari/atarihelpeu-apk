@@ -1,6 +1,10 @@
 package eu.atarihelp.mobile;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -39,10 +43,17 @@ public class MainActivity extends Activity {
 
         webView = new WebView(this);
         setContentView(webView);
+        webView.clearCache(true);
+
+        if (Build.VERSION.SDK_INT >= 21) {
+            Bitmap taskIcon = BitmapFactory.decodeResource(getResources(), R.drawable.app_icon);
+            setTaskDescription(new ActivityManager.TaskDescription("AtariHelp.eu", taskIcon, Color.rgb(2, 4, 3)));
+        }
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setAllowFileAccessFromFileURLs(false);

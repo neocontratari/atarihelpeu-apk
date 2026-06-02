@@ -1,13 +1,15 @@
-# AtariHelp.eu EMU-09 FIX76 FIX69 INSTALL + N&P LOGO + COBRA
+# AtariHelp.eu EMU-09 FIX77 RELEASE + 240 VIEWPORT + COBRA UI
 
-FIX76 reaguje na testy z 2026-06-02:
+FIX77 reaguje na testy z 2026-06-02:
 
-- GitHub Actions jsou vratene na overeny FIX69 debug APK styl: `assembleDebug` a artifact `HOTOVE_APK_ATARIHELP_STAHNI_ME`.
+- GitHub Actions vyrabi release APK: `assembleRelease` a artifact `HOTOVE_RELEASE_APK_ATARIHELP_STAHNI_ME`.
 - N&P pecet z `pecet.png` je v launcher ikone i v `assets/np_logo.png`; EMU-09 ji zobrazuje i primo v appce.
-- Manifest je vraceny smerem k FIX69 kvuli instalaci na telefonu: `INTERNET`, `allowBackup=true`, bez `roundIcon`.
-- Mobilni ovladani je prestavene na levy palcovy kriz, pravy velky FIRE a Atari klavesnice je hned pod krizem.
+- Manifest nema INTERNET opravneni, ma N&P icon i roundIcon a appka cisti WebView cache, aby se nevracel stary obraz/logotyp.
+- Obecny ANTIC renderer kresli 320x240, aby Cobra a dalsi hry neztracely spodni HUD/FUEL cast.
+- Mobilni ovladani je prestavene na levy palcovy kriz bez START uprostred, pravy velky FIRE a Atari klavesnice je hned pod krizem.
+- TAP START je nad FIRE; smerova tlacitka pouzivaji pointer capture pro plynulejsi drzeni palcem.
 - PiTT-KiTT Remaster: textove obrazovky maji cisty background a citelny fallback foreground, aby rekord/intro/konec nemizely.
-- Super Cobra: FIRE je kratky puls a missile kolize je uzsi, hlavne podle spicky rakety.
+- Super Cobra: FIRE je kratky puls, HITCLR maze kolize hned a missile kolize se cte cerstveji pri GTIA read.
 - Galactic Chase a Pacman nejsou timto balikem prohlasene za opravene; zustavaji jako dalsi OS/loader prace.
 - Hlavni vestavene testy jsou PiTT-KiTT Remaster, Donkey Kong, Pitstop II, KiTT Garage a Super Cobra.
 - PiTT-KiTT Remaster zustava chraneny referencni titul.
@@ -16,6 +18,6 @@ FIX76 reaguje na testy z 2026-06-02:
 
 Build:
 
-FIX76_FIX69_INSTALL_LOGO_COBRA
+FIX77_RELEASE_VIEWPORT_COBRA_UI
 
 

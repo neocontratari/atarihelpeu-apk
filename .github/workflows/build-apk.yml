@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: Vyrob debug APK
+    name: Vyrob release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -42,11 +42,12 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: 6 - Vyrobit APK
+      - name: 6 - Vyrobit release APK
         run: |
           gradle --version
-          gradle assembleDebug --stacktrace --info --no-daemon
-          ls -lh app/build/outputs/apk/debug
+          test -f app/atarihelp-release.p12
+          gradle assembleRelease --stacktrace --info --no-daemon
+          ls -lh app/build/outputs/apk/release
 
       - name: 6b - Diagnostika pri padu buildu
         if: failure()
@@ -54,7 +55,7 @@ jobs:
           echo "=== ROOT FILES ==="
           ls -la
           echo "=== APP BUILD FILE ==="
-          sed -n '1,120p' app/build.gradle || true
+          sed -n '1,140p' app/build.gradle || true
           echo "=== ROOT BUILD FILE ==="
           sed -n '1,120p' build.gradle || true
           echo "=== SETTINGS ==="
@@ -63,10 +64,12 @@ jobs:
           sed -n '1,160p' app/src/main/AndroidManifest.xml || true
           echo "=== ASSETS ==="
           ls -lh app/src/main/assets || true
+          echo "=== DRAWABLE ==="
+          ls -lh app/src/main/res/drawable || true
 
       - name: 7 - Ulozit hotove APK ke stazeni
         uses: actions/upload-artifact@v4
         with:
-          name: HOTOVE_APK_ATARIHELP_STAHNI_ME
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: HOTOVE_RELEASE_APK_ATARIHELP_STAHNI_ME
+          path: app/build/outputs/apk/release/app-release.apk
           retention-days: 14
