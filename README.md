@@ -1,11 +1,13 @@
-# AtariHelp.eu EMU-09 FIX78 GALAXIAN INIT + DLI CORE
+# AtariHelp.eu EMU-09 FIX79 VIRTUAL JOYSTICK + GALAXIAN CORE
 
-FIX78 navazuje na FIX77 a resi hlavne `Galaxian (Title Version 2).xex`.
+FIX79 navazuje na FIX78 a přidává moderní kruhový virtuální joystick pro mobilní ovládání.
 
-Hlavni opravy:
-- INITAD-only XEX bez RUNAD uz nespadne hned na prazdnem DOS/loader BRK v nizke pameti, pokud uz ma platny DLIST a NMI/DLI.
-- DLI/VBI async wrapper konci hned po RTI/RTS a obnovuje stack page, aby DLI rutina neposkodila hlavni CPU stack.
-- Log pridal INITIDLE/INIT-ONLY IDLE diagnostiku.
+Hlavní změna:
+- kruhový joystick pod obrazem: drž prst v kolečku a táhni směr, směr zůstane sepnutý jako trvale držený Atari joystick;
+- diagonály fungují kombinací UP/DOWN + LEFT/RIGHT;
+- starý kříž zůstává v nouzovém rozbalovacím panelu;
+- TAP START/FIRE/UP/DOWN zůstávají pro menu a hry čekající na klávesy;
+- jádro FIX78 pro Galaxian INIT/DLI zůstává zachované.
 
-Summary pro GitHub Desktop:
-`FIX78 galaxian init dli core`
+GitHub Desktop Summary:
+FIX79 virtual joystick core
