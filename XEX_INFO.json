@@ -1,9 +1,9 @@
 {
-  "version": "EMU09_FIX74_TEXT_OSROM_DPAD_KBD",
+  "version": "EMU09_FIX75_RELEASE_ICON_PLAYPROTECT",
   "date": "2026-06-02",
   "protected_references": ["PiTT-KiTT-NaP-Final.xex", "KITT_HRA47_PLUS_LEVEL2_V21_PROMPTY_FLAG_GARAZ.xex"],
   "builtin_tests": ["PiTT-KiTT Remaster", "Donkey Kong", "Pitstop II", "KiTT Garage", "Super Cobra"],
-  "note": "FIX74 keeps protected PiTT and KiTT Garage references, moves the Atari keyboard below the left D-pad, restores readable PiTT text screens, adds empty Atari OS ROM stubs for C000-CFFF/D800-FFFF, refreshes GTIA collisions on reads for PMG games such as Super Cobra, and keeps generic BRK/DLIST recovery for Galactic/Pacman-style XEX files."
+  "note": "FIX75 keeps protected PiTT and KiTT Garage references, restores the N&P app icon, switches GitHub Actions from debug APK to signed release APK, removes the unused INTERNET permission, keeps the Atari keyboard below the left D-pad, restores readable PiTT text screens, adds empty Atari OS ROM stubs for C000-CFFF/D800-FFFF, refreshes GTIA collisions on reads for PMG games such as Super Cobra, and keeps generic BRK/DLIST recovery for Galactic/Pacman-style XEX files."
 }
 
 

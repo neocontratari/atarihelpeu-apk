@@ -6,12 +6,35 @@ android {
     namespace "eu.atarihelp.mobile"
     compileSdk 35
 
+    signingConfigs {
+        release {
+            storeFile file(System.getenv("ATARIHELP_RELEASE_KEYSTORE") ?: "atarihelp-release.p12")
+            storePassword System.getenv("ATARIHELP_RELEASE_STORE_PASSWORD") ?: "AtariHelpEuFixRelease2026"
+            keyAlias System.getenv("ATARIHELP_RELEASE_KEY_ALIAS") ?: "atarihelp"
+            keyPassword System.getenv("ATARIHELP_RELEASE_KEY_PASSWORD") ?: "AtariHelpEuFixRelease2026"
+            storeType "pkcs12"
+        }
+    }
+
     defaultConfig {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 174
-        versionName "EMU-09-FIX74"
+        versionCode 175
+        versionName "EMU-09-FIX75"
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            signingConfig signingConfigs.release
+            debuggable false
+            minifyEnabled false
+            shrinkResources false
+        }
     }
 }
 
