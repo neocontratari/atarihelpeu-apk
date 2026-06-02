@@ -20,8 +20,8 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 182
-        versionName "EMU-09-FIX83-cobra-async-safe-galaxian-vjoy"
+        versionCode 184
+        versionName "EMU-09-FIX84-galaxian-pf-pmg-safe-vjoy-tune"
     }
 
     buildTypes {
