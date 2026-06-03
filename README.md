@@ -1,9 +1,5 @@
-# AtariHelp.eu EMU-09 FIX107
+FIX108_MULTIGAME_DLIST_ARKANOID_PMG_CORE
 
-FIX107_MULTIGAME_BOOT_PMG_DONKEYJR_CORE
+Hotový overlay pro GitHub Desktop. Rozbal obsah ZIPu do kořene repozitáře, commitni a nech GitHub Actions postavit APK.
 
-- Adds separate Donkey Jr profile detection instead of treating every Donkey title as the original reference.
-- Blocks automatic Montezuma boot assist so the intro can enter the maze before manual START/FIRE.
-- Refines Montezuma PMG stale-row trimming to reduce vertical ghosts without fully disabling the filter after death.
-- Preserves Cobra title/menu fallback and previous collision/trigger improvements without further Cobra-specific hacks.
-- Preserves Donkey baseline and Arkanoid clean menu.
+Cíl FIX108: společné Atari XEX jádro, ne ladění jedné hry. Donkey Jr rollback z chybného scan-DLISTu, Arkanoid gameplay probe, Montezuma PMG trim a zachování Donkey/Cobra/Arkanoid menu baseline.
