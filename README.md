@@ -1,3 +1,3 @@
-AtariHelp.eu EMU-09 FIX90 MULTI-GAME COLLISION + VIEWPORT CORE
+AtariHelp.eu EMU-09 FIX93 MULTIGAME BOOT + VIEWPORT + DLI CORE
 
-Navazuje na FIX89, kde Donkey znovu fungoval. FIX90 opravuje obecnou PMG/GTIA chybu: player se nesmi srazit sam se sebou, kolize respektuji 240r mobilni viewport a generic XEX muze pouzit lepsi runtime DLIST, pokud je aktualni pointer slabsi.
+Pokračování ze stabilního jádra s Donkey jako referencí. FIX93 opravuje společný problém: frame hold se skutečně používá, Cobra dostává bezpečnější DLI/NMI fázi, Montezuma je přidaný jako PMG/viewport test a generic hry dostaly opatrný boot/trap recovery.
