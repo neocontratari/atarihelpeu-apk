@@ -1,7 +1,5 @@
-# AtariHelp.eu EMU-09 FIX87 STABLE SCOPED OSROM + DEATH RACE
+# AtariHelp.eu EMU-09 FIX88 STABLE DLI SAFE + GTIA GUARD
 
-Stabilní základ FIX84 + bezpečně scoped OSROM/I/O ochrana pro obecné XEXy.
+FIX88 není jednoherní záplata. Opravuje obecný princip: DLI wrapper nesmí trvale přepisovat běžnou RAM hry, PMG se neclipuje na 192 řádcích při 240řádkovém viewportu a Cobra/GTIA kolize jsou opatrnější proti falešným zásahům do textu/HUDu.
 
-Hlavní pravidlo: Cobra/Donkey reference nesmí dostat Death Race/Galaxian zásahy.
-
-Do GitHub Desktop Summary: FIX87 stable scoped osrom deathrace
+Do GitHub Desktop Summary: FIX88 stable dli safe gtia guard
