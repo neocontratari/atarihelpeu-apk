@@ -1,17 +1,14 @@
-AtariHelp.eu EMU-09 FIX104 SHARED INPUT + GTIA LATCH CORE
+AtariHelp.eu EMU-09 FIX104_SHARED_INPUT_GTIA_LATCH_CORE
 
-Cíl: vrátit směr zpět k obecnému emulátoru, ne k opravě jedné hry.
+REPACK: opraveny viditelny build label. Predchozi FIX104 balik mel v nekterych UI/log hlaskach stale text FIX103, i kdyz EMU_BUILD_TAG uz byl FIX104.
 
-Změny:
-- sjednocená TRIG0 repeat/latch cesta pro hry, které na mobilním držení FIRE potřebují hrany,
-- D010 i OS STRIG0 teď používají stejný stav u Cobra/River-like kontinuální střelby,
-- Cobra dostává jen krátký sekundární DOWN pulse pro jednu-tlačítkový bomb cadence, ne trvalý joystick hack,
-- Cobra/River si nechávají GTIA HITCLR latch do dalšího renderu, protože kolize počítáme z vykresleného snímku,
-- bounded PF fallback z renderovaných pixelů: kolize terénu/tanků se nemají ztratit kvůli DLI barevnému posunu,
-- Cobra title overlay zůstává, Donkey safe baseline, Arkanoid čisté menu a Montezuma VVBLKD/PMG zůstávají zachované.
+Zmeny jadra:
+- sdilena TRIG0/STRIG0 opakovaci cesta pro hry typu Cobra/River
+- GTIA collision latch timing s odlozenym HITCLR pro render-time kolize
+- bounded playfield pixel fallback pro kolize v DLI-shifted terenu
+- Cobra title/menu fallback zachovan
+- Donkey safe baseline zachovan
+- Arkanoid clean menu zachovano
+- Montezuma VVBLKD/PMG viditelnost zachovana
 
-Test hlavně:
-1) Cobra: menu, gameplay, držení FIRE, pomalé/rychlé střelby, náraz do nádrže/terénu.
-2) Donkey: jestli se nevrátil dlouhý šum FIX99.
-3) Montezuma: po intru, duchy.
-4) Arkanoid: menu.
+Kontrola: v emulatoru, snapshotu i ulozenem logu musi byt FIX104, ne FIX103.
