@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX88 STABLE DLI SAFE + GTIA GUARD / vlastní XEX</title>
+<title>EMU-09 FIX89 VIEWPORT/TIMING SAFE CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix81" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX88 STABLE DLI SAFE + GTIA GUARD</h1>
-<p>PiTT-KiTT Remaster zůstává chráněný referenční titul. FIX88 opravuje princip: DLI rutiny už nesmí trvale přepisovat herní RAM, PMG/GTIA kolize se počítají opatrněji a 240řádkový obraz nesmí useknout PMG na 192 řádcích.</p>
+<h1>EMU-09 FIX89 VIEWPORT/TIMING SAFE CORE</h1>
+<p>PiTT-KiTT Remaster zůstává chráněný referenční titul. FIX89 řeší princip, který teď opakovaně lezl ven: 240řádkový mobilní viewport nesmí vyrábět falešné horní kolize/stíny, kolize se nesmí přepočítávat uprostřed CPU čtení a DLI/VBI opravy musí být scoped, aby nerozbíjely Cobra/Donkey.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl FIX88 jsou <b>vlastní .XEX soubory</b> z telefonu. Loader rozlišuje segmenty, INITAD ($02E2) a RUNAD ($02E0); diagnostika víc hlídá DLIST, SAVMSC, DLI, CHBASE, PMG/GTIA kolize, OS stubs, OS timers a 130XE PORTB.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl FIX89 jsou <b>vlastní .XEX soubory</b> z telefonu. Loader rozlišuje segmenty, INITAD ($02E2) a RUNAD ($02E0); diagnostika víc hlídá DLIST, SAVMSC, DLI, CHBASE, PMG/GTIA kolize, OS stubs, OS timers a 130XE PORTB.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -90,7 +90,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX88: stabilní core + DLI RAM guard + PMG 240řádkový clip + GTIA guard. Cobra/Donkey nesmí dostat cizí zásahy. CORE TEST TXT automaticky uloží report do mobilu a vrátí původní hru.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX89: 240 viewport guard + stabilni timing + scoped DLI/OSROM. Cobra/Donkey nesmí dostat cizí zásahy. CORE TEST TXT automaticky uloží report do mobilu a vrátí původní hru.</div>
 </section>
 
 <section class="card">
@@ -183,7 +183,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
-<p>FIX88 drží směr obecného XEX jádra: DLI/VBI se chovají víc jako přerušení, DLI smí měnit hlavně hardware registry, ne trvale herní RAM; PMG overlay počítá celý 240řádkový viewport a GTIA kolize se už nesnaží trefovat každou textovou čáru jako cíl.</p>
+<p>FIX89 drží směr obecného XEX jádra: hlavní změna je bezpečný 240řádkový viewport, stabilnější mobilní timing, žádné renderování uvnitř GTIA collision read a scoped OS/DLI chování pro obecné hry typu Death Race.</p>
 </section>
 </div>
 
@@ -242,8 +242,8 @@ var playMode=false;
 var playLoopId=0;
 var playBooted=false;
 var playFrameNo=0;
-var playCyclesPerFrame=7600;
-var playMaxMsPerFrame=10;
+var playCyclesPerFrame=4200;
+var playMaxMsPerFrame=7;
 var playLastRan=0;
 var playFrameMs=0;
 var fastVideo=true;
@@ -275,8 +275,10 @@ function clearGtiaCollisions(resetStats){
  else gtiaCollisionStats.clears=(gtiaCollisionStats.clears||0)+1;
 }
 function shouldDeferHitclrCollisionClear(){
- return isRiverProfile() || isDonkeyProfile() || isKittGarageProfile() ||
-        activeXexProfile==="generic" || activeXexProfile==="arkanoid";
+ // FIX89: HITCLR je skutečné smazání GTIA kolizí. Staré deferování u Donkey/generic drželo
+ // staré stíny moc dlouho a na mobilu mohlo zabíjet/stopovat logiku. River si zatím nechává
+ // výjimku, protože jeho special renderer kolize počítá mimo běžný scanline timing.
+ return isRiverProfile();
 }
 function gtiaCollisionHasAny(){
  if(!gtiaCollisionRegs)return false;
@@ -284,26 +286,15 @@ function gtiaCollisionHasAny(){
  return false;
 }
 function refreshGtiaCollisionsForRead(){
- if(collisionReadRenderGuard || collisionReadRenderFrame===playFrameNo)return 0;
- if(!gtiaCollisionRegs || isPiTTProfile() || activeXexProfile==='pitstop')return 0;
- if(gtiaCollisionHasAny() && !isCobraProfile())return 0;
- if(typeof document==='undefined' || !document.getElementById("video"))return 0;
- collisionReadRenderGuard=true;
- try{
-   renderVideo();
-   collisionReadRenderFrame=playFrameNo;
-   if(gtiaCollisionStats)gtiaCollisionStats.readRefresh=(gtiaCollisionStats.readRefresh||0)+1;
-   return 1;
- }catch(e){
-   return 0;
- }finally{
-   collisionReadRenderGuard=false;
- }
+ // FIX89: nikdy nespouštěj celý renderer uvnitř čtení GTIA kolizí. Na desktopu to ještě prošlo,
+ // ale na mobilu to znamenalo render uprostřed CPU smyčky: Cobra měla nesmyslné zásahy,
+ // Donkey horní patro/sud se umělo zastavit a hry se chovaly jinak než v emulátoru.
+ // Kolize teď vznikají jednou při normálním renderu snímku a CPU čte poslední stabilní stav.
+ return 0;
 }
 function shouldRefreshGtiaCollisionRead(ci){
- if(!gtiaCollisionRegs || activeXexProfile==='pitstop')return false;
- if(isCobraProfile() && ci>=0 && ci<=7)return true;
- return !gtiaCollisionRegs[ci];
+ // FIX89: read-only. Žádný re-render během CPU read. Lag jedné frame je menší zlo než falešné stíny.
+ return false;
 }
 
 var genericRenderEvery=2;
@@ -327,7 +318,7 @@ var portbValue=0xFF;
 var xeBankSwitches=0;
 var osStubStats={calls:0,direct:0,basic:0,last:"--"};
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX88_STABLE_DLI_SAFE_GTIA_GUARD";
+var EMU_BUILD_TAG="FIX89_VIEWPORT_TIMING_SAFE_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -399,7 +390,7 @@ function deterministicColdResetState(){
  lastGoodDlist=0;lastGoodDlistProfile="";lastRejectedDlistInfo="";brkNearLoadRecoveries=0;brkRomRecoveries=0;initOnlyIdleRecoveries=0;galaxianIdleStubInstalled=false;lastBrkRecoverInfo="--";
  ram.fill(0);
  coldResetSeq++;
- lastColdResetInfo='COLD RESET FIX88 #'+coldResetSeq+' OK: RAM/CPU/DLI/cache/input/timery/130XE banky vyčištěny';
+ lastColdResetInfo='COLD RESET FIX89 #'+coldResetSeq+' OK: RAM/CPU/DLI/cache/input/timery/130XE banky vyčištěny';
 }
 
 function pitstopPhaseFromPc(pc){
@@ -543,11 +534,11 @@ function makeLogFileName(reason){
  var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
  var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
  var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
- return 'atarihelp-FIX88-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
+ return 'atarihelp-FIX89-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX88 STABLE DLI SAFE + GTIA GUARD');
+ parts.push('AtariHelp.eu EMU-09 FIX89 VIEWPORT/TIMING SAFE CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -626,7 +617,7 @@ function isInitOnlyLoadedXex(){
  return !!(activeEntryWasInit && xexInfo && !xexInfo.run && xexInfo.inits && xexInfo.inits.length);
 }
 function installGalaxianIdleStub(){
- // FIX88: jen pro Galaxian INIT-only návrat. Malá smyčka mimo XEX segmenty, aby CPU nešlapal BRK dokola.
+ // FIX89: jen pro Galaxian INIT-only návrat. Malá smyčka mimo XEX segmenty, aby CPU nešlapal BRK dokola.
  if(!ram)return 0;
  var a=0x06F0;
  ram[a]=0xEA;           // NOP
@@ -698,7 +689,7 @@ function loadBuiltinRiverRaid(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="River Raid.xex / vestavěný test";
  loadXex(false);
-updatePlayStatus("Nacten River Raid test. FIX88 ho bere jako jeden z vice testu jadra: XEX loader, OS stubs/timers, ANTIC/DLI, GTIA/PMG a kolize. Kdyz stoji na startu, zkus TAP START nebo TAP FIRE.");
+updatePlayStatus("Nacten River Raid test. FIX89 ho bere jako jeden z vice testu jadra: XEX loader, OS stubs/timers, ANTIC/DLI, GTIA/PMG a kolize. Kdyz stoji na startu, zkus TAP START nebo TAP FIRE.");
  scheduleAutoStartLoadedXex("River Raid");
 }
 function loadBuiltinDonkeyKong(){
@@ -708,7 +699,7 @@ function loadBuiltinDonkeyKong(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Donkey Kong.xex / vestaveny test";
  loadXex(false);
- updatePlayStatus("Nacten Donkey Kong. FIX88 ho drzi jako vestaveny test obecneho XEX jadra, VBI, DLIST a GTIA/PMG kolizi.");
+ updatePlayStatus("Nacten Donkey Kong. FIX89 ho drzi jako vestaveny test obecneho XEX jadra, VBI, DLIST a GTIA/PMG kolizi.");
  scheduleAutoStartLoadedXex("Donkey Kong");
 }
 function loadBuiltinSuperCobra(){
@@ -728,7 +719,7 @@ function loadBuiltinGalaxian(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Galaxian (Title Version 2).xex / vestavěný test";
  loadXex(false);
- updatePlayStatus("Načten Galaxian. FIX88 zkouší opatrný INIT-only/DLI režim jen pro Galaxian; Cobra/Donkey core zůstává FIX77/FIX81 stabilní.");
+ updatePlayStatus("Načten Galaxian. FIX89 zkouší opatrný INIT-only/DLI režim jen pro Galaxian; Cobra/Donkey core zůstává FIX77/FIX81 stabilní.");
  scheduleAutoStartLoadedXex("Galaxian");
 }
 
@@ -739,7 +730,7 @@ function loadBuiltinDeathRace(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Death Race.xex / vestavěný test";
  loadXex(false);
- updatePlayStatus("Načten Death Race. FIX88 ho používá jako obecný test OS ROM/VBI/DLI návratů. Ochrana je scoped: Cobra/Donkey zůstávají na stabilní cestě.");
+ updatePlayStatus("Načten Death Race. FIX89 ho používá jako obecný test OS ROM/VBI/DLI návratů. Ochrana je scoped: Cobra/Donkey zůstávají na stabilní cestě.");
  scheduleAutoStartLoadedXex("Death Race");
 }
 
@@ -750,7 +741,7 @@ function loadBuiltinPitstopII(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Pitstop II.xex / vestavěný těžší test";
  loadXex(false);
-updatePlayStatus("Nacten Pitstop II. FIX88 ho bere jako tezsi kompatibilitni test jadra: INITAD, SETVBV/VBI, OS timers, DLIST, CPU opcodes a vstup. Zkus TAP START/FIRE/OPTION/SELECT podle obrazovky.");
+updatePlayStatus("Nacten Pitstop II. FIX89 ho bere jako tezsi kompatibilitni test jadra: INITAD, SETVBV/VBI, OS timers, DLIST, CPU opcodes a vstup. Zkus TAP START/FIRE/OPTION/SELECT podle obrazovky.");
  scheduleAutoStartLoadedXex("Pitstop II");
 }
 function loadBuiltinKittGarage(){
@@ -760,7 +751,7 @@ function loadBuiltinKittGarage(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="KITT_HRA47_PLUS_LEVEL2_V21_PROMPTY_FLAG_GARAZ.xex / vestavena reference";
  loadXex(false);
- updatePlayStatus("Nactena KiTT Garage reference. FIX88 ji drzi mimo PiTT profil, zpomaluje takt a obnovuje OS shadow barvy pro DLI/text.");
+ updatePlayStatus("Nactena KiTT Garage reference. FIX89 ji drzi mimo PiTT profil, zpomaluje takt a obnovuje OS shadow barvy pro DLI/text.");
  scheduleAutoStartLoadedXex("KiTT Garage");
 }
 function loadBuiltinArkanoidIII(){
@@ -868,7 +859,7 @@ function runCoreSmokeMatrix(){
    ["Super Cobra",decodeB64(superCobraB64),120],
    ["Death Race",decodeB64(deathRaceB64),50]
  ];
- var lines=["FIX88 CORE SMOKE MATRIX - testuje hlavni reference + Death Race scoped OSROM; po testu se vrati puvodni stav emulatoru."];
+ var lines=["FIX89 CORE SMOKE MATRIX - testuje hlavni reference + Death Race scoped OSROM; po testu se vrati puvodni stav emulatoru."];
  lines.push("PiTT-KiTT Remaster a KiTT Garage jsou chranene reference: test je jen nacteni a kratky beh, zadna zmena jejich dat.");
  try{
    for(var i=0;i<cases.length;i++){
@@ -879,7 +870,7 @@ function runCoreSmokeMatrix(){
    restoreCoreMatrixEmuState(savedState);
  }
  var report=[
-    "AtariHelp.eu EMU-09 FIX88 STABLE DLI SAFE MATRIX TXT",
+    "AtariHelp.eu EMU-09 FIX89 VIEWPORT TIMING SAFE MATRIX TXT",
    "time="+new Date().toISOString(),
    "build="+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing'),
    "restoredXex="+currentXexName,
@@ -888,7 +879,7 @@ function runCoreSmokeMatrix(){
  ].join("\n");
  log(report);
  var saved=saveTextReportToMobile('core-matrix',report);
- updatePlayStatus("FIX88 CORE TEST TXT hotovo. TXT report "+(saved?"ulozen automaticky":"se nepodarilo ulozit automaticky")+".\nPuvodni hra obnovena: "+currentXexName+"\n"+lines.slice(2).join("\n"));
+ updatePlayStatus("FIX89 CORE TEST TXT hotovo. TXT report "+(saved?"ulozen automaticky":"se nepodarilo ulozit automaticky")+".\nPuvodni hra obnovena: "+currentXexName+"\n"+lines.slice(2).join("\n"));
  return false;
 }
 
@@ -902,7 +893,7 @@ function handleXexFile(file){
      xexCache=null;
      currentXexName=file.name+" / "+customXexBytes.length+" bytes";
      loadXex(false);
-     updatePlayStatus("Nacten vlastni XEX: "+currentXexName+". FIX88 ho za chvilku spusti sam; PAUZA ho zastavi.");
+     updatePlayStatus("Nacten vlastni XEX: "+currentXexName+". FIX89 ho za chvilku spusti sam; PAUZA ho zastavi.");
      scheduleAutoStartLoadedXex("vlastní XEX");
    }catch(e){log("XEX load error: "+e.message);updatePlayStatus("Chyba při načtení XEX: "+e.message);}
  };
@@ -1198,12 +1189,19 @@ function loadXex(light){
    playMaxMsPerFrame=8;
    genericRenderEvery=1;
   }else if(activeXexProfile==="cobra"){
-    // Cobra už nemá spadnout do River profilu. Běží přes obecný DLIST a lehký frame-sync hack níže.
-    playCyclesPerFrame=5200;
-    playMaxMsPerFrame=8;
+    // FIX89: Cobra běží na telefonu stabilněji v normálním taktu. 5200 umělo rozjet scroll,
+    // ale na mobilu rozbíjelo zásahy/restart a horní lištu. Rychleji jde zapnout ručně tlačítkem.
+    playCyclesPerFrame=4200;
+    playMaxMsPerFrame=7;
+    genericRenderEvery=1;
+  }else if(activeXexProfile==="donkey"){
+    // FIX89: Donkey byl omylem v "else" větvi s PiTT rychlostí 7600. Na telefonu to umí rozhodit
+    // horní patro/sudy a VBI timing. Donkey je referenční hra, drž normální takt.
+    playCyclesPerFrame=4200;
+    playMaxMsPerFrame=7;
     genericRenderEvery=1;
  }else if(activeXexProfile==="galaxian"){
-   // FIX88: Galaxian Title Version je INIT-only/DLI hra. Drž stabilní takt a žádné profilové hacky do Cobry/Donkey.
+   // FIX89: Galaxian Title Version je INIT-only/DLI hra. Drž stabilní takt a žádné profilové hacky do Cobry/Donkey.
    playCyclesPerFrame=4200;
    playMaxMsPerFrame=7;
    genericRenderEvery=1;
@@ -1228,7 +1226,7 @@ function loadXex(light){
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX88-STABLE-DLI-SAFE-GTIA-GUARD");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX89-VIEWPORT-TIMING-SAFE-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -1738,7 +1736,7 @@ CPU6502.prototype.step=function(){
   case 0x9C:this.opShy(this.abx());break; case 0x9E:this.opShx(this.aby());break; case 0x9F:this.opAhx(this.aby());break; case 0x93:this.opAhx(this.izy());break; case 0x9B:{var a=this.aby();this.sp=(this.a&this.x)&255;this.w(a,this.sp&(((a>>8)+1)&255));break;} case 0x8B:this.a=(this.x&this.imm())&255;this.zn(this.a);break;
 
   case 0x00:{
-    // FIX88: Galaxian Title Version je INITAD-only XEX bez RUNAD. Po inicializaci se vrací do
+    // FIX89: Galaxian Title Version je INITAD-only XEX bez RUNAD. Po inicializaci se vrací do
     // prázdného DOS/loader návratu, ale DLIST/DLI už běží. Jen pro profil galaxian proto přepneme CPU
     // do bezpečné idle smyčky a necháme dál běžet frame interrupt/DLI.
     if(shouldIdleInitOnlyBrk(pc0)){
@@ -2032,7 +2030,7 @@ function getDlistPtr(){
    return fallbackGoodDlist();
  }
  var gr=0;
- // FIX88 Galaxian: after START/FIRE the hardware/shadow DLIST can stay on a short/menu-like
+ // FIX89 Galaxian: after START/FIRE the hardware/shadow DLIST can stay on a short/menu-like
  // list ($3D00, ~79 visible scanlines) while a fuller runtime DLIST is built inside the loaded
  // XEX area. Prefer the scanned candidate only for Galaxian, only when the current visible
  // height is suspiciously short. This keeps Cobra/Donkey on the FIX77/FIX81 path.
@@ -2384,7 +2382,22 @@ function rgbClose(a,b,t){
  if(!a||!b)return false; t=t||10;
  return Math.abs(a[0]-b[0])<=t && Math.abs(a[1]-b[1])<=t && Math.abs(a[2]-b[2])<=t;
 }
+function logicalCollisionWindow(){
+ // FIX89: canvas je 240 px, ale hodně her má reálné herní okno cca 192-208 scanline.
+ // Rozšíření viewportu nesmí proměnit horní HUD/overscan/stíny v kolizní playfield.
+ if(isCobraProfile())return {top:34,bottom:218};
+ if(isDonkeyProfile())return {top:18,bottom:222};
+ if(isGalaxianProfile())return {top:8,bottom:232};
+ if(activeXexProfile==='generic' || isArkanoidProfile())return {top:8,bottom:232};
+ return {top:0,bottom:ATARI_SCREEN_H};
+}
+function inLogicalCollisionWindow(y){
+ var w=logicalCollisionWindow();
+ y=y|0;
+ return y>=w.top && y<w.bottom;
+}
 function playfieldPfBitsAt(x,y,cs){
+ if(!inLogicalCollisionWindow(y))return 0;
  var rgb=pixelRgbAtAnticImage(x,y);
  if(!rgb)return 0;
  var bk=rgbFromCss((cs&&cs.bk)||'#000000');
@@ -2496,6 +2509,8 @@ function markRiverPfCollision(isPlayer,index,x,y,w,h){
 }
 function markPlayerPfCollision(p,x,y,w,h,cs){
  if(!gtiaCollisionRegs || activeXexProfile==='pitstop')return;
+ // FIX89: bezpečný 240 viewport. Objekt celý v horním/spodním overscanu nesmí vyrábět smrt/stíny.
+ if(!inLogicalCollisionWindow(y+(h>>1)))return;
  var bits=playfieldPfBitsInRect(x,y,w,h,cs);
  if(bits){
    gtiaCollisionRegs[4+p]|=bits;
@@ -2504,6 +2519,7 @@ function markPlayerPfCollision(p,x,y,w,h,cs){
 }
 function markMissilePfCollision(mi,x,y,w,h,cs){
  if(!gtiaCollisionRegs || activeXexProfile==='pitstop')return;
+ if(!inLogicalCollisionWindow(y+(h>>1)))return;
  var bits=isCobraProfile()?playfieldPfBitsInCobraMissileNose(x,y,w,h,cs):playfieldPfBitsInRect(x-1,y-1,w+2,h+2,cs);
  if(bits){
    gtiaCollisionRegs[mi]|=bits;
@@ -3138,7 +3154,7 @@ function regsToColorSetFromDli(regs){
  // regs je snapshot $D000-$D01A. U Riveru je voda často v COLPF1 a břehy/zem v dalších PF registrech.
  if(!regs)return null;
  var p0v=regs[0x16]||0, p1v=regs[0x17]||0, p2v=regs[0x18]||0, p3v=regs[0x19]||0, bkv=regs[0x1A]||0;
- // FIX88 Galaxian: the title/game DLI sometimes leaves PF1-PF3 as zero in our mini-wrapper.
+ // FIX89 Galaxian: the title/game DLI sometimes leaves PF1-PF3 as zero in our mini-wrapper.
  // That makes some playfield objects invisible on black. Keep it profile-local and only when
  // the line would otherwise have a single non-black playfield color.
  if(isGalaxianProfile() && p0v && !p1v && !p2v && !p3v){
@@ -3246,7 +3262,7 @@ function renderRiverPmgOnlyFrame(){
  riverLastPmgDebug=riverPmgPlayerDebug(caps)+' drawn='+pmgDrawn;
  setPmgDebug(riverLastPmgDebug);
  g.fillStyle='#ff6b9a';g.font='10px monospace';
- g.fillText('RIVER PMG ONLY FIX88 '+pmgDrawn,4,188);
+ g.fillText('RIVER PMG ONLY FIX89 '+pmgDrawn,4,188);
  log(riverLastPmgDebug);
  return true;
 }
@@ -3495,7 +3511,7 @@ function renderRiverRaidDisplay(){
    if(op&0x40){var lo=ram[p++&65535],hi=ram[p++&65535];scanAddr=lo|(hi<<8);}
    if(!scanAddr)scanAddr=((ram[0x58]|(ram[0x59]<<8))+(textLines*48))&65535;
    var h=scanlinesForMode(mode);
-   // FIX60: ve FIX88 tady byl překlep dliCaps místo caps. River renderer pak uměl skončit černou obrazovkou.
+   // FIX60: ve FIX89 tady byl překlep dliCaps místo caps. River renderer pak uměl skončit černou obrazovkou.
    var dma0=(ram[0xD400]||ram[0x022F]||0)&255;
    var stride=lineStrideBytesForDma(mode,dma0);
    var visAddr=(scanAddr+visibleOffsetBytesForStride(mode,stride))&65535;
@@ -3524,8 +3540,8 @@ function renderRiverRaidDisplay(){
  g.putImageData(anticImageData,0,0);
  if(!playMode){
    var gg=c.getContext('2d');gg.fillStyle='#ff6b9a';gg.font='10px monospace';
-   gg.fillText('RIVER FIX88 DLI '+caps.length+' PMG '+pmgDrawn+' NB '+nonBg+' DL $'+hex(dl,4),4,188);
-   log('Rendered River FIX88 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' nonBg='+nonBg+' DL=$'+hex(dl,4)+' '+riverLastPmgDebug+' map='+riverLastDliMap);
+   gg.fillText('RIVER FIX89 DLI '+caps.length+' PMG '+pmgDrawn+' NB '+nonBg+' DL $'+hex(dl,4),4,188);
+   log('Rendered River FIX89 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' nonBg='+nonBg+' DL=$'+hex(dl,4)+' '+riverLastPmgDebug+' map='+riverLastDliMap);
  }
  return true;
 }
@@ -3839,7 +3855,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Pripraveno. FIX88: hlavni reference jsou PiTT-KiTT, Donkey, Pitstop II, KiTT Garage a Super Cobra. CORE TEST TXT ulozi report automaticky a vrati puvodni hru."+(extra?"\n"+extra:"");return;}
+ if(!cpu){e.textContent="Pripraveno. FIX89: hlavni reference jsou PiTT-KiTT, Donkey, Pitstop II, KiTT Garage a Super Cobra. CORE TEST TXT ulozi report automaticky a vrati puvodni hru."+(extra?"\n"+extra:"");return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -3915,7 +3931,7 @@ function runPendingXexInits(){
 }
 
 function scopedAsyncOsExitEnabled(){
- // FIX88: obecné OS ROM/I/O konce potřebují hry typu Death Race, ale nesmí měnit stabilní reference.
+ // FIX89: obecné OS ROM/I/O konce potřebují hry typu Death Race, ale nesmí měnit stabilní reference.
  // Cobra/Donkey/PiTT/KiTT/Pitstop/River zůstávají na původní FIX84 async cestě.
  return activeXexProfile==="generic" || activeXexProfile==="arkanoid";
 }
@@ -3943,16 +3959,16 @@ function asyncRoutineIsDli(label){
  label=(label||'').toUpperCase();
  return label.indexOf('DLI')>=0;
 }
+function dliRamGuardEnabled(){
+ // FIX89: plošný DLI RAM guard z FIX88 byl moc hrubý. Death Race i některé dema/hry mohou
+ // v DLI samomodifikovat display list nebo pracovní RAM. Necháme DLI běžet jako reálnou rutinu;
+ // ochrany řešíme jinde: stabilní timing, scoped OSROM a 240 viewport collision guard.
+ return false;
+}
 function restoreRamButKeepHardware(before){
- if(!before||!ram)return;
- // FIX88: DLI rutiny na skutečném Atari obvykle mění GTIA/ANTIC/POKEY registry,
- // ne herní logiku. Náš wrapper DLI spouští mimo skutečný CPU tok a někdy i víckrát
- // za snímek; trvalé zápisy do běžné RAM pak dělaly přesně ty chyby typu:
- // horní sud v Donkey se zastaví, Cobra restart přejde do divného stavu.
- // Proto po DLI vracíme běžnou RAM a necháváme jen I/O registry + malý HW stav.
+ if(!before||!ram||!dliRamGuardEnabled())return;
  for(var a=0;a<65536;a++){
    if(a>=0xD000 && a<=0xD7FF)continue;
-   // Zachovej pár OS shadow registrů, které DLI/SETVBV diagnostika používá jako zrcadla hardware.
    if(a>=0x02C0 && a<=0x02FF)continue;
    ram[a]=before[a];
  }
@@ -3962,10 +3978,10 @@ function runAsyncAtariRoutine(addr,label,limit,vcountValue){
  var dliRoutine=asyncRoutineIsDli(label);
  var savedRam=dliRoutine?ram.slice(0):null;
  var saved={a:cpu.a,x:cpu.x,y:cpu.y,p:cpu.p,sp:cpu.sp,pc:cpu.pc,trap:cpu.trap,msg:cpu.trapMsg,vc:cpu.vcount,trace:cpu.trace.slice(0)};
- var galaxSafe=isGalaxianProfile(); // FIX88: Cobra/Super Cobra jsou také INIT-only, ale NESMÍ dostat Galaxian RTI/stack ochranu.
+ var galaxSafe=isGalaxianProfile(); // FIX89: Cobra/Super Cobra jsou také INIT-only, ale NESMÍ dostat Galaxian RTI/stack ochranu.
  var stackCopy=(galaxSafe && !dliRoutine)?ram.slice(0x0100,0x0200):null;
  cpu.trap=false;cpu.trapMsg="";
- // FIX18/FIX88: VBI/DLI nejsou JSR. Pro běžné hry držíme přesně FIX81 chování.
+ // FIX18/FIX89: VBI/DLI nejsou JSR. Pro běžné hry držíme přesně FIX81 chování.
  // Jen INIT-only/Galaxian rutina má navíc ochranu: když DLI/VBI skončí RTI/RTS, wrapper hned končí
  // a vrátí stack page, aby DLI nepokračovala do $0000.
  var sentinel=0x02FE;
@@ -4026,7 +4042,7 @@ function runFrameInterrupts(){
  var nmi=ram[0xD40E]&255;
  if(nmi&0x40){
    var vbi=(ram[0x0222]|(ram[0x0223]<<8))&65535;
-   // FIX88: VBI routine must not be cut in the middle. Donkey Kong's attract/game intro VBI
+   // FIX89: VBI routine must not be cut in the middle. Donkey Kong's attract/game intro VBI
    // can legitimately exceed 10k mini-ops; the old cap left game semaphores half-updated.
    var vbiBudget=isPitstopProfile()?4500:24000;
    if(goodEntry(vbi)){frameVbiRan=runAsyncAtariRoutine(vbi,"VBI $"+hex(vbi,4),vbiBudget,0x7C);frameIrqRan+=frameVbiRan;}
@@ -4097,8 +4113,8 @@ function compatibilitySnapshot(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX88 STABLE DLI-SAFE CORE + VJOY + GTIA GUARD");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX88, běží starý APK/ZIP nebo starý label.");
+lines.push("COMPAT SNAPSHOT FIX89 VIEWPORT/TIMING SAFE CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX89, běží starý APK/ZIP nebo starý label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -4106,26 +4122,26 @@ lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missi
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
-lines.push("ANTIC FIX88 modes: "+decodeDlistShort(dl));
-lines.push("DLI CAP FIX88 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / DLI RAM guard aktivní: DLI smí zůstat v I/O registrech, ne v běžné RAM.");
-lines.push("DLIST RESOLVE FIX88: "+dlistQualitySummary(dl));
-lines.push("OS TIMERS FIX88 CDTMV1-5="+[0x0218,0x021A,0x021C,0x021E,0x0220].map(function(a){return '$'+hex(a,4)+'=$'+hex((ram[a]|(ram[(a+1)&65535]<<8))&65535,4);}).join(' ')+" ticks="+osTimerTicks);
-lines.push("GALAXIAN INIT-IDLE FIX88 recoveries="+initOnlyIdleRecoveries+" active="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" idleStub="+(galaxianIdleStubInstalled?"YES":"no")+" last="+lastBrkRecoverInfo);
-lines.push("ASYNC WRAPPER FIX88: galaxSafeOnly="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" scopedOS="+scopedAsyncOsExitEnabled()+" / Cobra/Donkey drží původní FIX84 async cestu.");
-lines.push("ASYNC OS EXIT FIX88 "+asyncOsExitInfo());
-if(isGalaxianProfile())lines.push("GALAXIAN DISPLAY FIX88 scanDL="+((dlistScanCache&&dlistScanCache.addr)?("$"+hex(dlistScanCache.addr,4)+" score "+dlistScanCache.score):"--")+" PMBASE0="+(((ram[0xD407]||0)===0)?"lowPMG":"std")+" / fuller scanned DLIST only if current DL is too short.");
-if(activeXexProfile==='pitstop')lines.push("PITSTOP RACE DLIST TEMPLATE FIX88: "+(pitstopRaceTemplateLast||"--")+" reason "+(pitstopRaceDlistLastReason||"--"));
- if(activeXexProfile==='pitstop')lines.push("PITSTOP VIRTUAL DLIST FIX88: "+(pitstopRaceVirtualLast||"--"));
- if(activeXexProfile==='pitstop')lines.push("PITSTOP CLEAN ROAD DIAG FIX88: "+(pitstopSplitDebugLast||"--"));
+lines.push("ANTIC FIX89 modes: "+decodeDlistShort(dl));
+lines.push("DLI CAP FIX89 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX89: DLI RAM guard je vypnutý; ochrana je timing/viewport/scoped OSROM.");
+lines.push("DLIST RESOLVE FIX89: "+dlistQualitySummary(dl));
+lines.push("OS TIMERS FIX89 CDTMV1-5="+[0x0218,0x021A,0x021C,0x021E,0x0220].map(function(a){return '$'+hex(a,4)+'=$'+hex((ram[a]|(ram[(a+1)&65535]<<8))&65535,4);}).join(' ')+" ticks="+osTimerTicks);
+lines.push("GALAXIAN INIT-IDLE FIX89 recoveries="+initOnlyIdleRecoveries+" active="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" idleStub="+(galaxianIdleStubInstalled?"YES":"no")+" last="+lastBrkRecoverInfo);
+lines.push("ASYNC WRAPPER FIX89: galaxSafeOnly="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" scopedOS="+scopedAsyncOsExitEnabled()+" / Cobra/Donkey drží původní FIX84 async cestu.");
+lines.push("ASYNC OS EXIT FIX89 "+asyncOsExitInfo());
+if(isGalaxianProfile())lines.push("GALAXIAN DISPLAY FIX89 scanDL="+((dlistScanCache&&dlistScanCache.addr)?("$"+hex(dlistScanCache.addr,4)+" score "+dlistScanCache.score):"--")+" PMBASE0="+(((ram[0xD407]||0)===0)?"lowPMG":"std")+" / fuller scanned DLIST only if current DL is too short.");
+if(activeXexProfile==='pitstop')lines.push("PITSTOP RACE DLIST TEMPLATE FIX89: "+(pitstopRaceTemplateLast||"--")+" reason "+(pitstopRaceDlistLastReason||"--"));
+ if(activeXexProfile==='pitstop')lines.push("PITSTOP VIRTUAL DLIST FIX89: "+(pitstopRaceVirtualLast||"--"));
+ if(activeXexProfile==='pitstop')lines.push("PITSTOP CLEAN ROAD DIAG FIX89: "+(pitstopSplitDebugLast||"--"));
  lines.push("DLIST BYTES: "+dumpDlistBytes(dl,72));
-lines.push("DLI SCANLINES FIX88: "+dliScanlineSummary(dl));
+lines.push("DLI SCANLINES FIX89: "+dliScanlineSummary(dl));
  lines.push("GENERIC DLI STATES: "+dliStateSummary(genericDliCache,12));
 lines.push("PMG INFO: "+pmgInfo());
-lines.push("GTIA COLLISION FIX88: "+gtiaCollisionInfo());
-lines.push("OS STUBS FIX88 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches);
-lines.push("SETVBV FIX88 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
-if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX88: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
- if(isRiverProfile())lines.push("RIVER FIX88: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
+lines.push("GTIA COLLISION FIX89: "+gtiaCollisionInfo());
+lines.push("OS STUBS FIX89 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches);
+lines.push("SETVBV FIX89 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
+if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX89: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
+ if(isRiverProfile())lines.push("RIVER FIX89: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
@@ -4150,11 +4166,11 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX88 CORE: PiTT text je chraneny, OS ROM $C000+ ma stub a GTIA kolize se pri cteni cerstveji prepocitaji.");
+updatePlayStatus("Emulator bezi. FIX89 CORE: stabilni 4200 timing pro Donkey/Cobra, zadny render uvnitr GTIA read, 240 viewport collision guard, scoped OSROM pro generic.");
  if(!playLoopId)playLoop();
 }
 function serviceCobraStartHelper(){
- // FIX88: zadne automaticke START/FIRE. To nebyla emulace vstupu a u Super Cobry to preskakovalo intro
+ // FIX89: zadne automaticke START/FIRE. To nebyla emulace vstupu a u Super Cobry to preskakovalo intro
  // a vyrabelo dojem, ze hra sama strili. Konzolove tlacitko a spoust zustavaji jen na realnem tapu uzivatele.
  return;
 }
@@ -4219,7 +4235,7 @@ function setVjoyState(left,right,up,down){
  if(vjoyState.left===left&&vjoyState.right===right&&vjoyState.up===up&&vjoyState.jump===down)return;
  vjoyState.left=left;vjoyState.right=right;vjoyState.up=up;vjoyState.jump=down;
  input.left=left;input.right=right;input.up=up;input.jump=down;
- // Kruhový joystick FIX88 je jemně zklidněný čistý joystick. Neposílá CH klávesy, aby nerozbíjel menu a nezpomaloval hry.
+ // Kruhový joystick FIX89 je jemně zklidněný čistý joystick. Neposílá CH klávesy, aby nerozbíjel menu a nezpomaloval hry.
  if(!up&&!down && (input.key===0x0E||input.key===0x0F))input.key=0xFF;
  syncInputShadows();
  renderInput();
