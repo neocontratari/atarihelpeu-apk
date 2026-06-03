@@ -1,17 +1,10 @@
 {
-  "version": "EMU09_FIX77_RELEASE_VIEWPORT_COBRA_UI",
-  "date": "2026-06-02",
-  "protected_references": [
-    "PiTT-KiTT-NaP-Final.xex",
-    "KITT_HRA47_PLUS_LEVEL2_V21_PROMPTY_FLAG_GARAZ.xex"
-  ],
-  "builtin_tests": [
-    "PiTT-KiTT Remaster",
-    "Donkey Kong",
-    "Pitstop II",
-    "KiTT Garage",
-    "Super Cobra"
-  ],
-  "note": "FIX106 shared input PMG Cobra core; Cobra fire cadence and Montezuma PMG stale-row filter.",
-  "build": "FIX106_TRIGGER_COLLISION_PMG_STABILITY_CORE"
+  "build": "FIX107_MULTIGAME_BOOT_PMG_DONKEYJR_CORE",
+  "focus": [
+    "multigame boot gating",
+    "Montezuma PMG long-cluster trim",
+    "Donkey Jr profile detection",
+    "preserve Cobra title fallback",
+    "preserve Donkey and Arkanoid baselines"
+  ]
 }
