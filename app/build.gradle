@@ -20,8 +20,8 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 186
-        versionName "EMU-09-FIX86-generic-osrom-async-deathrace"
+        versionCode 187
+        versionName "EMU-09-FIX87-stable-scoped-osrom-deathrace"
     }
 
     buildTypes {
