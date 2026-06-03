@@ -20,8 +20,8 @@ android {
         applicationId "eu.atarihelp.mobile"
         minSdk 23
         targetSdk 35
-        versionCode 188
-        versionName "EMU-09-FIX88-stable-dli-safe-gtia-guard"
+        versionCode 190
+        versionName "EMU-09-FIX90-multigame-collision-viewport"
     }
 
     buildTypes {
