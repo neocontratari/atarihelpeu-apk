@@ -1,4 +1,4 @@
-# EMU-09 FIX103 MULTIGAME INPUT + GTIA/COBRA CORE
+# EMU-09 FIX104 SHARED INPUT + GTIA LATCH CORE
 
 Cíl: vrátit směr z herních hacků zpět ke společnému jádru emulátoru.
 

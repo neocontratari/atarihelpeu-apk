@@ -23,7 +23,7 @@ var cobraForcedNmiLast="--";
 var genericTrapRecoveries=0;
 var genericTrapRecoverLast="--";
 var arkanoidAssistBlocked=0;
-var fix96RegressionGuardInfo="FIX103: multigame input edges + GTIA collision restore + Donkey/Arkanoid/Montezuma preserved";
+var fix96RegressionGuardInfo="FIX104: shared input cadence + GTIA latch timing + safer PF collisions";
 var fix99DonkeyHoldInfo="--";
 var fix99CobraInputInfo="--";
 var cobraFirePressCount=0;
@@ -124,9 +124,9 @@ function clearGtiaCollisions(resetStats){
 }
 function shouldDeferHitclrCollisionClear(){
  // FIX89: HITCLR je skutečné smazání GTIA kolizí. Staré deferování u Donkey/generic drželo
- // staré stíny moc dlouho a na mobilu mohlo zabíjet/stopovat logiku. River si zatím nechává
- // výjimku, protože jeho special renderer kolize počítá mimo běžný scanline timing.
- return isRiverProfile();
+ // staré stíny moc dlouho a na mobilu mohlo zabíjet/stopovat logiku. River a Cobra si nechávají
+ // výjimku, protože jejich kolize počítáme z posledního vykresleného snímku, ne scanline přesně v CPU čase.
+ return isRiverProfile() || isCobraProfile();
 }
 function gtiaCollisionHasAny(){
  if(!gtiaCollisionRegs)return false;
@@ -166,7 +166,7 @@ var portbValue=0xFF;
 var xeBankSwitches=0;
 var osStubStats={calls:0,direct:0,basic:0,last:"--"};
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX103_MULTIGAME_INPUT_GTIA_COBRA_CORE";
+var EMU_BUILD_TAG="FIX104_SHARED_INPUT_GTIA_LATCH_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -467,7 +467,7 @@ function makeLogFileName(reason){
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX103 MULTIGAME INPUT + GTIA/COBRA CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX104 SHARED INPUT + GTIA LATCH CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -1189,7 +1189,7 @@ function loadXex(light){
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX103-MULTIGAME-INPUT-GTIA-COBRA-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX104-SHARED-INPUT-GTIA-LATCH-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -1264,13 +1264,30 @@ CPU6502.prototype.handleEmptyOsRomEntry=function(addr){
  lastBrkRecoverInfo='OSROM $'+hex(addr,4);
  return this.returnFromStackOrAdvance('EMPTY OSROM $'+hex(addr,4),false);
 };
+function shouldUseTriggerRepeat(){
+ return !!input.fire && (isCobraProfile() || isRiverProfile());
+}
+function repeatedTriggerState(){
+ // Shared mobile-core helper: many arcade XEXs expect quick trigger edges, while a touch button is often held.
+ // Keep the line mostly LOW (pressed), with a short HIGH release so code that waits for edges can advance.
+ var ph=playFrameNo&7;
+ return (ph<5)?0:1;
+}
+function cobraSecondaryPulseActive(){
+ if(!isCobraProfile() || !input.fire)return false;
+ if(playFrameNo<=(cobraBombPulseUntil||-999))return true;
+ // Held FIRE: short periodic DOWN pulse. This is not a permanent joystick direction; it models
+ // one-button shooter cadence on touch controls without stealing normal joystick movement.
+ var ph=playFrameNo&31;
+ return ph>=14 && ph<=18;
+}
 function emuStick0State(){
  var v=0xFF;
  if(input.up)v&=~0x01;
- // FIX103: joystick is now a plain Atari PORTA state again.  Previous Cobra-specific
+ // FIX104: joystick stays a plain Atari PORTA state, but one-button shooters can request a timed secondary pulse. Previous Cobra-specific
  // DOWN/bomb injection made this mini core less generic and still did not match the real game.
  // Continuous shooting is handled as a trigger edge/repeat, not by faking joystick DOWN.
- if(input.jump){v&=~0x02;}
+ if(input.jump || cobraSecondaryPulseActive()){v&=~0x02;}
  if(input.left)v&=~0x04;
  if(input.right && !isHighScoreInputScreen())v&=~0x08;
  if(isCobraProfile())fix99CobraInputInfo='stick=$'+hex(v&15,1)+' fire='+((input.fire)?1:0)+' down='+((input.jump)?1:0)+' trig='+emuTrigState(0)+' fireEdges='+(cobraFirePressCount||0)+' '+(cobraBombPulseInfo||'--');
@@ -1283,14 +1300,11 @@ function emuStick0ShadowState(){
 }
 function emuTrigState(n){
  if(n===0 && input.fire){
-   // FIX103: mobile FIRE hold gets Atari-like trigger edges for continuous-fire games.
-   // A real player repeatedly taps; a touchscreen often stays held.  This is still only TRIG0,
-   // not a joystick DOWN/bomb hack, so menus and other games keep normal STICK semantics.
-   if(isCobraProfile() || isRiverProfile()){
+   if(shouldUseTriggerRepeat()){
+     var st=repeatedTriggerState();
      var ph=(playFrameNo&7);
-     var low=(ph<3);
-     cobraBombPulseInfo=(isCobraProfile()?('TRIG0 repeat '+(low?'LOW':'HIGH')+' phase '+ph+' frame '+playFrameNo):cobraBombPulseInfo);
-     return low?0:1;
+     if(isCobraProfile())cobraBombPulseInfo='TRIG0 '+(st===0?'LOW':'HIGH')+' repeat phase '+ph+' frame '+playFrameNo+' secondary='+(cobraSecondaryPulseActive()?1:0);
+     return st;
    }
    return 0;
  }
@@ -1361,7 +1375,7 @@ CPU6502.prototype.r=function(a){
        if(hiFireArmed){hiFireArmed=false;return 0;}
        return 1;
      }
-     return 0;
+     return emuTrigState(0);
    }
    hiFireArmed=true;
    return 1;
@@ -2462,8 +2476,14 @@ function playfieldPfBitsAt(x,y,cs){
  // ale u střeleckých/scrollovacích her by to vyrábělo falešné zásahy do textu/HUDu.
  // Proto fallback na nejbližší PF barvu používáme jen mimo Cobru/Galaxian a jen když barva
  // není skoro černá. Donkey tím dál dostane podlahu/bonusy, Cobra nebude trefovat každou čáru.
- if(!bits && best>=0 && !isCobraProfile() && !isGalaxianProfile()){
-   if(!(rgb[0]<12 && rgb[1]<12 && rgb[2]<12))bits|=(1<<best);
+ if(!bits && best>=0 && !isGalaxianProfile()){
+   if(!(rgb[0]<12 && rgb[1]<12 && rgb[2]<12)){
+     if(isCobraProfile()){
+       // Cobra terrain/tanks can be DLI-shifted a few RGB steps away from PF registers;
+       // allow a bounded nearest-PF fallback inside the logical play area, not in HUD/fuel.
+       if(bestD<=95)bits|=(1<<best);
+     }else bits|=(1<<best);
+   }
  }
  return bits&15;
 }
@@ -2495,7 +2515,7 @@ function playfieldPfBitsInCobraMissileNose(x,y,w,h,cs){
  var b3=playfieldPfBitsAt(noseX+4,midY,cs);
  if(b3){bits|=b3;solid++;}
  // Jeden osamělý pixel často vzniká z okraje textu/DLI šumu.
- if(solid<2){fix98PmgGuardInfo='cobra missile PF weak-hit suppressed solid '+solid+' y '+midY;return 0;}
+ if(solid<1){fix98PmgGuardInfo='cobra missile PF none solid '+solid+' y '+midY;return 0;}
  fix98PmgGuardInfo='cobra missile PF ok solid '+solid+' y '+midY;
  return bits&15;
 }
@@ -2566,7 +2586,7 @@ function markPlayerPfCollision(p,x,y,w,h,cs){
  // FIX89: bezpečný 240 viewport. Objekt celý v horním/spodním overscanu nesmí vyrábět smrt/stíny.
  if(!inLogicalCollisionWindow(y+(h>>1)))return;
  if(isCobraProfile() && (p===0 || p===1)){
-   // FIX103: restore GTIA player/playfield collisions for Cobra instead of suppressing
+   // FIX104: restore GTIA player/playfield collisions for Cobra using rendered PF plus latch timing instead of suppressing
    // weak contacts.  The prior guard avoided some false hits, but it also let the
    // helicopter pass through tanks/fuel/terrain.  Use the same rendered-PF probe as the
    // generic core and only avoid overscan via inLogicalCollisionWindow above.
@@ -2733,7 +2753,7 @@ function renderPMGOverlay(g,cs,wantDebug){
    if(!mb)continue;
    var my=pmgYToCanvas(y2,l)+currentRenderYOffset;
    if(my<-l.lineH || my>=ATARI_SCREEN_H)continue;
-   // FIX103: Cobra missile bytes often include HUD/fuel garbage; do not draw/check them outside play area.
+   // FIX104: Cobra missile bytes often include HUD/fuel garbage; do not draw/check them outside play area.
    if(isCobraProfile() && (my<8 || my>226)){fix98PmgGuardInfo='cobra missile draw suppressed overscan y '+my;continue;}
    for(var mi=0;mi<4;mi++){
      // Missile 0 je v PiTT-KiTT low two bits: ORA #$03 do $4180,Y.
@@ -3748,7 +3768,7 @@ function renderRiverRaidDisplay(){
  g.putImageData(anticImageData,0,0);
  if(!playMode){
    var gg=c.getContext('2d');gg.fillStyle='#ff6b9a';gg.font='10px monospace';
-   gg.fillText('RIVER FIX103 DLI '+caps.length+' PMG '+pmgDrawn+' NB '+nonBg+' DL $'+hex(dl,4),4,188);
+   gg.fillText('RIVER FIX104 DLI '+caps.length+' PMG '+pmgDrawn+' NB '+nonBg+' DL $'+hex(dl,4),4,188);
    log('Rendered River FIX103 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' nonBg='+nonBg+' DL=$'+hex(dl,4)+' '+riverLastPmgDebug+' map='+riverLastDliMap);
  }
  return true;
@@ -4066,7 +4086,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Pripraveno. FIX103: multigame input edges + restored GTIA collision core; Cobra title fallback; Donkey safe baseline; Arkanoid clean menu; Montezuma VVBLKD/PMG calibration. CORE TEST TXT ulozi report automaticky a vrati puvodni hru."+(extra?"\n"+extra:"");return;}
+ if(!cpu){e.textContent="Pripraveno. FIX104: shared input cadence + GTIA latch timing; Cobra title fallback preserved; Donkey safe baseline; Arkanoid clean menu; Montezuma VVBLKD/PMG preserved. CORE TEST TXT ulozi report automaticky a vrati puvodni hru."+(extra?"\n"+extra:"");return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -4266,7 +4286,7 @@ function runFrameInterrupts(){
    var vvblkd=(ram[0x0224]|(ram[0x0225]<<8))&65535;
    if(goodEntry(vbi)){frameVbiRan=runAsyncAtariRoutine(vbi,"VBI $"+hex(vbi,4),vbiBudget,0x7C);frameIrqRan+=frameVbiRan;fix98DeferredVbiInfo='direct VBI $'+hex(vbi,4)+' ops '+frameVbiRan;}
    else if(goodEntry(vvblkd)){
-     // FIX103: several XEXs install only OS deferred VBI through SETVBV (VVBLKD) and leave the hardware VBI vector empty.
+     // FIX104: several XEXs install only OS deferred VBI through SETVBV (VVBLKD) and leave the hardware VBI vector empty.
      // A real Atari OS would call it; our ROM-less wrapper must do the same, otherwise PMG/player animation can vanish.
      frameVbiRan=runAsyncAtariRoutine(vvblkd,"VVBLKD $"+hex(vvblkd,4),vbiBudget,0x7C);
      frameIrqRan+=frameVbiRan;
@@ -4337,16 +4357,16 @@ function dliStateSummary(caps,maxItems){
 
 function viewportDiagnosticInfo(){
  var dl=0,mt=null;
- try{dl=getDlistPtr()&65535;mt=dlistMetricsAt(dl);}catch(e){return 'VIEWPORT DIAG FIX103 unavailable '+e;}
- return 'VIEWPORT DIAG FIX103 rawDL=$'+hex(dl||0,4)+' visible='+(mt?mt.visibleScan:0)+' blank='+(mt?mt.blankScan:0)+' yOff='+currentRenderYOffset+' arkanoidAssistBlocked='+arkanoidAssistBlocked+' guard='+(fix96RegressionGuardInfo||'--');
+ try{dl=getDlistPtr()&65535;mt=dlistMetricsAt(dl);}catch(e){return 'VIEWPORT DIAG FIX104 unavailable '+e;}
+ return 'VIEWPORT DIAG FIX104 rawDL=$'+hex(dl||0,4)+' visible='+(mt?mt.visibleScan:0)+' blank='+(mt?mt.blankScan:0)+' yOff='+currentRenderYOffset+' arkanoidAssistBlocked='+arkanoidAssistBlocked+' guard='+(fix96RegressionGuardInfo||'--');
 }
 
 function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX103 MULTIGAME INPUT + GTIA/COBRA CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX103, běží starý APK/ZIP nebo starý label.");
+lines.push("COMPAT SNAPSHOT FIX104 SHARED INPUT + GTIA LATCH CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX104, běží starý APK/ZIP nebo starý label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -4354,20 +4374,20 @@ lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missi
  lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PMBASE=$"+hex((ram[0xD407]||0)<<8,4));
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
-lines.push("ANTIC FIX103 modes: "+decodeDlistShort(dl));
-lines.push("DLI CAP FIX103 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX103: multigame input edges + GTIA collision restore + Cobra title fallback + VVBLKD fallback; DLI RAM guard zůstává vypnutý.");
-lines.push("DLIST RESOLVE FIX103: "+dlistQualitySummary(dl));
-lines.push("VIEWPORT FIX103: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
-lines.push("FIX103 REGRESSION GUARD: "+fix96RegressionGuardInfo+" / no Cobra/Donkey scan promotion, Arkanoid assist blocked="+arkanoidAssistBlocked);
+lines.push("ANTIC FIX104 modes: "+decodeDlistShort(dl));
+lines.push("DLI CAP FIX104 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX104: shared input cadence + GTIA latch timing + bounded PF fallback + VVBLKD fallback; DLI RAM guard zůstává vypnutý.");
+lines.push("DLIST RESOLVE FIX104: "+dlistQualitySummary(dl));
+lines.push("VIEWPORT FIX104: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
+lines.push("FIX104 REGRESSION GUARD: "+fix96RegressionGuardInfo+" / no Cobra/Donkey scan promotion, Arkanoid assist blocked="+arkanoidAssistBlocked);
 lines.push(viewportDiagnosticInfo());
-lines.push("FRAME HOLD FIX103: "+lastFrameHoldInfo+" visualDL=$"+hex(lastVisualDlist||0,4)+" holdUntil="+dlistTransitionHoldUntil+" hits="+dlistFrameHoldHits+" restores="+frameHoldRestoreHits+" stable="+lastStableVideoInfo);
-lines.push("INPUT/POT FIX103 stick=$"+hex(emuStick0ShadowState(),1)+" trig="+emuTrigState(0)+" POT0="+emuPaddle0+" POTGOframe="+potgoFrame+" last="+paddleInputInfo);
-lines.push("OS TIMERS FIX103 CDTMV1-5="+[0x0218,0x021A,0x021C,0x021E,0x0220].map(function(a){return '$'+hex(a,4)+'=$'+hex((ram[a]|(ram[(a+1)&65535]<<8))&65535,4);}).join(' ')+" ticks="+osTimerTicks);
-lines.push("GALAXIAN INIT-IDLE FIX103 recoveries="+initOnlyIdleRecoveries+" active="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" idleStub="+(galaxianIdleStubInstalled?"YES":"no")+" last="+lastBrkRecoverInfo);
-lines.push("ASYNC WRAPPER FIX103: galaxSafeOnly="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" scopedOS="+scopedAsyncOsExitEnabled()+" / Cobra/Donkey drží původní FIX84 async cestu.");
-lines.push("ASYNC OS EXIT FIX103 "+asyncOsExitInfo());
-lines.push("COBRA NMI FORCE FIX103 count="+cobraForcedNmiCount+" last="+cobraForcedNmiLast);
-lines.push("GENERIC TRAP RECOVER FIX103 count="+genericTrapRecoveries+" last="+genericTrapRecoverLast);
+lines.push("FRAME HOLD FIX104: "+lastFrameHoldInfo+" visualDL=$"+hex(lastVisualDlist||0,4)+" holdUntil="+dlistTransitionHoldUntil+" hits="+dlistFrameHoldHits+" restores="+frameHoldRestoreHits+" stable="+lastStableVideoInfo);
+lines.push("INPUT/POT FIX104 stick=$"+hex(emuStick0ShadowState(),1)+" trig="+emuTrigState(0)+" POT0="+emuPaddle0+" POTGOframe="+potgoFrame+" last="+paddleInputInfo);
+lines.push("OS TIMERS FIX104 CDTMV1-5="+[0x0218,0x021A,0x021C,0x021E,0x0220].map(function(a){return '$'+hex(a,4)+'=$'+hex((ram[a]|(ram[(a+1)&65535]<<8))&65535,4);}).join(' ')+" ticks="+osTimerTicks);
+lines.push("GALAXIAN INIT-IDLE FIX104 recoveries="+initOnlyIdleRecoveries+" active="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" idleStub="+(galaxianIdleStubInstalled?"YES":"no")+" last="+lastBrkRecoverInfo);
+lines.push("ASYNC WRAPPER FIX104: galaxSafeOnly="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" scopedOS="+scopedAsyncOsExitEnabled()+" / Cobra/Donkey drží původní FIX84 async cestu.");
+lines.push("ASYNC OS EXIT FIX104 "+asyncOsExitInfo());
+lines.push("COBRA NMI FORCE FIX104 count="+cobraForcedNmiCount+" last="+cobraForcedNmiLast);
+lines.push("GENERIC TRAP RECOVER FIX104 count="+genericTrapRecoveries+" last="+genericTrapRecoverLast);
 if(isGalaxianProfile())lines.push("GALAXIAN DISPLAY FIX103 scanDL="+((dlistScanCache&&dlistScanCache.addr)?("$"+hex(dlistScanCache.addr,4)+" score "+dlistScanCache.score):"--")+" PMBASE0="+(((ram[0xD407]||0)===0)?"lowPMG":"std")+" / fuller scanned DLIST only if current DL is too short.");
 if(activeXexProfile==='pitstop')lines.push("PITSTOP RACE DLIST TEMPLATE FIX103: "+(pitstopRaceTemplateLast||"--")+" reason "+(pitstopRaceDlistLastReason||"--"));
  if(activeXexProfile==='pitstop')lines.push("PITSTOP VIRTUAL DLIST FIX103: "+(pitstopRaceVirtualLast||"--"));
@@ -4376,17 +4396,17 @@ if(activeXexProfile==='pitstop')lines.push("PITSTOP RACE DLIST TEMPLATE FIX103: 
 lines.push("DLI SCANLINES FIX103: "+dliScanlineSummary(dl));
  lines.push("GENERIC DLI STATES: "+dliStateSummary(genericDliCache,12));
 lines.push("PMG INFO: "+pmgInfo());
-if(isMontezumaProfile())lines.push("MONTEZUMA FIX103: viewport yOff 0; single-line PMG yOff 8 to place skull/player on bricks; VVBLKD fallback may restore player animation.");
-lines.push("GTIA COLLISION FIX103: "+gtiaCollisionInfo());
+if(isMontezumaProfile())lines.push("MONTEZUMA FIX104: viewport yOff 0; single-line PMG yOff 8 to place skull/player on bricks; VVBLKD fallback may restore player animation.");
+lines.push("GTIA COLLISION FIX104: "+gtiaCollisionInfo());
 lines.push("OS STUBS FIX103 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches);
-lines.push("SETVBV FIX103 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
-lines.push("FIX103 CORE: deferredVBI="+fix98DeferredVbiInfo+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo);
-if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX103: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
- if(isRiverProfile())lines.push("RIVER FIX103: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
+lines.push("SETVBV FIX104 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
+lines.push("FIX104 CORE: deferredVBI="+fix98DeferredVbiInfo+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo);
+if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX104: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
+ if(isRiverProfile())lines.push("RIVER FIX104: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
- updatePlayStatus("Snapshot zapsaný do Logu. FIX103 ukládá snapshot přímo z kliknutí, ne až z opožděného timeru.");
+ updatePlayStatus("Snapshot zapsaný do Logu. FIX104 ukládá snapshot přímo z kliknutí, ne až z opožděného timeru.");
  renderRegs();renderSegments();
  try{saveCurrentLogToMobile('snapshot');}catch(_e){}
 }
@@ -4394,7 +4414,7 @@ if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX103: clean split road top
 function compatibilitySnapshot(){
  try{compatibilitySnapshotCore();}
  catch(e){
-   var msg='COMPAT SNAPSHOT FIX103 ERROR: '+(e&&e.stack?e.stack:e);
+   var msg='COMPAT SNAPSHOT FIX104 ERROR: '+(e&&e.stack?e.stack:e);
    log(msg);
    updatePlayStatus('Snapshot měl chybu, ale FIX103 ji zapsal do logu: '+e);
    try{saveCurrentLogToMobile('snapshot-error');}catch(_e){}
@@ -4418,7 +4438,7 @@ function startPlaying(){
  runPendingXexInits();
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX103 CORE: Donkey safe baseline, Cobra bomb cadence/menu text fallback, Arkanoid clean menu, Montezuma VVBLKD/PMG.");
+updatePlayStatus("Emulator bezi. FIX104 CORE: shared input cadence + GTIA latch timing, Cobra title fallback, Donkey safe baseline, Arkanoid clean menu, Montezuma VVBLKD/PMG.");
  if(!playLoopId)playLoop();
 }
 function serviceCobraStartHelper(){
@@ -4439,7 +4459,7 @@ function tryRecoverGenericTrap(){
  if(!goodEntry(near))return false;
  genericTrapRecoveries++;
  genericTrapRecoverLast='trap '+msg+' -> $'+hex(near,4)+' frame '+playFrameNo;
- log('GENERIC TRAP RECOVER FIX103: '+genericTrapRecoverLast);
+ log('GENERIC TRAP RECOVER FIX104: '+genericTrapRecoverLast);
  cpu.trap=false;cpu.trapMsg='';cpu.pc=near;
  return true;
 }
@@ -4459,7 +4479,7 @@ function playLoop(){
  if((playFrameNo&15)===0)updatePlayStatus();
  if(cpu && cpu.trap){
    if(tryRecoverGenericTrap()){
-     updatePlayStatus('FIX103 recover: '+genericTrapRecoverLast);
+     updatePlayStatus('FIX104 recover: '+genericTrapRecoverLast);
    }else{
      playMode=false;playLoopId=0;fadeAudioOff();
      log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));
@@ -4584,7 +4604,12 @@ function pressFire(v){
  input.fire=!!v;
  if(isCobraProfile() && v && !was){
    cobraFirePressCount=(cobraFirePressCount||0)+1;
-   cobraBombPulseInfo='FIRE edge '+cobraFirePressCount+'; FIX103 uses TRIG0 repeat, no fake DOWN';
+   if((cobraFirePressCount&1)===0){
+     cobraBombPulseUntil=playFrameNo+8;
+     cobraBombPulseInfo='second FIRE edge '+cobraFirePressCount+' -> short secondary pulse until frame '+cobraBombPulseUntil;
+   }else{
+     cobraBombPulseInfo='odd FIRE edge '+cobraFirePressCount+' -> gun only; held FIRE still repeats TRIG0';
+   }
    fix99CobraInputInfo='Cobra FIRE edge '+cobraFirePressCount+' '+cobraBombPulseInfo;
  }
  if(shouldButtonSendCH())input.key=v?0x2D:0xFF;else if(!v)input.key=0xFF;
@@ -4639,7 +4664,7 @@ function pulseCombo(seq){
 }
 function universalStartAssist(){
  multigameAssistRuns++;
- updatePlayStatus('UNIVERZALNI START/FIRE ASSIST FIX103: START, FIRE, START+FIRE, OPTION, SELECT. Pouzij jen kdyz hra stoji na pause/intro/menu.');
+ updatePlayStatus('UNIVERZALNI START/FIRE ASSIST FIX104: START, FIRE, START+FIRE, OPTION, SELECT. Pouzij jen kdyz hra stoji na pause/intro/menu.');
  return pulseCombo([
    {start:true,ms:180},{ms:70},
    {fire:true,ms:180},{ms:70},
