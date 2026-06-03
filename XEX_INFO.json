@@ -12,6 +12,6 @@
     "KiTT Garage",
     "Super Cobra"
   ],
-  "note": "FIX105 shared input PMG Cobra core; Cobra fire cadence and Montezuma PMG stale-row filter.",
-  "build": "FIX105_SHARED_INPUT_PMG_COBRA_CORE"
+  "note": "FIX106 shared input PMG Cobra core; Cobra fire cadence and Montezuma PMG stale-row filter.",
+  "build": "FIX106_TRIGGER_COLLISION_PMG_STABILITY_CORE"
 }

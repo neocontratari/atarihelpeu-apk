@@ -1,11 +1,10 @@
-# AtariHelp.eu EMU-09 FIX105 SHARED INPUT + PMG/COBRA CORE
+# AtariHelp.eu APK Builder EMU-09 FIX106
 
-FIX105 je jádrový krok, ne jednorázový Cobra hack.
+FIX106_TRIGGER_COLLISION_PMG_STABILITY_CORE
 
-- Cobra: menu fallback zachován; FIRE/TRIG cadence zjemněna na kratší release a sekundární DOWN okno je svázané s každou druhou trigger hranou.
-- GTIA: navazuje na předchozí latch/collision cestu, bez potlačení player/playfield kolizí z FIX102.
-- Montezuma: přidán PMG stale-row window filtr pro vertikální duchy postavy po intru; VVBLKD fallback zůstává.
-- Donkey: bezpečný baseline beze změny, bez dlouhého FIX99 $1200 holdu.
-- Arkanoid: čisté menu zachováno, hra zatím další větev.
+- Shared pulsed TRIG0 cadence for touch FIRE.
+- Cobra collision latch cleanup and self-hit suppression for own missiles.
+- Montezuma PMG respawn/death guard after FIX105 ghost reduction.
+- Donkey safe baseline and Arkanoid clean menu preserved.
 
-Test: Cobra střelba a nárazové kolize; Montezuma duchové po intru; Donkey/Arkanoid jen regresní kontrola.
+Upload obsah slozky do repozitare pres GitHub Desktop, ne samotny ZIP.
