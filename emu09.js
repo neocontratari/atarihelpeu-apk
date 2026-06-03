@@ -1,6 +1,10 @@
 
 var ATARI_SCREEN_W=320;
 var ATARI_SCREEN_H=240;
+// FIX91: 240řádkový mobilní viewport nesmí kreslit 198řádkové hry nalepené úplně nahoře.
+// Offset je pouze vizuální/renderovací a PMG se posouvá stejnou hodnotou, aby playfield a PMG zůstaly spolu.
+var currentRenderYOffset=0;
+var lastViewportFixInfo="--";
 function imageHeight(data){return data?((data.length/(ATARI_SCREEN_W*4))|0):ATARI_SCREEN_H;}
 var b64="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////////qqqqVVVVVaqqqqqqqlVVqqqq//+qqlVVqqqqqv//////////////qqpVVVVV/1VVqqqqVVVVVVWqqv+qVVVVVVWqqqqq////////////qqpVVVVV////VVVVVVVVVVVVVaqqVVVVVVVVVaqqqqr//////////6pVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVqqqq//////////9VVVVVVf///1VVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////////VVVVVVVV////VVVVVVVVVVVVVVVVVVVVVVVVVVVVVaqq/////////1VVVVVVVVX///9VVVVVVVVVVVVVVVVVVVVVVVVVVVVVqqr///////9VVVVVVVVVVf////9VVVVVVVVVVVVVVVVVVVVVVVVVVVWqqv//////VVVVVVVVVVVV/////1VVVVVVVVVVVVVVVVVVVVVVVVVVVaqq////////////////////////////7v/////////////////////////u/////////////////////////7v/////////////////////////u////////////////////////6qqqv//////////////////////qqqq//////////////////////+7u7v//////////////////////7u7u///////////////qqr///+q7u7uqv////////////+qqv///6ru7u6q/////6qq////qnd3qv//u7u7u7v/////qqr///+qd3eq//+7u7u7u////6q7u6r/qt3d3d2q/+7u7u7u////qru7qv+q3d3d3ar/7u7u7u7//6ru7u7uqqp3d3d3d6q7u7u7u///qu7u7u6qqnd3d3d3qru7u7u7/6q7u7u7u7uq3d3d3d3d7u7u7u7/qru7u7u7u6rd3d3d3d3u7u7u7qru7u7u7u7uqnd3d3d3d7u7u7u7qu7u7u7u7u6qd3d3d3d3u7u7u7u7u7u7u7u7u7vd3d3d3d3u7u7u7ru7u7u7u7u7u93d3d3d3e7u7u7u7u7u7u7u7u7ud3d3d3d3u7u7u7vu7u7u7u7u7u53d3d3d3e7u7u7u///////////AP///////////////////wD///////////8A////////////////AAAA/////////////////wAAAP////////8AAAD/////////////AABVAAD//////////////wAAVQAA//////8AAFUAAP//////////AABVVVUAAP///////////wAAVVVVAAD///8AAFVVVQAA////////AABVVVVVVQAA/////////wAAVVVVVVUAAP8AAFVVVVVVAAD/////AABVVVWqqlVVAAD//////wAAVVVVqqpVVQAAVVVVqqpVVQAAqv//AABVVVWqqqqqVVUAAP///wAAVVVVqqqqqlVVAABVqqqqqlUAAKr/AABVVVWqqqqqqqpVVQAA/wAAVVVVqqqqqqqqVVUAAKqqqqqqVQAAAABVVVWqqqqqqqqqqlVVAABVVVVVqqqqqqqqqqpVVQCqqqqqqlVVAABVVVVVVaqqqqqqqqpVVVVVVVVVVVWqqqqqqqqqVVVVqqqqqqpVVVVVVVVVVVVVqqqqqlVVVVVVVVVVVVVVVaqqqqpVVVVVVVWqqqqqVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQABAD8/AAAFBQUA////AAAVVQUFBRVaVVVVVVVVFQAAVFVQUFBUpVVVVVVVVVQAAABAAPz8AABQUFAA////AAAAAAAAAAAAAAAAAAAKqqoKAAAAAAAAAAAAAAAKqqqqqAAAAAAAAAAAAAAAKqqqqqgAAAAAAAAAAAAAAACgqqoKAw8/Dz//AwPA8Pzw/P/AwB8/AwMHBx84OB8PDw8PAAA/fwcHDw8/cHA/Hx8fHwAADx8BAQMDDxwcDwcHBwcAAPj8wMDg4PgcHPjw8PDwAADw+ICAwMDwODjw4ODg4AAA/P7g4PDw/A4O/Pj4+PgAAAAA4ODgAAAAAADw8PDwAAAAAODg4AAAAAAA4ODg4AAAAADg4OAAAAAAAPj4+PgAAAAABwcHAAAAAAAPDw8PAAAAAAcHBwAAAAAABwcHBwAAAAAHBwcAAAAAAB8fHx8AAK2tAACtrQAAra0AAK2tAAAAAAAArQCIAHwAbACtAIgAGBgYGRkZGhoaGhoaGRkZGBgYFxcXFhYWFRUVFRUVFhYWFxcXGBgYGRkZGhoZGRgYqmpaVgBAUFSVpamqFQUBAOAC4QIaIg==";
 var riverRaidB64="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";
@@ -201,7 +205,7 @@ function deterministicColdResetState(){
  lastGoodDlist=0;lastGoodDlistProfile="";lastRejectedDlistInfo="";brkNearLoadRecoveries=0;brkRomRecoveries=0;initOnlyIdleRecoveries=0;galaxianIdleStubInstalled=false;lastBrkRecoverInfo="--";
  ram.fill(0);
  coldResetSeq++;
- lastColdResetInfo='COLD RESET FIX89 #'+coldResetSeq+' OK: RAM/CPU/DLI/cache/input/timery/130XE banky vyčištěny';
+ lastColdResetInfo='COLD RESET FIX91 #'+coldResetSeq+' OK: RAM/CPU/DLI/cache/input/timery/130XE banky vyčištěny';
 }
 
 function pitstopPhaseFromPc(pc){
@@ -500,7 +504,7 @@ function loadBuiltinRiverRaid(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="River Raid.xex / vestavěný test";
  loadXex(false);
-updatePlayStatus("Nacten River Raid test. FIX89 ho bere jako jeden z vice testu jadra: XEX loader, OS stubs/timers, ANTIC/DLI, GTIA/PMG a kolize. Kdyz stoji na startu, zkus TAP START nebo TAP FIRE.");
+updatePlayStatus("Nacten River Raid test. FIX91 ho bere jako jeden z vice testu jadra: XEX loader, OS stubs/timers, ANTIC/DLI, GTIA/PMG a kolize. Kdyz stoji na startu, zkus TAP START nebo TAP FIRE.");
  scheduleAutoStartLoadedXex("River Raid");
 }
 function loadBuiltinDonkeyKong(){
@@ -510,7 +514,7 @@ function loadBuiltinDonkeyKong(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Donkey Kong.xex / vestaveny test";
  loadXex(false);
- updatePlayStatus("Nacten Donkey Kong. FIX89 ho drzi jako vestaveny test obecneho XEX jadra, VBI, DLIST a GTIA/PMG kolizi.");
+ updatePlayStatus("Nacten Donkey Kong. FIX91 ho drzi jako vestaveny test obecneho XEX jadra, VBI, DLIST a GTIA/PMG kolizi.");
  scheduleAutoStartLoadedXex("Donkey Kong");
 }
 function loadBuiltinSuperCobra(){
@@ -530,7 +534,7 @@ function loadBuiltinGalaxian(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Galaxian (Title Version 2).xex / vestavěný test";
  loadXex(false);
- updatePlayStatus("Načten Galaxian. FIX89 zkouší opatrný INIT-only/DLI režim jen pro Galaxian; Cobra/Donkey core zůstává FIX77/FIX81 stabilní.");
+ updatePlayStatus("Načten Galaxian. FIX91 zkouší opatrný INIT-only/DLI režim jen pro Galaxian; Cobra/Donkey core zůstává FIX77/FIX81 stabilní.");
  scheduleAutoStartLoadedXex("Galaxian");
 }
 
@@ -541,7 +545,7 @@ function loadBuiltinDeathRace(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Death Race.xex / vestavěný test";
  loadXex(false);
- updatePlayStatus("Načten Death Race. FIX89 ho používá jako obecný test OS ROM/VBI/DLI návratů. Ochrana je scoped: Cobra/Donkey zůstávají na stabilní cestě.");
+ updatePlayStatus("Načten Death Race. FIX91 ho používá jako obecný test OS ROM/VBI/DLI návratů. Ochrana je scoped: Cobra/Donkey zůstávají na stabilní cestě.");
  scheduleAutoStartLoadedXex("Death Race");
 }
 
@@ -552,7 +556,7 @@ function loadBuiltinPitstopII(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="Pitstop II.xex / vestavěný těžší test";
  loadXex(false);
-updatePlayStatus("Nacten Pitstop II. FIX89 ho bere jako tezsi kompatibilitni test jadra: INITAD, SETVBV/VBI, OS timers, DLIST, CPU opcodes a vstup. Zkus TAP START/FIRE/OPTION/SELECT podle obrazovky.");
+updatePlayStatus("Nacten Pitstop II. FIX91 ho bere jako tezsi kompatibilitni test jadra: INITAD, SETVBV/VBI, OS timers, DLIST, CPU opcodes a vstup. Zkus TAP START/FIRE/OPTION/SELECT podle obrazovky.");
  scheduleAutoStartLoadedXex("Pitstop II");
 }
 function loadBuiltinKittGarage(){
@@ -562,7 +566,7 @@ function loadBuiltinKittGarage(){
  var ff=document.getElementById("xexFile");if(ff)ff.value="";
  currentXexName="KITT_HRA47_PLUS_LEVEL2_V21_PROMPTY_FLAG_GARAZ.xex / vestavena reference";
  loadXex(false);
- updatePlayStatus("Nactena KiTT Garage reference. FIX89 ji drzi mimo PiTT profil, zpomaluje takt a obnovuje OS shadow barvy pro DLI/text.");
+ updatePlayStatus("Nactena KiTT Garage reference. FIX91 ji drzi mimo PiTT profil, zpomaluje takt a obnovuje OS shadow barvy pro DLI/text.");
  scheduleAutoStartLoadedXex("KiTT Garage");
 }
 function loadBuiltinArkanoidIII(){
@@ -704,7 +708,7 @@ function handleXexFile(file){
      xexCache=null;
      currentXexName=file.name+" / "+customXexBytes.length+" bytes";
      loadXex(false);
-     updatePlayStatus("Nacten vlastni XEX: "+currentXexName+". FIX89 ho za chvilku spusti sam; PAUZA ho zastavi.");
+     updatePlayStatus("Nacten vlastni XEX: "+currentXexName+". FIX91 ho za chvilku spusti sam; PAUZA ho zastavi.");
      scheduleAutoStartLoadedXex("vlastní XEX");
    }catch(e){log("XEX load error: "+e.message);updatePlayStatus("Chyba při načtení XEX: "+e.message);}
  };
@@ -2207,6 +2211,25 @@ function inLogicalCollisionWindow(y){
  y=y|0;
  return y>=w.top && y<w.bottom;
 }
+
+function viewportCenterYOffsetForDl(dl){
+ var off=0,mt=null;
+ try{mt=dlistMetricsAt(dl||getDlistPtr());}catch(e){mt=null;}
+ if(!mt || !mt.visibleScan)return 0;
+ var vis=mt.visibleScan|0;
+ if(vis<160 || vis>=232)return 0;
+ var centered=((ATARI_SCREEN_H-vis)>>1);
+ if(centered<0)centered=0;
+ // PiTT, Pitstop a River mají vlastní renderery/viewporty; tam offset nevnucujeme.
+ if(isPiTTProfile() || isPitstopProfile() || isRiverProfile())off=0;
+ else if(isDonkeyProfile())off=Math.min(16,Math.max(0,centered-5));
+ else if(isCobraProfile())off=Math.min(20,Math.max(0,centered-4));
+ else if(isGalaxianProfile())off=0;
+ else off=Math.min(18,Math.max(0,centered-3));
+ lastViewportFixInfo='profile='+activeXexProfile+' rawDL=$'+hex((dl||0)&65535,4)+' visible='+vis+' centered='+centered+' yOff='+off+' canvasH='+ATARI_SCREEN_H;
+ return off|0;
+}
+function resetViewportOffset(){currentRenderYOffset=0;lastViewportFixInfo='profile='+activeXexProfile+' yOff=0';}
 function playfieldPfBitsAt(x,y,cs){
  if(!inLogicalCollisionWindow(y))return 0;
  var rgb=pixelRgbAtAnticImage(x,y);
@@ -2433,7 +2456,7 @@ function renderPMGOverlay(g,cs,wantDebug){
    for(var y=0;y<l.rows;y++){
      var b=ram[(base+y)&65535];
      if(!b)continue;
-     var yy=pmgYToCanvas(y,l);
+     var yy=pmgYToCanvas(y,l)+currentRenderYOffset;
      if(yy<-l.lineH || yy>=ATARI_SCREEN_H)continue;
      for(var bit=0;bit<8;bit++){
        if(b&(0x80>>bit)){
@@ -2459,7 +2482,7 @@ function renderPMGOverlay(g,cs,wantDebug){
  for(var y2=0;y2<l.rows;y2++){
    var mb=ram[(mbase+y2)&65535];
    if(!mb)continue;
-   var my=pmgYToCanvas(y2,l);
+   var my=pmgYToCanvas(y2,l)+currentRenderYOffset;
    if(my<-l.lineH || my>=ATARI_SCREEN_H)continue;
    for(var mi=0;mi<4;mi++){
      // Missile 0 je v PiTT-KiTT low two bits: ORA #$03 do $4180,Y.
@@ -2665,6 +2688,7 @@ function renderPitstopRaceSplitDisplay(){
  return true;
 }
 function renderVideo(){
+ resetViewportOffset();
  var d=getDlistPtr();
  if(isPitstopProfile() && pitstopRaceSeen){
    if(renderPitstopRaceSplitDisplay())return;
@@ -3093,6 +3117,13 @@ function genericStateForY(caps,y){
  if(!caps || !caps.length)return null;
  var best=0;
  for(var i=0;i<caps.length;i++){ if((caps[i].y||0)<=y)best=i; else break; }
+ // FIX91: některé hry (typicky Super Cobra) nastaví barvy přes DLI na konci horní
+ // textové řádky. Když renderer čekal až na poslední scanline, horní text byl černý/rozsypaný.
+ // Pro horní text/char zónu proto DLI stav použijeme o pár scanline dřív.
+ if(isCobraProfile() && y<56 && best+1<caps.length){
+   var ny=(caps[best+1].y||0);
+   if(ny>=y && ny-y<=10)return caps[best+1];
+ }
  return caps[best];
 }
 var genericDliCache=null;
@@ -3352,7 +3383,7 @@ function renderRiverRaidDisplay(){
  if(!playMode){
    var gg=c.getContext('2d');gg.fillStyle='#ff6b9a';gg.font='10px monospace';
    gg.fillText('RIVER FIX89 DLI '+caps.length+' PMG '+pmgDrawn+' NB '+nonBg+' DL $'+hex(dl,4),4,188);
-   log('Rendered River FIX89 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' nonBg='+nonBg+' DL=$'+hex(dl,4)+' '+riverLastPmgDebug+' map='+riverLastDliMap);
+   log('Rendered River FIX91 display. DLI states='+caps.length+' PMG rects='+pmgDrawn+' nonBg='+nonBg+' DL=$'+hex(dl,4)+' '+riverLastPmgDebug+' map='+riverLastDliMap);
  }
  return true;
 }
@@ -3379,7 +3410,8 @@ function renderAnticDisplayFastGeneric(){
  imgFillRect(d,0,0,320,ATARI_SCREEN_H,bk);
  var dl=getDlistPtr();
  if(!dl)return false;
- var y=0,safety=0,textLines=0,scanAddr=0;
+ currentRenderYOffset=viewportCenterYOffsetForDl(dl);
+ var y=currentRenderYOffset,safety=0,textLines=0,scanAddr=0;
  while(y<ATARI_SCREEN_H && safety++<360){
    var op=ram[dl++&65535];
    var mode=op&0x0F;
@@ -3435,7 +3467,8 @@ function renderAnticDisplay(){
  g.fillStyle=cs.bk;g.fillRect(0,0,320,ATARI_SCREEN_H);
  var dl=getDlistPtr();
  if(!dl){renderGame2bpp();return;}
- var y=0, safety=0, textLines=0, scanAddr=0, lastDl=dl;
+ currentRenderYOffset=viewportCenterYOffsetForDl(dl);
+ var y=currentRenderYOffset, safety=0, textLines=0, scanAddr=0, lastDl=dl;
  g.font="8px monospace";
  g.textBaseline="top";
  while(y<ATARI_SCREEN_H && safety++<260){
@@ -3666,7 +3699,7 @@ function scoreText(){
 function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
- if(!cpu){e.textContent="Pripraveno. FIX89: hlavni reference jsou PiTT-KiTT, Donkey, Pitstop II, KiTT Garage a Super Cobra. CORE TEST TXT ulozi report automaticky a vrati puvodni hru."+(extra?"\n"+extra:"");return;}
+ if(!cpu){e.textContent="Pripraveno. FIX91: hlavni reference jsou PiTT-KiTT, Donkey, Pitstop II, KiTT Garage a Super Cobra. CORE TEST TXT ulozi report automaticky a vrati puvodni hru."+(extra?"\n"+extra:"");return;}
  var base=ram[0x58]|(ram[0x59]<<8);
  var dl=getDlistPtr();
  var mode=(dl&&shouldRenderDlist(dl))?(dl===hiDl?'HIGH-SCORE initials':((dl===loseDl||dl===winDl)?'END screen':'ANTIC/DLIST')):'2BPP game';
@@ -3920,7 +3953,7 @@ function dliStateSummary(caps,maxItems){
 }
 
 
-function compatibilitySnapshot(){
+function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
@@ -3934,7 +3967,7 @@ lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missi
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX89 modes: "+decodeDlistShort(dl));
-lines.push("DLI CAP FIX89 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX89: DLI RAM guard je vypnutý; ochrana je timing/viewport/scoped OSROM.");
+lines.push("DLI CAP FIX89 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX91: viewport center + DLI phase + scoped OSROM; DLI RAM guard zůstává vypnutý.");
 lines.push("DLIST RESOLVE FIX89: "+dlistQualitySummary(dl));
 lines.push("OS TIMERS FIX89 CDTMV1-5="+[0x0218,0x021A,0x021C,0x021E,0x0220].map(function(a){return '$'+hex(a,4)+'=$'+hex((ram[a]|(ram[(a+1)&65535]<<8))&65535,4);}).join(' ')+" ticks="+osTimerTicks);
 lines.push("GALAXIAN INIT-IDLE FIX89 recoveries="+initOnlyIdleRecoveries+" active="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" idleStub="+(galaxianIdleStubInstalled?"YES":"no")+" last="+lastBrkRecoverInfo);
@@ -3956,8 +3989,19 @@ if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX89: clean split road top 
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
- updatePlayStatus("Snapshot zapsaný do Logu. Pošli ho, když cizí XEX stojí nebo kreslí nesmysl. U Riveru sleduj hlavně DLIST, SAVMSC, NMIEN, NZ RAM $2000/$3000 a SKSTAT/TRIG poznámku.");
+ updatePlayStatus("Snapshot zapsaný do Logu. FIX91 ukládá snapshot přímo z kliknutí, ne až z opožděného timeru.");
  renderRegs();renderSegments();
+ try{saveCurrentLogToMobile('snapshot');}catch(_e){}
+}
+
+function compatibilitySnapshot(){
+ try{compatibilitySnapshotCore();}
+ catch(e){
+   var msg='COMPAT SNAPSHOT FIX91 ERROR: '+(e&&e.stack?e.stack:e);
+   log(msg);
+   updatePlayStatus('Snapshot měl chybu, ale FIX91 ji zapsal do logu: '+e);
+   try{saveCurrentLogToMobile('snapshot-error');}catch(_e){}
+ }
 }
 
 function setPlaySpeed(mode){
@@ -4046,7 +4090,7 @@ function setVjoyState(left,right,up,down){
  if(vjoyState.left===left&&vjoyState.right===right&&vjoyState.up===up&&vjoyState.jump===down)return;
  vjoyState.left=left;vjoyState.right=right;vjoyState.up=up;vjoyState.jump=down;
  input.left=left;input.right=right;input.up=up;input.jump=down;
- // Kruhový joystick FIX89 je jemně zklidněný čistý joystick. Neposílá CH klávesy, aby nerozbíjel menu a nezpomaloval hry.
+ // Kruhový joystick FIX91 je jemně zklidněný čistý joystick. Neposílá CH klávesy, aby nerozbíjel menu a nezpomaloval hry.
  if(!up&&!down && (input.key===0x0E||input.key===0x0F))input.key=0xFF;
  syncInputShadows();
  renderInput();
