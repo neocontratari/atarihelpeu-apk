@@ -1,9 +1,17 @@
 {
   "version": "EMU09_FIX77_RELEASE_VIEWPORT_COBRA_UI",
   "date": "2026-06-02",
-  "protected_references": ["PiTT-KiTT-NaP-Final.xex", "KITT_HRA47_PLUS_LEVEL2_V21_PROMPTY_FLAG_GARAZ.xex"],
-  "builtin_tests": ["PiTT-KiTT Remaster", "Donkey Kong", "Pitstop II", "KiTT Garage", "Super Cobra"],
-  "note": "FIX77 keeps protected PiTT and KiTT Garage references, restores and cache-busts the N&P launcher/in-app logo, builds a signed release APK, removes INTERNET permission, expands the generic ANTIC viewport to 320x240 for Cobra HUD/FUEL, removes START from the center of the D-pad, moves TAP START above FIRE, adds pointer capture for smoother touch controls, clears Cobra HITCLR immediately, refreshes Cobra collision reads more aggressively, and avoids Donkey fallback noise during short invalid-DLIST transitions."
+  "protected_references": [
+    "PiTT-KiTT-NaP-Final.xex",
+    "KITT_HRA47_PLUS_LEVEL2_V21_PROMPTY_FLAG_GARAZ.xex"
+  ],
+  "builtin_tests": [
+    "PiTT-KiTT Remaster",
+    "Donkey Kong",
+    "Pitstop II",
+    "KiTT Garage",
+    "Super Cobra"
+  ],
+  "note": "FIX105 shared input PMG Cobra core; Cobra fire cadence and Montezuma PMG stale-row filter.",
+  "build": "FIX105_SHARED_INPUT_PMG_COBRA_CORE"
 }
-
-
