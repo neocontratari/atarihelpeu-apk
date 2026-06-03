@@ -1,7 +1,7 @@
-AtariHelp.eu EMU-09 FIX94 STABLE FRAME + INPUT/POT CORE
+AtariHelp.eu EMU-09 FIX95 DLIST STABILITY + SCAN CORE
 
-Pokračování ze stabilního jádra FIX93. Donkey Kong zůstává chráněná reference, ale FIX94 nejde po jedné hře: přidává obecnou ochranu posledního stabilního snímku při přechodech DLISTů, frame input shadow obnovu a POT0/POTGO stub pro paddle hry typu Arkanoid.
+Pokračování po testu FIX94. Donkey Kong zůstává chráněná reference, ale FIX95 jde po strukturálním jádru: stabilní DLIST snímky, lepší výběr runtime DLISTu u Cobry, neopakovat automatické přeskočení Arkanoid menu a opravený SNAPSHOT log.
 
-Cíl: menší šum mezi menu/intry u Donkey a podobných XEXů, přesnější vstup pro menu a šance posunout další hru bez rozbití Cobry/Donkey.
+Cíl: zmenšit šum mezi Donkey intry bez uložení špatného DLIST $1200 jako stabilního, vrátit Cobru z nízkého $2000 menu/shadow DLISTu k lepšímu naskenovanému runtime DLISTu a získat čisté logy bez ReferenceError.
 
-René workflow: rozbalit ZIP overlay do projektu přes GitHub Desktop, Commit Summary použít z README_FIX94_STABLE_FRAME_INPUT_POT_CORE.txt a poslat screenshoty/logy podle test plánu.
+René workflow: rozbalit ZIP overlay do projektu přes GitHub Desktop, Commit Summary použít z README_FIX95_DLIST_STABILITY_SCAN_CORE.txt a poslat screenshoty/logy podle test plánu.
