@@ -1,1 +1,1 @@
-{"build":"FIX128_FRAMEHOLD_MOON_DLIST_CORE","note":"Cobra no framehold restore; Moon $7481 trusted DLIST; refs protected"}
+{"build":"FIX129_DLIST_CODE_FILTER_COLLISION_CORE","note":"Reject false code DLISTs; Cobra missile-player collision latch; fallback framebuffer scan for Moon/Pac/generic; protected Donkey/Cobra/Arkanoid references"}
