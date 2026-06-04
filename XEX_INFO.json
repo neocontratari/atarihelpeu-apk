@@ -1,1 +1,1 @@
-{"emu":"EMU-09","fix":"FIX111_MULTIGAME_BOOT_DLIST_MONTEZUMA_SAFE_CORE","focus":"multigame safe boot, scoped ANTIC 4/5 attributes, Montezuma input gate, Donkey Jr DLIST stabilization, unknown XEX diagnostics"}
+{"emu":"EMU-09","fix":"FIX112_MULTIGAME_BOOT_OS_TRAP_ARKANOID_CORE","focus":"multigame boot trap guard, longer INITAD pre-run for Moon Patrol, Pac-Man hardware/OS trap diagnostics, Montezuma reload transition guard, Arkanoid DLIST diagnostics"}
