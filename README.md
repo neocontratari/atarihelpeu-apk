@@ -1,7 +1,6 @@
-# AtariHelp.eu EMU-09
+FIX133_STABLE_VIDEO_COLLISION_CORE
 
-## FIX132_UNIVERSAL_DLI_COLLISION_LABEL_CORE
+Overlay pro GitHub Desktop: rozbalit do rootu repozitáře a přepsat soubory.
+Commit summary: FIX133 stable video collision core
 
-Overlay pro GitHub Desktop. Rozbalit do rootu repozitáře, commit/push, nechat GitHub Actions postavit APK.
-
-Viz README_FIX132_UNIVERSAL_DLI_COLLISION_LABEL_CORE.txt.
+Hlavní směr: obecné jádro, méně agresivní DLI, Cobra kolize, Moon blank-video fallback, správné názvy v aplikaci.
