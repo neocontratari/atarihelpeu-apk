@@ -1,1 +1,1 @@
-{"build":"FIX126_PROTECTED_REFERENCES_MOON_DLIST_CORE","note":"Protected Donkey/Cobra/Arkanoid references; Cobra DLIST $2000 lock; Moon Patrol false-DLIST guard; built-in ROM remains diagnostic."}
+{"build":"FIX127_STABLE_REFS_DLIST_RECOVERY_CORE","note":"Cobra $2000 protected, Arkanoid $3503 protected, Moon $854C quarantine"}

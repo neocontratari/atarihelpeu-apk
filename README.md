@@ -1,3 +1,3 @@
-# AtariHelp.eu EMU-09 FIX126
+AtariHelp.eu EMU-09 FIX127 STABLE REFS DLIST RECOVERY CORE
 
-FIX126 chrani Donkey/Cobra/Arkanoid reference, vraci Cobru na stabilni DLIST $2000 a zkousi bezpecnejsi DLIST cestu pro Moon Patrol bez rozbiti zakladu.
+Overlay ZIP pro GitHub Desktop. Nahraj obsah složky, ne ZIP jako soubor.

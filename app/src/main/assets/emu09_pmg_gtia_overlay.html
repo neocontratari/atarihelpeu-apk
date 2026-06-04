@@ -221,7 +221,7 @@ var cobraForcedNmiLast="--";
 var genericTrapRecoveries=0;
 var genericTrapRecoverLast="--";
 var arkanoidAssistBlocked=0;
-var fix96RegressionGuardInfo="FIX126: protected references locked + Cobra $2000 + Moon false-DLIST guard";
+var fix96RegressionGuardInfo="FIX127: protected refs hard-locked + Cobra $2000 validated + Arkanoid $3503 + Moon $854C quarantine";
 var fix109ArkanoidCharmodeInfo="--";
 var fix109PmgTitleGuardInfo="--";
 var fix109MontezumaRespawnInfo="--";
@@ -443,7 +443,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX126_PROTECTED_REFERENCES_MOON_DLIST_CORE";
+var EMU_BUILD_TAG="FIX127_STABLE_REFS_DLIST_RECOVERY_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -2705,6 +2705,10 @@ function dlistMetricsSuspicious(m){
  if(m.hasEnd && (!validPtrForMiniAtari(m.jump) || m.jump<0x0200))return true;
  var denseValidLms=m.hasEnd && m.selfJump && m.lmsOps>=4 && m.invalidLms===0 && m.visibleScan>=32 && m.visibleScan<=224 && m.displayOps>=4;
  if(denseValidLms)return false;
+ // FIX127: chráněné známé DLISTy, které obecná metrika dřív omylem označila jako podezřelé.
+ if(isCobraProfile() && m.addr===0x2000 && m.displayOps>=8 && m.visibleScan>=100 && m.visibleScan<=224)return false;
+ if(isArkanoidProfile() && m.addr===0x3503 && m.displayOps>=4 && m.visibleScan>=80 && m.visibleScan<=224)return false;
+ if(isMoonPatrolProfile() && m.addr===0x7481 && m.displayOps>=8 && m.visibleScan>=80 && m.visibleScan<=224 && m.invalidLms===0)return false;
  // FIX60: náhodná obrazová/PMG/charset data někdy vypadají jako DLIST, hlavně u Pitstopu
  // ($9A99 měl 18 LMS ve 43 opsech a 261 scanlines). Skutečné herní DLISTy v našich
  // testech mají málo LMS vůči počtu řádků a buď JVB/JMP, nebo rozumnou výšku obrazu.
@@ -2734,7 +2738,13 @@ function fallbackGoodDlist(){
   return 0;
 }
 function dlistCandidateScore(m){
- if(!m || m.codeLike || m.displayOps<4 || m.invalidLms>0)return -999;
+ if(!m || m.displayOps<4 || m.invalidLms>0)return -999;
+ if(isMoonPatrolProfile() && m.addr===0x854C)return -999;
+ if(isCobraProfile() && m.addr===0x462B)return -999;
+ if(isCobraProfile() && m.addr===0x2000 && m.visibleScan>=100 && m.visibleScan<=224)return 160;
+ if(isArkanoidProfile() && m.addr===0x3503 && m.visibleScan>=80 && m.visibleScan<=224)return 145;
+ if(isMoonPatrolProfile() && m.addr===0x7481 && m.visibleScan>=80 && m.visibleScan<=224 && m.invalidLms===0)return 130;
+ if(m.codeLike)return -999;
  if(m.hasEnd && m.jump && !validPtrForMiniAtari(m.jump))return -999;
  if(!m.hasEnd && m.visibleScan<120)return -999;
  if(m.visibleScan<32 || m.visibleScan>235)return -999;
@@ -2758,6 +2768,9 @@ function scanLoadedDlistCandidate(){
    if(en<st || en<0x0200 || st>0xBFFF)continue;
    st=Math.max(st,0x0200); en=Math.min(en,0xBFFF);
    for(var a=st;a<=en;a++){
+     // FIX127: známé falešné kandidáty nesmí ani krátkodobě přepsat lastGoodDlist.
+     if(isMoonPatrolProfile() && a===0x854C)continue;
+     if(isCobraProfile() && (a===0x462B || a===0xB439))continue;
      var m=dlistMetricsAt(a);
      var sc=dlistCandidateScore(m);
      if(sc>bestScore){bestScore=sc;best=a;bestMetrics=m;}
@@ -2846,6 +2859,10 @@ function getDlistPtr(){
  // FIX125 accepted $462B as a drawable list, but Rene's snapshot showed that this breaks the playfield after START.
  // $2000 is not a game hack here: it is the live display list used by the older working Cobra baseline.
  if(isCobraProfile()){
+   // FIX127: pro Cobru už nesmí rozhodovat obecná metrika. $2000 je ověřený živý DLIST z funkční baseline;
+   // FIX125/126 pouštěly $462B/$B439 a tím se obraz po START rozsypal. Vracíme ho natvrdo, jen když má aspoň hrubý obrazový tvar.
+   var cm=dlistMetricsAt(0x2000);
+   if(validPtrForMiniAtari(0x2000) && cm.displayOps>=8 && cm.visibleScan>=100){lastGoodDlist=0x2000;lastGoodDlistProfile=activeXexProfile;lastRejectedDlistInfo='cobra hard-lock $2000 over shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' vis '+cm.visibleScan+' lms '+cm.lmsOps;return 0x2000;}
    var cd=0;
    cd=tryOne(0x2000,'cobra-protected-2000'); if(cd)return cd;
    if(sw){cd=tryOne(s,'cobra-shadow'); if(cd)return cd;}
@@ -2856,12 +2873,15 @@ function getDlistPtr(){
  // Prefer the earlier stable boot/runtime list $7481 and only scan as a last resort.
  if(isMoonPatrolProfile()){
    var md=0;
+   // FIX127: log z FIX126 ukázal raw/used $854C a zároveň $7481 odmítnutý jako code-like. $854C je falešná
+   // zobrazovací listina bez SAVMSC a bez barev; nesmí se uložit jako lastGood. Nejprve zkusíme $7481 opatrně jako Moon kandidát.
+   md=tryOne(0x7481,'moon-prefer-7481'); if(md)return md;
    if(sw && s!==0x854C){md=tryOne(s,'moon-shadow'); if(md)return md;}
    if(hw && h!==0x854C){md=tryOne(h,'moon-hw'); if(md)return md;}
-   md=tryOne(0x7481,'moon-stable-7481'); if(md)return md;
    var msg=scanLoadedDlistCandidate();
    if(msg && msg!==0x854C){md=tryOne(msg,'moon-scan-safe'); if(md)return md;}
-   return fallbackGoodDlist();
+   lastRejectedDlistInfo='moon blocked false $854C shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' scan '+(msg?('$'+hex(msg,4)):'--');
+   return 0;
  }
  // FIX89 Galaxian: after START/FIRE the hardware/shadow DLIST can stay on a short/menu-like
  // list ($3D00, ~79 visible scanlines) while a fuller runtime DLIST is built inside the loaded
@@ -2890,12 +2910,12 @@ function getDlistPtr(){
    return fallbackGoodDlist();
  }
  if(isArkanoidProfile()){
-   // FIX125: Arkanoid menu je čisté, ale po STARTu některé snímky ukazují krátký/přechodový DLIST $0A00.
-   // Jako obecný krok nejdřív podržíme poslední dobrý DLIST, pak zkusíme známou menu/game listinu $3503.
+   // FIX127: Arkanoid je chráněná reference. Nejdřív držíme známou čistou menu/game DLIST $3503,
+   // teprve potom živé pointery. Tím vracíme menu blíž FIX125/FIX110 místo náhodných přechodových listin.
    var adl=0;
+   adl=tryOne(0x3503,'arkanoid-hard-3503'); if(adl)return adl;
    if(hw)adl=tryOne(h,'arkanoid-hw'); if(adl)return adl;
    if(sw)adl=tryOne(s,'arkanoid-shadow'); if(adl)return adl;
-   adl=tryOne(0x3503,'arkanoid-stable-3503'); if(adl)return adl;
    adl=fallbackGoodDlist(); if(adl)return adl;
  }
  var baseGenericDl = hw ? h : s;
@@ -5361,8 +5381,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX126 PROTECTED REFERENCES MOON DLIST CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX125, běží starý APK/ZIP nebo starý label.");
+lines.push("COMPAT SNAPSHOT FIX127 STABLE REFS DLIST RECOVERY CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX127, běží starý APK/ZIP nebo starý label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -5437,7 +5457,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX126 CORE: Montezuma reload diag, Moon Patrol code-window handoff, Pac-Man BASIC/OS diagnostic, Arkanoid DLIST preserved; Cobra/Donkey baseline preserved.");
+updatePlayStatus("Emulator bezi. FIX127 CORE: chráněné reference Cobra/Donkey/Arkanoid, Moon $854C karanténa, bezpečný ROM probe jen tam, kde má smysl.");
  if(!playLoopId)playLoop();
 }
 
