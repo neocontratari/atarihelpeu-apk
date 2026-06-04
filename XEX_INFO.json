@@ -1,1 +1,1 @@
-{"emu":"EMU-09","fix":"FIX114_MULTIGAME_OS_ROM_BOOT_CORE","focus":"Montezuma PRELIM/ORIG comparison, Moon Patrol code-scored loader handoff, Pac-Man BASIC/OS ROM diagnostic, protected Donkey/Cobra/Arkanoid baseline"}
+{"emu":"EMU-09","fix":"FIX115_MONTEZUMA_MOON_IDLE_CORE","focus":"Montezuma PRELIM/ORIG/ALT death-reload cache guard, Moon Patrol idle/VVBLKD fallback, Pac-Man BASIC/OS diagnostic, protected Donkey/Cobra/Arkanoid baseline"}
