@@ -1,1 +1,10 @@
-{"emu":"EMU-09","fix":"FIX116_OS_SHIM_MONTEZUMA_CHBASE_CORE","focus":"mini OS/CIO shim, Montezuma CHBASE guard for ORIG/PRELIM/ALT, Moon Patrol code-window handoff, Pac-Man BASIC/OS diagnostic, protected Donkey/Cobra/Arkanoid baseline"}
+{
+  "build": "FIX117_OS_ROM_OPT_DLIST_CORE",
+  "title": "EMU-09 FIX117 OS ROM OPT DLIST CORE",
+  "notes": [
+    "optional OS/BASIC ROM loader from user file",
+    "DLIST code-like candidate rejection",
+    "gentle Montezuma CHBASE handling",
+    "protected Donkey/Cobra/Arkanoid baseline"
+  ]
+}
