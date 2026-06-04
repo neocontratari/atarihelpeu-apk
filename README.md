@@ -1,1 +1,3 @@
-FIX122 BUILTIN ROM BOOT CORE. Vestavěná Atari XL OS ROM + Atari BASIC ROM jsou mapované v emulátoru; tester nic nenahrává. Donkey/Cobra/Arkanoid baseline chráněný. Moon/Pac/Montezuma testují širší OS/BASIC/DLIST/PMG jádro.
+# AtariHelp.eu EMU-09 FIX123
+
+ROM DATA SAFE OS CORE. ROM je vestavěná, tester nic nenahrává. CPU už nesmí slepě běžet v BASIC/OS ROM kódu; ROM slouží pro data/font/vektory a OS služby obsluhuje bezpečný shim. Donkey/Cobra/Arkanoid chráněné reference.
