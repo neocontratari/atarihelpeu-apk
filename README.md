@@ -1,9 +1,7 @@
-AtariHelp.eu EMU-09 FIX128 FRAMEHOLD MOON DLIST CORE
+# AtariHelp.eu EMU-09
 
-Overlay pro GitHub Desktop. Kopíruj obsah složky do repozitáře, commitni a nech GitHub Actions postavit APK.
+## FIX132_UNIVERSAL_DLI_COLLISION_LABEL_CORE
 
-Hlavní změna: Cobra bez framehold flickeru, Moon Patrol nesmí skončit na DLIST $0000; $7481 je povolený Moon kandidát, $854C zůstává karanténa.
+Overlay pro GitHub Desktop. Rozbalit do rootu repozitáře, commit/push, nechat GitHub Actions postavit APK.
 
-## FIX131_TEXT_ATTR_MOON_ROLLBACK_CORE
-- Text attrs/special chars + Moon handoff rollback from FIX130 regression.
-- See README_FIX131_TEXT_ATTR_MOON_ROLLBACK_CORE.txt.
+Viz README_FIX132_UNIVERSAL_DLI_COLLISION_LABEL_CORE.txt.
