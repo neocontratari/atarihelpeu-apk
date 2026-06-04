@@ -22,7 +22,7 @@ var cobraForcedNmiLast="--";
 var genericTrapRecoveries=0;
 var genericTrapRecoverLast="--";
 var arkanoidAssistBlocked=0;
-var fix96RegressionGuardInfo="FIX125: ROM quarantined for protected baselines + stronger code-DLIST filter";
+var fix96RegressionGuardInfo="FIX126: protected references locked + Cobra $2000 + Moon false-DLIST guard";
 var fix109ArkanoidCharmodeInfo="--";
 var fix109PmgTitleGuardInfo="--";
 var fix109MontezumaRespawnInfo="--";
@@ -63,13 +63,13 @@ var optionalRomReads=0;
 // musí běžet původní RAM/ANTIC cestou; vestavěná ROM se použije jen jako karanténní
 // probe pro Moon Patrol/Pac-Man/generic diagnostiku.
 function fix125CoreModeForProfile(){
-  // FIX125: AUTO core selector podle Reného testů. FIX123 byl správný směr pro některé hry,
-  // ale nesmí rozbít chráněné reference. Nejde o hack hry, ale o volbu emulační vrstvy:
-  // LEGACY = stabilní ROM-less shim, ROM_PROBE = vestavěný OS/BASIC jako data+vektory se shimem.
+  // FIX126: AUTO core selector podle Reného testů. FIX123/125 pomáhaly některým ROM/OS-heavy hrám,
+  // ale Cobra/Donkey/Arkanoid jsou chráněné reference a nesmí se přepnout do agresivního ROM_PROBE.
+  // LEGACY = stabilní RAM/ANTIC cesta, ROM_PROBE = vestavěný OS/BASIC jen pro problémové boot/OS XEXy.
   try{
-    if(isDonkeyFamilyProfile() || isCobraProfile() || isPitstopProfile() || isRiverProfile() || isPiTTProfile() || activeXexProfile==='kittgarage' || activeXexProfile==='galaxian')return 'LEGACY_PROTECTED';
+    if(isDonkeyFamilyProfile() || isCobraProfile() || isArkanoidProfile() || isPitstopProfile() || isRiverProfile() || isPiTTProfile() || activeXexProfile==='kittgarage' || activeXexProfile==='galaxian')return 'LEGACY_PROTECTED';
     if(isMontezumaProfile())return 'MONTEZUMA_SAFE_LEGACY';
-    if(isArkanoidProfile() || isMoonPatrolProfile() || isPacmanProfile() || activeXexProfile==='generic')return 'ROM_PROBE';
+    if(isMoonPatrolProfile() || isPacmanProfile() || activeXexProfile==='generic')return 'ROM_PROBE';
   }catch(e){}
   return 'ROM_PROBE';
 }
@@ -244,7 +244,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX125_ADAPTIVE_ROM_DLIST_CORE";
+var EMU_BUILD_TAG="FIX126_PROTECTED_REFERENCES_MOON_DLIST_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -567,11 +567,11 @@ function makeLogFileName(reason){
  var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
  var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
  var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
- return 'atarihelp-FIX125-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
+ return 'atarihelp-FIX126-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX125 ADAPTIVE ROM DLIST CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX126 PROTECTED REFERENCES + MOON DLIST CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -774,7 +774,7 @@ function handleOptionalRomFile(file,kind){
    }
    updateRomStatusLine(optionalRomInfo);
    fullStop();clearInputState();
-   updatePlayStatus('FIX125: ROM override načtený, ale běžně nic nenahrávej. Vestavěná ROM cesta je aktivní; pokračuj přes TEST nebo NAČÍST VLASTNÍ XEX.');
+   updatePlayStatus('FIX126: ROM override načtený, ale běžně nic nenahrávej. Vestavěná ROM cesta je jen pomocná; pokračuj přes TEST nebo NAČÍST VLASTNÍ XEX.');
  };
  fr.readAsArrayBuffer(file);
 }
@@ -1011,7 +1011,7 @@ function runCoreSmokeMatrix(){
    restoreCoreMatrixEmuState(savedState);
  }
  var report=[
-    "AtariHelp.eu EMU-09 FIX125 MULTIGAME START DLI TEXT FRAMEHOLD MATRIX TXT",
+    "AtariHelp.eu EMU-09 FIX126 MULTIGAME START DLI TEXT FRAMEHOLD MATRIX TXT",
    "time="+new Date().toISOString(),
    "build="+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing'),
    "restoredXex="+currentXexName,
@@ -1611,7 +1611,7 @@ function loadXex(light){
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX125-ADAPTIVE-ROM-DLIST-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX126-PROTECTED-REFERENCES-MOON-DLIST-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -2580,6 +2580,7 @@ function shouldPreferScannedDlistForGeneric(baseDl, scanDl){
  if(!scanDl || !validPtrForMiniAtari(scanDl))return false;
  if(dlistLooksLike6502Code(scanDl)){lastRejectedDlistInfo="scan code-like rejected $"+hex(scanDl,4)+" "+(fix121LastDlistReject||"");return false;}
  if(isPiTTProfile() || isPitstopProfile() || isRiverProfile() || isCobraProfile() || isDonkeyFamilyProfile() || isGalaxianProfile() || isMontezumaProfile())return false;
+ if(isMoonPatrolProfile() && scanDl===0x854C){lastRejectedDlistInfo='moon scan $854C rejected: false drawable/code-window from FIX125';return false;}
  var bm=dlistMetricsAt(baseDl||0), sm=dlistMetricsAt(scanDl);
  // FIX125: obecná pojistka proti regresi Donkey Jr a dalším XEXům: nepovýšit krátký skenovaný
  // kandidát přes už použitelný dlouhý runtime DLIST jen proto, že má o pár bodů vyšší skóre.
@@ -2642,6 +2643,27 @@ function getDlistPtr(){
    return fallbackGoodDlist();
  }
  var gr=0;
+ // FIX126: Super Cobra must stay on the stable runtime DLIST $2000.
+ // FIX125 accepted $462B as a drawable list, but Rene's snapshot showed that this breaks the playfield after START.
+ // $2000 is not a game hack here: it is the live display list used by the older working Cobra baseline.
+ if(isCobraProfile()){
+   var cd=0;
+   cd=tryOne(0x2000,'cobra-protected-2000'); if(cd)return cd;
+   if(sw){cd=tryOne(s,'cobra-shadow'); if(cd)return cd;}
+   if(hw){cd=tryOne(h,'cobra-hw'); if(cd)return cd;}
+   cd=fallbackGoodDlist(); if(cd)return cd;
+ }
+ // FIX126: Moon Patrol's current scan can promote $854C, which looks drawable by metrics but produces no real picture.
+ // Prefer the earlier stable boot/runtime list $7481 and only scan as a last resort.
+ if(isMoonPatrolProfile()){
+   var md=0;
+   if(sw && s!==0x854C){md=tryOne(s,'moon-shadow'); if(md)return md;}
+   if(hw && h!==0x854C){md=tryOne(h,'moon-hw'); if(md)return md;}
+   md=tryOne(0x7481,'moon-stable-7481'); if(md)return md;
+   var msg=scanLoadedDlistCandidate();
+   if(msg && msg!==0x854C){md=tryOne(msg,'moon-scan-safe'); if(md)return md;}
+   return fallbackGoodDlist();
+ }
  // FIX89 Galaxian: after START/FIRE the hardware/shadow DLIST can stay on a short/menu-like
  // list ($3D00, ~79 visible scanlines) while a fuller runtime DLIST is built inside the loaded
  // XEX area. Prefer the scanned candidate only for Galaxian, only when the current visible
@@ -5132,15 +5154,15 @@ function dliStateSummary(caps,maxItems){
 
 function viewportDiagnosticInfo(){
  var dl=0,mt=null;
- try{dl=getDlistPtr()&65535;mt=dlistMetricsAt(dl);}catch(e){return 'VIEWPORT DIAG FIX125 unavailable '+e;}
- return 'VIEWPORT DIAG FIX125 rawDL=$'+hex(dl||0,4)+' visible='+(mt?mt.visibleScan:0)+' blank='+(mt?mt.blankScan:0)+' yOff='+currentRenderYOffset+' arkanoidAssistBlocked='+arkanoidAssistBlocked+' guard='+(fix96RegressionGuardInfo||'--');
+ try{dl=getDlistPtr()&65535;mt=dlistMetricsAt(dl);}catch(e){return 'VIEWPORT DIAG FIX126 unavailable '+e;}
+ return 'VIEWPORT DIAG FIX126 rawDL=$'+hex(dl||0,4)+' visible='+(mt?mt.visibleScan:0)+' blank='+(mt?mt.blankScan:0)+' yOff='+currentRenderYOffset+' arkanoidAssistBlocked='+arkanoidAssistBlocked+' guard='+(fix96RegressionGuardInfo||'--');
 }
 
 function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX125 ROM QUARANTINE DLIST CORE + VJOY");
+lines.push("COMPAT SNAPSHOT FIX126 PROTECTED REFERENCES MOON DLIST CORE + VJOY");
 lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX125, běží starý APK/ZIP nebo starý label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
@@ -5150,34 +5172,34 @@ lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missi
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
-lines.push("DLI CAP FIX125 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX125: safer multigame boot + code-scored Moon handoff + Pac BASIC/OS diagnostic; DLI RAM guard zůstává vypnutý.");
-lines.push("DLIST RESOLVE FIX125: "+dlistQualitySummary(dl));
-lines.push("VIEWPORT FIX125: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
-lines.push("FIX125 REGRESSION GUARD: "+fix96RegressionGuardInfo+" / no Cobra/Donkey scan promotion, Arkanoid assist blocked="+arkanoidAssistBlocked);
+lines.push("DLI CAP FIX126 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX125: safer multigame boot + code-scored Moon handoff + Pac BASIC/OS diagnostic; DLI RAM guard zůstává vypnutý.");
+lines.push("DLIST RESOLVE FIX126: "+dlistQualitySummary(dl));
+lines.push("VIEWPORT FIX126: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
+lines.push("FIX126 REGRESSION GUARD: "+fix96RegressionGuardInfo+" / no Cobra/Donkey scan promotion, Arkanoid assist blocked="+arkanoidAssistBlocked);
 lines.push(viewportDiagnosticInfo());
-lines.push("FRAME HOLD FIX125: "+lastFrameHoldInfo+" visualDL=$"+hex(lastVisualDlist||0,4)+" holdUntil="+dlistTransitionHoldUntil+" hits="+dlistFrameHoldHits+" restores="+frameHoldRestoreHits+" stable="+lastStableVideoInfo);
-lines.push("INPUT/POT FIX125 stick=$"+hex(emuStick0ShadowState(),1)+" trig="+emuTrigState(0)+" POT0="+emuPaddle0+" POTGOframe="+potgoFrame+" last="+paddleInputInfo);
-lines.push("OS TIMERS FIX125 CDTMV1-5="+[0x0218,0x021A,0x021C,0x021E,0x0220].map(function(a){return '$'+hex(a,4)+'=$'+hex((ram[a]|(ram[(a+1)&65535]<<8))&65535,4);}).join(' ')+" ticks="+osTimerTicks);
-lines.push("GALAXIAN INIT-IDLE FIX125 recoveries="+initOnlyIdleRecoveries+" active="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" idleStub="+(galaxianIdleStubInstalled?"YES":"no")+" last="+lastBrkRecoverInfo);
-lines.push("ASYNC WRAPPER FIX125: galaxSafeOnly="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" scopedOS="+scopedAsyncOsExitEnabled()+" / Cobra/Donkey drží původní FIX84 async cestu.");
-lines.push("ASYNC OS EXIT FIX125 "+asyncOsExitInfo());
-lines.push("COBRA NMI FORCE FIX125 count="+cobraForcedNmiCount+" last="+cobraForcedNmiLast);
-lines.push("GENERIC TRAP RECOVER FIX125 count="+genericTrapRecoveries+" last="+genericTrapRecoverLast);
+lines.push("FRAME HOLD FIX126: "+lastFrameHoldInfo+" visualDL=$"+hex(lastVisualDlist||0,4)+" holdUntil="+dlistTransitionHoldUntil+" hits="+dlistFrameHoldHits+" restores="+frameHoldRestoreHits+" stable="+lastStableVideoInfo);
+lines.push("INPUT/POT FIX126 stick=$"+hex(emuStick0ShadowState(),1)+" trig="+emuTrigState(0)+" POT0="+emuPaddle0+" POTGOframe="+potgoFrame+" last="+paddleInputInfo);
+lines.push("OS TIMERS FIX126 CDTMV1-5="+[0x0218,0x021A,0x021C,0x021E,0x0220].map(function(a){return '$'+hex(a,4)+'=$'+hex((ram[a]|(ram[(a+1)&65535]<<8))&65535,4);}).join(' ')+" ticks="+osTimerTicks);
+lines.push("GALAXIAN INIT-IDLE FIX126 recoveries="+initOnlyIdleRecoveries+" active="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" idleStub="+(galaxianIdleStubInstalled?"YES":"no")+" last="+lastBrkRecoverInfo);
+lines.push("ASYNC WRAPPER FIX126: galaxSafeOnly="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" scopedOS="+scopedAsyncOsExitEnabled()+" / Cobra/Donkey drží původní FIX84 async cestu.");
+lines.push("ASYNC OS EXIT FIX126 "+asyncOsExitInfo());
+lines.push("COBRA NMI FORCE FIX126 count="+cobraForcedNmiCount+" last="+cobraForcedNmiLast);
+lines.push("GENERIC TRAP RECOVER FIX126 count="+genericTrapRecoveries+" last="+genericTrapRecoverLast);
 if(isGalaxianProfile())lines.push("GALAXIAN DISPLAY FIX125 scanDL="+((dlistScanCache&&dlistScanCache.addr)?("$"+hex(dlistScanCache.addr,4)+" score "+dlistScanCache.score):"--")+" PMBASE0="+(((ram[0xD407]||0)===0)?"lowPMG":"std")+" / fuller scanned DLIST only if current DL is too short.");
 if(activeXexProfile==='pitstop')lines.push("PITSTOP RACE DLIST TEMPLATE FIX125: "+(pitstopRaceTemplateLast||"--")+" reason "+(pitstopRaceDlistLastReason||"--"));
  if(activeXexProfile==='pitstop')lines.push("PITSTOP VIRTUAL DLIST FIX125: "+(pitstopRaceVirtualLast||"--"));
  if(activeXexProfile==='pitstop')lines.push("PITSTOP CLEAN ROAD DIAG FIX125: "+(pitstopSplitDebugLast||"--"));
  lines.push("DLIST BYTES: "+dumpDlistBytes(dl,72));
-lines.push("DLI SCANLINES FIX125: "+dliScanlineSummary(dl));
+lines.push("DLI SCANLINES FIX126: "+dliScanlineSummary(dl));
  lines.push("GENERIC DLI STATES: "+dliStateSummary(genericDliCache,12));
 lines.push("PMG INFO: "+pmgInfo());
 if(isDonkeyJrProfile())lines.push("DONKEY JR FIX125: profile kept, bad scan-DLIST promotion blocked; title/menu DLIST switch is live without frame-hold; PMG title-noise guard skips broad stale PMG on $5919/$8052; runtime $8031 keeps PMG.");
 if(isMontezumaProfile())lines.push("MONTEZUMA FIX125: viewport yOff 0; single-line PMG yOff 8; early START/FIRE is queued until intro/maze is ready; 128-glyph ANTIC mode4 path restored for score/body; renderer CHBASE guard active. guard="+fix115MontezumaGuardInfo+" chbase="+(fix116MontezumaCharsetInfo||"--"));
-lines.push("GTIA COLLISION FIX125: "+gtiaCollisionInfo());
-lines.push("OS STUBS FIX125 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
-lines.push("FIX125 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
-lines.push("SETVBV FIX125 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
-lines.push("FIX125 CORE: multigame=safe boot + internal OS shim + DLIST-code filter + Montezuma protected + Pac BASIC/OS diagnostic; unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
+lines.push("GTIA COLLISION FIX126: "+gtiaCollisionInfo());
+lines.push("OS STUBS FIX126 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
+lines.push("FIX126 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
+lines.push("SETVBV FIX126 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
+lines.push("FIX126 CORE: multigame=safe boot + internal OS shim + DLIST-code filter + Montezuma protected + Pac BASIC/OS diagnostic; unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
 if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX125: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
  if(isRiverProfile())lines.push("RIVER FIX125: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
@@ -5216,7 +5238,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX125 CORE: Montezuma reload diag, Moon Patrol code-window handoff, Pac-Man BASIC/OS diagnostic, Arkanoid DLIST preserved; Cobra/Donkey baseline preserved.");
+updatePlayStatus("Emulator bezi. FIX126 CORE: Montezuma reload diag, Moon Patrol code-window handoff, Pac-Man BASIC/OS diagnostic, Arkanoid DLIST preserved; Cobra/Donkey baseline preserved.");
  if(!playLoopId)playLoop();
 }
 
@@ -5350,7 +5372,7 @@ function tryRecoverGenericTrap(){
  if(!goodEntry(near))return false;
  genericTrapRecoveries++;
  genericTrapRecoverLast='trap '+msg+' -> $'+hex(near,4)+' frame '+playFrameNo;
- log('GENERIC TRAP RECOVER FIX125: '+genericTrapRecoverLast);
+ log('GENERIC TRAP RECOVER FIX126: '+genericTrapRecoverLast);
  cpu.trap=false;cpu.trapMsg='';cpu.pc=near;
  return true;
 }
@@ -5374,7 +5396,7 @@ function playLoop(){
  if((playFrameNo&15)===0)updatePlayStatus();
  if(cpu && cpu.trap){
    if(tryRecoverGenericTrap()){
-     updatePlayStatus('FIX125 recover: '+genericTrapRecoverLast);
+     updatePlayStatus('FIX126 recover: '+genericTrapRecoverLast);
    }else{
      playMode=false;playLoopId=0;fadeAudioOff();
      log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));

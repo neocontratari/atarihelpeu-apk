@@ -1,3 +1,3 @@
-# AtariHelp.eu EMU-09 FIX123
+# AtariHelp.eu EMU-09 FIX126
 
-ROM DATA SAFE OS CORE. ROM je vestavěná, tester nic nenahrává. CPU už nesmí slepě běžet v BASIC/OS ROM kódu; ROM slouží pro data/font/vektory a OS služby obsluhuje bezpečný shim. Donkey/Cobra/Arkanoid chráněné reference.
+FIX126 chrani Donkey/Cobra/Arkanoid reference, vraci Cobru na stabilni DLIST $2000 a zkousi bezpecnejsi DLIST cestu pro Moon Patrol bez rozbiti zakladu.
