@@ -1,1 +1,1 @@
-{"emu":"EMU-09","fix":"FIX115_MONTEZUMA_MOON_IDLE_CORE","focus":"Montezuma PRELIM/ORIG/ALT death-reload cache guard, Moon Patrol idle/VVBLKD fallback, Pac-Man BASIC/OS diagnostic, protected Donkey/Cobra/Arkanoid baseline"}
+{"emu":"EMU-09","fix":"FIX116_OS_SHIM_MONTEZUMA_CHBASE_CORE","focus":"mini OS/CIO shim, Montezuma CHBASE guard for ORIG/PRELIM/ALT, Moon Patrol code-window handoff, Pac-Man BASIC/OS diagnostic, protected Donkey/Cobra/Arkanoid baseline"}

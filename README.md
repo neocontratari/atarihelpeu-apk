@@ -1,17 +1,12 @@
-AtariHelp.eu APK Builder - EMU-09 FIX115
+AtariHelp.eu APK Builder - EMU-09 FIX116
 
-Aktuální balík: FIX115_MONTEZUMA_MOON_IDLE_CORE.
+Aktuální balík: FIX116_OS_SHIM_MONTEZUMA_CHBASE_CORE.
 
 Směr: obecnější kompatibilita místo ladění jedné hry.
-- Montezuma má zvlášť PRELIM a ORIGINAL vestavěný test.
-- Moon Patrol handoff už nesmí skočit do segmentu, který vypadá jako data.
-- Pac-Man má jasnou BASIC/OS ROM diagnostiku.
+- Přidán silnější mini OS/CIO shim pro ROM-less XEXy, které padají do $0000/$Dxxx po OS volání.
+- Montezuma PRELIM/ORIG/ALT má CHBASE guard pro $3000/$3800 charset/body data a death/reload cache reset bez mazání Atari RAM.
+- Moon Patrol zkouší code-window handoff místo čistě segmentového handoffu nebo prázdného idle loopu.
+- Pac-Man dál hlásí BASIC/OS závislost, ale OS shim se snaží o bezpečnější návraty.
 - Donkey Kong, Super Cobra a Arkanoid baseline jsou chráněné.
 
-Podrobnosti jsou v README_FIX115_MONTEZUMA_MOON_IDLE_CORE.txt.
-
-
-## FIX115 MONTEZUMA/MOON IDLE CORE
-- Montezuma PRELIM/ORIG/ALT comparison and death/reload render-cache guard.
-- Moon Patrol VVBLKD idle fallback instead of unsafe loader handoff into data.
-- Pac-Man remains BASIC/OS diagnostic.
+Podrobnosti jsou v hlavním EMU-09 HTML a ve snapshot logu FIX116.
