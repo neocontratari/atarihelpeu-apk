@@ -1,5 +1,5 @@
-FIX109_MULTIGAME_ANTIC_CHARMODE_PMG_CORE
+# AtariHelp.eu APK Builder EMU-09
 
-Hotový overlay pro GitHub Desktop. Rozbal obsah ZIPu do kořene repozitáře, commitni a nech GitHub Actions postavit APK.
+FIX110_ANTIC_COLOR_ATTR_DONKEYJR_COBRA_LIFE_CORE
 
-Cíl FIX109: víc her v jednom kroku, ne ladění jedné hry. Oprava viditelných FIX labelů, první opatrný ANTIC mode 4/5 char-index probe pro Arkanoid gameplay, Donkey Jr PMG title-noise guard a Montezuma respawn/PMG diagnostika bez rozbití Donkey/Cobra baseline.
+Shared ANTIC 4/5 color-attribute rendering, Donkey Jr no-flicker/title PMG guard, Montezuma stable PMG preserved, Cobra lifecycle diagnostic reset only.
