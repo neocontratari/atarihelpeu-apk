@@ -1,1 +1,1 @@
-{"emu":"EMU-09","fix":"FIX112_MULTIGAME_BOOT_OS_TRAP_ARKANOID_CORE","focus":"multigame boot trap guard, longer INITAD pre-run for Moon Patrol, Pac-Man hardware/OS trap diagnostics, Montezuma reload transition guard, Arkanoid DLIST diagnostics"}
+{"emu":"EMU-09","fix":"FIX113_MULTIGAME_RESET_DLI_BOOT_CORE","focus":"Montezuma live DLI/no stale frame, Moon Patrol loader handoff, Pac-Man BASIC/OS dependency diagnostic, Arkanoid gameplay DLIST diagnostics"}

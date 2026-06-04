@@ -1,8 +1,8 @@
-AtariHelp.eu APK Builder - EMU-09 FIX112
+AtariHelp.eu APK Builder - EMU-09 FIX113
 =======================================
 
-Aktuální balík: FIX112_MULTIGAME_BOOT_OS_TRAP_ARKANOID_CORE.
+Aktuální balík: FIX113_MULTIGAME_RESET_DLI_BOOT_CORE.
 
-Hlavní směr: obecné XEX jádro, bezpečný boot neznámých her, Montezuma intro gate, profilové ANTIC 4/5 atributy a chráněné reference Donkey/Cobra.
+Hlavní směr: obecné XEX jádro, Montezuma live DLI/no stale frame, Moon Patrol loader handoff, Pac-Man BASIC/OS diagnostika a chráněné reference Donkey/Cobra.
 
-Podrobnosti jsou v README_FIX112_MULTIGAME_BOOT_OS_TRAP_ARKANOID_CORE.txt.
+Podrobnosti jsou v README_FIX113_MULTIGAME_RESET_DLI_BOOT_CORE.txt.
