@@ -1,3 +1,5 @@
-AtariHelp.eu EMU-09 FIX127 STABLE REFS DLIST RECOVERY CORE
+AtariHelp.eu EMU-09 FIX128 FRAMEHOLD MOON DLIST CORE
 
-Overlay ZIP pro GitHub Desktop. Nahraj obsah složky, ne ZIP jako soubor.
+Overlay pro GitHub Desktop. Kopíruj obsah složky do repozitáře, commitni a nech GitHub Actions postavit APK.
+
+Hlavní změna: Cobra bez framehold flickeru, Moon Patrol nesmí skončit na DLIST $0000; $7481 je povolený Moon kandidát, $854C zůstává karanténa.
