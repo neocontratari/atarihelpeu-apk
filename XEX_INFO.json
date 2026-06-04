@@ -1,10 +1,1 @@
-{
-  "build": "FIX107_MULTIGAME_BOOT_PMG_DONKEYJR_CORE",
-  "focus": [
-    "multigame boot gating",
-    "Montezuma PMG long-cluster trim",
-    "Donkey Jr profile detection",
-    "preserve Cobra title fallback",
-    "preserve Donkey and Arkanoid baselines"
-  ]
-}
+{"emu":"EMU-09","fix":"FIX111_MULTIGAME_BOOT_DLIST_MONTEZUMA_SAFE_CORE","focus":"multigame safe boot, scoped ANTIC 4/5 attributes, Montezuma input gate, Donkey Jr DLIST stabilization, unknown XEX diagnostics"}

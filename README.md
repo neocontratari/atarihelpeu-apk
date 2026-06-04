@@ -1,5 +1,8 @@
-# AtariHelp.eu APK Builder EMU-09
+AtariHelp.eu APK Builder - EMU-09 FIX111
+=======================================
 
-FIX110_ANTIC_COLOR_ATTR_DONKEYJR_COBRA_LIFE_CORE
+Aktuální balík: FIX111_MULTIGAME_BOOT_DLIST_MONTEZUMA_SAFE_CORE.
 
-Shared ANTIC 4/5 color-attribute rendering, Donkey Jr no-flicker/title PMG guard, Montezuma stable PMG preserved, Cobra lifecycle diagnostic reset only.
+Hlavní směr: obecné XEX jádro, bezpečný boot neznámých her, Montezuma intro gate, profilové ANTIC 4/5 atributy a chráněné reference Donkey/Cobra.
+
+Podrobnosti jsou v README_FIX111_MULTIGAME_BOOT_DLIST_MONTEZUMA_SAFE_CORE.txt.
