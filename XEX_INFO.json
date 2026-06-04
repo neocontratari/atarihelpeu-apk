@@ -1,5 +1,4 @@
 {
-  "build": "FIX121_OS_VECTOR_BOOT_CORE",
-  "rom_required": false,
-  "roms_embedded": false
+  "build": "FIX122_BUILTIN_ROM_BOOT_CORE",
+  "note": "Built-in Atari XL OS + BASIC ROM mapped; no tester ROM upload required"
 }

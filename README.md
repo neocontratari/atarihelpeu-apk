@@ -1,1 +1,1 @@
-FIX121 OS vector boot core. Externí ROM není potřeba; dodané ROMy byly použité jen jako technická reference.
+FIX122 BUILTIN ROM BOOT CORE. Vestavěná Atari XL OS ROM + Atari BASIC ROM jsou mapované v emulátoru; tester nic nenahrává. Donkey/Cobra/Arkanoid baseline chráněný. Moon/Pac/Montezuma testují širší OS/BASIC/DLIST/PMG jádro.
