@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX184_REALOS_GTIA_BARS_BASICSAFE_CORE / vlastní XEX</title>
+<title>EMU-09 FIX185_REALOS_GRAPHICS7_FULLSAFE_GTIA_BARS_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX184_REALOS_GTIA_BARS_BASICSAFE_CORE</h1>
-<p>FIX184 drzi stabilni BASIC/GRAPHICS 7 cestu, opravuje GTIA 9/10/11 testy na ciste pruhy a jasne oddeluje diagnosticky obraz od BASIC editoru.</p>
+<h1>EMU-09 FIX185_REALOS_GRAPHICS7_FULLSAFE_GTIA_BARS_CORE</h1>
+<p>FIX185 drzi stabilni BASIC/GRAPHICS 7 cestu, rozlisuje split 160x80 a full 160x96 helper, a ponechava GTIA 9/10/11 ciste pruhove diagnostiky mimo BASIC editor.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -98,7 +98,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX184: BASIC/GRAPHICS7 stabilizace + GTIA 9/10/11 pruhove testy mimo OS RAM.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX185: GRAPHICS 7 split/full BASIC helper + GTIA 9/10/11 pruhove testy mimo OS RAM.</div>
 </section>
 
 <section class="card">
@@ -107,7 +107,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX184: klavesnice beze zmeny; GRAPHICS 7 zustava BASIC test, GTIA 9/10/11 jsou diagnosticke pruhy mimo OS/BASIC RAM.</p>
+<p class="tinyhint">FIX185: klavesnice beze zmeny; G7 80/96 helper, paste umi G7 fullsafe; GTIA 9/10/11 diagnosticke pruhy mimo OS/BASIC RAM.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="promptAtariName()">⌨️ ZADAT JMÉNO</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
@@ -116,7 +116,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(9)">GTIA 9 BARS</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(10)">GTIA 10 BARS</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(11)">GTIA 11 BARS</button>
-<button class="secondary compact" onclick="forceGraphics7EdgeTestFix180()">GRAPHICS 7 EDGE TEST</button>
+<button class="secondary compact" onclick="forceGraphics7SplitTestFix185()">G7 SPLIT 80 TEST</button>
+<button class="secondary compact" onclick="forceGraphics7EdgeTestFix180()">G7 FULL 96 TEST</button>
 </div>
 <div class="keygrid" id="atariKeyboard"></div>
 </div>
@@ -706,7 +707,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX184_REALOS_GTIA_BARS_BASICSAFE_CORE";
+var EMU_BUILD_TAG="FIX185_REALOS_GRAPHICS7_FULLSAFE_GTIA_BARS_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1077,7 +1078,7 @@ function makeLogFileName(reason){
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX184 REALOS GTIA BARS BASICSAFE CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX185 REALOS GRAPHICS7 FULLSAFE GTIA BARS CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -2204,17 +2205,32 @@ function promptBasicPasteFix171(){
 }
 
 function forceGraphics7EdgeTestFix180(){
-  // FIX184: real BASIC GRAPHICS 7 path, no direct RAM. Keep it boring and stable:
-  // exact 0..159 / 0..95 border plus diagonals. No COLOR 0 erase loop.
+  // FIX185: full-height GRAPHICS 7 test must use mode 7+16 = 23.
+  // Plain GRAPHICS 7 keeps the BASIC text window and the safe Y range is 0..79.
+  // The user's tunnel/edge programs often use Y=95, so this helper uses full 160x96.
   var prog=[
-    '10 GRAPHICS 7',
+    '10 GRAPHICS 23',
     '20 COLOR 1:PLOT 0,0:DRAWTO 159,0:DRAWTO 159,95:DRAWTO 0,95:DRAWTO 0,0',
     '30 COLOR 2:PLOT 0,0:DRAWTO 159,95',
     '40 COLOR 3:PLOT 159,0:DRAWTO 0,95',
     '50 GOTO 50',
     'RUN'
   ].join('\n');
-  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 EDGE FIX184');
+  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 FULL96 FIX185');
+}
+function forceGraphics7SplitTestFix185(){
+  // FIX185: original split-screen GRAPHICS 7 with BASIC text window.
+  // This is the real safe range for GRAPHICS 7 without +16: 160x80 graphics + text window.
+  var prog=[
+    '10 GRAPHICS 7',
+    '20 COLOR 1:PLOT 0,0:DRAWTO 159,0:DRAWTO 159,79:DRAWTO 0,79:DRAWTO 0,0',
+    '30 COLOR 2:PLOT 0,0:DRAWTO 159,79',
+    '40 COLOR 3:PLOT 159,0:DRAWTO 0,79',
+    '50 PRINT "G7 SPLIT"',
+    '60 GOTO 60',
+    'RUN'
+  ].join('\n');
+  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 SPLIT80 FIX185');
 }
 
 function queueGtiaBasicDemoFix177(mode){
@@ -2250,7 +2266,7 @@ function fillGtiaScreenMemoryFix179(mode,scr){
      if(y===0 && x<8)sample.push(hex(v,2));
    }
  }
- fix177GtiaRenderInfo='direct fill pending GTIA mode '+mode+' scr $'+hex(scr,4)+' nz '+nz+' sample '+sample.join(' ')+' frame '+playFrameNo+' BARPAT FIX184';
+ fix177GtiaRenderInfo='direct fill pending GTIA mode '+mode+' scr $'+hex(scr,4)+' nz '+nz+' sample '+sample.join(' ')+' frame '+playFrameNo+' BARPAT FIX185';
  fix184GtiaBarsInfo='GTIA '+mode+' bars 80px over ANTIC F scr $'+hex(scr,4)+' nz '+nz+' sample '+sample.join(' ')+' frame '+playFrameNo;
  return {nz:nz,sample:sample.join(' ')};
 }
@@ -2284,7 +2300,7 @@ function installGtiaDisplayListFix179(mode){
  // as lastGoodDlist, otherwise BASIC fallback can later draw image bytes as a display list.
  var fill=fillGtiaScreenMemoryFix179(mode,scr);
  fix179GtiaDirectMode=mode;fix179GtiaDirectUntil=playFrameNo+900;
- fix179GtiaDirectInfo='GTIA direct test mode '+mode+' dl $'+hex(dl,4)+' scr $'+hex(scr,4)+' prior $'+hex(prior,2)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF/BARS FIX184';
+ fix179GtiaDirectInfo='GTIA direct test mode '+mode+' dl $'+hex(dl,4)+' scr $'+hex(scr,4)+' prior $'+hex(prior,2)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF/BARS FIX185';
  fix170GtiaModeInfo='GTIA GRAPHICS '+mode+' active over ANTIC $F PRIOR $'+hex(prior,2)+' COLBK $'+hex(ram[0xD01A]||0,2)+' FIX181 direct-fill frame '+playFrameNo;
  return true;
 }
@@ -2296,7 +2312,7 @@ function keepGtiaDirectFillAliveFix179(){
    fix181GtiaKeepAliveLastFrame=playFrameNo;
    // Refill only the screen bytes, do not rebuild DLIST/OS state every frame.
    var fill=fillGtiaScreenMemoryFix179(fix179GtiaDirectMode|0, fix179GtiaDirectScr&65535);
-   fix179GtiaDirectInfo='GTIA direct keep mode '+fix179GtiaDirectMode+' dl $'+hex(fix179GtiaDirectDl,4)+' scr $'+hex(fix179GtiaDirectScr,4)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF/BARS FIX184';
+   fix179GtiaDirectInfo='GTIA direct keep mode '+fix179GtiaDirectMode+' dl $'+hex(fix179GtiaDirectDl,4)+' scr $'+hex(fix179GtiaDirectScr,4)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF/BARS FIX185';
  }catch(e){fix179GtiaDirectInfo='GTIA keep recover '+(e&&e.message?e.message:e);}
 }
 function forceGtiaVisualTestFix179(mode){
@@ -2317,7 +2333,7 @@ function forceGtiaVisualTestFix179(mode){
      try{renderAnticDisplay();}catch(re){log('FIX181 GTIA render test recover: '+(re&&re.stack?re.stack:re));}
      try{renderRegs();renderSegments();}catch(_ui){}
      updatePlayStatus('FIX184 GTIA '+mode+': diagnosticky pruhovy obraz, nepise BASIC kod. CPU je pauznuty, tlacitka zustavaji aktivni. RESET/READY vrati BASIC.');
-     log('FIX184 GTIA DIRECT TEST: mode='+mode+' '+fix179GtiaDirectInfo+' / '+(fix184GtiaBarsInfo||'--'));
+     log('FIX185 GTIA DIRECT TEST: mode='+mode+' '+fix179GtiaDirectInfo+' / '+(fix184GtiaBarsInfo||'--'));
    }catch(e){
      log('FIX181 GTIA DIRECT TEST ERROR: '+(e&&e.stack?e.stack:e));
      updatePlayStatus('FIX181 GTIA test chyba, ale UI zustava aktivni: '+(e&&e.message?e.message:e));
@@ -2328,6 +2344,13 @@ function forceGtiaVisualTestFix179(mode){
 }
 function queueBasicProgramTextFix171(txt,name){
  txt=String(txt||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+ // FIX185: Atari BASIC GRAPHICS 7 is split-screen by default; Y 80..95 needs full-screen 7+16 (GRAPHICS 23).
+ // For pasted/listed programs that clearly use the full 0..95 vertical range, auto-protect the user from ERROR-141.
+ var g7FullNeeded=/\bGRAPHICS\s+7\b/i.test(txt) && !/\bGRAPHICS\s+23\b/i.test(txt) && (/(^|[^0-9])95([^0-9]|$)/.test(txt) || /MY\s*=\s*95/i.test(txt) || /DRAWTO[^\n]*,\s*9[0-5]/i.test(txt) || /PLOT[^\n]*,\s*9[0-5]/i.test(txt));
+ if(g7FullNeeded){
+   txt=txt.replace(/\bGRAPHICS\s+7\b/ig,'GRAPHICS 23');
+   try{log('FIX185 BASIC TXT G7 FULLSAFE: GRAPHICS 7 -> GRAPHICS 23, protoze program pouziva Y 80..95.');}catch(_e){}
+ }
  var lines=txt.split('\n');
  var cleaned=[];
  for(var i=0;i<lines.length;i++){
@@ -7254,7 +7277,7 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX184 REALOS GTIA BARS BASICSAFE CORE + VJOY");
+lines.push("COMPAT SNAPSHOT FIX185 REALOS GRAPHICS7 FULLSAFE GTIA BARS CORE + VJOY");
 lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX184, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
@@ -7267,7 +7290,7 @@ lines.push("GTIA DLI BAND FIX181: "+(fix169GtiaDliBandInfo||"--"));
 lines.push("GTIA MODE FIX181: "+(fix170GtiaModeInfo||"--"));
 lines.push("GTIA RENDER FIX181: "+(fix177GtiaRenderInfo||"--"));
 lines.push("GTIA DIRECT FIX181: "+(fix179GtiaDirectInfo||"--"));
-lines.push("GTIA BARS FIX184: "+(fix184GtiaBarsInfo||"--"));
+lines.push("GTIA BARS FIX185: "+(fix184GtiaBarsInfo||"--"));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
 lines.push("DLI CAP FIX181 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX125: safer multigame boot + code-scored Moon handoff + Pac BASIC/OS diagnostic; DLI RAM guard zůstává vypnutý.");
@@ -7313,7 +7336,7 @@ if(activeXexProfile==='realos')lines.push("ANTIC GRID FIX182: "+(fix181AnticGrid
 lines.push("OS STUBS FIX181 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
 lines.push("FIX181 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
 lines.push("SETVBV FIX181 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
-lines.push("FIX184 CORE: REALOS BASIC/GRAPHICS7 safe + GTIA 9/10/11 bar diagnostics + keyboard kept + protected XEX baseline; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
+lines.push("FIX185 CORE: REALOS GRAPHICS7 split/full safe + GTIA 9/10/11 bar diagnostics + keyboard kept + protected XEX baseline; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
 if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX125: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
  if(isRiverProfile())lines.push("RIVER FIX125: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
