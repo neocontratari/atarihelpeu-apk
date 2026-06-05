@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX201_DLI_WSYNC_CAPTURE_CORE / vlastní XEX</title>
+<title>EMU-09 FIX202_DLI_SCANLINE_VIEWPORT_TRACE_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX201_DLI_WSYNC_CAPTURE_CORE</h1>
-<p>FIX201 bere CAS/WAV pilot jako potvrzenou slepou větev a vypíná ho. Hlavní oprava je obecné DLI/WSYNC časování: DLI rutina se při běhu snímá i při zápisech na WSYNC $D40A, aby renderer viděl mezilehlé GTIA/ANTIC změny po scanline, ne jen konečný stav rutiny.</p>
+<h1>EMU-09 FIX202_DLI_SCANLINE_VIEWPORT_TRACE_CORE</h1>
+<p>FIX202 navazuje na FIX201 bez hernich hard-locku. Hlavni oprava je obecne DLI/WSYNC casovani ve vazbe na realny display-list scanline a aktualni viewport: renderer ted vidi DLI stavy na spravnem radku obrazu a snapshot vypise kratkou DLI stopu.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX201 používá čistý XEX segment loader: načítá $FF $FF segmenty do RAM, bere RUNAD/INITAD z $02E0-$02E3, BASIC direct OFF. Obraz bere primárně ze skutečného ANTIC/HW/SDLST DLISTu; segmentový scan je záchranná cesta, RAM scan nemá přednost. CAS/WAV pilot je vypnutý, protože test ukázal stejný nebo horší obraz než XEX.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX202 pouziva cisty XEX segment loader: nacita $FF $FF segmenty do RAM, bere RUNAD/INITAD z $02E0-$02E3, BASIC direct OFF. Obraz bere primarne ze skutecneho ANTIC/HW/SDLST DLISTu; segmentovy scan je zachranna cesta, RAM scan nema prednost. CAS/WAV pilot zustava vypnuty.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -66,7 +66,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary" onclick="loadBuiltinDonkeyKong()">TEST DONKEY KONG XEX</button>
 <button class="secondary" onclick="loadBuiltinSuperCobra()">🚁 TEST SUPER COBRA XEX</button>
 <button class="secondary" onclick="xexCasWavPilotFix200('donkey')">📼 CAS/WAV PILOT VYPNUTO</button>
-<button class="secondary" onclick="xexCasWavPilotFix200('cobra')">🧪 DLI/WSYNC FIX201 INFO</button>
+<button class="secondary" onclick="xexCasWavPilotFix200('cobra')">🧪 DLI/WSYNC FIX202 INFO</button>
 </div>
 <div class="halfgrid">
 <button class="secondary" onclick="loadBuiltinGalaxian()">👾 TEST GALAXIAN XEX</button>
@@ -102,7 +102,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX201: CAS/WAV pilot vypnuty; cisty XEX loader zustava; DLI rutina se snima pres WSYNC $D40A pro scanline GTIA/ANTIC zmeny.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX202: CAS/WAV pilot vypnuty; XEX loader zustava; DLI/WSYNC capture je navazane na viewport scanline + snapshot ma DLI stopu.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -254,8 +254,12 @@ var fix196OsKernelEnabled=false;
 var fix197PurgeInfo='FIX198 hardware purge waiting';
 var fix198RamDlistInfo='FIX198 RAM DLIST SCAN waiting';
 var fix199DlistTrustInfo='FIX199 HW DLIST TRUST waiting';
-var fix200CasWavInfo='FIX201 CAS/WAV pilot disabled after negative test';
-var fix201DliCaptureInfo='FIX201 DLI/WSYNC capture waiting';
+var fix200CasWavInfo='FIX202 CAS/WAV pilot disabled after negative test';
+var fix201DliCaptureInfo='FIX202 DLI/WSYNC viewport capture waiting';
+var fix202DliTraceInfo='FIX202 DLI viewport trace waiting';
+var fix202DliTrace=[];
+var fix202DliTraceFrame=-999;
+var fix202LastViewportOffset=0;
 var fix200CasWavPilotNext=false;
 var fix200CasWavPilotActive=false;
 var fix197TotalPurgeActive=false;
@@ -761,7 +765,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX201_DLI_WSYNC_CAPTURE_CORE";
+var EMU_BUILD_TAG="FIX202_DLI_SCANLINE_VIEWPORT_TRACE_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -2773,7 +2777,7 @@ function loadXex(light){
  fix195NativeXexInfo=(fix195NativeXexInfo||'FIX197 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM probe ON resetVector $C2AA';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX201-DLI-WSYNC-CAPTURE-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX202-DLI-SCANLINE-VIEWPORT-TRACE-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -6634,7 +6638,7 @@ function captureRiverDliStates(){
    if(!capture)return;
    a&=65535;
    if(a===0xD40A){
-     cap.push({vc:this.vcount&0x7F, regs:Array.prototype.slice.call(ram,0xD000,0xD01B)});
+     cap.push({vc:this.vcount&0x7F, regs:Array.prototype.slice.call(ram,0xD000,0xD01C)});
    }
  };
  try{
@@ -6644,7 +6648,7 @@ function captureRiverDliStates(){
  }
  capture=false;
  CPU6502.prototype.w=origW;
- if(!cap.length){cap.push({vc:0, regs:Array.prototype.slice.call(ram,0xD000,0xD01B)});}
+ if(!cap.length){cap.push({vc:0, regs:Array.prototype.slice.call(ram,0xD000,0xD01C)});}
  riverDliCache=cap;
  riverDliCacheFrame=playFrameNo;
  return cap;
@@ -6673,7 +6677,7 @@ function riverRegsForY(caps,y){
 function riverPmgPlayerDebug(caps){
  var pm=(ram[0xD407]||0)<<8;
  if(pm<0x0400||pm>0xF000)return 'RIVER PMG DEBUG: PMBASE invalid $'+hex(pm,4);
- var sampleRegs=riverRegsForY(caps||[],96)||Array.prototype.slice.call(ram,0xD000,0xD01B);
+ var sampleRegs=riverRegsForY(caps||[],96)||Array.prototype.slice.call(ram,0xD000,0xD01C);
  var best=-1,bestScore=-999,parts=[];
  for(var pl=0;pl<4;pl++){
    var base=(pm+0x400+pl*0x100)&65535;
@@ -6713,13 +6717,38 @@ function renderRiverPmgOnlyFrame(){
  return true;
 }
 
-function captureGenericHardwareState(y,vc){
- var regs=Array.prototype.slice.call(ram,0xD000,0xD01B);
+function fix202DisplayYForAnticY(anticY){
+ var dl=0,off=0;
+ try{dl=(getDlistPtr()||0)&65535;off=viewportCenterYOffsetForDl(dl)|0;}catch(e){off=0;}
+ fix202LastViewportOffset=off;
+ return (anticY|0)+off;
+}
+function fix202NoteDliTrace(dli,anticY,displayY,vc,wsyncs,writes,ran,caps,reason){
+ if(!fix202DliTrace || fix202DliTraceFrame!==playFrameNo){fix202DliTrace=[];fix202DliTraceFrame=playFrameNo;}
+ var item={dli:dli&65535,ay:anticY|0,y:displayY|0,vc:vc&0x7F,ws:wsyncs|0,wr:writes|0,ran:ran|0,caps:caps|0,reason:reason||''};
+ fix202DliTrace.push(item);
+ if(fix202DliTrace.length>20)fix202DliTrace.shift();
+ fix202DliTraceInfo='FIX202 viewport off '+fix202LastViewportOffset+' last y'+item.y+'/a'+item.ay+' VC$'+hex(item.vc,2)+' DLI $'+hex(item.dli,4)+' WSYNC '+item.ws+' HWwrites '+item.wr+' ran '+item.ran+' caps '+item.caps+' frame '+playFrameNo;
+}
+function fix202DliTraceSummary(){
+ if(!fix202DliTrace || !fix202DliTrace.length)return fix202DliTraceInfo||'--';
+ var arr=[];
+ for(var i=0;i<Math.min(fix202DliTrace.length,10);i++){
+   var t=fix202DliTrace[i];
+   arr.push('y'+t.y+'/a'+t.ay+' VC$'+hex(t.vc,2)+' $'+hex(t.dli,4)+' ws'+t.ws+' wr'+t.wr+' r'+t.ran);
+ }
+ if(fix202DliTrace.length>10)arr.push('...'+fix202DliTrace.length);
+ return (fix202DliTraceInfo||'FIX202 trace')+' | '+arr.join(' | ');
+}
+function captureGenericHardwareState(y,vc,anticY,reason){
+ var regs=Array.prototype.slice.call(ram,0xD000,0xD01C);
  var chb=ram[0xD409]&255;
  var mb=montezumaPreferredChbaseByte(chb);
  if(mb>=0){chb=mb; regs[0x09]=mb;}
  return {
    y:y||0,
+   anticY:(anticY!==undefined)?(anticY|0):(y|0),
+   reason:reason||'',
    vc:vc||0,
    regs:regs,
    chbase:chb,
@@ -6829,27 +6858,35 @@ function dliScanlinesFromDlist(dl){
  }
  return out;
 }
-function captureGenericDliStatePushFix201(cap,y,vc){
+function captureGenericDliStatePushFix201(cap,displayY,vc,anticY,reason){
  if(!cap)return;
- if(cap.length>96)return;
- var st=captureGenericHardwareState(Math.max(0,Math.min(239,y|0)),vc|0);
+ if(cap.length>128)return;
+ var dy=displayY|0;
+ var ay=(anticY!==undefined)?(anticY|0):dy;
+ var st=captureGenericHardwareState(dy,vc|0,ay,reason||'');
  var last=cap.length?cap[cap.length-1]:null;
  if(last && (last.y|0)===(st.y|0))cap[cap.length-1]=st;
  else cap.push(st);
 }
-function runGenericDliRoutineCaptureFix201(dli,y,limit,vc,cap){
+function runGenericDliRoutineCaptureFix201(dli,y,limit,vc,cap,displayYArg){
  if(!cpu || !goodEntry(dli))return 0;
  var origW=CPU6502.prototype.w;
- var scanY=(y|0), wsyncs=0, writes=0;
- captureGenericDliStatePushFix201(cap,scanY,vc);
+ var anticY=(y|0);
+ var scanY=(typeof displayYArg==='number')?(displayYArg|0):fix202DisplayYForAnticY(anticY);
+ var wsyncs=0, writes=0, lastHw='entry';
+ captureGenericDliStatePushFix201(cap,scanY,vc,anticY,'entry');
  CPU6502.prototype.w=function(a,v){
    origW.call(this,a,v);
    a&=65535;
-   if(a>=0xD000 && a<=0xD01A)writes++;
+   // FIX202: capture not only final RTI state, but also live GTIA/ANTIC/PMG register changes.
+   // PRIOR $D01B is included, because PMG/playfield priority bugs look like ghosts/noise.
+   var hw=(a>=0xD000 && a<=0xD01B) || a===0xD400 || a===0xD401 || a===0xD407 || a===0xD409 || a===0xD40E || a===0x022F;
+   if(hw){writes++;lastHw='$'+hex(a,4)+'=$'+hex(v,2);captureGenericDliStatePushFix201(cap,scanY,vc,anticY,lastHw);}
    if(a===0xD40A){
      wsyncs++;
-     scanY=Math.min(239,scanY+1);
-     captureGenericDliStatePushFix201(cap,scanY,vc);
+     anticY=Math.min(239,anticY+1);
+     scanY=fix202DisplayYForAnticY(anticY);
+     captureGenericDliStatePushFix201(cap,scanY,vc,anticY,'WSYNC#'+wsyncs+' after '+lastHw);
    }
  };
  var ran=0;
@@ -6858,8 +6895,9 @@ function runGenericDliRoutineCaptureFix201(dli,y,limit,vc,cap){
  }finally{
    CPU6502.prototype.w=origW;
  }
- captureGenericDliStatePushFix201(cap,scanY,vc);
- fix201DliCaptureInfo='FIX201 DLI/WSYNC y '+(y|0)+' dli $'+hex(dli,4)+' ran '+ran+' wsync '+wsyncs+' hwWrites '+writes+' cap '+(cap?cap.length:0)+' frame '+playFrameNo;
+ captureGenericDliStatePushFix201(cap,scanY,vc,anticY,'exit '+lastHw);
+ fix202NoteDliTrace(dli,anticY,scanY,vc,wsyncs,writes,ran,cap?cap.length:0,lastHw);
+ fix201DliCaptureInfo='FIX202 DLI/WSYNC viewport y '+scanY+' antic '+(y|0)+' dli $'+hex(dli,4)+' ran '+ran+' wsync '+wsyncs+' hwWrites '+writes+' cap '+(cap?cap.length:0)+' last '+lastHw+' frame '+playFrameNo;
  return ran;
 }
 function runScheduledGenericDlis(limitEach){
@@ -6869,18 +6907,19 @@ function runScheduledGenericDlis(limitEach){
  var ys=dliScanlinesFromDlist(getDlistPtr());
  ys=fix134AutoDliScanlines(ys);
  if(!ys.length)return 0;
- var ran=0, cap=[captureGenericHardwareState(0,0)], chain=[];
+ var ran=0, cap=[captureGenericHardwareState(fix202DisplayYForAnticY(0),0,0,'frame-start')], chain=[];
  var max=Math.min(ys.length,32);
  for(var i=0;i<max;i++){
    var dli=(ram[0x0200]|(ram[0x0201]<<8))&65535;
    if(!goodEntry(dli))break;
    var vc=(ys[i]>>1)&0x7F;
-   chain.push('y'+ys[i]+'@$'+hex(dli,4));
+   var dy=fix202DisplayYForAnticY(ys[i]);
+   chain.push('y'+dy+'/a'+ys[i]+'@$'+hex(dli,4));
    if(fix197TotalPurgeActive && activeXexProfile!=='realos'){
-     ran+=runGenericDliRoutineCaptureFix201(dli,ys[i],limitEach||2600,vc,cap);
+     ran+=runGenericDliRoutineCaptureFix201(dli,ys[i],limitEach||2600,vc,cap,dy);
    }else{
      ran+=runAsyncAtariRoutine(dli,'GENERIC LIVE DLI CHAIN y'+ys[i]+' $'+hex(dli,4),limitEach||2200,vc);
-     cap.push(captureGenericHardwareState(ys[i],vc));
+     cap.push(captureGenericHardwareState(fix202DisplayYForAnticY(ys[i]),vc,ys[i],'fallback-dli'));
    }
  }
  cap.sort(function(a,b){return (a.y||0)-(b.y||0);});
@@ -6888,7 +6927,7 @@ function runScheduledGenericDlis(limitEach){
  genericDliCacheFrame=playFrameNo;
  genericDliCacheDl=getDlistPtr()&65535;
  genericDliChainLog=chain;
- if(fix197TotalPurgeActive)fix201DliCaptureInfo='FIX201 DLI/WSYNC chain '+chain.join(' ')+' ran '+ran+' caps '+cap.length+' frame '+playFrameNo;
+ if(fix197TotalPurgeActive)fix201DliCaptureInfo='FIX202 DLI/WSYNC viewport chain '+chain.join(' ')+' ran '+ran+' caps '+cap.length+' frame '+playFrameNo;
  return ran;
 }
 function captureGenericDliStates(){
@@ -7455,7 +7494,7 @@ function xexCasWavPilotFix200(which){
  fix200CasWavPilotNext=false;
  fix200CasWavPilotActive=false;
  fix192StreamInitActive=false;
- fix200CasWavInfo='FIX201 CAS/WAV pilot je vypnuty: FIX200 test ukazal stejny/horsi obraz, pokracujeme normalnim XEX + DLI/WSYNC jadrem. Bez nahravani WAV.';
+ fix200CasWavInfo='FIX202 CAS/WAV pilot je vypnuty: pokracujeme normalnim XEX + DLI/WSYNC viewport jadrem. Bez nahravani WAV.';
  log(fix200CasWavInfo);
  updatePlayStatus(fix200CasWavInfo);
  return false;
@@ -7883,7 +7922,7 @@ function dliStateSummary(caps,maxItems){
  var out=[];
  for(var i=0;i<Math.min(caps.length,maxItems);i++){
    var c=caps[i],r=c.regs||[];
-   out.push('y'+(c.y||0)+' VC$'+hex(c.vc||0,2)+' CH$'+hex(c.chbase!==undefined?c.chbase:(ram[0xD409]||0),2)+' PF '+[0x16,0x17,0x18,0x19,0x1A].map(function(o){return '$'+hex(r[o]||0,2);}).join('/'));
+   out.push('y'+(c.y||0)+'/a'+((c.anticY!==undefined)?c.anticY:(c.y||0))+' VC$'+hex(c.vc||0,2)+' CH$'+hex(c.chbase!==undefined?c.chbase:(ram[0xD409]||0),2)+' PR$'+hex(r[0x1B]||0,2)+' PF '+[0x16,0x17,0x18,0x19,0x1A].map(function(o){return '$'+hex(r[o]||0,2);}).join('/')+(c.reason?(' '+c.reason):''));
  }
  if(caps.length>maxItems)out.push('...'+caps.length+' states');
  return out.join(' | ');
@@ -7917,8 +7956,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX191 CLEAN XEX LOADER PASTE CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX195, bezi stary APK/ZIP nebo stary label.");
+lines.push("COMPAT SNAPSHOT FIX202 DLI SCANLINE VIEWPORT TRACE CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX202, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -7944,7 +7983,8 @@ lines.push("NATIVE XEX LOADER FIX200: "+(fix195NativeXexInfo||"--"));
 lines.push("XEX OS KERNEL FIX200: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
 lines.push("HARDWARE PURGE FIX201: "+(fix197PurgeInfo||"--")+" STREAMED="+(fix197StreamedOk?"OK":"FAIL")+" ACTIVE="+(fix197TotalPurgeActive?"YES":"NO")+" blocks="+(fix197StreamedBlocks||0)+" bytes="+(fix197StreamedBytes||0));
 lines.push("CAS/WAV PILOT FIX201: "+(fix200CasWavInfo||"--")+" active="+(fix200CasWavPilotActive?"YES":"NO"));
-lines.push("DLI WSYNC CAPTURE FIX201: "+(fix201DliCaptureInfo||"--"));
+lines.push("DLI WSYNC CAPTURE FIX202: "+(fix201DliCaptureInfo||"--"));
+lines.push("DLI VIEWPORT TRACE FIX202: "+fix202DliTraceSummary());
 lines.push("HW DLIST TRUST FIX199: "+(fix199DlistTrustInfo||"--"));
 lines.push("RAM DLIST SCAN FIX199: "+(fix198RamDlistInfo||"--")+" / diagnostic last only");
 lines.push("RESET READY FIX194: "+(fix194ResetInfo||"--"));
@@ -7952,7 +7992,7 @@ lines.push("GENERIC PMG POLICY FIX194: one-game PMG guard disabled; clean XEX lo
 lines.push("BASIC PASTE FIX191: "+(fix190PasteInfo||"--"));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
-lines.push("DLI CAP FIX201 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / HARDWARE: no synthetic profile DLI in purge; real DLIST $80 bits only, HW/SDLST first.");
+lines.push("DLI CAP FIX202 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / real DLIST $80 bits, viewport y/a trace, PRIOR captured.");
 lines.push("DLIST RESOLVE FIX201: "+dlistQualitySummary(dl));
 lines.push("VIEWPORT FIX200: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
 lines.push("FIX200 REGRESSION GUARD: HARDWARE active="+(fix197TotalPurgeActive?"YES":"NO")+" oldGuard="+fix96RegressionGuardInfo+" arkanoidAssistBlocked="+arkanoidAssistBlocked);
