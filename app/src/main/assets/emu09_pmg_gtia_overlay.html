@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX192_XEX_STREAM_INIT_LOADER_CORE / vlastní XEX</title>
+<title>EMU-09 FIX195_NATIVE_XEX_BINARY_LOADER_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX192_XEX_STREAM_INIT_LOADER_CORE</h1>
-<p>FIX192 nechava potvrzeny REAL OS/BASIC/G7/GTIA BARS/zvuk/cisty XEX loader. Pridava volitelny streamovany XEX loader: segmenty se ctou jako z DOS loaderu a mezilehle INITAD se spusti hned pri nacitani, bez BASIC ROM direct.</p>
+<h1>EMU-09 FIX195_NATIVE_XEX_BINARY_LOADER_CORE</h1>
+<p>FIX195 dava hlavni smer na obecny Native-style XEX Binary Loader Core: cisty loader pod kapotou, zadne BASIC direct spousteni her, segmenty do RAM, RUNAD/INITAD presne z vektoru, BASIC off pro hry a ROM zustava jen pro REAL OS/BASIC testy.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,13 +45,13 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl FIX125 jsou <b>vlastní .XEX soubory</b> z telefonu. Loader rozlišuje segmenty, INITAD ($02E2) a RUNAD ($02E0); diagnostika víc hlídá DLIST, SAVMSC, DLI, CHBASE, PMG/GTIA kolize, OS stubs, OS timers, 130XE PORTB a bezpečný ruční start u neznámých her. ROMky od Reného jsou vestavěné pro REAL OS/BASIC testy. FIX190 ukázal, že pouštět hotové hry přímo přes BASIC/ROM vrstvu rozbíjí Donkey/Cobru, proto FIX191 vrací XEX hry do čistého loaderu: nahraje segmenty, INITAD/RUNAD a běží bez BASIC ROM direct zásahů. START/OPTION pulse je jen vstupní puls, ne přepnutí na BASIC.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX195 používá obecný Native-style XEX Binary Loader Core: načte hlavičku $FF $FF, segmenty ukládá přímo do emulované RAM, RUNAD bere z $02E0/$02E1, INITAD z $02E2/$02E3 a hotové hry spouští s vypnutým BASIC direct režimem. ROMky zůstávají pro REAL OS/BASIC obrazovku, klávesnici a testy; hry se nepouští přes BASIC.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
 </div>
 <div class="halfgrid">
-<button class="danger" onclick="resetPlaying()">RESET AKTIVNÍ XEX</button>
+<button class="danger" onclick="resetPlaying()">RESET → BASIC READY</button>
 <button class="secondary" onclick="toggleAudio()">ZVUK ON/OFF</button>
 <button class="secondary" onclick="audioTestFix188()">🔊 ZVUK TEST</button>
 <button class="secondary" onclick="showInputMapFix188()">🎮 OVLÁDÁNÍ MAPA<br><span class="muted">zivy test</span></button>
@@ -75,12 +75,6 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="halfgrid">
 <button class="secondary" onclick="loadBuiltinPitstopII()">🏁 TEST PITSTOP II XEX</button>
 <button class="secondary" onclick="loadBuiltinKittGarage()">TEST KiTT GARAZ XEX</button>
-<button class="secondary" onclick="xexBridgeSmokeFix188('donkey')">🧪 CISTY XEX DONKEY</button>
-<button class="secondary" onclick="xexBridgeSmokeFix188('cobra')">🧪 CISTY XEX COBRA</button>
-<button class="secondary" onclick="xexCleanStartOptionFix191('donkey')">🧼 CISTY XEX START+OPTION DONKEY</button>
-<button class="secondary" onclick="xexCleanStartOptionFix191('cobra')">🧼 CISTY XEX START+OPTION COBRA</button>
-<button class="secondary" onclick="xexStreamInitLoaderFix192('donkey')">🧩 XEX LOADER CODE DONKEY</button>
-<button class="secondary" onclick="xexStreamInitLoaderFix192('cobra')">🧩 XEX LOADER CODE COBRA</button>
 </div>
 <div class="halfgrid">
 <button class="secondary" onclick="compatibilitySnapshot()">📋 KOMPATIBILITA / SNAPSHOT</button>
@@ -106,7 +100,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX192: cisty XEX baseline zustava; pridany XEX loader-code test se streamovanym INITAD bez BASIC ROM direct.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX195: Native-style XEX Binary Loader Core je default pro vsechny XEX hry; BASIC direct pro hry je vypnuty.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -247,6 +241,15 @@ var fix192StreamInitNext=false;
 var fix192StreamInitActive=false;
 var fix192LoaderInfo="FIX192 stream INIT loader waiting";
 var fix192StreamedInitAddrs=[];
+var fix193DonkeyPmgCleanEnabled=false;
+var fix193DonkeyPmgCleanNext=false;
+var fix193DonkeyPmgInfo='FIX193 Donkey PMG transition guard waiting';
+var fix194ResetInfo='FIX194 reset-to-BASIC waiting';
+var fix195NativeXexInfo='FIX195 Native XEX Binary Loader waiting';
+var fix193DonkeyStableFrames=0;
+var fix193DonkeyLastDl=0;
+var fix193DonkeySuppressUntil=-999;
+
 var fix190PasteInfo="FIX191 paste extra slow mobile mode: idle";
 var fix189LastInputPanelFrame=-999;
 var cobraForcedNmiCount=0;
@@ -735,7 +738,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX192_XEX_STREAM_INIT_LOADER_CORE";
+var EMU_BUILD_TAG="FIX195_NATIVE_XEX_BINARY_LOADER_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -2133,7 +2136,7 @@ function handleAtariKeyboardKey(k){
  if(atariCtrlActive && (k==='→' || k==='RIGHT'))return tapAtariControlArrowFix171('RIGHT');
  if(atariCtrlActive && (k==='↑' || k==='UP'))return tapAtariControlArrowFix171('UP');
  if(atariCtrlActive && (k==='↓' || k==='DOWN'))return tapAtariControlArrowFix171('DOWN');
- if(k==='RESET'){if(activeXexProfile==='realos')return warmResetRealOsBasicFix171();return resetPlaying();}
+ if(k==='RESET'){return resetToBasicReadyFix194('virtual keyboard RESET');}
  if(k==='START')return tapStartPulse();
  if(k==='SELECT')return tapSelectPulse();
  if(k==='OPTION')return tapOptionPulse();
@@ -2532,15 +2535,18 @@ function fix192HasMoreXexSegments(bytes,pos){
 }
 function installCleanXexLoaderEnvironmentFix192(reason){
  if(!ram)return;
- // Clean XEX loader environment: no BASIC direct execution, but keep OS shadow vectors usable.
- // $D301/PORTB stays all ones (BASIC/cart disabled from the game's point of view in this emulator),
- // COLDST/BOOT flags sane, and INIT/RUN vectors are owned by the incoming XEX segments.
+ // FIX195 Native-style XEX Binary Loader environment.
+ // This is the game side: BASIC ROM direct execution is OFF, ROMs stay only for REALOS/BASIC tests.
+ // PORTB/D301 is kept in the no-BASIC game configuration used by the clean loader.
  ram[0xD301]=0xFF;
- ram[0x0244]=0x00; // COLDST
+ portbValue=0xFF;
+ ram[0x0244]=0x00; // COLDST sane for clean loaded program
  ram[0x0009]=0x00; ram[0x000A]=0x00; ram[0x000B]=0x00;
  ram[0x02E0]=0; ram[0x02E1]=0; ram[0x02E2]=0; ram[0x02E3]=0;
- fix192LoaderInfo='FIX192 clean loader env '+(reason||'')+' PORTB $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
+ fix195NativeXexInfo='FIX195 native loader env '+(reason||'')+' BASIC-direct OFF PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
+ fix192LoaderInfo='FIX195 native loader env '+(reason||'')+' PORTB $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
 }
+
 function runStreamedInitFix192(addr,segNo,segStart,segEnd){
  addr&=65535;
  if(!goodEntry(addr))return 0;
@@ -2564,7 +2570,35 @@ function runStreamedInitFix192(addr,segNo,segStart,segEnd){
  return ran;
 }
 
+
+function parseNativeXexBlocksFix195(bytes){
+ var info={header:false,blocks:[],warnings:[],run:0,inits:[],firstExec:0,dataBytes:0,bad:false};
+ var p=0;
+ if(bytes && bytes.length>=2 && bytes[0]===255 && bytes[1]===255){info.header=true;}
+ else info.warnings.push('missing $FFFF header - continuing tolerant XEX parse');
+ var blockNo=0;
+ while(p<bytes.length){
+   while(p+2<=bytes.length && bytes[p]===255 && bytes[p+1]===255)p+=2;
+   if(p>=bytes.length)break;
+   if(p+4>bytes.length){info.bad=true;info.warnings.push('truncated segment header at offset '+p);break;}
+   var start=(bytes[p]|(bytes[p+1]<<8))&65535;
+   var end=(bytes[p+2]|(bytes[p+3]<<8))&65535;
+   p+=4;
+   var size=end-start+1;
+   if(end<start || p+size>bytes.length){info.bad=true;info.warnings.push('bad segment '+(blockNo+1)+' $'+hex(start,4)+'-$'+hex(end,4)+' at offset '+(p-4));break;}
+   var vectorOnly=(start>=0x0200 && end<=0x02FF);
+   var blk={no:blockNo+1,start:start,end:end,size:size,offset:p,vectorOnly:vectorOnly};
+   info.blocks.push(blk); info.dataBytes+=size;
+   if(!info.firstExec && !vectorOnly && start>=0x0100)info.firstExec=start;
+   if(start<=0x02E0 && end>=0x02E1){var ro=0x02E0-start;info.run=(bytes[p+ro]|(bytes[p+ro+1]<<8))&65535;}
+   if(start<=0x02E2 && end>=0x02E3){var io=0x02E2-start;var ia=(bytes[p+io]|(bytes[p+io+1]<<8))&65535;if(ia)info.inits.push(ia);}
+   p+=size; blockNo++;
+ }
+ return info;
+}
+
 function parseAndLoadXexBytes(bytes,light){
+ var nativeInfo=typeof parseNativeXexBlocksFix195==='function'?parseNativeXexBlocksFix195(bytes):null;
  var p=0,count=0,firstExec=0,bad=false,runVec=0,inits=[];
  segments=[];
  while(p<bytes.length){
@@ -2598,7 +2632,7 @@ function parseAndLoadXexBytes(bytes,light){
  else if(inits.length){entry=inits[inits.length-1];activeEntryWasInit=true;}
  else if(goodEntry(firstExec)){entry=firstExec;}
  else entry=0x2000;
- xexInfo={run:runVec||0,inits:inits,entry:entry,warnings:[],bad:bad};
+ xexInfo={run:runVec||0,inits:inits,entry:entry,warnings:(nativeInfo&&nativeInfo.warnings?nativeInfo.warnings.slice(0):[]),bad:bad};
  activeXexProfile=detectXexProfile(bytes,entry,runVec||0);
  var wantedDirect=!!fix190NextXexDirect;
  fix190NextXexDirect=false;
@@ -2612,8 +2646,10 @@ function parseAndLoadXexBytes(bytes,light){
    fix192LoaderInfo+=' pending '+(pendingInitAddrs.length?pendingInitAddrs.map(function(a){return '$'+hex(a,4);}).join(','):'none');
  }else pendingInitAddrs=goodEntry(runVec)?inits.slice(0):inits.slice(0,Math.max(0,inits.length-1));
  ranInitAddrs=[];
- xexInfo.warnings=xexWarningsForEntry(entry);
- fix188XexBridgeInfo=(fix192StreamInitActive?'FIX192 stream-init XEX loaded profile ':'FIX192 clean protected XEX loaded profile ')+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' BASIC/ROM direct OFF streamed '+(fix192StreamedInitAddrs.length?fix192StreamedInitAddrs.map(function(a){return '$'+hex(a,4);}).join(','):'none')+' frame '+playFrameNo;
+ xexInfo.warnings=(xexInfo.warnings||[]).concat(xexWarningsForEntry(entry));
+ var nativeRanges=(segments||[]).map(function(sg){return '$'+hex(sg.start,4)+'-$'+hex(sg.end,4);}).slice(0,6).join(' ');
+ fix195NativeXexInfo='FIX195 native XEX: header '+(nativeInfo&&nativeInfo.header?'$FFFF OK':'missing/tolerant')+' blocks '+count+' bytes '+(nativeInfo?nativeInfo.dataBytes:0)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' ENTRY $'+hex(entry||0,4)+' BASIC direct OFF PORTB $'+hex(ram[0xD301]||0,2)+' ranges '+nativeRanges+' frame '+playFrameNo;
+ fix188XexBridgeInfo=(fix192StreamInitActive?'FIX195 native stream-init XEX loaded profile ':'FIX195 native clean XEX loaded profile ')+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' BASIC/ROM direct OFF streamed '+(fix192StreamedInitAddrs.length?fix192StreamedInitAddrs.map(function(a){return '$'+hex(a,4);}).join(','):'none')+' frame '+playFrameNo;
  fix191CleanXexInfo=fix188XexBridgeInfo;
  if(activeXexProfile==="pitt")detectPittTextDlists();
  installOsKeyboardReturnStub();
@@ -2630,6 +2666,10 @@ function loadXex(light){
  fix192StreamInitActive=!!fix192StreamInitNext;
  fix192StreamInitNext=false;
  fix192StreamedInitAddrs=[];
+ fix193DonkeyStableFrames=0; fix193DonkeyLastDl=0; fix193DonkeySuppressUntil=-999;
+ fix193DonkeyPmgCleanNext=false;
+ fix193DonkeyPmgCleanEnabled=false;
+ if(!fix193DonkeyPmgInfo || fix193DonkeyPmgInfo.indexOf('FIX194')<0)fix193DonkeyPmgInfo='FIX194 generic core: one-game PMG guard disabled';
  installCleanXexLoaderEnvironmentFix192(fix192StreamInitActive?'stream-init':'baseline');
  // FIX60 obecný XEX default: než si hra nastaví vlastní hardware, držíme použitelný Atari charset
  // a základní ANTIC DMA hodnoty. Vlastní XEX je samozřejmě může okamžitě přepsat.
@@ -2692,9 +2732,11 @@ function loadXex(light){
  applyMobileBudgetGuard();
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
+ try{cpu.sp=0xFD;cpu.p=0x24;cpu.a=0;cpu.x=0;cpu.y=0;}catch(e){}
+ fix195NativeXexInfo=(fix195NativeXexInfo||'FIX195 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX192-XEX-STREAM-INIT-LOADER-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX195-NATIVE-XEX-BINARY-LOADER-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -5122,6 +5164,53 @@ function setPmgDebug(text){
  var e=document.getElementById("pmgdebug");
  if(e)e.textContent=text;
 }
+
+function donkeyPmgBytesSummaryFix193(l){
+ var parts=[],total=0,maxSpan=0;
+ if(!l || !ram)return {total:0,maxSpan:0,text:'--'};
+ for(var p=0;p<4;p++){
+   var st=countNonZero((l.pm+l.pOff+p*l.pStep)&65535,l.rows);
+   if(st && st.first>=0){
+     var span=(st.last-st.first+1)|0;
+     total+=st.n|0; if(span>maxSpan)maxSpan=span;
+     parts.push('P'+p+':'+st.first+'-'+st.last+'/'+st.n);
+   }
+ }
+ var ms=countNonZero((l.pm+l.mOff)&65535,l.rows);
+ if(ms && ms.first>=0){var mspan=(ms.last-ms.first+1)|0; total+=ms.n|0; if(mspan>maxSpan)maxSpan=mspan; parts.push('M:'+ms.first+'-'+ms.last+'/'+ms.n);}
+ return {total:total,maxSpan:maxSpan,text:parts.length?parts.join(' '):'empty'};
+}
+function donkeyRuntimeStableForPmgFix193(l,dliCaps){
+ if(!isOriginalDonkeyRuntimeXex())return true;
+ var dl=(getDlistPtr()||0)&65535;
+ var mt=null; try{mt=dlistMetricsAt(dl);}catch(e){mt=null;}
+ var caps=(dliCaps&&dliCaps.length)|0;
+ var nmi=(ram&&ram[0xD40E])?ram[0xD40E]&255:0;
+ var dma=(ram&&ram[0xD400])?ram[0xD400]&255:0;
+ var gra=(ram&&ram[0xD01D])?ram[0xD01D]&255:0;
+ var stable=!!(mt && mt.visibleScan>=180 && mt.visibleScan<=210 && mt.displayOps>=20 && caps>=2 && (nmi&0x80) && (dma&0x20));
+ // Donkey's clean runtime in our confirmed baseline is $1200 with DLI at y61/y158.
+ // During intro/transition noise the list/IRQ/DLI can be temporarily half-built; then old PMG bytes create ghosts.
+ if(dl!==fix193DonkeyLastDl){
+   if(fix193DonkeyLastDl){fix193DonkeySuppressUntil=playFrameNo+8;}
+   fix193DonkeyLastDl=dl;
+   fix193DonkeyStableFrames=0;
+ }
+ if(stable)fix193DonkeyStableFrames++; else fix193DonkeyStableFrames=0;
+ var sum=donkeyPmgBytesSummaryFix193(l);
+ var allow=stable && fix193DonkeyStableFrames>=4 && playFrameNo>fix193DonkeySuppressUntil;
+ fix193DonkeyPmgInfo='FIX193 Donkey PMG guard dl $'+hex(dl,4)+' stable='+(stable?'yes':'no')+' stableFrames='+fix193DonkeyStableFrames+' suppressUntil='+fix193DonkeySuppressUntil+' caps='+caps+' nmi $'+hex(nmi,2)+' dma $'+hex(dma,2)+' gra $'+hex(gra,2)+' pmg '+sum.text+' allow='+(allow?'yes':'no')+' frame '+playFrameNo;
+ return allow;
+}
+function shouldSuppressDonkeyPmgGhostFix193(l,dliCaps){
+ if(!fix193DonkeyPmgCleanEnabled || !isOriginalDonkeyRuntimeXex())return false;
+ var sum=donkeyPmgBytesSummaryFix193(l);
+ if(sum.total<=0)return false;
+ var ok=donkeyRuntimeStableForPmgFix193(l,dliCaps);
+ if(!ok){fix193DonkeyPmgInfo+=' -> PMG hidden for transition';return true;}
+ return false;
+}
+
 function shouldSkipPmgForDonkeyJrTitleNoise(l){
  if(!isDonkeyJrProfile())return false;
  var dl=getDlistPtr()&65535;
@@ -5167,6 +5256,11 @@ function renderPMGOverlay(g,cs,wantDebug,dliCaps){
    }
    if(wantDebug){lines.push("Drawn diagnostic markers: "+drawn);setPmgDebug(lines.join("\n"));}
    return drawn;
+ }
+
+ if(shouldSuppressDonkeyPmgGhostFix193(l,dliCaps)){
+   if(wantDebug){lines.push(pmgInfo());lines.push(fix193DonkeyPmgInfo);setPmgDebug(lines.join("\n"));}
+   return 0;
  }
 
  var playerOrder=isPiTTProfile()?[0,2,1,3]:[0,1,2,3];
@@ -5529,6 +5623,27 @@ function fix152EnterNoXexProbe(kind){
   fix148MapGuardInfo='FIX181 isolated '+kind+' no XEX reset vector $'+hex(rv,4);
 }
 
+
+
+function resetToBasicReadyFix194(reason){
+ // Generic Atari-style front panel RESET for EMU-09:
+ // - in REALOS/BASIC: warm reset, BASIC RAM preserved (LIST should survive)
+ // - in any XEX/game: leave the game and boot REAL OS BASIC READY cleanly
+ // This is not a game patch and not BASIC-direct XEX loading.
+ reason=reason||'manual RESET';
+ try{endGtiaDirectTestFix183('FIX194 reset to BASIC');}catch(e){}
+ try{fix190NextXexDirect=false;fix190RealOsDirectXexMode=false;fix192StreamInitNext=false;fix192StreamInitActive=false;}catch(e){}
+ try{fix193DonkeyPmgCleanEnabled=false;fix193DonkeyPmgCleanNext=false;}catch(e){}
+ if(activeXexProfile==='realos'){
+   fix194ResetInfo='FIX194 warm RESET inside REALOS/BASIC: preserve BASIC RAM, reason='+reason+' frame '+playFrameNo;
+   return warmResetRealOsBasicFix171();
+ }
+ var oldName=currentXexName||'--';
+ var oldProf=activeXexProfile||'--';
+ fix194ResetInfo='FIX194 RESET -> REAL OS BASIC READY from '+oldProf+' / '+oldName+' reason='+reason+' frame '+playFrameNo;
+ log(fix194ResetInfo);
+ return startRealOsBasicBootFix157('basic');
+}
 
 function warmResetRealOsBasicFix171(){
   endGtiaDirectTestFix183('warm reset');
@@ -7196,6 +7311,16 @@ function xexStreamInitLoaderFix192(which){
  return r;
 }
 
+function xexDonkeyPmgCleanFix193(){
+ // FIX194: one-game PMG clean experiment is intentionally disabled.
+ // Keep the symbol only so old cached buttons do not crash; run generic clean XEX instead.
+ fix193DonkeyPmgCleanEnabled=false;
+ fix193DonkeyPmgCleanNext=false;
+ fix193DonkeyPmgInfo='FIX194: Donkey-only PMG experiment disabled; using generic clean XEX loader';
+ log(fix193DonkeyPmgInfo);
+ return xexBridgeSmokeFix188('donkey');
+}
+
 function toggleAudio(){
  audioWanted=!audioWanted;
  if(audioWanted)ensureAudio();
@@ -7588,7 +7713,7 @@ function compatibilitySnapshotCore(){
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
 lines.push("COMPAT SNAPSHOT FIX191 CLEAN XEX LOADER PASTE CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX191, bezi stary APK/ZIP nebo stary label.");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX195, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -7610,6 +7735,9 @@ lines.push("INPUT LIVE FIX189: "+(fix189InputLiveInfo||"--"));
 lines.push("REAL OS DIRECT XEX FIX190: "+(fix190DirectXexInfo||"--")+" active="+(fix190RealOsDirectXexMode?"yes":"no")+" (disabled by FIX191 for games)");
 lines.push("CLEAN XEX FIX191: "+(fix191CleanXexInfo||"--"));
 lines.push("XEX LOADER CODE FIX192: "+(fix192LoaderInfo||"--")+" streamed="+(fix192StreamedInitAddrs&&fix192StreamedInitAddrs.length?fix192StreamedInitAddrs.map(function(a){return "$"+hex(a,4);}).join(","):"none")+" active="+(fix192StreamInitActive?"yes":"no"));
+lines.push("NATIVE XEX LOADER FIX195: "+(fix195NativeXexInfo||"--"));
+lines.push("RESET READY FIX194: "+(fix194ResetInfo||"--"));
+lines.push("GENERIC PMG POLICY FIX194: one-game PMG guard disabled; clean XEX loader only. oldInfo="+(fix193DonkeyPmgInfo||"--"));
 lines.push("BASIC PASTE FIX191: "+(fix190PasteInfo||"--"));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
@@ -7656,7 +7784,7 @@ if(activeXexProfile==='realos')lines.push("ANTIC GRID FIX182: "+(fix181AnticGrid
 lines.push("OS STUBS FIX181 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
 lines.push("FIX181 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
 lines.push("SETVBV FIX181 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
-lines.push("FIX192 CORE: clean XEX baseline + optional streamed INITAD loader code + REAL OS DIRECT disabled for games + extra slow mobile BASIC paste; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
+lines.push("FIX195 CORE: Native-style XEX Binary Loader default + clean XEX baseline + RUNAD/INITAD vectors + BASIC direct disabled for games + REALOS tests preserved; native="+(fix195NativeXexInfo||"--")+" mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
 if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX125: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
  if(isRiverProfile())lines.push("RIVER FIX125: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
@@ -7695,7 +7823,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX192 CORE: CPU decimal + G7/GTIA + clean XEX baseline + optional streamed INITAD loader.");
+updatePlayStatus("Emulator bezi. FIX195 CORE: Native XEX Binary Loader je default; segmenty/RUNAD/INITAD bez BASIC direct.");
  if(!playLoopId)playLoop();
 }
 
@@ -7876,10 +8004,7 @@ function pausePlaying(){
  updatePlayStatus("Pozastaveno.");
 }
 function resetPlaying(){
- if(activeXexProfile==='realos')return warmResetRealOsBasicFix171();
- fullStop();clearInputState();
- loadXex(false);
- updatePlayStatus("Aktivní XEX je čistě resetovaný. Dej SPUSTIT / INTRO.");
+ return resetToBasicReadyFix194('main RESET button');
 }
 function singleFramePlay(){
  if(!cpu)loadXex(true);
