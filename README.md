@@ -1,9 +1,7 @@
-# FIX146_TEXT_SPACE_NOISE_GUARD_CORE
-Overlay ZIP pro AtariHelp.eu EMU-09.
+# AtariHelp.eu EMU-09 FIX147_MODE4_BOOT_VISUAL_CORE
 
-Commit summary:
-FIX146 text space noise guard core
+ZIP overlay pro GitHub Desktop. Rozbalit do rootu repozitáře, commitnout a pushnout.
 
-Obsah:
-- app/src/main/assets/emu09_pmg_gtia_overlay.html
-- app/src/main/assets/index.html
+Commit summary: `FIX147 mode4 boot visual core`
+
+Hlavní změna: obecnější ANTIC mode 4/5 128-glyph cesta + boot visual gate bez canvas frameholdu. Zachována rychlost z FIX144/FIX145 a chráněná Montezuma PRELIM + Super Cobra.
