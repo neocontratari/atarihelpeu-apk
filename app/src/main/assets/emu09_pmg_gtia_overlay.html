@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX189_XEX_VISIBLE_INPUT_BRIDGE_CORE / vlastní XEX</title>
+<title>EMU-09 FIX190_REALOS_DIRECT_XEX_PASTE_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX189_XEX_VISIBLE_INPUT_BRIDGE_CORE</h1>
-<p>FIX189 nechava potvrzeny REAL OS/BASIC/GRAPHICS 7/GTIA BARS a XEX bridge z FIX188. Opravuje hlavne viditelnou ovladaci mapu a pridava zive cteni STICK/TRIG/CONSOL pro test ovladani.</p>
+<h1>EMU-09 FIX190_REALOS_DIRECT_XEX_PASTE_CORE</h1>
+<p>FIX190 nechava potvrzeny REAL OS/BASIC/G7/GTIA BARS/XEX bridge a pridava opatrny REAL OS DIRECT XEX pilot. Zpomaluje BASIC TXT/paste na mobilu, aby se radky nemichaly.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl FIX125 jsou <b>vlastní .XEX soubory</b> z telefonu. Loader rozlišuje segmenty, INITAD ($02E2) a RUNAD ($02E0); diagnostika víc hlídá DLIST, SAVMSC, DLI, CHBASE, PMG/GTIA kolize, OS stubs, OS timers, 130XE PORTB a bezpečný ruční start u neznámých her. ROMky od Reného jsou vestavěné. XEX hry zatím zůstávají na bezpečném legacy jádru; servisní REAL OS/BASIC je izolovaný experiment mimo XEX hry.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl FIX125 jsou <b>vlastní .XEX soubory</b> z telefonu. Loader rozlišuje segmenty, INITAD ($02E2) a RUNAD ($02E0); diagnostika víc hlídá DLIST, SAVMSC, DLI, CHBASE, PMG/GTIA kolize, OS stubs, OS timers, 130XE PORTB a bezpečný ruční start u neznámých her. ROMky od Reného jsou vestavěné. FIX190 přidává pilotní REAL OS DIRECT XEX režim: XEX se pořád načte bezpečně jako XEX, ale OS/BASIC ROM služby a vektory se pouští příměji přes ROM vrstvu. Starý chráněný bridge zůstává jako záloha.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -77,6 +77,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary" onclick="loadBuiltinKittGarage()">TEST KiTT GARAZ XEX</button>
 <button class="secondary" onclick="xexBridgeSmokeFix188('donkey')">🧪 XEX BRIDGE DONKEY</button>
 <button class="secondary" onclick="xexBridgeSmokeFix188('cobra')">🧪 XEX BRIDGE COBRA</button>
+<button class="secondary" onclick="xexRealOsDirectSmokeFix190('donkey')">🧬 REAL OS DIRECT DONKEY</button>
+<button class="secondary" onclick="xexRealOsDirectSmokeFix190('cobra')">🧬 REAL OS DIRECT COBRA</button>
 </div>
 <div class="halfgrid">
 <button class="secondary" onclick="compatibilitySnapshot()">📋 KOMPATIBILITA / SNAPSHOT</button>
@@ -102,8 +104,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX189: potvrzeny REALOS/G7/GTIA/XEX bridge; OVLADANI MAPA je ted viditelny panel se zivym STICK/TRIG/CONSOL testem.</div>
-<div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX189 zatim skryta. Klikni na 🎮 OVLÁDÁNÍ MAPA.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX190: REALOS/G7/GTIA/XEX bridge potvrzen; pridany REAL OS DIRECT XEX pilot a delsi pauzy BASIC paste pro mobil.</div>
+<div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX190 zatim skryta. Klikni na 🎮 OVLADANI MAPA; kdyz hra reaguje zvukem/strelem, joystick uz bereme jako OK.</div>
 </section>
 
 <section class="card">
@@ -112,7 +114,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX189: klavesnice beze zmeny; REALOS/G7/GTIA BARS/XEX bridge drzi, OVLADANI MAPA je viditelny zivy panel.</p>
+<p class="tinyhint">FIX190: klavesnice beze zmeny; pomalejsi BASIC TXT/paste pro mobil; REAL OS DIRECT XEX pilot pro dalsi krok.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="promptAtariName()">⌨️ ZADAT JMÉNO</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
@@ -235,6 +237,10 @@ var fix188PokeyAudioInfo="FIX188 audio idle: tap ZVUK TEST or load XEX that writ
 var fix188InputMapInfo="FIX188 input map: joystick->STICK0 $0278/$D300, FIRE->TRIG0 $D010, START/SELECT/OPTION->CONSOL $D01F";
 var fix189InputMapVisible=false;
 var fix189InputLiveInfo="FIX189 visible input map waiting";
+var fix190RealOsDirectXexMode=false;
+var fix190NextXexDirect=false;
+var fix190DirectXexInfo="FIX190 REAL OS DIRECT XEX: idle";
+var fix190PasteInfo="FIX190 paste slow mobile mode: idle";
 var fix189LastInputPanelFrame=-999;
 var cobraForcedNmiCount=0;
 var cobraForcedNmiLast="--";
@@ -301,6 +307,7 @@ function fix125CoreModeForProfile(){
   // LEGACY = stabilní RAM/ANTIC cesta, ROM_PROBE = vestavěný OS/BASIC jen pro problémové boot/OS XEXy.
   try{
     if(activeXexProfile==='realos')return 'REAL_OS_BOOT';
+    if(fix190RealOsDirectXexMode)return 'REAL_OS_XEX_DIRECT';
     if(isDonkeyFamilyProfile() || isCobraProfile() || isArkanoidProfile() || isPitstopProfile() || isRiverProfile() || isPiTTProfile() || activeXexProfile==='kittgarage' || activeXexProfile==='galaxian')return 'LEGACY_PROTECTED';
     if(isMontezumaProfile())return 'MONTEZUMA_SAFE_LEGACY';
     if(isMoonPatrolProfile() || isPacmanProfile() || activeXexProfile==='generic')return 'ROM_PROBE';
@@ -315,7 +322,7 @@ function fix124RomProbeProfile(){
   try{return fix125CoreModeForProfile()==='ROM_PROBE' || fix125CoreModeForProfile()==='REAL_OS_BOOT';}
   catch(e){return false;}
 }
-function fix124RomEnabledForProfile(){var m=fix125CoreModeForProfile();return m==='ROM_PROBE' || m==='REAL_OS_BOOT' || !!fix154RealOsBootMode;}
+function fix124RomEnabledForProfile(){var m=fix125CoreModeForProfile();return m==='ROM_PROBE' || m==='REAL_OS_BOOT' || m==='REAL_OS_XEX_DIRECT' || !!fix154RealOsBootMode;}
 function fix124ShouldHookBasicEntry(a){a&=65535;return isBasicRomAddr(a) && !loadedXexByteAt(a) && fix124RomEnabledForProfile();}
 // FIX125: René dodal OS/BASIC ROMy a výslovně chce, aby emulátor neběžel jen na slepém stubu.
 // Proto jsou mapované vestavěně: tester nic nenahrává, CPU/renderer je čte jako Atari XL OS + BASIC ROM.
@@ -721,7 +728,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX189_XEX_VISIBLE_INPUT_BRIDGE_CORE";
+var EMU_BUILD_TAG="FIX190_REALOS_DIRECT_XEX_PASTE_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -2449,17 +2456,18 @@ function queueBasicProgramTextFix171(txt,name){
    var text=cleaned.join('\n')+'\n';
    for(var j=0;j<text.length;j++){
      var ch=text.charAt(j);
-     if(ch==='\n'){atariKeyQueue.push({code:0x9B,hold:170,gap:520});continue;}
+     if(ch==='\n'){atariKeyQueue.push({code:0x9B,hold:230,gap:1050});continue;}
      var a=realOsAtasciiForKeyFix172(ch);
-     if(a!==0xFF)atariKeyQueue.push({code:a&255,hold:115,gap:45});
+     if(a!==0xFF)atariKeyQueue.push({code:a&255,hold:135,gap:70});
      else fix172KeyboardMapInfo='skipped unsupported TXT char "'+ch+'" frame '+playFrameNo;
    }
    if(!cpu)loadXex(true);
    if(!playMode)startPlaying();
    if(!atariKeyTimer)pumpAtariKeyQueue();
    fix171KeyboardInfo='BASIC TXT queued '+cleaned.length+' lines from '+(name||'text')+' frame '+playFrameNo;
-   updatePlayStatus('FIX181 BASIC TXT: posilam '+cleaned.length+' radku rychleji, ale s pauzou po RETURN. Pockej, az se dopise.');
-   log('FIX181 BASIC TXT IMPORT: '+(name||'text')+' lines='+cleaned.length+' first="'+cleaned[0].slice(0,48)+'"');
+   fix190PasteInfo='FIX190 BASIC TXT/Paste: mobile slow mode lines '+cleaned.length+' RETURN gap 1050ms char gap 70ms frame '+playFrameNo;
+   updatePlayStatus('FIX190 BASIC TXT: posilam '+cleaned.length+' radku pomaleji pro mobil. Pockej, az se dopise; pak teprve RUN/RESET.');
+   log('FIX190 BASIC TXT IMPORT: '+(name||'text')+' lines='+cleaned.length+' first="'+cleaned[0].slice(0,48)+'"');
  }
  if(activeXexProfile!=='realos' || !fix154RealOsBootMode){
    startRealOsBasicBootFix157('basic');
@@ -2535,11 +2543,14 @@ function parseAndLoadXexBytes(bytes,light){
  else entry=0x2000;
  xexInfo={run:runVec||0,inits:inits,entry:entry,warnings:[],bad:bad};
  activeXexProfile=detectXexProfile(bytes,entry,runVec||0);
+ fix190RealOsDirectXexMode=!!fix190NextXexDirect;
+ fix190NextXexDirect=false;
+ if(fix190RealOsDirectXexMode){fix190DirectXexInfo='FIX190 REAL OS DIRECT XEX active profile '+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' frame '+playFrameNo;}
  resetAdaptiveRuntimeStateLight();
  pendingInitAddrs=goodEntry(runVec)?inits.slice(0):inits.slice(0,Math.max(0,inits.length-1));
  ranInitAddrs=[];
  xexInfo.warnings=xexWarningsForEntry(entry);
- fix188XexBridgeInfo='FIX189 XEX bridge loaded profile '+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' realos isolated frame '+playFrameNo;
+ fix188XexBridgeInfo=(fix190RealOsDirectXexMode?('FIX190 REAL OS DIRECT XEX loaded profile '+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' OS/BASIC ROM direct pilot frame '+playFrameNo):('FIX190 protected XEX bridge loaded profile '+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' realos isolated frame '+playFrameNo));
  if(activeXexProfile==="pitt")detectPittTextDlists();
  installOsKeyboardReturnStub();
  installGenericOsRomStubs();
@@ -2615,7 +2626,7 @@ function loadXex(light){
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX188-XEX-BRIDGE-AUDIO-INPUT-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX190-REALOS-DIRECT-XEX-PASTE-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -7040,8 +7051,8 @@ function renderInputMapPanelFix189(force){
  var dirs=[];
  if(input.up)dirs.push('UP'); if(input.jump)dirs.push('DOWN'); if(input.left)dirs.push('LEFT'); if(input.right)dirs.push('RIGHT'); if(input.fire)dirs.push('FIRE'); if(input.start)dirs.push('START'); if(input.select)dirs.push('SELECT'); if(input.option)dirs.push('OPTION');
  var active=dirs.length?dirs.join('+'):'neutral';
- fix189InputLiveInfo='FIX189 INPUT LIVE: active='+active+' STICK0 $'+hex(stick,1)+' PORTA $'+hex(porta,2)+' TRIG0 '+trig+' CONSOL $'+hex(consol,1)+' CH $'+hex(ch,2)+' key $'+hex(key,2)+' profile '+activeXexProfile+' frame '+playFrameNo;
- p.textContent='OVLADANI MAPA FIX189 - ZIVY TEST\n'
+ fix189InputLiveInfo='FIX190 INPUT LIVE: active='+active+' STICK0 $'+hex(stick,1)+' PORTA $'+hex(porta,2)+' TRIG0 '+trig+' CONSOL $'+hex(consol,1)+' CH $'+hex(ch,2)+' key $'+hex(key,2)+' profile '+activeXexProfile+' frame '+playFrameNo;
+ p.textContent='OVLADANI MAPA FIX190 - ZIVY TEST\n'
   +'Joystick kruh / stary kriz -> STICK0 shadow $0278 a PORTA $D300 (active low)\n'
   +'FIRE -> TRIG0 $D010 a STRIG0 $0284 (active low, 0=stisk)\n'
   +'TAP START / SELECT / OPTION -> CONSOL $D01F (active low)\n'
@@ -7058,7 +7069,7 @@ function showInputMapFix188(){
  fix189InputMapVisible=!fix189InputMapVisible;
  var p=document.getElementById('inputMapPanel');
  if(p){p.classList.toggle('visible',fix189InputMapVisible);}
- fix188InputMapInfo='FIX189 INPUT MAP visible='+(fix189InputMapVisible?'ON':'OFF')+': joystick -> STICK0 $0278/$D300, FIRE -> TRIG0 $D010, START/SELECT/OPTION -> CONSOL $D01F; live panel frame '+playFrameNo;
+ fix188InputMapInfo='FIX190 INPUT MAP visible='+(fix189InputMapVisible?'ON':'OFF')+': joystick -> STICK0 $0278/$D300, FIRE -> TRIG0 $D010, START/SELECT/OPTION -> CONSOL $D01F; live panel frame '+playFrameNo;
  renderInputMapPanelFix189(true);
  updatePlayStatus(fix188InputMapInfo);
  log(fix188InputMapInfo);
@@ -7068,10 +7079,32 @@ function showInputMapFix188(){
 function xexBridgeSmokeFix188(which){
  which=String(which||'donkey').toLowerCase();
  ensureAudio();
- fix188XexBridgeInfo='FIX189 XEX bridge smoke requested '+which+': cold XEX load, REALOS scratch/GTIA test state must not leak, audio armed='+(audioReady?'yes':'waiting')+' frame '+playFrameNo;
+ fix190RealOsDirectXexMode=false;
+ fix190NextXexDirect=false;
+ fix188XexBridgeInfo='FIX190 protected XEX bridge smoke requested '+which+': cold XEX load, REALOS scratch/GTIA test state must not leak, audio armed='+(audioReady?'yes':'waiting')+' frame '+playFrameNo;
  log(fix188XexBridgeInfo);
  if(which.indexOf('cobra')>=0)return loadBuiltinSuperCobra();
  return loadBuiltinDonkeyKong();
+}
+function fix190StartOptionPulseAfterLoad(){
+ try{
+   input.start=true; input.option=true; syncInputShadows(); renderInput();
+   setTimeout(function(){try{input.start=false;input.option=false;syncInputShadows();renderInput();}catch(e){}},720);
+ }catch(e){}
+}
+function xexRealOsDirectSmokeFix190(which){
+ which=String(which||'donkey').toLowerCase();
+ ensureBuiltinAtariRomImages();
+ ensureAudio();
+ fix190NextXexDirect=true;
+ fix190RealOsDirectXexMode=true;
+ fix190DirectXexInfo='FIX190 REAL OS DIRECT XEX requested '+which+': OS/BASIC ROM hooks enabled for this XEX load, START+OPTION pulse after cold reset, protected bridge available as fallback frame '+playFrameNo;
+ fix188XexBridgeInfo=fix190DirectXexInfo;
+ log(fix190DirectXexInfo);
+ var r=(which.indexOf('cobra')>=0)?loadBuiltinSuperCobra():loadBuiltinDonkeyKong();
+ fix190StartOptionPulseAfterLoad();
+ updatePlayStatus('FIX190 REAL OS DIRECT '+which.toUpperCase()+': pilotni rezim pres ROM vektory + kratky START+OPTION puls. Kdyby to bylo horsi, pouzij zpatky XEX BRIDGE.');
+ return r;
 }
 
 function toggleAudio(){
@@ -7465,8 +7498,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX189 XEX VISIBLE INPUT BRIDGE CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX189, bezi stary APK/ZIP nebo stary label.");
+lines.push("COMPAT SNAPSHOT FIX190 REALOS DIRECT XEX PASTE CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX190, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -7485,6 +7518,8 @@ lines.push("XEX BRIDGE FIX188: "+(fix188XexBridgeInfo||"--"));
 lines.push("POKEY AUDIO FIX188: "+(fix188PokeyAudioInfo||"--"));
 lines.push("INPUT MAP FIX188: "+(fix188InputMapInfo||"--"));
 lines.push("INPUT LIVE FIX189: "+(fix189InputLiveInfo||"--"));
+lines.push("REAL OS DIRECT XEX FIX190: "+(fix190DirectXexInfo||"--")+" active="+(fix190RealOsDirectXexMode?"yes":"no"));
+lines.push("BASIC PASTE FIX190: "+(fix190PasteInfo||"--"));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
 lines.push("DLI CAP FIX181 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX125: safer multigame boot + code-scored Moon handoff + Pac BASIC/OS diagnostic; DLI RAM guard zůstává vypnutý.");
@@ -7530,7 +7565,7 @@ if(activeXexProfile==='realos')lines.push("ANTIC GRID FIX182: "+(fix181AnticGrid
 lines.push("OS STUBS FIX181 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
 lines.push("FIX181 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
 lines.push("SETVBV FIX181 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
-lines.push("FIX189 CORE: confirmed REALOS/G7/GTIA/XEX bridge kept + visible input map HUD + live STICK/TRIG/CONSOL readout + protected XEX baseline; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
+lines.push("FIX190 CORE: confirmed REALOS/G7/GTIA/XEX bridge kept + REAL OS DIRECT XEX pilot + slower mobile BASIC paste + visible input map HUD; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
 if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX125: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
  if(isRiverProfile())lines.push("RIVER FIX125: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
