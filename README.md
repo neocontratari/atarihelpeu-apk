@@ -1,7 +1,9 @@
-# AtariHelp.eu EMU-09 FIX167
+# AtariHelp.eu EMU-09 FIX168
 
-Overlay pro Android WebView Atari 800/XL/XE/130XE XEX emulator.
+Overlay pro GitHub Desktop.
 
-Build: FIX167_REALOS_CENTERED_BORDER_GTIA_CORE
+Build: FIX168_REALOS_GTIA_SHADOW_PRIOR_CORE
 
-Hlavni zmena: REAL OS/BASIC viewport uz nepridava dodatecny generic y-offset. DLIST ma vlastni horni ANTIC blank radky, takze pri yOff=0 vyjde cerny monitor/border nahore i dole vyvazeneji. GRAPHICS 3 modeline oprava z FIX164 a BASIC klavesnice/uvozovky zustavaji zachovane.
+Zaklad: potvrzeny FIX167 REAL OS/BASIC monitor, klavesnice a GRAPHICS 3.
+
+FIX168 pridava obecnou GTIA synchronizaci shadow registru COLOR0-4, PCOLR0-3 a PRIOR do hardwarovych COLPF/COLBK, PCOLR a PRIOR. River/PiTT specialni cesty zustavaji chranene.
