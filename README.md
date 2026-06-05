@@ -1,8 +1,8 @@
-AtariHelp.eu EMU-09 FIX199 HW DLIST TRUST SEGMENT CORE
+# AtariHelp.eu EMU-09 FIX200_CAS_WAV_DLI_TIMING_CORE
 
-Overlay ZIP pro GitHub Desktop. Rozbalit do korene repozitare.
+Overlay pro Android WebView Atari 800/XL/XE/130XE XEX emulator.
 
 Commit summary:
-FIX199 hw dlist trust segment core
+`FIX200 cas wav dli timing core`
 
-Hlavni zmena: FIX198 full RAM scan uz nesmi prebit skutecny HW/SDLST DLIST.
+Viz `README_FIX200_CAS_WAV_DLI_TIMING_CORE.txt`.
