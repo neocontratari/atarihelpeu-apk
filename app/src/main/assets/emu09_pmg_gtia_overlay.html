@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX183 SAFE GRAPHICS7 GTIA CORE / vlastní XEX</title>
+<title>EMU-09 FIX184_REALOS_GTIA_BARS_BASICSAFE_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX183 SAFE GRAPHICS7 GTIA CORE</h1>
-<p>FIX183 vraci stabilni BASIC/GRAPHICS 7 cestu. Klavesnici nechavam funkcne beze zmeny. GTIA testy jsou izolovane mimo OS/BASIC RAM, aby neprepsaly READY/DLIST.</p>
+<h1>EMU-09 FIX184_REALOS_GTIA_BARS_BASICSAFE_CORE</h1>
+<p>FIX184 drzi stabilni BASIC/GRAPHICS 7 cestu, opravuje GTIA 9/10/11 testy na ciste pruhy a jasne oddeluje diagnosticky obraz od BASIC editoru.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -98,7 +98,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX183: navrat do stabilni BASIC/GRAPHICS7 cesty + bezpecne GTIA testy mimo OS RAM.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX184: BASIC/GRAPHICS7 stabilizace + GTIA 9/10/11 pruhove testy mimo OS RAM.</div>
 </section>
 
 <section class="card">
@@ -107,15 +107,15 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX183: klavesnice beze zmeny; GRAPHICS 7 stabilni, GTIA testy zapisují mimo OS/BASIC oblast RAM.</p>
+<p class="tinyhint">FIX184: klavesnice beze zmeny; GRAPHICS 7 zustava BASIC test, GTIA 9/10/11 jsou diagnosticke pruhy mimo OS/BASIC RAM.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="promptAtariName()">⌨️ ZADAT JMÉNO</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
 <button class="secondary compact" onclick="pickBasicTxtFileFix171()">📄 BASIC TXT</button>
 <button class="secondary compact" onclick="promptBasicPasteFix171()">📋 VLOZIT PROGRAM</button>
-<button class="secondary compact" onclick="queueGtiaBasicDemoFix177(9)">GTIA 9 TEST</button>
-<button class="secondary compact" onclick="queueGtiaBasicDemoFix177(10)">GTIA 10 TEST</button>
-<button class="secondary compact" onclick="queueGtiaBasicDemoFix177(11)">GTIA 11 TEST</button>
+<button class="secondary compact" onclick="queueGtiaBasicDemoFix177(9)">GTIA 9 BARS</button>
+<button class="secondary compact" onclick="queueGtiaBasicDemoFix177(10)">GTIA 10 BARS</button>
+<button class="secondary compact" onclick="queueGtiaBasicDemoFix177(11)">GTIA 11 BARS</button>
 <button class="secondary compact" onclick="forceGraphics7EdgeTestFix180()">GRAPHICS 7 EDGE TEST</button>
 </div>
 <div class="keygrid" id="atariKeyboard"></div>
@@ -706,7 +706,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX183_SAFE_GRAPHICS7_GTIA_CORE";
+var EMU_BUILD_TAG="FIX184_REALOS_GTIA_BARS_BASICSAFE_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1073,11 +1073,11 @@ function makeLogFileName(reason){
  var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
  var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
  var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
- return 'atarihelp-FIX183-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
+ return 'atarihelp-FIX184-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX183 SAFE GRAPHICS7 GTIA CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX184 REALOS GTIA BARS BASICSAFE CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -2204,18 +2204,17 @@ function promptBasicPasteFix171(){
 }
 
 function forceGraphics7EdgeTestFix180(){
-  // FIX183: missing button handler from FIX180. Use real BASIC GRAPHICS 7 path, not direct RAM.
-  // This verifies 0..159 / 0..95 without touching DLIST internals.
+  // FIX184: real BASIC GRAPHICS 7 path, no direct RAM. Keep it boring and stable:
+  // exact 0..159 / 0..95 border plus diagonals. No COLOR 0 erase loop.
   var prog=[
     '10 GRAPHICS 7',
     '20 COLOR 1:PLOT 0,0:DRAWTO 159,0:DRAWTO 159,95:DRAWTO 0,95:DRAWTO 0,0',
     '30 COLOR 2:PLOT 0,0:DRAWTO 159,95',
     '40 COLOR 3:PLOT 159,0:DRAWTO 0,95',
-    '50 POSITION 2,10:? "G7 EDGE"',
-    '60 GOTO 60',
+    '50 GOTO 50',
     'RUN'
   ].join('\n');
-  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 EDGE FIX183');
+  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 EDGE FIX184');
 }
 
 function queueGtiaBasicDemoFix177(mode){
@@ -2228,11 +2227,18 @@ function gtiaSetRegPairFix179(sh,hw,val){
  try{ram[sh&65535]=val;ram[hw&65535]=val;if(writeSeen){writeSeen[sh&65535]=1;writeSeen[hw&65535]=1;}}catch(e){}
 }
 function gtiaPatternByteFix179(mode,x,y){
- var a=((x+y)&15), b=((x*3+y*2)&15);
- if(mode===10){a=(x+y)%9;b=(x*2+y+3)%9;}
- if(a===0)a=(mode===10)?1:1;
- if(b===0)b=(mode===10)?2:2;
- return ((a&15)<<4)|(b&15);
+ // FIX184: visible GTIA test pattern. Previous checker pattern looked like random garbage
+ // and made it impossible to tell if the GTIA renderer was correct. Atari BASIC
+ // GRAPHICS 9/10/11 are 80 logical GTIA pixels wide over ANTIC F: each byte
+ // stores two 4-bit GTIA pixels. Fill with stable vertical bars.
+ function idxForNib(n){
+   n=Math.max(0,Math.min(79,n|0));
+   if(mode===10){return 1+Math.floor(n*8/80);}
+   if(mode===9){return 1+Math.floor(n*15/80);}
+   return Math.floor(n*16/80);
+ }
+ var hi=idxForNib((x|0)*2), lo=idxForNib((x|0)*2+1);
+ return ((hi&15)<<4)|(lo&15);
 }
 function fillGtiaScreenMemoryFix179(mode,scr){
  var nz=0,sample=[];
@@ -2244,7 +2250,8 @@ function fillGtiaScreenMemoryFix179(mode,scr){
      if(y===0 && x<8)sample.push(hex(v,2));
    }
  }
- fix177GtiaRenderInfo='direct fill pending GTIA mode '+mode+' scr $'+hex(scr,4)+' nz '+nz+' sample '+sample.join(' ')+' frame '+playFrameNo;
+ fix177GtiaRenderInfo='direct fill pending GTIA mode '+mode+' scr $'+hex(scr,4)+' nz '+nz+' sample '+sample.join(' ')+' frame '+playFrameNo+' BARPAT FIX184';
+ fix184GtiaBarsInfo='GTIA '+mode+' bars 80px over ANTIC F scr $'+hex(scr,4)+' nz '+nz+' sample '+sample.join(' ')+' frame '+playFrameNo;
  return {nz:nz,sample:sample.join(' ')};
 }
 function installGtiaDisplayListFix179(mode){
@@ -2277,7 +2284,7 @@ function installGtiaDisplayListFix179(mode){
  // as lastGoodDlist, otherwise BASIC fallback can later draw image bytes as a display list.
  var fill=fillGtiaScreenMemoryFix179(mode,scr);
  fix179GtiaDirectMode=mode;fix179GtiaDirectUntil=playFrameNo+900;
- fix179GtiaDirectInfo='GTIA direct test mode '+mode+' dl $'+hex(dl,4)+' scr $'+hex(scr,4)+' prior $'+hex(prior,2)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF FIX183';
+ fix179GtiaDirectInfo='GTIA direct test mode '+mode+' dl $'+hex(dl,4)+' scr $'+hex(scr,4)+' prior $'+hex(prior,2)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF/BARS FIX184';
  fix170GtiaModeInfo='GTIA GRAPHICS '+mode+' active over ANTIC $F PRIOR $'+hex(prior,2)+' COLBK $'+hex(ram[0xD01A]||0,2)+' FIX181 direct-fill frame '+playFrameNo;
  return true;
 }
@@ -2289,7 +2296,7 @@ function keepGtiaDirectFillAliveFix179(){
    fix181GtiaKeepAliveLastFrame=playFrameNo;
    // Refill only the screen bytes, do not rebuild DLIST/OS state every frame.
    var fill=fillGtiaScreenMemoryFix179(fix179GtiaDirectMode|0, fix179GtiaDirectScr&65535);
-   fix179GtiaDirectInfo='GTIA direct keep mode '+fix179GtiaDirectMode+' dl $'+hex(fix179GtiaDirectDl,4)+' scr $'+hex(fix179GtiaDirectScr,4)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF FIX183';
+   fix179GtiaDirectInfo='GTIA direct keep mode '+fix179GtiaDirectMode+' dl $'+hex(fix179GtiaDirectDl,4)+' scr $'+hex(fix179GtiaDirectScr,4)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF/BARS FIX184';
  }catch(e){fix179GtiaDirectInfo='GTIA keep recover '+(e&&e.message?e.message:e);}
 }
 function forceGtiaVisualTestFix179(mode){
@@ -2309,8 +2316,8 @@ function forceGtiaVisualTestFix179(mode){
      fix179GtiaDirectUntil=playFrameNo+2400;
      try{renderAnticDisplay();}catch(re){log('FIX181 GTIA render test recover: '+(re&&re.stack?re.stack:re));}
      try{renderRegs();renderSegments();}catch(_ui){}
-     updatePlayStatus('FIX181 GTIA '+mode+': direct-fill test zobrazen. CPU je pauznuty, tlacitka zustavaji aktivni. RESET/READY vrati BASIC.');
-     log('FIX181 GTIA DIRECT TEST: mode='+mode+' '+fix179GtiaDirectInfo);
+     updatePlayStatus('FIX184 GTIA '+mode+': diagnosticky pruhovy obraz, nepise BASIC kod. CPU je pauznuty, tlacitka zustavaji aktivni. RESET/READY vrati BASIC.');
+     log('FIX184 GTIA DIRECT TEST: mode='+mode+' '+fix179GtiaDirectInfo+' / '+(fix184GtiaBarsInfo||'--'));
    }catch(e){
      log('FIX181 GTIA DIRECT TEST ERROR: '+(e&&e.stack?e.stack:e));
      updatePlayStatus('FIX181 GTIA test chyba, ale UI zustava aktivni: '+(e&&e.message?e.message:e));
@@ -4206,11 +4213,12 @@ function auditAnticGridFix181(mode, addr, y, bytes, px, rowH){
     var w = 0, h = info.scan || 1, label = 'ANTIC $'+hex(mode,1);
     if(mode === 13){ w = 160; label = 'GRAPHICS 7 / ANTIC $D'; }
     else if(mode === 14){ w = 160; label = 'ANTIC $E'; }
-    else if(mode === 15){ w = gtiaModeNumberFix170(mode) ? 160 : 320; label = (gtiaModeNumberFix170(mode)?('GTIA '+gtiaModeNumberFix170(mode)+' over '):'')+'ANTIC $F'; }
+    else if(mode === 15){ w = gtiaModeNumberFix170(mode) ? 80 : 320; label = (gtiaModeNumberFix170(mode)?('GTIA '+gtiaModeNumberFix170(mode)+' over '):'')+'ANTIC $F'; }
     else { w = (bytes||info.bytes||40) * (info.kind==='map2'?4:8) * (px||info.px||1); }
     var ok = true, warn = '';
     if(mode === 13 && ((bytes!==40) || ((px||2)!==2))) { ok=false; warn=' expected b40 px2 for 160x96'; }
     if(mode === 15 && bytes!==40) { ok=false; warn=' expected b40 for GTIA/ANTIC F'; }
+    if(mode === 15 && gtiaModeNumberFix170(mode) && w!==80) { ok=false; warn=' expected 80 logical GTIA pixels'; }
     fix181AnticGridInfo = label+' b'+bytes+' px'+px+' rowH '+rowH+' logical '+w+'x'+(mode===13?96:(mode===15?192:h))+' addr $'+hex(addr&65535,4)+' y '+y+' '+(ok?'OK':'WARN '+warn)+' frame '+playFrameNo;
   }catch(e){ fix181AnticGridInfo='audit error '+(e&&e.message?e.message:e); }
 }
@@ -4224,6 +4232,7 @@ function auditAnticGridFix180(mode, addr, y, bytes, px, rowH){
 var fix170GtiaModeInfo='reset';
 var fix177GtiaRenderInfo='reset';
 var fix179GtiaDirectInfo='reset';
+var fix184GtiaBarsInfo='reset';
 var fix179GtiaDirectUntil=0;
 function endGtiaDirectTestFix183(reason){
   try{
@@ -7245,8 +7254,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX183 SAFE GRAPHICS7 GTIA CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX183, běží starý APK/ZIP nebo starý label.");
+lines.push("COMPAT SNAPSHOT FIX184 REALOS GTIA BARS BASICSAFE CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX184, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -7258,6 +7267,7 @@ lines.push("GTIA DLI BAND FIX181: "+(fix169GtiaDliBandInfo||"--"));
 lines.push("GTIA MODE FIX181: "+(fix170GtiaModeInfo||"--"));
 lines.push("GTIA RENDER FIX181: "+(fix177GtiaRenderInfo||"--"));
 lines.push("GTIA DIRECT FIX181: "+(fix179GtiaDirectInfo||"--"));
+lines.push("GTIA BARS FIX184: "+(fix184GtiaBarsInfo||"--"));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
 lines.push("DLI CAP FIX181 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX125: safer multigame boot + code-scored Moon handoff + Pac BASIC/OS diagnostic; DLI RAM guard zůstává vypnutý.");
@@ -7303,7 +7313,7 @@ if(activeXexProfile==='realos')lines.push("ANTIC GRID FIX182: "+(fix181AnticGrid
 lines.push("OS STUBS FIX181 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
 lines.push("FIX181 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
 lines.push("SETVBV FIX181 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
-lines.push("FIX181 CORE: REALOS GTIA direct-fill tests + ANTIC grid ReferenceError fix + safe test buttons + keyboard kept + protected XEX baseline; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
+lines.push("FIX184 CORE: REALOS BASIC/GRAPHICS7 safe + GTIA 9/10/11 bar diagnostics + keyboard kept + protected XEX baseline; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
 if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX125: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
  if(isRiverProfile())lines.push("RIVER FIX125: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
@@ -7342,7 +7352,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX183 CORE: safe BASIC/GRAPHICS7 + isolated GTIA test buffers + protected XEX baseline.");
+updatePlayStatus("Emulator bezi. FIX184 CORE: BASIC/GRAPHICS7 safe + GTIA 9/10/11 bars + protected XEX baseline.");
  if(!playLoopId)playLoop();
 }
 
