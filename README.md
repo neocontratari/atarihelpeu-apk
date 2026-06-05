@@ -1,9 +1,7 @@
-# AtariHelp.eu EMU-09 FIX166 overlay
+# AtariHelp.eu EMU-09 FIX167
 
-Build tag: `FIX166_REALOS_MONITOR_BORDER_GTIA_CORE`
+Overlay pro Android WebView Atari 800/XL/XE/130XE XEX emulator.
 
-Tento overlay je pripraveny pro rozbaleni do lokalniho repozitare pres GitHub Desktop workflow.
+Build: FIX167_REALOS_CENTERED_BORDER_GTIA_CORE
 
-Hlavni oprava: REAL OS/BASIC monitor model. Cerna oblast monitoru/borderu zustava cerna; modre je jen Atari editor/playfield okno. GRAPHICS 3 oprava z FIX164 zustava zachovana.
-
-Commit summary: `FIX166 realos monitor border gtia core`
+Hlavni zmena: REAL OS/BASIC viewport uz nepridava dodatecny generic y-offset. DLIST ma vlastni horni ANTIC blank radky, takze pri yOff=0 vyjde cerny monitor/border nahore i dole vyvazeneji. GRAPHICS 3 modeline oprava z FIX164 a BASIC klavesnice/uvozovky zustavaji zachovane.
