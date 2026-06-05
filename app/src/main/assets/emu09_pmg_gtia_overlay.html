@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX181 REALOS TEST BUTTON RECOVER GTIA CORE / vlastní XEX</title>
+<title>EMU-09 FIX182 REALOS RECOVER DLIST GRID CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,7 +36,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX181 REALOS TEST BUTTON RECOVER GTIA CORE</h1>
+<h1>EMU-09 FIX182 REALOS RECOVER DLIST GRID CORE</h1>
 <p>FIX181 navazuje na FIX179. Klavesnici nechavam funkcne beze zmeny. Overuji ANTIC grid pro GRAPHICS 7 / ANTIC D, ANTIC E a ANTIC F / GTIA 9-11, pridavam GRAPHICS 7 EDGE test a snapshot diagnostiku.</p>
 </div>
 </div>
@@ -98,7 +98,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX181: ANTIC grid audit + GRAPHICS 7 EDGE + GTIA 9/10/11 direct testy.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX182: stabilni BASIC DLIST fallback + opraveny ANTIC grid odkazy + GTIA direct testy.</div>
 </section>
 
 <section class="card">
@@ -107,7 +107,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX181: Atari/QWERTY klavesnice beze zmeny; ANTIC grid D/E/F audit, GRAPHICS 7 EDGE test a GTIA 9/10/11 direct testy.</p>
+<p class="tinyhint">FIX182: Atari/QWERTY klavesnice beze zmeny; BASIC DLIST fallback, GRAPHICS 7 EDGE a GTIA 9/10/11 testy.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="promptAtariName()">⌨️ ZADAT JMÉNO</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
@@ -226,7 +226,7 @@ var cobraForcedNmiLast="--";
 var genericTrapRecoveries=0;
 var genericTrapRecoverLast="--";
 var arkanoidAssistBlocked=0;
-var fix96RegressionGuardInfo="FIX181 safe baseline + REAL ROM BOOT visible audit + games protected";
+var fix96RegressionGuardInfo="FIX182 safe baseline + REAL ROM BOOT visible audit + games protected";
 var fix148MapGuardInfo="reset";
 var fix148LastMapKey="";
 var fix148DonkeyVariantInfo="reset";
@@ -706,7 +706,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX181_REALOS_TEST_BUTTON_RECOVER_GTIA_CORE";
+var EMU_BUILD_TAG="FIX182_REALOS_RECOVER_DLIST_GRID_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1073,11 +1073,11 @@ function makeLogFileName(reason){
  var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
  var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
  var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
- return 'atarihelp-FIX181-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
+ return 'atarihelp-FIX182-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX181 REALOS TEST BUTTON RECOVER GTIA CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX182 REALOS RECOVER DLIST GRID CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -1566,7 +1566,7 @@ function runCoreSmokeMatrix(){
    restoreCoreMatrixEmuState(savedState);
  }
  var report=[
-    "AtariHelp.eu EMU-09 FIX181 DONKEY STRICT 466F SPEED MATRIX TXT",
+    "AtariHelp.eu EMU-09 FIX182 DONKEY STRICT 466F SPEED MATRIX TXT",
    "time="+new Date().toISOString(),
    "build="+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing'),
    "restoredXex="+currentXexName,
@@ -3647,6 +3647,20 @@ function getDlistPtr(){
    if(validPtrForMiniAtari(a0) && (m0.displayOps>=2 || m0.visibleScan>=16)){lastGoodDlist=a0;lastGoodDlistProfile=activeXexProfile;fix154RealOsLastDl=a0;return resolveDlistPtr(a0)||a0;}
    var a1=s||h; var m1=dlistMetricsAt(a1);
    if(validPtrForMiniAtari(a1) && (m1.displayOps>=2 || m1.visibleScan>=16)){lastGoodDlist=a1;lastGoodDlistProfile=activeXexProfile;fix154RealOsLastDl=a1;return resolveDlistPtr(a1)||a1;}
+   // FIX182: if BASIC temporarily leaves SDLST/HW DLIST at zero or garbage after an error/RESET,
+   // never let the renderer draw from $0000. Restore last good REALOS DLIST or the standard
+   // XL editor DLIST $9C20 when SAVMSC still points at the editor screen.
+   if(lastGoodDlistProfile===activeXexProfile && validPtrForMiniAtari(lastGoodDlist) && dlistLooksValid(lastGoodDlist)){
+     lastRejectedDlistInfo='realos fallback lastGood $'+hex(lastGoodDlist,4)+' over shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4);
+     fix154RealOsLastDl=lastGoodDlist;
+     return resolveDlistPtr(lastGoodDlist)||lastGoodDlist;
+   }
+   var sav=(ram[0x58]|(ram[0x59]<<8))&65535;
+   if(sav===0x9C40 && dlistLooksValid(0x9C20)){
+     lastGoodDlist=0x9C20; lastGoodDlistProfile=activeXexProfile; fix154RealOsLastDl=0x9C20;
+     lastRejectedDlistInfo='realos fallback editor $9C20 over shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4);
+     return 0x9C20;
+   }
    lastRejectedDlistInfo='realos no drawable OS DLIST shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4);
    return 0;
  }
@@ -4168,6 +4182,12 @@ function auditAnticGridFix181(mode, addr, y, bytes, px, rowH){
     fix181AnticGridInfo = label+' b'+bytes+' px'+px+' rowH '+rowH+' logical '+w+'x'+(mode===13?96:(mode===15?192:h))+' addr $'+hex(addr&65535,4)+' y '+y+' '+(ok?'OK':'WARN '+warn)+' frame '+playFrameNo;
   }catch(e){ fix181AnticGridInfo='audit error '+(e&&e.message?e.message:e); }
 }
+// FIX182: hard aliases for old FIX180 names left in older paths. They must never throw.
+var fix180AnticGridInfo = fix181AnticGridInfo;
+function auditAnticGridFix180(mode, addr, y, bytes, px, rowH){
+  auditAnticGridFix181(mode, addr, y, bytes, px, rowH);
+  fix180AnticGridInfo = fix181AnticGridInfo;
+}
 
 var fix170GtiaModeInfo='reset';
 var fix177GtiaRenderInfo='reset';
@@ -4252,7 +4272,7 @@ function gtiaByteNibblesFix177(v){
  return [(v>>4)&15,v&15];
 }
 function drawBitmapModeLineWithCssFix163(g,addr,y,mode,cols,rowH){
- rowH=rowH||1; var info=anticModeInfo(mode); var bytes=info.bytes||40; var px=info.px||2; auditAnticGridFix180(mode,addr,y,bytes,px,rowH);
+ rowH=rowH||1; var info=anticModeInfo(mode); var bytes=info.bytes||40; var px=info.px||2; auditAnticGridFix181(mode,addr,y,bytes,px,rowH);
  var gtiaCols=gtiaModeCssColorsFix170(mode);
  if(gtiaCols){
    for(var gcol=0;gcol<bytes;gcol++){
@@ -6333,7 +6353,7 @@ function imgMapLineVariable(data,addr,y,mode,cols){
  var info=anticModeInfo(mode);
  var drawBytes=info.bytes||40;
  var px=info.px||2;
- auditAnticGridFix180(mode,addr,y,drawBytes,px,1);
+ auditAnticGridFix181(mode,addr,y,drawBytes,px,1);
  if(info.kind==='map1'){
    var gtiaRgb=gtiaModeRgbColorsFix170(mode);
    if(gtiaRgb){
@@ -7171,8 +7191,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX181 REALOS KEYCAP LATCH GTIA CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX181, běží starý APK/ZIP nebo starý label.");
+lines.push("COMPAT SNAPSHOT FIX182 REALOS RECOVER DLIST GRID CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX182, běží starý APK/ZIP nebo starý label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -7225,7 +7245,7 @@ if(activeXexProfile==='realos')lines.push("REAL OS SCREEN FIX181: "+realOsScreen
 if(activeXexProfile==='realos')lines.push("REAL OS KEYBOARD MAP FIX181: "+(fix172KeyboardMapInfo||'--')+" / real XL ROM table, no KEYDEF overwrite");
 if(activeXexProfile==='realos')lines.push("REAL OS GTIA FIX181: "+(fix162RealOsGtiaInfo||'--')+" PRIOR=$"+hex(gtiaPriorValueFix168(),2));
 if(activeXexProfile==='realos')lines.push("ANTIC MODELINE FIX181: "+(fix166AnticModelineInfo||'--'));
-if(activeXexProfile==='realos')lines.push("ANTIC GRID FIX181: "+(fix180AnticGridInfo||'--')); 
+if(activeXexProfile==='realos')lines.push("ANTIC GRID FIX182: "+(fix181AnticGridInfo||'--')); 
 lines.push("OS STUBS FIX181 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
 lines.push("FIX181 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
 lines.push("SETVBV FIX181 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
@@ -7243,7 +7263,7 @@ if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX125: clean split road top
 function compatibilitySnapshot(){
  try{compatibilitySnapshotCore();}
  catch(e){
-   var msg='COMPAT SNAPSHOT FIX181 ERROR: '+(e&&e.stack?e.stack:e);
+   var msg='COMPAT SNAPSHOT FIX182 ERROR: '+(e&&e.stack?e.stack:e);
    log(msg);
    updatePlayStatus('Snapshot měl chybu, ale FIX181 ji zapsal do logu: '+e);
    try{saveCurrentLogToMobile('snapshot-error');}catch(_e){}
