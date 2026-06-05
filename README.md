@@ -23,3 +23,7 @@ Test plan:
 4. VLOZIT PROGRAM s rucnim G7 programem, ktery pouziva Y=95.
 5. GTIA 9 BARS, GTIA 10 BARS, GTIA 11 BARS.
 6. Snapshot/log: hledat FIX185 CORE, G7 FULLSAFE a GTIA BARS FIX185.
+
+FIX187_REALOS_CPU_DECIMAL_G7_TUNNEL_CORE
+- CPU decimal SBC/ADC fix for Atari BASIC FOR/NEXT loops.
+- Designed to stop legal GRAPHICS 7 programs from overrunning loop limits and throwing ERROR-141.

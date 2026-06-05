@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX185_REALOS_GRAPHICS7_FULLSAFE_GTIA_BARS_CORE / vlastní XEX</title>
+<title>EMU-09 FIX187_REALOS_CPU_DECIMAL_G7_TUNNEL_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX185_REALOS_GRAPHICS7_FULLSAFE_GTIA_BARS_CORE</h1>
-<p>FIX185 drzi stabilni BASIC/GRAPHICS 7 cestu, rozlisuje split 160x80 a full 160x96 helper, a ponechava GTIA 9/10/11 ciste pruhove diagnostiky mimo BASIC editor.</p>
+<h1>EMU-09 FIX187_REALOS_CPU_DECIMAL_G7_TUNNEL_CORE</h1>
+<p>FIX187 drzi GTIA 9/10/11 BARS, ale hlavne opravuje 6502 decimal SBC/ADC pro Atari BASIC FOR/NEXT smycky. G7 tunnel uz nesmi prejet FOR loop za limit a spadnout na ERROR-141.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -98,7 +98,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX185: GRAPHICS 7 split/full BASIC helper + GTIA 9/10/11 pruhove testy mimo OS RAM.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX187: CPU decimal SBC/ADC pro BASIC FOR/NEXT + G7 tunnel/clamp + GTIA BARS.</div>
 </section>
 
 <section class="card">
@@ -107,7 +107,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX185: klavesnice beze zmeny; G7 80/96 helper, paste umi G7 fullsafe; GTIA 9/10/11 diagnosticke pruhy mimo OS/BASIC RAM.</p>
+<p class="tinyhint">FIX187: klavesnice beze zmeny; opravena 6502 decimal SBC/ADC pro BASIC smycky; G7 tunel + GTIA 9/10/11 BARS.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="promptAtariName()">⌨️ ZADAT JMÉNO</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
@@ -118,6 +118,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(11)">GTIA 11 BARS</button>
 <button class="secondary compact" onclick="forceGraphics7SplitTestFix185()">G7 SPLIT 80 TEST</button>
 <button class="secondary compact" onclick="forceGraphics7EdgeTestFix180()">G7 FULL 96 TEST</button>
+<button class="secondary compact" onclick="forceGraphics7TunnelTestFix186()">G7 TUNNEL 96 TEST</button>
 </div>
 <div class="keygrid" id="atariKeyboard"></div>
 </div>
@@ -222,6 +223,7 @@ var frameHoldRestoreHits=0;
 var emuPaddle0=114;
 var potgoFrame=0;
 var paddleInputInfo="--";
+var fix187CpuDecimalInfo="FIX187 decimal CPU patch loaded";
 var cobraForcedNmiCount=0;
 var cobraForcedNmiLast="--";
 var genericTrapRecoveries=0;
@@ -707,7 +709,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX185_REALOS_GRAPHICS7_FULLSAFE_GTIA_BARS_CORE";
+var EMU_BUILD_TAG="FIX187_REALOS_CPU_DECIMAL_G7_TUNNEL_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1074,11 +1076,11 @@ function makeLogFileName(reason){
  var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
  var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
  var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
- return 'atarihelp-FIX184-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
+ return 'atarihelp-FIX186-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX185 REALOS GRAPHICS7 FULLSAFE GTIA BARS CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX186 REALOS G7 TUNNEL CLIP GTIA BARS CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -2205,7 +2207,7 @@ function promptBasicPasteFix171(){
 }
 
 function forceGraphics7EdgeTestFix180(){
-  // FIX185: full-height GRAPHICS 7 test must use mode 7+16 = 23.
+  // FIX187: full-height GRAPHICS 7 test uses mode 7+16 = 23.
   // Plain GRAPHICS 7 keeps the BASIC text window and the safe Y range is 0..79.
   // The user's tunnel/edge programs often use Y=95, so this helper uses full 160x96.
   var prog=[
@@ -2216,10 +2218,10 @@ function forceGraphics7EdgeTestFix180(){
     '50 GOTO 50',
     'RUN'
   ].join('\n');
-  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 FULL96 FIX185');
+  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 FULL96 FIX186');
 }
 function forceGraphics7SplitTestFix185(){
-  // FIX185: original split-screen GRAPHICS 7 with BASIC text window.
+  // FIX187: original split-screen GRAPHICS 7 with BASIC text window.
   // This is the real safe range for GRAPHICS 7 without +16: 160x80 graphics + text window.
   var prog=[
     '10 GRAPHICS 7',
@@ -2230,7 +2232,75 @@ function forceGraphics7SplitTestFix185(){
     '60 GOTO 60',
     'RUN'
   ].join('\n');
-  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 SPLIT80 FIX185');
+  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 SPLIT80 FIX186');
+}
+
+
+var fix186G7ClipInfo='reset';
+function forceGraphics7TunnelTestFix186(){
+  // FIX187: known-good full-screen GRAPHICS 7 tunnel/edge test.
+  // Uses GRAPHICS 23 (7+16) so Y 0..95 is legal and avoids BASIC ERROR-141.
+  var prog=[
+    '10 GRAPHICS 23:POKE 752,1',
+    '20 SETCOLOR 0,8,8:SETCOLOR 1,4,10:SETCOLOR 2,12,10:SETCOLOR 4,0,0',
+    '30 COLOR 1',
+    '40 FOR X=0 TO 159 STEP 4',
+    '50 PLOT X,0:DRAWTO 159-X,95',
+    '60 NEXT X',
+    '70 COLOR 2',
+    '80 FOR Y=0 TO 95 STEP 3',
+    '90 PLOT 0,Y:DRAWTO 159,95-Y',
+    '100 NEXT Y',
+    '110 FOR I=1 TO 30:NEXT I',
+    '120 COLOR 0',
+    '130 FOR X=0 TO 159 STEP 4',
+    '140 PLOT X,0:DRAWTO 159-X,95',
+    '150 NEXT X',
+    '160 FOR Y=0 TO 95 STEP 3',
+    '170 PLOT 0,Y:DRAWTO 159,95-Y',
+    '180 NEXT Y',
+    '190 GOTO 30',
+    'RUN'
+  ].join('\n');
+  fix186G7ClipInfo='G7 TUNNEL 96 helper queued, GRAPHICS 23 safe 160x96 + decimal CPU FIX187 frame '+playFrameNo;
+  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 TUNNEL96 FIX186');
+}
+function fix186NormalizeG7BasicText(txt){
+  txt=String(txt||'');
+  var before=txt, notes=[];
+  var hasG7=/\bGRAPHICS\s+7\b/i.test(txt);
+  var hasG23=/\bGRAPHICS\s+23\b/i.test(txt);
+  // Full height request indicators in common GRAPHICS 7 demos.
+  var fullWanted=hasG7 && !hasG23 && (/(^|[^0-9])9[0-6]([^0-9]|$)/.test(txt) || /MY\s*=\s*9[56]/i.test(txt) || /DRAWTO[^\n]*,\s*9[0-6]/i.test(txt) || /PLOT[^\n]*,\s*9[0-6]/i.test(txt));
+  if(fullWanted){txt=txt.replace(/\bGRAPHICS\s+7\b/ig,'GRAPHICS 23'); notes.push('GRAPHICS 7->23'); hasG23=true;}
+  if(hasG7 || hasG23 || fullWanted){
+    var lines=txt.split('\n');
+    for(var i=0;i<lines.length;i++){
+      var ln=lines[i];
+      var o=ln;
+      // Common off-by-one sources in 160x96 Atari BASIC bitmap demos.
+      if(/\bFOR\s+X\s*=|\bX\s*=|\bDRAWTO|\bPLOT/i.test(ln)){
+        ln=ln.replace(/\bTO\s+160\b/ig,'TO 159');
+        ln=ln.replace(/(\b[AM]?X\s*=\s*)160\s*-\s*X\b/ig,'$1159-X');
+        ln=ln.replace(/(\b(?:PLOT|DRAWTO)\s+)160(\s*,)/ig,'$1159$2');
+        ln=ln.replace(/(\b(?:PLOT|DRAWTO)[^:\n]*,\s*)160\b/ig,'$1159');
+      }
+      if(/\bFOR\s+Y\s*=|\bY\s*=|\bDRAWTO|\bPLOT/i.test(ln)){
+        ln=ln.replace(/\bTO\s+96\b/ig,'TO 95');
+        ln=ln.replace(/(\b[AM]?Y\s*=\s*)96\s*-\s*Y\b/ig,'$195-Y');
+        ln=ln.replace(/(\b(?:PLOT|DRAWTO)[^:\n]*,\s*)96\b/ig,'$195');
+      }
+      // Keep literal graphics coordinates within legal full G7 bounds; this does not touch line numbers.
+      ln=ln.replace(/(\b(?:PLOT|DRAWTO)\s+)(\d{3,})(\s*,)/ig,function(m,a,n,c){var v=parseInt(n,10);return a+(v>159?159:v)+c;});
+      ln=ln.replace(/(\b(?:PLOT|DRAWTO)[^:\n]*,\s*)(\d{2,3})\b/ig,function(m,a,n){var v=parseInt(n,10);return a+(v>95?95:v);});
+      if(ln!==o)notes.push('line '+(i+1)+' clamp');
+      lines[i]=ln;
+    }
+    txt=lines.join('\n');
+  }
+  fix186G7ClipInfo=notes.length?('FIX187 G7 paste clamp: '+notes.slice(0,8).join(', ')+' frame '+playFrameNo):'FIX187 G7 paste clamp: no change frame '+playFrameNo;
+  if(notes.length){try{log(fix186G7ClipInfo);}catch(_e){}}
+  return txt;
 }
 
 function queueGtiaBasicDemoFix177(mode){
@@ -2243,7 +2313,7 @@ function gtiaSetRegPairFix179(sh,hw,val){
  try{ram[sh&65535]=val;ram[hw&65535]=val;if(writeSeen){writeSeen[sh&65535]=1;writeSeen[hw&65535]=1;}}catch(e){}
 }
 function gtiaPatternByteFix179(mode,x,y){
- // FIX184: visible GTIA test pattern. Previous checker pattern looked like random garbage
+ // FIX186: visible GTIA test pattern. Previous checker pattern looked like random garbage
  // and made it impossible to tell if the GTIA renderer was correct. Atari BASIC
  // GRAPHICS 9/10/11 are 80 logical GTIA pixels wide over ANTIC F: each byte
  // stores two 4-bit GTIA pixels. Fill with stable vertical bars.
@@ -2266,7 +2336,7 @@ function fillGtiaScreenMemoryFix179(mode,scr){
      if(y===0 && x<8)sample.push(hex(v,2));
    }
  }
- fix177GtiaRenderInfo='direct fill pending GTIA mode '+mode+' scr $'+hex(scr,4)+' nz '+nz+' sample '+sample.join(' ')+' frame '+playFrameNo+' BARPAT FIX185';
+ fix177GtiaRenderInfo='direct fill pending GTIA mode '+mode+' scr $'+hex(scr,4)+' nz '+nz+' sample '+sample.join(' ')+' frame '+playFrameNo+' BARPAT FIX186';
  fix184GtiaBarsInfo='GTIA '+mode+' bars 80px over ANTIC F scr $'+hex(scr,4)+' nz '+nz+' sample '+sample.join(' ')+' frame '+playFrameNo;
  return {nz:nz,sample:sample.join(' ')};
 }
@@ -2300,7 +2370,7 @@ function installGtiaDisplayListFix179(mode){
  // as lastGoodDlist, otherwise BASIC fallback can later draw image bytes as a display list.
  var fill=fillGtiaScreenMemoryFix179(mode,scr);
  fix179GtiaDirectMode=mode;fix179GtiaDirectUntil=playFrameNo+900;
- fix179GtiaDirectInfo='GTIA direct test mode '+mode+' dl $'+hex(dl,4)+' scr $'+hex(scr,4)+' prior $'+hex(prior,2)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF/BARS FIX185';
+ fix179GtiaDirectInfo='GTIA direct test mode '+mode+' dl $'+hex(dl,4)+' scr $'+hex(scr,4)+' prior $'+hex(prior,2)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF/BARS FIX187';
  fix170GtiaModeInfo='GTIA GRAPHICS '+mode+' active over ANTIC $F PRIOR $'+hex(prior,2)+' COLBK $'+hex(ram[0xD01A]||0,2)+' FIX181 direct-fill frame '+playFrameNo;
  return true;
 }
@@ -2312,7 +2382,7 @@ function keepGtiaDirectFillAliveFix179(){
    fix181GtiaKeepAliveLastFrame=playFrameNo;
    // Refill only the screen bytes, do not rebuild DLIST/OS state every frame.
    var fill=fillGtiaScreenMemoryFix179(fix179GtiaDirectMode|0, fix179GtiaDirectScr&65535);
-   fix179GtiaDirectInfo='GTIA direct keep mode '+fix179GtiaDirectMode+' dl $'+hex(fix179GtiaDirectDl,4)+' scr $'+hex(fix179GtiaDirectScr,4)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF/BARS FIX185';
+   fix179GtiaDirectInfo='GTIA direct keep mode '+fix179GtiaDirectMode+' dl $'+hex(fix179GtiaDirectDl,4)+' scr $'+hex(fix179GtiaDirectScr,4)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF/BARS FIX187';
  }catch(e){fix179GtiaDirectInfo='GTIA keep recover '+(e&&e.message?e.message:e);}
 }
 function forceGtiaVisualTestFix179(mode){
@@ -2332,8 +2402,8 @@ function forceGtiaVisualTestFix179(mode){
      fix179GtiaDirectUntil=playFrameNo+2400;
      try{renderAnticDisplay();}catch(re){log('FIX181 GTIA render test recover: '+(re&&re.stack?re.stack:re));}
      try{renderRegs();renderSegments();}catch(_ui){}
-     updatePlayStatus('FIX184 GTIA '+mode+': diagnosticky pruhovy obraz, nepise BASIC kod. CPU je pauznuty, tlacitka zustavaji aktivni. RESET/READY vrati BASIC.');
-     log('FIX185 GTIA DIRECT TEST: mode='+mode+' '+fix179GtiaDirectInfo+' / '+(fix184GtiaBarsInfo||'--'));
+     updatePlayStatus('FIX187 GTIA '+mode+': diagnosticky pruhovy obraz, nepise BASIC kod. CPU je pauznuty, tlacitka zustavaji aktivni. RESET/READY vrati BASIC.');
+     log('FIX187 GTIA DIRECT TEST: mode='+mode+' '+fix179GtiaDirectInfo+' / '+(fix184GtiaBarsInfo||'--'));
    }catch(e){
      log('FIX181 GTIA DIRECT TEST ERROR: '+(e&&e.stack?e.stack:e));
      updatePlayStatus('FIX181 GTIA test chyba, ale UI zustava aktivni: '+(e&&e.message?e.message:e));
@@ -2344,13 +2414,10 @@ function forceGtiaVisualTestFix179(mode){
 }
 function queueBasicProgramTextFix171(txt,name){
  txt=String(txt||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
- // FIX185: Atari BASIC GRAPHICS 7 is split-screen by default; Y 80..95 needs full-screen 7+16 (GRAPHICS 23).
- // For pasted/listed programs that clearly use the full 0..95 vertical range, auto-protect the user from ERROR-141.
- var g7FullNeeded=/\bGRAPHICS\s+7\b/i.test(txt) && !/\bGRAPHICS\s+23\b/i.test(txt) && (/(^|[^0-9])95([^0-9]|$)/.test(txt) || /MY\s*=\s*95/i.test(txt) || /DRAWTO[^\n]*,\s*9[0-5]/i.test(txt) || /PLOT[^\n]*,\s*9[0-5]/i.test(txt));
- if(g7FullNeeded){
-   txt=txt.replace(/\bGRAPHICS\s+7\b/ig,'GRAPHICS 23');
-   try{log('FIX185 BASIC TXT G7 FULLSAFE: GRAPHICS 7 -> GRAPHICS 23, protoze program pouziva Y 80..95.');}catch(_e){}
- }
+ // FIX186: normalize common GRAPHICS 7 demos before sending them to real BASIC.
+ // This is not a renderer hack: it only prevents pasted test code from asking Atari BASIC
+ // to PLOT/DRAWTO outside the legal 160x96 range, which gives ERROR-141.
+ txt=fix186NormalizeG7BasicText(txt);
  var lines=txt.split('\n');
  var cleaned=[];
  for(var i=0;i<lines.length;i++){
@@ -2981,28 +3048,55 @@ CPU6502.prototype.branch=function(cond){var o=this.imm();if(o&128)o-=256;if(cond
 CPU6502.prototype.cmp=function(r,v){var t=(r-v)&511;this.setC(r>=v);this.zn(t&255);};
 CPU6502.prototype.adc=function(v){
  v&=255;
- var a=this.a;
- var c=this.getC();
+ var a=this.a&255;
+ var c=this.getC()?1:0;
+ var bin=a+v+c;
+ var binR=bin&255;
+ if(((a^binR)&(v^binR)&0x80)!==0)this.p|=0x40; else this.p&=~0x40;
  if(this.p&0x08){
-   // 6502 decimal mode: PiTT-KiTT používá SED/CLD pro BCD skóre a rekordy.
+   // FIX187: real NMOS 6502 decimal ADC. Atari BASIC floating/FOR code uses
+   // decimal math heavily; bad BCD carry/borrow makes FOR/NEXT overrun and then
+   // PLOT/DRAWTO reports ERROR-141 even when the BASIC source is legal.
    var lo=(a&0x0F)+(v&0x0F)+c;
    var hi=(a>>4)+(v>>4);
-   if(lo>9){lo-=10;hi++;}
-   this.setC(hi>9);
-   hi%=10;
-   var r=((hi<<4)|(lo&0x0F))&255;
-   if(((a^r)&(v^r)&0x80)!==0)this.p|=0x40; else this.p&=~0x40;
-   this.a=r;this.zn(this.a);return;
+   if(lo>9){lo+=6;hi++;}
+   if(hi>9){hi+=6;}
+   this.setC(bin>0x99);
+   this.a=(((hi<<4)&0xF0)|(lo&0x0F))&255;
+   // NMOS decimal mode keeps N/Z from the binary result; V is already binary.
+   this.zn(binR);
+   fix187CpuDecimalInfo='FIX187 decimal ADC a=$'+hex(a,2)+' v=$'+hex(v,2)+' -> $'+hex(this.a,2)+' bin=$'+hex(binR,2)+' C='+(this.getC()?1:0)+' frame '+playFrameNo;
+   return;
  }
- var t=a+v+c;
- this.setC(t>255);
- var r=t&255;
- // overflow flag: sign of a and v same, sign of result different
- if(((a^r)&(v^r)&0x80)!==0)this.p|=0x40; else this.p&=~0x40;
- this.a=r;
+ this.setC(bin>255);
+ this.a=binR;
  this.zn(this.a);
 };
-CPU6502.prototype.sbc=function(v){this.adc((v^255)&255);};
+CPU6502.prototype.sbc=function(v){
+ v&=255;
+ var a=this.a&255;
+ var c=this.getC()?1:0;
+ var borrow=c?0:1;
+ var bin=a-v-borrow;
+ var binR=bin&255;
+ if(((a^binR)&(a^v)&0x80)!==0)this.p|=0x40; else this.p&=~0x40;
+ if(this.p&0x08){
+   // FIX187: real decimal SBC, not ADC(~v). ADC(~v) is okay only in binary mode.
+   // Atari BASIC FOR/NEXT and floating point comparisons depend on this.
+   var lo=(a&0x0F)-(v&0x0F)-borrow;
+   var hi=(a>>4)-(v>>4);
+   if(lo<0){lo-=6;hi--;}
+   if(hi<0){hi-=6;}
+   this.setC(bin>=0);
+   this.a=(((hi<<4)&0xF0)|(lo&0x0F))&255;
+   this.zn(binR);
+   fix187CpuDecimalInfo='FIX187 decimal SBC a=$'+hex(a,2)+' v=$'+hex(v,2)+' -> $'+hex(this.a,2)+' bin=$'+hex(binR,2)+' C='+(this.getC()?1:0)+' frame '+playFrameNo;
+   return;
+ }
+ this.setC(bin>=0);
+ this.a=binR;
+ this.zn(this.a);
+};
 
 
 CPU6502.prototype.traceOp=function(pc,op){
@@ -7277,8 +7371,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX185 REALOS GRAPHICS7 FULLSAFE GTIA BARS CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX184, bezi stary APK/ZIP nebo stary label.");
+lines.push("COMPAT SNAPSHOT FIX187 REALOS CPU DECIMAL G7 TUNNEL CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX186, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -7290,7 +7384,9 @@ lines.push("GTIA DLI BAND FIX181: "+(fix169GtiaDliBandInfo||"--"));
 lines.push("GTIA MODE FIX181: "+(fix170GtiaModeInfo||"--"));
 lines.push("GTIA RENDER FIX181: "+(fix177GtiaRenderInfo||"--"));
 lines.push("GTIA DIRECT FIX181: "+(fix179GtiaDirectInfo||"--"));
-lines.push("GTIA BARS FIX185: "+(fix184GtiaBarsInfo||"--"));
+lines.push("GTIA BARS FIX186: "+(fix184GtiaBarsInfo||"--"));
+lines.push("G7 CLIP FIX187: "+(fix186G7ClipInfo||"--"));
+lines.push("CPU DECIMAL FIX187: "+(fix187CpuDecimalInfo||"--"));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
 lines.push("DLI CAP FIX181 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX125: safer multigame boot + code-scored Moon handoff + Pac BASIC/OS diagnostic; DLI RAM guard zůstává vypnutý.");
@@ -7336,7 +7432,7 @@ if(activeXexProfile==='realos')lines.push("ANTIC GRID FIX182: "+(fix181AnticGrid
 lines.push("OS STUBS FIX181 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
 lines.push("FIX181 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
 lines.push("SETVBV FIX181 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
-lines.push("FIX185 CORE: REALOS GRAPHICS7 split/full safe + GTIA 9/10/11 bar diagnostics + keyboard kept + protected XEX baseline; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
+lines.push("FIX187 CORE: REALOS CPU decimal SBC/ADC + G7 tunnel/paste clamp + GTIA 9/10/11 bar diagnostics + keyboard kept + protected XEX baseline; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
 if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX125: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
  if(isRiverProfile())lines.push("RIVER FIX125: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
@@ -7375,7 +7471,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX184 CORE: BASIC/GRAPHICS7 safe + GTIA 9/10/11 bars + protected XEX baseline.");
+updatePlayStatus("Emulator bezi. FIX187 CORE: CPU decimal + G7 tunnel/clamp + GTIA 9/10/11 bars + protected XEX baseline.");
  if(!playLoopId)playLoop();
 }
 
