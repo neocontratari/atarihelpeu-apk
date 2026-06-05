@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX182 REALOS RECOVER DLIST GRID CORE / vlastní XEX</title>
+<title>EMU-09 FIX183 SAFE GRAPHICS7 GTIA CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX182 REALOS RECOVER DLIST GRID CORE</h1>
-<p>FIX181 navazuje na FIX179. Klavesnici nechavam funkcne beze zmeny. Overuji ANTIC grid pro GRAPHICS 7 / ANTIC D, ANTIC E a ANTIC F / GTIA 9-11, pridavam GRAPHICS 7 EDGE test a snapshot diagnostiku.</p>
+<h1>EMU-09 FIX183 SAFE GRAPHICS7 GTIA CORE</h1>
+<p>FIX183 vraci stabilni BASIC/GRAPHICS 7 cestu. Klavesnici nechavam funkcne beze zmeny. GTIA testy jsou izolovane mimo OS/BASIC RAM, aby neprepsaly READY/DLIST.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -98,7 +98,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX182: stabilni BASIC DLIST fallback + opraveny ANTIC grid odkazy + GTIA direct testy.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX183: navrat do stabilni BASIC/GRAPHICS7 cesty + bezpecne GTIA testy mimo OS RAM.</div>
 </section>
 
 <section class="card">
@@ -107,7 +107,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX182: Atari/QWERTY klavesnice beze zmeny; BASIC DLIST fallback, GRAPHICS 7 EDGE a GTIA 9/10/11 testy.</p>
+<p class="tinyhint">FIX183: klavesnice beze zmeny; GRAPHICS 7 stabilni, GTIA testy zapisují mimo OS/BASIC oblast RAM.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="promptAtariName()">⌨️ ZADAT JMÉNO</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
@@ -226,7 +226,7 @@ var cobraForcedNmiLast="--";
 var genericTrapRecoveries=0;
 var genericTrapRecoverLast="--";
 var arkanoidAssistBlocked=0;
-var fix96RegressionGuardInfo="FIX182 safe baseline + REAL ROM BOOT visible audit + games protected";
+var fix96RegressionGuardInfo="FIX183 safe baseline + REAL ROM BOOT visible audit + games protected";
 var fix148MapGuardInfo="reset";
 var fix148LastMapKey="";
 var fix148DonkeyVariantInfo="reset";
@@ -706,7 +706,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX182_REALOS_RECOVER_DLIST_GRID_CORE";
+var EMU_BUILD_TAG="FIX183_SAFE_GRAPHICS7_GTIA_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1073,11 +1073,11 @@ function makeLogFileName(reason){
  var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
  var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
  var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
- return 'atarihelp-FIX182-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
+ return 'atarihelp-FIX183-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX182 REALOS RECOVER DLIST GRID CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX183 SAFE GRAPHICS7 GTIA CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -1566,7 +1566,7 @@ function runCoreSmokeMatrix(){
    restoreCoreMatrixEmuState(savedState);
  }
  var report=[
-    "AtariHelp.eu EMU-09 FIX182 DONKEY STRICT 466F SPEED MATRIX TXT",
+    "AtariHelp.eu EMU-09 FIX183 DONKEY STRICT 466F SPEED MATRIX TXT",
    "time="+new Date().toISOString(),
    "build="+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing'),
    "restoredXex="+currentXexName,
@@ -2202,6 +2202,22 @@ function promptBasicPasteFix171(){
  if(txt===null)return false;
  return queueBasicProgramTextFix171(txt,'paste');
 }
+
+function forceGraphics7EdgeTestFix180(){
+  // FIX183: missing button handler from FIX180. Use real BASIC GRAPHICS 7 path, not direct RAM.
+  // This verifies 0..159 / 0..95 without touching DLIST internals.
+  var prog=[
+    '10 GRAPHICS 7',
+    '20 COLOR 1:PLOT 0,0:DRAWTO 159,0:DRAWTO 159,95:DRAWTO 0,95:DRAWTO 0,0',
+    '30 COLOR 2:PLOT 0,0:DRAWTO 159,95',
+    '40 COLOR 3:PLOT 159,0:DRAWTO 0,95',
+    '50 POSITION 2,10:? "G7 EDGE"',
+    '60 GOTO 60',
+    'RUN'
+  ].join('\n');
+  return queueBasicProgramTextFix171(prog,'GRAPHICS 7 EDGE FIX183');
+}
+
 function queueGtiaBasicDemoFix177(mode){
  // FIX181: direct visual GTIA test. Previous BASIC POKE loops were too slow: the mode switched,
  // screen cleared, then the snapshot still showed zero bytes at the bottom of SAVMSC.
@@ -2256,10 +2272,12 @@ function installGtiaDisplayListFix179(mode){
    gtiaSetRegPairFix179(0x02C8,0xD01A,0x08); // GRAPHICS 11: hue sweep at visible luminance
    gtiaSetRegPairFix179(0x02C4,0xD016,0x28);gtiaSetRegPairFix179(0x02C5,0xD017,0xCA);gtiaSetRegPairFix179(0x02C6,0xD018,0x94);gtiaSetRegPairFix179(0x02C7,0xD019,0x46);
  }
- try{fix148LastMapKey='';genericDliCache=null;lastGoodDlist=dl;lastGoodDlistProfile=activeXexProfile;fix154RealOsLastDl=dl;}catch(e){}
+ try{fix148LastMapKey='';genericDliCache=null;}catch(e){}
+ // FIX183: this is a diagnostic GTIA DLIST, not a REAL OS editor DLIST. Do not store it
+ // as lastGoodDlist, otherwise BASIC fallback can later draw image bytes as a display list.
  var fill=fillGtiaScreenMemoryFix179(mode,scr);
  fix179GtiaDirectMode=mode;fix179GtiaDirectUntil=playFrameNo+900;
- fix179GtiaDirectInfo='GTIA direct test mode '+mode+' dl $'+hex(dl,4)+' scr $'+hex(scr,4)+' prior $'+hex(prior,2)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo;
+ fix179GtiaDirectInfo='GTIA direct test mode '+mode+' dl $'+hex(dl,4)+' scr $'+hex(scr,4)+' prior $'+hex(prior,2)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF FIX183';
  fix170GtiaModeInfo='GTIA GRAPHICS '+mode+' active over ANTIC $F PRIOR $'+hex(prior,2)+' COLBK $'+hex(ram[0xD01A]||0,2)+' FIX181 direct-fill frame '+playFrameNo;
  return true;
 }
@@ -2271,7 +2289,7 @@ function keepGtiaDirectFillAliveFix179(){
    fix181GtiaKeepAliveLastFrame=playFrameNo;
    // Refill only the screen bytes, do not rebuild DLIST/OS state every frame.
    var fill=fillGtiaScreenMemoryFix179(fix179GtiaDirectMode|0, fix179GtiaDirectScr&65535);
-   fix179GtiaDirectInfo='GTIA direct keep mode '+fix179GtiaDirectMode+' dl $'+hex(fix179GtiaDirectDl,4)+' scr $'+hex(fix179GtiaDirectScr,4)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo;
+   fix179GtiaDirectInfo='GTIA direct keep mode '+fix179GtiaDirectMode+' dl $'+hex(fix179GtiaDirectDl,4)+' scr $'+hex(fix179GtiaDirectScr,4)+' nz '+fill.nz+' sample '+fill.sample+' frame '+playFrameNo+' SAFEBUF FIX183';
  }catch(e){fix179GtiaDirectInfo='GTIA keep recover '+(e&&e.message?e.message:e);}
 }
 function forceGtiaVisualTestFix179(mode){
@@ -3642,6 +3660,20 @@ function getDlistPtr(){
  var sw=(writeSeen && (writeSeen[0x0230]||writeSeen[0x0231]));
  var hw=(writeSeen && (writeSeen[0xD402]||writeSeen[0xD403]));
  if(activeXexProfile==='realos'){
+   // FIX183: isolated GTIA diagnostic DLIST is allowed only while the direct test is active.
+   // Never let it become the editor fallback DLIST.
+   if((fix179GtiaDirectMode|0) && playFrameNo<=fix179GtiaDirectUntil){
+     var gd=fix179GtiaDirectDl&65535;
+     if((h&&h===gd) || (s&&s===gd)) return gd;
+   }else{
+     var gd2=fix179GtiaDirectDl&65535;
+     if((h&&h===gd2) || (s&&s===gd2)){
+       lastRejectedDlistInfo='realos ignored expired GTIA direct DLIST $'+hex(gd2,4)+' -> editor fallback $9C20';
+       if(ram){ram[0x0230]=0x20;ram[0x0231]=0x9C;ram[0xD402]=0x20;ram[0xD403]=0x9C;}
+       lastGoodDlist=0x9C20;lastGoodDlistProfile='realos';fix154RealOsLastDl=0x9C20;
+       return 0x9C20;
+     }
+   }
    var a0=hw?h:s;
    var m0=dlistMetricsAt(a0);
    if(validPtrForMiniAtari(a0) && (m0.displayOps>=2 || m0.visibleScan>=16)){lastGoodDlist=a0;lastGoodDlistProfile=activeXexProfile;fix154RealOsLastDl=a0;return resolveDlistPtr(a0)||a0;}
@@ -4193,9 +4225,29 @@ var fix170GtiaModeInfo='reset';
 var fix177GtiaRenderInfo='reset';
 var fix179GtiaDirectInfo='reset';
 var fix179GtiaDirectUntil=0;
+function endGtiaDirectTestFix183(reason){
+  try{
+    fix179GtiaDirectMode=0; fix179GtiaDirectUntil=0;
+    fix179GtiaDirectInfo='ended '+(reason||'')+' frame '+playFrameNo;
+    fix170GtiaModeInfo='reset by FIX183 '+(reason||'');
+    fix177GtiaRenderInfo='reset by FIX183 '+(reason||'');
+    if(activeXexProfile==='realos'){
+      // Return display pointers to normal XL editor area; OS may overwrite them again naturally.
+      ram[0x58]=0x40; ram[0x59]=0x9C;
+      ram[0x0230]=0x20; ram[0x0231]=0x9C;
+      ram[0xD402]=0x20; ram[0xD403]=0x9C;
+      fix154RealOsLastDl=0x9C20;
+      if(lastGoodDlist===fix179GtiaDirectDl) lastGoodDlist=0x9C20;
+      lastGoodDlistProfile='realos';
+    }
+  }catch(e){fix179GtiaDirectInfo='end recover '+(e&&e.message?e.message:e);}
+}
+
 var fix179GtiaDirectMode=0;
-var fix179GtiaDirectScr=0x8150;
-var fix179GtiaDirectDl=0x8036;
+// FIX183: GTIA diagnostic buffers must never overlap REAL OS editor/DLIST memory around $9C20/$9C40.
+// FIX179-FIX182 used $8150 plus 7680 bytes, which reached $9F50 and overwrote the BASIC/DLIST area.
+var fix179GtiaDirectScr=0x4000;
+var fix179GtiaDirectDl=0x3F00;
 function gtiaRawRegFix170(shadowAddr,hwAddr,def){
  // FIX181: for REAL OS/BASIC prefer live HW, then shadow, but keep written zero valid.
  shadowAddr&=65535; hwAddr&=65535;
@@ -5252,6 +5304,7 @@ function fix152EnterNoXexProbe(kind){
 
 
 function warmResetRealOsBasicFix171(){
+  endGtiaDirectTestFix183('warm reset');
   // Atari RESET neni NEW: RAM a BASIC program nechavame v pameti.
   // Jen pustime OS warm-start cestu a vycistime vstupy/casovace emulatoru.
   if(activeXexProfile!=='realos')return resetPlaying();
@@ -5281,6 +5334,7 @@ function warmResetRealOsBasicFix171(){
 // FIX181: skutečný experimentální OS/BASIC boot. Žádný kreslený READY.
 // CPU startuje přes reset vector z ATARIXL.ROM; BASIC ROM je mapovaná na $A000-$BFFF.
 function startRealOsBasicBootFix157(mode){
+  endGtiaDirectTestFix183('cold/basic boot');
   mode=(mode==='option')?'option':'basic';
   fullStop();
   clearManagedTimers();
@@ -7191,8 +7245,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX182 REALOS RECOVER DLIST GRID CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX182, běží starý APK/ZIP nebo starý label.");
+lines.push("COMPAT SNAPSHOT FIX183 SAFE GRAPHICS7 GTIA CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX183, běží starý APK/ZIP nebo starý label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -7288,7 +7342,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX181 CORE: GTIA 9/10/11 renderer + REAL OS stable + protected XEX baseline.");
+updatePlayStatus("Emulator bezi. FIX183 CORE: safe BASIC/GRAPHICS7 + isolated GTIA test buffers + protected XEX baseline.");
  if(!playLoopId)playLoop();
 }
 
