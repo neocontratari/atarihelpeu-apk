@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX195_NATIVE_XEX_BINARY_LOADER_CORE / vlastní XEX</title>
+<title>EMU-09 FIX196_XEX_OS_KERNEL_LOADER_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX195_NATIVE_XEX_BINARY_LOADER_CORE</h1>
-<p>FIX195 dava hlavni smer na obecny Native-style XEX Binary Loader Core: cisty loader pod kapotou, zadne BASIC direct spousteni her, segmenty do RAM, RUNAD/INITAD presne z vektoru, BASIC off pro hry a ROM zustava jen pro REAL OS/BASIC testy.</p>
+<h1>EMU-09 FIX196_XEX_OS_KERNEL_LOADER_CORE</h1>
+<p>FIX196 opravuje skutecny problem: XEX loader uz neni jen LEGACY_PROTECTED/quarantine. Hry dostanou cisty XEX loader + mapovanou Atari OS ROM kernel vrstvu pro OS rutiny/data, ale BASIC direct zustava vypnuty.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX195 používá obecný Native-style XEX Binary Loader Core: načte hlavičku $FF $FF, segmenty ukládá přímo do emulované RAM, RUNAD bere z $02E0/$02E1, INITAD z $02E2/$02E3 a hotové hry spouští s vypnutým BASIC direct režimem. ROMky zůstávají pro REAL OS/BASIC obrazovku, klávesnici a testy; hry se nepouští přes BASIC.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX196 používá čistý XEX loader se skutečnou Atari OS kernel vrstvou: načte hlavičku $FF $FF, segmenty ukládá do RAM, RUNAD/INITAD bere z $02E0-$02E3, mapuje Atari XL OS ROM pro hry a zároveň drží BASIC direct vypnutý. Tohle je obecná cesta pro komerční XEXy, ne záplata jedné hry.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -100,7 +100,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX195: Native-style XEX Binary Loader Core je default pro vsechny XEX hry; BASIC direct pro hry je vypnuty.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX196: XEX hry bezi pres cisty loader + mapovanou Atari OS ROM kernel vrstvu; BASIC direct zustava vypnuty.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -245,7 +245,10 @@ var fix193DonkeyPmgCleanEnabled=false;
 var fix193DonkeyPmgCleanNext=false;
 var fix193DonkeyPmgInfo='FIX193 Donkey PMG transition guard waiting';
 var fix194ResetInfo='FIX194 reset-to-BASIC waiting';
-var fix195NativeXexInfo='FIX195 Native XEX Binary Loader waiting';
+var fix195NativeXexInfo='FIX196 Native XEX loader waiting';
+var fix196XexOsKernelInfo='FIX196 XEX OS kernel waiting';
+var fix196OsKernelReads=0;
+var fix196OsKernelEnabled=false;
 var fix193DonkeyStableFrames=0;
 var fix193DonkeyLastDl=0;
 var fix193DonkeySuppressUntil=-999;
@@ -311,29 +314,35 @@ var fix157BasicJumpDone=false;
 // že ji nesmíme pustit přes stabilní reference. Donkey/Cobra/Arkanoid/Montezuma
 // musí běžet původní RAM/ANTIC cestou; vestavěná ROM se použije jen jako karanténní
 // probe pro Moon Patrol/Pac-Man/generic diagnostiku.
+function fix196XexOsKernelActive(){
+  try{
+    return !!fix196OsKernelEnabled && !fix154RealOsBootMode && activeXexProfile && activeXexProfile!=='realos';
+  }catch(e){return false;}
+}
 function fix125CoreModeForProfile(){
-  // FIX126: AUTO core selector podle Reného testů. FIX123/125 pomáhaly některým ROM/OS-heavy hrám,
-  // ale Cobra/Donkey/Arkanoid jsou chráněné reference a nesmí se přepnout do agresivního ROM_PROBE.
-  // LEGACY = stabilní RAM/ANTIC cesta, ROM_PROBE = vestavěný OS/BASIC jen pro problémové boot/OS XEXy.
+  // FIX196: komercni XEXy uz nesmi bezet jako pouhy LEGACY_PROTECTED/quarantine bez OS ROM vrstvy.
+  // REAL OS/BASIC zustava vlastni profil. Hotove hry maji cisty XEX loader + Atari OS kernel ROM services,
+  // ale BASIC direct zustava vypnuty. Tohle je obecny core smer, ne Donkey/Cobra hack.
   try{
     if(activeXexProfile==='realos')return 'REAL_OS_BOOT';
-    if(fix190RealOsDirectXexMode){fix190RealOsDirectXexMode=false;fix190DirectXexInfo='FIX191 blocked REAL_OS_XEX_DIRECT; using clean XEX loader frame '+playFrameNo;}
-    if(isDonkeyFamilyProfile() || isCobraProfile() || isArkanoidProfile() || isPitstopProfile() || isRiverProfile() || isPiTTProfile() || activeXexProfile==='kittgarage' || activeXexProfile==='galaxian')return 'LEGACY_PROTECTED';
-    if(isMontezumaProfile())return 'MONTEZUMA_SAFE_LEGACY';
+    if(fix190RealOsDirectXexMode){fix190RealOsDirectXexMode=false;fix190DirectXexInfo='FIX196 blocked REAL_OS_XEX_DIRECT; using XEX OS kernel loader frame '+playFrameNo;}
+    if(fix196XexOsKernelActive())return 'XEX_OS_KERNEL';
     if(isMoonPatrolProfile() || isPacmanProfile() || activeXexProfile==='generic')return 'ROM_PROBE';
   }catch(e){}
-  return 'ROM_PROBE';
+  return fix196OsKernelEnabled?'XEX_OS_KERNEL':'ROM_PROBE';
 }
 function fix124RomQuarantinedProfile(){
   try{var m=fix125CoreModeForProfile();return m==='LEGACY_PROTECTED' || m==='MONTEZUMA_SAFE_LEGACY';}
   catch(e){return false;}
 }
 function fix124RomProbeProfile(){
-  try{return fix125CoreModeForProfile()==='ROM_PROBE' || fix125CoreModeForProfile()==='REAL_OS_BOOT';}
+  try{var m=fix125CoreModeForProfile();return m==='ROM_PROBE' || m==='REAL_OS_BOOT' || m==='XEX_OS_KERNEL';}
   catch(e){return false;}
 }
-function fix124RomEnabledForProfile(){var m=fix125CoreModeForProfile();return m==='ROM_PROBE' || m==='REAL_OS_BOOT' || !!fix154RealOsBootMode;}
-function fix124ShouldHookBasicEntry(a){a&=65535;return isBasicRomAddr(a) && !loadedXexByteAt(a) && fix124RomEnabledForProfile();}
+function fix124OsRomEnabledForProfile(){var m=fix125CoreModeForProfile();return m==='ROM_PROBE' || m==='REAL_OS_BOOT' || m==='XEX_OS_KERNEL' || !!fix154RealOsBootMode;}
+function fix124BasicRomEnabledForProfile(){var m=fix125CoreModeForProfile();return m==='ROM_PROBE' || m==='REAL_OS_BOOT' || !!fix154RealOsBootMode;}
+function fix124RomEnabledForProfile(){return fix124OsRomEnabledForProfile();}
+function fix124ShouldHookBasicEntry(a){a&=65535;return isBasicRomAddr(a) && !loadedXexByteAt(a) && fix124BasicRomEnabledForProfile();}
 // FIX125: René dodal OS/BASIC ROMy a výslovně chce, aby emulátor neběžel jen na slepém stubu.
 // Proto jsou mapované vestavěně: tester nic nenahrává, CPU/renderer je čte jako Atari XL OS + BASIC ROM.
 var builtinAtariOsbRomB64="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";
@@ -738,7 +747,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX195_NATIVE_XEX_BINARY_LOADER_CORE";
+var EMU_BUILD_TAG="FIX196_XEX_OS_KERNEL_LOADER_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1305,21 +1314,24 @@ function isMiniOsRomAddr(a){
 }
 function isHardwareIoTrapAddr(a){a&=65535;return a>=0xD000 && a<=0xD7FF;}
 function isBasicRomAddr(a){a&=65535;return a>=0xA000 && a<=0xBFFF;}
-function optionalOsRomActiveForAddr(a){ a&=65535; return !!(fix124RomEnabledForProfile() && optionalOsRom && optionalOsRom.length>=16384 && ((a>=0xC000 && a<=0xCFFF) || (a>=0xD800 && a<=0xFFFF))); }
-function optionalBasicRomActiveForAddr(a){ a&=65535; return !!(fix124RomEnabledForProfile() && optionalBasicRom && optionalBasicRom.length===8192 && isBasicRomAddr(a)); }
+function optionalOsRomActiveForAddr(a){ a&=65535; return !!(fix124OsRomEnabledForProfile() && optionalOsRom && optionalOsRom.length>=16384 && ((a>=0xC000 && a<=0xCFFF) || (a>=0xD800 && a<=0xFFFF))); }
+function optionalBasicRomActiveForAddr(a){ a&=65535; return !!(fix124BasicRomEnabledForProfile() && optionalBasicRom && optionalBasicRom.length===8192 && isBasicRomAddr(a)); }
 function shouldStubCpuRomEntry(a){
  a&=65535;
- // FIX125: ROM používáme jako data/font/vektory, ale CPU nesmí volně běžet celým BASIC/OS ROM kódem.
- // Reálné Atari má k OS i periferie a správný stack; náš WebView core zatím musí služební vstupy vracet řízeně.
+ // FIX196: OS ROM je pro XEXy mapovana jako kernel/data, ale BASIC ROM pro hotove hry zustava vypnuty.
  if(fix154RealOsBootMode)return false;
- return !loadedXexByteAt(a) && ((fix124RomEnabledForProfile() && isBasicRomAddr(a)) || isMiniOsRomAddr(a) || isHardwareIoTrapAddr(a));
+ return !loadedXexByteAt(a) && ((fix124BasicRomEnabledForProfile() && isBasicRomAddr(a)) || isMiniOsRomAddr(a) || isHardwareIoTrapAddr(a));
 }
 function optionalRomByteAt(a){
  a&=65535;
  if(optionalBasicRomActiveForAddr(a))return optionalBasicRom[a-0xA000]&255;
  if(optionalOsRomActiveForAddr(a)){
    var off=a-0xC000;
-   if(off>=0 && off<optionalOsRom.length){optionalRomReads++;return optionalOsRom[off]&255;}
+   if(off>=0 && off<optionalOsRom.length){
+     optionalRomReads++;
+     if(fix196XexOsKernelActive()){fix196OsKernelReads++; if((fix196OsKernelReads&255)===1)fix196XexOsKernelInfo='FIX196 Atari OS ROM kernel mapped for XEX; reads '+fix196OsKernelReads+' last $'+hex(a,4)+' BASIC direct OFF frame '+playFrameNo;}
+     return optionalOsRom[off]&255;
+   }
  }
  return -1;
 }
@@ -2073,7 +2085,7 @@ function basicDependencyLikely(){
 function emptyBasicRomAt(a,mem){
  a&=65535;
  if(optionalBasicRomActiveForAddr(a))return false;
- if(!fix124RomEnabledForProfile())return false;
+ if(!fix124BasicRomEnabledForProfile())return false;
  return a>=0xA000 && a<=0xBFFF && !loadedXexByteAt(a) && (!mem || (mem[a]&255)===0);
 }
 function emptyOsRomAt(a,mem){
@@ -2535,16 +2547,17 @@ function fix192HasMoreXexSegments(bytes,pos){
 }
 function installCleanXexLoaderEnvironmentFix192(reason){
  if(!ram)return;
- // FIX195 Native-style XEX Binary Loader environment.
- // This is the game side: BASIC ROM direct execution is OFF, ROMs stay only for REALOS/BASIC tests.
- // PORTB/D301 is kept in the no-BASIC game configuration used by the clean loader.
+ // FIX196: obecny XEX OS kernel loader. Cisty XEX load zustava, ale OS ROM uz neni quarantine-only.
+ // BASIC direct pro hotove hry zustava vypnuty; mapujeme jen Atari OS kernel/data oblast a rizene OS vstupy.
  ram[0xD301]=0xFF;
  portbValue=0xFF;
  ram[0x0244]=0x00; // COLDST sane for clean loaded program
  ram[0x0009]=0x00; ram[0x000A]=0x00; ram[0x000B]=0x00;
  ram[0x02E0]=0; ram[0x02E1]=0; ram[0x02E2]=0; ram[0x02E3]=0;
- fix195NativeXexInfo='FIX195 native loader env '+(reason||'')+' BASIC-direct OFF PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
- fix192LoaderInfo='FIX195 native loader env '+(reason||'')+' PORTB $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
+ fix196OsKernelEnabled=true; fix196OsKernelReads=0;
+ fix196XexOsKernelInfo='FIX196 XEX OS kernel env '+(reason||'')+': Atari OS ROM mapped, BASIC direct OFF, PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
+ fix195NativeXexInfo='FIX196 native loader env '+(reason||'')+' + OS kernel BASIC-direct OFF / OS-ROM ON PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
+ fix192LoaderInfo='FIX196 native+OS loader env '+(reason||'')+' PORTB $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
 }
 
 function runStreamedInitFix192(addr,segNo,segStart,segEnd){
@@ -2648,9 +2661,10 @@ function parseAndLoadXexBytes(bytes,light){
  ranInitAddrs=[];
  xexInfo.warnings=(xexInfo.warnings||[]).concat(xexWarningsForEntry(entry));
  var nativeRanges=(segments||[]).map(function(sg){return '$'+hex(sg.start,4)+'-$'+hex(sg.end,4);}).slice(0,6).join(' ');
- fix195NativeXexInfo='FIX195 native XEX: header '+(nativeInfo&&nativeInfo.header?'$FFFF OK':'missing/tolerant')+' blocks '+count+' bytes '+(nativeInfo?nativeInfo.dataBytes:0)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' ENTRY $'+hex(entry||0,4)+' BASIC direct OFF PORTB $'+hex(ram[0xD301]||0,2)+' ranges '+nativeRanges+' frame '+playFrameNo;
- fix188XexBridgeInfo=(fix192StreamInitActive?'FIX195 native stream-init XEX loaded profile ':'FIX195 native clean XEX loaded profile ')+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' BASIC/ROM direct OFF streamed '+(fix192StreamedInitAddrs.length?fix192StreamedInitAddrs.map(function(a){return '$'+hex(a,4);}).join(','):'none')+' frame '+playFrameNo;
+ fix195NativeXexInfo='FIX196 native+OS XEX: header '+(nativeInfo&&nativeInfo.header?'$FFFF OK':'missing/tolerant')+' blocks '+count+' bytes '+(nativeInfo?nativeInfo.dataBytes:0)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' ENTRY $'+hex(entry||0,4)+' BASIC direct OFF PORTB $'+hex(ram[0xD301]||0,2)+' ranges '+nativeRanges+' frame '+playFrameNo;
+ fix188XexBridgeInfo=(fix192StreamInitActive?'FIX196 native+OS stream-init XEX loaded profile ':'FIX196 native+OS clean XEX loaded profile ')+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' BASIC direct OFF / OS ROM mapped streamed '+(fix192StreamedInitAddrs.length?fix192StreamedInitAddrs.map(function(a){return '$'+hex(a,4);}).join(','):'none')+' frame '+playFrameNo;
  fix191CleanXexInfo=fix188XexBridgeInfo;
+ fix196XexOsKernelInfo='FIX196 Atari OS ROM kernel armed for '+activeXexProfile+'; OS ROM mapped, BASIC direct OFF, service traps guarded frame '+playFrameNo;
  if(activeXexProfile==="pitt")detectPittTextDlists();
  installOsKeyboardReturnStub();
  installGenericOsRomStubs();
@@ -2733,10 +2747,10 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  try{cpu.sp=0xFD;cpu.p=0x24;cpu.a=0;cpu.x=0;cpu.y=0;}catch(e){}
- fix195NativeXexInfo=(fix195NativeXexInfo||'FIX195 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF';
+ fix195NativeXexInfo=(fix195NativeXexInfo||'FIX196 native+OS XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM ON';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX195-NATIVE-XEX-BINARY-LOADER-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX196-XEX-OS-KERNEL-LOADER-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -7265,7 +7279,7 @@ function xexBridgeSmokeFix188(which){
  fix190RealOsDirectXexMode=false;
  fix190NextXexDirect=false;
  fix190DirectXexInfo='FIX191 direct ROM XEX disabled for clean game load';
- fix188XexBridgeInfo='FIX191 clean XEX load requested '+which+': cold XEX segment loader, BASIC/ROM direct OFF, audio armed='+(audioReady?'yes':'waiting')+' frame '+playFrameNo;
+ fix188XexBridgeInfo='FIX191 clean XEX load requested '+which+': cold XEX segment loader, BASIC direct OFF / OS ROM mapped, audio armed='+(audioReady?'yes':'waiting')+' frame '+playFrameNo;
  fix191CleanXexInfo=fix188XexBridgeInfo;
  log(fix188XexBridgeInfo);
  if(which.indexOf('cobra')>=0)return loadBuiltinSuperCobra();
@@ -7735,7 +7749,8 @@ lines.push("INPUT LIVE FIX189: "+(fix189InputLiveInfo||"--"));
 lines.push("REAL OS DIRECT XEX FIX190: "+(fix190DirectXexInfo||"--")+" active="+(fix190RealOsDirectXexMode?"yes":"no")+" (disabled by FIX191 for games)");
 lines.push("CLEAN XEX FIX191: "+(fix191CleanXexInfo||"--"));
 lines.push("XEX LOADER CODE FIX192: "+(fix192LoaderInfo||"--")+" streamed="+(fix192StreamedInitAddrs&&fix192StreamedInitAddrs.length?fix192StreamedInitAddrs.map(function(a){return "$"+hex(a,4);}).join(","):"none")+" active="+(fix192StreamInitActive?"yes":"no"));
-lines.push("NATIVE XEX LOADER FIX195: "+(fix195NativeXexInfo||"--"));
+lines.push("NATIVE XEX LOADER FIX196: "+(fix195NativeXexInfo||"--"));
+lines.push("XEX OS KERNEL FIX196: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
 lines.push("RESET READY FIX194: "+(fix194ResetInfo||"--"));
 lines.push("GENERIC PMG POLICY FIX194: one-game PMG guard disabled; clean XEX loader only. oldInfo="+(fix193DonkeyPmgInfo||"--"));
 lines.push("BASIC PASTE FIX191: "+(fix190PasteInfo||"--"));
@@ -7784,7 +7799,7 @@ if(activeXexProfile==='realos')lines.push("ANTIC GRID FIX182: "+(fix181AnticGrid
 lines.push("OS STUBS FIX181 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
 lines.push("FIX181 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
 lines.push("SETVBV FIX181 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
-lines.push("FIX195 CORE: Native-style XEX Binary Loader default + clean XEX baseline + RUNAD/INITAD vectors + BASIC direct disabled for games + REALOS tests preserved; native="+(fix195NativeXexInfo||"--")+" mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
+lines.push("FIX196 CORE: XEX OS kernel loader default + Atari OS ROM mapped for games + BASIC direct disabled + RUNAD/INITAD vectors + REALOS tests preserved; native="+(fix195NativeXexInfo||"--")+" osKernel="+(fix196XexOsKernelInfo||"--")+" mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" keyMap="+(fix172KeyboardMapInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
 if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX125: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
  if(isRiverProfile())lines.push("RIVER FIX125: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
@@ -7823,7 +7838,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX195 CORE: Native XEX Binary Loader je default; segmenty/RUNAD/INITAD bez BASIC direct.");
+updatePlayStatus("Emulator bezi. FIX196 CORE: XEX loader + Atari OS ROM kernel vrstva, BASIC direct OFF.");
  if(!playLoopId)playLoop();
 }
 
