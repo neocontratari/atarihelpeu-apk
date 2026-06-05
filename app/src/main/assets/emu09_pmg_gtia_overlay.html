@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX197_TOTAL_PURGE_XEX_HARDWARE_CORE / vlastní XEX</title>
+<title>EMU-09 FIX198_HARDWARE_RAM_DLIST_SCAN_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX197_TOTAL_PURGE_XEX_HARDWARE_CORE</h1>
-<p>FIX197 dela total purge legacy/profile render cest. Cilem neni dalsi Donkey naplast, ale obecny XEX hardware pass: segmenty do RAM, RUNAD/INITAD, OS kernel probe, potom ANTIC/DLIST/PMG z realnych registru bez Donkey/Cobra sablon.</p>
+<h1>EMU-09 FIX198_HARDWARE_RAM_DLIST_SCAN_CORE</h1>
+<p>FIX198 opravuje skutecnou slabinu po purge: kdyz HW/SDLST ukaze na code-like adresu, emulator uz nesmi vzit nahodny kod jako DLIST. Pouzije obecny RAM DLIST scan a validuje ANTIC instrukce bez Donkey/Cobra sablon.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX197 pouziva cisty XEX hardware pass: nacita $FF $FF segmenty do RAM, bere RUNAD/INITAD z $02E0-$02E3, drzi BASIC direct OFF a vypina profilove Donkey/Cobra/Pitstop/Arkanoid DLIST sablony. Obraz se ma brat z realnych ANTIC registru a obecneho scanneru, ne z historicke karanteny.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX198 pouziva cisty XEX segment loader: nacita $FF $FF segmenty do RAM, bere RUNAD/INITAD z $02E0-$02E3, BASIC direct OFF. Obraz bere z HW/SDLST jen kdyz je validni; jinak spusti obecny RAM DLIST scanner, ktery odmita 6502 code-like adresy.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -100,7 +100,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX197: total purge legacy/profile render cest. XEX jde pres cisty segment loader, OS kernel probe zustava, ale DLIST/ANTIC/PMG uz nesmi byt nahrazovany Donkey/Cobra sablonou.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX198: cisty XEX segment loader + obecny RAM DLIST scan. Zadny Donkey/Cobra hard-lock, zadny code-like DLIST fallback.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -249,7 +249,8 @@ var fix195NativeXexInfo='FIX196 Native XEX loader waiting';
 var fix196XexOsKernelInfo='FIX197 XEX OS kernel waiting';
 var fix196OsKernelReads=0;
 var fix196OsKernelEnabled=false;
-var fix197PurgeInfo='FIX197 TOTAL PURGE waiting';
+var fix197PurgeInfo='FIX198 hardware purge waiting';
+var fix198RamDlistInfo='FIX198 RAM DLIST SCAN waiting';
 var fix197TotalPurgeActive=false;
 var fix197StreamedOk=false;
 var fix197StreamedBytes=0;
@@ -753,7 +754,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX197_TOTAL_PURGE_XEX_HARDWARE_CORE";
+var EMU_BUILD_TAG="FIX198_HARDWARE_RAM_DLIST_SCAN_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -2561,9 +2562,9 @@ function installCleanXexLoaderEnvironmentFix192(reason){
  ram[0x0009]=0x00; ram[0x000A]=0x00; ram[0x000B]=0x00;
  ram[0x02E0]=0; ram[0x02E1]=0; ram[0x02E2]=0; ram[0x02E3]=0;
  fix196OsKernelEnabled=true; fix196OsKernelReads=0; fix197TotalPurgeActive=true; fix197StreamedOk=false; fix197StreamedBytes=0; fix197StreamedBlocks=0;
- fix196XexOsKernelInfo='FIX197 XEX OS kernel probe '+(reason||'')+': OS ROM mapped, BASIC direct OFF, PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' resetVector $C2AA staged frame '+playFrameNo;
- fix195NativeXexInfo='FIX197 native loader env '+(reason||'')+' TOTAL_PURGE BASIC-direct OFF / OS-ROM probe ON PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
- fix192LoaderInfo='FIX197 STREAMED=PENDING ACTIVE=YES env '+(reason||'')+' PORTB $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' resetVector $C2AA frame '+playFrameNo;
+ fix196XexOsKernelInfo='FIX198 OS kernel probe '+(reason||'')+': OS ROM mapped, BASIC direct OFF, PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' resetVector $C2AA staged frame '+playFrameNo;
+ fix195NativeXexInfo='FIX198 native loader env '+(reason||'')+' HARDWARE-RAM-DLIST BASIC-direct OFF / OS-ROM probe ON PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
+ fix192LoaderInfo='FIX198 STREAMED=PENDING ACTIVE=YES env '+(reason||'')+' PORTB $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' resetVector $C2AA frame '+playFrameNo;
 }
 
 function runStreamedInitFix192(addr,segNo,segStart,segEnd){
@@ -2670,12 +2671,12 @@ function parseAndLoadXexBytes(bytes,light){
  xexInfo.warnings=(xexInfo.warnings||[]).concat(xexWarningsForEntry(entry));
  var nativeRanges=(segments||[]).map(function(sg){return '$'+hex(sg.start,4)+'-$'+hex(sg.end,4);}).slice(0,6).join(' ');
  fix197StreamedBlocks=count|0; fix197StreamedBytes=(nativeInfo?nativeInfo.dataBytes:0)|0; fix197StreamedOk=(count>0 && fix197StreamedBytes>0);
- fix195NativeXexInfo='FIX197 native XEX: STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' ACTIVE=YES header '+(nativeInfo&&nativeInfo.header?'$FFFF OK':'missing/tolerant')+' blocks '+count+' bytes '+fix197StreamedBytes+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' ENTRY $'+hex(entry||0,4)+' BASIC direct OFF PORTB $'+hex(ram[0xD301]||0,2)+' ranges '+nativeRanges+' frame '+playFrameNo;
- fix192LoaderInfo='FIX197 STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' ACTIVE=YES blocks '+count+' bytes '+fix197StreamedBytes+' profile '+activeXexProfile+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' ENTRY $'+hex(entry||0,4)+' resetVector $C2AA staged frame '+playFrameNo;
- fix188XexBridgeInfo='FIX197 total-purge XEX loaded profile '+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' BASIC direct OFF streamed=OK active=YES frame '+playFrameNo;
+ fix195NativeXexInfo='FIX198 native XEX: STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' ACTIVE=YES header '+(nativeInfo&&nativeInfo.header?'$FFFF OK':'missing/tolerant')+' blocks '+count+' bytes '+fix197StreamedBytes+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' ENTRY $'+hex(entry||0,4)+' BASIC direct OFF PORTB $'+hex(ram[0xD301]||0,2)+' ranges '+nativeRanges+' frame '+playFrameNo;
+ fix192LoaderInfo='FIX198 STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' ACTIVE=YES blocks '+count+' bytes '+fix197StreamedBytes+' profile '+activeXexProfile+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' ENTRY $'+hex(entry||0,4)+' resetVector $C2AA staged frame '+playFrameNo;
+ fix188XexBridgeInfo='FIX198 hardware XEX loaded profile '+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' BASIC direct OFF streamed=OK active=YES frame '+playFrameNo;
  fix191CleanXexInfo=fix188XexBridgeInfo;
- fix196XexOsKernelInfo='FIX197 OS kernel probe armed for '+activeXexProfile+'; OS ROM mapped, BASIC direct OFF, service traps guarded, legacy profile render purge ON frame '+playFrameNo;
- fix197PurgeInfo='FIX197 TOTAL PURGE active: legacy Donkey/Cobra/Pitstop/Arkanoid DLIST locks disabled; generic ANTIC/DLIST/PMG path only frame '+playFrameNo;
+ fix196XexOsKernelInfo='FIX198 OS kernel probe armed for '+activeXexProfile+'; OS ROM mapped, BASIC direct OFF, service traps guarded, legacy profile render purge ON frame '+playFrameNo;
+ fix197PurgeInfo='FIX198 HARDWARE active: profile DLIST locks disabled; generic ANTIC/DLIST/PMG + RAM DLIST scan only frame '+playFrameNo;
  if(activeXexProfile==="pitt")detectPittTextDlists();
  installOsKeyboardReturnStub();
  installGenericOsRomStubs();
@@ -2761,7 +2762,7 @@ function loadXex(light){
  fix195NativeXexInfo=(fix195NativeXexInfo||'FIX197 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM probe ON resetVector $C2AA';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX197-TOTAL-PURGE-XEX-HARDWARE-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX198-HARDWARE-RAM-DLIST-SCAN-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -3752,7 +3753,7 @@ function dlistLooksLike6502Code(dl){
  if(!validPtrForMiniAtari(dl) || !ram)return false;
  var op0=ram[dl]&255;
  var codeOps=0, a9=0, staAbs=0, jmp=0, jsr=0, rts=0, branch=0, dlistOps=0;
- var codeSet={0x80:1,0x18:1,0x38:1,0x58:1,0x78:1,0xD8:1,0xF8:1,0xA9:1,0xA2:1,0xA0:1,0xAD:1,0xBD:1,0xB9:1,0xBC:1,0xA5:1,0xB5:1,0xB6:1,0xA4:1,0xB4:1,0x8D:1,0x9D:1,0x99:1,0x85:1,0x95:1,0x86:1,0x84:1,0x20:1,0x4C:1,0x6C:1,0x60:1,0x40:1,0xD0:1,0xF0:1,0x10:1,0x30:1,0x90:1,0xB0:1,0x50:1,0x70:1,0xC9:1,0xE0:1,0xC0:1,0x29:1,0x09:1,0x49:1,0xE8:1,0xCA:1,0xC8:1,0x88:1,0xE6:1,0xC6:1,0xEE:1,0xCE:1};
+ var codeSet={0x00:1,0x08:1,0x18:1,0x28:1,0x38:1,0x48:1,0x58:1,0x68:1,0x78:1,0x88:1,0x98:1,0xA8:1,0xB8:1,0xC8:1,0xD8:1,0xE8:1,0xF8:1,0x40:1,0x60:1,0x20:1,0x4C:1,0x6C:1,0x10:1,0x30:1,0x50:1,0x70:1,0x90:1,0xB0:1,0xD0:1,0xF0:1,0xA9:1,0xA5:1,0xB5:1,0xAD:1,0xBD:1,0xB9:1,0xA1:1,0xB1:1,0xA2:1,0xA6:1,0xB6:1,0xAE:1,0xBE:1,0xA0:1,0xA4:1,0xB4:1,0xAC:1,0xBC:1,0x85:1,0x95:1,0x8D:1,0x9D:1,0x99:1,0x81:1,0x91:1,0x86:1,0x96:1,0x8E:1,0x84:1,0x94:1,0x8C:1,0x69:1,0x65:1,0x75:1,0x6D:1,0x7D:1,0x79:1,0x61:1,0x71:1,0xE9:1,0xE5:1,0xF5:1,0xED:1,0xFD:1,0xF9:1,0xE1:1,0xF1:1,0x29:1,0x25:1,0x35:1,0x2D:1,0x3D:1,0x39:1,0x21:1,0x31:1,0x09:1,0x05:1,0x15:1,0x0D:1,0x1D:1,0x19:1,0x01:1,0x11:1,0x49:1,0x45:1,0x55:1,0x4D:1,0x5D:1,0x59:1,0x41:1,0x51:1,0xC9:1,0xC5:1,0xD5:1,0xCD:1,0xDD:1,0xD9:1,0xC1:1,0xD1:1,0xE0:1,0xE4:1,0xEC:1,0xC0:1,0xC4:1,0xCC:1,0xE6:1,0xF6:1,0xEE:1,0xFE:1,0xC6:1,0xD6:1,0xCE:1,0xDE:1,0x24:1,0x2C:1,0x0A:1,0x06:1,0x16:1,0x0E:1,0x1E:1,0x4A:1,0x46:1,0x56:1,0x4E:1,0x5E:1,0x2A:1,0x26:1,0x36:1,0x2E:1,0x3E:1,0x6A:1,0x66:1,0x76:1,0x6E:1,0x7E:1,0x80:1,0xEA:1};
  for(var i=0;i<32;i++){
    var b=ram[(dl+i)&65535]&255;
    if(codeSet[b])codeOps++;
@@ -3773,6 +3774,10 @@ function dlistLooksLike6502Code(dl){
  // tvářil jako dlouhá bitmapová listina jen proto, že opkódy mají nastavené DLI/LMS bity.
  if(codeOps>=13 && (a9+staAbs+jmp+jsr+rts+branch)>=6){fix121DlistCodeRejects++;fix121LastDlistReject='dense 6502-code DLIST $'+hex(dl,4)+' codeOps '+codeOps+' A9 '+a9+' STA '+staAbs+' BR '+branch+' dlistOps '+dlistOps;return true;}
  if(op0===0x80 && codeOps>=8 && (a9||branch||jmp||jsr)){fix121DlistCodeRejects++;fix121LastDlistReject='illegal/NOP code-like DLIST $'+hex(dl,4)+' codeOps '+codeOps;return true;}
+ // FIX198: broader 6502 detector. Donkey-like code starting EOR/LDY/LDA/STA/AND/BEQ looked like ANTIC LMS.
+ // A real DLIST may contain one or two bytes that are also opcodes, but a dense branch/stack/ALU pattern is executable code.
+ if(codeOps>=11 && (branch+rts+jmp+jsr+a9+staAbs)>=4 && dlistOps<30){fix121DlistCodeRejects++;fix121LastDlistReject='FIX198 dense CPU pattern rejected $'+hex(dl,4)+' op $'+hex(op0,2)+' codeOps '+codeOps+' branch '+branch+' dlistOps '+dlistOps;return true;}
+ if((op0===0x55 || op0===0x45 || op0===0x65 || op0===0xA5) && codeOps>=10 && branch>=1){fix121DlistCodeRejects++;fix121LastDlistReject='FIX198 zero-page/branch code rejected $'+hex(dl,4)+' op $'+hex(op0,2)+' codeOps '+codeOps+' branch '+branch;return true;}
  return false;
 }
 
@@ -3854,10 +3859,7 @@ function fallbackGoodDlist(){
 }
 function dlistCandidateScore(m){
  if(!m || m.displayOps<4 || m.invalidLms>0)return -999;
- if(isMoonPatrolProfile() && m.addr===0x854C)return -999;
- if(isCobraProfile() && m.addr===0x462B)return -999;
- if(isCobraProfile() && m.addr===0x2000 && m.visibleScan>=100 && m.visibleScan<=224)return 160;
- if(isArkanoidProfile() && m.addr===0x3503 && m.visibleScan>=80 && m.visibleScan<=224)return 145;
+ // FIX198: no profile whitelists here. Generic candidates must stand on ANTIC structure only.
  if(m.codeLike)return -999;
  if(m.hasEnd && m.jump && !validPtrForMiniAtari(m.jump))return -999;
  if(!m.hasEnd && m.visibleScan<120)return -999;
@@ -3899,6 +3901,54 @@ function scanLoadedDlistCandidate(){
  dlistScanCache={profile:activeXexProfile,frame:playFrameNo,addr:0,score:bestScore};
  return 0;
 }
+
+function fix198DlistScoreNoProfile(m){
+ if(!m || m.displayOps<4 || m.invalidLms>0 || m.codeLike)return -999;
+ if(m.hasEnd && m.jump && !validPtrForMiniAtari(m.jump))return -999;
+ if(!m.hasEnd && m.visibleScan<96)return -999;
+ if(m.visibleScan<32 || m.visibleScan>235)return -999;
+ if(m.lmsOps>=8 && (m.lmsOps*3)>m.displayOps)return -999;
+ var s=0;
+ if(m.hasEnd)s+=25;
+ if(m.selfJump)s+=40;
+ if(m.lmsOps>0)s+=25;
+ if(m.visibleScan>=96 && m.visibleScan<=224)s+=45;
+ if(m.visibleScan>=160 && m.visibleScan<=208)s+=18;
+ if(m.blankScan<=96)s+=12;
+ if(m.displayOps>=8 && m.displayOps<=100)s+=12;
+ if(!m.hasEnd)s-=12;
+ // Prefer low/mid RAM runtime lists over code banks when both look possible.
+ if(m.addr>=0x0800 && m.addr<0x4000)s+=12;
+ if(m.addr>=0x8000)s-=10;
+ return s;
+}
+function scanRuntimeRamDlistCandidateFix198(){
+ if(!ram || activeXexProfile==='realos')return 0;
+ if(fix198RamDlistCache && fix198RamDlistCache.profile===activeXexProfile && (playFrameNo-fix198RamDlistCache.frame)<12)return fix198RamDlistCache.addr||0;
+ var ranges=[[0x0800,0x3FFF],[0x4000,0x7FFF],[0x8000,0xBFFF]];
+ var best=0,bestScore=-999,bestMetrics=null,checked=0;
+ for(var ri=0;ri<ranges.length;ri++){
+   var st=ranges[ri][0],en=ranges[ri][1];
+   for(var a=st;a<=en;a++){
+     // cheap prefilter: display list opcodes are blank, JVB/JMP, or display modes with optional LMS/DLI.
+     var b=ram[a]&255, mode=b&15;
+     if(!(mode===0 || mode===1 || (mode>=2 && mode<=15)))continue;
+     var m=dlistMetricsAt(a); checked++;
+     var sc=fix198DlistScoreNoProfile(m);
+     if(sc>bestScore){bestScore=sc;best=a;bestMetrics=m;}
+   }
+ }
+ if(best && bestScore>=92){
+   fix198RamDlistCache={profile:activeXexProfile,frame:playFrameNo,addr:best,score:bestScore};
+   fix198RamDlistInfo='FIX198 RAM DLIST SCAN picked $'+hex(best,4)+' score '+bestScore+' ops '+bestMetrics.displayOps+' lms '+bestMetrics.lmsOps+' vis '+bestMetrics.visibleScan+' blank '+bestMetrics.blankScan+' checked '+checked+' frame '+playFrameNo;
+   return best;
+ }
+ fix198RamDlistCache={profile:activeXexProfile,frame:playFrameNo,addr:0,score:bestScore};
+ fix198RamDlistInfo='FIX198 RAM DLIST SCAN none best '+(best?('$'+hex(best,4)):'--')+' score '+bestScore+' checked '+checked+' frame '+playFrameNo;
+ return 0;
+}
+var fix198RamDlistCache={profile:'',frame:-999,addr:0,score:-999};
+
 function shouldPreferScannedDlistForGeneric(baseDl, scanDl){
  // FIX142: obecné hry často během bootu nechají v SDLST/HW přechodný/no-end DLIST,
  // zatímco použitelný runtime DLIST už leží v nahraném XEX segmentu. Nejde o kreslicí hack:
@@ -4004,11 +4054,15 @@ function getDlistPtr(){
    }
    var base=hw?h:s;
    var scan=scanLoadedDlistCandidate();
+   var ramScan=scanRuntimeRamDlistCandidateFix198();
    var pr=0;
    if(hw){pr=tryPure(h,'HW-DLIST'); if(pr)return pr;}
    if(sw){pr=tryPure(s,'SDLST'); if(pr)return pr;}
-   if(shouldPreferScannedDlistForGeneric(base,scan)){pr=tryPure(scan,'GENERIC-SCAN'); if(pr)return pr;}
-   if(scan){pr=tryPure(scan,'SCAN-FALLBACK'); if(pr)return pr;}
+   // FIX198: when HW/SDLST is code-like or stale, scan whole RAM for a real runtime DLIST.
+   // This is generic hardware recovery, not a profile address.
+   if(ramScan){pr=tryPure(ramScan,'RAM-SCAN'); if(pr)return pr;}
+   if(shouldPreferScannedDlistForGeneric(base,scan)){pr=tryPure(scan,'SEGMENT-SCAN'); if(pr)return pr;}
+   if(scan){pr=tryPure(scan,'SEGMENT-FALLBACK'); if(pr)return pr;}
    if(lastGoodDlistProfile===activeXexProfile && lastGoodDlist){pr=tryPure(lastGoodDlist,'LASTGOOD'); if(pr)return pr;}
    fix197PurgeInfo='FIX197 TOTAL PURGE no drawable generic DLIST shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' scan '+(scan?('$'+hex(scan,4)):'--')+' frame '+playFrameNo;
    return 0;
@@ -7784,19 +7838,20 @@ lines.push("INPUT MAP FIX188: "+(fix188InputMapInfo||"--"));
 lines.push("INPUT LIVE FIX189: "+(fix189InputLiveInfo||"--"));
 lines.push("REAL OS DIRECT XEX FIX190: "+(fix190DirectXexInfo||"--")+" active="+(fix190RealOsDirectXexMode?"yes":"no")+" (disabled by FIX191 for games)");
 lines.push("CLEAN XEX FIX191: "+(fix191CleanXexInfo||"--"));
-lines.push("XEX LOADER CODE FIX192: "+(fix192LoaderInfo||"--")+" streamed="+(fix192StreamedInitAddrs&&fix192StreamedInitAddrs.length?fix192StreamedInitAddrs.map(function(a){return "$"+hex(a,4);}).join(","):"none")+" active="+(fix192StreamInitActive?"yes":"no"));
-lines.push("NATIVE XEX LOADER FIX197: "+(fix195NativeXexInfo||"--"));
-lines.push("XEX OS KERNEL FIX197: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
-lines.push("TOTAL PURGE FIX197: "+(fix197PurgeInfo||"--")+" STREAMED="+(fix197StreamedOk?"OK":"FAIL")+" ACTIVE="+(fix197TotalPurgeActive?"YES":"NO")+" blocks="+(fix197StreamedBlocks||0)+" bytes="+(fix197StreamedBytes||0));
+lines.push("XEX STREAM STATUS FIX198: "+(fix192LoaderInfo||"--"));
+lines.push("NATIVE XEX LOADER FIX198: "+(fix195NativeXexInfo||"--"));
+lines.push("XEX OS KERNEL FIX198: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
+lines.push("HARDWARE PURGE FIX198: "+(fix197PurgeInfo||"--")+" STREAMED="+(fix197StreamedOk?"OK":"FAIL")+" ACTIVE="+(fix197TotalPurgeActive?"YES":"NO")+" blocks="+(fix197StreamedBlocks||0)+" bytes="+(fix197StreamedBytes||0));
+lines.push("RAM DLIST SCAN FIX198: "+(fix198RamDlistInfo||"--"));
 lines.push("RESET READY FIX194: "+(fix194ResetInfo||"--"));
 lines.push("GENERIC PMG POLICY FIX194: one-game PMG guard disabled; clean XEX loader only. oldInfo="+(fix193DonkeyPmgInfo||"--"));
 lines.push("BASIC PASTE FIX191: "+(fix190PasteInfo||"--"));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
-lines.push("DLI CAP FIX197 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / TOTAL PURGE: profile DLIST locks disabled for XEX hardware path.");
-lines.push("DLIST RESOLVE FIX197: "+dlistQualitySummary(dl));
-lines.push("VIEWPORT FIX197: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
-lines.push("FIX197 REGRESSION GUARD: TOTAL PURGE active="+(fix197TotalPurgeActive?"YES":"NO")+" oldGuard="+fix96RegressionGuardInfo+" arkanoidAssistBlocked="+arkanoidAssistBlocked);
+lines.push("DLI CAP FIX198 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / HARDWARE: profile DLIST locks disabled; RAM scan allowed.");
+lines.push("DLIST RESOLVE FIX198: "+dlistQualitySummary(dl));
+lines.push("VIEWPORT FIX198: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
+lines.push("FIX198 REGRESSION GUARD: HARDWARE active="+(fix197TotalPurgeActive?"YES":"NO")+" oldGuard="+fix96RegressionGuardInfo+" arkanoidAssistBlocked="+arkanoidAssistBlocked);
 lines.push(viewportDiagnosticInfo());
 lines.push("MOBILE PERF FIX181: "+mobilePerfInfo+" runtime="+mobileRuntime+" throttle="+mobileThrottleLevel+" frameMs="+mobileLastFrameTotalMs.toFixed(1)+" renderMs="+mobileLastRenderMs.toFixed(1)+" skips="+mobileRenderSkipHits);
 lines.push("LOG GUARD FIX181: "+(fix139LogGuardInfo||"--")+" suppressed="+fix139SuppressedLogCount+" handoff="+fix139SuppressedHandoffCount+" / "+fix161StorageGuardInfo);
@@ -7819,7 +7874,7 @@ lines.push("AUTO COMPAT FIX197: "+(fix134AutoCompatInfo||"--")+" mode="+(fix134D
  lines.push("FIX197 MAP GUARD: "+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--"));
  lines.push("GENERIC DLI STATES: "+dliStateSummary(genericDliCache,12));
 lines.push("PMG INFO: "+pmgInfo());
-if(isDonkeyProfile())lines.push("DONKEY FIX197: profile DLIST hacks PURGED; using generic ANTIC/DLIST/PMG only; oldInfo="+fix143DonkeyLegacyInfo);
+if(isDonkeyProfile())lines.push("DONKEY FIX198: no Donkey DLIST lock; generic ANTIC/DLIST/PMG + RAM DLIST scan only; oldInfo="+fix143DonkeyLegacyInfo);
 if(isDonkeyJrProfile())lines.push("DONKEY JR FIX125: profile kept, bad scan-DLIST promotion blocked; title/menu DLIST switch is live without frame-hold; PMG title-noise guard skips broad stale PMG on $5919/$8052; runtime $8031 keeps PMG.");
 if(isMontezumaProfile())lines.push("MONTEZUMA FIX125: viewport yOff 0; single-line PMG yOff 8; early START/FIRE is queued until intro/maze is ready; 128-glyph ANTIC mode4 path restored for score/body; renderer CHBASE guard active. guard="+fix115MontezumaGuardInfo+" chbase="+(fix116MontezumaCharsetInfo||"--"));
 lines.push("GTIA COLLISION FIX181: "+gtiaCollisionInfo());
@@ -7875,7 +7930,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX197 TOTAL PURGE: cisty XEX loader + obecny ANTIC/DLIST/PMG bez profilovych render sablon.");
+updatePlayStatus("Emulator bezi. FIX198: cisty XEX loader + obecny RAM DLIST scan bez code-like fallbacku.");
  if(!playLoopId)playLoop();
 }
 
