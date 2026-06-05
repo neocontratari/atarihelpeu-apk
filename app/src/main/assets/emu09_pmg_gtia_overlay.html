@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX200_CAS_WAV_DLI_TIMING_CORE / vlastní XEX</title>
+<title>EMU-09 FIX201_DLI_WSYNC_CAPTURE_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX200_CAS_WAV_DLI_TIMING_CORE</h1>
-<p>FIX200 drzi FIX199 HW/SDLST DLIST poradi, ale pridava CAS/WAV pilotni vetev a cisti DLI timing: zadne dalsi herni obrazove berlicky, RAM scan zustava jen diagnosticky fallback.</p>
+<h1>EMU-09 FIX201_DLI_WSYNC_CAPTURE_CORE</h1>
+<p>FIX201 bere CAS/WAV pilot jako potvrzenou slepou větev a vypíná ho. Hlavní oprava je obecné DLI/WSYNC časování: DLI rutina se při běhu snímá i při zápisech na WSYNC $D40A, aby renderer viděl mezilehlé GTIA/ANTIC změny po scanline, ne jen konečný stav rutiny.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX200 pouziva cisty XEX segment loader: nacita $FF $FF segmenty do RAM, bere RUNAD/INITAD z $02E0-$02E3, BASIC direct OFF. Obraz bere primarne ze skutecneho ANTIC/HW/SDLST DLISTu; segmentovy scan je zachranna cesta, RAM scan nema prednost. CAS/WAV pilot je oddelena diagnosticka vetev.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX201 používá čistý XEX segment loader: načítá $FF $FF segmenty do RAM, bere RUNAD/INITAD z $02E0-$02E3, BASIC direct OFF. Obraz bere primárně ze skutečného ANTIC/HW/SDLST DLISTu; segmentový scan je záchranná cesta, RAM scan nemá přednost. CAS/WAV pilot je vypnutý, protože test ukázal stejný nebo horší obraz než XEX.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -65,8 +65,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="halfgrid">
 <button class="secondary" onclick="loadBuiltinDonkeyKong()">TEST DONKEY KONG XEX</button>
 <button class="secondary" onclick="loadBuiltinSuperCobra()">🚁 TEST SUPER COBRA XEX</button>
-<button class="secondary" onclick="xexCasWavPilotFix200('donkey')">📼 CAS/WAV PILOT DONKEY</button>
-<button class="secondary" onclick="xexCasWavPilotFix200('cobra')">📼 CAS/WAV PILOT COBRA</button>
+<button class="secondary" onclick="xexCasWavPilotFix200('donkey')">📼 CAS/WAV PILOT VYPNUTO</button>
+<button class="secondary" onclick="xexCasWavPilotFix200('cobra')">🧪 DLI/WSYNC FIX201 INFO</button>
 </div>
 <div class="halfgrid">
 <button class="secondary" onclick="loadBuiltinGalaxian()">👾 TEST GALAXIAN XEX</button>
@@ -102,7 +102,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX200: cisty XEX loader zustava, pridana CAS/WAV pilotni vetev a prisnejsi DLI timing bez RAM-scan prebijeni.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX201: CAS/WAV pilot vypnuty; cisty XEX loader zustava; DLI rutina se snima pres WSYNC $D40A pro scanline GTIA/ANTIC zmeny.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -254,7 +254,8 @@ var fix196OsKernelEnabled=false;
 var fix197PurgeInfo='FIX198 hardware purge waiting';
 var fix198RamDlistInfo='FIX198 RAM DLIST SCAN waiting';
 var fix199DlistTrustInfo='FIX199 HW DLIST TRUST waiting';
-var fix200CasWavInfo='FIX200 CAS/WAV pilot idle';
+var fix200CasWavInfo='FIX201 CAS/WAV pilot disabled after negative test';
+var fix201DliCaptureInfo='FIX201 DLI/WSYNC capture waiting';
 var fix200CasWavPilotNext=false;
 var fix200CasWavPilotActive=false;
 var fix197TotalPurgeActive=false;
@@ -760,7 +761,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX200_CAS_WAV_DLI_TIMING_CORE";
+var EMU_BUILD_TAG="FIX201_DLI_WSYNC_CAPTURE_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -2683,7 +2684,7 @@ function parseAndLoadXexBytes(bytes,light){
  fix191CleanXexInfo=fix188XexBridgeInfo;
  fix196XexOsKernelInfo='FIX200 OS kernel probe armed for '+activeXexProfile+'; OS ROM mapped, BASIC direct OFF, service traps guarded, legacy profile render purge ON frame '+playFrameNo;
  fix197PurgeInfo='FIX200 HARDWARE active: profile locks disabled; HW/SDLST trusted first, XEX segment scan second, RAM scan diagnostic last frame '+playFrameNo;
- if(fix200CasWavPilotActive){fix200CasWavInfo='FIX200 CAS/WAV pilot loaded '+activeXexProfile+' STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' blocks '+count+' bytes '+fix197StreamedBytes+' ENTRY $'+hex(entry||0,4)+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' frame '+playFrameNo;}
+ if(fix200CasWavPilotActive){fix200CasWavInfo='FIX201 CAS/WAV pilot disabled; normal XEX loader used for '+activeXexProfile+' frame '+playFrameNo;}
  if(activeXexProfile==="pitt")detectPittTextDlists();
  installOsKeyboardReturnStub();
  installGenericOsRomStubs();
@@ -2701,7 +2702,7 @@ function loadXex(light){
  fix200CasWavPilotActive=!!fix200CasWavPilotNext;
  fix200CasWavPilotNext=false;
  fix192StreamedInitAddrs=[];
- if(fix200CasWavPilotActive){fix192StreamInitActive=true;fix200CasWavInfo='FIX200 CAS/WAV pilot ACTIVE: XEX is staged through cassette-like slow loader branch, stream INIT enabled, BASIC direct OFF frame '+playFrameNo;}
+ if(fix200CasWavPilotActive){fix200CasWavPilotActive=false;fix192StreamInitActive=false;fix200CasWavInfo='FIX201 CAS/WAV pilot request ignored: negative test, staying on normal XEX loader frame '+playFrameNo;}
  fix193DonkeyStableFrames=0; fix193DonkeyLastDl=0; fix193DonkeySuppressUntil=-999;
  fix193DonkeyPmgCleanNext=false;
  fix193DonkeyPmgCleanEnabled=false;
@@ -2772,7 +2773,7 @@ function loadXex(light){
  fix195NativeXexInfo=(fix195NativeXexInfo||'FIX197 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM probe ON resetVector $C2AA';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX200-CAS-WAV-DLI-TIMING-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX201-DLI-WSYNC-CAPTURE-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -6828,6 +6829,39 @@ function dliScanlinesFromDlist(dl){
  }
  return out;
 }
+function captureGenericDliStatePushFix201(cap,y,vc){
+ if(!cap)return;
+ if(cap.length>96)return;
+ var st=captureGenericHardwareState(Math.max(0,Math.min(239,y|0)),vc|0);
+ var last=cap.length?cap[cap.length-1]:null;
+ if(last && (last.y|0)===(st.y|0))cap[cap.length-1]=st;
+ else cap.push(st);
+}
+function runGenericDliRoutineCaptureFix201(dli,y,limit,vc,cap){
+ if(!cpu || !goodEntry(dli))return 0;
+ var origW=CPU6502.prototype.w;
+ var scanY=(y|0), wsyncs=0, writes=0;
+ captureGenericDliStatePushFix201(cap,scanY,vc);
+ CPU6502.prototype.w=function(a,v){
+   origW.call(this,a,v);
+   a&=65535;
+   if(a>=0xD000 && a<=0xD01A)writes++;
+   if(a===0xD40A){
+     wsyncs++;
+     scanY=Math.min(239,scanY+1);
+     captureGenericDliStatePushFix201(cap,scanY,vc);
+   }
+ };
+ var ran=0;
+ try{
+   ran=runAsyncAtariRoutine(dli,'GENERIC LIVE DLI WSYNC y'+(y|0)+' $'+hex(dli,4),limit||2200,vc);
+ }finally{
+   CPU6502.prototype.w=origW;
+ }
+ captureGenericDliStatePushFix201(cap,scanY,vc);
+ fix201DliCaptureInfo='FIX201 DLI/WSYNC y '+(y|0)+' dli $'+hex(dli,4)+' ran '+ran+' wsync '+wsyncs+' hwWrites '+writes+' cap '+(cap?cap.length:0)+' frame '+playFrameNo;
+ return ran;
+}
 function runScheduledGenericDlis(limitEach){
  if(!cpu || isPiTTProfile() || isRiverProfile())return 0;
  var nmi=ram[0xD40E]&255;
@@ -6842,14 +6876,19 @@ function runScheduledGenericDlis(limitEach){
    if(!goodEntry(dli))break;
    var vc=(ys[i]>>1)&0x7F;
    chain.push('y'+ys[i]+'@$'+hex(dli,4));
-   ran+=runAsyncAtariRoutine(dli,'GENERIC LIVE DLI CHAIN y'+ys[i]+' $'+hex(dli,4),limitEach||2200,vc);
-   cap.push(captureGenericHardwareState(ys[i],vc));
+   if(fix197TotalPurgeActive && activeXexProfile!=='realos'){
+     ran+=runGenericDliRoutineCaptureFix201(dli,ys[i],limitEach||2600,vc,cap);
+   }else{
+     ran+=runAsyncAtariRoutine(dli,'GENERIC LIVE DLI CHAIN y'+ys[i]+' $'+hex(dli,4),limitEach||2200,vc);
+     cap.push(captureGenericHardwareState(ys[i],vc));
+   }
  }
  cap.sort(function(a,b){return (a.y||0)-(b.y||0);});
  genericDliCache=cap;
  genericDliCacheFrame=playFrameNo;
  genericDliCacheDl=getDlistPtr()&65535;
  genericDliChainLog=chain;
+ if(fix197TotalPurgeActive)fix201DliCaptureInfo='FIX201 DLI/WSYNC chain '+chain.join(' ')+' ran '+ran+' caps '+cap.length+' frame '+playFrameNo;
  return ran;
 }
 function captureGenericDliStates(){
@@ -7413,18 +7452,13 @@ function showInputMapFix188(){
 }
 
 function xexCasWavPilotFix200(which){
- which=String(which||'donkey').toLowerCase();
- ensureAudio();
- fix190NextXexDirect=false;
- fix190RealOsDirectXexMode=false;
- fix192StreamInitNext=true;
- fix200CasWavPilotNext=true;
- fix200CasWavInfo='FIX200 CAS/WAV pilot requested '+which+': experimental cassette-style staging branch, no BASIC direct, no visual profile lock, stream INIT on';
+ fix200CasWavPilotNext=false;
+ fix200CasWavPilotActive=false;
+ fix192StreamInitActive=false;
+ fix200CasWavInfo='FIX201 CAS/WAV pilot je vypnuty: FIX200 test ukazal stejny/horsi obraz, pokracujeme normalnim XEX + DLI/WSYNC jadrem. Bez nahravani WAV.';
  log(fix200CasWavInfo);
- try{audioTestFix188();}catch(e){}
- var r=(which.indexOf('cobra')>=0)?loadBuiltinSuperCobra():loadBuiltinDonkeyKong();
- updatePlayStatus('FIX200 CAS/WAV PILOT '+which.toUpperCase()+': oddelena diagnosticka vetev. Jestli bude stejny obraz jako XEX, chyba je render/DLI; jestli jiny, chyba je loader/init timing.');
- return r;
+ updatePlayStatus(fix200CasWavInfo);
+ return false;
 }
 
 function xexBridgeSmokeFix188(which){
@@ -7801,10 +7835,10 @@ function runFrameInterrupts(){
  }else if(nmi&0x80){
    // FIX33: obecné XEXy potřebují živé DLI podle DLIST $80 bitů. Pitstop II jinak nechá starý HW DLIST
    // a obraz/countery uvíznou ve stavu, který na skutečném Atari obslouží NMI řádkování.
-   var dliBudgetFix200=isGalaxianProfile()?3600:(fix197TotalPurgeActive?3600:1800);
-   if(isCobraProfile() && fix197TotalPurgeActive)dliBudgetFix200=5200;
+   var dliBudgetFix200=isGalaxianProfile()?3600:(fix197TotalPurgeActive?4200:1800);
+   if(isCobraProfile() && fix197TotalPurgeActive)dliBudgetFix200=6400;
    frameDliRan+=runScheduledGenericDlis(dliBudgetFix200);
-   if(fix197TotalPurgeActive)fix200CasWavInfo=(fix200CasWavInfo||'')+' / DLI budget '+dliBudgetFix200+' ran '+frameDliRan+' frame '+playFrameNo;
+   if(fix197TotalPurgeActive && (playFrameNo&31)===0)fix201DliCaptureInfo=(fix201DliCaptureInfo||'FIX201 DLI/WSYNC')+' budget '+dliBudgetFix200+' totalRan '+frameDliRan+' frame '+playFrameNo;
    frameIrqRan+=frameDliRan;
  }else{
    genericDliCache=null; genericDliCacheFrame=-999; genericDliCacheDl=0;
@@ -7908,8 +7942,9 @@ lines.push("CLEAN XEX FIX191: "+(fix191CleanXexInfo||"--"));
 lines.push("XEX STREAM STATUS FIX200: "+(fix192LoaderInfo||"--"));
 lines.push("NATIVE XEX LOADER FIX200: "+(fix195NativeXexInfo||"--"));
 lines.push("XEX OS KERNEL FIX200: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
-lines.push("HARDWARE PURGE FIX200: "+(fix197PurgeInfo||"--")+" STREAMED="+(fix197StreamedOk?"OK":"FAIL")+" ACTIVE="+(fix197TotalPurgeActive?"YES":"NO")+" blocks="+(fix197StreamedBlocks||0)+" bytes="+(fix197StreamedBytes||0));
-lines.push("CAS/WAV PILOT FIX200: "+(fix200CasWavInfo||"--")+" active="+(fix200CasWavPilotActive?"YES":"NO"));
+lines.push("HARDWARE PURGE FIX201: "+(fix197PurgeInfo||"--")+" STREAMED="+(fix197StreamedOk?"OK":"FAIL")+" ACTIVE="+(fix197TotalPurgeActive?"YES":"NO")+" blocks="+(fix197StreamedBlocks||0)+" bytes="+(fix197StreamedBytes||0));
+lines.push("CAS/WAV PILOT FIX201: "+(fix200CasWavInfo||"--")+" active="+(fix200CasWavPilotActive?"YES":"NO"));
+lines.push("DLI WSYNC CAPTURE FIX201: "+(fix201DliCaptureInfo||"--"));
 lines.push("HW DLIST TRUST FIX199: "+(fix199DlistTrustInfo||"--"));
 lines.push("RAM DLIST SCAN FIX199: "+(fix198RamDlistInfo||"--")+" / diagnostic last only");
 lines.push("RESET READY FIX194: "+(fix194ResetInfo||"--"));
@@ -7917,8 +7952,8 @@ lines.push("GENERIC PMG POLICY FIX194: one-game PMG guard disabled; clean XEX lo
 lines.push("BASIC PASTE FIX191: "+(fix190PasteInfo||"--"));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
-lines.push("DLI CAP FIX200 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / HARDWARE: no synthetic profile DLI in purge; real DLIST $80 bits only, HW/SDLST first.");
-lines.push("DLIST RESOLVE FIX200: "+dlistQualitySummary(dl));
+lines.push("DLI CAP FIX201 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / HARDWARE: no synthetic profile DLI in purge; real DLIST $80 bits only, HW/SDLST first.");
+lines.push("DLIST RESOLVE FIX201: "+dlistQualitySummary(dl));
 lines.push("VIEWPORT FIX200: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
 lines.push("FIX200 REGRESSION GUARD: HARDWARE active="+(fix197TotalPurgeActive?"YES":"NO")+" oldGuard="+fix96RegressionGuardInfo+" arkanoidAssistBlocked="+arkanoidAssistBlocked);
 lines.push(viewportDiagnosticInfo());
