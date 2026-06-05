@@ -1,5 +1,9 @@
-# AtariHelp.eu EMU-09 FIX165_REALOS_TEXTBLANK_GTIA_CORE
+# AtariHelp.eu EMU-09 FIX166 overlay
 
-Hotovy ZIP overlay pro GitHub Desktop. Rozbalit do korene lokalniho repo, commit/push, GitHub Actions postavi APK.
+Build tag: `FIX166_REALOS_MONITOR_BORDER_GTIA_CORE`
 
-Viz README_FIX165_REALOS_TEXTBLANK_GTIA_CORE.txt.
+Tento overlay je pripraveny pro rozbaleni do lokalniho repozitare pres GitHub Desktop workflow.
+
+Hlavni oprava: REAL OS/BASIC monitor model. Cerna oblast monitoru/borderu zustava cerna; modre je jen Atari editor/playfield okno. GRAPHICS 3 oprava z FIX164 zustava zachovana.
+
+Commit summary: `FIX166 realos monitor border gtia core`
