@@ -1,9 +1,9 @@
-# AtariHelp.eu EMU-09 FIX168
+# AtariHelp.eu EMU-09 FIX169
 
 Overlay pro GitHub Desktop.
 
-Build: FIX168_REALOS_GTIA_SHADOW_PRIOR_CORE
+Build: FIX169_REALOS_GTIA_DLI_BAND_CORE
 
-Zaklad: potvrzeny FIX167 REAL OS/BASIC monitor, klavesnice a GRAPHICS 3.
+Zaklad: potvrzeny FIX168 REAL OS/BASIC monitor, klavesnice, GRAPHICS 3 a GTIA shadow/PRIOR synchronizace.
 
-FIX168 pridava obecnou GTIA synchronizaci shadow registru COLOR0-4, PCOLR0-3 a PRIOR do hardwarovych COLPF/COLBK, PCOLR a PRIOR. River/PiTT specialni cesty zustavaji chranene.
+FIX169 pridava obecnou GTIA DLI band vrstvu: PMG/PCOLR, missile barvy, PRIOR/fifth-player bit a kolizni color set se berou po scanline z DLI snapshotu. River/PiTT specialni cesty zustavaji chranene.
