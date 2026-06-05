@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX158 REAL OS BASIC STABLE BOOT CORE / vlastní XEX</title>
+<title>EMU-09 FIX159 REAL OS COLOR KEYBOARD CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX158 REAL OS BASIC STABLE BOOT CORE</h1>
-<p>FIX158 drží bezpečný rychlý XEX baseline a pokračuje v poctivém REAL OS/BASIC experimentu. FIX157 zachytával CIO/SIO příliš brzy a tím zastavil OS ještě před obrazovkou; FIX158 nejdřív nechá XL OS postavit editorový DLIST/SAVMSC a teprve potom se pokusí přejít do skutečné BASIC ROM. Žádné kreslené READY.</p>
+<h1>EMU-09 FIX159 REAL OS COLOR KEYBOARD CORE</h1>
+<p>FIX159 drží bezpečný rychlý XEX baseline a pokračuje v poctivém REAL OS/BASIC experimentu. FIX157 zachytával CIO/SIO příliš brzy a tím zastavil OS ještě před obrazovkou; FIX159 nejdřív nechá XL OS postavit editorový DLIST/SAVMSC a teprve potom se pokusí přejít do skutečné BASIC ROM. Žádné kreslené READY.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -97,7 +97,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Připraveno. FIX158: hry chráněné; REAL OS/BASIC AUTO je izolovaný experiment bez kresleného READY.</div>
+<div id="playStatus" class="playStatus">Připraveno. FIX159: hry chráněné; REAL OS/BASIC AUTO je izolovaný experiment bez kresleného READY.</div>
 </section>
 
 <section class="card">
@@ -219,7 +219,7 @@ var cobraForcedNmiLast="--";
 var genericTrapRecoveries=0;
 var genericTrapRecoverLast="--";
 var arkanoidAssistBlocked=0;
-var fix96RegressionGuardInfo="FIX158: FIX158 safe baseline + REAL ROM BOOT visible audit + games protected";
+var fix96RegressionGuardInfo="FIX159: FIX159 safe baseline + REAL ROM BOOT visible audit + games protected";
 var fix148MapGuardInfo="reset";
 var fix148LastMapKey="";
 var fix148DonkeyVariantInfo="reset";
@@ -307,10 +307,10 @@ function ensureBuiltinAtariRomImages(){
    optionalOsRom=decodeB64(builtinAtariOsRomB64);       // René: ATARIXL.ROM 16384 bytes md5 06daac977823773a3eea3422fd26a703
    optionalOsbRom=decodeB64(builtinAtariOsbRomB64);     // René: ATARIOSB.ROM 10240 bytes md5 a3e8d617c95d08031fe1b20d541434b2
    optionalBasicRom=decodeB64(builtinAtariBasicRomB64); // René: ATARIBAS.ROM 8192 bytes md5 0bac0c6a50104045d902df4503a4c30b
-   optionalRomInfo='ROM AUDIT FIX158: ATARIXL 16384 + ATARIOSB 10240 + ATARIBAS 8192 vestavěné / md5 XL 06daac97 OSB a3e8d617 BAS 0bac0c6a';
+   optionalRomInfo='ROM AUDIT FIX159: ATARIXL 16384 + ATARIOSB 10240 + ATARIBAS 8192 vestavěné / md5 XL 06daac97 OSB a3e8d617 BAS 0bac0c6a';
    builtinRomImagesReady=true;
  }catch(e){
-   optionalRomInfo='ROM AUDIT FIX158 decode chyba: '+(e&&e.message?e.message:e);
+   optionalRomInfo='ROM AUDIT FIX159 decode chyba: '+(e&&e.message?e.message:e);
  }
 }
 function mapBuiltinRomsIntoRam(){
@@ -390,7 +390,7 @@ var mobileOverBudgetFrames=0;
 var mobileRenderSkipHits=0;
 var mobileLastFrameTotalMs=0;
 var mobileLastRenderMs=0;
-var mobilePerfInfo="FIX158 mobile guard init";
+var mobilePerfInfo="FIX159 mobile guard init";
 function nowMs(){return (typeof performance!=="undefined"&&performance.now)?performance.now():Date.now();}
 function mobileThrottleProfile(){
  return mobileRuntime && (activeXexProfile==="generic" || activeXexProfile==="arkanoid" || activeXexProfile==="moonpatrol" || activeXexProfile==="montezuma" || activeXexProfile==="pacman" || activeXexProfile==="pitstop" || activeXexProfile==="river");
@@ -407,7 +407,7 @@ function applyMobileBudgetGuard(){
  if(mobileThrottleProfile())genericRenderEvery=Math.max(genericRenderEvery||1,2);
  if(mobileRuntime && (activeXexProfile==="donkey" || activeXexProfile==="cobra"))genericRenderEvery=1;
  if(mobileThrottleProfile())playMaxMsPerFrame=Math.min(playMaxMsPerFrame||7,6);
- mobilePerfInfo="FIX158 mobile guard profile="+activeXexProfile+" renderEvery="+effectiveRenderEvery()+" maxMs="+playMaxMsPerFrame;
+ mobilePerfInfo="FIX159 mobile guard profile="+activeXexProfile+" renderEvery="+effectiveRenderEvery()+" maxMs="+playMaxMsPerFrame;
 }
 function updateMobilePerfGuard(totalMs,renderMs){
  mobileLastFrameTotalMs=totalMs||0; mobileLastRenderMs=renderMs||0;
@@ -418,7 +418,7 @@ function updateMobilePerfGuard(totalMs,renderMs){
  }else if(totalMs<12 && renderMs<5 && mobileThrottleLevel>0 && (playFrameNo&63)===0){
    mobileThrottleLevel--; mobileOverBudgetFrames=0;
  }
- mobilePerfInfo="FIX158 mobile guard "+(mobileRuntime?"ON":"off")+" prof="+activeXexProfile+" lvl="+mobileThrottleLevel+" renderEvery="+effectiveRenderEvery()+" frame="+totalMs.toFixed(1)+"ms render="+renderMs.toFixed(1)+"ms skips="+mobileRenderSkipHits+" logGuard="+fix139SuppressedLogCount;
+ mobilePerfInfo="FIX159 mobile guard "+(mobileRuntime?"ON":"off")+" prof="+activeXexProfile+" lvl="+mobileThrottleLevel+" renderEvery="+effectiveRenderEvery()+" frame="+totalMs.toFixed(1)+"ms render="+renderMs.toFixed(1)+"ms skips="+mobileRenderSkipHits+" logGuard="+fix139SuppressedLogCount;
 }
 var gameImageData=null;
 var xexCache=null;
@@ -440,7 +440,7 @@ var initOnlyIdleRecoveries=0;
 var galaxianIdleStubInstalled=false;
 var lastBrkRecoverInfo="--";
 var dlistScanCache={profile:"",frame:-999,addr:0,score:0};
-  lastVisualDlist=0;lastVisualProfile="";dlistTransitionHoldUntil=-999;lastFrameHoldInfo="reset";dlistFrameHoldHits=0;lastStableVideoImage=null;lastStableVideoInfo="reset";lastStableVideoFrame=-999;frameHoldRestoreHits=0;emuPaddle0=114;potgoFrame=0;paddleInputInfo="reset";cobraFirePressCount=0;cobraBombPulseUntil=-999;cobraBombPulseInfo="reset";cobraFireHoldLastFrame=-999;cobraFireHoldFrames=0;cobraTitleFallbackInfo="reset";cobraCollisionGuardInfo="reset";genericTrapRecoveries=0;genericTrapRecoverLast="--";fix110AnticAttrInfo="reset";fix110CobraLifeInfo="reset";fix113BootHandoffInfo="reset";fix113BasicDependencyInfo="reset";fix130CharsetFallbackInfo="reset";fix130MoonSegmentInfo="reset";genericDliCacheDl=0;fix148MapGuardInfo="reset";fix148LastMapKey="";fix148DonkeyVariantInfo="reset";fix154RealOsBootMode=false;fix154RealOsBootInfo="reset";fix154RealOsLastDl=0;fix157RealOsMode="basic";fix157RealOsInfo="reset";fix157BasicJumpDone=false;
+  lastVisualDlist=0;lastVisualProfile="";dlistTransitionHoldUntil=-999;lastFrameHoldInfo="reset";dlistFrameHoldHits=0;lastStableVideoImage=null;lastStableVideoInfo="reset";lastStableVideoFrame=-999;frameHoldRestoreHits=0;emuPaddle0=114;potgoFrame=0;paddleInputInfo="reset";cobraFirePressCount=0;cobraBombPulseUntil=-999;cobraBombPulseInfo="reset";cobraFireHoldLastFrame=-999;cobraFireHoldFrames=0;cobraTitleFallbackInfo="reset";cobraCollisionGuardInfo="reset";genericTrapRecoveries=0;genericTrapRecoverLast="--";fix110AnticAttrInfo="reset";fix110CobraLifeInfo="reset";fix113BootHandoffInfo="reset";fix113BasicDependencyInfo="reset";fix130CharsetFallbackInfo="reset";fix130MoonSegmentInfo="reset";genericDliCacheDl=0;fix148MapGuardInfo="reset";fix148LastMapKey="";fix148DonkeyVariantInfo="reset";fix154RealOsBootMode=false;fix154RealOsBootInfo="reset";fix154RealOsLastDl=0;fix157RealOsMode="basic";fix157RealOsInfo="reset";fix157BasicJumpDone=false;var fix159RealOsKeyInfo='reset';var realOsKeyOneShot=0xFF;var realOsKeyLast=0xFF;var realOsKeyStamp=0;
 var collisionReadRenderFrame=-999;
 var collisionReadRenderGuard=false;
 var cobraStickyMxpf=new Uint8Array(4);
@@ -501,7 +501,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX158_REAL_OS_BASIC_STABLE_BOOT_CORE";
+var EMU_BUILD_TAG="FIX159_REAL_OS_COLOR_KEYBOARD_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -581,7 +581,7 @@ function deterministicColdResetState(){
  if(typeof riverDliCache!=='undefined'){riverDliCache=null;riverDliCacheFrame=-999;}
  if(typeof genericDliCache!=='undefined'){genericDliCache=null;genericDliCacheFrame=-999;genericDliChainLog=[];}
  dlistScanCache={profile:"",frame:-999,addr:0,score:0};
-  lastVisualDlist=0;lastVisualProfile="";dlistTransitionHoldUntil=-999;lastFrameHoldInfo="reset";dlistFrameHoldHits=0;lastStableVideoImage=null;lastStableVideoInfo="reset";lastStableVideoFrame=-999;frameHoldRestoreHits=0;emuPaddle0=114;potgoFrame=0;paddleInputInfo="reset";cobraFirePressCount=0;cobraBombPulseUntil=-999;cobraBombPulseInfo="reset";cobraFireHoldLastFrame=-999;cobraFireHoldFrames=0;cobraTitleFallbackInfo="reset";cobraCollisionGuardInfo="reset";genericTrapRecoveries=0;genericTrapRecoverLast="--";fix110AnticAttrInfo="reset";fix110CobraLifeInfo="reset";fix113BootHandoffInfo="reset";fix113BasicDependencyInfo="reset";fix130CharsetFallbackInfo="reset";fix130MoonSegmentInfo="reset";genericDliCacheDl=0;fix148MapGuardInfo="reset";fix148LastMapKey="";fix148DonkeyVariantInfo="reset";fix154RealOsBootMode=false;fix154RealOsBootInfo="reset";fix154RealOsLastDl=0;fix157RealOsMode="basic";fix157RealOsInfo="reset";fix157BasicJumpDone=false;
+  lastVisualDlist=0;lastVisualProfile="";dlistTransitionHoldUntil=-999;lastFrameHoldInfo="reset";dlistFrameHoldHits=0;lastStableVideoImage=null;lastStableVideoInfo="reset";lastStableVideoFrame=-999;frameHoldRestoreHits=0;emuPaddle0=114;potgoFrame=0;paddleInputInfo="reset";cobraFirePressCount=0;cobraBombPulseUntil=-999;cobraBombPulseInfo="reset";cobraFireHoldLastFrame=-999;cobraFireHoldFrames=0;cobraTitleFallbackInfo="reset";cobraCollisionGuardInfo="reset";genericTrapRecoveries=0;genericTrapRecoverLast="--";fix110AnticAttrInfo="reset";fix110CobraLifeInfo="reset";fix113BootHandoffInfo="reset";fix113BasicDependencyInfo="reset";fix130CharsetFallbackInfo="reset";fix130MoonSegmentInfo="reset";genericDliCacheDl=0;fix148MapGuardInfo="reset";fix148LastMapKey="";fix148DonkeyVariantInfo="reset";fix154RealOsBootMode=false;fix154RealOsBootInfo="reset";fix154RealOsLastDl=0;fix157RealOsMode="basic";fix157RealOsInfo="reset";fix157BasicJumpDone=false;fix159RealOsKeyInfo='reset';realOsKeyOneShot=0xFF;realOsKeyLast=0xFF;realOsKeyStamp=0;
  collisionReadRenderFrame=-999;collisionReadRenderGuard=false;
  pitstopStableRenderPending=false;pitstopStableRenderHits=0;pitstopSkippedMidDrawRenders=0;pitstopLastStablePC=0;
  pitstopVideoSnapshot=null;pitstopSnapshotDliCache=null;pitstopSnapshotHits=0;pitstopSnapshotRejects=0;pitstopLastSnapshotDl=0;pitstopLastSnapshotPC=0;pitstopSnapshotRenderGuard=false;pitstopLastSnapshotInfo="";pitstopLastStablePhase="";pitstopSnapshotPhase="";pitstopLastRenderSource="LIVE";pitstopLastLivePhase="";pitstopRaceSeen=false;pitstopRaceDlistRepairs=0;pitstopRaceDlistLastReason="";pitstopRaceTemplateLast="--";pitstopRaceVirtualLast="--";pitstopRaceVirtualFrames=0;pitstopSplitDebugLast="--";pitstopSplitDebugFrame=-999;pitstopSplitCleanRows=0;pitstopSplitCopiedRows=0;
@@ -595,7 +595,7 @@ function deterministicColdResetState(){
  lastGoodDlist=0;lastGoodDlistProfile="";lastRejectedDlistInfo="";brkNearLoadRecoveries=0;brkRomRecoveries=0;initOnlyIdleRecoveries=0;galaxianIdleStubInstalled=false;lastBrkRecoverInfo="--";
  ram.fill(0);
  coldResetSeq++;
- lastColdResetInfo='COLD RESET FIX158 #'+coldResetSeq+' OK: RAM/CPU/DLI/cache/input/timery/framehold/POT/130XE banky vyčištěny';
+ lastColdResetInfo='COLD RESET FIX159 #'+coldResetSeq+' OK: RAM/CPU/DLI/cache/input/timery/framehold/POT/130XE banky vyčištěny';
 }
 
 function pitstopPhaseFromPc(pc){
@@ -720,7 +720,7 @@ function renderWithPitstopSnapshot(fn){
  }
 }
 function transitionHoldProfile(){
- // FIX158: Donkey jde FIX69-clean cestou bez canvas frame-holdu.
+ // FIX159: Donkey jde FIX69-clean cestou bez canvas frame-holdu.
  // getImageData/putImageData při přechodech zpomalovalo i NOX a přidávalo duchy/čaj.
  return isDonkeyJrProfile()||isCobraProfile()||isGalaxianProfile()||isArkanoidProfile()||activeXexProfile==='generic';
 }
@@ -789,7 +789,7 @@ function maybeHoldDlistTransitionFrame(){
  if(isDonkeyProfile()){
    lastVisualDlist=dl; lastVisualProfile=prof; dlistTransitionHoldUntil=-999;
    lastStableVideoImage=null;
-   fix99DonkeyHoldInfo='FIX158 Donkey FIX69 clean/no framehold dl $'+hex(dl,4)+' frame '+playFrameNo;
+   fix99DonkeyHoldInfo='FIX159 Donkey FIX69 clean/no framehold dl $'+hex(dl,4)+' frame '+playFrameNo;
    fix143DonkeyLegacyInfo='live DLIST $'+hex(dl,4)+' no canvas hold frame '+playFrameNo;
    return false;
  }
@@ -868,11 +868,11 @@ function makeLogFileName(reason){
  var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
  var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
  var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
- return 'atarihelp-FIX158-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
+ return 'atarihelp-FIX159-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX158 REAL OS BASIC STABLE BOOT CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX159 REAL OS COLOR KEYBOARD CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -941,7 +941,7 @@ var fix139LastLogStoreMs=0;
 var fix139LogGuardInfo="FIX143 log guard init";
 function isHighRateDiagnosticLog(s){
  s=String(s||"");
- return s.indexOf('FIX125 LOADER HANDOFF:')>=0 || s.indexOf('FIX142 LOADER HANDOFF:')>=0 || s.indexOf('GENERIC TRAP RECOVER FIX158:')>=0;
+ return s.indexOf('FIX125 LOADER HANDOFF:')>=0 || s.indexOf('FIX142 LOADER HANDOFF:')>=0 || s.indexOf('GENERIC TRAP RECOVER FIX159:')>=0;
 }
 function log(s){
  s=String(s==null?'':s);
@@ -1360,7 +1360,7 @@ function runCoreSmokeMatrix(){
    restoreCoreMatrixEmuState(savedState);
  }
  var report=[
-    "AtariHelp.eu EMU-09 FIX158 DONKEY STRICT 466F SPEED MATRIX TXT",
+    "AtariHelp.eu EMU-09 FIX159 DONKEY STRICT 466F SPEED MATRIX TXT",
    "time="+new Date().toISOString(),
    "build="+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing'),
    "restoredXex="+currentXexName,
@@ -1427,7 +1427,7 @@ function detectXexProfile(bytes,entry,runVec){
  if(nm.indexOf("hra47")>=0 || nm.indexOf("garaz")>=0 || nm.indexOf("garage")>=0)return "kittgarage";
  if(nm.indexOf("donkey")>=0 && (nm.indexOf("junior")>=0 || nm.indexOf("jr")>=0))return "donkeyjr";
  if(nm.indexOf("donkey")>=0){
-   // FIX158: název Donkey nestačí. Externí varianty typu Arcade/Title mají jiné ENTRY/DLIST a nesmí dědit
+   // FIX159: název Donkey nestačí. Externí varianty typu Arcade/Title mají jiné ENTRY/DLIST a nesmí dědit
    // původní Donkey FIX69 pravidla ($466F/$1200/$49D7), jinak se míchá intro a hra.
    if(bytes && bytes.length===16495)return "donkey";
    if((entry&65535)===0x701D)return "donkey";
@@ -1862,9 +1862,15 @@ function tapAtariKey(k,ms){
  if(!playMode)startPlaying();
  if(activeXexProfile!=='realos')ensureAudio();
  input.key=code;
+ if(activeXexProfile==='realos'){
+   // FIX159: reálný OS/BASIC nesmí dostat jeden klik jako třicet znaků.
+   // CH $02FC vrátíme jen jednou; KBCODE necháme krátce jako poslední fyzickou klávesu.
+   realOsKeyOneShot=code&255;realOsKeyLast=code&255;realOsKeyStamp=Date.now();
+   fix159RealOsKeyInfo='queued one-shot key $'+hex(code,2)+' frame '+playFrameNo;
+ }
  syncInputShadows();
  renderInput();
- var hold=ms||130;
+ var hold=(activeXexProfile==='realos')?(ms||55):(ms||130);
  trackInputTimer(setTimeout(function(){input.key=0xFF;syncInputShadows();renderInput();},hold));
  return false;
 }
@@ -1904,15 +1910,31 @@ function promptAtariName(){
 function buildAtariKeyboard(){
  var el=document.getElementById('atariKeyboard');
  if(!el)return;
- var keys='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
- keys.push('SPACE','BACK','ENTER');
+ // FIX159: rozložení blíž Atari/QWERTY místo prosté abecedy.
+ // Zatím držíme znaky, které náš KBCODE mapper bezpečně zná: čísla, písmena, mezera, DEL, RETURN.
+ var rows=[
+   ['1','2','3','4','5','6','7','8','9','0'],
+   ['Q','W','E','R','T','Y','U','I','O','P'],
+   ['A','S','D','F','G','H','J','K','L'],
+   ['Z','X','C','V','B','N','M'],
+   ['SPACE','BACK','ENTER']
+ ];
  el.innerHTML='';
- keys.forEach(function(k){
-   var b=document.createElement('button');
-   b.className='secondary compact';
-   b.textContent=(k==='SPACE')?'MEZERA':(k==='BACK'?'DEL':k);
-   b.onclick=function(){return tapAtariKey(k);};
-   el.appendChild(b);
+ el.style.display='block';
+ rows.forEach(function(row){
+   var r=document.createElement('div');
+   r.style.display='grid';
+   r.style.gridTemplateColumns='repeat('+row.length+', minmax(0, 1fr))';
+   r.style.gap='5px';
+   r.style.marginBottom='5px';
+   row.forEach(function(k){
+     var b=document.createElement('button');
+     b.className='secondary compact';
+     b.textContent=(k==='SPACE')?'SPACE':(k==='BACK'?'DEL':(k==='ENTER'?'RETURN':k));
+     b.onclick=function(ev){if(ev){ev.preventDefault();ev.stopPropagation();}return tapAtariKey(k);};
+     r.appendChild(b);
+   });
+   el.appendChild(r);
  });
 }
 
@@ -1980,7 +2002,7 @@ function loadXex(light){
     playMaxMsPerFrame=7;
     genericRenderEvery=1;
   }else if(activeXexProfile==="donkey"){
-    // FIX158: Donkey drží svižný NOX/mobile budget; canvas framehold zůstává vypnutý.
+    // FIX159: Donkey drží svižný NOX/mobile budget; canvas framehold zůstává vypnutý.
     // Po vypnutí frameholdu může běžet blíž starší svižné baseline.
     playCyclesPerFrame=5200;
     playMaxMsPerFrame=8;
@@ -2021,7 +2043,7 @@ function loadXex(light){
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX158-REAL-OS-BASIC-STABLE-BOOT-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX159-REAL-OS-COLOR-KEYBOARD-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -2343,10 +2365,16 @@ CPU6502.prototype.r=function(a){
  // POKEY SKSTAT $D20F: v klidu jsou důležité bity nahozené.
  // FIX33: když posíláme klávesový TAP, nevracíme úplný klid, aby hry čtoucí KBCODE/SKSTAT viděly stisk.
  if(a===0xD20F){
+   if(activeXexProfile==='realos')return (realOsKeyOneShot!==0xFF || input.key!==0xFF) ? 0xF7 : 0xFF;
    return (input.key!==undefined && input.key!==0xFF) ? 0xF7 : 0xFF;
  }
  // KBCODE $D209: scan-code poslední klávesy. FIX32 ho váže na stejné TAP pulsy jako CH $02FC.
  if(a===0xD209){
+   if(activeXexProfile==='realos'){
+     if(realOsKeyOneShot!==0xFF)return realOsKeyOneShot&255;
+     if(Date.now()-realOsKeyStamp<70 && realOsKeyLast!==0xFF)return realOsKeyLast&255;
+     return 0xFF;
+   }
    return (input.key!==undefined && input.key!==0xFF) ? (input.key&255) : 0xFF;
  }
  // CH / keyboard shadow. V klidu $FF. U některých menu pomůže, když FIRE krátce připomíná SPACE, ale jen přes TAP/aktuální dotyk.
@@ -2354,6 +2382,15 @@ CPU6502.prototype.r=function(a){
    // CH keyboard shadow. Klid $FF. Některé menu hry (Arkanoid) nečtou konzoli, ale CH.
    // FIX36: u Pitstop II NESMÍME mapovat FIRE/START na CH. Po zadání jména by FIRE
    // vypadal jako klávesa T ($2D) a hra by dostávala nekonečné TTTTT.
+   if(activeXexProfile==='realos'){
+     if(realOsKeyOneShot!==0xFF){
+       var rv=realOsKeyOneShot&255;
+       realOsKeyOneShot=0xFF; input.key=0xFF; syncInputShadows();
+       fix159RealOsKeyInfo='CH one-shot consumed $'+hex(rv,2)+' frame '+playFrameNo+' pc $'+(cpu?hex(cpu.pc,4):'----');
+       return rv;
+     }
+     return 0xFF;
+   }
    if(input.key!==undefined && input.key!==0xFF)return input.key&255;
    if(activeXexProfile==='pitstop')return 0xFF;
    if(input.fire)return 0x2D;
@@ -2539,7 +2576,7 @@ function shouldHookOsServiceEntry(a){
 
 function fix157IsRealOsNoDeviceService(addr){
  addr&=65535;
- // FIX158: FIX157 chytal E456/CIOV už v raném resetu ($C3F2) a tím vracel OS zpět do RAM testu
+ // FIX159: FIX157 chytal E456/CIOV už v raném resetu ($C3F2) a tím vracel OS zpět do RAM testu
  // ještě před vytvořením editorové obrazovky. V REALOS bootu proto rané CIO/SIO hooky vypínáme;
  // BASIC přepnutí řeší až fix157MaybeEnterBasicFromBoot(), když už existuje DLIST/SAVMSC.
  if(fix154RealOsBootMode){ fix158NoDeviceSuppressed++; return false; }
@@ -2571,13 +2608,13 @@ function fix157MaybeEnterBasicFromBoot(cpuObj,pc0){
  var dl=((cpuObj.m[0x0230]||0)|((cpuObj.m[0x0231]||0)<<8))&65535;
  var sav=((cpuObj.m[0x58]||0)|((cpuObj.m[0x59]||0)<<8))&65535;
  var screenReady=(dl>=0x9000 && dl<=0xA200 && sav>=0x9000 && sav<=0xA500);
- // FIX158: BASIC nespouštíme dřív než skutečný OS postaví editorovou obrazovku.
+ // FIX159: BASIC nespouštíme dřív než skutečný OS postaví editorovou obrazovku.
  // Pokud pak OS spadne do boot/CIO/SIO RAM oblasti nebo čekací smyčky, zkusíme skutečný BASIC ROM.
  if(screenReady && ((pc0>=0x5000&&pc0<=0x5FFF) || pc0===0xEA9E || pc0===0xEB16 || pc0===0xEB24 || pc0===0xE456 || pc0===0xE459)){
    cpuObj.pc=0xA000; cpuObj.a=0; cpuObj.x=0; cpuObj.y=0; cpuObj.p&=~1;
    fix157BasicJumpDone=true;
-   fix157RealOsInfo='BASIC AUTO FIX158: real OS screen DL $'+hex(dl,4)+' SAV $'+hex(sav,4)+' -> try BASIC ROM $A000 from $'+hex(pc0,4)+' frame '+playFrameNo;
-   fix154RealOsBootInfo=(fix154RealOsBootInfo||'REAL OS RESET FIX158')+'; '+fix157RealOsInfo;
+   fix157RealOsInfo='BASIC AUTO FIX159: real OS screen DL $'+hex(dl,4)+' SAV $'+hex(sav,4)+' -> try BASIC ROM $A000 from $'+hex(pc0,4)+' frame '+playFrameNo;
+   fix154RealOsBootInfo=(fix154RealOsBootInfo||'REAL OS RESET FIX159')+'; '+fix157RealOsInfo;
    return true;
  }
  return false;
@@ -2597,7 +2634,7 @@ CPU6502.prototype.step=function(){
    this.m[0x01]=1;
    fix158RamGuardHits++;
    if(fix158RamGuardHits<=3){
-     fix154RealOsBootInfo=(fix154RealOsBootInfo||'REAL OS RESET FIX158')+'; RAMTEST guard '+fix158RamGuardHits+': $01 00->01 at $C3AB';
+     fix154RealOsBootInfo=(fix154RealOsBootInfo||'REAL OS RESET FIX159')+'; RAMTEST guard '+fix158RamGuardHits+': $01 00->01 at $C3AB';
    }
  }
  if(fix154RealOsBootMode && pc0===0xC3C1){
@@ -2608,7 +2645,7 @@ CPU6502.prototype.step=function(){
    return;
  }
  if(fix154RealOsBootMode && pc0===0xEA9E && (this.m[0x11]&255)!==0 && (this.m[0x3A]&255)===0){
-   // FIX158: skutečný XL OS už postavil DLIST/SAVMSC, ale při bootu bez periferií visí v SIO čekání
+   // FIX159: skutečný XL OS už postavil DLIST/SAVMSC, ale při bootu bez periferií visí v SIO čekání
    // na serial-ready flag $3A. Na reálném Atari by SIO skončilo timeoutem/IRQ a pokračovalo do BASICu.
    // Tady nedokreslujeme READY ručně; jen dovolíme OS opustit SIO wait smyčku.
    this.m[0x3A]=1;
@@ -3211,8 +3248,8 @@ function getDlistPtr(){
    }
  }
  if(isOriginalDonkeyRuntimeXex()){
-   // FIX158: Donkey Kong clean path podle dodaného APK FIX69 jen pro původní Donkey. Varianty jdou přes obecný DLIST core.
-   // FIX158: Donkey Kong clean path podle dodaného APK FIX69.
+   // FIX159: Donkey Kong clean path podle dodaného APK FIX69 jen pro původní Donkey. Varianty jdou přes obecný DLIST core.
+   // FIX159: Donkey Kong clean path podle dodaného APK FIX69.
    // Z FIX69 si bereme princip: nepovyšovat náhradní $49D7 brzy a nepřikrývat čaj canvas frameholdem.
    // Když live SDLST/HW ukazuje na přechodový $1200, preferuj starý čistý runtime DLIST $466F,
    // případně silný scanner. $49D7 je až pozdní nouze, protože ve FIX143 čaj jen zmenšil, ale neodstranil.
@@ -3227,31 +3264,31 @@ function getDlistPtr(){
      if(dlistLooksLike6502Code(a))return false;
      return true;
    }
-   // FIX158: FIX144 zrychlil hru, ale šum zůstal, protože živý shadow/HW pointer mohl
+   // FIX159: FIX144 zrychlil hru, ale šum zůstal, protože živý shadow/HW pointer mohl
    // stále brzy projít přes $49D7. Bereme ho stejně jako $1200: přechodový čaj, ne čistý obraz.
    if(rawIsTransition && goodDonkeyRuntimeCandidate(0x466F)){
      dk=tryOne(0x466F,'donkey-fix69-strict-466F');
-     if(dk){fix143DonkeyLegacyInfo='FIX158 strict $466F over transient shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;return dk;}
+     if(dk){fix143DonkeyLegacyInfo='FIX159 strict $466F over transient shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;return dk;}
    }
-   if(sw && !isDonkeyTransientPtr(s)){dk=tryOne(s,'donkey-fix69-shadow-live'); if(dk){fix143DonkeyLegacyInfo='FIX158 live shadow $'+hex(dk,4)+' over hw $'+hex(h||0,4)+' frame '+playFrameNo;return dk;}}
-   if(hw && !isDonkeyTransientPtr(h)){dk=tryOne(h,'donkey-fix69-hw-live'); if(dk){fix143DonkeyLegacyInfo='FIX158 live hw $'+hex(dk,4)+' over shadow $'+hex(s||0,4)+' frame '+playFrameNo;return dk;}}
+   if(sw && !isDonkeyTransientPtr(s)){dk=tryOne(s,'donkey-fix69-shadow-live'); if(dk){fix143DonkeyLegacyInfo='FIX159 live shadow $'+hex(dk,4)+' over hw $'+hex(h||0,4)+' frame '+playFrameNo;return dk;}}
+   if(hw && !isDonkeyTransientPtr(h)){dk=tryOne(h,'donkey-fix69-hw-live'); if(dk){fix143DonkeyLegacyInfo='FIX159 live hw $'+hex(dk,4)+' over shadow $'+hex(s||0,4)+' frame '+playFrameNo;return dk;}}
    if(rawIsTransition || !goodDonkeyRuntimeCandidate(s) || !goodDonkeyRuntimeCandidate(h)){
      if(goodDonkeyRuntimeCandidate(0x466F)){
        dk=tryOne(0x466F,'donkey-fix69-clean-466F');
-       if(dk){fix143DonkeyLegacyInfo='FIX158 FIX69 clean $466F over shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;return dk;}
+       if(dk){fix143DonkeyLegacyInfo='FIX159 FIX69 clean $466F over shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;return dk;}
      }
      if(lastGoodDlistProfile===activeXexProfile && lastGoodDlist && goodDonkeyRuntimeCandidate(lastGoodDlist)){
-       fix143DonkeyLegacyInfo='FIX158 transient replaced by lastGood $'+hex(lastGoodDlist,4)+' shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;
+       fix143DonkeyLegacyInfo='FIX159 transient replaced by lastGood $'+hex(lastGoodDlist,4)+' shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;
        return lastGoodDlist;
      }
      var ds=scanLoadedDlistCandidate();
      if(ds && goodDonkeyRuntimeCandidate(ds)){
        dk=tryOne(ds,'donkey-fix69-scan-runtime');
-       if(dk){fix143DonkeyLegacyInfo='FIX158 scan runtime $'+hex(dk,4)+' over shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;return dk;}
+       if(dk){fix143DonkeyLegacyInfo='FIX159 scan runtime $'+hex(dk,4)+' over shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;return dk;}
      }
    }
    // $49D7 je opravdu až poslední nouze a jen když zrovna není nahlášený přechod.
-   if(!rawIsTransition){dk=tryOne(0x49D7,'donkey-late-49D7'); if(dk){fix143DonkeyLegacyInfo='FIX158 late $49D7 fallback over shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;return dk;}}
+   if(!rawIsTransition){dk=tryOne(0x49D7,'donkey-late-49D7'); if(dk){fix143DonkeyLegacyInfo='FIX159 late $49D7 fallback over shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;return dk;}}
    if(sw && !isDonkeyTransientPtr(s)){dk=tryOne(s,'donkey-shadow-fallback'); if(dk)return dk;}
    if(hw && !isDonkeyTransientPtr(h)){dk=tryOne(h,'donkey-hw-fallback'); if(dk)return dk;}
    dk=fallbackGoodDlist(); if(dk)return dk;
@@ -3505,6 +3542,13 @@ function copyAtariColorShadowsToHardware(){
 }
 function colorSet(){
  var v0=colorReg(0x02C4,0xD016,0x00), v1=colorReg(0x02C5,0xD017,0x0F), v2=colorReg(0x02C6,0xD018,0x76), v3=colorReg(0x02C7,0xD019,0x34), vb=colorReg(0x02C8,0xD01A,0x04);
+ // FIX159: REAL OS/BASIC už ve FIX159 vytváří skutečný DLIST/SAVMSC, ale naše GTIA shadow barvy
+ // zůstávají černé / převrácené. Pro REALOS textovou obrazovku opravujeme pouze interpretaci
+ // defaultních OS barev v rendereru: modré pozadí + světlý text, žádné kreslené READY.
+ if(activeXexProfile==='realos'){
+   v0=0x0E; v1=0x0E; v2=0x0E; v3=0x0E; vb=0x86;
+   fix133VideoFallbackInfo='FIX159 REALOS renderer palette blue READY screen frame '+playFrameNo;
+ }
  // FIX139: several loader/ROM-less XEXs reach a real DLIST while all GTIA PF/BK registers are still black/zero.
  // Rendering that literally produces a blank or grey diagnostic sheet; use a conservative Atari-like palette only for video output.
  if(!isPiTTProfile() && !isRiverProfile() && !isCobraProfile() && !isDonkeyFamilyProfile() && (v0|v1|v2|v3|vb)===0){
@@ -4402,11 +4446,11 @@ function shouldUseBlankVideoFallback(dl){
 
 
 
-// FIX158: izolace ROM/READY testu od poslední XEX hry.
+// FIX159: izolace ROM/READY testu od poslední XEX hry.
 function fix152EnterNoXexProbe(kind){
   try{fullStop();}catch(e){}
   try{clearInputState();}catch(e){}
-  try{resetCompatRuntimeState('FIX158 '+kind+' no-XEX isolate');}catch(e){}
+  try{resetCompatRuntimeState('FIX159 '+kind+' no-XEX isolate');}catch(e){}
   try{if(!ram)ram=new Uint8Array(65536);else ram.fill(0);}catch(e){}
   try{ensureBuiltinAtariRomImages();}catch(e){}
   try{cpu=new CPU6502(ram);}catch(e){cpu={pc:0,steps:0,sp:0xFF,trap:false};}
@@ -4414,17 +4458,17 @@ function fix152EnterNoXexProbe(kind){
   try{rv=fix151RomVector(0xFFFC)||0xE477;}catch(e){rv=0xE477;}
   try{cpu.pc=rv&65535;cpu.sp=0xFF;cpu.steps=0;cpu.trap=false;}catch(e){}
   try{xexInfo={segments:[],entry:rv&65535,run:0,inits:[],warnings:[],bad:false};}catch(e){}
-  currentXexName=(kind==='READY')?'REAL READY INPUT FIX158 / no XEX':'ROM AUDIT FIX158 / no XEX';
+  currentXexName=(kind==='READY')?'REAL READY INPUT FIX159 / no XEX':'ROM AUDIT FIX159 / no XEX';
   activeXexProfile=(kind==='READY')?'romready':'romboot';
   playMode=false;
   playLastRan=0; playFrameMs=0; frameIrqRan=0; osTimerTicks=0;
   try{ram[0x58]=0x00;ram[0x59]=0x60;ram[0x0230]=0x00;ram[0x0231]=0x90;ram[0xD402]=0x00;ram[0xD403]=0x90;ram[0xD40E]=0x00;ram[0x0200]=0;ram[0x0201]=0;ram[0x0222]=0;ram[0x0223]=0;ram[0x02FC]=0xFF;ram[0x0284]=1;}catch(e){}
   lastGoodDlist=0;lastVisualDlist=0;dlistScanCache={profile:'romprobe',frame:-999,addr:0,score:0};
-  fix148MapGuardInfo='FIX158 isolated '+kind+' no XEX reset vector $'+hex(rv,4);
+  fix148MapGuardInfo='FIX159 isolated '+kind+' no XEX reset vector $'+hex(rv,4);
 }
 
 
-// FIX158: skutečný experimentální OS/BASIC boot. Žádný kreslený READY.
+// FIX159: skutečný experimentální OS/BASIC boot. Žádný kreslený READY.
 // CPU startuje přes reset vector z ATARIXL.ROM; BASIC ROM je mapovaná na $A000-$BFFF.
 function startRealOsBasicBootFix157(mode){
   mode=(mode==='option')?'option':'basic';
@@ -4436,11 +4480,12 @@ function startRealOsBasicBootFix157(mode){
   xexLoadedMask=new Uint8Array(65536);
   if(xeExtRam)xeExtRam.fill(0);
   input={start:false,fire:false,left:false,right:false,up:false,jump:false,select:false,option:false,key:0xFF};
+  realOsKeyOneShot=0xFF;realOsKeyLast=0xFF;realOsKeyStamp=0;fix159RealOsKeyInfo='reset';
   if(mode==='option'){input.start=true;input.option=true;}
   atariKeyQueue=[];hiFireArmed=true;
   activeXexProfile='realos';
   fix157RealOsMode=mode;fix157RealOsInfo='mode '+mode;fix157BasicJumpDone=false;fix158RamGuardHits=0;fix158NoDeviceSuppressed=0;
-  currentXexName=(mode==='option')?'REAL ATARI OS START OPTION BOOT FIX158 / no XEX':'REAL ATARI OS BASIC AUTO BOOT FIX158 / no XEX';
+  currentXexName=(mode==='option')?'REAL ATARI OS START OPTION BOOT FIX159 / no XEX':'REAL ATARI OS BASIC AUTO BOOT FIX159 / no XEX';
   xexInfo={run:0,inits:[],entry:0,warnings:[],bad:false};
   segments=[];pendingInitAddrs=[];ranInitAddrs=[];activeEntryWasInit=false;runAddress=0;
   fix151AtariReadyMode=false;fix150RomBootMode=false;fix154RealOsBootMode=true;fix154RealOsBootStartFrame=playFrameNo||0;fix154RealOsLastDl=0;fix156RealOsSioGuardInfo='reset';try{fadeAudioOff();}catch(e){}
@@ -4455,16 +4500,16 @@ function startRealOsBasicBootFix157(mode){
   xexInfo.entry=reset;runAddress=reset;
   playBooted=true;playMode=true;playFrameNo=0;playLastRan=0;playFrameMs=0;frameIrqRan=0;frameVbiRan=0;frameDliRan=0;osTimerTicks=0;
   playCyclesPerFrame=4200;playMaxMsPerFrame=8;genericRenderEvery=1;fastVideo=true;
-  fix154RealOsBootInfo='REAL OS RESET FIX158: mode='+mode+' start PC $'+hex(reset,4)+' vectors reset=$'+hex(reset,4)+' irq=$'+hex((optionalRomByteAt(0xFFFE)|optionalRomByteAt(0xFFFF)<<8)&65535,4)+' nmi=$'+hex((optionalRomByteAt(0xFFFA)|optionalRomByteAt(0xFFFB)<<8)&65535,4)+' BASIC mapped yes; no fake READY';
-  updateRomStatusLine('FIX158 REAL OS/BASIC '+mode+' boot: early CIO/SIO hooks off, no fake READY');
-  updatePlayStatus('FIX158 REAL OS/BASIC: '+(mode==='basic'?'AUTO BASIC bez START/OPTION':'START+OPTION / NO BASIC')+'. Nejdřív reálný OS DLIST/SAVMSC, pak teprve BASIC ROM. Žádné kreslené READY.');
+  fix154RealOsBootInfo='REAL OS RESET FIX159: mode='+mode+' start PC $'+hex(reset,4)+' vectors reset=$'+hex(reset,4)+' irq=$'+hex((optionalRomByteAt(0xFFFE)|optionalRomByteAt(0xFFFF)<<8)&65535,4)+' nmi=$'+hex((optionalRomByteAt(0xFFFA)|optionalRomByteAt(0xFFFB)<<8)&65535,4)+' BASIC mapped yes; no fake READY';
+  updateRomStatusLine('FIX159 REAL OS/BASIC '+mode+' boot: early CIO/SIO hooks off, no fake READY');
+  updatePlayStatus('FIX159 REAL OS/BASIC: '+(mode==='basic'?'AUTO BASIC bez START/OPTION':'START+OPTION / NO BASIC')+'. Nejdřív reálný OS DLIST/SAVMSC, pak teprve BASIC ROM. Žádné kreslené READY.');
   log(fix154RealOsBootInfo);
   renderInput();renderRegs();renderVideo();
   playLoopId=requestAnimationFrame(playLoop);
 }
 
 function startRealOsBasicBootFix154(){return startRealOsBasicBootFix157('basic');}
-// FIX158: dočasný interaktivní Atari READY/MEMO PAD probe.
+// FIX159: dočasný interaktivní Atari READY/MEMO PAD probe.
 // Není to ještě plný OS boot přes všechny PIA/POKEY/ANTIC inicializace; je to oddělený režim,
 // který používá vložené ROM bajty pro audit vektorů a dovolí živě psát do modré Atari obrazovky.
 // XEX core tím zůstává na bezpečném FIX148/FIX145 baseline.
@@ -4503,7 +4548,7 @@ function fix151ConsoleKey(k){
     if(fix151AtariTypedLine.length<38)fix151AtariTypedLine+=ch;
   }
   renderRealAtariReadyFix151();
-  updatePlayStatus('FIX158 REAL ATARI READY: píšeš do dočasné Atari obrazovky. ENTER přidá READY, DEL maže znak. XEX hry tím nejsou přepnuté do ROM_PROBE.');
+  updatePlayStatus('FIX159 REAL ATARI READY: píšeš do dočasné Atari obrazovky. ENTER přidá READY, DEL maže znak. XEX hry tím nejsou přepnuté do ROM_PROBE.');
   return false;
 }
 function fix151DrawAtariText(g,text,x,y,scale){
@@ -4514,7 +4559,7 @@ function fix151DrawAtariText(g,text,x,y,scale){
   g.restore();
 }
 function renderRealAtariReadyFix151(){
-  var c=document.getElementById('video'); if(!c){fix151AtariReadyInfo='FIX158 ERROR missing video canvas';return;}
+  var c=document.getElementById('video'); if(!c){fix151AtariReadyInfo='FIX159 ERROR missing video canvas';return;}
   var g=c.getContext('2d');
   var W=c.width,H=c.height;
   g.imageSmoothingEnabled=false;
@@ -4529,7 +4574,7 @@ function renderRealAtariReadyFix151(){
   var cur=((Date.now()>>8)&1)?'█':' ';
   fix151DrawAtariText(g,fix151AtariTypedLine+cur,22,y,2);
   g.fillStyle='#b9d2ff';
-  fix151DrawAtariText(g,'FIX158 REAL READY INPUT',22,H-34,1);
+  fix151DrawAtariText(g,'FIX159 REAL READY INPUT',22,H-34,1);
   fix151DrawAtariText(g,fix151AtariReadyInfo,22,H-20,1);
 }
 function showRealAtariReadyFix151(){
@@ -4543,13 +4588,14 @@ function showRealAtariReadyFix151(){
   fix151AtariReadyInfo='XL reset $'+hex(reset,4)+' IRQ $'+hex(irq,4)+' NMI $'+hex(nmi,4)+' ROM bytes OK canvas=video';
   renderRealAtariReadyFix151();
   renderRegs();renderSegments();
-  updateRomStatusLine('FIX158 REAL ATARI READY probe active');
-  updatePlayStatus('FIX158: dočasná Atari READY obrazovka je aktivní. Teď můžeš psát přes mobilní Atari klávesnici nebo HW klávesnici. Tohle je oddělený test, hry zůstávají bezpečný baseline.');
-  log('REAL READY INPUT FIX158: '+fix151AtariReadyInfo+' / interactive keyboard echo active');
+  updateRomStatusLine('FIX159 REAL ATARI READY probe active');
+  updatePlayStatus('FIX159: dočasná Atari READY obrazovka je aktivní. Teď můžeš psát přes mobilní Atari klávesnici nebo HW klávesnici. Tohle je oddělený test, hry zůstávají bezpečný baseline.');
+  log('REAL READY INPUT FIX159: '+fix151AtariReadyInfo+' / interactive keyboard echo active');
   return false;
 }
 setInterval(function(){if(fix151AtariReadyMode)renderRealAtariReadyFix151();},350);
 document.addEventListener('keydown',function(e){
+  if(e.repeat && (fix151AtariReadyMode || activeXexProfile==='realos')){e.preventDefault();return;}
   var k=e.key||'';
   if(k==='Backspace')k='BACK'; else if(k==='Enter')k='ENTER'; else if(k===' ')k='SPACE';
   if(!(k.length===1 || k==='BACK' || k==='ENTER' || k==='SPACE'))return;
@@ -4561,11 +4607,11 @@ document.addEventListener('keydown',function(e){
   if(fix154RealOsBootMode){
     e.preventDefault();
     tapAtariKey(k,180);
-    fix154RealOsBootInfo='REAL OS RESET FIX158: HW key '+k+' sent to KBCODE/CH at PC $'+(cpu?hex(cpu.pc,4):'----')+' DL $'+hex(fix154RealOsLastDl||0,4)+'; no fake READY; audio muted in REALOS probe';
+    fix154RealOsBootInfo='REAL OS RESET FIX159: HW key '+k+' sent to KBCODE/CH at PC $'+(cpu?hex(cpu.pc,4):'----')+' DL $'+hex(fix154RealOsLastDl||0,4)+'; no fake READY; audio muted in REALOS probe';
   }
 });
 
-// FIX158: samostatný viditelný ROM boot/audit screen.
+// FIX159: samostatný viditelný ROM boot/audit screen.
 // Důležité: tohle NEpřepíná hry do agresivního ROM běhu. Je to oddělený test, aby René viděl,
 // že ROM obrazy jsou skutečně načtené, mapované a čitelné uvnitř EMU-09.
 var fix150RomBootMode=false;
@@ -4619,7 +4665,7 @@ function fix150RealRomBootStatus(){
  var xl=optionalOsRom||[], osb=optionalOsbRom||[], bas=optionalBasicRom||[];
  var pos=fix150FindAscii(xl,'ATARI COMPUTER');
  var title=fix150AsciiFrom(xl,pos,32);
- fix150RomBootInfo='FIX158 ROM OK sizes XL='+xl.length+' OSB='+osb.length+' BASIC='+bas.length+
+ fix150RomBootInfo='FIX159 ROM OK sizes XL='+xl.length+' OSB='+osb.length+' BASIC='+bas.length+
    ' sums XL='+fix150RomShortSum(xl)+' OSB='+fix150RomShortSum(osb)+' BAS='+fix150RomShortSum(bas)+
    ' map XL C000 '+fix150ByteHex(fix150RomByteXL(0xC000))+' XL D800 '+fix150ByteHex(fix150RomByteXL(0xD800))+
    ' OSB D800 '+fix150ByteHex(fix150RomByteOSB(0xD800))+' BAS A000 '+fix150ByteHex(fix150RomByteBASIC(0xA000))+
@@ -4644,7 +4690,7 @@ function fix150DrawRomBootScreen(){
  g.fillStyle='#0b214e'; g.fillRect(0,0,320,18); g.fillRect(0,222,320,18);
  fix150CenterText(g,'ATARI COMPUTER - MEMO PAD',26,hi,bg,1,1);
  fix150CenterText(g,'READY',50,fg,bg,1,1);
- fix150CenterText(g,'FIX158 ROM AUDIT',76,ok,bg,1,1);
+ fix150CenterText(g,'FIX159 ROM AUDIT',76,ok,bg,1,1);
  fix150DrawText(g,'ATARIXL ROM  '+st.xl.length+'  MD5 06DAAC97',22,104,fg,bg,1,1);
  fix150DrawText(g,'ATARIOSB ROM '+st.osb.length+'  MD5 A3E8D617',22,118,fg,bg,1,1);
  fix150DrawText(g,'ATARIBAS ROM '+st.bas.length+'   MD5 0BAC0C6A',22,132,fg,bg,1,1);
@@ -4660,10 +4706,10 @@ function showRealRomBootFix150(){
  optionalRomReads=0;
  fix150DrawRomBootScreen();
  renderRegs();
- updateRomStatusLine('FIX158 ROM AUDIT visible');
+ updateRomStatusLine('FIX159 ROM AUDIT visible');
  var st=fix150RealRomBootStatus();
- log('ROM AUDIT FIX158: '+st.info);
- updatePlayStatus('FIX158: ROM obrazovka je aktivní. Canvas kreslí ATARI COMPUTER - MEMO PAD + READY z ROM auditu; hry tím nejsou přepnuté do ROM_PROBE.');
+ log('ROM AUDIT FIX159: '+st.info);
+ updatePlayStatus('FIX159: ROM obrazovka je aktivní. Canvas kreslí ATARI COMPUTER - MEMO PAD + READY z ROM auditu; hry tím nejsou přepnuté do ROM_PROBE.');
  return false;
 }
 
@@ -4678,7 +4724,7 @@ function renderVideo(){
    return;
  }
  if(isDonkeyTransientDlist(d)){
-   // FIX158: no canvas restore for Donkey. getDlistPtr() should have replaced $1200 using FIX69/$466F priority
+   // FIX159: no canvas restore for Donkey. getDlistPtr() should have replaced $1200 using FIX69/$466F priority
    // with the last stable/runtime DLIST; if not, render live rather than holding stale ghosts.
    fix143DonkeyLegacyInfo='raw Donkey transient $1200 reached renderer frame '+playFrameNo+' (live, no restore)';
  }
@@ -5445,7 +5491,7 @@ function fix148EnsureMapFresh(reason){
  var key=[activeXexProfile,dl,ch,dma,nmi,dli,vbi,sav].join('|');
  if(key!==fix148LastMapKey){
    genericDliCache=null;genericDliCacheFrame=-999;genericDliCacheDl=0;genericDliChainLog=[];
-   fix134AutoCompatInfo='FIX158 map reset '+(reason||'')+' dl $'+hex(dl,4)+' ch $'+hex(ch,2)+' nmi $'+hex(nmi,2)+' dli $'+hex(dli,4)+' vbi $'+hex(vbi,4)+' sav $'+hex(sav,4)+' frame '+playFrameNo;
+   fix134AutoCompatInfo='FIX159 map reset '+(reason||'')+' dl $'+hex(dl,4)+' ch $'+hex(ch,2)+' nmi $'+hex(nmi,2)+' dli $'+hex(dli,4)+' vbi $'+hex(vbi,4)+' sav $'+hex(sav,4)+' frame '+playFrameNo;
    fix134DliAutoMode='map-reset';
    fix148MapGuardInfo=fix134AutoCompatInfo+' profile '+activeXexProfile;
    fix148LastMapKey=key;
@@ -5975,11 +6021,11 @@ function updatePlayStatus(extra){
  var e=document.getElementById("playStatus");
  if(!e)return;
  if(typeof fix151AtariReadyMode!=='undefined' && fix151AtariReadyMode){
-   e.textContent='PAUZA  REAL READY INPUT  PC $'+hex(cpu?cpu.pc:0,4)+'  ENTRY $'+hex((xexInfo&&xexInfo.entry)||0,4)+'\nXEX REAL READY INPUT FIX158 / no XEX\nREADY sandbox je izolovaný od poslední hry. Piš přes mobilní klávesnici dole nebo HW klávesnici. ENTER přidá READY.\ntyped: '+(fix151AtariTypedLine||'')+(extra?'\n'+extra:'');
+   e.textContent='PAUZA  REAL READY INPUT  PC $'+hex(cpu?cpu.pc:0,4)+'  ENTRY $'+hex((xexInfo&&xexInfo.entry)||0,4)+'\nXEX REAL READY INPUT FIX159 / no XEX\nREADY sandbox je izolovaný od poslední hry. Piš přes mobilní klávesnici dole nebo HW klávesnici. ENTER přidá READY.\ntyped: '+(fix151AtariTypedLine||'')+(extra?'\n'+extra:'');
    return;
  }
  if(typeof fix150RomBootMode!=='undefined' && fix150RomBootMode){
-   e.textContent='PAUZA  ROM AUDIT  PC $'+hex(cpu?cpu.pc:0,4)+'  ENTRY $'+hex((xexInfo&&xexInfo.entry)||0,4)+'\nXEX ROM AUDIT FIX158 / no XEX\nTohle je jen kontrola ROM bajtů, ne psací READY. Pro psaní použij TEST REAL ATARI READY.'+(extra?'\n'+extra:'');
+   e.textContent='PAUZA  ROM AUDIT  PC $'+hex(cpu?cpu.pc:0,4)+'  ENTRY $'+hex((xexInfo&&xexInfo.entry)||0,4)+'\nXEX ROM AUDIT FIX159 / no XEX\nTohle je jen kontrola ROM bajtů, ne psací READY. Pro psaní použij TEST REAL ATARI READY.'+(extra?'\n'+extra:'');
    return;
  }
  if(!cpu){e.textContent="Pripraveno. FIX125: multigame boot gating, Montezuma PMG trim, Donkey Jr profile; Cobra title/menu preserved; Donkey/Arkanoid baseline preserved. CORE TEST TXT ulozi report automaticky a vrati puvodni hru."+(extra?"\n"+extra:"");return;}
@@ -6263,8 +6309,8 @@ function dliStateSummary(caps,maxItems){
 
 function viewportDiagnosticInfo(){
  var dl=0,mt=null;
- try{dl=getDlistPtr()&65535;mt=dlistMetricsAt(dl);}catch(e){return 'VIEWPORT DIAG FIX158 unavailable '+e;}
- return 'VIEWPORT DIAG FIX158 rawDL=$'+hex(dl||0,4)+' visible='+(mt?mt.visibleScan:0)+' blank='+(mt?mt.blankScan:0)+' yOff='+currentRenderYOffset+' arkanoidAssistBlocked='+arkanoidAssistBlocked+' guard='+(fix96RegressionGuardInfo||'--');
+ try{dl=getDlistPtr()&65535;mt=dlistMetricsAt(dl);}catch(e){return 'VIEWPORT DIAG FIX159 unavailable '+e;}
+ return 'VIEWPORT DIAG FIX159 rawDL=$'+hex(dl||0,4)+' visible='+(mt?mt.visibleScan:0)+' blank='+(mt?mt.blankScan:0)+' yOff='+currentRenderYOffset+' arkanoidAssistBlocked='+arkanoidAssistBlocked+' guard='+(fix96RegressionGuardInfo||'--');
 }
 
 
@@ -6288,8 +6334,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX158 REAL OS BASIC STABLE BOOT CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX157, běží starý APK/ZIP nebo starý label.");
+lines.push("COMPAT SNAPSHOT FIX159 REAL OS COLOR KEYBOARD CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidíš FIX159, běží starý APK/ZIP nebo starý label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -6298,52 +6344,52 @@ lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missi
  lines.push("COLPF/BK HW D016-D01A: "+[0xD016,0xD017,0xD018,0xD019,0xD01A].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
-lines.push("DLI CAP FIX158 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX125: safer multigame boot + code-scored Moon handoff + Pac BASIC/OS diagnostic; DLI RAM guard zůstává vypnutý.");
-lines.push("DLIST RESOLVE FIX158: "+dlistQualitySummary(dl));
-lines.push("VIEWPORT FIX158: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
-lines.push("FIX158 REGRESSION GUARD: "+fix96RegressionGuardInfo+" / no Cobra/Donkey scan promotion, Arkanoid assist blocked="+arkanoidAssistBlocked);
+lines.push("DLI CAP FIX159 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX125: safer multigame boot + code-scored Moon handoff + Pac BASIC/OS diagnostic; DLI RAM guard zůstává vypnutý.");
+lines.push("DLIST RESOLVE FIX159: "+dlistQualitySummary(dl));
+lines.push("VIEWPORT FIX159: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
+lines.push("FIX159 REGRESSION GUARD: "+fix96RegressionGuardInfo+" / no Cobra/Donkey scan promotion, Arkanoid assist blocked="+arkanoidAssistBlocked);
 lines.push(viewportDiagnosticInfo());
-lines.push("MOBILE PERF FIX158: "+mobilePerfInfo+" runtime="+mobileRuntime+" throttle="+mobileThrottleLevel+" frameMs="+mobileLastFrameTotalMs.toFixed(1)+" renderMs="+mobileLastRenderMs.toFixed(1)+" skips="+mobileRenderSkipHits);
-lines.push("LOG GUARD FIX158: "+(fix139LogGuardInfo||"--")+" suppressed="+fix139SuppressedLogCount+" handoff="+fix139SuppressedHandoffCount);
-lines.push("FRAMEBUFFER SCAN FIX158: "+(fix129FramebufferScanInfo||"--"));
-lines.push("FRAME HOLD FIX158: "+lastFrameHoldInfo+" visualDL=$"+hex(lastVisualDlist||0,4)+" holdUntil="+dlistTransitionHoldUntil+" hits="+dlistFrameHoldHits+" restores="+frameHoldRestoreHits+" stable="+lastStableVideoInfo);
-lines.push("INPUT/POT FIX158 stick=$"+hex(emuStick0ShadowState(),1)+" trig="+emuTrigState(0)+" POT0="+emuPaddle0+" POTGOframe="+potgoFrame+" last="+paddleInputInfo);
-lines.push("OS TIMERS FIX158 CDTMV1-5="+[0x0218,0x021A,0x021C,0x021E,0x0220].map(function(a){return '$'+hex(a,4)+'=$'+hex((ram[a]|(ram[(a+1)&65535]<<8))&65535,4);}).join(' ')+" ticks="+osTimerTicks);
-lines.push("GALAXIAN INIT-IDLE FIX158 recoveries="+initOnlyIdleRecoveries+" active="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" idleStub="+(galaxianIdleStubInstalled?"YES":"no")+" last="+lastBrkRecoverInfo);
-lines.push("ASYNC WRAPPER FIX158: galaxSafeOnly="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" scopedOS="+scopedAsyncOsExitEnabled()+" / Cobra/Donkey drží původní FIX84 async cestu.");
-lines.push("ASYNC OS EXIT FIX158 "+asyncOsExitInfo());
-lines.push("COBRA NMI FORCE FIX158 count="+cobraForcedNmiCount+" last="+cobraForcedNmiLast);
-lines.push("GENERIC TRAP RECOVER FIX158 count="+genericTrapRecoveries+" last="+genericTrapRecoverLast);
+lines.push("MOBILE PERF FIX159: "+mobilePerfInfo+" runtime="+mobileRuntime+" throttle="+mobileThrottleLevel+" frameMs="+mobileLastFrameTotalMs.toFixed(1)+" renderMs="+mobileLastRenderMs.toFixed(1)+" skips="+mobileRenderSkipHits);
+lines.push("LOG GUARD FIX159: "+(fix139LogGuardInfo||"--")+" suppressed="+fix139SuppressedLogCount+" handoff="+fix139SuppressedHandoffCount);
+lines.push("FRAMEBUFFER SCAN FIX159: "+(fix129FramebufferScanInfo||"--"));
+lines.push("FRAME HOLD FIX159: "+lastFrameHoldInfo+" visualDL=$"+hex(lastVisualDlist||0,4)+" holdUntil="+dlistTransitionHoldUntil+" hits="+dlistFrameHoldHits+" restores="+frameHoldRestoreHits+" stable="+lastStableVideoInfo);
+lines.push("INPUT/POT FIX159 stick=$"+hex(emuStick0ShadowState(),1)+" trig="+emuTrigState(0)+" POT0="+emuPaddle0+" POTGOframe="+potgoFrame+" last="+paddleInputInfo);
+lines.push("OS TIMERS FIX159 CDTMV1-5="+[0x0218,0x021A,0x021C,0x021E,0x0220].map(function(a){return '$'+hex(a,4)+'=$'+hex((ram[a]|(ram[(a+1)&65535]<<8))&65535,4);}).join(' ')+" ticks="+osTimerTicks);
+lines.push("GALAXIAN INIT-IDLE FIX159 recoveries="+initOnlyIdleRecoveries+" active="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" idleStub="+(galaxianIdleStubInstalled?"YES":"no")+" last="+lastBrkRecoverInfo);
+lines.push("ASYNC WRAPPER FIX159: galaxSafeOnly="+isGalaxianProfile()+" initOnly="+isInitOnlyLoadedXex()+" scopedOS="+scopedAsyncOsExitEnabled()+" / Cobra/Donkey drží původní FIX84 async cestu.");
+lines.push("ASYNC OS EXIT FIX159 "+asyncOsExitInfo());
+lines.push("COBRA NMI FORCE FIX159 count="+cobraForcedNmiCount+" last="+cobraForcedNmiLast);
+lines.push("GENERIC TRAP RECOVER FIX159 count="+genericTrapRecoveries+" last="+genericTrapRecoverLast);
 if(isGalaxianProfile())lines.push("GALAXIAN DISPLAY FIX125 scanDL="+((dlistScanCache&&dlistScanCache.addr)?("$"+hex(dlistScanCache.addr,4)+" score "+dlistScanCache.score):"--")+" PMBASE0="+(((ram[0xD407]||0)===0)?"lowPMG":"std")+" / fuller scanned DLIST only if current DL is too short.");
 if(activeXexProfile==='pitstop')lines.push("PITSTOP RACE DLIST TEMPLATE FIX125: "+(pitstopRaceTemplateLast||"--")+" reason "+(pitstopRaceDlistLastReason||"--"));
  if(activeXexProfile==='pitstop')lines.push("PITSTOP VIRTUAL DLIST FIX125: "+(pitstopRaceVirtualLast||"--"));
  if(activeXexProfile==='pitstop')lines.push("PITSTOP CLEAN ROAD DIAG FIX125: "+(pitstopSplitDebugLast||"--"));
  lines.push("DLIST BYTES: "+dumpDlistBytes(dl,72));
-lines.push("DLI SCANLINES FIX158: "+dliScanlineSummary(dl));
-lines.push("AUTO COMPAT FIX158: "+(fix134AutoCompatInfo||"--")+" mode="+(fix134DliAutoMode||"--"));
- lines.push("FIX158 MAP GUARD: "+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--"));
+lines.push("DLI SCANLINES FIX159: "+dliScanlineSummary(dl));
+lines.push("AUTO COMPAT FIX159: "+(fix134AutoCompatInfo||"--")+" mode="+(fix134DliAutoMode||"--"));
+ lines.push("FIX159 MAP GUARD: "+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--"));
  lines.push("GENERIC DLI STATES: "+dliStateSummary(genericDliCache,12));
 lines.push("PMG INFO: "+pmgInfo());
-if(isDonkeyProfile())lines.push("DONKEY FIX158: strict FIX69 DLIST priority; $1200/$49D7 blocked early, $466F/lastGood before late $49D7; no canvas framehold; info="+fix143DonkeyLegacyInfo);
+if(isDonkeyProfile())lines.push("DONKEY FIX159: strict FIX69 DLIST priority; $1200/$49D7 blocked early, $466F/lastGood before late $49D7; no canvas framehold; info="+fix143DonkeyLegacyInfo);
 if(isDonkeyJrProfile())lines.push("DONKEY JR FIX125: profile kept, bad scan-DLIST promotion blocked; title/menu DLIST switch is live without frame-hold; PMG title-noise guard skips broad stale PMG on $5919/$8052; runtime $8031 keeps PMG.");
 if(isMontezumaProfile())lines.push("MONTEZUMA FIX125: viewport yOff 0; single-line PMG yOff 8; early START/FIRE is queued until intro/maze is ready; 128-glyph ANTIC mode4 path restored for score/body; renderer CHBASE guard active. guard="+fix115MontezumaGuardInfo+" chbase="+(fix116MontezumaCharsetInfo||"--"));
-lines.push("GTIA COLLISION FIX158: "+gtiaCollisionInfo());
-if(fix150RomBootInfo && fix150RomBootInfo!=="reset")lines.push("ROM AUDIT FIX158: "+fix150RomBootInfo);
-if(typeof fix151AtariReadyInfo!=='undefined' && fix151AtariReadyInfo!=="reset")lines.push("REAL READY INPUT FIX158: "+fix151AtariReadyInfo+" typed="+fix151AtariTypedLine);
-if(typeof fix154RealOsBootInfo!=='undefined' && fix154RealOsBootInfo!=="reset")lines.push("REAL OS BOOT FIX158: "+fix154RealOsBootInfo+" lastDL=$"+hex(fix154RealOsLastDl||0,4)+" trap="+(cpu&&cpu.trap?cpu.trapMsg:"--"));
-if(typeof fix156RealOsSioGuardInfo!=='undefined' && fix156RealOsSioGuardInfo!=="reset")lines.push("REAL OS SIO FIX158: "+fix156RealOsSioGuardInfo);
-if(typeof fix157RealOsInfo!=='undefined' && fix157RealOsInfo!=="reset")lines.push("REAL OS BASIC AUTO FIX158: "+fix157RealOsInfo+" mode="+fix157RealOsMode+" basicJump="+fix157BasicJumpDone+" earlyNoDeviceSuppressed="+fix158NoDeviceSuppressed+" ramGuardHits="+fix158RamGuardHits);
-if(activeXexProfile==='realos')lines.push("REAL OS SCREEN FIX158: "+realOsScreenPreviewFix156());
-lines.push("OS STUBS FIX158 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
-lines.push("FIX158 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
-lines.push("SETVBV FIX158 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
-lines.push("FIX158 CORE: rollback from FIX147 + core map/cache audit + safe Donkey variant guard + FIX158 speed kept + Montezuma FIX140 locked + Super Cobra protected; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
+lines.push("GTIA COLLISION FIX159: "+gtiaCollisionInfo());
+if(fix150RomBootInfo && fix150RomBootInfo!=="reset")lines.push("ROM AUDIT FIX159: "+fix150RomBootInfo);
+if(typeof fix151AtariReadyInfo!=='undefined' && fix151AtariReadyInfo!=="reset")lines.push("REAL READY INPUT FIX159: "+fix151AtariReadyInfo+" typed="+fix151AtariTypedLine);
+if(typeof fix154RealOsBootInfo!=='undefined' && fix154RealOsBootInfo!=="reset")lines.push("REAL OS BOOT FIX159: "+fix154RealOsBootInfo+" lastDL=$"+hex(fix154RealOsLastDl||0,4)+" trap="+(cpu&&cpu.trap?cpu.trapMsg:"--"));
+if(typeof fix156RealOsSioGuardInfo!=='undefined' && fix156RealOsSioGuardInfo!=="reset")lines.push("REAL OS SIO FIX159: "+fix156RealOsSioGuardInfo);
+if(typeof fix157RealOsInfo!=='undefined' && fix157RealOsInfo!=="reset")lines.push("REAL OS BASIC AUTO FIX159: "+fix157RealOsInfo+" mode="+fix157RealOsMode+" basicJump="+fix157BasicJumpDone+" earlyNoDeviceSuppressed="+fix158NoDeviceSuppressed+" ramGuardHits="+fix158RamGuardHits);
+if(activeXexProfile==='realos')lines.push("REAL OS SCREEN FIX159: "+realOsScreenPreviewFix156());
+lines.push("OS STUBS FIX159 calls="+(osStubStats?osStubStats.calls:0)+" direct="+(osStubStats?osStubStats.direct:0)+" basic="+(osStubStats?osStubStats.basic:0)+" last="+(osStubStats?osStubStats.last:"--")+" PORTB=$"+hex(portbValue||0,2)+" XEbank="+xeBankSwitches+" ROM="+optionalRomSnapshotText()+" romReads="+optionalRomReads);
+lines.push("FIX159 OS/VECTOR: "+(fix121OsVectorInfo||"--")+" lastLoaded=$"+hex(fix121LastLoadedPc||0,4)+" op=$"+hex(fix121LastLoadedOp||0,2)+" DLIST codeRejects="+(fix121DlistCodeRejects||0)+" last="+(fix121LastDlistReject||"--"));
+lines.push("SETVBV FIX159 VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" VVBLKD=$"+hex((ram[0x0224]|(ram[0x0225]<<8))&65535,4)+" / Pitstop timer $E7=$"+hex(ram[0x00E7]||0,2));
+lines.push("FIX159 CORE: rollback from FIX147 + core map/cache audit + safe Donkey variant guard + FIX159 speed kept + Montezuma FIX140 locked + Super Cobra protected; mapGuard="+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--")+" autoCompat="+(fix134AutoCompatInfo||"--")+" dliMode="+(fix134DliAutoMode||"--")+" charset="+(fix130CharsetFallbackInfo||"--")+" moonSeg="+(fix130MoonSegmentInfo||"--")+" unknownBoot="+fix111UnknownBootInfo+" bootTrap="+fix112BootTrapInfo+" handoff="+(fix113BootHandoffInfo||"--")+" moonWin="+(fix116MoonHandoffInfo||"--")+" osShim="+(fix116OsShimInfo||"--")+" keyFix="+fix159RealOsKeyInfo+" basicDiag="+(fix113BasicDependencyInfo||"--")+" initRun="+fix112InitRunInfo+" monInput="+fix111MontezumaInputInfo+" monReload="+fix112MontezumaReloadInfo+" monGuard="+fix115MontezumaGuardInfo+" monCH="+(fix116MontezumaCharsetInfo||"--")+" moonIdle="+fix115MoonIdleInfo+" deferredVBI="+fix98DeferredVbiInfo+" videoFallback="+(fix133VideoFallbackInfo||"--")+" pmgGuard="+fix98PmgGuardInfo+" donkeyStable="+fix98DonkeyStableInfo+" donkeyHold="+fix99DonkeyHoldInfo+" dk143="+fix143DonkeyLegacyInfo+" cobraInput="+fix99CobraInputInfo+" cobraBomb="+cobraBombPulseInfo+" cobraLife="+fix110CobraLifeInfo+" cobraTitle="+cobraTitleFallbackInfo+" cobraCollision="+cobraCollisionGuardInfo+" arkChar="+fix109ArkanoidCharmodeInfo+" attr="+fix110AnticAttrInfo+" djPmg="+fix109PmgTitleGuardInfo+" monRespawn="+fix109MontezumaRespawnInfo);
 if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX125: clean split road top $7100 bottom $7000, noise rows copied. Snapshot se použije jen pro stejnou známou fázi; neznámá fáze/menu jde vždy LIVE. raceSeen="+pitstopRaceSeen+" stableHits="+pitstopStableRenderHits+" skippedMidDraw="+pitstopSkippedMidDrawRenders+" lastStablePC=$"+hex(pitstopLastStablePC||0,4)+" snapHits="+pitstopSnapshotHits+" snapRejects="+pitstopSnapshotRejects+" snapDLIST=$"+hex(pitstopLastSnapshotDl||0,4)+" snapPC=$"+hex(pitstopLastSnapshotPC||0,4)+" phase="+(pitstopSnapshotPhase||"--")+" livePhase="+(pitstopLastLivePhase||"--")+" renderSource="+(pitstopLastRenderSource||"LIVE")+" stablePhase="+(pitstopLastStablePhase||"--")+" chain="+((genericDliChainLog&&genericDliChainLog.length)?genericDliChainLog.join(">"):"--")+" snapModes="+(pitstopLastSnapshotInfo||"--"));
  if(isRiverProfile())lines.push("RIVER FIX125: wide PF stride 48 crop 4, viewport -32 pro HUD, PMG regs podle DLI sekvence ukotvené k display listu; kolize P2/P3 se počítají z překrytých PF pixelů, voda je nekolizní. renderStats mode="+(riverLastRenderStats&&riverLastRenderStats.mode)+" dl=$"+hex((riverLastRenderStats&&riverLastRenderStats.dl)||0,4)+" caps="+((riverLastRenderStats&&riverLastRenderStats.caps)||0)+" pmg="+((riverLastRenderStats&&riverLastRenderStats.pmg)||0)+" nonBg="+((riverLastRenderStats&&riverLastRenderStats.nonBg)||0)+" fallback="+!!(riverLastRenderStats&&riverLastRenderStats.fallback)+" map="+(riverLastDliMap||"--")+" "+(riverLastPmgDebug||"--"));
  lines.push("TRACE:");
  lines=lines.concat(cpu.trace.slice(-18));
  log(lines.join("\n"));
- updatePlayStatus("Snapshot zapsaný do Logu. FIX158 ukládá snapshot se správným build tagem.");
+ updatePlayStatus("Snapshot zapsaný do Logu. FIX159 ukládá snapshot se správným build tagem.");
  renderRegs();renderSegments();
  try{saveCurrentLogToMobile('snapshot');}catch(_e){}
 }
@@ -6351,9 +6397,9 @@ if(activeXexProfile==='pitstop')lines.push("PITSTOP FIX125: clean split road top
 function compatibilitySnapshot(){
  try{compatibilitySnapshotCore();}
  catch(e){
-   var msg='COMPAT SNAPSHOT FIX158 ERROR: '+(e&&e.stack?e.stack:e);
+   var msg='COMPAT SNAPSHOT FIX159 ERROR: '+(e&&e.stack?e.stack:e);
    log(msg);
-   updatePlayStatus('Snapshot měl chybu, ale FIX158 ji zapsal do logu: '+e);
+   updatePlayStatus('Snapshot měl chybu, ale FIX159 ji zapsal do logu: '+e);
    try{saveCurrentLogToMobile('snapshot-error');}catch(_e){}
  }
 }
@@ -6376,7 +6422,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator běží. FIX158 CORE: map/cache audit rollback + Donkey original protected + Montezuma/Super Cobra protected.");
+updatePlayStatus("Emulator běží. FIX159 CORE: map/cache audit rollback + Donkey original protected + Montezuma/Super Cobra protected.");
  if(!playLoopId)playLoop();
 }
 
@@ -6512,7 +6558,7 @@ function tryRecoverGenericTrap(){
  if(!goodEntry(near))return false;
  genericTrapRecoveries++;
  genericTrapRecoverLast='trap '+msg+' -> $'+hex(near,4)+' frame '+playFrameNo;
- log('GENERIC TRAP RECOVER FIX158: '+genericTrapRecoverLast);
+ log('GENERIC TRAP RECOVER FIX159: '+genericTrapRecoverLast);
  cpu.trap=false;cpu.trapMsg='';cpu.pc=near;
  return true;
 }
@@ -6541,7 +6587,7 @@ function playLoop(){
  if((playFrameNo&(mobileRuntime?63:15))===0)updatePlayStatus();
  if(cpu && cpu.trap){
    if(tryRecoverGenericTrap()){
-     updatePlayStatus('FIX158 recover: '+genericTrapRecoverLast);
+     updatePlayStatus('FIX159 recover: '+genericTrapRecoverLast);
    }else{
      playMode=false;playLoopId=0;fadeAudioOff();
      log(cpu.trapMsg+"\nTRACE:\n"+cpu.trace.join("\n"));
