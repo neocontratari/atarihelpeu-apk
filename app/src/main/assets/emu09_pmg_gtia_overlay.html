@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX203_GTIA_OS_VERIFY_CORE / vlastní XEX</title>
+<title>EMU-09 FIX204_GTIA_REGMAP_COLOR_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX203_GTIA_OS_VERIFY_CORE</h1>
-<p>FIX203 navazuje na FIX202 bez hernich hard-locku. Hlavni zmena je poctivy GTIA 9/10/11 OS verifier: tlacitka uz neposilaji jen pruhy, ale realny BASIC/OS program se SAVMSC, PRIOR, COLOR/PCOLOR registry a 4bit nibbly.</p>
+<h1>EMU-09 FIX204_GTIA_REGMAP_COLOR_CORE</h1>
+<p>FIX204 navazuje na FIX203 bez hernich hard-locku. Hlavni zmena je oprava obecneho GTIA 9/10/11 regmap/color rendereru podle Altirry a realneho Atari 130XE. Tlacitka VERIFY zustavaji jako BASIC/OS test SAVMSC, PRIOR, COLOR/PCOLOR a 4bit nibbles.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX203 pouziva cisty XEX segment loader: nacita $FF $FF segmenty do RAM, bere RUNAD/INITAD z $02E0-$02E3, BASIC direct OFF. Obraz bere primarne ze skutecneho ANTIC/HW/SDLST DLISTu; segmentovy scan je zachranna cesta, RAM scan nema prednost. CAS/WAV pilot zustava vypnuty. Tlacitka GTIA 9/10/11 ted pousti OS/BASIC verifier, ne jen staticke pruhy.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX204 pouziva cisty XEX segment loader: nacita $FF $FF segmenty do RAM, bere RUNAD/INITAD z $02E0-$02E3, BASIC direct OFF. Obraz bere primarne ze skutecneho ANTIC/HW/SDLST DLISTu; segmentovy scan je zachranna cesta, RAM scan nema prednost. CAS/WAV pilot zustava vypnuty. Tlacitka GTIA 9/10/11 ted pousti OS/BASIC verifier, ne jen staticke pruhy.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -765,7 +765,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX203_GTIA_OS_VERIFY_CORE";
+var EMU_BUILD_TAG="FIX204_GTIA_REGMAP_COLOR_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1132,11 +1132,11 @@ function makeLogFileName(reason){
  var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
  var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
  var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
- return 'atarihelp-FIX203-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
+ return 'atarihelp-FIX204-'+prof+'-'+reason+'-'+ts+'-'+name+'.txt';
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX203 GTIA OS VERIFY CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX204 GTIA REGMAP COLOR CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -2371,7 +2371,7 @@ function gtiaBasicVerifierProgramFix203(mode){
  mode=(mode|0); if(mode!==9 && mode!==10 && mode!==11)mode=9;
  var lines=[];
  if(mode===10){
-   // GRAPHICS 10 verifier: uses all 9 GTIA color sources. 0=COLBK, 1..4=COLPF0..3, 5..8=PCOLR0..3.
+   // GRAPHICS 10 verifier: real GTIA 9-color indirection. 0=PCOLR0, 1=PCOLR1, 2=PCOLR2, 3=PCOLR3, 4..7=COLPF0..3, 8=COLBK.
    lines=[
     '10 GRAPHICS 10:POKE 752,1',
     '20 POKE 623,128:POKE 704,14:POKE 705,88:POKE 706,154:POKE 707,222',
@@ -2416,23 +2416,23 @@ function gtiaBasicVerifierProgramFix203(mode){
 function gtiaVerifyExpectedFix203(mode){
  mode=(mode|0);
  if(mode===9)return 'G9: PRIOR $40, COLBK $88, hodnoty 0-F musi byt jas jedne barvy; horni nibble je levy pulpixel, dolni nibble pravy.';
- if(mode===10)return 'G10: PRIOR $80, map 0=COLBK/D01A 1=COLPF0/D016 2=COLPF1/D017 3=COLPF2/D018 4=COLPF3/D019 5=PCOLR0/D012 6=PCOLR1/D013 7=PCOLR2/D014 8=PCOLR3/D015.';
+ if(mode===10)return 'G10: PRIOR $80, real GTIA map 0=PCOLR0/D012 1=PCOLR1/D013 2=PCOLR2/D014 3=PCOLR3/D015 4=COLPF0/D016 5=COLPF1/D017 6=COLPF2/D018 7=COLPF3/D019 8=COLBK/D01A.';
  return 'G11: PRIOR $C0, COLBK $08, hodnoty 0-F musi byt 16 hue pri stejnem jasu; horni nibble je levy pulpixel, dolni nibble pravy.';
 }
 function queueGtiaBasicDemoFix177(mode){
- // FIX203: Rene mel pravdu - samotne pruhy nejsou dostatecny test.  Tlacitka GTIA 9/10/11
+ // FIX204: Rene mel pravdu - samotne pruhy nejsou dostatecny test.  Tlacitka GTIA 9/10/11
  // ted posilaji realny Atari BASIC program: GRAPHICS 9/10/11, PEEK(88/89) SAVMSC,
  // POKE 623 PRIOR, COLOR/PCOLOR shadow registry a screen RAM s high/low nibble kontrolou.
  // To overi OS zaklad, shadow->GTIA kopirovani, prior bity, poradi nibbles i renderer.
  mode=(mode|0); if(mode!==9 && mode!==10 && mode!==11)mode=9;
  var prog=gtiaBasicVerifierProgramFix203(mode);
- fix203GtiaVerifyMode=mode;
- fix203GtiaVerifyCode=prog.replace(/\n/g,' | ');
- fix203GtiaVerifyInfo='FIX203 queued GTIA '+mode+' OS/BASIC verifier: '+gtiaVerifyExpectedFix203(mode)+' lines '+prog.split('\n').length+' frame '+playFrameNo;
- fix184GtiaBarsInfo='replaced by FIX203 GTIA OS verifier mode '+mode+'; no static bars';
- fix170GtiaModeInfo='FIX203 GTIA '+mode+' verifier queued; waiting for BASIC program to run';
- try{log('GTIA VERIFY FIX203: '+fix203GtiaVerifyInfo);log('GTIA VERIFY CODE FIX203: '+fix203GtiaVerifyCode);}catch(e){}
- return queueBasicProgramTextFix171(prog,'GTIA '+mode+' OS VERIFY FIX203');
+ fix204GtiaVerifyMode=mode;
+ fix204GtiaVerifyCode=prog.replace(/\n/g,' | ');
+ fix204GtiaVerifyInfo='FIX204 queued GTIA '+mode+' OS/BASIC verifier: '+gtiaVerifyExpectedFix203(mode)+' lines '+prog.split('\n').length+' frame '+playFrameNo;
+ fix184GtiaBarsInfo='replaced by FIX204 GTIA OS verifier mode '+mode+'; no static bars';
+ fix170GtiaModeInfo='FIX204 GTIA '+mode+' verifier queued; waiting for BASIC program to run';
+ try{log('GTIA VERIFY FIX204: '+fix204GtiaVerifyInfo);log('GTIA VERIFY CODE FIX204: '+fix204GtiaVerifyCode);}catch(e){}
+ return queueBasicProgramTextFix171(prog,'GTIA '+mode+' OS VERIFY FIX204');
 }
 function gtiaSetRegPairFix179(sh,hw,val){
  val&=255;
@@ -2844,7 +2844,7 @@ function loadXex(light){
  fix195NativeXexInfo=(fix195NativeXexInfo||'FIX197 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM probe ON resetVector $C2AA';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX203-GTIA-OS-VERIFY-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX204-GTIA-REGMAP-COLOR-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -4712,9 +4712,10 @@ var fix170GtiaModeInfo='reset';
 var fix177GtiaRenderInfo='reset';
 var fix179GtiaDirectInfo='reset';
 var fix184GtiaBarsInfo='reset';
-var fix203GtiaVerifyInfo='reset';
-var fix203GtiaVerifyCode='reset';
-var fix203GtiaVerifyMode=0;
+var fix204GtiaVerifyInfo='reset';
+var fix204GtiaVerifyCode='reset';
+var fix204GtiaVerifyMode=0;
+var fix204GtiaRegMapInfo='reset';
 var fix179GtiaDirectUntil=0;
 function endGtiaDirectTestFix183(reason){
   try{
@@ -4773,33 +4774,38 @@ function gtiaModeColorValuesFix177(mode){
  var bk=gtiaRawRegFix170(0x02C8,0xD01A,0x00);
  var vals=[], i;
  if(gm===9){
-   // GRAPHICS 9: one hue, 16 luminances. If BASIC leaves hue black, this is greyscale.
+   // FIX204: GTIA $40 / BASIC GRAPHICS 9. Pixel data selects luminance of COLBK hue.
+   // On real Atari/Altirra a cleared pixel uses the visible COLBK/background, not forced black.
    var hue=bk&0xF0;
-   for(i=0;i<16;i++)vals.push((hue|(i&15))&255);
+   vals[0]=bk&255;
+   for(i=1;i<16;i++)vals[i]=(hue|(i&15))&255;
  }else if(gm===11){
-   // GRAPHICS 11: 16 hues, one luminance. A zero luminance is invisible, so for REAL OS tests
-   // use a readable mid luminance unless the program explicitly set a nonzero COLBK luminance.
-   var lum=bk&0x0F;
-   if(activeXexProfile==='realos' && lum===0)lum=8;
-   for(i=0;i<16;i++)vals.push((((i&15)<<4)|lum)&255);
+   // FIX204: GTIA $C0 / BASIC GRAPHICS 11. Pixel 0 is background: COLBK color component
+   // with luminance forced to 0. Pixels 1-F use the COLBK luminance, with COLBK hue ORed in.
+   var lum=bk&0x0E;
+   var bgHue=bk&0xF0;
+   vals[0]=bgHue&255;
+   for(i=1;i<16;i++)vals[i]=(bgHue|((i&15)<<4)|lum)&255;
  }else{
-   // GRAPHICS 10: 9 GTIA color registers. Fill 9..15 with visible repeated colors.
+   // FIX204: real GTIA 9-color indirection. 0-3 are PCOLR/PM registers,
+   // 4-7 are COLPF0-3, 8 is COLBK. Old build had this order reversed.
    vals=[
-    bk,
+    gtiaRawRegFix170(0x02C0,0xD012,0x0E),
+    gtiaRawRegFix170(0x02C1,0xD013,0x58),
+    gtiaRawRegFix170(0x02C2,0xD014,0x9A),
+    gtiaRawRegFix170(0x02C3,0xD015,0xDE),
     gtiaRawRegFix170(0x02C4,0xD016,0x28),
     gtiaRawRegFix170(0x02C5,0xD017,0x46),
     gtiaRawRegFix170(0x02C6,0xD018,0x84),
     gtiaRawRegFix170(0x02C7,0xD019,0xC8),
-    gtiaRawRegFix170(0x02C0,0xD012,0x0E),
-    gtiaRawRegFix170(0x02C1,0xD013,0x58),
-    gtiaRawRegFix170(0x02C2,0xD014,0x9A),
-    gtiaRawRegFix170(0x02C3,0xD015,0xDE)
+    bk
    ];
    var allZero=true; for(i=0;i<vals.length;i++)if((vals[i]&255)!==0){allZero=false;break;}
    if(allZero)vals=gtiaDefaultPaletteFix177().slice(0,9);
-   for(i=9;i<16;i++)vals[i]=vals[1+(i%8)]&255;
+   for(i=9;i<16;i++)vals[i]=vals[i-9]&255;
  }
- fix170GtiaModeInfo='GTIA GRAPHICS '+gm+' active over ANTIC $F PRIOR $'+hex(prior,2)+' COLBK $'+hex(bk,2)+' FIX181 renderer frame '+playFrameNo;
+ fix170GtiaModeInfo='GTIA GRAPHICS '+gm+' active over ANTIC $F PRIOR $'+hex(prior,2)+' COLBK $'+hex(bk,2)+' FIX204 renderer frame '+playFrameNo;
+ fix204GtiaRegMapInfo='mode '+gm+' vals '+vals.map(function(v){return '$'+hex(v&255,2);}).join(' ')+' PRIOR $'+hex(prior,2)+' frame '+playFrameNo;
  return vals.map(function(v){return v&255;});
 }
 function gtiaModeCssColorsFix170(mode){
@@ -8026,8 +8032,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX203 GTIA OS VERIFY CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX203, bezi stary APK/ZIP nebo stary label.");
+lines.push("COMPAT SNAPSHOT FIX204 GTIA REGMAP COLOR CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX204, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -8040,8 +8046,9 @@ lines.push("GTIA MODE FIX181: "+(fix170GtiaModeInfo||"--"));
 lines.push("GTIA RENDER FIX181: "+(fix177GtiaRenderInfo||"--"));
 lines.push("GTIA DIRECT FIX181: "+(fix179GtiaDirectInfo||"--"));
 lines.push("GTIA BARS FIX186: "+(fix184GtiaBarsInfo||"--"));
-lines.push("GTIA VERIFY FIX203: "+(fix203GtiaVerifyInfo||"--"));
-lines.push("GTIA VERIFY CODE FIX203: "+(fix203GtiaVerifyCode||"--"));
+lines.push("GTIA VERIFY FIX204: "+(fix204GtiaVerifyInfo||"--"));
+lines.push("GTIA VERIFY CODE FIX204: "+(fix204GtiaVerifyCode||"--"));
+lines.push("GTIA REGMAP FIX204: "+(fix204GtiaRegMapInfo||"--"));
 lines.push("G7 CLIP FIX187: "+(fix186G7ClipInfo||"--"));
 lines.push("CPU DECIMAL FIX187: "+(fix187CpuDecimalInfo||"--"));
 lines.push("XEX BRIDGE FIX188: "+(fix188XexBridgeInfo||"--"));
