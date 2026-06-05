@@ -31,3 +31,6 @@ Test plan:
 FIX187_REALOS_CPU_DECIMAL_G7_TUNNEL_CORE
 - CPU decimal SBC/ADC fix for Atari BASIC FOR/NEXT loops.
 - Designed to stop legal GRAPHICS 7 programs from overrunning loop limits and throwing ERROR-141.
+
+
+FIX197: total purge legacy/profile DLIST render paths. XEX loader must log STREAMED=OK ACTIVE=YES.

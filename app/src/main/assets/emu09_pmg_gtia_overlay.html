@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX196_XEX_OS_KERNEL_LOADER_CORE / vlastní XEX</title>
+<title>EMU-09 FIX197_TOTAL_PURGE_XEX_HARDWARE_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX196_XEX_OS_KERNEL_LOADER_CORE</h1>
-<p>FIX196 opravuje skutecny problem: XEX loader uz neni jen LEGACY_PROTECTED/quarantine. Hry dostanou cisty XEX loader + mapovanou Atari OS ROM kernel vrstvu pro OS rutiny/data, ale BASIC direct zustava vypnuty.</p>
+<h1>EMU-09 FIX197_TOTAL_PURGE_XEX_HARDWARE_CORE</h1>
+<p>FIX197 dela total purge legacy/profile render cest. Cilem neni dalsi Donkey naplast, ale obecny XEX hardware pass: segmenty do RAM, RUNAD/INITAD, OS kernel probe, potom ANTIC/DLIST/PMG z realnych registru bez Donkey/Cobra sablon.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX196 používá čistý XEX loader se skutečnou Atari OS kernel vrstvou: načte hlavičku $FF $FF, segmenty ukládá do RAM, RUNAD/INITAD bere z $02E0-$02E3, mapuje Atari XL OS ROM pro hry a zároveň drží BASIC direct vypnutý. Tohle je obecná cesta pro komerční XEXy, ne záplata jedné hry.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX197 pouziva cisty XEX hardware pass: nacita $FF $FF segmenty do RAM, bere RUNAD/INITAD z $02E0-$02E3, drzi BASIC direct OFF a vypina profilove Donkey/Cobra/Pitstop/Arkanoid DLIST sablony. Obraz se ma brat z realnych ANTIC registru a obecneho scanneru, ne z historicke karanteny.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -100,7 +100,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX196: XEX hry bezi pres cisty loader + mapovanou Atari OS ROM kernel vrstvu; BASIC direct zustava vypnuty.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX197: total purge legacy/profile render cest. XEX jde pres cisty segment loader, OS kernel probe zustava, ale DLIST/ANTIC/PMG uz nesmi byt nahrazovany Donkey/Cobra sablonou.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -246,9 +246,15 @@ var fix193DonkeyPmgCleanNext=false;
 var fix193DonkeyPmgInfo='FIX193 Donkey PMG transition guard waiting';
 var fix194ResetInfo='FIX194 reset-to-BASIC waiting';
 var fix195NativeXexInfo='FIX196 Native XEX loader waiting';
-var fix196XexOsKernelInfo='FIX196 XEX OS kernel waiting';
+var fix196XexOsKernelInfo='FIX197 XEX OS kernel waiting';
 var fix196OsKernelReads=0;
 var fix196OsKernelEnabled=false;
+var fix197PurgeInfo='FIX197 TOTAL PURGE waiting';
+var fix197TotalPurgeActive=false;
+var fix197StreamedOk=false;
+var fix197StreamedBytes=0;
+var fix197StreamedBlocks=0;
+var fix197LastResolvedDlist=0;
 var fix193DonkeyStableFrames=0;
 var fix193DonkeyLastDl=0;
 var fix193DonkeySuppressUntil=-999;
@@ -325,7 +331,7 @@ function fix125CoreModeForProfile(){
   // ale BASIC direct zustava vypnuty. Tohle je obecny core smer, ne Donkey/Cobra hack.
   try{
     if(activeXexProfile==='realos')return 'REAL_OS_BOOT';
-    if(fix190RealOsDirectXexMode){fix190RealOsDirectXexMode=false;fix190DirectXexInfo='FIX196 blocked REAL_OS_XEX_DIRECT; using XEX OS kernel loader frame '+playFrameNo;}
+    if(fix190RealOsDirectXexMode){fix190RealOsDirectXexMode=false;fix190DirectXexInfo='FIX197 blocked REAL_OS_XEX_DIRECT; using total-purge XEX loader frame '+playFrameNo;}
     if(fix196XexOsKernelActive())return 'XEX_OS_KERNEL';
     if(isMoonPatrolProfile() || isPacmanProfile() || activeXexProfile==='generic')return 'ROM_PROBE';
   }catch(e){}
@@ -747,7 +753,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX196_XEX_OS_KERNEL_LOADER_CORE";
+var EMU_BUILD_TAG="FIX197_TOTAL_PURGE_XEX_HARDWARE_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1304,7 +1310,7 @@ function renderRegs(){
 }
 
 
-function optionalRomSnapshotText(){if(fix150RomBootMode)return fix150RomBootInfo;return optionalRomInfo+' core='+(typeof fix125CoreModeForProfile==='function'?fix125CoreModeForProfile():(fix124RomEnabledForProfile()?'ROM_PROBE':'LEGACY'))+' mode='+(fix124RomEnabledForProfile()?'PROBE':'QUARANTINE')+' reads='+optionalRomReads;}
+function optionalRomSnapshotText(){if(fix150RomBootMode)return fix150RomBootInfo;return optionalRomInfo+' core='+(typeof fix125CoreModeForProfile==='function'?fix125CoreModeForProfile():'XEX_TOTAL_PURGE')+' mode='+(fix197TotalPurgeActive?'TOTAL_PURGE':(fix124RomEnabledForProfile()?'PROBE':'OFF'))+' reads='+optionalRomReads;}
 function isMiniOsRomAddr(a){
  a&=65535;
  // FIX125: podle prostudovaných OS-B/XL/XE ROM je ROM vrstva nejen $E000+, ale i $C000-$CFFF
@@ -1329,7 +1335,7 @@ function optionalRomByteAt(a){
    var off=a-0xC000;
    if(off>=0 && off<optionalOsRom.length){
      optionalRomReads++;
-     if(fix196XexOsKernelActive()){fix196OsKernelReads++; if((fix196OsKernelReads&255)===1)fix196XexOsKernelInfo='FIX196 Atari OS ROM kernel mapped for XEX; reads '+fix196OsKernelReads+' last $'+hex(a,4)+' BASIC direct OFF frame '+playFrameNo;}
+     if(fix196XexOsKernelActive()){fix196OsKernelReads++; if((fix196OsKernelReads&255)===1)fix196XexOsKernelInfo='FIX197 Atari OS ROM probe read '+fix196OsKernelReads+' last $'+hex(a,4)+' BASIC direct OFF frame '+playFrameNo;}
      return optionalOsRom[off]&255;
    }
  }
@@ -2547,17 +2553,17 @@ function fix192HasMoreXexSegments(bytes,pos){
 }
 function installCleanXexLoaderEnvironmentFix192(reason){
  if(!ram)return;
- // FIX196: obecny XEX OS kernel loader. Cisty XEX load zustava, ale OS ROM uz neni quarantine-only.
- // BASIC direct pro hotove hry zustava vypnuty; mapujeme jen Atari OS kernel/data oblast a rizene OS vstupy.
+ // FIX197: total purge XEX env. Cisty XEX load zustava, ale profilove render sablony se nesmi pouzit.
+ // BASIC direct je OFF; OS kernel probe zustava jen jako sluzba, ne jako fake obrazova cesta.
  ram[0xD301]=0xFF;
  portbValue=0xFF;
  ram[0x0244]=0x00; // COLDST sane for clean loaded program
  ram[0x0009]=0x00; ram[0x000A]=0x00; ram[0x000B]=0x00;
  ram[0x02E0]=0; ram[0x02E1]=0; ram[0x02E2]=0; ram[0x02E3]=0;
- fix196OsKernelEnabled=true; fix196OsKernelReads=0;
- fix196XexOsKernelInfo='FIX196 XEX OS kernel env '+(reason||'')+': Atari OS ROM mapped, BASIC direct OFF, PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
- fix195NativeXexInfo='FIX196 native loader env '+(reason||'')+' + OS kernel BASIC-direct OFF / OS-ROM ON PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
- fix192LoaderInfo='FIX196 native+OS loader env '+(reason||'')+' PORTB $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
+ fix196OsKernelEnabled=true; fix196OsKernelReads=0; fix197TotalPurgeActive=true; fix197StreamedOk=false; fix197StreamedBytes=0; fix197StreamedBlocks=0;
+ fix196XexOsKernelInfo='FIX197 XEX OS kernel probe '+(reason||'')+': OS ROM mapped, BASIC direct OFF, PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' resetVector $C2AA staged frame '+playFrameNo;
+ fix195NativeXexInfo='FIX197 native loader env '+(reason||'')+' TOTAL_PURGE BASIC-direct OFF / OS-ROM probe ON PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
+ fix192LoaderInfo='FIX197 STREAMED=PENDING ACTIVE=YES env '+(reason||'')+' PORTB $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' resetVector $C2AA frame '+playFrameNo;
 }
 
 function runStreamedInitFix192(addr,segNo,segStart,segEnd){
@@ -2647,12 +2653,14 @@ function parseAndLoadXexBytes(bytes,light){
  else entry=0x2000;
  xexInfo={run:runVec||0,inits:inits,entry:entry,warnings:(nativeInfo&&nativeInfo.warnings?nativeInfo.warnings.slice(0):[]),bad:bad};
  activeXexProfile=detectXexProfile(bytes,entry,runVec||0);
+ fix197TotalPurgeActive=(activeXexProfile!=='realos');
  var wantedDirect=!!fix190NextXexDirect;
  fix190NextXexDirect=false;
  fix190RealOsDirectXexMode=false;
  if(wantedDirect){fix190DirectXexInfo='FIX191 blocked old REAL OS DIRECT for '+activeXexProfile+'; clean XEX loader used instead frame '+playFrameNo;}
  fix191CleanXexInfo='FIX191 clean XEX loaded profile '+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments pending frame '+playFrameNo;
  resetAdaptiveRuntimeStateLight();
+ if(fix197TotalPurgeActive){playCyclesPerFrame=4200;playMaxMsPerFrame=8;genericRenderEvery=1;mobileThrottleLevel=0;mobilePerfInfo='FIX197 total purge generic timing profile '+activeXexProfile+' frame '+playFrameNo;}
  if(fix192StreamInitActive){
    var streamedMap={}; for(var si192=0;si192<fix192StreamedInitAddrs.length;si192++)streamedMap[fix192StreamedInitAddrs[si192]&65535]=1;
    pendingInitAddrs=(goodEntry(runVec)?inits.slice(0):inits.slice(0,Math.max(0,inits.length-1))).filter(function(a){return !streamedMap[a&65535];});
@@ -2661,10 +2669,13 @@ function parseAndLoadXexBytes(bytes,light){
  ranInitAddrs=[];
  xexInfo.warnings=(xexInfo.warnings||[]).concat(xexWarningsForEntry(entry));
  var nativeRanges=(segments||[]).map(function(sg){return '$'+hex(sg.start,4)+'-$'+hex(sg.end,4);}).slice(0,6).join(' ');
- fix195NativeXexInfo='FIX196 native+OS XEX: header '+(nativeInfo&&nativeInfo.header?'$FFFF OK':'missing/tolerant')+' blocks '+count+' bytes '+(nativeInfo?nativeInfo.dataBytes:0)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' ENTRY $'+hex(entry||0,4)+' BASIC direct OFF PORTB $'+hex(ram[0xD301]||0,2)+' ranges '+nativeRanges+' frame '+playFrameNo;
- fix188XexBridgeInfo=(fix192StreamInitActive?'FIX196 native+OS stream-init XEX loaded profile ':'FIX196 native+OS clean XEX loaded profile ')+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' BASIC direct OFF / OS ROM mapped streamed '+(fix192StreamedInitAddrs.length?fix192StreamedInitAddrs.map(function(a){return '$'+hex(a,4);}).join(','):'none')+' frame '+playFrameNo;
+ fix197StreamedBlocks=count|0; fix197StreamedBytes=(nativeInfo?nativeInfo.dataBytes:0)|0; fix197StreamedOk=(count>0 && fix197StreamedBytes>0);
+ fix195NativeXexInfo='FIX197 native XEX: STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' ACTIVE=YES header '+(nativeInfo&&nativeInfo.header?'$FFFF OK':'missing/tolerant')+' blocks '+count+' bytes '+fix197StreamedBytes+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' ENTRY $'+hex(entry||0,4)+' BASIC direct OFF PORTB $'+hex(ram[0xD301]||0,2)+' ranges '+nativeRanges+' frame '+playFrameNo;
+ fix192LoaderInfo='FIX197 STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' ACTIVE=YES blocks '+count+' bytes '+fix197StreamedBytes+' profile '+activeXexProfile+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' ENTRY $'+hex(entry||0,4)+' resetVector $C2AA staged frame '+playFrameNo;
+ fix188XexBridgeInfo='FIX197 total-purge XEX loaded profile '+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' BASIC direct OFF streamed=OK active=YES frame '+playFrameNo;
  fix191CleanXexInfo=fix188XexBridgeInfo;
- fix196XexOsKernelInfo='FIX196 Atari OS ROM kernel armed for '+activeXexProfile+'; OS ROM mapped, BASIC direct OFF, service traps guarded frame '+playFrameNo;
+ fix196XexOsKernelInfo='FIX197 OS kernel probe armed for '+activeXexProfile+'; OS ROM mapped, BASIC direct OFF, service traps guarded, legacy profile render purge ON frame '+playFrameNo;
+ fix197PurgeInfo='FIX197 TOTAL PURGE active: legacy Donkey/Cobra/Pitstop/Arkanoid DLIST locks disabled; generic ANTIC/DLIST/PMG path only frame '+playFrameNo;
  if(activeXexProfile==="pitt")detectPittTextDlists();
  installOsKeyboardReturnStub();
  installGenericOsRomStubs();
@@ -2747,10 +2758,10 @@ function loadXex(light){
  runAddress=meta.entry;
  cpu=new CPU6502(ram);cpu.pc=runAddress;
  try{cpu.sp=0xFD;cpu.p=0x24;cpu.a=0;cpu.x=0;cpu.y=0;}catch(e){}
- fix195NativeXexInfo=(fix195NativeXexInfo||'FIX196 native+OS XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM ON';
+ fix195NativeXexInfo=(fix195NativeXexInfo||'FIX197 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM probe ON resetVector $C2AA';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX196-XEX-OS-KERNEL-LOADER-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX197-TOTAL-PURGE-XEX-HARDWARE-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -3975,6 +3986,31 @@ function getDlistPtr(){
      return 0x9C20;
    }
    lastRejectedDlistInfo='realos no drawable OS DLIST shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4);
+   return 0;
+ }
+ if(fix197TotalPurgeActive && activeXexProfile!=='realos'){
+   function tryPure(a,label){
+     a=(a||0)&65535;
+     if(!validPtrForMiniAtari(a))return 0;
+     if(dlistLooksLike6502Code(a)){
+       lastRejectedDlistInfo='FIX197 pure rejected code-like '+label+' $'+hex(a,4);
+       return 0;
+     }
+     var rr=rememberDlistCandidate(a);
+     if(rr){fix197LastResolvedDlist=rr;fix197PurgeInfo='FIX197 TOTAL PURGE generic DLIST '+label+' -> $'+hex(rr,4)+' shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' frame '+playFrameNo;return rr;}
+     var mm=dlistMetricsAt(a);
+     lastRejectedDlistInfo='FIX197 pure rejected '+label+' $'+hex(a,4)+' ops '+mm.displayOps+' lms '+mm.lmsOps+' vis '+mm.visibleScan+' blank '+mm.blankScan+' code '+(mm.codeLike?'Y':'n');
+     return 0;
+   }
+   var base=hw?h:s;
+   var scan=scanLoadedDlistCandidate();
+   var pr=0;
+   if(hw){pr=tryPure(h,'HW-DLIST'); if(pr)return pr;}
+   if(sw){pr=tryPure(s,'SDLST'); if(pr)return pr;}
+   if(shouldPreferScannedDlistForGeneric(base,scan)){pr=tryPure(scan,'GENERIC-SCAN'); if(pr)return pr;}
+   if(scan){pr=tryPure(scan,'SCAN-FALLBACK'); if(pr)return pr;}
+   if(lastGoodDlistProfile===activeXexProfile && lastGoodDlist){pr=tryPure(lastGoodDlist,'LASTGOOD'); if(pr)return pr;}
+   fix197PurgeInfo='FIX197 TOTAL PURGE no drawable generic DLIST shadow $'+hex(s||0,4)+' hw $'+hex(h||0,4)+' scan '+(scan?('$'+hex(scan,4)):'--')+' frame '+playFrameNo;
    return 0;
  }
  function tryOne(a,label){
@@ -7749,17 +7785,18 @@ lines.push("INPUT LIVE FIX189: "+(fix189InputLiveInfo||"--"));
 lines.push("REAL OS DIRECT XEX FIX190: "+(fix190DirectXexInfo||"--")+" active="+(fix190RealOsDirectXexMode?"yes":"no")+" (disabled by FIX191 for games)");
 lines.push("CLEAN XEX FIX191: "+(fix191CleanXexInfo||"--"));
 lines.push("XEX LOADER CODE FIX192: "+(fix192LoaderInfo||"--")+" streamed="+(fix192StreamedInitAddrs&&fix192StreamedInitAddrs.length?fix192StreamedInitAddrs.map(function(a){return "$"+hex(a,4);}).join(","):"none")+" active="+(fix192StreamInitActive?"yes":"no"));
-lines.push("NATIVE XEX LOADER FIX196: "+(fix195NativeXexInfo||"--"));
-lines.push("XEX OS KERNEL FIX196: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
+lines.push("NATIVE XEX LOADER FIX197: "+(fix195NativeXexInfo||"--"));
+lines.push("XEX OS KERNEL FIX197: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
+lines.push("TOTAL PURGE FIX197: "+(fix197PurgeInfo||"--")+" STREAMED="+(fix197StreamedOk?"OK":"FAIL")+" ACTIVE="+(fix197TotalPurgeActive?"YES":"NO")+" blocks="+(fix197StreamedBlocks||0)+" bytes="+(fix197StreamedBytes||0));
 lines.push("RESET READY FIX194: "+(fix194ResetInfo||"--"));
 lines.push("GENERIC PMG POLICY FIX194: one-game PMG guard disabled; clean XEX loader only. oldInfo="+(fix193DonkeyPmgInfo||"--"));
 lines.push("BASIC PASTE FIX191: "+(fix190PasteInfo||"--"));
  lines.push("NZ RAM $0800="+nonZeroRange(0x0800,0x0800)+" $1000="+nonZeroRange(0x1000,0x0400)+" $2000="+nonZeroRange(0x2000,0x1000)+" $3000="+nonZeroRange(0x3000,0x1000)+" $3F00="+nonZeroRange(0x3F00,0x0100)+" $E000ROMstub="+nonZeroRange(0xE000,0x0400));
 lines.push("ANTIC FIX125 modes: "+decodeDlistShort(dl));
-lines.push("DLI CAP FIX181 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / FIX125: safer multigame boot + code-scored Moon handoff + Pac BASIC/OS diagnostic; DLI RAM guard zůstává vypnutý.");
-lines.push("DLIST RESOLVE FIX181: "+dlistQualitySummary(dl));
-lines.push("VIEWPORT FIX181: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
-lines.push("FIX181 REGRESSION GUARD: "+fix96RegressionGuardInfo+" / no Cobra/Donkey scan promotion, Arkanoid assist blocked="+arkanoidAssistBlocked);
+lines.push("DLI CAP FIX197 generic="+(genericDliCache?genericDliCache.length:0)+" river="+(riverDliCache?riverDliCache.length:0)+" / TOTAL PURGE: profile DLIST locks disabled for XEX hardware path.");
+lines.push("DLIST RESOLVE FIX197: "+dlistQualitySummary(dl));
+lines.push("VIEWPORT FIX197: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
+lines.push("FIX197 REGRESSION GUARD: TOTAL PURGE active="+(fix197TotalPurgeActive?"YES":"NO")+" oldGuard="+fix96RegressionGuardInfo+" arkanoidAssistBlocked="+arkanoidAssistBlocked);
 lines.push(viewportDiagnosticInfo());
 lines.push("MOBILE PERF FIX181: "+mobilePerfInfo+" runtime="+mobileRuntime+" throttle="+mobileThrottleLevel+" frameMs="+mobileLastFrameTotalMs.toFixed(1)+" renderMs="+mobileLastRenderMs.toFixed(1)+" skips="+mobileRenderSkipHits);
 lines.push("LOG GUARD FIX181: "+(fix139LogGuardInfo||"--")+" suppressed="+fix139SuppressedLogCount+" handoff="+fix139SuppressedHandoffCount+" / "+fix161StorageGuardInfo);
@@ -7778,11 +7815,11 @@ if(activeXexProfile==='pitstop')lines.push("PITSTOP RACE DLIST TEMPLATE FIX125: 
  if(activeXexProfile==='pitstop')lines.push("PITSTOP CLEAN ROAD DIAG FIX125: "+(pitstopSplitDebugLast||"--"));
  lines.push("DLIST BYTES: "+dumpDlistBytes(dl,72));
 lines.push("DLI SCANLINES FIX181: "+dliScanlineSummary(dl));
-lines.push("AUTO COMPAT FIX181: "+(fix134AutoCompatInfo||"--")+" mode="+(fix134DliAutoMode||"--"));
- lines.push("FIX181 MAP GUARD: "+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--"));
+lines.push("AUTO COMPAT FIX197: "+(fix134AutoCompatInfo||"--")+" mode="+(fix134DliAutoMode||"--"));
+ lines.push("FIX197 MAP GUARD: "+(fix148MapGuardInfo||"--")+" variant="+(fix148DonkeyVariantInfo||"--"));
  lines.push("GENERIC DLI STATES: "+dliStateSummary(genericDliCache,12));
 lines.push("PMG INFO: "+pmgInfo());
-if(isDonkeyProfile())lines.push("DONKEY FIX181: strict FIX69 DLIST priority; $1200/$49D7 blocked early, $466F/lastGood before late $49D7; no canvas framehold; info="+fix143DonkeyLegacyInfo);
+if(isDonkeyProfile())lines.push("DONKEY FIX197: profile DLIST hacks PURGED; using generic ANTIC/DLIST/PMG only; oldInfo="+fix143DonkeyLegacyInfo);
 if(isDonkeyJrProfile())lines.push("DONKEY JR FIX125: profile kept, bad scan-DLIST promotion blocked; title/menu DLIST switch is live without frame-hold; PMG title-noise guard skips broad stale PMG on $5919/$8052; runtime $8031 keeps PMG.");
 if(isMontezumaProfile())lines.push("MONTEZUMA FIX125: viewport yOff 0; single-line PMG yOff 8; early START/FIRE is queued until intro/maze is ready; 128-glyph ANTIC mode4 path restored for score/body; renderer CHBASE guard active. guard="+fix115MontezumaGuardInfo+" chbase="+(fix116MontezumaCharsetInfo||"--"));
 lines.push("GTIA COLLISION FIX181: "+gtiaCollisionInfo());
@@ -7838,7 +7875,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX196 CORE: XEX loader + Atari OS ROM kernel vrstva, BASIC direct OFF.");
+updatePlayStatus("Emulator bezi. FIX197 TOTAL PURGE: cisty XEX loader + obecny ANTIC/DLIST/PMG bez profilovych render sablon.");
  if(!playLoopId)playLoop();
 }
 
