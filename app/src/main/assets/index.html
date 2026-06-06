@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>AtariHelp.eu FIX224</title>
+<title>AtariHelp.eu FIX226</title>
 <style>
 :root{--bg:#070604;--gold:#d7b76a;--gold2:#ffe3a3;--line:rgba(215,183,106,.35);--text:#fff7e3;--muted:rgba(255,247,227,.68);--red:#ff6b9a;--green:#2aff8f;--blue:#78a6ff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Arial,sans-serif}
@@ -27,7 +27,7 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.94);border-top
 </head>
 <body>
 <div class="app">
-<header><img src="np_logo.png?fix94" class="logo" alt="N&P"><div><div class="kicker">AtariHelp.eu</div><div class="title">N&P Studio</div><div class="ver">APK FIX224 realrom input selftest core</div></div></header>
+<header><img src="np_logo.png?fix94" class="logo" alt="N&P"><div><div class="kicker">AtariHelp.eu</div><div class="title">N&P Studio</div><div class="ver">APK FIX226 pure hardware audit core</div></div></header>
 
 <main id="home" class="view">
 <section class="card hero">
@@ -52,8 +52,8 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.94);border-top
 <section class="card">
   <div class="kicker">EMU-09</div>
   <h2>🚗 PMG / GTIA Overlay</h2>
-  <p>PiTT-KiTT zustava referencni historie, ale FIX224 pridava READY-gated FAST BASIC + vycistene input fronty pro PURE SELF TEST; zadna fake obrazovka.</p>
-  <button onclick="location.href='emu09_pmg_gtia_overlay.html'">Spustit EMU-09 FIX224 realrom input selftest core</button>
+  <p>PiTT-KiTT zustava referencni historie, ale FIX226 je radikalni PURE HARDWARE rezim: ROM reset vector, PORTB/MMU, PIA/POKEY/ANTIC/GTIA bez servisnich zkratek.</p>
+  <button onclick="location.href='emu09_pmg_gtia_overlay.html'">Spustit EMU-09 FIX226 pure hardware audit core</button>
 </section>
 
 
@@ -172,7 +172,7 @@ const b64="//8AIO07TBoicHBwcHBCaSBwcHBCkSBwcHBCuSBwcHBwQuEgQQMgcHBwcEIJIXBCMSFwc
 const game={"id": "pitt-kitt-remaster", "title": "PiTT-KiTT Remaster", "filename": "PiTT-KiTT-NaP-Final.xex", "size_bytes": 7162, "sha256": "8c587d73e8c4c4eb2ffe7d758cbc3856d0ca1275d8204fb87b8e5c68c619bd99", "run_address": "$221A", "segments": [{"start": "$2000", "end": "$3BED", "size": 7150}, {"start": "$02E0", "end": "$02E1", "size": 2}], "playable": false, "note": "XEX je uvnitř APK, plná hratelnost čeká na dokončení mini-emulátoru nebo port hry do N&P mobile engine."};
 function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.view===id));if(id==='meta')renderMeta();}
 function decodeB64(s){const raw=atob(s),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i)&255;return a}
-function bootXex(){const bytes=decodeB64(b64);document.getElementById('slotStatus').textContent='XEX LOADED / RUN $221A';document.getElementById('regs').innerHTML='<div class="reg">RUN $221A</div><div class="reg">SIZE '+bytes.length+' bytes</div><div class="reg">Segments 2</div>';document.getElementById('log').textContent='Loaded PiTT-KiTT XEX into runner slot.\nFull game still needs video/joystick emulation or mobile port.\nNo fake promise here.';}
+function bootXex(){const bytes=decodeB64(b64);document.getElementById('slotStatus').textContent='XEX LOADED / RUN $221A';document.getElementById('regs').innerHTML='<div class="reg">RUN $221A</div><div class="reg">SIZE '+bytes.length+' bytes</div><div class="reg">Segments 2</div>';document.getElementById('log').textContent='Loaded PiTT-KiTT XEX into runner slot.\nFull game still needs video/joystick emulation or mobile port.\nNo service shortcut promise here.';}
 function showNeed(){document.getElementById('log').textContent='Pro PiTT-KiTT hraní potřebuji jednu z cest:\n\nA) zdroják hry / pravidla / grafiku -> udělám mobilní port do N&P engine\n\nB) hotové Atari emu jádro -> napojím XEX\n\nC) nový N&P XEX standard -> budoucí komunitní hry budou hratelné v našem mini-emulátoru.';}
 function renderMeta(){let lines=[];lines.push('APP: AtariHelp.eu');lines.push('FILE: '+game.filename);lines.push('SIZE: '+game.size_bytes+' bytes');lines.push('RUNAD: '+game.run_address);lines.push('SHA256: '+game.sha256);lines.push('');lines.push('SEGMENTS:');game.segments.forEach((s,i)=>lines.push((i+1)+'. '+s.start+'-'+s.end+' / '+s.size+' bytes'));document.getElementById('metaBox').textContent=lines.join('\n');}
 renderMeta();
