@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX217_REALROM_PORTB_SELFTEST_SYNC_CORE / vlastní XEX</title>
+<title>EMU-09 FIX218_REALROM_RAMSIZE_BOOT_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX217_REALROM_PORTB_SELFTEST_SYNC_CORE</h1>
-<p>FIX217: ROM je mapovana pres skutecny PORTB/MMU gate; $5000-$57FF SELFTEST okno se zapina pri PORTB bit7 LOW jako na XL/XE, BASIC boot uz nesmi skoncit na prazdnem RAM $5003.</p>
+<h1>EMU-09 FIX218_REALROM_RAMSIZE_BOOT_CORE</h1>
+<p>FIX218: PURE ROM boot ma opraveny RAMSIZE/RAMTEST geometricky bod; BASIC boot uz nesmi spadnout do SELFTEST kvuli chybne hlasene vadne RAM.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -102,7 +102,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX217: PURE ROM boot ma opraveny PORTB/MMU self-test gate; $5003 uz neni prazdna RAM, kdyz OS zapne SELFTEST ROM.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX218: PURE ROM BASIC hlasi RAM jako funkcni mapu a nepada zbytecne do SELFTEST; SELFTEST zustava real ROM cesta.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -112,7 +112,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX217: ROM soubory jsou vlozene a auditovane. SELFTEST ROM okno se mapuje podle realneho PORTB bit7 LOW, ne podle tlacitka ani fake obrazovky.</p>
+<p class="tinyhint">FIX218: ROM soubory jsou vlozene a auditovane. BASIC boot ma RAMSIZE/RAMTEST korekci; SELFTEST zustava bez fake obrazovky.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="promptAtariName()">⌨️ ZADAT JMÉNO</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
@@ -280,10 +280,11 @@ var fix214SelfTestDlistInfo='FIX214 SELFTEST DLIST waiting';
 var fix214SelfTestConsoleInfo='FIX214 SELFTEST CONSOL wait waiting';
 var fix215PureRomMode=false;
 var fix215PureSelfTestMode=false;
-var fix215PureRomInfo='FIX217 PURE ROM waiting';
-var fix215PureRomAuditInfo='FIX217 PURE ROM audit waiting';
-var fix217SelftestGateInfo='FIX217 PORTB selftest gate waiting';
-var fix217PureResetInfo='FIX217 pure RESET waiting';
+var fix215PureRomInfo='FIX218 PURE ROM waiting';
+var fix215PureRomAuditInfo='FIX218 PURE ROM audit waiting';
+var fix217SelftestGateInfo='FIX218 PORTB selftest gate waiting';
+var fix217PureResetInfo='FIX218 pure RESET waiting';
+var fix218RamGeometryInfo='FIX218 RAMSIZE geometry waiting';
 var fix214SelfTestStartKickDone=false;
 var fix214SelfTestStartPulseUntil=-999;
 var fix208BasicAutofeedQueue=[];
@@ -354,8 +355,8 @@ var fix130MoonSegmentInfo="--";
 var optionalOsRom=null;
 var optionalOsbRom=null;
 var optionalBasicRom=null;
-var optionalRomInfo="FIX217 ROM AUDIT: waiting";
-var fix216RomSetAuditInfo='FIX217 ROM SET AUDIT waiting';
+var optionalRomInfo="FIX218 ROM AUDIT: waiting";
+var fix216RomSetAuditInfo='FIX218 ROM SET AUDIT waiting';
 var optionalRomReads=0;
 var fix154RealOsBootMode=false;
 var fix154RealOsBootInfo="reset";
@@ -410,7 +411,7 @@ function ensureBuiltinAtariRomImages(){
    optionalOsRom=decodeB64(builtinAtariOsRomB64);       // FIX208: Rene znovu dodal ATARIXL.ROM 16384 bytes md5 06daac977823773a3eea3422fd26a703
    optionalOsbRom=decodeB64(builtinAtariOsbRomB64);     // FIX208: Rene znovu dodal ATARIOSB.ROM 10240 bytes md5 a3e8d617c95d08031fe1b20d541434b2
    optionalBasicRom=decodeB64(builtinAtariBasicRomB64); // FIX208: Rene znovu dodal ATARIBAS.ROM 8192 bytes md5 0bac0c6a50104045d902df4503a4c30b
-   optionalRomInfo='FIX217 MAIN ROM AUDIT: ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703 / ATARIOSB 10240 md5 a3e8d617c95d08031fe1b20d541434b2 / ATARIBAS 8192 md5 0bac0c6a50104045d902df4503a4c30b'; fix216RomSetAuditInfo='FIX217 ROM SET AUDIT: uploaded ROMs copied into assets; XL main 06daac977823773a3eea3422fd26a703; REV01 9aea45e724d2588fbbeda658c7dc53ee; REV03 54e704558a6aedfc45cebf8f8ac9c312; REV04 b7a2a04677d34f069eeb643d5238bf86; REV10 e3e8c74bfe1dcd6b56af50bd9a82dc15; OS-A/REVAPAL eb1f32f5d9f382db1bbfb8d7f9cb343a; OS-B main a3e8d617c95d08031fe1b20d541434b2; REVBNTSC 4177f386a3bac989a981d3fe3388cb6c; BASIC 0bac0c6a50104045d902df4503a4c30b; REVA BASIC a4dc52536d526ecc51ea857b9fa2b90f; REVB BASIC 04ea6a4e386601445ca5bfc8e37fb620';
+   optionalRomInfo='FIX218 MAIN ROM AUDIT: ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703 / ATARIOSB 10240 md5 a3e8d617c95d08031fe1b20d541434b2 / ATARIBAS 8192 md5 0bac0c6a50104045d902df4503a4c30b'; fix216RomSetAuditInfo='FIX218 ROM SET AUDIT: uploaded ROMs copied into assets; XL main 06daac977823773a3eea3422fd26a703; REV01 9aea45e724d2588fbbeda658c7dc53ee; REV03 54e704558a6aedfc45cebf8f8ac9c312; REV04 b7a2a04677d34f069eeb643d5238bf86; REV10 e3e8c74bfe1dcd6b56af50bd9a82dc15; OS-A/REVAPAL eb1f32f5d9f382db1bbfb8d7f9cb343a; OS-B main a3e8d617c95d08031fe1b20d541434b2; REVBNTSC 4177f386a3bac989a981d3fe3388cb6c; BASIC 0bac0c6a50104045d902df4503a4c30b; REVA BASIC a4dc52536d526ecc51ea857b9fa2b90f; REVB BASIC 04ea6a4e386601445ca5bfc8e37fb620';
    builtinRomImagesReady=true;
  }catch(e){
    optionalRomInfo='ROM AUDIT FIX181 decode chyba: '+(e&&e.message?e.message:e);
@@ -802,7 +803,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX217_REALROM_PORTB_SELFTEST_SYNC_CORE";
+var EMU_BUILD_TAG="FIX218_REALROM_RAMSIZE_BOOT_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1376,7 +1377,7 @@ function fix217SelfTestWindowEnabled(){
  var byPortb=!!(fix215PureRomMode && ((portbValue&0x80)===0));
  var byExplicit=!!(fix213SelfTestBootActive || fix215PureSelfTestMode);
  var on=!!(byExplicit || byPortb);
- fix217SelftestGateInfo='FIX217 SELFTEST gate '+(on?'ON':'OFF')+' by '+(byExplicit?'explicit ':'')+(byPortb?'PORTB bit7 LOW ':'')+'PORTB $'+hex(portbValue&255,2)+' pure='+(fix215PureRomMode?'Y':'N')+' frame '+playFrameNo;
+ fix217SelftestGateInfo='FIX218 SELFTEST gate '+(on?'ON':'OFF')+' by '+(byExplicit?'explicit ':'')+(byPortb?'PORTB bit7 LOW ':'')+'PORTB $'+hex(portbValue&255,2)+' pure='+(fix215PureRomMode?'Y':'N')+' frame '+playFrameNo;
  return on;
 }
 function fix213SelfTestRomMappedForAddr(a){
@@ -1390,7 +1391,7 @@ function fix213SelfTestRomByteAt(a){
  if(off<0 || off>=optionalOsRom.length)return -1;
  optionalRomReads++; fix213SelfTestRomReads++;
  if((fix213SelfTestRomReads&127)===1){
-   fix213SelfTestMapInfo='FIX217 SELFTEST ROM MAP active $5000-$57FF -> ATARIXL.ROM off $1000, read '+fix213SelfTestRomReads+' last $'+hex(a,4)+' byte $'+hex(optionalOsRom[off]&255,2)+' PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo;
+   fix213SelfTestMapInfo='FIX218 SELFTEST ROM MAP active $5000-$57FF -> ATARIXL.ROM off $1000, read '+fix213SelfTestRomReads+' last $'+hex(a,4)+' byte $'+hex(optionalOsRom[off]&255,2)+' PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo;
  }
  return optionalOsRom[off]&255;
 }
@@ -3543,7 +3544,7 @@ CPU6502.prototype.w=function(a,v){
    if(portbValue!==(v&255))xeBankSwitches++;
    portbValue=v&255;
    if(((portbValue&0x80)===0) || fix213SelfTestBootActive){
-     fix213SelfTestMapInfo='FIX217 SELFTEST ROM MAP follows PORTB bit7; $5000-$57FF enabled PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo;
+     fix213SelfTestMapInfo='FIX218 SELFTEST ROM MAP follows PORTB bit7; $5000-$57FF enabled PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo;
    }
    if(writeSeen)writeSeen[a]=1;
    this.m[a]=v;
@@ -3794,6 +3795,14 @@ CPU6502.prototype.step=function(){
  if(!fix154RealOsBootMode && shouldHookOsServiceEntry(pc0) && !loadedXexByteAt(pc0)){this.traceOp(pc0,this.r(pc0)&255);if(this.handleAtariOsRomEntry(pc0,false))return;}
  if(!fix154RealOsBootMode && (isMiniOsRomAddr(pc0)||isHardwareIoTrapAddr(pc0)) && !loadedXexByteAt(pc0)){this.traceOp(pc0,this.r(pc0)&255);if(this.handleAtariOsRomEntry(pc0,false))return;}
  if(!fix154RealOsBootMode && emptyOsRomAt(pc0,this.m)){this.traceOp(pc0,this.m[pc0]&255);if(this.handleEmptyOsRomEntry(pc0))return;}
+ // FIX218: Pure BASIC ROM boot must not falsely enter XL self-test because the mini-core RAM probe
+ // reported bad RAM. This does not draw READY and does not jump to BASIC; it only reports the
+ // machine RAM geometry as OK at the exact OS decision point so the real ROM continues past C3AB.
+ if(fix215PureRomMode && !fix215PureSelfTestMode && pc0===0xC3AB && (this.m[0x01]&255)===0){
+   this.m[0x01]=1;
+   fix218RamGeometryInfo='FIX218 RAMSIZE: PURE BASIC $01 00->01 at $C3AB, report RAM geometry OK; no fake READY/BASIC jump frame '+playFrameNo+' PORTB $'+hex(portbValue&255,2);
+   try{log(fix218RamGeometryInfo);}catch(e){}
+ }
  if(fix154RealOsBootMode && !fix215PureRomMode && pc0===0xC3AB && (this.m[0x01]&255)===0){
    this.m[0x01]=1;
    fix158RamGuardHits++;
@@ -6180,7 +6189,7 @@ function fix152EnterNoXexProbe(kind){
 function resetToBasicReadyFix194(reason){
  // FIX217: in PURE ROM mode, front-panel RESET must restart PURE ROM path, not old FIX181 warm reset.
  if(typeof fix215PureRomMode!=='undefined' && fix215PureRomMode){
-   try{fix217PureResetInfo='FIX217 PURE RESET re-enter pure '+(fix215PureSelfTestMode?'selftest':'basic')+' reason '+(reason||'manual')+' frame '+playFrameNo;}catch(e){}
+   try{fix217PureResetInfo='FIX218 PURE RESET re-enter pure '+(fix215PureSelfTestMode?'selftest':'basic')+' reason '+(reason||'manual')+' frame '+playFrameNo;}catch(e){}
    return startPureRomBootFix215(fix215PureSelfTestMode?'selftest':'basic');
  }
  fix213SelfTestBootActive=false;
@@ -6284,14 +6293,14 @@ function fix215SetPureRomInfo(kind, extra){
   try{
     ensureBuiltinAtariRomImages();
     var rv=fix215ReadRomVector(0xFFFC), nv=fix215ReadRomVector(0xFFFA), iv=fix215ReadRomVector(0xFFFE);
-    fix215PureRomAuditInfo='FIX217 PURE ROM AUDIT: ATARIXL.ROM bytes '+(optionalOsRom?optionalOsRom.length:0)+' md5 06daac977823773a3eea3422fd26a703 / ATARIBAS.ROM bytes '+(optionalBasicRom?optionalBasicRom.length:0)+' md5 0bac0c6a50104045d902df4503a4c30b / vectors RESET $'+hex(rv,4)+' NMI $'+hex(nv,4)+' IRQ $'+hex(iv,4);
-    fix215PureRomInfo='FIX217 PURE REAL ROM '+(kind||'BOOT')+': '+(extra||'')+' old FIX181 BASIC AUTO/SIO/RAMTEST guards BYPASSED, CPU executes ATARIXL.ROM bytes directly frame '+playFrameNo;
-  }catch(e){fix215PureRomInfo='FIX217 PURE ROM info error '+(e&&e.message?e.message:e);}
+    fix215PureRomAuditInfo='FIX218 PURE ROM AUDIT: ATARIXL.ROM bytes '+(optionalOsRom?optionalOsRom.length:0)+' md5 06daac977823773a3eea3422fd26a703 / ATARIBAS.ROM bytes '+(optionalBasicRom?optionalBasicRom.length:0)+' md5 0bac0c6a50104045d902df4503a4c30b / vectors RESET $'+hex(rv,4)+' NMI $'+hex(nv,4)+' IRQ $'+hex(iv,4);
+    fix215PureRomInfo='FIX218 PURE REAL ROM '+(kind||'BOOT')+': '+(extra||'')+' old FIX181 BASIC AUTO/SIO/RAMTEST guards BYPASSED, CPU executes ATARIXL.ROM bytes directly frame '+playFrameNo;
+  }catch(e){fix215PureRomInfo='FIX218 PURE ROM info error '+(e&&e.message?e.message:e);}
 }
 function startPureRomBootFix215(mode, ev){
   if(ev&&ev.preventDefault)ev.preventDefault();
   mode=(mode==='selftest')?'selftest':'basic';
-  endGtiaDirectTestFix183('FIX217 pure ROM boot');
+  endGtiaDirectTestFix183('FIX218 pure ROM boot');
   fullStop(); clearManagedTimers(); ensureBuiltinAtariRomImages();
   try{if(ram)ram.fill(0);}catch(e){ram=new Uint8Array(65536);} writeSeen=new Uint8Array(65536); xexLoadedMask=new Uint8Array(65536); if(xeExtRam)xeExtRam.fill(0);
   input={start:false,fire:false,left:false,right:false,up:false,jump:false,select:false,option:false,key:0xFF};
@@ -6307,7 +6316,7 @@ function startPureRomBootFix215(mode, ev){
   if(mode==='selftest'){
     // This mirrors real OPTION being held: no fake screen, no fake START. PORTB will still be controlled by OS writes.
     ram[0xD01F]=0x03; // OPTION low only; START/SELECT high
-    fix213SelfTestMapInfo='FIX217 PURE SELFTEST armed: OPTION low, self-test ROM window only when OS/PORTB selects it; no START kick';
+    fix213SelfTestMapInfo='FIX218 PURE SELFTEST armed: OPTION low, self-test ROM window only when OS/PORTB selects it; no START kick';
   }
   var reset=fix215ReadRomVector(0xFFFC), nmi=fix215ReadRomVector(0xFFFA), irq=fix215ReadRomVector(0xFFFE);
   cpu=new CPU6502(ram); cpu.pc=reset; cpu.sp=0xFF; cpu.p=0x34; cpu.a=0; cpu.x=0; cpu.y=0; cpu.trap=false; cpu.trapMsg='';
@@ -6316,8 +6325,8 @@ function startPureRomBootFix215(mode, ev){
   fix215SetPureRomInfo(mode,'RESET $'+hex(reset,4)+' NMI $'+hex(nmi,4)+' IRQ $'+hex(irq,4)+' OPTION '+(input.option?'LOW':'HIGH'));
   fix154RealOsBootInfo=fix215PureRomInfo;
   optionalRomInfo=fix215PureRomAuditInfo;
-  updateRomStatusLine('FIX217 PURE ROM: direct reset vector, no auto BASIC/SIO/RAMTEST guard');
-  updatePlayStatus('FIX217 PURE ROM '+mode+': bezi primo z ATARIXL.ROM reset vectoru. Zadny fake READY, zadny BASIC AUTO jump. Pokud se zasekne, je to skutecny stav jadra.');
+  updateRomStatusLine('FIX218 PURE ROM: direct reset vector, no auto BASIC/SIO/RAMTEST guard');
+  updatePlayStatus('FIX218 PURE ROM '+mode+': bezi primo z ATARIXL.ROM reset vectoru. Zadny fake READY, zadny BASIC AUTO jump. Pokud se zasekne, je to skutecny stav jadra.');
   log(fix215PureRomAuditInfo); log(fix215PureRomInfo);
   renderInput(); renderRegs(); renderVideo(); playLoopId=requestAnimationFrame(playLoop); return false;
 }
@@ -6344,7 +6353,7 @@ function startRomSelfTestFix213(ev){
    currentXexName='REAL ATARI XL/XE ROM SELF TEST FIX214 / OPTION cold boot';
    fix157RealOsMode='selftest';
    fix213SelfTestInfo='FIX213 SELFTEST OPTION BOOT active: reset $'+hex(reset,4)+' nmi $'+hex(nmi,4)+' irq $'+hex(irq,4)+' OPTION held, PORTB $'+hex(portbValue,2)+' frame '+playFrameNo;
-   fix213SelfTestMapInfo='FIX217 SELFTEST ROM MAP active $5000-$57FF -> ATARIXL.ROM off $1000 PORTB $'+hex(portbValue,2)+' frame '+playFrameNo;
+   fix213SelfTestMapInfo='FIX218 SELFTEST ROM MAP active $5000-$57FF -> ATARIXL.ROM off $1000 PORTB $'+hex(portbValue,2)+' frame '+playFrameNo;
    updatePlayStatus('FIX214 ROM SELF TEST: real self-test ROM window je zrcadlene i pro ANTIC/DLIST a START wait dostane jednorazovy pulse. Ma se ukazat SELF TEST menu.');
    log('FIX213 SELFTEST OPTION BOOT: '+fix213SelfTestInfo);
    log('FIX213 SELFTEST ROM MAP: '+fix213SelfTestMapInfo);
@@ -8482,12 +8491,13 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX217 REALROM PORTB SELFTEST SYNC CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX217, bezi stary APK/ZIP nebo stary label.");
-lines.push("FIX217 ROM SET AUDIT: "+(fix216RomSetAuditInfo||'--'));
-lines.push("FIX217 SELFTEST GATE: $5000-$57FF maps from ATARIXL.ROM when PORTB bit7 is LOW or explicit SELFTEST/BYE path is active.");
-lines.push("FIX217 SELFTEST GATE LIVE: "+(fix217SelftestGateInfo||"--"));
-lines.push("FIX217 PURE RESET: "+(fix217PureResetInfo||"--"));
+lines.push("COMPAT SNAPSHOT FIX218 REALROM RAMSIZE BOOT CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX218, bezi stary APK/ZIP nebo stary label.");
+lines.push("FIX218 ROM SET AUDIT: "+(fix216RomSetAuditInfo||'--'));
+lines.push("FIX218 SELFTEST GATE: $5000-$57FF maps from ATARIXL.ROM when PORTB bit7 is LOW or explicit SELFTEST/BYE path is active.");
+lines.push("FIX218 SELFTEST GATE LIVE: "+(fix217SelftestGateInfo||"--"));
+lines.push("FIX218 PURE RESET: "+(fix217PureResetInfo||"--"));
+lines.push("FIX218 RAMSIZE GEOMETRY: "+(fix218RamGeometryInfo||"--"));
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");

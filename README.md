@@ -1,3 +1,4 @@
-FIX212_REALROM_CHARSET_TEXT_CORE overlay
+AtariHelp.eu EMU-09 overlay FIX218_REALROM_RAMSIZE_BOOT_CORE
 
-AtariHelp.eu EMU-09 FIX211 CH LATCH TEXTMODE CORE overlay. KODY JSOU STEJNE. Rychly BASIC loader + cisty CH/KBCODE latch po RUN.
+Rozbalit do lokalniho GitHub repo pres GitHub Desktop.
+KODY JSOU STEJNE.
