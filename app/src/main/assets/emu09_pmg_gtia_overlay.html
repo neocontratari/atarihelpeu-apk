@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX242_SAFE_FAST_BASIC_THROTTLE_SELFTEST_CONSOL_CORE / vlastní XEX</title>
+<title>EMU-09 FIX243_KGETCH_FAST_SIOV_NODEVICE_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -12068,6 +12068,309 @@ updatePlayStatus('ready');
   log242('FIX242 installed: safe FAST BASIC throttle + SELFTEST CONSOL passthrough');
 })();
 /* END FIX242 */
+
+
+
+/* FIX243 KGETCH FAST BASIC + STRICT SELFTEST SIOV NO-DEVICE CORE
+   Rene test after FIX242 still showed corrupted BASIC listings (RRINT/RR2NT/POSTTION/SSUBMARINE)
+   because the service paste still fed the ROM through raw CH $02FC key scan codes. For fast service paste
+   after a real READY we must feed ATASCII at the KGETCH return point, not through the physical keyboard map.
+   This stays a service helper only: no fake READY, no fake SELF TEST, no screen/program RAM pokes.
+
+   Self-test note: the uploaded snapshot does not prove a PC=$E456 lock; it shows the ROM in the $532A RAM-test
+   loop. Still, FIX243 adds a strict no-device return for CIOV/SIOV vectors $E456/$E459 during self-test only,
+   so if the original ROM reaches the peripheral check, it returns hardware-style no-device/timeout instead of
+   falling into an empty or stale shim. */
+(function(){
+  var FIX243_TAG='FIX243_KGETCH_FAST_SIOV_NODEVICE_CORE';
+  window.fix243FastInfo='FIX243 KGETCH FAST BASIC idle';
+  window.fix243SelftestInfo='FIX243 selftest SIOV no-device guard idle';
+  window.fix243UiInfo='FIX243 UI waiting';
+  window.fix243Last='--';
+  var q243=[];
+  var active243=false;
+  var name243='';
+  var total243=0;
+  var pumped243=0;
+  var epoch243=0;
+  var nextFrame243=0;
+  var lastInjectFrame243=-1;
+  var waitTimer243=0;
+  var clickGuardName243='';
+  var clickGuardMs243=0;
+  var nodevCount243=0;
+  var kgetchCount243=0;
+
+  function hx(v,n){try{return hex((v||0)&((n>=4)?65535:255),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
+  function fr(){return (typeof playFrameNo!=='undefined'?(playFrameNo|0):0);} 
+  function log243(s){try{log(s);}catch(e){} try{console.log(s);}catch(e){}}
+  function isSelfTest243(){try{return !!(fix215PureSelfTestMode || (String(fix157RealOsMode||'').indexOf('selftest')>=0) || (String(fix233Mode||'')==='selftest'));}catch(e){return false;}}
+  function ready243(){
+    try{
+      if(!ram || !cpu || !playMode)return false;
+      if(activeXexProfile!=='realos')return false;
+      if(isSelfTest243())return false;
+      if(fr()<120)return false;
+      var dl=((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535;
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;
+      var nmi=(ram[0xD40E]||0)&255;
+      var eff=(typeof fix227EffectivePortB==='function')?(fix227EffectivePortB()&255):((typeof piaPortBOut!=='undefined'?piaPortBOut:0xFD)&255);
+      return dl===0x9C20 && sav===0x9C40 && !!(nmi&0x40) && ((eff&0x02)===0) && ((eff&0x80)!==0);
+    }catch(e){return false;}
+  }
+  function status243(){
+    try{
+      var dl=ram?(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535):0;
+      var sav=ram?(((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535):0;
+      var nmi=ram?((ram[0xD40E]||0)&255):0;
+      var eff=(typeof fix227EffectivePortB==='function')?(fix227EffectivePortB()&255):0;
+      return 'DLIST $'+hx(dl,4)+' SAVMSC $'+hx(sav,4)+' NMIEN $'+hx(nmi,2)+' EFF $'+hx(eff,2)+' mode '+(fix157RealOsMode||'--')+' frame '+fr();
+    }catch(e){return 'status error '+(e&&e.message?e.message:e);}
+  }
+  function clearLatch243(reason){
+    try{
+      if(typeof input!=='undefined' && input)input.key=0xFF;
+      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;
+      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;
+      if(typeof realOsKeyLast!=='undefined')realOsKeyLast=0xFF;
+      if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=0xFF;
+      if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}
+      try{syncInputShadows();renderInput();}catch(e){}
+      fix243FastInfo='LATCH CLEAR '+(reason||'')+' frame '+fr();
+    }catch(e){fix243FastInfo='FIX243 latch clear error '+(e&&e.message?e.message:e);}
+  }
+  function cancel243(reason){
+    try{
+      active243=false; q243=[]; name243=''; total243=0; pumped243=0; nextFrame243=0; lastInjectFrame243=-1;
+      if(waitTimer243){clearTimeout(waitTimer243); waitTimer243=0;}
+      try{if(typeof fix242CancelFastBasicQueue==='function')fix242CancelFastBasicQueue('FIX243 takeover '+(reason||''));}catch(e){}
+      if(typeof fix208BasicAutofeedQueue!=='undefined')fix208BasicAutofeedQueue=[];
+      if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false;
+      if(typeof fix223FastKgetchOnly!=='undefined')fix223FastKgetchOnly=false;
+      if(typeof atariKeyQueue!=='undefined')atariKeyQueue=[];
+      if(typeof atariKeyTimer!=='undefined' && atariKeyTimer){clearTimeout(atariKeyTimer);atariKeyTimer=0;}
+      clearLatch243('cancel '+(reason||''));
+      if(reason){fix243FastInfo='QUEUE CANCELLED '+reason+' frame '+fr();fix243Last=fix243FastInfo;log243('FIX243 '+fix243FastInfo);}
+    }catch(e){fix243FastInfo='FIX243 cancel error '+(e&&e.message?e.message:e);}
+  }
+  window.fix243CancelFastBasicQueue=cancel243;
+
+  function atasciiFromChar243(ch){
+    if(ch==='\n')return 0x9B;
+    if(ch==='\r')return -1;
+    if(ch==='\t')return 0x20;
+    if(ch==='\u00a0')return 0x20;
+    var c=ch.charCodeAt(0);
+    if(c===0x9B)return 0x9B;
+    if(c>=97 && c<=122)c-=32;
+    if(c>=32 && c<=126)return c&255;
+    return -1;
+  }
+  function buildQueue243(text,runAfter){
+    text=String(text||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    if(runAfter){ if(text.length && text.charAt(text.length-1)!=='\n')text+='\n'; text+='RUN\n'; }
+    else if(text.length && text.charAt(text.length-1)!=='\n')text+='\n';
+    var q=[],bad=[];
+    for(var i=0;i<text.length;i++){var a=atasciiFromChar243(text.charAt(i)); if(a>=0)q.push(a&255); else bad.push(text.charAt(i));}
+    var lines=text.length?text.split('\n').filter(function(x){return x.length>0;}).length:0;
+    return {q:q,chars:q.length,lines:lines,bad:bad,source:text};
+  }
+  function inKgetchWait243(pc){
+    pc&=65535;
+    return (pc>=0xF2FD && pc<=0xF314);
+  }
+  function complete243(lastA){
+    active243=false;
+    var msg='QUEUE COMPLETE '+name243+' chars '+total243+' pumped '+pumped243+' via KGETCH ATASCII return last $'+hx(lastA,2)+' injections '+kgetchCount243+' frame '+fr()+' / LATCH CLEAR';
+    fix243FastInfo=msg; fix243Last=msg;
+    try{fix240FastBasicInfo='FIX243 '+msg;fix240FastBasicLast='FIX243 '+msg;fix241FastPumpInfo='FIX243 '+msg;fix242FastInfo='FIX243 '+msg;fix242Last='FIX243 '+msg;fix208SubmarineFastInfo='FIX243 '+msg;fix209ChAutopasteInfo='FIX243 '+msg;}catch(e){}
+    log243('FIX243 '+msg);
+    clearLatch243('after complete');
+    try{genericRenderEvery=1;fastVideo=true;updatePlayStatus('FIX243 FAST BASIC: QUEUE COMPLETE pres KGETCH/ATASCII.');}catch(e){}
+  }
+  function injectKgetch243(c){
+    try{
+      if(!active243 || !q243.length || !c)return false;
+      if(!ready243()){fix243FastInfo='KGETCH FAST HOLD not READY '+status243();return false;}
+      var pc=(c.pc||0)&65535;
+      if(!inKgetchWait243(pc))return false;
+      var f=fr();
+      if(f<nextFrame243 || f===lastInjectFrame243)return false;
+      var a=q243.shift()&255;
+      if(ram){ram[0x02FB]=a;ram[0x02FC]=0xFF;ram[0xD209]=0xFF;}
+      if(typeof input!=='undefined' && input)input.key=0xFF;
+      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;
+      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=a;
+      if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=a;
+      c.a=a; if(c.zn)c.zn(a); c.pc=0xF3DA; c.steps=(c.steps||0)+1;
+      pumped243++; kgetchCount243++; lastInjectFrame243=f;
+      var delay=(a===0x9B)?28:2;
+      nextFrame243=f+delay;
+      var left=q243.length|0;
+      if(pumped243<10 || left<10 || (pumped243%64)===0 || a===0x9B){
+        fix243FastInfo='KGETCH FEED '+name243+' ATASCII $'+hx(a,2)+' pumped '+pumped243+'/'+total243+' left '+left+' delay '+delay+' from PC $'+hx(pc,4)+' -> $F3DA frame '+f;
+        try{fix223KeyboardInfo='FIX243 '+fix243FastInfo;fix209ChAutopasteInfo='FIX243 '+fix243FastInfo;}catch(e){}
+      }
+      if(!left)complete243(a);
+      return true;
+    }catch(e){fix243FastInfo='FIX243 KGETCH feed error '+(e&&e.message?e.message:e);return false;}
+  }
+  function arm243(payload,nm,epoch){
+    try{
+      try{if(typeof fix242CancelFastBasicQueue==='function')fix242CancelFastBasicQueue('FIX243 KGETCH arm');}catch(e){}
+      q243=payload.q.slice(0); active243=true; name243='FIX243 '+String(nm||'FAST BASIC'); total243=payload.chars|0; pumped243=0; epoch243=epoch|0; nextFrame243=fr()+2; lastInjectFrame243=-1; kgetchCount243=0;
+      if(typeof fix208BasicAutofeedQueue!=='undefined')fix208BasicAutofeedQueue=[];
+      if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false;
+      if(typeof fix223FastKgetchOnly!=='undefined')fix223FastKgetchOnly=false;
+      playCyclesPerFrame=Math.max(playCyclesPerFrame||0,9000); playMaxMsPerFrame=Math.max(playMaxMsPerFrame||0,12); genericRenderEvery=4; fastVideo=true;
+      fix243FastInfo='FAST BASIC QUEUE START '+name243+' chars '+payload.chars+' lines '+payload.lines+' ATASCII EOL $9B epoch '+epoch243+' READY OK '+status243()+' KGETCH direct ATASCII; no physical CH map';
+      fix243Last=fix243FastInfo;
+      try{fix240FastBasicInfo='FIX243 '+fix243FastInfo;fix241FastPumpInfo='FIX243 '+fix243FastInfo;fix242FastInfo='FIX243 '+fix243FastInfo;fix208SubmarineFastInfo='FIX243 '+fix243FastInfo;}catch(e){}
+      log243('FIX243 '+fix243FastInfo);
+      try{updatePlayStatus('FIX243 FAST BASIC: READY potvrzen. Servisni ATASCII fronta jde pres KGETCH return, ne pres fyzicky CH map.');}catch(e){}
+    }catch(e){fix243FastInfo='FIX243 arm error '+(e&&e.message?e.message:e);}
+  }
+  function waitArm243(payload,nm,epoch,startFrame){
+    try{
+      if((typeof fix223InputEpoch!=='undefined') && (epoch|0)!==(fix223InputEpoch|0)){fix243FastInfo='QUEUE CANCELLED epoch changed '+nm+' old '+epoch+' current '+fix223InputEpoch+' frame '+fr();log243('FIX243 '+fix243FastInfo);return;}
+      if(ready243()){waitTimer243=0;arm243(payload,nm,epoch);return;}
+      var age=(fr()-(startFrame||fr()))|0;
+      fix243FastInfo='WAIT READY '+nm+' epoch '+epoch+' age '+age+' '+status243();
+      if(age>1200){fix243FastInfo='WAIT READY timeout - queue NOT armed '+nm+' '+status243();log243('FIX243 '+fix243FastInfo);try{updatePlayStatus('FIX243 FAST BASIC: READY neni potvrzeny, frontu nepoustim.');}catch(e){};return;}
+      waitTimer243=setTimeout(function(){waitArm243(payload,nm,epoch,startFrame);},120);
+    }catch(e){fix243FastInfo='FIX243 wait error '+(e&&e.message?e.message:e);}
+  }
+  function queue243fn(text,nm,runAfter,ev){
+    try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}
+    var now=Date.now();
+    if(clickGuardName243===nm && now-clickGuardMs243<350){fix243FastInfo='duplicate touch/click ignored '+nm+' frame '+fr();return false;}
+    clickGuardName243=nm;clickGuardMs243=now;
+    var payload=buildQueue243(text,!!runAfter);
+    if(!payload.q.length){fix243FastInfo='FAST BASIC QUEUE empty - nothing armed';log243('FIX243 '+fix243FastInfo);return false;}
+    if(payload.bad.length){log243('FIX243 FAST BASIC unsupported chars '+payload.bad.join(''));}
+    if(typeof fix223InputEpoch!=='undefined')fix223InputEpoch=(fix223InputEpoch|0)+1;
+    cancel243('new FIX243 FAST request');
+    var ep=(typeof fix223InputEpoch!=='undefined')?(fix223InputEpoch|0):((epoch243+1)|0);
+    fix243FastInfo='FAST BASIC QUEUE REQUEST '+nm+' chars '+payload.chars+' lines '+payload.lines+' ATASCII EOL $9B epoch '+ep+' badChars '+payload.bad.length;
+    log243('FIX243 '+fix243FastInfo);
+    try{updatePlayStatus('FIX243 FAST BASIC: klik prijat, cekam na skutecny READY.');}catch(e){}
+    waitArm243(payload,nm,ep,fr());
+    return false;
+  }
+
+  window.queueFastBasicFix243=function(text,nm,runAfter,ev){return queue243fn(text,nm||'FAST BASIC',!!runAfter,ev);};
+  window.queueFastBasicFix242=function(text,nm,runAfter,ev){return queue243fn(text,nm||'FAST BASIC',!!runAfter,ev);};
+  window.queueFastBasicFix240=function(text,nm,runAfter){return queue243fn(text,nm||'FAST BASIC',!!runAfter,null);};
+  window.basicTxtFastFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue243fn(ta?ta.value:'','BASIC TXT FAST',false,ev);};
+  window.vlozitFastFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue243fn(ta?ta.value:'','VLOZIT FAST',false,ev);};
+  window.vlozitFastRunFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue243fn(ta?ta.value:'','VLOZIT FAST + RUN',true,ev);};
+  window.submarineFastFix240=function(ev){var prog=(typeof submarineBasicProgramFix207==='function')?submarineBasicProgramFix207():'10 PRINT "SUBMARINE"\n20 GOTO 20\n';return queue243fn(prog,'SUBMARINE FAST',false,ev);};
+
+  function strictNodev243(c,addr){
+    try{
+      addr&=65535; nodevCount243++;
+      var x=c.x&0xF0;
+      if(c.m){c.m[(0x0343+x)&65535]=0x8A; c.m[(0x0342+x)&65535]=0; c.m[0x3A]=1; c.m[0x11]=1;}
+      c.a=0x8A; c.y=0x8A; c.p|=1; if(c.zn)c.zn(c.y);
+      var sp=c.sp&255;
+      var lo=c.m[(0x0100+((sp+1)&255))&65535]&255;
+      var hi=c.m[(0x0100+((sp+2)&255))&65535]&255;
+      var ret=((lo|(hi<<8))+1)&65535;
+      if(ret>=0x0200 && ret<=0xFFFF && ret!==addr){c.sp=(sp+2)&255; c.pc=ret;}
+      else {c.pc=(addr+3)&65535;}
+      c.steps=(c.steps||0)+1;
+      fix243SelftestInfo='STRICT NODEV '+(addr===0xE456?'CIOV/E456':'SIOV/E459')+' status $8A ret $'+hx(c.pc,4)+' X=$'+hx(c.x,2)+' count '+nodevCount243+' frame '+fr()+'; no PC fake screen';
+      try{fix156RealOsSioGuardInfo='FIX243 '+fix243SelftestInfo;fix240SelftestInfo='FIX243 '+fix243SelftestInfo;fix242SelftestInfo='FIX243 '+fix243SelftestInfo;}catch(e){}
+      log243('FIX243 '+fix243SelftestInfo);
+      return true;
+    }catch(e){fix243SelftestInfo='STRICT NODEV error '+(e&&e.message?e.message:e);return false;}
+  }
+
+  var oldStep243=CPU6502.prototype.step;
+  CPU6502.prototype.step=function(){
+    if(this.trap)return oldStep243.apply(this,arguments);
+    try{
+      if(cpu===this && active243 && injectKgetch243(this))return;
+      var pc0=(this.pc||0)&65535;
+      if(cpu===this && (pc0===0xE456 || pc0===0xE459) && (typeof fix225PureHardwareMode!=='undefined') && fix225PureHardwareMode && isSelfTest243()){
+        if(strictNodev243(this,pc0))return;
+      }
+    }catch(e){try{fix243FastInfo='FIX243 step hook error '+(e&&e.message?e.message:e);}catch(_){}}
+    return oldStep243.apply(this,arguments);
+  };
+
+  var oldR243=CPU6502.prototype.r;
+  CPU6502.prototype.r=function(a){
+    a&=65535;
+    if(a===0x02FC && active243){return 0xFF;}
+    return oldR243.call(this,a);
+  };
+
+  function installUi243(){
+    try{
+      var fast=document.getElementById('fix240FastBasicBox');
+      if(fast){
+        var h=fast.querySelector('h2'); if(h)h.textContent='Rychly BASIC text automat FIX243';
+        var p=fast.querySelector('p'); if(p)p.textContent='Servisni helper: po real READY vraci ATASCII primo z KGETCH fronty. Nepouziva fyzicky CH scan map, EOL=$9B, epoch cancel, latch clear.';
+        var buttons=fast.querySelectorAll('button');
+        var kinds=['txt','vlozit','run','sub'];
+        for(var i=0;i<buttons.length;i++)(function(btn,kind){
+          if(!btn)return;
+          var b=btn.cloneNode(true);
+          b.setAttribute('data-fix243-bound','1');
+          b.style.pointerEvents='auto';
+          b.onclick=function(ev){
+            if(kind==='txt')return window.basicTxtFastFix240(ev);
+            if(kind==='vlozit')return window.vlozitFastFix240(ev);
+            if(kind==='run')return window.vlozitFastRunFix240(ev);
+            return window.submarineFastFix240(ev);
+          };
+          b.addEventListener('pointerup',b.onclick,true);
+          btn.parentNode.replaceChild(b,btn);
+        })(buttons[i],kinds[i]||'vlozit');
+      }
+      var dock=document.getElementById('atariKeyboardDock');
+      if(dock){var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX243: klavesnice pod obrazem; FAST BASIC jde pres KGETCH/ATASCII, SELF TEST ma strict E456/E459 no-device guard.';}
+      fix243UiInfo='FIX243 UI OK buttons rebound to KGETCH queue frame '+fr();
+    }catch(e){fix243UiInfo='FIX243 UI error '+(e&&e.message?e.message:e);}
+  }
+  setTimeout(installUi243,0);setTimeout(installUi243,400);setTimeout(installUi243,1200);
+
+  try{var oldStartBasic243=startPureHardwareBasicFix226;startPureHardwareBasicFix226=function(ev){cancel243('POWER BASIC'); if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}} return oldStartBasic243(ev);};}catch(e){}
+  try{var oldStartSelf243=startPureHardwareSelfTestFix226;startPureHardwareSelfTestFix226=function(ev){cancel243('POWER OPTION SELF TEST'); if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}} fix243SelftestInfo='SELFTEST boot requested: strict E456/E459 no-device guard armed; no auto START frame '+fr(); return oldStartSelf243(ev);};}catch(e){}
+  try{var oldReset243=resetPureHardwareFix226;resetPureHardwareFix226=function(ev){cancel243('RESET PURE HW'); if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}} return oldReset243(ev);};}catch(e){}
+
+  var oldMakeName243=makeLogFileName;
+  makeLogFileName=function(reason){
+    try{
+      var d=new Date();function p(n){return (n<10?'0':'')+n;}
+      var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
+      var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
+      var nm=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
+      return 'atarihelp-FIX243-'+prof+'-'+(reason||'manual')+'-'+ts+'-'+nm+'.txt';
+    }catch(e){return oldMakeName243(reason);}
+  };
+  var oldSnap243=compatibilitySnapshot;
+  compatibilitySnapshot=function(){
+    try{window.__fix243SnapshotTail='\nBUILD '+FIX243_TAG+'\nFIX243 KGETCH FAST/SIOV CHECK\nFAST '+fix243FastInfo+'\nLAST '+fix243Last+'\nSELFTEST '+fix243SelftestInfo+'\nUI '+fix243UiInfo+'\nRULE FAST_BASIC_KGETCH_ATASCII_RETURN / NO_PHYSICAL_CH_MAP_FOR_PASTE / EOL_9B_DELAY / READY_GATED / EPOCH_CANCEL / LATCH_CLEAR / STRICT_E456_E459_NODEV_SELFTEST_ONLY / NO_FAKE_READY_SELFTEST';}catch(e){}
+    return oldSnap243();
+  };
+  var oldSave243=saveLogToFile;
+  saveLogToFile=function(reason){
+    if(reason==='purehw-snapshot'){
+      try{log((window.__fix243SnapshotTail||('\nBUILD '+FIX243_TAG+'\nFIX243 KGETCH FAST/SIOV CHECK\nFAST '+fix243FastInfo+'\nLAST '+fix243Last+'\nSELFTEST '+fix243SelftestInfo+'\nUI '+fix243UiInfo+'\nRULE FAST_BASIC_KGETCH_ATASCII_RETURN / NO_PHYSICAL_CH_MAP_FOR_PASTE / EOL_9B_DELAY / READY_GATED / EPOCH_CANCEL / LATCH_CLEAR / STRICT_E456_E459_NODEV_SELFTEST_ONLY / NO_FAKE_READY_SELFTEST')).replace(/^\n/,''));}catch(e){}
+    }
+    return oldSave243.apply(this,arguments);
+  };
+
+  try{EMU_BUILD_TAG=FIX243_TAG;}catch(e){}
+  try{document.title='EMU-09 '+FIX243_TAG;}catch(e){}
+  try{var h1=document.querySelector('h1');if(h1)h1.textContent='EMU-09 '+FIX243_TAG;}catch(e){}
+  try{var p=document.querySelector('h1 + p');if(p)p.textContent='FIX243: FAST BASIC paste jde servisne pres KGETCH/ATASCII return, ne pres fyzicky CH scan map. SELF TEST ma strict E456/E459 no-device guard jen ve self-testu.';}catch(e){}
+  try{updateRomStatusLine('FIX243 PURE HW: KGETCH FAST BASIC + strict selftest E456/E459 no-device guard');}catch(e){}
+  log243('FIX243 installed: KGETCH FAST BASIC + strict selftest CIOV/SIOV no-device guard');
+})();
+/* END FIX243 */
 
 </script>
 </body>
