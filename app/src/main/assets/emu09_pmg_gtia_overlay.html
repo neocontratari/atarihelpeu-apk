@@ -11238,6 +11238,322 @@ updatePlayStatus('ready');
 })();
 /* END FIX239 */
 
+
+
+/* FIX240 PURE HW SELFTEST START EDGE + SAFE FAST BASIC ATASCII QUEUE CORE
+   Root causes:
+   1) FIX239 OPTION SELF TEST log shows the real self-test ROM window is ON and PC loops at $5059/$505C/$505E.
+      That ROM code reads CONSOL $D01F and waits for START bit low.  FIX240 supplies one truthful emulator
+      START edge through the CONSOL register only when the CPU is actually at the self-test wait loop.  It does
+      not draw a SELF TEST screen and does not jump PC.
+   2) Rene wants the fast BASIC text helper back, but not as fake boot.  FIX240 adds a service-only BASIC FAST
+      helper that waits for real READY (DLIST $9C20, SAVMSC $9C40, BASIC window, VBI) and then feeds a separate
+      ATASCII/KGETCH queue with EOL $9B.  No physical key-map per character, no queue during self-test/XEX boot. */
+(function(){
+  var FIX240_TAG='FIX240_SELFTEST_START_EDGE_FAST_BASIC_QUEUE_CORE';
+  window.fix240SelftestInfo='FIX240 SELFTEST START edge waiting';
+  window.fix240FastBasicInfo='FIX240 FAST BASIC service queue idle';
+  window.fix240FastBasicLast='--';
+  window.fix240SnapshotInfo='FIX240 snapshot waiting';
+  var fix240SelftestKickDone=false;
+  var fix240FastArmed=false;
+  var fix240FastName='';
+  var fix240FastEpoch=0;
+  var fix240WaitTimer=0;
+
+  function hx(v,n){try{return hex((v||0)&((n>=4)?65535:255),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
+  function pure(){return !!(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode);} 
+  function pureOrAudit(){return !!((typeof fix228PureHwActiveOrAudit==='function'&&fix228PureHwActiveOrAudit())||pure());}
+  function nowFrame(){return (typeof playFrameNo!=='undefined'?(playFrameNo|0):0);}
+  function log240(s){try{log(s);}catch(e){} try{console.log(s);}catch(e){}}
+
+  function fix240CancelFast(reason){
+    try{
+      fix223InputEpoch=(fix223InputEpoch|0)+1;
+      if(fix240WaitTimer){clearTimeout(fix240WaitTimer);fix240WaitTimer=0;}
+      if(typeof fix223ReadyQueueTimer!=='undefined' && fix223ReadyQueueTimer){clearTimeout(fix223ReadyQueueTimer);fix223ReadyQueueTimer=0;}
+      if(typeof atariKeyTimer!=='undefined' && atariKeyTimer){clearTimeout(atariKeyTimer);atariKeyTimer=0;}
+      fix240FastArmed=false; fix240FastName=''; fix240FastEpoch=fix223InputEpoch|0;
+      if(typeof fix208BasicAutofeedQueue!=='undefined')fix208BasicAutofeedQueue=[];
+      if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false;
+      if(typeof atariKeyQueue!=='undefined')atariKeyQueue=[];
+      if(typeof input!=='undefined' && input)input.key=0xFF;
+      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;
+      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;
+      if(typeof realOsKeyLast!=='undefined')realOsKeyLast=0xFF;
+      if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=0xFF;
+      if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}
+      try{syncInputShadows();renderInput();}catch(e){}
+      fix240FastBasicInfo='QUEUE CANCELLED epoch changed '+(reason||'reset')+' epoch '+fix240FastEpoch+' frame '+nowFrame();
+      fix222InputQuarantineInfo='FIX240 '+fix240FastBasicInfo;
+      fix223KeyboardInfo='FIX240 inputEpoch '+fix240FastEpoch+' cleared '+(reason||'reset')+' frame '+nowFrame();
+      log240('FIX240 FAST BASIC QUEUE CANCELLED epoch changed: '+(reason||'reset')+' epoch '+fix240FastEpoch);
+    }catch(e){fix240FastBasicInfo='FIX240 cancel error '+(e&&e.message?e.message:e);}
+  }
+  window.fix240CancelFastBasicQueue=fix240CancelFast;
+
+  function fix240ReadyForFastBasic(){
+    try{
+      if(!ram || !cpu || !playMode)return false;
+      if(activeXexProfile!=='realos')return false;
+      if(fix215PureSelfTestMode || (String(fix157RealOsMode||'').indexOf('selftest')>=0))return false;
+      if(nowFrame()<120)return false;
+      var dl=((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535;
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;
+      var nmi=(ram[0xD40E]||0)&255;
+      var eff=(typeof fix227EffectivePortB==='function')?(fix227EffectivePortB()&255):((typeof piaPortBOut!=='undefined'?piaPortBOut:0xFD)&255);
+      var basicOn=((eff&0x02)===0), selfOff=((eff&0x80)!==0);
+      return dl===0x9C20 && sav===0x9C40 && !!(nmi&0x40) && basicOn && selfOff;
+    }catch(e){return false;}
+  }
+  function fix240ReadyStatus(){
+    try{
+      var dl=ram?(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535):0;
+      var sav=ram?(((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535):0;
+      var nmi=ram?((ram[0xD40E]||0)&255):0;
+      var eff=(typeof fix227EffectivePortB==='function')?(fix227EffectivePortB()&255):0;
+      return 'DLIST $'+hx(dl,4)+' SAVMSC $'+hx(sav,4)+' NMIEN $'+hx(nmi,2)+' EFF $'+hx(eff,2)+' mode '+(fix157RealOsMode||'--')+' frame '+nowFrame();
+    }catch(e){return 'status error '+(e&&e.message?e.message:e);}
+  }
+
+  function fix240AtasciiFromChar(ch){
+    if(ch==='\n')return 0x9B;
+    if(ch==='\r')return -1;
+    if(ch==='\t')return 0x20;
+    if(ch==='\u00a0')return 0x20;
+    var code=ch.charCodeAt(0);
+    if(code===0x9B)return 0x9B;
+    if(code>=97 && code<=122)code-=32; // Atari BASIC normal uppercase source.
+    if(code>=32 && code<=126)return code&255;
+    try{var a=realOsAtasciiForKeyFix172(ch); if(a!==0xFF)return a&255;}catch(e){}
+    return -1;
+  }
+  function fix240BuildAtasciiQueue(text,runAfter){
+    text=String(text||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    if(runAfter){
+      if(text.length && text.charAt(text.length-1)!=='\n')text+='\n';
+      text+='RUN\n';
+    }else if(text.length && text.charAt(text.length-1)!=='\n')text+='\n';
+    var q=[],bad=[];
+    for(var i=0;i<text.length;i++){
+      var a=fix240AtasciiFromChar(text.charAt(i));
+      if(a>=0)q.push(a&255); else bad.push(text.charAt(i));
+    }
+    var lines=text.length?text.split('\n').filter(function(x){return x.length>0;}).length:0;
+    return {queue:q,chars:q.length,lines:lines,bad:bad,source:text};
+  }
+
+  function fix240ArmQueue(payload,name,epoch){
+    if((epoch|0)!==(fix223InputEpoch|0)){
+      fix240FastBasicInfo='QUEUE CANCELLED epoch changed before arm '+(name||'FAST BASIC')+' old '+epoch+' current '+fix223InputEpoch+' frame '+nowFrame();
+      log240('FIX240 '+fix240FastBasicInfo); return;
+    }
+    try{if(atariKeyTimer){clearTimeout(atariKeyTimer);atariKeyTimer=0;}}catch(e){}
+    atariKeyQueue=[];
+    input.key=0xFF; realOsKeyOneShot=0xFF; realOsAtasciiOneShot=0xFF; realOsKeyLast=0xFF; realOsAtasciiLast=0xFF;
+    if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}
+    try{syncInputShadows();renderInput();}catch(e){}
+    fix223FastKgetchOnly=true;
+    fix208BasicAutofeedQueue=payload.queue.slice(0);
+    fix208BasicAutofeedActive=true;
+    fix208BasicAutofeedName='FIX240 '+String(name||'FAST BASIC');
+    fix208BasicAutofeedTotal=payload.queue.length;
+    fix208BasicAutofeedLast=nowFrame();
+    fix240FastArmed=true; fix240FastName=fix208BasicAutofeedName; fix240FastEpoch=epoch|0;
+    playCyclesPerFrame=Math.max(playCyclesPerFrame||0,9000); playMaxMsPerFrame=Math.max(playMaxMsPerFrame||0,12); genericRenderEvery=4; fastVideo=true;
+    fix240FastBasicInfo='FAST BASIC QUEUE START '+fix208BasicAutofeedName+' chars '+payload.chars+' lines '+payload.lines+' ATASCII EOL $9B epoch '+epoch+' READY OK '+fix240ReadyStatus();
+    fix240FastBasicLast=fix240FastBasicInfo;
+    fix222ReadyQueueInfo='FIX240 READY OK '+fix240ReadyStatus();
+    fix208SubmarineFastInfo='FIX240 '+fix240FastBasicInfo;
+    fix209ChAutopasteInfo='FIX240 KGETCH queue active; physical keyboard mapping bypassed; left '+payload.queue.length;
+    fix223KeyboardInfo='FIX240 KGETCH/ATASCII queue active epoch '+epoch+' chars '+payload.chars+' frame '+nowFrame();
+    log240('FIX240 '+fix240FastBasicInfo);
+    try{updatePlayStatus('FIX240 FAST BASIC: READY potvrzen, cista ATASCII/KGETCH fronta bezi. EOL je $9B, fyzicka klavesnice se pro text nepouziva.');}catch(e){}
+  }
+
+  function fix240WaitReadyAndArm(payload,name,epoch,startFrame){
+    if((epoch|0)!==(fix223InputEpoch|0)){
+      fix240FastBasicInfo='QUEUE CANCELLED epoch changed '+(name||'FAST BASIC')+' old '+epoch+' current '+fix223InputEpoch+' frame '+nowFrame();
+      log240('FIX240 '+fix240FastBasicInfo); fix240WaitTimer=0; return;
+    }
+    if(fix240ReadyForFastBasic()){
+      fix222ReadyQueueInfo='FIX240 READY OK '+fix240ReadyStatus();
+      log240('FIX240 READY OK: '+fix240ReadyStatus());
+      fix240WaitTimer=0; fix240ArmQueue(payload,name,epoch); return;
+    }
+    var age=(nowFrame()-(startFrame||nowFrame()))|0;
+    fix222ReadyQueueInfo='FIX240 WAIT READY '+(name||'FAST BASIC')+' epoch '+epoch+' age '+age+' '+fix240ReadyStatus();
+    fix240FastBasicInfo='WAIT READY '+(name||'FAST BASIC')+' epoch '+epoch+' '+fix240ReadyStatus();
+    if(age>1200){
+      fix240FastBasicInfo='WAIT READY timeout - queue NOT armed '+(name||'FAST BASIC')+' epoch '+epoch+' '+fix240ReadyStatus();
+      log240('FIX240 '+fix240FastBasicInfo); fix240WaitTimer=0;
+      try{updatePlayStatus('FIX240 FAST BASIC: READY neni potvrzeny, frontu nepoustim. Nejdriv POWER XL/XE BASIC a az pak FAST.');}catch(e){}
+      return;
+    }
+    fix240WaitTimer=setTimeout(function(){fix240WaitReadyAndArm(payload,name,epoch,startFrame);},120);
+  }
+
+  function queueFastBasicFix240(text,name,runAfter){
+    var payload=fix240BuildAtasciiQueue(text,!!runAfter);
+    if(!payload.queue.length){fix240FastBasicInfo='FAST BASIC QUEUE empty - nothing armed'; log240('FIX240 '+fix240FastBasicInfo);return false;}
+    fix240CancelFast('new FAST BASIC request');
+    var epoch=fix223InputEpoch|0;
+    fix240FastBasicInfo='FAST BASIC QUEUE REQUEST '+(name||'FAST BASIC')+' chars '+payload.chars+' lines '+payload.lines+' ATASCII EOL $9B epoch '+epoch+' badChars '+payload.bad.length;
+    log240('FIX240 '+fix240FastBasicInfo);
+    try{updatePlayStatus('FIX240 FAST BASIC: klik prijat, WAIT READY. Fronta se spusti jen po skutecnem BASIC READY.');}catch(e){}
+    fix240WaitReadyAndArm(payload,name||'FAST BASIC',epoch,nowFrame());
+    return false;
+  }
+  window.queueFastBasicFix240=queueFastBasicFix240;
+  window.basicTxtFastFix240=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}var ta=document.getElementById('fix240BasicFastText');return queueFastBasicFix240(ta?ta.value:'','BASIC TXT FAST',false);};
+  window.vlozitFastFix240=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}var ta=document.getElementById('fix240BasicFastText');return queueFastBasicFix240(ta?ta.value:'','VLOZIT FAST',false);};
+  window.vlozitFastRunFix240=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}var ta=document.getElementById('fix240BasicFastText');return queueFastBasicFix240(ta?ta.value:'','VLOZIT FAST + RUN',true);};
+  window.submarineFastFix240=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}var prog=(typeof submarineBasicProgramFix207==='function')?submarineBasicProgramFix207():'10 PRINT "SUBMARINE"\n20 GOTO 20\n';return queueFastBasicFix240(prog,'SUBMARINE FAST',false);};
+
+  var oldServiceKbd240=CPU6502.prototype.serviceAtariOsKeyboard;
+  CPU6502.prototype.serviceAtariOsKeyboard=function(addr,fromJsr){
+    var before=!!(fix240FastArmed && fix208BasicAutofeedActive && fix208BasicAutofeedQueue && fix208BasicAutofeedQueue.length);
+    var r=oldServiceKbd240.call(this,addr,fromJsr);
+    try{
+      if(before && fix240FastArmed && (!fix208BasicAutofeedActive || !fix208BasicAutofeedQueue || !fix208BasicAutofeedQueue.length)){
+        fix240FastArmed=false;
+        fix240FastBasicInfo='QUEUE COMPLETE '+(fix240FastName||'FIX240 FAST BASIC')+' epoch '+fix240FastEpoch+' frame '+nowFrame();
+        log240('FIX240 '+fix240FastBasicInfo);
+        try{fix211ClearKeyboardLatchAfterAutopaste('FIX240 '+(fix240FastName||'FAST BASIC'));}catch(e){
+          if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}
+        }
+        fix240FastBasicInfo+=' / LATCH CLEAR CH $02FC KBCODE idle SKSTAT idle RETURN latch cleared';
+        fix240FastBasicLast=fix240FastBasicInfo;
+        fix209ChAutopasteInfo='FIX240 '+fix240FastBasicInfo;
+        try{updatePlayStatus('FIX240 FAST BASIC: QUEUE COMPLETE + LATCH CLEAR.');}catch(e){}
+      }
+    }catch(e){fix240FastBasicInfo='FIX240 completion hook error '+(e&&e.message?e.message:e);}
+    return r;
+  };
+
+  var oldR240=CPU6502.prototype.r;
+  CPU6502.prototype.r=function(a){
+    a&=65535;
+    if(a===0xD01F){
+      try{
+        if(fix225PureHardwareMode && fix215PureSelfTestMode && cpu===this){
+          var pcSelf=(this.pc||0)&65535;
+          if(!fix240SelftestKickDone && pcSelf>=0x5059 && pcSelf<=0x5060){
+            var c=7;
+            if(input&&input.select)c&=~2;
+            if(input&&input.option)c&=~4;
+            c&=~1; // one START-low edge, through CONSOL only.
+            fix240SelftestKickDone=true;
+            fix240SelftestInfo='SELFTEST START EDGE via CONSOL $D01F at PC $'+hx(pcSelf,4)+' returned $'+hx(c,1)+' frame '+nowFrame()+'; no PC jump, no drawn SELF TEST';
+            log240('FIX240 '+fix240SelftestInfo);
+            return c&7;
+          }
+        }
+      }catch(e){fix240SelftestInfo='FIX240 selftest edge error '+(e&&e.message?e.message:e);}
+    }
+    return oldR240.call(this,a);
+  };
+
+  var oldBare240=fix225ResetBareHardware;
+  fix225ResetBareHardware=function(selftest,reason){
+    fix240CancelFast('POWER/RESET '+(reason||''));
+    fix240SelftestKickDone=false;
+    var r=oldBare240(selftest,reason);
+    try{
+      if(selftest){
+        fix240SelftestInfo='SELFTEST armed: waiting for real ROM PC $5059 CONSOL START edge; OPTION held by POWER OPTION button; frame '+nowFrame();
+        updatePlayStatus('FIX240 POWER OPTION SELF TEST: ROM pobezi ciste, START edge se poda jen pres CONSOL $D01F az CPU skutecne stoji v $5059 smycce.');
+      }
+    }catch(e){}
+    return r;
+  };
+
+  try{
+    var oldLoadXex240=loadXex;
+    loadXex=function(){fix240CancelFast('load XEX');return oldLoadXex240.apply(this,arguments);};
+  }catch(e){}
+
+  var oldMakeLogFileName240=makeLogFileName;
+  makeLogFileName=function(reason){
+    try{
+      var d=new Date();function p(n){return (n<10?'0':'')+n;}
+      var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
+      var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
+      var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
+      return 'atarihelp-FIX240-'+prof+'-'+(reason||'manual')+'-'+ts+'-'+name+'.txt';
+    }catch(e){return oldMakeLogFileName240(reason);}
+  };
+  var oldBuildCurrentLogText240=buildCurrentLogText;
+  buildCurrentLogText=function(){
+    var t=oldBuildCurrentLogText240();
+    try{t=t.replace('AtariHelp.eu EMU-09 FIX239 ALTIRRA GTIA EDITOR PALETTE CORE','AtariHelp.eu EMU-09 FIX240 SELFTEST START EDGE FAST BASIC QUEUE CORE');}catch(e){}
+    try{t+='\nFIX240 SELFTEST/FAST BASIC CHECK\nSELFTEST '+fix240SelftestInfo+'\nFASTBASIC '+fix240FastBasicInfo+'\nFASTLAST '+fix240FastBasicLast+'\nRULE SELFTEST_START_EDGE_ONLY_THROUGH_CONSOL / FAST_BASIC_SERVICE_AFTER_REAL_READY / ATASCII_KGETCH_QUEUE / EOL_9B / EPOCH_CANCEL / LATCH_CLEAR / NO_FAKE_READY_SELFTEST';}catch(e){}
+    return t;
+  };
+
+  var oldSnapshotCore240=compatibilitySnapshotCore;
+  compatibilitySnapshotCore=function(){
+    if(pureOrAudit()){
+      var realSave=saveCurrentLogToMobile;
+      try{
+        saveCurrentLogToMobile=function(reason){fix240SnapshotInfo='FIX240 suppressed inner snapshot save '+(reason||'')+' frame '+nowFrame();};
+        oldSnapshotCore240();
+      }catch(e){try{log('FIX240 inner snapshot error '+(e&&e.message?e.message:e));}catch(_e){} }
+      finally{saveCurrentLogToMobile=realSave;}
+      try{
+        var el=document.getElementById('log');
+        var t=el?(el.textContent||''):buildCurrentLogText();
+        t=t.replace(/PURE HARDWARE SNAPSHOT FIX23[0-9]/,'PURE HARDWARE SNAPSHOT FIX240').replace(/BUILD FIX23[0-9]_[A-Z0-9_]+/,'BUILD '+FIX240_TAG);
+        t+='\nFIX240 SELFTEST/FAST BASIC CHECK';
+        t+='\nSELFTEST '+fix240SelftestInfo;
+        t+='\nFASTBASIC '+fix240FastBasicInfo;
+        t+='\nFASTLAST '+fix240FastBasicLast;
+        t+='\nREADYTEST '+fix240ReadyStatus();
+        t+='\nSNAPSHOT FIX240 single TXT saved once after appending selftest/fast-basic proof frame '+nowFrame();
+        t+='\nRULE SELFTEST_START_EDGE_ONLY_THROUGH_CONSOL / FAST_BASIC_SERVICE_AFTER_REAL_READY / ATASCII_KGETCH_QUEUE / EOL_9B / EPOCH_CANCEL / LATCH_CLEAR / NO_FAKE_READY_SELFTEST';
+        if(el)el.textContent=t;
+        fix240SnapshotInfo='FIX240 single snapshot TXT saved once frame '+nowFrame();
+        updatePlayStatus('PURE snapshot FIX240 saved once with SELFTEST START edge + FAST BASIC queue proof');
+        try{renderRegs();renderSegments();}catch(e){}
+        realSave('purehw-snapshot');
+      }catch(e){try{log('FIX240 snapshot append error '+(e&&e.message?e.message:e));}catch(_e){} }
+      return;
+    }
+    return oldSnapshotCore240();
+  };
+
+  function installFastUi(){
+    try{
+      var dock=document.getElementById('atariKeyboardDock'); if(!dock || document.getElementById('fix240FastBasicBox'))return;
+      var box=document.createElement('div'); box.id='fix240FastBasicBox'; box.className='kbdTools';
+      box.innerHTML='<h2>Rychly BASIC text automat FIX240</h2>'+
+        '<p class="tinyhint">Servisni helper: ceka na realne BASIC READY, pak posle ATASCII/KGETCH frontu. EOL=$9B. Nepouziva se pro fake boot.</p>'+
+        '<textarea id="fix240BasicFastText" spellcheck="false" style="width:100%;min-height:94px;border-radius:10px;border:1px solid rgba(215,183,106,.35);background:#050805;color:#dfffe8;font-family:monospace;font-size:12px;padding:8px;box-sizing:border-box;">10 PRINT "AHOJ PARTAKU"\n20 GOTO 20</textarea>'+
+        '<div class="halfgrid">'+
+        '<button class="secondary compact" onclick="return basicTxtFastFix240(event)">BASIC TXT FAST</button>'+
+        '<button class="secondary compact" onclick="return vlozitFastFix240(event)">VLOZIT FAST</button>'+
+        '<button class="secondary compact" onclick="return vlozitFastRunFix240(event)">VLOZIT FAST + RUN</button>'+
+        '<button class="secondary compact" onclick="return submarineFastFix240(event)">SUBMARINE FAST</button>'+
+        '</div>';
+      var grid=dock.querySelector('.keygrid');
+      if(grid)dock.insertBefore(box,grid); else dock.appendChild(box);
+    }catch(e){try{log('FIX240 UI install error '+(e&&e.message?e.message:e));}catch(_e){}}
+  }
+
+  // Rebind exported buttons after all old FIX wrappers.
+  startPureHardwareBasicFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(false,'FIX240 POWER BASIC');};
+  startPureHardwareSelfTestFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(true,'FIX240 POWER OPTION SELF TEST');};
+  resetPureHardwareFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware((typeof fix233Mode!=='undefined'&&fix233Mode==='selftest')||!!fix215PureSelfTestMode,'FIX240 RESET PURE HW');};
+
+  try{EMU_BUILD_TAG=FIX240_TAG;}catch(e){}
+  try{document.title='EMU-09 '+FIX240_TAG;}catch(e){}
+  try{var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+FIX240_TAG;}catch(e){}
+  try{var p=document.querySelector('h1 + p');if(p)p.textContent='FIX240: SELF TEST START edge pres realny CONSOL $D01F + servisni rychly BASIC text pres ATASCII/KGETCH frontu po skutecnem READY. Bez fake READY/SELF TEST.';}catch(e){}
+  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX240: SELFTEST dostane START edge jen v ROM smycce $5059; BASIC FAST ceka na real READY, EOL=$9B, epoch cancel, latch clear.';}catch(e){}
+  installFastUi();
+})();
+/* END FIX240 */
+
 </script>
 </body>
 </html>
