@@ -1,5 +1,11 @@
-AtariHelp.eu EMU-09 FIX222 REALROM INPUT SELFTEST CORE overlay
+AtariHelp.eu EMU-09 overlay
+BUILD: FIX224_PURE_ROM_NMI_POKEY_CORE
 
-KODY JSOU STEJNE. SUBMARINE BASIC, GTIA 9/10/11 i ostatni BASIC testy beze zmeny.
+KODY JSOU STEJNE.
+SUBMARINE BASIC, GTIA 9/10/11 VERIFY a ostatni BASIC testy nejsou zmenene.
 
-FIX222 opravuje READY-gated FAST BASIC vstup a cisti autopaste/klavesove fronty pri PURE ROM BOOT/SELFTEST. PURE SELFTEST DLI se uz nespousti jako nepresny async JSR, aby nekazil low RAM/BRK cestu.
+Pouziti:
+1. Rozbal ZIP pres lokalni repo GitHub Desktop.
+2. Commit: FIX224 pure rom nmi pokey core
+3. Push, GitHub Actions postavi APK.
+4. Testuj podle README_FIX224_PURE_ROM_NMI_POKEY_CORE.txt.
