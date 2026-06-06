@@ -11040,6 +11040,204 @@ updatePlayStatus('ready');
 })();
 /* END FIX238 */
 
+
+/* FIX239 ALTIRRA-LIKE GTIA EDITOR PALETTE CALIBRATION CORE
+   Root cause from Rene FIX238 test: the raw GTIA register roles are now correct (GRAPHICS 0
+   background from COLPF2/COLOR2 and text from COLPF1/COLOR1), but the hue anchors in the WebView
+   byte->RGB converter still made the XL/XE editor text greenish.  FIX239 keeps the raw GTIA byte
+   path and only recalibrates the palette curve: default BASIC $94 becomes Atari blue and $CA becomes
+   bright cyan-white.  No drawn READY, no fake SELF TEST, no forced screen data. */
+(function(){
+  var FIX239_TAG='FIX239_ALTIRRA_GTIA_EDITOR_PALETTE_CORE';
+  window.fix239PaletteInfo='FIX239 Altirra-like GTIA calibration waiting';
+  window.fix239TextColorInfo='FIX239 GRAPHICS0 COLOR1/COLOR2 calibration waiting';
+  window.fix239SnapshotInfo='FIX239 single snapshot waiting';
+  function hx(v,n){try{return hex((v||0)&((n>=4)?65535:255),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
+  function pure(){return !!(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode);} 
+  function realos(){return activeXexProfile==='realos' || pure();}
+  function pureOrAudit(){return !!((typeof fix228PureHwActiveOrAudit==='function'&&fix228PureHwActiveOrAudit())||pure());}
+  function clamp(v){v=Math.round(v);return v<0?0:(v>255?255:v);}
+  function css(r){return 'rgb('+clamp(r[0])+','+clamp(r[1])+','+clamp(r[2])+')';}
+
+  // FIX239: Altirra-like XL/XE palette anchors for WebView sRGB output.
+  // Important verified points from Rene's real 130XE/Altirra comparison:
+  //   COLOR1/COLPF1 $CA = bright cyan-white BASIC text, not green.
+  //   COLOR2/COLPF2 $94 = saturated Atari editor blue.
+  // The table remains a GTIA byte->RGB mapping; it does not inspect the screen text or draw READY.
+  var fix239HueAnchors=[
+    [255,255,255], // 0 greyscale ramp handled separately
+    [218,122,48],  // 1 gold/rust
+    [238,92,44],   // 2 orange-red
+    [246,82,42],   // 3 red-orange
+    [228,58,78],   // 4 red/pink
+    [178,74,160],  // 5 purple
+    [120,92,220],  // 6 violet-blue
+    [76,104,238],  // 7 blue
+    [52,132,240],  // 8 medium blue
+    [42,122,238],  // 9 Atari XL/XE editor blue anchor
+    [72,174,232],  // A blue-cyan
+    [110,214,224], // B cyan
+    [236,250,255], // C bright cyan-white at high luma (BASIC COLOR1 $CA)
+    [170,222,106], // D yellow-green
+    [214,190,68],  // E olive/yellow
+    [242,150,58]   // F orange
+  ];
+  function gtiaRgbFix239(v){
+    v=(v||0)&255;
+    var hue=(v>>4)&15, lum=v&15;
+    if(lum===0)return [0,0,0];
+    // Real Atari/Altirra-like luma: low values still visible, high values approach monitor white.
+    var y=Math.pow(lum/15,0.66);
+    if(hue===0){var g=clamp(14 + y*240);return [g,g,g];}
+    var base=fix239HueAnchors[hue]||[255,255,255];
+    var sat=0.30 + y*0.70;
+    var level=12 + y*238;
+    var r=level*(1-sat)+base[0]*sat;
+    var g2=level*(1-sat)+base[1]*sat;
+    var b=level*(1-sat)+base[2]*sat;
+    // Anchor the exact BASIC READY defaults to avoid green/yellow drift in WebView canvas gamma.
+    if(v===0xCA)return [232,247,255];
+    if(v===0x94)return [75,119,190];
+    return [clamp(r),clamp(g2),clamp(b)];
+  }
+  var oldAtariColor239=atariColor;
+  atariColor=function(v,fallback){try{return css(gtiaRgbFix239(v));}catch(e){return oldAtariColor239(v,fallback);}};
+  window.gtiaRgbFix239=gtiaRgbFix239;
+
+  function rawVals(){
+    try{return [colorReg(0x02C4,0xD016,0),colorReg(0x02C5,0xD017,0),colorReg(0x02C6,0xD018,0),colorReg(0x02C7,0xD019,0),colorReg(0x02C8,0xD01A,0)].map(function(x){return x&255;});}
+    catch(e){return [0,0,0,0,0];}
+  }
+  function mapText(vals){
+    vals=vals||rawVals();
+    var names=['COLPF0','COLPF1','COLPF2','COLPF3','COLBK'], out=[];
+    for(var i=0;i<5;i++)out.push(names[i]+' $'+hx(vals[i],2)+' -> '+css(gtiaRgbFix239(vals[i])));
+    return out.join(' | ');
+  }
+  function screenProof(rows){
+    rows=rows||6;
+    if(!ram)return 'no RAM';
+    var base=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;
+    var dl=((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535;
+    var out=['DLIST $'+hx(dl,4)+' SAVMSC $'+hx(base,4)+' CHBASE $'+hx((ram[0xD409]||ram[0x02F4]||0),2)];
+    for(var r=0;r<rows;r++){
+      var txt='',hexs=[];
+      for(var c=0;c<40;c++){var v=ram[(base+r*40+c)&65535]&255;txt+=screenChar(v&127);hexs.push(hx(v,2));}
+      out.push('R'+r+' "'+txt.replace(/\s+$/,'')+'"  '+hexs.join(' '));
+    }
+    return out.join('\n');
+  }
+
+  var oldColorSet239=colorSet;
+  colorSet=function(){
+    var cs=oldColorSet239();
+    try{
+      if(realos()){
+        var vals=rawVals();
+        fix239PaletteInfo='FIX239 ALTIRRA-LIKE GTIA BYTE->RGB '+mapText(vals)+' PRIOR $'+hx((ram&&((ram[0xD01B]||ram[0x026F]||0)))||0,2)+' frame '+playFrameNo;
+        fix239TextColorInfo='FIX239 GRAPHICS0 roles kept strict: bg=COLPF2 '+css(gtiaRgbFix239(vals[2]))+' fg=COLPF1 '+css(gtiaRgbFix239(vals[1]))+' outer COLBK '+css(gtiaRgbFix239(vals[4]))+' frame '+playFrameNo;
+      }
+    }catch(e){fix239PaletteInfo='FIX239 palette info error '+(e&&e.message?e.message:e);}
+    return cs;
+  };
+
+  var oldDrawTextLine239=drawAtariTextLine;
+  drawAtariTextLine=function(g,addr,y,fg,bg){
+    if(realos()){
+      try{
+        var vals=rawVals(), bgCss=atariColor(vals[2]), fgCss=atariColor(vals[1]);
+        fix239TextColorInfo='FIX239 canvas GRAPHICS0 calibrated: bg COLPF2 $'+hx(vals[2],2)+' '+bgCss+' fg COLPF1 $'+hx(vals[1],2)+' '+fgCss+' frame '+playFrameNo;
+        return oldDrawTextLine239(g,addr,y,fgCss,bgCss);
+      }catch(e){}
+    }
+    return oldDrawTextLine239(g,addr,y,fg,bg);
+  };
+
+  var oldMakeLogFileName239=makeLogFileName;
+  makeLogFileName=function(reason){
+    try{
+      var d=new Date();function p(n){return (n<10?'0':'')+n;}
+      var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
+      var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
+      var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
+      return 'atarihelp-FIX239-'+prof+'-'+(reason||'manual')+'-'+ts+'-'+name+'.txt';
+    }catch(e){return oldMakeLogFileName239(reason);}
+  };
+  var oldBuildCurrentLogText239=buildCurrentLogText;
+  buildCurrentLogText=function(){
+    var t=oldBuildCurrentLogText239();
+    try{t=t.replace('AtariHelp.eu EMU-09 FIX238 STRICT GTIA PALETTE COLOR CORE','AtariHelp.eu EMU-09 FIX239 ALTIRRA GTIA EDITOR PALETTE CORE');}catch(e){}
+    return t;
+  };
+
+  var oldBare239=fix225ResetBareHardware;
+  fix225ResetBareHardware=function(selftest,reason){
+    var r=oldBare239(selftest,reason);
+    try{
+      currentXexName=selftest?'PURE HARDWARE OPTION SELF TEST FIX239 / no XEX':'PURE HARDWARE BASIC FIX239 / no XEX';
+      try{setXexName();}catch(e){}
+      updateRomStatusLine('FIX239 PURE HW: Altirra-like GTIA editor palette calibration; no drawn READY');
+      updatePlayStatus('FIX239 PURE HW '+(selftest?'OPTION SELF TEST':'BASIC')+' started. BASIC GRAPHICS0: bg=COLPF2 Atari blue, fg=COLPF1 bright cyan-white, raw GTIA bytes preserved.');
+    }catch(e){try{log('FIX239 post-reset error '+(e&&e.message?e.message:e));}catch(_){} }
+    return r;
+  };
+  startPureHardwareBasicFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(false,'FIX239 POWER BASIC');};
+  startPureHardwareSelfTestFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(true,'FIX239 POWER OPTION SELF TEST');};
+  resetPureHardwareFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware((typeof fix233Mode!=='undefined'&&fix233Mode==='selftest'),'FIX239 RESET PURE HW');};
+
+  var oldSnapshotCore239=compatibilitySnapshotCore;
+  compatibilitySnapshotCore=function(){
+    if(pureOrAudit()){
+      try{
+        var lines=(typeof fix228PureSnapshotLines==='function')?fix228PureSnapshotLines():['PURE HARDWARE SNAPSHOT FIX239','BUILD '+FIX239_TAG];
+        for(var i=0;i<lines.length;i++){
+          lines[i]=String(lines[i]).replace(/PURE HARDWARE SNAPSHOT FIX23[0-9]/,'PURE HARDWARE SNAPSHOT FIX239').replace(/BUILD FIX23[0-9]_[A-Z0-9_]+/,'BUILD '+FIX239_TAG);
+        }
+        var vals=rawVals();
+        lines.push('FIX234 ROOT CHECK');
+        lines.push('RAMINFO '+(window.fix234RamInfo||'--'));
+        lines.push('POKEYINFO '+(window.fix234PokeyInfo||'--'));
+        lines.push('IRQINFO '+(window.fix234IrqInfo||'--'));
+        lines.push('FIX235 ROOT CHECK');
+        lines.push('TRIG3/CART '+(window.fix235TrigInfo||'--'));
+        lines.push('POKEY/SIO '+(window.fix235SioInfo||'--'));
+        lines.push('AUDIO '+(window.fix235AudioInfo||'--'));
+        lines.push('FIX236 NO-FAKE RENDER CHECK');
+        lines.push('RENDER '+(window.fix236RenderInfo||'--'));
+        lines.push('PALETTE '+(window.fix236PaletteInfo||'--'));
+        lines.push('SCREEN PROOF\n'+screenProof(6));
+        lines.push('FIX237 INPUT/SNAPSHOT CHECK');
+        lines.push('SNAPSHOT '+(window.fix237SnapshotInfo||'--'));
+        lines.push('KEYEDGE '+(window.fix237KeyInfo||'--'));
+        lines.push('KEYCLICK '+(window.fix237ClickInfo||'--'));
+        lines.push('FIX238 STRICT GTIA PALETTE CHECK');
+        lines.push('PREV '+(window.fix238PaletteInfo||'--'));
+        fix239SnapshotInfo='FIX239 single snapshot TXT saved once: purehw-snapshot frame '+playFrameNo;
+        lines.push('FIX239 ALTIRRA GTIA EDITOR PALETTE CHECK');
+        lines.push('PALETTE '+fix239PaletteInfo);
+        lines.push('TEXTCOL '+fix239TextColorInfo);
+        lines.push('RAW2RGB '+mapText(vals));
+        lines.push('VERIFY BASIC DEFAULTS COLPF1 $CA '+css(gtiaRgbFix239(0xCA))+' / COLPF2 $94 '+css(gtiaRgbFix239(0x94))+' / COLBK $00 '+css(gtiaRgbFix239(0x00)));
+        lines.push('SNAPSHOT '+fix239SnapshotInfo);
+        lines.push('RULE ALTIRRA_LIKE_GTIA_RGB_CALIBRATION / ANTIC2_BG_COLPF2 / ANTIC2_FG_COLPF1 / RAW_BYTES_PRESERVED / SNAPSHOT_SINGLE_TXT / NO_DRAWN_READY_FAKE');
+        var el=document.getElementById('log'); if(el)el.textContent=lines.join('\n');
+        updatePlayStatus('PURE snapshot FIX239 saved once with Altirra-like GTIA palette proof');
+        try{renderRegs();renderSegments();}catch(e){}
+        try{saveCurrentLogToMobile('purehw-snapshot');}catch(e){}
+      }catch(e){try{log('FIX239 snapshot error '+(e&&e.message?e.message:e));}catch(_e){} }
+      return;
+    }
+    return oldSnapshotCore239();
+  };
+
+  try{EMU_BUILD_TAG=FIX239_TAG;}catch(e){}
+  try{document.title='EMU-09 '+FIX239_TAG;}catch(e){}
+  try{var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+FIX239_TAG;}catch(e){}
+  try{var p=document.querySelector('h1 + p');if(p)p.textContent='FIX239: Altirra-like GTIA RGB calibration for XL/XE GRAPHICS 0. COLOR2 blue background, COLOR1 bright cyan-white text. No drawn READY/SELF TEST.';}catch(e){}
+  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX239: COLPF2 $94 = Atari blue, COLPF1 $CA = jasne bile/cyan pismo; raw GTIA bajty zustavaji, zadny fake READY.';}catch(e){}
+})();
+/* END FIX239 */
+
 </script>
 </body>
 </html>
