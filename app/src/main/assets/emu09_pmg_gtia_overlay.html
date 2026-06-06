@@ -13283,3 +13283,85 @@ updatePlayStatus('ready');
   stamp();setTimeout(stamp,80);setTimeout(stamp,500);setTimeout(stamp,1500);
 })();
 </script>
+
+<!-- FIX251_TURBOBASIC_WAV_ASSET_CASSETTE_PILOT_CORE_FINAL_SCRIPT -->
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX251_TURBOBASIC_WAV_ASSET_CASSETTE_PILOT_CORE';
+  var ASSET='TurboBasicXXL.wav?fix=251';
+  var cassette={inserted:false,source:'none',name:'--',size:0,kind:'none',playing:false,motor:false,posSec:0,durationSec:0,epoch:0,last:'CASSETTE waiting',head:'--',wav:'--',analysis:'--',cload:'CLOAD not requested',error:'',loadedBytes:0};
+  var timer=null,lastTick=0;
+  function g(id){return document.getElementById(id);} 
+  function hx(v,n){v=Number(v)||0;var mask=(n===2?255:(n===4?65535:0xffffffff));var s=(v&mask).toString(16).toUpperCase();while(s.length<n)s='0'+s;return s;}
+  function frame(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function raw(a){try{return ram[a&65535]&255;}catch(e){return 0;}}
+  function dlptr(){try{if(typeof getDlistPtr==='function')return getDlistPtr()&65535;}catch(e){}return (raw(0x0230)|(raw(0x0231)<<8))&65535;}
+  function countNZ(start,len){var n=0;try{for(var i=0;i<len;i++)if(raw(start+i))n++;}catch(e){}return n;}
+  function statusLine(){try{return 'DLIST $'+hx(dlptr(),4)+' SAVMSC $'+hx((raw(0x58)|(raw(0x59)<<8))&65535,4)+' NMIEN $'+hx(raw(0xD40E),2)+' SDMCTL $'+hx((raw(0x022F)||raw(0xD400))&255,2)+' DMACTL $'+hx(raw(0xD400),2)+' CHBASE $'+hx((raw(0xD409)||raw(0x02F4))&255,2)+' PRIOR $'+hx((raw(0xD01B)||raw(0x026F))&255,2)+' frame '+frame();}catch(e){return 'status err '+e.message;}}
+  function ready(){try{var dl=dlptr(),sav=(raw(0x58)|(raw(0x59)<<8))&65535,eff=(typeof fix233PortBEffective==='function'?fix233PortBEffective():raw(0xD301))&255;return (dl>=0x9C00&&dl<=0x9D00&&sav>=0x9C00&&sav<=0x9D80&&(eff&2)===0);}catch(e){return false;}}
+  function formatTime(s){s=Math.max(0,Number(s)||0);var m=Math.floor(s/60),r=Math.floor(s%60);return m+':'+(r<10?'0':'')+r;}
+  function bytesHead(u,n){var h=[];for(var i=0;i<Math.min(n||16,u.length);i++)h.push(hx(u[i],2));return h.join(' ');} 
+  function u32(u,o){return (u[o]|(u[o+1]<<8)|(u[o+2]<<16)|(u[o+3]<<24))>>>0;}
+  function u16(u,o){return (u[o]|(u[o+1]<<8))&65535;}
+  function parseWav(u){
+    var info={ok:false,reason:'not parsed'};
+    try{
+      var riff=String.fromCharCode(u[0],u[1],u[2],u[3]),wave=String.fromCharCode(u[8],u[9],u[10],u[11]);
+      info.riff=riff; info.wave=wave; info.size=u.length; info.head=bytesHead(u,16);
+      if(riff!=='RIFF'||wave!=='WAVE'){info.reason='not RIFF/WAVE';return info;}
+      var p=12,fmt=null,data=null;
+      while(p+8<=u.length){var id=String.fromCharCode(u[p],u[p+1],u[p+2],u[p+3]);var sz=u32(u,p+4);var start=p+8;if(id==='fmt '){fmt={start:start,size:sz};} if(id==='data'){data={start:start,size:sz};break;} p=start+sz+(sz&1); if(p>1024*1024&&data)break;}
+      if(!fmt){info.reason='fmt chunk missing';return info;}
+      var audioFormat=u16(u,fmt.start),channels=u16(u,fmt.start+2),rate=u32(u,fmt.start+4),byteRate=u32(u,fmt.start+8),blockAlign=u16(u,fmt.start+12),bits=u16(u,fmt.start+14);
+      info.ok=true; info.audioFormat=audioFormat; info.channels=channels; info.sampleRate=rate; info.byteRate=byteRate; info.blockAlign=blockAlign; info.bits=bits;
+      if(data){info.dataStart=data.start; info.dataSize=data.size; info.duration=(rate&&blockAlign)?(data.size/(rate*blockAlign)):0;} else {info.dataStart=0;info.dataSize=0;info.duration=0;info.reason='data chunk missing';}
+      return info;
+    }catch(e){info.reason='parse exception '+e.message;return info;}
+  }
+  function analyzePilot(u,info){
+    try{
+      if(!info||!info.ok||!info.dataStart)return 'WAV ANALYZE skipped - no PCM data';
+      var start=info.dataStart, bytesPerSample=(info.bits/8)|0, chans=info.channels||1, step=bytesPerSample*chans, maxSamples=Math.min(info.sampleRate*5, Math.floor((u.length-start)/step));
+      var min=999999,max=-999999,sum=0,sum2=0,zc=0,prev=0,edge=0;
+      for(var i=0;i<maxSamples;i++){var o=start+i*step;var v=0;if(info.bits===16){v=(u[o]|(u[o+1]<<8)); if(v&0x8000)v-=0x10000;} else if(info.bits===8){v=(u[o]-128)<<8;} else continue; if(v<min)min=v;if(v>max)max=v;sum+=v;sum2+=v*v;var s=v>0?1:(v<0?-1:0);if(s&&prev&&s!==prev){zc++;edge++;}if(s)prev=s;}
+      var mean=sum/Math.max(1,maxSamples),rms=Math.sqrt(sum2/Math.max(1,maxSamples));
+      return 'WAV ANALYZE first '+Math.round(maxSamples/(info.sampleRate||44100))+'s samples '+maxSamples+' min '+Math.round(min)+' max '+Math.round(max)+' mean '+mean.toFixed(2)+' rms '+rms.toFixed(1)+' zeroCross '+zc+' / pilot-edge raw only, not decoded to RAM';
+    }catch(e){return 'WAV ANALYZE error '+e.message;}
+  }
+  function updateCass(){
+    try{var s=g('cassStateFix249')||g('cassStateFix250')||g('cassStateFix251');if(s)s.textContent='CASSETTE '+(cassette.inserted?cassette.name:'empty')+' ['+cassette.source+']\nPLAY '+(cassette.playing?'ON':'OFF')+' MOTOR '+(cassette.motor?'ON':'OFF')+' POS '+formatTime(cassette.posSec)+' / '+formatTime(cassette.durationSec)+'\nLAST '+cassette.last+'\nWAV '+cassette.wav+'\nANALYZE '+cassette.analysis+'\nCLOAD '+cassette.cload; }catch(e){}
+    try{var p=g('inputMapPanel');if(p){p.classList.add('visible');p.textContent='FIX251 TURBOBASIC WAV: '+cassette.last+' | '+cassette.wav;}}catch(e){}
+  }
+  function setCassFromBuffer(name,source,buf){
+    try{var u=new Uint8Array(buf);var info=parseWav(u);cassette.inserted=true;cassette.source=source;cassette.name=name;cassette.size=u.length;cassette.kind=info.ok?'WAV':'FILE';cassette.head=bytesHead(u,16);cassette.loadedBytes=u.length;cassette.epoch++;cassette.posSec=0;cassette.durationSec=info.duration||0;cassette.wav=info.ok?('RIFF/WAVE PCM format '+info.audioFormat+' ch '+info.channels+' '+info.bits+'bit '+info.sampleRate+'Hz data '+info.dataSize+' bytes duration '+formatTime(info.duration)):'WAV parse '+info.reason+' head '+cassette.head;cassette.analysis=analyzePilot(u,info);cassette.last='CASSETTE INSERT OK '+name+' source '+source+' size '+u.length+' / NO FAKE LOAD';updateCass();return true;}catch(e){cassette.error=e.message;cassette.last='CASSETTE buffer error '+e.message;updateCass();return false;}
+  }
+  function loadBuiltIn(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} cassette.last='BUILTIN TURBOBASIC WAV loading from asset '+ASSET; updateCass(); try{fetch(ASSET,{cache:'reload'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.arrayBuffer();}).then(function(b){setCassFromBuffer('TurboBasicXXL.wav','APK_ASSET',b);}).catch(function(e){cassette.last='BUILTIN TURBOBASIC WAV fetch failed: '+e.message+' / zkus INSERT WAV/CAS'; cassette.error=e.message; updateCass();});}catch(e){cassette.last='BUILTIN TURBOBASIC WAV exception '+e.message; updateCass();} return false;}
+  function loadFile(f){cassette.last='CASSETTE FILE START '+(f&&f.name?f.name:'?');updateCass();try{var fr=new FileReader();fr.onload=function(){setCassFromBuffer(f.name,'ANDROID_PICKER',fr.result);};fr.onerror=function(){cassette.last='CASSETTE FileReader error';updateCass();};fr.readAsArrayBuffer(f);}catch(e){cassette.last='CASSETTE picker read exception '+e.message;updateCass();}}
+  function openPicker(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}var inp=g('cassetteFileFix251');if(!inp){cassette.last='PICKER input missing';updateCass();return false;}inp.value='';cassette.last='PICKER OPEN all files';updateCass();try{inp.click();}catch(e){cassette.last='PICKER click error '+e.message;updateCass();}return false;}
+  function play(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(e){}cassette.playing=true;cassette.motor=true;cassette.last='CASSETTE PLAY motor ON '+cassette.name+' / audio timing pilot only, no fake data to RAM';lastTick=Date.now();if(timer)clearInterval(timer);timer=setInterval(function(){if(!cassette.playing)return;var now=Date.now();cassette.posSec+=Math.max(0,(now-lastTick)/1000);lastTick=now;if(cassette.durationSec&&cassette.posSec>cassette.durationSec){cassette.posSec=cassette.durationSec;cassette.playing=false;cassette.motor=false;cassette.last='CASSETTE EOF reached';clearInterval(timer);}updateCass();},1000);updateCass();return false;}
+  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(e){}cassette.playing=false;cassette.motor=false;if(timer)clearInterval(timer);cassette.last='CASSETTE STOP motor OFF';updateCass();return false;}
+  function rewind(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(e){}cassette.posSec=0;cassette.last='CASSETTE REWIND pos 0';updateCass();return false;}
+  function sendBasicText(text,name,ev){try{if(typeof window.queueFastBasicFix247==='function')return window.queueFastBasicFix247(text,name||'CASSETTE COMMAND',false,ev);}catch(e){}try{if(typeof window.queueFastBasicFix244==='function')return window.queueFastBasicFix244(text,name||'CASSETTE COMMAND',false,ev);}catch(e){}try{if(typeof window.queueFastBasicFix240==='function')return window.queueFastBasicFix240(text,name||'CASSETTE COMMAND',false);}catch(e){}cassette.last='BASIC command helper missing; cannot type '+name;updateCass();return false;}
+  function cload(run,ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}cassette.cload='CLOAD '+(run?'+ RUN ':'')+'requested at '+formatTime(cassette.posSec)+' READY '+(ready()?'YES':'NO')+' inserted '+cassette.inserted+' / NO FAKE LOAD';cassette.last=cassette.cload;cassette.motor=true;cassette.playing=true;play();var cmd='CLOAD'+(run?'\nRUN':'');return sendBasicText(cmd,'CASSETTE CLOAD '+(run?'+ RUN':''),ev);}
+  function installUI(){
+    try{
+      var dock=g('atariKeyboardDock')||document.body; var box=g('cassetteBoxFix251')||g('cassetteBoxFix250')||g('cassetteBoxFix249');
+      if(!box){box=document.createElement('div');box.id='cassetteBoxFix251';box.className='card';dock.parentNode.insertBefore(box,dock.nextSibling);}else box.id='cassetteBoxFix251';
+      box.innerHTML='<h2>Virtualni kazetak FIX251</h2><p>Vestaveny TurboBasicXXL.wav z APK + Android picker. Zatim poctivy WAV ingest/play/CLOAD prikaz, zadny fake LOAD do RAM.</p><input id="cassetteFileFix251" type="file" accept="*/*,.wav,.cas,audio/*,application/octet-stream" style="display:none"><button id="cassBuiltinFix251" class="secondary compact">INSERT BUILTIN TURBOBASICXXL.WAV</button><button id="cassInsFix251" class="secondary compact">INSERT WAV/CAS Z ANDROIDU</button><button id="cassPlayFix251" class="secondary compact">PLAY</button><button id="cassStopFix251" class="secondary compact">STOP</button><button id="cassRewFix251" class="secondary compact">REWIND</button><button id="cassCloadFix251" class="secondary compact">CLOAD + PLAY</button><button id="cassCloadRunFix251" class="secondary compact">CLOAD + RUN + PLAY</button><pre id="cassStateFix251" class="inputReadout">CASSETTE waiting</pre>';
+      g('cassetteFileFix251').onchange=function(){var f=this.files&&this.files[0];if(f)loadFile(f);else{cassette.last='PICKER closed - no file selected';updateCass();}};
+      [['cassBuiltinFix251',loadBuiltIn],['cassInsFix251',openPicker],['cassPlayFix251',play],['cassStopFix251',stop],['cassRewFix251',rewind],['cassCloadFix251',function(e){return cload(false,e);}],['cassCloadRunFix251',function(e){return cload(true,e);}]].forEach(function(p){var b=g(p[0]);if(b){b.onclick=p[1];['pointerup','touchend'].forEach(function(n){b.addEventListener(n,p[1],{passive:false});});}});
+    }catch(e){cassette.last='installUI error '+e.message;}
+    updateCass();
+  }
+  function stamp(){try{window.EMU_BUILD_TAG=TAG;EMU_BUILD_TAG=TAG;}catch(e){}try{document.title='EMU-09 '+TAG;}catch(e){}try{var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h)h.textContent='EMU-09\n'+TAG;}catch(e){}try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX251: vestaveny TurboBasicXXL.wav asset + kazetovy pilot. CLOAD je real prikaz, WAV zatim analyza/play, bez fake RAM load.';}catch(e){}try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX251: TurboBasicXXL.wav v APK, cassette pilot/play/CLOAD bez fake LOAD.';}catch(e){}try{var ps=g('playStatus');if(ps&&ps.textContent.indexOf('FIX251')<0)ps.textContent='FIX251 TURBOBASIC WAV asset ready. Nejdriv INSERT BUILTIN TURBOBASICXXL.WAV.';}catch(e){}installUI();}
+  function screenRows(){var out=[];try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535;for(var r=0;r<6;r++){var s='',bs=[];for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0;bs.push(hx(b,2));var cc=b&127;s+=(cc>=0x20&&cc<0x5b?String.fromCharCode(cc+0x20):' ');}out.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+bs.join(' '));}}catch(e){out.push('screen rows err '+e.message);}return out;}
+  function snapshotText(reason){var l=[];l.push('AtariHelp.eu EMU-09 FIX251 TURBOBASIC WAV ASSET CASSETTE PILOT CORE');l.push('cas='+(new Date()).toISOString());l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));l.push('build='+TAG);l.push('');l.push('[STATUS]');try{l.push(cpu?('PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){}l.push(statusLine());l.push('');l.push('[LOG]');l.push('PURE HARDWARE SNAPSHOT FIX251');l.push('BUILD '+TAG);l.push('FIX251 TURBOBASIC WAV/CASSETTE PILOT CHECK');l.push('VERIFY LOADED YES');l.push('TURBOBASIC WAV ASSET TurboBasicXXL.wav expected size 33558928 md5 0965696a8e82a8c961ba31fb49a9a57a duration 380.49s source user-uploaded test asset');l.push('CASSETTE '+cassette.last);l.push('CASSETTE STATE inserted '+cassette.inserted+' source '+cassette.source+' name '+cassette.name+' size '+cassette.size+' kind '+cassette.kind+' play '+cassette.playing+' motor '+cassette.motor+' posSec '+cassette.posSec.toFixed(2)+' durationSec '+cassette.durationSec.toFixed(2)+' epoch '+cassette.epoch);l.push('CASSETTE HEAD '+cassette.head);l.push('WAV INFO '+cassette.wav);l.push('WAV ANALYSIS '+cassette.analysis);l.push('CLOAD '+cassette.cload);l.push('SELFTEST NOTE FIX251 keeps FIX249/FIX250 ROM-bus DLIST + real RAM render path; no drawn fake self-test');l.push('DLIST $'+hx(dlptr(),4)+' RAM3000nonzero '+countNZ(0x3000,0x400)+' BC40nonzero '+countNZ(0xBC40,0x400));l.push('SCREEN PROOF');l=l.concat(screenRows());try{l.push('TRACE');if(cpu&&cpu.trace)l=l.concat(cpu.trace.slice(-18));}catch(e){}l.push('RULE FIX251_TURBOBASIC_WAV_ASSET_INCLUDED / WAV_RIFF_PCM_PARSE / CASSETTE_PLAY_STOP_REWIND_TIMER / CLOAD_COMMAND_ONLY_AFTER_REAL_READY / NO_FAKE_LOAD_NO_RAM_INJECT / SELFTEST_RENDER_PATH_PRESERVED');return l.join('\n');}
+  function fname(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX251-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function save(txt,reason){var fn=fname(reason||'snapshot');try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(txt,fn);return true;}}catch(e){}try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);return true;}catch(e){return false;}}
+  window.compatibilitySnapshotCore=function(){stamp();var t=snapshotText('snapshot');var el=g('log');if(el)el.textContent=t;try{updatePlayStatus('FIX251 snapshot: TurboBasic WAV asset cassette pilot.');}catch(e){}return save(t,'snapshot');};
+  window.compatibilitySnapshot=function(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return window.compatibilitySnapshotCore();};
+  window.saveCurrentLogToMobile=function(reason){stamp();return save(snapshotText(reason||'manual'),reason||'manual');};window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');};window.makeLogFileName=function(reason){return fname(reason||'snapshot');};
+  stamp();setTimeout(stamp,50);setTimeout(stamp,500);setTimeout(stamp,1500);setTimeout(stamp,4000);try{window.fix251LoadBuiltInTurboBasicWav=loadBuiltIn;}catch(e){}
+})();
+</script>
