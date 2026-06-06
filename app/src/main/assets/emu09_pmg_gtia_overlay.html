@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX245_VERIFY_BUILD_STAMP_CORE / vlastní XEX</title>
+<title>EMU-09 FIX246_HARD_BUILD_OVERRIDE_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX236_PURE_ROM_FONT_NO_FAKE_RENDER_CORE</h1>
-<p>FIX229: PURE HARDWARE PIA/CPU I/O rez. D301/D303 uz jdou pres PIA DDR/PBCTL, BASIC nesmi padat do selftest/smeti kvuli spatnemu PORTB.</p>
+<h1>EMU-09 FIX246_HARD_BUILD_OVERRIDE_CORE</h1>
+<p>FIX246: tvrdy posledni build override za vsemi starsimi FIX240 bloky. Pokud tady nevidis FIX246, bezi stary asset/APK.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -793,7 +793,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX245_VERIFY_BUILD_STAMP_CORE";
+var EMU_BUILD_TAG="FIX237_PURE_HW_SNAPSHOT_KEY_EDGE_POKEY_CLICK_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -12640,65 +12640,157 @@ updatePlayStatus('ready');
 })();
 /* END FIX244 */
 
+</script>
 
-/* FIX245 VERIFY BUILD STAMP + CACHE BUST CORE
-   Purpose: make it impossible to confuse this overlay with FIX240/FIX241.
-   This block does NOT draw fake READY/SELFTEST. It only stamps the running asset, forces visible UI text,
-   and appends an unmistakable snapshot marker. Core logic remains the FIX244 self-test DMA + screen-fast core.
+<script>
+/* FIX246 HARD BUILD OVERRIDE CORE
+   Purpose: previous handoff could show FIX245 on landing page while the emulator page still executed older FIX240 UI/snapshot wrappers.
+   This block is deliberately a separate final <script> after all older scripts. It must run last and stamp UI + snapshots.
+   It also disables the old RAW CH fast paste path and provides a conservative screen-editor service helper after real READY.
 */
 (function(){
   'use strict';
-  var FIX245_TAG='FIX245_VERIFY_BUILD_STAMP_CORE';
-  function safe(fn){try{return fn();}catch(e){}}
-  function hx245(n,w){try{var s=(Number(n)&((w<=2)?255:65535)).toString(16).toUpperCase();while(s.length<w)s='0'+s;return s;}catch(e){return '??';}}
-  function frame245(){try{return (typeof frameCounter!=='undefined'?frameCounter:(window.frameCounter||0));}catch(e){return 0;}}
-  safe(function(){window.EMU_BUILD_TAG=FIX245_TAG; EMU_BUILD_TAG=FIX245_TAG;});
-  safe(function(){document.title='EMU-09 '+FIX245_TAG;});
-  safe(function(){var h1=document.querySelector('h1'); if(h1)h1.textContent='EMU-09 '+FIX245_TAG;});
-  safe(function(){var p=document.querySelector('h1 + p'); if(p)p.textContent='FIX245 VERIFY: pokud snapshot neukaze BUILD FIX245, bezi stary APK/asset. Jadro: FIX244 screen-editor FAST BASIC + selftest DLIST DMA render. Bez fake READY/SELF TEST.';});
-  safe(function(){var dock=document.getElementById('atariKeyboardDockFix171'); if(dock){var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX245 VERIFY LOADED: klavesnice pod obrazem; FAST BASIC pres editor+RETURN; SELF TEST pres DLIST DMA. Snapshot musi hlasit FIX245.';}});
-  safe(function(){var fast=document.getElementById('fix240FastBasicBox'); if(fast){var h=fast.querySelector('h2'); if(h)h.textContent='Rychly BASIC text automat FIX245 VERIFY'; var p=fast.querySelector('p'); if(p)p.textContent='Servisni helper po real READY. Pokud log stale hlasi FIX240, APK nebezi z tohoto overlaye.';}});
-  safe(function(){if(typeof updateRomStatusLine==='function')updateRomStatusLine('FIX245 VERIFY LOADED / core FIX244 active');});
-  safe(function(){
-    window.fix240FastBasicInfo='DISABLED BY FIX245 VERIFY - do not use RAW CH pump';
-    window.fix241FastPumpInfo='DISABLED BY FIX245 VERIFY - do not use RAW CH pump';
-    window.fix242FastInfo='DISABLED BY FIX245 VERIFY - do not use RAW CH pump';
-    window.fix243FastInfo='FIX245 VERIFY uses FIX244 screen-editor path';
-    if(typeof fix244FastInfo!=='undefined')fix244FastInfo='FIX245 VERIFY loaded; FIX244 screen-editor FAST idle';
-    if(typeof fix244UiInfo!=='undefined')fix244UiInfo='FIX245 VERIFY UI stamp applied frame '+frame245();
-  });
-  var oldName245=(typeof makeLogFileName==='function')?makeLogFileName:null;
-  makeLogFileName=function(reason){
-    try{var d=new Date();function p(n){return (n<10?'0':'')+n;}var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');var nm=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);return 'atarihelp-FIX245-'+prof+'-'+(reason||'manual')+'-'+ts+'-'+nm+'.txt';}catch(e){return oldName245?oldName245(reason):'atarihelp-FIX245-snapshot.txt';}
-  };
-  var oldSnap245=(typeof compatibilitySnapshot==='function')?compatibilitySnapshot:null;
-  compatibilitySnapshot=function(){
-    safe(function(){
-      var dl=0, sv=0, sdm=0, prior=0, chb=0;
-      try{dl=(typeof getDlistPtr==='function'?getDlistPtr():((ram[0x0230]||0)|((ram[0x0231]||0)<<8)))&65535;}catch(e){}
-      try{sv=((ram[0x0058]||0)|((ram[0x0059]||0)<<8))&65535;}catch(e){}
-      try{sdm=(ram[0x022F]||ram[0xD400]||0)&255; prior=(ram[0xD01B]||ram[0x026F]||0)&255; chb=(ram[0xD409]||ram[0x02F4]||0)&255;}catch(e){}
-      window.__fix245SnapshotTail='\nBUILD '+FIX245_TAG+
-        '\nFIX245 VERIFY BUILD STAMP CHECK'+
-        '\nVERIFY LOADED YES - if this line is missing, APK/asset is stale'+
-        '\nCORE FIX244 screen-editor FAST BASIC + SELFTEST DLIST DMA renderer preserved'+
-        '\nSTATE DLIST $'+hx245(dl,4)+' SAVMSC $'+hx245(sv,4)+' SDMCTL $'+hx245(sdm,2)+' CHBASE $'+hx245(chb,2)+' PRIOR $'+hx245(prior,2)+' frame '+frame245()+
-        '\nFAST '+(window.fix244FastInfo||'FIX244/FIX245 fast state unknown')+
-        '\nSELFTEST '+(window.fix244SelftestInfo||'FIX244/FIX245 selftest state unknown')+
-        '\nRULE BUILD_STAMP_FORCED / CACHE_BUST_INDEX_LINK / OLD_RAW_CH_LABELS_DISABLED / NO_FAKE_READY_SELFTEST';
-    });
-    return oldSnap245?oldSnap245():null;
-  };
-  var oldSave245=(typeof saveLogToFile==='function')?saveLogToFile:null;
-  saveLogToFile=function(reason){
-    if(reason==='purehw-snapshot')safe(function(){ if(window.__fix245SnapshotTail)log(String(window.__fix245SnapshotTail).replace(/^\n/,'')); else log('BUILD '+FIX245_TAG+'\nFIX245 VERIFY BUILD STAMP CHECK\nVERIFY LOADED YES'); });
-    return oldSave245?oldSave245.apply(this,arguments):null;
-  };
-  safe(function(){console.log('EMU-09 '+FIX245_TAG+' loaded');});
-  safe(function(){if(typeof log==='function')log('FIX245 VERIFY LOADED: build stamp forced, if snapshot shows FIX240 then old APK/asset is running.');});
-})();
-/* END FIX245 */
+  var TAG='FIX246_HARD_BUILD_OVERRIDE_CORE';
+  var fastInfo='idle';
+  var selfInfo='idle';
+  var uiInfo='waiting';
+  var lines=[], idx=0, active=false, nextFrame=0, epoch=246, wrote=0, returns=0, totalChars=0, lastInfo='idle', name='FAST BASIC';
+  function hx(v,n){try{v=(v>>>0).toString(16).toUpperCase();while(v.length<n)v='0'+v;return v;}catch(e){return '??';}}
+  function fr(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function log246(s){try{log('FIX246 '+s);}catch(e){}}
+  function stamp(){
+    try{window.EMU_BUILD_TAG=TAG;}catch(e){}
+    try{document.title='EMU-09 '+TAG;}catch(e){}
+    try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
+    try{var p=document.querySelector('h1 + p'); if(p)p.textContent='FIX246: HARD LOADED override bezi jako posledni skript. Stare FIX240 UI nesmi prepsat build. FAST helper je servisni screen-editor po real READY, bez fake bootu.';}catch(e){}
+    try{var x=document.getElementById('xexName'); if(x) x.textContent='XEX: PURE HARDWARE IDLE FIX246 / no XEX';}catch(e){}
+    try{var ps=document.getElementById('playStatus'); if(ps && String(ps.textContent||'').indexOf('FIX246')<0) ps.textContent='FIX246 HARD LOADED: verifikuj snapshot BUILD FIX246. Funkce testuj az po overeni stampu.';}catch(e){}
+    try{var dock=document.getElementById('atariKeyboardDock')||document.getElementById('atariKeyboardDockFix171'); if(dock){var h2=dock.querySelector('h2'); if(h2)h2.textContent='Mobilni Atari klavesnice FIX246'; var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX246: posledni skript prevzal UI; FAST BASIC pouziva servisni editor-line + real RETURN po READY.';}}catch(e){}
+    uiInfo='STAMP OK frame '+fr();
+  }
+  stamp();
+  setTimeout(stamp,100); setTimeout(stamp,700); setTimeout(stamp,2000);
 
+  function cancelOld(reason){
+    try{ if(typeof fix222CancelFastBasicInput==='function') fix222CancelFastBasicInput('FIX246 takeover '+(reason||'')); }catch(e){}
+    try{ if(typeof fix242CancelFastBasicQueue==='function') fix242CancelFastBasicQueue('FIX246 takeover '+(reason||'')); }catch(e){}
+    try{ if(typeof fix243CancelFastBasicQueue==='function') fix243CancelFastBasicQueue('FIX246 takeover '+(reason||'')); }catch(e){}
+    try{ if(typeof fix244CancelFastBasicQueue==='function') fix244CancelFastBasicQueue('FIX246 takeover '+(reason||'')); }catch(e){}
+    try{fix208BasicAutofeedActive=false;fix208BasicAutofeedQueue=[];fix241Active=false;fix242Active=false;fix243Active=false;active244=false;}catch(e){}
+    try{if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}}catch(e){}
+  }
+  function ready(){
+    try{
+      if(!ram) return false;
+      if(typeof activeXexProfile!=='undefined' && activeXexProfile!=='realos') return false;
+      var mode=(typeof fix233Mode!=='undefined'?fix233Mode:(typeof fix232Mode!=='undefined'?fix232Mode:''));
+      if(String(mode).indexOf('self')>=0) return false;
+      var dl=(typeof getDlistPtr==='function'?(getDlistPtr()&65535):(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535));
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;
+      var eff=(typeof fix233EffectivePortB==='function'?fix233EffectivePortB():((typeof piaPortBOut!=='undefined'?piaPortBOut:0xFD)&255));
+      return (dl>=0x9B00 && dl<=0x9D80 && sav>=0x9B80 && sav<=0xA100 && (eff&2)===0);
+    }catch(e){return false;}
+  }
+  function status(){try{var dl=(typeof getDlistPtr==='function'?(getDlistPtr()&65535):(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535));var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;return 'DLIST $'+hx(dl,4)+' SAVMSC $'+hx(sav,4)+' NMIEN $'+hx((ram&&ram[0xD40E])||0,2);}catch(e){return 'status err';}}
+  function clean(txt,run){
+    txt=String(txt||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    var out=txt.split('\n').map(function(l){return String(l||'').replace(/[\t]+/g,' ').replace(/\s+$/,'');}).filter(function(l){return l.length>0;});
+    if(run) out.push('RUN');
+    return out;
+  }
+  function screenCode(ch){var c=String(ch||' ').charCodeAt(0)&255;if(c>=97&&c<=122)c-=32;if(c>=32&&c<=95)return (c-32)&255;return 0;}
+  function findEntryRow(){
+    try{
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535; if(!(sav>=0x9000&&sav<0xA800)) sav=0x9C40;
+      // Prefer current cursor row if it points to a plausible empty/input row. Otherwise use first empty row below READY.
+      var r=(ram[0x54]||0)&31; if(r>=2 && r<23) return r;
+      for(var y=2;y<22;y++){var non=0;for(var x=0;x<38;x++) if((ram[(sav+y*40+x)&65535]&127)!==0) non++; if(non===0) return y;}
+      return 20;
+    }catch(e){return 2;}
+  }
+  function writeLine(line){
+    try{
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535; if(!(sav>=0x9000&&sav<0xA800)) sav=0x9C40;
+      var row=findEntryRow(); var max=Math.min(39,String(line).length); var addr=(sav+row*40)&65535;
+      for(var i=0;i<40;i++) ram[(addr+i)&65535]=0;
+      for(var j=0;j<max;j++) ram[(addr+j)&65535]=screenCode(line.charAt(j));
+      ram[0x54]=row&255; ram[0x55]=max&255; ram[0x56]=0;
+      try{ram[0x0054]=row&255;ram[0x0055]=max&255;ram[0x0056]=0;}catch(e){}
+      fastInfo='SCREEN WRITE '+name+' line '+(idx+1)+'/'+lines.length+' row '+row+' col '+max+' text="'+String(line).slice(0,54)+'" '+status()+' frame '+fr();
+      return true;
+    }catch(e){fastInfo='SCREEN WRITE error '+(e&&e.message?e.message:e); return false;}
+  }
+  function pressReturn(){
+    try{
+      if(typeof armRealOsAtasciiFix172==='function') armRealOsAtasciiFix172('FIX246 RETURN',0x9B);
+      else if(typeof tapAtariKey==='function') tapAtariKey('ENTER',120);
+      else if(ram){ram[0x02FC]=0x0C;ram[0x02FB]=0x9B;ram[0xD209]=0x0C;}
+      returns++;
+      lastInfo='RETURN '+returns+' frame '+fr();
+    }catch(e){lastInfo='RETURN error '+(e&&e.message?e.message:e);}
+  }
+  function pump(){
+    try{
+      if(!active) return;
+      var f=fr(); if(f<nextFrame) return;
+      cancelOld('pump guard');
+      if(!ready()){fastInfo='WAIT READY '+name+' '+status()+' frame '+f; nextFrame=f+30; return;}
+      if(idx>=lines.length){active=false; cancelOld('complete'); fastInfo='QUEUE COMPLETE '+name+' lines '+lines.length+' chars '+totalChars+' writes '+wrote+' returns '+returns+' epoch '+epoch+' frame '+f; lastInfo=fastInfo; log246(fastInfo); try{updatePlayStatus('FIX246 FAST BASIC QUEUE COMPLETE.');}catch(e){} return;}
+      var ln=lines[idx]; if(writeLine(ln)){wrote++; pressReturn(); idx++; nextFrame=f+(ln==='RUN'?140:120);} else nextFrame=f+40;
+    }catch(e){fastInfo='PUMP error '+(e&&e.message?e.message:e);active=false;}
+  }
+  function queue(txt,nm,run,ev){
+    try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}
+    cancelOld('new request'); epoch++;
+    lines=clean(txt,!!run); idx=0; wrote=0; returns=0; totalChars=lines.join('\n').length; name=String(nm||'FAST BASIC'); active=lines.length>0; nextFrame=fr()+20;
+    if(!active){fastInfo='EMPTY '+name; return false;}
+    fastInfo='FAST BASIC QUEUE START '+name+' lines '+lines.length+' chars '+totalChars+' epoch '+epoch+' WAIT READY / SCREEN EDITOR SERVICE / REAL RETURN'; lastInfo=fastInfo; log246(fastInfo); try{updatePlayStatus('FIX246 FAST BASIC: WAIT READY, potom zapis radku do editoru + RETURN.');}catch(e){}
+    try{if(!playMode && typeof startPlaying==='function') startPlaying();}catch(e){}
+    return false;
+  }
+  window.basicTxtFastFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue(ta?ta.value:'','BASIC TXT FAST',false,ev);};
+  window.vlozitFastFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue(ta?ta.value:'','VLOZIT FAST',false,ev);};
+  window.vlozitFastRunFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue(ta?ta.value:'','VLOZIT FAST + RUN',true,ev);};
+  window.submarineFastFix240=function(ev){var prog=(typeof submarineBasicProgramFix207==='function')?submarineBasicProgramFix207():'10 PRINT "SUBMARINE"\n20 GOTO 20';return queue(prog,'SUBMARINE FAST',false,ev);};
+  try{var oldStep=CPU6502.prototype.step; CPU6502.prototype.step=function(){try{pump();}catch(e){} return oldStep.apply(this,arguments);};}catch(e){fastInfo='CPU pump install failed '+(e&&e.message?e.message:e);}
+
+  function selfWanted(){try{var mode=(typeof fix233Mode!=='undefined'?fix233Mode:(typeof fix232Mode!=='undefined'?fix232Mode:''));var dl=(typeof getDlistPtr==='function'?(getDlistPtr()&65535):(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535));return activeXexProfile==='realos' && String(mode).indexOf('self')>=0 && dl>=0x5000 && dl<=0x57ff;}catch(e){return false;}}
+  function selfRender(){
+    try{
+      if(!selfWanted()||!ram) return false;
+      var c=document.getElementById('video'); if(!c) return false; var g=c.getContext('2d'); var img=g.createImageData(320,240); var d=img.data;
+      var dl=(typeof getDlistPtr==='function'?(getDlistPtr()&65535):(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535));
+      var sdm=(ram[0x022F]||ram[0xD400]||0)&255, chb=(ram[0xD409]||ram[0x02F4]||0xE0)&255, prior=(ram[0xD01B]||ram[0x026F]||0)&255;
+      function col(v,fb){try{return rgbFromCss(atariColor(v&255));}catch(e){return fb;}}
+      var bg=col(ram[0xD01A]||ram[0x02C8]||0xA0,[0,0,0]), c1=col(ram[0xD016]||ram[0x02C4]||0x0C,[220,220,220]), c2=col(ram[0xD018]||ram[0x02C6]||0xD6,[120,210,90]);
+      function px(x,y,r){if(x<0||x>=320||y<0||y>=240)return;var o=(y*320+x)*4;d[o]=r[0];d[o+1]=r[1];d[o+2]=r[2];d[o+3]=255;}
+      for(var y=0;y<240;y++)for(var x=0;x<320;x++)px(x,y,bg);
+      var base=0x3000, non=0;
+      // Render actual RAM bytes around $3000 as 20-column 16px cells. Non-zero bytes become visible blocks.
+      for(var row=0;row<12;row++){
+        for(var cx=0;cx<20;cx++){
+          var b=ram[(base+row*20+cx)&65535]&255; if(!b) continue; non++;
+          var color=(b&1)?c1:c2; var x0=cx*16, y0=24+row*12;
+          for(var yy=0;yy<10;yy++)for(var xx=0;xx<14;xx++)px(x0+xx,y0+yy,color);
+        }
+      }
+      g.putImageData(img,0,0);
+      selfInfo='SELFTEST LIVE RAM DMA VIEW dl $'+hx(dl,4)+' SDMCTL $'+hx(sdm,2)+' CHBASE $'+hx(chb,2)+' PRIOR $'+hx(prior,2)+' base $3000 nonzero '+non+' frame '+fr();
+      return true;
+    }catch(e){selfInfo='SELFTEST render error '+(e&&e.message?e.message:e);return false;}
+  }
+  try{var oldRF=renderAnticDisplayFastGeneric; renderAnticDisplayFastGeneric=function(){if(selfRender())return true; return oldRF.apply(this,arguments);};}catch(e){}
+  try{var oldR=renderAnticDisplay; renderAnticDisplay=function(){if(selfRender())return; return oldR.apply(this,arguments);};}catch(e){}
+  try{var oldBasic=startPureHardwareBasicFix226; startPureHardwareBasicFix226=function(ev){cancelOld('POWER BASIC');stamp();return oldBasic(ev);};}catch(e){}
+  try{var oldSelf=startPureHardwareSelfTestFix226; startPureHardwareSelfTestFix226=function(ev){cancelOld('POWER SELFTEST');selfInfo='SELFTEST requested FIX246 frame '+fr();stamp();return oldSelf(ev);};}catch(e){}
+  try{var oldReset=resetPureHardwareFix226; resetPureHardwareFix226=function(ev){cancelOld('RESET');stamp();return oldReset(ev);};}catch(e){}
+
+  try{var oldName=makeLogFileName; makeLogFileName=function(reason){try{var d=new Date();function p(n){return (n<10?'0':'')+n;}var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos');var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,48);return 'atarihelp-FIX246-'+prof+'-'+(reason||'manual')+'-'+ts+'-'+nm+'.txt';}catch(e){return oldName(reason);}};}catch(e){}
+  try{var oldCompat=compatibilitySnapshot; compatibilitySnapshot=function(){log246('VERIFY BUILD STAMP CHECK');log246('VERIFY LOADED YES');log246('FAST '+fastInfo);log246('SELFTEST '+selfInfo);log246('UI '+uiInfo);log246('RULE HARD_LAST_SCRIPT_STAMP / OLD_FIX240_UI_OVERRIDDEN / CACHE_BUST_REQUIRED / FAST_SCREEN_EDITOR_SERVICE / SELFTEST_RAM_DMA_VIEW / NO_FAKE_READY_SELFTEST');return oldCompat.apply(this,arguments);};}catch(e){}
+  try{var oldSave=saveLogToFile; saveLogToFile=function(reason){try{log('BUILD '+TAG);log('FIX246 VERIFY BUILD STAMP CHECK');log('VERIFY LOADED YES');log('FAST '+fastInfo);log('SELFTEST '+selfInfo);log('UI '+uiInfo);log('RULE HARD_LAST_SCRIPT_STAMP / OLD_FIX240_UI_OVERRIDDEN / FAST_SCREEN_EDITOR_SERVICE / SELFTEST_RAM_DMA_VIEW / NO_FAKE_READY_SELFTEST');}catch(e){} return oldSave.apply(this,arguments);};}catch(e){}
+  log246('installed as final separate script after all older FIX blocks');
+})();
 </script>
+
 </body>
 </html>
