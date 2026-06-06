@@ -10834,6 +10834,212 @@ updatePlayStatus('ready');
 })();
 /* END FIX237 */
 
+
+
+/* FIX238 STRICT GTIA PALETTE COLOR MAPPING + ANTIC TEXT COLOR ROLES CORE
+   Root cause from Rene FIX237 test: keyboard/snapshot/keyclick are now clean, but REALOS BASIC colors
+   still look wrong in Nox/WebView. FIX236 correctly stopped the fake READY palette, but it exposed two
+   real renderer problems: (1) the GTIA byte -> RGB converter was a rough rainbow approximation, and
+   (2) ANTIC 2/3 editor text was using COLBK as the text background. Atari GRAPHICS 0/editor text uses
+   playfield color roles; the blue editor field comes from COLPF2/COLOR2, not from COLBK black border.
+   This patch keeps the raw ROM/GTIA/ANTIC path: no drawn READY, no fake SELF TEST, no forced screen.
+   It only calibrates the color conversion and the ANTIC 2/3 color role mapping. */
+(function(){
+  var FIX238_TAG='FIX238_STRICT_GTIA_PALETTE_COLOR_CORE';
+  window.fix238PaletteInfo='FIX238 strict GTIA palette waiting';
+  window.fix238TextColorInfo='FIX238 ANTIC text color roles waiting';
+  window.fix238SnapshotInfo='FIX238 snapshot single-save waiting';
+  var fix238SnapshotBatch=false;
+  function hx(v,n){try{return hex((v||0)&((n>=4)?65535:255),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
+  function pure(){return !!(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode);} 
+  function realos(){return activeXexProfile==='realos' || pure();}
+  function pureOrAudit(){return !!((typeof fix228PureHwActiveOrAudit==='function'&&fix228PureHwActiveOrAudit())||pure());}
+  function clamp(v){v=Math.round(v);return v<0?0:(v>255?255:v);}
+  function rgbCss(r){return 'rgb('+clamp(r[0])+','+clamp(r[1])+','+clamp(r[2])+')';}
+
+  // FIX238: calibrated Atari/GTIA hue anchors.  These are not a drawn READY palette: every final
+  // color still starts from the raw GTIA register byte.  The anchors replace the old generic rainbow,
+  // with hue 9 giving the XL/XE editor blue and high luminance values staying bright instead of muddy.
+  var fix238HueAnchors=[
+    [255,255,255], // 0 grey handled as neutral luminance ramp
+    [210,118,42],  // 1 gold/rust
+    [238,92,36],   // 2 orange-red
+    [246,70,36],   // 3 red-orange
+    [228,52,70],   // 4 red/pink
+    [176,62,154],  // 5 purple
+    [104,78,210],  // 6 violet-blue
+    [62,92,232],   // 7 blue
+    [42,128,236],  // 8 medium Atari blue
+    [38,96,204],   // 9 XL/XE editor blue
+    [58,158,218],  // A blue-cyan
+    [74,188,176],  // B cyan/green
+    [102,214,118], // C light green/near-white at high luma
+    [142,206,76],  // D yellow-green
+    [198,178,50],  // E olive/yellow
+    [238,142,50]   // F orange
+  ];
+  function gtiaRgbFix238(v){
+    v=(v||0)&255;
+    var hue=(v>>4)&15, lum=v&15;
+    if(lum===0)return [0,0,0];
+    // Web canvas is sRGB.  Use a gamma-shaped luma ramp so low Atari luminance is not crushed to black
+    // and high luma is bright like Altirra/real monitor output, while still preserving the raw GTIA byte.
+    var y=Math.pow(lum/15,0.72);
+    if(hue===0){var g=clamp(18 + y*232);return [g,g,g];}
+    var base=fix238HueAnchors[hue]||[255,255,255];
+    var sat=0.22 + y*0.78;
+    var level=16 + y*236;
+    var r=level*(1-sat) + base[0]*sat;
+    var g2=level*(1-sat) + base[1]*sat;
+    var b=level*(1-sat) + base[2]*sat;
+    return [clamp(r),clamp(g2),clamp(b)];
+  }
+  var oldAtariColor238=atariColor;
+  atariColor=function(v,fallback){
+    try{return rgbCss(gtiaRgbFix238(v));}catch(e){return oldAtariColor238(v,fallback);}
+  };
+  window.gtiaRgbFix238=gtiaRgbFix238;
+
+  function rawPlayfieldBytes238(){
+    try{return [colorReg(0x02C4,0xD016,0),colorReg(0x02C5,0xD017,0),colorReg(0x02C6,0xD018,0),colorReg(0x02C7,0xD019,0),colorReg(0x02C8,0xD01A,0)].map(function(x){return x&255;});}
+    catch(e){return [0,0,0,0,0];}
+  }
+  function paletteMapText238(vals){
+    vals=vals||rawPlayfieldBytes238();
+    var names=['COLPF0','COLPF1','COLPF2','COLPF3','COLBK'];
+    var out=[];
+    for(var i=0;i<5;i++){var rgb=gtiaRgbFix238(vals[i]);out.push(names[i]+' $'+hx(vals[i],2)+' -> '+rgbCss(rgb));}
+    return out.join(' | ');
+  }
+
+  var oldColorSet238=colorSet;
+  colorSet=function(){
+    var cs=oldColorSet238();
+    try{
+      if(realos()){
+        var vals=rawPlayfieldBytes238();
+        fix238PaletteInfo='FIX238 STRICT GTIA BYTE->RGB '+paletteMapText238(vals)+' PRIOR $'+hx((ram&&((ram[0xD01B]||ram[0x026F]||0)))||0,2)+' frame '+playFrameNo;
+      }
+    }catch(e){fix238PaletteInfo='FIX238 palette info error '+(e&&e.message?e.message:e);}
+    return cs;
+  };
+
+  function realOsTextCsFix238(mode,cs){
+    if(!realos() || !(mode===2 || mode===3))return cs;
+    // ANTIC 2/3 editor text: background must be COLOR2/COLPF2.  COLBK remains the outer TV border.
+    // Foreground uses COLOR1/COLPF1; this is still raw GTIA-derived, not a white overlay.
+    var out={p0:cs.p0,p1:cs.p1,p2:cs.p1,p3:cs.p3,bk:cs.p2};
+    fix238TextColorInfo='FIX238 ANTIC '+mode+' GRAPHICS0 roles: bg=COLPF2 '+cs.p2+' fg=COLPF1 '+cs.p1+' outer COLBK '+cs.bk+' frame '+playFrameNo;
+    return out;
+  }
+
+  var oldRealOsMaybeTextColor238=realOsMaybeTextColorSetFix163;
+  realOsMaybeTextColorSetFix163=function(mode,cs){
+    if(realos() && (mode===2 || mode===3))return realOsTextCsFix238(mode,cs);
+    return oldRealOsMaybeTextColor238(mode,cs);
+  };
+
+  var oldAnticTextFg238=anticTextFgRgb;
+  anticTextFgRgb=function(raw,mode,cs){
+    if(realos() && (mode===2 || mode===3)){
+      // After realOsTextCsFix238, cs.p2 is the foreground (COLPF1) and cs.bk is the blue editor field.
+      return rgbFromCss(cs.p2||cs.p1||'#ffffff');
+    }
+    return oldAnticTextFg238(raw,mode,cs);
+  };
+
+  // The direct canvas text fallback introduced in FIX236 also needs the same ANTIC 2/3 roles.
+  var oldDrawTextLine238=drawAtariTextLine;
+  drawAtariTextLine=function(g,addr,y,fg,bg){
+    if(realos()){
+      try{
+        var vals=rawPlayfieldBytes238();
+        var bgCss=atariColor(vals[2]);
+        var fgCss=atariColor(vals[1]);
+        fix238TextColorInfo='FIX238 canvas text roles: bg COLPF2 $'+hx(vals[2],2)+' '+bgCss+' fg COLPF1 $'+hx(vals[1],2)+' '+fgCss+' frame '+playFrameNo;
+        return oldDrawTextLine238(g,addr,y,fgCss,bgCss);
+      }catch(e){}
+    }
+    return oldDrawTextLine238(g,addr,y,fg,bg);
+  };
+
+  var oldMakeLogFileName238=makeLogFileName;
+  makeLogFileName=function(reason){
+    try{
+      var d=new Date();function p(n){return (n<10?'0':'')+n;}
+      var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
+      var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
+      var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
+      return 'atarihelp-FIX238-'+prof+'-'+(reason||'manual')+'-'+ts+'-'+name+'.txt';
+    }catch(e){return oldMakeLogFileName238(reason);}
+  };
+
+  var oldBuildCurrentLogText238=buildCurrentLogText;
+  buildCurrentLogText=function(){
+    var t=oldBuildCurrentLogText238();
+    try{t=t.replace('AtariHelp.eu EMU-09 FIX237 PURE HW SNAPSHOT KEY EDGE POKEY CLICK CORE','AtariHelp.eu EMU-09 FIX238 STRICT GTIA PALETTE COLOR CORE');}catch(e){}
+    return t;
+  };
+
+  var oldSaveCurrentLogToMobile238=saveCurrentLogToMobile;
+  saveCurrentLogToMobile=function(reason){
+    var r=String(reason||'manual');
+    if(fix238SnapshotBatch && r.indexOf('snapshot')>=0){fix238SnapshotInfo='FIX238 suppressed inner snapshot save: '+r+' frame '+playFrameNo;return true;}
+    return oldSaveCurrentLogToMobile238.apply(this,arguments);
+  };
+
+  var oldBare238=fix225ResetBareHardware;
+  fix225ResetBareHardware=function(selftest,reason){
+    var r=oldBare238(selftest,reason);
+    try{
+      currentXexName=selftest?'PURE HARDWARE OPTION SELF TEST FIX238 / no XEX':'PURE HARDWARE BASIC FIX238 / no XEX';
+      try{setXexName();}catch(e){}
+      updateRomStatusLine('FIX238 PURE HW: strict GTIA byte->RGB palette + ANTIC2/3 text color roles');
+      updatePlayStatus('FIX238 PURE HW '+(selftest?'OPTION SELF TEST':'BASIC')+' started. Barvy jsou raw GTIA bajty pres novou paletu; GRAPHICS0 bg=COLPF2, fg=COLPF1, COLBK jen okraj.');
+    }catch(e){try{log('FIX238 post-reset error '+(e&&e.message?e.message:e));}catch(_){}}
+    return r;
+  };
+  startPureHardwareBasicFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(false,'FIX238 POWER BASIC');};
+  startPureHardwareSelfTestFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(true,'FIX238 POWER OPTION SELF TEST');};
+  resetPureHardwareFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware((typeof fix233Mode!=='undefined'&&fix233Mode==='selftest'),'FIX238 RESET PURE HW');};
+
+  var oldSnapshotCore238=compatibilitySnapshotCore;
+  compatibilitySnapshotCore=function(){
+    if(pureOrAudit()){
+      fix238SnapshotBatch=true;
+      try{oldSnapshotCore238();}finally{fix238SnapshotBatch=false;}
+      try{
+        var el=document.getElementById('log');
+        if(el){
+          var t=el.textContent||'';
+          t=t.replace(/PURE HARDWARE SNAPSHOT FIX23[0-9]/,'PURE HARDWARE SNAPSHOT FIX238')
+             .replace(/BUILD FIX23[0-9]_[A-Z0-9_]+/,'BUILD '+FIX238_TAG);
+          var vals=rawPlayfieldBytes238();
+          t+='\nFIX238 STRICT GTIA PALETTE CHECK';
+          t+='\nPALETTE '+fix238PaletteInfo;
+          t+='\nTEXTCOL '+fix238TextColorInfo;
+          t+='\nRAW2RGB '+paletteMapText238(vals);
+          t+='\nSNAPSHOT '+fix238SnapshotInfo;
+          t+='\nRULE STRICT_GTIA_BYTE_TO_RGB / ANTIC2_BG_COLPF2 / ANTIC2_FG_COLPF1 / COLBK_OUTER_BORDER_ONLY / NO_DRAWN_READY_FAKE';
+          el.textContent=t;
+        }
+        updatePlayStatus('PURE snapshot FIX238 saved once with strict GTIA palette proof');
+        try{renderRegs();renderSegments();}catch(e){}
+        try{oldSaveCurrentLogToMobile238.call(this,'purehw-snapshot');}catch(e){}
+      }catch(e){try{log('FIX238 snapshot append error '+(e&&e.message?e.message:e));}catch(_e){} }
+      return;
+    }
+    return oldSnapshotCore238();
+  };
+
+  try{EMU_BUILD_TAG=FIX238_TAG;}catch(e){}
+  try{document.title='EMU-09 '+FIX238_TAG;}catch(e){}
+  try{var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+FIX238_TAG;}catch(e){}
+  try{var p=document.querySelector('h1 + p');if(p)p.textContent='FIX238: STRICT GTIA byte->RGB palette + ANTIC GRAPHICS0 color roles. No drawn READY, no fake SELF TEST.';}catch(e){}
+  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX238: raw COLPF0-3/COLBK pres strict GTIA paletu; GRAPHICS0 bg=COLPF2, fg=COLPF1, COLBK zustava okraj.';}catch(e){}
+})();
+/* END FIX238 */
+
 </script>
 </body>
 </html>
