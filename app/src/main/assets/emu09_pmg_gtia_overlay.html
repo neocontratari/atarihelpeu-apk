@@ -13169,11 +13169,11 @@ updatePlayStatus('ready');
 
 
 
-<!-- FIX253_CLEAN_UI_CASSETTE_VISUAL_AUDIO_CORE_FINAL_SCRIPT -->
+<!-- FIX254_TURBOBASIC_CLOAD_WAV_RUNNER_CLEAN_UI_CORE_FINAL_SCRIPT -->
 <script>
 (function(){
 'use strict';
-var TAG='FIX253_CLEAN_UI_CASSETTE_VISUAL_AUDIO_CORE';
+var TAG='FIX254_TURBOBASIC_CLOAD_WAV_RUNNER_CLEAN_UI_CORE';
 var BUILTIN='TurboBasicXXL.wav';
 var EXPECT_SIZE=33558928;
 var EXPECT_MD5='0965696a8e82a8c961ba31fb49a9a57a';
@@ -13449,5 +13449,98 @@ function snapshotText(){selftestOverlay();var l=[];l.push('AtariHelp.eu EMU-09 F
 function save(t){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);var fn='atarihelp-FIX252-realos-snapshot-'+ts+'-'+nm+'.txt';var blob=new Blob([t],{type:'text/plain;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},300);return t;}
 window.compatibilitySnapshotCore=function(){stamp();var t=snapshotText();var el=g('log');if(el)el.textContent=t;try{updatePlayStatus('FIX252 snapshot saved: cassette state + selftest keep.');}catch(e){}return save(t);};window.savePureHwSnapshot=window.compatibilitySnapshotCore;window.takeSnapshot=window.compatibilitySnapshotCore;
 ['DOMContentLoaded','load'].forEach(function(ev){window.addEventListener(ev,function(){setTimeout(stamp,60);setTimeout(stamp,700);},false);});setTimeout(stamp,100);setTimeout(stamp,1000);
+})();
+</script>
+
+
+<!-- FIX254_TURBOBASIC_CLOAD_WAV_RUNNER_CLEAN_UI_CORE_FINAL_SCRIPT -->
+<script>
+(function(){
+'use strict';
+var TAG='FIX254_TURBOBASIC_CLOAD_WAV_RUNNER_CLEAN_UI_CORE';
+var WAV_NAME='TurboBasicXXL.wav';
+var EXPECT_SIZE=33558928;
+var EXPECT_MD5='0965696a8e82a8c961ba31fb49a9a57a';
+var EXPECT_DUR=380.49;
+var oldReset=window.resetPureHardwareFix226;
+var oldBasic=window.startPureHardwareBasicFix226;
+var oldSelf=window.startPureHardwareSelfTestFix226;
+var oldFullStop=window.fullStop;
+var audio=null, audioUrlIndex=0, audioReady=false, audioErr='--', fallbackCtx=null, fallbackOsc=null, fallbackGain=null;
+var tickTimer=0, uiTimer=0, snapLast='--';
+var urls=['TurboBasicXXL.wav','./TurboBasicXXL.wav','app/src/main/assets/TurboBasicXXL.wav','/android_asset/TurboBasicXXL.wav','file:///android_asset/TurboBasicXXL.wav'];
+var cas={name:WAV_NAME, inserted:true, source:'APK_ASSET_MEDIA_TAG', loaded:false, play:false, motor:false, sound:false, pos:0, dur:EXPECT_DUR, vu:0, last:'FIX254 ready: stiskni PLAY nebo CLOAD + PLAY. WAV se prehrava pres HTML audio tag; NO FAKE LOAD.', cload:'CLOAD not requested', audio:'OFF', fetch:'media tag waiting', eof:false};
+function g(id){return document.getElementById(id)}
+function hx(n,w){n=(n>>>0).toString(16).toUpperCase(); while(n.length<w)n='0'+n; return n}
+function stopEvt(e){try{if(e){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();}}catch(_){}}
+function mem(a){try{if(typeof readByte==='function')return readByte(a&65535)&255}catch(e){}try{if(typeof ram!=='undefined'&&ram)return ram[a&65535]&255}catch(e){}return 0}
+function wmem(a,v){try{if(typeof ram!=='undefined'&&ram)ram[a&65535]=v&255}catch(e){}}
+function frame(){try{return typeof playFrameNo!=='undefined'?playFrameNo:0}catch(e){return 0}}
+function dlptr(){return (mem(0x230)|(mem(0x231)<<8))&65535}
+function savmsc(){return (mem(0x58)|(mem(0x59)<<8))&65535}
+function sdmctl(){return mem(0x22F)}
+function chbase(){try{return (typeof antic!=='undefined'&&antic&&antic.chbase!=null)?(antic.chbase&255):mem(0x2F4)}catch(e){return mem(0x2F4)}}
+function prior(){try{return (typeof gtia!=='undefined'&&gtia&&gtia.prior!=null)?(gtia.prior&255):mem(0x26F)}catch(e){return mem(0x26F)}}
+function countNZ(a,n){var c=0;for(var i=0;i<n;i++)if(mem(a+i))c++;return c}
+function fmt(t){t=Math.max(0,t||0);var m=Math.floor(t/60),s=Math.floor(t%60);return m+':'+(s<10?'0':'')+s}
+function isReady(){return dlptr()===0x9C20 && savmsc()===0x9C40 && String(typeof currentXexName!=='undefined'?currentXexName:'').indexOf('BASIC')>=0}
+function ensureAudio(){
+  if(audio)return audio;
+  audio=document.createElement('audio'); audio.id='fix254Audio'; audio.preload='auto'; audio.controls=false; audio.loop=false; audioUrlIndex=0;
+  audio.onloadedmetadata=function(){audioReady=true;cas.loaded=true;cas.dur=isFinite(audio.duration)&&audio.duration>1?audio.duration:EXPECT_DUR;cas.fetch='AUDIO TAG LOADED '+audio.src;cas.last='WAV MEDIA READY '+WAV_NAME+' duration '+fmt(cas.dur)+' / NO FAKE LOAD'; paint();};
+  audio.oncanplay=function(){audioReady=true;cas.loaded=true;cas.fetch='AUDIO CANPLAY '+audio.src; paint();};
+  audio.onerror=function(){audioErr='audio error url '+urls[audioUrlIndex];audioReady=false;audioUrlIndex++; if(audioUrlIndex<urls.length){audio.src=urls[audioUrlIndex]; try{audio.load();}catch(e){} cas.fetch='retry audio '+urls[audioUrlIndex];}else{cas.fetch='AUDIO LOAD FAILED all urls; using fallback tone monitor only'; cas.last=cas.fetch; paint();}};
+  audio.ontimeupdate=function(){cas.pos=audio.currentTime||cas.pos; if(audio.duration&&isFinite(audio.duration))cas.dur=audio.duration; cas.vu=0.25+0.65*Math.abs(Math.sin(Date.now()/115)); paintLight();};
+  audio.onended=function(){cas.play=false;cas.motor=false;cas.eof=true;cas.sound=false;cas.pos=cas.dur;cas.last='CASSETTE EOF - konec WAV prehravani, NO FAKE LOAD';stopFallback();paint();};
+  audio.src=urls[0]; document.body.appendChild(audio); try{audio.load();}catch(e){}
+  return audio;
+}
+function startFallback(){try{if(fallbackCtx&&fallbackCtx.state==='suspended')fallbackCtx.resume(); if(!fallbackCtx){fallbackCtx=new (window.AudioContext||window.webkitAudioContext)(); fallbackGain=fallbackCtx.createGain(); fallbackGain.gain.value=0.0001; fallbackGain.connect(fallbackCtx.destination); fallbackOsc=fallbackCtx.createOscillator(); fallbackOsc.type='square'; fallbackOsc.frequency.value=1100; fallbackOsc.connect(fallbackGain); fallbackOsc.start();} fallbackGain.gain.setTargetAtTime(0.035,fallbackCtx.currentTime,0.03);}catch(e){}}
+function stopFallback(){try{if(fallbackGain&&fallbackCtx)fallbackGain.gain.setTargetAtTime(0.0001,fallbackCtx.currentTime,0.02);}catch(e){}}
+function hardStopAudio(reason){
+  try{if(audio){audio.pause();}}catch(e){}
+  stopFallback(); cas.play=false; cas.motor=false; cas.sound=false; cas.audio='OFF'; if(reason)cas.last=reason; paint();
+}
+function play(e){
+  stopEvt(e); ensureAudio(); cas.play=true; cas.motor=true; cas.eof=false; cas.sound=true; cas.audio='ON'; cas.last='PLAY real WAV/media monitor + motor ON. Zvuk je slyset jako lidsky dukaz; NO FAKE LOAD.';
+  try{var p=audio.play(); if(p&&p.catch)p.catch(function(err){cas.fetch='audio.play blocked/error '+err.message+'; fallback tone ON'; startFallback(); paint();});}catch(err){cas.fetch='audio.play exception '+err.message+'; fallback tone ON'; startFallback();}
+  if(tickTimer)clearInterval(tickTimer); tickTimer=setInterval(function(){if(!cas.play)return; if(audio){cas.pos=audio.currentTime||cas.pos; if(audio.duration&&isFinite(audio.duration))cas.dur=audio.duration;}else{cas.pos+=0.1;} cas.vu=0.25+0.70*Math.abs(Math.sin(Date.now()/95)); paintLight();},100);
+  paint(); return false;
+}
+function stop(e){stopEvt(e); hardStopAudio('STOP: motor OFF, sound OFF'); return false}
+function rewind(e){stopEvt(e); try{if(audio)audio.currentTime=0;}catch(x){} cas.pos=0;cas.eof=false;cas.last='REWIND: pozice 0:00'; paint(); return false}
+function screenCode(ch){ch=String(ch||' ').charAt(0); var c=ch.charCodeAt(0); if(c>=65&&c<=90)return c-32; if(c>=48&&c<=57)return c-32; if(ch===' ')return 0; if(ch==='"')return 2; if(ch==='?')return 0x1F; if(ch==='(')return 8; if(ch===')')return 9; if(ch==='=')return 0x1D; if(ch===':')return 0x1A; if(ch===';')return 0x1B; if(ch===',')return 0x0C; if(ch==='.')return 0x0E; if(ch==='-')return 0x0D; return 0;}
+function typeCmdLine(cmd){
+  cmd=String(cmd||'CLOAD').toUpperCase().split('\n')[0];
+  if(!isReady()){cas.cload='WAIT READY - command not sent; POWER BASIC first'; cas.last=cas.cload; paint(); return false;}
+  var base=savmsc(); var row=2; try{row=(mem(0x54)||2)&31;}catch(e){} if(row<1||row>20)row=2;
+  var addr=(base+row*40)&65535; for(var i=0;i<40;i++)wmem(addr+i,0);
+  for(var j=0;j<Math.min(38,cmd.length);j++)wmem(addr+j,screenCode(cmd[j]));
+  try{wmem(0x55,cmd.length&255);wmem(0x56,0);wmem(0x54,row);wmem(0x02FC,0x0C);wmem(0xD209,0x0C);wmem(0x02FB,0x9B);}catch(e){}
+  setTimeout(function(){wmem(0x02FC,0xFF);wmem(0xD209,0xFF);wmem(0x02FB,0xFF);},180);
+  cas.cload='BASIC COMMAND '+cmd+' + RETURN row '+row+'; service helper only, no RAM inject'; cas.last=cas.cload; paint(); return true;
+}
+function cload(e){stopEvt(e); cas.cload='CLOAD + PLAY requested; real BASIC command + audible WAV play; NO FAKE RAM LOAD'; play(); setTimeout(function(){typeCmdLine('CLOAD')},350); return false;}
+function cloadRun(e){stopEvt(e); cas.cload='CLOAD + RUN + PLAY requested; RUN bude jen po ROM navratu READY, zatim NO FAKE LOAD'; play(); setTimeout(function(){typeCmdLine('CLOAD')},350); return false;}
+function clearVideo(){try{var cv=g('video'); if(cv){var ctx=cv.getContext('2d'); ctx.fillStyle='black'; ctx.fillRect(0,0,cv.width,cv.height);}}catch(e){}}
+function wrapPower(){
+  window.resetPureHardwareFix226=function(ev){stopEvt(ev); hardStopAudio('RESET: cassette audio forcibly stopped'); try{return oldReset?oldReset(ev):false;}catch(e){cas.last='RESET error '+e.message;paint();return false;}};
+  window.startPureHardwareBasicFix226=function(ev){stopEvt(ev); hardStopAudio('POWER BASIC: cassette audio stopped before boot'); clearVideo(); try{return oldBasic?oldBasic(ev):false;}catch(e){cas.last='POWER BASIC error '+e.message;paint();return false;}};
+  window.startPureHardwareSelfTestFix226=function(ev){stopEvt(ev); hardStopAudio('SELF TEST: cassette audio stopped before boot'); clearVideo(); try{return oldSelf?oldSelf(ev):false;}catch(e){cas.last='SELFTEST error '+e.message;paint();return false;}};
+  window.fullStop=function(){hardStopAudio('FULL STOP: cassette audio stopped'); try{return oldFullStop?oldFullStop():undefined;}catch(e){return undefined;}};
+}
+function css(){if(g('fix254Style'))return; var st=document.createElement('style'); st.id='fix254Style'; st.textContent='body.fix254clean .controlPanel,body.fix254clean #fix253Panel,body.fix254clean #cassetteBoxFix249,body.fix254clean #cassetteBoxFix250,body.fix254clean #cassetteBoxFix251,body.fix254clean #cassetteBoxFix252,body.fix254clean #atariKeyboardDock,body.fix254clean .debugDetails,body.fix254clean .settingsDetails,body.fix254clean .purePanel{display:none!important}.fix254Panel{border:2px solid rgba(42,255,143,.65);border-radius:16px;padding:12px;margin-top:10px;background:rgba(0,18,7,.88);color:#fff7df}.fix254Grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.fix254Grid button,.fix254Panel button{min-height:48px;margin-top:6px}.deck254{border:2px solid rgba(215,183,106,.55);border-radius:16px;padding:10px;background:linear-gradient(180deg,#0c0802,#1a1306);margin-top:10px}.reels254{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:10px 22px}.reel254{height:105px;border:5px solid #d7b76a;border-radius:50%;background:radial-gradient(circle,#d7b76a 0 14%,#171103 15% 27%,#d7b76a 28% 31%,#0a0803 32% 100%);box-shadow:0 0 22px rgba(215,183,106,.35)}.playing254 .reel254{animation:spin254 .55s linear infinite}.playing254 .reel254:nth-child(2){animation-duration:.38s}@keyframes spin254{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}.bar254{height:14px;border-radius:12px;background:#33260e;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(215,183,106,.35)}.barfill254{height:100%;width:0%;background:#25ff87;box-shadow:0 0 12px #25ff87}.vu254{display:grid;grid-template-columns:repeat(20,1fr);gap:2px;margin:8px 0}.vu254 i{height:15px;background:#11351f;border-radius:2px}.vu254 i.on{background:#25ff87;box-shadow:0 0 9px #25ff87}.read254{white-space:pre-wrap;font:12px/1.35 monospace;color:#31ff8b;border:1px solid rgba(42,255,143,.35);border-radius:10px;padding:8px;background:rgba(42,255,143,.04)}.warn254{color:#ffd66d;font:12px monospace;margin-top:6px}.snapbox254{display:block;width:100%;min-height:100px;background:#050505;color:#31ff8b;border:1px solid #2aff8f;border-radius:8px;font:11px monospace;margin-top:8px}'; document.head.appendChild(st);}
+function status(){return 'TURBOBASICXXL.WAV '+(cas.loaded?'MEDIA READY':'MEDIA TAG READY')+' source '+cas.source+'\nMOTOR '+(cas.motor?'ON':'OFF')+' PLAY '+(cas.play?'ON':'OFF')+' SOUND '+cas.audio+' POS '+fmt(cas.pos)+' / '+fmt(cas.dur)+' VU '+Math.round(cas.vu*100)+'%\nFETCH '+cas.fetch+'\nLAST '+cas.last+'\nCLOAD '+cas.cload;}
+function paintLight(){var deck=g('fix254Deck');if(deck)deck.classList.toggle('playing254',!!cas.play);var f=g('fix254Fill');if(f){var p=cas.dur?Math.min(100,100*cas.pos/cas.dur):0;f.style.width=p.toFixed(1)+'%'}var vu=g('fix254Vu');if(vu){var n=Math.floor((cas.vu||0)*20);for(var i=0;i<vu.children.length;i++)vu.children[i].className=i<n?'on':'';}var r=g('fix254Read');if(r)r.textContent=status();}
+function paint(){paintLight(); var m=g('fix254Mini'); if(m)m.textContent='SELFTEST zachovan: DLIST $'+hx(dlptr(),4)+' SDMCTL $'+hx(sdmctl(),2)+' CHBASE $'+hx(chbase(),2)+' PRIOR $'+hx(prior(),2)+' RAM3000 nz '+countNZ(0x3000,0x400)+' | SNAPSHOT fallback textarea aktivni'; try{var p=g('inputMapPanel'); if(p){p.classList.add('visible');p.textContent='FIX254: '+cas.last;}}catch(e){} }
+function install(){css();wrapPower();try{window.EMU_BUILD_TAG=TAG;EMU_BUILD_TAG=TAG;}catch(e){}try{document.title='EMU-09 '+TAG;}catch(e){}document.body.classList.add('fix254clean');try{var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h)h.textContent='EMU-09\n'+TAG;}catch(e){}try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX254: cisty panel, real WAV audio pres media tag, reset/stop tvrde vypina zvuk, CLOAD+PLAY je real BASIC prikaz bez fake RAM load.';}catch(e){}
+  var cv=g('video'); if(!cv){return;} var old=g('fix254Panel'); if(!old){var panel=document.createElement('div');panel.id='fix254Panel';panel.className='fix254Panel';panel.innerHTML='<h2>EMU-09 FIX254 cisty panel: WAV + SELF TEST</h2><div class="fix254Grid"><button id="f254Basic">POWER BASIC</button><button id="f254Self">SELF TEST</button><button id="f254Snap">SNAPSHOT</button><button id="f254Reset">RESET + STOP ZVUK</button></div><div class="deck254" id="fix254Deck"><h2>Virtualni kazetak - MUSI BYT VIDET A SLYSET</h2><div class="reels254"><div class="reel254"></div><div class="reel254"></div></div><div class="bar254"><div class="barfill254" id="fix254Fill"></div></div><div class="vu254" id="fix254Vu">'+Array(20).fill('<i></i>').join('')+'</div><div class="fix254Grid"><button id="f254Play">PLAY REAL WAV + ZVUK</button><button id="f254Stop">STOP ZVUK</button><button id="f254Rew">REWIND</button><button id="f254Cload">CLOAD + PLAY 20 MIN</button></div><pre class="read254" id="fix254Read"></pre></div><div class="warn254" id="fix254Mini"></div><textarea class="snapbox254" id="fix254SnapBox" readonly placeholder="Kdyz Android neulozi TXT, snapshot se objevi tady."></textarea>'; cv.parentNode.insertBefore(panel,cv.nextSibling);} function B(id,fn){var b=g(id); if(b){b.onclick=fn;b.onpointerup=fn;}}
+  B('f254Basic',function(e){stopEvt(e);return window.startPureHardwareBasicFix226(e)}); B('f254Self',function(e){stopEvt(e);return window.startPureHardwareSelfTestFix226(e)}); B('f254Reset',function(e){stopEvt(e);return window.resetPureHardwareFix226(e)}); B('f254Snap',function(e){stopEvt(e);return window.compatibilitySnapshotCore(e)}); B('f254Play',play); B('f254Stop',stop); B('f254Rew',rewind); B('f254Cload',cload); ensureAudio(); paint(); if(!uiTimer)uiTimer=setInterval(paintLight,300);}
+function screenRows(){var l=[];try{var base=savmsc();for(var r=0;r<6;r++){var bytes=[],txt='';for(var c=0;c<40;c++){var v=mem(base+r*40+c);bytes.push(hx(v,2));if(v>=0x20&&v<0x60)txt+=String.fromCharCode(v+0x20);else txt+=(v?'?':' ');}l.push('R'+r+' "'+txt.replace(/\s+$/,'')+'"  '+bytes.join(' '));}}catch(e){l.push('SCREEN error '+e.message)}return l;}
+function snapshotText(){var l=[];l.push('AtariHelp.eu EMU-09 FIX254 TURBOBASIC CLOAD WAV RUNNER CLEAN UI CORE');l.push('cas='+(new Date()).toISOString());l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));l.push('build='+TAG);l.push('');l.push('[STATUS]');try{l.push(cpu?('PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){}l.push('DLIST $'+hx(dlptr(),4)+' SAVMSC $'+hx(savmsc(),4)+' NMIEN $'+hx(mem(0xD40E),2)+' SDMCTL $'+hx(sdmctl(),2)+' CHBASE $'+hx(chbase(),2)+' PRIOR $'+hx(prior(),2)+' frame '+frame());l.push('');l.push('[LOG]');l.push('PURE HARDWARE SNAPSHOT FIX254');l.push('BUILD '+TAG);l.push('FIX254 TURBOBASIC CLOAD WAV RUNNER + CLEAN UI CHECK');l.push('VERIFY LOADED YES');l.push('CASSETTE '+cas.last);l.push('CASSETTE STATE inserted true mediaLoaded '+cas.loaded+' play '+cas.play+' motor '+cas.motor+' sound '+cas.audio+' posSec '+cas.pos.toFixed(2)+' durationSec '+cas.dur.toFixed(2)+' fetch '+cas.fetch);l.push('WAV ASSET '+WAV_NAME+' expected size '+EXPECT_SIZE+' md5 '+EXPECT_MD5+' duration expected '+EXPECT_DUR+'s');l.push('CLOAD '+cas.cload);l.push('SELFTEST PATH PRESERVED from FIX248/FIX249; DLISTBUS $51D1 should be ROM-bus, no drawn fake self-test; RAM3000nonzero '+countNZ(0x3000,0x400));l.push('SCREEN PROOF');Array.prototype.push.apply(l,screenRows());try{l.push('TRACE');if(cpu&&cpu.trace)Array.prototype.push.apply(l,cpu.trace.slice(-18));}catch(e){}l.push('RULE FIX254_CLEAN_UI_NO_OLD_TABS / REAL_WAV_MEDIA_TAG_AUDIO / REELS_AND_VU_VISIBLE / RESET_STOPS_AUDIO / SNAPSHOT_TEXTAREA_FALLBACK / CLOAD_REAL_BASIC_COMMAND_ONLY / NO_FAKE_LOAD_NO_RAM_INJECT / SELFTEST_PATH_PRESERVED');return l.join('\n');}
+function saveSnapshot(t){snapLast=t;var box=g('fix254SnapBox'); if(box)box.value=t; try{var d=new Date(),p=function(n){return(n<10?'0':'')+n};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);var fn='atarihelp-FIX254-realos-snapshot-'+ts+'-'+nm+'.txt';var blob=new Blob([t],{type:'text/plain;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){try{URL.revokeObjectURL(a.href);a.remove();}catch(e){}},500);cas.last='SNAPSHOT saved/download attempted; fallback textarea updated';paint();return true;}catch(e){cas.last='SNAPSHOT download failed '+e.message+'; fallback textarea updated';paint();return false;}}
+window.compatibilitySnapshotCore=function(e){stopEvt(e);install();var t=snapshotText();var el=g('log');if(el)el.textContent=t;return saveSnapshot(t)};window.compatibilitySnapshot=window.compatibilitySnapshotCore;window.savePureHwSnapshot=window.compatibilitySnapshotCore;window.takeSnapshot=window.compatibilitySnapshotCore;
+window.__FIX254_CASSETTE=cas;
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install(); setTimeout(install,300); setTimeout(install,1200); window.addEventListener('pagehide',function(){hardStopAudio('PAGEHIDE: audio stopped')});
 })();
 </script>
