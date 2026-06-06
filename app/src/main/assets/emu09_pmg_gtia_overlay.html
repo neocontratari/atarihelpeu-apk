@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX233_PURE_HW_REAL_PORTB_NMI_CORE / vlastní XEX</title>
+<title>EMU-09 FIX234_PURE_HW_RAM_POKEY_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,7 +36,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX233_PURE_HW_REAL_PORTB_NMI_CORE</h1>
+<h1>EMU-09 FIX234_PURE_HW_RAM_POKEY_CORE</h1>
 <p>FIX229: PURE HARDWARE PIA/CPU I/O rez. D301/D303 uz jdou pres PIA DDR/PBCTL, BASIC nesmi padat do selftest/smeti kvuli spatnemu PORTB.</p>
 </div>
 </div>
@@ -793,7 +793,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX233_PURE_HW_REAL_PORTB_NMI_CORE";
+var EMU_BUILD_TAG="FIX234_PURE_HW_RAM_POKEY_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -9536,7 +9536,7 @@ updatePlayStatus('ready');
    No drawn READY, no drawn SELFTEST, no XEX fallback. This fixes the real root seen in FIX228:
    CPU writes to $D301/$D303 were still using the old direct PORTB path, so BASIC/SELFTEST mapping was wrong. */
 (function(){
-  var FIX229_TAG='FIX233_PURE_HW_REAL_PORTB_NMI_CORE';
+  var FIX229_TAG='FIX234_PURE_HW_RAM_POKEY_CORE';
   function pure(){return !!(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode);}
   function hx(v,n){try{return hex(v&((1<<(Math.min(n,4)*4))-1),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
   function fix229PokeyIdleDefaults(){
@@ -9644,7 +9644,7 @@ updatePlayStatus('ready');
    cold BASIC must see internal BASIC ROM until the OS explicitly changes PORTB DATA, and ANTIC/DLIST
    inspection must read through the same bus as CPU instead of raw RAM[] only. */
 (function(){
-  var FIX230_TAG='FIX233_PURE_HW_REAL_PORTB_NMI_CORE';
+  var FIX230_TAG='FIX234_PURE_HW_RAM_POKEY_CORE';
   var fix230ColdBasicWindow=false;
   var fix230ColdSelftestWindow=false;
   var fix230PortbDataWritten=false;
@@ -9866,7 +9866,7 @@ updatePlayStatus('ready');
    - SELFTEST: OPTION low, BASIC ROM hidden, SELFTEST ROM visible.
    Snapshot remains isolated: no XEX loader, no built-in game fallback. */
 (function(){
-  var FIX232_TAG='FIX233_PURE_HW_REAL_PORTB_NMI_CORE';
+  var FIX232_TAG='FIX234_PURE_HW_RAM_POKEY_CORE';
   window.fix232Mode='audit';
   window.fix232BootInfo='FIX232 waiting';
   window.fix232ConsoleInfo='FIX232 console waiting';
@@ -10022,7 +10022,7 @@ updatePlayStatus('ready');
    jumping to $5003 during BASIC boot, so the window must be controlled by real PIA effective PORTB,
    not by a BASIC/selftest label. Also, VBI/DLI must only be raised when NMIEN enables the bit. */
 (function(){
-  var FIX233_TAG='FIX233_PURE_HW_REAL_PORTB_NMI_CORE';
+  var FIX233_TAG='FIX234_PURE_HW_RAM_POKEY_CORE';
   window.fix233Mode='audit';
   window.fix233PortbDataWritten=false;
   window.fix233PendingNmi=0;
@@ -10158,6 +10158,99 @@ updatePlayStatus('ready');
   try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX233: real PORTB $5000 gate + NMIEN-gated NMI. ROM audit obsahuje nove co*.rom.';}catch(e){}
 })();
 /* END FIX233 */
+
+
+
+/* FIX234 PURE HARDWARE RAM + POKEY REGISTER SPLIT CORE
+   Root cause from FIX233: BASIC and SELFTEST still entered $532A-$533D because the XL OS RAM probe
+   failed before editor init. The emulator was not giving the OS plain RAM below $D000: OS shadow reads
+   like $0278/$0284/$02FC were still joystick/keyboard helpers. The RAM test writes/reads $0008-$05FF,
+   so those helpers make real RAM look bad and the OS intentionally jumps into self-test. Also POKEY
+   read/write registers were mirrored incorrectly: writing SKCTL $D20F made SKSTAT read $03. */
+(function(){
+  var FIX234_TAG='FIX234_PURE_HW_RAM_POKEY_CORE';
+  window.fix234RamInfo='FIX234 RAM/plain-bus waiting';
+  window.fix234PokeyInfo='FIX234 POKEY split waiting';
+  window.fix234IrqInfo='FIX234 IRQST idle waiting';
+  var fix234Skctl=0x00, fix234Irqen=0x00, fix234Irqst=0xFF, fix234Kbcode=0xFF, fix234Skstat=0xFF;
+  function pure(){return !!(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode);} 
+  function hx(v,n){try{return hex((v||0)&((n>=4)?65535:255),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
+  function rawRam(a){a&=65535;try{return cpuMemRead(ram,a)&255;}catch(e){return ram?ram[a]&255:0;}}
+  function resetPokeySplit(reason){
+    fix234Skctl=0x00; fix234Irqen=0x00; fix234Irqst=0xFF; fix234Kbcode=0xFF; fix234Skstat=0xFF;
+    if(ram){ram[0xD209]=fix234Kbcode;ram[0xD20E]=fix234Irqst;ram[0xD20F]=fix234Skstat;ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;}
+    fix234PokeyInfo='FIX234 POKEY split reset '+(reason||'')+' KBCODE read $FF SKSTAT read $FF IRQST read $FF; SKCTL/IRQEN writes separate';
+  }
+  var oldR234=CPU6502.prototype.r;
+  CPU6502.prototype.r=function(a){
+    a&=65535;
+    if(pure()){
+      // ROM windows first. Everything below $D000 that is not ROM is plain RAM.
+      // This removes joystick/keyboard shadow helpers from the OS RAM test range $0008-$05FF.
+      if(a<0xD000){
+        var rb=-1; try{rb=optionalRomByteAt(a);}catch(e){rb=-1;}
+        if(rb>=0)return rb&255;
+        return rawRam(a);
+      }
+      // PIA/GTIA/ANTIC hardware stay hardware.
+      if(a===0xD209){fix234PokeyInfo='FIX234 KBCODE read idle $FF PC $'+hx(this.pc,4)+' frame '+playFrameNo;return fix234Kbcode&255;}
+      if(a===0xD20E){fix234IrqInfo='FIX234 IRQST read $'+hx(fix234Irqst,2)+' IRQEN $'+hx(fix234Irqen,2)+' PC $'+hx(this.pc,4)+' frame '+playFrameNo;return fix234Irqst&255;}
+      if(a===0xD20F){fix234PokeyInfo='FIX234 SKSTAT read $'+hx(fix234Skstat,2)+' SKCTL $'+hx(fix234Skctl,2)+' PC $'+hx(this.pc,4)+' frame '+playFrameNo;return fix234Skstat&255;}
+    }
+    return oldR234.call(this,a);
+  };
+  var oldW234=CPU6502.prototype.w;
+  CPU6502.prototype.w=function(a,v){
+    a&=65535;v&=255;
+    if(pure()){
+      // Write-only POKEY controls are not the same value read back from status registers.
+      if(a===0xD20E){fix234Irqen=v; if(writeSeen)writeSeen[a]=1; if(ram)ram[a]=fix234Irqst; fix234IrqInfo='FIX234 IRQEN write $'+hx(v,2)+' IRQST read remains $'+hx(fix234Irqst,2)+' PC $'+hx(this.pc,4)+' frame '+playFrameNo; return;}
+      if(a===0xD20F){fix234Skctl=v; if(writeSeen)writeSeen[a]=1; if(ram)ram[a]=fix234Skstat; fix234PokeyInfo='FIX234 SKCTL write $'+hx(v,2)+' SKSTAT read remains $'+hx(fix234Skstat,2)+' PC $'+hx(this.pc,4)+' frame '+playFrameNo; return;}
+      if(a===0xD209){if(writeSeen)writeSeen[a]=1; if(ram)ram[a]=fix234Kbcode; fix234PokeyInfo='FIX234 ignored write to read-only KBCODE $'+hx(v,2)+' PC $'+hx(this.pc,4); return;}
+    }
+    return oldW234.call(this,a,v);
+  };
+  var oldBare234=fix225ResetBareHardware;
+  fix225ResetBareHardware=function(selftest,reason){
+    var r=oldBare234(selftest,reason);
+    try{resetPokeySplit(reason||'power');fix234RamInfo='FIX234 PURE RAM bus active: $0000-$CFFF RAM reads are plain RAM unless ROM window is selected; OS shadow helpers disabled in PURE HW.';}catch(e){}
+    return r;
+  };
+  var oldAudit234=runPureHardwareAuditFix226;
+  runPureHardwareAuditFix226=function(ev){
+    try{resetPokeySplit('audit');fix234RamInfo='FIX234 audit: pure RAM bus shadow helpers disabled for RAM test';}catch(e){}
+    return oldAudit234(ev);
+  };
+  var oldSnap234=compatibilitySnapshotCore;
+  compatibilitySnapshotCore=function(){
+    if((typeof fix228PureHwActiveOrAudit==='function'&&fix228PureHwActiveOrAudit())||pure()){
+      // Let the latest pure snapshot build its normal lines, then append the two critical root-cause checks.
+      oldSnap234();
+      try{
+        var el=document.getElementById('log');
+        if(el){
+          var add=[];
+          add.push('FIX234 ROOT CHECK');
+          add.push('RAM TEST BUS: OS shadow addresses are raw RAM in PURE HW: $0278=$'+hx(rawRam(0x0278),2)+' $0284=$'+hx(rawRam(0x0284),2)+' $02FC=$'+hx(rawRam(0x02FC),2));
+          add.push('POKEY SPLIT: KBCODE read $'+hx(fix234Kbcode,2)+' SKSTAT read $'+hx(fix234Skstat,2)+' SKCTL write-latch $'+hx(fix234Skctl,2)+' IRQST read $'+hx(fix234Irqst,2)+' IRQEN write-latch $'+hx(fix234Irqen,2));
+          add.push('RAMINFO '+fix234RamInfo);
+          add.push('POKEYINFO '+fix234PokeyInfo);
+          add.push('IRQINFO '+fix234IrqInfo);
+          el.textContent=(el.textContent||'').replace('PURE HARDWARE SNAPSHOT FIX233','PURE HARDWARE SNAPSHOT FIX234').replace('BUILD FIX233_PURE_HW_REAL_PORTB_NMI_CORE','BUILD '+FIX234_TAG)+'\n'+add.join('\n');
+        }
+        updatePlayStatus('PURE snapshot FIX234 saved without XEX loader');
+        try{saveCurrentLogToMobile('purehw-snapshot');}catch(e){}
+      }catch(e){}
+      return;
+    }
+    return oldSnap234();
+  };
+  try{document.title='EMU-09 '+FIX234_TAG;}catch(e){}
+  try{var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+FIX234_TAG;}catch(e){}
+  try{var p=document.querySelector('h1 + p');if(p)p.textContent='FIX234: PURE HW RAM bus + POKEY read/write split. OS RAM test vidi skutecnou RAM; SKSTAT/KBCODE nejsou CH/joystick helpery.';}catch(e){}
+  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX234: odstranen fake shadow RAM pri OS RAM testu + POKEY SKCTL/SKSTAT split.';}catch(e){}
+})();
+/* END FIX234 */
 
 </script>
 </body>
