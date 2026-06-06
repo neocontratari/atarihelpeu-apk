@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX212_REALROM_CHARSET_TEXT_CORE / vlastní XEX</title>
+<title>EMU-09 FIX213_SELFTEST_ROM_BOOT_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX212_REALROM_CHARSET_TEXT_CORE</h1>
-<p>FIX212 zachovava rychly CH/KBCODE loader a opravuje ANTIC 6/7 text: kdyz REAL OS/BASIC necha CHBASE=$00/$E0, renderer bere skutecny font z vlozene ATARIXL.ROM, ne synteticke tecky.</p>
+<h1>EMU-09 FIX213_SELFTEST_ROM_BOOT_CORE</h1>
+<p>FIX213 pridava poctivy ROM SELF TEST: OPTION cold boot + self-test ROM window $5000-$57FF z ATARIXL.ROM. Rychly CH/KBCODE loader zustava.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -102,7 +102,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX212: rychly CH/KBCODE loader zustava; ANTIC 6/7 bere font z realne ATARIXL.ROM, CHBASE=$00/$E0 uz neni synteticky teckovy font.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX213: ROM SELF TEST overi ATARIXL.ROM pres OPTION cold boot a self-test ROM mapovani $5000-$57FF.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -112,13 +112,15 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX212: FAST BASIC + realny OS font z ATARIXL.ROM pro ANTIC 6/7; cisty XEX loader bez BASIC ROM direct.</p>
+<p class="tinyhint">FIX213: ROM SELF TEST + BYE SELFTEST; FAST BASIC zustava rychly.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="promptAtariName()">⌨️ ZADAT JMÉNO</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
 <button class="secondary compact" onclick="pickBasicTxtFileFix171()">📄 BASIC TXT FAST</button>
 <button class="secondary compact" onclick="promptBasicPasteFix171()">📋 VLOZIT FAST</button>
 <button id="submarineBtnFix209" class="secondary compact" onclick="return queueSubmarineBasicTestFix208(event)">🚢 SUBMARINE FAST</button>
+<button id="selfTestBtnFix213" class="secondary compact" onclick="return startRomSelfTestFix213(event)">🧪 ROM SELF TEST</button>
+<button class="secondary compact" onclick="return queueByeSelfTestFix213(event)">BYE SELFTEST</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(9)">GTIA 9 VERIFY</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(10)">GTIA 10 VERIFY</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(11)">GTIA 11 VERIFY</button>
@@ -268,6 +270,11 @@ var fix211ChLatchInfo='FIX211 CH latch clear waiting';
 var fix211ChLatchClearUntil=-999;
 var fix211Antic6TextInfo='FIX211 ANTIC 6/7 textmode waiting';
 var fix212RomCharsetInfo='FIX212 real ROM charset waiting';
+var fix213SelfTestInfo='FIX213 SELFTEST waiting';
+var fix213SelfTestMapInfo='FIX213 SELFTEST ROM MAP waiting';
+var fix213SelfTestBootActive=false;
+var fix213SelfTestBootStart=-999;
+var fix213SelfTestRomReads=0;
 var fix208BasicAutofeedQueue=[];
 var fix208BasicAutofeedActive=false;
 var fix208BasicAutofeedName='';
@@ -783,7 +790,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX212_REALROM_CHARSET_TEXT_CORE";
+var EMU_BUILD_TAG="FIX213_SELFTEST_ROM_BOOT_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1350,6 +1357,23 @@ function isMiniOsRomAddr(a){
 }
 function isHardwareIoTrapAddr(a){a&=65535;return a>=0xD000 && a<=0xD7FF;}
 function isBasicRomAddr(a){a&=65535;return a>=0xA000 && a<=0xBFFF;}
+function fix213SelfTestRomMappedForAddr(a){
+ a&=65535;
+ // FIX213: XL/XE self-test ROM window.  On real XL/XE the self-test image is exposed in the $5000-$57FF window when the self-test ROM select is enabled.
+ // The bytes come from the $D000-$D7FF part of the 16KB ATARIXL.ROM image, i.e. offset $1000 in the ROM file.
+ return !!(optionalOsRom && optionalOsRom.length>=0x1800 && a>=0x5000 && a<=0x57FF && (fix213SelfTestBootActive || ((portbValue&0x80)===0)));
+}
+function fix213SelfTestRomByteAt(a){
+ a&=65535;
+ if(!fix213SelfTestRomMappedForAddr(a))return -1;
+ var off=0x1000+(a-0x5000);
+ if(off<0 || off>=optionalOsRom.length)return -1;
+ optionalRomReads++; fix213SelfTestRomReads++;
+ if((fix213SelfTestRomReads&127)===1){
+   fix213SelfTestMapInfo='FIX213 SELFTEST ROM MAP active $5000-$57FF -> ATARIXL.ROM off $1000, read '+fix213SelfTestRomReads+' last $'+hex(a,4)+' byte $'+hex(optionalOsRom[off]&255,2)+' PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo;
+ }
+ return optionalOsRom[off]&255;
+}
 function optionalOsRomActiveForAddr(a){ a&=65535; return !!(fix124OsRomEnabledForProfile() && optionalOsRom && optionalOsRom.length>=16384 && ((a>=0xC000 && a<=0xCFFF) || (a>=0xD800 && a<=0xFFFF))); }
 function optionalBasicRomActiveForAddr(a){ a&=65535; return !!(fix124BasicRomEnabledForProfile() && optionalBasicRom && optionalBasicRom.length===8192 && isBasicRomAddr(a)); }
 function shouldStubCpuRomEntry(a){
@@ -1360,6 +1384,7 @@ function shouldStubCpuRomEntry(a){
 }
 function optionalRomByteAt(a){
  a&=65535;
+ var st=fix213SelfTestRomByteAt(a); if(st>=0)return st;
  if(optionalBasicRomActiveForAddr(a))return optionalBasicRom[a-0xA000]&255;
  if(optionalOsRomActiveForAddr(a)){
    var off=a-0xC000;
@@ -1371,7 +1396,7 @@ function optionalRomByteAt(a){
  }
  return -1;
 }
-function optionalRomWriteBlocked(a){a&=65535;return optionalBasicRomActiveForAddr(a) || optionalOsRomActiveForAddr(a);}
+function optionalRomWriteBlocked(a){a&=65535;return fix213SelfTestRomMappedForAddr(a) || optionalBasicRomActiveForAddr(a) || optionalOsRomActiveForAddr(a);}
 function updateRomStatusLine(extra){
  var rn=document.getElementById('romName');
  if(!rn)return;
@@ -3045,7 +3070,7 @@ function loadXex(light){
  fix195NativeXexInfo=(fix195NativeXexInfo||'FIX197 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM probe ON resetVector $C2AA';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX212-REALROM-CHARSET-TEXT-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX213-SELFTEST-ROM-BOOT-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -3481,6 +3506,9 @@ CPU6502.prototype.w=function(a,v){
  if(a===0xD301){
    if(portbValue!==(v&255))xeBankSwitches++;
    portbValue=v&255;
+   if(((portbValue&0x80)===0) || fix213SelfTestBootActive){
+     fix213SelfTestMapInfo='FIX213 SELFTEST ROM MAP '+(((portbValue&0x80)===0)?'PORTB bit7 low':'explicit boot')+' $5000-$57FF enabled PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo;
+   }
    if(writeSeen)writeSeen[a]=1;
    this.m[a]=v;
    return;
@@ -6101,6 +6129,7 @@ function fix152EnterNoXexProbe(kind){
 
 
 function resetToBasicReadyFix194(reason){
+ fix213SelfTestBootActive=false;
  // Generic Atari-style front panel RESET for EMU-09:
  // - in REALOS/BASIC: warm reset, BASIC RAM preserved (LIST should survive)
  // - in any XEX/game: leave the game and boot REAL OS BASIC READY cleanly
@@ -6152,6 +6181,7 @@ function warmResetRealOsBasicFix171(){
 // CPU startuje přes reset vector z ATARIXL.ROM; BASIC ROM je mapovaná na $A000-$BFFF.
 function startRealOsBasicBootFix157(mode){
   endGtiaDirectTestFix183('cold/basic boot');
+  fix213SelfTestBootActive=false;
   mode=(mode==='option')?'option':'basic';
   fullStop();
   clearManagedTimers();
@@ -6191,6 +6221,47 @@ function startRealOsBasicBootFix157(mode){
 }
 
 function startRealOsBasicBootFix154(){return startRealOsBasicBootFix157('basic');}
+
+function startRomSelfTestFix213(ev){
+ if(ev&&ev.preventDefault)ev.preventDefault();
+ ensureBuiltinAtariRomImages();
+ fix213SelfTestBootActive=true;
+ fix213SelfTestRomReads=0;
+ fix213SelfTestBootStart=0;
+ fix213SelfTestMapInfo='FIX213 SELFTEST ROM MAP arming: OPTION cold boot, $5000-$57FF -> ATARIXL.ROM off $1000';
+ try{log('FIX213 SELFTEST BUTTON CLICK: OPTION cold boot requested');}catch(e){}
+ startRealOsBasicBootFix157('option');
+ try{
+   input.start=false; input.select=false; input.option=true;
+   fix213SelfTestBootActive=true; fix213SelfTestBootStart=playFrameNo||0;
+   portbValue=0x7F; if(ram){ram[0xD301]=portbValue; ram[0xD01F]=0x03;}
+   var reset=((optionalRomByteAt(0xFFFC)&255)|((optionalRomByteAt(0xFFFD)&255)<<8))&65535;
+   var nmi=((optionalRomByteAt(0xFFFA)&255)|((optionalRomByteAt(0xFFFB)&255)<<8))&65535;
+   var irq=((optionalRomByteAt(0xFFFE)&255)|((optionalRomByteAt(0xFFFF)&255)<<8))&65535;
+   currentXexName='REAL ATARI XL/XE ROM SELF TEST FIX213 / OPTION cold boot';
+   fix157RealOsMode='selftest';
+   fix213SelfTestInfo='FIX213 SELFTEST OPTION BOOT active: reset $'+hex(reset,4)+' nmi $'+hex(nmi,4)+' irq $'+hex(irq,4)+' OPTION held, PORTB $'+hex(portbValue,2)+' frame '+playFrameNo;
+   fix213SelfTestMapInfo='FIX213 SELFTEST ROM MAP active $5000-$57FF -> ATARIXL.ROM off $1000 PORTB $'+hex(portbValue,2)+' frame '+playFrameNo;
+   updatePlayStatus('FIX213 ROM SELF TEST: OPTION cold boot bezi. Jestli je ROM mapa spravne, ma se ukazat Atari SELF TEST menu, ne Submarine/duha.');
+   log('FIX213 SELFTEST OPTION BOOT: '+fix213SelfTestInfo);
+   log('FIX213 SELFTEST ROM MAP: '+fix213SelfTestMapInfo);
+   setTimeout(function(){try{input.option=false;syncInputShadows();fix213SelfTestInfo+=' / OPTION released frame '+playFrameNo;log('FIX213 SELFTEST OPTION RELEASE frame '+playFrameNo);}catch(e){}},6500);
+   syncInputShadows();renderInput();renderRegs();renderVideo();
+ }catch(e){fix213SelfTestInfo='FIX213 SELFTEST start error '+(e&&e.stack?e.stack:e);try{log(fix213SelfTestInfo);}catch(_){}}
+ return false;
+}
+
+function queueByeSelfTestFix213(ev){
+ if(ev&&ev.preventDefault)ev.preventDefault();
+ fix213SelfTestBootActive=true;
+ fix213SelfTestRomReads=0;
+ fix213SelfTestInfo='FIX213 BYE SELFTEST requested: BASIC direct command BYE should enter OS self-test if BASIC/ROM path is healthy frame '+playFrameNo;
+ fix213SelfTestMapInfo='FIX213 SELFTEST ROM MAP armed for BYE: $5000-$57FF -> ATARIXL.ROM off $1000';
+ try{log('FIX213 BYE SELFTEST CLICK: queue BYE through fast CH path');}catch(e){}
+ updatePlayStatus('FIX213 BYE SELFTEST: posilam prikaz BYE pres rychly CH loader. Kdyz BASIC a ROM sedi, musi nabehnout SELF TEST.');
+ return queueBasicProgramTextFastFix208('BYE','BYE SELFTEST FIX213');
+}
+
 // FIX181: dočasný interaktivní Atari READY/MEMO PAD probe.
 // Není to ještě plný OS boot přes všechny PIA/POKEY/ANTIC inicializace; je to oddělený režim,
 // který používá vložené ROM bajty pro audit vektorů a dovolí živě psát do modré Atari obrazovky.
@@ -8307,8 +8378,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX212 REALROM CHARSET TEXT CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX212, bezi stary APK/ZIP nebo stary label.");
+lines.push("COMPAT SNAPSHOT FIX213 SELFTEST ROM BOOT CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX213, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -8330,6 +8401,8 @@ lines.push("FIX211 FAST BASIC: "+(fix210FastBasicInfo||"--"));
 lines.push("FIX211 CH LATCH CLEAR: "+(fix211ChLatchInfo||"--"));
 lines.push("FIX211 ANTIC 6/7 TEXTMODE: "+(fix211Antic6TextInfo||"--"));
 lines.push("FIX212 ROM CHARSET: "+(fix212RomCharsetInfo||"--"));
+lines.push("FIX213 SELFTEST: "+(fix213SelfTestInfo||"--"));
+lines.push("FIX213 SELFTEST ROM MAP: "+(fix213SelfTestMapInfo||"--")+" reads="+(fix213SelfTestRomReads||0)+" active="+(fix213SelfTestBootActive?"YES":"NO")+" PORTB=$"+hex(portbValue||0,2));
 lines.push("FIX211 REALOS TEXT COLORS: "+(fix210RealOsTextColorInfo||"--"));
 lines.push("SUBMARINE BASIC CODE FIX210: "+(fix207SubmarineCode||"--"));
 lines.push("GTIA REGMAP FIX205: "+(fix204GtiaRegMapInfo||"--"));
@@ -8440,7 +8513,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX212: CH FAST BASIC loader + real ATARIXL.ROM charset for ANTIC 6/7; HW/SDLST DLIST first.");
+updatePlayStatus("Emulator bezi. FIX213: SELF TEST ROM button + BYE SELFTEST; CH FAST BASIC loader zustava.");
  if(!playLoopId)playLoop();
 }
 
