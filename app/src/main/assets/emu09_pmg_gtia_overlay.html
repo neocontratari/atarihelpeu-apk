@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX208_SUBMARINE_FAST_BASIC_QUEUE_CORE / vlastní XEX</title>
+<title>EMU-09 FIX209_SUBMARINE_CH_AUTOPASTE_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX208_SUBMARINE_FAST_BASIC_QUEUE_CORE</h1>
-<p>FIX208 navazuje na real-ROM stream loader a FIX208 SUBMARINE BASIC test, ale rusi pomale psani radku. BASIC zdroj se predava primo pres rychlou ATASCII frontu do REAL OS BASIC vstupu podle toho, jak si interpreter vyzada dalsi znak. Cilem je bez cekani overit BASIC/GRAPHICS 17/SOUND a pritom zustat v real OS/BASIC ceste.</p>
+<h1>EMU-09 FIX209_SUBMARINE_CH_AUTOPASTE_CORE</h1>
+<p>FIX209 opravuje tlacitko SUBMARINE a meni fast loader: nejde pres slepy timer ani pres OS vector, ale pres realne cteni CH/KBCODE/SKSTAT. BASIC dostane dalsi znak teprve kdyz si o klavesnici sam rekne. Cilem je rychle nahrat BASIC test bez petiminutoveho psani a bez rucniho prepisovani.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX208 pouziva cisty XEX segment loader v DOS-like stream rezimu: segmenty se kopiruji postupne, mezilehle INITAD se spousti behem loadu, zbyvajici INITAD pred hlavnim RUNAD/ENTRY. BASIC direct zustava OFF, OS ROM probe zustava sluzba, ne fake obraz. Obraz se porad bere ze skutecneho ANTIC/HW/SDLST DLISTu; RAM scan nema prednost. CAS/WAV pilot zustava vypnuty.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX209 pouziva cisty XEX segment loader v DOS-like stream rezimu: segmenty se kopiruji postupne, mezilehle INITAD se spousti behem loadu, zbyvajici INITAD pred hlavnim RUNAD/ENTRY. BASIC direct zustava OFF, OS ROM probe zustava sluzba, ne fake obraz. Obraz se porad bere ze skutecneho ANTIC/HW/SDLST DLISTu; RAM scan nema prednost. CAS/WAV pilot zustava vypnuty.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -102,7 +102,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX208: SUBMARINE BASIC se uz neposila pomalym psanim. Zdroj se krmi primo do REAL OS BASIC klavesoveho vstupu podle poptavky interpreteru.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX209: SUBMARINE BASIC se vklada pres CH/KBCODE autopaste. Tlacitko musi okamzite zapsat log/status a BASIC si bere znaky podle skutecnych cteni klavesnice.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -118,7 +118,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
 <button class="secondary compact" onclick="pickBasicTxtFileFix171()">📄 BASIC TXT</button>
 <button class="secondary compact" onclick="promptBasicPasteFix171()">📋 VLOZIT PROGRAM</button>
-<button class="secondary compact" onclick="queueSubmarineBasicTestFix208()">🚢 SUBMARINE FAST BASIC</button>
+<button id="submarineBtnFix209" class="secondary compact" onclick="return queueSubmarineBasicTestFix208(event)">🚢 SUBMARINE CH AUTOLOAD</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(9)">GTIA 9 VERIFY</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(10)">GTIA 10 VERIFY</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(11)">GTIA 11 VERIFY</button>
@@ -255,12 +255,13 @@ var fix196OsKernelEnabled=false;
 var fix197PurgeInfo='FIX198 hardware purge waiting';
 var fix198RamDlistInfo='FIX198 RAM DLIST SCAN waiting';
 var fix199DlistTrustInfo='FIX199 HW DLIST TRUST waiting';
-var fix200CasWavInfo='FIX208 CAS/WAV pilot disabled: focus is clean real-ROM XEX stream loader, not WAV yet';
-var fix206RealRomAuditInfo='FIX208 user ROMs embedded: XL md5 06daac977823773a3eea3422fd26a703 OSB md5 a3e8d617c95d08031fe1b20d541434b2 BASIC md5 0bac0c6a50104045d902df4503a4c30b; REVA/REVB/REVC assets included for audit';
-var fix206StreamLoaderInfo='FIX208 stream INIT loader default ON: XEX segments copied in file order, middle INITAD runs during load, remaining INITAD runs before RUNAD/ENTRY';
-var fix207SubmarineInfo='FIX208 SUBMARINE BASIC fast queue waiting: corrected House Book code, no slow paste';
+var fix200CasWavInfo='FIX209 CAS/WAV pilot disabled: current focus is BASIC/keyboard loader and clean XEX stream loader';
+var fix206RealRomAuditInfo='FIX209 user ROMs embedded: XL md5 06daac977823773a3eea3422fd26a703 OSB md5 a3e8d617c95d08031fe1b20d541434b2 BASIC md5 0bac0c6a50104045d902df4503a4c30b; REVA/REVB/REVC assets included for audit';
+var fix206StreamLoaderInfo='FIX209 stream INIT loader default ON: XEX segments copied in file order, middle INITAD runs during load, remaining INITAD runs before RUNAD/ENTRY';
+var fix207SubmarineInfo='FIX209 SUBMARINE CH autopaste waiting: corrected House Book code, no slow paste';
 var fix207SubmarineCode='--';
-var fix208SubmarineFastInfo='FIX208 fast BASIC queue waiting';
+var fix208SubmarineFastInfo='FIX209 CH autopaste waiting';
+var fix209ChAutopasteInfo='FIX209 CH autopaste waiting';
 var fix208BasicAutofeedQueue=[];
 var fix208BasicAutofeedActive=false;
 var fix208BasicAutofeedName='';
@@ -384,7 +385,7 @@ function ensureBuiltinAtariRomImages(){
    optionalOsRom=decodeB64(builtinAtariOsRomB64);       // FIX208: Rene znovu dodal ATARIXL.ROM 16384 bytes md5 06daac977823773a3eea3422fd26a703
    optionalOsbRom=decodeB64(builtinAtariOsbRomB64);     // FIX208: Rene znovu dodal ATARIOSB.ROM 10240 bytes md5 a3e8d617c95d08031fe1b20d541434b2
    optionalBasicRom=decodeB64(builtinAtariBasicRomB64); // FIX208: Rene znovu dodal ATARIBAS.ROM 8192 bytes md5 0bac0c6a50104045d902df4503a4c30b
-   optionalRomInfo='ROM AUDIT FIX208: user ROMs embedded ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703 / ATARIOSB 10240 md5 a3e8d617c95d08031fe1b20d541434b2 / ATARIBAS 8192 md5 0bac0c6a50104045d902df4503a4c30b';
+   optionalRomInfo='ROM AUDIT FIX209: user ROMs embedded ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703 / ATARIOSB 10240 md5 a3e8d617c95d08031fe1b20d541434b2 / ATARIBAS 8192 md5 0bac0c6a50104045d902df4503a4c30b';
    builtinRomImagesReady=true;
  }catch(e){
    optionalRomInfo='ROM AUDIT FIX181 decode chyba: '+(e&&e.message?e.message:e);
@@ -776,7 +777,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX208_SUBMARINE_FAST_BASIC_QUEUE_CORE";
+var EMU_BUILD_TAG="FIX209_SUBMARINE_CH_AUTOPASTE_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1147,7 +1148,7 @@ function makeLogFileName(reason){
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX208 SUBMARINE FAST BASIC QUEUE CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX209 SUBMARINE CH AUTOPASTE CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -2336,7 +2337,7 @@ function queueSubmarineBasicTestFix207(){
  var prog=submarineBasicProgramFix207();
  fix207SubmarineCode=prog.replace(/\n/g,' | ');
  fix207SubmarineInfo='FIX208 queued SUBMARINE BASIC fixed: PAUSE removed at lines 195/1050, delay loops 900/920, INT around RND POKE/SOUND, lines '+prog.split('\n').length+' frame '+playFrameNo;
- try{log('SUBMARINE BASIC TEST FIX208: '+fix207SubmarineInfo);log('SUBMARINE BASIC CODE FIX208: '+fix207SubmarineCode);}catch(e){}
+ try{log('SUBMARINE BASIC TEST FIX209: '+fix207SubmarineInfo);log('SUBMARINE BASIC CODE FIX209: '+fix207SubmarineCode);}catch(e){}
  updatePlayStatus('FIX208 SUBMARINE BASIC TEST: posilam opraveny House Book kod bez PAUSE. Pockej, az se dopise a spusti.');
  return queueBasicProgramTextFix171(prog,'SUBMARINE BASIC FIX208');
 }
@@ -2350,9 +2351,38 @@ function fix208CleanBasicProgramLines(txt){
  }
  return cleaned;
 }
+function fix209FastFeedPeekAtascii(){
+ if(fix208BasicAutofeedActive && fix208BasicAutofeedQueue && fix208BasicAutofeedQueue.length){return fix208BasicAutofeedQueue[0]&255;}
+ return 0xFF;
+}
+function fix209FastFeedPeekKey(){
+ var a=fix209FastFeedPeekAtascii();
+ if(a===0xFF)return 0xFF;
+ try{return realOsKeycodeForAtasciiFix172(a)&255;}catch(e){return 0xFF;}
+}
+function fix209FastFeedPopKey(cpuRef,where){
+ if(!(fix208BasicAutofeedActive && fix208BasicAutofeedQueue && fix208BasicAutofeedQueue.length))return 0xFF;
+ var out=fix208BasicAutofeedQueue.shift()&255;
+ var ch=realOsKeycodeForAtasciiFix172(out)&255;
+ if(cpuRef && cpuRef.m){cpuRef.m[0x02FC]=ch&255;cpuRef.m[0x02FB]=out&255;}
+ realOsAtasciiLast=out&255; realOsKeyLast=ch&255; realOsKeyStamp=Date.now();
+ if(!fix208BasicAutofeedQueue.length){
+   fix208BasicAutofeedActive=false;
+   fix208SubmarineFastInfo='FIX209 CH autopaste COMPLETE '+fix208BasicAutofeedName+' chars '+fix208BasicAutofeedTotal+' frame '+playFrameNo+' via '+(where||'CH');
+   fix209ChAutopasteInfo=fix208SubmarineFastInfo;
+   fix190PasteInfo=fix208SubmarineFastInfo;
+   try{log('FIX209 CH AUTOPASTE COMPLETE: '+fix208SubmarineFastInfo);}catch(e){}
+   try{genericRenderEvery=1;fastVideo=true;}catch(e){}
+ }else if((fix208BasicAutofeedQueue.length&127)===0 || playFrameNo-fix208BasicAutofeedLast>60){
+   fix208BasicAutofeedLast=playFrameNo;
+   fix208SubmarineFastInfo='FIX209 CH autopaste feeding '+fix208BasicAutofeedName+' left '+fix208BasicAutofeedQueue.length+'/'+fix208BasicAutofeedTotal+' frame '+playFrameNo+' via '+(where||'CH');
+   fix209ChAutopasteInfo=fix208SubmarineFastInfo;
+ }
+ return ch&255;
+}
 function queueBasicProgramTextFastFix208(txt,name){
  var cleaned=fix208CleanBasicProgramLines(txt);
- if(!cleaned.length){log('FIX208 FAST BASIC: prazdny text');return false;}
+ if(!cleaned.length){log('FIX209 CH AUTOPASTE: prazdny text');return false;}
  var source=cleaned.join('\n')+'\n';
  var q=[];
  for(var i=0;i<source.length;i++){
@@ -2360,7 +2390,7 @@ function queueBasicProgramTextFastFix208(txt,name){
    if(ch==='\n')a=0x9B;
    else a=realOsAtasciiForKeyFix172(ch);
    if(a!==0xFF)q.push(a&255);
-   else fix172KeyboardMapInfo='FIX208 fast skipped unsupported char "'+ch+'" frame '+playFrameNo;
+   else fix172KeyboardMapInfo='FIX209 skipped unsupported char "'+ch+'" frame '+playFrameNo;
  }
  function armFastQueue(){
    try{if(atariKeyTimer){clearTimeout(atariKeyTimer);atariKeyTimer=0;}}catch(e){}
@@ -2371,28 +2401,34 @@ function queueBasicProgramTextFastFix208(txt,name){
    fix208BasicAutofeedName=String(name||'FAST BASIC');
    fix208BasicAutofeedTotal=q.length;
    fix208BasicAutofeedLast=playFrameNo;
-   // Give BASIC more CPU while feeding source.  This is loader/input speed only, not a renderer/game hack.
-   playCyclesPerFrame=7600; playMaxMsPerFrame=10; genericRenderEvery=6; fastVideo=true;
-   fix171KeyboardInfo='FIX208 FAST BASIC queued '+cleaned.length+' lines / '+q.length+' ATASCII chars from '+fix208BasicAutofeedName+' frame '+playFrameNo;
-   fix190PasteInfo='FIX208 FAST BASIC direct ATASCII queue: no timed paste, chars consumed by REAL OS/BASIC keyboard vector on demand; lines '+cleaned.length+' chars '+q.length+' frame '+playFrameNo;
-   fix208SubmarineFastInfo='FIX208 armed '+fix208BasicAutofeedName+' lines '+cleaned.length+' chars '+q.length+' frame '+playFrameNo;
-   log('FIX208 FAST BASIC QUEUE: '+fix208SubmarineFastInfo+' first="'+cleaned[0].slice(0,48)+'"');
-   updatePlayStatus('FIX208 FAST BASIC: kod neni psany pomalu. Je ve fronte a BASIC si ho bere sam pres ATASCII vstup. Pockej jen na start programu.');
+   playCyclesPerFrame=9000; playMaxMsPerFrame=12; genericRenderEvery=4; fastVideo=true;
+   fix171KeyboardInfo='FIX209 CH AUTOPASTE armed '+cleaned.length+' lines / '+q.length+' ATASCII chars from '+fix208BasicAutofeedName+' frame '+playFrameNo;
+   fix190PasteInfo='FIX209 CH AUTOPASTE: no timed paste; SKSTAT/KBCODE/CH feed chars only when BASIC reads keyboard; lines '+cleaned.length+' chars '+q.length+' frame '+playFrameNo;
+   fix208SubmarineFastInfo='FIX209 armed '+fix208BasicAutofeedName+' lines '+cleaned.length+' chars '+q.length+' frame '+playFrameNo;
+   fix209ChAutopasteInfo=fix208SubmarineFastInfo;
+   log('FIX209 CH AUTOPASTE ARM: '+fix208SubmarineFastInfo+' first="'+cleaned[0].slice(0,48)+'"');
+   updatePlayStatus('FIX209 SUBMARINE: tlacitko funguje, kod je ve fronte CH/KBCODE. BASIC si bere znaky sam, bez 5 minut psani.');
    if(!playMode)startPlaying();
  }
+ log('FIX209 CH AUTOPASTE CLICK: '+(name||'FAST BASIC')+' lines '+cleaned.length);
+ updatePlayStatus('FIX209 CH AUTOPASTE: klik prijat, pripravuju REAL OS BASIC a frontu.');
  if(activeXexProfile!=='realos' || !fix154RealOsBootMode){
    startRealOsBasicBootFix157('basic');
-   setTimeout(armFastQueue,1600);
+   setTimeout(armFastQueue,1800);
  }else armFastQueue();
  return false;
 }
-function queueSubmarineBasicTestFix208(){
+
+function queueSubmarineBasicTestFix208(ev){
+ if(ev&&ev.preventDefault)ev.preventDefault();
+ log('FIX209 SUBMARINE BUTTON CLICK: handler reached frame '+playFrameNo);
+ updatePlayStatus('FIX209 SUBMARINE: klik funguje, pripravuju rychle vlozeni BASIC kodu.');
  var prog=submarineBasicProgramFix207();
  fix207SubmarineCode=prog.replace(/\n/g,' | ');
- fix207SubmarineInfo='FIX208 SUBMARINE uses the same corrected BASIC source as FIX207, but loads by fast ATASCII autofeed, no slow typed paste; lines '+prog.split('\n').length+' frame '+playFrameNo;
- fix208SubmarineFastInfo='FIX208 SUBMARINE fast queue requested frame '+playFrameNo;
- try{log('SUBMARINE BASIC TEST FIX208: '+fix207SubmarineInfo);log('SUBMARINE BASIC CODE FIX208: '+fix207SubmarineCode);}catch(e){}
- return queueBasicProgramTextFastFix208(prog,'SUBMARINE BASIC FIX208 FAST');
+ fix207SubmarineInfo='FIX209 SUBMARINE uses the same corrected BASIC source as FIX207, but loads by CH/KBCODE autopaste, no slow typed paste; lines '+prog.split('\n').length+' frame '+playFrameNo;
+ fix208SubmarineFastInfo='FIX209 SUBMARINE CH autopaste requested frame '+playFrameNo;fix209ChAutopasteInfo=fix208SubmarineFastInfo;
+ try{log('SUBMARINE BASIC TEST FIX209: '+fix207SubmarineInfo);log('SUBMARINE BASIC CODE FIX209: '+fix207SubmarineCode);}catch(e){}
+ return queueBasicProgramTextFastFix208(prog,'SUBMARINE BASIC FIX209 CH');
 }
 
 function forceGraphics7EdgeTestFix180(){
@@ -2561,7 +2597,7 @@ function queueGtiaBasicDemoFix177(mode){
  fix204GtiaVerifyInfo='FIX208 queued GTIA '+mode+' OS/BASIC verifier: '+gtiaVerifyExpectedFix203(mode)+' lines '+prog.split('\n').length+' frame '+playFrameNo;
  fix184GtiaBarsInfo='replaced by FIX208 GTIA OS verifier mode '+mode+'; no static bars';
  fix170GtiaModeInfo='FIX208 GTIA '+mode+' verifier queued; waiting for BASIC program to run';
- try{log('GTIA VERIFY FIX208: '+fix204GtiaVerifyInfo);log('GTIA VERIFY CODE FIX208: '+fix204GtiaVerifyCode);}catch(e){}
+ try{log('GTIA VERIFY FIX209: '+fix204GtiaVerifyInfo);log('GTIA VERIFY CODE FIX209: '+fix204GtiaVerifyCode);}catch(e){}
  return queueBasicProgramTextFix171(prog,'GTIA '+mode+' OS VERIFY FIX205');
 }
 function gtiaSetRegPairFix179(sh,hw,val){
@@ -2902,7 +2938,7 @@ function loadXex(light){
  // Vychozi cesta je ted DOS-like stream loader: segmenty v poradi souboru, mezilehle INITAD behem loadu.
  fix192StreamInitActive=true;
  fix192StreamInitNext=false;
- fix206StreamLoaderInfo='FIX208 stream INIT loader default ON for '+(currentXexName||'XEX')+' frame '+playFrameNo;
+ fix206StreamLoaderInfo='FIX209 stream INIT loader default ON for '+(currentXexName||'XEX')+' frame '+playFrameNo;
  fix200CasWavPilotActive=!!fix200CasWavPilotNext;
  fix200CasWavPilotNext=false;
  fix192StreamedInitAddrs=[];
@@ -2977,7 +3013,7 @@ function loadXex(light){
  fix195NativeXexInfo=(fix195NativeXexInfo||'FIX197 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM probe ON resetVector $C2AA';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX208-SUBMARINE-FAST-BASIC-QUEUE-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX209-SUBMARINE-CH-AUTOPASTE-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -3064,13 +3100,13 @@ CPU6502.prototype.serviceAtariOsKeyboard=function(addr,fromJsr){
      realOsAtasciiLast=out&255; realOsKeyLast=ch&255; realOsKeyStamp=Date.now();
      if(!fix208BasicAutofeedQueue.length){
        fix208BasicAutofeedActive=false;
-       fix208SubmarineFastInfo='FIX208 fast BASIC feed completed '+fix208BasicAutofeedName+' chars '+fix208BasicAutofeedTotal+' frame '+playFrameNo;
+       fix208SubmarineFastInfo='FIX209 vector autofeed completed '+fix208BasicAutofeedName+' chars '+fix208BasicAutofeedTotal+' frame '+playFrameNo;
        fix190PasteInfo=fix208SubmarineFastInfo;
-       try{log('FIX208 FAST BASIC COMPLETE: '+fix208SubmarineFastInfo);}catch(e){}
+       try{log('FIX209 VECTOR AUTOPASTE COMPLETE: '+fix208SubmarineFastInfo);}catch(e){}
        try{genericRenderEvery=1;}catch(e){}
      }else if((fix208BasicAutofeedQueue.length&127)===0 || playFrameNo-fix208BasicAutofeedLast>60){
        fix208BasicAutofeedLast=playFrameNo;
-       fix208SubmarineFastInfo='FIX208 fast BASIC feeding '+fix208BasicAutofeedName+' left '+fix208BasicAutofeedQueue.length+'/'+fix208BasicAutofeedTotal+' frame '+playFrameNo;
+       fix208SubmarineFastInfo='FIX209 vector autofeed feeding '+fix208BasicAutofeedName+' left '+fix208BasicAutofeedQueue.length+'/'+fix208BasicAutofeedTotal+' frame '+playFrameNo;
      }
    }
    // FIX181: REAL OS/BASIC wants the OS keyboard routine to hand BASIC an ATASCII character.
@@ -3343,13 +3379,18 @@ CPU6502.prototype.r=function(a){
  // POKEY SKSTAT $D20F: v klidu jsou důležité bity nahozené.
  // FIX33: když posíláme klávesový TAP, nevracíme úplný klid, aby hry čtoucí KBCODE/SKSTAT viděly stisk.
  if(a===0xD20F){
-   if(activeXexProfile==='realos')return (realOsKeyOneShot!==0xFF || input.key!==0xFF) ? 0xF7 : 0xFF;
+   if(activeXexProfile==='realos'){
+     if(fix208BasicAutofeedActive && fix208BasicAutofeedQueue && fix208BasicAutofeedQueue.length)return 0xF7;
+     return (realOsKeyOneShot!==0xFF || input.key!==0xFF) ? 0xF7 : 0xFF;
+   }
    return (input.key!==undefined && input.key!==0xFF) ? 0xF7 : 0xFF;
  }
  // KBCODE $D209: scan-code poslední klávesy. FIX32 ho váže na stejné TAP pulsy jako CH $02FC.
  if(a===0xD209){
    if(activeXexProfile==='realos'){
      if(realOsKeyOneShot!==0xFF)return realOsKeyOneShot&255;
+     var fk=fix209FastFeedPeekKey();
+     if(fk!==0xFF)return fk&255;
      if(Date.now()-realOsKeyStamp<70 && realOsKeyLast!==0xFF)return realOsKeyLast&255;
      return 0xFF;
    }
@@ -3366,6 +3407,11 @@ CPU6502.prototype.r=function(a){
        realOsKeyOneShot=0xFF; input.key=0xFF; syncInputShadows();
        fix159RealOsKeyInfo='FIX181 CH consumed $'+hex(rv,2)+' ATASCII $'+hex(realOsAtasciiLast&255,2)+' frame '+playFrameNo+' pc $'+(cpu?hex(cpu.pc,4):'----');
        return rv;
+     }
+     var fk=fix209FastFeedPopKey(cpu,'CH');
+     if(fk!==0xFF){
+       fix159RealOsKeyInfo='FIX209 CH autopaste consumed $'+hex(fk,2)+' ATASCII $'+hex(realOsAtasciiLast&255,2)+' left '+((fix208BasicAutofeedQueue&&fix208BasicAutofeedQueue.length)||0)+' frame '+playFrameNo+' pc $'+(cpu?hex(cpu.pc,4):'----');
+       return fk&255;
      }
      return 0xFF;
    }
@@ -4963,7 +5009,7 @@ function gtiaModeColorValuesFix177(mode){
    var allZero=true; for(i=0;i<vals.length;i++)if((vals[i]&255)!==0){allZero=false;break;}
    if(allZero)vals=gtiaDefaultPaletteFix177().slice(0,16);
  }
- fix170GtiaModeInfo='GTIA GRAPHICS '+gm+' active over ANTIC $F PRIOR $'+hex(prior,2)+' COLBK $'+hex(bk,2)+' FIX208 renderer frame '+playFrameNo;
+ fix170GtiaModeInfo='GTIA GRAPHICS '+gm+' active over ANTIC $F PRIOR $'+hex(prior,2)+' COLBK $'+hex(bk,2)+' FIX209 renderer frame '+playFrameNo;
  fix204GtiaRegMapInfo='mode '+gm+' vals '+vals.map(function(v){return '$'+hex(v&255,2);}).join(' ')+' PRIOR $'+hex(prior,2)+' frame '+playFrameNo;
  fix205GtiaPaletteInfo='mode '+gm+' bk $'+hex(bk,2)+' vals '+vals.map(function(v){return '$'+hex(v&255,2)+'='+atariColor(v&255);}).join(' ')+' frame '+playFrameNo;
  return vals.map(function(v){return v&255;});
@@ -8192,8 +8238,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX208 SUBMARINE FAST BASIC QUEUE CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX208, bezi stary APK/ZIP nebo stary label.");
+lines.push("COMPAT SNAPSHOT FIX209 SUBMARINE CH AUTOPASTE CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX209, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -8206,11 +8252,12 @@ lines.push("GTIA MODE FIX181: "+(fix170GtiaModeInfo||"--"));
 lines.push("GTIA RENDER FIX181: "+(fix177GtiaRenderInfo||"--"));
 lines.push("GTIA DIRECT FIX181: "+(fix179GtiaDirectInfo||"--"));
 lines.push("GTIA BARS FIX186: "+(fix184GtiaBarsInfo||"--"));
-lines.push("GTIA VERIFY FIX208: "+(fix204GtiaVerifyInfo||"--"));
-lines.push("GTIA VERIFY CODE FIX208: "+(fix204GtiaVerifyCode||"--"));
-lines.push("SUBMARINE BASIC TEST FIX208: "+(fix207SubmarineInfo||"--"));
-lines.push("SUBMARINE FAST QUEUE FIX208: "+(fix208SubmarineFastInfo||"--"));
-lines.push("SUBMARINE BASIC CODE FIX208: "+(fix207SubmarineCode||"--"));
+lines.push("GTIA VERIFY FIX209: "+(fix204GtiaVerifyInfo||"--"));
+lines.push("GTIA VERIFY CODE FIX209: "+(fix204GtiaVerifyCode||"--"));
+lines.push("SUBMARINE BASIC TEST FIX209: "+(fix207SubmarineInfo||"--"));
+lines.push("SUBMARINE FAST QUEUE FIX209: "+(fix208SubmarineFastInfo||"--"));
+lines.push("SUBMARINE CH AUTOPASTE FIX209: "+(fix209ChAutopasteInfo||"--"));
+lines.push("SUBMARINE BASIC CODE FIX209: "+(fix207SubmarineCode||"--"));
 lines.push("GTIA REGMAP FIX205: "+(fix204GtiaRegMapInfo||"--"));
 lines.push("GTIA PALETTE FIX205: "+(fix205GtiaPaletteInfo||"--"));
 lines.push("G7 CLIP FIX187: "+(fix186G7ClipInfo||"--"));
@@ -8221,11 +8268,11 @@ lines.push("INPUT MAP FIX188: "+(fix188InputMapInfo||"--"));
 lines.push("INPUT LIVE FIX189: "+(fix189InputLiveInfo||"--"));
 lines.push("REAL OS DIRECT XEX FIX190: "+(fix190DirectXexInfo||"--")+" active="+(fix190RealOsDirectXexMode?"yes":"no")+" (disabled by FIX191 for games)");
 lines.push("CLEAN XEX FIX191: "+(fix191CleanXexInfo||"--"));
-lines.push("XEX STREAM STATUS FIX208: "+(fix192LoaderInfo||"--"));
-lines.push("REAL ROM AUDIT FIX208: "+(fix206RealRomAuditInfo||"--"));
-lines.push("XEX STREAM LOADER FIX208: "+(fix206StreamLoaderInfo||"--"));
-lines.push("NATIVE XEX LOADER FIX208: "+(fix195NativeXexInfo||"--"));
-lines.push("XEX OS KERNEL FIX208: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
+lines.push("XEX STREAM STATUS FIX209: "+(fix192LoaderInfo||"--"));
+lines.push("REAL ROM AUDIT FIX209: "+(fix206RealRomAuditInfo||"--"));
+lines.push("XEX STREAM LOADER FIX209: "+(fix206StreamLoaderInfo||"--"));
+lines.push("NATIVE XEX LOADER FIX209: "+(fix195NativeXexInfo||"--"));
+lines.push("XEX OS KERNEL FIX209: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
 lines.push("HARDWARE PURGE FIX201: "+(fix197PurgeInfo||"--")+" STREAMED="+(fix197StreamedOk?"OK":"FAIL")+" ACTIVE="+(fix197TotalPurgeActive?"YES":"NO")+" blocks="+(fix197StreamedBlocks||0)+" bytes="+(fix197StreamedBytes||0));
 lines.push("CAS/WAV PILOT FIX201: "+(fix200CasWavInfo||"--")+" active="+(fix200CasWavPilotActive?"YES":"NO"));
 lines.push("DLI WSYNC CAPTURE FIX202: "+(fix201DliCaptureInfo||"--"));
@@ -8319,7 +8366,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX208: cisty XEX stream INIT loader + real ROM audit; HW/SDLST DLIST first; RAM scan nema prednost.");
+updatePlayStatus("Emulator bezi. FIX209: cisty XEX stream INIT loader + real ROM audit; HW/SDLST DLIST first; RAM scan nema prednost.");
  if(!playLoopId)playLoop();
 }
 
@@ -8685,6 +8732,14 @@ function detectLoop(){
  for(i=0;i<lastPCs.length;i++){k=hex(lastPCs[i],4);counts[k]=(counts[k]||0)+1;if(counts[k]>bestn){bestn=counts[k];best=k;}}
  if(bestn>=4)log("LOOP? PC repeatedly near $"+best+" / try START or FIRE");
 }
+try{
+ window.queueSubmarineBasicTestFix208=queueSubmarineBasicTestFix208;
+ setTimeout(function(){
+   var b=document.getElementById('submarineBtnFix209');
+   if(b){b.onclick=function(ev){return queueSubmarineBasicTestFix208(ev||window.event);};}
+ },0);
+}catch(e){try{log('FIX209 button bind error '+e);}catch(_){} }
+
 renderInput();
 
 renderSegments();renderRegs();
