@@ -1,1 +1,2 @@
-FIX207 SUBMARINE BASIC LOADER TEST CORE overlay. KODY JSOU ZMENENE pro SUBMARINE BASIC TEST; GTIA VERIFY kody jsou stejne. Rozbalit do rootu repo, commit/push pres GitHub Desktop.
+FIX208_SUBMARINE_FAST_BASIC_QUEUE_CORE
+Hotovy overlay pro GitHub Desktop. Navazuje na FIX207, ale SUBMARINE BASIC se uz nezadava pomalym timed paste. Kod je stejny, meni se jen zpusob nahrani do REAL OS BASIC.
