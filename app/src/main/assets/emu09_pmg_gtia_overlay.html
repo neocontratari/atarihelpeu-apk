@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX236_PURE_ROM_FONT_NO_FAKE_RENDER_CORE / vlastní XEX</title>
+<title>EMU-09 FIX241_FAST_BASIC_RAWCH_UI_DOCK_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -11549,10 +11549,211 @@ updatePlayStatus('ready');
   try{document.title='EMU-09 '+FIX240_TAG;}catch(e){}
   try{var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+FIX240_TAG;}catch(e){}
   try{var p=document.querySelector('h1 + p');if(p)p.textContent='FIX240: SELF TEST START edge pres realny CONSOL $D01F + servisni rychly BASIC text pres ATASCII/KGETCH frontu po skutecnem READY. Bez fake READY/SELF TEST.';}catch(e){}
-  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX240: SELFTEST dostane START edge jen v ROM smycce $5059; BASIC FAST ceka na real READY, EOL=$9B, epoch cancel, latch clear.';}catch(e){}
+  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX241: klavesnice je primo pod obrazem; FAST BASIC tlacitka maji touch/click bind a RAW CH $02FC pumpu po real READY.';}catch(e){}
   installFastUi();
 })();
 /* END FIX240 */
+
+
+/* FIX241 FAST BASIC RAW-CH PUMP + TOUCH BUTTON BIND + KEYBOARD UNDER SCREEN CORE
+   Root cause from Rene FIX240 test:
+   - Buttons looked dead because the FAST queue was armed (log fastQ 2205 / READY OK), but the PURE ROM BASIC path
+     did not drain it through the old E420/E424 service shim.  The ROM polls CH $02FC directly in the editor loop.
+   - FIX241 therefore keeps the service-only FAST helper, but feeds one queued ATASCII byte as a real CH edge exactly
+     when the ROM reads idle CH $02FC.  No fake READY, no fake screen, no PC jump.
+   - Mobile UI is reordered: the Atari keyboard grid is placed immediately under the video area; FAST helper and
+     service buttons are below it. */
+(function(){
+  var FIX241_TAG='FIX241_FAST_BASIC_RAWCH_UI_DOCK_CORE';
+  window.fix241FastPumpInfo='FIX241 FAST BASIC raw-CH pump idle';
+  window.fix241UiInfo='FIX241 UI waiting';
+  window.fix241SelftestInfo='FIX241 SELFTEST keeps FIX240 CONSOL START edge';
+  var fix241LastFrame=-1;
+  var fix241Pumped=0;
+  var fix241LastLeft=-1;
+
+  function hx(v,n){try{return hex((v||0)&((n>=4)?65535:255),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
+  function frame(){return (typeof playFrameNo!=='undefined'?(playFrameNo|0):0);}
+  function log241(s){try{log(s);}catch(e){} try{console.log(s);}catch(e){}}
+  function ready241(){
+    try{
+      if(!ram || !cpu || !playMode)return false;
+      if(activeXexProfile!=='realos')return false;
+      if(fix215PureSelfTestMode || (String(fix157RealOsMode||'').indexOf('selftest')>=0))return false;
+      var dl=((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535;
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;
+      var nmi=(ram[0xD40E]||0)&255;
+      var eff=(typeof fix227EffectivePortB==='function')?(fix227EffectivePortB()&255):((typeof piaPortBOut!=='undefined'?piaPortBOut:0xFD)&255);
+      return dl===0x9C20 && sav===0x9C40 && !!(nmi&0x40) && ((eff&0x02)===0) && ((eff&0x80)!==0);
+    }catch(e){return false;}
+  }
+  function status241(){
+    try{
+      var dl=ram?(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535):0;
+      var sav=ram?(((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535):0;
+      var nmi=ram?((ram[0xD40E]||0)&255):0;
+      var eff=(typeof fix227EffectivePortB==='function')?(fix227EffectivePortB()&255):0;
+      return 'DLIST $'+hx(dl,4)+' SAVMSC $'+hx(sav,4)+' NMIEN $'+hx(nmi,2)+' EFF $'+hx(eff,2)+' mode '+(fix157RealOsMode||'--')+' frame '+frame();
+    }catch(e){return 'status error '+(e&&e.message?e.message:e);}
+  }
+  function queueActive241(){
+    try{return !!(fix208BasicAutofeedActive && fix208BasicAutofeedQueue && fix208BasicAutofeedQueue.length);}catch(e){return false;}
+  }
+  function latchIdle241(){
+    try{
+      if(!ram)return false;
+      return (((ram[0x02FC]||0xFF)&255)===0xFF) && (((ram[0xD209]||0xFF)&255)===0xFF) && ((typeof realOsKeyOneShot==='undefined') || ((realOsKeyOneShot&255)===0xFF));
+    }catch(e){return false;}
+  }
+  function clearLatch241(reason){
+    try{
+      if(typeof input!=='undefined' && input)input.key=0xFF;
+      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;
+      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;
+      if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}
+      try{syncInputShadows();renderInput();}catch(e){}
+      fix241FastPumpInfo='FIX241 LATCH CLEAR '+(reason||'')+' frame '+frame();
+    }catch(e){fix241FastPumpInfo='FIX241 latch clear error '+(e&&e.message?e.message:e);}
+  }
+  function complete241(reason){
+    try{
+      fix208BasicAutofeedActive=false;
+      fix223FastKgetchOnly=false;
+      fix241FastPumpInfo='QUEUE COMPLETE '+(fix208BasicAutofeedName||'FIX241 FAST BASIC')+' chars '+(fix208BasicAutofeedTotal||fix241Pumped)+' pumped '+fix241Pumped+' via RAW CH $02FC '+(reason||'')+' frame '+frame();
+      fix240FastBasicInfo=fix241FastPumpInfo+' / LATCH CLEAR';
+      fix240FastBasicLast=fix240FastBasicInfo;
+      fix208SubmarineFastInfo='FIX241 '+fix240FastBasicInfo;
+      fix209ChAutopasteInfo='FIX241 '+fix240FastBasicInfo;
+      log241('FIX241 '+fix240FastBasicInfo);
+      clearLatch241('after queue complete');
+      try{genericRenderEvery=1;fastVideo=true;}catch(e){}
+      try{updatePlayStatus('FIX241 FAST BASIC: QUEUE COMPLETE + LATCH CLEAR.');}catch(e){}
+    }catch(e){fix241FastPumpInfo='FIX241 complete error '+(e&&e.message?e.message:e);}
+  }
+  function feedOne241(where){
+    try{
+      if(!queueActive241())return false;
+      if(!ready241()){
+        fix241FastPumpInfo='FIX241 FAST QUEUE HOLD not READY '+status241();
+        return false;
+      }
+      if(!latchIdle241())return false;
+      var a=fix208BasicAutofeedQueue.shift()&255;
+      var k=0xFF;
+      try{k=realOsKeycodeForAtasciiFix172(a)&255;}catch(e){k=a&255;}
+      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=a&255;
+      if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=a&255;
+      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=k&255;
+      if(typeof realOsKeyLast!=='undefined')realOsKeyLast=k&255;
+      if(typeof realOsKeyStamp!=='undefined')realOsKeyStamp=Date.now();
+      if(typeof input!=='undefined' && input)input.key=k&255;
+      if(ram){ram[0x02FB]=a&255;ram[0x02FC]=k&255;ram[0xD209]=k&255;}
+      fix241Pumped++;
+      var left=fix208BasicAutofeedQueue.length|0;
+      if(left!==fix241LastLeft && ((left&63)===0 || left<8 || fix241Pumped<8)){
+        fix241LastLeft=left;
+        fix241FastPumpInfo='RAW CH FEED '+(fix208BasicAutofeedName||'FAST BASIC')+' ATASCII $'+hx(a,2)+' CH $'+hx(k,2)+' left '+left+'/'+(fix208BasicAutofeedTotal||'?')+' via '+(where||'CH')+' frame '+frame();
+        fix240FastBasicInfo=fix241FastPumpInfo;
+        fix223KeyboardInfo='FIX241 '+fix241FastPumpInfo;
+        fix209ChAutopasteInfo='FIX241 '+fix241FastPumpInfo;
+      }
+      if(!left)complete241('last byte ATASCII $'+hx(a,2));
+      return true;
+    }catch(e){fix241FastPumpInfo='FIX241 feed error '+(e&&e.message?e.message:e);return false;}
+  }
+
+  var oldR241=CPU6502.prototype.r;
+  CPU6502.prototype.r=function(a){
+    a&=65535;
+    if(a===0x02FC){
+      try{ if(queueActive241() && latchIdle241()) feedOne241('ROM raw CH read before $02FC'); }catch(e){fix241FastPumpInfo='FIX241 raw CH hook error '+(e&&e.message?e.message:e);} 
+    }
+    return oldR241.call(this,a);
+  };
+
+  var oldLoop241=playLoop;
+  playLoop=function(){
+    try{
+      if(queueActive241() && frame()!==fix241LastFrame){
+        fix241LastFrame=frame();
+        // Safety pump: if the ROM has not hit CH this frame yet, seed one edge so the next editor poll sees it.
+        if(latchIdle241()) feedOne241('frame seed');
+      }
+    }catch(e){fix241FastPumpInfo='FIX241 playLoop hook error '+(e&&e.message?e.message:e);} 
+    return oldLoop241();
+  };
+
+  function callFast241(kind,ev){
+    try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}
+    var ta=document.getElementById('fix240BasicFastText');
+    var txt=ta?ta.value:'';
+    fix241Pumped=0;fix241LastLeft=-1;
+    if(kind==='txt')return window.basicTxtFastFix240?window.basicTxtFastFix240(null):false;
+    if(kind==='vlozit')return window.vlozitFastFix240?window.vlozitFastFix240(null):false;
+    if(kind==='run')return window.vlozitFastRunFix240?window.vlozitFastRunFix240(null):false;
+    if(kind==='sub')return window.submarineFastFix240?window.submarineFastFix240(null):false;
+    return false;
+  }
+  function installUi241(){
+    try{
+      var dock=document.getElementById('atariKeyboardDock'); if(!dock)return;
+      var h=dock.querySelector('h2'); if(h)h.textContent='Mobilní Atari klávesnice';
+      var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX241: klavesnice je primo pod obrazem; FAST BASIC tlacitka jsou niz a posilaji ATASCII pres RAW CH/KGETCH pumpu az po real READY.';
+      var grid=document.getElementById('atariKeyboard');
+      var actions=dock.querySelector('.kbdTopActions');
+      var fast=document.getElementById('fix240FastBasicBox');
+      if(grid && hint && hint.nextSibling!==grid)dock.insertBefore(grid,hint.nextSibling);
+      if(actions && grid && actions.previousSibling!==grid)dock.insertBefore(actions,grid.nextSibling);
+      if(fast && actions && fast.previousSibling!==actions)dock.insertBefore(fast,actions.nextSibling);
+      if(fast){
+        var fh=fast.querySelector('h2'); if(fh)fh.textContent='Rychly BASIC text automat FIX241';
+        var fp=fast.querySelector('p'); if(fp)fp.textContent='Servisni helper: klik reaguje pres touch/click bind. Ceka na real BASIC READY a potom posila ATASCII znaky pres RAW CH $02FC/KGETCH pumpu. EOL=$9B. Nepouziva se pro fake boot.';
+        var buttons=fast.querySelectorAll('button');
+        var kinds=['txt','vlozit','run','sub'];
+        for(var i=0;i<buttons.length;i++)(function(b,kind){
+          if(!b || b.getAttribute('data-fix241-bound'))return;
+          b.setAttribute('data-fix241-bound','1');
+          b.style.pointerEvents='auto';
+          b.addEventListener('pointerup',function(ev){return callFast241(kind,ev);},true);
+          b.addEventListener('click',function(ev){return callFast241(kind,ev);},true);
+        })(buttons[i],kinds[i]||'vlozit');
+      }
+      fix241UiInfo='FIX241 UI OK: keyboard grid moved directly under screen, FAST buttons rebound touch/click frame '+frame();
+    }catch(e){fix241UiInfo='FIX241 UI error '+(e&&e.message?e.message:e);}
+  }
+  setTimeout(installUi241,0);setTimeout(installUi241,350);setTimeout(installUi241,1100);
+
+  var oldMakeName241=makeLogFileName;
+  makeLogFileName=function(reason){
+    try{
+      var d=new Date();function p(n){return (n<10?'0':'')+n;}
+      var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
+      var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
+      var name=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
+      return 'atarihelp-FIX241-'+prof+'-'+(reason||'manual')+'-'+ts+'-'+name+'.txt';
+    }catch(e){return oldMakeName241(reason);}
+  };
+
+  var oldSnap241=compatibilitySnapshot;
+  compatibilitySnapshot=function(){
+    try{window.__fix241SnapshotTail='\nFIX241 FAST BASIC RAW-CH/UI CHECK\nFASTPUMP '+fix241FastPumpInfo+'\nUI '+fix241UiInfo+'\nSELFTEST '+(typeof fix240SelftestInfo!=='undefined'?fix240SelftestInfo:fix241SelftestInfo)+'\nRULE FAST_BUTTON_TOUCH_CLICK_BOUND / KEYBOARD_DIRECTLY_UNDER_SCREEN / RAW_CH_02FC_ATASCII_PUMP / READY_GATED / EOL_9B / NO_FAKE_READY_SELFTEST';}catch(e){}
+    return oldSnap241();
+  };
+  var oldSave241=saveLogToFile;
+  saveLogToFile=function(reason){
+    if(reason==='purehw-snapshot' && window.__fix241SnapshotTail){
+      try{log(window.__fix241SnapshotTail.replace(/^\n/,''));}catch(e){}
+    }
+    return oldSave241.apply(this,arguments);
+  };
+
+  try{EMU_BUILD_TAG=FIX241_TAG;}catch(e){}
+  try{document.title='EMU-09 '+FIX241_TAG;}catch(e){}
+  try{var h1=document.querySelector('h1');if(h1)h1.textContent='EMU-09 '+FIX241_TAG;}catch(e){}
+  try{var p=document.querySelector('h1 + p');if(p)p.textContent='FIX241: opravuje FAST BASIC tlacitka/pumpu. Fronta se po real READY krmi pres RAW CH $02FC/KGETCH edge, keyboard grid je primo pod obrazem. SELF TEST zustava cisty FIX240 CONSOL edge, bez fake obrazovek.';}catch(e){}
+  log241('FIX241 installed: FAST raw-CH pump + touch button bind + keyboard dock reorder');
+})();
+/* END FIX241 */
 
 </script>
 </body>
