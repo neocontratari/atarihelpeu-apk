@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX206_REALROM_STREAM_LOADER_CORE / vlastní XEX</title>
+<title>EMU-09 FIX207_SUBMARINE_BASIC_LOADER_TEST_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX206_REALROM_STREAM_LOADER_CORE</h1>
-<p>FIX206 se vraci k zakladu pod kapotou: stejne BASIC/GTIA test kody zustavaji, ale hlavni zmena je cisty XEX loader. Stream INITAD je zapnuty jako vychozi DOS-like cesta, ROM obrazy jsou znovu vlozene podle dodanych souboru a snapshot hlasi realne MD5/loader stopu. Cilem neni duhovy test, ale poctivy loader + ROM servis pro cizi XEX hry.</p>
+<h1>EMU-09 FIX207_SUBMARINE_BASIC_LOADER_TEST_CORE</h1>
+<p>FIX207 navazuje na real-ROM stream loader, ale ted hlavne pridava opraveny SUBMARINE BASIC test z dodaneho House Book kodu. PAUSE na radcich 195 a 1050 je pryc, misto toho jsou ciste BASIC delay smycky. Cilem je overit, ze REAL OS BASIC paste/keyboard/GRAPHICS 17/SOUND bezi spravne driv, nez budeme delat dalsi zavery o hrach.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card">
 <h2>Atari XEX emulator</h2>
-<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX206 pouziva cisty XEX segment loader v DOS-like stream rezimu: segmenty se kopiruji postupne, mezilehle INITAD se spousti behem loadu, zbyvajici INITAD pred hlavnim RUNAD/ENTRY. BASIC direct zustava OFF, OS ROM probe zustava sluzba, ne fake obraz. Obraz se porad bere ze skutecneho ANTIC/HW/SDLST DLISTu; RAM scan nema prednost. CAS/WAV pilot zustava vypnuty.</p>
+<p>Vestavěný <b>PiTT-KiTT-NaP-Final.xex</b> zůstává jako referenční test, ale hlavní cíl jsou <b>vlastní .XEX soubory</b> z telefonu. FIX207 pouziva cisty XEX segment loader v DOS-like stream rezimu: segmenty se kopiruji postupne, mezilehle INITAD se spousti behem loadu, zbyvajici INITAD pred hlavnim RUNAD/ENTRY. BASIC direct zustava OFF, OS ROM probe zustava sluzba, ne fake obraz. Obraz se porad bere ze skutecneho ANTIC/HW/SDLST DLISTu; RAM scan nema prednost. CAS/WAV pilot zustava vypnuty.</p>
 <div class="halfgrid">
 <button onclick="startPlaying()">▶ SPUSTIT / INTRO</button>
 <button class="secondary" onclick="pausePlaying()">⏸ PAUZA</button>
@@ -102,7 +102,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX206: real ROM audit + vychozi XEX stream INIT loader pod kapotou. GTIA verify kody jsou stejne; hry testuj pres cisty loader.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX207: real ROM stream loader zustava, novy test je SUBMARINE BASIC bez PAUSE chyb. GTIA verify kody jsou stejne.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -118,6 +118,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
 <button class="secondary compact" onclick="pickBasicTxtFileFix171()">📄 BASIC TXT</button>
 <button class="secondary compact" onclick="promptBasicPasteFix171()">📋 VLOZIT PROGRAM</button>
+<button class="secondary compact" onclick="queueSubmarineBasicTestFix207()">🚢 SUBMARINE BASIC TEST</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(9)">GTIA 9 VERIFY</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(10)">GTIA 10 VERIFY</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(11)">GTIA 11 VERIFY</button>
@@ -254,9 +255,11 @@ var fix196OsKernelEnabled=false;
 var fix197PurgeInfo='FIX198 hardware purge waiting';
 var fix198RamDlistInfo='FIX198 RAM DLIST SCAN waiting';
 var fix199DlistTrustInfo='FIX199 HW DLIST TRUST waiting';
-var fix200CasWavInfo='FIX206 CAS/WAV pilot disabled: focus is clean real-ROM XEX stream loader, not WAV yet';
-var fix206RealRomAuditInfo='FIX206 user ROMs embedded: XL md5 06daac977823773a3eea3422fd26a703 OSB md5 a3e8d617c95d08031fe1b20d541434b2 BASIC md5 0bac0c6a50104045d902df4503a4c30b; REVA/REVB/REVC assets included for audit';
-var fix206StreamLoaderInfo='FIX206 stream INIT loader default ON: XEX segments copied in file order, middle INITAD runs during load, remaining INITAD runs before RUNAD/ENTRY';
+var fix200CasWavInfo='FIX207 CAS/WAV pilot disabled: focus is clean real-ROM XEX stream loader, not WAV yet';
+var fix206RealRomAuditInfo='FIX207 user ROMs embedded: XL md5 06daac977823773a3eea3422fd26a703 OSB md5 a3e8d617c95d08031fe1b20d541434b2 BASIC md5 0bac0c6a50104045d902df4503a4c30b; REVA/REVB/REVC assets included for audit';
+var fix206StreamLoaderInfo='FIX207 stream INIT loader default ON: XEX segments copied in file order, middle INITAD runs during load, remaining INITAD runs before RUNAD/ENTRY';
+var fix207SubmarineInfo='FIX207 SUBMARINE BASIC test waiting: uploaded House Book code will be pasted through REAL OS BASIC with PAUSE removed';
+var fix207SubmarineCode='--';
 var fix201DliCaptureInfo='FIX202 DLI/WSYNC viewport capture waiting';
 var fix202DliTraceInfo='FIX202 DLI viewport trace waiting';
 var fix202DliTrace=[];
@@ -372,10 +375,10 @@ var builtinRomImagesReady=false;
 function ensureBuiltinAtariRomImages(){
  if(builtinRomImagesReady && optionalOsRom && optionalOsbRom && optionalBasicRom)return;
  try{
-   optionalOsRom=decodeB64(builtinAtariOsRomB64);       // FIX206: Rene znovu dodal ATARIXL.ROM 16384 bytes md5 06daac977823773a3eea3422fd26a703
-   optionalOsbRom=decodeB64(builtinAtariOsbRomB64);     // FIX206: Rene znovu dodal ATARIOSB.ROM 10240 bytes md5 a3e8d617c95d08031fe1b20d541434b2
-   optionalBasicRom=decodeB64(builtinAtariBasicRomB64); // FIX206: Rene znovu dodal ATARIBAS.ROM 8192 bytes md5 0bac0c6a50104045d902df4503a4c30b
-   optionalRomInfo='ROM AUDIT FIX206: user ROMs embedded ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703 / ATARIOSB 10240 md5 a3e8d617c95d08031fe1b20d541434b2 / ATARIBAS 8192 md5 0bac0c6a50104045d902df4503a4c30b';
+   optionalOsRom=decodeB64(builtinAtariOsRomB64);       // FIX207: Rene znovu dodal ATARIXL.ROM 16384 bytes md5 06daac977823773a3eea3422fd26a703
+   optionalOsbRom=decodeB64(builtinAtariOsbRomB64);     // FIX207: Rene znovu dodal ATARIOSB.ROM 10240 bytes md5 a3e8d617c95d08031fe1b20d541434b2
+   optionalBasicRom=decodeB64(builtinAtariBasicRomB64); // FIX207: Rene znovu dodal ATARIBAS.ROM 8192 bytes md5 0bac0c6a50104045d902df4503a4c30b
+   optionalRomInfo='ROM AUDIT FIX207: user ROMs embedded ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703 / ATARIOSB 10240 md5 a3e8d617c95d08031fe1b20d541434b2 / ATARIBAS 8192 md5 0bac0c6a50104045d902df4503a4c30b';
    builtinRomImagesReady=true;
  }catch(e){
    optionalRomInfo='ROM AUDIT FIX181 decode chyba: '+(e&&e.message?e.message:e);
@@ -767,7 +770,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX206_REALROM_STREAM_LOADER_CORE";
+var EMU_BUILD_TAG="FIX207_SUBMARINE_BASIC_LOADER_TEST_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -1138,7 +1141,7 @@ function makeLogFileName(reason){
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX206 REALROM STREAM LOADER CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX207 SUBMARINE BASIC LOADER TEST CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -2267,6 +2270,71 @@ function promptBasicPasteFix171(){
  return queueBasicProgramTextFix171(txt,'paste');
 }
 
+
+function submarineBasicProgramFix207(){
+ return [
+  "0 DIM A$(20):GOTO 1000",
+  "2 SCORE=0:SHOTS=100:X=10:BX=-1:BY=-1:ST=0:GOTO 30",
+  "5 GRAPHICS 17:SETCOLOR 4,0,0:SETCOLOR 0,8,10:POKE 752,1",
+  "30 PRINT #6;CHR$(125):COLOR 1",
+  "31 FOR I=0 TO 19:POSITION I,1:PRINT #6;\"-\";:POSITION I,23:PRINT #6;\"-\";:NEXT I",
+  "32 FOR I=2 TO 22:POSITION 0,I:PRINT #6;\"!\";:POSITION 19,I:PRINT #6;\"!\";:NEXT I",
+  "34 SX=5:SY=12:SDX=1",
+  "40 K=PEEK(764):IF K=255 THEN GOTO 100",
+  "45 POSITION X,2:PRINT #6;\" \";",
+  "55 IF K=63 THEN X=X-1:REM KEY A",
+  "60 IF K=58 THEN X=X+1:REM KEY D",
+  "65 IF K=33 AND BY<0 AND SHOTS>0 THEN BX=X:BY=3:SHOTS=SHOTS-1:SOUND 0,100,10,4",
+  "90 POKE 764,255:IF X<1 THEN X=1",
+  "91 IF X>18 THEN X=18",
+  "95 COLOR 1:POSITION X,2:PRINT #6;\"A\";",
+  "100 IF BY<0 THEN GOTO 120",
+  "110 POSITION BX,BY:PRINT #6;\" \";:BY=BY+1:IF BY>22 THEN BY=-1:SOUND 0,0,0,0:GOTO 120",
+  "115 IF BY>0 THEN POSITION BX,BY:COLOR 2:PRINT #6;\"*\";",
+  "120 ST=ST+1:IF ST<3 THEN GOTO 130",
+  "122 ST=0:POSITION SX,SY:PRINT #6;\" \";:SX=SX+SDX",
+  "123 IF SX<2 OR SX>17 THEN SDX=-SDX",
+  "124 COLOR 3:POSITION SX,SY:PRINT #6;\"S\";",
+  "130 IF BY<1 THEN GOTO 140",
+  "132 IF BX=SX AND BY=SY THEN GOTO 170",
+  "140 POSITION 0,0:PRINT #6;\"S:\";SCORE;\"  AMMO:\";SHOTS;\"  \"",
+  "141 IF SHOTS<=0 AND BY<0 THEN GOTO 190",
+  "145 GOTO 40",
+  "170 SCORE=SCORE+1:SOUND 0,50,10,15:POSITION SX,SY:PRINT #6;\"#\";",
+  "175 FOR I=1 TO 20:POKE 712,INT(RND(0)*256):NEXT I:SOUND 0,0,0,0",
+  "180 POSITION SX,SY:PRINT #6;\" \";:BX=-1:BY=-1",
+  "182 SX=INT(RND(0)*14+2):SY=INT(RND(0)*10+5)",
+  "183 POSITION SX,SY:COLOR 3:PRINT #6;\"S\";",
+  "185 GOTO 40",
+  "190 REM *** GAME OVER ***",
+  "191 FOR I=100 TO 250 STEP 2:SOUND 0,I,10,8:POKE 712,I:NEXT I",
+  "192 FOR I=250 TO 100 STEP -4:SOUND 0,I,10,4:NEXT I:SOUND 0,0,0,0",
+  "193 POSITION 5,11:PRINT #6;\" GAME OVER \":POSITION 5,13:PRINT #6;\" NO AMMO! \"",
+  "195 GOSUB 900:GOTO 1000",
+  "900 FOR D=1 TO 150:NEXT D:RETURN",
+  "920 FOR D=1 TO 20:NEXT D:RETURN",
+  "1000 REM *** INTRO (C) N&P ***",
+  "1005 GRAPHICS 17:POKE 710,0:POKE 752,1",
+  "1010 POSITION 4,20:? #6;\"(C) N&P 2026\"",
+  "1020 POSITION 0,5:PRINT #6;\"MELBOURNE HOUSE BOOK\"",
+  "1030 FOR I=0 TO 254:SOUND 0,I,10,8:POKE 712,I:NEXT I:SOUND 0,0,0,0",
+  "1040 POSITION 5,9:PRINT #6;\"SUBMARINE\"",
+  "1050 FOR I=1 TO 50:POKE 712,INT(RND(0)*256):SOUND 0,INT(RND(0)*100),10,4:GOSUB 920:NEXT I",
+  "1060 SOUND 0,0,0,0:POKE 712,0:POSITION 4,14:PRINT #6;\"PRESS ANY KEY\"",
+  "1070 IF PEEK(764)=255 THEN 1070",
+  "1080 POKE 764,255:GOTO 2",
+  "RUN"
+ ].join('\n');
+}
+function queueSubmarineBasicTestFix207(){
+ var prog=submarineBasicProgramFix207();
+ fix207SubmarineCode=prog.replace(/\n/g,' | ');
+ fix207SubmarineInfo='FIX207 queued SUBMARINE BASIC fixed: PAUSE removed at lines 195/1050, delay loops 900/920, INT around RND POKE/SOUND, lines '+prog.split('\n').length+' frame '+playFrameNo;
+ try{log('SUBMARINE BASIC TEST FIX207: '+fix207SubmarineInfo);log('SUBMARINE BASIC CODE FIX207: '+fix207SubmarineCode);}catch(e){}
+ updatePlayStatus('FIX207 SUBMARINE BASIC TEST: posilam opraveny House Book kod bez PAUSE. Pockej, az se dopise a spusti.');
+ return queueBasicProgramTextFix171(prog,'SUBMARINE BASIC FIX207');
+}
+
 function forceGraphics7EdgeTestFix180(){
   // FIX187: full-height GRAPHICS 7 test uses mode 7+16 = 23.
   // Plain GRAPHICS 7 keeps the BASIC text window and the safe Y range is 0..79.
@@ -2430,10 +2498,10 @@ function queueGtiaBasicDemoFix177(mode){
  var prog=gtiaBasicVerifierProgramFix203(mode);
  fix204GtiaVerifyMode=mode;
  fix204GtiaVerifyCode=prog.replace(/\n/g,' | ');
- fix204GtiaVerifyInfo='FIX206 queued GTIA '+mode+' OS/BASIC verifier: '+gtiaVerifyExpectedFix203(mode)+' lines '+prog.split('\n').length+' frame '+playFrameNo;
- fix184GtiaBarsInfo='replaced by FIX206 GTIA OS verifier mode '+mode+'; no static bars';
- fix170GtiaModeInfo='FIX206 GTIA '+mode+' verifier queued; waiting for BASIC program to run';
- try{log('GTIA VERIFY FIX206: '+fix204GtiaVerifyInfo);log('GTIA VERIFY CODE FIX206: '+fix204GtiaVerifyCode);}catch(e){}
+ fix204GtiaVerifyInfo='FIX207 queued GTIA '+mode+' OS/BASIC verifier: '+gtiaVerifyExpectedFix203(mode)+' lines '+prog.split('\n').length+' frame '+playFrameNo;
+ fix184GtiaBarsInfo='replaced by FIX207 GTIA OS verifier mode '+mode+'; no static bars';
+ fix170GtiaModeInfo='FIX207 GTIA '+mode+' verifier queued; waiting for BASIC program to run';
+ try{log('GTIA VERIFY FIX207: '+fix204GtiaVerifyInfo);log('GTIA VERIFY CODE FIX207: '+fix204GtiaVerifyCode);}catch(e){}
  return queueBasicProgramTextFix171(prog,'GTIA '+mode+' OS VERIFY FIX205');
 }
 function gtiaSetRegPairFix179(sh,hw,val){
@@ -2642,9 +2710,9 @@ function installCleanXexLoaderEnvironmentFix192(reason){
  ram[0x0009]=0x00; ram[0x000A]=0x00; ram[0x000B]=0x00;
  ram[0x02E0]=0; ram[0x02E1]=0; ram[0x02E2]=0; ram[0x02E3]=0;
  fix196OsKernelEnabled=true; fix196OsKernelReads=0; fix197TotalPurgeActive=true; fix197StreamedOk=false; fix197StreamedBytes=0; fix197StreamedBlocks=0;
- fix196XexOsKernelInfo='FIX206 OS kernel probe '+(reason||'')+': OS ROM mapped, BASIC direct OFF, PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' resetVector $C2AA staged frame '+playFrameNo;
- fix195NativeXexInfo='FIX206 native loader env '+(reason||'')+' HARDWARE-RAM-DLIST BASIC-direct OFF / OS-ROM probe ON PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
- fix192LoaderInfo='FIX206 STREAMED=PENDING ACTIVE=YES env '+(reason||'')+' PORTB $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' resetVector $C2AA frame '+playFrameNo;
+ fix196XexOsKernelInfo='FIX207 OS kernel probe '+(reason||'')+': OS ROM mapped, BASIC direct OFF, PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' resetVector $C2AA staged frame '+playFrameNo;
+ fix195NativeXexInfo='FIX207 native loader env '+(reason||'')+' HARDWARE-RAM-DLIST BASIC-direct OFF / OS-ROM probe ON PORTB/D301 $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' frame '+playFrameNo;
+ fix192LoaderInfo='FIX207 STREAMED=PENDING ACTIVE=YES env '+(reason||'')+' PORTB $'+hex(ram[0xD301]||0,2)+' COLDST $'+hex(ram[0x0244]||0,2)+' resetVector $C2AA frame '+playFrameNo;
 }
 
 function runStreamedInitFix192(addr,segNo,segStart,segEnd){
@@ -2751,11 +2819,11 @@ function parseAndLoadXexBytes(bytes,light){
  xexInfo.warnings=(xexInfo.warnings||[]).concat(xexWarningsForEntry(entry));
  var nativeRanges=(segments||[]).map(function(sg){return '$'+hex(sg.start,4)+'-$'+hex(sg.end,4);}).slice(0,6).join(' ');
  fix197StreamedBlocks=count|0; fix197StreamedBytes=(nativeInfo?nativeInfo.dataBytes:0)|0; fix197StreamedOk=(count>0 && fix197StreamedBytes>0);
- fix195NativeXexInfo='FIX206 native XEX stream: STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' ACTIVE=YES header '+(nativeInfo&&nativeInfo.header?'$FFFF OK':'missing/tolerant')+' blocks '+count+' bytes '+fix197StreamedBytes+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' ENTRY $'+hex(entry||0,4)+' BASIC direct OFF PORTB $'+hex(ram[0xD301]||0,2)+' ranges '+nativeRanges+' frame '+playFrameNo;
- fix192LoaderInfo='FIX206 STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' ACTIVE=YES blocks '+count+' bytes '+fix197StreamedBytes+' profile '+activeXexProfile+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' ENTRY $'+hex(entry||0,4)+' resetVector $C2AA staged frame '+playFrameNo;
- fix188XexBridgeInfo='FIX206 stream-loader XEX loaded profile '+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' BASIC direct OFF streamed=OK active=YES frame '+playFrameNo;
+ fix195NativeXexInfo='FIX207 native XEX stream: STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' ACTIVE=YES header '+(nativeInfo&&nativeInfo.header?'$FFFF OK':'missing/tolerant')+' blocks '+count+' bytes '+fix197StreamedBytes+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' ENTRY $'+hex(entry||0,4)+' BASIC direct OFF PORTB $'+hex(ram[0xD301]||0,2)+' ranges '+nativeRanges+' frame '+playFrameNo;
+ fix192LoaderInfo='FIX207 STREAMED='+(fix197StreamedOk?'OK':'FAIL')+' ACTIVE=YES blocks '+count+' bytes '+fix197StreamedBytes+' profile '+activeXexProfile+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' ENTRY $'+hex(entry||0,4)+' resetVector $C2AA staged frame '+playFrameNo;
+ fix188XexBridgeInfo='FIX207 stream-loader XEX loaded profile '+activeXexProfile+' entry $'+hex(entry||0,4)+' RUNAD '+(runVec?'$'+hex(runVec,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hex(a,4);}).join(','):'--')+' segments '+count+' BASIC direct OFF streamed=OK active=YES frame '+playFrameNo;
  fix191CleanXexInfo=fix188XexBridgeInfo;
- fix196XexOsKernelInfo='FIX206 real-ROM OS probe armed for '+activeXexProfile+'; OS ROM mapped, BASIC direct OFF, service traps guarded, legacy profile render purge ON frame '+playFrameNo;
+ fix196XexOsKernelInfo='FIX207 real-ROM OS probe armed for '+activeXexProfile+'; OS ROM mapped, BASIC direct OFF, service traps guarded, legacy profile render purge ON frame '+playFrameNo;
  fix197PurgeInfo='FIX200 HARDWARE active: profile locks disabled; HW/SDLST trusted first, XEX segment scan second, RAM scan diagnostic last frame '+playFrameNo;
  if(fix200CasWavPilotActive){fix200CasWavInfo='FIX201 CAS/WAV pilot disabled; normal XEX loader used for '+activeXexProfile+' frame '+playFrameNo;}
  if(activeXexProfile==="pitt")detectPittTextDlists();
@@ -2770,11 +2838,11 @@ function loadXex(light){
  activeXexProfile="generic";
  ensureBuiltinAtariRomImages();
  seedAtariOsRomCharset();
- // FIX206: Rene ma pravdu - cizi XEX se nemaji jen nasypat do RAM a skocit do entry.
+ // FIX207: Rene ma pravdu - cizi XEX se nemaji jen nasypat do RAM a skocit do entry.
  // Vychozi cesta je ted DOS-like stream loader: segmenty v poradi souboru, mezilehle INITAD behem loadu.
  fix192StreamInitActive=true;
  fix192StreamInitNext=false;
- fix206StreamLoaderInfo='FIX206 stream INIT loader default ON for '+(currentXexName||'XEX')+' frame '+playFrameNo;
+ fix206StreamLoaderInfo='FIX207 stream INIT loader default ON for '+(currentXexName||'XEX')+' frame '+playFrameNo;
  fix200CasWavPilotActive=!!fix200CasWavPilotNext;
  fix200CasWavPilotNext=false;
  fix192StreamedInitAddrs=[];
@@ -2849,7 +2917,7 @@ function loadXex(light){
  fix195NativeXexInfo=(fix195NativeXexInfo||'FIX197 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM probe ON resetVector $C2AA';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX206-REALROM-STREAM-LOADER-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX207-SUBMARINE-BASIC-LOADER-TEST-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -4813,7 +4881,7 @@ function gtiaModeColorValuesFix177(mode){
    var allZero=true; for(i=0;i<vals.length;i++)if((vals[i]&255)!==0){allZero=false;break;}
    if(allZero)vals=gtiaDefaultPaletteFix177().slice(0,16);
  }
- fix170GtiaModeInfo='GTIA GRAPHICS '+gm+' active over ANTIC $F PRIOR $'+hex(prior,2)+' COLBK $'+hex(bk,2)+' FIX206 renderer frame '+playFrameNo;
+ fix170GtiaModeInfo='GTIA GRAPHICS '+gm+' active over ANTIC $F PRIOR $'+hex(prior,2)+' COLBK $'+hex(bk,2)+' FIX207 renderer frame '+playFrameNo;
  fix204GtiaRegMapInfo='mode '+gm+' vals '+vals.map(function(v){return '$'+hex(v&255,2);}).join(' ')+' PRIOR $'+hex(prior,2)+' frame '+playFrameNo;
  fix205GtiaPaletteInfo='mode '+gm+' bk $'+hex(bk,2)+' vals '+vals.map(function(v){return '$'+hex(v&255,2)+'='+atariColor(v&255);}).join(' ')+' frame '+playFrameNo;
  return vals.map(function(v){return v&255;});
@@ -8042,8 +8110,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX206 REALROM STREAM LOADER CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX206, bezi stary APK/ZIP nebo stary label.");
+lines.push("COMPAT SNAPSHOT FIX207 SUBMARINE BASIC LOADER TEST CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX207, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -8056,8 +8124,10 @@ lines.push("GTIA MODE FIX181: "+(fix170GtiaModeInfo||"--"));
 lines.push("GTIA RENDER FIX181: "+(fix177GtiaRenderInfo||"--"));
 lines.push("GTIA DIRECT FIX181: "+(fix179GtiaDirectInfo||"--"));
 lines.push("GTIA BARS FIX186: "+(fix184GtiaBarsInfo||"--"));
-lines.push("GTIA VERIFY FIX206: "+(fix204GtiaVerifyInfo||"--"));
-lines.push("GTIA VERIFY CODE FIX206: "+(fix204GtiaVerifyCode||"--"));
+lines.push("GTIA VERIFY FIX207: "+(fix204GtiaVerifyInfo||"--"));
+lines.push("GTIA VERIFY CODE FIX207: "+(fix204GtiaVerifyCode||"--"));
+lines.push("SUBMARINE BASIC TEST FIX207: "+(fix207SubmarineInfo||"--"));
+lines.push("SUBMARINE BASIC CODE FIX207: "+(fix207SubmarineCode||"--"));
 lines.push("GTIA REGMAP FIX205: "+(fix204GtiaRegMapInfo||"--"));
 lines.push("GTIA PALETTE FIX205: "+(fix205GtiaPaletteInfo||"--"));
 lines.push("G7 CLIP FIX187: "+(fix186G7ClipInfo||"--"));
@@ -8068,11 +8138,11 @@ lines.push("INPUT MAP FIX188: "+(fix188InputMapInfo||"--"));
 lines.push("INPUT LIVE FIX189: "+(fix189InputLiveInfo||"--"));
 lines.push("REAL OS DIRECT XEX FIX190: "+(fix190DirectXexInfo||"--")+" active="+(fix190RealOsDirectXexMode?"yes":"no")+" (disabled by FIX191 for games)");
 lines.push("CLEAN XEX FIX191: "+(fix191CleanXexInfo||"--"));
-lines.push("XEX STREAM STATUS FIX206: "+(fix192LoaderInfo||"--"));
-lines.push("REAL ROM AUDIT FIX206: "+(fix206RealRomAuditInfo||"--"));
-lines.push("XEX STREAM LOADER FIX206: "+(fix206StreamLoaderInfo||"--"));
-lines.push("NATIVE XEX LOADER FIX206: "+(fix195NativeXexInfo||"--"));
-lines.push("XEX OS KERNEL FIX206: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
+lines.push("XEX STREAM STATUS FIX207: "+(fix192LoaderInfo||"--"));
+lines.push("REAL ROM AUDIT FIX207: "+(fix206RealRomAuditInfo||"--"));
+lines.push("XEX STREAM LOADER FIX207: "+(fix206StreamLoaderInfo||"--"));
+lines.push("NATIVE XEX LOADER FIX207: "+(fix195NativeXexInfo||"--"));
+lines.push("XEX OS KERNEL FIX207: "+(fix196XexOsKernelInfo||"--")+" reads="+(fix196OsKernelReads||0));
 lines.push("HARDWARE PURGE FIX201: "+(fix197PurgeInfo||"--")+" STREAMED="+(fix197StreamedOk?"OK":"FAIL")+" ACTIVE="+(fix197TotalPurgeActive?"YES":"NO")+" blocks="+(fix197StreamedBlocks||0)+" bytes="+(fix197StreamedBytes||0));
 lines.push("CAS/WAV PILOT FIX201: "+(fix200CasWavInfo||"--")+" active="+(fix200CasWavPilotActive?"YES":"NO"));
 lines.push("DLI WSYNC CAPTURE FIX202: "+(fix201DliCaptureInfo||"--"));
@@ -8166,7 +8236,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX206: cisty XEX stream INIT loader + real ROM audit; HW/SDLST DLIST first; RAM scan nema prednost.");
+updatePlayStatus("Emulator bezi. FIX207: cisty XEX stream INIT loader + real ROM audit; HW/SDLST DLIST first; RAM scan nema prednost.");
  if(!playLoopId)playLoop();
 }
 
