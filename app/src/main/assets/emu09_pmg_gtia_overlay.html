@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX231_PURE_HW_BOOT_IRQ_CORE / vlastní XEX</title>
+<title>EMU-09 FIX232_PURE_HW_MODE_ACTIVE_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,7 +36,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX231_PURE_HW_BOOT_IRQ_CORE</h1>
+<h1>EMU-09 FIX232_PURE_HW_MODE_ACTIVE_CORE</h1>
 <p>FIX229: PURE HARDWARE PIA/CPU I/O rez. D301/D303 uz jdou pres PIA DDR/PBCTL, BASIC nesmi padat do selftest/smeti kvuli spatnemu PORTB.</p>
 </div>
 </div>
@@ -793,7 +793,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX231_PURE_HW_BOOT_IRQ_CORE";
+var EMU_BUILD_TAG="FIX232_PURE_HW_MODE_ACTIVE_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -9536,7 +9536,7 @@ updatePlayStatus('ready');
    No drawn READY, no drawn SELFTEST, no XEX fallback. This fixes the real root seen in FIX228:
    CPU writes to $D301/$D303 were still using the old direct PORTB path, so BASIC/SELFTEST mapping was wrong. */
 (function(){
-  var FIX229_TAG='FIX231_PURE_HW_BOOT_IRQ_CORE';
+  var FIX229_TAG='FIX232_PURE_HW_MODE_ACTIVE_CORE';
   function pure(){return !!(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode);}
   function hx(v,n){try{return hex(v&((1<<(Math.min(n,4)*4))-1),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
   function fix229PokeyIdleDefaults(){
@@ -9644,7 +9644,7 @@ updatePlayStatus('ready');
    cold BASIC must see internal BASIC ROM until the OS explicitly changes PORTB DATA, and ANTIC/DLIST
    inspection must read through the same bus as CPU instead of raw RAM[] only. */
 (function(){
-  var FIX230_TAG='FIX231_PURE_HW_BOOT_IRQ_CORE';
+  var FIX230_TAG='FIX232_PURE_HW_MODE_ACTIVE_CORE';
   var fix230ColdBasicWindow=false;
   var fix230ColdSelftestWindow=false;
   var fix230PortbDataWritten=false;
@@ -9852,163 +9852,169 @@ updatePlayStatus('ready');
 
   try{document.title='EMU-09 '+FIX230_TAG;}catch(e){}
   try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+FIX230_TAG;}catch(e){}
-  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX231: PURE HARDWARE boot/IRQ. BASIC nesmi sam spadnout do SELFTEST okna; OPTION cesta drzi selftest oddelene.';}catch(e){}
+  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX232: PURE HW aktivni mode gate. BASIC drzi BASIC ROM + selftest OFF; OPTION drzi selftest ROM oddelene. Bez XEX fallbacku.';}catch(e){}
 })();
 /* END FIX230 */
 
-</script>
-</body>
-</html>
 
 
-
-
-
-/* FIX231 PURE HARDWARE BOOT IRQ CORE
-   Clean boot stabilisation after FIX230 logs:
-   - BASIC power was entering SELFTEST window through PORTB $79, although OPTION was not held.
-   - OPTION self-test was falling into low-RAM BRK -> IRQ loop at $0000/$C02C.
-   This section does not draw READY or SELF TEST. It only separates cold power mode latches, console state,
-   and traps invalid low-RAM BRK loops so the next snapshot shows the real blocker instead of endless flicker. */
+/* FIX232 PURE HARDWARE MODE ACTIVE CORE
+   FIX231 code was accidentally appended after </html>, so it did not execute.
+   This block is inside the live <script>. It does not draw READY or SELF TEST.
+   It only makes POWER BASIC and POWER OPTION SELF TEST use separate hardware modes:
+   - BASIC: OPTION high, BASIC ROM visible, SELFTEST window blocked for this power mode.
+   - SELFTEST: OPTION low, BASIC ROM hidden, SELFTEST ROM visible.
+   Snapshot remains isolated: no XEX loader, no built-in game fallback. */
 (function(){
-  var FIX231_TAG='FIX231_PURE_HW_BOOT_IRQ_CORE';
-  var fix231PowerMode='idle';
-  var fix231BootInfo='FIX231 waiting';
-  var fix231ConsoleInfo='FIX231 console waiting';
-  var fix231BrkInfo='FIX231 BRK watch waiting';
+  var FIX232_TAG='FIX232_PURE_HW_MODE_ACTIVE_CORE';
+  window.fix232Mode='audit';
+  window.fix232BootInfo='FIX232 waiting';
+  window.fix232ConsoleInfo='FIX232 console waiting';
+  window.fix232TrapInfo='FIX232 trap waiting';
   function pure(){return !!(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode);} 
   function hx(v,n){try{return hex((v||0)&((n>=4)?65535:255),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
-
-  var oldBare231=fix225ResetBareHardware;
-  fix225ResetBareHardware=function(selftest,reason){
-    var r=oldBare231(selftest,reason);
+  function setPureName(selftest){
+    try{currentXexName=selftest?'PURE HARDWARE OPTION SELF TEST FIX232 / no XEX':'PURE HARDWARE BASIC FIX232 / no XEX'; setXexName();}catch(e){}
+  }
+  function cleanPureInputs(){
     try{
-      fix231PowerMode=selftest?'selftest':'basic';
-      // True cold PIA state first; power mode is expressed by console OPTION, not by forcing PORTB DATA.
+      if(typeof fix208BasicAutofeedQueue!=='undefined' && fix208BasicAutofeedQueue)fix208BasicAutofeedQueue.length=0;
+      if(typeof atariKeyQueue!=='undefined' && atariKeyQueue)atariKeyQueue.length=0;
+      if(typeof fix209ChAutoPasteActive!=='undefined')fix209ChAutoPasteActive=false;
+      if(typeof fix209ChAutoPasteArmed!=='undefined')fix209ChAutoPasteArmed=false;
+      if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;ram[0xD01F]=(fix232Mode==='selftest')?0x03:0x07;}
+    }catch(e){}
+  }
+  var oldBare232=fix225ResetBareHardware;
+  fix225ResetBareHardware=function(selftest,reason){
+    var r=oldBare232(selftest,reason);
+    try{
+      window.fix232Mode=selftest?'selftest':'basic';
+      fix228PureAuditOnlyMode=false;
+      // True PIA cold reset. The power mode is expressed through CONSOL/OPTION and ROM windows below,
+      // not by a service screen or by loading any XEX.
       piaPortBOut=0xFF; piaPortBDDR=0x00; piaPortBCtl=0x00;
-      if(typeof fix227SyncPortB==='function')fix227SyncPortB('FIX231 cold PIA reset '+fix231PowerMode);
-      // Keep FIX230 boot latches explicit. BASIC cold boot has BASIC ROM visible, SELFTEST cold boot has selftest window.
+      if(typeof fix227SyncPortB==='function')fix227SyncPortB('FIX232 cold PIA '+fix232Mode);
       if(typeof fix230PortbDataWritten!=='undefined')fix230PortbDataWritten=false;
       if(typeof fix230ColdBasicWindow!=='undefined')fix230ColdBasicWindow=!selftest;
       if(typeof fix230ColdSelftestWindow!=='undefined')fix230ColdSelftestWindow=!!selftest;
-      if(ram){
-        ram[0xD301]=fix227ReadPortB()&255; ram[0xD303]=piaPortBCtl&255;
-        ram[0xD01F]=selftest?0x03:0x07; // console readback mirror only; CPU read below is authoritative.
-        ram[0xD209]=0xFF; ram[0xD20F]=0xFF; ram[0x02FC]=0xFF; ram[0x02FB]=0xFF;
-      }
-      if(input){input.start=false;input.select=false;input.option=!!selftest;input.key=0xFF;}
-      fix231BootInfo='FIX231 POWER '+(selftest?'OPTION SELFTEST':'BASIC')+' PIA cold OUT $'+hx(piaPortBOut,2)+' DDR $'+hx(piaPortBDDR,2)+' PBCTL $'+hx(piaPortBCtl,2)+' EFF $'+hx(fix227EffectivePortB(),2)+' OPTION '+(selftest?'LOW':'HIGH')+' PC $'+hx(cpu?cpu.pc:0,4);
-      currentXexName=selftest?'PURE HARDWARE OPTION SELF TEST FIX231 / no XEX':'PURE HARDWARE BASIC FIX231 / no XEX';
-      try{setXexName();}catch(e){}
-      updateRomStatusLine('FIX231 PURE HARDWARE boot IRQ core');
-      updatePlayStatus('FIX231 PURE HARDWARE '+(selftest?'OPTION SELF TEST':'BASIC')+' started. No XEX loader, no drawn screen.');
-      try{log(fix231BootInfo);}catch(e){}
-    }catch(e){try{log('FIX231 post-power error '+(e&&e.message?e.message:e));}catch(_){}}
+      if(input){input.start=false;input.select=false;input.option=!!selftest;input.fire=false;input.key=0xFF;}
+      cleanPureInputs();
+      setPureName(selftest);
+      fix232BootInfo='FIX232 POWER '+(selftest?'OPTION SELFTEST':'BASIC')+' reset=$C2AA OPTION '+(selftest?'LOW':'HIGH')+' BASIC_WINDOW '+(selftest?'OFF':'ON')+' SELFTEST_WINDOW '+(selftest?'ON':'OFF')+' PIA OUT $'+hx(piaPortBOut,2)+' DDR $'+hx(piaPortBDDR,2)+' PBCTL $'+hx(piaPortBCtl,2)+' EFF $'+hx(fix227EffectivePortB(),2);
+      updateRomStatusLine('FIX232 PURE HARDWARE mode gate active');
+      updatePlayStatus('FIX232 PURE HARDWARE '+(selftest?'OPTION SELF TEST':'BASIC')+' started. No XEX, no drawn screen.');
+      try{log(fix232BootInfo);}catch(e){}
+    }catch(e){try{log('FIX232 post-power error '+(e&&e.message?e.message:e));}catch(_){} }
     return r;
   };
-  startPureHardwareBasicFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(false,'POWER BASIC');};
-  startPureHardwareSelfTestFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(true,'POWER OPTION SELF TEST');};
-  resetPureHardwareFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(fix231PowerMode==='selftest','RESET PURE HW');};
+  startPureHardwareBasicFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(false,'FIX232 POWER BASIC');};
+  startPureHardwareSelfTestFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(true,'FIX232 POWER OPTION SELF TEST');};
+  resetPureHardwareFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(fix232Mode==='selftest','FIX232 RESET PURE HW');};
 
-  var oldSelf231=fix217SelfTestWindowEnabled;
+  var oldSelf232=fix217SelfTestWindowEnabled;
   fix217SelfTestWindowEnabled=function(){
     if(pure()){
       var eff=fix227EffectivePortB();
-      if(fix231PowerMode==='basic'){
-        fix217SelftestGateInfo='FIX231 SELFTEST window OFF: BASIC power mode, OPTION high, effective PORTB $'+hx(eff,2)+' OUT $'+hx(piaPortBOut,2)+' DDR $'+hx(piaPortBDDR,2)+' PBCTL $'+hx(piaPortBCtl,2)+' frame '+playFrameNo;
+      if(fix232Mode==='basic'){
+        fix217SelftestGateInfo='FIX232 SELFTEST OFF in BASIC power mode; effective PORTB $'+hx(eff,2)+' OUT $'+hx(piaPortBOut,2)+' DDR $'+hx(piaPortBDDR,2)+' PBCTL $'+hx(piaPortBCtl,2)+' frame '+playFrameNo;
         return false;
       }
-      if(fix231PowerMode==='selftest'){
-        var on=true;
-        fix217SelftestGateInfo='FIX231 SELFTEST window ON: OPTION power mode, effective PORTB $'+hx(eff,2)+' OUT $'+hx(piaPortBOut,2)+' DDR $'+hx(piaPortBDDR,2)+' PBCTL $'+hx(piaPortBCtl,2)+' frame '+playFrameNo;
-        return on;
+      if(fix232Mode==='selftest'){
+        fix217SelftestGateInfo='FIX232 SELFTEST ON in OPTION power mode; effective PORTB $'+hx(eff,2)+' OUT $'+hx(piaPortBOut,2)+' DDR $'+hx(piaPortBDDR,2)+' PBCTL $'+hx(piaPortBCtl,2)+' frame '+playFrameNo;
+        return true;
       }
     }
-    return oldSelf231();
+    return oldSelf232();
   };
 
-  var oldBasicActive231=optionalBasicRomActiveForAddr;
+  var oldBasicActive232=optionalBasicRomActiveForAddr;
   optionalBasicRomActiveForAddr=function(a){
     a&=65535;
     if(pure() && isBasicRomAddr(a)){
-      if(fix231PowerMode==='basic')return true;
-      if(fix231PowerMode==='selftest')return false;
+      if(fix232Mode==='basic')return !!(optionalBasicRom && optionalBasicRom.length===8192);
+      if(fix232Mode==='selftest')return false;
     }
-    return oldBasicActive231(a);
+    return oldBasicActive232(a);
   };
 
-  var oldR231=CPU6502.prototype.r;
+  var oldR232=CPU6502.prototype.r;
   CPU6502.prototype.r=function(a){
     a&=65535;
     if(pure() && a===0xD01F){
-      var c=(fix231PowerMode==='selftest')?0x03:0x07; // START/SELECT/OPTION active low; selftest holds OPTION only.
-      fix231ConsoleInfo='FIX231 CONSOL read $'+hx(c,1)+' mode '+fix231PowerMode+' PC $'+hx(this.pc,4)+' frame '+playFrameNo;
+      var c=(fix232Mode==='selftest')?0x03:0x07; // START/SELECT/OPTION active-low; OPTION low only for selftest power.
+      fix232ConsoleInfo='FIX232 CONSOL read $'+hx(c,1)+' mode '+fix232Mode+' PC $'+hx(this.pc,4)+' frame '+playFrameNo;
       return c&7;
     }
-    return oldR231.call(this,a);
+    return oldR232.call(this,a);
   };
 
-  var oldStep231=CPU6502.prototype.step;
+  var oldStep232=CPU6502.prototype.step;
   CPU6502.prototype.step=function(){
     if(pure() && !this.trap){
-      var pc0=this.pc&65535, op=oldR231.call(this,pc0)&255;
-      // Endless BRK->IRQ from uninitialised RAM is not a working ROM boot; stop it and report the true PC.
-      if(op===0x00 && (pc0<0x0200 || (pc0>=0x0200 && pc0<0xA000 && this.steps>8000))){
+      var pc0=this.pc&65535, op=oldR232.call(this,pc0)&255;
+      // Do not hide low-RAM BRK storms behind flicker. Stop and report; no fake jump is made.
+      if(op===0x00 && this.steps>12000 && (pc0<0x0200 || (pc0>=0x0200 && pc0<0xA000))){
         this.trap=true;
-        this.trapMsg='FIX231 PURE BRK STOP at $'+hx(pc0,4)+' mode '+fix231PowerMode+' IRQ $'+hx((oldR231.call(this,0xFFFE)|(oldR231.call(this,0xFFFF)<<8))&65535,4);
-        fix231BrkInfo=this.trapMsg;
-        try{log(this.trapMsg);}catch(e){}
+        this.trapMsg='FIX232 PURE BRK STOP at $'+hx(pc0,4)+' mode '+fix232Mode+' IRQ $'+hx((oldR232.call(this,0xFFFE)|(oldR232.call(this,0xFFFF)<<8))&65535,4);
+        fix232TrapInfo=this.trapMsg;
+        try{log(fix232TrapInfo);}catch(e){}
         return;
       }
     }
-    return oldStep231.call(this);
+    return oldStep232.call(this);
   };
 
-  var oldSnap231=compatibilitySnapshotCore;
-  function fix231SnapshotLines(){
+  var oldSnap232=compatibilitySnapshotCore;
+  function fix232SnapshotLines(){
     var lines=[];var dl=0,sav=0;try{dl=getDlistPtr()&65535;sav=((ram[0x58]|(ram[0x59]<<8))&65535);}catch(e){}
     var reset=0,nmi=0,irq=0;try{reset=(optionalRomByteAt(0xFFFC)|(optionalRomByteAt(0xFFFD)<<8))&65535;nmi=(optionalRomByteAt(0xFFFA)|(optionalRomByteAt(0xFFFB)<<8))&65535;irq=(optionalRomByteAt(0xFFFE)|(optionalRomByteAt(0xFFFF)<<8))&65535;}catch(e){}
     var eff=fix227EffectivePortB();
-    lines.push('PURE HARDWARE SNAPSHOT FIX231');
-    lines.push('BUILD '+FIX231_TAG);
+    lines.push('PURE HARDWARE SNAPSHOT FIX232');
+    lines.push('BUILD '+FIX232_TAG);
     lines.push('NO XEX LOADER: snapshot did not call loadXex()');
-    lines.push('MODE '+fix231PowerMode+' / '+(currentXexName||'no XEX'));
+    lines.push('MODE '+fix232Mode+' / '+(currentXexName||'no XEX'));
     lines.push('ROM ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703');
     lines.push('ROM BASIC 8192 md5 0bac0c6a50104045d902df4503a4c30b');
     lines.push('VECTORS RESET $'+hx(reset,4)+' NMI $'+hx(nmi,4)+' IRQ $'+hx(irq,4));
     lines.push('PIA OUT $'+hx(piaPortBOut,2)+' DDR $'+hx(piaPortBDDR,2)+' PBCTL $'+hx(piaPortBCtl,2)+' EFFECTIVE $'+hx(eff,2));
     lines.push('WINDOWS BASIC '+(optionalBasicRomActiveForAddr(0xA000)?'ON':'OFF')+' SELFTEST '+(fix217SelfTestWindowEnabled()?'ON':'OFF'));
-    lines.push('INPUT CONSOL '+((fix231PowerMode==='selftest')?'$03 OPTION_LOW':'$07 NONE')+' CH $'+hx((ram&&ram[0x02FC])||0,2)+' KBCODE $'+hx((ram&&ram[0xD209])||0,2)+' SKSTAT $'+hx((ram&&ram[0xD20F])||0,2));
+    lines.push('INPUT CONSOL '+((fix232Mode==='selftest')?'$03 OPTION_LOW':'$07 NONE')+' CH $'+hx((ram&&ram[0x02FC])||0,2)+' KBCODE $'+hx((ram&&ram[0xD209])||0,2)+' SKSTAT $'+hx((ram&&ram[0xD20F])||0,2));
     if(cpu)lines.push('CPU PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+cpu.steps+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')); else lines.push('CPU not started');
     lines.push('DLIST $'+hx(dl,4)+' SAVMSC $'+hx(sav,4)+' NMIEN $'+hx((ram&&ram[0xD40E])||0,2)+' DMACTL $'+hx((ram&&ram[0xD400])||0,2)+' SDMCTL $'+hx((ram&&ram[0x022F])||0,2));
     lines.push('POKEY D200-D208 '+[0xD200,0xD201,0xD202,0xD203,0xD204,0xD205,0xD206,0xD207,0xD208].map(function(a){return '$'+hx((ram&&ram[a])||0,2)}).join(' '));
-    lines.push('BOOT '+fix231BootInfo);
-    lines.push('CONSOL '+fix231ConsoleInfo);
-    lines.push('BRK '+fix231BrkInfo);
+    lines.push('BOOT '+fix232BootInfo);
+    lines.push('CONSOL '+fix232ConsoleInfo);
+    lines.push('TRAP '+fix232TrapInfo);
     lines.push('NMI '+(fix224PureNmiInfo||'--'));
     lines.push('ANTIC '+(dl?decodeDlistShort(dl):'no display list'));
     lines.push('DLIST BYTES '+(dl?dumpDlistBytes(dl,64):'none'));
-    if(cpu){lines.push('CPU TRACE');lines=lines.concat((cpu.trace||[]).slice(-30));}
+    if(cpu){lines.push('CPU TRACE');lines=lines.concat((cpu.trace||[]).slice(-32));}
     return lines;
   }
   compatibilitySnapshotCore=function(){
     if((typeof fix228PureHwActiveOrAudit==='function' && fix228PureHwActiveOrAudit()) || pure()){
-      var lines=fix231SnapshotLines();
+      var lines=fix232SnapshotLines();
       try{var e=document.getElementById('log'); if(e)e.textContent=lines.join('\n');}catch(e){}
-      updatePlayStatus('PURE snapshot FIX231 saved without XEX loader');
+      updatePlayStatus('PURE snapshot FIX232 saved without XEX loader');
       try{renderRegs();renderSegments();}catch(e){}
       try{saveCurrentLogToMobile('purehw-snapshot');}catch(e){}
       return;
     }
-    return oldSnap231();
+    return oldSnap232();
   };
-  var oldAudit231=runPureHardwareAuditFix226;
+  var oldAudit232=runPureHardwareAuditFix226;
   runPureHardwareAuditFix226=function(ev){
-    fix231PowerMode='audit'; fix231BootInfo='FIX231 AUDIT only'; fix231ConsoleInfo='FIX231 console idle'; fix231BrkInfo='FIX231 BRK idle';
-    return oldAudit231(ev);
+    fix232Mode='audit'; fix232BootInfo='FIX232 AUDIT only'; fix232ConsoleInfo='FIX232 console idle'; fix232TrapInfo='FIX232 trap idle';
+    return oldAudit232(ev);
   };
-  try{document.title='EMU-09 '+FIX231_TAG;}catch(e){}
-  try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+FIX231_TAG;}catch(e){}
-  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX231: PURE HARDWARE boot/IRQ. BASIC drzi OPTION high, SELFTEST drzi OPTION low; snapshot ukaze real PC.';}catch(e){}
+  try{document.title='EMU-09 '+FIX232_TAG;}catch(e){}
+  try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+FIX232_TAG;}catch(e){}
+  try{var p=document.querySelector('h1 + p'); if(p)p.textContent='FIX232: aktivni PURE HW mode gate je uvnitr scriptu. BASIC a OPTION self-test jsou oddelene; zadny XEX fallback, zadny kresleny READY.';}catch(e){}
+  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX232: BASIC=OPTION high + selftest OFF, SELFTEST=OPTION low + selftest ON. Bez XEX fallbacku.';}catch(e){}
 })();
-/* END FIX231 */
+/* END FIX232 */
+
+</script>
+</body>
+</html>
