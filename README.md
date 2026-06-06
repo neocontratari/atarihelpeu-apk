@@ -1,3 +1,6 @@
-AtariHelp.eu EMU-09 FIX209 SUBMARINE CH AUTOPASTE CORE overlay
+AtariHelp.eu EMU-09 FIX210_REALOS_TEXT_FAST_BASIC_CORE overlay
 
-KODY JSOU STEJNE proti FIX208/FIX207 pro SUBMARINE BASIC. Oprava: tlacitko je navazane natvrdo a BASIC zdroj se krmi pres SKSTAT/KBCODE/CH podle realneho cteni klavesnice, ne pres slepy timer ani pomale psani.
+Rozbalit do lokalniho repo pres GitHub Desktop.
+Commit summary: FIX210 realos text fast basic core
+
+KODY JSOU STEJNE.

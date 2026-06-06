@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX209_SUBMARINE_CH_AUTOPASTE_CORE / vlastní XEX</title>
+<title>EMU-09 FIX210_REALOS_TEXT_FAST_BASIC_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX209_SUBMARINE_CH_AUTOPASTE_CORE</h1>
-<p>FIX209 opravuje tlacitko SUBMARINE a meni fast loader: nejde pres slepy timer ani pres OS vector, ale pres realne cteni CH/KBCODE/SKSTAT. BASIC dostane dalsi znak teprve kdyz si o klavesnici sam rekne. Cilem je rychle nahrat BASIC test bez petiminutoveho psani a bez rucniho prepisovani.</p>
+<h1>EMU-09 FIX210_REALOS_TEXT_FAST_BASIC_CORE</h1>
+<p>FIX210 pouziva rychle CH/KBCODE/SKSTAT vkladani nejen pro SUBMARINE, ale i pro BASIC TXT a VLOZIT PROGRAM. Zaroven opravuje REAL OS textove ANTIC 6/7 barvy: GRAPHICS 17 uz nesmi byt nucene modro-bile jako READY obrazovka, ale musi brat skutecne BASIC/GTIA barvy.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -102,7 +102,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX209: SUBMARINE BASIC se vklada pres CH/KBCODE autopaste. Tlacitko musi okamzite zapsat log/status a BASIC si bere znaky podle skutecnych cteni klavesnice.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX210: BASIC TXT, VLOZIT PROGRAM i SUBMARINE jedou rychle pres CH/KBCODE autopaste; REALOS textove rezimy 6/7 pouzivaji skutecne COLPF/COLBK barvy.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -112,13 +112,13 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX191: klavesnice beze zmeny; cisty XEX loader bez BASIC ROM direct; pomalejsi BASIC TXT/paste pro mobil.</p>
+<p class="tinyhint">FIX210: BASIC TXT/VLOZIT PROGRAM jsou rychle pres CH/KBCODE; cisty XEX loader bez BASIC ROM direct.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="promptAtariName()">⌨️ ZADAT JMÉNO</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
-<button class="secondary compact" onclick="pickBasicTxtFileFix171()">📄 BASIC TXT</button>
-<button class="secondary compact" onclick="promptBasicPasteFix171()">📋 VLOZIT PROGRAM</button>
-<button id="submarineBtnFix209" class="secondary compact" onclick="return queueSubmarineBasicTestFix208(event)">🚢 SUBMARINE CH AUTOLOAD</button>
+<button class="secondary compact" onclick="pickBasicTxtFileFix171()">📄 BASIC TXT FAST</button>
+<button class="secondary compact" onclick="promptBasicPasteFix171()">📋 VLOZIT FAST</button>
+<button id="submarineBtnFix209" class="secondary compact" onclick="return queueSubmarineBasicTestFix208(event)">🚢 SUBMARINE FAST</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(9)">GTIA 9 VERIFY</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(10)">GTIA 10 VERIFY</button>
 <button class="secondary compact" onclick="queueGtiaBasicDemoFix177(11)">GTIA 11 VERIFY</button>
@@ -262,6 +262,8 @@ var fix207SubmarineInfo='FIX209 SUBMARINE CH autopaste waiting: corrected House 
 var fix207SubmarineCode='--';
 var fix208SubmarineFastInfo='FIX209 CH autopaste waiting';
 var fix209ChAutopasteInfo='FIX209 CH autopaste waiting';
+var fix210RealOsTextColorInfo='FIX210 REALOS text colors waiting';
+var fix210FastBasicInfo='FIX210 FAST BASIC waiting';
 var fix208BasicAutofeedQueue=[];
 var fix208BasicAutofeedActive=false;
 var fix208BasicAutofeedName='';
@@ -777,7 +779,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX209_SUBMARINE_CH_AUTOPASTE_CORE";
+var EMU_BUILD_TAG="FIX210_REALOS_TEXT_FAST_BASIC_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -2704,7 +2706,7 @@ function forceGtiaVisualTestFix179(mode){
  go();
  return false;
 }
-function queueBasicProgramTextFix171(txt,name){
+function queueBasicProgramTextSlowFix171(txt,name){
  txt=String(txt||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
  // FIX186: normalize common GRAPHICS 7 demos before sending them to real BASIC.
  // This is not a renderer hack: it only prevents pasted test code from asking Atari BASIC
@@ -2747,6 +2749,19 @@ function queueBasicProgramTextFix171(txt,name){
    setTimeout(enqueueRealosProgram,1800);
  }else enqueueRealosProgram();
  return false;
+}
+
+function queueBasicProgramTextFix171(txt,name){
+ // FIX210: Rene ma pravdu - BASIC TXT a VLOZIT PROGRAM nesmi cekat minuty na timed paste.
+ // Pouzij stejnou rychlou, realnou CH/KBCODE cestu jako SUBMARINE. Stary pomaly paste zustava jako fallback.
+ try{
+   fix210FastBasicInfo='FIX210 FAST BASIC wrapper for '+(name||'BASIC TXT')+' frame '+playFrameNo;
+   log('FIX210 FAST BASIC REQUEST: '+(name||'BASIC TXT'));
+   return queueBasicProgramTextFastFix208(txt,(name||'BASIC TXT')+' FAST FIX210');
+ }catch(e){
+   try{log('FIX210 FAST BASIC fallback to slow paste: '+(e&&e.message?e.message:e));}catch(_){}
+   return queueBasicProgramTextSlowFix171(txt,name);
+ }
 }
 
 function buildAtariKeyboard(){
@@ -3013,7 +3028,7 @@ function loadXex(light){
  fix195NativeXexInfo=(fix195NativeXexInfo||'FIX197 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM probe ON resetVector $C2AA';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX209-SUBMARINE-CH-AUTOPASTE-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX210-REALOS-TEXT-FAST-BASIC-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -4814,19 +4829,22 @@ function realOsFirstVisibleAnticModeFix162(){
 function realOsIsBitmapGraphicsFix162(){var m=realOsFirstVisibleAnticModeFix162();return m>=8;}
 function colorSet(){
  var v0=colorReg(0x02C4,0xD016,0x00), v1=colorReg(0x02C5,0xD017,0x0F), v2=colorReg(0x02C6,0xD018,0x76), v3=colorReg(0x02C7,0xD019,0x34), vb=colorReg(0x02C8,0xD01A,0x04);
- // FIX181: REAL OS textový editor má bezpečný modrý vzhled, ale BASIC GRAPHICS režimy
- // už musí používat skutečné COLBK/COLPF registry. Jinak GRAPHICS 3/5/7 kreslí falešnými barvami.
+ // FIX210: REAL OS editor muže zůstat modro-bílý, ale BASIC programy v GRAPHICS 1/2
+ // (ANTIC 6/7, např. GRAPHICS 17 Submarine) NESMÍME násilně přebarvit na READY modrou.
+ // Bereme skutečné shadow/HW COLPF/COLBK jako Altirra/real Atari.
  if(activeXexProfile==='realos'){
    var rm=realOsFirstVisibleAnticModeFix162();
-   if(rm>=8){
+   if(rm>=6){
      try{copyAtariColorShadowsToHardware();}catch(e){}
-     v0=colorReg(0x02C4,0xD016,0x28); v1=colorReg(0x02C5,0xD017,0xCA); v2=colorReg(0x02C6,0xD018,0x94); v3=colorReg(0x02C7,0xD019,0x46); vb=colorReg(0x02C8,0xD01A,0x00);
-     fix162RealOsGtiaInfo='REALOS GTIA bitmap mode '+rm+' COLPF/BK '+[v0,v1,v2,v3,vb].map(function(x){return '$'+hex(x,2);}).join(' ')+' PRIOR $'+hex(ram[0xD01B]||ram[0x026F]||0,2)+' frame '+playFrameNo;
-     fix133VideoFallbackInfo='FIX181 REALOS GTIA honors BASIC graphics colors frame '+playFrameNo;
+     v0=colorReg(0x02C4,0xD016,0x28); v1=colorReg(0x02C5,0xD017,0xCA); v2=colorReg(0x02C6,0xD018,0x00); v3=colorReg(0x02C7,0xD019,0x46); vb=colorReg(0x02C8,0xD01A,0x00);
+     fix162RealOsGtiaInfo='REALOS text/graphics mode '+rm+' COLPF/BK '+[v0,v1,v2,v3,vb].map(function(x){return '$'+hex(x,2);}).join(' ')+' PRIOR $'+hex(ram[0xD01B]||ram[0x026F]||0,2)+' frame '+playFrameNo;
+     fix210RealOsTextColorInfo='FIX210 REALOS mode '+rm+' honors BASIC colors p0/p1/p2/p3/bk '+[v0,v1,v2,v3,vb].map(function(x){return '$'+hex(x,2);}).join(' ')+' frame '+playFrameNo;
+     fix133VideoFallbackInfo='FIX210 REALOS text/graphics honors BASIC COLPF/COLBK frame '+playFrameNo;
    }else{
      v0=0x0E; v1=0x0E; v2=0x0E; v3=0x0E; vb=0x76;
-     fix162RealOsGtiaInfo='REALOS text palette forced blue/white mode '+rm+' frame '+playFrameNo;
-     fix133VideoFallbackInfo='FIX181 REALOS renderer palette blue/white READY screen frame '+playFrameNo;
+     fix162RealOsGtiaInfo='REALOS editor palette forced blue/white mode '+rm+' frame '+playFrameNo;
+     fix210RealOsTextColorInfo='FIX210 REALOS editor mode '+rm+' keeps READY blue/white only before BASIC graphics frame '+playFrameNo;
+     fix133VideoFallbackInfo='FIX210 REALOS renderer palette blue/white READY screen frame '+playFrameNo;
    }
  }
  // FIX139: several loader/ROM-less XEXs reach a real DLIST while all GTIA PF/BK registers are still black/zero.
@@ -4858,7 +4876,10 @@ function realOsTextColorSetFix163(){
  return {p0:'#f2f6ff',p1:'#f2f6ff',p2:'#f2f6ff',p3:'#f2f6ff',bk:'#2058b8'};
 }
 function realOsMaybeTextColorSetFix163(mode,cs){
- return (activeXexProfile==='realos' && (mode===2 || mode===3 || mode===6 || mode===7))?realOsTextColorSetFix163():cs;
+ // FIX210: FORCE blue/white only for the ROM READY/editor text screen (ANTIC 2/3).
+ // GRAPHICS 1/2/17/18 use ANTIC 6/7 and must keep program COLPF/COLBK colors.
+ if(activeXexProfile==='realos' && (mode===2 || mode===3) && realOsFirstVisibleAnticModeFix162()<6)return realOsTextColorSetFix163();
+ return cs;
 }
 
 function realOsMonitorOuterCssFix166(cs){
@@ -8238,8 +8259,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX209 SUBMARINE CH AUTOPASTE CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX209, bezi stary APK/ZIP nebo stary label.");
+lines.push("COMPAT SNAPSHOT FIX210 REALOS TEXT FAST BASIC CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX210, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -8256,8 +8277,10 @@ lines.push("GTIA VERIFY FIX209: "+(fix204GtiaVerifyInfo||"--"));
 lines.push("GTIA VERIFY CODE FIX209: "+(fix204GtiaVerifyCode||"--"));
 lines.push("SUBMARINE BASIC TEST FIX209: "+(fix207SubmarineInfo||"--"));
 lines.push("SUBMARINE FAST QUEUE FIX209: "+(fix208SubmarineFastInfo||"--"));
-lines.push("SUBMARINE CH AUTOPASTE FIX209: "+(fix209ChAutopasteInfo||"--"));
-lines.push("SUBMARINE BASIC CODE FIX209: "+(fix207SubmarineCode||"--"));
+lines.push("SUBMARINE CH AUTOPASTE FIX210: "+(fix209ChAutopasteInfo||"--"));
+lines.push("FIX210 FAST BASIC: "+(fix210FastBasicInfo||"--"));
+lines.push("FIX210 REALOS TEXT COLORS: "+(fix210RealOsTextColorInfo||"--"));
+lines.push("SUBMARINE BASIC CODE FIX210: "+(fix207SubmarineCode||"--"));
 lines.push("GTIA REGMAP FIX205: "+(fix204GtiaRegMapInfo||"--"));
 lines.push("GTIA PALETTE FIX205: "+(fix205GtiaPaletteInfo||"--"));
 lines.push("G7 CLIP FIX187: "+(fix186G7ClipInfo||"--"));
@@ -8366,7 +8389,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX209: cisty XEX stream INIT loader + real ROM audit; HW/SDLST DLIST first; RAM scan nema prednost.");
+updatePlayStatus("Emulator bezi. FIX210: rychly CH BASIC loader + REALOS text barvy; HW/SDLST DLIST first; RAM scan nema prednost.");
  if(!playLoopId)playLoop();
 }
 
