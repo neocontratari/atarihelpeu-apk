@@ -1,1 +1,3 @@
+FIX212_REALROM_CHARSET_TEXT_CORE overlay
+
 AtariHelp.eu EMU-09 FIX211 CH LATCH TEXTMODE CORE overlay. KODY JSOU STEJNE. Rychly BASIC loader + cisty CH/KBCODE latch po RUN.

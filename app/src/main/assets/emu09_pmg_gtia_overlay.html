@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX211_CH_LATCH_TEXTMODE_CORE / vlastní XEX</title>
+<title>EMU-09 FIX212_REALROM_CHARSET_TEXT_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX211_CH_LATCH_TEXTMODE_CORE</h1>
-<p>FIX211 zachovava rychle CH/KBCODE/SKSTAT vkladani, ale opravuje dulezitou chybu po RUN: posledni RETURN/klavesa uz nesmi zustat v CH/KBCODE a preskocit BASIC intro nebo PRESS ANY KEY.</p>
+<h1>EMU-09 FIX212_REALROM_CHARSET_TEXT_CORE</h1>
+<p>FIX212 zachovava rychly CH/KBCODE loader a opravuje ANTIC 6/7 text: kdyz REAL OS/BASIC necha CHBASE=$00/$E0, renderer bere skutecny font z vlozene ATARIXL.ROM, ne synteticke tecky.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -102,7 +102,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary compact" onclick="toggleFastVideo()">VIDEO FAST/SAFE</button>
 </div>
 </details>
-<div id="playStatus" class="playStatus">Pripraveno. FIX211: rychly CH/KBCODE loader zustava; po autopaste se cisti klavesovy latch, aby BASIC program nepreskocil INTRO/PRESS ANY KEY.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX212: rychly CH/KBCODE loader zustava; ANTIC 6/7 bere font z realne ATARIXL.ROM, CHBASE=$00/$E0 uz neni synteticky teckovy font.</div>
 <div id="inputMapPanel" class="inputMapPanel">OVLADANI MAPA FIX191 zatim skryta. Joystick nemusis sledovat do detailu; kdyz hra reaguje zvukem/strelem, bereme ho jako OK.</div>
 </section>
 
@@ -112,7 +112,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX211: FAST BASIC ma po vlozeni vycisteny CH/KBCODE latch; cisty XEX loader bez BASIC ROM direct.</p>
+<p class="tinyhint">FIX212: FAST BASIC + realny OS font z ATARIXL.ROM pro ANTIC 6/7; cisty XEX loader bez BASIC ROM direct.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="promptAtariName()">⌨️ ZADAT JMÉNO</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
@@ -267,6 +267,7 @@ var fix210FastBasicInfo='FIX210 FAST BASIC waiting';
 var fix211ChLatchInfo='FIX211 CH latch clear waiting';
 var fix211ChLatchClearUntil=-999;
 var fix211Antic6TextInfo='FIX211 ANTIC 6/7 textmode waiting';
+var fix212RomCharsetInfo='FIX212 real ROM charset waiting';
 var fix208BasicAutofeedQueue=[];
 var fix208BasicAutofeedActive=false;
 var fix208BasicAutofeedName='';
@@ -782,7 +783,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX211_CH_LATCH_TEXTMODE_CORE";
+var EMU_BUILD_TAG="FIX212_REALROM_CHARSET_TEXT_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -2767,25 +2768,15 @@ function queueBasicProgramTextSlowFix171(txt,name){
  return false;
 }
 
-function clearGtiaDiagnosticCarryoverFix211(reason){
- try{
-   fix179GtiaDirectMode=0;fix179GtiaDirectUntil=-999;fix181GtiaKeepAliveLastFrame=-999;
-   fix170GtiaModeInfo='reset by FIX211 '+(reason||'');
-   fix177GtiaRenderInfo='reset by FIX211 '+(reason||'');
-   fix179GtiaDirectInfo='ended by FIX211 '+(reason||'');
-   if(ram){ram[0x026F]=ram[0xD01B]=0;if(writeSeen){writeSeen[0x026F]=1;writeSeen[0xD01B]=1;}}
- }catch(e){}
-}
 function queueBasicProgramTextFix171(txt,name){
- // FIX211: rychly CH/KBCODE loader zustava, ale pred spustenim cistime stare GTIA testy
- // a po dokonceni queue cistime CH/KBCODE latch, aby posledni RETURN nepreskocil intro.
+ // FIX210: Rene ma pravdu - BASIC TXT a VLOZIT PROGRAM nesmi cekat minuty na timed paste.
+ // Pouzij stejnou rychlou, realnou CH/KBCODE cestu jako SUBMARINE. Stary pomaly paste zustava jako fallback.
  try{
-   clearGtiaDiagnosticCarryoverFix211('before FAST BASIC');
-   fix210FastBasicInfo='FIX211 FAST BASIC wrapper for '+(name||'BASIC TXT')+' frame '+playFrameNo;
-   log('FIX211 FAST BASIC REQUEST: '+(name||'BASIC TXT'));
-   return queueBasicProgramTextFastFix208(txt,(name||'BASIC TXT')+' FAST FIX211');
+   fix210FastBasicInfo='FIX210 FAST BASIC wrapper for '+(name||'BASIC TXT')+' frame '+playFrameNo;
+   log('FIX210 FAST BASIC REQUEST: '+(name||'BASIC TXT'));
+   return queueBasicProgramTextFastFix208(txt,(name||'BASIC TXT')+' FAST FIX210');
  }catch(e){
-   try{log('FIX211 FAST BASIC fallback to slow paste: '+(e&&e.message?e.message:e));}catch(_){}
+   try{log('FIX210 FAST BASIC fallback to slow paste: '+(e&&e.message?e.message:e));}catch(_){}
    return queueBasicProgramTextSlowFix171(txt,name);
  }
 }
@@ -3054,7 +3045,7 @@ function loadXex(light){
  fix195NativeXexInfo=(fix195NativeXexInfo||'FIX197 native XEX')+'; CPU cold-state PC=$'+hex(runAddress||0,4)+' RUNAD='+(xexInfo&&xexInfo.run?'$'+hex(xexInfo.run,4):'--')+' BASIC-direct OFF / OS-ROM probe ON resetVector $C2AA';
  if(!light){
    log(lastColdResetInfo);
-   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX211-CH-LATCH-TEXTMODE-CORE");
+   log((meta.bad?"BAD/partial ":"")+"XEX loaded: "+currentXexName+". Segments: "+meta.count+", ENTRY=$"+hex(cpu.pc,4)+", RUNAD="+(xexInfo.run?"$"+hex(xexInfo.run,4):"--")+", INITAD="+(xexInfo.inits.length?xexInfo.inits.map(function(a){return "$"+hex(a,4);}).join(","):"--")+" renderer=EMU09-FIX212-REALROM-CHARSET-TEXT-CORE");
    renderSegments();renderRegs();renderVideo();
  }
 }
@@ -6580,10 +6571,32 @@ function montezumaPreferredChbaseByte(currentByte){
  fix116MontezumaCharsetInfo='Montezuma CHBASE raw $'+hex(cur,2)+' kept nz3000='+nz3000+' nz0c00='+nz0c00+' dl $'+hex(dl,4)+' frame '+playFrameNo;
  return -1;
 }
+
+function fix212OsRomCharsetByte(raw,mode,charScan){
+ raw&=255; mode&=15; charScan=charScan|0;
+ if(charScan<0 || charScan>7)return 0;
+ var code=(mode===4 || mode===5 || mode===6 || mode===7)?(raw&0x3F):(raw&0x7F);
+ try{
+   if(optionalOsRom && optionalOsRom.length>=0x2400){
+     var off=0x2000+((code&127)<<3)+charScan; // XL/XE OS is mapped at $C000, charset is $E000 => offset $2000
+     var v=optionalOsRom[off]&255;
+     fix212RomCharsetInfo='FIX212 real ATARIXL.ROM charset code $'+hex(code,2)+' scan '+charScan+' off $'+hex(off,4)+' v $'+hex(v,2)+' CHBASE real/synth frame '+playFrameNo;
+     return v;
+   }
+ }catch(e){fix212RomCharsetInfo='FIX212 OS ROM charset error '+(e&&e.message?e.message:e);}
+ return syntheticAtariCharsetByte(raw,mode,charScan);
+}
+function fix212ShouldUseOsRomCharset(chbaseByte,mode){
+ var b=(chbaseByte!==undefined && chbaseByte!==null)?(chbaseByte&255):(ram[0xD409]||ram[0x02F4]||0);
+ if(!(mode===2 || mode===3 || mode===4 || mode===5 || mode===6 || mode===7))return false;
+ if(b===0 || b>=0xE0)return true;
+ return false;
+}
+
 function charBaseGuess(chbaseByte){
  var b=(chbaseByte!==undefined && chbaseByte!==null)?(chbaseByte&255):(ram[0xD409]||ram[0x02F4]||0);
  if(activeXexProfile==='realos' && b===0){
-   fix130CharsetFallbackInfo='REALOS synthetic OS font because CHBASE hw/shadow is $00 frame '+playFrameNo;
+   fix130CharsetFallbackInfo='FIX212 REALOS CHBASE $00 => use ATARIXL.ROM charset at $E000 frame '+playFrameNo;
    return 0;
  }
  var mb=montezumaPreferredChbaseByte(b);
@@ -6593,7 +6606,7 @@ function charBaseGuess(chbaseByte){
  // dělat charset. Přesně to vyrábělo tečky okolo písma: mezery a textové řádky četly bajty OS kódu.
  // Reálný Atari default font je zvláštní případ; v našem WebView core je bezpečnější syntetický font níže.
  if(cb>=0xE000){
-   fix130CharsetFallbackInfo='synthetic charset for OS-ROM CHBASE $'+hex(b,2)+' profile '+activeXexProfile+' frame '+playFrameNo;
+   fix130CharsetFallbackInfo='FIX212 OS-ROM CHBASE $'+hex(b,2)+' => use ATARIXL.ROM charset profile '+activeXexProfile+' frame '+playFrameNo;
    return 0;
  }
  // FIX60: pro vlastní XEX bereme CHBASE jako skutečný ANTIC registr. Některé hry mají
@@ -6837,6 +6850,7 @@ function charsetByteForCode(raw,mode,scan,chbaseByte){
  if(mode===4 || mode===5 || mode===6 || mode===7)code=raw&0x3F;
  var charScan=anticCharScanForMode(mode,scan);
  if(charScan<0)return 0;
+ if(fix212ShouldUseOsRomCharset(chbaseByte,mode))return fix212OsRomCharsetByte(raw,mode,charScan);
  if(!cb)return syntheticAtariCharsetByte(raw,mode,charScan);
  return ram[(cb+((code&127)<<3)+charScan)&65535]&255;
 }
@@ -7566,6 +7580,7 @@ function renderAnticDisplayFastGeneric(){
      var lcs=gr?regsToColorSetFromDli(gr):cs;
      lcs=realOsMaybeTextColorSetFix163(mode,lcs);
      var gch=(gst && gst.chbase!==undefined)?gst.chbase:(ram[0xD409]&255);
+     if(activeXexProfile==='realos' && (mode===6||mode===7||mode===2||mode===3) && ((gch&255)===0)){gch=0xE0;fix212RomCharsetInfo='FIX212 renderer forced OS font CHBASE $E0 for REALOS ANTIC '+mode+' frame '+playFrameNo;}
      var cols=[rgbFromCss(lcs.bk),rgbFromCss(lcs.p0),rgbFromCss(lcs.p1),rgbFromCss(lcs.p2),rgbFromCss(lcs.p3)];
      var lineAddr=dynamicModeLineAddr(scanAddr,mode,sy,dliCaps,y);
      if(mode===2 || mode===3 || mode===6 || mode===7){
@@ -7644,6 +7659,7 @@ function renderAnticDisplay(){
      var csSlow=stSlow?regsToColorSetFromDli(stSlow.regs):cs;
      csSlow=realOsMaybeTextColorSetFix163(mode,csSlow);
      var chSlow=(stSlow && stSlow.chbase!==undefined)?stSlow.chbase:(ram[0xD409]&255);
+     if(activeXexProfile==='realos' && (mode===6||mode===7||mode===2||mode===3) && ((chSlow&255)===0)){chSlow=0xE0;fix212RomCharsetInfo='FIX212 slow renderer forced OS font CHBASE $E0 for REALOS ANTIC '+mode+' frame '+playFrameNo;}
      var lineAddrSlow=dynamicModeLineAddr(scanAddr,mode,sySlow,capsSlow,y);
     if(mode===2 || mode===3){drawAtariTextLine(g,lineAddrSlow,y,csSlow.p2,csSlow.bk);}
      else if(mode===6 || mode===7){drawAtariTextLineWide(g,lineAddrSlow,y,csSlow.p1,csSlow.bk,20,1);}
@@ -8291,8 +8307,8 @@ function compatibilitySnapshotCore(){
  if(!cpu){loadXex(false);}
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
-lines.push("COMPAT SNAPSHOT FIX211 CH LATCH TEXTMODE CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX211, bezi stary APK/ZIP nebo stary label.");
+lines.push("COMPAT SNAPSHOT FIX212 REALROM CHARSET TEXT CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX212, bezi stary APK/ZIP nebo stary label.");
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
  lines.push("profile="+activeXexProfile+" playMode="+(playMode?"RUN":"PAUSE")+" PC=$"+hex(cpu.pc,4)+" ENTRY=$"+hex(xexInfo.entry||0,4)+" steps="+cpu.steps);
  if(cpu.steps===0)lines.push("POZOR: CPU má steps=0, takže XEX je zatím jen načtený. Dej SPUSTIT nebo použij FIX17 autostart.");
@@ -8313,6 +8329,7 @@ lines.push("SUBMARINE CH AUTOPASTE FIX210: "+(fix209ChAutopasteInfo||"--"));
 lines.push("FIX211 FAST BASIC: "+(fix210FastBasicInfo||"--"));
 lines.push("FIX211 CH LATCH CLEAR: "+(fix211ChLatchInfo||"--"));
 lines.push("FIX211 ANTIC 6/7 TEXTMODE: "+(fix211Antic6TextInfo||"--"));
+lines.push("FIX212 ROM CHARSET: "+(fix212RomCharsetInfo||"--"));
 lines.push("FIX211 REALOS TEXT COLORS: "+(fix210RealOsTextColorInfo||"--"));
 lines.push("SUBMARINE BASIC CODE FIX210: "+(fix207SubmarineCode||"--"));
 lines.push("GTIA REGMAP FIX205: "+(fix204GtiaRegMapInfo||"--"));
@@ -8423,7 +8440,7 @@ function startPlaying(){
  applyLoaderHandoff('after INITAD');
  playMode=true;
  playBooted=true;
-updatePlayStatus("Emulator bezi. FIX211: CH FAST BASIC loader + key-latch clear po RUN; HW/SDLST DLIST first; RAM scan nema prednost.");
+updatePlayStatus("Emulator bezi. FIX212: CH FAST BASIC loader + real ATARIXL.ROM charset for ANTIC 6/7; HW/SDLST DLIST first.");
  if(!playLoopId)playLoop();
 }
 
