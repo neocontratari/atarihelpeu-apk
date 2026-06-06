@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX244_SELFTEST_DMA_SCREENFAST_CORE / vlastní XEX</title>
+<title>EMU-09 FIX245_VERIFY_BUILD_STAMP_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -793,7 +793,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX237_PURE_HW_SNAPSHOT_KEY_EDGE_POKEY_CLICK_CORE";
+var EMU_BUILD_TAG="FIX245_VERIFY_BUILD_STAMP_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -12639,6 +12639,65 @@ updatePlayStatus('ready');
   log244('FIX244 installed: screen-editor FAST BASIC + selftest DMA renderer');
 })();
 /* END FIX244 */
+
+
+/* FIX245 VERIFY BUILD STAMP + CACHE BUST CORE
+   Purpose: make it impossible to confuse this overlay with FIX240/FIX241.
+   This block does NOT draw fake READY/SELFTEST. It only stamps the running asset, forces visible UI text,
+   and appends an unmistakable snapshot marker. Core logic remains the FIX244 self-test DMA + screen-fast core.
+*/
+(function(){
+  'use strict';
+  var FIX245_TAG='FIX245_VERIFY_BUILD_STAMP_CORE';
+  function safe(fn){try{return fn();}catch(e){}}
+  function hx245(n,w){try{var s=(Number(n)&((w<=2)?255:65535)).toString(16).toUpperCase();while(s.length<w)s='0'+s;return s;}catch(e){return '??';}}
+  function frame245(){try{return (typeof frameCounter!=='undefined'?frameCounter:(window.frameCounter||0));}catch(e){return 0;}}
+  safe(function(){window.EMU_BUILD_TAG=FIX245_TAG; EMU_BUILD_TAG=FIX245_TAG;});
+  safe(function(){document.title='EMU-09 '+FIX245_TAG;});
+  safe(function(){var h1=document.querySelector('h1'); if(h1)h1.textContent='EMU-09 '+FIX245_TAG;});
+  safe(function(){var p=document.querySelector('h1 + p'); if(p)p.textContent='FIX245 VERIFY: pokud snapshot neukaze BUILD FIX245, bezi stary APK/asset. Jadro: FIX244 screen-editor FAST BASIC + selftest DLIST DMA render. Bez fake READY/SELF TEST.';});
+  safe(function(){var dock=document.getElementById('atariKeyboardDockFix171'); if(dock){var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX245 VERIFY LOADED: klavesnice pod obrazem; FAST BASIC pres editor+RETURN; SELF TEST pres DLIST DMA. Snapshot musi hlasit FIX245.';}});
+  safe(function(){var fast=document.getElementById('fix240FastBasicBox'); if(fast){var h=fast.querySelector('h2'); if(h)h.textContent='Rychly BASIC text automat FIX245 VERIFY'; var p=fast.querySelector('p'); if(p)p.textContent='Servisni helper po real READY. Pokud log stale hlasi FIX240, APK nebezi z tohoto overlaye.';}});
+  safe(function(){if(typeof updateRomStatusLine==='function')updateRomStatusLine('FIX245 VERIFY LOADED / core FIX244 active');});
+  safe(function(){
+    window.fix240FastBasicInfo='DISABLED BY FIX245 VERIFY - do not use RAW CH pump';
+    window.fix241FastPumpInfo='DISABLED BY FIX245 VERIFY - do not use RAW CH pump';
+    window.fix242FastInfo='DISABLED BY FIX245 VERIFY - do not use RAW CH pump';
+    window.fix243FastInfo='FIX245 VERIFY uses FIX244 screen-editor path';
+    if(typeof fix244FastInfo!=='undefined')fix244FastInfo='FIX245 VERIFY loaded; FIX244 screen-editor FAST idle';
+    if(typeof fix244UiInfo!=='undefined')fix244UiInfo='FIX245 VERIFY UI stamp applied frame '+frame245();
+  });
+  var oldName245=(typeof makeLogFileName==='function')?makeLogFileName:null;
+  makeLogFileName=function(reason){
+    try{var d=new Date();function p(n){return (n<10?'0':'')+n;}var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');var nm=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);return 'atarihelp-FIX245-'+prof+'-'+(reason||'manual')+'-'+ts+'-'+nm+'.txt';}catch(e){return oldName245?oldName245(reason):'atarihelp-FIX245-snapshot.txt';}
+  };
+  var oldSnap245=(typeof compatibilitySnapshot==='function')?compatibilitySnapshot:null;
+  compatibilitySnapshot=function(){
+    safe(function(){
+      var dl=0, sv=0, sdm=0, prior=0, chb=0;
+      try{dl=(typeof getDlistPtr==='function'?getDlistPtr():((ram[0x0230]||0)|((ram[0x0231]||0)<<8)))&65535;}catch(e){}
+      try{sv=((ram[0x0058]||0)|((ram[0x0059]||0)<<8))&65535;}catch(e){}
+      try{sdm=(ram[0x022F]||ram[0xD400]||0)&255; prior=(ram[0xD01B]||ram[0x026F]||0)&255; chb=(ram[0xD409]||ram[0x02F4]||0)&255;}catch(e){}
+      window.__fix245SnapshotTail='\nBUILD '+FIX245_TAG+
+        '\nFIX245 VERIFY BUILD STAMP CHECK'+
+        '\nVERIFY LOADED YES - if this line is missing, APK/asset is stale'+
+        '\nCORE FIX244 screen-editor FAST BASIC + SELFTEST DLIST DMA renderer preserved'+
+        '\nSTATE DLIST $'+hx245(dl,4)+' SAVMSC $'+hx245(sv,4)+' SDMCTL $'+hx245(sdm,2)+' CHBASE $'+hx245(chb,2)+' PRIOR $'+hx245(prior,2)+' frame '+frame245()+
+        '\nFAST '+(window.fix244FastInfo||'FIX244/FIX245 fast state unknown')+
+        '\nSELFTEST '+(window.fix244SelftestInfo||'FIX244/FIX245 selftest state unknown')+
+        '\nRULE BUILD_STAMP_FORCED / CACHE_BUST_INDEX_LINK / OLD_RAW_CH_LABELS_DISABLED / NO_FAKE_READY_SELFTEST';
+    });
+    return oldSnap245?oldSnap245():null;
+  };
+  var oldSave245=(typeof saveLogToFile==='function')?saveLogToFile:null;
+  saveLogToFile=function(reason){
+    if(reason==='purehw-snapshot')safe(function(){ if(window.__fix245SnapshotTail)log(String(window.__fix245SnapshotTail).replace(/^\n/,'')); else log('BUILD '+FIX245_TAG+'\nFIX245 VERIFY BUILD STAMP CHECK\nVERIFY LOADED YES'); });
+    return oldSave245?oldSave245.apply(this,arguments):null;
+  };
+  safe(function(){console.log('EMU-09 '+FIX245_TAG+' loaded');});
+  safe(function(){if(typeof log==='function')log('FIX245 VERIFY LOADED: build stamp forced, if snapshot shows FIX240 then old APK/asset is running.');});
+})();
+/* END FIX245 */
 
 </script>
 </body>
