@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX241_FAST_BASIC_RAWCH_UI_DOCK_CORE / vlastní XEX</title>
+<title>EMU-09 FIX242_SAFE_FAST_BASIC_THROTTLE_SELFTEST_CONSOL_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -11602,7 +11602,9 @@ updatePlayStatus('ready');
   function latchIdle241(){
     try{
       if(!ram)return false;
-      return (((ram[0x02FC]||0xFF)&255)===0xFF) && (((ram[0xD209]||0xFF)&255)===0xFF) && ((typeof realOsKeyOneShot==='undefined') || ((realOsKeyOneShot&255)===0xFF));
+      var ch=(ram[0x02FC]!==undefined?ram[0x02FC]:0xFF)&255;
+      var kb=(ram[0xD209]!==undefined?ram[0xD209]:0xFF)&255;
+      return ch===0xFF && kb===0xFF && ((typeof realOsKeyOneShot==='undefined') || ((realOsKeyOneShot&255)===0xFF));
     }catch(e){return false;}
   }
   function clearLatch241(reason){
@@ -11754,6 +11756,318 @@ updatePlayStatus('ready');
   log241('FIX241 installed: FAST raw-CH pump + touch button bind + keyboard dock reorder');
 })();
 /* END FIX241 */
+
+
+
+/* FIX242 SAFE FAST BASIC THROTTLE + SELFTEST CONSOL PASSTHROUGH CORE
+   Root causes from Rene FIX241 test:
+   - FAST BASIC bytes were injected too aggressively through RAW CH $02FC. The ROM editor can read CH many
+     times in one emulated frame; FIX241 therefore pumped whole lines/programs inside one editor/timing phase,
+     which corrupted listings (POSTTION, SOUDD, duplicated/shifted characters).
+   - SELF TEST black screen was triggered by the automatic START-low edge from FIX240. That edge is too strong
+     for the menu path: it can skip the visible self-test menu into the next ROM phase. FIX242 blocks automatic
+     START injection and returns only real CONSOL state. User START remains available through the HOLD START button.
+   No fake READY, no drawn SELF TEST, no PC jumps, no direct screen/program-memory write. */
+(function(){
+  var FIX242_TAG='FIX242_SAFE_FAST_BASIC_THROTTLE_SELFTEST_CONSOL_CORE';
+  window.fix242FastInfo='FIX242 safe FAST BASIC idle';
+  window.fix242SelftestInfo='FIX242 SELFTEST auto START disabled; CONSOL passthrough idle';
+  window.fix242UiInfo='FIX242 UI waiting';
+  window.fix242Last='--';
+  var q242=[];
+  var active242=false;
+  var name242='';
+  var total242=0;
+  var pumped242=0;
+  var epoch242=0;
+  var nextFrame242=0;
+  var lastFeedFrame242=-1;
+  var waitTimer242=0;
+  var clickGuardName242='';
+  var clickGuardMs242=0;
+
+  function hx(v,n){try{return hex((v||0)&((n>=4)?65535:255),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
+  function fr(){return (typeof playFrameNo!=='undefined'?(playFrameNo|0):0);} 
+  function log242(s){try{log(s);}catch(e){} try{console.log(s);}catch(e){}}
+  function isSelfTest242(){try{return !!(fix215PureSelfTestMode || (String(fix157RealOsMode||'').indexOf('selftest')>=0) || (String(fix233Mode||'')==='selftest'));}catch(e){return false;}}
+  function ready242(){
+    try{
+      if(!ram || !cpu || !playMode)return false;
+      if(activeXexProfile!=='realos')return false;
+      if(isSelfTest242())return false;
+      if(fr()<120)return false;
+      var dl=((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535;
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;
+      var nmi=(ram[0xD40E]||0)&255;
+      var eff=(typeof fix227EffectivePortB==='function')?(fix227EffectivePortB()&255):((typeof piaPortBOut!=='undefined'?piaPortBOut:0xFD)&255);
+      return dl===0x9C20 && sav===0x9C40 && !!(nmi&0x40) && ((eff&0x02)===0) && ((eff&0x80)!==0);
+    }catch(e){return false;}
+  }
+  function status242(){
+    try{
+      var dl=ram?(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535):0;
+      var sav=ram?(((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535):0;
+      var nmi=ram?((ram[0xD40E]||0)&255):0;
+      var eff=(typeof fix227EffectivePortB==='function')?(fix227EffectivePortB()&255):0;
+      return 'DLIST $'+hx(dl,4)+' SAVMSC $'+hx(sav,4)+' NMIEN $'+hx(nmi,2)+' EFF $'+hx(eff,2)+' mode '+(fix157RealOsMode||'--')+' frame '+fr();
+    }catch(e){return 'status error '+(e&&e.message?e.message:e);}
+  }
+  function cancel242(reason){
+    try{
+      active242=false; q242=[]; name242=''; total242=0; pumped242=0; nextFrame242=0; lastFeedFrame242=-1;
+      if(waitTimer242){clearTimeout(waitTimer242); waitTimer242=0;}
+      if(typeof fix208BasicAutofeedQueue!=='undefined')fix208BasicAutofeedQueue=[];
+      if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false;
+      if(typeof fix223FastKgetchOnly!=='undefined')fix223FastKgetchOnly=false;
+      if(typeof atariKeyQueue!=='undefined')atariKeyQueue=[];
+      if(typeof atariKeyTimer!=='undefined' && atariKeyTimer){clearTimeout(atariKeyTimer);atariKeyTimer=0;}
+      if(typeof input!=='undefined' && input)input.key=0xFF;
+      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;
+      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;
+      if(typeof realOsKeyLast!=='undefined')realOsKeyLast=0xFF;
+      if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=0xFF;
+      if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}
+      try{syncInputShadows();renderInput();}catch(e){}
+      if(reason){fix242FastInfo='QUEUE CANCELLED epoch changed '+reason+' frame '+fr();fix242Last=fix242FastInfo;log242('FIX242 '+fix242FastInfo);}
+    }catch(e){fix242FastInfo='FIX242 cancel error '+(e&&e.message?e.message:e);}
+  }
+  window.fix242CancelFastBasicQueue=cancel242;
+
+  function atasciiFromChar242(ch){
+    if(ch==='\n')return 0x9B;
+    if(ch==='\r')return -1;
+    if(ch==='\t')return 0x20;
+    if(ch==='\u00a0')return 0x20;
+    var c=ch.charCodeAt(0);
+    if(c===0x9B)return 0x9B;
+    if(c>=97 && c<=122)c-=32;
+    if(c>=32 && c<=126)return c&255;
+    try{var a=realOsAtasciiForKeyFix172(ch); if(a!==0xFF)return a&255;}catch(e){}
+    return -1;
+  }
+  function buildQueue242(text,runAfter){
+    text=String(text||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    if(runAfter){ if(text.length && text.charAt(text.length-1)!=='\n')text+='\n'; text+='RUN\n'; }
+    else if(text.length && text.charAt(text.length-1)!=='\n')text+='\n';
+    var q=[],bad=[];
+    for(var i=0;i<text.length;i++){var a=atasciiFromChar242(text.charAt(i)); if(a>=0)q.push(a&255); else bad.push(text.charAt(i));}
+    var lines=text.length?text.split('\n').filter(function(x){return x.length>0;}).length:0;
+    return {q:q,chars:q.length,lines:lines,bad:bad,source:text};
+  }
+  function chForAtascii242(a){
+    a&=255;
+    try{return realOsKeycodeForAtasciiFix172(a)&255;}catch(e){return a&255;}
+  }
+  function idle242(){
+    try{
+      if(!ram)return false;
+      var ch=(ram[0x02FC]!==undefined?ram[0x02FC]:0xFF)&255;
+      var kb=(ram[0xD209]!==undefined?ram[0xD209]:0xFF)&255;
+      var os=(typeof realOsKeyOneShot==='undefined')?0xFF:(realOsKeyOneShot&255);
+      return ch===0xFF && kb===0xFF && os===0xFF;
+    }catch(e){return false;}
+  }
+  function clearLatch242(reason){
+    try{
+      if(typeof input!=='undefined' && input)input.key=0xFF;
+      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;
+      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;
+      if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}
+      try{syncInputShadows();renderInput();}catch(e){}
+      fix242FastInfo='LATCH CLEAR '+(reason||'')+' frame '+fr();
+    }catch(e){fix242FastInfo='latch clear error '+(e&&e.message?e.message:e);}
+  }
+  function complete242(lastA){
+    active242=false;
+    var msg='QUEUE COMPLETE '+name242+' chars '+total242+' pumped '+pumped242+' SAFE_THROTTLED_RAW_CH last ATASCII $'+hx(lastA,2)+' frame '+fr()+' / LATCH CLEAR';
+    fix242FastInfo=msg; fix242Last=msg;
+    try{fix240FastBasicInfo='FIX242 '+msg;fix240FastBasicLast='FIX242 '+msg;fix241FastPumpInfo='FIX242 '+msg;fix208SubmarineFastInfo='FIX242 '+msg;fix209ChAutopasteInfo='FIX242 '+msg;}catch(e){}
+    log242('FIX242 '+msg);
+    clearLatch242('after complete');
+    try{genericRenderEvery=1;fastVideo=true;updatePlayStatus('FIX242 FAST BASIC: QUEUE COMPLETE. Bez rozstrelu kodu, throttled RAW CH.');}catch(e){}
+  }
+  function feed242(where){
+    try{
+      if(!active242 || !q242.length)return false;
+      if(!ready242()){fix242FastInfo='SAFE FAST HOLD not READY '+status242();return false;}
+      if(!idle242())return false;
+      var f=fr();
+      if(f<nextFrame242 || f===lastFeedFrame242)return false;
+      var a=q242.shift()&255;
+      var k=chForAtascii242(a)&255;
+      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=a;
+      if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=a;
+      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=k;
+      if(typeof realOsKeyLast!=='undefined')realOsKeyLast=k;
+      if(typeof realOsKeyStamp!=='undefined')realOsKeyStamp=Date.now();
+      if(typeof input!=='undefined' && input)input.key=k;
+      if(ram){ram[0x02FB]=a;ram[0x02FC]=k;ram[0xD209]=k;}
+      pumped242++; lastFeedFrame242=f;
+      var delay=(a===0x9B)?10:1; // one key per frame; line tokenization gets a longer EOL pause.
+      nextFrame242=f+delay;
+      var left=q242.length|0;
+      if(pumped242<10 || left<10 || (pumped242%64)===0 || a===0x9B){
+        fix242FastInfo='SAFE RAW CH FEED '+name242+' ATASCII $'+hx(a,2)+' CH $'+hx(k,2)+' pumped '+pumped242+'/'+total242+' left '+left+' delay '+delay+' via '+(where||'CH')+' frame '+f;
+        try{fix223KeyboardInfo='FIX242 '+fix242FastInfo;fix209ChAutopasteInfo='FIX242 '+fix242FastInfo;}catch(e){}
+      }
+      if(!left)complete242(a);
+      return true;
+    }catch(e){fix242FastInfo='feed error '+(e&&e.message?e.message:e);return false;}
+  }
+
+  function arm242(payload,nm,epoch){
+    try{
+      cancel242('new request arm cleanup');
+      if((typeof fix223InputEpoch!=='undefined') && (epoch|0)!==(fix223InputEpoch|0)){
+        fix242FastInfo='QUEUE CANCELLED epoch changed before arm '+nm+' old '+epoch+' current '+fix223InputEpoch+' frame '+fr();log242('FIX242 '+fix242FastInfo);return;
+      }
+      q242=payload.q.slice(0); active242=true; name242=String(nm||'FAST BASIC'); total242=q242.length; pumped242=0; epoch242=epoch|0; nextFrame242=fr()+2; lastFeedFrame242=-1;
+      // Keep old FAST queues hard-off. FIX242 owns the service queue.
+      if(typeof fix208BasicAutofeedQueue!=='undefined')fix208BasicAutofeedQueue=[];
+      if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false;
+      if(typeof fix223FastKgetchOnly!=='undefined')fix223FastKgetchOnly=false;
+      playCyclesPerFrame=Math.max(playCyclesPerFrame||0,9000); playMaxMsPerFrame=Math.max(playMaxMsPerFrame||0,12); genericRenderEvery=4; fastVideo=true;
+      fix242FastInfo='FAST BASIC QUEUE START '+name242+' chars '+payload.chars+' lines '+payload.lines+' ATASCII EOL $9B epoch '+epoch242+' READY OK '+status242()+' SAFE throttle 1 char/frame EOL delay 10';
+      fix242Last=fix242FastInfo;
+      try{fix240FastBasicInfo='FIX242 '+fix242FastInfo;fix240FastBasicLast='FIX242 '+fix242FastInfo;fix241FastPumpInfo='FIX242 '+fix242FastInfo;fix208SubmarineFastInfo='FIX242 '+fix242FastInfo;}catch(e){}
+      log242('FIX242 '+fix242FastInfo);
+      try{updatePlayStatus('FIX242 FAST BASIC: READY potvrzen, spoustim bezpecnou ATASCII frontu. Jeden znak za frame, EOL $9B s pauzou.');}catch(e){}
+    }catch(e){fix242FastInfo='arm error '+(e&&e.message?e.message:e);}
+  }
+  function waitArm242(payload,nm,epoch,startFrame){
+    try{
+      if((typeof fix223InputEpoch!=='undefined') && (epoch|0)!==(fix223InputEpoch|0)){fix242FastInfo='QUEUE CANCELLED epoch changed '+nm+' old '+epoch+' current '+fix223InputEpoch+' frame '+fr();log242('FIX242 '+fix242FastInfo);return;}
+      if(ready242()){waitTimer242=0;arm242(payload,nm,epoch);return;}
+      var age=(fr()-(startFrame||fr()))|0;
+      fix242FastInfo='WAIT READY '+nm+' epoch '+epoch+' age '+age+' '+status242();
+      if(age>1200){fix242FastInfo='WAIT READY timeout - queue NOT armed '+nm+' '+status242();log242('FIX242 '+fix242FastInfo);try{updatePlayStatus('FIX242 FAST BASIC: READY neni potvrzeny, frontu nepoustim.');}catch(e){};return;}
+      waitTimer242=setTimeout(function(){waitArm242(payload,nm,epoch,startFrame);},120);
+    }catch(e){fix242FastInfo='wait error '+(e&&e.message?e.message:e);}
+  }
+  function queue242fn(text,nm,runAfter,ev){
+    try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}
+    var now=Date.now();
+    if(clickGuardName242===nm && now-clickGuardMs242<350){fix242FastInfo='duplicate touch/click ignored '+nm+' frame '+fr();return false;}
+    clickGuardName242=nm;clickGuardMs242=now;
+    var payload=buildQueue242(text,!!runAfter);
+    if(!payload.q.length){fix242FastInfo='FAST BASIC QUEUE empty - nothing armed';log242('FIX242 '+fix242FastInfo);return false;}
+    if(payload.bad.length){log242('FIX242 FAST BASIC unsupported chars '+payload.bad.join(''));}
+    if(typeof fix223InputEpoch!=='undefined')fix223InputEpoch=(fix223InputEpoch|0)+1;
+    cancel242('new FIX242 FAST request');
+    var ep=(typeof fix223InputEpoch!=='undefined')?(fix223InputEpoch|0):((epoch242+1)|0);
+    fix242FastInfo='FAST BASIC QUEUE REQUEST '+nm+' chars '+payload.chars+' lines '+payload.lines+' ATASCII EOL $9B epoch '+ep+' badChars '+payload.bad.length;
+    log242('FIX242 '+fix242FastInfo);
+    try{updatePlayStatus('FIX242 FAST BASIC: klik prijat, cekam na skutecny READY.');}catch(e){}
+    waitArm242(payload,nm,ep,fr());
+    return false;
+  }
+
+  window.queueFastBasicFix242=function(text,nm,runAfter,ev){return queue242fn(text,nm||'FAST BASIC',!!runAfter,ev);};
+  window.queueFastBasicFix240=function(text,nm,runAfter){return queue242fn(text,nm||'FAST BASIC',!!runAfter,null);};
+  window.basicTxtFastFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue242fn(ta?ta.value:'','BASIC TXT FAST',false,ev);};
+  window.vlozitFastFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue242fn(ta?ta.value:'','VLOZIT FAST',false,ev);};
+  window.vlozitFastRunFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue242fn(ta?ta.value:'','VLOZIT FAST + RUN',true,ev);};
+  window.submarineFastFix240=function(ev){var prog=(typeof submarineBasicProgramFix207==='function')?submarineBasicProgramFix207():'10 PRINT "SUBMARINE"\n20 GOTO 20\n';return queue242fn(prog,'SUBMARINE FAST',false,ev);};
+
+  var oldR242=CPU6502.prototype.r;
+  CPU6502.prototype.r=function(a){
+    a&=65535;
+    if(a===0xD01F && typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode && isSelfTest242() && cpu===this){
+      try{
+        var c=0x07;
+        if(input&&input.start)c&=~1;
+        if(input&&input.select)c&=~2;
+        c&=~4; // OPTION remains low while in self-test boot/window.
+        fix242SelftestInfo='SELFTEST CONSOL passthrough $'+hx(c,1)+' AUTO_START_BLOCKED frame '+fr()+' PC $'+hx((this.pc||0)&65535,4)+'; user HOLD START still works';
+        return c&255;
+      }catch(e){fix242SelftestInfo='SELFTEST CONSOL passthrough error '+(e&&e.message?e.message:e);return 0x03;}
+    }
+    if(a===0x02FC){try{feed242('ROM CH poll');}catch(e){fix242FastInfo='raw CH hook error '+(e&&e.message?e.message:e);}}
+    return oldR242.call(this,a);
+  };
+
+  var oldLoop242=playLoop;
+  playLoop=function(){
+    try{
+      // No frame seeding. Feed only when ROM really polls CH. This prevents dumping many characters inside one OS pass.
+      if(active242 && !ready242()){fix242FastInfo='SAFE FAST waiting/hold '+status242();}
+    }catch(e){}
+    return oldLoop242();
+  };
+
+  function installUi242(){
+    try{
+      var fast=document.getElementById('fix240FastBasicBox');
+      if(fast){
+        var h=fast.querySelector('h2'); if(h)h.textContent='Rychly BASIC text automat FIX242';
+        var p=fast.querySelector('p'); if(p)p.textContent='Servisni helper: SAFE fronta po real READY. Znak se poda az pri ROM cteni CH $02FC, max 1 znak/frame, EOL=$9B ma pauzu. Bez fake bootu.';
+        var buttons=fast.querySelectorAll('button');
+        var kinds=['txt','vlozit','run','sub'];
+        for(var i=0;i<buttons.length;i++)(function(btn,kind){
+          if(!btn)return;
+          var b=btn.cloneNode(true);
+          b.setAttribute('data-fix242-bound','1');
+          b.style.pointerEvents='auto';
+          b.onclick=function(ev){
+            if(kind==='txt')return window.basicTxtFastFix240(ev);
+            if(kind==='vlozit')return window.vlozitFastFix240(ev);
+            if(kind==='run')return window.vlozitFastRunFix240(ev);
+            return window.submarineFastFix240(ev);
+          };
+          b.addEventListener('pointerup',b.onclick,true);
+          btn.parentNode.replaceChild(b,btn);
+        })(buttons[i],kinds[i]||'vlozit');
+      }
+      var dock=document.getElementById('atariKeyboardDock');
+      if(dock){var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX242: klavesnice je pod obrazem; FAST BASIC je SAFE/throttled, SELF TEST nema automaticky START do cerne.';}
+      fix242UiInfo='FIX242 UI OK buttons rebound SAFE queue frame '+fr();
+    }catch(e){fix242UiInfo='FIX242 UI error '+(e&&e.message?e.message:e);}
+  }
+  setTimeout(installUi242,0);setTimeout(installUi242,400);setTimeout(installUi242,1200);
+
+  try{
+    var oldStartBasic242=startPureHardwareBasicFix226;
+    startPureHardwareBasicFix226=function(ev){cancel242('POWER BASIC'); if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}} return oldStartBasic242(ev);};
+  }catch(e){}
+  try{
+    var oldStartSelf242=startPureHardwareSelfTestFix226;
+    startPureHardwareSelfTestFix226=function(ev){cancel242('POWER OPTION SELF TEST'); if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}} fix242SelftestInfo='SELFTEST boot requested: AUTO START disabled, waiting real ROM/menu path frame '+fr(); return oldStartSelf242(ev);};
+  }catch(e){}
+  try{
+    var oldReset242=resetPureHardwareFix226;
+    resetPureHardwareFix226=function(ev){cancel242('RESET PURE HW'); if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}} return oldReset242(ev);};
+  }catch(e){}
+
+  var oldMakeName242=makeLogFileName;
+  makeLogFileName=function(reason){
+    try{
+      var d=new Date();function p(n){return (n<10?'0':'')+n;}
+      var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
+      var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'unknown');
+      var nm=(typeof currentXexName!=='undefined'?currentXexName:'xex').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,42);
+      return 'atarihelp-FIX242-'+prof+'-'+(reason||'manual')+'-'+ts+'-'+nm+'.txt';
+    }catch(e){return oldMakeName242(reason);}
+  };
+  var oldSnap242=compatibilitySnapshot;
+  compatibilitySnapshot=function(){
+    try{window.__fix242SnapshotTail='\nBUILD '+FIX242_TAG+'\nFIX242 SAFE FAST BASIC/SELFTEST CHECK\nFAST '+fix242FastInfo+'\nLAST '+fix242Last+'\nSELFTEST '+fix242SelftestInfo+'\nUI '+fix242UiInfo+'\nRULE SAFE_FAST_THROTTLED_RAW_CH / MAX_ONE_CHAR_PER_FRAME / EOL_9B_DELAY / NO_FRAME_SEED / SELFTEST_AUTO_START_BLOCKED / CONSOL_PASSTHROUGH / NO_FAKE_READY_SELFTEST';}catch(e){}
+    return oldSnap242();
+  };
+  var oldSave242=saveLogToFile;
+  saveLogToFile=function(reason){
+    if(reason==='purehw-snapshot'){
+      try{log((window.__fix242SnapshotTail||('\nBUILD '+FIX242_TAG+'\nFIX242 SAFE FAST BASIC/SELFTEST CHECK\nFAST '+fix242FastInfo+'\nLAST '+fix242Last+'\nSELFTEST '+fix242SelftestInfo+'\nUI '+fix242UiInfo+'\nRULE SAFE_FAST_THROTTLED_RAW_CH / MAX_ONE_CHAR_PER_FRAME / EOL_9B_DELAY / NO_FRAME_SEED / SELFTEST_AUTO_START_BLOCKED / CONSOL_PASSTHROUGH / NO_FAKE_READY_SELFTEST')).replace(/^\n/,''));}catch(e){}
+    }
+    return oldSave242.apply(this,arguments);
+  };
+
+  try{EMU_BUILD_TAG=FIX242_TAG;}catch(e){}
+  try{document.title='EMU-09 '+FIX242_TAG;}catch(e){}
+  try{var h1=document.querySelector('h1');if(h1)h1.textContent='EMU-09 '+FIX242_TAG;}catch(e){}
+  try{var p=document.querySelector('h1 + p');if(p)p.textContent='FIX242: opravuje FAST BASIC rozstrel kodu bezpecnym throttlem RAW CH; SELF TEST uz nema automaticky START edge do cerne, jen cisty CONSOL passthrough.';}catch(e){}
+  log242('FIX242 installed: safe FAST BASIC throttle + SELFTEST CONSOL passthrough');
+})();
+/* END FIX242 */
 
 </script>
 </body>
