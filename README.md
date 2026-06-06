@@ -1,4 +1,4 @@
-AtariHelp.eu EMU-09 overlay FIX218_REALROM_RAMSIZE_BOOT_CORE
+AtariHelp.eu EMU-09 overlay FIX219_REALROM_VBI_SIO_BOOT_CORE
 
-Rozbalit do lokalniho GitHub repo pres GitHub Desktop.
 KODY JSOU STEJNE.
+Pure ROM BASIC boot: real ROM VBI + minimalni SIO no-device timeout, bez fake READY.
