@@ -1,4 +1,5 @@
-AtariHelp.eu EMU-09 overlay FIX219_REALROM_VBI_SIO_BOOT_CORE
+AtariHelp.eu EMU-09 FIX220_REALROM_IRQ_BRK_SELFTEST_CORE overlay
 
 KODY JSOU STEJNE.
-Pure ROM BASIC boot: real ROM VBI + minimalni SIO no-device timeout, bez fake READY.
+
+FIX220 navazuje na FIX219: PURE BASIC READY uz je realny, ted se opravuje SELFTEST cesta pres realne 6502 BRK -> OS IRQ vector $C02C. Bez fake READY a bez fake SELF TEST obrazovky.
