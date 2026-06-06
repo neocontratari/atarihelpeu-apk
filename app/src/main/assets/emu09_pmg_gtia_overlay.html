@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX227_PIA_PORTB_DDR_HARDWARE_CORE / vlastní XEX</title>
+<title>EMU-09 FIX228_PURE_HW_SNAPSHOT_ISOLATION_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX227_PIA_PORTB_DDR_HARDWARE_CORE</h1>
-<p>FIX227: PURE HARDWARE + PIA PORTB/DDR. Audit ukaze realny stav ROM mapy, PIA PORTB output latch, DDRB, PBCTL, NMI a POKEY.</p>
+<h1>EMU-09 FIX228_PURE_HW_SNAPSHOT_ISOLATION_CORE</h1>
+<p>FIX228: PURE HARDWARE izolace. Audit/snapshot nesmi spustit XEX loader ani vratit vestavenou hru; PURE vypis je kratky ROM/MMU/PIA/NMI/POKEY stav.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card purePanel">
 <h2>PURE HARDWARE RETRO EMULATION</h2>
-<p>FIX227 je oddeleny startovni panel pro cisty ROM/MMU/PIA/POKEY/ANTIC/GTIA test. Hlavni oprava je PIA PORTB: zapis na D301 jde podle PBCTL bit2 bud do DDRB, nebo do PORTB vystupniho latch.</p>
+<p>FIX228 drzi PURE HARDWARE panel izolovany od stareho XEX loaderu. Audit ani snapshot nesmi nacist PiTT-KiTT ani zadnou jinou hru.</p>
 <div class="halfgrid">
 <button class="secondary" onclick="return runPureHardwareAuditFix226(event)">PURE HW AUDIT</button>
 <button class="secondary" onclick="return compatibilitySnapshot()">SNAPSHOT</button>
@@ -68,7 +68,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 </div>
 <div id="xexName" class="fileLine">MODE: PURE HARDWARE only / no XEX</div>
 <div id="romName" class="fileLine">ROM: built-in ATARIXL.ROM + ATARIBAS.ROM. External ROM upload hidden in FIX227 audit panel.</div>
-<div id="playStatus" class="playStatus">Pripraveno. FIX227 PURE HW AUDIT: spust audit pred testem.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX228 PURE HW AUDIT: nejdriv audit, potom POWER.</div>
 <div id="inputMapPanel" class="inputMapPanel">PURE HW audit panel.</div>
 </section>
 
@@ -793,7 +793,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX227_PIA_PORTB_DDR_HARDWARE_CORE";
+var EMU_BUILD_TAG="FIX228_PURE_HW_SNAPSHOT_ISOLATION_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -9401,6 +9401,135 @@ renderInput();
 
 renderSegments();renderRegs();
 buildAtariKeyboard();
+
+
+
+/* FIX228 PURE HW SNAPSHOT ISOLATION OVERRIDES
+   This block intentionally overrides the old compatibility snapshot/update path for PURE HW only.
+   PURE HW audit/snapshot must never call loadXex() and must never restore the built-in PiTT-KiTT XEX. */
+var fix228PureAuditOnlyMode=true;
+function fix228PureHwActiveOrAudit(){
+  return !!(fix228PureAuditOnlyMode || (typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode));
+}
+function fix228SetPureNoXexName(label){
+  try{currentXexName=label||'PURE HARDWARE FIX228 / no XEX';}catch(e){}
+  try{activeXexProfile='realos';}catch(e){}
+  try{xexInfo={run:0,inits:[],entry:(cpu?cpu.pc:0),warnings:[],bad:false};segments=[];}catch(e){}
+  try{setXexName();renderSegments();}catch(e){}
+}
+function fix228ClearVisibleLogForPure(reason){
+  try{var e=document.getElementById('log'); if(e)e.textContent='';}catch(e){}
+  try{localStorage.removeItem('atarihelp_last_log');}catch(e){}
+  try{fix139SuppressedLogCount=0;fix139SuppressedHandoffCount=0;fix139LastSuppressedLog='--';fix139LogGuardInfo='PURE HW isolated '+(reason||'');}catch(e){}
+}
+function fix228PokeyRegsText(){
+  if(!ram)return 'no RAM';
+  return [0xD200,0xD201,0xD202,0xD203,0xD204,0xD205,0xD206,0xD207,0xD208].map(function(a){return '$'+hex(ram[a]||0,2);}).join(' ');
+}
+function fix228PureSnapshotLines(){
+  var dl=0,sav=0;
+  try{dl=ram?getDlistPtr():0;sav=ram?((ram[0x58]|(ram[0x59]<<8))&65535):0;}catch(e){}
+  var lines=[];
+  lines.push('PURE HARDWARE SNAPSHOT FIX228');
+  lines.push('BUILD '+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing'));
+  lines.push('NO XEX LOADER: snapshot did not call loadXex()');
+  lines.push('ROM ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703');
+  lines.push('ROM BASIC 8192 md5 0bac0c6a50104045d902df4503a4c30b');
+  var reset=0,nmi=0,irq=0;
+  try{reset=(fix226RomByteNoSideEffect(0xFFFC)|(fix226RomByteNoSideEffect(0xFFFD)<<8))&65535;nmi=(fix226RomByteNoSideEffect(0xFFFA)|(fix226RomByteNoSideEffect(0xFFFB)<<8))&65535;irq=(fix226RomByteNoSideEffect(0xFFFE)|(fix226RomByteNoSideEffect(0xFFFF)<<8))&65535;}catch(e){}
+  lines.push('VECTORS RESET $'+hex(reset,4)+' NMI $'+hex(nmi,4)+' IRQ $'+hex(irq,4));
+  var eff=(typeof fix227EffectivePortB==='function')?fix227EffectivePortB():(portbValue&255);
+  lines.push('PIA PORTB OUT $'+hex(piaPortBOut&255,2)+' DDR $'+hex(piaPortBDDR&255,2)+' PBCTL $'+hex(piaPortBCtl&255,2)+' EFFECTIVE $'+hex(eff,2)+' SELFTEST_WINDOW '+((typeof fix217SelfTestWindowEnabled==='function'&&fix217SelfTestWindowEnabled())?'ON':'OFF'));
+  var fastQ=0,keyQ=0;try{fastQ=(fix208BasicAutofeedQueue||[]).length;keyQ=(atariKeyQueue||[]).length;}catch(e){}
+  lines.push('INPUT QUEUES fastQ '+fastQ+' keyQ '+keyQ+' CH $'+hex((ram&&ram[0x02FC])||0,2));
+  if(cpu)lines.push('CPU PC $'+hex(cpu.pc,4)+' A $'+hex(cpu.a,2)+' X $'+hex(cpu.x,2)+' Y $'+hex(cpu.y,2)+' SP $'+hex(cpu.sp,2)+' P $'+hex(cpu.p,2)+' steps '+cpu.steps+' trap '+(cpu.trap?'YES':'NO'));
+  else lines.push('CPU not started');
+  lines.push('DLIST $'+hex(dl||0,4)+' SAVMSC $'+hex(sav,4)+' NMIEN $'+hex((ram&&ram[0xD40E])||0,2)+' DMACTL $'+hex((ram&&ram[0xD400])||0,2)+' SDMCTL $'+hex((ram&&ram[0x022F])||0,2));
+  lines.push('POKEY D200-D208 '+fix228PokeyRegsText());
+  lines.push('ANTIC '+(dl?decodeDlistShort(dl):'no display list'));
+  lines.push('DLIST BYTES '+(dl?dumpDlistBytes(dl,48):'none'));
+  if(cpu){lines.push('TRACE'); lines=lines.concat(cpu.trace.slice(-24));}
+  return lines;
+}
+var fix228OrigUpdatePlayStatus=updatePlayStatus;
+updatePlayStatus=function(extra){
+  if(fix228PureHwActiveOrAudit()){
+    var e=document.getElementById('playStatus'); if(!e)return;
+    var dl=0,sav=0; try{dl=ram?getDlistPtr():0;sav=ram?((ram[0x58]|(ram[0x59]<<8))&65535):0;}catch(_e){}
+    var eff=(typeof fix227EffectivePortB==='function')?fix227EffectivePortB():(portbValue&255);
+    e.textContent=(cpu?(playMode?'RUN ':'PAUSE '):'AUDIT ')+'PURE HARDWARE FIX228 / no XEX'+
+      '\nPC '+(cpu?'$'+hex(cpu.pc,4):'not started')+'  DLIST $'+hex(dl||0,4)+'  SAVMSC $'+hex(sav,4)+'  NMIEN $'+hex((ram&&ram[0xD40E])||0,2)+
+      '\nPIA OUT $'+hex(piaPortBOut&255,2)+' DDR $'+hex(piaPortBDDR&255,2)+' PBCTL $'+hex(piaPortBCtl&255,2)+' EFFECTIVE $'+hex(eff,2)+' SELFTEST '+((typeof fix217SelfTestWindowEnabled==='function'&&fix217SelfTestWindowEnabled())?'ON':'OFF')+
+      '\nPOKEY '+fix228PokeyRegsText()+
+      (extra?'\n'+extra:'');
+    return;
+  }
+  return fix228OrigUpdatePlayStatus(extra);
+};
+var fix228OrigBare=fix225ResetBareHardware;
+fix225ResetBareHardware=function(selftest, reason){
+  fix228PureAuditOnlyMode=false;
+  fix228ClearVisibleLogForPure(reason||'power');
+  var r=fix228OrigBare(selftest, reason);
+  fix228SetPureNoXexName(selftest?'PURE HARDWARE OPTION SELF TEST FIX228 / no XEX':'PURE HARDWARE BASIC FIX228 / no XEX');
+  updatePlayStatus('POWER started');
+  return r;
+};
+startPureHardwareBasicFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(false,'POWER BASIC');};
+startPureHardwareSelfTestFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(true,'POWER OPTION SELF TEST');};
+resetPureHardwareFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(!!(fix215PureSelfTestMode||input.option),'RESET PURE HW');};
+runPureHardwareAuditFix226=function(ev){
+  if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}
+  fix228ClearVisibleLogForPure('audit');
+  fix228PureAuditOnlyMode=true; fix225PureHardwareMode=false; fix215PureRomMode=false; fix215PureSelfTestMode=false;
+  fix228SetPureNoXexName('PURE HARDWARE AUDIT FIX228 / no XEX');
+  ensureBuiltinAtariRomImages();
+  var reset=(fix226RomByteNoSideEffect(0xFFFC)|(fix226RomByteNoSideEffect(0xFFFD)<<8))&65535;
+  var nmi=(fix226RomByteNoSideEffect(0xFFFA)|(fix226RomByteNoSideEffect(0xFFFB)<<8))&65535;
+  var irq=(fix226RomByteNoSideEffect(0xFFFE)|(fix226RomByteNoSideEffect(0xFFFF)<<8))&65535;
+  var q1=(typeof fix208BasicAutofeedQueue!=='undefined'&&fix208BasicAutofeedQueue)?fix208BasicAutofeedQueue.length:0;
+  var q2=(typeof atariKeyQueue!=='undefined'&&atariKeyQueue)?atariKeyQueue.length:0;
+  var problems=[];
+  if(!optionalOsRom || optionalOsRom.length!==16384)problems.push('ATARIXL ROM size');
+  if(!optionalBasicRom || optionalBasicRom.length!==8192)problems.push('BASIC ROM size');
+  if(reset!==0xC2AA)problems.push('RESET vector $'+hex(reset,4));
+  if(nmi!==0xC018)problems.push('NMI vector $'+hex(nmi,4));
+  if(irq!==0xC02C)problems.push('IRQ vector $'+hex(irq,4));
+  if(q1||q2)problems.push('input queue not empty '+q1+'/'+q2);
+  var eff=(typeof fix227EffectivePortB==='function')?fix227EffectivePortB():(portbValue&255);
+  var lines=[];
+  lines.push('PURE HW AUDIT FIX228');
+  lines.push('BUILD '+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing'));
+  lines.push('NO XEX ACTIVE: audit did not call loadXex()');
+  lines.push('ROM ATARIXL bytes '+(optionalOsRom?optionalOsRom.length:0)+' md5 06daac977823773a3eea3422fd26a703');
+  lines.push('ROM BASIC bytes '+(optionalBasicRom?optionalBasicRom.length:0)+' md5 0bac0c6a50104045d902df4503a4c30b');
+  lines.push('VECTORS RESET $'+hex(reset,4)+' NMI $'+hex(nmi,4)+' IRQ $'+hex(irq,4));
+  lines.push('PIA PORTB OUT $'+hex(piaPortBOut&255,2)+' DDR $'+hex(piaPortBDDR&255,2)+' PBCTL $'+hex(piaPortBCtl&255,2)+' EFFECTIVE $'+hex(eff,2)+' SELFTEST_WINDOW_NOW '+((typeof fix217SelfTestWindowEnabled==='function'&&fix217SelfTestWindowEnabled())?'ON':'OFF'));
+  lines.push('INPUT QUEUES active='+((q1||q2)?'YES':'NO')+' fastQ='+q1+' keyQ='+q2+' CH=$'+hex((ram&&ram[0x02FC])||0,2));
+  lines.push('CPU not started');
+  lines.push('DLIST $0000 SAVMSC $0000 NMIEN $00');
+  lines.push('POKEY D200-D208 '+fix228PokeyRegsText());
+  lines.push('RESULT '+(problems.length?'CHECK: '+problems.join('; '):'OK: pure audit isolated'));
+  fix226AuditOk=!problems.length; fix226AuditLastLines=lines; fix226AuditInfo=lines.join(' | ');
+  log(lines.join('\n'));
+  updatePlayStatus(lines.join('\n'));
+  return false;
+};
+var fix228OrigCompatibilitySnapshotCore=compatibilitySnapshotCore;
+compatibilitySnapshotCore=function(){
+  if(fix228PureHwActiveOrAudit()){
+    var lines=fix228PureSnapshotLines();
+    log(lines.join('\n'));
+    updatePlayStatus('PURE snapshot saved without XEX loader');
+    try{renderRegs();renderSegments();}catch(e){}
+    try{saveCurrentLogToMobile('purehw-snapshot');}catch(_e){}
+    return;
+  }
+  return fix228OrigCompatibilitySnapshotCore();
+};
+fix228SetPureNoXexName('PURE HARDWARE IDLE FIX228 / no XEX');
+updatePlayStatus('ready');
+/* END FIX228 OVERRIDES */
 
 </script>
 </body>
