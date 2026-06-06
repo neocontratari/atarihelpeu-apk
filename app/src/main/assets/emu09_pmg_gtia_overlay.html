@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX234_PURE_HW_RAM_POKEY_CORE / vlastní XEX</title>
+<title>EMU-09 FIX235_PURE_HW_TRIG3_POKEY_SIO_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,7 +36,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX234_PURE_HW_RAM_POKEY_CORE</h1>
+<h1>EMU-09 FIX235_PURE_HW_TRIG3_POKEY_SIO_CORE</h1>
 <p>FIX229: PURE HARDWARE PIA/CPU I/O rez. D301/D303 uz jdou pres PIA DDR/PBCTL, BASIC nesmi padat do selftest/smeti kvuli spatnemu PORTB.</p>
 </div>
 </div>
@@ -793,7 +793,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX234_PURE_HW_RAM_POKEY_CORE";
+var EMU_BUILD_TAG="FIX235_PURE_HW_TRIG3_POKEY_SIO_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -9536,7 +9536,7 @@ updatePlayStatus('ready');
    No drawn READY, no drawn SELFTEST, no XEX fallback. This fixes the real root seen in FIX228:
    CPU writes to $D301/$D303 were still using the old direct PORTB path, so BASIC/SELFTEST mapping was wrong. */
 (function(){
-  var FIX229_TAG='FIX234_PURE_HW_RAM_POKEY_CORE';
+  var FIX229_TAG='FIX235_PURE_HW_TRIG3_POKEY_SIO_CORE';
   function pure(){return !!(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode);}
   function hx(v,n){try{return hex(v&((1<<(Math.min(n,4)*4))-1),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
   function fix229PokeyIdleDefaults(){
@@ -9644,7 +9644,7 @@ updatePlayStatus('ready');
    cold BASIC must see internal BASIC ROM until the OS explicitly changes PORTB DATA, and ANTIC/DLIST
    inspection must read through the same bus as CPU instead of raw RAM[] only. */
 (function(){
-  var FIX230_TAG='FIX234_PURE_HW_RAM_POKEY_CORE';
+  var FIX230_TAG='FIX235_PURE_HW_TRIG3_POKEY_SIO_CORE';
   var fix230ColdBasicWindow=false;
   var fix230ColdSelftestWindow=false;
   var fix230PortbDataWritten=false;
@@ -9866,7 +9866,7 @@ updatePlayStatus('ready');
    - SELFTEST: OPTION low, BASIC ROM hidden, SELFTEST ROM visible.
    Snapshot remains isolated: no XEX loader, no built-in game fallback. */
 (function(){
-  var FIX232_TAG='FIX234_PURE_HW_RAM_POKEY_CORE';
+  var FIX232_TAG='FIX235_PURE_HW_TRIG3_POKEY_SIO_CORE';
   window.fix232Mode='audit';
   window.fix232BootInfo='FIX232 waiting';
   window.fix232ConsoleInfo='FIX232 console waiting';
@@ -10022,7 +10022,7 @@ updatePlayStatus('ready');
    jumping to $5003 during BASIC boot, so the window must be controlled by real PIA effective PORTB,
    not by a BASIC/selftest label. Also, VBI/DLI must only be raised when NMIEN enables the bit. */
 (function(){
-  var FIX233_TAG='FIX234_PURE_HW_RAM_POKEY_CORE';
+  var FIX233_TAG='FIX235_PURE_HW_TRIG3_POKEY_SIO_CORE';
   window.fix233Mode='audit';
   window.fix233PortbDataWritten=false;
   window.fix233PendingNmi=0;
@@ -10251,6 +10251,144 @@ updatePlayStatus('ready');
   try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX234: odstranen fake shadow RAM pri OS RAM testu + POKEY SKCTL/SKSTAT split.';}catch(e){}
 })();
 /* END FIX234 */
+
+
+/* FIX235 PURE HARDWARE TRIG3 + POKEY SIO TIMER CORE
+   Logs from FIX234: BASIC still fell into the self-test RAM loop ($532A-$533D), while OPTION boot
+   reached SIO wait at $EA9E with a steady tone. This patch keeps PURE HW honest: no screen drawing,
+   no PC jump shortcuts. It fixes XL/XE cartridge status (TRIG3) and adds minimal POKEY/SIO timing
+   events so the ROM does not sit forever in the serial wait loop. */
+(function(){
+  var FIX235_TAG='FIX235_PURE_HW_TRIG3_POKEY_SIO_CORE';
+  window.fix235TrigInfo='FIX235 TRIG3 waiting';
+  window.fix235SioInfo='FIX235 SIO timer waiting';
+  window.fix235AudioInfo='FIX235 POKEY audio quiet until real sound test';
+  var fix235SerDueStep=0, fix235SioLoopCount=0, fix235LastPc=0;
+  function pure(){return !!(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode);} 
+  function hx(v,n){try{return hex((v||0)&((n>=4)?65535:255),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
+  function externalCartPresent(){
+    // Built-in BASIC is not an external cartridge on TRIG3. In PURE HW we have no external cart inserted.
+    return false;
+  }
+
+  var oldR235=CPU6502.prototype.r;
+  CPU6502.prototype.r=function(a){
+    a&=65535;
+    if(pure()){
+      // GTIA TRIG3 ($D013) is the cartridge status line on XL/XE. The old core returned 1 for all
+      // D011-D013, which can make the OS believe an external cartridge path exists.
+      if(a===0xD011 || a===0xD012){return 1;}
+      if(a===0xD013){
+        var v=externalCartPresent()?1:0;
+        fix235TrigInfo='FIX235 TRIG3 read $'+hx(v,2)+' external cart '+(v?'YES':'NO')+' PC $'+hx(this.pc,4)+' mode '+(typeof fix233Mode!=='undefined'?fix233Mode:'?')+' frame '+playFrameNo;
+        return v&255;
+      }
+    }
+    return oldR235.call(this,a);
+  };
+
+  var oldW235=CPU6502.prototype.w;
+  CPU6502.prototype.w=function(a,v){
+    a&=65535;v&=255;
+    if(pure()){
+      // SEROUT. The OS SIO code writes a byte and waits at $EA9E for the POKEY serial event.
+      // Schedule a hardware-style completion; do not jump the PC and do not draw anything.
+      if(a===0xD20D){
+        if(writeSeen)writeSeen[a]=1;
+        if(ram)ram[a]=v;
+        fix235SerDueStep=((this.steps||0)+180)&0x7fffffff;
+        if(ram){ram[0x3A]=0;}
+        fix235SioInfo='FIX235 SEROUT write $'+hx(v,2)+' scheduled serial-ready step '+fix235SerDueStep+' PC $'+hx(this.pc,4)+' IRQEN $'+hx((typeof fix234Irqen!=='undefined'?fix234Irqen:0),2)+' frame '+playFrameNo;
+        return;
+      }
+      // During ROM boot, do not let the old simple audio bridge turn POKEY register writes into a
+      // permanent browser oscillator. The registers are still latched and visible in snapshots.
+      if(a>=0xD200 && a<=0xD208){
+        if(writeSeen)writeSeen[a]=1;
+        if(ram)ram[a]=v;
+        this.m[a]=v;
+        fix235AudioInfo='FIX235 POKEY latch $'+hx(a,4)+'=$'+hx(v,2)+' no browser oscillator during boot PC $'+hx(this.pc,4)+' frame '+playFrameNo;
+        return;
+      }
+    }
+    return oldW235.call(this,a,v);
+  };
+
+  var oldStep235=CPU6502.prototype.step;
+  CPU6502.prototype.step=function(){
+    if(pure() && !this.trap){
+      var pc0=(this.pc||0)&65535;
+      if(fix235SerDueStep && ((this.steps||0) >= fix235SerDueStep)){
+        // Minimal POKEY serial event. Let the ROM's own SIO code continue from $EA9E.
+        if(ram){ram[0x3A]=1;}
+        if(typeof fix234Irqst!=='undefined')fix234Irqst=0xEF; // serial-output bit asserted low-ish for diagnostics
+        fix235SioInfo='FIX235 serial-ready event: RAM $3A=1 IRQST $'+hx((typeof fix234Irqst!=='undefined'?fix234Irqst:0xFF),2)+' step '+(this.steps||0)+' PC $'+hx(pc0,4)+' frame '+playFrameNo;
+        fix235SerDueStep=0;
+      }
+      if(pc0===0xEA9E || pc0===0xEAA0 || pc0===0xEAA5 || pc0===0xEAA7){
+        if(fix235LastPc===pc0)fix235SioLoopCount++; else {fix235LastPc=pc0;fix235SioLoopCount=1;}
+        // If no device answers, real hardware times out through OS timers. We emulate the timer state,
+        // not a PC shortcut: the ROM takes its own timeout branch at $EA9E when $11 reaches zero.
+        if(fix235SioLoopCount>9000 && ram && ram[0x11]!==0){
+          ram[0x11]=0;
+          fix235SioInfo='FIX235 SIO no-device timer expired: RAM $11=0 at PC $'+hx(pc0,4)+' loop '+fix235SioLoopCount+' frame '+playFrameNo;
+        }
+      }else if(fix235SioLoopCount>0){fix235SioLoopCount=0;fix235LastPc=pc0;}
+    }
+    return oldStep235.call(this);
+  };
+
+  var oldBare235=fix225ResetBareHardware;
+  fix225ResetBareHardware=function(selftest,reason){
+    var r=oldBare235(selftest,reason);
+    try{
+      fix235SerDueStep=0;fix235SioLoopCount=0;fix235LastPc=0;
+      if(ram){ram[0x3A]=0;ram[0x11]=0x40;}
+      fix235TrigInfo='FIX235 TRIG3 reset: no external cartridge, internal BASIC remains controlled by PORTB bit1';
+      fix235SioInfo='FIX235 POKEY/SIO reset: serial-ready/timer will be driven by SIO writes, no PC jump';
+      fix235AudioInfo='FIX235 boot audio quiet: POKEY regs latched only until BASIC/SOUND test';
+      currentXexName=selftest?'PURE HARDWARE OPTION SELF TEST FIX235 / no XEX':'PURE HARDWARE BASIC FIX235 / no XEX';
+      try{setXexName();}catch(e){}
+      updateRomStatusLine('FIX235 PURE HW: TRIG3 cartridge status + POKEY SIO timer core');
+      updatePlayStatus('FIX235 PURE HW '+(selftest?'OPTION SELF TEST':'BASIC')+' started. TRIG3 external cart line fixed; POKEY SIO timer active.');
+    }catch(e){try{log('FIX235 post-power error '+(e&&e.message?e.message:e));}catch(_){} }
+    return r;
+  };
+  startPureHardwareBasicFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(false,'FIX235 POWER BASIC');};
+  startPureHardwareSelfTestFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware(true,'FIX235 POWER OPTION SELF TEST');};
+  resetPureHardwareFix226=function(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}return fix225ResetBareHardware((typeof fix233Mode!=='undefined'&&fix233Mode==='selftest'),'FIX235 RESET PURE HW');};
+
+  var oldSnap235=compatibilitySnapshotCore;
+  compatibilitySnapshotCore=function(){
+    if((typeof fix228PureHwActiveOrAudit==='function'&&fix228PureHwActiveOrAudit())||pure()){
+      oldSnap235();
+      try{
+        var el=document.getElementById('log');
+        if(el){
+          var t=el.textContent||'';
+          t=t.replace(/PURE HARDWARE SNAPSHOT FIX23[0-9]/,'PURE HARDWARE SNAPSHOT FIX235')
+             .replace(/BUILD FIX23[0-9]_[A-Z0-9_]+/,'BUILD '+FIX235_TAG);
+          t+='\nFIX235 ROOT CHECK';
+          t+='\nTRIG3/CART '+fix235TrigInfo;
+          t+='\nPOKEY/SIO '+fix235SioInfo;
+          t+='\nAUDIO '+fix235AudioInfo;
+          t+='\nSIO LOOP COUNT '+fix235SioLoopCount+' SERDUE '+fix235SerDueStep;
+          el.textContent=t;
+        }
+        updatePlayStatus('PURE snapshot FIX235 saved without XEX loader');
+        try{saveCurrentLogToMobile('purehw-snapshot');}catch(e){}
+      }catch(e){}
+      return;
+    }
+    return oldSnap235();
+  };
+
+  try{document.title='EMU-09 '+FIX235_TAG;}catch(e){}
+  try{var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+FIX235_TAG;}catch(e){}
+  try{var p=document.querySelector('h1 + p');if(p)p.textContent='FIX235: PURE HW TRIG3 cartridge status + POKEY SIO timer. No browser beep loop, no drawn READY/SELF TEST, no XEX fallback.';}catch(e){}
+  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX235: TRIG3 external-cart line + POKEY/SIO serial timer. Piskani z boot loopu odriznuto.';}catch(e){}
+})();
+/* END FIX235 */
 
 </script>
 </body>
