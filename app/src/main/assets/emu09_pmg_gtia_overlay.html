@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX247_CLEAN_CORE_UNWRAP / vlastní XEX</title>
+<title>EMU-09 FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,7 +36,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX247_CLEAN_CORE_UNWRAP</h1>
+<h1>EMU-09 FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE</h1>
 <p>FIX247: clean runtime unwrap. Snapshot uz nepouziva stare FIX240/FIX239 vrstvene writery; nejdriv overime ciste jadro.</p>
 </div>
 </div>
@@ -12650,7 +12650,7 @@ updatePlayStatus('ready');
 */
 (function(){
   'use strict';
-  var TAG='FIX247_CLEAN_CORE_UNWRAP';
+  var TAG='FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE';
   var fastInfo='idle';
   var selfInfo='idle';
   var uiInfo='waiting';
@@ -12664,7 +12664,7 @@ updatePlayStatus('ready');
     try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
     try{var p=document.querySelector('h1 + p'); if(p)p.textContent='FIX246: HARD LOADED override bezi jako posledni skript. Stare FIX240 UI nesmi prepsat build. FAST helper je servisni screen-editor po real READY, bez fake bootu.';}catch(e){}
     try{var x=document.getElementById('xexName'); if(x) x.textContent='XEX: PURE HARDWARE IDLE FIX246 / no XEX';}catch(e){}
-    try{var ps=document.getElementById('playStatus'); if(ps && String(ps.textContent||'').indexOf('FIX246')<0) ps.textContent='FIX247 CLEAN LOADED: verifikuj snapshot BUILD FIX246. Funkce testuj az po overeni stampu.';}catch(e){}
+    try{var ps=document.getElementById('playStatus'); if(ps && String(ps.textContent||'').indexOf('FIX246')<0) ps.textContent='FIX248 LOADED: verifikuj snapshot BUILD FIX246. Funkce testuj az po overeni stampu.';}catch(e){}
     try{var dock=document.getElementById('atariKeyboardDock')||document.getElementById('atariKeyboardDockFix171'); if(dock){var h2=dock.querySelector('h2'); if(h2)h2.textContent='Mobilni Atari klavesnice FIX246'; var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX246: posledni skript prevzal UI; FAST BASIC pouziva servisni editor-line + real RETURN po READY.';}}catch(e){}
     uiInfo='STAMP OK frame '+fr();
   }
@@ -12793,11 +12793,11 @@ updatePlayStatus('ready');
 </script>
 
 
-<!-- FIX247_CLEAN_CORE_UNWRAP_FINAL_SCRIPT -->
+<!-- FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE_FINAL_SCRIPT -->
 <script>
 (function(){
   'use strict';
-  var TAG='FIX247_CLEAN_CORE_UNWRAP';
+  var TAG='FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE';
   var fast247='FAST idle - old FIX240 RAW CH pump bypassed';
   var fastLast247='--';
   var self247='SELFTEST waiting - clean DLIST/DMA renderer installed';
@@ -12824,11 +12824,11 @@ updatePlayStatus('ready');
     try{window.EMU_BUILD_TAG=TAG; EMU_BUILD_TAG=TAG;}catch(e){}
     try{document.title='EMU-09 '+TAG+' / ciste jadro';}catch(e){}
     try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
-    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX247: CLEAN CORE UNWRAP. Snapshot/FAST uz nejdou pres stare FIX240 writery. Bez fake READY/SELF TEST.';}catch(e){}
-    try{var ps=g('playStatus'); if(ps && ps.textContent.indexOf('FIX247')<0) ps.textContent='FIX247 CLEAN LOADED: nejdriv over SNAPSHOT BUILD FIX247, potom FAST/SELF TEST.';}catch(e){}
+    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX248: SELFTEST ROMDLIST BUS RENDER. Snapshot/FAST uz nejdou pres stare FIX240 writery. Bez fake READY/SELF TEST.';}catch(e){}
+    try{var ps=g('playStatus'); if(ps && ps.textContent.indexOf('FIX247')<0) ps.textContent='FIX248 LOADED: nejdriv over SNAPSHOT BUILD FIX247, potom FAST/SELF TEST.';}catch(e){}
     try{var xn=g('xexName'); if(xn && (!xn.textContent || xn.textContent.indexOf('FIX247')<0))xn.textContent='XEX: PURE HARDWARE IDLE FIX247 / no XEX';}catch(e){}
     try{var rn=g('romName'); if(rn)rn.textContent='ROM: built-in ATARIXL.ROM + ATARIBAS.ROM. FIX247 clean unwrap active.';}catch(e){}
-    try{var box=g('inputMapPanel'); if(box){box.classList.add('visible');box.textContent='FIX247 CLEAN LOADED: stare FIX240 snapshot/fast vrstvy obchazene. Funkce testuj az po snapshot stampu.';}}catch(e){}
+    try{var box=g('inputMapPanel'); if(box){box.classList.add('visible');box.textContent='FIX248 LOADED: stare FIX240 snapshot/fast vrstvy obchazene. Funkce testuj az po snapshot stampu.';}}catch(e){}
     try{var fast=g('fix240FastBasicBox'); if(fast){var h2=fast.querySelector('h2'); if(h2)h2.textContent='Rychly BASIC text automat FIX247'; var pp=fast.querySelector('p'); if(pp)pp.textContent='Servisni helper po real READY. Nepouziva starou RAW CH scan-code pumpu. Pro kazdy radek: zapis do BASIC editoru + jeden RETURN.'; }}catch(e){}
   }
   function prevent(ev){try{if(ev){ev.preventDefault();ev.stopPropagation(); if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
@@ -12994,7 +12994,7 @@ updatePlayStatus('ready');
   function dlistBytes(){try{var dl=(typeof getDlistPtr==='function')?(getDlistPtr()&65535):(((ram&&ram[0x0230])||0)|(((ram&&ram[0x0231])||0)<<8)); if(!dl)return 'none'; var a=[]; for(var i=0;i<64;i++)a.push(hx(ram[(dl+i)&65535]||0,2)); return '$'+hx(dl,4)+': '+a.join(' ');}catch(e){return 'err '+e.message;}}
   function cleanSnapshotText(reason){
     var lines=[]; var d=new Date();
-    lines.push('AtariHelp.eu EMU-09 FIX247 CLEAN CORE UNWRAP');
+    lines.push('AtariHelp.eu EMU-09 FIX248 SELFTEST ROMDLIST BUS RENDER');
     lines.push('cas='+d.toISOString());
     lines.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));
     lines.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));
@@ -13009,7 +13009,7 @@ updatePlayStatus('ready');
     lines.push('[LOG]');
     lines.push('PURE HARDWARE SNAPSHOT FIX247');
     lines.push('BUILD '+TAG);
-    lines.push('FIX247 CLEAN CORE UNWRAP CHECK');
+    lines.push('FIX248 SELFTEST ROMDLIST BUS RENDER CHECK');
     lines.push('VERIFY LOADED YES');
     lines.push('OLD WRAPPERS BYPASSED: snapshot writer does not call FIX240/FIX239 compatibility chain');
     try{lines.push('ROM ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703'); lines.push('ROM BASIC 8192 md5 0bac0c6a50104045d902df4503a4c30b');}catch(e){}
@@ -13025,7 +13025,7 @@ updatePlayStatus('ready');
     lines.push('RULE FIX247_CLEAN_SNAPSHOT_WRITER / OLD_FIX240_RUNTIME_LOG_BYPASSED / FAST_SCREEN_EDITOR_SERVICE_AFTER_REAL_READY / NO_RAW_CH_SCAN_PASTE / SELFTEST_DLIST_DMA_RENDER_FROM_RAM / NO_DRAWN_READY_SELFTEST');
     return lines.join('\n');
   }
-  function filename(reason){var d=new Date();function p(n){return (n<10?'0':'')+n;}var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,48);return 'atarihelp-FIX247-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function filename(reason){var d=new Date();function p(n){return (n<10?'0':'')+n;}var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,48);return 'atarihelp-FIX248-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
   function hardSave(text,reason){
     var fn=filename(reason||'snapshot');
     try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(text,fn); return true;}}catch(e){}
@@ -13045,6 +13045,125 @@ updatePlayStatus('ready');
   try{var oldRF=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric; window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(selfRender())return true; return oldRF.apply(this,arguments);};}catch(e){}
   try{var oldRD=window.renderAnticDisplay||renderAnticDisplay; window.renderAnticDisplay=renderAnticDisplay=function(){if(selfRender())return; return oldRD.apply(this,arguments);};}catch(e){}
   stamp(); wrapPower(); setTimeout(function(){stamp();rebindFastButtons();},50); setTimeout(function(){stamp();rebindFastButtons();},600);
+})();
+</script>
+
+
+<!-- FIX248_SELFTEST_ROMDLIST_BUS_RENDER_FINAL_SCRIPT -->
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE';
+  var selfInfo248='SELFTEST FIX248 waiting - ROM-bus DLIST renderer installed';
+  var selfDma248='DLIST none';
+  var selfRenders248=0;
+  var selfNonBg248=0;
+  var selfDataNonZero248=0;
+  var lastDl248=0,lastSdm248=0,lastChbase248=0,lastPrior248=0;
+  var fastInfo248='FAST FIX248: FIX247 screen editor helper preserved; FAST porad neni prohlaseny za hotovy';
+  var fastLast248='--';
+  function hx(v,n){var s=((Number(v)||0)&(n===2?255:65535)).toString(16).toUpperCase(); while(s.length<n)s='0'+s; return s;}
+  function g(id){return document.getElementById(id);}
+  function frame(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function stamp(){
+    try{window.EMU_BUILD_TAG=TAG; EMU_BUILD_TAG=TAG;}catch(e){}
+    try{document.title='EMU-09 '+TAG;}catch(e){}
+    try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
+    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX248: SELFTEST DLIST se cte pres ROM/bus mapovani, ne raw RAM. FAST helper zustava servisni, bez fake bootu.';}catch(e){}
+    try{var ps=g('playStatus'); if(ps && ps.textContent.indexOf('FIX248')<0) ps.textContent='FIX248 LOADED: self-test DLIST cten pres ROM bus; testuj self-test + snapshot.';}catch(e){}
+    try{var box=g('inputMapPanel'); if(box){box.classList.add('visible');box.textContent='FIX248 LOADED: self-test DLIST $5000-$57FF se cte pres ROM/bus, data kresli z RAM. Bez kresleneho SELF TEST fake.';}}catch(e){}
+    try{var rn=g('romName'); if(rn)rn.textContent='ROM: built-in ATARIXL.ROM + ATARIBAS.ROM. FIX248 ROM-bus DLIST render active.';}catch(e){}
+  }
+  function isSelf(){try{var m=String(typeof fix233Mode!=='undefined'?fix233Mode:(typeof fix232Mode!=='undefined'?fix232Mode:'')); return m.indexOf('self')>=0 || !!(typeof fix215PureSelfTestMode!=='undefined'&&fix215PureSelfTestMode);}catch(e){return false;}}
+  function rd(a){
+    a&=65535;
+    try{ if(typeof optionalRomByteAt==='function'){var b=optionalRomByteAt(a); if(b>=0)return b&255;} }catch(e){}
+    try{return ram[a&65535]&255;}catch(e){return 0;}
+  }
+  function raw(a){try{return ram[a&65535]&255;}catch(e){return 0;}}
+  function getDl(){try{return (typeof getDlistPtr==='function')?(getDlistPtr()&65535):(((raw(0x0230))|((raw(0x0231))<<8))&65535);}catch(e){return 0;}}
+  function statusLine(){try{return 'DLIST $'+hx(getDl(),4)+' SAVMSC $'+hx((raw(0x58)|(raw(0x59)<<8))&65535,4)+' NMIEN $'+hx(raw(0xD40E),2)+' SDMCTL $'+hx((raw(0x022F)|raw(0xD400))&255,2)+' DMACTL $'+hx(raw(0xD400),2)+' CHBASE $'+hx((raw(0xD409)||raw(0x02F4))&255,2)+' PRIOR $'+hx((raw(0xD01B)||raw(0x026F))&255,2)+' frame '+frame();}catch(e){return 'status err '+e.message;}}
+  function rgbFromColor(v,fb){
+    try{ if(typeof gtiaByteToRgbFix239==='function')return gtiaByteToRgbFix239(v&255); }catch(e){}
+    try{ if(typeof atariColorToRgbFix239==='function')return atariColorToRgbFix239(v&255); }catch(e){}
+    return fb||[0,0,0];
+  }
+  function setpx(d,x,y,rgb){if(x<0||x>=320||y<0||y>=240)return; var o=(y*320+x)*4; d[o]=rgb[0]&255; d[o+1]=rgb[1]&255; d[o+2]=rgb[2]&255; d[o+3]=255;}
+  function rect(d,x,y,w,h,rgb){for(var yy=0;yy<h;yy++)for(var xx=0;xx<w;xx++)setpx(d,x+xx,y+yy,rgb);}
+  function charBits(code,scan,chbase){
+    try{ if(typeof charsetByteForCode==='function')return charsetByteForCode(code&255,2,scan&7,chbase&255)&255; }catch(e){}
+    var base=(chbase&255)<<8; var off=(base+((code&127)<<3)+(scan&7))&65535; return rd(off)&255;
+  }
+  function countNonzeroRange(start,len){var n=0; try{for(var i=0;i<len;i++){if(raw(start+i))n++;}}catch(e){} return n;}
+  function dlistBytesBus(dl){try{var out=[]; for(var i=0;i<64;i++)out.push(hx(rd((dl+i)&65535),2)); return '$'+hx(dl,4)+': '+out.join(' ');}catch(e){return 'err '+e.message;}}
+  function dlistBytesRaw(dl){try{var out=[]; for(var i=0;i<64;i++)out.push(hx(raw((dl+i)&65535),2)); return '$'+hx(dl,4)+': '+out.join(' ');}catch(e){return 'err '+e.message;}}
+  function renderSelf248(){
+    try{
+      if(!ram || !isSelf())return false;
+      var dl=getDl(); if(!(dl>=0x5000&&dl<=0x57FF))return false;
+      var canvas=g('video'); if(!canvas)return false; var ctx=canvas.getContext('2d'); var img=ctx.createImageData(320,240), d=img.data;
+      var c0=raw(0xD016)||raw(0x02C4)||0x0C, c1=raw(0xD017)||raw(0x02C5)||0x32, c2=raw(0xD018)||raw(0x02C6)||0xD6, c3=raw(0xD019)||raw(0x02C7)||0x46, cb=raw(0xD01A)||raw(0x02C8)||0xA0;
+      var bg=rgbFromColor(cb,[0,0,0]), pf0=rgbFromColor(c0,[221,221,221]), pf1=rgbFromColor(c1,[158,78,59]), pf2=rgbFromColor(c2,[161,197,117]), pf3=rgbFromColor(c3,[201,85,98]);
+      var colors=[bg,pf0,pf1,pf2,pf3];
+      for(var y=0;y<240;y++)for(var x=0;x<320;x++)setpx(d,x,y,bg);
+      var p=dl, addr=0, ypix=0, safety=0, non=0, dataNon=0, chbase=(raw(0xD409)||raw(0x02F4)||0xE0)&255;
+      while(ypix<240 && safety++<160){
+        var op=rd(p++), mode=op&15;
+        if(mode===1)break;
+        if(mode===0){ypix+=(((op>>4)&7)+1)*8; continue;}
+        if(op&0x40){addr=(rd(p)|(rd((p+1)&65535)<<8))&65535; p=(p+2)&65535;}
+        var h=(mode===7?16:8); var cols=(mode===6||mode===7)?20:40; var bytes=(mode===6||mode===7)?20:40;
+        if(mode===2||mode===3){cols=40; bytes=40; h=8;}
+        if(mode===6||mode===7||mode===2||mode===3){
+          for(var row=0;row<h;row++){
+            var scan=row&7;
+            for(var cc=0;cc<cols;cc++){
+              var rawch=raw((addr+cc)&65535)&255; if(rawch){dataNon++;}
+              var bits=charBits(rawch,scan,chbase); var inv=(rawch&0x80)!==0; var fg=colors[1+((rawch>>6)&3)]||pf0;
+              for(var b=0;b<8;b++){var on=(bits&(0x80>>b))!==0; if(inv)on=!on; if(on)non++; var px=(mode===6||mode===7)?(cc*16+b*2):(cc*8+b); var ww=(mode===6||mode===7)?2:1; rect(d,px,ypix+row,ww,1,on?fg:bg);}
+            }
+          }
+        }else if(mode===8||mode===9||mode===10||mode===11||mode===14||mode===15){
+          for(var row2=0;row2<h;row2++){
+            for(var bi=0;bi<bytes;bi++){
+              var val=raw((addr+bi)&65535)&255; if(val)dataNon++;
+              for(var bit=0;bit<8;bit++){var on2=(val&(0x80>>bit))!==0; if(on2)non++; setpx(d,bi*8+bit,ypix+row2,on2?pf2:bg);}
+            }
+          }
+        }
+        addr=(addr+bytes)&65535; ypix+=h;
+      }
+      ctx.putImageData(img,0,0);
+      selfRenders248++; selfNonBg248=non; selfDataNonZero248=dataNon; lastDl248=dl; lastSdm248=(raw(0x022F)||raw(0xD400))&255; lastChbase248=chbase; lastPrior248=(raw(0xD01B)||raw(0x026F))&255;
+      selfInfo248='SELFTEST FIX248 ROM-BUS DLIST render dl $'+hx(dl,4)+' SDMCTL $'+hx(lastSdm248,2)+' CHBASE $'+hx(chbase,2)+' PRIOR $'+hx(lastPrior248,2)+' pixels '+non+' dataNonZero '+dataNon+' RAM3000nonzero '+countNonzeroRange(0x3000,0x400)+' renders '+selfRenders248+' frame '+frame();
+      selfDma248='BUS '+dlistBytesBus(dl)+' | RAW '+dlistBytesRaw(dl);
+      return true;
+    }catch(e){selfInfo248='SELFTEST FIX248 render error '+(e&&e.message?e.message:e); return false;}
+  }
+  function screenRows(){var lines=[]; try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535; for(var r=0;r<6;r++){var s='',bytes=[]; for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0; bytes.push(hx(b,2)); try{s+=screenChar(b&127);}catch(e){s+=' ';}} lines.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+bytes.join(' '));}}catch(e){lines.push('rows error '+e.message);} return lines;}
+  function cleanSnapshot248(reason){
+    try{renderSelf248();}catch(e){}
+    var lines=[]; lines.push('AtariHelp.eu EMU-09 FIX248 SELFTEST ROMDLIST BUS RENDER CORE');
+    lines.push('cas='+(new Date()).toISOString()); lines.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX')); lines.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos')); lines.push('build='+TAG); lines.push('');
+    lines.push('[STATUS]'); try{lines.push(cpu?('PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){}
+    lines.push(statusLine()); try{lines.push('PIA OUT $'+hx(typeof piaPortBOut!=='undefined'?piaPortBOut:0xFF,2)+' DDR $'+hx(typeof piaPortBDDR!=='undefined'?piaPortBDDR:0,2)+' PBCTL $'+hx(typeof piaPortBCtl!=='undefined'?piaPortBCtl:0,2)+' EFFECTIVE $'+hx((typeof fix233EffectivePortB==='function'?fix233EffectivePortB():(typeof piaPortBOut!=='undefined'?piaPortBOut:0xFF)),2)+' SELFTEST '+(isSelf()?'ON':'OFF'));}catch(e){}
+    lines.push(''); lines.push('[LOG]'); lines.push('PURE HARDWARE SNAPSHOT FIX248'); lines.push('BUILD '+TAG); lines.push('FIX248 SELFTEST ROMDLIST BUS RENDER CHECK'); lines.push('VERIFY LOADED YES'); lines.push('OLD WRAPPERS BYPASSED / FIX247 clean writer kept');
+    lines.push('ANTIC '+(function(){try{return (typeof decodeDlistShort==='function'?decodeDlistShort(getDl()):'decode unavailable');}catch(e){return 'err '+e.message;}})());
+    lines.push('DLIST BYTES BUS '+dlistBytesBus(getDl())); lines.push('DLIST BYTES RAW '+dlistBytesRaw(getDl()));
+    lines.push('SELFTEST '+selfInfo248); lines.push('SELFTEST DMA '+selfDma248); lines.push('RAM SAMPLE $3000 nonzero '+countNonzeroRange(0x3000,0x400)+' / $BC40 nonzero '+countNonzeroRange(0xBC40,0x400));
+    lines.push('FAST '+fastInfo248); lines.push('FASTLAST '+fastLast248); lines.push('SCREEN PROOF'); lines=lines.concat(screenRows()); try{lines.push('TRACE'); if(cpu&&cpu.trace)lines=lines.concat(cpu.trace.slice(-18));}catch(e){}
+    lines.push('RULE FIX248_ROM_BUS_DLIST_READ_FOR_SELFTEST / RAM_DMA_DATA_FROM_$3000 / SDMCTL_CHBASE_PRIOR_LIVE / OLD_FIX240_RUNTIME_BYPASSED / NO_DRAWN_SELFTEST_FAKE'); return lines.join('\n');
+  }
+  function fname(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;}; var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds()); var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50); return 'atarihelp-FIX248-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function save248(txt,reason){var fn=fname(reason||'snapshot'); try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(txt,fn); return true;}}catch(e){} try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'}),a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href); a.remove();},500); return true;}catch(e){return false;}}
+  window.compatibilitySnapshotCore=function(){stamp(); var text=cleanSnapshot248('snapshot'); var el=g('log'); if(el)el.textContent=text; try{updatePlayStatus('FIX248 snapshot: self-test DLIST BUS/RAW porovnani ulozeno.');}catch(e){} save248(text,'snapshot'); return false;};
+  window.compatibilitySnapshot=function(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return window.compatibilitySnapshotCore();};
+  window.saveCurrentLogToMobile=function(reason){stamp(); var text=cleanSnapshot248(reason||'manual'); return save248(text,reason||'manual');};
+  window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');};
+  window.makeLogFileName=function(reason){return fname(reason||'snapshot');};
+  try{var oldFastRender248=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric; window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(renderSelf248())return true; return oldFastRender248.apply(this,arguments);};}catch(e){}
+  try{var oldRender248=window.renderAnticDisplay||renderAnticDisplay; window.renderAnticDisplay=renderAnticDisplay=function(){if(renderSelf248())return; return oldRender248.apply(this,arguments);};}catch(e){}
+  stamp(); setTimeout(stamp,80); setTimeout(stamp,600);
 })();
 </script>
 
