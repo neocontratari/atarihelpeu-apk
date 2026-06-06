@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE / vlastní XEX</title>
+<title>EMU-09 FIX250_WAV_PICKER_SELFTEST_DMA_ZOOM_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,7 +36,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE</h1>
+<h1>EMU-09 FIX250_WAV_PICKER_SELFTEST_DMA_ZOOM_CORE</h1>
 <p>FIX247: clean runtime unwrap. Snapshot uz nepouziva stare FIX240/FIX239 vrstvene writery; nejdriv overime ciste jadro.</p>
 </div>
 </div>
@@ -13229,3 +13229,57 @@ updatePlayStatus('ready');
 })();
 </script>
 
+
+
+<!-- FIX250_WAV_PICKER_SELFTEST_DMA_ZOOM_CORE_FINAL_SCRIPT -->
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX250_WAV_PICKER_SELFTEST_DMA_ZOOM_CORE';
+  var cass={inserted:false,name:'--',size:0,type:'--',kind:'none',playing:false,motor:false,pos:0,epoch:0,last:'CASSETTE waiting - no file inserted',cload:'CLOAD not requested',head:'--',error:''};
+  var selfInfo='SELFTEST FIX250 waiting - DMA zoom renderer installed';
+  var selfDma='SELFTEST DMA waiting';
+  var selfRenders=0,selfPixels=0,selfData=0,selfRam=0,selfDl=0,selfBus='',selfRaw='',selfView='--';
+  function g(id){return document.getElementById(id);} function hx(v,n){try{var s=((Number(v)||0)&(n===2?255:65535)).toString(16).toUpperCase();while(s.length<(n||2))s='0'+s;return s;}catch(e){return '??';}}
+  function raw(a){try{return (ram[a&65535]||0)&255;}catch(e){return 0;}}
+  function rd(a){a&=65535;try{if(a>=0x5000&&a<0x5800&&typeof readMem==='function')return readMem(a)&255;}catch(e){}try{if(a>=0x5000&&a<0x5800&&typeof cpuRead==='function')return cpuRead(a)&255;}catch(e){}try{if(a>=0x5000&&a<0x5800&&typeof optionalRomByteAt==='function'){var b=optionalRomByteAt(a);if(b>=0)return b&255;}}catch(e){}return raw(a);}
+  function dlptr(){try{return (typeof getDlistPtr==='function'?getDlistPtr():((raw(0x230)|(raw(0x231)<<8))&65535))&65535;}catch(e){return 0;}}
+  function frame(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function isSelf(){try{return (typeof currentXexName!=='undefined'&&String(currentXexName).toLowerCase().indexOf('self')>=0)||(((typeof fix233EffectivePortB==='function'?fix233EffectivePortB():raw(0xD301))&0x80)===0);}catch(e){return false;}}
+  function rgb(v,fb){try{if(typeof gtiaByteToRgbFix239==='function')return gtiaByteToRgbFix239(v&255);}catch(e){}try{if(typeof atariColorToRgbFix239==='function')return atariColorToRgbFix239(v&255);}catch(e){}return fb||[0,0,0];}
+  function setpx(d,x,y,c){if(x<0||x>=320||y<0||y>=240)return;var o=(y*320+x)*4;d[o]=c[0]&255;d[o+1]=c[1]&255;d[o+2]=c[2]&255;d[o+3]=255;}
+  function rect(d,x,y,w,h,c){for(var yy=0;yy<h;yy++)for(var xx=0;xx<w;xx++)setpx(d,x+xx,y+yy,c);}
+  function countNZ(a,l){var n=0;try{for(var i=0;i<l;i++)if(raw(a+i))n++;}catch(e){}return n;}
+  function bytesBus(dl){var a=[];try{for(var i=0;i<64;i++)a.push(hx(rd(dl+i),2));}catch(e){return 'err '+e.message;}return '$'+hx(dl,4)+': '+a.join(' ');}function bytesRaw(dl){var a=[];try{for(var i=0;i<64;i++)a.push(hx(raw(dl+i),2));}catch(e){return 'err '+e.message;}return '$'+hx(dl,4)+': '+a.join(' ');}
+  function statusLine(){return 'DLIST $'+hx(dlptr(),4)+' SAVMSC $'+hx((raw(0x58)|(raw(0x59)<<8))&65535,4)+' NMIEN $'+hx(raw(0xD40E),2)+' SDMCTL $'+hx((raw(0x022F)||raw(0xD400))&255,2)+' DMACTL $'+hx(raw(0xD400),2)+' CHBASE $'+hx((raw(0xD409)||raw(0x02F4))&255,2)+' PRIOR $'+hx((raw(0xD01B)||raw(0x026F))&255,2)+' frame '+frame();}
+  function charBits(code,scan,chb){try{if(typeof charsetByteForCode==='function')return charsetByteForCode(code&255,2,scan&7,chb&255)&255;}catch(e){}return rd(((chb&255)<<8)+((code&127)<<3)+(scan&7));}
+  function renderSelf250(){try{
+    if(!ram||!isSelf())return false;var dl=dlptr();if(!(dl>=0x5000&&dl<0x5800))return false;var c=g('video');if(!c)return false;var ctx=c.getContext('2d');var img=ctx.createImageData(320,240),d=img.data;
+    var col0=raw(0xD016)||raw(0x02C4)||0x0C,col1=raw(0xD017)||raw(0x02C5)||0x32,col2=raw(0xD018)||raw(0x02C6)||0xD6,col3=raw(0xD019)||raw(0x02C7)||0x46,cb=raw(0xD01A)||raw(0x02C8)||0xA0;
+    var border=rgb(cb,[0,0,0]),pf0=rgb(col0,[221,221,221]),pf1=rgb(col1,[158,78,59]),pf2=rgb(col2,[161,197,117]),pf3=rgb(col3,[201,85,98]);
+    for(var y=0;y<240;y++)for(var x=0;x<320;x++)setpx(d,x,y,border);
+    var p=dl,addr=0,yp=18,safety=0,non=0,data=0,chb=(raw(0xD409)||raw(0x02F4)||0xE0)&255,sdm=(raw(0x022F)||raw(0xD400)||0x21)&255;
+    while(yp<236&&safety++<80){var op=rd(p++),m=op&15;if(m===1)break;if(m===0){yp+=Math.max(2,(((op>>4)&7)+1)*5);continue;}if(op&0x40){addr=(rd(p)|(rd(p+1)<<8))&65535;p=(p+2)&65535;}
+      if(m===6||m===7){var rows=(m===7?16:8),chars=20,cw=16,x0=24;for(var r=0;r<rows;r++){for(var cc=0;cc<chars;cc++){var ch=raw(addr+cc)&255;if(ch)data++;var bits=charBits(ch,r&7,chb);var inv=(ch&0x80)!==0;var fg=(ch&0x40)?pf1:pf0;for(var b=0;b<8;b++){var on=(bits&(0x80>>b))!==0;if(inv)on=!on;if(on)non++;rect(d,x0+cc*cw+b*2,yp+r,2,1,on?fg:pf2);}}}addr=(addr+20)&65535;yp+=rows+2;}
+      else if(m===8||m===9||m===10||m===11||m===14||m===15){var bytes=(m===8||m===9)?10:20,rows2=(m===9||m===10)?4:(m===11?2:8),x1=64;for(var rr=0;rr<rows2;rr++){for(var bi=0;bi<bytes;bi++){var v=raw(addr+rr*bytes+bi)&255;if(v)data++;for(var q=0;q<4;q++){var ci=(v>>(6-q*2))&3;if(ci)non++;rect(d,x1+(bi*4+q)*4,yp+rr*3,4,3,[pf2,pf0,pf1,pf3][ci]||pf2);}}}addr=(addr+bytes*rows2)&65535;yp+=rows2*3+3;}
+      else {yp+=4;}
+    }
+    // Safety hardware view: only real RAM $3000 bytes, shown as diagnostic strip if DLIST window has too few pixels.
+    var nz=countNZ(0x3000,0x400); if(non<600&&nz>0){var baseY=150;for(var i=0;i<256;i++){var v2=raw(0x3000+i)&255;if(v2){for(var bit=0;bit<8;bit++){if(v2&(0x80>>bit))rect(d,16+(i%32)*9+bit,baseY+Math.floor(i/32)*6,1,5,pf3);}}}}
+    ctx.putImageData(img,0,0);selfRenders++;selfPixels=non;selfData=data;selfRam=nz;selfDl=dl;selfBus=bytesBus(dl);selfRaw=bytesRaw(dl);selfView='zoomY start 18 + RAM3000 strip if low pixels';selfInfo='SELFTEST FIX250 DMA zoom render dl $'+hx(dl,4)+' SDMCTL $'+hx(sdm,2)+' CHBASE $'+hx(chb,2)+' pixels '+non+' dataNonZero '+data+' RAM3000nonzero '+nz+' renders '+selfRenders+' frame '+frame();selfDma='BUS '+selfBus+' | RAW '+selfRaw+' VIEW '+selfView;return true;
+  }catch(e){selfInfo='SELFTEST FIX250 render error '+(e&&e.message?e.message:e);return false;}}
+  function updateCass(){try{var s=g('cassStateFix249')||g('cassStateFix250');if(s)s.textContent='CASSETTE '+(cass.inserted?cass.name:'empty')+'\nPLAY '+(cass.playing?'ON':'OFF')+' MOTOR '+(cass.motor?'ON':'OFF')+' POS '+cass.pos+'\nLAST '+cass.last+'\nHEAD '+cass.head+'\nCLOAD '+cass.cload;}catch(e){}try{var p=g('inputMapPanel');if(p){p.classList.add('visible');p.textContent='FIX250 LOADED: WAV/CAS picker + self-test DMA zoom. '+cass.last;}}catch(e){}}
+  function readFile(f){cass.inserted=true;cass.name=f.name;cass.size=f.size;cass.type=f.type||'file';cass.kind=(/\.wav$/i.test(f.name)?'WAV':(/\.cas$/i.test(f.name)?'CAS':'FILE'));cass.pos=0;cass.epoch++;cass.last='CASSETTE INSERT START '+cass.name+' size '+cass.size+' type '+cass.type+' epoch '+cass.epoch+' / decode not connected yet';updateCass();try{var fr=new FileReader();fr.onload=function(){try{var u=new Uint8Array(fr.result||new ArrayBuffer(0));var h=[];for(var i=0;i<Math.min(16,u.length);i++)h.push(hx(u[i],2));cass.head=h.join(' ');cass.last='CASSETTE INSERT OK '+cass.name+' size '+cass.size+' kind '+cass.kind+' head '+cass.head+' / NO FAKE LOAD';updateCass();}catch(e){cass.error=e.message;cass.last='CASSETTE INSERT read error '+e.message;updateCass();}};fr.onerror=function(){cass.error='FileReader error';cass.last='CASSETTE INSERT FileReader error';updateCass();};fr.readAsArrayBuffer(f.slice(0,65536));}catch(e){cass.error=e.message;cass.last='CASSETTE INSERT exception '+e.message;updateCass();}}
+  function installCassettePicker(){try{var box=g('cassetteBoxFix249');if(!box)return;box.id='cassetteBoxFix250';var h=box.querySelector('h2');if(h)h.textContent='Virtualni kazetak FIX250';var hint=box.querySelector('p');if(hint)hint.textContent='Picker opraven pro Android/Nox: ALL FILES + WAV/CAS. Zatim jen vlozeni/play/stop/log, zadny fake LOAD.';var old=g('cassetteFileFix249')||g('cassetteFileFix250');if(old)try{old.remove();}catch(e){}var inp=document.createElement('input');inp.id='cassetteFileFix250';inp.type='file';inp.accept='*/*,.wav,.cas,.txt,.bas,.xex,audio/*,application/octet-stream';inp.style.display='none';box.appendChild(inp);inp.addEventListener('change',function(ev){var f=inp.files&&inp.files[0];if(!f){cass.last='CASSETTE picker closed - no file selected';updateCass();return;}readFile(f);},{passive:false});function open(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}try{inp.value='';cass.last='CASSETTE PICKER OPEN Android/Nox all files';updateCass();inp.click();}catch(e){cass.last='CASSETTE PICKER error '+e.message;updateCass();}return false;}var b=g('cassInsFix249')||g('cassInsFix250');if(b){b.id='cassInsFix250';b.textContent='INSERT WAV/CAS / ALL FILES';b.onclick=open;['pointerup','click','touchend'].forEach(function(n){b.addEventListener(n,open,{passive:false});});}['cassPlayFix249','cassStopFix249','cassRewFix249'].forEach(function(id){var bb=g(id);if(bb){var old=bb.onclick;bb.onclick=function(ev){var r=old?old.call(this,ev):false;cass.playing=(id.indexOf('Play')>=0);if(id.indexOf('Stop')>=0)cass.playing=false;if(id.indexOf('Rew')>=0)cass.pos=0;cass.motor=cass.playing;cass.last=(id.indexOf('Play')>=0?'CASSETTE PLAY motor ON ':'CASSETTE '+(id.indexOf('Stop')>=0?'STOP':'REWIND'))+cass.name+' / no fake data';updateCass();return r;};}});updateCass();}catch(e){cass.last='CASSETTE FIX250 UI error '+e.message;updateCass();}}
+  function stamp(){try{window.EMU_BUILD_TAG=TAG;EMU_BUILD_TAG=TAG;}catch(e){}try{document.title='EMU-09 '+TAG;}catch(e){}try{var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h)h.textContent='EMU-09\n'+TAG;}catch(e){}try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX250: WAV/CAS picker opraven pro Android/Nox + self-test DMA zoom. CLOAD porad jen prikaz, zadny fake LOAD.';}catch(e){}try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX250: kazeťák picker all-files; SELFTEST DMA zoom z real RAM/ROM DLIST.';}catch(e){}installCassettePicker();updateCass();}
+  function screenRows(){var out=[];try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535;for(var r=0;r<6;r++){var s='',bs=[];for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0;bs.push(hx(b,2));try{s+=screenChar(b&127);}catch(e){s+=' ';}}out.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+bs.join(' '));}}catch(e){out.push('screen rows err '+e.message);}return out;}
+  function snapshotText(reason){try{renderSelf250();}catch(e){}var l=[];l.push('AtariHelp.eu EMU-09 FIX250 WAV PICKER SELFTEST DMA ZOOM CORE');l.push('cas='+(new Date()).toISOString());l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));l.push('build='+TAG);l.push('');l.push('[STATUS]');try{l.push(cpu?('PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){}l.push(statusLine());l.push('');l.push('[LOG]');l.push('PURE HARDWARE SNAPSHOT FIX250');l.push('BUILD '+TAG);l.push('FIX250 WAV PICKER/SELFTEST DMA ZOOM CHECK');l.push('VERIFY LOADED YES');l.push('SELFTEST '+selfInfo);l.push('SELFTEST DMA '+selfDma);l.push('DLIST BYTES BUS '+bytesBus(dlptr()));l.push('DLIST BYTES RAW '+bytesRaw(dlptr()));l.push('RAM SAMPLE $3000 nonzero '+countNZ(0x3000,0x400)+' / $BC40 nonzero '+countNZ(0xBC40,0x400));l.push('CASSETTE '+cass.last);l.push('CASSETTE STATE inserted '+cass.inserted+' name '+cass.name+' size '+cass.size+' type '+cass.type+' kind '+cass.kind+' play '+cass.playing+' motor '+cass.motor+' pos '+cass.pos+' epoch '+cass.epoch);l.push('CASSETTE HEAD '+cass.head);l.push('CLOAD '+cass.cload);l.push('SCREEN PROOF');l=l.concat(screenRows());try{l.push('TRACE');if(cpu&&cpu.trace)l=l.concat(cpu.trace.slice(-18));}catch(e){}l.push('RULE FIX250_ANDROID_WAV_CAS_PICKER_ALL_FILES / FILE_READER_HEAD_ONLY / CASSETTE_SCAFFOLD_NO_FAKE_LOAD / SELFTEST_DMA_ZOOM_FROM_ROMDLIST_AND_RAM3000 / NO_DRAWN_READY_SELFTEST');return l.join('\n');}
+  function fname(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX250-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function save(txt,reason){var fn=fname(reason||'snapshot');try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(txt,fn);return true;}}catch(e){}try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);return true;}catch(e){return false;}}
+  window.compatibilitySnapshotCore=function(){stamp();var t=snapshotText('snapshot');var el=g('log');if(el)el.textContent=t;try{updatePlayStatus('FIX250 snapshot: WAV picker + selftest DMA zoom.');}catch(e){}return save(t,'snapshot');};
+  window.compatibilitySnapshot=function(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return window.compatibilitySnapshotCore();};window.saveCurrentLogToMobile=function(reason){stamp();return save(snapshotText(reason||'manual'),reason||'manual');};window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');};window.makeLogFileName=function(reason){return fname(reason||'snapshot');};
+  try{var oldF=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric;window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(renderSelf250())return true;return oldF.apply(this,arguments);};}catch(e){}
+  try{var oldR=window.renderAnticDisplay||renderAnticDisplay;window.renderAnticDisplay=renderAnticDisplay=function(){if(renderSelf250())return;return oldR.apply(this,arguments);};}catch(e){}
+  stamp();setTimeout(stamp,80);setTimeout(stamp,500);setTimeout(stamp,1500);
+})();
+</script>
