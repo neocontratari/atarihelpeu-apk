@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX226_PURE_HARDWARE_AUDIT_CORE / vlastní XEX</title>
+<title>EMU-09 FIX227_PIA_PORTB_DDR_HARDWARE_CORE / vlastní XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX226_PURE_HARDWARE_AUDIT_CORE</h1>
-<p>FIX226: PURE HARDWARE AUDIT rezim. Pred testem lze tlacitkem PURE HW AUDIT vypsat skutecny stav ROM mapy, front vstupu, IRQ/NMI, POKEY a aktivnich cistych cest.</p>
+<h1>EMU-09 FIX227_PIA_PORTB_DDR_HARDWARE_CORE</h1>
+<p>FIX227: PURE HARDWARE + PIA PORTB/DDR. Audit ukaze realny stav ROM mapy, PIA PORTB output latch, DDRB, PBCTL, NMI a POKEY.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -45,7 +45,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <section class="card purePanel">
 <h2>PURE HARDWARE RETRO EMULATION</h2>
-<p>FIX226 je oddeleny startovni panel jen pro cisty ROM/MMU/PIA/POKEY/ANTIC/GTIA test. Stare herni a servisni testy nejsou na obrazovce dostupne. Nejdrive pouzij PURE HW AUDIT, potom POWER BASIC nebo POWER OPTION SELF TEST.</p>
+<p>FIX227 je oddeleny startovni panel pro cisty ROM/MMU/PIA/POKEY/ANTIC/GTIA test. Hlavni oprava je PIA PORTB: zapis na D301 jde podle PBCTL bit2 bud do DDRB, nebo do PORTB vystupniho latch.</p>
 <div class="halfgrid">
 <button class="secondary" onclick="return runPureHardwareAuditFix226(event)">PURE HW AUDIT</button>
 <button class="secondary" onclick="return compatibilitySnapshot()">SNAPSHOT</button>
@@ -67,8 +67,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
 </div>
 <div id="xexName" class="fileLine">MODE: PURE HARDWARE only / no XEX</div>
-<div id="romName" class="fileLine">ROM: built-in ATARIXL.ROM + ATARIBAS.ROM. External ROM upload hidden in FIX226 audit panel.</div>
-<div id="playStatus" class="playStatus">Pripraveno. FIX226 PURE HW AUDIT: spust audit pred testem.</div>
+<div id="romName" class="fileLine">ROM: built-in ATARIXL.ROM + ATARIBAS.ROM. External ROM upload hidden in FIX227 audit panel.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX227 PURE HW AUDIT: spust audit pred testem.</div>
 <div id="inputMapPanel" class="inputMapPanel">PURE HW audit panel.</div>
 </section>
 
@@ -78,7 +78,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX226: PURE HARDWARE AUDIT. Zaklad: AUDIT, POWER BASIC, POWER OPTION SELF TEST, RESET, START/SELECT/OPTION, SNAPSHOT.</p>
+<p class="tinyhint">FIX227: PURE HARDWARE PIA. Zaklad: AUDIT, POWER BASIC, POWER OPTION SELF TEST, RESET, START/SELECT/OPTION, SNAPSHOT.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="return runPureHardwareAuditFix226(event)">PURE HW AUDIT</button>
 <button id="pureHwBasicBtnFix226" class="secondary compact" onclick="return startPureHardwareBasicFix226(event)">POWER XL/XE BASIC</button>
@@ -249,7 +249,7 @@ var fix218RamGeometryInfo='FIX223 RAMSIZE geometry waiting';
 var fix219RealRomVbiInfo='FIX224 real ROM NMI/VBI waiting';
 var fix219SioTimeoutInfo='FIX223 SIO no-device timeout waiting';
 var fix220IrqBrkInfo='FIX224 real OS BRK/IRQ vector waiting';
-var fix221PureStackInfo='FIX224 pure ROM stack/NMI waiting';
+var fix221PureStackInfo='FIX227 pure hardware stack/NMI waiting';
 var fix222ReadyQueueInfo='FIX223 READY-gated FAST BASIC waiting';
 var fix222InputQuarantineInfo='FIX223 input/autopaste quarantine waiting';
 var fix222SelftestDliInfo='FIX223 PURE SELFTEST DLI quarantine waiting';
@@ -260,13 +260,13 @@ var fix223KeyboardInfo='FIX224 keyboard queue waiting';
 var fix223SelfTestPulseInfo='FIX224 selftest START/OPTION/NMI waiting';
 var fix224PureNmiInfo='FIX224 pure ROM true NMI waiting';
 var fix224PokeyInfo='FIX224 POKEY REALOS waiting';
-var fix224NoServisniInfo='FIX224 no servisni READY/SELFTEST: ROM only waiting';
+var fix224NoServisniInfo='FIX224 no drawn READY/SELFTEST: ROM only waiting';
 var fix225PureHardwareMode=false;
-var fix225HardwareInfo='FIX226 PURE HARDWARE waiting';
-var fix225HardwareMapInfo='FIX226 MMU/PORTB waiting';
-var fix225HardwareInputInfo='FIX226 PIA/keyboard waiting';
-var fix225HardwareAudioInfo='FIX226 POKEY register audio waiting';
-var fix226AuditInfo='FIX226 PURE HW AUDIT not run yet';
+var fix225HardwareInfo='FIX227 PURE HARDWARE waiting';
+var fix225HardwareMapInfo='FIX227 PIA PORTB/MMU waiting';
+var fix225HardwareInputInfo='FIX227 PIA/keyboard waiting';
+var fix225HardwareAudioInfo='FIX227 POKEY register audio waiting';
+var fix226AuditInfo='FIX227 PURE HW AUDIT not run yet';
 var fix226AuditLastLines=[];
 var fix226AuditOk=false;
 var fix224NmiBusy=false;
@@ -342,7 +342,7 @@ var optionalOsRom=null;
 var optionalOsbRom=null;
 var optionalBasicRom=null;
 var optionalRomInfo="FIX221 ROM AUDIT: waiting";
-var fix216RomSetAuditInfo='FIX224 ROM SET AUDIT waiting';
+var fix216RomSetAuditInfo='FIX227 ROM SET AUDIT waiting';
 var optionalRomReads=0;
 var fix154RealOsBootMode=false;
 var fix154RealOsBootInfo="reset";
@@ -397,7 +397,7 @@ function ensureBuiltinAtariRomImages(){
    optionalOsRom=decodeB64(builtinAtariOsRomB64);       // FIX208: Rene znovu dodal ATARIXL.ROM 16384 bytes md5 06daac977823773a3eea3422fd26a703
    optionalOsbRom=decodeB64(builtinAtariOsbRomB64);     // FIX208: Rene znovu dodal ATARIOSB.ROM 10240 bytes md5 a3e8d617c95d08031fe1b20d541434b2
    optionalBasicRom=decodeB64(builtinAtariBasicRomB64); // FIX208: Rene znovu dodal ATARIBAS.ROM 8192 bytes md5 0bac0c6a50104045d902df4503a4c30b
-   optionalRomInfo='FIX221 MAIN ROM AUDIT: ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703 / ATARIOSB 10240 md5 a3e8d617c95d08031fe1b20d541434b2 / ATARIBAS 8192 md5 0bac0c6a50104045d902df4503a4c30b'; fix216RomSetAuditInfo='FIX224 ROM SET AUDIT: uploaded ROMs copied into assets; XL main 06daac977823773a3eea3422fd26a703; REV01 9aea45e724d2588fbbeda658c7dc53ee; REV03 54e704558a6aedfc45cebf8f8ac9c312; REV04 b7a2a04677d34f069eeb643d5238bf86; REV10 e3e8c74bfe1dcd6b56af50bd9a82dc15; OS-A/REVAPAL eb1f32f5d9f382db1bbfb8d7f9cb343a; OS-B main a3e8d617c95d08031fe1b20d541434b2; REVBNTSC 4177f386a3bac989a981d3fe3388cb6c; BASIC 0bac0c6a50104045d902df4503a4c30b; REVA BASIC a4dc52536d526ecc51ea857b9fa2b90f; REVB BASIC 04ea6a4e386601445ca5bfc8e37fb620';
+   optionalRomInfo='FIX221 MAIN ROM AUDIT: ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703 / ATARIOSB 10240 md5 a3e8d617c95d08031fe1b20d541434b2 / ATARIBAS 8192 md5 0bac0c6a50104045d902df4503a4c30b'; fix216RomSetAuditInfo='FIX227 ROM SET AUDIT: uploaded ROMs copied into assets; XL main 06daac977823773a3eea3422fd26a703; REV01 9aea45e724d2588fbbeda658c7dc53ee; REV03 54e704558a6aedfc45cebf8f8ac9c312; REV04 b7a2a04677d34f069eeb643d5238bf86; REV10 e3e8c74bfe1dcd6b56af50bd9a82dc15; OS-A/REVAPAL eb1f32f5d9f382db1bbfb8d7f9cb343a; OS-B main a3e8d617c95d08031fe1b20d541434b2; REVBNTSC 4177f386a3bac989a981d3fe3388cb6c; BASIC 0bac0c6a50104045d902df4503a4c30b; REVA BASIC a4dc52536d526ecc51ea857b9fa2b90f; REVB BASIC 04ea6a4e386601445ca5bfc8e37fb620';
    builtinRomImagesReady=true;
  }catch(e){
    optionalRomInfo='ROM AUDIT FIX181 decode chyba: '+(e&&e.message?e.message:e);
@@ -678,7 +678,7 @@ var mobileOverBudgetFrames=0;
 var mobileRenderSkipHits=0;
 var mobileLastFrameTotalMs=0;
 var mobileLastRenderMs=0;
-var mobilePerfInfo="FIX181 mobile guard init";
+var mobilePerfInfo="PURE HW mobile timing init";
 function nowMs(){return (typeof performance!=="undefined"&&performance.now)?performance.now():Date.now();}
 function mobileThrottleProfile(){
  return mobileRuntime && (activeXexProfile==="generic" || activeXexProfile==="arkanoid" || activeXexProfile==="moonpatrol" || activeXexProfile==="montezuma" || activeXexProfile==="pacman" || activeXexProfile==="pitstop" || activeXexProfile==="river");
@@ -695,7 +695,7 @@ function applyMobileBudgetGuard(){
  if(mobileThrottleProfile())genericRenderEvery=Math.max(genericRenderEvery||1,2);
  if(mobileRuntime && (activeXexProfile==="donkey" || activeXexProfile==="cobra"))genericRenderEvery=1;
  if(mobileThrottleProfile())playMaxMsPerFrame=Math.min(playMaxMsPerFrame||7,6);
- mobilePerfInfo="FIX181 mobile guard profile="+activeXexProfile+" renderEvery="+effectiveRenderEvery()+" maxMs="+playMaxMsPerFrame;
+ mobilePerfInfo="PURE HW mobile timing profile="+activeXexProfile+" renderEvery="+effectiveRenderEvery()+" maxMs="+playMaxMsPerFrame;
 }
 function updateMobilePerfGuard(totalMs,renderMs){
  mobileLastFrameTotalMs=totalMs||0; mobileLastRenderMs=renderMs||0;
@@ -706,7 +706,7 @@ function updateMobilePerfGuard(totalMs,renderMs){
  }else if(totalMs<12 && renderMs<5 && mobileThrottleLevel>0 && (playFrameNo&63)===0){
    mobileThrottleLevel--; mobileOverBudgetFrames=0;
  }
- mobilePerfInfo="FIX181 mobile guard "+(mobileRuntime?"ON":"off")+" prof="+activeXexProfile+" lvl="+mobileThrottleLevel+" renderEvery="+effectiveRenderEvery()+" frame="+totalMs.toFixed(1)+"ms render="+renderMs.toFixed(1)+"ms skips="+mobileRenderSkipHits+" logGuard="+fix139SuppressedLogCount;
+ mobilePerfInfo="PURE HW mobile timing "+(mobileRuntime?"ON":"off")+" prof="+activeXexProfile+" lvl="+mobileThrottleLevel+" renderEvery="+effectiveRenderEvery()+" frame="+totalMs.toFixed(1)+"ms render="+renderMs.toFixed(1)+"ms skips="+mobileRenderSkipHits;
 }
 var gameImageData=null;
 var xexCache=null;
@@ -781,6 +781,10 @@ var writeSeen=new Uint8Array(65536);
 var xexLoadedMask=new Uint8Array(65536);
 var xeExtRam=new Uint8Array(0x10000);
 var portbValue=0xFF;
+var piaPortBOut=0xFF;
+var piaPortBDDR=0x00;
+var piaPortBCtl=0x00;
+var piaPortBInfo="FIX227 PIA PORTB waiting";
 var xeBankSwitches=0;
 var osStubStats={calls:0,direct:0,basic:0,last:"--"};
 var fix121OsVectorInfo="reset";
@@ -789,7 +793,7 @@ var fix121LastDlistReject="--";
 var fix121LastLoadedPc=0;
 var fix121LastLoadedOp=0;
 var asyncOsExitStats={exits:0,last:"--",map:{}};
-var EMU_BUILD_TAG="FIX226_PURE_HARDWARE_AUDIT_CORE";
+var EMU_BUILD_TAG="FIX227_PIA_PORTB_DDR_HARDWARE_CORE";
 var hiFireArmed=true; // High-score OK debounce: jedno klepnutí FIRE = jedno písmeno.
 var asyncIrqLogOnce={};
 var frameIrqRan=0;
@@ -879,7 +883,7 @@ function deterministicColdResetState(){
  introDl=0x2003;loseDl=0x2021;winDl=0x2039;hiDl=0x2051;textDlists=[];textDlistMap={};
  rgbCache={};writeSeen=new Uint8Array(65536);xexLoadedMask=new Uint8Array(65536);
  if(xeExtRam)xeExtRam.fill(0);
- portbValue=0xFF;xeBankSwitches=0;osStubStats={calls:0,direct:0,basic:0,last:"--"};asyncOsExitStats={exits:0,last:"--",map:{}};
+ portbValue=0xFF;piaPortBOut=0xFF;piaPortBDDR=0x00;piaPortBCtl=0x00;xeBankSwitches=0;osStubStats={calls:0,direct:0,basic:0,last:"--"};asyncOsExitStats={exits:0,last:"--",map:{}};
  lastGoodDlist=0;lastGoodDlistProfile="";lastRejectedDlistInfo="";brkNearLoadRecoveries=0;brkRomRecoveries=0;initOnlyIdleRecoveries=0;galaxianIdleStubInstalled=false;lastBrkRecoverInfo="--";
  ram.fill(0);
  coldResetSeq++;
@@ -1160,7 +1164,7 @@ function makeLogFileName(reason){
 }
 function buildCurrentLogText(){
  var parts=[];
- parts.push('AtariHelp.eu EMU-09 FIX214 SELFTEST DLIST CONSOL CORE');
+ parts.push('AtariHelp.eu EMU-09 FIX227 PURE HARDWARE PIA PORTB DDR CORE');
  parts.push('cas='+new Date().toISOString());
  parts.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'?'));
  parts.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'?'));
@@ -1355,6 +1359,37 @@ function renderRegs(){
 }
 
 
+
+function fix227EffectivePortB(){
+  // PIA PORTB pins: output latch where DDR=1; otherwise pulled high input.
+  return ((piaPortBOut & piaPortBDDR) | (0xFF & (~piaPortBDDR))) & 255;
+}
+function fix227SyncPortB(reason){
+  var old=portbValue&255;
+  portbValue=fix227EffectivePortB();
+  if(old!==portbValue)xeBankSwitches++;
+  if(ram)ram[0xD301]=portbValue;
+  piaPortBInfo='FIX227 PIA PORTB '+(reason||'sync')+' OUT $'+hex(piaPortBOut,2)+' DDR $'+hex(piaPortBDDR,2)+' PBCTL $'+hex(piaPortBCtl,2)+' EFFECTIVE $'+hex(portbValue,2)+' mode '+((piaPortBCtl&4)?'DATA':'DDR')+' frame '+playFrameNo;
+}
+function fix227WritePortB(v){
+  v&=255;
+  if(piaPortBCtl&4){piaPortBOut=v;fix227SyncPortB('write DATA $'+hex(v,2));}
+  else{piaPortBDDR=v;fix227SyncPortB('write DDR $'+hex(v,2));}
+  if(writeSeen)writeSeen[0xD301]=1;
+}
+function fix227ReadPortB(){
+  return (piaPortBCtl&4) ? (portbValue&255) : (piaPortBDDR&255);
+}
+function fix227WritePortBCtl(v){
+  piaPortBCtl=v&255;
+  if(ram)ram[0xD303]=piaPortBCtl;
+  if(writeSeen)writeSeen[0xD303]=1;
+  fix227SyncPortB('PBCTL $'+hex(piaPortBCtl,2));
+}
+function fix227ResetPiaPortB(){
+  piaPortBOut=0xFF; piaPortBDDR=0x00; piaPortBCtl=0x00; fix227SyncPortB('reset');
+}
+
 function optionalRomSnapshotText(){if(fix150RomBootMode)return fix150RomBootInfo;return optionalRomInfo+' core='+(typeof fix125CoreModeForProfile==='function'?fix125CoreModeForProfile():'XEX_TOTAL_PURGE')+' mode='+(fix197TotalPurgeActive?'TOTAL_PURGE':(fix124RomEnabledForProfile()?'PROBE':'OFF'))+' reads='+optionalRomReads;}
 function isMiniOsRomAddr(a){
  a&=65535;
@@ -1366,14 +1401,14 @@ function isMiniOsRomAddr(a){
 function isHardwareIoTrapAddr(a){a&=65535;return a>=0xD000 && a<=0xD7FF;}
 function isBasicRomAddr(a){a&=65535;return a>=0xA000 && a<=0xBFFF;}
 function fix217SelfTestWindowEnabled(){
- if(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode){var on225=!!(fix215PureRomMode && ((portbValue&0x80)===0)); fix217SelftestGateInfo='FIX226 SELFTEST gate '+(on225?'ON':'OFF')+' by PORTB bit7 only PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo; return on225;}
+ if(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode){var eff227=fix227EffectivePortB(); var on225=!!(fix215PureRomMode && ((eff227&0x80)===0)); fix217SelftestGateInfo='FIX227 SELFTEST window '+(on225?'ON':'OFF')+' from PIA effective PORTB $'+hex(eff227,2)+' OUT $'+hex(piaPortBOut,2)+' DDR $'+hex(piaPortBDDR,2)+' PBCTL $'+hex(piaPortBCtl,2)+' frame '+playFrameNo; return on225;}
  // XL/XE MMU: SELFTEST ROM at $5000-$57FF is selected by PORTB bit7 LOW.
  // FIX216 disabled this during PURE BASIC boot; the real XL OS jumps through $5003
  // after it lowers PORTB, so BASIC boot hit empty RAM/BRK. FIX217 follows PORTB.
  var byPortb=!!(fix215PureRomMode && ((portbValue&0x80)===0));
  var byExplicit=!!(fix213SelfTestBootActive || fix215PureSelfTestMode);
  var on=!!(byExplicit || byPortb);
- fix217SelftestGateInfo='FIX223 SELFTEST gate '+(on?'ON':'OFF')+' by '+(byExplicit?'explicit ':'')+(byPortb?'PORTB bit7 LOW ':'')+'PORTB $'+hex(portbValue&255,2)+' pure='+(fix215PureRomMode?'Y':'N')+' frame '+playFrameNo;
+ fix217SelftestGateInfo='FIX227 SELFTEST gate '+(on?'ON':'OFF')+' by '+(byExplicit?'explicit ':'')+(byPortb?'PORTB bit7 LOW ':'')+'PORTB $'+hex(portbValue&255,2)+' pure='+(fix215PureRomMode?'Y':'N')+' frame '+playFrameNo;
  return on;
 }
 function fix213SelfTestRomMappedForAddr(a){
@@ -1387,7 +1422,7 @@ function fix213SelfTestRomByteAt(a){
  if(off<0 || off>=optionalOsRom.length)return -1;
  optionalRomReads++; fix213SelfTestRomReads++;
  if((fix213SelfTestRomReads&127)===1){
-   fix213SelfTestMapInfo='FIX223 SELFTEST ROM MAP active $5000-$57FF -> ATARIXL.ROM off $1000, read '+fix213SelfTestRomReads+' last $'+hex(a,4)+' byte $'+hex(optionalOsRom[off]&255,2)+' PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo;
+   fix213SelfTestMapInfo='FIX227 SELFTEST ROM MAP active $5000-$57FF -> ATARIXL.ROM off $1000, read '+fix213SelfTestRomReads+' last $'+hex(a,4)+' byte $'+hex(optionalOsRom[off]&255,2)+' PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo;
  }
  return optionalOsRom[off]&255;
 }
@@ -1398,7 +1433,7 @@ function fix214MirrorSelfTestRomWindow(reason){
  return true;
 }
 function optionalOsRomActiveForAddr(a){ a&=65535; return !!(fix124OsRomEnabledForProfile() && optionalOsRom && optionalOsRom.length>=16384 && ((a>=0xC000 && a<=0xCFFF) || (a>=0xD800 && a<=0xFFFF))); }
-function optionalBasicRomActiveForAddr(a){ a&=65535; return !!(fix124BasicRomEnabledForProfile() && optionalBasicRom && optionalBasicRom.length===8192 && isBasicRomAddr(a)); }
+function optionalBasicRomActiveForAddr(a){ a&=65535; if(!(fix124BasicRomEnabledForProfile() && optionalBasicRom && optionalBasicRom.length===8192 && isBasicRomAddr(a)))return false; if(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode){return ((fix227EffectivePortB()&0x02)===0);} return true; }
 function shouldStubCpuRomEntry(a){
  a&=65535;
  // FIX196: OS ROM je pro XEXy mapovana jako kernel/data, ale BASIC ROM pro hotove hry zustava vypnuty.
@@ -1623,7 +1658,7 @@ function saveCoreMatrixEmuState(){
    input:Object.assign({},input),
    playMode:playMode,playBooted:playBooted,playFrameNo:playFrameNo,playLastRan:playLastRan,playFrameMs:playFrameMs,
    playCyclesPerFrame:playCyclesPerFrame,playMaxMsPerFrame:playMaxMsPerFrame,genericRenderEvery:genericRenderEvery,
-   portbValue:portbValue,xeBankSwitches:xeBankSwitches,osStubStats:Object.assign({},osStubStats),
+   portbValue:portbValue,piaPortBOut:piaPortBOut,piaPortBDDR:piaPortBDDR,piaPortBCtl:piaPortBCtl,xeBankSwitches:xeBankSwitches,osStubStats:Object.assign({},osStubStats),
    gtiaCollisionRegs:gtiaCollisionRegs?gtiaCollisionRegs.slice(0):null,
    gtiaCollisionStats:JSON.parse(JSON.stringify(gtiaCollisionStats||newGtiaCollisionStats())),
    lastGoodDlist:lastGoodDlist,lastGoodDlistProfile:lastGoodDlistProfile,lastRejectedDlistInfo:lastRejectedDlistInfo,
@@ -1645,7 +1680,7 @@ function restoreCoreMatrixEmuState(s){
  introDl=s.introDl;loseDl=s.loseDl;winDl=s.winDl;hiDl=s.hiDl;textDlists=s.textDlists.slice(0);textDlistMap=Object.assign({},s.textDlistMap);
  input=Object.assign({},s.input);playMode=s.playMode;playBooted=s.playBooted;playFrameNo=s.playFrameNo;playLastRan=s.playLastRan;playFrameMs=s.playFrameMs;
  playCyclesPerFrame=s.playCyclesPerFrame;playMaxMsPerFrame=s.playMaxMsPerFrame;genericRenderEvery=s.genericRenderEvery;
- portbValue=s.portbValue;xeBankSwitches=s.xeBankSwitches;osStubStats=Object.assign({},s.osStubStats);
+ portbValue=s.portbValue;piaPortBOut=(s.piaPortBOut===undefined?0xFF:s.piaPortBOut);piaPortBDDR=(s.piaPortBDDR===undefined?0x00:s.piaPortBDDR);piaPortBCtl=(s.piaPortBCtl===undefined?0x00:s.piaPortBCtl);xeBankSwitches=s.xeBankSwitches;osStubStats=Object.assign({},s.osStubStats);
  if(gtiaCollisionRegs && s.gtiaCollisionRegs)gtiaCollisionRegs.set(s.gtiaCollisionRegs);
  gtiaCollisionStats=s.gtiaCollisionStats||newGtiaCollisionStats();
  lastGoodDlist=s.lastGoodDlist;lastGoodDlistProfile=s.lastGoodDlistProfile;lastRejectedDlistInfo=s.lastRejectedDlistInfo;
@@ -2951,7 +2986,7 @@ function fix192HasMoreXexSegments(bytes,pos){
 function installCleanXexLoaderEnvironmentFix192(reason){
  if(!ram)return;
  // FIX197: total purge XEX env. Cisty XEX load zustava, ale profilove render sablony se nesmi pouzit.
- // BASIC direct je OFF; OS kernel probe zustava jen jako sluzba, ne jako servisni obrazova cesta.
+ // BASIC direct je OFF; OS kernel probe zustava jen jako sluzba, ne jako drawn obrazova cesta.
  ram[0xD301]=0xFF;
  portbValue=0xFF;
  ram[0x0244]=0x00; // COLDST sane for clean loaded program
@@ -3612,7 +3647,7 @@ CPU6502.prototype.w=function(a,v){
    if(portbValue!==(v&255))xeBankSwitches++;
    portbValue=v&255;
    if(((portbValue&0x80)===0) || fix213SelfTestBootActive){
-     fix213SelfTestMapInfo='FIX223 SELFTEST ROM MAP follows PORTB bit7; $5000-$57FF enabled PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo;
+     fix213SelfTestMapInfo='FIX227 SELFTEST ROM MAP follows PORTB bit7; $5000-$57FF enabled PORTB $'+hex(portbValue&255,2)+' frame '+playFrameNo;
    }
    if(writeSeen)writeSeen[a]=1;
    this.m[a]=v;
@@ -3623,7 +3658,7 @@ CPU6502.prototype.w=function(a,v){
  if(a>=0xD200 && a<=0xD208){
    if(writeSeen)writeSeen[a]=1;
    this.m[a]=v;
-   fix188PokeyAudioInfo=((typeof fix225PureHardwareMode!=='undefined'&&fix225PureHardwareMode)?'FIX226 POKEY register write $':'FIX188 POKEY write $')+hex(a,4)+'=$'+hex(v,2)+' profile '+activeXexProfile+' frame '+playFrameNo; if(typeof fix225PureHardwareMode!=='undefined'&&fix225PureHardwareMode)fix225HardwareAudioInfo=fix188PokeyAudioInfo;
+   fix188PokeyAudioInfo=((typeof fix225PureHardwareMode!=='undefined'&&fix225PureHardwareMode)?'FIX227 POKEY register write $':'FIX188 POKEY write $')+hex(a,4)+'=$'+hex(v,2)+' profile '+activeXexProfile+' frame '+playFrameNo; if(typeof fix225PureHardwareMode!=='undefined'&&fix225PureHardwareMode)fix225HardwareAudioInfo=fix188PokeyAudioInfo;
    if(audioWanted)ensureAudio();
    return;
  }
@@ -3864,10 +3899,10 @@ function fix219PureScreenReady(cpuObj){
 function fix219MaybePureSioNoDevice(cpuObj,pc0){
  pc0&=65535;
  if(!cpuObj || !fix215PureRomMode || fix215PureSelfTestMode)return false;
- if(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode){fix219SioTimeoutInfo='FIX226 PURE HARDWARE: SIO shortcut disabled at PC $'+hex(pc0,4);return false;}
+ if(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode){fix219SioTimeoutInfo='FIX227 PURE HARDWARE: SIO not implemented yet at PC $'+hex(pc0,4);return false;}
  if(pc0!==0xEA9E && pc0!==0xEB16 && pc0!==0xEB24)return false;
  if(!fix219PureScreenReady(cpuObj))return false;
- // FIX219: neni to servisni READY ani skok do BASICu. Je to minimalni emulace stavu "zadne SIO zarizeni".
+ // FIX219: neni to drawn READY ani skok do BASICu. Je to minimalni emulace stavu "zadne SIO zarizeni".
  // ROMka uz postavila editor DLIST/SAVMSC a ceka v SIO/POKEY smycce. Bez plneho POKEY serial IRQ
  // by cekala navzdy, proto vratime OS z JSR E456 kladnym statusem a nechame real ROM pokracovat.
  var sp=cpuObj.sp&255;
@@ -3903,7 +3938,7 @@ CPU6502.prototype.step=function(){
  // machine RAM geometry as OK at the exact OS decision point so the real ROM continues past C3AB.
  if(fix215PureRomMode && !fix215PureSelfTestMode && !(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode) && pc0===0xC3AB && (this.m[0x01]&255)===0){
    this.m[0x01]=1;
-   fix218RamGeometryInfo='FIX223 RAMSIZE: PURE BASIC $01 00->01 at $C3AB, report RAM geometry OK; no servisni READY/BASIC jump frame '+playFrameNo+' PORTB $'+hex(portbValue&255,2);
+   fix218RamGeometryInfo='FIX223 RAMSIZE: PURE BASIC $01 00->01 at $C3AB, report RAM geometry OK; no drawn READY/BASIC jump frame '+playFrameNo+' PORTB $'+hex(portbValue&255,2);
    try{log(fix218RamGeometryInfo);}catch(e){}
  }
  if(fix154RealOsBootMode && !fix215PureRomMode && pc0===0xC3AB && (this.m[0x01]&255)===0){
@@ -4120,10 +4155,10 @@ CPU6502.prototype.step=function(){
         var brkRet225=(this.pc+1)&65535;
         this.push((brkRet225>>8)&255);this.push(brkRet225&255);this.push((this.p|0x10)&255);
         this.p|=0x04;this.pc=vec;
-        fix220IrqBrkInfo='FIX226 BRK vector $'+hex(pc0,4)+' ret $'+hex(brkRet225,4)+' -> IRQ $'+hex(vec,4)+' frame '+playFrameNo;
+        fix220IrqBrkInfo='FIX227 BRK vector $'+hex(pc0,4)+' ret $'+hex(brkRet225,4)+' -> IRQ $'+hex(vec,4)+' frame '+playFrameNo;
         try{if((playFrameNo&31)===0)log(fix220IrqBrkInfo);}catch(e){}
       }else{
-        this.trap=true;fix220IrqBrkInfo='FIX226 BRK trap invalid IRQ vector $'+hex(vec,4)+' from $'+hex(pc0,4)+' frame '+playFrameNo;this.trapMsg=fix220IrqBrkInfo;try{log(fix220IrqBrkInfo);}catch(e){}
+        this.trap=true;fix220IrqBrkInfo='FIX227 BRK trap invalid IRQ vector $'+hex(vec,4)+' from $'+hex(pc0,4)+' frame '+playFrameNo;this.trapMsg=fix220IrqBrkInfo;try{log(fix220IrqBrkInfo);}catch(e){}
       }
     }else if(fix215PureRomMode && pc0<0x0200){
       this.trap=true;
@@ -6391,9 +6426,9 @@ function startRealOsBasicBootFix157(mode){
   xexInfo={run:0,inits:[],entry:0,warnings:[],bad:false};
   segments=[];pendingInitAddrs=[];ranInitAddrs=[];activeEntryWasInit=false;runAddress=0;
   fix151AtariReadyMode=false;fix150RomBootMode=false;fix154RealOsBootMode=true;fix154RealOsBootStartFrame=playFrameNo||0;fix154RealOsLastDl=0;fix156RealOsSioGuardInfo='reset';try{fadeAudioOff();}catch(e){}
-  portbValue=0xFF;xeBankSwitches=0;osStubStats={calls:0,direct:0,basic:0,last:'--'};optionalRomReads=0;
+  piaPortBOut=0xFF;piaPortBDDR=0x00;piaPortBCtl=0x00;portbValue=0xFF;xeBankSwitches=0;osStubStats={calls:0,direct:0,basic:0,last:'--'};optionalRomReads=0;
   // minimální hardware power-up defaulty; další musí nastavit skutečný OS přes zápisy do registrů.
-  ram[0xD301]=portbValue;ram[0xD20F]=0xFF;ram[0x02FC]=0xFF;ram[0x0284]=1;ram[0x02F4]=0xE0;ram[0x02F2]=0x00;ram[0x0009]=0x01;
+  ram[0xD301]=portbValue;ram[0xD303]=piaPortBCtl;ram[0xD20F]=0xFF;ram[0x02FC]=0xFF;ram[0x0284]=1;ram[0x02F4]=0xE0;ram[0x02F2]=0x00;ram[0x0009]=0x01;
   ram[0xD400]=0;ram[0xD402]=0;ram[0xD403]=0;ram[0xD409]=0xE0;ram[0xD40E]=0;
   var lo=optionalRomByteAt(0xFFFC), hi=optionalRomByteAt(0xFFFD);
   var reset=((lo&255)|((hi&255)<<8))&65535;
@@ -6402,8 +6437,8 @@ function startRealOsBasicBootFix157(mode){
   xexInfo.entry=reset;runAddress=reset;
   playBooted=true;playMode=true;playFrameNo=0;playLastRan=0;playFrameMs=0;frameIrqRan=0;frameVbiRan=0;frameDliRan=0;osTimerTicks=0;
   playCyclesPerFrame=4200;playMaxMsPerFrame=8;genericRenderEvery=1;fastVideo=true;
-  fix154RealOsBootInfo='REAL OS RESET FIX181: mode='+mode+' start PC $'+hex(reset,4)+' vectors reset=$'+hex(reset,4)+' irq=$'+hex((optionalRomByteAt(0xFFFE)|optionalRomByteAt(0xFFFF)<<8)&65535,4)+' nmi=$'+hex((optionalRomByteAt(0xFFFA)|optionalRomByteAt(0xFFFB)<<8)&65535,4)+' BASIC mapped yes; no servisni READY';
-  updateRomStatusLine('FIX181 REAL OS/BASIC '+mode+' boot: early CIO/SIO hooks off, no servisni READY');
+  fix154RealOsBootInfo='REAL OS RESET FIX181: mode='+mode+' start PC $'+hex(reset,4)+' vectors reset=$'+hex(reset,4)+' irq=$'+hex((optionalRomByteAt(0xFFFE)|optionalRomByteAt(0xFFFF)<<8)&65535,4)+' nmi=$'+hex((optionalRomByteAt(0xFFFA)|optionalRomByteAt(0xFFFB)<<8)&65535,4)+' BASIC mapped yes; no drawn READY';
+  updateRomStatusLine('FIX181 REAL OS/BASIC '+mode+' boot: early CIO/SIO hooks off, no drawn READY');
   updatePlayStatus('FIX181 REAL OS/BASIC: '+(mode==='basic'?'AUTO BASIC bez START/OPTION':'START+OPTION / NO BASIC')+'. Nejdřív reálný OS DLIST/SAVMSC, pak teprve BASIC ROM. Žádné kreslené READY. Klávesnice je hned pod obrazem.');
   setTimeout(function(){try{var kd=document.getElementById('atariKeyboardDock'); if(kd)kd.scrollIntoView({block:'nearest'});}catch(e){}},450);
   log(fix154RealOsBootInfo);
@@ -6428,11 +6463,11 @@ function fix215SetPureRomInfo(kind, extra){
 
 function fix225ClearAllQueues(reason){
  try{clearManagedTimers();}catch(e){}
- try{fix222CancelFastBasicInput('FIX226 pure hardware '+(reason||'reset'));}catch(e){}
+ try{fix222CancelFastBasicInput('FIX227 pure hardware '+(reason||'reset'));}catch(e){}
  try{fix208BasicAutofeedActive=false;fix208BasicAutofeedQueue=[];fix208BasicAutofeedName='';fix208BasicAutofeedTotal=0;}catch(e){}
  try{atariKeyQueue=[];realOsKeyOneShot=0xFF;realOsAtasciiOneShot=0xFF;realOsKeyLast=0xFF;realOsAtasciiLast=0xFF;}catch(e){}
  try{if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;}}catch(e){}
- fix225HardwareInputInfo='FIX226 input queues cleared: '+(reason||'reset')+' frame '+playFrameNo;
+ fix225HardwareInputInfo='FIX227 input queues cleared: '+(reason||'reset')+' frame '+playFrameNo;
 }
 function fix225ResetBareHardware(selftest, reason){
  fullStop();
@@ -6442,7 +6477,7 @@ function fix225ResetBareHardware(selftest, reason){
  ram.fill(0);
  writeSeen=new Uint8Array(65536); xexLoadedMask=new Uint8Array(65536);
  if(xeExtRam)xeExtRam.fill(0);
- portbValue=0xFF; xeBankSwitches=0; optionalRomReads=0; fix213SelfTestRomReads=0;
+ xeBankSwitches=0; optionalRomReads=0; fix213SelfTestRomReads=0; fix227ResetPiaPortB();
  clearGtiaCollisions(true); rgbCache={}; lastPCs=[]; asyncIrqLogOnce={};
  input={start:false,fire:false,left:false,right:false,up:false,jump:false,select:false,option:!!selftest,key:0xFF};
  syncInputShadows();
@@ -6450,21 +6485,21 @@ function fix225ResetBareHardware(selftest, reason){
  fix154RealOsBootMode=true; fix157RealOsMode=selftest?'pure-hw-selftest':'pure-hw-basic'; fix157BasicJumpDone=false;
  fix197TotalPurgeActive=false; activeXexProfile='realos'; playBooted=true; playFrameNo=0; playLastRan=0;
  fix213SelfTestBootActive=!!selftest; fix214SelfTestStartKickDone=false; fix214SelfTestStartPulseUntil=-1;
- fix219SioTimeoutInjected=false; fix219SioTimeoutInfo='FIX226 PURE HARDWARE: SIO is not shortcut-returned; OS must progress by emulated hardware';
- fix218RamGeometryInfo='FIX226 PURE HARDWARE: RAMSIZE/RAMTEST not patched';
- fix220IrqBrkInfo='FIX226 PURE HARDWARE: BRK uses CPU vector path only';
- fix224PureNmiInfo='FIX226 TRUE NMI waiting'; fix224PokeyInfo='FIX226 POKEY register path waiting'; fix224NoServisniInfo='FIX226 PURE HARDWARE active';
- fix222ReadyQueueInfo='FIX226 FAST BASIC disabled in pure hardware screen'; fix222InputQuarantineInfo='FIX226 queues cleared'; fix222SelftestDliInfo='FIX226 DLI via NMI vector only';
- fix225HardwareInfo='FIX226 POWER '+(selftest?'OPTION SELF TEST':'BASIC')+': CPU reset vector from ATARIXL.ROM, no boot shortcuts, no service screen shortcuts frame '+playFrameNo;
- fix225HardwareMapInfo='FIX226 ROM MAP: OS $C000-$CFFF/$D800-$FFFF, BASIC $A000-$BFFF, SELFTEST $5000-$57FF only when PORTB bit7 LOW';
- currentXexName=selftest?'PURE HARDWARE OPTION SELF TEST FIX226 / no XEX':'PURE HARDWARE BASIC FIX226 / no XEX';
+ fix219SioTimeoutInjected=false; fix219SioTimeoutInfo='FIX227 PURE HARDWARE: SIO path waits for real emulation; no direct READY jump';
+ fix218RamGeometryInfo='FIX227 PURE HARDWARE: RAMSIZE/RAMTEST not patched';
+ fix220IrqBrkInfo='FIX227 PURE HARDWARE: BRK uses CPU vector path only';
+ fix224PureNmiInfo='FIX227 TRUE NMI waiting'; fix224PokeyInfo='FIX227 POKEY register path waiting'; fix224NoServisniInfo='FIX227 PURE HARDWARE active';
+ fix222ReadyQueueInfo='FIX227 FAST BASIC disabled in pure hardware screen'; fix222InputQuarantineInfo='FIX227 queues cleared'; fix222SelftestDliInfo='FIX227 DLI via NMI vector only';
+ fix225HardwareInfo='FIX227 POWER '+(selftest?'OPTION SELF TEST':'BASIC')+': CPU reset vector from ATARIXL.ROM, ROM reset vector, no drawn READY/SELFTEST screen frame '+playFrameNo;
+ fix225HardwareMapInfo='FIX227 ROM MAP: OS $C000-$CFFF/$D800-$FFFF, BASIC $A000-$BFFF, SELFTEST $5000-$57FF only when PORTB bit7 LOW';
+ currentXexName=selftest?'PURE HARDWARE OPTION SELF TEST FIX227 / no XEX':'PURE HARDWARE BASIC FIX227 / no XEX';
  xexInfo={run:0,inits:[],entry:0xC2AA,warnings:[],bad:false}; segments=[]; setXexName(); renderSegments();
  cpu=new CPU6502(ram); cpu.sp=0xFD; cpu.p=0x24; cpu.a=0; cpu.x=0; cpu.y=0; cpu.trap=false; cpu.trace=[];
  var rv=(cpu.r(0xFFFC)|(cpu.r(0xFFFD)<<8))&65535;
  cpu.pc=rv||0xC2AA; xexInfo.entry=cpu.pc; currentSeq=0;
- updateRomStatusLine('FIX226 PURE HARDWARE: ROM reset vector only');
- updatePlayStatus('FIX226 PURE HARDWARE '+(selftest?'OPTION SELF TEST':'BASIC')+' bezi. Zadny servisni skok READY/SELFTEST. Pokud se zastavi, snapshot ukaze chybejici HW cestu.');
- log('FIX226 PURE HARDWARE POWER '+(selftest?'OPTION SELF TEST':'BASIC')+' reset=$'+hex(cpu.pc,4)+' option='+(input.option?'LOW':'HIGH'));
+ updateRomStatusLine('FIX227 PURE HARDWARE: ROM reset vector + PIA PORTB DDR');
+ updatePlayStatus('FIX227 PURE HARDWARE '+(selftest?'OPTION SELF TEST':'BASIC')+' bezi. Zadne kreslene READY/SELFTEST. Pokud se zastavi, snapshot ukaze chybejici HW cestu.');
+ log('FIX227 PURE HARDWARE POWER '+(selftest?'OPTION SELF TEST':'BASIC')+' reset=$'+hex(cpu.pc,4)+' option='+(input.option?'LOW':'HIGH'));
  renderInput(); playMode=true; requestAnimationFrame(playLoop);
  return false;
 }
@@ -6503,12 +6538,13 @@ function runPureHardwareAuditFix226(ev){
  if(typeof fix197TotalPurgeActive!=='undefined'&&fix197TotalPurgeActive)problems.push('XEX loader active');
  if(typeof fix215PureRomMode!=='undefined'&&fix215PureRomMode&&!fix225PureHardwareMode)problems.push('old pure-rom path active');
  var lines=[];
- lines.push('FIX226 PURE HW AUDIT');
+ lines.push('FIX227 PURE HW AUDIT');
  lines.push('BUILD '+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing'));
  lines.push('ROM ATARIXL bytes '+(optionalOsRom?optionalOsRom.length:0)+' md5 06daac977823773a3eea3422fd26a703');
  lines.push('ROM BASIC bytes '+(optionalBasicRom?optionalBasicRom.length:0)+' md5 0bac0c6a50104045d902df4503a4c30b');
  lines.push('VECTORS RESET $'+hex(reset,4)+' NMI $'+hex(nmi,4)+' IRQ $'+hex(irq,4));
- lines.push('MMU PORTB $'+hex(portbValue&255,2)+' SELFTEST_WINDOW_NOW '+(fix217SelfTestWindowEnabled()?'ON':'OFF'));
+ lines.push('MMU EFFECTIVE PORTB $'+hex(portbValue&255,2)+' SELFTEST_WINDOW_NOW '+(fix217SelfTestWindowEnabled()?'ON':'OFF'));
+ lines.push('PIA PORTB OUT $'+hex(piaPortBOut,2)+' DDR $'+hex(piaPortBDDR,2)+' PBCTL $'+hex(piaPortBCtl,2)+' ACCESS '+((piaPortBCtl&4)?'DATA':'DDR')); 
  lines.push('INPUT QUEUES active='+(activeQueue?'YES':'NO')+' fastQ='+q1+' keyQ='+q2+' CH=$'+hex((ram&&ram[0x02FC])||0,2));
  lines.push('PURE_HW_ACTIVE '+(fix225PureHardwareMode?'YES':'NO')+' MODE '+(fix215PureSelfTestMode?'SELFTEST':'BASIC/IDLE'));
  lines.push('CPU '+(cpu?('PC $'+hex(cpu.pc,4)+' SP $'+hex(cpu.sp,2)+' P $'+hex(cpu.p,2)+' trap '+(cpu.trap?'YES':'NO')):'not started'));
@@ -6583,7 +6619,7 @@ function startRomSelfTestFix213(ev){
    currentXexName='REAL ATARI XL/XE ROM SELF TEST FIX214 / OPTION cold boot';
    fix157RealOsMode='selftest';
    fix213SelfTestInfo='FIX213 SELFTEST OPTION BOOT active: reset $'+hex(reset,4)+' nmi $'+hex(nmi,4)+' irq $'+hex(irq,4)+' OPTION held, PORTB $'+hex(portbValue,2)+' frame '+playFrameNo;
-   fix213SelfTestMapInfo='FIX223 SELFTEST ROM MAP active $5000-$57FF -> ATARIXL.ROM off $1000 PORTB $'+hex(portbValue,2)+' frame '+playFrameNo;
+   fix213SelfTestMapInfo='FIX227 SELFTEST ROM MAP active $5000-$57FF -> ATARIXL.ROM off $1000 PORTB $'+hex(portbValue,2)+' frame '+playFrameNo;
    updatePlayStatus('FIX214 ROM SELF TEST: real self-test ROM window je zrcadlene i pro ANTIC/DLIST a START wait dostane jednorazovy pulse. Ma se ukazat SELF TEST menu.');
    log('FIX213 SELFTEST OPTION BOOT: '+fix213SelfTestInfo);
    log('FIX213 SELFTEST ROM MAP: '+fix213SelfTestMapInfo);
@@ -6711,7 +6747,7 @@ document.addEventListener('keydown',function(e){
   if(fix154RealOsBootMode){
     e.preventDefault();
     tapAtariKey(k,120);
-    fix154RealOsBootInfo='REAL OS RESET FIX181: HW key '+k+' sent to KBCODE/CH at PC $'+(cpu?hex(cpu.pc,4):'----')+' DL $'+hex(fix154RealOsLastDl||0,4)+'; no servisni READY; storage guarded';
+    fix154RealOsBootInfo='REAL OS RESET FIX181: HW key '+k+' sent to KBCODE/CH at PC $'+(cpu?hex(cpu.pc,4):'----')+' DL $'+hex(fix154RealOsLastDl||0,4)+'; no drawn READY; storage guarded';
   }
 });
 document.addEventListener('keyup',function(e){/* FIX181: SHIFT/CTRL jsou latch prepinace, keyup je nevypina. */});
@@ -8360,7 +8396,7 @@ function updateAudioFromPokey(){
    }
  }
  if((playFrameNo&63)===0){
-   fix188PokeyAudioInfo='FIX224 POKEY audio mix profile '+activeXexProfile+' ch '+regs.map(function(p){return hex(ram[p[0]]||0,2)+'/'+hex(ram[p[1]]||0,2);}).join(' ')+' frame '+playFrameNo; fix224PokeyInfo=fix188PokeyAudioInfo;
+   fix188PokeyAudioInfo='FIX227 POKEY audio mix profile '+activeXexProfile+' ch '+regs.map(function(p){return hex(ram[p[0]]||0,2)+'/'+hex(ram[p[1]]||0,2);}).join(' ')+' frame '+playFrameNo; fix224PokeyInfo=fix188PokeyAudioInfo;
  }
 }
 function fadeAudioOff(){
@@ -8541,7 +8577,7 @@ function runAsyncAtariRoutine(addr,label,limit,vcountValue){
  var saved={a:cpu.a,x:cpu.x,y:cpu.y,p:cpu.p,sp:cpu.sp,pc:cpu.pc,trap:cpu.trap,msg:cpu.trapMsg,vc:cpu.vcount,trace:cpu.trace.slice(0)};
  var galaxSafe=isGalaxianProfile(); // FIX89: Cobra/Super Cobra jsou také INIT-only, ale NESMÍ dostat Galaxian RTI/stack ochranu.
  var stackCopy=((galaxSafe && !dliRoutine) || fix215PureRomMode)?ram.slice(0x0100,0x0200):null;
- if(fix215PureRomMode){try{fix221PureStackInfo='FIX224 pure ROM stack page saved/restored for '+label+' frame '+playFrameNo;}catch(e){}}
+ if(fix215PureRomMode){try{fix221PureStackInfo='FIX227 pure hardware stack page saved/restored for '+label+' frame '+playFrameNo;}catch(e){}}
  cpu.trap=false;cpu.trapMsg="";
  // FIX18/FIX89: VBI/DLI nejsou JSR. Pro běžné hry držíme přesně FIX81 chování.
  // Jen INIT-only/Galaxian rutina má navíc ochranu: když DLI/VBI skončí RTI/RTS, wrapper hned končí
@@ -8603,7 +8639,7 @@ function fix224NmiVector(){
 function fix224RunTrueNmi(kind,label,budget,vc){
  if(!cpu || cpu.trap || fix224NmiBusy)return 0;
  var vec=fix224NmiVector();
- if(!vec || !optionalOsRomActiveForAddr(vec) || cpu.r(vec)===0x00){fix224PureNmiInfo='FIX224 TRUE NMI blocked '+label+' vector $'+hex(vec||0,4)+' frame '+playFrameNo;return 0;}
+ if(!vec || !optionalOsRomActiveForAddr(vec) || cpu.r(vec)===0x00){fix224PureNmiInfo='FIX227 TRUE NMI blocked '+label+' vector $'+hex(vec||0,4)+' frame '+playFrameNo;return 0;}
  fix224NmiBusy=true;
  var oldNm=(ram[0xD40F]||0)&255;
  var oldVc=cpu.vcount||0;
@@ -8620,10 +8656,10 @@ function fix224RunTrueNmi(kind,label,budget,vc){
      cpu.step();
      if(op===0x40){hitRti=true;break;}
    }
-   fix224PureNmiInfo='FIX224 TRUE NMI '+label+' kind $'+hex(kind&255,2)+' vec $'+hex(vec,4)+' start $'+hex(startPc,4)+' ran '+ran+' '+(hitRti?'RTI':'NO-RTI')+' pc $'+hex(cpu.pc&65535,4)+' frame '+playFrameNo;
+   fix224PureNmiInfo='FIX227 TRUE NMI '+label+' kind $'+hex(kind&255,2)+' vec $'+hex(vec,4)+' start $'+hex(startPc,4)+' ran '+ran+' '+(hitRti?'RTI':'NO-RTI')+' pc $'+hex(cpu.pc&65535,4)+' frame '+playFrameNo;
    if(label&&label.indexOf('VBI')>=0)fix219RealRomVbiInfo=fix224PureNmiInfo;
    if(label&&label.indexOf('DLI')>=0)fix222SelftestDliInfo=fix224PureNmiInfo;
-   try{if((playFrameNo&15)===0 || !hitRti)log('FIX224 TRUE NMI: '+fix224PureNmiInfo);}catch(e){}
+   try{if((playFrameNo&15)===0 || !hitRti)log('FIX227 TRUE NMI: '+fix224PureNmiInfo);}catch(e){}
    return ran;
  }finally{
    // NMIST zustava tak, jak ho ROM/NMIRES nechaly. Kdyz handler nezapsal NMIRES, nenechame latch ve starem neAtari stavu.
@@ -8641,22 +8677,22 @@ function fix224RunPureRomFrameInterrupts(nmi){
    var ys=dliScanlinesFromDlist(getDlistPtr());
    if(ys && ys.length){
      var max=Math.min(ys.length,8);
-     var cap=[captureGenericHardwareState(0,0,0,'FIX224 frame-start')], chain=[];
+     var cap=[captureGenericHardwareState(0,0,0,'FIX227 frame-start')], chain=[];
      for(var i=0;i<max;i++){
        var vc=(ys[i]>>1)&0x7F;
        chain.push('y'+ys[i]);
        ran+=fix224RunTrueNmi(0x80,'DLI y'+ys[i],9000,vc);
-       cap.push(captureGenericHardwareState(fix202DisplayYForAnticY(ys[i]),vc,ys[i],'FIX224 true-dli'));
+       cap.push(captureGenericHardwareState(fix202DisplayYForAnticY(ys[i]),vc,ys[i],'FIX227 true-dli'));
        if(cpu && cpu.trap)break;
      }
      genericDliCache=cap; genericDliCacheFrame=playFrameNo; genericDliCacheDl=getDlistPtr()&65535; genericDliChainLog=chain;
-     fix222SelftestDliInfo='FIX224 TRUE DLI chain '+chain.join(',')+' ran '+ran+' frame '+playFrameNo;
+     fix222SelftestDliInfo='FIX227 TRUE DLI chain '+chain.join(',')+' ran '+ran+' frame '+playFrameNo;
    }else{
      genericDliCache=null; genericDliCacheFrame=-999;
-     fix222SelftestDliInfo='FIX224 TRUE DLI none: DLIST has no $80 DLI bits dl $'+hex(getDlistPtr()||0,4)+' dli $'+hex((ram[0x0200]|(ram[0x0201]<<8))&65535,4)+' frame '+playFrameNo;
+     fix222SelftestDliInfo='FIX227 TRUE DLI none: DLIST has no $80 DLI bits dl $'+hex(getDlistPtr()||0,4)+' dli $'+hex((ram[0x0200]|(ram[0x0201]<<8))&65535,4)+' frame '+playFrameNo;
    }
  }
- fix224NoServisniInfo='FIX224 PURE ROM frame interrupts via NMI only; no servisni READY/SELFTEST frame '+playFrameNo+' ran '+ran;
+ fix224NoServisniInfo='FIX227 PURE HW frame interrupts via NMI only frame '+playFrameNo+' ran '+ran;
  return ran;
 }
 function runFrameInterrupts(){
@@ -8802,17 +8838,17 @@ function compatibilitySnapshotCore(){
  var dl=getDlistPtr(), base=ram[0x58]|(ram[0x59]<<8);
  var lines=[];
  if(typeof fix225PureHardwareMode!=='undefined' && fix225PureHardwareMode){
-   lines.push("COMPAT SNAPSHOT FIX226 PURE HARDWARE AUDIT CORE");
-   lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX226, bezi stary APK/ZIP.");
+   lines.push("COMPAT SNAPSHOT FIX227 PURE HARDWARE AUDIT CORE");
+   lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX227, bezi stary APK/ZIP.");
    lines.push("PURE HARDWARE: "+(fix225HardwareInfo||"--"));
    lines.push("HW MAP: "+(fix225HardwareMapInfo||"--"));
    lines.push("HW INPUT: "+(fix225HardwareInputInfo||"--"));
    lines.push("HW POKEY: "+(fix225HardwareAudioInfo||fix188PokeyAudioInfo||"--"));
    lines.push("ROM AUDIT: "+(fix216RomSetAuditInfo||"--"));
-   lines.push("FIX226 AUDIT: "+(fix226AuditInfo||"not run"));
+   lines.push("FIX227 AUDIT: "+(fix226AuditInfo||"not run"));
    lines.push("PC=$"+hex(cpu.pc,4)+" A=$"+hex(cpu.a,2)+" X=$"+hex(cpu.x,2)+" Y=$"+hex(cpu.y,2)+" SP=$"+hex(cpu.sp,2)+" P=$"+hex(cpu.p,2)+" steps="+cpu.steps+" trap="+(cpu.trap?cpu.trapMsg:"NO"));
    lines.push("DLIST=$"+hex(dl||0,4)+" SAVMSC=$"+hex(base,4)+" NMIEN=$"+hex(ram[0xD40E]||0,2)+" VBI=$"+hex((ram[0x0222]|(ram[0x0223]<<8))&65535,4)+" DLI=$"+hex((ram[0x0200]|(ram[0x0201]<<8))&65535,4));
-   lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PORTB=$"+hex(portbValue||0,2)+" SELFTEST_WINDOW="+(fix213SelfTestRomMappedForAddr(0x5000)?"ON":"OFF"));
+   lines.push("DMACTL=$"+hex(ram[0xD400]||0,2)+" SDMCTL=$"+hex(ram[0x022F]||0,2)+" CHBASE=$"+hex(ram[0xD409]||0,2)+" PORTB=$"+hex(portbValue||0,2)+" OUT=$"+hex(piaPortBOut||0,2)+" DDR=$"+hex(piaPortBDDR||0,2)+" PBCTL=$"+hex(piaPortBCtl||0,2)+" SELFTEST_WINDOW="+(fix213SelfTestRomMappedForAddr(0x5000)?"ON":"OFF"));
    lines.push("GTIA D016-D01B: "+[0xD016,0xD017,0xD018,0xD019,0xD01A,0xD01B].map(function(a){return "$"+hex(ram[a]||0,2);}).join(" "));
    lines.push("ANTIC: "+decodeDlistShort(dl));
    lines.push("DLIST BYTES: "+dumpDlistBytes(dl,48));
@@ -8822,33 +8858,34 @@ function compatibilitySnapshotCore(){
    lines.push("TRACE:");
    lines=lines.concat(cpu.trace.slice(-32));
    log(lines.join("\n"));
-   updatePlayStatus("FIX226 snapshot ulozen. Kratky PURE HW stav + audit info.");
+   updatePlayStatus("FIX227 snapshot ulozen. Kratky PURE HW stav + audit info.");
    renderRegs();renderSegments();
    try{saveCurrentLogToMobile('snapshot');}catch(_e){}
    return;
  }
-lines.push("COMPAT SNAPSHOT FIX226 PURE HARDWARE AUDIT CORE + VJOY");
-lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX226, bezi stary APK/ZIP nebo stary label.");
-lines.push('FIX226 PURE HARDWARE: '+(fix225HardwareInfo||'--'));
-lines.push('FIX226 HW MAP: '+(fix225HardwareMapInfo||'--'));
-lines.push('FIX226 HW INPUT: '+(fix225HardwareInputInfo||'--'));
-lines.push('FIX226 HW POKEY: '+(fix225HardwareAudioInfo||fix188PokeyAudioInfo||'--'));
-lines.push('FIX226 AUDIT: '+(fix226AuditInfo||'not run'));
-lines.push("FIX224 ROM SET AUDIT: "+(fix216RomSetAuditInfo||'--'));
-lines.push("FIX224 SELFTEST GATE: $5000-$57FF maps from ATARIXL.ROM when PORTB bit7 is LOW or explicit SELFTEST/BYE path is active.");
+lines.push("COMPAT SNAPSHOT FIX227 PURE HARDWARE AUDIT CORE + VJOY");
+lines.push("BUILD TAG "+(typeof EMU_BUILD_TAG!=='undefined'?EMU_BUILD_TAG:'missing')+" / pokud tu nevidis FIX227, bezi stary APK/ZIP nebo stary label.");
+lines.push('FIX227 PURE HARDWARE: '+(fix225HardwareInfo||'--'));
+lines.push('FIX227 HW MAP: '+(fix225HardwareMapInfo||'--'));
+lines.push('FIX227 PIA PORTB: '+(piaPortBInfo||'--'));
+lines.push('FIX227 HW INPUT: '+(fix225HardwareInputInfo||'--'));
+lines.push('FIX227 HW POKEY: '+(fix225HardwareAudioInfo||fix188PokeyAudioInfo||'--'));
+lines.push('FIX227 AUDIT: '+(fix226AuditInfo||'not run'));
+lines.push("FIX227 ROM SET AUDIT: "+(fix216RomSetAuditInfo||'--'));
+lines.push("FIX227 SELFTEST GATE: $5000-$57FF maps from ATARIXL.ROM when PORTB bit7 is LOW or explicit SELFTEST/BYE path is active.");
 lines.push("FIX223 SELFTEST GATE LIVE: "+(fix217SelftestGateInfo||"--"));
 lines.push("FIX223 PURE RESET: "+(fix217PureResetInfo||"--"));
 lines.push("FIX223 RAMSIZE GEOMETRY: "+(fix218RamGeometryInfo||"--"));
 lines.push("FIX223 REAL ROM VBI: "+(fix219RealRomVbiInfo||"--"));
 lines.push("FIX223 PURE STACK: "+(fix221PureStackInfo||"--"));
 lines.push("FIX223 SIO TIMEOUT: "+(fix219SioTimeoutInfo||"--"));
-lines.push("FIX224 BRK IRQ VECTOR: "+(fix220IrqBrkInfo||"--"));
+lines.push("FIX227 BRK IRQ VECTOR: "+(fix220IrqBrkInfo||"--"));
 lines.push("FIX223 READY QUEUE: "+(fix222ReadyQueueInfo||"--"));
 lines.push("FIX223 INPUT QUARANTINE: "+(fix222InputQuarantineInfo||"--"));
 lines.push("FIX223 SELFTEST DLI: "+(fix222SelftestDliInfo||"--"));
-lines.push("FIX224 TRUE NMI: "+(fix224PureNmiInfo||"--"));
-lines.push("FIX224 POKEY REALOS: "+(fix224PokeyInfo||fix188PokeyAudioInfo||"--"));
-lines.push("FIX224 PURE CHECK: "+(fix224NoServisniInfo||"--"));
+lines.push("FIX227 TRUE NMI: "+(fix224PureNmiInfo||"--"));
+lines.push("FIX227 POKEY: "+(fix224PokeyInfo||fix188PokeyAudioInfo||"--"));
+lines.push("FIX227 PURE CHECK: "+(fix224NoServisniInfo||"--"));
 lines.push("FIX223 KGETCH INPUT: "+(fix223KeyboardInfo||"--"));
 lines.push("FIX223 SELFTEST PULSE: "+(fix223SelfTestPulseInfo||"--"));
  lines.push(lastColdResetInfo+" currentSeq="+coldResetSeq);
@@ -8909,7 +8946,7 @@ lines.push("DLIST RESOLVE FIX201: "+dlistQualitySummary(dl));
 lines.push("VIEWPORT FIX200: "+lastViewportFixInfo+" collisionWindow="+JSON.stringify(logicalCollisionWindow()));
 lines.push("FIX200 REGRESSION GUARD: HARDWARE active="+(fix197TotalPurgeActive?"YES":"NO")+" oldGuard="+fix96RegressionGuardInfo+" arkanoidAssistBlocked="+arkanoidAssistBlocked);
 lines.push(viewportDiagnosticInfo());
-lines.push("MOBILE PERF FIX181: "+mobilePerfInfo+" runtime="+mobileRuntime+" throttle="+mobileThrottleLevel+" frameMs="+mobileLastFrameTotalMs.toFixed(1)+" renderMs="+mobileLastRenderMs.toFixed(1)+" skips="+mobileRenderSkipHits);
+lines.push("MOBILE TIMING FIX227: "+mobilePerfInfo+" runtime="+mobileRuntime+" throttle="+mobileThrottleLevel+" frameMs="+mobileLastFrameTotalMs.toFixed(1)+" renderMs="+mobileLastRenderMs.toFixed(1)+" skips="+mobileRenderSkipHits);
 lines.push("LOG GUARD FIX181: "+(fix139LogGuardInfo||"--")+" suppressed="+fix139SuppressedLogCount+" handoff="+fix139SuppressedHandoffCount+" / "+fix161StorageGuardInfo);
 lines.push("FRAMEBUFFER SCAN FIX181: "+(fix129FramebufferScanInfo||"--"));
 lines.push("FRAME HOLD FIX181: "+lastFrameHoldInfo+" visualDL=$"+hex(lastVisualDlist||0,4)+" holdUntil="+dlistTransitionHoldUntil+" hits="+dlistFrameHoldHits+" restores="+frameHoldRestoreHits+" stable="+lastStableVideoInfo);
