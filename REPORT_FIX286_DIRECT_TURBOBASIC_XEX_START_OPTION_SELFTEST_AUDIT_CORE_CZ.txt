@@ -1,0 +1,19 @@
+AtariHelp.eu EMU-09 FIX286_DIRECT_TURBOBASIC_XEX_START_OPTION_SELFTEST_AUDIT_CORE
+
+Commit summary:
+FIX286: TurboBasic XL XEX je hlavni test z cisteho START+OPTION/XEX stavu, POWER BASIC jen druhy kontrolni test.
+
+Zmeny:
+- index.html zachovava AtariHelp.eu centrum; EMU-09 zustava pododdil v Hry.
+- Viditelny build prepsan na FIX286.
+- TurboBasic panel presunut pred POWER BASIC panel.
+- TurboBasic tlacitko jasne rika START+OPTION -> TurboBasic XL XEX.
+- Turbo start vynucuje cisty XEX stav: zadny POWER BASIC, zadny CLOAD/WAV, zadny fake READY.
+- Snapshot Turbo doplnen o START_OPTION_DIRECT_XEX, POWER_BASIC_BEFORE_TURBO=NO, CLOAD_WAV_USED=NO.
+- Snapshot doplnen o SELFTEST_GRAPHICS_STATUS=OPEN_DEBT_NO_FAKE_DRAWING a ROM/DLIST/PORTB audit.
+- Vlastni BASIC TXT pole zustava prazdne a slouzi az jako druhy test po REAL READY.
+
+Self Test:
+- Graficky SELF TEST neni prohlasen za opraveny. FIX286 ho pouze drzi jako poctivy dluh a loguje ROM/DLIST/PORTB fakta bez kresleneho fake selftestu.
+
+KODY JSOU STEJNE.

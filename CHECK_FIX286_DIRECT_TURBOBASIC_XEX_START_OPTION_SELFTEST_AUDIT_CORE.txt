@@ -1,0 +1,10 @@
+STATIC CHECK FIX286
+index.html zachovava AtariHelp.eu centrum: ANO
+EMU-09 je jen pododdil v sekci Hry: ANO
+automaticky redirect rovnou do emulatoru: NE
+TurboBasic je hlavni test pred POWER BASIC: ANO
+POWER BASIC je jen druhy kontrolni test: ANO
+Vlastni BASIC pole prazdne: ANO
+Fake READY/LOAD/RAM inject pro TurboBasic: NE
+Self Test grafika: OTEVRENY DLUH, NEFAKOVANO
+KODY JSOU STEJNE
