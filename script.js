@@ -12464,5 +12464,3 @@ updatePlayStatus('ready');
 })();
 /* END FIX244 */
 
-
-/* FIX273 overlay final script is embedded in assets/emu09_pmg_gtia_overlay.html. */

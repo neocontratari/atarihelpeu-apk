@@ -1,0 +1,23 @@
+REPORT FIX276 CZ
+
+Commit: FIX276 visible TXT file XEX STARTOPTION core
+
+Test plan:
+1. Rozbal overlay do repo.
+2. Commitni: FIX276 visible TXT file XEX STARTOPTION core
+3. Postav APK.
+4. Otevri EMU-09, nadpis musi byt FIX276.
+5. POWER XL/XE BASIC musi reagovat.
+6. V panelu FIX276 vyber TXT/BAS soubor.
+7. Dej POSLAT TXT + RUN. Program musi jit pres BASIC editor/KGETCH, ne screen RAM.
+8. Vyber XEX soubor nebo pouzij TURBO BASIC XL XEX START+OPTION.
+9. Po startu posli snapshot.
+
+Snapshot hledej:
+build=FIX276_VISIBLE_FILE_INPUT_XEX_STARTOPTION_CORE
+VISIBLE_FILE_INPUTS=YES
+TXT_PATH=visible file input -> FileReader text -> queueFastBasicFix270 ATASCII/KGETCH
+XEX_PATH=visible file input -> ArrayBuffer -> customXexBytes -> normal loadXex(false) -> START+OPTION held
+TURBOBASIC_XEX=asset turbo-basic-xl-1.5-copy.xex
+
+KODY JSOU STEJNE.
