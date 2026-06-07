@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX260_STABLE_UI_RESTORE_FROM_LAST_GOOD_CORE / stabilni UI</title>
+<title>EMU-09 FIX261_UI_LOCK_SINGLE_CASSETTE_PANEL_CORE / stabilni UI</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX260_STABLE_UI_RESTORE_FROM_LAST_GOOD_CORE</h1>
-<p>FIX260: krizovy navrat na posledni stabilni UI pred FIX253-FIX258. Jedna klavesnice pod obrazem, cisty BASIC/SELF TEST/snapshot. Kazetak je zatim vypnuty panel, bez CLOAD/fake LOAD.</p>
+<h1>EMU-09 FIX261_UI_LOCK_SINGLE_CASSETTE_PANEL_CORE</h1>
+<p>FIX261: UI zpet a zamcene proti starym FIX248-FIX251 timerum. Jedna klavesnice pod obrazem, jeden cisty kazetakovy panel z FIX251, BASIC READY a snapshot bez fake LOAD/RAM injectu.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -12669,7 +12669,7 @@ updatePlayStatus('ready');
     uiInfo='STAMP OK frame '+fr();
   }
   stamp();
-  setTimeout(stamp,100); setTimeout(stamp,700); setTimeout(stamp,2000);
+  /* FIX261: old FIX246 delayed UI stamp timers disabled; core functions preserved. */
 
   function cancelOld(reason){
     try{ if(typeof fix222CancelFastBasicInput==='function') fix222CancelFastBasicInput('FIX246 takeover '+(reason||'')); }catch(e){}
@@ -13037,14 +13037,14 @@ updatePlayStatus('ready');
   window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');};
   window.makeLogFileName=function(reason){return filename(reason||'snapshot');};
   function wrapPower(){
-    try{var oldB=window.startPureHardwareBasicFix226||startPureHardwareBasicFix226; window.startPureHardwareBasicFix226=function(ev){prevent(ev); stamp(); killOldFast('POWER BASIC'); var r=oldB.call(this,ev); setTimeout(stamp,20); setTimeout(stamp,250); return r;};}catch(e){}
-    try{var oldS=window.startPureHardwareSelfTestFix226||startPureHardwareSelfTestFix226; window.startPureHardwareSelfTestFix226=function(ev){prevent(ev); stamp(); killOldFast('POWER SELFTEST'); self247='SELFTEST requested FIX247 '+status(); var r=oldS.call(this,ev); setTimeout(stamp,20); setTimeout(stamp,250); return r;};}catch(e){}
-    try{var oldR=window.resetPureHardwareFix226||resetPureHardwareFix226; window.resetPureHardwareFix226=function(ev){prevent(ev); stamp(); killOldFast('RESET'); var r=oldR.call(this,ev); setTimeout(stamp,20); return r;};}catch(e){}
+    try{var oldB=window.startPureHardwareBasicFix226||startPureHardwareBasicFix226; window.startPureHardwareBasicFix226=function(ev){prevent(ev); killOldFast('POWER BASIC'); var r=oldB.call(this,ev); return r;}; /* FIX261 removed old FIX247 UI stamp on POWER BASIC */}catch(e){}
+    try{var oldS=window.startPureHardwareSelfTestFix226||startPureHardwareSelfTestFix226; window.startPureHardwareSelfTestFix226=function(ev){prevent(ev); killOldFast('POWER SELFTEST'); self247='SELFTEST requested FIX247 '+status(); var r=oldS.call(this,ev); return r;}; /* FIX261 removed old FIX247 UI stamp on SELFTEST */}catch(e){}
+    try{var oldR=window.resetPureHardwareFix226||resetPureHardwareFix226; window.resetPureHardwareFix226=function(ev){prevent(ev); killOldFast('RESET'); var r=oldR.call(this,ev); return r;}; /* FIX261 removed old FIX247 UI stamp on RESET */}catch(e){}
   }
   try{var oldStep247=CPU6502.prototype.step; CPU6502.prototype.step=function(){try{pumpFast();}catch(e){} return oldStep247.apply(this,arguments);};}catch(e){fast247='CPU step hook install error '+e.message;}
   try{var oldRF=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric; window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(selfRender())return true; return oldRF.apply(this,arguments);};}catch(e){}
   try{var oldRD=window.renderAnticDisplay||renderAnticDisplay; window.renderAnticDisplay=renderAnticDisplay=function(){if(selfRender())return; return oldRD.apply(this,arguments);};}catch(e){}
-  stamp(); wrapPower(); setTimeout(function(){stamp();rebindFastButtons();},50); setTimeout(function(){stamp();rebindFastButtons();},600);
+  wrapPower(); try{rebindFastButtons();}catch(e){} /* FIX261: old FIX247 delayed UI stamps disabled. */
 })();
 </script>
 
@@ -13163,7 +13163,7 @@ updatePlayStatus('ready');
   window.makeLogFileName=function(reason){return fname(reason||'snapshot');};
   try{var oldFastRender248=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric; window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(renderSelf248())return true; return oldFastRender248.apply(this,arguments);};}catch(e){}
   try{var oldRender248=window.renderAnticDisplay||renderAnticDisplay; window.renderAnticDisplay=renderAnticDisplay=function(){if(renderSelf248())return; return oldRender248.apply(this,arguments);};}catch(e){}
-  stamp(); setTimeout(stamp,80); setTimeout(stamp,600);
+  /* FIX261: old FIX248 delayed UI stamps disabled. */
 })();
 </script>
 
@@ -13225,7 +13225,7 @@ updatePlayStatus('ready');
   try{var oldF=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric;window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(renderSelf249())return true;return oldF.apply(this,arguments);};}catch(e){}
   try{var oldR=window.renderAnticDisplay||renderAnticDisplay;window.renderAnticDisplay=renderAnticDisplay=function(){if(renderSelf249())return;return oldR.apply(this,arguments);};}catch(e){}
   window.insertCassetteFileFix249=function(ev){try{ev&&ev.preventDefault();}catch(e){} var inp=g('cassetteFileFix249'); if(inp)inp.click(); return false;}; window.cassetteCloadFix249=cload;
-  stamp(); setTimeout(stamp,80); setTimeout(stamp,500);
+  /* FIX261: old FIX249 delayed UI stamps disabled. */
 })();
 </script>
 
@@ -13280,7 +13280,7 @@ updatePlayStatus('ready');
   window.compatibilitySnapshot=function(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return window.compatibilitySnapshotCore();};window.saveCurrentLogToMobile=function(reason){stamp();return save(snapshotText(reason||'manual'),reason||'manual');};window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');};window.makeLogFileName=function(reason){return fname(reason||'snapshot');};
   try{var oldF=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric;window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(renderSelf250())return true;return oldF.apply(this,arguments);};}catch(e){}
   try{var oldR=window.renderAnticDisplay||renderAnticDisplay;window.renderAnticDisplay=renderAnticDisplay=function(){if(renderSelf250())return;return oldR.apply(this,arguments);};}catch(e){}
-  stamp();setTimeout(stamp,80);setTimeout(stamp,500);setTimeout(stamp,1500);
+  /* FIX261: old FIX250 delayed UI stamps disabled. */
 })();
 </script>
 
@@ -13362,143 +13362,114 @@ updatePlayStatus('ready');
   window.compatibilitySnapshotCore=function(){stamp();var t=snapshotText('snapshot');var el=g('log');if(el)el.textContent=t;try{updatePlayStatus('FIX251 snapshot: TurboBasic WAV asset cassette pilot.');}catch(e){}return save(t,'snapshot');};
   window.compatibilitySnapshot=function(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return window.compatibilitySnapshotCore();};
   window.saveCurrentLogToMobile=function(reason){stamp();return save(snapshotText(reason||'manual'),reason||'manual');};window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');};window.makeLogFileName=function(reason){return fname(reason||'snapshot');};
-  stamp();setTimeout(stamp,50);setTimeout(stamp,500);setTimeout(stamp,1500);setTimeout(stamp,4000);try{window.fix251LoadBuiltInTurboBasicWav=loadBuiltIn;}catch(e){}
+  installUI();updateCass();try{window.fix251LoadBuiltInTurboBasicWav=loadBuiltIn;window.fix251CassetteSafeApi={installUI:installUI,loadBuiltIn:loadBuiltIn,openPicker:openPicker,play:play,stop:stop,rewind:rewind,cload:cload,snapshotText:snapshotText};}catch(e){} /* FIX261: old FIX251 header timers disabled, cassette API exposed. */
 })();
 </script>
 
 
-<!-- FIX260_STABLE_UI_RESTORE_FROM_LAST_GOOD_CORE_FINAL_SCRIPT -->
+<!-- FIX261_UI_LOCK_SINGLE_CASSETTE_PANEL_CORE_FINAL_SCRIPT -->
 <script>
 (function(){
   'use strict';
-  var TAG='FIX260_STABLE_UI_RESTORE_FROM_LAST_GOOD_CORE';
-  function g(id){return document.getElementById(id);}
-  function prevent(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} }
-  function hx(v,n){try{return (v>>>0).toString(16).toUpperCase().padStart(n||2,'0');}catch(e){return '??';}}
-  function raw(a){try{return (window.ram?window.ram[a&65535]:ram[a&65535])&255;}catch(e){return 0;}}
-  function safeSetGlobal(name,val){try{window[name]=val;}catch(e){} try{eval(name+'=val');}catch(e){} }
-  function looksLikeDefaultPitt(){
-    try{
-      var nm=String(typeof currentXexName!=='undefined'?currentXexName:'').toLowerCase();
-      var pr=String(typeof activeXexProfile!=='undefined'?activeXexProfile:'').toLowerCase();
-      return (pr==='pitt' && (nm.indexOf('pitt')>=0 || nm.indexOf('kitt')>=0 || nm.indexOf('vestav')>=0));
-    }catch(e){return false;}
-  }
-  function sanitizeInitialProfile(reason){
-    try{
-      if(looksLikeDefaultPitt()){
-        activeXexProfile='realos';
-        currentXexName='PURE HARDWARE IDLE FIX260 / no XEX';
-        customXexBytes=null; xexCache=null;
-        if(typeof xexInfo!=='undefined')xexInfo={run:0,inits:[],entry:0,warnings:[],bad:false};
-        if(typeof segments!=='undefined')segments=[];
-        if(typeof setXexName==='function')setXexName();
-        if(typeof renderSegments==='function')renderSegments();
-      }
-    }catch(e){}
-  }
+  var TAG='FIX261_UI_LOCK_SINGLE_CASSETTE_PANEL_CORE';
+  var BUILD_TITLE='EMU-09\n'+TAG;
+  function g(id){return document.getElementById(id);} 
+  function prevent(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
+  function hx(v,n){v=Number(v)||0;var mask=(n===2?255:(n===4?65535:0xffffffff));var x=(v&mask).toString(16).toUpperCase();while(x.length<n)x='0'+x;return x;}
+  function raw(a){try{return ram[a&65535]&255;}catch(e){return 0;}}
+  function frame(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function sanitizeInitialProfile(reason){try{if(typeof currentXexName==='undefined'||!currentXexName||/pitt/i.test(String(currentXexName))){currentXexName='PURE HARDWARE BASIC FIX239 / no XEX';}}catch(e){}try{if(typeof activeXexProfile==='undefined'||!activeXexProfile||String(activeXexProfile).toLowerCase()==='pitt')activeXexProfile='realos';}catch(e){}try{var x=g('xexName');if(x&&/pitt/i.test(String(x.textContent||'')))x.textContent='XEX: PURE HARDWARE IDLE FIX261 / no XEX';}catch(e){}}
   function removeChaosPanels(){
     var killIds=['fix253Panel','fix253Deck','fix253Mini','fix254Panel','fix254Deck','fix254Snap','fix255Panel','fix256Panel','fix257Panel','fix257Keyboard','fix257Snap','fix258Panel','fix258Snap','fix260SnapshotBox'];
-    killIds.forEach(function(id){try{var el=g(id); if(el)el.remove();}catch(e){}});
+    killIds.forEach(function(id){try{var el=g(id);if(el)el.remove();}catch(e){}});
     try{document.querySelectorAll('[id^="fix253"],[id^="fix254"],[id^="fix255"],[id^="fix256"],[id^="fix257"],[id^="fix258"],[id^="f253"],[id^="f254"],[id^="b257"]').forEach(function(el){try{el.remove();}catch(e){}});}catch(e){}
   }
-  function disableCassettePanel(){
-    try{
-      var old=g('cassetteBoxFix251')||g('cassetteBoxFix250')||g('cassetteBoxFix249')||g('cassetteBoxFix260');
-      var dock=g('atariKeyboardDock')||document.querySelector('.atariKeyboardDock');
-      if(!dock)return;
-      var box=old||document.createElement('div');
-      box.id='cassetteBoxFix260';
-      box.className='card';
-      box.style.marginTop='10px';
-      box.innerHTML='<h2>Virtualni kazetak FIX260 - VYPNUTO PRO RECOVERY</h2><p>TurboBasicXXL.wav zustava v APK jako asset, ale v tomhle fixu nespoustim PLAY ani CLOAD. Nejdriv overujeme UI, BASIC READY a snapshot. Dalsi krok vrati kazetak ciste, bez fake LOAD a bez RAM injectu.</p><pre class="inputReadout">CASSETTE UI OFF / asset present / no auto play / no CLOAD</pre>';
-      if(!old) dock.parentNode.insertBefore(box,dock.nextSibling);
-      else if(box.parentNode!==dock.parentNode || box.previousElementSibling!==dock){dock.parentNode.insertBefore(box,dock.nextSibling);} 
-    }catch(e){}
+  function normalizeKeyboard(){
+    try{var ks=[].slice.call(document.querySelectorAll('#atariKeyboard'));ks.slice(1).forEach(function(el){try{el.remove();}catch(e){}});}catch(e){}
+    try{var ds=[].slice.call(document.querySelectorAll('#atariKeyboardDock,.atariKeyboardDock'));if(ds.length>1){ds.slice(1).forEach(function(el){try{if(el.id!=='atariKeyboardDock')el.remove();}catch(e){}});}}catch(e){}
+    try{var h=document.querySelector('#atariKeyboardDock h2');if(h)h.textContent='Mobilni Atari klavesnice FIX261';}catch(e){}
+    try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX261: jedna klavesnice pod obrazem. UI stamp timery FIX248-FIX251 jsou vypnute; kazetak je jeden cisty panel.';}catch(e){}
+  }
+  function cassetteBoxes(){try{return [].slice.call(document.querySelectorAll('#cassetteBoxFix249,#cassetteBoxFix250,#cassetteBoxFix251,#cassetteBoxFix260,#cassetteBoxFix261,[data-fix261-cassette]'));}catch(e){return [];}}
+  function normalizeCassettePanel(){
+    try{if(window.fix251CassetteSafeApi&&typeof window.fix251CassetteSafeApi.installUI==='function'){window.fix251CassetteSafeApi.installUI();}}catch(e){}
+    var boxes=cassetteBoxes();
+    var keep=null;
+    for(var i=0;i<boxes.length;i++){var txt=String(boxes[i].textContent||'');if(!keep || /INSERT BUILTIN|INSERT WAV|PLAY|CLOAD/.test(txt))keep=boxes[i];}
+    if(!keep){
+      try{var dock=g('atariKeyboardDock')||document.querySelector('.atariKeyboardDock')||g('playStatus')||document.body;keep=document.createElement('div');keep.className='card';keep.id='cassetteBoxFix251';dock.parentNode.insertBefore(keep,dock.nextSibling);}catch(e){}
+    }
+    boxes=cassetteBoxes();boxes.forEach(function(b){if(b!==keep){try{b.remove();}catch(e){}}});
+    if(!keep)return;
+    try{keep.setAttribute('data-fix261-cassette','single'); if(!keep.className)keep.className='card';}catch(e){}
+    var txt2=String(keep.textContent||'');
+    if(/VYPNUTO PRO RECOVERY|CASSETTE UI OFF/.test(txt2) && window.fix251CassetteSafeApi&&typeof window.fix251CassetteSafeApi.installUI==='function'){
+      try{window.fix251CassetteSafeApi.installUI(); keep=g('cassetteBoxFix251')||keep;}catch(e){}
+    }
+    try{var h=keep.querySelector('h2');if(h)h.textContent='Virtualni kazetak FIX261 - jeden cisty panel';}catch(e){}
+    try{var p=keep.querySelector('p');if(p)p.textContent='TurboBasicXXL.wav zustava pripojeny jako APK asset. Tohle je poctivy WAV ingest/play pilot z FIX251: INSERT/PLAY/STOP/REWIND a CLOAD jen jako realny BASIC prikaz pres klavesnici, bez RAM injectu a bez fake LOAD.';}catch(e){}
+    try{['cassBuiltinFix251','cassInsFix251','cassPlayFix251','cassStopFix251','cassRewFix251','cassCloadFix251','cassCloadRunFix251'].forEach(function(id){var b=g(id);if(b)b.classList.add('secondary','compact');});}catch(e){}
   }
   function stamp(){
-    try{window.EMU_BUILD_TAG=TAG; EMU_BUILD_TAG=TAG;}catch(e){}
+    try{window.EMU_BUILD_TAG=TAG;EMU_BUILD_TAG=TAG;}catch(e){}
     try{document.title='EMU-09 '+TAG;}catch(e){}
-    try{var h=document.querySelector('.brandText h1')||document.querySelector('h1'); if(h)h.textContent='EMU-09\n'+TAG;}catch(e){}
-    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX260: obnovena stabilni app struktura z posledni dobre vetve FIX251/FIX248. Jedna klavesnice pod obrazem, BASIC/snapshot prvni, kazeta vypnuta do dalsiho cisteho kroku.';}catch(e){}
-    try{var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX260: jedna stabilni Atari klavesnice pod obrazem. Kazeťak je v recovery vypnuty, bez fake LOAD.';}catch(e){}
-    try{var ps=g('playStatus'); if(ps && ps.textContent.indexOf('FIX260')<0)ps.textContent='FIX260 STABLE UI RESTORE: testuj nejdriv POWER BASIC, READY, klavesnici a SNAPSHOT. Kazeta je vypnuta.';}catch(e){}
+    try{var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h&&h.textContent!==BUILD_TITLE)h.textContent=BUILD_TITLE;}catch(e){}
+    try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX261: zamceny stabilni UI proti starym FIX248-FIX251 prepisum. Jedna klavesnice, jeden cisty kazetakovy WAV panel, BASIC READY/snapshot prvni. Bez fake READY/SELFTEST/LOAD/RAM inject.';}catch(e){}
+    try{var ps=g('playStatus');if(ps&&!/FIX261|READY|CLOAD|CASSETTE|snapshot/i.test(String(ps.textContent||'')))ps.textContent='FIX261 UI LOCK: BASIC READY, snapshot a jeden kazetakovy panel. Zadny fake LOAD.';}catch(e){}
   }
+  function enforce(){sanitizeInitialProfile('enforce');removeChaosPanels();normalizeKeyboard();normalizeCassettePanel();stamp();}
   function countBadUi(){try{return document.querySelectorAll('[id^="fix253"],[id^="fix254"],[id^="fix255"],[id^="fix256"],[id^="fix257"],[id^="fix258"],[id^="f253"],[id^="f254"],[id^="b257"]').length;}catch(e){return -1;}}
   function keyboardCount(){try{return document.querySelectorAll('#atariKeyboard').length;}catch(e){return -1;}}
   function dockCount(){try{return document.querySelectorAll('#atariKeyboardDock,.atariKeyboardDock').length;}catch(e){return -1;}}
-  function screenRows(){var out=[];try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535;for(var r=0;r<8;r++){var s='',bs=[];for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0;bs.push(hx(b,2));var cc=b&127;s+=(cc>=0x20&&cc<0x5b?String.fromCharCode(cc+0x20):' ');}out.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+bs.join(' '));}}catch(e){out.push('screen rows err '+(e&&e.message?e.message:e));}return out;}
-  function statusText(){try{if(typeof statusLine==='function')return statusLine();}catch(e){}return 'statusLine unavailable';}
+  function cassetteCount(){return cassetteBoxes().length;}
+  function screenRows(){var out=[];try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535;for(var r=0;r<8;r++){var st='',bs=[];for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0;bs.push(hx(b,2));var cc=b&127;st+=(cc>=0x20&&cc<0x5b?String.fromCharCode(cc+0x20):' ');}out.push('R'+r+' "'+st.replace(/\s+$/,'')+'"  '+bs.join(' '));}}catch(e){out.push('screen rows err '+(e&&e.message?e.message:e));}return out;}
+  function statusLine261(){try{if(typeof statusLine==='function')return statusLine();}catch(e){}return 'statusLine unavailable';}
   function snapshotText(reason){
-    sanitizeInitialProfile('snapshot'); removeChaosPanels(); stamp(); disableCassettePanel();
+    enforce();
     var l=[];
-    l.push('AtariHelp.eu EMU-09 FIX260 STABLE UI RESTORE FROM LAST GOOD CORE');
+    l.push('AtariHelp.eu EMU-09 FIX261 UI LOCK SINGLE CASSETTE PANEL CORE');
     l.push('cas='+(new Date()).toISOString());
     l.push('build='+TAG);
     l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));
     l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));
     l.push('');
     l.push('[RECOVERY AUDIT]');
-    l.push('BASE_LAST_GOOD=FIX251 UI/cassette asset branch + FIX248 selftest ROM-bus DLIST knowledge');
+    l.push('BASE_LAST_GOOD=FIX251 cassette/WAV pilot + FIX248 selftest ROM-bus DLIST + FIX239 BASIC colors');
     l.push('NOT_BASE=FIX258');
+    l.push('OLD_STAMP_TIMERS_FIX248_251=DISABLED');
+    l.push('HEADER_LOCK=FIX261');
     l.push('UI_CHAOS_FIX253_258_ELEMENTS='+countBadUi());
     l.push('KEYBOARD_COUNT='+keyboardCount()+' DOCK_COUNT='+dockCount());
-    l.push('CASSETTE_UI=OFF_IN_FIX260_RECOVERY asset TurboBasicXXL.wav kept, no auto PLAY, no CLOAD');
+    l.push('CASSETTE_PANEL_COUNT='+cassetteCount());
+    l.push('CASSETTE_UI=SINGLE_FIX251_WAV_PILOT_RESTORED / no auto CLOAD / no RAM inject / no fake LOAD');
     l.push('RULE NO_FAKE_READY / NO_FAKE_SELFTEST / NO_FAKE_LOAD / NO_RAM_INJECT / NO_GAME_HACK');
     l.push('');
     l.push('[STATUS]');
     try{l.push(cpu?('CPU PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){l.push('CPU status error '+(e&&e.message?e.message:e));}
-    l.push(statusText());
+    l.push(statusLine261());
     try{l.push('DLIST $'+hx((typeof getDlistPtr==='function'?getDlistPtr():((raw(0x230)|(raw(0x231)<<8))&65535)),4)+' SAVMSC $'+hx((raw(0x58)|(raw(0x59)<<8))&65535,4)+' CHBASE $'+hx(raw(0x2F4),2)+' SDMCTL $'+hx(raw(0x22F),2)+' DMACTL $'+hx(raw(0xD400),2)+' PRIOR $'+hx(raw(0xD01B),2));}catch(e){}
     try{l.push('PIA PORTB OUT $'+hx(typeof piaPortBOut!=='undefined'?piaPortBOut:raw(0xD301),2)+' DDR $'+hx(typeof piaPortBDDR!=='undefined'?piaPortBDDR:0,2)+' SELFTEST_WINDOW '+((typeof fix217SelfTestWindowEnabled==='function'&&fix217SelfTestWindowEnabled())?'ON':'OFF'));}catch(e){}
-    l.push('');
-    l.push('[SCREEN PROOF]');
-    l=l.concat(screenRows());
+    l.push('');l.push('[SCREEN PROOF]');l=l.concat(screenRows());
     try{l.push('');l.push('[TRACE]');if(cpu&&cpu.trace)l=l.concat(cpu.trace.slice(-18));}catch(e){}
     return l.join('\n');
   }
-  function fileName(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX260-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function fileName(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX261-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
   function ensureSnapBox(text,fn){
-    try{
-      var anchor=g('playStatus')||g('atariKeyboardDock')||document.body;
-      var box=g('fix260SnapshotBox');
-      if(!box){box=document.createElement('div');box.id='fix260SnapshotBox';box.className='card';box.style.marginTop='10px';anchor.parentNode.insertBefore(box,anchor.nextSibling);} 
-      box.innerHTML='<h2>Snapshot FIX260 TXT</h2><p>Fallback pro Android/Nox: kdyz download selze, oznac a zkopiruj text nize.</p><textarea id="fix260SnapshotText" style="width:100%;min-height:220px;box-sizing:border-box;background:#050403;color:#2aff8f;border:1px solid rgba(42,255,143,.35);border-radius:10px;padding:8px;font-family:monospace;font-size:11px"></textarea><button id="fix260CopySnap" class="secondary compact">KOPIROVAT SNAPSHOT</button><button id="fix260SelectSnap" class="secondary compact">OZNACIT SNAPSHOT</button><a id="fix260DownloadSnap" class="btn secondary" download="'+fn+'">STAHNOUT SNAPSHOT TXT</a>';
-      var ta=g('fix260SnapshotText'); if(ta)ta.value=text;
-      var blob=new Blob([text],{type:'text/plain;charset=utf-8'}); var url=URL.createObjectURL(blob); var a=g('fix260DownloadSnap'); if(a){a.href=url;a.download=fn;}
-      var copy=g('fix260CopySnap'); if(copy)copy.onclick=function(ev){prevent(ev); try{ta.focus();ta.select();document.execCommand('copy');}catch(e){} return false;};
-      var sel=g('fix260SelectSnap'); if(sel)sel.onclick=function(ev){prevent(ev); try{ta.focus();ta.select();}catch(e){} return false;};
-    }catch(e){}
+    try{var anchor=g('playStatus')||g('atariKeyboardDock')||document.body;var box=g('fix261SnapshotBox');if(!box){box=document.createElement('div');box.id='fix261SnapshotBox';box.className='card';box.style.marginTop='10px';anchor.parentNode.insertBefore(box,anchor.nextSibling);}box.innerHTML='<h2>Snapshot FIX261 TXT</h2><p>Fallback pro Android/Nox: kdyz download selze, oznac a zkopiruj text nize.</p><textarea id="fix261SnapshotText" style="width:100%;min-height:220px;box-sizing:border-box;background:#050403;color:#2aff8f;border:1px solid rgba(42,255,143,.35);border-radius:10px;padding:8px;font-family:monospace;font-size:11px"></textarea><button id="fix261CopySnap" class="secondary compact">KOPIROVAT SNAPSHOT</button><button id="fix261SelectSnap" class="secondary compact">OZNACIT SNAPSHOT</button><a id="fix261DownloadSnap" class="btn secondary" download="'+fn+'">STAHNOUT SNAPSHOT TXT</a>';var ta=g('fix261SnapshotText');if(ta)ta.value=text;var blob=new Blob([text],{type:'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);var a=g('fix261DownloadSnap');if(a){a.href=url;a.download=fn;}var copy=g('fix261CopySnap');if(copy)copy.onclick=function(ev){prevent(ev);try{ta.focus();ta.select();document.execCommand('copy');}catch(e){}return false;};var sel=g('fix261SelectSnap');if(sel)sel.onclick=function(ev){prevent(ev);try{ta.focus();ta.select();}catch(e){}return false;};}catch(e){}
   }
-  function save(text,reason){
-    var fn=fileName(reason||'snapshot');
-    ensureSnapBox(text,fn);
-    try{var el=g('log'); if(el)el.textContent=text;}catch(e){}
-    try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(text,fn); return true;}}catch(e){}
-    try{if(window.saveTextReportToMobile){window.saveTextReportToMobile(fn,text); return true;}}catch(e){}
-    try{var a=g('fix260DownloadSnap'); if(a&&a.href){a.click(); return true;}}catch(e){}
-    return false;
-  }
+  function save(text,reason){var fn=fileName(reason||'snapshot');ensureSnapBox(text,fn);try{var el=g('log');if(el)el.textContent=text;}catch(e){}try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(text,fn);return true;}}catch(e){}try{if(window.saveTextReportToMobile){window.saveTextReportToMobile(fn,text);return true;}}catch(e){}try{var a=g('fix261DownloadSnap');if(a&&a.href){a.click();return true;}}catch(e){}return false;}
   var oldBasic=window.startPureHardwareBasicFix226;
-  if(typeof oldBasic==='function'){
-    window.startPureHardwareBasicFix226=function(ev){prevent(ev); sanitizeInitialProfile('POWER BASIC'); removeChaosPanels(); stamp(); disableCassettePanel(); return oldBasic.call(this,ev);};
-  }
+  if(typeof oldBasic==='function')window.startPureHardwareBasicFix226=function(ev){prevent(ev);enforce();var r=oldBasic.call(this,ev);[20,250,800,1800,4300].forEach(function(t){setTimeout(enforce,t);});return r;};
   var oldSelf=window.startPureHardwareSelfTestFix226;
-  if(typeof oldSelf==='function'){
-    window.startPureHardwareSelfTestFix226=function(ev){prevent(ev); sanitizeInitialProfile('POWER SELFTEST'); removeChaosPanels(); stamp(); disableCassettePanel(); return oldSelf.call(this,ev);};
-  }
+  if(typeof oldSelf==='function')window.startPureHardwareSelfTestFix226=function(ev){prevent(ev);enforce();var r=oldSelf.call(this,ev);[20,250,800,1800,4300].forEach(function(t){setTimeout(enforce,t);});return r;};
   var oldReset=window.resetPureHardwareFix226;
-  if(typeof oldReset==='function'){
-    window.resetPureHardwareFix226=function(ev){prevent(ev); removeChaosPanels(); stamp(); disableCassettePanel(); return oldReset.call(this,ev);};
-  }
-  window.compatibilitySnapshotCore=function(reason){var text=snapshotText(reason||'snapshot'); try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX260 snapshot hotov: TXT fallback + clean UI audit.');}catch(e){} return save(text,reason||'snapshot');};
-  window.compatibilitySnapshot=function(ev){prevent(ev); return window.compatibilitySnapshotCore('snapshot');};
+  if(typeof oldReset==='function')window.resetPureHardwareFix226=function(ev){prevent(ev);var r=oldReset.call(this,ev);[20,250,800,1800,4300].forEach(function(t){setTimeout(enforce,t);});return r;};
+  window.compatibilitySnapshotCore=function(reason){var text=snapshotText(reason||'snapshot');try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX261 snapshot hotov: header lock + jedna klavesnice + jeden kazetakovy panel.');}catch(e){}return save(text,reason||'snapshot');};
+  window.compatibilitySnapshot=function(ev){prevent(ev);return window.compatibilitySnapshotCore('snapshot');};
   window.saveCurrentLogToMobile=function(reason){return window.compatibilitySnapshotCore(reason||'manual');};
   window.autoSaveLogToMobile=function(reason){return window.compatibilitySnapshotCore(reason||'auto');};
   window.makeLogFileName=function(reason){return fileName(reason||'snapshot');};
-  sanitizeInitialProfile('load'); removeChaosPanels(); stamp(); disableCassettePanel();
-  setTimeout(function(){sanitizeInitialProfile('load+80');removeChaosPanels();stamp();disableCassettePanel();},80);
-  setTimeout(function(){sanitizeInitialProfile('load+600');removeChaosPanels();stamp();disableCassettePanel();},600);
-  setTimeout(function(){stamp();disableCassettePanel();},1800);
+  try{var mo=new MutationObserver(function(){enforce();});var target=document.querySelector('.brandText')||document.body;mo.observe(target,{childList:true,subtree:true,characterData:true});}catch(e){}
+  enforce();[40,120,300,700,1700,2600,4100,5200].forEach(function(t){setTimeout(enforce,t);});
 })();
 </script>
