@@ -1,0 +1,42 @@
+AtariHelp.eu EMU-09 FIX272 CUSTOM BASIC EDITOR TURBO XEX KEEP CORE
+
+Commit summary:
+FIX272 custom BASIC editor Turbo XEX keep core
+
+Zmeny:
+- Jde dopredu, zadny rollback.
+- Zaklad: FIX271 TurboBasic XEX + FIX270 funkcni BASIC FAST + FIX267/FIX261 stabilni UI.
+- Pridan panel "Vlastni BASIC kod FIX272" s textarea.
+- VLOZIT VLASTNI FAST a VLOZIT VLASTNI FAST + RUN ctou aktualni obsah textarea.
+- Stary FAST panel je prebindovany, aby taky cetl aktualni text, ne hardcoded demo.
+- Textarea se synchronizuje s puvodnim fix240BasicFastText a uklada do localStorage.
+- Definovan FIX272 finish shim pro chybu FIX270 "finish is not defined" po poslednim EOL.
+- Keyboard RESET prebindovan na WARM RESET BASIC pres OS WARMSV $E474; nema volat BASIC cold boot.
+- Turbo Basic XL XEX z FIX271 zustava zachovan.
+
+Neni fake:
+- zadny fake READY,
+- zadny fake LOAD,
+- zadny RAM/program inject,
+- zadny screen RAM write,
+- zadny herni hack.
+
+Test plan:
+1. Rozbal overlay do lokalniho repo.
+2. Commit: FIX272 custom BASIC editor Turbo XEX keep core
+3. Postav APK.
+4. Spust EMU-09.
+5. Over nadpis FIX272.
+6. POWER XL/XE BASIC.
+7. Do panelu Vlastni BASIC kod vloz vlastni program, treba:
+   10 PRINT "RENE TEST"
+   20 GOTO 10
+8. Klikni VLOZIT VLASTNI FAST + RUN.
+9. Musi bezet tvuj text, ne natvrdo AHOJ demo.
+10. Zmackni klavesnicovy RESET.
+11. Po READY dej LIST. Program ma zustat.
+12. Pak zkus TURBO BASIC XL XEX START+OPTION.
+13. Posli screenshot + snapshot TXT.
+
+KODY JSOU STEJNE
+BASIC/Altirra porovnavaci kody nejsou menene.
