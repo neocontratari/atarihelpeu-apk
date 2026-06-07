@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>AtariHelp.eu FIX267 ROM quarantine safe core</title>
+<title>AtariHelp.eu FIX268 slow real-key BASIC typer</title>
 <style>
 :root{--bg:#070604;--gold:#d7b76a;--gold2:#ffe3a3;--line:rgba(215,183,106,.35);--text:#fff7e3;--muted:rgba(255,247,227,.68);--red:#ff6b9a;--green:#2aff8f;--blue:#78a6ff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Arial,sans-serif}
@@ -27,7 +27,7 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.94);border-top
 </head>
 <body>
 <div class="app">
-<header><img src="np_logo.png?fix94" class="logo" alt="N&P"><div><div class="kicker">AtariHelp.eu</div><div class="title">N&P Studio</div><div class="ver">APK FIX267 ROM quarantine from safe FIX261 core</div></div></header>
+<header><img src="np_logo.png?fix94" class="logo" alt="N&P"><div><div class="kicker">AtariHelp.eu</div><div class="title">N&P Studio</div><div class="ver">APK FIX268 slow real-key BASIC typer from FIX267/FIX261</div></div></header>
 
 <main id="home" class="view">
 <section class="card hero">
@@ -52,8 +52,8 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.94);border-top
 <section class="card">
   <div class="kicker">EMU-09</div>
   <h2>🚗 PMG / GTIA Overlay</h2>
-  <p>FIX267 je bezpecnostni forward z funkcniho FIX261: stabilni UI, jedna klavesnice a jeden kazetakovy panel zustavaji. Duplicitni nahrane CO ROM assety co24947a/co60302a/co61598b jsou vyrazene z APK baleni a blokovane v auditu. Hlavni BASIC/OS ROM cesta zustava jen pres zname ATARIXL.ROM + ATARIBAS.ROM, bez fake READY/SELFTEST/LOAD/RAM inject.</p>
-  <button onclick="location.href='emu09_pmg_gtia_overlay.html?fix=267&romsafe=1'">Spustit EMU-09 FIX267 ROM quarantine safe</button>
+  <p>FIX268 je forward z FIX267/FIX261: oprava rychlozapisu BASIC kodu pres pomaly real-key typer po skutecnem READY. Nezasahuje do CPU/POKEY, nedela screen RAM write, KGETCH PC jump, fake LOAD ani RAM inject. CO ROM duplicity zustavaji vyrazene.</p>
+  <button onclick="location.href='emu09_pmg_gtia_overlay.html?fix=268&realkey=1&t='+Date.now()">Spustit EMU-09 FIX268 slow real-key BASIC</button>
 </section>
 
 

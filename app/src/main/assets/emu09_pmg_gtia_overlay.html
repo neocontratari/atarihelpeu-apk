@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX267_ROM_QUARANTINE_SAFE_CORE / stabilni UI</title>
+<title>EMU-09 FIX268_SLOW_REAL_KEY_BASIC_TYPE_FORWARD_CORE / stabilni UI</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,8 +36,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX267_ROM_QUARANTINE_SAFE_CORE</h1>
-<p>FIX267: bezpecnostni forward z funkcniho FIX261. Jedna klavesnice, jeden kazetakovy panel, BASIC READY/snapshot zustavaji. CO ROM assety co24947a/co60302a/co61598b jsou v APK vyrazene a audit blokuje jejich pouziti. Bez fake READY/SELFTEST/LOAD/RAM inject.</p>
+<h1>EMU-09 FIX268_SLOW_REAL_KEY_BASIC_TYPE_FORWARD_CORE</h1>
+<p>FIX268: forward z FIX267/FIX261. Oprava rychlozapisu: pomaly real-key BASIC typer po READY, zadny screen RAM write, zadny KGETCH PC jump, zadny fake LOAD/RAM inject. CO ROM duplicity zustavaji vyrazene.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -13167,6 +13167,7 @@ updatePlayStatus('ready');
 })();
 </script>
 
+
 </body>
 </html>
 
@@ -13501,4 +13502,222 @@ updatePlayStatus('ready');
   setInterval(lockHeader,500);
 })();
 </script>
+
+
+
+<!-- FIX268_SLOW_REAL_KEY_BASIC_TYPE_FORWARD_CORE_FINAL_SCRIPT -->
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX268_SLOW_REAL_KEY_BASIC_TYPE_FORWARD_CORE';
+  var state={active:false,lines:[],line:0,pos:0,totalChars:0,pumped:0,started:0,last:'idle',info:'idle',preview:'--',lastByte:255,timer:0,dupName:'',dupMs:0,readyWaits:0};
+  window.fix268FastState=state;
+  window.fix268FastInfo='FIX268 slow real-key BASIC typer idle';
+  window.fix268FastLast='--';
+  window.fix268FastPreview='--';
+  window.fix268FastUi='waiting';
+  function g(id){return document.getElementById(id);} 
+  function prevent(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}}
+  function hx(v,n){try{var s=((Number(v)||0)&(n>=4?65535:255)).toString(16).toUpperCase();while(s.length<n)s='0'+s;return s;}catch(e){return '??';}}
+  function fr(){try{return (typeof playFrameNo!=='undefined'?(playFrameNo|0):0);}catch(e){return 0;}}
+  function raw(a){try{return ram?(ram[a&65535]&255):0;}catch(e){return 0;}}
+  function dlist(){try{return (typeof getDlistPtr==='function'?getDlistPtr():((raw(0x230)|(raw(0x231)<<8))&65535))&65535;}catch(e){return 0;}}
+  function savmsc(){try{return (raw(0x58)|(raw(0x59)<<8))&65535;}catch(e){return 0;}}
+  function status(){try{return 'DLIST $'+hx(dlist(),4)+' SAVMSC $'+hx(savmsc(),4)+' PC $'+hx(cpu?cpu.pc:0,4)+' frame '+fr()+' profile '+String(typeof activeXexProfile!=='undefined'?activeXexProfile:'--');}catch(e){return 'status error '+(e&&e.message?e.message:e);}}
+  function ready(){
+    try{
+      if(!ram || !cpu || !playMode)return false;
+      if(String(typeof activeXexProfile!=='undefined'?activeXexProfile:'')!=='realos')return false;
+      var dl=dlist(), sv=savmsc();
+      return (dl>=0x9C00 && dl<=0x9D80 && sv>=0x9C00 && sv<=0x9D80);
+    }catch(e){return false;}
+  }
+  function clearOldQueues(reason){
+    try{if(typeof window.fix266CancelFastBasicQueue==='function')window.fix266CancelFastBasicQueue('FIX268 takeover '+(reason||''));}catch(e){}
+    try{if(typeof window.fix244CancelFastBasicQueue==='function')window.fix244CancelFastBasicQueue('FIX268 takeover '+(reason||''));}catch(e){}
+    try{if(typeof window.fix243CancelFastBasicQueue==='function')window.fix243CancelFastBasicQueue('FIX268 takeover '+(reason||''));}catch(e){}
+    try{if(typeof window.fix242CancelFastBasicQueue==='function')window.fix242CancelFastBasicQueue('FIX268 takeover '+(reason||''));}catch(e){}
+    try{if(typeof window.fix222CancelFastBasicInput==='function')window.fix222CancelFastBasicInput('FIX268 takeover '+(reason||''));}catch(e){}
+    try{if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false;if(typeof fix208BasicAutofeedQueue!=='undefined')fix208BasicAutofeedQueue=[];}catch(e){}
+    try{if(typeof fix223FastKgetchOnly!=='undefined')fix223FastKgetchOnly=false;}catch(e){}
+    try{if(typeof atariKeyQueue!=='undefined')atariKeyQueue=[];if(typeof atariKeyTimer!=='undefined'&&atariKeyTimer){clearTimeout(atariKeyTimer);atariKeyTimer=0;}}catch(e){}
+    try{if(typeof input!=='undefined'&&input)input.key=0xFF;if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;}syncInputShadows();renderInput();}catch(e){}
+  }
+  function cancel(reason){
+    try{if(state.timer)clearTimeout(state.timer);}catch(e){}
+    state.active=false;state.lines=[];state.line=0;state.pos=0;state.last='cancel '+(reason||'');state.info='cancelled '+(reason||'')+' frame '+fr();
+    window.fix268FastInfo=state.info;window.fix268FastLast=state.last;
+    clearOldQueues(reason||'cancel');
+    try{updatePlayStatus('FIX268 FAST BASIC: fronta zrusena - '+(reason||''));}catch(e){}
+    return false;
+  }
+  window.fix268CancelFastBasicQueue=cancel;
+  function normalize(text,runAfter){
+    text=String(text||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    text=text.replace(/[“”„]/g,'"').replace(/[‘’]/g,"'").replace(/\u00A0/g,' ');
+    text=text.replace(/[a-z]/g,function(c){return c.toUpperCase();});
+    var arr=text.split('\n');
+    while(arr.length && arr[arr.length-1]==='')arr.pop();
+    if(runAfter)arr.push('RUN');
+    return arr;
+  }
+  function charToAtascii(ch){
+    if(ch==='\n')return 0x9B;
+    var c=String(ch||'').charCodeAt(0);
+    if(c>=32 && c<=126)return c&255;
+    return -1;
+  }
+  function build(text,runAfter){
+    var lines=normalize(text,!!runAfter), bad=[], total=0, preview=[];
+    for(var i=0;i<lines.length;i++){
+      for(var j=0;j<lines[i].length;j++){
+        var a=charToAtascii(lines[i].charAt(j));
+        if(a<0)bad.push(lines[i].charAt(j)); else {total++; if(preview.length<64)preview.push(hx(a,2));}
+      }
+      total++; if(preview.length<64)preview.push('9B');
+    }
+    return {lines:lines,bad:bad,total:total,preview:preview.join(' ')};
+  }
+  function sendByte(a,label){
+    a&=255; state.lastByte=a;
+    try{
+      if(typeof tapRealOsAtasciiFix172==='function' && String(typeof activeXexProfile!=='undefined'?activeXexProfile:'')==='realos'){
+        tapRealOsAtasciiFix172('FIX268 '+(label||''),a,145);
+      } else if(typeof tapAtariAtasciiFix171==='function'){
+        tapAtariAtasciiFix171('FIX268 '+(label||''),a,0xFF);
+      } else if(typeof armRealOsAtasciiFix172==='function'){
+        armRealOsAtasciiFix172('FIX268 '+(label||''),a);
+      }
+      state.pumped++;
+      state.last='sent $'+hx(a,2)+' '+((a>=32&&a<=126)?String.fromCharCode(a):(a===0x9B?'RETURN':''))+' line '+(state.line+1)+'/'+state.lines.length+' pos '+state.pos+' frame '+fr();
+      window.fix268FastLast=state.last;
+      return true;
+    }catch(e){state.last='send error '+(e&&e.message?e.message:e);window.fix268FastLast=state.last;return false;}
+  }
+  function finish(){
+    state.active=false;state.info='QUEUE COMPLETE lines '+state.lines.length+' pumped '+state.pumped+'/'+state.totalChars+' last $'+hx(state.lastByte,2)+' frame '+fr()+' / REAL_KEY_EDGES';
+    window.fix268FastInfo=state.info;window.fix268FastLast=state.info;
+    try{if(typeof input!=='undefined'&&input)input.key=0xFF;if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;}syncInputShadows();renderInput();}catch(e){}
+    try{updatePlayStatus('FIX268 FAST BASIC: hotovo. Pomalé real-key hrany, zadny KGETCH PC hack a zadny screen RAM write.');}catch(e){}
+  }
+  function pump(){
+    if(!state.active)return false;
+    if(state.timer){try{clearTimeout(state.timer);}catch(e){} state.timer=0;}
+    if(state.line>=state.lines.length){finish();return false;}
+    if(!ready()){
+      state.readyWaits++; state.info='WAIT BASIC READY before line '+(state.line+1)+'/'+state.lines.length+' '+status(); window.fix268FastInfo=state.info;
+      state.timer=setTimeout(pump,450); return false;
+    }
+    var line=state.lines[state.line]||'';
+    if(state.pos<line.length){
+      var a=charToAtascii(line.charAt(state.pos));
+      state.pos++;
+      if(a>=0)sendByte(a,'CHAR');
+      state.info='TYPE line '+(state.line+1)+'/'+state.lines.length+' char '+state.pos+'/'+line.length+' pumped '+state.pumped+'/'+state.totalChars+' '+status();
+      window.fix268FastInfo=state.info;
+      state.timer=setTimeout(pump,285); return false;
+    }
+    sendByte(0x9B,'RETURN');
+    state.info='RETURN line '+(state.line+1)+'/'+state.lines.length+' pumped '+state.pumped+'/'+state.totalChars+' wait parser '+status(); window.fix268FastInfo=state.info;
+    state.line++; state.pos=0;
+    state.timer=setTimeout(pump,1350); return false;
+  }
+  function queue(text,name,runAfter,ev){
+    prevent(ev);
+    var now=(new Date()).getTime(); if(state.dupName===name && now-state.dupMs<700){state.info='duplicate click ignored '+name;window.fix268FastInfo=state.info;return false;} state.dupName=name;state.dupMs=now;
+    var p=build(text,!!runAfter);
+    if(!p.lines.length){state.info='EMPTY FAST BASIC request '+(name||'');window.fix268FastInfo=state.info;return false;}
+    clearOldQueues('new FIX268 request');
+    if(state.timer)clearTimeout(state.timer);
+    state.active=true;state.lines=p.lines;state.line=0;state.pos=0;state.totalChars=p.total;state.pumped=0;state.started=fr();state.preview=p.preview;state.lastByte=255;state.readyWaits=0;
+    window.fix268FastPreview=p.preview; window.fix268FastInfo='QUEUE START '+(name||'FAST BASIC')+' lines '+p.lines.length+' chars '+p.total+' preview '+p.preview+' badChars '+p.bad.length+' '+status(); window.fix268FastLast='start';
+    try{fix240FastBasicInfo='FIX268 '+window.fix268FastInfo;fix241FastPumpInfo='FIX268 old fast disabled';fix242FastInfo='FIX268 old fast disabled';fix243FastInfo='FIX268 old fast disabled';fix244FastInfo='FIX268 old screen editor disabled';fix223KeyboardInfo='FIX268 real-key slow queue active';}catch(e){}
+    try{updatePlayStatus('FIX268 FAST BASIC: pomaly real-key zapis po READY. Nepouziva screen RAM, KGETCH PC hack ani CH scan preklad.');}catch(e){}
+    state.timer=setTimeout(pump,400);
+    return false;
+  }
+  window.queueFastBasicFix268=queue;
+  window.queueFastBasicFix247=function(txt,name,run,ev){return queue(txt,name||'FAST BASIC FIX268',!!run,ev);};
+  window.queueFastBasicFix244=function(txt,name,run,ev){return queue(txt,name||'FAST BASIC FIX268',!!run,ev);};
+  window.queueFastBasicFix240=function(txt,name,run,ev){return queue(txt,name||'FAST BASIC FIX268',!!run,ev);};
+  window.basicTxtFastFix240=function(ev){var ta=g('fix240BasicFastText');return queue(ta?ta.value:'','BASIC TXT FAST FIX268',false,ev);};
+  window.vlozitFastFix240=function(ev){var ta=g('fix240BasicFastText');return queue(ta?ta.value:'','VLOZIT FAST FIX268',false,ev);};
+  window.vlozitFastRunFix240=function(ev){var ta=g('fix240BasicFastText');return queue(ta?ta.value:'','VLOZIT FAST + RUN FIX268',true,ev);};
+  window.submarineFastFix240=function(ev){var prog=(typeof submarineBasicProgramFix207==='function')?submarineBasicProgramFix207():'10 PRINT "SUBMARINE"\n20 GOTO 20';return queue(prog,'SUBMARINE FAST FIX268',false,ev);};
+  function bindFast(){
+    try{
+      var fast=g('fix240FastBasicBox'); if(!fast)return;
+      var h=fast.querySelector('h2'); if(h)h.textContent='Rychly BASIC text automat FIX268 - POMALY REAL KEY';
+      var p=fast.querySelector('p'); if(p)p.textContent='Servisni helper po skutecnem BASIC READY: posila znaky jako realne virtualni klavesy pomalu po radcich. Zadny screen RAM write, zadny KGETCH PC hack, zadny fake LOAD.';
+      var bs=fast.querySelectorAll('button'), kinds=['txt','vlozit','run','sub'];
+      for(var i=0;i<bs.length;i++)(function(btn,kind){
+        if(!btn || btn.getAttribute('data-fix268-bound')==='1')return;
+        var b=btn.cloneNode(true); b.setAttribute('data-fix268-bound','1'); b.style.pointerEvents='auto';
+        b.onclick=function(ev){prevent(ev); if(kind==='txt')return window.basicTxtFastFix240(ev); if(kind==='vlozit')return window.vlozitFastFix240(ev); if(kind==='run')return window.vlozitFastRunFix240(ev); return window.submarineFastFix240(ev);};
+        b.onpointerup=b.onclick; b.ontouchend=b.onclick;
+        btn.parentNode.replaceChild(b,btn);
+      })(bs[i],kinds[i]||'vlozit');
+      window.fix268FastUi='FAST UI rebound OK frame '+fr();
+    }catch(e){window.fix268FastUi='FAST UI bind error '+(e&&e.message?e.message:e);}
+  }
+  function lockHeader(){
+    try{window.EMU_BUILD_TAG=TAG; EMU_BUILD_TAG=TAG;}catch(e){}
+    try{document.title='EMU-09 '+TAG;}catch(e){}
+    try{var h=document.querySelector('.brandText h1')||document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
+    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX268: oprava rychlozapisu smerem dopredu z FIX267/FIX261. FAST zapis je pomaly pres realne virtualni klavesy po READY; tlacitka BASIC/SNAPSHOT se neprepisuji. Bez fake READY/SELFTEST/LOAD/RAM inject.';}catch(e){}
+    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilni Atari klavesnice FIX268';}catch(e){}
+    try{var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX268: jedna klavesnice; FAST BASIC jde pomalu pres real-key hrany, ne pres screen RAM ani KGETCH PC hack.';}catch(e){}
+    try{var x=g('xexName'); if(x && /FIX246|FIX261|FIX265|FIX266|FIX267|pitt/i.test(String(x.textContent||'')))x.textContent='XEX: PURE HARDWARE IDLE FIX268 / no XEX';}catch(e){}
+    bindFast();
+  }
+  function screenChar(b){var cc=b&127;return (cc>=0x20&&cc<0x5B)?String.fromCharCode(cc+0x20):' ';}
+  function rows(){var out=[];try{var sv=savmsc();for(var r=0;r<8;r++){var s='',bs=[];for(var c=0;c<40;c++){var b=sv?raw(sv+r*40+c):0;bs.push(hx(b,2));s+=screenChar(b);}out.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+bs.join(' '));}}catch(e){out.push('screen rows err '+(e&&e.message?e.message:e));}return out;}
+  function filename(reason){var d=new Date(),pad=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX268-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function snapshotText(reason){
+    lockHeader();
+    var l=[];
+    l.push('AtariHelp.eu EMU-09 FIX268 SLOW REAL KEY BASIC TYPE FORWARD CORE');
+    l.push('cas='+(new Date()).toISOString());
+    l.push('build='+TAG);
+    l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));
+    l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));
+    l.push('');
+    l.push('[FORWARD AUDIT]');
+    l.push('FORWARD_BASE=FIX267 ROM quarantine + FIX261 stable UI');
+    l.push('NO_ROLLBACK=YES');
+    l.push('FIX266_KGETCH_PC_HACK_DISABLED=YES');
+    l.push('FAST_BASIC_FIX=REAL_KEY_SLOW_LINE_TYPER / NO_SCREEN_RAM_WRITE / NO_KGETCH_PC_JUMP / NO_CH_SCAN_TRANSLATE_FOR_FAST');
+    l.push('RULE NO_FAKE_READY / NO_FAKE_SELFTEST / NO_FAKE_LOAD / NO_PROGRAM_RAM_INJECT / NO_SCREEN_RAM_FAST_WRITE');
+    l.push('');
+    l.push('[FAST BASIC FIX268]');
+    l.push('active='+(state.active?'YES':'NO')+' line='+(state.line+1)+'/'+state.lines.length+' pos='+state.pos+' pumped='+state.pumped+'/'+state.totalChars+' lastByte=$'+hx(state.lastByte,2)+' readyWaits='+state.readyWaits+' startFrame='+state.started);
+    l.push('info='+(window.fix268FastInfo||'--'));
+    l.push('last='+(window.fix268FastLast||'--'));
+    l.push('previewHex='+(window.fix268FastPreview||state.preview||'--'));
+    l.push('ui='+(window.fix268FastUi||'--'));
+    l.push('');
+    l.push('[STATUS]');
+    try{l.push(cpu?('CPU PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){l.push('CPU status error '+(e&&e.message?e.message:e));}
+    l.push('DLIST $'+hx(dlist(),4)+' SAVMSC $'+hx(savmsc(),4)+' CHBASE $'+hx(raw(0x2F4),2)+' SDMCTL $'+hx(raw(0x22F),2)+' DMACTL $'+hx(raw(0xD400),2)+' PRIOR $'+hx(raw(0xD01B),2));
+    try{l.push('PIA PORTB OUT $'+hx(typeof piaPortBOut!=='undefined'?piaPortBOut:raw(0xD301),2)+' DDR $'+hx(typeof piaPortBDDR!=='undefined'?piaPortBDDR:0,2)+' SELFTEST_WINDOW '+((typeof fix217SelfTestWindowEnabled==='function'&&fix217SelfTestWindowEnabled())?'ON':'OFF'));}catch(e){}
+    l.push('');l.push('[SCREEN PROOF]');var rr=rows();for(var i=0;i<rr.length;i++)l.push(rr[i]);
+    try{l.push('');l.push('[TRACE]');if(cpu&&cpu.trace){var tr=cpu.trace.slice(-18);for(var ti=0;ti<tr.length;ti++)l.push(tr[ti]);}}catch(e){}
+    return l.join('\n');
+  }
+  function ensureSnapBox(text,fn){
+    try{var anchor=g('playStatus')||g('atariKeyboardDock')||document.body;var box=g('fix268SnapshotBox');if(!box){box=document.createElement('div');box.id='fix268SnapshotBox';box.className='card';box.style.marginTop='10px';anchor.parentNode.insertBefore(box,anchor.nextSibling);}box.innerHTML='<h2>Snapshot FIX268 TXT</h2><p>Fallback pro Android/Nox: kdyz download selze, oznac a zkopiruj text nize.</p><textarea id="fix268SnapshotText" style="width:100%;min-height:220px;box-sizing:border-box;background:#050403;color:#2aff8f;border:1px solid rgba(42,255,143,.35);border-radius:10px;padding:8px;font-family:monospace;font-size:11px"></textarea><button id="fix268CopySnap" class="secondary compact">KOPIROVAT SNAPSHOT</button><button id="fix268SelectSnap" class="secondary compact">OZNACIT SNAPSHOT</button><a id="fix268DownloadSnap" class="btn secondary" download="'+fn+'">STAHNOUT SNAPSHOT TXT</a>';var ta=g('fix268SnapshotText');if(ta)ta.value=text;var blob=new Blob([text],{type:'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);var a=g('fix268DownloadSnap');if(a){a.href=url;a.download=fn;}var copy=g('fix268CopySnap');if(copy)copy.onclick=function(ev){prevent(ev);try{ta.focus();ta.select();document.execCommand('copy');}catch(e){}return false;};var sel=g('fix268SelectSnap');if(sel)sel.onclick=function(ev){prevent(ev);try{ta.focus();ta.select();}catch(e){}return false;};}catch(e){}
+  }
+  function save(text,reason){var fn=filename(reason||'snapshot');ensureSnapBox(text,fn);try{var el=g('log');if(el)el.textContent=text;}catch(e){}try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(text,fn);return true;}}catch(e){}try{if(window.saveTextReportToMobile){window.saveTextReportToMobile(fn,text);return true;}}catch(e){}try{var a=g('fix268DownloadSnap');if(a&&a.href){a.click();return true;}}catch(e){}return false;}
+  window.compatibilitySnapshotCore=function(reason){var text=snapshotText(reason||'snapshot');try{updatePlayStatus('FIX268 snapshot hotov: FAST real-key audit + screen proof.');}catch(e){}return save(text,reason||'snapshot');};
+  window.compatibilitySnapshot=function(ev){prevent(ev);return window.compatibilitySnapshotCore('snapshot');};
+  window.saveCurrentLogToMobile=function(reason){return window.compatibilitySnapshotCore(reason||'manual');};
+  window.autoSaveLogToMobile=function(reason){return window.compatibilitySnapshotCore(reason||'auto');};
+  window.makeLogFileName=function(reason){return filename(reason||'snapshot');};
+  lockHeader();
+  [80,220,600,1300,2700,5200].forEach(function(t){setTimeout(lockHeader,t);});
+  try{setInterval(lockHeader,250);}catch(e){}
+  try{console.log('FIX268 installed');}catch(e){}
+})();
+</script>
+<!-- END FIX268 -->
 
