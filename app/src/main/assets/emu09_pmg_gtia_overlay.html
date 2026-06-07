@@ -1,10 +1,9 @@
-<!DOCTYPE html>
-
+<!doctype html>
 <html lang="cs">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
-<title>EMU-09 FIX283_APP_STRUCTURE_PRESERVED_TURBOBASIC_XEX_CORE / AtariHelp.eu</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EMU-09 FIX284_TURBOBASIC_XEX_DIRECT_FROM_WORKING270_CORE</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -35,21 +34,14 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="wrap">
 <section class="card">
 <div class="brandBar">
-<img alt="N&amp;P" class="brandLogo" src="np_logo.png?fix102"/>
+<img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX283_APP_STRUCTURE_PRESERVED_TURBOBASIC_XEX_CORE</h1>
-<p>FIX283: cisty mobilni panel, funkcni BASIC tlacitka z overene zive BASIC vetve, TurboBasic XL jako realny XEX loader. Bez fake READY/LOAD.</p>
+<h1>EMU-09 FIX284_TURBOBASIC_XEX_DIRECT_FROM_WORKING270_CORE</h1>
+<p>FIX284: stabilni BASIC/buttons jadro z FIX270 + TurboBasic XL 1.5 jako cisty XEX asset. Spoustej TurboBasic rovnou z cisteho stavu, ne po BASIC READY. Bez fake READY/LOAD/RAM inject.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
-<div class="card" id="fix282TurboPanel">
-<h2>TurboBasic XL 1.5 — XEX loader FIX283</h2>
-<p>Spusti TurboBasic jako skutecny XEX program v emulatoru. Neni to CLOAD, neni to WAV, neni to fake READY. Pokud selze, snapshot ukaze segmenty, RUN/INIT, PC a PORTB.</p>
-<button id="fix282TurboBtn" onclick="return fix282StartTurboBasic(event)">TURBO BASIC XL 1.5 — SPUSTIT XEX</button>
-<button class="secondary" id="fix282SnapshotBtn" onclick="return fix282Snapshot(event)">SNAPSHOT FIX283 TURBO</button>
-<pre id="fix282TurboStatus">FIX283 pripraven — nejdriv zkus POWER XL/XE BASIC a SNAPSHOT, potom TurboBasic.</pre>
-</div>
 
 <section class="card purePanel">
 <h2>PURE HARDWARE RETRO EMULATION</h2>
@@ -67,34 +59,43 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="secondary" onclick="toggleAudio()">ZVUK ON/OFF</button>
 </div>
 <div class="halfgrid">
-<button class="secondary" onpointercancel="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)" onpointerdown="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)">HOLD START</button>
-<button class="secondary" onpointercancel="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)" onpointerdown="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)">HOLD OPTION</button>
+<button class="secondary" onpointerdown="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)" onpointercancel="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)">HOLD START</button>
+<button class="secondary" onpointerdown="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)" onpointercancel="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)">HOLD OPTION</button>
 </div>
 <div class="halfgrid">
-<button class="secondary" onpointercancel="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)" onpointerdown="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)">HOLD SELECT</button>
+<button class="secondary" onpointerdown="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)" onpointercancel="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)">HOLD SELECT</button>
 <button class="secondary" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
 </div>
-<div class="fileLine" id="xexName">MODE: PURE HARDWARE only / no XEX</div>
-<div class="fileLine" id="romName">ROM: built-in ATARIXL.ROM + ATARIBAS.ROM. External ROM upload hidden in FIX227 audit panel.</div>
-<div class="playStatus" id="playStatus">Pripraveno. FIX228 PURE HW AUDIT: nejdriv audit, potom POWER.</div>
-<div class="inputMapPanel" id="inputMapPanel">PURE HW audit panel.</div>
+<div id="xexName" class="fileLine">MODE: PURE HARDWARE only / no XEX</div>
+<div id="romName" class="fileLine">ROM: built-in ATARIXL.ROM + ATARIBAS.ROM. External ROM upload hidden in FIX227 audit panel.</div>
+<div id="playStatus" class="playStatus">Pripraveno. FIX228 PURE HW AUDIT: nejdriv audit, potom POWER.</div>
+<div id="inputMapPanel" class="inputMapPanel">PURE HW audit panel.</div>
 </section>
+
+<section class="card" id="fix284TurboPanel">
+<h2>Turbo Basic XL 1.5 — XEX loader FIX284</h2>
+<p>Spoustet rovnou z cisteho stavu. Neklikej predtim POWER BASIC. Toto neni CLOAD ani WAV, ale cisty XEX loader: segmenty do RAM, INITAD $6132, potom bezi CPU emulatoru.</p>
+<button id="fix284TurboBtn" onclick="return fix284StartTurboBasic(event)">TURBO BASIC XL 1.5 — SPUSTIT XEX</button>
+<button class="secondary" id="fix284TurboSnapBtn" onclick="return fix284Snapshot(event)">SNAPSHOT FIX284 TURBO</button>
+<pre id="fix284TurboStatus">FIX284 pripraven. Klikni TurboBasic rovnou z cisteho stavu. Zadny fake READY/LOAD.</pre>
+</section>
+
 <section class="card">
 <h2>Obraz Atari</h2>
 <p>Obraz jde přes obecný ANTIC display list renderer, Atari font/charset, bitmapové režimy, DLI barvy a PMG overlay podle profilu. Ovládání je schválně hned pod obrazem jako na mobilní konzoli.</p>
-<canvas class="gameCanvas" height="240" id="video" width="320"></canvas>
+<canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
 <p class="tinyhint">FIX227: PURE HARDWARE PIA. Zaklad: AUDIT, POWER BASIC, POWER OPTION SELF TEST, RESET, START/SELECT/OPTION, SNAPSHOT.</p>
 <div class="halfgrid kbdTopActions">
 <button class="secondary compact" onclick="return runPureHardwareAuditFix226(event)">PURE HW AUDIT</button>
-<button class="secondary compact" id="pureHwBasicBtnFix226" onclick="return startPureHardwareBasicFix226(event)">POWER XL/XE BASIC</button>
-<button class="secondary compact" id="pureHwSelfBtnFix226" onclick="return startPureHardwareSelfTestFix226(event)">POWER OPTION SELF TEST</button>
+<button id="pureHwBasicBtnFix226" class="secondary compact" onclick="return startPureHardwareBasicFix226(event)">POWER XL/XE BASIC</button>
+<button id="pureHwSelfBtnFix226" class="secondary compact" onclick="return startPureHardwareSelfTestFix226(event)">POWER OPTION SELF TEST</button>
 <button class="secondary compact" onclick="return resetPureHardwareFix226(event)">RESET PURE HW</button>
 <button class="secondary compact" onclick="compatibilitySnapshot()">SNAPSHOT</button>
-<button class="secondary compact" onpointercancel="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)" onpointerdown="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)">HOLD START</button>
-<button class="secondary compact" onpointercancel="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)" onpointerdown="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)">HOLD SELECT</button>
-<button class="secondary compact" onpointercancel="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)" onpointerdown="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)">HOLD OPTION</button>
+<button class="secondary compact" onpointerdown="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)" onpointercancel="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)">HOLD START</button>
+<button class="secondary compact" onpointerdown="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)" onpointercancel="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)">HOLD SELECT</button>
+<button class="secondary compact" onpointerdown="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)" onpointercancel="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)">HOLD OPTION</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
 </div>
 <div class="keygrid" id="atariKeyboard"></div>
@@ -105,47 +106,48 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="thumbControls">
 <div class="dpadColumn">
 <div class="vjoyWrap">
-<div aria-label="Kruhový joystick" class="vjoy" id="vjoy" onpointercancel="return vjoyRelease(event)" onpointerdown="return vjoyPointer(event,true)" onpointerleave="return vjoyLeave(event)" onpointermove="return vjoyPointer(event,false)" onpointerup="return vjoyRelease(event)">
-<div class="vjoyKnob" id="vjoyKnob">●</div>
+<div id="vjoy" class="vjoy" aria-label="Kruhový joystick" onpointerdown="return vjoyPointer(event,true)" onpointermove="return vjoyPointer(event,false)" onpointerup="return vjoyRelease(event)" onpointercancel="return vjoyRelease(event)" onpointerleave="return vjoyLeave(event)">
+<div id="vjoyKnob" class="vjoyKnob">●</div>
 </div>
-<div class="vjoyReadout" id="vjoyReadout">Kruhový joystick jemně zklidněný: pusť prst = neutrál</div>
+<div id="vjoyReadout" class="vjoyReadout">Kruhový joystick jemně zklidněný: pusť prst = neutrál</div>
 </div>
 <details class="oldDpadBox">
 <summary>Starý kříž / nouzové tlačítka</summary>
 <div class="dpad">
-<button aria-hidden="true" class="empty" tabindex="-1"></button>
-<button class="secondary" onpointercancel="return capturePress(event,pressUp,false)" onpointerdown="return capturePress(event,pressUp,true)" onpointerup="return capturePress(event,pressUp,false)">▲<br/><span class="muted">UP</span></button>
-<button aria-hidden="true" class="empty" tabindex="-1"></button>
-<button class="secondary" onpointercancel="return capturePress(event,pressLeft,false)" onpointerdown="return capturePress(event,pressLeft,true)" onpointerup="return capturePress(event,pressLeft,false)">◀</button>
-<button aria-hidden="true" class="empty" tabindex="-1"></button>
-<button class="secondary" onpointercancel="return capturePress(event,pressRight,false)" onpointerdown="return capturePress(event,pressRight,true)" onpointerup="return capturePress(event,pressRight,false)">▶</button>
-<button aria-hidden="true" class="empty" tabindex="-1"></button>
-<button class="secondary" onpointercancel="return capturePress(event,pressJump,false)" onpointerdown="return capturePress(event,pressJump,true)" onpointerup="return capturePress(event,pressJump,false)">▼<br/><span class="muted">DOWN</span></button>
-<button aria-hidden="true" class="empty" tabindex="-1"></button>
+<button class="empty" tabindex="-1" aria-hidden="true"></button>
+<button class="secondary" onpointerdown="return capturePress(event,pressUp,true)" onpointerup="return capturePress(event,pressUp,false)" onpointercancel="return capturePress(event,pressUp,false)">▲<br><span class="muted">UP</span></button>
+<button class="empty" tabindex="-1" aria-hidden="true"></button>
+<button class="secondary" onpointerdown="return capturePress(event,pressLeft,true)" onpointerup="return capturePress(event,pressLeft,false)" onpointercancel="return capturePress(event,pressLeft,false)">◀</button>
+<button class="empty" tabindex="-1" aria-hidden="true"></button>
+<button class="secondary" onpointerdown="return capturePress(event,pressRight,true)" onpointerup="return capturePress(event,pressRight,false)" onpointercancel="return capturePress(event,pressRight,false)">▶</button>
+<button class="empty" tabindex="-1" aria-hidden="true"></button>
+<button class="secondary" onpointerdown="return capturePress(event,pressJump,true)" onpointerup="return capturePress(event,pressJump,false)" onpointercancel="return capturePress(event,pressJump,false)">▼<br><span class="muted">DOWN</span></button>
+<button class="empty" tabindex="-1" aria-hidden="true"></button>
 </div>
 </details>
 </div>
 <div class="fireZone">
-<button class="secondary" onclick="tapStartPulse()">TAP<br/>START</button>
-<button class="fireMain" onpointercancel="return capturePress(event,pressFire,false)" onpointerdown="return capturePress(event,pressFire,true)" onpointerup="return capturePress(event,pressFire,false)">FIRE<br/><span class="muted">střela / OK</span></button>
+<button class="secondary" onclick="tapStartPulse()">TAP<br>START</button>
+<button class="fireMain" onpointerdown="return capturePress(event,pressFire,true)" onpointerup="return capturePress(event,pressFire,false)" onpointercancel="return capturePress(event,pressFire,false)">FIRE<br><span class="muted">střela / OK</span></button>
 </div>
 </div>
-<p class="inputReadout" id="inputState"></p>
+<p id="inputState" class="inputReadout"></p>
 <button class="secondary compact" onclick="showInputMapFix188()">🎮 ZOBRAZIT / SCHOVAT OVLADANI MAPU</button>
 <div class="halfgrid">
-<button class="secondary compact" onclick="tapStartPulse()">TAP START<br/><span class="muted">krátký puls</span></button>
-<button class="secondary compact" onclick="tapFirePulse()">TAP FIRE<br/><span class="muted">krátký puls</span></button>
+<button class="secondary compact" onclick="tapStartPulse()">TAP START<br><span class="muted">krátký puls</span></button>
+<button class="secondary compact" onclick="tapFirePulse()">TAP FIRE<br><span class="muted">krátký puls</span></button>
 </div>
 <div class="halfgrid">
-<button class="secondary compact" onclick="tapUpPulse()">TAP UP<br/><span class="muted">menu nahoru</span></button>
-<button class="secondary compact" onclick="tapDownPulse()">TAP DOWN<br/><span class="muted">menu dolů</span></button>
+<button class="secondary compact" onclick="tapUpPulse()">TAP UP<br><span class="muted">menu nahoru</span></button>
+<button class="secondary compact" onclick="tapDownPulse()">TAP DOWN<br><span class="muted">menu dolů</span></button>
 </div>
 <div class="halfgrid">
-<button class="secondary compact" onclick="tapSelectPulse()">TAP SELECT<br/><span class="muted">krátký puls</span></button>
-<button class="secondary compact" onclick="tapOptionPulse()">TAP OPTION<br/><span class="muted">krátký puls</span></button>
+<button class="secondary compact" onclick="tapSelectPulse()">TAP SELECT<br><span class="muted">krátký puls</span></button>
+<button class="secondary compact" onclick="tapOptionPulse()">TAP OPTION<br><span class="muted">krátký puls</span></button>
 </div>
 </div>
 </section>
+
 <details class="debugDetails">
 <summary>Servisní debug / zatím schováno pro vývoj</summary>
 <section class="card">
@@ -173,16 +175,12 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button class="compact secondary" onclick="showDisasmHint()">VCOUNT hint</button>
 </section>
 </details>
+
 <section class="card">
 <h2>EMU-09 PLAY umí navíc</h2>
 <p>FIX125 drží směr obecného XEX jádra bez externí ROM: interní OS/CIO shim, silnější odmítání falešných DLISTů z kódu, Montezuma bez agresivního CHBASE zásahu a Cobra jako kontrolní reference.</p>
 </section>
 </div>
-
-
-<!-- FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE_FINAL_SCRIPT -->
-
-<!-- FIX248_SELFTEST_ROMDLIST_BUS_RENDER_FINAL_SCRIPT -->
 
 <script>
 var ATARI_SCREEN_W=320;
@@ -12650,7 +12648,874 @@ updatePlayStatus('ready');
 })();
 /* END FIX244 */
 
-</script><script>
+</script>
+
+<script>
+/* FIX246 HARD BUILD OVERRIDE CORE
+   Purpose: previous handoff could show FIX245 on landing page while the emulator page still executed older FIX240 UI/snapshot wrappers.
+   This block is deliberately a separate final <script> after all older scripts. It must run last and stamp UI + snapshots.
+   It also disables the old RAW CH fast paste path and provides a conservative screen-editor service helper after real READY.
+*/
+(function(){
+  'use strict';
+  var TAG='FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE';
+  var fastInfo='idle';
+  var selfInfo='idle';
+  var uiInfo='waiting';
+  var lines=[], idx=0, active=false, nextFrame=0, epoch=246, wrote=0, returns=0, totalChars=0, lastInfo='idle', name='FAST BASIC';
+  function hx(v,n){try{v=(v>>>0).toString(16).toUpperCase();while(v.length<n)v='0'+v;return v;}catch(e){return '??';}}
+  function fr(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function log246(s){try{log('FIX246 '+s);}catch(e){}}
+  function stamp(){
+    try{window.EMU_BUILD_TAG=TAG;}catch(e){}
+    try{document.title='EMU-09 '+TAG;}catch(e){}
+    try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
+    try{var p=document.querySelector('h1 + p'); if(p)p.textContent='FIX246: HARD LOADED override bezi jako posledni skript. Stare FIX240 UI nesmi prepsat build. FAST helper je servisni screen-editor po real READY, bez fake bootu.';}catch(e){}
+    try{var x=document.getElementById('xexName'); if(x) x.textContent='XEX: PURE HARDWARE IDLE FIX246 / no XEX';}catch(e){}
+    try{var ps=document.getElementById('playStatus'); if(ps && String(ps.textContent||'').indexOf('FIX246')<0) ps.textContent='FIX248 LOADED: verifikuj snapshot BUILD FIX246. Funkce testuj az po overeni stampu.';}catch(e){}
+    try{var dock=document.getElementById('atariKeyboardDock')||document.getElementById('atariKeyboardDockFix171'); if(dock){var h2=dock.querySelector('h2'); if(h2)h2.textContent='Mobilni Atari klavesnice FIX246'; var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX246: posledni skript prevzal UI; FAST BASIC pouziva servisni editor-line + real RETURN po READY.';}}catch(e){}
+    uiInfo='STAMP OK frame '+fr();
+  }
+  stamp();
+  /* FIX261: old FIX246 delayed UI stamp timers disabled; core functions preserved. */
+
+  function cancelOld(reason){
+    try{ if(typeof fix222CancelFastBasicInput==='function') fix222CancelFastBasicInput('FIX246 takeover '+(reason||'')); }catch(e){}
+    try{ if(typeof fix242CancelFastBasicQueue==='function') fix242CancelFastBasicQueue('FIX246 takeover '+(reason||'')); }catch(e){}
+    try{ if(typeof fix243CancelFastBasicQueue==='function') fix243CancelFastBasicQueue('FIX246 takeover '+(reason||'')); }catch(e){}
+    try{ if(typeof fix244CancelFastBasicQueue==='function') fix244CancelFastBasicQueue('FIX246 takeover '+(reason||'')); }catch(e){}
+    try{fix208BasicAutofeedActive=false;fix208BasicAutofeedQueue=[];fix241Active=false;fix242Active=false;fix243Active=false;active244=false;}catch(e){}
+    try{if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}}catch(e){}
+  }
+  function ready(){
+    try{
+      if(!ram) return false;
+      if(typeof activeXexProfile!=='undefined' && activeXexProfile!=='realos') return false;
+      var mode=(typeof fix233Mode!=='undefined'?fix233Mode:(typeof fix232Mode!=='undefined'?fix232Mode:''));
+      if(String(mode).indexOf('self')>=0) return false;
+      var dl=(typeof getDlistPtr==='function'?(getDlistPtr()&65535):(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535));
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;
+      var eff=(typeof fix233EffectivePortB==='function'?fix233EffectivePortB():((typeof piaPortBOut!=='undefined'?piaPortBOut:0xFD)&255));
+      return (dl>=0x9B00 && dl<=0x9D80 && sav>=0x9B80 && sav<=0xA100 && (eff&2)===0);
+    }catch(e){return false;}
+  }
+  function status(){try{var dl=(typeof getDlistPtr==='function'?(getDlistPtr()&65535):(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535));var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;return 'DLIST $'+hx(dl,4)+' SAVMSC $'+hx(sav,4)+' NMIEN $'+hx((ram&&ram[0xD40E])||0,2);}catch(e){return 'status err';}}
+  function clean(txt,run){
+    txt=String(txt||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    var out=txt.split('\n').map(function(l){return String(l||'').replace(/[\t]+/g,' ').replace(/\s+$/,'');}).filter(function(l){return l.length>0;});
+    if(run) out.push('RUN');
+    return out;
+  }
+  function screenCode(ch){var c=String(ch||' ').charCodeAt(0)&255;if(c>=97&&c<=122)c-=32;if(c>=32&&c<=95)return (c-32)&255;return 0;}
+  function findEntryRow(){
+    try{
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535; if(!(sav>=0x9000&&sav<0xA800)) sav=0x9C40;
+      // Prefer current cursor row if it points to a plausible empty/input row. Otherwise use first empty row below READY.
+      var r=(ram[0x54]||0)&31; if(r>=2 && r<23) return r;
+      for(var y=2;y<22;y++){var non=0;for(var x=0;x<38;x++) if((ram[(sav+y*40+x)&65535]&127)!==0) non++; if(non===0) return y;}
+      return 20;
+    }catch(e){return 2;}
+  }
+  function writeLine(line){
+    try{
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535; if(!(sav>=0x9000&&sav<0xA800)) sav=0x9C40;
+      var row=findEntryRow(); var max=Math.min(39,String(line).length); var addr=(sav+row*40)&65535;
+      for(var i=0;i<40;i++) ram[(addr+i)&65535]=0;
+      for(var j=0;j<max;j++) ram[(addr+j)&65535]=screenCode(line.charAt(j));
+      ram[0x54]=row&255; ram[0x55]=max&255; ram[0x56]=0;
+      try{ram[0x0054]=row&255;ram[0x0055]=max&255;ram[0x0056]=0;}catch(e){}
+      fastInfo='SCREEN WRITE '+name+' line '+(idx+1)+'/'+lines.length+' row '+row+' col '+max+' text="'+String(line).slice(0,54)+'" '+status()+' frame '+fr();
+      return true;
+    }catch(e){fastInfo='SCREEN WRITE error '+(e&&e.message?e.message:e); return false;}
+  }
+  function pressReturn(){
+    try{
+      if(typeof armRealOsAtasciiFix172==='function') armRealOsAtasciiFix172('FIX246 RETURN',0x9B);
+      else if(typeof tapAtariKey==='function') tapAtariKey('ENTER',120);
+      else if(ram){ram[0x02FC]=0x0C;ram[0x02FB]=0x9B;ram[0xD209]=0x0C;}
+      returns++;
+      lastInfo='RETURN '+returns+' frame '+fr();
+    }catch(e){lastInfo='RETURN error '+(e&&e.message?e.message:e);}
+  }
+  function pump(){
+    try{
+      if(!active) return;
+      var f=fr(); if(f<nextFrame) return;
+      cancelOld('pump guard');
+      if(!ready()){fastInfo='WAIT READY '+name+' '+status()+' frame '+f; nextFrame=f+30; return;}
+      if(idx>=lines.length){active=false; cancelOld('complete'); fastInfo='QUEUE COMPLETE '+name+' lines '+lines.length+' chars '+totalChars+' writes '+wrote+' returns '+returns+' epoch '+epoch+' frame '+f; lastInfo=fastInfo; log246(fastInfo); try{updatePlayStatus('FIX246 FAST BASIC QUEUE COMPLETE.');}catch(e){} return;}
+      var ln=lines[idx]; if(writeLine(ln)){wrote++; pressReturn(); idx++; nextFrame=f+(ln==='RUN'?140:120);} else nextFrame=f+40;
+    }catch(e){fastInfo='PUMP error '+(e&&e.message?e.message:e);active=false;}
+  }
+  function queue(txt,nm,run,ev){
+    try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}
+    cancelOld('new request'); epoch++;
+    lines=clean(txt,!!run); idx=0; wrote=0; returns=0; totalChars=lines.join('\n').length; name=String(nm||'FAST BASIC'); active=lines.length>0; nextFrame=fr()+20;
+    if(!active){fastInfo='EMPTY '+name; return false;}
+    fastInfo='FAST BASIC QUEUE START '+name+' lines '+lines.length+' chars '+totalChars+' epoch '+epoch+' WAIT READY / SCREEN EDITOR SERVICE / REAL RETURN'; lastInfo=fastInfo; log246(fastInfo); try{updatePlayStatus('FIX246 FAST BASIC: WAIT READY, potom zapis radku do editoru + RETURN.');}catch(e){}
+    try{if(!playMode && typeof startPlaying==='function') startPlaying();}catch(e){}
+    return false;
+  }
+  window.basicTxtFastFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue(ta?ta.value:'','BASIC TXT FAST',false,ev);};
+  window.vlozitFastFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue(ta?ta.value:'','VLOZIT FAST',false,ev);};
+  window.vlozitFastRunFix240=function(ev){var ta=document.getElementById('fix240BasicFastText');return queue(ta?ta.value:'','VLOZIT FAST + RUN',true,ev);};
+  window.submarineFastFix240=function(ev){var prog=(typeof submarineBasicProgramFix207==='function')?submarineBasicProgramFix207():'10 PRINT "SUBMARINE"\n20 GOTO 20';return queue(prog,'SUBMARINE FAST',false,ev);};
+  try{var oldStep=CPU6502.prototype.step; CPU6502.prototype.step=function(){try{pump();}catch(e){} return oldStep.apply(this,arguments);};}catch(e){fastInfo='CPU pump install failed '+(e&&e.message?e.message:e);}
+
+  function selfWanted(){try{var mode=(typeof fix233Mode!=='undefined'?fix233Mode:(typeof fix232Mode!=='undefined'?fix232Mode:''));var dl=(typeof getDlistPtr==='function'?(getDlistPtr()&65535):(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535));return activeXexProfile==='realos' && String(mode).indexOf('self')>=0 && dl>=0x5000 && dl<=0x57ff;}catch(e){return false;}}
+  function selfRender(){
+    try{
+      if(!selfWanted()||!ram) return false;
+      var c=document.getElementById('video'); if(!c) return false; var g=c.getContext('2d'); var img=g.createImageData(320,240); var d=img.data;
+      var dl=(typeof getDlistPtr==='function'?(getDlistPtr()&65535):(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535));
+      var sdm=(ram[0x022F]||ram[0xD400]||0)&255, chb=(ram[0xD409]||ram[0x02F4]||0xE0)&255, prior=(ram[0xD01B]||ram[0x026F]||0)&255;
+      function col(v,fb){try{return rgbFromCss(atariColor(v&255));}catch(e){return fb;}}
+      var bg=col(ram[0xD01A]||ram[0x02C8]||0xA0,[0,0,0]), c1=col(ram[0xD016]||ram[0x02C4]||0x0C,[220,220,220]), c2=col(ram[0xD018]||ram[0x02C6]||0xD6,[120,210,90]);
+      function px(x,y,r){if(x<0||x>=320||y<0||y>=240)return;var o=(y*320+x)*4;d[o]=r[0];d[o+1]=r[1];d[o+2]=r[2];d[o+3]=255;}
+      for(var y=0;y<240;y++)for(var x=0;x<320;x++)px(x,y,bg);
+      var base=0x3000, non=0;
+      // Render actual RAM bytes around $3000 as 20-column 16px cells. Non-zero bytes become visible blocks.
+      for(var row=0;row<12;row++){
+        for(var cx=0;cx<20;cx++){
+          var b=ram[(base+row*20+cx)&65535]&255; if(!b) continue; non++;
+          var color=(b&1)?c1:c2; var x0=cx*16, y0=24+row*12;
+          for(var yy=0;yy<10;yy++)for(var xx=0;xx<14;xx++)px(x0+xx,y0+yy,color);
+        }
+      }
+      g.putImageData(img,0,0);
+      selfInfo='SELFTEST LIVE RAM DMA VIEW dl $'+hx(dl,4)+' SDMCTL $'+hx(sdm,2)+' CHBASE $'+hx(chb,2)+' PRIOR $'+hx(prior,2)+' base $3000 nonzero '+non+' frame '+fr();
+      return true;
+    }catch(e){selfInfo='SELFTEST render error '+(e&&e.message?e.message:e);return false;}
+  }
+  try{var oldRF=renderAnticDisplayFastGeneric; renderAnticDisplayFastGeneric=function(){if(selfRender())return true; return oldRF.apply(this,arguments);};}catch(e){}
+  try{var oldR=renderAnticDisplay; renderAnticDisplay=function(){if(selfRender())return; return oldR.apply(this,arguments);};}catch(e){}
+  try{var oldBasic=startPureHardwareBasicFix226; startPureHardwareBasicFix226=function(ev){cancelOld('POWER BASIC');stamp();return oldBasic(ev);};}catch(e){}
+  try{var oldSelf=startPureHardwareSelfTestFix226; startPureHardwareSelfTestFix226=function(ev){cancelOld('POWER SELFTEST');selfInfo='SELFTEST requested FIX246 frame '+fr();stamp();return oldSelf(ev);};}catch(e){}
+  try{var oldReset=resetPureHardwareFix226; resetPureHardwareFix226=function(ev){cancelOld('RESET');stamp();return oldReset(ev);};}catch(e){}
+
+  try{var oldName=makeLogFileName; makeLogFileName=function(reason){try{var d=new Date();function p(n){return (n<10?'0':'')+n;}var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var prof=(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos');var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,48);return 'atarihelp-FIX246-'+prof+'-'+(reason||'manual')+'-'+ts+'-'+nm+'.txt';}catch(e){return oldName(reason);}};}catch(e){}
+  try{var oldCompat=compatibilitySnapshot; compatibilitySnapshot=function(){log246('VERIFY BUILD STAMP CHECK');log246('VERIFY LOADED YES');log246('FAST '+fastInfo);log246('SELFTEST '+selfInfo);log246('UI '+uiInfo);log246('RULE HARD_LAST_SCRIPT_STAMP / OLD_FIX240_UI_OVERRIDDEN / CACHE_BUST_REQUIRED / FAST_SCREEN_EDITOR_SERVICE / SELFTEST_RAM_DMA_VIEW / NO_FAKE_READY_SELFTEST');return oldCompat.apply(this,arguments);};}catch(e){}
+  try{var oldSave=saveLogToFile; saveLogToFile=function(reason){try{log('BUILD '+TAG);log('FIX246 VERIFY BUILD STAMP CHECK');log('VERIFY LOADED YES');log('FAST '+fastInfo);log('SELFTEST '+selfInfo);log('UI '+uiInfo);log('RULE HARD_LAST_SCRIPT_STAMP / OLD_FIX240_UI_OVERRIDDEN / FAST_SCREEN_EDITOR_SERVICE / SELFTEST_RAM_DMA_VIEW / NO_FAKE_READY_SELFTEST');}catch(e){} return oldSave.apply(this,arguments);};}catch(e){}
+  log246('installed as final separate script after all older FIX blocks');
+})();
+</script>
+
+
+<!-- FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE_FINAL_SCRIPT -->
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE';
+  var fast247='FAST idle - old FIX240 RAW CH pump bypassed';
+  var fastLast247='--';
+  var self247='SELFTEST waiting - clean DLIST/DMA renderer installed';
+  var ui247='UI FIX247 clean unwrap active';
+  var queue247=null;
+  var queueName247='';
+  var queueLine247=0;
+  var queueRun247=false;
+  var queueEpoch247=0;
+  var queueNextFrame247=0;
+  var queueReturns247=0;
+  var queueWrites247=0;
+  var queueChars247=0;
+  var selfRenderCount247=0;
+  var selfNonBg247=0;
+  var selfLastDl247=0;
+  var selfLastSdm247=0;
+  var selfLastChbase247=0;
+  var selfLastPrior247=0;
+  function hx(v,n){try{var s=(Number(v)&(n===2?255:65535)).toString(16).toUpperCase();while(s.length<n)s='0'+s;return s;}catch(e){return '??';}}
+  function frame(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function g(id){return document.getElementById(id);}
+  function stamp(){
+    try{window.EMU_BUILD_TAG=TAG; EMU_BUILD_TAG=TAG;}catch(e){}
+    try{document.title='EMU-09 '+TAG+' / ciste jadro';}catch(e){}
+    try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
+    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX248: SELFTEST ROMDLIST BUS RENDER. Snapshot/FAST uz nejdou pres stare FIX240 writery. Bez fake READY/SELF TEST.';}catch(e){}
+    try{var ps=g('playStatus'); if(ps && ps.textContent.indexOf('FIX247')<0) ps.textContent='FIX248 LOADED: nejdriv over SNAPSHOT BUILD FIX247, potom FAST/SELF TEST.';}catch(e){}
+    try{var xn=g('xexName'); if(xn && (!xn.textContent || xn.textContent.indexOf('FIX247')<0))xn.textContent='XEX: PURE HARDWARE IDLE FIX247 / no XEX';}catch(e){}
+    try{var rn=g('romName'); if(rn)rn.textContent='ROM: built-in ATARIXL.ROM + ATARIBAS.ROM. FIX247 clean unwrap active.';}catch(e){}
+    try{var box=g('inputMapPanel'); if(box){box.classList.add('visible');box.textContent='FIX248 LOADED: stare FIX240 snapshot/fast vrstvy obchazene. Funkce testuj az po snapshot stampu.';}}catch(e){}
+    try{var fast=g('fix240FastBasicBox'); if(fast){var h2=fast.querySelector('h2'); if(h2)h2.textContent='Rychly BASIC text automat FIX247'; var pp=fast.querySelector('p'); if(pp)pp.textContent='Servisni helper po real READY. Nepouziva starou RAW CH scan-code pumpu. Pro kazdy radek: zapis do BASIC editoru + jeden RETURN.'; }}catch(e){}
+  }
+  function prevent(ev){try{if(ev){ev.preventDefault();ev.stopPropagation(); if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
+  function status(){
+    try{
+      var dl=(typeof getDlistPtr==='function')?(getDlistPtr()&65535):(((ram&&ram[0x0230])||0)|(((ram&&ram[0x0231])||0)<<8));
+      var sav=ram?(((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535):0;
+      var nmi=ram?((ram[0xD40E]||0)&255):0;
+      var sdm=ram?(((ram[0x022F]||0)|(ram[0xD400]||0))&255):0;
+      var eff=(typeof fix233EffectivePortB==='function')?fix233EffectivePortB():((typeof piaPortBOut!=='undefined'?piaPortBOut:0xFF)&255);
+      return 'DLIST $'+hx(dl,4)+' SAVMSC $'+hx(sav,4)+' NMIEN $'+hx(nmi,2)+' SDMCTL $'+hx(sdm,2)+' EFF $'+hx(eff,2)+' frame '+frame();
+    }catch(e){return 'status error '+e.message;}
+  }
+  function isSelf(){try{var m=String(typeof fix233Mode!=='undefined'?fix233Mode:(typeof fix232Mode!=='undefined'?fix232Mode:''));return m.indexOf('self')>=0 || (typeof fix215PureSelfTestMode!=='undefined'&&fix215PureSelfTestMode);}catch(e){return false;}}
+  function isReady(){
+    try{
+      if(!ram || typeof activeXexProfile!=='undefined' && activeXexProfile!=='realos')return false;
+      if(isSelf())return false;
+      var dl=(typeof getDlistPtr==='function')?(getDlistPtr()&65535):(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535);
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;
+      var eff=(typeof fix233EffectivePortB==='function')?fix233EffectivePortB():((typeof piaPortBOut!=='undefined'?piaPortBOut:0xFD)&255);
+      return dl>=0x9B00 && dl<=0x9D80 && sav>=0x9B80 && sav<=0xA100 && (eff&2)===0 && (ram[0xD40E]||0)!==0;
+    }catch(e){return false;}
+  }
+  function killOldFast(reason){
+    try{window.fix208BasicAutofeedQueue=[]; fix208BasicAutofeedQueue=[];}catch(e){}
+    try{window.fix208BasicAutofeedActive=false; fix208BasicAutofeedActive=false;}catch(e){}
+    try{window.fix240FastArmed=false; fix240FastArmed=false;}catch(e){}
+    try{window.active242=false; active242=false;}catch(e){}
+    try{window.active243=false; active243=false;}catch(e){}
+    try{window.active244=false; active244=false;}catch(e){}
+    try{if(typeof fix240CancelFast==='function')fix240CancelFast('FIX247 '+reason);}catch(e){}
+    try{if(typeof fix242Cancel==='function')fix242Cancel('FIX247 '+reason);}catch(e){}
+    try{if(typeof fix211ClearKeyboardLatchAfterAutopaste==='function')fix211ClearKeyboardLatchAfterAutopaste('FIX247 '+reason);}catch(e){}
+    try{if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}}catch(e){}
+  }
+  function cleanLines(text,run){
+    text=String(text||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    var lines=text.split('\n').map(function(l){return String(l||'').replace(/[\t]+/g,' ').replace(/\s+$/,'');}).filter(function(l){return l.length>0;});
+    if(run)lines.push('RUN');
+    return lines;
+  }
+  function sc(ch){
+    var c=String(ch||' ').charCodeAt(0)&255;
+    if(c>=97&&c<=122)c-=32;
+    if(c>=32&&c<=95)return (c-32)&255;
+    return 0;
+  }
+  function cursorRow(){
+    try{var r=(ram[0x54]||0)&31; if(r>=2&&r<23)return r;}catch(e){}
+    try{var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535; for(var y=2;y<22;y++){var n=0; for(var x=0;x<38;x++)if((ram[(sav+y*40+x)&65535]&127)!==0)n++; if(n===0)return y;}}catch(e){}
+    return 2;
+  }
+  function writeEditorLine(line){
+    try{
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535; if(!(sav>=0x9000&&sav<0xA800))sav=0x9C40;
+      var row=cursorRow(); var max=Math.min(String(line).length,39); var addr=(sav+row*40)&65535;
+      for(var i=0;i<40;i++)ram[(addr+i)&65535]=0;
+      for(var j=0;j<max;j++)ram[(addr+j)&65535]=sc(String(line).charAt(j));
+      ram[0x54]=row&255; ram[0x55]=max&255; ram[0x56]=0;
+      fast247='FAST WRITE '+queueName247+' line '+(queueLine247+1)+'/'+queue247.length+' row '+row+' col '+max+' "'+String(line).slice(0,60)+'" '+status();
+      return true;
+    }catch(e){fast247='FAST WRITE error '+e.message; return false;}
+  }
+  function pressReturn(){
+    try{
+      if(typeof armRealOsAtasciiFix172==='function')armRealOsAtasciiFix172('FIX247 RETURN',0x9B);
+      else if(typeof tapAtariKey==='function')tapAtariKey('ENTER');
+      else if(ram){ram[0x02FC]=0x0C;ram[0x02FB]=0x9B;ram[0xD209]=0x0C;}
+      queueReturns247++;
+      fastLast247='RETURN '+queueReturns247+' after screen write frame '+frame();
+    }catch(e){fastLast247='RETURN error '+e.message;}
+  }
+  function pumpFast(){
+    try{
+      if(!queue247)return;
+      var f=frame(); if(f<queueNextFrame247)return;
+      killOldFast('pump guard');
+      if(!isReady()){fast247='WAIT READY '+queueName247+' '+status(); queueNextFrame247=f+30; return;}
+      if(queueLine247>=queue247.length){
+        fast247='QUEUE COMPLETE '+queueName247+' lines '+queue247.length+' chars '+queueChars247+' writes '+queueWrites247+' returns '+queueReturns247+' epoch '+queueEpoch247+' frame '+f+' / LATCH CLEAR';
+        fastLast247=fast247; queue247=null; killOldFast('complete'); try{updatePlayStatus('FIX247 FAST COMPLETE. Dej LIST a snapshot.');}catch(e){} return;
+      }
+      var line=queue247[queueLine247];
+      if(writeEditorLine(line)){queueWrites247++; pressReturn(); queueLine247++; queueNextFrame247=f+(line==='RUN'?150:130);} else queueNextFrame247=f+40;
+    }catch(e){fast247='FAST pump error '+e.message; queue247=null;}
+  }
+  function queueFast(text,name,run,ev){
+    prevent(ev); stamp(); killOldFast('new request');
+    queue247=cleanLines(text,!!run); queueName247=String(name||'FAST BASIC'); queueLine247=0; queueRun247=!!run; queueReturns247=0; queueWrites247=0; queueChars247=queue247.join('\n').length;
+    queueEpoch247=(typeof fix223InputEpoch!=='undefined'?((fix223InputEpoch|0)+1):(queueEpoch247+1)); try{fix223InputEpoch=queueEpoch247;}catch(e){}
+    queueNextFrame247=frame()+25;
+    if(!queue247.length){fast247='EMPTY request '+queueName247;return false;}
+    fast247='FAST BASIC QUEUE START '+queueName247+' lines '+queue247.length+' chars '+queueChars247+' epoch '+queueEpoch247+' WAIT READY / screen editor service / real RETURN / no RAW CH scan-code';
+    fastLast247=fast247;
+    try{updatePlayStatus('FIX247 FAST: WAIT READY, pak screen-editor zapis radku + RETURN.');}catch(e){}
+    try{if(!playMode && typeof startPlaying==='function')startPlaying();}catch(e){}
+    return false;
+  }
+  window.queueFastBasicFix247=function(text,name,run,ev){return queueFast(text,name,run,ev);};
+  window.queueFastBasicFix244=function(text,name,run,ev){return queueFast(text,name||'FAST BASIC',run,ev);};
+  window.queueFastBasicFix243=function(text,name,run,ev){return queueFast(text,name||'FAST BASIC',run,ev);};
+  window.queueFastBasicFix242=function(text,name,run,ev){return queueFast(text,name||'FAST BASIC',run,ev);};
+  window.queueFastBasicFix240=function(text,name,run){return queueFast(text,name||'FAST BASIC',run,null);};
+  window.basicTxtFastFix240=function(ev){var ta=g('fix240BasicFastText');return queueFast(ta?ta.value:'','BASIC TXT FAST',false,ev);};
+  window.vlozitFastFix240=function(ev){var ta=g('fix240BasicFastText');return queueFast(ta?ta.value:'','VLOZIT FAST',false,ev);};
+  window.vlozitFastRunFix240=function(ev){var ta=g('fix240BasicFastText');return queueFast(ta?ta.value:'','VLOZIT FAST + RUN',true,ev);};
+  window.submarineFastFix240=function(ev){var prog=(typeof submarineBasicProgramFix207==='function')?submarineBasicProgramFix207():'10 PRINT "SUBMARINE"\n20 GOTO 20';return queueFast(prog,'SUBMARINE FAST',false,ev);};
+  function rebindFastButtons(){
+    try{var fast=g('fix240FastBasicBox'); if(!fast)return; var bs=fast.querySelectorAll('button'); var kinds=['txt','vlozit','run','sub']; for(var i=0;i<bs.length;i++){(function(btn,kind){var b=btn.cloneNode(true); b.onclick=function(ev){if(kind==='txt')return window.basicTxtFastFix240(ev); if(kind==='vlozit')return window.vlozitFastFix240(ev); if(kind==='run')return window.vlozitFastRunFix240(ev); return window.submarineFastFix240(ev);}; ['pointerup','touchend','click'].forEach(function(n){b.addEventListener(n,function(ev){return b.onclick(ev);},{passive:false});}); btn.parentNode.replaceChild(b,btn);})(bs[i],kinds[i]||'vlozit');}}
+    catch(e){ui247='UI rebind error '+e.message;}
+  }
+  function rgbFromColor(v,fb){try{return rgbFromCss(atariColor(v&255));}catch(e){return fb||[255,255,255];}}
+  function setpx(d,x,y,rgb){if(x<0||x>=320||y<0||y>=240)return; var o=(y*320+x)*4; d[o]=rgb[0]; d[o+1]=rgb[1]; d[o+2]=rgb[2]; d[o+3]=255;}
+  function drawRect(d,x,y,w,h,rgb){for(var yy=0;yy<h;yy++)for(var xx=0;xx<w;xx++)setpx(d,x+xx,y+yy,rgb);}
+  function selfRender(){
+    try{
+      if(!ram || !isSelf())return false;
+      var dl=(typeof getDlistPtr==='function')?(getDlistPtr()&65535):(((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535);
+      if(!(dl>=0x5000&&dl<=0x57FF))return false;
+      var canvas=g('video'); if(!canvas)return false; var ctx=canvas.getContext('2d'); var img=ctx.createImageData(320,240); var d=img.data;
+      var p0=(ram[0xD016]||ram[0x02C4]||0x0C)&255, p1=(ram[0xD017]||ram[0x02C5]||0x32)&255, p2=(ram[0xD018]||ram[0x02C6]||0xD6)&255, p3=(ram[0xD019]||ram[0x02C7]||0x46)&255, bk=(ram[0xD01A]||ram[0x02C8]||0xA0)&255;
+      var colors=[rgbFromColor(bk,[0,0,0]),rgbFromColor(p0,[221,221,221]),rgbFromColor(p1,[158,78,59]),rgbFromColor(p2,[161,197,117]),rgbFromColor(p3,[201,85,98])];
+      for(var y=0;y<240;y++)for(var x=0;x<320;x++)setpx(d,x,y,colors[0]);
+      var p=dl, addr=0, ypix=0, safety=0, non=0, chbase=(ram[0xD409]||ram[0x02F4]||0xE0)&255;
+      while(ypix<240 && safety++<120){
+        var op=ram[p++&65535]&255, mode=op&15;
+        if(mode===1)break;
+        if(mode===0){ypix+=(((op>>4)&7)+1)*8; continue;}
+        if(op&0x40){addr=(ram[p++&65535]|(ram[p++&65535]<<8))&65535;}
+        var h=(mode===7?16:8); var cols=(mode===6||mode===7)?20:40; var bytes=(mode===6||mode===7)?20:40;
+        if(mode===6||mode===7){
+          for(var row=0;row<h;row++){
+            var scan=row&7;
+            for(var c=0;c<cols;c++){
+              var raw=ram[(addr+c)&65535]&255; if(raw)non++;
+              var bits=0; try{bits=charsetByteForCode(raw,mode,scan,chbase)&255;}catch(e){bits=0;}
+              var fg=colors[1+((raw>>6)&3)]||colors[2];
+              var inv=(raw&0x80)!==0;
+              for(var b=0;b<8;b++){var on=(bits&(0x80>>b))!==0; if(inv)on=!on; drawRect(d,c*16+b*2,ypix+row,2,1,on?fg:colors[0]);}
+            }
+          }
+        }else if(mode===8||mode===9||mode===10||mode===11||mode===14||mode===15){
+          // Generic bitmap/map view: draw real DMA bytes from RAM. No menu text is invented.
+          for(var row2=0;row2<h;row2++){
+            for(var bi=0;bi<bytes;bi++){
+              var val=ram[(addr+bi)&65535]&255; if(val)non++;
+              for(var bit=0;bit<8;bit++){var on2=(val&(0x80>>bit))!==0; setpx(d,bi*8+bit,ypix+row2,on2?colors[3]:colors[0]);}
+            }
+          }
+        }
+        addr=(addr+bytes)&65535; ypix+=h;
+      }
+      ctx.putImageData(img,0,0);
+      selfRenderCount247++; selfNonBg247=non; selfLastDl247=dl; selfLastSdm247=(ram[0x022F]||ram[0xD400]||0)&255; selfLastChbase247=chbase; selfLastPrior247=(ram[0xD01B]||ram[0x026F]||0)&255;
+      self247='SELFTEST DLIST/DMA render live dl $'+hx(dl,4)+' SDMCTL $'+hx(selfLastSdm247,2)+' CHBASE $'+hx(chbase,2)+' PRIOR $'+hx(selfLastPrior247,2)+' nonzero '+non+' renders '+selfRenderCount247+' frame '+frame();
+      return true;
+    }catch(e){self247='SELFTEST render error '+e.message; return false;}
+  }
+  function screenRows(){
+    var lines=[]; try{var sav=ram?(((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535):0; for(var r=0;r<6;r++){var s='',bytes=[]; for(var c=0;c<40;c++){var b=(ram&&sav)?(ram[(sav+r*40+c)&65535]&255):0; bytes.push(hx(b,2)); try{s+=screenChar(b&127);}catch(e){s+=' ';}} lines.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+bytes.join(' '));}}catch(e){lines.push('rows error '+e.message);} return lines;
+  }
+  function dlistBytes(){try{var dl=(typeof getDlistPtr==='function')?(getDlistPtr()&65535):(((ram&&ram[0x0230])||0)|(((ram&&ram[0x0231])||0)<<8)); if(!dl)return 'none'; var a=[]; for(var i=0;i<64;i++)a.push(hx(ram[(dl+i)&65535]||0,2)); return '$'+hx(dl,4)+': '+a.join(' ');}catch(e){return 'err '+e.message;}}
+  function cleanSnapshotText(reason){
+    var lines=[]; var d=new Date();
+    lines.push('AtariHelp.eu EMU-09 FIX248 SELFTEST ROMDLIST BUS RENDER');
+    lines.push('cas='+d.toISOString());
+    lines.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));
+    lines.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));
+    lines.push('build='+TAG);
+    lines.push('');
+    lines.push('[STATUS]');
+    try{lines.push((cpu?('PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started'));}catch(e){lines.push('CPU status err '+e.message);}
+    lines.push(status());
+    try{lines.push('PIA OUT $'+hx(typeof piaPortBOut!=='undefined'?piaPortBOut:0xFF,2)+' DDR $'+hx(typeof piaPortBDDR!=='undefined'?piaPortBDDR:0,2)+' PBCTL $'+hx(typeof piaPortBCtl!=='undefined'?piaPortBCtl:0,2)+' EFFECTIVE $'+hx((typeof fix233EffectivePortB==='function'?fix233EffectivePortB():(typeof piaPortBOut!=='undefined'?piaPortBOut:0xFF)),2)+' SELFTEST '+(isSelf()?'ON':'OFF'));}catch(e){}
+    try{lines.push('POKEY D200-D208 '+[0,1,2,3,4,5,6,7,8].map(function(i){return '$'+hx(ram[0xD200+i]||0,2);}).join(' '));}catch(e){}
+    lines.push('');
+    lines.push('[LOG]');
+    lines.push('PURE HARDWARE SNAPSHOT FIX247');
+    lines.push('BUILD '+TAG);
+    lines.push('FIX248 SELFTEST ROMDLIST BUS RENDER CHECK');
+    lines.push('VERIFY LOADED YES');
+    lines.push('OLD WRAPPERS BYPASSED: snapshot writer does not call FIX240/FIX239 compatibility chain');
+    try{lines.push('ROM ATARIXL 16384 md5 06daac977823773a3eea3422fd26a703'); lines.push('ROM BASIC 8192 md5 0bac0c6a50104045d902df4503a4c30b');}catch(e){}
+    try{lines.push('ANTIC '+(typeof decodeDlistShort==='function'?decodeDlistShort((typeof getDlistPtr==='function'?getDlistPtr():0)):'decode unavailable'));}catch(e){lines.push('ANTIC err '+e.message);}
+    lines.push('DLIST BYTES '+dlistBytes());
+    lines.push('FAST '+fast247);
+    lines.push('FASTLAST '+fastLast247);
+    lines.push('SELFTEST '+self247);
+    lines.push('SELFTEST DMA DLIST $'+hx(selfLastDl247,4)+' SDMCTL $'+hx(selfLastSdm247,2)+' CHBASE $'+hx(selfLastChbase247,2)+' PRIOR $'+hx(selfLastPrior247,2)+' nonBg '+selfNonBg247+' renders '+selfRenderCount247);
+    lines.push('SCREEN PROOF');
+    lines=lines.concat(screenRows());
+    try{lines.push('TRACE'); if(cpu&&cpu.trace)lines=lines.concat(cpu.trace.slice(-18));}catch(e){}
+    lines.push('RULE FIX247_CLEAN_SNAPSHOT_WRITER / OLD_FIX240_RUNTIME_LOG_BYPASSED / FAST_SCREEN_EDITOR_SERVICE_AFTER_REAL_READY / NO_RAW_CH_SCAN_PASTE / SELFTEST_DLIST_DMA_RENDER_FROM_RAM / NO_DRAWN_READY_SELFTEST');
+    return lines.join('\n');
+  }
+  function filename(reason){var d=new Date();function p(n){return (n<10?'0':'')+n;}var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,48);return 'atarihelp-FIX248-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function hardSave(text,reason){
+    var fn=filename(reason||'snapshot');
+    try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(text,fn); return true;}}catch(e){}
+    try{var blob=new Blob([text],{type:'text/plain;charset=utf-8'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href); a.remove();},500); return true;}catch(e){return false;}
+  }
+  window.compatibilitySnapshotCore=function(){stamp(); var text=cleanSnapshotText('snapshot'); var el=g('log'); if(el)el.textContent=text; try{updatePlayStatus('FIX247 snapshot ulozen cistym writerem. Stare FIX240 logy nejsou volane.');}catch(e){} hardSave(text,'snapshot'); return false;};
+  window.compatibilitySnapshot=function(ev){prevent(ev); return window.compatibilitySnapshotCore();};
+  window.saveCurrentLogToMobile=function(reason){stamp(); var el=g('log'); var text=(el&&el.textContent&&el.textContent.indexOf('BUILD '+TAG)>=0)?el.textContent:cleanSnapshotText(reason||'manual'); return hardSave(text,reason||'manual');};
+  window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');};
+  window.makeLogFileName=function(reason){return filename(reason||'snapshot');};
+  function wrapPower(){
+    try{var oldB=window.startPureHardwareBasicFix226||startPureHardwareBasicFix226; window.startPureHardwareBasicFix226=function(ev){prevent(ev); killOldFast('POWER BASIC'); var r=oldB.call(this,ev); return r;}; /* FIX261 removed old FIX247 UI stamp on POWER BASIC */}catch(e){}
+    try{var oldS=window.startPureHardwareSelfTestFix226||startPureHardwareSelfTestFix226; window.startPureHardwareSelfTestFix226=function(ev){prevent(ev); killOldFast('POWER SELFTEST'); self247='SELFTEST requested FIX247 '+status(); var r=oldS.call(this,ev); return r;}; /* FIX261 removed old FIX247 UI stamp on SELFTEST */}catch(e){}
+    try{var oldR=window.resetPureHardwareFix226||resetPureHardwareFix226; window.resetPureHardwareFix226=function(ev){prevent(ev); killOldFast('RESET'); var r=oldR.call(this,ev); return r;}; /* FIX261 removed old FIX247 UI stamp on RESET */}catch(e){}
+  }
+  try{var oldStep247=CPU6502.prototype.step; CPU6502.prototype.step=function(){try{pumpFast();}catch(e){} return oldStep247.apply(this,arguments);};}catch(e){fast247='CPU step hook install error '+e.message;}
+  try{var oldRF=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric; window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(selfRender())return true; return oldRF.apply(this,arguments);};}catch(e){}
+  try{var oldRD=window.renderAnticDisplay||renderAnticDisplay; window.renderAnticDisplay=renderAnticDisplay=function(){if(selfRender())return; return oldRD.apply(this,arguments);};}catch(e){}
+  wrapPower(); try{rebindFastButtons();}catch(e){} /* FIX261: old FIX247 delayed UI stamps disabled. */
+})();
+</script>
+
+
+<!-- FIX248_SELFTEST_ROMDLIST_BUS_RENDER_FINAL_SCRIPT -->
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX248_SELFTEST_ROMDLIST_BUS_RENDER_CORE';
+  var selfInfo248='SELFTEST FIX248 waiting - ROM-bus DLIST renderer installed';
+  var selfDma248='DLIST none';
+  var selfRenders248=0;
+  var selfNonBg248=0;
+  var selfDataNonZero248=0;
+  var lastDl248=0,lastSdm248=0,lastChbase248=0,lastPrior248=0;
+  var fastInfo248='FAST FIX248: FIX247 screen editor helper preserved; FAST porad neni prohlaseny za hotovy';
+  var fastLast248='--';
+  function hx(v,n){var s=((Number(v)||0)&(n===2?255:65535)).toString(16).toUpperCase(); while(s.length<n)s='0'+s; return s;}
+  function g(id){return document.getElementById(id);}
+  function frame(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function stamp(){
+    try{window.EMU_BUILD_TAG=TAG; EMU_BUILD_TAG=TAG;}catch(e){}
+    try{document.title='EMU-09 '+TAG;}catch(e){}
+    try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
+    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX248: SELFTEST DLIST se cte pres ROM/bus mapovani, ne raw RAM. FAST helper zustava servisni, bez fake bootu.';}catch(e){}
+    try{var ps=g('playStatus'); if(ps && ps.textContent.indexOf('FIX248')<0) ps.textContent='FIX248 LOADED: self-test DLIST cten pres ROM bus; testuj self-test + snapshot.';}catch(e){}
+    try{var box=g('inputMapPanel'); if(box){box.classList.add('visible');box.textContent='FIX248 LOADED: self-test DLIST $5000-$57FF se cte pres ROM/bus, data kresli z RAM. Bez kresleneho SELF TEST fake.';}}catch(e){}
+    try{var rn=g('romName'); if(rn)rn.textContent='ROM: built-in ATARIXL.ROM + ATARIBAS.ROM. FIX248 ROM-bus DLIST render active.';}catch(e){}
+  }
+  function isSelf(){try{var m=String(typeof fix233Mode!=='undefined'?fix233Mode:(typeof fix232Mode!=='undefined'?fix232Mode:'')); return m.indexOf('self')>=0 || !!(typeof fix215PureSelfTestMode!=='undefined'&&fix215PureSelfTestMode);}catch(e){return false;}}
+  function rd(a){
+    a&=65535;
+    try{ if(typeof optionalRomByteAt==='function'){var b=optionalRomByteAt(a); if(b>=0)return b&255;} }catch(e){}
+    try{return ram[a&65535]&255;}catch(e){return 0;}
+  }
+  function raw(a){try{return ram[a&65535]&255;}catch(e){return 0;}}
+  function getDl(){try{return (typeof getDlistPtr==='function')?(getDlistPtr()&65535):(((raw(0x0230))|((raw(0x0231))<<8))&65535);}catch(e){return 0;}}
+  function statusLine(){try{return 'DLIST $'+hx(getDl(),4)+' SAVMSC $'+hx((raw(0x58)|(raw(0x59)<<8))&65535,4)+' NMIEN $'+hx(raw(0xD40E),2)+' SDMCTL $'+hx((raw(0x022F)|raw(0xD400))&255,2)+' DMACTL $'+hx(raw(0xD400),2)+' CHBASE $'+hx((raw(0xD409)||raw(0x02F4))&255,2)+' PRIOR $'+hx((raw(0xD01B)||raw(0x026F))&255,2)+' frame '+frame();}catch(e){return 'status err '+e.message;}}
+  function rgbFromColor(v,fb){
+    try{ if(typeof gtiaByteToRgbFix239==='function')return gtiaByteToRgbFix239(v&255); }catch(e){}
+    try{ if(typeof atariColorToRgbFix239==='function')return atariColorToRgbFix239(v&255); }catch(e){}
+    return fb||[0,0,0];
+  }
+  function setpx(d,x,y,rgb){if(x<0||x>=320||y<0||y>=240)return; var o=(y*320+x)*4; d[o]=rgb[0]&255; d[o+1]=rgb[1]&255; d[o+2]=rgb[2]&255; d[o+3]=255;}
+  function rect(d,x,y,w,h,rgb){for(var yy=0;yy<h;yy++)for(var xx=0;xx<w;xx++)setpx(d,x+xx,y+yy,rgb);}
+  function charBits(code,scan,chbase){
+    try{ if(typeof charsetByteForCode==='function')return charsetByteForCode(code&255,2,scan&7,chbase&255)&255; }catch(e){}
+    var base=(chbase&255)<<8; var off=(base+((code&127)<<3)+(scan&7))&65535; return rd(off)&255;
+  }
+  function countNonzeroRange(start,len){var n=0; try{for(var i=0;i<len;i++){if(raw(start+i))n++;}}catch(e){} return n;}
+  function dlistBytesBus(dl){try{var out=[]; for(var i=0;i<64;i++)out.push(hx(rd((dl+i)&65535),2)); return '$'+hx(dl,4)+': '+out.join(' ');}catch(e){return 'err '+e.message;}}
+  function dlistBytesRaw(dl){try{var out=[]; for(var i=0;i<64;i++)out.push(hx(raw((dl+i)&65535),2)); return '$'+hx(dl,4)+': '+out.join(' ');}catch(e){return 'err '+e.message;}}
+  function renderSelf248(){
+    try{
+      if(!ram || !isSelf())return false;
+      var dl=getDl(); if(!(dl>=0x5000&&dl<=0x57FF))return false;
+      var canvas=g('video'); if(!canvas)return false; var ctx=canvas.getContext('2d'); var img=ctx.createImageData(320,240), d=img.data;
+      var c0=raw(0xD016)||raw(0x02C4)||0x0C, c1=raw(0xD017)||raw(0x02C5)||0x32, c2=raw(0xD018)||raw(0x02C6)||0xD6, c3=raw(0xD019)||raw(0x02C7)||0x46, cb=raw(0xD01A)||raw(0x02C8)||0xA0;
+      var bg=rgbFromColor(cb,[0,0,0]), pf0=rgbFromColor(c0,[221,221,221]), pf1=rgbFromColor(c1,[158,78,59]), pf2=rgbFromColor(c2,[161,197,117]), pf3=rgbFromColor(c3,[201,85,98]);
+      var colors=[bg,pf0,pf1,pf2,pf3];
+      for(var y=0;y<240;y++)for(var x=0;x<320;x++)setpx(d,x,y,bg);
+      var p=dl, addr=0, ypix=0, safety=0, non=0, dataNon=0, chbase=(raw(0xD409)||raw(0x02F4)||0xE0)&255;
+      while(ypix<240 && safety++<160){
+        var op=rd(p++), mode=op&15;
+        if(mode===1)break;
+        if(mode===0){ypix+=(((op>>4)&7)+1)*8; continue;}
+        if(op&0x40){addr=(rd(p)|(rd((p+1)&65535)<<8))&65535; p=(p+2)&65535;}
+        var h=(mode===7?16:8); var cols=(mode===6||mode===7)?20:40; var bytes=(mode===6||mode===7)?20:40;
+        if(mode===2||mode===3){cols=40; bytes=40; h=8;}
+        if(mode===6||mode===7||mode===2||mode===3){
+          for(var row=0;row<h;row++){
+            var scan=row&7;
+            for(var cc=0;cc<cols;cc++){
+              var rawch=raw((addr+cc)&65535)&255; if(rawch){dataNon++;}
+              var bits=charBits(rawch,scan,chbase); var inv=(rawch&0x80)!==0; var fg=colors[1+((rawch>>6)&3)]||pf0;
+              for(var b=0;b<8;b++){var on=(bits&(0x80>>b))!==0; if(inv)on=!on; if(on)non++; var px=(mode===6||mode===7)?(cc*16+b*2):(cc*8+b); var ww=(mode===6||mode===7)?2:1; rect(d,px,ypix+row,ww,1,on?fg:bg);}
+            }
+          }
+        }else if(mode===8||mode===9||mode===10||mode===11||mode===14||mode===15){
+          for(var row2=0;row2<h;row2++){
+            for(var bi=0;bi<bytes;bi++){
+              var val=raw((addr+bi)&65535)&255; if(val)dataNon++;
+              for(var bit=0;bit<8;bit++){var on2=(val&(0x80>>bit))!==0; if(on2)non++; setpx(d,bi*8+bit,ypix+row2,on2?pf2:bg);}
+            }
+          }
+        }
+        addr=(addr+bytes)&65535; ypix+=h;
+      }
+      ctx.putImageData(img,0,0);
+      selfRenders248++; selfNonBg248=non; selfDataNonZero248=dataNon; lastDl248=dl; lastSdm248=(raw(0x022F)||raw(0xD400))&255; lastChbase248=chbase; lastPrior248=(raw(0xD01B)||raw(0x026F))&255;
+      selfInfo248='SELFTEST FIX248 ROM-BUS DLIST render dl $'+hx(dl,4)+' SDMCTL $'+hx(lastSdm248,2)+' CHBASE $'+hx(chbase,2)+' PRIOR $'+hx(lastPrior248,2)+' pixels '+non+' dataNonZero '+dataNon+' RAM3000nonzero '+countNonzeroRange(0x3000,0x400)+' renders '+selfRenders248+' frame '+frame();
+      selfDma248='BUS '+dlistBytesBus(dl)+' | RAW '+dlistBytesRaw(dl);
+      return true;
+    }catch(e){selfInfo248='SELFTEST FIX248 render error '+(e&&e.message?e.message:e); return false;}
+  }
+  function screenRows(){var lines=[]; try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535; for(var r=0;r<6;r++){var s='',bytes=[]; for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0; bytes.push(hx(b,2)); try{s+=screenChar(b&127);}catch(e){s+=' ';}} lines.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+bytes.join(' '));}}catch(e){lines.push('rows error '+e.message);} return lines;}
+  function cleanSnapshot248(reason){
+    try{renderSelf248();}catch(e){}
+    var lines=[]; lines.push('AtariHelp.eu EMU-09 FIX248 SELFTEST ROMDLIST BUS RENDER CORE');
+    lines.push('cas='+(new Date()).toISOString()); lines.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX')); lines.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos')); lines.push('build='+TAG); lines.push('');
+    lines.push('[STATUS]'); try{lines.push(cpu?('PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){}
+    lines.push(statusLine()); try{lines.push('PIA OUT $'+hx(typeof piaPortBOut!=='undefined'?piaPortBOut:0xFF,2)+' DDR $'+hx(typeof piaPortBDDR!=='undefined'?piaPortBDDR:0,2)+' PBCTL $'+hx(typeof piaPortBCtl!=='undefined'?piaPortBCtl:0,2)+' EFFECTIVE $'+hx((typeof fix233EffectivePortB==='function'?fix233EffectivePortB():(typeof piaPortBOut!=='undefined'?piaPortBOut:0xFF)),2)+' SELFTEST '+(isSelf()?'ON':'OFF'));}catch(e){}
+    lines.push(''); lines.push('[LOG]'); lines.push('PURE HARDWARE SNAPSHOT FIX248'); lines.push('BUILD '+TAG); lines.push('FIX248 SELFTEST ROMDLIST BUS RENDER CHECK'); lines.push('VERIFY LOADED YES'); lines.push('OLD WRAPPERS BYPASSED / FIX247 clean writer kept');
+    lines.push('ANTIC '+(function(){try{return (typeof decodeDlistShort==='function'?decodeDlistShort(getDl()):'decode unavailable');}catch(e){return 'err '+e.message;}})());
+    lines.push('DLIST BYTES BUS '+dlistBytesBus(getDl())); lines.push('DLIST BYTES RAW '+dlistBytesRaw(getDl()));
+    lines.push('SELFTEST '+selfInfo248); lines.push('SELFTEST DMA '+selfDma248); lines.push('RAM SAMPLE $3000 nonzero '+countNonzeroRange(0x3000,0x400)+' / $BC40 nonzero '+countNonzeroRange(0xBC40,0x400));
+    lines.push('FAST '+fastInfo248); lines.push('FASTLAST '+fastLast248); lines.push('SCREEN PROOF'); lines=lines.concat(screenRows()); try{lines.push('TRACE'); if(cpu&&cpu.trace)lines=lines.concat(cpu.trace.slice(-18));}catch(e){}
+    lines.push('RULE FIX248_ROM_BUS_DLIST_READ_FOR_SELFTEST / RAM_DMA_DATA_FROM_$3000 / SDMCTL_CHBASE_PRIOR_LIVE / OLD_FIX240_RUNTIME_BYPASSED / NO_DRAWN_SELFTEST_FAKE'); return lines.join('\n');
+  }
+  function fname(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;}; var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds()); var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50); return 'atarihelp-FIX248-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function save248(txt,reason){var fn=fname(reason||'snapshot'); try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(txt,fn); return true;}}catch(e){} try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'}),a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href); a.remove();},500); return true;}catch(e){return false;}}
+  window.compatibilitySnapshotCore=function(){stamp(); var text=cleanSnapshot248('snapshot'); var el=g('log'); if(el)el.textContent=text; try{updatePlayStatus('FIX248 snapshot: self-test DLIST BUS/RAW porovnani ulozeno.');}catch(e){} save248(text,'snapshot'); return false;};
+  window.compatibilitySnapshot=function(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return window.compatibilitySnapshotCore();};
+  window.saveCurrentLogToMobile=function(reason){stamp(); var text=cleanSnapshot248(reason||'manual'); return save248(text,reason||'manual');};
+  window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');};
+  window.makeLogFileName=function(reason){return fname(reason||'snapshot');};
+  try{var oldFastRender248=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric; window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(renderSelf248())return true; return oldFastRender248.apply(this,arguments);};}catch(e){}
+  try{var oldRender248=window.renderAnticDisplay||renderAnticDisplay; window.renderAnticDisplay=renderAnticDisplay=function(){if(renderSelf248())return; return oldRender248.apply(this,arguments);};}catch(e){}
+  /* FIX261: old FIX248 delayed UI stamps disabled. */
+})();
+</script>
+
+
+
+
+
+</body>
+</html>
+
+
+<!-- FIX249_CASSETTE_SCAFFOLD_SELFTEST_COLORROLE_CORE_FINAL_SCRIPT -->
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX249_CASSETTE_SCAFFOLD_SELFTEST_COLORROLE_CORE';
+  try{window.EMU_BUILD_TAG=TAG;}catch(e){}
+  var cassette={inserted:false,name:'--',size:0,type:'--',playing:false,motor:false,pos:0,blocks:0,last:'CASSETTE idle - no file inserted',epoch:0,cload:'CLOAD not requested'};
+  var selfInfo='SELFTEST FIX249 waiting - color-role DLIST renderer installed';
+  var selfDma='SELFTEST DMA waiting';
+  var selfRenders=0,selfPixels=0,selfData=0,selfRam3000=0,selfDl=0,selfSdm=0,selfChbase=0,selfPrior=0,selfBus='',selfRaw='';
+  function g(id){return document.getElementById(id);} function hx(v,n){try{return (v>>>0).toString(16).toUpperCase().padStart(n||2,'0');}catch(e){return '??';}}
+  function raw(a){try{return (ram[a&65535]||0)&255;}catch(e){return 0;}}
+  function rd(a){a&=65535; try{ if(a>=0x5000&&a<0x5800 && typeof readMem==='function')return readMem(a)&255; }catch(e){} try{ if(a>=0x5000&&a<0x5800 && typeof cpuRead==='function')return cpuRead(a)&255; }catch(e){} try{ if(a>=0x5000&&a<0x5800 && typeof optionalRomByteAt==='function'){var b=optionalRomByteAt(a); if(b>=0)return b&255;} }catch(e){} return raw(a);}
+  function dlptr(){try{return (typeof getDlistPtr==='function'?getDlistPtr():((raw(0x230)|(raw(0x231)<<8))&65535))&65535;}catch(e){return 0;}}
+  function frame(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function isSelf(){try{return (typeof fix225PureHardwareMode!=='undefined'&&fix225PureHardwareMode&&String(fix225PureHardwareMode).indexOf('self')>=0)||(typeof currentXexName!=='undefined'&&String(currentXexName).toLowerCase().indexOf('self')>=0)||((typeof fix233EffectivePortB==='function'?fix233EffectivePortB():raw(0xD301))&0x80)===0;}catch(e){return false;}}
+  function rgb(v,fb){try{if(typeof gtiaByteToRgbFix239==='function')return gtiaByteToRgbFix239(v&255);}catch(e){} try{if(typeof atariColorToRgbFix239==='function')return atariColorToRgbFix239(v&255);}catch(e){} return fb||[0,0,0];}
+  function setpx(d,x,y,c){if(x<0||x>=320||y<0||y>=240)return;var o=(y*320+x)*4;d[o]=c[0]&255;d[o+1]=c[1]&255;d[o+2]=c[2]&255;d[o+3]=255;}
+  function rect(d,x,y,w,h,c){for(var yy=0;yy<h;yy++)for(var xx=0;xx<w;xx++)setpx(d,x+xx,y+yy,c);}
+  function modeInfo(m){try{if(typeof anticModeInfo==='function')return anticModeInfo(m);}catch(e){} var t={2:{bytes:40,scan:8,kind:'text40'},3:{bytes:40,scan:10,kind:'text40'},6:{bytes:20,scan:8,kind:'text20'},7:{bytes:20,scan:16,kind:'text20'},8:{bytes:10,scan:8,kind:'map2',px:8},9:{bytes:10,scan:4,kind:'map1',px:4},10:{bytes:20,scan:4,kind:'map2',px:4},11:{bytes:20,scan:2,kind:'map1',px:2},12:{bytes:20,scan:1,kind:'map1',px:2},13:{bytes:40,scan:2,kind:'map2',px:2},14:{bytes:40,scan:1,kind:'map2',px:2},15:{bytes:40,scan:1,kind:'map1',px:1}}; return t[m]||{bytes:40,scan:1,kind:'map2',px:2};}
+  function stride(m,sdm){try{if(typeof lineStrideBytesForDma==='function')return lineStrideBytesForDma(m,sdm&255)|0;}catch(e){} var base=modeInfo(m).bytes; var w=sdm&3; if(!w)w=2; if(base===40)return w===3?48:(w===1?32:40); if(base===20)return w===3?24:(w===1?16:20); if(base===10)return w===3?12:(w===1?8:10); return base;}
+  function charBits(code,scan,chb){try{if(typeof charsetByteForCode==='function')return charsetByteForCode(code&255,2,scan&7,chb&255)&255;}catch(e){} return rd(((chb&255)<<8)+((code&127)<<3)+(scan&7));}
+  function countNZ(a,l){var n=0;try{for(var i=0;i<l;i++)if(raw(a+i))n++;}catch(e){}return n;}
+  function bytesBus(dl){var a=[];try{for(var i=0;i<64;i++)a.push(hx(rd(dl+i),2));}catch(e){return 'err '+e.message;}return '$'+hx(dl,4)+': '+a.join(' ');} function bytesRaw(dl){var a=[];try{for(var i=0;i<64;i++)a.push(hx(raw(dl+i),2));}catch(e){return 'err '+e.message;}return '$'+hx(dl,4)+': '+a.join(' ');}
+  function statusLine(){return 'DLIST $'+hx(dlptr(),4)+' SAVMSC $'+hx((raw(0x58)|(raw(0x59)<<8))&65535,4)+' NMIEN $'+hx(raw(0xD40E),2)+' SDMCTL $'+hx((raw(0x022F)||raw(0xD400))&255,2)+' DMACTL $'+hx(raw(0xD400),2)+' CHBASE $'+hx((raw(0xD409)||raw(0x02F4))&255,2)+' PRIOR $'+hx((raw(0xD01B)||raw(0x026F))&255,2)+' frame '+frame();}
+  function renderSelf249(){
+    try{
+      if(!ram||!isSelf())return false; var dl=dlptr(); if(!(dl>=0x5000&&dl<0x5800))return false; var c=g('video'); if(!c)return false; var ctx=c.getContext('2d'); var img=ctx.createImageData(320,240),d=img.data;
+      var c0=raw(0xD016)||raw(0x02C4)||0x0C,c1=raw(0xD017)||raw(0x02C5)||0x32,c2=raw(0xD018)||raw(0x02C6)||0xD6,c3=raw(0xD019)||raw(0x02C7)||0x46,cb=raw(0xD01A)||raw(0x02C8)||0xA0;
+      var border=rgb(cb,[0,0,0]), pf0=rgb(c0,[221,221,221]), pf1=rgb(c1,[158,78,59]), pf2=rgb(c2,[161,197,117]), pf3=rgb(c3,[201,85,98]);
+      var playBg=pf2, pal=[playBg,pf0,pf1,pf2,pf3]; for(var y=0;y<240;y++)for(var x=0;x<320;x++)setpx(d,x,y,border);
+      var p=dl,addr=0,yp=0,safety=0,non=0,data=0,sdm=(raw(0x022F)||raw(0xD400)||0x21)&255,chb=(raw(0xD409)||raw(0x02F4)||0xE0)&255;
+      while(yp<240&&safety++<180){var op=rd(p++),m=op&15;if(m===1)break;if(m===0){yp+=(((op>>4)&7)+1)*8;continue;}if(op&0x40){addr=(rd(p)|(rd(p+1)<<8))&65535;p=(p+2)&65535;}var inf=modeInfo(m),h=inf.scan||8,st=stride(m,sdm),base=inf.bytes||st,kind=inf.kind||'map2';var viewBytes=Math.min(st,base);var x0=Math.max(0,Math.floor((320-(viewBytes*(kind.indexOf('text')===0?16:((kind==='map2'?4:8)*(inf.px||1)))))/2));
+        if(kind==='text20'||kind==='text40'||m===2||m===3||m===6||m===7){var cw=(kind==='text20'||m===6||m===7)?16:8;var chars=viewBytes;for(var row=0;row<h;row++){var scan=row&7;for(var cc=0;cc<chars;cc++){var ch=raw(addr+cc)&255;if(ch)data++;var bits=charBits(ch,scan,chb);var inv=(ch&0x80)!==0;var fg=(ch&0x40)?pf1:pf0;for(var b=0;b<8;b++){var on=(bits&(0x80>>b))!==0;if(inv)on=!on;if(on)non++;rect(d,x0+cc*cw+b*(cw/8),yp+row,cw/8,1,on?fg:playBg);}}}addr=(addr+st)&65535;}
+        else if(kind==='map2'||m===8||m===10||m===13||m===14){var px=inf.px||2;for(var r=0;r<h;r++){for(var bi=0;bi<viewBytes;bi++){var v=raw(addr+r*st+bi)&255;if(v)data++;for(var q=0;q<4;q++){var ci=(v>>(6-q*2))&3;if(ci)non++;rect(d,x0+(bi*4+q)*px,yp+r,px,1,[playBg,pf0,pf1,pf3][ci]||playBg);}}}addr=(addr+st*h)&65535;}
+        else {var px1=inf.px||1;for(var r1=0;r1<h;r1++){for(var bi1=0;bi1<viewBytes;bi1++){var v1=raw(addr+r1*st+bi1)&255;if(v1)data++;for(var bit=0;bit<8;bit++){var on=(v1&(0x80>>bit))!==0;if(on)non++;rect(d,x0+(bi1*8+bit)*px1,yp+r1,px1,1,on?pf1:playBg);}}}addr=(addr+st*h)&65535;}
+        yp+=h;}
+      ctx.putImageData(img,0,0); selfRenders++; selfPixels=non; selfData=data; selfRam3000=countNZ(0x3000,0x400); selfDl=dl; selfSdm=sdm; selfChbase=chb; selfPrior=(raw(0xD01B)||raw(0x026F))&255; selfBus=bytesBus(dl); selfRaw=bytesRaw(dl); selfInfo='SELFTEST FIX249 color-role renderer dl $'+hx(dl,4)+' SDMCTL $'+hx(sdm,2)+' CHBASE $'+hx(chb,2)+' PRIOR $'+hx(selfPrior,2)+' pixels '+non+' dataNonZero '+data+' RAM3000nonzero '+selfRam3000+' renders '+selfRenders+' frame '+frame(); selfDma='BUS '+selfBus+' | RAW '+selfRaw+' COLORROLE playfieldBg=COLPF2 border=COLBK'; return true;
+    }catch(e){selfInfo='SELFTEST FIX249 render error '+(e&&e.message?e.message:e);return false;}
+  }
+  function insertCassetteUi(){try{if(g('cassetteBoxFix249'))return; var dock=g('atariKeyboardDock')||g('atariKeyboardDockFix171'); if(!dock)return; var box=document.createElement('div');box.id='cassetteBoxFix249';box.style.cssText='margin-top:12px;border:1px solid rgba(215,183,106,.45);border-radius:12px;padding:10px;background:rgba(215,183,106,.06);color:#f4d77b;font-family:system-ui,sans-serif';box.innerHTML='<h2 style="margin:0 0 6px;font-size:18px;color:#fff">Virtualni kazetak FIX249</h2><p class="tinyhint" style="margin:0 0 8px;color:#cdbb7a;font-size:12px">Scaffold bez fake LOAD: vloz WAV/CAS, PLAY/STOP/REWIND, CLOAD jen posle prikaz do real BASIC po READY.</p><input id="cassetteFileFix249" type="file" accept=".wav,.cas,.txt,.bas,.xex,audio/wav,audio/wave" style="display:none"><div class="keyrow"><button class="secondary compact" id="cassInsFix249">INSERT WAV/CAS</button><button class="secondary compact" id="cassPlayFix249">PLAY</button><button class="secondary compact" id="cassStopFix249">STOP</button><button class="secondary compact" id="cassRewFix249">REWIND</button></div><div class="keyrow"><button class="secondary compact" id="cassCloadFix249">CLOAD</button><button class="secondary compact" id="cassCloadRunFix249">CLOAD + RUN</button></div><div id="cassStateFix249" style="font-family:monospace;color:#2aff8f;white-space:pre-wrap;margin-top:8px">CASSETTE empty</div>'; dock.parentNode.insertBefore(box,dock.nextSibling); var inp=g('cassetteFileFix249'); g('cassInsFix249').onclick=function(ev){ev&&ev.preventDefault(); inp.click(); return false;}; inp.onchange=function(){var f=inp.files&&inp.files[0]; if(!f)return; cassette.inserted=true;cassette.name=f.name;cassette.size=f.size;cassette.type=f.type||'file';cassette.pos=0;cassette.blocks=0;cassette.epoch++;cassette.last='CASSETTE INSERT '+f.name+' size '+f.size+' type '+cassette.type+' epoch '+cassette.epoch+' / no decode yet'; updateCass();}; g('cassPlayFix249').onclick=function(ev){ev&&ev.preventDefault(); cassette.playing=true;cassette.motor=true;cassette.last='CASSETTE PLAY motor ON file '+cassette.name+' epoch '+cassette.epoch+' / no fake data'; updateCass(); return false;}; g('cassStopFix249').onclick=function(ev){ev&&ev.preventDefault(); cassette.playing=false;cassette.motor=false;cassette.last='CASSETTE STOP motor OFF'; updateCass(); return false;}; g('cassRewFix249').onclick=function(ev){ev&&ev.preventDefault(); cassette.pos=0;cassette.last='CASSETTE REWIND pos 0'; updateCass(); return false;}; g('cassCloadFix249').onclick=function(ev){return cload(false,ev);}; g('cassCloadRunFix249').onclick=function(ev){return cload(true,ev);}; updateCass();}catch(e){cassette.last='CASSETTE UI error '+e.message;}}
+  function updateCass(){try{var s=g('cassStateFix249'); if(s)s.textContent='CASSETTE '+(cassette.inserted?cassette.name:'empty')+'\nPLAY '+(cassette.playing?'ON':'OFF')+' MOTOR '+(cassette.motor?'ON':'OFF')+' POS '+cassette.pos+'\nLAST '+cassette.last+'\nCLOAD '+cassette.cload;}catch(e){} try{var p=g('inputMapPanel'); if(p){p.classList.add('visible');p.textContent='FIX249 LOADED: self-test color-role renderer + virtual cassette scaffold. '+cassette.last;}}catch(e){}}
+  function cload(run,ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} cassette.cload='CLOAD command requested '+(run?'+ RUN':'')+' frame '+frame()+'; requires real BASIC READY and cassette PLAY; no fake load'; cassette.last=cassette.cload; cassette.motor=true; updateCass(); var cmd='CLOAD'+(run?'\nRUN':''); try{if(typeof window.queueFastBasicFix244==='function')return window.queueFastBasicFix244(cmd,'CASSETTE CLOAD'+(run?' + RUN':''),false,ev);}catch(e){} try{if(typeof window.queueFastBasicFix240==='function')return window.queueFastBasicFix240(cmd,'CASSETTE CLOAD'+(run?' + RUN':''),false,ev);}catch(e){} return false;}
+  function stamp(){try{document.title='EMU-09 '+TAG;}catch(e){} try{var h=document.querySelector('.brandText h1'); if(h)h.textContent='EMU-09\n'+TAG;}catch(e){} try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX249: self-test color-role renderer + virtual cassette scaffold. CLOAD tlacitko jen prikaz po READY, zadny fake LOAD.';}catch(e){} try{var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX249: klavesnice + kazetak scaffold. WAV/CAS tlacitka loguji stav; CLOAD posila prikaz po real READY.';}catch(e){} insertCassetteUi(); updateCass();}
+  function screenRows(){var out=[];try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535;for(var r=0;r<6;r++){var s='',bs=[];for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0;bs.push(hx(b,2));try{s+=screenChar(b&127);}catch(e){s+=' ';}}out.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+bs.join(' '));}}catch(e){out.push('screen rows err '+e.message);}return out;}
+  function snapshotText(reason){try{renderSelf249();}catch(e){} var l=[];l.push('AtariHelp.eu EMU-09 FIX249 CASSETTE SCAFFOLD SELFTEST COLORROLE CORE');l.push('cas='+(new Date()).toISOString());l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));l.push('build='+TAG);l.push('');l.push('[STATUS]');try{l.push(cpu?('PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){} l.push(statusLine());l.push('');l.push('[LOG]');l.push('PURE HARDWARE SNAPSHOT FIX249');l.push('BUILD '+TAG);l.push('FIX249 CASSETTE/SelfTest CHECK');l.push('VERIFY LOADED YES');l.push('OLD WRAPPERS BYPASSED / FIX248 clean writer kept');l.push('SELFTEST '+selfInfo);l.push('SELFTEST DMA '+selfDma);l.push('DLIST BYTES BUS '+bytesBus(dlptr()));l.push('DLIST BYTES RAW '+bytesRaw(dlptr()));l.push('RAM SAMPLE $3000 nonzero '+countNZ(0x3000,0x400)+' / $BC40 nonzero '+countNZ(0xBC40,0x400));l.push('CASSETTE '+cassette.last);l.push('CASSETTE STATE inserted '+cassette.inserted+' name '+cassette.name+' size '+cassette.size+' play '+cassette.playing+' motor '+cassette.motor+' pos '+cassette.pos+' epoch '+cassette.epoch);l.push('CLOAD '+cassette.cload);l.push('SCREEN PROOF');l=l.concat(screenRows());try{l.push('TRACE'); if(cpu&&cpu.trace)l=l.concat(cpu.trace.slice(-18));}catch(e){}l.push('RULE FIX249_SELFTEST_COLORROLE_COLPF2_BG / ROM_BUS_DLIST / RAM_DMA_DATA / CASSETTE_SCAFFOLD_ONLY / WAV_CAS_INSERT_PLAY_STOP_REWIND / CLOAD_COMMAND_ONLY_AFTER_READY / NO_FAKE_LOAD_READY_SELFTEST');return l.join('\n');}
+  function fname(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX249-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function save(txt,reason){var fn=fname(reason||'snapshot');try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(txt,fn);return true;}}catch(e){}try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);return true;}catch(e){return false;}}
+  window.compatibilitySnapshotCore=function(){stamp();var t=snapshotText('snapshot');var el=g('log');if(el)el.textContent=t;try{updatePlayStatus('FIX249 snapshot ulozen: self-test color-role + cassette scaffold.');}catch(e){}return save(t,'snapshot');};
+  window.compatibilitySnapshot=function(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return window.compatibilitySnapshotCore();};
+  window.saveCurrentLogToMobile=function(reason){stamp();return save(snapshotText(reason||'manual'),reason||'manual');}; window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');}; window.makeLogFileName=function(reason){return fname(reason||'snapshot');};
+  try{var oldF=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric;window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(renderSelf249())return true;return oldF.apply(this,arguments);};}catch(e){}
+  try{var oldR=window.renderAnticDisplay||renderAnticDisplay;window.renderAnticDisplay=renderAnticDisplay=function(){if(renderSelf249())return;return oldR.apply(this,arguments);};}catch(e){}
+  window.insertCassetteFileFix249=function(ev){try{ev&&ev.preventDefault();}catch(e){} var inp=g('cassetteFileFix249'); if(inp)inp.click(); return false;}; window.cassetteCloadFix249=cload;
+  /* FIX261: old FIX249 delayed UI stamps disabled. */
+})();
+</script>
+
+
+
+<!-- FIX250_WAV_PICKER_SELFTEST_DMA_ZOOM_CORE_FINAL_SCRIPT -->
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX250_WAV_PICKER_SELFTEST_DMA_ZOOM_CORE';
+  var cass={inserted:false,name:'--',size:0,type:'--',kind:'none',playing:false,motor:false,pos:0,epoch:0,last:'CASSETTE waiting - no file inserted',cload:'CLOAD not requested',head:'--',error:''};
+  var selfInfo='SELFTEST FIX250 waiting - DMA zoom renderer installed';
+  var selfDma='SELFTEST DMA waiting';
+  var selfRenders=0,selfPixels=0,selfData=0,selfRam=0,selfDl=0,selfBus='',selfRaw='',selfView='--';
+  function g(id){return document.getElementById(id);} function hx(v,n){try{var s=((Number(v)||0)&(n===2?255:65535)).toString(16).toUpperCase();while(s.length<(n||2))s='0'+s;return s;}catch(e){return '??';}}
+  function raw(a){try{return (ram[a&65535]||0)&255;}catch(e){return 0;}}
+  function rd(a){a&=65535;try{if(a>=0x5000&&a<0x5800&&typeof readMem==='function')return readMem(a)&255;}catch(e){}try{if(a>=0x5000&&a<0x5800&&typeof cpuRead==='function')return cpuRead(a)&255;}catch(e){}try{if(a>=0x5000&&a<0x5800&&typeof optionalRomByteAt==='function'){var b=optionalRomByteAt(a);if(b>=0)return b&255;}}catch(e){}return raw(a);}
+  function dlptr(){try{return (typeof getDlistPtr==='function'?getDlistPtr():((raw(0x230)|(raw(0x231)<<8))&65535))&65535;}catch(e){return 0;}}
+  function frame(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function isSelf(){try{return (typeof currentXexName!=='undefined'&&String(currentXexName).toLowerCase().indexOf('self')>=0)||(((typeof fix233EffectivePortB==='function'?fix233EffectivePortB():raw(0xD301))&0x80)===0);}catch(e){return false;}}
+  function rgb(v,fb){try{if(typeof gtiaByteToRgbFix239==='function')return gtiaByteToRgbFix239(v&255);}catch(e){}try{if(typeof atariColorToRgbFix239==='function')return atariColorToRgbFix239(v&255);}catch(e){}return fb||[0,0,0];}
+  function setpx(d,x,y,c){if(x<0||x>=320||y<0||y>=240)return;var o=(y*320+x)*4;d[o]=c[0]&255;d[o+1]=c[1]&255;d[o+2]=c[2]&255;d[o+3]=255;}
+  function rect(d,x,y,w,h,c){for(var yy=0;yy<h;yy++)for(var xx=0;xx<w;xx++)setpx(d,x+xx,y+yy,c);}
+  function countNZ(a,l){var n=0;try{for(var i=0;i<l;i++)if(raw(a+i))n++;}catch(e){}return n;}
+  function bytesBus(dl){var a=[];try{for(var i=0;i<64;i++)a.push(hx(rd(dl+i),2));}catch(e){return 'err '+e.message;}return '$'+hx(dl,4)+': '+a.join(' ');}function bytesRaw(dl){var a=[];try{for(var i=0;i<64;i++)a.push(hx(raw(dl+i),2));}catch(e){return 'err '+e.message;}return '$'+hx(dl,4)+': '+a.join(' ');}
+  function statusLine(){return 'DLIST $'+hx(dlptr(),4)+' SAVMSC $'+hx((raw(0x58)|(raw(0x59)<<8))&65535,4)+' NMIEN $'+hx(raw(0xD40E),2)+' SDMCTL $'+hx((raw(0x022F)||raw(0xD400))&255,2)+' DMACTL $'+hx(raw(0xD400),2)+' CHBASE $'+hx((raw(0xD409)||raw(0x02F4))&255,2)+' PRIOR $'+hx((raw(0xD01B)||raw(0x026F))&255,2)+' frame '+frame();}
+  function charBits(code,scan,chb){try{if(typeof charsetByteForCode==='function')return charsetByteForCode(code&255,2,scan&7,chb&255)&255;}catch(e){}return rd(((chb&255)<<8)+((code&127)<<3)+(scan&7));}
+  function renderSelf250(){try{
+    if(!ram||!isSelf())return false;var dl=dlptr();if(!(dl>=0x5000&&dl<0x5800))return false;var c=g('video');if(!c)return false;var ctx=c.getContext('2d');var img=ctx.createImageData(320,240),d=img.data;
+    var col0=raw(0xD016)||raw(0x02C4)||0x0C,col1=raw(0xD017)||raw(0x02C5)||0x32,col2=raw(0xD018)||raw(0x02C6)||0xD6,col3=raw(0xD019)||raw(0x02C7)||0x46,cb=raw(0xD01A)||raw(0x02C8)||0xA0;
+    var border=rgb(cb,[0,0,0]),pf0=rgb(col0,[221,221,221]),pf1=rgb(col1,[158,78,59]),pf2=rgb(col2,[161,197,117]),pf3=rgb(col3,[201,85,98]);
+    for(var y=0;y<240;y++)for(var x=0;x<320;x++)setpx(d,x,y,border);
+    var p=dl,addr=0,yp=18,safety=0,non=0,data=0,chb=(raw(0xD409)||raw(0x02F4)||0xE0)&255,sdm=(raw(0x022F)||raw(0xD400)||0x21)&255;
+    while(yp<236&&safety++<80){var op=rd(p++),m=op&15;if(m===1)break;if(m===0){yp+=Math.max(2,(((op>>4)&7)+1)*5);continue;}if(op&0x40){addr=(rd(p)|(rd(p+1)<<8))&65535;p=(p+2)&65535;}
+      if(m===6||m===7){var rows=(m===7?16:8),chars=20,cw=16,x0=24;for(var r=0;r<rows;r++){for(var cc=0;cc<chars;cc++){var ch=raw(addr+cc)&255;if(ch)data++;var bits=charBits(ch,r&7,chb);var inv=(ch&0x80)!==0;var fg=(ch&0x40)?pf1:pf0;for(var b=0;b<8;b++){var on=(bits&(0x80>>b))!==0;if(inv)on=!on;if(on)non++;rect(d,x0+cc*cw+b*2,yp+r,2,1,on?fg:pf2);}}}addr=(addr+20)&65535;yp+=rows+2;}
+      else if(m===8||m===9||m===10||m===11||m===14||m===15){var bytes=(m===8||m===9)?10:20,rows2=(m===9||m===10)?4:(m===11?2:8),x1=64;for(var rr=0;rr<rows2;rr++){for(var bi=0;bi<bytes;bi++){var v=raw(addr+rr*bytes+bi)&255;if(v)data++;for(var q=0;q<4;q++){var ci=(v>>(6-q*2))&3;if(ci)non++;rect(d,x1+(bi*4+q)*4,yp+rr*3,4,3,[pf2,pf0,pf1,pf3][ci]||pf2);}}}addr=(addr+bytes*rows2)&65535;yp+=rows2*3+3;}
+      else {yp+=4;}
+    }
+    // Safety hardware view: only real RAM $3000 bytes, shown as diagnostic strip if DLIST window has too few pixels.
+    var nz=countNZ(0x3000,0x400); if(non<600&&nz>0){var baseY=150;for(var i=0;i<256;i++){var v2=raw(0x3000+i)&255;if(v2){for(var bit=0;bit<8;bit++){if(v2&(0x80>>bit))rect(d,16+(i%32)*9+bit,baseY+Math.floor(i/32)*6,1,5,pf3);}}}}
+    ctx.putImageData(img,0,0);selfRenders++;selfPixels=non;selfData=data;selfRam=nz;selfDl=dl;selfBus=bytesBus(dl);selfRaw=bytesRaw(dl);selfView='zoomY start 18 + RAM3000 strip if low pixels';selfInfo='SELFTEST FIX250 DMA zoom render dl $'+hx(dl,4)+' SDMCTL $'+hx(sdm,2)+' CHBASE $'+hx(chb,2)+' pixels '+non+' dataNonZero '+data+' RAM3000nonzero '+nz+' renders '+selfRenders+' frame '+frame();selfDma='BUS '+selfBus+' | RAW '+selfRaw+' VIEW '+selfView;return true;
+  }catch(e){selfInfo='SELFTEST FIX250 render error '+(e&&e.message?e.message:e);return false;}}
+  function updateCass(){try{var s=g('cassStateFix249')||g('cassStateFix250');if(s)s.textContent='CASSETTE '+(cass.inserted?cass.name:'empty')+'\nPLAY '+(cass.playing?'ON':'OFF')+' MOTOR '+(cass.motor?'ON':'OFF')+' POS '+cass.pos+'\nLAST '+cass.last+'\nHEAD '+cass.head+'\nCLOAD '+cass.cload;}catch(e){}try{var p=g('inputMapPanel');if(p){p.classList.add('visible');p.textContent='FIX250 LOADED: WAV/CAS picker + self-test DMA zoom. '+cass.last;}}catch(e){}}
+  function readFile(f){cass.inserted=true;cass.name=f.name;cass.size=f.size;cass.type=f.type||'file';cass.kind=(/\.wav$/i.test(f.name)?'WAV':(/\.cas$/i.test(f.name)?'CAS':'FILE'));cass.pos=0;cass.epoch++;cass.last='CASSETTE INSERT START '+cass.name+' size '+cass.size+' type '+cass.type+' epoch '+cass.epoch+' / decode not connected yet';updateCass();try{var fr=new FileReader();fr.onload=function(){try{var u=new Uint8Array(fr.result||new ArrayBuffer(0));var h=[];for(var i=0;i<Math.min(16,u.length);i++)h.push(hx(u[i],2));cass.head=h.join(' ');cass.last='CASSETTE INSERT OK '+cass.name+' size '+cass.size+' kind '+cass.kind+' head '+cass.head+' / NO FAKE LOAD';updateCass();}catch(e){cass.error=e.message;cass.last='CASSETTE INSERT read error '+e.message;updateCass();}};fr.onerror=function(){cass.error='FileReader error';cass.last='CASSETTE INSERT FileReader error';updateCass();};fr.readAsArrayBuffer(f.slice(0,65536));}catch(e){cass.error=e.message;cass.last='CASSETTE INSERT exception '+e.message;updateCass();}}
+  function installCassettePicker(){try{var box=g('cassetteBoxFix249');if(!box)return;box.id='cassetteBoxFix250';var h=box.querySelector('h2');if(h)h.textContent='Virtualni kazetak FIX250';var hint=box.querySelector('p');if(hint)hint.textContent='Picker opraven pro Android/Nox: ALL FILES + WAV/CAS. Zatim jen vlozeni/play/stop/log, zadny fake LOAD.';var old=g('cassetteFileFix249')||g('cassetteFileFix250');if(old)try{old.remove();}catch(e){}var inp=document.createElement('input');inp.id='cassetteFileFix250';inp.type='file';inp.accept='*/*,.wav,.cas,.txt,.bas,.xex,audio/*,application/octet-stream';inp.style.display='none';box.appendChild(inp);inp.addEventListener('change',function(ev){var f=inp.files&&inp.files[0];if(!f){cass.last='CASSETTE picker closed - no file selected';updateCass();return;}readFile(f);},{passive:false});function open(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}try{inp.value='';cass.last='CASSETTE PICKER OPEN Android/Nox all files';updateCass();inp.click();}catch(e){cass.last='CASSETTE PICKER error '+e.message;updateCass();}return false;}var b=g('cassInsFix249')||g('cassInsFix250');if(b){b.id='cassInsFix250';b.textContent='INSERT WAV/CAS / ALL FILES';b.onclick=open;['pointerup','click','touchend'].forEach(function(n){b.addEventListener(n,open,{passive:false});});}['cassPlayFix249','cassStopFix249','cassRewFix249'].forEach(function(id){var bb=g(id);if(bb){var old=bb.onclick;bb.onclick=function(ev){var r=old?old.call(this,ev):false;cass.playing=(id.indexOf('Play')>=0);if(id.indexOf('Stop')>=0)cass.playing=false;if(id.indexOf('Rew')>=0)cass.pos=0;cass.motor=cass.playing;cass.last=(id.indexOf('Play')>=0?'CASSETTE PLAY motor ON ':'CASSETTE '+(id.indexOf('Stop')>=0?'STOP':'REWIND'))+cass.name+' / no fake data';updateCass();return r;};}});updateCass();}catch(e){cass.last='CASSETTE FIX250 UI error '+e.message;updateCass();}}
+  function stamp(){try{window.EMU_BUILD_TAG=TAG;EMU_BUILD_TAG=TAG;}catch(e){}try{document.title='EMU-09 '+TAG;}catch(e){}try{var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h)h.textContent='EMU-09\n'+TAG;}catch(e){}try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX250: WAV/CAS picker opraven pro Android/Nox + self-test DMA zoom. CLOAD porad jen prikaz, zadny fake LOAD.';}catch(e){}try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX250: kazeťák picker all-files; SELFTEST DMA zoom z real RAM/ROM DLIST.';}catch(e){}installCassettePicker();updateCass();}
+  function screenRows(){var out=[];try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535;for(var r=0;r<6;r++){var s='',bs=[];for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0;bs.push(hx(b,2));try{s+=screenChar(b&127);}catch(e){s+=' ';}}out.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+bs.join(' '));}}catch(e){out.push('screen rows err '+e.message);}return out;}
+  function snapshotText(reason){try{renderSelf250();}catch(e){}var l=[];l.push('AtariHelp.eu EMU-09 FIX250 WAV PICKER SELFTEST DMA ZOOM CORE');l.push('cas='+(new Date()).toISOString());l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));l.push('build='+TAG);l.push('');l.push('[STATUS]');try{l.push(cpu?('PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){}l.push(statusLine());l.push('');l.push('[LOG]');l.push('PURE HARDWARE SNAPSHOT FIX250');l.push('BUILD '+TAG);l.push('FIX250 WAV PICKER/SELFTEST DMA ZOOM CHECK');l.push('VERIFY LOADED YES');l.push('SELFTEST '+selfInfo);l.push('SELFTEST DMA '+selfDma);l.push('DLIST BYTES BUS '+bytesBus(dlptr()));l.push('DLIST BYTES RAW '+bytesRaw(dlptr()));l.push('RAM SAMPLE $3000 nonzero '+countNZ(0x3000,0x400)+' / $BC40 nonzero '+countNZ(0xBC40,0x400));l.push('CASSETTE '+cass.last);l.push('CASSETTE STATE inserted '+cass.inserted+' name '+cass.name+' size '+cass.size+' type '+cass.type+' kind '+cass.kind+' play '+cass.playing+' motor '+cass.motor+' pos '+cass.pos+' epoch '+cass.epoch);l.push('CASSETTE HEAD '+cass.head);l.push('CLOAD '+cass.cload);l.push('SCREEN PROOF');l=l.concat(screenRows());try{l.push('TRACE');if(cpu&&cpu.trace)l=l.concat(cpu.trace.slice(-18));}catch(e){}l.push('RULE FIX250_ANDROID_WAV_CAS_PICKER_ALL_FILES / FILE_READER_HEAD_ONLY / CASSETTE_SCAFFOLD_NO_FAKE_LOAD / SELFTEST_DMA_ZOOM_FROM_ROMDLIST_AND_RAM3000 / NO_DRAWN_READY_SELFTEST');return l.join('\n');}
+  function fname(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX250-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function save(txt,reason){var fn=fname(reason||'snapshot');try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(txt,fn);return true;}}catch(e){}try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);return true;}catch(e){return false;}}
+  window.compatibilitySnapshotCore=function(){stamp();var t=snapshotText('snapshot');var el=g('log');if(el)el.textContent=t;try{updatePlayStatus('FIX250 snapshot: WAV picker + selftest DMA zoom.');}catch(e){}return save(t,'snapshot');};
+  window.compatibilitySnapshot=function(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return window.compatibilitySnapshotCore();};window.saveCurrentLogToMobile=function(reason){stamp();return save(snapshotText(reason||'manual'),reason||'manual');};window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');};window.makeLogFileName=function(reason){return fname(reason||'snapshot');};
+  try{var oldF=window.renderAnticDisplayFastGeneric||renderAnticDisplayFastGeneric;window.renderAnticDisplayFastGeneric=renderAnticDisplayFastGeneric=function(){if(renderSelf250())return true;return oldF.apply(this,arguments);};}catch(e){}
+  try{var oldR=window.renderAnticDisplay||renderAnticDisplay;window.renderAnticDisplay=renderAnticDisplay=function(){if(renderSelf250())return;return oldR.apply(this,arguments);};}catch(e){}
+  /* FIX261: old FIX250 delayed UI stamps disabled. */
+})();
+</script>
+
+<!-- FIX251_TURBOBASIC_WAV_ASSET_CASSETTE_PILOT_CORE_FINAL_SCRIPT -->
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX251_TURBOBASIC_WAV_ASSET_CASSETTE_PILOT_CORE';
+  var ASSET='TurboBasicXXL.wav?fix=251';
+  var cassette={inserted:false,source:'none',name:'--',size:0,kind:'none',playing:false,motor:false,posSec:0,durationSec:0,epoch:0,last:'CASSETTE waiting',head:'--',wav:'--',analysis:'--',cload:'CLOAD not requested',error:'',loadedBytes:0};
+  var timer=null,lastTick=0;
+  function g(id){return document.getElementById(id);} 
+  function hx(v,n){v=Number(v)||0;var mask=(n===2?255:(n===4?65535:0xffffffff));var s=(v&mask).toString(16).toUpperCase();while(s.length<n)s='0'+s;return s;}
+  function frame(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function raw(a){try{return ram[a&65535]&255;}catch(e){return 0;}}
+  function dlptr(){try{if(typeof getDlistPtr==='function')return getDlistPtr()&65535;}catch(e){}return (raw(0x0230)|(raw(0x0231)<<8))&65535;}
+  function countNZ(start,len){var n=0;try{for(var i=0;i<len;i++)if(raw(start+i))n++;}catch(e){}return n;}
+  function statusLine(){try{return 'DLIST $'+hx(dlptr(),4)+' SAVMSC $'+hx((raw(0x58)|(raw(0x59)<<8))&65535,4)+' NMIEN $'+hx(raw(0xD40E),2)+' SDMCTL $'+hx((raw(0x022F)||raw(0xD400))&255,2)+' DMACTL $'+hx(raw(0xD400),2)+' CHBASE $'+hx((raw(0xD409)||raw(0x02F4))&255,2)+' PRIOR $'+hx((raw(0xD01B)||raw(0x026F))&255,2)+' frame '+frame();}catch(e){return 'status err '+e.message;}}
+  function ready(){try{var dl=dlptr(),sav=(raw(0x58)|(raw(0x59)<<8))&65535,eff=(typeof fix233PortBEffective==='function'?fix233PortBEffective():raw(0xD301))&255;return (dl>=0x9C00&&dl<=0x9D00&&sav>=0x9C00&&sav<=0x9D80&&(eff&2)===0);}catch(e){return false;}}
+  function formatTime(s){s=Math.max(0,Number(s)||0);var m=Math.floor(s/60),r=Math.floor(s%60);return m+':'+(r<10?'0':'')+r;}
+  function bytesHead(u,n){var h=[];for(var i=0;i<Math.min(n||16,u.length);i++)h.push(hx(u[i],2));return h.join(' ');} 
+  function u32(u,o){return (u[o]|(u[o+1]<<8)|(u[o+2]<<16)|(u[o+3]<<24))>>>0;}
+  function u16(u,o){return (u[o]|(u[o+1]<<8))&65535;}
+  function parseWav(u){
+    var info={ok:false,reason:'not parsed'};
+    try{
+      var riff=String.fromCharCode(u[0],u[1],u[2],u[3]),wave=String.fromCharCode(u[8],u[9],u[10],u[11]);
+      info.riff=riff; info.wave=wave; info.size=u.length; info.head=bytesHead(u,16);
+      if(riff!=='RIFF'||wave!=='WAVE'){info.reason='not RIFF/WAVE';return info;}
+      var p=12,fmt=null,data=null;
+      while(p+8<=u.length){var id=String.fromCharCode(u[p],u[p+1],u[p+2],u[p+3]);var sz=u32(u,p+4);var start=p+8;if(id==='fmt '){fmt={start:start,size:sz};} if(id==='data'){data={start:start,size:sz};break;} p=start+sz+(sz&1); if(p>1024*1024&&data)break;}
+      if(!fmt){info.reason='fmt chunk missing';return info;}
+      var audioFormat=u16(u,fmt.start),channels=u16(u,fmt.start+2),rate=u32(u,fmt.start+4),byteRate=u32(u,fmt.start+8),blockAlign=u16(u,fmt.start+12),bits=u16(u,fmt.start+14);
+      info.ok=true; info.audioFormat=audioFormat; info.channels=channels; info.sampleRate=rate; info.byteRate=byteRate; info.blockAlign=blockAlign; info.bits=bits;
+      if(data){info.dataStart=data.start; info.dataSize=data.size; info.duration=(rate&&blockAlign)?(data.size/(rate*blockAlign)):0;} else {info.dataStart=0;info.dataSize=0;info.duration=0;info.reason='data chunk missing';}
+      return info;
+    }catch(e){info.reason='parse exception '+e.message;return info;}
+  }
+  function analyzePilot(u,info){
+    try{
+      if(!info||!info.ok||!info.dataStart)return 'WAV ANALYZE skipped - no PCM data';
+      var start=info.dataStart, bytesPerSample=(info.bits/8)|0, chans=info.channels||1, step=bytesPerSample*chans, maxSamples=Math.min(info.sampleRate*5, Math.floor((u.length-start)/step));
+      var min=999999,max=-999999,sum=0,sum2=0,zc=0,prev=0,edge=0;
+      for(var i=0;i<maxSamples;i++){var o=start+i*step;var v=0;if(info.bits===16){v=(u[o]|(u[o+1]<<8)); if(v&0x8000)v-=0x10000;} else if(info.bits===8){v=(u[o]-128)<<8;} else continue; if(v<min)min=v;if(v>max)max=v;sum+=v;sum2+=v*v;var s=v>0?1:(v<0?-1:0);if(s&&prev&&s!==prev){zc++;edge++;}if(s)prev=s;}
+      var mean=sum/Math.max(1,maxSamples),rms=Math.sqrt(sum2/Math.max(1,maxSamples));
+      return 'WAV ANALYZE first '+Math.round(maxSamples/(info.sampleRate||44100))+'s samples '+maxSamples+' min '+Math.round(min)+' max '+Math.round(max)+' mean '+mean.toFixed(2)+' rms '+rms.toFixed(1)+' zeroCross '+zc+' / pilot-edge raw only, not decoded to RAM';
+    }catch(e){return 'WAV ANALYZE error '+e.message;}
+  }
+  function updateCass(){
+    try{var s=g('cassStateFix249')||g('cassStateFix250')||g('cassStateFix251');if(s)s.textContent='CASSETTE '+(cassette.inserted?cassette.name:'empty')+' ['+cassette.source+']\nPLAY '+(cassette.playing?'ON':'OFF')+' MOTOR '+(cassette.motor?'ON':'OFF')+' POS '+formatTime(cassette.posSec)+' / '+formatTime(cassette.durationSec)+'\nLAST '+cassette.last+'\nWAV '+cassette.wav+'\nANALYZE '+cassette.analysis+'\nCLOAD '+cassette.cload; }catch(e){}
+    try{var p=g('inputMapPanel');if(p){p.classList.add('visible');p.textContent='FIX251 TURBOBASIC WAV: '+cassette.last+' | '+cassette.wav;}}catch(e){}
+  }
+  function setCassFromBuffer(name,source,buf){
+    try{var u=new Uint8Array(buf);var info=parseWav(u);cassette.inserted=true;cassette.source=source;cassette.name=name;cassette.size=u.length;cassette.kind=info.ok?'WAV':'FILE';cassette.head=bytesHead(u,16);cassette.loadedBytes=u.length;cassette.epoch++;cassette.posSec=0;cassette.durationSec=info.duration||0;cassette.wav=info.ok?('RIFF/WAVE PCM format '+info.audioFormat+' ch '+info.channels+' '+info.bits+'bit '+info.sampleRate+'Hz data '+info.dataSize+' bytes duration '+formatTime(info.duration)):'WAV parse '+info.reason+' head '+cassette.head;cassette.analysis=analyzePilot(u,info);cassette.last='CASSETTE INSERT OK '+name+' source '+source+' size '+u.length+' / NO FAKE LOAD';updateCass();return true;}catch(e){cassette.error=e.message;cassette.last='CASSETTE buffer error '+e.message;updateCass();return false;}
+  }
+  function loadBuiltIn(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} cassette.last='BUILTIN TURBOBASIC WAV loading from asset '+ASSET; updateCass(); try{fetch(ASSET,{cache:'reload'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.arrayBuffer();}).then(function(b){setCassFromBuffer('TurboBasicXXL.wav','APK_ASSET',b);}).catch(function(e){cassette.last='BUILTIN TURBOBASIC WAV fetch failed: '+e.message+' / zkus INSERT WAV/CAS'; cassette.error=e.message; updateCass();});}catch(e){cassette.last='BUILTIN TURBOBASIC WAV exception '+e.message; updateCass();} return false;}
+  function loadFile(f){cassette.last='CASSETTE FILE START '+(f&&f.name?f.name:'?');updateCass();try{var fr=new FileReader();fr.onload=function(){setCassFromBuffer(f.name,'ANDROID_PICKER',fr.result);};fr.onerror=function(){cassette.last='CASSETTE FileReader error';updateCass();};fr.readAsArrayBuffer(f);}catch(e){cassette.last='CASSETTE picker read exception '+e.message;updateCass();}}
+  function openPicker(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}var inp=g('cassetteFileFix251');if(!inp){cassette.last='PICKER input missing';updateCass();return false;}inp.value='';cassette.last='PICKER OPEN all files';updateCass();try{inp.click();}catch(e){cassette.last='PICKER click error '+e.message;updateCass();}return false;}
+  function play(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(e){}cassette.playing=true;cassette.motor=true;cassette.last='CASSETTE PLAY motor ON '+cassette.name+' / audio timing pilot only, no fake data to RAM';lastTick=Date.now();if(timer)clearInterval(timer);timer=setInterval(function(){if(!cassette.playing)return;var now=Date.now();cassette.posSec+=Math.max(0,(now-lastTick)/1000);lastTick=now;if(cassette.durationSec&&cassette.posSec>cassette.durationSec){cassette.posSec=cassette.durationSec;cassette.playing=false;cassette.motor=false;cassette.last='CASSETTE EOF reached';clearInterval(timer);}updateCass();},1000);updateCass();return false;}
+  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(e){}cassette.playing=false;cassette.motor=false;if(timer)clearInterval(timer);cassette.last='CASSETTE STOP motor OFF';updateCass();return false;}
+  function rewind(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(e){}cassette.posSec=0;cassette.last='CASSETTE REWIND pos 0';updateCass();return false;}
+  function sendBasicText(text,name,ev){try{if(typeof window.queueFastBasicFix247==='function')return window.queueFastBasicFix247(text,name||'CASSETTE COMMAND',false,ev);}catch(e){}try{if(typeof window.queueFastBasicFix244==='function')return window.queueFastBasicFix244(text,name||'CASSETTE COMMAND',false,ev);}catch(e){}try{if(typeof window.queueFastBasicFix240==='function')return window.queueFastBasicFix240(text,name||'CASSETTE COMMAND',false);}catch(e){}cassette.last='BASIC command helper missing; cannot type '+name;updateCass();return false;}
+  function cload(run,ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}cassette.cload='CLOAD '+(run?'+ RUN ':'')+'requested at '+formatTime(cassette.posSec)+' READY '+(ready()?'YES':'NO')+' inserted '+cassette.inserted+' / NO FAKE LOAD';cassette.last=cassette.cload;cassette.motor=true;cassette.playing=true;play();var cmd='CLOAD'+(run?'\nRUN':'');return sendBasicText(cmd,'CASSETTE CLOAD '+(run?'+ RUN':''),ev);}
+  function installUI(){
+    try{
+      var dock=g('atariKeyboardDock')||document.body; var box=g('cassetteBoxFix251')||g('cassetteBoxFix250')||g('cassetteBoxFix249');
+      if(!box){box=document.createElement('div');box.id='cassetteBoxFix251';box.className='card';dock.parentNode.insertBefore(box,dock.nextSibling);}else box.id='cassetteBoxFix251';
+      box.innerHTML='<h2>Virtualni kazetak FIX251</h2><p>Vestaveny TurboBasicXXL.wav z APK + Android picker. Zatim poctivy WAV ingest/play/CLOAD prikaz, zadny fake LOAD do RAM.</p><input id="cassetteFileFix251" type="file" accept="*/*,.wav,.cas,audio/*,application/octet-stream" style="display:none"><button id="cassBuiltinFix251" class="secondary compact">INSERT BUILTIN TURBOBASICXXL.WAV</button><button id="cassInsFix251" class="secondary compact">INSERT WAV/CAS Z ANDROIDU</button><button id="cassPlayFix251" class="secondary compact">PLAY</button><button id="cassStopFix251" class="secondary compact">STOP</button><button id="cassRewFix251" class="secondary compact">REWIND</button><button id="cassCloadFix251" class="secondary compact">CLOAD + PLAY</button><button id="cassCloadRunFix251" class="secondary compact">CLOAD + RUN + PLAY</button><pre id="cassStateFix251" class="inputReadout">CASSETTE waiting</pre>';
+      g('cassetteFileFix251').onchange=function(){var f=this.files&&this.files[0];if(f)loadFile(f);else{cassette.last='PICKER closed - no file selected';updateCass();}};
+      [['cassBuiltinFix251',loadBuiltIn],['cassInsFix251',openPicker],['cassPlayFix251',play],['cassStopFix251',stop],['cassRewFix251',rewind],['cassCloadFix251',function(e){return cload(false,e);}],['cassCloadRunFix251',function(e){return cload(true,e);}]].forEach(function(p){var b=g(p[0]);if(b){b.onclick=p[1];['pointerup','touchend'].forEach(function(n){b.addEventListener(n,p[1],{passive:false});});}});
+    }catch(e){cassette.last='installUI error '+e.message;}
+    updateCass();
+  }
+  function stamp(){try{window.EMU_BUILD_TAG=TAG;EMU_BUILD_TAG=TAG;}catch(e){}try{document.title='EMU-09 '+TAG;}catch(e){}try{var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h)h.textContent='EMU-09\n'+TAG;}catch(e){}try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX251: vestaveny TurboBasicXXL.wav asset + kazetovy pilot. CLOAD je real prikaz, WAV zatim analyza/play, bez fake RAM load.';}catch(e){}try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX251: TurboBasicXXL.wav v APK, cassette pilot/play/CLOAD bez fake LOAD.';}catch(e){}try{var ps=g('playStatus');if(ps&&ps.textContent.indexOf('FIX251')<0)ps.textContent='FIX251 TURBOBASIC WAV asset ready. Nejdriv INSERT BUILTIN TURBOBASICXXL.WAV.';}catch(e){}installUI();}
+  function screenRows(){var out=[];try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535;for(var r=0;r<6;r++){var s='',bs=[];for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0;bs.push(hx(b,2));var cc=b&127;s+=(cc>=0x20&&cc<0x5b?String.fromCharCode(cc+0x20):' ');}out.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+bs.join(' '));}}catch(e){out.push('screen rows err '+e.message);}return out;}
+  function snapshotText(reason){var l=[];l.push('AtariHelp.eu EMU-09 FIX251 TURBOBASIC WAV ASSET CASSETTE PILOT CORE');l.push('cas='+(new Date()).toISOString());l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));l.push('build='+TAG);l.push('');l.push('[STATUS]');try{l.push(cpu?('PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){}l.push(statusLine());l.push('');l.push('[LOG]');l.push('PURE HARDWARE SNAPSHOT FIX251');l.push('BUILD '+TAG);l.push('FIX251 TURBOBASIC WAV/CASSETTE PILOT CHECK');l.push('VERIFY LOADED YES');l.push('TURBOBASIC WAV ASSET TurboBasicXXL.wav expected size 33558928 md5 0965696a8e82a8c961ba31fb49a9a57a duration 380.49s source user-uploaded test asset');l.push('CASSETTE '+cassette.last);l.push('CASSETTE STATE inserted '+cassette.inserted+' source '+cassette.source+' name '+cassette.name+' size '+cassette.size+' kind '+cassette.kind+' play '+cassette.playing+' motor '+cassette.motor+' posSec '+cassette.posSec.toFixed(2)+' durationSec '+cassette.durationSec.toFixed(2)+' epoch '+cassette.epoch);l.push('CASSETTE HEAD '+cassette.head);l.push('WAV INFO '+cassette.wav);l.push('WAV ANALYSIS '+cassette.analysis);l.push('CLOAD '+cassette.cload);l.push('SELFTEST NOTE FIX251 keeps FIX249/FIX250 ROM-bus DLIST + real RAM render path; no drawn fake self-test');l.push('DLIST $'+hx(dlptr(),4)+' RAM3000nonzero '+countNZ(0x3000,0x400)+' BC40nonzero '+countNZ(0xBC40,0x400));l.push('SCREEN PROOF');l=l.concat(screenRows());try{l.push('TRACE');if(cpu&&cpu.trace)l=l.concat(cpu.trace.slice(-18));}catch(e){}l.push('RULE FIX251_TURBOBASIC_WAV_ASSET_INCLUDED / WAV_RIFF_PCM_PARSE / CASSETTE_PLAY_STOP_REWIND_TIMER / CLOAD_COMMAND_ONLY_AFTER_REAL_READY / NO_FAKE_LOAD_NO_RAM_INJECT / SELFTEST_RENDER_PATH_PRESERVED');return l.join('\n');}
+  function fname(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX251-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function save(txt,reason){var fn=fname(reason||'snapshot');try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(txt,fn);return true;}}catch(e){}try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);return true;}catch(e){return false;}}
+  window.compatibilitySnapshotCore=function(){stamp();var t=snapshotText('snapshot');var el=g('log');if(el)el.textContent=t;try{updatePlayStatus('FIX251 snapshot: TurboBasic WAV asset cassette pilot.');}catch(e){}return save(t,'snapshot');};
+  window.compatibilitySnapshot=function(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return window.compatibilitySnapshotCore();};
+  window.saveCurrentLogToMobile=function(reason){stamp();return save(snapshotText(reason||'manual'),reason||'manual');};window.autoSaveLogToMobile=function(reason){return window.saveCurrentLogToMobile(reason||'auto');};window.makeLogFileName=function(reason){return fname(reason||'snapshot');};
+  installUI();updateCass();try{window.fix251LoadBuiltInTurboBasicWav=loadBuiltIn;window.fix251CassetteSafeApi={installUI:installUI,loadBuiltIn:loadBuiltIn,openPicker:openPicker,play:play,stop:stop,rewind:rewind,cload:cload,snapshotText:snapshotText};}catch(e){} /* FIX261: old FIX251 header timers disabled, cassette API exposed. */
+})();
+</script>
+
+
+<!-- FIX261_UI_LOCK_SINGLE_CASSETTE_PANEL_CORE_FINAL_SCRIPT -->
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX267_ROM_QUARANTINE_SAFE_CORE';
+  var BUILD_TITLE='EMU-09\n'+TAG;
+  function g(id){return document.getElementById(id);} 
+  function prevent(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
+  function hx(v,n){v=Number(v)||0;var mask=(n===2?255:(n===4?65535:0xffffffff));var x=(v&mask).toString(16).toUpperCase();while(x.length<n)x='0'+x;return x;}
+  function raw(a){try{return ram[a&65535]&255;}catch(e){return 0;}}
+  function frame(){try{return (typeof playFrameNo!=='undefined'?playFrameNo:0)|0;}catch(e){return 0;}}
+  function sanitizeInitialProfile(reason){try{if(typeof currentXexName==='undefined'||!currentXexName||/pitt/i.test(String(currentXexName))){currentXexName='PURE HARDWARE BASIC FIX239 / no XEX';}}catch(e){}try{if(typeof activeXexProfile==='undefined'||!activeXexProfile||String(activeXexProfile).toLowerCase()==='pitt')activeXexProfile='realos';}catch(e){}try{var x=g('xexName');if(x&&/pitt/i.test(String(x.textContent||'')))x.textContent='XEX: PURE HARDWARE IDLE FIX267 / no XEX';}catch(e){}}
+  function removeChaosPanels(){
+    var killIds=['fix253Panel','fix253Deck','fix253Mini','fix254Panel','fix254Deck','fix254Snap','fix255Panel','fix256Panel','fix257Panel','fix257Keyboard','fix257Snap','fix258Panel','fix258Snap','fix260SnapshotBox'];
+    killIds.forEach(function(id){try{var el=g(id);if(el)el.remove();}catch(e){}});
+    try{document.querySelectorAll('[id^="fix253"],[id^="fix254"],[id^="fix255"],[id^="fix256"],[id^="fix257"],[id^="fix258"],[id^="f253"],[id^="f254"],[id^="b257"]').forEach(function(el){try{el.remove();}catch(e){}});}catch(e){}
+  }
+  function normalizeKeyboard(){
+    try{var ks=[].slice.call(document.querySelectorAll('#atariKeyboard'));ks.slice(1).forEach(function(el){try{el.remove();}catch(e){}});}catch(e){}
+    try{var ds=[].slice.call(document.querySelectorAll('#atariKeyboardDock,.atariKeyboardDock'));if(ds.length>1){ds.slice(1).forEach(function(el){try{if(el.id!=='atariKeyboardDock')el.remove();}catch(e){}});}}catch(e){}
+    try{var h=document.querySelector('#atariKeyboardDock h2');if(h)h.textContent='Mobilni Atari klavesnice FIX267';}catch(e){}
+    try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX267: jedna klavesnice pod obrazem. CO ROM duplicity jsou vyrazene; kazetak je jeden cisty panel.';}catch(e){}
+  }
+  function cassetteBoxes(){try{return [].slice.call(document.querySelectorAll('#cassetteBoxFix249,#cassetteBoxFix250,#cassetteBoxFix251,#cassetteBoxFix260,#cassetteBoxFix261,[data-fix261-cassette]'));}catch(e){return [];}}
+  function normalizeCassettePanel(){
+    try{if(window.fix251CassetteSafeApi&&typeof window.fix251CassetteSafeApi.installUI==='function'){window.fix251CassetteSafeApi.installUI();}}catch(e){}
+    var boxes=cassetteBoxes();
+    var keep=null;
+    for(var i=0;i<boxes.length;i++){var txt=String(boxes[i].textContent||'');if(!keep || /INSERT BUILTIN|INSERT WAV|PLAY|CLOAD/.test(txt))keep=boxes[i];}
+    if(!keep){
+      try{var dock=g('atariKeyboardDock')||document.querySelector('.atariKeyboardDock')||g('playStatus')||document.body;keep=document.createElement('div');keep.className='card';keep.id='cassetteBoxFix251';dock.parentNode.insertBefore(keep,dock.nextSibling);}catch(e){}
+    }
+    boxes=cassetteBoxes();boxes.forEach(function(b){if(b!==keep){try{b.remove();}catch(e){}}});
+    if(!keep)return;
+    try{keep.setAttribute('data-fix261-cassette','single'); if(!keep.className)keep.className='card';}catch(e){}
+    var txt2=String(keep.textContent||'');
+    if(/VYPNUTO PRO RECOVERY|CASSETTE UI OFF/.test(txt2) && window.fix251CassetteSafeApi&&typeof window.fix251CassetteSafeApi.installUI==='function'){
+      try{window.fix251CassetteSafeApi.installUI(); keep=g('cassetteBoxFix251')||keep;}catch(e){}
+    }
+    try{var h=keep.querySelector('h2');if(h)h.textContent='Virtualni kazetak FIX267 - jeden cisty panel';}catch(e){}
+    try{var p=keep.querySelector('p');if(p)p.textContent='TurboBasicXXL.wav zustava pripojeny jako APK asset. Tohle je poctivy WAV ingest/play pilot z FIX251: INSERT/PLAY/STOP/REWIND a CLOAD jen jako realny BASIC prikaz pres klavesnici, bez RAM injectu a bez fake LOAD.';}catch(e){}
+    try{['cassBuiltinFix251','cassInsFix251','cassPlayFix251','cassStopFix251','cassRewFix251','cassCloadFix251','cassCloadRunFix251'].forEach(function(id){var b=g(id);if(b)b.classList.add('secondary','compact');});}catch(e){}
+  }
+  function stamp(){
+    try{window.EMU_BUILD_TAG=TAG;EMU_BUILD_TAG=TAG;}catch(e){}
+    try{document.title='EMU-09 '+TAG;}catch(e){}
+    try{var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h&&h.textContent!==BUILD_TITLE)h.textContent=BUILD_TITLE;}catch(e){}
+    try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX267: stabilni UI z funkcniho FIX261 + ROM quarantine. CO ROM assety co24947a/co60302a/co61598b nejsou v APK. BASIC/snapshot prvni. Bez fake READY/SELFTEST/LOAD/RAM inject.';}catch(e){}
+    try{var ps=g('playStatus');if(ps&&!/FIX261|READY|CLOAD|CASSETTE|snapshot/i.test(String(ps.textContent||'')))ps.textContent='FIX267 ROM SAFE: BASIC READY, snapshot a jeden kazetakovy panel. CO ROM duplicity blokovane. Zadny fake LOAD.';}catch(e){}
+  }
+  function enforce(){sanitizeInitialProfile('enforce');removeChaosPanels();normalizeKeyboard();normalizeCassettePanel();stamp();}
+  function countBadUi(){try{return document.querySelectorAll('[id^="fix253"],[id^="fix254"],[id^="fix255"],[id^="fix256"],[id^="fix257"],[id^="fix258"],[id^="f253"],[id^="f254"],[id^="b257"]').length;}catch(e){return -1;}}
+  function keyboardCount(){try{return document.querySelectorAll('#atariKeyboard').length;}catch(e){return -1;}}
+  function dockCount(){try{return document.querySelectorAll('#atariKeyboardDock,.atariKeyboardDock').length;}catch(e){return -1;}}
+  function cassetteCount(){return cassetteBoxes().length;}
+  function screenRows(){var out=[];try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535;for(var r=0;r<8;r++){var st='',bs=[];for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0;bs.push(hx(b,2));var cc=b&127;st+=(cc>=0x20&&cc<0x5b?String.fromCharCode(cc+0x20):' ');}out.push('R'+r+' "'+st.replace(/\s+$/,'')+'"  '+bs.join(' '));}}catch(e){out.push('screen rows err '+(e&&e.message?e.message:e));}return out;}
+  function statusLine261(){try{if(typeof statusLine==='function')return statusLine();}catch(e){}return 'statusLine unavailable';}
+  function snapshotText(reason){
+    enforce();
+    var l=[];
+    l.push('AtariHelp.eu EMU-09 FIX267 ROM QUARANTINE SAFE CORE');
+    l.push('cas='+(new Date()).toISOString());
+    l.push('build='+TAG);
+    l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));
+    l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));
+    l.push('');
+    l.push('[RECOVERY AUDIT]');
+    l.push('BASE_LAST_GOOD=FIX251 cassette/WAV pilot + FIX248 selftest ROM-bus DLIST + FIX239 BASIC colors');
+    l.push('NOT_BASE=FIX258');
+    l.push('OLD_STAMP_TIMERS_FIX248_251=DISABLED');
+    l.push('HEADER_LOCK=FIX267');
+    l.push('UI_CHAOS_FIX253_258_ELEMENTS='+countBadUi());
+    l.push('KEYBOARD_COUNT='+keyboardCount()+' DOCK_COUNT='+dockCount());
+    l.push('CASSETTE_PANEL_COUNT='+cassetteCount());
+    l.push('CASSETTE_UI=SINGLE_FIX251_WAV_PILOT_RESTORED / no auto CLOAD / no RAM inject / no fake LOAD');
+    l.push('RULE NO_FAKE_READY / NO_FAKE_SELFTEST / NO_FAKE_LOAD / NO_RAM_INJECT / NO_GAME_HACK');
+    l.push('');
+    l.push('[STATUS]');
+    try{l.push(cpu?('CPU PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){l.push('CPU status error '+(e&&e.message?e.message:e));}
+    l.push(statusLine261());
+    try{l.push('DLIST $'+hx((typeof getDlistPtr==='function'?getDlistPtr():((raw(0x230)|(raw(0x231)<<8))&65535)),4)+' SAVMSC $'+hx((raw(0x58)|(raw(0x59)<<8))&65535,4)+' CHBASE $'+hx(raw(0x2F4),2)+' SDMCTL $'+hx(raw(0x22F),2)+' DMACTL $'+hx(raw(0xD400),2)+' PRIOR $'+hx(raw(0xD01B),2));}catch(e){}
+    try{l.push('PIA PORTB OUT $'+hx(typeof piaPortBOut!=='undefined'?piaPortBOut:raw(0xD301),2)+' DDR $'+hx(typeof piaPortBDDR!=='undefined'?piaPortBDDR:0,2)+' SELFTEST_WINDOW '+((typeof fix217SelfTestWindowEnabled==='function'&&fix217SelfTestWindowEnabled())?'ON':'OFF'));}catch(e){}
+    l.push('');l.push('[SCREEN PROOF]');l=l.concat(screenRows());
+    try{l.push('');l.push('[TRACE]');if(cpu&&cpu.trace)l=l.concat(cpu.trace.slice(-18));}catch(e){}
+    return l.join('\n');
+  }
+  function fileName(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX267-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function ensureSnapBox(text,fn){
+    try{var anchor=g('playStatus')||g('atariKeyboardDock')||document.body;var box=g('fix267SnapshotBox');if(!box){box=document.createElement('div');box.id='fix267SnapshotBox';box.className='card';box.style.marginTop='10px';anchor.parentNode.insertBefore(box,anchor.nextSibling);}box.innerHTML='<h2>Snapshot FIX267 TXT</h2><p>Fallback pro Android/Nox: kdyz download selze, oznac a zkopiruj text nize.</p><textarea id="fix267SnapshotText" style="width:100%;min-height:220px;box-sizing:border-box;background:#050403;color:#2aff8f;border:1px solid rgba(42,255,143,.35);border-radius:10px;padding:8px;font-family:monospace;font-size:11px"></textarea><button id="fix267CopySnap" class="secondary compact">KOPIROVAT SNAPSHOT</button><button id="fix267SelectSnap" class="secondary compact">OZNACIT SNAPSHOT</button><a id="fix267DownloadSnap" class="btn secondary" download="'+fn+'">STAHNOUT SNAPSHOT TXT</a>';var ta=g('fix267SnapshotText');if(ta)ta.value=text;var blob=new Blob([text],{type:'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);var a=g('fix267DownloadSnap');if(a){a.href=url;a.download=fn;}var copy=g('fix267CopySnap');if(copy)copy.onclick=function(ev){prevent(ev);try{ta.focus();ta.select();document.execCommand('copy');}catch(e){}return false;};var sel=g('fix267SelectSnap');if(sel)sel.onclick=function(ev){prevent(ev);try{ta.focus();ta.select();}catch(e){}return false;};}catch(e){}
+  }
+  function save(text,reason){var fn=fileName(reason||'snapshot');ensureSnapBox(text,fn);try{var el=g('log');if(el)el.textContent=text;}catch(e){}try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(text,fn);return true;}}catch(e){}try{if(window.saveTextReportToMobile){window.saveTextReportToMobile(fn,text);return true;}}catch(e){}try{var a=g('fix267DownloadSnap');if(a&&a.href){a.click();return true;}}catch(e){}return false;}
+  var oldBasic=window.startPureHardwareBasicFix226;
+  if(typeof oldBasic==='function')window.startPureHardwareBasicFix226=function(ev){prevent(ev);enforce();var r=oldBasic.call(this,ev);[20,250,800,1800,4300].forEach(function(t){setTimeout(enforce,t);});return r;};
+  var oldSelf=window.startPureHardwareSelfTestFix226;
+  if(typeof oldSelf==='function')window.startPureHardwareSelfTestFix226=function(ev){prevent(ev);enforce();var r=oldSelf.call(this,ev);[20,250,800,1800,4300].forEach(function(t){setTimeout(enforce,t);});return r;};
+  var oldReset=window.resetPureHardwareFix226;
+  if(typeof oldReset==='function')window.resetPureHardwareFix226=function(ev){prevent(ev);var r=oldReset.call(this,ev);[20,250,800,1800,4300].forEach(function(t){setTimeout(enforce,t);});return r;};
+  window.compatibilitySnapshotCore=function(reason){var text=snapshotText(reason||'snapshot');try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX267 snapshot hotov: ROM quarantine + jedna klavesnice + jeden kazetakovy panel.');}catch(e){}return save(text,reason||'snapshot');};
+  window.compatibilitySnapshot=function(ev){prevent(ev);return window.compatibilitySnapshotCore('snapshot');};
+  window.saveCurrentLogToMobile=function(reason){return window.compatibilitySnapshotCore(reason||'manual');};
+  window.autoSaveLogToMobile=function(reason){return window.compatibilitySnapshotCore(reason||'auto');};
+  window.makeLogFileName=function(reason){return fileName(reason||'snapshot');};
+  try{var mo=new MutationObserver(function(){enforce();});var target=document.querySelector('.brandText')||document.body;mo.observe(target,{childList:true,subtree:true,characterData:true});}catch(e){}
+  enforce();[40,120,300,700,1700,2600,4100,5200].forEach(function(t){setTimeout(enforce,t);});
+})();
+</script>
+
+<!-- FIX267_ROM_QUARANTINE_SAFE_CORE_FINAL_SCRIPT -->
+
+<script>
+(function(){
+  var TAG='FIX267_ROM_QUARANTINE_SAFE_CORE';
+  function g(id){return document.getElementById(id);} 
+  function prevent(e){try{if(e){e.preventDefault();e.stopPropagation();}}catch(_){}}
+  function lockHeader(){
+    try{var h=document.querySelector('.brandText h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(_){ }
+    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX267: stabilni UI z funkcniho FIX261 + ROM quarantine. CO ROM assety co24947a/co60302a/co61598b nejsou v APK baleni. Bez fake READY/SELFTEST/LOAD/RAM inject.';}catch(_){ }
+    try{var x=g('xexName'); if(x && /FIX246|FIX261|FIX265|FIX266|pitt/i.test(String(x.textContent||'')))x.textContent='XEX: PURE HARDWARE IDLE FIX267 / no XEX';}catch(_){ }
+  }
+  function coRomCount(){try{return Array.prototype.slice.call(document.querySelectorAll('script,link,img,a')).filter(function(n){return /co24947a|co60302a|co61598b/i.test(String(n.src||n.href||n.textContent||''));}).length;}catch(e){return -1;}}
+  var oldSnap=window.compatibilitySnapshotCore;
+  window.fix267RomQuarantineAudit=function(){return 'FIX267 ROM_QUARANTINE=ACTIVE / removed app/src/main/assets/co24947a.rom co60302a.rom co61598b.rom and assets/rom_audit copies / CO_ROM_DOM_REFERENCES='+coRomCount()+' / no external CO ROM autoload';};
+  window.compatibilitySnapshotCore=function(reason){
+    var r;
+    try{r=oldSnap?oldSnap.call(this,reason):null;}catch(e){r=null;}
+    try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX267 ROM quarantine snapshot: CO ROM duplicity jsou mimo APK; BASIC runtime zustava pres hlavni ATARIXL/ATARIBAS.');}catch(_){ }
+    return r;
+  };
+  var oldAudit=window.pureHardwareAudit;
+  window.pureHardwareAudit=function(ev){prevent(ev); try{lockHeader();}catch(_){ } try{if(oldAudit)return oldAudit.call(this,ev);}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus(window.fix267RomQuarantineAudit());}catch(_){ } return false;};
+  lockHeader();
+  setInterval(lockHeader,500);
+})();
+</script>
+
+<!-- FIX270_FAST_BLOCK_WARM_RESET_CORRECT_DEMO_CORE_FINAL_SCRIPT -->
+<script>
 (function(){
   'use strict';
   var TAG='FIX270_FAST_BLOCK_WARM_RESET_CORRECT_DEMO_CORE';
@@ -12725,114 +13590,102 @@ updatePlayStatus('ready');
   lock();[40,120,300,700,1200,2200,3600,5200,7200].forEach(function(t){setTimeout(lock,t);});
   var fastLock=setInterval(lock,160);setTimeout(function(){try{clearInterval(fastLock);}catch(e){}setInterval(lock,700);},9000);
 })();
-</script><script>
+</script>
+
+
+<script>
+/* FIX284_TURBOBASIC_XEX_DIRECT_FROM_WORKING270_CORE
+   Final small module over proven FIX270 live BASIC/buttons core.
+   No fake READY, no fake LOAD, no RAM program inject, no screen RAM paint.
+   TurboBasic is loaded only as Atari XEX: segment copy + INITAD/RUNAD entry + real CPU execution.
+*/
 (function(){
   'use strict';
-  var TAG='FIX283_APP_STRUCTURE_PRESERVED_TURBOBASIC_XEX_CORE';
+  var TAG='FIX284_TURBOBASIC_XEX_DIRECT_FROM_WORKING270_CORE';
   var ASSET='turbo-basic-xl-1.5-copy.xex';
-  var st={clicks:0,bytes:0,loaded:false,started:false,error:'',segments:[],run:0,inits:[],entry:0,pc0:0,pc1:0,pc2:0,steps0:0,steps1:0,portb0:0,portb1:0,last:'idle'};
-  window.fix282TurboState=st;
+  var st=window.fix284TurboState={tag:TAG,asset:ASSET,clicks:0,loaded:false,started:false,error:'',bytes:0,segments:[],run:0,inits:[],entry:0,pcBefore:0,pcAfter:0,stepsBefore:0,stepsAfter:0,portbBefore:0,portbAfter:0,last:'ready'};
   function g(id){return document.getElementById(id);} 
-  function hx(v,n){v=(Number(v)||0)&(n>=4?65535:255);var s=v.toString(16).toUpperCase();while(s.length<n)s='0'+s;return '$'+s;}
-  function say(t){st.last=String(t||'');var e=g('fix282TurboStatus');if(e)e.textContent=st.last;try{if(typeof updatePlayStatus==='function')updatePlayStatus(st.last);}catch(_){}}
-  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(_){}return false;}
-  function pc(){try{return cpu?(cpu.pc&65535):0;}catch(_){return 0;}}
-  function steps(){try{return cpu?(cpu.steps||0):0;}catch(_){return 0;}}
-  function portb(){try{return (typeof portbValue!=='undefined'?portbValue:((ram&&ram[0xD301])||0xFF))&255;}catch(_){return 0xFF;}}
-  function fetchBytes(url){return new Promise(function(resolve,reject){
-    function xhr(){try{var x=new XMLHttpRequest();x.open('GET',url,true);x.responseType='arraybuffer';x.onload=function(){if(x.status===0||x.status===200)resolve(new Uint8Array(x.response));else reject(new Error('XHR '+x.status));};x.onerror=function(){reject(new Error('XHR error'));};x.send();}catch(e){reject(e);}}
-    if(window.fetch){fetch(url,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('fetch '+r.status);return r.arrayBuffer();}).then(function(b){resolve(new Uint8Array(b));}).catch(function(){xhr();});}else xhr();
-  });}
-  function parseXex(b){
-    var i=0, seg=[], run=0, inits=[], bad='';
-    function w(p){return (b[p]|(b[p+1]<<8))&65535;}
-    if(!b || b.length<6){return {seg:seg,run:0,inits:inits,entry:0,bad:'too short'};}
-    if(w(0)!==0xFFFF)bad='missing FFFF header';
-    i=(w(0)===0xFFFF)?2:0;
-    while(i+3<b.length){
-      var s=w(i),e=w(i+2);i+=4;
-      if(s===0xFFFF && i+3<b.length){s=w(i);e=w(i+2);i+=4;}
-      if(e<s || i+(e-s+1)>b.length){bad='bad segment '+hx(s,4)+'-'+hx(e,4)+' at '+i;break;}
-      var len=e-s+1;
-      if(s<=0x02E0 && e>=0x02E1){var off=0x02E0-s;run=(b[i+off]|(b[i+off+1]<<8))&65535;}
-      if(s<=0x02E2 && e>=0x02E3){var off2=0x02E2-s;var ia=(b[i+off2]|(b[i+off2+1]<<8))&65535;if(ia)inits.push(ia);}
-      seg.push({s:s,e:e,len:len});
-      i+=len;
+  function hx(v,n){v=(v||0)&((n===2)?255:65535);var s=v.toString(16).toUpperCase();while(s.length<n)s='0'+s;return s;}
+  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(_){ } return false;}
+  function say(msg){st.last=String(msg||'');var e=g('fix284TurboStatus');if(e)e.textContent=st.last;try{if(typeof updatePlayStatus==='function')updatePlayStatus(st.last);}catch(_){ } }
+  function currentPortb(){try{return (typeof portbValue!=='undefined'?portbValue:(ram?ram[0xD301]:0xFF))&255;}catch(_){return 0xFF;}}
+  function lockIdentity(){
+    try{window.EMU_BUILD_TAG=TAG;if(typeof EMU_BUILD_TAG!=='undefined')EMU_BUILD_TAG=TAG;}catch(_){ }
+    try{document.title='EMU-09 '+TAG;}catch(_){ }
+    try{var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h)h.textContent='EMU-09 '+TAG;}catch(_){ }
+    try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX284: stabilni BASIC/buttons jadro z FIX270 + TurboBasic XL 1.5 jako cisty XEX program. Turbo spoustej rovnou, ne po POWER BASIC. Bez fake READY/LOAD/RAM inject.';}catch(_){ }
+    try{var kh=document.querySelector('#atariKeyboardDock h2');if(kh)kh.textContent='Mobilni Atari klavesnice FIX284';var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX284: POWER BASIC/SNAPSHOT zachovano z funkcniho FIX270; TurboBasic je samostatny XEX loader, ne CLOAD.';}catch(_){ }
+    try{var panel=g('fix284TurboPanel'); if(panel && panel.parentNode){ var first=document.querySelector('.purePanel'); if(first && first.nextSibling!==panel) first.parentNode.insertBefore(panel, first.nextSibling); }}catch(_){ }
+  }
+  function fetchBytes(url){
+    return new Promise(function(resolve,reject){
+      function xhrTry(){try{var x=new XMLHttpRequest();x.open('GET',url,true);x.responseType='arraybuffer';x.onload=function(){if((x.status===0||x.status>=200&&x.status<300)&&x.response)resolve(new Uint8Array(x.response));else reject(new Error('XHR status '+x.status+' '+url));};x.onerror=function(){reject(new Error('XHR error '+url));};x.send();}catch(e){reject(e);} }
+      if(window.fetch){fetch(url).then(function(r){if(!r.ok&&r.status!==0)throw new Error('fetch status '+r.status);return r.arrayBuffer();}).then(function(b){resolve(new Uint8Array(b));}).catch(function(){xhrTry();});}
+      else xhrTry();
+    });
+  }
+  function parseXex(bytes){
+    var p=0, segs=[], run=0, inits=[], first=0, bad='';
+    while(p<bytes.length){
+      while(p+1<bytes.length && bytes[p]===255 && bytes[p+1]===255)p+=2;
+      if(p>=bytes.length)break;
+      if(p+4>bytes.length){bad='truncated header at '+p;break;}
+      var start=bytes[p]|(bytes[p+1]<<8), end=bytes[p+2]|(bytes[p+3]<<8);p+=4;
+      var size=end-start+1;if(end<start||p+size>bytes.length){bad='bad segment $'+hx(start,4)+'-$'+hx(end,4)+' at '+(p-4);break;}
+      segs.push({start:start,end:end,size:size});
+      if(!first && !(start>=0x0200&&end<=0x02FF) && start>=0x0100)first=start;
+      if(start<=0x02E0&&end>=0x02E1){var ro=0x02E0-start;run=(bytes[p+ro]|(bytes[p+ro+1]<<8))&65535;}
+      if(start<=0x02E2&&end>=0x02E3){var io=0x02E2-start, ia=(bytes[p+io]|(bytes[p+io+1]<<8))&65535;if(ia)inits.push(ia);}
+      p+=size;
     }
-    return {seg:seg,run:run,inits:inits,entry:(run||inits[inits.length-1]||(seg[0]?seg[0].s:0)),bad:bad};
+    return {segments:segs,run:run,inits:inits,entry:run||(inits.length?inits[inits.length-1]:first)||0,bad:bad};
   }
-  function segText(){try{return st.segments.slice(0,16).map(function(x){return hx(x.s,4)+'-'+hx(x.e,4)+' len '+x.len;}).join(' | ') || '--';}catch(_){return '--';}}
-  function installPortbAuditPatch(){
-    // Nedelam fake LOAD. Jen dovolime RAM pod OS ROM, kdyz emulovany kod pres PORTB vypne OS ROM.
+  function installTurboMmuPatch(){
+    if(window.__fix284TurboMmuPatch)return; window.__fix284TurboMmuPatch=true;
     try{
-      if(window.__fix282PortbAuditPatch)return;window.__fix282PortbAuditPatch=true;
-      if(typeof optionalOsRomActiveForAddr==='function'){
-        var oldOs=optionalOsRomActiveForAddr;
-        optionalOsRomActiveForAddr=function(a){a&=65535;if(window.fix282TurboMode&&((a>=0xC000&&a<=0xCFFF)||(a>=0xD800&&a<=0xFFFF)))return !!(portb()&1);return oldOs(a);};
-      }
-      if(typeof optionalBasicRomActiveForAddr==='function'){
-        var oldBas=optionalBasicRomActiveForAddr;
-        optionalBasicRomActiveForAddr=function(a){a&=65535;if(window.fix282TurboMode&&(a>=0xA000&&a<=0xBFFF))return ((portb()&2)===0);return oldBas(a);};
-      }
-    }catch(e){st.error='PORTB patch '+(e&&e.message?e.message:e);}
+      var oldOs=window.optionalOsRomActiveForAddr||optionalOsRomActiveForAddr;
+      window.__fix284OldOsRomActive=oldOs;
+      optionalOsRomActiveForAddr=function(a){a&=65535;if(window.fix284TurboMode && ((a>=0xC000&&a<=0xCFFF)||(a>=0xD800&&a<=0xFFFF))){return !!(currentPortb()&1);}return oldOs?oldOs(a):false;};
+    }catch(e){st.error+=' OSMMU:'+e.message;}
+    try{
+      var oldBas=window.optionalBasicRomActiveForAddr||optionalBasicRomActiveForAddr;
+      window.__fix284OldBasicRomActive=oldBas;
+      optionalBasicRomActiveForAddr=function(a){a&=65535;if(window.fix284TurboMode && a>=0xA000&&a<=0xBFFF){return ((currentPortb()&2)===0);}return oldBas?oldBas(a):false;};
+    }catch(e){st.error+=' BASMMU:'+e.message;}
   }
+  function startFromBytes(bytes){
+    st.loaded=true;st.bytes=bytes.length;var info=parseXex(bytes);st.segments=info.segments;st.run=info.run;st.inits=info.inits;st.entry=info.entry;st.error=info.bad||'';
+    if(info.bad)throw new Error(info.bad);
+    window.fix284TurboMode=true;installTurboMmuPatch();
+    try{if(typeof fullStop==='function')fullStop();}catch(_){ }
+    try{if(typeof clearInputState==='function')clearInputState();}catch(_){ }
+    try{customXexBytes=bytes;xexCache=null;currentXexName='Turbo Basic XL 1.5 XEX FIX284 / '+bytes.length+' bytes';activeXexProfile='generic';}catch(e){throw new Error('set XEX failed '+e.message);}
+    try{if(typeof input!=='undefined'&&input){input.start=true;input.option=true;input.select=false;input.fire=false;} if(typeof syncInputShadows==='function')syncInputShadows(); if(typeof renderInput==='function')renderInput();}catch(_){ }
+    st.portbBefore=currentPortb();
+    if(typeof loadXex!=='function')throw new Error('loadXex missing');
+    loadXex(false);
+    st.pcBefore=(typeof cpu!=='undefined'&&cpu)?(cpu.pc&65535):0;st.stepsBefore=(typeof cpu!=='undefined'&&cpu)?(cpu.steps||0):0;
+    if(typeof startPlaying==='function')startPlaying();
+    else { if(typeof playMode!=='undefined')playMode=true; if(typeof playLoop==='function')playLoop(); }
+    try{ if(typeof runCpuQuiet==='function')runCpuQuiet(2500); else if(typeof runCpuBudget==='function')runCpuBudget(2500,6); }catch(_){ }
+    try{if(typeof renderVideo==='function')renderVideo();if(typeof renderRegs==='function')renderRegs();}catch(_){ }
+    st.pcAfter=(typeof cpu!=='undefined'&&cpu)?(cpu.pc&65535):0;st.stepsAfter=(typeof cpu!=='undefined'&&cpu)?(cpu.steps||0):0;st.portbAfter=currentPortb();st.started=true;
+    setTimeout(function(){try{if(typeof input!=='undefined'&&input){input.start=false;input.option=false;} if(typeof syncInputShadows==='function')syncInputShadows(); if(typeof renderInput==='function')renderInput();}catch(_){ }},1400);
+    say('TURBO BASIC XEX spuštěn: bytes '+st.bytes+' segments '+st.segments.length+' ENTRY $'+hx(st.entry,4)+' PC $'+hx(st.pcBefore,4)+'->$'+hx(st.pcAfter,4)+' steps '+st.stepsBefore+'->'+st.stepsAfter+' PORTB $'+hx(st.portbBefore,2)+'->$'+hx(st.portbAfter,2));
+  }
+  window.fix284StartTurboBasic=function(ev){
+    stop(ev);lockIdentity();st.clicks++;st.started=false;st.loaded=false;st.error='';say('Nacitam TurboBasic XEX asset '+ASSET+' ...');
+    fetchBytes(ASSET).then(function(bytes){startFromBytes(bytes);}).catch(function(e){st.error=e&&e.message?e.message:String(e);say('TURBO BASIC XEX CHYBA: '+st.error);showSnapshot(snapshot('error'));});
+    return false;
+  };
+  function screenRows(){var out=[];try{var base=(ram[0x58]|(ram[0x59]<<8))&65535;for(var r=0;r<12;r++){var txt='',hexs=[];for(var c=0;c<40;c++){var v=ram[(base+r*40+c)&65535]&255;hexs.push(hx(v,2));txt+=(v>=32&&v<96)?String.fromCharCode(v):' ';}out.push('R'+r+' "'+txt.replace(/\s+$/,'')+'"  '+hexs.join(' '));}}catch(e){out.push('screen err '+e.message);}return out;}
   function snapshot(reason){
-    var l=[];l.push('AtariHelp.eu EMU-09 '+TAG);l.push('cas='+(new Date()).toISOString());l.push('build='+TAG);l.push('reason='+(reason||''));
-    l.push('STRICT_CLEAN_CHECK=only core script + working FIX270 helper + FIX283 turbo layer; no FIX271-281 active experiment stack');
-    l.push('NO_FAKE=NO fake READY / NO fake LOAD / NO RAM program inject / NO screen RAM write / NO fake CLOAD');
-    l.push('TURBOBASIC_MODE=XEX asset, not cassette/WAV');l.push('');
-    l.push('[BUTTONS] clicks='+st.clicks+' last='+st.last);l.push('');
-    l.push('[TURBO BASIC XEX] asset='+ASSET+' bytes='+st.bytes+' loaded='+(st.loaded?'YES':'NO')+' started='+(st.started?'YES':'NO'));
-    l.push('error='+(st.error||'--'));l.push('segments='+st.segments.length+' '+segText());
-    l.push('RUNAD='+hx(st.run,4)+' INITAD='+st.inits.map(function(x){return hx(x,4);}).join(',')+' ENTRY='+hx(st.entry,4));
-    l.push('PC '+hx(st.pc0,4)+' -> afterLoad '+hx(st.pc1,4)+' -> afterStart '+hx(st.pc2,4)+' now '+hx(pc(),4));
-    l.push('steps '+st.steps0+' -> '+st.steps1+' now '+steps());l.push('PORTB '+hx(st.portb0,2)+' -> '+hx(st.portb1,2)+' now '+hx(portb(),2));
-    try{l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'--'));l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--'));}catch(_){ }
-    return l.join('\n');
+    var lines=[];lines.push('AtariHelp.eu EMU-09 '+TAG);lines.push('cas='+(new Date()).toISOString());lines.push('build='+TAG);lines.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'--'));lines.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--'));lines.push('');lines.push('[TURBO BASIC XEX FIX284]');lines.push('TURBO_XEX_FILE='+ASSET);lines.push('TURBO_XEX_SIZE='+st.bytes);lines.push('loaded='+(st.loaded?'YES':'NO')+' started='+(st.started?'YES':'NO')+' clicks='+st.clicks+' error='+(st.error||'--'));lines.push('segments='+st.segments.length+' '+st.segments.slice(0,8).map(function(s){return '$'+hx(s.start,4)+'-$'+hx(s.end,4)+' bytes='+s.size;}).join(' | '));lines.push('RUNAD='+(st.run?'$'+hx(st.run,4):'NONE'));lines.push('INITAD='+(st.inits.length?st.inits.map(function(a){return '$'+hx(a,4);}).join(','):'NONE'));lines.push('ENTRY=$'+hx(st.entry,4));lines.push('PC_BEFORE=$'+hx(st.pcBefore,4)+' PC_AFTER=$'+hx(st.pcAfter,4));lines.push('STEPS_BEFORE='+st.stepsBefore+' STEPS_AFTER='+st.stepsAfter);lines.push('PORTB_BEFORE=$'+hx(st.portbBefore,2)+' PORTB_AFTER=$'+hx(st.portbAfter,2));lines.push('NO_FAKE_READY=YES');lines.push('NO_FAKE_LOAD=YES');lines.push('NO_RAM_PROGRAM_INJECT=YES');lines.push('NO_SCREEN_RAM_PAINT=YES');lines.push('XEX_LOADER_NOTE=segment copy + INITAD/RUNAD CPU execution only, not CLOAD/WAV');lines.push('');lines.push('[STATUS]');try{lines.push(cpu?('CPU PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){lines.push('CPU status err '+e.message);}try{lines.push('DLIST $'+hx((ram[0x230]|(ram[0x231]<<8))&65535,4)+' SAVMSC $'+hx((ram[0x58]|(ram[0x59]<<8))&65535,4)+' DMACTL $'+hx(ram[0xD400],2)+' SDMCTL $'+hx(ram[0x22F],2)+' CHBASE $'+hx(ram[0x2F4],2)+' PORTB $'+hx(currentPortb(),2));}catch(e){}lines.push('');lines.push('[SCREEN PROOF]');lines=lines.concat(screenRows());try{lines.push('');lines.push('[TRACE]');if(cpu&&cpu.trace)lines=lines.concat(cpu.trace.slice(-24));}catch(_){ }return lines.join('\n');
   }
-  function showSnapshot(txt){
-    try{var box=g('fix282SnapshotBox');if(!box){box=document.createElement('div');box.id='fix282SnapshotBox';box.className='card';(g('fix282TurboPanel')||document.body).appendChild(box);}box.innerHTML='<h2>Snapshot FIX283 TXT</h2><textarea id="fix282SnapText" style="width:100%;min-height:240px;box-sizing:border-box;background:#050403;color:#2aff8f;border:1px solid rgba(42,255,143,.35);border-radius:10px;padding:8px;font-family:monospace;font-size:11px"></textarea><a id="fix282SnapDownload" class="btn secondary" download="atarihelp-FIX283-turbo-snapshot.txt">STAHNOUT SNAPSHOT TXT</a>';g('fix282SnapText').value=txt;var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});g('fix282SnapDownload').href=URL.createObjectURL(blob);}catch(_){ }
-  }
-  function runBytes(arr){
-    st.bytes=arr.length;st.loaded=true;var p=parseXex(arr);st.segments=p.seg;st.run=p.run;st.inits=p.inits;st.entry=p.entry;st.error=p.bad||'';
-    say('TurboBasic XEX nacten '+arr.length+' bytes, segmentu '+p.seg.length+', ENTRY '+hx(st.entry,4)+'. Spoustim pres XEX loader.');
-    try{
-      installPortbAuditPatch();
-      st.pc0=pc();st.steps0=steps();st.portb0=portb();
-      try{if(typeof fullStop==='function')fullStop();}catch(_){ }
-      try{if(typeof clearInputState==='function')clearInputState();}catch(_){ }
-      window.fix282TurboMode=true;
-      try{activeXexProfile='generic';}catch(_){ }
-      window.customXexBytes=arr;try{customXexBytes=arr;}catch(_){ }
-      try{xexCache=null;}catch(_){ }
-      try{currentXexName='Turbo Basic XL 1.5 XEX FIX283 / '+arr.length+' bytes';if(typeof setXexName==='function')setXexName();}catch(_){ }
-      try{fix154RealOsBootMode=false;fix225PureHardwareMode=false;}catch(_){ }
-      if(typeof loadXex!=='function')throw new Error('loadXex function missing');
-      loadXex(false);
-      st.pc1=pc();st.portb1=portb();
-      try{if(typeof input!=='undefined'&&input){input.start=true;input.option=true;input.select=false;input.fire=false;}if(typeof syncInputShadows==='function')syncInputShadows();if(typeof renderInput==='function')renderInput();}catch(_){ }
-      if(typeof startPlaying==='function')startPlaying();
-      st.started=true;st.pc2=pc();st.steps1=steps();
-      showSnapshot(snapshot('after start'));
-      setTimeout(function(){try{if(typeof input!=='undefined'&&input){input.start=false;input.option=false;}if(typeof syncInputShadows==='function')syncInputShadows();if(typeof renderInput==='function')renderInput();}catch(_){ } say('TurboBasic XEX spusten/pusten START+OPTION. PC '+hx(pc(),4)+' PORTB '+hx(portb(),2));showSnapshot(snapshot('after 2s'));},2000);
-    }catch(e){st.error=e&&e.stack?e.stack:String(e);say('CHYBA TurboBasic XEX: '+(e&&e.message?e.message:e));showSnapshot(snapshot('error'));}
-  }
-  window.fix282StartTurboBasic=function(ev){stop(ev);st.clicks++;say('Klik OK: nacitam '+ASSET+' ...');fetchBytes(ASSET).then(runBytes).catch(function(e){st.error=e&&e.message?e.message:String(e);say('CHYBA asset: '+st.error);showSnapshot(snapshot('asset error'));});return false;};
-  window.fix282Snapshot=function(ev){stop(ev);showSnapshot(snapshot('manual'));return false;};
-  function lock(){try{document.title='EMU-09 '+TAG;var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h)h.textContent='EMU-09 '+TAG;var p=document.querySelector('.brandText p');if(p)p.textContent='FIX283: overena funkcni BASIC cesta z FIX270 + TurboBasic jako realny XEX asset. Bez fake.';}catch(_){ }}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){lock();say('FIX283 pripraven. Tlačítka jsou primé onclick, žádné skryté click hacky.');});else{lock();say('FIX283 pripraven. Tlačítka jsou primé onclick, žádné skryté click hacky.');}
+  function showSnapshot(txt){try{var anchor=g('fix284TurboPanel')||g('playStatus')||document.body;var box=g('fix284SnapshotBox');if(!box){box=document.createElement('div');box.id='fix284SnapshotBox';box.className='card';anchor.parentNode.insertBefore(box,anchor.nextSibling);}box.innerHTML='<h2>Snapshot FIX284 TURBO TXT</h2><textarea id="fix284SnapshotText" style="width:100%;min-height:260px;box-sizing:border-box;background:#050403;color:#2aff8f;border:1px solid rgba(42,255,143,.35);border-radius:10px;padding:8px;font-family:monospace;font-size:11px"></textarea><button class="secondary compact" id="fix284SelectSnap">OZNACIT SNAPSHOT</button><a id="fix284DownloadSnap" class="btn secondary" download="atarihelp-FIX284-turbo-snapshot.txt">STAHNOUT SNAPSHOT TXT</a>';var ta=g('fix284SnapshotText');ta.value=txt;g('fix284SelectSnap').onclick=function(ev){stop(ev);ta.focus();ta.select();return false;};var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});g('fix284DownloadSnap').href=URL.createObjectURL(blob);}catch(e){try{console.log(txt);}catch(_){}} }
+  window.fix284Snapshot=function(ev){stop(ev);lockIdentity();showSnapshot(snapshot('manual'));return false;};
+  function boot(){lockIdentity();var b=g('fix284TurboBtn');if(b&&!b.__fix284){b.__fix284=true;b.addEventListener('click',window.fix284StartTurboBasic,false);b.addEventListener('pointerup',function(ev){},false);}var s=g('fix284TurboSnapBtn');if(s&&!s.__fix284){s.__fix284=true;s.addEventListener('click',window.fix284Snapshot,false);} }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot); else boot();
+  var n=0;var timer=setInterval(function(){boot();if(++n>80)clearInterval(timer);},250);
 })();
-</script></body>
-</html>
-<!-- FIX249_CASSETTE_SCAFFOLD_SELFTEST_COLORROLE_CORE_FINAL_SCRIPT -->
-
-<!-- FIX250_WAV_PICKER_SELFTEST_DMA_ZOOM_CORE_FINAL_SCRIPT -->
-
-<!-- FIX251_TURBOBASIC_WAV_ASSET_CASSETTE_PILOT_CORE_FINAL_SCRIPT -->
-
-<!-- FIX261_UI_LOCK_SINGLE_CASSETTE_PANEL_CORE_FINAL_SCRIPT -->
-
-<!-- FIX267_ROM_QUARANTINE_SAFE_CORE_FINAL_SCRIPT -->
-
-<!-- FIX270_FAST_BLOCK_WARM_RESET_CORRECT_DEMO_CORE_FINAL_SCRIPT -->
-
+</script>

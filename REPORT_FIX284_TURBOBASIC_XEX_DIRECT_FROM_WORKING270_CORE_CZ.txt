@@ -1,0 +1,34 @@
+AtariHelp.eu EMU-09 FIX284_TURBOBASIC_XEX_DIRECT_FROM_WORKING270_CORE
+
+COMMIT:
+FIX284 TurboBasic XEX direct from working270 core
+
+ZAKLAD:
+- app struktura index.html zachovana z FIX283, EMU-09 zustava pododdil v Hry
+- emulator overlay vychazi z prokazatelne funkcniho FIX270 BASIC/buttons jadra
+- pridany pouze finalni FIX284 TurboBasic XEX panel a MMU audit modul
+
+TURBO BASIC XEX:
+- asset: turbo-basic-xl-1.5-copy.xex
+- size: 20877 bytes
+- segmenty: $4980-$9B00 bytes=20865, $02E2-$02E3 bytes=2
+- RUNAD: NONE
+- INITAD: $6132
+- ENTRY: $6132
+
+PRAVIDLA:
+- zadny fake READY
+- zadny fake LOAD
+- zadny CLOAD/WAV v tomhle kroku
+- zadny RAM program inject
+- zadne screen RAM malovani vysledku
+- XEX loader = segmenty do emulovane RAM + INITAD/RUNAD + CPU execution
+
+TEST:
+1. Spust AtariHelp.eu centrum, pak Hry -> EMU-09 FIX284.
+2. Bez POWER BASIC klikni TURBO BASIC XL 1.5 — SPUSTIT XEX.
+3. Po 5-10 s klikni SNAPSHOT FIX284 TURBO.
+4. Posli screenshot + TXT.
+
+KODY JSOU STEJNE
+BASIC/Altirra porovnavaci kody nemenene.
