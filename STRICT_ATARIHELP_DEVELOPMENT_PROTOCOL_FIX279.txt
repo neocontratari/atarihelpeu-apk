@@ -1,0 +1,6 @@
+STRICT BUILD CHECKS
+1. grep FIX248-FIX278 in emu09_pmg_gtia_overlay.html: must be empty.
+2. script blocks: one script tag only.
+3. visible UI: FIX279_STRICT_CLEAN_TURBOBASIC_XEX_CORE.
+4. Buttons: direct onclick globals, no hidden modal file picker.
+5. TurboBasic: XEX asset loader only, no CLOAD/WAV fake.
