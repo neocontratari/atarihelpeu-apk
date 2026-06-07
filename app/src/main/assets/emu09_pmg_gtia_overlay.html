@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX261_UI_LOCK_SINGLE_CASSETTE_PANEL_CORE / stabilni UI</title>
+<title>EMU-09 FIX262_CASSETTE_AUDIO_VISIBLE_WAV_TO_POKEY_CORE / cassette audio</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -36,7 +36,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX261_UI_LOCK_SINGLE_CASSETTE_PANEL_CORE</h1>
+<h1>EMU-09 FIX262_CASSETTE_AUDIO_VISIBLE_WAV_TO_POKEY_CORE</h1>
 <p>FIX261: UI zpet a zamcene proti starym FIX248-FIX251 timerum. Jedna klavesnice pod obrazem, jeden cisty kazetakovy panel z FIX251, BASIC READY a snapshot bez fake LOAD/RAM injectu.</p>
 </div>
 </div>
@@ -13472,4 +13472,158 @@ updatePlayStatus('ready');
   try{var mo=new MutationObserver(function(){enforce();});var target=document.querySelector('.brandText')||document.body;mo.observe(target,{childList:true,subtree:true,characterData:true});}catch(e){}
   enforce();[40,120,300,700,1700,2600,4100,5200].forEach(function(t){setTimeout(enforce,t);});
 })();
+</script>
+
+
+<script>
+/* FIX262_CASSETTE_AUDIO_VISIBLE_WAV_TO_POKEY_CORE_FINAL_SCRIPT */
+(function(){
+  'use strict';
+  var TAG='FIX262_CASSETTE_AUDIO_VISIBLE_WAV_TO_POKEY_CORE';
+  var BUILD_TITLE='EMU-09\n'+TAG;
+  var ASSET_NAME='TurboBasicXXL.wav';
+  var state={
+    inserted:false, source:'none', name:'--', size:0, wav:'--', analysis:'--', last:'CASSETTE waiting',
+    audio:null, audioUrl:'', audioReady:false, audioErr:'--', playing:false, motor:false, posSec:0, durationSec:0,
+    buf:null, bytes:null, serialPtr:0, serialActive:false, cloadRequested:false, decodeStatus:'not decoded', decodePhase:0,
+    serialLast:'--', nextByteStep:0, byteDelaySteps:30000, irqReads:0, serReads:0, eof:false, ticker:null
+  };
+  var oldSnapshot=null;
+  function g(id){return document.getElementById(id);} 
+  function hx(v,n){v=Number(v)||0;var m=(n===2?255:(n===4?65535:0xffffffff));var s=(v&m).toString(16).toUpperCase();while(s.length<n)s='0'+s;return s;}
+  function raw(a){try{return ram[a&65535]&255;}catch(e){return 0;}}
+  function prevent(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return false;}
+  function cpuSteps(){try{return (cpu&&cpu.steps)?(cpu.steps|0):0;}catch(e){return 0;}}
+  function nowTime(){return (new Date()).toISOString();}
+  function fmt(s){s=Math.max(0,Number(s)||0);var m=Math.floor(s/60),r=Math.floor(s%60);return m+':'+(r<10?'0':'')+r;}
+  function fileName(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX262-realos-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function dlptr(){try{if(typeof getDlistPtr==='function')return getDlistPtr()&65535;}catch(e){}return (raw(0x230)|(raw(0x231)<<8))&65535;}
+  function ready(){try{var dl=dlptr(),sav=(raw(0x58)|(raw(0x59)<<8))&65535;return dl>=0x9C00&&dl<=0x9D80&&sav>=0x9C00&&sav<=0x9D80;}catch(e){return false;}}
+  function assetUrls(){var a=[ASSET_NAME,'./'+ASSET_NAME];try{var base=String(location.href||'');var dir=base.replace(/[^\/]*($|[?#].*)/,'');a.push(dir+ASSET_NAME);}catch(e){}a.push('file:///android_asset/'+ASSET_NAME);var out=[];a.forEach(function(x){if(out.indexOf(x)<0)out.push(x);});return out;}
+  function parseWavInfo(buf){
+    var dv=new DataView(buf), info={ok:false, reason:'not RIFF', size:buf.byteLength, head:''};
+    function str(o,n){var s='';for(var i=0;i<n;i++)s+=String.fromCharCode(dv.getUint8(o+i));return s;}
+    try{
+      var h=[];for(var j=0;j<Math.min(16,buf.byteLength);j++){h.push(hx(dv.getUint8(j),2));}info.head=h.join(' ');
+      if(buf.byteLength<44||str(0,4)!=='RIFF'||str(8,4)!=='WAVE'){info.reason='not RIFF/WAVE head '+info.head;return info;}
+      var p=12,fmt=null,data=null;
+      while(p+8<=buf.byteLength){var id=str(p,4),sz=dv.getUint32(p+4,true),st=p+8;if(id==='fmt ')fmt={start:st,size:sz};if(id==='data'){data={start:st,size:sz};break;}p=st+sz+(sz&1);}
+      if(!fmt){info.reason='fmt chunk missing';return info;}
+      info.audioFormat=dv.getUint16(fmt.start,true);info.channels=dv.getUint16(fmt.start+2,true);info.sampleRate=dv.getUint32(fmt.start+4,true);info.byteRate=dv.getUint32(fmt.start+8,true);info.blockAlign=dv.getUint16(fmt.start+12,true);info.bits=dv.getUint16(fmt.start+14,true);
+      info.dataStart=data?data.start:0;info.dataSize=data?data.size:0;info.duration=(data&&info.sampleRate&&info.blockAlign)?(data.size/(info.sampleRate*info.blockAlign)):0;info.ok=!!data;info.reason=info.ok?'OK':'data chunk missing';return info;
+    }catch(e){info.reason='parse exception '+e.message;return info;}
+  }
+  function sampleAt(dv,info,idx){
+    var off=info.dataStart+idx*info.blockAlign;
+    if(off+1>=dv.byteLength)return 0;
+    try{return info.bits===16?dv.getInt16(off,true):((dv.getUint8(off)-128)<<8);}catch(e){return 0;}
+  }
+  function classifyBit(dv,info,startSample,bitSamp,bitIndex){
+    var a=Math.floor(startSample+bitIndex*bitSamp), c=Math.floor(startSample+(bitIndex+1)*bitSamp);
+    var prev=0,zc=0;
+    for(var s=a;s<c;s++){
+      var v=sampleAt(dv,info,s);var sg=v>=0?1:-1;
+      if(prev&&sg!==prev)zc++;prev=sg;
+    }
+    return zc>=16?1:0; // Atari cassette pilot in this WAV is high/mark ~5320Hz => bit 1
+  }
+  function decodeFramesFromBits(bits){
+    var out=[],i=0;
+    while(i+10<=bits.length){
+      if(bits[i]===0 && (i===0||bits[i-1]===1) && bits[i+9]===1){
+        var b=0;for(var j=0;j<8;j++)b|=(bits[i+1+j]<<j);out.push(b);i+=10;
+      }else i++;
+    }
+    return out;
+  }
+  function decodeWavToBytes(buf){
+    var info=parseWavInfo(buf); if(!info.ok){state.decodeStatus='WAV decode skipped: '+info.reason;return null;}
+    if(!(info.audioFormat===1 && info.channels>=1 && (info.bits===16||info.bits===8))){state.decodeStatus='WAV decode unsupported PCM format '+info.audioFormat+' bits '+info.bits;return null;}
+    var dv=new DataView(buf), totalSamples=Math.floor(info.dataSize/info.blockAlign), bitSamp=info.sampleRate/600;
+    var active=0; for(var i=0;i<totalSamples;i+=2048){if(Math.abs(sampleAt(dv,info,i))>1500){active=i;break;}}
+    var segStart=Math.max(0,active-Math.floor(info.sampleRate));
+    var testBits=Math.min(Math.floor(info.sampleRate*15/bitSamp),9000), best={score:-1,phase:0,bytes:[]};
+    for(var ph=0;ph<16;ph++){
+      var start=segStart+(ph/16)*bitSamp, bits=[];
+      for(var b=0;b<testBits;b++)bits.push(classifyBit(dv,info,start,bitSamp,b));
+      var bytes=decodeFramesFromBits(bits), printable=0;
+      for(var k=0;k<Math.min(200,bytes.length);k++){var x=bytes[k];if((x>=32&&x<127)||x===0||x===155||x===10||x===13)printable++;}
+      var score=bytes.length*3+printable;
+      if(score>best.score)best={score:score,phase:(ph/16)*bitSamp,bytes:bytes};
+    }
+    var startFull=segStart+best.phase, nbits=Math.floor((totalSamples-startFull)/bitSamp), bitsFull=[];
+    for(var q=0;q<nbits;q++)bitsFull.push(classifyBit(dv,info,startFull,bitSamp,q));
+    var arr=decodeFramesFromBits(bitsFull);
+    var u=new Uint8Array(arr.length);for(var z=0;z<arr.length;z++)u[z]=arr[z]&255;
+    state.decodePhase=best.phase;state.decodeStatus='OK bytes '+u.length+' start '+(startFull/info.sampleRate).toFixed(3)+'s phaseSamples '+best.phase.toFixed(2)+' / WAV->serial bytes only, NO RAM inject';
+    return u;
+  }
+  function analyzeQuick(buf,info){
+    try{var dv=new DataView(buf), maxSamples=Math.min(info.sampleRate*5,Math.floor(info.dataSize/info.blockAlign));var min=999999,max=-999999,sum=0,sum2=0,zc=0,prev=0;for(var i=0;i<maxSamples;i++){var v=sampleAt(dv,info,i);if(v<min)min=v;if(v>max)max=v;sum+=v;sum2+=v*v;var sg=v>=0?1:-1;if(prev&&sg!==prev)zc++;prev=sg;}var rms=Math.sqrt(sum2/Math.max(1,maxSamples));return 'first5s min '+Math.round(min)+' max '+Math.round(max)+' rms '+rms.toFixed(1)+' zc '+zc+' freq~'+(zc/5/2).toFixed(0)+'Hz';}catch(e){return 'analysis error '+e.message;}
+  }
+  function setBuffer(name,source,buf){
+    state.buf=buf;state.name=name;state.source=source;state.size=buf.byteLength;state.inserted=true;state.serialPtr=0;state.serialActive=false;state.cloadRequested=false;state.eof=false;
+    var info=parseWavInfo(buf);state.wav=info.ok?('PCM '+info.channels+'ch '+info.bits+'bit '+info.sampleRate+'Hz data '+info.dataSize+' duration '+fmt(info.duration)):'WAV parse '+info.reason;state.durationSec=info.duration||0;state.analysis=info.ok?analyzeQuick(buf,info):'--';
+    try{if(state.audioUrl)URL.revokeObjectURL(state.audioUrl);}catch(e){}
+    try{state.audioUrl=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));state.audio=new Audio();state.audio.src=state.audioUrl;state.audio.controls=true;state.audio.preload='auto';state.audio.volume=1.0;state.audio.oncanplay=function(){state.audioReady=true;state.audioErr='audio canplay';updateUI();};state.audio.onerror=function(){state.audioReady=false;state.audioErr='audio error '+(state.audio&&state.audio.error?state.audio.error.code:'?');updateUI();};state.audio.ontimeupdate=function(){state.posSec=state.audio.currentTime||0;updateUI(false);};state.audio.onended=function(){state.playing=false;state.motor=false;state.eof=true;state.last='AUDIO EOF';updateUI();};}catch(e){state.audioErr='audio setup exception '+e.message;}
+    state.last='INSERT OK '+name+' '+source+' '+state.wav; state.decodeStatus='not decoded yet'; updateUI();
+  }
+  function xhrArrayBuffer(url,ok,fail){try{var x=new XMLHttpRequest();x.open('GET',url,true);x.responseType='arraybuffer';x.onload=function(){if((x.status===0||x.status>=200&&x.status<300)&&x.response)ok(x.response,url);else fail(new Error('XHR status '+x.status+' '+url));};x.onerror=function(){fail(new Error('XHR error '+url));};x.send();}catch(e){fail(e);}}
+  function loadUrlList(urls,idx){idx=idx||0;if(idx>=urls.length){state.last='BUILTIN TURBOBASIC WAV fetch failed on all paths: '+urls.join(' | ');updateUI();return;}
+    var u=urls[idx];state.last='LOAD BUILTIN try '+u;updateUI();
+    try{fetch(u,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.arrayBuffer();}).then(function(b){setBuffer(ASSET_NAME,'APK_ASSET '+u,b);}).catch(function(){xhrArrayBuffer(u,function(b){setBuffer(ASSET_NAME,'APK_ASSET '+u,b);},function(){loadUrlList(urls,idx+1);});});}
+    catch(e){xhrArrayBuffer(u,function(b){setBuffer(ASSET_NAME,'APK_ASSET '+u,b);},function(){loadUrlList(urls,idx+1);});}
+  }
+  function insertBuiltin(ev){prevent(ev);loadUrlList(assetUrls(),0);return false;}
+  function insertFile(ev){prevent(ev);var inp=g('cassetteFileFix262');if(!inp){state.last='file input missing';updateUI();return false;}inp.value='';inp.click();return false;}
+  function onFile(f){if(!f){state.last='PICKER closed';updateUI();return;}state.last='READ FILE '+f.name;updateUI();var fr=new FileReader();fr.onload=function(){setBuffer(f.name,'ANDROID_PICKER',fr.result);};fr.onerror=function(){state.last='FileReader error';updateUI();};fr.readAsArrayBuffer(f);}
+  function ensureDecoded(){if(state.bytes&&state.bytes.length)return true;if(!state.buf){state.decodeStatus='NO WAV BUFFER - first INSERT BUILTIN or PICKER';updateUI();return false;}state.decodeStatus='DECODING WAV TO SERIAL BYTES...';updateUI();try{state.bytes=decodeWavToBytes(state.buf);state.serialPtr=0;state.serialLast='decoded '+(state.bytes?state.bytes.length:0)+' bytes';updateUI();return !!(state.bytes&&state.bytes.length);}catch(e){state.decodeStatus='decode exception '+e.message;state.serialLast=state.decodeStatus;updateUI();return false;}}
+  function playAudio(ev){prevent(ev);if(!state.inserted){state.last='PLAY requested but cassette empty - INSERT first';updateUI();return false;}state.motor=true;state.playing=true;state.last='PLAY motor ON, audio ON attempt, no RAM inject';try{if(state.audio){state.audio.currentTime=state.posSec||0;var pr=state.audio.play();if(pr&&pr.catch)pr.catch(function(e){state.audioErr='audio play blocked/error '+e.message;updateUI();});}}catch(e){state.audioErr='audio play exception '+e.message;}startTicker();updateUI();return false;}
+  function stopAudio(ev){prevent(ev);state.motor=false;state.playing=false;state.serialActive=false;try{if(state.audio)state.audio.pause();}catch(e){}state.last='STOP motor OFF audio OFF';updateUI();return false;}
+  function rewind(ev){prevent(ev);state.posSec=0;state.serialPtr=0;state.eof=false;state.nextByteStep=0;try{if(state.audio)state.audio.currentTime=0;}catch(e){}state.last='REWIND tape/audio/serial to 0';updateUI();return false;}
+  function soundTest(ev){prevent(ev);try{var AC=window.AudioContext||window.webkitAudioContext;var ac=new AC();var o=ac.createOscillator(),gn=ac.createGain();o.frequency.value=880;gn.gain.value=0.12;o.connect(gn);gn.connect(ac.destination);o.start();setTimeout(function(){try{o.stop();ac.close();}catch(e){}},400);state.audioErr='browser AudioContext test beep fired';}catch(e){state.audioErr='sound test failed '+e.message;}updateUI();return false;}
+  function sendBasicText(text,name,ev){try{if(typeof window.queueFastBasicFix247==='function')return window.queueFastBasicFix247(text,name||'CASSETTE COMMAND',false,ev);}catch(e){}try{if(typeof window.queueFastBasicFix244==='function')return window.queueFastBasicFix244(text,name||'CASSETTE COMMAND',false,ev);}catch(e){}try{if(typeof window.queueFastBasicFix240==='function')return window.queueFastBasicFix240(text,name||'CASSETTE COMMAND',false);}catch(e){}state.last='BASIC command helper missing, cannot type '+name;updateUI();return false;}
+  function cload(run,ev){prevent(ev);if(!state.inserted){state.last='CLOAD blocked: cassette empty';updateUI();return false;}ensureDecoded();rewind();state.cloadRequested=true;state.serialActive=true;state.motor=true;state.playing=true;state.nextByteStep=(cpuSteps()||0)+state.byteDelaySteps;state.last='CLOAD '+(run?'+RUN ':'')+'requested: BASIC READY '+(ready()?'YES':'NO')+', WAV serial bytes '+(state.bytes?state.bytes.length:0)+', POKEY SERIN active, NO RAM INJECT';playAudio();sendBasicText('CLOAD'+(run?'\nRUN':''),'CASSETTE CLOAD '+(run?'+ RUN':''),ev);updateUI();return false;}
+  function serialReady(){return !!(state.serialActive&&state.playing&&state.bytes&&state.serialPtr<state.bytes.length&&cpuSteps()>=state.nextByteStep);} 
+  function serialRead(){if(!serialReady())return 0xFF;var b=state.bytes[state.serialPtr++]&255;state.serReads++;state.serialLast='SERIN byte $'+hx(b,2)+' index '+state.serialPtr+'/'+state.bytes.length+' step '+cpuSteps();state.nextByteStep=(cpuSteps()||0)+state.byteDelaySteps;if(state.serialPtr>=state.bytes.length){state.eof=true;state.serialActive=false;state.last='SERIAL EOF all decoded WAV bytes delivered';}if(state.serReads%16===0)updateUI(false);return b;}
+  function installPokeyHook(){try{if(window.fix262PokeySerialHookInstalled)return;window.fix262PokeySerialHookInstalled=true;var oldR=CPU6502.prototype.r;CPU6502.prototype.r=function(a){a&=65535;if((activeXexProfile==='realos'||(typeof fix225PureHardwareMode!=='undefined'&&fix225PureHardwareMode))&&state.serialActive){if(a===0xD20E){state.irqReads++;if(serialReady()){if(state.irqReads%32===0)updateUI(false);return 0xDF;}return 0xFF;}if(a===0xD20D){return serialRead();}}return oldR.call(this,a);};state.serialLast='POKEY SERIN/IRQST hook installed';}catch(e){state.serialLast='POKEY hook install failed '+e.message;}}
+  function startTicker(){if(state.ticker)return;state.ticker=setInterval(function(){try{if(state.audio){state.posSec=state.audio.currentTime||state.posSec;state.durationSec=state.audio.duration||state.durationSec;state.playing=!state.audio.paused&&!state.audio.ended;state.motor=state.playing||state.serialActive;}}catch(e){}updateUI(false);},500);}
+  function removeOldCassetteBoxes(){try{document.querySelectorAll('#cassetteBoxFix249,#cassetteBoxFix250,#cassetteBoxFix251,#cassetteBoxFix260,#cassetteBoxFix261,[data-fix261-cassette]').forEach(function(x){if(x.id!=='cassetteBoxFix262')x.remove();});}catch(e){}}
+  function installUI(){
+    removeOldCassetteBoxes();
+    var box=g('cassetteBoxFix262');
+    if(!box){var dock=g('atariKeyboardDock')||document.querySelector('.atariKeyboardDock')||g('playStatus')||document.body;box=document.createElement('div');box.id='cassetteBoxFix262';box.className='card';try{dock.parentNode.insertBefore(box,dock.nextSibling);}catch(e){document.body.appendChild(box);}}
+    box.setAttribute('data-fix262-cassette','single');
+    box.innerHTML='<h2>Virtualni kazetak FIX262 - zvuk + WAV-&gt;POKEY serial</h2><p>Jedna kazeta. Vestaveny TurboBasicXXL.wav z APK, viditelny motor, cas, zvuk a dekodovani WAV na serialni bajty pro POKEY SERIN. Bez RAM injectu a bez fake LOAD.</p><input id="cassetteFileFix262" type="file" accept="*/*,.wav,.cas,audio/*,application/octet-stream" style="display:none"><div class="grid2"><button id="cassBuiltinFix262" class="secondary compact">INSERT BUILTIN TURBOBASICXXL.WAV</button><button id="cassFileFix262" class="secondary compact">INSERT WAV/CAS Z ANDROIDU</button><button id="cassDecodeFix262" class="secondary compact">DECODE WAV -&gt; POKEY SERIAL</button><button id="cassBeepFix262" class="secondary compact">ZVUK TEST BEEP</button><button id="cassPlayFix262" class="secondary compact">PLAY AUDIO + MOTOR</button><button id="cassStopFix262" class="secondary compact">STOP</button><button id="cassRewFix262" class="secondary compact">REWIND</button><button id="cassCloadFix262" class="secondary compact">CLOAD + PLAY + POKEY</button><button id="cassCloadRunFix262" class="secondary compact">CLOAD + RUN + PLAY</button></div><div id="cassAudioMount262"></div><progress id="cassProgress262" value="0" max="1" style="width:100%;height:16px;margin-top:8px"></progress><pre id="cassStateFix262" class="inputReadout">CASSETTE waiting</pre>';
+    g('cassetteFileFix262').onchange=function(){onFile(this.files&&this.files[0]);};
+    [['cassBuiltinFix262',insertBuiltin],['cassFileFix262',insertFile],['cassDecodeFix262',function(e){prevent(e);ensureDecoded();return false;}],['cassBeepFix262',soundTest],['cassPlayFix262',playAudio],['cassStopFix262',stopAudio],['cassRewFix262',rewind],['cassCloadFix262',function(e){return cload(false,e);}],['cassCloadRunFix262',function(e){return cload(true,e);}]].forEach(function(p){var b=g(p[0]);if(b){b.onclick=p[1];['pointerup','touchend'].forEach(function(n){try{b.addEventListener(n,p[1],{passive:false});}catch(e){}});}});
+    updateUI();
+  }
+  function updateUI(force){
+    try{var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h&&h.textContent!==BUILD_TITLE)h.textContent=BUILD_TITLE;}catch(e){}
+    try{document.title='EMU-09 '+TAG;}catch(e){}
+    try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX262: kazeta je viditelna a slyset; built-in TurboBasicXXL.wav se nacita bez query, audio hraje pres WebView, WAV se dekoduje na POKEY SERIN bytes. Bez fake LOAD/RAM inject.';}catch(e){}
+    try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX262: jedna klavesnice, jedna kazeta, CLOAD jde pres BASIC a POKEY SERIN, ne pres RAM inject.';}catch(e){}
+    try{var mount=g('cassAudioMount262');if(mount&&state.audio&&!mount.contains(state.audio)){mount.innerHTML='';state.audio.style.width='100%';state.audio.style.marginTop='8px';mount.appendChild(state.audio);}}catch(e){}
+    try{var pr=g('cassProgress262');if(pr){var dur=state.durationSec||1;pr.max=dur;pr.value=Math.min(dur,state.posSec||0);}}catch(e){}
+    try{var s=g('cassStateFix262');if(s){var pct=state.bytes&&state.bytes.length?((state.serialPtr/state.bytes.length)*100).toFixed(1)+'%':'--';s.textContent='BUILD '+TAG+'\nCASSETTE '+(state.inserted?state.name:'empty')+' ['+state.source+'] size '+state.size+'\nMOTOR '+(state.motor?'ON':'OFF')+' AUDIO '+(state.playing?'PLAY':'STOP')+' AUDIO_READY '+state.audioReady+' '+state.audioErr+'\nPOS '+fmt(state.posSec)+' / '+fmt(state.durationSec)+'\nWAV '+state.wav+'\nANALYZE '+state.analysis+'\nDECODE '+state.decodeStatus+'\nSERIAL active '+state.serialActive+' ptr '+state.serialPtr+'/'+(state.bytes?state.bytes.length:0)+' '+pct+' IRQreads '+state.irqReads+' SERreads '+state.serReads+' delaySteps '+state.byteDelaySteps+'\nSERIAL_LAST '+state.serialLast+'\nLAST '+state.last+'\nRULE NO_FAKE_LOAD / NO_RAM_INJECT / CLOAD_TYPED_TO_REAL_BASIC / WAV_BYTES_TO_POKEY_SERIN';}}catch(e){}
+  }
+  function snapshotText(reason){
+    updateUI(true);
+    var l=[];l.push('AtariHelp.eu EMU-09 FIX262 CASSETTE AUDIO VISIBLE WAV TO POKEY CORE');l.push('cas='+nowTime());l.push('build='+TAG);l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'PURE HARDWARE / no XEX'));l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'realos'));l.push('');l.push('[RECOVERY AUDIT]');l.push('BASE=FIX261 stable UI + FIX251 TurboBasicXXL.wav asset + new FIX262 audio/serial cassette layer');l.push('HEADER_LOCK=FIX262');l.push('OLD_STAMP_TIMERS_FIX248_251=DISABLED_BY_FIX261_AND_RELOCKED_BY_FIX262');l.push('UI_CHAOS_FIX253_258_ELEMENTS='+countBadUi());l.push('KEYBOARD_COUNT='+countSel('#atariKeyboard')+' DOCK_COUNT='+countSel('#atariKeyboardDock,.atariKeyboardDock'));l.push('CASSETTE_PANEL_COUNT='+countSel('#cassetteBoxFix262'));l.push('CASSETTE_UI=ONE_VISIBLE_PANEL_AUDIO_METER_PROGRESS');l.push('RULE NO_FAKE_READY / NO_FAKE_SELFTEST / NO_FAKE_LOAD / NO_RAM_INJECT / NO_GAME_HACK');l.push('');l.push('[STATUS]');try{l.push(cpu?('CPU PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?cpu.trapMsg:'NO')):'CPU not started');}catch(e){}try{l.push('DLIST $'+hx(dlptr(),4)+' SAVMSC $'+hx((raw(0x58)|(raw(0x59)<<8))&65535,4)+' CHBASE $'+hx(raw(0x2F4),2)+' SDMCTL $'+hx(raw(0x22F),2)+' DMACTL $'+hx(raw(0xD400),2)+' PRIOR $'+hx(raw(0xD01B),2));}catch(e){}l.push('BASIC_READY_HEURISTIC '+(ready()?'YES':'NO'));l.push('');l.push('[CASSETTE FIX262]');l.push('inserted='+state.inserted+' source='+state.source+' name='+state.name+' size='+state.size);l.push('audioReady='+state.audioReady+' playing='+state.playing+' motor='+state.motor+' posSec='+(state.posSec||0).toFixed(2)+' durationSec='+(state.durationSec||0).toFixed(2)+' audioErr='+state.audioErr);l.push('wav='+state.wav);l.push('analysis='+state.analysis);l.push('decode='+state.decodeStatus);l.push('serialActive='+state.serialActive+' serialPtr='+state.serialPtr+'/'+(state.bytes?state.bytes.length:0)+' irqReads='+state.irqReads+' serReads='+state.serReads+' byteDelaySteps='+state.byteDelaySteps);l.push('serialLast='+state.serialLast);l.push('last='+state.last);l.push('cassetteRule=WAV parsed/decode to POKEY SERIN only; no RAM write of program bytes');l.push('');l.push('[SCREEN PROOF]');l=l.concat(screenRows());try{l.push('');l.push('[TRACE]');if(cpu&&cpu.trace)l=l.concat(cpu.trace.slice(-18));}catch(e){}return l.join('\n');
+  }
+  function countSel(q){try{return document.querySelectorAll(q).length;}catch(e){return -1;}}
+  function countBadUi(){try{return document.querySelectorAll('[id^="fix253"],[id^="fix254"],[id^="fix255"],[id^="fix256"],[id^="fix257"],[id^="fix258"],[id^="f253"],[id^="f254"],[id^="b257"]').length;}catch(e){return -1;}}
+  function screenRows(){var out=[];try{var sav=(raw(0x58)|(raw(0x59)<<8))&65535;for(var r=0;r<8;r++){var st='',bs=[];for(var c=0;c<40;c++){var b=sav?raw(sav+r*40+c):0;bs.push(hx(b,2));var cc=b&127;st+=(cc>=0x20&&cc<0x5b?String.fromCharCode(cc+0x20):' ');}out.push('R'+r+' "'+st.replace(/\s+$/,'')+'"  '+bs.join(' '));}}catch(e){out.push('screen rows err '+e.message);}return out;}
+  function ensureSnapBox(text,fn){try{var anchor=g('playStatus')||g('cassetteBoxFix262')||document.body;var box=g('fix262SnapshotBox');if(!box){box=document.createElement('div');box.id='fix262SnapshotBox';box.className='card';box.style.marginTop='10px';anchor.parentNode.insertBefore(box,anchor.nextSibling);}box.innerHTML='<h2>Snapshot FIX262 TXT</h2><p>Fallback pro Android/Nox: kdyz download selze, oznac a zkopiruj text nize.</p><textarea id="fix262SnapshotText" style="width:100%;min-height:220px;box-sizing:border-box;background:#050403;color:#2aff8f;border:1px solid rgba(42,255,143,.35);border-radius:10px;padding:8px;font-family:monospace;font-size:11px"></textarea><button id="fix262CopySnap" class="secondary compact">KOPIROVAT SNAPSHOT</button><button id="fix262SelectSnap" class="secondary compact">OZNACIT SNAPSHOT</button><a id="fix262DownloadSnap" class="btn secondary" download="'+fn+'">STAHNOUT SNAPSHOT TXT</a>';var ta=g('fix262SnapshotText');if(ta)ta.value=text;var blob=new Blob([text],{type:'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);var a=g('fix262DownloadSnap');if(a){a.href=url;a.download=fn;}var copy=g('fix262CopySnap');if(copy)copy.onclick=function(ev){prevent(ev);try{ta.focus();ta.select();document.execCommand('copy');}catch(e){}return false;};var sel=g('fix262SelectSnap');if(sel)sel.onclick=function(ev){prevent(ev);try{ta.focus();ta.select();}catch(e){}return false;};}catch(e){}}
+  function save(text,reason){var fn=fileName(reason||'snapshot');ensureSnapBox(text,fn);try{var el=g('log');if(el)el.textContent=text;}catch(e){}try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(text,fn);return true;}}catch(e){}try{if(window.saveTextReportToMobile){window.saveTextReportToMobile(fn,text);return true;}}catch(e){}try{var a=g('fix262DownloadSnap');if(a&&a.href){a.click();return true;}}catch(e){}return false;}
+  function installSnapshotOverride(){oldSnapshot=window.compatibilitySnapshotCore;window.compatibilitySnapshotCore=function(reason){var t=snapshotText(reason||'snapshot');return save(t,reason||'snapshot');};window.compatibilitySnapshot=function(ev){prevent(ev);return window.compatibilitySnapshotCore('snapshot');};window.saveCurrentLogToMobile=function(reason){return window.compatibilitySnapshotCore(reason||'manual');};window.autoSaveLogToMobile=function(reason){return window.compatibilitySnapshotCore(reason||'auto');};window.makeLogFileName=function(reason){return fileName(reason||'snapshot');};}
+  var relockBusy=false;
+  function bootRelock(){if(relockBusy)return;relockBusy=true;try{try{window.EMU_BUILD_TAG=TAG;EMU_BUILD_TAG=TAG;}catch(e){}installUI();updateUI(true);}finally{relockBusy=false;}}
+  installPokeyHook();installSnapshotOverride();bootRelock();
+  try{var target=document.querySelector('.brandText')||document.querySelector('header');if(target){var mo=new MutationObserver(function(){updateUI(true);});mo.observe(target,{childList:true,subtree:true,characterData:true});}}catch(e){}
+  [40,120,300,700,1300,2500,4300,6500,9000].forEach(function(t){setTimeout(bootRelock,t);});
+  setInterval(updateUI,1000);
+})();
+
 </script>
