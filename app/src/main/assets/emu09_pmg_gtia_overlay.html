@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX316_TURBO_PORTB_RAM_UNDER_ROM_LOADER</title>
+<title>EMU-09 FIX317_SINGLE_TURBO_BUTTON_REAL_START</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -46,7 +46,7 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX316_TURBO_PORTB_RAM_UNDER_ROM_LOADER</h1>
+<h1>EMU-09 FIX317_SINGLE_TURBO_BUTTON_REAL_START</h1>
 <p>FIX316: Turbo Basic XEX loader opravuje PORTB mapování RAM pod OS ROM, dedupe kliků a drží teplý RESET. Žádný fake LOAD, žádný screen paint, žádný RAM program inject.</p>
 </div>
 </div>
@@ -12839,7 +12839,7 @@ updatePlayStatus('ready');
 <script>
 (function(){
   'use strict';
-  var TAG='FIX316_TURBO_PORTB_RAM_UNDER_ROM_LOADER';
+  var TAG='FIX317_SINGLE_TURBO_BUTTON_REAL_START';
   var fileName='--', fileSize=0, fileLoaded=false, lastInfo='init', lastAction='--', sentLines=0, sentChars=0, pickerClicks=0, sendClicks=0;
   var guardName='', guardMs=0, applied=0;
   function id(x){return document.getElementById(x);} 
@@ -12950,7 +12950,7 @@ updatePlayStatus('ready');
 <script>
 /* FIX316 WARM RESET + VISIBLE TURBO BASIC CLEAN XEX LOADER */
 (function(){
-  var TAG='FIX316_TURBO_PORTB_RAM_UNDER_ROM_LOADER';
+  var TAG='FIX317_SINGLE_TURBO_BUTTON_REAL_START';
   var TURBO_B64='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D9KgJ4jQ/akLjQ/SoCtM9Q+lMsU0pTPlNbAMoTKFOUUxhTE4TCEQpTGFOcpM9Q+I0P2QBaAwiND9qQOND9KgLpACoF6I0P2pC40P0higLOomOdDb5jLQAuYzoCGK8LKI0P2pA40P0qlAjQ7UWKk8jQLTYAAAySCQFMk6kBLJQZAMyVuQCslhkATJe5ACOGDJKhhgqQeFM4U1qRGFNKkAhTIgcg4QBcCA0OlgogGgAbEkyTrQFMixJCBHELAM8B3dAAfQz+jgEdDsqZuNEQetAAeFK6kHhSWgAYQkYMixJCBHELDl8PaMRRDKjkYQrkYQ6OAR8J6ORhCsRRCxJCBHELDH8NjdAAfQ5Mjo4BHQ7ExlEKUrjQAHohCpIJ0AB8rQ+qABsSTJOtAOyLEkIEcQsAadAQfoEPJgIAALTIAgYAB8ZnxmZnwAADxmYGBmPAAAeGxmZmx4AAB+YHxgYH4AAH5gfGBgYAAAPmBgbmY+AABmZn5mZmYAAH4YGBgYfgAABgYGBmY8AABmbHh4bGYAAGBgYGBgfgAAY3d/a2NjAABmdn5+bmYAADxmZmZmPAAAfGZmfGBgAAA8ZmZmbDYAAHxmZnxsZgAAPGA8BgY8AAB+GBgYGBgAAGZmZmZmPAAAZmZmZjwYAABjY2t/d2MAAGZmPDxmZgAAZmY8GBgYAAB+DBgwYH4AAHhgYGBgeMBgMBgMBgMAAAAeBgYGBh4AAAgcNmMAAAAAAAAAAAD/PBhmdn5+bmYMGAA8Bj5mPgwYZmZmZmY8PBgAPGBgYDw8GAYGPmZmPgwYADxmfmA8PBh8ZmZ8bGYMGDxmZmZmPAwYPBgYGBg8DBgAADgYGDwMGHxgeGBgfDwYPGZgYGY8DAgYPGZmfmY8GH4GDBgwfjwYAHxmZmZmDBgAPGZmZjw4OABmZmZmPjwYfGZmZmZ8PBgAfGZgYGA8GAA+YDwGfB4MEH4YGBgODBgAZmZmZj48GHxgeGBgfDwYADxmfmA8PBg8YDwGBjwYGGZmZmZmPDwYAH4MGDB+PBh+GBgYGBgAABg8fhgYGAAAGBgYfjwYAAAYMH4wGAAAABgMfgwYABhwDBhmZmY8AAAAPAY+Zj4AAGBgfGZmfAAAADxgYGA8AAAGBj5mZj4AAAA8Zn5gPAAADhg+GBgYDDgAPmZmZjwAAGBgfGZmZgAAGAA4GBg8GDAMAAwMDAwAAGBgbHhsZgAAOBgYGBg8AAAAZn9/a2MAAAB8ZmZmZgAAADxmZmY8YGAAfGZmZnwGBgA+ZmZmPgAAAHxmYGBgAAAAPmA8BnwAABh+GBgYDgAAAGZmZmY+AAAAZmZmPBgAAABja38+NgAAAGY8GDxmGHAAAGZmZjwAAAB+DBgwfgwYZmZmPBgYAAAYGBgYGBgGAH54fG5mBgAIGDh4OBgIABAYHB4cGBAA4gLjAjJh';
   var fix315TurboInfo='FIX316 TURBO waiting';
   var fix315WarmResetInfo='FIX316 WARM RESET waiting';
@@ -13170,7 +13170,7 @@ updatePlayStatus('ready');
    Turbo Basic's own INIT code switches PORTB to $FE and copies RAM under OS ROM. Older optional OS ROM probe blocked those writes.
 */
 (function(){
-  var TAG='FIX316_TURBO_PORTB_RAM_UNDER_ROM_LOADER';
+  var TAG='FIX317_SINGLE_TURBO_BUTTON_REAL_START';
   function id(x){return document.getElementById(x);} 
   function hx(v,n){return ((v||0)&((n===2)?255:65535)).toString(16).toUpperCase().padStart(n,'0');}
   function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(e){}}
@@ -13238,6 +13238,196 @@ updatePlayStatus('ready');
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',rebind,false);
   [40,120,260,520,900,1400,2200,3200,4600].forEach(function(ms){setTimeout(rebind,ms);});
   log316('installed: PORTB-aware RAM-under-OS-ROM + Turbo de-dupe guard + stable title');
+})();
+</script>
+
+
+
+<script>
+/* FIX317: single working Turbo button; no duplicate START+OPTION buttons.
+   FIX316 wrapper bug: it set fix316TurboClickGuardUntil before calling FIX315 loader, so FIX315 immediately rejected the click as duplicate.
+   FIX317 uses its own guard, clears the old guard before calling the already-tested clean XEX loader, and rebuilds the XEX panel into exactly one button + one snapshot.
+   No fake LOAD, no screen paint, no RAM BASIC inject. Turbo XEX still goes through segment parser/loadXex(false).
+*/
+(function(){
+  var TAG='FIX317_SINGLE_TURBO_BUTTON_REAL_START';
+  var applyCount=0;
+  var lastStartInfo='FIX317 TURBO waiting';
+  var ownGuardUntil=0;
+  function id(x){return document.getElementById(x);} 
+  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}}
+  function hx(v,n){return ((v||0)&((n===2)?255:65535)).toString(16).toUpperCase().padStart(n,'0');}
+  function log317(msg){try{if(typeof log==='function')log('FIX317 '+msg);else{var l=id('log');if(l)l.textContent='FIX317 '+msg+'\n'+(l.textContent||'');}}catch(e){}}
+  function safe(fn,fb){try{return fn();}catch(e){return fb||('ERR '+(e&&e.message?e.message:e));}}
+  function setTitle(){
+    try{document.title='EMU-09 '+TAG;}catch(e){}
+    try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
+    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX317: jeden funkční Turbo Basic XEX start, duplicitní tlačítka odstraněna. Warm RESET drží LIST.';}catch(e){}
+    try{var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX317: RESET je teplý a drží BASIC RAM. Ostrý reset je jen POWER XL/XE BASIC.';}catch(e){}
+  }
+  function ensurePortbPatch(){
+    try{if(typeof window.fix316InstallPortbPatch==='function')return window.fix316InstallPortbPatch();}catch(e){log317('PORTB patch call chyba '+(e&&e.message?e.message:e));}
+    return false;
+  }
+  function startTurbo(ev){
+    stop(ev);
+    var now=Date.now();
+    if(ownGuardUntil && now<ownGuardUntil){log317('TURBO duplicate event ignored by FIX317 own guard');return false;}
+    ownGuardUntil=now+1600;
+    ensurePortbPatch();
+    // Critical fix: FIX316 wrapper set this guard too early, then FIX315 loader rejected the same click.
+    try{window.fix316TurboClickGuardUntil=0;}catch(e){}
+    try{if(typeof input!=='undefined'&&input){input.start=false;input.option=false;input.select=false;input.fire=false;input.key=0xFF;}}catch(e){}
+    lastStartInfo='FIX317 TURBO START accepted: calling clean XEX loader once, old guard cleared, no fake LOAD.';
+    window.fix317TurboInfo=lastStartInfo;
+    log317(lastStartInfo);
+    try{
+      if(typeof window.fix315StartTurboBasic==='function'){
+        var r=window.fix315StartTurboBasic(null);
+        lastStartInfo+=' / CALL fix315StartTurboBasic OK';
+        window.fix317TurboInfo=lastStartInfo;
+        setTimeout(function(){try{cleanupAndBind();}catch(e){}},60);
+        return r;
+      }
+      if(typeof window.fix293StartTurboBasic==='function'){
+        var r2=window.fix293StartTurboBasic(null);
+        lastStartInfo+=' / CALL fix293StartTurboBasic OK';
+        window.fix317TurboInfo=lastStartInfo;
+        setTimeout(function(){try{cleanupAndBind();}catch(e){}},60);
+        return r2;
+      }
+      lastStartInfo+=' / ERROR loader function missing'; window.fix317TurboInfo=lastStartInfo; log317(lastStartInfo);
+    }catch(e){lastStartInfo+=' / ERROR '+(e&&e.message?e.message:e); window.fix317TurboInfo=lastStartInfo; log317(lastStartInfo);} 
+    return false;
+  }
+  window.fix317StartTurboBasic=startTurbo;
+  // Override the broken FIX316 exported entry. Old duplicate buttons that call this now go through fixed start.
+  window.fix316StartTurboBasic=startTurbo;
+  window.fix293StartTurboBasic=startTurbo;
+  function makePanel(){
+    var panel=id('fix313XexPanel');
+    if(!panel){
+      panel=document.createElement('div'); panel.id='fix313XexPanel'; panel.className='card panel fix317-xex-panel';
+      var anchor=id('fix313TxtPanel')||id('atariKeyboardDock')||document.body.lastElementChild;
+      if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling); else document.body.appendChild(panel);
+    }
+    panel.className=(panel.className||'')+' fix317-owned';
+    var input=id('xexFile');
+    if(input && input.parentNode!==panel)panel.appendChild(input);
+    panel.innerHTML=''+
+      '<h2>3) Turbo Basic XL 1.5 — čistý XEX loader FIX317</h2>'+ 
+      '<p>Jeden startovací knoflík. Opraveno: žádné duplicitní START+OPTION panely, starý FIX316 guard už nezabije vlastní start. Segmenty XEX se stále kopírují do emulované RAM přes parser, INITAD/RUNAD audit, žádný fake LOAD.</p>'+ 
+      '<div id="fix317TurboStatus" class="fileLine">FIX317 Turbo připraven: jeden knoflík, žádný duplicitní panel. XEX LOAD DO RAM = pouze segmenty přes parser.</div>'+ 
+      '<button id="fix317TurboBtn" class="compact" type="button">1) START+OPTION → TURBO BASIC XL 1.5 XEX — FIX317</button>'+ 
+      '<button id="fix317XexSnap" class="secondary compact" type="button">2) SNAPSHOT TURBO/XEX LOG FIX317</button>'+ 
+      '<input id="xexFile" class="fileChooserFix292" type="file" accept=".xex,.XEX" />'+ 
+      '<button id="fix317XexNoLoadBtn" class="secondary compact" type="button">RUČNÍ XEX FILE PICKER ZATÍM JEN NÁZEV - TURBO POUŽIJ TLAČÍTKEM NAHOŘE</button>';
+    input=id('xexFile');
+    if(input){input.onchange=function(){var f=this.files&&this.files[0];var st=id('fix317TurboStatus'); if(st)st.textContent=f?('XEX ručně vybrán jen pro název: '+f.name+' / '+f.size+' bytes. Do RAM se ručně zatím nic nekopíruje.'):('FIX317 Turbo připraven.');};}
+  }
+  function cleanupDuplicateButtons(){
+    var turboRe=/START\+OPTION.*TURBO BASIC XL 1\.5 XEX/i;
+    var snapRe=/SNAPSHOT TURBO\/XEX LOG/i;
+    try{Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(b){
+      var txt=(b.textContent||'').trim();
+      if(b.id==='fix317TurboBtn'||b.id==='fix317XexSnap')return;
+      if(turboRe.test(txt)||snapRe.test(txt)){
+        // Remove old duplicate UI buttons. Snapshot outside Turbo panel is recreated as FIX317.
+        if(b.parentNode)b.parentNode.removeChild(b);
+      }
+    });}catch(e){}
+  }
+  function bindOnce(el,fn){
+    if(!el)return;
+    el.onclick=fn;
+    if(el._fix317Bound!=='YES'){
+      el._fix317Bound='YES';
+      // Use capture so old bubbling handlers on ancestors do not win. Own guard prevents double event paths.
+      el.addEventListener('click',fn,true);
+      el.addEventListener('touchend',fn,true);
+      el.addEventListener('pointerup',fn,true);
+    }
+  }
+  function snapshot(ev){
+    stop(ev);
+    var arr=[];
+    arr.push('AtariHelp.eu EMU-09 '+TAG);
+    arr.push('time='+(new Date()).toISOString());
+    arr.push('build='+TAG);
+    arr.push('KODY JSOU STEJNE');
+    arr.push('NEW_XEX_CORE=YES');
+    arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
+    arr.push('FIX317_SINGLE_TURBO_BUTTON=YES');
+    arr.push('FIX317_TURBO_BUTTON_VISIBLE='+(id('fix317TurboBtn')?'YES':'NO'));
+    arr.push('FIX317_TURBO_START_CALLS_FIX315_LOADER=YES');
+    arr.push('FIX317_CLEARS_BROKEN_FIX316_GUARD=YES');
+    arr.push('FIX317_DUPLICATE_TURBO_BUTTONS_REMOVED=YES');
+    arr.push('FIX316_PORTB_OS_RAM_UNDER_ROM=YES');
+    arr.push('FIX315_WARM_RESET_PRESERVE_LIST=YES');
+    arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');
+    arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');arr.push('NO_RAW_CH_PASTE=YES');
+    arr.push('');arr.push('[FIX317 UI]');
+    arr.push('title='+(document.title||''));
+    arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--'));
+    arr.push('turboButton='+(id('fix317TurboBtn')?'YES':'NO'));
+    arr.push('turboButtonsTotal='+safe(function(){return Array.prototype.slice.call(document.querySelectorAll('button')).filter(function(b){return /START\+OPTION.*TURBO BASIC XL 1\.5 XEX/i.test(b.textContent||'');}).length;},'ERR'));
+    arr.push('snapshotButtonsTotal='+safe(function(){return Array.prototype.slice.call(document.querySelectorAll('button')).filter(function(b){return /SNAPSHOT TURBO\/XEX LOG/i.test(b.textContent||'');}).length;},'ERR'));
+    arr.push('applyCount='+applyCount);
+    arr.push('lastStartInfo='+lastStartInfo);
+    arr.push('fix317TurboInfo='+(window.fix317TurboInfo||'--'));
+    arr.push('fix315TurboInfo='+(window.fix315TurboInfo||'--'));
+    arr.push('');arr.push('[XEX CORE]');
+    arr.push('currentXexName='+safe(function(){return typeof currentXexName!=='undefined'?currentXexName:'--';},'--'));
+    arr.push('activeXexProfile='+safe(function(){return typeof activeXexProfile!=='undefined'?activeXexProfile:'--';},'--'));
+    arr.push('STREAMED='+safe(function(){return (typeof xexLoaded!=='undefined'&&xexLoaded)?'OK':'NO';},'--'));
+    arr.push('ENTRY='+safe(function(){return (typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.entry)?'$'+hx(xexInfo.entry,4):'--';},'--'));
+    arr.push('RUNAD='+safe(function(){return (typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.run)?'$'+hx(xexInfo.run,4):'--';},'--'));
+    arr.push('INITAD='+safe(function(){return (typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length)?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--';},'--'));
+    arr.push('PORTB_VALUE='+safe(function(){return typeof portbValue!=='undefined'?'$'+hx(portbValue,2):'--';},'--'));
+    arr.push('RAM_D301='+safe(function(){return typeof ram!=='undefined'&&ram?'$'+hx(ram[0xD301]||0,2):'--';},'--'));
+    arr.push('MEM_0B00='+safe(function(){return typeof window.dumpFix316==='function'?window.dumpFix316(0x0B00,16):'--';},'--'));
+    arr.push('MEM_2100='+safe(function(){return typeof window.dumpFix316==='function'?window.dumpFix316(0x2100,16):'--';},'--'));
+    arr.push('MEM_C000='+safe(function(){return typeof window.dumpFix316==='function'?window.dumpFix316(0xC000,16):'--';},'--'));
+    arr.push('MEM_D800='+safe(function(){return typeof window.dumpFix316==='function'?window.dumpFix316(0xD800,16):'--';},'--'));
+    arr.push('MEM_E400='+safe(function(){return typeof window.dumpFix316==='function'?window.dumpFix316(0xE400,16):'--';},'--'));
+    arr.push('CORE LOADER INFO='+safe(function(){return typeof fix208NativeXexInfo!=='undefined'?fix208NativeXexInfo:'--';},'--'));
+    arr.push('STREAM LOADER INFO='+safe(function(){return typeof fix192StreamInitInfo!=='undefined'?fix192StreamInitInfo:'--';},'--'));
+    arr.push('OS KERNEL INFO='+safe(function(){return typeof fix197OsKernelInfo!=='undefined'?fix197OsKernelInfo:'--';},'--'));
+    arr.push('');arr.push('[BASIC/TXT PANEL]');
+    arr.push('TXT_PICKER_BUTTON='+(id('fix313PickBtn')?'YES':'NO'));
+    arr.push('TXT_TEXTAREA='+(id('fix313Text')?'YES':'NO'));
+    arr.push('TXT_SEND_NO_RUN='+(id('fix313SendNoRun')?'YES':'NO'));
+    arr.push('TXT_SEND_RUN='+(id('fix313SendRun')?'YES':'NO'));
+    arr.push('');arr.push('[CPU]');
+    arr.push(safe(function(){return cpu?'PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO'):'CPU unavailable';},'CPU unavailable'));
+    arr.push('');arr.push('[DOM LOG]');
+    arr.push(safe(function(){var l=id('log');return l?(l.textContent||''):'--';},'--'));
+    var out=arr.join('\n');
+    try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){}
+    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX317-turbo-xex-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX317-turbo-xex-log');}catch(e){log317('save report error '+(e&&e.message?e.message:e));}
+    log317('SNAPSHOT TURBO/XEX LOG FIX317 hotov.');
+    return false;
+  }
+  window.fix317Snapshot=snapshot;
+  function cleanupAndBind(){
+    applyCount++;
+    setTitle();
+    cleanupDuplicateButtons();
+    var panel=id('fix313XexPanel');
+    if(!panel || !id('fix317TurboBtn') || !id('fix317XexSnap')) makePanel();
+    cleanupDuplicateButtons();
+    bindOnce(id('fix317TurboBtn'),startTurbo);
+    bindOnce(id('fix317XexSnap'),snapshot);
+    var no=id('fix317XexNoLoadBtn'); if(no)bindOnce(no,function(ev){stop(ev);log317('Ruční XEX picker je zatím jen název. Turbo Basic pouštěj jedním FIX317 tlačítkem nahoře.');return false;});
+    try{var st=id('fix317TurboStatus'); if(st && !/ček|spuštěn|accepted/i.test(st.textContent||''))st.textContent='FIX317 Turbo připraven: jeden funkční START+OPTION knoflík, staré duplicitní panely odstraněny.';}catch(e){}
+  }
+  window.fix317CleanupAndBind=cleanupAndBind;
+  function start(){
+    cleanupAndBind();
+    [50,150,350,700,1200,2000,3200,5000,8000,12000].forEach(function(ms){setTimeout(cleanupAndBind,ms);});
+    log317('installed: single Turbo button + fixed old guard + duplicate cleanup');
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
 })();
 </script>
 
