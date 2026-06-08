@@ -1,0 +1,22 @@
+STATIC CHECK FIX292_UNIVERSAL_XEX_LOADER_NO_PROFILE_MIX_CORE
+index.html zachovava AtariHelp.eu centrum: ANO
+EMU-09 je jen pododdil: ANO
+automaticky redirect rovnou do emulatoru: NE
+viditelny EMU build: FIX292
+post-FIX290/FIX291 vadne patch skripty odstraneny: ANO
+emu09 script blocks: 2
+index script blocks: 1
+node --check index scripts: OK
+node --check emu09 scripts: OK
+TurboBasic XEX asset included: ANO
+TurboBasic embedded fallback included: ANO
+TurboBasic size: 20877
+TurboBasic crc32: E20650BF
+TurboBasic sha256: 4ced830881a1edfe5e6928f6ccaac9e96f372c6dc9d9e89036361062b62f3022
+Universal user XEX file picker: ANO
+TXT/BAS native label/input picker: ANO
+Snapshot aliases compatibilitySnapshot/fix292UniversalSnapshot: ANO
+NO_FAKE_READY/LOAD/RAM_INJECT/SCREEN_RAM_PAINT flags in snapshot: ANO
+Self Test grafika: OPEN DEBT, bez fake kresleni
+ATR boot: OPEN DEBT, neimplementovano v tomhle FIXu
+KODY JSOU STEJNE

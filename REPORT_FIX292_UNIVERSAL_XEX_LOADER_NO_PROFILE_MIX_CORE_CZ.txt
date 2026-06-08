@@ -1,0 +1,29 @@
+AtariHelp.eu EMU-09 FIX292_UNIVERSAL_XEX_LOADER_NO_PROFILE_MIX_CORE
+
+Commit summary:
+FIX292: univerzalni XEX loader bez stareho game/profile loadXex mixu, TurboBasic embedded + uzivatelsky .XEX file picker, native TXT/BAS picker bez dvojiteho JS clicku.
+
+Zmeny:
+- EMU-09 viditelny build je FIX292.
+- index.html zustava AtariHelp.eu centrum, EMU-09 je jen pododdil v Hry.
+- Z emu09 overlaye byly odstraneny vadne post-FIX290/FIX291 patch skripty, ktere prepisovaly UI zpet na FIX290.
+- Pridan finalni FIX292 vlastnik UI a vazeb.
+- TurboBasic a uzivatelsky .XEX jdou pres novy univerzalni loader:
+  bytes -> parse XEX -> segment copy do emulovane RAM -> RUNAD/INITAD/ENTRY -> CPU6502 od entry.
+- Loader nepouziva stary profile/game loadXex(), takze se do TurboBasicu nesmi michat PiTT-KiTT/kittgarage herni profil.
+- TurboBasic asset je porad v ZIPu a zaroven je byte-for-byte embedded fallback pro Android WebView bez XHR.
+- Pridan file picker pro libovolny .xex/.obx/.com.
+- TXT/BAS helper pouziva native label/input file picker, ne JS inp.click(); tim se ma odstranit dvojite otevreni.
+- Snapshot je sjednoceny pres fix292UniversalSnapshot / compatibilitySnapshot.
+- Self Test grafika neni doresena a neni maskovana fake kreslenim.
+- ATR boot neni doresen v tomhle fixu a je oznacen jako OPEN_DEBT_NOT_IMPLEMENTED_IN_THIS_FIX.
+
+TurboBasic kontrola:
+size=20877
+crc32=E20650BF
+sha256=4ced830881a1edfe5e6928f6ccaac9e96f372c6dc9d9e89036361062b62f3022
+segmenty ocekavane: $4980-$9B00 a $02E2-$02E3
+INITAD/ENTRY: $6132
+RUNAD: NONE
+
+KODY JSOU STEJNE.
