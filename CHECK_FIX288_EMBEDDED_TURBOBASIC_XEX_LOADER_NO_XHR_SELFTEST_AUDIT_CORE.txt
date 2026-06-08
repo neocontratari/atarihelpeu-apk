@@ -1,0 +1,10 @@
+STATIC CHECK FIX288_EMBEDDED_TURBOBASIC_XEX_LOADER_NO_XHR_SELFTEST_AUDIT_CORE
+index.html zachovava AtariHelp.eu centrum: ANO
+EMU-09 je jen pododdil v sekci Hry: ANO
+automaticky redirect rovnou do emulatoru: NE
+TurboBasic XEX external asset included: ANO
+TurboBasic embedded fallback size: 20877
+TurboBasic sha256: 4ced830881a1edfe5e6928f6ccaac9e96f372c6dc9d9e89036361062b62f3022
+XHR required for TurboBasic start: NE
+NO_FAKE_READY/LOAD/RAM_INJECT/SCREEN_PAINT: ANO
+KODY JSOU STEJNE
