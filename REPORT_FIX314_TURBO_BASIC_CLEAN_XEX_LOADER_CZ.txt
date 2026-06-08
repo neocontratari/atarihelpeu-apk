@@ -1,0 +1,48 @@
+AtariHelp.eu EMU-09 FIX314_TURBO_BASIC_CLEAN_XEX_LOADER
+
+René, FIX314 navazuje na FIX313/FIX312 funkční BASIC/TXT základ a přidává první čistý XEX loader pro Turbo Basic XL 1.5.
+
+KODY JSOU STEJNE.
+NEW_XEX_CORE=YES
+XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST
+FIX314_TURBO_BASIC_LOADER=YES
+FIX314_SEGMENT_RAM_LOAD=YES
+FIX314_INITAD_RUNAD_AUDIT=YES
+FIX314_START_OPTION_BASIC_OFF=YES
+FIX314_PITT_KITT_PROFILE_GUARD=YES
+FIX314_XEX_FAKE_LOAD=NO
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
+
+Turbo Basic XL 1.5 XEX audit:
+- soubor: turbo-basic-xl-1.5-copy.xex a turbo-basic-xl-1.5.xex
+- velikost: 20877 bytes
+- SHA256: 4ced830881a1edfe5e6928f6ccaac9e96f372c6dc9d9e89036361062b62f3022
+- XEX header: $FFFF
+- segment 1: $4980-$9B00 / 20865 bytes
+- segment 2: $02E2-$02E3 / 2 bytes
+- RUNAD: --
+- INITAD: $6132
+- ENTRY: $6132
+
+Co dělá tlačítko START+OPTION -> TURBO BASIC XL 1.5 XEX:
+1) dekóduje vestavěný XEX,
+2) parsuje XEX bloky,
+3) nastaví čistý XEX stav s BASIC OFF / START+OPTION audit,
+4) zkopíruje segmenty do emulované RAM přes stávající loadXex/parseAndLoadXexBytes,
+5) zapíše audit RUNAD/INITAD/ENTRY,
+6) nastaví CPU na ENTRY $6132 a pustí emulator.
+
+Pozor: PiTT/KiTT profil se pro Turbo Basic nesmí použít. Název XEX je Turbo Basic, profil po loadu se drží jako generic/hardware cesta. Vlastní XEX tlačítko je přidané, ale hlavní test je Turbo Basic.
+
+Test:
+1. Spustit EMU-09, nahoře musí být FIX314_TURBO_BASIC_CLEAN_XEX_LOADER.
+2. Základ BASIC/TXT má zůstat funkční.
+3. V sekci 3 kliknout START+OPTION -> TURBO BASIC XL 1.5 XEX.
+4. Počkat, jestli naskočí Turbo Basic nebo aspoň jasný běh přes CPU bez fake READY.
+5. Udělat SNAPSHOT TURBO/XEX LOG FIX314.
+6. Poslat screen + log s FIX314 TURBO/XEX LOADER a CORE LOADER INFO.
