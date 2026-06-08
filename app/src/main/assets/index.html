@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>AtariHelp.eu FIX295_VBI_UNLOCK_ANTIC_9FD8_RENDER_MAPPING_CORE</title>
+<title>AtariHelp.eu FIX296_START_OPTION_XEX_HEADER_CLEAN_VIDEO_CORE</title>
 <style>
 :root{--bg:#070604;--gold:#d7b76a;--gold2:#ffe3a3;--line:rgba(215,183,106,.35);--text:#fff7e3;--muted:rgba(255,247,227,.68);--red:#ff6b9a;--green:#2aff8f;--blue:#78a6ff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Arial,sans-serif}
@@ -27,7 +27,7 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.94);border-top
 </head>
 <body>
 <div class="app">
-<header><img src="np_logo.png?fix94" class="logo" alt="N&P"><div><div class="kicker">AtariHelp.eu</div><div class="title">N&P Studio</div><div class="ver">APK FIX295_VBI_UNLOCK_ANTIC_9FD8_RENDER_MAPPING_CORE / AtariHelp.eu app centrum zachovano</div></div></header>
+<header><img src="np_logo.png?fix94" class="logo" alt="N&P"><div><div class="kicker">AtariHelp.eu</div><div class="title">N&P Studio</div><div class="ver">APK FIX296_START_OPTION_XEX_HEADER_CLEAN_VIDEO_CORE / AtariHelp.eu app centrum zachovano</div></div></header>
 
 <main id="home" class="view">
 <section class="card hero">
@@ -52,8 +52,8 @@ nav{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.94);border-top
 <section class="card">
   <div class="kicker">EMU-09</div>
   <h2>🚗 Atari 130XE EMU-09</h2>
-  <p>FIX295_VBI_UNLOCK_ANTIC_9FD8_RENDER_MAPPING_CORE: AtariHelp.eu aplikace zustava normalni mobilni centrum. EMU-09 je jen pododdil v sekci Hry. Hlavni test je TurboBasic XL po FIX294 strict RAM addressing: VBI loop unlock pres skutecny Atari CH $02FC latch a ANTIC render mapovani Display List / SAVMSC $9FD8 pres SDMCTL/PRIOR. Bez POWER BASIC, bez fake READY/LOAD/RAM inject.</p>
-  <button onclick="location.href='emu09_pmg_gtia_overlay.html?fix=295&appstruct=1&turbo=1&cleanui=1&custombasic=1&vbi=1&antic9fd8=1'">Spustit EMU-09 FIX295 / VBI unlock + ANTIC $9FD8</button>
+  <p>FIX296_START_OPTION_XEX_HEADER_CLEAN_VIDEO_CORE: AtariHelp.eu aplikace zustava normalni mobilni centrum. EMU-09 je jen pododdil v sekci Hry. Hlavni test je TurboBasic XL pres skutecnou XEX hlavicku: cisty START+OPTION stav, segmenty podle XEX, INITAD $6132, bez RAW $2AB7 exekuce. Normalni BASIC reset a obraz jsou ponechane bez FIX295 VBI/ANTIC vynuceni.</p>
+  <button onclick="location.href='emu09_pmg_gtia_overlay.html?fix=296&appstruct=1&turbo=1&cleanui=1&custombasic=1&startoption=1'">Spustit EMU-09 FIX296 / START+OPTION XEX header clean run</button>
 </section>
 
 

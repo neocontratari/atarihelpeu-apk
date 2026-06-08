@@ -1,0 +1,13 @@
+CHECK FIX296
+index.html zachovava AtariHelp.eu centrum: ANO
+EMU-09 je pododdil: ANO
+automaticky redirect rovnou do emulatoru: NE
+hlavni Turbo cesta: XEX header $4980-$9B00 + INITAD $6132: ANO
+START+OPTION state pred XEX copy: ANO
+RAW $2000/$2AB7 jen audit, ne RUN: ANO
+FIX295 VBI/ANTIC force odstraneno: ANO
+normalni BASIC reset nema byt patchovan Turbo VBI hookem: ANO
+KODY JSOU STEJNE
+runtime PiTT/KiTT residue guard: ANO
+script 0: OK
+script 1: OK

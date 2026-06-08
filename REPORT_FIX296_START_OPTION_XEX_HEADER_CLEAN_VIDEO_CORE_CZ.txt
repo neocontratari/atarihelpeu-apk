@@ -1,0 +1,24 @@
+AtariHelp.eu EMU-09 FIX296_START_OPTION_XEX_HEADER_CLEAN_VIDEO_CORE
+
+Commit summary:
+FIX296: cisty START+OPTION XEX header start pro TurboBasic, odstraneni FIX295 VBI/ANTIC force a ochrana normalniho BASIC resetu
+
+Proc tahle oprava:
+- FIX295 poskodil normalni BASIC/video cestu, protoze vynucoval CH $02FC a ANTIC $9FD8 i mimo bezpecny runtime okamzik.
+- Log FIX295 ukazal PC $0200 a pozdeji trap na $022F; to je spatne a nesmi se znovu maskovat.
+- RAW $2000 audit zustava jako RAM proof, ale Turbo hlavni RUN uz nejde pres $2AB7, protoze RAM proof na $2AB7 zacina bytem $22, coz neni platny 6502 opcode.
+
+Zmeny:
+- Hlavni Turbo tlacitko pouziva skutecnou XEX hlavicku TurboBasicu: segment $4980-$9B00 + INITAD $6132.
+- Pred XEX startem se drzi START+OPTION stav a PORTB $FD, az potom se kopiruji segmenty.
+- Funkce setupCpu uz nepise umely navratovy trampoline do page 2 na $0200. Page 2 zustava pro OS vektory/shadow registry.
+- FIX295 VBI loop unlock a ANTIC $9FD8 force nejsou v tomto buildu aktivni.
+- Normalni POWER BASIC / RESET BASIC video cesta se nema prepisovat Turbo hackem.
+- RAW $2000/$2AB7 tlacitko je jen audit RAM adresovani, ne RUN.
+- Libovolny XEX z pickeru porad bezi pres XEX segmentove adresy, bez PiTT/KiTT profilu. Runtime boot guard navic pri idle stavu smaze zbytky currentXexName/activeXexProfile po vestavenych hrach.
+
+Co neni tvrzene jako hotove:
+- ATR boot stale neni v tomto FIXu implementovan.
+- Self Test grafika stale neni hotova.
+
+KODY JSOU STEJNE.
