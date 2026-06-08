@@ -1,0 +1,11 @@
+FIX297 static check
+index.html zachovava AtariHelp.eu centrum: ANO
+EMU-09 je pododdil: ANO
+automaticky redirect rovnou do emulatoru: NE
+Hlavni XEX start: customXexBytes -> loadXex(false) -> startPlaying()
+Rucni CPU setup / RAW $2000 RUN v hlavnim UI: NE
+FIX295 VBI/ANTIC force: NE
+PiTT/KiTT default v idle UI: prepsan na PURE HARDWARE IDLE FIX297
+script blocks: 2
+node --check: OK
+ZIP obsahuje jen potrebne overlay soubory + reporty: ANO

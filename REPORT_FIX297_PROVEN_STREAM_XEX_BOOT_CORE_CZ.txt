@@ -1,0 +1,19 @@
+AtariHelp.eu EMU-09 FIX297_PROVEN_STREAM_XEX_BOOT_CORE
+
+Commit summary:
+FIX297: vraci XEX start na proverene stream-init jadro loadXex(false)+startPlaying; odstranuje rucni PC/RAW pokusy pro Turbo start.
+
+Zmeny:
+- Hlavni Turbo XEX start uz nepouziva rucni CPU setup z FIX292-FIX296.
+- Turbo i vybrany XEX jdou pres customXexBytes -> loadXex(false) -> startPlaying().
+- START+OPTION a PORTB $FD se nastavuji pred loadXex i po loadXex.
+- RAW $2000/$2AB7 RUN je odstranen z hlavniho UI.
+- FIX295 VBI/ANTIC force zustava vypnuty.
+- Snapshot ma logovat USED_LOADXEX=YES a USED_STARTPLAYING=YES.
+- TXT/BAS picker zustava native input.
+
+Co neni deklarovane jako hotove:
+- ATR boot stale neni resen v tomto overlayi.
+- Self Test grafika stale neni maskovana jako hotova.
+
+KODY JSOU STEJNE.
