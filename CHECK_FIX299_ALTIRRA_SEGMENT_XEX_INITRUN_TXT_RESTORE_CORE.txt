@@ -1,0 +1,12 @@
+CHECK FIX299_ALTIRRA_SEGMENT_XEX_INITRUN_TXT_RESTORE_CORE
+index.html zachovava AtariHelp.eu centrum: ANO
+EMU-09 je pododdil: ANO
+automaticky redirect do emulatoru: NE
+TXT/BAS picker jeden viditelny native input: ANO
+programmatic file click smycka: NE v panelu FIX299
+XEX forced $2000 default: NE
+XEX strict segment parser: ANO
+INITAD during load: ANO
+RUNAD after EOF: ANO
+script appended: ANO
+KODY JSOU STEJNE

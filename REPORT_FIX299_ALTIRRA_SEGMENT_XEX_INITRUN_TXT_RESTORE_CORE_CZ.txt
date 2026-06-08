@@ -1,0 +1,18 @@
+AtariHelp.eu EMU-09 FIX299_ALTIRRA_SEGMENT_XEX_INITRUN_TXT_RESTORE_CORE
+
+Commit summary:
+FIX299: segmentovy XEX loader podle Altirra struktury + obnoveny TXT/BAS file picker bez duplikaci.
+
+Zmeny:
+- Pridan finalni viditelny panel FIX299, stary FIX298/FIX240 TXT panely jsou skryte, aby se nemichaly.
+- TXT/BAS ma jeden skutecny viditelny <input type=file>, zadny JS .click(), zadny label-trigger, zadne dvojite otevreni.
+- XEX loader v novem panelu nepouziva forced $2000 jako univerzalni pravidlo.
+- Parser cte FFFF header, start/end segmenty, kopiruje data do RAM, vola INITAD pri loadu, RUNAD az po EOF.
+- Snapshot loguje XEX OPEN, HEADER, segmenty, INIT CALL/RTS/NO_RTS, RUNAD final, PORTB a zakaz fake.
+- BASIC TXT/BAS fronta je oddelena od XEX loaderu a pred XEX startem se rusi.
+
+Dulezite:
+- Neni tvrzeno, ze ATR boot nebo SELF TEST grafika jsou hotove.
+- Zadny fake READY/LOAD/screen RAM paint vysledku.
+
+KODY JSOU STEJNE.
