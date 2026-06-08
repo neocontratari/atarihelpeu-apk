@@ -1,0 +1,26 @@
+AtariHelp.eu EMU-09 FIX320_UI_RESTORE_VISIBLE_BODY_NO_FLICKER
+
+René měl pravdu: FIX319 sice zastavil blikání, ale nechal ve stránce starou třídu body.fix313-boot. Ta přes CSS schovala všechny sekce za úvodním brand panelem, takže v EMU zůstal prakticky prázdný černý prostor.
+
+FIX320 opravuje jen UI clonu/viditelnost:
+- odstraněno body class="fix313-boot" ze statického HTML,
+- po startu se třída fix313-boot ještě jednou vynuceně odstraní,
+- html.fix320-ready zviditelní celé tělo i normální sekce,
+- přidán failsafe reveal po 1.8 s, aby už nikdy nezůstala prázdná stránka,
+- BASIC/TXT panel, BEZ RUN/+RUN, warm reset, FIX309 KGETCH a Turbo XEX tlačítko zůstávají,
+- XEX/Turbo logika se tímto FIXem nemění.
+
+KODY JSOU STEJNE.
+NEW_XEX_CORE=YES
+XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST
+FIX320_UI_VISIBLE_BODY=YES
+FIX320_REMOVE_FIX313_BOOT_CLASS=YES
+FIX320_SINGLE_UI_SCRIPT=YES
+FIX320_SINGLE_TURBO_BUTTON=YES
+FIX320_WARM_RESET_PRESERVE_LIST=YES
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
