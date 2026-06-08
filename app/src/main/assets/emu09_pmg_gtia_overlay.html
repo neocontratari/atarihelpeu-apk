@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX290_UI_SINGLE_SNAPSHOT_FILEPICKER_CPU_RUN_CORE</title>
+<title>EMU-09 FIX291_BUTTON_REBIND_FILEPICKER_SINGLE_CLICK_TURBO_AUDIT_CORE</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -38,7 +38,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX290_UI_SINGLE_SNAPSHOT_FILEPICKER_CPU_RUN_CORE</h1>
+<h1>EMU-09 FIX291_BUTTON_REBIND_FILEPICKER_SINGLE_CLICK_TURBO_AUDIT_CORE</h1>
 <p>Čisté UI po auditu: AtariHelp.eu struktura zůstává, EMU-09 je jen pododdíl. Hlavní test je TurboBasic XL XEX rovnou z čistého START+OPTION/XEX stavu. Vlastní BASIC TXT/BAS se načítá přes skutečný file picker mobilu/Noxu, ne přes visící tlačítko. Bez fake READY, fake LOAD, RAM injectu nebo screen-RAM malování.</p>
 </div>
 </div>
@@ -48,9 +48,9 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <section class="card" id="fix284TurboPanel">
 <h2>Turbo Basic XL 1.5 — čistý XEX loader</h2>
 <p><b>TURBO BASIC XL XEX - HLAVNI TEST: START+OPTION + CISTY XEX START.</b> Nespouštěj po POWER BASIC. Tohle tlačítko samo připraví čistý XEX stav se START+OPTION, načte segmenty do emulované RAM, vezme INITAD $6132 a nechá běžet CPU emulatoru.</p>
-<button id="fix284TurboBtn" onclick="return fix290StartTurboBasic(event)">1) START+OPTION → TURBO BASIC XL 1.5 XEX</button>
-<button class="secondary" id="fix284TurboSnapBtn" onclick="return fix290UniversalSnapshot(event)">2) SNAPSHOT TXT — TURBO / BASIC / SELF TEST</button>
-<pre id="fix284TurboStatus">FIX290 připraven. První klikni TurboBasic XEX, ne POWER BASIC. XEX bytes jsou vložené byte-for-byte fallbackem kvůli Android WebView XHR chybě; ENTRY $6132. Žádný fake READY.</pre>
+<button id="fix284TurboBtn" onclick="return fix291StartTurboBasic(event)">1) START+OPTION → TURBO BASIC XL 1.5 XEX</button>
+<button class="secondary" id="fix284TurboSnapBtn" onclick="return fix291UniversalSnapshot(event)">2) SNAPSHOT TXT — TURBO / BASIC / SELF TEST</button>
+<pre id="fix284TurboStatus">FIX291 připraven. TurboBasic tlačítko je navázané jednou přímou vazbou. Ne POWER BASIC. XEX bytes jdou přes byte-for-byte embedded loader; ENTRY $6132. Žádný fake READY.</pre>
 </section>
 
 <section class="card purePanel">
@@ -58,14 +58,14 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <p>Hlavní cesta: TurboBasic XEX spouštěj rovnou z čistého stavu. POWER BASIC neklikej před TurboBasicem; POWER BASIC je jen druhý kontrolní test vlastního BASIC TXT.</p>
 <div class="halfgrid kbdTopActions">
 <button id="pureHwBasicBtnFix226Top" onclick="return startPureHardwareBasicFix226(event)">POWER XL/XE BASIC</button>
-<button class="secondary" onclick="return fix290UniversalSnapshot(event)">SNAPSHOT</button>
+<button class="secondary" onclick="return fix291UniversalSnapshot(event)">SNAPSHOT</button>
 <button id="pureHwSelfBtnFix226Top" class="secondary" onclick="return startPureHardwareSelfTestFix226(event)">POWER OPTION SELF TEST (grafika dluh)</button>
 <button class="secondary" onclick="return resetPureHardwareFix226(event)">RESET PURE HW</button>
 </div>
 <div id="xexName" class="fileLine">MODE: PURE HARDWARE / no XEX loaded</div>
 <div id="romName" class="fileLine">ROM: ATARIXL.ROM + ATARIBAS.ROM podle běžného XL/XE mapování.</div>
-<div id="playStatus" class="playStatus">FIX290 připraven. Hlavní test: rovnou klikni TURBO BASIC XL XEX. POWER BASIC až jako druhý kontrolní test.</div>
-<div id="inputMapPanel" class="inputMapPanel">FIX290 input/status panel.</div>
+<div id="playStatus" class="playStatus">FIX291 připraven. Hlavní test: TurboBasic XL XEX. Snapshot je sjednocený, souborový picker je single-click.</div>
+<div id="inputMapPanel" class="inputMapPanel">FIX291 input/status panel.</div>
 </section>
 
 
@@ -77,10 +77,10 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
-<p class="tinyhint">FIX290: klávesnice + čistý servisní BASIC TXT helper. Vlastní textové pole je prázdné a nepřepisuje se demem.</p>
+<p class="tinyhint">FIX291: klávesnice + čistý BASIC TXT/BAS file picker. Tlačítko výběru souboru má jen jednu vazbu, bez dvojitého otevření.</p>
 <div class="halfgrid kbdTopActions">
 <button id="pureHwBasicBtnFix226" class="secondary compact" onclick="return startPureHardwareBasicFix226(event)">POWER XL/XE BASIC</button>
-<button class="secondary compact" onclick="return fix290UniversalSnapshot(event)">SNAPSHOT</button>
+<button class="secondary compact" onclick="return fix291UniversalSnapshot(event)">SNAPSHOT</button>
 <button id="pureHwSelfBtnFix226" class="secondary compact" onclick="return startPureHardwareSelfTestFix226(event)">POWER OPTION SELF TEST (grafika dluh)</button>
 <button class="secondary compact" onclick="return resetPureHardwareFix226(event)">RESET PURE HW</button>
 <button class="secondary compact" onpointerdown="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)" onpointercancel="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)">HOLD START</button>
@@ -98,9 +98,9 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 10 PRINT &quot;RENE TEST&quot;
 20 GOTO 10"></textarea>
 <div class="halfgrid">
-<button id="fix289PickBasicFileBtn" class="secondary compact" onclick="return pickBasicTxtFileFix289(event)">1) OTEVŘÍT SOUBORY / VYBRAT TXT/BAS</button>
-<button id="fix289SendBasicBtn" class="secondary compact" onclick="return sendBasicTextFix289(event,false)">2) ODESLAT TEXT Z POLE DO BASICU</button>
-<button id="fix289SendBasicRunBtn" class="secondary compact" onclick="return sendBasicTextFix289(event,true)">3) ODESLAT TEXT Z POLE + RUN</button>
+<button id="fix289PickBasicFileBtn" class="secondary compact" onclick="return pickBasicTxtFileFix291(event)">1) OTEVŘÍT SOUBORY / VYBRAT TXT/BAS</button>
+<button id="fix289SendBasicBtn" class="secondary compact" onclick="return sendBasicTextFix291(event,false)">2) ODESLAT TEXT Z POLE DO BASICU</button>
+<button id="fix289SendBasicRunBtn" class="secondary compact" onclick="return sendBasicTextFix291(event,true)">3) ODESLAT TEXT Z POLE + RUN</button>
 </div>
 </div>
 <button id="fix285ClearBasicBtn" class="secondary compact" onclick="var t=document.getElementById('fix240BasicFastText');if(t){t.value='';t.focus();}return false;">VYČISTIT TEXTOVÉ POLE</button>
@@ -147,7 +147,7 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <button id="submarineBtnFix209" style="display:none" aria-hidden="true"></button>
 <div id="cassetteBoxFix249" style="display:none" aria-hidden="true"></div>
 <div id="cassetteBoxFix251" style="display:none" aria-hidden="true"></div>
-<div class="cleanNote">FIX290: TurboBasic XEX je hlavní test z čistého START+OPTION stavu. Vlastní BASIC TXT je druhý test po POWER BASIC/READY. Self Test grafika není maskovaná; snapshot hlásí ROM/DLIST/PORTB fakta.</div>
+<div class="cleanNote">FIX291: oprava vazeb tlačítek. TurboBasic XEX je hlavní test z čistého START+OPTION stavu. Vlastní TXT/BAS se vybírá jedním klikem přes file picker. Self Test grafika není maskovaná; zůstává otevřený dluh.</div>
 </div>
 
 <script>
@@ -13851,5 +13851,140 @@ updatePlayStatus('ready');
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot); else boot();
   var n=0;var timer=setInterval(function(){boot();if(++n>80)clearInterval(timer);},250);
+})();
+</script>
+
+
+<script>
+/* FIX291_BUTTON_REBIND_FILEPICKER_SINGLE_CLICK_TURBO_AUDIT_CORE
+   Last loaded UI/binding patch. It does not paint Atari screen RAM and does not fake READY/LOAD/SELFTEST.
+   It fixes only WebView/UI binding chaos: Turbo button alias, single snapshot, and single-click TXT/BAS picker.
+*/
+(function(){
+  'use strict';
+  var TAG='FIX291_BUTTON_REBIND_FILEPICKER_SINGLE_CLICK_TURBO_AUDIT_CORE';
+  var ASSET='turbo-basic-xl-1.5-copy.xex';
+  var turboClicks=0, lastTurboStart=0, lastPickerOpen=0, lastPickedFile='--', lastPickedSize=0, lastStatus='FIX291 waiting';
+  var oldTurboCore = window.fix290StartTurboBasic || window.fix289StartTurboBasic || window.fix288StartTurboBasic || window.fix287StartTurboBasic || window.fix286StartTurboBasic || window.fix284StartTurboBasic;
+
+  function g(id){return document.getElementById(id);} 
+  function hx(v,n){v=(v||0)&((n===2)?255:65535);var s=v.toString(16).toUpperCase();while(s.length<n)s='0'+s;return s;}
+  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(_){ }return false;}
+  function say(msg){lastStatus=msg;try{var s=g('fix284TurboStatus');if(s)s.textContent=msg;}catch(_){ }try{var p=g('playStatus');if(p)p.textContent=msg;}catch(_){ }try{var b=g('fix289BasicFileStatus');if(b)b.textContent=msg;}catch(_){ }}
+  function stamp(){
+    try{window.EMU_BUILD_TAG=TAG;if(typeof EMU_BUILD_TAG!=='undefined')EMU_BUILD_TAG=TAG;}catch(_){ }
+    try{document.title='EMU-09 '+TAG;}catch(_){ }
+    try{var h=document.querySelector('.brandText h1')||document.querySelector('h1');if(h)h.textContent='EMU-09 '+TAG;}catch(_){ }
+    try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX291: oprava vazeb tlačítek. TurboBasic je přímý XEX start bez POWER BASIC; TXT/BAS file picker je single-click. Bez fake READY/LOAD/RAM inject/screen paint.';}catch(_){ }
+    try{var kh=document.querySelector('#atariKeyboardDock h2');if(kh)kh.textContent='Mobilní Atari klávesnice FIX291';var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX291: TXT/BAS výběr souboru má jednu vazbu; když se soubor vybere, načte se do pole a už se znovu neotevírá.';}catch(_){ }
+    try{var x=g('xexName');if(x && !/Turbo Basic/i.test(String(x.textContent||'')))x.textContent='MODE: PURE HARDWARE / no XEX loaded / FIX291';}catch(_){ }
+    try{var i=g('inputMapPanel');if(i)i.textContent='FIX291 input/status: single Turbo bind, single snapshot, single file picker guard.';}catch(_){ }
+  }
+  function clearFastLatch(reason){
+    try{if(window.fix270FastState){window.fix270FastState.active=false;window.fix270FastState.phase='idle';window.fix270FastState.q=[];window.fix270FastState.info='CANCELLED_BY_FIX291 '+reason;}}catch(_){ }
+    try{window.fix270FastInfo='CANCELLED_BY_FIX291 '+reason;}catch(_){ }
+    try{if(typeof ram!=='undefined'&&ram){ram[0x02FC]=0;ram[0x02FB]=0;ram[0xD209]=0xFF;}}catch(_){ }
+    try{if(typeof input!=='undefined'&&input)input.key=0xFF;}catch(_){ }
+  }
+  if(typeof window.finish!=='function'){
+    window.finish=function(){
+      try{if(window.fix270FastState){var s=window.fix270FastState;s.active=false;s.completed=true;s.phase='done';s.info='FINISH_BY_FIX291_GLOBAL_GUARD';}}catch(_){ }
+      try{window.fix270FastInfo='FINISH_BY_FIX291_GLOBAL_GUARD';}catch(_){ }
+      clearFastLatch('finishGuard');
+      return false;
+    };
+  }
+  window.fix291StartTurboBasic=function(ev){
+    stop(ev); stamp(); clearFastLatch('turboStart'); turboClicks++; lastTurboStart=Date.now();
+    say('FIX291 TURBO START klik '+turboClicks+': volám původní XEX loader jádro přímo. POWER BASIC se nepoužívá. Žádný fake READY.');
+    if(typeof oldTurboCore!=='function'){
+      say('CHYBA FIX291: nenalezeno původní Turbo XEX jádro. Nejde spustit.');
+      return false;
+    }
+    try{
+      var r=oldTurboCore.call(this,ev||null);
+      setTimeout(function(){try{stamp();say('FIX291 TURBO po 1s: PC $'+hx((cpu&&cpu.pc)||0,4)+' steps '+((cpu&&cpu.steps)||0)+' xex '+(window.currentXexName||currentXexName||'--'));}catch(_){ }},1000);
+      setTimeout(function(){try{stamp();say('FIX291 TURBO po 4s: PC $'+hx((cpu&&cpu.pc)||0,4)+' steps '+((cpu&&cpu.steps)||0)+' xex '+(window.currentXexName||currentXexName||'--'));}catch(_){ }},4000);
+      return r===undefined?false:r;
+    }catch(e){
+      say('CHYBA FIX291 Turbo start: '+(e&&e.message?e.message:e));
+      return false;
+    }
+  };
+  window.fix290StartTurboBasic=window.fix289StartTurboBasic=window.fix288StartTurboBasic=window.fix287StartTurboBasic=window.fix286StartTurboBasic=window.fix284StartTurboBasic=window.fix291StartTurboBasic;
+
+  function rows(){var out=[];try{var base=(typeof ram!=='undefined'&&ram)?((ram[0x58]|(ram[0x59]<<8))&65535):0;for(var r=0;r<12;r++){var s='',hs=[];for(var c=0;c<40;c++){var v=(base&&ram)?(ram[(base+r*40+c)&65535]&255):0;hs.push(hx(v,2));s+=(v>=32&&v<96)?String.fromCharCode(v):' ';}out.push('R'+r+' "'+s.replace(/\s+$/,'')+'"  '+hs.join(' '));}}catch(e){out.push('screen rows err '+(e&&e.message?e.message:e));}return out;}
+  function snapshotText(reason){
+    stamp();
+    var l=[];l.push('AtariHelp.eu EMU-09 '+TAG);l.push('cas='+(new Date()).toISOString());l.push('build='+TAG);l.push('reason='+(reason||'manual'));l.push('xex='+(typeof currentXexName!=='undefined'?currentXexName:'--'));l.push('profile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--'));l.push('');
+    l.push('[FIX291 UI/BUTTON AUDIT]');l.push('TURBO_BUTTON_BIND=FIX291_DIRECT_SINGLE_ONCLICK');l.push('SNAPSHOT_BIND=FIX291_UNIVERSAL_SINGLE_ONCLICK');l.push('FILE_PICKER_BIND=FIX291_SINGLE_ONCLICK_GUARD_1200MS');l.push('TURBO_CLICKS='+turboClicks);l.push('LAST_STATUS='+lastStatus);l.push('LAST_PICKED_FILE='+lastPickedFile);l.push('LAST_PICKED_SIZE='+lastPickedSize);l.push('');
+    l.push('[TURBO BASIC XEX EXPECTED]');l.push('TURBO_XEX_FILE='+ASSET);l.push('TURBO_XEX_SIZE_EXPECTED=20877');l.push('TURBO_XEX_SOURCE=EMBEDDED_BYTE_FOR_BYTE_FALLBACK_OR_EXISTING_CORE');l.push('RUNAD=NONE');l.push('INITAD=$6132');l.push('ENTRY_EXPECTED=$6132');l.push('START_OPTION_DIRECT_XEX=YES');l.push('POWER_BASIC_BEFORE_TURBO=NO');l.push('CLOAD_WAV_USED=NO');l.push('NO_FAKE_READY=YES');l.push('NO_FAKE_LOAD=YES');l.push('NO_RAM_PROGRAM_INJECT=YES');l.push('NO_SCREEN_RAM_PAINT=YES');l.push('SELFTEST_GRAPHICS_STATUS=OPEN_DEBT_NO_FAKE_DRAWING');l.push('');
+    l.push('[CPU/RAM STATUS]');try{l.push(cpu?('CPU PC $'+hx(cpu.pc||0,4)+' A $'+hx(cpu.a||0,2)+' X $'+hx(cpu.x||0,2)+' Y $'+hx(cpu.y||0,2)+' SP $'+hx(cpu.sp||0,2)+' P $'+hx(cpu.p||0,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?(cpu.trapMsg||'YES'):'NO')):'CPU not started');}catch(e){l.push('CPU status err '+(e&&e.message?e.message:e));}
+    try{l.push('DLIST $'+hx((ram[0x230]|(ram[0x231]<<8))&65535,4)+' SAVMSC $'+hx((ram[0x58]|(ram[0x59]<<8))&65535,4)+' CHBASE $'+hx(ram[0x2F4],2)+' SDMCTL $'+hx(ram[0x22F],2)+' DMACTL $'+hx(ram[0xD400],2)+' PRIOR $'+hx(ram[0xD01B],2));}catch(e){}
+    try{l.push('PIA PORTB OUT $'+hx(typeof piaPortBOut!=='undefined'?piaPortBOut:ram[0xD301],2)+' DDR $'+hx(typeof piaPortBDDR!=='undefined'?piaPortBDDR:0,2));}catch(e){}
+    l.push('');l.push('[FAST BASIC STATE]');try{var s=window.fix270FastState;l.push(s?('active='+(s.active?'YES':'NO')+' phase='+s.phase+' completed='+(s.completed?'YES':'NO')+' line='+(s.lineIdx+1)+'/'+s.lines.length+' pumped='+s.pumped+'/'+s.total+' info='+(window.fix270FastInfo||s.info)):'no fix270FastState');}catch(e){l.push('fast state err '+(e&&e.message?e.message:e));}
+    l.push('');l.push('[SCREEN PROOF]');Array.prototype.push.apply(l,rows());try{l.push('');l.push('[TRACE]');if(cpu&&cpu.trace)Array.prototype.push.apply(l,cpu.trace.slice(-24));}catch(_){ }
+    return l.join('\n');
+  }
+  function fileName(reason){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};var ts=d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());var nm=(typeof currentXexName!=='undefined'?currentXexName:'PURE_HARDWARE').replace(/[^A-Za-z0-9._-]+/g,'_').slice(0,50);return 'atarihelp-FIX291-universal-'+(reason||'snapshot')+'-'+ts+'-'+nm+'.txt';}
+  function showAndSave(txt,reason){
+    var fn=fileName(reason||'snapshot');
+    try{var anchor=g('fix284TurboPanel')||g('playStatus')||document.body;var box=g('fix291SnapshotBox');if(!box){box=document.createElement('div');box.id='fix291SnapshotBox';box.className='card';anchor.parentNode.insertBefore(box,anchor.nextSibling);}box.innerHTML='<h2>Snapshot FIX291 universal TXT</h2><p class="tinyhint">Jedna vazba pro turbo/basic/selftest snapshot. Když Android nestáhne soubor, použij OZNAČIT nebo KOPÍROVAT.</p><textarea id="fix291SnapshotText" style="width:100%;min-height:260px;box-sizing:border-box;background:#050403;color:#2aff8f;border:1px solid rgba(42,255,143,.35);border-radius:10px;padding:8px;font-family:monospace;font-size:11px"></textarea><button class="secondary compact" id="fix291SelectSnap">OZNAČIT SNAPSHOT</button><button class="secondary compact" id="fix291CopySnap">KOPÍROVAT SNAPSHOT</button><a id="fix291DownloadSnap" class="btn secondary" download="'+fn+'">STÁHNOUT SNAPSHOT TXT</a>';var ta=g('fix291SnapshotText');if(ta)ta.value=txt;var sel=g('fix291SelectSnap');if(sel)sel.onclick=function(ev){stop(ev);try{ta.focus();ta.select();}catch(_){ }return false;};var cp=g('fix291CopySnap');if(cp)cp.onclick=function(ev){stop(ev);try{ta.focus();ta.select();document.execCommand('copy');}catch(_){ }return false;};var a=g('fix291DownloadSnap');if(a){var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});a.href=URL.createObjectURL(blob);a.download=fn;}}catch(e){}
+    try{var log=g('log');if(log)log.textContent=txt;}catch(_){ }
+    try{if(window.AtariLogBridge&&AtariLogBridge.saveLog){AtariLogBridge.saveLog(txt,fn);say('FIX291 snapshot ulozen pres Android bridge: '+fn);return true;}}catch(e){}
+    try{if(window.saveTextReportToMobile){window.saveTextReportToMobile(fn,txt);say('FIX291 snapshot ulozen pres saveTextReportToMobile: '+fn);return true;}}catch(e){}
+    try{var aa=g('fix291DownloadSnap');if(aa&&aa.href){aa.click();say('FIX291 snapshot pripraven ke stazeni: '+fn);return true;}}catch(e){}
+    say('FIX291 snapshot zobrazen v panelu: '+fn);return false;
+  }
+  window.fix291UniversalSnapshot=function(ev){stop(ev);stamp();return showAndSave(snapshotText('manual'),'manual');};
+  window.fix290UniversalSnapshot=window.fix289UniversalSnapshot=window.fix288UniversalSnapshot=window.fix287TurboSnapshot=window.fix286TurboSnapshot=window.fix284Snapshot=window.fix291UniversalSnapshot;
+
+  function readPickedFile(file){
+    if(!file){say('FIX291: soubor nevybrán.');return false;}
+    lastPickedFile=file.name||'TXT/BAS';lastPickedSize=file.size||0;
+    var fr=new FileReader();
+    fr.onload=function(){var txt=String(fr.result||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');var ta=g('fix240BasicFastText');if(ta){ta.value=txt;ta.focus();}say('FIX291: soubor načten do pole: '+lastPickedFile+' / '+txt.length+' znaků. Teď POWER BASIC → READY → 2 nebo 3.');try{var inp=g('basicTxtFile');if(inp)inp.value='';}catch(_){ }};
+    fr.onerror=function(){say('FIX291: chyba čtení souboru '+lastPickedFile);};
+    fr.readAsText(file);return false;
+  }
+  window.pickBasicTxtFileFix291=function(ev){
+    stop(ev);stamp();
+    var now=Date.now(); if(now-lastPickerOpen<1200){say('FIX291: ignoruji dvojitý click file pickeru.');return false;} lastPickerOpen=now;
+    try{var inp=g('basicTxtFile');if(!inp){say('FIX291 CHYBA: basicTxtFile input neexistuje.');return false;}inp.value='';say('FIX291: otevírám výběr TXT/BAS jedním klikem...');inp.click();}catch(e){say('FIX291 file picker chyba: '+(e&&e.message?e.message:e));}
+    return false;
+  };
+  window.sendBasicTextFix291=function(ev,run){
+    stop(ev);stamp();var ta=g('fix240BasicFastText');var txt=ta?String(ta.value||''):'';if(!txt.trim()){say('FIX291: prázdné pole. Vyber TXT/BAS nebo napiš text ručně.');return false;}
+    clearFastLatch('beforeBasicSend');say('FIX291: posílám text '+(run?'+ RUN':'')+' přes původní ATASCII/KGETCH helper.');
+    try{return run?window.vlozitFastRunFix240(ev):window.vlozitFastFix240(ev);}catch(e){say('FIX291 BASIC send chyba: '+(e&&e.message?e.message:e));return false;}
+  };
+  window.pickBasicTxtFileFix289=window.pickBasicTxtFileFix291;
+  window.sendBasicTextFix289=window.sendBasicTextFix291;
+
+  function bindOneButton(id,handler,label){
+    var b=g(id); if(!b)return;
+    if(b.getAttribute('data-fix291-bound')==='1'){b.onclick=handler; if(label)b.textContent=label; return;}
+    var nb=b.cloneNode(true); nb.removeAttribute('onclick'); nb.removeAttribute('onpointerdown'); nb.removeAttribute('onpointerup'); nb.removeAttribute('onpointercancel'); nb.setAttribute('data-fix291-bound','1'); nb.__fix289Bound=true; nb.__fix289SingleBind=true; if(label)nb.textContent=label; nb.onclick=handler; b.parentNode.replaceChild(nb,b);
+  }
+  function bindFileInput(){
+    var inp=g('basicTxtFile'); if(!inp)return;
+    if(inp.getAttribute('data-fix291-bound')!=='1'){
+      var ni=inp.cloneNode(false); ni.id='basicTxtFile'; ni.className=inp.className; ni.type='file'; ni.accept='.txt,.bas,.lst,text/plain,*/*'; ni.setAttribute('data-fix291-bound','1'); ni.__fix289FilePicker=true; inp.parentNode.replaceChild(ni,inp); inp=ni;
+    }
+    inp.__fix289FilePicker=true;
+    inp.onchange=function(){var file=inp.files&&inp.files[0];return readPickedFile(file);};
+  }
+  function boot(){
+    stamp();bindFileInput();
+    bindOneButton('fix284TurboBtn',window.fix291StartTurboBasic,'1) START+OPTION → TURBO BASIC XL 1.5 XEX');
+    bindOneButton('fix284TurboSnapBtn',window.fix291UniversalSnapshot,'2) SNAPSHOT TXT — TURBO / BASIC / SELF TEST');
+    bindOneButton('fix289PickBasicFileBtn',window.pickBasicTxtFileFix291,'1) OTEVŘÍT SOUBORY / VYBRAT TXT/BAS');
+    bindOneButton('fix289SendBasicBtn',function(ev){return window.sendBasicTextFix291(ev,false);},'2) ODESLAT TEXT Z POLE DO BASICU');
+    bindOneButton('fix289SendBasicRunBtn',function(ev){return window.sendBasicTextFix291(ev,true);},'3) ODESLAT TEXT Z POLE + RUN');
+    try{Array.prototype.forEach.call(document.querySelectorAll('button'),function(b){if(/^SNAPSHOT$/i.test(String(b.textContent||'').trim())){b.removeAttribute('onclick');b.setAttribute('data-fix291-bound','1');b.onclick=window.fix291UniversalSnapshot;}});}catch(_){ }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot); else boot();
+  var n=0,t=setInterval(function(){boot();if(++n>230)clearInterval(t);},120);
+  setTimeout(boot,30000);setTimeout(boot,60000);
 })();
 </script>
