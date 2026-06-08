@@ -1,9 +1,17 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="cs">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX318_TURBO_PIA_DATA_MODE_RELOC_FIX</title>
+<head><style>
+/* FIX319 hard boot guard: never show old intermediate FIX317/FIX318 panel text during DOM/bootstrap. */
+html:not(.fix319-ready) body{visibility:hidden!important;}
+html.fix319-ready body{visibility:visible!important;}
+#fix284TurboPanel,.purePanel,#fix313XexPanel,#fix317XexPanel,#fix318XexPanel{display:none!important;}
+#fix319XexPanel button,#fix240FastBasicBox button{margin-top:8px;}
+#fix319MiniStatus{white-space:pre-wrap;max-height:220px;overflow:auto;}
+</style>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<title>EMU-09 FIX319_BOOT_CLEAN_SINGLE_UI_NO_FLICKER</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -44,15 +52,14 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 <div class="wrap">
 <section class="card">
 <div class="brandBar">
-<img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
+<img alt="N&amp;P" class="brandLogo" src="np_logo.png?fix102"/>
 <div class="brandText">
-<h1>EMU-09 FIX318_TURBO_PIA_DATA_MODE_RELOC_FIX</h1>
+<h1>EMU-09 FIX319_BOOT_CLEAN_SINGLE_UI_NO_FLICKER</h1>
 <p>FIX316: Turbo Basic XEX loader opravuje PORTB mapování RAM pod OS ROM, dedupe kliků a drží teplý RESET. Žádný fake LOAD, žádný screen paint, žádný RAM program inject.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
 </section>
-
 <section class="card" id="fix284TurboPanel">
 <h2>Turbo Basic XL 1.5 — čistý XEX loader</h2>
 <p><b>TURBO BASIC XL XEX - HLAVNI TEST: START+OPTION + CISTY XEX START.</b> Nespouštěj po POWER BASIC. Tohle tlačítko samo připraví čistý XEX stav se START+OPTION, načte segmenty do emulované RAM, vezme INITAD $6132 a nechá běžet CPU emulatoru.</p>
@@ -60,80 +67,72 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 <button class="secondary" id="fix284TurboSnapBtn" onclick="return fix293UniversalSnapshot(event)">2) SNAPSHOT TXT — TURBO / BASIC / SELF TEST</button>
 <pre id="fix284TurboStatus">FIX300 STABLE: Turbo/XEX tlačítka jsou v tomto stabilizačním buildu vypnutá. Nejdřív vracíme funkční BASIC/TXT/keyboard/log.</pre>
 </section>
-
 <section class="card purePanel">
 <h2>Čisté ovládání emulátoru</h2>
 <p>Hlavní cesta: TurboBasic XEX spouštěj rovnou z čistého stavu. POWER BASIC neklikej před TurboBasicem; POWER BASIC je jen druhý kontrolní test vlastního BASIC TXT.</p>
 <div class="halfgrid kbdTopActions">
 <button id="pureHwBasicBtnFix226Top" onclick="return startPureHardwareBasicFix226(event)">POWER XL/XE BASIC</button>
 <button class="secondary" onclick="return fix293UniversalSnapshot(event)">SNAPSHOT</button>
-<button id="pureHwSelfBtnFix226Top" class="secondary" onclick="return startPureHardwareSelfTestFix226(event)">POWER OPTION SELF TEST (grafika dluh)</button>
+<button class="secondary" id="pureHwSelfBtnFix226Top" onclick="return startPureHardwareSelfTestFix226(event)">POWER OPTION SELF TEST (grafika dluh)</button>
 <button class="secondary" onclick="return resetPureHardwareFix226(event)">RESET PURE HW</button>
 </div>
-<div id="xexName" class="fileLine">MODE: PURE HARDWARE / no XEX loaded</div>
-<div id="romName" class="fileLine">ROM: ATARIXL.ROM + ATARIBAS.ROM podle běžného XL/XE mapování.</div>
-<div id="playStatus" class="playStatus">FIX300 STABLE: XEX experimenty vypnuté. Testuj POWER BASIC, ruční psaní, TXT/BAS načtení, snapshot, zvuk/log.</div>
-<div id="inputMapPanel" class="inputMapPanel">FIX300 input/status panel.</div>
+<div class="fileLine" id="xexName">MODE: PURE HARDWARE / no XEX loaded</div>
+<div class="fileLine" id="romName">ROM: ATARIXL.ROM + ATARIBAS.ROM podle běžného XL/XE mapování.</div>
+<div class="playStatus" id="playStatus">FIX300 STABLE: XEX experimenty vypnuté. Testuj POWER BASIC, ruční psaní, TXT/BAS načtení, snapshot, zvuk/log.</div>
+<div class="inputMapPanel" id="inputMapPanel">FIX300 input/status panel.</div>
 </section>
-
-
-
 <section class="card">
 <h2>Obraz Atari</h2>
 <p>Obraz jde přes emulátorové jádro. Ovládání a klávesnice jsou pod obrazem, bez duplicitních starých panelů.</p>
-<canvas id="video" class="gameCanvas" width="320" height="240"></canvas>
-
+<canvas class="gameCanvas" height="240" id="video" width="320"></canvas>
 <div class="kbdTools atariKeyboardDock" id="atariKeyboardDock">
 <h2>Mobilní Atari klávesnice</h2>
 <p class="tinyhint">FIX301: návrat funkčního základu. TXT/BAS jde bezpečnou řádkovou frontou, XEX vypnutý.</p>
 <div class="halfgrid kbdTopActions">
-<button id="pureHwBasicBtnFix226" class="secondary compact" onclick="return startPureHardwareBasicFix226(event)">POWER XL/XE BASIC</button>
+<button class="secondary compact" id="pureHwBasicBtnFix226" onclick="return startPureHardwareBasicFix226(event)">POWER XL/XE BASIC</button>
 <button class="secondary compact" onclick="return fix293UniversalSnapshot(event)">SNAPSHOT</button>
-<button id="pureHwSelfBtnFix226" class="secondary compact" onclick="return startPureHardwareSelfTestFix226(event)">POWER OPTION SELF TEST (grafika dluh)</button>
+<button class="secondary compact" id="pureHwSelfBtnFix226" onclick="return startPureHardwareSelfTestFix226(event)">POWER OPTION SELF TEST (grafika dluh)</button>
 <button class="secondary compact" onclick="return resetPureHardwareFix226(event)">RESET PURE HW</button>
-<button class="secondary compact" onpointerdown="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)" onpointercancel="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)">HOLD START</button>
-<button class="secondary compact" onpointerdown="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)" onpointercancel="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)">HOLD OPTION</button>
-<button class="secondary compact" onpointerdown="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)" onpointercancel="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)">HOLD SELECT</button>
+<button class="secondary compact" onpointercancel="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)" onpointerdown="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.start=v;syncInputShadows();renderInput();},false)">HOLD START</button>
+<button class="secondary compact" onpointercancel="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)" onpointerdown="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.option=v;syncInputShadows();renderInput();},false)">HOLD OPTION</button>
+<button class="secondary compact" onpointercancel="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)" onpointerdown="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},true)" onpointerup="return capturePress(event,function(v){input.select=v;syncInputShadows();renderInput();},false)">HOLD SELECT</button>
 <button class="secondary compact" onclick="tapAtariKey('ENTER')">ENTER / RETURN</button>
 </div>
-
-<div id="fix240FastBasicBox" class="kbdTools">
+<div class="kbdTools" id="fix240FastBasicBox">
 <h2>Vlastní BASIC TXT/BAS soubor</h2>
 <p class="tinyhint">1) Vyber TXT/BAS soubor z mobilu/Noxu. Obsah se načte do pole. 2) Po reálném BASIC READY ho pošli jako ATASCII/KGETCH frontu s EOL $9B. Nepíše program přímo do RAM a nekreslí výsledek na screen RAM.</p>
-<div id="fix289BasicFileStatus" class="fileLine">Soubor: zatím nevybrán. Klikni na první tlačítko.</div>
-<input id="basicTxtFile" class="fileChooserFix292" type="file" accept=".txt,.bas,.lst,text/plain">
-<textarea id="fix240BasicFastText" class="basicSource" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Sem můžeš psát ručně, nebo klikni 1) OTEVŘÍT SOUBORY / VYBRAT TXT/BAS.
-10 PRINT &quot;RENE TEST&quot;
-20 GOTO 10"></textarea>
+<div class="fileLine" id="fix289BasicFileStatus">Soubor: zatím nevybrán. Klikni na první tlačítko.</div>
+<input accept=".txt,.bas,.lst,text/plain" class="fileChooserFix292" id="basicTxtFile" type="file"/>
+<textarea autocapitalize="off" autocomplete="off" class="basicSource" id="fix240BasicFastText" placeholder='Sem můžeš psát ručně, nebo klikni 1) OTEVŘÍT SOUBORY / VYBRAT TXT/BAS.
+10 PRINT "RENE TEST"
+20 GOTO 10' spellcheck="false"></textarea>
 <div class="halfgrid">
-<button id="fix289PickBasicFileBtn" class="secondary compact" onclick="return pickBasicTxtFileFix293(event)">1) OTEVŘÍT SOUBORY / VYBRAT TXT/BAS</button>
-<button id="fix289SendBasicBtn" class="secondary compact" onclick="return sendBasicTextFix293(event,false)">2) ODESLAT TEXT Z POLE DO BASICU</button>
-<button id="fix289SendBasicRunBtn" class="secondary compact" onclick="return sendBasicTextFix293(event,true)">3) ODESLAT TEXT Z POLE + RUN</button>
+<button class="secondary compact" id="fix289PickBasicFileBtn" onclick="return pickBasicTxtFileFix293(event)">1) OTEVŘÍT SOUBORY / VYBRAT TXT/BAS</button>
+<button class="secondary compact" id="fix289SendBasicBtn" onclick="return sendBasicTextFix293(event,false)">2) ODESLAT TEXT Z POLE DO BASICU</button>
+<button class="secondary compact" id="fix289SendBasicRunBtn" onclick="return sendBasicTextFix293(event,true)">3) ODESLAT TEXT Z POLE + RUN</button>
 </div>
 </div>
-<button id="fix285ClearBasicBtn" class="secondary compact" onclick="var t=document.getElementById('fix240BasicFastText');if(t){t.value='';t.focus();}return false;">VYČISTIT TEXTOVÉ POLE</button>
-
+<button class="secondary compact" id="fix285ClearBasicBtn" onclick="var t=document.getElementById('fix240BasicFastText');if(t){t.value='';t.focus();}return false;">VYČISTIT TEXTOVÉ POLE</button>
 <div class="keygrid" id="atariKeyboard"></div>
 </div>
-
 <div class="controlPanel">
 <h2>Atari ovládání</h2>
 <p class="controlHint">Joystick a START/SELECT/OPTION/FIRE jsou ponechané jako běžný vstup emulátoru.</p>
 <div class="thumbControls">
 <div class="dpadColumn">
 <div class="vjoyWrap">
-<div id="vjoy" class="vjoy" aria-label="Kruhový joystick" onpointerdown="return vjoyPointer(event,true)" onpointermove="return vjoyPointer(event,false)" onpointerup="return vjoyRelease(event)" onpointercancel="return vjoyRelease(event)" onpointerleave="return vjoyLeave(event)">
-<div id="vjoyKnob" class="vjoyKnob">●</div>
+<div aria-label="Kruhový joystick" class="vjoy" id="vjoy" onpointercancel="return vjoyRelease(event)" onpointerdown="return vjoyPointer(event,true)" onpointerleave="return vjoyLeave(event)" onpointermove="return vjoyPointer(event,false)" onpointerup="return vjoyRelease(event)">
+<div class="vjoyKnob" id="vjoyKnob">●</div>
 </div>
-<div id="vjoyReadout" class="vjoyReadout">Kruhový joystick: pusť prst = neutrál</div>
+<div class="vjoyReadout" id="vjoyReadout">Kruhový joystick: pusť prst = neutrál</div>
 </div>
 </div>
 <div class="fireZone">
-<button class="secondary" onclick="tapStartPulse()">TAP<br>START</button>
-<button class="fireMain" onpointerdown="return capturePress(event,pressFire,true)" onpointerup="return capturePress(event,pressFire,false)" onpointercancel="return capturePress(event,pressFire,false)">FIRE<br><span class="muted">střela / OK</span></button>
+<button class="secondary" onclick="tapStartPulse()">TAP<br/>START</button>
+<button class="fireMain" onpointercancel="return capturePress(event,pressFire,false)" onpointerdown="return capturePress(event,pressFire,true)" onpointerup="return capturePress(event,pressFire,false)">FIRE<br/><span class="muted">střela / OK</span></button>
 </div>
 </div>
-<p id="inputState" class="inputReadout"></p>
+<p class="inputReadout" id="inputState"></p>
 <div class="halfgrid">
 <button class="secondary compact" onclick="tapStartPulse()">TAP START</button>
 <button class="secondary compact" onclick="tapFirePulse()">TAP FIRE</button>
@@ -142,7 +141,6 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 </div>
 </div>
 </section>
-
 <details class="debugDetails">
 <summary>Servisní debug / snapshot / log</summary>
 <section class="card"><h2>PMG debug</h2><pre id="pmgdebug">PMG debug čeká.</pre><button class="compact secondary" onclick="renderPMGOnly()">PMG real colors</button><button class="compact secondary" onclick="renderPMGDebugColors()">PMG debug colors</button></section>
@@ -150,14 +148,12 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 <section class="card"><h2>XEX diagnostika</h2><pre id="segments"></pre></section>
 <section class="card"><h2>Log</h2><pre id="log"></pre><button class="compact secondary" onclick="saveCurrentLogToMobile('manual-debug')">ULOŽIT LOG DO MOBILU</button><button class="compact secondary" onclick="copyCurrentLogToClipboard()">KOPÍROVAT LOG</button><button class="compact secondary" onclick="stepCpu()">STEP CPU</button><button class="compact secondary" onclick="singleFramePlay()">1 SNÍMEK</button></section>
 </details>
-
-<input id="xexFile" class="inlineFile" type="file" accept=".xex,.obx,.com">
-<button id="submarineBtnFix209" style="display:none" aria-hidden="true"></button>
-<div id="cassetteBoxFix249" style="display:none" aria-hidden="true"></div>
-<div id="cassetteBoxFix251" style="display:none" aria-hidden="true"></div>
+<input accept=".xex,.obx,.com" class="inlineFile" id="xexFile" type="file"/>
+<button aria-hidden="true" id="submarineBtnFix209" style="display:none"></button>
+<div aria-hidden="true" id="cassetteBoxFix249" style="display:none"></div>
+<div aria-hidden="true" id="cassetteBoxFix251" style="display:none"></div>
 <div class="cleanNote">FIX293: čistý nativní XEX loader, bez starých herních profilů a bez generic fallback omalovánek. Self Test/ATR nejsou v tomhle runtime panelu maskované ani tvrzené jako hotové.</div>
 </div>
-
 <script>
 var ATARI_SCREEN_W=320;
 var ATARI_SCREEN_H=240;
@@ -12625,8 +12621,6 @@ updatePlayStatus('ready');
 /* END LEGACY_CORE */
 
 </script>
-
-
 <script>
 
 /* FIX316: disabled obsolete FIX305/FIX306/FIX308 visual boot scripts - no delayed title/panel flicker; XEX loader enabled only by explicit button. */
@@ -12835,125 +12829,13 @@ updatePlayStatus('ready');
 
 </script>
 
-
-<script>
-(function(){
-  'use strict';
-  var TAG='FIX318_TURBO_PIA_DATA_MODE_RELOC_FIX';
-  var fileName='--', fileSize=0, fileLoaded=false, lastInfo='init', lastAction='--', sentLines=0, sentChars=0, pickerClicks=0, sendClicks=0;
-  var guardName='', guardMs=0, applied=0;
-  function id(x){return document.getElementById(x);} 
-  function qa(s){return Array.prototype.slice.call(document.querySelectorAll(s));}
-  function log313(msg){lastInfo=String(msg||''); try{if(typeof log==='function')log('FIX316 '+lastInfo);else{var l=id('log');if(l)l.textContent='FIX316 '+lastInfo+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX316: '+lastInfo);}catch(e){} var st=id('fix313Status'); if(st)st.textContent=lastInfo;}
-  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}}
-  function guard(n,ms){var t=Date.now(); if(guardName===n && t-guardMs<(ms||500))return false; guardName=n;guardMs=t;return true;}
-  function normText(t){return String(t||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');}
-  function lineCount(t){t=String(t||''); if(!t.trim())return 0; return t.replace(/\n+$/,'').split('\n').filter(function(x){return x.length>0;}).length;}
-  function feedText(t){return normText(t).toUpperCase();}
-  function cardOf(el){while(el && !(el.tagName && el.tagName.toLowerCase()==='section' && String(el.className||'').indexOf('card')>=0))el=el.parentNode;return el;}
-  function ensureCard(cardId,title,para,afterNode){
-    var c=id(cardId); if(!c){c=document.createElement('section'); c.className='card'; c.id=cardId; c.innerHTML='<h2></h2><p></p>';}
-    var h=c.querySelector('h2'); if(h)h.textContent=title;
-    var p=c.querySelector('p'); if(p)p.textContent=para||'';
-    if(afterNode && afterNode.parentNode && c.parentNode!==afterNode.parentNode)afterNode.parentNode.insertBefore(c,afterNode.nextSibling);
-    return c;
-  }
-  function hideOldPanels(){
-    ['fix284TurboPanel','fix307Panel','fix311XexPickerPanel','fix312TxtPanel','fix312XexPickerPanel'].forEach(function(x){var e=id(x); if(e)e.style.display='none';});
-    qa('.purePanel').forEach(function(e){e.style.display='none';});
-    var oldTxt=id('fix240FastBasicBox'); if(oldTxt)oldTxt.style.display='none';
-    var oldClear=id('fix285ClearBasicBtn'); if(oldClear)oldClear.style.display='none';
-  }
-  function ensureLayout(){
-    applied++;
-    hideOldPanels();
-    document.title='EMU-09 '+TAG;
-    var h1=document.querySelector('h1'); if(h1)h1.textContent='EMU-09 '+TAG;
-    var brandP=document.querySelector('.brandText p'); if(brandP)brandP.textContent='FIX316: stabilní start bez problikávání starých FIX306/FIX311/FIX312 vrstev. BASIC/TXT panel je nahoře pod obrazem, XEX je zatím jen příprava.';
-    var wrap=document.querySelector('.wrap'); if(!wrap)return;
-    var brandCard=cardOf(h1)||wrap.firstElementChild;
-    var consoleCard=cardOf(id('video'));
-    if(consoleCard){
-      consoleCard.id='fix313ConsoleCard';
-      var ch=consoleCard.querySelector('h2'); if(ch)ch.textContent='1) Atari obraz + klávesnice + ovládání';
-      var cp=consoleCard.querySelector('p'); if(cp)cp.textContent='Hlavní pracovní plocha: POWER BASIC, reset, ruční klávesnice, joystick, FIRE a SNAPSHOT jsou nahoře. Staré duplicitní panely jsou vypnuté.';
-      if(brandCard && consoleCard.previousElementSibling!==brandCard)wrap.insertBefore(consoleCard,brandCard.nextSibling);
-      var kh=consoleCard.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX313';
-      var hint=consoleCard.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX316: ruční klávesnice + čistý TXT/BAS panel pod obrazem. XEX loader zatím vypnutý.';
-    }
-    var txtPanel=ensureTxtPanel(consoleCard||brandCard);
-    ensureXexPanel(txtPanel);
-    qa('button').forEach(function(b){var t=(b.textContent||'').toUpperCase(); if(/SNAPSHOT/.test(t) && b.id!=='fix313Snap')b.onclick=snapshot;});
-    try{window.fix313FullSnapshot=snapshot; window.compatibilitySnapshot=snapshot; if(typeof fix293UniversalSnapshot==='function'&&!window.__fix313WrappedSnap){window.__fix313OldUniversalSnapshot=fix293UniversalSnapshot;window.fix293UniversalSnapshot=snapshot;window.__fix313WrappedSnap=true;}}catch(e){}
-  }
-  function ensureTxtPanel(afterNode){
-    var panel=id('fix313TxtPanel');
-    if(!panel){
-      panel=document.createElement('section'); panel.className='card'; panel.id='fix313TxtPanel';
-      panel.style.border='2px solid rgba(42,255,143,.50)';
-      panel.innerHTML=''+
-        '<h2>2) TXT/BAS výběr a odeslání — FIX316 STABILNÍ</h2>'+ 
-        '<p>Výběr TXT/BAS, textové pole, BEZ RUN i +RUN. Odeslání jde přes izolovanou KGETCH/ATASCII frontu z FIX309, EOL $9B. Žádný RAW CH, žádný RAM inject, žádný screen paint.</p>'+ 
-        '<div id="fix313Status" class="fileLine">FIX316 čeká.</div>'+ 
-        '<div id="fix313FileStatus" class="fileLine">Soubor: zatím nevybrán.</div>'+ 
-        '<button id="fix313PickBtn" class="secondary compact" type="button">1) VYBRAT TXT/BAS ZE SOUBORU / MOBILU</button>'+ 
-        '<input id="fix313File" class="fileChooserFix292" type="file" accept=".txt,.bas,.lst,text/plain" style="display:block;visibility:visible;pointer-events:auto">'+
-        '<textarea id="fix313Text" class="basicSource" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Tady bude načtený BASIC TXT/BAS. Nic se nepíše přímo do RAM."></textarea>'+ 
-        '<div class="halfgrid">'+ 
-          '<button id="fix313SendNoRun" class="secondary compact" type="button">2) ODESLAT DO BASICU BEZ RUN</button>'+ 
-          '<button id="fix313SendRun" class="secondary compact" type="button">3) ODESLAT DO BASICU + RUN</button>'+ 
-          '<button id="fix313Clear" class="secondary compact" type="button">VYČISTIT TEXTOVÉ POLE</button>'+ 
-          '<button id="fix313Snap" class="secondary compact" type="button">SNAPSHOT FULL LOG FIX313</button>'+ 
-        '</div><pre id="fix313MiniLog" style="max-height:150px">FIX316 audit čeká.</pre>';
-    }
-    if(afterNode && afterNode.parentNode && panel.parentNode!==afterNode.parentNode)afterNode.parentNode.insertBefore(panel,afterNode.nextSibling);
-    bindPanel();
-    return panel;
-  }
-  function ensureXexPanel(afterNode){
-    var panel=id('fix313XexPanel');
-    if(!panel){
-      panel=document.createElement('section'); panel.className='card'; panel.id='fix313XexPanel';
-      panel.innerHTML=''+
-       '<h2>3) XEX výběr — zatím jen příprava loaderu</h2>'+ 
-       '<p>Další krok bude čistý XEX loader: segmenty do emulované RAM, typicky $2000+, INITAD/RUNAD audit. V tomhle buildu se XEX pouze vybere a zaloguje název. Žádný fake LOAD, žádné profily, žádný RAM load.</p>'+ 
-       '<div id="fix313XexStatus" class="fileLine">XEX: zatím nevybrán. FIX316_XEX_LOAD_TO_RAM=NO.</div>'+ 
-       '<button id="fix313XexNoLoadBtn" class="secondary compact" type="button">XEX LOAD ZATÍM VYPNUTO — jen kontrola názvu</button>';
-    }
-    if(afterNode && afterNode.parentNode && panel.parentNode!==afterNode.parentNode)afterNode.parentNode.insertBefore(panel,afterNode.nextSibling);
-    var inp=id('xexFile'); if(inp){inp.classList.remove('inlineFile');inp.classList.add('fileChooserFix292');inp.style.display='block';inp.style.visibility='visible';inp.style.pointerEvents='auto'; if(inp.parentNode!==panel)panel.insertBefore(inp,id('fix313XexNoLoadBtn')); inp.onchange=function(){var f=this.files&&this.files[0];var st=id('fix313XexStatus'); if(st)st.textContent=f?('XEX vybrán jen pro název: '+f.name+' / '+f.size+' bytes. Do RAM se teď nic nekopíruje.'):('XEX: zatím nevybrán. FIX316_XEX_LOAD_TO_RAM=NO.'); log313(st?st.textContent:'XEX change');};}
-    var btn=id('fix313XexNoLoadBtn'); if(btn)btn.onclick=function(ev){stop(ev);log313('XEX loader je pořád vypnutý. Další krok musí být čistý segment loader přes RAM $2000+ / INITAD / RUNAD audit, ne fake LOAD.');return false;};
-    return panel;
-  }
-  function bindButton(el,fn){if(!el || el._fix313Bound==='YES')return; el._fix313Bound='YES'; el.onclick=fn; el.addEventListener('click',fn,{passive:false}); el.addEventListener('pointerup',fn,{passive:false}); el.addEventListener('touchend',fn,{passive:false});}
-  function bindPanel(){
-    bindButton(id('fix313PickBtn'),chooseFile);
-    var fi=id('fix313File'); if(fi && fi._fix313FileBound!=='YES'){fi._fix313FileBound='YES'; fi.disabled=false; fi.style.display='block'; fi.addEventListener('change',loadFile,false); fi.onchange=loadFile;}
-    bindButton(id('fix313SendNoRun'),function(ev){return send(false,ev);});
-    bindButton(id('fix313SendRun'),function(ev){return send(true,ev);});
-    bindButton(id('fix313Clear'),clear);
-    bindButton(id('fix313Snap'),snapshot);
-  }
-  function chooseFile(ev){stop(ev); if(!guard('pick',650))return false; pickerClicks++; var inp=id('fix313File'); log313('Otevírám systémový výběr TXT/BAS. Když WebView blokne tlačítko, použij nativní řádek Choose File pod ním. klik='+pickerClicks); try{if(inp){inp.disabled=false;inp.style.display='block';inp.click();}}catch(e){log313('file picker click chyba: '+(e&&e.message?e.message:e));} return false;}
-  function loadFile(ev){try{var inp=(ev&&ev.target)||id('fix313File'); var f=inp&&inp.files&&inp.files[0]; if(!f){log313('Soubor nevybrán.');return false;} fileName=f.name||'TXT/BAS'; fileSize=f.size||0; fileLoaded=false; lastAction='FILE_PICK'; var fs=id('fix313FileStatus'); if(fs)fs.textContent='Čtu: '+fileName+' / '+fileSize+' bytes'; var rd=new FileReader(); rd.onload=function(){var raw=normText(rd.result||''); var ta=id('fix313Text'); if(ta)ta.value=raw; fileLoaded=true; sentLines=0; sentChars=0; lastAction='FILE_LOADED'; if(fs)fs.textContent='Soubor načten: '+fileName+' / '+fileSize+' bytes / '+lineCount(raw)+' řádků / '+raw.length+' znaků'; var ml=id('fix313MiniLog'); if(ml)ml.textContent='FILE_LOADED '+fileName+'\nlines='+lineCount(raw)+' chars='+raw.length+'\nKODY JSOU STEJNE: CR/LF sjednoceno, pro KGETCH se při odeslání použije Atari uppercase + EOL $9B.'; log313('TXT/BAS načten do textového pole: '+fileName+' / '+lineCount(raw)+' řádků. Teď vyber BEZ RUN nebo +RUN.');}; rd.onerror=function(){log313('Čtení TXT/BAS selhalo: '+(rd.error&&rd.error.message?rd.error.message:rd.error));}; rd.readAsText(f,'utf-8');}catch(e){log313('loadFile chyba: '+(e&&e.message?e.message:e));} return false;}
-  function precleanBeforeSend(){try{if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false;}catch(e){} try{if(typeof atariKeyQueue!=='undefined'&&atariKeyQueue)atariKeyQueue.length=0;}catch(e){} try{if(typeof input!=='undefined'&&input)input.key=0xFF;}catch(e){} try{if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF; if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;}catch(e){} try{if(typeof currentXexName!=='undefined' && /KITT|PITT|DONKEY|TURBO|XEX|FIX29|FIX30/i.test(String(currentXexName||'')))currentXexName='PURE HARDWARE BASIC FIX316 / no XEX';}catch(e){} try{if(typeof activeXexProfile!=='undefined')activeXexProfile='realos';}catch(e){}}
-  function send(runAfter,ev){stop(ev); if(!guard(runAfter?'sendrun':'sendnorun',750))return false; sendClicks++; var ta=id('fix313Text'); var raw=ta?ta.value:''; if(!raw || !raw.trim()){log313('Pole je prázdné. Nejdřív vyber TXT/BAS nebo vlož text.');return false;} var txt=feedText(raw); sentLines=lineCount(txt); sentChars=txt.length; lastAction=runAfter?'SEND_PLUS_RUN':'SEND_NO_RUN'; precleanBeforeSend(); try{if(!playMode && typeof startPlaying==='function')startPlaying();}catch(e){} if(typeof window.queueFastBasicFix243==='function'){try{window.queueFastBasicFix243(txt,'FIX316 TXT/BAS KGETCH '+(runAfter?'+ RUN':'BEZ RUN'),!!runAfter,ev||null); var msg='KGETCH fronta spuštěna '+(runAfter?'S RUN':'BEZ RUN')+': '+sentLines+' řádků / '+sentChars+' znaků. Čekej na QUEUE COMPLETE.'; var ml=id('fix313MiniLog'); if(ml)ml.textContent=msg+'\nfile='+fileName+'\nTXT_SEND_PATH=queueFastBasicFix243_KGETCH_ATASCII_RETURN\nNO_RAW_CH_PASTE=YES\nNO_RAM_PROGRAM_INJECT=YES'; log313(msg); return false;}catch(e){log313('queueFastBasicFix243 chyba: '+(e&&e.message?e.message:e));return false;}} log313('CHYBA: queueFastBasicFix243 v runtime není. Zastavuju, nepouštím RAW CH ani RAM zápis.'); return false;}
-  function clear(ev){stop(ev); if(!guard('clear',450))return false; var ta=id('fix313Text'); if(ta)ta.value=''; fileName='--';fileSize=0;fileLoaded=false;sentLines=0;sentChars=0;lastAction='CLEAR'; var fs=id('fix313FileStatus'); if(fs)fs.textContent='Soubor: zatím nevybrán.'; var ml=id('fix313MiniLog'); if(ml)ml.textContent='Pole vyčištěno.'; log313('Textové pole vyčištěno.'); return false;}
-  function snapshot(ev){stop(ev); lastAction='SNAPSHOT'; var arr=[]; function safe(fn,fb){try{return fn();}catch(e){return fb||('ERR '+(e&&e.message?e.message:e));}} arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+(new Date()).toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE'); arr.push('NEW_XEX_CORE=NO'); arr.push('XEX_TURBO_SCOPE=DEFERRED'); arr.push('FIX316_BOOT_FLICKER_GUARD=YES'); arr.push('FIX316_OLD_UI_BOOT_DISABLED=YES'); arr.push('FIX316_TXT_PICKER_BUTTON=YES'); arr.push('FIX316_TEXTAREA_VISIBLE=YES'); arr.push('FIX316_SEND_NO_RUN_BUTTON=YES'); arr.push('FIX316_SEND_RUN_BUTTON=YES'); arr.push('FIX316_XEX_PICKER_UI_ONLY=YES'); arr.push('FIX316_XEX_LOAD_TO_RAM=NO'); arr.push('FIX316_BLOCK_FAST_MODE=NO'); arr.push('FIX309_KGETCH_CORE_KEPT_INTERNAL=YES'); arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');arr.push('NO_RAW_CH_PASTE=YES'); arr.push('');arr.push('[FIX316 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('bootClass='+(document.body&&document.body.classList.contains('fix313-boot')?'YES':'NO')); arr.push('appliedCount='+applied); arr.push('consoleCard='+(id('fix313ConsoleCard')?'YES':'NO')); arr.push('txtPanel='+(id('fix313TxtPanel')?'YES':'NO')); arr.push('xexPanel='+(id('fix313XexPanel')?'YES':'NO')); arr.push('');arr.push('[FIX316 TXT PANEL]'); arr.push('TXT_PICKER_BUTTON='+(id('fix313PickBtn')?'YES':'NO')); arr.push('TXT_FILE_INPUT='+(id('fix313File')?'YES':'NO')); arr.push('TXT_TEXTAREA='+(id('fix313Text')?'YES':'NO')); arr.push('TXT_SEND_NO_RUN='+(id('fix313SendNoRun')?'YES':'NO')); arr.push('TXT_SEND_RUN='+(id('fix313SendRun')?'YES':'NO')); arr.push('TXT_FILE_LOADED='+(fileLoaded?'YES':'NO')); arr.push('TXT_FILE='+fileName); arr.push('TXT_SIZE='+fileSize); arr.push('TEXTAREA_CHARS='+(id('fix313Text')?String(id('fix313Text').value||'').length:0)); arr.push('LAST_ACTION='+lastAction); arr.push('LAST_INFO='+lastInfo); arr.push('SENT_LINES_LAST='+sentLines); arr.push('SENT_CHARS_LAST='+sentChars); arr.push('TXT_SEND_PATH=queueFastBasicFix243_KGETCH_ATASCII_RETURN'); arr.push('EOL_NORMALIZE_CRLF_TO_LF=YES / queue handles ATASCII $9B'); arr.push('');arr.push('[FIX309/243 QUEUE]'); arr.push('fix309Active='+safe(function(){return window.fix309Active?'YES':'NO';},'--')); arr.push('fix309Done='+safe(function(){return window.fix309Done?'YES':'NO';},'--')); arr.push('fix309Pumped='+safe(function(){return window.fix309Pumped;},'--')); arr.push('fix309Left='+safe(function(){return window.fix309Left;},'--')); arr.push('fix309FastInfo='+safe(function(){return window.fix309FastInfo||'--';},'--')); arr.push('fix309Last='+safe(function(){return window.fix309Last||'--';},'--')); arr.push('fix243FastInfo='+safe(function(){return window.fix243FastInfo||'--';},'--')); arr.push('fix243Last='+safe(function(){return window.fix243Last||'--';},'--')); arr.push('');arr.push('[CPU]'); arr.push(safe(function(){return cpu?'PC $'+((cpu.pc>>>0).toString(16).toUpperCase().padStart(4,'0'))+' A $'+((cpu.a>>>0).toString(16).toUpperCase().padStart(2,'0'))+' X $'+((cpu.x>>>0).toString(16).toUpperCase().padStart(2,'0'))+' Y $'+((cpu.y>>>0).toString(16).toUpperCase().padStart(2,'0'))+' SP $'+((cpu.sp>>>0).toString(16).toUpperCase().padStart(2,'0'))+' P $'+((cpu.p>>>0).toString(16).toUpperCase().padStart(2,'0'))+' steps '+(cpu.steps||0):'CPU unavailable';},'CPU unavailable')); arr.push('');arr.push('[DOM LOG]'); arr.push(safe(function(){var l=id('log');return l?(l.textContent||''):'--';},'--')); var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX316-full-basic-txt-'+Date.now(),out);}catch(e){log313('save report error '+(e&&e.message?e.message:e));} log313('SNAPSHOT FULL LOG hotov.'); return false;}
-  function start(){ensureLayout(); setTimeout(ensureLayout,40); setTimeout(ensureLayout,160); setTimeout(ensureLayout,420); setTimeout(function(){ensureLayout(); try{document.body.classList.remove('fix313-boot');}catch(e){} log313('UI stabilizované: staré boot přepisy vypnuté, bez problikávání mezi 306/311/312.');},700); setTimeout(function(){ensureLayout(); try{document.body.classList.remove('fix313-boot');}catch(e){}},1600);}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
-})();
-</script>
-
-
-
 <script>
 /* FIX316 WARM RESET + VISIBLE TURBO BASIC CLEAN XEX LOADER */
 (function(){
-  var TAG='FIX318_TURBO_PIA_DATA_MODE_RELOC_FIX';
+  var TAG='FIX319_BOOT_CLEAN_SINGLE_UI_NO_FLICKER';
   var TURBO_B64='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D9KgJ4jQ/akLjQ/SoCtM9Q+lMsU0pTPlNbAMoTKFOUUxhTE4TCEQpTGFOcpM9Q+I0P2QBaAwiND9qQOND9KgLpACoF6I0P2pC40P0higLOomOdDb5jLQAuYzoCGK8LKI0P2pA40P0qlAjQ7UWKk8jQLTYAAAySCQFMk6kBLJQZAMyVuQCslhkATJe5ACOGDJKhhgqQeFM4U1qRGFNKkAhTIgcg4QBcCA0OlgogGgAbEkyTrQFMixJCBHELAM8B3dAAfQz+jgEdDsqZuNEQetAAeFK6kHhSWgAYQkYMixJCBHELDl8PaMRRDKjkYQrkYQ6OAR8J6ORhCsRRCxJCBHELDH8NjdAAfQ5Mjo4BHQ7ExlEKUrjQAHohCpIJ0AB8rQ+qABsSTJOtAOyLEkIEcQsAadAQfoEPJgIAALTIAgYAB8ZnxmZnwAADxmYGBmPAAAeGxmZmx4AAB+YHxgYH4AAH5gfGBgYAAAPmBgbmY+AABmZn5mZmYAAH4YGBgYfgAABgYGBmY8AABmbHh4bGYAAGBgYGBgfgAAY3d/a2NjAABmdn5+bmYAADxmZmZmPAAAfGZmfGBgAAA8ZmZmbDYAAHxmZnxsZgAAPGA8BgY8AAB+GBgYGBgAAGZmZmZmPAAAZmZmZjwYAABjY2t/d2MAAGZmPDxmZgAAZmY8GBgYAAB+DBgwYH4AAHhgYGBgeMBgMBgMBgMAAAAeBgYGBh4AAAgcNmMAAAAAAAAAAAD/PBhmdn5+bmYMGAA8Bj5mPgwYZmZmZmY8PBgAPGBgYDw8GAYGPmZmPgwYADxmfmA8PBh8ZmZ8bGYMGDxmZmZmPAwYPBgYGBg8DBgAADgYGDwMGHxgeGBgfDwYPGZgYGY8DAgYPGZmfmY8GH4GDBgwfjwYAHxmZmZmDBgAPGZmZjw4OABmZmZmPjwYfGZmZmZ8PBgAfGZgYGA8GAA+YDwGfB4MEH4YGBgODBgAZmZmZj48GHxgeGBgfDwYADxmfmA8PBg8YDwGBjwYGGZmZmZmPDwYAH4MGDB+PBh+GBgYGBgAABg8fhgYGAAAGBgYfjwYAAAYMH4wGAAAABgMfgwYABhwDBhmZmY8AAAAPAY+Zj4AAGBgfGZmfAAAADxgYGA8AAAGBj5mZj4AAAA8Zn5gPAAADhg+GBgYDDgAPmZmZjwAAGBgfGZmZgAAGAA4GBg8GDAMAAwMDAwAAGBgbHhsZgAAOBgYGBg8AAAAZn9/a2MAAAB8ZmZmZgAAADxmZmY8YGAAfGZmZnwGBgA+ZmZmPgAAAHxmYGBgAAAAPmA8BnwAABh+GBgYDgAAAGZmZmY+AAAAZmZmPBgAAABja38+NgAAAGY8GDxmGHAAAGZmZjwAAAB+DBgwfgwYZmZmPBgYAAAYGBgYGBgGAH54fG5mBgAIGDh4OBgIABAYHB4cGBAA4gLjAjJh';
   var fix315TurboInfo='FIX316 TURBO waiting';
-  var fix315WarmResetInfo='FIX316 WARM RESET waiting';
+  var fix315WarmResetInfo='FIX319 WARM RESET waiting';
   var fix315TurboBytes=null;
   var applyCount=0;
   var wrappedKeyboard=false;
@@ -13157,20 +13039,17 @@ updatePlayStatus('ready');
       var off=id('fix313XexNoLoadBtn'); if(off){off.textContent='RUČNÍ XEX FILE PICKER ZATÍM JEN NÁZEV - TURBO POUŽIJ TLAČÍTKEM NAHOŘE'; off.onclick=function(ev){stop(ev);log315('Ruční XEX picker je zatím audit názvu. Turbo Basic se pouští přes FIX316 embedded čistý XEX loader tlačítko.');return false;};}
     }
   }
-  function start315(){ensureUI(); setTimeout(ensureUI,80); setTimeout(ensureUI,260); setTimeout(ensureUI,900); setTimeout(ensureUI,1800); setTimeout(ensureUI,2600);}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start315,false); else start315();
+  function start315(){try{window.fix315ProviderReady='FIX319 provider only: UI timers disabled';}catch(e){}}
+  window.fix315ProviderReady='FIX319 provider loaded; old FIX315/FIX316 UI timers disabled';
 })();
 </script>
-
-
-
 <script>
 /* FIX316 TURBO BASIC PORTB RAM-UNDER-ROM + NO DOUBLE LOAD GUARD
    This is hardware-correct mapping, not fake load: XEX bytes are still loaded only by the XEX segment parser.
    Turbo Basic's own INIT code switches PORTB to $FE and copies RAM under OS ROM. Older optional OS ROM probe blocked those writes.
 */
 (function(){
-  var TAG='FIX318_TURBO_PIA_DATA_MODE_RELOC_FIX';
+  var TAG='FIX319_BOOT_CLEAN_SINGLE_UI_NO_FLICKER';
   function id(x){return document.getElementById(x);} 
   function hx(v,n){return ((v||0)&((n===2)?255:65535)).toString(16).toUpperCase().padStart(n,'0');}
   function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(e){}}
@@ -13233,380 +13112,130 @@ updatePlayStatus('ready');
       if(st){st.id='fix316TurboStatus'; if(!/PORTB RAM/i.test(st.textContent||''))st.textContent='FIX316 Turbo připraven: XEX segment parser + PORTB RAM pod OS ROM. XEX LOAD DO RAM=jen segmenty, žádný fake LOAD.';}
     }catch(e){log316('rebind error '+(e&&e.message?e.message:e));}
   }
-  // Early and repeated binding to beat old scheduled UI writers without visible version flicker.
-  rebind();
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',rebind,false);
-  [40,120,260,520,900,1400,2200,3200,4600].forEach(function(ms){setTimeout(rebind,ms);});
-  log316('installed: PORTB-aware RAM-under-OS-ROM + Turbo de-dupe guard + stable title');
+  // FIX319: provider only. No repeated UI rebinds, no delayed title/panel overwrites.
+  window.fix316PortbProviderOnly='FIX319 provider only: UI rebind disabled';
+  try{fix316InstallPortbPatch();}catch(e){}
+  log316('FIX319 provider: PORTB RAM-under-ROM patch available; old rebind timers disabled');
 })();
 </script>
 
 
-
 <script>
-/* FIX317: single working Turbo button; no duplicate START+OPTION buttons.
-   FIX316 wrapper bug: it set fix316TurboClickGuardUntil before calling FIX315 loader, so FIX315 immediately rejected the click as duplicate.
-   FIX317 uses its own guard, clears the old guard before calling the already-tested clean XEX loader, and rebuilds the XEX panel into exactly one button + one snapshot.
-   No fake LOAD, no screen paint, no RAM BASIC inject. Turbo XEX still goes through segment parser/loadXex(false).
-*/
+/* FIX319: ONE CLEAN UI, NO BOOT FLICKER. Keeps FIX309 KGETCH queue + FIX315 embedded Turbo loader providers, but owns all visible panels. */
 (function(){
-  var TAG='FIX318_TURBO_PIA_DATA_MODE_RELOC_FIX';
-  var applyCount=0;
-  var lastStartInfo='FIX317 TURBO waiting';
-  var ownGuardUntil=0;
+  'use strict';
+  var TAG='FIX319_BOOT_CLEAN_SINGLE_UI_NO_FLICKER';
+  var fileName='--', fileSize=0, fileLoaded=false, lastTxtInfo='čeká', lastTurboInfo='čeká', sentLines=0, sentChars=0;
+  var startGuardUntil=0, applied=0;
   function id(x){return document.getElementById(x);} 
-  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}}
-  function hx(v,n){return ((v||0)&((n===2)?255:65535)).toString(16).toUpperCase().padStart(n,'0');}
-  function log317(msg){try{if(typeof log==='function')log('FIX317 '+msg);else{var l=id('log');if(l)l.textContent='FIX317 '+msg+'\n'+(l.textContent||'');}}catch(e){}}
+  function qa(s){return Array.prototype.slice.call(document.querySelectorAll(s));}
+  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
+  function hx(v,n){try{return ((v||0)&(n===2?255:65535)).toString(16).toUpperCase().padStart(n,'0');}catch(e){return '??';}}
   function safe(fn,fb){try{return fn();}catch(e){return fb||('ERR '+(e&&e.message?e.message:e));}}
+  function log319(msg){var m='FIX319 '+String(msg||'');try{if(typeof log==='function')log(m);else{var l=id('log');if(l)l.textContent=m+'\n'+(l.textContent||'');}}catch(e){} try{var st=id('fix319MiniStatus');if(st)st.textContent=m;}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus(m);}catch(e){} }
+  function norm(t){return String(t||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');}
+  function lines(t){t=String(t||''); if(!t.trim())return 0; return t.replace(/\n+$/,'').split('\n').filter(function(x){return x.length>0;}).length;}
+  function cardOf(el){while(el && !(el.tagName&&el.tagName.toLowerCase()==='section'&&String(el.className||'').indexOf('card')>=0))el=el.parentNode;return el;}
+  function dump(addr,len){return safe(function(){if(typeof window.dumpFix316==='function')return window.dumpFix316(addr,len||16);var a=[],i;for(i=0;i<(len||16);i++)a.push(hx(ram[(addr+i)&65535]||0,2));return '$'+hx(addr,4)+' '+a.join(' ');},'ERR dump');}
+  function hideOld(){
+    ['fix284TurboPanel','fix313XexPanel','fix317XexPanel','fix318XexPanel','fix312TxtPanel','fix312XexPickerPanel','fix311XexPickerPanel'].forEach(function(x){var e=id(x);if(e)e.style.display='none';});
+    qa('.purePanel').forEach(function(e){e.style.display='none';});
+    qa('button').forEach(function(b){var t=(b.textContent||''); if(b.id==='fix319TurboBtn'||b.id==='fix319XexSnap')return; if(/START\+OPTION.*TURBO BASIC XL 1\.5 XEX/i.test(t)||/SNAPSHOT TURBO\/XEX LOG/i.test(t)){try{b.style.display='none';}catch(e){}}});
+  }
   function setTitle(){
     try{document.title='EMU-09 '+TAG;}catch(e){}
-    try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
-    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX317: jeden funkční Turbo Basic XEX start, duplicitní tlačítka odstraněna. Warm RESET drží LIST.';}catch(e){}
-    try{var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX317: RESET je teplý a drží BASIC RAM. Ostrý reset je jen POWER XL/XE BASIC.';}catch(e){}
+    try{var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
+    try{var p=document.querySelector('.brandText p');if(p)p.textContent='FIX319: čistý jediný UI start bez problikávání 317/318. BASIC/TXT/warm RESET zůstává, Turbo XEX jedno tlačítko. Žádný fake LOAD/READY.';}catch(e){}
+    try{var kh=document.querySelector('#atariKeyboardDock h2');if(kh)kh.textContent='Mobilní Atari klávesnice FIX319';}catch(e){}
+    try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX319: RESET je teplý a drží BASIC RAM. Ostrý reset je jen POWER XL/XE BASIC. UI běží z jednoho skriptu bez starých přepisů.';}catch(e){}
   }
-  function ensurePortbPatch(){
-    try{if(typeof window.fix316InstallPortbPatch==='function')return window.fix316InstallPortbPatch();}catch(e){log317('PORTB patch call chyba '+(e&&e.message?e.message:e));}
-    return false;
-  }
-  function startTurbo(ev){
-    stop(ev);
-    var now=Date.now();
-    if(ownGuardUntil && now<ownGuardUntil){log317('TURBO duplicate event ignored by FIX317 own guard');return false;}
-    ownGuardUntil=now+1600;
-    ensurePortbPatch();
-    // Critical fix: FIX316 wrapper set this guard too early, then FIX315 loader rejected the same click.
-    try{window.fix316TurboClickGuardUntil=0;}catch(e){}
-    try{if(typeof input!=='undefined'&&input){input.start=false;input.option=false;input.select=false;input.fire=false;input.key=0xFF;}}catch(e){}
-    lastStartInfo='FIX317 TURBO START accepted: calling clean XEX loader once, old guard cleared, no fake LOAD.';
-    window.fix317TurboInfo=lastStartInfo;
-    log317(lastStartInfo);
+  function bindWarmReset(){
     try{
-      if(typeof window.fix315StartTurboBasic==='function'){
-        var r=window.fix315StartTurboBasic(null);
-        lastStartInfo+=' / CALL fix315StartTurboBasic OK';
-        window.fix317TurboInfo=lastStartInfo;
-        setTimeout(function(){try{cleanupAndBind();}catch(e){}},60);
-        return r;
+      var resetKey=document.querySelector('[data-atkey="RESET"]');
+      if(resetKey){resetKey.textContent='TEPLÝ RESET'; resetKey.title='FIX319 teplý RESET: LIST/program zůstává'; resetKey.onclick=function(ev){return window.fix315WarmResetBasic?window.fix315WarmResetBasic(ev,'FIX319 virtual keyboard RESET'):false;};}
+      qa('button').forEach(function(b){var t=(b.textContent||'').trim(); if(/^RESET PURE HW$/i.test(t)||/^TEPL.Y RESET/i.test(t)||/^TEPLY RESET/i.test(t)){b.textContent='TEPLÝ RESET BASIC - LIST ZŮSTANE';b.onclick=function(ev){return window.fix315WarmResetBasic?window.fix315WarmResetBasic(ev,'FIX319 button RESET'):false;};}});
+      try{resetPureHardwareFix226=function(ev){return window.fix315WarmResetBasic?window.fix315WarmResetBasic(ev,'FIX319 resetPureHardwareFix226'):false;};}catch(e){}
+      if(!window.__fix319KeyboardWrapped && typeof handleAtariKeyboardKey==='function'){
+        var old=handleAtariKeyboardKey;
+        handleAtariKeyboardKey=function(k){if(String(k||'').toUpperCase()==='RESET')return window.fix315WarmResetBasic?window.fix315WarmResetBasic(null,'FIX319 keyboard RESET'):false; return old.apply(this,arguments);};
+        window.__fix319KeyboardWrapped=true;
       }
-      if(typeof window.fix293StartTurboBasic==='function'){
-        var r2=window.fix293StartTurboBasic(null);
-        lastStartInfo+=' / CALL fix293StartTurboBasic OK';
-        window.fix317TurboInfo=lastStartInfo;
-        setTimeout(function(){try{cleanupAndBind();}catch(e){}},60);
-        return r2;
-      }
-      lastStartInfo+=' / ERROR loader function missing'; window.fix317TurboInfo=lastStartInfo; log317(lastStartInfo);
-    }catch(e){lastStartInfo+=' / ERROR '+(e&&e.message?e.message:e); window.fix317TurboInfo=lastStartInfo; log317(lastStartInfo);} 
-    return false;
+    }catch(e){log319('warm reset bind chyba '+(e&&e.message?e.message:e));}
   }
-  window.fix317StartTurboBasic=startTurbo;
-  // Override the broken FIX316 exported entry. Old duplicate buttons that call this now go through fixed start.
-  window.fix316StartTurboBasic=startTurbo;
-  window.fix293StartTurboBasic=startTurbo;
-  function makePanel(){
-    var panel=id('fix313XexPanel');
-    if(!panel){
-      panel=document.createElement('div'); panel.id='fix313XexPanel'; panel.className='card panel fix317-xex-panel';
-      var anchor=id('fix313TxtPanel')||id('atariKeyboardDock')||document.body.lastElementChild;
-      if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling); else document.body.appendChild(panel);
-    }
-    panel.className=(panel.className||'')+' fix317-owned';
-    var input=id('xexFile');
-    if(input && input.parentNode!==panel)panel.appendChild(input);
-    panel.innerHTML=''+
-      '<h2>3) Turbo Basic XL 1.5 — čistý XEX loader FIX317</h2>'+ 
-      '<p>Jeden startovací knoflík. Opraveno: žádné duplicitní START+OPTION panely, starý FIX316 guard už nezabije vlastní start. Segmenty XEX se stále kopírují do emulované RAM přes parser, INITAD/RUNAD audit, žádný fake LOAD.</p>'+ 
-      '<div id="fix317TurboStatus" class="fileLine">FIX317 Turbo připraven: jeden knoflík, žádný duplicitní panel. XEX LOAD DO RAM = pouze segmenty přes parser.</div>'+ 
-      '<button id="fix317TurboBtn" class="compact" type="button">1) START+OPTION → TURBO BASIC XL 1.5 XEX — FIX317</button>'+ 
-      '<button id="fix317XexSnap" class="secondary compact" type="button">2) SNAPSHOT TURBO/XEX LOG FIX317</button>'+ 
-      '<input id="xexFile" class="fileChooserFix292" type="file" accept=".xex,.XEX" />'+ 
-      '<button id="fix317XexNoLoadBtn" class="secondary compact" type="button">RUČNÍ XEX FILE PICKER ZATÍM JEN NÁZEV - TURBO POUŽIJ TLAČÍTKEM NAHOŘE</button>';
-    input=id('xexFile');
-    if(input){input.onchange=function(){var f=this.files&&this.files[0];var st=id('fix317TurboStatus'); if(st)st.textContent=f?('XEX ručně vybrán jen pro název: '+f.name+' / '+f.size+' bytes. Do RAM se ručně zatím nic nekopíruje.'):('FIX317 Turbo připraven.');};}
+  function setupTxt(){
+    var box=id('fix240FastBasicBox'); if(!box)return;
+    box.style.display='block';
+    var h=box.querySelector('h2'); if(h)h.textContent='2) TXT/BAS výběr a odeslání — FIX319';
+    var p=box.querySelector('.tinyhint'); if(p)p.textContent='Výběr TXT/BAS z mobilu/Noxu, textové pole, odeslání přes izolovanou KGETCH/ATASCII EOL $9B frontu. Žádný RAW CH, žádný zápis programu přímo do RAM.';
+    var fi=id('basicTxtFile'); if(fi){fi.disabled=false;fi.style.display='block';fi.onchange=function(ev){var f=fi.files&&fi.files[0]; if(!f){fileLoaded=false;lastTxtInfo='Soubor nevybrán.';log319(lastTxtInfo);return;} fileName=f.name||'soubor.txt';fileSize=f.size||0;var r=new FileReader();r.onload=function(){var text=norm(String(r.result||''));var ta=id('fix240BasicFastText');if(ta)ta.value=text;fileLoaded=true;lastTxtInfo='TXT/BAS načten: '+fileName+' / '+lines(text)+' řádků / '+text.length+' znaků. Vyber BEZ RUN nebo +RUN.';var st=id('fix289BasicFileStatus');if(st)st.textContent=lastTxtInfo;log319(lastTxtInfo);};r.onerror=function(){lastTxtInfo='Chyba čtení souboru '+fileName;log319(lastTxtInfo);};r.readAsText(f);};}
+    var pick=id('fix289PickBasicFileBtn'); if(pick){pick.textContent='1) VYBRAT TXT/BAS ZE SOUBORU / MOBILU'; pick.onclick=function(ev){stop(ev);var f=id('basicTxtFile');if(f)f.click();lastTxtInfo='Otevírám systémový výběr TXT/BAS.';log319(lastTxtInfo);return false;};}
+    var send=id('fix289SendBasicBtn'); if(send){send.textContent='2) ODESLAT DO BASICU BEZ RUN'; send.onclick=function(ev){return sendTxt(ev,false);};}
+    var sendr=id('fix289SendBasicRunBtn'); if(sendr){sendr.textContent='3) ODESLAT DO BASICU + RUN'; sendr.onclick=function(ev){return sendTxt(ev,true);};}
+    var clear=id('fix285ClearBasicBtn'); if(!clear){clear=document.createElement('button'); clear.id='fix285ClearBasicBtn'; clear.className='secondary compact'; box.appendChild(clear);} clear.textContent='VYČISTIT TEXTOVÉ POLE'; clear.onclick=function(ev){stop(ev);var ta=id('fix240BasicFastText');if(ta)ta.value='';fileLoaded=false;fileName='--';fileSize=0;lastTxtInfo='Textové pole vyčištěno.';log319(lastTxtInfo);return false;};
+    var snap=id('fix319FullSnap'); if(!snap){snap=document.createElement('button');snap.id='fix319FullSnap';snap.className='secondary compact';snap.type='button';box.appendChild(snap);} snap.textContent='SNAPSHOT FULL LOG FIX319';snap.onclick=snapshot;
   }
-  function cleanupDuplicateButtons(){
-    var turboRe=/START\+OPTION.*TURBO BASIC XL 1\.5 XEX/i;
-    var snapRe=/SNAPSHOT TURBO\/XEX LOG/i;
-    try{Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(b){
-      var txt=(b.textContent||'').trim();
-      if(b.id==='fix317TurboBtn'||b.id==='fix317XexSnap')return;
-      if(turboRe.test(txt)||snapRe.test(txt)){
-        // Remove old duplicate UI buttons. Snapshot outside Turbo panel is recreated as FIX317.
-        if(b.parentNode)b.parentNode.removeChild(b);
-      }
-    });}catch(e){}
+  function sendTxt(ev,run){
+    stop(ev); var ta=id('fix240BasicFastText'), text=ta?norm(ta.value):''; sentLines=lines(text); sentChars=text.length;
+    if(!text.trim()){lastTxtInfo='CHYBA: textové pole je prázdné.';log319(lastTxtInfo);return false;}
+    if(typeof window.queueFastBasicFix243!=='function'){lastTxtInfo='CHYBA: queueFastBasicFix243 není dostupná.';log319(lastTxtInfo);return false;}
+    lastTxtInfo='KGETCH fronta spuštěna '+(run?'S RUN':'BEZ RUN')+': '+sentLines+' řádků / '+sentChars+' znaků. Čekej na QUEUE COMPLETE.';
+    var st=id('fix289BasicFileStatus'); if(st)st.textContent=lastTxtInfo;
+    log319(lastTxtInfo);
+    return window.queueFastBasicFix243(text,'FIX319 TXT/BAS KGETCH '+(run?'+ RUN':'BEZ RUN'),!!run,ev);
   }
-  function bindOnce(el,fn){
-    if(!el)return;
-    el.onclick=fn;
-    if(el._fix317Bound!=='YES'){
-      el._fix317Bound='YES';
-      // Use capture so old bubbling handlers on ancestors do not win. Own guard prevents double event paths.
-      el.addEventListener('click',fn,true);
-      el.addEventListener('touchend',fn,true);
-      el.addEventListener('pointerup',fn,true);
-    }
-  }
-  function snapshot(ev){
-    stop(ev);
-    var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG);
-    arr.push('time='+(new Date()).toISOString());
-    arr.push('build='+TAG);
-    arr.push('KODY JSOU STEJNE');
-    arr.push('NEW_XEX_CORE=YES');
-    arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
-    arr.push('FIX317_SINGLE_TURBO_BUTTON=YES');
-    arr.push('FIX317_TURBO_BUTTON_VISIBLE='+(id('fix317TurboBtn')?'YES':'NO'));
-    arr.push('FIX317_TURBO_START_CALLS_FIX315_LOADER=YES');
-    arr.push('FIX317_CLEARS_BROKEN_FIX316_GUARD=YES');
-    arr.push('FIX317_DUPLICATE_TURBO_BUTTONS_REMOVED=YES');
-    arr.push('FIX316_PORTB_OS_RAM_UNDER_ROM=YES');
-    arr.push('FIX315_WARM_RESET_PRESERVE_LIST=YES');
-    arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');
-    arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');arr.push('NO_RAW_CH_PASTE=YES');
-    arr.push('');arr.push('[FIX317 UI]');
-    arr.push('title='+(document.title||''));
-    arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--'));
-    arr.push('turboButton='+(id('fix317TurboBtn')?'YES':'NO'));
-    arr.push('turboButtonsTotal='+safe(function(){return Array.prototype.slice.call(document.querySelectorAll('button')).filter(function(b){return /START\+OPTION.*TURBO BASIC XL 1\.5 XEX/i.test(b.textContent||'');}).length;},'ERR'));
-    arr.push('snapshotButtonsTotal='+safe(function(){return Array.prototype.slice.call(document.querySelectorAll('button')).filter(function(b){return /SNAPSHOT TURBO\/XEX LOG/i.test(b.textContent||'');}).length;},'ERR'));
-    arr.push('applyCount='+applyCount);
-    arr.push('lastStartInfo='+lastStartInfo);
-    arr.push('fix317TurboInfo='+(window.fix317TurboInfo||'--'));
-    arr.push('fix315TurboInfo='+(window.fix315TurboInfo||'--'));
-    arr.push('');arr.push('[XEX CORE]');
-    arr.push('currentXexName='+safe(function(){return typeof currentXexName!=='undefined'?currentXexName:'--';},'--'));
-    arr.push('activeXexProfile='+safe(function(){return typeof activeXexProfile!=='undefined'?activeXexProfile:'--';},'--'));
-    arr.push('STREAMED='+safe(function(){return (typeof xexLoaded!=='undefined'&&xexLoaded)?'OK':'NO';},'--'));
-    arr.push('ENTRY='+safe(function(){return (typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.entry)?'$'+hx(xexInfo.entry,4):'--';},'--'));
-    arr.push('RUNAD='+safe(function(){return (typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.run)?'$'+hx(xexInfo.run,4):'--';},'--'));
-    arr.push('INITAD='+safe(function(){return (typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length)?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--';},'--'));
-    arr.push('PORTB_VALUE='+safe(function(){return typeof portbValue!=='undefined'?'$'+hx(portbValue,2):'--';},'--'));
-    arr.push('RAM_D301='+safe(function(){return typeof ram!=='undefined'&&ram?'$'+hx(ram[0xD301]||0,2):'--';},'--'));
-    arr.push('MEM_0B00='+safe(function(){return typeof window.dumpFix316==='function'?window.dumpFix316(0x0B00,16):'--';},'--'));
-    arr.push('MEM_2100='+safe(function(){return typeof window.dumpFix316==='function'?window.dumpFix316(0x2100,16):'--';},'--'));
-    arr.push('MEM_C000='+safe(function(){return typeof window.dumpFix316==='function'?window.dumpFix316(0xC000,16):'--';},'--'));
-    arr.push('MEM_D800='+safe(function(){return typeof window.dumpFix316==='function'?window.dumpFix316(0xD800,16):'--';},'--'));
-    arr.push('MEM_E400='+safe(function(){return typeof window.dumpFix316==='function'?window.dumpFix316(0xE400,16):'--';},'--'));
-    arr.push('CORE LOADER INFO='+safe(function(){return typeof fix208NativeXexInfo!=='undefined'?fix208NativeXexInfo:'--';},'--'));
-    arr.push('STREAM LOADER INFO='+safe(function(){return typeof fix192StreamInitInfo!=='undefined'?fix192StreamInitInfo:'--';},'--'));
-    arr.push('OS KERNEL INFO='+safe(function(){return typeof fix197OsKernelInfo!=='undefined'?fix197OsKernelInfo:'--';},'--'));
-    arr.push('');arr.push('[BASIC/TXT PANEL]');
-    arr.push('TXT_PICKER_BUTTON='+(id('fix313PickBtn')?'YES':'NO'));
-    arr.push('TXT_TEXTAREA='+(id('fix313Text')?'YES':'NO'));
-    arr.push('TXT_SEND_NO_RUN='+(id('fix313SendNoRun')?'YES':'NO'));
-    arr.push('TXT_SEND_RUN='+(id('fix313SendRun')?'YES':'NO'));
-    arr.push('');arr.push('[CPU]');
-    arr.push(safe(function(){return cpu?'PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO'):'CPU unavailable';},'CPU unavailable'));
-    arr.push('');arr.push('[DOM LOG]');
-    arr.push(safe(function(){var l=id('log');return l?(l.textContent||''):'--';},'--'));
-    var out=arr.join('\n');
-    try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){}
-    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX317-turbo-xex-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX317-turbo-xex-log');}catch(e){log317('save report error '+(e&&e.message?e.message:e));}
-    log317('SNAPSHOT TURBO/XEX LOG FIX317 hotov.');
-    return false;
-  }
-  window.fix317Snapshot=snapshot;
-  function cleanupAndBind(){
-    applyCount++;
-    setTitle();
-    cleanupDuplicateButtons();
-    makePanel();
-    cleanupDuplicateButtons();
-    bindOnce(id('fix317TurboBtn'),startTurbo);
-    bindOnce(id('fix317XexSnap'),snapshot);
-    var no=id('fix317XexNoLoadBtn'); if(no)bindOnce(no,function(ev){stop(ev);log317('Ruční XEX picker je zatím jen název. Turbo Basic pouštěj jedním FIX317 tlačítkem nahoře.');return false;});
-    try{var st=id('fix317TurboStatus'); if(st && !/ček|spuštěn|accepted/i.test(st.textContent||''))st.textContent='FIX317 Turbo připraven: jeden funkční START+OPTION knoflík, staré duplicitní panely odstraněny.';}catch(e){}
-  }
-  window.fix317CleanupAndBind=cleanupAndBind;
-  function start(){
-    cleanupAndBind();
-    [50,150,350,700,1200,2000,3200,5000,8000,12000].forEach(function(ms){setTimeout(cleanupAndBind,ms);});
-    try{if(window.MutationObserver){var mo=new MutationObserver(function(){setTimeout(cleanupAndBind,0);}); mo.observe(document.body,{childList:true,subtree:true}); setTimeout(function(){try{mo.disconnect();}catch(e){}},15000);}}catch(e){}
-    log317('installed: single Turbo button + fixed old guard + duplicate cleanup');
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
-})();
-</script>
-
-
-
-<script>
-/* FIX318: Turbo Basic XL XEX start - PIA PORTB DATA MODE before CPU executes INITAD.
-   Root from FIX317 log: button worked, XEX was parsed, INITAD=$6132 was NOT bad (bad NO),
-   but Turbo relocator's own copies to $2000/$C000/$D800/$E400/$0B00 did not stick and JSR $0B00 hit BRK.
-   The inherited PURE BASIC hardware mode kept the PIA wrapper active; STA $D301 #$FE could be interpreted as DDR access,
-   not the PORTB output latch expected by Turbo's relocator. FIX318 leaves the XEX bytes and INITAD/RUNAD path clean,
-   but arms the generic XEX CPU in normal PORTB data mode before first instruction runs.
-   No fake READY, no fake LOAD, no screen paint, no RAM program inject. */
-(function(){
-  var TAG='FIX318_TURBO_PIA_DATA_MODE_RELOC_FIX';
-  var startGuardUntil=0;
-  var last='FIX318 waiting';
-  var lastPost='--';
-  function id(x){return document.getElementById(x);} 
-  function hx(v,n){return ((v||0)&((n===2)?255:65535)).toString(16).toUpperCase().padStart(n,'0');}
-  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}}
-  function log318(msg){last=String(msg||'');try{if(typeof log==='function')log('FIX318 '+last);else{var l=id('log');if(l)l.textContent='FIX318 '+last+'\n'+(l.textContent||'');}}catch(e){} try{var st=id('fix318TurboStatus')||id('fix317TurboStatus');if(st)st.textContent=last;}catch(e){}}
-  function safe(fn,fb){try{return fn();}catch(e){return fb||('ERR '+(e&&e.message?e.message:e));}}
-  function dump(addr,len){try{if(typeof window.dumpFix316==='function')return window.dumpFix316(addr,len||16);var out=[];for(var i=0;i<(len||16);i++)out.push(hx(ram[(addr+i)&65535]||0,2));return '$'+hx(addr,4)+' '+out.join(' ');}catch(e){return 'ERR '+(e&&e.message?e.message:e);}}
-  function setTitle(){
-    try{document.title='EMU-09 '+TAG;}catch(e){}
-    try{var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;}catch(e){}
-    try{var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX318: Turbo Basic XEX start přes čistý loader; PIA PORTB přepnut do DATA režimu, aby vlastní Turbo relocator zapsal runtime na $0B00. Žádný fake LOAD.';}catch(e){}
-    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX318';}catch(e){}
-    try{var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX318: RESET je teplý a drží BASIC RAM. Ostrý reset je jen POWER XL/XE BASIC.';}catch(e){}
-  }
-  function forceGenericXexPiaDataMode(reason){
+  function forceXexPia(reason){
     try{fix225PureHardwareMode=false;}catch(e){}
     try{fix215PureRomMode=false;fix215PureSelfTestMode=false;fix228PureAuditOnlyMode=false;}catch(e){}
-    try{fix154RealOsBootMode=false;fix157RealOsMode='xex';fix157BasicJumpDone=false;}catch(e){}
-    try{fix232Mode='xex';fix233Mode='xex';}catch(e){}
+    try{fix154RealOsBootMode=false;fix157RealOsMode='xex';fix157BasicJumpDone=false;fix232Mode='xex';fix233Mode='xex';}catch(e){}
     try{activeXexProfile='generic';}catch(e){}
-    try{
-      // Atari PIA PORTB: DDR all output, control register DATA mode, output latch $FF.
-      // Then Turbo's STA $D301 #$FE really changes PORTB bit0 low and exposes RAM under OS ROM for its own copy routine.
-      piaPortBDDR=0xFF;
-      piaPortBCtl=0x04;
-      piaPortBOut=0xFF;
-      portbValue=0xFF;
-      if(ram){ram[0xD303]=0x04;ram[0xD301]=0xFF;}
-    }catch(e){}
+    try{piaPortBDDR=0xFF;piaPortBCtl=0x04;piaPortBOut=0xFF;portbValue=0xFF;if(ram){ram[0xD303]=0x04;ram[0xD301]=0xFF;}}catch(e){}
     try{if(typeof window.fix316InstallPortbPatch==='function')window.fix316InstallPortbPatch();}catch(e){}
-    lastPost='PIA DATA armed '+(reason||'')+' PBCTL $04 DDR $FF OUT $FF PORTB $FF pure OFF';
-    window.fix318PiaInfo=lastPost;
+    window.fix319PiaInfo='PIA DATA armed '+(reason||'')+' PBCTL $04 DDR $FF OUT $FF PORTB $FF pure OFF';
     return true;
   }
-  window.fix318ForceGenericXexPiaDataMode=forceGenericXexPiaDataMode;
-  function originalStart(){
-    // Prefer the embedded Turbo loader created in FIX315. Do not call FIX317 wrapper to avoid old extra guards.
-    if(typeof window.fix315StartTurboBasic==='function')return window.fix315StartTurboBasic(null);
-    if(typeof window.fix293StartTurboBasic==='function' && window.fix293StartTurboBasic!==startTurbo318)return window.fix293StartTurboBasic(null);
-    throw new Error('embedded Turbo loader function missing');
-  }
-  function postLoadArm(){
-    forceGenericXexPiaDataMode('after load before first RAF');
-    try{if(cpu){cpu.trap=false;cpu.trapMsg=''; if((cpu.pc&65535)!==0x6132 && typeof xexInfo!=='undefined' && xexInfo && xexInfo.entry){cpu.pc=xexInfo.entry&65535;}}}catch(e){}
-    try{if(typeof input!=='undefined'&&input){input.start=true;input.option=true;input.select=false;input.fire=false;input.key=0xFF;if(typeof syncInputShadows==='function')syncInputShadows();}}
-    catch(e){}
-    setTimeout(function(){try{if(typeof input!=='undefined'&&input){input.start=false;input.option=false;if(typeof syncInputShadows==='function')syncInputShadows();}}catch(e){}},650);
-    lastPost+=' / CPU PC '+safe(function(){return cpu?'$'+hx(cpu.pc,4):'--';},'--')+' ENTRY '+safe(function(){return xexInfo&&xexInfo.entry?'$'+hx(xexInfo.entry,4):'--';},'--');
-    window.fix318PiaInfo=lastPost;
-  }
-  function startTurbo318(ev){
-    stop(ev);
-    var now=Date.now();
-    if(startGuardUntil && now<startGuardUntil){log318('duplicate Turbo event ignored');return false;}
-    startGuardUntil=now+1800;
-    forceGenericXexPiaDataMode('before load');
+  function startTurbo(ev){
+    stop(ev); var now=Date.now(); if(startGuardUntil&&now<startGuardUntil){log319('Turbo duplicate event ignorován.');return false;} startGuardUntil=now+1800;
+    forceXexPia('before clean Turbo load');
     try{window.fix316TurboClickGuardUntil=0;window.fix317TurboClickGuardUntil=0;}catch(e){}
-    log318('TURBO START accepted: clean XEX loader + PIA DATA mode, no fake LOAD. INITAD $6132 is allowed; no blind $2AB7 jump.');
-    try{originalStart();}
-    catch(e){log318('TURBO START ERROR '+(e&&e.message?e.message:e));return false;}
-    postLoadArm();
+    lastTurboInfo='TURBO START: volám embedded čistý XEX loader jednou, bez starých UI timerů, bez fake LOAD.';log319(lastTurboInfo);
+    try{if(typeof window.fix315StartTurboBasic==='function')window.fix315StartTurboBasic(null); else throw new Error('fix315StartTurboBasic missing');}
+    catch(e){lastTurboInfo='TURBO START ERROR '+(e&&e.message?e.message:e);log319(lastTurboInfo);return false;}
+    forceXexPia('after load before CPU run');
+    try{if(cpu){cpu.trap=false;cpu.trapMsg=''; if((cpu.pc&65535)!==0x6132 && typeof xexInfo!=='undefined' && xexInfo && xexInfo.entry)cpu.pc=xexInfo.entry&65535;}}catch(e){}
+    try{if(typeof currentXexName!=='undefined')currentXexName=String(currentXexName||'').replace(/FIX316|FIX315|FIX317|FIX318/g,'FIX319');}catch(e){}
     try{if(!playMode && typeof startPlaying==='function')startPlaying();}catch(e){try{playMode=true;playLoopId=requestAnimationFrame(playLoop);}catch(_) {}}
-    log318('TURBO loader returned; '+lastPost+' / MEM_0B00 before run '+dump(0x0B00,8)+' / MEM_9200 '+dump(0x9200,8));
-    return false;
+    lastTurboInfo='TURBO loader returned; '+(window.fix319PiaInfo||'PIA ?')+' / PC '+safe(function(){return cpu?'$'+hx(cpu.pc,4):'--';},'--')+' / MEM_0B00 '+dump(0x0B00,8);
+    log319(lastTurboInfo); return false;
   }
-  window.fix318StartTurboBasic=startTurbo318;
-  // override visible paths, but preserve fix315StartTurboBasic itself as originalStart target
-  window.fix317StartTurboBasic=startTurbo318;
-  window.fix316StartTurboBasic=startTurbo318;
-  window.fix293StartTurboBasic=startTurbo318;
-  function makePanel(){
-    var panel=id('fix313XexPanel')||id('fix317XexPanel');
-    if(!panel){panel=document.createElement('section');panel.id='fix313XexPanel';panel.className='card';document.body.appendChild(panel);} 
-    panel.innerHTML=''+
-      '<h2>3) Turbo Basic XL 1.5 — čistý XEX loader FIX318</h2>'+ 
-      '<p>Jeden start. Segmenty XEX jdou do emulované RAM přes parser, INITAD/RUNAD audit. FIX318 před prvním CPU krokem přepne PIA PORTB do DATA režimu, aby Turbo relocator mohl vlastním kódem kopírovat runtime na $0B00. Žádný fake LOAD, žádný screen paint, žádný RAM program inject.</p>'+ 
-      '<div id="fix318TurboStatus" class="fileLine">FIX318 Turbo připraven: PIA DATA mode + RAM pod OS ROM pro vlastní Turbo relocator.</div>'+ 
-      '<button id="fix318TurboBtn" class="compact" type="button">1) START+OPTION → TURBO BASIC XL 1.5 XEX — FIX318</button>'+ 
-      '<button id="fix318XexSnap" class="secondary compact" type="button">2) SNAPSHOT TURBO/XEX LOG FIX318</button>'+ 
-      '<input id="xexFile" class="fileChooserFix292" type="file" accept=".xex,.XEX" />'+ 
-      '<button id="fix318XexNoLoadBtn" class="secondary compact" type="button">RUČNÍ XEX FILE PICKER ZATÍM JEN NÁZEV - TURBO POUŽIJ TLAČÍTKEM NAHOŘE</button>';
+  function setupXex(){
+    var key=id('atariKeyboardDock'); var host=cardOf(key)||document.querySelector('.wrap')||document.body; var panel=id('fix319XexPanel'); if(!panel){panel=document.createElement('section');panel.id='fix319XexPanel';panel.className='card'; if(host&&host.parentNode)host.parentNode.insertBefore(panel,host.nextSibling); else document.body.appendChild(panel);} panel.style.display='block';
+    var oldInput=id('xexFile');
+    panel.innerHTML='<h2>3) Turbo Basic XL 1.5 — čistý XEX loader FIX319</h2><p>Jeden startovací knoflík. Žádné staré FIX317/FIX318 přepisovače UI, žádné duplicitní panely. XEX segmenty jdou do emulované RAM přes parser, INITAD/RUNAD audit, PIA PORTB DATA mode pro Turbo relocator. Žádný fake LOAD, žádný screen paint, žádný RAM program inject.</p><div id="fix319MiniStatus" class="fileLine">FIX319 připraven: single UI, no flicker, Turbo čeká.</div><button id="fix319TurboBtn" class="compact" type="button">1) START+OPTION → TURBO BASIC XL 1.5 XEX — FIX319</button><button id="fix319XexSnap" class="secondary compact" type="button">2) SNAPSHOT TURBO/XEX LOG FIX319</button><button id="fix319NoLoadBtn" class="secondary compact" type="button">RUČNÍ XEX FILE PICKER ZATÍM JEN NÁZEV - TURBO POUŽIJ TLAČÍTKEM NAHOŘE</button>';
+    if(oldInput){oldInput.style.display='block';oldInput.className='fileChooserFix292';oldInput.onchange=function(){log319('Ruční XEX picker je zatím jen název. Turbo Basic pouštěj tlačítkem nahoře.');}; panel.insertBefore(oldInput,id('fix319NoLoadBtn'));}
+    id('fix319TurboBtn').onclick=startTurbo; id('fix319XexSnap').onclick=snapshot; id('fix319NoLoadBtn').onclick=function(ev){stop(ev);log319('Ruční XEX picker je zatím audit názvu. Turbo Basic pouštěj jediným FIX319 tlačítkem.');return false;};
   }
-  function removeDupes(){
-    try{Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(b){var t=(b.textContent||''); if(b.id==='fix318TurboBtn'||b.id==='fix318XexSnap')return; if(/START\+OPTION.*TURBO BASIC XL 1\.5 XEX/i.test(t)||/SNAPSHOT TURBO\/XEX LOG/i.test(t)){if(b.parentNode)b.parentNode.removeChild(b);}});}catch(e){}
+  function snapshot(ev){
+    stop(ev); var arr=[];
+    arr.push('AtariHelp.eu EMU-09 '+TAG);arr.push('time='+(new Date()).toISOString());arr.push('build='+TAG);arr.push('KODY JSOU STEJNE');
+    arr.push('NEW_XEX_CORE=YES');arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');arr.push('FIX319_BOOT_NO_FLICKER=YES');arr.push('FIX319_SINGLE_UI_SCRIPT=YES');arr.push('FIX319_OLD_UI_TIMERS_DISABLED=YES');arr.push('FIX319_SINGLE_TURBO_BUTTON=YES');arr.push('FIX319_WARM_RESET_PRESERVE_LIST=YES');arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');arr.push('NO_RAW_CH_PASTE=YES');
+    arr.push('');arr.push('[FIX319 UI]');arr.push('title='+safe(function(){return document.title;},'--'));arr.push('h1='+safe(function(){var h=document.querySelector('h1');return h?h.textContent:'--';},'--'));arr.push('applied='+applied);arr.push('turboButtonsTotal='+qa('button').filter(function(b){return /START\+OPTION.*TURBO BASIC XL 1\.5 XEX/i.test(b.textContent||'') && b.offsetParent!==null;}).length);arr.push('oldFix317TextVisible='+(document.body.innerText.indexOf('FIX317 Turbo připraven')>=0?'YES':'NO'));arr.push('lastTxtInfo='+lastTxtInfo);arr.push('lastTurboInfo='+lastTurboInfo);
+    arr.push('');arr.push('[XEX CORE]');arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--'));arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--'));arr.push('STREAMED='+(typeof xexStreamLoaded!=='undefined'?(xexStreamLoaded?'OK':'NO'):(typeof fix208StreamedOk!=='undefined'?fix208StreamedOk:'--')));arr.push('ENTRY='+safe(function(){return xexInfo&&xexInfo.entry?'$'+hx(xexInfo.entry,4):'--';},'--'));arr.push('RUNAD='+safe(function(){return xexInfo&&xexInfo.run?'$'+hx(xexInfo.run,4):'--';},'--'));arr.push('INITAD='+safe(function(){return xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--';},'--'));
+    arr.push('PORTB_VALUE='+safe(function(){return '$'+hx(portbValue,2);},'--'));arr.push('PIA_OUT='+safe(function(){return '$'+hx(piaPortBOut,2);},'--'));arr.push('PIA_DDR='+safe(function(){return '$'+hx(piaPortBDDR,2);},'--'));arr.push('PIA_PBCTL='+safe(function(){return '$'+hx(piaPortBCtl,2);},'--'));arr.push('RAM_D301='+safe(function(){return '$'+hx(ram[0xD301],2);},'--'));arr.push('PURE_HW_MODE='+safe(function(){return String(!!fix225PureHardwareMode);},'--'));
+    arr.push('MEM_0B00='+dump(0x0B00,16));arr.push('MEM_2100='+dump(0x2100,16));arr.push('MEM_9200='+dump(0x9200,16));arr.push('MEM_C000='+dump(0xC000,16));arr.push('MEM_D800='+dump(0xD800,16));arr.push('MEM_E400='+dump(0xE400,16));
+    arr.push('CORE LOADER INFO='+(typeof fix208LoaderInfo!=='undefined'?fix208LoaderInfo:(typeof coreLoaderInfo!=='undefined'?coreLoaderInfo:'--')));arr.push('STREAM LOADER INFO='+(typeof fix192StreamInfo!=='undefined'?fix192StreamInfo:'--'));arr.push('OS KERNEL INFO='+(typeof fix197OsKernelInfo!=='undefined'?fix197OsKernelInfo:'--'));
+    arr.push('');arr.push('[BASIC/TXT PANEL]');arr.push('TXT_PICKER_BUTTON='+(id('fix289PickBasicFileBtn')?'YES':'NO'));arr.push('TXT_TEXTAREA='+(id('fix240BasicFastText')?'YES':'NO'));arr.push('TXT_SEND_NO_RUN='+(id('fix289SendBasicBtn')?'YES':'NO'));arr.push('TXT_SEND_RUN='+(id('fix289SendBasicRunBtn')?'YES':'NO'));arr.push('TXT_FILE='+fileName);arr.push('TXT_SIZE='+fileSize);arr.push('SENT_LINES_LAST='+sentLines);arr.push('SENT_CHARS_LAST='+sentChars);
+    arr.push('');arr.push('[CPU]');arr.push(safe(function(){return cpu?'PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO'):'CPU unavailable';},'CPU unavailable'));
+    arr.push('');arr.push('[DOM LOG]');arr.push(safe(function(){var l=id('log');return l?(l.textContent||''):'--';},'--'));
+    var out=arr.join('\n');try{var pre=id('pmgdebug')||id('log');if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX319-turbo-xex-log-'+Date.now(),out);else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX319-turbo-xex-log');}catch(e){log319('save report error '+(e&&e.message?e.message:e));} log319('SNAPSHOT TURBO/XEX LOG FIX319 hotov.'); return false;
   }
-  function bind(){
-    setTitle(); removeDupes(); makePanel(); removeDupes();
-    var b=id('fix318TurboBtn'); if(b){b.onclick=startTurbo318; if(b._fix318Bound!=='YES'){b._fix318Bound='YES';b.addEventListener('click',startTurbo318,true);b.addEventListener('touchend',startTurbo318,true);b.addEventListener('pointerup',startTurbo318,true);}}
-    var s=id('fix318XexSnap'); if(s){s.onclick=snapshot318; if(s._fix318Bound!=='YES'){s._fix318Bound='YES';s.addEventListener('click',snapshot318,true);}}
-    var n=id('fix318XexNoLoadBtn'); if(n)n.onclick=function(ev){stop(ev);log318('Ruční XEX picker je zatím jen název; Turbo pouštěj jedním FIX318 tlačítkem.');return false;};
+  function apply(){
+    applied++;
+    hideOld();setTitle();bindWarmReset();setupTxt();setupXex();hideOld();
+    try{document.documentElement.classList.add('fix319-ready');}catch(e){}
+    window.fix319StartTurboBasic=startTurbo;window.fix319Snapshot=snapshot;window.fix293StartTurboBasic=startTurbo;window.fix317StartTurboBasic=startTurbo;window.fix318StartTurboBasic=startTurbo;
+    log319('single UI applied; old FIX317/FIX318 UI timers removed from HTML; build ready.');
   }
-  function snapshot318(ev){
-    stop(ev);
-    var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG);
-    arr.push('time='+(new Date()).toISOString());
-    arr.push('build='+TAG);
-    arr.push('KODY JSOU STEJNE');
-    arr.push('NEW_XEX_CORE=YES');
-    arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
-    arr.push('FIX318_SINGLE_TURBO_BUTTON=YES');
-    arr.push('FIX318_PIA_PORTB_DATA_MODE=YES');
-    arr.push('FIX318_NO_BLIND_2AB7_JUMP=YES');
-    arr.push('FIX318_INITAD_6132_ALLOWED=YES');
-    arr.push('FIX318_TURBO_RELOCATOR_0B00_AUDIT=YES');
-    arr.push('FIX315_WARM_RESET_PRESERVE_LIST=YES');
-    arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');
-    arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');arr.push('NO_RAW_CH_PASTE=YES');
-    arr.push('');arr.push('[FIX318 UI]');
-    arr.push('title='+(document.title||''));
-    arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--'));
-    arr.push('turboButton='+(id('fix318TurboBtn')?'YES':'NO'));
-    arr.push('turboButtonsTotal='+safe(function(){return Array.prototype.slice.call(document.querySelectorAll('button')).filter(function(b){return /START\+OPTION.*TURBO BASIC XL 1\.5 XEX/i.test(b.textContent||'');}).length;},'ERR'));
-    arr.push('snapshotButtonsTotal='+safe(function(){return Array.prototype.slice.call(document.querySelectorAll('button')).filter(function(b){return /SNAPSHOT TURBO\/XEX LOG/i.test(b.textContent||'');}).length;},'ERR'));
-    arr.push('lastStartInfo='+last);
-    arr.push('fix318PiaInfo='+(window.fix318PiaInfo||'--'));
-    arr.push('fix315TurboInfo='+(window.fix315TurboInfo||'--'));
-    arr.push('');arr.push('[XEX CORE]');
-    arr.push('currentXexName='+safe(function(){return currentXexName||'--';},'--'));
-    arr.push('activeXexProfile='+safe(function(){return activeXexProfile||'--';},'--'));
-    arr.push('STREAMED='+safe(function(){return fix197StreamedOk?'OK':'NO';},'--'));
-    arr.push('BLOCKS='+safe(function(){return fix197StreamedBlocks;},'--'));
-    arr.push('BYTES='+safe(function(){return fix197StreamedBytes;},'--'));
-    arr.push('ENTRY='+safe(function(){return xexInfo&&xexInfo.entry?'$'+hx(xexInfo.entry,4):'--';},'--'));
-    arr.push('RUNAD='+safe(function(){return xexInfo&&xexInfo.run?'$'+hx(xexInfo.run,4):'--';},'--'));
-    arr.push('INITAD='+safe(function(){return xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--';},'--'));
-    arr.push('PORTB_VALUE='+safe(function(){return '$'+hx(portbValue,2);},'--'));
-    arr.push('PIA_OUT='+safe(function(){return '$'+hx(piaPortBOut,2);},'--'));
-    arr.push('PIA_DDR='+safe(function(){return '$'+hx(piaPortBDDR,2);},'--'));
-    arr.push('PIA_PBCTL='+safe(function(){return '$'+hx(piaPortBCtl,2);},'--'));
-    arr.push('RAM_D301='+safe(function(){return '$'+hx(ram[0xD301]||0,2);},'--'));
-    arr.push('RAM_D303='+safe(function(){return '$'+hx(ram[0xD303]||0,2);},'--'));
-    arr.push('PURE_HW_MODE='+safe(function(){return fix225PureHardwareMode?'YES':'NO';},'--'));
-    arr.push('MEM_0B00='+dump(0x0B00,16));
-    arr.push('MEM_2100='+dump(0x2100,16));
-    arr.push('MEM_C000='+dump(0xC000,16));
-    arr.push('MEM_D800='+dump(0xD800,16));
-    arr.push('MEM_E400='+dump(0xE400,16));
-    arr.push('MEM_9200='+dump(0x9200,16));
-    arr.push('CORE LOADER INFO='+safe(function(){return fix195NativeXexInfo||'--';},'--'));
-    arr.push('STREAM LOADER INFO='+safe(function(){return fix192LoaderInfo||'--';},'--'));
-    arr.push('OS KERNEL INFO='+safe(function(){return fix196XexOsKernelInfo||'--';},'--'));
-    arr.push('');arr.push('[BASIC/TXT PANEL]');
-    arr.push('TXT_PICKER_BUTTON='+(id('fix313PickBtn')?'YES':'NO'));
-    arr.push('TXT_TEXTAREA='+(id('fix313Text')?'YES':'NO'));
-    arr.push('TXT_SEND_NO_RUN='+(id('fix313SendNoRun')?'YES':'NO'));
-    arr.push('TXT_SEND_RUN='+(id('fix313SendRun')?'YES':'NO'));
-    arr.push('');arr.push('[CPU]');
-    arr.push(safe(function(){return cpu?'PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO'):'CPU unavailable';},'CPU unavailable'));
-    arr.push('');arr.push('[DOM LOG]');
-    arr.push(safe(function(){var l=id('log');return l?(l.textContent||''):'--';},'--'));
-    var out=arr.join('\n');
-    try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){}
-    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX318-turbo-xex-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX318-turbo-xex-log');}catch(e){log318('save report error '+(e&&e.message?e.message:e));}
-    log318('SNAPSHOT TURBO/XEX LOG FIX318 hotov.');
-    return false;
-  }
-  window.fix318Snapshot=snapshot318;
-  function start(){bind();[50,150,350,700,1200,2000,3500,6000,9000].forEach(function(ms){setTimeout(bind,ms);});try{if(window.MutationObserver){var mo=new MutationObserver(function(){setTimeout(bind,0);});mo.observe(document.body,{childList:true,subtree:true});setTimeout(function(){try{mo.disconnect();}catch(e){}},12000);}}catch(e){} log318('installed: Turbo PIA DATA mode before INITAD, no blind $2AB7 jump');}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,false); else apply();
 })();
-</script>
-
-</body>
+</script></body>
 </html>

@@ -1,0 +1,15 @@
+AtariHelp.eu EMU-09 FIX319_BOOT_CLEAN_SINGLE_UI_NO_FLICKER
+
+Oprava: odstraněné staré viditelné UI přepisovače FIX317/FIX318, které při startu a scrollu přepisovaly texty/panely a způsobovaly blikání.
+Zachováno: FIX309 KGETCH fronta, TXT/BAS panel, teplý RESET z FIX315, Turbo Basic embedded XEX loader provider + PORTB RAM-under-ROM provider.
+Nové: jeden čistý FIX319 UI skript, jeden Turbo knoflík, jeden snapshot, hard boot CSS guard — staré mezistavy nejsou vidět.
+
+KODY JSOU STEJNE.
+NEW_XEX_CORE=YES
+XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
