@@ -1,0 +1,24 @@
+AtariHelp.eu EMU-09 FIX316_TURBO_PORTB_RAM_UNDER_ROM_LOADER
+
+KODY JSOU STEJNE.
+
+Co opravuje FIX316:
+- Turbo Basic XEX loader uz respektuje PORTB bit0: kdyz Turbo INIT zapise $D301=$FE, RAM pod OS ROM v $C000-$CFFF a $D800-$FFFF je zapisovatelna/citelna.
+- To je dulezite, protoze Turbo Basic INIT kopiruje vlastni casti pod OS ROM; predchozi OS ROM probe tyto zapisy blokoval.
+- pridany guard proti dvojimu klik/pointer/touch loadu, aby se nespustily dva COLD RESET/loady za sebou.
+- stabilizovany viditelny nazev FIX316 v indexu i EMU.
+- teply RESET z FIX315 zustava: LIST ma zustat v BASIC RAM, ostry reset je jen POWER XL/XE BASIC.
+
+Bez fake:
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
+
+XEX stav:
+NEW_XEX_CORE=YES
+XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST
+FIX316_PORTB_OS_RAM_UNDER_ROM=YES
+FIX316_TURBO_DOUBLE_CLICK_GUARD=YES
