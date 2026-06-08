@@ -1,0 +1,25 @@
+AtariHelp.eu EMU-09 FIX318_TURBO_PIA_DATA_MODE_RELOC_FIX
+
+KODY JSOU STEJNE.
+NEW_XEX_CORE=YES
+XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST
+
+Důvod:
+- FIX317 log potvrzuje: tlačítko už fungovalo, XEX loader se zavolal, INITAD=$6132, ale po vlastním Turbo relocatoru zůstalo MEM_0B00 nulové a CPU spadl na BRK $0B00.
+- Text "INITAD $6132 bad NO" znamená, že INITAD není špatný. Není to důvod skákat naslepo na $2AB7.
+- Pravděpodobná čistá příčina: Turbo relocator dělá STA $D301 #$FE a očekává PORTB v DATA režimu. Z předchozího PURE BASIC režimu mohl zůstat aktivní PIA/PURE wrapper, kde D301 funguje jako DDR podle PBCTL, takže RAM pod OS ROM a relokace nebyly správně připravené.
+
+Opravy:
+- před Turbo startem a znovu po loadXex(false) se vypne PURE BASIC režim pro XEX běh
+- PIA PORTB se nastaví do DATA režimu: PBCTL=$04, DDR=$FF, OUT=$FF, PORTB=$FF
+- START+OPTION se drží jen jako vstup, XEX segmenty dál načítá parser do emulované RAM
+- INITAD=$6132 se nechává jako legitimní entry; FIX318 neskáče naslepo na $2AB7
+- snapshot přidává PIA_OUT/DDR/PBCTL, PURE_HW_MODE a dumpy MEM_0B00/MEM_2100/MEM_C000/MEM_D800/MEM_E400/MEM_9200
+
+Zákazy:
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
