@@ -1,0 +1,86 @@
+AtariHelp.eu EMU-09 FIX309_TXT_KGETCH_NO_EPOCH_CANCEL
+======================================================
+
+René Frank / Čech / tester-designér-hlídač.
+ZIP overlay je připravený pro GitHub Desktop.
+
+DŮVOD FIX309
+------------
+FIX308 už opravil výběr TXT/BAS souboru z mobilu, ale odeslání do Atari okna se nespustilo.
+Z dodaného logu:
+- TXT_FILE_LOADED=YES
+- TXT_SEND_PATH=queueFastBasicFix243_KGETCH_ATASCII_RETURN
+- queueFastBasicFix243=YES
+- LEGACY_CORE FAST BASIC QUEUE REQUEST ...
+- hned potom LEGACY_CORE QUEUE CANCELLED ...
+
+Tedy chyba nebyla ve výběru souboru. Fronta se po kliknutí sama zabila přes staré legacy cancel/epoch vrstvy dřív,
+než začala vracet ATASCII znaky do ROM KGETCH.
+
+OPRAVA VE FIX309
+----------------
+- přidána nová izolovaná KGETCH fronta: FIX309_TXT_KGETCH_NO_EPOCH_CANCEL
+- window.queueFastBasicFix243 je záměrně přesměrováno na novou FIX309 frontu, aby starý panel nemusel měnit logiku tlačítek
+- fronta už nepoužívá fix223InputEpoch jako podmínku přežití
+- staré fronty se čistí pouze PŘED ozbrojením nové fronty
+- po ozbrojení už FIX309 nevolá legacy cancel, takže se nemá sama zabít
+- pumpa běží přes CPU step hook a čeká na skutečný BASIC READY
+- při ROM KGETCH okně PC $F2FD-$F314 vrací ATASCII znak v A a pokračuje na ROM návrat $F3DA
+- EOL je ATASCII $9B
+- po dokončení loguje QUEUE COMPLETE a LATCH CLEAR
+
+CO ZŮSTÁVÁ ZÁMĚRNĚ STEJNÉ
+-------------------------
+KODY JSOU STEJNE.
+BASIC test kódy se nemění.
+CR/LF se pouze sjednocuje pro odeslání, EOL do Atari jde jako $9B.
+
+ZÁKAZY / PRAVDA
+---------------
+NEW_XEX_CORE=NO
+XEX_TURBO_SCOPE=DEFERRED
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
+NO_GAME_HACKS=YES
+
+DŮLEŽITÉ
+--------
+FIX309 neřeší XEX, TurboBasic ani hry.
+Cíl je vrátit základ: BASIC/TXT/reset/klávesnice/log/zvuk.
+FIX300-FIX306 se neberou jako stabilní základ.
+
+TEST POSTUP
+-----------
+1) Overlay rozbalit přes GitHub Desktop do projektu.
+2) Build APK / spustit appku.
+3) EMU-09 -> POWER XL/XE BASIC.
+4) Počkat na skutečné READY.
+5) Kliknout: 1) VYBRAT TXT/BAS Z MOBILU / SOUBORY.
+6) Vybrat krátký TXT/BAS, třeba graphics9.txt.
+7) Kliknout ODESLAT TEXT DO BASICU.
+8) V Atari okně se mají začít objevovat řádky.
+9) Počkej na QUEUE COMPLETE.
+10) Dej LIST.
+11) Udělej SNAPSHOT FULL LOG.
+
+CO POSLAT Z LOGU
+----------------
+- build=FIX309_TXT_KGETCH_NO_EPOCH_CANCEL
+- fix309Active
+- fix309Done
+- fix309Pumped
+- fix309Left
+- fix309FastInfo
+- fix309Last
+- ready309
+- PC
+- DOM LOG okolo FIX309 QUEUE ARMED / FIX309 KGETCH FEED / FIX309 QUEUE COMPLETE
+
+POKUD SE ZASE NIC NEOBJEVÍ
+--------------------------
+Pak potřebuji log po cca 5-10 sekundách po kliknutí ODESLAT.
+Hlavní řádek bude říkat, jestli fronta čeká na READY nebo čeká na PC v KGETCH.

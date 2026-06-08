@@ -1,0 +1,31 @@
+CHECK FIX309_TXT_KGETCH_NO_EPOCH_CANCEL
+=======================================
+
+Node syntax check:
+- script1: OK
+- script2: OK
+- script3: OK
+
+Overlay files:
+- app/src/main/assets/emu09_pmg_gtia_overlay.html
+- app/src/main/assets/index.html
+- app/src/main/assets/turbo-basic-xl-1.5-copy.xex unchanged from incoming overlay
+
+Status:
+KODY JSOU STEJNE
+NEW_XEX_CORE=NO
+XEX_TURBO_SCOPE=DEFERRED
+TXT_PICKER_BUTTON=YES
+FIX309_EPOCH_CANCEL_FIX=YES
+FIX309_ISOLATED_KGETCH_QUEUE=YES
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
+NO_GAME_HACKS=YES
+
+Root fixed:
+FIX308 picker worked, but KGETCH request was immediately followed by legacy QUEUE CANCELLED.
+FIX309 installs isolated KGETCH queue and overrides window.queueFastBasicFix243 to it.

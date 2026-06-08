@@ -13167,4 +13167,211 @@ updatePlayStatus('ready');
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,false); else boot();
   [300,900,2100,4300,7200].forEach(function(ms){setTimeout(buildPanel,ms);});
 })();
+/* FIX309_TXT_KGETCH_NO_EPOCH_CANCEL
+   Root cause from René's FIX308 log: TXT picker worked and queueFastBasicFix243 existed, but the send path
+   called older cancel routines before/inside the request. Those routines changed/cancelled the legacy epoch and
+   the KGETCH queue never armed. FIX309 installs a fresh isolated READY-gated KGETCH queue that does not depend
+   on fix223InputEpoch, does not call legacy cancel after arming, and does not use RAW CH, screen editor writes,
+   RAM program inject, fake READY/LOAD/SELFTEST, or game hacks. */
+(function(){
+  var TAG='FIX309_TXT_KGETCH_NO_EPOCH_CANCEL';
+  window.fix309FastInfo='FIX309 idle';
+  window.fix309Last='--';
+  window.fix309UiInfo='FIX309 UI waiting';
+  var active=false,q=[],name='FIX309 TXT',total=0,pumped=0,lines=0,bad=[],nextFrame=0,lastFrame=-1,startFrame=0,epoch=0,done=false;
+  var oldQueue243=null, oldStep=null, clickGuardName='', clickGuardMs=0;
+  function hx(v,n){try{return hex((v||0)&(n>=4?65535:255),n);}catch(e){return ('0000'+((v||0)&65535).toString(16).toUpperCase()).slice(-n);}}
+  function fr(){try{return (typeof playFrameNo!=='undefined')?(playFrameNo|0):0;}catch(e){return 0;}}
+  function log309(m){try{log(m);}catch(e){} try{console.log(m);}catch(e){}}
+  function stop(ev){if(ev){try{ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}catch(e){}}}
+  function isSelf(){try{return !!(fix215PureSelfTestMode || String(fix157RealOsMode||'').indexOf('selftest')>=0 || String(fix233Mode||'')==='selftest');}catch(e){return false;}}
+  function effPortB(){try{return (typeof fix227EffectivePortB==='function')?(fix227EffectivePortB()&255):((typeof piaPortBOut!=='undefined'?piaPortBOut:0xFF)&255);}catch(e){return 0xFF;}}
+  function ready(){
+    try{
+      if(!ram || !cpu || activeXexProfile!=='realos' || isSelf())return false;
+      if(fr()<90)return false;
+      var dl=((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535;
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;
+      var nmi=(ram[0xD40E]||0)&255, eff=effPortB();
+      return dl===0x9C20 && sav===0x9C40 && !!(nmi&0x40) && ((eff&0x80)!==0) && ((eff&0x02)===0);
+    }catch(e){return false;}
+  }
+  function status(){
+    try{
+      var dl=((ram[0x0230]||0)|((ram[0x0231]||0)<<8))&65535;
+      var sav=((ram[0x58]||0)|((ram[0x59]||0)<<8))&65535;
+      return 'DLIST $'+hx(dl,4)+' SAVMSC $'+hx(sav,4)+' NMIEN $'+hx(ram[0xD40E]||0,2)+' SDMCTL $'+hx(ram[0x022F]||0,2)+' DMACTL $'+hx(ram[0xD400]||0,2)+' CHBASE $'+hx(ram[0x02F4]||ram[0xD409]||0,2)+' PORTB_EFF $'+hx(effPortB(),2)+' PC $'+(cpu?hx(cpu.pc,4):'----')+' frame '+fr();
+    }catch(e){return 'status error '+(e&&e.message?e.message:e);}
+  }
+  function clearLatch(reason){
+    try{
+      if(typeof input!=='undefined' && input)input.key=0xFF;
+      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;
+      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;
+      if(typeof realOsKeyLast!=='undefined')realOsKeyLast=0xFF;
+      if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=0xFF;
+      if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}
+      try{syncInputShadows();renderInput();}catch(e){}
+      window.fix309Last='LATCH CLEAR '+(reason||'')+' frame '+fr();
+    }catch(e){window.fix309Last='LATCH CLEAR error '+(e&&e.message?e.message:e);}
+  }
+  function cancelLegacyOnly(reason){
+    // Call old cancels only while FIX309 is not armed. After arming, FIX309 is isolated from legacy epochs.
+    try{if(typeof fix243CancelFastBasicQueue==='function')fix243CancelFastBasicQueue('FIX309 preclean '+(reason||''));}catch(e){}
+    try{if(typeof fix242CancelFastBasicQueue==='function')fix242CancelFastBasicQueue('FIX309 preclean '+(reason||''));}catch(e){}
+    try{if(typeof fix240CancelFastBasicQueue==='function')fix240CancelFastBasicQueue('FIX309 preclean '+(reason||''));}catch(e){}
+    try{if(typeof fix222CancelFastBasicInput==='function')fix222CancelFastBasicInput('FIX309 preclean '+(reason||''));}catch(e){}
+    try{if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false; if(typeof fix208BasicAutofeedQueue!=='undefined')fix208BasicAutofeedQueue=[];}catch(e){}
+    try{if(typeof atariKeyQueue!=='undefined')atariKeyQueue=[]; if(typeof atariKeyTimer!=='undefined' && atariKeyTimer){clearTimeout(atariKeyTimer);atariKeyTimer=0;}}catch(e){}
+    try{if(typeof fix223FastKgetchOnly!=='undefined')fix223FastKgetchOnly=false;}catch(e){}
+    clearLatch('preclean '+(reason||''));
+  }
+  function atascii(ch){
+    if(ch==='\n')return 0x9B;
+    if(ch==='\r')return -1;
+    if(ch==='\t')return 0x20;
+    if(ch==='\u00a0')return 0x20;
+    var c=String(ch||' ').charCodeAt(0)&65535;
+    if(c===0x9B)return 0x9B;
+    if(c>=97 && c<=122)c-=32;
+    if(c>=32 && c<=126)return c&255;
+    return -1;
+  }
+  function build(text,runAfter){
+    text=String(text||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    if(runAfter){if(text.length && text.charAt(text.length-1)!=='\n')text+='\n'; text+='RUN\n';}
+    else if(text.length && text.charAt(text.length-1)!=='\n')text+='\n';
+    var out=[],b=[];
+    for(var i=0;i<text.length;i++){var a=atascii(text.charAt(i)); if(a>=0)out.push(a&255); else b.push(text.charAt(i));}
+    var l=text.length?text.split('\n').filter(function(x){return x.length>0;}).length:0;
+    return {q:out,bad:b,chars:out.length,lines:l,source:text};
+  }
+  function inKgetch(pc){pc&=65535; return (pc>=0xF2FD && pc<=0xF314);}
+  function complete(lastA){
+    active=false; done=true;
+    var msg='FIX309 QUEUE COMPLETE '+name+' lines '+lines+' chars '+total+' pumped '+pumped+' via isolated KGETCH ATASCII return last $'+hx(lastA,2)+' epoch '+epoch+' frame '+fr()+' / LATCH CLEAR';
+    window.fix309FastInfo=msg; window.fix309Last=msg;
+    try{fix243FastInfo='LEGACY_CORE '+msg;fix243Last='LEGACY_CORE '+msg;fix240FastBasicInfo='LEGACY_CORE '+msg;fix242FastInfo='LEGACY_CORE '+msg;fix208SubmarineFastInfo='LEGACY_CORE '+msg;fix209ChAutopasteInfo='LEGACY_CORE '+msg;}catch(e){}
+    log309(msg);
+    clearLatch('after complete');
+    try{genericRenderEvery=1;fastVideo=true;updatePlayStatus('FIX309: QUEUE COMPLETE pres izolovanou KGETCH/ATASCII frontu.');}catch(e){}
+  }
+  function pump(c){
+    try{
+      if(!active || !q.length || !c)return false;
+      var f=fr();
+      if(!ready()){
+        window.fix309FastInfo='FIX309 WAIT REAL BASIC READY '+name+' age '+(f-startFrame)+' '+status();
+        return false;
+      }
+      var pc=(c.pc||0)&65535;
+      if(!inKgetch(pc)){
+        if((f%30)===0)window.fix309FastInfo='FIX309 ARMED waiting KGETCH PC '+hx(pc,4)+' left '+q.length+'/'+total+' '+status();
+        return false;
+      }
+      if(f<nextFrame || f===lastFrame)return false;
+      var a=q.shift()&255;
+      // KGETCH service: return ATASCII in A at the ROM keyboard-read exit. This is not CH/RAM paste.
+      if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=a;ram[0xD209]=0xFF;}
+      if(typeof input!=='undefined' && input)input.key=0xFF;
+      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;
+      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=a;
+      if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=a;
+      c.a=a; if(c.zn)c.zn(a); c.pc=0xF3DA; c.steps=(c.steps||0)+1;
+      pumped++; lastFrame=f; nextFrame=f+((a===0x9B)?32:3);
+      var left=q.length|0;
+      if(pumped<12 || left<12 || (pumped%32)===0 || a===0x9B){
+        window.fix309FastInfo='FIX309 KGETCH FEED '+name+' ATASCII $'+hx(a,2)+' pumped '+pumped+'/'+total+' left '+left+' from PC $'+hx(pc,4)+' -> $F3DA delay '+((a===0x9B)?32:3)+' frame '+f;
+        try{fix243FastInfo='LEGACY_CORE '+window.fix309FastInfo;fix223KeyboardInfo='LEGACY_CORE '+window.fix309FastInfo;fix209ChAutopasteInfo='LEGACY_CORE '+window.fix309FastInfo;}catch(e){}
+      }
+      if(!left)complete(a);
+      return true;
+    }catch(e){window.fix309FastInfo='FIX309 pump error '+(e&&e.message?e.message:e); return false;}
+  }
+  function queue309(text,nm,runAfter,ev){
+    stop(ev);
+    var now=Date.now(); nm=String(nm||'FIX309 TXT/BAS KGETCH');
+    if(clickGuardName===nm && now-clickGuardMs<350){window.fix309FastInfo='FIX309 duplicate click ignored '+nm+' frame '+fr();return false;}
+    clickGuardName=nm; clickGuardMs=now;
+    var payload=build(text,!!runAfter);
+    if(!payload.q.length){window.fix309FastInfo='FIX309 empty queue - nothing armed'; log309(window.fix309FastInfo); return false;}
+    active=false; q=[]; cancelLegacyOnly('before new FIX309 request');
+    q=payload.q.slice(0); bad=payload.bad.slice(0); lines=payload.lines|0; total=payload.chars|0; pumped=0; name='FIX309 '+nm; epoch++; startFrame=fr(); nextFrame=startFrame+4; lastFrame=-1; done=false; active=true;
+    window.fix309FastInfo='FIX309 QUEUE ARMED '+name+' lines '+lines+' chars '+total+' ATASCII EOL $9B epoch '+epoch+' '+status()+' / isolated from legacy epoch cancel';
+    window.fix309Last=window.fix309FastInfo;
+    try{fix243FastInfo='LEGACY_CORE '+window.fix309FastInfo;fix243Last='LEGACY_CORE '+window.fix309Last;fix240FastBasicInfo='LEGACY_CORE '+window.fix309FastInfo;fix242FastInfo='LEGACY_CORE '+window.fix309FastInfo;}catch(e){}
+    log309(window.fix309FastInfo);
+    if(bad.length)log309('FIX309 unsupported chars skipped: '+bad.join(''));
+    try{updatePlayStatus('FIX309: TXT/BAS fronta ozbrojena. Cekam na real READY a ROM KGETCH, legacy epoch cancel se nepouzije.');}catch(e){}
+    try{if(!playMode && typeof startPlaying==='function')startPlaying();}catch(e){}
+    return false;
+  }
+  function installStep(){
+    try{
+      if(window.__fix309StepInstalled)return;
+      if(typeof CPU6502==='undefined' || !CPU6502.prototype || !CPU6502.prototype.step)return;
+      oldStep=CPU6502.prototype.step;
+      CPU6502.prototype.step=function(){
+        if(this.trap)return oldStep.apply(this,arguments);
+        try{if(cpu===this && pump(this))return;}catch(e){window.fix309FastInfo='FIX309 step hook error '+(e&&e.message?e.message:e);}
+        return oldStep.apply(this,arguments);
+      };
+      window.__fix309StepInstalled=true;
+      window.fix309UiInfo='FIX309 CPU step hook installed frame '+fr();
+    }catch(e){window.fix309UiInfo='FIX309 step install error '+(e&&e.message?e.message:e);}
+  }
+  function snapshotText309(){
+    var arr=[];
+    function line(fn,fb){try{arr.push(fn());}catch(e){arr.push(fb||('ERR '+(e&&e.message?e.message:e)));}}
+    arr.push('AtariHelp.eu EMU-09 '+TAG);
+    arr.push('time='+(new Date()).toISOString());
+    arr.push('build='+TAG);
+    arr.push('KODY JSOU STEJNE');
+    arr.push('NEW_XEX_CORE=NO');arr.push('XEX_TURBO_SCOPE=DEFERRED');arr.push('TXT_PICKER_BUTTON=YES');
+    arr.push('FIX309_EPOCH_CANCEL_FIX=YES');arr.push('FIX309_ISOLATED_KGETCH_QUEUE=YES');
+    arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');arr.push('NO_RAW_CH_PASTE=YES');
+    arr.push('');arr.push('[FIX309 QUEUE]');
+    arr.push('fix309Active='+(active?'YES':'NO'));arr.push('fix309Done='+(done?'YES':'NO'));arr.push('fix309Lines='+lines);arr.push('fix309Chars='+total);arr.push('fix309Pumped='+pumped);arr.push('fix309Left='+(q?q.length:0));
+    arr.push('fix309FastInfo='+window.fix309FastInfo);arr.push('fix309Last='+window.fix309Last);arr.push('fix309UiInfo='+window.fix309UiInfo);
+    line(function(){return 'fix243FastInfo='+(typeof fix243FastInfo!=='undefined'?fix243FastInfo:'--');},'fix243FastInfo unavailable');
+    line(function(){return 'fix243Last='+(typeof fix243Last!=='undefined'?fix243Last:'--');},'fix243Last unavailable');
+    arr.push('');arr.push('[READY/CPU]');
+    arr.push('ready309='+(ready()?'YES':'NO')+' '+status());
+    line(function(){return cpu?'PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap||'NO'):'CPU not started';},'CPU unavailable');
+    arr.push('');arr.push('[DOM LOG]');
+    line(function(){var e=document.getElementById('log');return e?(e.textContent||''):'--';},'log DOM unavailable');
+    return arr.join('\n');
+  }
+  function fullSnapshot309(ev){
+    stop(ev);
+    var out=snapshotText309();
+    try{var pre=document.getElementById('fix307SnapshotPre')||document.getElementById('pmgdebug')||document.getElementById('log'); if(pre)pre.textContent=out;}catch(e){}
+    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX309-full-basic-txt-'+Date.now(),out);}catch(e){try{log309('FIX309 save report error '+e.message);}catch(_){} }
+    try{updatePlayStatus('FIX309 SNAPSHOT FULL LOG hotov.');}catch(e){}
+    log309('FIX309 SNAPSHOT FULL LOG hotov.');
+    return false;
+  }
+  function bindUi(){
+    try{
+      installStep();
+      oldQueue243=oldQueue243||window.queueFastBasicFix243;
+      window.queueFastBasicFix243=function(text,nm,runAfter,ev){return queue309(text,nm||'FIX309 TXT/BAS KGETCH',!!runAfter,ev);};
+      window.queueFastBasicFix309=window.queueFastBasicFix243;
+      window.fix309FullSnapshot=fullSnapshot309;
+      window.compatibilitySnapshot=fullSnapshot309;
+      try{EMU_BUILD_TAG=TAG;}catch(e){}
+      try{document.title='EMU-09 '+TAG;var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+TAG;var p=document.querySelector('.brandText p');if(p)p.textContent='FIX309: vyber TXT/BAS funguje; opravena izolovana KGETCH fronta bez legacy epoch cancel. XEX/Turbo vypnuto.';}catch(e){}
+      var st=document.getElementById('fix307Status'); if(st && /^FIX308|READY: FIX308|FIX307 init/.test(st.textContent||''))st.textContent='FIX309 aktivni: vyber TXT/BAS a odeslani bezi pres izolovanou KGETCH frontu.';
+      var panel=document.getElementById('fix307Panel'); if(panel){var h2=panel.querySelector('h2'); if(h2)h2.textContent='FIX309 BASIC/TXT/reset zaklad'; var hint=panel.querySelector('.tinyhint'); if(hint)hint.textContent='Pouze zaklad. POWER BASIC -> real READY -> vyber TXT/BAS -> ODESLAT. FIX309 opravuje frontu zabitou legacy epoch cancel. Bez fake/RAW CH/RAM/screen paint.';}
+      var snap=document.getElementById('fix307Snap'); if(snap){snap.onclick=fullSnapshot309; snap.addEventListener('pointerup',fullSnapshot309,{passive:false}); snap.addEventListener('touchend',fullSnapshot309,{passive:false});}
+      window.fix309UiInfo='FIX309 UI bound, queueFastBasicFix243 overridden to isolated KGETCH, frame '+fr();
+    }catch(e){window.fix309UiInfo='FIX309 UI bind error '+(e&&e.message?e.message:e);}
+  }
+  installStep(); bindUi();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bindUi,false);
+  [300,900,2100,4300,7600].forEach(function(ms){setTimeout(bindUi,ms);});
+  log309('FIX309 installed: isolated READY-gated KGETCH queue, no legacy epoch cancel after arm');
+})();
+/* END FIX309_TXT_KGETCH_NO_EPOCH_CANCEL */
+
 </script>
