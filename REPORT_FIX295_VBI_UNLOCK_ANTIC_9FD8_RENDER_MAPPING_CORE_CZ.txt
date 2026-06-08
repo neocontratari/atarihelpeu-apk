@@ -1,0 +1,15 @@
+AtariHelp.eu EMU-09 FIX295_VBI_UNLOCK_ANTIC_9FD8_RENDER_MAPPING_CORE
+
+Commit summary:
+FIX295: VBI loop unlock pres CH $02FC + ANTIC $9FD8 render mapping nad FIX294 strict RAM addressing
+
+Zmeny:
+- Navazuje na FIX294 strict RAM addressing; Turbo RAW payload zustava RAM $2000, ENTRY/RUN $2AB7, PORTB $FD.
+- Pridana runtime sluzba pro VBI/keyboard loop kolem OS ROM $F302-$F312.
+- Kdyz Turbo runtime sedi v OS loopu a CH $02FC je $FF, emulator jednorazove poda ATASCII RETURN $9B pres CH $02FC. Nejde o fake READY ani kresleni obrazovky, je to emulace vstupniho/keyboard latch stavu, ktery OS cte.
+- Pridane RTC tickovani $12-$14, SKSTAT/KBCODE idle a CH audit do snapshotu.
+- Pridane ANTIC mapovani DLIST/SAVMSC $9FD8 pres SDLSTL/H, SAVMSC, SDMCTL $02 a PRIOR $D01B.
+- renderVideo je hooknuty tak, aby pri Turbo runtime a $9FD8 mapovani pouzil obecny ANTIC renderer misto generic fallback omalovanek.
+- Self Test grafika a ATR boot nejsou prohlasene za hotove.
+
+KODY JSOU STEJNE.
