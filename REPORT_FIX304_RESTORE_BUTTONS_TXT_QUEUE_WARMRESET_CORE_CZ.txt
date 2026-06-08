@@ -1,0 +1,25 @@
+AtariHelp.eu EMU-09 FIX304_RESTORE_BUTTONS_TXT_QUEUE_WARMRESET_CORE
+
+Commit summary:
+FIX304: oprava mrtvych TXT tlacitek, snapshotu a tepleho resetu; XEX experimenty vypnute
+
+Proc vznikl FIX304:
+- FIX303 uz mel funkcni teply reset, ale TXT tlacitka koncila na chybe chybi queueFastBasicFix243.
+- Vyber souboru probehl, ale odeslani do Atari neproslo.
+- Snapshot FIX303 mohl byt prebit starymi handler vazbami.
+
+Zmeny:
+- XEX/Turbo zustava vypnute. Tenhle overlay resi jen BASIC/TXT/reset zaklad.
+- Panel FIX304 vytvori novy persistentni native file input pro TXT/BAS.
+- ODESLAT, ODESLAT+RUN, VYCISTIT a SNAPSHOT tlacitka jsou nahrazena novymi prvky a vazana pres pointerup/touchend/click s guardem proti dvojim kliknutim.
+- Odesilani uz nezavisi na queueFastBasicFix243. Pouziva stabilni queueRealOsAtasciiTextFix172 / ATASCII frontu pres existujici klavesovou cestu.
+- RAW CH pumpa a stare autofeed fronty se pred odeslanim rusi.
+- RESET je teply reset preserve BASIC RAM/program.
+
+NO FAKE:
+- zadny fake READY
+- zadny fake LOAD
+- zadny RAM inject hotoveho programu
+- zadny screen RAM paint vysledku
+
+KODY JSOU STEJNE.
