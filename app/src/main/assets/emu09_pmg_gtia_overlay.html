@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX310_UI_TOP_CONSOLE_TXT_XEX_ORDER</title>
+<title>EMU-09 FIX311_UI_REPACK_TOP_TXT_XEX</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -38,8 +38,8 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX310_UI_TOP_CONSOLE_TXT_XEX_ORDER</h1>
-<p>Čisté UI po auditu: AtariHelp.eu struktura zůstává, EMU-09 je jen pododdíl. Hlavní test je TurboBasic XL XEX rovnou z čistého START+OPTION/XEX stavu. Vlastní BASIC TXT/BAS se načítá přes skutečný file picker mobilu/Noxu, ne přes visící tlačítko. Bez fake READY, fake LOAD, RAM injectu nebo screen-RAM malování.</p>
+<h1>EMU-09 FIX311_UI_REPACK_TOP_TXT_XEX</h1>
+<p>FIX311: opravný přebal po vadném FIX310. Viditelný horní panel musí ukázat FIX311, ne FIX309. Pořadí UI: obraz Atari + klávesnice/ovládání nahoře, pod tím TXT/BAS, pod tím XEX výběr jen jako příprava. Základ KGETCH fronty z FIX309 zůstává, žádný fake/RAM/screen paint.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -13375,3 +13375,128 @@ updatePlayStatus('ready');
 /* END FIX309_TXT_KGETCH_NO_EPOCH_CANCEL */
 
 </script>
+
+<script>
+(function(){
+  'use strict';
+  var TAG='FIX311_UI_REPACK_TOP_TXT_XEX';
+  var appliedCount=0;
+  function byId(id){return document.getElementById(id);}
+  function closestCard(el){while(el && !(el.tagName && el.tagName.toLowerCase()==='section' && (el.className||'').indexOf('card')>=0))el=el.parentNode;return el;}
+  function setText(el,txt){if(el)el.textContent=txt;}
+  function log311(msg){
+    try{ if(typeof logLine==='function')logLine('FIX311 '+msg); else {var l=byId('log'); if(l)l.textContent='FIX311 '+msg+'\n'+(l.textContent||'');} }catch(e){}
+    try{ if(typeof updatePlayStatus==='function')updatePlayStatus('FIX311: '+msg); }catch(e){}
+  }
+  function makeCard(id,title,para){
+    var card=byId(id); if(card)return card;
+    card=document.createElement('section'); card.className='card'; card.id=id;
+    var h=document.createElement('h2'); h.textContent=title; card.appendChild(h);
+    if(para){var p=document.createElement('p'); p.textContent=para; card.appendChild(p);}
+    return card;
+  }
+  function ensureXexPanel(afterNode){
+    var card=makeCard('fix311XexPickerPanel','3) XEX výběr — zatím jen příprava loaderu','Tady bude další krok: čistý XEX file picker. V tomhle buildu se XEX pouze vybere a zaloguje název. Žádné načtení do RAM, žádný fake LOAD, žádné herní profily. Loader přijde až po potvrzení BASIC/TXT/reset/klávesnice/log/zvuk základu.');
+    if(afterNode && afterNode.parentNode && card.parentNode!==afterNode.parentNode){afterNode.parentNode.insertBefore(card,afterNode.nextSibling);} 
+    var status=byId('fix311XexStatus');
+    if(!status){status=document.createElement('div');status.id='fix311XexStatus';status.className='fileLine';status.textContent='XEX: zatím nevybrán. FIX311 XEX_LOAD_TO_RAM=NO.';card.appendChild(status);}
+    var inp=byId('xexFile');
+    if(inp){
+      inp.classList.remove('inlineFile'); inp.classList.add('fileChooserFix292'); inp.style.display='block'; inp.style.visibility='visible'; inp.style.pointerEvents='auto';
+      if(inp.parentNode!==card)card.appendChild(inp);
+      inp.onchange=function(){var f=this.files&&this.files[0];status.textContent=f?('XEX vybrán pouze pro budoucí loader: '+f.name+' / '+f.size+' bytes. Zatím NIC se nekopíruje do RAM.'): 'XEX: zatím nevybrán. FIX311 XEX_LOAD_TO_RAM=NO.'; log311(status.textContent);};
+    }
+    var btn=byId('fix311XexNoLoadBtn');
+    if(!btn){btn=document.createElement('button');btn.id='fix311XexNoLoadBtn';btn.className='secondary compact';btn.textContent='XEX LOAD ZATÍM VYPNUTO — jen kontrola názvu';btn.onclick=function(ev){if(ev){ev.preventDefault();ev.stopPropagation();}log311('XEX loader je záměrně vypnutý. NEXT musí být čistý RAM segment loader přes $2000+ / INITAD / RUNAD audit.');return false;};card.appendChild(btn);}
+    return card;
+  }
+  function fullSnapshot311(ev){
+    if(ev){try{ev.preventDefault();ev.stopPropagation();}catch(e){}}
+    var arr=[];
+    function val(expr,fb){try{return expr();}catch(e){return fb||('ERR '+(e&&e.message?e.message:e));}}
+    arr.push('AtariHelp.eu EMU-09 '+TAG);
+    arr.push('time='+(new Date()).toISOString());
+    arr.push('build='+TAG);
+    arr.push('KODY JSOU STEJNE');
+    arr.push('NEW_XEX_CORE=NO');
+    arr.push('XEX_TURBO_SCOPE=DEFERRED');
+    arr.push('FIX311_UI_REPACK_VISIBLE=YES');
+    arr.push('FIX311_XEX_PICKER_UI_ONLY=YES');
+    arr.push('FIX311_XEX_LOAD_TO_RAM=NO');
+    arr.push('FIX311_BLOCK_FAST_MODE=NO');
+    arr.push('FIX309_KGETCH_CORE_KEPT_INTERNAL=YES');
+    arr.push('NO_FAKE_READY=YES');
+    arr.push('NO_FAKE_LOAD=YES');
+    arr.push('NO_FAKE_SELF_TEST=YES');
+    arr.push('NO_RAM_PROGRAM_INJECT=YES');
+    arr.push('NO_SCREEN_PAINT=YES');
+    arr.push('NO_RAW_CH_PASTE=YES');
+    arr.push('');arr.push('[FIX311 UI]');
+    arr.push('title='+(document.title||''));
+    arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--'));
+    arr.push('appliedCount='+appliedCount);
+    arr.push('consoleCard='+(byId('fix311ConsoleCard')?'YES':'NO'));
+    arr.push('txtPanel='+(byId('fix311TxtPanel')?'YES':'NO'));
+    arr.push('xexPanel='+(byId('fix311XexPickerPanel')?'YES':'NO'));
+    arr.push('');arr.push('[INTERNAL KGETCH QUEUE STATUS]');
+    arr.push('fix309FastInfo='+val(function(){return window.fix309FastInfo||'--';}));
+    arr.push('fix309Last='+val(function(){return window.fix309Last||'--';}));
+    arr.push('fix243FastInfo='+val(function(){return window.fix243FastInfo||'--';}));
+    arr.push('fix243Last='+val(function(){return window.fix243Last||'--';}));
+    arr.push('');arr.push('[CPU/READY]');
+    arr.push(val(function(){return cpu?'PC $'+((cpu.pc>>>0).toString(16).toUpperCase().padStart(4,'0'))+' A $'+((cpu.a>>>0).toString(16).toUpperCase().padStart(2,'0'))+' X $'+((cpu.x>>>0).toString(16).toUpperCase().padStart(2,'0'))+' Y $'+((cpu.y>>>0).toString(16).toUpperCase().padStart(2,'0'))+' SP $'+((cpu.sp>>>0).toString(16).toUpperCase().padStart(2,'0'))+' P $'+((cpu.p>>>0).toString(16).toUpperCase().padStart(2,'0'))+' steps '+(cpu.steps||0):'CPU unavailable';}));
+    arr.push('');arr.push('[DOM LOG]');
+    arr.push(val(function(){var l=byId('log');return l?(l.textContent||''):'--';}));
+    var out=arr.join('\n');
+    try{var pre=byId('fix307SnapshotPre')||byId('pmgdebug')||byId('log'); if(pre)pre.textContent=out;}catch(e){}
+    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX311-full-basic-txt-'+Date.now(),out);}catch(e){log311('save report error '+(e&&e.message?e.message:e));}
+    log311('SNAPSHOT FULL LOG hotov.');
+    return false;
+  }
+  function apply311(){
+    appliedCount++;
+    try{window.EMU_BUILD_TAG=TAG;}catch(e){}
+    document.title='EMU-09 '+TAG;
+    var h1=document.querySelector('h1'); setText(h1,'EMU-09 '+TAG);
+    var brandP=document.querySelector('.brandText p');
+    setText(brandP,'FIX311 opravuje vadný FIX310 balík: starý FIX309 init už nesmí přepsat viditelný nadpis. Pořadí UI je obraz Atari + klávesnice/ovládání nahoře, TXT/BAS pod tím, XEX výběr pod tím. BASIC/TXT běží dál přes interní KGETCH frontu z FIX309; XEX loader je zatím vypnutý.');
+    var wrap=document.querySelector('.wrap'); if(!wrap)return;
+    var brandCard=closestCard(h1)||wrap.firstElementChild;
+    var turbo=byId('fix284TurboPanel'); if(turbo)turbo.style.display='none';
+    var pure=document.querySelector('section.purePanel'); if(pure)pure.style.display='none';
+    var consoleCard=closestCard(byId('video'));
+    if(consoleCard){
+      consoleCard.id='fix311ConsoleCard';
+      var ch=consoleCard.querySelector('h2'); setText(ch,'1) Atari obraz + klávesnice + ovládání');
+      var cp=consoleCard.querySelector('p'); setText(cp,'Tahle část je hlavní pracovní plocha. POWER BASIC, reset, ruční klávesnice, joystick a SNAPSHOT jsou tady nahoře.');
+      if(brandCard && consoleCard.previousSibling!==brandCard)wrap.insertBefore(consoleCard,brandCard.nextSibling);
+    }
+    var txtBox=byId('fix240FastBasicBox');
+    var clearBtn=byId('fix285ClearBasicBtn');
+    var txtCard=makeCard('fix311TxtPanel','2) TXT/BAS výběr a odeslání','Výběr souboru už funguje. Odeslání jde přes KGETCH/ATASCII EOL $9B. Žádné RAW CH, žádný zápis programu přímo do RAM.');
+    if(consoleCard && txtCard.parentNode!==wrap)wrap.insertBefore(txtCard,consoleCard.nextSibling);
+    if(txtBox && txtBox.parentNode!==txtCard)txtCard.appendChild(txtBox);
+    if(clearBtn && clearBtn.parentNode!==txtCard)txtCard.appendChild(clearBtn);
+    ensureXexPanel(txtCard);
+    var kbdCard=byId('fix307Panel')||closestCard(byId('atariKeyboard'));
+    if(kbdCard){var kh=kbdCard.querySelector('h2'); if(kh && /klávesnice|keyboard/i.test(kh.textContent||''))kh.textContent='Mobilní Atari klávesnice FIX311'; var hint=kbdCard.querySelector('.tinyhint'); if(hint)hint.textContent='FIX311: čisté UI. KGETCH/TXT základ z FIX309 ponechán, XEX zatím jen výběr souboru.';}
+    var st=byId('fix307Status'); if(st)st.textContent='FIX311 aktivní: UI přebal opraven, viditelný build nesmí být FIX309.';
+    var snapButtons=document.querySelectorAll('button');
+    for(var i=0;i<snapButtons.length;i++){var b=snapButtons[i]; if(/SNAPSHOT/i.test(b.textContent||'')){b.onclick=fullSnapshot311;}}
+    window.fix311FullSnapshot=fullSnapshot311;
+    window.compatibilitySnapshot=fullSnapshot311;
+    try{var old=window.fix293UniversalSnapshot;if(!window.__fix311SnapshotWrapped){window.__fix311SnapshotWrapped=true;window.fix293UniversalSnapshot=function(ev){return fullSnapshot311(ev);};window.fix311OldUniversalSnapshot=old;}}catch(e){}
+    var ps=byId('playStatus'); if(ps && appliedCount<3)ps.textContent='FIX311 aktivní: nahoře Atari obraz + klávesnice/ovládání, pod tím TXT/BAS, pod tím XEX UI-only. KGETCH fronta z FIX309 zůstává interně.';
+  }
+  function start(){
+    apply311();
+    [40,180,360,700,1000,2300,4500,7900,10500].forEach(function(ms){setTimeout(apply311,ms);});
+    var until=Date.now()+12000;
+    var id=setInterval(function(){apply311(); if(Date.now()>until)clearInterval(id);},650);
+    log311('UI REPACK aktivní. Jestli vidíš FIX309 v nadpisu, balík se nepřepsal nebo cache drží starý soubor.');
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
+})();
+</script>
+</body>
+</html>

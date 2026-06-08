@@ -1,0 +1,6 @@
+CHECK FIX311:
+1) po spuštění musí být v horním nadpisu EMU-09 FIX311_UI_REPACK_TOP_TXT_XEX
+2) nesmí tam zůstat hlavní nadpis FIX309
+3) nahoře má být obraz Atari + klávesnice/ovládání
+4) pod tím TXT/BAS
+5) pod tím XEX výběr UI-only
