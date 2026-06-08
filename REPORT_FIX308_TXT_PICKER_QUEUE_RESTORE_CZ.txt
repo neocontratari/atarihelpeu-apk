@@ -1,0 +1,86 @@
+AtariHelp.eu EMU-09 FIX308_TXT_PICKER_QUEUE_RESTORE
+
+Commit summary:
+Oprava pruseru z FIX307: TXT/BAS neodesilal, protoze prvni velky JS skript spadl driv,
+nez se nainstalovala KGETCH fronta queueFastBasicFix243. Soucasne je pridane jasne tlacitko
+pro vyber TXT/BAS souboru z mobilu.
+
+René / projektove pravidlo:
+René Frank je Cech, tester/designér/hlídač, ne programátor.
+Dostává hotový ZIP overlay pro GitHub Desktop.
+Bez fake READY, fake LOAD, fake SELF TEST, RAM injectu, screen paintu a hernich hacku.
+Nejdriv BASIC/TXT/reset/klavesnice/log/zvuk zaklad. XEX/TurboBasic az potom.
+FIX300-FIX306 nebrat jako stabilni zaklad.
+
+Co jsem opravil:
+- Kriticky bug: LEGACY_CORE block u FIX241 mel nehlidane `var oldSave241=saveLogToFile;`.
+  Kdyz saveLogToFile v runtime neexistoval, skript se zastavil a nedosel k instalaci
+  queueFastBasicFix243.
+- oldSave241 je ted hlidany fallbackem: kdyz saveLogToFile neni definovana, skript nepada
+  a pokracuje dal.
+- Staticka runtime simulace po oprave potvrdila: script1 OK a `queueFastBasicFix243=function`.
+- FIX308 finalni panel zustava v rozsahu BASIC/TXT/reset/log, zadny novy XEX core.
+- Do panelu je pridane velke tlacitko:
+  `1) VYBRAT TXT/BAS Z MOBILU / SOUBORY`
+- Pod tlacitkem zustava i viditelny nativni `<input type="file">` jako zaloha pro Android WebView/Nox,
+  kdyby system blokoval programove otevreni souboru.
+- Send path pouziva primo `window.queueFastBasicFix243`, ne nejasny global symbol.
+- Snapshot prida kontrolni radky:
+  TXT_PICKER_BUTTON=YES
+  FIX241_SAVELOG_GUARD=YES
+  queueFastBasicFix243=YES/NO
+
+Co jsem zamerne nedelal:
+- Nespoustel jsem XEX/TurboBasic.
+- Nepridaval jsem fake READY/LOAD/SELF TEST.
+- Nedelal jsem RAM zapis BASIC programu.
+- Nedelal jsem screen RAM malovani vysledku.
+- Nedelal jsem herni hacky ani profily.
+- Neměnil jsem BASIC testovaci kody.
+
+KODY JSOU STEJNE.
+NEW_XEX_CORE=NO
+XEX_TURBO_SCOPE=DEFERRED
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
+TXT_PICKER_BUTTON=YES
+FIX241_SAVELOG_GUARD=YES
+
+Staticka kontrola provedena tady:
+- node --check script1/script2/script3: OK
+- runtime stub script1: OK, queueFastBasicFix243=function
+- runtime stub all scripts: OK, title EMU-09 FIX308_TXT_PICKER_QUEUE_RESTORE, queue=function
+
+Test plan pro Reného:
+1) Prekopirovat ZIP overlay pres GitHub Desktop.
+2) Spustit appku a otevrit EMU-09 FIX308 BASIC/TXT/reset zaklad.
+3) Kliknout POWER XL/XE BASIC.
+4) Pockat na skutecne READY, ne fake obraz.
+5) V panelu kliknout `1) VYBRAT TXT/BAS Z MOBILU / SOUBORY`.
+6) Vybrat TXT/BAS soubor. Kdyby Android/WebView tlacitko neotevrel, kliknout primo na zeleny nativni file input pod nim.
+7) Overit, ze se text nacetl do textarea.
+8) Kliknout ODESLAT TEXT DO BASICU.
+9) Cekat na QUEUE COMPLETE, pak dat LIST.
+10) Kliknout SNAPSHOT FULL LOG.
+
+Co poslat z testu:
+- Screenshot FIX308 panelu po nacteni TXT/BAS.
+- Snapshot full log po kliknuti ODESLAT TEXT DO BASICU.
+- Hlavne radky:
+  build=
+  TXT_PICKER_BUTTON=
+  FIX241_SAVELOG_GUARD=
+  TXT_FILE_LOADED=
+  TXT_SEND_PATH=
+  queueFastBasicFix243=
+  fix243FastInfo=
+  fix243Last=
+  LAST_INFO=
+
+Ocekavany rozdil proti FIX307:
+- FIX307 log mel queueFastBasicFix243=NO a TXT_SEND_PATH=MISSING_QUEUE_FAST_BASIC_FIX243.
+- FIX308 ma po nabehu skriptu ukazat queueFastBasicFix243=YES.

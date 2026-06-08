@@ -11717,7 +11717,7 @@ updatePlayStatus('ready');
     try{window.__fix241SnapshotTail='\nLEGACY_CORE FAST BASIC RAW-CH/UI CHECK\nFASTPUMP '+fix241FastPumpInfo+'\nUI '+fix241UiInfo+'\nSELFTEST '+(typeof fix240SelftestInfo!=='undefined'?fix240SelftestInfo:fix241SelftestInfo)+'\nRULE FAST_BUTTON_TOUCH_CLICK_BOUND / KEYBOARD_DIRECTLY_UNDER_SCREEN / RAW_CH_02FC_ATASCII_PUMP / READY_GATED / EOL_9B / NO_FAKE_READY_SELFTEST';}catch(e){}
     return oldSnap241();
   };
-  var oldSave241=saveLogToFile;
+  var oldSave241=(typeof saveLogToFile==='function')?saveLogToFile:function(reason){try{var txt=((document.getElementById('log')||{}).textContent||''); if(typeof saveTextReportToMobile==='function')return saveTextReportToMobile(String(reason||'log'),txt); return false;}catch(e){return false;}};
   saveLogToFile=function(reason){
     if(reason==='purehw-snapshot' && window.__fix241SnapshotTail){
       try{log(window.__fix241SnapshotTail.replace(/^\n/,''));}catch(e){}
@@ -12908,12 +12908,13 @@ updatePlayStatus('ready');
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,false); else boot();
   setTimeout(buildPanel,500); setTimeout(buildPanel,1800); setTimeout(buildPanel,3500);
 })();
-/* FIX307_BASELINE_TXT_BUTTONS_PANEL
+/* FIX308_TXT_PICKER_QUEUE_RESTORE
+   Patch: guarded saveLogToFile so script1 reaches queueFastBasicFix243; explicit mobile TXT/BAS picker button.
    Scope: BASIC/TXT/reset/keyboard/log only. No XEX work, no fake READY/LOAD,
    no RAW CH paste, no screen paint, no RAM program inject.
    This final panel intentionally wins over older FIX303-FIX306 UI layers. */
 (function(){
-  var TAG='FIX307_BASELINE_TXT_BUTTONS_PANEL';
+  var TAG='FIX308_TXT_PICKER_QUEUE_RESTORE';
   var fileName='--', fileSize=0, fileLoaded=false, textLoaded='', lastInfo='FIX307 init';
   var lastAction='--', sentLines=0, sentChars=0, clickSeq=0, lastQueue='--', lastClickName='', lastClickMs=0;
   function g(id){return document.getElementById(id);}
@@ -12930,8 +12931,8 @@ updatePlayStatus('ready');
   function say(m){
     lastInfo=String(m||'');
     try{var s=g('fix307Status'); if(s)s.textContent=lastInfo;}catch(e){}
-    try{updatePlayStatus('FIX307: '+lastInfo);}catch(e){}
-    try{log('FIX307 '+lastInfo);}catch(e){}
+    try{updatePlayStatus('FIX308: '+lastInfo);}catch(e){}
+    try{log('FIX308 '+lastInfo);}catch(e){}
   }
   function normalizeText(t){
     return String(t||'').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
@@ -12941,10 +12942,10 @@ updatePlayStatus('ready');
     return t.split('\n').filter(function(x){return x.length>0;}).length;
   }
   function cancelOld(reason){
-    try{if(typeof fix243CancelFastBasicQueue==='function')fix243CancelFastBasicQueue('FIX307 '+(reason||''));}catch(e){}
-    try{if(typeof fix242CancelFastBasicQueue==='function')fix242CancelFastBasicQueue('FIX307 '+(reason||''));}catch(e){}
-    try{if(typeof fix240CancelFastBasicQueue==='function')fix240CancelFastBasicQueue('FIX307 '+(reason||''));}catch(e){}
-    try{if(typeof fix222CancelFastBasicInput==='function')fix222CancelFastBasicInput('FIX307 '+(reason||''));}catch(e){}
+    try{if(typeof fix243CancelFastBasicQueue==='function')fix243CancelFastBasicQueue('FIX308 '+(reason||''));}catch(e){}
+    try{if(typeof fix242CancelFastBasicQueue==='function')fix242CancelFastBasicQueue('FIX308 '+(reason||''));}catch(e){}
+    try{if(typeof fix240CancelFastBasicQueue==='function')fix240CancelFastBasicQueue('FIX308 '+(reason||''));}catch(e){}
+    try{if(typeof fix222CancelFastBasicInput==='function')fix222CancelFastBasicInput('FIX308 '+(reason||''));}catch(e){}
     try{if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false;}catch(e){}
     try{if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF; if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;}catch(e){}
     try{if(typeof input!=='undefined'&&input)input.key=0xFF;}catch(e){}
@@ -12969,7 +12970,7 @@ updatePlayStatus('ready');
   }
   function buildPanel(){
     hideOldPanels(); cleanModeNames();
-    try{document.title='EMU-09 '+TAG; var h=q('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=q('.brandText p'); if(p)p.textContent='FIX307 vraci zaklad: real BASIC READY, TXT/BAS file picker, KGETCH fronta, warm reset, full snapshot. XEX/Turbo vypnuto.';}catch(e){}
+    try{document.title='EMU-09 '+TAG; var h=q('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=q('.brandText p'); if(p)p.textContent='FIX308 vraci zaklad: real BASIC READY, TXT/BAS file picker, KGETCH fronta, warm reset, full snapshot. XEX/Turbo vypnuto.';}catch(e){}
     var panel=g('fix307Panel');
     if(!panel){
       panel=document.createElement('section');
@@ -12977,22 +12978,23 @@ updatePlayStatus('ready');
       panel.className='card';
       panel.style.border='2px solid rgba(42,255,143,.55)';
       panel.innerHTML=''+
-        '<h2>FIX307 BASIC/TXT/reset zaklad</h2>'+
+        '<h2>FIX308 BASIC/TXT/reset zaklad</h2>'+
         '<p class="tinyhint">Pouze zaklad. POWER BASIC -> real READY -> vyber TXT/BAS -> ODESLAT. Bez fake READY/LOAD, bez RAW CH, bez RAM injectu, bez XEX.</p>'+
-        '<div id="fix307Status" class="fileLine">FIX307 ceka.</div>'+
+        '<div id="fix307Status" class="fileLine">FIX308 ceka.</div>'+
         '<div class="halfgrid">'+
         '<button id="fix307Power" class="secondary compact" type="button">POWER XL/XE BASIC</button>'+
         '<button id="fix307Warm" class="secondary compact" type="button">TEPLY RESET BASIC</button>'+
         '</div>'+
         '<div id="fix307FileStatus" class="fileLine">Soubor: zatim nevybran.</div>'+
-        '<input id="fix307File" type="file" accept=".txt,.bas,.lst,text/plain" style="display:block;width:100%;margin:8px 0 12px 0;padding:10px;border:2px solid #2aff8f;border-radius:10px;background:#061008;color:#ffe3a3;pointer-events:auto;">'+
+        '<button id="fix307Pick" class="secondary compact" type="button" style="width:100%;pointer-events:auto;margin-top:8px;">1) VYBRAT TXT/BAS Z MOBILU / SOUBORY</button>'+
+        '<input id="fix307File" type="file" accept=".txt,.bas,.lst,text/plain" style="display:block;width:100%;margin:8px 0 12px 0;padding:10px;border:2px solid #2aff8f;border-radius:10px;background:#061008;color:#ffe3a3;pointer-events:auto;opacity:1;visibility:visible;">'+
         '<textarea id="fix307Text" class="basicSource" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Tady bude nacteny TXT/BAS. Kod nemenim, pouze normalizuji konce radku pro frontu." style="min-height:170px;pointer-events:auto;"></textarea>'+
         '<div class="halfgrid">'+
         '<button id="fix307Send" class="secondary compact" type="button">ODESLAT TEXT DO BASICU</button>'+
         '<button id="fix307Run" class="secondary compact" type="button">ODESLAT TEXT + RUN</button>'+
         '<button id="fix307Clear" class="secondary compact" type="button">VYCISTIT POLE</button>'+
         '<button id="fix307Snap" class="secondary compact" type="button">SNAPSHOT FULL LOG</button>'+
-        '</div><pre id="fix307SnapshotPre">FIX307 snapshot ceka.</pre>';
+        '</div><pre id="fix307SnapshotPre">FIX308 snapshot ceka.</pre>';
       var anchor=g('playStatus')||q('.controlPanel')||q('canvas')||document.body;
       if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling); else document.body.appendChild(panel);
     }
@@ -13003,6 +13005,7 @@ updatePlayStatus('ready');
     }
     makeButton('fix307Power','POWER XL/XE BASIC',powerBasic);
     makeButton('fix307Warm','TEPLY RESET BASIC',warmReset);
+    makeButton('fix307Pick','1) VYBRAT TXT/BAS Z MOBILU / SOUBORY',pickFile);
     makeButton('fix307Send','ODESLAT TEXT DO BASICU',function(ev){return sendText(false,ev);});
     makeButton('fix307Run','ODESLAT TEXT + RUN',function(ev){return sendText(true,ev);});
     makeButton('fix307Clear','VYCISTIT POLE',clearField);
@@ -13022,6 +13025,19 @@ updatePlayStatus('ready');
     window.basicTxtFastFix240=function(ev){return sendText(false,ev);};
     window.vlozitFastFix240=function(ev){return sendText(false,ev);};
     window.vlozitFastRunFix240=function(ev){return sendText(true,ev);};
+  }
+  function pickFile(ev){
+    stop(ev); if(!guard('pick',450))return false;
+    lastAction='PICK_FILE';
+    try{
+      var inp=g('fix307File');
+      if(!inp){say('CHYBA: file input fix307File nenalezen.');return false;}
+      inp.disabled=false; inp.style.display='block'; inp.style.visibility='visible'; inp.style.opacity='1'; inp.style.pointerEvents='auto';
+      try{inp.value='';}catch(_){}
+      say('Oteviram systemovy vyber TXT/BAS. Kdyby WebView blokoval tlacitko, pouzij zeleny nativni radek pod nim.');
+      inp.click();
+    }catch(e){say('File picker tlacitko chyba: '+(e&&e.message?e.message:e));}
+    return false;
   }
   function loadFile(ev){
     stop(ev); if(!guard('file',250))return false; lastAction='FILE_PICK';
@@ -13052,10 +13068,11 @@ updatePlayStatus('ready');
     var txt=textFromBox();
     if(!txt.trim()){say('Pole je prazdne. Vyber TXT/BAS nebo vloz text.');return false;}
     sentLines=countLines(txt); sentChars=txt.length; cancelOld('before send'); cleanModeNames();
-    if(typeof queueFastBasicFix243==='function'){
+    var qf=window.queueFastBasicFix243;
+    if(typeof qf==='function'){
       try{
         lastQueue='queueFastBasicFix243_KGETCH_ATASCII_RETURN';
-        queueFastBasicFix243(txt,'FIX307 TXT/BAS KGETCH'+(runAfter?' + RUN':''),!!runAfter,ev||null);
+        qf(txt,'FIX308 TXT/BAS KGETCH'+(runAfter?' + RUN':''),!!runAfter,ev||null);
         say('KGETCH fronta spustena: '+sentLines+' radku / '+sentChars+' znaku. Pockej na QUEUE COMPLETE, pak LIST.');
         return false;
       }catch(e){say('queueFastBasicFix243 chyba: '+(e&&e.message?e.message:e));return false;}
@@ -13085,7 +13102,7 @@ updatePlayStatus('ready');
     lastAction='WARM_RESET'; cancelOld('warm reset'); cleanModeNames();
     try{
       if(typeof warmResetRealOsBasicFix171==='function'){
-        warmResetRealOsBasicFix171('FIX307 warm reset preserve BASIC RAM');
+        warmResetRealOsBasicFix171('FIX308 warm reset preserve BASIC RAM');
         try{if(!playMode&&typeof startPlaying==='function')startPlaying(); for(var i=0;i<180;i++){if(cpu&&cpu.step)cpu.step();} if(typeof renderVideo==='function')renderVideo();}catch(_){}
         say('TEPLY RESET BASIC proveden. BASIC RAM/program se nema mazat, po READY dej LIST.');
         return false;
@@ -13117,7 +13134,7 @@ updatePlayStatus('ready');
     lastAction='SNAPSHOT';
     var l=[];
     l.push('AtariHelp.eu EMU-09 '+TAG); l.push('time='+now()); l.push('build='+TAG);
-    l.push('KODY JSOU STEJNE'); l.push('NEW_XEX_CORE=NO'); l.push('XEX_TURBO_SCOPE=DEFERRED');
+    l.push('KODY JSOU STEJNE'); l.push('NEW_XEX_CORE=NO'); l.push('XEX_TURBO_SCOPE=DEFERRED'); l.push('TXT_PICKER_BUTTON=YES'); l.push('FIX241_SAVELOG_GUARD=YES');
     l.push('NO_FAKE_READY=YES'); l.push('NO_FAKE_LOAD=YES'); l.push('NO_FAKE_SELF_TEST=YES'); l.push('NO_RAM_PROGRAM_INJECT=YES'); l.push('NO_SCREEN_PAINT=YES'); l.push('NO_RAW_CH_PASTE=YES');
     l.push(''); l.push('[TXT/BAS PANEL]');
     l.push('TXT_FILE_LOADED='+(fileLoaded?'YES':'NO')); l.push('TXT_FILE='+fileName); l.push('TXT_SIZE='+fileSize); l.push('TEXTAREA_CHARS='+textFromBox().length);
@@ -13130,7 +13147,7 @@ updatePlayStatus('ready');
     l.push(statusLine(function(){var a=[]; for(var x=0xD200;x<=0xD20F;x++)a.push('$'+hx(ram[x]||0,2)); return 'POKEY D200-D20F '+a.join(' ');},'POKEY unavailable'));
     l.push(statusLine(function(){var a=[]; for(var x=0xD000;x<=0xD01F;x++)a.push('$'+hx(ram[x]||0,2)); return 'GTIA D000-D01F '+a.join(' ');},'GTIA unavailable'));
     l.push(''); l.push('[QUEUES]');
-    l.push(statusLine(function(){return 'queueFastBasicFix243='+(typeof queueFastBasicFix243==='function'?'YES':'NO');},'queue check unavailable'));
+    l.push(statusLine(function(){return 'queueFastBasicFix243='+(typeof window.queueFastBasicFix243==='function'?'YES':'NO');},'queue check unavailable'));
     l.push(statusLine(function(){return 'fix243FastInfo='+(typeof fix243FastInfo!=='undefined'?fix243FastInfo:'--');},'fix243FastInfo unavailable'));
     l.push(statusLine(function(){return 'fix243Last='+(typeof fix243Last!=='undefined'?fix243Last:'--');},'fix243Last unavailable'));
     l.push(statusLine(function(){return 'fix208BasicAutofeedActive='+(typeof fix208BasicAutofeedActive!=='undefined'?fix208BasicAutofeedActive:'--');},'fix208 unavailable'));
@@ -13140,12 +13157,12 @@ updatePlayStatus('ready');
     l.push(''); l.push('[DOM LOG]'); l.push(statusLine(function(){var e=g('log');return e?(e.textContent||''):'--';},'log DOM unavailable'));
     l.push(''); l.push('[VISIBLE UI TAG]'); l.push(statusLine(function(){return (q('h1')?q('h1').textContent:'--')+' / '+(g('fix307Status')?g('fix307Status').textContent:'--');},'UI unavailable'));
     var out=l.join('\n'); var pre=g('fix307SnapshotPre')||g('pmgdebug')||g('log'); if(pre)pre.textContent=out;
-    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX307-full-basic-txt-'+Date.now(),out);}catch(e){try{log('FIX307 save report error '+e.message);}catch(_){}}
+    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX308-full-basic-txt-'+Date.now(),out);}catch(e){try{log('FIX308 save report error '+e.message);}catch(_){}}
     say('SNAPSHOT FULL LOG hotov a ulozen/zobrazen.');
     return false;
   }
   function boot(){
-    cancelOld('boot'); cleanModeNames(); buildPanel(); say('READY: FIX307 panel aktivni. Nejdřív POWER BASIC, pak TXT/BAS.');
+    cancelOld('boot'); cleanModeNames(); buildPanel(); say('READY: FIX308 panel aktivni. Nejdřív POWER BASIC, pak TXT/BAS.');
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,false); else boot();
   [300,900,2100,4300,7200].forEach(function(ms){setTimeout(buildPanel,ms);});
