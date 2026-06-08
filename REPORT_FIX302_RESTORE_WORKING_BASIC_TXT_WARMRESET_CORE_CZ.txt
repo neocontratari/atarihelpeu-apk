@@ -1,0 +1,40 @@
+AtariHelp.eu EMU-09 FIX302_RESTORE_WORKING_BASIC_TXT_WARMRESET_CORE
+
+COMMIT SUMMARY:
+FIX302: obnovuje BASIC/TXT/RESET po rozbití FIX298-FIX301; XEX/Turbo vypnuto; TXT jde přes KGETCH/ATASCII FIX243, ne RAW CH ani screen RAM.
+
+CO SE MENI:
+- Odstraněn vadný záchranný blok FIX300/FIX301 z konce emu09_pmg_gtia_overlay.html.
+- Přidán jeden stabilizační blok FIX302.
+- XEX/Turbo tlačítka jsou dočasně vypnutá, aby dál nerozbíjela základ.
+- TXT/BAS panel má jeden nativní file input + label, žádná programmatic click smyčka.
+- Odesílání TXT/BAS volá queueFastBasicFix243, tedy KGETCH/ATASCII return helper po reálném BASIC READY.
+- Nepoužívá se starý RAW CH $02FC fast pump.
+- Nepoužívá se screen-editor/screen RAM paste.
+- RESET v klávesnici i reset tlačítka jsou přesměrovány na teplý BASIC reset přes resetToBasicReadyFix194, aby RAM/BASIC program zůstal.
+- Při bootu a před posláním TXT se čistí staré fronty fix208/fix240/fix244 a zbytky PiTT/KiTT názvů v idle stavu.
+
+STATICKA KONTROLA:
+index.html zachovava AtariHelp.eu centrum: ANO
+EMU-09 je pododdil: ANO
+automaticky redirect do emulatoru: NE
+script blocks emu09: 2
+node --check: OK
+TXT picker jeden input: ANO
+programmatic input.click v panelu FIX302: NE
+XEX/Turbo experimenty v UI vypnute: ANO
+RAW CH pump pro TXT vypnuta: ANO
+screen RAM paste vypnuty: ANO
+
+TEST PLAN:
+1) Rozbal overlay do repo, commit/push, postav APK.
+2) Otevri AtariHelp.eu -> Hry -> EMU-09.
+3) Nahoře musí být FIX302_RESTORE_WORKING_BASIC_TXT_WARMRESET_CORE.
+4) Klikni POWER XL/XE BASIC, počkej na READY.
+5) Zkus ručně psát pár znaků.
+6) Klikni RESET / TEPLÝ RESET BASIC: musí zachovat BASIC RAM/program.
+7) V panelu FIX302 vyber TXT/BAS soubor přes VYBRAT TXT/BAS SOUBOR.
+8) Klikni ODESLAT TEXT DO BASICU nebo ODESLAT TEXT + RUN.
+9) Pošli screenshot + SNAPSHOT FIX302.
+
+KODY JSOU STEJNE.

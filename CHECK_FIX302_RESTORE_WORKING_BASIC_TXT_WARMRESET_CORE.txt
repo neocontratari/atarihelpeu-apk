@@ -1,0 +1,12 @@
+CHECK FIX302_RESTORE_WORKING_BASIC_TXT_WARMRESET_CORE
+node_check=OK
+scripts=2
+main_app_preserved=YES
+emu09_subsection=YES
+txt_native_input=YES
+uses_queueFastBasicFix243=YES
+raw_ch_pump_disabled=YES
+screen_editor_paste_disabled=YES
+xex_ui_disabled=YES
+warm_reset_preserve_basic_ram=YES
+KODY JSOU STEJNE
