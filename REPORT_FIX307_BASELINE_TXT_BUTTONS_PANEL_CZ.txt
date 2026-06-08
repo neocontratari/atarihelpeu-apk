@@ -1,0 +1,60 @@
+AtariHelp.eu EMU-09 FIX307_BASELINE_TXT_BUTTONS_PANEL
+
+Commit summary:
+Vraci se BASIC/TXT/reset/log zaklad. Nejde o novou XEX/TurboBasic vetev.
+
+Co jsem zmenil:
+- Do emu09_pmg_gtia_overlay.html je pridany finalni FIX307 servisni panel.
+- Panel ma jeden nativni TXT/BAS file input, jednu textarea, a jasna tlacitka:
+  POWER XL/XE BASIC, TEPLY RESET BASIC, ODESLAT TEXT DO BASICU, ODESLAT TEXT + RUN,
+  VYCISTIT POLE, SNAPSHOT FULL LOG.
+- FIX307 panel se vaze po DOMContentLoaded i s pozdejsimi rebindy, aby ho starsi FIX303-FIX306
+  casovane panely znovu neprebily.
+- Starsi FIX303/FIX304/FIX305/FIX306 panely se vizualne schovaji, ale core funkce zustavaji dostupne.
+- TXT/BAS se posila jen pres existujici queueFastBasicFix243 KGETCH/ATASCII frontu.
+- Pokud queueFastBasicFix243 v runtime neni, FIX307 zastavi a vypise chybu. Nepousti RAW CH ani RAM zapis.
+- TEPLY RESET pouziva warmResetRealOsBasicFix171 a nedela cold fallback, aby omylem nesmazal BASIC program.
+- Snapshot full log pridava CPU, ANTIC/GTIA/PIA/POKEY, fronty, SAVMSC dump, DOM log, trace a viditelny UI tag.
+- index.html ukazuje FIX307 a potvrzuje, ze EMU-09 je jen pododdil v Hry, ne autoredirect cele appky.
+
+Co jsem zamerne nedelal:
+- Nedelal jsem XEX loader ani TurboBasic.
+- Nedelal jsem fake READY, fake LOAD, fake SELF TEST, screen paint ani RAM inject BASIC programu.
+- Neopravoval jsem jednu hru ani herni profily.
+- Nemenil jsem testovaci BASIC kody. KODY JSOU STEJNE.
+
+Staticka kontrola:
+index.html AtariHelp.eu centrum: ANO
+EMU-09 pododdil: ANO
+autoredirect: NE
+stare tagy: FIX306 zustava jen uvnitr historickych JS bloku; viditelny vstup a index jsou FIX307
+duplicitni panely: starsi panely se schovaji, FIX307 panel je jeden
+tlacitka bind: ANO, direct handler + pointer/touch/click guard
+file input change: ANO, fix307File onchange + addEventListener change
+snapshot: ANO, fix307 full snapshot
+node --check: NEPROVEDENO lokalne, WindowsApps node.exe vraci pristup odepren
+ZIP jen nutne soubory: ANO, overlay obsahuje index.html, emu09 html, turbo-basic asset z puvodniho overlaye, report a check
+
+Test plan:
+1) Otevrit AtariHelp.eu, zkontrolovat ze EMU-09 je jen v Hry.
+2) Spustit EMU-09.
+3) Kliknout POWER XL/XE BASIC a pockat na skutecne READY.
+4) Rucne napsat:
+   10 PRINT "TEST"
+   20 GOTO 10
+5) LIST.
+6) Kliknout TEPLY RESET BASIC.
+7) Po READY znovu LIST, program ma zustat.
+8) Vybrat TXT/BAS soubor pres FIX307 file input.
+9) Overit, ze text je v textarea.
+10) Kliknout ODESLAT TEXT DO BASICU.
+11) Pockat na QUEUE COMPLETE a dat LIST.
+12) Kliknout ODESLAT TEXT + RUN.
+13) Kliknout SNAPSHOT FULL LOG.
+
+Co poslat:
+- Screenshot FIX307 panelu po nacteni souboru.
+- Snapshot full log po odeslani.
+- Kdyz se text nevlozi, poslat hlavne radky TXT_SEND_PATH, queueFastBasicFix243, fix243FastInfo, LAST_INFO.
+
+KODY JSOU STEJNE.
