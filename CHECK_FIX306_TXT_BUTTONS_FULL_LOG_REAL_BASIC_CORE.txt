@@ -1,0 +1,8 @@
+index.html zachovava AtariHelp.eu centrum: ANO
+EMU-09 je pododdil: ANO
+automaticky redirect do emulatoru: NE
+XEX/Turbo experimenty vypnute: ANO
+TXT/BAS direct buttons: ANO
+FULL LOG snapshot: ANO
+node --check scripts: OK
+ZIP obsahuje jen potrebne soubory: ANO
