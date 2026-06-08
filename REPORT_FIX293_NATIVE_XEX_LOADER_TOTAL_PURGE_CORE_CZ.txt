@@ -1,0 +1,21 @@
+AtariHelp.eu EMU-09 FIX293_NATIVE_XEX_LOADER_TOTAL_PURGE_CORE
+
+Commit summary:
+FIX293: native binary XEX loader purge, no old profile loadXex path, no generic fallback drawing
+
+Zmeny:
+- finalni viditelny EMU panel je FIX293
+- TurboBasic i uzivatelsky XEX jdou pres novy parser v poslednim scriptu
+- parser toleruje $FFFF header i vnorene $FFFF oddelovace segmentu
+- segmenty se kopiruji do RAM byte-for-byte
+- RUNAD/INITAD/ENTRY jsou vypoctene z vektoru $02E0-$02E3
+- pred XEX startem je pripravena standardni OS text DLIST/SAVMSC enviroment ($9C20/$9C40), ale nevykresluje se vysledek hry
+- generic fallback framebuffer renderer je blokovany: kdyz hra nenastavi DLIST/SAVMSC, obraz zustane pravdive prazdny/cerna, ne omalovanka
+- snapshot uz netvrdi ATR/SelfTest jako vyresene; tyto stavy nejsou soucasti runtime XEX claimu
+- TXT/BAS picker zustava native input, bez JS dvojiteho otevirani
+
+Co neni tvrzeno jako hotove:
+- ATR boot neni v tomhle FIXu implementovany
+- SELF TEST grafika neni v tomhle FIXu opravena
+
+KODY JSOU STEJNE.
