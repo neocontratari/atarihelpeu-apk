@@ -1,0 +1,1 @@
+FIX321 check: final TXT panel owns send buttons; queueFastBasicFix240/242/244/vlozitFast redirected to FIX309 KGETCH, not legacy screen-editor pump.
