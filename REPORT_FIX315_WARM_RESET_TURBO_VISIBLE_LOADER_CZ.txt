@@ -1,0 +1,44 @@
+AtariHelp.eu EMU-09 FIX315_WARM_RESET_TURBO_VISIBLE_LOADER
+
+Důvod:
+- FIX314 měl Turbo Basic tlačítko jen ve starém/hidden panelu, ne ve viditelném panelu.
+- RESET na klávesnici/RESET PURE HW nesmí dělat ostrý power reset a mazat BASIC program; LIST musí po teplém RESETu zůstat.
+
+Opravy:
+- Přidáno viditelné tlačítko v panelu XEX: START+OPTION → TURBO BASIC XL 1.5 XEX.
+- Přidán embedded Turbo Basic XL 1.5 XEX 20877 bytes.
+- Loader používá parse segmentů a existující čistý XEX zápis do emulované RAM, INITAD/RUNAD audit.
+- Očekávané segmenty Turbo Basic:
+  1) $4980-$9B00, 20865 bytes
+  2) $02E2-$02E3, INITAD $6132
+  RUNAD --, ENTRY/INITAD $6132
+- START+OPTION je drženo jako skutečný vstupní stav po loaderu na cca 650 ms.
+- PiTT/KiTT profil se nepoužívá pro Turbo Basic; název a velikost nejdou do PiTT heuristiky.
+- RESET tlačítko/klávesa přesměrována na teplý reset: zachová RAM/BASIC program a skáče na OS warm start $E474.
+- Jediný ostrý reset zůstává POWER XL/XE BASIC.
+
+KODY JSOU STEJNE.
+NEW_XEX_CORE=YES
+XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST
+FIX315_TURBO_BUTTON_VISIBLE=YES
+FIX315_WARM_RESET_PRESERVE_LIST=YES
+FIX315_KEYBOARD_RESET_WARM=YES
+FIX315_POWER_BASIC_ONLY_COLD_RESET=YES
+FIX315_SEGMENT_RAM_LOAD=YES
+FIX315_INITAD_RUNAD_AUDIT=YES
+FIX315_START_OPTION_HELD=YES
+FIX315_PITT_KITT_PROFILE_GUARD=YES
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
+
+Test:
+1) Spustit app centrum: musí být FIX315, ne FIX312/314.
+2) Otevřít EMU: nahoře musí být EMU-09 FIX315_WARM_RESET_TURBO_VISIBLE_LOADER.
+3) POWER XL/XE BASIC, vložit TXT/BAS, LIST.
+4) Zmáčknout TEPLÝ RESET na klávesnici: po návratu zkusit LIST. Program má zůstat.
+5) Kliknout START+OPTION → TURBO BASIC XL 1.5 XEX.
+6) Udělat SNAPSHOT TURBO/XEX LOG FIX315.
