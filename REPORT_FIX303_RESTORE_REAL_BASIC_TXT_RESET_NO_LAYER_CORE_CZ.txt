@@ -1,0 +1,22 @@
+FIX303_RESTORE_REAL_BASIC_TXT_RESET_NO_LAYER_CORE
+
+Commit summary:
+FIX303: oprava resetu na přímý warm reset a oprava TXT/BAS inputu bez znovuvytváření nefunkčního file inputu.
+
+Změny:
+- žádné XEX/Turbo experimenty v tomto buildu
+- přímý teplý RESET přes warmResetRealOsBasicFix171, mimo cold/pure redirect resetToBasicReadyFix194
+- po resetu CPU/render kick, aby jeden klik stačil
+- FIX302 chyba opravena: file input se už nepřepisuje novým nebindovaným elementem
+- TXT/BAS panel je jeden persistentní native input
+- odeslání textu používá queueFastBasicFix243 KGETCH/ATASCII, ne RAW CH pumpu
+- staré autofeed/RAW/screen-editor fronty se před odesláním ruší
+
+Test:
+1) POWER XL/XE BASIC, READY, ručně napsat znaky.
+2) Vložit krátký program ručně, LIST.
+3) TEPLÝ RESET BASIC jedním klikem, po READY dát LIST; program má zůstat.
+4) Vybrat TXT/BAS, počkat na Soubor načten, ODESLAT TEXT DO BASICU.
+5) Snapshot FIX303.
+
+KODY JSOU STEJNE.
