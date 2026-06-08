@@ -1,0 +1,21 @@
+AtariHelp.eu EMU-09 FIX294_STRICT_RAM_ADDRESSING_SYNC_2000_CORE
+
+Commit summary:
+FIX294: strict RAM addressing loader; Turbo RAW payload to $2000 entry $2AB7 with PORTB $FD; true XEX files keep segment addresses.
+
+Zmeny:
+- Nahrazen finalni FIX293 patch blok novym jednovrstvym FIX294 blokem.
+- Hlavni Turbo tlacitko pouziva RAW payload z TurboBasic XEX prvniho segmentu: load RAM $2000, ENTRY/RUN $2AB7, PORTB start $FD.
+- Sekundarni Turbo audit tlacitko ponechava pravdivou XEX cestu podle hlavicky: segment $4980-$9B00, INITAD $6132.
+- Souborovy loader automaticky rozlisuje XEX s $FFFF hlavickou a raw/TXT payload bez hlavicky.
+- XEX s hlavickou se NIKDY nerebasuje na $2000; segmenty jdou na adresy z XEX.
+- RAW/TXT bez XEX hlavicky jde do RAM $2000 a ENTRY $2AB7.
+- PORTB boot target $FD, BASIC ROM vypnuty, OS ROM aktivni.
+- BRK trap fix232 pure-mode se pro XEX rezim obchazi pres fix232Mode=xex a realnejsi BRK vector path.
+- Snapshot loguje RAM_PROOF_$2000 a RAM_PROOF_ENTRY.
+- Generic fallback render je blokovany. Zadny fake READY/LOAD/screen paint.
+
+Poznamka poctivosti:
+Embedded turbo-basic-xl-1.5-copy.xex ma skutecnou XEX hlavicku $4980-$9B00 a INITAD $6132. FIX294 hlavni tlacitko dela RAW $2000/$2AB7 podle Reného zadani jako oddeleny striktni test, sekundarni tlacitko dela XEX header audit.
+
+KODY JSOU STEJNE.
