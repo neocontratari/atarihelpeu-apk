@@ -1,0 +1,8 @@
+index.html zachovava AtariHelp.eu centrum: ANO
+EMU-09 je pododdil: ANO
+automaticky redirect do emulatoru: NE
+XEX/Turbo experimenty v UI vypnute: ANO
+TXT picker persistent native input: ANO
+TXT send path queueFastBasicFix243 KGETCH: ANO
+RAW CH/physical key queue pro paste: NE
+node --check scripts: OK
