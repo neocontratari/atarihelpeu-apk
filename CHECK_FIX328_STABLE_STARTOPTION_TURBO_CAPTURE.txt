@@ -1,0 +1,1 @@
+FIX328: no visible 314/315 labels, capture-phase Turbo/Snapshot buttons, START+OPTION latch, TXT/KGETCH and warm reset kept.

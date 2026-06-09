@@ -1,0 +1,11 @@
+AtariHelp.eu EMU-09 FIX328_STABLE_STARTOPTION_TURBO_CAPTURE
+
+Základ: vychází z funkčního FIX315/FIX327 základu.
+Cíl: nezobrazovat staré 314/315 popisky, nerozbíjet tlačítka, zachytit všechny Turbo/Snapshot kliky v capture fázi a nepustit staré handlery.
+
+Změny:
+- Turbo a Snapshot kliky se zachytí dřív než staré onclick handlery.
+- START+OPTION latch je vynucen při Turbo startu i přes D01F=$02.
+- Turbo warm reset v Turbo režimu nevrací BASIC READY, ale zkusí obnovit Turbo XEX PC=$6179.
+- TXT/KGETCH a BASIC warm reset zůstávají.
+- Žádný fake READY/LOAD/SELF TEST, žádný RAM program inject, žádný screen paint.
