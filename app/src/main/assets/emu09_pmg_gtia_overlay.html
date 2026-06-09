@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX339_TBXL_OS_KEYBOARD_POLL_FIX</title>
+<title>EMU-09 FIX340_CLEAN_TBXL_DIRECT_KEY_CAPTURE</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -48,6 +48,12 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 [data-fix329-hidden="YES"]{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 #fix329XexPanel button{margin-top:7px;}
 #fix329TurboBtn{border:2px solid rgba(255,221,122,.98)!important;font-size:18px!important;font-weight:900!important;}
+
+/* FIX340: hard-hide obsolete Turbo panels immediately, before delayed legacy scripts repaint UI. */
+#fix284TurboPanel,#fix315TurboPanel,#fix328XexPanel,#fix329XexPanel,#fix336TbxlPanel,#fix337TbxlPanel,#fix338TbxlPanel,#fix339TbxlPanel{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+body.fix340-clean #fix284TurboPanel,body.fix340-clean #fix315TurboPanel,body.fix340-clean #fix328XexPanel,body.fix340-clean #fix329XexPanel,body.fix340-clean #fix336TbxlPanel,body.fix340-clean #fix337TbxlPanel,body.fix340-clean #fix338TbxlPanel,body.fix340-clean #fix339TbxlPanel{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+#fix340TbxlPanel{display:block!important;visibility:visible!important;pointer-events:auto!important;border-color:rgba(42,255,143,.42)!important;}
+#fix340TbxlBtn{border:2px solid rgba(42,255,143,.85)!important;font-size:18px!important;font-weight:900!important;}
 </style>
 </head>
 <body>
@@ -56,8 +62,8 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX338_TBXL_CPU_CIOV_INPUT_FIX</h1>
-<p>FIX327: stabilní základ z FIX315. TXT/KGETCH a teplý RESET drží; Turbo Basic má jediný čistý XEX start bez duplicitních tlačítek.</p>
+<h1>EMU-09 FIX340_CLEAN_TBXL_DIRECT_KEY_CAPTURE</h1>
+<p>FIX340: čistý startovací stav, jeden TBXL panel, bez pozdního přepisování FIX337/FIX338/FIX339. Turbo Basic používá direct XEX loader a přímý capture kláves do reálných OS registrů.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -14502,6 +14508,78 @@ updatePlayStatus('ready');
     return false;
   }
   function start(){installHardwareBridge(); installStepGuard(); cleanUi(); [0,40,100,220,500,900,1500,2500,4000,7000,11000,16000,22000].forEach(function(ms){setTimeout(function(){installHardwareBridge(); installStepGuard(); cleanUi();},ms);}); log339('installed: OS keyboard poll bridge + duplicate Turbo UI cleaner.');}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
+})();
+</script>
+
+
+<script>
+/* FIX340: clean single TBXL panel + direct key capture.
+   Reason: Rene FIX339 test showed the page initially advertised FIX337 and only settled later.
+   That was a layered UI race, not acceptable. This patch does two things:
+   1) hard-clean UI immediately and keep old delayed FIX33x scripts from repainting old panels;
+   2) feed virtual/physical keys directly to Atari OS keyboard shadows/regs while TBXL is active.
+   No fake READY, no fake LOAD, no fake SELF TEST, no RAM program inject, no screen paint. */
+(function(){
+  'use strict';
+  var TAG='FIX340_CLEAN_TBXL_DIRECT_KEY_CAPTURE';
+  var startClicks=0, logClicks=0, uiCleanRuns=0, keysCaptured=0, keyArms=0, keyReads=0, keyReleases=0;
+  var latchAt=0xFF, latchScan=0xFF, latchUntil=0, latchReads=0;
+  var lastKey='--', lastStart='idle', lastUi='idle', lastHw='idle';
+  var lastCaptureMs=0, lastCaptureToken='';
+  function id(x){return document.getElementById(x);} 
+  function hx(v,n){try{if(typeof hex==='function')return hex((v||0)&(n>=4?65535:255),n);}catch(e){} var s=((v||0)&(n>=4?65535:255)).toString(16).toUpperCase(); while(s.length<n)s='0'+s; return s;}
+  function log340(msg){msg=String(msg||''); window.fix340Last=msg; try{if(typeof log==='function')log('FIX340 '+msg); else{var l=id('log'); if(l)l.textContent='FIX340 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX340: '+msg);}catch(e){} try{var s=id('fix340Status'); if(s)s.textContent=msg;}catch(e){} }
+  function turboActive(){try{return !!(window.fix340TurboActive||window.fix339TurboActive||window.fix337TurboActive||window.fix338TurboActive||window.fix335TurboActive) || /TBXL|TURBO BASIC XL\s*1\.5/i.test(String(currentXexName||''));}catch(e){return !!window.fix340TurboActive;}}
+  function setTurboFlags(){try{window.fix340TurboActive=true; window.fix339TurboActive=true; window.fix337TurboActive=true; window.fix338TurboActive=true; window.fix335TurboActive=true; window.fix328TurboActive=true; window.fix328TurboMode=true; activeXexProfile='generic'; fix232Mode='xex'; currentXexName='TBXL 1.5 CLEAN XEX FIX340 / direct loader + direct OS key capture'; fix154RealOsBootMode=false; fix215PureRomMode=false; fix225PureHardwareMode=false; fix215PureSelfTestMode=false;}catch(e){} }
+  function readBlock(addr,len){try{var out=[],a=addr&65535; for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2)); return '$'+hx(addr,4)+' '+out.join(' ');}catch(e){return '$'+hx(addr,4)+' ERR';}}
+  function keycodeForAtascii(a){a&=255; try{if(typeof realOsKeycodeForAtasciiFix172==='function')return realOsKeycodeForAtasciiFix172(a)&255;}catch(e){} try{if(typeof atariKeyCodes!=='undefined'){var ch=String.fromCharCode(a).toUpperCase(); if(atariKeyCodes[ch]!==undefined)return atariKeyCodes[ch]&255; if(a===0x20 && atariKeyCodes.SPACE!==undefined)return atariKeyCodes.SPACE&255; if(a===0x9B && atariKeyCodes.RETURN!==undefined)return atariKeyCodes.RETURN&255; if(a===0x7E && atariKeyCodes.DEL!==undefined)return atariKeyCodes.DEL&255;}}catch(e){} return a&255;}
+  function labelToAtascii(label){
+    label=String(label||'').trim();
+    if(!label)return -1;
+    var up=label.toUpperCase();
+    if(/^RETURN$/.test(up))return 0x9B;
+    if(/^SPACE$/.test(up))return 0x20;
+    if(/^DEL$/.test(up))return 0x7E;
+    if(/^ESC$/.test(up))return 0x1B;
+    if(/^TAB$/.test(up))return 0x7F;
+    if(/^(SHIFT|CTRL|BREAK|TEPLY RESET|TEPLÝ RESET|START|SELECT|OPTION|FIRE)$/.test(up))return -1;
+    if(/^CTRL/.test(up))return -1;
+    if(label.length===1)return label.toUpperCase().charCodeAt(0)&255;
+    return -1;
+  }
+  function physicalToAtascii(ev){var k=ev.key||''; if(k==='Enter')return 0x9B; if(k==='Backspace')return 0x7E; if(k===' ')return 0x20; if(k==='Escape')return 0x1B; if(k.length===1)return k.toUpperCase().charCodeAt(0)&255; return -1;}
+  function clearLatch(reason){try{if(input){input.key=0xFF; input.start=false; input.option=false; input.select=false; input.fire=false;}}catch(e){} try{realOsKeyOneShot=0xFF; realOsAtasciiOneShot=0xFF; realOsKeyLast=0xFF; realOsAtasciiLast=0xFF;}catch(e){} try{if(ram){ram[0x02FC]=0xFF; ram[0x02FB]=0xFF; ram[0xD209]=0xFF; ram[0xD20F]=0xFF; ram[0xD01F]=0x07;}}catch(e){} latchAt=0xFF; latchScan=0xFF; latchReads=0; latchUntil=0; lastHw='CLEAR '+(reason||'')+' PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--'); }
+  function armKey(a,src){
+    a&=255; if(a===0xFF)return false;
+    setTurboFlags();
+    latchAt=a; latchScan=keycodeForAtascii(a); latchUntil=Date.now()+950; latchReads=0; keyArms++;
+    try{if(input)input.key=latchScan&255;}catch(e){}
+    try{realOsAtasciiOneShot=a&255; realOsAtasciiLast=a&255; realOsKeyOneShot=latchScan&255; realOsKeyLast=latchScan&255; realOsKeyStamp=Date.now();}catch(e){}
+    try{if(ram){ram[0x02FB]=a&255; ram[0x02FC]=latchScan&255; ram[0xD209]=latchScan&255; ram[0xD20F]=0xF7;}}catch(e){}
+    lastKey=(src||'key')+' ATASCII $'+hx(a,2)+' KEYCODE $'+hx(latchScan,2)+' PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--');
+    lastHw='ARM '+lastKey; window.fix340KeyLast=lastKey; return true;
+  }
+  function latchActive(){return latchAt!==0xFF && Date.now()<=latchUntil;}
+  function releaseMaybe(why){if(latchAt!==0xFF && (Date.now()>latchUntil || latchReads>=6)){try{if(input)input.key=0xFF;}catch(e){} try{realOsKeyOneShot=0xFF; realOsAtasciiOneShot=0xFF;}catch(e){} try{if(ram){ram[0x02FC]=0xFF; ram[0xD209]=0xFF; ram[0xD20F]=0xFF; ram[0x02FB]=0xFF;}}catch(e){} keyReleases++; lastHw='RELEASE '+(why||'')+' ATASCII $'+hx(latchAt,2)+' reads '+latchReads; latchAt=0xFF; latchScan=0xFF; latchReads=0; latchUntil=0;}}
+  function installReadBridge(){
+    try{if(window.fix340ReadBridgeInstalled || !window.CPU6502 || !CPU6502.prototype || !CPU6502.prototype.r)return; var oldR=CPU6502.prototype.r;
+      CPU6502.prototype.r=function(a){a&=65535; if(turboActive()){try{if(latchActive()){if(a===0xD20F){keyReads++;return 0xF7;} if(a===0xD209){keyReads++;return latchScan&255;} if(a===0x02FB){keyReads++;return latchAt&255;} if(a===0x02FC){keyReads++;latchReads++;var s=latchScan&255;if(latchReads>=2)releaseMaybe('CH consumed');return s;}} else if(a===0x02FB && ram && (ram[0x02FB]&255)===0x9B){ram[0x02FB]=0xFF; return 0xFF;} else if(a===0x02FC || a===0xD209 || a===0xD20F){releaseMaybe('idle read');}}catch(e){lastHw='read bridge err '+(e&&e.message?e.message:e);}}
+        return oldR.call(this,a);
+      };
+      window.fix340ReadBridgeInstalled=true; log340('read bridge installed: direct CH/KBCODE/SKSTAT/ATACHR feed for TBXL.');
+    }catch(e){log340('read bridge install error '+(e&&e.message?e.message:e));}
+  }
+  function installStepGuard(){try{if(window.fix340StepGuardInstalled || !window.CPU6502 || !CPU6502.prototype || !CPU6502.prototype.step)return; var oldStep=CPU6502.prototype.step; CPU6502.prototype.step=function(){if(turboActive()){try{setTurboFlags(); if(latchAt===0xFF && ram && (ram[0x02FB]&255)===0x9B){ram[0x02FB]=0xFF;} releaseMaybe('step');}catch(e){lastHw='step err '+(e&&e.message?e.message:e);}} return oldStep.call(this);}; window.fix340StepGuardInstalled=true;}catch(e){log340('step guard install error '+(e&&e.message?e.message:e));}}
+  function captureButton(ev){try{var b=ev.target&&ev.target.closest?ev.target.closest('button'):null; if(!b || !turboActive())return; if(b.id && /^fix340/.test(b.id))return; var a=labelToAtascii(b.textContent||''); if(a<0)return; var tok=(b.textContent||'').trim()+'@'+a; var now=Date.now(); if(tok===lastCaptureToken && now-lastCaptureMs<120)return; lastCaptureToken=tok; lastCaptureMs=now; keysCaptured++; armKey(a,'UI '+(b.textContent||'').trim());}catch(e){lastKey='capture err '+(e&&e.message?e.message:e);}}
+  function capturePhysical(ev){try{if(!turboActive())return; var a=physicalToAtascii(ev); if(a<0)return; keysCaptured++; armKey(a,'HW '+(ev.key||'')); try{ev.preventDefault();}catch(_e){} }catch(e){lastKey='keydown err '+(e&&e.message?e.message:e);}}
+  function installCapture(){try{if(window.fix340CaptureInstalled)return; ['pointerdown','touchstart','mousedown','click'].forEach(function(ev){window.addEventListener(ev,captureButton,true);}); window.addEventListener('keydown',capturePhysical,true); window.fix340CaptureInstalled=true; log340('direct key capture installed.');}catch(e){log340('capture install error '+(e&&e.message?e.message:e));}}
+  function callFix337Start(){var b=id('fix337TbxlBtn'); if(b && typeof b.onclick==='function')return b.onclick({preventDefault:function(){},stopPropagation:function(){},stopImmediatePropagation:function(){}}); var b2=id('fix339TbxlBtn'); if(b2 && typeof b2.onclick==='function' && b2.id!=='fix340TbxlBtn')return b2.onclick({preventDefault:function(){},stopPropagation:function(){},stopImmediatePropagation:function(){}}); throw new Error('direct TBXL loader button/function missing');}
+  function startTbxl(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(e){} startClicks++; installReadBridge(); installStepGuard(); installCapture(); setTurboFlags(); clearLatch('pre FIX340 TBXL'); try{callFix337Start(); setTurboFlags(); clearLatch('post direct start stale clear'); lastStart='START OK via FIX337 direct loader + FIX340 direct key capture'; log340(lastStart);}catch(e){lastStart='START ERROR '+(e&&e.message?e.message:e); log340(lastStart);} setTimeout(function(){setTurboFlags(); clearLatch('post START/OPTION release FIX340');},900); setTimeout(function(){setTurboFlags(); if(ram && latchAt===0xFF)ram[0x02FB]=0xFF;},1800); return false;}
+  function hideLegacy(){try{['fix284TurboPanel','fix315TurboPanel','fix328XexPanel','fix329XexPanel','fix336TbxlPanel','fix337TbxlPanel','fix338TbxlPanel','fix339TbxlPanel'].forEach(function(pid){var p=id(pid); if(p){p.style.setProperty('display','none','important'); p.style.setProperty('visibility','hidden','important'); p.style.setProperty('pointer-events','none','important'); p.setAttribute('aria-hidden','true');}}); Array.prototype.slice.call(document.querySelectorAll('section.card')).forEach(function(sec){if(sec.id==='fix340TbxlPanel')return; var h2=sec.querySelector('h2'); var t=String(h2?h2.textContent:''); if(/Turbo Basic|TBXL/i.test(t)){sec.style.setProperty('display','none','important');sec.style.setProperty('visibility','hidden','important');sec.style.setProperty('pointer-events','none','important');sec.setAttribute('aria-hidden','true');}});}catch(e){} }
+  function cleanUi(){uiCleanRuns++; try{document.body.classList.add('fix340-clean'); document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p')||document.querySelector('h1 + p'); if(p)p.textContent='FIX340: čistý start bez pozdního FIX337/FIX338 přepisu, jeden TBXL panel, direct XEX loader + direct OS key capture. Žádný fake READY/LOAD/screen paint.'; var ps=id('playStatus'); if(ps && !turboActive())ps.textContent='FIX340 připraven: POWER BASIC/TXT základ zůstává, TBXL panel je jen jeden.'; var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX340'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX340: klik na klávesu jde přímo do CH $02FC / KBCODE $D209 / SKSTAT $D20F / ATACHR $02FB.';}catch(e){} hideLegacy(); try{var panel=id('fix340TbxlPanel'); if(!panel){panel=document.createElement('section'); panel.id='fix340TbxlPanel'; panel.className='card'; var anchor=document.querySelector('#atariKeyboardDock')||id('fix313TxtPanel')||document.querySelector('.wrap'); if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling); else document.body.appendChild(panel);} panel.style.setProperty('display','block','important'); panel.style.setProperty('visibility','visible','important'); panel.style.setProperty('pointer-events','auto','important'); panel.removeAttribute('aria-hidden'); panel.innerHTML='<h2>3) TBXL 1.5 — FIX340 čistý panel + direct key capture</h2><p>FIX340 uklízí staré FIX337/FIX338/FIX339 panely hned při startu a krmí UI/PC klávesy přímo do reálných OS vstupů CH/KBCODE/SKSTAT/ATACHR. Loader zůstává FIX337 direct XEX. Bez fake READY, bez screen paint, bez RAM inject.</p><div id="fix340Status" class="fileLine">FIX340 připraveno.</div><button id="fix340TbxlBtn" type="button">1) SPUSTIT TBXL 1.5 FIX340</button><button id="fix340LogBtn" type="button" class="secondary compact">2) ULOZIT TBXL LOG FIX340</button><button id="fix340RestartBtn" type="button" class="secondary compact">3) RESTART TBXL FIX340</button>'; id('fix340TbxlBtn').onclick=startTbxl; id('fix340LogBtn').onclick=snapshot; id('fix340RestartBtn').onclick=startTbxl; lastUi='UI clean '+uiCleanRuns+' legacy panels hard-hidden';}catch(e){lastUi='UI render err '+(e&&e.message?e.message:e); log340(lastUi);} }
+  function snapshot(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();}}catch(e){} logClicks++; installReadBridge(); installStepGuard(); installCapture(); cleanUi(); var arr=[]; arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU ZMENENE'); ['FIX340_CLEAN_SINGLE_TBXL_PANEL=YES','FIX340_INITIAL_TITLE_FIXED=YES','FIX340_NO_15S_UI_SETTLE=YES','FIX340_DIRECT_KEY_CAPTURE=YES','FIX337_DIRECT_TBXL_LOADER_REUSED=YES','NO_FAKE_READY=YES','NO_FAKE_LOAD=YES','NO_FAKE_SELF_TEST=YES','NO_RAM_PROGRAM_INJECT=YES','NO_SCREEN_PAINT=YES'].forEach(function(x){arr.push(x);}); arr.push(''); arr.push('[FIX340 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('uiCleanRuns='+uiCleanRuns); arr.push('lastUi='+lastUi); arr.push(''); arr.push('[FIX340 KEY CAPTURE]'); arr.push('captureInstalled='+(window.fix340CaptureInstalled?'YES':'NO')); arr.push('readBridgeInstalled='+(window.fix340ReadBridgeInstalled?'YES':'NO')); arr.push('stepGuardInstalled='+(window.fix340StepGuardInstalled?'YES':'NO')); arr.push('startClicks='+startClicks); arr.push('logClicks='+logClicks); arr.push('keysCaptured='+keysCaptured); arr.push('keyArms='+keyArms); arr.push('keyReads='+keyReads); arr.push('keyReleases='+keyReleases); arr.push('latchAt=$'+hx(latchAt,2)+' latchScan=$'+hx(latchScan,2)+' latchReads='+latchReads+' latchActive='+(latchActive()?'YES':'NO')); arr.push('lastKey='+(window.fix340KeyLast||lastKey)); arr.push('lastHw='+lastHw); arr.push('lastStart='+lastStart); arr.push(''); arr.push('[OLD COUNTERS]'); arr.push('fix339 hwHits='+(window.fix339KeyboardLast||'--')); arr.push('fix337KeyQueued='+(window.fix337KeyQueued||0)); arr.push('fix337KeyLast='+(window.fix337KeyLast||'--')); arr.push('fix338BridgeHits='+(window.fix338BridgeHits||0)); arr.push(''); arr.push('[TBXL/CPU]'); arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--')); arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--')); arr.push('fix232Mode='+(typeof fix232Mode!=='undefined'?fix232Mode:'--')); arr.push('CORE LOADER INFO='+(typeof fix195NativeXexInfo!=='undefined'?fix195NativeXexInfo:'--')); arr.push('MEM_6132='+(typeof ram!=='undefined'&&ram?readBlock(0x6132,16):'--')); arr.push('MEM_0B00='+(typeof ram!=='undefined'&&ram?readBlock(0x0B00,16):'--')); arr.push('IOCB0='+(typeof ram!=='undefined'&&ram?readBlock(0x0340,16):'--')); arr.push('IOCB1='+(typeof ram!=='undefined'&&ram?readBlock(0x0350,16):'--')); arr.push('E_BUFFER_0580='+(typeof ram!=='undefined'&&ram?readBlock(0x0580,48):'--')); arr.push('CH=$'+(typeof ram!=='undefined'&&ram?hx(ram[0x02FC]||0,2):'--')+' ATACHR=$'+(typeof ram!=='undefined'&&ram?hx(ram[0x02FB]||0,2):'--')+' KBCODE=$'+(typeof ram!=='undefined'&&ram?hx(ram[0xD209]||0,2):'--')+' SKSTAT=$'+(typeof ram!=='undefined'&&ram?hx(ram[0xD20F]||0,2):'--')+' D01F=$'+(typeof ram!=='undefined'&&ram?hx(ram[0xD01F]||0,2):'--')); arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable'); arr.push(''); arr.push('[DOM LOG]'); arr.push((id('log')&&id('log').textContent)||'--'); var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX340-tbxl-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX340-tbxl-log');}catch(e){log340('save error '+(e&&e.message?e.message:e));} log340('ULOZIT TBXL LOG FIX340 hotov.'); return false;}
+  function start(){try{document.body.classList.add('fix340-clean');}catch(e){} installReadBridge(); installStepGuard(); installCapture(); cleanUi(); try{var mo=new MutationObserver(function(){cleanUi();}); mo.observe(document.body,{childList:true,subtree:true,characterData:true}); setTimeout(function(){try{mo.disconnect();}catch(e){}},35000);}catch(e){} var times=[0,25,60,120,250,500,900,1400,2200,3500,5000,8000,12000,18000,26000,34000]; times.forEach(function(ms){setTimeout(function(){installReadBridge(); installStepGuard(); installCapture(); cleanUi();},ms);}); log340('installed: clean UI guard + direct TBXL key capture.');}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
 })();
 </script>

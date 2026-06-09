@@ -1,0 +1,35 @@
+ATARIHELP.EU EMU-09 - FIX340_CLEAN_TBXL_DIRECT_KEY_CAPTURE
+
+KODY JSOU ZMENENE.
+
+Duvod:
+FIX339 test ukazal dve veci:
+1) UI je rozbite vrstvenim: pri startu se stale ukazovalo FIX337/FIX338 a teprve asi po 15 s se stav prepsal na aktualni FIX.
+2) Turbo Basic porad READY cykli a nejde psat. FIX338 bridge i FIX339 OS poll bridge se netrefily dostatecne: logy mely bridge/hw pocitadla 0.
+
+Co FIX340 opravuje:
+- Staticky <title> a <h1> jsou prepsane na FIX340 uz v souboru, ne az pozdeji skriptem.
+- Stare Turbo panely FIX315/FIX328/FIX337/FIX338/FIX339 jsou hard-skryte pres CSS a hlidane MutationObserverem.
+- Uz se nema cekat 15 sekund, nez se UI ustali.
+- Je pouze jeden viditelny Turbo panel: FIX340.
+- Pridan direct key capture: klik na mobilni klavesnici i fyzicka klavesnice jde primo do realnych OS vstupu:
+  CH $02FC, ATACHR $02FB, KBCODE $D209, SKSTAT $D20F.
+- Loader zustava FIX337 direct XEX, protoze podle logu nacita TBXL do RAM spravne.
+
+Co FIX340 nedela:
+- Nepise READY rucne.
+- Nemaluje screen.
+- Neinjectuje BASIC program do RAM.
+- Nedela fake LOAD ani fake SELF TEST.
+- Neni to herni hack.
+
+Test:
+1. Nahrat overlay.
+2. Otevrit appku a sledovat, jestli se hned pise FIX340, ne FIX337/FIX338.
+3. Nesmí byt videt stare Turbo panely.
+4. Spustit SPUSTIT TBXL 1.5 FIX340.
+5. Jakmile se objevi READY, zkusit stisknout klavesu A a RETURN.
+6. Jestli stale READY cykli nebo nejde psat, ulozit FIX340 log.
+
+V logu hlidat:
+keysCaptured, keyArms, keyReads, keyReleases, latchAt, latchScan, CH, ATACHR, KBCODE, SKSTAT, PC, IOCB0, E_BUFFER_0580.
