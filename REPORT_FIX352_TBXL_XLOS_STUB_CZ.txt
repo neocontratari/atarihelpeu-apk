@@ -1,0 +1,40 @@
+AtariHelp.eu EMU-09 - FIX352_TBXL_XLOS_STUB
+
+KODY JSOU ZMENENE.
+
+PRŮLOM z testu Rene (2026-06-09 23:44):
+Log dokazuje celý řetěz: KEY E -> $45 CH=$2A DORUČENO -> TBXL
+zpracovává (kopírovací smyčka $6084: LDA/STA/DEY/BPL - TBXL sám
+píše na obrazovku) -> JSR $C9C5 -> CRASH "Unsupported opcode $02".
+
+Příčina pádu: vestavěná ROM jádra je OS-B (Atari 400/800), která
+NEMÁ oblast $C000-$CFFF. TBXL 1.5 je XL software a volá XL OS
+rutinu na $C9C5, kde je v tomto jádru prázdno. Srdíčka na obrazovce
+= TBXL scroll zhroucený v půlce kvůli pádu pomocné rutiny.
+
+Oprava FIX352:
+Trap recovery STEJNÝM vzorem, jaký jádro už používá pro CIOV/SIOV
+stuby (osRomReturnOrFallback): když CPU spadne v $C000-$CFFF při
+aktivním TBXL, provede se čistý RTS (návrat ze zásobníku). Každá
+záchrana se loguje s adresou - plný audit, žádné skryté chování.
+Mimo TBXL mód se nic nemění.
+
+Pravda: RTS přeskočí to, co XL rutina dělala (pravděpodobně klik
+klávesy nebo kurzor). Jestli to bude stačit, ukáže test - TBXL má
+vlastní rychlé obrazovkové rutiny, takže výstup by měl jet z jeho
+kódu. Plné řešení = skutečná XL OS ROM, to je další krok pokud stub
+nebude stačit.
+
+Test:
+1) POWER XL/XE BASIC
+2) SPUSTIT TBXL
+3) Stiskni A -> na obrazovce se musí objevit A (žádná srdíčka)
+4) PRINT 2+2 + RETURN -> 4
+5) CLS + RETURN
+6) ULOŽIT LOG -> poslat (v logu budou FIX352 stub záznamy s adresami)
+
+Zakazy:
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
