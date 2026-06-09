@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX331_TBXL_ATASCII_INPUT</title>
+<title>EMU-09 FIX334_TURBO_REAL_CIOV_KEYBOARD_WAIT</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -48,10 +48,6 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 [data-fix329-hidden="YES"]{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 #fix329XexPanel button{margin-top:7px;}
 #fix329TurboBtn{border:2px solid rgba(255,221,122,.98)!important;font-size:18px!important;font-weight:900!important;}
-#fix330XexPanel{border:2px solid rgba(42,255,143,.48)!important;}
-#fix330TbxlBtn{border:2px solid rgba(255,221,122,.98)!important;font-size:18px!important;font-weight:900!important;}
-#fix331InputBadge{margin:.5rem 0;color:#2aff8f;font-family:monospace;font-size:13px;white-space:pre-wrap;}
-#fix328XexPanel,#fix329XexPanel{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 </style>
 </head>
 <body>
@@ -60,8 +56,8 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX331_TBXL_ATASCII_INPUT</h1>
-<p>FIX331: FIX330 loader zustava, TBXL READY dostane vlastni ATASCII vstup. RETURN jde jako $9B; bez fake LOAD/READY/SELF TEST a bez screen paint.</p>
+<h1>EMU-09 FIX334_TURBO_REAL_CIOV_KEYBOARD_WAIT</h1>
+<p>FIX327: stabilní základ z FIX315. TXT/KGETCH a teplý RESET drží; Turbo Basic má jediný čistý XEX start bez duplicitních tlačítek.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -13313,7 +13309,7 @@ updatePlayStatus('ready');
     try{document.body.classList.remove('fix313-boot');}catch(e){}
     try{['fix284TurboPanel','fix307Panel','fix311XexPickerPanel','fix312TxtPanel','fix312XexPickerPanel'].forEach(function(x){var e=id(x); if(e){e.style.display='none'; e.setAttribute('aria-hidden','true');}});}catch(e){}
     try{Array.prototype.slice.call(document.querySelectorAll('.cleanNote')).forEach(function(el){el.style.display='none'; el.setAttribute('aria-hidden','true');});}catch(e){}
-    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX329'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX328: TXT/BAS přes KGETCH/ATASCII, teplý RESET drží LIST. Ostrý reset je jen POWER XL/XE BASIC.';}catch(e){}
+    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX334'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX328: TXT/BAS přes KGETCH/ATASCII, teplý RESET drží LIST. Ostrý reset je jen POWER XL/XE BASIC.';}catch(e){}
     var panel=id('fix328XexPanel')||id('fix313XexPanel');
     if(!panel){
       panel=document.createElement('section'); panel.className='card'; panel.id='fix328XexPanel';
@@ -13351,13 +13347,13 @@ updatePlayStatus('ready');
 /* FIX329 HARD OWNER: capture all Turbo/Snapshot clicks before old FIX314/FIX315 inline handlers. No MutationObserver. */
 (function(){
   'use strict';
-  var TAG='FIX329_STABLE_CAPTURE_STARTOPTION_NO_OLD_TURBO';
+  var TAG='FIX334_TURBO_REAL_CIOV_KEYBOARD_WAIT';
   var turboClicks=0, snapClicks=0, cleanRuns=0;
-  var lastInfo='FIX329 ready: single capture handler installed; old FIX315 Turbo handler blocked before onclick.';
+  var lastInfo='FIX330 ready: capture handler installed; reálný FIX328 loader zachován, žádná self-recursion.';
   function id(x){return document.getElementById(x);} 
   function hx(v,n){try{return ((v>>>0)&((n===2)?255:65535)).toString(16).toUpperCase().padStart(n,'0');}catch(e){return '0000'.slice(0,n);} }
   function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation(); if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
-  function log329(msg){lastInfo=msg; try{var s=id('fix329TurboStatus')||id('fix328TurboStatus')||id('fix315TurboStatus')||id('fix313XexStatus'); if(s)s.textContent=msg;}catch(e){} try{if(typeof log==='function')log('FIX329 '+msg);else{var l=id('log'); if(l)l.textContent='FIX329 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX329: '+msg);}catch(e){} }
+  function log329(msg){lastInfo=msg; try{var s=id('fix329TurboStatus')||id('fix328TurboStatus')||id('fix315TurboStatus')||id('fix313XexStatus'); if(s)s.textContent=msg;}catch(e){} try{if(typeof log==='function')log('FIX330 '+msg);else{var l=id('log'); if(l)l.textContent='FIX330 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX330: '+msg);}catch(e){} }
   function readBlock(a,n){try{var out='$'+hx(a,4); for(var i=0;i<n;i++)out+=' '+hx((ram&&ram[(a+i)&65535])||0,2); return out;}catch(e){return '$'+hx(a,4)+' ERR';}}
   function armStartOption(ms){
     var until=Date.now()+(ms||2400);
@@ -13386,11 +13382,58 @@ updatePlayStatus('ready');
     }catch(e){log329('D01F override install error '+(e&&e.message?e.message:e));}
   }
   function forceXexMode(){
-    try{activeXexProfile='generic'; currentXexName='TURBO BASIC XL 1.5 CLEAN XEX FIX329 / captured START+OPTION';}catch(e){}
+    try{activeXexProfile='generic'; currentXexName='TURBO BASIC XL 1.5 CLEAN XEX FIX330 / preserved FIX328 loader + captured START+OPTION';}catch(e){}
     try{fix154RealOsBootMode=false; fix197TotalPurgeActive=false; fix192StreamInitActive=true; fix192StreamInitNext=true;}catch(e){}
     try{fix215PureRomMode=false; fix225PureHardwareMode=false; fix215PureSelfTestMode=false; fix232Mode='xex';}catch(e){}
     try{if(typeof fix230ColdBasicWindow!=='undefined')fix230ColdBasicWindow=false; if(typeof fix230ColdSelftestWindow!=='undefined')fix230ColdSelftestWindow=false;}catch(e){}
     try{if(ram){ram[0xD01F]=0x02; ram[0x02FC]=0xFF; ram[0xD209]=0xFF; ram[0xD20F]=0xFF;}}catch(e){}
+  }
+
+  function turboMode333(){try{return /TURBO BASIC XL\s*1\.5/i.test(String(currentXexName||'')) || String(fix232Mode||'')==='xex' || !!window.fix333TurboActive;}catch(e){return !!window.fix333TurboActive;}}
+  function clearTurboInput333(reason){
+    try{if(input){input.start=false;input.option=false;input.select=false;input.fire=false;input.key=0xFF;}}catch(e){}
+    try{if(typeof atariKeyQueue!=='undefined' && atariKeyQueue)atariKeyQueue.length=0; if(typeof atariKeyTimer!=='undefined' && atariKeyTimer){clearTimeout(atariKeyTimer);atariKeyTimer=0;}}catch(e){}
+    try{if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false; if(typeof fix208BasicAutofeedQueue!=='undefined' && fix208BasicAutofeedQueue)fix208BasicAutofeedQueue.length=0; if(typeof fix223FastKgetchOnly!=='undefined')fix223FastKgetchOnly=false;}catch(e){}
+    try{if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF; if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF; if(typeof realOsKeyLast!=='undefined')realOsKeyLast=0xFF; if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=0xFF; if(typeof realOsKeyStamp!=='undefined')realOsKeyStamp=0;}catch(e){}
+    try{if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;ram[0xD01F]=0x07;}}catch(e){}
+    try{if(typeof syncInputShadows==='function')syncInputShadows(); if(typeof renderInput==='function')renderInput();}catch(e){}
+    window.fix333LastLatch='NO-KEY/LATCH CLEAR '+(reason||'')+' PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--')+' CH '+(ram?'$'+hx(ram[0x02FC]||0,2):'--')+' KBCODE '+(ram?'$'+hx(ram[0xD209]||0,2):'--')+' D01F '+(ram?'$'+hx(ram[0xD01F]||0,2):'--');
+  }
+  function installTurboNoKeyGuard333(){
+    try{
+      if(window.fix333NoKeyGuardInstalled || !window.CPU6502 || !CPU6502.prototype)return;
+      var oldSvc=CPU6502.prototype.serviceAtariOsKeyboard;
+      CPU6502.prototype.serviceAtariOsKeyboard=function(addr,fromJsr){
+        addr&=65535;
+        if((addr===0xE420 || addr===0xE424) && window.fix333TurboNoKeyUntilMs && Date.now()<window.fix333TurboNoKeyUntilMs && turboMode333()){
+          // Turbo Basic after title must see idle keyboard, not stale RETURN from BASIC/TXT helper.
+          clearTurboInput333('OS KGETCH idle guard $'+hx(addr,4));
+          this.a=0; this.y=1; this.p|=2; if(this.zn)this.zn(this.a);
+          window.fix333NoKeyHits=(window.fix333NoKeyHits||0)+1;
+          window.fix333NoKeyLast='OS keyboard NO KEY at $'+hx(addr,4)+' PC $'+hx((this.pc||0)&65535,4)+' hits '+window.fix333NoKeyHits;
+          try{fix121OsVectorInfo='FIX333 Turbo OS keyboard NO KEY guard '+window.fix333NoKeyLast;}catch(e){}
+          if(!fromJsr)return this.osRomReturnOrFallback('FIX333 TURBO KBD NO KEY $'+hx(addr,4),false);
+          this.noteOsStub('FIX333 TURBO KBD NO KEY $'+hx(addr,4),false,false);
+          return true;
+        }
+        return oldSvc.call(this,addr,fromJsr);
+      };
+      var oldR=CPU6502.prototype.r;
+      CPU6502.prototype.r=function(a){
+        a&=65535;
+        if(window.fix333TurboNoKeyUntilMs && Date.now()<window.fix333TurboNoKeyUntilMs && turboMode333()){
+          if(a===0x02FC || a===0xD209){window.fix333NoKeyHits=(window.fix333NoKeyHits||0)+1; return 0xFF;}
+          if(a===0xD20F)return 0xFF;
+        }
+        return oldR.call(this,a);
+      };
+      window.fix333NoKeyGuardInstalled=true;
+      log329('FIX333 NO-KEY guard installed: OS KGETCH/CH/KBCODE idle in Turbo after title.');
+    }catch(e){log329('FIX333 no-key guard install error '+(e&&e.message?e.message:e));}
+  }
+  function armTurboNoKeyGuard333(reason,ms){
+    installTurboNoKeyGuard333(); window.fix333TurboActive=true; window.fix333TurboNoKeyUntilMs=Date.now()+(ms||12000); window.fix333NoKeyReason=reason||'Turbo post-title';
+    [80,180,350,700,1100,1600,2300,3200,4500,6200,8400,11000].forEach(function(t){setTimeout(function(){if(Date.now()<window.fix333TurboNoKeyUntilMs)clearTurboInput333((reason||'Turbo post-title')+' +'+t+'ms');},t);});
   }
   function startTurbo(ev){
     stop(ev); turboClicks++;
@@ -13400,6 +13443,7 @@ updatePlayStatus('ready');
     installD01FOverride();
     armStartOption(2600);
     forceXexMode();
+    installTurboNoKeyGuard333();
     try{window.fix315StartTurboBasicBlockedByFix329='YES'; window.fix314StartBlockedByFix329='YES';}catch(e){}
     var ok=false, err='';
     try{
@@ -13412,8 +13456,9 @@ updatePlayStatus('ready');
     }catch(e){err=(e&&e.message?e.message:e);}
     armStartOption(2600);
     forceXexMode();
+    armTurboNoKeyGuard333('after real Turbo loader - block stale RETURN/READY spam',12000);
     try{if(cpu && ((cpu.pc|0)===0 || /BRK/i.test(String(cpu.trapMsg||'')))){cpu.trap=false; cpu.trapMsg=''; cpu.pc=0x6179; cpu.p=(cpu.p|4)&255;}}catch(e){}
-    var msg='TURBO START CAPTURED: old FIX315 onclick blocked, START+OPTION forced via D01F=$02, '+(ok?'called FIX328 internal OS reloc':'NO internal reloc fn')+(err?(' ERR '+err):'')+' / PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--')+' / MEM_0B00 '+readBlock(0x0B00,8)+' / D01F '+(ram?'$'+hx(ram[0xD01F]||0,2):'--');
+    var msg='TURBO START CAPTURED FIX333: old FIX315 onclick blocked, START+OPTION forced via D01F=$02, '+(ok?'called preserved FIX328 real OS reloc':'NO internal reloc fn')+(err?(' ERR '+err):'')+' / PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--')+' / MEM_0B00 '+readBlock(0x0B00,8)+' / D01F '+(ram?'$'+hx(ram[0xD01F]||0,2):'--')+' / NO_KEY_UNTIL '+(window.fix333TurboNoKeyUntilMs||0);
     log329(msg);
     setTimeout(function(){window.fix329TurboBusy=0;},1600);
     return false;
@@ -13423,10 +13468,10 @@ updatePlayStatus('ready');
     var arr=[];
     arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
     arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
-    arr.push('FIX329_CAPTURE_PHASE_TURBO_BUTTONS=YES'); arr.push('FIX329_D01F_START_OPTION_OVERRIDE=YES'); arr.push('FIX329_OLD_FIX315_TURBO_HANDLER_BLOCKED=YES'); arr.push('FIX329_SINGLE_TURBO_BUTTON=YES'); arr.push('FIX329_TXT_KGETCH_KEPT=YES'); arr.push('FIX329_WARM_RESET_PRESERVE_LIST=YES');
+    arr.push('FIX333_TURBO_NO_KEY_GUARD=YES'); arr.push('FIX333_OS_KGETCH_IDLE_AFTER_TITLE=YES'); arr.push('FIX333_WARM_RESET_RESTARTS_TURBO=YES'); arr.push('FIX333_KEEP_FIX330_REAL_LOADER=YES'); arr.push('FIX330_CAPTURE_PHASE_TURBO_BUTTONS=YES'); arr.push('FIX330_D01F_START_OPTION_OVERRIDE=YES'); arr.push('FIX330_OLD_FIX315_TURBO_HANDLER_BLOCKED=YES'); arr.push('FIX330_SINGLE_TURBO_BUTTON=YES'); arr.push('FIX330_TXT_KGETCH_KEPT=YES'); arr.push('FIX330_WARM_RESET_PRESERVE_LIST=YES');
     arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
-    arr.push(''); arr.push('[FIX329 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('keyboardTitle='+(document.querySelector('#atariKeyboardDock h2')?document.querySelector('#atariKeyboardDock h2').textContent:'--'));
-    arr.push('turboButtonsVisible='+[].slice.call(document.querySelectorAll('button')).filter(function(b){return /TURBO BASIC/i.test(b.textContent||'') && b.offsetParent!==null;}).length); arr.push('snapshotButtonsVisible='+[].slice.call(document.querySelectorAll('button')).filter(function(b){return /SNAPSHOT.*TURBO|TURBO\/XEX/i.test(b.textContent||'') && b.offsetParent!==null;}).length); arr.push('cleanRuns='+cleanRuns); arr.push('turboClicks='+turboClicks); arr.push('snapClicks='+snapClicks); arr.push('lastInfo='+lastInfo);
+    arr.push(''); arr.push('[FIX330 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('keyboardTitle='+(document.querySelector('#atariKeyboardDock h2')?document.querySelector('#atariKeyboardDock h2').textContent:'--'));
+    arr.push('noKeyGuardInstalled='+(window.fix333NoKeyGuardInstalled?'YES':'NO')); arr.push('noKeyUntilMs='+(window.fix333TurboNoKeyUntilMs||0)); arr.push('noKeyHits='+(window.fix333NoKeyHits||0)); arr.push('noKeyLast='+(window.fix333NoKeyLast||'--')); arr.push('lastLatch='+(window.fix333LastLatch||'--')); arr.push('turboButtonsVisible='+[].slice.call(document.querySelectorAll('button')).filter(function(b){return /TURBO BASIC/i.test(b.textContent||'') && b.offsetParent!==null;}).length); arr.push('snapshotButtonsVisible='+[].slice.call(document.querySelectorAll('button')).filter(function(b){return /SNAPSHOT.*TURBO|TURBO\/XEX/i.test(b.textContent||'') && b.offsetParent!==null;}).length); arr.push('cleanRuns='+cleanRuns); arr.push('turboClicks='+turboClicks); arr.push('snapClicks='+snapClicks); arr.push('lastInfo='+lastInfo);
     arr.push(''); arr.push('[START OPTION]'); arr.push('D01F_OVERRIDE='+(window.fix329D01FOverrideInstalled?'YES':'NO')); arr.push('startOptionUntilMs='+(window.fix329StartOptionUntilMs||0)); arr.push('startOptionReadLast='+(window.fix329StartOptionReadLast||'--')); arr.push('input.start='+(typeof input!=='undefined'&&input?String(!!input.start):'--')); arr.push('input.option='+(typeof input!=='undefined'&&input?String(!!input.option):'--'));
     arr.push(''); arr.push('[XEX/TURBO]'); arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--')); arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--')); arr.push('ENTRY='+(typeof xexInfo!=='undefined'&&xexInfo?'$'+hx(xexInfo.entry||0,4):'--')); arr.push('RUNAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.run?'$'+hx(xexInfo.run,4):'--')); arr.push('INITAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--'));
     arr.push('PORTB_VALUE='+(typeof portbValue!=='undefined'?'$'+hx(portbValue,2):'--')); arr.push('RAM_D301='+(typeof ram!=='undefined'&&ram?'$'+hx(ram[0xD301]||0,2):'--')); arr.push('RAM_D01F='+(typeof ram!=='undefined'&&ram?'$'+hx(ram[0xD01F]||0,2):'--')); arr.push('PURE_HW_MODE='+(typeof fix225PureHardwareMode!=='undefined'?String(!!fix225PureHardwareMode):'--')); arr.push('FIX232_MODE='+(typeof fix232Mode!=='undefined'?String(fix232Mode):'--'));
@@ -13434,7 +13479,7 @@ updatePlayStatus('ready');
     arr.push(''); arr.push('[BASIC/TXT PANEL]'); arr.push('TXT_PICKER_BUTTON='+(id('fix313PickBtn')||id('fix289PickBasicFileBtn')?'YES':'NO')); arr.push('TXT_TEXTAREA='+(id('fix313Text')||id('fix240BasicFastText')?'YES':'NO')); arr.push('TXT_SEND_NO_RUN='+(id('fix313SendNoRun')||id('fix289SendBasicBtn')?'YES':'NO')); arr.push('TXT_SEND_RUN='+(id('fix313SendRun')||id('fix289SendBasicRunBtn')?'YES':'NO'));
     arr.push(''); arr.push('[CPU]'); arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable');
     arr.push(''); arr.push('[DOM LOG]'); arr.push((id('log')&&id('log').textContent)||'--');
-    var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX329-turbo-xex-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX329-turbo-xex-log');}catch(e){log329('save report error '+(e&&e.message?e.message:e));} log329('SNAPSHOT TURBO/XEX LOG FIX329 hotov.'); return false;
+    var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX330-turbo-xex-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX330-turbo-xex-log');}catch(e){log329('save report error '+(e&&e.message?e.message:e));} log329('SNAPSHOT TURBO/XEX LOG FIX330 hotov.'); return false;
   }
   function btnText(b){return String((b&&b.textContent)||'').replace(/\s+/g,' ').trim();}
   function isTurboButton(b){var t=btnText(b), idv=String((b&&b.id)||''); return /TURBO BASIC XL\s*1\.5.*XEX/i.test(t) || /fix(315|327|328|329).*TurboBtn/i.test(idv);}
@@ -13448,587 +13493,330 @@ updatePlayStatus('ready');
   function bindCapture(){['click','mousedown','mouseup','pointerdown','pointerup','touchstart','touchend'].forEach(function(n){try{document.addEventListener(n,capture,true);}catch(e){}});}
   function cleanUi(){
     cleanRuns++;
-    try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX329: stabilní BASIC/TXT/warm reset; Turbo tlačítko je chyceno v capture fázi a starý FIX315 loader se nesmí spustit.';}catch(e){}
-    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX329'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX329: TXT/BAS přes KGETCH/ATASCII, teplý RESET drží LIST. Ostrý reset je jen POWER XL/XE BASIC.';}catch(e){}
+    try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX330: stabilní BASIC/TXT/warm reset; Turbo tlačítko už volá reálný FIX328 loader, ne samo sebe.';}catch(e){}
+    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX334'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX330: TXT/BAS přes KGETCH/ATASCII, teplý RESET drží LIST. Ostrý reset je jen POWER XL/XE BASIC.';}catch(e){}
     try{['fix284TurboPanel','fix307Panel','fix311XexPickerPanel','fix312TxtPanel','fix312XexPickerPanel'].forEach(function(x){var e=id(x); if(e){e.style.display='none';e.setAttribute('aria-hidden','true');}});}catch(e){}
     var panel=id('fix329XexPanel')||id('fix328XexPanel')||id('fix313XexPanel');
     if(!panel){panel=document.createElement('section'); panel.className='card'; var anchor=id('fix313TxtPanel')||document.querySelector('#atariKeyboardDock'); if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling); else document.body.appendChild(panel);} 
     panel.id='fix329XexPanel'; panel.className='card'; panel.style.display='block'; panel.removeAttribute('aria-hidden');
     if(panel.getAttribute('data-fix329-ready')!=='YES'){
-      panel.innerHTML='<h2>3) Turbo Basic XL 1.5 — čistý XEX loader FIX329</h2><p>Jediné aktivní Turbo tlačítko. Klik je zachycen dřív než staré FIX315 onclick handlery. START+OPTION je čtené přes CONSOL $D01F=$02, žádný fake LOAD/screen paint/RAM program inject.</p><div id="fix329TurboStatus" class="fileLine">'+lastInfo+'</div><button id="fix329TurboBtn" type="button" data-fix329="turbo">1) START+OPTION → TURBO BASIC XL 1.5 XEX — FIX329</button><button id="fix329XexSnap" type="button" data-fix329="snapshot" class="secondary compact">2) SNAPSHOT TURBO/XEX LOG FIX329</button><input id="fix329ManualXexFile" class="fileChooserFix292" type="file" accept=".xex,.obx,.com"><button id="fix329ManualXexBtn" type="button" class="secondary compact">RUČNÍ XEX FILE PICKER ZATÍM JEN NÁZEV — TURBO POUŽIJ TLAČÍTKEM NAHOŘE</button>';
+      panel.innerHTML='<h2>3) Turbo Basic XL 1.5 — čistý XEX loader FIX330</h2><p>Jediné aktivní Turbo tlačítko. Klik je zachycen dřív než staré FIX315 onclick handlery. START+OPTION je čtené přes CONSOL $D01F=$02, žádný fake LOAD/screen paint/RAM program inject.</p><div id="fix329TurboStatus" class="fileLine">'+lastInfo+'</div><button id="fix329TurboBtn" type="button" data-fix329="turbo">1) START+OPTION → TURBO BASIC XL 1.5 XEX — FIX330</button><button id="fix329XexSnap" type="button" data-fix329="snapshot" class="secondary compact">2) SNAPSHOT TURBO/XEX LOG FIX330</button><input id="fix329ManualXexFile" class="fileChooserFix292" type="file" accept=".xex,.obx,.com"><button id="fix329ManualXexBtn" type="button" class="secondary compact">RUČNÍ XEX FILE PICKER ZATÍM JEN NÁZEV — TURBO POUŽIJ TLAČÍTKEM NAHOŘE</button>';
       panel.setAttribute('data-fix329-ready','YES');
     }
-    try{var tb=id('fix329TurboBtn'), sn=id('fix329XexSnap'), mb=id('fix329ManualXexBtn'); if(tb)tb.onclick=startTurbo; if(sn)sn.onclick=snapshot; if(mb)mb.onclick=function(ev){stop(ev);log329('Ruční XEX picker zatím jen audit názvu. Turbo Basic spouštěj jediným FIX329 tlačítkem.');return false;};}catch(e){}
+    try{var tb=id('fix329TurboBtn'), sn=id('fix329XexSnap'), mb=id('fix329ManualXexBtn'); if(tb)tb.onclick=startTurbo; if(sn)sn.onclick=snapshot; if(mb)mb.onclick=function(ev){stop(ev);log329('Ruční XEX picker zatím jen audit názvu. Turbo Basic spouštěj jediným FIX330 tlačítkem.');return false;};}catch(e){}
     try{[].slice.call(document.querySelectorAll('button')).forEach(function(b){if(b.id==='fix329TurboBtn'||b.id==='fix329XexSnap'||b.id==='fix329ManualXexBtn')return; if(isTurboButton(b)||isTurboSnapshot(b)){b.setAttribute('data-fix329-hidden','YES'); b.onclick=null; b.disabled=true;}});}catch(e){}
-    try{window.fix329StartTurboBasic=startTurbo; window.fix328StartTurboBasic=startTurbo; window.fix327StartTurboBasic=startTurbo; window.fix326StartTurboBasic=startTurbo; window.fix325StartTurboBasic=startTurbo; window.fix324StartTurboBasic=startTurbo; window.fix323StartTurboBasic=startTurbo; window.fix315StartTurboBasic=startTurbo; window.fix293StartTurboBasic=startTurbo; window.fix329Snapshot=snapshot; window.fix328Snapshot=snapshot; window.fix327Snapshot=snapshot; window.fix315Snapshot=snapshot; window.fix293UniversalSnapshot=snapshot; window.compatibilitySnapshot=snapshot;}catch(e){}
+    try{window.fix330StartTurboBasic=startTurbo; window.fix329StartTurboBasic=startTurbo; /* FIX330: NEPREPISOVAT window.fix328StartTurboBasic ani fix327StartTurboBasic - tam je skutecny loader z predchozi vrstvy. */ window.fix326StartTurboBasic=startTurbo; window.fix325StartTurboBasic=startTurbo; window.fix324StartTurboBasic=startTurbo; window.fix323StartTurboBasic=startTurbo; window.fix315StartTurboBasic=startTurbo; window.fix293StartTurboBasic=startTurbo; window.fix330Snapshot=snapshot; window.fix329Snapshot=snapshot; window.fix315Snapshot=snapshot; window.fix293UniversalSnapshot=snapshot; window.compatibilitySnapshot=snapshot;}catch(e){}
   }
-  function start(){installD01FOverride(); bindCapture(); cleanUi(); [50,120,260,600,1200,2200,3600,5200].forEach(function(ms){setTimeout(cleanUi,ms);}); log329('FIX329 installed: document capture blocks old FIX315 Turbo/Snapshot before onclick; START+OPTION D01F override ready.');}
+  function start(){installD01FOverride(); bindCapture(); cleanUi(); [50,120,260,600,1200,2200,3600,5200].forEach(function(ms){setTimeout(cleanUi,ms);}); log329('FIX330 installed: capture blokuje starý FIX315 handler, ale reálný FIX328 loader zůstává zachovaný; START+OPTION D01F override ready.');}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
 })();
 </script>
 
+
 <script>
-/* FIX330: own Turbo Basic start path after FIX329 recursion, plus BASIC warm-reset IRQ vector seed. */
+/* FIX331: Turbo Basic gate fix. Preserve FIX330 working UI/TXT/warm baseline, but make Turbo obey XL/XE BASIC-ROM PORTB bit1. */
 (function(){
   'use strict';
-  var TAG='FIX330_TURBO_BASIC_CORE_RESET';
-  var turboClicks=0, snapClicks=0, cleanRuns=0;
-  var lastInfo='FIX330 ready: TBXL loader is independent from FIX329 recursive handler.';
-  var lastPayloadInfo='not loaded yet';
-  var lastRelocInfo='not relocated yet';
-  var lastVectorInfo='not seeded yet';
-  function id(x){return document.getElementById(x);}
-  function hx(v,n){try{return ((v>>>0)&((n===2)?255:65535)).toString(16).toUpperCase().padStart(n,'0');}catch(e){return '0000'.slice(0,n);}}
-  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return false;}
-  function statusEl(){return id('fix330Status')||id('fix329TurboStatus')||id('fix328TurboStatus')||id('fix313XexStatus');}
-  function log330(msg){
-    lastInfo=String(msg||'');
-    try{var s=statusEl(); if(s)s.textContent=lastInfo;}catch(e){}
-    try{if(typeof log==='function')log('FIX330 '+lastInfo);else{var l=id('log');if(l)l.textContent='FIX330 '+lastInfo+'\n'+(l.textContent||'');}}catch(e){}
-    try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX330: '+lastInfo);}catch(e){}
-  }
-  function readBlock(addr,len){
-    try{var out=[],a=addr&65535;for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2));return '$'+hx(addr,4)+' '+out.join(' ');}catch(e){return '$'+hx(addr,4)+' ERR';}
-  }
-  function b64ToBytes(s){
-    var bin=atob(s), out=new Uint8Array(bin.length);
-    for(var i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i)&255;
-    return out;
-  }
-  function getEmbeddedTurboBytes(){
+  var TAG='FIX334_TURBO_REAL_CIOV_KEYBOARD_WAIT';
+  var realFix328=null, snapClicks=0, warmClicks=0;
+  function id(x){return document.getElementById(x);} 
+  function hx(v,n){try{if(typeof hex==='function')return hex((v||0)&(n>=4?65535:255),n);}catch(e){} var s=((v||0)&(n>=4?65535:255)).toString(16).toUpperCase(); while(s.length<n)s='0'+s; return s;}
+  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation(); if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
+  function log331(msg){msg=String(msg||''); window.fix331LastInfo=msg; try{if(typeof log==='function')log('FIX331 '+msg);else{var l=id('log');if(l)l.textContent='FIX331 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX331: '+msg);}catch(e){} try{var s=id('fix329TurboStatus')||id('fix328TurboStatus')||id('fix315TurboStatus')||id('fix313XexStatus'); if(s)s.textContent=msg;}catch(e){} }
+  function readBlock(addr,len){try{var out=[],a=addr&65535; for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2)); return '$'+hx(addr,4)+' '+out.join(' ');}catch(e){return '$'+hx(addr,4)+' ERR';}}
+  function pb(){try{return (typeof portbValue!=='undefined'?portbValue:(ram?ram[0xD301]:0xFF))&255;}catch(e){return 0xFF;}}
+  function turboActive(){try{return !!(window.fix331TurboActive||window.fix328TurboActive||/TURBO BASIC XL\s*1\.5/i.test(String(currentXexName||''))||String(fix232Mode||'')==='xex');}catch(e){return !!window.fix331TurboActive;}}
+  function installBasicRomGate(){
     try{
-      if(window.fix330TurboBytes)return new Uint8Array(window.fix330TurboBytes);
-      var scripts=document.scripts||[];
-      for(var i=0;i<scripts.length;i++){
-        var t=scripts[i].textContent||'';
-        if(t.indexOf('TURBO_B64')<0)continue;
-        var m=t.match(/var\s+TURBO_B64\s*=\s*'([^']+)'/);
-        if(m&&m[1]){
-          var bytes=b64ToBytes(m[1]);
-          window.fix330TurboBytes=new Uint8Array(bytes);
-          lastPayloadInfo='embedded TURBO_B64 bytes '+bytes.length+' head '+Array.prototype.slice.call(bytes,0,6).map(function(v){return hx(v,2);}).join(' ');
-          return bytes;
-        }
-      }
-    }catch(e){lastPayloadInfo='embedded decode error '+(e&&e.message?e.message:e);}
-    throw new Error('TURBO_B64 not found in overlay');
-  }
-  function markLoaded(a){
-    try{if(typeof xexLoadedMask!=='undefined'&&xexLoadedMask)xexLoadedMask[a&65535]=1;}catch(e){}
-  }
-  function parseXexToRam(bytes){
-    var pos=0, blocks=[], inits=[], run=0, loaded=0, bad='NO';
-    if(bytes[0]===0xFF && bytes[1]===0xFF)pos=2;
-    while(pos+4<=bytes.length){
-      while(pos+2<=bytes.length && bytes[pos]===0xFF && bytes[pos+1]===0xFF)pos+=2;
-      if(pos+4>bytes.length)break;
-      var st=(bytes[pos]|(bytes[pos+1]<<8))&65535;
-      var en=(bytes[pos+2]|(bytes[pos+3]<<8))&65535;
-      pos+=4;
-      if(en<st || pos+(en-st+1)>bytes.length){bad='BAD_SEG $'+hx(st,4)+'-$'+hx(en,4)+' at '+(pos-4);break;}
-      var len=en-st+1;
-      for(var i=0;i<len;i++){var a=(st+i)&65535;ram[a]=bytes[pos+i]&255;markLoaded(a);}
-      if(st<=0x02E0 && en>=0x02E1)run=(ram[0x02E0]|(ram[0x02E1]<<8))&65535;
-      if(st<=0x02E2 && en>=0x02E3){var init=(ram[0x02E2]|(ram[0x02E3]<<8))&65535;if(init)inits.push(init);}
-      blocks.push('$'+hx(st,4)+'-$'+hx(en,4)+' '+len);
-      loaded+=len;
-      pos+=len;
-    }
-    if(!inits.length){var init2=(ram[0x02E2]|(ram[0x02E3]<<8))&65535;if(init2)inits.push(init2);}
-    if(!run){var run2=(ram[0x02E0]|(ram[0x02E1]<<8))&65535;if(run2)run=run2;}
-    lastPayloadInfo='XEX parsed bytes '+bytes.length+' loaded '+loaded+' blocks '+blocks.join(' ')+' RUNAD '+(run?'$'+hx(run,4):'--')+' INITAD '+(inits.length?inits.map(function(a){return '$'+hx(a,4);}).join(','):'--')+' bad '+bad;
-    if(bad!=='NO')throw new Error(lastPayloadInfo);
-    return {blocks:blocks,inits:inits,run:run,loaded:loaded,bad:bad};
-  }
-  function setPortB(v){
-    v&=255;
-    try{if(typeof piaPortBCtl!=='undefined')piaPortBCtl=0x04;if(typeof piaPortBDDR!=='undefined')piaPortBDDR=0xFF;if(typeof piaPortBOut!=='undefined')piaPortBOut=v;if(typeof portbValue!=='undefined')portbValue=v;if(ram){ram[0xD301]=v;ram[0xD303]=0x04;}}catch(e){}
-    try{if(typeof fix227SyncPortB==='function')fix227SyncPortB('FIX330 set PORTB $'+hx(v,2));}catch(e){}
-  }
-  function installOsGate(){
-    try{
-      if(window.fix330OsGateInstalled || typeof optionalOsRomActiveForAddr!=='function')return;
-      var old=optionalOsRomActiveForAddr;
-      optionalOsRomActiveForAddr=function(a){
+      if(window.fix331BasicRomGateInstalled)return;
+      var old=optionalBasicRomActiveForAddr;
+      window.fix331OldOptionalBasicRomActiveForAddr=old;
+      optionalBasicRomActiveForAddr=function(a){
         a&=65535;
-        if(window.fix330TurboActive && ((a>=0xC000&&a<=0xCFFF)||(a>=0xD800&&a<=0xFFFF))){
-          var pb=0xFF;try{pb=(typeof portbValue!=='undefined'?portbValue:(ram?ram[0xD301]:0xFF))&255;}catch(e){}
-          if((pb&1)===0)return false;
+        if(a>=0xA000 && a<=0xBFFF && turboActive()){
+          // Real XL/XE rule: PORTB bit1 HIGH means built-in BASIC ROM OFF. Turbo Basic must be able to use RAM at A000-BFFF.
+          if((pb()&0x02)!==0){window.fix331BasicGateLast='BASIC ROM OFF by PORTB $'+hx(pb(),2)+' addr $'+hx(a,4); return false;}
         }
-        return old.call(this,a);
+        return old.apply(this,arguments);
       };
-      window.fix330OsGateInstalled=true;
-    }catch(e){log330('OS gate install error '+(e&&e.message?e.message:e));}
+      window.fix331BasicRomGateInstalled=true;
+      window.fix331BasicGateLast='installed: A000-BFFF follows PORTB bit1 during Turbo/XEX';
+      log331('BASIC-ROM gate installed: A000-BFFF follows PORTB bit1 for Turbo/XEX.');
+    }catch(e){log331('BASIC-ROM gate install error '+(e&&e.message?e.message:e));}
   }
-  function installD01FOverride(){
+  function setTurboMode(label){
+    window.fix331TurboActive=true; window.fix328TurboActive=true; window.fix328TurboMode=true;
+    try{activeXexProfile='generic'; currentXexName='TURBO BASIC XL 1.5 CLEAN XEX FIX331 / BASIC-ROM PORTB gate';}catch(e){}
+    try{fix154RealOsBootMode=false; fix197TotalPurgeActive=false; fix192StreamInitActive=true; fix192StreamInitNext=true;}catch(e){}
+    try{fix215PureRomMode=false; fix225PureHardwareMode=false; fix215PureSelfTestMode=false; fix232Mode='xex';}catch(e){}
+    try{if(typeof fix230ColdBasicWindow!=='undefined')fix230ColdBasicWindow=false; if(typeof fix230ColdSelftestWindow!=='undefined')fix230ColdSelftestWindow=false;}catch(e){}
+    try{if(ram){ram[0x02FC]=0xFF;ram[0x0284]=1;ram[0xD01F]=0x02;}}catch(e){}
+    try{input.start=true;input.option=true;input.select=false;input.fire=false;input.key=0xFF;if(typeof syncInputShadows==='function')syncInputShadows();}catch(e){}
+    setTimeout(function(){try{input.start=false;input.option=false;if(ram)ram[0xD01F]=0x07;if(typeof syncInputShadows==='function')syncInputShadows();if(typeof renderInput==='function')renderInput();}catch(e){}},900);
+  }
+  function patchRealLoader(){
     try{
-      if(window.fix330D01FOverrideInstalled || typeof CPU6502==='undefined' || !CPU6502.prototype || !CPU6502.prototype.r)return;
-      var oldR=CPU6502.prototype.r;
-      CPU6502.prototype.r=function(a){
-        a&=65535;
-        if(a===0xD01F && window.fix330StartOptionUntilMs && Date.now()<window.fix330StartOptionUntilMs){
-          window.fix330StartOptionReadLast='D01F=$02 PC $'+hx((this.pc||0)&65535,4);
-          return 0x02;
-        }
-        return oldR.call(this,a);
-      };
-      window.fix330D01FOverrideInstalled=true;
-    }catch(e){log330('D01F override error '+(e&&e.message?e.message:e));}
-  }
-  function holdStartOption(ms){
-    var until=Date.now()+(ms||2200);
-    window.fix330StartOptionUntilMs=until;
-    function tick(){
-      if(Date.now()>until){try{if(window.fix330OwnedInput&&input){input.start=false;input.option=false;window.fix330OwnedInput=false;if(ram)ram[0xD01F]=0x07;}}catch(e){}return;}
-      try{if(input){input.start=true;input.option=true;input.select=false;window.fix330OwnedInput=true;}if(ram)ram[0xD01F]=0x02;}catch(e){}
-      setTimeout(tick,16);
-    }
-    tick();
-  }
-  function copyPages(src,dst,pages,zeroSrc){
-    var len=(pages&255)*256;src&=65535;dst&=65535;
-    for(var i=0;i<len;i++){var v=ram[(src+i)&65535]&255;var a=(dst+i)&65535;ram[a]=v;markLoaded(a);if(zeroSrc)ram[(src+i)&65535]=0;}
-    return len;
-  }
-  function exactTurboReloc(){
-    setPortB(0xFE);
-    var moved=0;
-    moved+=copyPages(0x4900,0x2000,0x17,true);
-    moved+=copyPages(0x6200,0xC000,0x0C,true);
-    moved+=copyPages(0x6E00,0xD800,0x08,true);
-    moved+=copyPages(0x7600,0xE400,0x1C,true);
-    moved+=copyPages(0x9200,0x0B00,0x07,true);
-    setPortB(0xFF);
-    lastRelocInfo='exact reloc moved '+moved+' bytes: 4900->2000,6200->C000,6E00->D800,7600->E400,9200->0B00; PORTB back $FF';
-  }
-  function seedOsVectors(reason){
-    try{
-      if(!ram)return;
-      ram[0x0216]=0x30;ram[0x0217]=0xC0;
-      if(!(ram[0x0222]||ram[0x0223]||ram[0x0224]||ram[0x0225]))ram[0xD40E]=0x00;
-      lastVectorInfo='VIMIRQ $0216=$30 $0217=$C0 NMIEN=$'+hx(ram[0xD40E]||0,2)+' reason '+(reason||'');
-    }catch(e){lastVectorInfo='seed error '+(e&&e.message?e.message:e);}
-  }
-  function wrapWarmReset(){
-    try{
-      var old=window.fix315WarmResetBasic;
-      if(old && old._fix330Wrapped)return;
-      if(typeof old==='function'){
-        var wrapped=function(ev,reason){
-          var r=old.call(this,ev,reason||'FIX330 warm reset');
-          seedOsVectors('after warm reset');
-          try{if(typeof updateRomStatusLine==='function')updateRomStatusLine('FIX330 warm reset seeded VIMIRQ $C030');}catch(e){}
-          log330('Warm RESET BASIC seed hotov: '+lastVectorInfo);
+      if(!realFix328 && typeof window.fix328StartTurboBasic==='function' && !window.fix328StartTurboBasic._fix331Wrapper)realFix328=window.fix328StartTurboBasic;
+      if(realFix328 && !window.fix331LoaderWrapped){
+        var wrapper=function(ev){
+          installBasicRomGate(); setTurboMode('start');
+          var r=realFix328.call(this,ev||null);
+          setTurboMode('after-real-loader');
+          window.fix331PostStartInfo='after loader PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--')+' PORTB $'+hx(pb(),2)+' BASIC_GATE '+(window.fix331BasicGateLast||'--')+' MEM_B000 '+readBlock(0xB000,8);
+          log331('Turbo start přes zachovaný FIX328 loader + BASIC-ROM gate. '+window.fix331PostStartInfo);
           return r;
         };
-        wrapped._fix330Wrapped=true;
-        window.fix315WarmResetBasic=wrapped;
-        try{fix315WarmResetBasic=wrapped;resetPureHardwareFix226=wrapped;}catch(e){}
+        wrapper._fix331Wrapper=true;
+        window.fix328StartTurboBasic=wrapper;
+        window.fix331StartTurboBasic=wrapper;
+        window.fix330StartTurboBasic=wrapper;
+        window.fix329StartTurboBasic=wrapper;
+        window.fix315StartTurboBasic=wrapper;
+        window.fix331LoaderWrapped=true;
       }
-    }catch(e){log330('warm reset wrap error '+(e&&e.message?e.message:e));}
+    }catch(e){log331('patch loader error '+(e&&e.message?e.message:e));}
   }
-  function forceXexMode(){
-    window.fix330TurboActive=true;window.fix328TurboActive=true;
-    try{activeXexProfile='generic';currentXexName='TURBO BASIC XL 1.5 CLEAN XEX FIX330 / direct parser no recursion';}catch(e){}
-    try{fix154RealOsBootMode=false;fix197TotalPurgeActive=false;fix192StreamInitActive=true;fix192StreamInitNext=true;}catch(e){}
-    try{fix215PureRomMode=false;fix225PureHardwareMode=false;fix215PureSelfTestMode=false;fix232Mode='xex';}catch(e){}
-    try{if(typeof fix230ColdBasicWindow!=='undefined')fix230ColdBasicWindow=false;if(typeof fix230ColdSelftestWindow!=='undefined')fix230ColdSelftestWindow=false;}catch(e){}
-  }
-  function clearRunQueues(){
-    try{if(typeof fullStop==='function')fullStop();}catch(e){}
-    try{if(typeof clearManagedTimers==='function')clearManagedTimers();}catch(e){}
-    try{if(typeof fix222CancelFastBasicInput==='function')fix222CancelFastBasicInput('FIX330 before TBXL');}catch(e){}
-    try{if(typeof atariKeyQueue!=='undefined'&&atariKeyQueue)atariKeyQueue.length=0;}catch(e){}
-    try{if(typeof input!=='undefined'&&input){input.key=0xFF;input.fire=false;input.start=false;input.option=false;input.select=false;}}catch(e){}
-  }
-  function startTbxl(ev){
-    stop(ev);turboClicks++;
-    var now=Date.now();
-    if(window.fix330TurboBusy && now-window.fix330TurboBusy<1600){log330('duplicitni TBXL klik ignorovan - jeden start uz bezi.');return false;}
-    window.fix330TurboBusy=now;
-    try{
-      if(!ram)throw new Error('RAM unavailable');
-      installOsGate();installD01FOverride();clearRunQueues();
-      try{if(typeof fix225ResetBareHardware==='function')fix225ResetBareHardware(false,'FIX330 TBXL clean hardware base');}catch(e){}
-      clearRunQueues();forceXexMode();holdStartOption(2600);
-      var bytes=getEmbeddedTurboBytes();
-      var info=parseXexToRam(bytes);
-      exactTurboReloc();
-      seedOsVectors('TBXL start');
-      try{segments=info.blocks.slice();pendingInitAddrs=info.inits.slice();ranInitAddrs=[0x6132];activeEntryWasInit=true;}catch(e){}
-      try{xexInfo={run:info.run||0,inits:info.inits.slice(),entry:0x6179,warnings:[],bad:false};runAddress=0x6179;}catch(e){}
-      try{fix195NativeXexInfo='FIX330 TBXL direct parser OK '+lastPayloadInfo+' / '+lastRelocInfo;fix192LoaderInfo=fix195NativeXexInfo;}catch(e){}
-      try{if(cpu){cpu.trap=false;cpu.trapMsg='';cpu.trace=[];cpu.pc=0x6179;cpu.steps=0;cpu.p=(cpu.p|0x04)&255;}}catch(e){}
-      try{if(!playMode && typeof startPlaying==='function')startPlaying();else if(!playMode){playMode=true;requestAnimationFrame(playLoop);}}catch(e){}
-      log330('TBXL start OK: PC=$6179, '+lastPayloadInfo+', '+lastRelocInfo+', MEM_2000 '+readBlock(0x2000,8)+', MEM_0B00 '+readBlock(0x0B00,8));
-    }catch(e){
-      log330('TBXL ERROR '+(e&&e.message?e.message:e));
-    }
-    setTimeout(function(){window.fix330TurboBusy=0;},1800);
+  function turboWarmReset(ev){
+    if(!turboActive())return true;
+    stop(ev); warmClicks++;
+    installBasicRomGate(); setTurboMode('turbo-warm-reset-fix333-restart');
+    try{if(typeof window.fix330StartTurboBasic==='function'){window.fix333WarmRestart='Turbo warm reset restarted clean Turbo loader, no OS WARMSV $E474'; log331('FIX333 TEPLÝ RESET v Turbo režimu: neskáču na OS WARMSV $E474, restartuji čistě Turbo XEX loader.'); return window.fix330StartTurboBasic(null);}}catch(e){log331('FIX333 warm Turbo restart error '+(e&&e.message?e.message:e));}
+    try{if(cpu){cpu.trap=false;cpu.trapMsg='';cpu.trace=[];cpu.pc=0x6179;cpu.p=(cpu.p|0x04)&255;}}catch(e){}
+    try{if(!playMode && typeof startPlaying==='function')startPlaying(); else if(!playMode){playMode=true;requestAnimationFrame(playLoop);}}catch(e){}
+    log331('FIX333 TEPLÝ RESET fallback: PC $6179, bez BASIC READY smyčky.');
     return false;
   }
   function snapshot(ev){
-    stop(ev);snapClicks++;
+    stop(ev); snapClicks++;
     var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG);
-    arr.push('time='+new Date().toISOString());
-    arr.push('build='+TAG);
-    arr.push('KODY JSOU STEJNE');
-    arr.push('FIX330_FIX329_RECURSION_REMOVED=YES');
-    arr.push('FIX330_DIRECT_TBXL_XEX_PARSER=YES');
-    arr.push('FIX330_BASIC_WARM_RESET_VIMIRQ_SEED=YES');
-    arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');
-    arr.push('');
-    arr.push('[FIX330 UI]');
-    arr.push('title='+(document.title||''));arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--'));
-    arr.push('cleanRuns='+cleanRuns);arr.push('turboClicks='+turboClicks);arr.push('snapClicks='+snapClicks);arr.push('lastInfo='+lastInfo);
-    arr.push('');
-    arr.push('[TBXL]');
-    arr.push('payload='+lastPayloadInfo);arr.push('reloc='+lastRelocInfo);arr.push('vectors='+lastVectorInfo);
-    arr.push('D01F_OVERRIDE='+(window.fix330D01FOverrideInstalled?'YES':'NO'));arr.push('startOptionReadLast='+(window.fix330StartOptionReadLast||'--'));
-    arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--'));arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--'));
-    arr.push('ENTRY='+(typeof xexInfo!=='undefined'&&xexInfo?'$'+hx(xexInfo.entry||0,4):'--'));arr.push('RUNAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.run?'$'+hx(xexInfo.run,4):'--'));arr.push('INITAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--'));
-    arr.push('PORTB='+(typeof portbValue!=='undefined'?'$'+hx(portbValue,2):'--'));arr.push('RAM_D301='+(ram?'$'+hx(ram[0xD301]||0,2):'--'));arr.push('RAM_D40E='+(ram?'$'+hx(ram[0xD40E]||0,2):'--'));arr.push('VIMIRQ='+(ram?'$'+hx((ram[0x0216]|(ram[0x0217]<<8))&65535,4):'--'));
-    arr.push('MEM_02E2='+(ram?readBlock(0x02E2,2):'--'));arr.push('MEM_4980='+(ram?readBlock(0x4980,16):'--'));arr.push('MEM_6132='+(ram?readBlock(0x6132,16):'--'));arr.push('MEM_0B00='+(ram?readBlock(0x0B00,16):'--'));arr.push('MEM_2000='+(ram?readBlock(0x2000,16):'--'));arr.push('MEM_C018='+(ram?readBlock(0xC018,16):'--'));
-    arr.push('');
-    arr.push('[CPU]');
-    arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable');
-    arr.push('');
-    arr.push('[DOM LOG]');
-    arr.push((id('log')&&id('log').textContent)||'--');
-    var out=arr.join('\n');
-    try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log');if(pre)pre.textContent=out;}catch(e){}
-    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX330-tbxl-core-reset-log-'+Date.now(),out);else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX330-tbxl-core-reset-log');}catch(e){log330('save log error '+(e&&e.message?e.message:e));}
-    log330('FIX330 TBXL CORE LOG ulozen.');
-    return false;
+    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
+    arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
+    arr.push('FIX331_BASIC_ROM_PORTB_GATE=YES'); arr.push('FIX331_KEEP_FIX330_UI_TXT_WARM_BASE=YES'); arr.push('FIX331_TURBO_WARM_RESET_XEX_MODE=YES'); arr.push('FIX331_NO_SCREEN_PAINT=YES');
+    arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
+    arr.push(''); arr.push('[FIX331 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('keyboardTitle='+(document.querySelector('#atariKeyboardDock h2')?document.querySelector('#atariKeyboardDock h2').textContent:'--')); arr.push('lastInfo='+(window.fix331LastInfo||'--')); arr.push('postStart='+(window.fix331PostStartInfo||'--'));
+    arr.push(''); arr.push('[PORTB/BASIC-ROM GATE]'); arr.push('BASIC_ROM_GATE_INSTALLED='+(window.fix331BasicRomGateInstalled?'YES':'NO')); arr.push('BASIC_GATE_LAST='+(window.fix331BasicGateLast||'--')); arr.push('PORTB_VALUE='+(typeof portbValue!=='undefined'?'$'+hx(portbValue,2):'--')); arr.push('RAM_D301='+(typeof ram!=='undefined'&&ram?'$'+hx(ram[0xD301]||0,2):'--')); arr.push('BASIC_ROM_A000_ACTIVE='+(typeof optionalBasicRomActiveForAddr==='function'?(optionalBasicRomActiveForAddr(0xA000)?'YES':'NO'):'--'));
+    arr.push(''); arr.push('[START OPTION]'); arr.push('D01F='+(typeof ram!=='undefined'&&ram?'$'+hx(ram[0xD01F]||0,2):'--')); arr.push('input.start='+(typeof input!=='undefined'&&input?String(!!input.start):'--')); arr.push('input.option='+(typeof input!=='undefined'&&input?String(!!input.option):'--'));
+    arr.push(''); arr.push('[XEX/TURBO]'); arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--')); arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--')); arr.push('ENTRY='+(typeof xexInfo!=='undefined'&&xexInfo?'$'+hx(xexInfo.entry||0,4):'--')); arr.push('RUNAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.run?'$'+hx(xexInfo.run,4):'--')); arr.push('INITAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--'));
+    arr.push('MEM_02E2='+(typeof ram!=='undefined'&&ram?readBlock(0x02E2,2):'--')); arr.push('MEM_6132='+(typeof ram!=='undefined'&&ram?readBlock(0x6132,16):'--')); arr.push('MEM_0B00='+(typeof ram!=='undefined'&&ram?readBlock(0x0B00,16):'--')); arr.push('MEM_2000='+(typeof ram!=='undefined'&&ram?readBlock(0x2000,16):'--')); arr.push('MEM_2100='+(typeof ram!=='undefined'&&ram?readBlock(0x2100,16):'--')); arr.push('MEM_A000='+(typeof ram!=='undefined'&&ram?readBlock(0xA000,16):'--')); arr.push('MEM_B000='+(typeof ram!=='undefined'&&ram?readBlock(0xB000,16):'--')); arr.push('CORE LOADER INFO='+(typeof fix195NativeXexInfo!=='undefined'?fix195NativeXexInfo:'--')); arr.push('STREAM LOADER INFO='+(typeof fix192LoaderInfo!=='undefined'?fix192LoaderInfo:'--'));
+    arr.push(''); arr.push('[BASIC/TXT PANEL]'); arr.push('TXT_PICKER_BUTTON='+(id('fix313PickBtn')||id('fix289PickBasicFileBtn')?'YES':'NO')); arr.push('TXT_TEXTAREA='+(id('fix313Text')||id('fix240BasicFastText')?'YES':'NO')); arr.push('TXT_SEND_NO_RUN='+(id('fix313SendNoRun')||id('fix289SendBasicBtn')?'YES':'NO')); arr.push('TXT_SEND_RUN='+(id('fix313SendRun')||id('fix289SendBasicRunBtn')?'YES':'NO'));
+    arr.push(''); arr.push('[CPU]'); arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable');
+    arr.push(''); arr.push('[DOM LOG]'); arr.push((id('log')&&id('log').textContent)||'--');
+    var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX331-turbo-xex-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX331-turbo-xex-log');}catch(e){log331('save report error '+(e&&e.message?e.message:e));} log331('SNAPSHOT TURBO/XEX LOG FIX331 hotov.'); return false;
   }
-  function bind(el,fn){
-    if(!el)return null;
-    var c=el.cloneNode(true);
-    c.onclick=fn;
-    ['click','pointerup','touchend'].forEach(function(n){try{c.addEventListener(n,fn,{passive:false});}catch(e){}});
-    if(el.parentNode)el.parentNode.replaceChild(c,el);
-    return c;
-  }
+  function btnText(b){return String((b&&b.textContent)||'').replace(/\s+/g,' ').trim();}
+  function isTurboSnapshot(b){var t=btnText(b), idv=String((b&&b.id)||''); return /SNAPSHOT.*TURBO|TURBO\/XEX/i.test(t)||/fix(328|329|330).*Snap/i.test(idv);}
+  function isWarmButton(b){var t=btnText(b), idv=String((b&&b.id)||''); return /TEPL[ÝY].*RESET|WARM RESET|RESET BASIC/i.test(t)||/RESET/i.test(idv)&&/atari/i.test(String((b&&b.getAttribute&&b.getAttribute('data-atkey'))||''));}
+  function capture(ev){var b=null; try{b=ev.target&&ev.target.closest?ev.target.closest('button'):null;}catch(e){} if(!b)return; if(isTurboSnapshot(b))return snapshot(ev); if(isWarmButton(b)&&turboActive())return turboWarmReset(ev);}
   function cleanUi(){
-    cleanRuns++;
-    try{document.title='EMU-09 '+TAG;var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+TAG;var p=document.querySelector('.brandText p');if(p)p.textContent='FIX330: TBXL start ma vlastni parser, warm RESET seeduje VIMIRQ $C030. Bez fake READY/LOAD/SELF TEST, bez screen paint a bez RAM programu.';}catch(e){}
-    try{var kh=document.querySelector('#atariKeyboardDock h2');if(kh)kh.textContent='Mobilni Atari klavesnice FIX330';}catch(e){}
-    try{['fix328XexPanel','fix329XexPanel','fix315TurboStatus'].forEach(function(x){var e=id(x);if(e){e.style.display='none';e.setAttribute('aria-hidden','true');}});}catch(e){}
-    var panel=id('fix330XexPanel');
-    if(!panel){
-      panel=document.createElement('section');panel.className='card';panel.id='fix330XexPanel';
-      var anchor=id('fix313TxtPanel')||id('fix240FastBasicBox')||document.querySelector('#atariKeyboardDock')||document.querySelector('.wrap');
-      if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling);else document.body.appendChild(panel);
-    }
-    panel.style.display='block';panel.removeAttribute('aria-hidden');
-    if(panel.getAttribute('data-fix330-ready')!=='YES'){
-      panel.innerHTML='<h2>3) TBXL 1.5 - FIX330 core start</h2>'+
-        '<p>Samostatny start Turbo Basicu bez stareho FIX329 capture volani. Nacte Atari binarni segmenty do RAM, provede Turbo relokaci a pusti CPU na $6179.</p>'+
-        '<div id="fix330Status" class="fileLine">'+lastInfo+'</div>'+
-        '<button id="fix330TbxlBtn" type="button">1) SPUSTIT TBXL 1.5 - FIX330</button>'+
-        '<button id="fix330LogBtn" type="button" class="secondary compact">2) ULOZIT FIX330 CORE LOG</button>'+
-        '<button id="fix330WarmBtn" type="button" class="secondary compact">TEPLY RESET BASIC - LIST ZUSTANE</button>';
-      panel.setAttribute('data-fix330-ready','YES');
-    }
-    bind(id('fix330TbxlBtn'),startTbxl);bind(id('fix330LogBtn'),snapshot);
-    bind(id('fix330WarmBtn'),function(ev){stop(ev);if(typeof window.fix315WarmResetBasic==='function')return window.fix315WarmResetBasic(ev,'FIX330 panel warm reset');seedOsVectors('manual warm button');log330('Warm RESET handler missing, only vectors seeded: '+lastVectorInfo);return false;});
-    try{window.fix330StartTurboBasic=startTbxl;window.fix330Snapshot=snapshot;}catch(e){}
+    installBasicRomGate(); patchRealLoader();
+    try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX332: stabilní BASIC/TXT/warm reset zůstává; Turbo po titulku čistí zaseknutý RETURN/READY latch. Bez fake READY/LOAD.';}catch(e){}
+    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX334'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX332: TXT/BAS přes KGETCH/ATASCII, teplý RESET drží LIST; po Turbo startu se čistí CH/KBCODE/RETURN latch proti READY smyčce.';}catch(e){}
+    try{var panel=id('fix329XexPanel')||id('fix328XexPanel'); if(panel){var h2=panel.querySelector('h2'); if(h2)h2.textContent='3) Turbo Basic XL 1.5 — čistý XEX loader FIX333'; var p2=panel.querySelector('p'); if(p2)p2.textContent='FIX331 doplňuje hlavně BASIC-ROM gate: v Turbo/XEX režimu $A000-$BFFF respektuje PORTB bit1. Žádný fake LOAD, žádný screen paint, žádný RAM program inject.'; var tb=panel.querySelector('button[data-fix329="turbo"],button[data-fix328="turbo"],#fix329TurboBtn,#fix328TurboBtn'); if(tb)tb.textContent='1) START+OPTION → TURBO BASIC XL 1.5 XEX — FIX333'; var sn=panel.querySelector('button[data-fix329="snapshot"],button[data-fix328="snapshot"],#fix329XexSnap,#fix328XexSnap'); if(sn){sn.textContent='2) SNAPSHOT TURBO/XEX LOG FIX333'; sn.onclick=snapshot;}}}catch(e){}
   }
-  function start(){
-    wrapWarmReset();installD01FOverride();cleanUi();
-    [60,180,420,900,1800,3200,5600,7200].forEach(function(ms){setTimeout(function(){wrapWarmReset();cleanUi();},ms);});
-    log330('FIX330 installed: old FIX329 Turbo recursion is bypassed; use SPUSTIT TBXL 1.5 - FIX330.');
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false);else start();
+  function start(){installBasicRomGate(); patchRealLoader(); try{document.addEventListener('click',capture,true);document.addEventListener('touchend',capture,true);document.addEventListener('pointerup',capture,true);}catch(e){} cleanUi(); [80,250,700,1500,3200].forEach(function(ms){setTimeout(function(){patchRealLoader();cleanUi();},ms);}); log331('FIX331 installed: Turbo BASIC-ROM gate přes PORTB bit1, FIX330 tlačítka ponechána.');}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
 })();
 </script>
 
+
 <script>
-/* FIX331: Turbo Basic reaches READY with FIX330; add ATASCII input bridge without changing TBXL memory map. */
+/* FIX332: Turbo Basic title/READY repeat fix. Does NOT fake READY/LOAD and does NOT write program to RAM.
+   It only releases stale keyboard/RETURN/CONSOL latches after the real Turbo XEX loader runs. */
 (function(){
   'use strict';
-  var TAG='FIX331_TBXL_ATASCII_INPUT';
-  var origStart=null, origSnap=null, installs=0, starts=0, snaps=0;
-  var origTap=null, origPump=null, origServiceKbd=null, origR=null, origSync=null;
-  var lastInputInfo='FIX331 waiting: TBXL keyboard will use ATASCII bridge after start.';
-  function id(x){return document.getElementById(x);}
-  function hx(v,n){try{return ((v>>>0)&((n===2)?255:65535)).toString(16).toUpperCase().padStart(n,'0');}catch(e){return '0000'.slice(0,n);}}
-  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return false;}
-  function status(msg){
-    lastInputInfo=String(msg||lastInputInfo);
-    try{var s=id('fix330Status');if(s)s.textContent=lastInputInfo;}catch(e){}
-    try{var b=id('fix331InputBadge');if(b)b.textContent=lastInputInfo;}catch(e){}
-    try{if(typeof log==='function')log('FIX331 '+lastInputInfo);}catch(e){}
-    try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX331: '+lastInputInfo);}catch(e){}
+  var TAG='FIX334_TURBO_REAL_CIOV_KEYBOARD_WAIT';
+  var old331=window.fix331StartTurboBasic, old330=window.fix330StartTurboBasic, old328=window.fix328StartTurboBasic, oldSnap331=window.fix331Snapshot, lastStartMs=0, cleanTimer=0, cleanUntil=0, turboStarts=0, snapClicks=0, warmClicks=0;
+  function id(x){return document.getElementById(x);} 
+  function hx(v,n){try{if(typeof hex==='function')return hex((v||0)&(n>=4?65535:255),n);}catch(e){} var s=((v||0)&(n>=4?65535:255)).toString(16).toUpperCase(); while(s.length<n)s='0'+s; return s;}
+  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
+  function log332(msg){msg=String(msg||''); window.fix332LastInfo=msg; try{if(typeof log==='function')log('FIX332 '+msg);else{var l=id('log'); if(l)l.textContent='FIX332 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX332: '+msg);}catch(e){} try{var s=id('fix329TurboStatus')||id('fix328TurboStatus')||id('fix315TurboStatus')||id('fix313XexStatus'); if(s)s.textContent=msg;}catch(e){} }
+  function turboActive(){try{return !!(window.fix332TurboActive||window.fix331TurboActive||window.fix328TurboActive||/TURBO BASIC XL\s*1\.5/i.test(String(currentXexName||''))||String(fix232Mode||'')==='xex');}catch(e){return !!window.fix332TurboActive;}}
+  function readBlock(addr,len){try{var out=[],a=addr&65535; for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2)); return '$'+hx(addr,4)+' '+out.join(' ');}catch(e){return '$'+hx(addr,4)+' ERR';}}
+  function clearTurboLatches(reason){
+    try{if(input){input.start=false;input.option=false;input.select=false;input.fire=false;input.key=0xFF;}}catch(e){}
+    try{if(typeof atariKeyQueue!=='undefined' && atariKeyQueue)atariKeyQueue.length=0;}catch(e){}
+    try{if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF; if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF; if(typeof realOsKeyLast!=='undefined')realOsKeyLast=0xFF; if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=0xFF;}catch(e){}
+    try{if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false; if(typeof fix208BasicAutofeedQueue!=='undefined' && fix208BasicAutofeedQueue)fix208BasicAutofeedQueue.length=0;}catch(e){}
+    try{if(ram){ram[0x02FC]=0xFF; ram[0x02FB]=0xFF; ram[0xD209]=0xFF; ram[0xD20F]=0xFF; ram[0xD01F]=0x07;}}catch(e){}
+    try{if(typeof syncInputShadows==='function')syncInputShadows(); if(typeof renderInput==='function')renderInput();}catch(e){}
+    window.fix332LastLatch='LATCH CLEAR '+(reason||'')+' frame '+(typeof playFrameNo!=='undefined'?playFrameNo:'--')+' PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--')+' CH '+(ram?'$'+hx(ram[0x02FC]||0,2):'--')+' KBCODE '+(ram?'$'+hx(ram[0xD209]||0,2):'--')+' D01F '+(ram?'$'+hx(ram[0xD01F]||0,2):'--');
   }
-  function readBlock(addr,len){
-    try{var out=[],a=addr&65535;for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2));return '$'+hx(addr,4)+' '+out.join(' ');}catch(e){return '$'+hx(addr,4)+' ERR';}
-  }
-  function looksLikeTbxl(){
-    var n='';try{n=String(typeof currentXexName!=='undefined'?currentXexName:'');}catch(e){}
-    return !!window.fix331TbxlInputActive || /TURBO BASIC|TBXL/i.test(n) || (typeof xexInfo!=='undefined'&&xexInfo&&((xexInfo.entry|0)===0x6179));
-  }
-  function clearKeyLatch(reason){
-    try{
-      if(typeof input!=='undefined'&&input)input.key=0xFF;
-      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF;
-      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;
-      if(ram){ram[0x02FC]=0xFF;ram[0x02FB]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;}
-      lastInputInfo='TBXL ATASCII input active; latch clear '+(reason||'')+' PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--');
-    }catch(e){lastInputInfo='latch clear error '+(e&&e.message?e.message:e);}
-  }
-  function hasTbxlKey(){
-    try{return ((typeof realOsKeyOneShot!=='undefined'?(realOsKeyOneShot&255):0xFF)!==0xFF) || (ram&&((ram[0x02FC]||0xFF)&255)!==0xFF);}catch(e){return false;}
-  }
-  function armTbxlAtascii(label,atascii,ms){
-    try{
-      if(!cpu && typeof loadXex==='function')loadXex(true);
-      if(!playMode && typeof startPlaying==='function')startPlaying();
-      try{if(typeof ensureAudio==='function')ensureAudio();}catch(e){}
-      var a=atascii&255;
-      if(a===0xFF)return false;
-      var k=(typeof realOsKeycodeForAtasciiFix172==='function')?(realOsKeycodeForAtasciiFix172(a)&255):a;
-      if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=a;
-      if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=a;
-      if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=k;
-      if(typeof realOsKeyLast!=='undefined')realOsKeyLast=k;
-      if(typeof realOsKeyStamp!=='undefined')realOsKeyStamp=Date.now();
-      if(typeof input!=='undefined'&&input)input.key=0xFF;
-      if(ram){ram[0x02FB]=a;ram[0x02FC]=k;ram[0xD209]=k;}
-      try{if(typeof fix159RealOsKeyInfo!=='undefined')fix159RealOsKeyInfo='FIX331 TBXL key '+(label||'key')+' CH $'+hx(k,2)+' ATASCII $'+hx(a,2)+' frame '+(typeof playFrameNo!=='undefined'?playFrameNo:0);}catch(e){}
-      try{if(typeof syncInputShadows==='function')syncInputShadows();if(typeof renderInput==='function')renderInput();}catch(e){}
-      if(ms!==0){
-        var hold=ms||260;
-        if(typeof trackInputTimer==='function')trackInputTimer(setTimeout(function(){clearKeyLatch('timer '+(label||'key'));try{if(typeof syncInputShadows==='function')syncInputShadows();if(typeof renderInput==='function')renderInput();}catch(e){}},hold));
+  function startLatchClean(reason,ms,delay){
+    setTimeout(function(){
+      cleanUntil=Date.now()+(ms||4200);
+      function tick(){
+        clearTurboLatches(reason||'post Turbo');
+        if(Date.now()<cleanUntil){cleanTimer=setTimeout(tick,70);} else {cleanTimer=0; clearTurboLatches('post Turbo done'); log332('Turbo input latch release complete: '+(window.fix332LastLatch||''));}
       }
-      lastInputInfo='TBXL ATASCII armed '+(label||'key')+' CH $'+hx(k,2)+' A $'+hx(a,2);
-      return true;
-    }catch(e){status('arm TBXL key error '+(e&&e.message?e.message:e));return false;}
+      if(!cleanTimer)tick();
+    }, delay||0);
   }
-  function clearTbxlConsumed(where){
-    clearKeyLatch(where||'consumed');
-    try{if(typeof syncInputShadows==='function')syncInputShadows();if(typeof renderInput==='function')renderInput();}catch(e){}
+  function setTurboFlags(){
+    window.fix332TurboActive=true; window.fix331TurboActive=true; window.fix328TurboActive=true; window.fix328TurboMode=true;
+    try{activeXexProfile='generic'; currentXexName='TURBO BASIC XL 1.5 CLEAN XEX FIX332 / latch release after title';}catch(e){}
+    try{fix154RealOsBootMode=false; fix197TotalPurgeActive=false; fix192StreamInitActive=true; fix192StreamInitNext=true; fix232Mode='xex'; fix215PureRomMode=false; fix225PureHardwareMode=false; fix215PureSelfTestMode=false;}catch(e){}
   }
-  function installCoreBridge(){
-    try{
-      if(!origSync && typeof syncInputShadows==='function')origSync=syncInputShadows;
-      if(origSync && syncInputShadows!==sync331){
-        syncInputShadows=sync331;
-      }
-    }catch(e){}
-    try{
-      if(!origPump && typeof pumpAtariKeyQueue==='function')origPump=pumpAtariKeyQueue;
-      if(origPump && pumpAtariKeyQueue!==pump331){
-        pumpAtariKeyQueue=pump331;
-      }
-    }catch(e){}
-    try{
-      if(typeof CPU6502!=='undefined' && CPU6502.prototype){
-        if(!origServiceKbd && CPU6502.prototype.serviceAtariOsKeyboard)origServiceKbd=CPU6502.prototype.serviceAtariOsKeyboard;
-        if(origServiceKbd && CPU6502.prototype.serviceAtariOsKeyboard!==serviceKbd331)CPU6502.prototype.serviceAtariOsKeyboard=serviceKbd331;
-        if(!origR && CPU6502.prototype.r)origR=CPU6502.prototype.r;
-        if(origR && CPU6502.prototype.r!==read331)CPU6502.prototype.r=read331;
-      }
-    }catch(e){}
-  }
-  function sync331(){
-    if(origSync)origSync.apply(this,arguments);
-    try{
-      if(window.fix331TbxlInputActive && ram){
-        var k=(typeof realOsKeyOneShot!=='undefined'?(realOsKeyOneShot&255):0xFF);
-        var a=(typeof realOsAtasciiOneShot!=='undefined'?(realOsAtasciiOneShot&255):0xFF);
-        if(k!==0xFF){
-          ram[0x02FC]=k;ram[0xD209]=k;ram[0x02FB]=(a!==0xFF)?a:((typeof atariScanToAtascii==='function')?atariScanToAtascii(k):k);
-        }else{
-          ram[0x02FC]=0xFF;ram[0xD209]=0xFF;
-        }
-      }
-    }catch(e){}
-  }
-  function pump331(){
-    if(!looksLikeTbxl() || !window.fix331TbxlInputActive || !origPump)return origPump?origPump.apply(this,arguments):false;
-    try{
-      if(!atariKeyQueue || !atariKeyQueue.length){clearTbxlConsumed('queue empty');atariKeyTimer=0;return false;}
-      var item=atariKeyQueue.shift();
-      var code=(typeof item==='object'&&item)?(item.code&255):(item&255);
-      var gap=(typeof item==='object'&&item&&item.gap!==undefined)?(item.gap|0):150;
-      armTbxlAtascii('QUEUE',code,0);
-      atariKeyTimer=setTimeout(function(){clearTbxlConsumed('queue gap');atariKeyTimer=setTimeout(pumpAtariKeyQueue,Math.max(35,gap));},58);
-      return false;
-    }catch(e){status('TBXL queue error '+(e&&e.message?e.message:e));return false;}
-  }
-  function serviceKbd331(addr,fromJsr){
-    addr&=65535;
-    if(window.fix331TbxlInputActive && (addr===0xE420 || addr===0xE424)){
-      try{
-        var k=(typeof realOsKeyOneShot!=='undefined'?(realOsKeyOneShot&255):0xFF);
-        if(k===0xFF && this.m)k=(this.m[0x02FC]||0xFF)&255;
-        var a=(typeof realOsAtasciiOneShot!=='undefined'?(realOsAtasciiOneShot&255):0xFF);
-        if(a===0xFF && this.m)a=(this.m[0x02FB]||0xFF)&255;
-        if(a===0xFF && k!==0xFF)a=(typeof atariScanToAtascii==='function')?atariScanToAtascii(k):k;
-        if(k===0xFF){this.a=0;this.y=1;this.p|=2;}else{this.a=a&255;this.y=1;this.p&=~2;clearTbxlConsumed('OS keyboard vector $'+hx(addr,4));}
-        this.zn(this.a);
-        try{if(typeof fix121OsVectorInfo!=='undefined')fix121OsVectorInfo='FIX331 TBXL KBD $'+hx(addr,4)+' CH $'+hx(k,2)+' A $'+hx(this.a,2)+' frame '+(typeof playFrameNo!=='undefined'?playFrameNo:0);}catch(e){}
-        if(!fromJsr)return this.osRomReturnOrFallback('FIX331 TBXL KBD $'+hx(addr,4),false);
-        this.noteOsStub('FIX331 TBXL KBD $'+hx(addr,4),false,false);
-        return true;
-      }catch(e){status('service TBXL KBD error '+(e&&e.message?e.message:e));}
-    }
-    return origServiceKbd?origServiceKbd.call(this,addr,fromJsr):false;
-  }
-  function read331(a){
-    a&=65535;
-    if(window.fix331TbxlInputActive){
-      try{
-        if(a===0xD20F)return hasTbxlKey()?0xF7:0xFF;
-        if(a===0xD209){
-          var k=(typeof realOsKeyOneShot!=='undefined'?(realOsKeyOneShot&255):0xFF);
-          if(k!==0xFF)return k;
-          if(typeof realOsKeyStamp!=='undefined' && typeof realOsKeyLast!=='undefined' && Date.now()-realOsKeyStamp<70 && (realOsKeyLast&255)!==0xFF)return realOsKeyLast&255;
-          return 0xFF;
-        }
-        if(a===0x02FC){
-          var ch=(typeof realOsKeyOneShot!=='undefined'?(realOsKeyOneShot&255):0xFF);
-          if(ch!==0xFF){clearTbxlConsumed('raw CH read $02FC $'+hx(ch,2));return ch;}
-          return 0xFF;
-        }
-      }catch(e){status('read TBXL KBD error '+(e&&e.message?e.message:e));}
-    }
-    return origR?origR.call(this,a):0xFF;
-  }
-  function activateTbxlInput(reason){
-    try{
-      window.fix331TbxlInputActive=true;
-      installCoreBridge();
-      if(typeof fix232Mode!=='undefined')fix232Mode='tbxl-atascii';
-      if(typeof currentXexName!=='undefined')currentXexName='TURBO BASIC XL 1.5 CLEAN XEX FIX331 / direct parser + ATASCII input';
-      if(typeof installRealOsKeydefIdentityFix172==='function')installRealOsKeydefIdentityFix172();
-      clearKeyLatch(reason||'activate');
-      try{if(typeof syncInputShadows==='function')syncInputShadows();if(typeof renderInput==='function')renderInput();}catch(e){}
-      status('TBXL keyboard READY: ATASCII bridge ON, RETURN=$9B, profile '+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--')+'. '+(reason||''));
-    }catch(e){status('TBXL input activate error '+(e&&e.message?e.message:e));}
-  }
-  function captureOrig(){
-    try{
-      var s=window.fix330StartTurboBasic;
-      if(typeof s==='function' && s!==start331)origStart=s;
-      var q=window.fix330Snapshot;
-      if(typeof q==='function' && q!==snapshot331)origSnap=q;
-    }catch(e){}
-  }
-  function start331(ev){
-    stop(ev);starts++;
-    captureOrig();
-    var r=false, err='';
-    try{
-      if(typeof origStart==='function')r=origStart.call(this,null);
-      else throw new Error('original FIX330 start unavailable');
-    }catch(e){err=(e&&e.message?e.message:e);status('FIX331 start error '+err);}
-    setTimeout(function(){activateTbxlInput('after TBXL start 120ms '+(err?('err '+err):''));},120);
-    setTimeout(function(){activateTbxlInput('after TBXL start 900ms');},900);
-    setTimeout(function(){activateTbxlInput('after TBXL start 2400ms');},2400);
+  function callRealTurbo(ev){
+    var now=Date.now(); stop(ev);
+    if(now-lastStartMs<1800){log332('duplicitní Turbo klik ignorován; běží jeden XEX start.'); return false;}
+    lastStartMs=now; turboStarts++;
+    setTurboFlags();
+    // Before loader: clear stale RETURN from BASIC/TXT. Loader itself will hold START+OPTION.
+    clearTurboLatches('pre Turbo start');
+    var fn=old331||old330||old328;
+    var ret=false;
+    try{ if(typeof fn==='function')ret=fn.call(window,null); else log332('ERROR: real Turbo loader function missing'); }catch(e){log332('real Turbo loader error '+(e&&e.message?e.message:e));}
+    setTurboFlags();
+    // Do not clear immediately: START+OPTION must be visible to the real loader. Release stale key latches after the loader/title has started.
+    startLatchClean('post Turbo title/READY stale RETURN guard',5200,1050);
+    window.fix332PostStart='Turbo start '+turboStarts+' PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--')+' MEM_0B00 '+(typeof ram!=='undefined'&&ram?readBlock(0x0B00,8):'--')+' / no fake READY, no fake LOAD';
+    log332('Turbo start přes real loader + post-title latch release. '+window.fix332PostStart);
     return false;
   }
-  function key331(k,ms){
-    if(looksLikeTbxl()){
-      activateTbxlInput('before key '+String(k||''));
-      var asc=(typeof k==='number')?(k&255):((typeof realOsAtasciiForKeyFix172==='function')?realOsAtasciiForKeyFix172(k):0xFF);
-      if(asc===0xFF){status('unknown TBXL key '+String(k||''));return false;}
-      armTbxlAtascii(String(k||'key'),asc,ms||260);
-      return false;
-    }
-    try{return origTap.apply(this,arguments);}catch(e){status('key error '+(e&&e.message?e.message:e));return false;}
+  function turboWarmReset(ev){
+    if(!turboActive())return true;
+    stop(ev); warmClicks++; setTurboFlags(); clearTurboLatches('Turbo warm reset pre FIX333');
+    try{if(typeof window.fix330StartTurboBasic==='function'){log332('FIX333 warm reset in Turbo: restartuji Turbo loader, ne OS WARMSV $E474.'); return window.fix330StartTurboBasic(null);}}catch(e){log332('FIX333 warm restart error '+(e&&e.message?e.message:e));}
+    try{if(cpu){cpu.trap=false;cpu.trapMsg='';cpu.trace=[];cpu.pc=0x6179;cpu.p=(cpu.p|0x04)&255;}}catch(e){}
+    startLatchClean('Turbo warm reset READY spam guard FIX333',4200,80);
+    log332('FIX333 TEPLÝ RESET fallback: PC $6179, bez BASIC READY smyčky.');
+    return false;
   }
-  function installTapWrapper(){
-    try{
-      if(!origTap && typeof tapAtariKey==='function')origTap=tapAtariKey;
-      if(origTap && tapAtariKey!==key331)tapAtariKey=key331;
-      installCoreBridge();
-    }catch(e){}
-  }
-  function snapshot331(ev){
-    stop(ev);snaps++;
-    captureOrig();
+  function snapshot(ev){
+    stop(ev); snapClicks++;
     var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG);
-    arr.push('time='+new Date().toISOString());
-    arr.push('build='+TAG);
-    arr.push('KODY JSOU STEJNE');
-    arr.push('FIX331_TBXL_ATASCII_INPUT=YES');
-    arr.push('FIX330_LOADER_KEPT=YES');
-    arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');
-    arr.push('');
-    arr.push('[INPUT]');
-    arr.push('fix331TbxlInputActive='+(window.fix331TbxlInputActive?'YES':'NO'));
-    arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--'));
-    arr.push('fix232Mode='+(typeof fix232Mode!=='undefined'?fix232Mode:'--'));
-    arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--'));
-    arr.push('lastInputInfo='+lastInputInfo);
-    arr.push('realOsKeyOneShot='+(typeof realOsKeyOneShot!=='undefined'?'$'+hx(realOsKeyOneShot,2):'--'));
-    arr.push('realOsAtasciiOneShot='+(typeof realOsAtasciiOneShot!=='undefined'?'$'+hx(realOsAtasciiOneShot,2):'--'));
-    arr.push('fix159RealOsKeyInfo='+(typeof fix159RealOsKeyInfo!=='undefined'?fix159RealOsKeyInfo:'--'));
-    arr.push('fix172KeyboardMapInfo='+(typeof fix172KeyboardMapInfo!=='undefined'?fix172KeyboardMapInfo:'--'));
-    arr.push('CH_02FC='+(ram?'$'+hx(ram[0x02FC]||0,2):'--'));
-    arr.push('ATASCII_02FB='+(ram?'$'+hx(ram[0x02FB]||0,2):'--'));
-    arr.push('KBCODE_D209='+(ram?'$'+hx(ram[0xD209]||0,2):'--'));
-    arr.push('SKSTAT_D20F='+(ram?'$'+hx(ram[0xD20F]||0,2):'--'));
-    arr.push('');
-    arr.push('[TBXL]');
-    arr.push('ENTRY='+(typeof xexInfo!=='undefined'&&xexInfo?'$'+hx(xexInfo.entry||0,4):'--'));
-    arr.push('RUNAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.run?'$'+hx(xexInfo.run,4):'--'));
-    arr.push('INITAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--'));
-    arr.push('VIMIRQ='+(ram?'$'+hx((ram[0x0216]|(ram[0x0217]<<8))&65535,4):'--'));
-    arr.push('MEM_2000='+(ram?readBlock(0x2000,16):'--'));
-    arr.push('MEM_0B00='+(ram?readBlock(0x0B00,16):'--'));
-    arr.push('');
-    arr.push('[CPU]');
-    arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable');
-    arr.push('');
-    arr.push('[DOM LOG]');
-    arr.push((id('log')&&id('log').textContent)||'--');
-    var out=arr.join('\n');
-    try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log');if(pre)pre.textContent=out;}catch(e){}
-    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX331-tbxl-atascii-input-log-'+Date.now(),out);else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX331-tbxl-atascii-input-log');}catch(e){status('save log error '+(e&&e.message?e.message:e));}
-    status('FIX331 TBXL ATASCII log ulozen.');
+    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
+    arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
+    arr.push('FIX332_TURBO_TITLE_LATCH_RELEASE=YES'); arr.push('FIX332_READY_SPAM_GUARD=YES'); arr.push('FIX332_KEEP_FIX330_REAL_LOADER=YES'); arr.push('FIX332_NO_FAKE_READY=YES');
+    arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
+    arr.push(''); arr.push('[FIX332 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('keyboardTitle='+(document.querySelector('#atariKeyboardDock h2')?document.querySelector('#atariKeyboardDock h2').textContent:'--')); arr.push('turboStarts='+turboStarts); arr.push('snapClicks='+snapClicks); arr.push('warmClicks='+warmClicks); arr.push('lastInfo='+(window.fix332LastInfo||'--')); arr.push('lastLatch='+(window.fix332LastLatch||'--')); arr.push('postStart='+(window.fix332PostStart||'--'));
+    arr.push(''); arr.push('[INPUT LATCH]'); arr.push('input.start='+(typeof input!=='undefined'&&input?String(!!input.start):'--')); arr.push('input.option='+(typeof input!=='undefined'&&input?String(!!input.option):'--')); arr.push('input.key='+(typeof input!=='undefined'&&input?'$'+hx(input.key||0,2):'--')); arr.push('CH_02FC='+(ram?'$'+hx(ram[0x02FC]||0,2):'--')); arr.push('KBCODE_D209='+(ram?'$'+hx(ram[0xD209]||0,2):'--')); arr.push('SKSTAT_D20F='+(ram?'$'+hx(ram[0xD20F]||0,2):'--')); arr.push('CONSOL_D01F='+(ram?'$'+hx(ram[0xD01F]||0,2):'--'));
+    arr.push(''); arr.push('[XEX/TURBO]'); arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--')); arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--')); arr.push('fix232Mode='+(typeof fix232Mode!=='undefined'?fix232Mode:'--')); arr.push('PORTB_VALUE='+(typeof portbValue!=='undefined'?'$'+hx(portbValue,2):'--')); arr.push('RAM_D301='+(ram?'$'+hx(ram[0xD301]||0,2):'--')); arr.push('ENTRY='+(typeof xexInfo!=='undefined'&&xexInfo?'$'+hx(xexInfo.entry||0,4):'--')); arr.push('INITAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--')); arr.push('MEM_6132='+(ram?readBlock(0x6132,16):'--')); arr.push('MEM_0B00='+(ram?readBlock(0x0B00,16):'--')); arr.push('MEM_2000='+(ram?readBlock(0x2000,16):'--')); arr.push('MEM_2100='+(ram?readBlock(0x2100,16):'--')); arr.push('CORE LOADER INFO='+(typeof fix195NativeXexInfo!=='undefined'?fix195NativeXexInfo:'--')); arr.push('STREAM LOADER INFO='+(typeof fix192LoaderInfo!=='undefined'?fix192LoaderInfo:'--'));
+    arr.push(''); arr.push('[BASIC/TXT PANEL]'); arr.push('TXT_PICKER_BUTTON='+(id('fix313PickBtn')||id('fix289PickBasicFileBtn')?'YES':'NO')); arr.push('TXT_TEXTAREA='+(id('fix313Text')||id('fix240BasicFastText')?'YES':'NO')); arr.push('TXT_SEND_NO_RUN='+(id('fix313SendNoRun')||id('fix289SendBasicBtn')?'YES':'NO')); arr.push('TXT_SEND_RUN='+(id('fix313SendRun')||id('fix289SendBasicRunBtn')?'YES':'NO'));
+    arr.push(''); arr.push('[CPU]'); arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable');
+    arr.push(''); arr.push('[DOM LOG]'); arr.push((id('log')&&id('log').textContent)||'--');
+    var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX333-turbo-xex-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX332-turbo-xex-log');}catch(e){log332('save report error '+(e&&e.message?e.message:e));} log332('SNAPSHOT TURBO/XEX LOG FIX333 hotov.'); return false;
+  }
+  function btnText(b){return String((b&&b.textContent)||'').replace(/\s+/g,' ').trim();}
+  function isTurboButton(b){var t=btnText(b), idv=String((b&&b.id)||''); return /START\+OPTION.*TURBO BASIC/i.test(t)||/fix(328|329|330|331).*Turbo/i.test(idv);} 
+  function isSnapButton(b){var t=btnText(b), idv=String((b&&b.id)||''); return /SNAPSHOT.*TURBO|TURBO\/XEX/i.test(t)||/fix(328|329|330|331).*Snap/i.test(idv);} 
+  function isWarmButton(b){var t=btnText(b), idv=String((b&&b.id)||''); return /TEPL[ÝY].*RESET|WARM RESET|RESET BASIC/i.test(t)||(/RESET/i.test(idv)&&/atari/i.test(String((b&&b.getAttribute&&b.getAttribute('data-atkey'))||'')));}
+  function capture(ev){var b=null; try{b=ev.target&&ev.target.closest?ev.target.closest('button'):null;}catch(e){} if(!b)return; if(isTurboButton(b))return callRealTurbo(ev); if(isSnapButton(b))return snapshot(ev); if(isWarmButton(b)&&turboActive())return turboWarmReset(ev);} 
+  function cleanUi(){
+    try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX333: reálný Turbo loader zůstává; po titulku OS klávesnice vrací NO KEY, aby READY nepadalo dokola. Bez fake READY/LOAD.';}catch(e){}
+    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX334'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX333: TXT/BAS přes KGETCH/ATASCII, teplý RESET drží LIST; Turbo má NO-KEY guard proti READY smyčce.';}catch(e){}
+    try{var panel=id('fix329XexPanel')||id('fix328XexPanel'); if(panel){var h2=panel.querySelector('h2'); if(h2)h2.textContent='3) Turbo Basic XL 1.5 — čistý XEX loader FIX333'; var p2=panel.querySelector('p'); if(p2)p2.textContent='FIX333 nepíše READY ani obraz. Jen po reálném Turbo XEX startu hlídá OS KGETCH/CH jako NO KEY, aby prázdný RETURN nespamoval READY.'; var tb=panel.querySelector('button[data-fix329="turbo"],button[data-fix328="turbo"],#fix329TurboBtn,#fix328TurboBtn,#fix315TurboBtn'); if(tb){tb.textContent='1) START+OPTION → TURBO BASIC XL 1.5 XEX — FIX333'; tb.onclick=callRealTurbo;} var sn=panel.querySelector('button[data-fix329="snapshot"],button[data-fix328="snapshot"],#fix329XexSnap,#fix328XexSnap,#fix315TurboSnap'); if(sn){sn.textContent='2) SNAPSHOT TURBO/XEX LOG FIX333'; sn.onclick=snapshot;}}}catch(e){}
+    try{window.fix332StartTurboBasic=callRealTurbo; window.fix331StartTurboBasic=callRealTurbo; window.fix330StartTurboBasic=callRealTurbo; window.fix329StartTurboBasic=callRealTurbo; window.fix315StartTurboBasic=callRealTurbo; window.fix332Snapshot=snapshot; window.fix331Snapshot=snapshot; window.fix330Snapshot=snapshot; window.fix315Snapshot=snapshot;}catch(e){}
+  }
+  function start(){try{document.addEventListener('click',capture,true);document.addEventListener('touchend',capture,true);document.addEventListener('pointerup',capture,true);}catch(e){} cleanUi(); [40,160,500,1100,2400,4200,6200].forEach(function(ms){setTimeout(cleanUi,ms);}); log332('installed: real loader kept, post-title RETURN/READY latch release active.');}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
+})();
+</script>
+
+
+<script>
+/* FIX334: Turbo Basic interactive prompt fix.
+   This does NOT draw READY, does NOT fake LOAD, and does NOT inject a BASIC program.
+   The previous Turbo loader already relocated and executed. The remaining bug was emulator-side:
+   the generic XEX OS shim returned OK from CIOV/KGETCH immediately, so Turbo BASIC received endless empty lines.
+   In Turbo mode, let real ATARIXL.ROM handle CIOV $E456 and KGETCH $E420/$E424 so console input can actually wait. */
+(function(){
+  'use strict';
+  var TAG='FIX334_TURBO_REAL_CIOV_KEYBOARD_WAIT';
+  function id(x){return document.getElementById(x);} 
+  function hx(v,n){try{if(typeof hex==='function')return hex((v||0)&(n>=4?65535:255),n);}catch(e){} var s=((v||0)&(n>=4?65535:255)).toString(16).toUpperCase(); while(s.length<n)s='0'+s; return s;}
+  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
+  function readBlock(addr,len){try{var out=[],a=addr&65535; for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2)); return '$'+hx(addr,4)+' '+out.join(' ');}catch(e){return '$'+hx(addr,4)+' ERR';}}
+  function log334(msg){msg=String(msg||''); window.fix334LastInfo=msg; try{if(typeof log==='function')log('FIX334 '+msg);else{var l=id('log'); if(l)l.textContent='FIX334 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX334: '+msg);}catch(e){} try{var s=id('fix329TurboStatus')||id('fix328TurboStatus')||id('fix315TurboStatus')||id('fix313XexStatus'); if(s)s.textContent=msg;}catch(e){} }
+  function turboMode(){try{return !!(window.fix334TurboActive||window.fix333TurboActive||window.fix332TurboActive||window.fix331TurboActive||window.fix328TurboActive||window.fix328TurboMode||/TURBO BASIC XL\s*1\.5/i.test(String(currentXexName||''))||String(fix232Mode||'')==='xex');}catch(e){return !!window.fix334TurboActive;}}
+  function clearLooseInput(reason){
+    try{if(input){input.start=false;input.option=false;input.select=false;input.fire=false; if(input.key===undefined)input.key=0xFF;}}catch(e){}
+    try{if(typeof atariKeyQueue!=='undefined' && atariKeyQueue)atariKeyQueue.length=0;}catch(e){}
+    try{if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF; if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF; if(typeof realOsKeyLast!=='undefined')realOsKeyLast=0xFF; if(typeof realOsAtasciiLast!=='undefined')realOsAtasciiLast=0xFF; if(typeof realOsKeyStamp!=='undefined')realOsKeyStamp=0;}catch(e){}
+    try{if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false; if(typeof fix208BasicAutofeedQueue!=='undefined' && fix208BasicAutofeedQueue)fix208BasicAutofeedQueue.length=0; if(typeof fix223FastKgetchOnly!=='undefined')fix223FastKgetchOnly=false;}catch(e){}
+    try{if(ram){ram[0x02FC]=0xFF; ram[0x02FB]=0xFF; ram[0xD209]=0xFF; ram[0xD20F]=0xFF; ram[0xD01F]=0x07;}}catch(e){}
+    window.fix334LastLatch='CLEAR '+(reason||'')+' PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--')+' CH '+(ram?'$'+hx(ram[0x02FC]||0,2):'--')+' KBCODE '+(ram?'$'+hx(ram[0xD209]||0,2):'--')+' D01F '+(ram?'$'+hx(ram[0xD01F]||0,2):'--');
+  }
+  function installRomPassThrough(){
+    try{
+      if(window.fix334RomPassInstalled || !window.CPU6502 || !CPU6502.prototype || !CPU6502.prototype.handleAtariOsRomEntry)return;
+      var oldHandle=CPU6502.prototype.handleAtariOsRomEntry;
+      CPU6502.prototype.handleAtariOsRomEntry=function(addr,fromJsr){
+        addr&=65535;
+        if(turboMode() && (addr===0xE456 || addr===0xE420 || addr===0xE424)){
+          window.fix334OsRomPassHits=(window.fix334OsRomPassHits||0)+1;
+          var cmd='--', x='--';
+          try{var xx=this.x&0xF0; x='$'+hx(xx,2); cmd='$'+hx((this.m[(0x0342+xx)&65535]||0)&255,2);}catch(e){}
+          window.fix334OsRomPassLast='REAL ROM PASS $'+hx(addr,4)+' '+(fromJsr?'JSR':'JMP/PC')+' X='+x+' ICCOM='+cmd+' PC $'+hx((this.pc||0)&65535,4)+' hit '+window.fix334OsRomPassHits;
+          try{fix121OsVectorInfo='FIX334 '+window.fix334OsRomPassLast;}catch(e){}
+          // Critical: return false so the 6502 actually JSR/JMPs into ATARIXL.ROM instead of the generic XEX shim returning OK.
+          return false;
+        }
+        return oldHandle.call(this,addr,fromJsr);
+      };
+      window.fix334RomPassInstalled=true;
+      log334('installed REAL OS CIOV/KGETCH pass-through for Turbo: E456/E420/E424. Generic empty-line shim blocked.');
+    }catch(e){log334('rom pass-through install error '+(e&&e.message?e.message:e));}
+  }
+  function setTurboFlags(){
+    window.fix334TurboActive=true; window.fix333TurboActive=true; window.fix332TurboActive=true; window.fix331TurboActive=true; window.fix328TurboActive=true; window.fix328TurboMode=true;
+    try{activeXexProfile='generic'; fix232Mode='xex'; fix154RealOsBootMode=false; fix215PureRomMode=false; fix225PureHardwareMode=false; fix215PureSelfTestMode=false;}catch(e){}
+  }
+  var oldStart=null, startBusy=0, turboClicks=0, snapClicks=0, warmClicks=0;
+  function realStartFn(){return oldStart || window.fix332StartTurboBasic || window.fix331StartTurboBasic || window.fix330StartTurboBasic || window.fix328StartTurboBasic;}
+  function startTurbo(ev){
+    stop(ev); var now=Date.now();
+    if(now-startBusy<1600){log334('duplicitní Turbo klik ignorován; běží jeden start.'); return false;}
+    startBusy=now; turboClicks++; installRomPassThrough(); setTurboFlags(); clearLooseInput('pre Turbo FIX334');
+    var fn=realStartFn(), err='', ok=false;
+    try{if(typeof fn==='function'){ok=true; fn.call(window,null);}else{err='real Turbo start function missing';}}catch(e){err=(e&&e.message?e.message:e);}
+    installRomPassThrough(); setTurboFlags();
+    // After START+OPTION bootstrap window has been sampled, release console buttons and stale RETURN.
+    setTimeout(function(){clearLooseInput('post START+OPTION release FIX334 900ms');},900);
+    setTimeout(function(){clearLooseInput('post Turbo prompt wait FIX334 1800ms');},1800);
+    log334('Turbo start '+(ok?'OK':'NO')+(err?(' ERR '+err):'')+' / real CIOV/KGETCH ROM pass-through active / PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--')+' MEM_0B00 '+(ram?readBlock(0x0B00,8):'--'));
+    setTimeout(function(){startBusy=0;},1700);
     return false;
   }
-  function bindButton(el,fn){
-    if(!el)return;
-    el.onclick=fn;
-    if(el.getAttribute('data-fix331-bound')!=='YES'){
-      el.setAttribute('data-fix331-bound','YES');
-      ['click','pointerup','touchend'].forEach(function(n){try{el.addEventListener(n,fn,{passive:false});}catch(e){}});
-    }
+  function turboWarm(ev){
+    if(!turboMode())return true;
+    stop(ev); warmClicks++; installRomPassThrough(); setTurboFlags(); clearLooseInput('Turbo warm reset FIX334 pre');
+    // Safer than jumping to OS WARMSV while Turbo has relocated RAM/ROM banks: re-run the clean Turbo bootstrap.
+    log334('TEPLÝ RESET v Turbo: restart čistého Turbo loaderu, ne OS WARMSV $E474.');
+    return startTurbo(null);
   }
+  function snapshot(ev){
+    stop(ev); snapClicks++; installRomPassThrough();
+    var arr=[];
+    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
+    arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
+    arr.push('FIX334_REAL_CIOV_E456_PASS_THROUGH=YES'); arr.push('FIX334_REAL_KGETCH_E420_PASS_THROUGH=YES'); arr.push('FIX334_BLOCK_GENERIC_EMPTY_CIO_OK=YES'); arr.push('FIX334_KEEP_FIX330_REAL_LOADER=YES');
+    arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
+    arr.push(''); arr.push('[FIX334 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('keyboardTitle='+(document.querySelector('#atariKeyboardDock h2')?document.querySelector('#atariKeyboardDock h2').textContent:'--'));
+    arr.push('turboClicks='+turboClicks); arr.push('warmClicks='+warmClicks); arr.push('snapClicks='+snapClicks); arr.push('lastInfo='+(window.fix334LastInfo||'--')); arr.push('lastLatch='+(window.fix334LastLatch||'--'));
+    arr.push(''); arr.push('[REAL OS PASS THROUGH]'); arr.push('installed='+(window.fix334RomPassInstalled?'YES':'NO')); arr.push('hits='+(window.fix334OsRomPassHits||0)); arr.push('last='+(window.fix334OsRomPassLast||'--'));
+    arr.push(''); arr.push('[XEX/TURBO]'); arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--')); arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--')); arr.push('fix232Mode='+(typeof fix232Mode!=='undefined'?fix232Mode:'--')); arr.push('ENTRY='+(typeof xexInfo!=='undefined'&&xexInfo?'$'+hx(xexInfo.entry||0,4):'--')); arr.push('INITAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--'));
+    arr.push('PORTB_VALUE='+(typeof portbValue!=='undefined'?'$'+hx(portbValue,2):'--')); arr.push('RAM_D301='+(ram?'$'+hx(ram[0xD301]||0,2):'--')); arr.push('RAM_D01F='+(ram?'$'+hx(ram[0xD01F]||0,2):'--')); arr.push('CH_02FC='+(ram?'$'+hx(ram[0x02FC]||0,2):'--')); arr.push('KBCODE_D209='+(ram?'$'+hx(ram[0xD209]||0,2):'--')); arr.push('SKSTAT_D20F='+(ram?'$'+hx(ram[0xD20F]||0,2):'--'));
+    arr.push('MEM_6132='+(ram?readBlock(0x6132,16):'--')); arr.push('MEM_0B00='+(ram?readBlock(0x0B00,16):'--')); arr.push('MEM_2100='+(ram?readBlock(0x2100,16):'--'));
+    arr.push('CORE LOADER INFO='+(typeof fix195NativeXexInfo!=='undefined'?fix195NativeXexInfo:'--')); arr.push('STREAM LOADER INFO='+(typeof fix192LoaderInfo!=='undefined'?fix192LoaderInfo:'--'));
+    arr.push(''); arr.push('[BASIC/TXT PANEL]'); arr.push('TXT_PICKER_BUTTON='+(id('fix313PickBtn')||id('fix289PickBasicFileBtn')?'YES':'NO')); arr.push('TXT_TEXTAREA='+(id('fix313Text')||id('fix240BasicFastText')?'YES':'NO')); arr.push('TXT_SEND_NO_RUN='+(id('fix313SendNoRun')||id('fix289SendBasicBtn')?'YES':'NO')); arr.push('TXT_SEND_RUN='+(id('fix313SendRun')||id('fix289SendBasicRunBtn')?'YES':'NO'));
+    arr.push(''); arr.push('[CPU]'); arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable');
+    arr.push(''); arr.push('[DOM LOG]'); arr.push((id('log')&&id('log').textContent)||'--');
+    var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX334-turbo-xex-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX334-turbo-xex-log');}catch(e){log334('save report error '+(e&&e.message?e.message:e));} log334('SNAPSHOT TURBO/XEX LOG FIX334 hotov.'); return false;
+  }
+  function btnText(b){return String((b&&b.textContent)||'').replace(/\s+/g,' ').trim();}
+  function isTurboButton(b){var t=btnText(b), idv=String((b&&b.id)||''); return /START\+OPTION.*TURBO BASIC/i.test(t)||/fix(328|329|330|331|332|333|334).*Turbo/i.test(idv);} 
+  function isSnapButton(b){var t=btnText(b), idv=String((b&&b.id)||''); return /SNAPSHOT.*TURBO|TURBO\/XEX/i.test(t)||/fix(328|329|330|331|332|333|334).*Snap/i.test(idv);} 
+  function isWarmButton(b){var t=btnText(b), idv=String((b&&b.id)||''); return /TEPL[ÝY].*RESET|WARM RESET|RESET BASIC/i.test(t)||(/RESET/i.test(idv)&&/atari/i.test(String((b&&b.getAttribute&&b.getAttribute('data-atkey'))||'')));}
+  function capture(ev){var b=null; try{b=ev.target&&ev.target.closest?ev.target.closest('button'):null;}catch(e){} if(!b)return; if(isTurboButton(b))return startTurbo(ev); if(isSnapButton(b))return snapshot(ev); if(isWarmButton(b)&&turboMode())return turboWarm(ev);} 
   function cleanUi(){
-    installs++;
-    captureOrig();installTapWrapper();
-    try{document.title='EMU-09 '+TAG;var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+TAG;var p=document.querySelector('.brandText p');if(p)p.textContent='FIX331: FIX330 loader + ATASCII vstupni most pro TBXL. RETURN je $9B, zadny fake READY/LOAD/SELF TEST.';}catch(e){}
-    try{var kh=document.querySelector('#atariKeyboardDock h2');if(kh)kh.textContent='Mobilni Atari klavesnice FIX331';var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX331: TBXL po READY pouziva ATASCII input bridge. RETURN posila $9B, teply RESET zustava jen jako zaloha.';}catch(e){}
-    var panel=id('fix330XexPanel');
-    if(panel && !id('fix331InputBadge')){
-      var badge=document.createElement('div');badge.id='fix331InputBadge';badge.textContent=lastInputInfo;
-      var st=id('fix330Status');if(st&&st.parentNode)st.parentNode.insertBefore(badge,st.nextSibling);else panel.insertBefore(badge,panel.firstChild);
-    }
-    var b=id('fix330TbxlBtn');if(b){b.textContent='1) SPUSTIT TBXL 1.5 - FIX331 ATASCII';bindButton(b,start331);}
-    var l=id('fix330LogBtn');if(l){l.textContent='2) ULOZIT FIX331 ATASCII LOG';bindButton(l,snapshot331);}
-    try{window.fix331StartTurboBasic=start331;window.fix331Snapshot=snapshot331;window.fix330StartTurboBasic=start331;window.fix330Snapshot=snapshot331;}catch(e){}
-    if(looksLikeTbxl())activateTbxlInput('cleanUi saw TBXL');
+    try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX334: reálný Turbo loader zůstává. Oprava teď pouští CIOV/KGETCH přes skutečnou ATARIXL.ROM, aby prompt čekal na klávesu místo nekonečného READY.';}catch(e){}
+    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX334'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX334: TXT/BAS drží, Turbo používá real OS CIOV/KGETCH wait; žádný fake READY/LOAD.';}catch(e){}
+    try{var panel=id('fix329XexPanel')||id('fix328XexPanel'); if(panel){var h2=panel.querySelector('h2'); if(h2)h2.textContent='3) Turbo Basic XL 1.5 — čistý XEX loader FIX334'; var p2=panel.querySelector('p'); if(p2)p2.textContent='FIX334 nepíše READY. Blokuje obecný prázdný CIO OK shim a nechává skutečnou OS ROM obsloužit E: vstup.'; var tb=panel.querySelector('button[data-fix329="turbo"],button[data-fix328="turbo"],#fix329TurboBtn,#fix328TurboBtn,#fix315TurboBtn'); if(tb){tb.textContent='1) START+OPTION → TURBO BASIC XL 1.5 XEX — FIX334'; tb.onclick=startTurbo;} var sn=panel.querySelector('button[data-fix329="snapshot"],button[data-fix328="snapshot"],#fix329XexSnap,#fix328XexSnap,#fix315TurboSnap'); if(sn){sn.textContent='2) SNAPSHOT TURBO/XEX LOG FIX334'; sn.onclick=snapshot;}}}catch(e){}
+    try{window.fix334StartTurboBasic=startTurbo; window.fix333StartTurboBasic=startTurbo; window.fix332StartTurboBasic=startTurbo; window.fix331StartTurboBasic=startTurbo; window.fix330StartTurboBasic=startTurbo; window.fix329StartTurboBasic=startTurbo; window.fix315StartTurboBasic=startTurbo; window.fix334Snapshot=snapshot; window.fix333Snapshot=snapshot; window.fix332Snapshot=snapshot; window.fix331Snapshot=snapshot; window.fix330Snapshot=snapshot; window.fix315Snapshot=snapshot;}catch(e){}
   }
-  function capture(ev){
-    var b=null;try{b=ev.target&&ev.target.closest?ev.target.closest('button'):null;}catch(e){}
-    if(!b)return;
-    if(b.id==='fix330TbxlBtn')return start331(ev);
-    if(b.id==='fix330LogBtn')return snapshot331(ev);
-  }
-  function start(){
-    try{document.addEventListener('click',capture,true);document.addEventListener('touchend',capture,true);}catch(e){}
-    cleanUi();
-    [80,220,520,1100,2100,3600,5800,7600,9000].forEach(function(ms){setTimeout(cleanUi,ms);});
-    status('FIX331 installed: TBXL READY bude psat pres ATASCII bridge.');
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false);else start();
+  function start(){oldStart=window.fix332StartTurboBasic || window.fix331StartTurboBasic || window.fix330StartTurboBasic || window.fix328StartTurboBasic; installRomPassThrough(); try{document.addEventListener('click',capture,true);document.addEventListener('touchend',capture,true);document.addEventListener('pointerup',capture,true);}catch(e){} cleanUi(); [50,180,500,1000,1800,3200,5200].forEach(function(ms){setTimeout(cleanUi,ms);}); log334('installed: Turbo uses real ROM CIOV/KGETCH wait instead of generic empty CIO OK.');}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
 })();
 </script>
 

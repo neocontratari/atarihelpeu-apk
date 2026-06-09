@@ -1,0 +1,1 @@
+FIX334 overlay present: Turbo passes CIOV/KGETCH to real ATARIXL.ROM; no fake READY/LOAD.

@@ -1,0 +1,1 @@
+FIX334: zachovává funkční BASIC/TXT/KGETCH/LIST/warm reset základ. Turbo loader zůstává z FIX330/FIX328, ale v Turbo režimu se obecný XEX OS shim nesmí tvářit, že CIOV/KGETCH okamžitě vrátil prázdný řádek. Pro $E456 CIOV a $E420/$E424 KGETCH se nechá běžet skutečná ATARIXL.ROM, aby prompt čekal na klávesu. Žádný fake READY, fake LOAD, screen paint ani RAM inject.
