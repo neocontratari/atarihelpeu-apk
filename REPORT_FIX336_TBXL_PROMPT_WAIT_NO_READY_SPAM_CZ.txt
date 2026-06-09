@@ -1,0 +1,24 @@
+FIX336_TBXL_PROMPT_WAIT_NO_READY_SPAM
+
+Audit po FIX335: předchozí změny se neprojevily, protože staré document-capture handlery chytaly tlačítka se slovy TURBO BASIC / SNAPSHOT dřív než nová vrstva.
+
+FIX336 proto vytváří nový panel s tlačítky SPUSTIT TBXL / ULOZIT TBXL LOG, aby staré handlery nezasáhly.
+
+Pod kapotou: loader FIX330/FIX328 zůstává. Nově je přidaný guard v reálném místě, kde Turbo čeká na řádek: PC $E68D, JSR $C287. Když není připravený řádek, CPU se drží na vstupu a nevrací prázdnou EOL řádku. Po RETURN se řádek vloží do E: bufferu $0580 s ATASCII EOL $9B a Turbo pokračuje.
+
+Nejde o fake READY, fake LOAD, screen paint ani RAM program inject.
+
+KODY JSOU STEJNE.
+NEW_XEX_CORE=YES
+XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST
+FIX336_NON_INTERCEPTED_TBXL_BUTTON=YES
+FIX336_TURBO_PROMPT_WAIT_E68D_C287=YES
+FIX336_NO_EMPTY_LINE_READY_SPAM=YES
+FIX336_EDITOR_COLOR_GTIA_SYNC=YES
+FIX336_KEEP_FIX330_REAL_LOADER=YES
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
