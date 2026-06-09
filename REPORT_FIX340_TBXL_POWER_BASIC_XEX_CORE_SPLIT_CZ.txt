@@ -1,0 +1,27 @@
+AtariHelp.eu EMU-09 FIX340_TBXL_POWER_BASIC_XEX_CORE_SPLIT
+
+Cil:
+- Opravit regresi, kde POWER XL/XE BASIC zustal ovlivneny TurboBasic/XEX stavem.
+- Nepouzivat fake READY, fake LOAD, fake SELF TEST, RAM inject ani screen paint.
+- Nelepit jednu hru. Pro XEX se v tomto patchi pridava audit existujiciho obecneho loaderu: segmenty, INITAD/RUNAD, entry, profil, CPU a stav klaves.
+
+Co je zmeneno:
+- Pridana finalni FIX340 vrstva za starsi FIX337-FIX339 skripty.
+- POWER BASIC wrapper pred i po startu vypina TBXL flagy, cisti CH/ATACHR/KBCODE/SKSTAT a vraci rezim na realos/basic.
+- TBXL start pouziva dosavadni FIX337 direct loader, ale FIX340 pridava vlastni prime zachyceni klaves z mobilni klavesnice.
+- TBXL klavesy se posilaji jako ATASCII/scan edge do CH $02FC, ATACHR $02FB, KBCODE $D209 a SKSTAT $D20F.
+- Pridany panel "XEX loader audit FIX340" pro TXT diagnostiku obecneho XEX loaderu.
+- Index a hlavni overlay titulky jsou prepsane na FIX340.
+
+Co neni slibeno:
+- Neslibuju jednim patchem 90 % XEX bez test matrix. FIX340 misto toho uklada meritelny XEX audit, aby dalsi opravy sly po realnych datech.
+
+Zakladni test:
+1. POWER XL/XE BASIC.
+2. Napis "? FRE(0)" a RETURN.
+3. Spust TBXL FIX340.
+4. Napis "PRINT 2+2" a RETURN.
+5. Kdyz se cokoli zasekne, uloz FIX340 LOG a posli TXT.
+
+Poznamka pro testera:
+- Prikazy CIRCLE a CLS nejsou standardni Atari BASIC prikazy. Je normalni, ze v plain POWER BASICu hodi ERROR. Pro potvrzeni vstupu pouzivat nejdrive PRINT, LIST, NEW, ? FRE(0).

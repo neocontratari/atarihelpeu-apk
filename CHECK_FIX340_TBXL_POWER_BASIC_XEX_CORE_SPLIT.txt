@@ -1,0 +1,12 @@
+CHECK FIX340 - TBXL_POWER_BASIC_XEX_CORE_SPLIT
+
+1. Otevri EMU-09 z indexu: musi svitit FIX340.
+2. Klikni POWER XL/XE BASIC.
+3. V BASICu zadej: ? FRE(0) a RETURN.
+   Ocekavani: BASIC prijme radek a odpovi cislem nebo Atari BASIC chybou podle realneho stavu, ale klavesnice nezamrzne.
+4. Pak spust TBXL tlacitkem "SPUSTIT TBXL 1.5 FIX340".
+5. Po READY zadej: PRINT 2+2 a RETURN.
+   Ocekavani: znak/RETURN projde pres FIX340 direct keyboard capture, ne pres starou nulovou frontu.
+6. Pri chybe klikni "ULOZIT FIX340 LOG" a posli jen TXT log.
+
+Poznamka: CIRCLE a CLS nejsou prikazy standardniho Atari BASICu. Pro POWER BASIC test pouzivej nejdriv PRINT/? prikazy.
