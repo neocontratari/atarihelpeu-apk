@@ -1,0 +1,18 @@
+AtariHelp.eu EMU-09 FIX329_STABLE_CAPTURE_STARTOPTION_NO_OLD_TURBO
+
+Cil: nevracet rollback, zachovat funkcni BASIC/TXT/warm reset zaklad a zaroven konecne odriznout stare FIX314/FIX315 Turbo onclick handlery.
+
+Zmeny:
+- Dokument-level capture handler zachyti Turbo/Snapshot click/pointer/touch driv nez stare inline onclicky.
+- Stare Turbo/Snapshot knofliky jsou skryte/disabled, zustava jeden FIX329 panel.
+- CPU read $D01F je pri Turbo startu docasne prebit na $02 = START low + OPTION low, SELECT high.
+- Po startu se znovu vynuti XEX mode, pure/basic BRK stop a BASIC window se odpoji od Turbo behu.
+- TXT/KGETCH cesta a teply reset zustavaji ze stabilniho zakladu.
+
+KODY JSOU STEJNE.
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
