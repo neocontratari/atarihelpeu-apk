@@ -1,0 +1,1 @@
+FIX335 OK: blocking CIOV/KGETCH empty input for Turbo READY loop; GTIA editor color sync; no fake READY/LOAD.
