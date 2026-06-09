@@ -1,0 +1,1 @@
+FIX342 static checked: index tag, emu tag, purePanel visible, cleanNote hidden, top FIX342 panel with POWER/TBXL/log. KODY JSOU ZMENENE.

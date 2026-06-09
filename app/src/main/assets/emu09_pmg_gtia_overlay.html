@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EMU-09 FIX341_TBXL_REAL_CLS_INPUT_CORE</title>
+<title>EMU-09 FIX342_FORWARD_CLEAN_UI_TBXL_POWER_REPAIR</title>
 <style>
 body{margin:0;background:#050403;color:#fff7e3;font-family:Arial,Helvetica,sans-serif}
 .wrap{max-width:620px;margin:auto;padding:14px 12px 90px}
@@ -33,14 +33,14 @@ pre{white-space:pre-wrap;word-break:break-word;color:#2aff8f;font-family:monospa
 
 /* FIX314: hide obsolete static panels immediately; prevent startup flicker while final layout is built. */
 body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visibility:hidden}
-#fix284TurboPanel,.purePanel,#fix307Panel,#fix311XexPickerPanel,#fix312TxtPanel,#fix312XexPickerPanel{display:none!important}
+#fix284TurboPanel,#fix307Panel,#fix311XexPickerPanel,#fix312TxtPanel,#fix312XexPickerPanel,.cleanNote{display:none!important}
 
 /* FIX315: user-visible Turbo Basic loader button and warm reset audit */
 #fix315TurboBtn{border:2px solid rgba(255,221,122,.95);font-size:17px;font-weight:900;}
 #fix315TurboStatus{white-space:pre-wrap;}
 
 /* FIX327: final UI guard - obsolete Turbo panels never visible, no duplicate start buttons. */
-#fix284TurboPanel,.purePanel,#fix307Panel,#fix311XexPickerPanel,#fix312TxtPanel,#fix312XexPickerPanel{display:none!important}
+#fix284TurboPanel,#fix307Panel,#fix311XexPickerPanel,#fix312TxtPanel,#fix312XexPickerPanel,.cleanNote{display:none!important}
 #fix327TurboBtn{border:2px solid rgba(255,221,122,.98)!important;font-size:18px!important;font-weight:900!important;}
 #fix327XexPanel button:not(#fix327TurboBtn):not(#fix327XexSnap):not(#fix327ManualXexBtn){margin-top:7px}
 
@@ -48,16 +48,28 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 [data-fix329-hidden="YES"]{display:none!important;visibility:hidden!important;pointer-events:none!important;}
 #fix329XexPanel button{margin-top:7px;}
 #fix329TurboBtn{border:2px solid rgba(255,221,122,.98)!important;font-size:18px!important;font-weight:900!important;}
+
+/* FIX342: forward repair. Do not hide purePanel; it contains POWER BASIC, Atari obraz and keyboard. */
+body.fix342-forward-clean .purePanel{display:block!important;visibility:visible!important}
+body.fix342-forward-clean .cleanNote{display:none!important;visibility:hidden!important}
+body.fix342-forward-clean #fix284TurboPanel,
+body.fix342-forward-clean #fix307Panel,
+body.fix342-forward-clean #fix311XexPickerPanel,
+body.fix342-forward-clean #fix312TxtPanel,
+body.fix342-forward-clean #fix312XexPickerPanel{display:none!important;visibility:hidden!important}
+#fix342TopPanel{display:block!important;visibility:visible!important;border:2px solid rgba(42,255,143,.45)}
+#fix342TopPanel h2{color:#2aff8f}
+
 </style>
 </head>
-<body>
+<body class="fix342-forward-clean">
 <div class="wrap">
 <section class="card">
 <div class="brandBar">
 <img src="np_logo.png?fix102" class="brandLogo" alt="N&P">
 <div class="brandText">
-<h1>EMU-09 FIX341_TBXL_REAL_CLS_INPUT_CORE</h1>
-<p>FIX341: TBXL loader jen nahraje Turbo Basic, potom klavesy a ROM gate prebere jedna nova cesta. Cilem je realny TBXL prikaz CLS, ne jen READY na obrazovce.</p>
+<h1>EMU-09 FIX342_FORWARD_CLEAN_UI_TBXL_POWER_REPAIR</h1>
+<p>FIX342: dopredna cista oprava UI + TBXL klavesnice. Zachovan BASIC/TXT/reset zaklad; zadny fake READY/LOAD/SELF TEST/screen paint/RAM inject.</p>
 </div>
 </div>
 <a class="btn secondary" href="index.html">Zpět do AtariHelp.eu</a>
@@ -165,7 +177,7 @@ body.fix313-boot .wrap>section:not(:first-child), body.fix313-boot details{visib
 <button id="submarineBtnFix209" style="display:none" aria-hidden="true"></button>
 <div id="cassetteBoxFix249" style="display:none" aria-hidden="true"></div>
 <div id="cassetteBoxFix251" style="display:none" aria-hidden="true"></div>
-<div class="cleanNote">FIX293: čistý nativní XEX loader, bez starých herních profilů a bez generic fallback omalovánek. Self Test/ATR nejsou v tomhle runtime panelu maskované ani tvrzené jako hotové.</div>
+<div class="cleanNote">XEX loader: čistý nativní XEX loader, bez starých herních profilů a bez generic fallback omalovánek. Self Test/ATR nejsou v tomhle runtime panelu maskované ani tvrzené jako hotové.</div>
 </div>
 
 <script>
@@ -11244,7 +11256,7 @@ updatePlayStatus('ready');
       helper that waits for real READY (DLIST $9C20, SAVMSC $9C40, BASIC window, VBI) and then feeds a separate
       ATASCII/KGETCH queue with EOL $9B.  No physical key-map per character, no queue during self-test/XEX boot. */
 (function(){
-  var LEGACY_CORE_TAG='LEGACY_CORE_SELFTEST_START_EDGE_FAST_BASIC_QUEUE_CORE';
+  var LEGACY_CORE_TAG='FIX342_FORWARD_CLEAN_UI_TBXL_POWER_REPAIR';
   window.fix240SelftestInfo='LEGACY_CORE SELFTEST START edge waiting';
   window.fix240FastBasicInfo='LEGACY_CORE FAST BASIC service queue idle';
   window.fix240FastBasicLast='--';
@@ -11543,7 +11555,7 @@ updatePlayStatus('ready');
   try{document.title='EMU-09 '+LEGACY_CORE_TAG;}catch(e){}
   try{var h=document.querySelector('h1');if(h)h.textContent='EMU-09 '+LEGACY_CORE_TAG;}catch(e){}
   try{var p=document.querySelector('h1 + p');if(p)p.textContent='LEGACY_CORE: SELF TEST START edge pres realny CONSOL $D01F + servisni rychly BASIC text pres ATASCII/KGETCH frontu po skutecnem READY. Bez fake READY/SELF TEST.';}catch(e){}
-  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='FIX290: vlastni BASIC TXT pole je prazdne; vlozeni jde pres real READY a ATASCII/KGETCH frontu.';}catch(e){}
+  try{var hint=document.querySelector('#atariKeyboardDock .tinyhint');if(hint)hint.textContent='BASIC TXT: vlastni BASIC TXT pole je prazdne; vlozeni jde pres real READY a ATASCII/KGETCH frontu.';}catch(e){}
   installFastUi();
 })();
 /* END LEGACY_CORE */
@@ -11694,7 +11706,7 @@ updatePlayStatus('ready');
     try{
       var dock=document.getElementById('atariKeyboardDock'); if(!dock)return;
       var h=dock.querySelector('h2'); if(h)h.textContent='Mobilní Atari klávesnice';
-      var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX290: vlastni BASIC TXT pole je prazdne; vlozeni jde pres real READY a ATASCII/KGETCH frontu.';
+      var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='BASIC TXT: vlastni BASIC TXT pole je prazdne; vlozeni jde pres real READY a ATASCII/KGETCH frontu.';
       var grid=document.getElementById('atariKeyboard');
       var actions=dock.querySelector('.kbdTopActions');
       var fast=document.getElementById('fix240FastBasicBox');
@@ -12013,7 +12025,7 @@ updatePlayStatus('ready');
         })(buttons[i],kinds[i]||'vlozit');
       }
       var dock=document.getElementById('atariKeyboardDock');
-      if(dock){var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX290: vlastni BASIC TXT pole je prazdne; vlozeni jde pres real READY a ATASCII/KGETCH frontu.';}
+      if(dock){var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='BASIC TXT: vlastni BASIC TXT pole je prazdne; vlozeni jde pres real READY a ATASCII/KGETCH frontu.';}
       fix242UiInfo='LEGACY_CORE UI OK buttons rebound SAFE queue frame '+fr();
     }catch(e){fix242UiInfo='LEGACY_CORE UI error '+(e&&e.message?e.message:e);}
   }
@@ -12076,7 +12088,7 @@ updatePlayStatus('ready');
    so if the original ROM reaches the peripheral check, it returns hardware-style no-device/timeout instead of
    falling into an empty or stale shim. */
 (function(){
-  var LEGACY_CORE_TAG='LEGACY_CORE_SELFTEST_DMA_SCREENFAST_CORE';
+  var LEGACY_CORE_TAG='FIX342_FORWARD_CLEAN_UI_TBXL_POWER_REPAIR';
   window.fix243FastInfo='LEGACY_CORE KGETCH FAST BASIC idle';
   window.fix243SelftestInfo='LEGACY_CORE selftest SIOV no-device guard idle';
   window.fix243UiInfo='LEGACY_CORE UI waiting';
@@ -12324,7 +12336,7 @@ updatePlayStatus('ready');
         })(buttons[i],kinds[i]||'vlozit');
       }
       var dock=document.getElementById('atariKeyboardDock');
-      if(dock){var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX290: vlastni BASIC TXT pole je prazdne; vlozeni jde pres real READY a ATASCII/KGETCH frontu.';}
+      if(dock){var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='BASIC TXT: vlastni BASIC TXT pole je prazdne; vlozeni jde pres real READY a ATASCII/KGETCH frontu.';}
       fix243UiInfo='LEGACY_CORE UI OK buttons rebound to KGETCH queue frame '+fr();
     }catch(e){fix243UiInfo='LEGACY_CORE UI error '+(e&&e.message?e.message:e);}
   }
@@ -12380,7 +12392,7 @@ updatePlayStatus('ready');
    and screen bytes near $3000. LEGACY_CORE adds a strict self-test ANTIC DMA renderer branch for mode 6/8 with
    live SDMCTL/CHBASE/PRIOR/GTIA colors. It draws only bytes read through the real display list, no fake menu. */
 (function(){
-  var LEGACY_CORE_TAG='LEGACY_CORE_SELFTEST_DMA_SCREENFAST_CORE';
+  var LEGACY_CORE_TAG='FIX342_FORWARD_CLEAN_UI_TBXL_POWER_REPAIR';
   window.fix244FastInfo='LEGACY_CORE screen-editor FAST BASIC idle';
   window.fix244SelftestInfo='LEGACY_CORE selftest DMA renderer idle';
   window.fix244Last='--';
@@ -12609,7 +12621,7 @@ updatePlayStatus('ready');
         var bs=fast.querySelectorAll('button'); var kinds=['txt','vlozit','run','sub'];
         for(var i=0;i<bs.length;i++)(function(btn,kind){var b=btn.cloneNode(true);b.onclick=function(ev){if(kind==='txt')return window.basicTxtFastFix240(ev);if(kind==='vlozit')return window.vlozitFastFix240(ev);if(kind==='run')return window.vlozitFastRunFix240(ev);return window.submarineFastFix240(ev);};['pointerup','touchend','click'].forEach(function(evname){b.addEventListener(evname,function(ev){return b.onclick(ev);},{passive:false});});btn.parentNode.replaceChild(b,btn);})(bs[i],kinds[i]||'vlozit');
       }
-      var dock=document.getElementById('atariKeyboardDockFix171'); if(dock){var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='FIX290: vlastni BASIC TXT pole je prazdne; vlozeni jde pres real READY a ATASCII/KGETCH frontu.';}
+      var dock=document.getElementById('atariKeyboardDockFix171'); if(dock){var hint=dock.querySelector('.tinyhint'); if(hint)hint.textContent='BASIC TXT: vlastni BASIC TXT pole je prazdne; vlozeni jde pres real READY a ATASCII/KGETCH frontu.';}
       fix244UiInfo='UI rebound OK frame '+fr();
     }catch(e){fix244UiInfo='UI bind error '+(e&&e.message?e.message:e);}
   }
@@ -12799,7 +12811,7 @@ updatePlayStatus('ready');
     arr.push('AtariHelp.eu EMU-09 '+TAG);
     arr.push('time='+(new Date()).toISOString());
     arr.push('build='+TAG);
-    arr.push('KODY JSOU STEJNE');
+    arr.push('KODY JSOU ZMENENE');
     arr.push('NEW_XEX_CORE=NO');arr.push('XEX_TURBO_SCOPE=DEFERRED');arr.push('TXT_PICKER_BUTTON=YES');
     arr.push('FIX309_EPOCH_CANCEL_FIX=YES');arr.push('FIX309_ISOLATED_KGETCH_QUEUE=YES');
     arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');arr.push('NO_RAW_CH_PASTE=YES');
@@ -12945,11 +12957,11 @@ updatePlayStatus('ready');
     bindButton(id('fix313Snap'),snapshot);
   }
   function chooseFile(ev){stop(ev); if(!guard('pick',650))return false; pickerClicks++; var inp=id('fix313File'); log313('Otevírám systémový výběr TXT/BAS. Když WebView blokne tlačítko, použij nativní řádek Choose File pod ním. klik='+pickerClicks); try{if(inp){inp.disabled=false;inp.style.display='block';inp.click();}}catch(e){log313('file picker click chyba: '+(e&&e.message?e.message:e));} return false;}
-  function loadFile(ev){try{var inp=(ev&&ev.target)||id('fix313File'); var f=inp&&inp.files&&inp.files[0]; if(!f){log313('Soubor nevybrán.');return false;} fileName=f.name||'TXT/BAS'; fileSize=f.size||0; fileLoaded=false; lastAction='FILE_PICK'; var fs=id('fix313FileStatus'); if(fs)fs.textContent='Čtu: '+fileName+' / '+fileSize+' bytes'; var rd=new FileReader(); rd.onload=function(){var raw=normText(rd.result||''); var ta=id('fix313Text'); if(ta)ta.value=raw; fileLoaded=true; sentLines=0; sentChars=0; lastAction='FILE_LOADED'; if(fs)fs.textContent='Soubor načten: '+fileName+' / '+fileSize+' bytes / '+lineCount(raw)+' řádků / '+raw.length+' znaků'; var ml=id('fix313MiniLog'); if(ml)ml.textContent='FILE_LOADED '+fileName+'\nlines='+lineCount(raw)+' chars='+raw.length+'\nKODY JSOU STEJNE: CR/LF sjednoceno, pro KGETCH se při odeslání použije Atari uppercase + EOL $9B.'; log313('TXT/BAS načten do textového pole: '+fileName+' / '+lineCount(raw)+' řádků. Teď vyber BEZ RUN nebo +RUN.');}; rd.onerror=function(){log313('Čtení TXT/BAS selhalo: '+(rd.error&&rd.error.message?rd.error.message:rd.error));}; rd.readAsText(f,'utf-8');}catch(e){log313('loadFile chyba: '+(e&&e.message?e.message:e));} return false;}
+  function loadFile(ev){try{var inp=(ev&&ev.target)||id('fix313File'); var f=inp&&inp.files&&inp.files[0]; if(!f){log313('Soubor nevybrán.');return false;} fileName=f.name||'TXT/BAS'; fileSize=f.size||0; fileLoaded=false; lastAction='FILE_PICK'; var fs=id('fix313FileStatus'); if(fs)fs.textContent='Čtu: '+fileName+' / '+fileSize+' bytes'; var rd=new FileReader(); rd.onload=function(){var raw=normText(rd.result||''); var ta=id('fix313Text'); if(ta)ta.value=raw; fileLoaded=true; sentLines=0; sentChars=0; lastAction='FILE_LOADED'; if(fs)fs.textContent='Soubor načten: '+fileName+' / '+fileSize+' bytes / '+lineCount(raw)+' řádků / '+raw.length+' znaků'; var ml=id('fix313MiniLog'); if(ml)ml.textContent='FILE_LOADED '+fileName+'\nlines='+lineCount(raw)+' chars='+raw.length+'\nKODY JSOU ZMENENE: CR/LF sjednoceno, pro KGETCH se při odeslání použije Atari uppercase + EOL $9B.'; log313('TXT/BAS načten do textového pole: '+fileName+' / '+lineCount(raw)+' řádků. Teď vyber BEZ RUN nebo +RUN.');}; rd.onerror=function(){log313('Čtení TXT/BAS selhalo: '+(rd.error&&rd.error.message?rd.error.message:rd.error));}; rd.readAsText(f,'utf-8');}catch(e){log313('loadFile chyba: '+(e&&e.message?e.message:e));} return false;}
   function precleanBeforeSend(){try{if(typeof fix208BasicAutofeedActive!=='undefined')fix208BasicAutofeedActive=false;}catch(e){} try{if(typeof atariKeyQueue!=='undefined'&&atariKeyQueue)atariKeyQueue.length=0;}catch(e){} try{if(typeof input!=='undefined'&&input)input.key=0xFF;}catch(e){} try{if(typeof realOsKeyOneShot!=='undefined')realOsKeyOneShot=0xFF; if(typeof realOsAtasciiOneShot!=='undefined')realOsAtasciiOneShot=0xFF;}catch(e){} try{if(typeof currentXexName!=='undefined' && /KITT|PITT|DONKEY|TURBO|XEX|FIX29|FIX30/i.test(String(currentXexName||'')))currentXexName='PURE HARDWARE BASIC FIX314 / no XEX';}catch(e){} try{if(typeof activeXexProfile!=='undefined')activeXexProfile='realos';}catch(e){}}
   function send(runAfter,ev){stop(ev); if(!guard(runAfter?'sendrun':'sendnorun',750))return false; sendClicks++; var ta=id('fix313Text'); var raw=ta?ta.value:''; if(!raw || !raw.trim()){log313('Pole je prázdné. Nejdřív vyber TXT/BAS nebo vlož text.');return false;} var txt=feedText(raw); sentLines=lineCount(txt); sentChars=txt.length; lastAction=runAfter?'SEND_PLUS_RUN':'SEND_NO_RUN'; precleanBeforeSend(); try{if(!playMode && typeof startPlaying==='function')startPlaying();}catch(e){} if(typeof window.queueFastBasicFix243==='function'){try{window.queueFastBasicFix243(txt,'FIX314 TXT/BAS KGETCH '+(runAfter?'+ RUN':'BEZ RUN'),!!runAfter,ev||null); var msg='KGETCH fronta spuštěna '+(runAfter?'S RUN':'BEZ RUN')+': '+sentLines+' řádků / '+sentChars+' znaků. Čekej na QUEUE COMPLETE.'; var ml=id('fix313MiniLog'); if(ml)ml.textContent=msg+'\nfile='+fileName+'\nTXT_SEND_PATH=queueFastBasicFix243_KGETCH_ATASCII_RETURN\nNO_RAW_CH_PASTE=YES\nNO_RAM_PROGRAM_INJECT=YES'; log313(msg); return false;}catch(e){log313('queueFastBasicFix243 chyba: '+(e&&e.message?e.message:e));return false;}} log313('CHYBA: queueFastBasicFix243 v runtime není. Zastavuju, nepouštím RAW CH ani RAM zápis.'); return false;}
   function clear(ev){stop(ev); if(!guard('clear',450))return false; var ta=id('fix313Text'); if(ta)ta.value=''; fileName='--';fileSize=0;fileLoaded=false;sentLines=0;sentChars=0;lastAction='CLEAR'; var fs=id('fix313FileStatus'); if(fs)fs.textContent='Soubor: zatím nevybrán.'; var ml=id('fix313MiniLog'); if(ml)ml.textContent='Pole vyčištěno.'; log313('Textové pole vyčištěno.'); return false;}
-  function snapshot(ev){stop(ev); lastAction='SNAPSHOT'; var arr=[]; function safe(fn,fb){try{return fn();}catch(e){return fb||('ERR '+(e&&e.message?e.message:e));}} arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+(new Date()).toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE'); arr.push('NEW_XEX_CORE=NO'); arr.push('XEX_TURBO_SCOPE=DEFERRED'); arr.push('FIX314_BOOT_FLICKER_GUARD=YES'); arr.push('FIX314_OLD_UI_BOOT_DISABLED=YES'); arr.push('FIX314_TXT_PICKER_BUTTON=YES'); arr.push('FIX314_TEXTAREA_VISIBLE=YES'); arr.push('FIX314_SEND_NO_RUN_BUTTON=YES'); arr.push('FIX314_SEND_RUN_BUTTON=YES'); arr.push('FIX314_XEX_PICKER_UI_ONLY=YES'); arr.push('FIX314_XEX_LOAD_TO_RAM=NO'); arr.push('FIX314_BLOCK_FAST_MODE=NO'); arr.push('FIX309_KGETCH_CORE_KEPT_INTERNAL=YES'); arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');arr.push('NO_RAW_CH_PASTE=YES'); arr.push('');arr.push('[FIX314 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('bootClass='+(document.body&&document.body.classList.contains('fix313-boot')?'YES':'NO')); arr.push('appliedCount='+applied); arr.push('consoleCard='+(id('fix313ConsoleCard')?'YES':'NO')); arr.push('txtPanel='+(id('fix313TxtPanel')?'YES':'NO')); arr.push('xexPanel='+(id('fix313XexPanel')?'YES':'NO')); arr.push('');arr.push('[FIX314 TXT PANEL]'); arr.push('TXT_PICKER_BUTTON='+(id('fix313PickBtn')?'YES':'NO')); arr.push('TXT_FILE_INPUT='+(id('fix313File')?'YES':'NO')); arr.push('TXT_TEXTAREA='+(id('fix313Text')?'YES':'NO')); arr.push('TXT_SEND_NO_RUN='+(id('fix313SendNoRun')?'YES':'NO')); arr.push('TXT_SEND_RUN='+(id('fix313SendRun')?'YES':'NO')); arr.push('TXT_FILE_LOADED='+(fileLoaded?'YES':'NO')); arr.push('TXT_FILE='+fileName); arr.push('TXT_SIZE='+fileSize); arr.push('TEXTAREA_CHARS='+(id('fix313Text')?String(id('fix313Text').value||'').length:0)); arr.push('LAST_ACTION='+lastAction); arr.push('LAST_INFO='+lastInfo); arr.push('SENT_LINES_LAST='+sentLines); arr.push('SENT_CHARS_LAST='+sentChars); arr.push('TXT_SEND_PATH=queueFastBasicFix243_KGETCH_ATASCII_RETURN'); arr.push('EOL_NORMALIZE_CRLF_TO_LF=YES / queue handles ATASCII $9B'); arr.push('');arr.push('[FIX309/243 QUEUE]'); arr.push('fix309Active='+safe(function(){return window.fix309Active?'YES':'NO';},'--')); arr.push('fix309Done='+safe(function(){return window.fix309Done?'YES':'NO';},'--')); arr.push('fix309Pumped='+safe(function(){return window.fix309Pumped;},'--')); arr.push('fix309Left='+safe(function(){return window.fix309Left;},'--')); arr.push('fix309FastInfo='+safe(function(){return window.fix309FastInfo||'--';},'--')); arr.push('fix309Last='+safe(function(){return window.fix309Last||'--';},'--')); arr.push('fix243FastInfo='+safe(function(){return window.fix243FastInfo||'--';},'--')); arr.push('fix243Last='+safe(function(){return window.fix243Last||'--';},'--')); arr.push('');arr.push('[CPU]'); arr.push(safe(function(){return cpu?'PC $'+((cpu.pc>>>0).toString(16).toUpperCase().padStart(4,'0'))+' A $'+((cpu.a>>>0).toString(16).toUpperCase().padStart(2,'0'))+' X $'+((cpu.x>>>0).toString(16).toUpperCase().padStart(2,'0'))+' Y $'+((cpu.y>>>0).toString(16).toUpperCase().padStart(2,'0'))+' SP $'+((cpu.sp>>>0).toString(16).toUpperCase().padStart(2,'0'))+' P $'+((cpu.p>>>0).toString(16).toUpperCase().padStart(2,'0'))+' steps '+(cpu.steps||0):'CPU unavailable';},'CPU unavailable')); arr.push('');arr.push('[DOM LOG]'); arr.push(safe(function(){var l=id('log');return l?(l.textContent||''):'--';},'--')); var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX314-full-basic-txt-'+Date.now(),out);}catch(e){log313('save report error '+(e&&e.message?e.message:e));} log313('SNAPSHOT FULL LOG hotov.'); return false;}
+  function snapshot(ev){stop(ev); lastAction='SNAPSHOT'; var arr=[]; function safe(fn,fb){try{return fn();}catch(e){return fb||('ERR '+(e&&e.message?e.message:e));}} arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+(new Date()).toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU ZMENENE'); arr.push('NEW_XEX_CORE=NO'); arr.push('XEX_TURBO_SCOPE=DEFERRED'); arr.push('FIX314_BOOT_FLICKER_GUARD=YES'); arr.push('FIX314_OLD_UI_BOOT_DISABLED=YES'); arr.push('FIX314_TXT_PICKER_BUTTON=YES'); arr.push('FIX314_TEXTAREA_VISIBLE=YES'); arr.push('FIX314_SEND_NO_RUN_BUTTON=YES'); arr.push('FIX314_SEND_RUN_BUTTON=YES'); arr.push('FIX314_XEX_PICKER_UI_ONLY=YES'); arr.push('FIX314_XEX_LOAD_TO_RAM=NO'); arr.push('FIX314_BLOCK_FAST_MODE=NO'); arr.push('FIX309_KGETCH_CORE_KEPT_INTERNAL=YES'); arr.push('NO_FAKE_READY=YES');arr.push('NO_FAKE_LOAD=YES');arr.push('NO_FAKE_SELF_TEST=YES');arr.push('NO_RAM_PROGRAM_INJECT=YES');arr.push('NO_SCREEN_PAINT=YES');arr.push('NO_RAW_CH_PASTE=YES'); arr.push('');arr.push('[FIX314 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('bootClass='+(document.body&&document.body.classList.contains('fix313-boot')?'YES':'NO')); arr.push('appliedCount='+applied); arr.push('consoleCard='+(id('fix313ConsoleCard')?'YES':'NO')); arr.push('txtPanel='+(id('fix313TxtPanel')?'YES':'NO')); arr.push('xexPanel='+(id('fix313XexPanel')?'YES':'NO')); arr.push('');arr.push('[FIX314 TXT PANEL]'); arr.push('TXT_PICKER_BUTTON='+(id('fix313PickBtn')?'YES':'NO')); arr.push('TXT_FILE_INPUT='+(id('fix313File')?'YES':'NO')); arr.push('TXT_TEXTAREA='+(id('fix313Text')?'YES':'NO')); arr.push('TXT_SEND_NO_RUN='+(id('fix313SendNoRun')?'YES':'NO')); arr.push('TXT_SEND_RUN='+(id('fix313SendRun')?'YES':'NO')); arr.push('TXT_FILE_LOADED='+(fileLoaded?'YES':'NO')); arr.push('TXT_FILE='+fileName); arr.push('TXT_SIZE='+fileSize); arr.push('TEXTAREA_CHARS='+(id('fix313Text')?String(id('fix313Text').value||'').length:0)); arr.push('LAST_ACTION='+lastAction); arr.push('LAST_INFO='+lastInfo); arr.push('SENT_LINES_LAST='+sentLines); arr.push('SENT_CHARS_LAST='+sentChars); arr.push('TXT_SEND_PATH=queueFastBasicFix243_KGETCH_ATASCII_RETURN'); arr.push('EOL_NORMALIZE_CRLF_TO_LF=YES / queue handles ATASCII $9B'); arr.push('');arr.push('[FIX309/243 QUEUE]'); arr.push('fix309Active='+safe(function(){return window.fix309Active?'YES':'NO';},'--')); arr.push('fix309Done='+safe(function(){return window.fix309Done?'YES':'NO';},'--')); arr.push('fix309Pumped='+safe(function(){return window.fix309Pumped;},'--')); arr.push('fix309Left='+safe(function(){return window.fix309Left;},'--')); arr.push('fix309FastInfo='+safe(function(){return window.fix309FastInfo||'--';},'--')); arr.push('fix309Last='+safe(function(){return window.fix309Last||'--';},'--')); arr.push('fix243FastInfo='+safe(function(){return window.fix243FastInfo||'--';},'--')); arr.push('fix243Last='+safe(function(){return window.fix243Last||'--';},'--')); arr.push('');arr.push('[CPU]'); arr.push(safe(function(){return cpu?'PC $'+((cpu.pc>>>0).toString(16).toUpperCase().padStart(4,'0'))+' A $'+((cpu.a>>>0).toString(16).toUpperCase().padStart(2,'0'))+' X $'+((cpu.x>>>0).toString(16).toUpperCase().padStart(2,'0'))+' Y $'+((cpu.y>>>0).toString(16).toUpperCase().padStart(2,'0'))+' SP $'+((cpu.sp>>>0).toString(16).toUpperCase().padStart(2,'0'))+' P $'+((cpu.p>>>0).toString(16).toUpperCase().padStart(2,'0'))+' steps '+(cpu.steps||0):'CPU unavailable';},'CPU unavailable')); arr.push('');arr.push('[DOM LOG]'); arr.push(safe(function(){var l=id('log');return l?(l.textContent||''):'--';},'--')); var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX314-full-basic-txt-'+Date.now(),out);}catch(e){log313('save report error '+(e&&e.message?e.message:e));} log313('SNAPSHOT FULL LOG hotov.'); return false;}
   function start(){ensureLayout(); setTimeout(ensureLayout,40); setTimeout(ensureLayout,160); setTimeout(ensureLayout,420); setTimeout(function(){ensureLayout(); try{document.body.classList.remove('fix313-boot');}catch(e){} log313('UI stabilizované: staré boot přepisy vypnuté, bez problikávání mezi 306/311/312.');},700); setTimeout(function(){ensureLayout(); try{document.body.classList.remove('fix313-boot');}catch(e){}},1600);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
 })();
@@ -13075,7 +13087,7 @@ updatePlayStatus('ready');
     arr.push('AtariHelp.eu EMU-09 '+TAG);
     arr.push('time='+(new Date()).toISOString());
     arr.push('build='+TAG);
-    arr.push('KODY JSOU STEJNE');
+    arr.push('KODY JSOU ZMENENE');
     arr.push('NEW_XEX_CORE=YES');
     arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
     arr.push('FIX315_TURBO_BUTTON_VISIBLE='+(id('fix315TurboBtn')?'YES':'NO'));
@@ -13288,12 +13300,12 @@ updatePlayStatus('ready');
   function snapshot327(ev){
     stop(ev);
     var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
+    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU ZMENENE');
     arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
     arr.push('FIX328_BASELINE_FROM_FIX315=YES'); arr.push('FIX328_NO_FLICKER_STATIC_LABELS=YES'); arr.push('FIX328_SINGLE_TURBO_BUTTON=YES'); arr.push('FIX328_NO_OLD_FIX314_315_TURBO_HANDLERS=YES'); arr.push('FIX328_EXACT_TURBO_RELOC=YES'); arr.push('FIX328_OS_ROM_GATE_BY_PORTB=YES'); arr.push('FIX328_WARM_RESET_PRESERVE_LIST=YES');
     arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
     arr.push(''); arr.push('[FIX328 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('keyboardTitle='+(document.querySelector('#atariKeyboardDock h2')?document.querySelector('#atariKeyboardDock h2').textContent:'--'));
-    arr.push('turboButtonsTotal='+document.querySelectorAll('#fix328XexPanel button[data-fix328="turbo"]').length); arr.push('snapshotButtonsTotal='+document.querySelectorAll('#fix328XexPanel button[data-fix328="snapshot"]').length); arr.push('oldFix293Visible='+(document.body&&/FIX293: čistý nativní/i.test(document.body.innerText||'')?'YES':'NO')); arr.push('turboClicks='+turboClicks); arr.push('turboInfo='+lastTurboInfo);
+    arr.push('turboButtonsTotal='+document.querySelectorAll('#fix328XexPanel button[data-fix328="turbo"]').length); arr.push('snapshotButtonsTotal='+document.querySelectorAll('#fix328XexPanel button[data-fix328="snapshot"]').length); arr.push('oldFix293Visible='+(document.body&&/XEX loader: čistý nativní/i.test(document.body.innerText||'')?'YES':'NO')); arr.push('turboClicks='+turboClicks); arr.push('turboInfo='+lastTurboInfo);
     arr.push(''); arr.push('[XEX/TURBO]'); arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--')); arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--')); arr.push('ENTRY='+(typeof xexInfo!=='undefined'&&xexInfo?'$'+hx(xexInfo.entry||0,4):'--')); arr.push('RUNAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.run?'$'+hx(xexInfo.run,4):'--')); arr.push('INITAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--'));
     arr.push('PORTB_VALUE='+(typeof portbValue!=='undefined'?'$'+hx(portbValue,2):'--')); arr.push('RAM_D301='+(ram?'$'+hx(ram[0xD301]||0,2):'--')); arr.push('PURE_ROM_MODE='+(typeof fix215PureRomMode!=='undefined'?String(!!fix215PureRomMode):'--')); arr.push('PURE_HW_MODE='+(typeof fix225PureHardwareMode!=='undefined'?String(!!fix225PureHardwareMode):'--')); arr.push('FIX232_MODE='+(typeof fix232Mode!=='undefined'?String(fix232Mode):'--')); arr.push('nmiGuardLeft='+(window.fix328TurboNmiGuard||0)); arr.push('nmiGuardLast='+(window.fix328NmiLast||'--')); arr.push('brkBypassLast='+(window.fix328BrkBypassLast||'--'));
     arr.push('MEM_02E2='+(ram?readBlock(0x02E2,2):'--')); arr.push('MEM_4980='+(ram?readBlock(0x4980,16):'--')); arr.push('MEM_6132='+(ram?readBlock(0x6132,16):'--')); arr.push('MEM_0B00='+(ram?readBlock(0x0B00,16):'--')); arr.push('MEM_2000='+(ram?readBlock(0x2000,16):'--')); arr.push('MEM_2100='+(ram?readBlock(0x2100,16):'--')); arr.push('MEM_C018='+(ram?readBlock(0xC018,16):'--')); arr.push('CORE LOADER INFO='+(typeof fix195NativeXexInfo!=='undefined'?fix195NativeXexInfo:'--')); arr.push('STREAM LOADER INFO='+(typeof fix192LoaderInfo!=='undefined'?fix192LoaderInfo:'--'));
@@ -13466,7 +13478,7 @@ updatePlayStatus('ready');
   function snapshot(ev){
     stop(ev); snapClicks++;
     var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
+    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU ZMENENE');
     arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
     arr.push('FIX333_TURBO_NO_KEY_GUARD=YES'); arr.push('FIX333_OS_KGETCH_IDLE_AFTER_TITLE=YES'); arr.push('FIX333_WARM_RESET_RESTARTS_TURBO=YES'); arr.push('FIX333_KEEP_FIX330_REAL_LOADER=YES'); arr.push('FIX330_CAPTURE_PHASE_TURBO_BUTTONS=YES'); arr.push('FIX330_D01F_START_OPTION_OVERRIDE=YES'); arr.push('FIX330_OLD_FIX315_TURBO_HANDLER_BLOCKED=YES'); arr.push('FIX330_SINGLE_TURBO_BUTTON=YES'); arr.push('FIX330_TXT_KGETCH_KEPT=YES'); arr.push('FIX330_WARM_RESET_PRESERVE_LIST=YES');
     arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
@@ -13589,7 +13601,7 @@ updatePlayStatus('ready');
   function snapshot(ev){
     stop(ev); snapClicks++;
     var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
+    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU ZMENENE');
     arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
     arr.push('FIX331_BASIC_ROM_PORTB_GATE=YES'); arr.push('FIX331_KEEP_FIX330_UI_TXT_WARM_BASE=YES'); arr.push('FIX331_TURBO_WARM_RESET_XEX_MODE=YES'); arr.push('FIX331_NO_SCREEN_PAINT=YES');
     arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
@@ -13685,7 +13697,7 @@ updatePlayStatus('ready');
   function snapshot(ev){
     stop(ev); snapClicks++;
     var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
+    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU ZMENENE');
     arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
     arr.push('FIX332_TURBO_TITLE_LATCH_RELEASE=YES'); arr.push('FIX332_READY_SPAM_GUARD=YES'); arr.push('FIX332_KEEP_FIX330_REAL_LOADER=YES'); arr.push('FIX332_NO_FAKE_READY=YES');
     arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
@@ -13788,7 +13800,7 @@ updatePlayStatus('ready');
   function snapshot(ev){
     stop(ev); snapClicks++; installRomPassThrough();
     var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
+    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU ZMENENE');
     arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
     arr.push('FIX334_REAL_CIOV_E456_PASS_THROUGH=YES'); arr.push('FIX334_REAL_KGETCH_E420_PASS_THROUGH=YES'); arr.push('FIX334_BLOCK_GENERIC_EMPTY_CIO_OK=YES'); arr.push('FIX334_KEEP_FIX330_REAL_LOADER=YES');
     arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
@@ -13948,7 +13960,7 @@ updatePlayStatus('ready');
   function snapshot(ev){
     stop(ev); snapClicks++; installBlockingCio(); syncTurboEditorColors();
     var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
+    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU ZMENENE');
     arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
     arr.push('FIX335_BLOCK_EMPTY_CIOV_GETREC=YES'); arr.push('FIX335_KGETCH_BLOCKS_NO_KEY=YES'); arr.push('FIX335_TURBO_EDITOR_COLOR_SYNC=YES'); arr.push('FIX335_KEEP_FIX330_REAL_LOADER=YES');
     arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
@@ -13969,7 +13981,7 @@ updatePlayStatus('ready');
   function capture(ev){var b=null; try{b=ev.target&&ev.target.closest?ev.target.closest('button'):null;}catch(e){} if(!b)return; if(isTurboButton(b))return startTurbo(ev); if(isSnapButton(b))return snapshot(ev); if(isWarmButton(b)&&turboMode())return turboWarm(ev); captureKeys(ev);} 
   function cleanUi(){
     try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX335: Turbo loader je reálný. Oprava blokuje prázdný CIOV/KGETCH vstup, aby READY neběželo dokola; barvy jdou přes GTIA registry.';}catch(e){}
-    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX337'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX335: BASIC/TXT drží; Turbo E: vstup čeká na klávesu místo prázdného READY cyklu.';}catch(e){}
+    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX342'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX335: BASIC/TXT drží; Turbo E: vstup čeká na klávesu místo prázdného READY cyklu.';}catch(e){}
     try{var panel=id('fix329XexPanel')||id('fix328XexPanel'); if(panel){var h2=panel.querySelector('h2'); if(h2)h2.textContent='3) Turbo Basic XL 1.5 — čistý XEX loader FIX335'; var p2=panel.querySelector('p'); if(p2)p2.textContent='FIX335 nepiše READY. Blokuje prázdný CIOV/KGETCH vstup a drží GTIA editorové barvy přes registry.'; var tb=panel.querySelector('button[data-fix329="turbo"],button[data-fix328="turbo"],#fix329TurboBtn,#fix328TurboBtn,#fix315TurboBtn'); if(tb){tb.textContent='1) START+OPTION → TURBO BASIC XL 1.5 XEX — FIX335'; tb.onclick=startTurbo;} var sn=panel.querySelector('button[data-fix329="snapshot"],button[data-fix328="snapshot"],#fix329XexSnap,#fix328XexSnap,#fix315TurboSnap'); if(sn){sn.textContent='2) SNAPSHOT TURBO/XEX LOG FIX335'; sn.onclick=snapshot;}}}catch(e){}
     try{window.fix335StartTurboBasic=startTurbo; window.fix334StartTurboBasic=startTurbo; window.fix333StartTurboBasic=startTurbo; window.fix332StartTurboBasic=startTurbo; window.fix331StartTurboBasic=startTurbo; window.fix330StartTurboBasic=startTurbo; window.fix329StartTurboBasic=startTurbo; window.fix315StartTurboBasic=startTurbo; window.fix335Snapshot=snapshot; window.fix334Snapshot=snapshot; window.fix333Snapshot=snapshot; window.fix330Snapshot=snapshot;}catch(e){}
   }
@@ -13988,7 +14000,7 @@ updatePlayStatus('ready');
    until a real key/line is queued, then writes that line into the normal E: line buffer $0580 and returns to Turbo. */
 (function(){
   'use strict';
-  var TAG='FIX338_TBXL_CPU_CIOV_INPUT_FIX';
+  var TAG='FIX342_TBXL_DIRECT_LOADER_KEYBOARD_COLOR_FIX';
   var started=false, busy=0, tbxlClicks=0, tbxlLogClicks=0, promptWaitHits=0, lineSubmits=0, keyCount=0;
   var lineBuf=[];
   function id(x){return document.getElementById(x);} 
@@ -14093,7 +14105,7 @@ updatePlayStatus('ready');
   function snapshot336(ev){
     stop(ev); tbxlLogClicks++; installPromptGuard(); applyEditorColors();
     var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE');
+    arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU ZMENENE');
     arr.push('NEW_XEX_CORE=YES'); arr.push('XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST');
     arr.push('FIX336_NON_INTERCEPTED_TBXL_BUTTON=YES'); arr.push('FIX336_TURBO_PROMPT_WAIT_E68D_C287=YES'); arr.push('FIX336_NO_EMPTY_LINE_READY_SPAM=YES'); arr.push('FIX336_EDITOR_COLOR_GTIA_SYNC=YES'); arr.push('FIX336_KEEP_FIX330_REAL_LOADER=YES');
     arr.push('NO_FAKE_READY=YES'); arr.push('NO_FAKE_LOAD=YES'); arr.push('NO_FAKE_SELF_TEST=YES'); arr.push('NO_RAM_PROGRAM_INJECT=YES'); arr.push('NO_SCREEN_PAINT=YES'); arr.push('NO_RAW_CH_PASTE=YES');
@@ -14110,7 +14122,7 @@ updatePlayStatus('ready');
   }
   function cleanUi(){
     try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX336: nový TBXL panel nepoužívá stará slova Turbo/Snapshot, takže ho už nechytí staré document-capture handlery. Prompt čeká v $E68D místo prázdného READY cyklu.';}catch(e){}
-    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX337'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX336: BASIC/TXT drží; v TBXL se klávesy sbírají do reálné E: line buffer fronty $0580/EOL $9B.';}catch(e){}
+    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX342'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX336: BASIC/TXT drží; v TBXL se klávesy sbírají do reálné E: line buffer fronty $0580/EOL $9B.';}catch(e){}
     var hidden=0;
     try{[].slice.call(document.querySelectorAll('button')).forEach(function(b){var t=String(b.textContent||''); if(b.id==='fix336TbxlBtn'||b.id==='fix336LogBtn'||b.id==='fix336RestartBtn')return; if(/TURBO BASIC|SNAPSHOT.*TURBO|TURBO\/XEX/i.test(t)){b.style.display='none'; b.disabled=true; hidden++;}}); window.fix336OldButtonsHidden=hidden;}catch(e){}
     try{var panel=id('fix336TbxlPanel'); if(!panel){panel=document.createElement('section'); panel.id='fix336TbxlPanel'; panel.className='card'; var anchor=id('fix329XexPanel')||id('fix328XexPanel')||id('fix313TxtPanel')||document.querySelector('#atariKeyboardDock'); if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling); else document.body.appendChild(panel);} panel.style.display='block'; panel.innerHTML='<h2>3) TBXL 1.5 — FIX336 skutečný XEX start + prompt wait</h2><p>Nová tlačítka záměrně nepoužívají starý text Turbo/Snapshot, aby je nechytaly staré capture handlery. Loader zůstává FIX330/FIX328, prompt čeká v $E68D na řádek místo nekonečného READY.</p><div id="fix336Status" class="fileLine">FIX336 připraveno.</div><button id="fix336TbxlBtn" type="button">1) SPUSTIT TBXL 1.5 FIX336</button><button id="fix336LogBtn" type="button" class="secondary compact">2) ULOZIT TBXL LOG FIX336</button><button id="fix336RestartBtn" type="button" class="secondary compact">3) RESTART TBXL FIX336</button>'; id('fix336TbxlBtn').onclick=startTbxl; id('fix336LogBtn').onclick=snapshot336; id('fix336RestartBtn').onclick=restartTbxl;}catch(e){}
@@ -14123,21 +14135,21 @@ updatePlayStatus('ready');
 
 
 <script>
-/* FIX337: TBXL direct loader + real keyboard wait + editor colors.
+/* FIX342: TBXL direct loader + real keyboard wait + editor colors.
    No fake READY, no fake LOAD, no screen paint, no RAM program inject. */
 (function(){
   'use strict';
-  var TAG='FIX338_TBXL_CPU_CIOV_INPUT_FIX';
+  var TAG='FIX342_TBXL_DIRECT_LOADER_KEYBOARD_COLOR_FIX';
   var XEX_B64="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D9KgJ4jQ/akLjQ/SoCtM9Q+lMsU0pTPlNbAMoTKFOUUxhTE4TCEQpTGFOcpM9Q+I0P2QBaAwiND9qQOND9KgLpACoF6I0P2pC40P0higLOomOdDb5jLQAuYzoCGK8LKI0P2pA40P0qlAjQ7UWKk8jQLTYAAAySCQFMk6kBLJQZAMyVuQCslhkATJe5ACOGDJKhhgqQeFM4U1qRGFNKkAhTIgcg4QBcCA0OlgogGgAbEkyTrQFMixJCBHELAM8B3dAAfQz+jgEdDsqZuNEQetAAeFK6kHhSWgAYQkYMixJCBHELDl8PaMRRDKjkYQrkYQ6OAR8J6ORhCsRRCxJCBHELDH8NjdAAfQ5Mjo4BHQ7ExlEKUrjQAHohCpIJ0AB8rQ+qABsSTJOtAOyLEkIEcQsAadAQfoEPJgIAALTIAgYAB8ZnxmZnwAADxmYGBmPAAAeGxmZmx4AAB+YHxgYH4AAH5gfGBgYAAAPmBgbmY+AABmZn5mZmYAAH4YGBgYfgAABgYGBmY8AABmbHh4bGYAAGBgYGBgfgAAY3d/a2NjAABmdn5+bmYAADxmZmZmPAAAfGZmfGBgAAA8ZmZmbDYAAHxmZnxsZgAAPGA8BgY8AAB+GBgYGBgAAGZmZmZmPAAAZmZmZjwYAABjY2t/d2MAAGZmPDxmZgAAZmY8GBgYAAB+DBgwYH4AAHhgYGBgeMBgMBgMBgMAAAAeBgYGBh4AAAgcNmMAAAAAAAAAAAD/PBhmdn5+bmYMGAA8Bj5mPgwYZmZmZmY8PBgAPGBgYDw8GAYGPmZmPgwYADxmfmA8PBh8ZmZ8bGYMGDxmZmZmPAwYPBgYGBg8DBgAADgYGDwMGHxgeGBgfDwYPGZgYGY8DAgYPGZmfmY8GH4GDBgwfjwYAHxmZmZmDBgAPGZmZjw4OABmZmZmPjwYfGZmZmZ8PBgAfGZgYGA8GAA+YDwGfB4MEH4YGBgODBgAZmZmZj48GHxgeGBgfDwYADxmfmA8PBg8YDwGBjwYGGZmZmZmPDwYAH4MGDB+PBh+GBgYGBgAABg8fhgYGAAAGBgYfjwYAAAYMH4wGAAAABgMfgwYABhwDBhmZmY8AAAAPAY+Zj4AAGBgfGZmfAAAADxgYGA8AAAGBj5mZj4AAAA8Zn5gPAAADhg+GBgYDDgAPmZmZjwAAGBgfGZmZgAAGAA4GBg8GDAMAAwMDAwAAGBgbHhsZgAAOBgYGBg8AAAAZn9/a2MAAAB8ZmZmZgAAADxmZmY8YGAAfGZmZnwGBgA+ZmZmPgAAAHxmYGBgAAAAPmA8BnwAABh+GBgYDgAAAGZmZmY+AAAAZmZmPBgAAABja38+NgAAAGY8GDxmGHAAAGZmZjwAAAB+DBgwfgwYZmZmPBgYAAAYGBgYGBgGAH54fG5mBgAIGDh4OBgIABAYHB4cGBAA4gLjAjJh";
   var startClicks=0, logClicks=0, keyQueued=0, cioWait=0, keyWait=0, cioReturns=0, keyReturns=0, busy=0;
   var byteQ=[];
   function id(x){return document.getElementById(x);}
   function hx(v,n){try{if(typeof hex==='function')return hex((v||0)&(n>=4?65535:255),n);}catch(e){} var s=((v||0)&(n>=4?65535:255)).toString(16).toUpperCase(); while(s.length<n)s='0'+s; return s;}
   function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
-  function log337(msg){msg=String(msg||''); window.fix337Last=msg; try{if(typeof log==='function')log('FIX337 '+msg);else{var l=id('log'); if(l)l.textContent='FIX337 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX337: '+msg);}catch(e){} try{var s=id('fix337Status'); if(s)s.textContent=msg;}catch(e){} }
+  function log337(msg){msg=String(msg||''); window.fix337Last=msg; try{if(typeof log==='function')log('FIX342 '+msg);else{var l=id('log'); if(l)l.textContent='FIX342 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX342: '+msg);}catch(e){} try{var s=id('fix337Status'); if(s)s.textContent=msg;}catch(e){} }
   function readBlock(addr,len){try{var out=[],a=addr&65535; for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2)); return '$'+hx(addr,4)+' '+out.join(' ');}catch(e){return '$'+hx(addr,4)+' ERR';}}
   function b64Bytes(s){var bin=atob(s), out=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i)&255; return out;}
-  function setPortB(v){v&=255; try{if(typeof piaPortBCtl!=='undefined')piaPortBCtl=0x04; if(typeof piaPortBDDR!=='undefined')piaPortBDDR=0xFF; if(typeof piaPortBOut!=='undefined')piaPortBOut=v; if(typeof portbValue!=='undefined')portbValue=v; if(ram){ram[0xD301]=v;ram[0xD303]=0x04;}}catch(e){} try{if(typeof fix227SyncPortB==='function')fix227SyncPortB('FIX337 PORTB $'+hx(v,2));}catch(e){} }
+  function setPortB(v){v&=255; try{if(typeof piaPortBCtl!=='undefined')piaPortBCtl=0x04; if(typeof piaPortBDDR!=='undefined')piaPortBDDR=0xFF; if(typeof piaPortBOut!=='undefined')piaPortBOut=v; if(typeof portbValue!=='undefined')portbValue=v; if(ram){ram[0xD301]=v;ram[0xD303]=0x04;}}catch(e){} try{if(typeof fix227SyncPortB==='function')fix227SyncPortB('FIX342 PORTB $'+hx(v,2));}catch(e){} }
   function installPortBGates(){try{if(window.fix337PortBGateInstalled || typeof optionalOsRomActiveForAddr!=='function')return; var old=optionalOsRomActiveForAddr; optionalOsRomActiveForAddr=function(a){a&=65535; if(window.fix337TurboActive){var pb=0xFF; try{pb=(typeof portbValue!=='undefined'?portbValue:(ram?ram[0xD301]:0xFF))&255;}catch(e){} if(((a>=0xC000&&a<=0xCFFF)||(a>=0xD800&&a<=0xFFFF)) && ((pb&1)===0))return false; if((a>=0xA000&&a<=0xBFFF) && ((pb&2)!==0))return false;} return old.call(this,a);}; window.fix337PortBGateInstalled=true;}catch(e){log337('PORTB gate install error '+(e&&e.message?e.message:e));}}
   function parseXex(bytes){var pos=0, blocks=[], inits=[], run=0, loaded=0, bad='NO'; while(pos+2<=bytes.length && bytes[pos]===0xFF && bytes[pos+1]===0xFF)pos+=2; while(pos+4<=bytes.length){var st=(bytes[pos]|(bytes[pos+1]<<8))&65535, en=(bytes[pos+2]|(bytes[pos+3]<<8))&65535; pos+=4; if(st===0xFFFF)continue; if(en<st || pos+(en-st+1)>bytes.length){bad='BAD_SEG $'+hx(st,4)+'-$'+hx(en,4)+' pos '+pos; break;} var len=en-st+1; for(var i=0;i<len;i++){var a=(st+i)&65535; ram[a]=bytes[pos+i]&255; try{if(typeof xexLoadedMask!=='undefined'&&xexLoadedMask)xexLoadedMask[a]=1;}catch(e){}} pos+=len; loaded+=len; blocks.push('$'+hx(st,4)+'-$'+hx(en,4)+' '+len); if(st<=0x02E0 && en>=0x02E1)run=(ram[0x02E0]|(ram[0x02E1]<<8))&65535; if(st<=0x02E2 && en>=0x02E3){var init=(ram[0x02E2]|(ram[0x02E3]<<8))&65535; if(init)inits.push(init);}} if(!inits.length){var ia=(ram[0x02E2]|(ram[0x02E3]<<8))&65535; if(ia)inits.push(ia);} if(!run){var ra=(ram[0x02E0]|(ram[0x02E1]<<8))&65535; if(ra)run=ra;} return {blocks:blocks,inits:inits,run:run,loaded:loaded,bad:bad};}
   function copyPages(src,dst,pages,zeroSrc){var len=(pages&255)*256; for(var i=0;i<len;i++){var v=ram[(src+i)&65535]&255; ram[(dst+i)&65535]=v; try{if(typeof xexLoadedMask!=='undefined'&&xexLoadedMask)xexLoadedMask[(dst+i)&65535]=1;}catch(e){} if(zeroSrc)ram[(src+i)&65535]=0;} return len;}
@@ -14147,1135 +14159,22 @@ updatePlayStatus('ready');
   function syncColors(){try{if(!ram)return; var fg=0x0E,bg=0x76,bk=0x00; ram[0x02C5]=fg;ram[0xD017]=fg; ram[0x02C6]=bg;ram[0xD018]=bg; ram[0x02C8]=bk;ram[0xD01A]=bk; ram[0x026F]=0;ram[0xD01B]=0; window.fix337Color='COLPF1/TEXT $'+hx(fg,2)+' COLPF2/BG $'+hx(bg,2)+' COLBK $'+hx(bk,2)+' PC '+(cpu?'$'+hx(cpu.pc,4):'--');}catch(e){window.fix337Color='color err '+(e&&e.message?e.message:e);}}
   function turboActive(){try{return !!window.fix337TurboActive || /TBXL|TURBO BASIC XL\s*1\.5/i.test(String(currentXexName||''));}catch(e){return !!window.fix337TurboActive;}}
   function installColorRoles(){try{if(window.fix337ColorRolesInstalled)return; var oldMaybe=realOsMaybeTextColorSetFix163; realOsMaybeTextColorSetFix163=function(mode,cs){if(turboActive() && (mode===2||mode===3)){syncColors(); return {p0:cs.p0,p1:cs.p1,p2:atariColor(0x0E),p3:cs.p3,bk:atariColor(0x76)};} return oldMaybe.call(this,mode,cs);}; var oldFg=(typeof anticTextFgRgb==='function')?anticTextFgRgb:null; if(oldFg){anticTextFgRgb=function(raw,mode,cs){if(turboActive()&&(mode===2||mode===3))return rgbFromCss(atariColor(0x0E)); return oldFg.call(this,raw,mode,cs);};} window.fix337ColorRolesInstalled=true;}catch(e){log337('color roles install error '+(e&&e.message?e.message:e));}}
-  function setTurboMode(){window.fix337TurboActive=true; window.fix328TurboActive=true; window.fix328TurboMode=true; window.fix330TurboActive=true; window.fix335TurboActive=true; try{activeXexProfile='generic'; currentXexName='TBXL 1.5 CLEAN XEX FIX337 / direct internal XEX parser'; fix232Mode='xex'; fix154RealOsBootMode=false; fix215PureRomMode=false; fix225PureHardwareMode=false; fix215PureSelfTestMode=false;}catch(e){}}
+  function setTurboMode(){window.fix337TurboActive=true; window.fix328TurboActive=true; window.fix328TurboMode=true; window.fix330TurboActive=true; window.fix335TurboActive=true; try{activeXexProfile='generic'; currentXexName='TBXL 1.5 CLEAN XEX FIX342 / direct internal XEX parser'; fix232Mode='xex'; fix154RealOsBootMode=false; fix215PureRomMode=false; fix225PureHardwareMode=false; fix215PureSelfTestMode=false;}catch(e){}}
   function installBrkNmiGuards(){try{if(!window.fix337NmiWrapInstalled && typeof fix224RunPureRomFrameInterrupts==='function'){var oldN=fix224RunPureRomFrameInterrupts; fix224RunPureRomFrameInterrupts=function(nmi){if(window.fix337NmiGuard&&window.fix337NmiGuard>0){window.fix337NmiGuard--; window.fix337NmiLast='skip NMI $'+hx(nmi,2)+' left '+window.fix337NmiGuard+' PC '+(cpu?'$'+hx(cpu.pc,4):'--'); return 0;} return oldN.apply(this,arguments);}; window.fix337NmiWrapInstalled=true;}}catch(e){} try{if(!window.fix337BrkInstalled && CPU6502&&CPU6502.prototype&&CPU6502.prototype.step){var oldStep=CPU6502.prototype.step; CPU6502.prototype.step=function(){try{if(window.fix337TurboActive)syncColors();}catch(e){} return oldStep.call(this);}; window.fix337BrkInstalled=true;}}catch(e){}}
   function iocbBase(c){return c.x&0xF0;} function iocbCmd(c){try{return (c.m[(0x0342+iocbBase(c))&65535]||0)&255;}catch(e){return 0;}}
   function blockJsr(c,label){try{c.pc=(c.pc-3)&65535; c.steps=(c.steps||0)+1; var x=iocbBase(c); if(c.m)c.m[(0x0343+x)&65535]=0;}catch(e){} if(/KGETCH/.test(label))keyWait++; else cioWait++; window.fix337WaitLast=label+' BLOCK PC $'+hx((c&&c.pc)||0,4)+' hits K='+keyWait+' CIO='+cioWait+' q='+byteQ.length; return true;}
   function popByte(){return byteQ.length?byteQ.shift():-1;}
-  function putCioBytes(c, bytes){try{var x=iocbBase(c), ptr=((c.m[(0x0344+x)&65535]||0)|((c.m[(0x0345+x)&65535]||0)<<8))&65535; var max=((c.m[(0x0348+x)&65535]||0)|((c.m[(0x0349+x)&65535]||0)<<8))&65535; if(!max)max=1; var n=Math.min(bytes.length,max); for(var i=0;i<n;i++)c.m[(ptr+i)&65535]=bytes[i]&255; c.m[(0x0348+x)&65535]=n&255; c.m[(0x0349+x)&65535]=(n>>8)&255; c.m[(0x0343+x)&65535]=1; c.m[(0x0342+x)&65535]=0; c.a=1;c.y=1;c.p&=~1;c.zn(c.a); c.noteOsStub('FIX337 CIO bytes '+n,false,false); cioReturns++; window.fix337CioReturnLast='CIO returned '+n+' bytes to $'+hx(ptr,4)+' data '+bytes.slice(0,n).map(function(b){return hx(b,2);}).join(' '); return true;}catch(e){window.fix337CioReturnLast='ERR '+(e&&e.message?e.message:e); return false;}}
-  function installInputHooks(){try{if(window.fix337InputHooksInstalled || !CPU6502 || !CPU6502.prototype)return; var oldCio=CPU6502.prototype.serviceAtariOsCio; var oldKey=CPU6502.prototype.serviceAtariOsKeyboard; CPU6502.prototype.serviceAtariOsKeyboard=function(addr,fromJsr){addr&=65535; if(turboActive() && (addr===0xE420||addr===0xE424)){var b=popByte(); if(b<0)return blockJsr(this,'KGETCH $'+hx(addr,4)); try{this.a=b&255;this.y=1;this.p&=~2;this.zn(this.a);this.noteOsStub('FIX337 KGETCH $'+hx(b,2),false,false); keyReturns++; window.fix337KeyReturnLast='KGETCH byte $'+hx(b,2)+' PC $'+hx(this.pc,4); return true;}catch(e){}} return oldKey?oldKey.call(this,addr,fromJsr):false;}; CPU6502.prototype.serviceAtariOsCio=function(addr,fromJsr){addr&=65535; if(turboActive() && addr===0xE456){var cmd=iocbCmd(this); window.fix337CioLast='CIOV cmd $'+hx(cmd,2)+' PC $'+hx(this.pc,4)+' X $'+hx(this.x,2)+' q '+byteQ.length; if(cmd===5){var line=[]; var hasEol=false; for(var i=0;i<byteQ.length;i++){line.push(byteQ[i]&255); if((byteQ[i]&255)===0x9B){hasEol=true;break;}} if(!hasEol)return blockJsr(this,'CIOV GETREC wait'); byteQ.splice(0,line.length); return putCioBytes(this,line);} if(cmd===7){var b=popByte(); if(b<0)return blockJsr(this,'CIOV GETCHARS wait'); return putCioBytes(this,[b&255]);} } return oldCio?oldCio.call(this,addr,fromJsr):false;}; window.fix337InputHooksInstalled=true; log337('input hooks installed: KGETCH/CIOV block until real queued key/line.');}catch(e){log337('input hook install error '+(e&&e.message?e.message:e));}}
+  function putCioBytes(c, bytes){try{var x=iocbBase(c), ptr=((c.m[(0x0344+x)&65535]||0)|((c.m[(0x0345+x)&65535]||0)<<8))&65535; var max=((c.m[(0x0348+x)&65535]||0)|((c.m[(0x0349+x)&65535]||0)<<8))&65535; if(!max)max=1; var n=Math.min(bytes.length,max); for(var i=0;i<n;i++)c.m[(ptr+i)&65535]=bytes[i]&255; c.m[(0x0348+x)&65535]=n&255; c.m[(0x0349+x)&65535]=(n>>8)&255; c.m[(0x0343+x)&65535]=1; c.m[(0x0342+x)&65535]=0; c.a=1;c.y=1;c.p&=~1;c.zn(c.a); c.noteOsStub('FIX342 CIO bytes '+n,false,false); cioReturns++; window.fix337CioReturnLast='CIO returned '+n+' bytes to $'+hx(ptr,4)+' data '+bytes.slice(0,n).map(function(b){return hx(b,2);}).join(' '); return true;}catch(e){window.fix337CioReturnLast='ERR '+(e&&e.message?e.message:e); return false;}}
+  function installInputHooks(){try{if(window.fix337InputHooksInstalled || !CPU6502 || !CPU6502.prototype)return; var oldCio=CPU6502.prototype.serviceAtariOsCio; var oldKey=CPU6502.prototype.serviceAtariOsKeyboard; CPU6502.prototype.serviceAtariOsKeyboard=function(addr,fromJsr){addr&=65535; if(turboActive() && (addr===0xE420||addr===0xE424)){var b=popByte(); if(b<0)return blockJsr(this,'KGETCH $'+hx(addr,4)); try{this.a=b&255;this.y=1;this.p&=~2;this.zn(this.a);this.noteOsStub('FIX342 KGETCH $'+hx(b,2),false,false); keyReturns++; window.fix337KeyReturnLast='KGETCH byte $'+hx(b,2)+' PC $'+hx(this.pc,4); return true;}catch(e){}} return oldKey?oldKey.call(this,addr,fromJsr):false;}; CPU6502.prototype.serviceAtariOsCio=function(addr,fromJsr){addr&=65535; if(turboActive() && addr===0xE456){var cmd=iocbCmd(this); window.fix337CioLast='CIOV cmd $'+hx(cmd,2)+' PC $'+hx(this.pc,4)+' X $'+hx(this.x,2)+' q '+byteQ.length; if(cmd===5){var line=[]; var hasEol=false; for(var i=0;i<byteQ.length;i++){line.push(byteQ[i]&255); if((byteQ[i]&255)===0x9B){hasEol=true;break;}} if(!hasEol)return blockJsr(this,'CIOV GETREC wait'); byteQ.splice(0,line.length); return putCioBytes(this,line);} if(cmd===7){var b=popByte(); if(b<0)return blockJsr(this,'CIOV GETCHARS wait'); return putCioBytes(this,[b&255]);} } return oldCio?oldCio.call(this,addr,fromJsr):false;}; window.fix337InputHooksInstalled=true; log337('input hooks installed: KGETCH/CIOV block until real queued key/line.');}catch(e){log337('input hook install error '+(e&&e.message?e.message:e));}}
   function keyTextToAtascii(t){t=String(t||'').replace(/\s+/g,' ').trim(); if(!t)return -1; if(/^RETURN$/i.test(t))return 0x9B; if(/^SPACE$/i.test(t))return 0x20; if(/^DEL$/i.test(t))return 0x7E; if(/^ESC|SHIFT|CTRL|BREAK|START|SELECT|OPTION|FIRE|TEPL|POWER|SNAP|SPUSTIT|ULOZIT|LOG|TBXL|RESTART/i.test(t))return -1; if(t.length===1){var ch=t; if(ch>='a'&&ch<='z')ch=ch.toUpperCase(); return ch.charCodeAt(0)&255;} return -1;}
   function queueAscii(a,src){a&=255; byteQ.push(a); keyQueued++; window.fix337KeyQueued=keyQueued; window.fix337KeyLast=(src||'key')+' -> $'+hx(a,2)+' q '+byteQ.length; try{if(ram){ram[0x02FB]=a; ram[0x02FC]=0xFF;}}catch(e){} }
   function captureKeyEvent(ev){try{if(!turboActive())return; var b=ev.target&&ev.target.closest?ev.target.closest('button'):null; if(!b)return; var a=keyTextToAtascii(b.textContent||''); if(a<0)return; queueAscii(a,String(b.textContent||'').trim()); stop(ev);}catch(e){}}
   function keydown(ev){try{if(!turboActive())return; var k=ev.key||''; var a=-1; if(k==='Enter')a=0x9B; else if(k==='Backspace')a=0x7E; else if(k===' ')a=0x20; else if(k.length===1)a=k.toUpperCase().charCodeAt(0)&255; if(a>=0){queueAscii(a,'HW '+k); stop(ev);}}catch(e){}}
-  function directStart(ev){stop(ev); var now=Date.now(); if(now-busy<1800){log337('duplicitní TBXL klik ignorován'); return false;} busy=now; startClicks++; byteQ=[]; try{if(!ram)throw new Error('RAM unavailable'); installPortBGates(); installInputHooks(); installColorRoles(); installBrkNmiGuards(); setTurboMode(); clearKeys('before direct TBXL'); syncColors(); try{if(typeof cancelQueues==='function')cancelQueues('FIX337 before TBXL');}catch(e){} try{if(typeof fix222CancelFastBasicInput==='function')fix222CancelFastBasicInput('FIX337 before TBXL');}catch(e){} try{if(typeof clearManagedTimers==='function')clearManagedTimers();}catch(e){} holdStartOption(1700); var bytes=b64Bytes(XEX_B64), info=parseXex(bytes); exactReloc(); setTurboMode(); syncColors(); holdStartOption(1700); try{segments=info.blocks.slice(); pendingInitAddrs=info.inits.slice(); ranInitAddrs=[0x6132]; activeEntryWasInit=true;}catch(e){} try{xexInfo={run:info.run||0,inits:info.inits.slice(),entry:0x6179,warnings:[],bad:false}; runAddress=0x6179;}catch(e){} try{fix195NativeXexInfo='FIX337 DIRECT XEX STREAMED=OK ACTIVE=YES blocks '+info.blocks.length+' bytes '+info.loaded+' RUNAD '+(info.run?'$'+hx(info.run,4):'--')+' INITAD '+(info.inits.length?info.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--')+' exact reloc, no wrapper'; fix192LoaderInfo=fix195NativeXexInfo;}catch(e){} try{if(!cpu || !cpu.m)cpu=new CPU6502(ram); cpu.trap=false;cpu.trapMsg='';cpu.trace=[];cpu.pc=0x6179;cpu.steps=0;cpu.p=(cpu.p|0x04)&255;}catch(e){throw new Error('CPU start '+(e&&e.message?e.message:e));} window.fix337NmiGuard=160; try{if(!playMode && typeof startPlaying==='function')startPlaying(); else if(!playMode){playMode=true; requestAnimationFrame(playLoop);}}catch(e){} setTimeout(function(){clearKeys('after START+OPTION release');syncColors();},900); setTimeout(function(){syncColors();},1800); setTimeout(function(){syncColors();},3200); log337('DIRECT TBXL START OK: XEX bytes '+bytes.length+' blocks '+info.blocks.length+' PC $6179 MEM_0B00 '+readBlock(0x0B00,8)+' MEM_6132 '+readBlock(0x6132,8));}catch(e){log337('DIRECT TBXL START ERROR '+(e&&e.message?e.message:e));} setTimeout(function(){busy=0;},1900); return false;}
-  function restart(ev){stop(ev); log337('RESTART TBXL přes FIX337 direct loader.'); return directStart(null);}
-  function snapshot(ev){stop(ev); logClicks++; installInputHooks(); installColorRoles(); syncColors(); var arr=[]; arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU STEJNE'); ['NEW_XEX_CORE=YES','XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST','FIX337_DIRECT_TBXL_LOADER=YES','FIX337_NO_OLD_WRAPPER_CALLS=YES','FIX337_BLOCK_EMPTY_KGETCH_CIOV=YES','FIX337_WINDOW_CAPTURE_KEYS=YES','FIX337_EDITOR_COLOR_ROLES=YES','NO_FAKE_READY=YES','NO_FAKE_LOAD=YES','NO_FAKE_SELF_TEST=YES','NO_RAM_PROGRAM_INJECT=YES','NO_SCREEN_PAINT=YES','NO_RAW_CH_PASTE=YES'].forEach(function(x){arr.push(x);}); arr.push('');arr.push('[FIX337 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('keyboardTitle='+(document.querySelector('#atariKeyboardDock h2')?document.querySelector('#atariKeyboardDock h2').textContent:'--')); arr.push('tbxlButtonVisible='+(id('fix337TbxlBtn')&&id('fix337TbxlBtn').offsetParent!==null?'YES':'NO')); arr.push('startClicks='+startClicks); arr.push('logClicks='+logClicks); arr.push('last='+(window.fix337Last||'--')); arr.push('');arr.push('[INPUT WAIT]'); arr.push('hooksInstalled='+(window.fix337InputHooksInstalled?'YES':'NO')); arr.push('queueLen='+byteQ.length); arr.push('keyQueued='+keyQueued); arr.push('keyLast='+(window.fix337KeyLast||'--')); arr.push('keyWaitHits='+keyWait); arr.push('keyReturnHits='+keyReturns); arr.push('keyReturnLast='+(window.fix337KeyReturnLast||'--')); arr.push('cioWaitHits='+cioWait); arr.push('cioReturns='+cioReturns); arr.push('cioLast='+(window.fix337CioLast||'--')); arr.push('cioReturnLast='+(window.fix337CioReturnLast||'--')); arr.push('waitLast='+(window.fix337WaitLast||'--')); arr.push('');arr.push('[COLOR]'); arr.push('rolesInstalled='+(window.fix337ColorRolesInstalled?'YES':'NO')); arr.push(window.fix337Color||'--'); arr.push('COLPF1 sh/hw $'+(ram?hx(ram[0x02C5]||0,2)+'/$'+hx(ram[0xD017]||0,2):'--')+' COLPF2 sh/hw $'+(ram?hx(ram[0x02C6]||0,2)+'/$'+hx(ram[0xD018]||0,2):'--')+' COLBK sh/hw $'+(ram?hx(ram[0x02C8]||0,2)+'/$'+hx(ram[0xD01A]||0,2):'--')); arr.push('');arr.push('[XEX/TBXL]'); arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--')); arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--')); arr.push('fix232Mode='+(typeof fix232Mode!=='undefined'?fix232Mode:'--')); arr.push('ENTRY='+(typeof xexInfo!=='undefined'&&xexInfo?'$'+hx(xexInfo.entry||0,4):'--')); arr.push('INITAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--')); arr.push('PORTB='+(typeof portbValue!=='undefined'?'$'+hx(portbValue,2):'--')+' RAM_D301='+(ram?'$'+hx(ram[0xD301]||0,2):'--')+' D01F='+(ram?'$'+hx(ram[0xD01F]||0,2):'--')); arr.push('MEM_02E2='+(ram?readBlock(0x02E2,2):'--')); arr.push('MEM_6132='+(ram?readBlock(0x6132,16):'--')); arr.push('MEM_0B00='+(ram?readBlock(0x0B00,16):'--')); arr.push('MEM_2100='+(ram?readBlock(0x2100,16):'--')); arr.push('CORE LOADER INFO='+(typeof fix195NativeXexInfo!=='undefined'?fix195NativeXexInfo:'--')); arr.push('');arr.push('[CPU]'); arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable'); arr.push('');arr.push('[DOM LOG]'); arr.push((id('log')&&id('log').textContent)||'--'); var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX337-tbxl-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX337-tbxl-log');}catch(e){log337('save error '+(e&&e.message?e.message:e));} log337('ULOZIT TBXL LOG FIX337 hotov.'); return false;}
-  function cleanUi(){try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX337: přímý TBXL XEX loader bez starých wrapperů, blokování prázdného KGETCH/CIOV a barvy editoru přes ANTIC/GTIA role.';}catch(e){} try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX337'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX337: TBXL používá přímý XEX load; klávesy jdou přes okno-capture do KGETCH/CIOV fronty.';}catch(e){} try{var p336=id('fix336TbxlPanel'); if(p336){p336.style.display='none'; p336.setAttribute('aria-hidden','true');}}catch(e){} try{Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(b){var t=(b.textContent||''); if(/START\+OPTION.*TURBO BASIC|SNAPSHOT TURBO\/XEX|SPUSTIT TBXL 1\.5 FIX336|ULOZIT TBXL LOG FIX336/i.test(t)){b.style.display='none'; b.setAttribute('aria-hidden','true');}});}catch(e){} try{var panel=id('fix337TbxlPanel'); if(!panel){panel=document.createElement('section'); panel.id='fix337TbxlPanel'; panel.className='card'; var anchor=document.querySelector('#atariKeyboardDock')||id('fix313TxtPanel')||document.querySelector('.wrap'); if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling); else document.body.appendChild(panel);} panel.style.display='block'; panel.innerHTML='<h2>3) TBXL 1.5 — FIX337 přímý XEX loader</h2><p>FIX337 nevolá staré Turbo/FIX33x handlery. XEX se načte přímo do emulované RAM, TBXL čeká na skutečnou klávesu/řádek a editor má modré pozadí + světlý text přes GTIA barvy.</p><div id="fix337Status" class="fileLine">FIX337 připraveno.</div><button id="fix337TbxlBtn" type="button">1) SPUSTIT TBXL 1.5 FIX337</button><button id="fix337LogBtn" type="button" class="secondary compact">2) ULOZIT TBXL LOG FIX337</button><button id="fix337RestartBtn" type="button" class="secondary compact">3) RESTART TBXL FIX337</button>'; id('fix337TbxlBtn').onclick=directStart; id('fix337LogBtn').onclick=snapshot; id('fix337RestartBtn').onclick=restart;}catch(e){log337('UI render error '+(e&&e.message?e.message:e));}}
-  function start(){installPortBGates(); installInputHooks(); installColorRoles(); installBrkNmiGuards(); try{window.addEventListener('click',captureKeyEvent,true); window.addEventListener('touchend',captureKeyEvent,true); window.addEventListener('pointerup',captureKeyEvent,true); window.addEventListener('keydown',keydown,true);}catch(e){} cleanUi(); [40,120,300,700,1500,3000,6000,10000,14000].forEach(function(ms){setTimeout(function(){cleanUi(); if(turboActive())syncColors();},ms);}); log337('installed: direct loader, window-capture keyboard, blocking KGETCH/CIOV, color roles.');}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
-})();
-</script>
-
-
-
-<script>
-/* FIX338: TBXL CPU-level CIOV/KGETCH input bridge.
-   Purpose: make Turbo Basic XL actually wait for and receive keyboard input.
-   No fake READY, no fake LOAD, no fake SELF TEST, no screen paint, no RAM program inject.
-   This does NOT hide the READY loop; it forces the real TBXL JSR $E456/$E420 input calls
-   through the already-installed blocking keyboard/CIO service even though TBXL relocated code
-   occupies the OS/CIO address range and therefore bypassed the older loadedXexByteAt guard. */
-(function(){
-  'use strict';
-  var TAG='FIX338_TBXL_CPU_CIOV_INPUT_FIX';
-  var startClicks=0, bridgeHits=0, bridgeBlocks=0, bridgeReturns=0, lastBridge='--';
-  function id(x){return document.getElementById(x);}
-  function hx(v,n){try{if(typeof hex==='function')return hex((v||0)&(n>=4?65535:255),n);}catch(e){} var s=((v||0)&(n>=4?65535:255)).toString(16).toUpperCase(); while(s.length<n)s='0'+s; return s;}
-  function log338(msg){msg=String(msg||''); window.fix338Last=msg; try{if(typeof log==='function')log('FIX338 '+msg);else{var l=id('log'); if(l)l.textContent='FIX338 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX338: '+msg);}catch(e){} try{var s=id('fix338Status'); if(s)s.textContent=msg;}catch(e){} }
-  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
-  function turboActive(){try{return !!(window.fix337TurboActive||window.fix338TurboActive||window.fix336TurboActive) || /TBXL|TURBO BASIC XL\s*1\.5/i.test(String(currentXexName||''));}catch(e){return !!(window.fix337TurboActive||window.fix338TurboActive);}}
-  function iocbBase(c){return c.x&0xF0;}
-  function iocbCmd(c){try{return (c.m[(0x0342+iocbBase(c))&65535]||0)&255;}catch(e){return 0;}}
-  function isInputCmd(cmd){cmd&=255; return cmd===0x05 || cmd===0x07;}
-  function readBlock(addr,len){try{var out=[],a=addr&65535; for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2)); return '$'+hx(addr,4)+' '+out.join(' ');}catch(e){return '$'+hx(addr,4)+' ERR';}}
-  function installCpuBridge(){
-    try{
-      if(window.fix338CpuBridgeInstalled || !window.CPU6502 || !CPU6502.prototype || !CPU6502.prototype.step)return;
-      var oldStep=CPU6502.prototype.step;
-      CPU6502.prototype.step=function(){
-        if(!this.trap && turboActive()){
-          try{
-            var pc0=this.pc&65535, op=this.r(pc0)&255;
-            if(op===0x20){
-              var target=(this.r((pc0+1)&65535)|(this.r((pc0+2)&65535)<<8))&65535;
-              if(target===0xE456 || target===0xE459){
-                var cmd=iocbCmd(this);
-                // Output commands must keep running through TBXL's own relocated E: handler.
-                // Only input commands are bridged, because those are the path that returned empty lines in FIX337.
-                if(isInputCmd(cmd) && typeof this.serviceAtariOsCio==='function'){
-                  bridgeHits++;
-                  var before=this.pc&65535;
-                  this.pc=(pc0+3)&65535; // match normal JSR decode state before serviceAtariOsCio
-                  var ok=this.serviceAtariOsCio(target,true);
-                  if(ok){
-                    if((this.pc&65535)===pc0){bridgeBlocks++; lastBridge='BLOCK CIOV cmd $'+hx(cmd,2)+' at JSR $'+hx(pc0,4)+' -> $'+hx(target,4)+' q='+(window.fix337KeyQueued||0)+' PC held';}
-                    else{bridgeReturns++; lastBridge='RETURN CIOV cmd $'+hx(cmd,2)+' from JSR $'+hx(pc0,4)+' -> $'+hx(target,4)+' next $'+hx(this.pc,4);}
-                    window.fix338BridgeHits=bridgeHits; window.fix338BridgeBlocks=bridgeBlocks; window.fix338BridgeReturns=bridgeReturns; window.fix338BridgeLast=lastBridge;
-                    try{if(typeof syncColors==='function')syncColors();}catch(e){}
-                    return;
-                  }
-                  this.pc=before;
-                }
-              }
-              if((target===0xE420 || target===0xE424) && typeof this.serviceAtariOsKeyboard==='function'){
-                bridgeHits++;
-                var beforeK=this.pc&65535;
-                this.pc=(pc0+3)&65535;
-                var okK=this.serviceAtariOsKeyboard(target,true);
-                if(okK){
-                  if((this.pc&65535)===pc0){bridgeBlocks++; lastBridge='BLOCK KGETCH at JSR $'+hx(pc0,4)+' -> $'+hx(target,4)+' PC held';}
-                  else{bridgeReturns++; lastBridge='RETURN KGETCH from JSR $'+hx(pc0,4)+' -> $'+hx(target,4)+' A $'+hx(this.a,2)+' next $'+hx(this.pc,4);}
-                  window.fix338BridgeHits=bridgeHits; window.fix338BridgeBlocks=bridgeBlocks; window.fix338BridgeReturns=bridgeReturns; window.fix338BridgeLast=lastBridge;
-                  return;
-                }
-                this.pc=beforeK;
-              }
-            }
-          }catch(e){window.fix338BridgeLast='CPU bridge error '+(e&&e.message?e.message:e);}
-        }
-        return oldStep.call(this);
-      };
-      window.fix338CpuBridgeInstalled=true;
-      log338('CPU bridge installed: TBXL JSR $E456/$E420 input is forced through blocking CIO/KGETCH service.');
-    }catch(e){log338('CPU bridge install error '+(e&&e.message?e.message:e));}
-  }
-  function callFix337Start(){
-    var b=id('fix337TbxlBtn');
-    if(b && typeof b.onclick==='function'){
-      try{return b.onclick({preventDefault:function(){},stopPropagation:function(){},stopImmediatePropagation:function(){}});}catch(e){throw e;}
-    }
-    throw new Error('FIX337 direct loader button/function missing');
-  }
-  function startTbxl(ev){
-    stop(ev); startClicks++; window.fix338TurboActive=true; installCpuBridge();
-    try{window.fix337TurboActive=true; window.fix336TurboActive=false;}catch(e){}
-    try{callFix337Start(); log338('SPUSTIT TBXL FIX338 OK: používá FIX337 direct loader + FIX338 CPU CIOV input bridge.');}
-    catch(e){log338('SPUSTIT TBXL FIX338 ERROR '+(e&&e.message?e.message:e));}
-    return false;
-  }
-  function restartTbxl(ev){stop(ev); log338('RESTART TBXL přes stejný direct loader + CPU input bridge.'); return startTbxl(null);}
-  function snapshot(ev){
-    stop(ev); installCpuBridge();
-    var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG);
-    arr.push('time='+new Date().toISOString());
-    arr.push('build='+TAG);
-    arr.push('KODY JSOU ZMENENE');
-    ['FIX338_CPU_LEVEL_TBXL_INPUT_BRIDGE=YES','FIX338_INTERCEPT_JSR_E456_INPUT_ONLY=YES','FIX338_INTERCEPT_JSR_E420_KGETCH=YES','FIX337_DIRECT_TBXL_LOADER_REUSED=YES','NO_FAKE_READY=YES','NO_FAKE_LOAD=YES','NO_FAKE_SELF_TEST=YES','NO_RAM_PROGRAM_INJECT=YES','NO_SCREEN_PAINT=YES'].forEach(function(x){arr.push(x);});
-    arr.push(''); arr.push('[FIX338 BRIDGE]');
-    arr.push('installed='+(window.fix338CpuBridgeInstalled?'YES':'NO'));
-    arr.push('startClicks='+startClicks);
-    arr.push('bridgeHits='+bridgeHits);
-    arr.push('bridgeBlocks='+bridgeBlocks);
-    arr.push('bridgeReturns='+bridgeReturns);
-    arr.push('bridgeLast='+(window.fix338BridgeLast||lastBridge));
-    arr.push('last='+(window.fix338Last||'--'));
-    arr.push(''); arr.push('[FIX337 QUEUE/SERVICE]');
-    arr.push('hooksInstalled='+(window.fix337InputHooksInstalled?'YES':'NO'));
-    arr.push('keyQueued='+(window.fix337KeyQueued||0));
-    arr.push('keyLast='+(window.fix337KeyLast||'--'));
-    arr.push('keyReturnLast='+(window.fix337KeyReturnLast||'--'));
-    arr.push('cioLast='+(window.fix337CioLast||'--'));
-    arr.push('cioReturnLast='+(window.fix337CioReturnLast||'--'));
-    arr.push('waitLast='+(window.fix337WaitLast||'--'));
-    arr.push(''); arr.push('[TBXL/CPU]');
-    arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--'));
-    arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--'));
-    arr.push('fix232Mode='+(typeof fix232Mode!=='undefined'?fix232Mode:'--'));
-    arr.push('CORE LOADER INFO='+(typeof fix195NativeXexInfo!=='undefined'?fix195NativeXexInfo:'--'));
-    arr.push('MEM_6132='+(ram?readBlock(0x6132,16):'--'));
-    arr.push('MEM_0B00='+(ram?readBlock(0x0B00,16):'--'));
-    arr.push('IOCB0='+(ram?readBlock(0x0340,16):'--'));
-    arr.push('IOCB1='+(ram?readBlock(0x0350,16):'--'));
-    arr.push('E_BUFFER_0580='+(ram?readBlock(0x0580,48):'--'));
-    arr.push('CH=$'+(ram?hx(ram[0x02FC]||0,2):'--')+' ATACHR=$'+(ram?hx(ram[0x02FB]||0,2):'--')+' KBCODE=$'+(ram?hx(ram[0xD209]||0,2):'--')+' SKSTAT=$'+(ram?hx(ram[0xD20F]||0,2):'--')+' D01F=$'+(ram?hx(ram[0xD01F]||0,2):'--'));
-    arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable');
-    arr.push(''); arr.push('[DOM LOG]'); arr.push((id('log')&&id('log').textContent)||'--');
-    var out=arr.join('\n');
-    try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){}
-    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX338-tbxl-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX338-tbxl-log');}catch(e){log338('save error '+(e&&e.message?e.message:e));}
-    log338('ULOZIT TBXL LOG FIX338 hotov.');
-    return false;
-  }
-  function cleanUi(){
-    try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX338: Turbo Basic používá FIX337 direct XEX loader; vstup je opraven CPU bridge na JSR $E456/$E420, žádný fake READY.';}catch(e){}
-    try{var old=id('fix337TbxlPanel'); if(old){old.style.display='none'; old.setAttribute('aria-hidden','true');}}catch(e){}
-    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX338'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX338: klávesy jdou do reálné TBXL E: input fronty; RETURN uvolní GETREC.';}catch(e){}
-    try{
-      var panel=id('fix338TbxlPanel');
-      if(!panel){panel=document.createElement('section'); panel.id='fix338TbxlPanel'; panel.className='card'; var anchor=document.querySelector('#atariKeyboardDock')||id('fix313TxtPanel')||document.querySelector('.wrap'); if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling); else document.body.appendChild(panel);}
-      panel.style.display='block';
-      panel.innerHTML='<h2>3) TBXL 1.5 — FIX338 reálný vstup</h2><p>FIX338 používá přímý XEX loader z FIX337, ale opravuje pod kapotou CPU cestu: vstupní JSR $E456 / $E420 už nepropadne do prázdné READY smyčky. Není to fake READY ani screen paint.</p><div id="fix338Status" class="fileLine">FIX338 připraveno.</div><button id="fix338TbxlBtn" type="button">1) SPUSTIT TBXL 1.5 FIX338</button><button id="fix338LogBtn" type="button" class="secondary compact">2) ULOZIT TBXL LOG FIX338</button><button id="fix338RestartBtn" type="button" class="secondary compact">3) RESTART TBXL FIX338</button>';
-      id('fix338TbxlBtn').onclick=startTbxl; id('fix338LogBtn').onclick=snapshot; id('fix338RestartBtn').onclick=restartTbxl;
-    }catch(e){log338('UI render error '+(e&&e.message?e.message:e));}
-  }
-  function start(){installCpuBridge(); cleanUi(); [60,180,420,900,1800,3200,6000,10000,15000].forEach(function(ms){setTimeout(function(){cleanUi(); installCpuBridge();},ms);}); log338('installed: CPU-level bridge for TBXL input; waiting for FIX338 start.');}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
-})();
-</script>
-
-<script>
-/* FIX339: TBXL real OS keyboard poll bridge + UI de-dup.
-   Result of Rene FIX338 test: bridgeHits=0 and PC $F867 (real OS editor scroll/output path),
-   so JSR $E456/$E420 interception was the wrong level.  The old FIX337 capture queue did
-   receive virtual key presses, but because TBXL runs through the real OS editor path, the
-   queue never reached CH/KBCODE/SKSTAT.  This patch bridges that existing queue into the
-   real Atari keyboard hardware/shadows.  No fake READY/LOAD/SELFTEST, no screen paint. */
-(function(){
-  'use strict';
-  var TAG='FIX339_TBXL_OS_KEYBOARD_POLL_FIX';
-  var startClicks=0, logClicks=0;
-  var seenFix337Queued=0;
-  var latchAt=0xFF, latchScan=0xFF, latchUntil=0, latchReads=0;
-  var hwHits=0, hwReturns=0, hwIdleClears=0, staleEolClears=0;
-  var uiCleanRuns=0;
-  var lastHw='idle', lastUi='idle', lastStart='idle';
-
-  function id(x){return document.getElementById(x);} 
-  function hx(v,n){try{if(typeof hex==='function')return hex((v||0)&(n>=4?65535:255),n);}catch(e){} var s=((v||0)&(n>=4?65535:255)).toString(16).toUpperCase(); while(s.length<n)s='0'+s; return s;}
-  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
-  function log339(msg){msg=String(msg||''); window.fix339Last=msg; try{if(typeof log==='function')log('FIX339 '+msg);else{var l=id('log'); if(l)l.textContent='FIX339 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX339: '+msg);}catch(e){} try{var s=id('fix339Status'); if(s)s.textContent=msg;}catch(e){} }
-  function turboActive(){try{return !!(window.fix339TurboActive||window.fix337TurboActive||window.fix338TurboActive||window.fix335TurboActive) || /TBXL|TURBO BASIC XL\s*1\.5/i.test(String(currentXexName||''));}catch(e){return !!window.fix339TurboActive;}}
-  function readBlock(addr,len){try{var out=[],a=addr&65535; for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2)); return '$'+hx(addr,4)+' '+out.join(' ');}catch(e){return '$'+hx(addr,4)+' ERR';}}
-  function keycodeForAtascii(a){try{if(typeof realOsKeycodeForAtasciiFix172==='function')return realOsKeycodeForAtasciiFix172(a&255)&255;}catch(e){} try{if(typeof atariKeyCodes!=='undefined'){var ch=String.fromCharCode(a&255).toUpperCase(); if(atariKeyCodes[ch]!==undefined)return atariKeyCodes[ch]&255; if((a&255)===0x20)return atariKeyCodes.SPACE&255; if((a&255)===0x9B)return atariKeyCodes.RETURN&255; if((a&255)===0x7E)return atariKeyCodes.DEL&255;}}catch(e){} return a&255;}
-  function setTurboFlags(){try{window.fix339TurboActive=true; window.fix337TurboActive=true; window.fix338TurboActive=true; window.fix335TurboActive=true; window.fix328TurboActive=true; window.fix328TurboMode=true; activeXexProfile='generic'; fix232Mode='xex'; currentXexName='TBXL 1.5 CLEAN XEX FIX339 / direct loader + OS keyboard bridge'; fix154RealOsBootMode=false; fix215PureRomMode=false; fix225PureHardwareMode=false; fix215PureSelfTestMode=false;}catch(e){}}
-  function clearInputLatch(reason){try{if(input){input.key=0xFF;input.start=false;input.option=false;input.select=false;input.fire=false;}}catch(e){} try{realOsKeyOneShot=0xFF; realOsAtasciiOneShot=0xFF; realOsKeyLast=0xFF; realOsAtasciiLast=0xFF;}catch(e){} try{if(ram){ram[0x02FC]=0xFF; ram[0x02FB]=0xFF; ram[0xD209]=0xFF; ram[0xD20F]=0xFF; ram[0xD01F]=0x07;}}catch(e){} latchAt=0xFF; latchScan=0xFF; latchReads=0; latchUntil=0; lastHw='CLEAR '+(reason||'')+' PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--'); }
-  function armLatchFromAtascii(a,src){a&=255; if(a===0xFF)return false; latchAt=a; latchScan=keycodeForAtascii(a); latchUntil=Date.now()+260; latchReads=0; hwHits++; try{if(input)input.key=latchScan&255;}catch(e){} try{realOsAtasciiOneShot=a&255; realOsAtasciiLast=a&255; realOsKeyOneShot=latchScan&255; realOsKeyLast=latchScan&255; realOsKeyStamp=Date.now();}catch(e){} try{if(ram){ram[0x02FB]=a&255; ram[0x02FC]=latchScan&255; ram[0xD209]=latchScan&255; ram[0xD20F]=0xF7;}}catch(e){} lastHw='ARM '+(src||'key')+' ATASCII $'+hx(a,2)+' KEYCODE $'+hx(latchScan,2)+' q337 '+(window.fix337KeyQueued||0)+' PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--'); window.fix339KeyboardLast=lastHw; return true;}
-  function pollFix337Queue(src){
-    if(!turboActive() || !ram)return false;
-    var q=(window.fix337KeyQueued||0)|0;
-    if(q>seenFix337Queued){
-      seenFix337Queued=q;
-      var a=(ram[0x02FB]||0)&255;
-      if(a!==0xFF)return armLatchFromAtascii(a,src||'FIX337 queue');
-      lastHw='QUEUE HIT but ATACHR empty q337 '+q+' PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--');
-      return false;
-    }
-    // FIX338 log showed ATACHR=$9B while no key was queued.  That is a stale RETURN latch,
-    // not user input.  Clear it so the real E: editor cannot accept an empty line forever.
-    if((ram[0x02FB]&255)===0x9B && q===seenFix337Queued && latchAt===0xFF){
-      ram[0x02FB]=0xFF; staleEolClears++; lastHw='STALE EOL CLEAR $02FB $9B -> $FF no queued key PC '+(typeof cpu!=='undefined'&&cpu?'$'+hx(cpu.pc,4):'--');
-      return false;
-    }
-    return false;
-  }
-  function latchActive(){return latchAt!==0xFF && Date.now()<=latchUntil;}
-  function maybeReleaseLatch(why){
-    if(latchAt!==0xFF && (Date.now()>latchUntil || latchReads>5)){
-      try{if(input)input.key=0xFF;}catch(e){} try{realOsKeyOneShot=0xFF; realOsAtasciiOneShot=0xFF;}catch(e){} try{if(ram){ram[0x02FC]=0xFF; ram[0xD209]=0xFF; ram[0xD20F]=0xFF; ram[0x02FB]=0xFF;}}catch(e){}
-      lastHw='RELEASE '+(why||'')+' last ATASCII $'+hx(latchAt,2)+' reads '+latchReads;
-      latchAt=0xFF; latchScan=0xFF; latchReads=0; latchUntil=0;
-    }
-  }
-  function installHardwareBridge(){
-    try{
-      if(window.fix339HwBridgeInstalled || !window.CPU6502 || !CPU6502.prototype || !CPU6502.prototype.r)return;
-      var oldR=CPU6502.prototype.r;
-      CPU6502.prototype.r=function(a){
-        a&=65535;
-        if(turboActive()){
-          try{
-            if(a===0x02FB || a===0x02FC || a===0xD209 || a===0xD20F){pollFix337Queue('read $'+hx(a,4));}
-            if(latchActive()){
-              if(a===0xD20F){hwReturns++; return 0xF7;}
-              if(a===0xD209){hwReturns++; return latchScan&255;}
-              if(a===0x02FB){hwReturns++; return latchAt&255;}
-              if(a===0x02FC){hwReturns++; latchReads++; var s=latchScan&255; if(latchReads>=2)maybeReleaseLatch('CH consumed'); return s;}
-            }else if(a===0x02FB && ram && (ram[0x02FB]&255)===0x9B && ((window.fix337KeyQueued||0)|0)===seenFix337Queued){
-              ram[0x02FB]=0xFF; staleEolClears++; return 0xFF;
-            }else if(a===0x02FC || a===0xD209 || a===0xD20F){
-              maybeReleaseLatch('idle read');
-            }
-          }catch(e){lastHw='bridge read error '+(e&&e.message?e.message:e);}
-        }
-        return oldR.call(this,a);
-      };
-      window.fix339HwBridgeInstalled=true;
-      log339('HW keyboard bridge installed: FIX337 queued ATASCII -> CH/KBCODE/SKSTAT for real TBXL OS editor.');
-    }catch(e){log339('HW bridge install error '+(e&&e.message?e.message:e));}
-  }
-  function installStepGuard(){
-    try{
-      if(window.fix339StepGuardInstalled || !window.CPU6502 || !CPU6502.prototype || !CPU6502.prototype.step)return;
-      var oldStep=CPU6502.prototype.step;
-      CPU6502.prototype.step=function(){
-        if(turboActive()){
-          try{
-            // During the initial READY spam the CPU is often in the real OS scroll/output loop ($F860-$F870).
-            // Do not fake the screen.  Only keep stale RETURN cleared and poll the queued keyboard edge.
-            pollFix337Queue('step');
-            if(latchAt===0xFF && ram && (ram[0x02FB]&255)===0x9B && ((window.fix337KeyQueued||0)|0)===seenFix337Queued){ram[0x02FB]=0xFF; staleEolClears++;}
-            if(latchAt===0xFF && ram && (ram[0x02FC]&255)!==0xFF && Date.now()>latchUntil){ram[0x02FC]=0xFF; hwIdleClears++;}
-          }catch(e){lastHw='step guard error '+(e&&e.message?e.message:e);}
-        }
-        return oldStep.call(this);
-      };
-      window.fix339StepGuardInstalled=true;
-    }catch(e){log339('step guard install error '+(e&&e.message?e.message:e));}
-  }
-  function startFix337Direct(){
-    var b=id('fix337TbxlBtn');
-    if(b && typeof b.onclick==='function')return b.onclick({preventDefault:function(){},stopPropagation:function(){},stopImmediatePropagation:function(){}});
-    throw new Error('FIX337 direct loader button/function missing');
-  }
-  function startTbxl(ev){
-    stop(ev); startClicks++; installHardwareBridge(); installStepGuard(); setTurboFlags(); seenFix337Queued=(window.fix337KeyQueued||0)|0; clearInputLatch('pre FIX339 TBXL');
-    try{startFix337Direct(); setTurboFlags(); seenFix337Queued=(window.fix337KeyQueued||0)|0; clearInputLatch('post direct start ignore stale'); lastStart='START OK via FIX337 direct loader + FIX339 OS keyboard bridge'; log339(lastStart);}
-    catch(e){lastStart='START ERROR '+(e&&e.message?e.message:e); log339(lastStart);} 
-    setTimeout(function(){setTurboFlags(); clearInputLatch('post START/OPTION release FIX339');},900);
-    setTimeout(function(){setTurboFlags(); if(((window.fix337KeyQueued||0)|0)===seenFix337Queued)clearInputLatch('post title stale clear FIX339');},1900);
-    setTimeout(function(){setTurboFlags(); if(((window.fix337KeyQueued||0)|0)===seenFix337Queued && ram)ram[0x02FB]=0xFF;},3200);
-    return false;
-  }
-  function restartTbxl(ev){stop(ev); log339('RESTART TBXL FIX339'); return startTbxl(null);}
-  function cleanUi(){
-    uiCleanRuns++;
-    try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p')||document.querySelector('h1 + p'); if(p)p.textContent='FIX339: TBXL direct XEX loader + reálný OS keyboard bridge. Staré Turbo panely skryté. Žádný fake READY/LOAD/screen paint.';}catch(e){}
-    try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX339'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX339: klávesy z UI se krmí do CH $02FC/KBCODE $D209/SKSTAT $D20F pro skutečnou TBXL OS editor cestu.';}catch(e){}
-    try{
-      Array.prototype.slice.call(document.querySelectorAll('section.card')).forEach(function(sec){
-        if(sec.id==='fix339TbxlPanel')return;
-        var h2=sec.querySelector('h2'); var t=String(h2?h2.textContent:'');
-        if(/Turbo Basic|TBXL/i.test(t)){sec.style.display='none'; sec.setAttribute('aria-hidden','true');}
-      });
-      ['fix328XexPanel','fix329XexPanel','fix336TbxlPanel','fix337TbxlPanel','fix338TbxlPanel'].forEach(function(pid){var p=id(pid); if(p){p.style.display='none'; p.setAttribute('aria-hidden','true');}});
-    }catch(e){}
-    try{
-      var panel=id('fix339TbxlPanel');
-      if(!panel){panel=document.createElement('section'); panel.id='fix339TbxlPanel'; panel.className='card'; var anchor=document.querySelector('#atariKeyboardDock')||id('fix313TxtPanel')||document.querySelector('.wrap'); if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling); else document.body.appendChild(panel);}
-      panel.style.display='block'; panel.removeAttribute('aria-hidden');
-      panel.innerHTML='<h2>3) TBXL 1.5 — FIX339 OS keyboard bridge</h2><p>FIX338 se netrefil: bridgeHits=0. FIX339 nechává přímý TBXL XEX loader z FIX337, ale klávesy krmí do reálných OS vstupů CH/KBCODE/SKSTAT a maže jen zatuchlý RETURN latch $02FB=$9B bez fronty. Není to fake READY ani screen paint.</p><div id="fix339Status" class="fileLine">FIX339 připraveno.</div><button id="fix339TbxlBtn" type="button">1) SPUSTIT TBXL 1.5 FIX339</button><button id="fix339LogBtn" type="button" class="secondary compact">2) ULOZIT TBXL LOG FIX339</button><button id="fix339RestartBtn" type="button" class="secondary compact">3) RESTART TBXL FIX339</button>';
-      id('fix339TbxlBtn').onclick=startTbxl; id('fix339LogBtn').onclick=snapshot; id('fix339RestartBtn').onclick=restartTbxl;
-      lastUi='UI clean '+uiCleanRuns+' old Turbo panels hidden';
-    }catch(e){lastUi='UI render error '+(e&&e.message?e.message:e); log339(lastUi);}
-  }
-  function snapshot(ev){
-    stop(ev); logClicks++; installHardwareBridge(); installStepGuard(); pollFix337Queue('snapshot');
-    var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG);
-    arr.push('time='+new Date().toISOString());
-    arr.push('build='+TAG);
-    arr.push('KODY JSOU ZMENENE');
-    ['FIX339_OS_KEYBOARD_POLL_BRIDGE=YES','FIX339_FIX338_BRIDGE_MISSED_CONFIRMED=YES','FIX339_HIDE_DUPLICATE_TURBO_PANELS=YES','FIX337_DIRECT_TBXL_LOADER_REUSED=YES','NO_FAKE_READY=YES','NO_FAKE_LOAD=YES','NO_FAKE_SELF_TEST=YES','NO_RAM_PROGRAM_INJECT=YES','NO_SCREEN_PAINT=YES'].forEach(function(x){arr.push(x);});
-    arr.push(''); arr.push('[FIX339 RESULT FROM FIX338 LOG]');
-    arr.push('reason=FIX338 bridgeHits=0, CPU PC was $F867 real OS editor/output path, so JSR $E456/$E420 interception did not fire.');
-    arr.push(''); arr.push('[FIX339 KEYBOARD BRIDGE]');
-    arr.push('installed='+(window.fix339HwBridgeInstalled?'YES':'NO'));
-    arr.push('stepGuard='+(window.fix339StepGuardInstalled?'YES':'NO'));
-    arr.push('startClicks='+startClicks);
-    arr.push('logClicks='+logClicks);
-    arr.push('seenFix337Queued='+seenFix337Queued);
-    arr.push('window.fix337KeyQueued='+(window.fix337KeyQueued||0));
-    arr.push('hwHits='+hwHits);
-    arr.push('hwReturns='+hwReturns);
-    arr.push('staleEolClears='+staleEolClears);
-    arr.push('hwIdleClears='+hwIdleClears);
-    arr.push('latchAt=$'+hx(latchAt,2)+' latchScan=$'+hx(latchScan,2)+' latchReads='+latchReads+' latchActive='+(latchActive()?'YES':'NO'));
-    arr.push('lastHw='+(window.fix339KeyboardLast||lastHw));
-    arr.push('lastStart='+lastStart);
-    arr.push('lastUi='+lastUi);
-    arr.push(''); arr.push('[FIX337/FIX338 COUNTERS]');
-    arr.push('fix338BridgeHits='+(window.fix338BridgeHits||0));
-    arr.push('fix338BridgeBlocks='+(window.fix338BridgeBlocks||0));
-    arr.push('fix338BridgeReturns='+(window.fix338BridgeReturns||0));
-    arr.push('fix337KeyQueued='+(window.fix337KeyQueued||0));
-    arr.push('fix337KeyLast='+(window.fix337KeyLast||'--'));
-    arr.push('fix337WaitLast='+(window.fix337WaitLast||'--'));
-    arr.push(''); arr.push('[TBXL/CPU]');
-    arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--'));
-    arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--'));
-    arr.push('fix232Mode='+(typeof fix232Mode!=='undefined'?fix232Mode:'--'));
-    arr.push('CORE LOADER INFO='+(typeof fix195NativeXexInfo!=='undefined'?fix195NativeXexInfo:'--'));
-    arr.push('MEM_6132='+(ram?readBlock(0x6132,16):'--'));
-    arr.push('MEM_0B00='+(ram?readBlock(0x0B00,16):'--'));
-    arr.push('IOCB0='+(ram?readBlock(0x0340,16):'--'));
-    arr.push('IOCB1='+(ram?readBlock(0x0350,16):'--'));
-    arr.push('E_BUFFER_0580='+(ram?readBlock(0x0580,48):'--'));
-    arr.push('CH=$'+(ram?hx(ram[0x02FC]||0,2):'--')+' ATACHR=$'+(ram?hx(ram[0x02FB]||0,2):'--')+' KBCODE=$'+(ram?hx(ram[0xD209]||0,2):'--')+' SKSTAT=$'+(ram?hx(ram[0xD20F]||0,2):'--')+' D01F=$'+(ram?hx(ram[0xD01F]||0,2):'--'));
-    arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable');
-    arr.push(''); arr.push('[DOM LOG]'); arr.push((id('log')&&id('log').textContent)||'--');
-    var out=arr.join('\n');
-    try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){}
-    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX339-tbxl-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX339-tbxl-log');}catch(e){log339('save error '+(e&&e.message?e.message:e));}
-    log339('ULOZIT TBXL LOG FIX339 hotov.');
-    return false;
-  }
-  function start(){installHardwareBridge(); installStepGuard(); cleanUi(); [0,40,100,220,500,900,1500,2500,4000,7000,11000,16000,22000].forEach(function(ms){setTimeout(function(){installHardwareBridge(); installStepGuard(); cleanUi();},ms);}); log339('installed: OS keyboard poll bridge + duplicate Turbo UI cleaner.');}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
-})();
-</script>
-
-<script>
-/* FIX340: hard split POWER BASIC vs TBXL/XEX state + direct TBXL keyboard capture.
-   This layer intentionally does not paint READY, does not inject BASIC text into RAM,
-   and does not add a game-specific XEX hack.  It keeps the old generic XEX loader
-   visible in the log/audit, but it makes POWER BASIC and TBXL stop sharing stale flags. */
-(function(){
-  'use strict';
-  var TAG='FIX340_TBXL_POWER_BASIC_XEX_CORE_SPLIT';
-  var startClicks=0, powerClicks=0, logClicks=0, xexAuditClicks=0;
-  var keyQueued=0, keyArmed=0, keyReads=0, keyClears=0;
-  var queue=[];
-  var latchAt=0xFF, latchScan=0xFF, latchUntil=0, latchReads=0;
-  var oldBasicStart=null, oldBasicReset=null, oldSelfTestStart=null, oldKeyHandler=null;
-  var wrappedBasic=false, wrappedReset=false, wrappedSelf=false, wrappedKeys=false, wrappedCpu=false, installedCapture=false;
-  var lastState='installed', lastKey='none', lastPower='none', lastXexAudit='none';
-
-  function id(x){return document.getElementById(x);}
-  function hx(v,n){var mask=n>=4?65535:255; var s=((v||0)&mask).toString(16).toUpperCase(); while(s.length<n)s='0'+s; return s;}
-  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){} return false;}
-  function log340(msg){msg=String(msg||''); window.fix340Last=msg; try{if(typeof log==='function')log('FIX340 '+msg);else{var l=id('log');if(l)l.textContent='FIX340 '+msg+'\n'+(l.textContent||'');}}catch(e){} try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX340: '+msg);}catch(e){} try{var s=id('fix340Status');if(s)s.textContent=msg;}catch(e){}}
-  function safe(fn,fb){try{return fn();}catch(e){return fb||('ERR '+(e&&e.message?e.message:e));}}
-  function readBlock(addr,len){return safe(function(){var out=[],a=addr&65535;for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2));return '$'+hx(addr,4)+' '+out.join(' ');},'$'+hx(addr,4)+' ERR');}
-  function activeTbxl(){
-    return !!(window.fix340TbxlActive||window.fix339TurboActive||window.fix338TurboActive||window.fix337TurboActive||window.fix335TurboActive);
-  }
-  function setTbxlFlags(){
-    window.fix340TbxlActive=true;
-    window.fix339TurboActive=true;
-    window.fix338TurboActive=true;
-    window.fix337TurboActive=true;
-    window.fix335TurboActive=true;
-    window.fix328TurboActive=true;
-    window.fix328TurboMode=true;
-    try{activeXexProfile='generic';fix232Mode='xex';currentXexName='TBXL 1.5 CLEAN XEX FIX340 / direct loader + direct keyboard capture';fix154RealOsBootMode=false;fix215PureRomMode=false;fix225PureHardwareMode=false;fix215PureSelfTestMode=false;}catch(e){}
-  }
-  function hardClearKeys(reason){
-    latchAt=0xFF; latchScan=0xFF; latchReads=0; latchUntil=0; queue.length=0;
-    try{if(input){input.key=0xFF;input.start=false;input.option=false;input.select=false;input.fire=false;}}catch(e){}
-    try{realOsKeyOneShot=0xFF;realOsAtasciiOneShot=0xFF;realOsKeyLast=0xFF;realOsAtasciiLast=0xFF;realOsKeyStamp=0;}catch(e){}
-    try{if(ram){ram[0x02FB]=0xFF;ram[0x02FC]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;ram[0xD01F]=0x07;}}catch(e){}
-    lastKey='CLEAR '+(reason||'');
-  }
-  function deactivateTbxl(reason){
-    window.fix340TbxlActive=false;
-    window.fix339TurboActive=false;
-    window.fix338TurboActive=false;
-    window.fix337TurboActive=false;
-    window.fix335TurboActive=false;
-    window.fix330TurboActive=false;
-    window.fix328TurboActive=false;
-    window.fix328TurboMode=false;
-    hardClearKeys(reason||'deactivate TBXL');
-    try{activeXexProfile='realos';fix232Mode='basic';currentXexName='PURE HARDWARE BASIC FIX340 / no XEX loaded';fix154RealOsBootMode=true;fix215PureRomMode=true;fix225PureHardwareMode=true;fix215PureSelfTestMode=false;}catch(e){}
-    lastPower='TBXL flags OFF: '+(reason||'');
-    return true;
-  }
-  function keycodeForAtascii(a){
-    a&=255;
-    try{if(typeof realOsKeycodeForAtasciiFix172==='function')return realOsKeycodeForAtasciiFix172(a)&255;}catch(e){}
-    try{if((a===0x9B||a===13) && atariKeyCodes.RETURN!==undefined)return atariKeyCodes.RETURN&255;}catch(e){}
-    try{if(a===32 && atariKeyCodes.SPACE!==undefined)return atariKeyCodes.SPACE&255;}catch(e){}
-    try{var ch=String.fromCharCode(a).toUpperCase(); if(atariKeyCodes && atariKeyCodes[ch]!==undefined)return atariKeyCodes[ch]&255;}catch(e){}
-    return a&255;
-  }
-  function keyToAtascii(k){
-    var raw=String(k||'');
-    var u=raw.toUpperCase();
-    if(u==='RETURN'||u==='ENTER')return 0x9B;
-    if(u==='SPACE')return 0x20;
-    if(u==='TAB')return 0x7F;
-    if(u==='ESC')return 0x1B;
-    if(u==='DEL'||u==='DELETE'||u==='BACK')return 0x7E;
-    if(u==='PLUS')return 43;
-    if(u==='STAR'||u==='ASTERISK')return 42;
-    if(u==='MINUS')return 45;
-    if(u==='COMMA')return 44;
-    if(u==='DOT'||u==='PERIOD')return 46;
-    if(u==='SLASH')return 47;
-    if(u==='SEMI'||u==='SEMICOLON')return 59;
-    if(u==='COLON')return 58;
-    if(u==='QUOTE'||u==='DOUBLEQUOTE')return 34;
-    if(raw.length===1)return raw.toUpperCase().charCodeAt(0)&255;
-    try{if(typeof realOsAtasciiForKeyFix172==='function'){var a=realOsAtasciiForKeyFix172(u); if(a!==0xFF)return a&255;}}catch(e){}
-    return 0xFF;
-  }
-  function shouldCaptureKey(k){
-    var u=String(k||'').toUpperCase();
-    if(!activeTbxl())return false;
-    if(u==='SHIFT'||u==='CTRL'||u==='CONTROL'||u==='RESET'||u==='BREAK')return false;
-    if(u==='START'||u==='SELECT'||u==='OPTION'||u==='FIRE')return false;
-    if(/^CTRL/.test(u))return false;
-    return keyToAtascii(k)!==0xFF;
-  }
-  function armAtascii(a,src){
-    a&=255;
-    if(a===0xFF)return false;
-    latchAt=a;
-    latchScan=keycodeForAtascii(a);
-    latchUntil=Date.now()+360;
-    latchReads=0;
-    keyArmed++;
-    try{if(input)input.key=latchScan&255;}catch(e){}
-    try{realOsAtasciiOneShot=a&255;realOsAtasciiLast=a&255;realOsKeyOneShot=latchScan&255;realOsKeyLast=latchScan&255;realOsKeyStamp=Date.now();}catch(e){}
-    try{if(ram){ram[0x02FB]=a&255;ram[0x02FC]=latchScan&255;ram[0xD209]=latchScan&255;ram[0xD20F]=0xF7;}}catch(e){}
-    window.fix337KeyQueued=((window.fix337KeyQueued||0)|0)+1;
-    window.fix337KeyLast='FIX340 '+(src||'key')+' ATASCII $'+hx(a,2)+' KEY $'+hx(latchScan,2);
-    window.fix340KeyQueued=keyQueued;
-    window.fix340KeyLast=window.fix337KeyLast;
-    lastKey=window.fix337KeyLast;
-    return true;
-  }
-  function releaseLatch(reason){
-    if(latchAt===0xFF)return;
-    try{if(input)input.key=0xFF;}catch(e){}
-    try{realOsKeyOneShot=0xFF;realOsAtasciiOneShot=0xFF;}catch(e){}
-    try{if(ram){ram[0x02FC]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;ram[0x02FB]=0xFF;}}catch(e){}
-    keyClears++;
-    lastKey='RELEASE '+(reason||'')+' ATASCII $'+hx(latchAt,2)+' reads '+latchReads;
-    latchAt=0xFF; latchScan=0xFF; latchReads=0; latchUntil=0;
-  }
-  function queueKey(k,src){
-    if(!shouldCaptureKey(k))return false;
-    var a=keyToAtascii(k);
-    if(a===0xFF)return false;
-    keyQueued++;
-    queue.push(a&255);
-    if(latchAt===0xFF)armAtascii(queue.shift(),src||String(k));
-    return true;
-  }
-  function pumpQueue(src){
-    if(!activeTbxl())return false;
-    if(latchAt!==0xFF && Date.now()>latchUntil)releaseLatch('timeout '+(src||''));
-    if(latchAt===0xFF && queue.length)return armAtascii(queue.shift(),src||'pump');
-    return latchAt!==0xFF;
-  }
-  function installCpuBridge(){
-    if(wrappedCpu)return;
-    try{
-      if(!window.CPU6502 || !CPU6502.prototype || !CPU6502.prototype.r)return;
-      var oldR=CPU6502.prototype.r;
-      CPU6502.prototype.r=function(a){
-        a&=65535;
-        if(activeTbxl()){
-          try{
-            if(a===0x02FB||a===0x02FC||a===0xD209||a===0xD20F)pumpQueue('read $'+hx(a,4));
-            if(latchAt!==0xFF && Date.now()<=latchUntil){
-              if(a===0xD20F){keyReads++;return 0xF7;}
-              if(a===0xD209){keyReads++;return latchScan&255;}
-              if(a===0x02FB){keyReads++;return latchAt&255;}
-              if(a===0x02FC){keyReads++;latchReads++;var s=latchScan&255;if(latchReads>=2)releaseLatch('CH consumed');return s;}
-            }
-          }catch(e){lastKey='CPU bridge ERR '+(e&&e.message?e.message:e);}
-        }
-        return oldR.call(this,a);
-      };
-      wrappedCpu=true;
-      window.fix340CpuBridgeInstalled=true;
-    }catch(e){log340('CPU bridge install error '+(e&&e.message?e.message:e));}
-  }
-  function wrapKeyboard(){
-    if(wrappedKeys)return;
-    try{
-      if(typeof handleAtariKeyboardKey!=='function')return;
-      oldKeyHandler=handleAtariKeyboardKey;
-      handleAtariKeyboardKey=function(k){
-        if(queueKey(k,'virtual keyboard')){
-          try{syncInputShadows();renderInput();}catch(e){}
-          return false;
-        }
-        return oldKeyHandler?oldKeyHandler(k):false;
-      };
-      window.handleAtariKeyboardKey=handleAtariKeyboardKey;
-      wrappedKeys=true;
-    }catch(e){log340('keyboard wrap error '+(e&&e.message?e.message:e));}
-  }
-  function installButtonCapture(){
-    if(installedCapture)return;
-    try{
-      document.addEventListener('click',function(ev){
-        var t=ev.target;
-        var b=t&&t.closest?t.closest('[data-atkey]'):null;
-        if(!b)return;
-        var k=b.getAttribute('data-atkey')||'';
-        if(queueKey(k,'button capture')){stop(ev);try{syncInputShadows();renderInput();}catch(e){}}
-      },true);
-      installedCapture=true;
-    }catch(e){log340('button capture error '+(e&&e.message?e.message:e));}
-  }
-  function wrapPowerButtons(){
-    if(!wrappedBasic){
-      try{
-        if(typeof startPureHardwareBasicFix226==='function'){
-          oldBasicStart=startPureHardwareBasicFix226;
-          startPureHardwareBasicFix226=function(ev){
-            powerClicks++;
-            deactivateTbxl('before POWER BASIC');
-            var r=false;
-            try{r=oldBasicStart?oldBasicStart(ev):false;}catch(e){lastPower='POWER BASIC old start ERR '+(e&&e.message?e.message:e);throw e;}
-            setTimeout(function(){deactivateTbxl('after POWER BASIC');cleanUi();},0);
-            setTimeout(function(){deactivateTbxl('POWER BASIC settle');},250);
-            lastPower='POWER BASIC isolated start clicks '+powerClicks;
-            return r;
-          };
-          window.startPureHardwareBasicFix226=startPureHardwareBasicFix226;
-          wrappedBasic=true;
-        }
-      }catch(e){log340('POWER BASIC wrap error '+(e&&e.message?e.message:e));}
-    }
-    if(!wrappedReset){
-      try{
-        if(typeof resetPureHardwareFix226==='function'){
-          oldBasicReset=resetPureHardwareFix226;
-          resetPureHardwareFix226=function(ev){
-            deactivateTbxl('before RESET PURE HW');
-            var r=oldBasicReset?oldBasicReset(ev):false;
-            setTimeout(function(){deactivateTbxl('after RESET PURE HW');cleanUi();},0);
-            return r;
-          };
-          window.resetPureHardwareFix226=resetPureHardwareFix226;
-          wrappedReset=true;
-        }
-      }catch(e){log340('RESET wrap error '+(e&&e.message?e.message:e));}
-    }
-    if(!wrappedSelf){
-      try{
-        if(typeof startPureHardwareSelfTestFix226==='function'){
-          oldSelfTestStart=startPureHardwareSelfTestFix226;
-          startPureHardwareSelfTestFix226=function(ev){
-            deactivateTbxl('before SELF TEST');
-            var r=oldSelfTestStart?oldSelfTestStart(ev):false;
-            setTimeout(function(){deactivateTbxl('after SELF TEST');cleanUi();},0);
-            return r;
-          };
-          window.startPureHardwareSelfTestFix226=startPureHardwareSelfTestFix226;
-          wrappedSelf=true;
-        }
-      }catch(e){log340('SELF TEST wrap error '+(e&&e.message?e.message:e));}
-    }
-  }
-  function clickOldTbxl(){
-    var btn=id('fix339TbxlBtn')||id('fix338TbxlBtn')||id('fix337TbxlBtn');
-    if(btn && typeof btn.onclick==='function')return btn.onclick({preventDefault:function(){},stopPropagation:function(){},stopImmediatePropagation:function(){}});
-    throw new Error('old TBXL start button missing');
-  }
-  function startTbxl(ev){
-    stop(ev);
-    startClicks++;
-    installCpuBridge(); wrapKeyboard(); installButtonCapture();
-    hardClearKeys('before TBXL start');
-    setTbxlFlags();
-    try{clickOldTbxl();}catch(e){log340('TBXL start via old loader error '+(e&&e.message?e.message:e));}
-    setTbxlFlags();
-    hardClearKeys('after TBXL direct start');
-    setTimeout(function(){setTbxlFlags();hardClearKeys('after START/OPTION release');},900);
-    setTimeout(function(){setTbxlFlags();},1800);
-    lastState='TBXL START FIX340 clicks '+startClicks;
-    log340('TBXL start: FIX337 direct loader reused, FIX340 direct keyboard capture active.');
-    return false;
-  }
-  function restartTbxl(ev){stop(ev);return startTbxl(null);}
-  function startXexPicker(ev){
-    stop(ev);
-    xexAuditClicks++;
-    lastXexAudit='picker click '+xexAuditClicks;
-    var f=id('xexFile');
-    if(f){try{f.click();}catch(e){lastXexAudit='picker ERR '+(e&&e.message?e.message:e);}}
-    return false;
-  }
-  function installXexFileHandler(){
-    try{
-      var f=id('xexFile');
-      if(!f || f.__fix340Bound)return;
-      var old=f.onchange;
-      f.onchange=function(ev){
-        var file=this.files&&this.files[0];
-        if(file){
-          lastXexAudit='selected '+file.name+' / '+file.size+' bytes';
-          try{if(typeof handleXexFile==='function')return handleXexFile(file);}catch(e){lastXexAudit='handleXexFile ERR '+(e&&e.message?e.message:e);}
-        }
-        if(old)return old.call(this,ev);
-        return false;
-      };
-      f.__fix340Bound=true;
-    }catch(e){lastXexAudit='file handler ERR '+(e&&e.message?e.message:e);}
-  }
-  function snapshot(ev){
-    stop(ev); logClicks++; installCpuBridge(); wrapKeyboard(); wrapPowerButtons(); pumpQueue('snapshot');
-    var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG);
-    arr.push('time='+new Date().toISOString());
-    arr.push('build='+TAG);
-    arr.push('KODY JSOU STEJNE');
-    arr.push('NEW_XEX_CORE=NO_THIS_PATCH_AUDITS_EXISTING_GENERIC_LOADER');
-    arr.push('POWER_BASIC_TBXL_STATE_SPLIT=YES');
-    arr.push('TBXL_DIRECT_KEYBOARD_CAPTURE=YES');
-    arr.push('TBXL_DIRECT_XEX_LOADER_REUSED=FIX337');
-    arr.push('GENERIC_XEX_LOADER_AUDIT=YES');
-    arr.push('NO_FAKE_READY=YES');
-    arr.push('NO_FAKE_LOAD=YES');
-    arr.push('NO_FAKE_SELF_TEST=YES');
-    arr.push('NO_RAM_PROGRAM_INJECT=YES');
-    arr.push('NO_SCREEN_PAINT=YES');
-    arr.push('');
-    arr.push('[POWER BASIC / MODE SPLIT]');
-    arr.push('powerClicks='+powerClicks);
-    arr.push('wrappedBasic='+(wrappedBasic?'YES':'NO'));
-    arr.push('fix340TbxlActive='+(window.fix340TbxlActive?'YES':'NO'));
-    arr.push('fix339TurboActive='+(window.fix339TurboActive?'YES':'NO'));
-    arr.push('fix337TurboActive='+(window.fix337TurboActive?'YES':'NO'));
-    arr.push('activeXexProfile='+safe(function(){return activeXexProfile;},'--'));
-    arr.push('fix232Mode='+safe(function(){return fix232Mode;},'--'));
-    arr.push('currentXexName='+safe(function(){return currentXexName;},'--'));
-    arr.push('lastPower='+lastPower);
-    arr.push('');
-    arr.push('[TBXL KEYBOARD]');
-    arr.push('wrappedKeyboard='+(wrappedKeys?'YES':'NO'));
-    arr.push('buttonCapture='+(installedCapture?'YES':'NO'));
-    arr.push('cpuBridge='+(wrappedCpu?'YES':'NO'));
-    arr.push('startClicks='+startClicks);
-    arr.push('keyQueued='+keyQueued);
-    arr.push('keyArmed='+keyArmed);
-    arr.push('keyReads='+keyReads);
-    arr.push('keyClears='+keyClears);
-    arr.push('queueLen='+queue.length);
-    arr.push('latchAt=$'+hx(latchAt,2)+' latchScan=$'+hx(latchScan,2)+' latchReads='+latchReads+' latchActive='+(latchAt!==0xFF&&Date.now()<=latchUntil?'YES':'NO'));
-    arr.push('window.fix337KeyQueued='+(window.fix337KeyQueued||0));
-    arr.push('window.fix337KeyLast='+(window.fix337KeyLast||'--'));
-    arr.push('lastKey='+lastKey);
-    arr.push('');
-    arr.push('[GENERIC XEX LOADER AUDIT]');
-    arr.push('xexAuditClicks='+xexAuditClicks);
-    arr.push('lastXexAudit='+lastXexAudit);
-    arr.push('customXexBytes='+safe(function(){return customXexBytes?customXexBytes.length:0;},'--'));
-    arr.push('xexInfo.entry='+safe(function(){return xexInfo?'$'+hx(xexInfo.entry||0,4):'--';},'--'));
-    arr.push('xexInfo.run='+safe(function(){return xexInfo?'$'+hx(xexInfo.run||0,4):'--';},'--'));
-    arr.push('xexInfo.inits='+safe(function(){return xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--';},'--'));
-    arr.push('segments='+safe(function(){return segments?segments.length:0;},'--'));
-    arr.push('CORE LOADER INFO='+safe(function(){return fix195NativeXexInfo||'--';},'--'));
-    arr.push('STREAM LOADER INFO='+safe(function(){return fix192LoaderInfo||'--';},'--'));
-    arr.push('');
-    arr.push('[CPU/KEY REGISTERS]');
-    arr.push('CPU='+safe(function(){return cpu?'PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO'):'CPU unavailable';},'CPU unavailable'));
-    arr.push('CH=$'+safe(function(){return ram?hx(ram[0x02FC]||0,2):'--';},'--')+' ATACHR=$'+safe(function(){return ram?hx(ram[0x02FB]||0,2):'--';},'--')+' KBCODE=$'+safe(function(){return ram?hx(ram[0xD209]||0,2):'--';},'--')+' SKSTAT=$'+safe(function(){return ram?hx(ram[0xD20F]||0,2):'--';},'--')+' CONSOL=$'+safe(function(){return ram?hx(ram[0xD01F]||0,2):'--';},'--'));
-    arr.push('MEM_6132='+safe(function(){return ram?readBlock(0x6132,16):'--';},'--'));
-    arr.push('MEM_0B00='+safe(function(){return ram?readBlock(0x0B00,16):'--';},'--'));
-    arr.push('');
-    arr.push('[DOM LOG]');
-    arr.push(safe(function(){var l=id('log');return l?(l.textContent||''):'--';},'--'));
-    var out=arr.join('\n');
-    try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log');if(pre)pre.textContent=out;}catch(e){}
-    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX340-tbxl-powerbasic-xex-audit-'+Date.now(),out);else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX340-tbxl-powerbasic-xex-audit');}catch(e){log340('save error '+(e&&e.message?e.message:e));}
-    log340('ULOZIT FIX340 LOG hotov.');
-    return false;
-  }
-  function cleanUi(){
-    try{
-      document.title='EMU-09 '+TAG;
-      var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;
-      var p=document.querySelector('.brandText p')||document.querySelector('h1 + p'); if(p)p.textContent='FIX340: POWER BASIC je izolovany od TBXL/XEX. TBXL ma primou klavesnici a XEX loader audit bez fake READY/LOAD.';
-      var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilni Atari klavesnice FIX340';
-      var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX340: POWER BASIC vypina TBXL flagy; TBXL bere znaky primo z klavesnice do CH/KBCODE/SKSTAT.';
-    }catch(e){}
-    try{
-      Array.prototype.slice.call(document.querySelectorAll('section.card')).forEach(function(sec){
-        if(sec.id==='fix340TbxlPanel'||sec.id==='fix340XexAuditPanel')return;
-        var h2=sec.querySelector('h2'); var t=String(h2?h2.textContent:'');
-        if(/Turbo Basic|TBXL/i.test(t)){sec.style.display='none'; sec.setAttribute('aria-hidden','true');}
-      });
-      ['fix337TbxlPanel','fix338TbxlPanel','fix339TbxlPanel'].forEach(function(pid){var p=id(pid); if(p){p.style.display='none';p.setAttribute('aria-hidden','true');}});
-    }catch(e){}
-    try{
-      var anchor=document.querySelector('#atariKeyboardDock')||document.querySelector('.controlPanel')||document.querySelector('.wrap');
-      var panel=id('fix340TbxlPanel');
-      if(!panel){panel=document.createElement('section');panel.id='fix340TbxlPanel';panel.className='card';if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling);else document.body.appendChild(panel);}
-      panel.style.display='block';panel.removeAttribute('aria-hidden');
-      panel.innerHTML='<h2>3) TBXL 1.5 - FIX340 oddeleny start</h2><p>POWER BASIC a TBXL uz nesdili stejne flagy. Toto tlacitko spusti cisty TBXL XEX pres existujici loader a zapne primou klavesovou frontu do CH/KBCODE/SKSTAT.</p><div id="fix340Status" class="fileLine">FIX340 pripraveno.</div><button id="fix340TbxlBtn" type="button">1) SPUSTIT TBXL 1.5 FIX340</button><button id="fix340LogBtn" type="button" class="secondary compact">2) ULOZIT FIX340 LOG</button><button id="fix340RestartBtn" type="button" class="secondary compact">3) RESTART TBXL FIX340</button>';
-      id('fix340TbxlBtn').onclick=startTbxl;
-      id('fix340LogBtn').onclick=snapshot;
-      id('fix340RestartBtn').onclick=restartTbxl;
-    }catch(e){log340('TBXL panel UI error '+(e&&e.message?e.message:e));}
-    try{
-      var xpanel=id('fix340XexAuditPanel');
-      if(!xpanel){xpanel=document.createElement('section');xpanel.id='fix340XexAuditPanel';xpanel.className='card';var after=id('fix340TbxlPanel')||anchor;if(after&&after.parentNode)after.parentNode.insertBefore(xpanel,after.nextSibling);else document.body.appendChild(xpanel);}
-      xpanel.style.display='block';xpanel.removeAttribute('aria-hidden');
-      xpanel.innerHTML='<h2>4) XEX loader audit FIX340</h2><p>Obecny XEX loader zatim nemeni hry jednou zaplatou. Tenhle audit uklada segmenty, RUNAD/INITAD, entry, profil a stav CPU do TXT logu.</p><button id="fix340PickXexBtn" type="button" class="secondary compact">NACIST VLASTNI XEX</button><button id="fix340AuditBtn" type="button" class="secondary compact">ULOZIT XEX CORE AUDIT FIX340</button><div class="fileLine" id="fix340XexStatus">'+lastXexAudit+'</div>';
-      id('fix340PickXexBtn').onclick=startXexPicker;
-      id('fix340AuditBtn').onclick=snapshot;
-      var xs=id('fix340XexStatus'); if(xs)xs.textContent=lastXexAudit;
-    }catch(e){log340('XEX audit panel UI error '+(e&&e.message?e.message:e));}
-  }
-  function start(){
-    installCpuBridge();
-    wrapKeyboard();
-    installButtonCapture();
-    wrapPowerButtons();
-    installXexFileHandler();
-    cleanUi();
-    [0,60,150,350,800,1400,2400,4000,7000,11000,16000,23000,32000,45000].forEach(function(ms){
-      setTimeout(function(){installCpuBridge();wrapKeyboard();installButtonCapture();wrapPowerButtons();installXexFileHandler();cleanUi();},ms);
-    });
-    log340('installed: POWER BASIC/TBXL split + direct TBXL keyboard capture + XEX audit panel.');
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
-})();
-</script>
-
-<script>
-/* FIX341: TBXL command input ownership.
-   The old FIX337 loader is still used only to load/relocate TBXL into emulated RAM.
-   After the load, FIX341 takes ownership of keyboard input and ROM gating so old
-   document-capture handlers cannot steal key clicks before the command reaches TBXL. */
-(function(){
-  'use strict';
-  var TAG='FIX341_TBXL_REAL_CLS_INPUT_CORE';
-  var started=0, logs=0, queued=0, returned=0, blocked=0, reads=0, clears=0;
-  var q=[], latchAt=0xFF, latchScan=0xFF, latchUntil=0, latchReads=0;
-  var oldR=null, oldCio=null, oldKey=null, oldBasic=null;
-  var wrappedR=false, wrappedCio=false, wrappedKey=false, wrappedPortB=false, wrappedBasic=false, captureInstalled=false;
-  var last='installed', lastKey='none', lastCio='none', lastPower='none';
-
-  function id(x){return document.getElementById(x);}
-  function hx(v,n){var mask=n>=4?65535:255;var s=((v||0)&mask).toString(16).toUpperCase();while(s.length<n)s='0'+s;return s;}
-  function stop(ev){try{if(ev){ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();}}catch(e){}return false;}
-  function safe(fn,fb){try{return fn();}catch(e){return fb||('ERR '+(e&&e.message?e.message:e));}}
-  function log341(msg){msg=String(msg||'');window.fix341Last=msg;try{if(typeof log==='function')log('FIX341 '+msg);else{var l=id('log');if(l)l.textContent='FIX341 '+msg+'\n'+(l.textContent||'');}}catch(e){}try{if(typeof updatePlayStatus==='function')updatePlayStatus('FIX341: '+msg);}catch(e){}try{var s=id('fix341Status');if(s)s.textContent=msg;}catch(e){}}
-  function active(){return !!window.fix341TbxlActive;}
-  function readBlock(addr,len){return safe(function(){var out=[],a=addr&65535;for(var i=0;i<len;i++)out.push(hx((ram[(a+i)&65535]||0)&255,2));return '$'+hx(addr,4)+' '+out.join(' ');},'$'+hx(addr,4)+' ERR');}
-  function claim(reason){
-    window.fix341TbxlActive=true;
-    window.fix340TbxlActive=false;
-    window.fix339TurboActive=false;
-    window.fix338TurboActive=false;
-    window.fix337TurboActive=false;
-    window.fix335TurboActive=false;
-    window.fix330TurboActive=false;
-    window.fix328TurboActive=false;
-    window.fix328TurboMode=false;
-    try{activeXexProfile='generic';fix232Mode='xex';currentXexName='T-BASIC XL 1.5 FIX341 / real command input core';fix154RealOsBootMode=false;fix215PureRomMode=false;fix225PureHardwareMode=false;fix215PureSelfTestMode=false;}catch(e){}
-    last='claim '+(reason||'')+' PC '+safe(function(){return cpu?'$'+hx(cpu.pc,4):'--';},'--');
-  }
-  function deactivate(reason){
-    window.fix341TbxlActive=false;
-    window.fix340TbxlActive=false;
-    window.fix339TurboActive=false;
-    window.fix338TurboActive=false;
-    window.fix337TurboActive=false;
-    q.length=0; release('deactivate');
-    try{activeXexProfile='realos';fix232Mode='basic';currentXexName='PURE HARDWARE BASIC FIX341 / no XEX loaded';fix154RealOsBootMode=true;fix215PureRomMode=true;fix225PureHardwareMode=true;fix215PureSelfTestMode=false;}catch(e){}
-    lastPower='deactivate '+(reason||'');
-  }
-  function keycode(a){
-    a&=255;
-    try{if(typeof realOsKeycodeForAtasciiFix172==='function')return realOsKeycodeForAtasciiFix172(a)&255;}catch(e){}
-    try{if((a===0x9B||a===13) && atariKeyCodes.RETURN!==undefined)return atariKeyCodes.RETURN&255;}catch(e){}
-    try{if(a===32 && atariKeyCodes.SPACE!==undefined)return atariKeyCodes.SPACE&255;}catch(e){}
-    try{var ch=String.fromCharCode(a).toUpperCase();if(atariKeyCodes&&atariKeyCodes[ch]!==undefined)return atariKeyCodes[ch]&255;}catch(e){}
-    return a&255;
-  }
-  function atascii(k){
-    var raw=String(k||''), u=raw.toUpperCase();
-    if(u==='RETURN'||u==='ENTER')return 0x9B;
-    if(u==='SPACE')return 0x20;
-    if(u==='TAB')return 0x7F;
-    if(u==='ESC')return 0x1B;
-    if(u==='DEL'||u==='DELETE'||u==='BACK')return 0x7E;
-    if(u==='PLUS')return 43; if(u==='STAR'||u==='ASTERISK')return 42; if(u==='MINUS')return 45;
-    if(u==='COMMA')return 44; if(u==='DOT'||u==='PERIOD')return 46; if(u==='SLASH')return 47;
-    if(u==='SEMI'||u==='SEMICOLON')return 59; if(u==='COLON')return 58; if(u==='QUOTE'||u==='DOUBLEQUOTE')return 34;
-    if(raw.length===1)return raw.toUpperCase().charCodeAt(0)&255;
-    try{if(typeof realOsAtasciiForKeyFix172==='function'){var a=realOsAtasciiForKeyFix172(u);if(a!==0xFF)return a&255;}}catch(e){}
-    return 0xFF;
-  }
-  function should(k){
-    if(!active())return false;
-    var u=String(k||'').toUpperCase();
-    if(u==='SHIFT'||u==='CTRL'||u==='CONTROL'||u==='RESET'||u==='BREAK')return false;
-    if(u==='START'||u==='SELECT'||u==='OPTION'||u==='FIRE')return false;
-    if(/^CTRL/.test(u))return false;
-    return atascii(k)!==0xFF;
-  }
-  function arm(a,src){
-    a&=255; if(a===0xFF)return false;
-    latchAt=a; latchScan=keycode(a); latchUntil=Date.now()+420; latchReads=0;
-    try{if(input)input.key=latchScan&255;}catch(e){}
-    try{realOsAtasciiOneShot=a&255;realOsAtasciiLast=a&255;realOsKeyOneShot=latchScan&255;realOsKeyLast=latchScan&255;realOsKeyStamp=Date.now();}catch(e){}
-    try{if(ram){ram[0x02FB]=a&255;ram[0x02FC]=latchScan&255;ram[0xD209]=latchScan&255;ram[0xD20F]=0xF7;}}catch(e){}
-    lastKey='ARM '+(src||'key')+' ATASCII $'+hx(a,2)+' KEY $'+hx(latchScan,2)+' q '+q.length;
-    window.fix341KeyLast=lastKey;
-    return true;
-  }
-  function release(reason){
-    if(latchAt===0xFF)return;
-    try{if(input)input.key=0xFF;}catch(e){}
-    try{realOsKeyOneShot=0xFF;realOsAtasciiOneShot=0xFF;}catch(e){}
-    try{if(ram){ram[0x02FC]=0xFF;ram[0xD209]=0xFF;ram[0xD20F]=0xFF;ram[0x02FB]=0xFF;}}catch(e){}
-    clears++; lastKey='RELEASE '+(reason||'')+' ATASCII $'+hx(latchAt,2)+' reads '+latchReads;
-    latchAt=0xFF; latchScan=0xFF; latchReads=0; latchUntil=0;
-  }
-  function pump(reason){
-    if(!active())return false;
-    if(latchAt!==0xFF && Date.now()>latchUntil)release('timeout '+(reason||''));
-    if(latchAt===0xFF && q.length)return arm(q.shift(),reason||'pump');
-    return latchAt!==0xFF;
-  }
-  function queueKey(k,src){
-    if(!should(k))return false;
-    var a=atascii(k); if(a===0xFF)return false;
-    queued++; q.push(a&255); pump(src||String(k));
-    lastKey='QUEUE '+(src||k)+' $'+hx(a,2)+' len '+q.length;
-    window.fix341KeyLast=lastKey;
-    try{syncInputShadows();renderInput();}catch(e){}
-    return true;
-  }
-  function popByte(){
-    pump('pop');
-    if(latchAt!==0xFF){var a=latchAt&255; release('pop'); return a;}
-    if(q.length)return q.shift()&255;
-    return -1;
-  }
-  function findLine(){
-    pump('line');
-    var line=[];
-    if(latchAt!==0xFF){line.push(latchAt&255); if((latchAt&255)===0x9B){release('line latch'); return line;}}
-    for(var i=0;i<q.length;i++){line.push(q[i]&255); if((q[i]&255)===0x9B){q.splice(0,i+1); release('line complete'); return line;}}
-    return null;
-  }
-  function iocbBase(c){return c.x&0xF0;}
-  function iocbCmd(c){try{return (c.m[(0x0342+iocbBase(c))&65535]||0)&255;}catch(e){return 0;}}
-  function putCio(c,bytes){
-    try{
-      var x=iocbBase(c), ptr=((c.m[(0x0344+x)&65535]||0)|((c.m[(0x0345+x)&65535]||0)<<8))&65535;
-      var max=((c.m[(0x0348+x)&65535]||0)|((c.m[(0x0349+x)&65535]||0)<<8))&65535; if(!max)max=bytes.length||1;
-      var n=Math.min(bytes.length,max);
-      for(var i=0;i<n;i++)c.m[(ptr+i)&65535]=bytes[i]&255;
-      c.m[(0x0348+x)&65535]=n&255; c.m[(0x0349+x)&65535]=(n>>8)&255;
-      c.m[(0x0342+x)&65535]=0; c.m[(0x0343+x)&65535]=1;
-      c.a=1; c.y=1; c.p&=~1; c.zn(c.a); returned++;
-      lastCio='RETURN '+n+' bytes to $'+hx(ptr,4)+' data '+bytes.slice(0,n).map(function(b){return hx(b,2);}).join(' ');
-      return true;
-    }catch(e){lastCio='putCio ERR '+(e&&e.message?e.message:e); return false;}
-  }
-  function block(c,label,fromJsr){
-    blocked++;
-    if(fromJsr){try{c.pc=(c.pc-3)&65535; c.steps=(c.steps||0)+1;}catch(e){}}
-    lastCio='BLOCK '+label+' PC '+safe(function(){return '$'+hx(c.pc,4);},'--')+' q '+q.length+' latch $'+hx(latchAt,2);
-    return true;
-  }
-  function installServiceHooks(){
-    try{
-      if(!wrappedKey && window.CPU6502 && CPU6502.prototype){
-        oldKey=CPU6502.prototype.serviceAtariOsKeyboard;
-        CPU6502.prototype.serviceAtariOsKeyboard=function(addr,fromJsr){
-          addr&=65535;
-          if(active() && (addr===0xE420||addr===0xE424)){
-            var b=popByte();
-            if(b<0)return block(this,'KGETCH $'+hx(addr,4),fromJsr);
-            this.a=b&255; this.y=1; this.p&=~2; this.zn(this.a); returned++;
-            lastCio='KGETCH RETURN $'+hx(b,2)+' PC '+hx(this.pc,4);
-            return true;
-          }
-          return oldKey?oldKey.call(this,addr,fromJsr):false;
-        };
-        wrappedKey=true;
-      }
-      if(!wrappedCio && window.CPU6502 && CPU6502.prototype){
-        oldCio=CPU6502.prototype.serviceAtariOsCio;
-        CPU6502.prototype.serviceAtariOsCio=function(addr,fromJsr){
-          addr&=65535;
-          if(active() && (addr===0xE456||addr===0xE459)){
-            var cmd=iocbCmd(this);
-            if(cmd===5){
-              var line=findLine();
-              if(!line)return block(this,'CIOV GETREC wait cmd $05',fromJsr);
-              return putCio(this,line);
-            }
-            if(cmd===7){
-              var b=popByte();
-              if(b<0)return block(this,'CIOV GETCHARS wait cmd $07',fromJsr);
-              return putCio(this,[b&255]);
-            }
-          }
-          return oldCio?oldCio.call(this,addr,fromJsr):false;
-        };
-        wrappedCio=true;
-      }
-    }catch(e){log341('service hook error '+(e&&e.message?e.message:e));}
-  }
-  function installReadBridge(){
-    try{
-      if(wrappedR || !window.CPU6502 || !CPU6502.prototype || !CPU6502.prototype.r)return;
-      oldR=CPU6502.prototype.r;
-      CPU6502.prototype.r=function(a){
-        a&=65535;
-        if(active()){
-          try{
-            if(a===0x02FB||a===0x02FC||a===0xD209||a===0xD20F)pump('read $'+hx(a,4));
-            if(latchAt!==0xFF && Date.now()<=latchUntil){
-              if(a===0xD20F){reads++;return 0xF7;}
-              if(a===0xD209){reads++;return latchScan&255;}
-              if(a===0x02FB){reads++;return latchAt&255;}
-              if(a===0x02FC){reads++;latchReads++;var s=latchScan&255;if(latchReads>=2)release('CH consumed');return s;}
-            }
-          }catch(e){lastKey='read bridge ERR '+(e&&e.message?e.message:e);}
-        }
-        return oldR.call(this,a);
-      };
-      wrappedR=true;
-    }catch(e){log341('read bridge error '+(e&&e.message?e.message:e));}
-  }
-  function installPortBGate(){
-    try{
-      if(wrappedPortB || typeof optionalOsRomActiveForAddr!=='function')return;
-      var old=optionalOsRomActiveForAddr;
-      optionalOsRomActiveForAddr=function(a){
-        a&=65535;
-        if(active()){
-          var pb=0xFF; try{pb=(typeof portbValue!=='undefined'?portbValue:(ram?ram[0xD301]:0xFF))&255;}catch(e){}
-          if(((a>=0xC000&&a<=0xCFFF)||(a>=0xD800&&a<=0xFFFF)) && ((pb&1)===0))return false;
-          if((a>=0xA000&&a<=0xBFFF) && ((pb&2)!==0))return false;
-        }
-        return old.call(this,a);
-      };
-      wrappedPortB=true;
-    }catch(e){log341('PORTB gate error '+(e&&e.message?e.message:e));}
-  }
-  function installCapture(){
-    if(captureInstalled)return;
-    try{
-      function fromTarget(ev){
-        var t=ev.target;
-        var b=t&&t.closest?t.closest('[data-atkey],button'):null;
-        if(!b)return '';
-        return b.getAttribute('data-atkey') || String(b.textContent||'').trim();
-      }
-      function pointer(ev){
-        if(!active())return;
-        var k=fromTarget(ev);
-        if(queueKey(k,'pointer '+(ev.type||''))){stop(ev);}
-      }
-      function keydown(ev){
-        if(!active())return;
-        var k=ev.key||'';
-        if(k==='Enter')k='RETURN'; else if(k==='Backspace')k='DEL'; else if(k===' ')k='SPACE';
-        if(queueKey(k,'HW '+(ev.key||''))){stop(ev);}
-      }
-      document.addEventListener('pointerdown',pointer,true);
-      document.addEventListener('touchstart',pointer,true);
-      document.addEventListener('mousedown',pointer,true);
-      window.addEventListener('keydown',keydown,true);
-      captureInstalled=true;
-    }catch(e){log341('capture error '+(e&&e.message?e.message:e));}
-  }
-  function wrapPower(){
-    if(wrappedBasic)return;
-    try{
-      if(typeof startPureHardwareBasicFix226==='function'){
-        oldBasic=startPureHardwareBasicFix226;
-        startPureHardwareBasicFix226=function(ev){
-          deactivate('before POWER BASIC');
-          var r=oldBasic?oldBasic(ev):false;
-          setTimeout(function(){deactivate('after POWER BASIC');cleanUi();},0);
-          setTimeout(function(){deactivate('POWER BASIC settle');},280);
-          return r;
-        };
-        window.startPureHardwareBasicFix226=startPureHardwareBasicFix226;
-        wrappedBasic=true;
-      }
-    }catch(e){log341('POWER BASIC wrap error '+(e&&e.message?e.message:e));}
-  }
-  function clickFix337(){
-    var b=id('fix337TbxlBtn');
-    if(b && typeof b.onclick==='function')return b.onclick({preventDefault:function(){},stopPropagation:function(){},stopImmediatePropagation:function(){}});
-    throw new Error('FIX337 direct loader button missing');
-  }
-  function startTbxl(ev){
-    stop(ev); started++;
-    installPortBGate(); installServiceHooks(); installReadBridge(); installCapture(); wrapPower();
-    q.length=0; release('pre start'); window.fix341TbxlActive=false;
-    try{clickFix337();}catch(e){log341('old direct loader error '+(e&&e.message?e.message:e));}
-    claim('after FIX337 direct loader');
-    [20,120,420,920,1350,1900,2600,3600].forEach(function(ms){setTimeout(function(){claim('post start '+ms);},ms);});
-    log341('TBXL started through old loader, FIX341 now owns command input. Test command should be CLS + RETURN.');
-    return false;
-  }
-  function sendCls(ev){
-    stop(ev);
-    if(!active())claim('send CLS');
-    ['C','L','S','RETURN'].forEach(function(k){queueKey(k,'SELF CLS');});
-    log341('CLS queued through FIX341 keyboard path.');
-    return false;
-  }
-  function snapshot(ev){
-    stop(ev); logs++; pump('snapshot');
-    var arr=[];
-    arr.push('AtariHelp.eu EMU-09 '+TAG);
-    arr.push('time='+new Date().toISOString());
-    arr.push('build='+TAG);
-    arr.push('KODY JSOU STEJNE');
-    arr.push('TBXL_REAL_CLS_INPUT_CORE=YES');
-    arr.push('OLD_TBXL_CAPTURE_DISABLED_AFTER_LOAD=YES');
-    arr.push('FIX337_DIRECT_LOADER_USED_ONLY_FOR_LOAD=YES');
-    arr.push('FIX341_PORTB_GATE=YES');
-    arr.push('FIX341_CIOV_KGETCH_AND_CH_BRIDGE=YES');
-    arr.push('NO_FAKE_READY=YES');
-    arr.push('NO_FAKE_LOAD=YES');
-    arr.push('NO_SCREEN_PAINT=YES');
-    arr.push('NO_RAM_PROGRAM_INJECT=YES');
-    arr.push('');
-    arr.push('[STATE]');
-    arr.push('fix341TbxlActive='+(window.fix341TbxlActive?'YES':'NO'));
-    arr.push('oldFlags fix337='+(window.fix337TurboActive?'YES':'NO')+' fix339='+(window.fix339TurboActive?'YES':'NO')+' fix340='+(window.fix340TbxlActive?'YES':'NO'));
-    arr.push('currentXexName='+safe(function(){return currentXexName;},'--'));
-    arr.push('activeXexProfile='+safe(function(){return activeXexProfile;},'--'));
-    arr.push('fix232Mode='+safe(function(){return fix232Mode;},'--'));
-    arr.push('last='+last);
-    arr.push('');
-    arr.push('[INPUT]');
-    arr.push('queued='+queued+' returned='+returned+' blocked='+blocked+' reads='+reads+' clears='+clears+' qLen='+q.length);
-    arr.push('latchAt=$'+hx(latchAt,2)+' latchScan=$'+hx(latchScan,2)+' latchReads='+latchReads+' active='+(latchAt!==0xFF&&Date.now()<=latchUntil?'YES':'NO'));
-    arr.push('lastKey='+lastKey);
-    arr.push('lastCio='+lastCio);
-    arr.push('hooks read='+(wrappedR?'YES':'NO')+' cio='+(wrappedCio?'YES':'NO')+' key='+(wrappedKey?'YES':'NO')+' portb='+(wrappedPortB?'YES':'NO')+' capture='+(captureInstalled?'YES':'NO'));
-    arr.push('');
-    arr.push('[CPU]');
-    arr.push(safe(function(){return cpu?'PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO'):'CPU unavailable';},'CPU unavailable'));
-    arr.push('CH=$'+safe(function(){return ram?hx(ram[0x02FC]||0,2):'--';},'--')+' ATACHR=$'+safe(function(){return ram?hx(ram[0x02FB]||0,2):'--';},'--')+' KBCODE=$'+safe(function(){return ram?hx(ram[0xD209]||0,2):'--';},'--')+' SKSTAT=$'+safe(function(){return ram?hx(ram[0xD20F]||0,2):'--';},'--'));
-    arr.push('MEM_6132='+safe(function(){return ram?readBlock(0x6132,16):'--';},'--'));
-    arr.push('MEM_0B00='+safe(function(){return ram?readBlock(0x0B00,16):'--';},'--'));
-    arr.push('CORE LOADER INFO='+safe(function(){return fix195NativeXexInfo||'--';},'--'));
-    arr.push('');
-    arr.push('[DOM LOG]');
-    arr.push(safe(function(){var l=id('log');return l?(l.textContent||''):'--';},'--'));
-    var out=arr.join('\n');
-    try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log');if(pre)pre.textContent=out;}catch(e){}
-    try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX341-tbxl-real-cls-input-'+Date.now(),out);else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX341-tbxl-real-cls-input');}catch(e){log341('save error '+(e&&e.message?e.message:e));}
-    log341('ULOZIT FIX341 LOG hotov.');
-    return false;
-  }
-  function cleanUi(){
-    try{
-      document.title='EMU-09 '+TAG;
-      var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG;
-      var p=document.querySelector('.brandText p')||document.querySelector('h1 + p'); if(p)p.textContent='FIX341: TBXL loader jen nahraje interpreter. Klavesy/CLS jdou pres jednu novou cestu, stare capture handlery jsou po loadu vypnute.';
-      var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilni Atari klavesnice FIX341';
-      var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX341: pro TBXL pouzij C L S RETURN; vstup jde pres FIX341 CIOV/KGETCH/CH bridge.';
-    }catch(e){}
-    try{
-      Array.prototype.slice.call(document.querySelectorAll('section.card')).forEach(function(sec){
-        if(sec.id==='fix341TbxlPanel')return;
-        var h2=sec.querySelector('h2'); var t=String(h2?h2.textContent:'');
-        if(/Turbo Basic|TBXL/i.test(t)){sec.style.display='none';sec.setAttribute('aria-hidden','true');}
-      });
-      ['fix337TbxlPanel','fix338TbxlPanel','fix339TbxlPanel','fix340TbxlPanel'].forEach(function(pid){var p=id(pid);if(p){p.style.display='none';p.setAttribute('aria-hidden','true');}});
-    }catch(e){}
-    try{
-      var anchor=document.querySelector('#atariKeyboardDock')||document.querySelector('.controlPanel')||document.querySelector('.wrap');
-      var panel=id('fix341TbxlPanel');
-      if(!panel){panel=document.createElement('section');panel.id='fix341TbxlPanel';panel.className='card';if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling);else document.body.appendChild(panel);}
-      panel.style.display='block';panel.removeAttribute('aria-hidden');
-      panel.innerHTML='<h2>3) Turbo Basic XL 1.5 - FIX341 real command input</h2><p>FIX341 pouzije stary loader jen pro nahrani TBXL. Po startu vypne stare Turbo capture handlery a prikazy posila pres vlastni CIOV/KGETCH/CH cestu. Testovaci prikaz: CLS.</p><div id="fix341Status" class="fileLine">FIX341 pripraveno.</div><button id="fix341TbxlBtn" type="button">1) SPUSTIT TBXL 1.5 FIX341</button><button id="fix341ClsBtn" type="button" class="secondary compact">2) POSLAT CLS PRES KLAVESY</button><button id="fix341LogBtn" type="button" class="secondary compact">3) ULOZIT FIX341 LOG</button>';
-      id('fix341TbxlBtn').onclick=startTbxl;
-      id('fix341ClsBtn').onclick=sendCls;
-      id('fix341LogBtn').onclick=snapshot;
-    }catch(e){log341('UI error '+(e&&e.message?e.message:e));}
-  }
-  function start(){
-    installPortBGate(); installServiceHooks(); installReadBridge(); installCapture(); wrapPower(); cleanUi();
-    [0,60,160,360,800,1400,2400,4000,7000,11000,17000,26000,40000].forEach(function(ms){setTimeout(function(){installPortBGate();installServiceHooks();installReadBridge();installCapture();wrapPower();cleanUi();},ms);});
-    log341('installed: single TBXL command input owner.');
-  }
+  function directStart(ev){stop(ev); var now=Date.now(); if(now-busy<1800){log337('duplicitní TBXL klik ignorován'); return false;} busy=now; startClicks++; byteQ=[]; try{if(!ram)throw new Error('RAM unavailable'); installPortBGates(); installInputHooks(); installColorRoles(); installBrkNmiGuards(); setTurboMode(); clearKeys('before direct TBXL'); syncColors(); try{if(typeof cancelQueues==='function')cancelQueues('FIX342 before TBXL');}catch(e){} try{if(typeof fix222CancelFastBasicInput==='function')fix222CancelFastBasicInput('FIX342 before TBXL');}catch(e){} try{if(typeof clearManagedTimers==='function')clearManagedTimers();}catch(e){} holdStartOption(1700); var bytes=b64Bytes(XEX_B64), info=parseXex(bytes); exactReloc(); setTurboMode(); syncColors(); holdStartOption(1700); try{segments=info.blocks.slice(); pendingInitAddrs=info.inits.slice(); ranInitAddrs=[0x6132]; activeEntryWasInit=true;}catch(e){} try{xexInfo={run:info.run||0,inits:info.inits.slice(),entry:0x6179,warnings:[],bad:false}; runAddress=0x6179;}catch(e){} try{fix195NativeXexInfo='FIX342 DIRECT XEX STREAMED=OK ACTIVE=YES blocks '+info.blocks.length+' bytes '+info.loaded+' RUNAD '+(info.run?'$'+hx(info.run,4):'--')+' INITAD '+(info.inits.length?info.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--')+' exact reloc, no wrapper'; fix192LoaderInfo=fix195NativeXexInfo;}catch(e){} try{if(!cpu || !cpu.m)cpu=new CPU6502(ram); cpu.trap=false;cpu.trapMsg='';cpu.trace=[];cpu.pc=0x6179;cpu.steps=0;cpu.p=(cpu.p|0x04)&255;}catch(e){throw new Error('CPU start '+(e&&e.message?e.message:e));} window.fix337NmiGuard=160; try{if(!playMode && typeof startPlaying==='function')startPlaying(); else if(!playMode){playMode=true; requestAnimationFrame(playLoop);}}catch(e){} setTimeout(function(){clearKeys('after START+OPTION release');syncColors();},900); setTimeout(function(){syncColors();},1800); setTimeout(function(){syncColors();},3200); log337('DIRECT TBXL START OK: XEX bytes '+bytes.length+' blocks '+info.blocks.length+' PC $6179 MEM_0B00 '+readBlock(0x0B00,8)+' MEM_6132 '+readBlock(0x6132,8));}catch(e){log337('DIRECT TBXL START ERROR '+(e&&e.message?e.message:e));} setTimeout(function(){busy=0;},1900); return false;}
+  function restart(ev){stop(ev); log337('RESTART TBXL přes FIX342 direct loader.'); return directStart(null);}
+  function snapshot(ev){stop(ev); logClicks++; installInputHooks(); installColorRoles(); syncColors(); var arr=[]; arr.push('AtariHelp.eu EMU-09 '+TAG); arr.push('time='+new Date().toISOString()); arr.push('build='+TAG); arr.push('KODY JSOU ZMENENE'); ['NEW_XEX_CORE=YES','XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST','FIX342_DIRECT_TBXL_LOADER=YES','FIX342_NO_OLD_WRAPPER_CALLS=YES','FIX342_BLOCK_EMPTY_KGETCH_CIOV=YES','FIX342_WINDOW_CAPTURE_KEYS=YES','FIX342_EDITOR_COLOR_ROLES=YES','NO_FAKE_READY=YES','NO_FAKE_LOAD=YES','NO_FAKE_SELF_TEST=YES','NO_RAM_PROGRAM_INJECT=YES','NO_SCREEN_PAINT=YES','NO_RAW_CH_PASTE=YES'].forEach(function(x){arr.push(x);}); arr.push('');arr.push('[FIX342 UI]'); arr.push('title='+(document.title||'')); arr.push('h1='+(document.querySelector('h1')?document.querySelector('h1').textContent:'--')); arr.push('keyboardTitle='+(document.querySelector('#atariKeyboardDock h2')?document.querySelector('#atariKeyboardDock h2').textContent:'--')); arr.push('tbxlButtonVisible='+(id('fix337TbxlBtn')&&id('fix337TbxlBtn').offsetParent!==null?'YES':'NO')); arr.push('startClicks='+startClicks); arr.push('logClicks='+logClicks); arr.push('last='+(window.fix337Last||'--')); arr.push('');arr.push('[INPUT WAIT]'); arr.push('hooksInstalled='+(window.fix337InputHooksInstalled?'YES':'NO')); arr.push('queueLen='+byteQ.length); arr.push('keyQueued='+keyQueued); arr.push('keyLast='+(window.fix337KeyLast||'--')); arr.push('keyWaitHits='+keyWait); arr.push('keyReturnHits='+keyReturns); arr.push('keyReturnLast='+(window.fix337KeyReturnLast||'--')); arr.push('cioWaitHits='+cioWait); arr.push('cioReturns='+cioReturns); arr.push('cioLast='+(window.fix337CioLast||'--')); arr.push('cioReturnLast='+(window.fix337CioReturnLast||'--')); arr.push('waitLast='+(window.fix337WaitLast||'--')); arr.push('');arr.push('[COLOR]'); arr.push('rolesInstalled='+(window.fix337ColorRolesInstalled?'YES':'NO')); arr.push(window.fix337Color||'--'); arr.push('COLPF1 sh/hw $'+(ram?hx(ram[0x02C5]||0,2)+'/$'+hx(ram[0xD017]||0,2):'--')+' COLPF2 sh/hw $'+(ram?hx(ram[0x02C6]||0,2)+'/$'+hx(ram[0xD018]||0,2):'--')+' COLBK sh/hw $'+(ram?hx(ram[0x02C8]||0,2)+'/$'+hx(ram[0xD01A]||0,2):'--')); arr.push('');arr.push('[XEX/TBXL]'); arr.push('currentXexName='+(typeof currentXexName!=='undefined'?currentXexName:'--')); arr.push('activeXexProfile='+(typeof activeXexProfile!=='undefined'?activeXexProfile:'--')); arr.push('fix232Mode='+(typeof fix232Mode!=='undefined'?fix232Mode:'--')); arr.push('ENTRY='+(typeof xexInfo!=='undefined'&&xexInfo?'$'+hx(xexInfo.entry||0,4):'--')); arr.push('INITAD='+(typeof xexInfo!=='undefined'&&xexInfo&&xexInfo.inits&&xexInfo.inits.length?xexInfo.inits.map(function(a){return '$'+hx(a,4);}).join(','):'--')); arr.push('PORTB='+(typeof portbValue!=='undefined'?'$'+hx(portbValue,2):'--')+' RAM_D301='+(ram?'$'+hx(ram[0xD301]||0,2):'--')+' D01F='+(ram?'$'+hx(ram[0xD01F]||0,2):'--')); arr.push('MEM_02E2='+(ram?readBlock(0x02E2,2):'--')); arr.push('MEM_6132='+(ram?readBlock(0x6132,16):'--')); arr.push('MEM_0B00='+(ram?readBlock(0x0B00,16):'--')); arr.push('MEM_2100='+(ram?readBlock(0x2100,16):'--')); arr.push('CORE LOADER INFO='+(typeof fix195NativeXexInfo!=='undefined'?fix195NativeXexInfo:'--')); arr.push('');arr.push('[CPU]'); arr.push((typeof cpu!=='undefined'&&cpu)?('PC $'+hx(cpu.pc,4)+' A $'+hx(cpu.a,2)+' X $'+hx(cpu.x,2)+' Y $'+hx(cpu.y,2)+' SP $'+hx(cpu.sp,2)+' P $'+hx(cpu.p,2)+' steps '+(cpu.steps||0)+' trap '+(cpu.trap?'YES '+(cpu.trapMsg||''):'NO')):'CPU unavailable'); arr.push('');arr.push('[DOM LOG]'); arr.push((id('log')&&id('log').textContent)||'--'); var out=arr.join('\n'); try{var pre=id('fix313MiniLog')||id('pmgdebug')||id('log'); if(pre)pre.textContent=out;}catch(e){} try{if(typeof saveTextReportToMobile==='function')saveTextReportToMobile('FIX342-tbxl-log-'+Date.now(),out); else if(typeof saveCurrentLogToMobile==='function')saveCurrentLogToMobile('FIX342-tbxl-log');}catch(e){log337('save error '+(e&&e.message?e.message:e));} log337('ULOZIT TBXL LOG FIX342 hotov.'); return false;}
+  function cleanUi(){try{document.title='EMU-09 '+TAG; var h=document.querySelector('h1'); if(h)h.textContent='EMU-09 '+TAG; var p=document.querySelector('.brandText p'); if(p)p.textContent='FIX342: přímý TBXL XEX loader bez starých wrapperů, blokování prázdného KGETCH/CIOV a barvy editoru přes ANTIC/GTIA role.';}catch(e){} try{var kh=document.querySelector('#atariKeyboardDock h2'); if(kh)kh.textContent='Mobilní Atari klávesnice FIX342'; var hint=document.querySelector('#atariKeyboardDock .tinyhint'); if(hint)hint.textContent='FIX342: TBXL klavesy jdou pres real OS keyboard latch CH/KBCODE/ATACHR; bez fake screen paint.';}catch(e){} try{var p336=id('fix336TbxlPanel'); if(p336){p336.style.display='none'; p336.setAttribute('aria-hidden','true');}}catch(e){} try{Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(b){var t=(b.textContent||''); if(/START\+OPTION.*TURBO BASIC|SNAPSHOT TURBO\/XEX|SPUSTIT TBXL 1\.5 FIX336|ULOZIT TBXL LOG FIX336/i.test(t)){b.style.display='none'; b.setAttribute('aria-hidden','true');}});}catch(e){} try{var panel=id('fix342TopPanel'); if(!panel){panel=document.createElement('section'); panel.id='fix342TopPanel'; panel.className='card'; var anchor=document.querySelector('.wrap>section.card')||document.querySelector('#atariKeyboardDock')||id('fix313TxtPanel')||document.querySelector('.wrap'); if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(panel,anchor.nextSibling); else document.body.appendChild(panel);} panel.style.display='block'; panel.innerHTML='<h2>FIX342 — POWER BASIC + TBXL 1.5</h2><p>FIX342 dopředná oprava: čistý viditelný panel, POWER XL/XE BASIC zpět, TBXL direct XEX loader bez fake READY/LOAD/screen paint/RAM inject.</p><div id="fix337Status" class="fileLine">FIX342 připraveno. Pokud nahoře nevidíš FIX342, netestovat.</div><button id="fix342PowerBtn" type="button" class="secondary compact">POWER XL/XE BASIC</button><button id="fix337TbxlBtn" type="button">SPUSTIT TBXL 1.5 FIX342</button><button id="fix337LogBtn" type="button" class="secondary compact">ULOZIT TBXL LOG FIX342</button><button id="fix337RestartBtn" type="button" class="secondary compact">RESTART TBXL FIX342</button>'; id('fix342PowerBtn').onclick=function(ev){stop(ev); try{return startPureHardwareBasicFix226(ev);}catch(e){log337('POWER BASIC error '+(e&&e.message?e.message:e)); return false;}}; id('fix337TbxlBtn').onclick=directStart; id('fix337LogBtn').onclick=snapshot; id('fix337RestartBtn').onclick=restart;}catch(e){log337('UI render error '+(e&&e.message?e.message:e));}}
+  function start(){installPortBGates(); installInputHooks(); installColorRoles(); installBrkNmiGuards(); try{window.addEventListener('click',captureKeyEvent,true); window.addEventListener('touchend',captureKeyEvent,true); window.addEventListener('pointerup',captureKeyEvent,true); window.addEventListener('keydown',keydown,true);}catch(e){} cleanUi(); try{window.fix342StartTBXL=directStart;window.fix342SaveLog=snapshot;window.fix342RestartTBXL=restart;}catch(e){} [40,120,300,700,1500,3000,6000,10000,14000].forEach(function(ms){setTimeout(function(){cleanUi(); if(turboActive())syncColors();},ms);}); log337('installed: direct loader, window-capture keyboard, blocking KGETCH/CIOV, color roles.');}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,false); else start();
 })();
 </script>
