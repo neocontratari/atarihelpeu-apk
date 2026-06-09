@@ -1,0 +1,21 @@
+AtariHelp.eu EMU-09 FIX327_STABLE_BUTTONS_NO_OBSERVER_TURBO
+
+Ucel:
+- zachovat funkcni zaklad z FIX315/FIX326: TXT/KGETCH, klavesnice, teply RESET, LIST
+- opravit chybu z FIX326, kde MutationObserver a opakovane prepisovani XEX panelu nicily click/touch tlacitka
+- ponechat jeden Turbo Basic start a jeden Turbo/XEX snapshot
+
+Opravy:
+- vypnut MutationObserver, ktery rebuildoval UI pri dotyku/zmene DOM
+- XEX panel se renderuje jen jednou, potom se uz neprepisuje
+- stare funkce fix315/fix323/fix324/fix325/fix326 startu jsou smerovane na FIX327 start
+- staticke popisky jsou FIX327
+- zadny fake READY, fake LOAD, SELF TEST, RAM program inject, screen paint ani RAW CH paste
+
+KODY JSOU STEJNE.
+NEW_XEX_CORE=YES
+XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST
+FIX327_BUTTONS_RESTORED=YES
+FIX327_MUTATION_OBSERVER_DISABLED=YES
+FIX327_SINGLE_TURBO_BUTTON=YES
+FIX327_WARM_RESET_PRESERVE_LIST=YES
