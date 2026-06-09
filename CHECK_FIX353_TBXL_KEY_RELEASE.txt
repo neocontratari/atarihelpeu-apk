@@ -1,0 +1,15 @@
+CHECK FIX353_TBXL_KEY_RELEASE
+KODY JSOU ZMENENE
+build_label=FIX353_TBXL_KEY_RELEASE
+echo_chain_confirmed=KEY_TO_SCREEN_WORKS (otazniky na obrazovce = TBXL vypisuje znaky)
+bug_found=KBCODE_D209_never_released (uvolnoval se jen SKSTAT)
+fix1=release_timeout_now_clears_KBCODE_ATACHR_SKSTAT_40ms
+fix2=watchdog_100ms_clears_stuck_KBCODE_when_CH_consumed
+both_release_lines_patched=YES (lines 13779+13973)
+labels_single=FIX353
+syntax_13_scripts=0_errors
+xex_byte_identical=YES
+no_fake_ready=YES
+no_fake_load=YES
+no_ram_program_inject=YES
+no_screen_paint=YES
