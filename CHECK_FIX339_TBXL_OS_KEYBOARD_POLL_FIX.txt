@@ -1,0 +1,15 @@
+CHECK FIX339_TBXL_OS_KEYBOARD_POLL_FIX
+KODY JSOU ZMENENE
+
+Vychodisko z testu FIX338:
+- FIX338 se netrefil: bridgeHits=0, bridgeBlocks=0, bridgeReturns=0.
+- CPU snapshot byl PC $F867, coz je realny OS editor/output/scroll kod, ne JSR $E456/$E420 vstup.
+- Loader byl OK: MEM_6132 a MEM_0B00 nenulove, STREAMED=OK ACTIVE=YES.
+- Problem je, ze UI klavesnice skoncila ve FIX337 soukrome fronte, ale TBXL bezi pres real OS editor a cte CH/KBCODE/SKSTAT.
+
+FIX339 zmeny:
+- Pridan OS keyboard poll bridge: FIX337 queued ATASCII -> CH $02FC, KBCODE $D209, SKSTAT $D20F, ATACHR $02FB.
+- Maže jen zatuchly RETURN latch $02FB=$9B, pokud nevznikl novy queued key.
+- Schovava duplicitni stare Turbo panely FIX315/FIX328/FIX335/FIX337/FIX338, zustava jeden panel FIX339.
+- Loader zustava FIX337 direct TBXL XEX loader, zadny wrapper/fake.
+- Neni fake READY, fake LOAD, fake SELF TEST, RAM program inject ani screen paint.
