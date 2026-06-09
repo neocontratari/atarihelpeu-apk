@@ -1,0 +1,1 @@
+FIX325 overlay: static no-flicker labels from first paint; TXT/KGETCH/warm reset kept; Turbo loads XEX segments into current OS RAM without cold-reset loop and guards early NMI.
