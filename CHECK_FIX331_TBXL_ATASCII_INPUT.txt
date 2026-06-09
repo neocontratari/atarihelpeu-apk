@@ -1,0 +1,17 @@
+CHECK FIX331 TBXL ATASCII INPUT
+
+[OK] Overlay title/header: FIX331_TBXL_ATASCII_INPUT
+[OK] FIX330 direct TBXL loader kept
+[OK] Old FIX329 recursion still bypassed by FIX330 owner button
+[OK] New FIX331 bridge installed after FIX330 as final script
+[OK] tapAtariKey wrapper sends TBXL keys as ATASCII, not generic XEX scan input
+[OK] RETURN maps to ATASCII $9B
+[OK] KBCODE $D209, SKSTAT $D20F and CH $02FC are bridged while TBXL input is active
+[OK] OS keyboard vectors $E420/$E424 return ATASCII while TBXL input is active
+[OK] ATASCII latch clears after consume/timer to avoid repeated RETURN
+[OK] No fake READY/LOAD/SELF TEST, no RAM program inject, no screen paint
+
+Manual verification requested:
+- Start TBXL, type PRINT 1, press RETURN.
+- Expected: output 1, then READY.
+- If failed: save FIX331 ATASCII log.
