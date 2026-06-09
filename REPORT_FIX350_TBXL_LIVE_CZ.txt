@@ -1,0 +1,40 @@
+AtariHelp.eu EMU-09 - FIX350_TBXL_LIVE
+
+KODY JSOU ZMENENE.
+
+Po vlastním auditu (na žádost Rene):
+- ODSTRANĚN mrtvý CIO hook z FIX345. Nikdy se nespustil (cioHits=0
+  ve všech tvých logech), ale obcházel OS rutinu a hraničil s pravidly
+  NO_FAKE. Statická kontrola: _fix345CioHook count=0 v celém HTML.
+- Vše funkční zachováno: embedded XEX loader (FIX347, bajt po bajtu
+  identický s originálem), autodetekční klávesnicový most (FIX349),
+  DOSVEC oprava pro teplý reset.
+
+Co v buildu ŽIJE a jak to funguje:
+1. SPUSTIT TBXL 1.5 FIX350 -> dekóduje XEX z base64, zapíše segmenty
+   $4980-$9B00 do RAM, skočí na RUNAD $6132. POTVRZENO tvým testem
+   (TBXL titulek Frank Ostrowski se vykreslil).
+2. Most: každých 500ms čte RAM. RUNAD=$6132 + nenulová MEM_6132
+   => klávesy z mobilní klávesnice jdou do CH $02FC přes ROM keymap
+   jádra. Stejný princip jako stisk na skutečné klávesnici (IRQ->CH).
+3. Teplý reset: DOSVEC=$6132 => návrat do TBXL.
+
+Test:
+1) POWER XL/XE BASIC (základ musí žít)
+2) SPUSTIT TBXL 1.5 FIX350 -> titulek
+3) Stiskni A -> v logu "FIX349 KEY A -> $41", na obrazovce A
+4) PRINT 2+2 + RETURN -> 4
+5) CLS + RETURN -> smaže obrazovku
+6) TEPLÝ RESET -> zpět do TBXL
+7) ULOŽIT FIX350 LOG -> poslat
+
+Pravda: pokud klávesa bude v logu ale NE na obrazovce, znamená to,
+že OS smyčka v tomto jádru čte klávesy jinou cestou než CH poll.
+Log mi přesně ukáže PC a půjdu po té cestě. Žádné obcházení.
+
+Zakazy:
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
