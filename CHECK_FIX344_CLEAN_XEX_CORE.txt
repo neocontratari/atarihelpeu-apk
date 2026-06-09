@@ -1,0 +1,15 @@
+CHECK FIX344_CLEAN_XEX_CORE
+KODY JSOU ZMENENE
+overlay_zip_root_has_only_current_report=YES
+index_current_label_PRESENT=YES
+emu_current_label_PRESENT=YES
+old_upper_FIX_number_labels=NONE
+old_lower_fix_number_labels=NONE
+legacy_core_literal_present=NO
+script_tags=3
+node_syntax_check=OK
+no_fake_ready=YES
+no_fake_load=YES
+no_fake_self_test=YES
+no_ram_program_inject=YES
+no_screen_paint=YES
