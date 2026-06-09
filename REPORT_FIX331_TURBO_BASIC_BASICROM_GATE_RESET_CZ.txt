@@ -1,0 +1,12 @@
+FIX331_TURBO_BASIC_BASICROM_GATE_RESET
+
+KODY JSOU STEJNE.
+
+Změna proti FIX330:
+- ponechán funkční BASIC/TXT/KGETCH a teplý reset základ
+- Turbo Basic loader dál používá čistý XEX segment load a relokaci z FIX328/FIX330
+- nově se v Turbo/XEX režimu BASIC ROM $A000-$BFFF řídí PORTB bit1, takže při PORTB $FE/$FF je vestavěný BASIC vypnutý a Turbo může používat RAM v této oblasti
+- teplý RESET po Turbo už nemá násilně přepínat do BASIC READY smyčky; drží XEX/Turbo stav
+- žádný fake READY, fake LOAD, screen paint ani RAM program inject
+
+Test: POWER XL/XE BASIC -> TXT/LIST -> TEPLÝ RESET/LIST -> Turbo Basic FIX331 -> SNAPSHOT TURBO/XEX LOG FIX331.
