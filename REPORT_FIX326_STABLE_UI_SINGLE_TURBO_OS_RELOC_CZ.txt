@@ -1,0 +1,26 @@
+AtariHelp.eu EMU-09 FIX326_STABLE_UI_SINGLE_TURBO_OS_RELOC
+
+KODY JSOU STEJNE.
+
+Cil:
+- Nepouzit rollback.
+- Zachovat funkcni zaklad z FIX315: TXT/KGETCH, klavesnice, teply RESET s LIST.
+- Odstranit problikavani starych popisku FIX314/FIX315/FIX323/FIX325.
+- Odstranit duplicity START+OPTION Turbo Basic a snapshot tlacitek.
+- Jedine aktivni Turbo tlacitko vlastni finalni FIX326 vrstva.
+
+Turbo cesta:
+- XEX segmenty se parsuji do emulovane RAM.
+- Bez fake LOAD, bez screen paint, bez RAM program inject.
+- Pro Turbo Basic se provede presna relokace podle INITAD $6132:
+  $4900->$2000, $6200->$C000, $6E00->$D800, $7600->$E400, $9200->$0B00.
+- PORTB bit0 gate pro RAM pod OS ROM je dopsany pro Turbo rezim.
+- Po relokaci se PORTB vraci na $FF, aby OS ROM byla viditelna pro nasledujici OS cteni.
+- CPU startuje na $6179.
+
+Test:
+1) Spustit EMU, ma byt FIX326 a nesmi se objevit duplicitni Turbo tlacitka.
+2) POWER XL/XE BASIC, TXT/BAS zapis, LIST.
+3) TEPLY RESET, LIST zustane.
+4) Jedno Turbo tlacitko.
+5) Snapshot Turbo/XEX FIX326.
