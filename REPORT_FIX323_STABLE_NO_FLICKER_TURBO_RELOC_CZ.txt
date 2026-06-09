@@ -1,0 +1,22 @@
+AtariHelp.eu EMU-09 FIX323_STABLE_NO_FLICKER_TURBO_RELOC
+
+Základ: poslední funkční FIX315 UI/TXT/warm reset.
+Cíl: neblikající appka + Turbo Basic pokus bez rozbití TXT panelu.
+
+KODY JSOU STEJNE.
+NEW_XEX_CORE=YES
+XEX_TURBO_SCOPE=TURBO_BASIC_CLEAN_XEX_FIRST
+FIX323_BASELINE_FROM_FIX315=YES
+FIX323_NO_FLICKER_LABELS=YES
+FIX323_TURBO_RELOC_CONTINUATION=YES
+FIX323_WARM_RESET_PRESERVE_LIST=YES
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_FAKE_SELF_TEST=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
+NO_RAW_CH_PASTE=YES
+
+Poznámka: Turbo Basic relokace není screen paint ani fake LOAD. Segment XEX se nejdřív načte přes existující XEX loader. FIX323 potom zrcadlí vlastní Turbo INITAD relokační kopírovací loop ($4980->$2000, $6200->$C000, $6E00->$D800, $7600->$E400, $9200->$0B00) a pokračuje na $6179, kde původní Turbo kód volá JSR $0B00.
+
+Test: nejdřív BASIC/TXT + LIST + teplý reset. Potom jednou Turbo Basic tlačítko a snapshot FIX323.
