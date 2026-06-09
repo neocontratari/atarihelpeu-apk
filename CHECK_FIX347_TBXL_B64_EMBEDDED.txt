@@ -1,0 +1,17 @@
+CHECK FIX347_TBXL_B64_EMBEDDED
+KODY JSOU ZMENENE
+build_label=FIX347_TBXL_B64_EMBEDDED
+base=FIX330 + FIX345 CIO patch + FIX346 label owner
+xex_embedded_base64=YES
+xex_b64_matches_original_sha=YES
+fetch_removed_from_load_path=YES
+parse_segments_verified=SEG_4980_9B00_20865B + SEG_02E2_2B
+runad_verified=6132
+syntax_js_ok=YES
+label_owner_active=YES
+index_label_updated=YES
+no_fake_ready=YES
+no_fake_load=YES
+no_fake_self_test=YES
+no_ram_program_inject=YES
+no_screen_paint=YES
