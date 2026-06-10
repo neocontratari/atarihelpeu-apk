@@ -1,0 +1,56 @@
+AtariHelp.eu EMU-10 BUILD1 - CISTE JADRO ATARI 130XE
+=====================================================
+
+NOVA APKA OD NULY. Zadne FIXy, zadne vrstvy, zadny stary kod.
+Jeden soubor: emu10_130xe.html (84 kB vcetne obou ROM).
+
+CO JE UVNITR (vse nove napsane):
+- 6502 CPU: kompletnich 151 instrukci vcetne NMOS decimal módu
+  (BCD - bez nej by nefungovala matematika Atari BASICu).
+  Generovano z tabulky, zadne rucni preklepy.
+- MMU 130XE: plne bankovani PORTB (OS ROM, BASIC, self-test okno
+  $5000-$57FF, 4x16K rozsirena RAM zvlast pro CPU a ANTIC).
+- ANTIC: display list procesor po scanlinech, textove mody 2-7,
+  graficke 8-F, LMS, DLI, VBI, WSYNC, VCOUNT, PAL 312 radek.
+- GTIA: barvy, PMG (hraci+strely), CONSOL, TRIG3=0 (zadna cart),
+  PAL paleta pocitana algoritmicky.
+- POKEY: klavesnice (KBCODE/SKSTAT/IRQ), serial model podle
+  SKUTECNEHO chovani cipu (overeno disassemblingem VSEROR $EAAD
+  z vasi ROM - bit4 je udalost, ne stav!), RANDOM, zvuk:
+  4 kanaly, poly 4/5/9/17, AUDCTL (16bit spojeni, 1.79 MHz,
+  15/64 kHz), volume-only - WebAudio.
+- GTIA reproduktor: klik klaves XL OS pres CONSOL bit3 - SLYSITE
+  originalni tukani klaves jako na pravem stroji.
+- PIA s DDR semantikou.
+- ROM: VASE 130XE OS (16K, reset $C2AA) + prava Atari BASIC (8K,
+  obe z puvodniho balicku). Zadny fake, zadny shim, zadny JS BASIC.
+
+DUKAZ FUNKCNOSTI - automaticke testy PRED odevzdanim
+(headless boot v Node, testovan primo finalni HTML soubor):
+  TEST1: POWER -> prava OS bootuje, SIO timeout disku jako na
+         realnem zeleze -> BASIC READY za 4.6 s. PASS
+  TEST2: napsano "? 1+1" pres scan kody klavesnice -> OS IRQ ->
+         BASIC vypsal "2". PASS (CPU+BCD+klavesnice+editor)
+  TEST3: POWER s drzenym OPTION -> BASIC vypnuta -> SELF TEST
+         z vasi ROM na obrazovce. PASS
+
+OVLADANI:
+- POWER BASIC / POWER+OPTION SELF TEST / RESET / BREAK
+- OPTION, SELECT, START - drzet (funguji i v SELF TESTu)
+- Fyzicka klavesnice: pismena/cisla primo, F1=HELP, F2=OPTION,
+  F3=SELECT, F4=START, F5=RESET, F6=BREAK, sipky=CTRL+sipky Atari,
+  ` (backquote)=INVERZE
+- On-screen XE klavesnice (SHIFT/CTRL jsou prepinace)
+- LOG panel + ULOZIT LOG (stejny workflow jako dosud)
+
+ZAKAZY DRZI: NO_FAKE_READY, NO_FAKE_LOAD, NO_RAM_PROGRAM_INJECT,
+NO_SCREEN_PAINT - vsechno na obrazovce kresli ANTIC z pameti,
+vsechen text vypisuje prava OS/BASIC.
+
+DALSI KROK (BUILD2): universalni loader XEX / ATR / WAV(turbo),
+TBXL. Jadro uz na to ma pripravene SIO rozhrani.
+
+ZNAME LIMITY BUILD1 (rekneme si je rovnou, zadne prekvapeni):
+- GTIA mody 9/10/11 (GR.9-11) zatim ne, kolizni registry ctou 0,
+  jemny scrolling zjednoduseny - na BASIC, self test a klavesnici
+  nemaji vliv. Doplnime s loaderem her.
