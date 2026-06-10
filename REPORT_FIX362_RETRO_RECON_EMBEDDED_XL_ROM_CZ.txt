@@ -1,0 +1,32 @@
+AtariHelp.eu EMU-09 - FIX362_RETRO_RECON_EMBEDDED_XL_ROM
+
+KODY JSOU ZMENENE
+
+Co bylo fyzicky udelano:
+- Overlay je znovu slozeny jako jedna cista vetev.
+- Z puvodniho FIX358 je ponechano pouze hlavni emulatorove jadro.
+- Vsechny pozdejsi prilepene overlay script bloky za jadrem byly odstraneny.
+- Viditelne stare UI panely byly nahrazeny cistym minimalnim panelem FIX362.
+- NaPatari130xe.rom je vlozena natvrdo do HTML jako base64 a take prilozena v assets pro kontrolu.
+- TBXL XEX je vlozen natvrdo do HTML jako base64 a take prilozena kopie v assets.
+- Pridana jedna ROM/MMU brana: C000-CFFF a D800-FFFF cte 16KB OS ROM pouze kdyz PORTB bit0=1; pri bit0=0 je RAM pod OS ROM.
+- BASIC okno A000-BFFF se ridi PORTB bit1; pro TBXL start je PORTB=$FF = OS ON / BASIC OFF.
+- Start TBXL provadi XEX segment load, relokaci do RAM pod ROM a skok na $6179.
+
+ROM:
+NaPatari130xe.rom size=16384 MD5=06daac977823773a3eea3422fd26a703 SHA256=a77050b2d81db2d11eaa3dbafd8ec2531b478abcc3bcc4b0d846b634e885edb1
+
+TBXL:
+turbo-basic-xl-1.5.xex size=20877 MD5=824f9f1ad27b8177ab75b9c123eb256a SHA256=4ced830881a1edfe5e6928f6ccaac9e96f372c6dc9d9e89036361062b62f3022
+
+Neobsahuje zadny fake READY, fake LOAD, fake SELF TEST, screen paint ani RAM program inject jako podvod.
+
+Dulezite omezeni narovinu:
+Toto je technicky cisty rekonstrukcni build z existujiciho JS emulatoroveho jadra. Neni to dukaz, ze TBXL uz projde PRINT 2+2. Dukaz je az Reneho realny test a FIX362 log.
+
+Test:
+1) Nahrat overlay pres GitHub Desktop.
+2) Spustit appku.
+3) Kliknout SPUSTIT TBXL — EMBEDDED XL ROM FIX362.
+4) Po nabehu zkusit PRINT 2+2 a RETURN.
+5) Pokud nevyjde 4, ulozit FIX362 LOG.
