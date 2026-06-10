@@ -1,0 +1,33 @@
+AtariHelp.eu EMU-09 - FIX357_TBXL_XLOS_SHIM
+
+KODY JSOU ZMENENE.
+
+Tvůj log 07:16 potvrdil: FIX356 CPU hook FUNGUJE - v trace je
+"$C018 $60", CPU poprvé četl z $C000 oblasti RTS místo garbage.
+Žádný "Unsupported opcode" pád už nenastal.
+
+Nová příčina pádu (BRK STOP $0427, IRQ $C02C):
+$C018 je NMI vstup a $C02C je IRQ vstup skutečného XL OS.
+Přerušení (VBLANK, klávesnice) na tyto adresy skáčou automaticky
+a ukládají na zásobník i status byte. RTS tam vrátí špatnou
+adresu -> rozbitý zásobník -> BRK na $0427.
+
+Oprava FIX357 - přesně jako skutečný XL OS:
+$C018: JMP ($0222) - NMI jde přes RAM vektor VVBLKI
+$C02C: JMP ($0216) - IRQ jde přes RAM vektor VIMIRQ
+RAM vektory nastavil OS při bootu na platné handlery. Zbytek
+oblasti zůstává RTS. Aktivní jen při TBXL.
+
+Test:
+1) POWER XL/XE BASIC
+2) SPUSTIT TBXL -> titulek
+3) V logu: "XL OS shim aktivní"
+4) Stiskni A -> jedno A
+5) PRINT 2+2 + RETURN -> 4
+6) ULOŽIT LOG (FIX357-log-...)
+
+Zakazy:
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
