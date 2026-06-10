@@ -1,0 +1,32 @@
+AtariHelp.eu EMU-09 - FIX364_TBXL_UI_CLEAN
+
+KODY JSOU ZMENENE.
+
+Rene měl pravdu: dole viselo staré TURBO tlačítko FIX330 volající
+starý FIX328 loader - když se stisklo, hádalo se s novou cestou.
+
+FIX364:
+1. Všechna stará TURBO tlačítka SKRYTA a přesměrována na nový start.
+2. Staré panely (fix284/307/311/312/328/329) skryté.
+3. Texty FIX330/FIX328 v UI nahrazeny FIX364 (klávesnice, podtitul).
+4. Funkčnost FIX363 beze změny (pravá ROM, vektor seed, sticky).
+
+STAV PRAVDIVĚ:
+- Pravý XL OS prokazatelně BOOTUJE: READY na obrazovce, NMI handler
+  proběhl přes seednutou RTI. To je obrovský kus cesty.
+- Psaní po READY a self test blokuje POSLEDNÍ konflikt: JS shimy
+  jádra (CIOV $E456 "NODEV", BRK JS vektory, FIX232 watchdog) jsou
+  stavěné pro starý svět bez ROM a střílejí chyby do běžícího
+  pravého OS. Důkaz v logu: "STRICT NODEV CIOV/E456 status $8A".
+- Tohle se NEDÁ bezpečně vyřešit dalším overlay skriptem - je to
+  přepínač uvnitř jádra: shimy musí stát stranou, když je aktivní
+  pravá ROM. Potřebuje to cílený zásah do jádra (1 podmínka na
+  ~4 místech), který připravím jako přesný patch po odsouhlasení.
+
+Test FIX364 (UI klid):
+1) Otevři appku - žádné FIX330/328 texty, žádné staré turbo tlačítko
+2) POWER -> SPUSTIT TBXL -> READY (pravá OS)
+3) POWER -> čistý BASIC funguje
+
+Zakazy:
+NO_FAKE_READY=YES NO_FAKE_LOAD=YES NO_RAM_PROGRAM_INJECT=YES NO_SCREEN_PAINT=YES
