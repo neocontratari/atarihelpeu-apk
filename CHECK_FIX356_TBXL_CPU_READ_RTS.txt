@@ -1,0 +1,16 @@
+CHECK FIX356_TBXL_CPU_READ_RTS
+KODY JSOU ZMENENE
+build_label=FIX356_TBXL_CPU_READ_RTS
+proof_from_user_log_0112=fill_to_ram_array_ignored_by_cpu (trap $02 po vyplni)
+root_cause=cpu_r_has_own_rom_mapping_for_C000_CFFF
+fix=wrap_CPU6502_prototype_r_return_RTS_60_when_tbxl_active
+scope=only_C000_CFFF_only_tbxl_active_otherwise_unchanged
+fix352_stub_and_fix354_fill_kept_as_backup=YES
+labels_single=FIX356
+log_filenames=FIX356-log
+syntax_15_scripts=0_errors
+xex_byte_identical=YES
+no_fake_ready=YES
+no_fake_load=YES
+no_ram_program_inject=YES
+no_screen_paint=YES
