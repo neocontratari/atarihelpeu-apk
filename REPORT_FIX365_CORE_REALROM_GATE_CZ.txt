@@ -1,0 +1,50 @@
+AtariHelp.eu EMU-09 - FIX365_CORE_REALROM_GATE
+
+KODY JSOU ZMENENE.
+
+PRICINA PADU Z LOGU FIX364 (BRK $0080, IRQ $C02C) - NALEZENA PRESNE:
+NMI stub pravé NaP XL OS ROM na $C020 dela:
+  CLD PHA TXA PHA TYA PHA STA NMIRES JMP ($0222)   <- 3 pushe (A,X,Y)
+FIX364 ale predosadil VVBLKI $0222 na HOLOU RTI ($C00D).
+RTI pak sebrala ze stacku pushnute Y/X/A misto P/PC -> skok na
+smeti $0080 -> BRK storm -> FIX232 PURE BRK STOP. Trace v logu
+($C020..$C029 $6C, $C00D $40) to dokazuje bajt po bajtu.
+
+FIX365 = CILENY ZASAH DO JADRA (presne podle planu z REPORT_FIX364):
+
+1) SPRAVNE PREDOSAZENI VEKTORU $0200-$0226 podle semantiky ROM:
+   - VDSLST $0200, VIMIRQ $0216 (bez pushu)      -> RTI $C00D
+   - IRQ subvektory $0202-$0214, BRKKY $0226 (A) -> PLA RTI $C09E
+   - VVBLKI $0222, VVBLKD $0224 (3 pushe)        -> PLA TAY PLA TAX PLA RTI $C28A
+   - CDTMA1 $0218, CDTMA2 $021A (JSR)            -> RTS $C017
+   - $021C-$0221 jsou hodnoty casovacu           -> 0
+   Adresy se hledaji v ROM dynamicky (funguje i s jinou nahranou ROM).
+   XL OS si vse pri init prepise sama - tohle je jen bezpecna sit.
+
+2) GATE window.fix365RealRomActive (1 podminka na ~6 mistech jadra):
+   Kdyz bezi prava ROM (FIX365 TBXL aktivni), stoji stranou:
+   - handleAtariOsRomEntry / handleBasicRomEntry / handleEmptyOsRomEntry
+     (CIOV $E456 "NODEV", SETVBV, mini-OS stuby) - primy skok i JSR cesta
+   - FIX243 STRICT NODEV $E456/$E459 (log "status $8A")
+   - FIX243 CH $02FC read override + KGETCH inject
+   - FIX232 PURE BRK hard-stop (BRK jde pres skutecny vektor $FFFE)
+   Gate se zapina v SPUSTIT TBXL, synchronizuje se kazdych 300 ms
+   (started && TBXL podpis $6132 && ROM) a vypina se POWER tlacitkem.
+   Bez prave ROM se chovani jadra NEMENI (flag je false/undefined).
+
+OCEKAVANY STAV:
+- POWER XL/XE BASIC -> SPUSTIT TBXL -> READY (prava OS) a po READY
+  uz zadny BRK $0080: VBI prochazi pres spravny unwind, klavesy
+  jdou pravou cestou $FFFE -> OS IRQ -> CH $02FC -> TBXL.
+- Cisty BASIC pres POWER funguje beze zmeny (gate OFF).
+
+Test FIX365:
+1) Otevri appku - titulek FIX365_CORE_REALROM_GATE
+2) POWER XL/XE BASIC -> SPUSTIT TBXL 1.5 -> READY
+3) Psani na klavesnici po READY: znaky se vypisuji, ZADNY
+   "FIX232 PURE BRK STOP at $0080" v logu
+4) Log obsahuje "Vektory ... PODLE SEMANTIKY: ... UNWIND $C28A"
+5) POWER -> cisty BASIC funguje
+
+Zakazy drzi:
+NO_FAKE_READY=YES NO_FAKE_LOAD=YES NO_RAM_PROGRAM_INJECT=YES NO_SCREEN_PAINT=YES
