@@ -1,0 +1,34 @@
+AtariHelp.eu EMU-09 - FIX362_TBXL_STICKY_ROM
+
+KODY JSOU ZMENENE.
+
+PRŮLOM z logu Rene (12:18): trace $C403/$C58B/$C670 = inicializační
+rutiny PRAVÉHO XL OS poprvé skutečně běžely. ROM mapování funguje.
+
+Chyba (moje): XL OS si při warm startu normálně NULUJE RUNAD.
+Můj detektor TBXL stál na RUNAD=$6132 -> zhasl -> ROM se odmapovala
+UPROSTŘED běhu OS -> CPU četl prázdno -> pád na $0000.
+Log to usvědčuje: RUNAD=$0000, MOST=OFF.
+
+Oprava FIX362:
+1. Detekce přes PODPIS TBXL kódu na $6132 (bajty A0 00 84 32) -
+   ten warm start přežije. RUNAD se pro detekci nepoužívá.
+2. Sticky režim: zapne se synchronně při SPUSTIT TBXL, ROM zůstává
+   mapovaná natrvalo.
+3. Vypnutí JEN tlačítkem POWER XL/XE BASIC - čistý návrat k BASICu,
+   ROM se odmapuje, obyčejný BASIC nedotčen.
+
+Test:
+1) POWER XL/XE BASIC
+2) SPUSTIT TBXL 1.5
+3) Log: "Zabudovaná NaP XL OS ROM aktivní" + "PRAVÁ XL OS: warm start"
+4) READY -> A, PRINT 2+2 + RETURN -> 4
+5) CLS, GRAPHICS 8 + CIRCLE 160,96,50
+6) TEPLÝ RESET -> nativní návrat do TBXL
+7) POWER -> čistý BASIC (kontrola, že se nic nerozbilo)
+
+Zakazy:
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
