@@ -1,0 +1,36 @@
+AtariHelp.eu EMU-09 - FIX360_TBXL_CLEAN_CONSOLIDATED
+
+KODY JSOU ZMENENE.
+
+Co se stalo: vlastním auditem jsem našel, že můj řetěz sed náhrad
+přes verze FIX350-359 tiše korumpoval texty v jádru (titulek byl
+slepenec "FIX359_TBXL_RTCLOK328_LOADER..."). Celá větev zahozena.
+
+FIX360 = čerstvý originál FIX330 + JEDEN konsolidovaný script.
+Diff důkaz: proti originálu se liší jen přidaný script a 7 cílených
+label řádků. 7 scriptů celkem (větev 350-359 jich měla 19).
+
+Obsah (vše dříve ověřené tvými testy):
+A) TBXL XEX embedded base64 -> RAM -> RUNAD $6132
+B) Klávesnicový most do CH $02FC s plným uvolněním kláves + watchdog
+C) Výběr PRAVÉ XL OS ROM: tvoje záloha, 16384 B (např. ATARIXL.ROM).
+   Soubor zůstává jen v paměti stránky. Čtení $C000-$CFFF a
+   $D800-$FFFF jde z pravé ROM, HW okno $D000-$D7FF zůstává jádru.
+   Start: warm start $E474 -> XL OS si nastaví vektory -> (DOSVEC)
+   -> TBXL. Teplý reset pak funguje NATIVNĚ (XL OS ho umí sám).
+D) Bez ROM: nouzový stub (stejné chování jako poslední testy -
+   titulek jede, psaní je nespolehlivé). Plný TBXL = s pravou ROM.
+
+Postup (přesně jak chtěl Rene):
+1) POWER XL/XE BASIC (zapnout Atari)
+2) Vybrat XL OS ROM soubor (jednou)
+3) SPUSTIT TBXL 1.5
+4) READY -> psát: A, PRINT 2+2, CLS
+5) TEPLÝ RESET -> nativní návrat do TBXL
+6) ULOŽIT FIX360 LOG při problému
+
+Zakazy:
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
