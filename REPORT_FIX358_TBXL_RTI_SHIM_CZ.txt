@@ -1,0 +1,35 @@
+AtariHelp.eu EMU-09 - FIX358_TBXL_RTI_SHIM
+
+KODY JSOU ZMENENE.
+
+Tvůj screenshot 10:23 ukázal ČISTÝ TBXL READY prompt s kurzorem.
+Trace ukázal proč nejde psát: NMI vstoupí na $C018, FIX357 ho
+poslal přes RAM vektor ($0222), ale ten ukazuje ZPÁTKY do $C0E2
+(chybějící oblast, OS boot tam zapsal XL adresy). RTS po přerušení
+= rozbitý zásobník = BRK STOP = stroj stojí po každém přerušení.
+
+Oprava FIX358:
+$C018 (NMI vstup) = RTI
+$C02C (IRQ vstup) = RTI
+Přerušení se ukončí okamžitě a čistě, program pokračuje. Žádné
+skákání přes vektory. Zbytek oblasti zůstává RTS pro JSR volání.
+Klávesy nepotřebují OS IRQ handler - most píše CH přímo, což už
+prokazatelně funguje.
+
+Warm reset pod TBXL: zatím po resetu stiskni SPUSTIT TBXL znovu
+(udělá čistý reload segmentů). Trvalé řešení přijde po potvrzení
+psaní.
+
+Test:
+1) POWER XL/XE BASIC
+2) SPUSTIT TBXL -> READY
+3) Stiskni A -> A na obrazovce
+4) PRINT 2+2 + RETURN -> 4
+5) CLS + RETURN
+6) ULOŽIT LOG (FIX358-log-...)
+
+Zakazy:
+NO_FAKE_READY=YES
+NO_FAKE_LOAD=YES
+NO_RAM_PROGRAM_INJECT=YES
+NO_SCREEN_PAINT=YES
