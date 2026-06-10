@@ -1,26 +1,3 @@
-<!doctype html>
-<html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>EMU-09 130XE CLEAN JS R0</title>
-<style>
-:root{color-scheme:dark} body{margin:0;background:#101014;color:#f4f4f4;font-family:Arial,Helvetica,sans-serif} .wrap{max-width:1100px;margin:0 auto;padding:12px} h1{font-size:20px;margin:8px 0} .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center} button{font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid #777;background:#252532;color:#fff} button:active{transform:scale(.98)} canvas{width:100%;max-width:768px;image-rendering:pixelated;border:2px solid #444;border-radius:12px;background:#1020a0} .panel{background:#191922;border:1px solid #333;border-radius:12px;padding:10px;margin:10px 0} pre{white-space:pre-wrap;background:#07070a;border:1px solid #333;border-radius:10px;padding:10px;max-height:280px;overflow:auto;font-size:12px} .warn{color:#ffdf7a} .ok{color:#9affb1} .small{font-size:13px;line-height:1.35}
-</style></head><body><div class="wrap">
-<h1>EMU-09 130XE CLEAN JS R0 — čistý základ bez starých FIX vrstev</h1>
-<div class="panel small"><b class="ok">KODY JSOU ZMENENE.</b> Tohle není další přelep. Je to nový čistý HTML/JS asset: jedna CPU cesta, jedna RAM, jedna OS ROM, jedna BASIC ROM, jedna PORTB/MMU brána. <span class="warn">R0 ještě neslibuje hotový TurboBasic ani hry; nejdřív musí pravdivě naběhnout základ systému.</span></div>
-<div class="row panel">
-<button id="bootBasic">POWER 130XE BASIC</button>
-<button id="bootOption">POWER START+OPTION / BASIC OFF</button>
-<button id="pause">RUN / PAUSE</button>
-<button id="step">STEP 2000 CPU</button>
-<button id="saveLog">ULOZIT CLEAN R0 LOG</button>
-<button id="clearLog">VYCISTIT LOG</button>
-</div>
-<div id="status" class="panel small">čekám</div>
-<canvas id="screen" width="768" height="480"></canvas>
-<div class="panel small">
-<b>Test R0:</b> 1) POWER 130XE BASIC. 2) Sleduj, jestli se CPU drží v OS/BASIC ROM a jestli se na plátně objeví reálný text ze screen RAM. 3) Když je černá/modrá/čaj, ulož CLEAN R0 LOG. Žádné fake READY se nekreslí; plátno renderuje RAM obrazovku.
-</div>
-<pre id="log"></pre>
-</div><script>
 
 'use strict';
 (function(){
@@ -136,5 +113,3 @@ function loop(){ if(running&&atari){ for(let i=0;i<2;i++)atari.runFrame(); draw(
 function init(){ atari=new Atari130XE(); log('CLEAN R0 nainstalovano. Zadny LEGACY_CORE, zadne stare FIX vrstvy, jedna ROM/MMU/CPU cesta.'); log('OS ROM '+atari.os.length+' bytes md5 '+OS_MD5+'; BASIC ROM '+atari.basic.length+' bytes md5 '+BASIC_MD5); $('bootBasic').onclick=()=>{atari.coldBasic();running=true;}; $('bootOption').onclick=()=>{atari.coldOption();running=true;}; $('pause').onclick=()=>{running=!running;log(running?'RUN':'PAUSE');}; $('step').onclick=()=>{if(!atari) return; for(let i=0;i<2000;i++)atari.cpu.step(); draw();}; $('saveLog').onclick=()=>{const txt=(atari?atari.snapshot():'NO ATARI')+'\n\nLOG:\n'+logLines.join('\n'); const blob=new Blob([txt],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='emu09-clean-r0-log-'+Date.now()+'.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);}; $('clearLog').onclick=()=>{logLines=[];log('log cleared');}; draw(); loop(); }
 window.addEventListener('load',init);
 })();
-
-</script></body></html>
