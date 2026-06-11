@@ -1,0 +1,28 @@
+EMU-10 BUILD2E - RETRO DESIGN DOMOVSKE STRANKY (CTETE PRVNI)
+=============================================================
+CO SMAZAT: NIC.
+CO PREPSAT: presne 1 soubor:
+    app/src/main/assets/index.html
+(emulator, loga img/ i MainActivity zustavaji z BUILD2D)
+Commit + push.
+
+CO JE NOVE - DESIGN V DUCHU 80. LET:
+- celni panel jako konzole: duhove Atari pruhy nahore i dole,
+  vase logo s "chrome" stinem, blikajici kurzor READY.
+- SPUSTIT EMULATOR = velka cervena 3D klavesa (stejny styl jako
+  klavesy v emulatoru - jednotny vzhled cele apky)
+- rozcestnik webu = POLICKA S CARTRIDGEMI: kazda sekce atarihelp.eu
+  ma stitek cartridge s barevnym hrbetem a rucne kreslenou
+  pixelovou SVG ikonou (joystick, kniha, KITT auto, magnetofon,
+  obalka, srdce, glob...)
+- manifest N&P Studia na kremovem stitku s duhovym prouzkem
+- paticka INSERT COIN / PRESS START + vase pecet
+- zadne externi fonty ani knihovny - vse offline v APK
+  (odkazy na zivy web pochopitelne potrebuji internet)
+- respektuje "reduced motion" (blikani jde vypnout systemem)
+
+KONTROLA:
+[ ] start apky: konzole s duhovymi pruhy, logo, READY. blika
+[ ] cervena klavesa SPUSTIT EMULATOR funguje (ZPET vraci na web)
+[ ] cartridge odkazy vedou na sekce atarihelp.eu
+[ ] na uzkem displeji se cartridge srovnaji do jednoho sloupce

@@ -5,85 +5,191 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>(C)N&P - ATARI HELP - AtariHelp.eu</title>
 <style>
-:root{ --bg:#16171c; --case:#2b2d35; --key:#c9c5bb; --accent:#d8412f; --dim:#8a8e98; --gold:#d9b25c; }
-*{ box-sizing:border-box; }
-body{ margin:0; background:var(--bg); color:#e7e4dc; font:14px/1.6 'Courier New',monospace; }
-header{ text-align:center; padding:22px 14px 8px; }
-header img.logo{ max-width:min(520px,92%); display:block; margin:0 auto; }
-h1{ font-size:20px; letter-spacing:2px; margin:14px 0 2px; }
-h1 b{ color:var(--accent); }
-.sub{ color:var(--dim); font-size:12px; letter-spacing:1px; }
-.wrap{ max-width:760px; margin:0 auto; padding:14px; }
-.card{ background:var(--case); border-radius:14px; padding:18px; margin:14px 0;
-       box-shadow:inset 0 2px 0 #3a3d46, 0 10px 30px rgba(0,0,0,.5); }
-.emu{ display:flex; gap:16px; align-items:center; }
-.emu img{ width:96px; border-radius:10px; }
-.emu a.btn{ display:inline-block; background:var(--accent); color:#fff; text-decoration:none;
-  font-weight:bold; letter-spacing:1px; padding:14px 22px; border-radius:6px; box-shadow:0 4px 0 #8d2418; }
-.emu a.btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #8d2418; }
-ul.menu{ list-style:none; margin:0; padding:0; }
-ul.menu li{ border-bottom:1px solid #3a3d46; }
-ul.menu li:last-child{ border-bottom:0; }
-ul.menu a{ display:block; padding:10px 6px; color:var(--key); text-decoration:none; }
-ul.menu a:active{ color:#fff; }
-ul.menu span{ color:var(--dim); font-size:11px; display:block; }
-.gold{ color:var(--gold); }
-footer{ text-align:center; color:var(--dim); font-size:11px; padding:18px 10px 26px; }
-.seal{ text-align:center; margin:10px 0 0; }
-.seal img{ width:110px; }
+:root{
+  --case:#23252c; --panel:#2b2d35; --panel2:#33363f;
+  --key:#d9d4c7; --keydark:#b8b2a3; --ink:#1d1e23;
+  --red:#d8412f; --reddark:#8d2418;
+  --gold:#d9b25c; --phos:#7da2ff; --dim:#8a8e98;
+  --s1:#d8412f; --s2:#e8842c; --s3:#e7c52e; --s4:#5cb85c; --s5:#3b6fd7; --s6:#8e5cd9;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{ margin:0; background:
+  radial-gradient(1200px 500px at 50% -10%, #2e3140 0%, #16171c 60%) #16171c;
+  color:#e7e4dc; font:14px/1.6 'Courier New',monospace; }
+
+/* ---------- celni panel konzole ---------- */
+.console{ max-width:780px; margin:14px auto 0; background:var(--case); border-radius:16px;
+  box-shadow:inset 0 2px 0 #3a3d46, inset 0 -3px 0 #15161a, 0 14px 40px rgba(0,0,0,.6);
+  overflow:hidden; }
+.stripes{ display:flex; height:8px; }
+.stripes i{ flex:1; }
+.stripes i:nth-child(1){background:var(--s1);} .stripes i:nth-child(2){background:var(--s2);}
+.stripes i:nth-child(3){background:var(--s3);} .stripes i:nth-child(4){background:var(--s4);}
+.stripes i:nth-child(5){background:var(--s5);} .stripes i:nth-child(6){background:var(--s6);}
+header{ text-align:center; padding:20px 16px 6px; position:relative; }
+header img.logo{ max-width:min(460px,94%); display:block; margin:0 auto;
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,.55)); }
+h1{ font-size:22px; letter-spacing:6px; margin:14px 0 0; font-weight:bold;
+  text-shadow:0 2px 0 #000, 0 0 18px rgba(125,162,255,.35); }
+h1 b{ color:var(--red); }
+.sub{ color:var(--dim); font-size:11px; letter-spacing:3px; margin-top:2px; }
+.ready{ color:var(--phos); font-size:12px; letter-spacing:2px; margin:10px 0 14px; }
+.ready::after{ content:'\2588'; margin-left:4px; animation:blink 1.06s steps(1) infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+@media (prefers-reduced-motion:reduce){ .ready::after{ animation:none; } }
+
+/* ---------- hero: velka klavesa SPUSTIT ---------- */
+.slot{ margin:0 16px 18px; background:var(--panel); border-radius:12px; padding:16px;
+  box-shadow:inset 0 0 22px rgba(0,0,0,.45), inset 0 2px 0 #3a3d46;
+  display:flex; gap:16px; align-items:center; }
+.slot img{ width:92px; border-radius:12px; box-shadow:0 6px 14px rgba(0,0,0,.5); }
+.slot .t{ flex:1; }
+.slot .name{ font-weight:bold; letter-spacing:2px; }
+.slot .d{ color:var(--dim); font-size:11px; letter-spacing:1px; margin:4px 0 12px; }
+a.power{ display:inline-block; background:linear-gradient(#e4604e,var(--red));
+  color:#fff; text-decoration:none; font:bold 15px/1 'Courier New',monospace; letter-spacing:2px;
+  padding:16px 22px 15px; border-radius:8px; border:0;
+  box-shadow:0 6px 0 var(--reddark), 0 10px 18px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.35); }
+a.power:active{ transform:translateY(5px); box-shadow:0 1px 0 var(--reddark); }
+
+/* ---------- police s cartridgemi ---------- */
+.shelf{ max-width:780px; margin:18px auto; padding:0 16px; }
+.shelf .label{ font-size:11px; letter-spacing:3px; color:var(--dim); margin:0 4px 8px; }
+.grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:560px){ .grid{ grid-template-columns:1fr; } }
+a.cart{ display:flex; gap:12px; align-items:center; text-decoration:none; color:#e7e4dc;
+  background:linear-gradient(#34373f,var(--panel)); border-radius:10px; padding:12px;
+  border-left:8px solid var(--c,var(--s5));
+  box-shadow:0 4px 0 #17181d, 0 8px 16px rgba(0,0,0,.4), inset 0 1px 0 #43464f; }
+a.cart:active{ transform:translateY(3px); box-shadow:0 1px 0 #17181d; }
+a.cart .ic{ width:40px; height:40px; flex:none; background:var(--ink); border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:inset 0 0 8px rgba(0,0,0,.8), 0 1px 0 #43464f; }
+a.cart svg{ width:26px; height:26px; shape-rendering:crispEdges; }
+a.cart .n{ font-weight:bold; font-size:13px; letter-spacing:1px; }
+a.cart .s{ color:var(--dim); font-size:10.5px; letter-spacing:.5px; line-height:1.4; }
+
+/* ---------- manifest karta ---------- */
+.paper{ max-width:780px; margin:18px auto; padding:0 16px; }
+.paper .in{ background:linear-gradient(#e6e1d4,var(--key)); color:var(--ink); border-radius:10px;
+  padding:18px 18px 14px; box-shadow:0 5px 0 var(--keydark), 0 10px 18px rgba(0,0,0,.4); position:relative; }
+.paper .in::before{ content:''; position:absolute; left:0; right:0; top:0; height:6px; border-radius:10px 10px 0 0;
+  background:linear-gradient(90deg,var(--s1),var(--s2),var(--s3),var(--s4),var(--s5),var(--s6)); }
+.paper h2{ font-size:13px; letter-spacing:3px; margin:6px 0 8px; }
+.paper p{ margin:6px 0; font-size:12.5px; }
+.paper .sign{ color:var(--reddark); font-weight:bold; letter-spacing:1px; }
+
+/* ---------- paticka ---------- */
+.sealrow{ text-align:center; margin:22px 0 4px; }
+.sealrow img{ width:104px; filter:drop-shadow(0 6px 12px rgba(0,0,0,.6)); }
+footer{ text-align:center; color:var(--dim); font-size:10.5px; letter-spacing:1px; padding:10px 12px 26px; }
+footer .coin{ color:var(--gold); letter-spacing:3px; margin-bottom:6px; }
 </style>
 </head>
 <body>
-<header>
-  <img class="logo" src="img/logo.png" alt="N&P Video Computer System - Atari 130XE">
-  <h1>ATARIHELP<b>.EU</b></h1>
-  <div class="sub">N&amp;P STUDIO &middot; ATARI 130XE FOREVER</div>
-</header>
-<div class="wrap">
 
-  <div class="card emu">
+<div class="console">
+  <div class="stripes"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <header>
+    <img class="logo" src="img/logo.png" alt="N&P Video Computer System - program cassette for Atari XL/XE">
+    <h1>ATARIHELP<b>.EU</b></h1>
+    <div class="sub">N&amp;P STUDIO &middot; ATARI 130XE FOREVER &middot; (C) 2026</div>
+    <div class="ready">READY.</div>
+  </header>
+  <div class="slot">
     <img src="img/pecet.png" alt="N&P pecet">
-    <div>
-      <div style="font-weight:bold; letter-spacing:1px; margin-bottom:8px;">EMULATOR EMU-10 &middot; ATARI 130XE</div>
-      <div style="color:var(--dim); font-size:12px; margin-bottom:12px;">Prava XL OS + Atari BASIC &middot; SIO loader XEX/ATR &middot; TBXL 1.5 &middot; joystick</div>
-      <a class="btn" href="emu/index.html">SPUSTIT EMULATOR</a>
+    <div class="t">
+      <div class="name">EMULATOR EMU-10 &middot; ATARI 130XE</div>
+      <div class="d">PRAVA XL OS + ATARI BASIC &middot; SIO LOADER XEX/ATR &middot; TBXL 1.5 &middot; JOYSTICK</div>
+      <a class="power" href="emu/index.html">&#9654;&nbsp; SPUSTIT EMULATOR</a>
     </div>
   </div>
-
-  <div class="card">
-    <p><b>Vitejte na atarihelp.eu!</b></p>
-    <p>Jsme <b class="gold">N&amp;P Studio</b> a vracime zivot legendarnimu <b>Atari 130XE</b>.
-    Pamatujete na to piskani magnetofonu a modrou obrazovku? My ano! Tato stranka vznikla proto,
-    abychom se podelili o nase zkusenosti s propojovanim Atari s modernim PC, nahravanim her
-    z WAVu a tvorbou vlastnich zavadecu.</p>
-    <p><b>Co tu najdete?</b> Podrobne navody pro zacatecniky i pokrocile, nase vlastni programy
-    (Tetris Platinum, N&amp;P Loader) a archiv her a utilit pro ceskou Atari scenu.</p>
-    <p class="gold"><i>Atari zdar!</i></p>
-  </div>
-
-  <div class="card">
-    <div style="font-weight:bold; letter-spacing:1px; margin-bottom:8px;">WEB ATARIHELP.EU</div>
-    <ul class="menu">
-      <li><a href="https://atarihelp.eu/">(C)N&amp;P - ATARI HELP<span>domovska stranka</span></a></li>
-      <li><a href="https://atarihelp.eu/?page_id=614">Assembler<span>kurz krok 1-6</span></a></li>
-      <li><a href="https://atarihelp.eu/?page_id=50">Dokumentace - Docs</a></li>
-      <li><a href="https://atarihelp.eu/?page_id=171">Forum</a></li>
-      <li><a href="https://atarihelp.eu/?page_id=207">Hry - Games<span>PDF / WAV / XEX</span></a></li>
-      <li><a href="https://atarihelp.eu/?page_id=856">K.I.T.T. - Loader 3v1 (C)N&amp;P 2026</a></li>
-      <li><a href="https://atarihelp.eu/?page_id=212">Made by N&amp;P Studio<span>MASTER Tetris 130XE Platinum &middot; MASTER Walls 130XE Gold &middot; PiTT-KiTT Remaster</span></a></li>
-      <li><a href="https://atarihelp.eu/?page_id=309">Melbourne House Book<span>Bomber &middot; Catcher &middot; Dodger &middot; Muncher &middot; Pitstop-Kitt &middot; Snake &middot; Walls</span></a></li>
-      <li><a href="https://atarihelp.eu/?page_id=786">Navody a rady - Guides and Tips<span>kazetovy adapter DIY &middot; zvuk z Atari do PC</span></a></li>
-      <li><a href="https://atarihelp.eu/?page_id=347">Odber / Newsletter</a></li>
-      <li><a href="https://atarihelp.eu/?page_id=31">Programs</a></li>
-      <li><a href="https://atarihelp.eu/?page_id=353">Podekovani / Special Thanks<span>Vedos Hosting - za pomoc a podporu</span></a></li>
-    </ul>
-  </div>
-
-  <div class="seal"><img src="img/pecet.png" alt="(C) 2026 N&P VCS"></div>
+  <div class="stripes"><i></i><i></i><i></i><i></i><i></i><i></i></div>
 </div>
+
+<div class="shelf">
+  <div class="label">&#9608;&#9608; KNIHOVNA ATARIHELP.EU &mdash; VYBER CARTRIDGE</div>
+  <div class="grid">
+
+    <a class="cart" style="--c:var(--s1)" href="https://atarihelp.eu/?page_id=207">
+      <span class="ic"><svg viewBox="0 0 16 16"><rect x="7" y="2" width="2" height="6" fill="#d8412f"/><circle cx="8" cy="3" r="2.6" fill="#e8842c"/><rect x="3" y="8" width="10" height="4" rx="1" fill="#d9d4c7"/><rect x="3" y="11" width="10" height="2" fill="#b8b2a3"/></svg></span>
+      <span><span class="n">HRY &ndash; GAMES</span><br><span class="s">archiv PDF &middot; WAV &middot; XEX</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s5)" href="https://atarihelp.eu/?page_id=614">
+      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="9" fill="#3b6fd7"/><rect x="3" y="4" width="10" height="7" fill="#0e1b3a"/><text x="4" y="10" font-size="6" fill="#7da2ff" font-family="monospace">A=</text><rect x="5" y="13" width="6" height="1.5" fill="#b8b2a3"/></svg></span>
+      <span><span class="n">ASSEMBLER</span><br><span class="s">kurz 6502 &middot; krok 1&ndash;6</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s3)" href="https://atarihelp.eu/?page_id=212">
+      <span class="ic"><svg viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="1" fill="#d9b25c"/><rect x="5" y="2" width="6" height="4" fill="#1d1e23"/><rect x="6" y="8" width="4" height="4" fill="#8a5a1e"/><rect x="6.7" y="3" width="2.6" height="2" fill="#d9d4c7"/></svg></span>
+      <span><span class="n">MADE BY N&amp;P</span><br><span class="s">MASTER Tetris Platinum &middot; Walls Gold &middot; PiTT-KiTT</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s2)" href="https://atarihelp.eu/?page_id=856">
+      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2" y="6" width="12" height="5" rx="1.5" fill="#d8412f"/><rect x="3.5" y="7.5" width="2" height="2" fill="#ffd9d0"/><rect x="10.5" y="7.5" width="2" height="2" fill="#ffd9d0"/><rect x="4" y="11" width="2.4" height="2" fill="#1d1e23"/><rect x="9.6" y="11" width="2.4" height="2" fill="#1d1e23"/><rect x="6" y="4" width="4" height="2.5" fill="#e8842c"/></svg></span>
+      <span><span class="n">K.I.T.T. LOADER 3v1</span><br><span class="s">(C)N&amp;P 2026 &middot; nas zavadec</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s4)" href="https://atarihelp.eu/?page_id=309">
+      <span class="ic"><svg viewBox="0 0 16 16"><rect x="3" y="2.5" width="10" height="11" rx="1" fill="#5cb85c"/><rect x="3" y="2.5" width="2" height="11" fill="#3c8a3c"/><rect x="6.5" y="5" width="5" height="1.4" fill="#e9f5e9"/><rect x="6.5" y="7.5" width="5" height="1.4" fill="#e9f5e9"/><rect x="6.5" y="10" width="3.4" height="1.4" fill="#e9f5e9"/></svg></span>
+      <span><span class="n">MELBOURNE HOUSE BOOK</span><br><span class="s">Bomber &middot; Catcher &middot; Dodger &middot; Muncher &middot; Snake &middot; Walls</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s6)" href="https://atarihelp.eu/?page_id=786">
+      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="7" rx="1" fill="#8e5cd9"/><circle cx="5.6" cy="6.5" r="1.7" fill="#2a1d42"/><circle cx="10.4" cy="6.5" r="1.7" fill="#2a1d42"/><rect x="2.5" y="11" width="11" height="2" fill="#6a42ab"/></svg></span>
+      <span><span class="n">NAVODY A RADY</span><br><span class="s">kazetovy adapter DIY &middot; zvuk z Atari do PC</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s5)" href="https://atarihelp.eu/?page_id=50">
+      <span class="ic"><svg viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" fill="#d9d4c7"/><rect x="3" y="2" width="10" height="2.6" fill="#3b6fd7"/><rect x="5" y="6.5" width="6" height="1.2" fill="#5b5e66"/><rect x="5" y="9" width="6" height="1.2" fill="#5b5e66"/><rect x="5" y="11.5" width="4" height="1.2" fill="#5b5e66"/></svg></span>
+      <span><span class="n">DOKUMENTACE</span><br><span class="s">manualy &middot; datasheety &middot; mapy pameti</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s1)" href="https://atarihelp.eu/?page_id=171">
+      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2.5" y="3.5" width="11" height="7" rx="1.5" fill="#d9d4c7"/><path d="M5 10.5 L5 13.5 L8.4 10.5 Z" fill="#d9d4c7"/><rect x="4.5" y="5.5" width="7" height="1.2" fill="#5b5e66"/><rect x="4.5" y="7.6" width="5" height="1.2" fill="#5b5e66"/></svg></span>
+      <span><span class="n">FORUM</span><br><span class="s">ceska Atari scena &middot; pridej se</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s3)" href="https://atarihelp.eu/?page_id=31">
+      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="#1d1e23"/><rect x="9" y="2.5" width="3.4" height="4" fill="#d9d4c7"/><rect x="4.5" y="8" width="7" height="5.5" fill="#3b6fd7"/><rect x="5.5" y="9" width="5" height="3.5" fill="#d9d4c7"/></svg></span>
+      <span><span class="n">PROGRAMS</span><br><span class="s">utility a software ke stazeni</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s4)" href="https://atarihelp.eu/?page_id=347">
+      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2.5" y="4" width="11" height="8" rx="1" fill="#e7c52e"/><path d="M2.5 4.5 L8 9 L13.5 4.5" stroke="#8a6f10" stroke-width="1.4" fill="none"/></svg></span>
+      <span><span class="n">ODBER / NEWSLETTER</span><br><span class="s">novinky N&amp;P primo do schranky</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s6)" href="https://atarihelp.eu/?page_id=353">
+      <span class="ic"><svg viewBox="0 0 16 16"><path d="M8 13.5 C5 11 2.5 9 2.5 6.4 C2.5 4.6 4 3.2 5.7 3.2 C6.7 3.2 7.6 3.8 8 4.6 C8.4 3.8 9.3 3.2 10.3 3.2 C12 3.2 13.5 4.6 13.5 6.4 C13.5 9 11 11 8 13.5 Z" fill="#d8412f"/></svg></span>
+      <span><span class="n">PODEKOVANI / THANKS</span><br><span class="s">Vedos Hosting &ndash; za pomoc a podporu</span></span>
+    </a>
+
+    <a class="cart" style="--c:var(--s2)" href="https://atarihelp.eu/">
+      <span class="ic"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.6" fill="#3b6fd7"/><ellipse cx="8" cy="8" rx="2.4" ry="5.6" fill="none" stroke="#cfe0ff" stroke-width="1"/><rect x="2.4" y="7.4" width="11.2" height="1.2" fill="#cfe0ff"/></svg></span>
+      <span><span class="n">ATARIHELP.EU &ndash; WEB</span><br><span class="s">cela domovska stranka online</span></span>
+    </a>
+
+  </div>
+</div>
+
+<div class="paper">
+  <div class="in">
+    <h2>MANIFEST N&amp;P STUDIA</h2>
+    <p><b>Vitejte na atarihelp.eu!</b> Jsme <b>N&amp;P Studio</b> a vracime zivot legendarnimu
+    <b>Atari 130XE</b>. Pamatujete na to piskani magnetofonu a modrou obrazovku? My ano!</p>
+    <p>Delime se o zkusenosti s propojovanim Atari s modernim PC, nahravanim her z WAVu
+    a tvorbou vlastnich zavadecu. Najdete tu navody pro zacatecniky i pokrocile, nase
+    programy (Tetris Platinum, N&amp;P Loader) a archiv pro ceskou Atari scenu.</p>
+    <p class="sign">Atari zdar! &mdash; Rene Frank (Renatus Honda), N&amp;P Studio</p>
+  </div>
+</div>
+
+<div class="sealrow"><img src="img/pecet.png" alt="(C) 2026 N&P Video Computer System"></div>
 <footer>
-  O AUTOROVI: Rene Frank (Renatus Honda) - jediny tvurce a programator<br>
-  &copy; 2026 N&amp;P Studio - Atari Forever
+  <div class="coin">&#9608; INSERT COIN &#9608; PRESS START &#9608;</div>
+  &copy; 2026 N&amp;P STUDIO &mdash; ATARI FOREVER
 </footer>
 </body>
 </html>
