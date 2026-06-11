@@ -1,2 +1,18 @@
+// EMU-10 BUILD1 FIX1: pluginManagement s google() - bez nej Gradle
+// nenajde com.android.application a spadne v konfiguraci (~30 s).
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
 rootProject.name = "EMU09CleanR0"
 include ':app'

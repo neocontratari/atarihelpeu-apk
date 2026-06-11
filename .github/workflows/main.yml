@@ -1,4 +1,4 @@
-name: CHECK_EMU10_BUILD1
+name: AtariHelp_eu_EMU10_BUILD1
 on: [push, workflow_dispatch]
 jobs:
   build:
@@ -13,9 +13,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Uklid pozustatku (local.properties z Windows rozbiji CI)
+        run: rm -f local.properties app/local.properties
       - name: Sestaveni
-        run: gradle assembleDebug --no-daemon
+        run: gradle assembleDebug --no-daemon --stacktrace
       - name: Ulozit APK jako artefakt
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: EMU10-BUILD1-debug-apk

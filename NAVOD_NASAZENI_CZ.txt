@@ -1,40 +1,38 @@
-EMU-10 BUILD1 - KOMPLETNI APK PROJEKT - NAVOD
+EMU-10 BUILD1 FIX1 - OPRAVA PADU #390 - NAVOD
 ==============================================
 
-CO SE NEJSPIS STALO U BUILDU #389:
-Muj predchozi balicek obsahoval JEN app/src/main/assets/ (HTML/JS).
-Zadnou Javu - emulator bezi v JavaScriptu ve WebView, Java je jen obal.
-Pokud se pri kopirovani NAHRADILA cela slozka app/, zmizel
-app/build.gradle + AndroidManifest.xml + MainActivity.java
-a Gradle spadne presne tak, jak je na screenshotu (exit code 1, ~56 s).
+CO BYLO SPATNE (#390) - MOJE CHYBA:
+V settings.gradle chybel blok pluginManagement s repozitarem google().
+Bez nej Gradle nema odkud stahnout Android plugin com.android.application
+a spadne behem konfigurace - presne tech ~29 s z vaseho screenshotu.
 
-TENHLE BALICEK JE CELY PROJEKT - nic dalsiho neni potreba:
-  settings.gradle              (rootProject "EMU09CleanR0" - sedi s vasim CI)
-  build.gradle                 (AGP 8.5.2 - kompatibilni s Gradle 8.9 z vaseho serveru)
-  gradle.properties
-  app/build.gradle             (namespace eu.atarihelp.emu10, SDK 34, Java 17)
-  app/src/main/AndroidManifest.xml
-  app/src/main/java/eu/atarihelp/emu10/MainActivity.java
-  app/src/main/assets/index.html + emu10_130xe.html  (otestovane jadro EMU-10)
-  .github/workflows/main.yml   (Gradle 8.9 + NOVE: uklada APK jako artefakt,
-                                takze si app-debug.apk stahnete primo z Actions)
+CO JE V TOMHLE BALICKU NAVIC OPRAVENO/PRITVRZENO:
+1) settings.gradle: pluginManagement { google() ... } + centralni
+   repozitare pro zavislosti. HLAVNI OPRAVA.
+2) main.yml: pred sestavenim smaze pripadny local.properties
+   (pozustatek z Windows s cestou k SDK rozbiji CI server).
+3) main.yml: --stacktrace, takze pripadna dalsi chyba bude v logu
+   citelna cernobile.
+4) APK se po zelenem buildu uklada jako artefakt
+   "EMU10-BUILD1-debug-apk" primo na strance runu.
 
-NASAZENI (vyberte JEDNU cestu):
-A) CISTE (doporucuji): obsah repa krome .git smazat, nakopirovat
-   cely obsah tohoto ZIPu do korene repa, commit + push.
-B) OPRAVA: zkontrolovat, ze v repu existuji VSECHNY soubory vyse.
-   Cokoliv chybi, dokopirovat z tohoto ZIPu. Assets prepsat temito.
-
-POZNAMKA K POCTIVOSTI: Gradle build jsem tady spustit nemohl
-(sestaveni stahuje Android pluginy ze site, ke ktere nemam pristup).
-Overil jsem syntaxi Javy, XML i YAML a struktura odpovida tomu,
-co Gradle 8.9 + AGP 8.5.2 vyzaduji. Skutecny dukaz da vas server.
+NASAZENI - DULEZITE, POUZIJTE CESTU A:
+A) CISTE NASAZENI (doporucuji duraznĕ): v repu smazat vse krome .git,
+   nakopirovat cely obsah tohoto ZIPu, commit + push.
+   Tim zmizi i pripadne stare soubory (stary build.gradle, gradlew,
+   local.properties, druha MainActivity...), ktere by se s novymi praly.
+B) Jen kdyz A nejde: prepsat settings.gradle, build.gradle,
+   app/build.gradle, AndroidManifest.xml, MainActivity.java,
+   .github/workflows/main.yml a assets timto balickem a SMAZAT
+   z repa: local.properties, gradlew, gradlew.bat, gradle/ (slozku),
+   a jakekoliv dalsi *.java krome MainActivity.java.
 
 KDYZ TO PRESTO SPADNE:
-Posli mi cerveny text z kroku "Sestaveni" (staci zkopirovat radky
-kolem prvniho "error:" / "FAILURE"). Z toho opravim presne misto -
-zadne hadani.
+Otevrit cerveny krok "Sestaveni" a poslat mi radky kolem prvniho
+"error:" nebo "FAILURE: Build failed". Z presneho logu opravim
+presne misto.
 
 PO ZELENEM BUILDU:
-Actions -> bezici run -> dole "Artifacts" -> EMU10-BUILD1-debug-apk
--> stahnout, nainstalovat v NoxPlayeru -> POWER BASIC -> READY.
+Actions -> run -> dole Artifacts -> EMU10-BUILD1-debug-apk ->
+stahnout ZIP s app-debug.apk -> nainstalovat v NoxPlayeru ->
+POWER BASIC -> do ~5 s READY -> ? 1+1 -> 2.
