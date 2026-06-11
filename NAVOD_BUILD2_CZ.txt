@@ -1,0 +1,46 @@
+EMU-10 BUILD2 - UNIVERZALNI LOADER - NAVOD (CTETE PRVNI)
+=========================================================
+
+CO SMAZAT: NIC.
+CO PREPSAT: presne 3 soubory z tohoto ZIPu:
+    app/src/main/assets/index.html
+    app/src/main/assets/emu10_130xe.html
+    app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+        (POZOR: tentokrat i MainActivity - pridana podpora vyberu
+         souboru pro NAHRAJ XEX/ATR; bez ni se okno vyberu neotevre)
+Pak commit + push. Gradle/manifest/workflow beze zmeny.
+
+CO BUILD2 UMI NAVIC:
+- NAHRAJ XEX (.xex/.exe/.com): HARDWAROVE POCTIVY boot -
+  zadne injektovani do RAM. XEX se zabali do virtualniho disku,
+  prava OS nabootuje boot sektory pres SIO sbernici a muj 6502
+  zavadec (275 bajtu, bezi UVNITR stroje na $0700) nahraje segmenty
+  pres DSKINV, vola INITAD, skoci na RUNAD. OPTION se pri bootu
+  drzi automaticky (BASIC OFF, jako na pravem stroji).
+- NAHRAJ ATR: D1: mechanika na SIO sbernici (STATUS/READ,
+  128 i 256 B sektory, ATR hlavicka). Checkbox "OPTION u ATR".
+- TBXL 1.5: vestavene, jeden klik.
+- SIO casovani podle reality: ACK -> COMPLETE -> mezera ->
+  data 19200 Bd ekvivalent. Mechanika hlasi zdravy FDC status
+  ($FF - s $00 by OS boot preskocila, overeno disasm $C5A2).
+
+DUKAZY (headless testy finalniho HTML pred odevzdanim):
+  TBXL 1.5 pres SIO boot -> READY za 12.8 s, "? 1+1" -> 2   PASS
+  River Raid XEX -> bezi (PC v RAM, display list aktivni)    PASS
+  POWER BASIC -> READY, barvy $94 modra                      PASS
+  POWER+OPTION -> SELF TEST                                  PASS
+
+ZNAME LIMITY BUILD2 (rovnou a bez mlzeni):
+- ATR: cteni ano, ZAPIS na disk zatim ne (hry/DOS bootuji,
+  SAVE na disk priste).
+- WAV/turbo kazety: BUILD3 (FSK dekodovani je samostatna prace,
+  nechci to odflaknout).
+- Hry chtici presne kolize PMG nebo GTIA mody 9-11 mohou mit
+  grafiku spatne - kolizni registry zatim ctou 0.
+
+KONTROLA:
+[ ] TBXL 1.5 -> modry READY Turbo Basicu (~13 s, jako z mechaniky)
+[ ] ? 1+1 [RET] -> 2
+[ ] NAHRAJ XEX -> vyber souboru z telefonu -> hra bootuje
+[ ] POWER BASIC / SELF TEST porad funguji
+[ ] log hlasi "Boot pres prave SIO"
