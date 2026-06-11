@@ -1,0 +1,57 @@
+EMU-10 BUILD2C - KOLIZE PMG + OPRAVA VKLADANI TXT (CTETE PRVNI)
+================================================================
+
+CO SMAZAT: NIC.
+CO PREPSAT: presne 2 soubory z tohoto ZIPu:
+    app/src/main/assets/index.html
+    app/src/main/assets/emu10_130xe.html
+MainActivity se tentokrat NESAHA (zustava z BUILD2B).
+Commit + push.
+
+VASE NALEZY -> OPRAVY:
+1. "U PACMANA ME NIKDO NEZABIJI": pricina - kolizni registry GTIA
+   ($D000-$D00F) cetly nulu, takze hra nikdy nevidela dotyk ducha.
+   DOPLNENO KOMPLETNE: hrac-playfield, hrac-hrac, missile-playfield,
+   missile-hrac, vcetne HITCLR. Dukaz: headless test postavil hrace
+   pres text, pres druheho hrace i missile a precetl spravne bity;
+   HITCLR je vynuloval. Duchove uz zabijeji. Pomuze to i dalsim
+   "rozhazenym" hram - spousta her kolize pouziva i pro logiku.
+2. VKLADANI TXT - VASE "VELKA CHYBA" POTVRZENA, ZADNY FAKE:
+   chybna mapa klaves. Znaky < a > jsem mel namapovane po vzoru PC
+   (Shift+carka/tecka), jenze na Atari je Shift+carka '[' - kazde
+   IF A<10 nebo <> se napsalo jako [ ] -> syntax error -> program
+   nenabehl. Atari ma pro < > VLASTNI klavesy (scan 54/55) - opraveno.
+   Dukaz: headless test napsal do praveho TBXL program s <, >=, <>
+   a RUN probehl spravne (vypis v testu).
+3. VKLADANI JE POMALE: prepsano - znaky se vkladaji pres OS buffer
+   CH ($02FC), tedy stejnou cestou, kterou je uklada klavesove
+   preruseni; editor a tokenizace bezi normalne. Rychlost ~2 znaky
+   na frame: vas 4850znakovy program cca 1-2 minuty misto 8.
+   Kdyz OS nestiha (tokenizuje radek), buffer se sam pribrzdi.
+4. KLAVESNICE SE NEVRATILA PO POWER: opraveno - POWER, SELF TEST
+   i NAHRAJ ATR prepnou zpet na klavesnici a vyprazdni frontu psani.
+5. DONKEY KONG LEZE MIMO STRED ZEBRIKU: nasel jsem chybu zarovnani
+   sprite - muj prepocet HPOS na pixel byl o 4 barvove takty (8 px)
+   vlevo. Spravne: HPOS $80 = presny stred obrazu. Opraveno pro
+   hrace i missily - panacek je ted NA zebriku.
+6. ZVUK: na rovinu - 4096 buffer omezil vypadky, ale "rozhazene"
+   zvuky nekterych her jsou nepresnost meho POKEY modelu (vzorkuje
+   registry, neni cyklove presny). Poradna prestavba zvuku je
+   BUILD3, nebudu tvrdit, ze je hotova.
+
+HRY, KTERE SE PORAD NENACTOU: posilejte logy (STAHNOUT v LOG okne).
+Loader uz hlasi "piše pod OS ROM" - tyhle hry potrebuji RAM pod ROM
+(BUILD3). River Raid 2.xex porad prosim poslete - JAM $02 chci videt.
+
+DUKAZY (headless, finalni HTML):
+  kolize P-PF / P-P / M-PF / M-P + HITCLR                  PASS
+  TBXL: program s < >= <> pres VLOZIT TXT + RUN            PASS
+  TBXL boot pres SIO zavadec v2 (READY 10.8 s, ? 1+1=2)    PASS
+  River Raid bezi / kolizni XEX pres $0600-$09FF           PASS
+  POWER BASIC / SELF TEST / barvy                          PASS
+
+KONTROLA:
+[ ] Pac-Man: duch vas zabije :-)
+[ ] Donkey Kong: panacek na stredu zebriku
+[ ] VLOZIT TXT: vas testovany TBXL program nabehne
+[ ] POWER -> klavesnice se vrati

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2B — Atari 130XE CLEAN CORE</title>
+<title>AtariHelp.eu EMU-10 BUILD2C — Atari 130XE CLEAN CORE</title>
 <style>
 :root{ --case:#23252b; --panel:#2c2f37; --key:#c9c5bb; --keytxt:#23252b;
        --mod:#8f8a7e; --accent:#d8412f; --led:#ff5238; --txt:#d6d3cb; --dim:#8a877f; }
@@ -57,7 +57,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
 </head>
 <body>
 <header>
-  <h1>ATARIHELP<b>.EU</b> EMU-10 BUILD2B</h1>
+  <h1>ATARIHELP<b>.EU</b> EMU-10 BUILD2C</h1>
   <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; PRAVA XL OS + ATARI BASIC</div>
   <div id="led"></div>
 </header>
@@ -346,11 +346,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function portB(){ return (pia.orB | (~pia.ddrB)) & 0xFF; }   // inputs pull high
   let joyMask=0x0F, joyFire=1;   // aktivni LOW: 0x0F = stred, fire 1 = nestisknuto
   M.setJoy=function(mask,fire){ joyMask=(~mask)&0x0F; joyFire=fire?0:1; };
+  M.stuffKey=function(sc){ if(ram[0x2FC]!==0xFF) return false; ram[0x2FC]=sc&0xFF; return true; };
+  M.chEmpty=function(){ return ram[0x2FC]===0xFF; };
   function portA(){ return ((pia.orA | (~pia.ddrA)) & 0xF0) | joyMask; }
   // ---------------- GTIA ------------------
   const gtia={ regs:new Uint8Array(32), consol:7, speaker:0, prior:0,
                hposp:[0,0,0,0], hposm:[0,0,0,0], sizep:[0,0,0,0], sizem:0,
                grafp:[0,0,0,0], grafm:0, colpm:[0,0,0,0], colpf:[0,0,0,0], colbk:0,
+               cMPF:[0,0,0,0], cPPF:[0,0,0,0], cMPL:[0,0,0,0], cPPL:[0,0,0,0],
                gractl:0, pal:0x01 /* PAL */ };
   // ---------------- POKEY -----------------
   const pokey={ audf:[0,0,0,0], audc:[0,0,0,0], audctl:0, skctl:0,
@@ -458,8 +461,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const r=a&0xFF, page=a&0xFF00;
     if(page===0xD000){ // GTIA
       const g=a&0x1F;
-      if(g<=0x07) return 0x00;                 // collisions M0PF..P3PF (BUILD1: none)
-      if(g>=0x08 && g<=0x0B) return 0x00;      // P/M playfield collisions
+      if(g<=0x03) return gtia.cMPF[g]&0x0F;        // M0PF..M3PF
+      if(g<=0x07) return gtia.cPPF[g-4]&0x0F;      // P0PF..P3PF
+      if(g<=0x0B) return gtia.cMPL[g-8]&0x0F;      // M0PL..M3PL
+      if(g<=0x0F) return gtia.cPPL[g-12]&0x0F;     // P0PL..P3PL
       if(g===0x10) return joyFire;                      // TRIG0 = fire (0=stisknuto)
       if(g>=0x11 && g<=0x13) return g===0x13?0x00:0x01; // TRIG1-2 idle, TRIG3=0 (no cart)
       if(g===0x14) return gtia.pal;            // PAL/NTSC
@@ -507,7 +512,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(g===0x1A) gtia.colbk=v;
       else if(g===0x1B) gtia.prior=v;
       else if(g===0x1D) gtia.gractl=v;
-      else if(g===0x1E){ /* HITCLR */ }
+      else if(g===0x1E){ for(let i=0;i<4;i++){ gtia.cMPF[i]=0;gtia.cPPF[i]=0;gtia.cMPL[i]=0;gtia.cPPL[i]=0; } }
       else if(g===0x1F){ const sp=(v>>3)&1; if(sp!==gtia.speaker){gtia.speaker=sp; pokey.dirty=true; M.onSpeaker&&M.onSpeaker(sp);} }
       return;
     }
@@ -586,6 +591,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   // ---------------- CPU -------------------
   const cpu=CPUctor(cpuRead,cpuWrite);
   M.cpu=cpu; M.ram=ram; M.portB=portB; M.pokey=pokey; M.gtia=gtia; M.antic=antic; M.anticRead=anticRead;
+  M.peek=cpuRead; M.poke=cpuWrite;
   // ---------------- Palette (PAL) ---------
   const palette=new Uint32Array(256);
   (function(){
@@ -640,10 +646,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
       return;
     }
   }
+  const pfc=new Uint8Array(384), pml=new Uint8Array(384);
   function renderScanline(){
     const y=M.line-8; if(y<0||y>=240) return;
     const fb=M.fb, off=y*384, bk=palette[gtia.colbk];
     for(let x=0;x<384;x++) fb[off+x]=bk;
+    pfc.fill(0);
     if(antic.done||!(antic.dmactl&0x20)||antic.mode===0) { renderPMG(y); return; }
     const md=MODE[antic.mode]; if(!md){renderPMG(y);return;}
     const nb=pfBytes(md.b);
@@ -662,7 +670,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         let line=row; if(antic.mode===3){ if(line>=8)line-=8; }
         bits=anticRead(ch+((sc&0x7F)<<3)+(line&7));
         if(sc&0x80){ if(antic.chactl&1) bits=0; else if(antic.chactl&2) bits^=0xFF; }
-        for(let b=0;b<8;b++) fb[off+xs+i*8+b]=(bits&(0x80>>b))?fg:bg;
+        for(let b=0;b<8;b++){ fb[off+xs+i*8+b]=(bits&(0x80>>b))?fg:bg; pfc[xs+i*8+b]=3; }
       }
     } else if(md.t==='ch4'){
       xs=192-nb*4;
@@ -672,8 +680,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
         const bits=anticRead(ch+((sc&0x7F)<<3)+(l&7));
         for(let p=0;p<4;p++){
           let v=(bits>>(6-p*2))&3;
+          let cls=v===0?0:(v===3&&(sc&0x80)?4:v);
           let col=v===0?PF[0]:(v===3&&(sc&0x80)?PF[4]:PF[v]);
           fb[off+xs+i*8+p*2]=col; fb[off+xs+i*8+p*2+1]=col;
+          pfc[xs+i*8+p*2]=cls; pfc[xs+i*8+p*2+1]=cls;
         }
       }
     } else if(md.t==='ch6'){
@@ -683,21 +693,23 @@ function Atari130XE(osRom, basicRom, CPUctor){
         const sc=anticRead(antic.lms+i);
         const bits=anticRead(ch+((sc&0x3F)<<3)+(l&7));
         const col=PF[1+((sc>>6)&3)];
+        const cls=1+((sc>>6)&3);
         for(let b=0;b<8;b++){ const on=bits&(0x80>>b);
-          fb[off+xs+i*16+b*2]=on?col:PF[0]; fb[off+xs+i*16+b*2+1]=on?col:PF[0]; }
+          fb[off+xs+i*16+b*2]=on?col:PF[0]; fb[off+xs+i*16+b*2+1]=on?col:PF[0];
+          pfc[xs+i*16+b*2]=on?cls:0; pfc[xs+i*16+b*2+1]=on?cls:0; }
       }
     } else if(md.t==='m1bpp'){
       const pxw=320/(nb*8); xs=192-160;
       for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
-        for(let b=0;b<8;b++){ const col=(bits&(0x80>>b))?PF[1]:PF[0];
+        for(let b=0;b<8;b++){ const on=bits&(0x80>>b), col=on?PF[1]:PF[0];
           const x0=xs+((i*8+b)*pxw)|0;
-          for(let k=0;k<pxw;k++) fb[off+x0+k]=col; } }
+          for(let k=0;k<pxw;k++){ fb[off+x0+k]=col; pfc[x0+k]=on?1:0; } } }
     } else if(md.t==='m2bpp'){
       const pxw=320/(nb*4); xs=192-160;
       for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
         for(let p=0;p<4;p++){ const v=(bits>>(6-p*2))&3; const col=PF[v];
           const x0=xs+((i*4+p)*pxw)|0;
-          for(let k=0;k<pxw;k++) fb[off+x0+k]=col; } }
+          for(let k=0;k<pxw;k++){ fb[off+x0+k]=col; pfc[x0+k]=v; } } }
     } else if(md.t==='hires'){
       xs=192-nb*4;
       const fgL=gtia.colpf[1]&0x0F, bgC=gtia.colpf[2];
@@ -708,6 +720,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     renderPMG(y);
   }
   function renderPMG(y){
+    pml.fill(0);
     if(!(gtia.gractl&3) && !(gtia.grafp[0]|gtia.grafp[1]|gtia.grafp[2]|gtia.grafp[3]|gtia.grafm)) return;
     const fb=M.fb, off=y*384, line=M.line;
     const dbl=!(antic.dmactl&0x10);
@@ -721,9 +734,13 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(!g) continue;
       const col=palette[gtia.colpm[p]];
       const w=[1,2,1,4][gtia.sizep[p]&3];
-      const x0=(gtia.hposp[p]-32)*2-32+24; // approx mapping color clocks->fb px
+      const x0=gtia.hposp[p]*2-64;   // leva hrana fb = color clock $20
       for(let b=0;b<8;b++){ if(g&(0x80>>b)){
-        for(let k=0;k<2*w;k++){ const x=x0+b*2*w+k; if(x>=0&&x<384) fb[off+x]=col; } } }
+        for(let k=0;k<2*w;k++){ const x=x0+b*2*w+k; if(x>=0&&x<384){
+          const c=pfc[x]; if(c) gtia.cPPF[p]|=1<<(c-1);
+          const mm=pml[x]; if(mm){ gtia.cPPL[p]|=mm; for(let q=0;q<4;q++) if(mm&(1<<q)) gtia.cPPL[q]|=(1<<p); }
+          pml[x]|=(1<<p);
+          fb[off+x]=col; } } } }
     }
     // missiles
     let gm;
@@ -733,9 +750,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(gm){ for(let p=0;p<4;p++){ const bits=(gm>>(p*2))&3; if(!bits)continue;
       const col=palette[gtia.colpm[p]];
       const w=[1,2,1,4][(gtia.sizem>>(p*2))&3];
-      const x0=(gtia.hposm[p]-32)*2-32+24;
+      const x0=gtia.hposm[p]*2-64;
       for(let b=0;b<2;b++){ if(bits&(2>>b)){
-        for(let k=0;k<2*w;k++){ const x=x0+b*2*w+k; if(x>=0&&x<384) fb[off+x]=col; } } } } }
+        for(let k=0;k<2*w;k++){ const x=x0+b*2*w+k; if(x>=0&&x<384){
+          const c=pfc[x]; if(c) gtia.cMPF[p]|=1<<(c-1);
+          gtia.cMPL[p]|=pml[x];
+          fb[off+x]=col; } } } } } }
   }
   // ---------------- Scanline / frame ------
   M.wsync=false;
@@ -879,9 +899,9 @@ window.EMU10={ createMachine:function(){
   var KEY={ 'l':0,'j':1,';':2,'k':5,'+':6,'*':7,'o':8,'p':10,'u':11,'i':13,'-':14,'=':15,
     'v':16,'c':18,'b':21,'x':22,'z':23,'4':24,'3':26,'6':27,'5':29,'2':30,'1':31,
     ',':32,' ':33,'.':34,'n':35,'m':37,'/':38,'r':40,'e':42,'y':43,'t':45,'w':46,'q':47,
-    '9':48,'0':50,'7':51,'8':53,'f':56,'h':57,'d':58,'g':61,'s':62,'a':63 };
+    '9':48,'0':50,'7':51,'8':53,'f':56,'h':57,'d':58,'g':61,'s':62,'a':63,'<':54,'>':55 };
   var SHIFTED={'!':'1','"':'2','#':'3','$':'4','%':'5','&':'6',"'":'7','@':'8','(':'9',')':'0',
-    ':':';','<':',','>':'.','?':'/','^':'*','_':'-','|':'=','\\':'+','[':',',']':'.'};
+    ':':';','?':'/','^':'*','_':'-','|':'=','\\':'+','[':',',']':'.'};
   function charToScan(chr){
     if(KEY[chr]!==undefined) return KEY[chr];
     var lo=chr.toLowerCase();
@@ -998,27 +1018,30 @@ window.EMU10={ createMachine:function(){
   }
 
   // ---------- vkladani TXT (typing queue pres scan kody) ----------
-  var typeQ=[], typeCnt=0, typeDown=false;
+  var typeQ=[], typeWait=0;
   function queueText(text){
     var skipped=0;
     for(var i=0;i<text.length;i++){
       var ch=text[i];
       if(ch==='\r') continue;
-      if(ch==='\n'){ typeQ.push({sc:12,hold:3,gap:22}); continue; }   // RETURN + cas na tokenizaci radku
+      if(ch==='\n'){ typeQ.push(12|0x100); continue; }                // RETURN (priznak: pockat na radek)
       var sc;
       if(/[a-zA-Z]/.test(ch)) sc=KEY[ch.toLowerCase()];                // caps po bootu pise velka
       else sc=charToScan(ch);
       if(sc===undefined){ skipped++; continue; }
-      typeQ.push({sc:sc,hold:3,gap:2});
+      typeQ.push(sc);
     }
-    log('VLOZIT TXT: zarazeno '+typeQ.length+' kroku'+(skipped?(', preskoceno '+skipped+' neznamych znaku'):''));
+    log('VLOZIT TXT: '+typeQ.length+' znaku pres OS buffer CH'+(skipped?(', preskoceno '+skipped+' neznamych'):''));
   }
-  function typeStep(){
-    if(!M) { typeQ.length=0; return; }
-    if(typeCnt>0){ typeCnt--; return; }
-    if(typeDown){ M.keyUp(); typeDown=false; typeCnt=typeQ.length?typeQ[0].gap:0; if(typeQ.length)typeQ.shift().done=1; return; }
+  function typeStep(){ // vola se 2x za frame; pise pres CH ($02FC) = stejna cesta jako klavesove IRQ
+    if(!M){ typeQ.length=0; return; }
+    if(typeWait>0){ typeWait--; return; }
     if(!typeQ.length) return;
-    var it=typeQ[0]; M.keyDown(it.sc&0xFF); typeDown=true; typeCnt=it.hold;
+    var it=typeQ[0];
+    if(!M.stuffKey(it&0xFF)) return;                                   // OS jeste neprecetl minuly znak
+    typeQ.shift();
+    if(it&0x100) typeWait=6;                                           // po RETURN kratka rezerva; CH-plny se skrti sam
+    if(!typeQ.length) log('VLOZIT TXT: hotovo.');
   }
 
   // ---------- celociselne skalovani (zadne carecky) ----------
@@ -1047,6 +1070,8 @@ window.EMU10={ createMachine:function(){
              M.consol(false,false,true); }
     running=true;
     document.getElementById('led').classList.add('on');
+    if(typeof setJoyMode==='function') setJoyMode(false);   // klavesnice zpet
+    typeQ.length=0;
     log(opt?'POWER + OPTION: cold start, OPTION drzene 4 s -> SELF TEST':'POWER: cold start -> BASIC');
     log('ROM: prava XL OS 16K (reset $C2AA) + prava Atari BASIC 8K');
   }
@@ -1067,6 +1092,7 @@ window.EMU10={ createMachine:function(){
     log('NAHRAJ XEX: '+name+' ('+info.bytes+' B, '+info.records+' zaznamu, zavadec v2 primo na cilove adresy)');
     log('Boot pres prave SIO: OS -> boot sektory -> stage2 $0100 -> SIOV zaznamy. OPTION drzene (BASIC OFF).');
     if(info.underRom) log('POZOR: program piše pod OS ROM ($C000+) - vyzaduje RAM pod ROM, plna podpora v BUILD3. Muze selhat.');
+    typeQ.length=0;
     var tb=/turbo|tbxl/i.test(name);
     setJoyMode(!tb && !keepKb);
     if(!tb && !keepKb) log('Joystick aktivni (palec = smer, FIRE vpravo). Prepnuti: tlacitko KLAVESNICE.');
@@ -1080,6 +1106,7 @@ window.EMU10={ createMachine:function(){
     if(opt){ consolState.option=true; M.consol(false,false,true);
       setTimeout(function(){ consolState.option=false; if(M)M.consol(false,false,false); },5000); }
     running=true; document.getElementById('led').classList.add('on');
+    setJoyMode(false); typeQ.length=0;
     log('NAHRAJ ATR: '+name+' ('+u8.length+' B)'+(opt?' + OPTION (BASIC OFF)':''));
   }
   function pickFile(accept,cb){
@@ -1102,7 +1129,7 @@ window.EMU10={ createMachine:function(){
     if(!last) last=ts;
     acc+=Math.min(ts-last,100); last=ts;
     var n=0;
-    while(acc>=20 && n<3){ typeStep(); M.runFrame(); acc-=20; n++;
+    while(acc>=20 && n<3){ typeStep(); M.runFrame(); typeStep(); acc-=20; n++;
       if(M.cpu.jam){ running=false;
         log('CPU JAM op $'+M.cpu.jamOp.toString(16).toUpperCase()+' na $'+M.cpu.jamPc.toString(16).toUpperCase()+' frame '+M.frame);
         log('PC=$'+M.cpu.pc.toString(16).toUpperCase()+' PORTB=$'+M.portB().toString(16).toUpperCase());
