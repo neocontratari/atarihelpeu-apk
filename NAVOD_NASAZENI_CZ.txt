@@ -1,0 +1,40 @@
+EMU-10 BUILD1 - KOMPLETNI APK PROJEKT - NAVOD
+==============================================
+
+CO SE NEJSPIS STALO U BUILDU #389:
+Muj predchozi balicek obsahoval JEN app/src/main/assets/ (HTML/JS).
+Zadnou Javu - emulator bezi v JavaScriptu ve WebView, Java je jen obal.
+Pokud se pri kopirovani NAHRADILA cela slozka app/, zmizel
+app/build.gradle + AndroidManifest.xml + MainActivity.java
+a Gradle spadne presne tak, jak je na screenshotu (exit code 1, ~56 s).
+
+TENHLE BALICEK JE CELY PROJEKT - nic dalsiho neni potreba:
+  settings.gradle              (rootProject "EMU09CleanR0" - sedi s vasim CI)
+  build.gradle                 (AGP 8.5.2 - kompatibilni s Gradle 8.9 z vaseho serveru)
+  gradle.properties
+  app/build.gradle             (namespace eu.atarihelp.emu10, SDK 34, Java 17)
+  app/src/main/AndroidManifest.xml
+  app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+  app/src/main/assets/index.html + emu10_130xe.html  (otestovane jadro EMU-10)
+  .github/workflows/main.yml   (Gradle 8.9 + NOVE: uklada APK jako artefakt,
+                                takze si app-debug.apk stahnete primo z Actions)
+
+NASAZENI (vyberte JEDNU cestu):
+A) CISTE (doporucuji): obsah repa krome .git smazat, nakopirovat
+   cely obsah tohoto ZIPu do korene repa, commit + push.
+B) OPRAVA: zkontrolovat, ze v repu existuji VSECHNY soubory vyse.
+   Cokoliv chybi, dokopirovat z tohoto ZIPu. Assets prepsat temito.
+
+POZNAMKA K POCTIVOSTI: Gradle build jsem tady spustit nemohl
+(sestaveni stahuje Android pluginy ze site, ke ktere nemam pristup).
+Overil jsem syntaxi Javy, XML i YAML a struktura odpovida tomu,
+co Gradle 8.9 + AGP 8.5.2 vyzaduji. Skutecny dukaz da vas server.
+
+KDYZ TO PRESTO SPADNE:
+Posli mi cerveny text z kroku "Sestaveni" (staci zkopirovat radky
+kolem prvniho "error:" / "FAILURE"). Z toho opravim presne misto -
+zadne hadani.
+
+PO ZELENEM BUILDU:
+Actions -> bezici run -> dole "Artifacts" -> EMU10-BUILD1-debug-apk
+-> stahnout, nainstalovat v NoxPlayeru -> POWER BASIC -> READY.

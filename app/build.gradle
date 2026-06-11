@@ -1,5 +1,21 @@
-plugins { id 'com.android.application' }
-
-android { namespace 'eu.atarihelp.emu09cleanr0'; compileSdk 35
-    defaultConfig { applicationId 'eu.atarihelp.emu09cleanr0'; minSdk 23; targetSdk 35; versionCode 1; versionName '0.1-clean-r0' }
+plugins {
+    id 'com.android.application'
+}
+android {
+    namespace 'eu.atarihelp.emu10'
+    compileSdk 34
+    defaultConfig {
+        applicationId "eu.atarihelp.emu10"
+        minSdk 24
+        targetSdk 34
+        versionCode 10
+        versionName "EMU10-BUILD1"
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes {
+        debug { }
+    }
 }
