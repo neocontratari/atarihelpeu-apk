@@ -1,9 +1,0 @@
-CHECK FIX303
-index.html zachovava AtariHelp.eu centrum: ANO
-EMU-09 je pododdil: ANO
-XEX/Turbo experimenty: VYPNUTE
-TXT input persistent native: ANO
-programmatic input.click: NE
-warm reset direct: ANO
-node --check: OK
-KODY JSOU STEJNE

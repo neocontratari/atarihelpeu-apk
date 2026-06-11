@@ -1,9 +1,0 @@
-index.html zachovava AtariHelp.eu centrum: ANO
-EMU-09 je pododdil: ANO
-automaticky redirect do emulatoru: NE
-XEX experiment UI disabled: ANO
-TXT/BAS native single input: ANO
-programmatic file picker click: NE v panelu FIX301
-old broken FIX300 script removed: ANO
-node syntax script blocks: OK
-KODY JSOU STEJNE

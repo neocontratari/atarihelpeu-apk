@@ -1,1 +1,0 @@
-FIX332 check: UI no flicker, TXT/KGETCH kept, Turbo real loader kept, post-title RETURN/READY latch clear added.

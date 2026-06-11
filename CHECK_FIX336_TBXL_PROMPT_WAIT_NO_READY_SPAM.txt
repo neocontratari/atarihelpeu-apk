@@ -1,1 +1,0 @@
-FIX336: non-intercepted TBXL button, prompt wait guard at E68D/C287, no fake READY/LOAD/screen paint.

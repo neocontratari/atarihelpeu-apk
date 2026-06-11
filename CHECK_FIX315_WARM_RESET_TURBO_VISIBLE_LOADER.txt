@@ -1,1 +1,0 @@
-FIX315 zip sanity: visible turbo button + warm reset script appended. KODY JSOU STEJNE.

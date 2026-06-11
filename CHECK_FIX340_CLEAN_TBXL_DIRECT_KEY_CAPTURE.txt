@@ -1,8 +1,0 @@
-FIX340_CLEAN_TBXL_DIRECT_KEY_CAPTURE
-KODY JSOU ZMENENE
-- Opraven staticky title/h1: appka nema startovat jako FIX337/FIX338.
-- Pridan hard UI guard: stare Turbo panely se skryvaji okamzite a hlida je MutationObserver, ne az po 15 sekundach.
-- Pridan jeden panel: FIX340.
-- Pridan direct key capture: UI/PC klavesy jdou do CH $02FC, ATACHR $02FB, KBCODE $D209, SKSTAT $D20F.
-- Direct TBXL loader z FIX337 zustava.
-- Zadny fake READY, fake LOAD, fake SELF TEST, screen paint ani RAM inject.

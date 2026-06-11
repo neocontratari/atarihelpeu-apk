@@ -1,6 +1,0 @@
-CHECK FIX310
-- HTML syntax/scripts checked with node --check after extraction.
-- FIX310 patch appended after FIX309, does not edit FIX309 queue internals.
-- KODY JSOU STEJNE.
-- NEW_XEX_CORE=NO.
-- XEX picker UI-only, LOAD_TO_RAM=NO.

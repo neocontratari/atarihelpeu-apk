@@ -1,9 +1,0 @@
-Na GitHub nenahravej tento ZIP jako jeden soubor.
-Nejdrive ZIP rozbal a nahraj OBSAH rozbalene slozky.
-
-
-FIX82_STABLE_VJOY_GALAXIAN_SAFE:
-- Vychazi z funkcniho FIX81/FIX77 core, Cobra/Donkey se nema rozbit.
-- Kruhovy joystick ma mensi mrtvou zonu (citlivejsi ovladani), bez timeru a bez zpomalovani CPU.
-- Galaxian (Title Version 2) ma opatrny profil: INIT-only idle a DLI/VBI ochrana jen pro Galaxian/init-only hry.
-- Testovat nejdrive Cobra + Donkey + joystick, potom Galaxian.

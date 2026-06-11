@@ -1,2 +1,0 @@
-FIX337: Prime TBXL 1.5 XEX loader bez volani starych FIX33x wrapperu. XEX parser zapisuje segmenty do emulovane RAM, provadi TBXL relokaci a startuje CPU na $6179. KGETCH/CIOV v TBXL rezimu blokuji prazdny vstup. Klavesy jdou pres window capture drive nez stare document handlery. Barvy editoru: text COLPF1, pozadi COLPF2, border COLBK. Zadny fake READY/LOAD, zadny screen paint, zadny RAM program inject.
-KODY JSOU STEJNE.

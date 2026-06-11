@@ -1,8 +1,0 @@
-FIX364 static check
-ROM file embedded: NaPatari130xe.rom
-ROM bytes: 16384
-ROM MD5: 06daac977823773a3eea3422fd26a703
-ROM SHA256: a77050b2d81db2d11eaa3dbafd8ec2531b478abcc3bcc4b0d846b634e885edb1
-Removed shim scripts: FIX352, FIX354, FIX356, FIX357, FIX358
-Final tag: FIX364_130XE_OS_ROM_ONLY_CLEAN_BOOT
-KODY JSOU ZMENENE

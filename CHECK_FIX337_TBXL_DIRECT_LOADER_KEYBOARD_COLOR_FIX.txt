@@ -1,2 +1,0 @@
-FIX337 direct TBXL loader, window-capture keyboard, KGETCH/CIOV blocking, editor color roles.
-KODY JSOU STEJNE.

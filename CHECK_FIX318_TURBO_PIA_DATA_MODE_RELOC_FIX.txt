@@ -1,7 +1,0 @@
-FIX318 generated.
-Checks:
-- one Turbo Basic button is recreated as fix318TurboBtn
-- snapshot is fix318XexSnap
-- start path forces generic XEX/Pia DATA mode after load and before first RAF CPU execution
-- no blind $2AB7 jump; INITAD $6132 remains the XEX entry/audit path
-- no fake READY/LOAD/SELFTEST, no RAM program inject, no screen paint

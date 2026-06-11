@@ -1,9 +1,0 @@
-FIX283_APP_STRUCTURE_PRESERVED_TURBOBASIC_XEX_CORE
-
-KONTROLA STRUKTURY:
-- index.html je vraceny na plnou AtariHelp.eu aplikaci z mobilniho centra, ne na samostatny emulator.
-- Neni tam location.replace auto-skok do emulatoru.
-- EMU-09 je karta/pododdil v sekci Hry.
-- TurboBasic asset zustava: turbo-basic-xl-1.5-copy.xex.
-- CLOAD/WAV se v tomhle kroku nefejkuje.
-KODY JSOU STEJNE.
