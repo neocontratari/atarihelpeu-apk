@@ -1,0 +1,60 @@
+EMU-10 BUILD2B - JOYSTICK + LOADER V2 + VLOZENI TXT (CTETE PRVNI)
+==================================================================
+
+CO SMAZAT: NIC.
+CO PREPSAT: presne 3 soubory z tohoto ZIPu:
+    app/src/main/assets/index.html
+    app/src/main/assets/emu10_130xe.html
+    app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+        (POZOR: MainActivity znovu - pridan AHSAVE pro ulozeni
+         logu do mobilu)
+Pak commit + push. Gradle/manifest/workflow beze zmeny.
+
+OPRAVY PODLE VASICH NALEZU:
+1. PAC-MAN (a podobne hry): pricina nalezena - stary zavadec sedel
+   na $0700 + buffer $0900 a hry, ktere se nahravaji do teto oblasti,
+   ho prepsaly. NOVY ZAVADEC V2: dvoustupnovy, schova se na $0100
+   (zasobnikova stranka, hry ji nepouzivaji pro kod) a kazdy segment
+   posila pres SIOV PRIMO na cilovou adresu - zadny buffer.
+   DUKAZ: syntheticky XEX se segmentem pres $0600-$09FF se nahraje
+   bajt po bajtu spravne (headless test PASS). Zkuste De Re Pac-Mana.
+2. INTERNATIONAL KARATE: pravdepodobne piše pod OS ROM (45 kB).
+   Loader to ted pozna a NAPISE DO LOGU varovani. Plna podpora
+   RAM pod ROM = BUILD3. Posilejte log, potvrdi mi to.
+3. CARECKY NA MONITORU: dve priciny - falesne CSS "scanlinky"
+   (odstranene) a necelociselne skalovani (ted se obraz skaluje
+   jen na cele nasobky 384 px). Obraz je ciste ostry.
+4. JOYSTICK: kruhovy pad na levy palec (8 smeru) + velke FIRE na
+   pravy palec. Pri NAHRAJ XEX se automaticky prepne klavesnice
+   -> joystick; VYJIMKA TBXL (tam zustava klavesnice).
+   Tlacitko JOYSTIK/KLAVESNICE prepina rucne. Na PC v joystick
+   rezimu funguji sipky + mezernik (FIRE).
+5. VLOZIT TXT: tlacitko otevre okno, vlozite BASIC/TBXL vypis,
+   "VLOZIT DO ATARI" ho po znacich nadatluje (3 framy stisk,
+   po RETURN 22 framu na tokenizaci radku). Funguje v BASIC
+   i Turbo Basicu. DUKAZ: headless test napsal program s
+   uvozovkami, RUN ho spustil.
+6. LOG DO MOBILU: STAHNOUT v log okne nyni uklada pres Android
+   rozhrani do slozky aplikace (Android/data/eu.atarihelp.emu10/
+   files/) a cestu vypise do logu.
+7. ZVUK CHRASTI: WebView nestihal 2048vzorkovy buffer - zvetseno
+   na 4096. Mene vypadku. (Plne planovani zvuku = dalsi krok,
+   kdyz to nebude stacit, napiste.)
+
+RIVER RAID 2 (JAM op $2 na $F3F9): zaznamenano - vypada to na
+nedokumentovanou instrukci nebo cteni kolizniho registru.
+Posilejte prosim ten XEX, rozeberu ho instrukci po instrukci.
+
+DUKAZY (headless, finalni HTML pred odevzdanim):
+  TBXL pres SIO (zavadec v2) -> READY 10.8 s, ? 1+1 -> 2   PASS
+  River Raid XEX bezi                                       PASS
+  Kolizni XEX pres $0600-$09FF nahran spravne               PASS
+  VLOZIT TXT: program s uvozovkami + RUN                    PASS
+  POWER BASIC / SELF TEST / barvy $94                       PASS
+
+KONTROLA:
+[ ] De Re Pac-Man -> mel by nabehnout (drive kolize)
+[ ] hra -> joystick naskoci sam; TBXL -> klavesnice zustane
+[ ] VLOZIT TXT v BASICu: 10 PRINT "AHOJ" / RUN
+[ ] STAHNOUT log -> cesta v logu, soubor v mobilu
+[ ] obraz bez carek (celociselne skalovani)
