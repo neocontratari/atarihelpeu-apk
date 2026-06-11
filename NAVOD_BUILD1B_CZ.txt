@@ -1,0 +1,29 @@
+EMU-10 BUILD1B - NAVOD K NASAZENI (CTETE PRVNI)
+================================================
+
+CO SMAZAT: NIC.
+CO PREPSAT: POUZE tyto 2 soubory (oba jsou v tomto ZIPu):
+    app/src/main/assets/index.html
+    app/src/main/assets/emu10_130xe.html
+Pak commit + push. Java, Gradle ani workflow se NEMENI - CI jen
+znovu zabali assets do APK.
+
+CO JE OPRAVENO (BUILD1 -> BUILD1B):
+1) BARVY: chyba v me PAL palete (prohozena osa odstinu - hue 9
+   vychazel oranzovy). Opraveno a OVERENO numericky z framebufferu:
+   pozadi BASIC $94 = RGB(37,67,215) MODRA,
+   text READY = RGB(127,157,255) svetla modrobila.
+   Stejna oprava srovna i barvy SELF TESTu.
+2) HELP: pridano konzolove tlacitko HELP do horni listy
+   (jako na pravem 130XE; v klavesnici zustava taky).
+3) ULOZIT LOG: v Android WebView nejde stahovat blob - ted se
+   otevre okno s celym logem a tlacitky:
+   KOPIROVAT (do schranky - funguje v Noxu) / STAHNOUT (desktop
+   prohlizec) / ZAVRIT.
+
+KONTROLA PO NASAZENI:
+[ ] titulek EMU-10 BUILD1B
+[ ] POWER BASIC -> MODRA obrazovka, svetly READY
+[ ] HELP tlacitko nahore vedle BREAK
+[ ] ULOZIT LOG -> okno -> KOPIROVAT -> vlozit jinam = cely log
+[ ] SELF TEST barvy odpovidaji pravemu stroji
