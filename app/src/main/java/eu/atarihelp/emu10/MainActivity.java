@@ -80,6 +80,12 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public void onBackPressed() {
+        if (web != null && web.canGoBack()) web.goBack();
+        else super.onBackPressed();
+    }
+
+    @Override
     protected void onPause() { super.onPause(); if (web != null) web.onPause(); }
 
     @Override
