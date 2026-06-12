@@ -1,0 +1,33 @@
+EMU-10 BUILD2G - KOMPLETNI BALICEK "JEN ZKOPIRUJ" (CTETE PRVNI)
+================================================================
+
+ZADNE RUCNI UPRAVY. ZADNE MAZANI. Postup:
+1. Rozbal tento ZIP.
+2. Slozku "app" z balicku nakopiruj PRES slozku "app" ve tvem
+   projektu (Windows se zepta na prepsani -> ANO VSEM).
+3. Commit + push. Hotovo.
+
+Balicek obsahuje VSECHNO z BUILD2F a navic HOTOVY AndroidManifest.xml
+(ten tvuj o ikonach nevedel - proto byl brouk; tenhle uz ano,
+proste ho prepises jako ostatni soubory).
+
+Co se prepise/prida:
+    app/src/main/AndroidManifest.xml          <- NOVY (ikona, internet)
+    app/src/main/assets/index.html            <- N&P-VISION design
+    app/src/main/assets/emu/index.html        <- emulator + ZIP autostart
+    app/src/main/assets/img/ (logo, pecet)
+    app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+    app/src/main/res/                         <- NOVA slozka s ikonami
+
+Po pushi a zelenem CI: APK preinstaluj (odinstaluj starou verzi,
+at se ikona obnovi - Android si ikony cachuje).
+
+CO MA BUILD2G UMET (shrnu, je to BUILD2F + manifest):
+- ikona apky = tva zlata pecet N&P (zadny brouk)
+- domovska stranka = N&P-VISION kazetak (CRT, civky, PLAY)
+- klik na ZIP/XEX/ATR na webu v apce -> stahne a rovnou spusti
+- NAHRAJ XEX bere i .zip (rozbali a spusti, vlastni dekoder)
+- vsech 10 headless testu PASS
+
+KDYBY CI ZCERVENAL (kvuli manifestu se to pozna hned):
+vyfot chybu z GitHubu a posli mi ji - poslu opravu obratem.
