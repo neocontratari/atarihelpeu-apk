@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2K — Atari 130XE CLEAN CORE</title>
+<title>AtariHelp.eu EMU-10 BUILD2L — Atari 130XE CLEAN CORE</title>
 <style>
 :root{ --case:#23252b; --panel:#2c2f37; --key:#c9c5bb; --keytxt:#23252b;
        --mod:#8f8a7e; --accent:#d8412f; --led:#ff5238; --txt:#d6d3cb; --dim:#8a877f; }
@@ -57,7 +57,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
 </head>
 <body>
 <header>
-  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2K</h1>
+  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2L</h1>
   <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; PRAVA XL OS + ATARI BASIC</div>
   <div id="led"></div>
 </header>
@@ -908,8 +908,25 @@ function Atari130XE(osRom, basicRom, CPUctor){
           gtia.cMPL[p]|=pml[x];
           if(pmShow(p,c)) fb[off+x]=col; } } } } } }
   }
+  // ---- snapshot render-registru (stav v HBLANKU radky) ----
+  const SNAP_G=['colbk','prior','grafm','sizem','gractl'];
+  const SNAP_GA=['colpf','colpm','grafp','hposp','hposm','sizep'];
+  const SNAP_A=['chbase','hscrol','chactl','dmactl','pmbase'];
+  const snap={g:{},ga:{},a:{}};
+  for(const k of SNAP_GA) snap.ga[k]=[0,0,0,0];
+  function snapTake(){
+    for(const k of SNAP_G) snap.g[k]=gtia[k];
+    for(const k of SNAP_GA){ const s=snap.ga[k], v=gtia[k]; s[0]=v[0];s[1]=v[1];s[2]=v[2];s[3]=v[3]; }
+    for(const k of SNAP_A) snap.a[k]=antic[k];
+  }
+  function snapSwap(){
+    for(const k of SNAP_G){ const t=gtia[k]; gtia[k]=snap.g[k]; snap.g[k]=t; }
+    for(const k of SNAP_GA){ const s=snap.ga[k], v=gtia[k];
+      for(let i=0;i<4;i++){ const t=v[i]; v[i]=s[i]; s[i]=t; } }
+    for(const k of SNAP_A){ const t=antic[k]; antic[k]=snap.a[k]; snap.a[k]=t; }
+  }
   // ---------------- Scanline / frame ------
-  M.wsync=false;
+  M.wsync=false; M.wsCarry=false;
   function runScanline(){
     // DL bookkeeping at line start (display area 8..247)
     if(M.line===8) startFrame();
@@ -936,24 +953,30 @@ function Atari130XE(osRom, basicRom, CPUctor){
         pokey.serinRead=false; pokey.serinAge=0;
       if(M.sioDebug) M.sioDebug('RX',pokey.serin);
       if(sio.rxPos>=sio.rxq.length){ sio.rxq.length=0; sio.rxPos=0; } } }
-    // RENDER NEJDRIV - radka se kresli ze stavu registru na SVEM zacatku.
-    // Zapisy behem radky (DLI handlery, kernely) se projevi az na dalsi radce,
-    // presne jako na pravem HW pri WSYNC-podchycenych handlerech.
-    if(M.line>=8 && M.line<248){
-      renderScanline();
-      if(!antic.done && antic.rowsLeft>0 && antic.mode!==0){ antic.rowsLeft--; antic.row++; if(antic.rowsLeft>0){} else { antic.lms=(antic.lms+(antic.hsLine?pfBytesW(MODE[antic.mode].b,Math.min(3,(antic.dmactl&3)+1)):pfBytes(MODE[antic.mode].b)))&0xFFFF; } }
-      else if(antic.rowsLeft>0) antic.rowsLeft--;
-    }
-    // CPU; WSYNC = uvolneni v HBLANKU TEZE radky (zbyva ~9 cyklu),
-    // takze kod za STA WSYNC zapise registry pred renderem dalsi radky.
-    const target=cpu.cycles+CYC_LINE;
-    let wsUsed=false;
-    while(cpu.cycles<target){
+    // MODEL RADKY: zapisy v HBLANKU (prvnich ~28 cyklu) plati pro TUTO radku,
+    // pozdejsi az pro dalsi - jako skutecny paprsek. CPU bezi ve dvou fazich,
+    // mezi nimi se zmrazi (snapshot) registry pro vykresleni.
+    const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+28, wsAt=lineStart+105;
+    if(M.wsCarry){ M.wsCarry=false; cpu.cycles=wsAt; }   // WSYNC z konce minule radky: halt do cyklu 105 teto
+    while(cpu.cycles<snapAt){
       if(M.wsync){ M.wsync=false;
-        if(!wsUsed && cpu.cycles<target-9){ cpu.cycles=target-9; wsUsed=true; }
-        else { cpu.cycles=target; break; } }
+        if(cpu.cycles<wsAt) cpu.cycles=wsAt; else { cpu.cycles=target; M.wsCarry=true; }
+        break; }
       cpu.step();
       if(cpu.jam){ cpu.cycles=target; break; }
+    }
+    snapTake();                                        // zmrazeni stavu pro render teto radky (stav v HBLANKU)
+    while(cpu.cycles<target){
+      if(M.wsync){ M.wsync=false;
+        if(cpu.cycles<wsAt) cpu.cycles=wsAt; else { cpu.cycles=target; M.wsCarry=true; break; }
+        continue; }
+      cpu.step();
+      if(cpu.jam){ cpu.cycles=target; break; }
+    }
+    if(M.line>=8 && M.line<248){
+      snapSwap(); renderScanline(); snapSwap();        // kresli ze zmrazeneho stavu
+      if(!antic.done && antic.rowsLeft>0 && antic.mode!==0){ antic.rowsLeft--; antic.row++; if(antic.rowsLeft>0){} else { antic.lms=(antic.lms+(antic.hsLine?pfBytesW(MODE[antic.mode].b,Math.min(3,(antic.dmactl&3)+1)):pfBytes(MODE[antic.mode].b)))&0xFFFF; } }
+      else if(antic.rowsLeft>0) antic.rowsLeft--;
     }
     M.line++;
     if(M.line>=LINES){ M.line=0; M.frame++; }
