@@ -1,0 +1,38 @@
+EMU-10 BUILD2N - SHAFT RAIDER, ROAD RACE, PITSTOP II (CTETE PRVNI)
+===================================================================
+
+ZADNE RUCNI UPRAVY. Postup:
+1. Rozbal ZIP, "app" pres tvou "app" (prepsat -> ANO VSEM).
+2. Commit + push, starou apku ODINSTALUJ, nainstaluj novou.
+3. V hlavicce musi byt "BUILD2N".
+
+CO JE NOVE:
+
+1. SHAFT RAIDER BOOTUJE - ZAVADEC v5:
+   Hra ma zaznam, ktery se nahrava na $0100-$015D - PRIMO PRES
+   zavadec v pameti! v5 takove kolizni zaznamy odlozi na konec
+   a nahraje je pres 6bajtovy dokoncovaci mustek na $0400
+   (JSR SIOV / JMP RUNAD) - v okamziku prepisu uz na $0100 nikdo
+   nebydli. Overeno: titulka SHAFT RAIDER 1982, Gareth Smith.
+
+2. ROAD RACE - MAPA USA JEDE! Oprava RANDOM:
+   Generator nahody POKEY bezi na pravem stroji NEPRETRZITE na
+   1.79 MHz. Muj krokoval jen pri cteni -> po sobe jdouci hodnoty
+   byly silne pribuzne -> "dissolve" intro Road Race se nikdy
+   nerozkrylo. Ted se posouva o uplynule cykly procesoru.
+   Overeno: FROM LOS ANGELES TO ALBUQUERQUE, mapa, palubka.
+   TAHLE OPRAVA POMUZE SPOUSTE HER (efekty, nahodne prvky, AI).
+
+3. PITSTOP II - FUNGUJE, JEN MA SVUJ POSTUP:
+   Start je cisty (ENTER NAME FOR PLAYER #1). DULEZITE: hra
+   NEJDRIV ceka na FIRE, TEPRVE POTOM cte jmeno z klavesnice!
+   Postup: FIRE -> napis jmeno (tlacitko KLAVESNICE) -> RETURN
+   -> zavod jede (split-screen, dve formule, mapa okruhu LAP 0
+   - overeno screenshotem). Klavesnice v apce funguje spravne.
+   Drobnosti v pasu tribun behem zavodu = dalsi ladeni (BUILD3).
+
+4. Tenis: az ho posles, mrknu na nej - ale spousta veci z teto
+   davky oprav (RANDOM, casovani) muze pomoct i jemu.
+
+VSECH 11 TESTU PASS + overeno zaroven: Moon Patrol, Death Race,
+Alley Cat, Karate, Bugi Bugi 3, Shaft Raider, Road Race, Pitstop II.

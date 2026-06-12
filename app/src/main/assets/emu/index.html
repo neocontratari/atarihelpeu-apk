@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2M — Atari 130XE CLEAN CORE</title>
+<title>AtariHelp.eu EMU-10 BUILD2N — Atari 130XE CLEAN CORE</title>
 <style>
 :root{ --case:#23252b; --panel:#2c2f37; --key:#c9c5bb; --keytxt:#23252b;
        --mod:#8f8a7e; --accent:#d8412f; --led:#ff5238; --txt:#d6d3cb; --dim:#8a877f; }
@@ -57,7 +57,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
 </head>
 <body>
 <header>
-  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2M</h1>
+  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2N</h1>
   <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; PRAVA XL OS + ATARI BASIC</div>
   <div id="led"></div>
 </header>
@@ -486,7 +486,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   //   DAUX $7001 = header aktualniho recordu (5 B: dst,len,flags do ZP $80)
   //   DAUX $7002 = payload recordu (DBYT=len, DBUF=dst) - zadny buffer,
   //   zadna kolize s hrami nahravajicimi na $0700+.
-  const XEX_LOADER_B64="AAIABwAHogC9FgedAAHo4HzQ9UwAAakAIFYBMDelhSkC0DylhUggZAGlgY0EA6WCjQUDpYONCAOlhI0JA6lyjQsDIFnkMBJoKQHwAyBhAakBTAIBqQBMAgFoqQBMAgGpAI1EAqkBjQkAbOACSCBkAWiNCgNMWeRs4gKiC71wAZ0AA8oQ92AxAVJAgAAHAAYAAHEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
+  const XEX_LOADER_B64="AAIABwAHogC9FgedAAHo4LnQ9UwAAakAIJMBMD2lhSkC0EKlhSkE0EKlhUggoQGlgY0EA6WCjQUDpYONCAOlhI0JA6lyjQsDIFnkMBJoKQHwAyCeAakBTAIBqQBMAgFoqQBMAgEgiAFs4AIgoQGlgY0EA6WCjQUDpYONCAOlhI0JA6lyjQsDIIgBogW9ggGdAATKEPdMAAQgWeRs4AKpAI1EAqkBjQkAYEggoQFojQoDTFnkbOICogu9rQGdAAPKEPdgMQFSQIAABwAGAABxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
   M.mountXex=function(xex){
     if(!(xex[0]===0xFF&&xex[1]===0xFF))
       return {error:'neni XEX (chybi FF FF hlavicka) - .bas soubory potrebuji BASIC LOAD'};
@@ -508,6 +508,19 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(recs.length>250) return {error:'prilis mnoho segmentu (>250)'};
     if(!sawRun) recs.push({dst:0x02E0,len:2,pay:new Uint8Array([first&0xFF,first>>8]),flags:0});
     recs.push({dst:0,len:0,pay:new Uint8Array(0),flags:2});   // EOF -> JMP (RUNAD)
+    { // zaznamy prepisujici zavadec ($0100-$01BF) odloz na konec; nahraje je stub na $0400
+      const norm=[], dfr=[];
+      let eof=null;
+      for(const r of recs){
+        if(r.flags&2){ eof=r; continue; }
+        if(r.dst<=0x01BF && (r.dst+r.len-1)>=0x0100) dfr.push(r); else norm.push(r);
+      }
+      if(dfr.length){
+        if(dfr.length>1) console.warn('XEX: '+dfr.length+' zaznamu koliduje se zavadecem - podporovan je 1');
+        for(const r of dfr) r.flags|=4;
+        recs.length=0; recs.push(...norm, ...dfr); if(eof)recs.push(eof);
+      }
+    }
     sio.xex={recs:recs,cur:0,pserved:false};
     // boot disk: jen 2 sektory zavadece
     const bin=atob(XEX_LOADER_B64), disk=new Uint8Array(256);
@@ -575,8 +588,13 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(page===0xD200){ // POKEY
       const p=a&0x0F;
       if(p===0x09) return pokey.kbcode;        // KBCODE
-      if(p===0x0A){ pokey.random=((pokey.random<<1)|(((pokey.random>>16)^(pokey.random>>11))&1))&0x1FFFF;
-                    return (pokey.random>>1)&0xFF; } // RANDOM
+      if(p===0x0A){ // RANDOM: poly17 bezi na 1.79 MHz NEPRETRZITE - posun o uplynule cykly
+        let st=cpu.cycles-(pokey.randCyc||0); pokey.randCyc=cpu.cycles;
+        if(st<1)st=1; if(st>4096)st=4096;
+        let r=pokey.random;
+        while(st--){ r=((r<<1)|(((r>>16)^(r>>11))&1))&0x1FFFF; }
+        pokey.random=r;
+        return (r>>1)&0xFF; }
       if(p===0x0D){ pokey.serinRead=true; return pokey.serin; } // SERIN (flow control: dalsi bajt az po precteni)
       if(p===0x0E) return (~pokeyStatus())&0xFF; // IRQST active low
       if(p===0x0F){ // SKSTAT: bit3 shift(0=down), bit2 key down(0=down), serial idle bits high
