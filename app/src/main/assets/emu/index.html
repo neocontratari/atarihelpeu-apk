@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2L — Atari 130XE CLEAN CORE</title>
+<title>AtariHelp.eu EMU-10 BUILD2M — Atari 130XE CLEAN CORE</title>
 <style>
 :root{ --case:#23252b; --panel:#2c2f37; --key:#c9c5bb; --keytxt:#23252b;
        --mod:#8f8a7e; --accent:#d8412f; --led:#ff5238; --txt:#d6d3cb; --dim:#8a877f; }
@@ -57,7 +57,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
 </head>
 <body>
 <header>
-  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2L</h1>
+  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2M</h1>
   <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; PRAVA XL OS + ATARI BASIC</div>
   <div id="led"></div>
 </header>
@@ -448,18 +448,20 @@ function Atari130XE(osRom, basicRom, CPUctor){
     } else if(cmd===0x52 && sio.xex && (a2===0x71||a2===0x72||a2===0x73)){ // XEX loader v3: index drzi MECHANIKA
       const X=sio.xex;
       if(X.cur>=X.recs.length) X.cur=X.recs.length-1;
-      if(a2===0x73){ // POSUN; idempotentni pres idx token v aux1
-        if(a1===(X.cur&0xFF) && X.cur<X.recs.length-1) X.cur++;
+      if(a2===0x73){ // legacy v3 posun - uz se nepouziva, neskodny
         const d=[X.cur&0xFF];
         sioQueue(6,[0x41]); sioQueue(10,[0x43]); sioQueue(20,d.concat([sioChk(d)]),2);
         return;
       }
-      const r=X.recs[X.cur];
-      if(a2===0x71){ // header: idx,dst,len,flags (6 B)
+      if(a2===0x71){ // header; DAUX1=1 = predchozi payload OK -> posun (max 1x diky pserved)
+        if(a1===1 && X.pserved){ if(X.cur<X.recs.length-1) X.cur++; X.pserved=false; }
+        const r=X.recs[X.cur];
         const h=[X.cur&0xFF,r.dst&0xFF,r.dst>>8,r.len&0xFF,r.len>>8,r.flags];
         sioQueue(6,[0x41]); sioQueue(10,[0x43]); sioQueue(20,h.concat([sioChk(h)]),2);
-      } else {
+      } else { // payload
+        const r=X.recs[X.cur];
         if(!r.len){ sioQueue(6,[0x4E]); return; }
+        X.pserved=true;
         const data=Array.from(r.pay);
         sioQueue(6,[0x41]); sioQueue(10,[0x43]); sioQueue(20,data.concat([sioChk(data)]),2);
       }
@@ -484,7 +486,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   //   DAUX $7001 = header aktualniho recordu (5 B: dst,len,flags do ZP $80)
   //   DAUX $7002 = payload recordu (DBYT=len, DBUF=dst) - zadny buffer,
   //   zadna kolize s hrami nahravajicimi na $0700+.
-  const XEX_LOADER_B64="AAIABwAHogC9FgedAAHo4IDQ9UwAASBoASBZ5DD4pYUpAvANqQCNRAKpAY0JAGzgAiBoAaWBjQQDpYKNBQOlg40IA6WEjQkDqXKNCwMgWeQwxKWFSCBoAakBjQgDqXONCwOlgI0KAyBZ5DALaCkB8AMgZQFMAAFoTDwBbOICogu9dAGdAAPKEPdgMQFSQIAABwAGAABxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
+  const XEX_LOADER_B64="AAIABwAHogC9FgedAAHo4HzQ9UwAAakAIFYBMDelhSkC0DylhUggZAGlgY0EA6WCjQUDpYONCAOlhI0JA6lyjQsDIFnkMBJoKQHwAyBhAakBTAIBqQBMAgFoqQBMAgGpAI1EAqkBjQkAbOACSCBkAWiNCgNMWeRs4gKiC71wAZ0AA8oQ92AxAVJAgAAHAAYAAHEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
   M.mountXex=function(xex){
     if(!(xex[0]===0xFF&&xex[1]===0xFF))
       return {error:'neni XEX (chybi FF FF hlavicka) - .bas soubory potrebuji BASIC LOAD'};
@@ -506,7 +508,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(recs.length>250) return {error:'prilis mnoho segmentu (>250)'};
     if(!sawRun) recs.push({dst:0x02E0,len:2,pay:new Uint8Array([first&0xFF,first>>8]),flags:0});
     recs.push({dst:0,len:0,pay:new Uint8Array(0),flags:2});   // EOF -> JMP (RUNAD)
-    sio.xex={recs:recs,cur:0};
+    sio.xex={recs:recs,cur:0,pserved:false};
     // boot disk: jen 2 sektory zavadece
     const bin=atob(XEX_LOADER_B64), disk=new Uint8Array(256);
     for(let k=0;k<bin.length;k++) disk[k]=bin.charCodeAt(k)&0xFF;
@@ -656,7 +658,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(p===0x04) antic.hscrol=v&15;
       else if(p===0x05) antic.vscrol=v&15;
       else if(p===0x07) antic.pmbase=v;
-      else if(p===0x09) antic.chbase=v; if(M.chLog)M.chLog.push([M.line,v,cpu.pc]);
+      else if(p===0x09) antic.chbase=v; if(chSeg.n<6){ chSeg.c[chSeg.n]=cpu.cycles-M.lineCyc0; chSeg.v[chSeg.n]=v; chSeg.n++; } if(M.chLog)M.chLog.push([M.line,v,cpu.pc]);
       else if(p===0x0A){ M.wsync=true; }       // WSYNC: stall CPU to line end
       else if(p===0x0E){ antic.nmien=v; }
       else if(p===0x0F){ antic.nmist=0x1F; }   // NMIRES
@@ -775,6 +777,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const left=192-((nb*(md.t==='ch6'?16:(md.px? md.px*8/ (md.b===10?1: (md.b===20?2:4)) :8)))>>1); // computed below per type instead
     const row=antic.row;
     const ch=(antic.chbase&0xFC)<<8;
+    const chMulti=(chSeg.n>0 && (md.t==='ch2'||md.t==='ch4'||md.t==='ch6'));
+    const chStep=76/nb;
+    function chAt(i){
+      if(!chMulti) return ch;
+      const fc=46+i*chStep; let val=chSeg.base;
+      for(let k=0;k<chSeg.n;k++){ if(chSeg.c[k]<=fc) val=chSeg.v[k]; }
+      return (val&0xFC)<<8;
+    }
     const PF=[palette[gtia.colbk],palette[gtia.colpf[0]],palette[gtia.colpf[1]],palette[gtia.colpf[2]],palette[gtia.colpf[3]]];
     let xs;
     if(md.t==='ch2'){
@@ -785,7 +795,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         const sc=anticRead(antic.lms+i);
         let bits=os[0]===undefined?0:0;
         let line=row; if(antic.mode===3){ if(line>=8)line-=8; }
-        bits=anticRead(ch+((sc&0x7F)<<3)+(line&7));
+        bits=anticRead(chAt(i)+((sc&0x7F)<<3)+(line&7));
         if(sc&0x80){ if(antic.chactl&1) bits=0; else if(antic.chactl&2) bits^=0xFF; }
         for(let b=0;b<8;b++){ TB[TO+xs+i*8+b]=(bits&(0x80>>b))?fg:bg; TC[xs+i*8+b]=3; }
       }
@@ -794,7 +804,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const l=(antic.mode===5)?(row>>1):row;
       for(let i=0;i<nb;i++){
         const sc=anticRead(antic.lms+i);
-        const bits=anticRead(ch+((sc&0x7F)<<3)+(l&7));
+        const bits=anticRead(chAt(i)+((sc&0x7F)<<3)+(l&7));
         for(let p=0;p<4;p++){
           let v=(bits>>(6-p*2))&3;
           let cls=v===0?0:(v===3&&(sc&0x80)?4:v);
@@ -808,7 +818,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const l=(antic.mode===7)?(row>>1):row;
       for(let i=0;i<nb;i++){
         const sc=anticRead(antic.lms+i);
-        const bits=anticRead(ch+((sc&0x3F)<<3)+(l&7));
+        const bits=anticRead(chAt(i)+((sc&0x3F)<<3)+(l&7));
         const col=PF[1+((sc>>6)&3)];
         const cls=1+((sc>>6)&3);
         for(let b=0;b<8;b++){ const on=bits&(0x80>>b);
@@ -908,6 +918,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
           gtia.cMPL[p]|=pml[x];
           if(pmShow(p,c)) fb[off+x]=col; } } } } } }
   }
+  const chSeg={n:0, c:new Int32Array(6), v:new Uint8Array(6), base:0};   // CHBASE zapisy behem radky (zavod s paprskem)
+  M.lineCyc0=0;
   // ---- snapshot render-registru (stav v HBLANKU radky) ----
   const SNAP_G=['colbk','prior','grafm','sizem','gractl'];
   const SNAP_GA=['colpf','colpm','grafp','hposp','hposm','sizep'];
@@ -957,6 +969,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // pozdejsi az pro dalsi - jako skutecny paprsek. CPU bezi ve dvou fazich,
     // mezi nimi se zmrazi (snapshot) registry pro vykresleni.
     const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+28, wsAt=lineStart+105;
+    M.lineCyc0=lineStart; chSeg.n=0; chSeg.base=antic.chbase;
     if(M.wsCarry){ M.wsCarry=false; cpu.cycles=wsAt; }   // WSYNC z konce minule radky: halt do cyklu 105 teto
     while(cpu.cycles<snapAt){
       if(M.wsync){ M.wsync=false;
@@ -1002,7 +1015,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     gtia.consol=7; if(opt&&opt.option) gtia.consol&=~4;
     M.line=0;M.frame=0;M.wsync=false;cpu.jam=false;cpu.irqLine=0;
     sio.rxq.length=0;sio.rxPos=0;sio.frame.length=0;sio.cmdLine=false;pokey.serin=0xFF;pokey.serinRead=true;pokey.serinAge=0;
-    if(sio.xex) sio.xex.cur=0;
+    if(sio.xex){ sio.xex.cur=0; sio.xex.pserved=false; }
 
     cpu.reset();
   };
