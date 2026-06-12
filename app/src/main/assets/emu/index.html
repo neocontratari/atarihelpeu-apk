@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2J — Atari 130XE CLEAN CORE</title>
+<title>AtariHelp.eu EMU-10 BUILD2K — Atari 130XE CLEAN CORE</title>
 <style>
 :root{ --case:#23252b; --panel:#2c2f37; --key:#c9c5bb; --keytxt:#23252b;
        --mod:#8f8a7e; --accent:#d8412f; --led:#ff5238; --txt:#d6d3cb; --dim:#8a877f; }
@@ -57,7 +57,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
 </head>
 <body>
 <header>
-  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2J</h1>
+  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2K</h1>
   <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; PRAVA XL OS + ATARI BASIC</div>
   <div id="led"></div>
 </header>
@@ -321,6 +321,65 @@ function CPU6502(read, write){
       case 0xF9: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; sbc(rd(ea)); cyc=4; break; // SBC aby
       case 0xFD: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; sbc(rd(ea)); cyc=4; break; // SBC abx
       case 0xFE: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; t=(rd(ea)+1)&0xFF; wr(ea,t); nz(t); cyc=7; break; // INC abx
+      case 0xA7: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; c.a=rd(ea); c.x=c.a; nz(c.a); cyc=3; break; // LAX zp
+      case 0xB7: ea=(rd(c.pc)+c.y)&0xFF; c.pc=(c.pc+1)&0xFFFF; c.a=rd(ea); c.x=c.a; nz(c.a); cyc=4; break; // LAX zpy
+      case 0xAF: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; c.a=rd(ea); c.x=c.a; nz(c.a); cyc=4; break; // LAX abs
+      case 0xBF: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; c.a=rd(ea); c.x=c.a; nz(c.a); cyc=4; break; // LAX aby
+      case 0xA3: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); c.a=rd(ea); c.x=c.a; nz(c.a); cyc=6; break; // LAX izx
+      case 0xB3: t=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; ea=((rd(t)|(rd((t+1)&0xFF)<<8))+c.y)&0xFFFF; c.a=rd(ea); c.x=c.a; nz(c.a); cyc=5; break; // LAX izy
+      case 0x87: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; wr(ea, c.a&c.x); cyc=3; break; // SAX zp
+      case 0x97: ea=(rd(c.pc)+c.y)&0xFF; c.pc=(c.pc+1)&0xFFFF; wr(ea, c.a&c.x); cyc=4; break; // SAX zpy
+      case 0x8F: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; wr(ea, c.a&c.x); cyc=4; break; // SAX abs
+      case 0x83: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); wr(ea, c.a&c.x); cyc=6; break; // SAX izx
+      case 0xC7: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; v=rd(ea); v=(v-1)&0xFF; t=(c.a-v)&0xFF; c.cf=c.a>=v?1:0; nz(t); wr(ea,v); cyc=5; break; // DCP zp
+      case 0xD7: ea=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; v=rd(ea); v=(v-1)&0xFF; t=(c.a-v)&0xFF; c.cf=c.a>=v?1:0; nz(t); wr(ea,v); cyc=6; break; // DCP zpx
+      case 0xCF: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; v=rd(ea); v=(v-1)&0xFF; t=(c.a-v)&0xFF; c.cf=c.a>=v?1:0; nz(t); wr(ea,v); cyc=6; break; // DCP abs
+      case 0xDF: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); v=(v-1)&0xFF; t=(c.a-v)&0xFF; c.cf=c.a>=v?1:0; nz(t); wr(ea,v); cyc=7; break; // DCP abx
+      case 0xDB: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); v=(v-1)&0xFF; t=(c.a-v)&0xFF; c.cf=c.a>=v?1:0; nz(t); wr(ea,v); cyc=7; break; // DCP aby
+      case 0xC3: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); v=rd(ea); v=(v-1)&0xFF; t=(c.a-v)&0xFF; c.cf=c.a>=v?1:0; nz(t); wr(ea,v); cyc=8; break; // DCP izx
+      case 0xD3: t=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; ea=((rd(t)|(rd((t+1)&0xFF)<<8))+c.y)&0xFFFF; v=rd(ea); v=(v-1)&0xFF; t=(c.a-v)&0xFF; c.cf=c.a>=v?1:0; nz(t); wr(ea,v); cyc=8; break; // DCP izy
+      case 0xE7: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; v=rd(ea); v=(v+1)&0xFF; sbc(v); wr(ea,v); cyc=5; break; // ISB zp
+      case 0xF7: ea=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; v=rd(ea); v=(v+1)&0xFF; sbc(v); wr(ea,v); cyc=6; break; // ISB zpx
+      case 0xEF: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; v=rd(ea); v=(v+1)&0xFF; sbc(v); wr(ea,v); cyc=6; break; // ISB abs
+      case 0xFF: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); v=(v+1)&0xFF; sbc(v); wr(ea,v); cyc=7; break; // ISB abx
+      case 0xFB: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); v=(v+1)&0xFF; sbc(v); wr(ea,v); cyc=7; break; // ISB aby
+      case 0xE3: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); v=rd(ea); v=(v+1)&0xFF; sbc(v); wr(ea,v); cyc=8; break; // ISB izx
+      case 0xF3: t=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; ea=((rd(t)|(rd((t+1)&0xFF)<<8))+c.y)&0xFFFF; v=rd(ea); v=(v+1)&0xFF; sbc(v); wr(ea,v); cyc=8; break; // ISB izy
+      case 0x07: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; v=rd(ea); c.cf=(v>>7)&1; v=(v<<1)&0xFF; c.a|=v; nz(c.a); wr(ea,v); cyc=5; break; // SLO zp
+      case 0x17: ea=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; v=rd(ea); c.cf=(v>>7)&1; v=(v<<1)&0xFF; c.a|=v; nz(c.a); wr(ea,v); cyc=6; break; // SLO zpx
+      case 0x0F: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; v=rd(ea); c.cf=(v>>7)&1; v=(v<<1)&0xFF; c.a|=v; nz(c.a); wr(ea,v); cyc=6; break; // SLO abs
+      case 0x1F: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); c.cf=(v>>7)&1; v=(v<<1)&0xFF; c.a|=v; nz(c.a); wr(ea,v); cyc=7; break; // SLO abx
+      case 0x1B: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); c.cf=(v>>7)&1; v=(v<<1)&0xFF; c.a|=v; nz(c.a); wr(ea,v); cyc=7; break; // SLO aby
+      case 0x03: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); v=rd(ea); c.cf=(v>>7)&1; v=(v<<1)&0xFF; c.a|=v; nz(c.a); wr(ea,v); cyc=8; break; // SLO izx
+      case 0x13: t=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; ea=((rd(t)|(rd((t+1)&0xFF)<<8))+c.y)&0xFFFF; v=rd(ea); c.cf=(v>>7)&1; v=(v<<1)&0xFF; c.a|=v; nz(c.a); wr(ea,v); cyc=8; break; // SLO izy
+      case 0x27: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; v=rd(ea); t=c.cf; c.cf=(v>>7)&1; v=((v<<1)|t)&0xFF; c.a&=v; nz(c.a); wr(ea,v); cyc=5; break; // RLA zp
+      case 0x37: ea=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; v=rd(ea); t=c.cf; c.cf=(v>>7)&1; v=((v<<1)|t)&0xFF; c.a&=v; nz(c.a); wr(ea,v); cyc=6; break; // RLA zpx
+      case 0x2F: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; v=rd(ea); t=c.cf; c.cf=(v>>7)&1; v=((v<<1)|t)&0xFF; c.a&=v; nz(c.a); wr(ea,v); cyc=6; break; // RLA abs
+      case 0x3F: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); t=c.cf; c.cf=(v>>7)&1; v=((v<<1)|t)&0xFF; c.a&=v; nz(c.a); wr(ea,v); cyc=7; break; // RLA abx
+      case 0x3B: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); t=c.cf; c.cf=(v>>7)&1; v=((v<<1)|t)&0xFF; c.a&=v; nz(c.a); wr(ea,v); cyc=7; break; // RLA aby
+      case 0x23: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); v=rd(ea); t=c.cf; c.cf=(v>>7)&1; v=((v<<1)|t)&0xFF; c.a&=v; nz(c.a); wr(ea,v); cyc=8; break; // RLA izx
+      case 0x33: t=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; ea=((rd(t)|(rd((t+1)&0xFF)<<8))+c.y)&0xFFFF; v=rd(ea); t=c.cf; c.cf=(v>>7)&1; v=((v<<1)|t)&0xFF; c.a&=v; nz(c.a); wr(ea,v); cyc=8; break; // RLA izy
+      case 0x47: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; v=rd(ea); c.cf=v&1; v=v>>1; c.a^=v; nz(c.a); wr(ea,v); cyc=5; break; // SRE zp
+      case 0x57: ea=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; v=rd(ea); c.cf=v&1; v=v>>1; c.a^=v; nz(c.a); wr(ea,v); cyc=6; break; // SRE zpx
+      case 0x4F: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; v=rd(ea); c.cf=v&1; v=v>>1; c.a^=v; nz(c.a); wr(ea,v); cyc=6; break; // SRE abs
+      case 0x5F: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); c.cf=v&1; v=v>>1; c.a^=v; nz(c.a); wr(ea,v); cyc=7; break; // SRE abx
+      case 0x5B: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); c.cf=v&1; v=v>>1; c.a^=v; nz(c.a); wr(ea,v); cyc=7; break; // SRE aby
+      case 0x43: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); v=rd(ea); c.cf=v&1; v=v>>1; c.a^=v; nz(c.a); wr(ea,v); cyc=8; break; // SRE izx
+      case 0x53: t=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; ea=((rd(t)|(rd((t+1)&0xFF)<<8))+c.y)&0xFFFF; v=rd(ea); c.cf=v&1; v=v>>1; c.a^=v; nz(c.a); wr(ea,v); cyc=8; break; // SRE izy
+      case 0x67: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; v=rd(ea); t=c.cf; c.cf=v&1; v=(v>>1)|(t<<7); adc(v); wr(ea,v); cyc=5; break; // RRA zp
+      case 0x77: ea=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; v=rd(ea); t=c.cf; c.cf=v&1; v=(v>>1)|(t<<7); adc(v); wr(ea,v); cyc=6; break; // RRA zpx
+      case 0x6F: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; v=rd(ea); t=c.cf; c.cf=v&1; v=(v>>1)|(t<<7); adc(v); wr(ea,v); cyc=6; break; // RRA abs
+      case 0x7F: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); t=c.cf; c.cf=v&1; v=(v>>1)|(t<<7); adc(v); wr(ea,v); cyc=7; break; // RRA abx
+      case 0x7B: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); t=c.cf; c.cf=v&1; v=(v>>1)|(t<<7); adc(v); wr(ea,v); cyc=7; break; // RRA aby
+      case 0x63: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); v=rd(ea); t=c.cf; c.cf=v&1; v=(v>>1)|(t<<7); adc(v); wr(ea,v); cyc=8; break; // RRA izx
+      case 0x73: t=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; ea=((rd(t)|(rd((t+1)&0xFF)<<8))+c.y)&0xFFFF; v=rd(ea); t=c.cf; c.cf=v&1; v=(v>>1)|(t<<7); adc(v); wr(ea,v); cyc=8; break; // RRA izy
+      case 0x0B: ea=c.pc; c.pc=(c.pc+1)&0xFFFF; c.a&=rd(ea); nz(c.a); c.cf=c.nf; cyc=2; break; // ANC imm
+      case 0x2B: ea=c.pc; c.pc=(c.pc+1)&0xFFFF; c.a&=rd(ea); nz(c.a); c.cf=c.nf; cyc=2; break; // ANC imm
+      case 0x4B: ea=c.pc; c.pc=(c.pc+1)&0xFFFF; c.a&=rd(ea); c.cf=c.a&1; c.a>>=1; nz(c.a); cyc=2; break; // ALR imm
+      case 0x6B: ea=c.pc; c.pc=(c.pc+1)&0xFFFF; c.a&=rd(ea); c.a=(c.a>>1)|(c.cf<<7); nz(c.a); c.cf=(c.a>>6)&1; c.vf=((c.a>>6)^(c.a>>5))&1; cyc=2; break; // ARR imm
+      case 0xCB: ea=c.pc; c.pc=(c.pc+1)&0xFFFF; t=rd(ea); v=(c.a&c.x)-t; c.cf=v>=0?1:0; c.x=v&0xFF; nz(c.x); cyc=2; break; // SBX imm
+      case 0xEB: ea=c.pc; c.pc=(c.pc+1)&0xFFFF; sbc(rd(ea)); cyc=2; break; // SBC imm
+      case 0xAB: ea=c.pc; c.pc=(c.pc+1)&0xFFFF; c.a=(c.a|0xEE)&rd(ea); c.x=c.a; nz(c.a); cyc=2; break; // LXA imm
       default:
         // undocumented: common NOPs consume operands; JAM opcodes halt
         if(op===0x02||op===0x12||op===0x22||op===0x32||op===0x42||op===0x52||
@@ -365,7 +424,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
                 t1:0, t2:0, t4:0,   // odpocty casovacu v CPU cyklech (IRQ bity 0/1/2)
                 irqen:0, irqpend:0, kbcode:0xFF, keyDown:false, shiftDown:false,
                 outBusy:0, shiftBusy:0, random:0x12345, dirty:true,
-                serin:0xFF };
+                serin:0xFF, serinRead:true, serinAge:0 };
   // ---- SIO sbernice + diskova mechanika D1: ----
   const sio={ cmdLine:false, frame:[], rxq:[], rxPos:0, disk:null, secSize:128, log:null };
   function sioChk(arr){ let s=0; for(let i=0;i<arr.length;i++){ s+=arr[i]; if(s>255)s=(s&255)+1; } return s&255; }
@@ -516,7 +575,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(p===0x09) return pokey.kbcode;        // KBCODE
       if(p===0x0A){ pokey.random=((pokey.random<<1)|(((pokey.random>>16)^(pokey.random>>11))&1))&0x1FFFF;
                     return (pokey.random>>1)&0xFF; } // RANDOM
-      if(p===0x0D) return pokey.serin;         // SERIN
+      if(p===0x0D){ pokey.serinRead=true; return pokey.serin; } // SERIN (flow control: dalsi bajt az po precteni)
       if(p===0x0E) return (~pokeyStatus())&0xFF; // IRQST active low
       if(p===0x0F){ // SKSTAT: bit3 shift(0=down), bit2 key down(0=down), serial idle bits high
         let v=0xFF; if(pokey.shiftDown)v&=~0x08; if(pokey.keyDown)v&=~0x04; return v; }
@@ -620,7 +679,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(a>=0xD000 && a<0xD800){ hwWrite(a,v); return; }
     const pb=portB();
     if(a>=0x4000 && a<0x8000 && !(pb&0x10)){ ext[(((pb>>2)&3)<<14)|(a-0x4000)]=v; return; }
-    ram[a]=v; // RAM under ROM always writable
+    if(M.wrWatch&&a===M.wrWatch)M.wrLog.push([cpu.pc,v,M.line]); ram[a]=v; // RAM under ROM always writable
   }
   function anticRead(a){
     a&=0xFFFF;
@@ -869,7 +928,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(pokey.outBusy>0 && --pokey.outBusy===0) pokeyRaise(0x10);   // vystupni registr prazdny
     if(pokey.shiftBusy>0 && --pokey.shiftBusy===0) pokeyRaise(0x08); // prenos dokoncen
     // serial in: fronta z SIO zarizeni
-    if(sio.rxPos<sio.rxq.length){ if(--sio.rxq[sio.rxPos][0]<=0){ pokey.serin=sio.rxq[sio.rxPos++][1]; pokeyRaise(0x20);
+    if(sio.rxPos<sio.rxq.length){
+      if(!pokey.serinRead && sio.rxq[sio.rxPos][0]<=0){ // predchozi bajt jeste neprecten - pockej (max 200 radek)
+        if(++pokey.serinAge<200){ /* drz */ } else { pokey.serinRead=true; pokey.serinAge=0; }
+      }
+      if(pokey.serinRead && --sio.rxq[sio.rxPos][0]<=0){ pokey.serin=sio.rxq[sio.rxPos++][1]; pokeyRaise(0x20);
+        pokey.serinRead=false; pokey.serinAge=0;
       if(M.sioDebug) M.sioDebug('RX',pokey.serin);
       if(sio.rxPos>=sio.rxq.length){ sio.rxq.length=0; sio.rxPos=0; } } }
     // RENDER NEJDRIV - radka se kresli ze stavu registru na SVEM zacatku.
@@ -914,7 +978,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     antic.dmactl=0;antic.nmien=0;antic.nmist=0x1F;antic.dlist=0;
     gtia.consol=7; if(opt&&opt.option) gtia.consol&=~4;
     M.line=0;M.frame=0;M.wsync=false;cpu.jam=false;cpu.irqLine=0;
-    sio.rxq.length=0;sio.rxPos=0;sio.frame.length=0;sio.cmdLine=false;pokey.serin=0xFF;
+    sio.rxq.length=0;sio.rxPos=0;sio.frame.length=0;sio.cmdLine=false;pokey.serin=0xFF;pokey.serinRead=true;pokey.serinAge=0;
     if(sio.xex) sio.xex.cur=0;
 
     cpu.reset();
@@ -1055,23 +1119,27 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var AC=window.AudioContext||window.webkitAudioContext; if(!AC){ log('AUDIO: AudioContext neni k dispozici'); return; }
     var ac=new AC(), sp=ac.createScriptProcessor(4096,0,1); // 4096: WebView nestiha 2048 -> chrasteni
     var CPS=1773447/ac.sampleRate; // cyklu na vzorek (PAL)
-    var st={cnt:[0,0,0,0], out:[0,0,0,0], p4:0,p5:0,p9:0,p17:0, clock:0, spkLevel:0, spkDecay:0};
+    var st={cnt:[0,0,0,0], out:[0,0,0,0], p4:0,p5:0,p9:0,p17:0, clock:0, spkLevel:0, spkDecay:0, dcx:0, dcy:0};
     var sh={ audf:[0,0,0,0], audc:[0,0,0,0], audctl:0, head:-1, qi:0 };  // stinove registry rizene frontou udalosti
     sp.onaudioprocess=function(e){
       var buf=e.outputBuffer.getChannelData(0);
       var pk=M?M.pokey:null, q=M?M.audioQ:null;
       // synchronizace prehravaci hlavy: drz se ~1 frame za emulaci, pri velkem driftu skoc
+      var rate=CPS;
       if(pk&&q){
         var now=M.cpu.cycles;
-        if(sh.head<0 || now-sh.head>200000 || sh.head>now){ sh.head=now-36000;
+        if(sh.head<0 || now-sh.head>900000 || sh.head>now){ sh.head=now-54000;   // tvrdy skok jen pri velkem rozjeti
           for(var c0=0;c0<4;c0++){ sh.audf[c0]=pk.audf[c0]; sh.audc[c0]=pk.audc[c0]; } sh.audctl=pk.audctl;
           q.length=0; sh.qi=0; }
+        else { var lag=(now-sh.head)-54000;                                      // jemne dotahovani tempa (max +-2 %)
+          var adj=lag/2000000; if(adj>0.02)adj=0.02; if(adj<-0.02)adj=-0.02;
+          rate=CPS*(1+adj); }
       }
       for(var i=0;i<buf.length;i++){
         var s=0;
         if(pk){
           // aplikuj udalosti, jejichz cas uz prehravaci hlava minula
-          sh.head+=CPS;
+          sh.head+=rate;
           if(q){ while(sh.qi+2<q.length && q[sh.qi]<=sh.head){ var r=q[sh.qi+1], v=q[sh.qi+2]; sh.qi+=3;
             if(r===8) sh.audctl=v; else if(r&1) sh.audc[r>>1]=v; else sh.audf[r>>1]=v; }
             if(sh.qi>6000){ q.splice(0,sh.qi); sh.qi=0; } }
@@ -1102,7 +1170,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         }
         // GTIA reproduktor (klik klaves XL OS pres CONSOL bit3)
         if(st.spkDecay>0){ st.spkDecay--; s+=st.spkLevel*0.25; }
-        buf[i]=s;
+        var dcout=s-st.dcx+0.995*st.dcy; st.dcx=s; st.dcy=dcout;   // DC-blocker
+        buf[i]=dcout;
       }
     };
     sp.connect(ac.destination);
