@@ -1,0 +1,44 @@
+EMU-10 BUILD2I - POKEY CASOVACE + DLI CASOVANI + TXT NACITANI (CTETE PRVNI)
+============================================================================
+
+ZADNE RUCNI UPRAVY. ZADNE MAZANI. Postup:
+1. Rozbal ZIP, slozku "app" nakopiruj PRES tvou "app" (prepsat -> ANO VSEM).
+2. Commit + push. Po zelenem CI starou apku ODINSTALUJ a nainstaluj novou.
+3. V hlavicce emulatoru ted uvidis "BUILD2I" - podle toho poznas,
+   ze bezi nova verze (tvuj screenshot ukazoval jeste BUILD2F!).
+
+CO JE OPRAVENO (na tvych hrach, s dukazy):
+
+1. INTERNATIONAL KARATE SE ROZJELO!
+   Hra ceka na preruseni od POKEY casovacu (hudebni driver) - a ty
+   v emulatoru vubec nebyly. Doplnil jsem casovace 1, 2 a 4 vcetne
+   16bitovych rezimu. Karate ted bezi: Sydney, dva bojovnici,
+   rozhodci, skore - overeno screenshotem.
+   BONUS: casovace poganeji hudbu i v dalsich hrach -> "divny zvuk"
+   by se mel u rady her srovnat (uplna presnost POKEY = BUILD3).
+
+2. DEATH RACE - svy pres obraz PRYC.
+   DLI rutiny menily barvy a moje vykreslovani je bralo o radek driv.
+   Radka se ted kresli ze stavu registru na svem ZACATKU a WSYNC
+   pousti procesor uz v HBLANKU teze radky - presne jako na pravem
+   zeleze. Stejna oprava spravila i podlahu v Karate a mela by
+   pomoct Pitstopu 2 (posli screenshot, jestli tam jeste neco je).
+
+3. VLOZIT TXT / NEW:
+   - po NEW ted nahravac ceka 25 framu, nez zacne psat program
+     (driv mohl BASIC jeste mazat a prvni radky se ztratily)
+   - NOVE tlacitko "SMAZAT PROG" - posle NEW jednim klikem
+   - NOVE tlacitko "NAHRAJ TXT SOUBOR" (v okne VLOZIT TXT):
+     vyber .txt/.lst/.bas soubor a program se sam napise do BASICu
+     ci TurboBASICu; umi i ATASCII konce radku z praveho Atari
+
+4. DOMOVSKA STRANKA: pod kazetakem dve velka citelna tlacitka
+   "NAHRAT HRU" (oranzove, vede na GAMES-XEX) a "FORUM".
+
+ZNAME MOUCHY (poctive):
+- Karate: obcasne drobnosti ve fontech pasu (hra meni fonty
+  UPROSTRED radky - chce cyklove presne DLI, planuju do BUILD3)
+- zvuk: zakladni presnost; plna POKEY emulace = BUILD3
+
+VSECH 11 TESTU PASS (TBXL, River Raid, kolize, GTIA, ZIP, scroll,
+psani, zavadec...).

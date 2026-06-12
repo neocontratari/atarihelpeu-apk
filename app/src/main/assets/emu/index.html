@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2F — Atari 130XE CLEAN CORE</title>
+<title>AtariHelp.eu EMU-10 BUILD2I — Atari 130XE CLEAN CORE</title>
 <style>
 :root{ --case:#23252b; --panel:#2c2f37; --key:#c9c5bb; --keytxt:#23252b;
        --mod:#8f8a7e; --accent:#d8412f; --led:#ff5238; --txt:#d6d3cb; --dim:#8a877f; }
@@ -57,7 +57,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
 </head>
 <body>
 <header>
-  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2F</h1>
+  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2I</h1>
   <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; PRAVA XL OS + ATARI BASIC</div>
   <div id="led"></div>
 </header>
@@ -76,6 +76,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
     <button id="btnTbxl" class="dark">TBXL 1.5</button>
     <button id="btnJoy" class="dark">JOYSTIK</button>
     <button id="btnTxt" class="dark">VLOZIT TXT</button>
+    <button id="btnProgNew" class="dark" title="Smaze program v BASICu (NEW)">SMAZAT PROG</button>
     <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dim);"><input type="checkbox" id="chkOpt" checked>OPTION u ATR</label>
   </div>
   <input type="file" id="filePick" style="display:none">
@@ -95,6 +96,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
 <div id="txtOverlay" style="display:none; position:fixed; inset:0; background:rgba(10,10,12,.92); z-index:9; padding:16px; flex-direction:column; gap:8px;">
   <div style="display:flex; gap:8px;">
     <button id="btnTxtGo" style="flex:1; padding:10px; font:bold 12px 'Courier New',monospace; background:#c9c5bb; border:0; border-radius:4px;">VLOZIT DO ATARI</button>
+    <button id="btnTxtFile" style="flex:1; padding:10px; font:bold 12px 'Courier New',monospace; background:#8a9a5b; border:0; border-radius:4px;">NAHRAJ TXT SOUBOR</button>
     <button id="btnTxtClose" style="flex:1; padding:10px; font:bold 12px 'Courier New',monospace; background:#d8412f; color:#fff; border:0; border-radius:4px;">ZAVRIT</button>
   </div>
   <div style="display:flex; align-items:center; gap:14px;">
@@ -360,6 +362,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
                gractl:0, pal:0x01 /* PAL */ };
   // ---------------- POKEY -----------------
   const pokey={ audf:[0,0,0,0], audc:[0,0,0,0], audctl:0, skctl:0,
+                t1:0, t2:0, t4:0,   // odpocty casovacu v CPU cyklech (IRQ bity 0/1/2)
                 irqen:0, irqpend:0, kbcode:0xFF, keyDown:false, shiftDown:false,
                 outBusy:0, shiftBusy:0, random:0x12345, dirty:true,
                 serin:0xFF };
@@ -457,6 +460,33 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function pokeyStatus(){ return pokey.irqpend; }
   function pokeySync(){ cpu.irqLine = (pokey.irqen & pokey.irqpend)!==0 ? 1:0; }
   function pokeyRaise(bit){ pokey.irqpend|=bit; pokeySync(); }
+  function timerPeriod(ch){ // perioda v CPU cyklech (1.79 MHz); ch 0=timer1, 1=timer2, 3=timer4
+    const ac=pokey.audctl, f=pokey.audf;
+    if(ch===0){
+      if(ac&0x10) return 0;                                 // 1+2 spojene: ridi ch2
+      const d=(ac&0x40)?1:((ac&1)?114:28);
+      return (f[0]+((ac&0x40)?4:1))*d;
+    }
+    if(ch===1){
+      if(ac&0x10){ const d=(ac&0x40)?1:((ac&1)?114:28);     // 16bit 1+2
+        return ((f[1]<<8)+f[0]+((ac&0x40)?7:1))*d; }
+      const d=(ac&1)?114:28; return (f[1]+1)*d;
+    }
+    if(ch===3){
+      if(ac&8){ const d=(ac&0x20)?1:((ac&1)?114:28);        // 16bit 3+4
+        return ((f[3]<<8)+f[2]+((ac&0x20)?7:1))*d; }
+      const d=(ac&1)?114:28; return (f[3]+1)*d;
+    }
+    return 0;
+  }
+  function timersReload(){ pokey.t1=timerPeriod(0); pokey.t2=timerPeriod(1); pokey.t4=timerPeriod(3); }
+  function timersTick(cyc){ // vola se kazdou scanline (114 cyklu)
+    if(pokey.irqen&0x07){
+      if(pokey.t1>0){ pokey.t1-=cyc; if(pokey.t1<=0){ pokey.t1+=timerPeriod(0)||1e9; pokeyRaise(0x01); } }
+      if(pokey.t2>0){ pokey.t2-=cyc; if(pokey.t2<=0){ pokey.t2+=timerPeriod(1)||1e9; pokeyRaise(0x02); } }
+      if(pokey.t4>0){ pokey.t4-=cyc; if(pokey.t4<=0){ pokey.t4+=timerPeriod(3)||1e9; pokeyRaise(0x04); } }
+    }
+  }
   // ---------------- ANTIC -----------------
   const antic={ dmactl:0, chactl:2, dlist:0, hscrol:0, vscrol:0, pmbase:0, chbase:0,
                 nmien:0, nmist:0x1F, vcountLine:0,
@@ -530,14 +560,16 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const p=a&0x0F;
       if(p<=0x07){ if(p&1) pokey.audc[p>>1]=v; else pokey.audf[p>>1]=v; pokey.dirty=true; return; }
       if(p===0x08){ pokey.audctl=v; pokey.dirty=true; return; }
-      if(p===0x09){ return; }                  // STIMER
+      if(p===0x09){ timersReload(); return; } // STIMER: znovunabij citace
       if(p===0x0A){ return; }                  // SKRES
       if(p===0x0D){ // SEROUT: byte opusti vystupni registr za ~10 radek, posuv dobehne za ~30
         if(M.sioDebug) M.sioDebug('TX',[v,sio.cmdLine?1:0]);
         if(sio.cmdLine){ sio.frame.push(v); }
         pokey.outBusy=10; pokey.shiftBusy=30; pokey.irqpend&=~0x18; pokeySync(); return; }
       if(p===0x0E){ if(M.sioDebug&&(v&0x20)!==(pokey.irqen&0x20)) M.sioDebug('IRQEN',v);
-        pokey.irqen=v; pokey.irqpend&=v; pokeySync(); return; }
+        const was=pokey.irqen; pokey.irqen=v; pokey.irqpend&=v;
+        if((v&0x07)&&!(was&0x07)) timersReload();
+        pokeySync(); return; }
       if(p===0x0F){ pokey.skctl=v; return; }
       return;
     }
@@ -563,7 +595,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(p===0x04) antic.hscrol=v&15;
       else if(p===0x05) antic.vscrol=v&15;
       else if(p===0x07) antic.pmbase=v;
-      else if(p===0x09) antic.chbase=v;
+      else if(p===0x09) antic.chbase=v; if(M.chLog)M.chLog.push([M.line,v,cpu.pc]);
       else if(p===0x0A){ M.wsync=true; }       // WSYNC: stall CPU to line end
       else if(p===0x0E){ antic.nmien=v; }
       else if(p===0x0F){ antic.nmist=0x1F; }   // NMIRES
@@ -825,11 +857,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(antic.rowsLeft===0) nextInstr();
       if(!antic.done && antic.rowsLeft===1 && antic.dli) dli=true;
     }
-    if(dli && (antic.nmien&0x80)){ antic.nmist=(antic.nmist|0x80)&~0x40; cpu.nmiPending=true; }
+    if(dli && (antic.nmien&0x80)){ antic.nmist=(antic.nmist|0x80)&~0x40; cpu.nmiPending=true; if(M.dliLog)M.dliLog.push(M.line); }
     if(M.line===VBI_LINE){
       antic.nmist=(antic.nmist|0x40)&~0x80;
       if(antic.nmien&0x40) cpu.nmiPending=true;
     }
+    timersTick(114);                                               // POKEY casovace 1/2/4
     // serial out udalosti
     if(pokey.outBusy>0 && --pokey.outBusy===0) pokeyRaise(0x10);   // vystupni registr prazdny
     if(pokey.shiftBusy>0 && --pokey.shiftBusy===0) pokeyRaise(0x08); // prenos dokoncen
@@ -837,24 +870,31 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(sio.rxPos<sio.rxq.length){ if(--sio.rxq[sio.rxPos][0]<=0){ pokey.serin=sio.rxq[sio.rxPos++][1]; pokeyRaise(0x20);
       if(M.sioDebug) M.sioDebug('RX',pokey.serin);
       if(sio.rxPos>=sio.rxq.length){ sio.rxq.length=0; sio.rxPos=0; } } }
-    // CPU
-    const target=cpu.cycles+CYC_LINE;
-    while(cpu.cycles<target){
-      if(M.wsync){ cpu.cycles=target; M.wsync=false; break; }
-      cpu.step();
-      if(cpu.jam){ cpu.cycles=target; break; }
-    }
-    // render
+    // RENDER NEJDRIV - radka se kresli ze stavu registru na SVEM zacatku.
+    // Zapisy behem radky (DLI handlery, kernely) se projevi az na dalsi radce,
+    // presne jako na pravem HW pri WSYNC-podchycenych handlerech.
     if(M.line>=8 && M.line<248){
       renderScanline();
       if(!antic.done && antic.rowsLeft>0 && antic.mode!==0){ antic.rowsLeft--; antic.row++; if(antic.rowsLeft>0){} else { antic.lms=(antic.lms+(antic.hsLine?pfBytesW(MODE[antic.mode].b,Math.min(3,(antic.dmactl&3)+1)):pfBytes(MODE[antic.mode].b)))&0xFFFF; } }
       else if(antic.rowsLeft>0) antic.rowsLeft--;
+    }
+    // CPU; WSYNC = uvolneni v HBLANKU TEZE radky (zbyva ~9 cyklu),
+    // takze kod za STA WSYNC zapise registry pred renderem dalsi radky.
+    const target=cpu.cycles+CYC_LINE;
+    let wsUsed=false;
+    while(cpu.cycles<target){
+      if(M.wsync){ M.wsync=false;
+        if(!wsUsed && cpu.cycles<target-9){ cpu.cycles=target-9; wsUsed=true; }
+        else { cpu.cycles=target; break; } }
+      cpu.step();
+      if(cpu.jam){ cpu.cycles=target; break; }
     }
     M.line++;
     if(M.line>=LINES){ M.line=0; M.frame++; }
   }
   M.runFrame=function(){ const f=M.frame; while(M.frame===f){ runScanline(); if(cpu.jam) { if(M.line===0)break; } } };
   M.runScanline=runScanline;
+  M._sio=sio; M._pokey=pokey;   // debug pristup
   // ---------------- Keyboard --------------
   M.keyDown=function(scan){ if((pokey.skctl&3)===0) return;
     pokey.kbcode=scan&0xFF; pokey.keyDown=true; pokey.shiftDown=!!(scan&0x40);
@@ -1187,6 +1227,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var ch=text[i];
       if(ch==='\r') continue;
       if(ch==='\n'){ typeQ.push(12|0x100); continue; }                // RETURN (priznak: pockat na radek)
+      if(ch==='\x01'){ typeQ.push(12|0x300); continue; }              // RETURN + dlouha pauza (po NEW)
       var sc;
       if(/[a-zA-Z]/.test(ch)) sc=KEY[ch.toLowerCase()];                // caps po bootu pise velka
       else sc=charToScan(ch);
@@ -1202,7 +1243,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var it=typeQ[0];
     if(!M.stuffKey(it&0xFF)) return;                                   // OS jeste neprecetl minuly znak
     typeQ.shift();
-    if(it&0x100) typeWait=6;                                           // po RETURN kratka rezerva; CH-plny se skrti sam
+    if(it&0x200) typeWait=25;                                          // po NEW: pockej, az ho BASIC opravdu provede
+    else if(it&0x100) typeWait=6;                                      // po RETURN kratka rezerva; CH-plny se skrti sam
     if(!typeQ.length) log('VLOZIT TXT: hotovo.');
   }
 
@@ -1346,11 +1388,25 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     document.getElementById('btnTbxl').addEventListener('click',function(){ bootXex('TBXL 1.5 (vestavene)', b64u8(EMU10_TBXL_B64), true); });
     document.getElementById('btnJoy').addEventListener('click',function(){ setJoyMode(!joyMode); });
     document.getElementById('btnTxt').addEventListener('click',function(){ document.getElementById('txtOverlay').style.display='flex'; });
+    function txtToAtari(text){
+      if(!text) return;
+      var pre=document.getElementById('chkNew').checked ? 'NEW\x01' : '';
+      queueText(pre + text.replace(/\r/g,'').replace(/\n*$/,'\n'));
+    }
     document.getElementById('btnTxtGo').addEventListener('click',function(){
       var ta=document.getElementById('txtIn'); document.getElementById('txtOverlay').style.display='none';
-      if(!ta.value) return;
-      var pre=document.getElementById('chkNew').checked ? 'NEW\n' : '';
-      queueText(pre + ta.value.replace(/\n*$/,'\n'));
+      txtToAtari(ta.value);
+    });
+    document.getElementById('btnTxtFile').addEventListener('click',function(){
+      document.getElementById('txtOverlay').style.display='none';
+      pickFile('.txt,.lst,.bas',function(n,u8){
+        var text=''; for(var i=0;i<u8.length;i++){ var b=u8[i]; if(b===0x9B){text+='\n';continue;} text+=String.fromCharCode(b); } // ATASCII EOL -> \n
+        log('NAHRAJ TXT: '+n+' ('+u8.length+' B) - piseme do BASICu.');
+        txtToAtari(text);
+      });
+    });
+    document.getElementById('btnProgNew').addEventListener('click',function(){
+      typeQ.length=0; queueText('NEW\x01'); log('SMAZAT PROGRAM: NEW odeslano.');
     });
     document.getElementById('btnTxtClose').addEventListener('click',function(){ document.getElementById('txtOverlay').style.display='none'; });
     bindJoy();
@@ -1392,7 +1448,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bh.addEventListener('pointerup',bhUp); bh.addEventListener('pointerleave',bhUp);
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
-    log('AtariHelp.eu EMU-10 BUILD1 CLEAN CORE pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2I CORE pripraven.');
     log('Jadro proslo headless testy: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK');
     requestAnimationFrame(tick);
   });
