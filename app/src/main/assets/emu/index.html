@@ -383,11 +383,18 @@ function Atari130XE(osRom, basicRom, CPUctor){
       sioQueue(6,[0x41]);              // ACK
       sioQueue(10,[0x43]);             // COMPLETE
       sioQueue(20,st.concat([sioChk(st)]),2); // mezera pred blokem; pak 2 radky/bajt
-    } else if(cmd===0x52 && sio.xex && (a2===0x71||a2===0x72)){ // XEX records (idempotentni: idx v aux1)
-      const X=sio.xex, idx=a1;
-      const r=(idx<X.recs.length)?X.recs[idx]:X.recs[X.recs.length-1]; // za koncem: EOF record
-      if(a2===0x71){
-        const h=[r.dst&0xFF,r.dst>>8,r.len&0xFF,r.len>>8,r.flags];
+    } else if(cmd===0x52 && sio.xex && (a2===0x71||a2===0x72||a2===0x73)){ // XEX loader v3: index drzi MECHANIKA
+      const X=sio.xex;
+      if(X.cur>=X.recs.length) X.cur=X.recs.length-1;
+      if(a2===0x73){ // POSUN; idempotentni pres idx token v aux1
+        if(a1===(X.cur&0xFF) && X.cur<X.recs.length-1) X.cur++;
+        const d=[X.cur&0xFF];
+        sioQueue(6,[0x41]); sioQueue(10,[0x43]); sioQueue(20,d.concat([sioChk(d)]),2);
+        return;
+      }
+      const r=X.recs[X.cur];
+      if(a2===0x71){ // header: idx,dst,len,flags (6 B)
+        const h=[X.cur&0xFF,r.dst&0xFF,r.dst>>8,r.len&0xFF,r.len>>8,r.flags];
         sioQueue(6,[0x41]); sioQueue(10,[0x43]); sioQueue(20,h.concat([sioChk(h)]),2);
       } else {
         if(!r.len){ sioQueue(6,[0x4E]); return; }
@@ -415,7 +422,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   //   DAUX $7001 = header aktualniho recordu (5 B: dst,len,flags do ZP $80)
   //   DAUX $7002 = payload recordu (DBYT=len, DBUF=dst) - zadny buffer,
   //   zadna kolize s hrami nahravajicimi na $0700+.
-  const XEX_LOADER_B64="AAIABwAHogC9FgedAAHo4H3Q9UwAAakAhYWpMY0AA6kBjQEDqVKNAgOpQI0DA6mAjQQDqQCNBQOpB40GA6kFjQgDqQCNCQOlhY0KA6lxjQsDIFnkMMSlhCkC0DGlgI0EA6WBjQUDpYKNCAOlg40JA6lyjQsDqUCNAwMgWeQwm6WEKQHwAyB6AeaFTAQBbOACbOICAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
+  const XEX_LOADER_B64="AAIABwAHogC9FgedAAHo4IDQ9UwAASBoASBZ5DD4pYUpAvANqQCNRAKpAY0JAGzgAiBoAaWBjQQDpYKNBQOlg40IA6WEjQkDqXKNCwMgWeQwxKWFSCBoAakBjQgDqXONCwOlgI0KAyBZ5DALaCkB8AMgZQFMAAFoTDwBbOICogu9dAGdAAPKEPdgMQFSQIAABwAGAABxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
   M.mountXex=function(xex){
     if(!(xex[0]===0xFF&&xex[1]===0xFF))
       return {error:'neni XEX (chybi FF FF hlavicka) - .bas soubory potrebuji BASIC LOAD'};
@@ -437,7 +444,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(recs.length>250) return {error:'prilis mnoho segmentu (>250)'};
     if(!sawRun) recs.push({dst:0x02E0,len:2,pay:new Uint8Array([first&0xFF,first>>8]),flags:0});
     recs.push({dst:0,len:0,pay:new Uint8Array(0),flags:2});   // EOF -> JMP (RUNAD)
-    sio.xex={recs:recs};
+    sio.xex={recs:recs,cur:0};
     // boot disk: jen 2 sektory zavadece
     const bin=atob(XEX_LOADER_B64), disk=new Uint8Array(256);
     for(let k=0;k<bin.length;k++) disk[k]=bin.charCodeAt(k)&0xFF;
@@ -625,10 +632,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
     0x0A:{b:20,sl:4, t:'m2bpp',px:16}, 0x0B:{b:20,sl:2,t:'m1bpp',px:16},
     0x0C:{b:20,sl:1, t:'m1bpp',px:16}, 0x0D:{b:40,sl:2,t:'m2bpp',px:8},
     0x0E:{b:40,sl:1, t:'m2bpp',px:8},  0x0F:{b:40,sl:1,t:'hires'} };
-  function pfBytes(base){ const w=antic.dmactl&3; if(w===1)return base*0.8|0; if(w===3)return base*1.2|0; return base; }
+  function pfBytesW(base,w){ if(w<=1)return base*0.8|0; if(w>=3)return base*1.2|0; return base; }
+  function pfBytes(base){ return pfBytesW(base, antic.dmactl&3); }
   function startFrame(){
     antic.dlptr=antic.dlist; antic.rowsLeft=0; antic.done=!(antic.dmactl&0x20);
-    antic.mode=0; antic.blankRows=0; antic.row=0;
+    antic.mode=0; antic.blankRows=0; antic.row=0; antic.vsPrev=false; antic.hsLine=false;
   }
   function dlFetch(){ const v=anticRead(antic.dlptr); antic.dlptr=(antic.dlptr&0xFC00)|((antic.dlptr+1)&0x3FF); return v; }
   function nextInstr(){
@@ -645,11 +653,19 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }
       if(ins&0x40){ const lo=dlFetch(), hi=dlFetch(); antic.lms=(hi<<8)|lo; }
       antic.mode=m; const md=MODE[m];
-      antic.rowsLeft=md.sl; antic.row=0; antic.dli=!!(ins&0x80);
+      antic.dli=!!(ins&0x80);
+      antic.hsLine=!!(ins&0x10);                       // jemny horizontalni posuv na teto radce
+      const vsBit=!!(ins&0x20);                        // vertikalni scroll region
+      let r0=0, rN=md.sl;
+      if(vsBit && !antic.vsPrev) r0=antic.vscrol % md.sl;          // prvni radka regionu: zacni od VSCROL
+      if(!vsBit && antic.vsPrev) rN=(antic.vscrol % md.sl)+1;      // radka za regionem: skonci na VSCROL
+      antic.vsPrev=vsBit;
+      antic.row=r0; antic.rowsLeft=rN-r0; if(antic.rowsLeft<1)antic.rowsLeft=1;
       return;
     }
   }
   const pfc=new Uint8Array(384), pml=new Uint8Array(384);
+  const hsBuf=new Uint32Array(512), hsCls=new Uint8Array(512);
   function renderScanline(){
     const y=M.line-8; if(y<0||y>=240) return;
     const fb=M.fb, off=y*384, bk=palette[gtia.colbk];
@@ -657,7 +673,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
     pfc.fill(0);
     if(antic.done||!(antic.dmactl&0x20)||antic.mode===0) { renderPMG(y); return; }
     const md=MODE[antic.mode]; if(!md){renderPMG(y);return;}
-    const nb=pfBytes(md.b);
+    const hsOn=!!antic.hsLine;
+    const wNow=antic.dmactl&3;
+    const nb=hsOn?pfBytesW(md.b,Math.min(3,wNow+1)):pfBytes(md.b);  // HS radka: fetch o sirku vys
+    const nbN=pfBytes(md.b);                                        // normalni (viditelne) okno
+    const TB=hsOn?hsBuf:fb, TO=hsOn?0:off, TC=hsOn?hsCls:pfc;
+    if(hsOn){ hsBuf.fill(bk); hsCls.fill(0); }
     const left=192-((nb*(md.t==='ch6'?16:(md.px? md.px*8/ (md.b===10?1: (md.b===20?2:4)) :8)))>>1); // computed below per type instead
     const row=antic.row;
     const ch=(antic.chbase&0xFC)<<8;
@@ -673,7 +694,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         let line=row; if(antic.mode===3){ if(line>=8)line-=8; }
         bits=anticRead(ch+((sc&0x7F)<<3)+(line&7));
         if(sc&0x80){ if(antic.chactl&1) bits=0; else if(antic.chactl&2) bits^=0xFF; }
-        for(let b=0;b<8;b++){ fb[off+xs+i*8+b]=(bits&(0x80>>b))?fg:bg; pfc[xs+i*8+b]=3; }
+        for(let b=0;b<8;b++){ TB[TO+xs+i*8+b]=(bits&(0x80>>b))?fg:bg; TC[xs+i*8+b]=3; }
       }
     } else if(md.t==='ch4'){
       xs=192-nb*4;
@@ -685,8 +706,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
           let v=(bits>>(6-p*2))&3;
           let cls=v===0?0:(v===3&&(sc&0x80)?4:v);
           let col=v===0?PF[0]:(v===3&&(sc&0x80)?PF[4]:PF[v]);
-          fb[off+xs+i*8+p*2]=col; fb[off+xs+i*8+p*2+1]=col;
-          pfc[xs+i*8+p*2]=cls; pfc[xs+i*8+p*2+1]=cls;
+          TB[TO+xs+i*8+p*2]=col; TB[TO+xs+i*8+p*2+1]=col;
+          TC[xs+i*8+p*2]=cls; TC[xs+i*8+p*2+1]=cls;
         }
       }
     } else if(md.t==='ch6'){
@@ -698,21 +719,21 @@ function Atari130XE(osRom, basicRom, CPUctor){
         const col=PF[1+((sc>>6)&3)];
         const cls=1+((sc>>6)&3);
         for(let b=0;b<8;b++){ const on=bits&(0x80>>b);
-          fb[off+xs+i*16+b*2]=on?col:PF[0]; fb[off+xs+i*16+b*2+1]=on?col:PF[0];
-          pfc[xs+i*16+b*2]=on?cls:0; pfc[xs+i*16+b*2+1]=on?cls:0; }
+          TB[TO+xs+i*16+b*2]=on?col:PF[0]; TB[TO+xs+i*16+b*2+1]=on?col:PF[0];
+          TC[xs+i*16+b*2]=on?cls:0; TC[xs+i*16+b*2+1]=on?cls:0; }
       }
     } else if(md.t==='m1bpp'){
       const pxw=320/(nb*8); xs=192-160;
       for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
         for(let b=0;b<8;b++){ const on=bits&(0x80>>b), col=on?PF[1]:PF[0];
           const x0=xs+((i*8+b)*pxw)|0;
-          for(let k=0;k<pxw;k++){ fb[off+x0+k]=col; pfc[x0+k]=on?1:0; } } }
+          for(let k=0;k<pxw;k++){ TB[TO+x0+k]=col; TC[x0+k]=on?1:0; } } }
     } else if(md.t==='m2bpp'){
       const pxw=320/(nb*4); xs=192-160;
       for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
         for(let p=0;p<4;p++){ const v=(bits>>(6-p*2))&3; const col=PF[v];
           const x0=xs+((i*4+p)*pxw)|0;
-          for(let k=0;k<pxw;k++){ fb[off+x0+k]=col; pfc[x0+k]=v; } } }
+          for(let k=0;k<pxw;k++){ TB[TO+x0+k]=col; TC[x0+k]=v; } } }
     } else if(md.t==='hires'){
       xs=192-nb*4;
       const gmode=gtia.prior&0xC0;
@@ -727,14 +748,22 @@ function Atari130XE(osRom, basicRom, CPUctor){
                             gtia.colpf[0],gtia.colpf[1],gtia.colpf[2],gtia.colpf[3]];
                    col=palette[t[nib]]; }                                          // GR.10
             const x0=xs+i*8+h*4;
-            fb[off+x0]=col; fb[off+x0+1]=col; fb[off+x0+2]=col; fb[off+x0+3]=col; }
+            TB[TO+x0]=col; TB[TO+x0+1]=col; TB[TO+x0+2]=col; TB[TO+x0+3]=col; }
         }
       } else {
         const fgL=gtia.colpf[1]&0x0F, bgC=gtia.colpf[2];
         const fg=palette[(bgC&0xF0)|fgL], bg=palette[bgC];
         for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
-          for(let b=0;b<8;b++){ fb[off+xs+i*8+b]=(bits&(0x80>>b))?fg:bg; pfc[xs+i*8+b]=3; }
+          for(let b=0;b<8;b++){ TB[TO+xs+i*8+b]=(bits&(0x80>>b))?fg:bg; TC[xs+i*8+b]=3; }
         }
+      }
+    }
+    if(hsOn){
+      const R=md.px||((md.t==='ch6')?16:8);
+      const xs0=192-((nbN*R)>>1), sh=antic.hscrol*2;
+      for(let x=xs0;x<xs0+nbN*R;x++){
+        const s=x-sh;
+        if(s>=0&&s<512){ fb[off+x]=hsBuf[s]; pfc[x]=hsCls[s]; }
       }
     }
     renderPMG(y);
@@ -818,7 +847,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // render
     if(M.line>=8 && M.line<248){
       renderScanline();
-      if(!antic.done && antic.rowsLeft>0 && antic.mode!==0){ antic.rowsLeft--; antic.row++; if(antic.rowsLeft>0){} else { antic.lms=(antic.lms+pfBytes(MODE[antic.mode].b))&0xFFFF; } }
+      if(!antic.done && antic.rowsLeft>0 && antic.mode!==0){ antic.rowsLeft--; antic.row++; if(antic.rowsLeft>0){} else { antic.lms=(antic.lms+(antic.hsLine?pfBytesW(MODE[antic.mode].b,Math.min(3,(antic.dmactl&3)+1)):pfBytes(MODE[antic.mode].b)))&0xFFFF; } }
       else if(antic.rowsLeft>0) antic.rowsLeft--;
     }
     M.line++;
@@ -844,6 +873,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     gtia.consol=7; if(opt&&opt.option) gtia.consol&=~4;
     M.line=0;M.frame=0;M.wsync=false;cpu.jam=false;cpu.irqLine=0;
     sio.rxq.length=0;sio.rxPos=0;sio.frame.length=0;sio.cmdLine=false;pokey.serin=0xFF;
+    if(sio.xex) sio.xex.cur=0;
 
     cpu.reset();
   };

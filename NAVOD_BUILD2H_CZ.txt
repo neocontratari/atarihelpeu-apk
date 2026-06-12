@@ -1,0 +1,49 @@
+EMU-10 BUILD2H - OPRAVENE HRY: ZAVADEC v3 + JEMNE SCROLLOVANI (CTETE PRVNI)
+============================================================================
+
+ZADNE RUCNI UPRAVY. ZADNE MAZANI. Postup:
+1. Rozbal tento ZIP.
+2. Slozku "app" nakopiruj PRES slozku "app" ve tvem projektu
+   (Windows: prepsat -> ANO VSEM).
+3. Commit + push. Po zelenem CI starou apku ODINSTALUJ a nainstaluj novou.
+
+(Balicek obsahuje i vse z BUILD2G - ikonu pecet, N&P-VISION, manifest -
+ kdyz uz mas BUILD2G nasazeny, prepise se jen emulator.)
+
+CO JE NOVE - TRI OPRAVENE CHYBY (nalezene na tvych hrach):
+
+1. ZAVADEC XEX v3 "stav drzi mechanika":
+   Moon Patrol ma INIT rutinu UPROSTRED nahravani, ktera prepisuje
+   zero page - stary zavadec si tam drzel pocitadlo recordu a hra mu
+   ho rozbila -> nahravalo se porad dokola a hra vstavala z pulky
+   prepsane pameti (proto divne chovani a nesmysly).
+   Novy zavadec si NIC nepamatuje v RAM - cislo recordu si drzi
+   primo (virtualni) mechanika a procesor se jen pta "dej mi dalsi".
+   INIT rutina hry si smi prepsat klidne celou zero page.
+
+2. COLDST priznak (tohle byla ta "rozbita grafika" Air Strike!):
+   Air Strike po titulce dela warmstart pres OS - to je u boot-disk
+   her normalni cesta. Jenze v emulatoru zustaval priznak "studeny
+   start nedokoncen", takze warmstart udelal CELY REBOOT - a hra se
+   nahravala znovu a znovu, na obrazovce zmatek. Zavadec ted po
+   nahrani uklidi OS priznaky jako po radnem bootu z diskety.
+
+3. JEMNE SCROLLOVANI (HSCROL/VSCROL) - uplne chybelo:
+   Moon Patrol posouva teren po jednotlivych barvovych hodinach
+   a hory jedou paralaxne pres DLI. Bez toho teren skakal po 8 px
+   a kolize sedely jinde, nez hrac videl = nesmyslna umrti.
+   Doplneno vcetne sirsiho nacitani radek a posunu pameti,
+   novy test test_scroll to hlida (posuv presne +2 px na krok).
+
+DUKAZY (headless, primo z tvych ZIPu z webu):
+- Air Strike: titulka "THE ENGLISH SOFTWARE COMPANY PRESENTS" cista,
+  bezi 800+ frames bez rebootu, barvy animuji.
+- Moon Patrol: menu Williams 1982, gameplay s vozitkem na terenu,
+  HUD, parallax (DLI meni HSCROL na scanline 137 a 169 - zmereno).
+- Kompletni sada 11 testu PASS (vcetne TBXL, River Raid, kolize,
+  GTIA, ZIP, psani, scroll).
+
+INTERNATIONAL KARATE: tvuj ZIP ke mne nedorazil (prisel jen log).
+Posli ho prosim znovu - prejmenovat na neco.zip.txt a priloz.
+Je dost mozne, ze oprava c. 2 pomuze i jemu - ale chci to dokazat,
+ne slibovat.
