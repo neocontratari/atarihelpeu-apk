@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2N — Atari 130XE CLEAN CORE</title>
+<title>AtariHelp.eu EMU-10 BUILD2P — Atari 130XE CLEAN CORE</title>
 <style>
 :root{ --case:#23252b; --panel:#2c2f37; --key:#c9c5bb; --keytxt:#23252b;
        --mod:#8f8a7e; --accent:#d8412f; --led:#ff5238; --txt:#d6d3cb; --dim:#8a877f; }
@@ -57,7 +57,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
 </head>
 <body>
 <header>
-  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2N</h1>
+  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2P</h1>
   <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; PRAVA XL OS + ATARI BASIC</div>
   <div id="led"></div>
 </header>
@@ -445,6 +445,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
       sioQueue(6,[0x41]);              // ACK
       sioQueue(10,[0x43]);             // COMPLETE
       sioQueue(20,st.concat([sioChk(st)]),2); // mezera pred blokem; pak 2 radky/bajt
+    } else if(cmd===0x52 && sio.xex && sec===1){ // novy boot (hra/RESET restartovala) -> pretoc na zacatek
+      sio.xex.cur=0; sio.xex.pserved=false;
+      const off=(sec-1)*sio.secSize, d=[];
+      for(let k=0;k<sio.secSize;k++) d.push(sio.disk[off+k]||0);
+      sioQueue(6,[0x41]); sioQueue(10,[0x43]); sioQueue(20,d.concat([sioChk(d)]),2);
     } else if(cmd===0x52 && sio.xex && (a2===0x71||a2===0x72||a2===0x73)){ // XEX loader v3: index drzi MECHANIKA
       const X=sio.xex;
       if(X.cur>=X.recs.length) X.cur=X.recs.length-1;
@@ -1434,7 +1439,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(info&&info.error){ log('NAHRAJ XEX: '+name+' - CHYBA: '+info.error); running=true; return; }
     M.coldStart({option:true});
     consolState.option=true; M.consol(false,false,true);
-    setTimeout(function(){ consolState.option=false; if(M)M.consol(false,false,false); },5000);
+    setTimeout(function(){ consolState.option=false; if(M)M.consol(false,false,false); },1500); // jen na dobu coldstartu - drzene OPTION mate hry, ktere ho ctou na titulce
     running=true; document.getElementById('led').classList.add('on');
     log('NAHRAJ XEX: '+name+' ('+info.bytes+' B, '+info.records+' zaznamu, zavadec v2 primo na cilove adresy)');
     log('Boot pres prave SIO: OS -> boot sektory -> stage2 $0100 -> SIOV zaznamy. OPTION drzene (BASIC OFF).');
