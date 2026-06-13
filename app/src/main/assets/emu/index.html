@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2Q — Atari 130XE CLEAN CORE</title>
+<title>AtariHelp.eu EMU-10 BUILD2R — Atari 130XE CLEAN CORE</title>
 <style>
 :root{ --case:#23252b; --panel:#2c2f37; --key:#c9c5bb; --keytxt:#23252b;
        --mod:#8f8a7e; --accent:#d8412f; --led:#ff5238; --txt:#d6d3cb; --dim:#8a877f; }
@@ -57,8 +57,8 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
 </head>
 <body>
 <header>
-  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2Q</h1>
-  <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; PRAVA XL OS + ATARI BASIC</div>
+  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2R</h1>
+  <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; oprava PM grafiky (sprajty/missily)</div>
   <div id="led"></div>
 </header>
 <div class="crt">
@@ -919,11 +919,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const dbl=!(antic.dmactl&0x10);
     const pmDma=(antic.dmactl&0x08)&&(gtia.gractl&2), mDma=((antic.dmactl&0x0C))&&(gtia.gractl&1); // player DMA fetchuje i missily (HW kvirk)
     for(let p=0;p<4;p++){
-      let g;
-      if(pmDma){ const base=(antic.pmbase&(dbl?0xFC:0xF8))<<8;
-        g=anticRead(base+(dbl?512:1024)+p*(dbl?128:256)+(dbl?(line>>1):line)&0xFFFF? base+(dbl?512:1024)+p*(dbl?128:256)+(dbl?(line>>1):line):0);
-        g=anticRead(base+(dbl?512:1024)+p*(dbl?128:256)+(dbl?(line>>1):line));
-      } else g=gtia.grafp[p];
+      let g=gtia.grafp[p];   // GRAFP drzi DMA-nactenou nebo zmrazenou hodnotu (plni pmDmaFetch)
       if(!g) continue;
       const col=palette[gtia.colpm[p]];
       const w=[1,2,1,4][gtia.sizep[p]&3];
@@ -936,10 +932,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           if(pmShow(p,c)) fb[off+x]=col; } } } }
     }
     // missiles
-    let gm;
-    if(mDma){ const base=(antic.pmbase&(dbl?0xFC:0xF8))<<8;
-      gm=anticRead(base+(dbl?384:768)+(dbl?(line>>1):line)); }
-    else gm=gtia.grafm;
+    let gm=gtia.grafm;   // GRAFM drzi DMA-nactenou nebo zmrazenou hodnotu
     if(gm){ for(let p=0;p<4;p++){ const bits=(gm>>(p*2))&3; if(!bits)continue;
       const col=palette[(gtia.prior&0x10)?gtia.colpf[3]:gtia.colpm[p]]; // bit4: missily = PF3 (5. hrac)
       const w=[1,2,1,4][(gtia.sizem>>(p*2))&3];
@@ -971,6 +964,17 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   // ---------------- Scanline / frame ------
   M.wsync=false; M.wsCarry=false;
+  // PM/M DMA: ANTIC nacte grafiku hracu/missilu z pameti do registru GRAFP/GRAFM
+  // kazdou zobrazenou radku. Kdyz DMA neni aktivni, registr DRZI posledni hodnotu
+  // (verne HW - tak se hraci "zmrazi"). Driv emulator pri vyplem DMA kreslil davnou
+  // softwarovou hodnotu, coz delalo zbytky grafiky (napr. bloky v nebi v Pitstopu).
+  function pmDmaFetch(){
+    if(M.line<8 || M.line>=248) return;
+    const dbl=!(antic.dmactl&0x10), base=(antic.pmbase&(dbl?0xFC:0xF8))<<8, li=dbl?(M.line>>1):M.line;
+    if((antic.dmactl&0x08)&&(gtia.gractl&2)){ const o=base+(dbl?512:1024)+li, st=dbl?128:256;
+      gtia.grafp[0]=anticRead(o); gtia.grafp[1]=anticRead(o+st); gtia.grafp[2]=anticRead(o+st*2); gtia.grafp[3]=anticRead(o+st*3); }
+    if((antic.dmactl&0x0C)&&(gtia.gractl&1)) gtia.grafm=anticRead(base+(dbl?384:768)+li);
+  }
   function runScanline(){
     // DL bookkeeping at line start (display area 8..247)
     if(M.line===8) startFrame();
@@ -984,6 +988,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       antic.nmist=(antic.nmist|0x40)&~0x80;
       if(antic.nmien&0x40) cpu.nmiPending=true;
     }
+    pmDmaFetch();   // PM/M DMA do registru GRAFP/GRAFM (nebo zmrazeni pri vyplem DMA)
     timersTick(114);                                               // POKEY casovace 1/2/4
     // serial out udalosti
     if(pokey.outBusy>0 && --pokey.outBusy===0) pokeyRaise(0x10);   // vystupni registr prazdny
