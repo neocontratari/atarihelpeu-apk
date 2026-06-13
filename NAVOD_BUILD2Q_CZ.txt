@@ -1,0 +1,42 @@
+EMU-10 BUILD2Q - OPRAVA PRUHU V OBRAZE (KRITICKA) (CTETE PRVNI)
+================================================================
+
+ZADNE RUCNI UPRAVY. Postup:
+1. Rozbal ZIP, "app" pres tvou "app" (prepsat -> ANO VSEM).
+2. Commit + push, starou apku ODINSTALUJ, nainstaluj novou.
+3. V hlavicce musi byt "BUILD2Q".
+
+CO SE STALO - NA ROVINU:
+Mel jsi naprostou pravdu. Pruhy v obraze "skoro v kazde hre" od
+opravy Alley Cat - byla to jedna konkretni chyba v MEM kodu.
+
+Kdyz jsem delal horizontalni deleni fontu pro Karate (hra meni
+font 3x behem radky), spletl jsem ZAVORKU: kod, ktery sleduje
+zmeny fontu, se omylem provadel pri KAZDEM zapisu do grafickeho
+cipu - misto jen pri zmene fontu. Navic to PRERUSILO retez
+podminek, takze i dalsi registry (vcetne WSYNC casovani!) se
+chovaly spatne. Vysledek: font se "rozjizdel" po strane =
+presne ty pruhy, co jsi videl.
+
+OPRAVA:
+- zavorka spravne: font se sleduje JEN pri skutecnem zapisu fontu
+- horizontalni deleni se zapne JEN kdyz hra opravdu zmeni font
+  BEHEM radky na JINOU hodnotu (Karate). Jinak se kresli normalne
+  jako predtim - zadne pruhy.
+- tim se spravil i retez podminek -> spravne WSYNC casovani zpet.
+
+OVERENO PRES ZABALENE HTML (to, co jde k tobe):
+- Moon Patrol titulka: 0 chybnych pixelu (q_mp.png)
+- Shaft Raider: cisty vc. praveho okraje (q_sr.png)
+- Death Race, Alley Cat: ciste (q_dr.png, q_ac.png)
+- Karate: boky PORAD spravne - deleni funguje kde ma (q_ik.png)
+
+NOVY TRVALY TEST test_stripes: meri "blikajici/rozsypane" pixely
+ve staticke titulce 5 her. Moon Patrol a Shaft Raider = 0.
+Tahle trida chyb se uz nevrati - testuje se primo na obraze.
+
+13/13 TESTU PASS (11 puvodnich + test_pkg + test_stripes).
+
+POZNAMKA: Bugi Bugi 3 a nektere hry se ovladaji ve hre joystickem
+(smer, ne fire) - to je vec ovladani, ne grafiky. Na realnem
+ovladani v apce to pujde. Pruhy jsou pryc - to bylo hlavni.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2P — Atari 130XE CLEAN CORE</title>
+<title>AtariHelp.eu EMU-10 BUILD2Q — Atari 130XE CLEAN CORE</title>
 <style>
 :root{ --case:#23252b; --panel:#2c2f37; --key:#c9c5bb; --keytxt:#23252b;
        --mod:#8f8a7e; --accent:#d8412f; --led:#ff5238; --txt:#d6d3cb; --dim:#8a877f; }
@@ -57,7 +57,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
 </head>
 <body>
 <header>
-  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2P</h1>
+  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2Q</h1>
   <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; PRAVA XL OS + ATARI BASIC</div>
   <div id="led"></div>
 </header>
@@ -681,7 +681,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(p===0x04) antic.hscrol=v&15;
       else if(p===0x05) antic.vscrol=v&15;
       else if(p===0x07) antic.pmbase=v;
-      else if(p===0x09) antic.chbase=v; if(chSeg.n<6){ chSeg.c[chSeg.n]=cpu.cycles-M.lineCyc0; chSeg.v[chSeg.n]=v; chSeg.n++; } if(M.chLog)M.chLog.push([M.line,v,cpu.pc]);
+      else if(p===0x09){ antic.chbase=v;
+        if(chSeg.n<6){ chSeg.c[chSeg.n]=cpu.cycles-M.lineCyc0; chSeg.v[chSeg.n]=v; chSeg.n++; }
+        if(M.chLog)M.chLog.push([M.line,v,cpu.pc]); }
       else if(p===0x0A){ M.wsync=true; }       // WSYNC: stall CPU to line end
       else if(p===0x0E){ antic.nmien=v; }
       else if(p===0x0F){ antic.nmist=0x1F; }   // NMIRES
@@ -800,11 +802,18 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const left=192-((nb*(md.t==='ch6'?16:(md.px? md.px*8/ (md.b===10?1: (md.b===20?2:4)) :8)))>>1); // computed below per type instead
     const row=antic.row;
     const ch=(antic.chbase&0xFC)<<8;
-    const chMulti=(chSeg.n>0 && (md.t==='ch2'||md.t==='ch4'||md.t==='ch6'));
+    // horizontalni split JEN kdyz hra behem radky prepne font na JINOU hodnotu
+    // (zavod s paprskem - Karate). Jinak (jediny zapis na zacatku, nebo zadny)
+    // se chova jako bezny font - zadne pruhy.
+    let chMulti=false;
+    if((md.t==='ch2'||md.t==='ch4'||md.t==='ch6') && chSeg.n>=2){
+      const f0=chSeg.v[0]&0xFC;
+      for(let k=1;k<chSeg.n;k++){ if((chSeg.v[k]&0xFC)!==f0){ chMulti=true; break; } }
+    }
     const chStep=76/nb;
     function chAt(i){
       if(!chMulti) return ch;
-      const fc=46+i*chStep; let val=chSeg.base;
+      const fc=46+i*chStep; let val=chSeg.v[0];
       for(let k=0;k<chSeg.n;k++){ if(chSeg.c[k]<=fc) val=chSeg.v[k]; }
       return (val&0xFC)<<8;
     }
