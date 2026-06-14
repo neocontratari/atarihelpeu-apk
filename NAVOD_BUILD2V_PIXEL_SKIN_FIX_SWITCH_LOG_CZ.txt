@@ -1,0 +1,45 @@
+AtariHelp.eu EMU-10 BUILD2V_PIXEL_SKIN_FIX_SWITCH_LOG
+=====================================================
+
+Co je to:
+- Oprava BUILD2U pixeloveho skinu podle testu v Noxu.
+- Neni to APK, je to ZIP overlay do projektu.
+- Prekopiruj slozku app pres aktualni projekt a potvrdit prepsani.
+
+Opravy proti BUILD2U:
+1) Uvodni cerno-zlaty skin:
+   - tocici se civky/kotouce kazety jsou posunute zpet na stred realnych civek v navrhu.
+
+2) Emulatorova obrazovka:
+   - odstraneno spatne opakovane POWER BASIC v kazdem requestAnimationFrame.
+   - To byla hlavni chyba: emulator se znovu a znovu restartoval a proto se rozbijelo prepinani i start.
+   - POWER BASIC se vola jen jednou po startu stranky.
+
+3) Prepinac KLAVESNICE / JOYSTICK:
+   - doplneny bezpecny tap handler pro Android WebView.
+   - prepnuti loguje: PREPINAC: JOYSTICK / PREPINAC: KLAVESNICE.
+
+4) CRT canvas:
+   - zarovnany na modrou obrazovku v presnem PNG skinu.
+   - canvas se uz necpe do celociselneho 384px stredu, ale vyplni CRT otvor.
+
+5) Viditelna servisni tlacitka dole:
+   - XEX / ZIP
+   - TBXL
+   - VLOZIT TEXT
+   - LOG / CHYBA
+   Tohle je pridane schvalne, aby bylo na mobilu videt, kam tuknout a kde hledat chybu.
+
+KODY JSOU STEJNE.
+BASIC/Altirra testovaci kody se nemenily.
+Emulatorove jadro zustava z BUILD2R/BUILD2U, opravoval se hlavne UI skin a vazby.
+
+Test v Noxu:
+1) Spust aplikaci.
+2) Na uvodni obrazovce zkontroluj, ze civky v kazete se toci na stredu civek.
+3) Tukni na GAMES/TAPE nebo stred kazety, otevri emulator.
+4) Pockej na POWER BASIC / READY.
+5) Tukni na prepinac KLAVESNICE-JOYSTICK. Skin se musi prepnout.
+6) Tukni znovu. Skin se musi vratit na klavesnici.
+7) Dole otestuj LOG / CHYBA a VLOZIT TEXT.
+8) Kdyz neco selze, otevri LOG / CHYBA a posli screenshot nebo stazeny log.

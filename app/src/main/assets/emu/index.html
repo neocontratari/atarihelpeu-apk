@@ -12,8 +12,8 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050608;overflow:hidden;box-shadow:0 0 45px rgba(0,0,0,.95);}
 .skin{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;z-index:0;}
 /* real Atari screen over the CRT opening */
-.screenSlot{position:absolute;left:11.0%;top:7.4%;width:78.0%;height:22.1%;border-radius:4.5%/9%;overflow:hidden;z-index:5;background:#0047db;box-shadow:inset 0 0 34px rgba(0,0,0,.35);}
-canvas#scr{position:absolute;left:0;top:0;width:100%;height:100%;display:block;image-rendering:pixelated;background:#0047db;filter:contrast(1.05) saturate(1.10);}
+.screenSlot{position:absolute;left:10.8%;top:6.7%;width:77.8%;height:22.9%;border-radius:4.7%/9.5%;overflow:hidden;z-index:5;background:#0047db;box-shadow:inset 0 0 34px rgba(0,0,0,.35);}
+canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !important;margin:0 !important;display:block;image-rendering:pixelated;background:#0047db;filter:contrast(1.05) saturate(1.10);}
 .scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.045) 0 1px,rgba(0,0,0,.05) 1px 4px);mix-blend-mode:overlay;animation:scanflick .16s steps(2) infinite;}
 .screenSlot:after{content:"";position:absolute;left:-45%;top:0;width:35%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent);animation:sweep 5.6s linear infinite;pointer-events:none;mix-blend-mode:screen;}
 @keyframes scanflick{50%{opacity:.62}}@keyframes sweep{to{left:115%}}
@@ -44,6 +44,14 @@ canvas#scr{position:absolute;left:0;top:0;width:100%;height:100%;display:block;i
 /* full screen overlays for text/log remain visible when opened */
 .overlay{display:none;position:fixed;inset:0;background:rgba(8,9,10,.96);z-index:1000;padding:16px;flex-direction:column;gap:10px;color:#e8e2d0;font-family:"Courier New",monospace;}
 .overlay .row{display:flex;gap:8px}.overlay button{flex:1;padding:11px;border:0;border-radius:6px;background:#d9b25c;color:#111;font:bold 12px "Courier New",monospace}.overlay button.dark{background:#454850;color:#eee}.overlay button.danger{background:#c94331;color:#fff}.overlay textarea{flex:1;background:#08090a;color:#9fe29f;border:1px solid #333;border-radius:6px;padding:9px;font:12px "Courier New",monospace;resize:none;}
+
+/* BUILD2V: visible service buttons requested by René - not hidden hitboxes */
+#actionDock{position:absolute;left:4.2%;right:4.2%;top:94.2%;height:4.9%;z-index:60;display:grid;grid-template-columns:repeat(4,1fr);gap:1.1%;pointer-events:auto;}
+#actionDock button{border:1px solid rgba(242,196,100,.78);border-radius:8px;background:linear-gradient(180deg,rgba(55,50,37,.94),rgba(14,15,17,.96));color:#f2c464;text-shadow:0 0 5px rgba(242,196,100,.45);box-shadow:inset 0 0 13px rgba(242,196,100,.12),0 0 12px rgba(0,0,0,.65);font:bold clamp(8px,2.2vw,13px) "Courier New",monospace;letter-spacing:.04em;}
+#actionDock button:active{background:linear-gradient(180deg,rgba(242,196,100,.30),rgba(30,25,15,.96));transform:translateY(1px);}
+#miniLog{position:absolute;left:4.2%;right:4.2%;top:99.18%;height:.7%;z-index:61;color:#ffd976;font:700 clamp(6px,1.6vw,9px) "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 5px #000;opacity:.95;}
+@media(max-width:420px){#actionDock{top:93.9%;height:5.25%;gap:.8%;}#actionDock button{font-size:8px;}}
+
 @media (prefers-reduced-motion:reduce){.scan,.screenSlot:after,#led{animation:none}}
 </style>
 </head>
@@ -72,6 +80,13 @@ canvas#scr{position:absolute;left:0;top:0;width:100%;height:100%;display:block;i
   <div id="osk"></div>
   <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyFire">FIRE</button></div>
   <div class="logwrap"><div class="bar"><span>LOG</span></div><div id="log"></div></div>
+  <div id="actionDock" aria-label="Viditelne servisni ovladani">
+    <button id="dockXex" type="button">XEX / ZIP</button>
+    <button id="dockTbxl" type="button">TBXL</button>
+    <button id="dockTxt" type="button">VLOZIT TEXT</button>
+    <button id="dockLog" type="button">LOG / CHYBA</button>
+  </div>
+  <div id="miniLog">EMU10 BUILD2V: cekam na start...</div>
 </main>
 <div id="txtOverlay" class="overlay">
   <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
@@ -1146,7 +1161,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
 (function(){
   var logEl, M, canvas, ctx, img, running=false, audio=null;
   var LOGBUF=[];
-  function log(s){ LOGBUF.push(s); if(logEl){ logEl.textContent=LOGBUF.slice(-200).join('\n'); logEl.scrollTop=logEl.scrollHeight; } }
+  function log(s){ LOGBUF.push(s); if(logEl){ logEl.textContent=LOGBUF.slice(-200).join('\n'); logEl.scrollTop=logEl.scrollHeight; } var ml=document.getElementById('miniLog'); if(ml) ml.textContent=String(s).slice(0,180); }
   window.emuLog=log;
 
   // ---------- POKEY audio (4 kanaly + poly 4/5/9/17 + GTIA speaker klik) ----------
@@ -1307,13 +1322,15 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function joyApply(){ if(M) M.setJoy(joyMask,joyFire); }
   function joySet(mask){ if(mask!==joyMask){ joyMask=mask; joyApply(); } }
   function setJoyMode(on){
-    joyMode=on;
-    var skin=document.getElementById('skinImg'); if(skin) skin.src=on?'../design/emu_joystick_np_vision.png':'../design/emu_klavesnice_np_vision.png';
-    document.getElementById('osk').style.display=on?'none':'';
-    document.getElementById('joy').style.display=on?'flex':'none';
+    joyMode=!!on;
+    var skin=document.getElementById('skinImg'); if(skin) skin.src=joyMode?'../design/emu_joystick_np_vision.png':'../design/emu_klavesnice_np_vision.png';
+    var osk=document.getElementById('osk'), joy=document.getElementById('joy');
+    if(osk) osk.style.display=joyMode?'none':'';
+    if(joy) joy.style.display=joyMode?'block':'none';
     var b=document.getElementById('btnJoy');
-    if(b) b.setAttribute('data-mode', on?'joy':'keyboard');
+    if(b) b.setAttribute('data-mode', joyMode?'joy':'keyboard');
     joySet(0); joyFire=false; joyApply();
+    log('PREPINAC: '+(joyMode?'JOYSTICK':'KLAVESNICE'));
   }
   function bindJoy(){
     var pad=document.getElementById('joyPad'), knob=document.getElementById('joyKnob');
@@ -1377,13 +1394,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
 
   // ---------- celociselne skalovani (zadne carecky) ----------
-  function fitScreen(){
-    if(!canvas) return;
-    var bez=canvas.parentElement, avail=bez.clientWidth-0;
-    if(avail<=0) return;
-    if(avail>=384){ var s=Math.floor(avail/384); canvas.style.width=(384*s)+'px'; canvas.style.margin='0 auto'; }
-    else { canvas.style.width='100%'; canvas.style.margin='0'; }
-  }
+  function fitScreen(){ if(!canvas) return; canvas.style.width='100%'; canvas.style.height='100%'; canvas.style.margin='0'; }
 
   // ---------- konzole / power ----------
   var consolState={start:false,select:false,option:false};
@@ -1491,7 +1502,6 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   var last=0, acc=0;
   function tick(ts){
     requestAnimationFrame(tick);
-    setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120);
     if(!running||!M) return;
     if(!last) last=ts;
     acc+=Math.min(ts-last,100); last=ts;
@@ -1515,8 +1525,13 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     document.getElementById('btnXex').addEventListener('click',function(){ pickFile('.xex,.exe,.com,.zip',function(n,u8){ bootAny(n,u8); }); });
     document.getElementById('btnAtr').addEventListener('click',function(){ pickFile('.atr,.zip',function(n,u8){ if(u8[0]===0x50&&u8[1]===0x4B){bootAny(n,u8);} else bootAtr(n,u8,document.getElementById('chkOpt').checked); }); });
     document.getElementById('btnTbxl').addEventListener('click',function(){ bootXex('TBXL 1.5 (vestavene)', b64u8(EMU10_TBXL_B64), true); });
-    document.getElementById('btnJoy').addEventListener('click',function(){ setJoyMode(!joyMode); });
+    function safeTap(id,fn){ var el=document.getElementById(id); if(!el) return; var moved=false,last=0; el.addEventListener('pointerdown',function(e){ moved=false; },{passive:true}); el.addEventListener('pointermove',function(e){ moved=true; },{passive:true}); el.addEventListener('pointerup',function(e){ if(!moved){ e.preventDefault(); last=Date.now(); fn(e); } }); el.addEventListener('click',function(e){ e.preventDefault(); if(Date.now()-last<450) return; last=Date.now(); fn(e); }); }
+    safeTap('btnJoy',function(){ setJoyMode(!joyMode); });
     document.getElementById('btnTxt').addEventListener('click',function(){ document.getElementById('txtOverlay').style.display='flex'; });
+    safeTap('dockXex',function(){ document.getElementById('btnXex').click(); });
+    safeTap('dockTbxl',function(){ document.getElementById('btnTbxl').click(); });
+    safeTap('dockTxt',function(){ document.getElementById('txtOverlay').style.display='flex'; });
+    safeTap('dockLog',function(){ document.getElementById('btnSaveLog').click(); });
     function txtToAtari(text){
       if(!text) return;
       var pre=document.getElementById('chkNew').checked ? 'NEW\x01' : '';
@@ -1564,7 +1579,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD1-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2V-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -1577,7 +1592,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bh.addEventListener('pointerup',bhUp); bh.addEventListener('pointerleave',bhUp);
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
-    log('AtariHelp.eu EMU-10 BUILD2U PIXEL SKIN CODE pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2V PIXEL SKIN FIX SWITCH LOG pripraven.');
     log('Jadro proslo headless testy: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK');
     requestAnimationFrame(tick);
     setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120);
