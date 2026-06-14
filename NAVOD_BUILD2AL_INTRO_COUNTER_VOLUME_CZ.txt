@@ -1,0 +1,13 @@
+AtariHelp.eu EMU-10 BUILD2AL — INTRO COUNTER + VOLUME FIX
+
+Co je opraveno:
+- uvodni kazetak MP3 prehravace ma srovnany COUNTER 000 do okna COUNTER
+- na uvodni obrazovce funguje knoflik VOLUME pro MP3 prehravac
+- hlasitost se meni otacenim / tazenim po knofliku, koleckem mysi a kliknutim
+- PLAY / PAUSE / STOP / REW / F.FWD pro uvodni MP3 prehravac zustavaji zachovane
+- SETTINGS vede na https://atarihelp.eu/
+- SYSTEM vede na https://atarihelp.eu/?page_id=786
+- EMULATOR tile je zachovan v PNG skinu
+
+KODY JSOU STEJNE.
+Jadro emulatoru, ROM logika a BASIC/Altirra testovaci kody jsem nemenil.
