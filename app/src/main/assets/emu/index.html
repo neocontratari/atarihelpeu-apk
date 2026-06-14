@@ -3,115 +3,198 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2R — Atari 130XE CLEAN CORE</title>
+<title>AtariHelp.eu EMU-10 BUILD2S — N&P VISION SAFE UI SKIN</title>
 <style>
-:root{ --case:#23252b; --panel:#2c2f37; --key:#c9c5bb; --keytxt:#23252b;
-       --mod:#8f8a7e; --accent:#d8412f; --led:#ff5238; --txt:#d6d3cb; --dim:#8a877f; }
-*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
-body{ background:#141519; color:var(--txt); font-family:'Courier New',monospace; padding:10px; }
-header{ display:flex; align-items:baseline; gap:12px; margin-bottom:10px; }
-header h1{ font-size:15px; letter-spacing:3px; font-weight:bold; }
-header h1 b{ color:var(--accent); }
-header .sub{ font-size:11px; color:var(--dim); letter-spacing:1px; }
-#led{ width:9px; height:9px; border-radius:50%; background:#552019; align-self:center; }
-#led.on{ background:var(--led); box-shadow:0 0 8px var(--led); }
-.crt{ background:var(--case); border-radius:14px; padding:14px; max-width:820px; margin:0 auto;
-      box-shadow:inset 0 2px 0 #3a3d46, 0 10px 30px rgba(0,0,0,.5); }
-.bezel{ background:#0a0a0c; border-radius:8px; padding:10px; box-shadow:inset 0 0 24px #000; position:relative; }
-canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
-.scan{ display:none; } /* falesne scanlinky delaly carecky pres skalovani - pryc */
-.strip{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
-.strip button{ flex:1; min-width:84px; background:var(--key); color:var(--keytxt); border:0; border-radius:4px;
-  padding:10px 6px; font:bold 12px 'Courier New',monospace; letter-spacing:1px; cursor:pointer;
-  border-bottom:3px solid #8f8a7e; }
-.strip button:active,.strip button.on{ border-bottom-width:1px; transform:translateY(2px); background:#dedacf; }
-.strip button.danger{ background:var(--accent); color:#fff; border-bottom-color:#8d2418; }
-.strip button.dark{ background:#4a4d57; color:#e7e4dc; border-bottom-color:#33353d; }
-#osk{ margin-top:12px; }
-.krow{ display:flex; gap:4px; margin-bottom:4px; }
-.key{ flex:1; background:var(--key); color:var(--keytxt); border:0; border-radius:3px; padding:9px 0;
-  font:bold 11px 'Courier New',monospace; cursor:pointer; border-bottom:2px solid #8f8a7e; }
-.key:active{ transform:translateY(1px); border-bottom-width:1px; background:#dedacf; }
-.key.mod{ background:var(--mod); color:#1d1e22; }
-.key.mod.on{ background:var(--accent); color:#fff; }
-.key.space{ flex:6; }
-.logwrap{ max-width:820px; margin:10px auto 0; }
-.logwrap .bar{ display:flex; justify-content:space-between; align-items:center; }
-.logwrap .bar span{ font-size:11px; letter-spacing:2px; color:var(--dim); }
-#btnSaveLog{ background:none; border:1px solid var(--dim); color:var(--txt); padding:4px 10px;
-  font:11px 'Courier New',monospace; cursor:pointer; border-radius:3px; }
-#log{ background:#0c0d10; border:1px solid #2c2f37; border-radius:4px; margin-top:6px; padding:8px;
-  height:130px; overflow-y:auto; font-size:11px; line-height:1.5; white-space:pre-wrap; color:#9fd49f; }
-#joy{ display:none; justify-content:space-between; align-items:center; padding:18px 8px; gap:16px;
-      touch-action:none; user-select:none; }
-#joyPad{ width:170px; height:170px; border-radius:50%; background:radial-gradient(circle at 38% 32%, #3c3f49, #23252c);
-      box-shadow:inset 0 4px 14px rgba(0,0,0,.6), 0 2px 0 #3a3d46; position:relative; touch-action:none; }
-#joyKnob{ position:absolute; left:50%; top:50%; width:74px; height:74px; margin:-37px 0 0 -37px; border-radius:50%;
-      background:radial-gradient(circle at 35% 30%, #6a6e7a, #3a3d46); box-shadow:0 5px 10px rgba(0,0,0,.55);
-      pointer-events:none; }
-#joyFire{ width:108px; height:108px; border-radius:50%; border:0; background:radial-gradient(circle at 35% 30%, #e4604e, #a32a1c);
-      color:#fff; font:bold 15px 'Courier New',monospace; box-shadow:0 6px 0 #71190f, 0 8px 16px rgba(0,0,0,.5);
-      touch-action:none; }
-#joyFire.on{ transform:translateY(5px); box-shadow:0 1px 0 #71190f; }
+:root{
+  --bg:#060708; --shell:#0f1012; --shell2:#1a1b1e; --panel:#24262a; --panel2:#303238;
+  --cream:#cfc9bb; --cream2:#eee8d8; --cream3:#aaa395; --key:#cbc6b9; --key2:#b8b2a5;
+  --txt:#e8e1cd; --muted:#8f8a7f; --gold:#e2b85e; --gold2:#a36d22; --blue:#0755dd;
+  --accent:#d84331; --green:#61ff3e; --red:#e03527; --black:#050607;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:radial-gradient(1000px 900px at 50% -180px,#202329 0%,#0c0d10 55%,#030405 100%);color:var(--txt);font-family:'Courier New',monospace;}
+body{padding:8px;}
+.appShell{width:min(100%,950px);margin:0 auto 18px;border-radius:34px;padding:14px;background:linear-gradient(145deg,#15171b,#050607 55%,#17191c);box-shadow:0 22px 70px rgba(0,0,0,.85),inset 0 0 0 2px #2d3035,inset 0 0 0 7px #090a0b;}
+.device{border-radius:24px;overflow:hidden;background:linear-gradient(#111214,#050607);border:1px solid #34373b;box-shadow:inset 0 0 32px rgba(0,0,0,.8);}
+.topBadge{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;padding:12px 18px;background:linear-gradient(#17191d,#0d0e10);border-bottom:2px solid #050506;}
+.vent{height:86px;border-radius:14px;background:repeating-linear-gradient(0deg,#050506 0 5px,#202226 6px 10px);border:1px solid #303238;box-shadow:inset 0 0 22px #000;position:relative;padding:16px;color:var(--gold);letter-spacing:1px;font-size:12px;line-height:1.55;}
+.vent small{display:block;color:#b7a878;font-size:10px;letter-spacing:1px;margin-top:2px;}
+.coin{width:138px;height:138px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 38% 30%,#ffe8a3 0%,#d8aa51 38%,#704312 70%,#1b1208 100%);color:#1c1307;border:6px solid #1f1409;box-shadow:0 0 0 3px #9b6b2c,0 8px 20px rgba(0,0,0,.55),inset 0 0 20px rgba(255,255,255,.35);font:bold 42px Arial,sans-serif;letter-spacing:-2px;text-shadow:0 1px 0 rgba(255,255,255,.35);}
+.coin span{font:bold 18px 'Courier New',monospace;letter-spacing:0;color:#1c1307;margin-top:3px;}
+.crtBox{background:#111215;padding:18px 18px 14px;border-bottom:2px solid #050506;}
+.bezel{background:linear-gradient(145deg,#030304,#141518 52%,#050506);border-radius:24px;padding:26px;box-shadow:inset 0 0 0 2px #3a3d42,inset 0 0 46px #000,0 2px 0 #4c4f52;position:relative;overflow:hidden;}
+.bezel:before{content:'';position:absolute;inset:8px;border-radius:20px;background:radial-gradient(ellipse at 50% 35%,rgba(255,255,255,.13),transparent 45%);pointer-events:none;z-index:2;mix-blend-mode:screen;}
+canvas{display:block;width:100%;image-rendering:pixelated;background:#001b9b;border-radius:14px;box-shadow:inset 0 0 34px rgba(0,0,0,.65),0 0 0 2px #08090a;position:relative;z-index:1;}
+.scan{position:absolute;inset:26px;border-radius:14px;pointer-events:none;z-index:3;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 2px,rgba(255,255,255,.025) 3px 4px);mix-blend-mode:multiply;}
+.statusRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 28px;background:#121315;border-top:1px solid #303237;border-bottom:1px solid #060707;}
+button{font-family:'Courier New',monospace;touch-action:manipulation;}
+.ctrlBtn{background:linear-gradient(#2c2e32,#17181b);color:#dfdacd;border:1px solid #3e4146;border-radius:9px;padding:12px 14px;font:bold 12px 'Courier New',monospace;letter-spacing:.4px;box-shadow:0 5px 0 #060707,inset 0 1px 0 rgba(255,255,255,.09);min-height:54px;}
+.ctrlBtn:active,.ctrlBtn.on{transform:translateY(3px);box-shadow:0 2px 0 #060707;background:linear-gradient(#d5cec0,#aaa395);color:#151515;}
+.ctrlBtn.danger{background:linear-gradient(#e15a4b,#9f2116);color:white;border-color:#792018;}
+.power{min-width:150px;text-align:left;position:relative;padding-right:28px;}
+.power:after,#led{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;background:#273019;box-shadow:inset 0 0 4px #000;vertical-align:middle;margin-left:8px;}
+#led{margin-left:0;}
+#led.on,.power.ready:after{background:var(--green);box-shadow:0 0 8px var(--green),inset 0 0 3px #fff;}
+.modeSwitch{flex:1;min-width:280px;display:flex;align-items:center;justify-content:center;gap:20px;background:linear-gradient(#26282d,#16171a);border:1px solid #414349;border-radius:10px;padding:10px 12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
+.modeSwitch span{font-size:13px;letter-spacing:1px;color:#d8d4c8;}
+#btnJoy{min-width:112px;height:38px;border:1px solid #393b40;border-radius:21px;background:#050607;color:transparent;position:relative;box-shadow:inset 0 0 8px #000;}
+#btnJoy:before{content:'';position:absolute;left:6px;top:5px;width:28px;height:28px;border-radius:50%;background:linear-gradient(#e9e1d2,#aaa395);box-shadow:0 2px 5px rgba(0,0,0,.8);transition:left .12s ease;}
+body.joymode #btnJoy:before{left:76px;}
+.brandRow{display:grid;grid-template-columns:250px 1fr;align-items:end;background:linear-gradient(#d7d2c3,#b7b0a0);color:#232323;border-top:2px solid #eee9dd;border-bottom:2px solid #777064;padding:0 22px;}
+.atariLogo{display:flex;align-items:center;gap:13px;font:bold 30px Arial,sans-serif;letter-spacing:-1px;height:78px;color:#202225;}
+.atariLogo .fuji{font-size:44px;line-height:1;color:#303235;}
+.funcRow{display:flex;justify-content:flex-end;align-items:flex-end;height:78px;}
+.funcRow .ctrlBtn{min-width:114px;height:58px;min-height:0;color:#1d1d1d;background:linear-gradient(#eee8d8,#b8b2a5);border-color:#6f695f;border-radius:0;clip-path:polygon(15% 0,100% 0,85% 100%,0 100%);box-shadow:inset 0 1px 0 #fff,0 3px 0 #625c55;padding:0 18px;font-size:12px;}
+.funcRow .ctrlBtn:active,.funcRow .ctrlBtn.on{transform:translateY(2px);box-shadow:0 1px 0 #625c55;background:linear-gradient(#b8b2a5,#eee8d8);}
+.inputDeck{background:linear-gradient(#cbc6b8,#aca697);border-top:1px solid #e9e3d5;padding:18px 20px 20px;}
+#osk{display:block;background:linear-gradient(#b6b0a2,#d4cec0 45%,#a49e90);border-radius:6px;padding:12px 10px 20px;box-shadow:inset 0 3px 8px rgba(0,0,0,.25),0 2px 0 #7c766b;}
+.krow{display:flex;gap:4px;margin-bottom:4px;}
+.key{flex:1;min-width:0;background:linear-gradient(#eee9dd,#bdb7aa);color:#1c1d1e;border:1px solid #706a60;border-radius:5px;padding:7px 2px 6px;font:bold 11px/1.05 'Courier New',monospace;white-space:pre-line;min-height:48px;box-shadow:0 4px 0 #777064,inset 0 1px 0 #fff;}
+.key:active,.key.on{transform:translateY(3px);box-shadow:0 1px 0 #777064;background:linear-gradient(#bdb7aa,#eee9dd);}
+.key.mod{background:linear-gradient(#d9d3c6,#aaa497);}
+.key.space{flex:7;max-width:620px;margin:0 auto;}
+#joy{display:none;align-items:center;justify-content:space-around;gap:22px;min-height:330px;background:linear-gradient(#cfcabd,#aaa497);border-radius:8px;padding:28px;box-shadow:inset 0 3px 8px rgba(0,0,0,.25);}
+#joyPad{width:min(48vw,300px);height:min(48vw,300px);max-width:300px;max-height:300px;border-radius:34px;background:linear-gradient(#2f3135,#151619);box-shadow:inset 0 0 0 4px #4b4e53,inset 0 12px 28px rgba(255,255,255,.04),0 7px 0 #747064;position:relative;touch-action:none;}
+#joyPad:before{content:'';position:absolute;left:50%;top:50%;width:78%;height:78%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 45% 42%,#2d2f34,#08090a 70%);box-shadow:inset 0 0 0 4px #08090a,0 0 0 3px #393c42;}
+#joyPad:after{content:'△\A ◁      ▷\A ▽';white-space:pre;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#a9a9a9;font:bold 26px/2.9 Arial,sans-serif;letter-spacing:26px;opacity:.55;}
+#joyKnob{position:absolute;left:50%;top:50%;width:94px;height:94px;margin:-47px 0 0 -47px;border-radius:50%;background:radial-gradient(circle at 35% 28%,#585b61,#101113 72%);box-shadow:0 7px 18px rgba(0,0,0,.8),inset 0 2px 8px rgba(255,255,255,.12);z-index:2;pointer-events:none;}
+#joyFire{width:min(34vw,160px);height:min(34vw,160px);max-width:160px;max-height:160px;border-radius:50%;border:8px solid #2b2020;background:radial-gradient(circle at 35% 25%,#ff6d58,#c31d12 62%,#7b0e09);color:#260503;font:bold 16px Arial,sans-serif;box-shadow:0 8px 0 #120908,0 0 0 3px #777064;touch-action:none;}
+#joyFire:before{content:'FIRE';position:absolute;}
+#joyFire.on{transform:translateY(7px);box-shadow:0 1px 0 #120908,0 0 0 3px #777064;}
+.cassette{display:grid;grid-template-columns:1fr 170px;gap:14px;background:linear-gradient(#c7c2b6,#a9a396);border-top:2px solid #797367;padding:18px 22px;color:#222;}
+.xc12{background:linear-gradient(#d8d2c3,#aaa497);border:1px solid #827b70;border-radius:6px;padding:16px;box-shadow:inset 0 2px 4px rgba(255,255,255,.25);}
+.tapeWindow{height:114px;border-radius:10px;background:#0b0c0d;border:8px solid #716c62;position:relative;box-shadow:inset 0 0 20px #000;margin:0 auto 12px;max-width:560px;display:flex;align-items:center;justify-content:space-around;overflow:hidden;}
+.tapeWindow:before{content:'A';position:absolute;left:12px;top:9px;color:#c42d22;font:bold 20px Arial,sans-serif;background:#e9e3d8;padding:0 5px;border-radius:2px;}
+.reel{width:78px;height:78px;border-radius:50%;background:radial-gradient(circle,#a9a9a9 0 12%,#0d0e10 13% 23%,#34363a 24% 37%,#070809 38%);box-shadow:0 0 0 6px #111;}
+.tapeName{position:absolute;top:10px;left:88px;right:88px;height:20px;background:#ece5d8;border-top:3px solid #b63b2e;color:#7e7a72;font:bold 10px Arial,sans-serif;text-align:right;padding-right:8px;}
+.transportRow{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:12px;}
+.transportRow .ctrlBtn{background:linear-gradient(#e2dcca,#b6afa1);color:#242424;border-color:#827b70;box-shadow:0 5px 0 #7b7469,inset 0 1px 0 #fff;min-height:62px;font-size:20px;}
+.transportRow .ctrlBtn span{display:block;font-size:10px;letter-spacing:.2px;margin-top:4px;}
+.sidePanel{background:linear-gradient(#beb8aa,#aaa497);border-left:1px solid #817b70;padding:16px;text-align:center;display:flex;flex-direction:column;gap:16px;justify-content:center;}
+.counter{font:bold 34px 'Courier New',monospace;background:#060707;color:#ffd765;border:5px solid #2a2b2e;border-radius:4px;padding:5px 8px;box-shadow:inset 0 0 9px #000;text-shadow:0 0 7px #ffa200;}
+.sidePanel label{display:flex;justify-content:center;align-items:center;gap:8px;font:bold 13px 'Courier New',monospace;color:#252525;}
+.loaderButtons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.loaderButtons .ctrlBtn{flex:1;min-width:110px;background:linear-gradient(#2d2f35,#151619);color:#eee6d3;box-shadow:0 4px 0 #777064,inset 0 1px 0 rgba(255,255,255,.08);}
+.logwrap{width:min(100%,950px);margin:10px auto 0;background:#0d0e10;border:1px solid #32353b;border-radius:12px;padding:10px;color:#9fd49f;}
+.logwrap .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;color:var(--gold);letter-spacing:2px;font-size:12px;}
+#btnSaveLog{background:transparent;border:1px solid #6a665d;color:#e6decf;border-radius:5px;padding:6px 12px;font:bold 11px 'Courier New',monospace;}
+#log{height:145px;overflow-y:auto;white-space:pre-wrap;font-size:11px;line-height:1.45;color:#9fd49f;background:#050607;border:1px solid #202226;border-radius:6px;padding:8px;}
+.hiddenNative{display:none;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(5,6,7,.94);z-index:50;padding:16px;flex-direction:column;gap:8px;}
+.overlay .ovbar{display:flex;gap:8px;}
+.overlay button{flex:1;padding:12px;font:bold 12px 'Courier New',monospace;background:#c9c5bb;border:0;border-radius:4px;color:#111;}
+.overlay button.danger{background:#d8412f;color:#fff;}
+.overlay button.dark{background:#4a4d57;color:#e7e4dc;}
+.overlay textarea{flex:1;background:#0c0d10;color:#9fd49f;border:1px solid #2c2f37;border-radius:4px;font:12px 'Courier New',monospace;padding:8px;resize:none;}
+.checkline{font:11px 'Courier New',monospace;color:#c9c5bb;display:flex;gap:6px;align-items:center;}
+@media(max-width:760px){
+ body{padding:0;background:#040506;}
+ .appShell{border-radius:0;padding:5px;box-shadow:none;}
+ .topBadge{display:none;}
+ .bezel{padding:14px;border-radius:16px;}
+ .scan{inset:14px;}
+ .statusRow{padding:10px;gap:8px;}
+ .ctrlBtn{padding:9px 8px;font-size:11px;min-height:46px;}
+ .brandRow{grid-template-columns:1fr;padding:0 8px;}
+ .atariLogo{height:54px;font-size:24px;}
+ .funcRow{height:50px;justify-content:center;}
+ .funcRow .ctrlBtn{min-width:64px;height:44px;font-size:10px;padding:0 7px;}
+ .inputDeck{padding:8px;}
+ .key{font-size:9px;min-height:38px;padding:5px 1px;border-radius:4px;}
+ .krow{gap:2px;margin-bottom:3px;}
+ .cassette{grid-template-columns:1fr;padding:10px;}
+ .sidePanel{display:none;}
+ .transportRow .ctrlBtn{min-height:46px;font-size:15px;}
+ .modeSwitch{min-width:220px;gap:10px;}
+ .modeSwitch span{font-size:10px;}
+ #btnJoy{min-width:80px;width:80px;}
+ body.joymode #btnJoy:before{left:46px;}
+ #joy{min-height:250px;padding:14px;}
+ #joyKnob{width:76px;height:76px;margin:-38px 0 0 -38px;}
+ .logwrap{border-radius:0;margin-top:6px;}
+}
 </style>
 </head>
 <body>
-<header>
-  <h1><a href="../index.html" style="color:inherit;text-decoration:none;">ATARIHELP<b>.EU</b></a> EMU-10 BUILD2R</h1>
-  <div class="sub">ATARI 130XE &middot; CISTE JADRO &middot; oprava PM grafiky (sprajty/missily)</div>
-  <div id="led"></div>
-</header>
-<div class="crt">
-  <div class="bezel"><canvas id="scr" width="384" height="240"></canvas><div class="scan"></div></div>
-  <div class="strip">
-    <button id="btnPower">POWER &middot; BASIC</button>
-    <button id="btnSelfTest" class="dark">POWER + OPTION &middot; SELF TEST</button>
-    <button id="btnReset" class="danger">RESET</button>
-    <button id="btnBreak" class="dark">BREAK</button>
-    <button id="btnHelp">HELP</button>
+<div class="appShell" id="emuDevice">
+  <div class="device">
+    <div class="topBadge">
+      <div class="vent">N&amp;P VISION<small>PREMIUM ATARI 130XE EMULATION</small></div>
+      <div class="coin">N&amp;P<span>(C) 2026 VCS</span></div>
+      <div class="vent">DESIGNED FOR<br>ATARI FANS.<small>BUILT TO LAST.</small></div>
+    </div>
+    <div class="crtBox">
+      <div class="bezel"><canvas id="scr" width="384" height="240"></canvas><div class="scan"></div></div>
+    </div>
+    <div class="statusRow">
+      <button id="btnPower" class="ctrlBtn power ready">POWER BASIC</button>
+      <button id="btnSelfTest" class="ctrlBtn">POWER +<br>OPTION + SELF TEST</button>
+      <div class="modeSwitch"><span>KEYBOARD</span><button id="btnJoy" class="ctrlBtn" aria-label="Prepnout klavesnice joystick">JOYSTIK</button><span>JOYSTICK</span></div>
+      <div id="led"></div>
+    </div>
+    <div class="brandRow">
+      <div class="atariLogo"><span class="fuji">╱╲</span> ATARI 130XE</div>
+      <div class="funcRow">
+        <button id="btnHelp" class="ctrlBtn">HELP</button>
+        <button id="btnStart" class="ctrlBtn">START</button>
+        <button id="btnSelect" class="ctrlBtn">SELECT</button>
+        <button id="btnOption" class="ctrlBtn">OPTION</button>
+        <button id="btnReset" class="ctrlBtn danger">RESET</button>
+      </div>
+    </div>
+    <div class="inputDeck">
+      <div id="osk"></div>
+      <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyFire">FIRE</button></div>
+    </div>
+    <div class="cassette">
+      <div class="xc12">
+        <div class="tapeWindow"><div class="tapeName">XC12 / N&amp;P VISION</div><div class="reel"></div><div class="reel"></div></div>
+        <div class="transportRow">
+          <button id="btnBreak" class="ctrlBtn">●<span>BREAK</span></button>
+          <button class="ctrlBtn" type="button">▶<span>PLAY</span></button>
+          <button class="ctrlBtn" type="button">◀◀<span>REWIND</span></button>
+          <button class="ctrlBtn" type="button">▶▶<span>F.FWD</span></button>
+          <button class="ctrlBtn" type="button">■<span>STOP/EJT</span></button>
+          <button class="ctrlBtn" type="button">Ⅱ<span>PAUSE</span></button>
+        </div>
+        <div class="loaderButtons">
+          <button id="btnXex" class="ctrlBtn">NAHRAJ XEX</button>
+          <button id="btnAtr" class="ctrlBtn">NAHRAJ ATR</button>
+          <button id="btnTbxl" class="ctrlBtn">TBXL 1.5</button>
+          <button id="btnTxt" class="ctrlBtn">VLOZIT TXT</button>
+          <button id="btnProgNew" class="ctrlBtn" title="Smaze program v BASICu (NEW)">SMAZAT PROG</button>
+        </div>
+      </div>
+      <div class="sidePanel">
+        <div style="font:bold 13px 'Courier New',monospace;letter-spacing:1px;">COUNTER</div>
+        <div class="counter">000</div>
+        <label><input type="checkbox" id="chkOpt" checked> OPTION U ATR</label>
+        <button class="ctrlBtn" type="button" style="background:linear-gradient(#e8e2d2,#b8b2a5);color:#222;">SAVE</button>
+      </div>
+    </div>
   </div>
-  <div class="strip">
-    <button id="btnXex" class="dark">NAHRAJ XEX</button>
-    <button id="btnAtr" class="dark">NAHRAJ ATR</button>
-    <button id="btnTbxl" class="dark">TBXL 1.5</button>
-    <button id="btnJoy" class="dark">JOYSTIK</button>
-    <button id="btnTxt" class="dark">VLOZIT TXT</button>
-    <button id="btnProgNew" class="dark" title="Smaze program v BASICu (NEW)">SMAZAT PROG</button>
-    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dim);"><input type="checkbox" id="chkOpt" checked>OPTION u ATR</label>
-  </div>
-  <input type="file" id="filePick" style="display:none">
-  <div class="strip">
-    <button id="btnOption">OPTION</button>
-    <button id="btnSelect">SELECT</button>
-    <button id="btnStart">START</button>
-  </div>
-  <div id="osk"></div>
-  <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyFire">FIRE</button></div>
 </div>
+<input type="file" id="filePick" class="hiddenNative">
 <div class="logwrap">
-  <div class="bar"><span>LOG</span><button id="btnSaveLog">ULOZIT LOG</button></div>
+  <div class="bar"><span>EMU-10 BUILD2S SAFE UI SKIN / LOG</span><button id="btnSaveLog">ULOZIT LOG</button></div>
   <div id="log"></div>
 </div>
-
-<div id="txtOverlay" style="display:none; position:fixed; inset:0; background:rgba(10,10,12,.92); z-index:9; padding:16px; flex-direction:column; gap:8px;">
-  <div style="display:flex; gap:8px;">
-    <button id="btnTxtGo" style="flex:1; padding:10px; font:bold 12px 'Courier New',monospace; background:#c9c5bb; border:0; border-radius:4px;">VLOZIT DO ATARI</button>
-    <button id="btnTxtFile" style="flex:1; padding:10px; font:bold 12px 'Courier New',monospace; background:#8a9a5b; border:0; border-radius:4px;">NAHRAJ TXT SOUBOR</button>
-    <button id="btnTxtClose" style="flex:1; padding:10px; font:bold 12px 'Courier New',monospace; background:#d8412f; color:#fff; border:0; border-radius:4px;">ZAVRIT</button>
+<div id="txtOverlay" class="overlay">
+  <div class="ovbar">
+    <button id="btnTxtGo">VLOZIT DO ATARI</button>
+    <button id="btnTxtFile" style="background:#8a9a5b;">NAHRAJ TXT SOUBOR</button>
+    <button id="btnTxtClose" class="danger">ZAVRIT</button>
   </div>
-  <div style="display:flex; align-items:center; gap:14px;">
-    <div style="font:11px 'Courier New',monospace; color:#8a8e98; flex:1;">Vlozte BASIC/TBXL kod - radky se pisou pres OS buffer (prava tokenizace).</div>
-    <label style="font:11px 'Courier New',monospace; color:#c9c5bb; display:flex; gap:6px; align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim</label>
-  </div>
-  <textarea id="txtIn" style="flex:1; background:#0c0d10; color:#9fd49f; border:1px solid #2c2f37; border-radius:4px; font:12px 'Courier New',monospace; padding:8px; resize:none;" placeholder="10 PRINT &quot;AHOJ&quot;&#10;20 GOTO 10&#10;RUN"></textarea>
+  <label class="checkline"><input type="checkbox" id="chkNew" checked> NEW pred vlozenim</label>
+  <textarea id="txtIn" placeholder="10 PRINT &quot;AHOJ&quot;&#10;20 GOTO 10&#10;RUN"></textarea>
 </div>
-<div id="logOverlay" style="display:none; position:fixed; inset:0; background:rgba(10,10,12,.92); z-index:9; padding:16px; flex-direction:column; gap:8px;">
-  <div style="display:flex; gap:8px;">
-    <button id="btnLogCopy" style="flex:1; padding:10px; font:bold 12px 'Courier New',monospace; background:#c9c5bb; border:0; border-radius:4px;">KOPIROVAT</button>
-    <button id="btnLogDownload" style="flex:1; padding:10px; font:bold 12px 'Courier New',monospace; background:#4a4d57; color:#e7e4dc; border:0; border-radius:4px;">STAHNOUT</button>
-    <button id="btnLogClose" style="flex:1; padding:10px; font:bold 12px 'Courier New',monospace; background:#d8412f; color:#fff; border:0; border-radius:4px;">ZAVRIT</button>
+<div id="logOverlay" class="overlay">
+  <div class="ovbar">
+    <button id="btnLogCopy">KOPIROVAT</button>
+    <button id="btnLogDownload" class="dark">STAHNOUT</button>
+    <button id="btnLogClose" class="danger">ZAVRIT</button>
   </div>
-  <textarea id="logFull" readonly style="flex:1; background:#0c0d10; color:#9fd49f; border:1px solid #2c2f37; border-radius:4px; font:11px 'Courier New',monospace; padding:8px; resize:none;"></textarea>
+  <textarea id="logFull" readonly></textarea>
 </div>
 <script>
 // cpu6502.js - complete documented 6502 with NMOS BCD. Generated by gen_cpu.py.
@@ -1303,11 +1386,11 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
 
   // ---------- on-screen XE klavesnice ----------
   var ROWS=[
-    [['ESC',28],['1',31],['2',30],['3',26],['4',24],['5',29],['6',27],['7',51],['8',53],['9',48],['0',50],['<',54],['>',55],['BS',52]],
-    [['TAB',44],['Q',47],['W',46],['E',42],['R',40],['T',45],['Y',43],['U',11],['I',13],['O',8],['P',10],['-',14],['=',15],['RET',12]],
-    [['CTRL',-1],['A',63],['S',62],['D',58],['F',56],['G',61],['H',57],['J',1],['K',5],['L',0],[';',2],['+',6],['*',7],['CAPS',60]],
-    [['SHIFT',-2],['Z',23],['X',22],['C',18],['V',16],['B',21],['N',35],['M',37],[',',32],['.',34],['/',38],['INV',39],['HELP',17]],
-    [['BREAK',-3],['MEZERNIK',33]]
+    [['Esc',28],['!\n1',31],['\"\n2',30],['#\n3',26],['$\n4',24],['%\n5',29],['&\n6',27],["'\n7",51],['@\n8',53],['(\n9',48],[')\n0',50],['Clear\n<',54],['Insert\n>',55],['Delete\nBk Sp',52],['Break',-3]],
+    [['Clr/Set\nTab',44],['Q',47],['W',46],['E',42],['R',40],['T',45],['Y',43],['U',11],['I',13],['O',8],['P',10],['↑\n-',14],['↓\n=',15],['Return',12]],
+    [['Control',-1],['A',63],['S',62],['D',58],['F',56],['G',61],['H',57],['J',1],['K',5],['L',0],[':\n;',2],['←\n+',6],['→\n*',7],['Caps',60]],
+    [['Shift',-2],['Z',23],['X',22],['C',18],['V',16],['B',21],['N',35],['M',37],['[\n,',32],[']\n.',34],['?\n/',38],['Shift',-2],['Fuji\nINVERSE',39]],
+    [['Space',33]]
   ];
   var oskShift=false, oskCtrl=false;
   function buildOSK(host){
@@ -1338,6 +1421,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function joySet(mask){ if(mask!==joyMask){ joyMask=mask; joyApply(); } }
   function setJoyMode(on){
     joyMode=on;
+    document.body.classList.toggle('joymode', !!on);
     document.getElementById('osk').style.display=on?'none':'';
     document.getElementById('joy').style.display=on?'flex':'none';
     var b=document.getElementById('btnJoy');

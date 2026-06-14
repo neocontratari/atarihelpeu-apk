@@ -3,213 +3,88 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>N&P-VISION - AtariHelp.eu</title>
+<title>N&amp;P VISION — AtariHelp.eu EMU-10</title>
 <style>
-:root{
-  --body:#101114; --metal:#3a3d42; --metal2:#2c2e33; --dark:#1b1c20; --ink:#0c0d0f;
-  --phos:#66e07a; --phosdim:#2f5d38; --led:#ff3b2f; --cream:#e8e2d0; --creamdark:#bdb6a2;
-  --orange:#e8842c; --red:#a32a1c; --gold:#d9b25c; --dim:#8a8e98;
-}
-*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-body{ margin:0; background:radial-gradient(900px 420px at 50% -8%, #1d1f26 0%, var(--body) 65%);
-  color:var(--cream); font:14px/1.6 'Courier New',monospace; }
-
-/* ============ N&P-VISION PREHRAVAC ============ */
-.player{ max-width:560px; margin:16px auto; border-radius:26px; padding:14px;
-  background:linear-gradient(#46494f,var(--metal) 12%,var(--metal2) 88%,#222428);
-  box-shadow:inset 0 2px 0 #5a5d63, inset 0 -3px 0 #141518, 0 18px 50px rgba(0,0,0,.7); }
-
-/* CRT obrazovka */
-.crt{ background:#0a0f0a; border-radius:14px; padding:22px 16px 26px; position:relative; overflow:hidden;
-  box-shadow:inset 0 0 40px rgba(0,0,0,.9), inset 0 0 90px rgba(40,90,50,.18), 0 2px 0 #515459; }
-.crt::after{ content:''; position:absolute; inset:0; pointer-events:none; border-radius:14px;
-  background:radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.07), transparent 45%); }
-.crt .t1{ color:var(--phos); text-align:center; font-size:19px; letter-spacing:4px; font-weight:bold;
-  text-shadow:0 0 10px rgba(102,224,122,.8); }
-.crt .t2{ color:#cfe8cf; text-align:center; font-size:12px; margin-top:10px; letter-spacing:1px;
-  text-shadow:0 0 6px rgba(180,230,180,.4); }
-.crt .t3{ color:var(--phos); font-size:13px; margin-top:12px; letter-spacing:2px;
-  text-shadow:0 0 8px rgba(102,224,122,.7); }
-.crt .t3::after{ content:'\2588'; margin-left:3px; animation:blink 1.06s steps(1) infinite; }
-@keyframes blink{ 50%{opacity:0;} }
-
-/* deck: napis + pocitadlo */
-.deckbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 8px 8px; }
-.brand{ font-weight:bold; letter-spacing:4px; font-size:17px; color:#d7d2c4; text-shadow:0 1px 0 #000; }
-.brand small{ display:block; font-size:8px; letter-spacing:3px; color:var(--dim); text-align:center; }
-.counter{ background:#190705; border-radius:6px; padding:4px 10px; font-weight:bold; font-size:18px;
-  letter-spacing:5px; color:var(--led); text-shadow:0 0 9px rgba(255,59,47,.9);
-  box-shadow:inset 0 0 10px rgba(0,0,0,.9), 0 1px 0 #515459; }
-
-/* kazetove okenko */
-.tape{ background:linear-gradient(#26282d,#1b1c20); border-radius:12px; padding:14px; margin:2px 4px;
-  box-shadow:inset 0 0 18px rgba(0,0,0,.8), 0 1px 0 #515459; }
-.window{ background:#0d0e10; border-radius:8px; height:118px; position:relative; overflow:hidden;
-  box-shadow:inset 0 0 16px rgba(0,0,0,.9); display:flex; align-items:center; justify-content:space-around; }
-.reel{ width:74px; height:74px; border-radius:50%;
-  background:radial-gradient(circle at 50% 50%, #555a61 0 18%, #2a2c31 19% 40%, #17181b 41% 100%);
-  position:relative; animation:spin 4s linear infinite; box-shadow:0 0 0 6px #101113, 0 0 0 8px #2a2c31; }
-.reel::before,.reel::after{ content:''; position:absolute; left:50%; top:50%; width:64%; height:7px;
-  margin:-3.5px 0 0 -32%; background:#0d0e10; border-radius:3px; }
-.reel::after{ transform:rotate(60deg); }
-.reel i{ position:absolute; left:50%; top:50%; width:64%; height:7px; margin:-3.5px 0 0 -32%;
-  background:#0d0e10; border-radius:3px; transform:rotate(120deg); }
-.reel.r2{ animation-duration:5.2s; }
-@keyframes spin{ to{ transform:rotate(360deg); } }
-@media (prefers-reduced-motion:reduce){ .reel{ animation:none; } .crt .t3::after{ animation:none; } }
-.window .belt{ position:absolute; left:8%; right:8%; bottom:10px; height:3px; background:#000;
-  box-shadow:0 -1px 0 #2a2c31; }
-
-/* kremovy stitek */
-.label{ display:flex; align-items:center; gap:10px; background:linear-gradient(var(--cream),#d8d2bf);
-  color:#222; border-radius:6px; margin-top:12px; padding:8px 12px;
-  box-shadow:0 3px 0 var(--creamdark); font-size:11px; }
-.label .np{ font-weight:bold; font-size:13px; letter-spacing:1px; }
-.label .np small{ display:block; font-weight:normal; font-size:8px; color:#777; letter-spacing:0; }
-.label .mid{ flex:1; text-align:center; font-weight:bold; letter-spacing:1px; }
-.label .mid small{ display:block; font-weight:normal; font-size:9px; color:#666; }
-.label .est{ font-weight:bold; }
-
-/* transportni tlacitka */
-.transport{ display:flex; gap:10px; padding:16px 4px 6px; }
-.transport a{ flex:1; text-decoration:none; text-align:center; color:#d7d2c4; }
-.transport a span.cap{ display:block; font-size:11px; letter-spacing:1.5px; font-weight:bold; color:var(--dim); margin-bottom:6px; }
-.transport a b{ display:flex; align-items:center; justify-content:center; height:54px; border-radius:9px;
-  font-size:19px; background:linear-gradient(#4a4d53,#33363b);
-  box-shadow:0 5px 0 #1a1b1e, inset 0 1px 0 #5d6066; }
-.transport a:active b{ transform:translateY(4px); box-shadow:0 1px 0 #1a1b1e; }
-.transport a.rec b{ background:linear-gradient(#7e2418,#5d1a10); color:#ffb4a8; }
-.transport a.play b{ background:linear-gradient(#f0964a,var(--orange));
-  box-shadow:0 5px 0 #8d4a12, inset 0 1px 0 #ffd9b0, 0 0 18px rgba(232,132,44,.45); color:#fff; }
-.transport a.play span.cap{ color:var(--orange); }
-
-/* ============ KNIHOVNA / CARTRIDGE ============ */
-.shelf{ max-width:560px; margin:20px auto; padding:0 10px; }
-.shelf .head{ color:var(--phos); font-size:11px; letter-spacing:3px; margin:0 6px 10px;
-  text-shadow:0 0 8px rgba(102,224,122,.5); }
-.grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-@media (max-width:470px){ .grid{ grid-template-columns:1fr; } }
-a.cart{ display:flex; gap:11px; align-items:center; text-decoration:none; color:var(--cream);
-  background:linear-gradient(#34373d,#26282d); border-radius:10px; padding:11px;
-  border-left:7px solid var(--c,var(--phos));
-  box-shadow:0 4px 0 #141518, inset 0 1px 0 #43464c; }
-a.cart:active{ transform:translateY(3px); box-shadow:0 1px 0 #141518; }
-a.cart .ic{ width:38px; height:38px; flex:none; background:var(--ink); border-radius:8px;
-  display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 8px rgba(0,0,0,.85); }
-a.cart svg{ width:24px; height:24px; shape-rendering:crispEdges; }
-a.cart .n{ font-weight:bold; font-size:12.5px; letter-spacing:1px; }
-a.cart .s{ color:var(--dim); font-size:10px; line-height:1.4; }
-
-/* manifest stitek + paticka */
-.paper{ max-width:560px; margin:18px auto; padding:0 10px; }
-.paper .in{ background:linear-gradient(var(--cream),#d8d2bf); color:#23241f; border-radius:10px;
-  padding:16px 16px 12px; box-shadow:0 5px 0 var(--creamdark); position:relative; font-size:12.5px; }
-.paper .in::before{ content:'N&P'; position:absolute; right:12px; top:10px; font-weight:bold;
-  color:#9a9482; letter-spacing:2px; font-size:11px; }
-.paper h2{ font-size:13px; letter-spacing:3px; margin:0 0 8px; }
-.paper p{ margin:6px 0; }
-.paper .sign{ color:var(--red); font-weight:bold; }
-.sealrow{ text-align:center; margin:20px 0 4px; }
-.sealrow img{ width:100px; filter:drop-shadow(0 6px 12px rgba(0,0,0,.6)); }
-footer{ text-align:center; color:var(--dim); font-size:10.5px; letter-spacing:1px; padding:8px 12px 26px; }
-footer .coin{ color:var(--gold); letter-spacing:3px; margin-bottom:6px; }
+:root{--bg:#050607;--panel:#111215;--panel2:#1c1d20;--gold:#e2b85e;--gold2:#8a5b1f;--blue:#8cd6ff;--cream:#e5dcc7;--muted:#928a78;--line:#393632;--red:#d84531;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:radial-gradient(900px 700px at 50% -120px,#24272d 0%,#0c0d10 58%,#030405 100%);color:var(--cream);font-family:'Courier New',monospace;}
+body{padding:10px;}
+a{color:inherit;text-decoration:none;}
+.shell{max-width:720px;margin:0 auto 24px;border-radius:36px;padding:14px;background:linear-gradient(145deg,#17191d,#050607 55%,#15171a);box-shadow:0 24px 80px rgba(0,0,0,.85),inset 0 0 0 2px #3b3e43,inset 0 0 0 7px #08090a;}
+.device{border:1px solid #373a3f;border-radius:24px;overflow:hidden;background:#0c0d0f;box-shadow:inset 0 0 34px #000;}
+.top{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;padding:14px;background:linear-gradient(#17191c,#0d0e10);border-bottom:2px solid #050607;}
+.vent{height:94px;border-radius:14px;background:repeating-linear-gradient(0deg,#040506 0 5px,#222327 6px 10px);border:1px solid #34363a;color:var(--gold);padding:18px 16px;font:bold 14px/1.35 'Courier New',monospace;letter-spacing:1px;box-shadow:inset 0 0 22px #000;}
+.vent small{display:block;color:#baa870;font-weight:normal;font-size:11px;margin-top:5px;}
+.badge{width:146px;height:146px;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:radial-gradient(circle at 38% 27%,#ffeaa8,#d7a94c 42%,#714613 72%,#191006);border:7px solid #1f1408;box-shadow:0 0 0 3px #9b6b2b,0 8px 24px rgba(0,0,0,.7),inset 0 0 22px rgba(255,255,255,.28);color:#1a1107;font:bold 42px Arial,sans-serif;letter-spacing:-2px;}
+.badge span{font:bold 18px 'Courier New',monospace;letter-spacing:0;}
+.crtWrap{background:linear-gradient(#121316,#08090a);padding:18px;border-bottom:2px solid #050607;}
+.crt{border-radius:22px;background:linear-gradient(145deg,#030304,#151619);padding:26px;box-shadow:inset 0 0 0 2px #46494d,inset 0 0 48px #000;}
+.screen{min-height:330px;border-radius:18px;background:radial-gradient(ellipse at 52% 35%,#17212a,#050707 67%);box-shadow:inset 0 0 38px rgba(0,0,0,.8),0 0 0 2px #090a0b;position:relative;overflow:hidden;padding:48px 52px;}
+.screen:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 2px,rgba(255,255,255,.025) 3px 4px),radial-gradient(ellipse at 50% -10%,rgba(255,255,255,.12),transparent 48%);pointer-events:none;}
+.title{position:relative;z-index:1;font:bold clamp(38px,8vw,66px) Arial,sans-serif;color:var(--gold);letter-spacing:2px;text-shadow:0 3px 0 #3b260c,0 0 20px rgba(226,184,94,.22);}
+.sub{position:relative;z-index:1;color:var(--blue);font:bold 18px 'Courier New',monospace;letter-spacing:2px;margin-top:7px;border-bottom:1px solid var(--gold);padding-bottom:18px;}
+.check{position:relative;z-index:1;color:var(--blue);font-size:18px;line-height:1.55;margin-top:18px;white-space:pre;}
+.ready{position:relative;z-index:1;color:#ffd970;font:bold 20px 'Courier New',monospace;margin-top:18px;}
+.ready:after{content:'█';display:block;margin-top:4px;animation:blink 1s steps(1) infinite;}
+@keyframes blink{50%{opacity:0;}}
+.tape{display:grid;grid-template-columns:150px 1fr 128px;gap:14px;background:linear-gradient(#25221b,#151411);padding:18px;border-top:1px solid #3c382f;border-bottom:1px solid #070707;}
+.slot,.side{border:1px solid #524632;border-radius:8px;background:linear-gradient(#2b261d,#11100e);padding:14px;color:var(--gold);box-shadow:inset 0 0 18px #000;}
+.eject{height:84px;margin-top:28px;border-radius:5px;background:linear-gradient(#1b1c1e,#050607);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 #050607,inset 0 1px 0 #50535a;color:#e6d2a2;font:bold 12px 'Courier New',monospace;}
+.cassette{border-radius:10px;background:#08090a;border:8px solid #4a3e2b;min-height:180px;display:flex;align-items:center;justify-content:space-around;position:relative;box-shadow:inset 0 0 26px #000;}
+.cassette:before{content:'N&P VISION';position:absolute;top:12px;left:48px;right:48px;text-align:center;color:var(--gold);font:bold 25px Arial,sans-serif;letter-spacing:1px;}
+.cassette:after{content:'ATARI 130XE';position:absolute;bottom:16px;left:48px;right:48px;text-align:center;color:var(--gold);font:bold 20px 'Courier New',monospace;}
+.reel{width:74px;height:74px;border-radius:50%;background:radial-gradient(circle,#ccc 0 9%,#0b0c0d 10% 23%,#34363a 24% 38%,#070809 39%);box-shadow:0 0 0 6px #111;}
+.counter{font:bold 33px 'Courier New',monospace;background:#060707;color:#ffd765;border:4px solid #2a2b2d;border-radius:4px;padding:5px 8px;text-shadow:0 0 8px #ffa200;text-align:center;margin-top:16px;}
+.mainMenu{background:linear-gradient(#111214,#08090a);padding:18px;border-top:1px solid #27292e;}
+.menuHead{color:var(--gold);font:bold 14px 'Courier New',monospace;letter-spacing:1px;margin-bottom:12px;}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.card{min-height:112px;border:1px solid #7d5c25;border-radius:10px;background:linear-gradient(#1d1f22,#0b0c0e);box-shadow:0 5px 0 #050607,inset 0 0 0 2px #2b2d31,inset 0 1px 0 rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--gold);font:bold 20px 'Courier New',monospace;letter-spacing:1px;padding:10px;}
+.card b{font-size:30px;margin-bottom:6px;line-height:1;}
+.card span{display:block;color:#d2ccbd;font-size:12px;margin-top:5px;letter-spacing:.3px;}
+.card:active{transform:translateY(4px);box-shadow:0 1px 0 #050607;}
+.status{display:grid;grid-template-columns:1fr 1fr 2fr 64px;gap:8px;background:#070809;padding:12px;color:var(--gold);font:bold 12px 'Courier New',monospace;border-top:1px solid #2b2d31;}
+.status div{border:1px solid #24262a;border-radius:7px;padding:10px;background:#0d0e10;min-height:52px;}
+.status small{display:block;color:#c8c1b2;font-size:11px;margin-top:5px;}
+.led{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ffd765;box-shadow:0 0 8px #ffd765;margin-right:6px;}
+@media(max-width:680px){body{padding:0}.shell{border-radius:0;padding:5px;box-shadow:none}.top{display:none}.screen{min-height:280px;padding:34px 30px}.tape{grid-template-columns:1fr}.slot,.side{display:none}.grid{grid-template-columns:1fr 1fr}.card{min-height:98px;font-size:17px}.status{grid-template-columns:1fr 1fr}.crt{padding:14px;border-radius:16px}.crtWrap{padding:10px}}
 </style>
 </head>
 <body>
-
-<div class="player">
-  <div class="crt">
-    <div class="t1">* N&amp;P-VISION *</div>
-    <div class="t2">N&amp;P SYSTEM: EMU-10 &middot; ATARI 130XE<br>(c) 2026 N&amp;P STUDIO (R. Honda)</div>
-    <div class="t3">INITIATE_VISION</div>
-  </div>
-  <div class="deckbar">
-    <div class="brand">N&amp;P<small>EST. 2026</small></div>
-    <div class="counter">130</div>
-  </div>
-  <div class="tape">
-    <div class="window">
-      <div class="reel"><i></i></div>
-      <div class="reel r2"><i></i></div>
-      <div class="belt"></div>
+<div class="shell">
+  <div class="device">
+    <div class="top">
+      <div class="vent">N&amp;P VISION<small>PREMIUM EMULATION</small></div>
+      <div class="badge">N&amp;P<span>(C) 2026 VCS</span></div>
+      <div class="vent">DESIGNED FOR<br>ATARI FANS.<small>BUILT TO LAST.</small></div>
     </div>
-    <div class="label">
-      <span class="np">N&amp;P &#9889;<small>EMU/2026</small></span>
-      <span class="mid">N&amp;P (tm) &ndash; EMU-10 &middot; ATARI 130XE<small>PRAVA XL OS &middot; SIO LOADER &middot; TBXL &middot; JOYSTICK</small></span>
-      <span class="est">EST.<br>2026</span>
+    <div class="crtWrap"><div class="crt"><div class="screen">
+      <div class="title">N&amp;P VISION</div>
+      <div class="sub">ATARI 130XE EMULATOR</div>
+      <div class="check">SYSTEM CHECK
+64K RAM            OK
+OS 2.4             OK
+CARTRIDGE PORT     OK
+TAPE UNIT          OK</div>
+      <div class="ready">READY.</div>
+    </div></div></div>
+    <div class="tape">
+      <div class="slot">TAPE LOADER<div class="eject">▲<br>EJECT</div></div>
+      <div class="cassette"><div class="reel"></div><div class="reel"></div></div>
+      <div class="side">COUNTER<div class="counter">000</div><br>VOLUME<br><br>MIN&nbsp;&nbsp;&nbsp;&nbsp;MAX</div>
     </div>
-  </div>
-  <div class="transport">
-    <a class="rec" href="https://atarihelp.eu/?page_id=21"><span class="cap">REC&middot;GAME</span><b>&#9679;</b></a>
-    <a class="play" href="emu/index.html"><span class="cap">PLAY&middot;EMULATOR</span><b>&#9654;</b></a>
-    <a href="https://atarihelp.eu/"><span class="cap">REW&middot;WEB</span><b>&#9664;&#9664;</b></a>
-    <a href="https://atarihelp.eu/?page_id=171"><span class="cap">FF&middot;FORUM</span><b>&#9654;&#9654;</b></a>
-    <a href="https://atarihelp.eu/?page_id=50"><span class="cap">STOP&middot;DOCS</span><b>&#9632;</b></a>
-  </div>
-  
-</div>
-
-<div class="shelf">
-  <div class="head">&#9608;&#9608; KNIHOVNA ATARIHELP.EU &mdash; VYBER CARTRIDGE</div>
-  <div class="grid">
-    <a class="cart" style="--c:#d8412f" href="https://atarihelp.eu/?page_id=207">
-      <span class="ic"><svg viewBox="0 0 16 16"><rect x="7" y="2" width="2" height="6" fill="#d8412f"/><circle cx="8" cy="3" r="2.6" fill="#e8842c"/><rect x="3" y="8" width="10" height="4" rx="1" fill="#e8e2d0"/><rect x="3" y="11" width="10" height="2" fill="#bdb6a2"/></svg></span>
-      <span><span class="n">HRY &ndash; GAMES</span><br><span class="s">archiv PDF &middot; WAV &middot; XEX &middot; ZIP rovnou spustis</span></span>
-    </a>
-    <a class="cart" style="--c:#66e07a" href="https://atarihelp.eu/?page_id=614">
-      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="9" fill="#2f5d38"/><rect x="3" y="4" width="10" height="7" fill="#06140a"/><text x="4" y="10" font-size="6" fill="#66e07a" font-family="monospace">A=</text><rect x="5" y="13" width="6" height="1.5" fill="#bdb6a2"/></svg></span>
-      <span><span class="n">ASSEMBLER</span><br><span class="s">kurz 6502 &middot; krok 1&ndash;6</span></span>
-    </a>
-    <a class="cart" style="--c:#d9b25c" href="https://atarihelp.eu/?page_id=212">
-      <span class="ic"><svg viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="1" fill="#d9b25c"/><rect x="5" y="2" width="6" height="4" fill="#0c0d0f"/><rect x="6" y="8" width="4" height="4" fill="#8a5a1e"/><rect x="6.7" y="3" width="2.6" height="2" fill="#e8e2d0"/></svg></span>
-      <span><span class="n">MADE BY N&amp;P</span><br><span class="s">Tetris Platinum &middot; Walls Gold &middot; PiTT-KiTT</span></span>
-    </a>
-    <a class="cart" style="--c:#e8842c" href="https://atarihelp.eu/?page_id=856">
-      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2" y="6" width="12" height="5" rx="1.5" fill="#a32a1c"/><rect x="3.5" y="7.5" width="2" height="2" fill="#ffd9d0"/><rect x="10.5" y="7.5" width="2" height="2" fill="#ffd9d0"/><rect x="4" y="11" width="2.4" height="2" fill="#0c0d0f"/><rect x="9.6" y="11" width="2.4" height="2" fill="#0c0d0f"/><rect x="6" y="4" width="4" height="2.5" fill="#e8842c"/></svg></span>
-      <span><span class="n">K.I.T.T. LOADER 3v1</span><br><span class="s">(C)N&amp;P 2026 &middot; nas zavadec</span></span>
-    </a>
-    <a class="cart" style="--c:#5cb85c" href="https://atarihelp.eu/?page_id=309">
-      <span class="ic"><svg viewBox="0 0 16 16"><rect x="3" y="2.5" width="10" height="11" rx="1" fill="#5cb85c"/><rect x="3" y="2.5" width="2" height="11" fill="#3c8a3c"/><rect x="6.5" y="5" width="5" height="1.4" fill="#eef7ee"/><rect x="6.5" y="7.5" width="5" height="1.4" fill="#eef7ee"/><rect x="6.5" y="10" width="3.4" height="1.4" fill="#eef7ee"/></svg></span>
-      <span><span class="n">MELBOURNE HOUSE BOOK</span><br><span class="s">Bomber &middot; Catcher &middot; Snake &middot; Walls &middot; ...</span></span>
-    </a>
-    <a class="cart" style="--c:#8e5cd9" href="https://atarihelp.eu/?page_id=786">
-      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="7" rx="1" fill="#3a3d42"/><circle cx="5.6" cy="6.5" r="1.7" fill="#0c0d0f"/><circle cx="10.4" cy="6.5" r="1.7" fill="#0c0d0f"/><rect x="2.5" y="11" width="11" height="2" fill="#26282d"/></svg></span>
-      <span><span class="n">NAVODY A RADY</span><br><span class="s">kazetovy adapter DIY &middot; zvuk Atari&rarr;PC</span></span>
-    </a>
-    <a class="cart" style="--c:#66e07a" href="https://atarihelp.eu/?page_id=31">
-      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="#0c0d0f"/><rect x="9" y="2.5" width="3.4" height="4" fill="#e8e2d0"/><rect x="4.5" y="8" width="7" height="5.5" fill="#2f5d38"/><rect x="5.5" y="9" width="5" height="3.5" fill="#e8e2d0"/></svg></span>
-      <span><span class="n">PROGRAMS</span><br><span class="s">utility a software ke stazeni</span></span>
-    </a>
-    <a class="cart" style="--c:#e7c52e" href="https://atarihelp.eu/?page_id=347">
-      <span class="ic"><svg viewBox="0 0 16 16"><rect x="2.5" y="4" width="11" height="8" rx="1" fill="#e7c52e"/><path d="M2.5 4.5 L8 9 L13.5 4.5" stroke="#7a6210" stroke-width="1.4" fill="none"/></svg></span>
-      <span><span class="n">ODBER / NEWSLETTER</span><br><span class="s">novinky N&amp;P do schranky</span></span>
-    </a>
-    <a class="cart" style="--c:#d8412f" href="https://atarihelp.eu/?page_id=353">
-      <span class="ic"><svg viewBox="0 0 16 16"><path d="M8 13.5 C5 11 2.5 9 2.5 6.4 C2.5 4.6 4 3.2 5.7 3.2 C6.7 3.2 7.6 3.8 8 4.6 C8.4 3.8 9.3 3.2 10.3 3.2 C12 3.2 13.5 4.6 13.5 6.4 C13.5 9 11 11 8 13.5 Z" fill="#d8412f"/></svg></span>
-      <span><span class="n">PODEKOVANI / THANKS</span><br><span class="s">Vedos Hosting &ndash; pomoc a podpora</span></span>
-    </a>
-    <a class="cart" style="--c:#5c9bd9" href="https://atarihelp.eu/">
-      <span class="ic"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.6" fill="#2f4a5d"/><ellipse cx="8" cy="8" rx="2.4" ry="5.6" fill="none" stroke="#bcd9ef" stroke-width="1"/><rect x="2.4" y="7.4" width="11.2" height="1.2" fill="#bcd9ef"/></svg></span>
-      <span><span class="n">ATARIHELP.EU &ndash; WEB</span><br><span class="s">cela domovska stranka online</span></span>
-    </a>
+    <div class="mainMenu">
+      <div class="menuHead">MAIN MENU</div>
+      <div class="grid">
+        <a class="card" href="https://atarihelp.eu/?page_id=207"><b>▣</b>GAMES<span>BROWSE &amp; PLAY</span></a>
+        <a class="card" href="emu/index.html"><b>▻</b>TAPE LOADER<span>LOAD CASSETTE / EMU</span></a>
+        <a class="card" href="https://atarihelp.eu/?page_id=614"><b>&gt;_</b>ASSEMBLER<span>6502 DEV TOOLS</span></a>
+        <a class="card" href="emu/index.html"><b>⚙</b>EMULATOR<span>ATARI 130XE</span></a>
+        <a class="card" href="https://atarihelp.eu/"><b>▭</b>SYSTEM<span>INFO &amp; ABOUT</span></a>
+        <a class="card" href="https://atarihelp.eu/?page_id=50"><b>☰</b>DOCS<span>MANUALS &amp; HELP</span></a>
+      </div>
+    </div>
+    <div class="status"><div>SYSTEM STATUS<small><span class="led"></span>OK</small></div><div>FRAME<small>59.94 FPS</small></div><div>AUDIO<small>STEREO ████████████</small></div><div style="text-align:center;font-size:26px;">⌘</div></div>
   </div>
 </div>
-
-<div class="paper">
-  <div class="in">
-    <h2>MANIFEST N&amp;P STUDIA</h2>
-    <p><b>Vitejte na atarihelp.eu!</b> Jsme <b>N&amp;P Studio</b> a vracime zivot legendarnimu
-    <b>Atari 130XE</b>. Pamatujete na to piskani magnetofonu a modrou obrazovku? My ano!</p>
-    <p>Tip: kdyz na webu klepnes na ZIP se hrou, apka ho stahne, rozbali
-    a <b>rovnou spusti v emulatoru</b>. Zadne kopirovani souboru.</p>
-    <p class="sign">Atari zdar! &mdash; Rene Frank (Renatus Honda), N&amp;P Studio</p>
-  </div>
-</div>
-
-<div class="sealrow"><img src="img/pecet.png" alt="(C) 2026 N&P VCS"></div>
-<footer>
-  <div class="coin">&#9608; INSERT COIN &#9608; PRESS START &#9608;</div>
-  &copy; 2026 N&amp;P STUDIO &mdash; ATARI FOREVER
-</footer>
 </body>
 </html>
