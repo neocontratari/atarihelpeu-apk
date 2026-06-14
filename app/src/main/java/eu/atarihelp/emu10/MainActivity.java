@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.database.Cursor;
 import android.content.Intent;
+import android.content.ClipData;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,12 +27,12 @@ import java.net.URL;
 import java.net.URLDecoder;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2AM
+ * AtariHelp.eu EMU-10 BUILD2AN
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
  * - BUILD2AG UI: NET HRY + XC12 WAV/MP3 real seek pres REW/F.FWD
- * - BUILD2AM HELP: vysvetlivky nejsou pres grafiku, napoveda je pod tlacitkem HELP
+ * - BUILD2AN INTRO MP3: multi-vyber skladeb + EJECT reset playlistu
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
@@ -166,7 +167,8 @@ public class MainActivity extends Activity {
             i.setType("audio/*");
             i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/mpeg", "audio/mp3", "audio/*", "application/octet-stream"});
             i.putExtra("android.content.extra.SHOW_ADVANCED", true);
-            startActivityForResult(Intent.createChooser(i, "Vyber MP3 hudbu z Downloads"), PICK_BRIDGE);
+            i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            startActivityForResult(Intent.createChooser(i, "Vyber jednu nebo vice MP3 z Downloads"), PICK_BRIDGE);
         } else if ("audio".equals(kind)) {
             i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*", "audio/wav", "audio/x-wav", "audio/mpeg", "application/octet-stream"});
             startActivityForResult(Intent.createChooser(i, "Vyber WAV / MP3 / CAS z mobilu"), PICK_BRIDGE);
@@ -339,15 +341,35 @@ public class MainActivity extends Activity {
             return;
         }
         if (req == PICK_BRIDGE) {
-            if (res == RESULT_OK && data != null && data.getData() != null) {
+            if (res == RESULT_OK && data != null) {
                 try {
-                    Uri uri = data.getData();
-                    String name = getDisplayName(uri);
                     int max = ("audio".equals(pendingBridgeKind) || "mp3".equals(pendingBridgeKind)) ? 64 * 1024 * 1024 : ("text".equals(pendingBridgeKind) ? 2 * 1024 * 1024 : 16 * 1024 * 1024);
-                    byte[] bytes = readUriBytes(uri, max);
-                    if ("audio".equals(pendingBridgeKind) || "mp3".equals(pendingBridgeKind)) injectAudio(name, bytes);
-                    else if ("text".equals(pendingBridgeKind)) injectText(name, bytes);
-                    else injectGame(name, bytes);
+                    if ("mp3".equals(pendingBridgeKind)) {
+                        web.evaluateJavascript("AHLOCAL_MP3_PLAYLIST_BEGIN()", null);
+                        ClipData clip = data.getClipData();
+                        if (clip != null && clip.getItemCount() > 0) {
+                            for (int k = 0; k < clip.getItemCount(); k++) {
+                                Uri uri = clip.getItemAt(k).getUri();
+                                if (uri == null) continue;
+                                String name = getDisplayName(uri);
+                                byte[] bytes = readUriBytes(uri, max);
+                                injectAudio(name, bytes);
+                            }
+                        } else if (data.getData() != null) {
+                            Uri uri = data.getData();
+                            String name = getDisplayName(uri);
+                            byte[] bytes = readUriBytes(uri, max);
+                            injectAudio(name, bytes);
+                        }
+                        web.evaluateJavascript("AHLOCAL_MP3_PLAYLIST_END()", null);
+                    } else if (data.getData() != null) {
+                        Uri uri = data.getData();
+                        String name = getDisplayName(uri);
+                        byte[] bytes = readUriBytes(uri, max);
+                        if ("audio".equals(pendingBridgeKind)) injectAudio(name, bytes);
+                        else if ("text".equals(pendingBridgeKind)) injectText(name, bytes);
+                        else injectGame(name, bytes);
+                    }
                 } catch (Exception e) {
                     web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote(e.getMessage()) + ")", null);
                 }
