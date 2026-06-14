@@ -27,12 +27,13 @@ import java.net.URL;
 import java.net.URLDecoder;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2AN
+ * AtariHelp.eu EMU-10 BUILD2AS
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
  * - BUILD2AG UI: NET HRY + XC12 WAV/MP3 real seek pres REW/F.FWD
  * - BUILD2AQ INTRO MP3: MP3 PRIDAT nacita/pripojuje skladby do playlistu + EJECT reset
+ * - BUILD2AS XC12 CLOAD/CSAVE stage1: binarni saveBase64 pro CAS/WAV vystupy
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
@@ -54,6 +55,22 @@ public class MainActivity extends Activity {
                 File f = new File(dir, name.replaceAll("[^A-Za-z0-9._-]", "_"));
                 FileOutputStream out = new FileOutputStream(f);
                 out.write(text.getBytes("UTF-8"));
+                out.close();
+                return f.getAbsolutePath();
+            } catch (Exception e) {
+                return "CHYBA: " + e.getMessage();
+            }
+        }
+
+        @JavascriptInterface
+        public String saveBase64(String name, String b64) {
+            try {
+                File dir = getExternalFilesDir(null);
+                if (dir == null) dir = getFilesDir();
+                File f = new File(dir, name.replaceAll("[^A-Za-z0-9._-]", "_"));
+                byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                FileOutputStream out = new FileOutputStream(f);
+                out.write(data);
                 out.close();
                 return f.getAbsolutePath();
             } catch (Exception e) {

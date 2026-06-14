@@ -1,0 +1,50 @@
+AtariHelp.eu EMU-10 BUILD2AS_XC12_CLOAD_CSAVE_WAV_STAGE1
+
+NAVAZUJE NA: BUILD2AR_LANDSCAPE_JOYSTICK
+
+UCEL:
+Prvni cista faze pro realny kazetak XC12 v emulatoru:
+- priprava CLOAD z WAV/CAS
+- priprava CSAVE na mobil
+- priprava SAVE CAS / SAVE WAV bez fake dat
+- vse s logem a HELP popisem
+
+CO JE NOVE:
+1) V emu pod kazetakem jsou nove servisni tlacitka:
+   - CLOAD WAV/CAS
+   - CSAVE ARM
+   - SAVE CAS
+   - SAVE WAV
+
+2) CLOAD WAV/CAS:
+   - otevre vyber souboru z mobilu / Downloads
+   - WAV/MP3 se umi prehravat a pretacet jako drive
+   - CAS soubor se analyzuje: FUJI hlavicka, chunk/data bloky, velikost
+   - zatim se CAS NEVKLADA do RAM a nedela fake CLOAD
+
+3) CSAVE ARM:
+   - RECORD na fyzickem kazetaku i tlacitko CSAVE ARM pripravi nahravani
+   - log jasne pise, ze ceka na realna data z Atari C:
+   - pokud data nejsou, SAVE CAS/WAV nic falesneho nevytvori
+
+4) SAVE CAS / SAVE WAV:
+   - pripraveno na budouci realne zachycene bloky
+   - pokud emulator jeste nedodal data, log napise: neni co ulozit
+   - pridana Android metoda saveBase64 pro budouci binarni zapis CAS/WAV
+
+5) HELP:
+   - doplnena sekce BUILD2AS CLOAD / CSAVE / WAV
+   - vysvetluje, ze tahle faze je poctiva a bez RAM injectu
+
+TEST:
+1. Otevri emulator.
+2. Zmackni CLOAD WAV/CAS a vyber WAV nebo CAS.
+3. U WAV/MP3 testuj PLAY, PAUSE, STOP, REW, F.FWD, counter.
+4. U CAS koukni do LOGU, jestli se ukaze analyza bloku.
+5. Zmackni RECORD nebo CSAVE ARM.
+6. Zmackni SAVE CAS a SAVE WAV - pokud zatim nejsou realna data, ma to poctive napsat, ze neni co ulozit.
+7. Otestuj, ze XEX hry, NET HRY, Turbo BASIC, BASIC TXT a landscape joystick zustaly funkcni.
+
+KODY JSOU STEJNE.
+BASIC/Altirra testovaci kody se nemenily.
+Jadro emulatoru se v teto fazi nema menit; zmeny jsou UI, Android saveBase64, CLOAD/CSAVE stage logika a HELP.

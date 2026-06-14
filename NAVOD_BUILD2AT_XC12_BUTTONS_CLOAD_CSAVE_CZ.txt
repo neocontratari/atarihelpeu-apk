@@ -1,0 +1,65 @@
+AtariHelp.eu EMU-10 BUILD2AT_XC12_BUTTONS_CLOAD_CSAVE
+
+STAV:
+- Pokracovani z BUILD2AS.
+- Jadro emulatoru beze zmen.
+- BASIC/Altirra testovaci kody se nemenily.
+- Zmeny jsou UI/kazetak/HELP/logika tlacitek.
+
+HLAVNI ZMENA:
+Kazetove funkce jsou presunute primo na fyzicka tlacitka XC12 v emulatoru, aby to bylo jako u realneho Atari.
+
+XC12 OVLADANI:
+- PLAY:
+  - kdyz neni vlozena kazeta, otevre mobilni Downloads a vyber WAV / CAS / MP3.
+  - kdyz je vlozen WAV/MP3, spusti nebo pokracuje prehravani.
+  - kdyz je vlozen CAS, spusti CLOAD stage/pripravu bez RAM injectu.
+
+- RECORD:
+  - CSAVE ARM.
+  - pripravi nahravani z Atari na mobil.
+  - zatim poctive ceka na realny vystup C:, nevytvari fake soubor.
+
+- STOP/EJECT:
+  - prvni stisk zastavi mechaniku/audio/CSAVE bez pretoceni.
+  - dalsi stisk pri stojici kazete vysune/vycisti vlozeny WAV/CAS.
+
+- PAUSE:
+  - pozastavi audio/mechaniku.
+  - PLAY potom pokracuje.
+
+- REW / F.FWD:
+  - realne pretaci WAV/MP3 pres currentTime.
+  - pri CAS/mechanice hybe counterem a animaci.
+
+- COUNTER RESET:
+  - male tlacitko u ciselniku vynuluje counter na 000 bez pretaceni pasky.
+
+DOLE POD KAZETAKEM ZUSTAVA JEN SERVIS MIMO KAZETU:
+- NET HRY
+- XEX MOBIL
+- ATR DISK
+- TURBO BASIC
+- BASIC/TBXL TXT
+- LOG / CHYBA
+- HELP
+- MENU
+
+HELP:
+- HELP byl upraven: kazetove funkce jsou popsane pod fyzickymi tlacitky XC12.
+
+NEFAKE ZASADA:
+- Zadny fake CLOAD.
+- Zadny RAM inject.
+- Zadny falesny CSAVE soubor.
+- SAVE CAS/WAV se bude delat az z realne zachycenych C: dat.
+
+TEST:
+1. Emulator portrait: tlacitko PLAY na XC12 bez vlozene kazety ma otevrit vyber WAV/CAS/MP3.
+2. Vybrat WAV nebo MP3: ma se prehrat, counter ma bezet.
+3. PAUSE: zvuk stoji. PLAY: pokracuje.
+4. STOP/EJECT jednou: zvuk stoji, counter zustane.
+5. STOP/EJECT podruhe: kazeta se vysune, dalsi PLAY znovu otevre vyber.
+6. REW/F.FWD: u WAV/MP3 realne pretaci.
+7. RECORD: log musi psat CSAVE ARM a ne fake save.
+8. Landscape joystick z BUILD2AR musi zustat funkcni.

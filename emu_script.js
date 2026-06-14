@@ -1063,10 +1063,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   var logEl, M, canvas, ctx, img, running=false, audio=null;
   var tapeAudio=null, tapeAudioUrl=null, tapeRunTimer=null, tapeCounterTimer=null, tapeCounterValue=0, tapeCounterDir=1;
   var tapeCounterAudioMode=false, tapeAudioName='', tapeSeekHudTimer=null, tapeFastReturnTimer=null;
-  /* BUILD2AK: realny counter lze vynulovat nezavisle na aktualni poloze audia */
+  /* BUILD2AM: realny counter lze vynulovat nezavisle na aktualni poloze audia */
   var tapeCounterZeroBase=0;
   var LOGBUF=[];
-  function log(s){ LOGBUF.push(s); if(logEl){ logEl.textContent=LOGBUF.slice(-200).join('\n'); logEl.scrollTop=logEl.scrollHeight; } var ml=document.getElementById('miniLog'); if(ml) ml.textContent=String(s).slice(0,180); }
+  function log(s){ LOGBUF.push(s); if(logEl){ logEl.textContent=LOGBUF.slice(-200).join('\n'); logEl.scrollTop=logEl.scrollHeight; } }
   window.emuLog=log;
 
   // ---------- POKEY audio (4 kanaly + poly 4/5/9/17 + GTIA speaker klik) ----------
@@ -1300,6 +1300,57 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bindDir('joyUp',1,'UP'); bindDir('joyDown',2,'DOWN'); bindDir('joyLeft',4,'LEFT'); bindDir('joyRight',8,'RIGHT');
   }
 
+
+  // ---------- BUILD2AR landscape joystick pres hru ----------
+  function bindLandscapeJoy(){
+    var pad=document.getElementById('landJoyPad'), knob=document.getElementById('landJoyKnob'), fire=document.getElementById('landFire');
+    if(!pad||!knob||!fire) return;
+    var active=false, pid=null, lastLog=0;
+    function xy(e){
+      if(e.touches && e.touches.length) return {x:e.touches[0].clientX,y:e.touches[0].clientY};
+      if(e.changedTouches && e.changedTouches.length) return {x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
+      return {x:e.clientX,y:e.clientY};
+    }
+    function fromXY(x,y){
+      var r=pad.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+      var dx=x-cx, dy=y-cy, rad=Math.min(r.width,r.height)/2;
+      var len=Math.sqrt(dx*dx+dy*dy), dead=rad*0.070;
+      var kx=dx, ky=dy, max=rad*0.52;
+      if(len>max){ kx=dx/len*max; ky=dy/len*max; }
+      knob.style.transform='translate('+kx+'px,'+ky+'px)';
+      if(len<dead){ joySet(0); return; }
+      var a=Math.atan2(dy,dx), oct=Math.round(a/(Math.PI/4)), m=0;
+      if(oct===0) m=8;
+      else if(oct===1) m=8|2;
+      else if(oct===2) m=2;
+      else if(oct===3) m=4|2;
+      else if(oct===4||oct===-4) m=4;
+      else if(oct===-3) m=4|1;
+      else if(oct===-2) m=1;
+      else if(oct===-1) m=8|1;
+      joySet(m);
+      if(Date.now()-lastLog>1300){ log('LANDSCAPE JOYSTICK mask='+m+' fire='+(joyFire?1:0)); lastLog=Date.now(); }
+    }
+    function begin(e){ e.preventDefault(); active=true; pad.classList.add('active'); if(e.pointerId!==undefined){ pid=e.pointerId; try{ pad.setPointerCapture(pid); }catch(_e){} } var p=xy(e); fromXY(p.x,p.y); }
+    function move(e){ if(!active) return; e.preventDefault(); var p=xy(e); fromXY(p.x,p.y); }
+    function end(e){ if(e) e.preventDefault(); active=false; pid=null; joySet(0); knob.style.transform=''; pad.classList.remove('active'); }
+    pad.addEventListener('pointerdown',begin,{passive:false});
+    pad.addEventListener('pointermove',function(e){ if(pid===null || pid===e.pointerId) move(e); },{passive:false});
+    pad.addEventListener('pointerup',end,{passive:false}); pad.addEventListener('pointercancel',end,{passive:false}); pad.addEventListener('pointerleave',end,{passive:false});
+    pad.addEventListener('touchstart',begin,{passive:false}); pad.addEventListener('touchmove',move,{passive:false}); pad.addEventListener('touchend',end,{passive:false}); pad.addEventListener('touchcancel',end,{passive:false});
+    pad.addEventListener('mousedown',begin,{passive:false}); window.addEventListener('mousemove',move,{passive:false}); window.addEventListener('mouseup',end,{passive:false});
+    function fOn(e){ e.preventDefault(); joyFire=true; joyApply(); fire.classList.add('on'); }
+    function fOff(e){ if(e) e.preventDefault(); joyFire=false; joyApply(); fire.classList.remove('on'); }
+    fire.addEventListener('pointerdown',fOn,{passive:false}); fire.addEventListener('pointerup',fOff,{passive:false}); fire.addEventListener('pointercancel',fOff,{passive:false}); fire.addEventListener('pointerleave',fOff,{passive:false});
+    fire.addEventListener('touchstart',fOn,{passive:false}); fire.addEventListener('touchend',fOff,{passive:false}); fire.addEventListener('touchcancel',fOff,{passive:false});
+    fire.addEventListener('mousedown',fOn,{passive:false}); fire.addEventListener('mouseup',fOff,{passive:false});
+    try{
+      var mq=window.matchMedia('(orientation: landscape)');
+      var announce=function(){ if(mq.matches) log('LANDSCAPE: obraz pres celou sirku, podkresleny joystick vlevo + FIRE vpravo.'); };
+      if(mq.addEventListener) mq.addEventListener('change',announce); else if(mq.addListener) mq.addListener(announce);
+    }catch(_e){}
+  }
+
   // ---------- vkladani TXT (typing queue pres scan kody) ----------
   var typeQ=[], typeWait=0;
   function queueText(text){
@@ -1450,7 +1501,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     try{
       var bin=atob(localAudioParts.join('')), u8=new Uint8Array(bin.length);
       for(var i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i)&0xFF;
-      playTapeAudioBytes(localAudioName,u8);
+      loadCassetteBytes(localAudioName,u8);
     }catch(e){ log('WAV/CAS: prijem audio selhal - '+e.message); }
     localAudioParts=[];
   };
@@ -1467,6 +1518,102 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }catch(e){ log('TXT: prijem textu selhal - '+e.message); }
     localTextParts=[];
   };
+
+  // ---------- BUILD2AS: XC12 CLOAD/CSAVE stage1 bez fake RAM injectu ----------
+  var cassStage={loadedName:'',loadedKind:'',loadedBytes:null,casInfo:null,csaveArmed:false,csaveCapturing:false,captured:new Uint8Array(0)};
+  function cassSetStatus(msg){
+    var el=document.getElementById('cassStatus');
+    if(el) el.textContent='XC12: '+msg;
+  }
+  function u8ToBase64(u8){
+    var out='', chunk=0x8000;
+    for(var i=0;i<u8.length;i+=chunk){
+      var sub=u8.subarray(i,Math.min(i+chunk,u8.length));
+      var s=''; for(var j=0;j<sub.length;j++) s+=String.fromCharCode(sub[j]);
+      out+=btoa(s);
+    }
+    return out;
+  }
+  function saveBinaryMobile(name,u8,label){
+    try{
+      if(!u8 || !u8.length){ log((label||'SAVE')+': neni co ulozit. CSAVE jeste neposlalo realna kazetova data.'); return; }
+      if(window.AHSAVE && window.AHSAVE.saveBase64){
+        var path=window.AHSAVE.saveBase64(name,u8ToBase64(u8));
+        log((label||'SAVE')+': ulozeno '+name+' ('+u8.length+' B) -> '+path);
+      }else{
+        var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([u8],{type:'application/octet-stream'})); a.download=name; a.click();
+        log((label||'SAVE')+': stazeno pres HTML download '+name+' ('+u8.length+' B).');
+      }
+    }catch(e){ log((label||'SAVE')+': chyba - '+e.message); }
+  }
+  function parseCasInfo(u8){
+    var info={ok:false,fuji:false,chunks:0,dataChunks:0,dataBytes:0,baud:0,notes:[]};
+    if(!u8 || u8.length<4){ info.notes.push('soubor je moc kratky'); return info; }
+    var head=String.fromCharCode(u8[0],u8[1],u8[2],u8[3]);
+    if(head==='FUJI'){
+      info.fuji=true; info.ok=true;
+      var p=4;
+      while(p+8<=u8.length){
+        var id=String.fromCharCode(u8[p],u8[p+1],u8[p+2],u8[p+3]);
+        var len=u8[p+4]|(u8[p+5]<<8), aux=u8[p+6]|(u8[p+7]<<8); p+=8;
+        if(p+len>u8.length){ info.notes.push('chunk '+id+' presahuje konec souboru'); break; }
+        info.chunks++;
+        if(id.toLowerCase()==='data'){ info.dataChunks++; info.dataBytes+=len; }
+        if(id.toLowerCase()==='baud'){ info.baud=aux||info.baud; }
+        p+=len;
+      }
+      return info;
+    }
+    // nouzove: nektere jednoduche exporty jsou jen bloky bez FUJI hlavicky
+    info.ok=true; info.dataChunks=Math.ceil(u8.length/132); info.dataBytes=u8.length; info.notes.push('neni FUJI CAS hlavicka - beru jako syrova data pro analyzu');
+    return info;
+  }
+  function loadCassetteBytes(name,u8){
+    name=name||'kazeta';
+    cassStage.loadedName=name; cassStage.loadedBytes=u8; cassStage.casInfo=null;
+    var lower=name.toLowerCase();
+    if(/\.cas($|[?#])/i.test(lower)){
+      cassStage.loadedKind='CAS';
+      cassStage.casInfo=parseCasInfo(u8);
+      var ci=cassStage.casInfo;
+      clearTapeAudioForNewFile('CAS LOAD RESET AUDIO');
+      tapeCounterValue=0; updateTapeCounter(false);
+      cassSetStatus('CAS pripraven: '+name+' | data bloky '+ci.dataChunks+' | '+ci.dataBytes+' B');
+      log('CLOAD CAS: nahran '+name+' ('+u8.length+' B). FUJI='+(ci.fuji?'ANO':'NE')+', chunks='+ci.chunks+', dataBlocks='+ci.dataChunks+', dataBytes='+ci.dataBytes+'.');
+      if(ci.notes.length) log('CLOAD CAS POZN: '+ci.notes.join(' | '));
+      log('CLOAD CAS: stage1 zatim analyzuje a pripravi pasku. Dalsi faze napoji bloky do praveho C: handleru / POKEY cesty. Nic se nevklada do RAM.');
+      return;
+    }
+    if(/\.wav($|[?#])/i.test(lower)) cassStage.loadedKind='WAV';
+    else if(/\.mp3($|[?#])/i.test(lower)) cassStage.loadedKind='MP3';
+    else cassStage.loadedKind='AUDIO';
+    cassSetStatus(cassStage.loadedKind+' nahran: '+name+' | PLAY/REW/F.FWD realne ovlada audio');
+    playTapeAudioBytes(name,u8);
+  }
+  function armCsave(){
+    cassStage.csaveArmed=true; cassStage.csaveCapturing=true; cassStage.captured=new Uint8Array(0);
+    cassSetStatus('CSAVE ARM | cekam na realny vystup Atari C:');
+    tapeVisualStart('REC',1,false);
+    log('CSAVE ARM: RECORD stisknut. Pripraveno pro ciste zachyceni dat z Atari na mobil.');
+    log('CSAVE ARM: zatim NEUKLADAM fake soubor. SAVE CAS/WAV bude aktivni az budou zachycena realna kazetova data z emulatoru.');
+  }
+  function stopCsaveIfNeeded(reason){
+    if(cassStage.csaveCapturing){
+      cassStage.csaveCapturing=false;
+      cassSetStatus('CSAVE stop | zachyceno '+(cassStage.captured?cassStage.captured.length:0)+' B');
+      log((reason||'CSAVE STOP')+': nahravani zastaveno. Zachyceno '+(cassStage.captured?cassStage.captured.length:0)+' B.');
+      if(!cassStage.captured || !cassStage.captured.length) log('CSAVE STOP: zatim nebyla zachycena realna data z C:. To je poctive stage1, ne fake.');
+    }
+  }
+  function saveCsaveCas(){
+    if(!cassStage.captured || !cassStage.captured.length){ log('SAVE CAS: zatim neni co ulozit. Neudelam prazdny/falesny CAS. Nejdrive musi CSAVE poslat realna data.'); return; }
+    saveBinaryMobile('EMU10_CSAVE_'+Date.now()+'.cas',cassStage.captured,'SAVE CAS');
+  }
+  function saveCsaveWav(){
+    if(!cassStage.captured || !cassStage.captured.length){ log('SAVE WAV: zatim neni co renderovat. Neudelam fake WAV. Nejdrive musi byt zachyceny skutecny CSAVE stream.'); return; }
+    log('SAVE WAV: render z realnych CSAVE bloku bude dalsi faze po zachyceni C: dat.');
+  }
+
   function openTxtOverlay(){ document.getElementById('txtOverlay').style.display='flex'; }
   function openTextPicker(){
     log('TXT: oteviram mobilni Downloads / Vyber BASIC nebo Turbo BASIC textu.');
@@ -1619,7 +1766,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('WAV/MP3 '+(dir<0?'REWIND':'F.FWD')+': realny seek '+fmtTime(old)+' -> '+fmtTime(target)+' / '+fmtTime(dur)+' | COUNTER '+pad3(tapeCounterValue));
   }
   function pickTapeAudio(){
-    log('WAV/CAS: oteviram mobilni Downloads / Vyber WAV/MP3/CAS. Po nahrani funguje REWIND/F.FWD jako realne pretaceni.');
+    log('CLOAD WAV/CAS: oteviram mobilni Downloads / Vyber WAV/MP3/CAS. WAV/MP3 lze prehrat a pretacet; CAS se analyzuje pro cisty CLOAD stage.');
     try{
       if(window.AHPICK && window.AHPICK.pickAudio){ window.AHPICK.pickAudio(); return; }
     }catch(e){ log('AHPICK WAV/CAS chyba: '+e.message); }
@@ -1654,7 +1801,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!silent) log((reason||'TAPE PAUSE')+': audio je zastavene na aktualni pozici. PLAY ho znovu rozjede. COUNTER '+pad3(tapeCounterValue)+'.');
   }
   function stopTapeAudio(reason,silent){
-    /* BUILD2AK: STOP nesmi pretacet dopredu ani dozadu. Jen zastavi pohyb a zvuk.
+    /* BUILD2AM: STOP nesmi pretacet dopredu ani dozadu. Jen zastavi pohyb a zvuk.
        Nulovani je samostatne tlacitko u ciselniku COUNTER. */
     try{
       if(tapeAudio && tapeAudio.src){
@@ -1677,7 +1824,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       return;
     }
     tapeAnimate(1200,'PLAY',1);
-    log('KAZETA PLAY: CLOAD priprava z WAV/CAS, COUNTER pocita stopu. Zatim bez RAM injectu a bez fake LOAD.');
+    if(cassStage.loadedKind==='CAS'){ log('KAZETA PLAY: CAS '+cassStage.loadedName+' pripraven pro CLOAD stage. Zatim bez RAM injectu a bez fake LOAD.'); } else { log('KAZETA PLAY: CLOAD priprava z WAV/CAS, COUNTER pocita stopu. Zatim bez RAM injectu a bez fake LOAD.'); }
   }
   function pickFile(accept,cb){
     var inp=document.getElementById('filePick');
@@ -1721,10 +1868,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     document.getElementById('btnTbxl').addEventListener('click',runTbxl);
     function safeTap(id,fn){ var el=document.getElementById(id); if(!el) return; var moved=false,last=0; el.addEventListener('pointerdown',function(e){ moved=false; },{passive:true}); el.addEventListener('pointermove',function(e){ moved=true; },{passive:true}); el.addEventListener('pointerup',function(e){ if(!moved){ e.preventDefault(); last=Date.now(); fn(e); } }); el.addEventListener('click',function(e){ e.preventDefault(); if(Date.now()-last<450) return; last=Date.now(); fn(e); }); }
     safeTap('btnJoy',function(){ setJoyMode(!joyMode); });
-    safeTap('btnTapeRecord',function(){ pressAnim('btnTapeRecord',520); tapeAnimate(1200,'REC',1); log('KAZETA REC: CSAVE priprava na ulozeni na mobil, COUNTER pocita stopu. XEX picker je jen dole v servisnim panelu.'); });
+    safeTap('btnTapeRecord',function(){ pressAnim('btnTapeRecord',520); armCsave(); });
     safeTap('btnTapePlay',function(){ pressAnim('btnTapePlay',520); resumeTapeAudioOrCload(); });
     safeTap('btnTapePause',function(){ pressAnim('btnTapePause',620); pauseTapeAudio('KAZETA PAUSE'); });
-    safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',620); stopTapeAudio('KAZETA STOP/EJECT'); });
+    safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',620); stopCsaveIfNeeded('KAZETA STOP/EJECT'); stopTapeAudio('KAZETA STOP/EJECT'); });
     safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',650); seekTapeAudio(-1); });
     safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',650); seekTapeAudio(1); });
     safeTap('btnCounterReset',function(){ pressAnim('btnCounterReset',260); resetTapeCounter(); });
@@ -1733,10 +1880,16 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     safeTap('dockAtr',function(){ pressAnim('dockAtr',220); openLocalGamePicker('ATR DISK Z MOBILU'); });
     safeTap('dockTbxl',function(){ runTbxl(); });
     safeTap('dockTxt',function(){ pressAnim('dockTxt',220); openTextPicker(); });
-    safeTap('dockWav',function(){ pressAnim('dockWav',220); pickTapeAudio(); });
+    safeTap('dockCload',function(){ pressAnim('dockCload',220); pickTapeAudio(); });
+    safeTap('dockCsave',function(){ pressAnim('dockCsave',220); armCsave(); });
+    safeTap('dockSaveCas',function(){ pressAnim('dockSaveCas',220); saveCsaveCas(); });
+    safeTap('dockSaveWav',function(){ pressAnim('dockSaveWav',220); saveCsaveWav(); });
+    safeTap('dockHelpMini',function(){ pressAnim('dockHelpMini',220); var ov=document.getElementById('helpOverlay'); if(ov){ ov.style.display='flex'; ov.setAttribute('aria-hidden','false'); } });
     safeTap('dockNetGames',function(){ pressAnim('dockNetGames',260); openGamesDownload(); });
     safeTap('dockLog',function(){ pressAnim('dockLog',220); document.getElementById('btnSaveLog').click(); });
     safeTap('dockMenu',function(){ pressAnim('dockMenu',220); try{ window.location.href='../index.html'; }catch(e){ log('MENU chyba: '+e.message); } });
+    safeTap('btnHelpPanel',function(){ pressAnim('btnHelpPanel',220); var ov=document.getElementById('helpOverlay'); if(ov){ ov.style.display='flex'; ov.setAttribute('aria-hidden','false'); } });
+    safeTap('btnHelpPanel',function(){ pressAnim('btnHelpPanel',220); var o=document.getElementById('helpOverlay'); if(o) o.style.display='flex'; });
     function txtToAtari(text){
       if(!text) return;
       var pre=document.getElementById('chkNew').checked ? 'NEW\x01' : '';
@@ -1759,6 +1912,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     });
     document.getElementById('btnTxtClose').addEventListener('click',function(){ document.getElementById('txtOverlay').style.display='none'; });
     bindJoy();
+    bindLandscapeJoy();
     window.addEventListener('resize',fitScreen); fitScreen();
     document.getElementById('btnSelfTest').addEventListener('click',function(){power(true);});
     document.getElementById('btnReset').addEventListener('click',doReset);
@@ -1790,6 +1944,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     document.getElementById('btnLogClose').addEventListener('click',function(){
       document.getElementById('logOverlay').style.display='none';
     });
+    var bhc=document.getElementById('btnHelpClose'); if(bhc){ bhc.addEventListener('click',function(){ var ov=document.getElementById('helpOverlay'); if(ov){ ov.style.display='none'; ov.setAttribute('aria-hidden','true'); } }); }
+
     bindHold('btnOption','option'); bindHold('btnSelect','select'); bindHold('btnStart','start');
     var bh=document.getElementById('btnHelp');
     bh.addEventListener('pointerdown',function(e){e.preventDefault(); if(M){M.keyDown(17); bh.classList.add('on');}});
@@ -1798,9 +1954,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2AK STOP + COUNTER RESET pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2AR LANDSCAPE JOYSTICK pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani.');
-    log('Dole: NET HRY, XEX MOBIL, ATR DISK, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. STOP uz nepretaci, COUNTER resetuje male tlacitko u ciselniku.');
+    log('HELP BUILD2AR: pridany landscape joystick pres hru pro hrani na sirku.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
