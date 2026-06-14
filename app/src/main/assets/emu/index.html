@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2AW</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2AX</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -28,14 +28,16 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
 /* file/action zones on cassette and main physical buttons */
 #btnXex,#btnAtr{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-/* BUILD2AW: VLOZIT KAZETU je samostatna zona na tele XC12. PLAY uz nikdy neotevira picker. */
+/* BUILD2AX: fyzicka tlacitka XC12 jsou srovnana podle PNG, aby STOP/EJT nepadal do F.FWD. */
 #btnTapeInsert{left:25.0%;top:71.35%;width:50.0%;height:13.2%;z-index:69;border-radius:16px;}
-#btnTapeRecord{left:7.1%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTapePlay{left:20.0%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTapeRew{left:32.9%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTapeFwd{left:45.8%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTapeStop{left:58.7%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTapePause{left:71.6%;top:88.15%;width:12.5%;height:5.7%;}
+/* BUILD2AX: realne pozice fyzickych tlacitek na PNG: RECORD / PLAY / REW / F.FWD / STOP-EJT / PAUSE.
+   Predtim byl cely rad posunuty doleva, proto se pri stisku STOP nekdy trefilo F.FWD. */
+#btnTapeRecord{left:11.9%;top:89.55%;width:9.9%;height:6.1%;z-index:73;}
+#btnTapePlay{left:22.2%;top:89.55%;width:9.9%;height:6.1%;z-index:73;}
+#btnTapeRew{left:32.5%;top:89.55%;width:9.9%;height:6.1%;z-index:73;}
+#btnTapeFwd{left:42.8%;top:89.55%;width:9.9%;height:6.1%;z-index:73;}
+#btnTapeStop{left:53.1%;top:89.55%;width:9.9%;height:6.1%;z-index:78;}
+#btnTapePause{left:63.4%;top:89.55%;width:9.9%;height:6.1%;z-index:73;}
 #btnTapeSave{left:82.4%;top:86.95%;width:10.2%;height:4.55%;z-index:74;border-radius:6px;}
 /* BUILD2AM: male tlacitko/reset u praveho ciselniku XC12 */
 #btnCounterReset{left:88.35%;top:82.70%;width:3.8%;height:3.35%;z-index:70;border-radius:4px;}
@@ -2112,14 +2114,18 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(tapeRunTimer){ clearTimeout(tapeRunTimer); tapeRunTimer=null; }
     startTapeCounter(mode||'PLAY', speed||1, !!followAudio);
   }
-  function tapeVisualStop(){
+  function clearTapeTransportTimers(){
     tapeMotionToken++;
+    if(tapeCounterTimer){ try{ clearInterval(tapeCounterTimer); }catch(e){} tapeCounterTimer=null; }
+    if(tapeRunTimer){ try{ clearTimeout(tapeRunTimer); }catch(e){} tapeRunTimer=null; }
+    if(tapeFastReturnTimer){ try{ clearTimeout(tapeFastReturnTimer); }catch(e){} tapeFastReturnTimer=null; }
+    if(tapeSeekHudTimer){ try{ clearTimeout(tapeSeekHudTimer); }catch(e){} tapeSeekHudTimer=null; }
+  }
+  function tapeVisualStop(){
+    clearTapeTransportTimers();
     if(cassStage){ cassStage.transport='STOPPED'; }
     var st=document.getElementById('stage');
     if(st){ st.classList.remove('tapeRun','tapePlay','tapeFwd','tapeRew'); }
-    if(tapeRunTimer){ clearTimeout(tapeRunTimer); tapeRunTimer=null; }
-    if(tapeFastReturnTimer){ clearTimeout(tapeFastReturnTimer); tapeFastReturnTimer=null; }
-    if(tapeSeekHudTimer){ clearTimeout(tapeSeekHudTimer); tapeSeekHudTimer=null; }
     var hud=document.getElementById('tapeSeekHud'); if(hud) hud.classList.remove('show');
     stopTapeCounter();
     document.querySelectorAll('.tapeBtn.pressed').forEach(function(b){ b.classList.remove('pressed'); });
@@ -2180,6 +2186,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     setTimeout(function(){ b.classList.remove('pressed'); }, ms||180);
   }
   function seekTapeAudio(dir){
+    if(cassStage && (cassStage.csaveArmed || cassStage.csaveCapturing)){
+      log('KAZETA SEEK: ignorovano pri CSAVE ARM/CAPTURE. Nejdriv STOP/EJECT, aby se nahravani vyhodnotilo.');
+      return;
+    }
     if(Date.now()<tapeStoppedUntil){ log('KAZETA SEEK: ignoruju dozvuk po STOP, aby se paska sama nerozjela.'); return; }
     var mode=dir<0?'REWIND':'FWD';
     if(!tapeAudio || !tapeAudio.src){
@@ -2252,9 +2262,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     /* BUILD2AM: STOP nesmi pretacet dopredu ani dozadu. Jen zastavi pohyb a zvuk.
        Nulovani je samostatne tlacitko u ciselniku COUNTER. */
     try{
-      tapeStoppedUntil=Date.now()+650;
+      tapeStoppedUntil=Date.now()+1200;
+      clearTapeTransportTimers();
       if(tapeAudio && tapeAudio.src){
-        tapeAudio.pause();
+        try{ tapeAudio.pause(); tapeAudio.playbackRate=1.0; }catch(e){}
       }
     }catch(e){ log('TAPE STOP: chyba zastaveni audio - '+e.message); }
     tapeVisualStop();
@@ -2268,6 +2279,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     return visual || audio || !!cassStage.csaveCapturing;
   }
   function handleTapeStopEject(){
+    tapeStoppedUntil=Date.now()+1200;
+    clearTapeTransportTimers();
     var active=isTapeActiveNow();
     var stoppedCsave=stopCsaveIfNeeded('KAZETA STOP/EJECT');
     if(tapeAudio && tapeAudio.src){ stopTapeAudio('KAZETA STOP/EJECT', stoppedCsave); }
@@ -2445,7 +2458,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2AW-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2AX-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -2461,9 +2474,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2AW XC12 AUTO CSAVE LOG FIX pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2AX XC12 STOP HITBOX FIX pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani/kazetak.');
-    log('KAZETA BUILD2AW: VLOZIT=klepni na telo kazety, PLAY=spustit vlozenou kazetu, RECORD=CSAVE ARM, STOP automaticky vyhodnoti CSAVE v LOGu a ulozi realny CAS jen kdyz prisly skutecne SEROUT bajty.');
+    log('KAZETA BUILD2AX: opraveny hitbox fyzickych tlacitek XC12. STOP/EJECT je presne na STOP/EJT a blokuje stale F.FWD/REW dozvuky; CSAVE auto log/save zustava bez fake.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
