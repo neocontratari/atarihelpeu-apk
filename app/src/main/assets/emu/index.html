@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2AK</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2AM</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -28,14 +28,14 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
 /* file/action zones on cassette and main physical buttons */
 #btnXex,#btnAtr{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-/* BUILD2AK: fyzicky kazetak zustava CLOAD / CSAVE; STOP nepretaci, reset u ciselniku nuluje COUNTER. */
+/* BUILD2AM: fyzicky kazetak zustava CLOAD / CSAVE; STOP nepretaci, reset u ciselniku nuluje COUNTER. */
 #btnTapeRecord{left:7.1%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapePlay{left:20.0%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeRew{left:32.9%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeFwd{left:45.8%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeStop{left:58.7%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapePause{left:71.6%;top:88.15%;width:12.5%;height:5.7%;}
-/* BUILD2AK: male tlacitko/reset u praveho ciselniku XC12 */
+/* BUILD2AM: male tlacitko/reset u praveho ciselniku XC12 */
 #btnCounterReset{left:88.35%;top:82.70%;width:3.8%;height:3.35%;z-index:70;border-radius:4px;}
 #btnCounterReset.pressed,#btnCounterReset:active{background:rgba(255,208,90,.20)!important;box-shadow:inset 0 0 13px rgba(255,210,80,.75),0 0 10px rgba(255,200,60,.35);transform:translateY(1px) scale(.96);}
 #btnTbxl{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
@@ -46,7 +46,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .tapeReel:after{transform:rotate(62deg);}
 #tapeReelL{left:37.85%;top:75.52%;width:5.15%;aspect-ratio:1;}
 #tapeReelR{left:53.95%;top:75.52%;width:5.15%;aspect-ratio:1;}
-/* BUILD2AK: counter ve skutecnem prave okno COUNTER na XC12 skinu */
+/* BUILD2AM: counter ve skutecnem prave okno COUNTER na XC12 skinu */
 #tapeCounter{position:absolute;left:80.72%;top:83.20%;width:7.95%;height:2.15%;z-index:62;pointer-events:none;display:flex;align-items:center;justify-content:center;padding-top:.04%;
   font:900 clamp(10px,1.72vw,16px) "Courier New",monospace;letter-spacing:.10em;color:#ffd064;text-shadow:0 0 4px #ff9d00,0 0 9px rgba(255,168,0,.74),0 1px 0 #000;
   background:linear-gradient(180deg,rgba(6,4,1,.74),rgba(22,12,0,.50));border-radius:3px;box-shadow:inset 0 0 6px rgba(0,0,0,.88),0 0 7px rgba(255,171,0,.16);mix-blend-mode:normal;}
@@ -97,7 +97,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .overlay{display:none;position:fixed;inset:0;background:rgba(8,9,10,.96);z-index:1000;padding:16px;flex-direction:column;gap:10px;color:#e8e2d0;font-family:"Courier New",monospace;}
 .overlay .row{display:flex;gap:8px}.overlay button{flex:1;padding:11px;border:0;border-radius:6px;background:#d9b25c;color:#111;font:bold 12px "Courier New",monospace}.overlay button.dark{background:#454850;color:#eee}.overlay button.danger{background:#c94331;color:#fff}.overlay textarea{flex:1;background:#08090a;color:#9fe29f;border:1px solid #333;border-radius:6px;padding:9px;font:12px "Courier New",monospace;resize:none;}
 
-/* BUILD2AK: servisni tlacitka jako fyzicka tlacitka pod monitorem - tmave, hluboke, stisk dolu */
+/* BUILD2AM: servisni tlacitka jako fyzicka tlacitka pod monitorem - tmave, hluboke, stisk dolu */
 #actionDock{
   position:relative;width:min(100vw,941px);max-width:941px;margin:9px auto 0;padding:10px 9px 9px;z-index:90;
   display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,42px);gap:8px;pointer-events:auto;
@@ -125,6 +125,15 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 }
 #actionDock button.primary{color:#f2c464;border-color:#585047;box-shadow:inset 0 1px 0 rgba(255,255,255,.15), inset 0 -7px 12px rgba(0,0,0,.58), 0 3px 0 #020304, 0 0 9px rgba(242,196,100,.10);}
 #miniLog{position:relative;width:min(100vw,941px);max-width:941px;margin:5px auto 10px;color:#ffd976;font:700 clamp(7px,1.65vw,10px) "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 5px #000;opacity:.95;padding:0 8px;}
+#miniLog{display:none;}
+#dockHelpFloat{position:relative;width:min(100vw,941px);max-width:941px;margin:4px auto 0;display:flex;justify-content:flex-end;padding:0 8px;}
+#btnHelpPanel{padding:9px 16px;border:1px solid #5a5148;border-radius:8px;background:linear-gradient(180deg,#30333a 0%,#202329 34%,#111317 67%,#050608 100%);color:#f2c464;font:bold 12px "Courier New",monospace;box-shadow:inset 0 1px 0 rgba(255,255,255,.15), inset 0 -7px 12px rgba(0,0,0,.58), 0 3px 0 #020304;}
+#btnHelpPanel:active,#btnHelpPanel.pressed{transform:translateY(3px) scale(.985);box-shadow:inset 0 9px 21px rgba(0,0,0,.86),0 0 10px rgba(242,196,100,.16);}
+#helpOverlay .panel{max-width:860px;margin:0 auto;background:#0b0d10;border:1px solid #3a3e45;border-radius:12px;padding:16px;box-shadow:0 0 30px rgba(0,0,0,.7);}
+#helpOverlay h2{font-size:18px;margin-bottom:10px;color:#ffd87a;}
+#helpOverlay ul{padding-left:18px;margin:10px 0 14px;}
+#helpOverlay li{margin:5px 0;}
+
 @media(max-width:420px){#actionDock{grid-template-rows:repeat(2,36px);gap:6px;padding:8px 7px 7px;}#actionDock button{font-size:7.4px;}}
 
 @media (prefers-reduced-motion:reduce){.scan,.screenSlot:after,#led{animation:none}}
@@ -174,7 +183,8 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <button id="dockLog" type="button">LOG / CHYBA</button>
   <button id="dockMenu" type="button">MENU</button>
 </div>
-<div id="miniLog">EMU10 BUILD2AK: STOP nepretaci, reset COUNTER tlacitkem u ciselniku...</div>
+<div id="dockHelpFloat"><button id="btnHelpPanel" type="button">HELP</button></div>
+<div id="miniLog"></div>
 <div id="txtOverlay" class="overlay">
   <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
   <label style="font:11px 'Courier New',monospace;color:#c9c5bb;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim</label>
@@ -183,6 +193,34 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 <div id="logOverlay" class="overlay">
   <div class="row"><button id="btnLogCopy">KOPIROVAT</button><button id="btnLogDownload" class="dark">STAHNOUT</button><button id="btnLogClose" class="danger">ZAVRIT</button></div>
   <textarea id="logFull" readonly></textarea>
+</div>
+
+<div id="helpOverlay" class="overlay" aria-hidden="true">
+  <div class="panel">
+    <h2>N&P VISION — HELP</h2>
+    <p>Napoveda ke vsem hlavnim tlacitkum. Zobrazuje se jen po stisku HELP, aby nerusila grafiku emulatoru.</p>
+    <ul>
+      <li><b>POWER BASIC</b> — cold start do BASICu.</li>
+      <li><b>POWER + OPTION + SELF TEST</b> — boot se stisknutym OPTION / Self Test.</li>
+      <li><b>KLAVESNICE / JOYSTICK</b> — prepina skin a ovladani.</li>
+      <li><b>HELP / START / SELECT / OPTION / RESET / BREAK</b> — realne Atari funkcni klavesy.</li>
+      <li><b>NET HRY</b> — otevře hry z AtariHelp.eu a klik na XEX/ZIP/ATR se vraci do emulatoru.</li>
+      <li><b>XEX MOBIL</b> — výběr XEX/ZIP z mobilu / Downloads.</li>
+      <li><b>ATR DISK</b> — výběr ATR disk image.</li>
+      <li><b>TURBO BASIC</b> — spusti Turbo Basic XL.</li>
+      <li><b>BASIC/TBXL TXT</b> — vložení vlastního BASIC / Turbo Basic textu.</li>
+      <li><b>WAV / MP3</b> — nahraje audio do kazetaku prehravace.</li>
+      <li><b>REC</b> — priprava pro ciste CSAVE na mobil.</li>
+      <li><b>PLAY</b> — CLOAD priprava, nebo prehrani nahraneho WAV/MP3/CAS.</li>
+      <li><b>REW / F.FWD</b> — realne pretaci WAV/MP3/CAS, kdyz je audio nahrane.</li>
+      <li><b>STOP/EJECT</b> — zastavi audio bez nesmyslneho pretaceni.</li>
+      <li><b>PAUSE</b> — pozastavi audio, PLAY potom pokracuje.</li>
+      <li><b>COUNTER RESET</b> — male tlacitko u ciselniku vynuluje stopu na 000.</li>
+      <li><b>LOG / CHYBA</b> — zobrazi plny log pro testovani.</li>
+      <li><b>MENU</b> — navrat na uvodni obrazovku.</li>
+    </ul>
+    <div class="row"><button id="btnHelpClose" class="danger">ZAVRIT HELP</button></div>
+  </div>
 </div>
 
 <script>
@@ -1250,10 +1288,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   var logEl, M, canvas, ctx, img, running=false, audio=null;
   var tapeAudio=null, tapeAudioUrl=null, tapeRunTimer=null, tapeCounterTimer=null, tapeCounterValue=0, tapeCounterDir=1;
   var tapeCounterAudioMode=false, tapeAudioName='', tapeSeekHudTimer=null, tapeFastReturnTimer=null;
-  /* BUILD2AK: realny counter lze vynulovat nezavisle na aktualni poloze audia */
+  /* BUILD2AM: realny counter lze vynulovat nezavisle na aktualni poloze audia */
   var tapeCounterZeroBase=0;
   var LOGBUF=[];
-  function log(s){ LOGBUF.push(s); if(logEl){ logEl.textContent=LOGBUF.slice(-200).join('\n'); logEl.scrollTop=logEl.scrollHeight; } var ml=document.getElementById('miniLog'); if(ml) ml.textContent=String(s).slice(0,180); }
+  function log(s){ LOGBUF.push(s); if(logEl){ logEl.textContent=LOGBUF.slice(-200).join('\n'); logEl.scrollTop=logEl.scrollHeight; } }
   window.emuLog=log;
 
   // ---------- POKEY audio (4 kanaly + poly 4/5/9/17 + GTIA speaker klik) ----------
@@ -1841,7 +1879,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!silent) log((reason||'TAPE PAUSE')+': audio je zastavene na aktualni pozici. PLAY ho znovu rozjede. COUNTER '+pad3(tapeCounterValue)+'.');
   }
   function stopTapeAudio(reason,silent){
-    /* BUILD2AK: STOP nesmi pretacet dopredu ani dozadu. Jen zastavi pohyb a zvuk.
+    /* BUILD2AM: STOP nesmi pretacet dopredu ani dozadu. Jen zastavi pohyb a zvuk.
        Nulovani je samostatne tlacitko u ciselniku COUNTER. */
     try{
       if(tapeAudio && tapeAudio.src){
@@ -1924,6 +1962,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     safeTap('dockNetGames',function(){ pressAnim('dockNetGames',260); openGamesDownload(); });
     safeTap('dockLog',function(){ pressAnim('dockLog',220); document.getElementById('btnSaveLog').click(); });
     safeTap('dockMenu',function(){ pressAnim('dockMenu',220); try{ window.location.href='../index.html'; }catch(e){ log('MENU chyba: '+e.message); } });
+    safeTap('btnHelpPanel',function(){ pressAnim('btnHelpPanel',220); var ov=document.getElementById('helpOverlay'); if(ov){ ov.style.display='flex'; ov.setAttribute('aria-hidden','false'); } });
+    safeTap('btnHelpPanel',function(){ pressAnim('btnHelpPanel',220); var o=document.getElementById('helpOverlay'); if(o) o.style.display='flex'; });
     function txtToAtari(text){
       if(!text) return;
       var pre=document.getElementById('chkNew').checked ? 'NEW\x01' : '';
@@ -1977,6 +2017,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     document.getElementById('btnLogClose').addEventListener('click',function(){
       document.getElementById('logOverlay').style.display='none';
     });
+    var bhc=document.getElementById('btnHelpClose'); if(bhc){ bhc.addEventListener('click',function(){ var ov=document.getElementById('helpOverlay'); if(ov){ ov.style.display='none'; ov.setAttribute('aria-hidden','true'); } }); }
+
     bindHold('btnOption','option'); bindHold('btnSelect','select'); bindHold('btnStart','start');
     var bh=document.getElementById('btnHelp');
     bh.addEventListener('pointerdown',function(e){e.preventDefault(); if(M){M.keyDown(17); bh.classList.add('on');}});
@@ -1985,9 +2027,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2AK STOP + COUNTER RESET pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2AM STOP + COUNTER RESET pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani.');
-    log('Dole: NET HRY, XEX MOBIL, ATR DISK, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. STOP uz nepretaci, COUNTER resetuje male tlacitko u ciselniku.');
+    log('HELP: napovedu ke vsem tlacitkum otevres tlacitkem HELP pod emulatorovou obrazovkou.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
