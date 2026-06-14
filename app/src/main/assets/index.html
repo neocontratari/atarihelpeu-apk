@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — AtariHelp.eu EMU-10</title>
+<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2W</title>
 <style>
 :root{--gold:#f3c465;--blue:#6cc9ff;--dark:#060709;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -12,7 +12,7 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 .stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050608;overflow:hidden;box-shadow:0 0 40px rgba(0,0,0,.9);}
 .skin{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;}
 .hit{position:absolute;border:0;background:rgba(255,196,90,0);color:transparent;font-size:0;cursor:pointer;z-index:10;border-radius:12px;}
-.hit:active{background:rgba(255,196,90,.13);box-shadow:0 0 26px rgba(255,196,90,.35) inset;}
+.hit:active,.hit.flash{background:rgba(255,196,90,.16);box-shadow:0 0 28px rgba(255,196,90,.45) inset,0 0 18px rgba(95,190,255,.18);transform:translateY(1px);}
 .crt-sweep{position:absolute;left:10.8%;top:18.9%;width:78.5%;height:27.7%;border-radius:4%/9%;z-index:4;pointer-events:none;overflow:hidden;mix-blend-mode:screen;}
 .crt-sweep:before{content:"";position:absolute;left:-40%;top:0;width:35%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,210,95,.18),transparent);animation:sweep 4.8s linear infinite;}
 .crt-sweep:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.035) 0 1px,transparent 1px 4px);opacity:.35;animation:flicker .16s steps(2) infinite;}
@@ -28,7 +28,9 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 /* 6 velkych tlacitek presne na navrhu */
 #goGames{left:7.3%;top:75.5%;width:31.5%;height:7.25%;}#goTape{left:40.1%;top:75.5%;width:31.5%;height:7.25%;}#goAsm{left:72.8%;top:75.5%;width:20.0%;height:7.25%;}
 #goSettings{left:7.3%;top:84.6%;width:31.5%;height:7.25%;}#goSystem{left:40.1%;top:84.6%;width:31.5%;height:7.25%;}#goDocs{left:72.8%;top:84.6%;width:20.0%;height:7.25%;}
-#playEmu{left:23.0%;top:66.3%;width:53.8%;height:4.3%;border-radius:8px;}#tapeTransport{left:22.0%;top:64.2%;width:54.8%;height:8.6%;}
+#playEmu{left:31.0%;top:66.3%;width:13.0%;height:4.3%;border-radius:8px;}#tapeTransport{left:22.0%;top:64.2%;width:54.8%;height:8.6%;}
+#introRecGames{left:22.0%;top:65.8%;width:11.3%;height:4.8%;border-radius:8px;z-index:12;}
+#introPlayEmu{left:33.4%;top:65.8%;width:11.2%;height:4.8%;border-radius:8px;z-index:12;}
 </style>
 </head>
 <body>
@@ -37,7 +39,9 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
   <div class="crt-sweep"></div><div class="led-blue"></div><div class="reelglow r1"></div><div class="reelglow r2"></div>
   <div class="eq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <a id="playEmu" class="hit" href="emu/index.html" aria-label="Spustit emulator">PLAY EMULATOR</a>
-  <a id="goGames" class="hit" href="emu/index.html" aria-label="Games">GAMES</a>
+  <a id="introRecGames" class="hit" href="https://atarihelp.eu/?page_id=207" aria-label="REC - otevrit AtariHelp hry ke stazeni">REC DOWNLOAD</a>
+  <a id="introPlayEmu" class="hit" href="emu/index.html" aria-label="PLAY - spustit emulator">PLAY EMULATOR</a>
+  <a id="goGames" class="hit" href="https://atarihelp.eu/?page_id=207" aria-label="Games - AtariHelp.eu hry ke stazeni">GAMES</a>
   <a id="goTape" class="hit" href="emu/index.html" aria-label="Tape loader">TAPE LOADER</a>
   <a id="goAsm" class="hit" href="https://atarihelp.eu/?page_id=614" aria-label="Assembler">ASSEMBLER</a>
   <a id="goSettings" class="hit" href="emu/index.html" aria-label="Settings">SETTINGS</a>

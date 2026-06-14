@@ -22,10 +22,11 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2F
+ * AtariHelp.eu EMU-10 BUILD2W
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
+ * - BUILD2W UI: REC otevira AtariHelp hry, PLAY v HTML vybira lokalni WAV/MP3, PAUSE TBXL
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
