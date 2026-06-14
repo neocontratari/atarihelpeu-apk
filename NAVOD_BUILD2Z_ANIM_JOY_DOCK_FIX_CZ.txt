@@ -1,0 +1,49 @@
+AtariHelp.eu EMU10 BUILD2Z_ANIM_JOY_DOCK_FIX
+
+Co tato verze meni proti BUILD2Y:
+
+1) Uvodni obrazovka
+- Vypnul jsem pridane tocici se civky na uvodni obrazovce, protoze byly mimo presny pixelovy navrh.
+- Skin zustava presny obrazek N&P VISION, bez rozhozene animace civky.
+
+2) Kazetak v emulatoru
+- Fyzicky kazetak uz neni pouzity jako XEX/WAV picker.
+- REC = priprava pro budouci CSAVE na mobil.
+- PLAY = priprava pro budouci CLOAD z WAV/CAS.
+- STOP/EJECT, REW, F.FWD, PAUSE zustavaji jako mechanicka kazetova tlacitka.
+- Kazetova tlacitka maji silnejsi animaci zamacknuti.
+- Kazeta zustava pripravena pro budoucí ciste C: / CLOAD / CSAVE bez fake RAM injectu.
+
+3) Servisni tlacitka pod kazetakem
+- Viditelna tlacitka XEX/ZIP, ATR DISK, TURBO BASIC, BASIC/TBXL TXT, WAV/CAS, LOG/CHYBA jsou presunuta pod cely skin.
+- Uz neprekrývaji a neorezavaji kazetak ani spodni cast obrazku.
+- XEX/ATR/TBXL/TXT/WAV se spousti pres tato samostatna tlacitka, ne pres fyzicky kazetak.
+
+4) Klavesnice
+- SHIFT zustava zamacknuty, dokud se znovu neodmackne.
+- Pri zmacknuti klavesy se prida viditelna animace pohybu/zamacknuti.
+
+5) Joystick
+- Joystick ma citlivejsi kruhovy pad pro NOX.
+- Deadzone je snizena.
+- Pridane jsou prime smerove zony UP/DOWN/LEFT/RIGHT pres sipky joysticku, aby byl smer vice natvrdo.
+- FIRE ma silnejsi animaci a log.
+
+6) BASIC/Altirra testy
+KODY JSOU STEJNE.
+BASIC/Altirra testovaci kody nebyly menene.
+
+Jak pouzit:
+- Rozbal ZIP.
+- Slozku app prekopiruj pres aktualni projekt.
+- Commit v GitHub Desktop.
+- Spust GitHub Actions build APK.
+
+Doporuceny test v NOX:
+1. Otevri aplikaci, zkontroluj uvodni obrazovku bez rozhozene tocici civky.
+2. Spust emulator.
+3. Zmackni par klaves - musi byt videt pohyb/zamacknuti.
+4. SHIFT musi zustat zamacknuty do dalsiho stisku.
+5. Prepnout JOYSTICK a otestovat smery + FIRE.
+6. Zmacknout kazetova tlacitka - musi byt videt zamacknuti, ale nesmi otevirat XEX picker.
+7. Sjet pod kazetak na servisni panel a testovat XEX/ZIP, ATR, TURBO BASIC, BASIC/TBXL TXT, WAV/CAS, LOG/CHYBA.

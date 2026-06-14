@@ -1212,7 +1212,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         if(k[1]===-1) b.setAttribute('data-mod','ctrl');
         if(k[1]===-2) b.setAttribute('data-mod','shift');
         var press=function(ev){ ev.preventDefault();
-          b.classList.add('flash'); setTimeout(function(){ b.classList.remove('flash'); },160);
+          b.classList.add('flash','keyPress'); setTimeout(function(){ b.classList.remove('flash','keyPress'); },190);
           if(k[1]===-1){ oskCtrl=!oskCtrl; refreshModifierVisuals(); log('CTRL '+(oskCtrl?'ZAMACKNUTO':'VYPNUTO')); return; }
           if(k[1]===-2){ oskShift=!oskShift; refreshModifierVisuals(); log('SHIFT '+(oskShift?'ZAMACKNUTO':'VYPNUTO')); return; }
           if(k[1]===-3){ M&&M.breakKey(); log('KEY BREAK'); return; }
@@ -1240,7 +1240,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var b=document.getElementById('btnJoy');
     if(b) b.setAttribute('data-mode', joyMode?'joy':'keyboard');
     joySet(0); joyFire=false; joyApply();
-    log('PREPINAC: '+(joyMode?'JOYSTICK':'KLAVESNICE'));
+    log('PREPINAC: '+(joyMode?'JOYSTICK - smerove zony jsou ostrejsi / natvrdo':'KLAVESNICE'));
   }
   function bindJoy(){
     var pad=document.getElementById('joyPad'), knob=document.getElementById('joyKnob');
@@ -1254,8 +1254,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     function fromXY(x,y){
       var r=pad.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
       var dx=x-cx, dy=y-cy, rad=Math.min(r.width,r.height)/2;
-      var len=Math.sqrt(dx*dx+dy*dy), dead=rad*0.18;
-      var kx=dx, ky=dy, max=rad*0.64;
+      var len=Math.sqrt(dx*dx+dy*dy), dead=rad*0.055;
+      var kx=dx, ky=dy, max=rad*0.78;
       if(len>max){ kx=dx/len*max; ky=dy/len*max; }
       knob.style.transform='translate('+kx+'px,'+ky+'px)';
       if(len<dead){ joySet(0); return; }
@@ -1285,6 +1285,15 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     fire.addEventListener('pointerdown',fOn,{passive:false}); fire.addEventListener('pointerup',fOff,{passive:false}); fire.addEventListener('pointercancel',fOff,{passive:false}); fire.addEventListener('pointerleave',fOff,{passive:false});
     fire.addEventListener('touchstart',fOn,{passive:false}); fire.addEventListener('touchend',fOff,{passive:false}); fire.addEventListener('touchcancel',fOff,{passive:false});
     fire.addEventListener('mousedown',fOn,{passive:false}); fire.addEventListener('mouseup',fOff,{passive:false});
+    function bindDir(id,mask,label){
+      var el=document.getElementById(id); if(!el) return;
+      function on(e){ e.preventDefault(); active=false; joySet(mask); el.classList.add('on'); log('JOYSTICK '+label+' natvrdo mask='+mask); }
+      function off(e){ if(e) e.preventDefault(); joySet(0); el.classList.remove('on'); }
+      el.addEventListener('pointerdown',on,{passive:false}); el.addEventListener('pointerup',off,{passive:false}); el.addEventListener('pointercancel',off,{passive:false}); el.addEventListener('pointerleave',off,{passive:false});
+      el.addEventListener('touchstart',on,{passive:false}); el.addEventListener('touchend',off,{passive:false}); el.addEventListener('touchcancel',off,{passive:false});
+      el.addEventListener('mousedown',on,{passive:false}); el.addEventListener('mouseup',off,{passive:false});
+    }
+    bindDir('joyUp',1,'UP'); bindDir('joyDown',2,'DOWN'); bindDir('joyLeft',4,'LEFT'); bindDir('joyRight',8,'RIGHT');
   }
 
   // ---------- vkladani TXT (typing queue pres scan kody) ----------
@@ -1546,12 +1555,12 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     document.getElementById('btnTbxl').addEventListener('click',runTbxl);
     function safeTap(id,fn){ var el=document.getElementById(id); if(!el) return; var moved=false,last=0; el.addEventListener('pointerdown',function(e){ moved=false; },{passive:true}); el.addEventListener('pointermove',function(e){ moved=true; },{passive:true}); el.addEventListener('pointerup',function(e){ if(!moved){ e.preventDefault(); last=Date.now(); fn(e); } }); el.addEventListener('click',function(e){ e.preventDefault(); if(Date.now()-last<450) return; last=Date.now(); fn(e); }); }
     safeTap('btnJoy',function(){ setJoyMode(!joyMode); });
-    safeTap('btnTapeRecord',function(){ pressAnim('btnTapeRecord',220); tapeAnimate(900); log('KAZETA REC: rezervovano pro CSAVE na mobil. Neni to XEX picker a nic se nefakuje.'); });
-    safeTap('btnTapePlay',function(){ pressAnim('btnTapePlay',220); tapeAnimate(1200); log('KAZETA PLAY: rezervovano pro CLOAD z WAV/CAS. Zatim bez RAM injectu.'); });
-    safeTap('btnTapePause',function(){ pressAnim('btnTapePause',220); tapeAnimate(600); log('KAZETA PAUSE: mechanicka pauza pro budouci CLOAD/CSAVE.'); });
-    safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',220); stopTapeAudio(); log('KAZETA STOP/EJECT: zastaveno, C: stav zustava pripraveny.'); });
-    safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',220); tapeAnimate(900); log('KAZETA REWIND: animace, HW kazeta/C: bude v dalsi fazi.'); });
-    safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',220); tapeAnimate(900); log('KAZETA F.FWD: animace, HW kazeta/C: bude v dalsi fazi.'); });
+    safeTap('btnTapeRecord',function(){ pressAnim('btnTapeRecord',520); tapeAnimate(900); log('KAZETA REC: CSAVE priprava na ulozeni na mobil. XEX picker je jen dole v servisnim panelu.'); });
+    safeTap('btnTapePlay',function(){ pressAnim('btnTapePlay',520); tapeAnimate(1200); log('KAZETA PLAY: CLOAD priprava z WAV/CAS. Zatim bez RAM injectu a bez fake LOAD.'); });
+    safeTap('btnTapePause',function(){ pressAnim('btnTapePause',520); tapeAnimate(600); log('KAZETA PAUSE: mechanicka pauza pro budouci CLOAD/CSAVE.'); });
+    safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',520); stopTapeAudio(); log('KAZETA STOP/EJECT: zastaveno, C: stav zustava pripraveny.'); });
+    safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',520); tapeAnimate(900); log('KAZETA REWIND: animace, HW kazeta/C: bude v dalsi fazi.'); });
+    safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',520); tapeAnimate(900); log('KAZETA F.FWD: animace, HW kazeta/C: bude v dalsi fazi.'); });
     document.getElementById('btnTxt').addEventListener('click',openTxtOverlay);
     safeTap('dockXex',function(){ pressAnim('dockXex',220); openLocalGamePicker('XEX/ZIP Z MOBILU'); });
     safeTap('dockAtr',function(){ pressAnim('dockAtr',220); openLocalGamePicker('ATR DISK Z MOBILU'); });
@@ -1606,7 +1615,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2Y-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2Z-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -1619,7 +1628,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bh.addEventListener('pointerup',bhUp); bh.addEventListener('pointerleave',bhUp);
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
-    log('AtariHelp.eu EMU-10 BUILD2Y JOY + CLOAD/CSAVE PREP pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2Z JOY + CLOAD/CSAVE PREP pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani.');
     log('Dole: XEX/ZIP, ATR, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. Kazetak: priprava CLOAD/CSAVE.');
     requestAnimationFrame(tick);

@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2Y</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2AA</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{min-height:100%;background:#050608;color:#f2c464;font-family:"Courier New",monospace;overflow-x:hidden;}
-body{display:flex;justify-content:center;align-items:flex-start;}
+body{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;padding-bottom:12px;}
 .stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050608;overflow:hidden;box-shadow:0 0 45px rgba(0,0,0,.95);}
 .skin{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;z-index:0;}
 /* real Atari screen over the CRT opening */
@@ -27,8 +27,8 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnHelp{left:34.1%;top:43.2%;width:11.4%;height:4.3%;}#btnStart{left:45.6%;top:43.2%;width:11.5%;height:4.3%;}#btnSelect{left:57.1%;top:43.2%;width:12.1%;height:4.3%;}#btnOption{left:69.2%;top:43.2%;width:12.3%;height:4.3%;}#btnReset{left:81.5%;top:43.2%;width:11.2%;height:4.3%;}
 #btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
 /* file/action zones on cassette and main physical buttons */
-#btnXex{left:28.7%;top:71.2%;width:39.7%;height:6.8%;}#btnAtr{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-/* BUILD2Y: fyzicky kazetak uz neni souborovy picker. Je rezervovany pro CLOAD / CSAVE. */
+#btnXex,#btnAtr{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
+/* BUILD2AA: fyzicky kazetak uz neni souborovy picker. Je rezervovany pro CLOAD / CSAVE. */
 #btnTapeRecord{left:7.1%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapePlay{left:20.0%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeRew{left:32.9%;top:88.15%;width:12.5%;height:5.7%;}
@@ -45,16 +45,23 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .stage.tapeRun .tapeReel{opacity:1;animation:tapeSpin .55s linear infinite;}
 .stage.tapeRun #tapeReelR{animation-duration:.43s;}
 @keyframes tapeSpin{to{transform:rotate(360deg)}}
-.hit.pressed{background:rgba(255,203,95,.18)!important;box-shadow:0 0 22px rgba(255,203,95,.50) inset,0 0 15px rgba(95,190,255,.18);transform:translateY(1px);}
+.hit.pressed{background:rgba(255,203,95,.22)!important;box-shadow:0 0 24px rgba(255,203,95,.55) inset,0 0 18px rgba(95,190,255,.22);transform:translateY(2px) scale(.985);}
+.hit.tapeBtn.pressed{background:rgba(45,38,28,.34)!important;box-shadow:inset 0 8px 20px rgba(0,0,0,.55),inset 0 -2px 8px rgba(255,235,180,.28),0 0 16px rgba(255,220,130,.18);transform:translateY(6px) scaleY(.92);border-radius:6px;}
 /* transparent keyboard overlay over exact PNG key area */
 #osk{position:absolute;left:5.6%;top:48.5%;width:87.2%;height:20.4%;z-index:32;display:flex;flex-direction:column;gap:.4%;opacity:1;pointer-events:auto;}
-.krow{display:flex;gap:.35%;flex:1;min-height:0;}.key{flex:1;border:0;border-radius:5px;background:rgba(255,255,255,.001);color:transparent;font-size:0;min-width:0;}.key.space{flex:8.4}.key.mod{flex:1.25}.key:active,.key.on,.key.flash{background:rgba(255,200,70,.25);box-shadow:inset 0 0 10px rgba(255,220,140,.75),0 0 8px rgba(255,220,140,.28);opacity:1;}
-.key.shiftLatched{background:rgba(255,196,70,.30);box-shadow:inset 0 0 14px rgba(255,230,150,.85),0 0 12px rgba(255,220,130,.45);}
+.krow{display:flex;gap:.35%;flex:1;min-height:0;}.key{flex:1;border:0;border-radius:5px;background:rgba(255,255,255,.001);color:transparent;font-size:0;min-width:0;transition:transform .045s ease,background .045s ease,box-shadow .045s ease;transform-origin:center bottom;}
+.key.space{flex:8.4}.key.mod{flex:1.25}
+.key:active,.key.on,.key.flash,.key.keyPress{background:rgba(40,32,18,.26);box-shadow:inset 0 4px 10px rgba(0,0,0,.46),inset 0 -1px 5px rgba(255,235,170,.35),0 0 10px rgba(255,220,130,.22);opacity:1;transform:translateY(2.6px) scale(.985);}
+.key.shiftLatched{background:rgba(255,196,70,.30);box-shadow:inset 0 0 14px rgba(255,230,150,.85),0 0 12px rgba(255,220,130,.45);transform:translateY(2px) scale(.985);}
 /* joystick overlay - visible skin is swapped to the joystick PNG, controls are transparent */
-#joy{position:absolute;left:7.5%;top:48.0%;width:85.2%;height:20.8%;display:none;z-index:75;touch-action:none;user-select:none;pointer-events:auto;}
-#joyPad{position:absolute;left:5.5%;top:5%;width:43.5%;height:88%;border-radius:25%;background:rgba(0,0,0,.01);touch-action:none;pointer-events:auto;}#joyKnob{position:absolute;left:50%;top:50%;width:12%;height:12%;border-radius:50%;background:rgba(255,255,255,.01);pointer-events:none;}
-#joyFire{position:absolute;right:7%;top:12%;width:30%;height:76%;border-radius:50%;border:0;background:rgba(255,0,0,.01);color:transparent;font-size:0;touch-action:none;pointer-events:auto;}
-#joyFire.on{background:rgba(255,0,0,.18);box-shadow:0 0 35px rgba(255,0,0,.28) inset;}
+#joy{position:absolute;left:4.8%;top:47.7%;width:90.6%;height:22.6%;display:none;z-index:75;touch-action:none;user-select:none;pointer-events:auto;}
+#joyPad{position:absolute;left:3.0%;top:1.0%;width:48.5%;height:94%;border-radius:25%;background:rgba(0,0,0,.01);touch-action:none;pointer-events:auto;z-index:76;}
+#joyKnob{position:absolute;left:50%;top:50%;width:15%;height:15%;border-radius:50%;background:rgba(255,255,255,.01);pointer-events:none;}
+.joyDir{position:absolute;z-index:86;border:0;border-radius:12px;background:rgba(255,210,90,.001);color:transparent;font-size:0;touch-action:none;}
+.joyDir.on,.joyDir:active{background:rgba(255,210,90,.18);box-shadow:inset 0 0 22px rgba(255,220,130,.50),0 0 16px rgba(255,220,130,.18);transform:translateY(2px) scale(.98);}
+#joyUp{left:20%;top:9%;width:16%;height:23%;}#joyDown{left:20%;top:65%;width:16%;height:24%;}#joyLeft{left:5%;top:34%;width:18%;height:26%;}#joyRight{left:34%;top:34%;width:18%;height:26%;}
+#joyFire{position:absolute;right:5%;top:8%;width:38%;height:84%;border-radius:50%;border:0;background:rgba(255,0,0,.01);color:transparent;font-size:0;touch-action:none;pointer-events:auto;z-index:86;}
+#joyFire.on{background:rgba(255,0,0,.22);box-shadow:0 0 35px rgba(255,0,0,.38) inset,0 0 18px rgba(255,50,20,.26);transform:translateY(2px) scale(.98);}
 /* hidden/utility DOM required by original emulator core */
 #filePick{display:none}.logwrap{position:absolute;left:4.0%;right:4.0%;top:94.5%;height:5%;z-index:25;color:#f2c464;font-size:10px;opacity:.01;pointer-events:none;}#log{height:100%;overflow:auto;white-space:pre-wrap;}
 .file-opt{position:absolute;left:3%;top:93%;z-index:35;font-size:10px;color:#f2c464;opacity:.01;}
@@ -64,11 +71,12 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .overlay .row{display:flex;gap:8px}.overlay button{flex:1;padding:11px;border:0;border-radius:6px;background:#d9b25c;color:#111;font:bold 12px "Courier New",monospace}.overlay button.dark{background:#454850;color:#eee}.overlay button.danger{background:#c94331;color:#fff}.overlay textarea{flex:1;background:#08090a;color:#9fe29f;border:1px solid #333;border-radius:6px;padding:9px;font:12px "Courier New",monospace;resize:none;}
 
 /* BUILD2V: visible service buttons requested by René - not hidden hitboxes */
-#actionDock{position:absolute;left:4.2%;right:4.2%;top:93.1%;height:5.95%;z-index:90;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:.9%;pointer-events:auto;}
-#actionDock button{border:1px solid rgba(242,196,100,.82);border-radius:8px;background:linear-gradient(180deg,rgba(70,58,35,.96),rgba(12,13,16,.98));color:#f2c464;text-shadow:0 0 5px rgba(242,196,100,.50);box-shadow:inset 0 0 13px rgba(242,196,100,.14),0 0 12px rgba(0,0,0,.68);font:bold clamp(7px,2.0vw,12px) "Courier New",monospace;letter-spacing:.03em;}
-#actionDock button:active,#actionDock button.pressed{background:linear-gradient(180deg,rgba(242,196,100,.34),rgba(30,25,15,.98));transform:translateY(1px);}
-#miniLog{position:absolute;left:4.2%;right:4.2%;top:99.25%;height:.7%;z-index:91;color:#ffd976;font:700 clamp(6px,1.55vw,9px) "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 5px #000;opacity:.95;}
-@media(max-width:420px){#actionDock{top:93.0%;height:6.05%;gap:.65%;}#actionDock button{font-size:7.5px;}}
+#actionDock{position:relative;width:min(100vw,941px);max-width:941px;margin:8px auto 0;padding:8px;z-index:90;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,38px);gap:7px;pointer-events:auto;background:linear-gradient(180deg,rgba(21,22,25,.98),rgba(4,5,7,.99));border:1px solid rgba(242,196,100,.58);border-radius:14px;box-shadow:inset 0 0 18px rgba(242,196,100,.10),0 0 28px rgba(0,0,0,.70);}
+#actionDock:before{content:"SERVIS POD KAZETAKEM";position:absolute;left:12px;top:-12px;padding:0 8px;background:#050608;color:#f2c464;font:bold 10px "Courier New",monospace;letter-spacing:.08em;text-shadow:0 0 6px #000;}
+#actionDock button{border:1px solid rgba(242,196,100,.82);border-radius:9px;background:linear-gradient(180deg,rgba(70,58,35,.96),rgba(12,13,16,.98));color:#f2c464;text-shadow:0 0 5px rgba(242,196,100,.50);box-shadow:inset 0 0 13px rgba(242,196,100,.14),0 0 12px rgba(0,0,0,.68);font:bold clamp(8px,2.1vw,13px) "Courier New",monospace;letter-spacing:.03em;transition:transform .05s ease,box-shadow .05s ease,background .05s ease;}
+#actionDock button:active,#actionDock button.pressed{background:linear-gradient(180deg,rgba(242,196,100,.36),rgba(30,25,15,.98));transform:translateY(2px) scale(.985);box-shadow:inset 0 6px 16px rgba(0,0,0,.48),0 0 12px rgba(242,196,100,.18);}
+#miniLog{position:relative;width:min(100vw,941px);max-width:941px;margin:4px auto 10px;color:#ffd976;font:700 clamp(7px,1.65vw,10px) "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 5px #000;opacity:.95;padding:0 8px;}
+@media(max-width:420px){#actionDock{grid-template-rows:repeat(2,34px);gap:5px;padding:7px;}#actionDock button{font-size:7.5px;}}
 
 @media (prefers-reduced-motion:reduce){.scan,.screenSlot:after,#led{animation:none}}
 </style>
@@ -89,12 +97,12 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <button id="btnBreak" class="hit">BREAK</button>
   <button id="btnXex" class="hit">NAHRAJ XEX</button>
   <button id="btnAtr" class="hit">NAHRAJ ATR</button>
-  <button id="btnTapeRecord" class="hit">RECORD DOWNLOADS XEX ZIP</button>
-  <button id="btnTapePlay" class="hit">PLAY WAV MP3</button>
-  <button id="btnTapeRew" class="hit">REWIND</button>
-  <button id="btnTapeFwd" class="hit">F.FWD</button>
-  <button id="btnTapeStop" class="hit">STOP EJECT</button>
-  <button id="btnTapePause" class="hit">PAUSE TBXL</button>
+  <button id="btnTapeRecord" class="hit tapeBtn">RECORD DOWNLOADS XEX ZIP</button>
+  <button id="btnTapePlay" class="hit tapeBtn">PLAY WAV MP3</button>
+  <button id="btnTapeRew" class="hit tapeBtn">REWIND</button>
+  <button id="btnTapeFwd" class="hit tapeBtn">F.FWD</button>
+  <button id="btnTapeStop" class="hit tapeBtn">STOP EJECT</button>
+  <button id="btnTapePause" class="hit tapeBtn">PAUSE TBXL</button>
   <button id="btnTbxl" class="hit">TBXL 1.5</button>
   <button id="btnTxt" class="hit">VLOZIT TXT</button>
   <button id="btnProgNew" class="hit">SMAZAT PROG</button>
@@ -103,18 +111,20 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <label class="file-opt"><input type="checkbox" id="chkOpt" checked> OPTION u ATR / boot bez BASICu</label>
   <input type="file" id="filePick">
   <div id="osk"></div>
-  <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyFire">FIRE</button></div>
+  <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyUp" class="joyDir">UP</button><button id="joyDown" class="joyDir">DOWN</button><button id="joyLeft" class="joyDir">LEFT</button><button id="joyRight" class="joyDir">RIGHT</button><button id="joyFire">FIRE</button></div>
   <div class="logwrap"><div class="bar"><span>LOG</span></div><div id="log"></div></div>
-  <div id="actionDock" aria-label="Viditelne servisni ovladani">
-    <button id="dockXex" type="button">XEX / ZIP</button>
-    <button id="dockAtr" type="button">ATR DISK</button>
-    <button id="dockTbxl" type="button">TURBO BASIC</button>
-    <button id="dockTxt" type="button">BASIC TXT</button>
-    <button id="dockWav" type="button">WAV / CAS</button>
-    <button id="dockLog" type="button">LOG / CHYBA</button>
-  </div>
-  <div id="miniLog">EMU10 BUILD2Y: kazetak=CLOAD/CSAVE priprava, dole XEX/ATR/TBXL/TXT/WAV/LOG...</div>
 </main>
+<div id="actionDock" aria-label="Viditelne servisni ovladani pod kazetakem">
+  <button id="dockNetGames" type="button">NET HRY</button>
+  <button id="dockXex" type="button">XEX / ZIP</button>
+  <button id="dockAtr" type="button">ATR DISK</button>
+  <button id="dockTbxl" type="button">TURBO BASIC</button>
+  <button id="dockTxt" type="button">BASIC / TBXL TXT</button>
+  <button id="dockWav" type="button">WAV / CAS</button>
+  <button id="dockLog" type="button">LOG / CHYBA</button>
+  <button id="dockMenu" type="button">MENU</button>
+</div>
+<div id="miniLog">EMU10 BUILD2AA: NET HRY + XEX/ATR/TBXL/TXT/WAV/LOG samostatne pod kazetakem; kazetak zustava CLOAD/CSAVE priprava...</div>
 <div id="txtOverlay" class="overlay">
   <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
   <label style="font:11px 'Courier New',monospace;color:#c9c5bb;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim</label>
@@ -1339,7 +1349,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         if(k[1]===-1) b.setAttribute('data-mod','ctrl');
         if(k[1]===-2) b.setAttribute('data-mod','shift');
         var press=function(ev){ ev.preventDefault();
-          b.classList.add('flash'); setTimeout(function(){ b.classList.remove('flash'); },160);
+          b.classList.add('flash','keyPress'); setTimeout(function(){ b.classList.remove('flash','keyPress'); },190);
           if(k[1]===-1){ oskCtrl=!oskCtrl; refreshModifierVisuals(); log('CTRL '+(oskCtrl?'ZAMACKNUTO':'VYPNUTO')); return; }
           if(k[1]===-2){ oskShift=!oskShift; refreshModifierVisuals(); log('SHIFT '+(oskShift?'ZAMACKNUTO':'VYPNUTO')); return; }
           if(k[1]===-3){ M&&M.breakKey(); log('KEY BREAK'); return; }
@@ -1367,7 +1377,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var b=document.getElementById('btnJoy');
     if(b) b.setAttribute('data-mode', joyMode?'joy':'keyboard');
     joySet(0); joyFire=false; joyApply();
-    log('PREPINAC: '+(joyMode?'JOYSTICK':'KLAVESNICE'));
+    log('PREPINAC: '+(joyMode?'JOYSTICK - smerove zony jsou ostrejsi / natvrdo':'KLAVESNICE'));
   }
   function bindJoy(){
     var pad=document.getElementById('joyPad'), knob=document.getElementById('joyKnob');
@@ -1381,8 +1391,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     function fromXY(x,y){
       var r=pad.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
       var dx=x-cx, dy=y-cy, rad=Math.min(r.width,r.height)/2;
-      var len=Math.sqrt(dx*dx+dy*dy), dead=rad*0.18;
-      var kx=dx, ky=dy, max=rad*0.64;
+      var len=Math.sqrt(dx*dx+dy*dy), dead=rad*0.055;
+      var kx=dx, ky=dy, max=rad*0.78;
       if(len>max){ kx=dx/len*max; ky=dy/len*max; }
       knob.style.transform='translate('+kx+'px,'+ky+'px)';
       if(len<dead){ joySet(0); return; }
@@ -1412,6 +1422,15 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     fire.addEventListener('pointerdown',fOn,{passive:false}); fire.addEventListener('pointerup',fOff,{passive:false}); fire.addEventListener('pointercancel',fOff,{passive:false}); fire.addEventListener('pointerleave',fOff,{passive:false});
     fire.addEventListener('touchstart',fOn,{passive:false}); fire.addEventListener('touchend',fOff,{passive:false}); fire.addEventListener('touchcancel',fOff,{passive:false});
     fire.addEventListener('mousedown',fOn,{passive:false}); fire.addEventListener('mouseup',fOff,{passive:false});
+    function bindDir(id,mask,label){
+      var el=document.getElementById(id); if(!el) return;
+      function on(e){ e.preventDefault(); active=false; joySet(mask); el.classList.add('on'); log('JOYSTICK '+label+' natvrdo mask='+mask); }
+      function off(e){ if(e) e.preventDefault(); joySet(0); el.classList.remove('on'); }
+      el.addEventListener('pointerdown',on,{passive:false}); el.addEventListener('pointerup',off,{passive:false}); el.addEventListener('pointercancel',off,{passive:false}); el.addEventListener('pointerleave',off,{passive:false});
+      el.addEventListener('touchstart',on,{passive:false}); el.addEventListener('touchend',off,{passive:false}); el.addEventListener('touchcancel',off,{passive:false});
+      el.addEventListener('mousedown',on,{passive:false}); el.addEventListener('mouseup',off,{passive:false});
+    }
+    bindDir('joyUp',1,'UP'); bindDir('joyDown',2,'DOWN'); bindDir('joyLeft',4,'LEFT'); bindDir('joyRight',8,'RIGHT');
   }
 
   // ---------- vkladani TXT (typing queue pres scan kody) ----------
@@ -1539,8 +1558,11 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   };
   function openGamesDownload(){
     var url='https://atarihelp.eu/?page_id=207';
-    log('GAMES: oteviram AtariHelp.eu hry ke stazeni: '+url);
-    try{ window.location.href=url; }catch(e){ log('GAMES chyba: '+e.message); }
+    log('NET HRY: oteviram AtariHelp.eu hry. Po kliknuti na XEX/ZIP/ATR se soubor stahne a vrati zpet do emulatoru.');
+    try{
+      if(window.AHNET && window.AHNET.openGames){ window.AHNET.openGames(); return; }
+    }catch(e){ log('AHNET openGames chyba: '+e.message); }
+    try{ window.location.href=url; }catch(e){ log('NET HRY chyba: '+e.message); }
   }
   function openLocalGamePicker(label){
     label=label||'XEX/ZIP';
@@ -1673,19 +1695,21 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     document.getElementById('btnTbxl').addEventListener('click',runTbxl);
     function safeTap(id,fn){ var el=document.getElementById(id); if(!el) return; var moved=false,last=0; el.addEventListener('pointerdown',function(e){ moved=false; },{passive:true}); el.addEventListener('pointermove',function(e){ moved=true; },{passive:true}); el.addEventListener('pointerup',function(e){ if(!moved){ e.preventDefault(); last=Date.now(); fn(e); } }); el.addEventListener('click',function(e){ e.preventDefault(); if(Date.now()-last<450) return; last=Date.now(); fn(e); }); }
     safeTap('btnJoy',function(){ setJoyMode(!joyMode); });
-    safeTap('btnTapeRecord',function(){ pressAnim('btnTapeRecord',220); tapeAnimate(900); log('KAZETA REC: rezervovano pro CSAVE na mobil. Neni to XEX picker a nic se nefakuje.'); });
-    safeTap('btnTapePlay',function(){ pressAnim('btnTapePlay',220); tapeAnimate(1200); log('KAZETA PLAY: rezervovano pro CLOAD z WAV/CAS. Zatim bez RAM injectu.'); });
-    safeTap('btnTapePause',function(){ pressAnim('btnTapePause',220); tapeAnimate(600); log('KAZETA PAUSE: mechanicka pauza pro budouci CLOAD/CSAVE.'); });
-    safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',220); stopTapeAudio(); log('KAZETA STOP/EJECT: zastaveno, C: stav zustava pripraveny.'); });
-    safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',220); tapeAnimate(900); log('KAZETA REWIND: animace, HW kazeta/C: bude v dalsi fazi.'); });
-    safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',220); tapeAnimate(900); log('KAZETA F.FWD: animace, HW kazeta/C: bude v dalsi fazi.'); });
+    safeTap('btnTapeRecord',function(){ pressAnim('btnTapeRecord',520); tapeAnimate(900); log('KAZETA REC: CSAVE priprava na ulozeni na mobil. XEX picker je jen dole v servisnim panelu.'); });
+    safeTap('btnTapePlay',function(){ pressAnim('btnTapePlay',520); tapeAnimate(1200); log('KAZETA PLAY: CLOAD priprava z WAV/CAS. Zatim bez RAM injectu a bez fake LOAD.'); });
+    safeTap('btnTapePause',function(){ pressAnim('btnTapePause',520); tapeAnimate(600); log('KAZETA PAUSE: mechanicka pauza pro budouci CLOAD/CSAVE.'); });
+    safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',520); stopTapeAudio(); log('KAZETA STOP/EJECT: zastaveno, C: stav zustava pripraveny.'); });
+    safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',520); tapeAnimate(900); log('KAZETA REWIND: animace, HW kazeta/C: bude v dalsi fazi.'); });
+    safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',520); tapeAnimate(900); log('KAZETA F.FWD: animace, HW kazeta/C: bude v dalsi fazi.'); });
     document.getElementById('btnTxt').addEventListener('click',openTxtOverlay);
     safeTap('dockXex',function(){ pressAnim('dockXex',220); openLocalGamePicker('XEX/ZIP Z MOBILU'); });
     safeTap('dockAtr',function(){ pressAnim('dockAtr',220); openLocalGamePicker('ATR DISK Z MOBILU'); });
     safeTap('dockTbxl',function(){ runTbxl(); });
     safeTap('dockTxt',function(){ pressAnim('dockTxt',220); openTextPicker(); });
     safeTap('dockWav',function(){ pressAnim('dockWav',220); pickTapeAudio(); });
+    safeTap('dockNetGames',function(){ pressAnim('dockNetGames',260); openGamesDownload(); });
     safeTap('dockLog',function(){ pressAnim('dockLog',220); document.getElementById('btnSaveLog').click(); });
+    safeTap('dockMenu',function(){ pressAnim('dockMenu',220); try{ window.location.href='../index.html'; }catch(e){ log('MENU chyba: '+e.message); } });
     function txtToAtari(text){
       if(!text) return;
       var pre=document.getElementById('chkNew').checked ? 'NEW\x01' : '';
@@ -1733,7 +1757,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2Y-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2AA-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -1746,9 +1770,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bh.addEventListener('pointerup',bhUp); bh.addEventListener('pointerleave',bhUp);
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
-    log('AtariHelp.eu EMU-10 BUILD2Y JOY + CLOAD/CSAVE PREP pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2AA JOY + CLOAD/CSAVE PREP pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani.');
-    log('Dole: XEX/ZIP, ATR, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. Kazetak: priprava CLOAD/CSAVE.');
+    log('Dole: NET HRY, XEX/ZIP, ATR, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. NET HRY otevre AtariHelp.eu a klik na XEX/ZIP/ATR se ma vratit do emulatoru a spustit.');
     requestAnimationFrame(tick);
     setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120);
   });

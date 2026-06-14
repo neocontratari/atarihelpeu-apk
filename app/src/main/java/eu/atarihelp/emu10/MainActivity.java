@@ -16,6 +16,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,11 +25,11 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2Y
+ * AtariHelp.eu EMU-10 BUILD2AA
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
- * - BUILD2Y UI: robustni picker, joystick fallback, kazetak rezervovan pro CLOAD/CSAVE
+ * - BUILD2AA UI: NET HRY v emulatoru, robustni web download -> automaticky boot hry
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
@@ -73,6 +74,19 @@ public class MainActivity extends Activity {
         }
     }
 
+    public class AHNet {
+        @JavascriptInterface
+        public void openGames() {
+            ui.post(() -> web.loadUrl("https://atarihelp.eu/?page_id=207"));
+        }
+        @JavascriptInterface
+        public void runGameUrl(String url) {
+            ui.post(() -> {
+                if (url != null && url.length() > 0) downloadAndRun(url);
+            });
+        }
+    }
+
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,9 +96,12 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
+        s.setAllowUniversalAccessFromFileURLs(true);
+        s.setAllowContentAccess(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         web.addJavascriptInterface(new AHSave(), "AHSAVE");
         web.addJavascriptInterface(new AHPick(), "AHPICK");
+        web.addJavascriptInterface(new AHNet(), "AHNET");
         web.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb,
@@ -100,17 +117,29 @@ public class MainActivity extends Activity {
         });
         web.setWebViewClient(new WebViewClient() {
             @Override
+            public boolean shouldOverrideUrlLoading(WebView v, String url) {
+                return handleMaybeGameUrl(url);
+            }
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
+                if (request != null && request.getUrl() != null) {
+                    return handleMaybeGameUrl(request.getUrl().toString());
+                }
+                return false;
+            }
+            @Override
             public void onPageFinished(WebView v, String url) {
                 if (pendingGame != null && url.startsWith(EMU_URL)) {
                     injectGame(pendingName, pendingGame);
                     pendingGame = null;
                 }
+                if (url != null && url.toLowerCase().contains("atarihelp.eu")) {
+                    injectGameLinkBridge();
+                }
             }
         });
         web.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
-            String low = url.toLowerCase();
-            if (low.contains(".zip") || low.contains(".xex") || low.contains(".atr")
-                    || low.contains(".com") || low.contains(".exe")) {
+            if (isGameUrl(url, contentDisposition, mimetype)) {
                 downloadAndRun(url);
             } else {
                 try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
@@ -167,6 +196,36 @@ public class MainActivity extends Activity {
         return bos.toByteArray();
     }
 
+    private boolean isGameUrl(String url, String contentDisposition, String mimetype) {
+        String all = ((url == null ? "" : url) + " "
+                + (contentDisposition == null ? "" : contentDisposition) + " "
+                + (mimetype == null ? "" : mimetype)).toLowerCase();
+        return all.contains(".zip") || all.contains(".xex") || all.contains(".atr")
+                || all.contains(".com") || all.contains(".exe");
+    }
+
+    private boolean handleMaybeGameUrl(String url) {
+        if (isGameUrl(url, null, null)) {
+            downloadAndRun(url);
+            return true;
+        }
+        return false;
+    }
+
+    private void injectGameLinkBridge() {
+        String js = "(function(){"
+                + "if(window.__AH_GAME_BRIDGE)return;window.__AH_GAME_BRIDGE=1;"
+                + "document.addEventListener('click',function(e){"
+                + "var a=e.target;while(a&&a.tagName!=='A')a=a.parentElement;if(!a||!a.href)return;"
+                + "var h=a.href;"
+                + "if(/\\.(xex|zip|atr|com|exe)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe)/i.test(h)){"
+                + "e.preventDefault();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}"
+                + "}"
+                + "},true);"
+                + "})();";
+        web.evaluateJavascript(js, null);
+    }
+
     private void downloadAndRun(final String url) {
         new Thread(() -> {
             try {
@@ -192,7 +251,15 @@ public class MainActivity extends Activity {
                         web.loadUrl(EMU_URL);   // otevri emulator, soubor se vlozi po nacteni
                     }
                 });
-            } catch (Exception ignored) { }
+            } catch (Exception ex) {
+                ui.post(() -> {
+                    try {
+                        if (web.getUrl() == null || !web.getUrl().startsWith(EMU_URL)) web.loadUrl(EMU_URL);
+                        final String msg = ex.getMessage() == null ? "neznamá chyba" : ex.getMessage();
+                        web.postDelayed(() -> web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote("NET HRY: download selhal - " + msg) + ")", null), 500);
+                    } catch (Exception ignored) {}
+                });
+            }
         }).start();
     }
 
