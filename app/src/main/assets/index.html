@@ -2,89 +2,94 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>N&amp;P VISION — AtariHelp.eu EMU-10</title>
 <style>
-:root{--bg:#050607;--panel:#111215;--panel2:#1c1d20;--gold:#e2b85e;--gold2:#8a5b1f;--blue:#8cd6ff;--cream:#e5dcc7;--muted:#928a78;--line:#393632;--red:#d84531;}
+:root{
+  --bg:#080a0d; --black:#0a0b0d; --black2:#14161a; --line:#2d3037;
+  --gold:#f0c66a; --gold2:#9d6e29; --gold3:#6a471d; --blue:#87d8ff;
+  --cream:#d7d0bf; --text:#f3d98d; --muted:#a79b80; --green:#8dff51;
+}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{min-height:100%;background:radial-gradient(900px 700px at 50% -120px,#24272d 0%,#0c0d10 58%,#030405 100%);color:var(--cream);font-family:'Courier New',monospace;}
-body{padding:10px;}
-a{color:inherit;text-decoration:none;}
-.shell{max-width:720px;margin:0 auto 24px;border-radius:36px;padding:14px;background:linear-gradient(145deg,#17191d,#050607 55%,#15171a);box-shadow:0 24px 80px rgba(0,0,0,.85),inset 0 0 0 2px #3b3e43,inset 0 0 0 7px #08090a;}
-.device{border:1px solid #373a3f;border-radius:24px;overflow:hidden;background:#0c0d0f;box-shadow:inset 0 0 34px #000;}
-.top{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;padding:14px;background:linear-gradient(#17191c,#0d0e10);border-bottom:2px solid #050607;}
-.vent{height:94px;border-radius:14px;background:repeating-linear-gradient(0deg,#040506 0 5px,#222327 6px 10px);border:1px solid #34363a;color:var(--gold);padding:18px 16px;font:bold 14px/1.35 'Courier New',monospace;letter-spacing:1px;box-shadow:inset 0 0 22px #000;}
-.vent small{display:block;color:#baa870;font-weight:normal;font-size:11px;margin-top:5px;}
-.badge{width:146px;height:146px;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:radial-gradient(circle at 38% 27%,#ffeaa8,#d7a94c 42%,#714613 72%,#191006);border:7px solid #1f1408;box-shadow:0 0 0 3px #9b6b2b,0 8px 24px rgba(0,0,0,.7),inset 0 0 22px rgba(255,255,255,.28);color:#1a1107;font:bold 42px Arial,sans-serif;letter-spacing:-2px;}
-.badge span{font:bold 18px 'Courier New',monospace;letter-spacing:0;}
-.crtWrap{background:linear-gradient(#121316,#08090a);padding:18px;border-bottom:2px solid #050607;}
-.crt{border-radius:22px;background:linear-gradient(145deg,#030304,#151619);padding:26px;box-shadow:inset 0 0 0 2px #46494d,inset 0 0 48px #000;}
-.screen{min-height:330px;border-radius:18px;background:radial-gradient(ellipse at 52% 35%,#17212a,#050707 67%);box-shadow:inset 0 0 38px rgba(0,0,0,.8),0 0 0 2px #090a0b;position:relative;overflow:hidden;padding:48px 52px;}
-.screen:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 2px,rgba(255,255,255,.025) 3px 4px),radial-gradient(ellipse at 50% -10%,rgba(255,255,255,.12),transparent 48%);pointer-events:none;}
-.title{position:relative;z-index:1;font:bold clamp(38px,8vw,66px) Arial,sans-serif;color:var(--gold);letter-spacing:2px;text-shadow:0 3px 0 #3b260c,0 0 20px rgba(226,184,94,.22);}
-.sub{position:relative;z-index:1;color:var(--blue);font:bold 18px 'Courier New',monospace;letter-spacing:2px;margin-top:7px;border-bottom:1px solid var(--gold);padding-bottom:18px;}
-.check{position:relative;z-index:1;color:var(--blue);font-size:18px;line-height:1.55;margin-top:18px;white-space:pre;}
-.ready{position:relative;z-index:1;color:#ffd970;font:bold 20px 'Courier New',monospace;margin-top:18px;}
-.ready:after{content:'█';display:block;margin-top:4px;animation:blink 1s steps(1) infinite;}
-@keyframes blink{50%{opacity:0;}}
-.tape{display:grid;grid-template-columns:150px 1fr 128px;gap:14px;background:linear-gradient(#25221b,#151411);padding:18px;border-top:1px solid #3c382f;border-bottom:1px solid #070707;}
-.slot,.side{border:1px solid #524632;border-radius:8px;background:linear-gradient(#2b261d,#11100e);padding:14px;color:var(--gold);box-shadow:inset 0 0 18px #000;}
-.eject{height:84px;margin-top:28px;border-radius:5px;background:linear-gradient(#1b1c1e,#050607);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 #050607,inset 0 1px 0 #50535a;color:#e6d2a2;font:bold 12px 'Courier New',monospace;}
-.cassette{border-radius:10px;background:#08090a;border:8px solid #4a3e2b;min-height:180px;display:flex;align-items:center;justify-content:space-around;position:relative;box-shadow:inset 0 0 26px #000;}
-.cassette:before{content:'N&P VISION';position:absolute;top:12px;left:48px;right:48px;text-align:center;color:var(--gold);font:bold 25px Arial,sans-serif;letter-spacing:1px;}
-.cassette:after{content:'ATARI 130XE';position:absolute;bottom:16px;left:48px;right:48px;text-align:center;color:var(--gold);font:bold 20px 'Courier New',monospace;}
-.reel{width:74px;height:74px;border-radius:50%;background:radial-gradient(circle,#ccc 0 9%,#0b0c0d 10% 23%,#34363a 24% 38%,#070809 39%);box-shadow:0 0 0 6px #111;}
-.counter{font:bold 33px 'Courier New',monospace;background:#060707;color:#ffd765;border:4px solid #2a2b2d;border-radius:4px;padding:5px 8px;text-shadow:0 0 8px #ffa200;text-align:center;margin-top:16px;}
-.mainMenu{background:linear-gradient(#111214,#08090a);padding:18px;border-top:1px solid #27292e;}
-.menuHead{color:var(--gold);font:bold 14px 'Courier New',monospace;letter-spacing:1px;margin-bottom:12px;}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.card{min-height:112px;border:1px solid #7d5c25;border-radius:10px;background:linear-gradient(#1d1f22,#0b0c0e);box-shadow:0 5px 0 #050607,inset 0 0 0 2px #2b2d31,inset 0 1px 0 rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--gold);font:bold 20px 'Courier New',monospace;letter-spacing:1px;padding:10px;}
-.card b{font-size:30px;margin-bottom:6px;line-height:1;}
-.card span{display:block;color:#d2ccbd;font-size:12px;margin-top:5px;letter-spacing:.3px;}
-.card:active{transform:translateY(4px);box-shadow:0 1px 0 #050607;}
-.status{display:grid;grid-template-columns:1fr 1fr 2fr 64px;gap:8px;background:#070809;padding:12px;color:var(--gold);font:bold 12px 'Courier New',monospace;border-top:1px solid #2b2d31;}
-.status div{border:1px solid #24262a;border-radius:7px;padding:10px;background:#0d0e10;min-height:52px;}
-.status small{display:block;color:#c8c1b2;font-size:11px;margin-top:5px;}
-.led{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ffd765;box-shadow:0 0 8px #ffd765;margin-right:6px;}
-@media(max-width:680px){body{padding:0}.shell{border-radius:0;padding:5px;box-shadow:none}.top{display:none}.screen{min-height:280px;padding:34px 30px}.tape{grid-template-columns:1fr}.slot,.side{display:none}.grid{grid-template-columns:1fr 1fr}.card{min-height:98px;font-size:17px}.status{grid-template-columns:1fr 1fr}.crt{padding:14px;border-radius:16px}.crtWrap{padding:10px}}
+html,body{min-height:100%;background:radial-gradient(900px 480px at 50% -10%,#202631 0%,#0b0d10 55%,#050607 100%);}
+body{font-family:'Courier New',monospace;color:var(--text);padding:8px;}
+a,button{font-family:inherit;}
+.phone{
+  width:min(100%,620px); margin:0 auto; padding:16px 14px 18px; border-radius:34px;
+  background:linear-gradient(180deg,#1a1d22 0%,#070809 8%,#101216 50%,#050607 100%);
+  border:2px solid #343842; box-shadow:inset 0 0 0 2px #050607, inset 0 0 0 5px #1d2026, 0 20px 70px rgba(0,0,0,.8);
+}
+.deck{border-radius:24px; padding:12px; background:linear-gradient(180deg,#17191d,#090a0c); border:1px solid #2f333c; box-shadow:inset 0 2px 0 rgba(255,255,255,.08), inset 0 -2px 0 #000;}
+.top{
+  min-height:138px; border-radius:18px; padding:10px 12px 12px; position:relative; overflow:hidden;
+  background:linear-gradient(180deg,#17191c,#0b0c0e); border:1px solid #382914;
+  box-shadow:inset 0 0 28px #000, 0 2px 0 rgba(255,255,255,.04);
+}
+.grilles{position:absolute;left:12px;right:12px;top:10px;height:70px;display:grid;grid-template-columns:1fr 178px 1fr;gap:16px;align-items:center;}
+.grille{height:64px;border-radius:12px;background:repeating-linear-gradient(180deg,#070809 0 5px,#33302a 6px,#141416 10px);border:1px solid #312514;box-shadow:inset 0 0 18px #000;}
+.coin{width:168px;height:168px;border-radius:50%;align-self:start;margin-top:-5px;justify-self:center;background:
+  radial-gradient(circle at 38% 25%,rgba(255,255,255,.5),transparent 14%),
+  radial-gradient(circle,#ffe29a 0%,#d5a345 42%,#7c4d18 70%,#16100b 74%,#c49645 78%,#0b0b0c 84%);
+  border:3px solid #0a0908; box-shadow:0 8px 20px rgba(0,0,0,.75), inset 0 0 18px rgba(255,255,255,.28);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:2;color:#2c1d0b;text-shadow:0 1px 0 rgba(255,255,255,.35);font-weight:900;}
+.coin b{font-size:48px;letter-spacing:-2px;line-height:.9;}
+.coin span{font-size:20px;letter-spacing:1px;}
+.plaque{position:absolute;top:82px;width:180px;min-height:56px;border-radius:8px;background:linear-gradient(180deg,#141518,#0d0e10);border:1px solid #382914;padding:13px 12px;box-shadow:inset 0 0 16px #000;color:#ddbe62;font-size:13px;line-height:1.45;letter-spacing:1px;}
+.plaque.left{left:17px;}.plaque.right{right:17px;color:#b7a981;}
+.led{position:absolute;right:34px;bottom:23px;width:9px;height:9px;border-radius:50%;background:#3da5ff;box-shadow:0 0 10px #2fa2ff,0 0 22px #2fa2ff;}
+.crtbox{margin-top:12px;border-radius:18px;padding:10px;background:linear-gradient(135deg,#2a2116,#070809 18%,#131416 82%,#4b3518);border:1px solid #715526;box-shadow:inset 0 0 26px #000,0 2px 0 rgba(255,255,255,.04);}
+.crt{height:330px;border-radius:42px/34px;background:
+  radial-gradient(140% 95% at 50% 45%,rgba(255,213,110,.14),transparent 55%),
+  repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 1px,rgba(0,0,0,.08) 2px 4px),
+  radial-gradient(110% 100% at 50% 40%,#141711 0%,#0b0d0a 55%,#030404 100%);
+  border:2px solid #050607; box-shadow:inset 0 0 35px #000,inset 0 0 90px rgba(0,0,0,.92); overflow:hidden;position:relative;padding:56px 62px;}
+.crt:after{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(100% 60% at 50% 0%,rgba(255,255,255,.06),transparent 55%);pointer-events:none;}
+.title{font-family:Arial Black,Impact,sans-serif;font-size:50px;line-height:1;color:var(--gold);letter-spacing:2px;text-shadow:0 2px 0 #5d3a11,0 0 16px rgba(240,198,106,.45);}
+.sub{margin-top:13px;color:var(--blue);font-size:18px;letter-spacing:3px;}
+.hr{height:1px;background:linear-gradient(90deg,var(--gold2),var(--gold),transparent);margin:16px 0 20px;box-shadow:0 0 12px var(--gold);}
+.sys{color:var(--blue);font-size:18px;letter-spacing:2px;line-height:1.6;}
+.sys .ok{float:right;margin-right:130px;}
+.ready{margin-top:22px;color:var(--gold);font-size:21px;font-weight:bold;text-shadow:0 0 10px rgba(240,198,106,.55);}.cur{display:block;width:13px;height:19px;margin-top:6px;background:var(--gold);animation:blink 1.05s steps(1) infinite;}
+@keyframes blink{50%{opacity:.15}}
+.label130{height:28px;text-align:center;color:var(--gold);font-weight:bold;letter-spacing:1px;padding-top:6px;background:linear-gradient(90deg,transparent,#050607 40%,#050607 60%,transparent);}
+.loader{margin-top:14px;display:grid;grid-template-columns:112px 1fr 100px;gap:10px;}
+.side,.counter,.cassette{background:linear-gradient(180deg,#1d1c17,#0e0f11);border:1px solid #3c2d15;border-radius:12px;box-shadow:inset 0 0 20px #000;}
+.side{padding:12px;text-align:left;}.side h3,.counter h3{font-size:14px;color:var(--gold);margin-bottom:10px;}.autostop{display:inline-flex;gap:7px;align-items:center;border:1px solid #704f1d;border-radius:6px;padding:5px 8px;color:#f2d075;font-size:12px;background:#131313}.dot{width:11px;height:11px;border-radius:50%;background:#ffc247;box-shadow:0 0 8px #ffc247;}.eject{margin:62px auto 0;width:56px;height:74px;border-radius:8px;background:linear-gradient(#2a2923,#090909);border:1px solid #6b5124;color:#d9bb63;text-align:center;padding-top:18px;box-shadow:0 8px 0 #030303;font-size:12px;}
+.cassette{padding:12px 10px 10px;}.cassette .name{text-align:center;color:var(--gold);font:900 27px Arial, sans-serif;margin-bottom:6px;}.window{height:152px;border:2px solid #5a421e;border-radius:12px;background:#050607;position:relative;display:flex;align-items:center;justify-content:space-around;box-shadow:inset 0 0 18px #000;overflow:hidden;}.tape-label{position:absolute;left:28px;right:28px;top:18px;height:30px;background:linear-gradient(90deg,#c08c36,#f3d28a,#c08c36);color:#2a1a08;font-weight:bold;text-align:center;padding-top:6px;letter-spacing:1px;}.reel{width:72px;height:72px;border-radius:50%;background:radial-gradient(circle,#0b0c0e 0 16%,#aaa 17% 20%,#1b1d22 21% 44%,#050607 45% 100%);border:5px solid #322a22;box-shadow:0 0 0 5px #08090b;}.cass-bottom{text-align:center;color:var(--gold);font-weight:bold;font-size:18px;margin-top:8px;letter-spacing:1px;}.transport{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:10px;}.transport a{height:54px;border:0;border-radius:6px;background:linear-gradient(#25262a,#111214);border:1px solid #3d2d14;color:var(--gold);text-decoration:none;display:flex;align-items:center;justify-content:center;flex-direction:column;font-weight:bold;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 0 #050607;}.transport span{font-size:10px;color:#aa986e;margin-top:3px;}
+.counter{padding:12px;text-align:center;}.digits{font:700 32px 'Courier New';letter-spacing:4px;color:#ffd45e;background:#080403;border-radius:6px;padding:5px 3px;margin-top:2px;text-shadow:0 0 9px #ffb000;}.volume{width:66px;height:66px;border-radius:50%;margin:34px auto 0;background:radial-gradient(circle at 35% 25%,#3b3d42,#0b0c0f);border:3px solid #c08a31;box-shadow:0 0 0 6px #15120e;}
+.menu{margin-top:14px;border-radius:14px;border:1px solid #272b32;background:linear-gradient(#111419,#0a0b0d);padding:10px;}.menu h3{font-size:14px;color:var(--gold);letter-spacing:2px;margin:0 0 9px 4px;}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}.card{min-height:110px;text-decoration:none;color:var(--gold);border:1px solid #805e23;border-radius:12px;background:linear-gradient(#1d2025,#0d0e10);box-shadow:inset 0 0 18px #000,0 0 0 2px rgba(240,198,106,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;}.card svg{width:38px;height:38px;stroke:var(--gold);fill:none;stroke-width:1.6}.card b{font-size:22px;letter-spacing:1px}.card span{font-size:13px;color:#dad2c0;}
+.status{margin-top:12px;display:grid;grid-template-columns:1fr 1fr 1.4fr 54px;gap:8px;}.pill{min-height:54px;border-radius:9px;background:#101216;border:1px solid #272b32;padding:10px;color:#d4ba67;font-size:12px;}.bars{display:inline-flex;gap:3px;margin-left:8px}.bars i{width:7px;height:18px;background:var(--gold);display:inline-block}.smallgear{text-align:center;font-size:28px;padding-top:8px;}
+@media(max-width:520px){body{padding:0}.phone{border-radius:0;padding:8px}.deck{padding:8px}.top{min-height:104px}.grilles{grid-template-columns:1fr 122px 1fr;height:50px}.coin{width:118px;height:118px}.coin b{font-size:34px}.coin span{font-size:14px}.plaque{display:none}.crt{height:250px;padding:38px 34px}.title{font-size:34px}.sub,.sys{font-size:14px}.sys .ok{margin-right:30px}.loader{grid-template-columns:1fr}.side,.counter{display:none}.grid{grid-template-columns:repeat(2,1fr)}.status{grid-template-columns:1fr 1fr}.cassette .name{font-size:22px}}
 </style>
 </head>
 <body>
-<div class="shell">
-  <div class="device">
+<main class="phone">
+  <section class="deck">
     <div class="top">
-      <div class="vent">N&amp;P VISION<small>PREMIUM EMULATION</small></div>
-      <div class="badge">N&amp;P<span>(C) 2026 VCS</span></div>
-      <div class="vent">DESIGNED FOR<br>ATARI FANS.<small>BUILT TO LAST.</small></div>
+      <div class="grilles"><div class="grille"></div><div class="coin"><b>N&amp;P</b><span>(C) 2026 VCS</span></div><div class="grille"></div></div>
+      <div class="plaque left"><b>N&amp;P VISION</b><br>PREMIUM EMULATION</div>
+      <div class="plaque right">DESIGNED FOR<br>ATARI FANS.<br>BUILT TO LAST.</div><div class="led"></div>
     </div>
-    <div class="crtWrap"><div class="crt"><div class="screen">
-      <div class="title">N&amp;P VISION</div>
-      <div class="sub">ATARI 130XE EMULATOR</div>
-      <div class="check">SYSTEM CHECK
-64K RAM            OK
-OS 2.4             OK
-CARTRIDGE PORT     OK
-TAPE UNIT          OK</div>
-      <div class="ready">READY.</div>
-    </div></div></div>
-    <div class="tape">
-      <div class="slot">TAPE LOADER<div class="eject">▲<br>EJECT</div></div>
-      <div class="cassette"><div class="reel"></div><div class="reel"></div></div>
-      <div class="side">COUNTER<div class="counter">000</div><br>VOLUME<br><br>MIN&nbsp;&nbsp;&nbsp;&nbsp;MAX</div>
+    <div class="crtbox"><div class="crt">
+      <div class="title">N&amp;P VISION</div><div class="sub">ATARI 130XE EMULATOR</div><div class="hr"></div>
+      <div class="sys">SYSTEM CHECK<br>64K RAM <span class="ok">OK</span><br>OS 2.4 <span class="ok">OK</span><br>CARTRIDGE PORT <span class="ok">OK</span><br>TAPE UNIT <span class="ok">OK</span></div>
+      <div class="ready">READY.<span class="cur"></span></div>
+    </div><div class="label130">130XE&nbsp;&nbsp;<span style="color:#d7352c">▮</span><span style="color:#e88b26">▮</span><span style="color:#e6d24a">▮</span><span style="color:#37a0e6">▮</span></div></div>
+    <div class="loader">
+      <aside class="side"><h3>TAPE LOADER</h3><div class="autostop"><i class="dot"></i>AUTO STOP</div><div class="eject">▲<br>EJECT</div></aside>
+      <section class="cassette"><div class="name">N&amp;P VISION</div><div class="window"><div class="tape-label">C-130&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A</div><div class="reel"></div><div class="reel"></div></div><div class="cass-bottom">ATARI 130XE</div><div class="transport"><a href="emu/index.html">◀◀<span>REW</span></a><a href="emu/index.html">▶<span>PLAY</span></a><a href="https://atarihelp.eu/">■<span>STOP</span></a><a href="https://atarihelp.eu/?page_id=21">▶▶<span>F.FWD</span></a><a href="https://atarihelp.eu/?page_id=50">Ⅱ<span>PAUSE</span></a></div></section>
+      <aside class="counter"><h3>COUNTER</h3><div class="digits">000</div><h3 style="margin-top:26px">VOLUME</h3><div class="volume"></div></aside>
     </div>
-    <div class="mainMenu">
-      <div class="menuHead">MAIN MENU</div>
-      <div class="grid">
-        <a class="card" href="https://atarihelp.eu/?page_id=207"><b>▣</b>GAMES<span>BROWSE &amp; PLAY</span></a>
-        <a class="card" href="emu/index.html"><b>▻</b>TAPE LOADER<span>LOAD CASSETTE / EMU</span></a>
-        <a class="card" href="https://atarihelp.eu/?page_id=614"><b>&gt;_</b>ASSEMBLER<span>6502 DEV TOOLS</span></a>
-        <a class="card" href="emu/index.html"><b>⚙</b>EMULATOR<span>ATARI 130XE</span></a>
-        <a class="card" href="https://atarihelp.eu/"><b>▭</b>SYSTEM<span>INFO &amp; ABOUT</span></a>
-        <a class="card" href="https://atarihelp.eu/?page_id=50"><b>☰</b>DOCS<span>MANUALS &amp; HELP</span></a>
-      </div>
-    </div>
-    <div class="status"><div>SYSTEM STATUS<small><span class="led"></span>OK</small></div><div>FRAME<small>59.94 FPS</small></div><div>AUDIO<small>STEREO ████████████</small></div><div style="text-align:center;font-size:26px;">⌘</div></div>
-  </div>
-</div>
+    <section class="menu"><h3>MAIN MENU</h3><div class="grid">
+      <a class="card" href="emu/index.html"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><b>GAMES</b><span>BROWSE &amp; PLAY</span></a>
+      <a class="card" href="emu/index.html"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/></svg><b>TAPE LOADER</b><span>LOAD CASSETTE</span></a>
+      <a class="card" href="https://atarihelp.eu/?page_id=614"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM7 9h5M7 13h9M7 17h6"/></svg><b>ASSEMBLER</b><span>6502 DEV TOOLS</span></a>
+      <a class="card" href="emu/index.html"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/></svg><b>SETTINGS</b><span>SYSTEM &amp; UI</span></a>
+      <a class="card" href="emu/index.html"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="10" rx="1"/><path d="M8 20h8M12 15v5"/></svg><b>SYSTEM</b><span>INFO &amp; ABOUT</span></a>
+      <a class="card" href="https://atarihelp.eu/?page_id=50"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM15 3v4h4M8 11h8M8 15h8"/></svg><b>DOCS</b><span>MANUALS &amp; HELP</span></a>
+    </div></section>
+    <section class="status"><div class="pill">SYSTEM STATUS<br><span style="color:var(--green)">● OK</span></div><div class="pill">FRAME<br><span style="color:#eee">59.94 FPS</span></div><div class="pill">AUDIO<br>STEREO <span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i style="background:#2f8ccb"></i></span></div><div class="pill smallgear">⌘</div></section>
+  </section>
+</main>
 </body>
 </html>

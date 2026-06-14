@@ -22,7 +22,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2S SAFE UI SKIN
+ * AtariHelp.eu EMU-10 BUILD2F
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru

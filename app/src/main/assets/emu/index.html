@@ -3,197 +3,119 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>AtariHelp.eu EMU-10 BUILD2S — N&P VISION SAFE UI SKIN</title>
+<title>AtariHelp.eu EMU-10 BUILD2T — N&amp;P VISION EXACT UI CODE</title>
 <style>
 :root{
-  --bg:#060708; --shell:#0f1012; --shell2:#1a1b1e; --panel:#24262a; --panel2:#303238;
-  --cream:#cfc9bb; --cream2:#eee8d8; --cream3:#aaa395; --key:#cbc6b9; --key2:#b8b2a5;
-  --txt:#e8e1cd; --muted:#8f8a7f; --gold:#e2b85e; --gold2:#a36d22; --blue:#0755dd;
-  --accent:#d84331; --green:#61ff3e; --red:#e03527; --black:#050607;
+  --bg:#090a0c; --black:#060708; --black2:#111317; --panel:#1a1c21; --line:#30333b;
+  --cream:#d8d2c3; --cream2:#bfb7a7; --key:#d4cec1; --key2:#b9b2a4; --keytxt:#111318;
+  --gold:#f0c66a; --gold2:#a8782e; --gold3:#5b401b; --blue:#75cfff; --red:#cf3527; --green:#83ff43; --txt:#efe8d7; --muted:#928b7d;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{min-height:100%;background:radial-gradient(1000px 900px at 50% -180px,#202329 0%,#0c0d10 55%,#030405 100%);color:var(--txt);font-family:'Courier New',monospace;}
-body{padding:8px;}
-.appShell{width:min(100%,950px);margin:0 auto 18px;border-radius:34px;padding:14px;background:linear-gradient(145deg,#15171b,#050607 55%,#17191c);box-shadow:0 22px 70px rgba(0,0,0,.85),inset 0 0 0 2px #2d3035,inset 0 0 0 7px #090a0b;}
-.device{border-radius:24px;overflow:hidden;background:linear-gradient(#111214,#050607);border:1px solid #34373b;box-shadow:inset 0 0 32px rgba(0,0,0,.8);}
-.topBadge{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;padding:12px 18px;background:linear-gradient(#17191d,#0d0e10);border-bottom:2px solid #050506;}
-.vent{height:86px;border-radius:14px;background:repeating-linear-gradient(0deg,#050506 0 5px,#202226 6px 10px);border:1px solid #303238;box-shadow:inset 0 0 22px #000;position:relative;padding:16px;color:var(--gold);letter-spacing:1px;font-size:12px;line-height:1.55;}
-.vent small{display:block;color:#b7a878;font-size:10px;letter-spacing:1px;margin-top:2px;}
-.coin{width:138px;height:138px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 38% 30%,#ffe8a3 0%,#d8aa51 38%,#704312 70%,#1b1208 100%);color:#1c1307;border:6px solid #1f1409;box-shadow:0 0 0 3px #9b6b2c,0 8px 20px rgba(0,0,0,.55),inset 0 0 20px rgba(255,255,255,.35);font:bold 42px Arial,sans-serif;letter-spacing:-2px;text-shadow:0 1px 0 rgba(255,255,255,.35);}
-.coin span{font:bold 18px 'Courier New',monospace;letter-spacing:0;color:#1c1307;margin-top:3px;}
-.crtBox{background:#111215;padding:18px 18px 14px;border-bottom:2px solid #050506;}
-.bezel{background:linear-gradient(145deg,#030304,#141518 52%,#050506);border-radius:24px;padding:26px;box-shadow:inset 0 0 0 2px #3a3d42,inset 0 0 46px #000,0 2px 0 #4c4f52;position:relative;overflow:hidden;}
-.bezel:before{content:'';position:absolute;inset:8px;border-radius:20px;background:radial-gradient(ellipse at 50% 35%,rgba(255,255,255,.13),transparent 45%);pointer-events:none;z-index:2;mix-blend-mode:screen;}
-canvas{display:block;width:100%;image-rendering:pixelated;background:#001b9b;border-radius:14px;box-shadow:inset 0 0 34px rgba(0,0,0,.65),0 0 0 2px #08090a;position:relative;z-index:1;}
-.scan{position:absolute;inset:26px;border-radius:14px;pointer-events:none;z-index:3;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 2px,rgba(255,255,255,.025) 3px 4px);mix-blend-mode:multiply;}
-.statusRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 28px;background:#121315;border-top:1px solid #303237;border-bottom:1px solid #060707;}
-button{font-family:'Courier New',monospace;touch-action:manipulation;}
-.ctrlBtn{background:linear-gradient(#2c2e32,#17181b);color:#dfdacd;border:1px solid #3e4146;border-radius:9px;padding:12px 14px;font:bold 12px 'Courier New',monospace;letter-spacing:.4px;box-shadow:0 5px 0 #060707,inset 0 1px 0 rgba(255,255,255,.09);min-height:54px;}
-.ctrlBtn:active,.ctrlBtn.on{transform:translateY(3px);box-shadow:0 2px 0 #060707;background:linear-gradient(#d5cec0,#aaa395);color:#151515;}
-.ctrlBtn.danger{background:linear-gradient(#e15a4b,#9f2116);color:white;border-color:#792018;}
-.power{min-width:150px;text-align:left;position:relative;padding-right:28px;}
-.power:after,#led{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;background:#273019;box-shadow:inset 0 0 4px #000;vertical-align:middle;margin-left:8px;}
-#led{margin-left:0;}
-#led.on,.power.ready:after{background:var(--green);box-shadow:0 0 8px var(--green),inset 0 0 3px #fff;}
-.modeSwitch{flex:1;min-width:280px;display:flex;align-items:center;justify-content:center;gap:20px;background:linear-gradient(#26282d,#16171a);border:1px solid #414349;border-radius:10px;padding:10px 12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
-.modeSwitch span{font-size:13px;letter-spacing:1px;color:#d8d4c8;}
-#btnJoy{min-width:112px;height:38px;border:1px solid #393b40;border-radius:21px;background:#050607;color:transparent;position:relative;box-shadow:inset 0 0 8px #000;}
-#btnJoy:before{content:'';position:absolute;left:6px;top:5px;width:28px;height:28px;border-radius:50%;background:linear-gradient(#e9e1d2,#aaa395);box-shadow:0 2px 5px rgba(0,0,0,.8);transition:left .12s ease;}
-body.joymode #btnJoy:before{left:76px;}
-.brandRow{display:grid;grid-template-columns:250px 1fr;align-items:end;background:linear-gradient(#d7d2c3,#b7b0a0);color:#232323;border-top:2px solid #eee9dd;border-bottom:2px solid #777064;padding:0 22px;}
-.atariLogo{display:flex;align-items:center;gap:13px;font:bold 30px Arial,sans-serif;letter-spacing:-1px;height:78px;color:#202225;}
-.atariLogo .fuji{font-size:44px;line-height:1;color:#303235;}
-.funcRow{display:flex;justify-content:flex-end;align-items:flex-end;height:78px;}
-.funcRow .ctrlBtn{min-width:114px;height:58px;min-height:0;color:#1d1d1d;background:linear-gradient(#eee8d8,#b8b2a5);border-color:#6f695f;border-radius:0;clip-path:polygon(15% 0,100% 0,85% 100%,0 100%);box-shadow:inset 0 1px 0 #fff,0 3px 0 #625c55;padding:0 18px;font-size:12px;}
-.funcRow .ctrlBtn:active,.funcRow .ctrlBtn.on{transform:translateY(2px);box-shadow:0 1px 0 #625c55;background:linear-gradient(#b8b2a5,#eee8d8);}
-.inputDeck{background:linear-gradient(#cbc6b8,#aca697);border-top:1px solid #e9e3d5;padding:18px 20px 20px;}
-#osk{display:block;background:linear-gradient(#b6b0a2,#d4cec0 45%,#a49e90);border-radius:6px;padding:12px 10px 20px;box-shadow:inset 0 3px 8px rgba(0,0,0,.25),0 2px 0 #7c766b;}
-.krow{display:flex;gap:4px;margin-bottom:4px;}
-.key{flex:1;min-width:0;background:linear-gradient(#eee9dd,#bdb7aa);color:#1c1d1e;border:1px solid #706a60;border-radius:5px;padding:7px 2px 6px;font:bold 11px/1.05 'Courier New',monospace;white-space:pre-line;min-height:48px;box-shadow:0 4px 0 #777064,inset 0 1px 0 #fff;}
-.key:active,.key.on{transform:translateY(3px);box-shadow:0 1px 0 #777064;background:linear-gradient(#bdb7aa,#eee9dd);}
-.key.mod{background:linear-gradient(#d9d3c6,#aaa497);}
-.key.space{flex:7;max-width:620px;margin:0 auto;}
-#joy{display:none;align-items:center;justify-content:space-around;gap:22px;min-height:330px;background:linear-gradient(#cfcabd,#aaa497);border-radius:8px;padding:28px;box-shadow:inset 0 3px 8px rgba(0,0,0,.25);}
-#joyPad{width:min(48vw,300px);height:min(48vw,300px);max-width:300px;max-height:300px;border-radius:34px;background:linear-gradient(#2f3135,#151619);box-shadow:inset 0 0 0 4px #4b4e53,inset 0 12px 28px rgba(255,255,255,.04),0 7px 0 #747064;position:relative;touch-action:none;}
-#joyPad:before{content:'';position:absolute;left:50%;top:50%;width:78%;height:78%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 45% 42%,#2d2f34,#08090a 70%);box-shadow:inset 0 0 0 4px #08090a,0 0 0 3px #393c42;}
-#joyPad:after{content:'△\A ◁      ▷\A ▽';white-space:pre;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#a9a9a9;font:bold 26px/2.9 Arial,sans-serif;letter-spacing:26px;opacity:.55;}
-#joyKnob{position:absolute;left:50%;top:50%;width:94px;height:94px;margin:-47px 0 0 -47px;border-radius:50%;background:radial-gradient(circle at 35% 28%,#585b61,#101113 72%);box-shadow:0 7px 18px rgba(0,0,0,.8),inset 0 2px 8px rgba(255,255,255,.12);z-index:2;pointer-events:none;}
-#joyFire{width:min(34vw,160px);height:min(34vw,160px);max-width:160px;max-height:160px;border-radius:50%;border:8px solid #2b2020;background:radial-gradient(circle at 35% 25%,#ff6d58,#c31d12 62%,#7b0e09);color:#260503;font:bold 16px Arial,sans-serif;box-shadow:0 8px 0 #120908,0 0 0 3px #777064;touch-action:none;}
-#joyFire:before{content:'FIRE';position:absolute;}
-#joyFire.on{transform:translateY(7px);box-shadow:0 1px 0 #120908,0 0 0 3px #777064;}
-.cassette{display:grid;grid-template-columns:1fr 170px;gap:14px;background:linear-gradient(#c7c2b6,#a9a396);border-top:2px solid #797367;padding:18px 22px;color:#222;}
-.xc12{background:linear-gradient(#d8d2c3,#aaa497);border:1px solid #827b70;border-radius:6px;padding:16px;box-shadow:inset 0 2px 4px rgba(255,255,255,.25);}
-.tapeWindow{height:114px;border-radius:10px;background:#0b0c0d;border:8px solid #716c62;position:relative;box-shadow:inset 0 0 20px #000;margin:0 auto 12px;max-width:560px;display:flex;align-items:center;justify-content:space-around;overflow:hidden;}
-.tapeWindow:before{content:'A';position:absolute;left:12px;top:9px;color:#c42d22;font:bold 20px Arial,sans-serif;background:#e9e3d8;padding:0 5px;border-radius:2px;}
-.reel{width:78px;height:78px;border-radius:50%;background:radial-gradient(circle,#a9a9a9 0 12%,#0d0e10 13% 23%,#34363a 24% 37%,#070809 38%);box-shadow:0 0 0 6px #111;}
-.tapeName{position:absolute;top:10px;left:88px;right:88px;height:20px;background:#ece5d8;border-top:3px solid #b63b2e;color:#7e7a72;font:bold 10px Arial,sans-serif;text-align:right;padding-right:8px;}
-.transportRow{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:12px;}
-.transportRow .ctrlBtn{background:linear-gradient(#e2dcca,#b6afa1);color:#242424;border-color:#827b70;box-shadow:0 5px 0 #7b7469,inset 0 1px 0 #fff;min-height:62px;font-size:20px;}
-.transportRow .ctrlBtn span{display:block;font-size:10px;letter-spacing:.2px;margin-top:4px;}
-.sidePanel{background:linear-gradient(#beb8aa,#aaa497);border-left:1px solid #817b70;padding:16px;text-align:center;display:flex;flex-direction:column;gap:16px;justify-content:center;}
-.counter{font:bold 34px 'Courier New',monospace;background:#060707;color:#ffd765;border:5px solid #2a2b2e;border-radius:4px;padding:5px 8px;box-shadow:inset 0 0 9px #000;text-shadow:0 0 7px #ffa200;}
-.sidePanel label{display:flex;justify-content:center;align-items:center;gap:8px;font:bold 13px 'Courier New',monospace;color:#252525;}
-.loaderButtons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
-.loaderButtons .ctrlBtn{flex:1;min-width:110px;background:linear-gradient(#2d2f35,#151619);color:#eee6d3;box-shadow:0 4px 0 #777064,inset 0 1px 0 rgba(255,255,255,.08);}
-.logwrap{width:min(100%,950px);margin:10px auto 0;background:#0d0e10;border:1px solid #32353b;border-radius:12px;padding:10px;color:#9fd49f;}
-.logwrap .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;color:var(--gold);letter-spacing:2px;font-size:12px;}
-#btnSaveLog{background:transparent;border:1px solid #6a665d;color:#e6decf;border-radius:5px;padding:6px 12px;font:bold 11px 'Courier New',monospace;}
-#log{height:145px;overflow-y:auto;white-space:pre-wrap;font-size:11px;line-height:1.45;color:#9fd49f;background:#050607;border:1px solid #202226;border-radius:6px;padding:8px;}
-.hiddenNative{display:none;}
-.overlay{display:none;position:fixed;inset:0;background:rgba(5,6,7,.94);z-index:50;padding:16px;flex-direction:column;gap:8px;}
-.overlay .ovbar{display:flex;gap:8px;}
-.overlay button{flex:1;padding:12px;font:bold 12px 'Courier New',monospace;background:#c9c5bb;border:0;border-radius:4px;color:#111;}
-.overlay button.danger{background:#d8412f;color:#fff;}
-.overlay button.dark{background:#4a4d57;color:#e7e4dc;}
-.overlay textarea{flex:1;background:#0c0d10;color:#9fd49f;border:1px solid #2c2f37;border-radius:4px;font:12px 'Courier New',monospace;padding:8px;resize:none;}
-.checkline{font:11px 'Courier New',monospace;color:#c9c5bb;display:flex;gap:6px;align-items:center;}
-@media(max-width:760px){
- body{padding:0;background:#040506;}
- .appShell{border-radius:0;padding:5px;box-shadow:none;}
- .topBadge{display:none;}
- .bezel{padding:14px;border-radius:16px;}
- .scan{inset:14px;}
- .statusRow{padding:10px;gap:8px;}
- .ctrlBtn{padding:9px 8px;font-size:11px;min-height:46px;}
- .brandRow{grid-template-columns:1fr;padding:0 8px;}
- .atariLogo{height:54px;font-size:24px;}
- .funcRow{height:50px;justify-content:center;}
- .funcRow .ctrlBtn{min-width:64px;height:44px;font-size:10px;padding:0 7px;}
- .inputDeck{padding:8px;}
- .key{font-size:9px;min-height:38px;padding:5px 1px;border-radius:4px;}
- .krow{gap:2px;margin-bottom:3px;}
- .cassette{grid-template-columns:1fr;padding:10px;}
- .sidePanel{display:none;}
- .transportRow .ctrlBtn{min-height:46px;font-size:15px;}
- .modeSwitch{min-width:220px;gap:10px;}
- .modeSwitch span{font-size:10px;}
- #btnJoy{min-width:80px;width:80px;}
- body.joymode #btnJoy:before{left:46px;}
- #joy{min-height:250px;padding:14px;}
- #joyKnob{width:76px;height:76px;margin:-38px 0 0 -38px;}
- .logwrap{border-radius:0;margin-top:6px;}
-}
+html,body{min-height:100%;background:radial-gradient(900px 520px at 50% -20%,#242b36 0%,#101216 54%,#050607 100%);}
+body{font-family:'Courier New',monospace;color:var(--txt);padding:7px;overflow-x:hidden;}
+button,input,textarea{font-family:inherit;}
+button{cursor:pointer;touch-action:manipulation;}
+.app-phone{width:min(100%,560px);margin:0 auto;border-radius:34px;background:linear-gradient(180deg,#171a20,#050607 7%,#101216 50%,#050607 100%);border:2px solid #2f3440;box-shadow:inset 0 0 0 2px #050607,inset 0 0 0 5px #171a20,0 20px 70px rgba(0,0,0,.85);padding:14px;}
+.machine{border-radius:26px;background:linear-gradient(180deg,#0e1013,#070809);border:1px solid #262b34;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -2px 0 #000;overflow:hidden;}
+.crt-module{background:linear-gradient(180deg,#111317,#090a0c);padding:20px 18px 15px;border-bottom:1px solid #1e2228;}
+.bezel{border-radius:24px;padding:12px;background:linear-gradient(135deg,#252932,#08090b 20%,#090a0c 78%,#252932);border:1px solid #323640;box-shadow:inset 0 0 35px #000,0 4px 0 #050607;position:relative;}
+.bezel:before{content:'';position:absolute;inset:7px;border-radius:18px;border:1px solid #222733;pointer-events:none;}
+canvas#scr{display:block;width:100%;height:auto;image-rendering:pixelated;background:#000;border-radius:18px;box-shadow:inset 0 0 30px rgba(0,0,0,.85);}
+.scan{display:none;}
+.controlbar{padding:14px 15px 13px;background:#15171b;border-top:1px solid #0b0c0e;border-bottom:1px solid #262a31;display:grid;grid-template-columns:1fr 1fr 1.85fr;gap:10px;align-items:center;}
+.power-btn{min-height:60px;border-radius:8px;border:1px solid #3a3d45;background:linear-gradient(#282b31,#111316);color:#ddd7cc;font-size:13px;line-height:1.22;letter-spacing:.3px;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 3px 0 #050607;position:relative;padding:8px 10px;}
+.power-btn:active,.fn-row button:active,.menu-card:active,.transport-btn:active,.key:active{transform:translateY(2px);}
+#btnPower:after{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);margin-left:7px;vertical-align:middle;}
+.mode-switch{min-height:60px;border-radius:10px;border:1px solid #3a3d45;background:linear-gradient(#25282e,#101114);color:#d8d0c1;display:grid;grid-template-columns:1fr 80px 1fr;align-items:center;gap:8px;padding:0 13px;letter-spacing:1px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 0 #050607;}
+.mode-switch .track{height:36px;border-radius:18px;background:#050607;border:1px solid #2b2e35;position:relative;box-shadow:inset 0 0 12px #000;}
+.mode-switch .knob{position:absolute;top:3px;left:4px;width:30px;height:30px;border-radius:50%;background:linear-gradient(#eee7da,#b9b0a3);box-shadow:0 2px 4px #000;transition:left .12s ease;}
+body.joy-active .mode-switch .knob{left:44px;}
+.brandbar{background:linear-gradient(180deg,#ddd7c8,#c9c1b0 52%,#aaa290);color:#15171b;border-top:1px solid #f2eadb;border-bottom:2px solid #8a8275;min-height:82px;display:grid;grid-template-columns:1.65fr 2.45fr;align-items:end;padding:0 16px;}
+.atari-logo{align-self:center;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:800;letter-spacing:-1px;color:#20242a;display:flex;align-items:center;gap:10px;white-space:nowrap;}
+.fuji{font-size:45px;line-height:1;color:#22262b;transform:scaleX(1.15);}
+.fn-row{display:grid;grid-template-columns:repeat(5,1fr);gap:0;align-items:end;}
+.fn-row button{height:53px;border:1px solid #26292d;border-bottom:4px solid #777064;background:linear-gradient(140deg,#eee7d8,#bbb3a4);color:#111318;font-weight:bold;font-size:11px;letter-spacing:.4px;transform:skewX(-18deg);box-shadow:inset 0 1px 0 #fff;}
+.fn-row button span{display:block;transform:skewX(18deg);}
+.fn-row button.on{background:linear-gradient(#fff2cf,#d6a345);}
+.surface{background:linear-gradient(180deg,#d6d0c2,#c1baaa);padding:18px 14px 12px;border-top:1px solid #ede6d8;}
+#osk{background:linear-gradient(180deg,#bdb6a8,#aaa294);border-radius:10px;border:1px solid #867e71;padding:9px 8px 12px;box-shadow:inset 0 1px 0 #eee7da,0 4px 0 #8b8274;}
+.krow{display:grid;grid-template-columns:repeat(15,1fr);gap:4px;margin-bottom:5px;}
+.krow:nth-child(2){grid-template-columns:1.25fr repeat(12,1fr) 1.85fr;}
+.krow:nth-child(3){grid-template-columns:1.45fr repeat(12,1fr) 1.25fr;}
+.krow:nth-child(4){grid-template-columns:1.95fr repeat(10,1fr) 1.55fr 1.45fr;}
+.krow:nth-child(5){grid-template-columns:1.25fr 6fr 1.25fr;}
+.key{min-height:44px;border:1px solid #766f63;border-radius:5px;background:linear-gradient(#eee9de,#c8c1b4);color:var(--keytxt);font:bold 11px/1.05 Arial,Helvetica,sans-serif;white-space:pre-line;text-align:center;box-shadow:inset 0 1px 0 #fff,0 3px 0 #8c8476;padding:4px 2px;}
+.key.mod{background:linear-gradient(#d3ccbf,#b5ac9c);}.key.mod.on{background:linear-gradient(#ffe19c,#d29b35);color:#111;}.key.space{grid-column:2;min-height:43px;font-size:11px;}
+#joy{display:none;background:linear-gradient(180deg,#d6d0c2,#c1baaa);border-radius:10px;min-height:280px;align-items:center;justify-content:space-around;gap:28px;padding:24px 12px;border:1px solid #8b8375;box-shadow:inset 0 1px 0 #eee7da,0 4px 0 #8b8274;touch-action:none;user-select:none;}
+#joyPad{width:185px;height:185px;border-radius:24px;background:linear-gradient(#2c2f34,#101113);border:3px solid #4e5052;box-shadow:inset 0 0 28px #000,0 3px 0 #7e7668;position:relative;touch-action:none;}
+#joyPad:before{content:'';position:absolute;left:26px;right:26px;top:26px;bottom:26px;border-radius:50%;background:radial-gradient(circle,#24262a 0 33%,#111 34% 42%,#2d3035 43% 100%);box-shadow:inset 0 0 18px #000;}
+#joyPad:after{content:'▲\A ◀   ▶\A ▼';white-space:pre;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#aaa;font:bold 21px/2.3 Arial;letter-spacing:32px;text-indent:32px;opacity:.8;}
+#joyKnob{position:absolute;left:50%;top:50%;width:74px;height:74px;margin:-37px 0 0 -37px;border-radius:50%;background:radial-gradient(circle at 35% 25%,#484b50,#16181b);border:2px solid #0b0c0d;box-shadow:0 5px 12px #000;z-index:2;pointer-events:none;}
+#joyFire{width:112px;height:112px;border-radius:50%;border:5px solid #4d4a44;background:radial-gradient(circle at 34% 24%,#ff5a48,#c91910 62%,#7c0d08);color:transparent;box-shadow:0 7px 0 #2a1510,0 0 0 7px #bdb6a8;position:relative;touch-action:none;}
+#joyFire:before{content:'FIRE';position:absolute;color:#1c1c1c;top:-36px;left:0;right:0;text-align:center;font:bold 18px Arial;}
+#joyFire.on{transform:translateY(5px);box-shadow:0 2px 0 #2a1510,0 0 0 7px #bdb6a8;}
+.cassette-deck{background:linear-gradient(180deg,#d0c9ba,#b9b1a2);padding:10px 14px 18px;border-top:2px solid #8a8275;display:grid;grid-template-columns:1fr 2.2fr .9fr;gap:9px;}
+.deck-logo,.deck-counter{min-height:142px;background:linear-gradient(#d4cdbf,#b8b0a1);border:1px solid #8b8375;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#20242a;font:bold 24px Arial,Helvetica,sans-serif;}.deck-logo b{color:#d63a28}.xc{font-size:34px;color:#7f7d78}.cass-window{min-height:142px;border-radius:8px;background:#c8c0b1;border:1px solid #81796d;padding:12px;display:flex;flex-direction:column;justify-content:center;}.cass-inner{height:92px;background:#060708;border:3px solid #7b756b;border-radius:5px;position:relative;display:flex;align-items:center;justify-content:space-around;overflow:hidden;}.cass-label{position:absolute;top:8px;left:18px;right:18px;height:22px;background:#e9e4db;border-top:3px solid #bd251a;color:#777;text-align:right;font:bold 10px Arial;padding:3px 7px}.cass-label:before{content:'A';position:absolute;left:0;top:0;width:24px;height:22px;background:#fff;color:#d33626;text-align:center;font-size:20px;line-height:22px}.mini-reel{width:52px;height:52px;border-radius:50%;background:radial-gradient(circle,#121316 0 20%,#bfc2c6 21% 27%,#22252b 28% 47%,#050607 48%);box-shadow:0 0 0 6px #111318;}.autostop{text-align:center;color:#20242a;font:bold 16px Arial;margin-top:6px;}.counter-box{background:#050607;color:#ddd;border:2px solid #6c675f;font:22px 'Courier New';letter-spacing:5px;padding:4px 6px;margin-bottom:12px}.save-led{border:1px solid #aaa;padding:8px 12px;background:#d7d2c3}.save-led:before{content:'';display:inline-block;width:14px;height:14px;border-radius:50%;background:#e62418;box-shadow:0 0 8px #e62418;margin-right:8px;vertical-align:-2px;}
+.transport-strip{grid-column:1/4;display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px;}.transport-btn{height:58px;border-radius:5px;border:1px solid #777064;background:linear-gradient(#ded8ca,#bfb7a8);box-shadow:0 4px 0 #797164;color:#20242a;font:bold 10px Arial;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px}.transport-btn b{font-size:16px;}
+.main-menu{background:linear-gradient(#101318,#090a0c);border-top:1px solid #262b34;padding:12px 14px 14px;}.main-menu h3{color:var(--gold);font-size:13px;letter-spacing:2px;margin-bottom:10px;}.menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}.menu-card{min-height:88px;border-radius:10px;border:1px solid #7e5c20;background:linear-gradient(#1c2026,#0c0d0f);color:var(--gold);box-shadow:inset 0 0 14px #000,0 0 0 2px rgba(240,198,106,.05);font-weight:bold;letter-spacing:.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;text-align:center;}.menu-card small{display:block;color:#d9d0bd;font-size:11px;font-weight:bold;}.menu-card svg{width:30px;height:30px;stroke:var(--gold);fill:none;stroke-width:1.8}.menu-card.on{background:linear-gradient(#332410,#17100a);}
+.file-opt{display:flex;align-items:center;gap:6px;color:#cfc6b5;font-size:10px;margin-top:8px;justify-content:center;}.hidden-break{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;}
+.logwrap{margin-top:10px;border-radius:12px;background:#0c0e11;border:1px solid #262b34;overflow:hidden;}.logwrap .bar{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#15181d;color:var(--gold);font-size:12px;letter-spacing:2px}.logwrap button{border:1px solid #6b5424;border-radius:6px;background:#191b20;color:var(--gold);padding:5px 10px;font:bold 11px 'Courier New',monospace;}#log{height:118px;overflow-y:auto;white-space:pre-wrap;padding:8px;color:#93e093;font-size:10.5px;line-height:1.45;background:#050607;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(5,6,7,.94);z-index:9;padding:16px;flex-direction:column;gap:8px}.overlay .row{display:flex;gap:8px}.overlay button{flex:1;border:0;border-radius:6px;padding:11px;background:#d8d2c3;color:#111318;font:bold 12px 'Courier New',monospace}.overlay button.dark{background:#4a4d57;color:#e7e4dc}.overlay button.danger{background:#d8412f;color:#fff}.overlay textarea{flex:1;background:#050607;color:#9fd49f;border:1px solid #2c2f37;border-radius:6px;font:12px 'Courier New',monospace;padding:8px;resize:none;}.overlay .hint{font:11px 'Courier New',monospace;color:#aaa;flex:1;}
+@media(max-width:500px){body{padding:0}.app-phone{border-radius:0;padding:7px}.controlbar{grid-template-columns:1fr 1fr;padding:10px}.mode-switch{grid-column:1/3}.brandbar{grid-template-columns:1fr;padding:6px 10px 0}.atari-logo{font-size:22px}.fn-row button{height:44px;font-size:10px}.surface{padding:10px 8px}.key{min-height:37px;font-size:9px}.krow{gap:3px}.cassette-deck{grid-template-columns:1fr;padding:8px}.deck-logo,.deck-counter{display:none}.transport-strip{grid-column:1}.menu-grid{grid-template-columns:repeat(2,1fr)}.main-menu{padding:10px}.crt-module{padding:12px 10px}.bezel{padding:8px}#joy{min-height:250px}#joyPad{width:158px;height:158px}#joyFire{width:96px;height:96px}}
 </style>
 </head>
 <body>
-<div class="appShell" id="emuDevice">
-  <div class="device">
-    <div class="topBadge">
-      <div class="vent">N&amp;P VISION<small>PREMIUM ATARI 130XE EMULATION</small></div>
-      <div class="coin">N&amp;P<span>(C) 2026 VCS</span></div>
-      <div class="vent">DESIGNED FOR<br>ATARI FANS.<small>BUILT TO LAST.</small></div>
-    </div>
-    <div class="crtBox">
+
+<main class="app-phone">
+  <section class="machine">
+    <div class="crt-module">
       <div class="bezel"><canvas id="scr" width="384" height="240"></canvas><div class="scan"></div></div>
     </div>
-    <div class="statusRow">
-      <button id="btnPower" class="ctrlBtn power ready">POWER BASIC</button>
-      <button id="btnSelfTest" class="ctrlBtn">POWER +<br>OPTION + SELF TEST</button>
-      <div class="modeSwitch"><span>KEYBOARD</span><button id="btnJoy" class="ctrlBtn" aria-label="Prepnout klavesnice joystick">JOYSTIK</button><span>JOYSTICK</span></div>
-      <div id="led"></div>
+    <div class="controlbar">
+      <button id="btnPower" class="power-btn">POWER BASIC</button>
+      <button id="btnSelfTest" class="power-btn">POWER +<br>OPTION +<br>SELF TEST</button>
+      <button id="btnJoy" class="mode-switch" aria-label="Prepnout klavesnice joystick"><span>KEYBOARD</span><span class="track"><i class="knob"></i></span><span>JOYSTICK</span></button>
     </div>
-    <div class="brandRow">
-      <div class="atariLogo"><span class="fuji">╱╲</span> ATARI 130XE</div>
-      <div class="funcRow">
-        <button id="btnHelp" class="ctrlBtn">HELP</button>
-        <button id="btnStart" class="ctrlBtn">START</button>
-        <button id="btnSelect" class="ctrlBtn">SELECT</button>
-        <button id="btnOption" class="ctrlBtn">OPTION</button>
-        <button id="btnReset" class="ctrlBtn danger">RESET</button>
+    <div class="brandbar">
+      <div class="atari-logo"><span class="fuji">⌂</span><span>ATARI 130XE</span></div>
+      <div class="fn-row">
+        <button id="btnHelp"><span>HELP</span></button>
+        <button id="btnStart"><span>START</span></button>
+        <button id="btnSelect"><span>SELECT</span></button>
+        <button id="btnOption"><span>OPTION</span></button>
+        <button id="btnReset"><span>RESET</span></button>
       </div>
     </div>
-    <div class="inputDeck">
-      <div id="osk"></div>
-      <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyFire">FIRE</button></div>
-    </div>
-    <div class="cassette">
-      <div class="xc12">
-        <div class="tapeWindow"><div class="tapeName">XC12 / N&amp;P VISION</div><div class="reel"></div><div class="reel"></div></div>
-        <div class="transportRow">
-          <button id="btnBreak" class="ctrlBtn">●<span>BREAK</span></button>
-          <button class="ctrlBtn" type="button">▶<span>PLAY</span></button>
-          <button class="ctrlBtn" type="button">◀◀<span>REWIND</span></button>
-          <button class="ctrlBtn" type="button">▶▶<span>F.FWD</span></button>
-          <button class="ctrlBtn" type="button">■<span>STOP/EJT</span></button>
-          <button class="ctrlBtn" type="button">Ⅱ<span>PAUSE</span></button>
-        </div>
-        <div class="loaderButtons">
-          <button id="btnXex" class="ctrlBtn">NAHRAJ XEX</button>
-          <button id="btnAtr" class="ctrlBtn">NAHRAJ ATR</button>
-          <button id="btnTbxl" class="ctrlBtn">TBXL 1.5</button>
-          <button id="btnTxt" class="ctrlBtn">VLOZIT TXT</button>
-          <button id="btnProgNew" class="ctrlBtn" title="Smaze program v BASICu (NEW)">SMAZAT PROG</button>
-        </div>
+    <div class="surface"><div id="osk"></div><div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyFire">FIRE</button></div></div>
+    <section class="cassette-deck">
+      <div class="deck-logo"><span><b>ATARI</b></span></div>
+      <div class="cass-window"><div class="cass-inner"><div class="cass-label">XC12 / N&amp;P VISION</div><div class="mini-reel"></div><div class="mini-reel"></div></div><div class="autostop">AUTO STOP</div></div>
+      <div class="deck-counter"><div class="xc">XC12</div><div class="counter-box">000</div><div class="save-led">SAVE</div></div>
+      <div class="transport-strip"><div class="transport-btn"><b>●</b>RECORD</div><div class="transport-btn"><b>▶</b>PLAY</div><div class="transport-btn"><b>◀◀</b>REWIND</div><div class="transport-btn"><b>▶▶</b>F.FWD</div><div class="transport-btn"><b>↯</b>STOP/EJT</div><div class="transport-btn"><b>Ⅱ</b>PAUSE</div></div>
+    </section>
+    <section class="main-menu">
+      <h3>MAIN MENU</h3>
+      <div class="menu-grid">
+        <button id="btnXex" class="menu-card"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>GAMES<small>BROWSE &amp; PLAY XEX/ZIP</small></button>
+        <button id="btnAtr" class="menu-card"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/></svg>TAPE / ATR<small>LOAD CASSETTE / EMU</small></button>
+        <button id="btnTbxl" class="menu-card"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM7 9h5M7 13h9M7 17h6"/></svg>TBXL 1.5<small>TURBO BASIC XL</small></button>
+        <button id="btnTxt" class="menu-card"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM15 3v4h4M8 11h8M8 15h8"/></svg>VLOZIT TXT<small>BASIC TEXT QUEUE</small></button>
+        <button id="btnProgNew" class="menu-card"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>SMAZAT PROG<small>NEW DO BASICU</small></button>
+        <button id="btnBreak" class="menu-card"><svg viewBox="0 0 24 24"><path d="M7 4v16M17 4v16"/></svg>BREAK<small>ATARI BREAK KEY</small></button>
       </div>
-      <div class="sidePanel">
-        <div style="font:bold 13px 'Courier New',monospace;letter-spacing:1px;">COUNTER</div>
-        <div class="counter">000</div>
-        <label><input type="checkbox" id="chkOpt" checked> OPTION U ATR</label>
-        <button class="ctrlBtn" type="button" style="background:linear-gradient(#e8e2d2,#b8b2a5);color:#222;">SAVE</button>
-      </div>
-    </div>
-  </div>
-</div>
-<input type="file" id="filePick" class="hiddenNative">
-<div class="logwrap">
-  <div class="bar"><span>EMU-10 BUILD2S SAFE UI SKIN / LOG</span><button id="btnSaveLog">ULOZIT LOG</button></div>
-  <div id="log"></div>
-</div>
+      <label class="file-opt"><input type="checkbox" id="chkOpt" checked> OPTION u ATR / boot bez BASICu</label>
+      <input type="file" id="filePick" style="display:none">
+    </section>
+  </section>
+  <section class="logwrap"><div class="bar"><span>LOG</span><button id="btnSaveLog">ULOZIT LOG</button></div><div id="log"></div></section>
+</main>
 <div id="txtOverlay" class="overlay">
-  <div class="ovbar">
-    <button id="btnTxtGo">VLOZIT DO ATARI</button>
-    <button id="btnTxtFile" style="background:#8a9a5b;">NAHRAJ TXT SOUBOR</button>
-    <button id="btnTxtClose" class="danger">ZAVRIT</button>
-  </div>
-  <label class="checkline"><input type="checkbox" id="chkNew" checked> NEW pred vlozenim</label>
+  <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
+  <div class="row"><div class="hint">Vlozte BASIC/TBXL kod - radky se pisou pres OS buffer. Bez fake READY, bez RAM injectu.</div><label style="font:11px 'Courier New',monospace;color:#c9c5bb;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim</label></div>
   <textarea id="txtIn" placeholder="10 PRINT &quot;AHOJ&quot;&#10;20 GOTO 10&#10;RUN"></textarea>
 </div>
 <div id="logOverlay" class="overlay">
-  <div class="ovbar">
-    <button id="btnLogCopy">KOPIROVAT</button>
-    <button id="btnLogDownload" class="dark">STAHNOUT</button>
-    <button id="btnLogClose" class="danger">ZAVRIT</button>
-  </div>
+  <div class="row"><button id="btnLogCopy">KOPIROVAT</button><button id="btnLogDownload" class="dark">STAHNOUT</button><button id="btnLogClose" class="danger">ZAVRIT</button></div>
   <textarea id="logFull" readonly></textarea>
 </div>
 <script>
@@ -1386,17 +1308,18 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
 
   // ---------- on-screen XE klavesnice ----------
   var ROWS=[
-    [['Esc',28],['!\n1',31],['\"\n2',30],['#\n3',26],['$\n4',24],['%\n5',29],['&\n6',27],["'\n7",51],['@\n8',53],['(\n9',48],[')\n0',50],['Clear\n<',54],['Insert\n>',55],['Delete\nBk Sp',52],['Break',-3]],
+    [['Esc',28],['!\n1',31],['"\n2',30],['#\n3',26],['$\n4',24],['%\n5',29],['&\n6',27],["'\n7",51],['@\n8',53],['(\n9',48],[')\n0',50],['Clear\n<',54],['Insert\n>',55],['Delete\nBk Sp',52],['Break',-3]],
     [['Clr/Set\nTab',44],['Q',47],['W',46],['E',42],['R',40],['T',45],['Y',43],['U',11],['I',13],['O',8],['P',10],['↑\n-',14],['↓\n=',15],['Return',12]],
     [['Control',-1],['A',63],['S',62],['D',58],['F',56],['G',61],['H',57],['J',1],['K',5],['L',0],[':\n;',2],['←\n+',6],['→\n*',7],['Caps',60]],
-    [['Shift',-2],['Z',23],['X',22],['C',18],['V',16],['B',21],['N',35],['M',37],['[\n,',32],[']\n.',34],['?\n/',38],['Shift',-2],['Fuji\nINVERSE',39]],
-    [['Space',33]]
+    [['Shift',-2],['Z',23],['X',22],['C',18],['V',16],['B',21],['N',35],['M',37],['[\n,',32],[']\n.',34],['?\n/',38],['Shift',-2],['Fuji\nInverse',39]],
+    [['',-99],['Space',33],['',-99]]
   ];
   var oskShift=false, oskCtrl=false;
   function buildOSK(host){
     ROWS.forEach(function(row){
       var r=document.createElement('div'); r.className='krow';
       row.forEach(function(k){
+        if(k[1]===-99){ var sp=document.createElement('div'); r.appendChild(sp); return; }
         var b=document.createElement('button'); b.className='key'; b.textContent=k[0];
         if(k[0]==='MEZERNIK') b.classList.add('space');
         if(k[1]<0) b.classList.add('mod');
@@ -1421,11 +1344,11 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function joySet(mask){ if(mask!==joyMask){ joyMask=mask; joyApply(); } }
   function setJoyMode(on){
     joyMode=on;
-    document.body.classList.toggle('joymode', !!on);
+    document.body.classList.toggle('joy-active', !!on);
     document.getElementById('osk').style.display=on?'none':'';
     document.getElementById('joy').style.display=on?'flex':'none';
     var b=document.getElementById('btnJoy');
-    if(b) b.textContent=on?'KLAVESNICE':'JOYSTIK';
+    if(b){ b.classList.toggle('on', !!on); b.setAttribute('aria-pressed', on?'true':'false'); }
     joySet(0); joyFire=false; joyApply();
   }
   function bindJoy(){
@@ -1676,7 +1599,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD1-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2T-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -1689,7 +1612,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bh.addEventListener('pointerup',bhUp); bh.addEventListener('pointerleave',bhUp);
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
-    log('AtariHelp.eu EMU-10 BUILD1 CLEAN CORE pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2T EXACT UI CODE pripraven.');
     log('Jadro proslo headless testy: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK');
     requestAnimationFrame(tick);
   });
