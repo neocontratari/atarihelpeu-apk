@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2AJ</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2AK</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -28,13 +28,16 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
 /* file/action zones on cassette and main physical buttons */
 #btnXex,#btnAtr{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-/* BUILD2AJ: fyzicky kazetak zustava CLOAD / CSAVE; WAV/MP3 ma realny seek pres REW/F.FWD; cívky a counter jsou presne srovnane na XC12 skin. */
+/* BUILD2AK: fyzicky kazetak zustava CLOAD / CSAVE; STOP nepretaci, reset u ciselniku nuluje COUNTER. */
 #btnTapeRecord{left:7.1%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapePlay{left:20.0%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeRew{left:32.9%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeFwd{left:45.8%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeStop{left:58.7%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapePause{left:71.6%;top:88.15%;width:12.5%;height:5.7%;}
+/* BUILD2AK: male tlacitko/reset u praveho ciselniku XC12 */
+#btnCounterReset{left:88.35%;top:82.70%;width:3.8%;height:3.35%;z-index:70;border-radius:4px;}
+#btnCounterReset.pressed,#btnCounterReset:active{background:rgba(255,208,90,.20)!important;box-shadow:inset 0 0 13px rgba(255,210,80,.75),0 0 10px rgba(255,200,60,.35);transform:translateY(1px) scale(.96);}
 #btnTbxl{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
 #btnTxt{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}#btnProgNew{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
 #btnSaveLog{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
@@ -43,7 +46,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .tapeReel:after{transform:rotate(62deg);}
 #tapeReelL{left:37.85%;top:75.52%;width:5.15%;aspect-ratio:1;}
 #tapeReelR{left:53.95%;top:75.52%;width:5.15%;aspect-ratio:1;}
-/* BUILD2AJ: counter presne ve skutecnem prave okno COUNTER na XC12 skinu */
+/* BUILD2AK: counter ve skutecnem prave okno COUNTER na XC12 skinu */
 #tapeCounter{position:absolute;left:80.72%;top:83.20%;width:7.95%;height:2.15%;z-index:62;pointer-events:none;display:flex;align-items:center;justify-content:center;padding-top:.04%;
   font:900 clamp(10px,1.72vw,16px) "Courier New",monospace;letter-spacing:.10em;color:#ffd064;text-shadow:0 0 4px #ff9d00,0 0 9px rgba(255,168,0,.74),0 1px 0 #000;
   background:linear-gradient(180deg,rgba(6,4,1,.74),rgba(22,12,0,.50));border-radius:3px;box-shadow:inset 0 0 6px rgba(0,0,0,.88),0 0 7px rgba(255,171,0,.16);mix-blend-mode:normal;}
@@ -94,7 +97,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .overlay{display:none;position:fixed;inset:0;background:rgba(8,9,10,.96);z-index:1000;padding:16px;flex-direction:column;gap:10px;color:#e8e2d0;font-family:"Courier New",monospace;}
 .overlay .row{display:flex;gap:8px}.overlay button{flex:1;padding:11px;border:0;border-radius:6px;background:#d9b25c;color:#111;font:bold 12px "Courier New",monospace}.overlay button.dark{background:#454850;color:#eee}.overlay button.danger{background:#c94331;color:#fff}.overlay textarea{flex:1;background:#08090a;color:#9fe29f;border:1px solid #333;border-radius:6px;padding:9px;font:12px "Courier New",monospace;resize:none;}
 
-/* BUILD2AJ: servisni tlacitka jako fyzicka tlacitka pod monitorem - tmave, hluboke, stisk dolu */
+/* BUILD2AK: servisni tlacitka jako fyzicka tlacitka pod monitorem - tmave, hluboke, stisk dolu */
 #actionDock{
   position:relative;width:min(100vw,941px);max-width:941px;margin:9px auto 0;padding:10px 9px 9px;z-index:90;
   display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,42px);gap:8px;pointer-events:auto;
@@ -149,6 +152,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <button id="btnTapeFwd" class="hit tapeBtn">F.FWD</button>
   <button id="btnTapeStop" class="hit tapeBtn">STOP EJECT</button>
   <button id="btnTapePause" class="hit tapeBtn">PAUSE</button>
+  <button id="btnCounterReset" class="hit">COUNTER RESET</button>
   <button id="btnTbxl" class="hit">TBXL 1.5</button>
   <button id="btnTxt" class="hit">VLOZIT TXT</button>
   <button id="btnProgNew" class="hit">SMAZAT PROG</button>
@@ -170,7 +174,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <button id="dockLog" type="button">LOG / CHYBA</button>
   <button id="dockMenu" type="button">MENU</button>
 </div>
-<div id="miniLog">EMU10 BUILD2AJ: XC12 cívky + counter srovnane; MP3/WAV REW/F.FWD realne pretaci...</div>
+<div id="miniLog">EMU10 BUILD2AK: STOP nepretaci, reset COUNTER tlacitkem u ciselniku...</div>
 <div id="txtOverlay" class="overlay">
   <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
   <label style="font:11px 'Courier New',monospace;color:#c9c5bb;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim</label>
@@ -1246,6 +1250,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   var logEl, M, canvas, ctx, img, running=false, audio=null;
   var tapeAudio=null, tapeAudioUrl=null, tapeRunTimer=null, tapeCounterTimer=null, tapeCounterValue=0, tapeCounterDir=1;
   var tapeCounterAudioMode=false, tapeAudioName='', tapeSeekHudTimer=null, tapeFastReturnTimer=null;
+  /* BUILD2AK: realny counter lze vynulovat nezavisle na aktualni poloze audia */
+  var tapeCounterZeroBase=0;
   var LOGBUF=[];
   function log(s){ LOGBUF.push(s); if(logEl){ logEl.textContent=LOGBUF.slice(-200).join('\n'); logEl.scrollTop=logEl.scrollHeight; } var ml=document.getElementById('miniLog'); if(ml) ml.textContent=String(s).slice(0,180); }
   window.emuLog=log;
@@ -1664,9 +1670,20 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function tapeAudioSeekable(){
     return !!(tapeAudio && tapeAudio.src && isFinite(tapeAudio.duration) && tapeAudio.duration>0);
   }
-  function audioCounterValue(){
+  function audioRawCounterValue(){
     if(!tapeAudioSeekable()) return tapeCounterValue;
     return Math.max(0,Math.min(999,Math.floor((tapeAudio.currentTime/tapeAudio.duration)*999)));
+  }
+  function audioCounterValue(){
+    if(!tapeAudioSeekable()) return tapeCounterValue;
+    var raw=audioRawCounterValue();
+    return (raw - tapeCounterZeroBase + 1000) % 1000;
+  }
+  function resetTapeCounter(){
+    if(tapeAudioSeekable()) tapeCounterZeroBase=audioRawCounterValue();
+    tapeCounterValue=0;
+    updateTapeCounter(false);
+    log('COUNTER RESET: ciselnik XC12 vynulovan na 000. Audio/paska se nepretaci, jen se nuluje pocitadlo.');
   }
   function updateTapeCounter(forceAudio){
     if((forceAudio || tapeCounterAudioMode) && tapeAudioSeekable()) tapeCounterValue=audioCounterValue();
@@ -1724,6 +1741,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(st){ st.classList.remove('tapeRun','tapePlay','tapeFwd','tapeRew'); }
     if(tapeRunTimer){ clearTimeout(tapeRunTimer); tapeRunTimer=null; }
     if(tapeFastReturnTimer){ clearTimeout(tapeFastReturnTimer); tapeFastReturnTimer=null; }
+    if(tapeSeekHudTimer){ clearTimeout(tapeSeekHudTimer); tapeSeekHudTimer=null; }
+    var hud=document.getElementById('tapeSeekHud'); if(hud) hud.classList.remove('show');
     stopTapeCounter();
   }
   function playTapeAudioBytes(name,u8){
@@ -1734,6 +1753,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var type=/\.mp3$/i.test(name)?'audio/mpeg':(/\.cas$/i.test(name)?'application/octet-stream':'audio/wav');
       tapeAudioUrl=URL.createObjectURL(new Blob([u8],{type:type}));
       if(!tapeAudio) tapeAudio=new Audio();
+      tapeCounterZeroBase=0;
       tapeAudio.pause(); tapeAudio.src=tapeAudioUrl; tapeAudio.currentTime=0;
       tapeAudio.onloadedmetadata=function(){ updateTapeCounter(true); log('WAV/MP3: delka '+fmtTime(tapeAudio.duration)+' - REWIND/F.FWD ted realne meni pozici v souboru.'); };
       tapeAudio.onseeked=function(){ updateTapeCounter(true); };
@@ -1807,6 +1827,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       if(tapeAudio){ tapeAudio.pause(); tapeAudio.removeAttribute('src'); tapeAudio.load(); }
       if(tapeAudioUrl){ URL.revokeObjectURL(tapeAudioUrl); tapeAudioUrl=''; }
       tapeAudioName='';
+      tapeCounterZeroBase=0;
+      tapeCounterValue=0;
+      updateTapeCounter(false);
     }catch(e){ log((reason||'TAPE CLEAR')+': chyba pri vycisteni audio - '+e.message); }
     tapeVisualStop();
   }
@@ -1818,15 +1841,16 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!silent) log((reason||'TAPE PAUSE')+': audio je zastavene na aktualni pozici. PLAY ho znovu rozjede. COUNTER '+pad3(tapeCounterValue)+'.');
   }
   function stopTapeAudio(reason,silent){
+    /* BUILD2AK: STOP nesmi pretacet dopredu ani dozadu. Jen zastavi pohyb a zvuk.
+       Nulovani je samostatne tlacitko u ciselniku COUNTER. */
     try{
       if(tapeAudio && tapeAudio.src){
         tapeAudio.pause();
-        if(tapeAudioSeekable()) tapeAudio.currentTime=0;
       }
     }catch(e){ log('TAPE STOP: chyba zastaveni audio - '+e.message); }
     tapeVisualStop();
     updateTapeCounter(true);
-    if(!silent) log((reason||'TAPE STOP/EJECT')+': audio zastaveno a vraceno na zacatek. PLAY ho znovu spusti, soubor zustava nacteny. COUNTER '+pad3(tapeCounterValue)+'.');
+    if(!silent) log((reason||'TAPE STOP/EJECT')+': audio zastaveno bez pretoceni. PLAY pokracuje z aktualni pozice. COUNTER '+pad3(tapeCounterValue)+'. Reset na 000 je male tlacitko u ciselniku.');
   }
   function resumeTapeAudioOrCload(){
     if(tapeAudio && tapeAudio.src){
@@ -1890,6 +1914,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',620); stopTapeAudio('KAZETA STOP/EJECT'); });
     safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',650); seekTapeAudio(-1); });
     safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',650); seekTapeAudio(1); });
+    safeTap('btnCounterReset',function(){ pressAnim('btnCounterReset',260); resetTapeCounter(); });
     document.getElementById('btnTxt').addEventListener('click',openTxtOverlay);
     safeTap('dockXex',function(){ pressAnim('dockXex',220); openLocalGamePicker('XEX MOBIL'); });
     safeTap('dockAtr',function(){ pressAnim('dockAtr',220); openLocalGamePicker('ATR DISK Z MOBILU'); });
@@ -1960,9 +1985,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2AJ XC12 REEL + COUNTER ALIGN pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2AK STOP + COUNTER RESET pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani.');
-    log('Dole: NET HRY, XEX MOBIL, ATR DISK, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. WAV/MP3: REWIND/F.FWD realne pretaci audio a COUNTER ukazuje pozici.');
+    log('Dole: NET HRY, XEX MOBIL, ATR DISK, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. STOP uz nepretaci, COUNTER resetuje male tlacitko u ciselniku.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
