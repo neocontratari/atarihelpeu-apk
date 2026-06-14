@@ -1,169 +1,4 @@
-<!doctype html>
-<html lang="cs">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2AD</title>
-<style>
-:root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{min-height:100%;background:#050608;color:#f2c464;font-family:"Courier New",monospace;overflow-x:hidden;}
-body{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;padding-bottom:12px;}
-.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050608;overflow:hidden;box-shadow:0 0 45px rgba(0,0,0,.95);}
-.skin{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;z-index:0;}
-/* real Atari screen over the CRT opening */
-.screenSlot{position:absolute;left:10.8%;top:6.7%;width:77.8%;height:22.9%;border-radius:4.7%/9.5%;overflow:hidden;z-index:5;background:#0047db;box-shadow:inset 0 0 34px rgba(0,0,0,.35);}
-canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !important;margin:0 !important;display:block;image-rendering:pixelated;background:#0047db;filter:none;}
-.scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.006) 0 1px,rgba(0,0,0,.004) 1px 5px);mix-blend-mode:normal;opacity:.07;}
-.screenSlot:after{content:"";position:absolute;left:-45%;top:0;width:30%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.018),transparent);animation:sweep 9.5s linear infinite;pointer-events:none;mix-blend-mode:screen;}
-@keyframes scanflick{50%{opacity:.62}}@keyframes sweep{to{left:115%}}
-.hit{position:absolute;border:0;background:rgba(255,200,80,0);color:transparent;font-size:0;cursor:pointer;z-index:30;border-radius:9px;touch-action:manipulation;}
-.hit:active,.hit.on{background:rgba(255,203,95,.16);box-shadow:0 0 22px rgba(255,203,95,.45) inset;}
-#led{position:absolute;left:20.1%;top:36.15%;width:1.25%;aspect-ratio:1;border-radius:50%;background:#63ff34;z-index:31;box-shadow:0 0 7px #63ff34,0 0 16px #63ff34;animation:ledPulse 1.4s ease-in-out infinite;}
-#led.on{background:#63ff34;box-shadow:0 0 8px #63ff34,0 0 19px #63ff34;}@keyframes ledPulse{50%{opacity:.55}}
-/* power / mode controls */
-#btnPower{left:6.8%;top:34.6%;width:16.5%;height:5.1%;}#btnSelfTest{left:24.0%;top:34.6%;width:17.5%;height:5.1%;}#btnJoy{left:44.0%;top:34.6%;width:47.8%;height:5.1%;}
-/* Atari function row */
-#btnHelp{left:34.1%;top:43.2%;width:11.4%;height:4.3%;}#btnStart{left:45.6%;top:43.2%;width:11.5%;height:4.3%;}#btnSelect{left:57.1%;top:43.2%;width:12.1%;height:4.3%;}#btnOption{left:69.2%;top:43.2%;width:12.3%;height:4.3%;}#btnReset{left:81.5%;top:43.2%;width:11.2%;height:4.3%;}
-#btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
-/* file/action zones on cassette and main physical buttons */
-#btnXex,#btnAtr{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-/* BUILD2AD: fyzicky kazetak zustava CLOAD / CSAVE, ale PAUSE/STOP okamzite zastavi prehravany WAV/MP3/CAS monitor. */
-#btnTapeRecord{left:7.1%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTapePlay{left:20.0%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTapeRew{left:32.9%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTapeFwd{left:45.8%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTapeStop{left:58.7%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTapePause{left:71.6%;top:88.15%;width:12.5%;height:5.7%;}
-#btnTbxl{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-#btnTxt{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}#btnProgNew{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-#btnSaveLog{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-.tapeReel{position:absolute;z-index:48;pointer-events:none;border-radius:50%;border:2px solid rgba(255,216,120,.36);box-shadow:0 0 14px rgba(255,210,90,.22);opacity:0;mix-blend-mode:screen;}
-.tapeReel:before,.tapeReel:after{content:"";position:absolute;left:50%;top:50%;width:62%;height:5%;margin-left:-31%;margin-top:-2.5%;border-radius:4px;background:rgba(255,216,120,.33);}
-.tapeReel:after{transform:rotate(62deg);}
-#tapeReelL{left:42.0%;top:75.45%;width:6.2%;aspect-ratio:1;}#tapeReelR{left:55.0%;top:75.45%;width:6.2%;aspect-ratio:1;}
-.stage.tapeRun .tapeReel{opacity:1;animation:tapeSpin .55s linear infinite;}
-.stage.tapeRun #tapeReelR{animation-duration:.43s;}
-@keyframes tapeSpin{to{transform:rotate(360deg)}}
-.hit.pressed{background:rgba(255,203,95,.22)!important;box-shadow:0 0 24px rgba(255,203,95,.55) inset,0 0 18px rgba(95,190,255,.22);transform:translateY(2px) scale(.985);}
-.hit.tapeBtn.pressed{background:rgba(45,38,28,.34)!important;box-shadow:inset 0 8px 20px rgba(0,0,0,.55),inset 0 -2px 8px rgba(255,235,180,.28),0 0 16px rgba(255,220,130,.18);transform:translateY(6px) scaleY(.92);border-radius:6px;}
-.hit.tapeBtn{overflow:visible;transform-origin:center bottom;}
-.hit.tapeBtn.pressed:before{content:"";position:absolute;left:5%;right:5%;top:12%;bottom:4%;border-radius:5px;
-  background:linear-gradient(180deg,rgba(0,0,0,.44),rgba(255,223,145,.13) 55%,rgba(0,0,0,.30));
-  box-shadow:inset 0 10px 16px rgba(0,0,0,.62), inset 0 -2px 5px rgba(255,231,160,.24), 0 2px 0 rgba(0,0,0,.62);
-  transform:translateY(6px) scaleY(.90);pointer-events:none;}
-.hit.tapeBtn.pressed:after{content:"";position:absolute;left:8%;right:8%;top:16%;height:20%;border-radius:50%;background:rgba(255,255,255,.08);transform:translateY(6px);pointer-events:none;}
-/* transparent keyboard overlay over exact PNG key area */
-#osk{position:absolute;left:5.6%;top:48.5%;width:87.2%;height:20.4%;z-index:32;display:flex;flex-direction:column;gap:.4%;opacity:1;pointer-events:auto;}
-.krow{display:flex;gap:.35%;flex:1;min-height:0;}.key{flex:1;border:0;border-radius:5px;background:rgba(255,255,255,.001);color:transparent;font-size:0;min-width:0;transition:transform .045s ease,background .045s ease,box-shadow .045s ease;transform-origin:center bottom;}
-.key.space{flex:8.4}.key.mod{flex:1.25}
-.key:active,.key.on,.key.flash,.key.keyPress{background:rgba(40,32,18,.26);box-shadow:inset 0 4px 10px rgba(0,0,0,.46),inset 0 -1px 5px rgba(255,235,170,.35),0 0 10px rgba(255,220,130,.22);opacity:1;transform:translateY(2.6px) scale(.985);}
-.key.shiftLatched{background:rgba(255,196,70,.30);box-shadow:inset 0 0 14px rgba(255,230,150,.85),0 0 12px rgba(255,220,130,.45);transform:translateY(2px) scale(.985);}
-/* joystick overlay - visible skin is swapped to the joystick PNG, controls are transparent */
-#joy{position:absolute;left:4.8%;top:47.7%;width:90.6%;height:22.6%;display:none;z-index:75;touch-action:none;user-select:none;pointer-events:auto;}
-#joyPad{position:absolute;left:3.0%;top:1.0%;width:48.5%;height:94%;border-radius:25%;background:rgba(0,0,0,.01);touch-action:none;pointer-events:auto;z-index:76;}
-#joyKnob{position:absolute;left:50%;top:50%;width:15%;height:15%;border-radius:50%;background:rgba(255,255,255,.01);pointer-events:none;}
-.joyDir{position:absolute;z-index:86;border:0;border-radius:12px;background:rgba(255,210,90,.001);color:transparent;font-size:0;touch-action:none;}
-.joyDir.on,.joyDir:active{background:rgba(255,210,90,.18);box-shadow:inset 0 0 22px rgba(255,220,130,.50),0 0 16px rgba(255,220,130,.18);transform:translateY(2px) scale(.98);}
-#joyUp{left:20%;top:9%;width:16%;height:23%;}#joyDown{left:20%;top:65%;width:16%;height:24%;}#joyLeft{left:5%;top:34%;width:18%;height:26%;}#joyRight{left:34%;top:34%;width:18%;height:26%;}
-#joyFire{position:absolute;right:5%;top:8%;width:38%;height:84%;border-radius:50%;border:0;background:rgba(255,0,0,.01);color:transparent;font-size:0;touch-action:none;pointer-events:auto;z-index:86;}
-#joyFire.on{background:rgba(255,0,0,.22);box-shadow:0 0 35px rgba(255,0,0,.38) inset,0 0 18px rgba(255,50,20,.26);transform:translateY(2px) scale(.98);}
-/* hidden/utility DOM required by original emulator core */
-#filePick{display:none}.logwrap{position:absolute;left:4.0%;right:4.0%;top:94.5%;height:5%;z-index:25;color:#f2c464;font-size:10px;opacity:.01;pointer-events:none;}#log{height:100%;overflow:auto;white-space:pre-wrap;}
-.file-opt{position:absolute;left:3%;top:93%;z-index:35;font-size:10px;color:#f2c464;opacity:.01;}
-.hiddenInput{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;}
-/* full screen overlays for text/log remain visible when opened */
-.overlay{display:none;position:fixed;inset:0;background:rgba(8,9,10,.96);z-index:1000;padding:16px;flex-direction:column;gap:10px;color:#e8e2d0;font-family:"Courier New",monospace;}
-.overlay .row{display:flex;gap:8px}.overlay button{flex:1;padding:11px;border:0;border-radius:6px;background:#d9b25c;color:#111;font:bold 12px "Courier New",monospace}.overlay button.dark{background:#454850;color:#eee}.overlay button.danger{background:#c94331;color:#fff}.overlay textarea{flex:1;background:#08090a;color:#9fe29f;border:1px solid #333;border-radius:6px;padding:9px;font:12px "Courier New",monospace;resize:none;}
 
-/* BUILD2AD: servisni tlacitka jako fyzicka tlacitka pod monitorem - tmave, hluboke, stisk dolu */
-#actionDock{
-  position:relative;width:min(100vw,941px);max-width:941px;margin:9px auto 0;padding:10px 9px 9px;z-index:90;
-  display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,42px);gap:8px;pointer-events:auto;
-  background:linear-gradient(180deg,#1b1d21 0%,#08090b 100%);
-  border:1px solid rgba(61,65,72,.98);border-radius:12px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.09), inset 0 -1px 0 rgba(0,0,0,.9), 0 0 28px rgba(0,0,0,.82);
-}
-#actionDock:before{
-  content:"SERVIS POD KAZETAKEM";position:absolute;left:12px;top:-13px;padding:0 8px;background:#050608;
-  color:#f2c464;font:bold 10px "Courier New",monospace;letter-spacing:.08em;text-shadow:0 0 6px #000;
-}
-#actionDock button{
-  position:relative;overflow:hidden;border:1px solid #3a3e45;border-radius:8px;
-  background:linear-gradient(180deg,#30333a 0%,#202329 34%,#111317 67%,#050608 100%);
-  color:#e7e0d0;text-shadow:0 1px 0 #000,0 0 5px rgba(255,255,255,.08);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.15), inset 0 -7px 12px rgba(0,0,0,.58), 0 3px 0 #020304, 0 0 0 1px rgba(0,0,0,.68);
-  font:bold clamp(8px,2.0vw,13px) "Courier New",monospace;letter-spacing:.02em;
-  transition:transform .055s ease,box-shadow .055s ease,background .055s ease,color .055s ease;
-}
-#actionDock button:before{content:"";position:absolute;left:7%;right:7%;top:7%;height:25%;border-radius:40%;background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));pointer-events:none;}
-#actionDock button:active,#actionDock button.pressed{
-  background:linear-gradient(180deg,#060709 0%,#14161a 100%);color:#f2c464;
-  transform:translateY(4px) scale(.985);
-  box-shadow:inset 0 9px 21px rgba(0,0,0,.86), inset 0 -1px 4px rgba(255,230,170,.10),0 0 10px rgba(242,196,100,.16);
-}
-#actionDock button.primary{color:#f2c464;border-color:#585047;box-shadow:inset 0 1px 0 rgba(255,255,255,.15), inset 0 -7px 12px rgba(0,0,0,.58), 0 3px 0 #020304, 0 0 9px rgba(242,196,100,.10);}
-#miniLog{position:relative;width:min(100vw,941px);max-width:941px;margin:5px auto 10px;color:#ffd976;font:700 clamp(7px,1.65vw,10px) "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 5px #000;opacity:.95;padding:0 8px;}
-@media(max-width:420px){#actionDock{grid-template-rows:repeat(2,36px);gap:6px;padding:8px 7px 7px;}#actionDock button{font-size:7.4px;}}
-
-@media (prefers-reduced-motion:reduce){.scan,.screenSlot:after,#led{animation:none}}
-</style>
-</head>
-<body>
-<main class="stage" id="stage" aria-label="N&P VISION Atari 130XE emulator">
-  <img id="skinImg" class="skin" src="../design/emu_klavesnice_np_vision.png" alt="N&P VISION Atari 130XE keyboard skin">
-  <div class="screenSlot"><canvas id="scr" width="384" height="240"></canvas><div class="scan"></div></div>
-  <div id="led"></div>
-  <button id="btnPower" class="hit">POWER BASIC</button>
-  <button id="btnSelfTest" class="hit">POWER OPTION SELF TEST</button>
-  <button id="btnJoy" class="hit">JOYSTIK</button>
-  <button id="btnHelp" class="hit">HELP</button>
-  <button id="btnStart" class="hit">START</button>
-  <button id="btnSelect" class="hit">SELECT</button>
-  <button id="btnOption" class="hit">OPTION</button>
-  <button id="btnReset" class="hit">RESET</button>
-  <button id="btnBreak" class="hit">BREAK</button>
-  <button id="btnXex" class="hit">NAHRAJ XEX</button>
-  <button id="btnAtr" class="hit">NAHRAJ ATR</button>
-  <button id="btnTapeRecord" class="hit tapeBtn">RECORD CSAVE</button>
-  <button id="btnTapePlay" class="hit tapeBtn">PLAY CLOAD</button>
-  <button id="btnTapeRew" class="hit tapeBtn">REWIND</button>
-  <button id="btnTapeFwd" class="hit tapeBtn">F.FWD</button>
-  <button id="btnTapeStop" class="hit tapeBtn">STOP EJECT</button>
-  <button id="btnTapePause" class="hit tapeBtn">PAUSE</button>
-  <button id="btnTbxl" class="hit">TBXL 1.5</button>
-  <button id="btnTxt" class="hit">VLOZIT TXT</button>
-  <button id="btnProgNew" class="hit">SMAZAT PROG</button>
-  <button id="btnSaveLog" class="hit">ULOZIT LOG</button>
-  <div id="tapeReelL" class="tapeReel"></div><div id="tapeReelR" class="tapeReel"></div>
-  <label class="file-opt"><input type="checkbox" id="chkOpt" checked> OPTION u ATR / boot bez BASICu</label>
-  <input type="file" id="filePick">
-  <div id="osk"></div>
-  <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyUp" class="joyDir">UP</button><button id="joyDown" class="joyDir">DOWN</button><button id="joyLeft" class="joyDir">LEFT</button><button id="joyRight" class="joyDir">RIGHT</button><button id="joyFire">FIRE</button></div>
-  <div class="logwrap"><div class="bar"><span>LOG</span></div><div id="log"></div></div>
-</main>
-<div id="actionDock" aria-label="Viditelne servisni ovladani pod kazetakem">
-  <button id="dockNetGames" class="primary" type="button">NET HRY</button>
-  <button id="dockXex" type="button">XEX MOBIL</button>
-  <button id="dockAtr" type="button">ATR DISK</button>
-  <button id="dockTbxl" class="primary" type="button">TURBO BASIC</button>
-  <button id="dockTxt" type="button">BASIC/TBXL TXT</button>
-  <button id="dockWav" type="button">WAV / CAS</button>
-  <button id="dockLog" type="button">LOG / CHYBA</button>
-  <button id="dockMenu" type="button">MENU</button>
-</div>
-<div id="miniLog">EMU10 BUILD2AD: Settings/System linky opraveny, WAV/MP3/CAS stop na PAUSE/STOP, kazetak tlacitka maji hlubsi stisk...</div>
-<div id="txtOverlay" class="overlay">
-  <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
-  <label style="font:11px 'Courier New',monospace;color:#c9c5bb;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim</label>
-  <textarea id="txtIn" placeholder="10 PRINT &quot;AHOJ&quot;&#10;20 GOTO 10&#10;RUN"></textarea>
-</div>
-<div id="logOverlay" class="overlay">
-  <div class="row"><button id="btnLogCopy">KOPIROVAT</button><button id="btnLogDownload" class="dark">STAHNOUT</button><button id="btnLogClose" class="danger">ZAVRIT</button></div>
-  <textarea id="logFull" readonly></textarea>
-</div>
-
-<script>
 // cpu6502.js - complete documented 6502 with NMOS BCD. Generated by gen_cpu.py.
 'use strict';
 function CPU6502(read, write){
@@ -1678,14 +1513,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     };
     inp.click();
   }
-  function stopTapeAudio(reason){
-    try{
-      if(tapeAudio){ tapeAudio.pause(); tapeAudio.currentTime=0; tapeAudio.removeAttribute('src'); tapeAudio.load(); }
-      if(tapeAudioUrl){ URL.revokeObjectURL(tapeAudioUrl); tapeAudioUrl=''; }
-    }catch(e){ log('TAPE STOP: chyba zastaveni audio - '+e.message); }
-    var st=document.getElementById('stage'); if(st) st.classList.remove('tapeRun');
-    if(tapeRunTimer) clearTimeout(tapeRunTimer);
-    log((reason||'TAPE STOP/EJECT')+': WAV/MP3/CAS okamzite zastaveno.');
+  function stopTapeAudio(){
+    try{ if(tapeAudio){ tapeAudio.pause(); tapeAudio.currentTime=0; } }catch(e){}
+    tapeAnimate(250); log('TAPE STOP/EJECT: audio zastaveno.');
   }
   function pickFile(accept,cb){
     var inp=document.getElementById('filePick');
@@ -1731,8 +1561,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     safeTap('btnJoy',function(){ setJoyMode(!joyMode); });
     safeTap('btnTapeRecord',function(){ pressAnim('btnTapeRecord',520); tapeAnimate(900); log('KAZETA REC: CSAVE priprava na ulozeni na mobil. XEX picker je jen dole v servisnim panelu.'); });
     safeTap('btnTapePlay',function(){ pressAnim('btnTapePlay',520); tapeAnimate(1200); log('KAZETA PLAY: CLOAD priprava z WAV/CAS. Zatim bez RAM injectu a bez fake LOAD.'); });
-    safeTap('btnTapePause',function(){ pressAnim('btnTapePause',620); stopTapeAudio('KAZETA PAUSE'); log('KAZETA PAUSE: mechanicka pauza, audio monitor se zastavil hned.'); });
-    safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',620); stopTapeAudio('KAZETA STOP/EJECT'); log('KAZETA STOP/EJECT: zastaveno, C: stav zustava pripraveny.'); });
+    safeTap('btnTapePause',function(){ pressAnim('btnTapePause',520); tapeAnimate(600); log('KAZETA PAUSE: mechanicka pauza pro budouci CLOAD/CSAVE.'); });
+    safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',520); stopTapeAudio(); log('KAZETA STOP/EJECT: zastaveno, C: stav zustava pripraveny.'); });
     safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',520); tapeAnimate(900); log('KAZETA REWIND: animace, HW kazeta/C: bude v dalsi fazi.'); });
     safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',520); tapeAnimate(900); log('KAZETA F.FWD: animace, HW kazeta/C: bude v dalsi fazi.'); });
     document.getElementById('btnTxt').addEventListener('click',openTxtOverlay);
@@ -1804,14 +1634,11 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bh.addEventListener('pointerup',bhUp); bh.addEventListener('pointerleave',bhUp);
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
-    log('AtariHelp.eu EMU-10 BUILD2AD LINKY + WAV/CAS STOP + KAZETAK ANIM pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2AC NET-AUTORUN + DOCK BUTTON FIX pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani.');
-    log('Dole: NET HRY, XEX MOBIL, ATR DISK, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. PAUSE/STOP okamzite zastavi WAV/MP3/CAS audio.');
+    log('Dole: NET HRY, XEX MOBIL, ATR DISK, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. NET HRY otevre AtariHelp.eu a po kliknuti na hru se vrati do emulatoru bez auto-resetu BASICu.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
 })();
 
-</script>
-</body>
-</html>
