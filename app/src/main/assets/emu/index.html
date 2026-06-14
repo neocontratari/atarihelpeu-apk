@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2AU</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2AW</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -28,7 +28,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
 /* file/action zones on cassette and main physical buttons */
 #btnXex,#btnAtr{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-/* BUILD2AU: VLOZIT KAZETU je samostatna zona na tele XC12. PLAY uz nikdy neotevira picker. */
+/* BUILD2AW: VLOZIT KAZETU je samostatna zona na tele XC12. PLAY uz nikdy neotevira picker. */
 #btnTapeInsert{left:25.0%;top:71.35%;width:50.0%;height:13.2%;z-index:69;border-radius:16px;}
 #btnTapeRecord{left:7.1%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapePlay{left:20.0%;top:88.15%;width:12.5%;height:5.7%;}
@@ -36,6 +36,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnTapeFwd{left:45.8%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeStop{left:58.7%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapePause{left:71.6%;top:88.15%;width:12.5%;height:5.7%;}
+#btnTapeSave{left:82.4%;top:86.95%;width:10.2%;height:4.55%;z-index:74;border-radius:6px;}
 /* BUILD2AM: male tlacitko/reset u praveho ciselniku XC12 */
 #btnCounterReset{left:88.35%;top:82.70%;width:3.8%;height:3.35%;z-index:70;border-radius:4px;}
 #btnCounterReset.pressed,#btnCounterReset:active{background:rgba(255,208,90,.20)!important;box-shadow:inset 0 0 13px rgba(255,210,80,.75),0 0 10px rgba(255,200,60,.35);transform:translateY(1px) scale(.96);}
@@ -98,7 +99,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .overlay{display:none;position:fixed;inset:0;background:rgba(8,9,10,.96);z-index:1000;padding:16px;flex-direction:column;gap:10px;color:#e8e2d0;font-family:"Courier New",monospace;}
 .overlay .row{display:flex;gap:8px}.overlay button{flex:1;padding:11px;border:0;border-radius:6px;background:#d9b25c;color:#111;font:bold 12px "Courier New",monospace}.overlay button.dark{background:#454850;color:#eee}.overlay button.danger{background:#c94331;color:#fff}.overlay textarea{flex:1;background:#08090a;color:#9fe29f;border:1px solid #333;border-radius:6px;padding:9px;font:12px "Courier New",monospace;resize:none;}
 
-/* BUILD2AU: kazetak ma samostatne VLOZIT; dock zustava jen servis mimo kazetu */
+/* BUILD2AW: kazetak ma samostatne VLOZIT; dock zustava jen servis mimo kazetu */
 #actionDock{
   position:relative;width:min(100vw,941px);max-width:941px;margin:9px auto 0;padding:10px 9px 9px;z-index:90;
   display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,42px);gap:8px;pointer-events:auto;
@@ -192,6 +193,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <button id="btnTapeFwd" class="hit tapeBtn">F.FWD</button>
   <button id="btnTapeStop" class="hit tapeBtn">STOP EJECT</button>
   <button id="btnTapePause" class="hit tapeBtn">PAUSE</button>
+  <button id="btnTapeSave" class="hit tapeBtn">OPAKOVAT EXPORT CAS</button>
   <button id="btnCounterReset" class="hit">COUNTER RESET</button>
   <button id="btnTbxl" class="hit">TBXL 1.5</button>
   <button id="btnTxt" class="hit">VLOZIT TXT</button>
@@ -256,13 +258,14 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
       <li><b>VLOZIT KAZETU</b> — klepni primo na telo/okno kazety v XC12. Otevre Downloads a vyberes WAV / CAS / MP3. PLAY uz picker neotevira.</li>
       <li><b>PLAY</b> — spusti pouze vlozenou kazetu. Kdyz neni kazeta vlozena, jen napise chybu do LOGu.</li>
       <li><b>RECORD</b> — pripravi CSAVE nahravani z Atari na mobil. Nic nefakuje; zachytava jen skutecne bajty, ktere emulator posle ven pres POKEY/SEROUT.</li>
-      <li><b>STOP/EJECT</b> — prvni stisk zastavi audio / CLOAD / CSAVE. Kdyz se pri CSAVE zachyti realna data, nabidne ulozeni CAS. Dalsi stisk vysune kazetu.</li>
+      <li><b>STOP/EJECT</b> — kdyz kazeta bezi, okamzite zastavi audio, counter a animaci. Kdyz uz stoji, druhy stisk vysune/vymaze vlozeny WAV/CAS.</li>
+      <li><b>CSAVE ulozeni</b> — po RECORD + prikazu CSAVE staci dat STOP/EJECT. Emulator sam v LOGu napise ANO/NE: kolik realnych bajtu prislo ze SEROUT, jestli z toho vznikl CAS, a kam se soubor ulozil. Zadny dalsi SAVE testovat nemusis.</li>
       <li><b>PAUSE</b> — pozastavi audio nebo mechaniku; PLAY potom pokracuje.</li>
       <li><b>REW / F.FWD</b> — realne pretaci WAV/MP3, u CAS/mechaniky hybe stopou a counterem.</li>
       <li><b>COUNTER</b> — ukazuje stopu/polohu audio souboru.</li>
       <li><b>COUNTER RESET</b> — male tlacitko u ciselniku vynuluje stopu na 000 bez pretaceni audia.</li>
       <li><b>Zvuk kazety</b> — WAV/MP3 hraje skutecny soubor; CAS ma monitor zvuk vytvoreny z nahranych CAS bajtu. CSAVE monitor pipa jen pri realne zachycenych SEROUT bajtech, zadny vymysleny fake.</li>
-      <li><b>Zasada BUILD2AU</b> — zadny fake CLOAD, zadny RAM inject. Kazetove funkce jsou na fyzickem XC12 jako u realneho Atari.</li>
+      <li><b>Zasada BUILD2AW</b> — zadny fake CLOAD, zadny RAM inject. Kazetove funkce jsou na fyzickem XC12 jako u realneho Atari.</li>
     </ul>
     <h3>Servis</h3>
     <ul>
@@ -1339,6 +1342,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   var logEl, M, canvas, ctx, img, running=false, audio=null;
   var tapeAudio=null, tapeAudioUrl=null, tapeRunTimer=null, tapeCounterTimer=null, tapeCounterValue=0, tapeCounterDir=1;
   var tapeCounterAudioMode=false, tapeAudioName='', tapeSeekHudTimer=null, tapeFastReturnTimer=null;
+  /* BUILD2AW: hard transport guard - STOP invaliduje vsechny stare timery a odfiltruje dozvuk dvojkliku */
+  var tapeMotionToken=0, tapeStoppedUntil=0;
   /* BUILD2AM: realny counter lze vynulovat nezavisle na aktualni poloze audia */
   var tapeCounterZeroBase=0;
   var LOGBUF=[];
@@ -1795,7 +1800,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     localTextParts=[];
   };
 
-  // ---------- BUILD2AU: XC12 VLOZIT/PLAY oddelene + CSAVE real SEROUT capture, bez fake ----------
+  // ---------- BUILD2AW: XC12 VLOZIT/PLAY oddelene + CSAVE AUTO vyhodnoceni/log, bez fake ----------
   var cassStage={loadedName:'',loadedKind:'',loadedBytes:null,casInfo:null,csaveArmed:false,csaveCapturing:false,captured:new Uint8Array(0),captureArray:[],captureCount:0,tapeInserted:false,lastStopAt:0,casMonitor:false};
   function cassSetStatus(msg){
     var el=document.getElementById('cassStatus');
@@ -1815,7 +1820,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       if(!u8 || !u8.length){ log((label||'SAVE')+': neni co ulozit. CSAVE jeste neposlalo realna kazetova data.'); return; }
       if(window.AHSAVE && window.AHSAVE.saveBase64){
         var path=window.AHSAVE.saveBase64(name,u8ToBase64(u8));
-        log((label||'SAVE')+': ulozeno '+name+' ('+u8.length+' B) -> '+path);
+        log((label||'SAVE')+': ulozeno '+name+' ('+u8.length+' B) -> '+path); log((label||'SAVE')+': hledej v mobilu/Noxu v ceste vypsane za sipkou; neni-li videt v Downloads, otevri Android/data/eu.atarihelp.emu10/files.');
       }else{
         var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([u8],{type:'application/octet-stream'})); a.download=name; a.click();
         log((label||'SAVE')+': stazeno pres HTML download '+name+' ('+u8.length+' B).');
@@ -1980,8 +1985,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     cassStage.csaveArmed=true; cassStage.csaveCapturing=true; cassStage.captureArray=[]; cassStage.captureCount=0; cassStage.captured=new Uint8Array(0);
     cassSetStatus('CSAVE ARM | RECORD zmacknut | cekam na realny POKEY/SEROUT z C:');
     tapeVisualStart('REC',1,false);
-    log('CSAVE ARM: RECORD stisknut. Ted napis v BASIC/Turbo BASIC prikaz CSAVE nebo SAVE "C:" a nech Atari posilat data.');
-    log('CSAVE ARM: zvuk monitoru se ozve jen pri skutecnych zachycenych SEROUT bajtech. Zadny fake soubor, zadne cteni programu z RAM.');
+    log('CSAVE ARM: RECORD stisknut. Ted napis v BASIC/Turbo BASIC prikaz CSAVE nebo SAVE "C:" a nech Atari posilat data. Po dokonceni dej jen STOP/EJECT. Emulator sam v logu vyhodnoti, jestli se realna data zachytila, a pokud ano, automaticky ulozi CAS do mobilu.');
+    log('CSAVE ARM: zvuk monitoru se ozve jen pri skutecnych zachycenych SEROUT bajtech. Zadny fake soubor, zadne cteni programu z RAM. STOP/EJECT po testu automaticky vypise vysledek a pripadne ulozi CAS.');
   }
   function stopCsaveIfNeeded(reason){
     if(cassStage.csaveCapturing){
@@ -1996,10 +2001,11 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       if(got>0){
         var cas=makeFujiCasFromCaptured(raw);
         cassStage.captured=cas;
-        log('CSAVE STOP/EJECT: balim realne zachyceny serial stream do FUJI CAS ('+cas.length+' B). Pokud program nepujde nacist, log bude mit zachyceny stream pro opravu.');
+        log('CSAVE VYSLEDEK: ANO - emulator videl realny vystup z Atari. Zachyceno '+got+' B ze SEROUT.');
+        log('CSAVE AUTO CAS: balim realne zachyceny serial stream do FUJI CAS ('+cas.length+' B). Ukladam automaticky, bez dalsiho tlacitka.');
         saveCsaveCas();
       }else{
-        log('CSAVE STOP: nebyl zachycen zadny realny SEROUT bajt z C:. Nic neukladam a nic si nevymyslim.');
+        log('CSAVE VYSLEDEK: NE - z Atari zatim neprisel zadny realny SEROUT bajt. Soubor nevytvarim, nic nelakuju a nic netaham z RAM.');
       }
       return true;
     }
@@ -2068,10 +2074,12 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     mode=(mode||'PLAY').toUpperCase(); speed=speed||1;
     tapeCounterAudioMode=!!followAudio;
     tapeCounterDir=(mode==='REWIND'||mode==='REW')?-1:1;
+    var myToken=tapeMotionToken;
     var el=document.getElementById('tapeCounter'); if(el) el.classList.add('run');
     updateTapeCounter(tapeCounterAudioMode);
     if(tapeCounterTimer) clearInterval(tapeCounterTimer);
     tapeCounterTimer=setInterval(function(){
+      if(myToken!==tapeMotionToken){ clearInterval(tapeCounterTimer); tapeCounterTimer=null; return; }
       if(tapeCounterAudioMode && tapeAudioSeekable()){
         updateTapeCounter(true);
       }else{
@@ -2097,12 +2105,16 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     tapeSeekHudTimer=setTimeout(function(){ hud.classList.remove('show'); }, 900);
   }
   function tapeVisualStart(mode,speed,followAudio){
+    tapeMotionToken++;
+    if(cassStage){ cassStage.transport=(mode||'PLAY').toUpperCase(); }
     var st=document.getElementById('stage');
     if(st){ st.classList.add('tapeRun'); setTapeStageMode(mode||'PLAY'); }
     if(tapeRunTimer){ clearTimeout(tapeRunTimer); tapeRunTimer=null; }
     startTapeCounter(mode||'PLAY', speed||1, !!followAudio);
   }
   function tapeVisualStop(){
+    tapeMotionToken++;
+    if(cassStage){ cassStage.transport='STOPPED'; }
     var st=document.getElementById('stage');
     if(st){ st.classList.remove('tapeRun','tapePlay','tapeFwd','tapeRew'); }
     if(tapeRunTimer){ clearTimeout(tapeRunTimer); tapeRunTimer=null; }
@@ -2110,6 +2122,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(tapeSeekHudTimer){ clearTimeout(tapeSeekHudTimer); tapeSeekHudTimer=null; }
     var hud=document.getElementById('tapeSeekHud'); if(hud) hud.classList.remove('show');
     stopTapeCounter();
+    document.querySelectorAll('.tapeBtn.pressed').forEach(function(b){ b.classList.remove('pressed'); });
   }
   function clearTapeAudioOnly(reason){
     try{
@@ -2167,6 +2180,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     setTimeout(function(){ b.classList.remove('pressed'); }, ms||180);
   }
   function seekTapeAudio(dir){
+    if(Date.now()<tapeStoppedUntil){ log('KAZETA SEEK: ignoruju dozvuk po STOP, aby se paska sama nerozjela.'); return; }
     var mode=dir<0?'REWIND':'FWD';
     if(!tapeAudio || !tapeAudio.src){
       tapeAnimate(900,mode,3);
@@ -2214,6 +2228,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     inp.click();
   }
   function clearTapeAudioForNewFile(reason){
+    tapeStoppedUntil=Date.now()+450;
+    tapeMotionToken++;
     try{
       if(tapeAudio){ tapeAudio.pause(); tapeAudio.removeAttribute('src'); tapeAudio.load(); }
       if(tapeAudioUrl){ URL.revokeObjectURL(tapeAudioUrl); tapeAudioUrl=''; }
@@ -2236,13 +2252,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     /* BUILD2AM: STOP nesmi pretacet dopredu ani dozadu. Jen zastavi pohyb a zvuk.
        Nulovani je samostatne tlacitko u ciselniku COUNTER. */
     try{
+      tapeStoppedUntil=Date.now()+650;
       if(tapeAudio && tapeAudio.src){
         tapeAudio.pause();
       }
     }catch(e){ log('TAPE STOP: chyba zastaveni audio - '+e.message); }
     tapeVisualStop();
     updateTapeCounter(true);
-    if(!silent) log((reason||'TAPE STOP/EJECT')+': audio zastaveno bez pretoceni. PLAY pokracuje z aktualni pozice. COUNTER '+pad3(tapeCounterValue)+'. Reset na 000 je male tlacitko u ciselniku.');
+    if(!silent) log((reason||'TAPE STOP/EJECT')+': PASKA STOJI. Audio, animace i counter jsou zastavene bez pretoceni. PLAY pokracuje z aktualni pozice. COUNTER '+pad3(tapeCounterValue)+'. Druhy STOP/EJECT vysune/vymaze vlozeny WAV/CAS.');
   }
   function isTapeActiveNow(){
     var st=document.getElementById('stage');
@@ -2363,6 +2380,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',620); handleTapeStopEject(); });
     safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',650); seekTapeAudio(-1); });
     safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',650); seekTapeAudio(1); });
+    safeTap('btnTapeSave',function(){ pressAnim('btnTapeSave',520); log('SAVE: volitelny opakovany export posledniho zachyceneho CAS. Pro normalni test neni potreba; STOP/EJECT uklada automaticky.'); saveCsaveCas(); });
     safeTap('btnCounterReset',function(){ pressAnim('btnCounterReset',260); resetTapeCounter(); });
     document.getElementById('btnTxt').addEventListener('click',openTxtOverlay);
     safeTap('dockXex',function(){ pressAnim('dockXex',220); openLocalGamePicker('XEX MOBIL'); });
@@ -2427,7 +2445,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2AU-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2AW-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -2443,9 +2461,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2AU XC12 VLOZIT/PLAY + CSAVE SERIAL CAPTURE pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2AW XC12 AUTO CSAVE LOG FIX pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani/kazetak.');
-    log('KAZETA BUILD2AU: VLOZIT=klepni na telo kazety, PLAY=spustit vlozenou kazetu, RECORD=CSAVE ARM + real SEROUT capture.');
+    log('KAZETA BUILD2AW: VLOZIT=klepni na telo kazety, PLAY=spustit vlozenou kazetu, RECORD=CSAVE ARM, STOP automaticky vyhodnoti CSAVE v LOGu a ulozi realny CAS jen kdyz prisly skutecne SEROUT bajty.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });

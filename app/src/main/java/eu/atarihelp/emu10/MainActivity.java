@@ -27,13 +27,13 @@ import java.net.URL;
 import java.net.URLDecoder;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2AU
+ * AtariHelp.eu EMU-10 BUILD2AW
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
  * - BUILD2AG UI: NET HRY + XC12 WAV/MP3 real seek pres REW/F.FWD
  * - BUILD2AQ INTRO MP3: MP3 PRIDAT nacita/pripojuje skladby do playlistu + EJECT reset
- * - BUILD2AU XC12: VLOZIT oddelene od PLAY, CSAVE real SEROUT capture, bez fake
+ * - BUILD2AW XC12: VLOZIT oddelene od PLAY, CSAVE auto log/save po STOP, bez fake
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
