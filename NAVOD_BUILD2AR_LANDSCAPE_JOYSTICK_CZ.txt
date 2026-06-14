@@ -1,0 +1,26 @@
+AtariHelp.eu EMU-10 BUILD2AR_LANDSCAPE_JOYSTICK
+
+CO JE NOVE:
+- Pridan landscape herni rezim pro otoceni mobilu na sirku.
+- V landscape se obraz emulatoru roztahne pres celou obrazovku.
+- Pres hru je jemny pruhledny joystick: smerovy pad vlevo dole, FIRE vpravo dole.
+- Joystick neni vazany na viditelny skin joysticku/klavesnice; funguje pres M.setJoy i pri hre na sirku.
+- Joystick umi diagonaly, FIRE je samostatny a muze byt drzen soucasne se smerem.
+- HELP v emulatoru doplnen o landscape herni rezim.
+
+CO SE NEMENILO:
+- Jadro emulatoru beze zmen.
+- BASIC/Altirra testovaci kody beze zmen.
+- MP3 playlist z BUILD2AQ zustava zachovan.
+- XEX/ATR/NET HRY/TBXL/TXT/WAV-MP3/CAS logika zustava zachovana.
+
+TEST:
+1) Spust emulator.
+2) Nacti hru pres XEX MOBIL nebo NET HRY.
+3) Otoc mobil na sirku.
+4) Obraz ma byt pres celou obrazovku.
+5) Vlevo dole jemny pruhledny joystick, vpravo dole FIRE.
+6) Otestuj smery, diagonaly a FIRE.
+7) Otoc zpet na vysku - vrati se puvodni skin.
+
+KODY JSOU STEJNE.

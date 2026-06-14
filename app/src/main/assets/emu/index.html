@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2AM</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2AR</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -134,6 +134,32 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #helpOverlay ul{padding-left:18px;margin:10px 0 14px;}
 #helpOverlay li{margin:5px 0;}
 
+
+/* BUILD2AR: landscape herni rezim - velky obraz + podkresleny joystick pres hru */
+#landJoy{display:none;position:fixed;inset:0;z-index:2200;pointer-events:none;user-select:none;touch-action:none;font-family:"Courier New",monospace;}
+#landJoyPad{position:absolute;left:3.4vw;bottom:5.2vh;width:min(31vh,28vw);height:min(31vh,28vw);min-width:118px;min-height:118px;border-radius:50%;pointer-events:auto;touch-action:none;
+  background:radial-gradient(circle at 50% 50%,rgba(255,232,165,.13) 0 11%,rgba(0,0,0,.18) 12% 28%,rgba(255,214,120,.11) 29% 34%,rgba(0,0,0,.12) 35% 100%);
+  border:1px solid rgba(255,214,120,.28);box-shadow:inset 0 0 24px rgba(0,0,0,.70),0 0 20px rgba(0,0,0,.55);opacity:.50;}
+#landJoyPad:before{content:"▲\A ◄   ►\A ▼";white-space:pre;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.65;color:rgba(255,225,155,.42);font:bold min(4.8vh,5.0vw) "Courier New",monospace;text-shadow:0 0 8px rgba(0,0,0,.9);pointer-events:none;}
+#landJoyKnob{position:absolute;left:50%;top:50%;width:28%;height:28%;margin-left:-14%;margin-top:-14%;border-radius:50%;background:radial-gradient(circle,rgba(255,234,184,.32),rgba(0,0,0,.22));border:1px solid rgba(255,230,170,.35);box-shadow:0 0 16px rgba(255,210,90,.16);pointer-events:none;}
+#landFire{position:absolute;right:5.3vw;bottom:7.2vh;width:min(25vh,22vw);height:min(25vh,22vw);min-width:104px;min-height:104px;border-radius:50%;pointer-events:auto;touch-action:none;border:1px solid rgba(255,92,64,.40);
+  background:radial-gradient(circle at 45% 38%,rgba(255,116,84,.38),rgba(145,0,0,.22) 48%,rgba(0,0,0,.22) 72%);color:rgba(255,220,190,.60);font:bold min(3.8vh,4vw) "Courier New",monospace;text-shadow:0 0 8px rgba(0,0,0,.95);box-shadow:inset 0 0 30px rgba(0,0,0,.72),0 0 22px rgba(0,0,0,.55);opacity:.48;}
+#landFire.on,#landFire:active{opacity:.82;filter:brightness(1.28);box-shadow:inset 0 0 36px rgba(255,54,30,.54),0 0 24px rgba(255,50,20,.24);transform:translateY(2px) scale(.985);}
+#landJoyPad.active{opacity:.78;filter:brightness(1.12);}
+#landHint{position:absolute;left:50%;bottom:2vh;transform:translateX(-50%);padding:5px 9px;border-radius:8px;background:rgba(0,0,0,.36);border:1px solid rgba(255,214,120,.22);color:rgba(255,223,150,.70);font:bold min(2.2vh,2.2vw) "Courier New",monospace;text-shadow:0 0 7px #000;pointer-events:none;opacity:.55;}
+@media (orientation:landscape){
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;padding:0;margin:0;}
+  body{display:block;padding:0;}
+  .stage{position:fixed!important;left:0!important;top:0!important;width:100vw!important;height:100vh!important;max-width:none!important;aspect-ratio:auto!important;background:#000!important;box-shadow:none!important;overflow:hidden!important;}
+  .skin,#led,#osk,#joy,.hit,.tapeReel,#tapeCounter,#tapeSeekHud,.logwrap,.file-opt{display:none!important;}
+  #actionDock,#dockHelpFloat,#miniLog{display:none!important;}
+  .screenSlot{position:fixed!important;left:0!important;top:0!important;width:100vw!important;height:100vh!important;border-radius:0!important;z-index:2000!important;box-shadow:none!important;background:#0047db!important;}
+  canvas#scr{width:100vw!important;height:100vh!important;image-rendering:pixelated!important;}
+  .scan{opacity:.025!important;}
+  .screenSlot:after{display:none!important;}
+  #landJoy{display:block;}
+}
+
 @media(max-width:420px){#actionDock{grid-template-rows:repeat(2,36px);gap:6px;padding:8px 7px 7px;}#actionDock button{font-size:7.4px;}}
 
 @media (prefers-reduced-motion:reduce){.scan,.screenSlot:after,#led{animation:none}}
@@ -171,6 +197,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <input type="file" id="filePick">
   <div id="osk"></div>
   <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyUp" class="joyDir">UP</button><button id="joyDown" class="joyDir">DOWN</button><button id="joyLeft" class="joyDir">LEFT</button><button id="joyRight" class="joyDir">RIGHT</button><button id="joyFire">FIRE</button></div>
+  <div id="landJoy" aria-label="Landscape joystick pres hru"><div id="landJoyPad"><div id="landJoyKnob"></div></div><button id="landFire" type="button">FIRE</button><div id="landHint">LANDSCAPE JOYSTICK</div></div>
   <div class="logwrap"><div class="bar"><span>LOG</span></div><div id="log"></div></div>
 </main>
 <div id="actionDock" aria-label="Viditelne servisni ovladani pod kazetakem">
@@ -208,6 +235,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
       <li><b>HELP / START / SELECT / OPTION / RESET / BREAK</b> — realne Atari funkcni klavesy.</li>
       <li><b>SHIFT</b> — zamykaci klavesa pro NOX test; zustane zapnuta, dokud ji znovu nezmacknes.</li>
       <li><b>Joystick</b> — ostrejsi smerove zony; FIRE je samostatne tlacitko.</li>
+      <li><b>Landscape herni rezim</b> — pri otoceni mobilu na sirku se obraz roztahne pres celou obrazovku a pres hru se zobrazi jemny pruhledny joystick vlevo + FIRE vpravo.</li>
     </ul>
     <h3>Nahravani her a programu</h3>
     <ul>
@@ -1539,6 +1567,57 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bindDir('joyUp',1,'UP'); bindDir('joyDown',2,'DOWN'); bindDir('joyLeft',4,'LEFT'); bindDir('joyRight',8,'RIGHT');
   }
 
+
+  // ---------- BUILD2AR landscape joystick pres hru ----------
+  function bindLandscapeJoy(){
+    var pad=document.getElementById('landJoyPad'), knob=document.getElementById('landJoyKnob'), fire=document.getElementById('landFire');
+    if(!pad||!knob||!fire) return;
+    var active=false, pid=null, lastLog=0;
+    function xy(e){
+      if(e.touches && e.touches.length) return {x:e.touches[0].clientX,y:e.touches[0].clientY};
+      if(e.changedTouches && e.changedTouches.length) return {x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
+      return {x:e.clientX,y:e.clientY};
+    }
+    function fromXY(x,y){
+      var r=pad.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+      var dx=x-cx, dy=y-cy, rad=Math.min(r.width,r.height)/2;
+      var len=Math.sqrt(dx*dx+dy*dy), dead=rad*0.070;
+      var kx=dx, ky=dy, max=rad*0.52;
+      if(len>max){ kx=dx/len*max; ky=dy/len*max; }
+      knob.style.transform='translate('+kx+'px,'+ky+'px)';
+      if(len<dead){ joySet(0); return; }
+      var a=Math.atan2(dy,dx), oct=Math.round(a/(Math.PI/4)), m=0;
+      if(oct===0) m=8;
+      else if(oct===1) m=8|2;
+      else if(oct===2) m=2;
+      else if(oct===3) m=4|2;
+      else if(oct===4||oct===-4) m=4;
+      else if(oct===-3) m=4|1;
+      else if(oct===-2) m=1;
+      else if(oct===-1) m=8|1;
+      joySet(m);
+      if(Date.now()-lastLog>1300){ log('LANDSCAPE JOYSTICK mask='+m+' fire='+(joyFire?1:0)); lastLog=Date.now(); }
+    }
+    function begin(e){ e.preventDefault(); active=true; pad.classList.add('active'); if(e.pointerId!==undefined){ pid=e.pointerId; try{ pad.setPointerCapture(pid); }catch(_e){} } var p=xy(e); fromXY(p.x,p.y); }
+    function move(e){ if(!active) return; e.preventDefault(); var p=xy(e); fromXY(p.x,p.y); }
+    function end(e){ if(e) e.preventDefault(); active=false; pid=null; joySet(0); knob.style.transform=''; pad.classList.remove('active'); }
+    pad.addEventListener('pointerdown',begin,{passive:false});
+    pad.addEventListener('pointermove',function(e){ if(pid===null || pid===e.pointerId) move(e); },{passive:false});
+    pad.addEventListener('pointerup',end,{passive:false}); pad.addEventListener('pointercancel',end,{passive:false}); pad.addEventListener('pointerleave',end,{passive:false});
+    pad.addEventListener('touchstart',begin,{passive:false}); pad.addEventListener('touchmove',move,{passive:false}); pad.addEventListener('touchend',end,{passive:false}); pad.addEventListener('touchcancel',end,{passive:false});
+    pad.addEventListener('mousedown',begin,{passive:false}); window.addEventListener('mousemove',move,{passive:false}); window.addEventListener('mouseup',end,{passive:false});
+    function fOn(e){ e.preventDefault(); joyFire=true; joyApply(); fire.classList.add('on'); }
+    function fOff(e){ if(e) e.preventDefault(); joyFire=false; joyApply(); fire.classList.remove('on'); }
+    fire.addEventListener('pointerdown',fOn,{passive:false}); fire.addEventListener('pointerup',fOff,{passive:false}); fire.addEventListener('pointercancel',fOff,{passive:false}); fire.addEventListener('pointerleave',fOff,{passive:false});
+    fire.addEventListener('touchstart',fOn,{passive:false}); fire.addEventListener('touchend',fOff,{passive:false}); fire.addEventListener('touchcancel',fOff,{passive:false});
+    fire.addEventListener('mousedown',fOn,{passive:false}); fire.addEventListener('mouseup',fOff,{passive:false});
+    try{
+      var mq=window.matchMedia('(orientation: landscape)');
+      var announce=function(){ if(mq.matches) log('LANDSCAPE: obraz pres celou sirku, podkresleny joystick vlevo + FIRE vpravo.'); };
+      if(mq.addEventListener) mq.addEventListener('change',announce); else if(mq.addListener) mq.addListener(announce);
+    }catch(_e){}
+  }
+
   // ---------- vkladani TXT (typing queue pres scan kody) ----------
   var typeQ=[], typeWait=0;
   function queueText(text){
@@ -2000,6 +2079,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     });
     document.getElementById('btnTxtClose').addEventListener('click',function(){ document.getElementById('txtOverlay').style.display='none'; });
     bindJoy();
+    bindLandscapeJoy();
     window.addEventListener('resize',fitScreen); fitScreen();
     document.getElementById('btnSelfTest').addEventListener('click',function(){power(true);});
     document.getElementById('btnReset').addEventListener('click',doReset);
@@ -2041,9 +2121,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2AM STOP + COUNTER RESET pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2AR LANDSCAPE JOYSTICK pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani.');
-    log('HELP BUILD2AO: vsechny aktualni funkce tlacitek jsou popsane v HELP panelu.');
+    log('HELP BUILD2AR: pridany landscape joystick pres hru pro hrani na sirku.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
