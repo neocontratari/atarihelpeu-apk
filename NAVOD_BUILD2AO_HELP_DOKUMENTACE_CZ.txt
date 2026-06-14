@@ -1,0 +1,14 @@
+AtariHelp.eu EMU-10 BUILD2AO HELP DOKUMENTACE
+
+ZMENY:
+- HELP na uvodni obrazovce je rozdeleny na Hlavni menu a MP3 prehravac.
+- HELP popisuje PLAY, vice MP3 skladeb, playlist, PAUSE, STOP, REW/F.FWD, EJECT reset, COUNTER a VOLUME.
+- HELP v emulatoru je rozdeleny na Atari 130XE, nahravani her/programu, XC12 kazetak a servis.
+- Dopsana zasada: kazda nova funkce se musi postupne srozumitelne pridat do HELP.
+
+BEZE ZMEN:
+- Jadro emulatoru beze zmen.
+- ROM logika beze zmen.
+- BASIC/Altirra testovaci kody beze zmen.
+
+KODY JSOU STEJNE.

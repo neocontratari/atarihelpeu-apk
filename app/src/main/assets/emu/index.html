@@ -199,23 +199,37 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <div class="panel">
     <h2>N&P VISION — HELP</h2>
     <p>Napoveda ke vsem hlavnim tlacitkum. Zobrazuje se jen po stisku HELP, aby nerusila grafiku emulatoru.</p>
+    <p><b>ZASADA BUILD2AO:</b> kazda nova funkce emulatoru se bude postupne zapisovat sem do HELP.</p>
+    <h3>Atari 130XE emulator</h3>
     <ul>
       <li><b>POWER BASIC</b> — cold start do BASICu.</li>
       <li><b>POWER + OPTION + SELF TEST</b> — boot se stisknutym OPTION / Self Test.</li>
       <li><b>KLAVESNICE / JOYSTICK</b> — prepina skin a ovladani.</li>
       <li><b>HELP / START / SELECT / OPTION / RESET / BREAK</b> — realne Atari funkcni klavesy.</li>
-      <li><b>NET HRY</b> — otevře hry z AtariHelp.eu a klik na XEX/ZIP/ATR se vraci do emulatoru.</li>
+      <li><b>SHIFT</b> — zamykaci klavesa pro NOX test; zustane zapnuta, dokud ji znovu nezmacknes.</li>
+      <li><b>Joystick</b> — ostrejsi smerove zony; FIRE je samostatne tlacitko.</li>
+    </ul>
+    <h3>Nahravani her a programu</h3>
+    <ul>
+      <li><b>NET HRY</b> — otevře hry z AtariHelp.eu; klik na XEX/ZIP/ATR se vraci do emulatoru a spousti soubor.</li>
       <li><b>XEX MOBIL</b> — výběr XEX/ZIP z mobilu / Downloads.</li>
       <li><b>ATR DISK</b> — výběr ATR disk image.</li>
       <li><b>TURBO BASIC</b> — spusti Turbo Basic XL.</li>
       <li><b>BASIC/TBXL TXT</b> — vložení vlastního BASIC / Turbo Basic textu.</li>
+    </ul>
+    <h3>XC12 kazetak v emulatoru</h3>
+    <ul>
       <li><b>WAV / MP3</b> — nahraje audio do kazetaku prehravace.</li>
       <li><b>REC</b> — priprava pro ciste CSAVE na mobil.</li>
       <li><b>PLAY</b> — CLOAD priprava, nebo prehrani nahraneho WAV/MP3/CAS.</li>
       <li><b>REW / F.FWD</b> — realne pretaci WAV/MP3/CAS, kdyz je audio nahrane.</li>
       <li><b>STOP/EJECT</b> — zastavi audio bez nesmyslneho pretaceni.</li>
       <li><b>PAUSE</b> — pozastavi audio, PLAY potom pokracuje.</li>
-      <li><b>COUNTER RESET</b> — male tlacitko u ciselniku vynuluje stopu na 000.</li>
+      <li><b>COUNTER</b> — ukazuje stopu/polohu audio souboru.</li>
+      <li><b>COUNTER RESET</b> — male tlacitko u ciselniku vynuluje stopu na 000 bez pretaceni audia.</li>
+    </ul>
+    <h3>Servis</h3>
+    <ul>
       <li><b>LOG / CHYBA</b> — zobrazi plny log pro testovani.</li>
       <li><b>MENU</b> — navrat na uvodni obrazovku.</li>
     </ul>
@@ -2029,7 +2043,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     updateTapeCounter();
     log('AtariHelp.eu EMU-10 BUILD2AM STOP + COUNTER RESET pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani.');
-    log('HELP: napovedu ke vsem tlacitkum otevres tlacitkem HELP pod emulatorovou obrazovkou.');
+    log('HELP BUILD2AO: vsechny aktualni funkce tlacitek jsou popsane v HELP panelu.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });

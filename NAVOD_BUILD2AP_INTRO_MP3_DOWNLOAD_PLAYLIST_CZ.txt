@@ -1,0 +1,13 @@
+AtariHelp.eu EMU-10 BUILD2AP INTRO MP3 DOWNLOAD + PLAYLIST
+
+Zmeny:
+- Uvodni kazetak ma jasne viditelne tlacitko MP3 DOWNLOAD.
+- MP3 DOWNLOAD otevre mobilni/NOX Downloads a umozni vybrat jednu nebo vice MP3 pisnicek.
+- PLAYLIST otevre seznam vybranych skladeb. Klepnutim na skladbu se spusti konkretni pisnicka.
+- PLAY uz neslouzi jako skryty vyber hudby, jen spousti/pokracuje v prehravani. Kdyz neni nic vybrano, PLAY otevře Downloads jako zaloha.
+- EJECT smaze aktualni hudbu i playlist. Po EJECT je dalsi PLAY opet vyber hudby.
+- Hlasitost na uvodnim kazetaku je upravena na prirozenejsi kruhovy knob.
+- HELP je doplneny o MP3 DOWNLOAD, PLAYLIST, EJECT a vicenasobny vyber skladeb.
+
+KODY JSOU STEJNE.
+Jadro emulatoru, ROM logika a BASIC/Altirra testovaci kody nebyly meneny.
