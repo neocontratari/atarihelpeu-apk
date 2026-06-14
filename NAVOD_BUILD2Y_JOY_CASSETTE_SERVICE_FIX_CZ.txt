@@ -1,0 +1,50 @@
+AtariHelp.eu EMU-10 BUILD2Y_JOY_CASSETTE_SERVICE_FIX
+
+CO TO JE
+- Overlay navazujici na BUILD2X.
+- Cilem je opravit joystick, oddelit kazetak od nahravani XEX/ATR a pridat jasna servisni tlacitka pod kazetakem.
+
+HLAVNI ZMENY
+1) Joystick
+- Joystick ma nove robustni ovladani: pointer + touch + mouse fallback pro NOX/WebView.
+- Joystick skin se prepina tlacitkem KEYBOARD/JOYSTICK.
+- Pri pohybu se loguje maska smeru, aby bylo videt, jestli UI posila smer do emulatoru.
+- FIRE ma take pointer/touch/mouse fallback.
+
+2) Kazetak
+- Fyzicky kazetak uz NENI XEX/WAV picker.
+- RECORD = priprava pro budouci CSAVE na mobil.
+- PLAY = priprava pro budouci CLOAD z WAV/CAS.
+- STOP/EJECT = stop mechaniky/audio.
+- PAUSE = mechanicka pauza pro budouci CLOAD/CSAVE.
+- Nic z toho nefakuje LOAD/CLOAD/CSAVE a nic neinjektuje do RAM.
+
+3) Viditelna tlacitka pod kazetakem
+- XEX / ZIP: vyber her z mobilu / Downloads.
+- ATR DISK: vyber ATR disku z mobilu / Downloads.
+- TURBO BASIC: samostatne tlacitko pro Turbo BASIC XL.
+- BASIC TXT: vlozeni vlastniho BASIC/Turbo BASIC kodu.
+- WAV / CAS: vyber WAV/MP3/CAS audio souboru z mobilu jako audio-monitor / priprava pro kazetu.
+- LOG / CHYBA: zobrazeni a ulozeni logu.
+
+4) Android picker
+- Java bridge AHPICK prepnuto na ACTION_GET_CONTENT, protoze v NOX byva spolehlivejsi pro Downloads nez ACTION_OPEN_DOCUMENT.
+- Pridan picker pro textove BASIC/TBXL soubory.
+
+5) Monitor
+- CRT scanline/prouzky jsou jeste vic ztlumene, aby READY a text nebyly rozladene.
+
+KODY JSOU STEJNE
+- BASIC/Altirra testovaci kody se nemenily.
+- Emulatorove jadro a ROM data zustaly z BUILD2X.
+- Zmena je UI/ovladani/Java picker/logika tlacitek.
+
+TEST PRO RENEHO
+1) Spustit APK v NOX.
+2) POWER BASIC: musi nabehnout READY.
+3) Prepnout KEYBOARD/JOYSTICK a zkusit joystick + FIRE. V logu ma byt JOYSTICK smer mask=... a FIRE.
+4) Dole XEX/ZIP vybrat XEX z Downloads. V logu ma byt BOOTANY, velikost a prvni bajty.
+5) Dole TURBO BASIC. Musi se spustit z vlastniho tlacitka, ne z PAUSE kazetaku.
+6) Dole BASIC TXT otevrit vlastni TXT/BAS/LST a vlozit do BASICu.
+7) Kazetak RECORD/PLAY jen loguje pripravu CLOAD/CSAVE, nema otevirat XEX picker.
+8) LOG/CHYBA ulozit log, pokud XEX stale nepojede.

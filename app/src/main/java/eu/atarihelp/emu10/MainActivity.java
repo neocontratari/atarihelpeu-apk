@@ -24,11 +24,11 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2X
+ * AtariHelp.eu EMU-10 BUILD2Y
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
- * - BUILD2X UI: Android bridge picker pro XEX/ZIP/ATR a WAV/MP3, PAUSE TBXL
+ * - BUILD2Y UI: robustni picker, joystick fallback, kazetak rezervovan pro CLOAD/CSAVE
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
@@ -66,6 +66,10 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void pickAudio() {
             ui.post(() -> openBridgePicker("audio"));
+        }
+        @JavascriptInterface
+        public void pickText() {
+            ui.post(() -> openBridgePicker("text"));
         }
     }
 
@@ -119,12 +123,16 @@ public class MainActivity extends Activity {
 
     private void openBridgePicker(String kind) {
         pendingBridgeKind = kind;
-        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        Intent i = new Intent(Intent.ACTION_GET_CONTENT);  // NOX je s ACTION_GET_CONTENT spolehlivejsi nez ACTION_OPEN_DOCUMENT
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType("*/*");
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         if ("audio".equals(kind)) {
-            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*", "audio/wav", "audio/x-wav", "audio/mpeg"});
-            startActivityForResult(Intent.createChooser(i, "Vyber WAV / MP3 z mobilu"), PICK_BRIDGE);
+            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*", "audio/wav", "audio/x-wav", "audio/mpeg", "application/octet-stream"});
+            startActivityForResult(Intent.createChooser(i, "Vyber WAV / MP3 / CAS z mobilu"), PICK_BRIDGE);
+        } else if ("text".equals(kind)) {
+            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"text/*", "application/octet-stream", "*/*"});
+            startActivityForResult(Intent.createChooser(i, "Vyber BASIC / Turbo BASIC TXT z mobilu"), PICK_BRIDGE);
         } else {
             i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/zip", "application/octet-stream", "application/x-msdos-program", "*/*"});
             startActivityForResult(Intent.createChooser(i, "Vyber XEX / ATR / ZIP z mobilu"), PICK_BRIDGE);
@@ -213,6 +221,16 @@ public class MainActivity extends Activity {
         web.evaluateJavascript("AHLOCAL_AUDIO_END()", null);
     }
 
+    private void injectText(String name, byte[] data) {
+        web.evaluateJavascript("AHLOCAL_TEXT_BEGIN(" + jsQuote(name) + ")", null);
+        String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
+        for (int i = 0; i < b64.length(); i += 262144) {
+            String part = b64.substring(i, Math.min(i + 262144, b64.length()));
+            web.evaluateJavascript("AHLOCAL_TEXT_PART('" + part + "')", null);
+        }
+        web.evaluateJavascript("AHLOCAL_TEXT_END()", null);
+    }
+
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
@@ -228,8 +246,10 @@ public class MainActivity extends Activity {
                 try {
                     Uri uri = data.getData();
                     String name = getDisplayName(uri);
-                    byte[] bytes = readUriBytes(uri, "audio".equals(pendingBridgeKind) ? 64 * 1024 * 1024 : 16 * 1024 * 1024);
+                    int max = "audio".equals(pendingBridgeKind) ? 64 * 1024 * 1024 : ("text".equals(pendingBridgeKind) ? 2 * 1024 * 1024 : 16 * 1024 * 1024);
+                    byte[] bytes = readUriBytes(uri, max);
                     if ("audio".equals(pendingBridgeKind)) injectAudio(name, bytes);
+                    else if ("text".equals(pendingBridgeKind)) injectText(name, bytes);
                     else injectGame(name, bytes);
                 } catch (Exception e) {
                     web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote(e.getMessage()) + ")", null);
