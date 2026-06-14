@@ -32,7 +32,7 @@ import java.net.URLDecoder;
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
  * - BUILD2AG UI: NET HRY + XC12 WAV/MP3 real seek pres REW/F.FWD
- * - BUILD2AP INTRO MP3: jasne DOWNLOAD tlacitko + PLAYLIST panel + EJECT reset playlistu
+ * - BUILD2AQ INTRO MP3: MP3 PRIDAT nacita/pripojuje skladby do playlistu + EJECT reset
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
@@ -169,7 +169,7 @@ public class MainActivity extends Activity {
             i.putExtra("android.content.extra.SHOW_ADVANCED", true);
             i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
             i.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-            startActivityForResult(Intent.createChooser(i, "DOWNLOAD MP3 - vyber jednu nebo vice pisnicek"), PICK_BRIDGE);
+            startActivityForResult(Intent.createChooser(i, "MP3 PRIDAT - vyber pisnicku nebo vice pisnicek"), PICK_BRIDGE);
         } else if ("audio".equals(kind)) {
             i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*", "audio/wav", "audio/x-wav", "audio/mpeg", "application/octet-stream"});
             startActivityForResult(Intent.createChooser(i, "Vyber WAV / MP3 / CAS z mobilu"), PICK_BRIDGE);

@@ -1,0 +1,24 @@
+AtariHelp.eu EMU-10 BUILD2AQ INTRO MP3 APPEND PLAYLIST
+
+Oprava proti BUILD2AP:
+- MP3 DOWNLOAD je prejmenovane na MP3 PRIDAT.
+- Vyber MP3 z Downloads uz nemaze stary playlist.
+- Kazda vybrana MP3 se pripoji za konec playlistu.
+- Kdyz NOX dovoli vybrat jen jednu pisnicku, zmackni MP3 PRIDAT znovu a vyber dalsi.
+- Playlist panel behem prijmu ukazuje NACITAM MP3 a pocet prijatych skladeb.
+- Po prvnim nacteni se zacne hrat prvni skladba.
+- Pri dalsim pridani se aktualni prehravani neprerusi, nove skladby cekaji ve fronte.
+- EJECT smaze cely playlist a zacina se od nuly.
+- HELP je upraveny, aby to bylo srozumitelne pro uzivatele.
+
+Test:
+1) Na uvodu zmackni MP3 PRIDAT.
+2) Vyber jednu MP3.
+3) Otevri PLAYLIST - musi tam byt 1 skladba.
+4) Zmackni MP3 PRIDAT znovu.
+5) Vyber dalsi MP3.
+6) PLAYLIST musi ukazat 2 skladby.
+7) EJECT musi playlist vymazat.
+
+KODY JSOU STEJNE.
+Jadro emulatoru, ROM logika a BASIC/Altirra testovaci kody se nemenily.
