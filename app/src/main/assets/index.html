@@ -3,93 +3,46 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&amp;P VISION — AtariHelp.eu EMU-10</title>
+<title>N&P VISION — AtariHelp.eu EMU-10</title>
 <style>
-:root{
-  --bg:#080a0d; --black:#0a0b0d; --black2:#14161a; --line:#2d3037;
-  --gold:#f0c66a; --gold2:#9d6e29; --gold3:#6a471d; --blue:#87d8ff;
-  --cream:#d7d0bf; --text:#f3d98d; --muted:#a79b80; --green:#8dff51;
-}
+:root{--gold:#f3c465;--blue:#6cc9ff;--dark:#060709;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{min-height:100%;background:radial-gradient(900px 480px at 50% -10%,#202631 0%,#0b0d10 55%,#050607 100%);}
-body{font-family:'Courier New',monospace;color:var(--text);padding:8px;}
-a,button{font-family:inherit;}
-.phone{
-  width:min(100%,620px); margin:0 auto; padding:16px 14px 18px; border-radius:34px;
-  background:linear-gradient(180deg,#1a1d22 0%,#070809 8%,#101216 50%,#050607 100%);
-  border:2px solid #343842; box-shadow:inset 0 0 0 2px #050607, inset 0 0 0 5px #1d2026, 0 20px 70px rgba(0,0,0,.8);
-}
-.deck{border-radius:24px; padding:12px; background:linear-gradient(180deg,#17191d,#090a0c); border:1px solid #2f333c; box-shadow:inset 0 2px 0 rgba(255,255,255,.08), inset 0 -2px 0 #000;}
-.top{
-  min-height:138px; border-radius:18px; padding:10px 12px 12px; position:relative; overflow:hidden;
-  background:linear-gradient(180deg,#17191c,#0b0c0e); border:1px solid #382914;
-  box-shadow:inset 0 0 28px #000, 0 2px 0 rgba(255,255,255,.04);
-}
-.grilles{position:absolute;left:12px;right:12px;top:10px;height:70px;display:grid;grid-template-columns:1fr 178px 1fr;gap:16px;align-items:center;}
-.grille{height:64px;border-radius:12px;background:repeating-linear-gradient(180deg,#070809 0 5px,#33302a 6px,#141416 10px);border:1px solid #312514;box-shadow:inset 0 0 18px #000;}
-.coin{width:168px;height:168px;border-radius:50%;align-self:start;margin-top:-5px;justify-self:center;background:
-  radial-gradient(circle at 38% 25%,rgba(255,255,255,.5),transparent 14%),
-  radial-gradient(circle,#ffe29a 0%,#d5a345 42%,#7c4d18 70%,#16100b 74%,#c49645 78%,#0b0b0c 84%);
-  border:3px solid #0a0908; box-shadow:0 8px 20px rgba(0,0,0,.75), inset 0 0 18px rgba(255,255,255,.28);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:2;color:#2c1d0b;text-shadow:0 1px 0 rgba(255,255,255,.35);font-weight:900;}
-.coin b{font-size:48px;letter-spacing:-2px;line-height:.9;}
-.coin span{font-size:20px;letter-spacing:1px;}
-.plaque{position:absolute;top:82px;width:180px;min-height:56px;border-radius:8px;background:linear-gradient(180deg,#141518,#0d0e10);border:1px solid #382914;padding:13px 12px;box-shadow:inset 0 0 16px #000;color:#ddbe62;font-size:13px;line-height:1.45;letter-spacing:1px;}
-.plaque.left{left:17px;}.plaque.right{right:17px;color:#b7a981;}
-.led{position:absolute;right:34px;bottom:23px;width:9px;height:9px;border-radius:50%;background:#3da5ff;box-shadow:0 0 10px #2fa2ff,0 0 22px #2fa2ff;}
-.crtbox{margin-top:12px;border-radius:18px;padding:10px;background:linear-gradient(135deg,#2a2116,#070809 18%,#131416 82%,#4b3518);border:1px solid #715526;box-shadow:inset 0 0 26px #000,0 2px 0 rgba(255,255,255,.04);}
-.crt{height:330px;border-radius:42px/34px;background:
-  radial-gradient(140% 95% at 50% 45%,rgba(255,213,110,.14),transparent 55%),
-  repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 1px,rgba(0,0,0,.08) 2px 4px),
-  radial-gradient(110% 100% at 50% 40%,#141711 0%,#0b0d0a 55%,#030404 100%);
-  border:2px solid #050607; box-shadow:inset 0 0 35px #000,inset 0 0 90px rgba(0,0,0,.92); overflow:hidden;position:relative;padding:56px 62px;}
-.crt:after{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(100% 60% at 50% 0%,rgba(255,255,255,.06),transparent 55%);pointer-events:none;}
-.title{font-family:Arial Black,Impact,sans-serif;font-size:50px;line-height:1;color:var(--gold);letter-spacing:2px;text-shadow:0 2px 0 #5d3a11,0 0 16px rgba(240,198,106,.45);}
-.sub{margin-top:13px;color:var(--blue);font-size:18px;letter-spacing:3px;}
-.hr{height:1px;background:linear-gradient(90deg,var(--gold2),var(--gold),transparent);margin:16px 0 20px;box-shadow:0 0 12px var(--gold);}
-.sys{color:var(--blue);font-size:18px;letter-spacing:2px;line-height:1.6;}
-.sys .ok{float:right;margin-right:130px;}
-.ready{margin-top:22px;color:var(--gold);font-size:21px;font-weight:bold;text-shadow:0 0 10px rgba(240,198,106,.55);}.cur{display:block;width:13px;height:19px;margin-top:6px;background:var(--gold);animation:blink 1.05s steps(1) infinite;}
-@keyframes blink{50%{opacity:.15}}
-.label130{height:28px;text-align:center;color:var(--gold);font-weight:bold;letter-spacing:1px;padding-top:6px;background:linear-gradient(90deg,transparent,#050607 40%,#050607 60%,transparent);}
-.loader{margin-top:14px;display:grid;grid-template-columns:112px 1fr 100px;gap:10px;}
-.side,.counter,.cassette{background:linear-gradient(180deg,#1d1c17,#0e0f11);border:1px solid #3c2d15;border-radius:12px;box-shadow:inset 0 0 20px #000;}
-.side{padding:12px;text-align:left;}.side h3,.counter h3{font-size:14px;color:var(--gold);margin-bottom:10px;}.autostop{display:inline-flex;gap:7px;align-items:center;border:1px solid #704f1d;border-radius:6px;padding:5px 8px;color:#f2d075;font-size:12px;background:#131313}.dot{width:11px;height:11px;border-radius:50%;background:#ffc247;box-shadow:0 0 8px #ffc247;}.eject{margin:62px auto 0;width:56px;height:74px;border-radius:8px;background:linear-gradient(#2a2923,#090909);border:1px solid #6b5124;color:#d9bb63;text-align:center;padding-top:18px;box-shadow:0 8px 0 #030303;font-size:12px;}
-.cassette{padding:12px 10px 10px;}.cassette .name{text-align:center;color:var(--gold);font:900 27px Arial, sans-serif;margin-bottom:6px;}.window{height:152px;border:2px solid #5a421e;border-radius:12px;background:#050607;position:relative;display:flex;align-items:center;justify-content:space-around;box-shadow:inset 0 0 18px #000;overflow:hidden;}.tape-label{position:absolute;left:28px;right:28px;top:18px;height:30px;background:linear-gradient(90deg,#c08c36,#f3d28a,#c08c36);color:#2a1a08;font-weight:bold;text-align:center;padding-top:6px;letter-spacing:1px;}.reel{width:72px;height:72px;border-radius:50%;background:radial-gradient(circle,#0b0c0e 0 16%,#aaa 17% 20%,#1b1d22 21% 44%,#050607 45% 100%);border:5px solid #322a22;box-shadow:0 0 0 5px #08090b;}.cass-bottom{text-align:center;color:var(--gold);font-weight:bold;font-size:18px;margin-top:8px;letter-spacing:1px;}.transport{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:10px;}.transport a{height:54px;border:0;border-radius:6px;background:linear-gradient(#25262a,#111214);border:1px solid #3d2d14;color:var(--gold);text-decoration:none;display:flex;align-items:center;justify-content:center;flex-direction:column;font-weight:bold;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 0 #050607;}.transport span{font-size:10px;color:#aa986e;margin-top:3px;}
-.counter{padding:12px;text-align:center;}.digits{font:700 32px 'Courier New';letter-spacing:4px;color:#ffd45e;background:#080403;border-radius:6px;padding:5px 3px;margin-top:2px;text-shadow:0 0 9px #ffb000;}.volume{width:66px;height:66px;border-radius:50%;margin:34px auto 0;background:radial-gradient(circle at 35% 25%,#3b3d42,#0b0c0f);border:3px solid #c08a31;box-shadow:0 0 0 6px #15120e;}
-.menu{margin-top:14px;border-radius:14px;border:1px solid #272b32;background:linear-gradient(#111419,#0a0b0d);padding:10px;}.menu h3{font-size:14px;color:var(--gold);letter-spacing:2px;margin:0 0 9px 4px;}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}.card{min-height:110px;text-decoration:none;color:var(--gold);border:1px solid #805e23;border-radius:12px;background:linear-gradient(#1d2025,#0d0e10);box-shadow:inset 0 0 18px #000,0 0 0 2px rgba(240,198,106,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;}.card svg{width:38px;height:38px;stroke:var(--gold);fill:none;stroke-width:1.6}.card b{font-size:22px;letter-spacing:1px}.card span{font-size:13px;color:#dad2c0;}
-.status{margin-top:12px;display:grid;grid-template-columns:1fr 1fr 1.4fr 54px;gap:8px;}.pill{min-height:54px;border-radius:9px;background:#101216;border:1px solid #272b32;padding:10px;color:#d4ba67;font-size:12px;}.bars{display:inline-flex;gap:3px;margin-left:8px}.bars i{width:7px;height:18px;background:var(--gold);display:inline-block}.smallgear{text-align:center;font-size:28px;padding-top:8px;}
-@media(max-width:520px){body{padding:0}.phone{border-radius:0;padding:8px}.deck{padding:8px}.top{min-height:104px}.grilles{grid-template-columns:1fr 122px 1fr;height:50px}.coin{width:118px;height:118px}.coin b{font-size:34px}.coin span{font-size:14px}.plaque{display:none}.crt{height:250px;padding:38px 34px}.title{font-size:34px}.sub,.sys{font-size:14px}.sys .ok{margin-right:30px}.loader{grid-template-columns:1fr}.side,.counter{display:none}.grid{grid-template-columns:repeat(2,1fr)}.status{grid-template-columns:1fr 1fr}.cassette .name{font-size:22px}}
+html,body{min-height:100%;background:#050608;color:#f3c465;font-family:"Courier New",monospace;}
+body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidden;}
+.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050608;overflow:hidden;box-shadow:0 0 40px rgba(0,0,0,.9);}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;}
+.hit{position:absolute;border:0;background:rgba(255,196,90,0);color:transparent;font-size:0;cursor:pointer;z-index:10;border-radius:12px;}
+.hit:active{background:rgba(255,196,90,.13);box-shadow:0 0 26px rgba(255,196,90,.35) inset;}
+.crt-sweep{position:absolute;left:10.8%;top:18.9%;width:78.5%;height:27.7%;border-radius:4%/9%;z-index:4;pointer-events:none;overflow:hidden;mix-blend-mode:screen;}
+.crt-sweep:before{content:"";position:absolute;left:-40%;top:0;width:35%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,210,95,.18),transparent);animation:sweep 4.8s linear infinite;}
+.crt-sweep:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.035) 0 1px,transparent 1px 4px);opacity:.35;animation:flicker .16s steps(2) infinite;}
+.led-blue{position:absolute;left:86.55%;top:14.55%;width:1.2%;aspect-ratio:1;border-radius:50%;background:#33a5ff;z-index:5;box-shadow:0 0 8px #33a5ff,0 0 18px #33a5ff;animation:pulse 1.7s ease-in-out infinite;}
+.eq{position:absolute;left:69.2%;top:96.05%;width:12.5%;height:1%;display:flex;align-items:flex-end;gap:1.5%;z-index:5;pointer-events:none;}
+.eq i{display:block;width:8%;height:35%;background:#f3c465;box-shadow:0 0 6px rgba(243,196,101,.6);animation:eq 1.1s ease-in-out infinite;}
+.eq i:nth-child(2){animation-delay:.1s}.eq i:nth-child(3){animation-delay:.2s}.eq i:nth-child(4){animation-delay:.3s}.eq i:nth-child(5){animation-delay:.4s}.eq i:nth-child(6){animation-delay:.5s}.eq i:nth-child(7){animation-delay:.6s}.eq i:nth-child(8){animation-delay:.7s}
+.reelglow{position:absolute;border-radius:50%;border:2px solid rgba(255,218,130,.25);z-index:5;pointer-events:none;animation:spin 2.8s linear infinite;}
+.r1{left:34.6%;top:57.1%;width:8.7%;aspect-ratio:1}.r2{left:58.1%;top:57.1%;width:8.7%;aspect-ratio:1;animation-duration:3.4s;}
+.reelglow:before,.reelglow:after{content:"";position:absolute;left:50%;top:50%;width:76%;height:6%;margin-left:-38%;margin-top:-3%;background:rgba(255,218,130,.28);border-radius:3px;}.reelglow:after{transform:rotate(60deg)}
+@keyframes sweep{to{left:110%}}@keyframes flicker{50%{opacity:.2}}@keyframes pulse{50%{opacity:.45;transform:scale(.75)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes eq{50%{height:100%}}
+@media (prefers-reduced-motion:reduce){.crt-sweep:before,.crt-sweep:after,.led-blue,.eq i,.reelglow{animation:none}}
+/* 6 velkych tlacitek presne na navrhu */
+#goGames{left:7.3%;top:75.5%;width:31.5%;height:7.25%;}#goTape{left:40.1%;top:75.5%;width:31.5%;height:7.25%;}#goAsm{left:72.8%;top:75.5%;width:20.0%;height:7.25%;}
+#goSettings{left:7.3%;top:84.6%;width:31.5%;height:7.25%;}#goSystem{left:40.1%;top:84.6%;width:31.5%;height:7.25%;}#goDocs{left:72.8%;top:84.6%;width:20.0%;height:7.25%;}
+#playEmu{left:23.0%;top:66.3%;width:53.8%;height:4.3%;border-radius:8px;}#tapeTransport{left:22.0%;top:64.2%;width:54.8%;height:8.6%;}
 </style>
 </head>
 <body>
-<main class="phone">
-  <section class="deck">
-    <div class="top">
-      <div class="grilles"><div class="grille"></div><div class="coin"><b>N&amp;P</b><span>(C) 2026 VCS</span></div><div class="grille"></div></div>
-      <div class="plaque left"><b>N&amp;P VISION</b><br>PREMIUM EMULATION</div>
-      <div class="plaque right">DESIGNED FOR<br>ATARI FANS.<br>BUILT TO LAST.</div><div class="led"></div>
-    </div>
-    <div class="crtbox"><div class="crt">
-      <div class="title">N&amp;P VISION</div><div class="sub">ATARI 130XE EMULATOR</div><div class="hr"></div>
-      <div class="sys">SYSTEM CHECK<br>64K RAM <span class="ok">OK</span><br>OS 2.4 <span class="ok">OK</span><br>CARTRIDGE PORT <span class="ok">OK</span><br>TAPE UNIT <span class="ok">OK</span></div>
-      <div class="ready">READY.<span class="cur"></span></div>
-    </div><div class="label130">130XE&nbsp;&nbsp;<span style="color:#d7352c">▮</span><span style="color:#e88b26">▮</span><span style="color:#e6d24a">▮</span><span style="color:#37a0e6">▮</span></div></div>
-    <div class="loader">
-      <aside class="side"><h3>TAPE LOADER</h3><div class="autostop"><i class="dot"></i>AUTO STOP</div><div class="eject">▲<br>EJECT</div></aside>
-      <section class="cassette"><div class="name">N&amp;P VISION</div><div class="window"><div class="tape-label">C-130&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A</div><div class="reel"></div><div class="reel"></div></div><div class="cass-bottom">ATARI 130XE</div><div class="transport"><a href="emu/index.html">◀◀<span>REW</span></a><a href="emu/index.html">▶<span>PLAY</span></a><a href="https://atarihelp.eu/">■<span>STOP</span></a><a href="https://atarihelp.eu/?page_id=21">▶▶<span>F.FWD</span></a><a href="https://atarihelp.eu/?page_id=50">Ⅱ<span>PAUSE</span></a></div></section>
-      <aside class="counter"><h3>COUNTER</h3><div class="digits">000</div><h3 style="margin-top:26px">VOLUME</h3><div class="volume"></div></aside>
-    </div>
-    <section class="menu"><h3>MAIN MENU</h3><div class="grid">
-      <a class="card" href="emu/index.html"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><b>GAMES</b><span>BROWSE &amp; PLAY</span></a>
-      <a class="card" href="emu/index.html"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/></svg><b>TAPE LOADER</b><span>LOAD CASSETTE</span></a>
-      <a class="card" href="https://atarihelp.eu/?page_id=614"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM7 9h5M7 13h9M7 17h6"/></svg><b>ASSEMBLER</b><span>6502 DEV TOOLS</span></a>
-      <a class="card" href="emu/index.html"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/></svg><b>SETTINGS</b><span>SYSTEM &amp; UI</span></a>
-      <a class="card" href="emu/index.html"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="10" rx="1"/><path d="M8 20h8M12 15v5"/></svg><b>SYSTEM</b><span>INFO &amp; ABOUT</span></a>
-      <a class="card" href="https://atarihelp.eu/?page_id=50"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM15 3v4h4M8 11h8M8 15h8"/></svg><b>DOCS</b><span>MANUALS &amp; HELP</span></a>
-    </div></section>
-    <section class="status"><div class="pill">SYSTEM STATUS<br><span style="color:var(--green)">● OK</span></div><div class="pill">FRAME<br><span style="color:#eee">59.94 FPS</span></div><div class="pill">AUDIO<br>STEREO <span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i style="background:#2f8ccb"></i></span></div><div class="pill smallgear">⌘</div></section>
-  </section>
+<main class="stage" aria-label="N&P VISION uvodni obrazovka">
+  <img class="skin" src="design/uvodni_np_vision.png" alt="N&P VISION">
+  <div class="crt-sweep"></div><div class="led-blue"></div><div class="reelglow r1"></div><div class="reelglow r2"></div>
+  <div class="eq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <a id="playEmu" class="hit" href="emu/index.html" aria-label="Spustit emulator">PLAY EMULATOR</a>
+  <a id="goGames" class="hit" href="emu/index.html" aria-label="Games">GAMES</a>
+  <a id="goTape" class="hit" href="emu/index.html" aria-label="Tape loader">TAPE LOADER</a>
+  <a id="goAsm" class="hit" href="https://atarihelp.eu/?page_id=614" aria-label="Assembler">ASSEMBLER</a>
+  <a id="goSettings" class="hit" href="emu/index.html" aria-label="Settings">SETTINGS</a>
+  <a id="goSystem" class="hit" href="emu/index.html" aria-label="System">SYSTEM</a>
+  <a id="goDocs" class="hit" href="https://atarihelp.eu/?page_id=50" aria-label="Docs">DOCS</a>
 </main>
 </body>
 </html>
