@@ -1,0 +1,12 @@
+AtariHelp.eu EMU-10 BUILD2AJ_XC12_REEL_COUNTER_ALIGN
+
+Oprava podle testu v NOX:
+- srovnane tocici se civky na fyzickou polohu civek v emulacnim XC12 skinu
+- srovnany pravy COUNTER tak, aby cisla lezela v okynku pocitadla, ne vedle nej
+- counter zustava vazany na realnou pozici WAV/MP3/CAS
+- REWIND/F.FWD dal realne pretaci audio pres currentTime
+- PAUSE a STOP/EJECT dal okamzite zastavi audio/animaci/counter
+- PLAY po PAUSE pokracuje, PLAY po STOP spusti nahrany soubor znovu od zacatku
+
+KODY JSOU STEJNE.
+Jadro emulátoru, ROM logika a BASIC/Altirra testovaci kody nebyly meneny.
