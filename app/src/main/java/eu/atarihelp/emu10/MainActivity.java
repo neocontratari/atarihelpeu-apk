@@ -26,11 +26,11 @@ import java.net.URL;
 import java.net.URLDecoder;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2AC
+ * AtariHelp.eu EMU-10 BUILD2AG
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
- * - BUILD2AC UI: NET HRY v emulatoru, robustni web download -> automaticky boot hry bez auto POWER resetu
+ * - BUILD2AG UI: NET HRY + XC12 WAV/MP3 real seek pres REW/F.FWD
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;

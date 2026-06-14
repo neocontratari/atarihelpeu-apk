@@ -1,0 +1,20 @@
+AtariHelp.eu EMU-10 BUILD2AG_WAV_MP3_REAL_SEEK
+
+CO JE NOVE:
+- WAV / MP3 z mobilu se prehrava jako audio-monitor.
+- REWIND a F.FWD na fyzickem kazetaku ted u WAV/MP3 realne meni pozici audia pres currentTime.
+- Pri pretaceni je videt rychlejsi animace kotoucu, smer REW/F.FWD a zmena counteru.
+- Counter XC12 je pri WAV/MP3 svazany s realnou pozici v souboru.
+- PAUSE a STOP/EJECT okamzite zastavi audio, animaci i counter.
+- Kdyz WAV/MP3 neni nahrany, REW/F.FWD delaji jen mechanickou animaci a counter jako pripravu pro CLOAD/CSAVE.
+
+TEST:
+1) Spust emulator.
+2) Dole zmackni WAV / MP3.
+3) Vyber WAV nebo MP3 z mobilu / Downloads.
+4) Jakmile hraje audio, zmackni F.FWD - ma preskocit dopredu, rychle tocit kotouce a zmenit counter.
+5) Zmackni REWIND - ma preskocit dozadu, rychle tocit opacnym smerem a zmenit counter.
+6) PAUSE nebo STOP/EJECT musi audio okamzite zastavit.
+
+KODY JSOU STEJNE.
+Jadro emulatoru ani BASIC/Altirra testovaci kody nejsou menene. Zmeny jsou UI/audio-monitor/counter/animace kazetaku.
