@@ -26,11 +26,12 @@ import java.net.URL;
 import java.net.URLDecoder;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2AG
+ * AtariHelp.eu EMU-10 BUILD2AI
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
  * - BUILD2AG UI: NET HRY + XC12 WAV/MP3 real seek pres REW/F.FWD
+ * - BUILD2AI uvodni kazetak: samostatny MP3 prehravac hudby s realnym seekem
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
@@ -68,6 +69,10 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void pickAudio() {
             ui.post(() -> openBridgePicker("audio"));
+        }
+        @JavascriptInterface
+        public void pickMp3() {
+            ui.post(() -> openBridgePicker("mp3"));
         }
         @JavascriptInterface
         public void pickText() {
@@ -157,7 +162,12 @@ public class MainActivity extends Activity {
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType("*/*");
         i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        if ("audio".equals(kind)) {
+        if ("mp3".equals(kind)) {
+            i.setType("audio/*");
+            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/mpeg", "audio/mp3", "audio/*", "application/octet-stream"});
+            i.putExtra("android.content.extra.SHOW_ADVANCED", true);
+            startActivityForResult(Intent.createChooser(i, "Vyber MP3 hudbu z Downloads"), PICK_BRIDGE);
+        } else if ("audio".equals(kind)) {
             i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*", "audio/wav", "audio/x-wav", "audio/mpeg", "application/octet-stream"});
             startActivityForResult(Intent.createChooser(i, "Vyber WAV / MP3 / CAS z mobilu"), PICK_BRIDGE);
         } else if ("text".equals(kind)) {
@@ -333,9 +343,9 @@ public class MainActivity extends Activity {
                 try {
                     Uri uri = data.getData();
                     String name = getDisplayName(uri);
-                    int max = "audio".equals(pendingBridgeKind) ? 64 * 1024 * 1024 : ("text".equals(pendingBridgeKind) ? 2 * 1024 * 1024 : 16 * 1024 * 1024);
+                    int max = ("audio".equals(pendingBridgeKind) || "mp3".equals(pendingBridgeKind)) ? 64 * 1024 * 1024 : ("text".equals(pendingBridgeKind) ? 2 * 1024 * 1024 : 16 * 1024 * 1024);
                     byte[] bytes = readUriBytes(uri, max);
-                    if ("audio".equals(pendingBridgeKind)) injectAudio(name, bytes);
+                    if ("audio".equals(pendingBridgeKind) || "mp3".equals(pendingBridgeKind)) injectAudio(name, bytes);
                     else if ("text".equals(pendingBridgeKind)) injectText(name, bytes);
                     else injectGame(name, bytes);
                 } catch (Exception e) {

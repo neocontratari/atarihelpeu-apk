@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2AE</title>
+<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2AI</title>
 <style>
 :root{--gold:#f3c465;--blue:#6cc9ff;--dark:#060709;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -24,13 +24,37 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 .r1{left:35.4%;top:55.9%;width:8.7%;aspect-ratio:1}.r2{left:56.45%;top:55.9%;width:8.7%;aspect-ratio:1;animation-duration:3.4s;}
 .reelglow:before,.reelglow:after{content:"";position:absolute;left:50%;top:50%;width:58%;height:5%;margin-left:-29%;margin-top:-2.5%;background:rgba(255,218,130,.30);border-radius:3px;}.reelglow:after{transform:rotate(60deg)}
 @keyframes sweep{to{left:110%}}@keyframes flicker{50%{opacity:.2}}@keyframes pulse{50%{opacity:.45;transform:scale(.75)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes eq{50%{height:100%}}
-@media (prefers-reduced-motion:reduce){.crt-sweep:before,.crt-sweep:after,.led-blue,.eq i,.reelglow{animation:none}}
+
+/* BUILD2AI: uvodni kazetak = samostatny MP3 prehravac hudby z mobilu. */
+.introTapeBtn{border-radius:9px;z-index:14;}
+.introTapeBtn.flash,.introTapeBtn.down{background:rgba(255,197,86,.20);box-shadow:inset 0 10px 24px rgba(0,0,0,.82),inset 0 -2px 10px rgba(255,213,117,.25),0 0 16px rgba(255,190,70,.55);transform:translateY(3px) scale(.985);}
+#introMp3Hud{position:absolute;left:23.1%;top:71.85%;width:53.4%;height:2.15%;z-index:13;display:flex;align-items:center;justify-content:center;text-align:center;color:#ffd879;font:700 clamp(9px,1.72vw,16px)/1 "Courier New",monospace;letter-spacing:.06em;text-shadow:0 0 8px rgba(255,190,68,.72),0 2px 1px #000;background:linear-gradient(180deg,rgba(0,0,0,.24),rgba(0,0,0,.58));border:1px solid rgba(245,194,88,.22);border-radius:8px;pointer-events:none;opacity:.92;}
+#introMp3Counter{position:absolute;left:80.15%;top:54.18%;width:7.95%;height:2.05%;z-index:13;display:flex;align-items:center;justify-content:center;color:#ffd35c;font:900 clamp(12px,2.28vw,22px)/1 "Courier New",monospace;letter-spacing:.18em;text-shadow:0 0 7px #ffb42f,0 1px 0 #000;pointer-events:none;}
+#introMp3Counter.run{animation:introCounterGlow .42s steps(2,end) infinite;}
+@keyframes introCounterGlow{50%{filter:brightness(1.45);text-shadow:0 0 8px #ffbf2e,0 0 16px rgba(255,180,0,.88),0 1px 0 #000;}}
+.introMp3Reel{position:absolute;display:none;z-index:12;width:8.1%;aspect-ratio:1;border-radius:50%;pointer-events:none;mix-blend-mode:screen;opacity:.75;border:2px solid rgba(255,220,122,.22);box-shadow:0 0 20px rgba(255,190,70,.35) inset,0 0 15px rgba(255,190,70,.22);}
+#introMp3ReelL{left:35.35%;top:55.88%;}
+#introMp3ReelR{left:56.35%;top:55.88%;}
+.introMp3Reel:before,.introMp3Reel:after{content:"";position:absolute;left:50%;top:50%;width:62%;height:5%;margin-left:-31%;margin-top:-2.5%;background:rgba(255,218,130,.38);border-radius:5px;box-shadow:0 0 7px rgba(255,205,100,.7);}
+.introMp3Reel:after{transform:rotate(66deg);}
+.stage.mp3play .introMp3Reel{display:block;animation:introSpin 1.05s linear infinite;}
+.stage.mp3ffwd .introMp3Reel{display:block;animation:introSpin .26s linear infinite;}
+.stage.mp3rew .introMp3Reel{display:block;animation:introSpin .26s linear infinite reverse;}
+@keyframes introSpin{to{transform:rotate(360deg)}}
+#introMp3SeekHud{position:absolute;left:37.5%;top:61.2%;width:25%;height:2.4%;z-index:14;display:none;align-items:center;justify-content:center;color:#ffe08a;background:rgba(0,0,0,.62);border:1px solid rgba(244,197,92,.48);border-radius:8px;font:900 clamp(10px,1.9vw,18px)/1 "Courier New",monospace;text-shadow:0 0 10px rgba(255,193,65,.9);pointer-events:none;}
+#introMp3SeekHud.show{display:flex;animation:introSeekPulse .25s steps(2,end) infinite;}
+@keyframes introSeekPulse{50%{opacity:.62;transform:scale(.985)}}
+
+@media (prefers-reduced-motion:reduce){.crt-sweep:before,.crt-sweep:after,.led-blue,.eq i,.reelglow,.introMp3Reel,#introMp3Counter.run,#introMp3SeekHud.show{animation:none}}
 /* 6 velkych tlacitek presne na navrhu */
 #goGames{left:7.3%;top:75.5%;width:31.5%;height:7.25%;}#goTape{left:40.1%;top:75.5%;width:31.5%;height:7.25%;}#goAsm{left:72.8%;top:75.5%;width:20.0%;height:7.25%;}
 #goSettings{left:7.3%;top:84.6%;width:31.5%;height:7.25%;}#goSystem{left:40.1%;top:84.6%;width:31.5%;height:7.25%;}#goDocs{left:72.8%;top:84.6%;width:20.0%;height:7.25%;}
 #playEmu{left:31.0%;top:66.3%;width:13.0%;height:4.3%;border-radius:8px;}#tapeTransport{left:22.0%;top:64.2%;width:54.8%;height:8.6%;}
-#introRecGames{left:22.0%;top:65.8%;width:11.3%;height:4.8%;border-radius:8px;z-index:12;}
-#introPlayEmu{left:33.4%;top:65.8%;width:11.2%;height:4.8%;border-radius:8px;z-index:12;}
+#introTapeRew{left:23.0%;top:65.70%;width:10.9%;height:4.55%;}
+#introTapePlay{left:34.2%;top:65.70%;width:10.9%;height:4.55%;}
+#introTapeStop{left:45.4%;top:65.70%;width:10.9%;height:4.55%;}
+#introTapeFwd{left:56.6%;top:65.70%;width:10.9%;height:4.55%;}
+#introTapePause{left:67.8%;top:65.70%;width:10.9%;height:4.55%;}
 
 /* BUILD2AE: EMULATOR tile je zapeceny primo v PNG skinu, zadny CSS prekryv se uz neposouva. */
 
@@ -41,10 +65,13 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
   <img class="skin" src="design/uvodni_np_vision.png" alt="N&P VISION">
   <div class="crt-sweep"></div><div class="led-blue"></div>
   <div class="eq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-<div class="emuTitle">EMULATOR</div><div class="emuSub">ATARI 130XE</div></div>
-  <a id="playEmu" class="hit" href="emu/index.html" aria-label="Spustit emulator">PLAY EMULATOR</a>
-  <a id="introRecGames" class="hit" href="https://atarihelp.eu/?page_id=207" aria-label="REC - otevrit AtariHelp hry ke stazeni">REC DOWNLOAD</a>
-  <a id="introPlayEmu" class="hit" href="emu/index.html" aria-label="PLAY - spustit emulator">PLAY EMULATOR</a>
+  <div id="introMp3ReelL" class="introMp3Reel"></div><div id="introMp3ReelR" class="introMp3Reel"></div>
+  <div id="introMp3SeekHud">MP3 &gt;&gt;</div><div id="introMp3Counter">000</div><div id="introMp3Hud">MP3 PLAYER — PLAY OTEVRE DOWNLOADS / MP3</div>
+  <button id="introTapeRew" class="hit introTapeBtn" type="button" aria-label="MP3 REWIND">REWIND</button>
+  <button id="introTapePlay" class="hit introTapeBtn" type="button" aria-label="MP3 PLAY z mobilu">PLAY MP3</button>
+  <button id="introTapeStop" class="hit introTapeBtn" type="button" aria-label="MP3 STOP">STOP</button>
+  <button id="introTapeFwd" class="hit introTapeBtn" type="button" aria-label="MP3 FAST FORWARD">F.FWD</button>
+  <button id="introTapePause" class="hit introTapeBtn" type="button" aria-label="MP3 PAUSE">PAUSE</button>
   <a id="goGames" class="hit" href="https://atarihelp.eu/?page_id=207" aria-label="Games - AtariHelp.eu hry ke stazeni">GAMES</a>
   <a id="goTape" class="hit" href="emu/index.html" aria-label="Emulator - spustit Atari 130XE">EMULATOR</a>
   <a id="goAsm" class="hit" href="https://atarihelp.eu/?page_id=614" aria-label="Assembler">ASSEMBLER</a>
@@ -52,5 +79,112 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
   <a id="goSystem" class="hit" href="https://atarihelp.eu/?page_id=786" aria-label="System - informace o emulatoru">SYSTEM</a>
   <a id="goDocs" class="hit" href="https://atarihelp.eu/?page_id=50" aria-label="Docs">DOCS</a>
 </main>
+
+<script>
+(function(){
+'use strict';
+var stage=document.querySelector('.stage');
+var hud=document.getElementById('introMp3Hud');
+var counter=document.getElementById('introMp3Counter');
+var seekHud=document.getElementById('introMp3SeekHud');
+var audio=null, audioUrl='', audioName='', counterTimer=null, seekTimer=null, pressTimers={};
+function $(id){return document.getElementById(id);}
+function pad3(n){n=Math.max(0,Math.min(999,Math.floor(n||0))); return (n<10?'00':n<100?'0':'')+n;}
+function fmt(t){ if(!isFinite(t)||t<0)t=0; var m=Math.floor(t/60), s=Math.floor(t%60); return m+':'+(s<10?'0':'')+s; }
+function log(t){ if(hud) hud.textContent=t; try{console.log('[INTRO MP3] '+t);}catch(e){} }
+function setMode(mode){
+  if(!stage)return;
+  stage.classList.remove('mp3play','mp3ffwd','mp3rew');
+  if(mode) stage.classList.add(mode);
+  if(counter) counter.classList.toggle('run', !!mode);
+}
+function updateCounter(){
+  var val=0;
+  if(audio && audio.src && isFinite(audio.duration) && audio.duration>0) val=Math.floor((audio.currentTime/audio.duration)*999);
+  if(counter) counter.textContent=pad3(val);
+  if(audio && audio.src){
+    var state=audio.paused?'PAUSE':'PLAY';
+    if(hud) hud.textContent='MP3 '+state+' — '+(audioName||'HUDBA')+' — '+fmt(audio.currentTime)+' / '+fmt(audio.duration||0)+' — COUNTER '+pad3(val);
+  }
+}
+function startCounter(){ stopCounter(false); counterTimer=setInterval(updateCounter,250); updateCounter(); }
+function stopCounter(clearMode){ if(counterTimer){clearInterval(counterTimer); counterTimer=null;} if(clearMode) setMode(''); updateCounter(); }
+function press(id,ms){ var el=$(id); if(!el)return; el.classList.add('flash','down'); if(pressTimers[id])clearTimeout(pressTimers[id]); pressTimers[id]=setTimeout(function(){el.classList.remove('flash','down');},ms||280); }
+function showSeek(txt){ if(!seekHud)return; seekHud.textContent=txt; seekHud.classList.add('show'); if(seekTimer)clearTimeout(seekTimer); seekTimer=setTimeout(function(){seekHud.classList.remove('show');},900); }
+function playLoaded(){
+  if(!audio || !audio.src){ pickMp3(); return; }
+  try{
+    var p=audio.play();
+    if(p&&p.catch)p.catch(function(e){log('MP3 PLAY: prohlizec nedovolil spusteni — '+e.message);});
+    setMode('mp3play'); startCounter(); log('MP3 PLAY — '+(audioName||'HUDBA'));
+  }catch(e){ log('MP3 PLAY chyba: '+e.message); }
+}
+function stopMp3(reason,reset){
+  try{ if(audio) audio.pause(); }catch(e){}
+  if(reset && audio && audio.src){ try{audio.currentTime=0;}catch(e){} }
+  setMode(''); stopCounter(false); updateCounter(); log((reason||'MP3 STOP')+' — hudba zastavena');
+}
+function pauseMp3(){ stopMp3('MP3 PAUSE', false); }
+function seekMp3(dir){
+  if(!audio || !audio.src){ log('MP3 '+(dir<0?'REWIND':'F.FWD')+': nejdriv stiskni PLAY a vyber MP3 z mobilu.'); showSeek(dir<0?'MP3 <<':'MP3 >>'); setMode(dir<0?'mp3rew':'mp3ffwd'); setTimeout(function(){setMode('');},650); return; }
+  if(!(isFinite(audio.duration)&&audio.duration>0)){ log('MP3 SEEK: cekam na delku souboru, zkus znovu za chvilku.'); return; }
+  var old=audio.currentTime||0, step=10, target=Math.max(0,Math.min(audio.duration,old+dir*step));
+  try{ audio.currentTime=target; }catch(e){ log('MP3 SEEK chyba: '+e.message); return; }
+  setMode(dir<0?'mp3rew':'mp3ffwd'); showSeek(dir<0?'MP3 REW <<':'MP3 F.FWD >>'); updateCounter();
+  var wasPlaying=!audio.paused;
+  setTimeout(function(){ if(wasPlaying){setMode('mp3play'); startCounter();} else {setMode(''); stopCounter(false);} },720);
+  log('MP3 '+(dir<0?'REWIND':'F.FWD')+': realny posun '+fmt(old)+' -> '+fmt(target));
+}
+function loadBytes(name,u8){
+  try{
+    if(!/\.mp3$/i.test(name||'')) { log('MP3 PLAYER: vyber prosim jen MP3 soubor, ne '+(name||'neznamy soubor')+'.'); return; }
+    stopMp3('MP3 RESET PRED NOVOU HUDBOU', true);
+    if(audioUrl){URL.revokeObjectURL(audioUrl); audioUrl='';}
+    audioName=name||'hudba.mp3';
+    audioUrl=URL.createObjectURL(new Blob([u8],{type:'audio/mpeg'}));
+    if(!audio) audio=new Audio();
+    audio.pause(); audio.src=audioUrl; audio.currentTime=0;
+    audio.onloadedmetadata=function(){updateCounter(); log('MP3 nacteno — '+audioName+' — delka '+fmt(audio.duration)+' — REW/F.FWD realne pretaci.');};
+    audio.onseeked=updateCounter;
+    audio.onended=function(){setMode(''); stopCounter(false); log('MP3 konec — '+audioName+' — COUNTER '+(counter?counter.textContent:'000'));};
+    playLoaded();
+  }catch(e){ log('MP3 chyba: '+e.message); }
+}
+window.AHLOCAL_AUDIO_BEGIN=function(name){ window.__introMp3Name=name||'hudba.mp3'; window.__introMp3Parts=[]; log('MP3: prijimam z Android pickeru — '+window.__introMp3Name); };
+window.AHLOCAL_AUDIO_PART=function(b64){ (window.__introMp3Parts||(window.__introMp3Parts=[])).push(b64); };
+window.AHLOCAL_AUDIO_END=function(){
+  try{ var bin=atob((window.__introMp3Parts||[]).join('')), u8=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i)&255; loadBytes(window.__introMp3Name||'hudba.mp3',u8); }
+  catch(e){ log('MP3 prijem selhal — '+e.message); }
+  window.__introMp3Parts=[];
+};
+function pickMp3(){
+  log('MP3: oteviram vyber hudby z mobilu. Jen MP3 prehravac, zadny XEX/WAV/CAS.');
+  try{ if(window.AHPICK && window.AHPICK.pickMp3){ window.AHPICK.pickMp3(); return; } }catch(e){}
+  try{ if(window.AHPICK && window.AHPICK.pickAudio){ window.AHPICK.pickAudio(); return; } }catch(e){}
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='.mp3,audio/mpeg,audio/mp3'; inp.style.display='none'; document.body.appendChild(inp);
+  inp.onchange=function(){ var f=inp.files&&inp.files[0]; inp.remove(); if(!f){log('MP3: soubor nevybran.'); return;} var rd=new FileReader(); rd.onload=function(){loadBytes(f.name,new Uint8Array(rd.result));}; rd.onerror=function(){log('MP3: cteni souboru selhalo.');}; rd.readAsArrayBuffer(f); };
+  inp.click();
+}
+function bind(id,fn){
+  var el=$(id); if(!el)return; var moved=false,last=0;
+  el.addEventListener('pointerdown',function(){moved=false;},{passive:true});
+  el.addEventListener('pointermove',function(){moved=true;},{passive:true});
+  el.addEventListener('pointerup',function(e){
+    e.preventDefault(); e.stopPropagation();
+    if(moved) return; last=Date.now(); fn();
+  },{passive:false});
+  el.addEventListener('click',function(e){
+    e.preventDefault(); e.stopPropagation();
+    if(Date.now()-last<450) return; last=Date.now(); fn();
+  },true);
+}
+bind('introTapePlay',function(){press('introTapePlay',520); playLoaded();});
+bind('introTapeStop',function(){press('introTapeStop',620); stopMp3('MP3 STOP', true); log('MP3 STOP: zastaveno a vraceno na zacatek. Zmackni PLAY a hudba se znovu rozjede.');});
+bind('introTapePause',function(){press('introTapePause',620); pauseMp3(); log('MP3 PAUSE: zastaveno na aktualni pozici. Zmackni PLAY a pokracuje.');});
+bind('introTapeRew',function(){press('introTapeRew',650); seekMp3(-1);});
+bind('introTapeFwd',function(){press('introTapeFwd',650); seekMp3(1);});
+log('MP3 MUSIC PLAYER pripraven — prvni PLAY otevre Downloads/vyber MP3, dalsi PLAY po PAUSE/STOP znovu spusti hudbu.');
+})();
+</script>
 </body>
 </html>

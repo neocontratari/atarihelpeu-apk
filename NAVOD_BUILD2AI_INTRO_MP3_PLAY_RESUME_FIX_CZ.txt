@@ -1,0 +1,40 @@
+AtariHelp.eu EMU-10 BUILD2AI_INTRO_MP3_PLAY_RESUME_FIX
+
+CO JE OPRAVENO:
+1) Uvodni kazetak / MP3 player:
+   - PLAY pri prvnim spusteni otevira Android/NOX vyber souboru z mobilu / Downloads.
+   - Je urceny pro MP3 hudbu.
+   - Po nacteni MP3 se hudba spusti a counter pocita podle realne pozice.
+   - PAUSE hudbu zastavi na aktualni pozici a PLAY ji znovu rozjede.
+   - STOP hudbu zastavi a vrati na zacatek; PLAY ji znovu rozjede.
+   - REWIND a F.FWD realne meni pozici v audio souboru.
+   - Opraveno dvojite odpalení tap/click v Android WebView.
+
+2) Emulator / XC12 kazetak:
+   - WAV/MP3/CAS nahrany pres servisni tlacitko zustava po PAUSE/STOP v pameti prehravace.
+   - PAUSE zastavi audio na aktualni pozici, PLAY ho znovu rozjede.
+   - STOP/EJECT zastavi audio a vrati ho na zacatek, PLAY ho znovu spusti.
+   - REWIND/F.FWD realne seekuje currentTime.
+   - Counter je posunuty do okna COUNTER.
+
+3) Picker:
+   - AHPICK.pickMp3() otevre vyber MP3 hudby z Downloads.
+
+KODY JSOU STEJNE.
+Jadro emulatoru, ROM logika a BASIC/Altirra testovaci kody nejsou menene. Zmeny jsou UI, MP3/audio prehravac, picker, counter a animace kazetaku.
+
+TEST:
+A) Uvodni obrazovka:
+   1. Stiskni PLAY na kazetaku.
+   2. Musi se otevrit vyber MP3 z mobilu / Downloads.
+   3. Vyber MP3.
+   4. Musi hrat hudba, toci se civky a counter pocita.
+   5. PAUSE zastavi, PLAY pokracuje.
+   6. STOP vrati na zacatek, PLAY spusti od zacatku.
+   7. REW/F.FWD meni realnou pozici.
+
+B) Emulator:
+   1. Dole WAV/MP3 vyber audio.
+   2. PAUSE na kazetaku zastavi audio, PLAY ho znovu rozjede.
+   3. STOP/EJECT zastavi a vrati na zacatek, PLAY znovu spusti.
+   4. REWIND/F.FWD realne pretaci.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2AG</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2AI</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -28,7 +28,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
 /* file/action zones on cassette and main physical buttons */
 #btnXex,#btnAtr{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-/* BUILD2AG: fyzicky kazetak zustava CLOAD / CSAVE; WAV/MP3 ma realny seek pres REW/F.FWD. */
+/* BUILD2AI: fyzicky kazetak zustava CLOAD / CSAVE; WAV/MP3 ma realny seek pres REW/F.FWD. */
 #btnTapeRecord{left:7.1%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapePlay{left:20.0%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeRew{left:32.9%;top:88.15%;width:12.5%;height:5.7%;}
@@ -42,8 +42,8 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .tapeReel:before,.tapeReel:after{content:"";position:absolute;left:50%;top:50%;width:62%;height:5%;margin-left:-31%;margin-top:-2.5%;border-radius:4px;background:rgba(255,216,120,.33);}
 .tapeReel:after{transform:rotate(62deg);}
 #tapeReelL{left:42.0%;top:75.45%;width:6.2%;aspect-ratio:1;}#tapeReelR{left:55.0%;top:75.45%;width:6.2%;aspect-ratio:1;}
-/* BUILD2AG: realne viditelne pocitadlo stopy pres prave okno COUNTER na XC12 skinu */
-#tapeCounter{position:absolute;left:84.15%;top:82.95%;width:7.15%;height:2.15%;z-index:62;pointer-events:none;display:flex;align-items:center;justify-content:center;padding-top:.12%;
+/* BUILD2AI: realne viditelne pocitadlo stopy pres prave okno COUNTER na XC12 skinu */
+#tapeCounter{position:absolute;left:84.35%;top:82.78%;width:6.85%;height:2.0%;z-index:62;pointer-events:none;display:flex;align-items:center;justify-content:center;padding-top:.12%;
   font:900 clamp(12px,2.35vw,21px) "Courier New",monospace;letter-spacing:.12em;color:#ffd064;text-shadow:0 0 4px #ff9d00,0 0 10px rgba(255,168,0,.70),0 1px 0 #000;
   background:linear-gradient(180deg,rgba(9,7,4,.78),rgba(31,18,0,.42));border-radius:3px;box-shadow:inset 0 0 7px rgba(0,0,0,.88),0 0 8px rgba(255,171,0,.18);mix-blend-mode:screen;}
 #tapeCounter.run{animation:counterGlow .42s steps(2,end) infinite;}
@@ -93,7 +93,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .overlay{display:none;position:fixed;inset:0;background:rgba(8,9,10,.96);z-index:1000;padding:16px;flex-direction:column;gap:10px;color:#e8e2d0;font-family:"Courier New",monospace;}
 .overlay .row{display:flex;gap:8px}.overlay button{flex:1;padding:11px;border:0;border-radius:6px;background:#d9b25c;color:#111;font:bold 12px "Courier New",monospace}.overlay button.dark{background:#454850;color:#eee}.overlay button.danger{background:#c94331;color:#fff}.overlay textarea{flex:1;background:#08090a;color:#9fe29f;border:1px solid #333;border-radius:6px;padding:9px;font:12px "Courier New",monospace;resize:none;}
 
-/* BUILD2AG: servisni tlacitka jako fyzicka tlacitka pod monitorem - tmave, hluboke, stisk dolu */
+/* BUILD2AI: servisni tlacitka jako fyzicka tlacitka pod monitorem - tmave, hluboke, stisk dolu */
 #actionDock{
   position:relative;width:min(100vw,941px);max-width:941px;margin:9px auto 0;padding:10px 9px 9px;z-index:90;
   display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,42px);gap:8px;pointer-events:auto;
@@ -169,7 +169,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <button id="dockLog" type="button">LOG / CHYBA</button>
   <button id="dockMenu" type="button">MENU</button>
 </div>
-<div id="miniLog">EMU10 BUILD2AG: WAV/MP3/CAS ma viditelne REW/F.FWD a u WAV/MP3 se realne meni pozice audia...</div>
+<div id="miniLog">EMU10 BUILD2AI: MP3/WAV po PAUSE/STOP zustava nahrane, PLAY ho znovu rozjede; REW/F.FWD realne pretaci...</div>
 <div id="txtOverlay" class="overlay">
   <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
   <label style="font:11px 'Courier New',monospace;color:#c9c5bb;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim</label>
@@ -1727,7 +1727,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
   function playTapeAudioBytes(name,u8){
     try{
-      stopTapeAudio('WAV/CAS RESET PRED NOVYM SOUBOREM', true);
+      clearTapeAudioForNewFile('WAV/CAS RESET PRED NOVYM SOUBOREM');
       if(tapeAudioUrl) URL.revokeObjectURL(tapeAudioUrl);
       tapeAudioName=name||'audio';
       var type=/\.mp3$/i.test(name)?'audio/mpeg':(/\.cas$/i.test(name)?'application/octet-stream':'audio/wav');
@@ -1801,14 +1801,45 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     };
     inp.click();
   }
-  function stopTapeAudio(reason,silent){
+  function clearTapeAudioForNewFile(reason){
     try{
       if(tapeAudio){ tapeAudio.pause(); tapeAudio.removeAttribute('src'); tapeAudio.load(); }
       if(tapeAudioUrl){ URL.revokeObjectURL(tapeAudioUrl); tapeAudioUrl=''; }
       tapeAudioName='';
+    }catch(e){ log((reason||'TAPE CLEAR')+': chyba pri vycisteni audio - '+e.message); }
+    tapeVisualStop();
+  }
+  function pauseTapeAudio(reason,silent){
+    try{ if(tapeAudio && tapeAudio.src) tapeAudio.pause(); }
+    catch(e){ log('TAPE PAUSE: chyba zastaveni audio - '+e.message); }
+    tapeVisualStop();
+    updateTapeCounter(true);
+    if(!silent) log((reason||'TAPE PAUSE')+': audio je zastavene na aktualni pozici. PLAY ho znovu rozjede. COUNTER '+pad3(tapeCounterValue)+'.');
+  }
+  function stopTapeAudio(reason,silent){
+    try{
+      if(tapeAudio && tapeAudio.src){
+        tapeAudio.pause();
+        if(tapeAudioSeekable()) tapeAudio.currentTime=0;
+      }
     }catch(e){ log('TAPE STOP: chyba zastaveni audio - '+e.message); }
     tapeVisualStop();
-    if(!silent) log((reason||'TAPE STOP/EJECT')+': WAV/MP3/CAS okamzite zastaveno. COUNTER stoji na '+pad3(tapeCounterValue)+'.');
+    updateTapeCounter(true);
+    if(!silent) log((reason||'TAPE STOP/EJECT')+': audio zastaveno a vraceno na zacatek. PLAY ho znovu spusti, soubor zustava nacteny. COUNTER '+pad3(tapeCounterValue)+'.');
+  }
+  function resumeTapeAudioOrCload(){
+    if(tapeAudio && tapeAudio.src){
+      try{
+        if(tapeAudioSeekable() && tapeAudio.currentTime>=tapeAudio.duration-0.08) tapeAudio.currentTime=0;
+        tapeVisualStart('PLAY',1,true);
+        var pr=tapeAudio.play();
+        if(pr&&pr.then) pr.then(function(){ log('KAZETA PLAY: znovu spoustim nahrany audio soubor '+(tapeAudioName||'audio')+' od '+fmtTime(tapeAudio.currentTime)+'.'); }).catch(function(e){ tapeVisualStop(); log('KAZETA PLAY: audio se nerozjelo - '+e.message); });
+        else log('KAZETA PLAY: znovu spoustim audio '+(tapeAudioName||'audio')+'.');
+      }catch(e){ tapeVisualStop(); log('KAZETA PLAY chyba: '+e.message); }
+      return;
+    }
+    tapeAnimate(1200,'PLAY',1);
+    log('KAZETA PLAY: CLOAD priprava z WAV/CAS, COUNTER pocita stopu. Zatim bez RAM injectu a bez fake LOAD.');
   }
   function pickFile(accept,cb){
     var inp=document.getElementById('filePick');
@@ -1853,9 +1884,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     function safeTap(id,fn){ var el=document.getElementById(id); if(!el) return; var moved=false,last=0; el.addEventListener('pointerdown',function(e){ moved=false; },{passive:true}); el.addEventListener('pointermove',function(e){ moved=true; },{passive:true}); el.addEventListener('pointerup',function(e){ if(!moved){ e.preventDefault(); last=Date.now(); fn(e); } }); el.addEventListener('click',function(e){ e.preventDefault(); if(Date.now()-last<450) return; last=Date.now(); fn(e); }); }
     safeTap('btnJoy',function(){ setJoyMode(!joyMode); });
     safeTap('btnTapeRecord',function(){ pressAnim('btnTapeRecord',520); tapeAnimate(1200,'REC',1); log('KAZETA REC: CSAVE priprava na ulozeni na mobil, COUNTER pocita stopu. XEX picker je jen dole v servisnim panelu.'); });
-    safeTap('btnTapePlay',function(){ pressAnim('btnTapePlay',520); tapeAnimate(1200,'PLAY',1); log('KAZETA PLAY: CLOAD priprava z WAV/CAS, COUNTER pocita stopu. Zatim bez RAM injectu a bez fake LOAD.'); });
-    safeTap('btnTapePause',function(){ pressAnim('btnTapePause',620); stopTapeAudio('KAZETA PAUSE'); log('KAZETA PAUSE: mechanicka pauza, audio monitor se zastavil hned.'); });
-    safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',620); stopTapeAudio('KAZETA STOP/EJECT'); log('KAZETA STOP/EJECT: zastaveno, C: stav zustava pripraveny.'); });
+    safeTap('btnTapePlay',function(){ pressAnim('btnTapePlay',520); resumeTapeAudioOrCload(); });
+    safeTap('btnTapePause',function(){ pressAnim('btnTapePause',620); pauseTapeAudio('KAZETA PAUSE'); });
+    safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',620); stopTapeAudio('KAZETA STOP/EJECT'); });
     safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',650); seekTapeAudio(-1); });
     safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',650); seekTapeAudio(1); });
     document.getElementById('btnTxt').addEventListener('click',openTxtOverlay);
@@ -1928,7 +1959,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2AG COUNTER TRACK + XC12 ANIM pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2AI COUNTER TRACK + XC12 ANIM pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani.');
     log('Dole: NET HRY, XEX MOBIL, ATR DISK, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. WAV/MP3: REWIND/F.FWD realne pretaci audio a COUNTER ukazuje pozici.');
     requestAnimationFrame(tick);
