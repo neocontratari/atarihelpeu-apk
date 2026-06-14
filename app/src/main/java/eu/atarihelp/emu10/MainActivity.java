@@ -2,11 +2,13 @@ package eu.atarihelp.emu10;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.database.Cursor;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.OpenableColumns;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -22,19 +24,21 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2W
+ * AtariHelp.eu EMU-10 BUILD2X
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
- * - BUILD2W UI: REC otevira AtariHelp hry, PLAY v HTML vybira lokalni WAV/MP3, PAUSE TBXL
+ * - BUILD2X UI: Android bridge picker pro XEX/ZIP/ATR a WAV/MP3, PAUSE TBXL
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
+    private static final int PICK_BRIDGE = 2;
     private static final String EMU_URL = "file:///android_asset/emu/index.html";
     private WebView web;
     private ValueCallback<Uri[]> pendingChooser;
     private byte[] pendingGame;
     private String pendingName;
+    private String pendingBridgeKind;
     private final Handler ui = new Handler(Looper.getMainLooper());
 
     public class AHSave {
@@ -54,6 +58,17 @@ public class MainActivity extends Activity {
         }
     }
 
+    public class AHPick {
+        @JavascriptInterface
+        public void pickGame() {
+            ui.post(() -> openBridgePicker("game"));
+        }
+        @JavascriptInterface
+        public void pickAudio() {
+            ui.post(() -> openBridgePicker("audio"));
+        }
+    }
+
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +80,7 @@ public class MainActivity extends Activity {
         s.setAllowFileAccess(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         web.addJavascriptInterface(new AHSave(), "AHSAVE");
+        web.addJavascriptInterface(new AHPick(), "AHPICK");
         web.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb,
@@ -101,6 +117,48 @@ public class MainActivity extends Activity {
         setContentView(web);
     }
 
+    private void openBridgePicker(String kind) {
+        pendingBridgeKind = kind;
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        if ("audio".equals(kind)) {
+            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*", "audio/wav", "audio/x-wav", "audio/mpeg"});
+            startActivityForResult(Intent.createChooser(i, "Vyber WAV / MP3 z mobilu"), PICK_BRIDGE);
+        } else {
+            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/zip", "application/octet-stream", "application/x-msdos-program", "*/*"});
+            startActivityForResult(Intent.createChooser(i, "Vyber XEX / ATR / ZIP z mobilu"), PICK_BRIDGE);
+        }
+    }
+
+    private String getDisplayName(Uri uri) {
+        try (Cursor c = getContentResolver().query(uri, null, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (idx >= 0) {
+                    String n = c.getString(idx);
+                    if (n != null && n.length() > 0) return n;
+                }
+            }
+        } catch (Exception ignored) {}
+        String p = uri.getLastPathSegment();
+        return (p == null || p.length() == 0) ? "vybrany_soubor" : p;
+    }
+
+    private byte[] readUriBytes(Uri uri, int maxBytes) throws Exception {
+        InputStream in = getContentResolver().openInputStream(uri);
+        if (in == null) throw new Exception("Nelze otevrit soubor");
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buf = new byte[16384];
+        int n;
+        while ((n = in.read(buf)) > 0) {
+            bos.write(buf, 0, n);
+            if (bos.size() > maxBytes) { in.close(); throw new Exception("Soubor je moc velky"); }
+        }
+        in.close();
+        return bos.toByteArray();
+    }
+
     private void downloadAndRun(final String url) {
         new Thread(() -> {
             try {
@@ -130,15 +188,29 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    private String jsQuote(String text) {
+        if (text == null) text = "";
+        return "'" + text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
+    }
+
     private void injectGame(String name, byte[] data) {
-        String safe = name.replace("'", "_").replace("\\", "_");
-        web.evaluateJavascript("AHRECV_BEGIN('" + safe + "')", null);
+        web.evaluateJavascript("AHRECV_BEGIN(" + jsQuote(name) + ")", null);
         String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
         for (int i = 0; i < b64.length(); i += 262144) {
             String part = b64.substring(i, Math.min(i + 262144, b64.length()));
             web.evaluateJavascript("AHRECV_PART('" + part + "')", null);
         }
         web.evaluateJavascript("AHRECV_END()", null);
+    }
+
+    private void injectAudio(String name, byte[] data) {
+        web.evaluateJavascript("AHLOCAL_AUDIO_BEGIN(" + jsQuote(name) + ")", null);
+        String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
+        for (int i = 0; i < b64.length(); i += 262144) {
+            String part = b64.substring(i, Math.min(i + 262144, b64.length()));
+            web.evaluateJavascript("AHLOCAL_AUDIO_PART('" + part + "')", null);
+        }
+        web.evaluateJavascript("AHLOCAL_AUDIO_END()", null);
     }
 
     @Override
@@ -149,6 +221,21 @@ public class MainActivity extends Activity {
                     ? new Uri[]{ data.getData() } : null;
             pendingChooser.onReceiveValue(out);
             pendingChooser = null;
+            return;
+        }
+        if (req == PICK_BRIDGE) {
+            if (res == RESULT_OK && data != null && data.getData() != null) {
+                try {
+                    Uri uri = data.getData();
+                    String name = getDisplayName(uri);
+                    byte[] bytes = readUriBytes(uri, "audio".equals(pendingBridgeKind) ? 64 * 1024 * 1024 : 16 * 1024 * 1024);
+                    if ("audio".equals(pendingBridgeKind)) injectAudio(name, bytes);
+                    else injectGame(name, bytes);
+                } catch (Exception e) {
+                    web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote(e.getMessage()) + ")", null);
+                }
+            }
+            pendingBridgeKind = null;
         }
     }
 

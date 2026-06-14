@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2W</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2X</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -13,9 +13,9 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .skin{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;z-index:0;}
 /* real Atari screen over the CRT opening */
 .screenSlot{position:absolute;left:10.8%;top:6.7%;width:77.8%;height:22.9%;border-radius:4.7%/9.5%;overflow:hidden;z-index:5;background:#0047db;box-shadow:inset 0 0 34px rgba(0,0,0,.35);}
-canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !important;margin:0 !important;display:block;image-rendering:pixelated;background:#0047db;filter:contrast(1.05) saturate(1.10);}
-.scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.045) 0 1px,rgba(0,0,0,.05) 1px 4px);mix-blend-mode:overlay;animation:scanflick .16s steps(2) infinite;}
-.screenSlot:after{content:"";position:absolute;left:-45%;top:0;width:35%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent);animation:sweep 5.6s linear infinite;pointer-events:none;mix-blend-mode:screen;}
+canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !important;margin:0 !important;display:block;image-rendering:pixelated;background:#0047db;filter:none;}
+.scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.012) 0 1px,rgba(0,0,0,.010) 1px 4px);mix-blend-mode:normal;opacity:.18;}
+.screenSlot:after{content:"";position:absolute;left:-45%;top:0;width:35%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.035),transparent);animation:sweep 6.8s linear infinite;pointer-events:none;mix-blend-mode:screen;}
 @keyframes scanflick{50%{opacity:.62}}@keyframes sweep{to{left:115%}}
 .hit{position:absolute;border:0;background:rgba(255,200,80,0);color:transparent;font-size:0;cursor:pointer;z-index:30;border-radius:9px;touch-action:manipulation;}
 .hit:active,.hit.on{background:rgba(255,203,95,.16);box-shadow:0 0 22px rgba(255,203,95,.45) inset;}
@@ -28,7 +28,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
 /* file/action zones on cassette and main physical buttons */
 #btnXex{left:28.7%;top:71.2%;width:39.7%;height:6.8%;}#btnAtr{left:28.7%;top:71.2%;width:39.7%;height:6.8%;}
-/* BUILD2W: fyzicke ovladani kazetaku: RECORD=AtariHelp hry, PLAY=lokalni WAV/MP3, PAUSE=TBXL */
+/* BUILD2X: fyzicke ovladani kazetaku: RECORD=lokalni hry z Downloads, PLAY=lokalni WAV/MP3, PAUSE=TBXL */
 #btnTapeRecord{left:7.1%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapePlay{left:20.0%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeRew{left:32.9%;top:88.15%;width:12.5%;height:5.7%;}
@@ -47,8 +47,9 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 @keyframes tapeSpin{to{transform:rotate(360deg)}}
 .hit.pressed{background:rgba(255,203,95,.18)!important;box-shadow:0 0 22px rgba(255,203,95,.50) inset,0 0 15px rgba(95,190,255,.18);transform:translateY(1px);}
 /* transparent keyboard overlay over exact PNG key area */
-#osk{position:absolute;left:5.6%;top:48.5%;width:87.2%;height:20.4%;z-index:32;display:flex;flex-direction:column;gap:.4%;opacity:.01;pointer-events:auto;}
-.krow{display:flex;gap:.35%;flex:1;min-height:0;}.key{flex:1;border:0;border-radius:5px;background:rgba(255,255,255,.01);color:transparent;font-size:0;min-width:0;}.key.space{flex:8.4}.key.mod{flex:1.25}.key:active,.key.on,.key.flash{background:rgba(255,200,70,.25);box-shadow:inset 0 0 10px rgba(255,220,140,.75),0 0 8px rgba(255,220,140,.28);opacity:1;}
+#osk{position:absolute;left:5.6%;top:48.5%;width:87.2%;height:20.4%;z-index:32;display:flex;flex-direction:column;gap:.4%;opacity:1;pointer-events:auto;}
+.krow{display:flex;gap:.35%;flex:1;min-height:0;}.key{flex:1;border:0;border-radius:5px;background:rgba(255,255,255,.001);color:transparent;font-size:0;min-width:0;}.key.space{flex:8.4}.key.mod{flex:1.25}.key:active,.key.on,.key.flash{background:rgba(255,200,70,.25);box-shadow:inset 0 0 10px rgba(255,220,140,.75),0 0 8px rgba(255,220,140,.28);opacity:1;}
+.key.shiftLatched{background:rgba(255,196,70,.30);box-shadow:inset 0 0 14px rgba(255,230,150,.85),0 0 12px rgba(255,220,130,.45);}
 /* joystick overlay - visible skin is swapped to the joystick PNG, controls are transparent */
 #joy{position:absolute;left:7.5%;top:48.0%;width:85.2%;height:20.8%;display:none;z-index:33;touch-action:none;user-select:none;pointer-events:auto;}
 #joyPad{position:absolute;left:6.5%;top:10%;width:38.5%;height:78%;border-radius:25%;background:rgba(0,0,0,.01);touch-action:none;}#joyKnob{position:absolute;left:50%;top:50%;width:12%;height:12%;border-radius:50%;background:rgba(255,255,255,.01);pointer-events:none;}
@@ -88,7 +89,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <button id="btnBreak" class="hit">BREAK</button>
   <button id="btnXex" class="hit">NAHRAJ XEX</button>
   <button id="btnAtr" class="hit">NAHRAJ ATR</button>
-  <button id="btnTapeRecord" class="hit">RECORD DOWNLOAD</button>
+  <button id="btnTapeRecord" class="hit">RECORD DOWNLOADS XEX ZIP</button>
   <button id="btnTapePlay" class="hit">PLAY WAV MP3</button>
   <button id="btnTapeRew" class="hit">REWIND</button>
   <button id="btnTapeFwd" class="hit">F.FWD</button>
@@ -110,7 +111,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
     <button id="dockTxt" type="button">VLOZIT TEXT</button>
     <button id="dockLog" type="button">LOG / CHYBA</button>
   </div>
-  <div id="miniLog">EMU10 BUILD2W: REC=web hry, PLAY=WAV/MP3, PAUSE=TBXL...</div>
+  <div id="miniLog">EMU10 BUILD2X: REC/XEX=Downloads, PLAY=WAV/MP3, PAUSE=TBXL...</div>
 </main>
 <div id="txtOverlay" class="overlay">
   <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
@@ -1320,6 +1321,12 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     [['MEZERNIK',33]]
   ];
   var oskShift=false, oskCtrl=false;
+  function refreshModifierVisuals(){
+    var shiftBtns=document.querySelectorAll('.key[data-mod="shift"]');
+    for(var i=0;i<shiftBtns.length;i++){ shiftBtns[i].classList.toggle('shiftLatched', oskShift); shiftBtns[i].classList.toggle('on', oskShift); }
+    var ctrlBtns=document.querySelectorAll('.key[data-mod="ctrl"]');
+    for(var j=0;j<ctrlBtns.length;j++){ ctrlBtns[j].classList.toggle('on', oskCtrl); }
+  }
   function buildOSK(host){
     ROWS.forEach(function(row){
       var r=document.createElement('div'); r.className='krow';
@@ -1327,10 +1334,12 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         var b=document.createElement('button'); b.className='key'; b.textContent=k[0];
         if(k[0]==='MEZERNIK') b.classList.add('space');
         if(k[1]<0) b.classList.add('mod');
+        if(k[1]===-1) b.setAttribute('data-mod','ctrl');
+        if(k[1]===-2) b.setAttribute('data-mod','shift');
         var press=function(ev){ ev.preventDefault();
           b.classList.add('flash'); setTimeout(function(){ b.classList.remove('flash'); },160);
-          if(k[1]===-1){ oskCtrl=!oskCtrl; b.classList.toggle('on',oskCtrl); return; }
-          if(k[1]===-2){ oskShift=!oskShift; b.classList.toggle('on',oskShift); return; }
+          if(k[1]===-1){ oskCtrl=!oskCtrl; refreshModifierVisuals(); log('CTRL '+(oskCtrl?'ZAMACKNUTO':'VYPNUTO')); return; }
+          if(k[1]===-2){ oskShift=!oskShift; refreshModifierVisuals(); log('SHIFT '+(oskShift?'ZAMACKNUTO':'VYPNUTO')); return; }
           if(k[1]===-3){ M&&M.breakKey(); log('KEY BREAK'); return; }
           var sc=k[1]; if(oskShift) sc|=0x40; if(oskCtrl) sc|=0x80;
           M&&M.keyDown(sc&0xFF);
@@ -1514,8 +1523,45 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   };
   function openGamesDownload(){
     var url='https://atarihelp.eu/?page_id=207';
-    log('RECORD / GAMES: oteviram AtariHelp.eu hry ke stazeni: '+url);
-    try{ window.location.href=url; }catch(e){ log('RECORD / GAMES chyba: '+e.message); }
+    log('GAMES: oteviram AtariHelp.eu hry ke stazeni: '+url);
+    try{ window.location.href=url; }catch(e){ log('GAMES chyba: '+e.message); }
+  }
+  function openLocalGamePicker(label){
+    label=label||'XEX/ZIP';
+    log(label+': oteviram mobilni Downloads / Vyber souboru. Podporuji XEX/EXE/COM/ATR/ZIP.');
+    try{
+      if(window.AHPICK && window.AHPICK.pickGame){ window.AHPICK.pickGame(); return; }
+    }catch(e){ log('AHPICK GAME chyba: '+e.message); }
+    pickFile('.xex,.exe,.com,.atr,.zip,application/zip,application/octet-stream,*/*',function(n,u8){
+      log(label+': vybran '+n+' ('+u8.length+' B)');
+      bootAny(n,u8);
+    });
+  }
+  var localAudioName='', localAudioParts=[];
+  window.AHJAVA_ERROR=function(msg){ log('ANDROID PICKER CHYBA: '+msg); };
+  window.AHLOCAL_AUDIO_BEGIN=function(name){ localAudioName=name||'audio'; localAudioParts=[]; log('TAPE PLAY: prijimam audio z Android pickeru: '+localAudioName); };
+  window.AHLOCAL_AUDIO_PART=function(b64){ localAudioParts.push(b64); };
+  window.AHLOCAL_AUDIO_END=function(){
+    try{
+      var bin=atob(localAudioParts.join('')), u8=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i)&0xFF;
+      playTapeAudioBytes(localAudioName,u8);
+    }catch(e){ log('TAPE PLAY: prijem audio selhal - '+e.message); }
+    localAudioParts=[];
+  };
+  function playTapeAudioBytes(name,u8){
+    try{
+      if(tapeAudioUrl) URL.revokeObjectURL(tapeAudioUrl);
+      var type=/\.mp3$/i.test(name)?'audio/mpeg':'audio/wav';
+      tapeAudioUrl=URL.createObjectURL(new Blob([u8],{type:type}));
+      if(!tapeAudio) tapeAudio=new Audio();
+      tapeAudio.pause(); tapeAudio.src=tapeAudioUrl; tapeAudio.currentTime=0;
+      tapeAudio.onended=function(){ tapeAnimate(250); log('TAPE PLAY: konec audio souboru.'); };
+      var pr=tapeAudio.play(); tapeAnimate(6000);
+      if(pr&&pr.then) pr.then(function(){ log('TAPE PLAY: spusten lokalni audio soubor '+name+' ('+u8.length+' B).'); }).catch(function(e){ log('TAPE PLAY: nelze spustit audio - '+e.message); });
+      else log('TAPE PLAY: spusten lokalni audio soubor '+name+' ('+u8.length+' B).');
+      log('TAPE PLAY: prehravam WAV/MP3 z mobilu. Poznamka: zatim audio-monitor, neni to fake CLOAD inject.');
+    }catch(e){ log('TAPE PLAY chyba: '+e.message); }
   }
   function tapeAnimate(ms){
     var st=document.getElementById('stage'); if(!st) return;
@@ -1529,20 +1575,18 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     setTimeout(function(){ b.classList.remove('pressed'); }, ms||180);
   }
   function pickTapeAudio(){
+    log('TAPE PLAY: oteviram mobilni Downloads / Vyber WAV nebo MP3.');
+    try{
+      if(window.AHPICK && window.AHPICK.pickAudio){ window.AHPICK.pickAudio(); return; }
+    }catch(e){ log('AHPICK AUDIO chyba: '+e.message); }
     var inp=document.getElementById('filePick');
     inp.accept='.wav,.mp3,audio/wav,audio/x-wav,audio/mpeg,audio/*';
     inp.onchange=function(){
       var f=inp.files&&inp.files[0]; inp.value=''; if(!f){ log('TAPE PLAY: soubor nevybran.'); return; }
       try{
-        if(tapeAudioUrl) URL.revokeObjectURL(tapeAudioUrl);
-        tapeAudioUrl=URL.createObjectURL(f);
-        if(!tapeAudio) tapeAudio=new Audio();
-        tapeAudio.pause(); tapeAudio.src=tapeAudioUrl; tapeAudio.currentTime=0;
-        tapeAudio.onended=function(){ tapeAnimate(250); log('TAPE PLAY: konec audio souboru.'); };
-        var pr=tapeAudio.play(); tapeAnimate(6000);
-        if(pr&&pr.then) pr.then(function(){ log('TAPE PLAY: spusten lokalni audio soubor '+f.name+' ('+f.size+' B).'); }).catch(function(e){ log('TAPE PLAY: nelze spustit audio - '+e.message); });
-        else log('TAPE PLAY: spusten lokalni audio soubor '+f.name+' ('+f.size+' B).');
-        log('TAPE PLAY: prehravam WAV/MP3 z mobilu. Poznamka: zatim audio-monitor, neni to fake CLOAD inject.');
+        var rd=new FileReader();
+        rd.onload=function(){ playTapeAudioBytes(f.name,new Uint8Array(rd.result)); };
+        rd.readAsArrayBuffer(f);
       }catch(e){ log('TAPE PLAY chyba: '+e.message); }
     };
     inp.click();
@@ -1587,20 +1631,20 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     canvas=document.getElementById('scr'); ctx=canvas.getContext('2d');
     img=ctx.createImageData(384,240);
     document.getElementById('btnPower').addEventListener('click',function(){power(false);});
-    document.getElementById('btnXex').addEventListener('click',function(){ pickFile('.xex,.exe,.com,.zip',function(n,u8){ bootAny(n,u8); }); });
-    document.getElementById('btnAtr').addEventListener('click',function(){ pickFile('.atr,.zip',function(n,u8){ if(u8[0]===0x50&&u8[1]===0x4B){bootAny(n,u8);} else bootAtr(n,u8,document.getElementById('chkOpt').checked); }); });
+    document.getElementById('btnXex').addEventListener('click',function(){ openLocalGamePicker('XEX/ZIP'); });
+    document.getElementById('btnAtr').addEventListener('click',function(){ openLocalGamePicker('ATR/ZIP'); });
     function runTbxlFromPause(){ pressAnim('btnTapePause',220); tapeAnimate(900); bootXex('TBXL 1.5 (PAUSE na kazetaku)', b64u8(EMU10_TBXL_B64), true); }
     document.getElementById('btnTbxl').addEventListener('click',runTbxlFromPause);
     function safeTap(id,fn){ var el=document.getElementById(id); if(!el) return; var moved=false,last=0; el.addEventListener('pointerdown',function(e){ moved=false; },{passive:true}); el.addEventListener('pointermove',function(e){ moved=true; },{passive:true}); el.addEventListener('pointerup',function(e){ if(!moved){ e.preventDefault(); last=Date.now(); fn(e); } }); el.addEventListener('click',function(e){ e.preventDefault(); if(Date.now()-last<450) return; last=Date.now(); fn(e); }); }
     safeTap('btnJoy',function(){ setJoyMode(!joyMode); });
-    safeTap('btnTapeRecord',function(){ pressAnim('btnTapeRecord',220); tapeAnimate(900); openGamesDownload(); });
+    safeTap('btnTapeRecord',function(){ pressAnim('btnTapeRecord',220); tapeAnimate(900); openLocalGamePicker('TAPE RECORD / DOWNLOADS'); });
     safeTap('btnTapePlay',function(){ pressAnim('btnTapePlay',220); tapeAnimate(1200); pickTapeAudio(); });
     safeTap('btnTapePause',function(){ runTbxlFromPause(); });
     safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',220); stopTapeAudio(); });
     safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',220); tapeAnimate(900); log('TAPE REWIND: animace, HW kazeta bude v dalsi fazi.'); });
     safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',220); tapeAnimate(900); log('TAPE F.FWD: animace, HW kazeta bude v dalsi fazi.'); });
     document.getElementById('btnTxt').addEventListener('click',function(){ document.getElementById('txtOverlay').style.display='flex'; });
-    safeTap('dockXex',function(){ document.getElementById('btnXex').click(); });
+    safeTap('dockXex',function(){ openLocalGamePicker('DOCK XEX/ZIP'); });
     safeTap('dockTbxl',function(){ document.getElementById('btnTbxl').click(); });
     safeTap('dockTxt',function(){ document.getElementById('txtOverlay').style.display='flex'; });
     safeTap('dockLog',function(){ document.getElementById('btnSaveLog').click(); });
@@ -1651,7 +1695,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2W-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2X-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -1664,8 +1708,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bh.addEventListener('pointerup',bhUp); bh.addEventListener('pointerleave',bhUp);
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
-    log('AtariHelp.eu EMU-10 BUILD2W SITE REC PLAY PAUSE ANIM pripraven.');
-    log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | UI REC/PLAY/PAUSE mapovani pridano');
+    log('AtariHelp.eu EMU-10 BUILD2X FILEPICK SHIFT TUNED MONITOR pripraven.');
+    log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | UI file picker a SHIFT latch pridany');
     requestAnimationFrame(tick);
     setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120);
   });
