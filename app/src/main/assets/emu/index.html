@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2AA</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2AC</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -28,7 +28,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
 /* file/action zones on cassette and main physical buttons */
 #btnXex,#btnAtr{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-/* BUILD2AA: fyzicky kazetak uz neni souborovy picker. Je rezervovany pro CLOAD / CSAVE. */
+/* BUILD2AC: fyzicky kazetak uz neni souborovy picker. Je rezervovany pro CLOAD / CSAVE. */
 #btnTapeRecord{left:7.1%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapePlay{left:20.0%;top:88.15%;width:12.5%;height:5.7%;}
 #btnTapeRew{left:32.9%;top:88.15%;width:12.5%;height:5.7%;}
@@ -70,13 +70,35 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .overlay{display:none;position:fixed;inset:0;background:rgba(8,9,10,.96);z-index:1000;padding:16px;flex-direction:column;gap:10px;color:#e8e2d0;font-family:"Courier New",monospace;}
 .overlay .row{display:flex;gap:8px}.overlay button{flex:1;padding:11px;border:0;border-radius:6px;background:#d9b25c;color:#111;font:bold 12px "Courier New",monospace}.overlay button.dark{background:#454850;color:#eee}.overlay button.danger{background:#c94331;color:#fff}.overlay textarea{flex:1;background:#08090a;color:#9fe29f;border:1px solid #333;border-radius:6px;padding:9px;font:12px "Courier New",monospace;resize:none;}
 
-/* BUILD2V: visible service buttons requested by René - not hidden hitboxes */
-#actionDock{position:relative;width:min(100vw,941px);max-width:941px;margin:8px auto 0;padding:8px;z-index:90;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,38px);gap:7px;pointer-events:auto;background:linear-gradient(180deg,rgba(21,22,25,.98),rgba(4,5,7,.99));border:1px solid rgba(242,196,100,.58);border-radius:14px;box-shadow:inset 0 0 18px rgba(242,196,100,.10),0 0 28px rgba(0,0,0,.70);}
-#actionDock:before{content:"SERVIS POD KAZETAKEM";position:absolute;left:12px;top:-12px;padding:0 8px;background:#050608;color:#f2c464;font:bold 10px "Courier New",monospace;letter-spacing:.08em;text-shadow:0 0 6px #000;}
-#actionDock button{border:1px solid rgba(242,196,100,.82);border-radius:9px;background:linear-gradient(180deg,rgba(70,58,35,.96),rgba(12,13,16,.98));color:#f2c464;text-shadow:0 0 5px rgba(242,196,100,.50);box-shadow:inset 0 0 13px rgba(242,196,100,.14),0 0 12px rgba(0,0,0,.68);font:bold clamp(8px,2.1vw,13px) "Courier New",monospace;letter-spacing:.03em;transition:transform .05s ease,box-shadow .05s ease,background .05s ease;}
-#actionDock button:active,#actionDock button.pressed{background:linear-gradient(180deg,rgba(242,196,100,.36),rgba(30,25,15,.98));transform:translateY(2px) scale(.985);box-shadow:inset 0 6px 16px rgba(0,0,0,.48),0 0 12px rgba(242,196,100,.18);}
-#miniLog{position:relative;width:min(100vw,941px);max-width:941px;margin:4px auto 10px;color:#ffd976;font:700 clamp(7px,1.65vw,10px) "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 5px #000;opacity:.95;padding:0 8px;}
-@media(max-width:420px){#actionDock{grid-template-rows:repeat(2,34px);gap:5px;padding:7px;}#actionDock button{font-size:7.5px;}}
+/* BUILD2AC: servisni tlacitka jako fyzicka tlacitka pod monitorem - ne zlata lista */
+#actionDock{
+  position:relative;width:min(100vw,941px);max-width:941px;margin:9px auto 0;padding:10px 9px 9px;z-index:90;
+  display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,42px);gap:8px;pointer-events:auto;
+  background:linear-gradient(180deg,#17191d 0%,#090a0c 100%);
+  border:1px solid rgba(80,83,88,.96);border-radius:13px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09), inset 0 -1px 0 rgba(0,0,0,.85), 0 0 26px rgba(0,0,0,.76);
+}
+#actionDock:before{
+  content:"SERVIS POD KAZETAKEM";position:absolute;left:12px;top:-13px;padding:0 8px;background:#050608;
+  color:#f2c464;font:bold 10px "Courier New",monospace;letter-spacing:.08em;text-shadow:0 0 6px #000;
+}
+#actionDock button{
+  position:relative;overflow:hidden;border:1px solid #343941;border-radius:9px;
+  background:linear-gradient(180deg,#282b31 0%,#15171b 48%,#07080a 100%);
+  color:#e8e1d2;text-shadow:0 1px 0 #000,0 0 5px rgba(255,255,255,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.13), inset 0 -5px 10px rgba(0,0,0,.54), 0 2px 0 rgba(0,0,0,.88), 0 0 0 1px rgba(0,0,0,.55);
+  font:bold clamp(8px,2.0vw,13px) "Courier New",monospace;letter-spacing:.02em;
+  transition:transform .055s ease,box-shadow .055s ease,background .055s ease,color .055s ease;
+}
+#actionDock button:before{content:"";position:absolute;left:8%;right:8%;top:8%;height:24%;border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0));pointer-events:none;}
+#actionDock button:active,#actionDock button.pressed{
+  background:linear-gradient(180deg,#0a0b0d 0%,#17191d 100%);color:#f2c464;
+  transform:translateY(3px) scale(.985);
+  box-shadow:inset 0 7px 18px rgba(0,0,0,.78), inset 0 -1px 4px rgba(255,230,170,.10),0 0 9px rgba(242,196,100,.18);
+}
+#actionDock button.primary{color:#f2c464;border-color:#6e5b34;box-shadow:inset 0 1px 0 rgba(255,255,255,.13), inset 0 -5px 10px rgba(0,0,0,.54), 0 2px 0 rgba(0,0,0,.88), 0 0 8px rgba(242,196,100,.10);}
+#miniLog{position:relative;width:min(100vw,941px);max-width:941px;margin:5px auto 10px;color:#ffd976;font:700 clamp(7px,1.65vw,10px) "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 5px #000;opacity:.95;padding:0 8px;}
+@media(max-width:420px){#actionDock{grid-template-rows:repeat(2,36px);gap:6px;padding:8px 7px 7px;}#actionDock button{font-size:7.4px;}}
 
 @media (prefers-reduced-motion:reduce){.scan,.screenSlot:after,#led{animation:none}}
 </style>
@@ -115,16 +137,16 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <div class="logwrap"><div class="bar"><span>LOG</span></div><div id="log"></div></div>
 </main>
 <div id="actionDock" aria-label="Viditelne servisni ovladani pod kazetakem">
-  <button id="dockNetGames" type="button">NET HRY</button>
-  <button id="dockXex" type="button">XEX / ZIP</button>
+  <button id="dockNetGames" class="primary" type="button">NET HRY</button>
+  <button id="dockXex" type="button">XEX MOBIL</button>
   <button id="dockAtr" type="button">ATR DISK</button>
-  <button id="dockTbxl" type="button">TURBO BASIC</button>
-  <button id="dockTxt" type="button">BASIC / TBXL TXT</button>
+  <button id="dockTbxl" class="primary" type="button">TURBO BASIC</button>
+  <button id="dockTxt" type="button">BASIC/TBXL TXT</button>
   <button id="dockWav" type="button">WAV / CAS</button>
   <button id="dockLog" type="button">LOG / CHYBA</button>
   <button id="dockMenu" type="button">MENU</button>
 </div>
-<div id="miniLog">EMU10 BUILD2AA: NET HRY + XEX/ATR/TBXL/TXT/WAV/LOG samostatne pod kazetakem; kazetak zustava CLOAD/CSAVE priprava...</div>
+<div id="miniLog">EMU10 BUILD2AC: NET HRY bez auto-resetu + fyzicky dock styl; kazetak zustava CLOAD/CSAVE priprava...</div>
 <div id="txtOverlay" class="overlay">
   <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
   <label style="font:11px 'Courier New',monospace;color:#c9c5bb;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim</label>
@@ -1196,6 +1218,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
 // ui.js - EMU-10 UI: POKEY audio, klavesnice, smycka, log. Inlined do HTML pri buildu.
 'use strict';
 (function(){
+  var AH_AUTORUN_FROM_NET = /(?:\?|&)autorun=1(?:&|$)/.test(location.search||'');
   var logEl, M, canvas, ctx, img, running=false, audio=null;
   var tapeAudio=null, tapeAudioUrl=null, tapeRunTimer=null;
   var LOGBUF=[];
@@ -1702,7 +1725,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',520); tapeAnimate(900); log('KAZETA REWIND: animace, HW kazeta/C: bude v dalsi fazi.'); });
     safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',520); tapeAnimate(900); log('KAZETA F.FWD: animace, HW kazeta/C: bude v dalsi fazi.'); });
     document.getElementById('btnTxt').addEventListener('click',openTxtOverlay);
-    safeTap('dockXex',function(){ pressAnim('dockXex',220); openLocalGamePicker('XEX/ZIP Z MOBILU'); });
+    safeTap('dockXex',function(){ pressAnim('dockXex',220); openLocalGamePicker('XEX MOBIL'); });
     safeTap('dockAtr',function(){ pressAnim('dockAtr',220); openLocalGamePicker('ATR DISK Z MOBILU'); });
     safeTap('dockTbxl',function(){ runTbxl(); });
     safeTap('dockTxt',function(){ pressAnim('dockTxt',220); openTextPicker(); });
@@ -1757,7 +1780,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2AA-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2AC-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -1770,11 +1793,11 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bh.addEventListener('pointerup',bhUp); bh.addEventListener('pointerleave',bhUp);
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
-    log('AtariHelp.eu EMU-10 BUILD2AA JOY + CLOAD/CSAVE PREP pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2AC NET-AUTORUN + DOCK BUTTON FIX pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani.');
-    log('Dole: NET HRY, XEX/ZIP, ATR, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. NET HRY otevre AtariHelp.eu a klik na XEX/ZIP/ATR se ma vratit do emulatoru a spustit.');
+    log('Dole: NET HRY, XEX MOBIL, ATR DISK, TURBO BASIC, BASIC TXT, WAV/CAS, LOG. NET HRY otevre AtariHelp.eu a po kliknuti na hru se vrati do emulatoru bez auto-resetu BASICu.');
     requestAnimationFrame(tick);
-    setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120);
+    if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
 })();
 

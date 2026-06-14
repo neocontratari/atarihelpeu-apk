@@ -1,0 +1,19 @@
+AtariHelp.eu EMU-10 BUILD2AC_NET_AUTORUN_DOCK_FIX
+
+Co se meni:
+- Opravena chyba NET HRY: pri navratu z webu se emulator uz neresetuje auto POWER BASIC po 120 ms.
+  To byla pricina, proc log ukazal BOOTANY/NAHRAJ XEX, ale pak se to vratilo do BASIC READY.
+- Java nyni pri stazeni hry z webu otvira emu/index.html?autorun=1 a JS v tomto rezimu vypne startovni auto POWER.
+- Dole pod kazetakem jsou tlacitka ve tmavem fyzickem stylu jako pod monitorem.
+- Popisek XEX / ZIP zmenen na XEX MOBIL, aby bylo jasne, ze je to lokalni vyber z mobilu. NET HRY zustava web.
+- Kazetak zustava pripraveny pro budouci ciste CLOAD/CSAVE, neni zneuzity na XEX picker.
+
+Test:
+1) Spust apku.
+2) V emulatoru zmackni NET HRY.
+3) Na AtariHelp.eu klikni na ZIP/XEX/ATR hru.
+4) Log ma ukazat: Prijimam z webu -> Prijato -> BOOTANY -> NAHRAJ XEX/ATR.
+5) Po logu uz se NESMI objevit POWER: cold start -> BASIC.
+
+KODY JSOU STEJNE.
+BASIC/Altirra testovaci kody se nemenily. Jadro emulace zustava beze zmen, zmena je UI/Android bridge/autorun ochrana.

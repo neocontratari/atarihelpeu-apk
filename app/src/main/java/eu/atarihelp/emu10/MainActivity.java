@@ -23,13 +23,14 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLDecoder;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2AA
+ * AtariHelp.eu EMU-10 BUILD2AC
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
- * - BUILD2AA UI: NET HRY v emulatoru, robustni web download -> automaticky boot hry
+ * - BUILD2AC UI: NET HRY v emulatoru, robustni web download -> automaticky boot hry bez auto POWER resetu
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
@@ -212,6 +213,25 @@ public class MainActivity extends Activity {
         return false;
     }
 
+    private String guessDownloadName(String url, String contentDisposition) {
+        try {
+            if (contentDisposition != null) {
+                String cd = contentDisposition;
+                int p = cd.toLowerCase().indexOf("filename=");
+                if (p >= 0) {
+                    String n = cd.substring(p + 9).replace("\"", "").replace("'", "").trim();
+                    int semi = n.indexOf(';');
+                    if (semi >= 0) n = n.substring(0, semi).trim();
+                    if (n.length() > 0) return n;
+                }
+            }
+            Uri u = Uri.parse(url);
+            String path = u.getLastPathSegment();
+            if (path != null && path.length() > 0) return URLDecoder.decode(path, "UTF-8");
+        } catch (Exception ignored) {}
+        return "stazeno_z_webu.zip";
+    }
+
     private void injectGameLinkBridge() {
         String js = "(function(){"
                 + "if(window.__AH_GAME_BRIDGE)return;window.__AH_GAME_BRIDGE=1;"
@@ -232,6 +252,7 @@ public class MainActivity extends Activity {
                 HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
                 c.setInstanceFollowRedirects(true);
                 c.connect();
+                final String cdName = c.getHeaderField("Content-Disposition");
                 InputStream in = c.getInputStream();
                 ByteArrayOutputStream bos = new ByteArrayOutputStream();
                 byte[] buf = new byte[16384];
@@ -239,8 +260,7 @@ public class MainActivity extends Activity {
                 while ((n = in.read(buf)) > 0 && bos.size() < 8 * 1024 * 1024) bos.write(buf, 0, n);
                 in.close();
                 final byte[] data = bos.toByteArray();
-                String path = Uri.parse(url).getLastPathSegment();
-                final String name = (path == null || path.isEmpty()) ? "stazeno.zip" : path;
+                final String name = guessDownloadName(url, cdName);
                 ui.post(() -> {
                     String cur = web.getUrl();
                     if (cur != null && cur.startsWith(EMU_URL)) {
@@ -248,7 +268,7 @@ public class MainActivity extends Activity {
                     } else {
                         pendingGame = data;
                         pendingName = name;
-                        web.loadUrl(EMU_URL);   // otevri emulator, soubor se vlozi po nacteni
+                        web.loadUrl(EMU_URL + "?autorun=1");   // otevri emulator bez auto POWER BASIC; soubor se vlozi po nacteni
                     }
                 });
             } catch (Exception ex) {
