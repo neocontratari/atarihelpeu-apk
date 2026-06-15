@@ -1,0 +1,32 @@
+AtariHelp.eu EMU-10 BUILD2BA START+OPTION + WAV CLOAD FIRST PASS
+
+CO JE NOVE:
+- Horni tlacitko uz neni POWER+OPTION SELF TEST. Je to ciste START + OPTION.
+- START + OPTION udela cold start s drzenym START+OPTION cca 6.5 s, pro kazetovy/turbo loader.
+- PLAY na kazetaku porad NEOTEVIRA Downloads. Downloads otevre jen VLOZIT KAZETU klepnutim na telo kazety.
+- WAV PLAY dela prvni poctivy standardni Atari 600 baud FSK decode pokus.
+- Kdyz se z WAV opravdu dekoduji bajty, poslou se do POKEY SERIN fronty. Zadny RAM inject.
+- Kdyz WAV neni standardni CLOAD/CSAVE nebo je Turgen/turbo loader, log rekne NE a WAV se jen prehrava jako realna zvukova kazeta.
+- CSAVE/SAVE "C:" uklada automaticky do Downloads/AtariHelp jen tehdy, kdyz RECORD+CSAVE opravdu zachyti SEROUT bajty.
+
+DULEZITE:
+- Pokud po testu CSAVE neni v Downloads/AtariHelp soubor AtariHelp_CSAVE_*.cas, log musi ukazat proc: nebyly zachyceny realne SEROUT bajty nebo nebyl stisknut RECORD/CSAVE ARM.
+- CLOAD z WAV je v BUILD2BA prvni realny pokus, ne fake hotovy dekoder pro vsechny Turgen/turbo WAV.
+
+TEST 1 - START + OPTION:
+1. V emulatoru zmackni horni START + OPTION.
+2. Log musi psat START+OPTION, ne Self Test.
+3. Vloz WAV/CAS pres telo kazety.
+4. PLAY pousti vlozenou kazetu.
+
+TEST 2 - CSAVE DO DOWNLOADS:
+1. POWER BASIC.
+2. Napis kratky program.
+3. RECORD na XC12.
+4. V BASICu napis CSAVE nebo v Turbo BASICu SAVE "C:".
+5. Po dokonceni STOP/EJECT.
+6. Log musi psat CSAVE VYSLEDEK ANO/NE.
+7. Pri ANO hledej soubor v Downloads/AtariHelp jako AtariHelp_CSAVE_BASIC_YYYYMMDD_HHMMSS.cas nebo AtariHelp_CSAVE_TBXL_YYYYMMDD_HHMMSS.cas.
+
+KODY JSOU STEJNE.
+Jadro emulatoru, ROM logika a BASIC/Altirra testovaci kody nebyly meneny. Zmeny jsou UI, START+OPTION, logika WAV CLOAD first-pass a ukladani CSAVE do Downloads/AtariHelp.
