@@ -1,0 +1,75 @@
+ATARIHELP.EU EMU-10 BUILD2BF_START_BOOT_CLOAD_MOTOR_SERIAL
+===========================================================
+
+CO JE TO:
+- Navazuje na BUILD2BE_START_BOOT_AUTOPLAY_LONG_LEADER.
+- Cilem neni grafika/UI, ale poctivejsi CLOAD / START cassette boot.
+- Zadny RAM inject, zadny fake CLOAD, zadne cteni BASIC programu z RAM.
+
+KODY JSOU STEJNE.
+Jadro/ROM/BASIC testovaci kody jsou nezmenene. Meneny je kazetovy serial/POKEY/SIO model, START+OPTION boot puls a logika/log XC12.
+
+HLAVNI ZMENY BUILD2BF:
+1) CLOAD CAS/WAV fronta uz nezacne jen podle kliknuti PLAY.
+   - Data se pripravi do POKEY SERIN fronty.
+   - Ale cekaji na realny C: motor ON z PACTL bit3.
+   - To znamena: Atari OS/BASIC musi opravdu prejit do CLOAD/boot cekani.
+
+2) Dlouhy leader se pocita az PO motor ON.
+   - Queue lead: cca 120000 PAL radku (~7.7 s) pred prvnim SERIN bajtem.
+   - Monitor WAV pro CAS/CSAVE ma novy delsi vodici ton cca 8 s.
+
+3) SERIN byte se uz neprepisuje po 200 radkach.
+   - BUILD2BE mohl ztratit byte, kdyz OS jeste SERIN neprecetl.
+   - BUILD2BF drzi neprecteny SERIN byte a loguje HOLD_SERIN.
+
+4) START+OPTION boot je upraveny.
+   - START je drzeny od resetu dlouho.
+   - OPTION je jen kratky BASIC-OFF/Turbo pulz, aby se omezil pad do SELF TESTu.
+   - Auto PLAY kazety zustava, ale data jdou az po realnem motor ON + leader.
+
+5) Brutalnejsi pravdivy log.
+   V logu hledej hlavne:
+   - CLOAD SERIAL BUILD2BF: fronta ... motor=ON/OFF
+   - CLOAD SERIAL BUILD2BF: data jsou pripravena, ale C: motor jeste neni ON
+   - CLOAD MOTOR: PACTL bit3 = 0, motor ON
+   - CLOAD SERIAL BUILD2BF: motor potvrzen, leader zbyva ...
+   - CLOAD SERIAL BUILD2BF: prvni bajt do SERIN = $..
+   - CLOAD SERIAL BUILD2BF: SERIN predano X/Y B
+   - CLOAD SERIAL BUILD2BF: HOLD_SERIN ... OS ho jeste neprecetl
+   - CLOAD SERIAL BUILD2BF: fronta dokoncena X/Y B
+
+TEST PLAN:
+1) Zakladni boot:
+   - Spust apku.
+   - POWER -> musi zustat BASIC READY jako driv.
+
+2) CSAVE kontrola, ze jsme nerozbili zapis:
+   - V BASICu napis kratky program.
+   - Dej CSAVE nebo SAVE "C:".
+   - Over, ze AUTO REC zachyti SEROUT a ulozi CAS+WAV do Downloads/AtariHelp.
+
+3) CLOAD z vlastniho CAS:
+   - POWER BASIC.
+   - Vloz ulozeny AtariHelp_CSAVE_BASIC_*.cas.
+   - V BASICu zadej CLOAD.
+   - Az Atari ceka, dej PLAY CLOAD.
+   - V logu musi byt MOTOR ON, leader, prvni SERIN byte, postup X/Y.
+   - Pokud Atari napise Error, posli screen a log.
+
+4) CLOAD z vlastniho WAV:
+   - Vloz ulozeny AtariHelp_CSAVE_BASIC_*.wav.
+   - Zadej CLOAD, pak PLAY.
+   - WAV dekoder musi ukazat confidence a data se pusti jen pokud je decode OK.
+   - U vlastniho WAV z CSAVE cekame cca 95 % jako v BUILD2BE logu.
+
+5) START+OPTION cassette boot:
+   - Klikni START+OPTION bez vlozene kazety.
+   - Vyber WAV/CAS.
+   - Sleduj, jestli log rekne START drzen, OPTION uvolnen, motor ON, leader, SERIN.
+   - Kdyz to skonci READY/SELF TEST/BOOT ERROR, posli cely log + screen.
+
+POZOR:
+- Pokud se v logu objevi jen WAIT_MOTOR a nikdy MOTOR_ON, Atari OS/BASIC nevstoupil do C: cekani. To je dulezity vysledek, ne fake.
+- Pokud je MOTOR_ON, ale nikdy FIRST_BYTE, je problem v leader/timingu.
+- Pokud FIRST_BYTE a RX_COUNT bezi, ale BASIC skonci Error 138/143, bude dalsi prace na presnem Atari kazetovem formatu/checksum/SKSTAT/IRQ timing.
