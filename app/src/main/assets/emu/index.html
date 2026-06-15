@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2BC</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2BD</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -267,7 +267,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
       <li><b>COUNTER</b> — ukazuje stopu/polohu audio souboru.</li>
       <li><b>COUNTER RESET</b> — male tlacitko u ciselniku vynuluje stopu na 000 bez pretaceni audia.</li>
       <li><b>Zvuk kazety</b> — WAV/MP3 hraje skutecny soubor; CAS ma monitor zvuk vytvoreny z nahranych CAS bajtu. CSAVE monitor pipa jen pri realne zachycenych SEROUT bajtech, zadny vymysleny fake.</li>
-      <li><b>Zasada BUILD2BC</b> — zadny fake CLOAD, zadny RAM inject. CAS PLAY posila data z CAS do POKEY SERIN fronty; WAV PLAY dela prvni poctivy standardni 600 baud FSK decode pokus a jen pri realne dekodovanych bajtech je posle do POKEY SERIN.</li>
+      <li><b>Zasada BUILD2BD</b> — zadny fake CLOAD, zadny RAM inject. CAS PLAY posila data z CAS do POKEY SERIN fronty s delsim lead-in. WAV PLAY hleda skutecny zacatek dat za vodicim tonem a posle jen dostatecne duveryhodne dekodovane bajty.</li>
       <li><b>Ukladani CSAVE</b> — automaticky jen kdyz pri RECORD + CSAVE/SAVE &quot;C:&quot; prisly realne SEROUT bajty. Uklada do Downloads/AtariHelp jako AtariHelp_CSAVE_BASIC/TBXL_YYYYMMDD_HHMMSS.cas a AtariHelp_CSAVE_BASIC/TBXL_YYYYMMDD_HHMMSS.wav.</li>
     </ul>
     <h3>Servis</h3>
@@ -603,7 +603,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!bytes || !bytes.length) return 0;
     sio.rxq.length=0; sio.rxPos=0; pokey.serinRead=true; pokey.serinAge=0;
     const arr=[]; for(let i=0;i<bytes.length;i++) arr.push(bytes[i]&255);
-    sioQueue(900,arr,perByteLines||260); // BUILD2BC: kratky nabeh pasky po PLAY, pak cca 600 baud (~260 PAL radek/byte)
+    sioQueue(16000,arr,perByteLines||260); // BUILD2BD: delsi lead-in po PLAY (~1 s), pak cca 600 baud (~260 PAL radek/byte)
     if(M.cassDebug) M.cassDebug('QUEUE',arr.length);
     return arr.length;
   };
@@ -1706,19 +1706,19 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     startAudio();
     M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(audio&&audio.sh)audio.sh.head=-1;
     if(audio) M.onSpeaker=function(level){ audio.st.spkLevel=level?1:-1; audio.st.spkDecay=(audio.ac.sampleRate*0.004)|0; };
-    // BUILD2BC: START drzim kratce jen pro kazetovy boot request, OPTION drzim dele pro BASIC OFF.
-    // Drzeni obou prilis dlouho dokazalo spadnout do SELF TESTu, coz nechceme.
-    M.coldStart({start:true,option:true});
+    // BUILD2BD: na testu bylo overeno, ze drzeni OPTION pri cold startu v nasem OS pada do SELF TESTu.
+    // Proto tlacitko zustava uzivatelsky START+OPTION, ale HW cesta je BEZPECNY KAZETOVY START:
+    // START drzim pres reset a OPTION nepoustim do self-test vetve. Zadny fake load, jen spravne konzolove boot tlacitko START.
+    M.coldStart({start:true,option:false});
     running=true;
     document.getElementById('led').classList.add('on');
     if(typeof setJoyMode==='function') setJoyMode(false);
     typeQ.length=0;
-    consolState.start=true; consolState.option=true; consolState.select=false;
-    M.consol(true,false,true);
-    setTimeout(function(){ consolState.start=false; if(M)M.consol(false,false,consolState.option); log('START+OPTION: START uvolnen po kazetovem boot impulsu, OPTION jeste drzim pro BASIC OFF.'); },900);
-    setTimeout(function(){ consolState.option=false; if(M)M.consol(false,false,false); log('START+OPTION: OPTION uvolnen. Pokud je vlozena WAV/CAS, pokracuj PLAY na kazetaku.'); },5200);
-    log('START+OPTION: cold start s kratkym START impulsem + drzenym OPTION. Tohle neni Self Test; je to rezim pro kazetovy/turbo loader jako na realnem Atari.');
-    log('START+OPTION: vloz WAV/CAS klepnutim na telo kazety a PLAY pusti vlozenou pasku. PLAY uz nikdy neotevira Downloads.');
+    consolState.start=true; consolState.option=false; consolState.select=false;
+    M.consol(true,false,false);
+    setTimeout(function(){ consolState.start=false; if(M)M.consol(false,false,false); log('START+OPTION SAFE: START uvolnen. OPTION jsem nedrzel, protoze v BUILD2BC skakal do SELF TESTu. Tohle je cisty kazetovy boot START.'); },1800);
+    log('START+OPTION SAFE: cold start s drzenym START pro kazetovy/turbo boot. SELF TEST je blokovany tim, ze OPTION nejde drzet pres OS self-test vetvici.');
+    log('START+OPTION SAFE: vloz WAV/CAS klepnutim na telo kazety a PLAY pusti vlozenou pasku. PLAY uz nikdy neotevira Downloads.');
     log('ROM: prava XL OS 16K (reset $C2AA) + prava Atari BASIC 8K');
   }
   function doReset(){ if(!M) return; M.reset(); log('RESET (warm start pres reset vektor)'); }
@@ -1836,14 +1836,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     localTextParts=[];
   };
 
-  // ---------- BUILD2BC: XC12 VLOZIT/PLAY + CSAVE AUTO SAVE + WAV CLOAD FIRST PASS ----------
+  // ---------- BUILD2BD: XC12 VLOZIT/PLAY + CSAVE AUTO SAVE + WAV CLOAD FIRST PASS ----------
   var cassStage={loadedName:'',loadedKind:'',loadedBytes:null,casInfo:null,wavDecodeCache:null,wavDecodeTried:false,csaveArmed:false,csaveCapturing:false,captured:new Uint8Array(0),captureArray:[],captureCount:0,tapeInserted:false,lastStopAt:0,casMonitor:false,csaveMode:'BASIC'};
   function cassSetStatus(msg){
     var el=document.getElementById('cassStatus');
     if(el) el.textContent='XC12: '+msg;
   }
   function u8ToBase64(u8){
-    var out='', chunk=0x6000; // BUILD2BC: chunk je nasobek 3, aby spojena Base64 nebyla rozbita pro velke WAV
+    var out='', chunk=0x6000; // BUILD2BD: chunk je nasobek 3, aby spojena Base64 nebyla rozbita pro velke WAV
     for(var i=0;i<u8.length;i+=chunk){
       var sub=u8.subarray(i,Math.min(i+chunk,u8.length));
       var s=''; for(var j=0;j<sub.length;j++) s+=String.fromCharCode(sub[j]);
@@ -1956,7 +1956,15 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function attachMachineHooks(){
     if(!M) return;
     M.onSerialOut=function(v,cmdLine){
-      if(cassStage && cassStage.csaveCapturing && !cmdLine) captureCsaveByte(v);
+      if(!cassStage || cmdLine) return;
+      // BUILD2BD: AUTO REC pro CSAVE/SAVE "C:". Kdyz Atari opravdu zacne posilat kazetovy serial
+      // proud a prvni sync byte je $55, nemusis predem mackat RECORD. Neni to fake: zachytava se
+      // jen skutecny POKEY SEROUT byte, nic z RAM.
+      if(!cassStage.csaveCapturing && (v&255)===0x55){
+        armCsave('AUTO REC');
+        log('CSAVE AUTO REC: Atari zacalo posilat $55 na SEROUT, RECORD jsem automaticky zamackl jako realny XC12 pripraveny na zapis.');
+      }
+      if(cassStage.csaveCapturing) captureCsaveByte(v);
     };
   }
   function extractCasPayloadBytes(u8){
@@ -2085,42 +2093,58 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     return s1*s1+s2*s2-coeff*s1*s2;
   }
   function decodeWavStandard600(u8){
-    var res={ok:false,bytes:new Uint8Array(0),error:'',valid:0,total:0,offset:0,confidence:0};
+    var res={ok:false,bytes:new Uint8Array(0),error:'',valid:0,total:0,offset:0,lead:0,confidence:0};
     var w=wavPcmMonoFromBytes(u8);
     if(!w.ok){ res.error=w.error; return res; }
     var sr=w.sr, pcm=w.pcm, spb=Math.max(12,Math.round(sr/600));
-    var lead=Math.min(pcm.length-1,Math.floor(sr*0.15));
-    function bitAt(cell){
-      var st=lead + res.offset + cell*spb;
+    var maxCellsAll=Math.floor(pcm.length/spb)-12;
+    if(maxCellsAll<20){ res.error='WAV je prilis kratky pro 600 baud decode'; return res; }
+    function energyBit(st){
       if(st<0 || st+spb>pcm.length) return 1;
       var a=goertzel(pcm,st,spb,sr,3995), b=goertzel(pcm,st,spb,sr,5327);
       return b>a ? 1 : 0;
     }
-    var best={score:-1,off:0,valid:0,total:0};
-    var maxCells=Math.min(Math.floor((pcm.length-lead)/spb)-12, 40000);
-    for(var off=0; off<spb; off+=Math.max(1,Math.floor(spb/18))){
-      res.offset=off; var score=0, valid=0, total=0;
-      for(var cell=0; cell+10<Math.min(maxCells,2400); cell+=10){
-        var st=bitAt(cell), stop=bitAt(cell+9); total++;
-        if(st===0 && stop===1){ score+=3; valid++; }
-        else if(st===0 || stop===1) score+=1;
+    function scoreAt(lead,off,limitCells){
+      var valid=0,total=0,score=0;
+      var maxCells=Math.min(Math.floor((pcm.length-lead-off)/spb)-12, limitCells||1800);
+      if(maxCells<20) return {score:-1,valid:0,total:0};
+      for(var cell=0; cell+10<maxCells; cell+=10){
+        var st=lead+off+cell*spb;
+        var sb=energyBit(st), eb=energyBit(st+9*spb); total++;
+        if(sb===0 && eb===1){ score+=5; valid++; }
+        else if(sb===0 || eb===1) score+=1;
       }
-      if(score>best.score) best={score:score,off:off,valid:valid,total:total};
+      return {score:score,valid:valid,total:total};
     }
-    res.offset=best.off;
+    // BUILD2BD: nehadej pevny zacatek dat. Vlastni CSAVE WAV ma asi 1 s vodici tone,
+    // Turgen muze mit jiny nabeh. Hledam misto, kde zacnou platne start/stop bity.
+    var best={score:-1,lead:0,off:0,valid:0,total:0};
+    var leadMax=Math.min(pcm.length-spb*200, sr*3.0|0);
+    var leadStep=Math.max(spb*3, Math.floor(sr*0.04));
+    var offStep=Math.max(1,Math.floor(spb/16));
+    for(var lead=0; lead<=leadMax; lead+=leadStep){
+      for(var off=0; off<spb; off+=offStep){
+        var sc=scoreAt(lead,off,800);
+        if(sc.score>best.score) best={score:sc.score,lead:lead,off:off,valid:sc.valid,total:sc.total};
+      }
+    }
+    res.lead=best.lead; res.offset=best.off;
     var arr=[], badRun=0;
+    var maxCells=Math.min(Math.floor((pcm.length-best.lead-best.off)/spb)-12, 400000);
     for(var cell=0; cell+10<maxCells; cell+=10){
-      var start=bitAt(cell), stop=bitAt(cell+9), v=0;
-      for(var b=0;b<8;b++) v|=(bitAt(cell+1+b)<<b);
+      var base=best.lead+best.off+cell*spb;
+      var startBit=energyBit(base), stopBit=energyBit(base+9*spb), v=0;
+      for(var b=0;b<8;b++) v|=(energyBit(base+(1+b)*spb)<<b);
       res.total++;
-      if(start===0 && stop===1){ arr.push(v&255); res.valid++; badRun=0; }
-      else { badRun++; if(arr.length>16 && badRun>120) break; }
+      if(startBit===0 && stopBit===1){ arr.push(v&255); res.valid++; badRun=0; }
+      else { badRun++; if(arr.length>16 && badRun>160) break; }
       if(arr.length>262144) break;
     }
+    // orez koncovy sum/nahodne byty po dlouhem badRun se uz deje vyse; ponechavam komplet valid stream
     res.bytes=new Uint8Array(arr);
     res.confidence=res.total?res.valid/res.total:0;
-    if(arr.length>=16 && res.confidence>0.06){ res.ok=true; return res; }
-    res.error='standardni 600 baud FSK zatim nenasel spolehliva data (valid='+res.valid+'/'+res.total+', offset='+res.offset+')';
+    if(arr.length>=16 && res.confidence>0.35){ res.ok=true; return res; }
+    res.error='standardni 600 baud FSK zatim nenasel spolehliva data (valid='+res.valid+'/'+res.total+', lead='+(res.lead/sr).toFixed(2)+'s, offset='+res.offset+')';
     return res;
   }
   function tryQueueWavCloadFirstPass(){
@@ -2139,7 +2163,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var d=cassStage.wavDecodeCache;
     if(d && d.ok && d.bytes && d.bytes.length){
       var conf=d.confidence||0;
-      if(conf<0.55){
+      if(conf<0.35){
         log('WAV CLOAD DECODE: POZOR - duvera je jen '+Math.round(conf*100)+'%, data NEPOSILAM do POKEY. To by delalo BOOT ERROR / bordel. WAV jen prehravam jako pravou pasku, zadny fake.');
         cassSetStatus('WAV CLOAD: dekoder nasel slaba data | neposilam garbage');
         return 0;
@@ -2173,14 +2197,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     else cassStage.loadedKind='AUDIO';
     insertTapeAudioBytes(name,u8);
   }
-  function armCsave(){
+  function armCsave(mode){
     if(cassStage.csaveCapturing){ log('CSAVE ARM: RECORD uz je zamacknuty a cekam na data z Atari.'); return; }
     cassStage.csaveArmed=true; cassStage.csaveCapturing=true; cassStage.captureArray=[]; cassStage.captureCount=0; cassStage.captured=new Uint8Array(0);
     clearCsaveAutoStop();
     cassSetStatus('CSAVE ARM | RECORD drzi dole | cekam na realny POKEY/SEROUT z C:');
     tapeVisualStart('REC',1,false);
     var rb=document.getElementById('btnTapeRecord'); if(rb) rb.classList.add('pressed');
-    log('CSAVE ARM: RECORD je zamacknuty a zustane dole jako na realnem XC12. Ted napis v BASIC/Turbo BASIC CSAVE nebo SAVE "C:". Jakmile Atari posle SEROUT bajty, nahravani se samo rozbehne.');
+    log((mode==='AUTO REC'?'CSAVE AUTO REC ARM: ':'CSAVE ARM: ')+'RECORD je zamacknuty a zustane dole jako na realnem XC12. Ted Atari posila/pocka na CSAVE nebo SAVE "C:". Zachytavam jen realne SEROUT bajty.');
     log('CSAVE ARM: po konci dat se pokusim zastavit nahravani automaticky a ulozit CAS+WAV do Downloads/AtariHelp. STOP/EJECT zustava rucni jistota. Zadny fake soubor, zadne cteni programu z RAM.');
   }
   function stopCsaveIfNeeded(reason){
@@ -2371,7 +2395,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var pr=tapeAudio.play();
       if(pr&&pr.then) pr.then(function(){ log('CAS PLAY: monitor zvuk odvozeny z '+r.bytes+' B CAS dat. Zdroj mel '+r.srcBytes+' B dat. Neni to RAM inject.'); }).catch(function(e){ tapeVisualStop(); log('CAS PLAY: audio monitor se nerozjel - '+e.message); });
       cassSetStatus('CAS PLAY | '+cassStage.loadedName+' | CLOAD prvni pruchod');
-      log('CLOAD REAL POKUS BUILD2BC: CAS je zaroven poslana do POKEY SERIN fronty ('+queued+' B) a slysim monitor zvuk. Pokud BASIC/Turbo BASIC ceka na C:, ma sanci data vzit. Pokud ne, log rekne kde se ztraci.');
+      log('CLOAD REAL POKUS BUILD2BD: CAS je po delsim lead-in poslana do POKEY SERIN fronty ('+queued+' B) a slysim monitor zvuk. Pokud BASIC/Turbo BASIC ceka na C:, ma sanci data vzit. Pokud ne, log rekne kde se ztraci.');
     }catch(e){ tapeVisualStop(); log('CAS PLAY chyba: '+e.message); }
   }
   function tapeAnimate(ms,mode,speed){
@@ -2458,7 +2482,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!silent) log((reason||'TAPE PAUSE')+': audio je zastavene na aktualni pozici. PLAY ho znovu rozjede. COUNTER '+pad3(tapeCounterValue)+'.');
   }
   function stopTapeAudio(reason,silent){
-    /* BUILD2BC: STOP nesmi pretacet. Zastavi pohyb/zvuk a vynuluje jen ciselnik,
+    /* BUILD2BD: STOP nesmi pretacet. Zastavi pohyb/zvuk a vynuluje jen ciselnik,
        nepretaci realnou pozici audio souboru. PLAY muze pokracovat z aktualni pozice. */
     try{
       tapeStoppedUntil=Date.now()+1200;
@@ -2661,7 +2685,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2BC-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2BD-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -2677,9 +2701,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2BC START+OPTION + CSAVE WAV SAVE AUTO REC pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2BD SAFE START + WAV CLOAD DECODE + AUTO REC pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani/kazetak.');
-    log('KAZETA BUILD2BC: START+OPTION je ciste kazetovy/turbo start; CSAVE po realnem SEROUT automaticky uklada CAS i WAV do Downloads/AtariHelp; RECORD zustava zamacknuty a CSAVE se umi po tichu sam zastavit.');
+    log('KAZETA BUILD2BD: START+OPTION je ciste kazetovy/turbo start; CSAVE po realnem SEROUT automaticky uklada CAS i WAV do Downloads/AtariHelp; RECORD zustava zamacknuty a CSAVE se umi po tichu sam zastavit.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
