@@ -1,0 +1,30 @@
+AtariHelp.eu EMU-10 BUILD2BJ_WAV_AUDIO_RESTORE_CSAVE_CACHE
+============================================================
+
+KODY JSOU STEJNE.
+Jadro/ROM/BASIC testovaci kody se nemenily. Zmeny jsou jen v XC12/WAV/CSAVE cache/logice.
+
+Proc BUILD2BJ:
+- BUILD2BI moc tvrdym SAFE guardem umlcel velke WAV, takze po START+OPTION ani CLOAD nebyl slyset zvuk.
+- Log z testu ukazal, ze velky WAV byl vlozeny, ale Android audio nebylo pustene.
+- Pri pokusu o vlastni CSAVE WAV selhal Android picker na ENOENT, takze se k CLOAD testu casto ani nedostal spravny soubor.
+
+Zmeny:
+1) Velke WAV uz nejsou tise blokovane. Pokud maji validni WAV hlavicku a nejsou extremni, pusti se realny Android Audio zvuk.
+2) Velke/turbo WAV se stale NEDEKODUJI do SERIN, aby nevznikal fake/garbage. Hraji jako skutecny zvuk, CLOAD/boot data pro ne jsou dalsi faze.
+3) Posledni CSAVE CAS+WAV se drzi v pameti emulatoru. Cervene SAVE/LAST CSAVE tlacitko vlozi posledni CSAVE WAV z pameti pro okamzity CLOAD test bez Android pickeru.
+4) Pokud Android picker po CSAVE hodi open failed / ENOENT, BUILD2BJ automaticky zkusi vlozit posledni CSAVE WAV z pameti.
+5) Audio ma onerror log, aby bylo jasne, jestli spadl Android/NOX audio dekoder nebo jen nejde CLOAD.
+
+Test plan:
+1. POWER BASIC -> READY.
+2. Vloz galactic/pacman WAV -> PLAY: musi byt slyset zvuk nebo jasna AUDIO CHYBA v logu. Uz ne tiche odmitnuti.
+3. START+OPTION s vlozenym WAV -> OS boot pokus + zvuk kazety se ma rozjet, pokud ho NOX neodmitne.
+4. CSAVE maly BASIC program -> auto ulozi CAS+WAV a napise CSAVE CACHE.
+5. Nepouzivej picker: po CSAVE stiskni cervene SAVE/LAST CSAVE, tim se vlozi posledni CSAVE WAV z pameti. Pak v BASICu CLOAD + PLAY.
+6. Posli log s radky BUILD2BJ CSAVE CACHE, WAV AUDIO BUILD2BJ, KAZETA AUDIO CHYBA, CLOAD SERIAL.
+
+Dulezite:
+- Zadny RAM inject.
+- Zadny fake CLOAD/CSAVE.
+- Cache obsahuje jen realne bajty zachycene z POKEY SEROUT pri CSAVE.
