@@ -1,0 +1,49 @@
+================================================================
+  AtariHelp.eu EMU-10 (BUILD2BL) — OPRAVA: Decathlon banner barva
+================================================================
+
+CO SE OPRAVILO
+--------------
+Pozadi banneru v Decathlonu (a obecne barvy $7x/$8x) bylo FIALOVE.
+Spravne ma byt syta tmava MODRA. Slo o chybu PALETY, ne emulace.
+
+PROC TO TAK BYLO (vystopovano primo v kodu hry)
+-----------------------------------------------
+- Hra si pozadi banneru zapisuje SAMA ve svem VBI:
+    $99C9:  LDY #$88
+    $99CB:  STY $D01A     ; COLBK = barva $88, kazdy frame
+  Herni VBI konci RTI - NEvola OS rutinu. Takze hodnota $88 plati
+  i na realnem zeleze i v Altire. Hodnotu $88 NELZE zmenit, jinak
+  bych rozbil hru. $88 ale NENI cerna - je to MODRA (hue 8).
+- Problem byl, ze moje paleta renderovala $88 jako FIALOVOU
+  (135,105,255) misto spravne modre. Atari hue 7 a 8 jsou MODRE,
+  muj puvodni vzorec u nich nechaval prilis cervene -> fialova.
+
+OPRAVA (chirurgicka, bezpecna)
+------------------------------
+- Zmenily se POUZE barvy $7x a $8x (16+16 = 32 hodnot) na sytou
+  tmavou modrou, konzistentni s overenou modrou $94.
+- VSECHNY ostatni barvy (zlata, cervena, zelena, bila, modra $94,
+  ...) zustaly BAJT PO BAJTU STEJNE jako predtim.
+  => zadna jina hra se barevne nezmeni.
+- $88 nove = RGB (32,65,150) - syta tmava Atari modra.
+
+OVERENO HEADLESS TESTY
+----------------------
+- Decathlon: banner ted MODRY (ne fialovy), zbytek obrazu beze zmeny.
+- Pitstop II, International Karate, Death Race: vyrenderovany se
+  starou i novou paletou - mimo modre $7x/$8x jsou PIXELOVE STEJNE.
+- Emulator nabootuje, zadny pad CPU.
+
+INSTALACE
+---------
+Zkopiruj slozku  app/  z tohoto baliku pres  app/  ve svem projektu
+(prepise se jediny soubor: app/src/main/assets/emu/index.html),
+znovu sestav a nainstaluj.
+
+POZNAMKA
+--------
+Pozadi NEBUDE uplne cerne - hra do nej natvrdo zapisuje barvu $88,
+coz je MODRA, ne cerna (to je verne realnemu HW i Altire). Ted je to
+spravna tmava modra misto fialove. Pokud tvoje Altirra ukazuje jiny
+presny odstin, posli mi jeho RGB a nastavim $88 presne na nej.

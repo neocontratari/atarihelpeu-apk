@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2BN</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2BL</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -79,21 +79,19 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   transform:translateY(6px) scaleY(.90);pointer-events:none;}
 .hit.tapeBtn.pressed:after{content:"";position:absolute;left:8%;right:8%;top:16%;height:20%;border-radius:50%;background:rgba(255,255,255,.08);transform:translateY(6px);pointer-events:none;}
 /* transparent keyboard overlay over exact PNG key area */
-#osk{position:absolute;left:5.35%;top:48.28%;width:88.15%;height:21.05%;z-index:32;display:flex;flex-direction:column;gap:.45%;opacity:1;pointer-events:auto;}
-.krow{display:flex;gap:.30%;flex:1;min-height:0;}
-.key{flex:1;border:0;border-radius:5px;background:rgba(255,255,255,.001);color:transparent;font-size:0;min-width:0;transition:transform .045s ease,background .045s ease,box-shadow .045s ease;transform-origin:center bottom;}
-.key.wide-tab{flex:1.45}.key.wide-ret{flex:1.85}.key.wide-ctrl{flex:1.75}.key.wide-caps{flex:1.65}.key.wide-shift-l{flex:2.15}.key.wide-shift-r{flex:1.75}.key.wide-inv{flex:1.25}.key.space{flex:9.6}.key.spacer{flex:2.35;pointer-events:none;background:transparent!important;box-shadow:none!important;transform:none!important;}
-.key.mod{flex:1.25}
+#osk{position:absolute;left:5.6%;top:48.5%;width:87.2%;height:20.4%;z-index:32;display:flex;flex-direction:column;gap:.4%;opacity:1;pointer-events:auto;}
+.krow{display:flex;gap:.35%;flex:1;min-height:0;}.key{flex:1;border:0;border-radius:5px;background:rgba(255,255,255,.001);color:transparent;font-size:0;min-width:0;transition:transform .045s ease,background .045s ease,box-shadow .045s ease;transform-origin:center bottom;}
+.key.space{flex:8.4}.key.mod{flex:1.25}
 .key:active,.key.on,.key.flash,.key.keyPress{background:rgba(40,32,18,.26);box-shadow:inset 0 4px 10px rgba(0,0,0,.46),inset 0 -1px 5px rgba(255,235,170,.35),0 0 10px rgba(255,220,130,.22);opacity:1;transform:translateY(2.6px) scale(.985);}
 .key.shiftLatched{background:rgba(255,196,70,.30);box-shadow:inset 0 0 14px rgba(255,230,150,.85),0 0 12px rgba(255,220,130,.45);transform:translateY(2px) scale(.985);}
 /* joystick overlay - visible skin is swapped to the joystick PNG, controls are transparent */
-#joy{position:absolute;left:0;top:0;width:100%;height:100%;display:none;z-index:75;touch-action:none;user-select:none;pointer-events:auto;}
-#joyPad{position:absolute;left:11.15%;top:49.65%;width:38.35%;height:21.35%;border-radius:22%;background:rgba(0,0,0,.01);touch-action:none;pointer-events:auto;z-index:76;}
-#joyKnob{position:absolute;left:50%;top:50%;width:26%;height:26%;margin-left:-13%;margin-top:-13%;border-radius:50%;background:rgba(255,255,255,.01);pointer-events:none;}
+#joy{position:absolute;left:4.8%;top:47.7%;width:90.6%;height:22.6%;display:none;z-index:75;touch-action:none;user-select:none;pointer-events:auto;}
+#joyPad{position:absolute;left:3.0%;top:1.0%;width:48.5%;height:94%;border-radius:25%;background:rgba(0,0,0,.01);touch-action:none;pointer-events:auto;z-index:76;}
+#joyKnob{position:absolute;left:50%;top:50%;width:15%;height:15%;border-radius:50%;background:rgba(255,255,255,.01);pointer-events:none;}
 .joyDir{position:absolute;z-index:86;border:0;border-radius:12px;background:rgba(255,210,90,.001);color:transparent;font-size:0;touch-action:none;}
 .joyDir.on,.joyDir:active{background:rgba(255,210,90,.18);box-shadow:inset 0 0 22px rgba(255,220,130,.50),0 0 16px rgba(255,220,130,.18);transform:translateY(2px) scale(.98);}
-#joyUp{left:25.55%;top:53.75%;width:10.1%;height:5.25%;}#joyDown{left:25.55%;top:63.85%;width:10.1%;height:5.25%;}#joyLeft{left:19.45%;top:58.35%;width:9.35%;height:5.95%;}#joyRight{left:35.05%;top:58.35%;width:9.35%;height:5.95%;}
-#joyFire{position:absolute;left:64.1%;top:55.25%;width:21.8%;height:13.95%;border-radius:50%;border:0;background:rgba(255,0,0,.01);color:transparent;font-size:0;touch-action:none;pointer-events:auto;z-index:86;}
+#joyUp{left:20%;top:9%;width:16%;height:23%;}#joyDown{left:20%;top:65%;width:16%;height:24%;}#joyLeft{left:5%;top:34%;width:18%;height:26%;}#joyRight{left:34%;top:34%;width:18%;height:26%;}
+#joyFire{position:absolute;right:5%;top:8%;width:38%;height:84%;border-radius:50%;border:0;background:rgba(255,0,0,.01);color:transparent;font-size:0;touch-action:none;pointer-events:auto;z-index:86;}
 #joyFire.on{background:rgba(255,0,0,.22);box-shadow:0 0 35px rgba(255,0,0,.38) inset,0 0 18px rgba(255,50,20,.26);transform:translateY(2px) scale(.98);}
 /* hidden/utility DOM required by original emulator core */
 #filePick{display:none}.logwrap{position:absolute;left:4.0%;right:4.0%;top:94.5%;height:5%;z-index:25;color:#f2c464;font-size:10px;opacity:.01;pointer-events:none;}#log{height:100%;overflow:auto;white-space:pre-wrap;}
@@ -146,12 +144,12 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 
 /* BUILD2AR: landscape herni rezim - velky obraz + podkresleny joystick pres hru */
 #landJoy{display:none;position:fixed;inset:0;z-index:2200;pointer-events:none;user-select:none;touch-action:none;font-family:"Courier New",monospace;}
-#landJoyPad{position:absolute;left:3.1vw;bottom:4.9vh;width:min(32vh,29vw);height:min(32vh,29vw);min-width:118px;min-height:118px;border-radius:50%;pointer-events:auto;touch-action:none;
+#landJoyPad{position:absolute;left:3.4vw;bottom:5.2vh;width:min(31vh,28vw);height:min(31vh,28vw);min-width:118px;min-height:118px;border-radius:50%;pointer-events:auto;touch-action:none;
   background:radial-gradient(circle at 50% 50%,rgba(255,232,165,.13) 0 11%,rgba(0,0,0,.18) 12% 28%,rgba(255,214,120,.11) 29% 34%,rgba(0,0,0,.12) 35% 100%);
   border:1px solid rgba(255,214,120,.28);box-shadow:inset 0 0 24px rgba(0,0,0,.70),0 0 20px rgba(0,0,0,.55);opacity:.50;}
 #landJoyPad:before{content:"▲\A ◄   ►\A ▼";white-space:pre;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.65;color:rgba(255,225,155,.42);font:bold min(4.8vh,5.0vw) "Courier New",monospace;text-shadow:0 0 8px rgba(0,0,0,.9);pointer-events:none;}
 #landJoyKnob{position:absolute;left:50%;top:50%;width:28%;height:28%;margin-left:-14%;margin-top:-14%;border-radius:50%;background:radial-gradient(circle,rgba(255,234,184,.32),rgba(0,0,0,.22));border:1px solid rgba(255,230,170,.35);box-shadow:0 0 16px rgba(255,210,90,.16);pointer-events:none;}
-#landFire{position:absolute;right:4.9vw;bottom:6.8vh;width:min(26vh,23vw);height:min(26vh,23vw);min-width:104px;min-height:104px;border-radius:50%;pointer-events:auto;touch-action:none;border:1px solid rgba(255,92,64,.40);
+#landFire{position:absolute;right:5.3vw;bottom:7.2vh;width:min(25vh,22vw);height:min(25vh,22vw);min-width:104px;min-height:104px;border-radius:50%;pointer-events:auto;touch-action:none;border:1px solid rgba(255,92,64,.40);
   background:radial-gradient(circle at 45% 38%,rgba(255,116,84,.38),rgba(145,0,0,.22) 48%,rgba(0,0,0,.22) 72%);color:rgba(255,220,190,.60);font:bold min(3.8vh,4vw) "Courier New",monospace;text-shadow:0 0 8px rgba(0,0,0,.95);box-shadow:inset 0 0 30px rgba(0,0,0,.72),0 0 22px rgba(0,0,0,.55);opacity:.48;}
 #landFire.on,#landFire:active{opacity:.82;filter:brightness(1.28);box-shadow:inset 0 0 36px rgba(255,54,30,.54),0 0 24px rgba(255,50,20,.24);transform:translateY(2px) scale(.985);}
 #landJoyPad.active{opacity:.78;filter:brightness(1.12);}
@@ -269,7 +267,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
       <li><b>COUNTER</b> — ukazuje stopu/polohu audio souboru.</li>
       <li><b>COUNTER RESET</b> — male tlacitko u ciselniku vynuluje stopu na 000 bez pretaceni audia.</li>
       <li><b>Zvuk kazety</b> — WAV/MP3 hraje skutecny soubor; CAS ma monitor zvuk vytvoreny z nahranych CAS bajtu. CSAVE monitor pipa jen pri realne zachycenych SEROUT bajtech, zadny vymysleny fake.</li>
-      <li><b>Zasada BUILD2BN</b> — zadny fake CLOAD, zadny RAM inject. Po ciste zavadeci stope uz vlastni CSAVE nepousti datovy chaos do SKSTAT. BUILD2BN rozdeluje skutecne zachyceny CSAVE stream: vodici $55 slouzi jen jako leader/timing a vlastni bajty po synchronizaci jdou do POKEY SERIN az kdyz OS povoli serial input IRQ. Hlasitost kazety je snizena.</li>
+      <li><b>Zasada BUILD2BL</b> — zadny fake CLOAD, zadny RAM inject. Vlastni CSAVE WAV se uz pro CLOAD nemusi znovu dekodovat/re-enkodovat; posila se primo jako WAV tvar na SKSTAT bit4. Monitor hlasitost je snizena, aby se zvuk netrhal a nerezal do usi.</li>
       <li><b>Ukladani CSAVE</b> — automaticky jen kdyz pri RECORD + CSAVE/SAVE &quot;C:&quot; prisly realne SEROUT bajty. Uklada do Downloads/AtariHelp jako AtariHelp_CSAVE_BASIC/TBXL_YYYYMMDD_HHMMSS.cas a AtariHelp_CSAVE_BASIC/TBXL_YYYYMMDD_HHMMSS.wav.</li>
     </ul>
     <h3>Servis</h3>
@@ -596,8 +594,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   // ---- SIO sbernice + diskova mechanika D1: ----
   const sio={ cmdLine:false, frame:[], rxq:[], rxPos:0, disk:null, secSize:128, log:null,
               cassMotor:false, cassWaitMotor:false, cassPausedLogged:false, cassDelivered:0, cassQueued:0, cassKind:'', cassLeadLines:0, cassWaitOsLastFrame:-9999,
-              cassTone:null, cassPcm:null, cassInLevel:1, cassToneLastFrame:-9999,
-              cassAfterTone:null, cassSerialDelayLines:260, cassSkipped55:0, cassReadyWaitLastFrame:-9999 };
+              cassTone:null, cassPcm:null, cassInLevel:1, cassToneLastFrame:-9999 };
   function sioChk(arr){ let s=0; for(let i=0;i<arr.length;i++){ s+=arr[i]; if(s>255)s=(s&255)+1; } return s&255; }
   function sioQueue(delay,bytes,perByte,opts){ // prijem: 'delay' radek do 1. bajtu, dal perByte radek/bajt
     let t=delay; const pb=perByte||5;      // 19200 Bd = ~5.2 scanlinek na bajt, kazeta cca 260 PAL radek/bajt
@@ -607,52 +604,25 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function resetCassetteQueueStats(){
     sio.cassPausedLogged=false; sio.cassDelivered=0; sio.cassQueued=0; sio.cassKind=''; sio.cassLeadLines=0; sio.cassWaitOsLastFrame=-9999;
     sio.cassTone=null; sio.cassPcm=null; sio.cassInLevel=1; sio.cassToneLastFrame=-9999;
-    sio.cassAfterTone=null; sio.cassSerialDelayLines=260; sio.cassSkipped55=0; sio.cassReadyWaitLastFrame=-9999;
   }
-  // BUILD2BN: oprava po slepe uličce BUILD2BK/BL/BM.
-  // Atari OS pri CLOAD nejdriv meri vodici $55 ton pres SKSTAT bit4 a az potom prepne POKEY serial input.
-  // Proto uz nedavame DATOVE bajty jako chaos do SKSTAT. Tonem delame jen leader/sync a po nem poustime skutecne bajty do SERIN,
-  // ale az kdyz OS neni v SEI/FD1B cekani a ma povoleny serial input IRQ ($20). Bez RAM injectu.
-  function splitCassetteLeader55(bytes){
-    const arr=[]; for(let i=0;i<bytes.length;i++) arr.push(bytes[i]&255);
-    let lead55=0; while(lead55<arr.length && arr[lead55]===0x55) lead55++;
-    let skip=0;
-    if(lead55>=12) skip=lead55;       // dlouha CSAVE zavadeci stopa: tyhle $55 patri do leaderu, ne do dat
-    else if(lead55>=2) skip=2;        // kratky sync: ROM si prvni dva $55 po leaderu zalozi sama
-    const payload=arr.slice(skip);
-    return {all:arr,payload:payload,lead55:lead55,skip:skip};
-  }
-  function startCassetteSerinAfterTone(t){
-    if(!t || t.serialQueued) return;
-    t.serialQueued=true;
-    const bytes=t.serialBytes||[];
-    if(!bytes.length){ if(M.cassDebug) M.cassDebug('BITSTREAM_COMPLETE',{count:0,queued:0,edges:t.edgeCount||0,kind:t.kind}); resetCassetteQueueStats(); return; }
-    sio.rxq.length=0; sio.rxPos=0;
-    sio.cassDelivered=0; sio.cassQueued=bytes.length; sio.cassKind=t.kind||'CLOAD SERIN';
-    sio.cassPausedLogged=false; sio.cassReadyWaitLastFrame=-9999;
-    sioQueue(t.serialDelayLines||260, bytes, 260, {cassette:true,waitMotor:true});
-    sio.cassTone=null; sio.cassPcm=null; sio.cassInLevel=1;
-    if(M.cassDebug) M.cassDebug('LEADER_SERIN_ARM',{bytes:bytes.length,skipped:t.skipped55||0,lead55:t.lead55||0,pc:cpu.pc,irqen:pokey.irqen,iff:cpu.if_,kind:t.kind});
-  }
+  // BUILD2BL: poctivy CLOAD uz NENI hotovy byte do SERIN.
+  // Atari OS ROM v kazetove rutine ($ED44) cte SKSTAT bit4 ($D20F & $10) a meri hrany tonu.
+  // Proto zde z realnych bajtu (CAS nebo dekodovany WAV/CSAVE) vyrabim virtualni kazetovy tonovy bitstream
+  // 3995/5327 Hz na SKSTAT bit4. Data nejdou do RAM a nejdou primo do BASICu.
   M.queueCassetteSerial=function(bytes,perByteLines,leadLines,kind){
     if(!bytes || !bytes.length) return 0;
     sio.rxq.length=0; sio.rxPos=0; pokey.serinRead=true; pokey.serinAge=0; pokey.inShiftBusy=0; pokey.irqpend&=~0x20; pokeySync();
-    const sp=splitCassetteLeader55(bytes);
-    const bitLines=Math.max(18,Math.round(15600/600));
-    const skippedLeadLines=sp.skip*10*bitLines;
-    const lead=(leadLines||72000) + skippedLeadLines;
+    const arr=[]; for(let i=0;i<bytes.length;i++) arr.push(bytes[i]&255);
+    const lead=leadLines||124800; // 8 s PAL leader po MOTOR ON, jako realna paska; OS meri SKSTAT hrany
     resetCassetteQueueStats();
-    sio.cassWaitMotor=true; sio.cassQueued=sp.payload.length; sio.cassKind=kind||'CLOAD LEADER THEN SERIN'; sio.cassLeadLines=lead; sio.cassSkipped55=sp.skip;
-    const CPS=114*312*50;
-    sio.cassTone={bytes:sp.all, serialBytes:sp.payload, lead:lead, leadCycles:Math.round(lead*114), trail:Math.round(15600*0.25), trailCycles:Math.round(0.25*CPS),
-                  byteIndex:0, bitIndex:0, bitLine:0, bitLines:bitLines, bitCycles:Math.round(CPS/600),
-                  lineState:1, edgeAcc:0, edgeCount:0, startCycle:null, lastLogCount:0,
-                  started:false, dataStarted:false, waitLogged:false, completed:false, delivered:0, kind:sio.cassKind,
-                  leaderOnly:true, serialQueued:false, serialDelayLines:Math.max(120,perByteLines||260), skipped55:sp.skip, lead55:sp.lead55};
-    if(M.cassDebug) M.cassDebug('QUEUE_TONE',{bytes:sp.payload.length,rawBytes:sp.all.length,lead:lead,bitLines:sio.cassTone.bitLines,kind:sio.cassKind,motor:sio.cassMotor?1:0,skipped:sp.skip,lead55:sp.lead55});
-    return sp.payload.length;
+    sio.cassWaitMotor=true; sio.cassQueued=arr.length; sio.cassKind=kind||'CLOAD BITSTREAM'; sio.cassLeadLines=lead;
+    sio.cassTone={bytes:arr, lead:lead, trail:Math.round(15600*0.5), byteIndex:0, bitIndex:0, bitLine:0,
+                  bitLines:Math.max(18,Math.round(15600/600)), lineState:1, edgeAcc:0, edgeCount:0,
+                  started:false, dataStarted:false, waitLogged:false, completed:false, delivered:0, kind:sio.cassKind};
+    if(M.cassDebug) M.cassDebug('QUEUE_TONE',{bytes:arr.length,lead:lead,bitLines:sio.cassTone.bitLines,kind:sio.cassKind,motor:sio.cassMotor?1:0});
+    return arr.length;
   };
-  // BUILD2BN: presnejsi cesta pro WAV, ktery realne Atari 130XE nacte.
+  // BUILD2BL: presnejsi cesta pro WAV, ktery realne Atari 130XE nacte.
   // Namisto decode->reencode se do SKSTAT bit4 posila primo tvar WAV prevzorkovany na PAL radky.
   M.queueCassettePcmLevels=function(levels,meta){
     if(!levels || !levels.length) return 0;
@@ -661,7 +631,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     meta=meta||{};
     sio.cassWaitMotor=true; sio.cassQueued=levels.length; sio.cassKind=meta.kind||'WAV PCM SKSTAT'; sio.cassLeadLines=0;
     sio.cassPcm={levels:levels, idx:0, last:levels[0]?1:0, edgeCount:0, waitLogged:false, started:false, completed:false,
-                 startCycle:null, lastLogLine:-999999, kind:sio.cassKind, seconds:meta.seconds||0, sr:meta.sampleRate||0, peak:meta.peak||0, name:meta.name||''};
+                 kind:sio.cassKind, seconds:meta.seconds||0, sr:meta.sampleRate||0, peak:meta.peak||0, name:meta.name||''};
     sio.cassInLevel=sio.cassPcm.last;
     if(M.cassDebug) M.cassDebug('QUEUE_PCM',{lines:levels.length,seconds:sio.cassPcm.seconds,sr:sio.cassPcm.sr,peak:sio.cassPcm.peak,kind:sio.cassKind,motor:sio.cassMotor?1:0,name:sio.cassPcm.name});
     return levels.length;
@@ -840,10 +810,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }
       if(p===0x0E) return (~pokeyStatus())&0xFF; // IRQST active low
       if(p===0x0F){ // SKSTAT: seriovy vstup + klavesnice. Bit1 serial busy je aktivni LOW behem cekajiciho/prave prijateho byte.
-        advanceCassetteToneLine(true); // BUILD2BN: pred ctenim SKSTAT prepocitam pasku podle CPU cyklu, ne jen po radkach
         let v=0xFF;
         if(pokey.shiftDown)v&=~0x08; if(pokey.keyDown)v&=~0x04;
-        // BUILD2BN: SKSTAT bit4 je kazetovy/serial input DATA line. Atari OS CLOAD ho opravdu cte na $ED44.
+        // BUILD2BL: SKSTAT bit4 je kazetovy/serial input DATA line. Atari OS CLOAD ho opravdu cte na $ED44.
         // Leader/data zde nejsou hotove bajty, ale hrany virtualni pasky 3995/5327 Hz.
         if((sio.cassTone || sio.cassPcm) && sio.cassMotor){ if(sio.cassInLevel) v|=0x10; else v&=~0x10; }
         // SKSTAT bit1 = serial shift register busy pro disk/SIO SERIN cestu, ne pro kazetovy bitstream.
@@ -892,7 +861,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(p===0x08){ pokey.audctl=v; pokey.dirty=true;
         if(M.audioQ){ M.audioQ.push(cpu.cycles,8,v); if(M.audioQ.length>48000)M.audioQ.splice(0,24000); } return; }
       if(p===0x09){ timersReload(); return; } // STIMER: znovunabij citace
-      if(p===0x0A){ pokey.serinAge=0; pokey.inShiftBusy=0; return; }     // SKRES: v BUILD2BN aspon cisti seriove overrun cekani
+      if(p===0x0A){ pokey.serinAge=0; pokey.inShiftBusy=0; return; }     // SKRES: v BUILD2BL aspon cisti seriove overrun cekani
       if(p===0x0D){ // SEROUT: byte opusti vystupni registr za ~10 radek, posuv dobehne za ~30
         if(M.sioDebug) M.sioDebug('TX',[v,sio.cmdLine?1:0]);
         if(M.onSerialOut){ try{ M.onSerialOut(v, sio.cmdLine?1:0); }catch(_e){} }
@@ -983,6 +952,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const hue=i>>4, lum=i&15;
       let y=0.06+0.88*(lum/15), r,g,b;
       if(hue===0){ r=g=b=y; }
+      else if(hue===7||hue===8){
+        // OPRAVA: hue 7/8 byly fialove (r=y bylo prilis cervene) - syta MODRA,
+        // konzistentni s overenou modrou $94 (hue 9). Meni jen $7x a $8x.
+        r=y*0.24; g=y*0.48; b=Math.min(1, y*0.85+0.14);
+      }
       else{
         const ang=(180-(hue-1)*25.7)*Math.PI/180, sat=0.30;
         const u=sat*Math.cos(ang), v2=sat*Math.sin(ang);
@@ -1227,98 +1201,67 @@ function Atari130XE(osRom, basicRom, CPUctor){
       gtia.grafp[0]=anticRead(o); gtia.grafp[1]=anticRead(o+st); gtia.grafp[2]=anticRead(o+st*2); gtia.grafp[3]=anticRead(o+st*3); }
     if((antic.dmactl&0x0C)&&(gtia.gractl&1)) gtia.grafm=anticRead(base+(dbl?384:768)+li);
   }
-  function cassetteToneFreqAt(t, bitIndex, byteIndex){
-    if(!t) return 5327;
-    if(byteIndex<0 || byteIndex>=t.bytes.length) return 5327;
-    const v=t.bytes[byteIndex]&255;
-    if(bitIndex===0) return 3995;              // start bit = space
-    if(bitIndex>=1 && bitIndex<=8) return ((v>>(bitIndex-1))&1)?5327:3995;
+  function cassetteToneFreq(){
+    const t=sio.cassTone; if(!t) return 5327;
+    if(t.lead>0) return 5327;
+    if(t.byteIndex>=t.bytes.length) return 5327;
+    const v=t.bytes[t.byteIndex]&255;
+    if(t.bitIndex===0) return 3995;              // start bit = space
+    if(t.bitIndex>=1 && t.bitIndex<=8) return ((v>>(t.bitIndex-1))&1)?5327:3995;
     return 5327;                                  // stop bit = mark
   }
-  function cassetteCyclesPerSecond(){ return 114*312*50; } // PAL model jadra EMU-10
-  function squareLevelFromCycles(freq, cyc){
-    const hp=Math.max(1,cassetteCyclesPerSecond()/(freq*2));
-    return (Math.floor(cyc/hp)&1)?0:1;
-  }
-  function advanceCassetteToneLine(fromRead){
-    const CPS=cassetteCyclesPerSecond();
-    const now=(cpu&&cpu.cycles)||0;
+  function advanceCassetteToneLine(){
     const pcm=sio.cassPcm;
     if(pcm){
-      // BUILD2BN: PCM->SKSTAT je ponechane jen pro obecny WAV analyzator, ne jako defaultni LAST CSAVE cesta.
       if(!sio.cassMotor){
         if(!pcm.waitLogged){ pcm.waitLogged=true; if(M.cassDebug) M.cassDebug('WAIT_MOTOR',{queued:pcm.levels.length-pcm.idx,kind:pcm.kind}); }
         return;
       }
-      if(pcm.startCycle==null){ pcm.startCycle=now; pcm.started=true; pcm.waitLogged=false; if(M.cassDebug) M.cassDebug('PCM_START',{lines:pcm.levels.length,seconds:pcm.seconds,sr:pcm.sr,peak:pcm.peak,kind:pcm.kind,name:pcm.name}); }
-      const LPS=15600;
-      const idx=Math.min(pcm.levels.length, Math.max(0, Math.floor(((now-pcm.startCycle)*LPS)/CPS)));
-      if(idx<pcm.levels.length){
-        const lev=pcm.levels[idx]?1:0;
+      if(!pcm.started){ pcm.started=true; pcm.waitLogged=false; if(M.cassDebug) M.cassDebug('PCM_START',{lines:pcm.levels.length,seconds:pcm.seconds,sr:pcm.sr,peak:pcm.peak,kind:pcm.kind,name:pcm.name}); }
+      if(pcm.idx<pcm.levels.length){
+        const lev=pcm.levels[pcm.idx++]?1:0;
         if(lev!==pcm.last){ pcm.last=lev; pcm.edgeCount++; }
-        sio.cassInLevel=lev; pcm.idx=idx;
-        if(M.cassDebug && (idx===0 || (idx-pcm.lastLogLine)>=15600)){ pcm.lastLogLine=idx; M.cassDebug('PCM_COUNT',{lines:idx+1,total:pcm.levels.length,pc:cpu.pc,skstat:lev?0xFF:0xEF,edges:pcm.edgeCount,kind:pcm.kind}); }
+        sio.cassInLevel=lev;
+        if(M.cassDebug && (pcm.idx===1 || (pcm.idx%15600)===0)) M.cassDebug('PCM_COUNT',{lines:pcm.idx,total:pcm.levels.length,pc:cpu.pc,skstat:lev?0xFF:0xEF,edges:pcm.edgeCount,kind:pcm.kind});
         return;
       }
-      if(!pcm.completed){ pcm.idx=pcm.levels.length; pcm.completed=true; if(M.cassDebug) M.cassDebug('PCM_COMPLETE',{lines:pcm.idx,total:pcm.levels.length,edges:pcm.edgeCount,kind:pcm.kind}); }
-      resetCassetteQueueStats(); return;
+      if(!pcm.completed){ pcm.completed=true; if(M.cassDebug) M.cassDebug('PCM_COMPLETE',{lines:pcm.idx,total:pcm.levels.length,edges:pcm.edgeCount,kind:pcm.kind}); }
+      resetCassetteQueueStats();
+      return;
     }
     const t=sio.cassTone;
     if(!t){ sio.cassInLevel=1; return; }
     if(!sio.cassMotor){
-      if(!t.waitLogged){ t.waitLogged=true; if(M.cassDebug) M.cassDebug('WAIT_MOTOR',{queued:(t.serialBytes?t.serialBytes.length:t.bytes.length)-t.byteIndex,kind:t.kind}); }
+      if(!t.waitLogged){ t.waitLogged=true; if(M.cassDebug) M.cassDebug('WAIT_MOTOR',{queued:t.bytes.length-t.byteIndex,kind:t.kind}); }
       return;
     }
-    if(t.startCycle==null){
-      t.startCycle=now; t.started=true; t.waitLogged=false; t.lastLogCount=0; t.edgeCount=0;
-      if(M.cassDebug) M.cassDebug('MOTOR_OK_LEADER',{lead:t.lead,kind:t.kind,bitLines:t.bitLines,skipped:t.skipped55||0,lead55:t.lead55||0});
-    }
-    const elapsed=Math.max(0, now-t.startCycle);
-    const leadCycles=t.leadCycles||Math.round((t.lead||0)*114);
-    if(elapsed<leadCycles){
-      // Zavadeci stopa je cisty $55/mark ton pro OS ROM synchronizaci.
-      const lev=squareLevelFromCycles(5327, elapsed);
-      if(lev!==sio.cassInLevel) t.edgeCount++;
-      sio.cassInLevel=lev;
+    if(!t.started){ t.started=true; t.waitLogged=false; if(M.cassDebug) M.cassDebug('MOTOR_OK_LEADER',{lead:t.lead,kind:t.kind,bitLines:t.bitLines}); }
+    const LPS=15600; // PAL scanlines/s, dostatecne pro prvni poctivou emulaci XC12 hran
+    const freq=cassetteToneFreq();
+    t.edgeAcc += (freq*2)/LPS;
+    while(t.edgeAcc>=1){ t.edgeAcc-=1; t.lineState^=1; t.edgeCount++; }
+    sio.cassInLevel=t.lineState?1:0;
+    if(t.lead>0){
+      t.lead--;
+      if(t.lead===0){ t.dataStarted=true; if(M.cassDebug) M.cassDebug('BITSTREAM_DATA_START',{bytes:t.bytes.length,edges:t.edgeCount,kind:t.kind}); }
       return;
     }
-    if(t.leaderOnly){
-      if(!t.dataStarted){
-        t.dataStarted=true;
-        if(M.cassDebug) M.cassDebug('BITSTREAM_DATA_START',{bytes:(t.serialBytes||[]).length,edges:t.edgeCount||0,kind:t.kind,skipped:t.skipped55||0,lead55:t.lead55||0});
+    if(t.byteIndex<t.bytes.length){
+      t.bitLine++;
+      if(t.bitLine>=t.bitLines){
+        t.bitLine=0; t.bitIndex++;
+        if(t.bitIndex>=10){
+          t.bitIndex=0; t.byteIndex++; t.delivered++; sio.cassDelivered=t.delivered;
+          if(M.cassDebug){
+            if(t.delivered===1 || (t.delivered%64)===0) M.cassDebug('BITSTREAM_COUNT',{count:t.delivered,queued:t.bytes.length,pc:cpu.pc,skstat:sio.cassInLevel?0xFF:0xEF,edges:t.edgeCount,kind:t.kind});
+          }
+        }
       }
-      // Po leaderu uz SKSTAT nedostava datovy chaos. Pockame na realny POKEY serial input v OS.
-      // Samotne SERIN bajty startuji az v serial-in bloku, ktery hlida I flag + IRQEN bit $20 + motor.
-      startCassetteSerinAfterTone(t);
-      sio.cassInLevel=1;
       return;
     }
-    // Legacy bitstream fallback pro pripad, ze by nekdy bylo potreba opravdu poslat data jako ton.
-    const bitCycles=t.bitCycles||Math.max(1,Math.round(CPS/600));
-    const byteCycles=bitCycles*10;
-    const dataCyc=elapsed-leadCycles;
-    const totalData=t.bytes.length*byteCycles;
-    let freq=5327, segCyc=0;
-    if(dataCyc<totalData){
-      if(!t.dataStarted){ t.dataStarted=true; if(M.cassDebug) M.cassDebug('BITSTREAM_DATA_START',{bytes:t.bytes.length,edges:t.edgeCount||0,kind:t.kind}); }
-      const byteIndex=Math.floor(dataCyc/byteCycles);
-      const inByte=dataCyc-byteIndex*byteCycles;
-      const bitIndex=Math.floor(inByte/bitCycles);
-      segCyc=inByte-bitIndex*bitCycles;
-      freq=cassetteToneFreqAt(t,bitIndex,byteIndex);
-      const delivered=Math.min(t.bytes.length, byteIndex+1);
-      if(delivered>t.delivered){ t.delivered=delivered; sio.cassDelivered=delivered; }
-      if(M.cassDebug && (delivered===1 || (delivered%64)===0) && delivered!==t.lastLogCount){
-        t.lastLogCount=delivered; M.cassDebug('BITSTREAM_COUNT',{count:delivered,queued:t.bytes.length,pc:cpu.pc,skstat:sio.cassInLevel?0xFF:0xEF,edges:t.edgeCount||0,kind:t.kind});
-      }
-    }else{
-      const trailCyc=dataCyc-totalData;
-      if(trailCyc<(t.trailCycles||Math.round((t.trail||0)*114))){ freq=5327; segCyc=trailCyc; }
-      else{ if(!t.completed){ t.completed=true; t.delivered=t.bytes.length; if(M.cassDebug) M.cassDebug('BITSTREAM_COMPLETE',{count:t.bytes.length,queued:t.bytes.length,edges:t.edgeCount||0,kind:t.kind}); } resetCassetteQueueStats(); return; }
-    }
-    const lev=squareLevelFromCycles(freq,segCyc);
-    if(lev!==sio.cassInLevel) t.edgeCount++;
-    sio.cassInLevel=lev;
+    if(t.trail>0){ t.trail--; return; }
+    if(!t.completed){ t.completed=true; if(M.cassDebug) M.cassDebug('BITSTREAM_COMPLETE',{count:t.delivered,queued:t.bytes.length,edges:t.edgeCount,kind:t.kind}); }
+    resetCassetteQueueStats();
   }
   
   function runScanline(){
@@ -1336,11 +1279,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     pmDmaFetch();   // PM/M DMA do registru GRAFP/GRAFM (nebo zmrazeni pri vyplem DMA)
     timersTick(114);                                               // POKEY casovace 1/2/4
-    advanceCassetteToneLine();                                      // BUILD2BN: virtualni XC12 hrany na SKSTAT bit4
+    advanceCassetteToneLine();                                      // BUILD2BL: virtualni XC12 hrany na SKSTAT bit4
     // serial out udalosti
     if(pokey.outBusy>0 && --pokey.outBusy===0) pokeyRaise(0x10);   // vystupni registr prazdny
     if(pokey.shiftBusy>0 && --pokey.shiftBusy===0) pokeyRaise(0x08); // prenos dokoncen
-    // serial in: fronta z SIO zarizeni / kazety. BUILD2BN: kazeta ceka na realny motor C: a emuluje kratky stav SKSTAT busy -> pak teprve SERIN IRQ.
+    // serial in: fronta z SIO zarizeni / kazety. BUILD2BL: kazeta ceka na realny motor C: a emuluje kratky stav SKSTAT busy -> pak teprve SERIN IRQ.
     if(pokey.inShiftBusy>0){
       pokey.inShiftBusy--;
       if(pokey.inShiftBusy===0 && !pokey.serinRead){
@@ -1356,20 +1299,21 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(q.waitMotor && !sio.cassMotor){
         if(!sio.cassPausedLogged){ sio.cassPausedLogged=true; if(M.cassDebug) M.cassDebug('WAIT_MOTOR',{queued:sio.rxq.length-sio.rxPos,kind:sio.cassKind}); }
       }else if(!pokey.serinRead){
-        // BUILD2BN: SERIN uz ma byte pripraveny. Drzim ho, dokud ho OS neprecte; SKSTAT busy uz je HIGH.
+        // BUILD2BL: SERIN uz ma byte pripraveny. Drzim ho, dokud ho OS neprecte; SKSTAT busy uz je HIGH.
         pokey.serinAge++;
         if(q.cassette && (pokey.serinAge===7800 || pokey.serinAge===15600) && M.cassDebug) M.cassDebug('HOLD_SERIN',{byte:pokey.serin,ageLines:pokey.serinAge,irqen:pokey.irqen,irqst:(~pokeyStatus())&0xFF,skstat:0xFF,pc:cpu.pc,iff:cpu.if_});
         else if(!q.cassette && pokey.serinAge>200){ pokey.serinRead=true; pokey.serinAge=0; pokey.inShiftBusy=0; pokey.irqpend&=~0x20; pokeySync(); }
       }else if(pokey.serinRead){
         if(q.waitMotor && sio.cassMotor && sio.cassPausedLogged){ sio.cassPausedLogged=false; if(M.cassDebug) M.cassDebug('MOTOR_OK_LEADER',{lead:q.d,kind:sio.cassKind}); }
         q.d--;
-        if(q.cassette && q.d<=0 && ((ram[0x022A]&0xFF)!==0 || (cpu.pc>=0xFD18 && cpu.pc<=0xFD20) || cpu.if_ || ((pokey.irqen&0x20)===0))){
-          // BUILD2BN: SERIN byte smi prijit az po ciste leader synchronizaci,
-          // po CLI a po povoleni POKEY serial input IRQ bitu $20. Jinak OS byte necte a vznikne ERROR 138.
+        if(q.cassette && q.d<=0 && ((ram[0x022A]&0xFF)!==0 || (cpu.pc>=0xFD18 && cpu.pc<=0xFD20))){
+          // BUILD2BL: po MOTOR ON jeste Atari OS dela vlastni kazetovy cekaci/timer usek.
+          // Kdyz sem byte pustime moc brzy, skonci navzdy v SERIN a OS ho neprecte (presne log BUILD2BH: PC=$FD1B).
+          // Proto prodluzujeme pouze vodici stopu: data zustavaji ve fronte, nejdou do RAM a nic se nefakuje.
           q.d=1;
-          if(M.cassDebug && (M.frame-sio.cassReadyWaitLastFrame)>=25){
-            sio.cassReadyWaitLastFrame=M.frame;
-            M.cassDebug('WAIT_SERIN_READY',{timer:ram[0x022A]&0xFF,pc:cpu.pc,irqen:pokey.irqen,irqst:(~pokeyStatus())&0xFF,iff:cpu.if_,kind:sio.cassKind});
+          if(M.cassDebug && (M.frame-sio.cassWaitOsLastFrame)>=25){
+            sio.cassWaitOsLastFrame=M.frame;
+            M.cassDebug('WAIT_OS_TIMER',{timer:ram[0x022A]&0xFF,pc:cpu.pc,irqen:pokey.irqen,irqst:(~pokeyStatus())&0xFF,kind:sio.cassKind});
           }
         }else if(q.d<=0){
           pokey.serin=q.b; sio.rxPos++; sio.cassDelivered += q.cassette?1:0;
@@ -1707,20 +1651,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     for(var j=0;j<ctrlBtns.length;j++){ ctrlBtns[j].classList.toggle('on', oskCtrl); }
   }
   function buildOSK(host){
-    ROWS.forEach(function(row,rowIndex){
+    ROWS.forEach(function(row){
       var r=document.createElement('div'); r.className='krow';
-      if(rowIndex===4){
-        var spL=document.createElement('button'); spL.className='key spacer'; spL.tabIndex=-1; spL.setAttribute('aria-hidden','true'); r.appendChild(spL);
-      }
       row.forEach(function(k){
         var b=document.createElement('button'); b.className='key'; b.textContent=k[0];
-        if(k[0]==='TAB') b.classList.add('wide-tab');
-        if(k[0]==='RET') b.classList.add('wide-ret');
-        if(k[0]==='CTRL') b.classList.add('wide-ctrl');
-        if(k[0]==='CAPS') b.classList.add('wide-caps');
-        if(k[0]==='SHIFT' && rowIndex===3 && r.children.length===0) b.classList.add('wide-shift-l');
-        else if(k[0]==='SHIFT') b.classList.add('wide-shift-r');
-        if(k[0]==='INV') b.classList.add('wide-inv');
         if(k[0]==='MEZERNIK') b.classList.add('space');
         if(k[1]<0) b.classList.add('mod');
         if(k[1]===-1) b.setAttribute('data-mod','ctrl');
@@ -1737,7 +1671,6 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         b.addEventListener('pointerdown',press); b.addEventListener('pointerup',rel); b.addEventListener('pointerleave',rel);
         r.appendChild(b);
       });
-      if(rowIndex===4){ var spR=document.createElement('button'); spR.className='key spacer'; spR.tabIndex=-1; spR.setAttribute('aria-hidden','true'); r.appendChild(spR); }
       host.appendChild(r);
     });
   }
@@ -1919,14 +1852,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
   function startCassetteBootNow(reason){
     startAudio();
-    // BUILD2BN: START+OPTION uz NESMI zustat v READY jen proto, ze WAV dekoder neni hotovy.
+    // BUILD2BL: START+OPTION uz NESMI zustat v READY jen proto, ze WAV dekoder neni hotovy.
     // Tady vzdy startuji realny OS kazetovy boot; do kazetoveho SKSTAT bit4 bitstreamu se poslou jen data, ktera projdou poctivym dekodem.
     if(cassStage && cassStage.loadedKind==='WAV' && cassStage.loadedBytes && cassStage.loadedBytes.length>2097152){
-      log('START+OPTION BOOT BUILD2BN: kazeta je velky/turbo WAV - OS boot spoustim, ale WAV data zatim neposilam do SERIN, aby apka nespadla a nevznikl garbage.');
+      log('START+OPTION BOOT BUILD2BL: kazeta je velky/turbo WAV - OS boot spoustim, ale WAV data zatim neposilam do SERIN, aby apka nespadla a nevznikl garbage.');
     }
     M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(audio&&audio.sh)audio.sh.head=-1;
     if(audio) M.onSpeaker=function(level){ audio.st.spkLevel=level?1:-1; audio.st.spkDecay=(audio.ac.sampleRate*0.004)|0; };
-    // BUILD2BN: START je drzeny dlouho; OPTION jen velmi kratky vzorek pri coldstartu, aby to nespadlo do SELF TESTu.
+    // BUILD2BL: START je drzeny dlouho; OPTION jen velmi kratky vzorek pri coldstartu, aby to nespadlo do SELF TESTu.
     M.coldStart({start:true,option:true});
     running=true;
     document.getElementById('led').classList.add('on');
@@ -1934,19 +1867,19 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     typeQ.length=0;
     consolState.start=true; consolState.option=true; consolState.select=false;
     M.consol(true,false,true);
-    log('START+OPTION BOOT BUILD2BN: '+(reason||'spoustim kazetovy boot')+'. START je dole od resetu, OPTION je jen ultra kratky BASIC-OFF vzorek; zadny RAM inject ani fake boot.');
-    log('START+OPTION BOOT BUILD2BN: kazeta '+(cassStage.loadedName||tapeAudioName||'vlozena')+' se spusti automaticky. Serialni data zacnou az po realnem C: motor ON + dlouhy leader.');
+    log('START+OPTION BOOT BUILD2BL: '+(reason||'spoustim kazetovy boot')+'. START je dole od resetu, OPTION je jen ultra kratky BASIC-OFF vzorek; zadny RAM inject ani fake boot.');
+    log('START+OPTION BOOT BUILD2BL: kazeta '+(cassStage.loadedName||tapeAudioName||'vlozena')+' se spusti automaticky. Serialni data zacnou az po realnem C: motor ON + dlouhy leader.');
     log('ROM: prava XL OS 16K (reset $C2AA) + prava Atari BASIC 8K');
-    setTimeout(function(){ consolState.option=false; if(M)M.consol(true,false,false); log('START+OPTION BOOT BUILD2BN: OPTION uvolnen hned po startu, aby nespadl SELF TEST; START stale drzim pro kazetovy boot.'); },120);
+    setTimeout(function(){ consolState.option=false; if(M)M.consol(true,false,false); log('START+OPTION BOOT BUILD2BL: OPTION uvolnen hned po startu, aby nespadl SELF TEST; START stale drzim pro kazetovy boot.'); },120);
     setTimeout(function(){
       try{ resumeTapeAudioOrCload(); }catch(e){ log('START+OPTION BOOT: auto PLAY kazety selhalo - '+e.message); }
     },420);
     setTimeout(function(){ consolState.start=false; if(M)M.consol(false,false,false); log('START+OPTION BOOT: START uvolnen az po dlouhem kazetovem boot impulsu.'); },6500);
   }
   function powerStartOption(){
-    // BUILD2BN: tlacitko vzdy udela realny coldstart se START drzenym. Neotvira hned Downloads a nezustava v READY.
+    // BUILD2BL: tlacitko vzdy udela realny coldstart se START drzenym. Neotvira hned Downloads a nezustava v READY.
     if(!cassStage.tapeInserted && !cassStage.loadedName && !tapeAudioName){
-      log('START+OPTION BOOT BUILD2BN: neni vlozena kazeta, presto spoustim cisty realny OS kazetovy boot. Kazetu vloz tlacitkem VLOZIT a pak PLAY; zadny fake.');
+      log('START+OPTION BOOT BUILD2BL: neni vlozena kazeta, presto spoustim cisty realny OS kazetovy boot. Kazetu vloz tlacitkem VLOZIT a pak PLAY; zadny fake.');
       cassSetStatus('START+OPTION boot bez kazety | OS ceka / muze dat BOOT ERROR');
       startCassetteBootNow('bez vlozene kazety');
       return;
@@ -2047,10 +1980,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('ANDROID PICKER CHYBA: '+msg);
     try{
       if(cassStage && cassStage.lastCsaveWav && /open failed|ENOENT|No such file|Nelze otevrit/i.test(String(msg||''))){
-        log('BUILD2BN CSAVE CACHE: Android picker neotevrel ulozeny WAV, proto vkladam posledni realne zachyceny CSAVE WAV primo z pameti emulatoru. Neni to RAM inject - jsou to stejne SEROUT bajty, ktere se prave ulozily.');
+        log('BUILD2BL CSAVE CACHE: Android picker neotevrel ulozeny WAV, proto vkladam posledni realne zachyceny CSAVE WAV primo z pameti emulatoru. Neni to RAM inject - jsou to stejne SEROUT bajty, ktere se prave ulozily.');
         loadCassetteBytes(cassStage.lastCsaveWavName||'AtariHelp_LAST_CSAVE.wav', cassStage.lastCsaveWav);
       }
-    }catch(e){ log('BUILD2BN CSAVE CACHE: fallback po picker chybe selhal - '+e.message); }
+    }catch(e){ log('BUILD2BL CSAVE CACHE: fallback po picker chybe selhal - '+e.message); }
   };
   window.AHLOCAL_AUDIO_BEGIN=function(name){ localAudioName=name||'audio'; localAudioParts=[]; log('WAV/CAS: prijimam audio z Android pickeru: '+localAudioName); };
   window.AHLOCAL_AUDIO_PART=function(b64){ localAudioParts.push(b64); };
@@ -2076,14 +2009,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     localTextParts=[];
   };
 
-  // ---------- BUILD2BN: XC12 VLOZIT/PLAY + CSAVE AUTO SAVE + WAV CLOAD FIRST PASS ----------
+  // ---------- BUILD2BL: XC12 VLOZIT/PLAY + CSAVE AUTO SAVE + WAV CLOAD FIRST PASS ----------
   var cassStage={loadedName:'',loadedKind:'',loadedBytes:null,casInfo:null,wavDecodeCache:null,wavDecodeTried:false,csaveArmed:false,csaveCapturing:false,captured:new Uint8Array(0),captureArray:[],captureCount:0,tapeInserted:false,lastStopAt:0,casMonitor:false,csaveMode:'BASIC',pendingStartBoot:false,lastCsaveRaw:null,lastCsaveCas:null,lastCsaveWav:null,lastCsaveBase:'',lastCsaveWavName:'',lastCsaveCasName:''};
   function cassSetStatus(msg){
     var el=document.getElementById('cassStatus');
     if(el) el.textContent='XC12: '+msg;
   }
   function u8ToBase64(u8){
-    var out='', chunk=0x6000; // BUILD2BN: chunk je nasobek 3, aby spojena Base64 nebyla rozbita pro velke WAV
+    var out='', chunk=0x6000; // BUILD2BL: chunk je nasobek 3, aby spojena Base64 nebyla rozbita pro velke WAV
     for(var i=0;i<u8.length;i+=chunk){
       var sub=u8.subarray(i,Math.min(i+chunk,u8.length));
       var s=''; for(var j=0;j<sub.length;j++) s+=String.fromCharCode(sub[j]);
@@ -2169,7 +2102,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       var f=(v&1)?5327:3995;
       csaveTone.osc.frequency.setTargetAtTime(f, ac.currentTime, 0.003);
-      csaveTone.gain.gain.setTargetAtTime(0.010, ac.currentTime, 0.006);
+      csaveTone.gain.gain.setTargetAtTime(0.045, ac.currentTime, 0.006);
       if(csaveToneTimer) clearTimeout(csaveToneTimer);
       csaveToneTimer=setTimeout(function(){ stopCsaveTone(); }, 90);
     }catch(e){}
@@ -2197,7 +2130,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!M) return;
     M.onSerialOut=function(v,cmdLine){
       if(!cassStage || cmdLine) return;
-      // BUILD2BN: AUTO REC pro CSAVE/SAVE "C:". Kdyz Atari opravdu zacne posilat kazetovy serial
+      // BUILD2BL: AUTO REC pro CSAVE/SAVE "C:". Kdyz Atari opravdu zacne posilat kazetovy serial
       // proud a prvni sync byte je $55, nemusis predem mackat RECORD. Neni to fake: zachytava se
       // jen skutecny POKEY SEROUT byte, nic z RAM.
       if(!cassStage.csaveCapturing && (v&255)===0x55){
@@ -2208,26 +2141,24 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     };
     M.cassDebug=function(ev,data){
       try{
-        if(ev==='QUEUE') log('CLOAD SERIAL BUILD2BN: fronta '+data.bytes+' B, lead '+Math.round((data.lead||0)/15.6)+' ms PAL, byte '+data.perByte+' radku, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Cekam na realny C: motor, nic nepoustim do RAM.');
-        else if(ev==='QUEUE_TONE'){ log('CLOAD LEADER+SERIN BUILD2BN: pripraveno '+data.bytes+' datovych B po leaderu, raw='+((data.rawBytes||data.bytes))+' B, preskoceno vodicich $55='+((data.skipped||0))+', leader '+Math.round((data.lead||0)/15.6)+' ms PAL, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Zadny RAM inject.'); cassSetStatus('CLOAD leader + SERIN pripraven | '+data.bytes+' B'); }
-        else if(ev==='QUEUE_PCM'){ log('CLOAD WAV PCM BUILD2BN: pripraven primy WAV->SKSTAT bit4, '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%, motor='+(data.motor?'ON':'OFF')+', soubor='+(data.name||'WAV')+'. Zadny decode/reencode, zadny RAM inject.'); cassSetStatus('WAV PCM->SKSTAT pripraven | cekam na motor'); }
-        else if(ev==='WAIT_MOTOR') log('CLOAD LEADER+SERIN BUILD2BN: data jsou pripravena, ale C: motor jeste neni ON. Cekam na realny CLOAD/boot wait stav; zadny fake start.');
-        else if(ev==='MOTOR_ON') log('CLOAD MOTOR: PACTL bit3 = 0, motor ON. Ted bezi jen cisty leader; datove bajty pujdou az potom pres POKEY SERIN.');
+        if(ev==='QUEUE') log('CLOAD SERIAL BUILD2BL: fronta '+data.bytes+' B, lead '+Math.round((data.lead||0)/15.6)+' ms PAL, byte '+data.perByte+' radku, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Cekam na realny C: motor, nic nepoustim do RAM.');
+        else if(ev==='QUEUE_TONE'){ log('CLOAD BITSTREAM BUILD2BL: pripraveno '+data.bytes+' B jako skutecny kazetovy ton na SKSTAT bit4, leader '+Math.round((data.lead||0)/15.6)+' ms PAL, bit '+data.bitLines+' radku, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Zadny RAM inject, zadne hotove SERIN bajty.'); cassSetStatus('CLOAD BITSTREAM pripraven | '+data.bytes+' B | cekam na motor'); }
+        else if(ev==='QUEUE_PCM'){ log('CLOAD WAV PCM BUILD2BL: pripraven primy WAV->SKSTAT bit4, '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%, motor='+(data.motor?'ON':'OFF')+', soubor='+(data.name||'WAV')+'. Zadny decode/reencode, zadny RAM inject.'); cassSetStatus('WAV PCM->SKSTAT pripraven | cekam na motor'); }
+        else if(ev==='WAIT_MOTOR') log('CLOAD BITSTREAM BUILD2BL: data jsou pripravena, ale C: motor jeste neni ON. Cekam na realny CLOAD/boot wait stav; zadny fake start.');
+        else if(ev==='MOTOR_ON') log('CLOAD MOTOR: PACTL bit3 = 0, motor ON. Ted teprve bezi dlouhy leader a pak tonovy SKSTAT bitstream.');
         else if(ev==='MOTOR_OFF') log('CLOAD MOTOR: PACTL bit3 = 1, motor OFF. Kazetova fronta se zastavi/cekani je videt v logu.');
-        else if(ev==='MOTOR_OK_LEADER') log('CLOAD LEADER BUILD2BN: motor potvrzen, cisty leader zbyva '+Math.round((data.lead||0)/15.6)+' ms PAL, skipped55='+((data.skipped||0))+', zdroj='+data.kind+'.');
-        else if(ev==='WAIT_OS_TIMER') log('CLOAD SERIAL BUILD2BN: drzim jeste vodici stopu, OS neni pripraven cist data (timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'). Data jsou porad jen ve fronte, zadny RAM inject.');
-        else if(ev==='LEADER_SERIN_ARM'){ log('CLOAD SERIN ARM BUILD2BN: OS leader faze hotova, pripravuji '+data.bytes+' B pro POKEY SERIN; skipped55='+((data.skipped||0))+', lead55='+((data.lead55||0))+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+'.'); cassSetStatus('CLOAD SERIN arm | '+data.bytes+' B'); }
-        else if(ev==='WAIT_SERIN_READY'){ log('CLOAD SERIN WAIT BUILD2BN: cekam na OS serial ready: timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+'. Nic neprepisuju, zadny RAM inject.'); cassSetStatus('CLOAD ceka na SERIN ready'); }
-        else if(ev==='PCM_START'){ log('CLOAD WAV PCM BUILD2BN: motor ON, spoustim primy WAV tvar na SKSTAT bit4: '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%. Tohle je cesta podle WAV, ktery realne Atari nacte.'); cassSetStatus('WAV PCM->SKSTAT bezi | poslouchej cisty zvuk'); }
-        else if(ev==='PCM_COUNT'){ log('CLOAD WAV PCM BUILD2BN: odtikan primy WAV tvar '+Math.round(((data.lines||0)*100)/Math.max(1,(data.total||1)))+'% / '+data.lines+'/'+data.total+' radku, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('WAV PCM->SKSTAT tece | '+Math.round(((data.lines||0)*100)/Math.max(1,(data.total||1)))+'%'); }
-        else if(ev==='PCM_COMPLETE'){ log('CLOAD WAV PCM BUILD2BN: primy WAV tvar dokoncen '+data.lines+'/'+data.total+' radku, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('WAV PCM->SKSTAT konec | cekam na Atari vysledek'); }
-        else if(ev==='BITSTREAM_DATA_START'){ log('CLOAD LEADER DONE BUILD2BN: leader dobehl, SKSTAT data chaos je vypnuty. Prepinam na cekani na POKEY SERIN ready. Hrany='+data.edges+', skipped55='+((data.skipped||0))+'.'); cassSetStatus('CLOAD leader hotov | cekam na SERIN'); }
-        else if(ev==='BITSTREAM_COUNT'){ log('CLOAD BITSTREAM BUILD2BN: odtikan tonovy stream '+data.count+'/'+data.queued+' B, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('CLOAD BITSTREAM tece | '+data.count+'/'+data.queued+' B'); }
-        else if(ev==='BITSTREAM_COMPLETE'){ log('CLOAD BITSTREAM BUILD2BN: tonovy stream dokoncen '+data.count+'/'+data.queued+' B, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('CLOAD BITSTREAM konec | cekam na Atari vysledek'); }
-        else if(ev==='FIRST_BYTE'){ log('CLOAD SERIAL BUILD2BN: prvni bajt dosel do SERIN = $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' / celkem '+data.queued+' B | IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'.'); cassSetStatus('CLOAD SERIN start | 1/'+data.queued+' B'); }
-        else if(ev==='RX_COUNT'){ log('CLOAD SERIAL BUILD2BN: SERIN predano '+data.count+'/'+data.queued+' B.'); cassSetStatus('CLOAD SERIN tece | '+data.count+'/'+data.queued+' B'); }
-        else if(ev==='HOLD_SERIN'){ log('CLOAD SERIAL BUILD2BN: SERIN byte $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' drzim uz '+Math.round(data.ageLines/15.6)+' ms, OS ho jeste neprecetl. IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+' I='+(data.iff?1:0)+'. Neprepisuju ho dalsim bytem.'); cassSetStatus('CLOAD ceka: OS necetl SERIN | viz log'); }
-        else if(ev==='COMPLETE') log('CLOAD SERIAL BUILD2BN: fronta dokoncena '+data.count+'/'+data.queued+' B, zdroj='+data.kind+'. Vysledek musi rict Atari obrazovka/BASIC, nebudu ho lakovat.');
+        else if(ev==='MOTOR_OK_LEADER') log('CLOAD SERIAL BUILD2BL: motor potvrzen, leader zbyva '+Math.round((data.lead||0)/15.6)+' ms PAL, zdroj='+data.kind+'.');
+        else if(ev==='WAIT_OS_TIMER') log('CLOAD SERIAL BUILD2BL: drzim jeste vodici stopu, OS neni pripraven cist data (timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'). Data jsou porad jen ve fronte, zadny RAM inject.');
+        else if(ev==='PCM_START'){ log('CLOAD WAV PCM BUILD2BL: motor ON, spoustim primy WAV tvar na SKSTAT bit4: '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%. Tohle je cesta podle WAV, ktery realne Atari nacte.'); cassSetStatus('WAV PCM->SKSTAT bezi | poslouchej cisty zvuk'); }
+        else if(ev==='PCM_COUNT'){ log('CLOAD WAV PCM BUILD2BL: odtikan primy WAV tvar '+Math.round(((data.lines||0)*100)/Math.max(1,(data.total||1)))+'% / '+data.lines+'/'+data.total+' radku, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('WAV PCM->SKSTAT tece | '+Math.round(((data.lines||0)*100)/Math.max(1,(data.total||1)))+'%'); }
+        else if(ev==='PCM_COMPLETE'){ log('CLOAD WAV PCM BUILD2BL: primy WAV tvar dokoncen '+data.lines+'/'+data.total+' radku, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('WAV PCM->SKSTAT konec | cekam na Atari vysledek'); }
+        else if(ev==='BITSTREAM_DATA_START'){ log('CLOAD BITSTREAM BUILD2BL: leader dobehl, zacinaji realne start/data/stop bity. SKSTAT bit4 uz pulzuje; OS ROM rutina $ED44 ma co merit. Hrany='+data.edges+'.'); cassSetStatus('CLOAD BITSTREAM: data zacinaji | SKSTAT bit4 pulzuje'); }
+        else if(ev==='BITSTREAM_COUNT'){ log('CLOAD BITSTREAM BUILD2BL: odtikan tonovy stream '+data.count+'/'+data.queued+' B, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('CLOAD BITSTREAM tece | '+data.count+'/'+data.queued+' B'); }
+        else if(ev==='BITSTREAM_COMPLETE'){ log('CLOAD BITSTREAM BUILD2BL: tonovy stream dokoncen '+data.count+'/'+data.queued+' B, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('CLOAD BITSTREAM konec | cekam na Atari vysledek'); }
+        else if(ev==='FIRST_BYTE'){ log('CLOAD SERIAL BUILD2BL: prvni bajt dosel do SERIN = $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' / celkem '+data.queued+' B | IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'.'); cassSetStatus('CLOAD SERIN start | 1/'+data.queued+' B'); }
+        else if(ev==='RX_COUNT'){ log('CLOAD SERIAL BUILD2BL: SERIN predano '+data.count+'/'+data.queued+' B.'); cassSetStatus('CLOAD SERIN tece | '+data.count+'/'+data.queued+' B'); }
+        else if(ev==='HOLD_SERIN'){ log('CLOAD SERIAL BUILD2BL: SERIN byte $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' drzim uz '+Math.round(data.ageLines/15.6)+' ms, OS ho jeste neprecetl. IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+' I='+(data.iff?1:0)+'. Neprepisuju ho dalsim bytem.'); cassSetStatus('CLOAD ceka: OS necetl SERIN | viz log'); }
+        else if(ev==='COMPLETE') log('CLOAD SERIAL BUILD2BL: fronta dokoncena '+data.count+'/'+data.queued+' B, zdroj='+data.kind+'. Vysledek musi rict Atari obrazovka/BASIC, nebudu ho lakovat.');
       }catch(_e){}
     };
   }
@@ -2254,7 +2185,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!M.queueCassetteSerial){ log('CLOAD CAS: jadro nema queueCassetteSerial - nemuzu poslat data do POKEY.'); return 0; }
     var lead=72000;
     var n=M.queueCassetteSerial(data,260,lead,'CAS CLOAD');
-    log('CLOAD CAS BITSTREAM BUILD2BN: po realnem C: motor ON + zavadeci stope '+Math.round(lead/15.6)+' ms posilam '+n+' B z CAS jako tonovy bitstream na SKSTAT bit4 cca 600 baud. Zadny RAM inject, zadne hotove SERIN bajty.');
+    log('CLOAD CAS BITSTREAM BUILD2BL: po realnem C: motor ON + zavadeci stope '+Math.round(lead/15.6)+' ms posilam '+n+' B z CAS jako tonovy bitstream na SKSTAT bit4 cca 600 baud. Zadny RAM inject, zadne hotove SERIN bajty.');
     log('CLOAD CAS POSTUP: v Atari musi byt spusteny CLOAD / LOAD "C:"; PLAY jen pousti vlozenou CAS pasku a seriova data. Vysledek uvidis na obrazovce nebo v logu.');
     cassSetStatus('CAS CLOAD bitstream tece na SKSTAT bit4 | '+n+' B');
     return n;
@@ -2262,7 +2193,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function makeCasMonitorWav(u8){
     var data=extractCasPayloadBytes(u8);
     var maxBytes=Math.min(data.length, 65536); // ochrana pameti pro mobil/NOX
-    // BUILD2BN: zvuk CSAVE WAV zvednuty na 44.1 kHz a sinusovy ton, ne hruba 22 kHz ctvercova pila.
+    // BUILD2BL: zvuk CSAVE WAV zvednuty na 44.1 kHz a sinusovy ton, ne hruba 22 kHz ctvercova pila.
     // Realny CLOAD test na skutecnem Atari tak ma mnohem bliz k normalni Atari kazete a v emulatoru neni zvuk tak prervany.
     var sr=44100, baud=600, spb=Math.max(16,Math.round(sr/baud));
     var leadSamples=sr*8.0|0;
@@ -2274,7 +2205,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var fade=Math.min(96, samples>>2);
       for(var i=0;i<samples && pos<pcm.length;i++,pos++){
         phase+=inc; if(phase>Math.PI*2) phase-=Math.PI*2;
-        var g=0.065;
+        var g=0.20;
         if(i<fade) g*=i/fade;
         else if(samples-i<fade) g*=(samples-i)/fade;
         pcm[pos]=Math.max(-32767,Math.min(32767,Math.round(Math.sin(phase)*g*32767)));
@@ -2388,10 +2319,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       return {score:score,valid:valid,total:total};
     }
-    // BUILD2BN: nehadej pevny zacatek dat. Vlastni CSAVE WAV ma asi 1 s vodici tone,
+    // BUILD2BL: nehadej pevny zacatek dat. Vlastni CSAVE WAV ma asi 1 s vodici tone,
     // Turgen muze mit jiny nabeh. Hledam misto, kde zacnou platne start/stop bity.
     var best={score:-1,lead:0,off:0,valid:0,total:0};
-    var leadMax=Math.min(pcm.length-spb*200, sr*7.0|0); // BUILD2BN: CSAVE WAV muze mit dlouhy vodici ton
+    var leadMax=Math.min(pcm.length-spb*200, sr*7.0|0); // BUILD2BL: CSAVE WAV muze mit dlouhy vodici ton
     var leadStep=Math.max(spb*3, Math.floor(sr*0.04));
     var offStep=Math.max(1,Math.floor(spb/16));
     for(var lead=0; lead<=leadMax; lead+=leadStep){
@@ -2454,30 +2385,21 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var wavSize=(cassStage.loadedBytes&&cassStage.loadedBytes.length)||0;
     var ownShort=/AtariHelp_CSAVE|EMU10_CSAVE|CSAVE_BASIC/i.test(wavName) || wavSize<2097152;
     if(!ownShort && wavSize>2097152){
-      log('WAV CLOAD DECODE: '+wavName+' ma '+wavSize+' B. BUILD2BN ho kvuli stabilite NOXu NEDEKODUJE v UI vlakne; prehravam jen realny zvuk, aby apka nespadla. Turbo/Turgen WAV dekoder je dalsi faze.');
+      log('WAV CLOAD DECODE: '+wavName+' ma '+wavSize+' B. BUILD2BL ho kvuli stabilite NOXu NEDEKODUJE v UI vlakne; prehravam jen realny zvuk, aby apka nespadla. Turbo/Turgen WAV dekoder je dalsi faze.');
       cassSetStatus('WAV velky/turbo | prehravam zvuk | bez POKEY decode');
       return 0;
     }
-    // BUILD2BN: podle testu uzivatel slysel, ze PCM->SKSTAT po leaderu dela chaos.
-    // Proto pro vlastni LAST CSAVE beru primo zachycene POKEY SEROUT bajty a posilam je jako cyklove presny 600 baud ton.
-    if(ownShort && M && M.queueCassetteSerial && cassStage && cassStage.lastCsaveRaw && cassStage.lastCsaveRaw.length){
-      var raw=cassStage.lastCsaveRaw;
-      var leadRaw=124800; // 8 s jako renderovany WAV, leader zustane cisty a data se nerozjedou z PCM aliasingu
-      var nr=M.queueCassetteSerial(raw,260,leadRaw,'LAST CSAVE RAW CYCLE CLOAD');
-      log('CLOAD RAW CYCLE BUILD2BN: vlastni CSAVE WAV necpu pres PCM chaos. Pouzivam '+nr+' skutecnych SEROUT B jako cyklove presny 600 baud ton na SKSTAT bit4, leader '+Math.round(leadRaw/15.6)+' ms. Bez RAM injectu.');
-      cassSetStatus('CLOAD RAW CYCLE | '+nr+' B | cisty ton po leaderu');
-      return nr;
-    }
-    // PCM cesta zustava v kodu jen jako nouze, ale neni default pro LAST CSAVE, protoze BL log ukazal chaos po leaderu.
-    if(false && M && M.queueCassettePcmLevels){
+    // BUILD2BL: pro vlastni CSAVE WAV, ktery realne Atari 130XE nacte, je nejvernejsi nepřevadet WAV zpet na byty a znovu ho negenerovat.
+    // Posilam primo tvar WAV na SKSTAT bit4, prevzorkovany na PAL radky. Je to stale cista kazetova cesta, zadny RAM inject.
+    if(M && M.queueCassettePcmLevels){
       var pr=wavToSkstatLineLevels(cassStage.loadedBytes,wavName);
       if(pr.ok){
         var qn=M.queueCassettePcmLevels(pr.levels,{kind:'WAV PCM CLOAD',seconds:pr.seconds,sampleRate:pr.sampleRate,peak:pr.peak,name:wavName});
-        log('WAV PCM CLOAD BUILD2BN: posilam primo tvar WAV na SKSTAT bit4: '+qn+' radku, '+fmtTime(pr.seconds)+', sr='+pr.sampleRate+' Hz, peak='+(pr.peak*100).toFixed(1)+'%, hrany='+pr.edges+'. Zadny decode/reencode, zadny RAM inject.');
+        log('WAV PCM CLOAD BUILD2BL: posilam primo tvar WAV na SKSTAT bit4: '+qn+' radku, '+fmtTime(pr.seconds)+', sr='+pr.sampleRate+' Hz, peak='+(pr.peak*100).toFixed(1)+'%, hrany='+pr.edges+'. Zadny decode/reencode, zadny RAM inject.');
         cassSetStatus('WAV PCM->SKSTAT | '+fmtTime(pr.seconds)+' | hlasitost snizena');
         return qn;
       }else{
-        log('WAV PCM CLOAD BUILD2BN: primy PCM->SKSTAT nesel ('+pr.error+'), padam zpatky na stary 600 baud dekoder.');
+        log('WAV PCM CLOAD BUILD2BL: primy PCM->SKSTAT nesel ('+pr.error+'), padam zpatky na stary 600 baud dekoder.');
       }
     }
     if(!cassStage.wavDecodeTried){
@@ -2500,7 +2422,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       var lead=(ownShort?72000:96000);
       var n=M.queueCassetteSerial(d.bytes,260,lead,'WAV CLOAD');
-      log('WAV CLOAD BUILD2BN: pripravuji '+n+' realne dekodovanych B do kazetoveho bitstreamu SKSTAT bit4. Tonove hrany se spusti az po realnem C: motor ON + leader '+Math.round(lead/15.6)+' ms. Zadny RAM inject.');
+      log('WAV CLOAD BUILD2BL: pripravuji '+n+' realne dekodovanych B do kazetoveho bitstreamu SKSTAT bit4. Tonove hrany se spusti az po realnem C: motor ON + leader '+Math.round(lead/15.6)+' ms. Zadny RAM inject.');
       cassSetStatus('WAV CLOAD bitstream tece na SKSTAT bit4 | '+n+' B');
       return n;
     }
@@ -2569,7 +2491,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         try{ var wr=makeCasMonitorWav(raw); cassStage.lastCsaveWav=wr.wav; }
         catch(werr){ cassStage.lastCsaveWav=null; log('CSAVE CACHE: WAV kopii v pameti se nepodarilo pripravit - '+werr.message); }
         log('CSAVE VYSLEDEK: ANO - emulator videl realny vystup z Atari. Zachyceno '+got+' B ze SEROUT.');
-        log('CSAVE AUTO CAS/WAV: balim realne zachyceny serial stream do FUJI CAS ('+cas.length+' B) a renderuju monitor WAV. BUILD2BN navic drzi posledni CSAVE WAV/CAS v pameti pro okamzity CLOAD test bez Android pickeru.');
+        log('CSAVE AUTO CAS/WAV: balim realne zachyceny serial stream do FUJI CAS ('+cas.length+' B) a renderuju monitor WAV. BUILD2BL navic drzi posledni CSAVE WAV/CAS v pameti pro okamzity CLOAD test bez Android pickeru.');
         saveCsaveCas();
         saveCsaveWav();
       }else{
@@ -2600,13 +2522,13 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       var name=(cassStage && cassStage.lastCsaveWavName) ? cassStage.lastCsaveWavName : ('AtariHelp_CSAVE_'+csaveModeName()+'_'+ahStamp()+'.wav');
       saveBinaryMobile(name,r.wav,'SAVE WAV');
-      log('SAVE WAV: monitor WAV 44.1 kHz vyrenderovan/zopakován z realne zachyceneho streamu ('+r.bytes+' B dat). BUILD2BN drzi kopii v pameti pro okamzity CLOAD test bez Android pickeru.');
+      log('SAVE WAV: monitor WAV 44.1 kHz vyrenderovan/zopakován z realne zachyceneho streamu ('+r.bytes+' B dat). BUILD2BL drzi kopii v pameti pro okamzity CLOAD test bez Android pickeru.');
     }catch(e){ log('SAVE WAV: render selhal - '+e.message); }
   }
   function insertLastCsaveWav(){
     if(!cassStage || !cassStage.lastCsaveWav){ log('LAST CSAVE WAV: zatim neni v pameti zadny realne zachyceny CSAVE WAV. Nejdriv udelej CSAVE.'); return false; }
     var nm=cassStage.lastCsaveWavName||'AtariHelp_LAST_CSAVE.wav';
-    log('BUILD2BN CSAVE CACHE: vkladam posledni ulozeny CSAVE WAV z pameti emulatoru: '+nm+' ('+cassStage.lastCsaveWav.length+' B). Data pochazi ze skutecneho POKEY SEROUT, bez RAM injectu.');
+    log('BUILD2BL CSAVE CACHE: vkladam posledni ulozeny CSAVE WAV z pameti emulatoru: '+nm+' ('+cassStage.lastCsaveWav.length+' B). Data pochazi ze skutecneho POKEY SEROUT, bez RAM injectu.');
     loadCassetteBytes(nm,cassStage.lastCsaveWav);
     cassSetStatus('LAST CSAVE WAV vlozen z pameti | CLOAD + PLAY');
     return true;
@@ -2757,18 +2679,18 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       if(/\.wav$/i.test(name)){
         var wi=safeWavInfo(u8);
         var ownShortAudio=/AtariHelp_CSAVE|EMU10_CSAVE|CSAVE_BASIC/i.test(name||'') || u8.length<2097152;
-        if(!wi.ok){ log('WAV AUDIO BUILD2BN: '+name+' nema bezpecne ctenou WAV hlavicku ('+wi.error+'). Android audio nepoustim, ale soubor zustava vlozen pro analyzu.'); cassSetStatus('WAV guard | spatna WAV hlavicka'); return; }
+        if(!wi.ok){ log('WAV AUDIO BUILD2BL: '+name+' nema bezpecne ctenou WAV hlavicku ('+wi.error+'). Android audio nepoustim, ale soubor zustava vlozen pro analyzu.'); cassSetStatus('WAV guard | spatna WAV hlavicka'); return; }
         if(!ownShortAudio && (wi.dataLen>8388608 || wi.seconds>180)){
-          log('WAV AUDIO BUILD2BN: '+name+' je velky WAV ('+Math.round(wi.dataLen/1048576)+' MB, '+fmtTime(wi.seconds)+'), ale po testu BUILD2BI uz ho NEUMLCUJU. Poustim realny zvuk pres Android Audio; POKEY decode pro turbo/velke WAV zatim neposilam do RAM ani SERIN.');
+          log('WAV AUDIO BUILD2BL: '+name+' je velky WAV ('+Math.round(wi.dataLen/1048576)+' MB, '+fmtTime(wi.seconds)+'), ale po testu BUILD2BI uz ho NEUMLCUJU. Poustim realny zvuk pres Android Audio; POKEY decode pro turbo/velke WAV zatim neposilam do RAM ani SERIN.');
         }
-        if(wi.dataLen>67108864 || wi.seconds>900){ log('WAV SAFE GUARD BUILD2BN: '+name+' je extremne velky/dlouhy pro NOX audio dekoder ('+Math.round(wi.dataLen/1048576)+' MB, '+fmtTime(wi.seconds)+'). Nepustim ho, aby nespadla apka.'); cassSetStatus('WAV guard | extremne velky pro NOX'); return; }
+        if(wi.dataLen>67108864 || wi.seconds>900){ log('WAV SAFE GUARD BUILD2BL: '+name+' je extremne velky/dlouhy pro NOX audio dekoder ('+Math.round(wi.dataLen/1048576)+' MB, '+fmtTime(wi.seconds)+'). Nepustim ho, aby nespadla apka.'); cassSetStatus('WAV guard | extremne velky pro NOX'); return; }
       }
       tapeAudioUrl=URL.createObjectURL(new Blob([u8],{type:type}));
       if(!tapeAudio) tapeAudio=new Audio();
-      try{ tapeAudio.preload='metadata'; tapeAudio.volume=0.14; }catch(_e){}
+      try{ tapeAudio.preload='metadata'; tapeAudio.volume=0.35; }catch(_e){}
       tapeCounterZeroBase=0;
       tapeAudio.pause(); tapeAudio.src=tapeAudioUrl; tapeAudio.currentTime=0;
-      tapeAudio.onerror=function(){ tapeVisualStop(); log('KAZETA AUDIO CHYBA BUILD2BN: Android/NOX audio dekoder odmítl soubor '+(tapeAudioName||'audio')+'. Kazeta zustava vlozena pro analyzu/CLOAD decode, ale zvuk z Androidu se nerozjel.'); cassSetStatus('audio chyba | soubor zustal vlozen'); };
+      tapeAudio.onerror=function(){ tapeVisualStop(); log('KAZETA AUDIO CHYBA BUILD2BL: Android/NOX audio dekoder odmítl soubor '+(tapeAudioName||'audio')+'. Kazeta zustava vlozena pro analyzu/CLOAD decode, ale zvuk z Androidu se nerozjel.'); cassSetStatus('audio chyba | soubor zustal vlozen'); };
       tapeAudio.onloadedmetadata=function(){ updateTapeCounter(true); cassSetStatus(cassStage.loadedKind+' vlozena: '+tapeAudioName+' | PLAY spusti kazetu'); log('VLOZIT KAZETU: '+cassStage.loadedKind+' '+tapeAudioName+' delka '+fmtTime(tapeAudio.duration)+'. PLAY spusti, REW/F.FWD pretaci realny soubor.'); };
       tapeAudio.onseeked=function(){ updateTapeCounter(true); };
       tapeAudio.onended=function(){ tapeVisualStop(); log('KAZETA: konec audio souboru, counter stoji na '+pad3(tapeCounterValue)+'.'); };
@@ -2794,7 +2716,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var pr=tapeAudio.play();
       if(pr&&pr.then) pr.then(function(){ log('CAS PLAY: monitor zvuk odvozeny z '+r.bytes+' B CAS dat. Zdroj mel '+r.srcBytes+' B dat. Neni to RAM inject.'); }).catch(function(e){ tapeVisualStop(); log('CAS PLAY: audio monitor se nerozjel - '+e.message); });
       cassSetStatus('CAS PLAY | '+cassStage.loadedName+' | CLOAD prvni pruchod');
-      log('CLOAD REAL POKUS BUILD2BN: CAS je po realnem motor ON + dlouhem leaderu poslana jako tonovy bitstream na SKSTAT bit4 ('+queued+' B) a slysim monitor zvuk. Pokud BASIC/Turbo BASIC ceka na C:, ma sanci data vzit. Pokud ne, log rekne kde se ztraci.');
+      log('CLOAD REAL POKUS BUILD2BL: CAS je po realnem motor ON + dlouhem leaderu poslana jako tonovy bitstream na SKSTAT bit4 ('+queued+' B) a slysim monitor zvuk. Pokud BASIC/Turbo BASIC ceka na C:, ma sanci data vzit. Pokud ne, log rekne kde se ztraci.');
     }catch(e){ tapeVisualStop(); log('CAS PLAY chyba: '+e.message); }
   }
   function tapeAnimate(ms,mode,speed){
@@ -2881,7 +2803,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!silent) log((reason||'TAPE PAUSE')+': audio je zastavene na aktualni pozici. PLAY ho znovu rozjede. COUNTER '+pad3(tapeCounterValue)+'.');
   }
   function stopTapeAudio(reason,silent){
-    /* BUILD2BN: STOP nesmi pretacet. Zastavi pohyb/zvuk a vynuluje jen ciselnik,
+    /* BUILD2BL: STOP nesmi pretacet. Zastavi pohyb/zvuk a vynuluje jen ciselnik,
        nepretaci realnou pozici audio souboru. PLAY muze pokracovat z aktualni pozice. */
     try{
       tapeStoppedUntil=Date.now()+1200;
@@ -2939,7 +2861,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       tryQueueWavCloadFirstPass();
       tapeVisualStart('PLAY',1,true);
       setTimeout(function(){ tapeVisualStop(); }, 900);
-      log('KAZETA PLAY BUILD2BN: WAV je vlozeny bez Android audio zdroje. Zkousim aspon CLOAD dekoder / analyzu; pokud jde o posledni CSAVE, pouzij SAVE/cervene tlacitko pro vlozeni cache. Zadny RAM inject.');
+      log('KAZETA PLAY BUILD2BL: WAV je vlozeny bez Android audio zdroje. Zkousim aspon CLOAD dekoder / analyzu; pokud jde o posledni CSAVE, pouzij SAVE/cervene tlacitko pro vlozeni cache. Zadny RAM inject.');
       cassSetStatus('WAV bez audio zdroje | analyza/CLOAD decode');
       return;
     }
@@ -3027,7 +2949,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     safeTap('btnTapeStop',function(){ pressAnim('btnTapeStop',620); handleTapeStopEject(); });
     safeTap('btnTapeRew',function(){ pressAnim('btnTapeRew',650); seekTapeAudio(-1); });
     safeTap('btnTapeFwd',function(){ pressAnim('btnTapeFwd',650); seekTapeAudio(1); });
-    safeTap('btnTapeSave',function(){ pressAnim('btnTapeSave',520); if(cassStage && cassStage.lastCsaveWav && !isTapeActiveNow()){ insertLastCsaveWav(); return; } log('SAVE: volitelny opakovany export posledniho zachyceneho CAS. Pokud existuje posledni CSAVE WAV, BUILD2BN ho timto tlacitkem umi i vlozit z pameti pro CLOAD test.'); saveCsaveCas(); });
+    safeTap('btnTapeSave',function(){ pressAnim('btnTapeSave',520); if(cassStage && cassStage.lastCsaveWav && !isTapeActiveNow()){ insertLastCsaveWav(); return; } log('SAVE: volitelny opakovany export posledniho zachyceneho CAS. Pokud existuje posledni CSAVE WAV, BUILD2BL ho timto tlacitkem umi i vlozit z pameti pro CLOAD test.'); saveCsaveCas(); });
     safeTap('btnCounterReset',function(){ pressAnim('btnCounterReset',260); resetTapeCounter(); });
     document.getElementById('btnTxt').addEventListener('click',openTxtOverlay);
     safeTap('dockXex',function(){ pressAnim('dockXex',220); openLocalGamePicker('XEX MOBIL'); });
@@ -3092,7 +3014,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2BN-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2BL-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -3108,9 +3030,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2BN_CLOAD_LEADER_THEN_SERIN_TOUCH_FIX pripraven.');
-    log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani/kazetak/dotykove zony.');
-    log('KAZETA BUILD2BN: oprava po BL - leader zustava cisty na SKSTAT bit4, ale po leaderu uz nejede datovy PCM/bitstream chaos. Skutecny CSAVE stream se rozdeluje: vodici $55 se preskoci jako leader a vlastni data jdou az po OS ready pres POKEY SERIN IRQ. Snizena hlasitost a srovnane dotykove zony. Bez RAM injectu.');
+    log('AtariHelp.eu EMU-10 BUILD2BL_CLOAD_WAV_PCM_SKSTAT_VOLUME_FIX pripraven.');
+    log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou UI/ovladani/kazetak.');
+    log('KAZETA BUILD2BL: po testu realneho Atari pridavam primy WAV->SKSTAT bit4 pro vlastni CSAVE WAV, nizsi hlasitost kazety a cistejsi monitor zvuk. Bez RAM injectu.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
