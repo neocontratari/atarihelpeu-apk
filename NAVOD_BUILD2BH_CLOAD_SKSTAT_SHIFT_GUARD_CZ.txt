@@ -1,4 +1,4 @@
-ATARIHELP.EU EMU-10 - BUILD2BH_CLOAD_SKSTAT_SHIFT_GUARD
+ATARIHELP.EU EMU-10 - BUILD2BI_CLOAD_OS_TIMER_SERIN_PACMAN_SAFE
 ===========================================================
 
 KODY JSOU STEJNE.
@@ -13,7 +13,7 @@ BUILD2BG zlepsil START+OPTION, ale CLOAD z vlastniho ulozeneho CSAVE WAV porad n
 
 To znamena, ze chyba nebyla hlavne ve WAV dekoderu, ale v handshake SERIN / IRQST / SKSTAT.
 
-HLAVNI OPRAVA V BUILD2BH
+HLAVNI OPRAVA V BUILD2BI
 ------------------------
 1) SKSTAT bit1 uz neni drzeny LOW po celou dobu, kdy SERIN ceka na OS.
    - Predtim mohl emulator rikat OS: serial input shift register je porad busy.
@@ -64,13 +64,13 @@ CO TESTOVAT
 HLEDEJ V LOGU
 -------------
 - WAV CLOAD DECODE: ANO
-- CLOAD SERIAL BUILD2BH: prvni bajt dosel do SERIN
+- CLOAD SERIAL BUILD2BI: prvni bajt dosel do SERIN
 - pokud se objevi RX_COUNT 64/264, 128/264 atd., je to velky posun: OS zacal cist SERIN.
 - pokud se objevi HOLD_SERIN, posli cely log. Novy log ukaze IRQEN/IRQST/PC/I a da se opravovat dal presneji.
 
 PACMAN / VELKE WAV
 ------------------
-Pacman WAV muze byt specificky/velky/turbo/problemovy. BUILD2BH ho nesmi nechat shodit celou appku. Pokud ho guard odmitne, je to schvalne a poctive. Turbo/Turgen dekoder je dalsi faze, ne fake.
+Pacman WAV muze byt specificky/velky/turbo/problemovy. BUILD2BI ho nesmi nechat shodit celou appku. Pokud ho guard odmitne, je to schvalne a poctive. Turbo/Turgen dekoder je dalsi faze, ne fake.
 
 ZASADY
 ------
