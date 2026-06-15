@@ -1,4 +1,4 @@
-AtariHelp.eu EMU-10 BUILD2BK_CLOAD_REAL_TAPE_BITSTREAM_AUDIO
+AtariHelp.eu EMU-10 BUILD2BL_CLOAD_WAV_PCM_SKSTAT_VOLUME_FIX
 =============================================================
 
 KODY JSOU STEJNE.
@@ -8,7 +8,7 @@ Proc tento build vznikl:
 - BUILD2BJ porad nebyl viditelny posun v CLOAD.
 - Log ukazal, ze posilani hotoveho bytu do POKEY SERIN bylo spatne: OS ho necetl.
 - Pri kontrole OS ROM rutiny se ukazalo, ze CLOAD kod na $ED44 cte SKSTAT $D20F bit4 a meri hrany tonu.
-- Proto BUILD2BK prestava krmit CLOAD hotovymi SERIN bajty a vyrabi z realnych dat tonovy bitstream 3995/5327 Hz na SKSTAT bit4.
+- Proto BUILD2BL prestava krmit CLOAD hotovymi SERIN bajty a vyrabi z realnych dat tonovy bitstream 3995/5327 Hz na SKSTAT bit4.
 
 Co je zmeneno:
 1) CLOAD vstup:
@@ -24,7 +24,7 @@ Co je zmeneno:
    - Cilem je, aby zvuk nebyl tak prervany a vic se blizil realne kazete.
 
 3) Log:
-   - Pribyly zpravy CLOAD BITSTREAM BUILD2BK.
+   - Pribyly zpravy CLOAD BITSTREAM BUILD2BL.
    - Dulezite hledat:
      * QUEUE_TONE / CLOAD BITSTREAM pripraven
      * MOTOR_OK_LEADER
