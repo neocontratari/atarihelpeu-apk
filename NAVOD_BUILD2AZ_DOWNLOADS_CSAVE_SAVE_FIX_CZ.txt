@@ -1,0 +1,30 @@
+AtariHelp.eu EMU-10 BUILD2AZ DOWNLOADS CSAVE SAVE FIX
+
+CIL:
+- CSAVE/SAVE CAS a SAVE WAV se musi ukladat jasne do mobilu/Noxu do Downloads/AtariHelp.
+- Tester nesmi hledat soubory v Android/data aplikace.
+- Nazev musi byt citelny a neopakovat se.
+
+ZMENY:
+- Android AHSAVE.saveBase64/save uklada primarne do verejne slozky Downloads/AtariHelp.
+- Android 10+ pouziva MediaStore do Downloads/AtariHelp.
+- Android 9 a starsi/NOX pouziva verejnou cestu /storage/emulated/0/Download/AtariHelp.
+- Pokud Downloads selze, log vypise POZOR a nouzovou fallback cestu, ale to neni cilovy stav.
+- CSAVE CAS nazev:
+  AtariHelp_CSAVE_BASIC_YYYYMMDD_HHMMSS.cas
+  nebo AtariHelp_CSAVE_TBXL_YYYYMMDD_HHMMSS.cas
+- SAVE WAV nazev:
+  AtariHelp_CSAVE_BASIC_YYYYMMDD_HHMMSS.wav
+  nebo AtariHelp_CSAVE_TBXL_YYYYMMDD_HHMMSS.wav
+
+TEST:
+1) POWER BASIC.
+2) Napis kratky program.
+3) RECORD na XC12.
+4) CSAVE.
+5) STOP/EJECT.
+6) V LOGu musi byt CSAVE VYSLEDEK: ANO a SAVE CAS: ULOZENO DO DOWNLOADS/AtariHelp.
+7) Soubor hledej v mobilu/Noxu: Downloads/AtariHelp.
+
+KODY JSOU STEJNE.
+Jadro emulátoru, ROM logika a BASIC/Altirra testovaci kody se nemeni.

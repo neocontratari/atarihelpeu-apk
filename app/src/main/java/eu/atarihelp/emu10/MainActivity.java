@@ -1,15 +1,21 @@
 package eu.atarihelp.emu10;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ContentValues;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.content.Intent;
 import android.content.ClipData;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.OpenableColumns;
+import android.provider.MediaStore;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -22,18 +28,20 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLDecoder;
 
 /**
- * AtariHelp.eu EMU-10 BUILD2AX
+ * AtariHelp.eu EMU-10 BUILD2AZ
  * - file chooser (NAHRAJ XEX/ATR/ZIP)
  * - AHSAVE (ulozeni logu)
  * - DownloadListener: ZIP/XEX/ATR z webu se stahne a rovnou spusti v emulatoru
  * - BUILD2AG UI: NET HRY + XC12 WAV/MP3 real seek pres REW/F.FWD
  * - BUILD2AQ INTRO MP3: MP3 PRIDAT nacita/pripojuje skladby do playlistu + EJECT reset
- * - BUILD2AX XC12: VLOZIT oddelene od PLAY, CSAVE auto log/save po STOP, bez fake
+ * - BUILD2AZ XC12: CSAVE/CAS/WAV/LOG uklada primo do Downloads/AtariHelp
  */
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
@@ -46,35 +54,102 @@ public class MainActivity extends Activity {
     private String pendingBridgeKind;
     private final Handler ui = new Handler(Looper.getMainLooper());
 
+    private String safeFileName(String name) {
+        if (name == null || name.trim().length() == 0) name = "AtariHelp_file.bin";
+        String safe = name.replaceAll("[^A-Za-z0-9._-]", "_");
+        if (safe.length() > 96) safe = safe.substring(0, 96);
+        return safe;
+    }
+
+    private File getPublicAtariHelpDownloadsDir() {
+        File base = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File dir = new File(base, "AtariHelp");
+        if (!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    private String mimeForName(String name) {
+        String lower = name == null ? "" : name.toLowerCase();
+        if (lower.endsWith(".cas")) return "application/octet-stream";
+        if (lower.endsWith(".wav")) return "audio/wav";
+        if (lower.endsWith(".txt") || lower.endsWith(".log")) return "text/plain";
+        return "application/octet-stream";
+    }
+
+    private String writeBytesToDownloads(String name, byte[] data) throws IOException {
+        String safe = safeFileName(name);
+
+        // Android 10+ spravne pres MediaStore do viditelne slozky Downloads/AtariHelp.
+        if (Build.VERSION.SDK_INT >= 29) {
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.MediaColumns.DISPLAY_NAME, safe);
+            values.put(MediaStore.MediaColumns.MIME_TYPE, mimeForName(safe));
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/AtariHelp");
+            Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+            if (uri == null) throw new IOException("MediaStore insert vratil null");
+            OutputStream out = getContentResolver().openOutputStream(uri);
+            if (out == null) throw new IOException("MediaStore openOutputStream vratil null");
+            try { out.write(data); } finally { out.close(); }
+            return "Downloads/AtariHelp/" + safe;
+        }
+
+        // Android 9 a starsi / NOX: klasicka verejna slozka Downloads/AtariHelp.
+        File dir = getPublicAtariHelpDownloadsDir();
+        File f = new File(dir, safe);
+        int n = 1;
+        String base = safe;
+        String ext = "";
+        int dot = safe.lastIndexOf('.');
+        if (dot > 0) { base = safe.substring(0, dot); ext = safe.substring(dot); }
+        while (f.exists()) {
+            f = new File(dir, base + "_" + n + ext);
+            n++;
+        }
+        FileOutputStream out = new FileOutputStream(f);
+        try { out.write(data); } finally { out.close(); }
+        return f.getAbsolutePath();
+    }
+
     public class AHSave {
         @JavascriptInterface
         public String save(String name, String text) {
             try {
-                File dir = getExternalFilesDir(null);
-                if (dir == null) dir = getFilesDir();
-                File f = new File(dir, name.replaceAll("[^A-Za-z0-9._-]", "_"));
-                FileOutputStream out = new FileOutputStream(f);
-                out.write(text.getBytes("UTF-8"));
-                out.close();
-                return f.getAbsolutePath();
+                String path = writeBytesToDownloads(name, text.getBytes("UTF-8"));
+                return "DOWNLOADS_OK:" + path;
             } catch (Exception e) {
-                return "CHYBA: " + e.getMessage();
+                try {
+                    File dir = getExternalFilesDir(null);
+                    if (dir == null) dir = getFilesDir();
+                    File f = new File(dir, safeFileName(name));
+                    FileOutputStream out = new FileOutputStream(f);
+                    out.write(text.getBytes("UTF-8"));
+                    out.close();
+                    return "FALLBACK_APP_DIR:" + f.getAbsolutePath() + " | DOWNLOADS_CHYBA:" + e.getMessage();
+                } catch (Exception e2) {
+                    return "CHYBA: " + e.getMessage() + " / fallback: " + e2.getMessage();
+                }
             }
         }
 
         @JavascriptInterface
         public String saveBase64(String name, String b64) {
             try {
-                File dir = getExternalFilesDir(null);
-                if (dir == null) dir = getFilesDir();
-                File f = new File(dir, name.replaceAll("[^A-Za-z0-9._-]", "_"));
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
-                FileOutputStream out = new FileOutputStream(f);
-                out.write(data);
-                out.close();
-                return f.getAbsolutePath();
+                String path = writeBytesToDownloads(name, data);
+                return "DOWNLOADS_OK:" + path;
             } catch (Exception e) {
-                return "CHYBA: " + e.getMessage();
+                try {
+                    File dir = getExternalFilesDir(null);
+                    if (dir == null) dir = getFilesDir();
+                    File f = new File(dir, safeFileName(name));
+                    byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                    FileOutputStream out = new FileOutputStream(f);
+                    out.write(data);
+                    out.close();
+                    return "FALLBACK_APP_DIR:" + f.getAbsolutePath() + " | DOWNLOADS_CHYBA:" + e.getMessage();
+                } catch (Exception e2) {
+                    return "CHYBA: " + e.getMessage() + " / fallback: " + e2.getMessage();
+                }
             }
         }
     }
@@ -115,6 +190,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Build.VERSION.SDK_INT >= 23 && Build.VERSION.SDK_INT < 29 &&
+                checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 10);
+        }
         web = new WebView(this);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
