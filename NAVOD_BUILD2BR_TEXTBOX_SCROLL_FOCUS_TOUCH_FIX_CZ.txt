@@ -1,0 +1,28 @@
+ATARIHELP.EU EMU-10 BUILD2BR_TEXTBOX_SCROLL_FOCUS_TOUCH_FIX
+=========================================================
+
+KODY JSOU STEJNE.
+Jadro / ROM / BASIC testovaci kody se nemeni.
+Zmeny jsou TXT ramecek, focus po vlozeni, scroll v NOXu a dotykova OSK vrstva.
+
+CO JE OPRAVENO:
+- Po VLOZIT DO ATARI se TXT ramecek zavre, textarea ztrati focus a stranka se automaticky posune nahoru k Atari obrazovce.
+- Body/html maji znovu povoleny vertical scroll v NOXu.
+- OSK prekryv uz neblokuje posouvani cele stage mimo skutecne klavesy.
+- Textarea v TXT ramecku ma vlastni scroll, kdyz vlozeny kod je dlouhy.
+- CLOAD cesta zustava z predchoziho buildu, bez RAM injectu.
+
+TEST PLAN BUILD2BR:
+1) POWER -> cekat BASIC READY.
+2) BASIC/TBXL TXT -> vlozit kratky BASIC kod.
+3) VLOZIT DO ATARI.
+   Ocekavani: ramecek zmizi, emulator se posune nahoru k obrazovce, strankou jde v NOXu znovu posouvat nahoru/dolu.
+4) Pockat na log: VLOZIT TXT BUILD2BR: hotovo.
+5) LIST -> program musi byt videt.
+6) Pokud scroll porad nejde: poslat log a napsat, jestli nejde scroll prstem/mysi, nebo jen kdyz drag zacina primo na klavese.
+
+LOG MARKERY:
+- TXT RAMECEK BUILD2BR: otevren
+- TXT RAMECEK BUILD2BR: zavreno/odeslano - VLOZIT DO ATARI. Scroll stranky je znovu povolen...
+- VLOZIT TXT BUILD2BR: pripraveno ...
+- VLOZIT TXT BUILD2BR: hotovo...
