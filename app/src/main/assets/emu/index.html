@@ -629,7 +629,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function splitCassetteLeader55(bytes){
     const arr=[]; for(let i=0;i<bytes.length;i++) arr.push(bytes[i]&255);
     let lead55=0; while(lead55<arr.length && arr[lead55]===0x55) lead55++;
-    // BUILD2CC: vlastni CSAVE SEROUT proud ma po testech stabilni strukturu fyzickych kazetovych recordu 132 B:
+    // BUILD2CD: vlastni CSAVE SEROUT proud ma po testech stabilni strukturu fyzickych kazetovych recordu 132 B:
     // 2x $55 sync/leader + 128 B, a 2 pomocne bajty pred dalsim recordem. Kdyz se to krmilo jako jeden dlouhy
     // proud, ROM po 128 B prešla zpet do $ED44 sync smycky a dalsi bajt ($A8 apod.) drzela az do Error 138.
     // Proto u takoveho vlastniho CSAVE skladam pouze ciste 128B datove casti kazdeho recordu a mezi recordy dava
@@ -655,18 +655,18 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function cassetteSerialCanFeed(){
     if(!sio.cassMotor) return false;
     if((ram[0x022A]&0xFF)!==0 || (cpu.pc>=0xFD18 && cpu.pc<=0xFD20)) return false;
-    // BUILD2CC: po 128B bloku se ROM vraci do kazetove sync smycky ($ED3D-$ED96).
+    // BUILD2CD: po 128B bloku se ROM vraci do kazetove sync smycky ($ED3D-$ED96).
     // V te chvili nesmim poslat dalsi SERIN byte, jinak ho OS necte a vznikne Error 138.
     if(cassettePcInLeaderDetector()) return false;
     // XL OS CLOAD drzi I=1 a pouziva vlastni IRQ vektor. Necekat na CLI ani na IRQEN $20, to byla chyba BUILD2BN.
     return true;
   }
   function startCassetteBlockResyncLeader(delivered){
-    // BUILD2CC: Atari OS CLOAD se po 128B kazetovem bloku vraci do sync/leader faze.
+    // BUILD2CD: Atari OS CLOAD se po 128B kazetovem bloku vraci do sync/leader faze.
     // Kdyz hned drzime dalsi SERIN byte, OS ho necte a skoncime Error 138.
     // Proto pred bajtem 129/257/385... pustime znovu cisty leader na SKSTAT bit4 a teprve pak pokracujeme ve stejne rxq.
     if(!sio.cassMotor || sio.cassBlockResyncActive) return false;
-    const leadLines=Math.round(15600*2.2); // BUILD2CC: meziblokovy leader cca 2.2 s; 8 s bylo zvukove predimenzovane a casto vyplo motor pred koncem
+    const leadLines=Math.round(15600*5.5); // BUILD2CD: meziblokovy leader 5.5 s, ale az kdyz ROM opravdu ceka na sync
     const CPS=cassetteCyclesPerSecond();
     sio.cassBlockResyncActive=true;
     sio.cassBlockResyncDoneFor=delivered;
@@ -675,20 +675,26 @@ function Atari130XE(osRom, basicRom, CPUctor){
                   byteIndex:0, bitIndex:0, bitLine:0, bitLines:Math.max(18,Math.round(15600/600)), bitCycles:Math.round(CPS/600),
                   lineState:1, edgeAcc:0, edgeCount:0, startCycle:null, lastLogCount:0,
                   started:false, dataStarted:false, waitLogged:false, completed:false, delivered:0,
-                  kind:'BUILD2CC BLOCK RESYNC', leaderOnly:true, serialQueued:false, serialDelayLines:0,
+                  kind:'BUILD2CD BLOCK RESYNC', leaderOnly:true, serialQueued:false, serialDelayLines:0,
                   skipped55:0, lead55:0, adaptiveLeader:true, osDetectorSeen:false, adaptiveLogFrame:-9999,
-                  resumeExisting:true, resumeDelivered:delivered, strictDetector:false, fixedBlockResync:true};
+                  resumeExisting:true, resumeDelivered:delivered, strictDetector:true, fixedBlockResync:false};
     if(M.cassDebug) M.cassDebug('BLOCK_RESYNC_START',{delivered:delivered,queued:sio.cassQueued,lead:leadLines,pc:cpu.pc,irqen:pokey.irqen,pokmsk:ram[0x0232]&255,kind:sio.cassKind});
     return true;
   }
-  function cassetteBlockBoundaryNeedsLeader(q){
+  function cassetteBlockBoundaryPending(q){
     if(!q || !q.cassette || !sio.cassMotor) return false;
     const sz=sio.cassBlockResyncSize||128;
     const d=sio.cassDelivered|0;
     if(d<=0 || d>=sio.cassQueued) return false;
     if((d % sz)!==0) return false;
-    if(sio.cassBlockResyncDoneFor===d) return false;
+    if(sio.cassBlockResyncDoneFor===d || sio.cassBlockResyncActive) return false;
     return true;
+  }
+  function cassetteBlockBoundaryNeedsLeader(q){
+    // BUILD2CD: meziblokovy leader se NESMI pustit hned po 128 B.
+    // Nejdřív musi ROM sama dojit z prijmu bloku zpet do ED3D/ED44 sync smycky.
+    // Jinak slysim dalsi „kod“, nebo leader bezi, kdyz ho ROM neposloucha.
+    return cassetteBlockBoundaryPending(q) && cassettePcInLeaderDetector();
   }
   function startCassetteSerinAfterTone(t){
     if(!t || t.serialQueued) return;
@@ -1467,6 +1473,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
         q.d--;
         if(q.cassette && q.d<=0 && (sio.cassTone && sio.cassTone.resumeExisting)){
           q.d=1; // bezi blokovy cisty leader; dalsi byte se nesmi poslat pred syncem OS ROM
+        }else if(q.cassette && q.d<=0 && cassetteBlockBoundaryPending(q) && !cassettePcInLeaderDetector()){
+          // BUILD2CD: po 128 B cekam, az ROM skutecne vleze do kazetove synchronizace.
+          // Nehraju/nespoustim dalsi leader naslepo a neposilam dalsi SERIN byte.
+          q.d=1;
+          if(M.cassDebug && (M.frame-sio.cassReadyWaitLastFrame)>=25){
+            sio.cassReadyWaitLastFrame=M.frame;
+            M.cassDebug('BLOCK_RESYNC_WAIT_SYNC',{delivered:sio.cassDelivered|0,queued:sio.cassQueued|0,pc:cpu.pc,irqen:pokey.irqen,pokmsk:ram[0x0232]&255,irqst:(~pokeyStatus())&0xFF,kind:sio.cassKind});
+          }
         }else if(q.cassette && q.d<=0 && cassetteBlockBoundaryNeedsLeader(q)){
           q.d=1;
           startCassetteBlockResyncLeader(sio.cassDelivered|0);
@@ -2409,7 +2423,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     M.cassDebug=function(ev,data){
       try{
         if(ev==='QUEUE') log('CLOAD SERIAL BUILD2BR: fronta '+data.bytes+' B, lead '+Math.round((data.lead||0)/15.6)+' ms PAL, byte '+data.perByte+' radku, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Cekam na realny C: motor, nic nepoustim do RAM.');
-        else if(ev==='QUEUE_TONE'){ log('CLOAD LEADER+SERIN BUILD2CC: pripraveno '+data.bytes+' datovych B po leaderu, raw='+((data.rawBytes||data.bytes))+' B, preskoceno vodicich $55='+((data.skipped||0))+', leader '+Math.round((data.lead||0)/15.6)+' ms PAL, motor='+(data.motor?'ON':'OFF')+', record132='+(data.recordMode?'ANO':'NE')+', recordCount='+((data.recordCount||0))+', zdroj='+data.kind+'. Zadny RAM inject.'); cassSetStatus('CLOAD leader + SERIN pripraven | '+data.bytes+' B'); }
+        else if(ev==='QUEUE_TONE'){ log('CLOAD LEADER+SERIN BUILD2CD: pripraveno '+data.bytes+' datovych B po leaderu, raw='+((data.rawBytes||data.bytes))+' B, preskoceno vodicich $55='+((data.skipped||0))+', leader '+Math.round((data.lead||0)/15.6)+' ms PAL, motor='+(data.motor?'ON':'OFF')+', record132='+(data.recordMode?'ANO':'NE')+', recordCount='+((data.recordCount||0))+', zdroj='+data.kind+'. Zadny RAM inject.'); cassSetStatus('CLOAD leader + SERIN pripraven | '+data.bytes+' B'); }
         else if(ev==='QUEUE_PCM'){ log('CLOAD WAV PCM BUILD2BR: pripraven primy WAV->SKSTAT bit4, '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%, motor='+(data.motor?'ON':'OFF')+', soubor='+(data.name||'WAV')+'. Zadny decode/reencode, zadny RAM inject.'); cassSetStatus('WAV PCM->SKSTAT pripraven | cekam na motor'); }
         else if(ev==='WAIT_MOTOR') log('CLOAD LEADER+SERIN BUILD2BR: data jsou pripravena, ale C: motor jeste neni ON. Cekam na realny CLOAD/boot wait stav; zadny fake start.');
         else if(ev==='MOTOR_ON') log('CLOAD MOTOR: PACTL bit3 = 0, motor ON. Ted bezi jen cisty leader; datove bajty pujdou az potom pres POKEY SERIN.');
@@ -2425,13 +2439,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         else if(ev==='BITSTREAM_DATA_START'){ log('CLOAD LEADER DONE BUILD2BR: leader dobehl, SKSTAT data chaos je vypnuty. Prepinam na cekani na POKEY SERIN ready. Hrany='+data.edges+', skipped55='+((data.skipped||0))+'.'); cassSetStatus('CLOAD leader hotov | cekam na SERIN'); }
         else if(ev==='BITSTREAM_COUNT'){ log('CLOAD BITSTREAM BUILD2BR: odtikan tonovy stream '+data.count+'/'+data.queued+' B, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('CLOAD BITSTREAM tece | '+data.count+'/'+data.queued+' B'); }
         else if(ev==='BITSTREAM_COMPLETE'){ log('CLOAD BITSTREAM BUILD2BR: tonovy stream dokoncen '+data.count+'/'+data.queued+' B, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('CLOAD BITSTREAM konec | cekam na Atari vysledek'); }
-        else if(ev==='BLOCK_RESYNC_START'){ log('CLOAD BLOCK RESYNC BUILD2CC: po '+data.delivered+'/'+data.queued+' B davam novy cisty leader pred dalsim blokem. PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+' IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'. Bez RAM injectu.'); cassSetStatus('CLOAD blokovy leader | '+data.delivered+'/'+data.queued+' B'); }
-        else if(ev==='BLOCK_RESYNC_DONE'){ log('CLOAD BLOCK RESYNC BUILD2CC: leader po bloku hotov, pokracuji SERIN od '+data.delivered+'/'+data.queued+' B. PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+'.'); cassSetStatus('CLOAD pokracuje po bloku | '+data.delivered+'/'+data.queued+' B'); }
-        else if(ev==='BLOCK_RESYNC_REWIND'){ log('CLOAD BLOCK RESYNC BUILD2CC: nouzove vracim prilis brzy predany byte $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' a davam leader. Predano '+data.delivered+'/'+data.queued+' B, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+'.'); }
-        else if(ev==='FIRST_BYTE'){ log('CLOAD SERIAL BUILD2CC: prvni bajt dosel do SERIN = $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' / celkem '+data.queued+' B | IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'.'); cassSetStatus('CLOAD SERIN start | 1/'+data.queued+' B'); }
-        else if(ev==='RX_COUNT'){ log('CLOAD SERIAL BUILD2CC: SERIN predano '+data.count+'/'+data.queued+' B.'); cassSetStatus('CLOAD SERIN tece | '+data.count+'/'+data.queued+' B'); }
-        else if(ev==='HOLD_SERIN'){ log('CLOAD SERIAL BUILD2CC: SERIN byte $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' drzim uz '+Math.round(data.ageLines/15.6)+' ms, OS ho jeste neprecetl. IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+' I='+(data.iff?1:0)+'. Neprepisuju ho dalsim bytem.'); cassSetStatus('CLOAD ceka: OS necetl SERIN | viz log'); }
-        else if(ev==='COMPLETE') log('CLOAD SERIAL BUILD2CC: fronta dokoncena '+data.count+'/'+data.queued+' B, zdroj='+data.kind+'. Vysledek musi rict Atari obrazovka/BASIC, nebudu ho lakovat.');
+        else if(ev==='BLOCK_RESYNC_START'){ log('CLOAD BLOCK RESYNC BUILD2CD: ROM je ve sync smycce, po '+data.delivered+'/'+data.queued+' B davam cisty tissi meziblokovy leader. PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+' IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'. Bez RAM injectu.'); cassSetStatus('CLOAD blokovy leader | '+data.delivered+'/'+data.queued+' B'); }
+        else if(ev==='BLOCK_RESYNC_WAIT_SYNC'){ log('CLOAD BLOCK RESYNC BUILD2CD: po '+data.delivered+'/'+data.queued+' B cekam, az ROM vleze do sync smycky. PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+' IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' POKMSK=$'+(((data.pokmsk||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'. Nic necpu do SERIN, zadny RAM inject.'); cassSetStatus('CLOAD ceka na ROM sync | '+data.delivered+'/'+data.queued+' B'); }
+        else if(ev==='BLOCK_RESYNC_DONE'){ log('CLOAD BLOCK RESYNC BUILD2CD: leader po bloku hotov, pokracuji SERIN od '+data.delivered+'/'+data.queued+' B. PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+'.'); cassSetStatus('CLOAD pokracuje po bloku | '+data.delivered+'/'+data.queued+' B'); }
+        else if(ev==='BLOCK_RESYNC_REWIND'){ log('CLOAD BLOCK RESYNC BUILD2CD: nouzove vracim prilis brzy predany byte $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' a davam leader. Predano '+data.delivered+'/'+data.queued+' B, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+'.'); }
+        else if(ev==='FIRST_BYTE'){ log('CLOAD SERIAL BUILD2CD: prvni bajt dosel do SERIN = $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' / celkem '+data.queued+' B | IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'.'); cassSetStatus('CLOAD SERIN start | 1/'+data.queued+' B'); }
+        else if(ev==='RX_COUNT'){ log('CLOAD SERIAL BUILD2CD: SERIN predano '+data.count+'/'+data.queued+' B.'); cassSetStatus('CLOAD SERIN tece | '+data.count+'/'+data.queued+' B'); }
+        else if(ev==='HOLD_SERIN'){ log('CLOAD SERIAL BUILD2CD: SERIN byte $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' drzim uz '+Math.round(data.ageLines/15.6)+' ms, OS ho jeste neprecetl. IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+' I='+(data.iff?1:0)+'. Neprepisuju ho dalsim bytem.'); cassSetStatus('CLOAD ceka: OS necetl SERIN | viz log'); }
+        else if(ev==='COMPLETE') log('CLOAD SERIAL BUILD2CD: fronta dokoncena '+data.count+'/'+data.queued+' B, zdroj='+data.kind+'. Vysledek musi rict Atari obrazovka/BASIC, nebudu ho lakovat.');
       }catch(_e){}
     };
   }
@@ -2466,12 +2481,12 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function makeCasMonitorWav(u8){
     var data=extractCasPayloadBytes(u8);
     var maxBytes=Math.min(data.length, 65536); // ochrana pameti pro mobil/NOX
-    // BUILD2CC: monitor WAV musi casove sedet s tim, co CLOAD emuluje.
+    // BUILD2CD: monitor WAV musi casove sedet s tim, co CLOAD emuluje.
     // Predchozi CB mel mezi bloky virtualni leader, ale ulozeny WAV zustal kratky/hlasity a motor spadl pred koncem.
     // Proto delam record-aware WAV: po kazdem 128B bloku kratky tichy meziblokovy leader a nizsi amplituda.
     var sr=44100, baud=600, spb=Math.max(16,Math.round(sr/baud));
     var leadSamples=sr*8.0|0;
-    var blockLeadSamples=Math.round(sr*2.2);
+    var blockLeadSamples=Math.round(sr*5.5);
     var tailSamples=sr*1.00|0;
     var records=[], recordMode=false;
     if(maxBytes>=132 && (maxBytes%132)===0 && data[0]===0x55 && data[1]===0x55){
@@ -2499,14 +2514,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         pcm[pos]=Math.max(-32767,Math.min(32767,Math.round(Math.sin(phase)*g*32767)));
       }
     }
-    tone(5327, leadSamples, 0.030);
+    tone(5327, leadSamples, 0.026);
     for(var rb=0; rb<records.length; rb++){
       var recBytes=records[rb];
       for(var b=0;b<recBytes.length;b++){
         var v=recBytes[b];
-        tone(3995,spb,0.026); // start bit
-        for(var bit=0;bit<8;bit++) tone(((v>>bit)&1)?5327:3995, spb,0.026);
-        tone(5327,spb,0.026); // stop bit
+        tone(3995,spb,0.020); // start bit
+        for(var bit=0;bit<8;bit++) tone(((v>>bit)&1)?5327:3995, spb,0.020);
+        tone(5327,spb,0.020); // stop bit
       }
       if(rb<records.length-1) tone(5327, blockLeadSamples, 0.018);
     }
@@ -2687,7 +2702,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var raw=cassStage.lastCsaveRaw;
       var leadRaw=124800; // 8 s jako renderovany WAV, leader zustane cisty a data se nerozjedou z PCM aliasingu
       var nr=M.queueCassetteSerial(raw,260,leadRaw,'LAST CSAVE RAW CYCLE CLOAD');
-      log('CLOAD RAW CYCLE BUILD2CC: vlastni CSAVE WAV necpu pres PCM chaos. Pouzivam '+nr+' skutecnych SEROUT B jako cyklove presny 600 baud ton na SKSTAT bit4, leader '+Math.round(leadRaw/15.6)+' ms. Bez RAM injectu.');
+      log('CLOAD RAW CYCLE BUILD2CD: vlastni CSAVE WAV necpu pres PCM chaos. Pouzivam '+nr+' skutecnych SEROUT B jako cyklove presny 600 baud ton na SKSTAT bit4, leader '+Math.round(leadRaw/15.6)+' ms. Bez RAM injectu.');
       cassSetStatus('CLOAD RAW CYCLE | '+nr+' B | cisty ton po leaderu');
       return nr;
     }
@@ -3008,7 +3023,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       tapeAudioUrl=URL.createObjectURL(new Blob([u8],{type:type}));
       if(!tapeAudio) tapeAudio=new Audio();
-      try{ tapeAudio.preload='metadata'; tapeAudio.volume=0.14; }catch(_e){}
+      try{ tapeAudio.preload='metadata'; tapeAudio.volume=0.10; }catch(_e){}
       tapeCounterZeroBase=0;
       tapeAudio.pause(); tapeAudio.src=tapeAudioUrl; tapeAudio.currentTime=0;
       tapeAudio.onerror=function(){ tapeVisualStop(); log('KAZETA AUDIO CHYBA BUILD2BR: Android/NOX audio dekoder odmítl soubor '+(tapeAudioName||'audio')+'. Kazeta zustava vlozena pro analyzu/CLOAD decode, ale zvuk z Androidu se nerozjel.'); cassSetStatus('audio chyba | soubor zustal vlozen'); };
@@ -3366,8 +3381,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2CC_BY_GOLDEN_CLOAD_BLOCK_AUDIO_TIMING_FIX pripraven.');
-    log('BUILD2CC: zaklad BUILD2BZ/BY golden. TXT line queue a joystick/scroll NEMENEN. Oprava jen delsiho vlastniho CLOAD: recordy 128B maji cisty, tissi a casove sladěny meziblokovy leader; SERIN se nepusti v ROM sync smycce. Bez RAM injectu. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2CD_BY_GOLDEN_CLOAD_WAIT_SYNC_AUDIO_FIX pripraven.');
+    log('BUILD2CD: zaklad BUILD2BZ/BY golden. TXT line queue a joystick/scroll NEMENEN. Oprava jen delsiho vlastniho CLOAD: po 128B necpu dalsi bajt ani nespoustim leader naslepo; cekam az ROM opravdu vleze do kazetove sync smycky, pak davam cisty tissi leader a pokracuji. Bez RAM injectu. KODY JSOU STEJNE.');
     log('BUILD2BR: TXT ramecek umi Ctrl+V + po VLOZIT uvolni focus a obnovi posouvani stranky v NOXu. OSK vrstva uz neblokuje scroll mimo klavesy. CLOAD cesta zustava po BO, bez RAM injectu.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }

@@ -1,0 +1,46 @@
+ATARIHELP.EU EMU-10 BUILD2CD_BY_GOLDEN_CLOAD_WAIT_SYNC_AUDIO_FIX
+==============================================================
+
+KODY JSOU STEJNE.
+Zaklad: BUILD2BZ/BY golden. TXT line queue nemenena. Joystick/scroll nemenene.
+Oprava jen delsi CLOAD z vlastniho CSAVE.
+
+Co BUILD2CD meni:
+- Po 128 B neposle dalsi SERIN byte a nespusti leader naslepo.
+- Ceka, az ROM skutecne vleze do kazetove sync smycky ED3D/ED44.
+- Teprve potom spusti cisty tissi meziblokovy leader.
+- Monitor WAV je delsi a tissi, aby neskoncil pred dokoncenim virtualni CLOAD fronty.
+- Bez RAM injectu.
+
+TEST BUILD2CD:
+1) POWER -> READY.
+2) BASIC/TBXL TXT -> vlozit stredni test:
+10 PRINT "ATARIHELP BZ"
+20 PRINT "TXT+CSAVE+CLOAD"
+30 S=0
+40 FOR I=1 TO 20
+50 S=S+I
+60 PRINT I,S
+70 NEXT I
+80 IF S=210 THEN PRINT "SUM OK"
+90 IF S<>210 THEN PRINT "SUM BAD"
+100 FOR A=1 TO 8
+110 PRINT "A=";A;" AA=";A*A
+120 NEXT A
+130 PRINT "KONEC OK"
+140 END
+
+3) VLOZIT + RUN -> musi byt SUM OK a KONEC OK.
+4) CSAVE -> cekat CSAVE VYSLEDEK: ANO.
+5) SAVE / LAST CSAVE.
+6) NEW -> LIST prazdny.
+7) CLOAD -> PLAY.
+8) Po READY: LIST a RUN.
+
+V logu hledat:
+- CLOAD BLOCK RESYNC BUILD2CD: cekam, az ROM vleze do sync smycky
+- CLOAD BLOCK RESYNC BUILD2CD: ROM je ve sync smycce
+- CLOAD SERIAL BUILD2CD: SERIN predano 256/512
+- CLOAD SERIAL BUILD2CD: fronta dokoncena
+
+Kdyz selze, poslat cely log a napsat: CD 138 PO 128 / CD POTICHU / CD ZVUK MOC HLASITY / CD REGRESE.
