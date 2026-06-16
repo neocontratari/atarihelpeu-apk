@@ -1,0 +1,63 @@
+ATARIHELP.EU EMU-10 BUILD2CE_BY_BZ_GOLDEN_CLOAD_TIMED_REPLAY_FIX
+================================================================
+
+KODY JSOU STEJNE.
+Zaklad je BUILD2BZ / BUILD2BY golden:
+- TXT line queue z BUILD2BZ zustava.
+- Joystick/scroll/focus z BUILD2BY zustava.
+- Kratky CLOAD z BR/BY/BZ zustava.
+
+Co je zmenene:
+- Delsi LAST CSAVE -> CLOAD uz nepouziva hadane 128B/132B bloky.
+- Pri CSAVE se uklada nejen SEROUT bajt, ale i radkove casovani, kdy ho Atari skutecne poslalo.
+- Pri CLOAD se vlastni CSAVE prehrava podle tohoto realne zachyceneho timing replay.
+- Dlouhe mezery v zachycenem timing proudu se prehravaji jako cisty gap tone na SKSTAT bit4.
+- Zadny RAM inject, zadne tahani programu z RAM.
+
+TEST 1 - rychla kontrola zakladu:
+1) POWER -> READY.
+2) Zkus scroll / joystick jako v BUILD2BY.
+3) Vloz kratky program a over kratky CSAVE/CLOAD, ktery uz fungoval.
+
+TEST 2 - stredni CLOAD, ktery padal po 128 B:
+Vloz pres BASIC/TBXL TXT:
+10 PRINT "ATARIHELP BZ"
+20 PRINT "TXT+CSAVE+CLOAD"
+30 S=0
+40 FOR I=1 TO 20
+50 S=S+I
+60 PRINT I,S
+70 NEXT I
+80 IF S=210 THEN PRINT "SUM OK"
+90 IF S<>210 THEN PRINT "SUM BAD"
+100 FOR A=1 TO 8
+110 PRINT "A=";A;" AA=";A*A
+120 NEXT A
+130 PRINT "KONEC OK"
+140 END
+
+Postup:
+POWER -> BASIC/TBXL TXT -> VLOZIT + RUN -> musi byt SUM OK a KONEC OK.
+CSAVE -> cekej CSAVE VYSLEDEK: ANO.
+SAVE / LAST CSAVE.
+NEW -> LIST musi byt prazdny.
+CLOAD -> PLAY.
+Po READY: LIST a RUN.
+
+Spravne:
+- bez Error 138 / 143
+- LIST vrati program
+- RUN znovu vypise SUM OK a KONEC OK
+
+Log markery:
+- CLOAD TIMED BUILD2CE
+- CLOAD TIMED REPLAY BUILD2CE
+- TIMED_SERIN_ARM
+- TIMED_GAP_QUEUE / TIMED_GAP_START / TIMED_GAP_DONE pokud existovala delsi mezera
+- CLOAD SERIAL BUILD2BR: SERIN predano ...
+
+Kdyz selze, poslat cely log a napsat jen:
+CE 138 PO 128
+CE POTICHU
+CE ZVUK SPATNE
+CE CLOAD REGRESE
