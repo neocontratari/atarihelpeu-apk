@@ -1,0 +1,24 @@
+ATARIHELP.EU EMU-10 BUILD2BY AUDIT RESET / BR GOLDEN CLOAD / JOYSTICK SCROLL
+=======================================================================
+
+KODY JSOU STEJNE.
+Jadro / ROM / BASIC testovaci kody se nemeni.
+
+ZAKLAD:
+- Build je vraceny na BUILD2BR golden CLOAD cestu.
+- CLOAD logika neni menena. Zadny BV/BW/BX long-resync ani TXT symbol experiment.
+- Oprava je izolovana jen na UI joystick/scroll/focus.
+
+PROC:
+- Pozdni buildy BV/BW/BX zacaly prepisovat vrstvy pres sebe.
+- CLOAD kratkeho programu uz bylo potvrzene jako funkcni, proto se zamyka.
+- Joystick overlay v BR mohl blokovat celou stage kvuli pointer-events/touch-action.
+
+OPRAVA BUILD2BY:
+- #joy overlay uz nema pointer-events:auto pres celou appku.
+- Dotyk berou jen joyPad/joyFire/joyDir.
+- Pri prepnuti KEYBOARD/JOYSTICK se uvolni focus, FIRE, joystick smer a scroll.
+- CLOAD BR golden zustava bez zasahu.
+
+TESTOVAT JEN PODLE CHATU.
+Nezkouset ted < > symboly ani dlouhe BASIC testy.
