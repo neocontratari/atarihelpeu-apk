@@ -1,0 +1,28 @@
+AtariHelp.eu EMU-10 BUILD2CK_BY_BZ_GOLDEN_CLOAD_SKRES_SERIN_HOLD_FIX
+
+KODY JSOU STEJNE.
+Zaklad: BUILD2BZ / BUILD2BY golden.
+TXT line queue z BUILD2BZ NEMENEN.
+Joystick/scroll/focus z BUILD2BY NEMENEN.
+
+Oprava pouze CLOAD vlastniho LAST CSAVE:
+- zahozene CJ pure FSK jako default, protoze log ukazal, ze FSK odtekl, ale OS nedostal SERIN data;
+- vracime se na BZ/BR leader + SERIN cestu;
+- opravuje se POKEY SKRES: kdyz OS zapise SKRES mezi serial IRQ a ctenim SERIN, unread kazetovy SERIN byte se nezahodi a bit IRQ $20 zustane aktivni;
+- zadny RAM inject, zadne cteni programu z RAM, zadny fake CLOAD.
+
+Test:
+1) POWER -> READY
+2) BASIC/TBXL TXT -> vlozit stredni test
+3) VLOZIT + RUN -> musi vypsat SUM OK a KONEC OK
+4) CSAVE -> cekat CSAVE VYSLEDEK: ANO
+5) LAST CSAVE/SAVE
+6) NEW, LIST prazdny
+7) CLOAD, PLAY
+8) po READY LIST a RUN
+
+Log markery:
+BUILD2CK
+CLOAD RAW CYCLE BUILD2CK
+CLOAD SKRES KEEP BUILD2CK
+CLOAD SERIAL BUILD2BR: SERIN predano 256/526
