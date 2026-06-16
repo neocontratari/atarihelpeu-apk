@@ -1,0 +1,100 @@
+AtariHelp.eu EMU-10 BUILD2CP_SINGLE_AUDIO_MASTER_POKEY_TAPE_AUDIT
+====================================================================
+
+ZAKLAD
+------
+BUILD2CP vychazi z BUILD2BZ/BY golden.
+BUILD2CK se nepouziva jako zaklad.
+TXT line queue, joystick, scroll, focus a klavesnice zustavaji z BUILD2BZ/BY.
+
+KODY JSOU STEJNE.
+BASIC / Altirra porovnavaci kody nejsou menene.
+
+PROC TENHLE BUILD EXISTUJE
+--------------------------
+Po BUILD2CO testu Rene spravne upozornil, ze v emulatoru slysi dva zvuky.
+Log CO to potvrzuje: soucasne bezel primy WAV/PCM -> SKSTAT tok a hned potom se spustil Android HTML Audio prehravac pres KAZETA PLAY.
+To jsou dva nezavisle casovace a pro kazetu je to spatne.
+
+BUILD2CP proto dela jednu zasadni zmenu:
+- pri WAV CLOAD se Android HTML Audio NEPOUSTI,
+- slyšitelny kazetovy monitor jde z te same PCM kopie jako SKSTAT bit4,
+- vsechno bezi v jednom WebAudio/POKEY proudu,
+- zadny druhy zvuk,
+- zadny druhy casovac,
+- zadny raw SERIN shortcut,
+- zadny RAM inject.
+
+CO JE ZMENENE V BUILD2CP
+------------------------
+1) SINGLE AUDIO MASTER:
+   CLOAD AUDIO MASTER BUILD2CP: slyšitelny kazetovy monitor jde ze STEJNE PCM kopie jako SKSTAT.
+
+2) Android HTML Audio je pri WAV CLOAD vypnute:
+   KAZETA PLAY BUILD2CP: Android HTML Audio NEPOUSTIM, aby nebyly dva zvuky.
+
+3) CSAVE WAV generator je zesileny:
+   48 kHz, 600 baud, 80 vzorku/bit, amplituda cca 60 %, bez fade na kazdem bitu.
+
+4) CLOAD dal tece pres realny WAV/PCM -> SKSTAT bit4:
+   RAW SERIN je vypnuty.
+
+5) PISMO/ZVUK nezapomenuto:
+   Pismo READY a presnejsi Atari charset/CHBASE je dalsi samostatny krok po stabilizaci kazety.
+   Tady se pismo zatim nemeni, aby se nerozbil golden zaklad.
+
+TEST PLAN
+---------
+1) Nahraj overlay BUILD2CP pres GitHub Desktop stejne jako predchozi buildy.
+2) Spust aplikaci v NOXu.
+3) POWER -> BASIC.
+4) VLOZIT TXT -> vloz stejny testovaci BASIC program jako minule -> VLOZIT + RUN.
+5) Pockej na dopsani programu a RUN.
+6) CSAVE / SAVE "C:" podle stejneho postupu jako minule.
+7) Pockej na auto ulozeni CAS + WAV.
+8) Vloz LAST CSAVE WAV z pameti emulatoru.
+9) V BASICu dej CLOAD.
+10) PLAY.
+
+OCEKAVANY SPRAVNY LOG
+---------------------
+V logu musi byt:
+
+AtariHelp.eu EMU-10 BUILD2CP_SINGLE_AUDIO_MASTER_POKEY_TAPE_AUDIT pripraven.
+BUILD2CP: zaklad BUILD2BZ/BY golden...
+SAVE WAV BUILD2CP: monitor WAV 48 kHz / 600 baud / amplituda 60% ...
+BUILD2CP STOP RAW SERIN: posledni CSAVE RAW ma ... B, ale tuto zkratku ted VYPINAM.
+CLOAD AUDIO MASTER BUILD2CP: slyšitelny kazetovy monitor jde ze STEJNE PCM kopie jako SKSTAT.
+CLOAD REAL WAV BUILD2CP: posilam skutecny tvar WAV na SKSTAT bit4 ... Android audio vypnute ...
+KAZETA PLAY BUILD2CP: Android HTML Audio NEPOUSTIM, aby nebyly dva zvuky.
+CLOAD REAL WAV BUILD2CP: motor ON, spoustim skutecny WAV tvar na SKSTAT bit4 ...
+CLOAD REAL WAV BUILD2CP: odtikan skutecny WAV tvar ...
+
+CO NESMI BYT V LOGU PRI LAST CSAVE WAV TESTU
+--------------------------------------------
+Nesmí se po BUILD2CP single-audio startu objevit:
+
+KAZETA PLAY: spoustim / pokracuji AtariHelp_CSAVE...
+
+Pokud se objevi tahle stara hlaska, znamena to, ze Android HTML Audio se zase spustil a znovu mame dva zvuky.
+
+CO POSLAT ZPATKY KDYZ TO SELZE
+------------------------------
+Kdyz bude opet ERROR 138 / 130 / 21, posli log od radku:
+
+AtariHelp.eu EMU-10 BUILD2CP_SINGLE_AUDIO_MASTER_POKEY_TAPE_AUDIT pripraven.
+
+az po chybu.
+
+Nejdulezitejsi radky jsou:
+- SAVE WAV BUILD2CP amplituda
+- CLOAD AUDIO MASTER BUILD2CP
+- KAZETA PLAY BUILD2CP Android HTML Audio NEPOUSTIM
+- CLOAD REAL WAV BUILD2CP PC=$.... SKSTAT~$.... hrany=....
+- pripadne ERROR 138 / ERROR 130 / ERROR 21 na obrazovce
+
+VERDIKT
+-------
+BUILD2CP neni oprava pismene READY.
+BUILD2CP je cisty audit a oprava kazetoveho zvuku: jeden master zvuk, jeden casovac, jedna PCM kopie pro SKSTAT i slyšitelny monitor.
+Pismo a vernejsi Atari charset/CHBASE jsou zapsane jako dalsi krok po kazete.
