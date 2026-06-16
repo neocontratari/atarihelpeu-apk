@@ -2121,10 +2121,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     try{
       if(cassStage && !cassStage.csaveSoundPrimed){
         cassStage.csaveSoundPrimed=true;
-        // BUILD2DA: zadny umely command buzzer podle testera ani podle MP3.
-        // Zvuk prikazu musi vzniknout z ROM zapisu na GTIA $D01F; tady pridavam jen realny SEROUT/FSK monitor.
-        tapeMasterQueueTone(5327, Math.round(((audio&&audio.ac&&audio.sampleRate)||48000)*0.18), 0.22);
-        log('AUDIO BUILD2DA: CSAVE monitor zacina jen realnym SEROUT/FSK leaderem; umely command buzzer vypnut, prikazove pipnuti ma jit z ROM $D01F.');
+        // CSAVE/CLOAD command zvuk podle dodane reference: nizky GTIA speaker/buzzer, ne vysoky datovy FSK pipak.
+        tapeMasterQueueReferenceBuzzer('CSAVE command',505,0.34);
+        tapeMasterQueueTone(5327, Math.round(((audio&&audio.ac&&audio.ac.sampleRate)||48000)*0.18), 0.22);
+        log('AUDIO BUILD2DA: CSAVE command bzučák + kratky leader slyset pres Atari audio master.');
       }
       tapeMasterQueueSerialByte(v&255,0.34);
     }catch(e){}

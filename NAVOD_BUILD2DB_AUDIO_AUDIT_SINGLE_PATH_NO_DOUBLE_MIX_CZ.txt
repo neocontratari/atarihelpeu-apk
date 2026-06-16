@@ -1,0 +1,45 @@
+ATARIHELP.EU EMU-10 - BUILD2DB_AUDIO_AUDIT_SINGLE_PATH_NO_DOUBLE_MIX
+
+Zaklad: BUILD2BZ/BY golden + BUILD2DA audio zlepseni.
+KODY JSOU STEJNE.
+TXT / joystick / scroll / focus NEMENENO.
+
+PROC TENHLE BUILD:
+René v DA slysel, ze klavesy jsou uz blizko realnemu Atari, ale maji maly ruch, CSAVE/CLOAD zvuk neni ono a vypada to, jako by se michaly dva zvuky. Log DA to potvrdil: po CLOAD/LAST CSAVE audio masteru se jeste spoustelo stare KAZETA PLAY HTML Audio. To mohla byt dvojita zvukova cesta.
+
+CO JE OPRAVENO:
+1) Klavesy:
+- Vypnuty synteticky UI keyclick bokem z M.keyDown.
+- Klavesovy zvuk smi vzniknout jen z ROM zapisu na GTIA $D01F.
+- GTIA speaker transient je ztlumeny a kratsi, aby nezpusoboval ruch.
+
+2) CSAVE:
+- Umely CSAVE command buzzer bokem je vypnuty.
+- Monitor zacina jen realnym POKEY SEROUT FSK bytem.
+- CSAVE WAV generator zustava 48 kHz / 600 baud / MARK 5327 / SPACE 3995.
+
+3) CLOAD / LAST CSAVE:
+- Pokud je vlozen vlastni posledni CSAVE WAV, PLAY uz nepusti HTML Audio soucasne s Atari audio masterem.
+- Log musi ukazat: KAZETA PLAY BUILD2DB: HTML Audio NEPOUSTIM...
+- Tim je odstranena dvojita zvukova cesta z DA.
+
+CO SE NESMI OBJEVIT PRI LAST CSAVE TESTU:
+- KAZETA PLAY: spoustim / pokracuji AtariHelp_CSAVE...
+
+CO SE MA OBJEVIT:
+- AtariHelp.eu EMU-10 BUILD2DB_AUDIO_AUDIT_SINGLE_PATH_NO_DOUBLE_MIX pripraven.
+- AUDIO BUILD2DB: SINGLE PATH AUDIT...
+- KAZETA PLAY BUILD2DB: HTML Audio NEPOUSTIM...
+
+TEST PLAN:
+1) Nahraj overlay pres GitHub Desktop jako obvykle.
+2) Spust appku v NOXu.
+3) Over v LOGu, ze je BUILD2DB.
+4) Zkus klavesy v BASICu: zvuk by mel zustat Atari-like, ale bez predchoziho ruchu/dvojiteho kliku.
+5) Zadej testovaci BASIC TXT jako minule, nech RUN.
+6) Proved CSAVE.
+7) Dej LAST CSAVE / VLOZIT ulozenou kazetu a PLAY + CLOAD.
+8) Posli log hlavne od AUDIO BUILD2DB / CSAVE CAPTURE az po CLOAD vysledek.
+
+POZNAMKA:
+Tohle je audit zvukove cesty a míchání. Nemeni BASIC kody ani UI golden casti.
