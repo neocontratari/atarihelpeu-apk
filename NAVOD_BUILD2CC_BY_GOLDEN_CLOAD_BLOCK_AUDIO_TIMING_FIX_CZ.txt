@@ -1,0 +1,34 @@
+ATARIHELP.EU EMU-10 BUILD2CC_BY_GOLDEN_CLOAD_BLOCK_AUDIO_TIMING_FIX
+
+KODY JSOU STEJNE.
+Zaklad: BUILD2BZ/BY golden. TXT line queue, joystick/scroll/focus zustavaji beze zmen.
+
+PROC BUILD2CC:
+- Reaguje na test BUILD2CB: prvni leader a zacatek kodu byly dobre, ale dalsi zvuk byl predimenzovany a CLOAD skoncil Error 138.
+- Oprava je jen v delsim vlastnim CSAVE/CLOAD.
+- Monitor WAV je record-aware: po 128B blocich dava kratky, tissi meziblokovy leader, aby motor nespadl pred koncem virtualniho CLOAD.
+- SERIN se nově nepusti, kdyz je OS v kazetove sync smycce $ED3D-$ED96.
+- Zadny RAM inject, zadne prepisovani BASIC programu.
+
+TESTUJ:
+1) POWER -> READY.
+2) BASIC/TBXL TXT -> vloz stredni test z chatu.
+3) VLOZIT + RUN -> musi byt SUM OK / KONEC OK.
+4) CSAVE -> cekej CSAVE VYSLEDEK: ANO.
+5) SAVE / LAST CSAVE.
+6) NEW, LIST prazdny.
+7) CLOAD, PLAY.
+8) LIST, RUN.
+
+LOG MARKERY:
+- BUILD2CC
+- record132=ANO
+- CLOAD BLOCK RESYNC BUILD2CC
+- CLOAD SERIAL BUILD2CC: SERIN predano 256/...
+- CLOAD SERIAL BUILD2CC: fronta dokoncena
+
+KDYZ SELZE, POSLI CELY LOG A NAPIS:
+- CC 138 PO 128
+- CC 138 PO RESYNC
+- CC ZVUK PREDIMENZOVANY
+- CC CLOAD REGRESE
