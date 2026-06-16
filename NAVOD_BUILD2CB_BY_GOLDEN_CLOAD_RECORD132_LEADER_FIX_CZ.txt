@@ -1,0 +1,40 @@
+ATARIHELP.EU EMU-10 BUILD2CB_BY_GOLDEN_CLOAD_RECORD132_LEADER_FIX
+===================================================================
+
+ZAKLAD:
+- Navazuje na BUILD2BZ / BUILD2BY golden.
+- TXT line queue z BUILD2BZ je ponechan beze zmen.
+- Joystick/scroll/focus z BUILD2BY je ponechan beze zmen.
+- Zmena je jen CLOAD delsiho vlastniho CSAVE.
+- KODY JSOU STEJNE.
+
+PROC BUILD2CB:
+- BUILD2CA po 128 B daval jen kratky 3s resync leader a porad skoncil Error 138.
+- Log ukazal, ze OS po 128 B ceka zpet v kazetove ROM smycce, ale dalsi SERIN byte prisel ve spatny cas.
+- BUILD2CB bere vlastni CSAVE SEROUT stream jako fyzicke 132B kazetove recordy.
+- Z kazdeho 132B recordu pouzije jen cistou 128B datovou cast pro SERIN.
+- Mezi bloky dava plnou cistou zavadeci stopu 8s a ceka strictne na realnou ROM detekci, ne jen na kratky timeout.
+- Bez RAM injectu, bez fake CLOAD.
+
+PRESNY TEST:
+1) POWER -> READY.
+2) BASIC/TBXL TXT -> vloz stredni test.
+3) VLOZIT + RUN.
+4) Musi vypsat SUM OK a KONEC OK.
+5) CSAVE.
+6) Cekej CSAVE VYSLEDEK: ANO a SAVE WAV: ULOZENO.
+7) SAVE / LAST CSAVE.
+8) NEW -> LIST musi byt prazdny.
+9) CLOAD -> PLAY.
+10) Po navratu READY: LIST, potom RUN.
+
+LOG MARKERY:
+- CLOAD LEADER+SERIN BUILD2CB ... record132=ANO
+- recordCount=4 pro stredni test cca 528 B raw
+- CLOAD BLOCK RESYNC BUILD2CB
+- CLOAD SERIAL BUILD2CB: SERIN predano 256/512 nebo dal
+- CLOAD SERIAL BUILD2CB: fronta dokoncena
+
+POKUD SELZE:
+- Poslat cely log.
+- Napsat jen: CB 138 PO 128, CB 138 PO RESYNC, nebo CB CLOAD REGRESE.
