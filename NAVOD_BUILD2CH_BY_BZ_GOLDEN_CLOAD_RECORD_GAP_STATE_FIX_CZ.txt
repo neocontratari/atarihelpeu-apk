@@ -1,0 +1,80 @@
+AtariHelp.eu EMU-10 BUILD2CH_BY_BZ_GOLDEN_CLOAD_RECORD_GAP_STATE_FIX
+=====================================================================
+
+KODY JSOU STEJNE.
+
+Zaklad:
+- Postaveno z BUILD2BZ / BUILD2BY golden.
+- TXT line queue z BUILD2BZ NEMENEN.
+- Joystick / scroll / focus z BUILD2BY NEMENEN.
+- CA/CB/CC/CD/CE/CF/CG vetve nejsou zaklad; jejich slepe 128/132/PCM pokusy jsou zahozene.
+
+Co je zmeneno:
+- Jen CLOAD vlastniho LAST CSAVE.
+- Po kazdych 128 B je record-gap state machine: dalsi byte se neposle naslepo.
+- Kdyz OS ROM vleze do kazetove sync smycky $ED3D-$ED96, emulator drzi SKSTAT bit4 zivym mark tone a ceka.
+- Kdyz byl SERIN byte podany moc brzo a OS ho necte, BUILD2CH ho vrati do fronty a zopakuje po record-gap tonu.
+- Monitor WAV hlasitost je normalizovana na rozumnou uroven, ne rev CG ani tiche CF.
+- Bez RAM injectu. Bez cteni BASIC programu z RAM. Bez fake READY/CLOAD.
+
+PRESNY TEST:
+1) Nainstaluj BUILD2CH.
+2) POWER -> cekej READY.
+3) BASIC/TBXL TXT -> vloz test:
+
+10 PRINT "ATARIHELP BZ"
+20 PRINT "TXT+CSAVE+CLOAD"
+30 S=0
+40 FOR I=1 TO 20
+50 S=S+I
+60 PRINT I,S
+70 NEXT I
+80 IF S=210 THEN PRINT "SUM OK"
+90 IF S<>210 THEN PRINT "SUM BAD"
+100 FOR A=1 TO 8
+110 PRINT "A=";A;" AA=";A*A
+120 NEXT A
+130 PRINT "KONEC OK"
+140 END
+
+4) VLOZIT + RUN.
+   Spravne: SUM OK a KONEC OK.
+
+5) Prikaz:
+   CSAVE
+   Cekej: CSAVE VYSLEDEK: ANO.
+
+6) LAST CSAVE / SAVE.
+7) Prikaz:
+   NEW
+   LIST
+   LIST musi byt prazdny.
+
+8) Prikaz:
+   CLOAD
+   PLAY
+
+9) Po navratu na READY:
+   LIST
+   RUN
+
+Spravne:
+- LIST ukaze program 10-140.
+- RUN znovu ukaze SUM OK a KONEC OK.
+
+LOG MARKERY, KTERE HLIDAT:
+- AtariHelp.eu EMU-10 BUILD2CH_BY_BZ_GOLDEN_CLOAD_RECORD_GAP_STATE_FIX pripraven.
+- BUILD2CH: zaklad BUILD2BZ/BY golden...
+- VLOZIT TXT BUILD2BZ: QUEUE COMPLETE
+- CSAVE VYSLEDEK: ANO
+- CLOAD RECORD-GAP BUILD2CH
+- CLOAD SERIN WAIT BUILD2CH
+- CLOAD SERIN BACKOFF BUILD2CH (jen kdyz OS byte nevezme vcas; neni to chyba samo o sobe)
+- CLOAD SERIAL BUILD2CH: fronta dokoncena
+
+KDYZ TO SELZE:
+Posli cely log a napis kratce:
+- CH 138 PO 128
+- CH BACKOFF A 138
+- CH CLOAD ZAMRZL
+- CH ZVUK SPATNY
