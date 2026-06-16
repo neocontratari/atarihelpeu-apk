@@ -1,0 +1,23 @@
+BUILD2CF TRUE WAV SKSTAT CLOAD FIX
+
+ZAKLAD: BUILD2BZ/BY golden.
+KODY JSOU STEJNE.
+TXT line queue z BUILD2BZ zustava. Joystick/scroll z BUILD2BY zustava.
+
+Zmena: vlastni LAST CSAVE CLOAD uz nejde po leaderu jako hybridni SERIN bajty. Emulator posila stejny vyrenderovany CSAVE WAV do SKSTAT bit4 podle CPU cyklu. Atari OS ROM si musi dekodovat zavadeci stopu, data i mezery sama. Zadny RAM inject.
+
+TEST:
+1 POWER -> READY.
+2 BASIC/TBXL TXT -> vloz stredni test.
+3 VLOZIT + RUN -> musi byt SUM OK a KONEC OK.
+4 CSAVE -> cekej CSAVE VYSLEDEK: ANO.
+5 SAVE / LAST CSAVE.
+6 NEW, LIST prazdny.
+7 CLOAD, PLAY.
+8 Po READY dej LIST a RUN.
+
+LOG MARKERY:
+CLOAD TRUE WAV BUILD2CF
+PCM_EXACT_START / TRUE WAV->SKSTAT start
+CLOAD TRUE WAV BUILD2CF: prehrano ...
+PCM_EXACT_COMPLETE / TRUE WAV->SKSTAT konec
