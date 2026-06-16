@@ -1,0 +1,69 @@
+AtariHelp.eu EMU-10 BUILD2CT_REAL_ATARI_SOUND_POKEY_MASTER
+========================================================
+
+ZAKLAD:
+- Vychazi z BUILD2BZ/BY golden.
+- BUILD2CK/CQ nejsou zaklad.
+- TXT / joystick / scroll / focus nemeneno.
+- KODY JSOU STEJNE.
+
+DUVOD BUILDU:
+Rene spravne upozornil, ze bez realne zvukove/POKEY cesty nema smysl dal lepit CLOAD.
+Predchozi buildy porad mely zvukove zkratky: samostatny CSAVE oscillator, Android/HTML audio nebo odvozeny monitor mimo hlavni POKEY/GTIA/SIO master.
+BUILD2CT to reze: vsechny slysitelne zvuky musi jit jednou master cestou.
+
+CO JE OPRAVENO:
+1) CSAVE monitor zvuk
+- Zruseny samostatny WebAudio oscillator pro CSAVE.
+- Kazdy skutecny POKEY SEROUT byte se prevadi do stejneho POKEY/GTIA/SIO master vystupu jako 600 baud FSK:
+  start bit = 3995 Hz,
+  8 datovych bitu LSB first,
+  stop bit = 5327 Hz.
+- Uz se nehraje nesmysl jen podle nejnizsiho bitu bajtu.
+
+2) CSAVE ulozeny WAV
+- makeCasMonitorWav prepsan.
+- 48 kHz, 600 baud, MARK 5327 Hz, SPACE 3995 Hz.
+- Square FSK, plynula faze, amplituda 50 %.
+- Bez sinus-fade na kazdem bitu.
+- Record gap cca 0.35 s mezi 132B bloky.
+
+3) CLOAD/CAS/WAV monitor
+- HTML/Android audio pro kazetak zustava vypnute.
+- CLOAD monitor se nepocita z pomaleho radkoveho stavu, ale ze stejneho FSK tvaru podle CPU cyklu, ktery vidi ROM pres SKSTAT bit4.
+- Zadna hotova SERIN fronta pro LAST CSAVE.
+- Zadny PCM PLL pokus.
+- Zadny RAM inject.
+
+4) Klavesy / Start / Option / Select
+- Zadny UI klik bokem.
+- Klavesovy klik smi vzniknout jen z ROM zapisu na GTIA speaker $D01F.
+- START/OPTION/SELECT jsou realne CONSOL bity. Samy zvuk nevyrabi; zvuk smi udelat jen ROM/POKEY/GTIA.
+
+CO MUSI BYT V LOGU:
+- AtariHelp.eu EMU-10 BUILD2CT_REAL_ATARI_SOUND_POKEY_MASTER pripraven.
+- AUDIO BUILD2CT: jeden POKEY/GTIA/SIO master bezi
+- BUILD2CT: zadny HTML audio kazetak, zadny CSAVE oscillator bokem, zadny UI klik bokem.
+- CSAVE CAPTURE BUILD2CT: prvni realny bajt z POKEY SEROUT
+- SAVE WAV BUILD2CT: monitor WAV 48 kHz / 600 baud / MARK 5327 Hz / SPACE 3995 Hz / square / amplituda 50 %
+- BUILD2CT TRUE ATARI TAPE
+- CLOAD BITSTREAM BUILD2CT
+
+CO NESMI BYT V LOGU PRI TOMHLE TESTU:
+- BUILD2CQ
+- POKEY TAPE RX BUILD2CQ
+- OVERRUN z BUILD2CQ
+- KAZETA PLAY: spoustim / pokracuji audio
+- CSAVE oscillator / createOscillator logika bokem
+
+TEST PLAN:
+1) Nainstaluj overlay BUILD2CT.
+2) Po startu uloz log a zkontroluj prvni radky: musi tam byt BUILD2CT, ne CQ/CS.
+3) V BASICu vloz stejny TXT jako predtim a nech RUN.
+4) Udelej CSAVE / SAVE "C:" stejnym postupem.
+5) Poslechni CSAVE zvuk: nesmi to byt kratky pisk podle jednoho bitu bajtu; musi jit souvisly 600 baud FSK stream.
+6) Pak LAST CSAVE WAV -> CLOAD.
+7) Kdyz to spadne, poslat log od BUILD2CT uvodnich radku az po chybu. Hlavne chci videt CSAVE CAPTURE BUILD2CT a CLOAD BITSTREAM BUILD2CT.
+
+POZNAMKA:
+Pismo READY/Atari charset neni zapomenute. V tomhle buildu je zamerne nemenene, protoze ted se opravuje duverovy zaklad zvuku/POKEY.
