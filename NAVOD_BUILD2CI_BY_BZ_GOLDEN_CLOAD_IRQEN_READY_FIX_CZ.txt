@@ -1,0 +1,51 @@
+AtariHelp.eu EMU-10 BUILD2CI_BY_BZ_GOLDEN_CLOAD_IRQEN_READY_FIX
+
+KODY JSOU STEJNE.
+Zaklad: BUILD2BZ/BY golden.
+TXT line queue z BUILD2BZ NEMENEN.
+Joystick/scroll/focus z BUILD2BY NEMENEN.
+Menena oblast: pouze CLOAD vlastniho LAST CSAVE.
+
+Proc tento build:
+Log BUILD2CH znovu potvrdil chybu po 128 B: byte $A8 byl podan do SERIN ve chvili, kdy ROM jeste nebyla pripravena cist dalsi byte. IRQEN byl $C0 a OS byte neprecetl, potom nasledoval ERROR 138.
+
+Co BUILD2CI meni:
+1) SERIN byte z virtualni kazety se poda az kdyz ROM/POKEY ma povoleny serial input IRQEN $20.
+2) Pokud OS zapise SKRES pred prectenim uz pripraveneho cassette byte, byte se vrati zpet do fronty a posle se znovu az po IRQEN $20.
+3) Zadny RAM inject, zadne cteni BASIC programu z RAM, zadny fake CLOAD.
+4) Vychazi z BUILD2BZ/BY, ne z CA/CB/CC/CD/CE/CF/CG/CH pokusu.
+
+Presny test:
+1. POWER -> READY.
+2. BASIC/TBXL TXT -> vlozit stredni test:
+10 PRINT "ATARIHELP BZ"
+20 PRINT "TXT+CSAVE+CLOAD"
+30 S=0
+40 FOR I=1 TO 20
+50 S=S+I
+60 PRINT I,S
+70 NEXT I
+80 IF S=210 THEN PRINT "SUM OK"
+90 IF S<>210 THEN PRINT "SUM BAD"
+100 FOR A=1 TO 8
+110 PRINT "A=";A;" AA=";A*A
+120 NEXT A
+130 PRINT "KONEC OK"
+140 END
+3. VLOZIT + RUN -> musi byt SUM OK a KONEC OK.
+4. CSAVE -> cekat CSAVE VYSLEDEK: ANO.
+5. LAST CSAVE / SAVE.
+6. NEW -> LIST musi byt prazdny.
+7. CLOAD -> PLAY.
+8. Po READY: LIST a RUN.
+Spravne: program je zpet, SUM OK, KONEC OK.
+
+Log markery:
+- BUILD2CI_BY_BZ_GOLDEN_CLOAD_IRQEN_READY_FIX pripraven
+- CLOAD IRQEN GATED BUILD2CI
+- CLOAD SERIN WAIT BUILD2CI
+- CLOAD SKRES REQUEUE BUILD2CI (jen pokud OS vycisti pending byte)
+- CLOAD SERIAL BUILD2BR/CI: SERIN predano 256/526 nebo fronta dokoncena
+
+Kdyz selze:
+Poslat cely log a kratce napsat: CI 138 PO 128, CI CEKA IRQEN, CI SKRES REQUEUE, nebo CI ZVUK SPATNY.
