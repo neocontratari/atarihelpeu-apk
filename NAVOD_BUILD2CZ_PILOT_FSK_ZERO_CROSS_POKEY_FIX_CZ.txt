@@ -1,0 +1,35 @@
+ATARIHELP.EU EMU-10 - BUILD2CZ_PILOT_FSK_ZERO_CROSS_POKEY_FIX
+
+ZAKLAD: BUILD2BZ/BY golden. BUILD2CK nepouzity.
+KODY JSOU STEJNE.
+TXT / joystick / scroll / focus nemeneno.
+
+CO JE OSETRENO PODLE TVEHO SEZNAMU:
+1) Lead-in / pilot signal:
+   - CLOAD i START+OPTION cesta pro vlastni CSAVE dava 12 s cisty pilot 5327 Hz pred daty.
+   - $55 bajty z realneho streamu se uz nevyhazuji.
+2) FSK tolerance:
+   - MARK=5327 Hz, SPACE=3995 Hz, 600 baud z PAL casovani jadra.
+   - Ulozeny WAV a monitor maji stejne konstanty.
+3) Filtrace / zero crossing:
+   - Pro externi WAV je doplnen DC removal + low-pass + Schmitt zero-cross tvarovac na SKSTAT bit4.
+4) SIO patch:
+   - Altirra SIO patch zde nepouzivame. BUILD2CZ loguje, ze cesta je bez SIO patch/fronty bokem.
+
+HLAVNI TEST:
+- POWER BASIC.
+- VLOZIT TXT + RUN kratky program.
+- CSAVE / RECORD.
+- LAST CSAVE / CLOAD.
+- Nejdriv poslouchej: klavesy, CLOAD/CSAVE command buzzer, 12s pilot, data FSK.
+
+V LOGU MA BYT:
+AtariHelp.eu EMU-10 BUILD2CZ_PILOT_FSK_ZERO_CROSS_POKEY_FIX pripraven.
+AUDIO BUILD2CZ: REAL ATARI REF master bezi | PILOT 5327Hz + FSK 3995/5327 + zero-cross WAV tvarovac | ALTIRRA/SIO PATCH: NEPOUZITO
+CLOAD PILOT/FSK BUILD2CZ
+POKEY_FSK_RX_CZ
+
+NESMI TAM BYT JAKO HLAVNI CESTA:
+BUILD2CQ
+CLOAD SERIN ARM BUILD2BR
+KAZETA PLAY: HTML audio

@@ -1,297 +1,4 @@
-<!doctype html>
-<html lang="cs">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2CZ</title>
-<style>
-:root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{min-height:100%;background:#050608;color:#f2c464;font-family:"Courier New",monospace;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
-body{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;padding-bottom:12px;}
-.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050608;overflow:hidden;box-shadow:0 0 45px rgba(0,0,0,.95);}
-.skin{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;z-index:0;}
-/* real Atari screen over the CRT opening */
-.screenSlot{position:absolute;left:10.8%;top:6.7%;width:77.8%;height:22.9%;border-radius:4.7%/9.5%;overflow:hidden;z-index:5;background:#0047db;box-shadow:inset 0 0 34px rgba(0,0,0,.35);}
-canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !important;margin:0 !important;display:block;image-rendering:pixelated;background:#0047db;filter:none;}
-.scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.006) 0 1px,rgba(0,0,0,.004) 1px 5px);mix-blend-mode:normal;opacity:.07;}
-.screenSlot:after{content:"";position:absolute;left:-45%;top:0;width:30%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.018),transparent);animation:sweep 9.5s linear infinite;pointer-events:none;mix-blend-mode:screen;}
-@keyframes scanflick{50%{opacity:.62}}@keyframes sweep{to{left:115%}}
-.hit{position:absolute;border:0;background:rgba(255,200,80,0);color:transparent;font-size:0;cursor:pointer;z-index:30;border-radius:9px;touch-action:manipulation;}
-.hit:active,.hit.on{background:rgba(255,203,95,.16);box-shadow:0 0 22px rgba(255,203,95,.45) inset;}
-#led{position:absolute;left:20.1%;top:36.15%;width:1.25%;aspect-ratio:1;border-radius:50%;background:#63ff34;z-index:31;box-shadow:0 0 7px #63ff34,0 0 16px #63ff34;animation:ledPulse 1.4s ease-in-out infinite;}
-#led.on{background:#63ff34;box-shadow:0 0 8px #63ff34,0 0 19px #63ff34;}@keyframes ledPulse{50%{opacity:.55}}
-/* power / mode controls */
-#btnPower{left:6.8%;top:34.6%;width:16.5%;height:5.1%;}#btnSelfTest{left:24.0%;top:34.6%;width:17.5%;height:5.1%;}#btnJoy{left:44.0%;top:34.6%;width:47.8%;height:5.1%;}
-/* Atari function row */
-#btnHelp{left:34.1%;top:43.2%;width:11.4%;height:4.3%;}#btnStart{left:45.6%;top:43.2%;width:11.5%;height:4.3%;}#btnSelect{left:57.1%;top:43.2%;width:12.1%;height:4.3%;}#btnOption{left:69.2%;top:43.2%;width:12.3%;height:4.3%;}#btnReset{left:81.5%;top:43.2%;width:11.2%;height:4.3%;}
-#btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
-/* file/action zones on cassette and main physical buttons */
-#btnXex,#btnAtr{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-/* BUILD2AX: fyzicka tlacitka XC12 jsou srovnana podle PNG, aby STOP/EJT nepadal do F.FWD. */
-#btnTapeInsert{left:25.0%;top:71.35%;width:50.0%;height:13.2%;z-index:69;border-radius:16px;}
-/* BUILD2AX: realne pozice fyzickych tlacitek na PNG: RECORD / PLAY / REW / F.FWD / STOP-EJT / PAUSE.
-   Predtim byl cely rad posunuty doleva, proto se pri stisku STOP nekdy trefilo F.FWD. */
-#btnTapeRecord{left:11.9%;top:89.55%;width:9.9%;height:6.1%;z-index:73;}
-#btnTapePlay{left:22.2%;top:89.55%;width:9.9%;height:6.1%;z-index:73;}
-#btnTapeRew{left:32.5%;top:89.55%;width:9.9%;height:6.1%;z-index:73;}
-#btnTapeFwd{left:42.8%;top:89.55%;width:9.9%;height:6.1%;z-index:73;}
-#btnTapeStop{left:53.1%;top:89.55%;width:9.9%;height:6.1%;z-index:78;}
-#btnTapePause{left:63.4%;top:89.55%;width:9.9%;height:6.1%;z-index:73;}
-#btnTapeSave{left:82.4%;top:86.95%;width:10.2%;height:4.55%;z-index:74;border-radius:6px;}
-/* BUILD2AM: male tlacitko/reset u praveho ciselniku XC12 */
-#btnCounterReset{left:88.35%;top:82.70%;width:3.8%;height:3.35%;z-index:70;border-radius:4px;}
-#btnCounterReset.pressed,#btnCounterReset:active{background:rgba(255,208,90,.20)!important;box-shadow:inset 0 0 13px rgba(255,210,80,.75),0 0 10px rgba(255,200,60,.35);transform:translateY(1px) scale(.96);}
-#btnTbxl{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-#btnTxt{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}#btnProgNew{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-#btnSaveLog{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}
-.tapeReel{position:absolute;z-index:48;pointer-events:none;border-radius:50%;border:1.5px solid rgba(255,216,120,.42);box-shadow:0 0 10px rgba(255,210,90,.20);opacity:0;mix-blend-mode:screen;transform-origin:center center;}
-.tapeReel:before,.tapeReel:after{content:"";position:absolute;left:50%;top:50%;width:62%;height:5%;margin-left:-31%;margin-top:-2.5%;border-radius:4px;background:rgba(255,216,120,.33);}
-.tapeReel:after{transform:rotate(62deg);}
-#tapeReelL{left:37.85%;top:75.52%;width:5.15%;aspect-ratio:1;}
-#tapeReelR{left:53.95%;top:75.52%;width:5.15%;aspect-ratio:1;}
-/* BUILD2AM: counter ve skutecnem prave okno COUNTER na XC12 skinu */
-#tapeCounter{position:absolute;left:80.72%;top:83.20%;width:7.95%;height:2.15%;z-index:62;pointer-events:none;display:flex;align-items:center;justify-content:center;padding-top:.04%;
-  font:900 clamp(10px,1.72vw,16px) "Courier New",monospace;letter-spacing:.10em;color:#ffd064;text-shadow:0 0 4px #ff9d00,0 0 9px rgba(255,168,0,.74),0 1px 0 #000;
-  background:linear-gradient(180deg,rgba(6,4,1,.74),rgba(22,12,0,.50));border-radius:3px;box-shadow:inset 0 0 6px rgba(0,0,0,.88),0 0 7px rgba(255,171,0,.16);mix-blend-mode:normal;}
-#tapeCounter.run{animation:counterGlow .42s steps(2,end) infinite;}
-@keyframes counterGlow{50%{filter:brightness(1.45);text-shadow:0 0 6px #ffbf2e,0 0 14px rgba(255,180,0,.88),0 1px 0 #000;}}
-#tapeSeekHud{position:absolute;left:35.2%;top:78.35%;width:30.2%;height:2.9%;z-index:63;display:none;align-items:center;justify-content:center;pointer-events:none;
-  font:900 clamp(9px,1.9vw,17px) "Courier New",monospace;letter-spacing:.08em;color:#ffd76f;text-shadow:0 0 5px #000,0 0 12px rgba(255,190,40,.9);
-  background:linear-gradient(90deg,rgba(0,0,0,.10),rgba(0,0,0,.48),rgba(0,0,0,.10));border-radius:7px;mix-blend-mode:screen;}
-#tapeSeekHud.show{display:flex;animation:seekBlink .16s steps(2,end) infinite;}
-@keyframes seekBlink{50%{filter:brightness(1.55);transform:scale(1.025);}}
-.stage.tapeRun .tapeReel{opacity:1;animation:tapeSpin .55s linear infinite;}
-.stage.tapeRun #tapeReelR{animation-duration:.43s;}
-.stage.tapeFwd .tapeReel{animation-name:tapeSpin;animation-duration:.16s;filter:brightness(1.55) drop-shadow(0 0 7px rgba(255,210,80,.75));}
-.stage.tapeFwd #tapeReelR{animation-duration:.11s;}
-.stage.tapeRew .tapeReel{animation-name:tapeSpinRev;animation-duration:.16s;filter:brightness(1.55) drop-shadow(0 0 7px rgba(90,190,255,.65));}
-.stage.tapeRew #tapeReelR{animation-duration:.11s;}
-.stage.tapePlay .tapeReel{animation-name:tapeSpin;}
-@keyframes tapeSpin{to{transform:rotate(360deg)}}
-@keyframes tapeSpinRev{to{transform:rotate(-360deg)}}
-.hit.pressed{background:rgba(255,203,95,.22)!important;box-shadow:0 0 24px rgba(255,203,95,.55) inset,0 0 18px rgba(95,190,255,.22);transform:translateY(2px) scale(.985);}
-.hit.tapeBtn.pressed{background:rgba(45,38,28,.34)!important;box-shadow:inset 0 8px 20px rgba(0,0,0,.55),inset 0 -2px 8px rgba(255,235,180,.28),0 0 16px rgba(255,220,130,.18);transform:translateY(6px) scaleY(.92);border-radius:6px;}
-.hit.tapeBtn{overflow:visible;transform-origin:center bottom;}
-.hit.tapeBtn.pressed:before{content:"";position:absolute;left:5%;right:5%;top:12%;bottom:4%;border-radius:5px;
-  background:linear-gradient(180deg,rgba(0,0,0,.44),rgba(255,223,145,.13) 55%,rgba(0,0,0,.30));
-  box-shadow:inset 0 10px 16px rgba(0,0,0,.62), inset 0 -2px 5px rgba(255,231,160,.24), 0 2px 0 rgba(0,0,0,.62);
-  transform:translateY(6px) scaleY(.90);pointer-events:none;}
-.hit.tapeBtn.pressed:after{content:"";position:absolute;left:8%;right:8%;top:16%;height:20%;border-radius:50%;background:rgba(255,255,255,.08);transform:translateY(6px);pointer-events:none;}
-/* BUILD2BR: high-res absolutni dotykova mapa + scroll fix: OSK vrstva nesmi blokovat posun stranky mimo samotne klavesy.
-   Zadny flex/stretch: kazda klavesa ma vlastni hitbox v procentech z 941x1672 skinu. */
-#osk{position:absolute;left:0;top:0;width:100%;height:100%;z-index:32;display:block;opacity:1;pointer-events:none;touch-action:pan-y;}
-.krow{display:contents;}
-.key{position:absolute;border:0;border-radius:6px;background:rgba(255,255,255,.001);color:transparent;font-size:0;min-width:0;padding:0;margin:0;transition:transform .035s ease,background .035s ease,box-shadow .035s ease;transform-origin:center bottom;touch-action:manipulation;pointer-events:auto;}
-.key.spacer{display:none!important;pointer-events:none;}
-.key:active,.key.on,.key.flash,.key.keyPress{background:rgba(40,32,18,.22);box-shadow:inset 0 4px 10px rgba(0,0,0,.46),inset 0 -1px 5px rgba(255,235,170,.35),0 0 10px rgba(255,220,130,.20);opacity:1;transform:translateY(2.0px) scale(.988);}
-.key.shiftLatched{background:rgba(255,196,70,.30);box-shadow:inset 0 0 14px rgba(255,230,150,.85),0 0 12px rgba(255,220,130,.45);transform:translateY(2px) scale(.988);}
-/* joystick overlay - visible skin is swapped to the joystick PNG, controls are transparent */
-#joy{position:absolute;left:0;top:0;width:100%;height:100%;display:none;z-index:75;touch-action:pan-y;user-select:none;pointer-events:none;}
-#joyPad{position:absolute;left:10.80%;top:49.10%;width:39.20%;height:22.10%;border-radius:22%;background:rgba(0,0,0,.01);touch-action:none;pointer-events:auto;z-index:76;}
-#joyKnob{position:absolute;left:50%;top:50%;width:26%;height:26%;margin-left:-13%;margin-top:-13%;border-radius:50%;background:rgba(255,255,255,.01);pointer-events:none;}
-.joyDir{position:absolute;z-index:86;border:0;border-radius:12px;background:rgba(255,210,90,.001);color:transparent;font-size:0;touch-action:none;pointer-events:auto;}
-.joyDir.on,.joyDir:active{background:rgba(255,210,90,.18);box-shadow:inset 0 0 22px rgba(255,220,130,.50),0 0 16px rgba(255,220,130,.18);transform:translateY(2px) scale(.98);}
-#joyUp{left:25.20%;top:53.30%;width:10.9%;height:5.75%;}#joyDown{left:25.20%;top:63.80%;width:10.9%;height:5.75%;}#joyLeft{left:18.80%;top:58.15%;width:10.2%;height:6.35%;}#joyRight{left:35.05%;top:58.15%;width:10.2%;height:6.35%;}
-#joyFire{position:absolute;left:63.5%;top:54.8%;width:23.0%;height:14.9%;border-radius:50%;border:0;background:rgba(255,0,0,.01);color:transparent;font-size:0;touch-action:none;pointer-events:auto;z-index:86;}
-#joyFire.on{background:rgba(255,0,0,.22);box-shadow:0 0 35px rgba(255,0,0,.38) inset,0 0 18px rgba(255,50,20,.26);transform:translateY(2px) scale(.98);}
-/* hidden/utility DOM required by original emulator core */
-#filePick{display:none}.logwrap{position:absolute;left:4.0%;right:4.0%;top:94.5%;height:5%;z-index:25;color:#f2c464;font-size:10px;opacity:.01;pointer-events:none;}#log{height:100%;overflow:auto;white-space:pre-wrap;}
-.file-opt{position:absolute;left:3%;top:93%;z-index:35;font-size:10px;color:#f2c464;opacity:.01;}
-.hiddenInput{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;}
-/* full screen overlays for text/log remain visible when opened */
-.overlay{display:none;position:fixed;inset:0;background:rgba(8,9,10,.96);z-index:1000;padding:16px;flex-direction:column;gap:10px;color:#e8e2d0;font-family:"Courier New",monospace;}
-.overlay{overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;}.overlay .row{display:flex;gap:8px;flex-wrap:wrap}.overlay button{flex:1;min-width:120px;padding:11px;border:0;border-radius:6px;background:#d9b25c;color:#111;font:bold 12px "Courier New",monospace}.overlay button.dark{background:#454850;color:#eee}.overlay button.danger{background:#c94331;color:#fff}.overlay textarea{flex:1;background:#08090a;color:#9fe29f;border:1px solid #333;border-radius:6px;padding:9px;font:12px "Courier New",monospace;resize:none;}
-#txtOverlay{background:rgba(5,6,8,.985);z-index:5000;padding:12px;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
-#txtOverlay h2{font:bold clamp(14px,4vw,22px) "Courier New",monospace;color:#f2c464;margin:0 0 4px;text-shadow:0 0 8px #000;}
-#txtOverlay .hint{font:bold clamp(10px,2.6vw,14px) "Courier New",monospace;line-height:1.35;color:#cfe9ff;background:rgba(20,28,38,.55);border:1px solid rgba(120,190,255,.28);border-radius:8px;padding:8px;}
-#txtOverlay label{font:bold clamp(10px,2.7vw,14px) "Courier New",monospace!important;color:#e8e2d0!important;}
-#txtOverlay,#txtOverlay *{pointer-events:auto;}
-#txtOverlay textarea{font:700 clamp(15px,4.2vw,22px) "Courier New",monospace;line-height:1.28;color:#b8ffb8;background:#020502;border:2px solid #5da85d;border-radius:10px;padding:12px;min-height:44vh;max-height:56vh;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:auto;box-shadow:inset 0 0 18px rgba(0,0,0,.85),0 0 18px rgba(80,255,110,.10);caret-color:#fff;}
-#txtOverlay .row button{font:bold clamp(10px,2.7vw,14px) "Courier New",monospace;padding:13px 10px;border-radius:9px;}
-#dockTxt{background:linear-gradient(180deg,#4a3520 0%,#2d1e10 60%,#100805 100%)!important;color:#ffd77d!important;border-color:#8a6230!important;}
 
-/* BUILD2AW: kazetak ma samostatne VLOZIT; dock zustava jen servis mimo kazetu */
-#actionDock{
-  position:relative;width:min(100vw,941px);max-width:941px;margin:9px auto 0;padding:10px 9px 9px;z-index:90;
-  display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,42px);gap:8px;pointer-events:auto;
-  background:linear-gradient(180deg,#1b1d21 0%,#08090b 100%);
-  border:1px solid rgba(61,65,72,.98);border-radius:12px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.09), inset 0 -1px 0 rgba(0,0,0,.9), 0 0 28px rgba(0,0,0,.82);
-}
-#actionDock:before{
-  content:"SERVIS MIMO KAZETAK";position:absolute;left:12px;top:-13px;padding:0 8px;background:#050608;
-  color:#f2c464;font:bold 10px "Courier New",monospace;letter-spacing:.08em;text-shadow:0 0 6px #000;
-}
-#actionDock button{
-  position:relative;overflow:hidden;border:1px solid #3a3e45;border-radius:8px;
-  background:linear-gradient(180deg,#30333a 0%,#202329 34%,#111317 67%,#050608 100%);
-  color:#e7e0d0;text-shadow:0 1px 0 #000,0 0 5px rgba(255,255,255,.08);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.15), inset 0 -7px 12px rgba(0,0,0,.58), 0 3px 0 #020304, 0 0 0 1px rgba(0,0,0,.68);
-  font:bold clamp(8px,2.0vw,13px) "Courier New",monospace;letter-spacing:.02em;
-  transition:transform .055s ease,box-shadow .055s ease,background .055s ease,color .055s ease;
-}
-#actionDock button:before{content:"";position:absolute;left:7%;right:7%;top:7%;height:25%;border-radius:40%;background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));pointer-events:none;}
-#actionDock button:active,#actionDock button.pressed{
-  background:linear-gradient(180deg,#060709 0%,#14161a 100%);color:#f2c464;
-  transform:translateY(4px) scale(.985);
-  box-shadow:inset 0 9px 21px rgba(0,0,0,.86), inset 0 -1px 4px rgba(255,230,170,.10),0 0 10px rgba(242,196,100,.16);
-}
-#actionDock button.primary{color:#f2c464;border-color:#585047;box-shadow:inset 0 1px 0 rgba(255,255,255,.15), inset 0 -7px 12px rgba(0,0,0,.58), 0 3px 0 #020304, 0 0 9px rgba(242,196,100,.10);}
-#miniLog{position:relative;width:min(100vw,941px);max-width:941px;margin:5px auto 10px;color:#ffd976;font:700 clamp(7px,1.65vw,10px) "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 5px #000;opacity:.95;padding:0 8px;}
-#miniLog{display:none;}
-#dockHelpFloat{position:relative;width:min(100vw,941px);max-width:941px;margin:4px auto 0;display:flex;justify-content:flex-end;padding:0 8px;}
-#cassStatus{position:relative;width:min(100vw,941px);max-width:941px;margin:4px auto 0;padding:0 10px;color:#8fd8ff;font:700 clamp(7px,1.65vw,10px) "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 5px #000;opacity:.95;}
-@media (orientation:landscape){#cassStatus{display:none!important;}}
-
-#btnHelpPanel{padding:9px 16px;border:1px solid #5a5148;border-radius:8px;background:linear-gradient(180deg,#30333a 0%,#202329 34%,#111317 67%,#050608 100%);color:#f2c464;font:bold 12px "Courier New",monospace;box-shadow:inset 0 1px 0 rgba(255,255,255,.15), inset 0 -7px 12px rgba(0,0,0,.58), 0 3px 0 #020304;}
-#btnHelpPanel:active,#btnHelpPanel.pressed{transform:translateY(3px) scale(.985);box-shadow:inset 0 9px 21px rgba(0,0,0,.86),0 0 10px rgba(242,196,100,.16);}
-#helpOverlay .panel{max-width:860px;margin:0 auto;background:#0b0d10;border:1px solid #3a3e45;border-radius:12px;padding:16px;box-shadow:0 0 30px rgba(0,0,0,.7);}
-#helpOverlay h2{font-size:18px;margin-bottom:10px;color:#ffd87a;}
-#helpOverlay ul{padding-left:18px;margin:10px 0 14px;}
-#helpOverlay li{margin:5px 0;}
-
-
-/* BUILD2AR: landscape herni rezim - velky obraz + podkresleny joystick pres hru */
-#landJoy{display:none;position:fixed;inset:0;z-index:2200;pointer-events:none;user-select:none;touch-action:none;font-family:"Courier New",monospace;}
-#landJoyPad{position:absolute;left:3.1vw;bottom:4.9vh;width:min(32vh,29vw);height:min(32vh,29vw);min-width:118px;min-height:118px;border-radius:50%;pointer-events:auto;touch-action:none;
-  background:radial-gradient(circle at 50% 50%,rgba(255,232,165,.13) 0 11%,rgba(0,0,0,.18) 12% 28%,rgba(255,214,120,.11) 29% 34%,rgba(0,0,0,.12) 35% 100%);
-  border:1px solid rgba(255,214,120,.28);box-shadow:inset 0 0 24px rgba(0,0,0,.70),0 0 20px rgba(0,0,0,.55);opacity:.50;}
-#landJoyPad:before{content:"▲\A ◄   ►\A ▼";white-space:pre;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.65;color:rgba(255,225,155,.42);font:bold min(4.8vh,5.0vw) "Courier New",monospace;text-shadow:0 0 8px rgba(0,0,0,.9);pointer-events:none;}
-#landJoyKnob{position:absolute;left:50%;top:50%;width:28%;height:28%;margin-left:-14%;margin-top:-14%;border-radius:50%;background:radial-gradient(circle,rgba(255,234,184,.32),rgba(0,0,0,.22));border:1px solid rgba(255,230,170,.35);box-shadow:0 0 16px rgba(255,210,90,.16);pointer-events:none;}
-#landFire{position:absolute;right:4.9vw;bottom:6.8vh;width:min(26vh,23vw);height:min(26vh,23vw);min-width:104px;min-height:104px;border-radius:50%;pointer-events:auto;touch-action:none;border:1px solid rgba(255,92,64,.40);
-  background:radial-gradient(circle at 45% 38%,rgba(255,116,84,.38),rgba(145,0,0,.22) 48%,rgba(0,0,0,.22) 72%);color:rgba(255,220,190,.60);font:bold min(3.8vh,4vw) "Courier New",monospace;text-shadow:0 0 8px rgba(0,0,0,.95);box-shadow:inset 0 0 30px rgba(0,0,0,.72),0 0 22px rgba(0,0,0,.55);opacity:.48;}
-#landFire.on,#landFire:active{opacity:.82;filter:brightness(1.28);box-shadow:inset 0 0 36px rgba(255,54,30,.54),0 0 24px rgba(255,50,20,.24);transform:translateY(2px) scale(.985);}
-#landJoyPad.active{opacity:.78;filter:brightness(1.12);}
-#landHint{position:absolute;left:50%;bottom:2vh;transform:translateX(-50%);padding:5px 9px;border-radius:8px;background:rgba(0,0,0,.36);border:1px solid rgba(255,214,120,.22);color:rgba(255,223,150,.70);font:bold min(2.2vh,2.2vw) "Courier New",monospace;text-shadow:0 0 7px #000;pointer-events:none;opacity:.55;}
-@media (orientation:landscape){
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;padding:0;margin:0;}
-  body{display:block;padding:0;}
-  .stage{position:fixed!important;left:0!important;top:0!important;width:100vw!important;height:100vh!important;max-width:none!important;aspect-ratio:auto!important;background:#000!important;box-shadow:none!important;overflow:hidden!important;}
-  .skin,#led,#osk,#joy,.hit,.tapeReel,#tapeCounter,#tapeSeekHud,.logwrap,.file-opt{display:none!important;}
-  #actionDock,#dockHelpFloat,#miniLog{display:none!important;}
-  .screenSlot{position:fixed!important;left:0!important;top:0!important;width:100vw!important;height:100vh!important;border-radius:0!important;z-index:2000!important;box-shadow:none!important;background:#0047db!important;}
-  canvas#scr{width:100vw!important;height:100vh!important;image-rendering:pixelated!important;}
-  .scan{opacity:.025!important;}
-  .screenSlot:after{display:none!important;}
-  #landJoy{display:block;}
-}
-
-@media(max-width:420px){#actionDock{grid-template-rows:repeat(2,34px);gap:6px;padding:8px 7px 7px;}#actionDock button{font-size:7.0px;}}
-
-@media (prefers-reduced-motion:reduce){.scan,.screenSlot:after,#led{animation:none}}
-</style>
-</head>
-<body>
-<main class="stage" id="stage" tabindex="-1" aria-label="N&P VISION Atari 130XE emulator">
-  <img id="skinImg" class="skin" src="../design/emu_klavesnice_np_vision.png" alt="N&P VISION Atari 130XE keyboard skin">
-  <div class="screenSlot"><canvas id="scr" width="384" height="240"></canvas><div class="scan"></div></div>
-  <div id="led"></div>
-  <button id="btnPower" class="hit">POWER BASIC</button>
-  <button id="btnSelfTest" class="hit">START + OPTION</button>
-  <button id="btnJoy" class="hit">JOYSTIK</button>
-  <button id="btnHelp" class="hit">HELP</button>
-  <button id="btnStart" class="hit">START</button>
-  <button id="btnSelect" class="hit">SELECT</button>
-  <button id="btnOption" class="hit">OPTION</button>
-  <button id="btnReset" class="hit">RESET</button>
-  <button id="btnBreak" class="hit">BREAK</button>
-  <button id="btnXex" class="hit">NAHRAJ XEX</button>
-  <button id="btnAtr" class="hit">NAHRAJ ATR</button>
-  <button id="btnTapeInsert" class="hit">VLOZIT KAZETU</button>
-  <button id="btnTapeRecord" class="hit tapeBtn">RECORD CSAVE</button>
-  <button id="btnTapePlay" class="hit tapeBtn">PLAY CLOAD</button>
-  <button id="btnTapeRew" class="hit tapeBtn">REWIND</button>
-  <button id="btnTapeFwd" class="hit tapeBtn">F.FWD</button>
-  <button id="btnTapeStop" class="hit tapeBtn">STOP EJECT</button>
-  <button id="btnTapePause" class="hit tapeBtn">PAUSE</button>
-  <button id="btnTapeSave" class="hit tapeBtn">LAST CSAVE / SAVE</button>
-  <button id="btnCounterReset" class="hit">COUNTER RESET</button>
-  <button id="btnTbxl" class="hit">TBXL 1.5</button>
-  <button id="btnTxt" class="hit">VLOZIT TXT</button>
-  <button id="btnProgNew" class="hit">SMAZAT PROG</button>
-  <button id="btnSaveLog" class="hit">ULOZIT LOG</button>
-  <div id="tapeReelL" class="tapeReel"></div><div id="tapeReelR" class="tapeReel"></div><div id="tapeCounter" aria-label="COUNTER stopa">000</div><div id="tapeSeekHud">F.FWD &gt;&gt;</div>
-  <label class="file-opt"><input type="checkbox" id="chkOpt" checked> OPTION u ATR / boot bez BASICu</label>
-  <input type="file" id="filePick">
-  <div id="osk"></div>
-  <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyUp" class="joyDir">UP</button><button id="joyDown" class="joyDir">DOWN</button><button id="joyLeft" class="joyDir">LEFT</button><button id="joyRight" class="joyDir">RIGHT</button><button id="joyFire">FIRE</button></div>
-  <div id="landJoy" aria-label="Landscape joystick pres hru"><div id="landJoyPad"><div id="landJoyKnob"></div></div><button id="landFire" type="button">FIRE</button><div id="landHint">LANDSCAPE JOYSTICK</div></div>
-  <div class="logwrap"><div class="bar"><span>LOG</span></div><div id="log"></div></div>
-</main>
-<div id="actionDock" aria-label="Viditelne servisni ovladani mimo kazetak">
-  <button id="dockNetGames" class="primary" type="button">NET HRY</button>
-  <button id="dockXex" type="button">XEX MOBIL</button>
-  <button id="dockAtr" type="button">ATR DISK</button>
-  <button id="dockTbxl" class="primary" type="button">TURBO BASIC</button>
-  <button id="dockTxt" type="button">BASIC/TBXL TXT</button>
-  <button id="dockLog" type="button">LOG / CHYBA</button>
-  <button id="dockHelpMini" type="button">HELP</button>
-  <button id="dockMenu" type="button">MENU</button>
-</div>
-<div id="cassStatus">XC12: VLOZIT = klepni na telo kazety | PLAY = spustit vlozenou kazetu | RECORD = CSAVE</div>
-<div id="dockHelpFloat"><button id="btnHelpPanel" type="button">HELP</button></div>
-<div id="miniLog"></div>
-<div id="txtOverlay" class="overlay" aria-label="Vlozeni BASIC TXT kodu">
-  <h2>VLOZIT TXT / BASIC KOD</h2>
-  <div class="hint">Sem normalne vloz kod z PC klavesnice nebo Ctrl+V. Kdyz je kurzor v tomhle ramecku, emulator uz nekrade klavesy — pises opravdu do textoveho pole.</div>
-  <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtRun">VLOZIT + RUN</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClear" class="dark">SMAZAT TEXT</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
-  <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim programu</label>
-  <textarea id="txtIn" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="10 PRINT &quot;ATARIHELP&quot;&#10;20 FOR I=1 TO 5&#10;30 PRINT I&#10;40 NEXT I"></textarea>
-</div>
-<div id="logOverlay" class="overlay">
-  <div class="row"><button id="btnLogCopy">KOPIROVAT</button><button id="btnLogDownload" class="dark">STAHNOUT</button><button id="btnLogClose" class="danger">ZAVRIT</button></div>
-  <textarea id="logFull" readonly></textarea>
-</div>
-
-<div id="helpOverlay" class="overlay" aria-hidden="true">
-  <div class="panel">
-    <h2>N&P VISION — HELP</h2>
-    <p>Napoveda ke vsem hlavnim tlacitkum. Zobrazuje se jen po stisku HELP, aby nerusila grafiku emulatoru.</p>
-    <p><b>ZASADA BUILD2AO:</b> kazda nova funkce emulatoru se bude postupne zapisovat sem do HELP.</p>
-    <h3>Atari 130XE emulator</h3>
-    <ul>
-      <li><b>POWER BASIC</b> — cold start do BASICu.</li>
-      <li><b>START + OPTION</b> — cold start s drzenym START+OPTION jako na realnem Atari; pouzij pro kazetovy/turbo loader, ne pro Self Test.</li>
-      <li><b>KLAVESNICE / JOYSTICK</b> — prepina skin a ovladani.</li>
-      <li><b>HELP / START / SELECT / OPTION / RESET / BREAK</b> — realne Atari funkcni klavesy.</li>
-      <li><b>SHIFT</b> — zamykaci klavesa pro NOX test; zustane zapnuta, dokud ji znovu nezmacknes.</li>
-      <li><b>Joystick</b> — ostrejsi smerove zony; FIRE je samostatne tlacitko.</li>
-      <li><b>Landscape herni rezim</b> — pri otoceni mobilu na sirku se obraz roztahne pres celou obrazovku a pres hru se zobrazi jemny pruhledny joystick vlevo + FIRE vpravo.</li>
-    </ul>
-    <h3>Nahravani her a programu</h3>
-    <ul>
-      <li><b>NET HRY</b> — otevře hry z AtariHelp.eu; klik na XEX/ZIP/ATR se vraci do emulatoru a spousti soubor.</li>
-      <li><b>XEX MOBIL</b> — výběr XEX/ZIP z mobilu / Downloads.</li>
-      <li><b>ATR DISK</b> — výběr ATR disk image.</li>
-      <li><b>TURBO BASIC</b> — spusti Turbo Basic XL.</li>
-      <li><b>BASIC/TBXL TXT</b> — otevře velky ramecek pro vlozeni kodu z PC/Ctrl+V. Klavesy v ramecku uz emulator nekrade.</li>
-    </ul>
-    <h3>XC12 kazetak v emulatoru</h3>
-    <ul>
-      <li><b>VLOZIT KAZETU</b> — klepni primo na telo/okno kazety v XC12. Otevre Downloads a vyberes WAV / CAS / MP3. PLAY uz picker neotevira.</li>
-      <li><b>PLAY</b> — spusti pouze vlozenou kazetu. Kdyz neni kazeta vlozena, jen napise chybu do LOGu.</li>
-      <li><b>RECORD</b> — pripravi CSAVE nahravani z Atari na mobil. Nic nefakuje; zachytava jen skutecne bajty, ktere emulator posle ven pres POKEY/SEROUT.</li>
-      <li><b>STOP/EJECT</b> — kdyz kazeta bezi, okamzite zastavi audio, counter a animaci a vynuluje ciselnik na 000 bez pretoceni audio pozice. Kdyz uz stoji, druhy stisk vysune/vymaze vlozeny WAV/CAS.</li>
-      <li><b>CSAVE ulozeni</b> — po RECORD + prikazu CSAVE staci dat STOP/EJECT. Emulator sam v LOGu napise ANO/NE: kolik realnych bajtu prislo ze SEROUT, jestli z toho vznikl CAS/WAV, a ulozi oba soubory do Downloads/AtariHelp s citelnym nazvem. Zadny dalsi SAVE testovat nemusis; soubory hledej v mobilu v Downloads/AtariHelp.</li>
-      <li><b>PAUSE</b> — pozastavi audio nebo mechaniku; PLAY potom pokracuje.</li>
-      <li><b>REW / F.FWD</b> — realne pretaci WAV/MP3, u CAS/mechaniky hybe stopou a counterem.</li>
-      <li><b>COUNTER</b> — ukazuje stopu/polohu audio souboru.</li>
-      <li><b>COUNTER RESET</b> — male tlacitko u ciselniku vynuluje stopu na 000 bez pretaceni audia.</li>
-      <li><b>Zvuk kazety</b> — WAV/MP3 hraje skutecny soubor; CAS ma monitor zvuk vytvoreny z nahranych CAS bajtu. CSAVE monitor pipa jen pri realne zachycenych SEROUT bajtech, zadny vymysleny fake.</li>
-      <li><b>Zasada BUILD2BR</b> — zadny fake CLOAD, zadny RAM inject. Po ciste zavadeci stope uz vlastni CSAVE nepousti datovy chaos do SKSTAT. BUILD2BR drzi cisty leader adaptivne az do skutecne OS ROM synchronizace, potom posila vlastni bajty pres POKEY SERIN/IRQ podle OS masky $10/$20. Dotyky klaves jsou absolutni high-res mapa, ne flex.</li>
-      <li><b>Ukladani CSAVE</b> — automaticky jen kdyz pri RECORD + CSAVE/SAVE &quot;C:&quot; prisly realne SEROUT bajty. Uklada do Downloads/AtariHelp jako AtariHelp_CSAVE_BASIC/TBXL_YYYYMMDD_HHMMSS.cas a AtariHelp_CSAVE_BASIC/TBXL_YYYYMMDD_HHMMSS.wav.</li>
-    </ul>
-    <h3>Servis</h3>
-    <ul>
-      <li><b>LOG / CHYBA</b> — zobrazi plny log pro testovani.</li>
-      <li><b>MENU</b> — navrat na uvodni obrazovku.</li>
-    </ul>
-    <div class="row"><button id="btnHelpClose" class="danger">ZAVRIT HELP</button></div>
-  </div>
-</div>
-
-<script>
 // cpu6502.js - complete documented 6502 with NMOS BCD. Generated by gen_cpu.py.
 'use strict';
 function CPU6502(read, write){
@@ -626,11 +333,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function splitCassetteLeader55(bytes){
     const arr=[]; for(let i=0;i<bytes.length;i++) arr.push(bytes[i]&255);
     let lead55=0; while(lead55<arr.length && arr[lead55]===0x55) lead55++;
-    // BUILD2CZ: nic z realneho kazetoveho streamu NEVYHAZUJU.
-    // Pilot/lead-in je samostatny cisty 5327 Hz ton pred daty; vsechny $55, control, data i checksum
-    // z realneho SEROUT/CAS streamu zustavaji soucasti bitstreamu pro ROM/POKEY.
     let skip=0;
-    const payload=arr.slice(0);
+    if(lead55>=12) skip=lead55;       // dlouha CSAVE zavadeci stopa: tyhle $55 patri do leaderu, ne do dat
+    else if(lead55>=2) skip=2;        // kratky sync: ROM si prvni dva $55 po leaderu zalozi sama
+    const payload=arr.slice(skip);
     return {all:arr,payload:payload,lead55:lead55,skip:skip};
   }
   function cassettePcInLeaderDetector(){ return cpu.pc>=0xED3D && cpu.pc<=0xED96; }
@@ -656,23 +362,21 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   M.queueCassetteSerial=function(bytes,perByteLines,leadLines,kind){
     if(!bytes || !bytes.length) return 0;
-    // BUILD2CZ: zadna hotova CLOAD SERIN fronta po leaderu. Kazeta bezi jako jeden Atari tok:
-    // pilot 5327 Hz -> 600 baud FSK 3995/5327 Hz -> POKEY serial input latch.
-    sio.rxq.length=0; sio.rxPos=0; pokey.serinRead=true; pokey.serinAge=0; pokey.inShiftBusy=0; pokey.irqpend&=~0x38; pokeySync();
+    sio.rxq.length=0; sio.rxPos=0; pokey.serinRead=true; pokey.serinAge=0; pokey.inShiftBusy=0; pokey.irqpend&=~0x20; pokeySync();
     const sp=splitCassetteLeader55(bytes);
     const bitLines=Math.max(18,Math.round(15600/600));
-    // minimum 12 s pilot, aby START+OPTION i CLOAD mely skutecny stabilni lead-in jako realny XC12.
-    const lead=Math.max(15600*12, (leadLines||0));
+    const skippedLeadLines=sp.skip*10*bitLines;
+    const lead=Math.max(15600*2, (leadLines||72000) + skippedLeadLines); // minimum, ale BUILD2BR ho adaptivne prodlouzi dokud OS nedokonci detekci
     resetCassetteQueueStats();
-    sio.cassWaitMotor=true; sio.cassQueued=sp.all.length; sio.cassKind=kind||'CLOAD TRUE PILOT+FSK'; sio.cassLeadLines=lead; sio.cassSkipped55=0;
+    sio.cassWaitMotor=true; sio.cassQueued=sp.payload.length; sio.cassKind=kind||'CLOAD LEADER THEN SERIN'; sio.cassLeadLines=lead; sio.cassSkipped55=sp.skip;
     const CPS=114*312*50;
-    sio.cassTone={bytes:sp.all, serialBytes:sp.all, lead:lead, leadCycles:Math.round(lead*114), trail:Math.round(15600*0.65), trailCycles:Math.round(0.65*CPS),
+    sio.cassTone={bytes:sp.all, serialBytes:sp.payload, lead:lead, leadCycles:Math.round(lead*114), trail:Math.round(15600*0.25), trailCycles:Math.round(0.25*CPS),
                   byteIndex:0, bitIndex:0, bitLine:0, bitLines:bitLines, bitCycles:Math.round(CPS/600),
                   lineState:1, edgeAcc:0, edgeCount:0, startCycle:null, lastLogCount:0,
-                  started:false, dataStarted:false, waitLogged:false, completed:false, delivered:0, rxDelivered:0, rxWaitLoggedFrame:-9999, kind:sio.cassKind,
-                  leaderOnly:false, serialQueued:false, serialDelayLines:0, skipped55:0, lead55:sp.lead55, adaptiveLeader:false, osDetectorSeen:false, adaptiveLogFrame:-9999};
-    if(M.cassDebug) M.cassDebug('QUEUE_TONE_CZ',{bytes:sp.all.length,rawBytes:sp.all.length,lead:lead,bitLines:sio.cassTone.bitLines,kind:sio.cassKind,motor:sio.cassMotor?1:0,skipped:0,lead55:sp.lead55,mark:5327,space:3995,pilotSec:Math.round(lead/15600)});
-    return sp.all.length;
+                  started:false, dataStarted:false, waitLogged:false, completed:false, delivered:0, kind:sio.cassKind,
+                  leaderOnly:true, serialQueued:false, serialDelayLines:22, skipped55:sp.skip, lead55:sp.lead55, adaptiveLeader:true, osDetectorSeen:false, adaptiveLogFrame:-9999};
+    if(M.cassDebug) M.cassDebug('QUEUE_TONE',{bytes:sp.payload.length,rawBytes:sp.all.length,lead:lead,bitLines:sio.cassTone.bitLines,kind:sio.cassKind,motor:sio.cassMotor?1:0,skipped:sp.skip,lead55:sp.lead55});
+    return sp.payload.length;
   };
   // BUILD2BR: presnejsi cesta pro WAV, ktery realne Atari 130XE nacte.
   // Namisto decode->reencode se do SKSTAT bit4 posila primo tvar WAV prevzorkovany na PAL radky.
@@ -1341,24 +1045,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const bitIndex=Math.floor(inByte/bitCycles);
       segCyc=inByte-bitIndex*bitCycles;
       freq=cassetteToneFreqAt(t,bitIndex,byteIndex);
-      const audibleBytes=Math.min(t.bytes.length, byteIndex+1);
-      if(audibleBytes>t.delivered){ t.delivered=audibleBytes; sio.cassDelivered=Math.max(sio.cassDelivered,audibleBytes); }
-      // BUILD2CZ: POKEY SERIN vzniká z toho sameho 600 baud FSK casovani, ne z oddelene fronty.
-      // Byte se smi zalozit az po dobehnuti celeho 10bit frame (start+8data+stop).
-      const completedBytes=Math.min(t.bytes.length, Math.floor(dataCyc/byteCycles));
-      if(completedBytes>(t.rxDelivered||0)){
-        const rxIdx=t.rxDelivered||0;
-        if(pokey.serinRead && pokey.inShiftBusy===0){
-          pokey.serin=t.bytes[rxIdx]&255; pokey.serinRead=false; pokey.serinAge=0; pokey.inShiftBusy=10; pokey.inShiftCassette=true;
-          t.rxDelivered=rxIdx+1; sio.cassDelivered=t.rxDelivered;
-          if(M.cassDebug && (t.rxDelivered===1 || (t.rxDelivered%64)===0)) M.cassDebug('POKEY_FSK_RX_CZ',{count:t.rxDelivered,queued:t.bytes.length,byte:pokey.serin,pc:cpu.pc,irqen:pokey.irqen,irqst:(~pokeyStatus())&0xFF,mark:5327,space:3995});
-        }else if(M.cassDebug && (M.frame-(t.rxWaitLoggedFrame||-9999))>=25){
-          t.rxWaitLoggedFrame=M.frame;
-          M.cassDebug('POKEY_FSK_RX_WAIT_CZ',{due:completedBytes,delivered:t.rxDelivered||0,pc:cpu.pc,irqen:pokey.irqen,irqst:(~pokeyStatus())&0xFF,serinRead:pokey.serinRead?1:0,busy:pokey.inShiftBusy});
-        }
-      }
-      if(M.cassDebug && (audibleBytes===1 || (audibleBytes%64)===0) && audibleBytes!==t.lastLogCount){
-        t.lastLogCount=audibleBytes; M.cassDebug('BITSTREAM_COUNT_CZ',{count:audibleBytes,rx:t.rxDelivered||0,queued:t.bytes.length,pc:cpu.pc,skstat:sio.cassInLevel?0xFF:0xEF,edges:t.edgeCount||0,kind:t.kind,mark:5327,space:3995});
+      const delivered=Math.min(t.bytes.length, byteIndex+1);
+      if(delivered>t.delivered){ t.delivered=delivered; sio.cassDelivered=delivered; }
+      if(M.cassDebug && (delivered===1 || (delivered%64)===0) && delivered!==t.lastLogCount){
+        t.lastLogCount=delivered; M.cassDebug('BITSTREAM_COUNT',{count:delivered,queued:t.bytes.length,pc:cpu.pc,skstat:sio.cassInLevel?0xFF:0xEF,edges:t.edgeCount||0,kind:t.kind});
       }
     }else{
       const trailCyc=dataCyc-totalData;
@@ -1467,7 +1157,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     var wasDown=pokey.keyDown;
     pokey.kbcode=scan&0xFF; pokey.keyDown=true; pokey.shiftDown=!!(scan&0x40);
     pokeyRaise(0x40);
-    if(!wasDown && M._gtiaKeyClick) M._gtiaKeyClick(); // BUILD2CZ: slyšitelny Atari keyclick z GTIA/audio masteru
+    if(!wasDown && M._gtiaKeyClick) M._gtiaKeyClick(); // BUILD2CY: slyšitelny Atari keyclick z GTIA/audio masteru
   };
   M.keyUp=function(){ pokey.keyDown=false; pokey.shiftDown=false; };
   M.breakKey=function(){ pokeyRaise(0x80); };
@@ -1685,7 +1375,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
             s += st.out[ch] ? (vol/55) : -(vol/90);
           }
         }
-        // BUILD2CZ: GTIA $D01F stav se bere z ROM zapisu ve spravne audio casove ose, ne okamzite z UI threadu.
+        // BUILD2CY: GTIA $D01F stav se bere z ROM zapisu ve spravne audio casove ose, ne okamzite z UI threadu.
         if(st.spkQ && st.spkQ.length){
           while(st.spkQi+1<st.spkQ.length && st.spkQ[st.spkQi]<=sh.head){
             st.spkLevel=st.spkQ[st.spkQi+1]?1:-1;
@@ -1693,9 +1383,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
           }
           if(st.spkQi>1024){ st.spkQ=st.spkQ.slice(st.spkQi); st.spkQi=0; }
         }
-        // BUILD2CZ: kazeta/CSAVE/CLOAD monitor jde pres stejny Atari audio master. Ne HTML Audio, ne druhy oscillator.
+        // BUILD2CY: kazeta/CSAVE/CLOAD monitor jde pres stejny Atari audio master. Ne HTML Audio, ne druhy oscillator.
         s += popQueued('tapeQ','tapePos');
-        // BUILD2CZ: GTIA $D01F / keyclick: kratky mechanicky impuls podle referencniho MP3 z Altirry/130XE.
+        // BUILD2CY: GTIA $D01F / keyclick: kratky mechanicky impuls podle referencniho MP3 z Altirry/130XE.
         s += popQueued('spkClick','spkClickPos');
         // slabsi stavovy reproduktorovy bit z ROM zustava v mixu, ale klik dela hlavne hrana.
         s += st.spkLevel*0.018;
@@ -1706,7 +1396,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     };
     sp.connect(ac.destination); audio={ac:ac,sp:sp,st:st,sh:sh};
     attachAudioHooksToMachine();
-    log('AUDIO BUILD2CZ: REAL ATARI REF master bezi | PILOT 5327Hz + FSK 3995/5327 + zero-cross WAV tvarovac | ALTIRRA/SIO PATCH: NEPOUZITO ('+ac.sampleRate+' Hz). Klavesy/GTIA $D01F, POKEY AUD*, CSAVE a CLOAD monitor jsou v jednom mixu podle dodaneho Atari 130XE MP3 reference; zadny HTML Audio kazetak pro vlastni CSAVE. BUILD2CZ pridal nizky CLOAD/CSAVE command buzzer podle dodane MP3 reference.');
+    log('AUDIO BUILD2CY: REAL ATARI REF master bezi ('+ac.sampleRate+' Hz). Klavesy/GTIA $D01F, POKEY AUD*, CSAVE a CLOAD monitor jsou v jednom mixu podle dodaneho Atari 130XE MP3 reference; zadny HTML Audio kazetak pro vlastni CSAVE. BUILD2CY pridal nizky CLOAD/CSAVE command buzzer podle dodane MP3 reference.');
   }
   function attachAudioHooksToMachine(){
     if(!M || !audio || !audio.st) return;
@@ -1717,7 +1407,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       if(!st.spkQ) st.spkQ=[];
       st.spkQ.push(c,lv);
       st.spkEdgeCount=(st.spkEdgeCount||0)+1;
-      if(st.spkEdgeCount===1) log('GTIA SPEAKER BUILD2CZ: prvni hrana z ROM/$D01F zachycena do audio fronty. Klavesy/CLOAD bzučák uz nejsou jen UI klik.');
+      if(st.spkEdgeCount===1) log('GTIA SPEAKER BUILD2CY: prvni hrana z ROM/$D01F zachycena do audio fronty. Klavesy/CLOAD bzučák uz nejsou jen UI klik.');
       // Hrana realneho reproduktoroveho bitu ma na Atari slyšitelny mechanicky ráz; pridavam jen krátký edge transient,
       // zatímco dlouhý tón/bzučení drzi primo queued stav $D01F výše.
       var n=Math.max(48,Math.round(sr*0.0065)), arr=new Float32Array(n);
@@ -1743,7 +1433,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }
   }
   function tapeMasterQueueReferenceBuzzer(label,ms,amp){
-    // BUILD2CZ: podle dodane reference freesound_community-atari-800xl-cload-command-buzzer.
+    // BUILD2CY: podle dodane reference freesound_community-atari-800xl-cload-command-buzzer.
     // Hlavni energie neni 4/5 kHz datovy ton, ale nizky GTIA speaker/buzzer cca 375-445 Hz s pulznimi hranami.
     if(!tapeMasterEnsure()) return 0;
     var sr=audio.ac.sampleRate||48000;
@@ -1766,7 +1456,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var sample=Math.tanh((0.82*sq+0.28*tri)*2.0)*a*env*trem;
       tapeMasterAppendSample(sample);
     }
-    if(label) log('AUDIO BUILD2CZ: '+label+' referencni nizky Atari command buzzer cca 0.5 s / 375-445 Hz, ne falesny vysoky kazetovy pipak.');
+    if(label) log('AUDIO BUILD2CY: '+label+' referencni nizky Atari command buzzer cca 0.5 s / 375-445 Hz, ne falesny vysoky kazetovy pipak.');
     return n;
   }
 
@@ -1798,7 +1488,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     total+=tapeMasterQueueTone(5327, Math.round(sr*(leaderSec==null?1.0:leaderSec)), amp==null?0.34:amp);
     for(var i=0;i<bytes.length;i++) total+=tapeMasterQueueSerialByte(bytes[i]&255, amp==null?0.34:amp);
     total+=tapeMasterQueueTone(5327, Math.round(sr*0.45), amp==null?0.34:amp);
-    if(label) log('AUDIO BUILD2CZ: '+label+' slyšitelny pres Atari audio master: '+bytes.length+' B, '+Math.round(total/sr*1000)+' ms, MARK 5327 / SPACE 3995, bez HTML Audio.');
+    if(label) log('AUDIO BUILD2CY: '+label+' slyšitelny pres Atari audio master: '+bytes.length+' B, '+Math.round(total/sr*1000)+' ms, MARK 5327 / SPACE 3995, bez HTML Audio.');
     return total;
   }
 
@@ -2391,7 +2081,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
   var csaveTone=null, csaveToneTimer=null, csaveAutoStopTimer=null;
   function stopCsaveTone(){
-    // BUILD2CZ: legacy oscillator bokem se nepouziva. Vse bezi pres Atari audio master queue.
+    // BUILD2CY: legacy oscillator bokem se nepouziva. Vse bezi pres Atari audio master queue.
     if(csaveToneTimer) clearTimeout(csaveToneTimer); csaveToneTimer=null; csaveTone=null;
   }
   function clearCsaveAutoStop(){
@@ -2417,7 +2107,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         // CSAVE/CLOAD command zvuk podle dodane reference: nizky GTIA speaker/buzzer, ne vysoky datovy FSK pipak.
         tapeMasterQueueReferenceBuzzer('CSAVE command',505,0.34);
         tapeMasterQueueTone(5327, Math.round(((audio&&audio.ac&&audio.ac.sampleRate)||48000)*0.18), 0.22);
-        log('AUDIO BUILD2CZ: CSAVE command bzučák + kratky leader slyset pres Atari audio master.');
+        log('AUDIO BUILD2CY: CSAVE command bzučák + kratky leader slyset pres Atari audio master.');
       }
       tapeMasterQueueSerialByte(v&255,0.34);
     }catch(e){}
@@ -2457,27 +2147,27 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     };
     M.cassDebug=function(ev,data){
       try{
-        if(ev==='QUEUE') log('CLOAD POKEY RX BUILD2CZ: fronta '+data.bytes+' B, lead '+Math.round((data.lead||0)/15.6)+' ms PAL, byte '+data.perByte+' radku, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Cekam na realny C: motor, nic nepoustim do RAM.');
-        else if(ev==='QUEUE_TONE'){ log('CLOAD PILOT+FSK BUILD2CZ: pripraveno '+data.bytes+' datovych B po leaderu, raw='+((data.rawBytes||data.bytes))+' B, preskoceno vodicich $55='+((data.skipped||0))+', leader '+Math.round((data.lead||0)/15.6)+' ms PAL, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Zadny RAM inject.'); cassSetStatus('CLOAD leader + SERIN pripraven | '+data.bytes+' B'); }
+        if(ev==='QUEUE') log('CLOAD SERIAL BUILD2BR: fronta '+data.bytes+' B, lead '+Math.round((data.lead||0)/15.6)+' ms PAL, byte '+data.perByte+' radku, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Cekam na realny C: motor, nic nepoustim do RAM.');
+        else if(ev==='QUEUE_TONE'){ log('CLOAD LEADER+SERIN BUILD2BR: pripraveno '+data.bytes+' datovych B po leaderu, raw='+((data.rawBytes||data.bytes))+' B, preskoceno vodicich $55='+((data.skipped||0))+', leader '+Math.round((data.lead||0)/15.6)+' ms PAL, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Zadny RAM inject.'); cassSetStatus('CLOAD leader + SERIN pripraven | '+data.bytes+' B'); }
         else if(ev==='QUEUE_PCM'){ log('CLOAD WAV PCM BUILD2BR: pripraven primy WAV->SKSTAT bit4, '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%, motor='+(data.motor?'ON':'OFF')+', soubor='+(data.name||'WAV')+'. Zadny decode/reencode, zadny RAM inject.'); cassSetStatus('WAV PCM->SKSTAT pripraven | cekam na motor'); }
         else if(ev==='WAIT_MOTOR') log('CLOAD LEADER+SERIN BUILD2BR: data jsou pripravena, ale C: motor jeste neni ON. Cekam na realny CLOAD/boot wait stav; zadny fake start.');
         else if(ev==='MOTOR_ON') log('CLOAD MOTOR: PACTL bit3 = 0, motor ON. Ted bezi jen cisty leader; datove bajty pujdou az potom pres POKEY SERIN.');
         else if(ev==='MOTOR_OFF') log('CLOAD MOTOR: PACTL bit3 = 1, motor OFF. Kazetova fronta se zastavi/cekani je videt v logu.');
-        else if(ev==='MOTOR_OK_LEADER') log('CLOAD PILOT BUILD2CZ: motor potvrzen, cisty leader zbyva '+Math.round((data.lead||0)/15.6)+' ms PAL, skipped55='+((data.skipped||0))+', zdroj='+data.kind+'.');
+        else if(ev==='MOTOR_OK_LEADER') log('CLOAD LEADER BUILD2BR: motor potvrzen, cisty leader zbyva '+Math.round((data.lead||0)/15.6)+' ms PAL, skipped55='+((data.skipped||0))+', zdroj='+data.kind+'.');
         else if(ev==='ADAPTIVE_LEADER_WAIT') log('CLOAD ADAPTIVE LEADER BUILD2BR: drzim cisty leader dokud OS skutecne nedokonci kazetovou synchronizaci: PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', timer='+((data.timer||0)&255)+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', POKMSK=$'+(((data.pokmsk||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+((data.edges||0))+', seen='+((data.seen||0))+'.');
-        else if(ev==='WAIT_OS_TIMER') log('CLOAD POKEY RX BUILD2CZ: drzim jeste vodici stopu, OS neni pripraven cist data (timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'). Data jsou porad jen ve fronte, zadny RAM inject.');
-        else if(ev==='LEADER_SERIN_ARM'){ log('CLOAD SERIN ARM STARA CESTA - NEMA SE OBJEVIT BUILD2CZ: OS leader faze hotova, pripravuji '+data.bytes+' B pro POKEY SERIN; skipped55='+((data.skipped||0))+', lead55='+((data.lead55||0))+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+'.'); cassSetStatus('CLOAD SERIN arm | '+data.bytes+' B'); }
+        else if(ev==='WAIT_OS_TIMER') log('CLOAD SERIAL BUILD2BR: drzim jeste vodici stopu, OS neni pripraven cist data (timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'). Data jsou porad jen ve fronte, zadny RAM inject.');
+        else if(ev==='LEADER_SERIN_ARM'){ log('CLOAD SERIN ARM BUILD2BR: OS leader faze hotova, pripravuji '+data.bytes+' B pro POKEY SERIN; skipped55='+((data.skipped||0))+', lead55='+((data.lead55||0))+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+'.'); cassSetStatus('CLOAD SERIN arm | '+data.bytes+' B'); }
         else if(ev==='WAIT_SERIN_READY'){ log('CLOAD SERIN WAIT BUILD2BR: cekam na OS serial ready: timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+'. Nic neprepisuju, zadny RAM inject.'); cassSetStatus('CLOAD ceka na SERIN ready'); }
         else if(ev==='PCM_START'){ log('CLOAD WAV PCM BUILD2BR: motor ON, spoustim primy WAV tvar na SKSTAT bit4: '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%. Tohle je cesta podle WAV, ktery realne Atari nacte.'); cassSetStatus('WAV PCM->SKSTAT bezi | poslouchej cisty zvuk'); }
         else if(ev==='PCM_COUNT'){ log('CLOAD WAV PCM BUILD2BR: odtikan primy WAV tvar '+Math.round(((data.lines||0)*100)/Math.max(1,(data.total||1)))+'% / '+data.lines+'/'+data.total+' radku, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('WAV PCM->SKSTAT tece | '+Math.round(((data.lines||0)*100)/Math.max(1,(data.total||1)))+'%'); }
         else if(ev==='PCM_COMPLETE'){ log('CLOAD WAV PCM BUILD2BR: primy WAV tvar dokoncen '+data.lines+'/'+data.total+' radku, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('WAV PCM->SKSTAT konec | cekam na Atari vysledek'); }
         else if(ev==='BITSTREAM_DATA_START'){ log('CLOAD LEADER DONE BUILD2BR: leader dobehl, SKSTAT data chaos je vypnuty. Prepinam na cekani na POKEY SERIN ready. Hrany='+data.edges+', skipped55='+((data.skipped||0))+'.'); cassSetStatus('CLOAD leader hotov | cekam na SERIN'); }
-        else if(ev==='BITSTREAM_COUNT'){ log('CLOAD BITSTREAM BUILD2CZ: odtikan tonovy stream '+data.count+'/'+data.queued+' B, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('CLOAD BITSTREAM tece | '+data.count+'/'+data.queued+' B'); }
-        else if(ev==='BITSTREAM_COMPLETE'){ log('CLOAD BITSTREAM BUILD2CZ: tonovy stream dokoncen '+data.count+'/'+data.queued+' B, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('CLOAD BITSTREAM konec | cekam na Atari vysledek'); }
-        else if(ev==='FIRST_BYTE'){ log('CLOAD POKEY RX BUILD2CZ: prvni bajt dosel do SERIN = $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' / celkem '+data.queued+' B | IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'.'); cassSetStatus('CLOAD SERIN start | 1/'+data.queued+' B'); }
-        else if(ev==='RX_COUNT'){ log('CLOAD POKEY RX BUILD2CZ: SERIN predano '+data.count+'/'+data.queued+' B.'); cassSetStatus('CLOAD SERIN tece | '+data.count+'/'+data.queued+' B'); }
-        else if(ev==='HOLD_SERIN'){ log('CLOAD POKEY RX BUILD2CZ: SERIN byte $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' drzim uz '+Math.round(data.ageLines/15.6)+' ms, OS ho jeste neprecetl. IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+' I='+(data.iff?1:0)+'. Neprepisuju ho dalsim bytem.'); cassSetStatus('CLOAD ceka: OS necetl SERIN | viz log'); }
-        else if(ev==='COMPLETE') log('CLOAD POKEY RX BUILD2CZ: fronta dokoncena '+data.count+'/'+data.queued+' B, zdroj='+data.kind+'. Vysledek musi rict Atari obrazovka/BASIC, nebudu ho lakovat.');
+        else if(ev==='BITSTREAM_COUNT'){ log('CLOAD BITSTREAM BUILD2BR: odtikan tonovy stream '+data.count+'/'+data.queued+' B, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('CLOAD BITSTREAM tece | '+data.count+'/'+data.queued+' B'); }
+        else if(ev==='BITSTREAM_COMPLETE'){ log('CLOAD BITSTREAM BUILD2BR: tonovy stream dokoncen '+data.count+'/'+data.queued+' B, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('CLOAD BITSTREAM konec | cekam na Atari vysledek'); }
+        else if(ev==='FIRST_BYTE'){ log('CLOAD SERIAL BUILD2BR: prvni bajt dosel do SERIN = $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' / celkem '+data.queued+' B | IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'.'); cassSetStatus('CLOAD SERIN start | 1/'+data.queued+' B'); }
+        else if(ev==='RX_COUNT'){ log('CLOAD SERIAL BUILD2BR: SERIN predano '+data.count+'/'+data.queued+' B.'); cassSetStatus('CLOAD SERIN tece | '+data.count+'/'+data.queued+' B'); }
+        else if(ev==='HOLD_SERIN'){ log('CLOAD SERIAL BUILD2BR: SERIN byte $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' drzim uz '+Math.round(data.ageLines/15.6)+' ms, OS ho jeste neprecetl. IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+' I='+(data.iff?1:0)+'. Neprepisuju ho dalsim bytem.'); cassSetStatus('CLOAD ceka: OS necetl SERIN | viz log'); }
+        else if(ev==='COMPLETE') log('CLOAD SERIAL BUILD2BR: fronta dokoncena '+data.count+'/'+data.queued+' B, zdroj='+data.kind+'. Vysledek musi rict Atari obrazovka/BASIC, nebudu ho lakovat.');
       }catch(_e){}
     };
   }
@@ -2512,7 +2202,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function makeCasMonitorWav(u8){
     var data=extractCasPayloadBytes(u8);
     var maxBytes=Math.min(data.length, 65536);
-    // BUILD2CZ: referencni zvuk Altirra/Atari 130XE: ne tichy sinus. Square FSK 600 baud s hrany a dostatecnou hlasitosti.
+    // BUILD2CY: referencni zvuk Altirra/Atari 130XE: ne tichy sinus. Square FSK 600 baud s hrany a dostatecnou hlasitosti.
     var sr=48000, baud=600, spb=80;
     var leadSamples=sr*12.0|0, tailSamples=sr*0.75|0;
     var total=leadSamples + maxBytes*10*spb + tailSamples;
@@ -2667,39 +2357,29 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     return res;
   }
   function wavToSkstatLineLevels(u8,name){
-    var res={ok:false,error:'',levels:null,seconds:0,sampleRate:0,peak:0,edges:0,pilotHz:0};
+    var res={ok:false,error:'',levels:null,seconds:0,sampleRate:0,peak:0,edges:0};
     var w=wavPcmMonoFromBytes(u8);
     if(!w.ok){ res.error=w.error; return res; }
     var sr=w.sr, pcm=w.pcm, LPS=15600;
     if(!sr || !pcm || pcm.length<sr*0.5){ res.error='WAV PCM je moc kratky'; return res; }
-    var mean=0, meanN=Math.min(pcm.length, sr*3|0);
+    var maxAbs=0, mean=0, meanN=Math.min(pcm.length, sr*3|0);
     for(var mi=0;mi<meanN;mi++) mean+=pcm[mi];
     mean=meanN?mean/meanN:0;
-    var maxAbs=0;
     for(var pi=0;pi<pcm.length;pi++){ var av=Math.abs(pcm[pi]-mean); if(av>maxAbs) maxAbs=av; }
     res.peak=maxAbs; res.sampleRate=sr; res.seconds=pcm.length/sr;
     if(maxAbs<0.01){ res.error='WAV signal je moc slaby pro SKSTAT hrany (peak '+maxAbs.toFixed(4)+')'; return res; }
     var lines=Math.max(1,Math.floor(pcm.length*LPS/sr));
     if(lines>LPS*240){ res.error='WAV je pro primy PCM->SKSTAT moc dlouhy ('+fmtTime(res.seconds)+')'; return res; }
     var levels=new Uint8Array(lines);
-    // BUILD2CZ: softwarovy predzesilovac/XC12 tvarovac: DC removal + jemny low-pass + Schmitt zero-cross.
-    var lp=0, dc=mean, last=1, edges=0;
-    var lpAlpha=Math.min(0.95, Math.max(0.08, 2*Math.PI*6200/sr));
-    var dcAlpha=1/Math.max(1,Math.floor(sr*0.08));
-    var hyst=Math.max(0.012, maxAbs*0.10);
+    var thr=Math.max(0.010, maxAbs*0.025);
+    var last=1, edges=0;
     for(var li=0; li<lines; li++){
       var idx=Math.min(pcm.length-1, Math.floor(li*sr/LPS));
-      var x=pcm[idx];
-      dc += (x-dc)*dcAlpha;
-      var hp=x-dc;
-      lp += (hp-lp)*lpAlpha;
-      if(lp>hyst) last=1; else if(lp<-hyst) last=0;
+      var v=pcm[idx]-mean;
+      if(Math.abs(v)>thr) last=(v>=0)?1:0;
       if(li>0 && levels[li-1]!==last) edges++;
       levels[li]=last;
     }
-    var firstLines=Math.min(lines,LPS*3), firstEdges=0;
-    for(var ei=1; ei<firstLines; ei++) if(levels[ei]!==levels[ei-1]) firstEdges++;
-    res.pilotHz= firstLines>0 ? (firstEdges/(firstLines/LPS))/2 : 0;
     res.ok=true; res.levels=levels; res.edges=edges;
     return res;
   }
@@ -2719,20 +2399,20 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     // Proto pro vlastni LAST CSAVE beru primo zachycene POKEY SEROUT bajty a posilam je jako cyklove presny 600 baud ton.
     if(ownShort && M && M.queueCassetteSerial && cassStage && cassStage.lastCsaveRaw && cassStage.lastCsaveRaw.length){
       var raw=cassStage.lastCsaveRaw;
-      var leadRaw=187200; // BUILD2CZ: 12 s cisty 5327 Hz pilot pro START+OPTION/CLOAD
+      var leadRaw=124800; // 8 s jako renderovany WAV, leader zustane cisty a data se nerozjedou z PCM aliasingu
       var nr=M.queueCassetteSerial(raw,260,leadRaw,'LAST CSAVE RAW CYCLE CLOAD');
       tapeMasterQueueReferenceBuzzer('CLOAD command',505,0.34);
       tapeMasterQueueSerialStream(raw,'CLOAD/LAST CSAVE monitor',1.05,0.30);
-      log('CLOAD RAW CYCLE BUILD2CZ: vlastni CSAVE ma nejdriv nizky Atari command buzzer podle reference a potom 600 baud FSK monitor pres audio master + stejny SEROUT stream jde do ROM cesty. Bez RAM injectu, bez HTML Audio. '+nr+' B.');
-      cassSetStatus('CLOAD BUILD2CZ | '+nr+' B | slyšitelny Atari tone');
+      log('CLOAD RAW CYCLE BUILD2CY: vlastni CSAVE ma nejdriv nizky Atari command buzzer podle reference a potom 600 baud FSK monitor pres audio master + stejny SEROUT stream jde do ROM cesty. Bez RAM injectu, bez HTML Audio. '+nr+' B.');
+      cassSetStatus('CLOAD BUILD2CY | '+nr+' B | slyšitelny Atari tone');
       return nr;
     }
     // PCM cesta zustava v kodu jen jako nouze, ale neni default pro LAST CSAVE, protoze BL log ukazal chaos po leaderu.
-    if(!ownShort && M && M.queueCassettePcmLevels){
+    if(false && M && M.queueCassettePcmLevels){
       var pr=wavToSkstatLineLevels(cassStage.loadedBytes,wavName);
       if(pr.ok){
         var qn=M.queueCassettePcmLevels(pr.levels,{kind:'WAV PCM CLOAD',seconds:pr.seconds,sampleRate:pr.sampleRate,peak:pr.peak,name:wavName});
-        log('WAV PCM CLOAD BUILD2CZ: zero-cross/Schmitt tvarovac posila WAV na SKSTAT bit4: '+qn+' radku, '+fmtTime(pr.seconds)+', sr='+pr.sampleRate+' Hz, peak='+(pr.peak*100).toFixed(1)+'%, hrany='+pr.edges+', pilot~'+(pr.pilotHz||0).toFixed(0)+' Hz. Zadny SIO patch, zadny RAM inject.');
+        log('WAV PCM CLOAD BUILD2BR: posilam primo tvar WAV na SKSTAT bit4: '+qn+' radku, '+fmtTime(pr.seconds)+', sr='+pr.sampleRate+' Hz, peak='+(pr.peak*100).toFixed(1)+'%, hrany='+pr.edges+'. Zadny decode/reencode, zadny RAM inject.');
         cassSetStatus('WAV PCM->SKSTAT | '+fmtTime(pr.seconds)+' | hlasitost snizena');
         return qn;
       }else{
@@ -2859,7 +2539,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       var name=(cassStage && cassStage.lastCsaveWavName) ? cassStage.lastCsaveWavName : ('AtariHelp_CSAVE_'+csaveModeName()+'_'+ahStamp()+'.wav');
       saveBinaryMobile(name,r.wav,'SAVE WAV');
-      log('SAVE WAV BUILD2CZ: monitor WAV 48 kHz / 600 baud / MARK 5327 Hz / SPACE 3995 Hz / square FSK / leader 12 s vyrenderovan z realneho SEROUT streamu ('+r.bytes+' B dat). Zvuk kalibrovan podle dodaneho Atari 130XE/Altirra MP3.');
+      log('SAVE WAV BUILD2CY: monitor WAV 48 kHz / 600 baud / MARK 5327 Hz / SPACE 3995 Hz / square FSK / leader 12 s vyrenderovan z realneho SEROUT streamu ('+r.bytes+' B dat). Zvuk kalibrovan podle dodaneho Atari 130XE/Altirra MP3.');
     }catch(e){ log('SAVE WAV: render selhal - '+e.message); }
   }
   function insertLastCsaveWav(){
@@ -3402,14 +3082,11 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2CZ_PILOT_FSK_ZERO_CROSS_POKEY_FIX pripraven.');
-    log('BUILD2CZ: zaklad BUILD2BZ/BY golden. REAL SOUND: $D01F speaker jde pres audio queue, CLOAD/CSAVE command buzzer kalibrovan podle dodane MP3 reference cca 375-445 Hz.  OPRAVA ZVUKU podle dodaneho Atari 130XE/Altirra MP3: klavesy, CSAVE, CLOAD monitor pres jeden Atari audio master. TXT/joystick/scroll NEMENEN. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2CY_REAL_ATARI_REFERENCE_SOUND_GTIA_POKEY_FIX pripraven.');
+    log('BUILD2CY: zaklad BUILD2BZ/BY golden. REAL SOUND: $D01F speaker jde pres audio queue, CLOAD/CSAVE command buzzer kalibrovan podle dodane MP3 reference cca 375-445 Hz.  OPRAVA ZVUKU podle dodaneho Atari 130XE/Altirra MP3: klavesy, CSAVE, CLOAD monitor pres jeden Atari audio master. TXT/joystick/scroll NEMENEN. KODY JSOU STEJNE.');
     log('ROM: OS/BASIC base64 v kodu vidim; tahle oprava neni v ROM, ale ve zvukove/POKEY/GTIA audio ceste.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
 })();
 
-</script>
-</body>
-</html>

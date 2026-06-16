@@ -1,0 +1,52 @@
+ATARIHELP.EU EMU-10 - BUILD2CY_REAL_ATARI_REFERENCE_SOUND_GTIA_POKEY_FIX
+=====================================================================
+
+ZAKLAD:
+- Vychazi z BUILD2BZ/BY golden.
+- TXT / joystick / scroll / focus NEMENENO.
+- KODY JSOU STEJNE.
+- BUILD2CK neni zaklad.
+
+CO JE OPRAVENO V TOMTO BALIKU:
+1) GTIA $D01F speaker uz nejde okamzite mimo casovani UI threadu.
+   Hrany z ROM zapisu na $D01F se frontuji do audio casove osy podle CPU cyklu.
+   V logu hledej: GTIA SPEAKER BUILD2CY: prvni hrana z ROM/$D01F...
+
+2) CLOAD/CSAVE command buzzer byl predtim spatne vysoky.
+   Podle dodane MP3 reference freesound_community-atari-800xl-cload-command-buzzer
+   ma hlavni energii nizko cca 375-445 Hz a trva asi 0.5 s.
+   BUILD2CY proto pridal nizky Atari command buzzer pro CLOAD i CSAVE.
+
+3) Klavesovy zvuk zustava slyset, ale je vazany na GTIA/audio master.
+   Neni to HTML Audio a neni to Android klik.
+
+4) CSAVE monitor stale vychazi jen ze skutecnych POKEY SEROUT bajtu.
+   Zadny RAM inject, zadne tahani programu z RAM.
+
+5) LAST CSAVE/CLOAD monitor ma nejdriv nizky command buzzer podle reference
+   a potom 600 baud FSK monitor z realnych SEROUT bajtu.
+
+CO TESTOVAT NEJDRIV:
+A) Po startu aplikace zkontroluj log:
+   AtariHelp.eu EMU-10 BUILD2CY_REAL_ATARI_REFERENCE_SOUND_GTIA_POKEY_FIX pripraven.
+   AUDIO BUILD2CY: REAL ATARI REF master bezi...
+
+B) Stiskni par klaves na Atari klavesnici.
+   Ocekavani: klik je slyset, neni mrtvy jako ve spatnem CV.
+   V logu by se mela objevit prvni hrana GTIA SPEAKER BUILD2CY.
+
+C) Dej CLOAD / PLAY LAST CSAVE tak, jak testujes normalne.
+   Ocekavani: na zacatku musi byt nizky Atari command buzzer cca pul sekundy,
+   ne vysoky sterilni pipak.
+
+D) Dej RECORD + CSAVE.
+   Ocekavani: na zacatku nahravani se ozve nizky command buzzer a potom kazetovy monitor.
+
+DUZITE:
+- Tenhle build je hlavne zvukova oprava podle tve dodane reference.
+- CLOAD ERROR 138 se muze resit az potom, co bude zvukove sedet zacatek CLOAD/CSAVE/klavesy.
+- Pokud v logu uvidis BUILD2CX/CV/CQ misto BUILD2CY, overlay se nenahral.
+
+CO POSLAT ZPET, KDYZ ZVUK PORAD NESEDI:
+- Log od startu aplikace po prvni CLOAD/CSAVE pokus.
+- Napis kratce: klavesy moc ostre / moc tiche / buzzer moc nizky / moc vysoky / moc dlouhy / moc kratky.
