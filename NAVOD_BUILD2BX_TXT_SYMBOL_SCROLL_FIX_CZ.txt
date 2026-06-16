@@ -1,0 +1,44 @@
+ATARIHELP.EU EMU-10 BUILD2BX_TXT_SYMBOL_SCROLL_FIX
+===================================================
+
+KODY JSOU STEJNE.
+Jadro / ROM / BASIC testovaci kody se nemenily.
+CLOAD golden cesta z BUILD2BR/BW neni menena.
+BUILD2BX opravuje jen TXT vkladani znaku < > a scroll/focus v NOXu.
+
+CO JE OPRAVENO:
+1) TXT paste: znaky < a > se posilaji jako SHIFT+Clear / SHIFT+Insert podle Atari 130XE, ne jako editorove Clear/Insert a ne jako SHIFT+comma/period.
+2) TXT paste je pomalejsi a kontroluje, ze OS/BASIC bere znaky pres CH/key IRQ, aby nepohltil radky.
+3) Scroll v NOXu: prazdna vrstva klavesnice a joysticku uz neblokuje posouvani cele appky. Dotyk berou jen skutecne klavesy, joystick pad, smerova tlacitka a FIRE.
+4) CLOAD se v teto verzi naslepo neopravuje.
+
+TEST 1 - TXT SYMBOLY:
+POWER -> BASIC/TBXL TXT -> vlozit:
+10 PRINT "TXT TEST"
+20 X=10
+30 IF X<>11 THEN PRINT "NEROVNA SE OK"
+40 IF X<11 THEN PRINT "MENSI OK"
+50 IF X>9 THEN PRINT "VETSI OK"
+60 PRINT "TXT TEST OK"
+70 END
+
+Pak RUN.
+Spravne: musi vypsat NEROVNA SE OK, MENSI OK, VETSI OK, TXT TEST OK.
+
+TEST 2 - SCROLL:
+Po testu zkus posouvat aplikaci nahoru/dolu v NOXu mimo skutecne klavesy.
+Prepni KEYBOARD -> JOYSTICK -> zkus joystick/FIRE -> scroll nahoru/dolu -> zpet KEYBOARD.
+Spravne: scroll nesmi byt zaseknuty.
+
+TEST 3 - CLOAD KRATKY GOLDEN:
+Pouzij jen kratky program:
+10 PRINT "ATARIHELP"
+20 FOR I=1 TO 5
+30 PRINT I
+40 NEXT I
+
+POWER -> TXT vlozit -> RUN -> CSAVE -> SAVE/LAST CSAVE -> NEW -> CLOAD -> PLAY -> LIST.
+Spravne: program se vrati.
+
+KDYZ SELZE:
+Posli cely log a napis jen: TXT SYMBOLY, SCROLL NEJDE, nebo CLOAD REGRESE.

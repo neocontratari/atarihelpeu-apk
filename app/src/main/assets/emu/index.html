@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Atari 130XE Emulator BUILD2BW</title>
+<title>N&P VISION — Atari 130XE Emulator BUILD2BX</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -78,16 +78,16 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   box-shadow:inset 0 10px 16px rgba(0,0,0,.62), inset 0 -2px 5px rgba(255,231,160,.24), 0 2px 0 rgba(0,0,0,.62);
   transform:translateY(6px) scaleY(.90);pointer-events:none;}
 .hit.tapeBtn.pressed:after{content:"";position:absolute;left:8%;right:8%;top:16%;height:20%;border-radius:50%;background:rgba(255,255,255,.08);transform:translateY(6px);pointer-events:none;}
-/* BUILD2BP: high-res absolutni dotykova mapa pres presnou PNG klavesnici.
+/* BUILD2BX: high-res absolutni dotykova mapa pres presnou PNG klavesnici.
    Zadny flex/stretch: kazda klavesa ma vlastni hitbox v procentech z 941x1672 skinu. */
-#osk{position:absolute;left:0;top:0;width:100%;height:100%;z-index:32;display:block;opacity:1;pointer-events:auto;touch-action:none;}
+#osk{position:absolute;left:0;top:0;width:100%;height:100%;z-index:32;display:block;opacity:1;pointer-events:none;touch-action:auto;}
 .krow{display:contents;}
 .key{position:absolute;border:0;border-radius:6px;background:rgba(255,255,255,.001);color:transparent;font-size:0;min-width:0;padding:0;margin:0;transition:transform .035s ease,background .035s ease,box-shadow .035s ease;transform-origin:center bottom;touch-action:manipulation;pointer-events:auto;}
 .key.spacer{display:none!important;pointer-events:none;}
 .key:active,.key.on,.key.flash,.key.keyPress{background:rgba(40,32,18,.22);box-shadow:inset 0 4px 10px rgba(0,0,0,.46),inset 0 -1px 5px rgba(255,235,170,.35),0 0 10px rgba(255,220,130,.20);opacity:1;transform:translateY(2.0px) scale(.988);}
 .key.shiftLatched{background:rgba(255,196,70,.30);box-shadow:inset 0 0 14px rgba(255,230,150,.85),0 0 12px rgba(255,220,130,.45);transform:translateY(2px) scale(.988);}
 /* joystick overlay - visible skin is swapped to the joystick PNG, controls are transparent */
-#joy{position:absolute;left:0;top:0;width:100%;height:100%;display:none;z-index:75;touch-action:none;user-select:none;pointer-events:auto;}
+#joy{position:absolute;left:0;top:0;width:100%;height:100%;display:none;z-index:75;touch-action:auto;user-select:none;pointer-events:none;}
 #joyPad{position:absolute;left:10.80%;top:49.10%;width:39.20%;height:22.10%;border-radius:22%;background:rgba(0,0,0,.01);touch-action:none;pointer-events:auto;z-index:76;}
 #joyKnob{position:absolute;left:50%;top:50%;width:26%;height:26%;margin-left:-13%;margin-top:-13%;border-radius:50%;background:rgba(255,255,255,.01);pointer-events:none;}
 .joyDir{position:absolute;z-index:86;border:0;border-radius:12px;background:rgba(255,210,90,.001);color:transparent;font-size:0;touch-action:none;}
@@ -1683,10 +1683,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   var SHIFTED={'!':'1','"':'2','#':'3','$':'4','%':'5','&':'6',"'":'7','@':'8','(':'9',')':'0',
     ':':';','?':'/','^':'*','_':'-','|':'=','\\':'+','[':',',']':'.'};
   function charToScan(chr){
-    // BUILD2BW: pro TXT paste musi byt < a > opravdu SHIFT+comma / SHIFT+period.
-    // Stare KEY['<']/KEY['>'] slo na Clear/Insert fyzicke klavesy a v BASICu rozbijelo porovnani <>.
-    if(chr==='<') return KEY[',']|0x40;
-    if(chr==='>') return KEY['.']|0x40;
+    // BUILD2BX: na 130XE jsou < a > na SHIFT+Clear / SHIFT+Insert.
+    // Raw Clear/Insert bez SHIFT jsou editorove klavesy, SHIFT+comma/period je spatne pro 130XE skin.
+    if(chr==='<') return (54|0x40);
+    if(chr==='>') return (55|0x40);
     if(KEY[chr]!==undefined) return KEY[chr];
     var lo=chr.toLowerCase();
     if(chr!==lo && KEY[lo]!==undefined) return KEY[lo]|0x40;       // velke pismeno
@@ -1807,7 +1807,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function joyApply(){ if(M) M.setJoy(joyMask,joyFire); }
   function joySet(mask){ if(mask!==joyMask){ joyMask=mask; joyApply(); } }
   function releaseUiPointerLocksBuild2BW(reason){
-    // BUILD2BW: oprava zaseku po prepnuti joysticku - nesmi zustat focus, stuck FIRE, stuck pad ani scroll lock.
+    // BUILD2BX: oprava zaseku po prepnuti joysticku - nesmi zustat focus, stuck FIRE, stuck pad ani scroll lock.
     try{ document.activeElement && document.activeElement.blur && document.activeElement.blur(); }catch(_e){}
     try{ document.body.style.overflow=''; document.documentElement.style.overflow=''; document.body.style.overflowY='auto'; document.documentElement.style.overflowY='auto'; }catch(_e){}
     try{ document.body.style.touchAction='pan-y'; document.documentElement.style.touchAction='pan-y'; }catch(_e){}
@@ -1824,7 +1824,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var b=document.getElementById('btnJoy');
     if(b) b.setAttribute('data-mode', joyMode?'joy':'keyboard');
     releaseUiPointerLocksBuild2BW('po prepnuti');
-    log('PREPINAC BUILD2BW: '+(joyMode?'JOYSTICK zapnut - jen pad/FIRE bere dotyk, scroll a POWER/START zustavaji zive':'KLAVESNICE zapnuta - joystick/fire uvolneny, scroll/focus obnoven'));
+    log('PREPINAC BUILD2BX: '+(joyMode?'JOYSTICK zapnut - jen pad/FIRE bere dotyk, scroll a POWER/START zustavaji zive':'KLAVESNICE zapnuta - joystick/fire uvolneny, scroll/focus obnoven'));
   }
   function bindJoy(){
     var pad=document.getElementById('joyPad'), knob=document.getElementById('joyKnob');
@@ -1931,12 +1931,12 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }catch(_e){}
   }
 
-  // ---------- vkladani TXT (BUILD2BW: bezpecna POKEY key IRQ cesta + kontrola CH) ----------
+  // ---------- vkladani TXT (BUILD2BX: bezpecna POKEY key IRQ cesta + kontrola CH) ----------
   var typeQ=[], typeWait=0, typeHold=0, typeCurrent=null, typeSent=0, typeTotal=0, typeDoneLogged=true;
   function clearTypeQueue(reason){
     typeQ.length=0; typeWait=0; typeHold=0; typeCurrent=null; typeSent=0; typeTotal=0; typeDoneLogged=true;
     try{ if(M) M.keyUp(); }catch(_e){}
-    if(reason) log('VLOZIT TXT BUILD2BW: fronta vycistena - '+reason);
+    if(reason) log('VLOZIT TXT BUILD2BX: fronta vycistena - '+reason);
   }
   function queueText(text){
     clearTypeQueue('novy text');
@@ -1953,8 +1953,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       typeQ.push(sc);
     }
     typeTotal=typeQ.length; typeSent=0; typeDoneLogged=(typeTotal===0);
-    log('VLOZIT TXT BUILD2BW: pripraveno '+typeTotal+' znaku pres POKEY key IRQ + CH throttle'+(skipped?(', preskoceno '+skipped+' neznamych'):'')+'.');
-    if(typeTotal===0) log('VLOZIT TXT BUILD2BW: nic k vlozeni.');
+    log('VLOZIT TXT BUILD2BX: pripraveno '+typeTotal+' znaku pres POKEY key IRQ + CH throttle'+(skipped?(', preskoceno '+skipped+' neznamych'):'')+'.');
+    if(typeTotal===0) log('VLOZIT TXT BUILD2BX: nic k vlozeni.');
   }
   function typeStep(){
     if(!M){ clearTypeQueue('neni machine'); return; }
@@ -1966,16 +1966,16 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       if(done&0x200) typeWait=90;                                      // po NEW dlouha rezerva
       else if(done&0x100) typeWait=38;                                  // po RETURN nech BASIC ulozit radek
       else typeWait=7;                                                   // mezi znaky vetsi mezera, zadne ztraceni IRQ
-      if(!typeQ.length && typeSent>=typeTotal && !typeDoneLogged){ typeDoneLogged=true; log('VLOZIT TXT BUILD2BW: hotovo, vsechny znaky odeslany pres klavesove IRQ.'); }
+      if(!typeQ.length && typeSent>=typeTotal && !typeDoneLogged){ typeDoneLogged=true; log('VLOZIT TXT BUILD2BX: hotovo, vsechny znaky odeslany pres klavesove IRQ.'); }
       return;
     }
     if(!typeQ.length) return;
     // Klicove: kdyz CH $02FC neni prazdne, OS jeste nevzal predchozi znak. Neposilat dalsi.
     try{ if(M.chEmpty && !M.chEmpty()){ typeWait=1; return; } }catch(_e){}
     var it=typeQ.shift();
-    try{ M.keyDown(it&0xFF); }catch(e){ log('VLOZIT TXT BUILD2BW: keyDown chyba - '+e.message); clearTypeQueue('chyba keyDown'); return; }
+    try{ M.keyDown(it&0xFF); }catch(e){ log('VLOZIT TXT BUILD2BX: keyDown chyba - '+e.message); clearTypeQueue('chyba keyDown'); return; }
     typeCurrent=it; typeHold=3; typeSent++;
-    if(typeSent===1 || typeSent===typeTotal || (typeSent%20)===0) log('VLOZIT TXT BUILD2BW: odesilam znak '+typeSent+'/'+typeTotal+' scan=$'+((it&255).toString(16).toUpperCase()).padStart(2,'0')+'.');
+    if(typeSent===1 || typeSent===typeTotal || (typeSent%20)===0) log('VLOZIT TXT BUILD2BX: odesilam znak '+typeSent+'/'+typeTotal+' scan=$'+((it&255).toString(16).toUpperCase()).padStart(2,'0')+'.');
   }
 
   // ---------- celociselne skalovani (zadne carecky) ----------
@@ -2707,9 +2707,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     try{ document.body.style.overflow=''; document.documentElement.style.overflow=''; document.body.style.overflowY='auto'; document.documentElement.style.overflowY='auto'; }catch(_e){}
     try{ document.body.style.touchAction='pan-y'; document.documentElement.style.touchAction='pan-y'; }catch(_e){}
     try{ document.getElementById('stage').scrollIntoView({block:'start'}); }catch(_e){ try{ window.scrollTo(0,0); }catch(__e){} }
-    log('TXT RAMECEK BUILD2BW: zavreno/odeslano - '+(reason||'zavrit')+'. Scroll/focus obnoven.');
+    log('TXT RAMECEK BUILD2BX: zavreno/odeslano - '+(reason||'zavrit')+'. Scroll/focus obnoven.');
   }
-  function openTxtOverlay(){ var o=document.getElementById('txtOverlay'); o.style.display='flex'; setTimeout(function(){ var ta=document.getElementById('txtIn'); if(ta){ ta.focus(); try{ ta.setSelectionRange(ta.value.length,ta.value.length); }catch(_e){} } },60); log('TXT RAMECEK BUILD2BW: otevren. Ctrl+V funguje, emulator ted nekrade klavesy. Paste je pomalejsi a kontroluje CH, aby neztracel znaky.'); }
+  function openTxtOverlay(){ var o=document.getElementById('txtOverlay'); o.style.display='flex'; setTimeout(function(){ var ta=document.getElementById('txtIn'); if(ta){ ta.focus(); try{ ta.setSelectionRange(ta.value.length,ta.value.length); }catch(_e){} } },60); log('TXT RAMECEK BUILD2BX: otevren. Ctrl+V funguje, emulator ted nekrade klavesy. Paste je pomalejsi a kontroluje CH, aby neztracel znaky.'); }
   function openTextPicker(){
     log('TXT: oteviram mobilni Downloads / Vyber BASIC nebo Turbo BASIC textu.');
     try{ if(window.AHPICK && window.AHPICK.pickText){ window.AHPICK.pickText(); return; } }
@@ -3147,7 +3147,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var body=text.replace(/\r/g,'').replace(/\n*$/,'\n');
       if(runAfter) body+='RUN\n';
       queueText(pre + body);
-      log('TXT RAMECEK BUILD2BW: vlozeno do aktivni fronty '+body.length+' znaku'+(runAfter?' + RUN':'')+'. Sleduj Atari obraz; paste je schvalne pomalejsi kvuli presnosti.');
+      log('TXT RAMECEK BUILD2BX: vlozeno do aktivni fronty '+body.length+' znaku'+(runAfter?' + RUN':'')+'. Sleduj Atari obraz; paste je schvalne pomalejsi kvuli presnosti.');
     }
     document.getElementById('btnTxtGo').addEventListener('click',function(){
       var ta=document.getElementById('txtIn'); closeTxtOverlayBuild2BW('VLOZIT DO ATARI');
@@ -3199,7 +3199,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2BW-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2BX-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -3215,9 +3215,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2BW_BP_GOLDEN_CLOAD_TEXTQUEUE_JOYSTICK_FIX pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2BX_TXT_SYMBOL_SCROLL_FIX pripraven.');
     log('Jadro beze zmen: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK | zmeny jsou TXT ramecek, SHIFT hold/lock, UI/ovladani/kazetak/dotykove zony.');
-    log('BUILD2BW: navrat na BP/BW golden CLOAD cestu; zadny BV long-resync. Opraven TXT paste: > a <, CH throttle, pomalejsi RETURN pauzy. Opraven joystick/scroll focus.');
+    log('BUILD2BX: CLOAD GOLDEN zustava, oprava jen TXT symboly < > a scroll pres prazdne casti klavesnice/joysticku. Zadny BV long-resync.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
