@@ -1,0 +1,37 @@
+ATARIHELP.EU EMU-10 - BUILD2CW_REAL_ATARI_SOUND_RESTORE_GTIA_POKEY_TAPE
+
+ZAKLAD:
+- BUILD2BZ/BY golden.
+- BUILD2CK neni zaklad.
+- TXT / joystick / scroll / focus nemeneno.
+- KODY JSOU STEJNE.
+
+PROC TENTO BUILD:
+CV sice rikal, ze jede jeden audio master, ale v praxi ztichly klavesy a LAST CSAVE CLOAD stale padal do stare BUILD2BR serial fronty. BUILD2CW opravuje primo slyšitelny zvuk:
+
+1) GTIA $D01F / klavesy
+- Vracen slyšitelny Atari keyclick pres GTIA speaker master.
+- Neni HTML/UI click bokem.
+- Hrana speakeru je zesilena v master mixu, aby nezmizela v DC filtru.
+
+2) CSAVE
+- Prvni realny SEROUT byte spusti kratky slyšitelny leader/nabeh.
+- Kazdy SEROUT byte jde jako 600 baud FSK: start 3995 Hz, data LSB first 3995/5327 Hz, stop 5327 Hz.
+- Zesilena realna kazetova uroven v masteru.
+
+3) CLOAD/LAST CSAVE
+- PLAY pro vlastni CSAVE hraje slyšitelny Atari 600 baud tok ze stejnych SEROUT bajtu.
+- HTML Audio nepouzito pro vlastni CSAVE.
+- Prvni $55 sync bajty se uz nevyhazuji jako v CV/BZ vetvi.
+
+TEST:
+1. Nahraj overlay pres GitHub Desktop.
+2. Spust apku v NOXu.
+3. POWER do BASICu.
+4. Zmackni par klaves na virtualni klavesnici: ma byt slyset keyclick.
+5. Vloz kratky BASIC TXT + RUN, udelej CSAVE. Pri CSAVE musi byt slyset leader/data, ne ticho.
+6. Dej LAST CSAVE / vlozenou kazetu, CLOAD a PLAY. Pri zacatku musi byt slyset Atari pip/leader a potom data.
+
+CO POSLAT KDYZ TO SELZE:
+- LOG od zacatku po chybu.
+- Napis slovne: klavesy ticho / CSAVE ticho / CLOAD nema pip / zvuk moc vysoko / zvuk moc nizko / podobne jako real Atari nebo ne.
