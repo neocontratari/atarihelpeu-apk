@@ -1,0 +1,41 @@
+ATARIHELP.EU EMU-10 BUILD2DR_BZ_DL_CLOAD_RAW132_ROM_SYNC_CLEAN
+
+ZAKLAD:
+- Vychazi z BUILD2DL / cisty BUILD2BZ-BY golden.
+- WAV export z BUILD2DL ponechan, protoze uz ho nacetla Altirra i realne Atari.
+- UI, klavesy, hitboxy, TXT, joystick, scroll: NEMENENO.
+- KODY JSOU STEJNE.
+
+PROC BUILD2DR:
+- BUILD2DP/DO dokazaly posun: CLOAD v apce cetl vic bajtu, ale koncil ERROR 143.
+- Neberu jako smer uzivatelskou poznamku o Android jitter/hysterezi. Beru logy a fakt, ze externi WAV uz funguje na Altirre i realnem Atari.
+- Interni LAST CSAVE/CLOAD v apce proto musi zrcadlit stejnou syrovou strukturu jako funkcni WAV.
+
+ZMENA:
+- LAST CSAVE/CLOAD uz neposila 520B payload bez synchronizacnich $55.
+- LAST CSAVE/CLOAD posila presne raw 132B recordy do POKEY SERIN:
+  $55, $55, control, 128 dat, checksum.
+- Pro 528 B to znamena 4x132B.
+- Nevklada se umele IRG mezi recordy.
+- Leader zustava 12 s a adaptivne ceka na ROM synchronizaci.
+- SKRES stale nesmi zahodit neprecteny SERIN byte.
+- Pridan CLOAD RAW AUDIT, aby log ukazal: raw velikost, record132 ANO/NE, pocet recordu a control bajty.
+
+TEST PLAN:
+1. Prepsat projekt overlay ZIPem pres GitHub Desktop workflow.
+2. Spustit APK.
+3. POWER do BASICu.
+4. BASIC TXT -> VLOZIT + RUN kratky testovaci program.
+5. CSAVE / 2x RETURN / pockat na ulozeni CAS+WAV.
+6. Overeny WAV neni treba znovu testovat na Altirre/realnem Atari, ale muze se.
+7. V apce pouzit LAST CSAVE / CLOAD.
+
+V LOGU MUSI BYT:
+AtariHelp.eu EMU-10 BUILD2DR_BZ_DL_CLOAD_RAW132_ROM_SYNC_CLEAN pripraven.
+CLOAD RAW AUDIT BUILD2DR: LAST CSAVE raw=528 B, record132=ANO, records=4
+CLOAD LEADER+SERIN BUILD2DR: pripraveno 528 raw SERIN B
+CLOAD RAW RECORD MIRROR BUILD2DR: posilam presne 528 B = 4x132B do POKEY SERIN
+CLOAD SERIAL BUILD2DR: prvni bajt dosel do SERIN = $55
+
+KDYZ TO SPADNE:
+Poslat log od radku "CLOAD RAW AUDIT BUILD2DR" az po ERROR. Hlavne sledovat, jestli dojde dal nez 256/528 B a kde se zastavi.
