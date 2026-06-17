@@ -1,0 +1,62 @@
+================================================================
+  EMU-10 BUILD2DV + oprava rozsypane grafiky Decathlon
+================================================================
+
+CO JE V TOMTO BALIKU
+--------------------
+Cely BUILD2DV (vsechno tve - CLOAD/BZ/DL/zvuky/UI beze zmeny),
+PLUS jedina chirurgicka oprava: rozsypana grafika v Decathlonu.
+
+OPRAVA: spatna znakova sada u ANTIC modu 6/7
+--------------------------------------------
+PRIZNAK: banner Decathlonu mel misto "WELCOME" rozsypane
+kosoctverce a zkomoleny text; dole misto "DECATHLON" nesmysl.
+
+PRICINA (overeno na display listu hry):
+- Banner i dolni napis jsou ANTIC mod 6; hra nastavuje CHBASE=$12.
+- ANTIC zarovnava znakovou sadu RUZNE:
+    mody 2-5  -> 1 KB  : adresa = (CHBASE & $FC) << 8
+    mody 6,7  -> 512 B : adresa = (CHBASE & $FE) << 8
+- Renderer pouzival masku $FC pro VSECHNY textove mody. U modu 6
+  s CHBASE=$12 (bit 1 = 1) tak cetl sadu z $1000 misto $1200
+  -> rozsypane znaky.
+
+CO JSEM ZMENIL (jen render textovych modu):
+- Pridana maska podle modu: ch6/ch7 -> $FE, ostatni -> $FC.
+- Tim banner i texty ctou spravnou sadu a "WELCOME" se vykresli.
+
+BEZPECNOST (overeno headless renderem nad TIMTO buildem):
+- Pro hry s CHBASE zarovnanym na 1 KB (bit 1 = 0) je $FE == $FC
+  -> ZADNA zmena. Overeno: Pitstop II, International Karate,
+  Death Race = 0 zmenenych bajtu obrazu vuci originalu BUILD2DV.
+- Meni se tedy POUZE hry typu Decathlon (mod 6/7 s lichym bitem 1).
+
+POZN. k barvam: tenhle build nema paletovou zmenu, takze obloha
+v banneru je fialova (puvodni $88). To jsou barvy, ne grafika -
+rozsypane znaky jsou opravene. Pokud chces i modrou oblohu jako
+v Altire, reknu a doplnim paletovou cast (meni jen odstiny $7x/$8x).
+
+CLOAD chyba 143 - STAV (NEopraveno v tomto baliku)
+--------------------------------------------------
+Z logu: data dotekla na 256/526 B (~konec 2. recordu), pak ROM
+vypnula motor (PACTL bit3=1) a uz ho nezapla -> vypadla ze cteci
+smycky. To je bud checksum 2. recordu (=chyba 143), nebo spatne
+precteny kontrolni bajt 3. recordu kvuli zarovnani $55.
+
+Tuhle cast jsem NEMENIL zamerne: kazetova logika je extremne
+citliva a doladena pres BR/DO/DL/DV. Slepa zmena by ji rozbila.
+Abych ji opravil spolehlive, potrebuju:
+  (a) ta kazetova data (.cas, pripadne ten CSAVE program), at
+      CLOAD reálne spustim a vytrasuju, NEBO
+  (b) nech me pridat cilene logovani prave do okamziku, kdy ROM
+      vypina motor (PC, posledni bajty, stav recordu, co dela
+      hned potom) - to je bezpecna zmena (jen log) a presne
+      ukaze, proc se po 2. recordu zastavi.
+
+INSTALACE (jinak se zmena NEPROJEVI!)
+-------------------------------------
+index.html z tohoto baliku MUSI do TVEHO REPA, ze ktereho se
+stavi APK (neocontratari/atarihelpeu-apk), na stejnou cestu:
+  app/src/main/assets/emu/index.html
+Pak: commit + push -> znovu sestavit APK na GitHubu -> stahnout
+NOVOU APK. Stazeni zipu do Downloads samo APK nezmeni.
