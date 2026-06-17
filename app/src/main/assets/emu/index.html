@@ -2390,47 +2390,67 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function makeCasMonitorWav(u8){
     var data=extractCasPayloadBytes(u8);
     var maxBytes=Math.min(data.length, 65536); // ochrana pameti pro mobil/NOX
-    // BUILD2DK: minimalni oprava exportu WAV z puvodniho BUILD2BZ.
-    // ZADNE UI / klavesy / hitboxy / CLOAD workflow z pozdejsich pokusu.
-    // Stary BZ render delal 44.1 kHz sinus s fade na KAZDEM bitu a malou amplitudou,
-    // coz mohlo rozbit Altirru i realne Atari. Tady je cisty standardni export:
-    // 48 kHz, 600 baud presne 80 vzorku/bit, MARK 5327 Hz, SPACE 3995 Hz,
-    // souvisla faze bez bitovych fade propadu, dlouhy MARK pilot a mark tail.
+    // BUILD2DL: BZ-only oprava exportu WAV po ERROR 143.
+    // Nemeni UI, klavesy, hitboxy, live CLOAD ani RECORD workflow. Oprava je jen ve WAV souboru.
+    // Atari cassette record ma 132 B: $55 $55, control, 128 data, checksum.
+    // DK renderoval cely stream souvisle bez inter-record gapu; to muze na hranici recordu udelat ERROR 143.
+    // Tady renderuji 132B recordy s MARK IRG mezerou mezi recordy, ale byte obsah zustava presne ze SEROUT.
     var sr=48000, baud=600, spb=80;
+    var markHz=5327, spaceHz=3995;
     var leadSamples=sr*12.0|0;
+    var irgSamples=sr*0.30|0; // kratky inter-record gap MARK mezi 132B bloky
     var tailSamples=sr*2.0|0;
-    var total=leadSamples + maxBytes*10*spb + tailSamples;
+    var records=[];
+    var recordMode=false;
+    if(maxBytes>=132 && (maxBytes%132)===0){
+      recordMode=true;
+      for(var ro=0; ro<maxBytes; ro+=132){
+        var ctrl=data[ro+2]&255;
+        if((data[ro]&255)!==0x55 || (data[ro+1]&255)!==0x55 || !(ctrl===0xFC || ctrl===0xFA || ctrl===0xFE)){
+          recordMode=false; break;
+        }
+        records.push(data.subarray(ro,ro+132));
+      }
+    }
+    if(!recordMode){ records=[data.subarray(0,maxBytes)]; }
+    var dataSamples=maxBytes*10*spb;
+    var total=leadSamples + dataSamples + tailSamples + (recordMode?Math.max(0,records.length-1)*irgSamples:0);
     var pcm=new Int16Array(total), pos=0, phase=0;
-    var amp=0.58; // dost silne pro realny vstup, bez saturace/clippingu
+    var amp=0.50;
     function putTone(freq, samples){
       var inc=2*Math.PI*freq/sr;
       for(var i=0;i<samples && pos<pcm.length;i++,pos++){
         phase+=inc;
         if(phase>Math.PI*2) phase-=Math.PI*2;
-        // globalni kratky fade jen na zacatku/konci celeho souboru, ne na bitech
         var g=amp;
+        // jen globalni fade na zacatku/konci celeho WAV, ne mezi bity/recordy
         if(pos<sr/100) g*=pos/(sr/100);
         var remain=pcm.length-pos-1;
         if(remain<sr/100) g*=Math.max(0,remain/(sr/100));
         pcm[pos]=Math.max(-32767,Math.min(32767,Math.round(Math.sin(phase)*g*32767)));
       }
     }
-    function putBit(bit){ putTone(bit?5327:3995, spb); }
-    putTone(5327, leadSamples); // MARK pilot / zavadeci stopa
-    for(var b=0;b<maxBytes;b++){
-      var v=data[b]&255;
-      putBit(0); // start bit SPACE
-      for(var bit=0;bit<8;bit++) putBit((v>>bit)&1); // LSB first
-      putBit(1); // stop bit MARK
+    function putBit(bit){ putTone(bit?markHz:spaceHz, spb); }
+    function putByte(v){
+      v&=255;
+      putBit(0); // start bit = SPACE
+      for(var bit=0; bit<8; bit++) putBit((v>>bit)&1); // LSB first
+      putBit(1); // stop bit = MARK
     }
-    putTone(5327, tailSamples);
+    putTone(markHz, leadSamples);
+    for(var r=0;r<records.length;r++){
+      if(recordMode && r>0) putTone(markHz, irgSamples);
+      var rec=records[r];
+      for(var b=0;b<rec.length;b++) putByte(rec[b]&255);
+    }
+    putTone(markHz, tailSamples);
     var bytes=44+pcm.length*2;
     var out=new Uint8Array(bytes), dv=new DataView(out.buffer);
     function str(o,t){ for(var i=0;i<t.length;i++) out[o+i]=t.charCodeAt(i); }
     str(0,'RIFF'); dv.setUint32(4,bytes-8,true); str(8,'WAVE'); str(12,'fmt ');
     dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,1,true); dv.setUint32(24,sr,true); dv.setUint32(28,sr*2,true); dv.setUint16(32,2,true); dv.setUint16(34,16,true); str(36,'data'); dv.setUint32(40,pcm.length*2,true);
     for(var k=0;k<pcm.length;k++) dv.setInt16(44+k*2,pcm[k],true);
-    return {wav:out, bytes:maxBytes, srcBytes:data.length, sampleRate:sr, leadSeconds:12, tailSeconds:2, baud:600, mark:5327, space:3995};
+    return {wav:out, bytes:maxBytes, srcBytes:data.length, sampleRate:sr, leadSeconds:12, tailSeconds:2, baud:600, mark:markHz, space:spaceHz, recordMode:recordMode, records:records.length, irgSeconds:recordMode?0.30:0};
   }
 
   function parseCasInfo(u8){
@@ -2736,7 +2756,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       var name=(cassStage && cassStage.lastCsaveWavName) ? cassStage.lastCsaveWavName : ('AtariHelp_CSAVE_'+csaveModeName()+'_'+ahStamp()+'.wav');
       saveBinaryMobile(name,r.wav,'SAVE WAV');
-      log('SAVE WAV BUILD2DK: LOADABLE WAV export 48 kHz / presne 600 baud / MARK 5327 Hz / SPACE 3995 Hz / 12s pilot / 2s tail / bez bitovych fade propadu, ze skutecneho SEROUT streamu ('+r.bytes+' B dat). UI a live zvuky zustaly BUILD2BZ.');
+      log('SAVE WAV BUILD2DL: WAV export 48 kHz / 600 baud / MARK 5327 Hz / SPACE 3995 Hz / 12s pilot / IRG mezi 132B recordy='+(r.recordMode?('ANO, '+r.records+' recordu'):'NE, syrovy stream')+' / 2s tail, ze skutecneho SEROUT streamu ('+r.bytes+' B dat). UI/live zvuky/CLOAD workflow zustaly BUILD2BZ.');
     }catch(e){ log('SAVE WAV: render selhal - '+e.message); }
   }
   function insertLastCsaveWav(){
@@ -3279,8 +3299,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2DK_BZ_ONLY_WAV_EXPORT_REPAIR pripraven.');
-    log('BUILD2DK: zaklad je cisty BUILD2BZ/BY golden. Menim POUZE export CSAVE WAV: 48kHz, presne 600 baud, 12s MARK pilot, bez fade na kazdem bitu. UI/zvuky klaves/hitboxy/CLOAD workflow NEMENENY. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2DL_BZ_ONLY_WAV_EXPORT_RECORD_IRG_FIX pripraven.');
+    log('BUILD2DL: zaklad je cisty BUILD2BZ/BY golden. Menim POUZE export CSAVE WAV: pridany inter-record gap mezi 132B kazetovymi recordy po ERROR 143. UI/zvuky klaves/hitboxy/CLOAD workflow NEMENENY. KODY JSOU STEJNE.');
     log('BUILD2BR: TXT ramecek umi Ctrl+V + po VLOZIT uvolni focus a obnovi posouvani stranky v NOXu. OSK vrstva uz neblokuje scroll mimo klavesy. CLOAD cesta zustava po BO, bez RAM injectu.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }

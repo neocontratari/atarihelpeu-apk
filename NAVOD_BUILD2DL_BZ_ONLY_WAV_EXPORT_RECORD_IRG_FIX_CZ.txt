@@ -1,0 +1,23 @@
+ATARIHELP.EU EMU-10 BUILD2DL - BZ ONLY WAV EXPORT RECORD IRG FIX
+
+Zaklad: cisty BUILD2BZ/BY golden.
+KODY JSOU STEJNE.
+
+Co se meni:
+- pouze export CSAVE WAV v app/src/main/assets/emu/index.html
+- po ERROR 143 se opravuje render WAV tak, aby 132B kazetove recordy mely mezi sebou kratky MARK inter-record gap
+- obsah SEROUT bajtu se nemeni: 528 B zustava 528 B
+- UI, klavesy, hitboxy, TXT, joystick, scroll a CLOAD workflow zustavaji z BUILD2BZ
+
+Proc:
+BUILD2DK delal 48 kHz export, ale renderoval cely SEROUT stream jako souvisly blok. Atari record ma 132 B ($55 $55, control, 128 dat, checksum) a mezi recordy ma byt MARK gap/IRG. Bez toho muze prijit ERROR 143 na hranici recordu.
+
+Test:
+1) Nahraj overlay.
+2) V logu musi byt BUILD2DL.
+3) V BASICu vloz kratky kod pres BASIC TXT.
+4) Dej CSAVE/RETURN/RETURN workflow jako predtim.
+5) Otestuj ulozeny WAV v Altirre a na realnem Atari.
+
+Log marker:
+SAVE WAV BUILD2DL: WAV export 48 kHz / 600 baud / ... / IRG mezi 132B recordy=ANO
