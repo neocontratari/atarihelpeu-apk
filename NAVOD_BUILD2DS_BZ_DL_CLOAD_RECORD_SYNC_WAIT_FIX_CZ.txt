@@ -1,0 +1,39 @@
+ATARIHELP.EU EMU-10 – BUILD2DS_BZ_DL_CLOAD_RECORD_SYNC_WAIT_FIX
+
+STAV:
+- Zaklad: BUILD2DL / BUILD2BZ-BY golden.
+- WAV export z BUILD2DL zustava zachovan, protoze ho Rene potvrdil: nacita ho Altirra i realne Atari 130XE.
+- UI, klavesy, hitboxy, TXT, joystick, scroll a vzhled nejsou meneny.
+- KODY JSOU STEJNE.
+
+PROC BUILD2DS:
+- BUILD2DR byl krok zpet: poslal raw $55 sync bajty primo do SERIN a skoncilo to ERROR 21.
+- Atari OS si pri CLOAD sync $55 resi pres SKSTAT/leader a sam si je vlozi do bufferu pred daty.
+- Proto BUILD2DS vraci spravny 520B SERIN payload: control + 128 data + checksum pro kazdy 132B record, bez $55 sync v SERIN.
+- Proti BUILD2DO/DP je zmena v tom, ze dalsi record se nepousti podle pevne IRG pauzy.
+- Dalsi record ceka, az ROM skutecne znovu projde SKSTAT synchronizaci ED3D-ED96 a vrati se do EB16/EB2C cekani na serial.
+
+CO TESTOVAT:
+1) Nainstaluj overlay BUILD2DS pres GitHub Desktop stejne jako predchozi buildy.
+2) Spust apku.
+3) POWER BASIC.
+4) BASIC/TBXL TXT -> vloz stejny kratky testovaci BASIC program jako minule -> VLOZIT + RUN.
+5) Nech text dobehnout.
+6) Zadej CSAVE / pouzij stejny postup jako u BUILD2DL.
+7) Po ulozeni dej LAST CSAVE / CLOAD v apce.
+
+CEKANE LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2DS_BZ_DL_CLOAD_RECORD_SYNC_WAIT_FIX pripraven.
+- SAVE WAV BUILD2DL: WAV export 48 kHz ...
+- CLOAD LEADER+SERIN BUILD2DS: pripraveno 520 SERIN B ... recordMode=ANO, records=4
+- CLOAD RECORD SYNC BUILD2DS: mezi 130B record payloady NEvkladam pevnou IRG...
+- CLOAD RECORD WAIT BUILD2DS: cekam se startem recordu ...
+- CLOAD RECORD READY BUILD2DS: ROM je pripravena na record ...
+
+KDYZ TO SELZE:
+- Poslat log od radku "CLOAD LEADER+SERIN BUILD2DS" az po ERROR.
+- Dulezite je, jestli se dostane pres 256/520 B a jestli se objevi RECORD WAIT/READY.
+
+NEDELAT:
+- Netestovat BUILD2DQ ani BUILD2DR jako dalsi smer; DR byl krok zpet kvuli ERROR 21.
+- Neprepisovat WAV export z DL, protoze je potvrzeny realnym Atari a Altirrou.
