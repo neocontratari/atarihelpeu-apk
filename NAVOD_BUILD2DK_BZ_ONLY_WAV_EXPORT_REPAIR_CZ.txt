@@ -1,0 +1,31 @@
+ATARIHELP.EU EMU-10 BUILD2DK_BZ_ONLY_WAV_EXPORT_REPAIR
+
+ZAKLAD:
+- Cisty BUILD2BZ/BY golden z predavaciho balicku.
+- Nejsou pouzite pozdejsi pokusy DA/DH/DI/DJ.
+
+CO JE ZMENENE:
+- POUZE export ulozeneho CSAVE WAV.
+- Puvodni BUILD2BZ delal 44.1 kHz monitor WAV s malou amplitudou a fade na kazdem bitu.
+- BUILD2DK dela 48 kHz, presne 600 baud = 80 vzorku/bit, MARK 5327 Hz, SPACE 3995 Hz, 12s pilot, 2s tail, bez fade propadu na kazdem bitu.
+
+CO NENI ZMENENE:
+- UI / tlacitka / hitboxy.
+- Zvuk klaves a live emulator.
+- TXT fronta.
+- Joystick / scroll / focus.
+- CLOAD workflow z BZ/BR.
+
+KODY JSOU STEJNE.
+
+TEST:
+1) Rozbal overlay do korene GitHub repo.
+2) Build APK. V logu musi byt BUILD2DK_BZ_ONLY_WAV_EXPORT_REPAIR.
+3) POWER -> READY.
+4) Vloz stejny BASIC TXT jako predtim.
+5) CSAVE, pockat na SAVE WAV BUILD2DK.
+6) Ten nove ulozeny WAV z Downloads/AtariHelp testni v Altirre a na realnem Atari.
+
+KDYZ TO FAILNE:
+- Posli log od CSAVE AUTO REC az po SAVE WAV BUILD2DK.
+- Posli i vznikly WAV a CAS, jinak neni mozne porovnat data/checksum/audio.
