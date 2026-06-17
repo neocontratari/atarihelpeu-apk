@@ -1,0 +1,31 @@
+ATARIHELP.EU EMU-10 BUILD2DO_BZ_DL_CLOAD_SKRES_AUDIO_MONITOR_FIX
+
+ZAKLAD:
+- BUILD2DL / cisty BUILD2BZ-BY golden.
+- Export WAV z DL ponechan, protoze ho nacte Altirra i realne Atari.
+- UI, klavesy, hitboxy, TXT, joystick, scroll: NEMENENO.
+- KODY JSOU STEJNE.
+
+OPRAVA PROTI DN:
+1) DN byl na poslech divny, protoze pri LAST CSAVE CLOAD bylo HTML Audio vypnute a slyset nebyl normalni WAV pilot.
+   BUILD2DO pusti overeny DL WAV jako tichy/spravny MONITOR od 00:00, aby byla slyset 12s zavadeci stopa.
+   Jadro CLOAD pritom porad bezi pres POKEY/SKSTAT/SERIN a nepousti dalsi synteticky hlasity zvuk.
+
+2) DN porad visel na checksumu $A8 po 128 B. Audit ukazal, ze ROM muze napsat SKRES, zatimco SERIN byte jeste neni precteny.
+   Stara emulace tim shodila IRQST a byte zustal viset -> ERROR 138.
+   BUILD2DO pri SKRES zachova serial-in ready, pokud je neprecteny kazetovy SERIN byte.
+
+TEST:
+1. Nahraj overlay pres GitHub Desktop.
+2. POWER -> BASIC READY.
+3. Vloz kratky BASIC TXT + RUN jako doposud.
+4. Nech CSAVE ulozit.
+5. Dej LAST CSAVE / CLOAD.
+
+CEKANY LOG:
+- AtariHelp.eu EMU-10 BUILD2DO_BZ_DL_CLOAD_SKRES_AUDIO_MONITOR_FIX pripraven.
+- KAZETA PLAY BUILD2DO: slyšitelny WAV MONITOR z overeneho DL exportu od 00:00
+- CLOAD SKRES BUILD2DO: ROM napsala SKRES, ale SERIN byte ... drzim IRQST serial ready
+
+POKUD SELZE:
+Posli log od radku CLOAD LEADER+SERIN BUILD2DO az po ERROR.
