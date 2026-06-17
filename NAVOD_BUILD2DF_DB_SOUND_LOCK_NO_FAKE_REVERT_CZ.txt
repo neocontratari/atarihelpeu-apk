@@ -1,0 +1,36 @@
+ATARIHELP.EU EMU-10 - BUILD2DF_DB_SOUND_LOCK_NO_FAKE_REVERT
+
+ZAKLAD:
+- BUILD2BZ/BY golden + DB zvukovy smer.
+- Nevracim puvodni fake/UI zvuk.
+- Klavesy zustavaji pres ROM/GTIA $D01F.
+- KODY JSOU STEJNE.
+
+CO JE OPRAVENO PROTI DB/DD/DE:
+1) Klavesy:
+   - zustava DB charakter, ale trvaly $D01F DC stav uz nedela dlouhy podzvuk/ruch.
+   - UI keyclick bokem zustava vypnuty.
+
+2) CSAVE:
+   - po STOP/READY se oreze dohravajici kazetovy audio buffer, aby zvuk nedohraval dlouho po READY.
+   - CSAVE monitor porad vznika jen z realnych POKEY SEROUT bajtu.
+
+3) CLOAD / LAST CSAVE:
+   - slyšitelny monitor ma plny 12s pilot.
+   - vodici $55 zustavaji ve zvuku, ale do SERIN se u vlastniho CSAVE neposilaji jako prvni BASIC data.
+   - prvni datovy byte by mel byt control $FC.
+   - HTML Audio pro vlastni LAST CSAVE zustava blokovane.
+
+CO NEMENIT / HLIDAT:
+- TXT line queue nemeneno.
+- Joystick/scroll/focus nemeneno.
+- Zadny RAM inject.
+- Zadny fake READY.
+
+TEST:
+1) Nahraj overlay BUILD2DF.
+2) POWER do BASICu.
+3) Otestuj klavesy - maji znit jako DB/real Atari, ale bez dlouheho podzvuku.
+4) Vloz kratky BASIC TXT + RUN.
+5) Dej CSAVE, sleduj, jestli po READY nedohrava dlouhy ocas.
+6) LAST CSAVE / CLOAD: poslouchej 12s pilot a posli log od CLOAD RAW CYCLE BUILD2DF po chybu/vysledek.
