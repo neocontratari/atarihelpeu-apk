@@ -1,0 +1,26 @@
+AtariHelp.eu EMU-10 BUILD2DU_BZ_DL_CLOAD_WAV_PCM_SKSTAT_HYSTERESIS_FIX
+
+ZAKLAD:
+- BUILD2DL / BUILD2BZ-BY golden.
+- WAV export z BUILD2DL ponechan, protoze ho uz nacte Altirra i realne Atari.
+- UI, klavesy, hitboxy, TXT, joystick, scroll nemeneno.
+- KODY JSOU STEJNE.
+
+CO SE MENI:
+- LAST CSAVE/CLOAD v apce uz nepouziva pokusy DT/DS/DR s hotovymi SERIN bajty.
+- Vlastni ulozeny WAV se pousti primo jako SKSTAT bit4 tvar do ROM kazetoveho cteni.
+- Pridan hysterzni komparator pro WAV->SKSTAT, aby se omezily falesne preklopy kolem nuly.
+- Zadny RAM inject, zadne hotove bajty do programu, zadny fake READY.
+
+TEST:
+1) POWER do BASIC READY.
+2) BASIC TXT -> VLOZIT + RUN kratky program.
+3) CSAVE, RECORD/auto capture jako predtim.
+4) LAST CSAVE/CLOAD v apce.
+5) V logu hledat:
+   AtariHelp.eu EMU-10 BUILD2DU_BZ_DL_CLOAD_WAV_PCM_SKSTAT_HYSTERESIS_FIX pripraven.
+   CLOAD WAV PCM BUILD2DU: hotove SERIN bajty jsou VYPNUTE.
+   CLOAD WAV PCM BUILD2DU: motor ON, spoustim overeny WAV tvar na SKSTAT bit4 s hysterezi.
+
+PRI CHYBE:
+Poslat log od CLOAD WAV PCM BUILD2DU az po ERROR.
