@@ -1,0 +1,36 @@
+ATARIHELP.EU EMU-10 BUILD2DN_BZ_DL_CLOAD_RECORD_SYNC_SINGLE_PATH_FIX
+
+ZAKLAD:
+- BUILD2DL / cisty BUILD2BZ-BY golden.
+- Export WAV z DL ponechan, protoze ho uz nacetla Altirra i realne Atari 130XE.
+- UI, klavesy, hitboxy, TXT fronta, joystick, scroll: NEMENENO.
+- KODY JSOU STEJNE.
+
+OPRAVA V BUILD2DN:
+- Menena je jen CLOAD cesta uvnitr APK emulatoru.
+- Problem z logu DM: po 128 B zustal checksum $A8 v SERIN, OS byl v PC=$ED4F a cekal na SKSTAT hrany, takze prisel ERROR 138.
+- DN dela record-aware CLOAD pro vlastni CSAVE stream:
+  * raw 528 B = 4 x 132B Atari cassette record,
+  * sync bajty $55 $55 kazdeho recordu zustavaji jen v pilot/SKSTAT tonu,
+  * do SERIN jde jen control + data + checksum,
+  * SERIN se NEKRMÍ, kdyz ROM prave meri SKSTAT synchronizaci v $ED3D-$ED96,
+  * cisty MARK/sync ton zustava na SKSTAT i behem cekani mezi recordy/checksumem.
+- Pri LAST CSAVE CLOAD se nespousti soucasne HTML Audio, aby nevznikal druhy hlasity zvuk/casovac.
+
+TEST:
+1. Nahraj tento overlay do repozitare.
+2. Commit/push pres GitHub Desktop a nainstaluj APK.
+3. POWER BASIC.
+4. Vloz kratky BASIC TXT jako predtim.
+5. CSAVE / ulozeni.
+6. LAST CSAVE / CLOAD v APK emulatoru.
+
+CEKEJ V LOGU:
+- AtariHelp.eu EMU-10 BUILD2DN_BZ_DL_CLOAD_RECORD_SYNC_SINGLE_PATH_FIX pripraven.
+- CLOAD LEADER+SERIN BUILD2DN ... recordMode=ANO, records=4 ...
+- CLOAD SERIN ARM BUILD2DN ... sync $55 mimo SERIN=8 ...
+- KAZETA PLAY BUILD2DN: HTML Audio pro LAST CSAVE NEPOUSTIM ...
+
+SELHANI:
+- Pokud je znovu ERROR 138, posli log od "CLOAD LEADER+SERIN BUILD2DN" az po chybu.
+- Hlavne sleduj, jestli porad visi "SERIN byte $A8 drzim" a na jakem PC.
