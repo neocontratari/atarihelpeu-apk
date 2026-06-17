@@ -1,0 +1,32 @@
+ATARIHELP.EU EMU-10 BUILD2DY_BZ_DL_CLOAD_RECORD_55_SYNC_GAP_FIX
+
+ZAKLAD:
+- Vychazi z BUILD2DO / BUILD2DL / BUILD2BZ-BY golden.
+- WAV export z BUILD2DL zustava zachovan.
+- UI, klavesy, TXT, joystick, scroll, hitboxy nemenene.
+- KODY JSOU STEJNE.
+
+PROC TENTO BUILD:
+- Zastavuji slepe vetve DU/DT/DS/DR/DQ/DV.
+- Nevracim raw $55 do SERIN.
+- Nejedu WAV->SKSTAT bez SERIN.
+- Necekam nekonecne na falesnou sync podminku.
+- CLOAD v apce zustava na nejblizsi ERROR 143 vetvi: 520B SERIN payload bez $55 jako data.
+- Oprava je jen hranice recordu:
+  raw CSAVE record je $55,$55,control,128 data,checksum = 132B.
+  Do SERIN patri 130B payload: control,128 data,checksum.
+  Mezi recordy se vlozi presny sync $55,$55 jako SKSTAT FSK gap 520 PAL radku.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2DY_BZ_DL_CLOAD_RECORD_55_SYNC_GAP_FIX pripraven.
+- CLOAD LEADER+SERIN BUILD2DY
+- CLOAD RECORD SYNC BUILD2DY
+- CLOAD RECORD READY BUILD2DY
+- CLOAD SKRES BUILD2DY
+
+TEST:
+1. POWER do BASICu.
+2. BASIC TXT vlozit testovaci kod.
+3. CSAVE / RECORD workflow jako drive.
+4. LAST CSAVE / CLOAD v apce.
+5. Pri chybe poslat log od CLOAD LEADER+SERIN BUILD2DY dal.
