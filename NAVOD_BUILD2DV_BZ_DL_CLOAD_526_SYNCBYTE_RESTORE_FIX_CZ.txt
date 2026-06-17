@@ -1,0 +1,31 @@
+AtariHelp.eu EMU-10 BUILD2DV_BZ_DL_CLOAD_526_SYNCBYTE_RESTORE_FIX
+
+ZAKLAD:
+- BUILD2DL / BUILD2BZ-BY golden.
+- WAV export z DL ponechan: Altirra i realne Atari ho dokazaly nacist.
+- Vraci se posledni spravny smer pred DS/DR/DT/DU: cil je znovu ERROR 143 vylepsit, ne litat zpet na ERROR 21/138.
+
+ZMENA:
+- Jen CLOAD cesta v apce pro LAST CSAVE.
+- Nepouziva se RAW 528 se startovnim $55 jako DR/DT.
+- Nepouziva se DS cekani na record sync.
+- Nepouziva se DU WAV PCM bez SERIN.
+- Do SERIN jde 526 B: vynechaji se jen prvni dva $55 po leaderu; dalsi recordove $55,$55 zustavaji v proudu.
+- SKRES fix z BUILD2DO zustava.
+
+KODY JSOU STEJNE.
+
+TEST:
+1) POWER BASIC.
+2) BASIC TXT -> VLOZIT + RUN.
+3) CSAVE.
+4) LAST CSAVE / CLOAD v apce.
+
+LOG HLEDEJ:
+AtariHelp.eu EMU-10 BUILD2DV_BZ_DL_CLOAD_526_SYNCBYTE_RESTORE_FIX pripraven.
+CLOAD LEADER+SERIN BUILD2DV: pripraveno 526 SERIN B
+CLOAD LEADER DONE BUILD2DV
+CLOAD SERIAL BUILD2BR: prvni bajt dosel do SERIN = $FC
+
+KDYZ FAIL:
+Poslat log od CLOAD LEADER+SERIN BUILD2DV po chybu.
