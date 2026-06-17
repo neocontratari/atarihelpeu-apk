@@ -614,6 +614,20 @@ function Atari130XE(osRom, basicRom, CPUctor){
     opts=opts||{};
     for(let i=0;i<bytes.length;i++){ sio.rxq.push({d:t,b:bytes[i]&255,cassette:!!opts.cassette,waitMotor:!!opts.waitMotor}); t=pb; }
   }
+  // BUILD2DP: kazeta neni jeden dlouhy SERIN kulomet. Pri record-aware CLOAD musi po kazdem
+  // control+128 data+checksum (130 SERIN B) prijit pauza/IRG, zatimco SKSTAT dal vidi MARK ton.
+  // Jinak ROM sice precte vic nez v DO, ale po 2. recordu spadne ERROR 143.
+  function sioQueueCassetteRecordAware(delay,bytes,perByte,opts){
+    opts=opts||{};
+    const pb=perByte||260;
+    const stride=opts.recordStride||0;
+    const gap=opts.recordGapLines||0;
+    for(let i=0;i<bytes.length;i++){
+      let d=(i===0)?delay:pb;
+      if(stride>0 && gap>0 && i>0 && (i%stride)===0) d=gap;
+      sio.rxq.push({d:d,b:bytes[i]&255,cassette:!!opts.cassette,waitMotor:!!opts.waitMotor,recordStart:(stride>0 && (i%stride)===0),recordIndex:stride?Math.floor(i/stride):0});
+    }
+  }
   function resetCassetteQueueStats(){
     sio.cassPausedLogged=false; sio.cassDelivered=0; sio.cassQueued=0; sio.cassKind=''; sio.cassLeadLines=0; sio.cassWaitOsLastFrame=-9999;
     sio.cassTone=null; sio.cassPcm=null; sio.cassInLevel=1; sio.cassToneLastFrame=-9999;
@@ -630,7 +644,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(lead55>=12) skip=lead55;       // dlouha CSAVE zavadeci stopa: tyhle $55 patri do leaderu, ne do dat
     else if(lead55>=2) skip=2;        // kratky sync: ROM si prvni dva $55 po leaderu zalozi sama
 
-    // BUILD2DO: record-aware CLOAD pro vlastni CSAVE.
+    // BUILD2DP: record-aware CLOAD pro vlastni CSAVE.
     // Raw SEROUT stream z Atari CSAVE ma 132B recordy: $55,$55,control,128 data,checksum.
     // Vsechny record sync $55,$55 musi zustat jen ve SKSTAT/pilot tonu; do SERIN patri control+data+checksum.
     // Predchozi BR/BZ cesta preskocila jen prvni dva $55 a dalsi record sync i checksum pustila do spatne faze,
@@ -655,7 +669,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function cassetteSerialCanFeed(){
     if(!sio.cassMotor) return false;
     if((ram[0x022A]&0xFF)!==0 || (cpu.pc>=0xFD18 && cpu.pc<=0xFD20)) return false;
-    // BUILD2DO: nekrmit SERIN, kdyz ROM prave meri SKSTAT synchronizaci ($ED3D-$ED96).
+    // BUILD2DP: nekrmit SERIN, kdyz ROM prave meri SKSTAT synchronizaci ($ED3D-$ED96).
     // V te fazi ma bezet jen cisty ton/hrany; byte se doda az po opusteni detektoru.
     if(cassettePcInLeaderDetector()) return false;
     // XL OS CLOAD drzi I=1 a pouziva vlastni IRQ vektor. Necekat na CLI ani na IRQEN $20, to byla chyba BUILD2BN.
@@ -670,8 +684,16 @@ function Atari130XE(osRom, basicRom, CPUctor){
     sio.cassDelivered=0; sio.cassQueued=bytes.length; sio.cassKind=t.kind||'CLOAD SERIN';
     sio.cassPausedLogged=false; sio.cassReadyWaitLastFrame=-9999;
     // Prvni byte nejde hned: po adaptivnim leaderu jeste kratka mezera jako realna XC12.
-    sioQueue(t.serialDelayLines||22, bytes, 260, {cassette:true,waitMotor:true});
-    // BUILD2DO: cassTone nechavam zivou i po startu SERIN.
+    // BUILD2DP: pokud jde o 4x132B Atari cassette record, davam mezi 130B SERIN payloady
+    // dlouhou IRG pauzu. Behem pauzy stale bezi MARK/sync ton na SKSTAT bit4, ale SERIN
+    // se nekrmi. To je rozdil proti DO, kde slo 520 B jako souvisly kulomet a koncilo ERROR 143.
+    if(t.recordMode && t.records>1){
+      sioQueueCassetteRecordAware(t.serialDelayLines||22, bytes, 260, {cassette:true,waitMotor:true,recordStride:130,recordGapLines:6500});
+      if(M.cassDebug) M.cassDebug('RECORD_GAP_ARM',{records:t.records,recordStride:130,gapLines:6500,gapMs:Math.round(6500/15.6)});
+    }else{
+      sioQueue(t.serialDelayLines||22, bytes, 260, {cassette:true,waitMotor:true});
+    }
+    // BUILD2DP: cassTone nechavam zivou i po startu SERIN.
     // OS ROM se po recordu vraci do $ED3D-$ED96 a ceka dalsi SKSTAT hrany; kdyz tady ton shodime,
     // checksum/record zustane viset v SERIN a skonci ERROR 138.
     t.serialActive=true;
@@ -941,14 +963,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
         if(M.audioQ){ M.audioQ.push(cpu.cycles,8,v); if(M.audioQ.length>48000)M.audioQ.splice(0,24000); } return; }
       if(p===0x09){ timersReload(); return; } // STIMER: znovunabij citace
       if(p===0x0A){
-        // BUILD2DO: SKRES nesmi spolknout uz pripraveny kazetovy SERIN byte.
+        // BUILD2DP: SKRES nesmi spolknout uz pripraveny kazetovy SERIN byte.
         // Log DN ukazal $A8 cekajici po 128 B, ale IRQST uz bylo $FF: OS napsal SKRES a my jsme mu shodili IRQ,
         // tak checksum zustal viset a CLOAD skoncil ERROR 138. Kdyz je SERIN neprecteny, ponecham serial-in ready.
         const keepCassSerin = (!pokey.serinRead && pokey.inShiftCassette);
         pokey.serinAge=0; pokey.inShiftBusy=0;
         if(keepCassSerin){ pokey.irqpend=(pokey.irqpend&~0x08)|0x30; if(M.cassDebug) M.cassDebug('SKRES_KEEP_SERIN',{byte:pokey.serin,irqen:pokey.irqen,irqst:(~pokeyStatus())&0xFF,pc:cpu.pc}); }
         else { pokey.inShiftCassette=false; pokey.irqpend&=~0x38; }
-        pokeySync(); return; } // BUILD2DO: SKRES cisti busy, ale ne zahodit neprecteny kazetovy SERIN
+        pokeySync(); return; } // BUILD2DP: SKRES cisti busy, ale ne zahodit neprecteny kazetovy SERIN
       if(p===0x0D){ // SEROUT: byte opusti vystupni registr za ~10 radek, posuv dobehne za ~30
         if(M.sioDebug) M.sioDebug('TX',[v,sio.cmdLine?1:0]);
         if(M.onSerialOut){ try{ M.onSerialOut(v, sio.cmdLine?1:0); }catch(_e){} }
@@ -1339,7 +1361,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       return;
     }
     if(t.leaderOnly){
-      // BUILD2DO: i po startu SERIN udrzuju cisty MARK/sync ton na SKSTAT bit4.
+      // BUILD2DP: i po startu SERIN udrzuju cisty MARK/sync ton na SKSTAT bit4.
       // ROM se po kazdem recordu/checksumu vraci do $ED3D-$ED96 a bez hran by cekala navzdy.
       if(t.serialQueued){
         const lev=squareLevelFromCycles(5327, elapsed);
@@ -2381,7 +2403,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     M.cassDebug=function(ev,data){
       try{
         if(ev==='QUEUE') log('CLOAD SERIAL BUILD2BR: fronta '+data.bytes+' B, lead '+Math.round((data.lead||0)/15.6)+' ms PAL, byte '+data.perByte+' radku, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Cekam na realny C: motor, nic nepoustim do RAM.');
-        else if(ev==='QUEUE_TONE'){ log('CLOAD LEADER+SERIN BUILD2DO: pripraveno '+data.bytes+' SERIN B po leaderu, raw='+((data.rawBytes||data.bytes))+' B, recordMode='+(data.recordMode?'ANO':'NE')+', records='+(data.records||0)+', sync $55 mimo SERIN='+(data.skippedSync||data.skipped||0)+', leader '+Math.round((data.lead||0)/15.6)+' ms PAL, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Zadny RAM inject.'); cassSetStatus('CLOAD DO record sync pripraven | '+data.bytes+' B'); }
+        else if(ev==='QUEUE_TONE'){ log('CLOAD LEADER+SERIN BUILD2DP: pripraveno '+data.bytes+' SERIN B po leaderu, raw='+((data.rawBytes||data.bytes))+' B, recordMode='+(data.recordMode?'ANO':'NE')+', records='+(data.records||0)+', sync $55 mimo SERIN='+(data.skippedSync||data.skipped||0)+', leader '+Math.round((data.lead||0)/15.6)+' ms PAL, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Zadny RAM inject.'); cassSetStatus('CLOAD DP record sync pripraven | '+data.bytes+' B'); }
+        else if(ev==='RECORD_GAP_ARM'){ log('CLOAD RECORD GAP BUILD2DP: mezi 130B record payloady vkladam IRG pauzu '+data.gapLines+' radku (~'+data.gapMs+' ms), records='+data.records+'. SKSTAT MARK ton bezi, SERIN stoji.'); cassSetStatus('CLOAD DP IRG mezi recordy'); }
         else if(ev==='QUEUE_PCM'){ log('CLOAD WAV PCM BUILD2BR: pripraven primy WAV->SKSTAT bit4, '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%, motor='+(data.motor?'ON':'OFF')+', soubor='+(data.name||'WAV')+'. Zadny decode/reencode, zadny RAM inject.'); cassSetStatus('WAV PCM->SKSTAT pripraven | cekam na motor'); }
         else if(ev==='WAIT_MOTOR') log('CLOAD LEADER+SERIN BUILD2BR: data jsou pripravena, ale C: motor jeste neni ON. Cekam na realny CLOAD/boot wait stav; zadny fake start.');
         else if(ev==='MOTOR_ON') log('CLOAD MOTOR: PACTL bit3 = 0, motor ON. Ted bezi jen cisty leader; datove bajty pujdou az potom pres POKEY SERIN.');
@@ -2391,11 +2414,11 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         else if(ev==='WAIT_OS_TIMER') log('CLOAD SERIAL BUILD2BR: drzim jeste vodici stopu, OS neni pripraven cist data (timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'). Data jsou porad jen ve fronte, zadny RAM inject.');
         else if(ev==='LEADER_SERIN_ARM'){ log('CLOAD SERIN ARM BUILD2BR: OS leader faze hotova, pripravuji '+data.bytes+' B pro POKEY SERIN; skipped55='+((data.skipped||0))+', lead55='+((data.lead55||0))+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+'.'); cassSetStatus('CLOAD SERIN arm | '+data.bytes+' B'); }
         else if(ev==='WAIT_SERIN_READY'){ log('CLOAD SERIN WAIT BUILD2BR: cekam na OS serial ready: timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+'. Nic neprepisuju, zadny RAM inject.'); cassSetStatus('CLOAD ceka na SERIN ready'); }
-        else if(ev==='SKRES_KEEP_SERIN'){ log('CLOAD SKRES BUILD2DO: ROM napsala SKRES, ale SERIN byte $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' je jeste neprecteny, proto drzim IRQST serial ready. PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'.'); cassSetStatus('CLOAD DO: SKRES nezhodil cekajici SERIN'); }
+        else if(ev==='SKRES_KEEP_SERIN'){ log('CLOAD SKRES BUILD2DP: ROM napsala SKRES, ale SERIN byte $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' je jeste neprecteny, proto drzim IRQST serial ready. PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'.'); cassSetStatus('CLOAD DP: SKRES nezhodil cekajici SERIN'); }
         else if(ev==='PCM_START'){ log('CLOAD WAV PCM BUILD2BR: motor ON, spoustim primy WAV tvar na SKSTAT bit4: '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%. Tohle je cesta podle WAV, ktery realne Atari nacte.'); cassSetStatus('WAV PCM->SKSTAT bezi | poslouchej cisty zvuk'); }
         else if(ev==='PCM_COUNT'){ log('CLOAD WAV PCM BUILD2BR: odtikan primy WAV tvar '+Math.round(((data.lines||0)*100)/Math.max(1,(data.total||1)))+'% / '+data.lines+'/'+data.total+' radku, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('WAV PCM->SKSTAT tece | '+Math.round(((data.lines||0)*100)/Math.max(1,(data.total||1)))+'%'); }
         else if(ev==='PCM_COMPLETE'){ log('CLOAD WAV PCM BUILD2BR: primy WAV tvar dokoncen '+data.lines+'/'+data.total+' radku, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('WAV PCM->SKSTAT konec | cekam na Atari vysledek'); }
-        else if(ev==='BITSTREAM_DATA_START'){ log('CLOAD LEADER DONE BUILD2DO: leader/sync ton bezi dal pro ROM SKSTAT; prepinam na record-aware SERIN az mimo $ED3D-$ED96. Hrany='+data.edges+', skipped55='+((data.skipped||0))+', recordMode='+(data.recordMode?'ANO':'NE')+'.'); cassSetStatus('CLOAD DO leader hotov | record sync'); }
+        else if(ev==='BITSTREAM_DATA_START'){ log('CLOAD LEADER DONE BUILD2DP: leader/sync ton bezi dal pro ROM SKSTAT; prepinam na record-aware SERIN az mimo $ED3D-$ED96. Hrany='+data.edges+', skipped55='+((data.skipped||0))+', recordMode='+(data.recordMode?'ANO':'NE')+'.'); cassSetStatus('CLOAD DP leader hotov | record sync'); }
         else if(ev==='BITSTREAM_COUNT'){ log('CLOAD BITSTREAM BUILD2BR: odtikan tonovy stream '+data.count+'/'+data.queued+' B, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('CLOAD BITSTREAM tece | '+data.count+'/'+data.queued+' B'); }
         else if(ev==='BITSTREAM_COMPLETE'){ log('CLOAD BITSTREAM BUILD2BR: tonovy stream dokoncen '+data.count+'/'+data.queued+' B, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('CLOAD BITSTREAM konec | cekam na Atari vysledek'); }
         else if(ev==='FIRST_BYTE'){ log('CLOAD SERIAL BUILD2BR: prvni bajt dosel do SERIN = $'+((data.byte&255).toString(16).toUpperCase()).padStart(2,'0')+' / celkem '+data.queued+' B | IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+' IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'.'); cassSetStatus('CLOAD SERIN start | 1/'+data.queued+' B'); }
@@ -2664,10 +2687,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     // Proto pro vlastni LAST CSAVE beru primo zachycene POKEY SEROUT bajty a posilam je jako cyklove presny 600 baud ton.
     if(ownShort && M && M.queueCassetteSerial && cassStage && cassStage.lastCsaveRaw && cassStage.lastCsaveRaw.length){
       var raw=cassStage.lastCsaveRaw;
-      var leadRaw=187200; // 12 s; BUILD2DO pak adaptivne ceka na ROM SKSTAT sync
+      var leadRaw=187200; // 12 s; BUILD2DP pak adaptivne ceka na ROM SKSTAT sync
       var nr=M.queueCassetteSerial(raw,260,leadRaw,'LAST CSAVE RAW CYCLE CLOAD');
       cassStage.lastCsaveRawCloadQueued = nr>0;
-      log('CLOAD RAW CYCLE BUILD2DO: vlastni CSAVE WAV ma overeny WAV export, ale apk CLOAD krmim record-aware POKEY/SKSTAT cestou: '+nr+' SERIN B, sync $55 zustava v tonu, leader '+Math.round(leadRaw/15.6)+' ms. Bez RAM injectu.');
+      log('CLOAD RAW CYCLE BUILD2DP: vlastni CSAVE WAV ma overeny WAV export, ale apk CLOAD krmim record-aware POKEY/SKSTAT cestou: '+nr+' SERIN B, sync $55 zustava v tonu, leader '+Math.round(leadRaw/15.6)+' ms. Bez RAM injectu.');
       cassSetStatus('CLOAD RAW CYCLE DO | '+nr+' B | record-aware sync');
       return nr;
     }
@@ -3146,16 +3169,16 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       try{
         if(cassStage && cassStage.loadedKind==='WAV') tryQueueWavCloadFirstPass();
         if(cassStage && cassStage.lastCsaveRawCloadQueued){
-          // BUILD2DO: CLOAD jadro bezi pres POKEY/SKSTAT/SERIN, ale uzivatel musi slyset normalni kazetu.
+          // BUILD2DP: CLOAD jadro bezi pres POKEY/SKSTAT/SERIN, ale uzivatel musi slyset normalni kazetu.
           // Pouštím overeny WAV export jen jako MONITOR od zacatku souboru (12s pilot + data). Nespouštím zadny druhy synteticky audio zdroj.
           cassStage.lastCsaveRawCloadQueued=false;
           if(tapeAudioSeekable()) tapeAudio.currentTime=0;
           try{ tapeAudio.volume=0.10; tapeAudio.playbackRate=1.0; }catch(_e){}
           tapeVisualStart('PLAY',1,true);
           var prMon=tapeAudio.play();
-          if(prMon&&prMon.then) prMon.then(function(){ log('KAZETA PLAY BUILD2DO: slyšitelny WAV MONITOR z overeneho DL exportu od 00:00; CLOAD jadro paralelne jen POKEY/SKSTAT/SERIN, bez dalsiho hlasiteho syntetickeho zvuku.'); }).catch(function(e){ tapeVisualStop(); log('KAZETA PLAY BUILD2DO: monitor audio se nerozjelo - '+e.message); });
-          else log('KAZETA PLAY BUILD2DO: slyšitelny WAV MONITOR z overeneho DL exportu od 00:00.');
-          cassSetStatus('LAST CSAVE CLOAD DO | slyšitelny WAV monitor + opraveny SKRES');
+          if(prMon&&prMon.then) prMon.then(function(){ log('KAZETA PLAY BUILD2DP: slyšitelny WAV MONITOR z overeneho DL exportu od 00:00; CLOAD jadro paralelne jen POKEY/SKSTAT/SERIN, bez dalsiho hlasiteho syntetickeho zvuku.'); }).catch(function(e){ tapeVisualStop(); log('KAZETA PLAY BUILD2DP: monitor audio se nerozjelo - '+e.message); });
+          else log('KAZETA PLAY BUILD2DP: slyšitelny WAV MONITOR z overeneho DL exportu od 00:00.');
+          cassSetStatus('LAST CSAVE CLOAD DP | slyšitelny WAV monitor + opraveny SKRES');
           return;
         }
         if(tapeAudioSeekable() && tapeAudio.currentTime>=tapeAudio.duration-0.08) tapeAudio.currentTime=0;
@@ -3359,8 +3382,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2DO_BZ_DL_CLOAD_SKRES_AUDIO_MONITOR_FIX pripraven.');
-    log('BUILD2DO: zaklad je BUILD2DL/BZ golden. Export WAV z DL ponechan, protoze ho nacte Altirra i realne Atari. Oprava jen CLOAD v apce: SKRES uz nesmaze neprecteny kazetovy SERIN/IRQ a LAST CSAVE ma slyšitelny WAV monitor z overeneho exportu. UI/zvuky klaves/hitboxy/TXT NEMENENY. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2DP_BZ_DL_CLOAD_RECORD_GAP_ERROR143_FIX pripraven.');
+    log('BUILD2DP: zaklad je BUILD2DL/BZ golden. Export WAV z DL ponechan, protoze ho nacte Altirra i realne Atari. Oprava jen CLOAD v apce po posunu na ERROR 143: mezi 130B cassette record payloady je IRG pauza, SKSTAT MARK ton bezi dal a SERIN se nekrmi jako jeden souvisly kulomet. UI/zvuky klaves/hitboxy/TXT NEMENENY. KODY JSOU STEJNE.');
     log('BUILD2BR: TXT ramecek umi Ctrl+V + po VLOZIT uvolni focus a obnovi posouvani stranky v NOXu. OSK vrstva uz neblokuje scroll mimo klavesy. CLOAD cesta zustava po BO, bez RAM injectu.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }

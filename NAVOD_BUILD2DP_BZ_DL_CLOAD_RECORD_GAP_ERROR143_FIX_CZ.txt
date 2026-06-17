@@ -1,0 +1,29 @@
+ATARIHELP.EU EMU-10 BUILD2DP_BZ_DL_CLOAD_RECORD_GAP_ERROR143_FIX
+
+ZAKLAD:
+- BUILD2DL / cisty BUILD2BZ-BY golden.
+- WAV export z DL se NEMENI, protoze ho nacte Altirra i realne Atari.
+- UI, klavesy, hitboxy, TXT, joystick, scroll se NEMENI.
+- KODY JSOU STEJNE.
+
+CO JE OPRAVENO:
+- DO byl posun: uz nespadl hned na ERROR 138 u prvniho checksumu, ale dosel dal a skoncil ERROR 143.
+- Log DO ukazal, ze SERIN byl stale krmen jako jeden dlouhy souvisly proud 520 B.
+- Atari kazeta je ale po recordech: 132B raw record = $55 $55 + control + 128 dat + checksum.
+- Do SERIN jde 130 B payload recordu, ale mezi recordy musi byt IRG pauza/sync cas, zatimco SKSTAT vidi MARK ton.
+- BUILD2DP proto mezi kazdym 130B payloadem vklada IRG pauzu cca 6500 PAL radku (~417 ms). Behem pauzy SERIN stoji, SKSTAT ton bezi.
+
+TEST:
+1) POWER -> BASIC READY.
+2) VLOZIT TXT + RUN stejne jako predtim.
+3) CSAVE, ulozit LAST CSAVE.
+4) LAST CSAVE / CLOAD.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2DP_BZ_DL_CLOAD_RECORD_GAP_ERROR143_FIX pripraven.
+- CLOAD LEADER+SERIN BUILD2DP ... recordMode=ANO, records=4
+- CLOAD RECORD GAP BUILD2DP: mezi 130B record payloady vkladam IRG pauzu ...
+- KAZETA PLAY BUILD2DP: slysitelny WAV MONITOR z overeneho DL exportu od 00:00
+
+KDYZ FAIL:
+Poslat log od 'CLOAD LEADER+SERIN BUILD2DP' az po chybu. Hlavne nas zajima, jestli se dostane pres 256/520 B dal nez BUILD2DO.
