@@ -1,0 +1,31 @@
+ATARIHELP.EU EMU-10 BUILD2BZ_BY_GOLDEN_TXT_LINE_QUEUE_FIX
+=========================================================
+
+KODY JSOU STEJNE.
+Jadro / ROM / BASIC testovaci kody se nemeni.
+BUILD2BZ navazuje na BUILD2BY golden baseline.
+CLOAD BR GOLDEN NEMENEN.
+Joystick/scroll/focus z BUILD2BY NEMENEN.
+
+CO JE ZMENENO:
+- Pouze TXT vkladani BASIC/TBXL TXT.
+- Stara rychla znakova fronta byla nahrazena radkovou frontou.
+- Fronta ceka na prazdny CH $02FC pred dalsi klavesou.
+- Po kazdem RETURN ceka BASIC/editor, aby se dalsi radek neposlal moc brzo.
+- Opakovane znaky jako 100 / 110 / 200 se nemaji ztracet.
+- Log ukazuje TXT LINE, WAIT BASIC a QUEUE COMPLETE.
+- Zadny RAM inject, zadne primy zapis programu do RAM.
+
+CO TESTOVAT:
+1) POWER -> READY.
+2) BASIC/TBXL TXT.
+3) Vlozit radkovy test 10 az 200.
+4) VLOZIT DO ATARI.
+5) LIST.
+Spravne: radky 100, 110, 120...200 musi byt porad 100, 110, 120...200, ne zpet na 10.
+
+ZATIM NETESTOVAT:
+- START+OPTION.
+- Velke WAV.
+- Dlouhy CSAVE/CLOAD.
+Nejdriv se musi potvrdit, ze TXT automat zadava program spravne.

@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2AP</title>
+<style>
+:root{--gold:#f3c465;--blue:#6cc9ff;--dark:#060709;--w:941;--h:1672;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:#050608;color:#f3c465;font-family:"Courier New",monospace;}
+body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidden;}
+.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050608;overflow:hidden;box-shadow:0 0 40px rgba(0,0,0,.9);}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;}
+.hit{position:absolute;border:0;background:rgba(255,196,90,0);color:transparent;font-size:0;cursor:pointer;z-index:10;border-radius:12px;}
+.hit:active,.hit.flash{background:rgba(255,196,90,.16);box-shadow:0 0 28px rgba(255,196,90,.45) inset,0 0 18px rgba(95,190,255,.18);transform:translateY(1px);}
+.crt-sweep{position:absolute;left:10.8%;top:18.9%;width:78.5%;height:27.7%;border-radius:4%/9%;z-index:4;pointer-events:none;overflow:hidden;mix-blend-mode:screen;}
+.crt-sweep:before{content:"";position:absolute;left:-40%;top:0;width:35%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,210,95,.18),transparent);animation:sweep 4.8s linear infinite;}
+.crt-sweep:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.035) 0 1px,transparent 1px 4px);opacity:.35;animation:flicker .16s steps(2) infinite;}
+.led-blue{position:absolute;left:86.55%;top:14.55%;width:1.2%;aspect-ratio:1;border-radius:50%;background:#33a5ff;z-index:5;box-shadow:0 0 8px #33a5ff,0 0 18px #33a5ff;animation:pulse 1.7s ease-in-out infinite;}
+.eq{position:absolute;left:69.2%;top:96.05%;width:12.5%;height:1%;display:flex;align-items:flex-end;gap:1.5%;z-index:5;pointer-events:none;}
+.eq i{display:block;width:8%;height:35%;background:#f3c465;box-shadow:0 0 6px rgba(243,196,101,.6);animation:eq 1.1s ease-in-out infinite;}
+.eq i:nth-child(2){animation-delay:.1s}.eq i:nth-child(3){animation-delay:.2s}.eq i:nth-child(4){animation-delay:.3s}.eq i:nth-child(5){animation-delay:.4s}.eq i:nth-child(6){animation-delay:.5s}.eq i:nth-child(7){animation-delay:.6s}.eq i:nth-child(8){animation-delay:.7s}
+.reelglow{display:none!important;position:absolute;border-radius:50%;border:2px solid rgba(255,218,130,.25);z-index:5;pointer-events:none;animation:spin 2.8s linear infinite;}
+.r1{left:35.4%;top:55.9%;width:8.7%;aspect-ratio:1}.r2{left:56.45%;top:55.9%;width:8.7%;aspect-ratio:1;animation-duration:3.4s;}
+.reelglow:before,.reelglow:after{content:"";position:absolute;left:50%;top:50%;width:58%;height:5%;margin-left:-29%;margin-top:-2.5%;background:rgba(255,218,130,.30);border-radius:3px;}.reelglow:after{transform:rotate(60deg)}
+@keyframes sweep{to{left:110%}}@keyframes flicker{50%{opacity:.2}}@keyframes pulse{50%{opacity:.45;transform:scale(.75)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes eq{50%{height:100%}}
+
+/* BUILD2AN: uvodni kazetak = MP3 prehravac s playlistem, EJECT reset a multi-vyber. */
+.introTapeBtn{border-radius:9px;z-index:14;}
+.introTapeBtn.flash,.introTapeBtn.down{background:rgba(255,197,86,.20);box-shadow:inset 0 10px 24px rgba(0,0,0,.82),inset 0 -2px 10px rgba(255,213,117,.25),0 0 16px rgba(255,190,70,.55);transform:translateY(3px) scale(.985);}
+#introMp3Hud{display:none!important;visibility:hidden!important;position:absolute;left:23.1%;top:71.85%;width:53.4%;height:2.15%;z-index:13;display:flex;align-items:center;justify-content:center;text-align:center;color:#ffd879;font:700 clamp(9px,1.72vw,16px)/1 "Courier New",monospace;letter-spacing:.06em;text-shadow:0 0 8px rgba(255,190,68,.72),0 2px 1px #000;background:linear-gradient(180deg,rgba(0,0,0,.24),rgba(0,0,0,.58));border:1px solid rgba(245,194,88,.22);border-radius:8px;pointer-events:none;opacity:.92;}
+#introMp3Counter{position:absolute;left:78.70%;top:53.78%;width:6.95%;height:2.42%;z-index:13;display:flex;align-items:center;justify-content:center;color:#ffd35c;font:900 clamp(10px,1.95vw,19px)/1 "Courier New",monospace;letter-spacing:.07em;text-shadow:0 0 7px #ffb42f,0 1px 0 #000;pointer-events:none;background:linear-gradient(180deg,#060503,#090603 45%,#030201);border-radius:4px;box-shadow:inset 0 0 10px rgba(0,0,0,.95),0 0 6px rgba(255,180,45,.18);padding-left:.12em;}
+#introMp3Counter.run{animation:introCounterGlow .42s steps(2,end) infinite;}
+@keyframes introCounterGlow{50%{filter:brightness(1.45);text-shadow:0 0 8px #ffbf2e,0 0 16px rgba(255,180,0,.88),0 1px 0 #000;}}
+.introMp3Reel{position:absolute;display:none;z-index:12;width:8.1%;aspect-ratio:1;border-radius:50%;pointer-events:none;mix-blend-mode:screen;opacity:.75;border:2px solid rgba(255,220,122,.22);box-shadow:0 0 20px rgba(255,190,70,.35) inset,0 0 15px rgba(255,190,70,.22);}
+#introMp3ReelL{left:35.35%;top:55.88%;}
+#introMp3ReelR{left:56.35%;top:55.88%;}
+.introMp3Reel:before,.introMp3Reel:after{content:"";position:absolute;left:50%;top:50%;width:62%;height:5%;margin-left:-31%;margin-top:-2.5%;background:rgba(255,218,130,.38);border-radius:5px;box-shadow:0 0 7px rgba(255,205,100,.7);}
+.introMp3Reel:after{transform:rotate(66deg);}
+.stage.mp3play .introMp3Reel{display:block;animation:introSpin 1.05s linear infinite;}
+.stage.mp3ffwd .introMp3Reel{display:block;animation:introSpin .26s linear infinite;}
+.stage.mp3rew .introMp3Reel{display:block;animation:introSpin .26s linear infinite reverse;}
+@keyframes introSpin{to{transform:rotate(360deg)}}
+#introMp3SeekHud{position:absolute;left:37.5%;top:61.2%;width:25%;height:2.4%;z-index:14;display:none;align-items:center;justify-content:center;color:#ffe08a;background:rgba(0,0,0,.62);border:1px solid rgba(244,197,92,.48);border-radius:8px;font:900 clamp(10px,1.9vw,18px)/1 "Courier New",monospace;text-shadow:0 0 10px rgba(255,193,65,.9);pointer-events:none;}
+#introMp3SeekHud.show{display:flex;animation:introSeekPulse .25s steps(2,end) infinite;}
+@keyframes introSeekPulse{50%{opacity:.62;transform:scale(.985)}}
+#introVolHot{position:absolute;left:76.85%;top:58.40%;width:11.05%;height:8.70%;z-index:15;border-radius:50%;background:rgba(255,196,90,0);cursor:pointer;touch-action:none;}
+#introVolHot:active,#introVolHot.flash{background:rgba(255,196,90,.08);box-shadow:0 0 22px rgba(255,190,65,.24) inset;}
+#introVolNeedle{position:absolute;left:79.40%;top:60.15%;width:6.05%;aspect-ratio:1;z-index:14;border-radius:50%;pointer-events:none;filter:drop-shadow(0 0 5px rgba(255,200,90,.65));}
+#introVolNeedle:before{content:"";position:absolute;left:49%;top:8%;width:3px;height:43%;background:#ffd66f;border-radius:3px;transform-origin:50% 98%;box-shadow:0 0 7px rgba(255,207,98,.9),0 1px 1px #000;}
+#introVolValue{position:absolute;left:76.0%;top:67.15%;width:12.8%;height:1.55%;z-index:14;display:flex;align-items:center;justify-content:center;color:#ffd879;font:800 clamp(7px,1.25vw,12px)/1 "Courier New",monospace;letter-spacing:.05em;text-shadow:0 0 6px rgba(255,190,68,.55),0 1px 1px #000;pointer-events:none;opacity:.0;transition:opacity .18s;}
+.stage.volshow #introVolValue{opacity:.95;}
+#introHelpBtn{position:absolute;left:76.2%;top:71.72%;width:12.5%;height:2.3%;z-index:15;border:1px solid rgba(244,197,92,.45);border-radius:8px;background:linear-gradient(180deg,#2f3239,#0b0d10);color:#f3c465;font:700 clamp(8px,1.35vw,12px)/1 "Courier New",monospace;letter-spacing:.04em;box-shadow:inset 0 1px 0 rgba(255,255,255,.10), inset 0 -5px 9px rgba(0,0,0,.55),0 2px 0 #020304;}
+#introHelpBtn:active,#introHelpBtn.flash{transform:translateY(2px) scale(.985);box-shadow:inset 0 8px 18px rgba(0,0,0,.82),0 0 10px rgba(255,190,65,.16);}
+#introHelpOverlay{display:none;position:fixed;inset:0;z-index:999;background:rgba(8,9,10,.96);padding:16px;color:#f3c465;font:700 13px/1.4 "Courier New",monospace;overflow:auto;}
+#introHelpOverlay.open{display:block;}
+#introHelpOverlay .panel{max-width:760px;margin:0 auto;background:#0b0d10;border:1px solid #3a3e45;border-radius:12px;padding:16px;box-shadow:0 0 30px rgba(0,0,0,.7);}
+#introHelpOverlay h2{font-size:18px;margin-bottom:10px;color:#ffd87a;}
+#introHelpOverlay ul{padding-left:18px;margin:10px 0 14px;}
+#introHelpOverlay li{margin:5px 0;}
+#introHelpClose{width:100%;padding:12px;border:0;border-radius:10px;background:#d9b25c;color:#111;font:700 14px "Courier New",monospace;}
+
+/* BUILD2AP: MP3 prehravac je jasny: DOWNLOAD vybere hudbu, PLAY jen hraje/pokracuje, PLAYLIST ukaze vybrane skladby. */
+.introMiniBtn{position:absolute;z-index:15;border:1px solid rgba(244,197,92,.48);border-radius:8px;background:linear-gradient(180deg,#30333a,#0b0d10);color:#f3c465;font:800 clamp(7px,1.25vw,12px)/1 "Courier New",monospace;letter-spacing:.03em;text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -6px 10px rgba(0,0,0,.58),0 2px 0 #020304;padding:0 2px;}
+.introMiniBtn:active,.introMiniBtn.flash{transform:translateY(2px) scale(.985);box-shadow:inset 0 9px 18px rgba(0,0,0,.84),0 0 12px rgba(255,190,65,.18);}
+#introMp3DownloadBtn{left:22.4%;top:71.74%;width:20.4%;height:2.35%;}
+#introMp3ListBtn{left:43.4%;top:71.74%;width:15.7%;height:2.35%;}
+#introMp3Now{position:absolute;left:59.8%;top:71.82%;width:15.5%;height:2.1%;z-index:14;display:flex;align-items:center;justify-content:center;color:#ffd879;font:800 clamp(6px,1.05vw,11px)/1 "Courier New",monospace;letter-spacing:.03em;text-shadow:0 0 6px rgba(255,190,68,.55),0 1px 1px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;opacity:.92;}
+#introPlaylistOverlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(8,9,10,.96);padding:16px;color:#f3c465;font:700 13px/1.4 "Courier New",monospace;overflow:auto;}
+#introPlaylistOverlay.open{display:block;}
+#introPlaylistOverlay .panel{max-width:760px;margin:0 auto;background:#0b0d10;border:1px solid #3a3e45;border-radius:12px;padding:16px;box-shadow:0 0 30px rgba(0,0,0,.7);}
+#introPlaylistOverlay h2{font-size:18px;margin-bottom:10px;color:#ffd87a;}
+#introPlaylistInfo{margin:0 0 10px;color:#8fd8ff;}
+#introPlaylistItems{display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+#introPlaylistItems button{width:100%;text-align:left;padding:11px;border:1px solid rgba(244,197,92,.38);border-radius:10px;background:linear-gradient(180deg,#22262d,#0a0c10);color:#f3c465;font:800 12px/1.25 "Courier New",monospace;}
+#introPlaylistItems button.active{border-color:#6cc9ff;box-shadow:0 0 14px rgba(108,201,255,.35),inset 0 0 12px rgba(108,201,255,.12);color:#8fd8ff;}
+#introPlaylistItems button.pending{border-color:#d9b25c;color:#ffd879;opacity:.72;background:linear-gradient(180deg,#2f2615,#11100d);}
+#introPlaylistItems button[disabled]{cursor:default;}
+#introPlaylistDownload,#introPlaylistEject,#introPlaylistClose{width:100%;padding:12px;margin-top:8px;border:0;border-radius:10px;font:900 13px "Courier New",monospace;}
+#introPlaylistDownload{background:#d9b25c;color:#111;}
+#introPlaylistEject{background:#22262d;color:#ffd879;border:1px solid rgba(244,197,92,.42);}
+#introPlaylistClose{background:#3a3e45;color:#fff;}
+
+
+
+@media (prefers-reduced-motion:reduce){.crt-sweep:before,.crt-sweep:after,.led-blue,.eq i,.reelglow,.introMp3Reel,#introMp3Counter.run,#introMp3SeekHud.show{animation:none}}
+/* 6 velkych tlacitek presne na navrhu */
+#goGames{left:7.3%;top:75.5%;width:31.5%;height:7.25%;}#goTape{left:40.1%;top:75.5%;width:31.5%;height:7.25%;}#goAsm{left:72.8%;top:75.5%;width:20.0%;height:7.25%;}
+#goSettings{left:7.3%;top:84.6%;width:31.5%;height:7.25%;}#goSystem{left:40.1%;top:84.6%;width:31.5%;height:7.25%;}#goDocs{left:72.8%;top:84.6%;width:20.0%;height:7.25%;}
+#playEmu{left:31.0%;top:66.3%;width:13.0%;height:4.3%;border-radius:8px;}#tapeTransport{left:22.0%;top:64.2%;width:54.8%;height:8.6%;}
+#introTapeEject{left:9.8%;top:59.4%;width:9.4%;height:8.6%;border-radius:7px;}
+#introTapeRew{left:23.0%;top:65.70%;width:10.9%;height:4.55%;}
+#introTapePlay{left:34.2%;top:65.70%;width:10.9%;height:4.55%;}
+#introTapeStop{left:45.4%;top:65.70%;width:10.9%;height:4.55%;}
+#introTapeFwd{left:56.6%;top:65.70%;width:10.9%;height:4.55%;}
+#introTapePause{left:67.8%;top:65.70%;width:10.9%;height:4.55%;}
+
+/* BUILD2AE: EMULATOR tile je zapeceny primo v PNG skinu, zadny CSS prekryv se uz neposouva. */
+
+</style>
+</head>
+<body>
+<main class="stage" aria-label="N&P VISION uvodni obrazovka">
+  <img class="skin" src="design/uvodni_np_vision.png" alt="N&P VISION">
+  <div class="crt-sweep"></div><div class="led-blue"></div>
+  <div class="eq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div id="introMp3ReelL" class="introMp3Reel"></div><div id="introMp3ReelR" class="introMp3Reel"></div>
+  <div id="introMp3SeekHud">MP3 &gt;&gt;</div><div id="introMp3Counter">000</div><div id="introVolNeedle"></div><div id="introVolValue">VOL 100%</div><button id="introVolHot" class="hit" type="button" aria-label="MP3 volume">VOLUME</button><div id="introMp3Hud" aria-hidden="true"></div><button id="introMp3DownloadBtn" class="introMiniBtn" type="button" aria-label="MP3 PRIDAT z mobilu - skladby se pripoji do playlistu">MP3 PRIDAT</button><button id="introMp3ListBtn" class="introMiniBtn" type="button" aria-label="Zobrazit MP3 playlist">PLAYLIST</button><div id="introMp3Now">MP3: PRIDAT</div><button id="introHelpBtn" type="button" aria-label="HELP - napoveda ke vsem tlacitkum">HELP</button>
+  <button id="introTapeRew" class="hit introTapeBtn" type="button" aria-label="MP3 REWIND">REWIND</button>
+  <button id="introTapePlay" class="hit introTapeBtn" type="button" aria-label="MP3 PLAY z mobilu">PLAY MP3</button>
+  <button id="introTapeStop" class="hit introTapeBtn" type="button" aria-label="MP3 STOP">STOP</button>
+  <button id="introTapeFwd" class="hit introTapeBtn" type="button" aria-label="MP3 FAST FORWARD">F.FWD</button>
+  <button id="introTapePause" class="hit introTapeBtn" type="button" aria-label="MP3 PAUSE">PAUSE</button>
+  <button id="introTapeEject" class="hit introTapeBtn" type="button" aria-label="MP3 EJECT reset playlistu">EJECT MP3</button>
+  <a id="goGames" class="hit" href="https://atarihelp.eu/?page_id=207" aria-label="Games - AtariHelp.eu hry ke stazeni">GAMES</a>
+  <a id="goTape" class="hit" href="emu/index.html" aria-label="Emulator - spustit Atari 130XE">EMULATOR</a>
+  <a id="goAsm" class="hit" href="https://atarihelp.eu/?page_id=614" aria-label="Assembler">ASSEMBLER</a>
+  <a id="goSettings" class="hit" href="https://atarihelp.eu/" aria-label="Settings - AtariHelp.eu hlavni stranka">SETTINGS</a>
+  <a id="goSystem" class="hit" href="https://atarihelp.eu/?page_id=786" aria-label="System - informace o emulatoru">SYSTEM</a>
+  <a id="goDocs" class="hit" href="https://atarihelp.eu/?page_id=50" aria-label="Docs">DOCS</a>
+</main>
+
+<div id="introPlaylistOverlay" aria-hidden="true">
+  <div class="panel">
+    <h2>MP3 PLAYLIST</h2>
+    <p id="introPlaylistInfo">Zatim neni vybrana zadna hudba. Stiskni MP3 PRIDAT a v Downloads vyber MP3. Kdyz NOX vezme jen jednu, zmackni MP3 PRIDAT znovu a pridas dalsi.</p>
+    <div id="introPlaylistItems"></div>
+    <button id="introPlaylistDownload" type="button">MP3 PRIDAT / DOWNLOAD</button>
+    <button id="introPlaylistEject" type="button">EJECT / VYMAZAT PLAYLIST</button>
+    <button id="introPlaylistClose" type="button">ZAVRIT PLAYLIST</button>
+  </div>
+</div>
+
+<div id="introHelpOverlay" aria-hidden="true">
+  <div class="panel">
+    <h2>N&P VISION — HELP</h2>
+    <p>Napoveda se zobrazuje jen po stisku HELP. Na grafice nejsou trvale vysvetlivky, aby nerusily skin.</p>
+    <p><b>ZASADA BUILD2AO:</b> kazda nova funkce apky se bude postupne zapisovat sem do HELP, aby uzivatel vedel, co ktere tlacitko dela.</p>
+    <h3>Hlavni menu</h3>
+    <ul>
+      <li><b>GAMES</b> — otevře hry na AtariHelp.eu.</li>
+      <li><b>EMULATOR</b> — spustí Atari 130XE emulator.</li>
+      <li><b>ASSEMBLER</b> — otevře vývojové / assembler nástroje na webu.</li>
+      <li><b>SETTINGS</b> — otevře hlavní stránku AtariHelp.eu.</li>
+      <li><b>SYSTEM</b> — otevře stránku Info & About.</li>
+      <li><b>DOCS</b> — otevře manuály a nápovědu.</li>
+    </ul>
+    <h3>Uvodni kazetak — MP3 prehravac hudby</h3>
+    <ul>
+      <li><b>MP3 PRIDAT</b> — otevře Downloads a přidá vybranou MP3 do playlistu. Starý playlist se nemaže.</li>
+      <li><b>PLAYLIST</b> — ukáže všechny načtené skladby. Klepnutím na skladbu ji rovnou spustíš.</li>
+      <li><b>Více skladeb</b> — když NOX dovolí označit více MP3 najednou, načtou se všechny. Když dovolí jen jednu, zmáčkni MP3 PRIDAT opakovaně a skladby se budou přidávat po jedné.</li>
+      <li><b>PLAY bez hudby</b> — otevře Downloads stejně jako MP3 PRIDAT.</li>
+      <li><b>PLAY během hraní</b> — nechá hudbu běžet / pokračuje. Novou hudbu přidávej přes MP3 PRIDAT.</li>
+      <li><b>PLAY po PAUSE</b> — pokračuje od aktuální pozice.</li>
+      <li><b>PLAY po STOP</b> — spustí aktuální skladbu od začátku.</li>
+      <li><b>PAUSE</b> — pozastaví MP3 na aktuální pozici.</li>
+      <li><b>STOP</b> — zastaví MP3 a vrátí aktuální skladbu na začátek, playlist nechá v paměti.</li>
+      <li><b>REWIND / F.FWD</b> — reálně přetáčí MP3 dozadu / dopředu.</li>
+      <li><b>EJECT</b> — vymaže hudbu i celý playlist; nový playlist začneš od nuly.</li>
+      <li><b>COUNTER</b> — ukazuje stopu/pozici MP3.</li>
+      <li><b>VOLUME</b> — pravým knoflíkem měníš hlasitost MP3 přehrávače.</li>
+    </ul>
+    <button id="introHelpClose" type="button">ZAVRIT HELP</button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var stage=document.querySelector('.stage');
+var hud=document.getElementById('introMp3Hud');
+var counter=document.getElementById('introMp3Counter');
+var seekHud=document.getElementById('introMp3SeekHud');
+var volNeedle=document.getElementById('introVolNeedle');
+var volValue=document.getElementById('introVolValue');
+var volHot=document.getElementById('introVolHot');
+var mp3Now=document.getElementById('introMp3Now');
+var playlistOverlay=document.getElementById('introPlaylistOverlay');
+var playlistInfo=document.getElementById('introPlaylistInfo');
+var playlistItems=document.getElementById('introPlaylistItems');
+var introVolume=1.0, volHideTimer=null;
+var audio=null, audioUrl='', audioName='', counterTimer=null, seekTimer=null, pressTimers={};
+var playlist=[], playlistIndex=-1, incomingPlaylist=false, pendingPlaylist=[];
+function $(id){return document.getElementById(id);}
+function pad3(n){n=Math.max(0,Math.min(999,Math.floor(n||0))); return (n<10?'00':n<100?'0':'')+n;}
+function fmt(t){ if(!isFinite(t)||t<0)t=0; var m=Math.floor(t/60), s=Math.floor(t%60); return m+':'+(s<10?'0':'')+s; }
+function log(t){ try{console.log('[INTRO MP3] '+t);}catch(e){} }
+function showVol(){ if(stage){ stage.classList.add('volshow'); if(volHideTimer)clearTimeout(volHideTimer); volHideTimer=setTimeout(function(){stage.classList.remove('volshow');},1400);} }
+function applyVolume(v,announce){ introVolume=Math.max(0,Math.min(1,Number(v)||0)); if(audio) audio.volume=introVolume; if(volNeedle){ var deg=-130+(introVolume*260); volNeedle.style.transform='rotate('+deg+'deg)'; } if(volValue) volValue.textContent='VOL '+Math.round(introVolume*100)+'%'; if(announce){ showVol(); log('MP3 VOLUME '+Math.round(introVolume*100)+'% — hlasitost uvodniho kazetaku nastavena.'); } }
+function setVolumeFromEvent(e){ if(!volHot)return; var r=volHot.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2; var ang=Math.atan2((e.clientY||0)-cy,(e.clientX||0)-cx)*180/Math.PI; var deg=ang+90; if(deg<-180)deg+=360; if(deg>180)deg-=360; var v=(deg+135)/270; if(v<0||v>1){ var x=((e.clientX||0)-r.left)/Math.max(1,r.width); v=x; } applyVolume(v,true); }
+function setMode(mode){
+  if(!stage)return;
+  stage.classList.remove('mp3play','mp3ffwd','mp3rew');
+  if(mode) stage.classList.add(mode);
+  if(counter) counter.classList.toggle('run', !!mode);
+}
+function updateNow(){
+  if(mp3Now){
+    if(playlist.length>0 && playlistIndex>=0){
+      mp3Now.textContent='MP3 '+(playlistIndex+1)+'/'+playlist.length+': '+(audioName||'hudba.mp3');
+    } else {
+      mp3Now.textContent='MP3: PRIDAT';
+    }
+  }
+}
+function updatePlaylistUi(){
+  updateNow();
+  var total=playlist.length+(incomingPlaylist?pendingPlaylist.length:0);
+  if(playlistInfo){
+    if(incomingPlaylist){
+      playlistInfo.textContent='NACITAM MP3... prijato '+pendingPlaylist.length+' nova/nove. Uz v playlistu: '+playlist.length+'. Po dokonceni se skladby pripoji za konec.';
+    } else {
+      playlistInfo.textContent = playlist.length ? ('Vybrano '+playlist.length+' MP3. MP3 PRIDAT prida dalsi skladbu/skladby za konec. EJECT vymaze playlist.') : 'Playlist je prazdny. Stiskni MP3 PRIDAT a v Downloads vyber MP3. Kdyz NOX vezme jen jednu, stiskni MP3 PRIDAT znovu.';
+    }
+  }
+  if(!playlistItems) return;
+  playlistItems.innerHTML='';
+  if(!total){
+    var empty=document.createElement('div'); empty.textContent='Playlist je prazdny.'; empty.style.color='#8fd8ff'; empty.style.padding='8px 0'; playlistItems.appendChild(empty); return;
+  }
+  playlist.forEach(function(t,i){
+    var b=document.createElement('button'); b.type='button'; b.textContent=(i+1)+'. '+(t.name||'hudba.mp3');
+    if(i===playlistIndex) b.className='active';
+    b.addEventListener('click',function(){ setTrack(i,true); if(playlistOverlay){ playlistOverlay.classList.remove('open'); playlistOverlay.setAttribute('aria-hidden','true'); } });
+    playlistItems.appendChild(b);
+  });
+  if(incomingPlaylist){
+    pendingPlaylist.forEach(function(t,i){
+      var b=document.createElement('button'); b.type='button'; b.disabled=true; b.className='pending';
+      b.textContent='nacitam: '+(playlist.length+i+1)+'. '+(t.name||'hudba.mp3');
+      playlistItems.appendChild(b);
+    });
+  }
+}
+function showPlaylist(){ updatePlaylistUi(); if(playlistOverlay){ playlistOverlay.classList.add('open'); playlistOverlay.setAttribute('aria-hidden','false'); } }
+function updateCounter(){
+  var val=0;
+  if(audio && audio.src && isFinite(audio.duration) && audio.duration>0) val=Math.floor((audio.currentTime/audio.duration)*999);
+  if(counter) counter.textContent=pad3(val);
+  updateNow();
+}
+function startCounter(){ stopCounter(false); counterTimer=setInterval(updateCounter,250); updateCounter(); }
+function stopCounter(clearMode){ if(counterTimer){clearInterval(counterTimer); counterTimer=null;} if(clearMode) setMode(''); updateCounter(); }
+function press(id,ms){ var el=$(id); if(!el)return; el.classList.add('flash','down'); if(pressTimers[id])clearTimeout(pressTimers[id]); pressTimers[id]=setTimeout(function(){el.classList.remove('flash','down');},ms||280); }
+function showSeek(txt){ if(!seekHud)return; seekHud.textContent=txt; seekHud.classList.add('show'); if(seekTimer)clearTimeout(seekTimer); seekTimer=setTimeout(function(){seekHud.classList.remove('show');},900); }
+function trackInfo(){ return playlist.length>1 ? ' ['+(playlistIndex+1)+'/'+playlist.length+']' : ''; }
+function playLoaded(){
+  if(!audio || !audio.src){ pickMp3(); return; }
+  try{
+    var p=audio.play();
+    if(p&&p.catch)p.catch(function(e){log('MP3 PLAY: prohlizec nedovolil spusteni — '+e.message);});
+    setMode('mp3play'); startCounter(); log('MP3 PLAY — '+(audioName||'HUDBA')+trackInfo());
+  }catch(e){ log('MP3 PLAY chyba: '+e.message); }
+}
+function stopMp3(reason,reset){
+  try{ if(audio) audio.pause(); }catch(e){}
+  if(reset && audio && audio.src){ try{audio.currentTime=0;}catch(e){} }
+  setMode(''); stopCounter(false); updateCounter(); log((reason||'MP3 STOP')+' — hudba zastavena');
+}
+function pauseMp3(){ stopMp3('MP3 PAUSE', false); }
+function seekMp3(dir){
+  if(!audio || !audio.src){ log('MP3 '+(dir<0?'REWIND':'F.FWD')+': nejdriv stiskni PLAY a vyber MP3 z mobilu.'); showSeek(dir<0?'MP3 <<':'MP3 >>'); setMode(dir<0?'mp3rew':'mp3ffwd'); setTimeout(function(){setMode('');},650); return; }
+  if(!(isFinite(audio.duration)&&audio.duration>0)){ log('MP3 SEEK: cekam na delku souboru, zkus znovu za chvilku.'); return; }
+  var old=audio.currentTime||0, step=10, target=Math.max(0,Math.min(audio.duration,old+dir*step));
+  try{ audio.currentTime=target; }catch(e){ log('MP3 SEEK chyba: '+e.message); return; }
+  setMode(dir<0?'mp3rew':'mp3ffwd'); showSeek(dir<0?'MP3 REW <<':'MP3 F.FWD >>'); updateCounter();
+  var wasPlaying=!audio.paused;
+  setTimeout(function(){ if(wasPlaying){setMode('mp3play'); startCounter();} else {setMode(''); stopCounter(false);} },720);
+  log('MP3 '+(dir<0?'REWIND':'F.FWD')+': realny posun '+fmt(old)+' -> '+fmt(target));
+}
+function revokePlaylist(){
+  try{
+    var seen={};
+    playlist.forEach(function(t){ if(t&&t.url&&!seen[t.url]){ seen[t.url]=1; URL.revokeObjectURL(t.url); } });
+    if(audioUrl && !seen[audioUrl]) URL.revokeObjectURL(audioUrl);
+  }catch(e){}
+  playlist=[]; playlistIndex=-1; audioUrl=''; audioName='';
+}
+function createTrack(name,u8){
+  if(!/\.mp3$/i.test(name||'')) { log('MP3 PLAYER: vyber prosim jen MP3 soubor, ne '+(name||'neznamy soubor')+'.'); return null; }
+  var url=URL.createObjectURL(new Blob([u8],{type:'audio/mpeg'}));
+  return {name:name||'hudba.mp3', url:url};
+}
+function setTrack(index,autoplay){
+  if(index<0 || index>=playlist.length) return;
+  try{ if(audio) audio.pause(); }catch(e){}
+  playlistIndex=index;
+  var tr=playlist[playlistIndex];
+  audioName=tr.name||'hudba.mp3'; audioUrl=tr.url;
+  if(!audio) audio=new Audio();
+  audio.volume=introVolume;
+  audio.pause(); audio.src=audioUrl; audio.currentTime=0;
+  audio.onloadedmetadata=function(){updateCounter(); updatePlaylistUi(); log('MP3 nacteno — '+audioName+trackInfo()+' — delka '+fmt(audio.duration)+' — REW/F.FWD realne pretaci.');};
+  audio.onseeked=updateCounter;
+  audio.onended=function(){
+    setMode(''); stopCounter(false);
+    if(playlist.length>1 && playlistIndex<playlist.length-1){
+      log('MP3 dalsi skladba — '+(playlistIndex+2)+'/'+playlist.length);
+      setTrack(playlistIndex+1,true);
+    } else {
+      log('MP3 konec — '+audioName+trackInfo()+' — COUNTER '+(counter?counter.textContent:'000'));
+    }
+  };
+  updateCounter(); updatePlaylistUi();
+  if(autoplay) playLoaded();
+}
+function replacePlaylist(tracks){
+  stopMp3('MP3 RESET PRED NOVOU HUDBOU', true);
+  revokePlaylist();
+  playlist=tracks||[];
+  playlistIndex=-1;
+  log('MP3 playlist nahran — '+playlist.length+' skladba/skladeb.');
+  if(playlist.length>0) setTrack(0,true);
+  else {updateCounter(); updatePlaylistUi();}
+}
+function appendPlaylist(tracks){
+  tracks=tracks||[];
+  if(!tracks.length){ updatePlaylistUi(); return; }
+  var wasEmpty=playlist.length===0 || playlistIndex<0 || !audio || !audio.src;
+  var startCount=playlist.length;
+  tracks.forEach(function(t){ if(t) playlist.push(t); });
+  log('MP3 playlist: pripojeno '+tracks.length+' skladba/skladeb. Celkem '+playlist.length+'.');
+  if(playlistOverlay){ playlistOverlay.classList.add('open'); playlistOverlay.setAttribute('aria-hidden','false'); }
+  if(wasEmpty){ setTrack(startCount,true); }
+  else { updatePlaylistUi(); log('MP3 playlist: nove skladby cekaji za aktualni pisnickou.'); }
+}
+function ejectMp3(){
+  try{ if(audio){ audio.pause(); audio.removeAttribute('src'); audio.load(); } }catch(e){}
+  setMode(''); stopCounter(false); revokePlaylist(); updateCounter(); updatePlaylistUi();
+  log('MP3 EJECT: hudba/playlist vymazany. Dalsi PLAY otevre Downloads a muzes vybrat novou skladbu nebo vice skladeb.');
+}
+function loadBytes(name,u8){
+  try{
+    var tr=createTrack(name,u8);
+    if(!tr) return;
+    if(incomingPlaylist){ pendingPlaylist.push(tr); log('MP3 playlist: nacitam '+tr.name+' ('+pendingPlaylist.length+')'); updatePlaylistUi(); if(playlistOverlay){ playlistOverlay.classList.add('open'); playlistOverlay.setAttribute('aria-hidden','false'); } return; }
+    replacePlaylist([tr]);
+  }catch(e){ log('MP3 chyba: '+e.message); }
+}
+window.AHLOCAL_MP3_PLAYLIST_BEGIN=function(){
+  incomingPlaylist=true; pendingPlaylist=[];
+  log('MP3 playlist: prijimam skladby z Android pickeru. Stare skladby zustanou, nove se pripoji za konec.');
+  if(playlistOverlay){ playlistOverlay.classList.add('open'); playlistOverlay.setAttribute('aria-hidden','false'); }
+  updatePlaylistUi();
+};
+window.AHLOCAL_MP3_PLAYLIST_END=function(){
+  try{
+    var got=pendingPlaylist.slice(0);
+    incomingPlaylist=false;
+    pendingPlaylist=[];
+    if(got.length>0) appendPlaylist(got);
+    else { log('MP3 playlist: nic nevybrano.'); updatePlaylistUi(); }
+  }catch(e){ incomingPlaylist=false; pendingPlaylist=[]; log('MP3 playlist chyba — '+e.message); updatePlaylistUi(); }
+};
+window.AHLOCAL_AUDIO_BEGIN=function(name){ window.__introMp3Name=name||'hudba.mp3'; window.__introMp3Parts=[]; log('MP3: prijimam z Android pickeru — '+window.__introMp3Name); };
+window.AHLOCAL_AUDIO_PART=function(b64){ (window.__introMp3Parts||(window.__introMp3Parts=[])).push(b64); };
+window.AHLOCAL_AUDIO_END=function(){
+  try{ var bin=atob((window.__introMp3Parts||[]).join('')), u8=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i)&255; loadBytes(window.__introMp3Name||'hudba.mp3',u8); }
+  catch(e){ log('MP3 prijem selhal — '+e.message); }
+  window.__introMp3Parts=[];
+};
+function pickMp3(){
+  log('MP3 PRIDAT: oteviram Downloads. Vybrana MP3 se PRIDA do playlistu, EJECT maze playlist.');
+  try{ if(window.AHPICK && window.AHPICK.pickMp3){ window.AHPICK.pickMp3(); return; } }catch(e){}
+  try{ if(window.AHPICK && window.AHPICK.pickAudio){ window.AHPICK.pickAudio(); return; } }catch(e){}
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='.mp3,audio/mpeg,audio/mp3'; inp.multiple=true; inp.style.display='none'; document.body.appendChild(inp);
+  inp.onchange=function(){
+    var files=Array.prototype.slice.call((inp.files||[])); inp.remove();
+    if(!files.length){log('MP3: soubor nevybran.'); return;}
+    incomingPlaylist=true; pendingPlaylist=[]; updatePlaylistUi(); if(playlistOverlay){ playlistOverlay.classList.add('open'); playlistOverlay.setAttribute('aria-hidden','false'); }
+    function readNext(i){
+      if(i>=files.length){ window.AHLOCAL_MP3_PLAYLIST_END(); return; }
+      var f=files[i]; var rd=new FileReader();
+      rd.onload=function(){ loadBytes(f.name,new Uint8Array(rd.result)); readNext(i+1); };
+      rd.onerror=function(){ log('MP3: cteni souboru selhalo — '+f.name); readNext(i+1); };
+      rd.readAsArrayBuffer(f);
+    }
+    readNext(0);
+  };
+  inp.click();
+}
+function bind(id,fn){
+  var el=$(id); if(!el)return; var moved=false,last=0;
+  el.addEventListener('pointerdown',function(){moved=false;},{passive:true});
+  el.addEventListener('pointermove',function(){moved=true;},{passive:true});
+  el.addEventListener('pointerup',function(e){
+    e.preventDefault(); e.stopPropagation();
+    if(moved) return; last=Date.now(); fn();
+  },{passive:false});
+  el.addEventListener('click',function(e){
+    e.preventDefault(); e.stopPropagation();
+    if(Date.now()-last<450) return; last=Date.now(); fn();
+  },true);
+}
+bind('introTapePlay',function(){press('introTapePlay',520); playLoaded(); });
+bind('introTapeStop',function(){press('introTapeStop',620); stopMp3('MP3 STOP', true); log('MP3 STOP: zastaveno a vraceno na zacatek. Zmackni PLAY a hudba se znovu rozjede.');});
+bind('introTapePause',function(){press('introTapePause',620); pauseMp3(); log('MP3 PAUSE: zastaveno na aktualni pozici. Zmackni PLAY a pokracuje.');});
+bind('introTapeEject',function(){press('introTapeEject',760); ejectMp3();});
+bind('introTapeRew',function(){press('introTapeRew',650); seekMp3(-1);});
+bind('introTapeFwd',function(){press('introTapeFwd',650); seekMp3(1);});
+bind('introMp3DownloadBtn',function(){press('introMp3DownloadBtn',260); pickMp3();});
+bind('introMp3ListBtn',function(){press('introMp3ListBtn',260); showPlaylist();});
+var plDown=$('introPlaylistDownload'), plEject=$('introPlaylistEject'), plClose=$('introPlaylistClose');
+if(plDown) plDown.addEventListener('click',function(){ pickMp3(); },true);
+if(plEject) plEject.addEventListener('click',function(){ ejectMp3(); updatePlaylistUi(); },true);
+if(plClose && playlistOverlay) plClose.addEventListener('click',function(){ playlistOverlay.classList.remove('open'); playlistOverlay.setAttribute('aria-hidden','true'); },true);
+if(volHot){
+  var volDragging=false;
+  volHot.addEventListener('pointerdown',function(e){e.preventDefault(); e.stopPropagation(); volDragging=true; volHot.classList.add('flash'); setVolumeFromEvent(e); try{volHot.setPointerCapture(e.pointerId);}catch(_){}} ,{passive:false});
+  volHot.addEventListener('pointermove',function(e){ if(!volDragging)return; e.preventDefault(); e.stopPropagation(); setVolumeFromEvent(e); },{passive:false});
+  volHot.addEventListener('pointerup',function(e){ e.preventDefault(); e.stopPropagation(); volDragging=false; volHot.classList.remove('flash'); setVolumeFromEvent(e); try{volHot.releasePointerCapture(e.pointerId);}catch(_){}} ,{passive:false});
+  volHot.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); setVolumeFromEvent(e); },true);
+}
+applyVolume(1.0,false); updatePlaylistUi();
+var introHelpBtn=$('introHelpBtn'), introHelpOverlay=$('introHelpOverlay'), introHelpClose=$('introHelpClose');
+if(introHelpBtn && introHelpOverlay){ bind('introHelpBtn', function(){ press('introHelpBtn',220); introHelpOverlay.classList.add('open'); introHelpOverlay.setAttribute('aria-hidden','false'); }); }
+if(introHelpClose && introHelpOverlay){ introHelpClose.addEventListener('click', function(){ introHelpOverlay.classList.remove('open'); introHelpOverlay.setAttribute('aria-hidden','true'); }); }
+log('BUILD2AQ: MP3 PRIDAT nyni nacita/pripojuje skladby do playlistu; EJECT maze playlist.');
+})();
+</script>
+</body>
+</html>
