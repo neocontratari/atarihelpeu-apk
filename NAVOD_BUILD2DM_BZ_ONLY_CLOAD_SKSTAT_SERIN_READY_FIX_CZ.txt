@@ -1,0 +1,27 @@
+ATARIHELP.EU EMU-10 BUILD2DM_BZ_ONLY_CLOAD_SKSTAT_SERIN_READY_FIX
+
+ZAKLAD:
+- vychazi z BUILD2DL / cisteho BUILD2BZ/BY golden
+- export CSAVE WAV z BUILD2DL ponechan, protoze WAV ted nacita Altirra i realne Atari
+- UI, klavesy, hitboxy, TXT, joystick, scroll a CSAVE export se nemenily
+
+OPRAVA:
+- oprava je jen v emulaci POKEY/SKSTAT pri CLOAD uvnitr aplikace
+- SKSTAT bit1 je ted LOW i ve chvili, kdy je SERIN byte hotovy a ceka na precteni ROM
+- cil: ROM po 128B recordu uvidi cekajici checksum byte ($A8) a precte ho, misto aby CLOAD spadl na ERROR 138
+
+KODY JSOU STEJNE.
+
+TEST:
+1) Rozbal overlay do repozitare a buildni APK.
+2) V emulatoru vloz BASIC TXT jako predtim.
+3) Nech probehnout CSAVE a ulozeni WAV/CAS.
+4) Hned testuj LAST CSAVE/CLOAD v aplikaci.
+
+CO POSLAT ZPET PRI CHYBE:
+- log od radku "CLOAD LEADER+SERIN" az po ERROR/READY
+- hlavne radky "SERIN byte $A8 drzim" nebo "SERIN predano 128/526"
+
+OCEKAVANI:
+- exportovany WAV zustava nacitatelny v Altirre i realnem Atari
+- v aplikaci by se CLOAD mel dostat pres hranici prvniho 128B recordu

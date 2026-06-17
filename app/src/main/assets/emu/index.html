@@ -865,8 +865,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
         // BUILD2BR: SKSTAT bit4 je kazetovy/serial input DATA line. Atari OS CLOAD ho opravdu cte na $ED44.
         // Leader/data zde nejsou hotove bajty, ale hrany virtualni pasky 3995/5327 Hz.
         if((sio.cassTone || sio.cassPcm) && sio.cassMotor){ if(sio.cassInLevel) v|=0x10; else v&=~0x10; }
-        // SKSTAT bit1 = serial shift register busy pro disk/SIO SERIN cestu, ne pro kazetovy bitstream.
-        if(pokey.inShiftBusy>0) v&=~0x02;
+        // BUILD2DM: realnejsi POKEY SKSTAT bit1.
+        // Bit1 musi zustat LOW nejen pri posunu, ale i kdyz uz SERIN byte ceka neprecteny.
+        // Jinak ROM po 128B rekordu nevidi pripraveny checksum ($A8) a CLOAD spadne na ERROR 138.
+        if(pokey.inShiftBusy>0 || !pokey.serinRead) v&=~0x02;
         return v; }
       return 0xFF;
     }
@@ -3299,8 +3301,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2DL_BZ_ONLY_WAV_EXPORT_RECORD_IRG_FIX pripraven.');
-    log('BUILD2DL: zaklad je cisty BUILD2BZ/BY golden. Menim POUZE export CSAVE WAV: pridany inter-record gap mezi 132B kazetovymi recordy po ERROR 143. UI/zvuky klaves/hitboxy/CLOAD workflow NEMENENY. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2DM_BZ_ONLY_CLOAD_SKSTAT_SERIN_READY_FIX pripraven.');
+    log('BUILD2DM: zaklad je BUILD2DL/BZ golden. Export WAV z DL ponechan, protoze ho nacte Altirra i realne Atari. Menim jen POKEY/SKSTAT CLOAD v apce: SKSTAT bit1 zustava LOW i pro neprecteny SERIN byte, aby ROM precetla checksum po 128B recordu misto ERROR 138. UI/zvuky klaves/hitboxy/TXT NEMENENY. KODY JSOU STEJNE.');
     log('BUILD2BR: TXT ramecek umi Ctrl+V + po VLOZIT uvolni focus a obnovi posouvani stranky v NOXu. OSK vrstva uz neblokuje scroll mimo klavesy. CLOAD cesta zustava po BO, bez RAM injectu.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
