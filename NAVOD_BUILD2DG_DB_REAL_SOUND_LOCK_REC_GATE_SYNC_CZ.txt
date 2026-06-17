@@ -1,0 +1,63 @@
+AtariHelp.eu EMU-10 BUILD2DG_DB_REAL_SOUND_LOCK_REC_GATE_SYNC
+===============================================================
+
+ZAKLAD:
+- Vychazi z BUILD2DB_AUDIO_AUDIT_SINGLE_PATH_NO_DOUBLE_MIX, protoze tam byl nejblizsi realny zvuk klaves/CSAVE/CLOAD.
+- Nevracim puvodni fake zvuk.
+- BUILD2BZ/BY golden UI zachovano.
+- TXT / joystick / scroll / focus NEMENENO.
+- KODY JSOU STEJNE.
+
+CO JE OPRAVENO:
+1) KLAVESY / GTIA $D01F
+- DB tuknuti klaves zustava.
+- UI keyclick bokem zustava vypnuty.
+- Zmenseno zpozdeni audio masteru.
+- Trvaly DC stav GTIA speakeru uz nedrzi podzvuk/ruch po klavese; zustava jen kratke realne tuknuti z ROM/$D01F.
+
+2) CSAVE NESMI NAHRAVAT NESMYSLY
+- AUTO REC z nahodneho SEROUT $55 je vypnuty.
+- Nahravani se spusti jen po rucnim RECORD/CSAVE ARM a jen kdyz je C: motor ON.
+- Pokud prijde SEROUT bez motoru nebo bez sync $55, build ho loguje jako ignorovany a neulozi fake soubor.
+- Tim se resi pripad: po klavesach / dvou RETURN se nesmi samo vytvorit nesmyslny CSAVE.
+
+3) CSAVE CASOVANI / READY PRED ZVUKEM
+- POKEY SEROUT pro kazetu je zpomalen na cca 600 baud, ne CPU-rychly vystup.
+- Cilem je, aby BASIC/ROM nevracel READY davno pred dohranim zvuku.
+
+4) CLOAD / LAST CSAVE
+- CLOAD/LAST CSAVE pouziva DB zvukovy smer, ale s plnym 12s slyšitelnym pilotem.
+- HTML Audio se pro vlastni LAST CSAVE nepousti soucasne.
+- Sync $55 bajty zustavaji ve zvuku, ale do SERIN payloadu nejdou jako prvni BASIC data.
+- U standardnich 132B Atari recordu se pro SERIN preskakuje 2x$55 na zacatku kazdeho recordu.
+
+CO TESTOVAT:
+A) ZVUK KLAVES
+1. POWER -> BASIC READY.
+2. Stiskni par klaves rucne.
+SPRAVNE: typicke DB/Atari tuknuti zustane, ale nebude dlouhy podzvuk/ruch.
+LOG: GTIA SPEAKER BUILD2DG...
+
+B) NESMYSLNE CSAVE
+1. Po READY neklikej RECORD.
+2. Stiskni nekolik klaves a 2x RETURN.
+SPRAVNE: nesmi se spustit CSAVE AUTO REC, nesmi vzniknout CAS/WAV.
+LOG NESMI obsahovat: CSAVE AUTO REC
+
+C) NORMALNI CSAVE
+1. Stiskni RECORD CSAVE.
+2. V BASICu spust CSAVE / SAVE "C:" podle obvykleho testu.
+SPRAVNE: zachyt zacne az realnym C: motorem a sync $55.
+LOG: CSAVE CAPTURE: prvni realny bajt ... $55
+SPRAVNE: READY by nemelo naskocit vyrazne pred dohranim kazetoveho zvuku.
+
+D) CLOAD / LAST CSAVE
+1. Vloz posledni ulozeny WAV / LAST CSAVE.
+2. Spust CLOAD a PLAY.
+SPRAVNE: slyset plny pilot, ne ticho.
+LOG: CLOAD RAW CYCLE BUILD2DG ... plny 12s pilot
+LOG: CLOAD POKEY RX BUILD2DG: prvni bajt do SERIN = $FC (ne $55) u standardniho 132B recordu.
+
+CO POSLAT PRI CHYBE:
+- Posli log od radku "AtariHelp.eu EMU-10 BUILD2DG..." az po chybu / READY / ERROR.
+- U zvuku napis kratce: klavesy ruch ano/ne, CSAVE dohrava po READY ano/ne, CLOAD pilot slyset ano/ne.
