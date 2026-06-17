@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2DI</title>
+<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2AP</title>
 <style>
 :root{--gold:#f3c465;--blue:#6cc9ff;--dark:#060709;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -85,9 +85,9 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 
 @media (prefers-reduced-motion:reduce){.crt-sweep:before,.crt-sweep:after,.led-blue,.eq i,.reelglow,.introMp3Reel,#introMp3Counter.run,#introMp3SeekHud.show{animation:none}}
 /* 6 velkych tlacitek presne na navrhu */
-#goGames{left:7.3%;top:75.5%;width:31.5%;height:7.25%;z-index:40;}#goTape{left:40.1%;top:75.5%;width:31.5%;height:7.25%;z-index:45;}#goAsm{left:72.8%;top:75.5%;width:20.0%;height:7.25%;z-index:40;}
+#goGames{left:7.3%;top:75.5%;width:31.5%;height:7.25%;}#goTape{left:40.1%;top:75.5%;width:31.5%;height:7.25%;}#goAsm{left:72.8%;top:75.5%;width:20.0%;height:7.25%;}
 #goSettings{left:7.3%;top:84.6%;width:31.5%;height:7.25%;}#goSystem{left:40.1%;top:84.6%;width:31.5%;height:7.25%;}#goDocs{left:72.8%;top:84.6%;width:20.0%;height:7.25%;}
-#playEmu{left:31.0%;top:66.3%;width:13.0%;height:4.3%;border-radius:8px;z-index:45;}#tapeTransport{left:22.0%;top:64.2%;width:54.8%;height:8.6%;z-index:8;pointer-events:none;}
+#playEmu{left:31.0%;top:66.3%;width:13.0%;height:4.3%;border-radius:8px;}#tapeTransport{left:22.0%;top:64.2%;width:54.8%;height:8.6%;}
 #introTapeEject{left:9.8%;top:59.4%;width:9.4%;height:8.6%;border-radius:7px;}
 #introTapeRew{left:23.0%;top:65.70%;width:10.9%;height:4.55%;}
 #introTapePlay{left:34.2%;top:65.70%;width:10.9%;height:4.55%;}
@@ -95,7 +95,11 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 #introTapeFwd{left:56.6%;top:65.70%;width:10.9%;height:4.55%;}
 #introTapePause{left:67.8%;top:65.70%;width:10.9%;height:4.55%;}
 
-/* BUILD2DI: EMULATOR hitbox ma vyssi z-index a tapeTransport je pointer-events:none, aby ho nic neprekrylo. */
+/* BUILD2AE: EMULATOR tile je zapeceny primo v PNG skinu, zadny CSS prekryv se uz neposouva. */
+
+/* BUILD2DJ: hlavni menu pouziva PNG grafiku jako jediny obraz. Odkazy jsou jen neviditelne hitboxy, zadna druha kreslena vrstva pres EMULATOR/GAMES/SYSTEM. */
+#goGames,#goTape,#goAsm,#goSettings,#goSystem,#goDocs,#goGames:active,#goTape:active,#goAsm:active,#goSettings:active,#goSystem:active,#goDocs:active,#goGames.flash,#goTape.flash,#goAsm.flash,#goSettings.flash,#goSystem.flash,#goDocs.flash{background:transparent!important;box-shadow:none!important;color:transparent!important;text-shadow:none!important;border:0!important;outline:0!important;transform:none!important;}
+#playEmu,#tapeTransport{display:none!important;pointer-events:none!important;background:transparent!important;box-shadow:none!important;border:0!important;color:transparent!important;}
 
 </style>
 </head>
