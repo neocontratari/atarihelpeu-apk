@@ -1,0 +1,21 @@
+BUILD2EE - skutecna zmena kodu proti BUILD2ED
+
+KODY JSOU STEJNE.
+
+Zmenen pouze:
+app/src/main/assets/emu/index.html
+
+Hlavni zmeny v kodu:
+1) armCsave() pri startu CSAVE vytvori captureCycleArray a captureCycleBase.
+2) captureCsaveByte(v) uklada ke kazdemu SEROUT bajtu relativni CPU cyklus M.cpu.cycles.
+3) stopCsaveIfNeeded() ulozi lastCsaveCycles vedle lastCsaveRaw.
+4) makeCasMonitorWav() je prepsany:
+   - uz neni 132B record-aware generator s umelymi IRG pauzami,
+   - generuje 48 kHz / 600 baud FSK podle SEROUT timeline,
+   - mezery mezi bajty bere z realnych rozestupu CPU cyklu,
+   - kdyz timeline neni dostupna, spadne na kontinuální 600 baud fallback.
+5) Log SAVE WAV BUILD2EE vypisuje timelineAware, lead55, goodDelta, badDelta.
+
+Cil:
+Delsi BASIC/CSAVE nesmi byt rozhozeny umelym rezanim po 132 B.
+Realny 130XE test rozhodne, jestli je WAV pouzitelny.
