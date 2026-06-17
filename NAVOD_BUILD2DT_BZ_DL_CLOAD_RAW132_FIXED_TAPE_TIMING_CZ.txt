@@ -1,0 +1,23 @@
+ATARIHELP.EU EMU-10 BUILD2DT_BZ_DL_CLOAD_RAW132_FIXED_TAPE_TIMING
+
+ZAKLAD: BUILD2DL / BUILD2BZ-BY golden.
+KODY JSOU STEJNE.
+
+Co se meni:
+- WAV export z BUILD2DL zustava beze zmeny, protoze ho nacetla Altirra i realne Atari.
+- Zahazuje se smer DS/DR pro interni CLOAD v apce.
+- LAST CSAVE/CLOAD v apce pouziva raw 132B cassette stream: 528 B = 4x132B vcetne $55 markeru, control, 128 dat, checksum.
+- Data zacinaji jako na realne pasce po pevnem 12s leaderu; prvni $55 do SERIN prijde az po ~16,7 ms (600 baud byte cas), ne hned po leaderu.
+- UI, klavesy, TXT, joystick, scroll, hitboxy zustavaji bez zmen.
+
+Test:
+1) POWER do BASICu.
+2) BASIC TXT vlozit kratky test + RUN, jako predtim.
+3) CSAVE, 2x RETURN, pockat na ulozeni WAV/CAS.
+4) LAST CSAVE/CLOAD v apce.
+
+Log hledej:
+AtariHelp.eu EMU-10 BUILD2DT_BZ_DL_CLOAD_RAW132_FIXED_TAPE_TIMING pripraven.
+CLOAD RAW132 BUILD2DT: pripraveno 528 B = 4x132
+CLOAD RAW132 START BUILD2DT
+CLOAD SERIN ARM RAW132 BUILD2DT
