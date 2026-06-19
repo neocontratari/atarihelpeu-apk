@@ -1473,16 +1473,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }else if(pokey.serinRead){
         if(q.waitMotor && sio.cassMotor && sio.cassPausedLogged){ sio.cassPausedLogged=false; if(M.cassDebug) M.cassDebug('MOTOR_OK_LEADER',{lead:q.d,kind:sio.cassKind}); }
         q.d--;
-        // BUILD2ER: po prvnim bajtu kazetoveho recordu uz NESMI byte stream cekat na PC/timer gate.
-        // Predchozi BUILD2EQ se kolem 128/130 B zasekl: OS uz cekal na dalsi bajt/checksum,
-        // ale hack cassetteSerialCanFeed() ho blokoval podle PC/timeru a BASIC skoncil ERROR 138.
-        // Realny POKEY prijima bajty v case nezavisle na tom, kde zrovna bezi 6502; zastavi se jen motor OFF.
-        const erRecordByteStream = !!(q.recSerin && q.cassette && sio.cassMotor && sio.cassDelivered>0);
-        if(q.cassette && q.d<=0 && !erRecordByteStream && !cassetteSerialCanFeed()){
+        if(q.cassette && q.d<=0 && !cassetteSerialCanFeed()){
           q.d=1;
           if(M.cassDebug && (M.frame-sio.cassReadyWaitLastFrame)>=25){
             sio.cassReadyWaitLastFrame=M.frame;
-            M.cassDebug('WAIT_SERIN_READY',{timer:ram[0x022A]&0xFF,pc:cpu.pc,irqen:pokey.irqen,pokmsk:ram[0x0232]&255,irqst:(~pokeyStatus())&0xFF,iff:cpu.if_,kind:sio.cassKind,erRecordByteStream:erRecordByteStream?1:0});
+            M.cassDebug('WAIT_SERIN_READY',{timer:ram[0x022A]&0xFF,pc:cpu.pc,irqen:pokey.irqen,pokmsk:ram[0x0232]&255,irqst:(~pokeyStatus())&0xFF,iff:cpu.if_,kind:sio.cassKind});
           }
         }else if(q.d<=0){
           pokey.serin=q.b; sio.rxPos++; sio.cassDelivered += q.cassette?1:0;
@@ -1492,7 +1487,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
             sio.rxq.length=0; sio.rxPos=0;
             if(wasRec && sio.cassRecord){
               sio.cassRecord.pendingNext=true;
-              if(M.cassDebug) M.cassDebug('RECORD_SERIN_BLOCK_SENT',{record:sio.cassRecord.idx+1,records:sio.cassRecord.records.length,count:delivered,queued:queued,kind:kind, timingFix:'BUILD2ER'});
+              if(M.cassDebug) M.cassDebug('RECORD_SERIN_BLOCK_SENT',{record:sio.cassRecord.idx+1,records:sio.cassRecord.records.length,count:delivered,queued:queued,kind:kind});
             }else if(wasCass){
               /* COMPLETE az po poslednim SERIN read/IRQ by bylo idealni; zatim lognu po vlozeni posledniho bytu do posuvneho registru */
               resetCassetteQueueStats(); if(M.cassDebug) M.cassDebug('COMPLETE',{count:delivered,queued:queued,kind:kind});
@@ -2750,7 +2745,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
 
   function tryQueueWavCloadFirstPass(){
     if(!cassStage || cassStage.loadedKind!=='WAV' || !cassStage.loadedBytes) return 0;
-    if(cassStage.cloadQueueArmed){ log('BUILD2ER CLOAD: CLOAD fronta uz je pripravena, nepoustim druhou paralelni cestu ani druhy dekoder.'); return 0; }
+    if(cassStage.cloadQueueArmed){ log('BUILD2EQ CLOAD: CLOAD fronta uz je pripravena, nepoustim druhou paralelni cestu ani druhy dekoder.'); return 0; }
     if(!M || (!M.queueCassetteRecordSerin && !M.queueCassetteSerial && !M.queueCassettePcmLevels)){ log('WAV CLOAD: emulator/jadro nema kazetovy vstup.'); return 0; }
     var wavName=(cassStage.loadedName||tapeAudioName||'');
     var wavSize=(cassStage.loadedBytes&&cassStage.loadedBytes.length)||0;
@@ -2797,9 +2792,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       var lead=(ownShort?187200:187200); // 12 s prvni leader; dalsi recordy ma BUILD2EQ vlastni mezery/adaptive leader
       if(M.queueCassetteRecordSerin){
-        var n=M.queueCassetteRecordSerin(d.bytes,260,lead,'BUILD2ER RECORD_AWARE_SERIN_TIMING');
+        var n=M.queueCassetteRecordSerin(d.bytes,260,lead,'BUILD2EQ RECORD_AWARE_SERIN');
         cassStage.cloadQueueArmed=true;
-        log('WAV CLOAD BUILD2ER: pripravuji '+n+' B jako record-aware CLOAD: kazdy 132B record jde samostatne, $55 $55 slouzi pro leader/sync a do SERIN jde control+data+checksum. Zadny RAM inject, WAV export zustava stejny.');
+        log('WAV CLOAD BUILD2EQ: pripravuji '+n+' B jako record-aware CLOAD: kazdy 132B record jde samostatne, $55 $55 slouzi pro leader/sync a do SERIN jde control+data+checksum. Zadny RAM inject, WAV export zustava stejny.');
         cassSetStatus('BUILD2EQ CLOAD record-aware | '+n+' B');
         return n;
       }
@@ -3262,7 +3257,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         if(tapeAudioSeekable() && tapeAudio.currentTime>=tapeAudio.duration-0.08) tapeAudio.currentTime=0;
         tapeVisualStart('PLAY',1,true);
         var pr=tapeAudio.play();
-        if(pr&&pr.then) pr.then(function(){ log('KAZETA PLAY BUILD2ER: spoustim slyšitelny WAV/CAS audio monitor '+(tapeAudioName||'audio')+' od '+fmtTime(tapeAudio.currentTime)+'. CLOAD data cesta je jen jedna: record-aware POKEY SERIN timing-fix, zadna druha paralelni fronta.'); }).catch(function(e){ tapeVisualStop(); log('KAZETA PLAY: audio se nerozjelo - '+e.message); });
+        if(pr&&pr.then) pr.then(function(){ log('KAZETA PLAY BUILD2EQ: spoustim slyšitelny WAV/CAS audio monitor '+(tapeAudioName||'audio')+' od '+fmtTime(tapeAudio.currentTime)+'. CLOAD data cesta je jen jedna: record-aware POKEY SERIN, zadna druha paralelni fronta.'); }).catch(function(e){ tapeVisualStop(); log('KAZETA PLAY: audio se nerozjelo - '+e.message); });
         else log('KAZETA PLAY: spoustim / pokracuji audio '+(tapeAudioName||'audio')+'.');
         cassSetStatus((cassStage.loadedKind||'KAZETA')+' PLAY | '+(cassStage.loadedName||tapeAudioName));
       }catch(e){ tapeVisualStop(); log('KAZETA PLAY chyba: '+e.message); }
@@ -3464,9 +3459,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2ER_RECORD_SERIN_TIMING_FIX pripraven.');
-    log('BUILD2EJ: zaklad BUILD2BZ/BY golden, XEX/CSAVE/TXT/UI zachovano. Menim jen mechaniku XC12: po CSAVE se posledni WAV automaticky vlozi jako kazeta, PLAY prehrava slyšitelny WAV a CLOAD se pousti z vlozene kazety. KODY JSOU STEJNE.');
-    log('BUILD2ER: WAV export NEOPRAVUJU, protoze funguje v Altirre i na realnem Atari 130XE. Oprava je jen EMU CLOAD prijem: po prvnim prijatem bajtu recordu uz dalsi bajty tecou pevnym 600baud casovanim a necekaji na spatny PC/timer gate.');
+    log('AtariHelp.eu EMU-10 BUILD2EQ_RECORD_SERIN_CLOAD_CLEAN pripraven.');
+    log('BUILD2EQ: zaklad je posledni funkcni APK/BUILD2EJ. CSAVE WAV export, XEX, UI, klavesnice a ROM zachovano. Menim jen CLOAD prijem: record-aware POKEY SERIN po 132B recordech. KODY JSOU STEJNE.');
+    log('BUILD2EQ: WAV export NEOPRAVUJU, protoze funguje v Altirre i na realnem Atari 130XE. Oprava je jen EMU CLOAD prijem: zadne EP no-skip, zadny EO clean-FSK fallback, zadna dvojita CLOAD fronta.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
