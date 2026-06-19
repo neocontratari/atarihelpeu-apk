@@ -1,0 +1,29 @@
+NAVOD PRO GITHUB DESKTOP - BUILD2EY CLOAD RECORD LEADER
+
+1. Rozbal ZIP overlay.
+2. V Total Commanderu otevri rozbalenou slozku.
+3. Slozku app z overlaye zkopiruj do korene repozitare atarihelpeu-apk.
+   Potvrd prepsani souboru.
+4. V GitHub Desktopu musi byt videt zmena:
+   app/src/main/assets/emu/index.html
+5. Commit message:
+   BUILD2EY CLOAD record leader fix
+6. Klikni Commit to main.
+7. Klikni Push origin.
+8. Pockej na GitHub Actions a stahni nove APK.
+
+KONTROLA PO INSTALACI
+---------------------
+V logu po startu musi byt:
+AtariHelp.eu EMU-10 BUILD2EY_CLOAD_RECORD_LEADER_FIX pripraven.
+
+KONTROLA PRI CLOAD
+------------------
+Po CLOAD musi log ukazat:
+CLOAD LEADER+SERIN BUILD2EY
+CLOAD SERIN ARM BUILD2EY
+CLOAD RECORD LEADER START BUILD2EY
+CLOAD RECORD LEADER DONE BUILD2EY
+
+Kdyz tam porad vidis BUILD2EX, neni v telefonu nova APK nebo nebyl pushnuty spravny overlay.
+

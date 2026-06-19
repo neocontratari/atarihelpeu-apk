@@ -1,0 +1,59 @@
+AtariHelp EMU-10 BUILD2EY_CLOAD_RECORD_LEADER_FIX
+Datum: 2026-06-19
+
+CO BYLO V LOGU SPATNE
+---------------------
+BUILD2EX uz dokazal dekodovat vlastni CSAVE WAV a poslal prvni data pres POKEY SERIN.
+Selhani nebylo v TXT ani v BASIC editoru.
+
+Kriticke misto z logu:
+- WAV CLOAD DECODE: ANO, dekodovano 2904 B.
+- CLOAD SERIN ARM BUILD2EX: pripraveno 2902 B.
+- CLOAD SERIAL: prvni bajt $FC.
+- CLOAD SERIAL: SERIN predano 64/2902 B.
+- CLOAD SERIAL: SERIN predano 128/2902 B.
+- potom PC dlouho lital v OS detektoru $ED3D/$ED44/$ED48/$ED4C/$ED4F.
+- motor vypnul a BASIC skoncil ERROR 138.
+
+ZAVER:
+Po prvnim 132B cassette recordu Atari OS necekal obycejnou mezeru.
+Vratil se do cassette leader/sync detektoru a cekal novou vodici stopu.
+BUILD2EX daval jen casovou mezeru, proto dalsi record nikdy nebyl korektne prijat.
+
+CO MENI BUILD2EY
+----------------
+1. Mezi 132B cassette recordy uz neni jen 300ms pauza.
+2. Pred kazdym dalsim recordem se zapne novy virtualni SKSTAT leader.
+3. Teprve po dokonceni OS leader detekce jde dalsi record pres POKEY SERIN.
+4. Overlap leader-ready adresy $ED96 je opraven tak, aby se OS nezasekl mezi detektorem a serial read fazi.
+5. Pridane logy:
+   - CLOAD LEADER+SERIN BUILD2EY
+   - CLOAD SERIN ARM BUILD2EY
+   - CLOAD RECORD LEADER START BUILD2EY
+   - CLOAD RECORD LEADER WAIT BUILD2EY
+   - CLOAD RECORD LEADER DONE BUILD2EY
+
+CO TO NENI
+----------
+Neni to screen paint.
+Neni to fake READY.
+Neni to OS-buffer zapis.
+Neni to RAM inject.
+Neni to herni hack.
+
+OCEKAVANY LOG PO OPRAVE
+-----------------------
+AtariHelp.eu EMU-10 BUILD2EY_CLOAD_RECORD_LEADER_FIX pripraven.
+CLOAD LEADER+SERIN BUILD2EY: ...
+CLOAD SERIN ARM BUILD2EY: ...
+CLOAD SERIAL BUILD2BR: SERIN predano 128/...
+CLOAD RECORD LEADER START BUILD2EY: record 2 ...
+CLOAD RECORD LEADER DONE BUILD2EY: record 2 ...
+CLOAD SERIAL BUILD2BR: SERIN predano 192/... nebo 256/...
+
+KDYZ TO PORAD HODI ERROR 138
+----------------------------
+Posli pouze ulozeny log.
+Nejdulezitejsi je, jestli se po 128 B objevi RECORD_LEADER_START/DONE.
+Pokud ano a presto je ERROR 138, dalsi chyba bude uz ve validaci record checksum/control byte, ne v chybejicim leaderu.
+
