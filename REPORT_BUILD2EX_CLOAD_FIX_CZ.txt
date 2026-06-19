@@ -1,0 +1,44 @@
+AtariHelp EMU-10 BUILD2EX_CLOAD_SERIN_RECORD_GAP_FIX
+=====================================================
+
+Co byla chyba
+-------------
+CSAVE/WAV export podle handoffu a prilozenych dukazu neni hlavni problem.
+WAV/CAS pary z baliku davaji shodna kazetova data: 2904 B = 22 Atari cassette recordu po 132 B.
+
+Selhavala prijimaci cesta CLOAD v emulatoru:
+- pozdejsi buildy zkusily OS-buffer servis, ktery zapisoval data mimo cisty POKEY prijem;
+- po 1.-2. recordu se emulator dostal mimo CLOAD ROM read smycku a dalsi record se ztratil;
+- mezi 132B recordy chybela spolehliva kazetova mezera/IRG;
+- posledni SERIN fronta se mohla uklidit driv, nez si OS precetl posledni byte;
+- WAV decoder mel prilis kratke hledani leaderu pro 12s CSAVE WAV.
+
+Co je opraveno
+--------------
+Soubor:
+app/src/main/assets/emu/index.html
+
+Zmeny:
+- CLOAD jde pres POKEY SERIN, ne pres OS-buffer a ne pres RAM inject.
+- Vlastni CSAVE WAV/CAS dostane 12s leader jako realny export.
+- 132B Atari cassette recordy maji mezi bloky 300 ms mezeru.
+- Dalsi byte se nepusti, pokud CPU neni v ROM C: read casti.
+- Posledni SERIN byte se uklidi az po cteni SERIN.
+- WAV decoder pri nizsi duvere rozsiruje hledani leaderu az do 24 s.
+
+Co jsem nemenil
+---------------
+- CSAVE WAV export zustava zachovany.
+- BASIC/TXT/klavesnice/reset/UI jsem zamerne neprekopaval.
+- Neni tu screen paint, fake READY, fake LOAD, RAM inject ani primy zapis BASIC programu.
+
+Jak poznat spravny build
+------------------------
+Po startu aplikace musi byt v logu:
+AtariHelp.eu EMU-10 BUILD2EX_CLOAD_SERIN_RECORD_GAP_FIX pripraven.
+
+Pri CLOAD musi log ukazat:
+CLOAD LEADER+SERIN BUILD2EX
+CLOAD SERIN ARM BUILD2EX
+
+Kdyz tyto radky v logu nejsou, nebudes testovat tento overlay.

@@ -1,0 +1,42 @@
+NAVOD: jak vlozit BUILD2EX overlay pres GitHub Desktop
+======================================================
+
+1. V GitHub Desktop otevri repo AtariHelp / atarihelpeu-apk.
+
+2. Dej Repository -> Show in Explorer.
+   Otevre se slozka repozitare. To je cilovy koren.
+
+3. Rozbal tento ZIP.
+
+4. Z rozbaleneho overlaye zkopiruj slozku app do korene repozitare.
+   Musi se prepsat tento soubor:
+   app\src\main\assets\emu\index.html
+
+5. Kdyz se Windows zepta na prepsani, dej Ano / Nahradit.
+
+6. V GitHub Desktop zkontroluj Changes.
+   Hlavni zmena musi byt:
+   app/src/main/assets/emu/index.html
+
+7. Commit message:
+   BUILD2EX CLOAD SERIN record gap fix
+
+8. Dej Commit to main a potom Push origin.
+
+9. Na GitHubu pockej na Actions build APK.
+   Stahni novy app-debug.apk z artifacts.
+
+10. Po instalaci APK nejdriv otevri log v aplikaci.
+    Musi tam byt:
+    AtariHelp.eu EMU-10 BUILD2EX_CLOAD_SERIN_RECORD_GAP_FIX pripraven.
+
+11. Pokud tam BUILD2EX neni, je nainstalovana stara APK nebo se overlay neprepsal.
+
+Minimalni test
+--------------
+1. POWER BASIC.
+2. Udelej kratky BASIC program.
+3. CSAVE.
+4. Po auto ulozeni nech vlozeny posledni WAV.
+5. Napis CLOAD a dej PLAY.
+6. V logu hledej QUEUE_TONE BUILD2EX a LEADER_SERIN_ARM BUILD2EX.
