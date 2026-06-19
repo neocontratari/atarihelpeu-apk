@@ -1,0 +1,67 @@
+AtariHelp EMU-10 BUILD2EZ_CLOAD_EBF0_RECORD_TAIL_FIX
+Datum: 2026-06-20
+
+CO UKAZAL NOVY LOG
+------------------
+BUILD2EY byl opravdu skoro:
+- WAV decode: 2904 B, confidence 85 %.
+- raw CSAVE CAS: 22 recordu po 132 B.
+- vsechny CAS record checksumy sedi.
+- prvni byte do SERIN byl $FC.
+- CLOAD dosel na "SERIN predano 128/2902 B".
+
+Pak se ale RECORD_LEADER_START vubec neobjevil.
+Misto toho log ukazal:
+- PC=$EBF0
+- potom PC=$ED4F / $ED48 / $ED3D
+- motor nakonec OFF
+
+ZAVER
+-----
+BUILD2EY nepadal na spatnem CAS/WAV souboru.
+Chyba byla v nasi ROM gate pro kazetovy SERIN.
+
+Po 128 predanych bajtech byl OS jeste kratce v koncovce recordu na $EBF0.
+Stara brana povolovala jen $EB16-$EB2F a $ED96-$EDDF.
+Tim se zablokoval konec 132B recordu jeste pred tim, nez se mohla spustit dalsi vodici stopa.
+
+CO MENI BUILD2EZ
+----------------
+1. CLOAD SERIN gate je rozsirena:
+   puvodne: $EB16-$EB2F
+   nove:    $EB16-$EBFF
+2. Raw cassette data zustavaji 1:1.
+   Nic nevyhazuju, nemenim checksum, nemenim payload.
+3. 132B record leader oprava z BUILD2EY zustava.
+4. WAIT_SERIN_READY log ted vypisuje i:
+   - rxPos
+   - queued
+   - next byte
+
+CO TO NENI
+----------
+Neni to fake READY.
+Neni to RAM inject.
+Neni to screen paint.
+Neni to prepis BASIC programu.
+
+CO HLEDAT V LOGU
+----------------
+Po startu:
+AtariHelp.eu EMU-10 BUILD2EZ_CLOAD_EBF0_RECORD_TAIL_FIX pripraven.
+
+Pri CLOAD:
+CLOAD LEADER+SERIN BUILD2EZ
+CLOAD SERIN ARM BUILD2EZ
+CLOAD SERIAL BUILD2BR: SERIN predano 128/...
+pak musi prijit bud:
+CLOAD SERIAL BUILD2BR: SERIN predano 192/...
+nebo:
+CLOAD RECORD LEADER START BUILD2EZ
+CLOAD RECORD LEADER DONE BUILD2EZ
+
+KDYZ TO ZNOVU SPADNE
+--------------------
+Posli jen novy log.
+Nejdulezitejsi radky jsou WAIT_SERIN_READY BUILD2EZ s rxPos/next byte.
+

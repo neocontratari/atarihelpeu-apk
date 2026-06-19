@@ -1,0 +1,20 @@
+NAVOD PRO GITHUB DESKTOP - BUILD2EZ CLOAD EBF0 RECORD TAIL
+
+1. Rozbal ZIP overlay.
+2. Z rozbalene slozky zkopiruj slozku app do korene repozitare atarihelpeu-apk.
+3. Potvrd prepsani souboru.
+4. V GitHub Desktopu musi byt zmena:
+   app/src/main/assets/emu/index.html
+5. Commit message:
+   BUILD2EZ CLOAD EBF0 record tail fix
+6. Klikni Commit to main.
+7. Klikni Push origin.
+8. Pockej na GitHub Actions, stahni nove APK a nainstaluj.
+
+KONTROLA
+--------
+Po startu aplikace musi log ukazat:
+AtariHelp.eu EMU-10 BUILD2EZ_CLOAD_EBF0_RECORD_TAIL_FIX pripraven.
+
+Kdyz vidis BUILD2EY nebo BUILD2EX, neni v mobilu nova APK.
+

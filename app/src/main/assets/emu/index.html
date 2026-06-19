@@ -636,7 +636,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function cassettePcAfterLeaderReady(){ return (cpu.pc>=0xED96 && cpu.pc<=0xEDC6) || (cpu.pc>=0xEB16 && cpu.pc<=0xEB27) || (cpu.pc>=0xEB2C && cpu.pc<=0xEB7F); }
   function cassettePcInSerialRead(){
     const pc=cpu.pc&0xFFFF;
-    return (pc>=0xEB16 && pc<=0xEB2F) || (pc>=0xED96 && pc<=0xEDDF);
+    return (pc>=0xEB16 && pc<=0xEBFF) || (pc>=0xED96 && pc<=0xEDDF);
   }
   function cassetteSerialCanFeed(){
     if(!sio.cassMotor) return false;
@@ -1482,7 +1482,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
             q.d=1;
             if(M.cassDebug && (M.frame-sio.cassReadyWaitLastFrame)>=25){
               sio.cassReadyWaitLastFrame=M.frame;
-              M.cassDebug('WAIT_SERIN_READY',{timer:ram[0x022A]&0xFF,pc:cpu.pc,irqen:pokey.irqen,pokmsk:ram[0x0232]&255,irqst:(~pokeyStatus())&0xFF,iff:cpu.if_,kind:sio.cassKind,record:q.recordNo||0});
+              M.cassDebug('WAIT_SERIN_READY',{timer:ram[0x022A]&0xFF,pc:cpu.pc,irqen:pokey.irqen,pokmsk:ram[0x0232]&255,irqst:(~pokeyStatus())&0xFF,iff:cpu.if_,kind:sio.cassKind,record:q.recordNo||0,rxPos:sio.rxPos,queued:sio.rxq.length,byte:q.b});
             }
             holdCassetteRecord=true;
           }else{
@@ -1495,7 +1495,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
             q.d=1;
             if(M.cassDebug && (M.frame-sio.cassReadyWaitLastFrame)>=25){
               sio.cassReadyWaitLastFrame=M.frame;
-              M.cassDebug('WAIT_SERIN_READY',{timer:ram[0x022A]&0xFF,pc:cpu.pc,irqen:pokey.irqen,pokmsk:ram[0x0232]&255,irqst:(~pokeyStatus())&0xFF,iff:cpu.if_,kind:sio.cassKind});
+              M.cassDebug('WAIT_SERIN_READY',{timer:ram[0x022A]&0xFF,pc:cpu.pc,irqen:pokey.irqen,pokmsk:ram[0x0232]&255,irqst:(~pokeyStatus())&0xFF,iff:cpu.if_,kind:sio.cassKind,record:q.recordNo||0,rxPos:sio.rxPos,queued:sio.rxq.length,byte:q.b});
             }
           }else if(q.d<=0){
             pokey.serin=q.b; sio.rxPos++; sio.cassDelivered += q.cassette?1:0;
@@ -2480,7 +2480,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     M.cassDebug=function(ev,data){
       try{
         if(ev==='QUEUE') log('CLOAD SERIAL BUILD2BR: fronta '+data.bytes+' B, lead '+Math.round((data.lead||0)/15.6)+' ms PAL, byte '+data.perByte+' radku, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Cekam na realny C: motor, nic nepoustim do RAM.');
-        else if(ev==='QUEUE_TONE'){ log('CLOAD LEADER+SERIN BUILD2EY: pripraveno '+data.bytes+' datovych B po leaderu, raw='+((data.rawBytes||data.bytes))+' B, preskoceno vodicich $55='+((data.skipped||0))+', records='+((data.records||0))+', record-leader='+(data.gap?Math.round(data.gap/15.6):0)+' ms, start leader '+Math.round((data.lead||0)/15.6)+' ms PAL, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Zadny OS-buffer zapis, zadny RAM inject.'); cassSetStatus('CLOAD leader + SERIN pripraven | '+data.bytes+' B'); }
+        else if(ev==='QUEUE_TONE'){ log('CLOAD LEADER+SERIN BUILD2EZ: pripraveno '+data.bytes+' datovych B po leaderu, raw='+((data.rawBytes||data.bytes))+' B, preskoceno vodicich $55='+((data.skipped||0))+', records='+((data.records||0))+', record-leader='+(data.gap?Math.round(data.gap/15.6):0)+' ms, start leader '+Math.round((data.lead||0)/15.6)+' ms PAL, motor='+(data.motor?'ON':'OFF')+', zdroj='+data.kind+'. Zadny OS-buffer zapis, zadny RAM inject.'); cassSetStatus('CLOAD leader + SERIN pripraven | '+data.bytes+' B'); }
         else if(ev==='QUEUE_PCM'){ log('CLOAD WAV PCM BUILD2BR: pripraven primy WAV->SKSTAT bit4, '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%, motor='+(data.motor?'ON':'OFF')+', soubor='+(data.name||'WAV')+'. Zadny decode/reencode, zadny RAM inject.'); cassSetStatus('WAV PCM->SKSTAT pripraven | cekam na motor'); }
         else if(ev==='WAIT_MOTOR') log('CLOAD LEADER+SERIN BUILD2BR: data jsou pripravena, ale C: motor jeste neni ON. Cekam na realny CLOAD/boot wait stav; zadny fake start.');
         else if(ev==='MOTOR_ON') log('CLOAD MOTOR: PACTL bit3 = 0, motor ON. Ted bezi jen cisty leader; datove bajty pujdou az potom pres POKEY SERIN.');
@@ -2488,11 +2488,11 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         else if(ev==='MOTOR_OK_LEADER') log('CLOAD LEADER BUILD2BR: motor potvrzen, cisty leader zbyva '+Math.round((data.lead||0)/15.6)+' ms PAL, skipped55='+((data.skipped||0))+', zdroj='+data.kind+'.');
         else if(ev==='ADAPTIVE_LEADER_WAIT') log('CLOAD ADAPTIVE LEADER BUILD2BR: drzim cisty leader dokud OS skutecne nedokonci kazetovou synchronizaci: PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', timer='+((data.timer||0)&255)+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', POKMSK=$'+(((data.pokmsk||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+((data.edges||0))+', seen='+((data.seen||0))+'.');
         else if(ev==='WAIT_OS_TIMER') log('CLOAD SERIAL BUILD2BR: drzim jeste vodici stopu, OS neni pripraven cist data (timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'). Data jsou porad jen ve fronte, zadny RAM inject.');
-        else if(ev==='LEADER_SERIN_ARM'){ log('CLOAD SERIN ARM BUILD2EY: OS leader faze hotova, pripravuji '+data.bytes+' B pro POKEY SERIN; skipped55='+((data.skipped||0))+', lead55='+((data.lead55||0))+', records='+((data.records||0))+', record-leader='+(data.gap?Math.round(data.gap/15.6):0)+' ms, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+'.'); cassSetStatus('CLOAD SERIN arm | '+data.bytes+' B'); }
-        else if(ev==='RECORD_LEADER_START'){ log('CLOAD RECORD LEADER START BUILD2EY: record '+((data.record||0))+' dostava novou vodici stopu '+Math.round((data.lines||0)/15.6)+' ms, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', zdroj='+data.kind+'. Tohle opravuje ERROR 138 po prvnim 132B bloku.'); cassSetStatus('CLOAD record leader | record '+((data.record||0))); }
-        else if(ev==='RECORD_LEADER_WAIT'){ log('CLOAD RECORD LEADER WAIT BUILD2EY: record '+((data.record||0))+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', timer $022A='+((data.timer||0)&255)+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', POKMSK=$'+(((data.pokmsk||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+((data.edges||0))+'.'); cassSetStatus('CLOAD ceka na record leader'); }
-        else if(ev==='RECORD_LEADER_DONE'){ log('CLOAD RECORD LEADER DONE BUILD2EY: record '+((data.record||0))+' leader hotov, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', POKMSK=$'+(((data.pokmsk||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+((data.edges||0))+'.'); cassSetStatus('CLOAD record leader hotov'); }
-        else if(ev==='WAIT_SERIN_READY'){ log('CLOAD SERIN WAIT BUILD2EY: cekam na OS serial ready'+(data.record?(' pro record '+data.record):'')+': timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+'. Nic neprepisuju, zadny RAM inject.'); cassSetStatus('CLOAD ceka na SERIN ready'); }
+        else if(ev==='LEADER_SERIN_ARM'){ log('CLOAD SERIN ARM BUILD2EZ: OS leader faze hotova, pripravuji '+data.bytes+' B pro POKEY SERIN; skipped55='+((data.skipped||0))+', lead55='+((data.lead55||0))+', records='+((data.records||0))+', record-leader='+(data.gap?Math.round(data.gap/15.6):0)+' ms, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+'.'); cassSetStatus('CLOAD SERIN arm | '+data.bytes+' B'); }
+        else if(ev==='RECORD_LEADER_START'){ log('CLOAD RECORD LEADER START BUILD2EZ: record '+((data.record||0))+' dostava novou vodici stopu '+Math.round((data.lines||0)/15.6)+' ms, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', zdroj='+data.kind+'. Tohle opravuje ERROR 138 po prvnim 132B bloku.'); cassSetStatus('CLOAD record leader | record '+((data.record||0))); }
+        else if(ev==='RECORD_LEADER_WAIT'){ log('CLOAD RECORD LEADER WAIT BUILD2EZ: record '+((data.record||0))+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', timer $022A='+((data.timer||0)&255)+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', POKMSK=$'+(((data.pokmsk||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+((data.edges||0))+'.'); cassSetStatus('CLOAD ceka na record leader'); }
+        else if(ev==='RECORD_LEADER_DONE'){ log('CLOAD RECORD LEADER DONE BUILD2EZ: record '+((data.record||0))+' leader hotov, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', POKMSK=$'+(((data.pokmsk||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+((data.edges||0))+'.'); cassSetStatus('CLOAD record leader hotov'); }
+        else if(ev==='WAIT_SERIN_READY'){ log('CLOAD SERIN WAIT BUILD2EZ: cekam na OS serial ready'+(data.record?(' pro record '+data.record):'')+': timer $022A='+((data.timer||0)&255)+', PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', IRQEN=$'+(((data.irqen||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', IRQST=$'+(((data.irqst||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', I='+(data.iff?1:0)+', rxPos='+(data.rxPos===undefined?'-':data.rxPos)+'/'+(data.queued||'?')+', next=$'+(((data.byte||0)&255).toString(16).toUpperCase()).padStart(2,'0')+'. Nic neprepisuju, zadny RAM inject.'); cassSetStatus('CLOAD ceka na SERIN ready'); }
         else if(ev==='PCM_START'){ log('CLOAD WAV PCM BUILD2BR: motor ON, spoustim primy WAV tvar na SKSTAT bit4: '+data.lines+' radku, '+fmtTime(data.seconds||0)+', sr='+(data.sr||0)+' Hz, peak='+(((data.peak||0)*100).toFixed(1))+'%. Tohle je cesta podle WAV, ktery realne Atari nacte.'); cassSetStatus('WAV PCM->SKSTAT bezi | poslouchej cisty zvuk'); }
         else if(ev==='PCM_COUNT'){ log('CLOAD WAV PCM BUILD2BR: odtikan primy WAV tvar '+Math.round(((data.lines||0)*100)/Math.max(1,(data.total||1)))+'% / '+data.lines+'/'+data.total+' radku, PC=$'+(((data.pc||0)&65535).toString(16).toUpperCase()).padStart(4,'0')+', SKSTAT~$'+(((data.skstat||0)&255).toString(16).toUpperCase()).padStart(2,'0')+', hrany='+data.edges+'.'); cassSetStatus('WAV PCM->SKSTAT tece | '+Math.round(((data.lines||0)*100)/Math.max(1,(data.total||1)))+'%'); }
         else if(ev==='PCM_COMPLETE'){ log('CLOAD WAV PCM BUILD2BR: primy WAV tvar dokoncen '+data.lines+'/'+data.total+' radku, hrany='+data.edges+', zdroj='+data.kind+'. Vysledek musi rict Atari/BASIC.'); cassSetStatus('WAV PCM->SKSTAT konec | cekam na Atari vysledek'); }
@@ -2539,7 +2539,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!M.queueCassetteSerial){ log('CLOAD CAS: jadro nema queueCassetteSerial - nemuzu poslat data do POKEY.'); return 0; }
     var lead=187200;
     var n=M.queueCassetteSerial(data,260,lead,'CAS CLOAD');
-    log('CLOAD CAS SERIN BUILD2EY: po realnem C: motor ON + zavadeci stope '+Math.round(lead/15.6)+' ms posilam '+n+' B z CAS pres POKEY SERIN, s 132B record leadery. Zadny OS-buffer zapis, zadny RAM inject.');
+    log('CLOAD CAS SERIN BUILD2EZ: po realnem C: motor ON + zavadeci stope '+Math.round(lead/15.6)+' ms posilam '+n+' B z CAS pres POKEY SERIN, s 132B record leadery. Zadny OS-buffer zapis, zadny RAM inject.');
     log('CLOAD CAS POSTUP: v Atari musi byt spusteny CLOAD / LOAD "C:"; PLAY jen pousti vlozenou CAS pasku a seriova data. Vysledek uvidis na obrazovce nebo v logu.');
     cassSetStatus('CAS CLOAD bitstream tece na SKSTAT bit4 | '+n+' B');
     return n;
@@ -2699,7 +2699,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       return {score:score,valid:valid,total:total};
     }
-    // BUILD2EY_FIX_CLOAD: nehadej pevny zacatek dat. Vlastni CSAVE WAV z EMU10 ma 12 s vodici ton,
+    // BUILD2EZ_FIX_CLOAD: nehadej pevny zacatek dat. Vlastni CSAVE WAV z EMU10 ma 12 s vodici ton,
     // stare hledani do 7 s davalo zbytecne nizkou duveru a u nekterych WAV trefilo zacatek spatne.
     var best={score:-1,lead:0,off:0,valid:0,total:0};
     var leadMax=Math.min(pcm.length-spb*200, sr*7.0|0);
@@ -2813,7 +2813,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       var lead=(ownShort?187200:96000);
       var n=M.queueCassetteSerial(d.bytes,260,lead,'WAV CLOAD');
-      log('WAV CLOAD BUILD2EY: pripravuji '+n+' realne dekodovanych B do POKEY SERIN pres CLOAD leader + 132B record leadery. Ton se spusti az po realnem C: motor ON + leader '+Math.round(lead/15.6)+' ms. Zadny OS-buffer zapis, zadny RAM inject.');
+      log('WAV CLOAD BUILD2EZ: pripravuji '+n+' realne dekodovanych B do POKEY SERIN pres CLOAD leader + 132B record leadery. Ton se spusti az po realnem C: motor ON + leader '+Math.round(lead/15.6)+' ms. Zadny OS-buffer zapis, zadny RAM inject.');
       cassSetStatus('WAV CLOAD SERIN pripraven | '+n+' B');
       return n;
     }
@@ -3472,9 +3472,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2EY_CLOAD_RECORD_LEADER_FIX pripraven.');
-    log('BUILD2EY: zaklad BUILD2EJ/BZ/BY, CSAVE WAV export zachovan. Oprava je CLOAD RX: po kazdem 132B recordu znovu SKSTAT leader a pak POKEY SERIN. Bez OS-buffer/RAM injectu.');
-    log('BUILD2EY: v logu hledej QUEUE_TONE BUILD2EY, LEADER_SERIN_ARM BUILD2EY a RECORD_LEADER_START/DONE BUILD2EY. KODY JSOU STEJNE, zadny screen paint, zadny fake READY.');
+    log('AtariHelp.eu EMU-10 BUILD2EZ_CLOAD_EBF0_RECORD_TAIL_FIX pripraven.');
+    log('BUILD2EZ: zaklad BUILD2EJ/BZ/BY, CSAVE WAV export zachovan. Oprava je CLOAD RX: konec 132B recordu smi dobehnout pres ROM $EBF0, potom SKSTAT leader a dalsi POKEY SERIN. Bez OS-buffer/RAM injectu.');
+    log('BUILD2EZ: v logu hledej QUEUE_TONE BUILD2EZ, LEADER_SERIN_ARM BUILD2EZ a RECORD_LEADER_START/DONE BUILD2EZ. KODY JSOU STEJNE, zadny screen paint, zadny fake READY.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
