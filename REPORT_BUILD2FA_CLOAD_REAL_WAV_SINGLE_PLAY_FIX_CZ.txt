@@ -1,0 +1,79 @@
+AtariHelp EMU-10 BUILD2FA_CLOAD_REAL_WAV_SINGLE_PLAY_FIX
+Datum: 2026-06-20
+
+CO UKAZAL POSLEDNI LOG
+----------------------
+BUILD2EZ byl nainstalovany spravne, ale CLOAD porad koncil ERROR 138.
+
+Dulezite radky z logu:
+- CSAVE zachytil 2904 B ze skutecneho POKEY SEROUT.
+- CAS/WAV byl ulozen do Downloads/AtariHelp.
+- WAV decode nasel 2904 B, confidence 85 %.
+- CLOAD pripravil stejnou kazetu dvakrat.
+- KAZETA PLAY se spustila dvakrat.
+- Po prvnim recordu se interni CLOAD zasekl na checksum bajtu $37.
+
+Kontrola souboru:
+- CAS ma 22 DATA bloku po 132 B.
+- Atari carry checksum je OK pro vsechny bloky.
+- WAV je RIFF/WAVE, 48 kHz, mono, 16 bit.
+
+ZAVER
+-----
+Chyba neni v tom, ze by CSAVE soubor byl prazdny nebo falesny.
+Chyba byla v mechanice CLOAD/PLAY:
+1. appka umela rozjet druhy PLAY / druhou CLOAD frontu pro stejny WAV,
+2. vlastni CSAVE WAV sel v appce primarne pres hybrid decode->SERIN cestu,
+   ktera v logu zamrzla na checksumu prvniho recordu.
+
+CO MENI BUILD2FA
+----------------
+1. Jeden PLAY guard:
+   - dvojklik / druhy PLAY se ignoruje,
+   - log musi napsat KAZETA PLAY BUILD2FA,
+   - nesmi se objevit dva radky KAZETA PLAY hned za sebou.
+
+2. Jedna CLOAD fronta pro stejny WAV:
+   - stejny WAV se pro jeden pokus nequeueuje dvakrat,
+   - log musi napsat WAV CLOAD BUILD2FA pri duplicitnim pokusu.
+
+3. Vlastni kratky CSAVE WAV jde nejdriv fyzicky:
+   - WAV PCM -> SKSTAT bit4,
+   - bez decode/reencode,
+   - bez OS-buffer/RAM injectu,
+   - bez fake READY.
+
+4. Hybrid decode->SERIN zustava jen zalozni cesta.
+
+CO TO NENI
+----------
+Neni to fake LOAD.
+Neni to fake READY.
+Neni to RAM inject.
+Neni to screen paint.
+Neni to uprava BASIC programu.
+
+CO HLEDAT V LOGU PO STARTU
+--------------------------
+AtariHelp.eu EMU-10 BUILD2FA_CLOAD_REAL_WAV_SINGLE_PLAY_FIX pripraven.
+
+Pri testu vlastniho CSAVE/CLOAD:
+WAV PCM CLOAD BUILD2FA
+KAZETA PLAY BUILD2FA
+
+NESMI tam byt dvakrat za sebou:
+KAZETA PLAY ...
+nebo dvakrat stejny CLOAD queue pro stejny WAV.
+
+TEST PRO RENEHO
+---------------
+1. POWER XL/XE BASIC.
+2. Vloz kratky BASIC program.
+3. CSAVE.
+4. Po ulozeni nech auto-vlozeny posledni WAV.
+5. Napis CLOAD.
+6. Stiskni PLAY jen jednou.
+7. Pokud real Atari/Altirra porad hodi ERROR 138, posli jen novy log.
+
+Nehlasim hotovo pro real Atari dopredu.
+Rozhoduje real Atari 130XE a Altirra.

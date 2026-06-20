@@ -1,0 +1,32 @@
+NAVOD PRO GITHUB DESKTOP - BUILD2FA CLOAD REAL WAV SINGLE PLAY
+
+1. Rozbal ZIP overlay.
+2. Z rozbalene slozky zkopiruj slozku app do korene repozitare atarihelpeu-apk.
+3. Potvrd prepsani souboru.
+4. V GitHub Desktopu musi byt zmena:
+   app/src/main/assets/emu/index.html
+5. Commit message:
+   BUILD2FA CLOAD real WAV single PLAY fix
+6. Klikni Commit to main.
+7. Klikni Push origin.
+8. Pockej na GitHub Actions, stahni nove APK a nainstaluj.
+
+KONTROLA PO STARTU APPKY
+-----------------------
+V logu musi byt:
+AtariHelp.eu EMU-10 BUILD2FA_CLOAD_REAL_WAV_SINGLE_PLAY_FIX pripraven.
+
+Kdyz vidis BUILD2EZ, neni v mobilu nova APK.
+
+KONTROLA PRI CLOAD
+------------------
+Po CSAVE a CLOAD + PLAY hledej:
+WAV PCM CLOAD BUILD2FA
+KAZETA PLAY BUILD2FA
+
+Kdyz se objevi dvakrat KAZETA PLAY hned za sebou, posli log.
+
+DULEZITE
+--------
+Stiskni PLAY jen jednou.
+Real Atari 130XE a Altirra jsou rozhodujici test.
