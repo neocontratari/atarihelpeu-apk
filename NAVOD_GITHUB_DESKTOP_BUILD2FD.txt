@@ -1,0 +1,28 @@
+NAVOD PRO GITHUB DESKTOP - BUILD2FD
+
+1. Rozbal ZIP:
+   AtariHelp_EMU10_BUILD2FD_POKEY_PCM_RECORD_SYNC_CLOAD_overlay.zip
+
+2. Z rozbaleneho adresare zkopiruj slozku:
+   app
+
+3. Vloz ji do korene repozitare:
+   atarihelpeu-apk
+
+4. Potvrd prepsani souboru:
+   app/src/main/assets/emu/index.html
+
+5. V GitHub Desktopu commit:
+   BUILD2FD POKEY PCM record sync CLOAD
+
+6. Pushni na main a nech GitHub Actions postavit APK.
+
+7. V aplikaci po startu MUSI byt:
+   AtariHelp.eu EMU-10 BUILD2FD_POKEY_PCM_RECORD_SYNC_CLOAD pripraven.
+
+8. Pri CLOAD z posledniho CSAVE WAV hledej:
+   record 1 sync byte $55 preskocen
+   record 1/22 zacina control=$FC
+   OS byte 1 = $FC
+
+Pokud prvni OS byte bude $55, testujes stary build nebo je cesta stale spatne.

@@ -1,0 +1,36 @@
+AtariHelp EMU-10 BUILD2FD - POKEY PCM RECORD SYNC CLOAD
+Datum: 2026-06-20
+
+Proc tento build:
+Log BUILD2FC ukazal, ze POKEY PCM RX sice sklada bajty z WAV hran, ale OS dostaval i sync bajty $55 $55 jako data. Po 130 bajtech pak OS utekl do chyby a dalsi bajty padaly jako overrun. To vysvetluje nahodne vypadajici ERROR 21 / 143 podle toho, kdy se pokus zastavil.
+
+Konkretni dukaz z logu:
+- BUILD2FC: byte 1 = $55
+- BUILD2FC: po byte 128/130 zacina overrun lavina
+- PC potom utece mimo CLOAD cteni
+
+Oprava BUILD2FD:
+1. WAV/CAS porad tece jako PCM signal na SKSTAT bit4.
+2. POKEY PCM RX porad sklada bajty z hran, zadny RAM inject a zadna predelana soft fronta.
+3. U standardni Atari kazety se $55 $55 bere jako record synchronizace, ne jako payload pro BASIC.
+4. OS dostane 130 bajtu na record: control byte $FC/$FA/$FE + 128 dat + checksum.
+5. Po 130 bajtech se receiver vrati do hledani dalsiho $55 $55 sync recordu.
+
+Offline audit na poslednim test WAV:
+- rawFirst = 55 55 FC 00 00 00 01 1C
+- osFirst  = FC 00 00 00 01 1C 01 1D
+- records = 22
+- raw bytes = 2904
+- OS bytes = 2860
+- skipped sync bytes = 44
+- OS stream ma stejnou delku jako CAS po odstraneni dvou sync bajtu z kazdeho recordu: 22 * 130 = 2860 B
+
+Co hledat v logu:
+AtariHelp.eu EMU-10 BUILD2FD_POKEY_PCM_RECORD_SYNC_CLOAD pripraven.
+POKEY PCM RX BUILD2FD: record 1 sync byte $55 preskocen jako sync, ne data.
+POKEY PCM RX BUILD2FD: record 1/22 zacina control=$FC
+POKEY PCM RX BUILD2FD: OS byte 1 = $FC
+POKEY PCM RX BUILD2FD: record 1/22 hotov, OS bytes=130
+
+Co je stale ferove receno:
+Tohle neresi celou presnost Atari 130XE emulatoru. Zvuk klaves, font/charset a obecna kompatibilita jsou dalsi core prace. Tenhle build ciste opravuje kazetovy CLOAD record sync v POKEY PCM ceste.
