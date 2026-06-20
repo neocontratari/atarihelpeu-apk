@@ -1,0 +1,39 @@
+AtariHelp EMU-10 BUILD2FC - PURE POKEY PCM/SKSTAT CLOAD
+Datum: 2026-06-20
+
+Proc tento build:
+Rene spravne odmitl smer BUILD2FB, kde se WAV dekodoval na bajty a ty se pak krmily do kazetove serial fronty. To je pro test realneho Atari emulatoru spatny smer.
+
+Co BUILD2FC meni:
+1. CLOAD z WAV/CAS jde jako skutecny PCM signal na SKSTAT bit4.
+2. POKEY PCM RX v jadre pocita hrany, sklada start/data/stop bity a teprve potom vlozi prijaty byte do hardwaroveho POKEY SERIN registru $D20D.
+3. WAV/CAS cesta uz nevola stary queueCassetteSerial fallback.
+4. Logy jsou prejmenovane tak, aby bylo jasne:
+   - WAV CLOAD BUILD2FC = skutecny WAV tvar na SKSTAT bit4
+   - POKEY PCM RX BUILD2FC = byte vznikl z hran PCM/SKSTAT
+   - POKEY RX REGISTER BUILD2FC = OS precetl hardwarovy POKEY SERIN registr
+5. CSAVE WAV zustava tissi: generator amp 25 %, Android PLAY volume 35 %.
+
+Co BUILD2FC neni:
+- neni RAM inject
+- neni screen paint
+- neni fake READY / fake LOAD
+- neni prepis OS bufferu
+- neni preddelany seznam bajtu posilany jako kazetova zkratka
+
+Dulezite:
+Slovo SERIN muze byt v logu jen jako hardwarovy POKEY registr $D20D. To je misto, odkud realny Atari OS bere prijaty byte. Rozhodujici je, ze byte predtim musi vzniknout z PCM/SKSTAT hran, ne z dekodovane soft fronty.
+
+Co hledat v logu:
+AtariHelp.eu EMU-10 BUILD2FC_PURE_POKEY_PCM_SKSTAT_CLOAD pripraven.
+SAVE WAV BUILD2FC ... amp=25%
+WAV CLOAD BUILD2FC: posilam skutecny WAV tvar na SKSTAT bit4
+CLOAD WAV PCM BUILD2FC: motor ON
+POKEY PCM RX BUILD2FC: synchronizace z hran
+POKEY PCM RX BUILD2FC: byte 1 = $55
+
+Co je spatne:
+Pokud u CLOAD testu uvidis BUILD2FB, SERIN_RETRY, LOW_VOLUME_SERIN_RETRY nebo starou leader+serial cestu, neni spustena spravna APK/cesta.
+
+Realny test:
+BUILD2FC netvrdi dopredu, ze CLOAD je hotovy. Je to oprava smeru pod kapotou: cisty signal -> SKSTAT -> POKEY RX -> OS. Vysledek musi potvrdit realne Atari/Altirra a log.

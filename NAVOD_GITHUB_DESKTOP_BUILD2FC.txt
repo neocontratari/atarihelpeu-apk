@@ -1,0 +1,27 @@
+NAVOD PRO GITHUB DESKTOP - BUILD2FC
+
+1. Rozbal ZIP:
+   AtariHelp_EMU10_BUILD2FC_PURE_POKEY_PCM_SKSTAT_CLOAD_overlay.zip
+
+2. V rozbalenem adresari vezmi slozku:
+   app
+
+3. Zkopiruj ji do korene repozitare:
+   atarihelpeu-apk
+
+4. Potvrd prepsani souboru.
+   Meni se hlavne:
+   app/src/main/assets/emu/index.html
+
+5. Otevri GitHub Desktop.
+   Musi ukazat zmeny v index.html a tyto dva txt soubory jen pokud je zkopirujes taky.
+
+6. Commit zprava doporucena:
+   BUILD2FC pure POKEY PCM SKSTAT CLOAD
+
+7. Pushni na main a nech GitHub Actions vyrobit APK.
+
+8. Pri testu v aplikaci musi byt v logu:
+   AtariHelp.eu EMU-10 BUILD2FC_PURE_POKEY_PCM_SKSTAT_CLOAD pripraven.
+
+9. Pokud APK ukazuje BUILD2FB nebo BUILD2FA, testujes stary build.
