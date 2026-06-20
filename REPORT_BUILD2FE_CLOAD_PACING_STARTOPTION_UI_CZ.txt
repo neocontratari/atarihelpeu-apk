@@ -1,0 +1,33 @@
+AtariHelp EMU-10 BUILD2FE - CLOAD pacing + START OPTION UI
+Datum: 2026-06-20
+
+Co ukazaly nove logy:
+- CSAVE funguje: emulator zachytil skutecny POKEY SEROUT stream, napr. 2904 B = 22 Atari recordu po 132 B.
+- Vlastni CSAVE WAV/CAS funguje v Altirre i na realnem Atari, takze chyba neni ve vygenerovanem WAV jako takovem.
+- BUILD2FD uz spravne preskocil $55 $55 sync a prvni OS byte byl $FC.
+- Nova chyba byla po prvnim recordu: druhy record zacal padat jako POKEY PCM RX overrun, protoze dalsi byte sel do SERIN driv, nez ho Atari OS stihl precist.
+
+Oprava BUILD2FE:
+1. PCM/SKSTAT CLOAD receiver ted ceka na skutecne uvolneni POKEY SERIN pred dalsim bytem/recordem.
+2. Po konci WAV se PCM cesta neresetuje, dokud OS neprecte posledni byte z POKEY SERIN.
+3. Pridany logy:
+   - POKEY PCM RX BUILD2FE: cekam na OS/POKEY SERIN read
+   - CLOAD WAV PCM BUILD2FE: audio tvar uz dosel, ale PCM RX jeste korektne doposila OS byty
+4. Externi WAV do 32 MB se uz zkousi dekodovat do PCM/SKSTAT, ne jen prehrat jako Android audio.
+5. Externi WAV ma autodetekci standardniho Atari recordu: kdyz vidi $55 $55 $FC/$FA/$FE, bere $55 $55 jako sync; kdyz pattern nesedi, posila byty tak, jak vysly z PCM.
+6. START OPTION UI:
+   - hlavni emu tlacitko ma jednotny vyznam START OPTION BOOT
+   - stary legacy emu10_130xe.html uz nema tlacitko POWER + OPTION / SELF TEST
+   - odstranena dvojita vazba HELP tlacitka v emu/index.html
+
+Co ma byt po instalaci videt v logu:
+AtariHelp.eu EMU-10 BUILD2FE_POKEY_PCM_RECORD_SYNC_CLOAD pripraven.
+
+Co hledat pri CLOAD z vlastniho CSAVE WAV:
+- record 1/22 zacina control=$FC
+- OS byte 1 = $FC
+- record 1/22 hotov
+- nasledne uz nesmi prijit lavina "overrun byte" hned po startu recordu 2
+
+Ferove omezeni:
+Tohle neopravuje cely Atari 130XE emulator najednou. Je to konkretni oprava CLOAD prijimace, START OPTION UI a WAV limitu. Pokud nejaky Turbo/rychly WAV pouziva nestandardni modulaci, muze byt dalsi prace v dekoderu.

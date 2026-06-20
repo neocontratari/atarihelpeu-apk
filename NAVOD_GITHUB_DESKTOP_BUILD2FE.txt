@@ -1,0 +1,36 @@
+NAVOD PRO GITHUB DESKTOP - BUILD2FE
+
+1. Rozbal ZIP:
+   AtariHelp_EMU10_BUILD2FE_CLOAD_PACING_STARTOPTION_UI_overlay.zip
+
+2. Z rozbaleneho adresare zkopiruj slozku:
+   app
+
+3. Vloz ji do korene repozitare:
+   atarihelpeu-apk
+
+4. Potvrd prepsani techto souboru:
+   app/src/main/assets/index.html
+   app/src/main/assets/emu/index.html
+   app/src/main/assets/emu10_130xe.html
+
+5. V GitHub Desktopu commit:
+   BUILD2FE CLOAD pacing START OPTION UI
+
+6. Pushni na main a nech GitHub Actions postavit APK.
+
+7. Po spusteni APK musi byt v logu:
+   AtariHelp.eu EMU-10 BUILD2FE_POKEY_PCM_RECORD_SYNC_CLOAD pripraven.
+
+8. Testuj nejdriv kratky vlastni CSAVE/CLOAD:
+   - POWER BASIC
+   - vloz kratky BASIC/TurboBasic program
+   - CSAVE pres RECORD
+   - po ulozeni dej CLOAD a PLAY
+
+9. V logu hledej:
+   OS byte 1 = $FC
+   record 1 hotov
+   zadna overrun lavina na recordu 2
+
+10. Potom testuj delsi TurboBasic WAV a START OPTION BOOT.

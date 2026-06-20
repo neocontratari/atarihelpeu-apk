@@ -65,7 +65,7 @@ canvas{ display:block; width:100%; image-rendering:pixelated; background:#000; }
   <div class="bezel"><canvas id="scr" width="384" height="240"></canvas><div class="scan"></div></div>
   <div class="strip">
     <button id="btnPower">POWER &middot; BASIC</button>
-    <button id="btnSelfTest" class="dark">POWER + OPTION &middot; SELF TEST</button>
+    <button id="btnSelfTest" class="dark">START+OPTION BOOT</button>
     <button id="btnReset" class="danger">RESET</button>
     <button id="btnBreak" class="dark">BREAK</button>
     <button id="btnHelp">HELP</button>
@@ -1072,7 +1072,7 @@ window.EMU10={ createMachine:function(){
     document.getElementById('led').classList.add('on');
     if(typeof setJoyMode==='function') setJoyMode(false);   // klavesnice zpet
     typeQ.length=0;
-    log(opt?'POWER + OPTION: cold start, OPTION drzene 4 s -> SELF TEST':'POWER: cold start -> BASIC');
+    log(opt?'START+OPTION BOOT: cold start, OPTION/BASIC OFF vzorek; legacy obrazovka nema hlavni XC12 CLOAD flow':'POWER: cold start -> BASIC');
     log('ROM: prava XL OS 16K (reset $C2AA) + prava Atari BASIC 8K');
   }
   function doReset(){ if(!M) return; M.reset(); log('RESET (warm start pres reset vektor)'); }
@@ -1157,7 +1157,7 @@ window.EMU10={ createMachine:function(){
     document.getElementById('btnTxtClose').addEventListener('click',function(){ document.getElementById('txtOverlay').style.display='none'; });
     bindJoy();
     window.addEventListener('resize',fitScreen); fitScreen();
-    document.getElementById('btnSelfTest').addEventListener('click',function(){power(true);});
+    document.getElementById('btnSelfTest').addEventListener('click',function(){power(true); log('START+OPTION BOOT: legacy obrazovka drzi OPTION/BASIC OFF; hlavni kazetovy boot je v emu/index.html.');});
     document.getElementById('btnReset').addEventListener('click',doReset);
     document.getElementById('btnBreak').addEventListener('click',function(){ if(M){M.breakKey(); log('KEY BREAK');} });
     document.getElementById('btnSaveLog').addEventListener('click',function(){
@@ -1195,7 +1195,7 @@ window.EMU10={ createMachine:function(){
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     log('AtariHelp.eu EMU-10 BUILD1 CLEAN CORE pripraven.');
-    log('Jadro proslo headless testy: BASIC READY 4.6 s | ? 1+1 = 2 | SELF TEST OK');
+    log('Jadro proslo headless testy: BASIC READY 4.6 s | ? 1+1 = 2 | ROM/READY OK');
     requestAnimationFrame(tick);
   });
 })();
