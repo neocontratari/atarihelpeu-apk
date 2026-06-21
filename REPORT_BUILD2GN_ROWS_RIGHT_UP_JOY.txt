@@ -1,0 +1,40 @@
+BUILD2GN_ROWS_RIGHT_UP_JOY
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu/index.html
+
+Na co jsem NESAHAL:
+- emulator core
+- CLOAD / POKEY / CSAVE / TXT / ROM
+- MainActivity.java
+- linky YouTube / Facebook / AtariHelp.eu
+- prehravac / intro
+
+Co je ted zmeneno presne podle tve poznamky:
+1) 2. rada od T
+- posunuta DOPRAVA
+- a lehce VYS
+
+2) 3. rada od G
+- posunuta DOPRAVA
+- a lehce VYS
+
+3) 4. rada od V
+- posunuta DOPRAVA
+- a lehce VYS
+
+4) Joystick
+- DOLU vic do stredu
+- VLEVO a VPRAVO vys
+
+5) Kazetak
+- STOP jemne doprava
+
+Test plan:
+- 2. rada: T Y U I O P - = Return
+- 3. rada: G H J K L ; + * Caps
+- 4. rada: V B N M , . / Shift INV
+- joystick: DOLU, VLEVO, VPRAVO
+- kazetak: STOP
