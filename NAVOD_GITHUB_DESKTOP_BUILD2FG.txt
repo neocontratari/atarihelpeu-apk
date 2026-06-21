@@ -1,0 +1,21 @@
+NAVOD PRO GITHUB DESKTOP - BUILD2FG
+
+1. ZIP rozbal.
+2. Otevri slozku app v rozbalenem ZIPu.
+3. Celou slozku app pretahni do repozitare atarihelpeu-apk.
+4. Windows se zepta na prepsani souboru - potvrdit prepsat.
+5. V GitHub Desktop musi byt zmenene hlavne:
+   app/src/main/assets/emu/index.html
+   app/src/main/assets/index.html
+6. Dej commit napr.:
+   BUILD2FG_RUN_UI_OVERLAP_FIX
+7. Dej Push origin.
+8. Pockej na GitHub Actions APK.
+
+Testuj nejdriv jen:
+- POWER BASIC
+- BASIC/TBXL TXT
+- VLOZIT + RUN s kratkym programem
+- jestli zmizelo zdvojene START+OPTION a EMULATOR
+
+CLOAD/CSAVE ted netestuj jako prvni, dokud nebude potvrzene, ze RUN zase funguje.

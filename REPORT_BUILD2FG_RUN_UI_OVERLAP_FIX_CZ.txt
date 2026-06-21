@@ -1,0 +1,39 @@
+AtariHelp EMU-10 BUILD2FG - RUN + UI overlap fix
+
+Co je opravene:
+1. TXT/BASIC vkladani zustava rychle, ale RETURN po radku uz neni prilis kratky.
+   - Normalni BASIC radek: RETURN dobeh 28 kroku.
+   - NEW a automaticky RUN: dlouhy dobeh 96 kroku.
+   - Klavesa je realne podrzena nekolik emu kroku, ne jen okamzity tuk.
+   - Porad se jede pres klavesove IRQ a CH $02FC, zadny RAM inject.
+
+2. VLOZIT + RUN ma specialni konec.
+   - RUN se neposila jako obycejny posledni radek s kratkou pauzou.
+   - V logu hledej "RUN LINE" a "QUEUE COMPLETE".
+
+3. START+OPTION UI je sjednocene.
+   - Jedine viditelne START+OPTION je zase pod monitorem vedle POWER BASIC.
+   - Moje predchozi extra START+OPTION v servisnim docku je odstranene.
+
+4. Uvodni EMULATOR tile je prekryty jednim realnym tlacitkem.
+   - Tim se schova stara dvojita/prekryta grafika z PNG podkladu.
+
+Co jsem nemenil:
+- CLOAD/CSAVE/Pokey/SIO transport jsem v tomto patchi nemenil.
+- Nepridaval jsem fake READY, fake LOAD, RAM inject ani screen paint.
+
+Minimalni test po instalaci:
+1. Otevri EMULATOR.
+2. Dej POWER BASIC.
+3. Otevri BASIC/TBXL TXT.
+4. Vloz kratky program a zmackni VLOZIT + RUN:
+   10 PRINT "ATARIHELP"
+   20 END
+5. Ocekavani:
+   - program se vypise rychle,
+   - po RUN se provede,
+   - v logu bude BUILD2FG a RUN LINE.
+
+Poznamka k poslednimu logu:
+- Vidim, ze test byl pres VLOZIT DO ATARI, ne pres VLOZIT + RUN.
+- BUILD2FG ale opravuje obe cesty: tokenizaci radku pri vlozeni a automaticky RUN.
