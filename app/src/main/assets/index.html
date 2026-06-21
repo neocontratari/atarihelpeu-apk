@@ -80,6 +80,13 @@ function closeHelp(){
 document.getElementById('btnAtariHelp').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openWeb('https://atarihelp.eu/');},true);
 document.getElementById('btnHelp').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);
 document.getElementById('btnSettingsTop').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);
+
+document.getElementById('btnFooterName').addEventListener('click',function(e){
+  e.preventDefault(); e.stopPropagation();
+  openWeb('https://www.facebook.com/renatus.honda');
+  log('FACEBOOK BUILD2GD: otevren odkaz https://www.facebook.com/renatus.honda');
+},true);
+
 document.getElementById('btnMenu').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);
 document.getElementById('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 log('BUILD2GB: exact intro skin active. EMULATOR -> emu/index.html, PREHRAVAC -> player/index.html, ATARIHELP -> web.');

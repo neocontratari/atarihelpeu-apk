@@ -139,6 +139,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .panelBtn.dark{background:#303740;color:#fff;}
 .box p,.box li{font:800 14px/1.45 "Courier New",monospace;color:#dfe6ef;margin:8px 0;}
 .box b{color:#8fd8ff;}
+
+/* BUILD2GD: zadne hnusne dodatecne posuvniky/pointery pres obrazek.
+   Ladeni zvuku zustava funkcni naslepo pres puvodni grafiku/hitzony. */
+.eqTrack,.eqHandle,.knobPointer,.valueLabel{display:none!important;visibility:hidden!important;opacity:0!important;}
+/* Cívky: nechávám původní obrázek čistý. Dodatečná reel overlay animace vypnutá, protože přelep přes skin je hnusný. */
+.reel{display:none!important;visibility:hidden!important;opacity:0!important;}
+.stage.playing .reel,.stage.seeking .reel{display:none!important;animation:none!important;}
+
 </style>
 </head>
 <body>
@@ -174,7 +182,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnFwd" class="hit" type="button">FAST FWD</button>
   <button id="btnRec" class="hit" type="button">RECORD</button>
   <button id="btnMyPlaylists" class="hit" type="button">MY PLAYLISTS</button>
-  <a id="btnYoutube" class="hit" href="https://www.youtube.com/" target="_self" rel="noopener">YOUTUBE</a>
+  <button id="btnYoutube" class="hit" type="button">YOUTUBE</button>
   <button id="btnTrackStrip" class="hit" type="button">TRACK</button>
 
   <button id="eq60" class="eqZone" type="button" aria-label="Equalizer 60Hz"></button>
@@ -254,6 +262,28 @@ function openYoutube(e){
   log('YOUTUBE BUILD2GC: oteviram https://www.youtube.com/');
   openWeb('https://www.youtube.com/');
 }
+
+function openYoutubeHard(e){
+  if(e){
+    try{e.preventDefault();}catch(_){}
+    try{e.stopPropagation();}catch(_){}
+    try{if(e.stopImmediatePropagation)e.stopImmediatePropagation();}catch(_){}
+  }
+  setStatus('YOUTUBE • OTEVIRAM EXTERNĚ');
+  var web='https://www.youtube.com/';
+  var intent='intent://www.youtube.com/#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https%3A%2F%2Fwww.youtube.com%2F;end';
+  log('YOUTUBE BUILD2GD: external open '+web);
+  try{
+    if(window.Android && typeof window.Android.openExternal==='function'){ window.Android.openExternal(web); return false; }
+    if(window.Android && typeof window.Android.openExternalUrl==='function'){ window.Android.openExternalUrl(web); return false; }
+    if(window.Android && typeof window.Android.openUrl==='function'){ window.Android.openUrl(web); return false; }
+    if(window.AndroidInterface && typeof window.AndroidInterface.openExternal==='function'){ window.AndroidInterface.openExternal(web); return false; }
+  }catch(err){ log('YOUTUBE bridge failed: '+err.message); }
+  try{ window.location.href=intent; return false; }catch(e1){}
+  try{ window.location.href=web; return false; }catch(e2){ try{ location.assign(web); }catch(_){} }
+  return false;
+}
+
 function initAudioGraph(){
   if(ctx) return;
   try{
@@ -362,27 +392,7 @@ pick.onchange=function(){
   closePlaylistPanel(); setStatus('PLAYLIST READY • '+tracks.length+' TRACKU');
 };
 
-function updateVisuals(){
-  var eqIds=['60','250','1k','4k','16k'];
-  eqIds.forEach(function(id,idx){
-    var handle=document.getElementById('handle'+id);
-    var val=soundState.eq[idx]; // -12..12
-    var pct=(12-val)/24; // 0 top, 1 bottom
-    handle.style.top=(pct*93)+'%';
-  });
-  function setKnob(id,val,min,max,labelId,labelText){
-    var el=document.getElementById(id);
-    var norm=(val-min)/(max-min); // 0..1
-    var deg=-130 + norm*260;
-    el.style.setProperty('--deg', deg+'deg');
-    el.style.transform='rotate('+deg+'deg)';
-    if(labelId) document.getElementById(labelId).textContent=labelText;
-  }
-  setKnob('ptrBalance', soundState.balance, -1, 1, 'lblBalance', soundState.balance<-0.15?'L':soundState.balance>0.15?'R':'C');
-  setKnob('ptrBass', soundState.bass, -12, 12, 'lblBass', Math.round(soundState.bass)+'');
-  setKnob('ptrTreble', soundState.treble, -12, 12, 'lblTreble', Math.round(soundState.treble)+'');
-  setKnob('ptrVolume', soundState.volume, 0, 1, 'lblVolume', Math.round(soundState.volume*100)+'%');
-}
+function updateVisuals(){ /* BUILD2GD: vizualni posuvniky vypnute, zvuk se ladi pres neviditelne hitzony. */ }
 
 function bindVertical(zoneEl, getCurrent, setter, min, max, statusPrefix){
   function applyFromEvent(ev){
@@ -456,7 +466,9 @@ document.getElementById('btnRew').onclick=function(){seek(-10);};
 document.getElementById('btnFwd').onclick=function(){seek(10);};
 document.getElementById('btnRec').onclick=function(){setStatus('RECORD • PRIPRAVENO PRO BUDOUCI CAPTURE');};
 
-document.getElementById('btnYoutube').addEventListener('click', openYoutube, true);
+document.getElementById('btnYoutube').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();},true);
+document.getElementById('btnYoutube').addEventListener('pointerup',openYoutubeHard,true);
+document.getElementById('btnYoutube').addEventListener('click',openYoutubeHard,true);
 
 document.getElementById('btnMenu').onclick=function(){location.href='../index.html';};
 document.getElementById('btnSettingsTop').onclick=openSettingsPanel;
@@ -473,7 +485,7 @@ audio.onended=function(){
 
 updateVisuals();
 renderPlaylist();
-log('BUILD2GC: recentered reels, finer sound controls, reset sound button, YouTube direct open.');
+log('BUILD2GD: odstraneny viditelne posuvniky/reel prelepy; jemne ladeni zustava pres hitzony; YouTube tvrde externi otevreni; Rene Frank Facebook na uvodu.');
 })();
 </script>
 </body>

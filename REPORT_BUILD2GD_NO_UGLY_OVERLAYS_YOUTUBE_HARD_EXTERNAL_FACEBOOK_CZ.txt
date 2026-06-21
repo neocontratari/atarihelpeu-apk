@@ -1,0 +1,52 @@
+ATARIHELP.EU EMU-10
+BUILD2GD_NO_UGLY_OVERLAYS_YOUTUBE_HARD_EXTERNAL_FACEBOOK
+
+KODY JSOU ZMENENE - UI / player / odkazy.
+BASIC / Altirra testovaci kody: KODY JSOU STEJNE.
+Emulator core: KODY JSOU STEJNE.
+
+CO JSEM OPRAVIL
+1) Přehrávač:
+- odstranil jsem hnusné viditelné EQ posuvníky / knob pointery / hodnoty přes obrázek
+- odstranil jsem dodatečné reel/cívka přelepy
+- původní krásný player obrázek zůstává čistý
+- jemné ladění zvuku zůstává funkční přes neviditelné hitzóny:
+  EQ 60/250/1K/4K/16K = táhnout nahoru/dolů
+  BASS/TREBLE/VOLUME = táhnout nahoru/dolů
+  BALANCE = táhnout vlevo/vpravo
+- RESET ZVUKU zůstává v SETTINGS panelu
+
+2) YouTube:
+- tlačítko YOUTUBE už není obyčejný odkaz v WebView
+- je to button s tvrdým externím otevřením
+- zkouší:
+  Android.openExternal
+  Android.openExternalUrl
+  Android.openUrl
+  AndroidInterface.openExternal
+  intent://www.youtube.com/ fallback
+  https://www.youtube.com/ fallback
+- cílem je, aby to nelezlo do emulatoru / černé obrazovky
+
+3) René Frank:
+- spodní tlačítko René Frank na úvodní stránce otevírá:
+  https://www.facebook.com/renatus.honda
+
+CO SE NEMENI
+- EMULATOR stále otevírá existující emulator
+- ATARIHELP.EU stále otevírá https://atarihelp.eu/
+- CLOAD/POKEY/CSAVE/TXT/ROM/Java emulator core beze zmen
+
+TEST PLAN
+1. Úvodní stránka:
+   - klik René Frank -> Facebook profil
+2. Přehrávač:
+   - nesmí být vidět žádné nové posuvníky/pointery přes grafiku
+   - zvuk se ladí neviditelně přes původní EQ/knoby
+3. SETTINGS:
+   - RESET ZVUKU vrátí vše na základ
+4. YOUTUBE:
+   - musí otevřít https://www.youtube.com/
+   - nesmí skočit do emulatoru / černé emulator obrazovky
+5. EMULATOR:
+   - stále musí otevřít existující emulator
