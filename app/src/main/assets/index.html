@@ -66,38 +66,20 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 #introMp3DownloadBtn{left:22.4%;top:71.74%;width:20.4%;height:2.35%;}
 #introMp3ListBtn{left:43.4%;top:71.74%;width:15.7%;height:2.35%;}
 #introMp3Now{position:absolute;left:59.8%;top:71.82%;width:15.5%;height:2.1%;z-index:14;display:flex;align-items:center;justify-content:center;color:#ffd879;font:800 clamp(6px,1.05vw,11px)/1 "Courier New",monospace;letter-spacing:.03em;text-shadow:0 0 6px rgba(255,190,68,.55),0 1px 1px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;opacity:.92;}
-#introPlaylistOverlay{display:none;position:fixed;inset:0;z-index:1000;background:radial-gradient(circle at 50% 14%,rgba(22,32,48,.42),rgba(4,5,7,.96) 56%,rgba(0,0,0,.99) 100%);padding:14px;color:#f3c465;font:700 13px/1.35 "Courier New",monospace;overflow:auto;pointer-events:auto;}
+#introPlaylistOverlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(8,9,10,.96);padding:16px;color:#f3c465;font:700 13px/1.4 "Courier New",monospace;overflow:auto;}
 #introPlaylistOverlay.open{display:block;}
-#introPlaylistOverlay .panel{position:relative;max-width:860px;margin:0 auto;background:linear-gradient(180deg,rgba(12,14,18,.98),rgba(6,8,10,.99));border:1px solid rgba(232,188,87,.42);border-radius:24px;padding:14px 14px 16px;box-shadow:0 22px 70px rgba(0,0,0,.74),inset 0 0 0 1px rgba(255,222,146,.06);overflow:hidden;pointer-events:auto;}
-#introPlaylistOverlay .panel:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,213,113,.03),rgba(0,0,0,0) 20%,rgba(0,0,0,.25) 100%);pointer-events:none;}
-#introPlaylistHero{position:relative;border:1px solid rgba(235,189,84,.32);border-radius:18px;overflow:hidden;background:linear-gradient(180deg,#11161c,#090b0e);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 14px 30px rgba(0,0,0,.30);margin-bottom:14px;}
-#introPlaylistHero img{display:block;width:100%;height:auto;}
-#introPlaylistHero .heroShade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,.02) 36%,rgba(0,0,0,.42) 100%),linear-gradient(90deg,rgba(0,0,0,.18),rgba(0,0,0,0) 24%,rgba(0,0,0,0) 76%,rgba(0,0,0,.18));pointer-events:none;}
-#introPlaylistHero .heroLabel{position:absolute;left:16px;bottom:14px;display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:14px;border:1px solid rgba(242,196,100,.28);background:linear-gradient(180deg,rgba(10,12,14,.84),rgba(7,8,10,.92));box-shadow:0 0 16px rgba(0,0,0,.28);}
-#introPlaylistHero .heroEyebrow{font:800 10px/1 "Courier New",monospace;letter-spacing:.24em;color:#8fd8ff;text-transform:uppercase;}
-#introPlaylistHero .heroTitle{font:900 clamp(20px,4.4vw,34px)/1 "Courier New",monospace;letter-spacing:.06em;color:#f2c464;text-shadow:0 0 16px rgba(242,196,100,.12),0 2px 0 #000;}
-#introPlaylistHero .heroSub{font:700 11px/1.2 "Courier New",monospace;letter-spacing:.18em;color:#d8dde3;text-transform:uppercase;opacity:.9;}
-#introPlaylistInfo{margin:0 0 10px;color:#8fd8ff;background:linear-gradient(180deg,rgba(10,14,20,.92),rgba(6,9,12,.86));border:1px solid rgba(108,201,255,.18);border-radius:14px;padding:11px 12px;font:800 12px/1.25 "Courier New",monospace;letter-spacing:.05em;text-shadow:0 0 8px rgba(108,201,255,.10);}
-#introPlaylistItems{display:flex;flex-direction:column;gap:10px;margin:0 0 14px;min-height:72px;max-height:240px;overflow:auto;padding:2px 1px 2px 0;}
-#introPlaylistItems button{width:100%;text-align:left;padding:13px 14px;border:1px solid rgba(244,197,92,.34);border-radius:14px;background:linear-gradient(180deg,rgba(35,40,48,.98),rgba(8,10,14,.98));color:#f3c465;font:800 12px/1.25 "Courier New",monospace;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 18px rgba(0,0,0,.18);}
-#introPlaylistItems button.active{border-color:#6cc9ff;box-shadow:0 0 16px rgba(108,201,255,.28),inset 0 0 12px rgba(108,201,255,.10);color:#8fd8ff;}
-#introPlaylistItems button.pending{border-color:#d9b25c;color:#ffd879;opacity:.82;background:linear-gradient(180deg,rgba(52,43,23,.98),rgba(14,12,9,.98));}
+#introPlaylistOverlay .panel{max-width:760px;margin:0 auto;background:#0b0d10;border:1px solid #3a3e45;border-radius:12px;padding:16px;box-shadow:0 0 30px rgba(0,0,0,.7);}
+#introPlaylistOverlay h2{font-size:18px;margin-bottom:10px;color:#ffd87a;}
+#introPlaylistInfo{margin:0 0 10px;color:#8fd8ff;}
+#introPlaylistItems{display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+#introPlaylistItems button{width:100%;text-align:left;padding:11px;border:1px solid rgba(244,197,92,.38);border-radius:10px;background:linear-gradient(180deg,#22262d,#0a0c10);color:#f3c465;font:800 12px/1.25 "Courier New",monospace;}
+#introPlaylistItems button.active{border-color:#6cc9ff;box-shadow:0 0 14px rgba(108,201,255,.35),inset 0 0 12px rgba(108,201,255,.12);color:#8fd8ff;}
+#introPlaylistItems button.pending{border-color:#d9b25c;color:#ffd879;opacity:.72;background:linear-gradient(180deg,#2f2615,#11100d);}
 #introPlaylistItems button[disabled]{cursor:default;}
-#introPlaylistActions{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-#introPlaylistDownload,#introPlaylistEject,#introPlaylistYoutube,#introPlaylistClose{display:flex;align-items:center;justify-content:center;gap:10px;min-height:58px;padding:14px;border-radius:15px;font:900 13px/1 "Courier New",monospace;letter-spacing:.05em;border:1px solid transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 12px 22px rgba(0,0,0,.20);position:relative;overflow:hidden;pointer-events:auto;cursor:pointer;}
-#introPlaylistDownload:before,#introPlaylistEject:before,#introPlaylistYoutube:before,#introPlaylistClose:before{content:"";position:absolute;left:0;right:0;top:0;height:44%;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,0));pointer-events:none;}
-#introPlaylistDownload{background:linear-gradient(180deg,#e2be67,#b48728);color:#121212;border-color:rgba(255,230,170,.28);}
-#introPlaylistEject{background:linear-gradient(180deg,#28303a,#11151a);color:#ffd879;border-color:rgba(244,197,92,.34);}
-#introPlaylistYoutube{background:linear-gradient(180deg,#5b0d16,#25070c);color:#fff;border-color:rgba(255,90,90,.34);}
-#introPlaylistClose{background:linear-gradient(180deg,#4a515d,#1d222a);color:#fff;border-color:rgba(255,255,255,.12);}
-#introPlaylistDownload:active,#introPlaylistEject:active,#introPlaylistYoutube:active,#introPlaylistClose:active{transform:translateY(2px) scale(.99);}
-#introPlaylistYoutube .ytBadge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:20px;border-radius:7px;background:#ff0033;box-shadow:0 0 12px rgba(255,0,51,.18);}
-#introPlaylistYoutube .ytBadge svg{display:block;width:13px;height:13px;fill:#fff;margin-left:2px;}
-#introPlaylistDownload .btnIcon,#introPlaylistEject .btnIcon,#introPlaylistClose .btnIcon{font-size:16px;line-height:1;}
-body.playlistModalOpen main.stage{pointer-events:none!important;}
-body.playlistModalOpen #introPlaylistOverlay{pointer-events:auto!important;}
-body.playlistModalOpen #introPlaylistOverlay .panel,body.playlistModalOpen #introPlaylistOverlay button{pointer-events:auto!important;}
-@media (max-width:640px){#introPlaylistActions{grid-template-columns:1fr;}#introPlaylistHero .heroLabel{left:10px;right:10px;bottom:10px;}}
+#introPlaylistDownload,#introPlaylistEject,#introPlaylistClose{width:100%;padding:12px;margin-top:8px;border:0;border-radius:10px;font:900 13px "Courier New",monospace;}
+#introPlaylistDownload{background:#d9b25c;color:#111;}
+#introPlaylistEject{background:#22262d;color:#ffd879;border:1px solid rgba(244,197,92,.42);}
+#introPlaylistClose{background:#3a3e45;color:#fff;}
 
 
 
@@ -158,6 +140,13 @@ body.playlistModalOpen #introPlaylistOverlay .panel,body.playlistModalOpen #intr
 }
 #introMp3DownloadBtn:before,#introMp3DownloadBtn:after,#introMp3ListBtn:before,#introMp3ListBtn:after,#introHelpBtn:before,#introHelpBtn:after{content:none!important;display:none!important;}
 
+
+/* BUILD2FW_MODAL_GUARD: pri otevrenem playlistu nesmi klik propadnout na emulator/system pod popupem. */
+body.playlistModalOpen main.stage{pointer-events:none!important;}
+body.playlistModalOpen #introPlaylistOverlay,
+body.playlistModalOpen #introPlaylistOverlay .panel,
+body.playlistModalOpen #introPlaylistOverlay button{pointer-events:auto!important;}
+
 </style>
 </head>
 <body>
@@ -183,23 +172,13 @@ body.playlistModalOpen #introPlaylistOverlay .panel,body.playlistModalOpen #intr
 
 <div id="introPlaylistOverlay" aria-hidden="true">
   <div class="panel">
-    <div id="introPlaylistHero">
-      <img src="design/intro_popup_deck.png" alt="N&P Vision Tape Loader">
-      <div class="heroShade"></div>
-      <div class="heroLabel">
-        <div class="heroEyebrow">N&P VISION</div>
-        <div class="heroTitle">MEDIA DECK</div>
-        <div class="heroSub">MP3 / WAV PLAYLIST</div>
-      </div>
-    </div>
-    <div id="introPlaylistInfo">READY • PRIDAT MP3 / WAV</div>
+    <h2>MP3/WAV PLAYLIST</h2>
+    <p id="introPlaylistInfo">TAPE LOADER: tady si priprav playlist pro uvodni kazetak. Stiskni MP3/WAV PRIDAT a z mobilu/NOX vyber MP3 nebo WAV. Kdyz NOX vezme jen jeden soubor, stiskni pridat znovu.</p>
     <div id="introPlaylistItems"></div>
-    <div id="introPlaylistActions">
-      <button id="introPlaylistDownload" type="button"><span class="btnIcon">+</span><span>PRIDAT MP3 / WAV</span></button>
-      <button id="introPlaylistEject" type="button"><span class="btnIcon">⏏</span><span>VYMAZAT PLAYLIST</span></button>
-      <button id="introPlaylistYoutube" type="button"><span class="ytBadge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2 31.7 31.7 0 0 0 0 12a31.7 31.7 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1A31.7 31.7 0 0 0 24 12a31.7 31.7 0 0 0-.5-5.8ZM9.7 15.8V8.2l6.6 3.8-6.6 3.8Z"/></svg></span><span>YOUTUBE</span></button>
-      <button id="introPlaylistClose" type="button"><span class="btnIcon">✕</span><span>ZAVRIT</span></button>
-    </div>
+    <button id="introPlaylistDownload" type="button">MP3/WAV PRIDAT</button>
+    <button id="introPlaylistEject" type="button">EJECT / VYMAZAT PLAYLIST</button>
+    <button id="introPlaylistYoutube" type="button">YOUTUBE</button>
+    <button id="introPlaylistClose" type="button">ZAVRIT PLAYLIST</button>
   </div>
 </div>
 
@@ -281,9 +260,9 @@ function updatePlaylistUi(){
   var total=playlist.length+(incomingPlaylist?pendingPlaylist.length:0);
   if(playlistInfo){
     if(incomingPlaylist){
-      playlistInfo.textContent='NACITAM MEDIA • '+pendingPlaylist.length+' NOVYCH SOUBORU';
+      playlistInfo.textContent='NACITAM MP3/WAV... prijato '+pendingPlaylist.length+' nova/nove. Uz v playlistu: '+playlist.length+'. Po dokonceni se soubory pripoji za konec.';
     } else {
-      playlistInfo.textContent = playlist.length ? ('PLAYLIST READY • '+playlist.length+' TRACKU') : 'READY • PRIDAT MP3 / WAV';
+      playlistInfo.textContent = playlist.length ? ('Vybrano '+playlist.length+' MP3/WAV. MP3/WAV PRIDAT prida dalsi soubor/soubory za konec. EJECT vymaze playlist.') : 'Playlist je prazdny. Stiskni MP3/WAV PRIDAT a z mobilu/NOX vyber MP3 nebo WAV. Kdyz NOX vezme jen jeden soubor, stiskni pridat znovu.';
     }
   }
   if(!playlistItems) return;
@@ -294,7 +273,7 @@ function updatePlaylistUi(){
   playlist.forEach(function(t,i){
     var b=document.createElement('button'); b.type='button'; b.textContent=(i+1)+'. '+(t.name||'hudba.mp3');
     if(i===playlistIndex) b.className='active';
-    b.addEventListener('click',function(){ setTrack(i,true); closePlaylist(); });
+    b.addEventListener('click',function(){ setTrack(i,true); if(playlistOverlay){ playlistOverlay.classList.remove('open'); playlistOverlay.setAttribute('aria-hidden','true'); } document.body.classList.remove('playlistModalOpen'); });
     playlistItems.appendChild(b);
   });
   if(incomingPlaylist){
@@ -305,9 +284,7 @@ function updatePlaylistUi(){
     });
   }
 }
-function setPlaylistModalOpen(on){ document.body.classList.toggle('playlistModalOpen', !!on); }
-function closePlaylist(){ if(playlistOverlay){ playlistOverlay.classList.remove('open'); playlistOverlay.setAttribute('aria-hidden','true'); } setPlaylistModalOpen(false); }
-function showPlaylist(){ updatePlaylistUi(); if(playlistOverlay){ playlistOverlay.classList.add('open'); playlistOverlay.setAttribute('aria-hidden','false'); } setPlaylistModalOpen(true); }
+function showPlaylist(){ updatePlaylistUi(); if(playlistOverlay){ playlistOverlay.classList.add('open'); playlistOverlay.setAttribute('aria-hidden','false'); } document.body.classList.add('playlistModalOpen'); }
 function updateCounter(){
   var val=0;
   if(audio && audio.src && isFinite(audio.duration) && audio.duration>0) val=Math.floor((audio.currentTime/audio.duration)*999);
@@ -409,7 +386,7 @@ function loadBytes(name,u8){
   try{
     var tr=createTrack(name,u8);
     if(!tr) return;
-    if(incomingPlaylist){ pendingPlaylist.push(tr); log('MP3 playlist: nacitam '+tr.name+' ('+pendingPlaylist.length+')'); updatePlaylistUi(); showPlaylist(); return; }
+    if(incomingPlaylist){ pendingPlaylist.push(tr); log('MP3 playlist: nacitam '+tr.name+' ('+pendingPlaylist.length+')'); updatePlaylistUi(); if(playlistOverlay){ playlistOverlay.classList.add('open'); playlistOverlay.setAttribute('aria-hidden','false'); } return; }
     replacePlaylist([tr]);
   }catch(e){ log('MP3 chyba: '+e.message); }
 }
@@ -443,7 +420,7 @@ function pickMp3(){
   inp.onchange=function(){
     var files=Array.prototype.slice.call((inp.files||[])); inp.remove();
     if(!files.length){log('MP3/WAV: soubor nevybran.'); return;}
-    incomingPlaylist=true; pendingPlaylist=[]; updatePlaylistUi(); showPlaylist();
+    incomingPlaylist=true; pendingPlaylist=[]; updatePlaylistUi(); if(playlistOverlay){ playlistOverlay.classList.add('open'); playlistOverlay.setAttribute('aria-hidden','false'); }
     function readNext(i){
       if(i>=files.length){ window.AHLOCAL_MP3_PLAYLIST_END(); return; }
       var f=files[i]; var rd=new FileReader();
@@ -476,10 +453,10 @@ bind('introTapeRew',function(){press('introTapeRew',650); seekMp3(-1);});
 bind('introTapeFwd',function(){press('introTapeFwd',650); seekMp3(1);});
 bind('introMp3DownloadBtn',function(){press('introMp3DownloadBtn',260); pickMp3();});
 bind('introMp3ListBtn',function(){press('introMp3ListBtn',260); showPlaylist();});
-var plDown=$('introPlaylistDownload'), plEject=$('introPlaylistEject'), plClose=$('introPlaylistClose'), plYt=$('introPlaylistYoutube');
-if(plDown) bind('introPlaylistDownload',function(){ press('introPlaylistDownload',180); pickMp3(); });
-if(plEject) bind('introPlaylistEject',function(){ press('introPlaylistEject',180); ejectMp3(); updatePlaylistUi(); });
-if(plClose && playlistOverlay) bind('introPlaylistClose',function(){ press('introPlaylistClose',180); closePlaylist(); });
+var plDown=$('introPlaylistDownload'), plEject=$('introPlaylistEject'), plClose=$('introPlaylistClose');
+if(plDown) plDown.addEventListener('click',function(){ pickMp3(); },true);
+if(plEject) plEject.addEventListener('click',function(){ ejectMp3(); updatePlaylistUi(); },true);
+if(plClose && playlistOverlay) plClose.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); playlistOverlay.classList.remove('open'); playlistOverlay.setAttribute('aria-hidden','true'); document.body.classList.remove('playlistModalOpen'); },true);
 if(volHot){
   var volDragging=false;
   volHot.addEventListener('pointerdown',function(e){e.preventDefault(); e.stopPropagation(); volDragging=true; volHot.classList.add('flash'); setVolumeFromEvent(e); try{volHot.setPointerCapture(e.pointerId);}catch(_){}} ,{passive:false});
@@ -499,7 +476,7 @@ if(tapeCard){
     e.preventDefault(); e.stopPropagation();
     showPlaylist();
     if(playlistInfo && !playlist.length && !incomingPlaylist){
-      playlistInfo.textContent='READY • PRIDAT MP3 / WAV';
+      playlistInfo.textContent='TAPE LOADER: tady si priprav playlist pro uvodni kazetak. Stiskni MP3/WAV PRIDAT a z mobilu/NOX vyber MP3 nebo WAV. Potom muzes prehravat tlacitky na kazetaku.';
     }
     log('TAPE LOADER BUILD2FT: otevreno playlist okno MP3/WAV pro uvodni kazetak.');
     return false;
@@ -508,15 +485,39 @@ if(tapeCard){
 var systemCard=$('goSystem');
 if(systemCard){ systemCard.setAttribute('href','emu/index.html'); systemCard.setAttribute('aria-label','System - vstup do emulatoru Atari 130XE'); }
 var ytBtn=$('introPlaylistYoutube');
-if(ytBtn) bind('introPlaylistYoutube',function(){
-  press('introPlaylistYoutube',180);
+function openYoutubeBuild2FW(){
   var url='https://www.youtube.com/';
-  try{ window.location.href=url; }catch(err){ try{ location.href=url; }catch(_){ } }
-  log('YOUTUBE BUILD2FV: otevreno https://www.youtube.com/.');
-});
+  log('YOUTUBE BUILD2FW: oteviram '+url+' - nesmi propadnout do emulatoru.');
+  try{
+    if(window.Android && typeof window.Android.openExternal==='function'){
+      window.Android.openExternal(url);
+      return;
+    }
+  }catch(e){ log('YOUTUBE BUILD2FW: Android.openExternal neni dostupny - '+e.message); }
+  try{
+    if(window.Android && typeof window.Android.openUrl==='function'){
+      window.Android.openUrl(url);
+      return;
+    }
+  }catch(e){ log('YOUTUBE BUILD2FW: Android.openUrl neni dostupny - '+e.message); }
+  try{
+    var w=window.open(url,'_blank','noopener,noreferrer');
+    if(w) return;
+  }catch(e){ log('YOUTUBE BUILD2FW: window.open selhal - '+e.message); }
+  try{
+    window.location.assign(url);
+  }catch(e){
+    try{ window.location.href=url; }catch(_){}
+  }
+}
+if(ytBtn){
+  ytBtn.addEventListener('pointerdown',function(e){ e.preventDefault(); e.stopPropagation(); },true);
+  ytBtn.addEventListener('pointerup',function(e){ e.preventDefault(); e.stopPropagation(); openYoutubeBuild2FW(); return false; },true);
+  ytBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); openYoutubeBuild2FW(); return false; },true);
+}
 
 log('BUILD2AQ: MP3 PRIDAT nyni nacita/pripojuje skladby do playlistu; EJECT maze playlist.');
-log('BUILD2FV: TAPE LOADER popup ma high-res deck grafiku z uvodni obrazovky. SYSTEM vstupuje do emulatoru, YOUTUBE otevre https://www.youtube.com/.');
+log('BUILD2FW: rollback z FV. Grafika popupu vracena na FT, YouTube osetren proti propadu do emulatoru, SYSTEM vstupuje do emulatoru.');
 })();
 </script>
 </body>

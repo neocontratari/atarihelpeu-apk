@@ -1,0 +1,46 @@
+ATARIHELP.EU EMU-10
+BUILD2FW_ROLLBACK_FV_SAFE_YOUTUBE
+
+KODY JSOU STEJNE.
+Nemenil jsem CLOAD, POKEY, CSAVE, TXT, ROM, Java ani emulator core.
+
+DUVOD
+- BUILD2FV graficky nevyhovoval.
+- YouTube tlacitko se nechovalo spravne a propadalo / skoncilo v emulatoru.
+- BUILD2FV se nema pouzivat.
+
+CO DELA BUILD2FW
+- vraci popup zpet z nepovedeneho FV pokusu
+- zachovava funkcnost TAPE LOADER -> MP3/WAV playlist
+- zachovava SYSTEM -> emulator
+- opravuje YouTube handler:
+  1) stopPropagation/preventDefault na pointerdown/pointerup/click
+  2) blokovani podkladove uvodni obrazovky pri otevrenem popupu
+  3) pokus Android.openExternal / Android.openUrl, pokud bridge existuje
+  4) fallback window.open / location.assign na https://www.youtube.com/
+
+CO SE NEMENI
+- zadne PNG
+- zadna grafika hlavni uvodni obrazovky
+- emulator core
+- CLOAD/POKEY/CSAVE/TXT/ROM/Java
+
+TEST PLAN
+1. Spust aplikaci.
+2. Klikni TAPE LOADER.
+3. Klikni YOUTUBE.
+   Ocekavani:
+   - nesmi se otevrit emulator
+   - musi se pokusit otevrit https://www.youtube.com/
+4. Spust aplikaci znovu.
+5. Klikni TAPE LOADER -> ZAVRIT.
+   Ocekavani:
+   - popup se zavre
+6. Klikni SYSTEM.
+   Ocekavani:
+   - otevre emulator.
+7. POWER BASIC jen rychla kontrola.
+
+POZNAMKA
+- high-res grafiku popupu nedelat dalsim prelepem naslepo.
+- dalsi graficky krok ma byt az podle schvaleneho hotoveho PNG/obrazku popupu, ne pres CSS prelepy.

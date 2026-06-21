@@ -1,0 +1,5 @@
+1. Rozbal ZIP.
+2. Prekopiruj obsah slozky app/ do projektu pres GitHub Desktop.
+3. Commit message:
+BUILD2FW rollback FV safe youtube
+4. BUILD2FV uz nepouzivat.
