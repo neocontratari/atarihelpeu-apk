@@ -1,0 +1,55 @@
+ATARIHELP.EU EMU-10
+BUILD2GT_VBXE_CORE_VERSION_D640
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emulatoru
+
+CO UKAZAL TVUJ TEST BUILD2GS:
+- Popeye se nacte jako VBXE XEX s 625 zaznamy.
+- Program dojde az na vlastni hlasku:
+  No VBXE found or no FX core
+- Trace ukazal opakovane:
+  VBXE TRACE R $D640 = $FF PC=$8C63
+- To znamena, ze Popeye v teto fazi testuje registr $D640 / Dx40.
+
+CO JE OPRAVENO V BUILD2GT:
+- $D640 / Dx40 pri cteni uz vraci CORE_VERSION = $10.
+- To neni fake bypass, je to primo dokumentovana hodnota registru:
+  Dx40 write = VIDEO_CONTROL, read = CORE_VERSION (= $10).
+- Ostatni registry se zatim nefakují jako hotovy cip:
+  $D64A = COLDETECT default 0
+  $D650 = BLT_COLLISION_CODE default 0
+  $D653 = BLITTER_BUSY idle 0
+  $D654 = IRQ_STATUS no IRQ 0
+  ostatni zatim $FF + trace
+
+PROC:
+Ted chceme zjistit, jestli Popeye projde pres prvni detekci.
+Pokud ano, dalsi log ukaze dalsi realne registry, ktere hra potrebuje.
+
+TEST PLAN:
+1. Spust novy VBXE emulator.
+2. Nahraj Popeye (VBXE, PAL Version).xex.
+3. Sleduj, jestli zmizi hlaska:
+   No VBXE found or no FX core
+4. Pokud se objevi jina chyba nebo cerna obrazovka, uloz log.
+5. Posli log.
+6. Hledat hlavne:
+   VBXE TRACE R/W $D6..
+   PC=$....
+   pripadne nove hlasky hry.
+
+OCEKAVANI:
+- Pokud hra jen testovala $D640, mela by se dostat dal.
+- Obraz jeste nemusi byt spravne, protoze VRAM, XDL, blitter a overlay renderer jeste nejsou hotove.
+- To je v poradku. Dalsi build bude podle noveho logu.
