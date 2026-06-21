@@ -1,0 +1,32 @@
+AtariHelp.eu EMU-10 BUILD2FH_CLEAN_UI_SAFE_TXT
+
+Duvod:
+- BUILD2FG zrychlil TXT zapis, ale podle testu programy nejdou spustit; pravdepodobne se ztracely/posouvaly stisky po radcich.
+- UI melo viditelne kreslene vrstvy pres PNG: EMULATOR na uvodni obrazovce a START+OPTION v emulatoru.
+
+Zmeneno:
+- app/src/main/assets/index.html
+- app/src/main/assets/emu/index.html
+
+UI oprava:
+- EMULATOR na uvodni obrazovce je znovu jen neviditelna klikaci hit-zona nad PNG.
+- START+OPTION pod monitorem je znovu jen neviditelna klikaci hit-zona nad PNG.
+- Zadna dalsi kreslena CSS vrstva, zadny dalsi obdelnik, zadne tlacitko pres tlacitko.
+
+TXT oprava:
+- BUILD2FG rychly rezim zmenen na BUILD2FH SAFE TXT rezim.
+- Po RETURN/RUN je delsi dobeh pro Atari BASIC / Turbo BASIC tokenizaci.
+- Po znaku je maly oddech, aby se neztracely stisky.
+- Stale pres klavesove IRQ/CH, zadny RAM inject, zadny screen paint.
+
+Nezmeneno:
+- CSAVE WAV export
+- CLOAD/POKEY PCM/SKSTAT kod
+- XEX loader
+- ROM
+- Java
+- joystick
+- klavesova mapa
+- cassette workflow
+
+KODY JSOU STEJNE.

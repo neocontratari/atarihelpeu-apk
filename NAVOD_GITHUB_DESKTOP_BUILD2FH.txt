@@ -1,0 +1,23 @@
+BUILD2FH_CLEAN_UI_SAFE_TXT - presny postup
+
+1) Rozbal ZIP do korene projektu:
+   C:\Users\neocontr\Documents\GitHub\atarihelpeu-apk\
+
+2) Prepis soubory:
+   app\src\main\assets\index.html
+   app\src\main\assets\emu\index.html
+
+3) GitHub Desktop:
+   Summary: BUILD2FH clean UI safe TXT
+   Commit to main
+   Push origin
+
+4) Nechat GitHub Actions vyrobit APK.
+
+TEST:
+A) Uvodni obrazovka: na dlazdici EMULATOR nesmi byt kreslene dalsi tlacitko pres PNG.
+B) Emulator: START+OPTION nesmi byt kreslene jako dalsi tlacitko pres PNG, musi zustat jen klikaci zona.
+C) TXT: vlozit kratky test a delsi Turbo BASIC kod. Zapis je zamerne pomalejsi nez FG.
+D) V logu hledej BUILD2FH_CLEAN_UI_SAFE_TXT a TXT LINE ... SAFE TXT rezim.
+
+KODY JSOU STEJNE.
