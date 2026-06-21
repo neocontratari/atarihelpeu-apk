@@ -1,0 +1,73 @@
+ATARIHELP.EU EMU-10
+BUILD2GU_VBXE_MEMAC_BLITTER_R4
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emulatoru
+
+CO UKAZAL TVUJ TEST BUILD2GT:
+- Popeye uz prosel pres No VBXE / FX core.
+- Objevilo se menu a instrukce hry.
+- Po zmacknuti klavesy hra zacala nacitat a je slyset zvuk.
+- Pak je obraz pruhovany / rozpadly.
+- Log ukazuje, ze program opakovane pousti blitter:
+  W $D650 / W $D651 / W $D652 / W $D653
+  a cte $D653 jako BLITTER_BUSY.
+- To znamena: dalsi chybejici kus neni detekce, ale VBXE VRAM + MEMAC + blitter/render.
+
+CO JE PRIDANO V BUILD2GU:
+1) 512 KB VBXE VRAM
+- samostatna pamet uvnitr emu_vbxe
+
+2) MEMAC A/B
+- CPU okno $2000-$3FFF pres MA_CPU $D64C
+- ANTIC okno $2000-$3FFF pres MA_ANTIC $D64D
+- CPU okno $4000-$7FFF pres MB_CPU $D64E
+- ANTIC okno $4000-$7FFF pres MB_ANTIC $D64F
+
+3) Prvni synchronni VBXE blitter
+- cte BL_ADR $D650-$D652
+- startuje pri zapisu $D653 bit0 = 1
+- parsuje BCB 19 bajtu
+- podporuje zakladni rezimy 0-6
+- podporuje constant source podle masky
+- BLITTER_BUSY se po dokonceni vrati na 0
+- kolize se vraci pres $D650 / $D64A
+
+4) Log je omezeny
+- prvnich 16 blitter startu ukaze detail
+- pak uz jen souhrny, aby log nezabil test
+
+DULEZITE:
+Tohle porad neni hotova VBXE grafika.
+Jeste chybi:
+- XDL parser
+- overlay renderer
+- palety
+- map/priority renderer
+
+TEST PLAN:
+1. Spust novy VBXE emulator.
+2. Nahraj Popeye.
+3. Na uvodni obrazovce hry stiskni klavesu pro pokracovani.
+4. Sleduj:
+   - jestli Loading dobehne dal
+   - jestli se pruhy zmeni / ubydou
+   - jestli se hra dostane do menu/gameplay
+   - jestli zvuk porad jede
+5. Uloz a posli log.
+
+V logu hledej:
+- VBXE MEMAC ...
+- VBXE BLITTER START ...
+- VBXE BLITTER DONE ...
+- pripadne dalsi VBXE TRACE R/W $D6..
