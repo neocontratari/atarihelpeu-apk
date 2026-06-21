@@ -1,0 +1,32 @@
+NAVOD - GitHub Desktop overlay BUILD2FF
+
+1) Rozbal ZIP.
+
+2) V rozbalene slozce uvidis:
+   app/src/main/assets/emu/index.html
+   app/src/main/assets/emu10_130xe.html
+
+3) Otevri svuj repozitar atarihelpeu-apk ve Windows Exploreru.
+
+4) Slozku app z overlaye pretahni do korene repozitare.
+   Windows se zepta na prepsani souboru.
+   Dej nahradit/prepsat.
+
+5) Otevri GitHub Desktop.
+   Mely by byt videt 2 zmenene soubory:
+   app/src/main/assets/emu/index.html
+   app/src/main/assets/emu10_130xe.html
+
+6) Commit message:
+   BUILD2FF TXT block STARTOPTION CLOAD reset
+
+7) Dej Commit to main.
+
+8) Dej Push origin.
+
+9) Pockej na Actions build APK.
+
+10) V APK po startu hledej v logu:
+   AtariHelp.eu EMU-10 BUILD2FF_TXT_BLOCK_STARTOPTION_CLOAD_RESET pripraven.
+
+Kdyz uvidis porad BUILD2FE nebo starsi, bezi stara APK nebo nebyl overlay spravne prepsany.

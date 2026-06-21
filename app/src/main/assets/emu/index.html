@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION - Atari 130XE Emulator BUILD2FE</title>
+<title>N&P VISION - Atari 130XE Emulator BUILD2FF</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -22,7 +22,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #led{position:absolute;left:20.1%;top:36.15%;width:1.25%;aspect-ratio:1;border-radius:50%;background:#63ff34;z-index:31;box-shadow:0 0 7px #63ff34,0 0 16px #63ff34;animation:ledPulse 1.4s ease-in-out infinite;}
 #led.on{background:#63ff34;box-shadow:0 0 8px #63ff34,0 0 19px #63ff34;}@keyframes ledPulse{50%{opacity:.55}}
 /* power / mode controls */
-#btnPower{left:6.8%;top:34.6%;width:16.5%;height:5.1%;}#btnSelfTest{left:24.0%;top:34.6%;width:17.5%;height:5.1%;}#btnJoy{left:44.0%;top:34.6%;width:47.8%;height:5.1%;}
+#btnPower{left:6.8%;top:34.6%;width:16.5%;height:5.1%;}#btnSelfTest{left:-20%;top:-20%;width:1px;height:1px;pointer-events:none;}#btnJoy{left:44.0%;top:34.6%;width:47.8%;height:5.1%;}
 /* Atari function row */
 #btnHelp{left:34.1%;top:43.2%;width:11.4%;height:4.3%;}#btnStart{left:45.6%;top:43.2%;width:11.5%;height:4.3%;}#btnSelect{left:57.1%;top:43.2%;width:12.1%;height:4.3%;}#btnOption{left:69.2%;top:43.2%;width:12.3%;height:4.3%;}#btnReset{left:81.5%;top:43.2%;width:11.2%;height:4.3%;}
 #btnBreak{left:87.6%;top:48.2%;width:5.2%;height:3.4%;}
@@ -114,7 +114,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 /* BUILD2AW: kazetak ma samostatne VLOZIT; dock zustava jen servis mimo kazetu */
 #actionDock{
   position:relative;width:min(100vw,941px);max-width:941px;margin:9px auto 0;padding:10px 9px 9px;z-index:90;
-  display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,42px);gap:8px;pointer-events:auto;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,42px);gap:8px;pointer-events:auto;
   background:linear-gradient(180deg,#1b1d21 0%,#08090b 100%);
   border:1px solid rgba(61,65,72,.98);border-radius:12px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.09), inset 0 -1px 0 rgba(0,0,0,.9), 0 0 28px rgba(0,0,0,.82);
@@ -177,7 +177,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   #landJoy{display:block;}
 }
 
-@media(max-width:420px){#actionDock{grid-template-rows:repeat(2,34px);gap:6px;padding:8px 7px 7px;}#actionDock button{font-size:7.0px;}}
+@media(max-width:420px){#actionDock{grid-template-rows:repeat(3,34px);gap:6px;padding:8px 7px 7px;}#actionDock button{font-size:7.0px;}}
 
 @media (prefers-reduced-motion:reduce){.scan,.screenSlot:after,#led{animation:none}}
 </style>
@@ -188,7 +188,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <div class="screenSlot"><canvas id="scr" width="384" height="240"></canvas><div class="scan"></div></div>
   <div id="led"></div>
   <button id="btnPower" class="hit">POWER BASIC</button>
-  <button id="btnSelfTest" class="hit" aria-label="START OPTION kazetovy boot">START OPTION BOOT</button>
+  <button id="btnSelfTest" class="hit" aria-hidden="true" tabindex="-1">DISABLED OLD START OPTION HITBOX</button>
   <button id="btnJoy" class="hit">JOYSTIK</button>
   <button id="btnHelp" class="hit">HELP</button>
   <button id="btnStart" class="hit">START</button>
@@ -226,6 +226,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <button id="dockTbxl" class="primary" type="button">TURBO BASIC</button>
   <button id="dockTxt" type="button">BASIC/TBXL TXT</button>
   <button id="dockLog" type="button">LOG / CHYBA</button>
+  <button id="dockStartOption" class="primary" type="button">START+OPTION</button>
   <button id="dockHelpMini" type="button">HELP</button>
   <button id="dockMenu" type="button">MENU</button>
 </div>
@@ -252,7 +253,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
     <h3>Atari 130XE emulator</h3>
     <ul>
       <li><b>POWER BASIC</b> — cold start do BASICu.</li>
-      <li><b>START OPTION BOOT</b> — cold start s drzenym START+OPTION jako na realnem Atari; pouzij pro kazetovy/turbo loader, ne pro Self Test.</li>
+      <li><b>START+OPTION v docku</b> — cold start s drzenym START+OPTION jako na realnem Atari; pouzij pro kazetovy/turbo loader, ne pro Self Test.</li>
       <li><b>KLAVESNICE / JOYSTICK</b> — prepina skin a ovladani.</li>
       <li><b>HELP / START / SELECT / OPTION / RESET / BREAK</b> — realne Atari funkcni klavesy.</li>
       <li><b>SHIFT</b> — zamykaci klavesa pro NOX test; zustane zapnuta, dokud ji znovu nezmacknes.</li>
@@ -1480,14 +1481,21 @@ function Atari130XE(osRom, basicRom, CPUctor){
         if(M.cassDebug && (idx===0 || (idx-pcm.lastLogLine)>=15600)){ pcm.lastLogLine=idx; M.cassDebug('PCM_COUNT',{lines:idx+1,total:pcm.levels.length,pc:cpu.pc,skstat:lev?0xFF:0xEF,edges:pcm.edgeCount,kind:pcm.kind}); }
         return;
       }
-      if(pcm.rx && ((pcm.rx.osExpected||0)>(pcm.rx.byteCount||0) || pcm.rx.pending.length || pcm.rx.inRecord || !pokey.serinRead)){
+      if(pcm.rx){
+        const rx=pcm.rx;
+        const expected=rx.osExpected||0;
+        const mustFinishExpected=expected>0 && expected>(rx.byteCount||0);
+        const mustFlushRecord=!!(rx.pending && rx.pending.length) || !!rx.inRecord;
+        const unreadExpectedByte=!pokey.serinRead && expected>0 && (rx.byteCount||0)<expected;
+        if(mustFinishExpected || mustFlushRecord || unreadExpectedByte){
         sio.cassInLevel=1; pcm.idx=pcm.levels.length;
         advanceCassettePcmReceiver(pcm,pcm.levels.length);
-        if(M.cassDebug && (M.frame-(pcm.rx.drainWaitLastLine||-999999))>=50){
-          pcm.rx.drainWaitLastLine=M.frame;
-          M.cassDebug('PCM_DRAIN_WAIT',{delivered:pcm.rx.byteCount||0,expected:pcm.rx.osExpected||0,pending:pcm.rx.pending.length,record:pcm.rx.recordNo||0,pc:cpu.pc,kind:pcm.kind});
+        if(M.cassDebug && (M.frame-(rx.drainWaitLastLine||-999999))>=250){
+          rx.drainWaitLastLine=M.frame;
+          M.cassDebug('PCM_DRAIN_WAIT',{delivered:rx.byteCount||0,expected:expected,pending:rx.pending.length,record:rx.recordNo||0,pc:cpu.pc,kind:pcm.kind});
         }
         return;
+        }
       }
       if(!pcm.completed){ pcm.idx=pcm.levels.length; pcm.completed=true; if(M.cassDebug) M.cassDebug('PCM_COMPLETE',{lines:pcm.idx,total:pcm.levels.length,edges:pcm.edgeCount,kind:pcm.kind}); }
       resetCassetteQueueStats(); return;
@@ -1688,6 +1696,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
   M.consol=function(start,select,option){
     gtia.consol=( (start?0:1) | (select?0:2) | (option?0:4) )&7;
   };
+  M.clearCassetteTransport=function(){
+    sio.rxq.length=0; sio.rxPos=0; sio.frame.length=0; sio.cmdLine=false;
+    pokey.serin=0xFF; pokey.serinRead=true; pokey.serinAge=0; pokey.inShiftBusy=0; pokey.inShiftCassette=false;
+    sio.cassMotor=false; sio.cassWaitMotor=false; resetCassetteQueueStats();
+    pokey.irqpend&=~0x20; pokeySync();
+  };
   M.reset=function(){ cpu.reset(); };
   M.coldStart=function(opt){
     ram.fill(0); ext.fill(0);
@@ -1699,8 +1713,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(opt&&opt.select) gtia.consol&=~2;
     if(opt&&opt.option) gtia.consol&=~4;
     M.line=0;M.frame=0;M.wsync=false;cpu.jam=false;cpu.irqLine=0;
-    sio.rxq.length=0;sio.rxPos=0;sio.frame.length=0;sio.cmdLine=false;pokey.serin=0xFF;pokey.serinRead=true;pokey.serinAge=0;pokey.inShiftBusy=0;pokey.inShiftCassette=false;
-    sio.cassMotor=false; sio.cassWaitMotor=false; resetCassetteQueueStats();
+    M.clearCassetteTransport();
     if(sio.xex){ sio.xex.cur=0; sio.xex.pserved=false; }
 
     cpu.reset();
@@ -2163,14 +2176,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }catch(_e){}
   }
 
-  // ---------- vkladani TXT (BUILD2BZ: radkova fronta, ceka na CH a BASIC po RETURN) ----------
+  // ---------- vkladani TXT (BUILD2FF: rychla radkova fronta, porad pres klavesove IRQ/CH) ----------
   var typeQ=[], typeWait=0, typeHold=0, typeCurrent=null, typeSent=0, typeTotal=0, typeDoneLogged=true;
-  var typeLineIndex=0, typeLineTotal=0, typeChWait=0, typeLastLineLogged=0, typeBuildName='BUILD2BZ';
+  var typeLineIndex=0, typeLineTotal=0, typeChWait=0, typeLastLineLogged=0, typeBuildName='BUILD2FF';
   function clearTypeQueue(reason){
     typeQ.length=0; typeWait=0; typeHold=0; typeCurrent=null; typeSent=0; typeTotal=0; typeDoneLogged=true;
     typeLineIndex=0; typeLineTotal=0; typeChWait=0; typeLastLineLogged=0;
     try{ if(M) M.keyUp(); }catch(_e){}
-    if(reason) log('VLOZIT TXT BUILD2BZ: fronta vycistena - '+reason);
+    if(reason) log('VLOZIT TXT BUILD2FF: fronta vycistena - '+reason);
   }
   function pushTypeScan(sc, meta){
     meta=meta||{}; meta.sc=sc&0xFF; typeQ.push(meta);
@@ -2201,15 +2214,15 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }
     typeTotal=typeQ.length; typeSent=0; typeDoneLogged=(typeTotal===0);
     typeLineTotal=visibleLines; typeLineIndex=0;
-    log('VLOZIT TXT BUILD2BZ: pripraveno '+typeTotal+' stisku / '+visibleLines+' radku. Radkova fronta ceka na CH $02FC a po kazdem RETURN dava BASICu cas. CLOAD GOLDEN NEMENEN.'+(skipped?(' Preskoceno '+skipped+' neznamych znaku.'):'') );
-    if(typeTotal===0) log('VLOZIT TXT BUILD2BZ: nic k vlozeni.');
+    log('VLOZIT TXT BUILD2FF: pripraveno '+typeTotal+' stisku / '+visibleLines+' radku. Rychly blokovy radkovy rezim porad ceka na CH $02FC; zadny RAM inject. CLOAD GOLDEN NEMENEN.'+(skipped?(' Preskoceno '+skipped+' neznamych znaku.'):'') );
+    if(typeTotal===0) log('VLOZIT TXT BUILD2FF: nic k vlozeni.');
   }
   function machineChEmpty(){
     try{ if(M && typeof M.chEmpty==='function') return M.chEmpty(); }catch(_e){}
     return true;
   }
   function typeStep(){
-    // BUILD2BZ: nepalit rychle znaky pres sebe. Atari OS musi po kazdem stisku vycistit CH $02FC.
+    // BUILD2FF: nepalit rychle znaky pres sebe. Atari OS musi po kazdem stisku vycistit CH $02FC.
     if(!M){ clearTypeQueue('neni machine'); return; }
     if(typeWait>0){ typeWait--; return; }
     if(typeCurrent!==null){
@@ -2218,17 +2231,17 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var done=typeCurrent; typeCurrent=null;
       if(done.kind==='return'){
         typeLineIndex++;
-        var wait=done.longWait?150:54; // cca 1.1 s po radku, 3 s po NEW; radsi pomalu a presne
+        var wait=done.longWait?55:16; // rychleji po blocich, ale porad pres RETURN a CH $02FC
         typeWait=wait;
         if(typeLineIndex===1 || typeLineIndex===typeLineTotal || (typeLineIndex%5)===0 || done.longWait){
-          log('VLOZIT TXT BUILD2BZ: TXT LINE '+typeLineIndex+'/'+typeLineTotal+' RETURN odeslan, cekam BASIC '+wait+' kroku.');
+          log('VLOZIT TXT BUILD2FF: TXT LINE '+typeLineIndex+'/'+typeLineTotal+' RETURN odeslan, blokova pauza BASIC '+wait+' kroku.');
         }
       } else {
-        typeWait=5;
+        typeWait=0;
       }
       if(!typeQ.length && typeSent>=typeTotal && !typeDoneLogged){
         typeDoneLogged=true;
-        log('VLOZIT TXT BUILD2BZ: QUEUE COMPLETE - vsechny znaky/radky odeslany pres klavesove IRQ, bez RAM injectu.');
+        log('VLOZIT TXT BUILD2FF: QUEUE COMPLETE - vsechny znaky/radky odeslany pres klavesove IRQ, bez RAM injectu.');
       }
       return;
     }
@@ -2237,18 +2250,18 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!machineChEmpty()){
       typeChWait++;
       if(typeChWait===1 || (typeChWait%80)===0){
-        log('VLOZIT TXT BUILD2BZ: cekam na prazdny CH $02FC pred dalsi klavesou, line '+(typeQ[0]&&typeQ[0].line?typeQ[0].line:'?')+'.');
+        log('VLOZIT TXT BUILD2FF: cekam na prazdny CH $02FC pred dalsi klavesou, line '+(typeQ[0]&&typeQ[0].line?typeQ[0].line:'?')+'.');
       }
       return;
     }
     typeChWait=0;
     var it=typeQ.shift();
-    try{ M.keyDown(it.sc&0xFF); }catch(e){ log('VLOZIT TXT BUILD2BZ: keyDown chyba - '+e.message); clearTypeQueue('chyba keyDown'); return; }
-    typeCurrent=it; typeHold=4; typeSent++;
+    try{ M.keyDown(it.sc&0xFF); }catch(e){ log('VLOZIT TXT BUILD2FF: keyDown chyba - '+e.message); clearTypeQueue('chyba keyDown'); return; }
+    typeCurrent=it; typeHold=0; typeSent++;
     if(it.kind==='return'){
       // RETURN logujeme az po keyUp, aby bylo jasne, ze ho BASIC dostal do fronty
     } else if(typeSent===1 || typeSent===typeTotal || (typeSent%40)===0){
-      log('VLOZIT TXT BUILD2BZ: znak '+typeSent+'/'+typeTotal+' line '+it.line+' scan=$'+((it.sc&255).toString(16).toUpperCase()).padStart(2,'0')+'.');
+      log('VLOZIT TXT BUILD2FF: znak '+typeSent+'/'+typeTotal+' line '+it.line+' scan=$'+((it.sc&255).toString(16).toUpperCase()).padStart(2,'0')+'.');
     }
   }
 
@@ -2265,6 +2278,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
   function power(opt){
     startAudio();
+    resetCassetteLiveForBoot('POWER/cold start');
     M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(audio&&audio.sh)audio.sh.head=-1;
     if(audio) M.onSpeaker=function(level){ audio.st.spkLevel=level?1:-1; audio.st.spkDecay=(audio.ac.sampleRate*0.004)|0; };
     M.coldStart({option:opt});
@@ -2281,6 +2295,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
   function startCassetteBootNow(reason){
     startAudio();
+    resetCassetteLiveForBoot('START+OPTION boot');
     // BUILD2BR: START+OPTION uz NESMI zustat v READY jen proto, ze WAV dekoder neni hotovy.
       // Tady vzdy startuji realny OS kazetovy boot; kazeta pote tece jako PCM/SKSTAT signal do POKEY RX.
       if(cassStage && cassStage.loadedKind==='WAV' && cassStage.loadedBytes && cassStage.loadedBytes.length>2097152){
@@ -2296,6 +2311,15 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     typeQ.length=0;
     consolState.start=true; consolState.option=true; consolState.select=false;
     M.consol(true,false,true);
+    var startQueued=0;
+    try{
+      if(cassStage && cassStage.loadedKind==='WAV' && cassStage.loadedBytes) startQueued=tryQueueWavCloadFirstPass()||0;
+      else if(cassStage && cassStage.loadedKind==='CAS' && cassStage.loadedBytes) startQueued=queueCasCloadToPokey()||0;
+      if(cassStage) cassStage.startOptionPrepared=!!startQueued;
+      if(startQueued) log('START+OPTION BOOT BUILD2FF: kazetovy PCM/SKSTAT proud je pripraven hned pri coldstartu pred prvnim motor pulsem. Radku='+startQueued+', zadny RAM inject.');
+    }catch(e){
+      log('START+OPTION BOOT BUILD2FF: priprava kazety pred motorem selhala - '+e.message);
+    }
     log('START+OPTION BOOT BUILD2FE: '+(reason||'spoustim kazetovy boot')+'. START je dole od resetu, OPTION je jen ultra kratky BASIC-OFF vzorek; zadny RAM inject ani fake boot.');
     log('START+OPTION BOOT BUILD2FE: kazeta '+(cassStage.loadedName||tapeAudioName||'vlozena')+' se spusti automaticky. PCM/SKSTAT signal zacne az po realnem C: motor ON.');
     log('ROM: XL OS 16K + Atari BASIC 8K vlozene v appce - nasleduje audit CRC, ne slepa vira.');
@@ -2316,7 +2340,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }
     startCassetteBootNow('kazeta uz je vlozena');
   }
-  function doReset(){ if(!M) return; M.reset(); log('RESET (warm start pres reset vektor)'); }
+  function doReset(){ if(!M) return; clearTypeQueue('RESET'); resetCassetteLiveForBoot('RESET/warm start'); M.reset(); log('RESET (warm start pres reset vektor)'); }
 
   // ---------- loader XEX / ATR ----------
   function bootXex(name,u8,keepKb){
@@ -2442,6 +2466,35 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
 
   // ---------- BUILD2BR: XC12 VLOZIT/PLAY + CSAVE AUTO SAVE + WAV CLOAD FIRST PASS ----------
   var cassStage={loadedName:'',loadedKind:'',loadedBytes:null,casInfo:null,wavDecodeCache:null,wavDecodeTried:false,wavCloadQueuedKey:'',csaveArmed:false,csaveCapturing:false,captured:new Uint8Array(0),captureArray:[],captureCount:0,tapeInserted:false,lastStopAt:0,casMonitor:false,csaveMode:'BASIC',pendingStartBoot:false,lastCsaveRaw:null,lastCsaveCas:null,lastCsaveWav:null,lastCsaveBase:'',lastCsaveWavName:'',lastCsaveCasName:''};
+  function resetCassetteLiveForBoot(reason){
+    try{
+      tapePlayGuardUntil=0;
+      tapeStoppedUntil=0;
+      if(M && typeof M.clearCassetteTransport==='function') M.clearCassetteTransport();
+      if(cassStage){
+        cassStage.wavCloadQueuedKey='';
+        cassStage.wavDecodeTried=false;
+        cassStage.wavDecodeCache=null;
+        cassStage.pendingStartBoot=false;
+        cassStage.transport='STOPPED';
+        cassStage.csaveArmed=false;
+        cassStage.csaveCapturing=false;
+        cassStage.captureArray=[];
+        cassStage.captureCount=0;
+      }
+      if(tapeAudio && tapeAudio.src){
+        try{ tapeAudio.pause(); tapeAudio.playbackRate=1.0; }catch(_e1){}
+        try{ tapeAudio.currentTime=0; }catch(_e2){}
+      }
+      tapeCounterZeroBase=0;
+      tapeCounterValue=0;
+      if(typeof updateTapeCounter==='function') updateTapeCounter(false);
+      if(typeof tapeVisualStop==='function') tapeVisualStop();
+      if(reason) log('KAZETA RESET BUILD2FF: '+reason+' - cisty POKEY/SIO/CLOAD stav, vlozena kazeta zustava a je pretocena na zacatek.');
+    }catch(e){
+      log('KAZETA RESET BUILD2FF: chyba - '+e.message);
+    }
+  }
   function cassSetStatus(msg){
     var el=document.getElementById('cassStatus');
     if(el) el.textContent='XC12: '+msg;
@@ -2906,7 +2959,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     res.peak=maxAbs; res.sampleRate=sr; res.seconds=pcm.length/sr;
     if(maxAbs<0.01){ res.error='WAV signal je moc slaby pro SKSTAT hrany (peak '+maxAbs.toFixed(4)+')'; return res; }
     var lines=Math.max(1,Math.floor(pcm.length*LPS/sr));
-    if(lines>LPS*240){ res.error='WAV je pro primy PCM->SKSTAT moc dlouhy ('+fmtTime(res.seconds)+')'; return res; }
+    if(lines>LPS*900 || lines>16000000){ res.error='WAV je pro primy PCM->SKSTAT moc dlouhy pro mobilni pamet ('+fmtTime(res.seconds)+')'; return res; }
     var levels=new Uint8Array(lines);
     var thr=Math.max(0.010, maxAbs*0.025);
     var last=1, edges=0;
@@ -2983,6 +3036,11 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
   function armCsave(mode){
     if(cassStage.csaveCapturing){ log('CSAVE ARM: RECORD uz je zamacknuty a cekam na data z Atari.'); return; }
+    try{
+      if(M && typeof M.clearCassetteTransport==='function') M.clearCassetteTransport();
+      cassStage.wavCloadQueuedKey=''; cassStage.wavDecodeTried=false; cassStage.wavDecodeCache=null; cassStage.startOptionPrepared=false;
+      log('CSAVE ARM BUILD2FF: pred nahravanim cistim jen stary CLOAD/PCM transport, aby nedobihal do RECORD. Program ani vlozena kazeta se necpe do RAM.');
+    }catch(_e){}
     cassStage.csaveArmed=true; cassStage.csaveCapturing=true; cassStage.captureArray=[]; cassStage.captureCycleArray=[]; cassStage.captureCycleBase=(M&&M.cpu&&typeof M.cpu.cycles==='number')?M.cpu.cycles:0; cassStage.captureCount=0; cassStage.captured=new Uint8Array(0);
     clearCsaveAutoStop();
     cassSetStatus('CSAVE ARM | RECORD drzi dole | cekam na realny POKEY/SEROUT z C:');
@@ -3080,7 +3138,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     try{ document.documentElement.style.overflowY='auto'; document.body.style.overflowY='auto'; }catch(_e){}
     var targetY = (/VLOZIT/.test(reason||'')) ? 0 : (txtOverlayLastScrollY||window.scrollY||0);
     try{ window.scrollTo({top:targetY,left:0,behavior:'auto'}); }catch(_e){ try{ window.scrollTo(0,targetY); }catch(__e){} }
-    if(reason) log('TXT RAMECEK BUILD2BZ: zavreno/odeslano - '+reason+'. Scroll stranky je znovu povolen'+((/VLOZIT/.test(reason||''))?' a obraz je posunuty nahoru k Atari obrazovce.':'.'));
+    if(reason) log('TXT RAMECEK BUILD2FF: zavreno/odeslano - '+reason+'. Scroll stranky je znovu povolen'+((/VLOZIT/.test(reason||''))?' a obraz je posunuty nahoru k Atari obrazovce.':'.'));
   }
   function openTxtOverlay(){
     txtOverlayLastScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
@@ -3088,7 +3146,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(o) o.style.display='flex';
     try{ document.documentElement.style.overflowY='auto'; document.body.style.overflowY='auto'; }catch(_e){}
     setTimeout(function(){ var ta=document.getElementById('txtIn'); if(ta){ ta.focus(); try{ ta.setSelectionRange(ta.value.length,ta.value.length); }catch(_e){} } },60);
-    log('TXT RAMECEK BUILD2BZ: otevren. Ctrl+V funguje, overlay ma vlastni scroll. Po VLOZIT se focus uvolni a stranka jde zase posouvat.');
+    log('TXT RAMECEK BUILD2FF: otevren. Ctrl+V funguje, overlay ma vlastni scroll. Po VLOZIT se focus uvolni a stranka jde zase posouvat.');
   }
   function openTextPicker(){
     log('TXT: oteviram mobilni Downloads / Vyber BASIC nebo Turbo BASIC textu.');
@@ -3410,8 +3468,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
           log('KAZETA PLAY BUILD2FE: kazeta uz hraje, druhy PLAY nespoustim.');
           return;
         }
-        if(tapeAudioSeekable() && (tapeAudio.currentTime||0)<0.15) cassStage.wavCloadQueuedKey='';
+        var keepStartPrepared=!!(cassStage && cassStage.startOptionPrepared);
+        if(tapeAudioSeekable() && (tapeAudio.currentTime||0)<0.15 && !keepStartPrepared) cassStage.wavCloadQueuedKey='';
         if(cassStage && cassStage.loadedKind==='WAV') tryQueueWavCloadFirstPass();
+        if(cassStage && keepStartPrepared) cassStage.startOptionPrepared=false;
         if(tapeAudioSeekable() && tapeAudio.currentTime>=tapeAudio.duration-0.08) tapeAudio.currentTime=0;
         tapeVisualStart('PLAY',1,true);
         var pr=tapeAudio.play();
@@ -3535,37 +3595,38 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     safeTap('dockHelpMini',function(){ pressAnim('dockHelpMini',220); var ov=document.getElementById('helpOverlay'); if(ov){ ov.style.display='flex'; ov.setAttribute('aria-hidden','false'); } });
     safeTap('dockNetGames',function(){ pressAnim('dockNetGames',260); openGamesDownload(); });
     safeTap('dockLog',function(){ pressAnim('dockLog',220); document.getElementById('btnSaveLog').click(); });
+    safeTap('dockStartOption',function(){ pressAnim('dockStartOption',260); powerStartOption(); });
     safeTap('dockMenu',function(){ pressAnim('dockMenu',220); try{ window.location.href='../index.html'; }catch(e){ log('MENU chyba: '+e.message); } });
     safeTap('btnHelpPanel',function(){ pressAnim('btnHelpPanel',220); var ov=document.getElementById('helpOverlay'); if(ov){ ov.style.display='flex'; ov.setAttribute('aria-hidden','false'); } });
     function txtToAtari(text,runAfter){
-      if(!text){ log('TXT RAMECEK BUILD2BZ: prazdny ramecek, nic nevkladam.'); return; }
+      if(!text){ log('TXT RAMECEK BUILD2FF: prazdny ramecek, nic nevkladam.'); return; }
       var pre=document.getElementById('chkNew').checked ? 'NEW\x01' : '';
       var body=text.replace(/\r/g,'').replace(/\n*$/,'\n');
       if(runAfter) body+='RUN\n';
       queueText(pre + body);
-      log('TXT RAMECEK BUILD2BZ: vlozeno do aktivni fronty '+body.length+' znaku'+(runAfter?' + RUN':'')+'. Sleduj Atari obraz, text se pise postupne.');
+      log('TXT RAMECEK BUILD2FF: vlozeno do aktivni fronty '+body.length+' znaku'+(runAfter?' + RUN':'')+'. Sleduj Atari obraz, text se pise rychle po radkovych blocich.');
     }
     safeTap('btnTxtGo',function(){
       var ta=document.getElementById('txtIn');
-      log('TXT RAMECEK BUILD2BZ: stisk VLOZIT DO ATARI, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
+      log('TXT RAMECEK BUILD2FF: stisk VLOZIT DO ATARI, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
       closeTxtOverlay('VLOZIT DO ATARI');
       txtToAtari(ta?ta.value:'',false);
     });
     safeTap('btnTxtRun',function(){
       var ta=document.getElementById('txtIn');
-      log('TXT RAMECEK BUILD2BZ: stisk VLOZIT + RUN, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
+      log('TXT RAMECEK BUILD2FF: stisk VLOZIT + RUN, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
       closeTxtOverlay('VLOZIT + RUN');
       txtToAtari(ta?ta.value:'',true);
     });
     safeTap('btnTxtClear',function(){
       var ta=document.getElementById('txtIn'); if(ta){ ta.value=''; ta.focus(); }
-      log('TXT RAMECEK BUILD2BZ: textovy ramecek smazan.');
+      log('TXT RAMECEK BUILD2FF: textovy ramecek smazan.');
     });
     safeTap('btnTxtFile',function(){
       closeTxtOverlay('NAHRAJ TXT SOUBOR');
       pickFile('.txt,.lst,.bas',function(n,u8){
         var text=''; for(var i=0;i<u8.length;i++){ var b=u8[i]; if(b===0x9B){text+='\n';continue;} text+=String.fromCharCode(b); } // ATASCII EOL -> \n
-        log('NAHRAJ TXT BUILD2BZ: '+n+' ('+u8.length+' B) - piseme do BASICu pres klavesove IRQ.');
+        log('NAHRAJ TXT BUILD2FF: '+n+' ('+u8.length+' B) - piseme do BASICu pres klavesove IRQ v rychlejsich radkovych blocich.');
         txtToAtari(text);
       });
     });
@@ -3616,9 +3677,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2FE_POKEY_PCM_RECORD_SYNC_CLOAD pripraven.');
-    log('BUILD2FE: kazeta jde jako PCM/SKSTAT signal do POKEY PCM RX. Standardni Atari record $55 $55 bere jako synchronizaci, OS dostane control+data+checksum. Zadny preddelany byte stream, zadny RAM inject, zadny screen paint.');
-    log('BUILD2FE: v logu hledej POKEY PCM RX BUILD2FE: record sync skip / record start / record done. Pokud prvni OS byte neni $FC, je to porad spatne.');
+    log('AtariHelp.eu EMU-10 BUILD2FF_TXT_BLOCK_STARTOPTION_CLOAD_RESET pripraven.');
+    log('BUILD2FF: jedno START+OPTION v docku, TXT jede rychleji po radcich pres CH/klavesove IRQ a CLOAD reset cisti POKEY/SIO transport. Zadny RAM inject, zadny screen paint.');
+    log('BUILD2FF: v logu hledej KAZETA RESET BUILD2FF a START+OPTION BOOT BUILD2FF; PCM/SKSTAT cesta zustava hardwarova pres POKEY RX.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });

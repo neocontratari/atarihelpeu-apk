@@ -1,0 +1,59 @@
+AtariHelp EMU-10 BUILD2FF - TXT block / START+OPTION / CLOAD reset
+
+Renemu, tady je cil opravy:
+- zadne fake READY, fake LOAD, RAM inject ani screen paint
+- TXT se porad pise pres emulovanou klavesnici/CH, jen rychleji po radkovych blocich
+- START+OPTION je v hlavni emu strance jen jedno viditelne tlacitko
+- START+OPTION pred bootem cisti zivy POKEY/SIO/CLOAD stav a ponecha vlozenou kazetu
+- CLOAD/CSAVE uz nesmi tahat stary PCM_DRAIN_WAIT stav z predchoziho pokusu do dalsiho nahravani
+
+Zmenene soubory:
+- app/src/main/assets/emu/index.html
+- app/src/main/assets/emu10_130xe.html
+
+Co je opravene:
+1) Zdvojene START+OPTION
+   - fyzicky hitbox START OPTION BOOT na hlavnim skinu je vypnuty
+   - v docku je pridane jedine viditelne tlacitko START+OPTION
+   - legacy emu10_130xe.html uz nepise START+OPTION BOOT, jen POWER OPTION, aby se to nepletlo
+
+2) Rychlejsi vlozeni TXT kodu
+   - BUILD2FF zkracuje pauzu po beznem RETURN z 54 kroku na 16
+   - pauza po NEW/RESET radku je 55 kroku misto 150
+   - znak se drzi pres jeden emulacni frame, ne pres zbytecne dlouhe prodlevy
+   - porad se ceka na prazdny CH $02FC, aby se znaky neprebijely
+
+3) START+OPTION / CLOAD reset
+   - pridano vnitrni M.clearCassetteTransport()
+   - resetuje POKEY SERIN, SIO RX, CLOAD PCM/tone stav a cassette motor stav
+   - nemaze vlozeny WAV/CAS a nemaze posledni CSAVE export
+   - START+OPTION vola KAZETA RESET BUILD2FF pred novym coldstartem
+
+4) START+OPTION pripravi kazetu driv
+   - WAV/CAS PCM/SKSTAT proud se pripravi hned po coldstartu, jeste pred prvnim motor pulsem
+   - log: START+OPTION BOOT BUILD2FF: kazetovy PCM/SKSTAT proud je pripraven...
+   - drive se to delalo az po cca 420 ms, kdy OS motor uz dokazal kratce zapnout a vypnout
+
+5) Delší WAV pro CLOAD
+   - limit primy WAV -> SKSTAT je zvednuty z 4 minut na max cca 15 minut / 16M scanlinek
+   - galactic.wav 04:24 uz nema spadnout jen na hlasku "moc dlouhy"
+
+6) CSAVE pred nahravanim cisti stary CLOAD transport
+   - pri RECORD/AUTO REC se cisti jen zivy CLOAD/PCM transport
+   - program ani kazeta se neinjectuje do RAM
+
+Overeni pred zabalenim:
+- node --check pres lokalni Adobe node.exe proslo pro emu/index.html
+- node --check proslo pro emu10_130xe.html
+
+Doporuceny test po instalaci APK:
+1) POWER BASIC, vlozit kratky TXT program, overit ze vypis nejede 5 minut.
+2) CSAVE kratky BASIC, potom CLOAD v BASICu.
+3) CSAVE TurboBasic delsi kod, potom CLOAD v TurboBasicu.
+4) Vlozit WAV/CAS, stisknout START+OPTION v docku, v logu hledej:
+   - KAZETA RESET BUILD2FF
+   - START+OPTION BOOT BUILD2FF
+   - CLOAD WAV PCM BUILD2FE / POKEY PCM RX
+
+Poznamka:
+BUILD2FF neresi obecny XEX loader ani TurboBasic core. Tohle je cileny patch podle posledniho reportu: tlacitka, TXT rychlost, CLOAD reset, START+OPTION timing.
