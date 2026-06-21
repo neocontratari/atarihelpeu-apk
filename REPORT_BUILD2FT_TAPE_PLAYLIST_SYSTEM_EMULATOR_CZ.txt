@@ -1,0 +1,54 @@
+ATARIHELP.EU EMU-10
+BUILD2FT_TAPE_PLAYLIST_SYSTEM_EMULATOR
+
+KODY JSOU STEJNE.
+Nemeni se CLOAD, POKEY, CSAVE, TXT, ROM, Java ani emulator core.
+Meni se pouze uvodni index.html: funkce klikacich zon a playlist pro uvodni kazetak.
+
+ZAKLAD
+- vychazi z potvrzene funkcniho BUILD2FS / BUILD2FP
+- grafika zustava stejna jako BUILD2FP_GRAFICKY_ZAKLAD_AUDIT_BEZ_DUCHU
+- zadna grafika neni prelepovana
+- zadne PNG neni upravene
+
+CO SE MENI
+1) TAPE LOADER karta:
+   - uz nevstupuje do emulatoru
+   - otevre playlist/tabulku pro uvodni kazetak
+   - playlist bere MP3 i WAV soubory
+   - soubory se daji vybrat z mobilu/NOX pres MP3/WAV PRIDAT
+
+2) Playlist okno:
+   - prejmenovane na MP3/WAV PLAYLIST
+   - pridane tlacitko YOUTUBE
+   - YOUTUBE otevre vyhledani AtariHelp NaP Studio na YouTube
+
+3) SYSTEM karta:
+   - nove vstupuje do emulatoru
+   - href je emu/index.html
+
+CO SE NEMENI
+- emu/index.html
+- emulator core
+- POWER BASIC
+- START+OPTION
+- CLOAD/CSAVE/TXT/POKEY/ROM
+- grafika/skiny
+
+TEST PLAN
+1. Spust aplikaci.
+2. Over, ze uvodni grafika je porad jako BUILD2FP/BUILD2FS.
+3. Klikni TAPE LOADER.
+   Ocekavani: otevre se MP3/WAV playlist okno, ne emulator.
+4. Klikni MP3/WAV PRIDAT.
+   Ocekavani: otevre se vyber souboru z mobilu/NOX; MP3 i WAV maji byt povolene.
+5. Klikni YOUTUBE.
+   Ocekavani: otevre se YouTube vyhledani AtariHelp NaP Studio.
+6. Zavri playlist.
+7. Klikni SYSTEM.
+   Ocekavani: vstup do emulatoru.
+8. V emulatoru kratce over POWER BASIC.
+
+POKUD TO SELZE
+- posli screenshot uvodniho menu nebo playlist okna
+- pokud se rozbije vstup do emulatoru, posli log

@@ -156,20 +156,21 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
   <button id="introTapePause" class="hit introTapeBtn" type="button" aria-label="MP3 PAUSE">PAUSE</button>
   <button id="introTapeEject" class="hit introTapeBtn" type="button" aria-label="MP3 EJECT reset playlistu">EJECT MP3</button>
   <a id="goGames" class="hit" href="https://atarihelp.eu/?page_id=207" aria-label="Games - AtariHelp.eu hry ke stazeni">GAMES</a>
-  <a id="goTape" class="hit cleanHit" href="emu/index.html" aria-label="Emulator - spustit Atari 130XE"></a>
+  <a id="goTape" class="hit cleanHit" href="#" aria-label="Tape loader - playlist MP3/WAV pro uvodni kazetak"></a>
   <a id="goAsm" class="hit" href="https://atarihelp.eu/?page_id=614" aria-label="Assembler">ASSEMBLER</a>
   <a id="goSettings" class="hit" href="https://atarihelp.eu/" aria-label="Settings - AtariHelp.eu hlavni stranka">SETTINGS</a>
-  <a id="goSystem" class="hit" href="https://atarihelp.eu/?page_id=786" aria-label="System - informace o emulatoru">SYSTEM</a>
+  <a id="goSystem" class="hit" href="emu/index.html" aria-label="System - vstup do emulatoru Atari 130XE">SYSTEM</a>
   <a id="goDocs" class="hit" href="https://atarihelp.eu/?page_id=50" aria-label="Docs">DOCS</a>
 </main>
 
 <div id="introPlaylistOverlay" aria-hidden="true">
   <div class="panel">
-    <h2>MP3 PLAYLIST</h2>
-    <p id="introPlaylistInfo">Zatim neni vybrana zadna hudba. Stiskni MP3 PRIDAT a v Downloads vyber MP3. Kdyz NOX vezme jen jednu, zmackni MP3 PRIDAT znovu a pridas dalsi.</p>
+    <h2>MP3/WAV PLAYLIST</h2>
+    <p id="introPlaylistInfo">TAPE LOADER: tady si priprav playlist pro uvodni kazetak. Stiskni MP3/WAV PRIDAT a z mobilu/NOX vyber MP3 nebo WAV. Kdyz NOX vezme jen jeden soubor, stiskni pridat znovu.</p>
     <div id="introPlaylistItems"></div>
-    <button id="introPlaylistDownload" type="button">MP3 PRIDAT / DOWNLOAD</button>
+    <button id="introPlaylistDownload" type="button">MP3/WAV PRIDAT</button>
     <button id="introPlaylistEject" type="button">EJECT / VYMAZAT PLAYLIST</button>
+    <button id="introPlaylistYoutube" type="button">YOUTUBE</button>
     <button id="introPlaylistClose" type="button">ZAVRIT PLAYLIST</button>
   </div>
 </div>
@@ -182,10 +183,10 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
     <h3>Hlavni menu</h3>
     <ul>
       <li><b>GAMES</b> — otevře hry na AtariHelp.eu.</li>
-      <li><b>EMULATOR</b> — spustí Atari 130XE emulator.</li>
+      <li><b>TAPE LOADER</b> — otevře playlist MP3/WAV pro úvodní kazeták.</li>
       <li><b>ASSEMBLER</b> — otevře vývojové / assembler nástroje na webu.</li>
       <li><b>SETTINGS</b> — otevře hlavní stránku AtariHelp.eu.</li>
-      <li><b>SYSTEM</b> — otevře stránku Info & About.</li>
+      <li><b>SYSTEM</b> — vstup do Atari 130XE emulatoru.</li>
       <li><b>DOCS</b> — otevře manuály a nápovědu.</li>
     </ul>
     <h3>Uvodni kazetak — MP3 prehravac hudby</h3>
@@ -241,9 +242,9 @@ function setMode(mode){
 function updateNow(){
   if(mp3Now){
     if(playlist.length>0 && playlistIndex>=0){
-      mp3Now.textContent='MP3 '+(playlistIndex+1)+'/'+playlist.length+': '+(audioName||'hudba.mp3');
+      mp3Now.textContent='AUDIO '+(playlistIndex+1)+'/'+playlist.length+': '+(audioName||'hudba.mp3');
     } else {
-      mp3Now.textContent='MP3: PRIDAT';
+      mp3Now.textContent='MP3/WAV';
     }
   }
 }
@@ -252,9 +253,9 @@ function updatePlaylistUi(){
   var total=playlist.length+(incomingPlaylist?pendingPlaylist.length:0);
   if(playlistInfo){
     if(incomingPlaylist){
-      playlistInfo.textContent='NACITAM MP3... prijato '+pendingPlaylist.length+' nova/nove. Uz v playlistu: '+playlist.length+'. Po dokonceni se skladby pripoji za konec.';
+      playlistInfo.textContent='NACITAM MP3/WAV... prijato '+pendingPlaylist.length+' nova/nove. Uz v playlistu: '+playlist.length+'. Po dokonceni se soubory pripoji za konec.';
     } else {
-      playlistInfo.textContent = playlist.length ? ('Vybrano '+playlist.length+' MP3. MP3 PRIDAT prida dalsi skladbu/skladby za konec. EJECT vymaze playlist.') : 'Playlist je prazdny. Stiskni MP3 PRIDAT a v Downloads vyber MP3. Kdyz NOX vezme jen jednu, stiskni MP3 PRIDAT znovu.';
+      playlistInfo.textContent = playlist.length ? ('Vybrano '+playlist.length+' MP3/WAV. MP3/WAV PRIDAT prida dalsi soubor/soubory za konec. EJECT vymaze playlist.') : 'Playlist je prazdny. Stiskni MP3/WAV PRIDAT a z mobilu/NOX vyber MP3 nebo WAV. Kdyz NOX vezme jen jeden soubor, stiskni pridat znovu.';
     }
   }
   if(!playlistItems) return;
@@ -321,8 +322,9 @@ function revokePlaylist(){
   playlist=[]; playlistIndex=-1; audioUrl=''; audioName='';
 }
 function createTrack(name,u8){
-  if(!/\.mp3$/i.test(name||'')) { log('MP3 PLAYER: vyber prosim jen MP3 soubor, ne '+(name||'neznamy soubor')+'.'); return null; }
-  var url=URL.createObjectURL(new Blob([u8],{type:'audio/mpeg'}));
+  if(!/\.(mp3|wav)$/i.test(name||'')) { log('AUDIO PLAYER: vyber prosim jen MP3 nebo WAV soubor, ne '+(name||'neznamy soubor')+'.'); return null; }
+  var mime=/\.wav$/i.test(name||'') ? 'audio/wav' : 'audio/mpeg';
+  var url=URL.createObjectURL(new Blob([u8],{type:mime}));
   return {name:name||'hudba.mp3', url:url};
 }
 function setTrack(index,autoplay){
@@ -404,13 +406,13 @@ window.AHLOCAL_AUDIO_END=function(){
   window.__introMp3Parts=[];
 };
 function pickMp3(){
-  log('MP3 PRIDAT: oteviram Downloads. Vybrana MP3 se PRIDA do playlistu, EJECT maze playlist.');
-  try{ if(window.AHPICK && window.AHPICK.pickMp3){ window.AHPICK.pickMp3(); return; } }catch(e){}
+  log('MP3/WAV PRIDAT: oteviram vyber souboru. Vybrany MP3/WAV se PRIDA do playlistu, EJECT maze playlist.');
   try{ if(window.AHPICK && window.AHPICK.pickAudio){ window.AHPICK.pickAudio(); return; } }catch(e){}
-  var inp=document.createElement('input'); inp.type='file'; inp.accept='.mp3,audio/mpeg,audio/mp3'; inp.multiple=true; inp.style.display='none'; document.body.appendChild(inp);
+  try{ if(window.AHPICK && window.AHPICK.pickMp3){ window.AHPICK.pickMp3(); return; } }catch(e){}
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='.mp3,.wav,audio/mpeg,audio/mp3,audio/wav,audio/x-wav'; inp.multiple=true; inp.style.display='none'; document.body.appendChild(inp);
   inp.onchange=function(){
     var files=Array.prototype.slice.call((inp.files||[])); inp.remove();
-    if(!files.length){log('MP3: soubor nevybran.'); return;}
+    if(!files.length){log('MP3/WAV: soubor nevybran.'); return;}
     incomingPlaylist=true; pendingPlaylist=[]; updatePlaylistUi(); if(playlistOverlay){ playlistOverlay.classList.add('open'); playlistOverlay.setAttribute('aria-hidden','false'); }
     function readNext(i){
       if(i>=files.length){ window.AHLOCAL_MP3_PLAYLIST_END(); return; }
@@ -459,8 +461,35 @@ applyVolume(1.0,false); updatePlaylistUi();
 var introHelpBtn=$('introHelpBtn'), introHelpOverlay=$('introHelpOverlay'), introHelpClose=$('introHelpClose');
 if(introHelpBtn && introHelpOverlay){ bind('introHelpBtn', function(){ press('introHelpBtn',220); introHelpOverlay.classList.add('open'); introHelpOverlay.setAttribute('aria-hidden','false'); }); }
 if(introHelpClose && introHelpOverlay){ introHelpClose.addEventListener('click', function(){ introHelpOverlay.classList.remove('open'); introHelpOverlay.setAttribute('aria-hidden','true'); }); }
+
+// BUILD2FT: prehozeni funkce karet bez zasahu do grafiky.
+var tapeCard=$('goTape');
+if(tapeCard){
+  tapeCard.addEventListener('click',function(e){
+    e.preventDefault(); e.stopPropagation();
+    showPlaylist();
+    if(playlistInfo && !playlist.length && !incomingPlaylist){
+      playlistInfo.textContent='TAPE LOADER: tady si priprav playlist pro uvodni kazetak. Stiskni MP3/WAV PRIDAT a z mobilu/NOX vyber MP3 nebo WAV. Potom muzes prehravat tlacitky na kazetaku.';
+    }
+    log('TAPE LOADER BUILD2FT: otevreno playlist okno MP3/WAV pro uvodni kazetak.');
+    return false;
+  },true);
+}
+var systemCard=$('goSystem');
+if(systemCard){ systemCard.setAttribute('href','emu/index.html'); systemCard.setAttribute('aria-label','System - vstup do emulatoru Atari 130XE'); }
+var ytBtn=$('introPlaylistYoutube');
+if(ytBtn){
+  ytBtn.addEventListener('click',function(e){
+    e.preventDefault(); e.stopPropagation();
+    var url='https://www.youtube.com/results?search_query=AtariHelp+NaP+Studio';
+    try{ window.open(url,'_blank'); }
+    catch(err){ window.location.href=url; }
+    log('YOUTUBE BUILD2FT: otevreno YouTube hledani AtariHelp NaP Studio.');
+  },true);
+}
+
 log('BUILD2AQ: MP3 PRIDAT nyni nacita/pripojuje skladby do playlistu; EJECT maze playlist.');
-log('BUILD2FL: intro EMULATOR a ASSEMBLER jsou prekreslene jako stejne karty v radku MAIN MENU; HTML je jen neviditelna hit-zona.');
+log('BUILD2FT: grafika zustava BUILD2FP/FS. TAPE LOADER otevira MP3/WAV playlist, SYSTEM vstupuje do emulatoru.');
 })();
 </script>
 </body>
