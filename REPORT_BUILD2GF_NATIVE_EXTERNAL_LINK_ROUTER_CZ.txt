@@ -1,0 +1,44 @@
+ATARIHELP.EU EMU-10
+BUILD2GF_NATIVE_EXTERNAL_LINK_ROUTER
+
+KODY JSOU ZMENENE - pridana Java helper trida + patch navod.
+BASIC / Altirra testovaci kody: KODY JSOU STEJNE.
+Emulator core: KODY JSOU STEJNE.
+
+CO JE PROBLEM
+- HTML odkaz uz neni hlavni chyba.
+- Log potvrzuje, ze nativni Java/WebViewClient posila Facebook/YouTube do emulator loaderu.
+- Proto se z toho stane "Prijimam z webu" a emulator se to snazi spustit jako XEX/ZIP/BAS.
+- To se neda spolehlive opravit jen v HTML.
+
+CO JE V ZIPU
+1) app/src/main/java/eu/atarihelp/nap/ExternalUrlHelper.java
+   - rozpozna youtube.com / facebook.com
+   - otevre je pres Android Intent ACTION_VIEW
+   - i pri chybe je uz neposle do emulatoru
+
+2) JAVA_PATCH_MAINACTIVITY_EXTERNAL_LINK_ROUTER_BUILD2GF.txt
+   - presny navod, kam vlozit jednu podminku v MainActivity WebViewClientu
+
+CO SE NEMENI
+- EMULATOR stale vede na emu/index.html
+- PREHRAVAC stale vede na player/index.html
+- player zustava z BUILD2GE/GD bez hnusnych posuvniku
+- CLOAD/POKEY/CSAVE/TXT/ROM/emulator core beze zmen
+
+CO JE NUTNE UDELAT
+- Pokud jen prekopirujes assets, YouTube/Facebook se muze porad chovat spatne.
+- Musi se aplikovat patch do MainActivity.java, protoze chyba je v nativnim routeru URL.
+
+TEST PLAN
+1. Po aplikaci Java patch:
+   PREHRAVAC -> YOUTUBE
+   Ocekavani: otevrit https://www.youtube.com/ v browseru / YouTube app.
+   Nesmí byt v logu "Prijimam z webu" nebo "NAHRAJ XEX".
+
+2. Uvod -> Rene Frank
+   Ocekavani: otevrit https://www.facebook.com/renatus.honda
+   Nesmí byt v logu "Prijimam z webu: renatus.honda".
+
+3. EMULATOR
+   Ocekavani: stale otevre realny emulator.

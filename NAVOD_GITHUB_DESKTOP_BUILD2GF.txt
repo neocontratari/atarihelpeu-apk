@@ -1,0 +1,5 @@
+1. Rozbal ZIP.
+2. Prekopiruj obsah slozky app/ do projektu pres GitHub Desktop.
+3. DULEZITE: pak aplikuj JAVA_PATCH_MAINACTIVITY_EXTERNAL_LINK_ROUTER_BUILD2GF.txt do MainActivity.java.
+4. Commit message:
+BUILD2GF native external link router

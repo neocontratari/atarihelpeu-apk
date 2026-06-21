@@ -1,0 +1,88 @@
+BUILD2GF - POVINNY PATCH DO MAINACTIVITY / WEBVIEWCLIENT
+
+PROBLEM:
+Log ukazuje, ze Facebook/YouTube nejdou jako WWW, ale padaji do emulator NET loaderu:
+- "Prijimam z webu: renatus.honda"
+- "NAHRAJ XEX: renatus.honda - CHYBA: neni XEX"
+To znamena, ze odkaz zachyti Java WebViewClient a posle ho do Atari loaderu.
+
+OPRAVA:
+Musis dat tento guard DO MAINACTIVITY, do WebViewClientu, uplne nahoru PRED kod,
+ktery dela NET AUTORUN / Prijimam z webu / download do emulatoru.
+
+1) Nahore v MainActivity.java pridej import:
+
+import eu.atarihelp.nap.ExternalUrlHelper;
+
+2) Najdi WebViewClient / shouldOverrideUrlLoading.
+
+Typicky tam bude neco jako:
+webView.setWebViewClient(new WebViewClient() {
+    @Override
+    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        String url = request.getUrl().toString();
+
+        // tady ted asi zacina tvoje stahovani webu do emulatoru
+    }
+});
+
+3) HNED za ziskani url vloz:
+
+if (ExternalUrlHelper.openExternalIfNeeded(MainActivity.this, url)) {
+    return true;
+}
+
+4) U stare metody pro starsi Android vloz to same:
+
+@Override
+public boolean shouldOverrideUrlLoading(WebView view, String url) {
+    if (ExternalUrlHelper.openExternalIfNeeded(MainActivity.this, url)) {
+        return true;
+    }
+
+    // TADY NECHAT PUvodni kod
+}
+
+HOTOVY PRIKLAD:
+
+webView.setWebViewClient(new WebViewClient() {
+    @Override
+    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        String url = request.getUrl().toString();
+
+        if (ExternalUrlHelper.openExternalIfNeeded(MainActivity.this, url)) {
+            return true;
+        }
+
+        // PUVODNI KOD NECHAT DAL:
+        // local file:///android_asset/ nech projit
+        // emulator NET HRY / XEX downloader nech az tady pod tim
+        return false;
+    }
+
+    @Override
+    public boolean shouldOverrideUrlLoading(WebView view, String url) {
+        if (ExternalUrlHelper.openExternalIfNeeded(MainActivity.this, url)) {
+            return true;
+        }
+
+        // PUVODNI KOD NECHAT DAL:
+        return false;
+    }
+});
+
+DULEZITE:
+- Ten guard MUSI byt pred "NET AUTORUN", "Prijimam z webu", "BOOTANY", "NAHRAJ XEX".
+- Jinak to znovu spadne do emulatoru.
+- Tohle nezasahuje do emulator core, jen do routovani WWW odkazu.
+- AtariHelp.eu nechavam podle puvodni funkcni cesty; tato oprava resi YouTube/Facebook.
+
+KDYZ V KODU NENAJDES shouldOverrideUrlLoading:
+Hledej tyto texty:
+- NET AUTORUN
+- Prijimam z webu
+- BOOTANY
+- NAHRAJ XEX
+- downloadUrl
+- openGamesDownload
+A dej guard nad misto, kde se HTTP/HTTPS posila do emulatoru.
