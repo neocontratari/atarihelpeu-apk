@@ -1,0 +1,33 @@
+ATARIHELP.EU EMU-10
+BUILD2FX_POPUP_ZNOVA_NAP_HIGHRES_YOUTUBE
+
+KODY JSOU STEJNE.
+Nemenil jsem CLOAD, POKEY, CSAVE, TXT, ROM, Java ani emulator core.
+
+CO JSEM UDELAL
+- stare popup okno jsem smazal a postavil znovu jako samostatny high-res NaP skin
+- novy popup neni delany jen CSS prelepem tlacitek
+- pouzit novy obrazek: app/src/main/assets/design/intro_playlist_np_popup.png
+- vyskakovaci okno ma vlastni high-res grafiku s kazetakem z uvodu a vlastnimi tlacitky
+- nad grafikou jsou jen neviditelne hitzony
+- YOUTUBE je primo anchor odkaz na https://www.youtube.com/
+- pri otevrenem popupu se podklad zablokuje proti klikum
+- TAPE LOADER otevre popup
+- SYSTEM otevre emulator
+
+TEST PLAN
+1. Spust aplikaci.
+2. Klikni TAPE LOADER.
+3. Ocekavany stav:
+   - uplne novy popup ve stylu NaP high-res
+   - zadny stary textovy popup
+4. Klikni YOUTUBE.
+   - musi otevrit https://www.youtube.com/
+   - nesmi otevrit emulator
+5. Znovu spust appku.
+6. Klikni TAPE LOADER -> PRIDAT MP3 / WAV.
+   - musi otevrit vyber souboru
+7. Klikni ZAVRIT.
+   - popup se zavre
+8. Klikni SYSTEM.
+   - musi otevrit emulator

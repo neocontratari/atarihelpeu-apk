@@ -1,0 +1,4 @@
+1. Rozbal ZIP.
+2. Prekopiruj obsah slozky app/ do projektu pres GitHub Desktop.
+3. Commit message:
+BUILD2FX popup znova NAP highres youtube
