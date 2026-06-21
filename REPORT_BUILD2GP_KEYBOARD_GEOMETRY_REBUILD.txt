@@ -1,0 +1,47 @@
+BUILD2GP_KEYBOARD_GEOMETRY_REBUILD
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu/index.html
+
+Na co jsem NESAHAL:
+- emulator core
+- CLOAD / POKEY / CSAVE / TXT / ROM
+- MainActivity.java
+- linky YouTube / Facebook / AtariHelp.eu
+- prehravac / intro
+
+DUVOD:
+Predtim se hitboxy ladily po jednotlivych klicich a tim se radky rozjizdely.
+To byla spatna cesta.
+
+CO JE TED JINAK:
+- KEY_RECTS uz neni patchovany nahodnymi posuny po jednotlivych klavesach.
+- Klavesnice je prekopana na systemovou geometrii:
+  1. rada = referencni radek
+  2. rada = TAB/Q/W/E/R kotvy + od T pravidelna rada
+  3. rada = CONTROL/A/S/D/F kotvy + od G pravidelna rada
+  4. rada = SHIFT/Z/X/C kotvy + od V pravidelna rada
+  SPACE = samostatny presny obdelnik
+- Press animace je navazana vic na stred hitboxu a je mensi, aby neklamala.
+- Joystick D-pad je znovu ukotven jako kriz, ne patchovany po minulych posunech.
+
+SKRYTY DEBUG:
+Pokud bude potreba videt realne hitboxy:
+otevri emulator s hashem:
+emu/index.html#hitdebug=1
+Ukaze cervene obrysy klaves a modre obrysy hornich/servisnich tlacitek.
+Normalne to neni videt.
+
+TEST PLAN:
+1. Klavesnice:
+   - 2. rada: T Y U I O P - = Return
+   - 3. rada: G H J K L ; + * Caps
+   - 4. rada: V B N M , . / Shift INV
+2. Joystick:
+   - nahoru, dolu, vlevo, vpravo
+3. Kazetak:
+   - jen rychla kontrola STOP
+4. Ostatni:
+   - emulator / prehravac / linky zustaly beze zmen
