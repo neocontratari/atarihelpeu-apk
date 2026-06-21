@@ -1,0 +1,38 @@
+BUILD2GM_TGV_JOY_MICRO
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu/index.html
+
+Nesahano na:
+- emulator core
+- CLOAD / POKEY / CSAVE / TXT / ROM
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu linky
+- prehravac a intro
+
+Co je opraveno:
+1) 2. rada klavesnice
+- od T doprava dalsi posun doleva
+
+2) 3. rada klavesnice
+- od G doprava dalsi posun doleva
+
+3) 4. rada klavesnice
+- od V doprava dalsi posun doleva
+
+4) Joystick
+- smer DOLU: posun vic do stredu (nahoru + lehce doprava)
+- smer VLEVO a VPRAVO: posun lehce vys
+- UP jen jemny trim
+
+5) Kazetak
+- STOP jeste jemne vlevo/zmenseny
+
+Test plan:
+1. 2. rada: T Y U I O P - = Return
+2. 3. rada: G H J K L ; + * Caps
+3. 4. rada: V B N M , . / Shift INV
+4. Joystick: hlavne DOLU, pak VLEVO a VPRAVO
+5. Kazetak: STOP
