@@ -1,0 +1,33 @@
+ATARIHELP.EU EMU-10
+BUILD2FU_NAP_MEDIA_DECK_YOUTUBE_STYLE
+
+KODY JSOU STEJNE.
+Nemenil jsem CLOAD, POKEY, CSAVE, TXT, ROM, Java ani emulator core.
+
+CO SE MENI
+- popup TAPE LOADER je vizualne predelany do stylu N&P / NaP Studio
+- uz to neni obycejne textove okno
+- pouzita je tmava gold/blue high-res stylizace s pozadim z uvodniho skinu
+- tlacitko YOUTUBE ma vlastni ikonu a otevre https://www.youtube.com/
+- SYSTEM zustava vstup do emulatoru
+
+CO ZUSTAVA
+- grafika hlavni uvodni obrazovky beze zmen
+- PNG skiny beze zmen
+- emulator beze zmen
+- funkce prehravani / playlistu zustavaji
+
+TEST PLAN
+1. Spust aplikaci.
+2. Klikni TAPE LOADER.
+3. Ocekavany stav:
+   - otevre se stylovy N&P popup MEDIA DECK
+   - ne obycejne textove okno
+4. Klikni PRIDAT MP3 / WAV.
+   - musi jit vyber souboru z mobilu/NOX
+5. Klikni YOUTUBE.
+   - musi se otevrit https://www.youtube.com/
+6. Klikni ZAVRIT.
+   - popup se zavre
+7. Klikni SYSTEM.
+   - musi otevrit emulator
