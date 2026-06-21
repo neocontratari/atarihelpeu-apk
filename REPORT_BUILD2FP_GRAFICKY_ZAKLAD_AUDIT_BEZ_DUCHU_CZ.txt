@@ -1,0 +1,49 @@
+ATARIHELP.EU EMU-10
+BUILD2FP_GRAFICKY_ZAKLAD_AUDIT_BEZ_DUCHU
+
+KODY JSOU STEJNE.
+Nemeni se CLOAD, POKEY, CSAVE, TXT, ROM, Java ani funkce emulatoru.
+
+CO JE CIL
+- vratit grafiku presne na stav APK "graficky zaklad apky.apk"
+- udelat audit na duchy / prelepy / spatne prepseryvani UI
+- zachovat funkcnost soucasne apky, hlavne emulatoru
+
+CO JSEM UDELAL
+1) Vratil jsem graficke podklady presne z graficke zakladni APK:
+   - app/src/main/assets/design/uvodni_np_vision.png
+   - app/src/main/assets/design/emu_klavesnice_np_vision.png
+
+2) Udelal jsem audit HTML/CSS prelepu:
+   - EMULATOR karta v menu = jen neviditelna hit-zona nad PNG
+   - GAMES / ASSEMBLER / SETTINGS / SYSTEM / DOCS = take jen neviditelne hit-zony
+   - START+OPTION / POWER BASIC / JOYSTICK horni tlacitka = jen neviditelne hit-zony nad PNG
+   - intro HELP / MP3 PRIDAT / PLAYLIST = vynucene neviditelne, aby nic neprekrelsovalo skin
+
+NALEZENE "DUCHY" / TECHNICKY DLUH
+- ID goTape se historicky pouziva jako klikaci zona pro EMULATOR kartu
+- ID btnSelfTest se historicky pouziva jako klikaci zona pro START+OPTION
+- to samo o sobe neni funkcni chyba, ale je to matouci a je to stopa starych prepisu
+- hlavni graficky problem delaly viditelne HTML vrstvy / pressed / hover / active stavy pres PNG
+
+CO TENTO BUILD DELA
+- nema mazat ani prekreslovat stredni kartu nebo START+OPTION jinou grafikou
+- ma nechat pouze puvodni vzhled ze zakladni APK
+- ma zachovat funkcnost emulatoru jako ve BUILD2FL vetvi
+
+TEST PLAN
+1. Hlavni menu:
+   - zkontroluj GAMES / EMULATOR / ASSEMBLER / SETTINGS / SYSTEM / DOCS
+   - nic nesmi byt prelepene dalsim cernym/HTML tlacitkem
+2. Emulator:
+   - zkontroluj POWER BASIC a START+OPTION
+   - vizual musi odpovidat grafickemu zakladu APK, bez dalsiho obdelniku navic
+3. Funkce:
+   - klik na EMULATOR musi otevrit emulator
+   - POWER BASIC musi nabehnout jako driv
+   - START+OPTION musi delat svoji funkci jako driv
+
+POKUD TO SELZE
+- posli screenshot hlavniho menu
+- posli screenshot vrsku emulatoru s POWER BASIC / START+OPTION
+- posli log jen pokud by se rozbila funkce emulatoru

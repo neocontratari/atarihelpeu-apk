@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2FO</title>
+<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2FL</title>
 <style>
 :root{--gold:#f3c465;--blue:#6cc9ff;--dark:#060709;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -85,7 +85,7 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 
 @media (prefers-reduced-motion:reduce){.crt-sweep:before,.crt-sweep:after,.led-blue,.eq i,.reelglow,.introMp3Reel,#introMp3Counter.run,#introMp3SeekHud.show{animation:none}}
 /* 6 velkych tlacitek presne na navrhu */
-#goGames{left:7.3%;top:75.5%;width:31.5%;height:7.25%;}#goEmulator{left:37.2%;top:74.4%;width:25.8%;height:9.7%;}#goAsm{left:72.8%;top:75.5%;width:20.0%;height:7.25%;}
+#goGames{left:7.3%;top:75.5%;width:31.5%;height:7.25%;}#goTape{left:37.2%;top:74.4%;width:25.8%;height:9.7%;}#goAsm{left:72.8%;top:75.5%;width:20.0%;height:7.25%;}
 #goSettings{left:7.3%;top:84.6%;width:31.5%;height:7.25%;}#goSystem{left:40.1%;top:84.6%;width:31.5%;height:7.25%;}#goDocs{left:72.8%;top:84.6%;width:20.0%;height:7.25%;}
 #playEmu{left:31.0%;top:66.3%;width:13.0%;height:4.3%;border-radius:8px;}#tapeTransport{left:22.0%;top:64.2%;width:54.8%;height:8.6%;}
 #introTapeEject{left:9.8%;top:59.4%;width:9.4%;height:8.6%;border-radius:7px;}
@@ -95,23 +95,23 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 #introTapeFwd{left:56.6%;top:65.70%;width:10.9%;height:4.55%;}
 #introTapePause{left:67.8%;top:65.70%;width:10.9%;height:4.55%;}
 
-/* BUILD2FO: EMULATOR je prekresleny primo v PNG skinu; HTML zustava jen neviditelna klikaci zona. */
-#goEmulator{
+/* BUILD2FL: EMULATOR je jen neviditelna klikaci zona nad PNG. Zadna dalsi kreslena vrstva, zadne tlacitko pres tlacitko. */
+#goTape{
   left:37.2%;top:74.4%;width:25.8%;height:9.7%;z-index:30;
   display:block!important;background:rgba(255,196,90,0)!important;border:0!important;
   color:transparent!important;font-size:0!important;text-decoration:none!important;text-shadow:none!important;
   box-shadow:none!important;border-radius:0!important;padding:0!important;outline:0!important;
 }
-#goEmulator:before,#goEmulator:after{content:""!important;display:none!important;}
-#goEmulator:active,#goEmulator.flash{background:rgba(255,196,90,0)!important;color:transparent!important;transform:none!important;box-shadow:none!important;}
+#goTape:before,#goTape:after{content:""!important;display:none!important;}
+#goTape:active,#goTape.flash{background:rgba(255,196,90,0)!important;color:transparent!important;transform:none!important;box-shadow:none!important;}
 
 
 
 
-/* BUILD2FO: EMULATOR = bitmapa v PNG + neviditelna hit-zona. Zadny hover/active/flash/down/pressed nesmi kreslit dalsi vrstvu pres PNG. */
-#goEmulator,#goEmulator.cleanHit,
-#goEmulator:hover,#goEmulator:active,#goEmulator:focus,#goEmulator:focus-visible,
-#goEmulator.flash,#goEmulator.down,#goEmulator.pressed,#goEmulator.on{
+/* BUILD2FL: EMULATOR = opravdu jen neviditelna hit-zona. Zadny hover/active/flash/down/pressed nesmi kreslit dalsi tlacitko pres PNG. */
+#goTape,#goTape.cleanHit,
+#goTape:hover,#goTape:active,#goTape:focus,#goTape:focus-visible,
+#goTape.flash,#goTape.down,#goTape.pressed,#goTape.on{
   left:37.2%!important;top:74.4%!important;width:25.8%!important;height:9.7%!important;z-index:30!important;
   display:block!important;position:absolute!important;pointer-events:auto!important;cursor:pointer!important;
   opacity:0!important;visibility:visible!important;background:transparent!important;border:0!important;outline:0!important;
@@ -119,32 +119,26 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
   font-size:0!important;line-height:0!important;letter-spacing:0!important;text-decoration:none!important;padding:0!important;margin:0!important;
   -webkit-appearance:none!important;appearance:none!important;border-radius:0!important;mix-blend-mode:normal!important;
 }
-#goEmulator:before,#goEmulator:after,#goEmulator.cleanHit:before,#goEmulator.cleanHit:after{content:none!important;display:none!important;background:none!important;border:0!important;box-shadow:none!important;}
+#goTape:before,#goTape:after,#goTape.cleanHit:before,#goTape.cleanHit:after{content:none!important;display:none!important;background:none!important;border:0!important;box-shadow:none!important;}
 
 
-
-/* BUILD2FO: vizualni reference ze stare APK. Tyto prvky zustavaji klikaci, ale NESMI kreslit dalsi tlacitka pres PNG skin. */
-#introMp3DownloadBtn,#introMp3ListBtn,#introHelpBtn,
-#introMp3DownloadBtn:hover,#introMp3ListBtn:hover,#introHelpBtn:hover,
-#introMp3DownloadBtn:active,#introMp3ListBtn:active,#introHelpBtn:active,
-#introMp3DownloadBtn:focus,#introMp3ListBtn:focus,#introHelpBtn:focus,
-#introMp3DownloadBtn:focus-visible,#introMp3ListBtn:focus-visible,#introHelpBtn:focus-visible,
-#introMp3DownloadBtn.flash,#introMp3ListBtn.flash,#introHelpBtn.flash{
-  background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important;
-  color:transparent!important;text-shadow:none!important;font-size:0!important;opacity:0!important;
-  transform:none!important;padding:0!important;-webkit-appearance:none!important;appearance:none!important;
+/* BUILD2FP AUDIT: grafika vracena na zakladni APK. Duchove / prelepy musi byt jen neviditelne hit-zony. */
+#goTape,#goTape.cleanHit,#goTape:hover,#goTape:active,#goTape:focus,#goTape:focus-visible,#goTape.flash,#goTape.down,#goTape.pressed,#goTape.on,
+#goGames,#goGames:hover,#goGames:active,#goGames:focus,#goGames:focus-visible,#goGames.flash,
+#goAsm,#goAsm:hover,#goAsm:active,#goAsm:focus,#goAsm:focus-visible,#goAsm.flash,
+#goSettings,#goSettings:hover,#goSettings:active,#goSettings:focus,#goSettings:focus-visible,#goSettings.flash,
+#goSystem,#goSystem:hover,#goSystem:active,#goSystem:focus,#goSystem:focus-visible,#goSystem.flash,
+#goDocs,#goDocs:hover,#goDocs:active,#goDocs:focus,#goDocs:focus-visible,#goDocs.flash{
+  opacity:0!important;visibility:visible!important;background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important;
+  color:transparent!important;text-shadow:none!important;font-size:0!important;line-height:0!important;letter-spacing:0!important;padding:0!important;
+  -webkit-appearance:none!important;appearance:none!important;transform:none!important;mix-blend-mode:normal!important;
 }
-#introMp3Now,#introMp3Hud{opacity:0!important;color:transparent!important;text-shadow:none!important;background:transparent!important;border:0!important;box-shadow:none!important;}
-#introMp3Now{font-size:0!important;}
-/* GAMES / EMULATOR / ASSEMBLER viditelne kresli jen PNG. Odkazy jsou pouze ciste hitzony. */
-#goGames,#goAsm,#goSettings,#goSystem,#goDocs,
-#goGames:hover,#goAsm:hover,#goSettings:hover,#goSystem:hover,#goDocs:hover,
-#goGames:active,#goAsm:active,#goSettings:active,#goSystem:active,#goDocs:active,
-#goGames:focus,#goAsm:focus,#goSettings:focus,#goSystem:focus,#goDocs:focus,
-#goGames.flash,#goAsm.flash,#goSettings.flash,#goSystem.flash,#goDocs.flash{
-  background:transparent!important;border:0!important;box-shadow:none!important;outline:0!important;
-  color:transparent!important;text-shadow:none!important;font-size:0!important;transform:none!important;
+#goTape:before,#goTape:after,#goGames:before,#goGames:after,#goAsm:before,#goAsm:after,#goSettings:before,#goSettings:after,#goSystem:before,#goSystem:after,#goDocs:before,#goDocs:after{content:none!important;display:none!important;}
+#introMp3DownloadBtn,#introMp3ListBtn,#introHelpBtn,#introMp3DownloadBtn:hover,#introMp3ListBtn:hover,#introHelpBtn:hover,#introMp3DownloadBtn:active,#introMp3ListBtn:active,#introHelpBtn:active,#introMp3DownloadBtn:focus,#introMp3ListBtn:focus,#introHelpBtn:focus{
+  opacity:0!important;visibility:visible!important;background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important;
+  color:transparent!important;text-shadow:none!important;transform:none!important;
 }
+#introMp3DownloadBtn:before,#introMp3DownloadBtn:after,#introMp3ListBtn:before,#introMp3ListBtn:after,#introHelpBtn:before,#introHelpBtn:after{content:none!important;display:none!important;}
 
 </style>
 </head>
@@ -162,7 +156,7 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
   <button id="introTapePause" class="hit introTapeBtn" type="button" aria-label="MP3 PAUSE">PAUSE</button>
   <button id="introTapeEject" class="hit introTapeBtn" type="button" aria-label="MP3 EJECT reset playlistu">EJECT MP3</button>
   <a id="goGames" class="hit" href="https://atarihelp.eu/?page_id=207" aria-label="Games - AtariHelp.eu hry ke stazeni">GAMES</a>
-  <a id="goEmulator" class="hit cleanHit" href="emu/index.html" aria-label="Emulator - spustit Atari 130XE"></a>
+  <a id="goTape" class="hit cleanHit" href="emu/index.html" aria-label="Emulator - spustit Atari 130XE"></a>
   <a id="goAsm" class="hit" href="https://atarihelp.eu/?page_id=614" aria-label="Assembler">ASSEMBLER</a>
   <a id="goSettings" class="hit" href="https://atarihelp.eu/" aria-label="Settings - AtariHelp.eu hlavni stranka">SETTINGS</a>
   <a id="goSystem" class="hit" href="https://atarihelp.eu/?page_id=786" aria-label="System - informace o emulatoru">SYSTEM</a>
@@ -466,7 +460,7 @@ var introHelpBtn=$('introHelpBtn'), introHelpOverlay=$('introHelpOverlay'), intr
 if(introHelpBtn && introHelpOverlay){ bind('introHelpBtn', function(){ press('introHelpBtn',220); introHelpOverlay.classList.add('open'); introHelpOverlay.setAttribute('aria-hidden','false'); }); }
 if(introHelpClose && introHelpOverlay){ introHelpClose.addEventListener('click', function(){ introHelpOverlay.classList.remove('open'); introHelpOverlay.setAttribute('aria-hidden','true'); }); }
 log('BUILD2AQ: MP3 PRIDAT nyni nacita/pripojuje skladby do playlistu; EJECT maze playlist.');
-log('BUILD2FO: intro EMULATOR a ASSEMBLER jsou prekreslene jako stejne karty v radku MAIN MENU; HTML je jen neviditelna hit-zona.');
+log('BUILD2FL: intro EMULATOR a ASSEMBLER jsou prekreslene jako stejne karty v radku MAIN MENU; HTML je jen neviditelna hit-zona.');
 })();
 </script>
 </body>

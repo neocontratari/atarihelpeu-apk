@@ -1,0 +1,5 @@
+1. Rozbal ZIP.
+2. Obsah slozky app/ prekopiruj do sveho projektu pres GitHub Desktop working tree.
+3. Zkontroluj zmeny.
+4. Commit message:
+BUILD2FP graphic base restore audit no ghosts
