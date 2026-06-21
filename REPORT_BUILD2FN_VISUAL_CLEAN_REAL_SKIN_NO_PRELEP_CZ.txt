@@ -1,0 +1,51 @@
+ATARIHELP.EU EMU-10 - BUILD2FN_VISUAL_CLEAN_REAL_SKIN_NO_PRELEP
+================================================================
+
+KODY JSOU STEJNE.
+
+Tento overlay je navazujici cista graficka oprava po BUILD2FM.
+Nesahano na CLOAD, POKEY, CSAVE, TXT zapis, ROM, CPU, Java ani Android bridge.
+Meni se jen PNG skin a HTML build popisky.
+
+CO BYLO OPRAVENO:
+1) Uvodni menu - karta EMULATOR
+   - odstranena cerna nalepena vypln / dojem tlacitka pres tlacitko.
+   - karta je znovu postavena z puvodni textury stare APK.
+   - text a ikona jsou kreslene primo do PNG skinu.
+   - HTML odkaz #goTape zustava pouze neviditelna klikaci zona.
+
+2) Emulator - START+OPTION
+   - odstranena cerna nalepena plocha uvnitr druheho power tlacitka.
+   - tlacitko ma puvodni realnou texturu/bevel ze stare APK.
+   - napis START + OPTION je kreslen primo do PNG, lehcim fontem podle POWER BASIC.
+   - HTML button #btnSelfTest zustava pouze neviditelna hitzona.
+
+3) Funkce zustava z BUILD2FL/BUILD2FM
+   - TXT zapis zustava stejny.
+   - CLOAD/CSAVE/START+OPTION logika zustava stejna.
+   - MP3 playlist a hlavni menu funkce zustavaji stejne.
+
+TEST PLAN:
+1) GitHub Desktop: pretahnout obsah ZIPu do rootu projektu a commitnout.
+2) Build/install APK stejne jako predtim.
+3) Hlavni menu:
+   - zkontrolovat, ze EMULATOR uz nevypada jako prelepeny cerny obdelnik.
+   - GAMES / EMULATOR / ASSEMBLER maji pusobit jako jedna sada karet.
+   - klik na EMULATOR musi porad spustit emulator.
+4) Emulator obrazovka:
+   - POWER BASIC a START+OPTION musi mit stejny styl tlacitka.
+   - u START+OPTION nesmi byt cerny vyrez ani viditelne HTML tlacitko.
+   - pri stisku se nema vykreslovat zadny nalepeny obdelnik.
+5) Rychla funkcni kontrola:
+   - POWER BASIC -> READY.
+   - BASIC/TBXL TXT -> kratky program -> LIST/RUN.
+   - chovani ma byt stejne jako BUILD2FM/BUILD2FL.
+
+CO POSLAT ZPET PRI CHYBE:
+- screenshot celeho hlavniho menu,
+- screenshot horni casti emulatoru s POWER BASIC / START+OPTION,
+- napsat, jestli kliky porad funguji.
+
+POZNAMKA PRO DALSI CHAT:
+Dokud Rene nepotvrdi, ze UI je vizualne ciste, nevracet se na CLOAD.
+Jakmile UI potvrdi, dalsi priorita je znovu CLOAD / START+OPTION externi WAV hry.

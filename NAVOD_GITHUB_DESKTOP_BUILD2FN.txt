@@ -1,0 +1,10 @@
+NAVOD BUILD2FN
+==============
+1. Rozbal ZIP.
+2. Zkopiruj slozku app pres root projektu v GitHub Desktop.
+3. Commit message:
+   BUILD2FN visual clean real skin no prelep
+4. Build/install APK.
+5. Testuj nejdriv jen UI: hlavni menu EMULATOR a emulator START+OPTION.
+
+KODY JSOU STEJNE - core/CLOAD/TXT/Java nemeneno.
