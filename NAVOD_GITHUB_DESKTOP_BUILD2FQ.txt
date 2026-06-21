@@ -1,0 +1,4 @@
+1. Rozbal ZIP.
+2. Prekopiruj soubor do projektu:
+   app/src/main/assets/design/uvodni_np_vision.png
+3. Commit do GitHub Desktop.

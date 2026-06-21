@@ -1,0 +1,34 @@
+ATARIHELP.EU EMU-10
+BUILD2FQ_JEN_PREPIS_EMULATOR_KARTY
+
+KODY JSOU STEJNE.
+Nemenil jsem CLOAD, POKEY, CSAVE, TXT, ROM, Java, hitzony ani funkcnost emulatoru.
+
+CO SE MENI
+- pouze grafika jedne karty v hlavnim menu na uvodni obrazovce
+- puvodni napis:
+  TAPE LOADER
+  LOAD CASSETTE
+- novy napis:
+  EMULATOR
+  ATARI XE/XL
+
+CO ZUSTAVA
+- barvy pisma a celkova grafika karty zachovana
+- funkcnost tlacitka zustava stejna jako dosud
+- nic jineho se nema zmenit
+
+TEST PLAN
+1. Spust aplikaci.
+2. Na uvodni obrazovce zkontroluj prostredni kartu v MAIN MENU.
+3. Ocekavany stav:
+   - velky napis EMULATOR
+   - maly napis ATARI XE/XL
+   - ostatni karty beze zmen
+4. Klikni na kartu.
+5. Ocekavany stav:
+   - otevre se emulator stejne jako predtim
+
+KDYZ TO SELZE
+- posli screenshot uvodniho menu
+- pokud by se rozbila funkce kliknuti, posli i log
