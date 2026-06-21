@@ -1,0 +1,48 @@
+ATARIHELP.EU EMU-10
+BUILD2GC_PLAYER_FINE_AUDIO_CENTER_REELS_YOUTUBE_FIX
+
+KODY JSOU ZMENENE.
+BASIC / Altirra testovaci kody: KODY JSOU STEJNE.
+Emulator core: KODY JSOU STEJNE.
+
+CO JSEM OPRAVIL
+- civky / reel animace jsou posunute a vycentrovane lepe na osu obou civcek
+- jemnejsi ladeni zvuku:
+  - EQ 60 / 250 / 1K / 4K / 16K je ted plynule tazeni nahoru / dolu
+  - BALANCE je plynule tazeni vlevo / vpravo
+  - BASS / TREBLE / VOLUME jsou plynule tazeni nahoru / dolu
+- pridal jsem vizualni overlay ukazatele:
+  - EQ handle pro kazde pasmo
+  - pointery pro BALANCE / BASS / TREBLE / VOLUME
+- pridal jsem RESET ZVUKU:
+  - v SOUND SETTINGS panelu
+  - otevreni pres horni gear SETTINGS
+  - i pres spodni SETTINGS
+- YOUTUBE jsem znovu osetril:
+  - je to anchor href na https://www.youtube.com/
+  - klik navic vola primy openWeb('https://www.youtube.com/')
+  - Android bridge + location.assign fallback
+
+CO SE NEMENI
+- prvni presna N&P Vision uvodni stranka zustava
+- EMULATOR stale vede na existujici skutecny emulator
+- ATARIHELP.EU stale otevre https://atarihelp.eu/
+- emulator core se nema menit
+
+TEST PLAN
+1. Spust appku.
+2. PREHRAVAC.
+3. Zkontroluj civky:
+   - pri PLAY se maji tocit vic uprostred obou civcek
+4. Otestuj zvuk:
+   - EQ pasma tazenim
+   - BALANCE vlevo/vpravo
+   - BASS / TREBLE / VOLUME
+5. SETTINGS (horni gear nebo spodni SETTINGS):
+   - otevre SOUND SETTINGS
+   - RESET ZVUKU vrati vse do zakladu
+6. YOUTUBE:
+   - musi otevrit https://www.youtube.com/
+   - nesmi otevrit emulator
+7. ATARIHELP.EU na uvodu:
+   - musi otevrit https://atarihelp.eu/
