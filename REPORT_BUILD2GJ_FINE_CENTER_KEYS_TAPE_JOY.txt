@@ -1,0 +1,39 @@
+BUILD2GJ_FINE_CENTER_KEYS_TAPE_JOY
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu/index.html
+- app/src/main/assets/design/emu_joystick_np_vision.png
+
+Nesahano na:
+- emulator core
+- CLOAD / POKEY / CSAVE / TXT / ROM
+- MainActivity.java
+- BUILD2GH router odkazu / YouTube / Facebook / AtariHelp.eu
+- prehravac a intro
+
+Co je opraveno:
+1) Klavesnice Atari:
+- vizualni stisk posunut vyse, aby sedel na stred klaves
+- vsechny rady klaves jemne zvednuty
+- SPACE, SHIFT, RETURN, CAPS, BREAK a horni numericka rada znovu dorezany
+
+2) Horni klavesy HELP / START / SELECT / OPTION / RESET:
+- hitboxy jemne zmenseny a posunuty nahoru pro presnejsi stred
+
+3) Joystick:
+- jemny recenter D-padu a FIRE
+
+4) Kazetak:
+- tlacitka RECORD/PLAY/REW/F.FWD/STOP/PAUSE jemne dorezany
+- pravy konec rady uz nema ujizdet doprava tolik jako predtim
+- pressed animace je mene utopena dolu
+
+Test plan:
+1. otevri EMULATOR
+2. na klavesnici otestuj hlavne H, P, SHIFT, SPACE
+3. otestuj HELP/START/SELECT/OPTION/RESET
+4. prepni na joystick a otestuj smer + FIRE
+5. otestuj kazetakova tlacitka zleva doprava: RECORD, PLAY, REW, F.FWD, STOP/EJECT, PAUSE
+6. zkontroluj, ze odkazy a prehravac zustaly funkcni
