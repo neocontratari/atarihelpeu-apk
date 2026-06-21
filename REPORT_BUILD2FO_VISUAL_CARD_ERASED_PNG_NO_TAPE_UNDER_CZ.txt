@@ -1,0 +1,20 @@
+ATARIHELP.EU EMU-10 — BUILD2FO_VISUAL_CARD_ERASED_PNG_NO_TAPE_UNDER
+
+KODY JSOU STEJNE.
+Nemeneny emulator core, CLOAD, POKEY, CSAVE, TXT logika, ROM, Java ani XEX/ATR.
+
+Co je zmeneno:
+- Karta EMULATOR je opravena primo v PNG skinu.
+- Predchozi chyba byla realna: pod prepisem zustaval puvodni TAPE LOADER / LOAD CASSETTE motiv.
+- BUILD2FO odstranuje TAPE/LOAD CASSETTE z bitmapy a kresli kartu znovu jako EMULATOR / ATARI 130XE.
+- HTML je jen neviditelna hit-zona, ne viditelne tlacitko pres obrazek.
+- Interni hit-zona byla prejmenovana z goTape na goEmulator.
+- START + OPTION je v emulator skinu prekreslene mensim pismem bliz stylu POWER BASIC.
+
+Test:
+1) Spustit aplikaci a zkontrolovat hlavni menu.
+2) Uprostred musi byt jen EMULATOR / ATARI 130XE.
+3) Nesmí prosvitat TAPE LOADER ani LOAD CASSETTE.
+4) Klik na EMULATOR musi otevrit emulator.
+5) V emulatoru zkontrolovat POWER BASIC / START + OPTION.
+6) TXT/CLOAD zatim neresit.

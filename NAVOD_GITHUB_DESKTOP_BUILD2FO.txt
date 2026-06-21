@@ -1,0 +1,8 @@
+BUILD2FO_VISUAL_CARD_ERASED_PNG_NO_TAPE_UNDER
+
+GitHub Desktop:
+1. Rozbal overlay do korene projektu.
+2. Potvrd prepsani souboru.
+3. Commit summary:
+   BUILD2FO visual card erased png no tape under
+4. Testuj jen grafiku UI.
