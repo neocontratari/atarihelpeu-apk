@@ -38,10 +38,10 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnSettingsTop" class="hit" type="button">SETTINGS</button>
   <a id="btnEmulator" class="hit" href="emu/index.html">EMULATOR</a>
   <a id="btnPlayer" class="hit" href="player/index.html">PREHRAVAC</a>
-  <button id="btnAtariHelp" class="hit" type="button">ATARIHELP.EU</button>
+  <a id="btnAtariHelp" class="hit" href="https://atarihelp.eu/">ATARIHELP.EU</a>
   <button id="btnHelp" class="hit" type="button">HELP</button>
   <button id="btnFooterLeft" class="hit" type="button">ATARI LEGACY</button>
-  <button id="btnFooterName" class="hit" type="button">RENE FRANK</button>
+  <a id="btnFooterName" class="hit" href="https://www.facebook.com/renatus.honda">RENE FRANK</a>
   <button id="btnFooterRight" class="hit" type="button">RETRO POWER</button>
 </main>
 
@@ -77,19 +77,12 @@ function closeHelp(){
   var p=document.getElementById('helpPanel');
   if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}
 }
-document.getElementById('btnAtariHelp').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openWeb('https://atarihelp.eu/');},true);
 document.getElementById('btnHelp').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);
 document.getElementById('btnSettingsTop').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);
 
-document.getElementById('btnFooterName').addEventListener('click',function(e){
-  e.preventDefault(); e.stopPropagation();
-  openWeb('https://www.facebook.com/renatus.honda');
-  log('FACEBOOK BUILD2GD: otevren odkaz https://www.facebook.com/renatus.honda');
-},true);
-
 document.getElementById('btnMenu').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);
 document.getElementById('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
-log('BUILD2GB: exact intro skin active. EMULATOR -> emu/index.html, PREHRAVAC -> player/index.html, ATARIHELP -> web.');
+log('BUILD2GE: ATARIHELP a RENE FRANK jsou ciste HTML odkazy bez JS/Android bridge; stejne chovani odkazu.');
 })();
 </script>
 </body>

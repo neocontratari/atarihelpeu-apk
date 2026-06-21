@@ -1,0 +1,40 @@
+ATARIHELP.EU EMU-10
+BUILD2GE_LINKS_STEJNE_JAKO_ATARIHELP
+
+KODY JSOU ZMENENE - oprava odkazu v UI.
+BASIC / Altirra testovaci kody: KODY JSOU STEJNE.
+Emulator core: KODY JSOU STEJNE.
+
+PROC
+Log ukazal, ze Facebook/YouTube se nechovaly jako externi web, ale spadly do NET/web loaderu emulatoru:
+- Facebook byl prijat jako 'renatus.honda' a emulator se ho pokusil spustit jako XEX.
+- Pri predchozim intent pokusu log hlasi 'unknown protocol: intent'.
+
+CO JSEM ZMENIL
+- Zrusil jsem JS/Android bridge/intent otevirani pro Facebook i YouTube.
+- Udelal jsem to stejne jako fungujici web odkazy:
+  cisty HTML <a href="..."> bez JS handleru.
+- ATARIHELP.EU je taky cisty HTML odkaz:
+  https://atarihelp.eu/
+- Rene Frank je cisty HTML odkaz:
+  https://www.facebook.com/renatus.honda
+- YouTube je cisty HTML odkaz:
+  https://www.youtube.com/
+
+CO SE NEMENI
+- EMULATOR stale vede na emu/index.html.
+- PREHRAVAC stale vede na player/index.html.
+- Přehrávač z BUILD2GD zustava bez hnusnych posuvniku/prelepu.
+- CLOAD/POKEY/CSAVE/TXT/ROM/Java emulator core beze zmen.
+
+TEST PLAN
+1. Uvodni stranka:
+   - klik ATARIHELP.EU -> musi otevrit https://atarihelp.eu/
+   - klik Rene Frank -> musi otevrit https://www.facebook.com/renatus.honda
+2. Přehrávač:
+   - klik YOUTUBE -> musi otevrit https://www.youtube.com/
+   - nesmi otevrit emulator / cernou obrazovku
+3. EMULATOR:
+   - klik EMULATOR -> stale otevre skutecny emulator
+4. Přehrávač:
+   - PLAY/EQ/BASS/TREBLE/BALANCE zustava jako v BUILD2GD

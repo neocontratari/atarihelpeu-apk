@@ -182,7 +182,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnFwd" class="hit" type="button">FAST FWD</button>
   <button id="btnRec" class="hit" type="button">RECORD</button>
   <button id="btnMyPlaylists" class="hit" type="button">MY PLAYLISTS</button>
-  <button id="btnYoutube" class="hit" type="button">YOUTUBE</button>
+  <a id="btnYoutube" class="hit" href="https://www.youtube.com/">YOUTUBE</a>
   <button id="btnTrackStrip" class="hit" type="button">TRACK</button>
 
   <button id="eq60" class="eqZone" type="button" aria-label="Equalizer 60Hz"></button>
@@ -256,33 +256,7 @@ function openWeb(url){
   }catch(e){ log('Android bridge failed: '+e.message); }
   try{ setTimeout(function(){ window.location.assign(url); }, 10); }catch(e){ try{ location.href=url; }catch(_){} }
 }
-function openYoutube(e){
-  if(e){ try{e.stopPropagation();}catch(_){} }
-  setStatus('YOUTUBE • OTEVIRAM');
-  log('YOUTUBE BUILD2GC: oteviram https://www.youtube.com/');
-  openWeb('https://www.youtube.com/');
-}
 
-function openYoutubeHard(e){
-  if(e){
-    try{e.preventDefault();}catch(_){}
-    try{e.stopPropagation();}catch(_){}
-    try{if(e.stopImmediatePropagation)e.stopImmediatePropagation();}catch(_){}
-  }
-  setStatus('YOUTUBE • OTEVIRAM EXTERNĚ');
-  var web='https://www.youtube.com/';
-  var intent='intent://www.youtube.com/#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https%3A%2F%2Fwww.youtube.com%2F;end';
-  log('YOUTUBE BUILD2GD: external open '+web);
-  try{
-    if(window.Android && typeof window.Android.openExternal==='function'){ window.Android.openExternal(web); return false; }
-    if(window.Android && typeof window.Android.openExternalUrl==='function'){ window.Android.openExternalUrl(web); return false; }
-    if(window.Android && typeof window.Android.openUrl==='function'){ window.Android.openUrl(web); return false; }
-    if(window.AndroidInterface && typeof window.AndroidInterface.openExternal==='function'){ window.AndroidInterface.openExternal(web); return false; }
-  }catch(err){ log('YOUTUBE bridge failed: '+err.message); }
-  try{ window.location.href=intent; return false; }catch(e1){}
-  try{ window.location.href=web; return false; }catch(e2){ try{ location.assign(web); }catch(_){} }
-  return false;
-}
 
 function initAudioGraph(){
   if(ctx) return;
@@ -467,8 +441,6 @@ document.getElementById('btnFwd').onclick=function(){seek(10);};
 document.getElementById('btnRec').onclick=function(){setStatus('RECORD • PRIPRAVENO PRO BUDOUCI CAPTURE');};
 
 document.getElementById('btnYoutube').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();},true);
-document.getElementById('btnYoutube').addEventListener('pointerup',openYoutubeHard,true);
-document.getElementById('btnYoutube').addEventListener('click',openYoutubeHard,true);
 
 document.getElementById('btnMenu').onclick=function(){location.href='../index.html';};
 document.getElementById('btnSettingsTop').onclick=openSettingsPanel;
@@ -485,7 +457,7 @@ audio.onended=function(){
 
 updateVisuals();
 renderPlaylist();
-log('BUILD2GD: odstraneny viditelne posuvniky/reel prelepy; jemne ladeni zustava pres hitzony; YouTube tvrde externi otevreni; Rene Frank Facebook na uvodu.');
+log('BUILD2GE: YouTube je cisty HTML odkaz bez JS/Android bridge/intent.');
 })();
 </script>
 </body>
