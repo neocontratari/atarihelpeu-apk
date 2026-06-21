@@ -1,0 +1,20 @@
+BUILD2FI - presny postup
+
+1) ZIP rozbal/copy overlay do korene projektu:
+   C:\Users\neocontr\Documents\GitHub\atarihelpeu-apk\
+
+2) Prepsat soubory v projektu:
+   app\src\main\assets\index.html
+   app\src\main\assets\emu\index.html
+
+3) GitHub Desktop:
+   Summary: BUILD2FI clean hitzones classic safe txt
+   Commit to main
+   Push origin
+
+4) WWW/Actions vyrobi APK.
+
+5) Test:
+   - zadny graficky overlay tlacitek EMULATOR a START+OPTION
+   - TXT kratky program LIST/RUN
+   - TXT delsi Turbo BASIC program LIST/RUN nebo VLOZIT + RUN

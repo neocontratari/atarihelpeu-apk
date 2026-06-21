@@ -1,0 +1,33 @@
+ATARIHELP.EU EMU-10 BUILD2FI_CLEAN_HITZONES_CLASSIC_SAFE_TXT
+
+KODY JSOU STEJNE.
+
+CIL OPRAVY:
+1) EMULATOR na uvodni obrazovce a START+OPTION v emulatoru uz nesmi kreslit zadne druhe HTML/CSS tlacitko pres PNG. Jsou to tvrde neviditelne hit-zony: opacity 0 ve vsech stavech, vcetne pressed/on/flash/focus.
+2) TXT zapis vracen z rychlejsiho FG/FH na pomalejsi CLASSIC SAFE rezim. Dulezitejsi je spravne LIST/RUN nez rychlost.
+
+ZMENA SOUBORU:
+- app/src/main/assets/index.html
+- app/src/main/assets/emu/index.html
+
+NEMENENO:
+- CSAVE WAV
+- CLOAD / POKEY PCM / SKSTAT
+- XEX
+- ROM
+- Java
+- joystick
+- kazeta
+- klavesova mapa
+
+TEST:
+1) Spustit appku. Na uvodni obrazovce EMULATOR nesmi mit zadny dodatecny HTML/CSS obdelnik pres grafiku.
+2) V emulatoru START+OPTION nesmi mit dodatecny HTML/CSS obdelnik pres grafiku ani po stisku.
+3) POWER BASIC nebo Turbo BASIC, vlozit kratky TXT a dat LIST/RUN.
+4) Vlozit delsi TXT a zkusit LIST/RUN. Pro automaticke spusteni pouzit VLOZIT + RUN.
+
+LOG MARKERY:
+AtariHelp.eu EMU-10 BUILD2FI_CLEAN_HITZONES_CLASSIC_SAFE_TXT pripraven.
+BUILD2FI: START+OPTION a EMULATOR jsou tvrde neviditelne hit-zony
+VLOZIT TXT BUILD2FI: pripraveno ... CLASSIC SAFE
+VLOZIT TXT BUILD2FI: QUEUE COMPLETE

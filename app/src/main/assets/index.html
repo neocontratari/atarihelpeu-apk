@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2FH</title>
+<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2FI</title>
 <style>
 :root{--gold:#f3c465;--blue:#6cc9ff;--dark:#060709;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -95,7 +95,7 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 #introTapeFwd{left:56.6%;top:65.70%;width:10.9%;height:4.55%;}
 #introTapePause{left:67.8%;top:65.70%;width:10.9%;height:4.55%;}
 
-/* BUILD2FH: EMULATOR je jen neviditelna klikaci zona nad PNG. Zadna dalsi kreslena vrstva, zadne tlacitko pres tlacitko. */
+/* BUILD2FI: EMULATOR je jen neviditelna klikaci zona nad PNG. Zadna dalsi kreslena vrstva, zadne tlacitko pres tlacitko. */
 #goTape{
   left:40.1%;top:75.5%;width:31.5%;height:7.25%;z-index:30;
   display:block!important;background:rgba(255,196,90,0)!important;border:0!important;
@@ -105,6 +105,21 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 #goTape:before,#goTape:after{content:""!important;display:none!important;}
 #goTape:active,#goTape.flash{background:rgba(255,196,90,0)!important;color:transparent!important;transform:none!important;box-shadow:none!important;}
 
+
+
+
+/* BUILD2FI: EMULATOR = opravdu jen neviditelna hit-zona. Zadny hover/active/flash/down/pressed nesmi kreslit dalsi tlacitko pres PNG. */
+#goTape,#goTape.cleanHit,
+#goTape:hover,#goTape:active,#goTape:focus,#goTape:focus-visible,
+#goTape.flash,#goTape.down,#goTape.pressed,#goTape.on{
+  left:40.1%!important;top:75.5%!important;width:31.5%!important;height:7.25%!important;z-index:30!important;
+  display:block!important;position:absolute!important;pointer-events:auto!important;cursor:pointer!important;
+  opacity:0!important;visibility:visible!important;background:transparent!important;border:0!important;outline:0!important;
+  box-shadow:none!important;filter:none!important;transform:none!important;color:transparent!important;text-shadow:none!important;
+  font-size:0!important;line-height:0!important;letter-spacing:0!important;text-decoration:none!important;padding:0!important;margin:0!important;
+  -webkit-appearance:none!important;appearance:none!important;border-radius:0!important;mix-blend-mode:normal!important;
+}
+#goTape:before,#goTape:after,#goTape.cleanHit:before,#goTape.cleanHit:after{content:none!important;display:none!important;background:none!important;border:0!important;box-shadow:none!important;}
 
 </style>
 </head>
@@ -122,7 +137,7 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
   <button id="introTapePause" class="hit introTapeBtn" type="button" aria-label="MP3 PAUSE">PAUSE</button>
   <button id="introTapeEject" class="hit introTapeBtn" type="button" aria-label="MP3 EJECT reset playlistu">EJECT MP3</button>
   <a id="goGames" class="hit" href="https://atarihelp.eu/?page_id=207" aria-label="Games - AtariHelp.eu hry ke stazeni">GAMES</a>
-  <a id="goTape" class="hit" href="emu/index.html" aria-label="Emulator - spustit Atari 130XE">EMULATOR</a>
+  <a id="goTape" class="hit cleanHit" href="emu/index.html" aria-label="Emulator - spustit Atari 130XE"></a>
   <a id="goAsm" class="hit" href="https://atarihelp.eu/?page_id=614" aria-label="Assembler">ASSEMBLER</a>
   <a id="goSettings" class="hit" href="https://atarihelp.eu/" aria-label="Settings - AtariHelp.eu hlavni stranka">SETTINGS</a>
   <a id="goSystem" class="hit" href="https://atarihelp.eu/?page_id=786" aria-label="System - informace o emulatoru">SYSTEM</a>
@@ -426,7 +441,7 @@ var introHelpBtn=$('introHelpBtn'), introHelpOverlay=$('introHelpOverlay'), intr
 if(introHelpBtn && introHelpOverlay){ bind('introHelpBtn', function(){ press('introHelpBtn',220); introHelpOverlay.classList.add('open'); introHelpOverlay.setAttribute('aria-hidden','false'); }); }
 if(introHelpClose && introHelpOverlay){ introHelpClose.addEventListener('click', function(){ introHelpOverlay.classList.remove('open'); introHelpOverlay.setAttribute('aria-hidden','true'); }); }
 log('BUILD2AQ: MP3 PRIDAT nyni nacita/pripojuje skladby do playlistu; EJECT maze playlist.');
-log('BUILD2FH: intro EMULATOR klikaci zona je neviditelna - zadna dalsi kreslena vrstva pres PNG.');
+log('BUILD2FI: intro EMULATOR hit-zona ma opacity 0 ve vsech stavech - zadny graficky overlay pres PNG.');
 })();
 </script>
 </body>
