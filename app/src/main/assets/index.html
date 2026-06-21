@@ -40,7 +40,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <a id="btnPlayer" class="hit" href="player/index.html">PREHRAVAC</a>
   <a id="btnAtariHelp" class="hit" href="https://atarihelp.eu/">ATARIHELP.EU</a>
   <button id="btnHelp" class="hit" type="button">HELP</button>
-  <button id="btnFooterLeft" class="hit" type="button">ATARI LEGACY</button>
+  <a id="btnFooterLeft" class="hit" href="emu_vbxe/index.html">ATARI VBXE</a>
   <a id="btnFooterName" class="hit" href="https://www.facebook.com/renatus.honda">RENE FRANK</a>
   <button id="btnFooterRight" class="hit" type="button">RETRO POWER</button>
 </main>
@@ -48,7 +48,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 <div id="helpPanel" aria-hidden="true">
   <div class="box">
     <h2>N&P VISION — HELP</h2>
-    <p><b>EMULATOR</b> otevře existující skutečný Atari 130XE emulator. Tady není žádný fake screen.</p>
+    <p><b>EMULATOR</b> otevře existující skutečný Atari 130XE emulator. Tady není žádný fake screen.</p><p><b>ATARI ikona vlevo dole</b> otevře nový oddělený VBXE emulator sandbox. Úvodní emulator se tím nerozbíjí.</p>
     <p><b>PŘEHRÁVAČ</b> otevře přesnou obrazovku cassette playeru s MP3/WAV přehráváním.</p>
     <p><b>ATARIHELP.EU</b> otevře https://atarihelp.eu/ jako web.</p>
     <p><b>YOUTUBE</b> v přehrávači otevře https://www.youtube.com/ jako web, ne emulator.</p>
@@ -82,7 +82,7 @@ document.getElementById('btnSettingsTop').addEventListener('click',function(e){e
 
 document.getElementById('btnMenu').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);
 document.getElementById('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
-log('BUILD2GE: ATARIHELP a RENE FRANK jsou ciste HTML odkazy bez JS/Android bridge; stejne chovani odkazu.');
+log('BUILD2GQ: ATARI ikona vlevo dole vede do oddeleneho emu_vbxe sandboxu. Existujici emulator a odkazy zustavaji.');
 })();
 </script>
 </body>

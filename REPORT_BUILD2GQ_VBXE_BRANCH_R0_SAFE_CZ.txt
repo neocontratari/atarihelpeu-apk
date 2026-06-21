@@ -1,0 +1,83 @@
+ATARIHELP.EU EMU-10
+BUILD2GQ_VBXE_BRANCH_R0_SAFE
+
+KODY JSOU ZMENENE.
+
+Meneno:
+- app/src/main/assets/index.html
+- app/src/main/assets/emu_vbxe/index.html
+- app/src/main/assets/design/emu_joystick_np_vision.png jen pro jistotu, pokud v projektu chybi
+
+Na co jsem NESAHAL:
+- app/src/main/assets/emu/index.html - puvodni emulator zustava
+- MainActivity.java
+- BUILD2GH router odkazu
+- prehravac / YouTube / Facebook / AtariHelp.eu
+- CLOAD / POKEY / CSAVE / TXT / ROM existujiciho emulatoru
+
+CO JE HOTOVE TED:
+1) Na prvni obrazovce je levy dolni Atari znak / tlacitko vedle Rene Frank napojeny na:
+   emu_vbxe/index.html
+
+2) Vznikl novy oddeleny emulator sandbox:
+   app/src/main/assets/emu_vbxe/index.html
+
+3) Puvodni EMULATOR tlacitko stale vede na existujici emulator:
+   emu/index.html
+
+4) Novy VBXE sandbox zatim NEFAKUJE VBXE.
+   To je dulezite:
+   - zadne fake No VBXE bypass
+   - zadne fake screen
+   - zadne lhani do logu
+   - kdyz VBXE neni implementovane, titul to ma rict nebo selhat poctive
+
+CO UKAZALY TVE TESTOVACI SOUBORY:
+Popeye XEX:
+- soubor: Popeye (VBXE, PAL Version).xex
+- velikost: 61819 B
+- sha256 zacatek: 340b1c5db188303f
+- signatury: VBXE@49, No VBXE found@122, FX core@142, $D640@167, Dual POKEY@673, Sophia 2@316
+- prvni segmenty: [(580, 580, 1), (35072, 36246, 1175), (738, 739, 2), (35098, 36747, 1650), (25232, 35071, 9840), (36454, 36457, 4), (738, 739, 2), (738, 739, 2), (33626, 35071, 1446), (36454, 36457, 4), (738, 739, 2), (738, 739, 2)]
+
+Wolf3D ATR:
+- soubor: wolf3d.atr
+- velikost: 1671824 B
+- sha256 zacatek: 19174f0f765df874
+- ATR sector size: 128
+- signatury: WOLF3D NEEDS VBXE@18590, WOLF3D@18590, VBXE@18603
+
+CO Z TOHO PLYNE:
+- Popeye primo kontroluje VBXE / FX core a hlasi texty typu No VBXE found / FX core / $D640.
+- Wolf3D ATR obsahuje text WOLF3D NEEDS VBXE.
+- Nestaci jen Atari 130XE zaklad. Musi vzniknout skutecny VBXE cip:
+  - IO registry okolo $D640
+  - detekce FX core a verze
+  - VBXE VRAM
+  - bankovani / okna do RAM
+  - XDL display list
+  - blitter
+  - palety
+  - overlay nad ANTIC/GTIA obrazem
+  - casovani tak, aby to nebouralo normalni Atari
+
+DALSI BUILD DOPORUCENI:
+BUILD2GR_VBXE_IO_STUB_NO_FAKE
+- pridat realny mapovany IO prostor VBXE do machine busu
+- logovat cteni/zapis registru $D640+
+- porad jeste nehlasit fake FX core jako funkcni, dokud nebudou registry a VRAM pravdive
+
+TEST PLAN:
+1) Spust appku.
+2) Klik EMULATOR:
+   - musi jit puvodni emulator.
+3) Zpet.
+4) Klik levý dolni Atari znak vedle Rene Frank:
+   - musi jit do noveho VBXE sandboxu.
+5) V novem VBXE sandboxu zkus nahrat Popeye XEX:
+   - log musi napsat VBXE R0 detekci
+   - nesmi tvrdit, ze VBXE hotove je
+6) Zkus Wolf3D ATR:
+   - log musi napsat VBXE R0 detekci
+   - pokud hra selze na VBXE, je to zatim spravne a poctive
+7) Otestuj, ze puvodni emulator / prehravac / odkazy zustaly funkcni.

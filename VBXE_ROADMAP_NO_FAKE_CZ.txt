@@ -1,0 +1,44 @@
+VBXE ROADMAP - CISTA EMULACE, ZADNY FAKE
+
+R0 - ted hotovo
+- oddelit novy emu_vbxe sandbox
+- tlacitko Atari ikona vlevo dole -> emu_vbxe
+- detekovat VBXE hry v logu
+- nic nefakovat
+
+R1
+- najit a oddelit memory bus v EMU10 machine
+- pridat VBXE IO oblast $D640+
+- logovat vsechny reads/writes pro Popeye/Wolf3D
+- testovat, co presne hry ctou jako detekci
+
+R2
+- implementovat zakladni VBXE core identity / verzi podle realneho chovani
+- porad jen pokud registr odpovida realne, ne fake bypass
+
+R3
+- VBXE VRAM, bankovani a okna do CPU adresniho prostoru
+
+R4
+- XDL parser a render pipeline
+- overlay obraz nad stavajicim ANTIC/GTIA framebufferem
+
+R5
+- blitter / kopirovani / fill / mask operace
+
+R6
+- palety, priority, alpha/overlay rezimy
+
+R7
+- optimalizace pro mobil
+
+TEST TITULY:
+- Popeye (VBXE, PAL Version).xex
+- wolf3d.atr
+
+ANTI-FAKE PRAVIDLA:
+- Nepsat 'VBXE OK', dokud to neni pravda.
+- Neobchazet check hry patchovanim RAM.
+- Nevykreslovat fake screen.
+- Nepsat fake READY / fake boot.
+- Puvodni emulator nerozbit.
