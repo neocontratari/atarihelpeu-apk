@@ -1,0 +1,36 @@
+ATARIHELP.EU EMU-10 - BUILD2FJ_CLEAN_SKIN_FAST_SAFE_TXT
+
+KODY JSOU STEJNE
+
+CO MENIM:
+- app/src/main/assets/index.html
+- app/src/main/assets/emu/index.html
+- app/src/main/assets/design/uvodni_np_vision.png
+- app/src/main/assets/design/emu_klavesnice_np_vision.png
+
+PROC:
+1) START+OPTION a EMULATOR nebyl problem jen v HTML hit-zone. Viditelny neporadek byl primo v PNG skinu.
+   Proto jsou ted upravene PNG obrazky: zadne bile pruhy, zadne tlacitko nalepene pres tlacitko.
+2) Hit-zony zustavaji neviditelne. Klikaji, ale nic nekresli.
+3) TXT zapis je FAST SAFE: rychlejsi nez FI, ale stale jde pres klavesove IRQ a CH $02FC. Zadny RAM inject.
+
+NEMENIM:
+- CSAVE WAV
+- CLOAD / POKEY PCM / SKSTAT
+- XEX
+- ROM
+- Java
+- joystick
+- kazetu
+- klavesovou mapu
+
+TEST:
+1) Spust appku a zkontroluj uvodni EMULATOR: nesmi byt tlacitko pres tlacitko.
+2) Spust emulator a zkontroluj START+OPTION: musi byt cisty jeden fyzicky button bez bileho pruhu / bez nalepeneho CSS obdelniku.
+3) Turbo BASIC: vloz kratky TXT test, LIST, RUN.
+4) Turbo BASIC: vloz delsi TXT test, LIST, RUN.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2FJ_CLEAN_SKIN_FAST_SAFE_TXT pripraven.
+- BUILD2FJ: TXT zapis je FAST SAFE
+- VLOZIT TXT BUILD2FJ: QUEUE COMPLETE

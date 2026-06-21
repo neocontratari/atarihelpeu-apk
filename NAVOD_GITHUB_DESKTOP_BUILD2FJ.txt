@@ -1,0 +1,13 @@
+BUILD2FJ - PRESNY POSTUP
+
+1) Rozbal ZIP / zkopiruj overlay do korene projektu:
+   C:\Users\neocontr\Documents\GitHub\atarihelpeu-apk\
+
+2) V GitHub Desktop zkontroluj zmeny.
+
+3) Commit summary:
+   BUILD2FJ clean skin fast safe txt
+
+4) Commit to main
+5) Push origin
+6) Pockej na APK z GitHub Actions.

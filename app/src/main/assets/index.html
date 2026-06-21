@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2FI</title>
+<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2FJ</title>
 <style>
 :root{--gold:#f3c465;--blue:#6cc9ff;--dark:#060709;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -95,7 +95,7 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 #introTapeFwd{left:56.6%;top:65.70%;width:10.9%;height:4.55%;}
 #introTapePause{left:67.8%;top:65.70%;width:10.9%;height:4.55%;}
 
-/* BUILD2FI: EMULATOR je jen neviditelna klikaci zona nad PNG. Zadna dalsi kreslena vrstva, zadne tlacitko pres tlacitko. */
+/* BUILD2FJ: EMULATOR je jen neviditelna klikaci zona nad PNG. Zadna dalsi kreslena vrstva, zadne tlacitko pres tlacitko. */
 #goTape{
   left:40.1%;top:75.5%;width:31.5%;height:7.25%;z-index:30;
   display:block!important;background:rgba(255,196,90,0)!important;border:0!important;
@@ -108,7 +108,7 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 
 
 
-/* BUILD2FI: EMULATOR = opravdu jen neviditelna hit-zona. Zadny hover/active/flash/down/pressed nesmi kreslit dalsi tlacitko pres PNG. */
+/* BUILD2FJ: EMULATOR = opravdu jen neviditelna hit-zona. Zadny hover/active/flash/down/pressed nesmi kreslit dalsi tlacitko pres PNG. */
 #goTape,#goTape.cleanHit,
 #goTape:hover,#goTape:active,#goTape:focus,#goTape:focus-visible,
 #goTape.flash,#goTape.down,#goTape.pressed,#goTape.on{
@@ -441,7 +441,7 @@ var introHelpBtn=$('introHelpBtn'), introHelpOverlay=$('introHelpOverlay'), intr
 if(introHelpBtn && introHelpOverlay){ bind('introHelpBtn', function(){ press('introHelpBtn',220); introHelpOverlay.classList.add('open'); introHelpOverlay.setAttribute('aria-hidden','false'); }); }
 if(introHelpClose && introHelpOverlay){ introHelpClose.addEventListener('click', function(){ introHelpOverlay.classList.remove('open'); introHelpOverlay.setAttribute('aria-hidden','true'); }); }
 log('BUILD2AQ: MP3 PRIDAT nyni nacita/pripojuje skladby do playlistu; EJECT maze playlist.');
-log('BUILD2FI: intro EMULATOR hit-zona ma opacity 0 ve vsech stavech - zadny graficky overlay pres PNG.');
+log('BUILD2FJ: intro EMULATOR hit-zona ma opacity 0 ve vsech stavech - zadny graficky overlay pres PNG.');
 })();
 </script>
 </body>

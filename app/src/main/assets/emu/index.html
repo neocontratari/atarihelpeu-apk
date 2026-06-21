@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION - Atari 130XE Emulator BUILD2FI</title>
+<title>N&P VISION - Atari 130XE Emulator BUILD2FJ</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -23,10 +23,8 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #led.on{background:#63ff34;box-shadow:0 0 8px #63ff34,0 0 19px #63ff34;}@keyframes ledPulse{50%{opacity:.55}}
 /* power / mode controls */
 #btnPower{left:6.8%;top:34.6%;width:16.5%;height:5.1%;}
-#btnSelfTest{left:24.0%;top:34.6%;width:17.5%;height:5.1%;pointer-events:auto;z-index:82;
-  display:block!important;background:rgba(255,200,80,0)!important;color:transparent!important;font-size:0!important;
-  border:0!important;border-radius:0!important;text-shadow:none!important;box-shadow:none!important;padding:0!important;outline:0!important;}
-#btnSelfTest:active,#btnSelfTest.on{background:rgba(255,203,95,0)!important;color:transparent!important;transform:none!important;box-shadow:none!important;}
+#btnSelfTest{left:24.0%;top:34.6%;width:17.5%;height:5.1%;pointer-events:auto;z-index:82;display:block!important;opacity:0!important;background:transparent!important;color:transparent!important;font-size:0!important;border:0!important;border-radius:0!important;text-shadow:none!important;box-shadow:none!important;padding:0!important;outline:0!important;appearance:none!important;-webkit-appearance:none!important;}
+#btnSelfTest:active,#btnSelfTest.on,#btnSelfTest:focus,#btnSelfTest:focus-visible{opacity:0!important;background:transparent!important;color:transparent!important;transform:none!important;box-shadow:none!important;border:0!important;outline:0!important;}
 #btnJoy{left:44.0%;top:34.6%;width:47.8%;height:5.1%;}
 /* Atari function row */
 #btnHelp{left:34.1%;top:43.2%;width:11.4%;height:4.3%;}#btnStart{left:45.6%;top:43.2%;width:11.5%;height:4.3%;}#btnSelect{left:57.1%;top:43.2%;width:12.1%;height:4.3%;}#btnOption{left:69.2%;top:43.2%;width:12.3%;height:4.3%;}#btnReset{left:81.5%;top:43.2%;width:11.2%;height:4.3%;}
@@ -187,7 +185,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 @media (prefers-reduced-motion:reduce){.scan,.screenSlot:after,#led{animation:none}}
 
 
-/* BUILD2FI: START+OPTION = opravdu jen neviditelna hit-zona nad PNG. Ani pressed/on/active nesmi kreslit dalsi obdelnik. */
+/* BUILD2FJ: START+OPTION = opravdu jen neviditelna hit-zona nad PNG. Ani pressed/on/active nesmi kreslit dalsi obdelnik. */
 #btnSelfTest,#btnSelfTest.cleanHit,
 #btnSelfTest:hover,#btnSelfTest:active,#btnSelfTest:focus,#btnSelfTest:focus-visible,
 #btnSelfTest.pressed,#btnSelfTest.on,#btnSelfTest.flash,#btnSelfTest.down{
@@ -254,7 +252,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 <div id="miniLog"></div>
 <div id="txtOverlay" class="overlay" aria-label="Vlozeni BASIC TXT kodu">
   <h2>VLOZIT TXT / BASIC KOD</h2>
-  <div class="hint">Sem vloz BASIC/Turbo BASIC kod. VLOZIT DO ATARI jen zapise program. VLOZIT + RUN po zapisu automaticky posle RUN. BUILD2FI pise pomaleji, ale bezpecneji.</div>
+  <div class="hint">Sem vloz BASIC/Turbo BASIC kod. VLOZIT DO ATARI jen zapise program. VLOZIT + RUN po zapisu automaticky posle RUN. BUILD2FJ pise pomaleji, ale bezpecneji.</div>
   <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtRun">VLOZIT + RUN</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClear" class="dark">SMAZAT TEXT</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
   <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim programu</label>
   <textarea id="txtIn" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="10 PRINT &quot;ATARIHELP&quot;&#10;20 FOR I=1 TO 5&#10;30 PRINT I&#10;40 NEXT I"></textarea>
@@ -2195,14 +2193,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }catch(_e){}
   }
 
-  // ---------- vkladani TXT (BUILD2FI: navrat na pomalejsi klasicky IRQ rezim + jisty RETURN/RUN) ----------
+  // ---------- vkladani TXT (BUILD2FJ: FAST SAFE IRQ rezim - rychlejsi nez FI, porad bez RAM injectu) ----------
   var typeQ=[], typeWait=0, typeHold=0, typeCurrent=null, typeSent=0, typeTotal=0, typeDoneLogged=true;
-  var typeLineIndex=0, typeLineTotal=0, typeChWait=0, typeLastLineLogged=0, typeBuildName='BUILD2FI';
+  var typeLineIndex=0, typeLineTotal=0, typeChWait=0, typeLastLineLogged=0, typeBuildName='BUILD2FJ';
   function clearTypeQueue(reason){
     typeQ.length=0; typeWait=0; typeHold=0; typeCurrent=null; typeSent=0; typeTotal=0; typeDoneLogged=true;
     typeLineIndex=0; typeLineTotal=0; typeChWait=0; typeLastLineLogged=0;
     try{ if(M) M.keyUp(); }catch(_e){}
-    if(reason) log('VLOZIT TXT BUILD2FI: fronta vycistena - '+reason);
+    if(reason) log('VLOZIT TXT BUILD2FJ: fronta vycistena - '+reason);
   }
   function pushTypeScan(sc, meta){
     meta=meta||{}; meta.sc=sc&0xFF; typeQ.push(meta);
@@ -2213,7 +2211,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     clearTypeQueue('novy text');
     var skipped=0, lineNo=1, visibleLines=0;
     text=String(text||'').replace(/\r/g,'');
-    // BUILD2FI: kdyz posledni radek nema ENTER, pridam ho. Bez toho BASIC/TBXL posledni radek nemusi potvrdit.
+    // BUILD2FJ: kdyz posledni radek nema ENTER, pridam ho. Bez toho BASIC/TBXL posledni radek nemusi potvrdit.
     if(text.length && text[text.length-1] !== '\n' && text[text.length-1] !== '\x01' && text[text.length-1] !== '\x02') text+='\n';
     var lineBuf='';
     function flushReturn(label,longWait){
@@ -2246,15 +2244,15 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }
     typeTotal=typeQ.length; typeSent=0; typeDoneLogged=(typeTotal===0);
     typeLineTotal=visibleLines; typeLineIndex=0;
-    log('VLOZIT TXT BUILD2FI: pripraveno '+typeTotal+' stisku / '+visibleLines+' radku. CLASSIC SAFE rezim: pomalejsi nez FG/FH, po kazdem znaku a RETURN cekam na CH $02FC. Posledni radek dostane ENTER automaticky. Zadny RAM inject.'+(skipped?(' Preskoceno '+skipped+' neznamych znaku.'):'') );
-    if(typeTotal===0) log('VLOZIT TXT BUILD2FI: nic k vlozeni.');
+    log('VLOZIT TXT BUILD2FJ: pripraveno '+typeTotal+' stisku / '+visibleLines+' radku. FAST SAFE rezim: po kazde klavese hlidam CH $02FC, ale pauzy jsou zkracene. Posledni radek dostane ENTER automaticky. Zadny RAM inject.'+(skipped?(' Preskoceno '+skipped+' neznamych znaku.'):'') );
+    if(typeTotal===0) log('VLOZIT TXT BUILD2FJ: nic k vlozeni.');
   }
   function machineChEmpty(){
     try{ if(M && typeof M.chEmpty==='function') return M.chEmpty(); }catch(_e){}
     return true;
   }
   function typeStep(){
-    // BUILD2FI: zamerne pomalejsi a stabilni. Nehonim rychlost, nejdriv musi program jit LIST/RUN.
+    // BUILD2FJ: rychlejsi SAFE rezim. Ne blokove FG, porad jednotlive klavesy pres IRQ + CH guard.
     if(!M){ clearTypeQueue('neni machine'); return; }
     if(typeWait>0){ typeWait--; return; }
     if(typeCurrent!==null){
@@ -2263,17 +2261,17 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var done=typeCurrent; typeCurrent=null;
       if(done.kind==='return'){
         typeLineIndex++;
-        var wait=done.longWait?220:80; // BUILD2FI: delsi dobeh po radku; RUN/CSAVE/CLOAD jeste delsi
+        var wait=done.longWait?170:48; // BUILD2FJ: rychlejsi, ale stale nechava BASIC/TBXL tokenizovat radek
         typeWait=wait;
         if(typeLineIndex===1 || typeLineIndex===typeLineTotal || (typeLineIndex%5)===0 || done.longWait){
-          log('VLOZIT TXT BUILD2FI: TXT LINE '+typeLineIndex+'/'+typeLineTotal+' '+(done.label||'RETURN')+' odeslan, cekam BASIC/TBXL '+wait+' kroku.');
+          log('VLOZIT TXT BUILD2FJ: TXT LINE '+typeLineIndex+'/'+typeLineTotal+' '+(done.label||'RETURN')+' odeslan, cekam BASIC/TBXL '+wait+' kroku.');
         }
       } else {
-        typeWait=6; // klasicky oddech po znaku, ne FG turbo blok
+        typeWait=2; // BUILD2FJ: rychlejsi znakovy oddech, porad s CH $02FC ochranou
       }
       if(!typeQ.length && typeSent>=typeTotal && !typeDoneLogged){
         typeDoneLogged=true;
-        log('VLOZIT TXT BUILD2FI: QUEUE COMPLETE - vsechny znaky/radky odeslany pres klavesove IRQ, bez RAM injectu. Ted pouzij LIST/RUN nebo tlacitko VLOZIT + RUN.');
+        log('VLOZIT TXT BUILD2FJ: QUEUE COMPLETE - vsechny znaky/radky odeslany pres klavesove IRQ, bez RAM injectu. Ted pouzij LIST/RUN nebo tlacitko VLOZIT + RUN.');
       }
       return;
     }
@@ -2281,18 +2279,18 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!machineChEmpty()){
       typeChWait++;
       if(typeChWait===1 || (typeChWait%80)===0){
-        log('VLOZIT TXT BUILD2FI: cekam na prazdny CH $02FC pred dalsi klavesou, line '+(typeQ[0]&&typeQ[0].line?typeQ[0].line:'?')+'.');
+        log('VLOZIT TXT BUILD2FJ: cekam na prazdny CH $02FC pred dalsi klavesou, line '+(typeQ[0]&&typeQ[0].line?typeQ[0].line:'?')+'.');
       }
       return;
     }
     typeChWait=0;
     var it=typeQ.shift();
-    try{ M.keyDown(it.sc&0xFF); }catch(e){ log('VLOZIT TXT BUILD2FI: keyDown chyba - '+e.message); clearTypeQueue('chyba keyDown'); return; }
-    typeCurrent=it; typeHold=4; typeSent++;
+    try{ M.keyDown(it.sc&0xFF); }catch(e){ log('VLOZIT TXT BUILD2FJ: keyDown chyba - '+e.message); clearTypeQueue('chyba keyDown'); return; }
+    typeCurrent=it; typeHold=2; typeSent++;
     if(it.kind==='return'){
       // RETURN logujeme az po keyUp, aby bylo jasne, ze ho BASIC/TBXL dostal do fronty
     } else if(typeSent===1 || typeSent===typeTotal || (typeSent%40)===0){
-      log('VLOZIT TXT BUILD2FI: znak '+typeSent+'/'+typeTotal+' line '+it.line+' scan=$'+((it.sc&255).toString(16).toUpperCase()).padStart(2,'0')+'.');
+      log('VLOZIT TXT BUILD2FJ: znak '+typeSent+'/'+typeTotal+' line '+it.line+' scan=$'+((it.sc&255).toString(16).toUpperCase()).padStart(2,'0')+'.');
     }
   }
 
@@ -3169,7 +3167,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     try{ document.documentElement.style.overflowY='auto'; document.body.style.overflowY='auto'; }catch(_e){}
     var targetY = (/VLOZIT/.test(reason||'')) ? 0 : (txtOverlayLastScrollY||window.scrollY||0);
     try{ window.scrollTo({top:targetY,left:0,behavior:'auto'}); }catch(_e){ try{ window.scrollTo(0,targetY); }catch(__e){} }
-    if(reason) log('TXT RAMECEK BUILD2FI: zavreno/odeslano - '+reason+'. Scroll stranky je znovu povolen'+((/VLOZIT/.test(reason||''))?' a obraz je posunuty nahoru k Atari obrazovce.':'.'));
+    if(reason) log('TXT RAMECEK BUILD2FJ: zavreno/odeslano - '+reason+'. Scroll stranky je znovu povolen'+((/VLOZIT/.test(reason||''))?' a obraz je posunuty nahoru k Atari obrazovce.':'.'));
   }
   function openTxtOverlay(){
     txtOverlayLastScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
@@ -3177,7 +3175,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(o) o.style.display='flex';
     try{ document.documentElement.style.overflowY='auto'; document.body.style.overflowY='auto'; }catch(_e){}
     setTimeout(function(){ var ta=document.getElementById('txtIn'); if(ta){ ta.focus(); try{ ta.setSelectionRange(ta.value.length,ta.value.length); }catch(_e){} } },60);
-    log('TXT RAMECEK BUILD2FI: otevren. Ctrl+V funguje, overlay ma vlastni scroll. Po VLOZIT se focus uvolni a stranka jde zase posouvat.');
+    log('TXT RAMECEK BUILD2FJ: otevren. Ctrl+V funguje, overlay ma vlastni scroll. Po VLOZIT se focus uvolni a stranka jde zase posouvat.');
   }
   function openTextPicker(){
     log('TXT: oteviram mobilni Downloads / Vyber BASIC nebo Turbo BASIC textu.');
@@ -3629,34 +3627,34 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     safeTap('dockMenu',function(){ pressAnim('dockMenu',220); try{ window.location.href='../index.html'; }catch(e){ log('MENU chyba: '+e.message); } });
     safeTap('btnHelpPanel',function(){ pressAnim('btnHelpPanel',220); var ov=document.getElementById('helpOverlay'); if(ov){ ov.style.display='flex'; ov.setAttribute('aria-hidden','false'); } });
     function txtToAtari(text,runAfter){
-      if(!text){ log('TXT RAMECEK BUILD2FI: prazdny ramecek, nic nevkladam.'); return; }
+      if(!text){ log('TXT RAMECEK BUILD2FJ: prazdny ramecek, nic nevkladam.'); return; }
       var pre=document.getElementById('chkNew').checked ? 'NEW\x01' : '';
       var body=text.replace(/\r/g,'').replace(/\n*$/,'\n');
       if(runAfter) body+='RUN\x02';
       queueText(pre + body);
-      log('TXT RAMECEK BUILD2FI: vlozeno do aktivni fronty '+body.length+' znaku'+(runAfter?' + RUN s delsim RETURN dobehem':'')+'. Sleduj Atari obraz, text se pise bezpecnym IRQ rezimem; je pomalejsi nez FG, ale nema ztracet radky.');
+      log('TXT RAMECEK BUILD2FJ: vlozeno do aktivni fronty '+body.length+' znaku'+(runAfter?' + RUN s delsim RETURN dobehem':'')+'. Sleduj Atari obraz, text se pise bezpecnym IRQ rezimem; rychlejsi nez FI, ale porad hlida CH a RETURN dobeh.');
     }
     safeTap('btnTxtGo',function(){
       var ta=document.getElementById('txtIn');
-      log('TXT RAMECEK BUILD2FI: stisk VLOZIT DO ATARI, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
+      log('TXT RAMECEK BUILD2FJ: stisk VLOZIT DO ATARI, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
       closeTxtOverlay('VLOZIT DO ATARI');
       txtToAtari(ta?ta.value:'',false);
     });
     safeTap('btnTxtRun',function(){
       var ta=document.getElementById('txtIn');
-      log('TXT RAMECEK BUILD2FI: stisk VLOZIT + RUN, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
+      log('TXT RAMECEK BUILD2FJ: stisk VLOZIT + RUN, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
       closeTxtOverlay('VLOZIT + RUN');
       txtToAtari(ta?ta.value:'',true);
     });
     safeTap('btnTxtClear',function(){
       var ta=document.getElementById('txtIn'); if(ta){ ta.value=''; ta.focus(); }
-      log('TXT RAMECEK BUILD2FI: textovy ramecek smazan.');
+      log('TXT RAMECEK BUILD2FJ: textovy ramecek smazan.');
     });
     safeTap('btnTxtFile',function(){
       closeTxtOverlay('NAHRAJ TXT SOUBOR');
       pickFile('.txt,.lst,.bas',function(n,u8){
         var text=''; for(var i=0;i<u8.length;i++){ var b=u8[i]; if(b===0x9B){text+='\n';continue;} text+=String.fromCharCode(b); } // ATASCII EOL -> \n
-        log('NAHRAJ TXT BUILD2FI: '+n+' ('+u8.length+' B) - piseme do BASICu pres klavesove IRQ v bezpecnem rezimu.');
+        log('NAHRAJ TXT BUILD2FJ: '+n+' ('+u8.length+' B) - piseme do BASICu pres klavesove IRQ v bezpecnem rezimu.');
         txtToAtari(text);
       });
     });
@@ -3707,9 +3705,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2FI_CLEAN_HITZONES_CLASSIC_SAFE_TXT pripraven.');
-    log('BUILD2FI: START+OPTION a EMULATOR jsou tvrde neviditelne hit-zony: opacity 0, zadny pressed/on/flash obdelnik pres PNG.');
-    log('BUILD2FI: TXT zapis vracen do pomaleho CLASSIC SAFE rezimu: posledni radek dostane ENTER, RUN/CSAVE/CLOAD maji delsi dobeh.');
+    log('AtariHelp.eu EMU-10 BUILD2FJ_CLEAN_SKIN_FAST_SAFE_TXT pripraven.');
+    log('BUILD2FJ: START+OPTION a EMULATOR jsou tvrde neviditelne hit-zony: opacity 0, zadny pressed/on/flash obdelnik pres PNG.');
+    log('BUILD2FJ: TXT zapis vracen do FAST SAFE rezimu: posledni radek dostane ENTER, RUN/CSAVE/CLOAD maji delsi dobeh.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
