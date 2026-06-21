@@ -1,0 +1,26 @@
+ATARIHELP.EU EMU-10
+BUILD2FZ_POPUP_KARTY_GAMES_STYLE_YOUTUBE
+
+KODY JSOU STEJNE.
+Nemenil jsem CLOAD, POKEY, CSAVE, TXT, ROM, Java ani emulator core.
+
+CO SE MENI
+- samostatna tape-loader stranka z BUILD2FY je zrusena
+- TAPE LOADER se vraci na popup nad prvni strankou
+- po vyberu MP3/WAV se popup zavre a zustanes zpet na prvni strance
+- kazetak na prvni strance zustava funkcni pro prehravani
+- popup tlacitka jsou stylovana jako karty GAMES/SYSTEM z prvni stranky
+- SYSTEM na prvni strance vstupuje do emulatoru
+- YOUTUBE je normalni viditelny HTML odkaz:
+  https://www.youtube.com/
+- pri otevrenem popupu je podklad zamknuty proti klikani
+
+TEST PLAN
+1. Spust aplikaci.
+2. Klikni TAPE LOADER.
+3. Klikni MP3/WAV PRIDAT a vyber MP3 nebo WAV.
+4. Popup se ma zavrit a zustanes na prvni strance.
+5. PLAY na uvodnim kazetaku prehrava vybrany soubor.
+6. TAPE LOADER znovu -> YOUTUBE.
+7. YouTube musi jit na https://www.youtube.com/ a nesmi otevrit emulator.
+8. SYSTEM musi otevrit emulator.
