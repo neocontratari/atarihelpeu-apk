@@ -1,0 +1,51 @@
+ATARIHELP.EU EMU-10
+BUILD2GS_VBXE_IO_TRACE_D640
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emulatoru
+
+POSOUZENI TESTU BUILD2GR:
+- Frogger v novem VBXE emu jede = spravne. VBXE je rozsireni Atari, ne nahrada Atari.
+- Popeye uz prosel pres XEX loader, ma 625 zaznamu a dostal se az na vlastni hlasku:
+  No VBXE found or no FX core
+- To je velky posun: predtim jsme padali na loaderu, ted uz pada samotna hra na realnem VBXE testu.
+
+CO DELA BUILD2GS:
+- mapuje VBXE IO rozsah $D640-$D6FF v novem emu_vbxe sandboxu
+- loguje realne cteni/zapisy:
+  VBXE TRACE R $D640 = $FF PC=$....
+  VBXE TRACE W $D640 = $.. PC=$....
+- porad NEVRACI fake FX core
+- porad NEFAKUJE VBXE OK
+- cilem je zjistit presne, co Popeye testuje
+
+PROC VRACIM $FF:
+Abychom nelhali. Dokud nebudeme vedet, ktery registr ma jak odpovidat,
+nesmime hru obelhat jen proto, aby zmizela hlaska.
+
+TEST PLAN:
+1. Spust novy VBXE emulator.
+2. Nahraj Popeye (VBXE, PAL Version).xex.
+3. Pockej na hlasku:
+   No VBXE found or no FX core
+4. Stiskni ULOZIT LOG.
+5. Posli log.
+6. V logu hledat:
+   VBXE TRACE R $D6..
+   VBXE TRACE W $D6..
+   PC=$....
+
+DALSI BUILD:
+BUILD2GT_VBXE_IDENTITY_FROM_TRACE
+- podle logu nastavime jen ty minimalni registry, ktere realny VBXE/FX core vraci pri detekci
+- porad zadny fake screen, zadny RAM patch
