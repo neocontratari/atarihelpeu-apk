@@ -1,0 +1,61 @@
+ATARIHELP.EU EMU-10
+BUILD2FY_CISTA_TAPE_LOADER_STRANKA
+
+KODY JSOU STEJNE.
+Nemenil jsem CLOAD, POKEY, CSAVE, TXT, ROM, Java ani emulator core.
+
+DUVOD
+- popup pres uvodni stranku byl spatny smer
+- dal se prekresloval/podkladal pres prvni stranku
+- tento build to rusi jako princip
+
+CO JE NOVE
+- TAPE LOADER uz neni popup
+- TAPE LOADER je cista samostatna stranka:
+  app/src/main/assets/tape-loader/index.html
+- hlavni index.html jen odkazuje TAPE LOADER na tuto novou stranku
+- SYSTEM odkazuje na:
+  app/src/main/assets/emu/index.html
+- nova stranka ma vlastni high-res skin:
+  app/src/main/assets/design/tape_loader_page_np.png
+- na strance jsou jen neviditelne hitzony nad hotovou grafikou
+- YouTube je primy HTML odkaz:
+  https://www.youtube.com/
+
+FUNKCE TAPE LOADER STRANKY
+- PRIDAT MP3 / WAV
+- PLAY
+- PAUSE
+- STOP
+- VYMAZAT
+- YOUTUBE
+- ZPET
+- EMULATOR
+
+CO SE NEMENI
+- uvodni grafika zustava BUILD2FP/FS
+- emulator zustava BUILD2FP/FS
+- CLOAD/POKEY/CSAVE/TXT/ROM/Java beze zmen
+
+TEST PLAN
+1. Spust aplikaci.
+2. Klikni TAPE LOADER.
+   Ocekavani:
+   - ne popup
+   - otevre se nova cista stranka TAPE LOADER
+3. Klikni YOUTUBE.
+   Ocekavani:
+   - otevre https://www.youtube.com/
+   - nesmi otevrit emulator
+4. Vrat se do aplikace.
+5. Klikni TAPE LOADER -> PRIDAT MP3 / WAV.
+   Ocekavani:
+   - otevre vyber souboru
+6. Pridej MP3 nebo WAV.
+7. Klikni PLAY / PAUSE / STOP.
+8. Klikni ZPET.
+   Ocekavani:
+   - navrat na uvodni stranku
+9. Klikni SYSTEM.
+   Ocekavani:
+   - vstup do emulatoru
