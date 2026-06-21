@@ -182,7 +182,7 @@ body.playlistModalOpen #introPlaylistOverlay,body.playlistModalOpen #introPlayli
     <div id="introPlaylistActions">
       <button id="introPlaylistDownload" class="introCardBtn primary" type="button">PRIDAT<br>MP3 / WAV</button>
       <button id="introPlaylistEject" class="introCardBtn" type="button">VYMAZAT<br>PLAYLIST</button>
-      <a id="introPlaylistYoutube" class="introCardBtn youtube" href="https://www.youtube.com/" target="_self" rel="noopener"><span class="ytIcon"></span><span>YOUTUBE</span></a>
+      <button id="introPlaylistYoutube" class="introCardBtn youtube" type="button"><span class="ytIcon"></span><span>YOUTUBE</span></button>
       <button id="introPlaylistClose" class="introCardBtn close" type="button">ZAVRIT<br>A ZPET</button>
     </div>
   </div>
@@ -279,7 +279,7 @@ function updatePlaylistUi(){
   playlist.forEach(function(t,i){
     var b=document.createElement('button'); b.type='button'; b.textContent=(i+1)+'. '+(t.name||'hudba.mp3');
     if(i===playlistIndex) b.className='active';
-    b.addEventListener('click',function(){ setTrack(i,true); if(playlistOverlay){ playlistOverlay.classList.remove('open'); playlistOverlay.setAttribute('aria-hidden','true'); } });
+    b.addEventListener('click',function(){ setTrack(i,true); closePlaylist(); });
     playlistItems.appendChild(b);
   });
   if(incomingPlaylist){
@@ -464,10 +464,19 @@ if(plDown) plDown.addEventListener('click',function(e){ e.preventDefault(); e.st
 if(plEject) plEject.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); ejectMp3(); updatePlaylistUi(); },true);
 if(plClose && playlistOverlay) plClose.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); closePlaylist(); },true);
 if(plYoutube){
-  plYoutube.addEventListener('click',function(e){
-    e.stopPropagation();
-    log('YOUTUBE BUILD2FZ: primy href https://www.youtube.com/ z popupu.');
-  },true);
+  var openYoutubeDirect=function(e){
+    if(e){
+      try{ e.preventDefault(); }catch(_){ }
+      try{ e.stopPropagation(); }catch(_){ }
+      try{ if(e.stopImmediatePropagation) e.stopImmediatePropagation(); }catch(_){ }
+    }
+    log('YOUTUBE BUILD2GA: oteviram primo https://www.youtube.com/');
+    try{ window.location.href='https://www.youtube.com/'; }catch(err){ try{ location.href='https://www.youtube.com/'; }catch(_){ } }
+    return false;
+  };
+  plYoutube.addEventListener('pointerdown',function(e){ e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation(); },true);
+  plYoutube.addEventListener('pointerup',openYoutubeDirect,true);
+  plYoutube.addEventListener('click',openYoutubeDirect,true);
 }
 if(volHot){
   var volDragging=false;

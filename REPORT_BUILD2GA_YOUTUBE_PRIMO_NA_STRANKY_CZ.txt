@@ -1,0 +1,29 @@
+ATARIHELP.EU EMU-10
+BUILD2GA_YOUTUBE_PRIMO_NA_STRANKY
+
+KODY JSOU STEJNE.
+Nemenil jsem CLOAD, POKEY, CSAVE, TXT, ROM, Java ani emulator core.
+
+CO SE MENI
+- navazuje na BUILD2FZ
+- popup TAPE LOADER zustava stejny
+- YOUTUBE uz neni anchor odkaz
+- YOUTUBE je tlacitko s primym JS presmerovanim:
+  window.location.href='https://www.youtube.com/'
+- handler ma pointerdown/pointerup/click ochranu, aby se klik nepropadl do emulatoru
+- pri kliknuti na vybranou polozku playlistu se popup zavre pres closePlaylist() a uklidi modal stav
+
+TEST PLAN
+1. Spust aplikaci.
+2. Klikni TAPE LOADER.
+3. Klikni YOUTUBE.
+   Ocekavani:
+   - musi jit primo na https://www.youtube.com/
+   - nesmi otevrit emulator
+4. Vrat se do appky.
+5. TAPE LOADER -> MP3/WAV PRIDAT.
+6. Vyber soubor.
+   Ocekavani:
+   - popup se zavre
+   - zustanes na prvni strance
+7. SYSTEM musi otevrit emulator.
