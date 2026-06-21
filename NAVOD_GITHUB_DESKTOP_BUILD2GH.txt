@@ -1,0 +1,5 @@
+1. Rozbal ZIP.
+2. Prekopiruj obsah slozky app/ do projektu pres GitHub Desktop.
+3. Commit message:
+BUILD2GH MainActivity fix com domain router
+4. Nic nemaz. tape-loader tam neni a nevadi.

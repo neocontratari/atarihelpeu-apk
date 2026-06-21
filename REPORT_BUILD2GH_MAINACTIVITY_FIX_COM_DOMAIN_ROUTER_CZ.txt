@@ -1,0 +1,59 @@
+ATARIHELP.EU EMU-10
+BUILD2GH_MAINACTIVITY_FIX_COM_DOMAIN_ROUTER
+
+KODY JSOU ZMENENE - MainActivity.java router.
+BASIC / Altirra testovaci kody: KODY JSOU STEJNE.
+Emulator core JS/HTML: KODY JSOU STEJNE.
+
+ANO - soubor MainActivity.java, ktery jsi poslal, je presne ten spravny soubor.
+
+SKUTECNA CHYBA
+V MainActivity.java byla metoda isGameUrl(), ktera delala toto:
+- spojila url + contentDisposition + mimetype do jednoho textu
+- pak hledala all.contains(".com")
+
+Tim padem:
+- https://www.facebook.com/renatus.honda obsahuje ".com"
+- https://www.youtube.com/ obsahuje ".com"
+
+A Java to povazovala za Atari COM soubor a poslala do:
+downloadAndRun -> BOOTANY -> NAHRAJ XEX
+
+Proto log ukazoval:
+Prijimam z webu: renatus.honda
+Prijimam z webu: stazeno_z_webu.zip
+
+CO JE OPRAVENO
+1) isGameUrl() uz nehleda ".com" v cele URL.
+2) Kontroluje jen Uri.getPath(), tedy skutecnou cestu souboru:
+   /hra.xex
+   /archiv.zip
+   /program.com
+3) Doména facebook.com / youtube.com uz nikdy nevyvola emulator loader.
+4) YouTube a Facebook jsou zachyceny drive:
+   openExternalBrowserUrl(url)
+5) Oteviraji se pres Intent.ACTION_VIEW + CATEGORY_BROWSABLE.
+6) DownloadListener je osetren stejne.
+
+CO SE NEMENI
+- emu/index.html
+- player/index.html
+- index.html
+- CLOAD/POKEY/CSAVE/TXT/ROM
+- Web emulator core
+
+TEST PLAN
+1. Nahraj overlay.
+2. Spust appku.
+3. Uvod -> Rene Frank:
+   musi otevrit https://www.facebook.com/renatus.honda
+4. Prehravac -> YouTube:
+   musi otevrit https://www.youtube.com/
+5. Emulator:
+   EMULATOR musi dal otevrit skutecny emulator.
+6. NET hry:
+   ZIP/XEX/ATR odkazy z AtariHelp.eu musi dal jit do emulatoru.
+7. Log uz nesmi obsahovat:
+   Prijimam z webu: renatus.honda
+   NAHRAJ XEX: renatus.honda
+   Prijimam z webu: stazeno_z_webu.zip
