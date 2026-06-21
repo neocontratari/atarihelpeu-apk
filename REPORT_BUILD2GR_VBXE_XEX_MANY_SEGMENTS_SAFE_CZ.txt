@@ -1,0 +1,57 @@
+ATARIHELP.EU EMU-10
+BUILD2GR_VBXE_XEX_MANY_SEGMENTS_SAFE
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator app/src/main/assets/emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- linky YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emu
+
+POSOUZENI TESTU:
+To, ze v novem VBXE emulatoru jedou stare bezne hry, je DOBRE.
+VBXE je rozsireni Atari, ne nahrada Atari. Spravny VBXE emulator musi umet pustit i bezne Atari hry, pokud hra VBXE nepouziva.
+
+CO UKAZAL LOG:
+- Frogger nema VBXE signaturu a spustil se jako bezny Atari titul. To je spravne.
+- Popeye VBXE byl spravne detekovan jako VBXE titul.
+- Popeye nesel dal kvuli chybe:
+  prilis mnoho segmentu (>250)
+
+CO TO ZNAMENA:
+To neni jeste chyba VBXE cipu.
+To je chyba / omezeni naseho XEX loaderu.
+Popeye ma stovky malych XEX zaznamu a opakovane INITAD/RUNAD segmenty. To muze byt validni XEX.
+Limit 250 byl moc maly a falesne blokoval test drive, jeste pred realnym VBXE checkem.
+
+CO JE OPRAVENO:
+- v emu_vbxe se limit XEX segmentu zvedl z 250 na 2048
+- kdyz je segmentu vic nez 250, log to poctive napise, ale neshodi to loader
+- zadne fake VBXE
+- zadne fake FX core
+- zadne patchovani hry
+
+TEST PLAN:
+1. Puvodni EMULATOR:
+   - musi porad jet normalne.
+
+2. Novy VBXE emulator:
+   - stara hra typu Frogger ma dal jet. To je spravne.
+   - Popeye VBXE uz nesmi skončit na:
+     prilis mnoho segmentu (>250)
+
+3. Ocekavany dalsi stav u Popeye:
+   - bud se dostane dal a ukaze realnou hlasku No VBXE / FX core
+   - nebo se zastavi na dalsim realnem chybejicim VBXE kroku
+   - nesmi to tvrdit VBXE OK, protoze VBXE cip jeste hotovy neni
+
+DALSI KROK PO TOMTO TESTU:
+BUILD2GS_VBXE_IO_TRACE_D640
+- zacit logovat realne cteni/zapis adres $D640+
+- zjistit, presne jak Popeye detekuje VBXE/FX core
