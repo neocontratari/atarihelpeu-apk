@@ -1,0 +1,65 @@
+AtariHelp.eu EMU-10 BUILD2FM_VISUAL_BASE_FROM_OLD_APK_NO_CORE_CHANGE
+
+KODY JSOU STEJNE.
+
+CIL:
+- Vzit funkcnost z BUILD2FL.
+- Vzit jen vizualni referenci ze stare app-debug APK, kde tlacitka sedela graficky.
+- Opravit UI bez prelepovani dalsimi viditelnymi HTML tlacitky.
+- Ted se NESAHALO na CLOAD, POKEY, CSAVE, TXT zapis, ROM ani Java.
+
+ZMENA:
+- app/src/main/assets/design/emu_klavesnice_np_vision.png
+  * START+OPTION tlacitko je postavene z ciste stare APK grafiky.
+  * Popis byl prekreslen na START + OPTION.
+  * Zmizel cerny vyrez / prelep kolem tlacitka.
+- app/src/main/assets/design/uvodni_np_vision.png
+  * MAIN MENU je vzate z ciste stare APK graficke reference.
+  * Prostredni karta je upravena na EMULATOR / ATARI 130XE.
+  * Karty maji byt v jedne rade a stylove stejné jako GAMES/ASSEMBLER.
+- app/src/main/assets/index.html
+  * MP3 PRIDAT / PLAYLIST / HELP zustavaji funkcne klikaci, ale uz nekresli dalsi viditelna tlacitka pres PNG.
+  * MAIN MENU odkazy jsou ciste neviditelne hitzony.
+- app/src/main/assets/emu/index.html
+  * START+OPTION HTML button je jen neviditelna hitzona nad PNG.
+
+NEMENENO:
+- CLOAD / POKEY / SKSTAT / PCM cesta
+- CSAVE WAV/CAS
+- TXT zapis, vcetne pomalejsiho BUILD2FL safe rezimu
+- XEX, ATR, Turbo BASIC
+- ROM / BASIC / Java
+- klavesova mapa a on-screen keyboard logika
+
+PROC TAKTO:
+- Rene poslal APK, kde byla grafika tlacitek cistsi, ale popisy/funkce starsi.
+- Tato oprava bere pouze vzhled z te APK, nevraci starou funkcnost.
+- Viditelna grafika ma byt jedna vrstva PNG. HTML prvky maji byt jen klikaci hitzony.
+
+TEST PLAN:
+1) Nainstaluj APK z GitHub Actions po aplikovani overlaye BUILD2FM.
+2) Spust appku a podivej se na hlavni menu.
+   Spravne ma byt:
+   - zadne viditelne MP3 PRIDAT / PLAYLIST / MP3: PRIDAT / HELP prelepene pres MAIN MENU,
+   - GAMES / EMULATOR / ASSEMBLER v jedne rade, ciste karty, stejny styl,
+   - EMULATOR neni prelepeny ani posunuty pres ASSEMBLER.
+3) Otevri EMULATOR.
+   Spravne ma byt:
+   - POWER BASIC a START+OPTION sedi ve stejne graficke rade,
+   - START+OPTION nema cerny vyrez kolem sebe,
+   - START+OPTION neni viditelne HTML tlacitko, ale cisty skin.
+4) TXT jen rychle overit, ne hluboce ladit:
+   - POWER BASIC -> READY,
+   - otevrit VLOZIT TXT,
+   - vlozit kratky BASIC program,
+   - LIST/RUN.
+   Ocekavani: chovani stejne jako BUILD2FL.
+5) CLOAD ted netestovat jako hlavni cil. Po potvrzeni grafiky se vratime na CLOAD.
+
+CO POSLAT ZPET PRI CHYBE:
+- Screenshot hlavniho menu, hlavne cast pod kazetakem a karty GAMES/EMULATOR/ASSEMBLER.
+- Screenshot emulatoru kolem POWER BASIC / START+OPTION / KEYBOARD-JOYSTICK.
+- Pokud se rozbije TXT, poslat LOG.
+
+GITHUB DESKTOP COMMIT SUMMARY:
+BUILD2FM visual base old apk no core change

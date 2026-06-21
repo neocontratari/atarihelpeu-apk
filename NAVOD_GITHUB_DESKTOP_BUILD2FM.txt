@@ -1,0 +1,18 @@
+BUILD2FM instalace:
+
+1) ZIP rozbal do korene projektu:
+   C:\Users\neocontr\Documents\GitHub\atarihelpeu-apk\
+
+2) Ve Windows potvrdit prepsani souboru.
+
+3) V GitHub Desktop zkontroluj zmeny.
+
+4) Commit summary:
+   BUILD2FM visual base old apk no core change
+
+5) Commit to main
+6) Push origin
+7) Pockat na GitHub Actions APK a otestovat podle reportu.
+
+KODY JSOU STEJNE.
+Menil se jen UI skin + CSS transparentnich hitzon.
