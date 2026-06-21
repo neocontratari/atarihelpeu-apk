@@ -1,0 +1,35 @@
+ATARIHELP.EU EMU-10
+BUILD2FV_HIRES_DECK_YOUTUBE_FIX
+
+KODY JSOU STEJNE.
+Nemenil jsem CLOAD, POKEY, CSAVE, TXT, ROM, Java ani emulator core.
+
+CO SE MENI
+- TAPE LOADER popup je predelany na high-res styl s realnou kazetovou/deck grafikou z uvodni obrazovky
+- nahore je pouzita presna grafika kazetaku z uvodu (crop z uvodniho skinu)
+- popup ma nove stylove tlacitka PRIDAT MP3/WAV, VYMAZAT PLAYLIST, YOUTUBE, ZAVRIT
+- YOUTUBE uz nema otevrit emulator; vede primo na https://www.youtube.com/
+- pri otevrenem popupu je podkladova uvodni obrazovka zablokovana proti klikani, aby nic nepropadlo na SYSTEM/EMULATOR pod popupem
+- SYSTEM stale vstupuje do emulatoru
+
+CO ZUSTAVA
+- PNG hlavni uvodni obrazovky beze zmen
+- emulator beze zmen
+- playlist / MP3 / WAV logika zachovana
+
+TEST PLAN
+1. Spust aplikaci.
+2. Klikni TAPE LOADER.
+3. Ocekavany stav:
+   - vyskoci high-res popup s kazetakem/desk grafikou nahore
+   - ne obycejne textove okno
+4. Klikni YOUTUBE.
+   - musi jit na https://www.youtube.com/
+   - nesmi otevrit emulator
+5. Spust aplikaci znovu, klikni TAPE LOADER a potom PRIDAT MP3 / WAV.
+   - musi otevrit vyber souboru
+6. Klikni ZAVRIT.
+   - popup se zavre
+7. Klikni SYSTEM.
+   - musi otevrit emulator
+8. V emulatoru over POWER BASIC.
