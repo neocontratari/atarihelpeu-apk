@@ -1,0 +1,33 @@
+BUILD2GI_EMU_CENTER_JOYSTICK_CLEAN
+
+KODY JSOU ZMENENE.
+
+Co jsem menil:
+- jen app/src/main/assets/emu/index.html
+- pridan clean app/src/main/assets/design/emu_joystick_np_vision.png
+
+Na co jsem NESAHAL:
+- emulator core
+- CLOAD / POKEY / CSAVE / TXT / ROM
+- MainActivity.java
+- link router BUILD2GH
+- prehravac / youtube / facebook
+
+Co je opraveno:
+1) klavesnice:
+- stisk/animace je vizualne zmensena dovnitr klavesy, aby sedela vic na stred keycapu
+- jemne dorezane krajni specialni klavesy (BS, BREAK, RETURN, CAPS, SHIFT, SPACE)
+
+2) joystick:
+- recentered joy hit-zony UP/DOWN/LEFT/RIGHT + FIRE
+- jemne mensi a stredovejsi vizualni press efekt
+- pri prepnuti do joysticku se cisti stavy btnPower / btnSelfTest / btnJoy, aby nezustaval vizualni prelep
+- prilozen clean joystick PNG, aby byl stejny zaklad jako v APK inspectu
+
+Test plan:
+1. otevri emulator
+2. otestuj klavesnici - tuk na krajni klavesy a sleduj, jestli animace sedi lepe na stred klaves
+3. prepni na JOYSTICK
+4. zkontroluj, ze nahore neni prelep START+OPTION a ze horni zona vypada ciste jako u klavesnice
+5. otestuj joystick smer + FIRE
+6. otestuj, ze EMULATOR / CLOAD / prehravac / linky zustaly beze zmen
