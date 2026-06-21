@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2FK</title>
+<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2FL</title>
 <style>
 :root{--gold:#f3c465;--blue:#6cc9ff;--dark:#060709;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -95,7 +95,7 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 #introTapeFwd{left:56.6%;top:65.70%;width:10.9%;height:4.55%;}
 #introTapePause{left:67.8%;top:65.70%;width:10.9%;height:4.55%;}
 
-/* BUILD2FK: EMULATOR je jen neviditelna klikaci zona nad PNG. Zadna dalsi kreslena vrstva, zadne tlacitko pres tlacitko. */
+/* BUILD2FL: EMULATOR je jen neviditelna klikaci zona nad PNG. Zadna dalsi kreslena vrstva, zadne tlacitko pres tlacitko. */
 #goTape{
   left:37.2%;top:74.4%;width:25.8%;height:9.7%;z-index:30;
   display:block!important;background:rgba(255,196,90,0)!important;border:0!important;
@@ -108,7 +108,7 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 
 
 
-/* BUILD2FK: EMULATOR = opravdu jen neviditelna hit-zona. Zadny hover/active/flash/down/pressed nesmi kreslit dalsi tlacitko pres PNG. */
+/* BUILD2FL: EMULATOR = opravdu jen neviditelna hit-zona. Zadny hover/active/flash/down/pressed nesmi kreslit dalsi tlacitko pres PNG. */
 #goTape,#goTape.cleanHit,
 #goTape:hover,#goTape:active,#goTape:focus,#goTape:focus-visible,
 #goTape.flash,#goTape.down,#goTape.pressed,#goTape.on{
@@ -441,7 +441,7 @@ var introHelpBtn=$('introHelpBtn'), introHelpOverlay=$('introHelpOverlay'), intr
 if(introHelpBtn && introHelpOverlay){ bind('introHelpBtn', function(){ press('introHelpBtn',220); introHelpOverlay.classList.add('open'); introHelpOverlay.setAttribute('aria-hidden','false'); }); }
 if(introHelpClose && introHelpOverlay){ introHelpClose.addEventListener('click', function(){ introHelpOverlay.classList.remove('open'); introHelpOverlay.setAttribute('aria-hidden','true'); }); }
 log('BUILD2AQ: MP3 PRIDAT nyni nacita/pripojuje skladby do playlistu; EJECT maze playlist.');
-log('BUILD2FK: intro EMULATOR je normalni PNG menu karta stejne velikosti jako GAMES; HTML je jen neviditelna hit-zona.');
+log('BUILD2FL: intro EMULATOR a ASSEMBLER jsou prekreslene jako stejne karty v radku MAIN MENU; HTML je jen neviditelna hit-zona.');
 })();
 </script>
 </body>

@@ -1,0 +1,30 @@
+AtariHelp.eu EMU-10 BUILD2FL_CLEAN_MENU_POWER_BUTTON_STABLE_TXT
+
+KODY JSOU STEJNE.
+
+CIL:
+- Opravit skutecnou grafiku skinu, ne jen CSS/hit-zony.
+- START+OPTION musi byt jedno ciste tlacitko ve stylu POWER BASIC, bez prelepu dalsim tlacitkem.
+- EMULATOR a ASSEMBLER v MAIN MENU musi byt ciste karty stejne rady/stylu jako GAMES, bez prekryti kart pres sebe.
+- TXT zapis ponechan v pomalejsim/stabilnim CLASSIC SAFE rezimu z FK, protoze uz fungoval.
+
+ZMENA:
+- app/src/main/assets/design/emu_klavesnice_np_vision.png
+- app/src/main/assets/design/uvodni_np_vision.png
+- app/src/main/assets/index.html
+- app/src/main/assets/emu/index.html
+
+NEMENENO:
+- CSAVE WAV
+- CLOAD / POKEY PCM / SKSTAT
+- XEX
+- ROM
+- Java
+- joystick
+- kazeta
+- klavesova mapa
+
+TEST:
+1) START+OPTION vizualne porovnat s POWER BASIC: jedno fyzicke tlacitko, zadny druhy prelep.
+2) MAIN MENU: GAMES, EMULATOR, ASSEMBLER maji byt ciste karty ve stejnem stylu.
+3) TXT: vlozit delsi Turbo BASIC kod, po vlozeni zkusit LIST a RUN.

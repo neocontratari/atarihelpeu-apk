@@ -1,0 +1,13 @@
+BUILD2FL instalace:
+
+1) Rozbal ZIP do korene projektu:
+   C:\Users\neocontr\Documents\GitHub\atarihelpeu-apk\
+
+2) V GitHub Desktop zkontroluj zmeny.
+
+3) Commit summary:
+   BUILD2FL clean menu power button stable txt
+
+4) Commit to main
+5) Push origin
+6) Nechat GitHub Actions vyrobit APK.
