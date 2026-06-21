@@ -1,0 +1,52 @@
+ATARIHELP.EU EMU-10
+BUILD2FR_FP_ZPET_TAPE_PLAYLIST_SYSTEM_EMULATOR
+
+KODY JSOU STEJNE.
+Nemenil jsem CLOAD, POKEY, CSAVE, TXT, ROM, Java ani emulator core.
+
+DULEZITE
+- grafika je vracena na BUILD2FP_GRAFICKY_ZAKLAD_AUDIT_BEZ_DUCHU
+- zadne dalsi malovani na kartu EMULATOR/TAPE LOADER
+- zadne lepeni grafiky na grafiku
+- meni se jen index.html funkcnost klikacich zon v uvodnim menu
+
+CO SE MENI
+1) TAPE LOADER karta:
+   - uz nespousti emulator
+   - otevre playlist okno pro uvodni kazetak
+   - playlist okno ma slouzit pro MP3/WAV soubory z mobilu/NOX
+   - pridano tlacitko YOUTUBE v playlist okne
+
+2) SYSTEM karta:
+   - nove vstupuje do emulatoru:
+     app/src/main/assets/emu/index.html
+
+3) MP3 playlist texty:
+   - prejmenovano na MP3/WAV
+   - picker je pripraveny na MP3 i WAV
+
+CO ZUSTAVA
+- grafika z BUILD2FP
+- emu_klavesnice_np_vision.png beze zmen
+- uvodni_np_vision.png z BUILD2FP, tedy z graficke zakladni APK
+- funkcnost emulatoru zustava z BUILD2FP vetve
+
+TEST PLAN
+1. Spust aplikaci.
+2. Zkontroluj, ze grafika je zpet jako BUILD2FP.
+3. Klikni na TAPE LOADER:
+   - ma se otevrit playlist/tabulka MP3/WAV pro uvodni kazetak
+   - nema se otevrit emulator
+4. V playlist okne zkus MP3/WAV PRIDAT:
+   - ma otevrit vyber souboru z mobilu/NOX
+5. V playlist okne zkus YOUTUBE:
+   - ma otevrit YouTube vyhledani AtariHelp NaP Studio
+6. Klikni SYSTEM:
+   - ma otevrit emulator
+7. V emulatoru zkontroluj POWER BASIC:
+   - ma fungovat jako predtim
+
+KDYZ TO SELZE
+- posli screenshot uvodniho menu
+- posli screenshot playlist okna
+- pokud SYSTEM neotevre emulator nebo se rozbije POWER BASIC, posli log
