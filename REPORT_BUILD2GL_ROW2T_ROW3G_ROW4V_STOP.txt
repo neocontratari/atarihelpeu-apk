@@ -1,0 +1,37 @@
+BUILD2GL_ROW2T_ROW3G_ROW4V_STOP
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu/index.html
+- app/src/main/assets/design/emu_joystick_np_vision.png
+
+Nesahano na:
+- emulator core
+- CLOAD / POKEY / CSAVE / TXT / ROM
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu linky
+- prehravac a intro
+
+Co je opraveno:
+1) 2. rada klavesnice
+- od T doprava posun doleva
+
+2) 3. rada klavesnice
+- od G doprava posun doleva
+
+3) 4. rada klavesnice
+- od V doprava posun doleva
+
+4) Kazetak
+- STOP/EJT ma mensi a vic vlevo posunuty hitbox
+
+5) Joystick
+- jeste jeden maly trim D-padu, jen jemne
+
+Test plan:
+1. 2. rada: T Y U I O P - = Return
+2. 3. rada: G H J K L ; + * Caps
+3. 4. rada: V B N M , . / Shift INV
+4. Kazetak: hlavne STOP
+5. Joystick: jen rychla kontrola smeru
