@@ -1,0 +1,33 @@
+ATARIHELP.EU EMU-10
+BUILD2FS_OKAMZITY_NAVRAT_NA_BUILD2FP
+
+OKAMZITY ROLLBACK PO CHYBE BUILD2FR.
+
+KODY JSOU STEJNE.
+Nemenim CLOAD, POKEY, CSAVE, TXT, ROM, Java ani emulator core.
+
+CO SE STALO V BUILD2FR
+- chyba: doplneny JavaScript byl vlozen do HTML spatne
+- prohlizec ho proto vykreslil jako text primo na obrazovku
+- vysledek: aplikace po otevreni ukazala kod misto UI
+
+CO DELA BUILD2FS
+- vraci aplikaci presne na graficky a funkcni zaklad BUILD2FP
+- rusi chybu z BUILD2FR
+- zadne dalsi upravy funkcnosti tlacitek
+- zadne malovani grafiky
+- zadne prelepy
+
+TEST PLAN
+1. Nainstaluj/nahraj BUILD2FS overlay.
+2. Spust aplikaci.
+3. Ocekavany stav:
+   - uvodni obrazovka vypada jako BUILD2FP
+   - nikde se nesmi zobrazit zadny JavaScript/kod
+   - TAPE LOADER a SYSTEM se chovaji jako v BUILD2FP
+4. Otevri emulator stejnym tlacitkem jako v BUILD2FP.
+5. Zkontroluj POWER BASIC.
+
+DULEZITE
+- BUILD2FR uz nepouzivat.
+- dalsi prehazovani funkcnosti tlacitek se musi udelat az po potvrzeni, ze BUILD2FS je zase stabilni.
