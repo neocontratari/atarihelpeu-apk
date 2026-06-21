@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2FJ</title>
+<title>N&P VISION — AtariHelp.eu EMU-10 BUILD2FK</title>
 <style>
 :root{--gold:#f3c465;--blue:#6cc9ff;--dark:#060709;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -85,7 +85,7 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 
 @media (prefers-reduced-motion:reduce){.crt-sweep:before,.crt-sweep:after,.led-blue,.eq i,.reelglow,.introMp3Reel,#introMp3Counter.run,#introMp3SeekHud.show{animation:none}}
 /* 6 velkych tlacitek presne na navrhu */
-#goGames{left:7.3%;top:75.5%;width:31.5%;height:7.25%;}#goTape{left:40.1%;top:75.5%;width:31.5%;height:7.25%;}#goAsm{left:72.8%;top:75.5%;width:20.0%;height:7.25%;}
+#goGames{left:7.3%;top:75.5%;width:31.5%;height:7.25%;}#goTape{left:37.2%;top:74.4%;width:25.8%;height:9.7%;}#goAsm{left:72.8%;top:75.5%;width:20.0%;height:7.25%;}
 #goSettings{left:7.3%;top:84.6%;width:31.5%;height:7.25%;}#goSystem{left:40.1%;top:84.6%;width:31.5%;height:7.25%;}#goDocs{left:72.8%;top:84.6%;width:20.0%;height:7.25%;}
 #playEmu{left:31.0%;top:66.3%;width:13.0%;height:4.3%;border-radius:8px;}#tapeTransport{left:22.0%;top:64.2%;width:54.8%;height:8.6%;}
 #introTapeEject{left:9.8%;top:59.4%;width:9.4%;height:8.6%;border-radius:7px;}
@@ -95,9 +95,9 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 #introTapeFwd{left:56.6%;top:65.70%;width:10.9%;height:4.55%;}
 #introTapePause{left:67.8%;top:65.70%;width:10.9%;height:4.55%;}
 
-/* BUILD2FJ: EMULATOR je jen neviditelna klikaci zona nad PNG. Zadna dalsi kreslena vrstva, zadne tlacitko pres tlacitko. */
+/* BUILD2FK: EMULATOR je jen neviditelna klikaci zona nad PNG. Zadna dalsi kreslena vrstva, zadne tlacitko pres tlacitko. */
 #goTape{
-  left:40.1%;top:75.5%;width:31.5%;height:7.25%;z-index:30;
+  left:37.2%;top:74.4%;width:25.8%;height:9.7%;z-index:30;
   display:block!important;background:rgba(255,196,90,0)!important;border:0!important;
   color:transparent!important;font-size:0!important;text-decoration:none!important;text-shadow:none!important;
   box-shadow:none!important;border-radius:0!important;padding:0!important;outline:0!important;
@@ -108,11 +108,11 @@ body{display:flex;justify-content:center;align-items:flex-start;overflow-x:hidde
 
 
 
-/* BUILD2FJ: EMULATOR = opravdu jen neviditelna hit-zona. Zadny hover/active/flash/down/pressed nesmi kreslit dalsi tlacitko pres PNG. */
+/* BUILD2FK: EMULATOR = opravdu jen neviditelna hit-zona. Zadny hover/active/flash/down/pressed nesmi kreslit dalsi tlacitko pres PNG. */
 #goTape,#goTape.cleanHit,
 #goTape:hover,#goTape:active,#goTape:focus,#goTape:focus-visible,
 #goTape.flash,#goTape.down,#goTape.pressed,#goTape.on{
-  left:40.1%!important;top:75.5%!important;width:31.5%!important;height:7.25%!important;z-index:30!important;
+  left:37.2%!important;top:74.4%!important;width:25.8%!important;height:9.7%!important;z-index:30!important;
   display:block!important;position:absolute!important;pointer-events:auto!important;cursor:pointer!important;
   opacity:0!important;visibility:visible!important;background:transparent!important;border:0!important;outline:0!important;
   box-shadow:none!important;filter:none!important;transform:none!important;color:transparent!important;text-shadow:none!important;
@@ -441,7 +441,7 @@ var introHelpBtn=$('introHelpBtn'), introHelpOverlay=$('introHelpOverlay'), intr
 if(introHelpBtn && introHelpOverlay){ bind('introHelpBtn', function(){ press('introHelpBtn',220); introHelpOverlay.classList.add('open'); introHelpOverlay.setAttribute('aria-hidden','false'); }); }
 if(introHelpClose && introHelpOverlay){ introHelpClose.addEventListener('click', function(){ introHelpOverlay.classList.remove('open'); introHelpOverlay.setAttribute('aria-hidden','true'); }); }
 log('BUILD2AQ: MP3 PRIDAT nyni nacita/pripojuje skladby do playlistu; EJECT maze playlist.');
-log('BUILD2FJ: intro EMULATOR hit-zona ma opacity 0 ve vsech stavech - zadny graficky overlay pres PNG.');
+log('BUILD2FK: intro EMULATOR je normalni PNG menu karta stejne velikosti jako GAMES; HTML je jen neviditelna hit-zona.');
 })();
 </script>
 </body>

@@ -1,0 +1,19 @@
+ATARIHELP.EU EMU-10 - BUILD2FK_CLEAN_SKIN_CLASSIC_SAFE_TXT
+
+KODY JSOU STEJNE
+
+OPRAVA:
+- START+OPTION je prekreslene primo v PNG jako normalni tlacitko stejneho stylu/velikosti jako POWER BASIC.
+- EMULATOR v uvodnim menu je normalni karta stejne velikosti/stylu jako GAMES/ASSEMBLER, bez druhe preplacane grafiky.
+- HTML tlacitka jsou jen neviditelne hit-zony.
+- TXT zapis je vracen do pomalejsiho CLASSIC SAFE rezimu, protoze FAST SAFE/FJ u dlouheho kodu neprosel.
+
+NEMENENO:
+- CSAVE WAV
+- CLOAD / POKEY PCM / SKSTAT
+- XEX
+- ROM
+- Java
+- joystick
+- kazeta
+- klavesova mapa

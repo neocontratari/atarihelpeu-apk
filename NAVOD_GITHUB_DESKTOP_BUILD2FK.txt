@@ -1,0 +1,11 @@
+BUILD2FK postup:
+1) Rozbal / zkopiruj overlay do korene projektu atarihelpeu-apk.
+2) V GitHub Desktop zkontroluj zmeny.
+3) Summary: BUILD2FK clean skin classic txt
+4) Commit to main.
+5) Push origin.
+
+Test:
+- START+OPTION musi byt jedno ciste tlacitko jako POWER BASIC.
+- EMULATOR musi byt normalni karta jako GAMES.
+- TXT: vlozit dlouhy Turbo BASIC, pak LIST/RUN.
