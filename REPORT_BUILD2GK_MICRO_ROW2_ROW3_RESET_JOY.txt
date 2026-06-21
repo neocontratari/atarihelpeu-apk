@@ -1,0 +1,38 @@
+BUILD2GK_MICRO_ROW2_ROW3_RESET_JOY
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu/index.html
+- app/src/main/assets/design/emu_joystick_np_vision.png
+
+Nesahano na:
+- emulator core
+- CLOAD / POKEY / CSAVE / TXT / ROM
+- MainActivity.java
+- BUILD2GH/odkazy/YouTube/Facebook/AtariHelp.eu
+- prehravac a intro
+
+Co je opraveno:
+1) Klavesnice:
+- 1. rada nechana skoro stejne, protoze uz sedela dobre
+- 2. rada od R doprava posunuta jemne doprava
+- 3. rada od D doprava posunuta jemne doprava
+
+2) Horni tlacitka:
+- RESET ma mensi a presnejsi hitbox
+- HELP/START/SELECT/OPTION lehce ztazene
+
+3) Joystick:
+- D-pad ma mensi a presnejsi hitboxy
+- FIRE ponechano skoro stejne, protoze uz bylo dobre
+
+4) Kazetak:
+- lehke mikro-orezani a recenter tlacitek
+- pressed overlay je mene klamavy a mene zavadi pri hodnoceni stredu
+
+Test plan:
+1. klavesnice: 2. rada od R, 3. rada od D
+2. horni rada: hlavne RESET
+3. joystick: smerove sipky, FIRE jen kontrola
+4. kazetak: RECORD / PLAY / REW / F.FWD / STOP / PAUSE
