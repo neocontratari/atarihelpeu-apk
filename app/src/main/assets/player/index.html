@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>N&P VISION — Retro Cassette Player</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:#050608;color:#f2c464;font-family:"Courier New",monospace;overflow-x:hidden;}
+body{display:flex;justify-content:center;align-items:flex-start;}
+.stage{position:relative;width:min(100vw,1024px);aspect-ratio:1024/1792;background:#050608;overflow:hidden;box-shadow:0 0 48px rgba(0,0,0,.95);}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;}
+.hit{position:absolute;z-index:5;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
+.hit:active{background:rgba(255,202,92,.10);box-shadow:0 0 26px rgba(255,202,92,.20) inset;border-radius:16px;}
+#filePick{display:none;}
+/* Transport hitzony podle player obrazku 1024x1792 */
+#btnMenu{left:5.5%;top:3.7%;width:12.2%;height:5.7%;}
+#btnSettingsTop{left:78.5%;top:3.7%;width:12.2%;height:5.7%;}
+#btnRew{left:6.1%;top:72.0%;width:14.0%;height:6.1%;}
+#btnPlay{left:20.2%;top:72.0%;width:14.0%;height:6.1%;}
+#btnStop{left:34.4%;top:72.0%;width:14.0%;height:6.1%;}
+#btnPause{left:48.6%;top:72.0%;width:14.0%;height:6.1%;}
+#btnFwd{left:62.8%;top:72.0%;width:14.0%;height:6.1%;}
+#btnRec{left:77.0%;top:72.0%;width:14.7%;height:6.1%;}
+#btnMyPlaylists{left:5.8%;top:80.1%;width:31.2%;height:5.4%;}
+#btnYoutube{left:60.7%;top:80.1%;width:33.2%;height:5.4%;}
+#btnTrackStrip{left:6.0%;top:86.4%;width:88.0%;height:5.0%;}
+#navPlayer{left:0.0%;top:93.0%;width:20.0%;height:7.0%;}
+#navPlaylists{left:20.0%;top:93.0%;width:20.0%;height:7.0%;}
+#navLibrary{left:40.0%;top:93.0%;width:20.0%;height:7.0%;}
+#navFavorites{left:60.0%;top:93.0%;width:20.0%;height:7.0%;}
+#navSettings{left:80.0%;top:93.0%;width:20.0%;height:7.0%;}
+/* EQ / knobs */
+.eq60{left:9%;top:55%;width:6%;height:15%}.eq250{left:16%;top:55%;width:6%;height:15%}.eq1k{left:23%;top:55%;width:6%;height:15%}.eq4k{left:31%;top:55%;width:6%;height:15%}.eq16k{left:38%;top:55%;width:6%;height:15%}
+#knBalance{left:53%;top:53.5%;width:12%;height:8%;}
+#knBass{left:72%;top:53.5%;width:12%;height:8%;}
+#knTreble{left:53%;top:64%;width:12%;height:8%;}
+#knVolume{left:72%;top:64%;width:16%;height:8.8%;}
+#status{position:absolute;left:20.5%;top:87.25%;width:55%;height:2.8%;z-index:4;display:flex;align-items:center;color:#f2c464;font:900 clamp(9px,1.8vw,17px)/1 "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 7px rgba(242,196,100,.22);pointer-events:none;}
+#playlistPanel{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.92);padding:18px;overflow:auto;color:#f2c464;}
+#playlistPanel.open{display:block;}
+#playlistPanel .box{max-width:760px;margin:0 auto;background:#090d12;border:1px solid rgba(242,196,100,.44);border-radius:16px;padding:18px;box-shadow:0 0 36px rgba(0,0,0,.8);}
+#playlistPanel h2{font:900 24px "Courier New",monospace;margin-bottom:12px;color:#ffd879;}
+#playlistItems{display:flex;flex-direction:column;gap:8px;margin:10px 0;}
+#playlistItems button{width:100%;padding:11px;border:1px solid rgba(242,196,100,.38);border-radius:10px;background:#121821;color:#f2c464;text-align:left;font:900 13px "Courier New",monospace;}
+#playlistItems button.active{border-color:#8fd8ff;color:#8fd8ff;}
+.panelBtn{width:100%;padding:13px;margin-top:8px;border:0;border-radius:10px;background:#d9b25c;color:#111;font:900 14px "Courier New",monospace;}
+.panelBtn.dark{background:#303740;color:#fff;}
+.reel{position:absolute;z-index:3;width:12%;aspect-ratio:1;border-radius:50%;border:2px solid rgba(255,196,70,.18);pointer-events:none;display:none;mix-blend-mode:screen;}
+#reelL{left:24.0%;top:28.9%;}#reelR{left:60.8%;top:28.9%;}
+.reel:before,.reel:after{content:"";position:absolute;left:50%;top:50%;width:82%;height:5%;margin-left:-41%;margin-top:-2.5%;background:rgba(255,196,70,.42);border-radius:8px;box-shadow:0 0 12px rgba(255,196,70,.35);}
+.reel:after{transform:rotate(65deg);}
+.stage.playing .reel{display:block;animation:spin 1.2s linear infinite;}
+.stage.seeking .reel{display:block;animation:spin .25s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<main class="stage" id="stage" aria-label="N&P Retro Cassette Player">
+  <img class="skin" src="../nap_ui/nap_player_cassette.png" alt="N&P Retro Cassette Player">
+  <div id="reelL" class="reel"></div><div id="reelR" class="reel"></div>
+  <div id="status">READY • MY PLAYLISTS</div>
+  <input id="filePick" type="file" accept=".mp3,.wav,audio/mpeg,audio/mp3,audio/wav,audio/x-wav" multiple>
+
+  <a id="btnMenu" class="hit" href="../index.html">MENU</a>
+  <button id="btnSettingsTop" class="hit" type="button">SETTINGS</button>
+  <button id="btnRew" class="hit" type="button">REWIND</button>
+  <button id="btnPlay" class="hit" type="button">PLAY</button>
+  <button id="btnStop" class="hit" type="button">STOP</button>
+  <button id="btnPause" class="hit" type="button">PAUSE</button>
+  <button id="btnFwd" class="hit" type="button">FAST FWD</button>
+  <button id="btnRec" class="hit" type="button">RECORD</button>
+  <button id="btnMyPlaylists" class="hit" type="button">MY PLAYLISTS</button>
+  <button id="btnYoutube" class="hit" type="button">YOUTUBE</button>
+  <button id="btnTrackStrip" class="hit" type="button">TRACK</button>
+
+  <button class="hit eq60" data-eq="60" type="button">EQ60</button>
+  <button class="hit eq250" data-eq="250" type="button">EQ250</button>
+  <button class="hit eq1k" data-eq="1000" type="button">EQ1K</button>
+  <button class="hit eq4k" data-eq="4000" type="button">EQ4K</button>
+  <button class="hit eq16k" data-eq="16000" type="button">EQ16K</button>
+  <button id="knBalance" class="hit" type="button">BALANCE</button>
+  <button id="knBass" class="hit" type="button">BASS</button>
+  <button id="knTreble" class="hit" type="button">TREBLE</button>
+  <button id="knVolume" class="hit" type="button">VOLUME</button>
+
+  <button id="navPlayer" class="hit" type="button">PLAYER</button>
+  <button id="navPlaylists" class="hit" type="button">PLAYLISTS</button>
+  <button id="navLibrary" class="hit" type="button">LIBRARY</button>
+  <button id="navFavorites" class="hit" type="button">FAVORITES</button>
+  <button id="navSettings" class="hit" type="button">SETTINGS</button>
+</main>
+
+<div id="playlistPanel" aria-hidden="true">
+  <div class="box">
+    <h2>MY PLAYLISTS — MP3 / WAV</h2>
+    <div id="playlistItems"></div>
+    <button id="panelAdd" class="panelBtn" type="button">PRIDAT MP3 / WAV</button>
+    <button id="panelClear" class="panelBtn dark" type="button">VYMAZAT PLAYLIST</button>
+    <button id="panelClose" class="panelBtn dark" type="button">ZAVRIT</button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var stage=document.getElementById('stage');
+var status=document.getElementById('status');
+var pick=document.getElementById('filePick');
+var panel=document.getElementById('playlistPanel');
+var items=document.getElementById('playlistItems');
+var audio=new Audio();
+var tracks=[], active=-1;
+var ctx=null, source=null, filters=[], panNode=null, gainNode=null;
+var eqFreq=[60,250,1000,4000,16000];
+
+function log(t){try{console.log('[NAP PLAYER] '+t);}catch(e){}}
+function setStatus(t){status.textContent=t;log(t);}
+function openWeb(url){
+  setStatus('OPEN WEB • '+url);
+  try{
+    if(window.Android && typeof window.Android.openExternal==='function'){ window.Android.openExternal(url); return; }
+    if(window.Android && typeof window.Android.openUrl==='function'){ window.Android.openUrl(url); return; }
+    if(window.Android && typeof window.Android.openExternalUrl==='function'){ window.Android.openExternalUrl(url); return; }
+  }catch(e){ log('Android bridge failed: '+e.message); }
+  try{ window.location.href=url; }catch(e){ location.href=url; }
+}
+function initAudioGraph(){
+  if(ctx) return;
+  try{
+    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    source=ctx.createMediaElementSource(audio);
+    var node=source;
+    eqFreq.forEach(function(f){
+      var biq=ctx.createBiquadFilter();
+      biq.type='peaking'; biq.frequency.value=f; biq.Q.value=1; biq.gain.value=0;
+      node.connect(biq); node=biq; filters.push(biq);
+    });
+    panNode=ctx.createStereoPanner?ctx.createStereoPanner():null;
+    gainNode=ctx.createGain(); gainNode.gain.value=1;
+    if(panNode){node.connect(panNode); panNode.connect(gainNode);}
+    else node.connect(gainNode);
+    gainNode.connect(ctx.destination);
+  }catch(e){ log('WebAudio graph unavailable: '+e.message); }
+}
+function renderPlaylist(){
+  items.innerHTML='';
+  if(!tracks.length){
+    var empty=document.createElement('div');
+    empty.textContent='Playlist je prazdny.';
+    empty.style.color='#8fd8ff'; empty.style.padding='8px 0';
+    items.appendChild(empty); return;
+  }
+  tracks.forEach(function(t,i){
+    var b=document.createElement('button');
+    b.type='button'; b.className=i===active?'active':'';
+    b.textContent=(i+1)+'. '+t.name;
+    b.onclick=function(){loadTrack(i,true); closePanel();};
+    items.appendChild(b);
+  });
+}
+function loadTrack(i,autoplay){
+  if(i<0||i>=tracks.length)return;
+  active=i; audio.src=tracks[i].url; audio.currentTime=0; renderPlaylist();
+  setStatus('NACITANO • '+tracks[i].name);
+  if(autoplay) play();
+}
+function play(){
+  initAudioGraph();
+  if(ctx && ctx.state==='suspended') ctx.resume();
+  if(!tracks.length){openPanel(); pick.click(); return;}
+  if(active<0) loadTrack(0,false);
+  try{
+    var p=audio.play();
+    if(p&&p.catch)p.catch(function(e){setStatus('PLAY BLOKOVAN • KLIKNI ZNOVU');log(e.message);});
+    stage.classList.add('playing'); stage.classList.remove('seeking');
+    setStatus('PLAY • '+tracks[active].name);
+  }catch(e){setStatus('PLAY CHYBA');log(e.message);}
+}
+function pause(){try{audio.pause();stage.classList.remove('playing','seeking');setStatus('PAUSE');}catch(e){log(e.message);}}
+function stop(){try{audio.pause();audio.currentTime=0;stage.classList.remove('playing','seeking');setStatus('STOP');}catch(e){log(e.message);}}
+function seek(delta){
+  if(!audio.src){setStatus('SEEK • NENI TRACK');return;}
+  audio.currentTime=Math.max(0, Math.min((audio.duration||0), audio.currentTime+delta));
+  stage.classList.add('seeking');
+  setTimeout(function(){stage.classList.remove('seeking'); if(!audio.paused)stage.classList.add('playing');},500);
+  setStatus(delta<0?'REWIND':'FAST FWD');
+}
+function clearAll(){
+  stop(); tracks.forEach(function(t){try{URL.revokeObjectURL(t.url);}catch(e){}});
+  tracks=[]; active=-1; renderPlaylist(); setStatus('PLAYLIST VYMAZAN');
+}
+function openPanel(){renderPlaylist();panel.classList.add('open');panel.setAttribute('aria-hidden','false');}
+function closePanel(){panel.classList.remove('open');panel.setAttribute('aria-hidden','true');}
+function pickFiles(){pick.click();}
+pick.onchange=function(){
+  var files=Array.prototype.slice.call(pick.files||[]);
+  files.forEach(function(f){
+    if(!/\.(mp3|wav)$/i.test(f.name||'')){setStatus('PRESKOCENO • NE MP3/WAV');return;}
+    tracks.push({name:f.name,url:URL.createObjectURL(f)});
+  });
+  pick.value=''; renderPlaylist();
+  if(active<0 && tracks.length) loadTrack(0,false);
+  closePanel(); setStatus('PLAYLIST READY • '+tracks.length+' TRACKU');
+};
+function adjustEq(index){
+  initAudioGraph();
+  if(!filters[index]){setStatus('EQ '+eqFreq[index]+' Hz');return;}
+  var g=filters[index].gain.value;
+  g = g>=9 ? -9 : g+3;
+  filters[index].gain.value=g;
+  setStatus('EQ '+eqFreq[index]+'Hz • '+g+' dB');
+}
+function cycleVolume(){
+  var v=audio.volume;
+  v = v>0.75 ? 0.5 : (v>0.45 ? 0.2 : 1.0);
+  audio.volume=v; if(gainNode)gainNode.gain.value=v;
+  setStatus('VOLUME • '+Math.round(v*100)+'%');
+}
+function cyclePan(){
+  initAudioGraph();
+  if(!panNode){setStatus('BALANCE • CENTER');return;}
+  var p=panNode.pan.value;
+  p = p<-0.4 ? 0 : (p<0.4 ? 0.75 : -0.75);
+  panNode.pan.value=p; setStatus('BALANCE • '+(p<0?'L':p>0?'R':'CENTER'));
+}
+function boostFilter(kind){
+  initAudioGraph();
+  var targets = kind==='bass' ? [0,1] : [3,4];
+  targets.forEach(function(i){if(filters[i]) filters[i].gain.value = filters[i].gain.value>5 ? 0 : 6;});
+  setStatus((kind==='bass'?'BASS':'TREBLE')+' • BOOST');
+}
+
+document.getElementById('btnMyPlaylists').onclick=openPanel;
+document.getElementById('navPlaylists').onclick=openPanel;
+document.getElementById('navLibrary').onclick=openPanel;
+document.getElementById('btnTrackStrip').onclick=openPanel;
+document.getElementById('panelAdd').onclick=pickFiles;
+document.getElementById('panelClear').onclick=clearAll;
+document.getElementById('panelClose').onclick=closePanel;
+document.getElementById('btnPlay').onclick=play;
+document.getElementById('btnPause').onclick=pause;
+document.getElementById('btnStop').onclick=stop;
+document.getElementById('btnRew').onclick=function(){seek(-10);};
+document.getElementById('btnFwd').onclick=function(){seek(10);};
+document.getElementById('btnRec').onclick=function(){setStatus('RECORD • PRIPRAVENO PRO BUDOUCI CAPTURE');};
+document.getElementById('btnYoutube').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openWeb('https://www.youtube.com/');},true);
+document.getElementById('btnMenu').onclick=function(){location.href='../index.html';};
+document.getElementById('btnSettingsTop').onclick=function(){setStatus('SETTINGS');};
+document.getElementById('navPlayer').onclick=function(){setStatus('PLAYER');};
+document.getElementById('navFavorites').onclick=function(){setStatus('FAVORITES');};
+document.getElementById('navSettings').onclick=function(){setStatus('SETTINGS');};
+Array.prototype.forEach.call(document.querySelectorAll('[data-eq]'),function(el,idx){el.onclick=function(){adjustEq(idx);};});
+document.getElementById('knBalance').onclick=cyclePan;
+document.getElementById('knBass').onclick=function(){boostFilter('bass');};
+document.getElementById('knTreble').onclick=function(){boostFilter('treble');};
+document.getElementById('knVolume').onclick=cycleVolume;
+audio.onended=function(){ if(active+1<tracks.length){loadTrack(active+1,true);} else {stage.classList.remove('playing');setStatus('KONEC PLAYLISTU');} };
+renderPlaylist();
+log('BUILD2GB: exact player skin active. YouTube -> https://www.youtube.com/.');
+})();
+</script>
+</body>
+</html>

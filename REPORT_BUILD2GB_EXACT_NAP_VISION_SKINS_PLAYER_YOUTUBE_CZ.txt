@@ -1,0 +1,86 @@
+ATARIHELP.EU EMU-10
+BUILD2GB_EXACT_NAP_VISION_SKINS_PLAYER_YOUTUBE
+
+STAV:
+KODY JSOU ZMENENE - meni se UI intro a prehravac.
+BASIC / Altirra testovaci kody: KODY JSOU STEJNE.
+Emulator core: KODY JSOU STEJNE.
+
+CO JE CIL
+- Neprelepovat starou prvni stranku.
+- Neprepisovat emulator.
+- Pouzit presnou grafiku z dodanych obrazku jako skin.
+- Nad skinem mit jen neviditelne hitzony.
+- EMULATOR otevre existujici skutecny emulator.
+- PREHRAVAC otevre presnou obrazovku cassette playeru.
+- ATARIHELP.EU otevre https://atarihelp.eu/
+- YOUTUBE otevre https://www.youtube.com/ a nikdy emulator.
+
+CO JE V OVERLAY
+1) app/src/main/assets/index.html
+   - kompletne nova cista uvodni stranka s presnym skinem N&P VISION Command Center
+   - EMULATOR -> emu/index.html
+   - PREHRAVAC -> player/index.html
+   - ATARIHELP.EU -> https://atarihelp.eu/
+   - HELP -> vestaveny help panel
+
+2) app/src/main/assets/player/index.html
+   - kompletne nova cista stranka prehravace
+   - skin podle dodane grafiky retro cassette playeru
+   - MP3/WAV playlist
+   - PLAY / PAUSE / STOP / REWIND / FAST FWD
+   - MY PLAYLISTS / LIBRARY / SETTINGS hitzony
+   - YOUTUBE -> https://www.youtube.com/
+   - EQ 60/250/1K/4K/16K prepinaji gain pres WebAudio
+   - BALANCE pres StereoPanner
+   - BASS/TREBLE boost pres WebAudio
+   - VOLUME cykluje hlasitost
+   - jednoducha animace reelu pri PLAY/SEEK
+
+3) app/src/main/assets/nap_ui/
+   - nap_intro_command_center.png
+   - nap_player_cassette.png
+
+4) app/src/main/java/eu/atarihelp/nap/NapExactImageScreens.java
+   - reference z dodaneho ZIPu pro pripadnou budouci native Java integraci.
+   - Emulator core se timto nema menit.
+
+CO SE NEMENI
+- app/src/main/assets/emu/index.html zustava ze stabilniho BUILD2FS/FP zakladu.
+- CLOAD / POKEY / CSAVE / TXT / ROM / Java emulator core se nema menit.
+
+DULEZITE
+- Predchozi slozka app/src/main/assets/tape-loader/ z pokusu BUILD2FY neni potreba a muze se smazat.
+- BUILD2GB na ni neodkazuje.
+
+TEST PLAN
+1. Spust aplikaci.
+   Ocekavani: nova presna uvodni obrazovka N&P VISION Command Center.
+
+2. Klikni EMULATOR.
+   Ocekavani: otevre se existujici skutecny Atari emulator z emu/index.html.
+
+3. Vrat se a klikni PREHRAVAC.
+   Ocekavani: otevre se presna obrazovka cassette playeru.
+
+4. V prehravaci klikni MY PLAYLISTS / PLAYLISTS / LIBRARY.
+   Ocekavani: otevre se playlist panel.
+
+5. Pridej MP3 nebo WAV.
+   Ocekavani: soubor se zaradi do playlistu.
+
+6. PLAY / PAUSE / STOP / REWIND / FAST FWD.
+   Ocekavani: ovlada prehravani vybraneho souboru.
+
+7. Klikni YOUTUBE v prehravaci.
+   Ocekavani: musi otevrit https://www.youtube.com/ a nesmi otevrit emulator.
+
+8. Klikni ATARIHELP.EU na uvodu.
+   Ocekavani: otevre https://atarihelp.eu/
+
+9. Otestuj EQ / BALANCE / BASS / TREBLE / VOLUME.
+   Ocekavani: meni zvuk prehravace pres WebAudio. Grafika je skin, ovladace se vizualne netoci 1:1.
+
+POZNAMKA K ANIMACI
+- Reely maji lehkou overlay animaci pri prehravani.
+- Pokud bude vadit, da se vypnout jednim CSS pravidlem.

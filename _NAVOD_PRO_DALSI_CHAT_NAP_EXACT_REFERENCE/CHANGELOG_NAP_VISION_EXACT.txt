@@ -1,0 +1,23 @@
+BUILD: NAP_VISION_EXACT_JAVA_IMAGE_OVERLAY
+
+ZMENY:
+- Přidán nový úvod N&P VISION bez kazetáku.
+- Přidán samostatný přehrávač/kazeťák jako přesná grafická obrazovka.
+- Přidány Java hit-zóny pro EMULATOR, PREHRAVAC, ATARIHELP.EU, HELP, YOUTUBE a playlisty.
+- ATARIHELP.EU i YouTube jsou připravené přes externí web Intent, ne do emulatoru.
+
+KODY JSOU ZMENENE:
+- UI / intro / menu / přehrávač skin.
+
+KODY JSOU STEJNE:
+- BASIC / Altirra testovací kódy.
+- Emulator core se tímto overlayem nemá měnit.
+
+NEDELAT:
+- Nelepit novou grafiku přes starou stránku.
+- Nenechávat pod tím stará tlačítka.
+- Nesměrovat YouTube ani AtariHelp.eu do emulatoru.
+- Nepoužívat to jako fake emulator screen.
+
+POZNAMKA:
+- Přesnost je dosažená tím, že PNG návrh je skin a Java nad ním řeší klikání.

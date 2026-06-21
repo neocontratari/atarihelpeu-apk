@@ -1,0 +1,5 @@
+1. Rozbal ZIP.
+2. Prekopiruj obsah slozky app/ do projektu pres GitHub Desktop.
+3. Pokud v projektu zbyla stara slozka app/src/main/assets/tape-loader/, smaž ji. BUILD2GB ji nepouziva.
+4. Commit message:
+BUILD2GB exact NAP vision skins player youtube

@@ -1,0 +1,13 @@
+BUILD2GB CLEANUP OLD UNUSED FILES
+
+Pokud v projektu po predchozich testech zustala slozka:
+app/src/main/assets/tape-loader/
+
+muze se smazat. BUILD2GB ji nepouziva.
+
+BUILD2GB pouziva:
+app/src/main/assets/index.html
+app/src/main/assets/player/index.html
+app/src/main/assets/emu/index.html
+app/src/main/assets/nap_ui/nap_intro_command_center.png
+app/src/main/assets/nap_ui/nap_player_cassette.png
