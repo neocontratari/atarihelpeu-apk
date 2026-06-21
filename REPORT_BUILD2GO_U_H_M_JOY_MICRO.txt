@@ -1,0 +1,33 @@
+BUILD2GO_U_H_M_JOY_MICRO
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu/index.html
+
+Na co jsem NESAHAL:
+- emulator core
+- CLOAD / POKEY / CSAVE / TXT / ROM
+- MainActivity.java
+- linky / prehravac / intro
+
+Co jsem ted zmenil podle tve posledni poznamky:
+1) 2. rada
+- od U doprava jemne DOLEVA
+
+2) 3. rada
+- od H doprava jemne DOLEVA
+
+3) 4. rada
+- cely radek lehce VYS
+- od M doprava jemne DOLEVA
+
+4) Joystick
+- NAHORU a DOLU trosku DOPRAVA
+- VLEVO a VPRAVO trosku VYS
+
+Test plan:
+- 2. rada: U I O P [ ] Return
+- 3. rada: H J K L ; sipky Caps
+- 4. rada: M , . / Shift INV
+- joystick: nahoru, dolu, vlevo, vpravo
