@@ -1,0 +1,106 @@
+ATARIHELP.EU EMU-10 - BUILD2HJ_VBXE_GENERIC_AUDIT_MATRIX
+
+KODY JSOU STEJNE
+BASIC / Altirra porovnavaci kody jsem nemenil.
+
+DUVOD ZMENY
+René spravne zastavil dalsi slepe testovani Popeye/W3D. Pokud emulator zachyti jen dve VBXE hry a dalsi testy padaji do SELF TESTu nebo hlasi no VBXE, nesmi se dal lepit obraz konkretni hry. BUILD2HJ proto dela obecny VBXE audit a prvni obecnou core-detekcni opravu.
+
+ZMENENY SOUBOR
+app/src/main/assets/emu_vbxe/index.html
+
+NA CO JSEM NESAHAL
+- app/src/main/assets/emu/index.html
+- MainActivity / router / Facebook / YouTube / web odkazy
+- prehravac / equalizer / BASS / TREBLE / BALANCE
+- ROMy, BASIC, normalni CLOAD/CSAVE baseline
+- skin klavesnice/kazetaku mimo textove build logy
+
+CO JE NOVE
+1) Obecny VBXE FX core read model podle fx1.26/vbxefx:
+   - cteni $D640 vraci CORE_VERSION=$10
+   - cteni $D641 vraci MINOR_REVISION=$26 = FX v1.26a
+   - cteni $D642/$D643 vraci $FF
+   - zapis $D640 zustava VIDEO_CONTROL
+   - zapis $D641-$D643 zustava XDL_ADR0-2
+
+2) BUILD2HJ audit matrix pri kazdem VBXE souboru:
+   - loguje velikost souboru
+   - pocet XEX/OBX segmentu
+   - prvni segment
+   - INITAD/RUNAD segmenty
+   - zda program obsahuje hlasky No VBXE / improper core / Core revision <> 1.20 / VBXE not found
+
+3) OBX podpora v pickeru a ZIP vyberu:
+   - .obx se bere jako stejny Atari binarni kontejner jako XEX
+   - neni to fake loader ani RAM inject
+
+4) MEMAC bezpecnost:
+   - dokumentovany MEMAC je $D64C-$D64F
+   - stare/legacy $D65D-$D65F zustava jen opatrny fallback
+   - $FF write sweep do $D65D-$D65F se ignoruje jako nebezpecny RMW/sweep, ktery predtim rozbijel mapovani
+
+5) Z predchozich buildu zustava:
+   - ZOOM bity z HE
+   - source snapshot z HF
+   - XDL carry / big-blit z HG
+   - NO_PROBE pres Atari z HH
+
+AUDIT SOUBORU, KTERE RENÉ POSLAL
+- Textmode Test (2009, KMK).xex
+  size=2169 B, records=2, first=$2000-$286C, INITAD=1, RUNAD=0, underROM=0, parse=OK
+  signatury: No VBXE or improper core, VBXE
+- DACTest (2009, KMK).xex
+  size=1379 B, records=2, first=$2000-$2556, INITAD=1, RUNAD=0, underROM=0, parse=OK
+  signatury: No VBXE or improper core, VBXE
+- mrproper_vbxe.xex
+  size=19677 B, records=7, first=$2000-$20FE, INITAD=1, RUNAD=1, underROM=0, parse=OK
+  signatury: Core revision <> 1.20
+- hl_vbxe.xex
+  size=74360 B, records=58, first=$7000-$72FF, INITAD=1, RUNAD=18, underROM=0, parse=OK
+  signatury: VBXE not found, VBXE
+- Heartlight VBXE WIP (2019-10-08)(Pelc, Janusz - Bartkowicz, Sebastian - Wieczorkowski, Bartlomiej)(PL)(en)[Req VBXE].obx
+  size=125356 B, records=99, first=$2000-$23D4, INITAD=1, RUNAD=33, underROM=0, parse=OK
+  signatury: VBXE not found, VBXE
+- commando230810.xex
+  size=357177 B, records=63, first=$2000-$24B8, INITAD=1, RUNAD=26, underROM=0, parse=OK
+  signatury: bez textove VBXE signatury v prvnim skenu
+
+TEST PLAN - NEJDRIV CORE DETEKCE, AZ PAK OBRAZ
+1) Nainstaluj overlay pres GitHub Desktop jako vzdy.
+2) Spust appku a over marker:
+   AtariHelp.eu EMU-10 BUILD2HJ_VBXE_GENERIC_AUDIT_MATRIX pripraven.
+3) Netestuj hned W3D/Popeye jako prvni.
+4) Nejprve postupne nahraj:
+   a) Textmode Test (2009, KMK).xex
+   b) DACTest (2009, KMK).xex
+   c) mrproper_vbxe.xex
+   d) hl_vbxe.xex
+   e) Heartlight .obx
+   f) commando230810.xex
+5) U kazdeho uloz LOG hned po prvni viditelne chybe nebo po obrazovce hlasky.
+
+CO JE SPRAVNY POSUN
+- Textmode/DACTest uz nesmi skoncit na "No VBXE or improper core" kvuli $D641.
+- mrproper by nemel spadnout na "Core revision <> 1.20" kvuli $D641.
+- hl_vbxe by nemel hlásit "VBXE not found" kvuli $D640.
+- Pokud dale spadne obraz, je to uz dalsi vrstva XDL/blitter/MEMAC, ale core detekce musi byt nejdrive obecne spravna.
+
+LOG MARKERY
+- VBXE AUDIT MATRIX BUILD2HJ
+- VBXE CORE READ BUILD2HJ: CORE_VERSION=$10 MINOR_REVISION=$26
+- VBXE READBACK LATCH BUILD2HJ
+- VBXE LEGACY MEMAC SAFE BUILD2HJ
+- VBXE BLITTER FEATURE BUILD2HJ
+- VBXE XDL RENDER BUILD2HJ
+
+CO POSLAT ZPET
+- Ke kazdemu z prvnich 3 testu screenshot + log.
+- Pokud test pise "No VBXE", "improper core", "Core revision", poslat hned log bez dalsiho hrani.
+- Pokud test projde detekci, ale obraz je caj, napsat: "detekce prosla, obraz caj".
+
+NEDELAL JSEM
+- netvrdim, ze je VBXE hotove
+- netvrdim, ze je opraveny W3D/Popeye obraz
+- nespoustel jsem NOX ani realny mobil
+- zadny screen-paint, zadny RAM inject, zadny hack na konkretni hru

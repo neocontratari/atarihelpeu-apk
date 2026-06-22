@@ -1,0 +1,10 @@
+NAVOD GITHUB DESKTOP - BUILD2HJ
+
+1) ZIP rozbal primo pres koren projektu AtariHelp.eu EMU-10.
+2) Potvrd prepsani app/src/main/assets/emu_vbxe/index.html.
+3) V GitHub Desktop zkontroluj zmeneny soubor.
+4) Commit message:
+   BUILD2HJ VBXE generic audit matrix
+5) Buildni APK jako obvykle a testuj podle REPORT_BUILD2HJ_VBXE_GENERIC_AUDIT_MATRIX_CZ.txt.
+
+KODY JSOU STEJNE.
