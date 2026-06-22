@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IC</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2ID</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -326,12 +326,12 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    Zachranny rollback po HY: vracim palety a HR renderer presne do BUILD2HX.
    Zachovava BUILD2HW rychly ATR/D1 zaklad, NET HRY, UI skin, hitboxy, joystick a TXT/TurboBasic rychle vkladani.
    Neobsahuje HY OV_COLOR_SHIFT ani HR blend, protoze v testu rozbil W3D a zhorsil Heartlight barvy. */
-/* BUILD2IC_VBXE_TEXT_NATIVE_DAC_ADDR_SAFE:
-   Po Reneho testu BUILD2IB: HSCROLL sampler realne bezel, ale Textmode vizualne zadna zmena.
-   Tedy nehadam dal hscroll: opravuji dve konkretni veci podle fx.txt:
-   1) Text mode ma foreground barvu 0..127 viditelnou; transparentni je jen pozadi podle attr/no_trans/trans15.
-   2) XDL OVADR se v pixel modu musi po recordu posouvat o OVSTEP za kazdou scanline; to miri na DACTest modry odskok.
-   Palety/W3D barvy/BCB21/RAM320/loader zustavaji z HZ/HW. */
+/* BUILD2ID_VBXE_TEXT_EDGE_SNAP_LOG_SAFE:
+   Rene potvrdil, ze BUILD2IC je vyrazne ostrejsi, ale text jeste neni ono.
+   Tady NEsaham na W3D barvy, palety, BCB21, RAM320, rychly loader, UI ani joystick.
+   Menim jen VBXE textovy sampler: 640px glyph se prevadi do 320cc edge-snap metodou,
+   aby se neztracely leve/pul-pixelove tahy pisma, ale zaroven se nevratil tlusty OR blur z IB.
+   Navic tlumim D65F MEMAC spam v logu, protoze Heartlight/W3D tim umi sezrat vykon. */
 
 </style>
 </head>
@@ -1071,7 +1071,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // BUILD2HB: legacy MEMAC ($D65D/$D65E/$D65F) pro starsi VBXE software/Popeye.
     legacyMemb:0, legacyMemc:0, legacyMems:0,
     vramWriteTrace:0, vramReadTrace:0,
-    memacLogA:0, memacLogB:0,
+    memacLogA:0, memacLogB:0, memac5FCount:0,
     safeBlitSkipped:0, safeBlitCopied:0,
     fastBlitCopied:0, fastBlitBlocks:0,
     lastMemacLog:{}, memacSpam:0, memac5DCount:0,
@@ -1170,8 +1170,15 @@ function Atari130XE(osRom, basicRom, CPUctor){
       var size=0x1000 << (v&3), base=(v&0xF0)<<8;
       M.vbxeDebug('VBXE LEGACY MEMAC_CONTROL $D65E=$'+hx2(v)+' base=$'+hx4(base)+' size='+Math.round(size/1024)+'KB CPU='+(v&8?1:0)+' ANTIC='+(v&4?1:0));
     } else if(off===0x5F){
-      var size2=0x1000 << (vbxe.legacyMemc&3);
-      M.vbxeDebug('VBXE LEGACY MEMAC_BANK_SEL $D65F=$'+hx2(v)+' global='+(v&0x80?1:0)+' bank='+(v&0x7F)+' vramBase=$'+(((v&0x7F)*size2)&0x7FFFF).toString(16).toUpperCase().padStart(5,'0'));
+      // BUILD2ID: Heartlight/W3D umi $D65F prepinat stovkykrat za snimek.
+      // Hodnota se porad respektuje pro MEMAC, jen log uz tim nesezereme.
+      vbxe.memac5FCount=(vbxe.memac5FCount||0)+1;
+      if(vbxe.memac5FCount<=16 || (vbxe.memac5FCount%1024)===0){
+        var size2=0x1000 << (vbxe.legacyMemc&3);
+        M.vbxeDebug('VBXE LEGACY MEMAC_BANK_SEL $D65F=$'+hx2(v)+' global='+(v&0x80?1:0)+' bank='+(v&0x7F)+' vramBase=$'+(((v&0x7F)*size2)&0x7FFFF).toString(16).toUpperCase().padStart(5,'0')+' count='+vbxe.memac5FCount);
+      } else if(vbxe.memac5FCount===17){
+        M.vbxeDebug('VBXE MEMAC $D65F: dalsi rychle prepinani potlacuju, hodnoty porad realne plati.');
+      }
     }
   }
   function vbxeLogMemac(off,v){
@@ -2610,10 +2617,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
     var step=(r.ovStep||chars*2)&0x0FFF;
     if(!step) step=chars*2;
     for(var yy=0;yy<lines;yy++){
-      // BUILD2IC: nativni VBXE text.
-      // IB dokazal, ze problem neni v lichém hscrollu. Tady opravuji realnou chybu:
-      // foreground barva 0..127 nesmi byt filtrovana pres SR/LR transparentni barvu 0.
-      // Soucasne pouzivam nearest-center downsample 640->320, aby text nebyl tlusty/rozmazany OR sloucenim dvou bitu.
+      // BUILD2ID: edge-snap sampler pro VBXE 80sl text.
+      // IC center sample byl ostrejsi, ale ztracel cast pul-pixelovych tahu.
+      // Tady beru primarne stred jako IC, ale kdyz je prava pulka prazdna a leva pulka
+      // obsahuje realny tah glyphu, zachranim ho stridme paritnim snapem. Nevracim OR blur.
       var gy=r.y+yy;
       var local=yy+phase;
       var fy=local&7;
@@ -2621,20 +2628,37 @@ function Atari130XE(osRom, basicRom, CPUctor){
       var rowAddr=(r.ovAddr + textRow*step)&0x7FFFF;
       var dst=gy*384+x0;
       for(var sx=0;sx<width && x0+sx<384;sx++){
-        var srcBit=(sx<<1)+1+hs;                 // center sample of 2 hires bits
-        var ci=(srcBit>>3);
-        if(ci>=chars) continue;
-        var bit=srcBit&7;
-        var cell=(rowAddr + ci*2)&0x7FFFF;
-        var ch=vram[cell]&0xFF, attr=vram[(cell+1)&0x7FFFF]&0xFF;
-        var glyph=vram[((r.chBase||0) + ch*8 + fy)&0x7FFFF]&0xFF;
-        var on=(glyph & (0x80>>bit))!==0;
+        var pairBase=(sx<<1)+hs;
+        var srcBit1=pairBase+1;                 // IC center/right sample
+        var ci1=(srcBit1>>3);
+        if(ci1>=chars) continue;
+        var bit1=srcBit1&7;
+        var cell1=(rowAddr + ci1*2)&0x7FFFF;
+        var ch1=vram[cell1]&0xFF, attr1=vram[(cell1+1)&0x7FFFF]&0xFF;
+        var glyph1=vram[((r.chBase||0) + ch1*8 + fy)&0x7FFFF]&0xFF;
+        var on1=(glyph1 & (0x80>>bit1))!==0;
         var color=-1;
-        if(on){
-          var fg=attr&0x7F;
-          if(vbxeTextFgVisible(fg)) color=fg;
+        if(on1){
+          var fg1=attr1&0x7F;
+          if(vbxeTextFgVisible(fg1)) color=fg1;
         } else {
-          color=vbxeTextBgColor(attr);
+          // leva pulka paru: zachrana tenkych tahu, ktere IC ignoroval.
+          var srcBit0=pairBase;
+          var ci0=(srcBit0>>3);
+          var rescued=false;
+          if(ci0>=0 && ci0<chars){
+            var bit0=srcBit0&7;
+            var cell0=(rowAddr + ci0*2)&0x7FFFF;
+            var ch0=vram[cell0]&0xFF, attr0=vram[(cell0+1)&0x7FFFF]&0xFF;
+            var glyph0=vram[((r.chBase||0) + ch0*8 + fy)&0x7FFFF]&0xFF;
+            var on0=(glyph0 & (0x80>>bit0))!==0;
+            // zachranuju jen pulku vzorku, aby se text nezmenil na tlusty IB/OR styl
+            if(on0 && (((sx ^ gy ^ fy) & 1)===0)){
+              var fg0=attr0&0x7F;
+              if(vbxeTextFgVisible(fg0)){ color=fg0; rescued=true; }
+            }
+          }
+          if(!rescued) color=vbxeTextBgColor(attr1);
         }
         if(color>=0){ fb[dst+sx]=vbxeColor(color,palNo); drew++; }
       }
@@ -2700,11 +2724,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
     if(textDrew>0 && !vbxe.xdlTextRenderLogged && M.vbxeDebug){
       vbxe.xdlTextRenderLogged=true;
-      M.vbxeDebug('VBXE TEXT XDL RENDER BUILD2IC: prvni realny textovy overlay z VRAM, pixels='+textDrew+'. Font/adres/scroll ctu z XDL podle fx.pdf, bez VRAM probe.');
+      M.vbxeDebug('VBXE TEXT XDL RENDER BUILD2ID: edge-snap 640->320 text sampler z VRAM, pixels='+textDrew+'. Palety/W3D/BCB21 beze zmen.');
     }
     if(hasText && textDrew===0 && !vbxe.xdlTextEmptyLogged && M.vbxeDebug){
       vbxe.xdlTextEmptyLogged=true;
-      M.vbxeDebug('VBXE TEXT XDL EMPTY BUILD2IC: XDL obsahuje TEXT, ale zatim nebyl vykreslen zadny netransparentni pixel. VRAM probe je stale blokovan, aby nevznikl caj.');
+      M.vbxeDebug('VBXE TEXT XDL EMPTY BUILD2ID: XDL obsahuje TEXT, ale zatim nebyl vykreslen zadny netransparentni pixel. VRAM probe je stale blokovan, aby nevznikl caj.');
     }
     if(graphDrew>0 && !vbxe.xdlRenderLogged && M.vbxeDebug){
       vbxe.xdlRenderLogged=true;
@@ -4981,7 +5005,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('AtariHelp.eu EMU-10 BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX pripraven - HP hitboxy zustaly, HELP manual a MENU navrat opraveny, landscape obraz aspect-fit bez orezani + FIRE/DOOR v bocnim prostoru; core BUILD2HL beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2HR_VBXE_POWER_ON_130XE_HELP_FIX pripraven - POWER BASIC je neviditelny hitbox na napisu 130XE + jemna zelena LED; HELP navod doplnen; VBXE core BUILD2HL beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE pripraven - NET HRY zustava, XEX/OBX turbo zustava a nove ma ATR/D1 rychlejsi SIO jen pri diskovem prenosu. Landscape HQ safe. VBXE core BUILD2HL GOLD beze zmen.');
-    log('AtariHelp.eu EMU-10 BUILD2IC_VBXE_TEXT_NATIVE_DAC_ADDR_SAFE pripraven - BUILD2IB hscroll nepomohl, proto opravuji nativni VBXE text foreground/transparent pravidla a XDL OVADR posun po recordech pro DAC. Palety/W3D/BCB21/RAM320/loader zustavaji z HZ/HW.');
+    log('AtariHelp.eu EMU-10 BUILD2ID_VBXE_TEXT_EDGE_SNAP_LOG_SAFE pripraven - BUILD2IC byl ostrejsi, tady zlepsuji jen VBXE text edge-snap sampler a tlumim D65F MEMAC spam. W3D barvy/palety/BCB21/RAM320/loader/UI zustavaji.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);

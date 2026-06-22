@@ -1,0 +1,19 @@
+NAVOD PRO RENEHO - BUILD2ID_VBXE_TEXT_EDGE_SNAP_LOG_SAFE
+=========================================================
+
+1) ZIP rozbalit.
+2) Slozku app z overlay ZIPu pretahnout do korene projektu v GitHub Desktop / lokalni slozce projektu.
+3) Povolit prepsani souboru.
+4) Commit navrh:
+   BUILD2ID VBXE text edge-snap + D65F log throttle
+5) Spustit aplikaci v NOX / mobilu.
+6) Testovat presne:
+   - Textmode Test 1-4
+   - DACTest
+   - Heartlight / hl_vbxe.xex
+   - W3D ATR
+
+DULEZITE:
+- BUILD2ID nemeni BASIC / Altirra testovaci kody.
+- BUILD2ID nemeni W3D barvy ani palety.
+- BUILD2ID je dalsi pokus po BUILD2IC, ne slepy navrat HY.

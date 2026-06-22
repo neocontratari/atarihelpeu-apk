@@ -1,0 +1,62 @@
+AtariHelp.eu EMU-10 BUILD2ID_VBXE_TEXT_EDGE_SNAP_LOG_SAFE
+=========================================================
+
+ZAKLAD:
+- vychazi z BUILD2IC, ktery Rene otestoval jako vyrazne ostrejsi textovy posun,
+- zachovava bezpecny HZ/HX/HW barevny zaklad,
+- zachovava rychly ATR/D1 load z BUILD2HW,
+- zachovava VBXE UI skin, hitboxy klavesnice, joystick, NET HRY, TXT/TurboBASIC fast,
+- zachovava BCB21 / RAM320 / loader / W3D barvy.
+
+KODY JSOU ZMENENE:
+- zmenen pouze app/src/main/assets/emu_vbxe/index.html.
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO JE NOVE:
+1) VBXE TEXT EDGE-SNAP
+   - BUILD2IC pouzival primarne center/right sample z 640px VBXE textu do 320 color-clock obrazu.
+   - To bylo ostrejsi, ale mohlo ztracet levou polovinu nekterych tenkych tahu znaku.
+   - BUILD2ID nechava IC center sample jako zaklad, ale kdyz je prava pulka prazdna a leva pulka obsahuje realny tah glyphu, zachrani ho paritnim edge-snap vzorkem.
+   - Cilem je dalsi ostrost Textmode Testu a textu ve W3D/Heartlight bez navratu k tlustemu OR blur stylu.
+
+2) D65F MEMAC LOG THROTTLE
+   - Heartlight/W3D umeji velmi rychle prepinat legacy MEMAC bank register $D65F.
+   - Hodnoty se porad realne pouzivaji, jen log uz nevypisuje tisice stejnych radku.
+   - Cilem je mensi brzdeni a mensi logy; obrazova logika se tim nemeni.
+
+CO JSEM NEMENIL:
+- W3D barvy,
+- VBXE palety,
+- BCB21 blitter,
+- RAM320,
+- rychly ATR/D1 loader,
+- UI skin,
+- klavesnicove hitboxy,
+- joystick,
+- NET HRY,
+- TXT/TurboBASIC fast.
+
+TEST PLAN:
+1) Textmode Test 1-4
+   Ocekavani: text by mel byt lepsi nebo minimalne stejny jako BUILD2IC. Pokud bude zubatý/teckovany nebo horsi, vratit se na BUILD2IC.
+
+2) DACTest
+   Ocekavani: pruhy nesmi byt horsi. Modry odskok muze zustat, BUILD2ID ho cilene nelovi, aby nerozbil W3D/HL.
+
+3) Heartlight / hl_vbxe.xex
+   Ocekavani: hra musi zustat funkcni. Uvodni text by mel byt ostrejsi nebo stejny; barvy textu zatim nemusi sedet na 100 %, protoze BUILD2ID nemenil palety.
+
+4) W3D ATR
+   Ocekavani: rychlost a barvy zustanou jako BUILD2IC/HZ/HW. Text by mel byt ostrejsi nebo stejny.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2ID_VBXE_TEXT_EDGE_SNAP_LOG_SAFE pripraven
+- VBXE TEXT XDL RENDER BUILD2ID
+- VBXE MEMAC $D65F: dalsi rychle prepinani potlacuju
+- ATR D1 FAST LOAD BUILD2HW
+
+KDYZ SELZE:
+- poslat screenshot Textmode Testu a log,
+- napsat: Textmode lepsi / stejny / horsi,
+- kdyz bude horsi nez BUILD2IC, vratit se na BUILD2IC jako aktualni zachranny textovy bod.
