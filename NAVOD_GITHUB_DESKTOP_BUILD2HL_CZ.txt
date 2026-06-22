@@ -1,0 +1,9 @@
+NAVOD - BUILD2HL ZIP OVERLAY
+============================
+1) Rozbal ZIP do korene projektu v GitHub Desktop repozitari.
+2) Potvrd prepsani souboru.
+3) V GitHub Desktop zkontroluj, ze se zmenil hlavne:
+   app/src/main/assets/emu_vbxe/index.html
+4) Commit message doporuceni:
+   BUILD2HL VBXE BCB21 blitter core fix
+5) Sestav/spust aplikaci stejne jako predchozi buildy.

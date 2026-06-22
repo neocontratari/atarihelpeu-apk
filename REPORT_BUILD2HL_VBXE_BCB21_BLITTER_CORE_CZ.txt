@@ -1,0 +1,76 @@
+ATARIHELP.EU EMU-10 - BUILD2HL_VBXE_BCB21_BLITTER_CORE
+==========================================================
+
+KODY JSOU STEJNE
+BASIC / Altirra testovaci kody jsem nemenil.
+
+ZMENENY SOUBOR
+- app/src/main/assets/emu_vbxe/index.html
+
+NA CO JSEM NESAHAL
+- app/src/main/assets/emu/index.html
+- MainActivity / Android router / odkazy / player / equalizer
+- ROMy, BASIC, CLOAD/CSAVE baseline
+- UI skin, klavesnice, kazetak
+
+PROC TENHLE BUILD VZNIKL
+Po BUILD2HK testech je jasne, ze obecna VBXE detekce uz prosla dal:
+- Textmode Test uz neskoncil na No VBXE/improper core a zobrazil menu/testy.
+- DACTest nespustil No VBXE, ale misto hladkych pruhu ukazoval carky.
+- Heartlight/HL zacaly bootovat, zvuk byl spravny/rychlejsi, ale obraz byl rozbity nebo se hra nedokreslila.
+
+V logu z HK je zasadni stopa: u maleho Textmode Testu blitter hlasi nesmysl:
+BCB=$01400 src=$02000 dst=$40001 w=259 h=256 zoom=$FF ... GUARD_SKIP
+To neni normalni pro prvni jednoduche testy. V kodu jsem nasel konkretni chybu:
+VBXE Blitter Command Block ma podle fx.pdf 21 bajtu, ale nase implementace cetla 19 bajtu.
+Tim se posunuly polozky DEST/STEP/WIDTH/HEIGHT/MASK/ZOOM/PATTERN/CONTROL a vznikal caj.
+
+CO JE OPRAVENE V BUILD2HL
+- BCB se cte jako 21 bajtu, ne 19.
+- Opravene offsety BCB poli podle fx.pdf:
+  source adr, source step y, source step x,
+  dest adr, dest step y, dest step x,
+  width, height, AND/XOR/collision mask, zoom, pattern, control.
+- Chain stride pro NEXT BCB je 21 bajtu.
+- source_step_y/dest_step_y jsou brane jako signed 12-bit.
+- source_step_x/dest_step_x jsou brane jako signed 8-bit.
+- Log blitteru ma marker BCB21 a vypisuje ssy/ssx/dsy/dsx.
+- RAM320 + VBXE VRAM 512K + tlumeny log z HK zustavaji.
+- Zadny screen-paint, zadny RAM inject, zadne herni hacky pro W3D/Popeye/Heartlight.
+
+CO TO NENI
+- Netvrdim, ze je tim hotove VBXE.
+- Netvrdim, ze W3D/Popeye/Heartlight budou hned spravne.
+- Tohle je oprava zakladniho parsovani blitteru, ktere bylo chybne a ovlivnovalo vsechny VBXE programy.
+
+TEST PLAN
+1) Textmode Test (2009, KMK).xex
+   - Ocekavani: menu ma byt cistci, mene hatch/caju.
+   - Projdi test 1, 2, 3, 4 jako v HK.
+   - Hledej v logu: BCB21, rozumne zoom hodnoty; pokud porad zoom=$FF u jednoducheho BCB, posli log.
+
+2) DACTest (2009, KMK).xex
+   - Ocekavani: misto carek by se mely blizit hladke barevne pruhy.
+   - Pokud zustanou jen carky, posli screenshot + log.
+
+3) Heartlight / hl_vbxe.xex
+   - Ocekavani: titul/intro muze porad mit chyby, ale blitter by uz nemel vyrabet tak masivni posunute nesmysly.
+   - Sleduj, jestli hra dojede dal nez HK a jestli se zlepsi plocha hry.
+
+4) Az potom W3D/Popeye
+   - Jen pokud prvni testy ukazou zmenu.
+
+LOG MARKERY
+- AtariHelp.eu EMU-10 BUILD2HL_VBXE_BCB21_BLITTER_CORE pripraven.
+- VBXE BLITTER FEATURE BUILD2HL: BCB21 podle fx.pdf
+- BCB21 v radku VBXE BLITTER FAST
+- ssy=... ssx=... dsy=... dsx=...
+- VBXE BLITTER GUARD_SKIP BUILD2HL
+- VBXE TEXT XDL RENDER BUILD2HL
+
+CO POSLAT ZPET
+- Screenshot Textmode test 1 nebo 2.
+- Screenshot DACTest.
+- Screenshot Heartlight/HL, pokud se obraz zmeni.
+- Jeden log z nejhorsiho testu.
+
