@@ -1,0 +1,67 @@
+ATARIHELP.EU EMU-10
+BUILD2GV_VBXE_LEGACY_MEMAC_WINDOW
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emulatoru
+
+CO UKAZAL TVUJ TEST BUILD2GU:
+- Popeye se dostane pres uvodni VBXE check.
+- Po stisku klavesy / FIRE je slyset zvuk a ovladani pravdepodobne reaguje.
+- Obraz jde po loadingu do cerna.
+- Log ukazuje klicove zapisy:
+  W $D65D = $00
+  W $D65E = $99
+  W $D65F = $80
+- Potom blitter startuje porad z BCB=$00000, ale BCB je same nuly:
+  src=$00000 dst=$00000 w=1 h=1 mode=0
+
+ZAVER:
+BUILD2GU mel novy MEMAC podle core registru $D64C-$D64F, ale Popeye pouziva legacy MEMAC pres $D65D/$D65E/$D65F.
+Proto se data pro BCB/VRAM pravdepodobne zapisovala do normalni Atari RAM misto do VBXE VRAM.
+Blitter potom cetl z VRAM $00000 same nuly a obraz zustal cerny.
+
+CO JE PRIDANO V BUILD2GV:
+1) Legacy MEMAC-B:
+   $D65D = pevne okno $4000-$7FFF
+   bit7 CPU enable, bit6 ANTIC enable, bit0-4 bank
+
+2) Legacy MEMAC-A:
+   $D65E = MEMAC_CONTROL
+   - b7..b4 base $x000
+   - b3 CPU enable
+   - b2 ANTIC enable
+   - b1..b0 velikost 4/8/16/32 KB
+   $D65F = MEMAC_BANK_SEL
+   - b7 global enable
+   - b6..b0 bank
+
+3) Trace prvnich VRAM pristupu:
+   VBXE LEGACY MEMAC_CONTROL ...
+   VBXE LEGACY MEMAC_BANK_SEL ...
+   VBXE VRAM WRITE CPU $9000 -> VRAM $00000 = $..
+
+TEST PLAN:
+1. Spust novy VBXE emulator.
+2. Nahraj Popeye.
+3. Na instrukcni obrazovce stiskni klavesu / FIRE.
+4. Sleduj:
+   - jestli Loading dobehne dal
+   - jestli cerna obrazovka zmizi / zmeni se
+   - jestli se v logu objevi VBXE VRAM WRITE CPU
+   - jestli BCB uz neni same nuly
+5. Uloz a posli log.
+
+OCEKAVANI:
+- Idealne se BCB zacne cist z realne nahranych dat ve VRAM.
+- Obraz jeste nemusi byt finalni, protoze XDL/overlay renderer stale neni hotovy.
+- Pokud obraz zustane cerny, ale v logu uvidime VRAM WRITE a nenulovy BCB, dalsi krok je XDL/overlay renderer.

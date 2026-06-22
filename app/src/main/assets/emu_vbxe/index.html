@@ -92,7 +92,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 .key:active:before,.key.on:before,.key.flash:before,.key.keyPress:before{opacity:1;background:rgba(40,32,18,.24);box-shadow:inset 0 4px 10px rgba(0,0,0,.48),inset 0 -1px 5px rgba(255,235,170,.35),0 0 8px rgba(255,220,130,.16);transform:translateY(.6px) scale(.994);}
 .key.shiftLatched{background:transparent;box-shadow:none;transform:translateY(.8px) scale(.994);}
 .key.shiftLatched:before{opacity:1;background:rgba(255,196,70,.24);box-shadow:inset 0 0 14px rgba(255,230,150,.78),0 0 10px rgba(255,220,130,.30);}
-/* BUILD2GU_VBXE_R4: joystick overlay recentered + clean top controls, no START+OPTION prelep. */
+/* BUILD2GV_VBXE_R5: joystick overlay recentered + clean top controls, no START+OPTION prelep. */
 #joy{position:absolute;left:0;top:0;width:100%;height:100%;display:none;z-index:75;touch-action:pan-y;user-select:none;pointer-events:none;}
 #joyPad{position:absolute;left:10.80%;top:49.15%;width:39.20%;height:22.00%;border-radius:24%;background:rgba(0,0,0,.01);touch-action:none;pointer-events:auto;z-index:76;}
 #joyKnob{position:absolute;left:50%;top:50%;width:24.8%;height:24.8%;margin-left:-12.4%;margin-top:-12.4%;border-radius:50%;background:rgba(255,255,255,.01);pointer-events:none;}
@@ -192,7 +192,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 @media (prefers-reduced-motion:reduce){.scan,.screenSlot:after,#led{animation:none}}
 
 
-/* BUILD2GU_VBXE_R4: START+OPTION = opravdu jen neviditelna hit-zona nad PNG. Ani pressed/on/active nesmi kreslit dalsi obdelnik. */
+/* BUILD2GV_VBXE_R5: START+OPTION = opravdu jen neviditelna hit-zona nad PNG. Ani pressed/on/active nesmi kreslit dalsi obdelnik. */
 #btnSelfTest,#btnSelfTest.cleanHit,
 #btnSelfTest:hover,#btnSelfTest:active,#btnSelfTest:focus,#btnSelfTest:focus-visible,
 #btnSelfTest.pressed,#btnSelfTest.on,#btnSelfTest.flash,#btnSelfTest.down{
@@ -270,7 +270,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 <div id="miniLog"></div>
 <div id="txtOverlay" class="overlay" aria-label="Vlozeni BASIC TXT kodu">
   <h2>VLOZIT TXT / BASIC KOD</h2>
-  <div class="hint">Sem vloz BASIC/Turbo BASIC kod. VLOZIT DO ATARI jen zapise program. VLOZIT + RUN po zapisu automaticky posle RUN. BUILD2GU_VBXE_R4 pise pomaleji, ale bezpecneji.</div>
+  <div class="hint">Sem vloz BASIC/Turbo BASIC kod. VLOZIT DO ATARI jen zapise program. VLOZIT + RUN po zapisu automaticky posle RUN. BUILD2GV_VBXE_R5 pise pomaleji, ale bezpecneji.</div>
   <div class="row"><button id="btnTxtGo">VLOZIT DO ATARI</button><button id="btnTxtRun">VLOZIT + RUN</button><button id="btnTxtFile" class="dark">NAHRAJ TXT SOUBOR</button><button id="btnTxtClear" class="dark">SMAZAT TEXT</button><button id="btnTxtClose" class="danger">ZAVRIT</button></div>
   <label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" id="chkNew" checked>NEW pred vlozenim programu</label>
   <textarea id="txtIn" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="10 PRINT &quot;ATARIHELP&quot;&#10;20 FOR I=1 TO 5&#10;30 PRINT I&#10;40 NEXT I"></textarea>
@@ -902,12 +902,15 @@ function Atari130XE(osRom, basicRom, CPUctor){
                 blankRows:0, width:0 };
   // ---------------- Machine state ---------
   M.frame=0; M.line=0; M.log=[];
-  // BUILD2GU: VBXE IO trace. Zatim pouze mapovani a logovani, NE fake FX core.
+  // BUILD2GV: VBXE IO trace. Zatim pouze mapovani a logovani, NE fake FX core.
   const vbxe={
     regs:new Uint8Array(0x100),
-    vram:new Uint8Array(512*1024),       // BUILD2GU: realna 512 KB VBXE VRAM
+    vram:new Uint8Array(512*1024),       // BUILD2GV: realna 512 KB VBXE VRAM
     traceCount:0, traceLimit:220, traceSuppressed:0, seen:{},
     bltCollision:0, bltBusy:0, bltIrq:0, bltStarts:0, bltSuppressed:0,
+    // BUILD2GV: legacy MEMAC ($D65D/$D65E/$D65F) pro starsi VBXE software/Popeye.
+    legacyMemb:0, legacyMemc:0, legacyMems:0,
+    vramWriteTrace:0, vramReadTrace:0,
     memacLogA:0, memacLogB:0
   };
   M.vbxe=vbxe;
@@ -930,15 +933,54 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function vbxeVramRead(a){ return vbxe.vram[a&0x7FFFF]; }
   function vbxeVramWrite(a,v){ vbxe.vram[a&0x7FFFF]=v&0xFF; }
 
+  function vbxeLegacyAAddr(a,isAntic){
+    // Starsi MEMAC-A: $D65E = MEMAC_CONTROL, $D65F = MEMAC_BANK_SEL.
+    // MEMAC_CONTROL: b7..b4 base $x000, b3 CPU, b2 ANTIC, b1..b0 size 4/8/16/32KB.
+    // MEMAC_BANK_SEL: b7 global enable, b6..b0 bank.
+    var memc=vbxe.legacyMemc&0xFF, mems=vbxe.legacyMems&0xFF;
+    if(!(mems&0x80)) return -1;
+    if(isAntic){ if(!(memc&0x04)) return -1; } else { if(!(memc&0x08)) return -1; }
+    var size=0x1000 << (memc&3);
+    var base=(memc&0xF0)<<8;
+    if(a>=base && a<base+size){
+      return (((mems&0x7F)*size) + (a-base)) & 0x7FFFF;
+    }
+    return -1;
+  }
+  function vbxeLegacyBAddr(a,isAntic){
+    // Legacy MEMAC-B: $D65D, pevne okno $4000-$7FFF, b7 CPU, b6 ANTIC, b0..b4 bank.
+    var memb=vbxe.legacyMemb&0xFF;
+    if(a>=0x4000 && a<=0x7FFF){
+      if(isAntic){ if(!(memb&0x40)) return -1; } else { if(!(memb&0x80)) return -1; }
+      return (((memb&0x1F)<<14) | (a&0x3FFF)) & 0x7FFFF;
+    }
+    return -1;
+  }
   function vbxeCpuMapAddr(a){
+    var la=vbxeLegacyAAddr(a,false); if(la>=0) return la;
+    var lb=vbxeLegacyBAddr(a,false); if(lb>=0) return lb;
     if(a>=0x2000 && a<=0x3FFF && (vbxe.regs[0x4C]&0x80)) return ((vbxe.regs[0x4C]&0x3F)<<13)|(a&0x1FFF);
     if(a>=0x4000 && a<=0x7FFF && (vbxe.regs[0x4E]&0x80)) return ((vbxe.regs[0x4E]&0x1F)<<14)|(a&0x3FFF);
     return -1;
   }
   function vbxeAnticMapAddr(a){
+    var la=vbxeLegacyAAddr(a,true); if(la>=0) return la;
+    var lb=vbxeLegacyBAddr(a,true); if(lb>=0) return lb;
     if(a>=0x2000 && a<=0x3FFF && (vbxe.regs[0x4D]&0x80)) return ((vbxe.regs[0x4D]&0x3F)<<13)|(a&0x1FFF);
     if(a>=0x4000 && a<=0x7FFF && (vbxe.regs[0x4F]&0x80)) return ((vbxe.regs[0x4F]&0x1F)<<14)|(a&0x3FFF);
     return -1;
+  }
+  function vbxeLegacyMemacLog(off,v){
+    if(!M.vbxeDebug) return;
+    if(off===0x5D){
+      M.vbxeDebug('VBXE LEGACY MEMAC_B_CTL $D65D=$'+hx2(v)+' CPU='+(v&0x80?1:0)+' ANTIC='+(v&0x40?1:0)+' bank='+(v&0x1F));
+    } else if(off===0x5E){
+      var size=0x1000 << (v&3), base=(v&0xF0)<<8;
+      M.vbxeDebug('VBXE LEGACY MEMAC_CONTROL $D65E=$'+hx2(v)+' base=$'+hx4(base)+' size='+Math.round(size/1024)+'KB CPU='+(v&8?1:0)+' ANTIC='+(v&4?1:0));
+    } else if(off===0x5F){
+      var size2=0x1000 << (vbxe.legacyMemc&3);
+      M.vbxeDebug('VBXE LEGACY MEMAC_BANK_SEL $D65F=$'+hx2(v)+' global='+(v&0x80?1:0)+' bank='+(v&0x7F)+' vramBase=$'+(((v&0x7F)*size2)&0x7FFFF).toString(16).toUpperCase().padStart(5,'0'));
+    }
   }
   function vbxeLogMemac(off,v){
     if(!M.vbxeDebug) return;
@@ -1027,6 +1069,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
     vbxe.regs[off]=v;
     if(off===0x4A){ vbxe.bltCollision=0; }
     if(off>=0x4C && off<=0x4F) vbxeLogMemac(off,v);
+    if(off===0x5D){ vbxe.legacyMemb=v; vbxeLegacyMemacLog(off,v); }
+    if(off===0x5E){ vbxe.legacyMemc=v; vbxeLegacyMemacLog(off,v); }
+    if(off===0x5F){ vbxe.legacyMems=v; vbxeLegacyMemacLog(off,v); }
     if(off===0x53){
       if(v&1) vbxeRunBlitter();
       else { vbxe.bltBusy=0; if(M.vbxeDebug) M.vbxeDebug('VBXE BLITTER STOP/ABORT'); }
@@ -1090,7 +1135,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(p===1){ return (pia.ctlB&0x04)? portB() : pia.ddrB; }
       if(p===2) return pia.ctlA; return pia.ctlB;
     }
-    if(page===0xD600 && (a&0xFF)>=0x40){ return vbxeRead(a); } // BUILD2GU VBXE IO $D640-$D6FF trace only
+    if(page===0xD600 && (a&0xFF)>=0x40){ return vbxeRead(a); } // BUILD2GV VBXE IO $D640-$D6FF trace only
     if(page===0xD400){ // ANTIC
       const p=a&0x0F;
       if(p===0x0B) return (M.line>>1)&0xFF;    // VCOUNT
@@ -1139,7 +1184,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(p===0x0F){ pokey.skctl=v; return; }
       return;
     }
-    if(page===0xD600 && (a&0xFF)>=0x40){ vbxeWrite(a,v); return; } // BUILD2GU VBXE IO $D640-$D6FF trace only
+    if(page===0xD600 && (a&0xFF)>=0x40){ vbxeWrite(a,v); return; } // BUILD2GV VBXE IO $D640-$D6FF trace only
     if(page===0xD300){
       const p=a&0x03;
       if(p===0){ if(pia.ctlA&0x04) pia.orA=v; else pia.ddrA=v; return; }
@@ -1181,7 +1226,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
     a&=0xFFFF;
     if(a>=0xD000 && a<0xD800) return hwRead(a);
     var va=vbxeCpuMapAddr(a);
-    if(va>=0) return vbxeVramRead(va);
+    if(va>=0){
+      if(vbxe.vramReadTrace<8 && M.vbxeDebug){ vbxe.vramReadTrace++; M.vbxeDebug('VBXE VRAM READ CPU $'+hx4(a)+' -> VRAM $'+va.toString(16).toUpperCase().padStart(5,'0')); }
+      return vbxeVramRead(va);
+    }
     const pb=portB();
     if(a>=0xC000){ if(pb&1) return os[a-0xC000]; return ram[a]; }
     if(a>=0xA000){ if(!(pb&2)) return bas[a-0xA000]; return ram[a]; }
@@ -1194,7 +1242,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
     a&=0xFFFF; v&=0xFF;
     if(a>=0xD000 && a<0xD800){ hwWrite(a,v); return; }
     var va=vbxeCpuMapAddr(a);
-    if(va>=0){ vbxeVramWrite(va,v); return; }
+    if(va>=0){
+      if(vbxe.vramWriteTrace<24 && M.vbxeDebug){ vbxe.vramWriteTrace++; M.vbxeDebug('VBXE VRAM WRITE CPU $'+hx4(a)+' -> VRAM $'+va.toString(16).toUpperCase().padStart(5,'0')+' = $'+hx2(v)); }
+      vbxeVramWrite(va,v); return;
+    }
     const pb=portB();
     if(a>=0x4000 && a<0x8000 && !(pb&0x10)){ ext[(((pb>>2)&3)<<14)|(a-0x4000)]=v; return; }
     if(M.wrWatch&&a===M.wrWatch)M.wrLog.push([cpu.pc,v,M.line]); ram[a]=v; // RAM under ROM always writable
@@ -2172,7 +2223,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function pct(v,base){ return (v*100/base).toFixed(4)+'%'; }
   // BUILD2BR: presna pixelova mapa podle PNG 941x1672. Klik = klavesa, zadny flex omyl.
   var KEY_RECTS={};
-  // BUILD2GU_VBXE_R4: strukturalni geometrie klavesnice.
+  // BUILD2GV_VBXE_R5: strukturalni geometrie klavesnice.
   // Uz se neladi kazda klavesa zvlast. Radky se skladaji z jasne definovaneho startu,
   // kroku a od ktere klavesy se ma radek zlomit / jemne korigovat.
   // Souradnice jsou v puvodnim skin prostoru 941 x 1672.
@@ -2200,14 +2251,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   // Mezernik ma vlastni presny stredovy obdelnik.
   addKeyRect(4,0,188,1097,518,54);
   
-  // BUILD2GU_VBXE_R4 debug: kdyz URL obsahuje #hitdebug=1, ukaze se cervena sit hitboxu.
+  // BUILD2GV_VBXE_R5 debug: kdyz URL obsahuje #hitdebug=1, ukaze se cervena sit hitboxu.
   function buildHitDebug(){
     if(String(location.hash||'').indexOf('hitdebug=1')<0) return;
     try{
       var css=document.createElement('style');
       css.textContent='.key{outline:1px solid rgba(255,0,0,.55)!important;background:rgba(255,0,0,.05)!important}.hit{outline:1px solid rgba(0,200,255,.55)!important}';
       document.head.appendChild(css);
-      log('BUILD2GU_VBXE_R4 HITDEBUG: zobrazuji obrysy hitboxu.');
+      log('BUILD2GV_VBXE_R5 HITDEBUG: zobrazuji obrysy hitboxu.');
     }catch(e){}
   }
 
@@ -2279,7 +2330,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(b) b.setAttribute('data-mode', joyMode?'joy':'keyboard');
     ['btnPower','btnSelfTest','btnJoy'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.classList.remove('pressed','on','flash','down'); } });
     releaseUiLocksBuild2BY('prepinac po');
-    log('PREPINAC BUILD2GU_VBXE_R4: '+(joyMode?'JOYSTICK zapnut - vycentrovany overlay, bez START+OPTION prelepu.':'KLAVESNICE zapnuta - hitboxy a animace jemne dorezany na stred klaves.'));
+    log('PREPINAC BUILD2GV_VBXE_R5: '+(joyMode?'JOYSTICK zapnut - vycentrovany overlay, bez START+OPTION prelepu.':'KLAVESNICE zapnuta - hitboxy a animace jemne dorezany na stred klaves.'));
   }
   function bindJoy(){
     var pad=document.getElementById('joyPad'), knob=document.getElementById('joyKnob');
@@ -2386,14 +2437,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }catch(_e){}
   }
 
-  // ---------- vkladani TXT (BUILD2GU_VBXE_R4: FAST SAFE IRQ rezim - rychlejsi nez FI, porad bez RAM injectu) ----------
+  // ---------- vkladani TXT (BUILD2GV_VBXE_R5: FAST SAFE IRQ rezim - rychlejsi nez FI, porad bez RAM injectu) ----------
   var typeQ=[], typeWait=0, typeHold=0, typeCurrent=null, typeSent=0, typeTotal=0, typeDoneLogged=true;
-  var typeLineIndex=0, typeLineTotal=0, typeChWait=0, typeLastLineLogged=0, typeBuildName='BUILD2GU_VBXE_R4';
+  var typeLineIndex=0, typeLineTotal=0, typeChWait=0, typeLastLineLogged=0, typeBuildName='BUILD2GV_VBXE_R5';
   function clearTypeQueue(reason){
     typeQ.length=0; typeWait=0; typeHold=0; typeCurrent=null; typeSent=0; typeTotal=0; typeDoneLogged=true;
     typeLineIndex=0; typeLineTotal=0; typeChWait=0; typeLastLineLogged=0;
     try{ if(M) M.keyUp(); }catch(_e){}
-    if(reason) log('VLOZIT TXT BUILD2GU_VBXE_R4: fronta vycistena - '+reason);
+    if(reason) log('VLOZIT TXT BUILD2GV_VBXE_R5: fronta vycistena - '+reason);
   }
   function pushTypeScan(sc, meta){
     meta=meta||{}; meta.sc=sc&0xFF; typeQ.push(meta);
@@ -2404,7 +2455,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     clearTypeQueue('novy text');
     var skipped=0, lineNo=1, visibleLines=0;
     text=String(text||'').replace(/\r/g,'');
-    // BUILD2GU_VBXE_R4: kdyz posledni radek nema ENTER, pridam ho. Bez toho BASIC/TBXL posledni radek nemusi potvrdit.
+    // BUILD2GV_VBXE_R5: kdyz posledni radek nema ENTER, pridam ho. Bez toho BASIC/TBXL posledni radek nemusi potvrdit.
     if(text.length && text[text.length-1] !== '\n' && text[text.length-1] !== '\x01' && text[text.length-1] !== '\x02') text+='\n';
     var lineBuf='';
     function flushReturn(label,longWait){
@@ -2437,15 +2488,15 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }
     typeTotal=typeQ.length; typeSent=0; typeDoneLogged=(typeTotal===0);
     typeLineTotal=visibleLines; typeLineIndex=0;
-    log('VLOZIT TXT BUILD2GU_VBXE_R4: pripraveno '+typeTotal+' stisku / '+visibleLines+' radku. CLASSIC SAFE rezim: pomalejsi, ale stabilni. Po kazde klavese a RETURN cekam na CH $02FC. Posledni radek dostane ENTER automaticky. Zadny RAM inject.'+(skipped?(' Preskoceno '+skipped+' neznamych znaku.'):'') );
-    if(typeTotal===0) log('VLOZIT TXT BUILD2GU_VBXE_R4: nic k vlozeni.');
+    log('VLOZIT TXT BUILD2GV_VBXE_R5: pripraveno '+typeTotal+' stisku / '+visibleLines+' radku. CLASSIC SAFE rezim: pomalejsi, ale stabilni. Po kazde klavese a RETURN cekam na CH $02FC. Posledni radek dostane ENTER automaticky. Zadny RAM inject.'+(skipped?(' Preskoceno '+skipped+' neznamych znaku.'):'') );
+    if(typeTotal===0) log('VLOZIT TXT BUILD2GV_VBXE_R5: nic k vlozeni.');
   }
   function machineChEmpty(){
     try{ if(M && typeof M.chEmpty==='function') return M.chEmpty(); }catch(_e){}
     return true;
   }
   function typeStep(){
-    // BUILD2GU_VBXE_R4: rychlejsi SAFE rezim. Ne blokove FG, porad jednotlive klavesy pres IRQ + CH guard.
+    // BUILD2GV_VBXE_R5: rychlejsi SAFE rezim. Ne blokove FG, porad jednotlive klavesy pres IRQ + CH guard.
     if(!M){ clearTypeQueue('neni machine'); return; }
     if(typeWait>0){ typeWait--; return; }
     if(typeCurrent!==null){
@@ -2454,17 +2505,17 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       var done=typeCurrent; typeCurrent=null;
       if(done.kind==='return'){
         typeLineIndex++;
-        var wait=done.longWait?220:80; // BUILD2GU_VBXE_R4: CLASSIC SAFE dobeh po radku pro BASIC/TBXL
+        var wait=done.longWait?220:80; // BUILD2GV_VBXE_R5: CLASSIC SAFE dobeh po radku pro BASIC/TBXL
         typeWait=wait;
         if(typeLineIndex===1 || typeLineIndex===typeLineTotal || (typeLineIndex%5)===0 || done.longWait){
-          log('VLOZIT TXT BUILD2GU_VBXE_R4: TXT LINE '+typeLineIndex+'/'+typeLineTotal+' '+(done.label||'RETURN')+' odeslan, cekam BASIC/TBXL '+wait+' kroku.');
+          log('VLOZIT TXT BUILD2GV_VBXE_R5: TXT LINE '+typeLineIndex+'/'+typeLineTotal+' '+(done.label||'RETURN')+' odeslan, cekam BASIC/TBXL '+wait+' kroku.');
         }
       } else {
-        typeWait=6; // BUILD2GU_VBXE_R4: CLASSIC SAFE oddech po znaku, stabilita pred rychlosti
+        typeWait=6; // BUILD2GV_VBXE_R5: CLASSIC SAFE oddech po znaku, stabilita pred rychlosti
       }
       if(!typeQ.length && typeSent>=typeTotal && !typeDoneLogged){
         typeDoneLogged=true;
-        log('VLOZIT TXT BUILD2GU_VBXE_R4: QUEUE COMPLETE - vsechny znaky/radky odeslany pres klavesove IRQ, bez RAM injectu. Ted pouzij LIST/RUN nebo tlacitko VLOZIT + RUN.');
+        log('VLOZIT TXT BUILD2GV_VBXE_R5: QUEUE COMPLETE - vsechny znaky/radky odeslany pres klavesove IRQ, bez RAM injectu. Ted pouzij LIST/RUN nebo tlacitko VLOZIT + RUN.');
       }
       return;
     }
@@ -2472,18 +2523,18 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(!machineChEmpty()){
       typeChWait++;
       if(typeChWait===1 || (typeChWait%80)===0){
-        log('VLOZIT TXT BUILD2GU_VBXE_R4: cekam na prazdny CH $02FC pred dalsi klavesou, line '+(typeQ[0]&&typeQ[0].line?typeQ[0].line:'?')+'.');
+        log('VLOZIT TXT BUILD2GV_VBXE_R5: cekam na prazdny CH $02FC pred dalsi klavesou, line '+(typeQ[0]&&typeQ[0].line?typeQ[0].line:'?')+'.');
       }
       return;
     }
     typeChWait=0;
     var it=typeQ.shift();
-    try{ M.keyDown(it.sc&0xFF); }catch(e){ log('VLOZIT TXT BUILD2GU_VBXE_R4: keyDown chyba - '+e.message); clearTypeQueue('chyba keyDown'); return; }
+    try{ M.keyDown(it.sc&0xFF); }catch(e){ log('VLOZIT TXT BUILD2GV_VBXE_R5: keyDown chyba - '+e.message); clearTypeQueue('chyba keyDown'); return; }
     typeCurrent=it; typeHold=2; typeSent++;
     if(it.kind==='return'){
       // RETURN logujeme az po keyUp, aby bylo jasne, ze ho BASIC/TBXL dostal do fronty
     } else if(typeSent===1 || typeSent===typeTotal || (typeSent%40)===0){
-      log('VLOZIT TXT BUILD2GU_VBXE_R4: znak '+typeSent+'/'+typeTotal+' line '+it.line+' scan=$'+((it.sc&255).toString(16).toUpperCase()).padStart(2,'0')+'.');
+      log('VLOZIT TXT BUILD2GV_VBXE_R5: znak '+typeSent+'/'+typeTotal+' line '+it.line+' scan=$'+((it.sc&255).toString(16).toUpperCase()).padStart(2,'0')+'.');
     }
   }
 
@@ -2596,7 +2647,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   // ---------- loader XEX / ATR ----------
   function bootXex(name,u8,keepKb){
     var isVbxe=vbxeScanAndLog(name,u8,'XEX');
-    if(isVbxe) log('VBXE BUILD2GU: $D640 vraci CORE_VERSION $10, zaroven loguju dalsi pristupy na $D640-$D6FF. Stiskni ULOZIT LOG po dalsim zastaveni.');
+    if(isVbxe) log('VBXE BUILD2GV: $D640 vraci CORE_VERSION $10, zaroven loguju dalsi pristupy na $D640-$D6FF. Stiskni ULOZIT LOG po dalsim zastaveni.');
     startAudio();
     M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(audio&&audio.sh)audio.sh.head=-1;
     if(audio) M.onSpeaker=function(level){ audio.st.spkLevel=level?1:-1; audio.st.spkDecay=(audio.ac.sampleRate*0.004)|0; };
@@ -2624,7 +2675,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
   function bootAtr(name,u8,opt){
     var isVbxe=vbxeScanAndLog(name,u8,'ATR');
-    if(isVbxe) log('VBXE BUILD2GU: $D640 vraci CORE_VERSION $10, zaroven loguju dalsi pristupy na $D640-$D6FF. Stiskni ULOZIT LOG po dalsim zastaveni.');
+    if(isVbxe) log('VBXE BUILD2GV: $D640 vraci CORE_VERSION $10, zaroven loguju dalsi pristupy na $D640-$D6FF. Stiskni ULOZIT LOG po dalsim zastaveni.');
     startAudio();
     M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(audio&&audio.sh)audio.sh.head=-1;
     if(audio) M.onSpeaker=function(level){ audio.st.spkLevel=level?1:-1; audio.st.spkDecay=(audio.ac.sampleRate*0.004)|0; };
@@ -3395,7 +3446,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     try{ document.documentElement.style.overflowY='auto'; document.body.style.overflowY='auto'; }catch(_e){}
     var targetY = (/VLOZIT/.test(reason||'')) ? 0 : (txtOverlayLastScrollY||window.scrollY||0);
     try{ window.scrollTo({top:targetY,left:0,behavior:'auto'}); }catch(_e){ try{ window.scrollTo(0,targetY); }catch(__e){} }
-    if(reason) log('TXT RAMECEK BUILD2GU_VBXE_R4: zavreno/odeslano - '+reason+'. Scroll stranky je znovu povolen'+((/VLOZIT/.test(reason||''))?' a obraz je posunuty nahoru k Atari obrazovce.':'.'));
+    if(reason) log('TXT RAMECEK BUILD2GV_VBXE_R5: zavreno/odeslano - '+reason+'. Scroll stranky je znovu povolen'+((/VLOZIT/.test(reason||''))?' a obraz je posunuty nahoru k Atari obrazovce.':'.'));
   }
   function openTxtOverlay(){
     txtOverlayLastScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
@@ -3403,7 +3454,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     if(o) o.style.display='flex';
     try{ document.documentElement.style.overflowY='auto'; document.body.style.overflowY='auto'; }catch(_e){}
     setTimeout(function(){ var ta=document.getElementById('txtIn'); if(ta){ ta.focus(); try{ ta.setSelectionRange(ta.value.length,ta.value.length); }catch(_e){} } },60);
-    log('TXT RAMECEK BUILD2GU_VBXE_R4: otevren. Ctrl+V funguje, overlay ma vlastni scroll. Po VLOZIT se focus uvolni a stranka jde zase posouvat.');
+    log('TXT RAMECEK BUILD2GV_VBXE_R5: otevren. Ctrl+V funguje, overlay ma vlastni scroll. Po VLOZIT se focus uvolni a stranka jde zase posouvat.');
   }
   function openTextPicker(){
     log('TXT: oteviram mobilni Downloads / Vyber BASIC nebo Turbo BASIC textu.');
@@ -3855,34 +3906,34 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     safeTap('dockMenu',function(){ pressAnim('dockMenu',220); try{ window.location.href='../index.html'; }catch(e){ log('MENU chyba: '+e.message); } });
     safeTap('btnHelpPanel',function(){ pressAnim('btnHelpPanel',220); var ov=document.getElementById('helpOverlay'); if(ov){ ov.style.display='flex'; ov.setAttribute('aria-hidden','false'); } });
     function txtToAtari(text,runAfter){
-      if(!text){ log('TXT RAMECEK BUILD2GU_VBXE_R4: prazdny ramecek, nic nevkladam.'); return; }
+      if(!text){ log('TXT RAMECEK BUILD2GV_VBXE_R5: prazdny ramecek, nic nevkladam.'); return; }
       var pre=document.getElementById('chkNew').checked ? 'NEW\x01' : '';
       var body=text.replace(/\r/g,'').replace(/\n*$/,'\n');
       if(runAfter) body+='RUN\x02';
       queueText(pre + body);
-      log('TXT RAMECEK BUILD2GU_VBXE_R4: vlozeno do aktivni fronty '+body.length+' znaku'+(runAfter?' + RUN s delsim RETURN dobehem':'')+'. Sleduj Atari obraz, text se pise pomalejsim CLASSIC SAFE IRQ rezimem; cilem je LIST/RUN bez ztraty radku.');
+      log('TXT RAMECEK BUILD2GV_VBXE_R5: vlozeno do aktivni fronty '+body.length+' znaku'+(runAfter?' + RUN s delsim RETURN dobehem':'')+'. Sleduj Atari obraz, text se pise pomalejsim CLASSIC SAFE IRQ rezimem; cilem je LIST/RUN bez ztraty radku.');
     }
     safeTap('btnTxtGo',function(){
       var ta=document.getElementById('txtIn');
-      log('TXT RAMECEK BUILD2GU_VBXE_R4: stisk VLOZIT DO ATARI, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
+      log('TXT RAMECEK BUILD2GV_VBXE_R5: stisk VLOZIT DO ATARI, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
       closeTxtOverlay('VLOZIT DO ATARI');
       txtToAtari(ta?ta.value:'',false);
     });
     safeTap('btnTxtRun',function(){
       var ta=document.getElementById('txtIn');
-      log('TXT RAMECEK BUILD2GU_VBXE_R4: stisk VLOZIT + RUN, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
+      log('TXT RAMECEK BUILD2GV_VBXE_R5: stisk VLOZIT + RUN, delka='+(ta&&ta.value?ta.value.length:0)+' znaku.');
       closeTxtOverlay('VLOZIT + RUN');
       txtToAtari(ta?ta.value:'',true);
     });
     safeTap('btnTxtClear',function(){
       var ta=document.getElementById('txtIn'); if(ta){ ta.value=''; ta.focus(); }
-      log('TXT RAMECEK BUILD2GU_VBXE_R4: textovy ramecek smazan.');
+      log('TXT RAMECEK BUILD2GV_VBXE_R5: textovy ramecek smazan.');
     });
     safeTap('btnTxtFile',function(){
       closeTxtOverlay('NAHRAJ TXT SOUBOR');
       pickFile('.txt,.lst,.bas',function(n,u8){
         var text=''; for(var i=0;i<u8.length;i++){ var b=u8[i]; if(b===0x9B){text+='\n';continue;} text+=String.fromCharCode(b); } // ATASCII EOL -> \n
-        log('NAHRAJ TXT BUILD2GU_VBXE_R4: '+n+' ('+u8.length+' B) - piseme do BASICu pres klavesove IRQ v bezpecnem rezimu.');
+        log('NAHRAJ TXT BUILD2GV_VBXE_R5: '+n+' ('+u8.length+' B) - piseme do BASICu pres klavesove IRQ v bezpecnem rezimu.');
         txtToAtari(text);
       });
     });
@@ -3933,9 +3984,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2GU_VBXE_R4_ROW2T_ROW3G_ROW4V_STOP pripraven.');
+    log('AtariHelp.eu EMU-10 BUILD2GV_VBXE_R5_ROW2T_ROW3G_ROW4V_STOP pripraven.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
-    log('BUILD2GU_VBXE_R4: mikro-doladeni radku od T / G / V, jemna oprava STOP a jeste drobny joystick trim. Ostatni beze zmen.');
+    log('BUILD2GV_VBXE_R5: mikro-doladeni radku od T / G / V, jemna oprava STOP a jeste drobny joystick trim. Ostatni beze zmen.');
     requestAnimationFrame(tick);
     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
   });
