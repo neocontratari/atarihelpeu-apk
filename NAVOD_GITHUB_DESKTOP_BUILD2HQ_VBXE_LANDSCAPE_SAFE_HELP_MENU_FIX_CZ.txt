@@ -1,0 +1,13 @@
+NAVOD - BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX
+==================================================
+1. Rozbal ZIP overlay do rootu projektu AtariHelp EMU-10.
+2. Potvrd prepsani app/src/main/assets/emu_vbxe/index.html.
+3. V GitHub Desktop zkontroluj zmeny.
+4. Commit doporuceny nazev:
+   BUILD2HQ VBXE landscape safe help menu fix
+5. Buildni APK a testuj podle REPORT_BUILD2HQ_*.txt.
+
+Pozor:
+- BUILD2HL zustava GOLD core baseline.
+- BUILD2HM nepouzivat jako zaklad.
+- BUILD2HQ meni jen UI/help/menu/landscape, ne VBXE core.

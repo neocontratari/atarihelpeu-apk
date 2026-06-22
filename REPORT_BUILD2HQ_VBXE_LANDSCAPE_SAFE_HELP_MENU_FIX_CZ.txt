@@ -1,0 +1,66 @@
+ATARIHELP.EU EMU-10 VBXE - BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX
+======================================================================
+
+ZAKLAD:
+- BUILD2HL GOLD + HN exact UI + HP presne klavesove hitboxy a W3D DOOR/SPACE.
+- BUILD2HM zustava v karantene a neni pouzity jako zaklad.
+
+KODY JSOU ZMENENE:
+- pouze UI / HELP / MENU / landscape joystick ve VBXE vetvi.
+
+BASIC / ALTIRRA TESTOVACI KODY JSOU STEJNE.
+
+ZMENĚNY SOUBOR:
+- app/src/main/assets/emu_vbxe/index.html
+
+NA CO SE NESAHALO:
+- VBXE core z BUILD2HL GOLD
+- BCB21 blitter oprava
+- XDL / blitter / RAM320 / XEX loader
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity / router / CLOAD/CSAVE baseline
+
+CO BUILD2HQ OPRAVUJE:
+1) HELP
+- Spodni HELP tlacitko ve skinu ted otevre HELP/navod.
+- Plovouci/dock HELP take otevre stejny navod.
+- Horni Atari HELP v rade HELP START SELECT OPTION RESET zustava Atari funkcni klavesa, aby se nerozbilo ovladani her/programu.
+
+2) MENU
+- Spodni MENU tlacitko ve skinu ted vraci na uvod aplikace pres ../index.html.
+- Dock MENU dela to same.
+
+3) LANDSCAPE W3D / JOYSTICK + DOOR
+- Opravena chyba z HP: pozdni exact UI pravidlo .screenSlot s !important prebijelo landscape media pravidlo a obraz se po otoceni zmensil do horni casti.
+- BUILD2HQ pridava finalni landscape override az po exact UI skinu.
+- Herni obraz se v landscape drzi cely v pomeru 384:240 jako aspect-fit, bez orezani.
+- Vlevo je joystick, vpravo FIRE + DOOR/SPACE v bocnich pruzich, aby pomocne tlacitko nerozsekalo viditelnou hru.
+
+TEST PLAN:
+1. Nainstaluj overlay pres GitHub Desktop jako vzdy.
+2. Spust VBXE emulator.
+3. V keyboard rezimu zkontroluj par klaves: 7 8 9 0, Return, Caps, Space.
+   - HP hitbox fix musi zustat funkcni.
+4. Stiskni spodni HELP.
+   - Ma se otevrit navod.
+5. Stiskni spodni MENU.
+   - Ma se vratit uvod aplikace.
+6. Spust W3D.
+7. Otoc mobil na sirku.
+   - Musi byt videt cela hra, ne jen horni pruh.
+   - Vlevo joystick, vpravo FIRE a DOOR/SPACE.
+8. W3D:
+   - FIRE = strelba.
+   - DOOR/SPACE = mezernik / otevreni dveri.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX pripraven
+- HELP MANUAL BUILD2HQ: otevren navod k ovladani.
+- MENU BUILD2HQ: navrat na uvod aplikace ../index.html
+- LANDSCAPE DOOR/SPACE stisk
+- LANDSCAPE JOYSTICK mask=...
+
+POKUD TO SELZE:
+- Posli screenshot portrait/landscape.
+- U landscape napis, jestli je obraz orezany nahore/dole, nebo jen maly.
+- U HELP/MENU napis presne ktere tlacitko nefunguje: spodni skin / dock / horni Atari HELP.
