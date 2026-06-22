@@ -1,0 +1,20 @@
+NAVOD - BUILD2HH_VBXE_NO_PROBE_OVER_ATARI
+
+1) Rozbal ZIP overlay do korene projektu tak, aby se prepsal soubor:
+   app/src/main/assets/emu_vbxe/index.html
+
+2) V GitHub Desktop zkontroluj, ze je zmeneny jen tento soubor:
+   app/src/main/assets/emu_vbxe/index.html
+
+3) Commit message:
+   BUILD2HH VBXE no probe over Atari
+
+4) Build/test v Noxu nebo mobilu.
+
+5) Testuj hlavne Popeye proti Altirre:
+   uvod -> score -> title -> vyber -> hra.
+
+6) Pak testuj Wolf3D:
+   start -> intro -> po intru -> joystick/fire.
+
+7) Posli zpet screenshoty a logy.

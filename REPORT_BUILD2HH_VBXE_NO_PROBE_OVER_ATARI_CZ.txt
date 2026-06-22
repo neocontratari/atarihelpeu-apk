@@ -1,0 +1,65 @@
+ATARIHELP.EU EMU-10 - BUILD2HH_VBXE_NO_PROBE_OVER_ATARI
+
+KODY JSOU STEJNE
+BASIC / Altirra porovnavaci kody nejsou menene.
+
+ZMENENY SOUBOR
+app/src/main/assets/emu_vbxe/index.html
+
+NA CO JSEM NESAHAL
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity / router / odkazy / prehravac / equalizer
+- ROMy, BASIC, CLOAD/CSAVE baseline
+- UI skin, klavesnice, kazetak
+
+PROC TENHLE BUILD VZNIKL
+Po testu BUILD2HG Rene porovnal Popeye ve skutecne Altirre s VBXE a v appce:
+- Altirra: Popeye po uvodu prejde na score, titul, vyber a hru.
+- appka: po uvodu se misto normalni Atari obrazovky kresli zluty/teckovy VBXE caj.
+
+Z logu BUILD2HG je videt, ze Popeye jeste pred XDL pousti VBXE blitter a nas renderer pak kresli pred-XDL VRAM PROBE. To byla diagnostika, ne finalni XDL renderer. U Popeye ale tato diagnostika prekryje normalni ANTIC/GTIA obraz.
+
+CO JE NOVE
+- XDL renderer, ZOOM oprava, source snapshot, CARRY_OVADR a BIG_BLIT z BUILD2HG zustavaji.
+- Pred-XDL VRAM probe uz nekresli pres aktivni Atari/ANTIC framebuffer.
+- Pokud je Atari framebuffer aktivni, probe se preskoci a v logu bude:
+  VBXE VRAM PROBE SKIP BUILD2HH
+- Pokud je Atari framebuffer prazdny, probe se jeste smi pouzit jako diagnostika a v logu bude:
+  VBXE VRAM PROBE ALLOW BUILD2HH
+- Jakmile je XDL zapnute nebo validni, probe je porad blokovan jako v predchozich buildech.
+
+CO TO NENI
+- Neni to screen-paint.
+- Neni to RAM inject.
+- Neni to hack pro Popeye nebo Wolf3D.
+- Je to obecne pravidlo: diagnosticky VBXE VRAM probe nesmi prekryt realny Atari/ANTIC obraz.
+
+TEST PLAN
+1) Nahraj Popeye VBXE XEX.
+2) Porovnej postup s Altirrou:
+   - uvodni text
+   - score obrazovka
+   - Popeye titul
+   - vyber START/FIRE
+   - zacatek hry
+3) Ocekavany posun: zluty/teckovy caj by uz nemel prelepit score/title/game obrazovky, pokud je kresli normalni Atari framebuffer.
+4) Nahraj Wolf3D ATR.
+   - zacatek
+   - intro
+   - stav po intru
+   - joystick/FIRE
+5) U Wolf3D muze byt stale spatne XDL/blitter slozeni. Hlavni cil HH je zastavit pred-XDL probe pres normalni Atari obraz a ziskat cisty rozdil v logu.
+
+LOG MARKERY KE KONTROLE
+- AtariHelp.eu EMU-10 BUILD2HH_VBXE_NO_PROBE_OVER_ATARI pripraven.
+- VBXE VRAM PROBE SKIP BUILD2HH
+- VBXE VRAM PROBE ALLOW BUILD2HH
+- VBXE XDL RENDER BUILD2HH
+- VBXE BLITTER BIG_EXEC BUILD2HH
+- VBXE BLITTER GUARD_SKIP BUILD2HH
+
+CO POSLAT ZPET
+- screenshot Popeye po uvodu / score / titul / hra
+- screenshot Wolf3D po intru
+- logy z Popeye a Wolf3D
+- slovne: lepsi / horsi / stejne
