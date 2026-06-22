@@ -1,0 +1,60 @@
+ATARIHELP.EU EMU-10
+BUILD2HA_VBXE_RESTORE_D641_DETECT
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emulatoru
+- grafika klavesnice/joystick/kazetak
+
+PROC TAHLE OPRAVA:
+Tvuj GZ log ukazal jasne:
+- Popeye precte $D640 = $10
+- hned potom precte $D641 = $09
+- a uz nepokracuje na MEMAC / blitter / XDL
+To znamena, ze moje zmena $D641 na minor revizi $09 rozbila detekci hry.
+
+V predchozim funkcnejsim GY/GX behu bylo $D641 = $FF a hra pokracovala az na:
+- MEMAC $D65E/$D65F
+- blitter
+- XDL
+- aspon rozbity obraz / Wolf3D logo
+
+CO JE OPRAVENO:
+- $D641 vracim zpet na $FF
+- ostatni opravy z GZ nechavam:
+  - VBXE RGB palety
+  - oprava HR sirky
+  - blitter constant fill
+  - omezeni XDL log spamu
+
+DULEZITE:
+Tohle neni nova velka emulace.
+Je to detekcni rollback, aby se hry zase dostaly dal nez jen "VBXE nevi".
+
+TEST PLAN:
+1. Spust novy VBXE emulator.
+2. Nejdriv nahraj Popeye.
+3. Sleduj v logu:
+   - VBXE TRACE R $D640 = $10
+   - VBXE TRACE R $D641 = $FF
+   - potom musi prijit MEMAC nebo blitter:
+     VBXE LEGACY MEMAC_CONTROL
+     VBXE BLITTER FAST
+     VBXE XDL PARSE
+4. Pak zkus wolf3d.atr.
+5. Sleduj, jestli se vrati aspon logo/rozbity obraz jako pred GZ.
+6. Uloz log a posli.
+
+KDYZ TO POBEZI DAL:
+Dalsi krok bude az potom resit barvy/obraz.
+KDYZ TO ZASE ZUSTANE NA DETEKCI:
+Pak musime upravit jeste konkretni odpovedi ctenych registru po $D641 podle logu, ne od oka.
