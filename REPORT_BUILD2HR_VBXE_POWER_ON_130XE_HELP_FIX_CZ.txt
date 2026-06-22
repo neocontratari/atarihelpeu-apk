@@ -1,0 +1,61 @@
+ATARIHELP.EU EMU-10 VBXE - BUILD2HR_VBXE_POWER_ON_130XE_HELP_FIX
+================================================================
+
+UCEL BUILDU
+- Bezpecny UI build po BUILD2HQ.
+- ZACHOVAT BUILD2HL GOLD VBXE CORE.
+- Presunout POWER BASIC z neexistujici/nalepene klavesy na napis 130XE podle pozadavku Reneho.
+- Doplnit HELP navod, kde je POWER.
+
+ZAKLAD
+- BUILD2HL GOLD: VBXE BCB21, RAM320, XDL/blitter baseline zustava.
+- BUILD2HN/HQ exact UI a HP hitboxy zustavaji.
+- BUILD2HM je porad karantena a neni pouzity.
+
+KODY JSOU ZMENENE
+- Menil se pouze UI/skin/help ve VBXE vetvi.
+- BASIC / Altirra porovnavaci kody JSOU STEJNE.
+
+ZMENENY SOUBOR
+- app/src/main/assets/emu_vbxe/index.html
+
+CO JE NOVE
+1) POWER BASIC neni nalepena klavesa.
+   - Neviditelny hitbox je na stredovem napisu 130XE nad klavesnici/joystickem.
+   - Klepnuti na 130XE provede cold start do BASICu.
+
+2) Jemna POWER LED.
+   - Mala zelena LED vedle napisu 130XE.
+   - Jen decentni indikator napajeni, aby nerozbila design.
+   - V landscape hernim rezimu se skryva, aby neprekryvala hru.
+
+3) HELP manual doplnen.
+   - Vysvetluje, ze POWER BASIC je na napisu 130XE.
+   - Vysvetluje zelenou LED.
+
+CO SE NEMENILO
+- VBXE core / BCB21 / blitter / XDL / RAM320 / loader.
+- Joystick landscape oprava z HQ.
+- HP klavesnicove hitboxy.
+- MainActivity, router, normalni emulator emu/index.html.
+
+TEST PLAN
+1. Spust VBXE emulator v portretu.
+2. Klepni na napis 130XE nad klavesnici/joystickem.
+   Ocekavani: cold start / BASIC READY.
+3. Zkontroluj, ze mala zelena LED u 130XE nerusi design.
+4. Stiskni spodini HELP.
+   Ocekavani: v navodu je popsano, ze POWER je na 130XE.
+5. Stiskni MENU.
+   Ocekavani: navrat na uvod aplikace porad funguje.
+6. Otoč mobil do landscape ve W3D.
+   Ocekavani: cela hra zustane videt, LED/power UI neprekryva hru, FIRE a DOOR SPACE zustavaji.
+7. Kontrolne zkus klavesy 7 8 9 0.
+   Ocekavani: hitboxy zustaly z HP a porad sedi.
+
+LOG MARKER
+- AtariHelp.eu EMU-10 BUILD2HR_VBXE_POWER_ON_130XE_HELP_FIX pripraven
+
+POZNAMKA PRO DALSI CHAT
+- BUILD2HL zustava zlaty VBXE zachranny bod.
+- BUILD2HR je jen UI/help/power umisteni nad HL/HQ, neni to VBXE core oprava.

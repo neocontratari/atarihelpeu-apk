@@ -1,0 +1,8 @@
+NAVOD - BUILD2HR VBXE POWER NA 130XE
+===================================
+1) Rozbal ZIP.
+2) Zkopiruj slozku app pres projekt v GitHub Desktopu.
+3) Potvrd prepsani souboru.
+4) V GitHub Desktop zkontroluj zmeny.
+5) Commit napriklad: BUILD2HR VBXE power on 130XE help fix
+6) Spust aplikaci a testuj podle REPORT_BUILD2HR...
