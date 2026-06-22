@@ -1,0 +1,64 @@
+ATARIHELP.EU EMU-10 - BUILD2HG_VBXE_XDL_CARRY_BIG_BLIT
+
+KODY JSOU STEJNE
+BASIC / Altirra testovaci kody nejsou zmenene.
+
+ZMENENY SOUBOR:
+app/src/main/assets/emu_vbxe/index.html
+
+NA CO JSEM NESAHAL:
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity / router / odkazy / player / equalizer
+- ROMy, BASIC, CLOAD/CSAVE baseline
+- UI skin, klavesnice, kazetak mimo textove build logy v indexu
+
+PROC BUILD2HG:
+Po HF testu uzivatel potvrdil, ze vizualne nevidi zlepseni. Z logu HF je ale jasne:
+- overlay se opravdu prepsal: startovni marker BUILD2HF byl v logu
+- source snapshot se opravdu spustil: VBXE BLITTER OVERLAP SOURCE SNAPSHOT BUILD2HF
+- problem tedy neni v tom, ze by GitHub/Desktop neprepsal index.html nebo ze by bylo potreba rucne mazat stare soubory
+
+NOVA OPRAVA V HG:
+1) XDL CARRY_OVADR
+   HF prilis tvrde drzel posledni platnou XDL, kdyz nova XDL mela viditelny record bez OVADR.
+   Podle fx.pdf se XDL chova stavove: bity jako OVADR/ATT/CHBASE meni registr-stav a kdyz nejsou zapsane, nemusi to automaticky znamenat novy uplny obraz.
+   HG proto nese posledni platny adresni/atributovy stav a pouzije ho pro viditelny XDL record bez OVADR.
+
+2) Velke Popeye blity
+   HF skipoval nektere velke VBXE blitter BCB operace nad 1M operaci.
+   HG zvysuje tvrdou brzdu na 4M operaci a loguje BIG_EXEC, aby Popeye nedostalo rozbite/nekompletni VBXE data jen kvuli guardu.
+
+3) ZOOM oprava z HE zustava.
+4) Source snapshot z HF zustava.
+5) Zadny screen-paint, zadny RAM inject, zadny herni hack.
+
+HLEDEJ V LOGU:
+- AtariHelp.eu EMU-10 BUILD2HG_VBXE_XDL_CARRY_BIG_BLIT pripraven.
+- VBXE BLITTER OVERLAP SOURCE SNAPSHOT BUILD2HG
+- VBXE XDL CARRY_OVADR BUILD2HG
+- CARRY_OVADR u XDL REC radku
+- VBXE BLITTER BIG_EXEC BUILD2HG
+- VBXE BLITTER GUARD_SKIP BUILD2HG jen pokud je blit opravdu extremni nad 4M operaci
+
+TEST PLAN:
+1) Nainstalovat/prekryt ZIP pres GitHub Desktop stejne jako predchozi overlaye.
+2) Build APK / spustit v Nox.
+3) Otevrit VBXE vetev.
+4) Test Wolf3D ATR:
+   - zacatek
+   - intro/logo
+   - stav po intru
+   - joystick/FIRE
+   Ocekavani: jestli XDL carry pomaha, mela by se zmenit horni tretina/5 obrazovek nebo zmizet HOLD_LAST_GOOD spam. Pokud obraz zustane stejny, poslat log.
+5) Test Popeye XEX:
+   - spustit
+   - sledovat, zda se objevi BIG_EXEC a zda zmizi/sklesne GUARD_SKIP
+   - sledovat CPU JAM
+
+CO POSLAT ZPET PRI FAILU:
+- screenshot Wolf3D po intru
+- screenshot Wolf3D herni obraz / kase
+- screenshot Popeye
+- log po Wolf3D
+- log po Popeye
+- kratce napsat: lepsi / horsi / stejny

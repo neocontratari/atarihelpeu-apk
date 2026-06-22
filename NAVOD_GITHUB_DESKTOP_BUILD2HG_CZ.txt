@@ -1,0 +1,10 @@
+NAVOD - BUILD2HG_VBXE_XDL_CARRY_BIG_BLIT
+
+1) Rozbal ZIP.
+2) Obsah ZIPu zkopiruj do korene projektu AtariHelp EMU-10.
+3) Potvrd prepsani souboru.
+4) V GitHub Desktop zkontroluj zmenu:
+   app/src/main/assets/emu_vbxe/index.html
+5) Commit napriklad:
+   BUILD2HG VBXE XDL carry + big blit guard
+6) Buildni APK a otestuj Wolf3D + Popeye.
