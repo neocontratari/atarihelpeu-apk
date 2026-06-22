@@ -1,0 +1,60 @@
+ATARIHELP.EU EMU-10 - BUILD2HF_VBXE_BLITTER_OVERLAP_SOURCE_SAFE
+
+KODY JSOU STEJNE
+BASIC / Altirra porovnavaci kody nebyly meneny.
+
+ZMENENY SOUBOR:
+app/src/main/assets/emu_vbxe/index.html
+
+NA CO JSEM NESAHAL:
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity / router / odkazy / player / equalizer
+- ROMy, BASIC, CLOAD/CSAVE baseline
+- UI skin, klavesnice, joystick, kazetak mimo textovy build log ve VBXE indexu
+
+PROC BUILD2HF:
+BUILD2HE opravilo dekodovani blt_zoom a log potvrdil spravne hodnoty, napr. zoom=$29 -> zx=2 zy=3 intlv=1.
+Vizuálně ale Wolf3D zustal bez pouzitelne zmeny. V logu je dalsi konkretni problem: Wolf3D dela blity se src=$00000 a dst=$00000 spolecne se ZOOM+INTLVE. Pri primem cteni a zapisu z/do stejne VRAM oblasti si vystup prepisuje budouci zdrojove bajty. To presne sedi na obraz typu "vice obrazovek v jedne" a barevny caj.
+
+CO BUILD2HF MENI:
+- ZOOM bity z BUILD2HE zustavaji zachovane: ZOOMX=b0-b2, INTLVE=b3, ZOOMY=b4-b6.
+- Pro ne-konstantni blit se pred zapisem udela snapshot zdrojovych radku z realne VBXE VRAM.
+- Zapisy do cile potom pouziji uz fixovana zdrojova data, aby src/dst overlap neznicil vstupni data behem jednoho blitu.
+- Pridany log marker: VBXE BLITTER OVERLAP SOURCE SNAPSHOT BUILD2HF.
+- Zadny screen-paint, zadny RAM inject, zadny hack na Wolf3D/Popeye.
+
+CO TO NENI:
+- Neni to hotova emulace celeho VBXE FX core.
+- Neni to garance, ze Wolf3D/Popeye budou hned hratelne.
+- Je to dalsi cilena oprava podle logu, ne odhad barvicky.
+
+TEST PLAN:
+1) Nahraj ZIP pres GitHub Desktop jako overlay.
+2) Spust APK v NOXu.
+3) Otevri VBXE vetev/emulator jako doposud.
+4) Test Wolf3D:
+   - nahraj wolf3d.atr
+   - sleduj zacatek, intro, prechod po intru, herni obraz
+   - zkus joystick a FIRE
+   - uloz log
+5) Test Popeye:
+   - nahraj Popeye VBXE XEX
+   - sleduj jestli se zmeni caj / jestli prestane CPU JAM / jestli je zvuk
+   - uloz log
+
+HLEDEJ V LOGU:
+- AtariHelp.eu EMU-10 BUILD2HF_VBXE_BLITTER_OVERLAP_SOURCE_SAFE pripraven.
+- VBXE BLITTER FEATURE BUILD2HF
+- VBXE BLITTER OVERLAP SOURCE SNAPSHOT BUILD2HF
+- zoom=$29 zx=2 zy=3 intlv=1
+- VBXE XDL RENDER BUILD2HF
+- pripadne GUARD_SKIP / CPU JAM, pokud zustanou
+
+CO POSLAT ZPET:
+- screenshot Wolf3D zacatek
+- screenshot Wolf3D intro
+- screenshot Wolf3D po intru / herni obraz
+- screenshot Popeye po nabehnuti
+- log Wolf3D
+- log Popeye
+- slovne: lepsi / horsi / stejne

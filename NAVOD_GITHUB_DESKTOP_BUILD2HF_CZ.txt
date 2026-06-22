@@ -1,0 +1,8 @@
+NAVOD PRO RENEHO - BUILD2HF
+
+1) ZIP rozbalit do korene projektu AtariHelp EMU-10.
+2) Potvrdit prepsani souboru app/src/main/assets/emu_vbxe/index.html.
+3) V GitHub Desktop zkontrolovat zmenu jen v emu_vbxe/index.html plus tyto TXT soubory mimo projekt, pokud je kopirujes jen jako dokumentaci.
+4) Commit napriklad:
+   BUILD2HF VBXE blitter overlap source snapshot
+5) Build APK a test ve stejnem postupu jako BUILD2HE.
