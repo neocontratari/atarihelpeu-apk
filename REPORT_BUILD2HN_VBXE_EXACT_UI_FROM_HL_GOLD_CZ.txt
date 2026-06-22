@@ -1,0 +1,67 @@
+ATARIHELP.EU EMU-10 VBXE – BUILD2HN_VBXE_EXACT_UI_FROM_HL_GOLD
+====================================================
+
+ZAKLAD: BUILD2HL_VBXE_BCB21_BLITTER_CORE = GOLD baseline.
+BUILD2HM je porad karantena a NENI pouzit jako zaklad.
+
+KODY JSOU STEJNE
+BASIC / Altirra porovnavaci kody jsem nemenil.
+
+CO SE MENI:
+- pouze VBXE HTML UI v app/src/main/assets/emu_vbxe/index.html
+- pridane PNG skiny do app/src/main/assets/design/:
+  - vbxe_130xe_keyboard_exact.png
+  - vbxe_130xe_joystick_exact.png
+  - nap_logo_original.png
+
+CO SE NEMENI:
+- VBXE core oprava BCB21 z BUILD2HL zustava
+- blitter / XDL / RAM320 / loader se nemenily zamerne
+- normalni emulator app/src/main/assets/emu/index.html se nemeni
+- MainActivity/router/link/audio/CLOAD baseline se nemeni
+
+HLAVNI CIL:
+Prevest do emu_vbxe presne Reneho rozhrani VBXE 130XE 1:1 podle PNG 941x1672, ale zachovat funkcnost BUILD2HL.
+
+IMPLEMENTACE:
+- skinImg prepina mezi:
+  ../design/vbxe_130xe_keyboard_exact.png
+  ../design/vbxe_130xe_joystick_exact.png
+- stage zustava 941/1672
+- live canvas monitor slot podle dodane Java mapy: x=98 y=175 w=744 h=505
+- top prepinac KEYBOARD/JOYSTICK ma dva samostatne hitboxy
+- spodnich 8 tlacitek je primo na skinu: NET HRY, XEX MOBIL, ATR DISK, TURBO BASIC, BASIC/TBXL TXT, LOG/CHYBA, HELP, MENU
+- OSK hitboxy jsou podle dodane presne mapy, ne podle stareho skinu
+- actionDock pod aplikaci je skryt, aby nebyly duplicitni tlacitka mimo skin
+
+DULEZITE:
+Toto NENI nova VBXE graficka oprava. Je to UI skin build z HL gold baseline.
+Pokud by se chovala hur hra HL/W3D, vratit se na GOLD RESCUE BUILD2HL a chyba je v UI vrstve/hitboxech, ne v core.
+
+TEST PLAN:
+1) Nainstaluj overlay pres GitHub Desktop jako obvykle.
+2) Spust emu_vbxe.
+3) Otestuj bez hry:
+   - jestli sedí monitor do CRT otvoru
+   - jestli KEYBOARD/JOYSTICK prepina spravny skin
+   - jestli klavesnice/joystick neni zdvojena pres obraz
+4) Otestuj tlacitka:
+   - START / SELECT / OPTION / RESET
+   - XEX MOBIL
+   - ATR DISK
+   - BASIC/TBXL TXT
+   - LOG/CHYBA
+   - HELP
+   - MENU
+5) Otestuj GOLD hry/testy jen kontrolne:
+   - DACTest: pruhy musi zustat
+   - hl_vbxe / Heartlight: hra musi porad nabehnout
+   - W3D: nesmi se zhorsit oproti BUILD2HL
+
+CO POSLAT ZPET PRI CHYBE:
+- screenshot cele aplikace
+- log pres LOG/CHYBA
+- napsat: "UI chyba" nebo "core/grafika se zhorsila"
+
+BUILD MARKER V LOGU:
+AtariHelp.eu EMU-10 BUILD2HN_VBXE_EXACT_UI_FROM_HL_GOLD pripraven

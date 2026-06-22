@@ -1,0 +1,26 @@
+HITBOXY JSOU DELANE PODLE PUvodniho PNG: 941 x 1672 px
+=====================================================
+
+Monitor live slot:
+x=98 y=175 w=744 h=505
+
+Top toggle:
+KEYBOARD x=585 y=39 w=140 h=58
+JOYSTICK x=725 y=39 w=150 h=58
+
+Top Atari buttons:
+HELP   x=320 y=748 w=112 h=62
+START  x=433 y=748 w=112 h=62
+SELECT x=545 y=748 w=112 h=62
+OPTION x=657 y=748 w=112 h=62
+RESET  x=769 y=748 w=112 h=62
+
+Bottom service buttons:
+y=1537 h=78, x start=42, w=100, gap=11
+NET_HRY, XEX_MOBIL, ATR_DISK, TURBO_BASIC, BASIC_TBXL_TXT, LOG_CHYBA, HELP_BOTTOM, MENU
+
+Klavesnice:
+Vbxe130xeExactSkinScreen.java -> addKeyboardZones()
+
+Joystick:
+Vbxe130xeExactSkinScreen.java -> addJoystickZones()

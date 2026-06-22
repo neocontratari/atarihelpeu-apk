@@ -1,0 +1,20 @@
+PRESNA MAPA KLAVESNICE ATARI 130XE - NESAHAT NA ROZLOZENI
+=========================================================
+
+HORNI RADA:
+[HELP] [START] [SELECT] [OPTION] [RESET]
+
+HLAVNI KLAVESNICE:
+[Esc] [!1] ["2] [#3] [$4] [%5] [&6] ['7] [@8] [(9] [)0] [Clear<] [Insert>] [Delete/BkSp] [Break]
+
+[Clr/Set Tab] [Q] [W] [E] [R] [T] [Y] [U] [I] [O] [P] [↑-] [↓=] [Return]
+
+[Control] [A] [S] [D] [F] [G] [H] [J] [K] [L] [:;] [←+] [→*] [Caps]
+
+[Shift] [Z] [X] [C] [V] [B] [N] [M] [[,] [] .] [?/] [Shift] [Fuji/Inverse]
+
+[SPACE BAR]
+
+POZNAMKA:
+Text klaves by idealne nemel generovat AI. Pro final app je bezpecnejsi kreslit klavesy z pevne mapy,
+nebo pouzit tento schvaleny PNG skin a nad nej hitboxy.

@@ -1,0 +1,11 @@
+NAVOD GITHUB DESKTOP – BUILD2HN VBXE EXACT UI
+============================================
+
+1. ZIP rozbalit do korene projektu tak, aby se slozky app/src/... prekryly.
+2. GitHub Desktop ukaze zmeny hlavne:
+   - app/src/main/assets/emu_vbxe/index.html
+   - app/src/main/assets/design/vbxe_130xe_keyboard_exact.png
+   - app/src/main/assets/design/vbxe_130xe_joystick_exact.png
+3. Commit doporuceny text:
+   BUILD2HN VBXE exact UI from HL gold baseline
+4. Kdyz se neco rozbije, vrat se na zachranny GOLD balicek BUILD2HL.

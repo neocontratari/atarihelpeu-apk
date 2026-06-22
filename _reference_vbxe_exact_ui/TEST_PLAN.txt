@@ -1,0 +1,34 @@
+TEST PLAN - VBXE 130XE EXACT JAVA OVERLAY
+========================================
+
+BUILD:
+VBXE_130XE_EXACT_JAVA_OVERLAY
+
+CO TESTOVAT:
+1) Spustit aplikaci.
+2) Zobrazit showVbxeExactUi().
+3) Overit, ze vidis stejny vzhled jako PNG navrh.
+4) Prepnout KEYBOARD / JOYSTICK.
+5) V KEYBOARD modu musi byt videt klavesnice, joystick tam NESMI byt.
+6) V JOYSTICK modu musi byt videt joystick misto klavesnice.
+7) Kazetak zustava dole v obou modech.
+8) Tlacitka NET HRY, XEX MOBIL, ATR DISK, TURBO BASIC, BASIC/TBXL TXT, LOG/CHYBA, HELP, MENU zustavaji pod kazetakem.
+9) Monitor musi zustat zivy emulatorovy monitor, ne mrtvy obrazek.
+10) Zmacknout START/SELECT/OPTION/RESET a zkontrolovat logy / reakci.
+11) V KEYBOARD modu zkusit par klaves: Q, W, A, Return, Shift, Fuji/Inverse.
+12) V JOYSTICK modu zkusit smer nahoru/dolu/vlevo/vpravo a FIRE.
+
+OCEKAVANY VYSLEDEK:
+- Vzhled 1:1 podle PNG.
+- Prepnutí KEYBOARD/JOYSTICK funguje okamzite.
+- Joystick neni pod klavesnici.
+- Klavesnice nerozhazena.
+- Monitor funguje jako live emulator.
+
+CO POSLAT PRI CHYBE:
+- Screenshot cele obrazovky.
+- Log z aplikace.
+- Napsat, jestli chyba je ve vzhledu, klikani, monitoru, nebo prepnutí KEYBOARD/JOYSTICK.
+
+KODY JSOU ZMENENE: UI/skin/hitboxy.
+BASIC / Altirra kody: KODY JSOU STEJNE.

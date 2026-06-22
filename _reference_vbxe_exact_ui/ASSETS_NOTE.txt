@@ -1,0 +1,11 @@
+ASSETS
+======
+
+Tyto dva PNG soubory jsou presny vzhled:
+- vbxe_130xe_keyboard_exact.png
+- vbxe_130xe_joystick_exact.png
+
+V Android projektu patri do:
+app/src/main/res/drawable-nodpi/
+
+NE do drawable s automatickym density scalem, jinak muze Android obrazky premerit.
