@@ -1,0 +1,74 @@
+ATARIHELP.EU EMU-10
+BUILD2GX_VBXE_FAST_BLITTER_VRAM_PROBE
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emulatoru
+- grafika klavesnice/joystick/kazetak
+
+CO UKAZAL TVUJ TEST BUILD2GW:
+- zvuk se castecne vratil, ale neni spravny
+- obraz je porad cerna obrazovka
+- log potvrzuje proc:
+  BUILD2GW chrani vykon pres SAFE_SKIP, ale tim zahazuje velke blitter bloky:
+  VBXE BLITTER SAFE_SKIP opBytes=66048
+  VBXE BLITTER SAFE_SKIP opBytes=97440
+- tim padem VBXE VRAM neni kompletne vyplnena a neni co kreslit
+- log take stale zahlcuje caste prepinani $D65D=$99/$00
+
+CO JE OPRAVENO V BUILD2GX:
+1) SAFE_SKIP je pryc pro normalni velke blity
+- velke BCB uz nezahazuju
+- blitter ma rychlejsi cesty pro copy/fill
+- porad je tam guard jen pro nesmyslne rozmery
+
+2) MEMAC $D65D log spam je tvrdě omezen
+- prvnich par prepnuti se zaloguje
+- potom jen souhrnne po 1024
+- cilem je nezabijet zvuk logovanim
+
+3) Prvni zivy VBXE VRAM probe renderer
+- neni to fake obraz
+- cte realna data z VBXE VRAM, ktera hra naplnila pres MEMAC/blitter
+- jeste to neni finalni XDL/palette renderer
+- muze vypadat barevne spatne nebo rozpadle, ale uz by nemela zustat jen cista cerna
+
+DULEZITE:
+Tohle porad neni hotovy VBXE.
+Jeste chybi:
+- XDL parser
+- spravne VBXE palety
+- overlay/attribute priority renderer
+- presne casovani blitteru
+
+TEST PLAN:
+1. Spust novy VBXE emulator.
+2. Nahraj Popeye.
+3. Na instrukcni obrazovce stiskni klavesu/FIRE.
+4. Sleduj:
+   - jestli po loadingu neni jen cerna obrazovka
+   - jestli se objevi aspon ziva data / graficky bordel z VBXE VRAM
+   - jestli zvuk neni horsi nez v GW
+   - jestli appka nezatuhne
+5. Uloz log a posli.
+
+V logu hledat:
+- VBXE BLITTER FAST
+- VBXE BLITTER FAST DONE
+- VBXE VRAM PROBE RENDER
+- uz by nemelo byt hromadne SAFE_SKIP
+- uz by nemel byt tisicovy spam D65D v kazdem radku
+
+DALSI KROK:
+BUILD2GY_VBXE_XDL_PALETTE_TRACE
+- jakmile uvidime, ze VRAM data existuji a zvuk prezije, zacneme tahat XDL/palety
+- pak se z probe rendereru udela skutecny VBXE obraz
