@@ -1,0 +1,59 @@
+ATARIHELP.EU EMU-10 VBXE - BUILD2HV_VBXE_NET_FASTLOAD_SAFE
+
+ZAKLAD:
+- BUILD2HL GOLD VBXE core / BCB21 / XDL / blitter / RAM320.
+- HN/HQ/HR/HU UI linie: exact skin, HP hitboxy, HELP/MENU, POWER na 130XE, HQ safe landscape.
+- BUILD2HM stale NEPOUZIT / karantena.
+- BUILD2HS/HT ghost/fullscreen pokusy NEPOUZITY.
+
+KODY JSOU ZMENENE:
+- pouze VBXE vetev app/src/main/assets/emu_vbxe/index.html.
+- BASIC / Altirra testovaci kody JSOU STEJNE.
+
+ZMENY:
+1) NET HRY oprava:
+- Spodni skin tlacitko NET HRY (#btnNetGames) bylo fyzicky v UI, ale nebylo pripojene na akci.
+- Ted vola openGamesDownload().
+- URL je presne: https://atarihelp.eu/?page_id=207
+- Dock NET HRY zustava take pripojeny.
+
+2) XEX/OBX loading speed:
+- Pri XEX/OBX loaderu bezi docasny BUILD2HV turbo rezim.
+- Turbo zrychluje jen emulovany SIO XEX loader, ne kazetu/CLOAD a ne bezici hru.
+- Po EOF/RUNAD headeru se automaticky vraci normalni rychlost.
+- SIO XEX odpovedi maji zkracene mezery/per-byte timing jen pro XEX loader.
+- VBXE IO trace uz nespamuje kazdych 1024 pristupu; to na mobilu zbytecne brzdilo W3D/HL.
+
+3) Landscape:
+- Zamerne nechany bezpecny HQ/HR/HU layout.
+- Nevracim ghost fullscreen z HT, protoze rozbil polohu joysticku/obrazu.
+- Cele-fullscreen ovladani vyresit az samostatne, bez rizika pro GOLD.
+
+NEMENENO:
+- VBXE core BUILD2HL: BCB21, blitter, XDL, RAM320, loader logika segmentu.
+- Normalni emulator app/src/main/assets/emu/index.html.
+- MainActivity/router.
+- ROMy, BASIC, CLOAD/CSAVE baseline.
+
+TEST PLAN:
+1) NET HRY:
+- Stisknout spodni NET HRY.
+- Ocekavani: otevrit https://atarihelp.eu/?page_id=207.
+- Z webu zkusit XEX/ZIP/ATR navrat do emulatoru.
+
+2) W3D loading:
+- Spustit W3D stejnou cestou jako predtim.
+- Ocekavani: loader je citelne rychlejsi nez cca 5 minut.
+- V logu hledat:
+  XEX FAST LOAD BUILD2HV: zrychluji jen emulovany SIO loader
+  XEX FAST LOAD BUILD2HV: loader skoncil, rychlost emulatoru je zpet normalni
+
+3) Bezpecna kontrola:
+- Hitboxy klavesnice 7 8 9 0 porad musi sedet.
+- HELP/MENU/POWER na 130XE porad funguji.
+- Landscape joystick zustava HQ safe: obraz bez orezu, joystick vlevo, FIRE + DOOR/SPACE vpravo.
+
+KDYZ SELZE:
+- Pokud NET HRY neotevre web, poslat screenshot + log po stisku NET HRY.
+- Pokud W3D stale nacita 5 minut, poslat log z nacitani a cas od spusteni po intro.
+- Pokud se hra po nacitani chova zrychlene, poslat log s markerem XEX FAST LOAD.

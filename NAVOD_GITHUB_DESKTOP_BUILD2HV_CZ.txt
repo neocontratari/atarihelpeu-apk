@@ -1,0 +1,15 @@
+NAVOD - BUILD2HV_VBXE_NET_FASTLOAD_SAFE
+
+1) Zavri Android Studio / emulator, pokud drzi soubory.
+2) Rozbal ZIP overlay do korene projektu AtariHelp EMU-10 tak, aby se prepsalo:
+   app/src/main/assets/emu_vbxe/index.html
+3) V GitHub Desktop zkontroluj zmeny.
+4) Commit zprava:
+   BUILD2HV VBXE NET FASTLOAD SAFE
+5) Buildni APK / spust v NOX nebo na mobilu.
+
+DULEZITE:
+- BUILD2HV vychazi z BUILD2HL GOLD.
+- BUILD2HM neni pouzit.
+- Normalni emu/index.html se nemeni.
+- Pokud se neco pokazi, vrat se na GOLD RESCUE BUILD2HL nebo HU safe UI.
