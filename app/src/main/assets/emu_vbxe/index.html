@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2HO</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -218,8 +218,8 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnPower:before,#btnPower:after,#btnSelfTest:before,#btnSelfTest:after,#btnJoy:before,#btnJoy:after{content:none!important;display:none!important;}
 
 
-/* BUILD2HN_VBXE_EXACT_UI_FROM_HL_GOLD: presny 941x1672 VBXE 130XE skin podle Reneho PNG.
-   Core / VBXE BCB21 z BUILD2HL se NEMENI. Jen skin, canvas slot a hitboxy. */
+/* BUILD2HO_VBXE_KEY_HITBOX_CENTER_FIX: presny 941x1672 VBXE 130XE skin podle Reneho PNG.
+   Core / VBXE BCB21 z BUILD2HL se NEMENI. Jen UI skin + centrovane hitboxy klavesnice. */
 .stage{width:min(100vw,941px)!important;aspect-ratio:941/1672!important;background:#050608!important;}
 .screenSlot{left:10.4145%!important;top:10.4665%!important;width:79.0648%!important;height:30.2033%!important;border-radius:5.5%/8.5%!important;background:#0047db!important;box-shadow:inset 0 0 42px rgba(0,0,0,.42)!important;}
 #led{display:none!important;}
@@ -3030,14 +3030,15 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   // Mezernik ma vlastni presny stredovy obdelnik.
   addKeyRect(4,0,188,1097,518,54);
 
-  // BUILD2HN_VBXE_EXACT_UI_FROM_HL_GOLD: presna hitbox mapa podle dodaneho Java/PNG overlay 941x1672.
-  // Pouze dotykove zony klaves, emulator core a scan kody zustavaji z BUILD2HL.
+  // BUILD2HO_VBXE_KEY_HITBOX_CENTER_FIX: vychazi z BUILD2HN, ale centrovane dotykove zony klaves jsou
+  // zmensene a posazene do stredu fyzickych klaves, aby se pri tuknuti na stred netrefovala sousedni klavesa.
+  // Pouze hitboxy klavesnice; VBXE core, BCB21, XDL, blitter a scan kody zustavaji z BUILD2HL/HN.
   KEY_RECTS={};
-  addLinearRow(0,886,62,[38,105,164,224,284,344,404,464,524,584,644,704,764,824,884],[66,58,58,58,58,58,58,58,58,58,58,58,58,58,50]);
-  addLinearRow(1,950,62,[38,136,196,256,316,376,436,496,556,616,676,736,796,856],[96,58,58,58,58,58,58,58,58,58,58,58,58,78]);
-  addLinearRow(2,1014,62,[38,136,196,256,316,376,436,496,556,616,676,736,796,856],[96,58,58,58,58,58,58,58,58,58,58,58,58,78]);
-  addLinearRow(3,1078,62,[38,166,226,286,346,406,466,526,586,646,706,766,846],[126,58,58,58,58,58,58,58,58,58,58,78,88]);
-  addKeyRect(4,0,215,1146,490,58);
+  addLinearRow(0,891,52,[41,108,167,227,287,347,407,467,527,587,647,707,767,827,886],[60,52,52,52,52,52,52,52,52,52,52,52,52,52,46]);
+  addLinearRow(1,955,52,[43,139,199,259,319,379,439,499,559,619,679,739,799,861],[86,52,52,52,52,52,52,52,52,52,52,52,52,68]);
+  addLinearRow(2,1019,52,[43,139,199,259,319,379,439,499,559,619,679,739,799,861],[86,52,52,52,52,52,52,52,52,52,52,52,52,68]);
+  addLinearRow(3,1083,52,[44,169,229,289,349,409,469,529,589,649,709,771,851],[114,52,52,52,52,52,52,52,52,52,52,68,78]);
+  addKeyRect(4,0,225,1154,470,48);
   
   // BUILD2HB_VBXE_R11 debug: kdyz URL obsahuje #hitdebug=1, ukaze se cervena sit hitboxu.
   function buildHitDebug(){
@@ -4803,7 +4804,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bindKeyboard();
     updateTapeCounter();
     log('AtariHelp.eu EMU-10 BUILD2HL_VBXE_BCB21_BLITTER_CORE pripraven.');
-    log('AtariHelp.eu EMU-10 BUILD2HN_VBXE_EXACT_UI_FROM_HL_GOLD pripraven - UI skin presne podle dodaneho VBXE 130XE PNG, core BUILD2HL beze zmen.');
+    log('AtariHelp.eu EMU-10 BUILD2HO_VBXE_KEY_HITBOX_CENTER_FIX pripraven - UI skin z BUILD2HN, centrovane hitboxy klavesnice, core BUILD2HL beze zmen.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);

@@ -1,0 +1,4 @@
+d96b4cabb456149ea1f1d0f4f191a544121eb0c39142ca0c09b763f8260f5b47  app/src/main/assets/emu_vbxe/index.html
+c8311723b585a1d221522486c5112666e7eed112c7350c276cc1dd88fbb5edd1  app/src/main/assets/design/vbxe_130xe_keyboard_exact.png
+af0d939998063a1e24a1b8b272b2935c45325caa6c0ea4d6534e2b98e592352a  app/src/main/assets/design/vbxe_130xe_joystick_exact.png
+14f0e88c961561d65ad4449fe6ded8444e200ed68647a5dd9305c9c54310005d  app/src/main/assets/design/nap_logo_original.png

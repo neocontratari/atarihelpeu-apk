@@ -1,0 +1,12 @@
+NAVOD - BUILD2HO_VBXE_KEY_HITBOX_CENTER_FIX
+===========================================
+
+1) ZIP rozbal do korene projektu pres stejnou strukturu slozek.
+2) Nech prepsat app/src/main/assets/emu_vbxe/index.html a assets/design PNG soubory.
+3) V GitHub Desktop zkontroluj zmeny.
+4) Commit text:
+   BUILD2HO VBXE exact UI keyboard hitbox center fix
+
+DULEZITE:
+- Core zustava BUILD2HL GOLD.
+- BUILD2HM nepouzivat jako zaklad.

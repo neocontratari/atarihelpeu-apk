@@ -1,0 +1,44 @@
+ATARIHELP.EU EMU-10 - BUILD2HO_VBXE_KEY_HITBOX_CENTER_FIX
+==========================================================
+
+UCEL:
+- Oprava nevycentrovanych hitboxu hlavni 130XE klavesnice ve VBXE exact UI.
+- Navazuje na BUILD2HN UI, ale jako zlaty VBXE core zustava BUILD2HL.
+
+KODY JSOU ZMENENE - pouze UI/skin/hitboxy VBXE vetve.
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+ZMENENY SOUBOR:
+- app/src/main/assets/emu_vbxe/index.html
+
+ASSETY PONECHANE:
+- app/src/main/assets/design/vbxe_130xe_keyboard_exact.png
+- app/src/main/assets/design/vbxe_130xe_joystick_exact.png
+- app/src/main/assets/design/nap_logo_original.png
+
+NA CO SE NESAHALO:
+- VBXE core BUILD2HL
+- BCB21 oprava
+- XDL / blitter / RAM320 / loader
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity, router, odkazy, CLOAD/CSAVE baseline
+
+CO JE OPRAVENE:
+- Hitboxy hlavni klavesnice jsou zmensene a posunute do stredu fyzickych klaves.
+- Cilem je, aby tuknuti na stred klavesy nemohlo padat do sousedni klavesy nebo mezery.
+- Space bar ma vlastni centrovanou zonu.
+- Scan kody Atari klaves zustavaji stejne jako v BUILD2HL/HN.
+
+TEST PLAN:
+1) Spust BUILD2HO.
+2) Prepni na KEYBOARD.
+3) Tukni postupne stredy: Q W E, A S D, Z X C, RETURN, SHIFT, SPACE.
+4) Ocekavani: kazda klavesa posle spravny znak / funkci, sousedni klavesa se netrefuje.
+5) Prepni JOYSTICK a zpet KEYBOARD - hitboxy musi zustat stejne.
+6) Kontrolne spust DACTest a HL, aby se potvrdilo, ze BUILD2HL VBXE gold neni rozbity.
+
+LOG MARKER:
+AtariHelp.eu EMU-10 BUILD2HO_VBXE_KEY_HITBOX_CENTER_FIX pripraven
+
+POZNAMKA:
+BUILD2HM zustava v karantene. Tento build vychazi z BUILD2HN/BUILD2HL, ne z HM.
