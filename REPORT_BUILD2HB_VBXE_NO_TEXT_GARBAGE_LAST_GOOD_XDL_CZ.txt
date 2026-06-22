@@ -1,0 +1,72 @@
+ATARIHELP.EU EMU-10
+BUILD2HB_VBXE_NO_TEXT_GARBAGE_LAST_GOOD_XDL
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emulatoru
+- grafika klavesnice/joystick/kazetak
+- $D641 zustava $FF jako v HA
+
+CO UKAZAL TVUJ TEST HA:
+- Dobre: Wolf3D uz znovu pozna VBXE a uvodni obrazek/logo nabehne ciste.
+- Dobre: Popeye se znovu dostane pres detekci na MEMAC a blitter.
+- Spatne: Popeye ma porad rozsypany obraz.
+- Spatne: Wolf3D po uvodu spadne do rozsypaneho caje.
+- Spatne: prepinani na joystick a loading trva dele, protoze XDL/log/render delal zbytecne moc prace.
+
+PROC SE ROZSYPAL WOLF3D:
+Log ukazuje, ze Wolf3D po uvodu zapne XDL v TEXT rezimu:
+- base $0A000
+- records 28
+- mode TEXT
+Ja zatim TEXT XDL renderer nemam hotovy. Chyba byla, ze kdyz text renderer nic nekreslil, spadl kod do VRAM probe fallbacku a ten premaloval cisty obraz bordelem.
+
+OPRAVA V BUILD2HB:
+1) TEXT XDL uz NEPADA do VRAM probe
+- kdyz je XDL zapnute a je to jen TEXT/OFF, necham podkladovy Atari obraz nedotceny
+- v logu bude:
+  VBXE TEXT XDL: textovy overlay zatim nekreslim, ale vypinam VRAM-probe bordel
+
+2) Popeye: posledni platny XDL
+- kdyz XDL parser najde nesmysl typu $FFFF / OFF, nepustim obraz do nahodne VRAM probe
+- pouzije se posledni platna XDL struktura
+- v logu bude:
+  VBXE XDL LAST_GOOD
+
+3) Log throttle
+- XDL parse uz se nema vypisovat tisickrat
+- cilem je zrychlit loading/prepinani a nezabijet zvuk
+
+TEST PLAN:
+1. Spust VBXE emulator.
+2. Otestuj Wolf3D:
+   - musi nabehnout cisty uvodni obrazek jako v HA
+   - po stisku klavesy/FIRE se obraz nesmi rozsypat do tyrkysoveho bordelu
+   - kdyz text VBXE jeste neuvidis, je to zatim v poradku; dulezite je, ze uz se nema kreslit fake/nahodny VRAM caj
+3. Otestuj Popeye:
+   - stale muze byt graficky spatny
+   - ale nemel by spadnout do uplne nahodneho $FFFF XDL bordelu
+4. Zkus prepnout JOYSTICK:
+   - melo by to byt rychlejsi nebo aspon ne horsi nez HA
+5. Uloz log a posli.
+
+V logu hledat:
+- VBXE TRACE R $D641 = $FF
+- VBXE TEXT XDL
+- VBXE XDL LAST_GOOD
+- VBXE XDL RENDER
+- mene opakovanych VBXE XDL PARSE radku nez v HA
+
+DALSI KROK:
+BUILD2HC:
+- podle logu bud textovy XDL renderer pro Wolf3D
+- nebo oprava blitter/pattern/HR pro Popeye
