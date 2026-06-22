@@ -1,0 +1,11 @@
+NAVOD PRO RENEHO - BUILD2HX
+
+1) ZIP rozbal presne do korene projektu v GitHub Desktop workspace.
+2) Potvrd prepsani app/src/main/assets/emu_vbxe/index.html.
+3) V GitHub Desktop zkontroluj zmenu.
+4) Commit text:
+   BUILD2HX VBXE text local row on HW
+5) Spust appku v NOXu / mobilu.
+6) Testuj podle REPORT_BUILD2HX_VBXE_TEXT_LOCAL_ROW_ON_HW_CZ.txt.
+
+Kdyz se cokoliv zhorsí, vrat se na BUILD2HW nebo BUILD2HL rescue.

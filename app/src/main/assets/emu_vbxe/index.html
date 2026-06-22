@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2HW</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2HX</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -322,6 +322,9 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    NET HRY spodní skin tlačítko je připojené na https://atarihelp.eu/?page_id=207.
    XEX/OBX boot má TURBO pouze během SIO loaderu: zrychlí emulovaný čas při zavádění,
    po EOF/RUN se automaticky vrací na normální 50 Hz. VBXE core/BCB21 beze změn. */
+/* BUILD2HX_VBXE_TEXT_LOCAL_ROW_ON_HW:
+   Zachovava BUILD2HW rychly ATR/D1 zaklad. Meni pouze VBXE textovy XDL renderer:
+   radek znaku pocita lokalne v ramci XDL recordu/OVADR, ne z absolutni Y obrazovky. */
 
 </style>
 </head>
@@ -2565,14 +2568,18 @@ function Atari130XE(osRom, basicRom, CPUctor){
     var lines=r.lines; if(r.y+lines>240) lines=240-r.y;
     if(lines<=0) return 0;
     var hs=(r.ovHScroll||0)&7, vs=(r.ovVScroll||0)&7, palNo=r.ovPal&3;
-    var pixShift=(hs>>1); // VBXE text hscroll je v pul-HIRES pixelech; canvas je 2:1 downsample.
+    var pixShift=(hs>>1); // VBXE hscroll 0..7, v canvasu 384 pouzivame 2:1 downsample.
+    var step=(r.ovStep||chars*2)&0x0FFF;
+    if(!step) step=chars*2;
     for(var yy=0;yy<lines;yy++){
-      // Textovy XDL muze byt bud jeden record s RPTL=7/15, nebo serie jednolinek.
-      // Proto beru font-line z absolutni XDL Y pozice, ne jen z yy uvnitr recordu.
+      // BUILD2HX: Textovy XDL radkuje relativne k aktualnimu recordu a jeho OVADR.
+      // VBXE hardware posouva OVADR po kazdych 8 radcich textoveho recordu, ne podle absolutni Y souradnice obrazovky.
+      // Dlouhy Textmode record na y=24 i Heartlight serie 7-radkovych recordu tak nesmi zacit o 2-3 textove radky vedle.
       var gy=r.y+yy;
-      var fy=(gy+vs)&7;
-      var textRow=((gy+vs)>>3);
-      var rowAddr=(r.ovAddr + textRow*(r.ovStep||chars*2))&0x7FFFF;
+      var local=yy+vs;
+      var fy=local&7;
+      var textRow=(local>>3);
+      var rowAddr=(r.ovAddr + textRow*step)&0x7FFFF;
       var dst=gy*384+x0;
       for(var sx=0;sx<width && x0+sx<384;sx++){
         var srcPix=sx+pixShift;
@@ -2653,11 +2660,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
     if(textDrew>0 && !vbxe.xdlTextRenderLogged && M.vbxeDebug){
       vbxe.xdlTextRenderLogged=true;
-      M.vbxeDebug('VBXE TEXT XDL RENDER BUILD2HL: prvni realny textovy overlay z VRAM, pixels='+textDrew+'. Font/adres/scroll ctu z XDL podle fx.pdf, bez VRAM probe.');
+      M.vbxeDebug('VBXE TEXT XDL RENDER BUILD2HX: prvni realny textovy overlay z VRAM, pixels='+textDrew+'. Font/adres/scroll ctu z XDL podle fx.pdf, bez VRAM probe.');
     }
     if(hasText && textDrew===0 && !vbxe.xdlTextEmptyLogged && M.vbxeDebug){
       vbxe.xdlTextEmptyLogged=true;
-      M.vbxeDebug('VBXE TEXT XDL EMPTY BUILD2HL: XDL obsahuje TEXT, ale zatim nebyl vykreslen zadny netransparentni pixel. VRAM probe je stale blokovan, aby nevznikl caj.');
+      M.vbxeDebug('VBXE TEXT XDL EMPTY BUILD2HX: XDL obsahuje TEXT, ale zatim nebyl vykreslen zadny netransparentni pixel. VRAM probe je stale blokovan, aby nevznikl caj.');
     }
     if(graphDrew>0 && !vbxe.xdlRenderLogged && M.vbxeDebug){
       vbxe.xdlRenderLogged=true;
@@ -4934,6 +4941,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('AtariHelp.eu EMU-10 BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX pripraven - HP hitboxy zustaly, HELP manual a MENU navrat opraveny, landscape obraz aspect-fit bez orezani + FIRE/DOOR v bocnim prostoru; core BUILD2HL beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2HR_VBXE_POWER_ON_130XE_HELP_FIX pripraven - POWER BASIC je neviditelny hitbox na napisu 130XE + jemna zelena LED; HELP navod doplnen; VBXE core BUILD2HL beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE pripraven - NET HRY zustava, XEX/OBX turbo zustava a nove ma ATR/D1 rychlejsi SIO jen pri diskovem prenosu. Landscape HQ safe. VBXE core BUILD2HL GOLD beze zmen.');
+    log('AtariHelp.eu EMU-10 BUILD2HX_VBXE_TEXT_LOCAL_ROW_ON_HW pripraven - vychazim z BUILD2HW, rychle ATR/D1 a UI nechavam; opravuji jen VBXE TEXT XDL radkovani relativne k OVADR/recordu.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);

@@ -1,0 +1,43 @@
+AtariHelp.eu EMU-10 BUILD2HX_VBXE_TEXT_LOCAL_ROW_ON_HW
+
+ZAKLAD:
+- BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE
+- tedy zustava: BUILD2HL GOLD VBXE core, BCB21, RAM320, rychlejsi ATR/D1 SIO, NET HRY, presny VBXE UI skin, HP hitboxy, HR POWER na 130XE, HQ/HU landscape safe.
+- BUILD2HM zustava karantena jako celek; z nej NEBERU UI. Do HW jsem prenesl pouze presnou ideu TEXT LOCAL ROW a udelal ji rucne v aktualnim HW souboru.
+
+KODY JSOU ZMENENE:
+- pouze app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO JE OPRAVENE:
+- VBXE TEXT XDL renderer uz nepocita textovy radek z absolutni Y pozice obrazovky.
+- Pocita ho relativne od zacatku aktualniho XDL recordu a OVADR.
+- Duvod: podle fx.pdf se v text mode OVSTEP pricita po 8 radcich textoveho recordu. Kdyz record zacne treba na y=24, nema se automaticky cist treti radek textove mapy.
+- To cílí hlavně na Textmode Test a Heartlight text/menu/title: odskocene pismo, spodni textovy caj, posunute radky.
+
+NA CO JSEM NESAHL:
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity, router, player, odkazy
+- CLOAD/CSAVE
+- VBXE BCB21 blitter
+- RAM320
+- ATR fast load z HW
+- NET HRY z HW
+- UI/hitboxy/joystick/POWER
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2HX_VBXE_TEXT_LOCAL_ROW_ON_HW pripraven
+- VBXE TEXT XDL RENDER BUILD2HX
+- stale uvidis i BUILD2HW marker pro ATR/D1 fast load
+
+TEST PLAN:
+1) Rychle over, ze NET HRY stale otevre https://atarihelp.eu/?page_id=207.
+2) Rychle over W3D jako ATR: nacteni musi zustat kolem zlepsene rychlosti z HW a hra se nesmi zhorsit.
+3) Testmode Test (2009, KMK).xex: napis, zda je textovy test 1-4 lepsi/stejny/horsi.
+4) Heartlight / hl_vbxe.xex: podivej se hlavne na uvodni text a prechod do hry. Cekam moznost zlepseni odsazeni textu.
+5) DACTest: pruhy musi zustat jako v HW/HL.
+6) Pokud se zhorsilo W3D, okamzite se vrat na BUILD2HW.
+
+POZNAMKA:
+Netvrdim, ze je tim VBXE hotove. Je to jeden cileny krok na textovy XDL, bez hernich hacku a bez screen paintu.
