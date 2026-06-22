@@ -1,0 +1,96 @@
+ATARIHELP.EU EMU-10 – BUILD2HC_VBXE_DOC_XDL_SANITY
+
+KODY JSOU STEJNE:
+- Testovaci BASIC / Altirra porovnavaci kody jsem nemenil.
+- CLOAD/TXT testy nejsou predmetem tohoto buildu.
+
+ZMENENY JE KOD:
+- app/src/main/assets/emu_vbxe/index.html
+
+NA CO JSEM NESAHAL:
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity / native router / odkazy YouTube/Facebook/atarihelp.eu
+- prehravac MP3, equalizer, BASS/TREBLE/BALANCE
+- puvodni UI skin mimo soubor emu_vbxe/index.html
+- CLOAD/CSAVE jadro mimo to, co uz bylo v predanem VBXE indexu
+- ROMy, BASIC, Altirra/BASIC testovaci kody
+
+PROC TENHLE BUILD EXISTUJE:
+BUILD2HB ukazal, ze Wolf3D uz umi ciste logo/obrazek, ale po intru jde obraz do caje a chybi text.
+V logu byl porad podezrely marker "VBXE VRAM PROBE RENDER". To byl fallback/diagnostika, ktera se po platnem XDL uz nesmi vracet a malovat pres realny VBXE obraz.
+BUILD2HC proto neni kosmetika a neni to hotove VBXE. Je to stabilizacni XDL krok podle dodane dokumentace fx.pdf / vbxefx.ah.
+
+CO JE NOVE:
+1) XDL parser uklada dalsi realne stavy z XDL:
+   - OVADR adresa a OVSTEP
+   - OVSCRL hscroll/vscroll
+   - CHBASE jako adresa fontu CHBASE * $800
+   - widthSel, OV palette, PF palette, priority
+
+2) Prvni realny TEXT XDL renderer:
+   - cte text z VBXE VRAM jako dvojice znak/atribut
+   - font bere z CHBASE ve VBXE VRAM
+   - normalni sirka = 80 znaku, narrow = 64, wide = 84
+   - text downsampluje 640px VBXE text do canvasu emulatoru 320px oblasti
+   - respektuje zakladni transparentnost textoveho overlaye podle VIDEO_CONTROL no_trans/trans15
+
+3) Graficky SR/LR/HR renderer ma upravenou transparentnost:
+   - SR/LR: transparentni je 0, a pri trans15 i hodnoty $xF
+   - HR: transparentni nibble 0, a pri trans15 nibble $F
+   - no_trans vypina transparentnost
+
+4) VRAM PROBE fallback je zablokovany po XDL:
+   - pred XDL muze zustat jako diagnostika
+   - jakmile je XDL zapnute nebo uz probehl validni XDL, probe uz nesmi kreslit caj pres obraz
+
+5) Cold start resetuje VBXE stav:
+   - registry
+   - VRAM
+   - XDL log/last-good stav
+   - palety zpatky na default
+   - tim se omezi duchove mezi testy/soubory
+
+NOVE LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2HC_VBXE_DOC_XDL_SANITY pripraven.
+- VBXE XDL REC ... ch=$xxxxx scr=h,v pri=$xx
+- VBXE XDL RENDER BUILD2HC: kreslim graficke XDL segmenty podle fx.pdf...
+- VBXE TEXT XDL RENDER BUILD2HC: prvni realny textovy overlay z VRAM...
+- VBXE TEXT XDL EMPTY BUILD2HC: XDL obsahuje TEXT, ale zatim nebyl vykreslen zadny netransparentni pixel...
+- VBXE VRAM PROBE BLOCKED BUILD2HC: platny nebo zapnuty XDL ma prednost...
+- VBXE VRAM PROBE RENDER BUILD2HC: pouze pred-XDL diagnostika...
+
+CO CEKAT:
+- Wolf3D logo/uvodni obrazek by nemel byt horsi nez BUILD2HB.
+- Po intru by se mel omezit nebo zmizet probe-caj. Muze se ale objevit cerny/nezaplneny obraz, pokud textovy XDL jeste nema spravnou adresu/font/blitter data.
+- Pokud TEXT renderer trefi spravne VRAM/font, mel by se objevit prvni smysluplny text/menu misto uplneho ticha bez textu.
+- Popeye muze byt porad rozsypany, protoze plny blitter/map/priority jeste neni hotovy. Hlavni cil u Popeye je zjistit, jestli se po HC zmeni log a jestli zmizi probe-caj.
+
+CO NENI HOTOVE:
+- plny VBXE/FX core
+- presna mapa atributu MAPON/MAPADR/MAPPAR
+- presne priority overlay vs ANTIC/PMG
+- presny text hscroll v pulpixelech, zatim aproximace do canvasu
+- plny blitter zoom/pattern/interleave
+- finalni Wolf3D/Popeye hratelnost
+
+TEST PLAN BUILD2HC:
+1) Nainstaluj overlay pres GitHub Desktop workflow jako obvykle.
+2) Spust EMU-10 a jdi do VBXE vetve pres znak Atari vedle jmena René Frank.
+3) Test A – Wolf3D:
+   - nahraj wolf3d.atr
+   - sleduj zacatek pred logem, logo/obrazek, stav po intru
+   - cekany vysledek: logo zustane ciste; po intru se uz nema vracet nahodny VRAM PROBE caj pres XDL
+   - v logu hledej: BUILD2HC pripraven, XDL REC s ch/scr/pri, XDL RENDER BUILD2HC, TEXT XDL RENDER nebo TEXT XDL EMPTY, VRAM PROBE BLOCKED
+4) Test B – Popeye VBXE XEX:
+   - nahraj Popeye (VBXE, PAL Version).xex
+   - cekany vysledek: minimalne poctivy log bez fake; obraz muze byt stale spatny, ale nesmi se lakovat jako hotovy
+   - hledej stejne VBXE markery
+5) Pri chybe posli zpet:
+   - log z aplikace
+   - screenshoty: pred logem, logo/obrazek, po intru/menu, Popeye obraz
+   - napis, jestli se objevil marker "VBXE TEXT XDL RENDER BUILD2HC" nebo jen "TEXT XDL EMPTY"
+
+DULEZITE PRO DALSI KROK:
+Kdyz HC ukaze TEXT XDL EMPTY, znamena to, ze parser uz text vidi, ale textova data/font nejsou na adrese, kterou zatim renderer pouziva. Pak dalsi build musi resit stavove preneseni OVADR/CHBASE mezi XDL listy nebo MAPON/MAPADR.
+Kdyz HC ukaze TEXT XDL RENDER, ale text je rozsypany, dalsi build ma ladit font-line, krok OVSTEP, hscroll a atributy.
+Kdyz se porad objevi "VBXE VRAM PROBE RENDER" az po validnim XDL, je to chyba a musi se opravit blokace fallbacku.

@@ -1,0 +1,16 @@
+NAVOD – BUILD2HC_VBXE_DOC_XDL_SANITY
+
+1) ZIP rozbal.
+2) Slozku app z overlaye prekopiruj presne pres slozku app ve svem projektu.
+3) Potvrd prepsani souboru:
+   app/src/main/assets/emu_vbxe/index.html
+4) Commit v GitHub Desktop navrh:
+   BUILD2HC VBXE doc XDL sanity text renderer
+5) Nech GitHub Actions / svuj build vyrobit APK.
+6) Testuj pouze VBXE vetev:
+   - Wolf3D ATR
+   - Popeye VBXE XEX
+7) Zpet posli log + screenshoty.
+
+KODY JSOU STEJNE:
+Testovaci BASIC/Altirra kody nejsou menene. Meni se jen VBXE kod v emu_vbxe/index.html.
