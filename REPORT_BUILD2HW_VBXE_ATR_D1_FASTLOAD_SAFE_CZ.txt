@@ -1,0 +1,60 @@
+AtariHelp.eu EMU-10 / VBXE 130XE
+BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE
+
+ZAKLAD:
+- BUILD2HL GOLD VBXE core: BCB21, XDL, blitter, RAM320, loader zachovany.
+- UI linie: HN/HQ/HR/HU/HV safe UI, HP hitboxy klavesnice zachovany.
+- BUILD2HM zustava v karantene, nepouzit.
+- BUILD2HS/HT fullscreen pokusy nepouzite.
+
+KODY:
+- KODY JSOU ZMENENE pouze v app/src/main/assets/emu_vbxe/index.html.
+- BASIC / Altirra testovaci kody JSOU STEJNE.
+
+PROC BUILD2HW:
+- Uzivatel potvrdil, ze NET HRY tlacitko v HV funguje.
+- Uzivatel nepotvrdil citelne zrychleni W3D nacitani.
+- Log ukazuje, ze W3D bezi jako wolf3d.atr, tedy ATR disk, ne XEX/OBX.
+- BUILD2HV zrychloval jen XEX/OBX SIO loader, proto u ATR/W3D nemusel byt rozdil citit.
+
+CO JE NOVE:
+- NET HRY zustava opravene na https://atarihelp.eu/?page_id=207.
+- XEX/OBX fast load z HV zustava.
+- Novy ATR/D1 FAST LOAD: zrychluje emulovany cas jen pri aktivnim D1: SIO prenosu ATR sektoru.
+- Normalni diskove sektory stale tecou pres OS/game SIO protokol, zadny RAM inject, zadny patch hry.
+- Pri diskovem SIO prenosu se snizily ACK/COMPLETE/DATA prodlevy a hlavni smycka bezi vice frame za jeden display tick.
+- Po ztichnuti diskove komunikace se rychlost automaticky vraci na normalni.
+
+CO NENI MENENO:
+- VBXE core / BCB21 / XDL / blitter / RAM320 / POKEY / CLOAD / CSAVE nejsou meneny.
+- Klavesnicove hitboxy z HP zustavaji.
+- Landscape joystick safe layout z HU/HV zustava.
+- POWER na 130XE a HELP/MENU zustavaji.
+
+TEST PLAN:
+1) Spustit appku a overit marker:
+   AtariHelp.eu EMU-10 BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE pripraven
+
+2) NET HRY:
+   - Stisknout NET HRY.
+   - Musi otevrit https://atarihelp.eu/?page_id=207.
+
+3) W3D ATR:
+   - Spustit wolf3d.atr z NET HRY nebo lokalne.
+   - Hledat v logu:
+     ATR D1 FAST LOAD BUILD2HW: zapinam rychlejsi emulovany D1: SIO prenos pro ATR
+     ATR D1 FAST LOAD BUILD2HW: emulovany cas bezi rychleji jen pri aktivnim D1: SIO prenosu
+   - Porovnat pocitove s HV: rychlejsi / stejne / horsi.
+   - Pokud dojde k chybe, poslat log.
+
+4) Turbo BASIC TXT:
+   - Zkontrolovat, ze rychle vkladani BASIC/TurboBASIC textu stale funguje.
+   - BUILD2HW na TXT paste nesaha.
+
+5) VBXE kontrola:
+   - DACTest pruhy musi zustat.
+   - HL/Heartlight se ma porad dostat do hry jako v BUILD2HL/HP/HV linii.
+
+DULEZITE:
+- Pokud ATR fastload zrychli W3D a nic nerozbije, BUILD2HW muzeme brat jako novy safe UI/perf bod.
+- Pokud bude W3D nestabilni, vratit se na BUILD2HV nebo GOLD rescue BUILD2HL.

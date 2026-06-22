@@ -1,0 +1,11 @@
+NAVOD PRO RENEHO - BUILD2HW
+
+1) Stahni ZIP overlay BUILD2HW.
+2) Rozbal ZIP.
+3) Obsah slozky overlay pretahni do korene projektu v GitHub Desktop / Windows Explorer.
+4) Potvrd prepsani souboru.
+5) V GitHub Desktop zkontroluj zmeny.
+6) Commit message doporuceni:
+   BUILD2HW VBXE ATR D1 FASTLOAD SAFE
+7) Buildni APK / spust v NOXu nebo mobilu.
+8) Test: NET HRY, W3D ATR rychlost, DACTest, HL, TurboBASIC TXT paste.
