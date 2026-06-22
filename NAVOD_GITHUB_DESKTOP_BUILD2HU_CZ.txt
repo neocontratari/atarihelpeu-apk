@@ -1,0 +1,15 @@
+NAVOD - BUILD2HU_VBXE_LANDSCAPE_ROLLBACK_HQ_SAFE
+=================================================
+
+1) Rozbal ZIP overlay do rootu projektu AtariHelp EMU-10.
+2) Nech prepsat soubory.
+3) V GitHub Desktop zkontroluj zmeny.
+4) Commit message:
+   BUILD2HU: VBXE landscape rollback to HQ/HR safe layout
+5) Spust aplikaci v Noxu nebo na mobilu.
+
+DULEZITE
+--------
+Toto je rollback landscape UI, ne VBXE core oprava.
+BUILD2HL GOLD zustava core zaklad.
+BUILD2HM/HS/HT nejsou pouzite jako zaklad.

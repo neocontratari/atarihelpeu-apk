@@ -1,0 +1,65 @@
+ATARIHELP.EU EMU-10 - BUILD2HU_VBXE_LANDSCAPE_ROLLBACK_HQ_SAFE
+================================================================
+
+DUVOD BUILDU
+------------
+BUILD2HT se v landscape nechoval spravne: hra nebyla pres celou pouzitelnou plochu a ghost joystick utekl nevhodne nahoru.
+René napsal, ze radsi predchozi funkcni reseni. Proto tento build vraci landscape na posledni funkcni HQ/HR safe layout.
+
+ZAKLAD
+------
+- BUILD2HL GOLD VBXE core
+- HN exact UI skin
+- HP presne klavesove hitboxy
+- HQ/HR landscape safe layout
+- HR POWER na napisu 130XE + HELP text
+
+NEPOUZITO / KARANTENA
+---------------------
+- BUILD2HM text local row fix: NEPOUZIT, porad karantena
+- BUILD2HS split landscape panel: NEPOUZIT
+- BUILD2HT ghost fullscreen overlay: NEPOUZIT
+
+KODY JSOU ZMENENE
+-----------------
+Meni se jen UI / landscape rollback / HELP text ve VBXE vetvi.
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+ZMENENE SOUBORY
+---------------
+app/src/main/assets/emu_vbxe/index.html
+
+NEZMENENO
+---------
+- VBXE core z BUILD2HL
+- BCB21 oprava
+- XDL / blitter / RAM320 / loader
+- ROMy / BASIC
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity / router / odkazy / CLOAD/CSAVE baseline
+
+CO OCEKAVAT
+-----------
+Landscape se vraci na funkcni stav, ktery René predtim oznacil jako ze sedi:
+- obraz hry cely, bez orezani, v pomeru 384:240
+- joystick vlevo
+- FIRE a DOOR/SPACE vpravo v bocnim prostoru
+- zadny ghost pokus pres hru
+
+TEST PLAN
+---------
+1) Portrait:
+   - 130XE POWER musi fungovat.
+   - HELP musi ukazat navod vcetne POWER na 130XE.
+   - MENU musi vratit na uvod.
+   - klavesy 7 8 9 0 musi sedet.
+
+2) Landscape W3D:
+   - obraz se nema rozpadnout ani utikat nahoru.
+   - rozlozeni ma byt jako posledni funkcni HQ/HR safe stav.
+   - FIRE strili.
+   - DOOR/SPACE posila mezernik pro dvere.
+
+LOG MARKER
+----------
+AtariHelp.eu EMU-10 BUILD2HU_VBXE_LANDSCAPE_ROLLBACK_HQ_SAFE pripraven
