@@ -1,0 +1,66 @@
+AtariHelp.eu EMU-10 / EMU VBXE 130XE
+BUILD2HZ_VBXE_ROLLBACK_TO_HX_COLOR_SAFE
+
+DŮVOD:
+BUILD2HY byl podle testu krok zpět:
+- W3D: horší / rozhozená grafika a paleta už v prvním obrázku i ve hře.
+- Textmode: bez zlepšení, možná méně ostré.
+- Heartlight: jiné / horší barvy.
+
+Proto BUILD2HZ není další slepé ladění. Je to bezpečný návrat na dobrý základ BUILD2HX/HW.
+
+ZÁKLAD:
+- BUILD2HW rychlý ATR/D1 load ponechán.
+- BUILD2HX lokální TEXT XDL řádkování ponecháno.
+- BUILD2HL GOLD BCB21 / RAM320 základ ponechán.
+- Přesné VBXE UI, hitboxy klávesnice, joystick, POWER na 130XE, HELP/MENU, NET HRY ponecháno.
+- BUILD2HM zůstává nepoužitý / karanténa.
+- BUILD2HY paletový experiment je odstraněný.
+
+KODY JSOU ZMENENE:
+- pouze app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovací kódy JSOU STEJNE.
+
+CO JE ODSTRANĚNO Z HY:
+- OV_COLOR_SHIFT přemapování horního nibble XDL_OVATT do barvového indexu.
+- Vynucené ovPal=1 / pfPal=0.
+- HR 640->320 blend obou nibblů.
+
+CO ZŮSTÁVÁ:
+- rychlý ATR/D1 diskový load,
+- NET HRY funkční,
+- TXT / TurboBasic rychlé vkládání,
+- nový VBXE UI skin,
+- hitboxy klávesnice,
+- joystick + FIRE/DOOR režim,
+- 130XE POWER hitbox + HELP návod,
+- TEXT XDL lokální řádkování z BUILD2HX.
+
+TEST PLÁN:
+1) Nainstaluj overlay přes GitHub Desktop jako obvykle.
+2) Spusť VBXE emulátor.
+3) Otestuj W3D ATR:
+   - očekávám návrat grafiky/barvy minimálně na BUILD2HX stav,
+   - rychlost má zůstat kolem cca 1 minuty podle tvého posledního dobrého testu,
+   - nesmí zůstat HY bílé/rozhozené barvy.
+4) Otestuj Textmode Test 1–4:
+   - očekávám stav BUILD2HX: bez duchů, text lokálně správně.
+5) Otestuj DACTest:
+   - pruhy mohou být stejné jako HX; hlavní je, že se nesmí zhoršit jako HY.
+6) Otestuj Heartlight / hl_vbxe.xex:
+   - hra musí stále naběhnout,
+   - barvy se mají vrátit blíž k BUILD2HX stavu.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2HZ_VBXE_ROLLBACK_TO_HX_COLOR_SAFE pripraven
+- VBXE TEXT XDL RENDER BUILD2HZ
+- VBXE XDL RENDER BUILD2HL
+- ATR D1 FAST LOAD BUILD2HW
+
+KDYŽ SE TO ZHORŠÍ:
+- okamžitě se vrať na záchranný BUILD2HL GOLD nebo BUILD2HX.
+- pošli screenshot + LOG.
+
+POZNÁMKA PRO DALŠÍ CHAT:
+Uživatel René Frank je tester/designer, ne programátor. Posílat hotové ZIP overlaye, ne ruční úpravy. Žádné fake READY, fake VBXE, RAM inject, screen paint ani hack na jednu hru.

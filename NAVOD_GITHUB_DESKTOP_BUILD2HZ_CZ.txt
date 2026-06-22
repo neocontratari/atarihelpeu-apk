@@ -1,0 +1,19 @@
+NÁVOD - BUILD2HZ_VBXE_ROLLBACK_TO_HX_COLOR_SAFE
+
+1) ZIP rozbalit do kořene projektu AtariHelp / EMU-10.
+2) Povolit přepsání souborů.
+3) V GitHub Desktop zkontrolovat změnu:
+   app/src/main/assets/emu_vbxe/index.html
+4) Commit název:
+   BUILD2HZ_VBXE_ROLLBACK_TO_HX_COLOR_SAFE
+5) Build / instalace jako obvykle.
+
+KODY JSOU ZMENENE:
+- pouze emu_vbxe/index.html
+
+BASIC / Altirra testovací kódy JSOU STEJNE.
+
+Hlavní smysl buildu:
+- vrátit HY paletový krok zpět,
+- udržet rychlost a UI z dobrých buildů,
+- nepokračovat v rozbité HY paletě.

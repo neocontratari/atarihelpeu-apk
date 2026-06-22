@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2HY</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2HZ</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -322,10 +322,10 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    NET HRY spodní skin tlačítko je připojené na https://atarihelp.eu/?page_id=207.
    XEX/OBX boot má TURBO pouze během SIO loaderu: zrychlí emulovaný čas při zavádění,
    po EOF/RUN se automaticky vrací na normální 50 Hz. VBXE core/BCB21 beze změn. */
-/* BUILD2HY_VBXE_COLOR_SHIFT_HR_BLEND_ON_HW:
-   Zachovava BUILD2HX/HW rychly ATR/D1 + UI + lokalni textove radkovani.
-   Opravuje XDL_OVATT: horni nibble je OV_COLOR_SHIFT, ne paleta.
-   HR rezim pri 640->320 downsample bere oba nibbly, aby DAC/pruhy nebyly zubate. */
+/* BUILD2HZ_VBXE_ROLLBACK_TO_HX_COLOR_SAFE:
+   Zachranny rollback po HY: vracim palety a HR renderer presne do BUILD2HX.
+   Zachovava BUILD2HW rychly ATR/D1 zaklad, NET HRY, UI skin, hitboxy, joystick a TXT/TurboBasic rychle vkladani.
+   Neobsahuje HY OV_COLOR_SHIFT ani HR blend, protoze v testu rozbil W3D a zhorsil Heartlight barvy. */
 
 </style>
 </head>
@@ -2372,7 +2372,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       out.push({
         y:r.y, lines:r.lines, xdlc:r.xdlc, mode:r.mode, ovAddr:r.ovAddr, ovStep:r.ovStep,
         ovHScroll:r.ovHScroll||0, ovVScroll:r.ovVScroll||0, chBase:r.chBase||0,
-        widthSel:r.widthSel, ovPal:r.ovPal, pfPal:r.pfPal, colorShift:(r.colorShift||0)&0x0F, priority:r.priority,
+        widthSel:r.widthSel, ovPal:r.ovPal, pfPal:r.pfPal, priority:r.priority,
         noTrans:r.noTrans, addrMissing:!!r.addrMissing, frozen:!!r.frozen, usedCarryAddr:!!r.usedCarryAddr
       });
     }
@@ -2411,10 +2411,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
             ovHScroll:(carry.ovHScroll||0)&7, ovVScroll:(carry.ovVScroll||0)&7,
             chBase:(carry.chBase||0)&0x7FFFF,
             widthSel:(carry.widthSel==null?1:carry.widthSel)&3,
-            // BUILD2HY: OVATT high nibble = OV_COLOR_SHIFT, not palette id. Without colour map active, overlay uses palette 1.
-            colorShift:(carry.colorShift||0)&0x0F,
-            ovPal:1,
-            pfPal:0,
+            ovPal:(carry.ovPal==null?1:carry.ovPal)&3,
+            pfPal:(carry.pfPal||0)&3,
             priority:(carry.priority==null?255:carry.priority)&0xFF,
             noTrans:!!(vbxe.regs[0x40]&0x04),
             ovAddrValid:!!carry.ovAddrValid};
@@ -2460,11 +2458,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(ovatt){
         var o0=vbxeVramRead(p), o1=vbxeVramRead((p+1)&0x7FFFF);
         st.widthSel=o0&0x03;
-        // BUILD2HY podle fx.pdf: b4-b7 jsou OV_COLOR_SHIFT (0..15), NE cislo palety.
-        // Paleta overlaye je bez zapnute colour mapy vzdy P1; shift se ORuje do barvoveho indexu.
-        st.colorShift=(o0>>4)&0x0F;
-        st.ovPal=1;
-        st.pfPal=0;
+        st.ovPal=(o0>>4)&0x03;  // b4-b5 = XDL OV PALETTE
+        st.pfPal=(o0>>6)&0x03;  // b6-b7 = XDL PF PALETTE
         st.priority=o1&0xFF;
         p=(p+2)&0x7FFFF;
       }
@@ -2474,7 +2469,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       recs.push({
         y:y, lines:rpt, xdlc:xdlc, mode:st.mode, ovAddr:st.ovAddr, ovStep:st.ovStep,
         ovHScroll:st.ovHScroll, ovVScroll:st.ovVScroll, chBase:st.chBase,
-        widthSel:st.widthSel, ovPal:st.ovPal, pfPal:st.pfPal, colorShift:st.colorShift&0x0F, priority:st.priority,
+        widthSel:st.widthSel, ovPal:st.ovPal, pfPal:st.pfPal, priority:st.priority,
         noTrans:st.noTrans, addrMissing:(visibleMode && !st.ovAddrValid), usedCarryAddr:usedCarryAddr
       });
       y += rpt;
@@ -2483,11 +2478,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(end && recs.length){
       vbxe.xdlCarryState={ovAddr:st.ovAddr&0x7FFFF, ovStep:st.ovStep&0x0FFF,
         ovHScroll:st.ovHScroll&7, ovVScroll:st.ovVScroll&7, chBase:st.chBase&0x7FFFF,
-        widthSel:st.widthSel&3, ovPal:1, pfPal:0, colorShift:st.colorShift&0x0F, priority:st.priority&0xFF,
+        widthSel:st.widthSel&3, ovPal:st.ovPal&3, pfPal:st.pfPal&3, priority:st.priority&0xFF,
         ovAddrValid:!!st.ovAddrValid};
     }
 
-    var shapeSig=base+':'+recs.length+':'+recs.map(function(r){return r.xdlc+','+r.lines+','+r.mode+','+r.ovAddr+','+r.ovStep+','+r.widthSel+','+r.ovPal+','+r.pfPal+','+(r.colorShift||0)+','+r.chBase+','+r.ovHScroll+','+r.ovVScroll+','+(r.addrMissing?1:0)+','+(r.usedCarryAddr?1:0);}).join('|');
+    var shapeSig=base+':'+recs.length+':'+recs.map(function(r){return r.xdlc+','+r.lines+','+r.mode+','+r.ovAddr+','+r.ovStep+','+r.widthSel+','+r.ovPal+','+r.pfPal+','+r.chBase+','+r.ovHScroll+','+r.ovVScroll+','+(r.addrMissing?1:0)+','+(r.usedCarryAddr?1:0);}).join('|');
     vbxe.xdlScanCount++;
 
     var xstat = vbxeAnalyzeXdl(recs,end);
@@ -2535,7 +2530,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           (r.mode===1?'SR':r.mode===2?'HR':r.mode===3?'LR':r.mode===4?'TEXT':'OFF')+
           ' xdlc=$'+r.xdlc.toString(16).toUpperCase().padStart(4,'0')+
           ' ov=$'+r.ovAddr.toString(16).toUpperCase().padStart(5,'0')+
-          ' step='+r.ovStep+' widthSel='+r.widthSel+' ovPal='+r.ovPal+' pfPal='+r.pfPal+' shift=$'+((r.colorShift||0)&15).toString(16).toUpperCase()+
+          ' step='+r.ovStep+' widthSel='+r.widthSel+' ovPal='+r.ovPal+' pfPal='+r.pfPal+
           ' ch=$'+(r.chBase||0).toString(16).toUpperCase().padStart(5,'0')+
           ' scr='+((r.ovHScroll||0)&7)+','+((r.ovVScroll||0)&7)+' pri=$'+hx2(r.priority||0)+(r.addrMissing?' MISS_OVADR':'')+(r.usedCarryAddr?' CARRY_OVADR':'')+(r.frozen?' LASTGOOD':''));
         if(r.usedCarryAddr && !vbxe.xdlCarryLogged && M.vbxeDebug){
@@ -2548,21 +2543,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return recs;
   }
 
-  function vbxeEffectiveColorIndex(idx, r){
-    // BUILD2HY: OV_COLOR_SHIFT je horni nibble XDL_OVATT. Podle fx.pdf: effective=(shift*16)|overlay_data.
-    return ((((r&&r.colorShift)||0)&0x0F)<<4) | (idx&0xFF);
-  }
-  function vbxeColor(idx, r){
-    // Bez aktivni colour attribute mapy pouziva overlay globalne paletu 1.
-    // Colour mapu zatim nemenim, aby se nerozbil BUILD2HL/HW zaklad.
-    return vbxe.pal[(1<<8)|(vbxeEffectiveColorIndex(idx,r)&0xFF)];
-  }
-  function vbxeBlend2(c1,c2){
-    if(c1===c2) return c1>>>0;
-    var r=((c1&255)+(c2&255))>>1;
-    var g=(((c1>>8)&255)+((c2>>8)&255))>>1;
-    var b=(((c1>>16)&255)+((c2>>16)&255))>>1;
-    return (0xFF<<24)|(b<<16)|(g<<8)|r;
+  function vbxeColor(idx, palNo){
+    return vbxe.pal[((palNo&3)<<8)|(idx&0xFF)];
   }
   function vbxeTransparent8(idx){
     idx&=0xFF;
@@ -2591,7 +2573,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     var step=(r.ovStep||chars*2)&0x0FFF;
     if(!step) step=chars*2;
     for(var yy=0;yy<lines;yy++){
-      // BUILD2HX: Textovy XDL radkuje relativne k aktualnimu recordu a jeho OVADR.
+      // BUILD2HZ/HX: Textovy XDL radkuje relativne k aktualnimu recordu a jeho OVADR. HY paletovy experiment je zpet pryc.
       // VBXE hardware posouva OVADR po kazdych 8 radcich textoveho recordu, ne podle absolutni Y souradnice obrazovky.
       // Dlouhy Textmode record na y=24 i Heartlight serie 7-radkovych recordu tak nesmi zacit o 2-3 textove radky vedle.
       var gy=r.y+yy;
@@ -2614,7 +2596,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         else if(attr&0x80) color=(attr&0x7F)+128;
         else if(vbxe.regs[0x40]&0x04) color=128;
         if(color>=0 && !vbxeTransparent8(color)){
-          fb[dst+sx]=vbxeColor(color,r); drew++;
+          fb[dst+sx]=vbxeColor(color,palNo); drew++;
         }
       }
     }
@@ -2651,7 +2633,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           var src=(r.ovAddr + yy*r.ovStep)&0x7FFFF, dst=(r.y+yy)*384+x0;
           for(var x=0;x<width && x0+x<384;x++){
             var v=vram[(src+x)&0x7FFFF]&0xFF;
-            if(!vbxeTransparent8(v)){ fb[dst+x]=vbxeColor(v,r); drew++; graphDrew++; }
+            if(!vbxeTransparent8(v)){ fb[dst+x]=vbxeColor(v,r.ovPal); drew++; graphDrew++; }
           }
         }
       } else if(r.mode===3){ // LR: 128/160/168 pixelu, roztazeno x2 na 256/320/336
@@ -2660,7 +2642,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           var src2=(r.ovAddr + yy2*r.ovStep)&0x7FFFF, dst2=(r.y+yy2)*384+x0;
           for(var lx=0;lx<lrw && x0+lx*2+1<384;lx++){
             var v2=vram[(src2+lx)&0x7FFFF]&0xFF;
-            if(!vbxeTransparent8(v2)){ var c2=vbxeColor(v2,r); fb[dst2+lx*2]=c2; fb[dst2+lx*2+1]=c2; drew+=2; graphDrew+=2; }
+            if(!vbxeTransparent8(v2)){ var c2=vbxeColor(v2,r.ovPal); fb[dst2+lx*2]=c2; fb[dst2+lx*2+1]=c2; drew+=2; graphDrew+=2; }
           }
         }
       } else if(r.mode===2){ // HR: 2 VBXE pixely v bajtu, na canvasu downsample 2:1
@@ -2670,29 +2652,20 @@ function Atari130XE(osRom, basicRom, CPUctor){
           for(var bx=0;bx<bytes && hx0+bx<384;bx++){
             var b=vram[(src3+bx)&0x7FFFF]&0xFF;
             var hi=(b>>4)&0x0F, lo=b&0x0F;
-            var ht=vbxeTransparent4(hi), lt=vbxeTransparent4(lo);
-            if(!ht || !lt){
-              var hc=!ht ? vbxeColor(hi,r) : 0;
-              var lc=!lt ? vbxeColor(lo,r) : 0;
-              fb[dst3+bx]=(!ht && !lt) ? vbxeBlend2(hc,lc) : (!ht ? hc : lc);
-              drew++; graphDrew++;
-            }
+            var vv = !vbxeTransparent4(hi) ? hi : (!vbxeTransparent4(lo) ? lo : -1);
+            if(vv>=0){ fb[dst3+bx]=vbxeColor(vv,r.ovPal); drew++; graphDrew++; }
           }
         }
       }
     }
 
-    if(!vbxe.xdlColorShiftLogged && M.vbxeDebug){
-      vbxe.xdlColorShiftLogged=true;
-      M.vbxeDebug('VBXE OV_COLOR_SHIFT BUILD2HY: XDL_OVATT high-nibble beru jako shift, overlay bez colour mapy jede pres paletu 1; HR downsample bere oba nibbly.');
-    }
     if(textDrew>0 && !vbxe.xdlTextRenderLogged && M.vbxeDebug){
       vbxe.xdlTextRenderLogged=true;
-      M.vbxeDebug('VBXE TEXT XDL RENDER BUILD2HY: prvni realny textovy overlay z VRAM, pixels='+textDrew+'. Font/adres/scroll ctu z XDL podle fx.pdf, bez VRAM probe.');
+      M.vbxeDebug('VBXE TEXT XDL RENDER BUILD2HZ: prvni realny textovy overlay z VRAM, pixels='+textDrew+'. Font/adres/scroll ctu z XDL podle fx.pdf, bez VRAM probe.');
     }
     if(hasText && textDrew===0 && !vbxe.xdlTextEmptyLogged && M.vbxeDebug){
       vbxe.xdlTextEmptyLogged=true;
-      M.vbxeDebug('VBXE TEXT XDL EMPTY BUILD2HY: XDL obsahuje TEXT, ale zatim nebyl vykreslen zadny netransparentni pixel. VRAM probe je stale blokovan, aby nevznikl caj.');
+      M.vbxeDebug('VBXE TEXT XDL EMPTY BUILD2HZ: XDL obsahuje TEXT, ale zatim nebyl vykreslen zadny netransparentni pixel. VRAM probe je stale blokovan, aby nevznikl caj.');
     }
     if(graphDrew>0 && !vbxe.xdlRenderLogged && M.vbxeDebug){
       vbxe.xdlRenderLogged=true;
@@ -4969,7 +4942,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('AtariHelp.eu EMU-10 BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX pripraven - HP hitboxy zustaly, HELP manual a MENU navrat opraveny, landscape obraz aspect-fit bez orezani + FIRE/DOOR v bocnim prostoru; core BUILD2HL beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2HR_VBXE_POWER_ON_130XE_HELP_FIX pripraven - POWER BASIC je neviditelny hitbox na napisu 130XE + jemna zelena LED; HELP navod doplnen; VBXE core BUILD2HL beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE pripraven - NET HRY zustava, XEX/OBX turbo zustava a nove ma ATR/D1 rychlejsi SIO jen pri diskovem prenosu. Landscape HQ safe. VBXE core BUILD2HL GOLD beze zmen.');
-    log('AtariHelp.eu EMU-10 BUILD2HY_VBXE_COLOR_SHIFT_HR_BLEND_ON_HW pripraven - vychazim z BUILD2HX/HW, rychle ATR/D1 a UI nechavam; opravuji VBXE OV_COLOR_SHIFT v XDL_OVATT + HR 640->320 downsample z obou nibbles.');
+    log('AtariHelp.eu EMU-10 BUILD2HZ_VBXE_ROLLBACK_TO_HX_COLOR_SAFE pripraven - HY paletovy experiment je odstraneny. Bezim na BUILD2HX/HW zakladu: rychle ATR/D1, NET HRY, UI skin, hitboxy, joystick, TXT/TurboBasic fast a TEXT XDL lokalni radkovani zustava.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);
