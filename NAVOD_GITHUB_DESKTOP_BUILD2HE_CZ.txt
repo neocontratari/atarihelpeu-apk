@@ -1,0 +1,9 @@
+BUILD2HE - NAVOD PRO GITHUB DESKTOP
+===================================
+1) Rozbal ZIP overlay do korene projektu AtariHelp EMU-10.
+2) Povol prepsani souboru.
+3) V GitHub Desktop zkontroluj zmenu:
+   app/src/main/assets/emu_vbxe/index.html
+4) Commit message:
+   BUILD2HE VBXE zoom bits fix
+5) Buildni/spust APK a testuj podle REPORT_BUILD2HE_VBXE_ZOOM_BITS_FIX_CZ.txt.

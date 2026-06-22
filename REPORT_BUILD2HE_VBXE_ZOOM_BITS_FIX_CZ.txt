@@ -1,0 +1,68 @@
+ATARIHELP.EU EMU-10 - BUILD2HE_VBXE_ZOOM_BITS_FIX
+====================================================
+
+KODY JSOU STEJNE
+- BASIC / Altirra testovaci kody NEBYLY meneny.
+
+ZMENENY SOUBOR
+- app/src/main/assets/emu_vbxe/index.html
+
+NA CO JSEM NESAHAL
+- normalni emulator: app/src/main/assets/emu/index.html
+- MainActivity / router / odkazy / player / equalizer
+- ROMy, BASIC, CLOAD/CSAVE baseline
+- UI skin, klavesnice, kazetak, joystick layout
+
+DUVOD BUILD2HE
+- Uzivatelsky test BUILD2HD: Wolf3D zacatek stejny, intro OK, po intru stale rozsypane; Popeye stale caj.
+- V HD logu je konkretni chyba v dekodovani VBXE blitter registru blt_zoom:
+  - zoom=$29 se logoval jako zx=10 zy=3 intlv=0.
+  - Podle fx.pdf / vbxefx.ah je spravne:
+    b0-b2 = ZOOMX, b3 = INTLVE, b4-b6 = ZOOMY, b7 nepouzity.
+  - zoom=$29 tedy ma byt: zx=2, zy=3, intlv=1.
+- Kvuli tomu HD pocital prilis velke blity a nektere preskakoval pres GUARD_SKIP.
+
+CO JE NOVE
+- Oprava dekodovani blt_zoom:
+  - predtim: ZOOMX = low nibble vcetne INTLVE, INTLVE = b7
+  - ted: ZOOMX = b0-b2, INTLVE = b3, ZOOMY = b4-b6
+- Zadne screen-paint hacky, zadny RAM inject, zadne herni hacky pro Wolf3D/Popeye.
+- XDL HOLD_LAST_GOOD a VRAM probe blokace z HD zustavaji zachovane.
+
+PROC BY TO MELA BYT VIDITELNA ZMENA
+- V HD byly konkretni Wolf3D blity se zoom=$29/$2D/$2B vyhodnocene spatne:
+  - zx bylo 10/14/12 misto realnych 2/6/4
+  - intlv byl 0 misto 1 u hodnot s b3
+- HE by mel vyrobit jine VRAM vysledky, ne jen stejny caj.
+
+LOG MARKERY PRO TEST
+Hledej hlavne:
+- AtariHelp.eu EMU-10 BUILD2HE_VBXE_ZOOM_BITS_FIX pripraven.
+- VBXE BLITTER FEATURE BUILD2HE: opraveny blt_zoom podle fx.pdf: ZOOMX=b0-b2, INTLVE=b3, ZOOMY=b4-b6; zadny screen-paint.
+- VBXE BLITTER FAST #... zoom=$29 zx=2 zy=3 intlv=1
+- VBXE BLITTER FAST #... zoom=$2D zx=6 zy=3 intlv=1
+- VBXE BLITTER FAST #... zoom=$2B zx=4 zy=3 intlv=1
+- Pokud se porad objevi GUARD_SKIP u techto presnych W3D BCB=$0AA00 blitu, posli log - to by znamenalo dalsi chybu.
+
+TEST PLAN
+1) ZIP overlay prekopiruj pres projekt pres GitHub Desktop workflow.
+2) Sestav / spust APK v NOX.
+3) Over, ze v logu je BUILD2HE_VBXE_ZOOM_BITS_FIX pripraven.
+4) Nahraj wolf3d.atr.
+   - Ocekavani: intro by melo zustat OK.
+   - Po intru sleduj, jestli je obraz viditelne jiny nez v HD.
+   - Nejdulezitejsi je, zda zmizi/pribude/posune se rozsypany gameplay a jestli se objevi text/HUD.
+5) Prepni na joystick, zkus pohyb a FIRE.
+   - Posli screenshot po intru, po pohybu, po FIRE.
+6) Nahraj Popeye VBXE XEX.
+   - Ocekavani: mozne, ze porad nebude spravne, ale log musi ukazat spravne zoom/intlv hodnoty.
+
+CO POSLAT ZPET
+- Screenshot Wolf3D: intro, stav hned po intru, stav po joystick/FIRE.
+- Screenshot Popeye.
+- Oba logy pres ULOZIT LOG.
+- Slovne: LEPSI / HORSI / STEJNE a co se zmenilo.
+
+OVEROENI PRED ODESLANIM
+- JS extrahovany ze script tagu prosel: node --check bez chyby.
+- ZIP obsahuje jen overlay a textove instrukce/report.
