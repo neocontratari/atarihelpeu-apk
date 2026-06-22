@@ -1,0 +1,9 @@
+BUILD2HM_VBXE_TEXT_LOCAL_ROW_FIX - ZIP overlay
+
+1) Rozbal ZIP do rootu projektu AtariHelp EMU-10.
+2) Potvrd prepsani souboru.
+3) V GitHub Desktop zkontroluj zmenu jen v:
+   app/src/main/assets/emu_vbxe/index.html
+4) Commit message:
+   BUILD2HM_VBXE_TEXT_LOCAL_ROW_FIX
+5) Sestav APK a testuj Textmode, DACTest, hl_vbxe/Heartlight.

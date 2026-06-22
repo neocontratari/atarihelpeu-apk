@@ -1,0 +1,44 @@
+ATARIHELP.EU EMU-10 - BUILD2HM_VBXE_TEXT_LOCAL_ROW_FIX
+
+KODY JSOU STEJNE
+BASIC / Altirra porovnavaci kody jsem nemenil.
+
+ZMENENY SOUBOR
+app/src/main/assets/emu_vbxe/index.html
+
+NA CO JSEM NESAHAL
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity / router / odkazy / player / equalizer
+- ROMy, BASIC, CLOAD/CSAVE baseline
+- UI skin, klavesnice, kazetak
+
+STAV PO TESTU BUILD2HL
+- Textmode Test uz projde detekci VBXE a bezi.
+- DACTest uz zobrazi pruhy misto carek.
+- Heartlight/HL poprve realne nabehne do hry.
+- Stale jsou chyby: Textmode ma spodni textovy caj, HL ma odskocene pismo a jine barvy/odsazeni proti Altirre.
+
+CO OPRAVUJE BUILD2HM
+- BCB21 oprava z HL zustava.
+- RAM320 a tlumeny log z HK zustavaji.
+- Textovy XDL renderer uz nepocita radek znaku z absolutni Y pozice obrazovky.
+- Radek znaku se pocita lokalne uvnitr aktualniho XDL recordu: fy=(yy+vscroll)&7, textRow=(yy+vscroll)>>3.
+- Duvod: Textmode/HL pouzivaji XDL recordy s vlastnim OVADR/OVSTEP. Absolutni Y pri vscroll=1 bral dalsi radek mapy predcasne a mohl delat posunute texty a spodni caj.
+- Zadny screen-paint, zadny RAM inject, zadny hack na jednu hru.
+
+TEST PLAN
+1) Textmode Test (2009, KMK).xex
+   - cekam mensi/zmizely spodni textovy caj a stabilnejsi menu.
+2) DACTest (2009, KMK).xex
+   - pruhy z HL musi zustat, nesmi se vratit carky.
+3) hl_vbxe.xex / Heartlight
+   - hra musi stale nabehnout.
+   - sleduj hlavne titulni text: odsazeni/pismo/barvy proti Altirre.
+
+LOG MARKERY
+- AtariHelp.eu EMU-10 BUILD2HM_VBXE_TEXT_LOCAL_ROW_FIX pripraven.
+- VBXE TEXT XDL RENDER BUILD2HM
+- BCB21
+
+KDYZ SELZE
+Posli screenshot + log z nejhorsiho testu. Nejdulezitejsi je porovnani: Textmode lepsi/stejne/horsi, DACTest pruhy zustaly/nezustaly, HL hra zustala/nezustala.
