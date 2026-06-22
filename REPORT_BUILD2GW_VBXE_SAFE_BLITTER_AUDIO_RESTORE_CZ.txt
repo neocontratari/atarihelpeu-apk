@@ -1,0 +1,64 @@
+ATARIHELP.EU EMU-10
+BUILD2GW_VBXE_SAFE_BLITTER_AUDIO_RESTORE
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emulatoru
+- grafika klavesnice/joystick/kazetak
+
+CO UKAZAL TVUJ LOG Z BUILD2GV:
+- Detekce VBXE uz prochazi.
+- Legacy MEMAC se opravdu pouziva:
+  $D65E=$99 base $9000, CPU=1
+  $D65F=$80 global=1
+- CPU zapisuje BCB do VBXE VRAM pres $9000.
+- Blitter uz vidi nenulove BCB, napr:
+  src=$00015 dst=$00001 w=258 h=256
+  src=$00050 dst=$3C0FF w=316 h=60 next=1
+- Problem: BUILD2GV poustel velke blity synchronne a opakovane.
+  To muze ve WebView zadusit casovani a zvuk. Proto jsi videl cernou obrazovku a uz ani zvuk.
+
+CO JE OPRAVENO V BUILD2GW:
+1) Safe blitter budget
+- male blity se provedou
+- velke blity se zatim neprovedou cele, ale poctive se zaloguji jako:
+  VBXE BLITTER SAFE_SKIP ...
+- cilem je vratit zvuk / běh CPU a nezabit WebView
+
+2) MEMAC log spam omezen
+- opakovane $D65D=$99 / $00 uz nebude zaplavovat log po tisicich radku
+
+3) Zadne lhani
+- neni fake screen
+- neni fake hotovy VBXE renderer
+- kdyz je obraz cerny, priznavame: chybi XDL/overlay renderer
+
+TEST PLAN:
+1. Spust novy VBXE emulator.
+2. Nahraj Popeye.
+3. Stiskni klavesu/FIRE na instrukcni obrazovce.
+4. Sleduj hlavne:
+   - jestli se po loadingu VRATI ZVUK
+   - jestli uz appka nezatuhne / nezadusi se
+   - obraz muze byt porad cerny nebo spatny, to je ted ocekavane
+5. Uloz log a posli.
+
+V logu hledat:
+- VBXE BLITTER SAFE_SKIP
+- VBXE BLITTER DONE copied=... skipped=...
+- MEMAC uz nesmi zaplavovat log donekonecna
+
+DALSI SPRAVNY KROK:
+BUILD2GX_VBXE_XDL_TRACE_RENDER_STUB
+- nenechat blitter dusit WebView
+- zacit trasovat XDL / overlay adresu a palety
+- teprve pak kreslit VBXE overlay nad Atari framebufferem
