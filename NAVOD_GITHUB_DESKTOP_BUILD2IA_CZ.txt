@@ -1,0 +1,15 @@
+NAVOD - BUILD2IA_VBXE_SHARP_PRESENTATION_DAC_SAFE
+=================================================
+
+1) ZIP rozbal do korene projektu EMU-10.
+2) V GitHub Desktop zkontroluj zmeny.
+3) Ocekavany zmeneny soubor:
+   app/src/main/assets/emu_vbxe/index.html
+4) Commit message doporuceni:
+   BUILD2IA VBXE sharp presentation safe
+5) Spust build / APK jako obvykle.
+
+Dulezite:
+- BUILD2IA neni paletovy pokus.
+- BUILD2IA jen ostreji prezentuje 384x240 obraz v Android WebView.
+- Kdyby to zhorsilo W3D, vratit BUILD2HZ/HW.

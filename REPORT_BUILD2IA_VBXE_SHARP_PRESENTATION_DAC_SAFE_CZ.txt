@@ -1,0 +1,102 @@
+AtariHelp.eu EMU-10 - BUILD2IA_VBXE_SHARP_PRESENTATION_DAC_SAFE
+=================================================================
+
+ZAKLAD
+------
+- Vychazim z BUILD2HZ / BUILD2HX / BUILD2HW dobreho zakladu.
+- BUILD2HY paletovy experiment zustava zahozeny / karantena.
+- BUILD2HM zustava karantena.
+
+KODY JSOU ZMENENE
+-----------------
+Zmeneny soubor:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+PROC TENHLE BUILD EXISTUJE
+--------------------------
+Reneho report po HZ:
+- W3D je zpet v barvach i hratelnosti.
+- Pismo je ale rozjete uz na startu EMU 2 VBXE / BASIC textu.
+- Textmode je rozjety / mene ostry.
+- DAC modry pruh ma porad odskok.
+- HL hra funguje a ma ostre barvy.
+
+Co z toho plyne:
+- Palety ani W3D graficky renderer se v IA nesmi menit.
+- Chyba pisma je videt i mimo VBXE TEXT XDL, tedy nejspis prezentacni blur/downscale canvasu v Android WebView.
+- IA proto resi jen prezentaci obrazovky, ne VBXE core.
+
+CO JE NOVE V BUILD2IA
+---------------------
+1) Ostry offscreen prezentacni scaler
+   - Interni emulatorovy framebuffer zustava 384x240.
+   - Nejdrive se nakresli do skryteho offscreen canvasu 384x240.
+   - Viditelny canvas se nastavi podle skutecne velikosti CRT slotu a devicePixelRatio.
+   - Offscreen obraz se prekresli do viditelneho canvasu pres drawImage se zakazanym smoothingem.
+   - Cil: odstranit browserovy rozmazany downscale na mobilu/Noxu.
+
+2) Zakaz image smoothingu
+   - imageSmoothingEnabled=false
+   - webkitImageSmoothingEnabled=false
+   - mozImageSmoothingEnabled=false
+   - msImageSmoothingEnabled=false
+   - CSS image-rendering: crisp-edges / pixelated
+
+3) Zachovani dobreho zakladu
+   - Rychly ATR/D1 load z BUILD2HW zustava.
+   - NET HRY odkaz zustava: https://atarihelp.eu/?page_id=207
+   - TXT/TurboBASIC rychle vkladani zustava.
+   - UI skin, klavesove hitboxy, joystick, DOOR/SPACE a POWER na 130XE zustavaji.
+   - W3D barvy a hratelnost z HZ se nesmi zhorsit.
+
+CO IA NEMENI
+------------
+- VBXE BCB21 blitter core.
+- XDL parser logiku.
+- Palety / HY OV_COLOR_SHIFT experiment.
+- HY HR blend experiment.
+- RAM320/MEMAC.
+- CLOAD/CSAVE.
+- BASIC/TurboBASIC testovaci kody.
+- Normalni emulator app/src/main/assets/emu/index.html.
+
+TEST PLAN
+---------
+1) Start EMU 2 VBXE / BASIC obraz:
+   - Pismo musi byt ostrejsi nez v HZ.
+   - Nesmí byt rozmazane/rozjete vic nez v HZ.
+
+2) Textmode Test (2009, KMK).xex:
+   - Test 1-4: bez duchu jako HX/HZ.
+   - Hodnotit hlavne ostrost pisma.
+   - Pokud je pismo stale rozjete, poslat screenshot a napsat: stejne / lepsi / horsi.
+
+3) DACTest (2009, KMK).xex:
+   - Pruhy musi zustat.
+   - Modry zacatek/odskok: lepsi / stejny / horsi.
+
+4) W3D ATR:
+   - Barvy a hratelnost musi zustat jako HZ/HX/HW.
+   - Nesmí se vratit HY rozhozena paleta.
+   - Rychlost nacitani ma zustat kolem BUILD2HW.
+
+5) Heartlight / hl_vbxe.xex:
+   - Hra musi dal fungovat.
+   - Barvy hry nesmi byt horsi.
+   - Text/pismo: porovnat ostrost.
+
+LOG MARKERY
+-----------
+Hledej v logu:
+- AtariHelp.eu EMU-10 BUILD2IA_VBXE_SHARP_PRESENTATION_DAC_SAFE pripraven
+- VBXE TEXT XDL RENDER BUILD2IA
+- ATR D1 FAST LOAD BUILD2HW
+
+ROLLBACK
+--------
+Kdyz se zhorsí W3D barvy/hratelnost nebo HL hra:
+- vratit se na BUILD2HZ_VBXE_ROLLBACK_TO_HX_COLOR_SAFE
+nebo na zachranny GOLD BUILD2HL.
+
