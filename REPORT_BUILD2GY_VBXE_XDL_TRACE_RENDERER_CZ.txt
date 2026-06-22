@@ -1,0 +1,82 @@
+ATARIHELP.EU EMU-10
+BUILD2GY_VBXE_XDL_TRACE_RENDERER
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emulatoru
+- grafika klavesnice/joystick/kazetak
+
+CO UKAZAL TVUJ TEST BUILD2GX:
+- Cerna obrazovka je pryc.
+- To znamena, ze VBXE VRAM se opravdu plni a blitter uz realne kopiruje/filluje.
+- V logu je:
+  VBXE BLITTER FAST #1 ... bytes=66048 copied=66048
+  VBXE VRAM PROBE RENDER
+  dalsi blittery kopiruji 18961, 6216, 7252, 16384 bajtu atd.
+- Obraz je ale rozsypany caj, protoze BUILD2GX jen naslepo ukazoval stranku VRAM.
+- To neni finalni VBXE zobrazovaci cesta.
+
+CO JE OPRAVENO V BUILD2GY:
+1) Pridan presny trace VIDEO_CONTROL / XDL adres
+- $D640 zapis loguje xdl_enable, xcolor, no_trans, trans15
+- $D641-$D643 loguji 19bit XDL adresu
+
+2) Pridan prvni XDL parser
+- XDL = 2 bajty XDLC + dodatecna data
+- data se ctou v pevnem poradi:
+  RPTL, OVADR, OVSCRL, CHBASE, MAPADR, MAPPAR, OVATT
+- loguje prvnich 8 XDL zaznamu:
+  VBXE XDL PARSE
+  VBXE XDL REC ...
+
+3) Pridan prvni XDL segment renderer
+- SR / LR / HR pixel rezimy
+- cte skutecne OVADR a OVSTEP z XDL
+- VRAM probe zustava jen jako fallback, pokud hra jeste XDL nezapne nebo parser nic nenajde
+
+4) Fallback VRAM probe uz nebere nahodny posledni renderBase
+- vybira deterministicky 16KB stranku s nejvice daty
+- tim se nebude obraz tak skakat podle posledniho 1-bajt blitu
+
+DULEZITE:
+Toto porad neni hotovy VBXE.
+Jeste chybi:
+- presne VBXE palety / MSEL RGB
+- attribute map
+- text mode renderer
+- priority/transparentni pravidla uplne presne
+- presne casovani blitteru
+
+TEST PLAN:
+1. Spust novy VBXE emulator.
+2. Nahraj Popeye.
+3. Na instrukcni obrazovce stiskni klavesu/FIRE.
+4. Sleduj:
+   - jestli se z rozsypaneho caje stane stabilnejsi obraz
+   - jestli v logu pribude:
+     VBXE VIDEO_CONTROL W
+     VBXE XDL_ADR W
+     VBXE XDL PARSE
+     VBXE XDL REC
+     VBXE XDL RENDER
+   - jestli zvuk nezmizi
+   - jestli ovladani stale reaguje
+5. Uloz log a posli.
+
+KDYZ V LOGU NEBUDE XDL:
+- znamena to, ze Popeye zatim nepouziva XDL cestu nebo ji pise jinak
+- pak dalsi krok nebude hadani obrazu, ale MEMAC/ANTIC/RAMBO cesta
+
+DALSI KROK:
+BUILD2GZ podle vysledku:
+A) pokud XDL existuje -> palety/MSEL RGB
+B) pokud XDL neni -> opravit MEMAC/ANTIC/RAMBO mapovani pro VBXE hry
