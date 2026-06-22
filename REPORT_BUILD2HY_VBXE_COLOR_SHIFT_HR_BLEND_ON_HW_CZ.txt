@@ -1,0 +1,75 @@
+AtariHelp.eu EMU-10 / EMU-2 VBXE
+BUILD2HY_VBXE_COLOR_SHIFT_HR_BLEND_ON_HW
+
+DUVOD BUILD2HY:
+René otestoval BUILD2HX a hlasil:
+- W3D: rychle nacteni cca 1 minuta, grafika v poradku na 8bit super, nacitani po prvnim intru se zpomali, ale zaklad je dobry.
+- Textmode Test: obrovsky posun, bez duchu, ale pismo je rozostrene.
+- DACTest: pruhy naskocily, ale modry pruh byl trochu ujete / zacatek nebyl hladky.
+- Heartlight: hra je funkcni a grafika ok, ale barvy textu/title jsou jine proti Altirre.
+
+ZAKLAD:
+- vychazim z BUILD2HX, tedy z BUILD2HW rychleho ATR/D1 nacitani + UI skinu + opraveneho textoveho lokalniho radkovani.
+- BUILD2HM se stale NEPOUZIVA a zustava v karantene.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO JE OPRAVENE:
+1) VBXE XDL_OVATT high nibble:
+   Predtim jsem horni nibble OVATT bral chybne jako cislo palety/ovPal.
+   Podle fx.pdf je to OV_COLOR_SHIFT 0..15.
+   Bez aktivni colour attribute mapy pouziva overlay paletu 1 a efektivni barva je:
+   effective_index = (OV_COLOR_SHIFT << 4) | overlay_data.
+
+2) HR 640 -> 320 downsample:
+   HR mode ma v jednom bajtu dva 4bit pixely: high nibble = levy pixel, low nibble = pravy pixel.
+   Predtim renderer vybiral hlavne prvni netransparentni nibble.
+   BUILD2HY bere oba nibbly; pokud jsou oba viditelne, udela prumer barev do jednoho canvas pixelu.
+   Cil: hladsi DACTest pruhy / mene ujeteho modreho zacatku.
+
+3) Text mode:
+   BUILD2HX lokalni radkovani zustava zachovane.
+   Do textoveho VBXE rendereru je nově zapojen OV_COLOR_SHIFT, takze Heartlight/Textmode barvy maji sanci byt blize Altirre.
+
+CO JSEM NEMENIL:
+- UI skin, hitboxy, joystick, HELP, MENU
+- NET HRY
+- rychly ATR/D1 loader z BUILD2HW
+- XEX/TXT/TurboBASIC rychle vkladani
+- BCB21 / blitter core BUILD2HL mimo barevny index a HR downsample
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity/router
+- ROM/BASIC/CLOAD baseline
+
+TEST PLAN:
+1) W3D ATR:
+   - musi zustat rychle nacteni cca jako BUILD2HW/HX.
+   - nesmi se vratit rozsypany caj.
+   - sleduj jestli se zmeni barvy / HUD / zdi po OV_COLOR_SHIFT.
+
+2) Textmode Test:
+   - test 1 az 4: musi zustat bez duchu.
+   - napis: ostrejsi / stejne / horsi.
+   - hlavne jestli barvy sedi lepe.
+
+3) DACTest:
+   - pruhy musi naskocit.
+   - modry pruh by mel byt hladsi a zacatek mene ujete.
+
+4) Heartlight / hl_vbxe.xex:
+   - title text: porovnat barvy s Altirrou.
+   - hra musi zustat funkcni.
+   - pokud se hra rozbije, okamzite vratit BUILD2HX nebo BUILD2HW.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2HY_VBXE_COLOR_SHIFT_HR_BLEND_ON_HW pripraven
+- VBXE OV_COLOR_SHIFT BUILD2HY
+- VBXE TEXT XDL RENDER BUILD2HY
+- ATR D1 FAST LOAD BUILD2HW
+
+POZNAMKA:
+Tohle neni screen-paint ani hack na W3D/Heartlight.
+Je to genericka oprava XDL_OVATT podle fx.pdf + obecnejsi HR downsample.

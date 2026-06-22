@@ -1,0 +1,15 @@
+NAVOD PRO RENEHO - BUILD2HY
+
+1) Rozbal ZIP overlay.
+2) Cely obsah slozky overlay pretahni do korene projektu v GitHub Desktop repozitari.
+3) Potvrd prepsani souboru.
+4) V GitHub Desktop zkontroluj zmeny.
+5) Commit message:
+   BUILD2HY VBXE color shift HR blend
+6) Build APK / spust v NOX nebo na mobilu.
+7) Testuj v tomto poradi:
+   W3D ATR -> Textmode Test -> DACTest -> Heartlight.
+8) Kdyby se W3D/HL zhorsil, vrat se na BUILD2HX nebo BUILD2HW.
+
+Zmeneny soubor:
+app/src/main/assets/emu_vbxe/index.html
