@@ -1,0 +1,97 @@
+ATARIHELP.EU EMU-10
+BUILD2GZ_VBXE_PALETTE_HR_BLITTER_FIX
+
+KODY JSOU ZMENENE.
+
+Meneno pouze:
+- app/src/main/assets/emu_vbxe/index.html
+
+Na co jsem NESAHAL:
+- puvodni emulator emu/index.html
+- uvodni obrazovka
+- MainActivity.java
+- YouTube / Facebook / AtariHelp.eu
+- prehravac
+- CLOAD / POKEY / CSAVE / TXT / ROM puvodniho emulatoru
+- grafika klavesnice/joystick/kazetak
+
+CO POMOHLO Z TVEHO ZIPU:
+- vbxe_package_v109.zip obsahuje fx.pdf a vbxefx.ah pro VBXE FX v1.09
+- z toho jsem opravil konkretni veci, ne od oka:
+  1) CSEL/PSEL/CR/CG/CB = 4 RGB palety po 256 barvach
+  2) XDL ATT byte: b4-b5 = overlay palette, b6-b7 = playfield palette
+  3) HR overlay: narrow/normal/wide fyzicky odpovida 256/320/336 bajtum na radek, proto jsem v GY cetl jen polovinu
+  4) blitter constant source plati pri blt_and_mask == 0, ne podle stare spatne podminky
+
+CO UKAZAL TVUJ BUILD2GY LOG:
+- cista cerna uz neni
+- XDL se opravdu zapina:
+  VIDEO_CONTROL $D640=$03
+  XDL base $1E000
+  XDL records=4
+- hra pouziva hlavne HR overlay:
+  rec0/1/2 mode=HR, widthSel=0, step=512
+- muj GY renderer ale kreslil HR uzky pruh, protoze bral width/2 bajtu
+- navic jsem zle cetl XDL paletu jako "shift", ne jako cislo VBXE palety
+- log take spamoval XDL PARSE stovkyrat, to je ted omezeno
+
+CO JE OPRAVENO V BUILD2GZ:
+1) VBXE RGB palety
+- implementovano PSEL $D645
+- CSEL $D644
+- CR/CG/CB $D646-$D648
+- zapis do CB automaticky zvysi CSEL, presne podle dokumentace
+
+2) XDL ATT palety
+- uz nepouzivam "shift"
+- ovPal = b4-b5
+- pfPal = b6-b7
+- renderer pouziva skutecnou VBXE RGB paletu
+
+3) HR sirka
+- HR uz necte width/2 bajtu
+- HR narrow cte 256 bajtu na radek
+- HR normal cte 320 bajtu
+- HR wide cte 336 bajtu
+- dva HR pixely v bajtu downsampluju do jednoho zobrazeneho bodu, protoze canvas nema 640 subpixelu
+
+4) Blitter constant fill
+- constant source je opraveno na and_mask == 0
+- to muze opravit spatne vyplnovane pruhy/plochy
+
+5) Log
+- XDL PARSE se uz nema vypisovat 800x za sebou
+- stabilni XDL vypisy se potlacuji, aby log nezabil vykon/zvuk
+
+DULEZITE:
+Tohle porad neni hotovy VBXE.
+Jeste chybi:
+- presna HR subpixel reprezentace / mozna lepsi downsample
+- attribute map
+- playfield/PMG priority
+- text mode
+- presne paletove priority pro mapu
+
+TEST PLAN:
+1. Spust novy VBXE emulator.
+2. Nahraj Popeye (VBXE, PAL Version).xex.
+3. Na instrukcni obrazovce stiskni klavesu nebo FIRE.
+4. Sleduj:
+   - jestli obraz uz neni jen uzky sloupec/pruh
+   - jestli je sirsi a vic podobny realnemu oknu
+   - jestli barvy nejsou jen zluto-cerna nahoda
+   - jestli zvuk zustane
+   - jestli ovladani reaguje
+5. Uloz log a posli.
+
+V logu hledat:
+- VBXE PALETTE RGB write
+- VBXE XDL REC ... ovPal=...
+- VBXE XDL RENDER
+- mene XDL PARSE spamu nez v GY
+
+DALSI KROK:
+BUILD2HA podle testu:
+A) jestli obraz bude sirsi, ale barevne spatny -> paletove mapy / attribute map
+B) jestli obraz bude porad posunuty/pruh -> HR downsample / OVADR stride
+C) jestli zvuk spadne -> snizit blitter praci po framech
