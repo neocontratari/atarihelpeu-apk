@@ -1,0 +1,24 @@
+NAVOD PRO RENEHO - BUILD2HP_VBXE_KEY_GRID_EXACT_AND_DOOR_BUTTON
+================================================================
+
+1) ZIP rozbal do rootu projektu AtariHelp EMU-10 pres Spravce souboru / Total Commander.
+2) Potvrd prepsani souboru.
+3) Otevri GitHub Desktop.
+4) Zkontroluj, ze se meni jen VBXE vetev:
+   app/src/main/assets/emu_vbxe/index.html
+5) Commit message:
+   BUILD2HP VBXE key grid exact + door space button
+6) Spust appku v NOX / mobilu.
+
+Nejdriv testuj klavesnici:
+- 7 8 9 0 Clear Insert Delete Break
+- O P sipky Return
+- pravy SHIFT / Fuji / SPACE
+
+Pak testuj joystick:
+- FIRE = strelba
+- DOOR SPACE = SPACE klavesa pro W3D dvere
+
+Kdyz bude klavesnice porad ujeta:
+- posli screenshot s #hitdebug=1, pokud ho umis zapnout v URL
+- nebo napis konkretne: jakou klavesu mas zmacknutou a jaka se skutecne poslala.

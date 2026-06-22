@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2HO</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2HP</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -106,6 +106,9 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #joyFire:before{content:"";position:absolute;left:8%;top:8%;width:84%;height:84%;border-radius:50%;opacity:0;pointer-events:none;transition:opacity .035s ease,transform .035s ease,box-shadow .035s ease,background .035s ease;}
 #joyFire.on{background:transparent;box-shadow:none;transform:translateY(1.4px) scale(.992);}
 #joyFire.on:before{opacity:1;background:rgba(255,0,0,.22);box-shadow:0 0 24px rgba(255,0,0,.30) inset,0 0 12px rgba(255,50,20,.20);transform:translateY(1px) scale(.992);}
+#joyDoor{position:absolute;left:64.20%;top:67.05%;width:23.2%;height:5.6%;border-radius:14px;border:0;background:rgba(0,0,0,.01);color:transparent;font-size:0;touch-action:none;pointer-events:auto;z-index:87;overflow:visible;}
+#joyDoor:before{content:"";position:absolute;inset:6% 10%;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .035s ease,transform .035s ease,box-shadow .035s ease,background .035s ease;}
+#joyDoor.on:before,#joyDoor:active:before{opacity:1;background:rgba(255,170,30,.20);box-shadow:inset 0 0 18px rgba(255,210,80,.38),0 0 10px rgba(255,190,60,.18);transform:translateY(1px) scale(.992);}
 /* hidden/utility DOM required by original emulator core */
 #filePick{display:none}.logwrap{position:absolute;left:4.0%;right:4.0%;top:94.5%;height:5%;z-index:25;color:#f2c464;font-size:10px;opacity:.01;pointer-events:none;}#log{height:100%;overflow:auto;white-space:pre-wrap;}
 .file-opt{position:absolute;left:3%;top:93%;z-index:35;font-size:10px;color:#f2c464;opacity:.01;}
@@ -173,6 +176,9 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #landFire{position:absolute;right:4.9vw;bottom:6.8vh;width:min(26vh,23vw);height:min(26vh,23vw);min-width:104px;min-height:104px;border-radius:50%;pointer-events:auto;touch-action:none;border:1px solid rgba(255,92,64,.40);
   background:radial-gradient(circle at 45% 38%,rgba(255,116,84,.38),rgba(145,0,0,.22) 48%,rgba(0,0,0,.22) 72%);color:rgba(255,220,190,.60);font:bold min(3.8vh,4vw) "Courier New",monospace;text-shadow:0 0 8px rgba(0,0,0,.95);box-shadow:inset 0 0 30px rgba(0,0,0,.72),0 0 22px rgba(0,0,0,.55);opacity:.48;}
 #landFire.on,#landFire:active{opacity:.82;filter:brightness(1.28);box-shadow:inset 0 0 36px rgba(255,54,30,.54),0 0 24px rgba(255,50,20,.24);transform:translateY(2px) scale(.985);}
+#landDoor{position:absolute;right:4.9vw;bottom:33.2vh;width:min(20vh,18vw);height:min(20vh,18vw);min-width:86px;min-height:86px;border-radius:50%;pointer-events:auto;touch-action:none;border:1px solid rgba(255,190,80,.42);
+  background:radial-gradient(circle at 45% 38%,rgba(255,210,90,.34),rgba(176,96,0,.22) 50%,rgba(0,0,0,.20) 73%);color:rgba(255,236,182,.72);font:bold min(2.7vh,2.8vw) "Courier New",monospace;text-shadow:0 0 8px rgba(0,0,0,.95);box-shadow:inset 0 0 28px rgba(0,0,0,.72),0 0 20px rgba(0,0,0,.50);opacity:.52;}
+#landDoor.on,#landDoor:active{opacity:.86;filter:brightness(1.26);box-shadow:inset 0 0 34px rgba(255,190,50,.48),0 0 23px rgba(255,170,40,.22);transform:translateY(2px) scale(.985);}
 #landJoyPad.active{opacity:.78;filter:brightness(1.12);}
 #landHint{position:absolute;left:50%;bottom:2vh;transform:translateX(-50%);padding:5px 9px;border-radius:8px;background:rgba(0,0,0,.36);border:1px solid rgba(255,214,120,.22);color:rgba(255,223,150,.70);font:bold min(2.2vh,2.2vw) "Courier New",monospace;text-shadow:0 0 7px #000;pointer-events:none;opacity:.55;}
 @media (orientation:landscape){
@@ -218,8 +224,8 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #btnPower:before,#btnPower:after,#btnSelfTest:before,#btnSelfTest:after,#btnJoy:before,#btnJoy:after{content:none!important;display:none!important;}
 
 
-/* BUILD2HO_VBXE_KEY_HITBOX_CENTER_FIX: presny 941x1672 VBXE 130XE skin podle Reneho PNG.
-   Core / VBXE BCB21 z BUILD2HL se NEMENI. Jen UI skin + centrovane hitboxy klavesnice. */
+/* BUILD2HP_VBXE_KEY_GRID_EXACT_AND_DOOR_BUTTON: presny 941x1672 VBXE 130XE skin podle Reneho PNG.
+   Core / VBXE BCB21 z BUILD2HL se NEMENI. Jen UI skin + presne pixelove hitboxy + druhy DOOR/SPACE ovladac. */
 .stage{width:min(100vw,941px)!important;aspect-ratio:941/1672!important;background:#050608!important;}
 .screenSlot{left:10.4145%!important;top:10.4665%!important;width:79.0648%!important;height:30.2033%!important;border-radius:5.5%/8.5%!important;background:#0047db!important;box-shadow:inset 0 0 42px rgba(0,0,0,.42)!important;}
 #led{display:none!important;}
@@ -266,8 +272,9 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
 #joyLeft{left:15.4091%!important;top:59.5096%!important;width:12.5399%!important;height:7.0574%!important;}
 #joyRight{left:38.2572%!important;top:59.5096%!important;width:12.5399%!important;height:7.0574%!important;}
 #joyFire{left:65.8874%!important;top:55.6220%!important;width:19.6599%!important;height:11.0646%!important;}
+#joyDoor{left:64.20%!important;top:67.05%!important;width:23.2%!important;height:5.6%!important;}
 /* presny skin uz ma kresbu klaves/joysticku; HTML hitboxy zustavaji neviditelne */
-.key,.hit,.joyDir,#joyFire{background:transparent!important;color:transparent!important;border:0!important;box-shadow:none!important;text-shadow:none!important;}
+.key,.hit,.joyDir,#joyFire,#joyDoor{background:transparent!important;color:transparent!important;border:0!important;box-shadow:none!important;text-shadow:none!important;}
 
 </style>
 </head>
@@ -309,8 +316,8 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
   <label class="file-opt"><input type="checkbox" id="chkOpt" checked> OPTION u ATR / boot bez BASICu</label>
   <input type="file" id="filePick">
   <div id="osk"></div>
-  <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyUp" class="joyDir">UP</button><button id="joyDown" class="joyDir">DOWN</button><button id="joyLeft" class="joyDir">LEFT</button><button id="joyRight" class="joyDir">RIGHT</button><button id="joyFire">FIRE</button></div>
-  <div id="landJoy" aria-label="Landscape joystick pres hru"><div id="landJoyPad"><div id="landJoyKnob"></div></div><button id="landFire" type="button">FIRE</button><div id="landHint">LANDSCAPE JOYSTICK</div></div>
+  <div id="joy"><div id="joyPad"><div id="joyKnob"></div></div><button id="joyUp" class="joyDir">UP</button><button id="joyDown" class="joyDir">DOWN</button><button id="joyLeft" class="joyDir">LEFT</button><button id="joyRight" class="joyDir">RIGHT</button><button id="joyFire">FIRE</button><button id="joyDoor" type="button">DOOR / SPACE</button></div>
+  <div id="landJoy" aria-label="Landscape joystick pres hru"><div id="landJoyPad"><div id="landJoyKnob"></div></div><button id="landFire" type="button">FIRE</button><button id="landDoor" type="button">DOOR<br>SPACE</button><div id="landHint">LANDSCAPE JOYSTICK + DOOR</div></div>
   <div class="logwrap"><div class="bar"><span>LOG</span></div><div id="log"></div></div>
 </main>
 <div id="actionDock" aria-label="Viditelne servisni ovladani mimo kazetak">
@@ -3030,15 +3037,15 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   // Mezernik ma vlastni presny stredovy obdelnik.
   addKeyRect(4,0,188,1097,518,54);
 
-  // BUILD2HO_VBXE_KEY_HITBOX_CENTER_FIX: vychazi z BUILD2HN, ale centrovane dotykove zony klaves jsou
-  // zmensene a posazene do stredu fyzickych klaves, aby se pri tuknuti na stred netrefovala sousedni klavesa.
-  // Pouze hitboxy klavesnice; VBXE core, BCB21, XDL, blitter a scan kody zustavaji z BUILD2HL/HN.
+  // BUILD2HP_VBXE_KEY_GRID_EXACT_AND_DOOR_BUTTON:
+  // HO mel radky moc roztazene doprava. Proto tady nepouzivam matematicky krok, ale pixelove hrany
+  // skutecnych klaves primo z dodaneho 941x1672 PNG skinu. Core/BCB21/VBXE zustava z BUILD2HL.
   KEY_RECTS={};
-  addLinearRow(0,891,52,[41,108,167,227,287,347,407,467,527,587,647,707,767,827,886],[60,52,52,52,52,52,52,52,52,52,52,52,52,52,46]);
-  addLinearRow(1,955,52,[43,139,199,259,319,379,439,499,559,619,679,739,799,861],[86,52,52,52,52,52,52,52,52,52,52,52,52,68]);
-  addLinearRow(2,1019,52,[43,139,199,259,319,379,439,499,559,619,679,739,799,861],[86,52,52,52,52,52,52,52,52,52,52,52,52,68]);
-  addLinearRow(3,1083,52,[44,169,229,289,349,409,469,529,589,649,709,771,851],[114,52,52,52,52,52,52,52,52,52,52,68,78]);
-  addKeyRect(4,0,225,1154,470,48);
+  addLinearRow(0,901,64,[41,108,168,227,284,340,395,452,505,560,614,667,723,779,837],[58,51,50,48,48,47,48,45,46,45,46,48,48,50,58]);
+  addLinearRow(1,966,67,[41,130,190,249,308,367,423,478,533,587,641,696,751,808],[81,54,52,53,52,50,49,50,47,49,49,49,51,87]);
+  addLinearRow(2,1034,65,[41,141,202,261,320,378,437,492,548,601,656,710,766,825],[90,52,50,50,50,49,46,47,45,47,45,49,52,70]);
+  addLinearRow(3,1101,68,[41,171,231,289,345,403,459,514,570,626,680,734,833],[121,51,48,49,48,46,46,47,47,46,45,91,62]);
+  addKeyRect(4,0,216,1175,484,52);
   
   // BUILD2HB_VBXE_R11 debug: kdyz URL obsahuje #hitdebug=1, ukaze se cervena sit hitboxu.
   function buildHitDebug(){
@@ -3093,7 +3100,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         host.appendChild(b);
       });
     });
-    log('KLAVESNICE BUILD2BZ: high-res absolutni hitbox mapa 941x1672, radek 2+ zustava z BUILD2BY/BR golden.');
+    log('KLAVESNICE BUILD2HP: pixelove hitboxy primo podle 941x1672 PNG, opravena prava strana radku.');
   }
 
   // ---------- joystick (kruhovy pad + FIRE) ----------
@@ -3105,7 +3112,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     try{ document.activeElement && document.activeElement.blur && document.activeElement.blur(); }catch(_e){}
     try{ document.body.style.overflow=''; document.documentElement.style.overflow=''; document.body.style.overflowY='auto'; document.documentElement.style.overflowY='auto'; }catch(_e){}
     try{ document.body.style.touchAction='pan-y'; document.documentElement.style.touchAction='pan-y'; }catch(_e){}
-    try{ document.querySelectorAll('.joyDir.on,#joyFire.on,#landFire.on').forEach(function(x){ x.classList.remove('on'); }); }catch(_e){}
+    try{ document.querySelectorAll('.joyDir.on,#joyFire.on,#joyDoor.on,#landFire.on,#landDoor.on').forEach(function(x){ x.classList.remove('on'); }); }catch(_e){}
     try{ joyMask=0; joyFire=false; joyApply(); }catch(_e){}
   }
   function setJoyMode(on){
@@ -3123,8 +3130,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
   function bindJoy(){
     var pad=document.getElementById('joyPad'), knob=document.getElementById('joyKnob');
-    var fire=document.getElementById('joyFire');
-    var active=false, pid=null, lastLog=0;
+    var fire=document.getElementById('joyFire'), door=document.getElementById('joyDoor');
+    var active=false, pid=null, lastLog=0, doorDown=false;
     function xy(e){
       if(e.touches && e.touches.length) return {x:e.touches[0].clientX,y:e.touches[0].clientY};
       if(e.changedTouches && e.changedTouches.length) return {x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
@@ -3161,9 +3168,12 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     pad.addEventListener('mousedown',begin,{passive:false}); window.addEventListener('mousemove',move,{passive:false}); window.addEventListener('mouseup',end,{passive:false});
     function fOn(e){ e.preventDefault(); joyFire=true; joyApply(); fire.classList.add('on'); log('JOYSTICK FIRE stisk'); }
     function fOff(e){ if(e) e.preventDefault(); joyFire=false; joyApply(); fire.classList.remove('on'); log('JOYSTICK FIRE pusteno'); }
+    function dOn(e){ e.preventDefault(); if(doorDown) return; doorDown=true; try{ M&&M.keyDown(33); }catch(_e){} if(door) door.classList.add('on'); log('JOYSTICK DOOR/SPACE stisk'); }
+    function dOff(e){ if(e) e.preventDefault(); if(!doorDown) return; doorDown=false; try{ M&&M.keyUp(); }catch(_e){} if(door) door.classList.remove('on'); log('JOYSTICK DOOR/SPACE pusteno'); }
     fire.addEventListener('pointerdown',fOn,{passive:false}); fire.addEventListener('pointerup',fOff,{passive:false}); fire.addEventListener('pointercancel',fOff,{passive:false}); fire.addEventListener('pointerleave',fOff,{passive:false});
     fire.addEventListener('touchstart',fOn,{passive:false}); fire.addEventListener('touchend',fOff,{passive:false}); fire.addEventListener('touchcancel',fOff,{passive:false});
     fire.addEventListener('mousedown',fOn,{passive:false}); fire.addEventListener('mouseup',fOff,{passive:false});
+    if(door){ door.addEventListener('pointerdown',dOn,{passive:false}); door.addEventListener('pointerup',dOff,{passive:false}); door.addEventListener('pointercancel',dOff,{passive:false}); door.addEventListener('pointerleave',dOff,{passive:false}); door.addEventListener('touchstart',dOn,{passive:false}); door.addEventListener('touchend',dOff,{passive:false}); door.addEventListener('touchcancel',dOff,{passive:false}); door.addEventListener('mousedown',dOn,{passive:false}); door.addEventListener('mouseup',dOff,{passive:false}); }
     function bindDir(id,mask,label){
       var el=document.getElementById(id); if(!el) return;
       function on(e){ e.preventDefault(); active=false; joySet(mask); el.classList.add('on'); log('JOYSTICK '+label+' natvrdo mask='+mask); }
@@ -3178,9 +3188,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
 
   // ---------- BUILD2AR landscape joystick pres hru ----------
   function bindLandscapeJoy(){
-    var pad=document.getElementById('landJoyPad'), knob=document.getElementById('landJoyKnob'), fire=document.getElementById('landFire');
+    var pad=document.getElementById('landJoyPad'), knob=document.getElementById('landJoyKnob'), fire=document.getElementById('landFire'), door=document.getElementById('landDoor');
     if(!pad||!knob||!fire) return;
-    var active=false, pid=null, lastLog=0;
+    var active=false, pid=null, lastLog=0, doorDown=false;
     function xy(e){
       if(e.touches && e.touches.length) return {x:e.touches[0].clientX,y:e.touches[0].clientY};
       if(e.changedTouches && e.changedTouches.length) return {x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
@@ -3216,9 +3226,12 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     pad.addEventListener('mousedown',begin,{passive:false}); window.addEventListener('mousemove',move,{passive:false}); window.addEventListener('mouseup',end,{passive:false});
     function fOn(e){ e.preventDefault(); joyFire=true; joyApply(); fire.classList.add('on'); }
     function fOff(e){ if(e) e.preventDefault(); joyFire=false; joyApply(); fire.classList.remove('on'); }
+    function dOn(e){ e.preventDefault(); if(doorDown) return; doorDown=true; try{ M&&M.keyDown(33); }catch(_e){} if(door) door.classList.add('on'); log('LANDSCAPE DOOR/SPACE stisk'); }
+    function dOff(e){ if(e) e.preventDefault(); if(!doorDown) return; doorDown=false; try{ M&&M.keyUp(); }catch(_e){} if(door) door.classList.remove('on'); log('LANDSCAPE DOOR/SPACE pusteno'); }
     fire.addEventListener('pointerdown',fOn,{passive:false}); fire.addEventListener('pointerup',fOff,{passive:false}); fire.addEventListener('pointercancel',fOff,{passive:false}); fire.addEventListener('pointerleave',fOff,{passive:false});
     fire.addEventListener('touchstart',fOn,{passive:false}); fire.addEventListener('touchend',fOff,{passive:false}); fire.addEventListener('touchcancel',fOff,{passive:false});
     fire.addEventListener('mousedown',fOn,{passive:false}); fire.addEventListener('mouseup',fOff,{passive:false});
+    if(door){ door.addEventListener('pointerdown',dOn,{passive:false}); door.addEventListener('pointerup',dOff,{passive:false}); door.addEventListener('pointercancel',dOff,{passive:false}); door.addEventListener('pointerleave',dOff,{passive:false}); door.addEventListener('touchstart',dOn,{passive:false}); door.addEventListener('touchend',dOff,{passive:false}); door.addEventListener('touchcancel',dOff,{passive:false}); door.addEventListener('mousedown',dOn,{passive:false}); door.addEventListener('mouseup',dOff,{passive:false}); }
     try{
       var mq=window.matchMedia('(orientation: landscape)');
       var announce=function(){ if(mq.matches) log('LANDSCAPE: obraz pres celou sirku, podkresleny joystick vlevo + FIRE vpravo.'); };
@@ -4804,7 +4817,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     bindKeyboard();
     updateTapeCounter();
     log('AtariHelp.eu EMU-10 BUILD2HL_VBXE_BCB21_BLITTER_CORE pripraven.');
-    log('AtariHelp.eu EMU-10 BUILD2HO_VBXE_KEY_HITBOX_CENTER_FIX pripraven - UI skin z BUILD2HN, centrovane hitboxy klavesnice, core BUILD2HL beze zmen.');
+    log('AtariHelp.eu EMU-10 BUILD2HP_VBXE_KEY_GRID_EXACT_AND_DOOR_BUTTON pripraven - UI skin z BUILD2HN, pixelove hitboxy klavesnice podle PNG, DOOR/SPACE tlacitko pro W3D, core BUILD2HL beze zmen.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);

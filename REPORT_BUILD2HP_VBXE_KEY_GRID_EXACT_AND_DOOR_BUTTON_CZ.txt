@@ -1,0 +1,74 @@
+ATARIHELP.EU EMU-10 VBXE - BUILD2HP_VBXE_KEY_GRID_EXACT_AND_DOOR_BUTTON
+======================================================================
+
+ZAKLAD:
+- BUILD2HL_VBXE_BCB21_BLITTER_CORE = GOLD VBXE core baseline.
+- BUILD2HN exact UI skin zustava.
+- BUILD2HM neni pouzity, zustava karantena.
+
+KODY JSOU ZMENENE:
+- pouze UI / hitboxy / joystick ovladani ve VBXE vetvi.
+
+BASIC / ALTIRRA TESTOVACI KODY JSOU STEJNE.
+
+ZMeneny soubor:
+- app/src/main/assets/emu_vbxe/index.html
+
+Nemeneno:
+- VBXE core z BUILD2HL
+- BCB21 oprava
+- XDL / blitter / RAM320 / XEX loader
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity / router / odkazy / CLOAD / CSAVE baseline
+
+OPRAVY V BUILD2HP:
+1) Klavesnice:
+   - HO mel klavesove hitboxy roztazene doprava.
+   - Projev: u prave casti radku tap na 0 spustil 9 atd.
+   - HP nahrazuje matematicky krok pixelovou mapou skutecnych hran klaves podle 941x1672 PNG skinu.
+   - Opravene jsou vsechny hlavni radky + SPACE.
+   - Scan kody klaves se nemenily.
+
+2) Joystick / W3D:
+   - Pridano druhe prave tlacitko DOOR / SPACE.
+   - FIRE zustava joystick trigger.
+   - DOOR / SPACE posila Atari scan kod SPACE (33), urceno pro otevirani dveri ve Wolf3D a podobne hry.
+   - V portret joystick rezimu je DOOR/SPACE neviditelna dotykova zona pod/okolo praveho FIRE panelu, aby se nerozbil presny skin.
+   - V landscape hernim rezimu jsou vpravo dve viditelna tlacitka: FIRE a DOOR SPACE.
+
+TEST PLAN:
+1) Klavesnice:
+   - Zapni KEYBOARD.
+   - Testuj hlavne pravy konec radku:
+     7 8 9 0 Clear Insert Delete Break
+     O P sipky Return
+     L ; + * Caps
+     [ ] ? Shift Fuji/Inverse
+   - Chyba z HO: 0 davalo 9. To musi zmizet.
+
+2) Prepinani:
+   - KEYBOARD -> JOYSTICK -> KEYBOARD.
+   - Hitboxy klavesnice musi zustat na miste.
+
+3) Joystick portrait:
+   - JOYSTICK: FIRE musi stale strilet.
+   - Klepnout vpravo pod FIRE / u napisu FIRE = DOOR/SPACE.
+
+4) Landscape:
+   - Otoc mobil.
+   - Vlevo joystick, vpravo FIRE + DOOR SPACE.
+   - W3D: FIRE = strelba, DOOR SPACE = otevreni dveri.
+
+5) VBXE gold kontrola:
+   - Po UI testu zkus rychle DACTest a HL.
+   - DAC pruhy musi zustat.
+   - HL musi stale nabehnout do hry jako v BUILD2HL.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2HP_VBXE_KEY_GRID_EXACT_AND_DOOR_BUTTON pripraven
+- KLAVESNICE BUILD2HP: pixelove hitboxy primo podle 941x1672 PNG
+- JOYSTICK DOOR/SPACE stisk
+- LANDSCAPE DOOR/SPACE stisk
+
+POZNAMKA:
+Toto je UI/ovladani build. Hlavni VBXE ukol zustava cisty core podle BUILD2HL gold baseline.
