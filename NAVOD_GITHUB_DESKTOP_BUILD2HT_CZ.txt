@@ -1,0 +1,15 @@
+NAVOD - BUILD2HT_VBXE_LANDSCAPE_FULL_GAME_GHOST_CONTROLS
+=========================================================
+
+1. ZIP rozbalit.
+2. Slozku app z overlaye zkopirovat pres stavajici app ve tvem projektu.
+3. Ve Windows potvrdit prepsani souboru.
+4. Otevrit GitHub Desktop.
+5. Zkontrolovat zmeny:
+   app/src/main/assets/emu_vbxe/index.html
+6. Commit message:
+   BUILD2HT_VBXE_LANDSCAPE_FULL_GAME_GHOST_CONTROLS
+7. Spustit APK v Noxu / mobilu.
+
+NEPREPISUJ normalni emu/index.html.
+Tento overlay meni jen VBXE vetev.

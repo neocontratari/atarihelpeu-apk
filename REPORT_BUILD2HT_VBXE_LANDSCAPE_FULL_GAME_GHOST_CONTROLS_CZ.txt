@@ -1,0 +1,79 @@
+ATARIHELP.EU EMU-10 VBXE - BUILD2HT_VBXE_LANDSCAPE_FULL_GAME_GHOST_CONTROLS
+==========================================================================
+
+DUVOD BUILDU
+------------
+René upresnil landscape joystick:
+- NE delena obrazovka.
+- NE joystick pod hrou jako samostatny panel.
+- Chce celou landscape plochu pro hru.
+- Joystick, FIRE a DOOR/SPACE maji byt jen slabe pruhledne ovladace pres herni obraz,
+  jako podkres/pomocne dotykove zony, aby neukously plochu hry.
+
+ZAKLAD
+------
+- BUILD2HL GOLD VBXE core.
+- HN/HQ/HR presny UI skin.
+- HP presne hitboxy klavesnice, ktere René potvrdil jako funkcni.
+- BUILD2HM NEPOUZIT - zustava v karantene.
+
+KODY
+----
+KODY JSOU ZMENENE - pouze UI / landscape rozlozeni ve VBXE vetvi.
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+ZMĚNĚNÝ SOUBOR
+--------------
+app/src/main/assets/emu_vbxe/index.html
+
+CORE BEZE ZMEN
+--------------
+Nemeneno:
+- VBXE core BUILD2HL
+- BCB21 oprava
+- XDL renderer / parser
+- blitter
+- RAM320
+- XEX/OBX loader
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity / router / odkazy / CLOAD/CSAVE baseline
+
+CO JE NOVE
+----------
+1) Landscape uz neni deleny na hru nahore a ovladace dole.
+2) ScreenSlot v landscape zabira celou obrazovku telefonu.
+3) Canvas hry je aspect-fit 384:240, aby nebyl orezany.
+4) Joystick/FIRE/DOOR jsou pruhledne pres obraz:
+   - levy joystick dole vlevo,
+   - FIRE dole vpravo,
+   - DOOR/SPACE nad FIRE,
+   - pruhlednost nizka v klidu, vyssi jen pri stisku.
+5) Ovládace jsou pointer-events jen ve svych zonach, jinak neprekryvaji hru.
+6) HELP text upraven podle noveho landscape chovani.
+
+TEST PLAN
+---------
+1. Portrait:
+   - POWER na 130XE funguje.
+   - HELP pise, kde je POWER.
+   - MENU vraci na uvod.
+   - Klavesy 7 8 9 0 stale sedi.
+
+2. Landscape mobil:
+   - Hra neni v samostatnem hornim okne.
+   - Celá landscape plocha patri hre.
+   - Joystick/FIRE/DOOR jsou jen slabe pruhledne pres obraz.
+   - Obraz nesmi byt orezany.
+
+3. W3D:
+   - Joystick pohyb funguje.
+   - FIRE strili.
+   - DOOR/SPACE otevíra dvere.
+
+LOG MARKER
+----------
+AtariHelp.eu EMU-10 BUILD2HT_VBXE_LANDSCAPE_FULL_GAME_GHOST_CONTROLS pripraven
+
+POZNAMKA
+--------
+Toto NENI dalsi VBXE core oprava. Je to ciste UI/landscape build. Po potvrzeni layoutu se lze vratit k ladeni VBXE obrazu z BUILD2HL GOLD.
