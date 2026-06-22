@@ -1,0 +1,99 @@
+ATARIHELP.EU EMU-10 - BUILD2HD_VBXE_BLITTER_ZOOM_XDL_HOLD
+============================================================
+
+KODY JSOU STEJNE
+- BASIC / Altirra porovnavaci kody jsem nemenil.
+- ROM, BASIC, normalni emu v app/src/main/assets/emu/index.html jsem nemenil.
+
+ZMENENY SOUBOR
+- app/src/main/assets/emu_vbxe/index.html
+
+NA CO JSEM NESAHAL
+- normalni emulator emu/index.html
+- MainActivity / router / odkazy Facebook / YouTube / AtariHelp
+- player / equalizer / BASS / TREBLE / BALANCE
+- UI skin, klavesnice, kazetak, XC12 mimo textove build logy
+- ROMy, BASIC, testovaci kody
+
+PROC BUILD2HD VZNIKL
+Po BUILD2HC logy a screenshoty ukazaly:
+1) Wolf3D uvodni obrazek nabehne, ale po prechodu se grafika rozsype jinak a vypada jako vice obrazovek v jedne.
+2) Popeye zustava rozsypany a neni normalne spustitelny.
+3) VRAM PROBE uz neni hlavni vinik - HC ho blokuje po XDL.
+4) V logu W3D se objevuje XDL TEXT serie s ov=$00000 a bez predchoziho OVADR. To je velmi podezrele: prvni viditelny XDL record nema z ceho brat obrazova data.
+5) Blitter v HC porad ignoroval casti fx.pdf: ZOOM, INTLVE a PATTERN FEATURE. To muze presne delat opakovane/rozsypane bloky, spatne vyplnene oblasti a vice obrazovek v jedne.
+
+CO JE NOVE V BUILD2HD
+1) BLITTER: pridana realna podpora ZOOMX / ZOOMY podle fx.pdf.
+   - Zoom zvetsuje cilovou oblast, ne zdroj.
+   - ZOOMY kopiruje jednu zdrojovou radku do vice cilovych radku.
+   - Testovaci pripad z fx dokumentace typu width 512, height 256, zoomY 4 tak konecne muze sahnout na celou 512KB oblast a ne jen na ctvrtinu.
+
+2) BLITTER: pridana podpora INTLVE.
+   - Pri INTLVE se cilova adresa po bajtu posouva o 2.
+   - To je dulezite hlavne pro textovy overlay: znak/atribut, kazdy druhy bajt.
+
+3) BLITTER: pridana podpora PATTERN FEATURE.
+   - Pokud je bit IN_USE aktivni, zdrojovy vzor se v horizontalni radce opakuje podle pattern width.
+   - Bez toho muze hra dostat opakovane/posunute bloky nebo rozsypany fill.
+
+4) XDL: pridana ochrana proti nehotove / neplatne XDL.
+   - Pokud je v XDL viditelny TEXT/SR/HR/LR record drive, nez byla nastavena OVADR adresa, renderer ho nebere jako validni obraz.
+   - Misto kresleni caje se drzi posledni platna XDL struktura.
+   - Marker: VBXE XDL HOLD_LAST_GOOD BUILD2HD
+
+5) LOG: blitter log pro prvnich 12 blitu ukazuje zoom, INTLVE a pattern.
+   - Marker: VBXE BLITTER FEATURE BUILD2HD
+   - Marker: zoom=$xx zx=N zy=N intlv=0/1 patt=$xx
+
+DULEZITE
+- Tohle neni game hack pro Wolf3D ani Popeye.
+- Tohle neni screen paint.
+- Tohle neni RAM inject.
+- Je to dalsi krok podle fx.pdf: realne chybejici casti blitteru + bezpecnejsi XDL validace.
+
+TEST PLAN
+---------
+
+TEST 1 - Wolf3D
+1) Prekryj projekt ZIPem pres GitHub Desktop.
+2) Sestav/spust appku v NOX.
+3) Otevri VBXE vetev stejne jako u HC.
+4) Nacti wolf3d.atr.
+5) Sleduj:
+   - jestli uvodni obrazek zustane cisty,
+   - co se stane po intru,
+   - jestli zmizi efekt vice obrazovek v jedne,
+   - jestli se herni obraz zlepsi / zhorsi / zustane stejne.
+6) Uloz LOG hned po rozsypani nebo po vstupu do hry.
+
+Ocekavane markery ve Wolf3D logu:
+- AtariHelp.eu EMU-10 BUILD2HD_VBXE_BLITTER_ZOOM_XDL_HOLD pripraven.
+- VBXE BLITTER FEATURE BUILD2HD
+- VBXE XDL HOLD_LAST_GOOD BUILD2HD   (pokud se objevi podezrela XDL bez OVADR)
+- VBXE BLITTER FAST #... zoom=$.. zx=.. zy=.. intlv=.. patt=$..
+- VBXE XDL RENDER BUILD2HD
+
+TEST 2 - Popeye
+1) Cold start / POWER.
+2) Nacti Popeye (VBXE, PAL Version).xex.
+3) Sleduj, jestli se obraz jen rozsype jako v HC, nebo jestli je zmena v HR casti.
+4) Uloz LOG po cca 10-20 sekundach.
+
+Ocekavane markery v Popeye logu:
+- VBXE BLITTER FEATURE BUILD2HD
+- VBXE XDL PARSE ... mode=HR ...
+- pripadne VBXE XDL HOLD_LAST_GOOD BUILD2HD
+
+CO POSLAT ZPET
+--------------
+- screenshot Wolf3D: intro + po intru + herni obraz
+- screenshot Popeye po nabehu
+- LOG pro Wolf3D
+- LOG pro Popeye
+- kratce napsat: "lepsi / horsi / stejne" a kde presne
+
+KDYZ TO BUDE HORSI
+------------------
+Rollback je BUILD2HC_VBXE_DOC_XDL_SANITY nebo predchozi BUILD2HB podle toho, co chces porovnat.
+HD meni jen emu_vbxe/index.html, takze rollback je jednoduchy.

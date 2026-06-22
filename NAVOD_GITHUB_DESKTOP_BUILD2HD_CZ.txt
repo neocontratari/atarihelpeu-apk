@@ -1,0 +1,11 @@
+NAVOD - BUILD2HD_VBXE_BLITTER_ZOOM_XDL_HOLD
+===========================================
+1) Stahni ZIP overlay.
+2) Rozbal ZIP primo do korene projektu AtariHelp EMU-10.
+3) Windows se zepta na prepsani souboru - potvrdit ANO.
+4) V GitHub Desktop zkontroluj zmenu:
+   app/src/main/assets/emu_vbxe/index.html
+5) Commit message:
+   BUILD2HD VBXE blitter zoom xdl hold
+6) Build / spust v NOX.
+7) Testuj Wolf3D a Popeye podle reportu.
