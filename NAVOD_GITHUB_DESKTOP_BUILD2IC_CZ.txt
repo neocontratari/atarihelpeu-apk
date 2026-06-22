@@ -1,0 +1,28 @@
+NAVOD PRO RENEHO - BUILD2IC_VBXE_TEXT_NATIVE_DAC_ADDR_SAFE
+
+1. Stahni ZIP overlay.
+2. ZIP rozbal.
+3. Obsah rozbalene slozky zkopiruj presne do korene projektu AtariHelp.eu EMU-10.
+4. Ve Windows potvrdit prepsani souboru.
+5. V GitHub Desktop zkontroluj Changes.
+6. Commit zprava:
+   BUILD2IC VBXE text native DAC addr safe
+7. Push / build APK stejnym postupem jako driv.
+
+Zmeneny soubor:
+- app/src/main/assets/emu_vbxe/index.html
+
+KODY JSOU ZMENENE pouze v JS/HTML emulatoru VBXE.
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+Testuj kratce v poradi:
+1. Textmode Test 1-4
+2. DACTest
+3. Pokud je zmena, pak W3D ATR
+4. Pokud je zmena, pak Heartlight / hl_vbxe.xex
+
+Posli zpet:
+- screenshot Textmode Test 1 nebo 2
+- screenshot DACTest
+- staci jedna veta: Textmode lepsi/stejne/horsi, DAC lepsi/stejne/horsi
+- log z aplikace

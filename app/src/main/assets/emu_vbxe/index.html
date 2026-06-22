@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IB</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IC</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -326,11 +326,12 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    Zachranny rollback po HY: vracim palety a HR renderer presne do BUILD2HX.
    Zachovava BUILD2HW rychly ATR/D1 zaklad, NET HRY, UI skin, hitboxy, joystick a TXT/TurboBasic rychle vkladani.
    Neobsahuje HY OV_COLOR_SHIFT ani HR blend, protoze v testu rozbil W3D a zhorsil Heartlight barvy. */
-/* BUILD2IB_VBXE_TEXTMODE_HSCROLL_SHARP_SAFE:
-   Po BUILD2IA Rene potvrdil: W3D barvy/hratelnost zustaly, ale Textmode Test 1-4 je porad rozmazany / nedokresleny.
-   IA prezentacni offscreen scaler proto NEpouzivam. Jedu zpet z HZ a opravuji jen VBXE TEXT XDL sampler:
-   textovy glyph se sampluje v hi-res bitech 0..7 s respektovanim lichého OV_HSCROLL, ne po hrubych dvojbitovych blocich.
-   Cilem je Textmode Test a Heartlight uvodni text; W3D grafika, palety, HR/DAC a BCB21 zustavaji beze zmen. */
+/* BUILD2IC_VBXE_TEXT_NATIVE_DAC_ADDR_SAFE:
+   Po Reneho testu BUILD2IB: HSCROLL sampler realne bezel, ale Textmode vizualne zadna zmena.
+   Tedy nehadam dal hscroll: opravuji dve konkretni veci podle fx.txt:
+   1) Text mode ma foreground barvu 0..127 viditelnou; transparentni je jen pozadi podle attr/no_trans/trans15.
+   2) XDL OVADR se v pixel modu musi po recordu posouvat o OVSTEP za kazdou scanline; to miri na DACTest modry odskok.
+   Palety/W3D barvy/BCB21/RAM320/loader zustavaji z HZ/HW. */
 
 </style>
 </head>
@@ -2376,7 +2377,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       var r=recs[i];
       out.push({
         y:r.y, lines:r.lines, xdlc:r.xdlc, mode:r.mode, ovAddr:r.ovAddr, ovStep:r.ovStep,
-        ovHScroll:r.ovHScroll||0, ovVScroll:r.ovVScroll||0, chBase:r.chBase||0,
+        ovHScroll:r.ovHScroll||0, ovVScroll:r.ovVScroll||0, textPhase:r.textPhase||0, chBase:r.chBase||0,
         widthSel:r.widthSel, ovPal:r.ovPal, pfPal:r.pfPal, priority:r.priority,
         noTrans:r.noTrans, addrMissing:!!r.addrMissing, frozen:!!r.frozen, usedCarryAddr:!!r.usedCarryAddr
       });
@@ -2413,7 +2414,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     var st={mode:0,
             ovAddr:(carry.ovAddrValid?carry.ovAddr:0)&0x7FFFF,
             ovStep:(carry.ovAddrValid?carry.ovStep:320)&0x0FFF,
-            ovHScroll:(carry.ovHScroll||0)&7, ovVScroll:(carry.ovVScroll||0)&7,
+            ovHScroll:(carry.ovHScroll||0)&7, ovVScroll:(carry.ovVScroll||0)&7, textPhase:(carry.textPhase||0)&7,
             chBase:(carry.chBase||0)&0x7FFFF,
             widthSel:(carry.widthSel==null?1:carry.widthSel)&3,
             ovPal:(carry.ovPal==null?1:carry.ovPal)&3,
@@ -2446,11 +2447,15 @@ function Atari130XE(osRom, basicRom, CPUctor){
         st.ovAddr=vbxeAddr3(a0,a1,a2);
         st.ovStep=(s0|((s1&0x0F)<<8))&0x0FFF;
         st.ovAddrValid=true;
+        // BUILD2IC: nova adresa znamena novy zacatek textoveho/obrazoveho fetchu.
+        st.textPhase=st.ovVScroll&7;
         p=(p+5)&0x7FFFF;
       }
       if(ovscrl){
         st.ovHScroll=vbxeVramRead(p)&0x07;
         st.ovVScroll=vbxeVramRead((p+1)&0x7FFFF)&0x07;
+        // BUILD2IC: vscroll je skutecna faze glyphu, ne jen hodnota do logu.
+        st.textPhase=st.ovVScroll&7;
         p=(p+2)&0x7FFFF;
       }
       if(chbase){
@@ -2471,23 +2476,36 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
       var visibleMode=(st.mode!==0);
       var usedCarryAddr=(visibleMode && !ovadr && st.ovAddrValid);
+      var recTextPhase=(st.textPhase||0)&7;
       recs.push({
         y:y, lines:rpt, xdlc:xdlc, mode:st.mode, ovAddr:st.ovAddr, ovStep:st.ovStep,
-        ovHScroll:st.ovHScroll, ovVScroll:st.ovVScroll, chBase:st.chBase,
+        ovHScroll:st.ovHScroll, ovVScroll:st.ovVScroll, textPhase:recTextPhase, chBase:st.chBase,
         widthSel:st.widthSel, ovPal:st.ovPal, pfPal:st.pfPal, priority:st.priority,
         noTrans:st.noTrans, addrMissing:(visibleMode && !st.ovAddrValid), usedCarryAddr:usedCarryAddr
       });
+      // BUILD2IC: skutecny XDL fetch po recordu posouva interní OVADR.
+      // Pixel mode: OVSTEP za kazdou scanline. Text mode: OVSTEP az po 8 radcich znaku.
+      if(visibleMode && st.ovAddrValid){
+        if(st.mode===1 || st.mode===2 || st.mode===3){
+          st.ovAddr=(st.ovAddr + (rpt * st.ovStep)) & 0x7FFFF;
+        } else if(st.mode===4){
+          var ph=(st.textPhase||0)&7;
+          var adv=(ph + rpt) >> 3;
+          st.textPhase=(ph + rpt) & 7;
+          if(adv>0) st.ovAddr=(st.ovAddr + (adv * st.ovStep)) & 0x7FFFF;
+        }
+      }
       y += rpt;
     }
 
     if(end && recs.length){
       vbxe.xdlCarryState={ovAddr:st.ovAddr&0x7FFFF, ovStep:st.ovStep&0x0FFF,
-        ovHScroll:st.ovHScroll&7, ovVScroll:st.ovVScroll&7, chBase:st.chBase&0x7FFFF,
+        ovHScroll:st.ovHScroll&7, ovVScroll:st.ovVScroll&7, textPhase:(st.textPhase||0)&7, chBase:st.chBase&0x7FFFF,
         widthSel:st.widthSel&3, ovPal:st.ovPal&3, pfPal:st.pfPal&3, priority:st.priority&0xFF,
         ovAddrValid:!!st.ovAddrValid};
     }
 
-    var shapeSig=base+':'+recs.length+':'+recs.map(function(r){return r.xdlc+','+r.lines+','+r.mode+','+r.ovAddr+','+r.ovStep+','+r.widthSel+','+r.ovPal+','+r.pfPal+','+r.chBase+','+r.ovHScroll+','+r.ovVScroll+','+(r.addrMissing?1:0)+','+(r.usedCarryAddr?1:0);}).join('|');
+    var shapeSig=base+':'+recs.length+':'+recs.map(function(r){return r.xdlc+','+r.lines+','+r.mode+','+r.ovAddr+','+r.ovStep+','+r.widthSel+','+r.ovPal+','+r.pfPal+','+r.chBase+','+r.ovHScroll+','+r.ovVScroll+','+(r.textPhase||0)+','+(r.addrMissing?1:0)+','+(r.usedCarryAddr?1:0);}).join('|');
     vbxe.xdlScanCount++;
 
     var xstat = vbxeAnalyzeXdl(recs,end);
@@ -2537,7 +2555,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           ' ov=$'+r.ovAddr.toString(16).toUpperCase().padStart(5,'0')+
           ' step='+r.ovStep+' widthSel='+r.widthSel+' ovPal='+r.ovPal+' pfPal='+r.pfPal+
           ' ch=$'+(r.chBase||0).toString(16).toUpperCase().padStart(5,'0')+
-          ' scr='+((r.ovHScroll||0)&7)+','+((r.ovVScroll||0)&7)+' pri=$'+hx2(r.priority||0)+(r.addrMissing?' MISS_OVADR':'')+(r.usedCarryAddr?' CARRY_OVADR':'')+(r.frozen?' LASTGOOD':''));
+          ' scr='+((r.ovHScroll||0)&7)+','+((r.ovVScroll||0)&7)+' phase='+((r.textPhase||0)&7)+' pri=$'+hx2(r.priority||0)+(r.addrMissing?' MISS_OVADR':'')+(r.usedCarryAddr?' CARRY_OVADR':'')+(r.frozen?' LASTGOOD':''));
         if(r.usedCarryAddr && !vbxe.xdlCarryLogged && M.vbxeDebug){
           vbxe.xdlCarryLogged=true;
           M.vbxeDebug('VBXE XDL CARRY_OVADR BUILD2HL: aktualni XDLC nezapsal OVADR, pouzivam posledni platny VBXE/XDL adresni stav misto HOLD_LAST_GOOD caje.');
@@ -2567,48 +2585,57 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   function vbxeTextCharsForWidth(widthSel){ return widthSel===0 ? 64 : (widthSel===2 ? 84 : 80); }
   function vbxeVisibleWidth(widthSel){ return widthSel===0 ? 256 : (widthSel===2 ? 336 : 320); }
+  function vbxeTextBgColor(attr){
+    attr&=0xFF;
+    var c=-1;
+    if(attr&0x80) c=(attr&0x7F)+128;
+    else if(vbxe.regs[0x40]&0x04) c=128;       // VC_NO_TRANS: background is colour 128
+    else return -1;                             // normal text background transparent
+    if((vbxe.regs[0x40]&0x08) && ((c&0x0F)===0x0F)) return -1;
+    return c&0xFF;
+  }
+  function vbxeTextFgVisible(c){
+    c&=0xFF;
+    // BUILD2IC: in VBXE text mode foreground colour 0 is still a real colour.
+    // Transparent colour 0 belongs to SR/LR pixel mode, not to text foreground.
+    return !((vbxe.regs[0x40]&0x08) && ((c&0x0F)===0x0F));
+  }
   function vbxeRenderTextRecord(r){
     var fb=M.fb, vram=vbxe.vram, drew=0;
     var chars=vbxeTextCharsForWidth(r.widthSel), width=chars*4;
     var x0=(384-width)>>1; if(x0<0) x0=0;
     var lines=r.lines; if(r.y+lines>240) lines=240-r.y;
     if(lines<=0) return 0;
-    var hs=(r.ovHScroll||0)&7, vs=(r.ovVScroll||0)&7, palNo=r.ovPal&3;
+    var hs=(r.ovHScroll||0)&7, phase=(r.textPhase==null?((r.ovVScroll||0)&7):(r.textPhase&7)), palNo=r.ovPal&3;
     var step=(r.ovStep||chars*2)&0x0FFF;
     if(!step) step=chars*2;
     for(var yy=0;yy<lines;yy++){
-      // BUILD2IB: text se sampluje v puvodnich 8 glyph bitech.
-      // Predchozi kod zjednodusil 640px text na 4 bloky po 2 bitech a lichy OV_HSCROLL zahazoval pres (hs>>1).
-      // To presne delalo rozjete/nedokreslene texty v Textmode Testu a u Heartlight menu.
-      // Tady kazdy vystupni 320px pixel vezme 2 sousedni hi-res bity vcetne lichého hscrollu a prechodu pres hranici znaku.
+      // BUILD2IC: nativni VBXE text.
+      // IB dokazal, ze problem neni v lichém hscrollu. Tady opravuji realnou chybu:
+      // foreground barva 0..127 nesmi byt filtrovana pres SR/LR transparentni barvu 0.
+      // Soucasne pouzivam nearest-center downsample 640->320, aby text nebyl tlusty/rozmazany OR sloucenim dvou bitu.
       var gy=r.y+yy;
-      var local=yy+vs;
+      var local=yy+phase;
       var fy=local&7;
       var textRow=(local>>3);
       var rowAddr=(r.ovAddr + textRow*step)&0x7FFFF;
       var dst=gy*384+x0;
       for(var sx=0;sx<width && x0+sx<384;sx++){
-        var srcBit=(sx<<1)+hs;
-        var color=-1, bgColor=-1;
-        for(var sample=0; sample<2; sample++){
-          var bitPos=srcBit+sample;
-          var ci=(bitPos>>3);
-          if(ci>=chars) continue;
-          var bit=bitPos&7;
-          var cell=(rowAddr + ci*2)&0x7FFFF;
-          var ch=vram[cell]&0xFF, attr=vram[(cell+1)&0x7FFFF]&0xFF;
-          var glyph=vram[((r.chBase||0) + ch*8 + fy)&0x7FFFF]&0xFF;
-          var on=(glyph & (0x80>>bit))!==0;
-          var cand=-1;
-          if(on) cand=attr&0x7F;
-          else if(attr&0x80) cand=(attr&0x7F)+128;
-          else if(vbxe.regs[0x40]&0x04) cand=128;
-          if(cand>=0 && !vbxeTransparent8(cand)){
-            if(on){ color=cand; break; }
-            if(bgColor<0) bgColor=cand;
-          }
+        var srcBit=(sx<<1)+1+hs;                 // center sample of 2 hires bits
+        var ci=(srcBit>>3);
+        if(ci>=chars) continue;
+        var bit=srcBit&7;
+        var cell=(rowAddr + ci*2)&0x7FFFF;
+        var ch=vram[cell]&0xFF, attr=vram[(cell+1)&0x7FFFF]&0xFF;
+        var glyph=vram[((r.chBase||0) + ch*8 + fy)&0x7FFFF]&0xFF;
+        var on=(glyph & (0x80>>bit))!==0;
+        var color=-1;
+        if(on){
+          var fg=attr&0x7F;
+          if(vbxeTextFgVisible(fg)) color=fg;
+        } else {
+          color=vbxeTextBgColor(attr);
         }
-        if(color<0) color=bgColor;
         if(color>=0){ fb[dst+sx]=vbxeColor(color,palNo); drew++; }
       }
     }
@@ -2673,11 +2700,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
     if(textDrew>0 && !vbxe.xdlTextRenderLogged && M.vbxeDebug){
       vbxe.xdlTextRenderLogged=true;
-      M.vbxeDebug('VBXE TEXT XDL RENDER BUILD2IB: prvni realny textovy overlay z VRAM, pixels='+textDrew+'. Font/adres/scroll ctu z XDL podle fx.pdf, bez VRAM probe.');
+      M.vbxeDebug('VBXE TEXT XDL RENDER BUILD2IC: prvni realny textovy overlay z VRAM, pixels='+textDrew+'. Font/adres/scroll ctu z XDL podle fx.pdf, bez VRAM probe.');
     }
     if(hasText && textDrew===0 && !vbxe.xdlTextEmptyLogged && M.vbxeDebug){
       vbxe.xdlTextEmptyLogged=true;
-      M.vbxeDebug('VBXE TEXT XDL EMPTY BUILD2IB: XDL obsahuje TEXT, ale zatim nebyl vykreslen zadny netransparentni pixel. VRAM probe je stale blokovan, aby nevznikl caj.');
+      M.vbxeDebug('VBXE TEXT XDL EMPTY BUILD2IC: XDL obsahuje TEXT, ale zatim nebyl vykreslen zadny netransparentni pixel. VRAM probe je stale blokovan, aby nevznikl caj.');
     }
     if(graphDrew>0 && !vbxe.xdlRenderLogged && M.vbxeDebug){
       vbxe.xdlRenderLogged=true;
@@ -4954,7 +4981,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('AtariHelp.eu EMU-10 BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX pripraven - HP hitboxy zustaly, HELP manual a MENU navrat opraveny, landscape obraz aspect-fit bez orezani + FIRE/DOOR v bocnim prostoru; core BUILD2HL beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2HR_VBXE_POWER_ON_130XE_HELP_FIX pripraven - POWER BASIC je neviditelny hitbox na napisu 130XE + jemna zelena LED; HELP navod doplnen; VBXE core BUILD2HL beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE pripraven - NET HRY zustava, XEX/OBX turbo zustava a nove ma ATR/D1 rychlejsi SIO jen pri diskovem prenosu. Landscape HQ safe. VBXE core BUILD2HL GOLD beze zmen.');
-    log('AtariHelp.eu EMU-10 BUILD2IB_VBXE_TEXTMODE_HSCROLL_SHARP_SAFE pripraven - vychazim z BUILD2HZ/HX/HW. IA offscreen scaler nepouzivam; W3D barvy/HR/DAC/BCB21 nechavam. Opravuji jen VBXE TEXT XDL hi-res bit sampler a lichy OV_HSCROLL pro Textmode Test/Heartlight text.');
+    log('AtariHelp.eu EMU-10 BUILD2IC_VBXE_TEXT_NATIVE_DAC_ADDR_SAFE pripraven - BUILD2IB hscroll nepomohl, proto opravuji nativni VBXE text foreground/transparent pravidla a XDL OVADR posun po recordech pro DAC. Palety/W3D/BCB21/RAM320/loader zustavaji z HZ/HW.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);

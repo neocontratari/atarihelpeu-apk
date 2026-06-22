@@ -1,0 +1,75 @@
+AtariHelp.eu EMU-10 / EMU 2 VBXE
+BUILD2IC_VBXE_TEXT_NATIVE_DAC_ADDR_SAFE
+
+ZAKLAD:
+- Vychazi z BUILD2HZ / BUILD2HX / BUILD2HW dobreho zakladu.
+- BUILD2IB se realne spustil, ale podle Reneho testu Textmode vizualne zadna zmena.
+- Proto uz nepokracuji v hscroll hadani.
+- HY paletovy pokus zustava pryc.
+- HM zustava karantena.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO SE MENILO CILENE:
+1. VBXE TEXT MODE transparentnost / foreground
+   - V text modu je foreground barva vzdy 0..127.
+   - Barva 0 u foregroundu NESMI byt automaticky pruhledna jako v SR/LR pixel modu.
+   - Transparentni je jen pozadi podle attr bit7 / VIDEO_CONTROL no_trans / trans15.
+   - To miri na rozmazane nebo nedokreslene pismo v Textmode Testu a textu Heartlight.
+
+2. VBXE TEXT downsample
+   - Text 640 hires -> 320 canvas se ted bere jako nearest-center vzorek.
+   - Predchozi OR/slouceni dvou hi-res bitu mohlo pismo delat tluste/rozmazane.
+
+3. XDL OVADR posun po recordu
+   - Pixel mode podle dokumentace posouva OVADR o OVSTEP za kazdou scanline.
+   - Text mode posouva OVADR az po 8 radcich znaku.
+   - To miri na DACTest modry odskok / radkove posuny.
+
+CO SE NEMENILO:
+- W3D barvy a palety.
+- HY paletovy experiment se nevraci.
+- HR/DAC paleta jako takova neni menena.
+- BCB21/blitter core.
+- RAM320 zaklad.
+- ATR/D1 fastload.
+- NET HRY.
+- TXT/TurboBASIC rychle vkladani.
+- VBXE UI skin, hitboxy, joystick, landscape ovladani.
+
+PROC:
+Rene hlasil, ze BUILD2IB neprinesl v Textmode zadnou viditelnou zmenu. Log pritom potvrzuje, ze BUILD2IB bezel a VBXE TEXT XDL renderer se opravdu spustil. To znamena, ze chyba neni jen v lichym HSCROLL. V logu DACTestu jsou videt XDL recordy bez nove OVADR a s CARRY_OVADR, proto ted opravuji obecne posouvani OVADR mezi recordy, ne hack na DACTest.
+
+TEST PLAN:
+1. Spust EMU 2 VBXE / READY.
+   - Ocekavani: nesmi byt horsi nez BUILD2HZ/IB.
+
+2. Spust Textmode Test (2009, KMK).xex.
+   - Hlavni test.
+   - Test 1-4: napis jen: lepsi / stejne / horsi.
+   - Sleduj hlavne ostrost a jestli se pismo nedokresluje.
+
+3. Spust DACTest (2009, KMK).xex.
+   - Sleduj hlavne modry pruh na zacatku.
+   - Ocekavani: modry odskok mensi nebo pryc.
+
+4. Jen pokud Textmode nebo DAC ukazou zmenu: spust W3D ATR.
+   - Ocekavani: barvy/hratelnost jako HZ, zadny navrat HY bordelu.
+
+5. Jen pokud Textmode nebo DAC ukazou zmenu: spust Heartlight / hl_vbxe.xex.
+   - Ocekavani: hra musi dal jet; uvodni text by nemel byt horsi.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2IC_VBXE_TEXT_NATIVE_DAC_ADDR_SAFE pripraven
+- VBXE TEXT XDL RENDER BUILD2IC
+- phase= v XDL REC logu
+- CARRY_OVADR
+- ATR D1 FAST LOAD BUILD2HW
+
+KDYZ SELZE:
+- Kdyz Textmode zustane stejny: chyba je uz spis v prezentaci CRT/canvas slotu nebo ve font/CHBASE interpretaci, ne v hscrollu ani foreground transparentnosti.
+- Kdyz DACTest zustane stejny: dalsi krok je samostatny SR/HR sample/width/slot audit.
+- Kdyz W3D zhorsime: vratit se okamzite na BUILD2HZ/BUILD2HW zachranny zaklad.
