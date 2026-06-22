@@ -1,0 +1,30 @@
+NAVOD PRO RENEHO - BUILD2IB_VBXE_TEXTMODE_HSCROLL_SHARP_SAFE
+
+1. Stahni ZIP overlay.
+2. ZIP rozbal.
+3. Obsah slozky overlay zkopiruj presne do korene projektu AtariHelp.eu EMU-10.
+4. Ve Windows potvrdit prepsani souboru.
+5. V GitHub Desktop zkontroluj Changes.
+6. Commit zprava:
+   BUILD2IB VBXE textmode hscroll sharp safe
+7. Push / build APK stejnym postupem jako driv.
+
+Zmeneny soubor:
+- app/src/main/assets/emu_vbxe/index.html
+
+KODY JSOU ZMENENE pouze v JS/HTML emulatoru VBXE.
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+Testuj v poradi:
+1. READY
+2. Textmode Test 1-4
+3. DACTest
+4. W3D ATR
+5. Heartlight / hl_vbxe.xex
+
+Posli zpet:
+- screenshot Textmode Test 1 nebo 2
+- screenshot DACTest
+- screenshot W3D menu/hra
+- screenshot Heartlight uvodni text nebo hra
+- log z aplikace

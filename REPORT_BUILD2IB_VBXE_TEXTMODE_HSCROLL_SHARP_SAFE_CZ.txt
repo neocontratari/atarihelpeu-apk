@@ -1,0 +1,62 @@
+AtariHelp.eu EMU-10 / EMU 2 VBXE
+BUILD2IB_VBXE_TEXTMODE_HSCROLL_SHARP_SAFE
+
+ZAKLAD:
+- Vychazi z BUILD2HZ / BUILD2HX / BUILD2HW dobreho zakladu.
+- BUILD2IA prezentacni offscreen scaler neni pouzit, protoze v testu nepomohl Textmode Testu 1-4.
+- HY paletovy pokus zustava pryc.
+- HM zustava karantena.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO SE MENILO:
+- Pouze VBXE TEXT XDL renderer.
+- Textove znaky se ted sampluji jako skutecnych 8 glyph bitu na znak.
+- Kazdy vystupni 320px pixel bere 2 sousedni hi-res bity vcetne licheho OV_HSCROLL.
+- Opraven je i prechod pres hranici znaku pri lichym hscrollu.
+
+CO SE NEMENILO:
+- W3D barvy a palety.
+- HR/DAC renderer.
+- BCB21/blitter core.
+- RAM320 zaklad.
+- ATR/D1 fastload.
+- NET HRY.
+- TXT/TurboBASIC rychle vkladani.
+- VBXE UI skin, hitboxy, joystick, landscape ovladani.
+
+PROC:
+Rene reportoval, ze W3D je graficky OK a hratelny, ale Textmode Test 1-4 je rozmazany/nedokresleny a v Heartlight uvodnim textu jsou pismena/barevne radky odskocene. Log stale ukazuje VBXE MEMAC a blitter aktivitu, takze nejdeme do screen paintu ani hernich hacku; cileny zasah je jen do textoveho XDL sampleru.
+
+TEST PLAN:
+1. Spust EMU 2 VBXE / READY.
+   - Ocekavani: nesmi byt horsi nez BUILD2HZ.
+
+2. Spust Textmode Test (2009, KMK).xex.
+   - Test 1-4: napis, jestli pismo je lepsi / stejne / horsi nez BUILD2IA/HZ.
+   - Hlavne sleduj, jestli jsou pismena mene rozmazana a mene nedokreslena.
+
+3. Spust DACTest (2009, KMK).xex.
+   - Ocekavani: nemelo by se zhorsit proti HZ/IA.
+   - Pokud modry prouzek porad odskakuje, je to dalsi cileny problem HR/DAC, ne tento textovy build.
+
+4. Spust W3D ATR.
+   - Ocekavani: barvy a hratelnost zustanou jako HZ, zadny navrat HY rozbite palety.
+   - Pismo/menu muze byt lepsi, ale hlavne nesmi byt horsi grafika hry.
+
+5. Spust Heartlight / hl_vbxe.xex.
+   - Ocekavani: hra musi dal jet, obraz hry nesmi byt horsi.
+   - Uvodni text/menu sleduj kvuli pismu a odskoku barev.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2IB_VBXE_TEXTMODE_HSCROLL_SHARP_SAFE pripraven
+- VBXE TEXT XDL RENDER BUILD2IB
+- ATR D1 FAST LOAD BUILD2HW
+
+KDYZ SELZE:
+- Kdyz se W3D grafika/barvy zhorsi: vratit se na BUILD2HZ.
+- Kdyz W3D zustane dobry, ale Textmode se nezlepsi: dalsi krok je audit XDL widthSel/OV_STEP/CHBASE pro textove records, ne paleta.
+- Kdyz DACTest porad odskakuje: dalsi krok je samostatny HR/DAC sampler, oddelene od textu.
