@@ -1,0 +1,7 @@
+BUILD2HK - NAVOD PRO GITHUB DESKTOP
+
+1) Zavri Android Studio / build proces, pokud bezi.
+2) ZIP rozbal presne do korene projektu AtariHelp EMU-10.
+3) Nech prepsat soubor app/src/main/assets/emu_vbxe/index.html.
+4) V GitHub Desktop zkontroluj zmeny a commitni napr.: BUILD2HK VBXE RAM320 PERF AUDIT.
+5) Buildni APK a testuj podle reportu.

@@ -1,0 +1,62 @@
+ATARIHELP.EU EMU-10 - BUILD2HK_VBXE_RAM320_PERF_AUDIT
+
+KODY JSOU STEJNE
+BASIC / Altirra testovaci kody nejsou menene.
+
+ZMENENY SOUBOR
+app/src/main/assets/emu_vbxe/index.html
+
+NA CO JSEM NESAHAL
+- normalni emulator app/src/main/assets/emu/index.html
+- MainActivity / router / externi odkazy / player / equalizer
+- ROMy, BASIC, CLOAD/CSAVE baseline
+- UI skin, klavesnice, kazetak
+
+PROC BUILD2HK
+Po BUILD2HJ testech uz obecna VBXE detekce pro Textmode/DACTest prosla: D640=$10, D641=$26.
+Ale testy ukazaly dve dalsi veci:
+1) apka se zpomalila - moc logu se cpe do DOM a VBXE trace se opakuje rychle,
+2) jadro melo jen standardni 130XE ext RAM 64K navic, ne 320K buffer.
+
+CO JE NOVE
+- Main RAM zustava 64K.
+- EXT RAM buffer je zvetseny na 320K: 16 banku po 16K.
+- Standardni 130XE mapovani zustava bezpecne na prvnich 4 bankach.
+- CPU okno $4000-$7FFF umi 320K/Rambo-style bank index z PORTB bitu b2,b3,b5,b6, kdyz software aktivne pouzije vyssi bank bit6.
+- ANTIC zatim zustava 130XE-safe na prvnich 4 bankach. Nelzu: plny Compy/576/true ANTIC banking je dalsi samostatny krok, pokud ho test vyzada.
+- VBXE VRAM zustava 512K.
+- Log do obrazovky je tlumeny: DOM se neprepisuje pri kazde VBXE hlaskce, ale davkove.
+- VBXE trace limit snizen z 260 na 120 radku.
+- XDL opakovane vypisy jsou potlacene vice, aby log nebral vykon.
+
+CO TO NENI
+- neni to oprava W3D/Popeye obrazu
+- neni to screen-paint
+- neni to RAM inject
+- neni to hack na jednu hru
+- neni to hotova 576K/Compy-Shop emulace
+
+TEST PLAN
+1) Spust Textmode Test (2009, KMK).xex.
+   Ocekavani: detekce VBXE projde, zadne No VBXE/improper core.
+   Sleduj, zda apka neni citelne pomalejsi nez HJ.
+
+2) Spust DACTest (2009, KMK).xex.
+   Ocekavani: detekce VBXE projde, log ma ukazat CORE_VERSION=$10 MINOR_REVISION=$26.
+
+3) Spust Heartlight / hl_vbxe.
+   Ocekavani: aspon korektni loader a nespadnout hned do Self Testu kvuli RAM/loaderu. Obraz zatim muze byt spatne.
+
+4) Teprve potom zkus W3D/Popeye jen orientacne.
+
+LOG MARKERY
+- AtariHelp.eu EMU-10 BUILD2HK_VBXE_RAM320_PERF_AUDIT pripraven.
+- VBXE BUILD2HK: ... RAM: main 64K + EXT buffer 320K + VBXE VRAM 512K
+- VBXE CORE READ BUILD2HK: CORE_VERSION=$10 MINOR_REVISION=$26
+- VBXE LEGACY MEMAC SAFE BUILD2HK
+- VBXE BLITTER GUARD_SKIP BUILD2HK
+
+CO POSLAT ZPET
+- napis, jestli je apka pocitove rychlejsi / stejna / pomalejsi proti HJ
+- screenshot Textmode/DACTest/Heartlight
+- log jen z jednoho testu, kde se to nejvic zasekne nebo zpomali
