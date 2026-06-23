@@ -1,0 +1,89 @@
+AtariHelp.eu EMU-10 / EMU 2 VBXE
+BUILD2IG_VBXE_PREXDL_UNDERLAY_AUDIT_SAFE
+
+KODY JSOU ZMENENE
+
+Zmeneny soubor:
+app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+Vychazim z testu BUILD2IF:
+- Textmode Test 1-4: beze zmen proti predeslemu dobremu stavu.
+- DACTest: beze zmen, modry/zluty odskok stale zustava.
+- Popeye VBXE: beze zmen.
+- Commando: Arnold uvodni obrazek stale chybi, ale hra uz bezi.
+- HL a W3D: beze zmen.
+- ANTIC+VBXE/Postcard test vypsal v auditu chybu hx4 is not defined.
+
+Co BUILD2IG meni cilene:
+1) Nechavam beze zmen:
+   - W3D barvy,
+   - HL grafiku,
+   - Textmode 640 canvas z BUILD2IE/IF,
+   - DACTest palety a DAC chovani,
+   - BCB21 blitter zaklad,
+   - RAM320,
+   - rychly ATR/D1 loader,
+   - TXT/TurboBasic rychle vkladani,
+   - VBXE UI skin,
+   - keyboard hitboxy,
+   - joystick.
+
+2) Oprava XEX auditu:
+   - vbxeQuickXexInfo uz ma lokalni h4() formatter.
+   - Cilem je odstranit hlasku "xexInfo=hx4 is not defined" u Postcard/ANTIC+VBXE testu.
+   - Tohle neni oprava grafiky Postcard, jen oprava chyboveho auditu, ktery musel byt nejdriv vycisten.
+
+3) Bezpecny pred-XDL VBXE underlay:
+   - Kdyz jeste neni platne XDL, ale ve VBXE VRAM uz existuje silny obrazovy kandidat a Atari obraz je jen ridky text/intro, emulator smi VBXE VRAM vykreslit JEN POD Atari obraz.
+   - Kresli se pouze do pixelu aktualni barvy pozadi COLBK, takze Atari text/sprity se nemaji mazat.
+   - Husty Atari/ANTIC obraz se stale chrani a probe se pres nej nepusti, aby se nevratil zluty/teckovy caj.
+   - Cil: Commando Arnold intro a mozna Popeye chybejici podklad bez rozbiti W3D/HL.
+
+Dulezite:
+- Tohle neni screen-paint ani hack na jednu hru. Bere se skutecna VBXE VRAM, kterou hra naplnila blitterem/MEMACem.
+- Pokud se Popeye nebo W3D zhorsí, okamzite se vratit na BUILD2IF/BUILD2IE zaklad.
+- DACTest modry/zluty odskok zustava samostatny problem, ted ho neresim agresivne.
+
+Test plan:
+1) Start EMU 2 VBXE / READY
+   Ocekavani: UI, klavesnice, hitboxy, joystick beze zmen.
+
+2) Textmode Test 1-4
+   Ocekavani: nesmi byt horsi nez BUILD2IF. Ostrost/pismo pravdepodobne beze zmen.
+
+3) DACTest
+   Ocekavani: nesmi byt horsi. Modry/zluty odskok muze zustat.
+
+4) Commando
+   Ocekavani: hra musi zustat funkcni jako v BUILD2IF.
+   Sleduj hlavne, jestli se v uvodu objevi Arnold obrazek nebo aspon cast obrazu misto samotneho textu.
+
+5) Popeye VBXE
+   Ocekavani: nesmi se vratit zluty/teckovy caj. Sleduj, jestli se doplni chybejici pozadi/grafika.
+
+6) HL / hl_vbxe.xex
+   Ocekavani: hra stale bezi, barvy ve hre nesmi byt horsi.
+
+7) W3D ATR
+   Ocekavani: zadna regrese barev/hry proti BUILD2IF.
+
+8) ANTIC+VBXE/Postcard zip
+   Ocekavani: v logu uz nesmi byt "xexInfo=hx4 is not defined".
+   Grafickou chybu Postcard ber zatim jako dalsi samostatny ukol, pokud zustane.
+
+Log markery:
+AtariHelp.eu EMU-10 BUILD2IG_VBXE_PREXDL_UNDERLAY_AUDIT_SAFE pripraven
+VBXE PRE-XDL UNDERLAY BUILD2IG
+VBXE VRAM PROBE SKIP BUILD2IG
+VBXE VRAM PROBE ALLOW BUILD2IG
+VBXE VRAM PROBE RENDER BUILD2IG
+VBXE TEXT XDL RENDER BUILD2IG
+VBXE HR/SR XDL RENDER BUILD2IG
+VBXE BLITTER CHAIN LIMIT BUILD2IG
+
+Co poslat zpet pri failu:
+- screenshot hry/testu,
+- ulozeny LOG,
+- veta: "lepsi / stejny / horsi" pro Textmode, DAC, Popeye, Commando, HL, W3D, Postcard.

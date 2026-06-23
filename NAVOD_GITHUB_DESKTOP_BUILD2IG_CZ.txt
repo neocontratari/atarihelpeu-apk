@@ -1,0 +1,11 @@
+NAVOD - BUILD2IG overlay pres GitHub Desktop
+
+1) ZIP rozbal do slozky projektu AtariHelp EMU-10.
+2) Potvrd prepsani souboru:
+   app/src/main/assets/emu_vbxe/index.html
+3) Otevri GitHub Desktop.
+4) Zkontroluj zmeny - mel by byt zmeneny hlavne/jen index.html v emu_vbxe.
+5) Commit message doporuceni:
+   BUILD2IG VBXE pre-XDL underlay audit safe
+6) Build / instalace do Nox nebo mobilu jako obvykle.
+7) Testuj podle REPORT_BUILD2IG_VBXE_PREXDL_UNDERLAY_AUDIT_SAFE_CZ.txt.
