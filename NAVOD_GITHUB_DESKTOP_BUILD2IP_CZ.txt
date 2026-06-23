@@ -1,0 +1,15 @@
+BUILD2IP - navod pro GitHub Desktop
+====================================
+
+1) Rozbal tento ZIP do korene projektu AtariHelp EMU-10.
+2) Vse nech prepsat.
+3) Otevri GitHub Desktop.
+4) Zkontroluj zmeny.
+5) Commit zprava:
+   BUILD2IP VBXE OVSCRL MAP PF3 safe
+6) Spust build / instalaci APK stejne jako predchozi overlay.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.

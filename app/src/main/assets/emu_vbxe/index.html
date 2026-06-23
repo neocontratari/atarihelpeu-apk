@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IO</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IP</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2671,7 +2671,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     var col=(lx/mw)|0, row=(ly/mh)|0;
     var addr=((r.mapAddr||0) + row*((r.mapStep||0)&0x0FFF) + col*4)&0x7FFFF;
     var a0=vbxeVramRead(addr), a1=vbxeVramRead((addr+1)&0x7FFFF), a2=vbxeVramRead((addr+2)&0x7FFFF), a3=vbxeVramRead((addr+3)&0x7FFFF);
-    return {pf0:a0&0xFF, pf1:a1&0xFF, pf2:a2&0xFF, priSel:a3&3, catt:!!(a3&8), ovPal:(a3>>4)&3, pfPal:(a3>>6)&3, raw:a3&0xFF};
+    return {pf0:a0&0xFF, pf1:a1&0xFF, pf2:a2&0xFF, priSel:a3&3, res:!!(a3&4), catt:!!(a3&8), ovPal:(a3>>4)&3, pfPal:(a3>>6)&3, raw:a3&0xFF};
   }
   function vbxeMapAttrAtPixel(r,x384,y){
     return vbxeMapAttrAtHi(r, ((x384*640/384)|0), y);
@@ -2726,7 +2726,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
         var gy=r.y+yy, row=gy*384;
         for(var x=0;x<384;x++){
           var cls=pfcf[row+x]&7;
-          if(cls!==1 && cls!==2 && cls!==3 && cls!==4) continue;
+          // BUILD2IP: fx.pdf definuje v mapovem poli jen lokalni COLPF0, COLPF1, COLPF2.
+          // PF3 se nesmi naslepo prebarvovat jako PF2 - to rozbijelo smiseny ANTIC+VBXE obraz
+          // typu Postcard a muze rozhazovat tmave/plne plochy ve hrach. PF3 nechavam globalni.
+          if(cls!==1 && cls!==2 && cls!==3) continue;
           var ma=vbxeMapAttrAtPixel(r,x,gy); if(!ma) continue;
           var ci=(cls===1?ma.pf0:(cls===2?ma.pf1:ma.pf2));
           fb[row+x]=vbxeColor(ci,ma.pfPal); drew++;
@@ -2735,7 +2738,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if(drew>0 && !vbxe.xdlMapApplyLogged && M.vbxeDebug){
       vbxe.xdlMapApplyLogged=true;
-      M.vbxeDebug('VBXE XDL ATTRIBUTE MAP APPLY BUILD2IO: MAPON/MAPADR/MAPPAR barvi PF0/PF1/PF2 a vybira MAP PF/OV palette; pixels='+drew+'.');
+      M.vbxeDebug('VBXE XDL ATTRIBUTE MAP APPLY BUILD2IP: MAPON/MAPADR/MAPPAR barvi PF0/PF1/PF2, PF3 nechava globalni, MAP PF/OV palette; pixels='+drew+'.');
     }
     return drew;
   }
@@ -2878,6 +2881,20 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
 
 
+  function vbxeGraphLocalY(r, yy){
+    // BUILD2IP: OVSCRL ma platit i pro graficky overlay. Vscroll je jemny posun
+    // zdrojoveho obrazu nahoru; record adresa se v parseru posouva po scanlinech jako hardware.
+    return (yy + ((r && r.ovVScroll!=null ? r.ovVScroll : 0)&7))|0;
+  }
+  function vbxeGraphSourceAddr(r, yy){
+    return (((r.ovAddr||0) + vbxeGraphLocalY(r,yy)*((r.ovStep||0)&0x0FFF)) & 0x7FFFF);
+  }
+  function vbxeGraphHScrollHi(r){
+    // Hscroll je v HIRES pixelech. Pro SR/LR se pozdeji prevede na bajt/pixel jednotky.
+    return ((r && r.ovHScroll!=null ? r.ovHScroll : 0)&7);
+  }
+
+
   function vbxeVisibleWidthHi(widthSel){
     // BUILD2IF: skutecna VBXE hires sirka. Normal = 640 px, narrow = 512, wide = 672.
     return widthSel===0 ? 512 : (widthSel===2 ? 672 : 640);
@@ -2895,28 +2912,28 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(r.mode===1){ // SR: 1 byte = 1 color-clock pixel = 2 hires pixely
       var bytes=widthHi>>1;
       for(var yy=0;yy<lines;yy++){
-        var src=(r.ovAddr + yy*r.ovStep)&0x7FFFF, gy=r.y+yy;
+        var src=vbxeGraphSourceAddr(r,yy), gy=r.y+yy, hs=vbxeGraphHScrollHi(r)>>1;
         for(var x=0;x<bytes;x++){
-          var v=vram[(src+x)&0x7FFFF]&0xFF;
-          if(!vbxeTransparent8(v)){ var px=x0+x*2; putIdx(px,gy,v); putIdx(px+1,gy,v); }
+          var v=vram[(src+x+hs)&0x7FFFF]&0xFF;
+          if(!vbxeTransparent8(v)){ var px=x0+x*2 - (vbxeGraphHScrollHi(r)&1)*2; putIdx(px,gy,v); putIdx(px+1,gy,v); }
         }
       }
     } else if(r.mode===3){ // LR: 1 byte = 4 hires pixely
       var lbytes=widthHi>>2;
       for(var yy2=0;yy2<lines;yy2++){
-        var src2=(r.ovAddr + yy2*r.ovStep)&0x7FFFF, gy2=r.y+yy2;
+        var src2=vbxeGraphSourceAddr(r,yy2), gy2=r.y+yy2, hs2=vbxeGraphHScrollHi(r)>>2, hp2=vbxeGraphHScrollHi(r)&3;
         for(var lx=0;lx<lbytes;lx++){
-          var v2=vram[(src2+lx)&0x7FFFF]&0xFF;
-          if(!vbxeTransparent8(v2)){ var px2=x0+lx*4; putIdx(px2,gy2,v2); putIdx(px2+1,gy2,v2); putIdx(px2+2,gy2,v2); putIdx(px2+3,gy2,v2); }
+          var v2=vram[(src2+lx+hs2)&0x7FFFF]&0xFF;
+          if(!vbxeTransparent8(v2)){ var px2=x0+lx*4-hp2; putIdx(px2,gy2,v2); putIdx(px2+1,gy2,v2); putIdx(px2+2,gy2,v2); putIdx(px2+3,gy2,v2); }
         }
       }
     } else if(r.mode===2){ // HR: 1 byte = 2 skutecne hires pixely, oba nibbly kreslim samostatne
       var hbytes=widthHi>>1;
       for(var yy3=0;yy3<lines;yy3++){
-        var src3=(r.ovAddr + yy3*r.ovStep)&0x7FFFF, gy3=r.y+yy3;
+        var src3=vbxeGraphSourceAddr(r,yy3), gy3=r.y+yy3, hs3=vbxeGraphHScrollHi(r), byteOff3=hs3>>1, nibbleOff3=hs3&1;
         for(var bx=0;bx<hbytes;bx++){
-          var b=vram[(src3+bx)&0x7FFFF]&0xFF;
-          var hiNib=(b>>4)&0x0F, loNib=b&0x0F, px3=x0+bx*2;
+          var b=vram[(src3+bx+byteOff3)&0x7FFFF]&0xFF;
+          var hiNib=(b>>4)&0x0F, loNib=b&0x0F, px3=x0+bx*2-nibbleOff3;
           if(!vbxeTransparent4(hiNib)) putIdx(px3,gy3,hiNib);
           if(!vbxeTransparent4(loNib)) putIdx(px3+1,gy3,loNib);
         }
@@ -2963,30 +2980,32 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
       if(r.mode===1){ // SR: 1 byte = 1 pixel, 256 barev
         for(var yy=0;yy<lines;yy++){
-          var src=(r.ovAddr + yy*r.ovStep)&0x7FFFF, dst=(r.y+yy)*384+x0;
+          var src=vbxeGraphSourceAddr(r,yy), dst=(r.y+yy)*384+x0, hs=vbxeGraphHScrollHi(r)>>1, hp=vbxeGraphHScrollHi(r)&1;
           for(var x=0;x<width && x0+x<384;x++){
-            var v=vram[(src+x)&0x7FFFF]&0xFF;
-            if(!vbxeTransparent8(v) && vbxePriorityAllowsPixel(r,x0+x,r.y+yy)){ fb[dst+x]=vbxeColor(v,vbxeOverlayPalAtPixel(r,x0+x,r.y+yy)); drew++; graphDrew++; }
+            var v=vram[(src+x+hs)&0x7FFFF]&0xFF;
+            var px=x0+x-hp;
+            if(px>=0 && px<384 && !vbxeTransparent8(v) && vbxePriorityAllowsPixel(r,px,r.y+yy)){ fb[(r.y+yy)*384+px]=vbxeColor(v,vbxeOverlayPalAtPixel(r,px,r.y+yy)); drew++; graphDrew++; }
           }
         }
       } else if(r.mode===3){ // LR: 128/160/168 pixelu, roztazeno x2 na 256/320/336
         var lrw=(width>>1);
         for(var yy2=0;yy2<lines;yy2++){
-          var src2=(r.ovAddr + yy2*r.ovStep)&0x7FFFF, dst2=(r.y+yy2)*384+x0;
+          var src2=vbxeGraphSourceAddr(r,yy2), dst2=(r.y+yy2)*384+x0, hs2=vbxeGraphHScrollHi(r)>>2, hp2=vbxeGraphHScrollHi(r)&3;
           for(var lx=0;lx<lrw && x0+lx*2+1<384;lx++){
-            var v2=vram[(src2+lx)&0x7FFFF]&0xFF;
-            if(!vbxeTransparent8(v2)){ var pxA=x0+lx*2, gyA=r.y+yy2; if(vbxePriorityAllowsPixel(r,pxA,gyA)){ fb[dst2+lx*2]=vbxeColor(v2,vbxeOverlayPalAtPixel(r,pxA,gyA)); drew++; graphDrew++; } if(vbxePriorityAllowsPixel(r,pxA+1,gyA)){ fb[dst2+lx*2+1]=vbxeColor(v2,vbxeOverlayPalAtPixel(r,pxA+1,gyA)); drew++; graphDrew++; } }
+            var v2=vram[(src2+lx+hs2)&0x7FFFF]&0xFF;
+            if(!vbxeTransparent8(v2)){ var pxA=x0+lx*2-((hp2/2)|0), gyA=r.y+yy2; if(pxA>=0 && pxA<384 && vbxePriorityAllowsPixel(r,pxA,gyA)){ fb[gyA*384+pxA]=vbxeColor(v2,vbxeOverlayPalAtPixel(r,pxA,gyA)); drew++; graphDrew++; } if(pxA+1>=0 && pxA+1<384 && vbxePriorityAllowsPixel(r,pxA+1,gyA)){ fb[gyA*384+pxA+1]=vbxeColor(v2,vbxeOverlayPalAtPixel(r,pxA+1,gyA)); drew++; graphDrew++; } }
           }
         }
       } else if(r.mode===2){ // HR: 2 VBXE pixely v bajtu, na canvasu downsample 2:1
         var bytes=width, hx0=x0;
         for(var yy3=0;yy3<lines;yy3++){
-          var src3=(r.ovAddr + yy3*r.ovStep)&0x7FFFF, dst3=(r.y+yy3)*384+hx0;
+          var src3=vbxeGraphSourceAddr(r,yy3), dst3=(r.y+yy3)*384+hx0, hs3=vbxeGraphHScrollHi(r)>>1, hp3=vbxeGraphHScrollHi(r)&1;
           for(var bx=0;bx<bytes && hx0+bx<384;bx++){
-            var b=vram[(src3+bx)&0x7FFFF]&0xFF;
+            var b=vram[(src3+bx+hs3)&0x7FFFF]&0xFF;
             var hi=(b>>4)&0x0F, lo=b&0x0F;
             var vv = !vbxeTransparent4(hi) ? hi : (!vbxeTransparent4(lo) ? lo : -1);
-            if(vv>=0 && vbxePriorityAllowsPixel(r,hx0+bx,r.y+yy3)){ fb[dst3+bx]=vbxeColor(vv,vbxeOverlayPalAtPixel(r,hx0+bx,r.y+yy3)); drew++; graphDrew++; }
+            var px3=hx0+bx-hp3;
+            if(px3>=0 && px3<384 && vv>=0 && vbxePriorityAllowsPixel(r,px3,r.y+yy3)){ fb[(r.y+yy3)*384+px3]=vbxeColor(vv,vbxeOverlayPalAtPixel(r,px3,r.y+yy3)); drew++; graphDrew++; }
           }
         }
       }
@@ -3003,7 +3022,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if(graphDrew>0 && !vbxe.xdlRenderLogged && M.vbxeDebug){
       vbxe.xdlRenderLogged=true;
-      M.vbxeDebug((hasHR?'VBXE HR/SR XDL RENDER BUILD2IF: HR overlay kreslim do nativniho 640 hires canvasu; ':'VBXE XDL RENDER BUILD2HL: kreslim graficke XDL segmenty podle fx.pdf, ')+'graphPixels='+graphDrew+'.');
+      M.vbxeDebug((hasHR?'VBXE HR/SR XDL RENDER BUILD2IP: graficky overlay kreslim s OVSCRL korekci; ':'VBXE XDL RENDER BUILD2IP: kreslim graficke XDL segmenty podle fx.pdf + OVSCRL, ')+'graphPixels='+graphDrew+'.');
     }
     if(drew>0) return true;
     if((hasGraph||hasText) && !vbxe.xdlFallbackLogged && M.vbxeDebug){
@@ -5294,6 +5313,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('AtariHelp.eu EMU-10 BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE pripraven - NET HRY zustava, XEX/OBX turbo zustava a nove ma ATR/D1 rychlejsi SIO jen pri diskovem prenosu. Landscape HQ safe. VBXE core BUILD2HL GOLD beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE pripraven - zachovan BUILD2IE ostrejsi Textmode, pridavam nativni 640px HR canvas pro VBXE HR overlay a zvysuji bezpecny BCB chain limit pro Commando/Popeye. W3D barvy, palety, BCB21, RAM320, loader, UI a hitboxy zustavaji.');
     log('AtariHelp.eu EMU-10 BUILD2IM_VBXE_PRIORITY_XCOLOR_SAFE pripraven - zaklad zustava BUILD2IF/APK/2IL bez sedeho HL obdelniku. Pridan obecny XDL priority pass nad ulozenou ANTIC/PMG mapou celeho frame a XCOLOR PF1 hires zachazeni. Zadny hack na jednu hru, UI/loader/joystick/RAM320/NET HRY beze zmeny.');
+    log('AtariHelp.eu EMU-10 BUILD2IP_VBXE_OVSCROLL_MAP_PF3_SAFE pripraven - navazuji na bezpecny BUILD2IO. Pridavam obecny OVSCRL pro SR/LR/HR graficky overlay a opravu atributove mapy: PF3 se uz nesmi prebarvovat jako PF2. Zadny hack na HL/Popeye/Commando/W3D/Postcard.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);

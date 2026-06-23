@@ -1,0 +1,87 @@
+AtariHelp.eu EMU-10 VBXE - BUILD2IP_VBXE_OVSCROLL_MAP_PF3_SAFE
+======================================================================
+
+Zaklad:
+- Navazuji na otestovany BUILD2IO, ktery Rene potvrdil jako bezpecny smer:
+  HL bez sedeho obdelniku, Popeye se pohnul dopredu, W3D ma rozdil LOW/HIGH,
+  Textmode je ostrejsi.
+- BUILD2IN zustava pozastaveny, nepouzivat jako zaklad.
+- BUILD2IH/BUILD2IK blank-hold/last-good vetev NEvracim.
+
+Co se meni:
+1) OVSCRL pro graficky overlay
+   - OVSCRL se ted nepouziva jen jako parsed stav, ale realne se aplikuje pri cteni
+     SR/LR/HR grafickych dat z overlay surface.
+   - Zavedene helpery:
+       vbxeGraphLocalY()
+       vbxeGraphSourceAddr()
+       vbxeGraphHScrollHi()
+   - Cilem je obecne zlepsit zarovnani overlay obrazu, clipping a surface cteni.
+   - To muze pomoct hlavne Commando / Postcard / Popeye / W3D / Textmode levy okraj.
+
+2) Attribute map PF3 oprava
+   - BUILD2IO prebarvoval PF0/PF1/PF2, ale v nekterych mistech se PF3 choval jako PF2.
+   - BUILD2IP nechava PF3 globalni, protoze VBXE map field v dokumentaci resi lokalni
+     COLPF0, COLPF1, COLPF2 + prioritu/palety, ne slepe PF3=PF2.
+   - Cilem je mene rozbite ANTIC+VBXE kompozice, hlavne Postcard a tmave/plne plochy.
+
+Co se NEMENI:
+- UI skin, joystick, klavesnice, hitboxy.
+- NET HRY / XEX / ATR / Turbo BASIC / BASIC TXT / LOG / HELP / MENU.
+- RAM320.
+- BCB chain limit 1024.
+- HR canvas 640.
+- Zadny hack podle nazvu hry.
+- Zadny fake obraz, zadne rucni kresleni Arnolda/Popeye/HL.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+Proc tento krok:
+- BUILD2IO ukazal, ze XDL attribute map je spravny smer, protoze W3D LOW/HIGH se konecne lisil
+  a Popeye zacal menit vrstvy/body/player stav.
+- Commando Arnold stale neni videt a Postcard zustava spatne. To vic ukazuje na obecnou chybu
+  overlay address/scroll/window/clipping nez na barvu jedne hry.
+
+Test plan:
+1) HL / Heartlight
+   - Ocekavani: sedy obdelnik se nesmi vratit.
+   - Text muze byt stale barevne jiny nez Altirra; ted neni hlavni cil.
+
+2) Popeye
+   - Ocekavani: nesmi byt horsi nez BUILD2IO.
+   - Hlidat jestli zustane pokrok v intru/body/player a jestli nepribude rozpad mapy.
+
+3) Commando
+   - Ocekavani: hra musi dal fungovat.
+   - Hlidat jestli Arnold aspon problikne / objevi se ve spravnem okne.
+   - Kdyz ne, poslat screenshot intro PRESS ANY KEY TO START + log.
+
+4) W3D
+   - Ocekavani: LOW/HIGH rozdil zustane.
+   - Hlidat zda se nezmeni orez nebo pozice obrazu.
+
+5) Textmode
+   - Ocekavani: ostrost zustane stejna/lepsi.
+   - Hlidat levy okraj, hlavne ujizdejici V ve Video.
+
+6) DACTest
+   - Ocekavani: bez zhorseni.
+   - Hlidat modro/zlutou hranici.
+
+7) Postcard
+   - Ocekavani: idealne mensi rozpad overlay/okna.
+   - Je to klicovy test pro ANTIC+VBXE kompozici.
+
+Log markery:
+- AtariHelp.eu EMU-10 BUILD2IP_VBXE_OVSCROLL_MAP_PF3_SAFE pripraven
+- VBXE HR/SR XDL RENDER BUILD2IP
+- VBXE XDL RENDER BUILD2IP
+- VBXE XDL ATTRIBUTE MAP APPLY BUILD2IP
+
+Co poslat zpet pri failu:
+- Screenshoty HL, Popeye, Commando intro, W3D LOW/HIGH, Textmode, DACTest, Postcard.
+- Soubor LOG / CHYBA.
+- Kratkou vetu: co je lepsi, co je horsi, co se nezmenilo.
