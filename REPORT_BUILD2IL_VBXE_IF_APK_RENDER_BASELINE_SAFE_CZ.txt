@@ -1,0 +1,91 @@
+AtariHelp.eu EMU-10 / VBXE 130XE
+BUILD2IL_VBXE_IF_APK_RENDER_BASELINE_SAFE
+Datum: 2026-06-23
+
+CO JE TOHLE ZA BUILD
+====================
+Tento overlay zamerne NENI dalsi lepeni Heartlightu.
+Je to bezpecny navrat render zakladu na BUILD2IF/APK vetev, kterou Rene poslal jako lepsi stav a ktera je shodna s dodanym app-debug.apk.
+
+Duvod:
+- Rene upozornil, ze buildy pred poslednim rollbackem byly v nekterych vecech lepsi.
+- V dodanem app-debug.apk je assets/emu_vbxe/index.html shodny s BUILD2IF.
+- BUILD2IH/BUILD2IK pridaly XDL NONBLANK / BLANK_HOLD / LAST_GOOD drzeni prazdneho XDL.
+- Posledni test HL ukazal stale sedy obdelnik nad textem. To vypada jako obecna regrese stale vrstvy / stale drzeny XDL obraz, ne jako chyba jedne hry.
+
+ROZHODNUTI
+==========
+Zaklad pro dalsi praci nastavuji na BUILD2IF/APK, ne na BUILD2IK.
+BUILD2II a BUILD2IJ stale nepouzivat jako zaklad.
+BUILD2HY barvy nepouzivat.
+
+CO JE ZMENENO
+=============
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+  - titul a start log zmenen na BUILD2IL
+  - pridan komentar s rozhodnutim: IF/APK render baseline safe
+  - render jadro je vraceno na BUILD2IF/APK stav
+
+KODY JSOU STEJNE:
+- BASIC / Altirra testovaci kody jsou stejne / nedotcene
+- UI skin / design PNG zustava stejny
+- NET HRY / loader / joystick / klavesnice zustavaji bez zamerne zmeny
+- RAM320 zustava
+- IF opravy zustavaji: 640px HR canvas a BCB chain limit 1024
+
+CO TIM SLEDUJEME
+================
+Cil neni opravit jen HL podle nazvu hry.
+Cil je odstranit obecnou regresi:
+- stale drzeny XDL obraz
+- stare last-good vrstvy
+- sedy/pruhovy obdelnik po prechodu text/grafika
+- prelepenou vrstvu pri zmenach XDL
+
+Pokud HL obdelnik zmizi a Popeye/Commando/W3D zustanou stejne nebo lepsi, dalsi krok ma byt obecny audit XDL recordu, transparentnosti a vrstveni z tohoto IF zakladu.
+
+CO NECEKAT
+==========
+Tento build jeste neni finalni kompletni VBXE emulace.
+Je to spravne zvoleny bezpecny zaklad pro dalsi genericke opravy.
+Neobsahuje herni hack pro Heartlight, Popeye ani Commando.
+
+TEST PLAN
+=========
+1) Aplikuj ZIP overlay pres GitHub Desktop jako obvykle.
+2) Spust VBXE 130XE emulator.
+3) V logu over marker:
+   AtariHelp.eu EMU-10 BUILD2IL_VBXE_IF_APK_RENDER_BASELINE_SAFE pripraven
+4) Otestuj:
+   A) Heartlight / HL
+      - hlavni kontrola: zmizel sedy obdelnik nad textem?
+      - hra samotna musi zustat dobra / hratelna
+   B) Popeye VBXE
+      - zda je stav minimalne jako v IF/APK, bez noveho caje
+   C) Commando
+      - zda hra bezi a neni horsi nez IF/APK
+   D) W3D
+      - zda zustaly barvy a hratelnost
+   E) Textmode Test 1-4
+      - zda zustala ostrost z IF/IE vetve
+   F) DACTest
+      - zda neni nova regrese
+
+CO POSLAT ZPATKY
+================
+Posli prosim:
+- screenshot HL presne s mistem, kde predtim byl sedy obdelnik
+- log z BUILD2IL
+- kratce: HL obdelnik ZMIZEL / ZUSTAL / JE JINY
+- jestli se proti app-debug.apk/BUILD2IF neco zhorsilo v Popeye, Commando, W3D
+
+DALSÍ KROK PO TESTU
+===================
+Pokud HL obdelnik zmizi:
+- pokracovat z BUILD2IL a delat obecny XDL/transparentnost/vrstveni audit.
+
+Pokud HL obdelnik zustane:
+- neni to jen regrese 2IH/2IK; potom je potreba logovat konkretni XDL record v okamziku obdelniku:
+  mode, y, lines, widthSel, ovAddr, ovStep, palette, priority, transparent mask.
+- nehackovat HL jmenem souboru.

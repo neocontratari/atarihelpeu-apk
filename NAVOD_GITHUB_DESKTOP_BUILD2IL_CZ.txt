@@ -1,0 +1,13 @@
+NAVOD - BUILD2IL overlay
+========================
+1) Rozbal ZIP.
+2) Slozku app z overlaye pretahni do korene projektu AtariHelp EMU-10.
+3) Ve Windows potvrdit slouceni a prepsani souboru.
+4) V GitHub Desktop zkontroluj zmenu:
+   app/src/main/assets/emu_vbxe/index.html
+5) Commit message:
+   BUILD2IL VBXE IF/APK render baseline safe
+6) Spust build/aplikaci a testuj podle REPORT_BUILD2IL...txt.
+
+Poznamka:
+Toto neni APK build. Je to zdrojovy overlay pro tvuj bezny GitHub Desktop workflow.
