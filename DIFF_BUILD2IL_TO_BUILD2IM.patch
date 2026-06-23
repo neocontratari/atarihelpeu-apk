@@ -1,0 +1,209 @@
+--- ../BUILD2IL_full/BUILD2IL_overlay/app/src/main/assets/emu_vbxe/index.html	2026-06-23 14:01:23.000000000 +0000
++++ app/src/main/assets/emu_vbxe/index.html	2026-06-23 14:31:59.084578770 +0000
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IL</title>
++<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IM</title>
+ <style>
+ :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
+ *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+@@ -326,12 +326,13 @@
+    Zachranny rollback po HY: vracim palety a HR renderer presne do BUILD2HX.
+    Zachovava BUILD2HW rychly ATR/D1 zaklad, NET HRY, UI skin, hitboxy, joystick a TXT/TurboBasic rychle vkladani.
+    Neobsahuje HY OV_COLOR_SHIFT ani HR blend, protoze v testu rozbil W3D a zhorsil Heartlight barvy. */
+-/* BUILD2IL_VBXE_IF_APK_RENDER_BASELINE_SAFE:
+-   Rozhodnuti po reportu a po Reneho doplneni: posledni rollback na 2IH/2IK drzel stale sedy obdelnik v Heartlight.
+-   Tady se render jadro vraci na realne shodny BUILD2IF/APK stav, ktery Rene poslal jako lepsi bod pred regresi.
+-   Neni to hack na jednu hru: odstranuje celou pozdejsi vetev XDL nonblank/blank-hold/lastgood drzeni, ktera mohla nechavat stale vrstvy.
+-   Zachovavam IF obecne opravy: 640px HR canvas, BCB chain limit 1024, RAM320, UI, joystick, loader, NET HRY a barvy.
+-   BASIC / Altirra testovaci kody jsou beze zmen. */
++/* BUILD2IM_VBXE_PRIORITY_XCOLOR_SAFE:
++   Po testu BUILD2IL Rene potvrdil: Heartlight/HL uz nema sedy obdelnik a hra je v normalu.
++   BUILD2IM proto NEvraci pozdejsi BLANK_HOLD/LAST_GOOD vetev a nelepi jednu hru.
++   Obecny dalsi krok: XDL main priority se porovnava proti realne ulozenym ANTIC/PMG
++   tridem pixelu celeho frame a XCOLOR hires foreground se bere jako PF1.
++   Cil: lepsi obecne vrstveni VBXE/ANTIC/PMG pro Popeye, Commando, W3D, Textmode, DACTest/Postcard
++   bez zasahu do UI, joysticku, loaderu, RAM320, NET HRY nebo VBXE skinu. */
+ /* BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE:
+    Rene potvrdil, ze BUILD2IE je podstatne lepsi/ostrejsi v Textmode a HL/W3D zůstaly hratelne.
+    Tady NEsaham na W3D barvy, palety, BCB21, RAM320, rychly loader, UI ani joystick.
+@@ -1066,6 +1067,9 @@
+                 blankRows:0, width:0 };
+   // ---------------- Machine state ---------
+   M.frame=0; M.line=0; M.log=[];
++  // BUILD2IM: full-frame priority map pro VBXE XDL priority byte (PF/PMG podklad).
++  M.vbxePfClassFrame=new Uint8Array(384*240);
++  M.vbxePmMaskFrame=new Uint8Array(384*240);
+   // BUILD2HB: VBXE IO trace. Zatim pouze mapovani a logovani, NE fake FX core.
+   const vbxe={
+     regs:new Uint8Array(0x100),
+@@ -1790,6 +1794,13 @@
+     }
+   }
+   const pfc=new Uint8Array(384), pml=new Uint8Array(384);
++  function vbxeStorePriorityLine(y){
++    if(!M.vbxePfClassFrame || !M.vbxePmMaskFrame) return;
++    if(y<0 || y>=240) return;
++    var base=y*384;
++    M.vbxePfClassFrame.set(pfc,base);
++    M.vbxePmMaskFrame.set(pml,base);
++  }
+   const hsBuf=new Uint32Array(512), hsCls=new Uint8Array(512);
+   function renderScanline(){
+     const y=M.line-8; if(y<0||y>=240) return;
+@@ -1826,15 +1837,17 @@
+     let xs;
+     if(md.t==='ch2'){
+       xs=192-nb*4;
++      const xcolor=!!(vbxe && (vbxe.regs[0x40]&0x02));
+       const fgL=gtia.colpf[1]&0x0F, bgC=gtia.colpf[2];
+-      const fg=palette[(bgC&0xF0)|fgL], bg=palette[bgC];
++      const fg=xcolor?palette[gtia.colpf[1]&0xFF]:palette[(bgC&0xF0)|fgL], bg=palette[bgC];
++      const fgCls=xcolor?2:3;
+       for(let i=0;i<nb;i++){
+         const sc=anticRead(antic.lms+i);
+         let bits=os[0]===undefined?0:0;
+         let line=row; if(antic.mode===3){ if(line>=8)line-=8; }
+         bits=anticRead(chAt(i)+((sc&0x7F)<<3)+(line&7));
+         if(sc&0x80){ if(antic.chactl&1) bits=0; else if(antic.chactl&2) bits^=0xFF; }
+-        for(let b=0;b<8;b++){ TB[TO+xs+i*8+b]=(bits&(0x80>>b))?fg:bg; TC[xs+i*8+b]=3; }
++        for(let b=0;b<8;b++){ const on=!!(bits&(0x80>>b)); TB[TO+xs+i*8+b]=on?fg:bg; TC[xs+i*8+b]=on?fgCls:3; }
+       }
+     } else if(md.t==='ch4'){
+       xs=192-nb*4;
+@@ -1891,10 +1904,12 @@
+             TB[TO+x0]=col; TB[TO+x0+1]=col; TB[TO+x0+2]=col; TB[TO+x0+3]=col; }
+         }
+       } else {
++        const xcolor=!!(vbxe && (vbxe.regs[0x40]&0x02));
+         const fgL=gtia.colpf[1]&0x0F, bgC=gtia.colpf[2];
+-        const fg=palette[(bgC&0xF0)|fgL], bg=palette[bgC];
++        const fg=xcolor?palette[gtia.colpf[1]&0xFF]:palette[(bgC&0xF0)|fgL], bg=palette[bgC];
++        const fgCls=xcolor?2:3;
+         for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
+-          for(let b=0;b<8;b++){ TB[TO+xs+i*8+b]=(bits&(0x80>>b))?fg:bg; TC[xs+i*8+b]=3; }
++          for(let b=0;b<8;b++){ const on=!!(bits&(0x80>>b)); TB[TO+xs+i*8+b]=on?fg:bg; TC[xs+i*8+b]=on?fgCls:3; }
+         }
+       }
+     }
+@@ -1919,7 +1934,7 @@
+   }
+   function renderPMG(y){
+     pml.fill(0);
+-    if(!(gtia.gractl&3) && !(gtia.grafp[0]|gtia.grafp[1]|gtia.grafp[2]|gtia.grafp[3]|gtia.grafm)) return;
++    if(!(gtia.gractl&3) && !(gtia.grafp[0]|gtia.grafp[1]|gtia.grafp[2]|gtia.grafp[3]|gtia.grafm)){ vbxeStorePriorityLine(y); return; }
+     const fb=M.fb, off=y*384, line=M.line;
+     const dbl=!(antic.dmactl&0x10);
+     const pmDma=(antic.dmactl&0x08)&&(gtia.gractl&2), mDma=((antic.dmactl&0x0C))&&(gtia.gractl&1); // player DMA fetchuje i missily (HW kvirk)
+@@ -1947,6 +1962,7 @@
+           const c=pfc[x]; if(c) gtia.cMPF[p]|=1<<(c-1);
+           gtia.cMPL[p]|=pml[x];
+           if(pmShow(p,c)) fb[off+x]=col; } } } } } }
++    vbxeStorePriorityLine(y);
+   }
+   const chSeg={n:0, c:new Int32Array(6), v:new Uint8Array(6), base:0};   // CHBASE zapisy behem radky (zavod s paprskem)
+   M.lineCyc0=0;
+@@ -2584,6 +2600,29 @@
+   function vbxeColor(idx, palNo){
+     return vbxe.pal[((palNo&3)<<8)|(idx&0xFF)];
+   }
++  function vbxePriorityAllowsPixel(r,x384,y){
++    var pri=(r && r.priority!=null ? r.priority : 255)&0xFF;
++    if(pri===255) return true;
++    if(!M.vbxePfClassFrame || !M.vbxePmMaskFrame) return true;
++    x384|=0; y|=0;
++    if(x384<0 || x384>=384 || y<0 || y>=240) return true;
++    var idx=y*384+x384;
++    var pf=M.vbxePfClassFrame[idx]&0x07;
++    var pm=M.vbxePmMaskFrame[idx]&0x0F;
++    var need=0;
++    if(pm&1) need|=0x01;
++    if(pm&2) need|=0x02;
++    if(pm&4) need|=0x04;
++    if(pm&8) need|=0x08;
++    if(pf===1) need|=0x10;        // PF0
++    else if(pf===2) need|=0x20;   // PF1
++    else if(pf===3 || pf===4) need|=0x40; // PF2/PF3
++    else if(!pm) need|=0x80;      // COLBAK / prazdny podklad
++    return (pri & need) === need;
++  }
++  function vbxePriorityAllowsHiPixel(r,px640,y){
++    return vbxePriorityAllowsPixel(r, ((px640*384/640)|0), y);
++  }
+   function vbxeTransparent8(idx){
+     idx&=0xFF;
+     if(vbxe.regs[0x40]&0x04) return false;              // VC_NO_TRANS
+@@ -2664,7 +2703,7 @@
+           }
+           if(!rescued) color=vbxeTextBgColor(attr1);
+         }
+-        if(color>=0){ fb[dst+sx]=vbxeColor(color,palNo); drew++; }
++        if(color>=0 && vbxePriorityAllowsPixel(r,x0+sx,gy)){ fb[dst+sx]=vbxeColor(color,palNo); drew++; }
+       }
+     }
+     return drew;
+@@ -2716,7 +2755,7 @@
+         } else {
+           color=vbxeTextBgColor(attr);
+         }
+-        if(color>=0){ hi[dst+sx]=vbxeColor(color,palNo); drew++; }
++        if(color>=0 && vbxePriorityAllowsHiPixel(r,x0+sx,gy)){ hi[dst+sx]=vbxeColor(color,palNo); drew++; }
+       }
+     }
+     return drew;
+@@ -2733,7 +2772,7 @@
+     var lines=r.lines; if(r.y+lines>240) lines=240-r.y;
+     if(lines<=0) return 0;
+     function put(px,py,col){
+-      if(px>=0 && px<640 && py>=0 && py<240){ hi[py*640+px]=col; drew++; }
++      if(px>=0 && px<640 && py>=0 && py<240 && vbxePriorityAllowsHiPixel(r,px,py)){ hi[py*640+px]=col; drew++; }
+     }
+     if(r.mode===1){ // SR: 1 byte = 1 color-clock pixel = 2 hires pixely
+       var bytes=widthHi>>1;
+@@ -2805,7 +2844,7 @@
+           var src=(r.ovAddr + yy*r.ovStep)&0x7FFFF, dst=(r.y+yy)*384+x0;
+           for(var x=0;x<width && x0+x<384;x++){
+             var v=vram[(src+x)&0x7FFFF]&0xFF;
+-            if(!vbxeTransparent8(v)){ fb[dst+x]=vbxeColor(v,r.ovPal); drew++; graphDrew++; }
++            if(!vbxeTransparent8(v) && vbxePriorityAllowsPixel(r,x0+x,r.y+yy)){ fb[dst+x]=vbxeColor(v,r.ovPal); drew++; graphDrew++; }
+           }
+         }
+       } else if(r.mode===3){ // LR: 128/160/168 pixelu, roztazeno x2 na 256/320/336
+@@ -2814,7 +2853,7 @@
+           var src2=(r.ovAddr + yy2*r.ovStep)&0x7FFFF, dst2=(r.y+yy2)*384+x0;
+           for(var lx=0;lx<lrw && x0+lx*2+1<384;lx++){
+             var v2=vram[(src2+lx)&0x7FFFF]&0xFF;
+-            if(!vbxeTransparent8(v2)){ var c2=vbxeColor(v2,r.ovPal); fb[dst2+lx*2]=c2; fb[dst2+lx*2+1]=c2; drew+=2; graphDrew+=2; }
++            if(!vbxeTransparent8(v2)){ var c2=vbxeColor(v2,r.ovPal), pxA=x0+lx*2, gyA=r.y+yy2; if(vbxePriorityAllowsPixel(r,pxA,gyA)){ fb[dst2+lx*2]=c2; drew++; graphDrew++; } if(vbxePriorityAllowsPixel(r,pxA+1,gyA)){ fb[dst2+lx*2+1]=c2; drew++; graphDrew++; } }
+           }
+         }
+       } else if(r.mode===2){ // HR: 2 VBXE pixely v bajtu, na canvasu downsample 2:1
+@@ -2825,7 +2864,7 @@
+             var b=vram[(src3+bx)&0x7FFFF]&0xFF;
+             var hi=(b>>4)&0x0F, lo=b&0x0F;
+             var vv = !vbxeTransparent4(hi) ? hi : (!vbxeTransparent4(lo) ? lo : -1);
+-            if(vv>=0){ fb[dst3+bx]=vbxeColor(vv,r.ovPal); drew++; graphDrew++; }
++            if(vv>=0 && vbxePriorityAllowsPixel(r,hx0+bx,r.y+yy3)){ fb[dst3+bx]=vbxeColor(vv,r.ovPal); drew++; graphDrew++; }
+           }
+         }
+       }
+@@ -2960,6 +2999,8 @@
+       vbxe.regs.fill(0); vbxe.vram.fill(0); vbxe.traceCount=0; vbxe.traceSuppressed=0; vbxe.seen={};
+       vbxe.bltCollision=0; vbxe.bltBusy=0; vbxe.bltIrq=0; vbxe.bltStarts=0; vbxe.renderDirty=false; vbxe.renderBase=0;
+       vbxe.xdlEnabled=false; vbxe.xdlRecords=[]; vbxe.xdlSig=''; vbxe.xdlSawValid=false; vbxe.lastGoodXdlRecords=null; vbxe.lastGoodXdlBase=0; vbxe.xdlCarryState=null; vbxe.xdlCarryLogged=false; vbxe.bigBlitLogged=false;
++      if(M.vbxePfClassFrame) M.vbxePfClassFrame.fill(0);
++      if(M.vbxePmMaskFrame) M.vbxePmMaskFrame.fill(0);
+       vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false;
+       vbxeInitPaletteDefaults();
+     }
+@@ -5130,7 +5171,7 @@
+     log('AtariHelp.eu EMU-10 BUILD2HR_VBXE_POWER_ON_130XE_HELP_FIX pripraven - POWER BASIC je neviditelny hitbox na napisu 130XE + jemna zelena LED; HELP navod doplnen; VBXE core BUILD2HL beze zmen.');
+     log('AtariHelp.eu EMU-10 BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE pripraven - NET HRY zustava, XEX/OBX turbo zustava a nove ma ATR/D1 rychlejsi SIO jen pri diskovem prenosu. Landscape HQ safe. VBXE core BUILD2HL GOLD beze zmen.');
+     log('AtariHelp.eu EMU-10 BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE pripraven - zachovan BUILD2IE ostrejsi Textmode, pridavam nativni 640px HR canvas pro VBXE HR overlay a zvysuji bezpecny BCB chain limit pro Commando/Popeye. W3D barvy, palety, BCB21, RAM320, loader, UI a hitboxy zustavaji.');
+-    log('AtariHelp.eu EMU-10 BUILD2IL_VBXE_IF_APK_RENDER_BASELINE_SAFE pripraven - render jadro je zpet na shodnem BUILD2IF/APK zakladu bez pozdejsi XDL BLANK_HOLD/LAST_GOOD vetve z 2IH/2IK. Cil: odstranit obecnou regresi stale vrstvy/obdelniku a nepokracovat v lepeni jedne hry. UI, loader, RAM320, HR canvas a chain 1024 zustavaji.');
++    log('AtariHelp.eu EMU-10 BUILD2IM_VBXE_PRIORITY_XCOLOR_SAFE pripraven - zaklad zustava BUILD2IF/APK/2IL bez sedeho HL obdelniku. Pridan obecny XDL priority pass nad ulozenou ANTIC/PMG mapou celeho frame a XCOLOR PF1 hires zachazeni. Zadny hack na jednu hru, UI/loader/joystick/RAM320/NET HRY beze zmeny.');
+     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
+     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
+     requestAnimationFrame(tick);

@@ -1,0 +1,75 @@
+AtariHelp.eu EMU-10 VBXE 130XE
+BUILD2IM_VBXE_PRIORITY_XCOLOR_SAFE
+Datum: 2026-06-23
+
+ZAKLAD / ROZHODNUTI
+- BUILD2IL test potvrdil spravny smer: Heartlight / HL uz nema sedy obdelnik a hra je v normalu.
+- Proto zustava zaklad BUILD2IF/APK -> BUILD2IL. Nevracim BUILD2IH/2IK blank-hold / stale last-good vetev, ktera delala sedy obdelnik.
+- BUILD2IM neni herni hack. Neobsahuje specialni podminku pro Heartlight, Popeye, Commando, W3D ani jinou jednu hru.
+
+CO JE ZMENENO
+- Soubor: app/src/main/assets/emu_vbxe/index.html
+- Pridan obecny full-frame priority buffer pro VBXE:
+  - M.vbxePfClassFrame: trida ANTIC playfieldu pro kazdy pixel 384x240.
+  - M.vbxePmMaskFrame: maska Player/Missile podkladu pro kazdy pixel 384x240.
+- VBXE XDL renderer uz pri kresleni overlay pixelu kontroluje XDL MAIN PRIORITY byte proti podkladu:
+  - b0-b3: overlay nad PM0-PM3,
+  - b4: overlay nad PF0,
+  - b5: overlay nad PF1,
+  - b6: overlay nad PF2/PF3,
+  - b7: overlay nad COLBAK / prazdnym pozadim.
+- XCOLOR pro ANTIC hires je osetren obecne:
+  - kdyz je ve VIDEO_CONTROL zapnut XCOLOR, foreground hires pixel bere skutecny COLPF1 a prioritu PF1,
+  - background zustava COLPF2 / PF2.
+- Zapracovano do normalniho XDL graph/text rendereru i do 640px HR/text canvasu.
+
+CO SE NESMI ROZBIT
+- HL nesmi vratit sedy obdelnik.
+- UI, skin, joystick, klavesnice, XC12, NET HRY, XEX/ZIP/ATR loader zustavaji beze zmen.
+- RAM320, 640px HR canvas a BCB chain limit 1024 zustavaji.
+- Zadny fake screen paint, zadny RAM inject, zadne lepeni jedne hry.
+
+KODY
+- KODY JSOU ZMENENE: app/src/main/assets/emu_vbxe/index.html
+- BASIC / Altirra testovaci kody JSOU STEJNE.
+
+PROC TENHLE KROK
+Po BUILD2IL je jasne, ze problem sedeho obdelniku byl regrese pozdejsi vetve. Ted nema smysl pridavat dalsi navrat naslepo. Spravny dalsi obecny krok je vrstveni: VBXE overlay nesmi byt vzdy slepe pres vsechno, ale ma respektovat XDL priority proti ANTIC/PMG podkladu. To muze ovlivnit Popeye/Commando/W3D/Postcard/Textmode/DACTest obecne, bez podminky na konkretni hru.
+
+OCEKAVANI / RIZIKO
+- HL by mel zustat bez obdelniku.
+- Popeye muze ukazat lepsi / jine vrstveni, ale kompletni grafika muze porad chtit MAP/attribute map nebo casovani.
+- Commando Arnold muze porad chybet, pokud problem neni priority, ale render sequencing / timing / MAPON / BCB order. BUILD2IM je ale nutny obecny krok pred dalsim hlubsim zasahem.
+- W3D low/high rozdil se nemusi opravit hned; pokud ne, dalsi audit ma jit po VIDEO_CONTROL/MEMAC/MAP a ne po barvach.
+
+TEST PLAN
+1) Nainstalovat overlay pres GitHub Desktop.
+2) Spustit VBXE emulator.
+3) Test HL / Heartlight:
+   - spravne: zadny sedy obdelnik; hra dal normalne bezi.
+   - poslat screen, pokud se obdelnik vrati.
+4) Test Popeye:
+   - sleduj, zda pribyly/zmizely vrstvy, postavy, mrizka, texty.
+   - pokud je horsi nez BUILD2IL, poslat screen + log.
+5) Test Commando:
+   - sleduj Arnold intro, jestli aspon problikne / zustane / zmeni se vrstveni.
+   - hra ma dal bezet.
+6) Test W3D:
+   - porovnat LOW vs HIGH detail.
+   - poslat info, jestli se objevil rozdil.
+7) Test Textmode a DACTest:
+   - Textmode nesmi spadnout ani zhrubnout.
+   - DACTest: hlidej modra/zluta odchylka.
+8) Po testu poslat:
+   - screen HL,
+   - screen Popeye,
+   - screen Commando intro,
+   - W3D LOW/HIGH slovni vysledek,
+   - ulozeny LOG/CHYBA.
+
+LOG MARKERY
+- BUILD2IM_VBXE_PRIORITY_XCOLOR_SAFE pripraven
+- VBXE XDL REC ... pri=$..
+- VBXE VIDEO_CONTROL W $D640=...
+- VBXE TEXT XDL RENDER / VBXE GRAPH XDL RENDER
+- VBXE BLITTER FAST #... BCB21
