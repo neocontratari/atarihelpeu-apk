@@ -1,0 +1,72 @@
+BUILD2IH_VBXE_XDL_NONBLANK_LASTGOOD_SAFE
+
+ZAKLAD
+- Vychazi z BUILD2IG_VBXE_PREXDL_UNDERLAY_AUDIT_SAFE.
+- Zachovava VBXE UI skin, klavesnici, hitboxy, joystick, NET HRY, rychly ATR/D1 load z BUILD2HW, rychle TXT/TurboBASIC vkladani, W3D/HL barvy, BCB21, RAM320.
+- BUILD2HM se porad NEPOUZIVA / zustava v karantene.
+
+KODY JSOU ZMENENE
+- Zmeneny soubor:
+  app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+PROC TENTO BUILD
+René se ptal, jestli zvednout RAM320 na 576K/RAMBO. V tomhle buildu RAM nezvedam. Posledni log ukazuje, ze bezi realne VBXE blitter/XDL/VRAM cesty, takze aktualni problem Commando/Popeye/Postcard nevypada jako nedostatek Atari extended RAM.
+
+CO JE NOVE
+1. XDL NONBLANK LAST_GOOD
+   - Viditelny XDL se uz automaticky nepovysuje na LAST_GOOD jen proto, ze je syntakticky validni.
+   - Povysi se az tehdy, kdyz opravdu vykresli netransparentni pixely.
+   - Cili prazdny nebo rozpracovany XDL po clear/blit fazi nesmi prepsat predchozi dobry obraz.
+
+2. QUICK NONBLANK AUDIT PRI ZAPISU XDL REGISTRU
+   - Kdyz je dobry XDL kratky a program ho rychle prepise, emulator ho zkusí zachytit hned pri zapisu registru.
+   - To miri hlavne na Commando/Arnold: log ukazoval nejdrive validni XDL na obrazova data a pak dalsi validni XDL, ktery muze byt v danou chvili prazdny/rozpracovany.
+
+3. BLANK_HOLD
+   - Kdyz aktualni viditelny XDL vykresli 0 pixelu, ale existuje posledni dobry nonblank XDL, emulator drzi posledni dobry obraz.
+   - Neni to screen-paint: porad se kresli jen z realnych XDL/VRAM dat, ktera hra sama pripravila.
+
+CO SE NEMENILO
+- RAM zustava 320K, zadne 576K/RAMBO v tomhle kroku.
+- W3D barvy/palety zustavaji z bezpecneho zakladu.
+- Heartlight grafika a palety zustavaji.
+- Textmode 640 canvas zustava.
+- DACTest modry odskok zatim neresim agresivne.
+- Popeye/Commando nejsou reseny hernim hackem podle jmena souboru.
+
+TEST PLAN
+1. Spust EMU 2 VBXE a jen over READY / zaklad UI.
+   Spravne: UI zustane stejne, hitboxy klavesnice porad sedi.
+
+2. Commando / commando230810.xex
+   Sleduj hlavne uvodni obrazek Arnolda.
+   Spravne zlepseni: Arnold / cast obrazku se objevi vic nez v BUILD2IG, nebo aspon log ukaze BLANK_HOLD / QUICK NONBLANK.
+   Pokud je stale jen text bez Arnolda, posli LOG.
+
+3. Popeye VBXE
+   Spravne: nesmi se vratit zlutoteckovy caj. Pozadi/grafika idealne vice kompletni.
+   Pokud pred tabulkou vitezu probehne caj, posli LOG.
+
+4. W3D ATR
+   Spravne: nesmi se zhorsit barvy ani hratelnost proti BUILD2IG/HZ/HX zakladu.
+   Pokud se W3D zhorsi, okamzite napsat: IH horsi, vratit predchozi.
+
+5. Heartlight / hl_vbxe.xex
+   Spravne: hra dal bezi, grafika ve hre zustava ostra; text barvy mozna stale nejsou Altirra, to neni hlavni zmena tohoto buildu.
+
+6. Textmode Test 1-4 a DACTest
+   Spravne: nesmi byt horsi nez BUILD2IG/2IE. U DACTest modry odskok muze zustat.
+
+LOG MARKERY
+- AtariHelp.eu EMU-10 BUILD2IH_VBXE_XDL_NONBLANK_LASTGOOD_SAFE pripraven
+- VBXE XDL QUICK NONBLANK LAST_GOOD BUILD2IH
+- VBXE XDL NONBLANK LAST_GOOD BUILD2IH
+- VBXE XDL BLANK_HOLD BUILD2IH
+- VBXE XDL RENDER BUILD2IH
+
+KDYZ TO SELZE
+- Posli screenshot + ULOZIT LOG.
+- Napis presne: Commando / Popeye / W3D / HL / Textmode / DAC.
+- U Commando napis, jestli Arnold chybi uplne, problikne, nebo je jen cast obrazu.
