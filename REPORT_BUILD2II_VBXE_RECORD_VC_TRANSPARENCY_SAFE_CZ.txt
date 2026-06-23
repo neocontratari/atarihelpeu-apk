@@ -1,0 +1,63 @@
+AtariHelp.eu EMU-10 / EMU 2 VBXE
+BUILD2II_VBXE_RECORD_VC_TRANSPARENCY_SAFE
+
+ZAKLAD:
+- Navazuje na BUILD2IH_VBXE_XDL_NONBLANK_LASTGOOD_SAFE.
+- BUILD2IH se ukazal jako smerove dobry: Commando uz ukaze Arnolda aspon kratce po klavese, hra funguje a najizdi i intra ze hry; Popeye je porad nekompletni; Textmode/DAC beze zmen; W3D/HL drzet bez zhorseni.
+
+KODY JSOU ZMENENE
+Zmeneny soubor:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO JE HLAVNI ZMENA:
+- Oprava je cilena na VBXE XDL pruhlednost a VIDEO_CONTROL stav.
+- Predchozi renderer pri pozdejsim kresleni XDL / LAST_GOOD pouzival aktualni globalni VIDEO_CONTROL.
+- BUILD2II uklada ke kazdemu XDL recordu snapshot bitu:
+  - no_trans
+  - trans15
+  - xcolor
+- Pruhlednost SR/LR/HR/TEXT se ted vyhodnocuje podle toho konkretniho XDL recordu, ne podle pozdejsiho globalniho registru.
+
+PROC:
+- To muze vysvetlovat nesmyslny sedy obdelnik nad Heartlight titulkem.
+- To muze pomoct Popeye/Commando prechodovym vrstvam, kde XDL/VIDEO_CONTROL kratce meni stav.
+- Nemeni to W3D barvy, palety, BCB21, RAM320, rychly ATR/D1 loader, UI, klavesnici ani joystick.
+
+CO JSEM NEDELAL:
+- Nezvedal jsem RAM320 na 576K/RAMBO. Log ukazuje aktivni VBXE/VRAM/blitter cestu a neni dukaz, ze problem je nedostatek RAM.
+- Nesahal jsem na W3D paletu/barvy.
+- Nesahal jsem na Textmode 640 canvas geometrii ani DAC modry odskok, aby se nerozbil dobry zaklad.
+- Zadny herni hack, zadny screen-paint.
+
+LOG MARKERY:
+AtariHelp.eu EMU-10 BUILD2II_VBXE_RECORD_VC_TRANSPARENCY_SAFE pripraven
+VBXE XDL REC ... nt=... t15=... xc=...
+VBXE XDL QUICK NONBLANK LAST_GOOD BUILD2IH
+VBXE XDL BLANK_HOLD BUILD2IH
+VBXE XDL RENDER BUILD2IH
+
+TEST PLAN:
+1) HL / Heartlight
+   - Zkontroluj hlavne uvodni text.
+   - Ocekavani: sedy nesmyslny obdelnik nad textem zmizi nebo se zmensi; hra musi zustat funkcni.
+
+2) Popeye VBXE
+   - Ocekavani: nesmi se vratit zluty/teckovy caj; sleduj, jestli se doplni cast chybejici grafiky.
+
+3) Commando
+   - Ocekavani: nesmi se zhorsit. Arnold muze porad jen probliknout, ale hra a intra ze hry musi zustat funkcni.
+
+4) W3D
+   - Jen regrese: barvy/hra nesmi byt horsi nez BUILD2IH.
+
+5) Textmode / DAC
+   - Jen kratka kontrola: pokud beze zmeny, je to v poradku. Tenhle build je zamerne neresil.
+
+CO POSLAT ZPET:
+- Napis: HL obdelnik lepsi/stejny/horsi.
+- Popeye: grafika lepsi/stejna/horsi.
+- Commando: Arnold/problik/hra/intra.
+- W3D: horsi/ne horsi.
+- Priloz LOG po testu, hlavne pokud se zmeni Popeye nebo Commando.

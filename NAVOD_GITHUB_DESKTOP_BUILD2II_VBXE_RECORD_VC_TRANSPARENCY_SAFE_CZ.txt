@@ -1,0 +1,11 @@
+NAVOD - ZIP overlay pres GitHub Desktop
+
+1. Rozbal ZIP.
+2. Slozku app zkopiruj do korene projektu AtariHelp/EMU-10 a povol prepsani souboru.
+3. V GitHub Desktop zkontroluj zmeny.
+4. Commit message:
+   BUILD2II VBXE record VIDEO_CONTROL transparency safe
+5. Spust build/apku a testuj podle REPORT souboru.
+
+Menim jen:
+app/src/main/assets/emu_vbxe/index.html
