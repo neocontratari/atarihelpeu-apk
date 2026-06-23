@@ -1,0 +1,105 @@
+AtariHelp EMU-10 / VBXE 130XE
+BUILD2IO_VBXE_XDL_MAPATTR_AUDIT_SAFE
+Datum: 2026-06-23
+
+DUVOD BUILDU
+------------
+Rene se spravne zeptal, jestli byly pred dalsim testem projite VBXE baliky:
+- vbxe_package_v109
+- vbxe_package_20230910
+- VBXE_130XE_EXACT_JAVA_OVERLAY
+- vbxe_test_postcard
+
+BUILD2IN se proto bere jako POZASTAVENY / netestovat. BUILD2IO je dalsi cisty krok po auditu oficialnich VBXE podkladu, hlavne fx.pdf a vbxefx.ah z VBXE FX v1.09.
+
+ZAKLAD
+------
+Zacatek je BUILD2IM, protoze Rene potvrdil:
+- HL / Heartlight je v poradku a sedy obdelnik se nevratil.
+- Popeye je stale neuplne, ale neni horsi nez predtim.
+- Commando hra funguje, ale Arnold ani neproblikne.
+- DACTest/Textmode nejsou rozbite.
+- W3D LOW/HIGH ma jen maly rozdil.
+
+BUILD2IO NEVRACI zpet BUILD2IH/2IK blank-hold vetev a nepouziva BUILD2IN frame-candidate latch.
+
+CO SE ZMENILO
+-------------
+1) XDL parser uz neignoruje atributovou mapu:
+   - XDLC_MAPON
+   - XDLC_MAPOFF
+   - XDLC_MAPADR
+   - XDLC_MAPPAR
+
+2) Parser cte MAPADR podle fx.pdf:
+   - 3 bajty AMAP = 19bit adresa ve VBXE VRAM
+   - 2 bajty MAPSTEP = 12bit krok
+
+3) Parser cte MAPPAR podle fx.pdf:
+   - hscroll mapy
+   - vscroll mapy
+   - width-1 pole mapy
+   - height-1 pole mapy
+
+4) Kazdy XDL record si nese mapovy stav stejne jako OVADR/OVATT/CHBASE.
+
+5) Attribute map se aplikuje obecne:
+   - lokalni PF0/PF1/PF2 barvy z mapy meni ANTIC obraz pod VBXE,
+   - MAP PF palette meni paletu pro PF barvy,
+   - MAP OV palette meni paletu pro OVERLAY pixely,
+   - priority pro OVERLAY se pri aktivni mape bere z P0/P1/P2/P3 podle mapoveho PS bitu.
+
+6) Tohle neni hack na Heartlight, Popeye, Commando ani W3D podle jmena. Je to obecna cast VBXE FX core podle dokumentace.
+
+KODY
+----
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO CEKAT
+--------
+Necekam zazrak v jednom kroku. BUILD2IO ma hlavne zjistit, jestli MAPON/MAPADR/MAPPAR byly ta chybejici obecna cast pro:
+- Popeye nekompletni grafiku / vrstvy,
+- W3D LOW/HIGH rozdil,
+- Postcard ANTIC+VBXE test,
+- Textmode/DACTest jemne barevne rozdily.
+
+HL musi zustat bez sedeho obdelniku.
+
+LOG MARKERY
+-----------
+Hledej v LOG/CHYBA:
+- BUILD2IO_VBXE_XDL_MAPATTR_AUDIT_SAFE
+- VBXE XDL REC ... map=1 maddr=$..... mstep=... msz=...
+- VBXE XDL ATTRIBUTE MAP APPLY BUILD2IO
+
+Kdyz map=0 vsude, testovany program mozna atributovou mapu nepouziva.
+Kdyz map=1 a obraz se nezmeni, dalsi krok bude presnejsi casovani MAPSTEP/field-scroll nebo XDL/VSYNC latch.
+
+TEST PLAN
+---------
+1. Nainstaluj overlay pres GitHub Desktop jako obvykle.
+2. Spust VBXE emulator.
+3. Testuj:
+   a) Heartlight / HL - sedy obdelnik se nesmi vratit.
+   b) Popeye - posli screen 1; zajima nas, jestli pribyly casti grafiky / vrstvy / barvy.
+   c) Commando - zda Arnold aspon problikne; hra musi dal fungovat.
+   d) W3D - LOW vs HIGH, zda je rozdil vetsi a bez rozbiti.
+   e) Textmode - ostrost, barvy, zadny krok zpet.
+   f) DACTest - modra/zluta hranice, zadny vetsi odskok.
+   g) Postcard - pokud mas chvilku, je to ted dulezity ANTIC+VBXE regression test.
+
+CO POSLAT ZPATKY
+----------------
+- Screenshot HL.
+- Screenshot Popeye screen 1.
+- Screenshot Commando intro/start a info, jestli Arnold problikne.
+- Screenshot DACTest.
+- Log LOG/CHYBA po testu, hlavne s radky map= / ATTRIBUTE MAP APPLY.
+
+DULEZITE
+--------
+Pokud BUILD2IO zhorsuje HL, hned stop a vratit se na BUILD2IM.
+Pokud BUILD2IO zlepsi Popeye/W3D/Postcard bez rozbiti HL, dalsi krok bude jemnejsi emulace mapy: RES bit, PF/PMG palette, CATT/collision a presnejsi XDL timing.

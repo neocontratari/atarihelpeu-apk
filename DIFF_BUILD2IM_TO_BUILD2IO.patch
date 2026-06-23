@@ -1,0 +1,351 @@
+--- BUILD2IM/app/src/main/assets/emu_vbxe/index.html
++++ BUILD2IO/app/src/main/assets/emu_vbxe/index.html
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IM</title>
++<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IO</title>
+ <style>
+ :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
+ *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+@@ -333,6 +333,11 @@
+    tridem pixelu celeho frame a XCOLOR hires foreground se bere jako PF1.
+    Cil: lepsi obecne vrstveni VBXE/ANTIC/PMG pro Popeye, Commando, W3D, Textmode, DACTest/Postcard
+    bez zasahu do UI, joysticku, loaderu, RAM320, NET HRY nebo VBXE skinu. */
++/* BUILD2IO_VBXE_XDL_MAPATTR_AUDIT_SAFE:
++   Po auditu oficialnich VBXE baliku vbxe_package_v109/vbxe_package_20230910 uz parser neignoruje
++   XDLC_MAPON/MAPOFF/MAPADR/MAPPAR. Attribute map se cte podle fx.pdf/vbxefx.ah: 4 bajty na pole,
++   lokalni PF0/PF1/PF2 barvy, MAP OV/PF palette a vyber P0-P3 priority.
++   Cilem je obecna oprava barev/vrstev pro Popeye/W3D/Postcard/Textmode bez hacku podle jmena hry. */
+ /* BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE:
+    Rene potvrdil, ze BUILD2IE je podstatne lepsi/ostrejsi v Textmode a HL/W3D zůstaly hratelne.
+    Tady NEsaham na W3D barvy, palety, BCB21, RAM320, rychly loader, UI ani joystick.
+@@ -1088,6 +1093,7 @@
+     xdlEnabled:false, xdlBase:0, xdlLogged:false, xdlRecords:[], xdlSig:'', xdlParseCount:0, xdlScanCount:0,
+     xdlRenderLogged:false, xdlFallbackLogged:false, xdlTextSkipLogged:false,
+     xdlSawValid:false, xdlProbeBlockedLogged:false, xdlTextRenderLogged:false, xdlTextEmptyLogged:false,
++    xdlMapLogged:false, xdlMapApplyLogged:false,
+     lastGoodXdlRecords:null, lastGoodXdlBase:0, lastGoodXdlWarned:false, xdlHoldLogged:false, lastXdlLogScan:0, xdlCarryState:null, xdlCarryLogged:false,
+     blitFeatureLogged:false, blitFeatureSuppressed:false, blitOverlapSnapshotLogged:false, bigBlitLogged:false,
+     preXdlProbeSkippedLogged:false, preXdlProbeAllowedLogged:false,
+@@ -2410,6 +2416,9 @@
+         y:r.y, lines:r.lines, xdlc:r.xdlc, mode:r.mode, ovAddr:r.ovAddr, ovStep:r.ovStep,
+         ovHScroll:r.ovHScroll||0, ovVScroll:r.ovVScroll||0, textPhase:r.textPhase||0, chBase:r.chBase||0,
+         widthSel:r.widthSel, ovPal:r.ovPal, pfPal:r.pfPal, priority:r.priority,
++        mapOn:!!r.mapOn, mapAddr:r.mapAddr||0, mapStep:r.mapStep||0, mapAddrValid:!!r.mapAddrValid,
++        mapHScroll:r.mapHScroll||0, mapVScroll:r.mapVScroll||0, mapPhase:r.mapPhase||0,
++        mapWidth:r.mapWidth==null?7:r.mapWidth, mapHeight:r.mapHeight==null?7:r.mapHeight,
+         noTrans:r.noTrans, addrMissing:!!r.addrMissing, frozen:!!r.frozen, usedCarryAddr:!!r.usedCarryAddr
+       });
+     }
+@@ -2451,6 +2460,14 @@
+             ovPal:(carry.ovPal==null?1:carry.ovPal)&3,
+             pfPal:(carry.pfPal||0)&3,
+             priority:(carry.priority==null?255:carry.priority)&0xFF,
++            // BUILD2IO: atributova mapa ma vlastni stav pres XDL, stejne jako overlay adresa/paleta.
++            mapOn:!!carry.mapOn,
++            mapAddr:(carry.mapAddrValid?carry.mapAddr:0)&0x7FFFF,
++            mapStep:(carry.mapAddrValid?carry.mapStep:80)&0x0FFF,
++            mapAddrValid:!!carry.mapAddrValid,
++            mapHScroll:(carry.mapHScroll||0)&31, mapVScroll:(carry.mapVScroll||0)&31,
++            mapPhase:(carry.mapPhase||carry.mapVScroll||0)&31,
++            mapWidth:(carry.mapWidth==null?7:carry.mapWidth)&31, mapHeight:(carry.mapHeight==null?7:carry.mapHeight)&31,
+             noTrans:!!(vbxe.regs[0x40]&0x04),
+             ovAddrValid:!!carry.ovAddrValid};
+     var y=0, end=false, safe=0;
+@@ -2461,6 +2478,7 @@
+       var rpt=1;
+ 
+       var tmon=!!(xdlc&0x0001), gmon=!!(xdlc&0x0002), ovoff=!!(xdlc&0x0004);
++      var mapon=!!(xdlc&0x0008), mapoff=!!(xdlc&0x0010);
+       var rptl=!!(xdlc&0x0020), ovadr=!!(xdlc&0x0040), ovscrl=!!(xdlc&0x0080);
+       var chbase=!!(xdlc&0x0100), mapadr=!!(xdlc&0x0200), mappar=!!(xdlc&0x0400), ovatt=!!(xdlc&0x0800);
+       var hr=!!(xdlc&0x1000), lr=!!(xdlc&0x2000);
+@@ -2469,6 +2487,11 @@
+       if(tmon && !gmon && !ovoff) st.mode=4;
+       else if(gmon && !tmon && !ovoff) st.mode = hr ? 2 : (lr ? 3 : 1);
+       else if(ovoff || (tmon&&gmon)) st.mode=0;
++
++      // BUILD2IO podle fx.pdf: MAPON/MAPOFF je nezavisle na OVERLAY.
++      // Bez bitu se stav mapy nese dal; MAPON+MAPOFF nebo MAPOFF mapu vypina.
++      if(mapon && !mapoff) st.mapOn=true;
++      else if(mapoff || (mapon && mapoff)) st.mapOn=false;
+ 
+       if(rptl){ rpt=(vbxeVramRead(p)&0xFF)+1; p=(p+1)&0x7FFFF; }
+ 
+@@ -2494,8 +2517,25 @@
+         st.chBase=(vbxeVramRead(p)&0xFF)<<11;
+         p=(p+1)&0x7FFFF;
+       }
+-      if(mapadr){ p=(p+5)&0x7FFFF; }
+-      if(mappar){ p=(p+4)&0x7FFFF; }
++      if(mapadr){
++        // BUILD2IO: XDLC_MAPADR = 19bit AMAP + 12bit MAPSTEP, stejne poradi jako OVADR.
++        var ma0=vbxeVramRead(p), ma1=vbxeVramRead((p+1)&0x7FFFF), ma2=vbxeVramRead((p+2)&0x7FFFF);
++        var ms0=vbxeVramRead((p+3)&0x7FFFF), ms1=vbxeVramRead((p+4)&0x7FFFF);
++        st.mapAddr=vbxeAddr3(ma0,ma1,ma2);
++        st.mapStep=(ms0|((ms1&0x0F)<<8))&0x0FFF;
++        st.mapAddrValid=true;
++        st.mapPhase=st.mapVScroll&31;
++        p=(p+5)&0x7FFFF;
++      }
++      if(mappar){
++        // BUILD2IO: MAPPAR = hscroll, vscroll, width-1, height-1; jednotky jsou hires pixely.
++        st.mapHScroll=vbxeVramRead(p)&0x1F;
++        st.mapVScroll=vbxeVramRead((p+1)&0x7FFFF)&0x1F;
++        st.mapWidth=vbxeVramRead((p+2)&0x7FFFF)&0x1F;
++        st.mapHeight=vbxeVramRead((p+3)&0x7FFFF)&0x1F;
++        st.mapPhase=st.mapVScroll&31;
++        p=(p+4)&0x7FFFF;
++      }
+       if(ovatt){
+         var o0=vbxeVramRead(p), o1=vbxeVramRead((p+1)&0x7FFFF);
+         st.widthSel=o0&0x03;
+@@ -2512,6 +2552,9 @@
+         y:y, lines:rpt, xdlc:xdlc, mode:st.mode, ovAddr:st.ovAddr, ovStep:st.ovStep,
+         ovHScroll:st.ovHScroll, ovVScroll:st.ovVScroll, textPhase:recTextPhase, chBase:st.chBase,
+         widthSel:st.widthSel, ovPal:st.ovPal, pfPal:st.pfPal, priority:st.priority,
++        mapOn:!!st.mapOn, mapAddr:st.mapAddr&0x7FFFF, mapStep:st.mapStep&0x0FFF, mapAddrValid:!!st.mapAddrValid,
++        mapHScroll:st.mapHScroll&31, mapVScroll:st.mapVScroll&31, mapPhase:(st.mapPhase||0)&31,
++        mapWidth:st.mapWidth&31, mapHeight:st.mapHeight&31,
+         noTrans:st.noTrans, addrMissing:(visibleMode && !st.ovAddrValid), usedCarryAddr:usedCarryAddr
+       });
+       // BUILD2IC: skutecny XDL fetch po recordu posouva interní OVADR.
+@@ -2526,6 +2569,14 @@
+           if(adv>0) st.ovAddr=(st.ovAddr + (adv * st.ovStep)) & 0x7FFFF;
+         }
+       }
++      // BUILD2IO: mapovy AMAP se posouva po cele vysce pole mapy, ne po kazde scanline.
++      if(st.mapOn && st.mapAddrValid){
++        var mh=((st.mapHeight&31)+1);
++        var mph=(st.mapPhase||0)&31;
++        var madv=((mph + rpt) / mh)|0;
++        st.mapPhase=(mph + rpt) % mh;
++        if(madv>0) st.mapAddr=(st.mapAddr + madv*(st.mapStep&0x0FFF)) & 0x7FFFF;
++      }
+       y += rpt;
+     }
+ 
+@@ -2533,10 +2584,13 @@
+       vbxe.xdlCarryState={ovAddr:st.ovAddr&0x7FFFF, ovStep:st.ovStep&0x0FFF,
+         ovHScroll:st.ovHScroll&7, ovVScroll:st.ovVScroll&7, textPhase:(st.textPhase||0)&7, chBase:st.chBase&0x7FFFF,
+         widthSel:st.widthSel&3, ovPal:st.ovPal&3, pfPal:st.pfPal&3, priority:st.priority&0xFF,
++        mapOn:!!st.mapOn, mapAddr:st.mapAddr&0x7FFFF, mapStep:st.mapStep&0x0FFF, mapAddrValid:!!st.mapAddrValid,
++        mapHScroll:st.mapHScroll&31, mapVScroll:st.mapVScroll&31, mapPhase:(st.mapPhase||0)&31,
++        mapWidth:st.mapWidth&31, mapHeight:st.mapHeight&31,
+         ovAddrValid:!!st.ovAddrValid};
+     }
+ 
+-    var shapeSig=base+':'+recs.length+':'+recs.map(function(r){return r.xdlc+','+r.lines+','+r.mode+','+r.ovAddr+','+r.ovStep+','+r.widthSel+','+r.ovPal+','+r.pfPal+','+r.chBase+','+r.ovHScroll+','+r.ovVScroll+','+(r.textPhase||0)+','+(r.addrMissing?1:0)+','+(r.usedCarryAddr?1:0);}).join('|');
++    var shapeSig=base+':'+recs.length+':'+recs.map(function(r){return r.xdlc+','+r.lines+','+r.mode+','+r.ovAddr+','+r.ovStep+','+r.widthSel+','+r.ovPal+','+r.pfPal+','+r.chBase+','+r.ovHScroll+','+r.ovVScroll+','+(r.textPhase||0)+','+(r.mapOn?1:0)+','+(r.mapAddr||0)+','+(r.mapStep||0)+','+(r.mapWidth||0)+','+(r.mapHeight||0)+','+(r.mapHScroll||0)+','+(r.mapVScroll||0)+','+(r.mapPhase||0)+','+(r.addrMissing?1:0)+','+(r.usedCarryAddr?1:0);}).join('|');
+     vbxe.xdlScanCount++;
+ 
+     var xstat = vbxeAnalyzeXdl(recs,end);
+@@ -2586,7 +2640,9 @@
+           ' ov=$'+r.ovAddr.toString(16).toUpperCase().padStart(5,'0')+
+           ' step='+r.ovStep+' widthSel='+r.widthSel+' ovPal='+r.ovPal+' pfPal='+r.pfPal+
+           ' ch=$'+(r.chBase||0).toString(16).toUpperCase().padStart(5,'0')+
+-          ' scr='+((r.ovHScroll||0)&7)+','+((r.ovVScroll||0)&7)+' phase='+((r.textPhase||0)&7)+' pri=$'+hx2(r.priority||0)+(r.addrMissing?' MISS_OVADR':'')+(r.usedCarryAddr?' CARRY_OVADR':'')+(r.frozen?' LASTGOOD':''));
++          ' scr='+((r.ovHScroll||0)&7)+','+((r.ovVScroll||0)&7)+' phase='+((r.textPhase||0)&7)+' pri=$'+hx2(r.priority||0)+
++          ' map='+(r.mapOn?1:0)+' maddr=$'+((r.mapAddr||0)&0x7FFFF).toString(16).toUpperCase().padStart(5,'0')+' mstep='+(r.mapStep||0)+' msz='+(((r.mapWidth||7)&31)+1)+'x'+(((r.mapHeight||7)&31)+1)+
++          (r.addrMissing?' MISS_OVADR':'')+(r.usedCarryAddr?' CARRY_OVADR':'')+(r.frozen?' LASTGOOD':''));
+         if(r.usedCarryAddr && !vbxe.xdlCarryLogged && M.vbxeDebug){
+           vbxe.xdlCarryLogged=true;
+           M.vbxeDebug('VBXE XDL CARRY_OVADR BUILD2HL: aktualni XDLC nezapsal OVADR, pouzivam posledni platny VBXE/XDL adresni stav misto HOLD_LAST_GOOD caje.');
+@@ -2600,10 +2656,44 @@
+   function vbxeColor(idx, palNo){
+     return vbxe.pal[((palNo&3)<<8)|(idx&0xFF)];
+   }
+-  function vbxePriorityAllowsPixel(r,x384,y){
+-    var pri=(r && r.priority!=null ? r.priority : 255)&0xFF;
++  function vbxeMapAttrAtHi(r,px640,y){
++    if(!r || !r.mapOn || !r.mapAddrValid) return null;
++    y|=0; px640|=0;
++    if(y<0 || y>=240) return null;
++    var widthHi=vbxeVisibleWidthHi(r.widthSel);
++    var x0=((640-widthHi)>>1);
++    var lx=px640 - x0 + ((r.mapHScroll||0)&31);
++    if(lx<0 || lx>=widthHi+32) return null;
++    var mw=((r.mapWidth==null?7:r.mapWidth)&31)+1;
++    var mh=((r.mapHeight==null?7:r.mapHeight)&31)+1;
++    var ly=(y - (r.y||0)) + ((r.mapPhase==null?(r.mapVScroll||0):r.mapPhase)&31);
++    if(ly<0) return null;
++    var col=(lx/mw)|0, row=(ly/mh)|0;
++    var addr=((r.mapAddr||0) + row*((r.mapStep||0)&0x0FFF) + col*4)&0x7FFFF;
++    var a0=vbxeVramRead(addr), a1=vbxeVramRead((addr+1)&0x7FFFF), a2=vbxeVramRead((addr+2)&0x7FFFF), a3=vbxeVramRead((addr+3)&0x7FFFF);
++    return {pf0:a0&0xFF, pf1:a1&0xFF, pf2:a2&0xFF, priSel:a3&3, catt:!!(a3&8), ovPal:(a3>>4)&3, pfPal:(a3>>6)&3, raw:a3&0xFF};
++  }
++  function vbxeMapAttrAtPixel(r,x384,y){
++    return vbxeMapAttrAtHi(r, ((x384*640/384)|0), y);
++  }
++  function vbxeOverlayPalAtHi(r,px640,y){
++    var ma=vbxeMapAttrAtHi(r,px640,y);
++    return ma ? ma.ovPal : ((r && r.ovPal!=null ? r.ovPal : 1)&3);
++  }
++  function vbxeOverlayPalAtPixel(r,x384,y){
++    var ma=vbxeMapAttrAtPixel(r,x384,y);
++    return ma ? ma.ovPal : ((r && r.ovPal!=null ? r.ovPal : 1)&3);
++  }
++  function vbxePriorityValueForHi(r,px640,y){
++    var ma=vbxeMapAttrAtHi(r,px640,y);
++    if(ma) return vbxe.regs[0x55+(ma.priSel&3)]&0xFF; // P0..P3 podle mapy atributu
++    return (r && r.priority!=null ? r.priority : 255)&0xFF;
++  }
++  function vbxePriorityAllowsHiPixel(r,px640,y){
++    var pri=vbxePriorityValueForHi(r,px640,y);
+     if(pri===255) return true;
+     if(!M.vbxePfClassFrame || !M.vbxePmMaskFrame) return true;
++    var x384=((px640*384/640)|0);
+     x384|=0; y|=0;
+     if(x384<0 || x384>=384 || y<0 || y>=240) return true;
+     var idx=y*384+x384;
+@@ -2616,12 +2706,38 @@
+     if(pm&8) need|=0x08;
+     if(pf===1) need|=0x10;        // PF0
+     else if(pf===2) need|=0x20;   // PF1
+-    else if(pf===3 || pf===4) need|=0x40; // PF2/PF3
++    else if(pf===3) need|=0x40;   // PF2
++    else if(pf===4) need|=0x80;   // PF3
+     else if(!pm) need|=0x80;      // COLBAK / prazdny podklad
+     return (pri & need) === need;
+   }
+-  function vbxePriorityAllowsHiPixel(r,px640,y){
+-    return vbxePriorityAllowsPixel(r, ((px640*384/640)|0), y);
++  function vbxePriorityAllowsPixel(r,x384,y){
++    return vbxePriorityAllowsHiPixel(r, ((x384*640/384)|0), y);
++  }
++  function vbxeApplyAttributeMapToAtari(recs){
++    if(!recs || !recs.length || !M.vbxePfClassFrame) return 0;
++    var fb=M.fb, pfcf=M.vbxePfClassFrame, drew=0;
++    for(var ri=0;ri<recs.length;ri++){
++      var r=recs[ri];
++      if(!r.mapOn || !r.mapAddrValid) continue;
++      var lines=r.lines; if(r.y+lines>240) lines=240-r.y;
++      if(lines<=0) continue;
++      for(var yy=0;yy<lines;yy++){
++        var gy=r.y+yy, row=gy*384;
++        for(var x=0;x<384;x++){
++          var cls=pfcf[row+x]&7;
++          if(cls!==1 && cls!==2 && cls!==3 && cls!==4) continue;
++          var ma=vbxeMapAttrAtPixel(r,x,gy); if(!ma) continue;
++          var ci=(cls===1?ma.pf0:(cls===2?ma.pf1:ma.pf2));
++          fb[row+x]=vbxeColor(ci,ma.pfPal); drew++;
++        }
++      }
++    }
++    if(drew>0 && !vbxe.xdlMapApplyLogged && M.vbxeDebug){
++      vbxe.xdlMapApplyLogged=true;
++      M.vbxeDebug('VBXE XDL ATTRIBUTE MAP APPLY BUILD2IO: MAPON/MAPADR/MAPPAR barvi PF0/PF1/PF2 a vybira MAP PF/OV palette; pixels='+drew+'.');
++    }
++    return drew;
+   }
+   function vbxeTransparent8(idx){
+     idx&=0xFF;
+@@ -2703,7 +2819,7 @@
+           }
+           if(!rescued) color=vbxeTextBgColor(attr1);
+         }
+-        if(color>=0 && vbxePriorityAllowsPixel(r,x0+sx,gy)){ fb[dst+sx]=vbxeColor(color,palNo); drew++; }
++        if(color>=0 && vbxePriorityAllowsPixel(r,x0+sx,gy)){ fb[dst+sx]=vbxeColor(color,vbxeOverlayPalAtPixel(r,x0+sx,gy)); drew++; }
+       }
+     }
+     return drew;
+@@ -2755,7 +2871,7 @@
+         } else {
+           color=vbxeTextBgColor(attr);
+         }
+-        if(color>=0 && vbxePriorityAllowsHiPixel(r,x0+sx,gy)){ hi[dst+sx]=vbxeColor(color,palNo); drew++; }
++        if(color>=0 && vbxePriorityAllowsHiPixel(r,x0+sx,gy)){ hi[dst+sx]=vbxeColor(color,vbxeOverlayPalAtHi(r,x0+sx,gy)); drew++; }
+       }
+     }
+     return drew;
+@@ -2771,8 +2887,10 @@
+     var widthHi=vbxeVisibleWidthHi(r.widthSel), x0=((640-widthHi)>>1);
+     var lines=r.lines; if(r.y+lines>240) lines=240-r.y;
+     if(lines<=0) return 0;
+-    function put(px,py,col){
+-      if(px>=0 && px<640 && py>=0 && py<240 && vbxePriorityAllowsHiPixel(r,px,py)){ hi[py*640+px]=col; drew++; }
++    function putIdx(px,py,idx){
++      if(px>=0 && px<640 && py>=0 && py<240 && vbxePriorityAllowsHiPixel(r,px,py)){
++        hi[py*640+px]=vbxeColor(idx,vbxeOverlayPalAtHi(r,px,py)); drew++;
++      }
+     }
+     if(r.mode===1){ // SR: 1 byte = 1 color-clock pixel = 2 hires pixely
+       var bytes=widthHi>>1;
+@@ -2780,7 +2898,7 @@
+         var src=(r.ovAddr + yy*r.ovStep)&0x7FFFF, gy=r.y+yy;
+         for(var x=0;x<bytes;x++){
+           var v=vram[(src+x)&0x7FFFF]&0xFF;
+-          if(!vbxeTransparent8(v)){ var c=vbxeColor(v,r.ovPal); var px=x0+x*2; put(px,gy,c); put(px+1,gy,c); }
++          if(!vbxeTransparent8(v)){ var px=x0+x*2; putIdx(px,gy,v); putIdx(px+1,gy,v); }
+         }
+       }
+     } else if(r.mode===3){ // LR: 1 byte = 4 hires pixely
+@@ -2789,7 +2907,7 @@
+         var src2=(r.ovAddr + yy2*r.ovStep)&0x7FFFF, gy2=r.y+yy2;
+         for(var lx=0;lx<lbytes;lx++){
+           var v2=vram[(src2+lx)&0x7FFFF]&0xFF;
+-          if(!vbxeTransparent8(v2)){ var c2=vbxeColor(v2,r.ovPal); var px2=x0+lx*4; put(px2,gy2,c2); put(px2+1,gy2,c2); put(px2+2,gy2,c2); put(px2+3,gy2,c2); }
++          if(!vbxeTransparent8(v2)){ var px2=x0+lx*4; putIdx(px2,gy2,v2); putIdx(px2+1,gy2,v2); putIdx(px2+2,gy2,v2); putIdx(px2+3,gy2,v2); }
+         }
+       }
+     } else if(r.mode===2){ // HR: 1 byte = 2 skutecne hires pixely, oba nibbly kreslim samostatne
+@@ -2799,8 +2917,8 @@
+         for(var bx=0;bx<hbytes;bx++){
+           var b=vram[(src3+bx)&0x7FFFF]&0xFF;
+           var hiNib=(b>>4)&0x0F, loNib=b&0x0F, px3=x0+bx*2;
+-          if(!vbxeTransparent4(hiNib)) put(px3,gy3,vbxeColor(hiNib,r.ovPal));
+-          if(!vbxeTransparent4(loNib)) put(px3+1,gy3,vbxeColor(loNib,r.ovPal));
++          if(!vbxeTransparent4(hiNib)) putIdx(px3,gy3,hiNib);
++          if(!vbxeTransparent4(loNib)) putIdx(px3+1,gy3,loNib);
+         }
+       }
+     }
+@@ -2823,6 +2941,10 @@
+     var pureText=(hasText && !hasGraph);
+     var useHiCanvas=(pureText || hasHR);
+     if(useHiCanvas) vbxePrepareHiTextFb();
++
++    // BUILD2IO: MAPON muze zlepsit ANTIC obraz i bez overlaye; aplikuj atributy pred OVERLAY.
++    var mapDrew=vbxeApplyAttributeMapToAtari(recs);
++    if(useHiCanvas && mapDrew>0) vbxePrepareHiTextFb();
+ 
+     for(var ri=0;ri<recs.length;ri++){
+       var r=recs[ri];
+@@ -2844,7 +2966,7 @@
+           var src=(r.ovAddr + yy*r.ovStep)&0x7FFFF, dst=(r.y+yy)*384+x0;
+           for(var x=0;x<width && x0+x<384;x++){
+             var v=vram[(src+x)&0x7FFFF]&0xFF;
+-            if(!vbxeTransparent8(v) && vbxePriorityAllowsPixel(r,x0+x,r.y+yy)){ fb[dst+x]=vbxeColor(v,r.ovPal); drew++; graphDrew++; }
++            if(!vbxeTransparent8(v) && vbxePriorityAllowsPixel(r,x0+x,r.y+yy)){ fb[dst+x]=vbxeColor(v,vbxeOverlayPalAtPixel(r,x0+x,r.y+yy)); drew++; graphDrew++; }
+           }
+         }
+       } else if(r.mode===3){ // LR: 128/160/168 pixelu, roztazeno x2 na 256/320/336
+@@ -2853,7 +2975,7 @@
+           var src2=(r.ovAddr + yy2*r.ovStep)&0x7FFFF, dst2=(r.y+yy2)*384+x0;
+           for(var lx=0;lx<lrw && x0+lx*2+1<384;lx++){
+             var v2=vram[(src2+lx)&0x7FFFF]&0xFF;
+-            if(!vbxeTransparent8(v2)){ var c2=vbxeColor(v2,r.ovPal), pxA=x0+lx*2, gyA=r.y+yy2; if(vbxePriorityAllowsPixel(r,pxA,gyA)){ fb[dst2+lx*2]=c2; drew++; graphDrew++; } if(vbxePriorityAllowsPixel(r,pxA+1,gyA)){ fb[dst2+lx*2+1]=c2; drew++; graphDrew++; } }
++            if(!vbxeTransparent8(v2)){ var pxA=x0+lx*2, gyA=r.y+yy2; if(vbxePriorityAllowsPixel(r,pxA,gyA)){ fb[dst2+lx*2]=vbxeColor(v2,vbxeOverlayPalAtPixel(r,pxA,gyA)); drew++; graphDrew++; } if(vbxePriorityAllowsPixel(r,pxA+1,gyA)){ fb[dst2+lx*2+1]=vbxeColor(v2,vbxeOverlayPalAtPixel(r,pxA+1,gyA)); drew++; graphDrew++; } }
+           }
+         }
+       } else if(r.mode===2){ // HR: 2 VBXE pixely v bajtu, na canvasu downsample 2:1
+@@ -2864,7 +2986,7 @@
+             var b=vram[(src3+bx)&0x7FFFF]&0xFF;
+             var hi=(b>>4)&0x0F, lo=b&0x0F;
+             var vv = !vbxeTransparent4(hi) ? hi : (!vbxeTransparent4(lo) ? lo : -1);
+-            if(vv>=0 && vbxePriorityAllowsPixel(r,hx0+bx,r.y+yy3)){ fb[dst3+bx]=vbxeColor(vv,r.ovPal); drew++; graphDrew++; }
++            if(vv>=0 && vbxePriorityAllowsPixel(r,hx0+bx,r.y+yy3)){ fb[dst3+bx]=vbxeColor(vv,vbxeOverlayPalAtPixel(r,hx0+bx,r.y+yy3)); drew++; graphDrew++; }
+           }
+         }
+       }
+@@ -3001,7 +3123,7 @@
+       vbxe.xdlEnabled=false; vbxe.xdlRecords=[]; vbxe.xdlSig=''; vbxe.xdlSawValid=false; vbxe.lastGoodXdlRecords=null; vbxe.lastGoodXdlBase=0; vbxe.xdlCarryState=null; vbxe.xdlCarryLogged=false; vbxe.bigBlitLogged=false;
+       if(M.vbxePfClassFrame) M.vbxePfClassFrame.fill(0);
+       if(M.vbxePmMaskFrame) M.vbxePmMaskFrame.fill(0);
+-      vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false;
++      vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false; vbxe.xdlMapApplyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false;
+       vbxeInitPaletteDefaults();
+     }
+     if(sio.xex){ sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true; }

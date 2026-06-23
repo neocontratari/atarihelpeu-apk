@@ -1,0 +1,18 @@
+NAVOD PRO RENEHO - BUILD2IO
+===========================
+
+1) ZIP rozbal.
+2) Slozku app pretahni / zkopiruj do korene projektu AtariHelp EMU-10.
+3) Ve Windows potvrdit PREPSAT SOUBORY.
+4) Otevri GitHub Desktop.
+5) Zkontroluj zmeny: ma byt zmenen hlavne:
+   app/src/main/assets/emu_vbxe/index.html
+6) Commit message:
+   BUILD2IO VBXE XDL MAPATTR AUDIT SAFE
+7) Buildni APK jako obvykle.
+8) Testuj podle REPORT_BUILD2IO...txt.
+
+KDYZ NECO NESEDI
+----------------
+Neprepisuj rucne kod. Posli screenshot + LOG/CHYBA.
+Tenhle build je auditni krok po oficialnich VBXE balicich, ne finalni hotove VBXE.
