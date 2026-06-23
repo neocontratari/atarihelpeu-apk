@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IJ_VBXE_XDL_STABLE_SPARSE_UNDERLAY_SAFE</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IH</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -340,13 +340,6 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    RAM320 nezvedam na 576K, protoze log ukazuje realne VBXE VRAM/blitter/XDL cestu, ne chybu velikosti Atari RAM.
    Viditelny XDL se povysi na LAST_GOOD az kdyz opravdu vykresli pixely; prazdny/rozpracovany XDL snimek drzi predchozi dobry obraz.
    Bez hernich hacku: W3D/HL barvy, palety, BCB21, rychly loader, UI/hitboxy zustavaji. */
-/* BUILD2IJ_VBXE_XDL_STABLE_SPARSE_UNDERLAY_SAFE:
-   Reakce na test BUILD2II: bez viditelne zmeny. II vracim do karanteny, nebudu dal hadat pruhlednost.
-   Cileny zasah podle logu: XDL_ADR se neparsuje po kazdem bajtu registru, ale az ve frame renderu, aby nevznikaly
-   mezistavy base=$00000/$28000; pre-XDL podklad pro ridky Atari obraz povoluji i pri diff do 320, protoze Popeye mel
-   diff=239/2016 a kandidat score=536, ale stary limit 110 ho zahodil. Navic chranim horní XDL clear/preamble record
-   se step=0, ktery v HL delal sedy obdelnik. W3D/HL/Commando/Popeye nejsou rozlisovane jmenem. */
-
 
 </style>
 </head>
@@ -1097,7 +1090,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     lastGoodXdlRecords:null, lastGoodXdlBase:0, lastGoodXdlWarned:false, xdlHoldLogged:false, lastXdlLogScan:0, xdlCarryState:null, xdlCarryLogged:false,
     blitFeatureLogged:false, blitFeatureSuppressed:false, blitOverlapSnapshotLogged:false, bigBlitLogged:false,
     preXdlProbeSkippedLogged:false, preXdlProbeAllowedLogged:false, preXdlUnderlayLogged:false, preXdlUnderlaySkipLogged:false,
-    xdlStableLogged:false, xdlAddrDirty:false, xdlTopStep0ClipLogged:false,
     xdlBlankHoldLogged:false, xdlPromoteLogged:false, xdlQuickPromoteLogged:false,
     ioWritten:false, readbackLogged:false, coreReadLogged:false, legacyUnsafeIgnored:0,
     pal:new Uint32Array(4*256), psel:0, csel:0, cr:0, cg:0, cb:0, palWrites:0, palLogSuppressed:false
@@ -1493,19 +1485,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
     vbxe.regs[off]=v;
     if(off===0x40){
       vbxe.xdlEnabled=!!(v&1);
-      vbxe.xdlAddrDirty=true;
       if(M.vbxeDebug) M.vbxeDebug('VBXE VIDEO_CONTROL W $D640=$'+hx2(v)+' xdl='+(v&1)+' xcolor='+((v>>1)&1)+' noTrans='+((v>>2)&1)+' trans15='+((v>>3)&1));
-      // BUILD2IJ: neparsujem okamzite pri zapisu VIDEO_CONTROL. Realny VBXE zacina XDL po synchronizaci,
-      // a hra casto zapisuje adresu po bajtech. Parse az ve frame renderu brani mezistavum a spatnemu LAST_GOOD.
-      if(vbxe.xdlEnabled && !vbxe.xdlStableLogged && M.vbxeDebug){
-        vbxe.xdlStableLogged=true;
-        M.vbxeDebug('VBXE XDL STABLE LATCH BUILD2IJ: VIDEO_CONTROL/XDL_ADR se parsuje az pri renderu snimku, ne po kazdem bajtu registru.');
-      }
+      if(vbxe.xdlEnabled) vbxeParseXdl(true);
     }
     if(off>=0x41 && off<=0x43){
-      vbxe.xdlAddrDirty=true;
-      vbxe.xdlSig='';
-      if(M.vbxeDebug) M.vbxeDebug('VBXE XDL_ADR W $D64'+(off-0x40)+'=$'+hx2(v)+' -> xdlBase=$'+vbxeGetXdlBase().toString(16).toUpperCase().padStart(5,'0')+' STABLE_WAIT');
+      if(M.vbxeDebug) M.vbxeDebug('VBXE XDL_ADR W $D64'+(off-0x40)+'=$'+hx2(v)+' -> xdlBase=$'+vbxeGetXdlBase().toString(16).toUpperCase().padStart(5,'0'));
+      if(vbxe.xdlEnabled) vbxeParseXdl(true);
     }
     if(off===0x44){ vbxe.csel=v&0xFF; }
     if(off===0x45){ vbxe.psel=v&0x03; }
@@ -2413,8 +2398,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         y:r.y, lines:r.lines, xdlc:r.xdlc, mode:r.mode, ovAddr:r.ovAddr, ovStep:r.ovStep,
         ovHScroll:r.ovHScroll||0, ovVScroll:r.ovVScroll||0, textPhase:r.textPhase||0, chBase:r.chBase||0,
         widthSel:r.widthSel, ovPal:r.ovPal, pfPal:r.pfPal, priority:r.priority,
-        noTrans:!!r.noTrans, trans15:!!r.trans15, xcolor:!!r.xcolor,
-        addrMissing:!!r.addrMissing, frozen:!!r.frozen, usedCarryAddr:!!r.usedCarryAddr
+        noTrans:r.noTrans, addrMissing:!!r.addrMissing, frozen:!!r.frozen, usedCarryAddr:!!r.usedCarryAddr
       });
     }
     return out;
@@ -2432,19 +2416,19 @@ function Atari130XE(osRom, basicRom, CPUctor){
         var w=vbxeVisibleWidth(r.widthSel);
         for(var yy=0; yy<lines && hits<24; yy+=8){
           var src=(r.ovAddr + yy*r.ovStep)&0x7FFFF;
-          for(var x=0; x<w && hits<24; x+=16){ var v=vram[(src+x)&0x7FFFF]&0xFF; if(!vbxeTransparent8ForRecord(r,v)) hits++; }
+          for(var x=0; x<w && hits<24; x+=16){ var v=vram[(src+x)&0x7FFFF]&0xFF; if(!vbxeTransparent8(v)) hits++; }
         }
       } else if(r.mode===2){
         var hw=vbxeVisibleWidth(r.widthSel);
         for(var yy2=0; yy2<lines && hits<24; yy2+=8){
           var src2=(r.ovAddr + yy2*r.ovStep)&0x7FFFF;
-          for(var bx=0; bx<hw && hits<24; bx+=16){ var b=vram[(src2+bx)&0x7FFFF]&0xFF; if(!vbxeTransparent4ForRecord(r,(b>>4)&15) || !vbxeTransparent4ForRecord(r,b&15)) hits++; }
+          for(var bx=0; bx<hw && hits<24; bx+=16){ var b=vram[(src2+bx)&0x7FFFF]&0xFF; if(!vbxeTransparent4((b>>4)&15) || !vbxeTransparent4(b&15)) hits++; }
         }
       } else if(r.mode===3){
         var lw=vbxeVisibleWidth(r.widthSel)>>1;
         for(var yy3=0; yy3<lines && hits<24; yy3+=8){
           var src3=(r.ovAddr + yy3*r.ovStep)&0x7FFFF;
-          for(var lx=0; lx<lw && hits<24; lx+=8){ var v3=vram[(src3+lx)&0x7FFFF]&0xFF; if(!vbxeTransparent8ForRecord(r,v3)) hits++; }
+          for(var lx=0; lx<lw && hits<24; lx+=8){ var v3=vram[(src3+lx)&0x7FFFF]&0xFF; if(!vbxeTransparent8(v3)) hits++; }
         }
       } else if(r.mode===4){
         var chars=vbxeTextCharsForWidth(r.widthSel), step=(r.ovStep||chars*2)&0x0FFF; if(!step) step=chars*2;
@@ -2454,7 +2438,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           for(var ci=0; ci<chars && hits<24; ci+=4){
             var cell=(rowAddr+ci*2)&0x7FFFF, ch=vram[cell]&0xFF, attr=vram[(cell+1)&0x7FFFF]&0xFF;
             var glyph=vram[((r.chBase||0)+ch*8+fy)&0x7FFFF]&0xFF;
-            if(glyph && vbxeTextFgVisibleForRecord(r,attr&0x7F)) hits++;
+            if(glyph && vbxeTextFgVisible(attr&0x7F)) hits++;
           }
         }
       }
@@ -2492,7 +2476,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!vbxe.xdlEnabled) return [];
     var base=vbxeGetXdlBase();
     vbxe.xdlBase=base;
-    vbxe.xdlAddrDirty=false;
     var p=base&0x7FFFF, recs=[];
     // BUILD2HL: XDL bity typu OVADR/ATT/CHBASE podle fx.pdf meni stav, ne vzdy kompletni obraz.
     // Po HF bylo videt, ze Wolf3D opakovane posila viditelny XDL bez OVADR a ja ho drzel jako chybu.
@@ -2509,8 +2492,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
             pfPal:(carry.pfPal||0)&3,
             priority:(carry.priority==null?255:carry.priority)&0xFF,
             noTrans:!!(vbxe.regs[0x40]&0x04),
-            trans15:!!(vbxe.regs[0x40]&0x08),
-            xcolor:!!(vbxe.regs[0x40]&0x02),
             ovAddrValid:!!carry.ovAddrValid};
     var y=0, end=false, safe=0;
 
@@ -2571,8 +2552,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         y:y, lines:rpt, xdlc:xdlc, mode:st.mode, ovAddr:st.ovAddr, ovStep:st.ovStep,
         ovHScroll:st.ovHScroll, ovVScroll:st.ovVScroll, textPhase:recTextPhase, chBase:st.chBase,
         widthSel:st.widthSel, ovPal:st.ovPal, pfPal:st.pfPal, priority:st.priority,
-        noTrans:st.noTrans, trans15:st.trans15, xcolor:st.xcolor,
-        addrMissing:(visibleMode && !st.ovAddrValid), usedCarryAddr:usedCarryAddr
+        noTrans:st.noTrans, addrMissing:(visibleMode && !st.ovAddrValid), usedCarryAddr:usedCarryAddr
       });
       // BUILD2IC: skutecny XDL fetch po recordu posouva interní OVADR.
       // Pixel mode: OVSTEP za kazdou scanline. Text mode: OVSTEP az po 8 radcich znaku.
@@ -2593,11 +2573,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
       vbxe.xdlCarryState={ovAddr:st.ovAddr&0x7FFFF, ovStep:st.ovStep&0x0FFF,
         ovHScroll:st.ovHScroll&7, ovVScroll:st.ovVScroll&7, textPhase:(st.textPhase||0)&7, chBase:st.chBase&0x7FFFF,
         widthSel:st.widthSel&3, ovPal:st.ovPal&3, pfPal:st.pfPal&3, priority:st.priority&0xFF,
-        noTrans:!!st.noTrans, trans15:!!st.trans15, xcolor:!!st.xcolor,
         ovAddrValid:!!st.ovAddrValid};
     }
 
-    var shapeSig=base+':'+recs.length+':'+recs.map(function(r){return r.xdlc+','+r.lines+','+r.mode+','+r.ovAddr+','+r.ovStep+','+r.widthSel+','+r.ovPal+','+r.pfPal+','+r.chBase+','+r.ovHScroll+','+r.ovVScroll+','+(r.textPhase||0)+','+(r.noTrans?1:0)+','+(r.trans15?1:0)+','+(r.xcolor?1:0)+','+(r.addrMissing?1:0)+','+(r.usedCarryAddr?1:0);}).join('|');
+    var shapeSig=base+':'+recs.length+':'+recs.map(function(r){return r.xdlc+','+r.lines+','+r.mode+','+r.ovAddr+','+r.ovStep+','+r.widthSel+','+r.ovPal+','+r.pfPal+','+r.chBase+','+r.ovHScroll+','+r.ovVScroll+','+(r.textPhase||0)+','+(r.addrMissing?1:0)+','+(r.usedCarryAddr?1:0);}).join('|');
     vbxe.xdlScanCount++;
 
     var xstat = vbxeAnalyzeXdl(recs,end);
@@ -2650,7 +2629,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           ' ov=$'+r.ovAddr.toString(16).toUpperCase().padStart(5,'0')+
           ' step='+r.ovStep+' widthSel='+r.widthSel+' ovPal='+r.ovPal+' pfPal='+r.pfPal+
           ' ch=$'+(r.chBase||0).toString(16).toUpperCase().padStart(5,'0')+
-          ' scr='+((r.ovHScroll||0)&7)+','+((r.ovVScroll||0)&7)+' phase='+((r.textPhase||0)&7)+' pri=$'+hx2(r.priority||0)+' nt='+(r.noTrans?1:0)+' t15='+(r.trans15?1:0)+' xc='+(r.xcolor?1:0)+(r.addrMissing?' MISS_OVADR':'')+(r.usedCarryAddr?' CARRY_OVADR':'')+(r.frozen?' LASTGOOD':''));
+          ' scr='+((r.ovHScroll||0)&7)+','+((r.ovVScroll||0)&7)+' phase='+((r.textPhase||0)&7)+' pri=$'+hx2(r.priority||0)+(r.addrMissing?' MISS_OVADR':'')+(r.usedCarryAddr?' CARRY_OVADR':'')+(r.frozen?' LASTGOOD':''));
         if(r.usedCarryAddr && !vbxe.xdlCarryLogged && M.vbxeDebug){
           vbxe.xdlCarryLogged=true;
           M.vbxeDebug('VBXE XDL CARRY_OVADR BUILD2HL: aktualni XDLC nezapsal OVADR, pouzivam posledni platny VBXE/XDL adresni stav misto HOLD_LAST_GOOD caje.');
@@ -2677,35 +2656,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(idx===0) return true;
     if((vbxe.regs[0x40]&0x08) && idx===0x0F) return true;
     return false;
-  }
-  function vbxeRecordNoTrans(r){ return !!(r && r.noTrans); }
-  function vbxeRecordTrans15(r){ return !!(r && r.trans15); }
-  function vbxeTransparent8ForRecord(r,idx){
-    idx&=0xFF;
-    if(vbxeRecordNoTrans(r)) return false;
-    if(idx===0) return true;
-    if(vbxeRecordTrans15(r) && ((idx&0x0F)===0x0F)) return true;
-    return false;
-  }
-  function vbxeTransparent4ForRecord(r,idx){
-    idx&=0x0F;
-    if(vbxeRecordNoTrans(r)) return false;
-    if(idx===0) return true;
-    if(vbxeRecordTrans15(r) && idx===0x0F) return true;
-    return false;
-  }
-  function vbxeTextFgVisibleForRecord(r,c){
-    c&=0xFF;
-    return !(vbxeRecordTrans15(r) && ((c&0x0F)===0x0F));
-  }
-  function vbxeTextBgColorForRecord(r,attr){
-    attr&=0xFF;
-    var c=-1;
-    if(attr&0x80) c=(attr&0x7F)+128;
-    else if(vbxeRecordNoTrans(r)) c=128;
-    else return -1;
-    if(vbxeRecordTrans15(r) && ((c&0x0F)===0x0F)) return -1;
-    return c&0xFF;
   }
   function vbxeTextCharsForWidth(widthSel){ return widthSel===0 ? 64 : (widthSel===2 ? 84 : 80); }
   function vbxeVisibleWidth(widthSel){ return widthSel===0 ? 256 : (widthSel===2 ? 336 : 320); }
@@ -2755,7 +2705,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         var color=-1;
         if(on1){
           var fg1=attr1&0x7F;
-          if(vbxeTextFgVisibleForRecord(r,fg1)) color=fg1;
+          if(vbxeTextFgVisible(fg1)) color=fg1;
         } else {
           var srcBit0=pairBase;
           var ci0=(srcBit0>>3);
@@ -2768,10 +2718,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
             var on0=(glyph0 & (0x80>>bit0))!==0;
             if(on0 && (((sx ^ gy ^ fy) & 1)===0)){
               var fg0=attr0&0x7F;
-              if(vbxeTextFgVisibleForRecord(r,fg0)){ color=fg0; rescued=true; }
+              if(vbxeTextFgVisible(fg0)){ color=fg0; rescued=true; }
             }
           }
-          if(!rescued) color=vbxeTextBgColorForRecord(r,attr1);
+          if(!rescued) color=vbxeTextBgColor(attr1);
         }
         if(color>=0){ fb[dst+sx]=vbxeColor(color,palNo); drew++; }
       }
@@ -2821,9 +2771,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
         var color=-1;
         if(on){
           var fg=attr&0x7F;
-          if(vbxeTextFgVisibleForRecord(r,fg)) color=fg;
+          if(vbxeTextFgVisible(fg)) color=fg;
         } else {
-          color=vbxeTextBgColorForRecord(r,attr);
+          color=vbxeTextBgColor(attr);
         }
         if(color>=0){ hi[dst+sx]=vbxeColor(color,palNo); drew++; }
       }
@@ -2850,7 +2800,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         var src=(r.ovAddr + yy*r.ovStep)&0x7FFFF, gy=r.y+yy;
         for(var x=0;x<bytes;x++){
           var v=vram[(src+x)&0x7FFFF]&0xFF;
-          if(!vbxeTransparent8ForRecord(r,v)){ var c=vbxeColor(v,r.ovPal); var px=x0+x*2; put(px,gy,c); put(px+1,gy,c); }
+          if(!vbxeTransparent8(v)){ var c=vbxeColor(v,r.ovPal); var px=x0+x*2; put(px,gy,c); put(px+1,gy,c); }
         }
       }
     } else if(r.mode===3){ // LR: 1 byte = 4 hires pixely
@@ -2859,7 +2809,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         var src2=(r.ovAddr + yy2*r.ovStep)&0x7FFFF, gy2=r.y+yy2;
         for(var lx=0;lx<lbytes;lx++){
           var v2=vram[(src2+lx)&0x7FFFF]&0xFF;
-          if(!vbxeTransparent8ForRecord(r,v2)){ var c2=vbxeColor(v2,r.ovPal); var px2=x0+lx*4; put(px2,gy2,c2); put(px2+1,gy2,c2); put(px2+2,gy2,c2); put(px2+3,gy2,c2); }
+          if(!vbxeTransparent8(v2)){ var c2=vbxeColor(v2,r.ovPal); var px2=x0+lx*4; put(px2,gy2,c2); put(px2+1,gy2,c2); put(px2+2,gy2,c2); put(px2+3,gy2,c2); }
         }
       }
     } else if(r.mode===2){ // HR: 1 byte = 2 skutecne hires pixely, oba nibbly kreslim samostatne
@@ -2869,8 +2819,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
         for(var bx=0;bx<hbytes;bx++){
           var b=vram[(src3+bx)&0x7FFFF]&0xFF;
           var hiNib=(b>>4)&0x0F, loNib=b&0x0F, px3=x0+bx*2;
-          if(!vbxeTransparent4ForRecord(r,hiNib)) put(px3,gy3,vbxeColor(hiNib,r.ovPal));
-          if(!vbxeTransparent4ForRecord(r,loNib)) put(px3+1,gy3,vbxeColor(loNib,r.ovPal));
+          if(!vbxeTransparent4(hiNib)) put(px3,gy3,vbxeColor(hiNib,r.ovPal));
+          if(!vbxeTransparent4(loNib)) put(px3+1,gy3,vbxeColor(loNib,r.ovPal));
         }
       }
     }
@@ -2903,20 +2853,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
         continue;
       }
       if(r.mode!==1 && r.mode!==2 && r.mode!==3) continue;
-      // BUILD2IJ: genericka ochrana proti hornimu XDL clear/preamble recordu: kratky graficky record od y=0,
-      // OVSTEP=0 a za nim dalsi viditelne recordy. V HL to vyrabelo sedy obdelnik nad textem.
-      // Neni to podle nazvu hry; je to jen ochrana proti statickemu preambule recordu pred skutecnym obrazem.
-      if(r.y===0 && (r.lines||0)<=32 && (r.ovStep||0)===0 && recs.length>1){
-        var laterVisible=false;
-        for(var si=ri+1; si<recs.length; si++){ if(recs[si].mode===1 || recs[si].mode===2 || recs[si].mode===3 || recs[si].mode===4){ laterVisible=true; break; } }
-        if(laterVisible){
-          if(!vbxe.xdlTopStep0ClipLogged && M.vbxeDebug){
-            vbxe.xdlTopStep0ClipLogged=true;
-            M.vbxeDebug('VBXE XDL TOP STEP0 PREFACE CLIP BUILD2IJ: preskakuji horni kratky graph record y=0 step=0 pred dalsim viditelnym XDL obrazem.');
-          }
-          continue;
-        }
-      }
       if(stt.useHiCanvas){ var gdHi=vbxeRenderGraphRecordHi(r); drew+=gdHi; graphDrew+=gdHi; continue; }
       var width = vbxeVisibleWidth(r.widthSel);
       var x0 = (384-width)>>1; if(x0<0) x0=0;
@@ -2928,7 +2864,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           var src=(r.ovAddr + yy*r.ovStep)&0x7FFFF, dst=(r.y+yy)*384+x0;
           for(var x=0;x<width && x0+x<384;x++){
             var v=vram[(src+x)&0x7FFFF]&0xFF;
-            if(!vbxeTransparent8ForRecord(r,v)){ fb[dst+x]=vbxeColor(v,r.ovPal); drew++; graphDrew++; }
+            if(!vbxeTransparent8(v)){ fb[dst+x]=vbxeColor(v,r.ovPal); drew++; graphDrew++; }
           }
         }
       } else if(r.mode===3){ // LR: 128/160/168 pixelu, roztazeno x2 na 256/320/336
@@ -2937,7 +2873,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           var src2=(r.ovAddr + yy2*r.ovStep)&0x7FFFF, dst2=(r.y+yy2)*384+x0;
           for(var lx=0;lx<lrw && x0+lx*2+1<384;lx++){
             var v2=vram[(src2+lx)&0x7FFFF]&0xFF;
-            if(!vbxeTransparent8ForRecord(r,v2)){ var c2=vbxeColor(v2,r.ovPal); fb[dst2+lx*2]=c2; fb[dst2+lx*2+1]=c2; drew+=2; graphDrew+=2; }
+            if(!vbxeTransparent8(v2)){ var c2=vbxeColor(v2,r.ovPal); fb[dst2+lx*2]=c2; fb[dst2+lx*2+1]=c2; drew+=2; graphDrew+=2; }
           }
         }
       } else if(r.mode===2){ // HR: 2 VBXE pixely v bajtu, na canvasu downsample 2:1
@@ -2947,7 +2883,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           for(var bx=0;bx<bytes && hx0+bx<384;bx++){
             var b=vram[(src3+bx)&0x7FFFF]&0xFF;
             var hi=(b>>4)&0x0F, lo=b&0x0F;
-            var vv = !vbxeTransparent4ForRecord(r,hi) ? hi : (!vbxeTransparent4ForRecord(r,lo) ? lo : -1);
+            var vv = !vbxeTransparent4(hi) ? hi : (!vbxeTransparent4(lo) ? lo : -1);
             if(vv>=0){ fb[dst3+bx]=vbxeColor(vv,r.ovPal); drew++; graphDrew++; }
           }
         }
@@ -3082,11 +3018,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(act.diff>=32){
       // BUILD2IG: ridky Atari textovy obraz + silny VBXE buffer = Commando/Popeye pred-XDL podklad.
       // Kreslim jen do aktualni barvy pozadi, takze Atari text/sprity nesmazu. Hustou hru porad nepřekryju.
-      if(act.diff<320 && cand.score>420){
+      if(act.diff<110 && cand.score>420){
         var wroteUnder=vbxeRenderProbePage(cand.base,true,act.bg);
         if(!vbxe.preXdlUnderlayLogged && M.vbxeDebug){
           vbxe.preXdlUnderlayLogged=true;
-          M.vbxeDebug('VBXE PRE-XDL SPARSE UNDERLAY BUILD2IJ: aktivni Atari obraz je jeste ridky diff='+act.diff+'/'+act.total+', proto kreslim VBXE VRAM podklad jen do COLBK pixelu. base=$'+cand.base.toString(16).toUpperCase().padStart(5,'0')+' score='+cand.score+' wrote='+wroteUnder+'.');
+          M.vbxeDebug('VBXE PRE-XDL UNDERLAY BUILD2IG: aktivni Atari obraz je ridky diff='+act.diff+'/'+act.total+', proto kreslim VBXE VRAM podklad jen do COLBK pixelu. base=$'+cand.base.toString(16).toUpperCase().padStart(5,'0')+' score='+cand.score+' wrote='+wroteUnder+'.');
         }
       } else {
         if(!vbxe.preXdlProbeSkippedLogged && M.vbxeDebug){
@@ -3143,7 +3079,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       vbxe.regs.fill(0); vbxe.vram.fill(0); vbxe.traceCount=0; vbxe.traceSuppressed=0; vbxe.seen={};
       vbxe.bltCollision=0; vbxe.bltBusy=0; vbxe.bltIrq=0; vbxe.bltStarts=0; vbxe.renderDirty=false; vbxe.renderBase=0;
       vbxe.xdlEnabled=false; vbxe.xdlRecords=[]; vbxe.xdlSig=''; vbxe.xdlSawValid=false; vbxe.lastGoodXdlRecords=null; vbxe.lastGoodXdlBase=0; vbxe.xdlCarryState=null; vbxe.xdlCarryLogged=false; vbxe.bigBlitLogged=false;
-      vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false; vbxe.preXdlUnderlayLogged=false; vbxe.preXdlUnderlaySkipLogged=false; vbxe.xdlStableLogged=false; vbxe.xdlAddrDirty=false; vbxe.xdlTopStep0ClipLogged=false; vbxe.xdlBlankHoldLogged=false; vbxe.xdlPromoteLogged=false; vbxe.xdlQuickPromoteLogged=false;
+      vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false; vbxe.preXdlUnderlayLogged=false; vbxe.preXdlUnderlaySkipLogged=false; vbxe.xdlBlankHoldLogged=false; vbxe.xdlPromoteLogged=false; vbxe.xdlQuickPromoteLogged=false;
       vbxeInitPaletteDefaults();
     }
     if(sio.xex){ sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true; }
@@ -5316,7 +5252,6 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('AtariHelp.eu EMU-10 BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE pripraven - zachovan BUILD2IE ostrejsi Textmode, pridavam nativni 640px HR canvas pro VBXE HR overlay a zvysuji bezpecny BCB chain limit pro Commando/Popeye. W3D barvy, palety, BCB21, RAM320, loader, UI a hitboxy zustavaji.');
     log('AtariHelp.eu EMU-10 BUILD2IG_VBXE_PREXDL_UNDERLAY_AUDIT_SAFE pripraven - bez zasahu do W3D/HL/Textmode/DAC palet. Pridavam jen bezpecny pred-XDL VBXE underlay pod ridky Atari text a opravu XEX audit hex pro ANTIC+VBXE test.');
     log('AtariHelp.eu EMU-10 BUILD2IH_VBXE_XDL_NONBLANK_LASTGOOD_SAFE pripraven - RAM zustava 320K, UI/loader/barvy zustavaji. XDL se povysi na LAST_GOOD az kdyz vykresli realne pixely; pridany rychly nonblank audit pro kratky dobry XDL; prazdny/rozpracovany XDL drzi posledni dobry obraz.');
-    log('AtariHelp.eu EMU-10 BUILD2IJ_VBXE_XDL_STABLE_SPARSE_UNDERLAY_SAFE pripraven - II zmena pruhlednosti byla slepa ulicka, ted cilim jen na realne zjistene veci z logu: stabilni XDL_ADR latch, ridsi pre-XDL underlay do COLBK pixelu a horni step=0 XDL preamble clip. W3D barvy/BCB21/RAM320/UI/loader zustavaji.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);
