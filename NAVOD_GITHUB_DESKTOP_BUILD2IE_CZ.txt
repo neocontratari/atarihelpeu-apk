@@ -1,0 +1,12 @@
+NAVOD PRO RENEHO - BUILD2IE_VBXE_TRUE_640_TEXT_CANVAS_SAFE
+
+1. ZIP rozbalit.
+2. Slozku app pretahnout do korene projektu v GitHub Desktop/Exploreru.
+3. Potvrdit prepsani souboru.
+4. Commit zprava:
+   BUILD2IE VBXE true 640 text canvas safe
+5. Build APK stejne jako predchozi buildy.
+6. Testovat nejdriv Textmode Test 1-4, potom DACTest, potom HL/W3D.
+
+KODY JSOU ZMENENE.
+BASIC / Altirra testovaci kody JSOU STEJNE.
