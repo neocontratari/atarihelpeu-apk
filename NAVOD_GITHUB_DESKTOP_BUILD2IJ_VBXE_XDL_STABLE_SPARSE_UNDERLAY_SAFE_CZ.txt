@@ -1,0 +1,10 @@
+NAVOD PRO RENEHO - BUILD2IJ_VBXE_XDL_STABLE_SPARSE_UNDERLAY_SAFE
+
+1. ZIP rozbalit do korene projektu v GitHub Desktop / working copy.
+2. Povolit prepsani souboru.
+3. Commit: BUILD2IJ_VBXE_XDL_STABLE_SPARSE_UNDERLAY_SAFE
+4. Sestavit APK jako predtim.
+5. Testuj HL -> Popeye -> Commando -> W3D. Textmode/DAC jen kontrola, ne hlavni cil.
+
+KODY JSOU ZMENENE: app/src/main/assets/emu_vbxe/index.html
+BASIC / Altirra testovaci kody JSOU STEJNE.

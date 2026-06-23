@@ -1,0 +1,28 @@
+BUILD2IJ_VBXE_XDL_STABLE_SPARSE_UNDERLAY_SAFE
+
+KODY JSOU ZMENENE
+Zmeneny soubor: app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+Proc tento build:
+- BUILD2II podle testu nezmenil HL/Popeye/Commando. Je brany jako slepa ulicka pro pruhlednost.
+- Log ukazal, ze XDL_ADR se zapisuje po bajtech a predchozi kod parsoval mezistavy ihned.
+- Log u Popeye ukazal sparse Atari obraz diff kolem 239/2016 a kandidata VBXE VRAM, ale stary limit 110 ho zahodil.
+- HL ma horni kratky XDL graph record y=0, step=0 pred vlastnim obrazem, ktery delal sedy obdelnik.
+
+Co je zmeneno obecne, bez jmen her v kodu:
+1. XDL_ADR / VIDEO_CONTROL se neparsuje hned po kazdem bajtu registru, ale az pri renderu snimku.
+2. Pre-XDL underlay se povoli i pro ridky Atari obraz do diff<320, porad jen do COLBK pixelu.
+3. Horni kratky graph preamble record y=0, lines<=32, OVSTEP=0 se preskoci, pokud za nim nasleduje dalsi viditelny XDL record.
+
+Co zustava beze zmeny:
+- W3D barvy, palety, BCB21 blitter, RAM320, rychly loader, UI skin, hitboxy, joystick, TXT/TurboBasic fast.
+- Textmode/DAC se v tomto buildu cilene neladi.
+
+Test plan:
+1. HL / Heartlight: musi byt videt, jestli zmizel/srazil se sedy obdelnik nad titulkem. Hra se nesmi zhorsit.
+2. Popeye VBXE: zkontroluj, jestli se doplnila chybejici grafika / pozadi.
+3. Commando: zkontroluj PRESS ANY KEY intro, jestli se Arnold objevi uz pred odmacknutim, nebo aspon ne hure; hra musi bezet.
+4. W3D jen regresni kontrola, ze se nezhoršily barvy/rychlost.
+5. Posli log, hlavne radky: VBXE XDL STABLE LATCH BUILD2IJ, VBXE PRE-XDL SPARSE UNDERLAY BUILD2IJ, VBXE XDL TOP STEP0 PREFACE CLIP BUILD2IJ.
