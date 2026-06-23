@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IE</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IF</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -326,12 +326,11 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    Zachranny rollback po HY: vracim palety a HR renderer presne do BUILD2HX.
    Zachovava BUILD2HW rychly ATR/D1 zaklad, NET HRY, UI skin, hitboxy, joystick a TXT/TurboBasic rychle vkladani.
    Neobsahuje HY OV_COLOR_SHIFT ani HR blend, protoze v testu rozbil W3D a zhorsil Heartlight barvy. */
-/* BUILD2IE_VBXE_TRUE_640_TEXT_CANVAS_SAFE:
-   Rene potvrdil, ze BUILD2IC je vyrazne ostrejsi, ale text jeste neni ono.
+/* BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE:
+   Rene potvrdil, ze BUILD2IE je podstatne lepsi/ostrejsi v Textmode a HL/W3D zůstaly hratelne.
    Tady NEsaham na W3D barvy, palety, BCB21, RAM320, rychly loader, UI ani joystick.
-   Menim jen VBXE textovy sampler: 640px glyph se prevadi do 320cc edge-snap metodou,
-   aby se neztracely leve/pul-pixelove tahy pisma, ale zaroven se nevratil tlusty OR blur z IB.
-   Navic tlumim D65F MEMAC spam v logu, protoze Heartlight/W3D tim umi sezrat vykon. */
+   Pridavam nativni 640px canvas pro VBXE HR overlay, aby Popeye/HR neztracel levy/pravy nibble.
+   Zvysuju bezpecny BCB chain limit z 32 na 1024, protoze Commando pouziva dlouhe chainy a 32 to utnulo. */
 
 </style>
 </head>
@@ -1336,8 +1335,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // BUILD2HB: už nevynechávám velké blity. BUILD2GW tím chránil zvuk,
     // ale zároveň zahodil data a obraz zůstal černý. Tady se velké blity provádějí
     // rychlými cestami bez log-spamu.
-    const CHAIN_LIMIT=32;
-    var totalBytes=0, blocks=0, startAdr=adr, copied=0;
+    const CHAIN_LIMIT=1024; // BUILD2IF: Commando pouziva delsi BCB chain; 32 blokovy limit utnul obrazek/hru.
+    var totalBytes=0, blocks=0, startAdr=adr, copied=0, totalDestOps=0, chainStillNext=false;
 
     for(var bi=0;bi<CHAIN_LIMIT;bi++){
       var b=vbxeBlitReadBCB(adr);
@@ -1359,6 +1358,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       var patternUse=!!(patt&0x80);
       var patternWidth=(patt&0x3F)+1;
       var opBytes=w*h, destOps=w*h*zoomX*zoomY;
+      totalDestOps += destOps;
       blocks++;
 
       if(vbxe.bltStarts<=12 && M.vbxeDebug){
@@ -1378,7 +1378,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
       // BUILD2HL: Popeye po HF narazil na velke, ale porad smysluplne blity nad 1M operaci.
       // Skip takoveho BCB muze rozbit data a shodit CPU do JAM. Nechavam tvrdou brzdu az nad 4M.
-      if(w>1024 || h>1024 || destOps>4194304){
+      if(w>1024 || h>1024 || destOps>4194304 || totalDestOps>16777216){
         vbxe.safeBlitSkipped++;
         if(M.vbxeDebug && vbxe.safeBlitSkipped<=8){
           M.vbxeDebug('VBXE BLITTER GUARD_SKIP BUILD2HL: skutecne extremni rozmery w='+w+' h='+h+' destOps='+destOps+' BCB=$'+(adr&0x7FFFF).toString(16).toUpperCase().padStart(5,'0'));
@@ -1425,9 +1425,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
       totalBytes+=opBytes;
       adr=(adr+21)&0x7FFFF;
+      chainStillNext=next;
       if(!next) break;
     }
 
+    if(chainStillNext && blocks>=CHAIN_LIMIT && M.vbxeDebug){ M.vbxeDebug('VBXE BLITTER CHAIN LIMIT BUILD2IF: dosazen limit '+CHAIN_LIMIT+' BCB, dalsi chain zustal oznacen NEXT; pokud se Commando nedokresli, posli log.'); }
     vbxe.bltBusy=0;
     if(vbxe.regs[0x54]&1) vbxe.bltIrq=1;
     vbxe.fastBlitCopied+=copied; vbxe.fastBlitBlocks+=blocks;
@@ -2714,6 +2716,52 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return drew;
   }
 
+
+  function vbxeVisibleWidthHi(widthSel){
+    // BUILD2IF: skutecna VBXE hires sirka. Normal = 640 px, narrow = 512, wide = 672.
+    return widthSel===0 ? 512 : (widthSel===2 ? 672 : 640);
+  }
+  function vbxeRenderGraphRecordHi(r){
+    var hi=M.vbxeTextHiFb || vbxePrepareHiTextFb(), vram=vbxe.vram, drew=0;
+    var widthHi=vbxeVisibleWidthHi(r.widthSel), x0=((640-widthHi)>>1);
+    var lines=r.lines; if(r.y+lines>240) lines=240-r.y;
+    if(lines<=0) return 0;
+    function put(px,py,col){
+      if(px>=0 && px<640 && py>=0 && py<240){ hi[py*640+px]=col; drew++; }
+    }
+    if(r.mode===1){ // SR: 1 byte = 1 color-clock pixel = 2 hires pixely
+      var bytes=widthHi>>1;
+      for(var yy=0;yy<lines;yy++){
+        var src=(r.ovAddr + yy*r.ovStep)&0x7FFFF, gy=r.y+yy;
+        for(var x=0;x<bytes;x++){
+          var v=vram[(src+x)&0x7FFFF]&0xFF;
+          if(!vbxeTransparent8(v)){ var c=vbxeColor(v,r.ovPal); var px=x0+x*2; put(px,gy,c); put(px+1,gy,c); }
+        }
+      }
+    } else if(r.mode===3){ // LR: 1 byte = 4 hires pixely
+      var lbytes=widthHi>>2;
+      for(var yy2=0;yy2<lines;yy2++){
+        var src2=(r.ovAddr + yy2*r.ovStep)&0x7FFFF, gy2=r.y+yy2;
+        for(var lx=0;lx<lbytes;lx++){
+          var v2=vram[(src2+lx)&0x7FFFF]&0xFF;
+          if(!vbxeTransparent8(v2)){ var c2=vbxeColor(v2,r.ovPal); var px2=x0+lx*4; put(px2,gy2,c2); put(px2+1,gy2,c2); put(px2+2,gy2,c2); put(px2+3,gy2,c2); }
+        }
+      }
+    } else if(r.mode===2){ // HR: 1 byte = 2 skutecne hires pixely, oba nibbly kreslim samostatne
+      var hbytes=widthHi>>1;
+      for(var yy3=0;yy3<lines;yy3++){
+        var src3=(r.ovAddr + yy3*r.ovStep)&0x7FFFF, gy3=r.y+yy3;
+        for(var bx=0;bx<hbytes;bx++){
+          var b=vram[(src3+bx)&0x7FFFF]&0xFF;
+          var hiNib=(b>>4)&0x0F, loNib=b&0x0F, px3=x0+bx*2;
+          if(!vbxeTransparent4(hiNib)) put(px3,gy3,vbxeColor(hiNib,r.ovPal));
+          if(!vbxeTransparent4(loNib)) put(px3+1,gy3,vbxeColor(loNib,r.ovPal));
+        }
+      }
+    }
+    return drew;
+  }
+
   function vbxeRenderXdl(){
     if(M) M.vbxeTextHiActive=false;
     if(!vbxe || !vbxe.xdlEnabled) return false;
@@ -2725,18 +2773,22 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(recs[ri0].mode===1 || recs[ri0].mode===2 || recs[ri0].mode===3) hasGraph=true;
       if(recs[ri0].mode===4) hasText=true;
     }
+    var hasHR=false;
+    for(var rh=0; rh<recs.length; rh++){ if(recs[rh].mode===2) { hasHR=true; break; } }
     var pureText=(hasText && !hasGraph);
-    if(pureText) vbxePrepareHiTextFb();
+    var useHiCanvas=(pureText || hasHR);
+    if(useHiCanvas) vbxePrepareHiTextFb();
 
     for(var ri=0;ri<recs.length;ri++){
       var r=recs[ri];
       if(r.mode===0) continue;
       if(r.mode===4){
-        var td=pureText ? vbxeRenderTextRecordHi(r) : vbxeRenderTextRecord(r);
+        var td=useHiCanvas ? vbxeRenderTextRecordHi(r) : vbxeRenderTextRecord(r);
         textDrew+=td; drew+=td;
         continue;
       }
       if(r.mode!==1 && r.mode!==2 && r.mode!==3) continue;
+      if(useHiCanvas){ var gdHi=vbxeRenderGraphRecordHi(r); drew+=gdHi; graphDrew+=gdHi; continue; }
       var width = vbxeVisibleWidth(r.widthSel);
       var x0 = (384-width)>>1; if(x0<0) x0=0;
       var lines=r.lines; if(r.y+lines>240) lines=240-r.y;
@@ -2773,10 +2825,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }
     }
 
-    if(pureText && textDrew>0) M.vbxeTextHiActive=true;
+    if(useHiCanvas && drew>0) M.vbxeTextHiActive=true;
     if(textDrew>0 && !vbxe.xdlTextRenderLogged && M.vbxeDebug){
       vbxe.xdlTextRenderLogged=true;
-      M.vbxeDebug('VBXE TEXT XDL RENDER BUILD2IE: pure TEXT XDL kreslim do nativniho 640x240 canvasu; smiseny text/grafika zustava safe low-res. pixels='+textDrew+'.');
+      M.vbxeDebug('VBXE TEXT XDL RENDER BUILD2IF: TEXT XDL kreslim do nativniho 640x240 canvasu; HR grafika umi taky hi-canvas. pixels='+textDrew+'.');
     }
     if(hasText && textDrew===0 && !vbxe.xdlTextEmptyLogged && M.vbxeDebug){
       vbxe.xdlTextEmptyLogged=true;
@@ -2784,7 +2836,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if(graphDrew>0 && !vbxe.xdlRenderLogged && M.vbxeDebug){
       vbxe.xdlRenderLogged=true;
-      M.vbxeDebug('VBXE XDL RENDER BUILD2HL: kreslim graficke XDL segmenty podle fx.pdf, graphPixels='+graphDrew+'.');
+      M.vbxeDebug((hasHR?'VBXE HR/SR XDL RENDER BUILD2IF: HR overlay kreslim do nativniho 640 hires canvasu; ':'VBXE XDL RENDER BUILD2HL: kreslim graficke XDL segmenty podle fx.pdf, ')+'graphPixels='+graphDrew+'.');
     }
     if(drew>0) return true;
     if((hasGraph||hasText) && !vbxe.xdlFallbackLogged && M.vbxeDebug){
@@ -5071,7 +5123,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('AtariHelp.eu EMU-10 BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX pripraven - HP hitboxy zustaly, HELP manual a MENU navrat opraveny, landscape obraz aspect-fit bez orezani + FIRE/DOOR v bocnim prostoru; core BUILD2HL beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2HR_VBXE_POWER_ON_130XE_HELP_FIX pripraven - POWER BASIC je neviditelny hitbox na napisu 130XE + jemna zelena LED; HELP navod doplnen; VBXE core BUILD2HL beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE pripraven - NET HRY zustava, XEX/OBX turbo zustava a nove ma ATR/D1 rychlejsi SIO jen pri diskovem prenosu. Landscape HQ safe. VBXE core BUILD2HL GOLD beze zmen.');
-    log('AtariHelp.eu EMU-10 BUILD2IE_VBXE_TRUE_640_TEXT_CANVAS_SAFE pripraven - Textmode uz nejde pres 384px downsample, ale pres nativni 640x240 canvas jen pro cisty VBXE TEXT XDL. W3D/HL grafika, barvy, BCB21, RAM320, loader, UI a hitboxy zustavaji.');
+    log('AtariHelp.eu EMU-10 BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE pripraven - zachovan BUILD2IE ostrejsi Textmode, pridavam nativni 640px HR canvas pro VBXE HR overlay a zvysuji bezpecny BCB chain limit pro Commando/Popeye. W3D barvy, palety, BCB21, RAM320, loader, UI a hitboxy zustavaji.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);

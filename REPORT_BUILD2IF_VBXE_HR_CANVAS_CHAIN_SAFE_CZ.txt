@@ -1,0 +1,57 @@
+AtariHelp.eu EMU-10 BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE
+
+ZAKLAD:
+- Navazuje na BUILD2IE_VBXE_TRUE_640_TEXT_CANVAS_SAFE.
+- BUILD2IE byl podle testu podstatne lepsi a ostrejsi v Textmode / HL / W3D.
+- W3D barvy, VBXE palety, BCB21 parser, RAM320, rychly XEX/ATR loader, UI skin, hitboxy klavesnice, joystick, NET HRY, TXT/TurboBasic rychle vkladani: ponechano.
+
+KODY JSOU ZMENENE
+Zmeneny soubor:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO JE NOVE:
+1) VBXE HR hires canvas
+- Pridan nativni 640x240 hi canvas i pro VBXE HR overlay grafiku.
+- HR rezim uz nekresli jen jeden pixel z bajtu pri downsamplu; kresli oba nibbly jako dva hires pixely.
+- Cili hlavne na Popeye / HR obraz a ostrost HR textu/grafiky.
+- SR/LR bez HR zustavaji puvodni cestou, aby se nerozbila W3D/HL grafika.
+
+2) Commando blitter chain
+- Zvysen bezpecny BCB chain limit z 32 na 1024.
+- V logu predtim Commando opakovalo BLITTER FAST DONE blocks=32, coz naznacovalo, ze dlouhy chain byl useknuty.
+- Nejde o herni hack: je to obecna VBXE blitter vlastnost NEXT chainu.
+- Pridan hlidany totalDestOps guard, aby extremni nesmyslny chain nezasekl prohlizec.
+
+CO JSEM NEMENIL:
+- zadny screen paint,
+- zadny RAM inject,
+- zadny hack na jednu hru,
+- zadne upravy W3D palety,
+- zadne upravy HL barvy textu,
+- zadne upravy DACTest modreho odskoku,
+- zadne UI/hitbox zmeny.
+
+TEST PLAN:
+1. Textmode Test 1-4
+   Ocekavani: ostrost zustane minimalne jako BUILD2IE. Test 4 muze mit drobny hscroll kraj, ale nesmi byt horsi.
+2. DACTest
+   Ocekavani: nesmi byt horsi. Modry/zluty odskok muze zustat, tento build ho cilene neresi.
+3. Heartlight / hl_vbxe.xex
+   Ocekavani: hra zustane funkcni, grafika nesmi byt horsi. Text barvy zatim mohou byt rozdilne proti Altirre.
+4. W3D ATR
+   Ocekavani: nesmi se zhorsit barvy ani hratelnost proti BUILD2IE.
+5. Popeye VBXE
+   Ocekavani: HR grafika by mela byt uplnejsi / ostrejsi. Pokud porad chybi cast sceny, poslat screenshot + log.
+6. Commando
+   Ocekavani: intro bitmapa by se mela dokreslit vic nez jen text; hra by se mela posunout. Pokud se zase kresli jen text, poslat log.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE pripraven
+- VBXE HR/SR XDL RENDER BUILD2IF
+- VBXE TEXT XDL RENDER BUILD2IF
+- VBXE BLITTER CHAIN LIMIT BUILD2IF  (tohle by se normalne objevit nemelo; kdyz ano, poslat log)
+
+ROLLBACK:
+- Pokud W3D nebo HL zhorsime, vratit se na BUILD2IE nebo zachranny BUILD2HL GOLD podle povahy chyby.
