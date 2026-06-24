@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JB</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JC</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -365,12 +365,6 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    Build proto obecne detekuje XEX MEMAC-A bank-loader vzor (A9 bank / A0 5F / 91 80 / RTS + INITAD)
    a pri servirovani payloadu provede stejny zapis i do realne VBXE VRAM. Neni to podle nazvu hry,
    neni to screen paint, je to doplneni vedlejsiho efektu INITAD/MEMAC zavadecu. */
-/* BUILD2JB_VBXE_MSEL_OVSHIFT_PRIORITY_SAFE:
-   BUILD2JA potvrdil spravny smer: Tetris VBXE uz ma realny bitmapovy podklad pres XEX/MEMAC/VRAM.
-   BUILD2JB proto NEvraci BCB19, NElepi jednu hru a nesaha na UI. Oprava jde podle fx_en.pdf:
-   $D644 je MSEL, $D645-$D648 jsou MB0-MB3. Palette RGB se provede az pri MSEL=$C0-$C3,
-   priority P0-P3 az pri MSEL=$80. XDL_OVATT byte0 uz neni falesna paleta, ale OV_COLOR_SHIFT.
-   Cilem je obecne zlepsit barvy/priority/text a VBXE vrstvy pro HL text, Popeye, Commando a dalsi. */
 
 /* BUILD2IU_CPU_BRANCH_NMI_TIMING_SAFE:
    Po testu BUILD2IT se Postcard/HL/Popeye/Commando vizualne nepohnuly.
@@ -1266,7 +1260,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
     blitFeatureLogged:false, blitFeatureSuppressed:false, blitOverlapSnapshotLogged:false, bigBlitLogged:false,
     preXdlProbeSkippedLogged:false, preXdlProbeAllowedLogged:false,
     ioWritten:false, readbackLogged:false, coreReadLogged:false, legacyUnsafeIgnored:0,
-    pal:new Uint32Array(4*256), pri:new Uint8Array([255,255,255,255]), msel:0, psel:0, csel:0, cr:0, cg:0, cb:0, palWrites:0, priWrites:0, palLogSuppressed:false,
+    pal:new Uint32Array(4*256), psel:0, csel:0, cr:0, cg:0, cb:0, palWrites:0, palLogSuppressed:false,
+    // BUILD2JC: jen audit registru $D644-$D648. Nepouziva se k renderu, aby se neopakovala regrese BUILD2JB.
+    mselAuditCount:0, mselAuditSuppressed:false,
     // BUILD2IY: posledni realne nakreslena velka VBXE plocha z blitteru; pouzije se jen jako fallback, kdyz XDL bezi, ale parser zatim nevidi zadny viditelny record.
     surfaceValid:false, surfaceAddr:0, surfaceStep:320, surfaceWidth:320, surfaceHeight:240, surfacePal:1, surfaceMode:1, surfaceScore:0, surfaceLogged:false, surfaceFallbackLogged:false
   };
@@ -1728,39 +1724,33 @@ function Atari130XE(osRom, basicRom, CPUctor){
       vbxe.xdlDirty=true;
       if(M.vbxeDebug) M.vbxeDebug('VBXE XDL_ADR W BUILD2IQ $D64'+(off-0x40)+'=$'+hx2(v)+' -> pending xdlBase=$'+vbxeGetXdlBase().toString(16).toUpperCase().padStart(5,'0'));
     }
-    if(off===0x44){
-      // BUILD2JB podle fx_en.pdf: $D644 je MSEL, ne barevny index.
-      // MB0=$D645 index/P0, MB1=$D646 R/P1, MB2=$D647 G/P2, MB3=$D648 B/P3.
-      vbxe.msel=v&0xFF;
-      var sel=(v>>6)&3;
-      if(sel===3){
-        var palNo=v&3, col=vbxe.regs[0x45]&0xFF;
-        var rr=vbxe.regs[0x46]&0xFE, gg=vbxe.regs[0x47]&0xFE, bb=vbxe.regs[0x48]&0xFE;
-        vbxe.pal[(palNo<<8)|col]=vbxeRgb(rr,gg,bb);
-        vbxe.palWrites++;
-        if(M.vbxeDebug && (vbxe.palWrites<=18 || (vbxe.palWrites%256)===0)){
-          M.vbxeDebug('VBXE MSEL/RGB BUILD2JB #'+vbxe.palWrites+' pal='+palNo+' col=$'+hx2(col)+' rgb='+rr+','+gg+','+bb+' via MSEL=$'+hx2(v));
-        } else if(M.vbxeDebug && !vbxe.palLogSuppressed && vbxe.palWrites===19){
-          vbxe.palLogSuppressed=true;
-          M.vbxeDebug('VBXE MSEL/RGB BUILD2JB: detailni log palety potlacen, paleta se dal zapisuje pres MSEL.');
-        }
-      } else if(sel===2){
-        vbxe.pri[0]=vbxe.regs[0x45]&0xFF; vbxe.pri[1]=vbxe.regs[0x46]&0xFF; vbxe.pri[2]=vbxe.regs[0x47]&0xFF; vbxe.pri[3]=vbxe.regs[0x48]&0xFF;
-        vbxe.priWrites++;
-        if(M.vbxeDebug && vbxe.priWrites<=8){
-          M.vbxeDebug('VBXE MSEL/PRIORMAP BUILD2JB #'+vbxe.priWrites+' P0=$'+hx2(vbxe.pri[0])+' P1=$'+hx2(vbxe.pri[1])+' P2=$'+hx2(vbxe.pri[2])+' P3=$'+hx2(vbxe.pri[3]));
-        }
+    if(off>=0x44 && off<=0x48){
+      // BUILD2JC: shadow audit MSEL/MB0-MB3. Stale nechavame funkcni legacy paletu z BUILD2JA.
+      // Cilem je poznat, ktere programy pouzivaji skutecny MSEL model, bez dalsiho rozbijeni barev.
+      vbxe.mselAuditCount=(vbxe.mselAuditCount||0)+1;
+      if(M.vbxeDebug && (vbxe.mselAuditCount<=40 || (vbxe.mselAuditCount%256)===0)){
+        M.vbxeDebug('VBXE MSEL SHADOW AUDIT BUILD2JC #'+vbxe.mselAuditCount+' off=$D6'+hx2(0x40+(off&0x1F))+' val=$'+hx2(v)+' regs44-48=$'+hx2(vbxe.regs[0x44])+','+hx2(vbxe.regs[0x45])+','+hx2(vbxe.regs[0x46])+','+hx2(vbxe.regs[0x47])+','+hx2(vbxe.regs[0x48])+'; render stale legacy BUILD2JA');
+      } else if(M.vbxeDebug && !vbxe.mselAuditSuppressed && vbxe.mselAuditCount===41){
+        vbxe.mselAuditSuppressed=true;
+        M.vbxeDebug('VBXE MSEL SHADOW AUDIT BUILD2JC: detailni log potlacen, dal po 256 zapisech. Render palety zustava BUILD2JA safe.');
       }
     }
-    if(off===0x45){ vbxe.csel=v&0xFF; vbxe.psel=v&0x03; }
+    if(off===0x44){ vbxe.csel=v&0xFF; }
+    if(off===0x45){ vbxe.psel=v&0x03; }
     if(off===0x46){ vbxe.cr=v&0xFE; }
     if(off===0x47){ vbxe.cg=v&0xFE; }
     if(off===0x48){
       vbxe.cb=v&0xFE;
-      // Legacy fallback pro stare rozpracovane buildy: nechavam i prime D645-D648 chovani,
-      // ale spravne VBXE programy prebiji barvu okamzite pri MSEL=$C0-$C3 vyse.
       var pi=((vbxe.psel&3)<<8)|(vbxe.csel&0xFF);
       vbxe.pal[pi]=vbxeRgb(vbxe.cr,vbxe.cg,vbxe.cb);
+      vbxe.palWrites++;
+      if(M.vbxeDebug && (vbxe.palWrites<=12 || (vbxe.palWrites%256)===0)){
+        M.vbxeDebug('VBXE PALETTE RGB write #'+vbxe.palWrites+' pal='+(vbxe.psel&3)+' col=$'+hx2(vbxe.csel)+' rgb='+vbxe.cr+','+vbxe.cg+','+vbxe.cb);
+      } else if(M.vbxeDebug && !vbxe.palLogSuppressed && vbxe.palWrites===13){
+        vbxe.palLogSuppressed=true;
+        M.vbxeDebug('VBXE PALETTE RGB: detailni log palety potlacen, dal po 256 zapisech.');
+      }
+      vbxe.csel=(vbxe.csel+1)&0xFF; vbxe.regs[0x44]=vbxe.csel;
     }
     if(off===0x4A){ vbxe.bltCollision=0; }
     if(off>=0x4C && off<=0x4F) vbxeLogMemac(off,v);
@@ -2002,7 +1992,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     for(var p=0;p<4;p++){
       for(var i=0;i<256;i++) vbxe.pal[p*256+i]=palette[i];
     }
-    vbxe.psel=0; vbxe.csel=0; vbxe.msel=0; vbxe.cr=0; vbxe.cg=0; vbxe.cb=0; if(vbxe.pri) for(var q=0;q<4;q++) vbxe.pri[q]=255;
+    vbxe.psel=0; vbxe.csel=0; vbxe.cr=0; vbxe.cg=0; vbxe.cb=0;
   }
   vbxeInitPaletteDefaults();
 
@@ -2739,7 +2729,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       out.push({
         y:r.y, lines:r.lines, xdlc:r.xdlc, mode:r.mode, ovAddr:r.ovAddr, ovStep:r.ovStep,
         ovHScroll:r.ovHScroll||0, ovVScroll:r.ovVScroll||0, textPhase:r.textPhase||0, chBase:r.chBase||0,
-        widthSel:r.widthSel, ovPal:r.ovPal, pfPal:r.pfPal, ovShift:r.ovShift||0, priority:r.priority,
+        widthSel:r.widthSel, ovPal:r.ovPal, pfPal:r.pfPal, priority:r.priority,
         mapOn:!!r.mapOn, mapAddr:r.mapAddr||0, mapStep:r.mapStep||0, mapAddrValid:!!r.mapAddrValid,
         mapHScroll:r.mapHScroll||0, mapVScroll:r.mapVScroll||0, mapPhase:r.mapPhase||0,
         mapWidth:r.mapWidth==null?7:r.mapWidth, mapHeight:r.mapHeight==null?7:r.mapHeight,
@@ -2783,7 +2773,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
             widthSel:(carry.widthSel==null?1:carry.widthSel)&3,
             ovPal:(carry.ovPal==null?1:carry.ovPal)&3,
             pfPal:(carry.pfPal||0)&3,
-            ovShift:(carry.ovShift||0)&15,
             priority:(carry.priority==null?255:carry.priority)&0xFF,
             // BUILD2IO: atributova mapa ma vlastni stav pres XDL, stejne jako overlay adresa/paleta.
             mapOn:!!carry.mapOn,
@@ -2864,10 +2853,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(ovatt){
         var o0=vbxeVramRead(p), o1=vbxeVramRead((p+1)&0x7FFFF);
         st.widthSel=o0&0x03;
-        // BUILD2JB podle fx_en.pdf: OVATT byte0 = OV_WIDTH bits0-1 + OV_COLOR_SHIFT bits2-5/7.
-        // Paletu neurcuje OVATT, ale default Overlay paleta 1 nebo atributova mapa.
-        // Stara interpretace b4-b5 jako ovPal a b6-b7 jako pfPal michala barvy HL/Popeye.
-        st.ovShift=(o0>>2)&0x0F;
+        st.ovPal=(o0>>4)&0x03;  // b4-b5 = XDL OV PALETTE
+        st.pfPal=(o0>>6)&0x03;  // b6-b7 = XDL PF PALETTE
         st.priority=o1&0xFF;
         p=(p+2)&0x7FFFF;
       }
@@ -2878,7 +2865,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       recs.push({
         y:y, lines:rpt, xdlc:xdlc, mode:st.mode, ovAddr:st.ovAddr, ovStep:st.ovStep,
         ovHScroll:st.ovHScroll, ovVScroll:st.ovVScroll, textPhase:recTextPhase, chBase:st.chBase,
-        widthSel:st.widthSel, ovPal:st.ovPal, pfPal:st.pfPal, ovShift:st.ovShift&15, priority:st.priority,
+        widthSel:st.widthSel, ovPal:st.ovPal, pfPal:st.pfPal, priority:st.priority,
         mapOn:!!st.mapOn, mapAddr:st.mapAddr&0x7FFFF, mapStep:st.mapStep&0x0FFF, mapAddrValid:!!st.mapAddrValid,
         mapHScroll:st.mapHScroll&31, mapVScroll:st.mapVScroll&31, mapPhase:(st.mapPhase||0)&31,
         mapWidth:st.mapWidth&31, mapHeight:st.mapHeight&31,
@@ -2910,14 +2897,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(end && recs.length){
       vbxe.xdlCarryState={ovAddr:st.ovAddr&0x7FFFF, ovStep:st.ovStep&0x0FFF,
         ovHScroll:st.ovHScroll&7, ovVScroll:st.ovVScroll&7, textPhase:(st.textPhase||0)&7, chBase:st.chBase&0x7FFFF,
-        widthSel:st.widthSel&3, ovPal:st.ovPal&3, pfPal:st.pfPal&3, ovShift:st.ovShift&15, priority:st.priority&0xFF,
+        widthSel:st.widthSel&3, ovPal:st.ovPal&3, pfPal:st.pfPal&3, priority:st.priority&0xFF,
         mapOn:!!st.mapOn, mapAddr:st.mapAddr&0x7FFFF, mapStep:st.mapStep&0x0FFF, mapAddrValid:!!st.mapAddrValid,
         mapHScroll:st.mapHScroll&31, mapVScroll:st.mapVScroll&31, mapPhase:(st.mapPhase||0)&31,
         mapWidth:st.mapWidth&31, mapHeight:st.mapHeight&31,
         ovAddrValid:!!st.ovAddrValid};
     }
 
-    var shapeSig=base+':'+recs.length+':'+recs.map(function(r){return r.xdlc+','+r.lines+','+r.mode+','+r.ovAddr+','+r.ovStep+','+r.widthSel+','+r.ovPal+','+r.pfPal+','+(r.ovShift||0)+','+r.chBase+','+r.ovHScroll+','+r.ovVScroll+','+(r.textPhase||0)+','+(r.mapOn?1:0)+','+(r.mapAddr||0)+','+(r.mapStep||0)+','+(r.mapWidth||0)+','+(r.mapHeight||0)+','+(r.mapHScroll||0)+','+(r.mapVScroll||0)+','+(r.mapPhase||0)+','+(r.addrMissing?1:0)+','+(r.usedCarryAddr?1:0);}).join('|');
+    var shapeSig=base+':'+recs.length+':'+recs.map(function(r){return r.xdlc+','+r.lines+','+r.mode+','+r.ovAddr+','+r.ovStep+','+r.widthSel+','+r.ovPal+','+r.pfPal+','+r.chBase+','+r.ovHScroll+','+r.ovVScroll+','+(r.textPhase||0)+','+(r.mapOn?1:0)+','+(r.mapAddr||0)+','+(r.mapStep||0)+','+(r.mapWidth||0)+','+(r.mapHeight||0)+','+(r.mapHScroll||0)+','+(r.mapVScroll||0)+','+(r.mapPhase||0)+','+(r.addrMissing?1:0)+','+(r.usedCarryAddr?1:0);}).join('|');
     vbxe.xdlScanCount++;
 
     var xstat = vbxeAnalyzeXdl(recs,end);
@@ -2965,7 +2952,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           (r.mode===1?'SR':r.mode===2?'HR':r.mode===3?'LR':r.mode===4?'TEXT':'OFF')+
           ' xdlc=$'+r.xdlc.toString(16).toUpperCase().padStart(4,'0')+
           ' ov=$'+r.ovAddr.toString(16).toUpperCase().padStart(5,'0')+
-          ' step='+r.ovStep+' widthSel='+r.widthSel+' ovShift='+((r.ovShift||0)&15)+' ovPal='+r.ovPal+' pfPal='+r.pfPal+
+          ' step='+r.ovStep+' widthSel='+r.widthSel+' ovPal='+r.ovPal+' pfPal='+r.pfPal+
           ' ch=$'+(r.chBase||0).toString(16).toUpperCase().padStart(5,'0')+
           ' scr='+((r.ovHScroll||0)&7)+','+((r.ovVScroll||0)&7)+' phase='+((r.textPhase||0)&7)+' pri=$'+hx2(r.priority||0)+
           ' map='+(r.mapOn?1:0)+' maddr=$'+((r.mapAddr||0)&0x7FFFF).toString(16).toUpperCase().padStart(5,'0')+' mstep='+(r.mapStep||0)+' msz='+(((r.mapWidth||7)&31)+1)+'x'+(((r.mapHeight||7)&31)+1)+
@@ -2982,16 +2969,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
   function vbxeColor(idx, palNo){
     return vbxe.pal[((palNo&3)<<8)|(idx&0xFF)];
-  }
-  function vbxeOvIndex(r,idx){
-    // BUILD2JB: XDL OV_COLOR_SHIFT = (shift*16)|overlay_data.
-    // Transparentnost se vyhodnocuje nad puvodnim datem pred posunem, proto volat az po transparent checku.
-    idx&=0xFF;
-    var sh=(r && r.ovShift!=null ? r.ovShift : 0)&15;
-    return sh ? (((sh<<4)|idx)&0xFF) : idx;
-  }
-  function vbxeOvColor(r,idx,palNo){
-    return vbxeColor(vbxeOvIndex(r,idx), palNo);
   }
   function vbxeMapAttrAtHi(r,px640,y){
     if(!r || !r.mapOn || !r.mapAddrValid) return null;
@@ -3023,7 +3000,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   function vbxePriorityValueForHi(r,px640,y){
     var ma=vbxeMapAttrAtHi(r,px640,y);
-    if(ma) return (vbxe.pri ? vbxe.pri[ma.priSel&3] : 255)&0xFF; // BUILD2JB: P0..P3 jsou latche z MSEL/PRIORMAP, ne registry $D655+
+    if(ma) return vbxe.regs[0x55+(ma.priSel&3)]&0xFF; // P0..P3 podle mapy atributu
     return (r && r.priority!=null ? r.priority : 255)&0xFF;
   }
   function vbxePriorityAllowsHiPixel(r,px640,y){
@@ -3159,7 +3136,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           }
           if(!rescued) color=vbxeTextBgColor(attr1);
         }
-        if(color>=0 && vbxePriorityAllowsPixel(r,x0+sx,gy)){ fb[dst+sx]=vbxeOvColor(r,color,vbxeOverlayPalAtPixel(r,x0+sx,gy)); drew++; }
+        if(color>=0 && vbxePriorityAllowsPixel(r,x0+sx,gy)){ fb[dst+sx]=vbxeColor(color,vbxeOverlayPalAtPixel(r,x0+sx,gy)); drew++; }
       }
     }
     return drew;
@@ -3211,7 +3188,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         } else {
           color=vbxeTextBgColor(attr);
         }
-        if(color>=0 && vbxePriorityAllowsHiPixel(r,x0+sx,gy)){ hi[dst+sx]=vbxeOvColor(r,color,vbxeOverlayPalAtHi(r,x0+sx,gy)); drew++; }
+        if(color>=0 && vbxePriorityAllowsHiPixel(r,x0+sx,gy)){ hi[dst+sx]=vbxeColor(color,vbxeOverlayPalAtHi(r,x0+sx,gy)); drew++; }
       }
     }
     return drew;
@@ -3243,7 +3220,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(lines<=0) return 0;
     function putIdx(px,py,idx){
       if(px>=0 && px<640 && py>=0 && py<240 && vbxePriorityAllowsHiPixel(r,px,py)){
-        hi[py*640+px]=vbxeOvColor(r,idx,vbxeOverlayPalAtHi(r,px,py)); drew++;
+        hi[py*640+px]=vbxeColor(idx,vbxeOverlayPalAtHi(r,px,py)); drew++;
       }
     }
     if(r.mode===1){ // SR: 1 byte = 1 color-clock pixel = 2 hires pixely
@@ -3363,7 +3340,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           for(var x=0;x<width && x0+x<384;x++){
             var v=vram[(src+x+hs)&0x7FFFF]&0xFF;
             var px=x0+x-hp;
-            if(px>=0 && px<384 && !vbxeTransparent8(v) && vbxePriorityAllowsPixel(r,px,r.y+yy)){ fb[(r.y+yy)*384+px]=vbxeOvColor(r,v,vbxeOverlayPalAtPixel(r,px,r.y+yy)); drew++; graphDrew++; }
+            if(px>=0 && px<384 && !vbxeTransparent8(v) && vbxePriorityAllowsPixel(r,px,r.y+yy)){ fb[(r.y+yy)*384+px]=vbxeColor(v,vbxeOverlayPalAtPixel(r,px,r.y+yy)); drew++; graphDrew++; }
           }
         }
       } else if(r.mode===3){ // LR: 128/160/168 pixelu, roztazeno x2 na 256/320/336
@@ -3372,7 +3349,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           var src2=vbxeGraphSourceAddr(r,yy2), dst2=(r.y+yy2)*384+x0, hs2=vbxeGraphHScrollHi(r)>>2, hp2=vbxeGraphHScrollHi(r)&3;
           for(var lx=0;lx<lrw && x0+lx*2+1<384;lx++){
             var v2=vram[(src2+lx+hs2)&0x7FFFF]&0xFF;
-            if(!vbxeTransparent8(v2)){ var pxA=x0+lx*2-((hp2/2)|0), gyA=r.y+yy2; if(pxA>=0 && pxA<384 && vbxePriorityAllowsPixel(r,pxA,gyA)){ fb[gyA*384+pxA]=vbxeOvColor(r,v2,vbxeOverlayPalAtPixel(r,pxA,gyA)); drew++; graphDrew++; } if(pxA+1>=0 && pxA+1<384 && vbxePriorityAllowsPixel(r,pxA+1,gyA)){ fb[gyA*384+pxA+1]=vbxeOvColor(r,v2,vbxeOverlayPalAtPixel(r,pxA+1,gyA)); drew++; graphDrew++; } }
+            if(!vbxeTransparent8(v2)){ var pxA=x0+lx*2-((hp2/2)|0), gyA=r.y+yy2; if(pxA>=0 && pxA<384 && vbxePriorityAllowsPixel(r,pxA,gyA)){ fb[gyA*384+pxA]=vbxeColor(v2,vbxeOverlayPalAtPixel(r,pxA,gyA)); drew++; graphDrew++; } if(pxA+1>=0 && pxA+1<384 && vbxePriorityAllowsPixel(r,pxA+1,gyA)){ fb[gyA*384+pxA+1]=vbxeColor(v2,vbxeOverlayPalAtPixel(r,pxA+1,gyA)); drew++; graphDrew++; } }
           }
         }
       } else if(r.mode===2){ // HR: 2 VBXE pixely v bajtu, na canvasu downsample 2:1
@@ -3384,7 +3361,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
             var hi=(b>>4)&0x0F, lo=b&0x0F;
             var vv = !vbxeTransparent4(hi) ? hi : (!vbxeTransparent4(lo) ? lo : -1);
             var px3=hx0+bx-hp3;
-            if(px3>=0 && px3<384 && vv>=0 && vbxePriorityAllowsPixel(r,px3,r.y+yy3)){ fb[(r.y+yy3)*384+px3]=vbxeOvColor(r,vv,vbxeOverlayPalAtPixel(r,px3,r.y+yy3)); drew++; graphDrew++; }
+            if(px3>=0 && px3<384 && vv>=0 && vbxePriorityAllowsPixel(r,px3,r.y+yy3)){ fb[(r.y+yy3)*384+px3]=vbxeColor(vv,vbxeOverlayPalAtPixel(r,px3,r.y+yy3)); drew++; graphDrew++; }
           }
         }
       }
@@ -5690,7 +5667,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2JB_VBXE_MSEL_OVSHIFT_PRIORITY_SAFE pripraven - navazuje na BUILD2JA; Tetris MEMAC preload/live cesta zachovana, opraven MSEL/RGB, MSEL/PRIORMAP a XDL OV_COLOR_SHIFT podle fx_en.pdf. BCB19 zustava vypnuty, BCB21 safe, bez hernich hacku.');
+    log('AtariHelp.eu EMU-10 BUILD2JC_VBXE_RESTORE_JA_MSEL_AUDIT_SAFE pripraven - BUILD2JB MSEL/OVSHIFT render zrusen kvuli rozbite grafice; funkcni BUILD2JA Tetris/MEMAC cesta zachovana; pridany jen stinovy audit $D644-$D648 bez zmeny renderu.');
+    log('AtariHelp.eu EMU-10 BUILD2JA_XEX_LIVE_MEMAC_PAYLOAD_SAFE pripraven - navazuje na BUILD2IZ; pridana ziva MEMAC payload cesta pro XEX bloky pres aktualni $D64C-$D64F i legacy MEMAC okna. Tetris preload zachovan, BCB21 safe, bez hernich hacku.');
     log('AtariHelp.eu EMU-10 BUILD2IZ_XEX_INITAD_MEMAC_PRELOAD_SAFE pripraven - navazuje na BUILD2IY/IX safe, BCB21 zustava, pridana obecna XEX INITAD/MEMAC-A preload cesta pro VBXE VRAM bank-load bloky.');
     log('AtariHelp.eu EMU-10 BUILD2IY_VBXE_SURFACE_FALLBACK_MADPASCAL_SAFE pripraven - BCB21 safe zustava, pridana surface fallback cesta z realne VBXE VRAM pri XDL bez viditelnych recordu.');
     log('AtariHelp.eu EMU-10 BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX pripraven - HP hitboxy zustaly, HELP manual a MENU navrat opraveny, landscape obraz aspect-fit bez orezani + FIRE/DOOR v bocnim prostoru; core BUILD2HL beze zmen.');
