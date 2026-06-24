@@ -1,0 +1,14 @@
+NAVOD PRO GITHUB DESKTOP - BUILD2IZ
+===================================
+
+1) Stahni ZIP overlay.
+2) Rozbal ZIP.
+3) Zkopiruj slozku app do korene projektu AtariHelp EMU-10 pres existujici soubory.
+4) V GitHub Desktop zkontroluj zmenene soubory.
+5) Commit text:
+   BUILD2IZ XEX INITAD MEMAC preload safe
+6) Buildni APK jako obvykle.
+7) Testuj hlavne Tetris VBXE, pak Popeye, Commando, HL.
+
+Zmeneny kod:
+- app/src/main/assets/emu_vbxe/index.html

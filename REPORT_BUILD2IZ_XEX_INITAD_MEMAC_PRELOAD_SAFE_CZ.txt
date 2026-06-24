@@ -1,0 +1,51 @@
+AtariHelp.eu EMU-10 BUILD2IZ_XEX_INITAD_MEMAC_PRELOAD_SAFE
+===========================================================
+
+ZAKLAD:
+- Navazuje na BUILD2IY / BUILD2IX safe vetev.
+- BUILD2IW BCB19-auto zustava zruseny jako spatna/destruktivni vetev.
+- BCB21 safe blitter zustava.
+- UI, joystick, klavesnice, kazetak, NET HRY, skin a BASIC/Altirra testy beze zmen.
+
+DUVOD ZMENY:
+- Tetris VBXE zdrojak ukazal klasicky Mad Pascal / Tebe VBXE postup:
+  1) XEX nahraje malou INITAD rutinu.
+  2) Rutina pres MEMAC legacy zapisuje banku do $D65F.
+  3) Nasledujici XEX blok na $B000-$BFFF ma jit pres MEMAC-A okno do VBXE VRAM.
+- Pokud rychly XEX/SIO loader zapise payload primo do Atari RAM a neprojevi se MEMAC vedlejsi efekt,
+  obrazova data skonci mimo VBXE VRAM. Pak Tetris ukazuje jen zakladni text/modrou plochu.
+
+CO JE ZMENENE:
+- Pridan obecny detektor XEX MEMAC-A bank-loader vzoru:
+  A9 bank / A0 5F / 91 80 / 60 + INITAD.
+- Pokud po takovem INITAD nasleduje XEX payload do $B000-$BFFF a bank ma bit7=1,
+  loader pri servirovani payloadu doplni stejny zapis i do VBXE VRAM:
+  VRAM = (bank & $7F) * $1000 + offset($B000).
+- Pro Tetris VBXE to ma detekovat 20 MEMAC-A bloku = 81920 B do VBXE VRAM.
+- Neni to hack podle nazvu hry a neni to screen-paint. Je to doplneni obecneho MEMAC efektu XEX loaderu.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+HLAVNI TEST:
+1) Tetris VBXE
+   - V logu musi byt:
+     AtariHelp.eu EMU-10 BUILD2IZ_XEX_INITAD_MEMAC_PRELOAD_SAFE pripraven
+     VBXE XEX MEMAC PRELOAD BUILD2IZ: detekovano 20 MEMAC-A $B000 bloku, 81920 B ...
+     VBXE XEX MEMAC PRELOAD BUILD2IZ: $B000 payload -> VRAM $30000 ...
+   - Ocekavani: viditelny posun proti BUILD2IY/IX, idealne bitmapovy podklad misto ciste modre/textove plochy.
+
+KONTROLNI TESTY:
+2) Popeye
+   - Nesmí se vratit caj z BUILD2IW.
+3) Commando
+   - Hra musi bezet. Arnold muze stale chybet, ale nesmi byt horsi nez BUILD2IX/IY.
+4) HL / Heartlight
+   - Sedy obdelnik se nesmi vratit.
+
+CO POSLAT ZPATKY:
+- Screen Tetris VBXE po nabehu.
+- LOG po testu Tetris VBXE.
+- Jestli log neukaze detekovano 20 bloku / 81920 B, poslat log hned, protoze pak se neaktivovala nova cesta.
