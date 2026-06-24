@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JC</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JD</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -338,6 +338,13 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    XDLC_MAPON/MAPOFF/MAPADR/MAPPAR. Attribute map se cte podle fx.pdf/vbxefx.ah: 4 bajty na pole,
    lokalni PF0/PF1/PF2 barvy, MAP OV/PF palette a vyber P0-P3 priority.
    Cilem je obecna oprava barev/vrstev pro Popeye/W3D/Postcard/Textmode bez hacku podle jmena hry. */
+
+/* BUILD2JD_VBXE_D740_ALIAS_SAFE:
+   Dokumentace rika, ze VBXE muze byt dekodovane bud na $D640-$D65F, nebo na $D740-$D75F.
+   Stary emu prijimal jen $D640 vetev. To mohlo u nekterych VBXE titulů znamenat: detekce/registr probejde
+   v jednom programu, ale jina hra nebo loader pise do $D740 a emulator to ignoruje.
+   Tento build prida obecny D740 alias na stejne VBXE registry, rozšíří audit IO operandů na D640 i D740
+   a zachova BUILD2JA/JC Tetris MEMAC cestu. Zadny BCB19, zadna MSEL barevna zmena, zadny hack hry. */
 /* BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE:
    Po testu BUILD2IP Rene potvrdil: HL porad bez sedeho obdelniku, ale Popeye/Commando/Postcard se prakticky nezmenily.
    Zastavuji slepe testovani stejneho: XDL enable/adresa se ted aplikuje az na zacatku frame/VSync,
@@ -1262,7 +1269,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     ioWritten:false, readbackLogged:false, coreReadLogged:false, legacyUnsafeIgnored:0,
     pal:new Uint32Array(4*256), psel:0, csel:0, cr:0, cg:0, cb:0, palWrites:0, palLogSuppressed:false,
     // BUILD2JC: jen audit registru $D644-$D648. Nepouziva se k renderu, aby se neopakovala regrese BUILD2JB.
-    mselAuditCount:0, mselAuditSuppressed:false,
+    mselAuditCount:0, mselAuditSuppressed:false, d740AliasCount:0, d740AliasSuppressed:false,
     // BUILD2IY: posledni realne nakreslena velka VBXE plocha z blitteru; pouzije se jen jako fallback, kdyz XDL bezi, ale parser zatim nevidi zadny viditelny record.
     surfaceValid:false, surfaceAddr:0, surfaceStep:320, surfaceWidth:320, surfaceHeight:240, surfacePal:1, surfaceMode:1, surfaceScore:0, surfaceLogged:false, surfaceFallbackLogged:false
   };
@@ -1775,6 +1782,23 @@ function Atari130XE(osRom, basicRom, CPUctor){
   const CYC_LINE=114, LINES=312, VBI_LINE=248;
   M.fb=new Uint32Array(384*240);          // RGBA frame buffer (visible lines 8..247)
   // ---------------- Bus -------------------
+
+  function vbxeD740AliasAddr(a){
+    // BUILD2JD: VBXE muze byt podle jumperu/adresace na $D640 nebo $D740.
+    // Vsechny D740-D75F operace mapujeme na stejne offsety jako D640-D65F.
+    return 0xD600 | (a&0xFF);
+  }
+  function vbxeD740AliasLog(rw,a,v){
+    if(!M.vbxeDebug) return;
+    vbxe.d740AliasCount=(vbxe.d740AliasCount||0)+1;
+    if(vbxe.d740AliasCount<=24 || (vbxe.d740AliasCount%256)===0){
+      M.vbxeDebug('VBXE D740 ALIAS BUILD2JD '+rw+' $'+hx4(a)+' -> $'+hx4(vbxeD740AliasAddr(a))+' val=$'+hx2(v)+' count='+vbxe.d740AliasCount+'; obecny mirror D740-D75F, ne hack hry.');
+    } else if(!vbxe.d740AliasSuppressed && vbxe.d740AliasCount===25){
+      vbxe.d740AliasSuppressed=true;
+      M.vbxeDebug('VBXE D740 ALIAS BUILD2JD: detailni D740 log potlacen, alias porad aktivni.');
+    }
+  }
+
   function hwRead(a){
     const r=a&0xFF, page=a&0xFF00;
     if(page===0xD000){ // GTIA
@@ -1829,6 +1853,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(p===2) return pia.ctlA; return pia.ctlB;
     }
     if(page===0xD600 && (a&0xFF)>=0x40){ return vbxeRead(a); } // BUILD2HB VBXE IO $D640-$D6FF trace only
+    if(page===0xD700 && (a&0xFF)>=0x40 && (a&0xFF)<=0x5F){ const aa=vbxeD740AliasAddr(a); const vv=vbxeRead(aa); vbxeD740AliasLog('R',a,vv); return vv; } // BUILD2JD D740-D75F mirror podle VBXE dokumentace
     if(page===0xD400){ // ANTIC
       const p=a&0x0F;
       if(p===0x0B) return (M.line>>1)&0xFF;    // VCOUNT
@@ -1879,6 +1904,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       return;
     }
     if(page===0xD600 && (a&0xFF)>=0x40){ vbxeWrite(a,v); return; } // BUILD2HB VBXE IO $D640-$D6FF trace only
+    if(page===0xD700 && (a&0xFF)>=0x40 && (a&0xFF)<=0x5F){ const aa=vbxeD740AliasAddr(a); vbxeWrite(aa,v); vbxeD740AliasLog('W',a,v); return; } // BUILD2JD D740-D75F mirror podle VBXE dokumentace
     if(page===0xD300){
       const p=a&0x03;
       if(p===0){ if(pia.ctlA&0x04) pia.orA=v; else pia.ddrA=v; return; }
@@ -4235,25 +4261,26 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function vbxeScanAndLog(name,u8,kind){
     try{
       var s=vbxeByteString(u8, Math.min(u8.length, 1048576));
-      var hit=/VBXE|WOLF3D NEEDS VBXE|No VBXE found|FX core|Core revision|improper core|\$D640|XDL/i.test(s);
-      // BUILD2IQ: nehledej jen textove hlasky. Nektere VBXE programy nemaji retezec, ale primo sahaji na $D640-$D6FF.
-      var ioHits=0;
-      for(var ai=0; ai+1<u8.length && ioHits<32; ai++){
+      var hit=/VBXE|WOLF3D NEEDS VBXE|No VBXE found|FX core|Core revision|improper core|\$D640|\$D740|XDL/i.test(s);
+      // BUILD2JD: nehledej jen textove hlasky. Nektere VBXE programy sahaji primo na $D640-$D65F nebo $D740-$D75F.
+      var ioHits=0, ioD640=0, ioD740=0;
+      for(var ai=0; ai+1<u8.length && ioHits<64; ai++){
         var lo=u8[ai]&255, hi=u8[ai+1]&255;
-        if(hi===0xD6 && lo>=0x40){ ioHits++; }
+        if(hi===0xD6 && lo>=0x40 && lo<=0x5F){ ioHits++; ioD640++; }
+        else if(hi===0xD7 && lo>=0x40 && lo<=0x5F){ ioHits++; ioD740++; }
       }
       if(ioHits>0) hit=true;
       var xi=vbxeQuickXexInfo(u8);
       log('VBXE AUDIT MATRIX BUILD2HL: soubor='+name+' kind='+(kind||'GAME')+' size='+u8.length+' B'+(xi.ok?(' xexRecords='+xi.records+' first='+xi.first+' INITAD='+xi.initad+' RUNAD='+xi.runad+' underROM='+xi.underRom):(' xexInfo='+xi.error))+'.');
       if(hit){
-        log('VBXE AUDIT MATRIX BUILD2IQ: VBXE signatura/IO operand nalezen (ioHits='+ioHits+'). Emuluji obecny FX profil: CORE_VERSION=$10, MINOR_REVISION=$26 (FX v1.26a), cteni D642/D643=$FF, MEMAC dokumentovane D64C-D64F.');
+        log('VBXE AUDIT MATRIX BUILD2JD: VBXE signatura/IO operand nalezen (ioHits='+ioHits+', D640='+ioD640+', D740='+ioD740+'). Emuluji obecny FX profil: CORE_VERSION=$10, MINOR_REVISION=$26 (FX v1.26a), cteni D642/D643=$FF, MEMAC D64C-D64F + alias D740-D75F.');
         if(/No VBXE or improper core/i.test(s)) log('VBXE AUDIT MATRIX BUILD2HL: program obsahuje hlasku "No VBXE or improper core" -> prvni brana je D640=$10 a (D641&$70)==$20.');
         if(/Core revision <> 1\.20/i.test(s)) log('VBXE AUDIT MATRIX BUILD2HL: program chce kompatibilni FX 1.20 radu -> D641=$26 ma projit maskou $70.');
         if(/VBXE not found/i.test(s)) log('VBXE AUDIT MATRIX BUILD2HL: program umi nahlasit "VBXE not found" -> sleduj v logu CORE READ a prvni cteni $D640/$D641.');
         if(/\.obx$/i.test(name)) log('VBXE AUDIT MATRIX BUILD2HL: OBX beru jako stejny Atari binarni kontejner jako XEX, ne jako jiny fake loader.');
         log('VBXE AUDIT MATRIX BUILD2HL: tohle NENI hack na jednu hru; stejna detekce bezi pro Textmode/DACTest/MrProper/Heartlight/Commando/Popeye/W3D.');
       } else {
-        log('VBXE AUDIT MATRIX BUILD2IQ: bez VBXE signatury a bez operandů $D640-$D6FF, spoustim jako bezny Atari/ANTIC titul; VBXE overlay bude po coldstartu tvrde vypnuty.');
+        log('VBXE AUDIT MATRIX BUILD2JD: bez VBXE signatury a bez operandů $D640-$D65F/$D740-$D75F, spoustim jako bezny Atari/ANTIC titul; VBXE overlay bude po coldstartu tvrde vypnuty.');
       }
       return hit;
     }catch(e){
@@ -4266,7 +4293,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   // ---------- loader XEX / ATR ----------
   function bootXex(name,u8,keepKb){
     var isVbxe=vbxeScanAndLog(name,u8,'XEX');
-    if(isVbxe) log('VBXE BUILD2HL: obecna detekce nastavena na FX v1.26a: $D640 read=$10, $D641 read=$26, $D642/$D643 read=$FF. RAM: main 64K + EXT buffer 320K + VBXE VRAM 512K; CPU 320K banky jen pres PORTB b2,b3,b5,b6, ANTIC zatim 130XE-safe. Stiskni ULOZIT LOG po zastaveni.');
+    if(isVbxe) log('VBXE BUILD2JD: obecna detekce nastavena na FX v1.26a: $D640/$D740 read=$10, minor=$26, D642/D643 read=$FF. RAM: main 64K + EXT buffer 320K + VBXE VRAM 512K; CPU 320K banky jen pres PORTB b2,b3,b5,b6, ANTIC zatim 130XE-safe. Stiskni ULOZIT LOG po zastaveni.');
     startAudio();
     M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(audio&&audio.sh)audio.sh.head=-1;
     if(audio) M.onSpeaker=function(level){ audio.st.spkLevel=level?1:-1; audio.st.spkDecay=(audio.ac.sampleRate*0.004)|0; };
@@ -4297,7 +4324,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
   function bootAtr(name,u8,opt){
     var isVbxe=vbxeScanAndLog(name,u8,'ATR');
-    if(isVbxe) log('VBXE BUILD2HL: obecna detekce nastavena na FX v1.26a: $D640 read=$10, $D641 read=$26, $D642/$D643 read=$FF. RAM: main 64K + EXT buffer 320K + VBXE VRAM 512K; CPU 320K banky jen pres PORTB b2,b3,b5,b6, ANTIC zatim 130XE-safe. Stiskni ULOZIT LOG po zastaveni.');
+    if(isVbxe) log('VBXE BUILD2JD: obecna detekce nastavena na FX v1.26a: $D640/$D740 read=$10, minor=$26, D642/D643 read=$FF. RAM: main 64K + EXT buffer 320K + VBXE VRAM 512K; CPU 320K banky jen pres PORTB b2,b3,b5,b6, ANTIC zatim 130XE-safe. Stiskni ULOZIT LOG po zastaveni.');
     startAudio();
     M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(audio&&audio.sh)audio.sh.head=-1;
     if(audio) M.onSpeaker=function(level){ audio.st.spkLevel=level?1:-1; audio.st.spkDecay=(audio.ac.sampleRate*0.004)|0; };
@@ -5667,6 +5694,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2JD_VBXE_D740_ALIAS_SAFE pripraven - zachovan JC/JA Tetris MEMAC fix, zrusena JB barvova regrese; pridany obecny mirror VBXE registru $D740-$D75F na $D640-$D65F a audit IO operandů D640/D740.');
     log('AtariHelp.eu EMU-10 BUILD2JC_VBXE_RESTORE_JA_MSEL_AUDIT_SAFE pripraven - BUILD2JB MSEL/OVSHIFT render zrusen kvuli rozbite grafice; funkcni BUILD2JA Tetris/MEMAC cesta zachovana; pridany jen stinovy audit $D644-$D648 bez zmeny renderu.');
     log('AtariHelp.eu EMU-10 BUILD2JA_XEX_LIVE_MEMAC_PAYLOAD_SAFE pripraven - navazuje na BUILD2IZ; pridana ziva MEMAC payload cesta pro XEX bloky pres aktualni $D64C-$D64F i legacy MEMAC okna. Tetris preload zachovan, BCB21 safe, bez hernich hacku.');
     log('AtariHelp.eu EMU-10 BUILD2IZ_XEX_INITAD_MEMAC_PRELOAD_SAFE pripraven - navazuje na BUILD2IY/IX safe, BCB21 zustava, pridana obecna XEX INITAD/MEMAC-A preload cesta pro VBXE VRAM bank-load bloky.');
