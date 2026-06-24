@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IU</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IV</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -344,6 +344,14 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    ne uprostred zapisu jednotlivych registru; pri non-VBXE XEX se VBXE overlay tvrde vypne a vycisti,
    aby normalni ANTIC/G2F test jako Postcard nemohl tahat starou VBXE vrstvu. Opraven audit hx4 v UI. */
 
+
+/* BUILD2IV_GTIA_DYNAMIC_GPRIOR_SAFE:
+   Po testu BUILD2IU Rene potvrdil: Postcard porad bez barev. V XEX jsem nasel presne, ze
+   Postcard kernel behem jedne radky prepina GTIA PRIOR/GPRIOR ($D01B) mezi normalnim hires
+   a GTIA 9 ($40), napr. blok kolem $5967-$597A. Stary renderer zvolil gtia.prior&$C0 jen
+   jednou na celou scanline, takze tyhle barevne GTIA useky nikdy nenakreslil.
+   Oprava je obecna: ANTIC mode F se rozhoduje pro kazdy 4px nibble podle GPRIOR v dane X pozici,
+   vcetne COLBK/COLPF/COLPM z GTIA segmentu. Bez hacku na Postcard nebo jmeno hry. */
 
 /* BUILD2IU_CPU_BRANCH_NMI_TIMING_SAFE:
    Po testu BUILD2IT se Postcard/HL/Popeye/Commando vizualne nepohnuly.
@@ -1984,27 +1992,44 @@ function Atari130XE(osRom, basicRom, CPUctor){
           for(let k=0;k<pxw;k++){ const xx=x0+k; TB[TO+xx]=PFC(v,xx); TC[xx]=v; } } }
     } else if(md.t==='hires'){
       xs=192-nb*4;
-      const gmode=gtia.prior&0xC0;
-      if(gmode){ // GTIA 9/10/11: bajt = 2 pixely po 4 bitech, pixel = 4 fb px
-        for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
-          for(let h=0;h<2;h++){ const nib=h?(bits&15):(bits>>4); let col;
-            if(gmode===0x40) col=palette[(gtia.colbk&0xF0)|nib];                  // GR.9: 16 jasu
-            else if(gmode===0xC0) col=palette[((nib<<4)|(gtia.colbk&0x0F))&0xFF]; // GR.11: 16 odstinu
-            else { const t=[gtia.colpm[0],gtia.colpm[1],gtia.colpm[2],gtia.colpm[3],
-                            gtia.colpf[0],gtia.colpf[1],gtia.colpf[2],gtia.colpf[3],
-                            gtia.colbk,gtia.colbk,gtia.colbk,gtia.colbk,
-                            gtia.colpf[0],gtia.colpf[1],gtia.colpf[2],gtia.colpf[3]];
-                   col=palette[t[nib]]; }                                          // GR.10
-            const x0=xs+i*8+h*4;
-            TB[TO+x0]=col; TB[TO+x0+1]=col; TB[TO+x0+2]=col; TB[TO+x0+3]=col; }
-        }
-      } else {
-        const xcolor=!!(vbxe && (vbxe.regs[0x40]&0x02));
-        const fgL=gtia.colpf[1]&0x0F, bgC=gtia.colpf[2];
-        const fg=xcolor?palette[gtia.colpf[1]&0xFF]:palette[(bgC&0xF0)|fgL], bg=palette[bgC];
-        const fgCls=xcolor?2:3;
-        for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
-          for(let b=0;b<8;b++){ const xx=xs+i*8+b; const on=!!(bits&(0x80>>b)); const bg2=useGtSeg?pfColorAt(3,xx):bg; TB[TO+xx]=on?fg:bg2; TC[xx]=on?fgCls:3; }
+      // BUILD2IV: GTIA 9/10/11 nesmi byt rozhodnute jen jednou na celou scanline.
+      // G2F/Postcard kernel prepina GPRIOR ($D01B) behem radky. Proto se rezim bere
+      // pro kazdy 4px nibble z gtiaRegAt(0x1B,x), stejne jako COLBK/COLPF/COLPM.
+      const xcolor=!!(vbxe && (vbxe.regs[0x40]&0x02));
+      function gtia10Color(nib,x){
+        if(nib<4) return gtiaRegAt(0x12+nib,x);
+        if(nib<8) return gtiaRegAt(0x16+(nib-4),x);
+        if(nib<12) return gtiaRegAt(0x1A,x);
+        return gtiaRegAt(0x16+(nib-12),x);
+      }
+      for(let i=0;i<nb;i++){
+        const bits=anticRead(antic.lms+i);
+        for(let h=0;h<2;h++){
+          const nib=h?(bits&15):(bits>>4);
+          const x0=xs+i*8+h*4;
+          const gm=gtiaRegAt(0x1B,x0)&0xC0;
+          if(gm){
+            const cb=gtiaRegAt(0x1A,x0);
+            let col;
+            if(gm===0x40) col=palette[(cb&0xF0)|nib];                  // GTIA 9: hue COLBK + 16 jasu
+            else if(gm===0xC0) col=palette[((nib<<4)|(cb&0x0F))&0xFF]; // GTIA 11: 16 odstinu + lum COLBK
+            else col=palette[gtia10Color(nib,x0)];                     // GTIA 10: 9 barvovych registru
+            TB[TO+x0]=col; TB[TO+x0+1]=col; TB[TO+x0+2]=col; TB[TO+x0+3]=col;
+            TC[x0]=0; TC[x0+1]=0; TC[x0+2]=0; TC[x0+3]=0;
+          }else{
+            // Normalni ANTIC F hires v ramci téhož nibblu. Barvy beru v dane X pozici,
+            // aby DLI/G2F zmeny COLPF1/COLPF2 fungovaly i bez GTIA modu.
+            const pf1=gtiaRegAt(0x17,x0), pf2=gtiaRegAt(0x18,x0);
+            const fg=xcolor?palette[pf1&0xFF]:palette[((pf2&0xF0)|(pf1&0x0F))&0xFF];
+            const bg=palette[pf2&0xFF];
+            const fgCls=xcolor?2:3;
+            for(let b=0;b<4;b++){
+              const xx=x0+b;
+              const on=!!(bits&(0x80>>(h*4+b)));
+              TB[TO+xx]=on?fg:bg;
+              TC[xx]=on?fgCls:3;
+            }
+          }
         }
       }
     }
@@ -5440,6 +5465,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('AtariHelp.eu EMU-10 BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE pripraven - XDL enable/adresa az na VSYNC, non-VBXE XEX/ATR tvrde vypne VBXE overlay, audit opraven na IO operand $D640-$D6FF a xexInfo uz nepada na hx4.');
     log('AtariHelp.eu EMU-10 BUILD2IS_G2F_GTIA_COLOR_SEGMENTS_SAFE pripraven - navazuje na BUILD2IR. Pridana obecna paprskova emulace COLPF/COLBK/PRIOR zmen behem jedne scanline pro G2F/DLI obrazky typu Postcard. VBXE core, UI, joystick, kazeta beze zmen.');
     log('AtariHelp.eu EMU-10 BUILD2IU_CPU_BRANCH_NMI_TIMING_SAFE pripraven - navazuje na BUILD2IT. Opraveny presne cykly 6502 vetvi (taken/pagecross) a NMI/IRQ service jako samostatny step. Cil: G2F/Postcard raster timing, HL text barvy, bez hacku na jednu hru.');
+    log('AtariHelp.eu EMU-10 BUILD2IV_GTIA_DYNAMIC_GPRIOR_SAFE pripraven - oprava neni odhad: Postcard/G2F kernel prepina $D01B behem radky, proto ANTIC F renderer bere GTIA 9/10/11 rezim podle X pozice, ne jednou pro celou scanline.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);

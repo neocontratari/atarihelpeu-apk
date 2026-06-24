@@ -1,0 +1,62 @@
+AtariHelp.eu EMU-10 BUILD2IV_GTIA_DYNAMIC_GPRIOR_SAFE
+====================================================
+
+NAVAZUJE NA:
+- BUILD2IU_CPU_BRANCH_NMI_TIMING_SAFE
+
+PROC TENTO BUILD EXISTUJE:
+- Test BUILD2IU: Postcard_Atari_Rocky.xex zustal bez barev a pruhy zustaly.
+- Predchozi pokusy pres COLPF/COLPM/PMG/branch timing neprinesly viditelny posun.
+- Proto jsem prestal hadat barvy a podival se na samotny XEX Postcard.
+
+PRESNY NALEZ V POSTCARD XEX:
+- RUNAD = $5800.
+- Kod kolem $5967-$597A a dal v souboru opakovane prepina registr GTIA PRIOR/GPRIOR $D01B primo behem jedne radky:
+  - STY $D01B s hodnotou $40
+  - STA $D01B s hodnotou $00 / aktualni hodnotou
+- To znamena, ze obraz pouziva dynamicke prepinani normalniho ANTIC F hires a GTIA modu 9/10/11 v ramci jedne scanline.
+
+CHYBA V EMULATORU PRED BUILD2IV:
+- Renderer ANTIC mode F rozhodl GTIA rezim jen jednou pro celou scanline:
+  const gmode = gtia.prior & 0xC0;
+- Pokud byl snapshot na zacatku radky $D01B = 0, barevne GTIA useky zapsane pozdeji v radce se nikdy nenakreslily.
+- To sedi na Reného test: Postcard mel jen sedo/pruhy a chybejici barvy.
+
+OPRAVA BUILD2IV:
+- V ANTIC mode F / hires se GTIA 9/10/11 rezim uz nebere jednou pro celou scanline.
+- Pro kazdy 4px nibble se bere:
+  - GPRIOR / PRIOR z gtiaRegAt($D01B, x)
+  - COLBK z gtiaRegAt($D01A, x)
+  - COLPF/COLPM pro GTIA 10 z gtiaRegAt() podle X pozice
+- Tedy se respektuji zmeny registru behem radky, ktere G2F/Postcard presne pouziva.
+
+CO SE NEMENILO:
+- UI / skin / joystick / klavesnice / kazeta / NET HRY beze zmen.
+- VBXE XDL/blitter core ponechan z BUILD2IU.
+- Zadny hack na Postcard podle jmena souboru.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+TEST PLAN:
+1) Postcard_Atari_Rocky.xex
+   - hlavni test: jestli naskoci barvy v obrazcich a jestli se zmensi pruhy.
+   - pokud budou barvy porad chybet, poslat screen + log.
+
+2) HL / Heartlight
+   - rychla kontrola: sedy obdelnik se nesmi vratit.
+   - predherni text muze mit porad odlisne barvy, ale nesmi byt horsi.
+
+3) Popeye
+   - kratce: nesmi byt horsi nez BUILD2IU.
+
+4) Commando intro
+   - informativne: jestli Arnold aspon problikne.
+
+LOG MARKER:
+- AtariHelp.eu EMU-10 BUILD2IV_GTIA_DYNAMIC_GPRIOR_SAFE pripraven
+
+POZNAMKA PRO DALSIHO ASSISTENTA:
+- Toto neni dalsi slepy barevny pokus. Je to konkretni oprava odvozena z XEX Postcard: kod prepinajici $D01B behem scanline vyzaduje per-X GTIA mode v ANTIC F rendereru.

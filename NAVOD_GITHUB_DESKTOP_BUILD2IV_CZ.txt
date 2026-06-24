@@ -1,0 +1,19 @@
+NAVOD - BUILD2IV ZIP OVERLAY
+============================
+
+1) Rozbal ZIP.
+2) Zkopiruj slozku app pres koren projektu v GitHub Desktop pracovnim adresari.
+3) Potvrd prepsani souboru.
+4) V GitHub Desktop zkontroluj zmeny.
+5) Commit message:
+   BUILD2IV GTIA dynamic GPRIOR per scanline
+6) Buildni APK stejne jako predchozi buildy.
+
+ZMENENY SOUBOR:
+- app/src/main/assets/emu_vbxe/index.html
+
+TESTUJ:
+- Postcard_Atari_Rocky.xex
+- HL / Heartlight
+- Popeye kratce
+- Commando intro kratce
