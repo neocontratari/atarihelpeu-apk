@@ -1,0 +1,112 @@
+--- /dev/fd/63	2026-06-24 09:49:14.113404717 +0000
++++ app/src/main/assets/emu_vbxe/index.html	2026-06-24 09:48:43.045656140 +0000
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IS</title>
++<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IT</title>
+ <style>
+ :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
+ *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+@@ -343,6 +343,13 @@
+    Zastavuji slepe testovani stejneho: XDL enable/adresa se ted aplikuje az na zacatku frame/VSync,
+    ne uprostred zapisu jednotlivych registru; pri non-VBXE XEX se VBXE overlay tvrde vypne a vycisti,
+    aby normalni ANTIC/G2F test jako Postcard nemohl tahat starou VBXE vrstvu. Opraven audit hx4 v UI. */
++
++/* BUILD2IT_G2F_PMG_PRIORITY_COLOR_SAFE:
++   Po testu BUILD2IS Rene potvrdil: Postcard porad bez barev/pruhy, HL hra OK, Commando Arnold chybi, Popeye rozsekany.
++   Zastavuji dalsi slepe GTIA barvy; G2F casto pouziva Player/Missile grafiku jako barevne vrstvy.
++   Oprava je obecna: PMG barvy a PRIOR se berou i behem scanline z COLPM/COLPF/PRIOR segmentu,
++   PMG priority se sklada pres P0/P1/P2/P3 proti PF tride pixelu, ne jako jeden plochy overlay.
++   Zadny hack na Postcard/HL/Popeye/Commando, UI/loader/kazeta beze zmen. */
+ /* BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE:
+    Rene potvrdil, ze BUILD2IE je podstatne lepsi/ostrejsi v Textmode a HL/W3D zůstaly hratelne.
+    Tady NEsaham na W3D barvy, palety, BCB21, RAM320, rychly loader, UI ani joystick.
+@@ -1996,14 +2003,16 @@
+     }
+     renderPMG(y);
+   }
+-  function pmShow(p,c){ // priorita podle PRIOR bitu 0-3 (c: 0=BAK, 1..4=PF0..PF3)
++  function pmShowAt(p,c,x){ // BUILD2IT: priorita podle PRIOR v dane X pozici (c: 0=BAK, 1..4=PF0..PF3)
+     if(!c) return true;
+-    const pr=gtia.prior&0x0F;
+-    if(pr&1) return true;            // hraci nad vsim
+-    if(pr&2) return p<2;             // P0/P1 nad PF, P2/P3 pod
+-    if(pr&4) return false;           // playfield nad hraci
+-    if(pr&8) return c>=3;            // PF0/PF1 nad hraci, PF2/PF3 pod
+-    return true;
++    // GTIA PRIOR bity 0-3 tvori rezimy priority. Prakticky pro G2F je dulezite,
++    // aby P/M barevne vrstvy nespadly cele pod playfield jen kvuli jednomu plochemu snapshotu.
++    const pr=gtiaRegAt(0x1B,x)&0x0F;
++    if(pr&1) return p<2 ? true : c>=3;   // P0/P1 nad vse, P2/P3 pod PF0/PF1
++    if(pr&2) return p<2;                 // P0/P1 nad cele PF, P2/P3 pod
++    if(pr&4) return c>=3;                // PF0/PF1 nad P/M, P/M nad PF2/PF3
++    if(pr&8) return false;               // cely playfield nad P/M
++    return true;                         // default: P/M nad PF
+   }
+   function renderPMG(y){
+     pml.fill(0);
+@@ -2011,10 +2020,17 @@
+     const fb=M.fb, off=y*384, line=M.line;
+     const dbl=!(antic.dmactl&0x10);
+     const pmDma=(antic.dmactl&0x08)&&(gtia.gractl&2), mDma=((antic.dmactl&0x0C))&&(gtia.gractl&1); // player DMA fetchuje i missily (HW kvirk)
++    // BUILD2IT: G2F pouziva PMG jako barevne vrstvy. COLPM/PRIOR se proto nesmi brat
++    // jako jedna hodnota pro celou scanline; DLI muze menit barvy a prioritu po STA WSYNC
++    // nebo i uvnitr radky. Beru stejne GTIA segmenty jako playfield renderer.
++    function pmColAt(p,x){ return palette[gtiaRegAt(0x12+p,x)]; }
++    function missileColAt(p,x){
++      const pr=gtiaRegAt(0x1B,x);
++      return palette[(pr&0x10)?gtiaRegAt(0x19,x):gtiaRegAt(0x12+p,x)];
++    }
+     for(let p=0;p<4;p++){
+       let g=gtia.grafp[p];   // GRAFP drzi DMA-nactenou nebo zmrazenou hodnotu (plni pmDmaFetch)
+       if(!g) continue;
+-      const col=palette[gtia.colpm[p]];
+       const w=[1,2,1,4][gtia.sizep[p]&3];
+       const x0=gtia.hposp[p]*2-64;   // leva hrana fb = color clock $20
+       for(let b=0;b<8;b++){ if(g&(0x80>>b)){
+@@ -2022,23 +2038,22 @@
+           const c=pfc[x]; if(c) gtia.cPPF[p]|=1<<(c-1);
+           const mm=pml[x]; if(mm){ gtia.cPPL[p]|=mm; for(let q=0;q<4;q++) if(mm&(1<<q)) gtia.cPPL[q]|=(1<<p); }
+           pml[x]|=(1<<p);
+-          if(pmShow(p,c)) fb[off+x]=col; } } } }
++          if(pmShowAt(p,c,x)) fb[off+x]=pmColAt(p,x); } } } }
+     }
+     // missiles
+     let gm=gtia.grafm;   // GRAFM drzi DMA-nactenou nebo zmrazenou hodnotu
+     if(gm){ for(let p=0;p<4;p++){ const bits=(gm>>(p*2))&3; if(!bits)continue;
+-      const col=palette[(gtia.prior&0x10)?gtia.colpf[3]:gtia.colpm[p]]; // bit4: missily = PF3 (5. hrac)
+       const w=[1,2,1,4][(gtia.sizem>>(p*2))&3];
+       const x0=gtia.hposm[p]*2-64;
+       for(let b=0;b<2;b++){ if(bits&(2>>b)){
+         for(let k=0;k<2*w;k++){ const x=x0+b*2*w+k; if(x>=0&&x<384){
+           const c=pfc[x]; if(c) gtia.cMPF[p]|=1<<(c-1);
+           gtia.cMPL[p]|=pml[x];
+-          if(pmShow(p,c)) fb[off+x]=col; } } } } } }
++          if(pmShowAt(p,c,x)) fb[off+x]=missileColAt(p,x); } } } } } }
+     vbxeStorePriorityLine(y);
+   }
+   const chSeg={n:0, c:new Int32Array(6), v:new Uint8Array(6), base:0};   // CHBASE zapisy behem radky (zavod s paprskem)
+-  const gtSeg={n:0, x:new Int32Array(32), r:new Uint8Array(32), v:new Uint8Array(32)}; // BUILD2IS: COLPF/COLBK/PRIOR zmeny behem scanline
++  const gtSeg={n:0, x:new Int32Array(96), r:new Uint8Array(96), v:new Uint8Array(96)}; // BUILD2IT: COLPM/COLPF/COLBK/PRIOR zmeny behem scanline, vic slotu pro G2F
+   M.gtiaSegDebugCount=0;
+   function gtiaColorTrack(g,v){
+     if(g<0x12 || g>0x1B) return;
+@@ -2053,7 +2068,7 @@
+     gtSeg.v[idx]=v&0xFF;
+     if(M.vbxeDebug && M.gtiaSegDebugCount<20 && (g>=0x16 || g===0x1A || g===0x1B)){
+       M.gtiaSegDebugCount++;
+-      M.vbxeDebug('GTIA COLOR SEG BUILD2IS line='+M.line+' cyc='+cyc+' x='+gtSeg.x[idx]+' reg=$D0'+hx2(g)+' val=$'+hx2(v));
++      M.vbxeDebug('GTIA COLOR/PRIOR SEG BUILD2IT line='+M.line+' cyc='+cyc+' x='+gtSeg.x[idx]+' reg=$D0'+hx2(g)+' val=$'+hx2(v));
+     }
+   }
+   M.lineCyc0=0;
+@@ -5409,6 +5424,7 @@
+     log('AtariHelp.eu EMU-10 BUILD2IP_VBXE_OVSCROLL_MAP_PF3_SAFE pripraven - navazuji na bezpecny BUILD2IO. Pridavam obecny OVSCRL pro SR/LR/HR graficky overlay a opravu atributove mapy: PF3 se uz nesmi prebarvovat jako PF2. Zadny hack na HL/Popeye/Commando/W3D/Postcard.');
+     log('AtariHelp.eu EMU-10 BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE pripraven - XDL enable/adresa az na VSYNC, non-VBXE XEX/ATR tvrde vypne VBXE overlay, audit opraven na IO operand $D640-$D6FF a xexInfo uz nepada na hx4.');
+     log('AtariHelp.eu EMU-10 BUILD2IS_G2F_GTIA_COLOR_SEGMENTS_SAFE pripraven - navazuje na BUILD2IR. Pridana obecna paprskova emulace COLPF/COLBK/PRIOR zmen behem jedne scanline pro G2F/DLI obrazky typu Postcard. VBXE core, UI, joystick, kazeta beze zmen.');
++    log('AtariHelp.eu EMU-10 BUILD2IT_G2F_PMG_PRIORITY_COLOR_SAFE pripraven - navazuje na BUILD2IS. Obecne opraveno PMG skladani pro G2F: COLPM/PRIOR se berou podle X segmentu a P/M priorita se sklada proti PF tride pixelu. Zadny hack na Postcard/HL/Popeye/Commando.');
+     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
+     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
+     requestAnimationFrame(tick);

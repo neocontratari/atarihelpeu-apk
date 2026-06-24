@@ -1,0 +1,18 @@
+NAVOD - BUILD2IT ZIP OVERLAY
+============================
+
+1) Rozbal ZIP do korene projektu v GitHub Desktop / do slozky projektu.
+2) Potvrd prepsani souboru.
+3) Commit message:
+   BUILD2IT G2F PMG priority color safe
+4) Sestav APK stejne jako predchozi buildy.
+5) Testuj jen:
+   - Postcard_Atari_Rocky.xex
+   - HL / Heartlight
+   - Popeye kratce
+   - Commando intro kratce
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.

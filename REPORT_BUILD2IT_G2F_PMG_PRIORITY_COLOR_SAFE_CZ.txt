@@ -1,0 +1,63 @@
+AtariHelp.eu EMU-10 BUILD2IT_G2F_PMG_PRIORITY_COLOR_SAFE
+======================================================
+
+NAVAZUJE NA:
+- BUILD2IS_G2F_GTIA_COLOR_SEGMENTS_SAFE
+
+PROC TENHLE BUILD:
+- René otestoval BUILD2IS: Postcard_Atari_Rocky.xex porad bez barev a s pruhy.
+- HL / Heartlight je porad bez sedeho obdelniku a hra je v poradku.
+- Commando intro porad neukazuje Arnolda.
+- Popeye ma porad rozsekanou / neuplnou grafiku.
+- Zaver: nema smysl dal tocit jen COLPF/COLBK. G2F obrazky casto skladaji barvy pres Player/Missile grafiku a PRIOR.
+
+CO JE ZMENENE:
+1) PMG barvy se uz neberou jako jedna hodnota pro celou scanline.
+   - Player barvy COLPM0-COLPM3 se berou pres GTIA segmenty podle X pozice.
+   - Missile barvy se berou take podle X pozice a respektuji PRIOR bit4 = missile jako PF3.
+
+2) PMG priorita se uz nevyhodnocuje jen z jednoho plocheho snapshotu PRIOR.
+   - Novy pmShowAt(p,c,x) bere PRIOR podle X pozice.
+   - Sklada Player/Missile proti tride playfieldu PF0/PF1/PF2/PF3.
+   - Cilem je obecna G2F/PMG kompozice, ne Postcard hack.
+
+3) GTIA segment buffer zvetsen z 32 na 96 udalosti na scanline.
+   - G2F/DLI obrazky umi v radce menit vice registru.
+   - Tim se snizi riziko ztraty COLPM/COLPF/COLBK/PRIOR zmen.
+
+CO SE NEMENILO:
+- VBXE XDL/BCB core beze zmen.
+- UI, joystick, klavesnice, kazeta, NET HRY beze zmen.
+- Loader/SIO beze zmen.
+- Zadny hack podle nazvu hry.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+TEST PLAN:
+1) Postcard_Atari_Rocky.xex
+   - hlavni test
+   - sleduj, jestli pribudou barvy v obrazcich a jestli zmizi / zeslabnou pruhy
+
+2) HL / Heartlight
+   - jen rychla kontrola, ze se nevratil sedy obdelnik
+   - mrkni i na predherni text, jestli se barvy neposkladaly jeste hur
+
+3) Popeye VBXE
+   - kratce: jestli PMG priorita nezhorsila hraci postavy / vrstvy
+
+4) Commando intro
+   - jen informativne: jestli Arnold aspon problikne
+
+CO NETESTOVAT TED:
+- W3D, Textmode, DACTest jen pokud sam chces. Nechci znovu zbytecny maraton.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2IT_G2F_PMG_PRIORITY_COLOR_SAFE pripraven
+- GTIA COLOR/PRIOR SEG BUILD2IT
+
+POZNAMKA:
+Pokud se Postcard opet nepohne, dalsi krok uz nebude dalsi PMG/GTIA barva naslepo,
+ale audit DLI/NMI CPU casovani a ANTIC display-list/LMS skoky proti G2F exportu.
