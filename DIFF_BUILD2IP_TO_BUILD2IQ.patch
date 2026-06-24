@@ -1,0 +1,198 @@
+--- /mnt/data/ip2/app/src/main/assets/emu_vbxe/index.html	2026-06-23 22:36:12.000000000 +0000
++++ /mnt/data/build2iq/app/src/main/assets/emu_vbxe/index.html	2026-06-23 23:03:18.421095200 +0000
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IP</title>
++<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IQ</title>
+ <style>
+ :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
+ *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+@@ -338,6 +338,11 @@
+    XDLC_MAPON/MAPOFF/MAPADR/MAPPAR. Attribute map se cte podle fx.pdf/vbxefx.ah: 4 bajty na pole,
+    lokalni PF0/PF1/PF2 barvy, MAP OV/PF palette a vyber P0-P3 priority.
+    Cilem je obecna oprava barev/vrstev pro Popeye/W3D/Postcard/Textmode bez hacku podle jmena hry. */
++/* BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE:
++   Po testu BUILD2IP Rene potvrdil: HL porad bez sedeho obdelniku, ale Popeye/Commando/Postcard se prakticky nezmenily.
++   Zastavuji slepe testovani stejneho: XDL enable/adresa se ted aplikuje az na zacatku frame/VSync,
++   ne uprostred zapisu jednotlivych registru; pri non-VBXE XEX se VBXE overlay tvrde vypne a vycisti,
++   aby normalni ANTIC/G2F test jako Postcard nemohl tahat starou VBXE vrstvu. Opraven audit hx4 v UI. */
+ /* BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE:
+    Rene potvrdil, ze BUILD2IE je podstatne lepsi/ostrejsi v Textmode a HL/W3D zůstaly hratelne.
+    Tady NEsaham na W3D barvy, palety, BCB21, RAM320, rychly loader, UI ani joystick.
+@@ -1090,7 +1095,7 @@
+     fastBlitCopied:0, fastBlitBlocks:0,
+     lastMemacLog:{}, memacSpam:0, memac5DCount:0,
+     renderBase:0, renderDirty:false, renderProbeLogged:false,
+-    xdlEnabled:false, xdlBase:0, xdlLogged:false, xdlRecords:[], xdlSig:'', xdlParseCount:0, xdlScanCount:0,
++    xdlEnabled:false, xdlPendingEnabled:false, xdlPendingApply:false, xdlDirty:false, xdlBase:0, xdlLogged:false, xdlRecords:[], xdlSig:'', xdlParseCount:0, xdlScanCount:0,
+     xdlRenderLogged:false, xdlFallbackLogged:false, xdlTextSkipLogged:false,
+     xdlSawValid:false, xdlProbeBlockedLogged:false, xdlTextRenderLogged:false, xdlTextEmptyLogged:false,
+     xdlMapLogged:false, xdlMapApplyLogged:false,
+@@ -1104,6 +1109,36 @@
+   M.vbxeDebug=null;
+   function hx2(v){ return (v&255).toString(16).toUpperCase().padStart(2,'0'); }
+   function hx4(v){ return (v&65535).toString(16).toUpperCase().padStart(4,'0'); }
++  function vbxeResetRuntimeState(keepVram){
++    // BUILD2IQ: jedna pravdiva cesta pro reset VBXE stavu. Pouziva se pri coldStart i pri non-VBXE XEX.
++    // Cilem je zastavit opakovane testovani stale stejneho Postcard pruhu z moznych starych XDL/overlay stavů.
++    vbxe.regs.fill(0);
++    if(!keepVram) vbxe.vram.fill(0);
++    vbxe.traceCount=0; vbxe.traceSuppressed=0; vbxe.seen={};
++    vbxe.bltCollision=0; vbxe.bltBusy=0; vbxe.bltIrq=0; vbxe.bltStarts=0;
++    vbxe.renderDirty=false; vbxe.renderBase=0;
++    vbxe.xdlEnabled=false; vbxe.xdlPendingEnabled=false; vbxe.xdlPendingApply=false; vbxe.xdlDirty=false;
++    vbxe.xdlRecords=[]; vbxe.xdlSig=''; vbxe.xdlSawValid=false; vbxe.lastGoodXdlRecords=null; vbxe.lastGoodXdlBase=0;
++    vbxe.xdlCarryState=null; vbxe.xdlCarryLogged=false; vbxe.bigBlitLogged=false;
++    vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false;
++    vbxe.xdlMapApplyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false;
++    vbxe.xdlParseCount=0; vbxe.xdlScanCount=0; vbxe.lastXdlLogScan=0;
++    if(M.vbxePfClassFrame) M.vbxePfClassFrame.fill(0);
++    if(M.vbxePmMaskFrame) M.vbxePmMaskFrame.fill(0);
++    vbxeInitPaletteDefaults();
++  }
++  M.disableVbxeForPlainProgram=function(reason){
++    vbxeResetRuntimeState(false);
++    if(M.vbxeDebug) M.vbxeDebug('VBXE NON-VBXE RESET BUILD2IQ: '+(reason||'plain program')+' -> XDL/OFF, VRAM clear, no stale overlay.');
++  };
++  function vbxeApplyVsyncPending(){
++    if(!vbxe.xdlPendingApply) return;
++    vbxe.xdlPendingApply=false;
++    vbxe.xdlEnabled=!!vbxe.xdlPendingEnabled;
++    vbxe.xdlDirty=true;
++    if(!vbxe.xdlEnabled){ vbxe.xdlRecords=[]; vbxe.lastGoodXdlRecords=null; vbxe.xdlCarryState=null; }
++    if(M.vbxeDebug) M.vbxeDebug('VBXE XDL VSYNC APPLY BUILD2IQ: enabled='+(vbxe.xdlEnabled?1:0)+' base=$'+vbxeGetXdlBase().toString(16).toUpperCase().padStart(5,'0'));
++  }
+   function vbxeTrace(rw,a,v){
+     a&=0xFFFF; v&=0xFF;
+     const key=rw+':'+hx4(a)+':'+hx4(cpu&&cpu.pc||0);
+@@ -1490,13 +1525,16 @@
+     vbxe.ioWritten=true;
+     vbxe.regs[off]=v;
+     if(off===0x40){
+-      vbxe.xdlEnabled=!!(v&1);
+-      if(M.vbxeDebug) M.vbxeDebug('VBXE VIDEO_CONTROL W $D640=$'+hx2(v)+' xdl='+(v&1)+' xcolor='+((v>>1)&1)+' noTrans='+((v>>2)&1)+' trans15='+((v>>3)&1));
+-      if(vbxe.xdlEnabled) vbxeParseXdl(true);
++      // BUILD2IQ: podle fx.pdf se XDL enable projevi az od nejblizsi vertikalni synchronizace.
++      // Neparsuj XDL uprostred zapisu registru - tim vznikaly mezistavy/stripes a slepe testy bez posunu.
++      vbxe.xdlPendingEnabled=!!(v&1);
++      vbxe.xdlPendingApply=true;
++      vbxe.xdlDirty=true;
++      if(M.vbxeDebug) M.vbxeDebug('VBXE VIDEO_CONTROL W BUILD2IQ $D640=$'+hx2(v)+' xdlPending='+(v&1)+' xcolor='+((v>>1)&1)+' noTrans='+((v>>2)&1)+' trans15='+((v>>3)&1));
+     }
+     if(off>=0x41 && off<=0x43){
+-      if(M.vbxeDebug) M.vbxeDebug('VBXE XDL_ADR W $D64'+(off-0x40)+'=$'+hx2(v)+' -> xdlBase=$'+vbxeGetXdlBase().toString(16).toUpperCase().padStart(5,'0'));
+-      if(vbxe.xdlEnabled) vbxeParseXdl(true);
++      vbxe.xdlDirty=true;
++      if(M.vbxeDebug) M.vbxeDebug('VBXE XDL_ADR W BUILD2IQ $D64'+(off-0x40)+'=$'+hx2(v)+' -> pending xdlBase=$'+vbxeGetXdlBase().toString(16).toUpperCase().padStart(5,'0'));
+     }
+     if(off===0x44){ vbxe.csel=v&0xFF; }
+     if(off===0x45){ vbxe.psel=v&0x03; }
+@@ -1770,6 +1808,7 @@
+   function pfBytesW(base,w){ if(w<=1)return base*0.8|0; if(w>=3)return base*1.2|0; return base; }
+   function pfBytes(base){ return pfBytesW(base, antic.dmactl&3); }
+   function startFrame(){
++    vbxeApplyVsyncPending();
+     antic.dlptr=antic.dlist; antic.rowsLeft=0; antic.done=!(antic.dmactl&0x20);
+     antic.mode=0; antic.blankRows=0; antic.row=0; antic.vsPrev=false; antic.hsLine=false;
+   }
+@@ -2945,7 +2984,8 @@
+   function vbxeRenderXdl(){
+     if(M) M.vbxeTextHiActive=false;
+     if(!vbxe || !vbxe.xdlEnabled) return false;
+-    var recs=vbxeParseXdl(false);
++    var recs=vbxeParseXdl(!!vbxe.xdlDirty);
++    vbxe.xdlDirty=false;
+     if(!recs || !recs.length) return false;
+ 
+     var fb=M.fb, vram=vbxe.vram, drew=0, graphDrew=0, textDrew=0, hasGraph=false, hasText=false;
+@@ -3136,15 +3176,7 @@
+     if(opt&&opt.option) gtia.consol&=~4;
+     M.line=0;M.frame=0;M.wsync=false;cpu.jam=false;cpu.irqLine=0;
+     M.clearCassetteTransport();
+-    if(vbxe){
+-      vbxe.regs.fill(0); vbxe.vram.fill(0); vbxe.traceCount=0; vbxe.traceSuppressed=0; vbxe.seen={};
+-      vbxe.bltCollision=0; vbxe.bltBusy=0; vbxe.bltIrq=0; vbxe.bltStarts=0; vbxe.renderDirty=false; vbxe.renderBase=0;
+-      vbxe.xdlEnabled=false; vbxe.xdlRecords=[]; vbxe.xdlSig=''; vbxe.xdlSawValid=false; vbxe.lastGoodXdlRecords=null; vbxe.lastGoodXdlBase=0; vbxe.xdlCarryState=null; vbxe.xdlCarryLogged=false; vbxe.bigBlitLogged=false;
+-      if(M.vbxePfClassFrame) M.vbxePfClassFrame.fill(0);
+-      if(M.vbxePmMaskFrame) M.vbxePmMaskFrame.fill(0);
+-      vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false; vbxe.xdlMapApplyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false;
+-      vbxeInitPaletteDefaults();
+-    }
++    if(vbxe){ vbxeResetRuntimeState(false); }
+     if(sio.xex){ sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true; }
+ 
+     cpu.reset();
+@@ -3863,6 +3895,7 @@
+     return s;
+   }
+   function vbxeQuickXexInfo(u8){
++    function xh4(v){ return ((v&0xFFFF).toString(16).toUpperCase()).padStart(4,'0'); }
+     var out={ok:false,records:0,underRom:0,initad:0,runad:0,first:'',error:''};
+     try{
+       if(!u8 || u8.length<4 || u8[0]!==0xFF || u8[1]!==0xFF){ out.error='neni standardni FF FF XEX/OBX hlavicka'; return out; }
+@@ -3870,9 +3903,9 @@
+       while(i+3<u8.length && out.records<4096){
+         if(u8[i]===0xFF && u8[i+1]===0xFF){ i+=2; continue; }
+         var st=u8[i]|(u8[i+1]<<8), en=u8[i+2]|(u8[i+3]<<8); i+=4;
+-        if(en<st){ out.error='segment end<start $'+hx4(st)+'-$'+hx4(en); break; }
+-        var len=en-st+1; if(i+len>u8.length){ out.error='segment pres konec souboru $'+hx4(st)+'-$'+hx4(en); break; }
+-        if(!out.first) out.first='$'+hx4(st)+'-$'+hx4(en);
++        if(en<st){ out.error='segment end<start $'+xh4(st)+'-$'+xh4(en); break; }
++        var len=en-st+1; if(i+len>u8.length){ out.error='segment pres konec souboru $'+xh4(st)+'-$'+xh4(en); break; }
++        if(!out.first) out.first='$'+xh4(st)+'-$'+xh4(en);
+         out.records++;
+         if(st<=0x02E3 && en>=0x02E2) out.runad++;
+         if(st<=0x02E1 && en>=0x02E0) out.initad++;
+@@ -3887,17 +3920,24 @@
+     try{
+       var s=vbxeByteString(u8, Math.min(u8.length, 1048576));
+       var hit=/VBXE|WOLF3D NEEDS VBXE|No VBXE found|FX core|Core revision|improper core|\$D640|XDL/i.test(s);
++      // BUILD2IQ: nehledej jen textove hlasky. Nektere VBXE programy nemaji retezec, ale primo sahaji na $D640-$D6FF.
++      var ioHits=0;
++      for(var ai=0; ai+1<u8.length && ioHits<32; ai++){
++        var lo=u8[ai]&255, hi=u8[ai+1]&255;
++        if(hi===0xD6 && lo>=0x40){ ioHits++; }
++      }
++      if(ioHits>0) hit=true;
+       var xi=vbxeQuickXexInfo(u8);
+       log('VBXE AUDIT MATRIX BUILD2HL: soubor='+name+' kind='+(kind||'GAME')+' size='+u8.length+' B'+(xi.ok?(' xexRecords='+xi.records+' first='+xi.first+' INITAD='+xi.initad+' RUNAD='+xi.runad+' underROM='+xi.underRom):(' xexInfo='+xi.error))+'.');
+       if(hit){
+-        log('VBXE AUDIT MATRIX BUILD2HL: VBXE signatura nalezena. Emuluji obecny FX profil: CORE_VERSION=$10, MINOR_REVISION=$26 (FX v1.26a), cteni D642/D643=$FF, MEMAC dokumentovane D64C-D64F.');
++        log('VBXE AUDIT MATRIX BUILD2IQ: VBXE signatura/IO operand nalezen (ioHits='+ioHits+'). Emuluji obecny FX profil: CORE_VERSION=$10, MINOR_REVISION=$26 (FX v1.26a), cteni D642/D643=$FF, MEMAC dokumentovane D64C-D64F.');
+         if(/No VBXE or improper core/i.test(s)) log('VBXE AUDIT MATRIX BUILD2HL: program obsahuje hlasku "No VBXE or improper core" -> prvni brana je D640=$10 a (D641&$70)==$20.');
+         if(/Core revision <> 1\.20/i.test(s)) log('VBXE AUDIT MATRIX BUILD2HL: program chce kompatibilni FX 1.20 radu -> D641=$26 ma projit maskou $70.');
+         if(/VBXE not found/i.test(s)) log('VBXE AUDIT MATRIX BUILD2HL: program umi nahlasit "VBXE not found" -> sleduj v logu CORE READ a prvni cteni $D640/$D641.');
+         if(/\.obx$/i.test(name)) log('VBXE AUDIT MATRIX BUILD2HL: OBX beru jako stejny Atari binarni kontejner jako XEX, ne jako jiny fake loader.');
+         log('VBXE AUDIT MATRIX BUILD2HL: tohle NENI hack na jednu hru; stejna detekce bezi pro Textmode/DACTest/MrProper/Heartlight/Commando/Popeye/W3D.');
+       } else {
+-        log('VBXE AUDIT MATRIX BUILD2HL: bez zjevne VBXE signatury v prvnim skenu, spoustim jako bezny Atari titul.');
++        log('VBXE AUDIT MATRIX BUILD2IQ: bez VBXE signatury a bez operandů $D640-$D6FF, spoustim jako bezny Atari/ANTIC titul; VBXE overlay bude po coldstartu tvrde vypnuty.');
+       }
+       return hit;
+     }catch(e){
+@@ -3923,6 +3963,7 @@
+     catch(err){ log('NAHRAJ XEX: '+name+' - CHYBA: '+err.message); return; }
+     if(info&&info.error){ log('NAHRAJ XEX: '+name+' - CHYBA: '+info.error); running=true; return; }
+     M.coldStart({option:true});
++    if(!isVbxe && M.disableVbxeForPlainProgram) M.disableVbxeForPlainProgram('XEX '+name);
+     consolState.option=true; M.consol(false,false,true);
+     setTimeout(function(){ consolState.option=false; if(M)M.consol(false,false,false); },1500); // jen na dobu coldstartu - drzene OPTION mate hry, ktere ho ctou na titulce
+     running=true; document.getElementById('led').classList.add('on');
+@@ -3946,6 +3987,7 @@
+     try{ if(M.diskFastStats){ M._hwDiskName=name; } }catch(_e){}
+     log('ATR D1 FAST LOAD BUILD2HW: zapinam rychlejsi emulovany D1: SIO prenos pro ATR. Stale cte OS/hra sektory pres SIO, zadny RAM inject.');
+     M.coldStart({option:opt});
++    if(!isVbxe && M.disableVbxeForPlainProgram) M.disableVbxeForPlainProgram('ATR '+name);
+     if(opt){ consolState.option=true; M.consol(false,false,true);
+       setTimeout(function(){ consolState.option=false; if(M)M.consol(false,false,false); },5000); }
+     running=true; document.getElementById('led').classList.add('on');
+@@ -5314,6 +5356,7 @@
+     log('AtariHelp.eu EMU-10 BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE pripraven - zachovan BUILD2IE ostrejsi Textmode, pridavam nativni 640px HR canvas pro VBXE HR overlay a zvysuji bezpecny BCB chain limit pro Commando/Popeye. W3D barvy, palety, BCB21, RAM320, loader, UI a hitboxy zustavaji.');
+     log('AtariHelp.eu EMU-10 BUILD2IM_VBXE_PRIORITY_XCOLOR_SAFE pripraven - zaklad zustava BUILD2IF/APK/2IL bez sedeho HL obdelniku. Pridan obecny XDL priority pass nad ulozenou ANTIC/PMG mapou celeho frame a XCOLOR PF1 hires zachazeni. Zadny hack na jednu hru, UI/loader/joystick/RAM320/NET HRY beze zmeny.');
+     log('AtariHelp.eu EMU-10 BUILD2IP_VBXE_OVSCROLL_MAP_PF3_SAFE pripraven - navazuji na bezpecny BUILD2IO. Pridavam obecny OVSCRL pro SR/LR/HR graficky overlay a opravu atributove mapy: PF3 se uz nesmi prebarvovat jako PF2. Zadny hack na HL/Popeye/Commando/W3D/Postcard.');
++    log('AtariHelp.eu EMU-10 BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE pripraven - XDL enable/adresa az na VSYNC, non-VBXE XEX/ATR tvrde vypne VBXE overlay, audit opraven na IO operand $D640-$D6FF a xexInfo uz nepada na hx4.');
+     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
+     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
+     requestAnimationFrame(tick);

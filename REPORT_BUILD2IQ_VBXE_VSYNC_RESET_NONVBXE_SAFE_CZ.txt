@@ -1,0 +1,59 @@
+AtariHelp.eu EMU-10 BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE
+============================================================
+
+NAVAZUJE NA:
+- BUILD2IP_VBXE_OVSCROLL_MAP_PF3_SAFE
+
+PROC TENTO BUILD:
+- Test BUILD2IP potvrdil, ze HL je stale v poradku a sedy obdelnik se nevratil.
+- Popeye / Commando / Textmode / DACTest zustaly prakticky beze zmen.
+- Postcard je porad spatne, ale log ukazal dulezitou vec: Postcard_Atari_Rocky.xex nema VBXE textovou signaturu a nenasel se bezny VBXE start jako u Textmode/DACTest.
+- Proto uz nedavam dalsi slepy barevny/scroll pokus. BUILD2IQ upravuje obecne chovani emulatoru kolem XDL casovani a resetu VBXE vrstvy pri non-VBXE programech.
+
+CO JE ZMENENE:
+1) XDL ENABLE / XDL ADR timing
+- Zapis VIDEO_CONTROL $D640 a XDL_ADR $D641-$D643 uz neparsuje XDL okamzite uprostred zapisu registru.
+- XDL enable se aplikuje az pri zacatku dalsiho frame/VSync pres BUILD2IQ pending stav.
+- Cilem je zamezit mezistavum, kdy se kreslila rozpracovana XDL tabulka nebo stara/nahodna adresa.
+
+2) Non-VBXE program hard reset
+- Pri XEX/ATR bez VBXE signatury a bez operandů $D640-$D6FF se po coldstartu tvrde vypne VBXE overlay:
+  XDL OFF, VRAM clear, lastGood XDL clear, carry state clear.
+- To je dulezite pro Postcard/G2F/ANTIC testy, ktere nejsou jasny VBXE program a nemaji tahat zadnou VBXE vrstvu.
+
+3) Audit detekce
+- Opravena chyba v auditu: xexInfo uz nepada na "hx4 is not defined".
+- Detekce VBXE uz nehleda jen textovy retezec, ale i operandy adres $D640-$D6FF v binarce.
+
+CO NENI MENENE:
+- UI / skin / klavesnice / joystick / kazetak / NET HRY.
+- Loader XEX/ATR princip zustava stejny.
+- BASIC / Altirra testovaci kody zustavaji stejne.
+- Zadny hack na HL, Popeye, Commando, W3D ani Postcard podle nazvu hry.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+TEST PLAN - UZ NE TESTOVAT VSECHNO DOKOLA:
+1) Postcard_Atari_Rocky.xex
+   - Ocekavani: pruhy z VBXE/stare XDL by mely zmizet nebo se vyrazne zmenit.
+   - Pokud je porad spatne, posli screenshot + log. Pak je to uz spis ANTIC/G2F/DLI/GTIA problem, ne VBXE XDL.
+
+2) Commando
+   - Ocekavani: zkontrolovat jen intro s Arnoldem.
+   - Kdyz Arnold porad ani neproblikne, posli log. Dalsi krok bude primo blitter/XDL surface audit pro Commando, ne dalsi obecne scroll testy.
+
+3) HL jen kratce
+   - Ocekavani: sedy obdelnik se nesmi vratit.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE pripraven
+- VBXE XDL VSYNC APPLY BUILD2IQ
+- VBXE NON-VBXE RESET BUILD2IQ
+- VBXE AUDIT MATRIX BUILD2IQ
+
+POZNAMKA PRO RENÉHO:
+Tenhle build je schvalne cilenejsi. Nechci po tobe znovu W3D, Textmode, DACTest, Popeye, pokud se sam nerozhodnes.
+Hlavni rychly test je Postcard + Commando intro + rychla kontrola HL.
