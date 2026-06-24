@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JD</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JE</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -345,6 +345,15 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    v jednom programu, ale jina hra nebo loader pise do $D740 a emulator to ignoruje.
    Tento build prida obecny D740 alias na stejne VBXE registry, rozšíří audit IO operandů na D640 i D740
    a zachova BUILD2JA/JC Tetris MEMAC cestu. Zadny BCB19, zadna MSEL barevna zmena, zadny hack hry. */
+
+
+/* BUILD2JE_XEX_INITAD_MEMAC_SHADOW_SAFE:
+   Navazuje na BUILD2JD, kde D740 alias pomohl Mission a zachoval Tetris top grafiku.
+   Nevracim BCB19, neaktivuji rozbitou MSEL/OVSHIFT vetev.
+   Pridavam obecny staticky stin XEX INITAD/MEMAC: pri parsovani XEX se v poradí segmentu simuluji
+   jednoduche INITAD rutiny, ktere zapisuji do VBXE MEMAC registru ($D64C-$D64F, $D65D-$D65F,
+   a alias $D74C-$D75F). Nasledne XEX payload zapisovany do aktivniho MEMAC CPU okna
+   se doplni i do realne VBXE VRAM. Neni to podle nazvu hry ani screen-paint. */
 /* BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE:
    Po testu BUILD2IP Rene potvrdil: HL porad bez sedeho obdelniku, ale Popeye/Commando/Postcard se prakticky nezmenily.
    Zastavuji slepe testovani stejneho: XDL enable/adresa se ted aplikuje az na zacatku frame/VSync,
@@ -1048,20 +1057,145 @@ function Atari130XE(osRom, basicRom, CPUctor){
   //   zadna kolize s hrami nahravajicimi na $0700+.
   const XEX_LOADER_B64="AAIABwAHogC9FgedAAHo4LnQ9UwAAakAIJMBMD2lhSkC0EKlhSkE0EKlhUggoQGlgY0EA6WCjQUDpYONCAOlhI0JA6lyjQsDIFnkMBJoKQHwAyCeAakBTAIBqQBMAgFoqQBMAgEgiAFs4AIgoQGlgY0EA6WCjQUDpYONCAOlhI0JA6lyjQsDIIgBogW9ggGdAATKEPdMAAQgWeRs4AKpAI1EAqkBjQkAYEggoQFojQoDTFnkbOICogu9rQGdAAPKEPdgMQFSQIAABwAGAABxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
   function annotateXexVbxeMemacPreload(recs){
-    // BUILD2IZ: obecna oprava XEX loaderu pro VBXE MEMAC bank-load bloky.
-    // Vzor pouziva Mad Pascal/Tebe VBXE unit i dalsi FX programy: XEX nahraje 7B rutinu
-    //   A9 bank / A0 5F / 91 80 / 60
-    // a pak pres INITAD zavola zapis hodnoty bank do ($80),Y = $D65F. Nasledujici data
-    // na $B000-$BFFF maji jit do legacy MEMAC-A okna, tedy do VBXE VRAM, ne zustat jen v Atari RAM.
+    // BUILD2JE: obecny stin XEX/INITAD/MEMAC.
+    // Doted jsme staticky poznali jen jeden 7B loader vzor. Commando/Popeye/Mission maji
+    // vic INITAD segmentu; tady nepatchujeme hru, jen omezeně emulujeme jednoduche INITAD
+    // rutiny a podle nich predem zjistime, kdy ma XEX payload do CPU okna skoncit i ve VBXE VRAM.
+    const mem=new Uint8Array(65536);
     const setters={};
+    const sh={regs:new Uint8Array(0x100), legacyMemb:0, legacyMemc:0, legacyMems:0,
+              writes:0, initCalls:0, mappedSegments:0, mappedBytes:0, log:[]};
     let activeA=-1, segments=0, bytes=0, firstBank=-1, lastBank=-1;
+
+    function shHex4(v){ return ((v&0xFFFF).toString(16).toUpperCase()).padStart(4,'0'); }
+    function shHex5(v){ return ((v&0x7FFFF).toString(16).toUpperCase()).padStart(5,'0'); }
+    function shWriteIo(a,v){
+      a&=0xFFFF; v&=0xFF;
+      if((a&0xFF00)===0xD700 && (a&0xFF)>=0x40 && (a&0xFF)<=0x5F) a=0xD600|(a&0xFF);
+      if((a&0xFF00)!==0xD600) return false;
+      const off=a&0xFF;
+      if(off>=0x40 && off<=0x5F) sh.regs[off]=v;
+      if(off===0x5D) sh.legacyMemb=v;
+      if(off===0x5E) sh.legacyMemc=v;
+      if(off===0x5F) sh.legacyMems=v;
+      if(off>=0x4C && off<=0x4F || off>=0x5D && off<=0x5F){
+        sh.writes++;
+        if(sh.log.length<16) sh.log.push('$'+shHex4(a)+'=$'+hx2(v));
+        return true;
+      }
+      return false;
+    }
+    function shLegacyAAddr(a){
+      var memc=sh.legacyMemc&0xFF, mems=sh.legacyMems&0xFF;
+      if(!(mems&0x80) || !(memc&0x08)) return -1;
+      var size=0x1000 << (memc&3);
+      var base=(memc&0xF0)<<8;
+      if(a>=base && a<base+size) return (((mems&0x7F)*size)+(a-base))&0x7FFFF;
+      return -1;
+    }
+    function shLegacyBAddr(a){
+      var memb=sh.legacyMemb&0xFF;
+      if(a>=0x4000 && a<=0x7FFF && (memb&0x80)) return (((memb&0x1F)<<14)|(a&0x3FFF))&0x7FFFF;
+      return -1;
+    }
+    function shCpuMapAddr(a){
+      a&=0xFFFF;
+      var la=shLegacyAAddr(a); if(la>=0) return la;
+      var lb=shLegacyBAddr(a); if(lb>=0) return lb;
+      if(a>=0x2000 && a<=0x3FFF && (sh.regs[0x4C]&0x80)) return (((sh.regs[0x4C]&0x3F)<<13)|(a&0x1FFF))&0x7FFFF;
+      if(a>=0x4000 && a<=0x7FFF && (sh.regs[0x4E]&0x80)) return (((sh.regs[0x4E]&0x1F)<<14)|(a&0x3FFF))&0x7FFFF;
+      return -1;
+    }
+    function annotateMappedPayload(r){
+      if(!r || !r.pay || !r.len) return;
+      const pay=r.pay, base=r.dst&0xFFFF;
+      let runCpu=-1, runVram=-1, runLen=0;
+      function flush(){
+        if(runLen<=0) return;
+        if(!r.vbxePreloadList) r.vbxePreloadList=[];
+        r.vbxePreloadList.push({off:(runCpu-base)&0xFFFF, len:runLen, vram:runVram&0x7FFFF, bank:-1, shadow:1});
+        segments++; bytes+=runLen; sh.mappedSegments++; sh.mappedBytes+=runLen;
+        runCpu=-1; runVram=-1; runLen=0;
+      }
+      for(let k=0;k<pay.length;k++){
+        const ca=(base+k)&0xFFFF;
+        const va=shCpuMapAddr(ca);
+        if(va<0){ flush(); continue; }
+        if(runLen>0 && ((runCpu+runLen)&0xFFFF)===ca && ((runVram+runLen)&0x7FFFF)===va) runLen++;
+        else { flush(); runCpu=ca; runVram=va; runLen=1; }
+      }
+      flush();
+    }
+    function copyToShadowRam(r){
+      if(!r || !r.pay) return;
+      const base=r.dst&0xFFFF, pay=r.pay;
+      for(let k=0;k<pay.length;k++) mem[(base+k)&0xFFFF]=pay[k]&0xFF;
+    }
+    function emulateInit(pc,depth){
+      pc&=0xFFFF;
+      if(depth>2) return false;
+      let A=0,X=0,Y=0,Z=0, touched=false;
+      const visited={};
+      sh.initCalls++;
+      for(let step=0; step<384; step++){
+        pc&=0xFFFF;
+        const key=pc+':'+step;
+        if(visited[pc]) break;
+        visited[pc]=1;
+        const op=mem[pc]&0xFF;
+        if(op===0x60) return touched; // RTS
+        if(op===0xA9){ A=mem[(pc+1)&0xFFFF]&0xFF; Z=(A===0); pc+=2; continue; } // LDA #
+        if(op===0xA2){ X=mem[(pc+1)&0xFFFF]&0xFF; Z=(X===0); pc+=2; continue; } // LDX #
+        if(op===0xA0){ Y=mem[(pc+1)&0xFFFF]&0xFF; Z=(Y===0); pc+=2; continue; } // LDY #
+        if(op===0xA5){ A=mem[mem[(pc+1)&0xFFFF]]&0xFF; Z=(A===0); pc+=2; continue; } // LDA zp
+        if(op===0xA6){ X=mem[mem[(pc+1)&0xFFFF]]&0xFF; Z=(X===0); pc+=2; continue; } // LDX zp
+        if(op===0xA4){ Y=mem[mem[(pc+1)&0xFFFF]]&0xFF; Z=(Y===0); pc+=2; continue; } // LDY zp
+        if(op===0xAD){ const a=mem[(pc+1)&0xFFFF]|(mem[(pc+2)&0xFFFF]<<8); A=mem[a]&0xFF; Z=(A===0); pc+=3; continue; } // LDA abs
+        if(op===0xAE){ const a=mem[(pc+1)&0xFFFF]|(mem[(pc+2)&0xFFFF]<<8); X=mem[a]&0xFF; Z=(X===0); pc+=3; continue; }
+        if(op===0xAC){ const a=mem[(pc+1)&0xFFFF]|(mem[(pc+2)&0xFFFF]<<8); Y=mem[a]&0xFF; Z=(Y===0); pc+=3; continue; }
+        if(op===0xAA){ X=A&0xFF; Z=(X===0); pc++; continue; } // TAX
+        if(op===0xA8){ Y=A&0xFF; Z=(Y===0); pc++; continue; } // TAY
+        if(op===0x8A){ A=X&0xFF; Z=(A===0); pc++; continue; } // TXA
+        if(op===0x98){ A=Y&0xFF; Z=(A===0); pc++; continue; } // TYA
+        if(op===0xE8){ X=(X+1)&0xFF; Z=(X===0); pc++; continue; } // INX
+        if(op===0xC8){ Y=(Y+1)&0xFF; Z=(Y===0); pc++; continue; } // INY
+        if(op===0xCA){ X=(X-1)&0xFF; Z=(X===0); pc++; continue; } // DEX
+        if(op===0x88){ Y=(Y-1)&0xFF; Z=(Y===0); pc++; continue; } // DEY
+        if(op===0x85){ mem[mem[(pc+1)&0xFFFF]]=A&0xFF; pc+=2; continue; } // STA zp
+        if(op===0x86){ mem[mem[(pc+1)&0xFFFF]]=X&0xFF; pc+=2; continue; }
+        if(op===0x84){ mem[mem[(pc+1)&0xFFFF]]=Y&0xFF; pc+=2; continue; }
+        if(op===0x8D){ const a=mem[(pc+1)&0xFFFF]|(mem[(pc+2)&0xFFFF]<<8); if(shWriteIo(a,A)) touched=true; else mem[a]=A&0xFF; pc+=3; continue; }
+        if(op===0x8E){ const a=mem[(pc+1)&0xFFFF]|(mem[(pc+2)&0xFFFF]<<8); if(shWriteIo(a,X)) touched=true; else mem[a]=X&0xFF; pc+=3; continue; }
+        if(op===0x8C){ const a=mem[(pc+1)&0xFFFF]|(mem[(pc+2)&0xFFFF]<<8); if(shWriteIo(a,Y)) touched=true; else mem[a]=Y&0xFF; pc+=3; continue; }
+        if(op===0x9D){ const b=mem[(pc+1)&0xFFFF]|(mem[(pc+2)&0xFFFF]<<8), a=(b+X)&0xFFFF; if(shWriteIo(a,A)) touched=true; else mem[a]=A&0xFF; pc+=3; continue; }
+        if(op===0x99){ const b=mem[(pc+1)&0xFFFF]|(mem[(pc+2)&0xFFFF]<<8), a=(b+Y)&0xFFFF; if(shWriteIo(a,A)) touched=true; else mem[a]=A&0xFF; pc+=3; continue; }
+        if(op===0x91){ const zp=mem[(pc+1)&0xFFFF]&0xFF, b=mem[zp]|(mem[(zp+1)&0xFF]<<8), a=(b+Y)&0xFFFF; if(shWriteIo(a,A)) touched=true; else mem[a]=A&0xFF; pc+=2; continue; }
+        if(op===0x20){ const sub=mem[(pc+1)&0xFFFF]|(mem[(pc+2)&0xFFFF]<<8); if(emulateInit(sub,depth+1)) touched=true; pc+=3; continue; }
+        if(op===0x4C){ pc=mem[(pc+1)&0xFFFF]|(mem[(pc+2)&0xFFFF]<<8); continue; }
+        if(op===0xD0 || op===0xF0){ // BNE/BEQ s hrubym Z flagem, jen pro kratke init rutiny
+          const rel=mem[(pc+1)&0xFFFF]; const take=(op===0xD0?!Z:!!Z);
+          pc = take ? ((pc+2+((rel<0x80)?rel:rel-256))&0xFFFF) : (pc+2);
+          continue;
+        }
+        if(op===0xEA || op===0x18 || op===0x38 || op===0x58 || op===0x78 || op===0xD8 || op===0xF8){ pc++; continue; }
+        break; // neznama nebo nebezpecna instrukce: staticky init dal nehadam
+      }
+      return touched;
+    }
+
     for(let i=0;i<recs.length;i++){
       const r=recs[i];
       const pay=r.pay||new Uint8Array(0);
+
+      // Stary osvedceny BUILD2IZ special-case nechavam: je to presny 7B MEMAC-A setter.
       if(r.len>=7 && pay[0]===0xA9 && pay[2]===0xA0 && pay[3]===0x5F && pay[4]===0x91 && pay[5]===0x80 && pay[6]===0x60){
         setters[r.dst&0xFFFF]=pay[1]&0xFF;
         r.vbxeMemacASetter=pay[1]&0xFF;
       }
+
+      annotateMappedPayload(r);
+      copyToShadowRam(r);
+
       if(r.len>=2 && r.dst<=0x02E2 && ((r.dst+r.len-1)&0xFFFF)>=0x02E3){
         const o=(0x02E2-r.dst)|0;
         if(o>=0 && o+1<pay.length){
@@ -1071,8 +1205,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
             if(firstBank<0) firstBank=activeA;
             lastBank=activeA;
           }
+          emulateInit(init,0);
         }
       }
+
       if(activeA>=0 && (activeA&0x80) && r.len>0){
         const rs=r.dst&0xFFFF, re=(r.dst+r.len-1)&0xFFFF;
         if(rs<=0xBFFF && re>=0xB000){
@@ -1084,8 +1220,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
         }
       }
     }
-    return {segments:segments,bytes:bytes,firstBank:firstBank,lastBank:lastBank};
+    return {segments:segments,bytes:bytes,firstBank:firstBank,lastBank:lastBank,
+            shadowSegments:sh.mappedSegments,shadowBytes:sh.mappedBytes,shadowWrites:sh.writes,
+            shadowInitCalls:sh.initCalls,shadowLog:sh.log.join(' ')};
   }
+
 
   function vbxePreloadRangeForCpuAddr(a){
     // BUILD2JA: zive mapovani podle aktualniho MEMAC stavu tesne pred servirovanim XEX payloadu.
@@ -1144,8 +1283,32 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // nechavam i BUILD2IZ staticky fallback pro Tetris/Mad Pascal $B000 bloky.
     const live=applyXexVbxeLiveMemacPayload(X,r);
     if(live>0) return;
-    if(!r || !r.vbxePreload || r.vbxePreloadDone || !vbxe || !vbxe.vram) return;
-    const m=r.vbxePreload, pay=r.pay||new Uint8Array(0);
+    if(!r || !vbxe || !vbxe.vram || !r.pay || !r.len) return;
+    const pay=r.pay||new Uint8Array(0);
+    if(r.vbxePreloadList && r.vbxePreloadList.length && !r.vbxePreloadListDone){
+      let total=0, first=-1;
+      for(let ii=0; ii<r.vbxePreloadList.length; ii++){
+        const m=r.vbxePreloadList[ii];
+        const lim=Math.min(m.len|0, Math.max(0,pay.length-(m.off|0)));
+        if(lim<=0) continue;
+        if(first<0) first=m.vram&0x7FFFF;
+        for(let k=0;k<lim;k++) vbxe.vram[(m.vram+k)&0x7FFFF]=pay[(m.off|0)+k]&0xFF;
+        total+=lim;
+      }
+      if(total>0){
+        r.vbxePreloadListDone=true;
+        vbxe.renderDirty=true;
+        vbxe.renderBase=(first<0?0:first)&0x7C000;
+        if(X){ X.vbxePreloadDone=(X.vbxePreloadDone||0)+1; X.vbxePreloadBytes=(X.vbxePreloadBytes||0)+total; }
+        if(M.vbxeDebug && (!X || (X.vbxePreloadLog||0)<16)){
+          if(X) X.vbxePreloadLog=(X.vbxePreloadLog||0)+1;
+          M.vbxeDebug('VBXE XEX INITAD MEMAC SHADOW BUILD2JE: payload CPU $'+hx4(r.dst)+' len='+r.len+' -> '+r.vbxePreloadList.length+' VRAM runu, bytes='+total+'; staticky INITAD/MEMAC side-effect, ne hack hry.');
+        }
+        return;
+      }
+    }
+    if(!r.vbxePreload || r.vbxePreloadDone) return;
+    const m=r.vbxePreload;
     const lim=Math.min(m.len|0, Math.max(0,pay.length-(m.off|0)));
     if(lim<=0) return;
     for(let k=0;k<lim;k++) vbxe.vram[(m.vram+k)&0x7FFFF]=pay[(m.off|0)+k]&0xFF;
@@ -1199,7 +1362,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const bin=atob(XEX_LOADER_B64), disk=new Uint8Array(256);
     for(let k=0;k<bin.length;k++) disk[k]=bin.charCodeAt(k)&0xFF;
     M.mountDisk(disk); sio.secSize=128;
-    return {sectors:2,records:recs.length,bytes:xex.length,underRom:underRom,manyRecords:(recs.length>250),vbxePreloadSegments:vbxePreloadInfo.segments,vbxePreloadBytes:vbxePreloadInfo.bytes};
+    return {sectors:2,records:recs.length,bytes:xex.length,underRom:underRom,manyRecords:(recs.length>250),vbxePreloadSegments:vbxePreloadInfo.segments,vbxePreloadBytes:vbxePreloadInfo.bytes,vbxeShadowSegments:vbxePreloadInfo.shadowSegments||0,vbxeShadowBytes:vbxePreloadInfo.shadowBytes||0,vbxeShadowWrites:vbxePreloadInfo.shadowWrites||0,vbxeShadowInitCalls:vbxePreloadInfo.shadowInitCalls||0,vbxeShadowLog:vbxePreloadInfo.shadowLog||''};
   };
   // Serial IRQ model podle chovani praveho POKEY (overeno disasm VSEROR $EAAD vasi ROM):
   // bit4 = JEDNORAZOVA udalost "byte presel z vystupniho do posuvneho registru",
@@ -4312,7 +4475,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     running=true; document.getElementById('led').classList.add('on');
     log('NAHRAJ XEX: '+name+' ('+info.bytes+' B, '+info.records+' zaznamu, zavadec v2 primo na cilove adresy + BUILD2HW turbo SIO behem loaderu)');
     if(info.vbxePreloadSegments) log('VBXE XEX MEMAC PRELOAD BUILD2IZ/JA: detekovano '+info.vbxePreloadSegments+' MEMAC-A $B000 bloku, '+info.vbxePreloadBytes+' B pujde soucasne do VBXE VRAM podle INITAD bank-loaderu.');
-      log('VBXE XEX LIVE MEMAC BUILD2JA: aktivni obecna payload cesta - kazdy XEX blok se pri servirovani kontroluje proti aktualnim MEMAC oknum $2000-$3FFF, $4000-$7FFF a legacy $B000; nic podle nazvu hry.');
+    if(info.vbxeShadowSegments) log('VBXE XEX INITAD MEMAC SHADOW BUILD2JE: staticky INITAD/MEMAC audit nasel '+info.vbxeShadowSegments+' mapovanych XEX payload runu, '+info.vbxeShadowBytes+' B, initCalls='+info.vbxeShadowInitCalls+', ioWrites='+info.vbxeShadowWrites+'. '+(info.vbxeShadowLog||''));
+      log('VBXE XEX LIVE MEMAC BUILD2JA: aktivni obecna payload cesta - kazdy XEX blok se pri servirovani kontroluje proti aktualnim MEMAC oknum $2000-$3FFF, $4000-$7FFF a legacy $B000; BUILD2JE navic staticky hlida INITAD/MEMAC okna; nic podle nazvu hry.');
     if(info.manyRecords) log('XEX BUILD2GR: mnoho zaznamu je povoleno - Popeye VBXE ma stovky malych segmentu/INITAD, neni to automaticky chyba.');
     log('Boot pres prave SIO: OS -> boot sektory -> stage2 $0100 -> SIOV zaznamy. OPTION drzene (BASIC OFF).');
     if(info.underRom) log('POZOR: program piše pod OS ROM ($C000+) - vyzaduje RAM pod ROM, plna podpora v BUILD3. Muze selhat.');
@@ -5694,6 +5858,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2JE_XEX_INITAD_MEMAC_SHADOW_SAFE pripraven - navazuje na BUILD2JD; D740 alias zachovan, Tetris/Mission safe, pridany staticky XEX INITAD/MEMAC shadow preload pro obecne VBXE loadery. BCB19 vypnuty, MSEL/OVSHIFT render stale vypnuty.');
     log('AtariHelp.eu EMU-10 BUILD2JD_VBXE_D740_ALIAS_SAFE pripraven - zachovan JC/JA Tetris MEMAC fix, zrusena JB barvova regrese; pridany obecny mirror VBXE registru $D740-$D75F na $D640-$D65F a audit IO operandů D640/D740.');
     log('AtariHelp.eu EMU-10 BUILD2JC_VBXE_RESTORE_JA_MSEL_AUDIT_SAFE pripraven - BUILD2JB MSEL/OVSHIFT render zrusen kvuli rozbite grafice; funkcni BUILD2JA Tetris/MEMAC cesta zachovana; pridany jen stinovy audit $D644-$D648 bez zmeny renderu.');
     log('AtariHelp.eu EMU-10 BUILD2JA_XEX_LIVE_MEMAC_PAYLOAD_SAFE pripraven - navazuje na BUILD2IZ; pridana ziva MEMAC payload cesta pro XEX bloky pres aktualni $D64C-$D64F i legacy MEMAC okna. Tetris preload zachovan, BCB21 safe, bez hernich hacku.');
