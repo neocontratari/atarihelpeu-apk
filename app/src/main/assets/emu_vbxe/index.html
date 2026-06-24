@@ -2403,24 +2403,29 @@ function Atari130XE(osRom, basicRom, CPUctor){
         }
       }
     }
-    // MODEL RADKY: zapisy v HBLANKU (prvnich ~28 cyklu) plati pro TUTO radku,
-    // pozdejsi az pro dalsi - jako skutecny paprsek. CPU bezi ve dvou fazich,
-    // mezi nimi se zmrazi (snapshot) registry pro vykresleni.
-    const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+28, wsAt=lineStart+105;
+    // BUILD2IR: presnejsi WSYNC/DLI model pro G2F/Postcard/rastry.
+    // WSYNC nesmi pustit CPU zpet do te same scanline na cyklu 105. Na Atari zastavi CPU
+    // do zacatku dalsi scanline; typicky DLI udela STA WSYNC a teprve na dalsi radce zapise
+    // COLPF/COLBK. Stary model bral snapshot pred temito zapisy, a tim vznikaly pruhy/barvy mimo.
+    // Zapisy v prvnich ~28 cyklech aktualni radky plati pro tuto radku, pozdejsi az pro dalsi.
+    const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+28;
     M.lineCyc0=lineStart; chSeg.n=0; chSeg.base=antic.chbase;
-    if(M.wsCarry){ M.wsCarry=false; cpu.cycles=wsAt; }   // WSYNC z konce minule radky: halt do cyklu 105 teto
     while(cpu.cycles<snapAt){
-      if(M.wsync){ M.wsync=false;
-        if(cpu.cycles<wsAt) cpu.cycles=wsAt; else { cpu.cycles=target; M.wsCarry=true; }
-        break; }
+      if(M.wsync){
+        M.wsync=false;
+        cpu.cycles=target;       // WSYNC = konec aktualni scanline, pokracovani az v dalsi
+        break;
+      }
       cpu.step();
       if(cpu.jam){ cpu.cycles=target; break; }
     }
     snapTake();                                        // zmrazeni stavu pro render teto radky (stav v HBLANKU)
     while(cpu.cycles<target){
-      if(M.wsync){ M.wsync=false;
-        if(cpu.cycles<wsAt) cpu.cycles=wsAt; else { cpu.cycles=target; M.wsCarry=true; break; }
-        continue; }
+      if(M.wsync){
+        M.wsync=false;
+        cpu.cycles=target;       // BUILD2IR: zadny navrat do stejne radky po WSYNC
+        break;
+      }
       cpu.step();
       if(cpu.jam){ cpu.cycles=target; break; }
     }
@@ -5357,6 +5362,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('AtariHelp.eu EMU-10 BUILD2IM_VBXE_PRIORITY_XCOLOR_SAFE pripraven - zaklad zustava BUILD2IF/APK/2IL bez sedeho HL obdelniku. Pridan obecny XDL priority pass nad ulozenou ANTIC/PMG mapou celeho frame a XCOLOR PF1 hires zachazeni. Zadny hack na jednu hru, UI/loader/joystick/RAM320/NET HRY beze zmeny.');
     log('AtariHelp.eu EMU-10 BUILD2IP_VBXE_OVSCROLL_MAP_PF3_SAFE pripraven - navazuji na bezpecny BUILD2IO. Pridavam obecny OVSCRL pro SR/LR/HR graficky overlay a opravu atributove mapy: PF3 se uz nesmi prebarvovat jako PF2. Zadny hack na HL/Popeye/Commando/W3D/Postcard.');
     log('AtariHelp.eu EMU-10 BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE pripraven - XDL enable/adresa az na VSYNC, non-VBXE XEX/ATR tvrde vypne VBXE overlay, audit opraven na IO operand $D640-$D6FF a xexInfo uz nepada na hx4.');
+    log('AtariHelp.eu EMU-10 BUILD2IR_G2F_DLI_WSYNC_SAFE pripraven - obecna oprava WSYNC/DLI: STA WSYNC zastavi CPU do dalsi scanline, ne do cyklu 105 stejne radky. Cili Postcard/G2F/rastry testujeme jako ANTIC+GTIA problem, ne dalsi VBXE scroll pokus.');
     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
     requestAnimationFrame(tick);

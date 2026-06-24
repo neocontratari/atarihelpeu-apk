@@ -1,0 +1,30 @@
+NAVOD PRO RENEHO - BUILD2IR
+===========================
+
+1. Stahni ZIP overlay:
+   AtariHelp_EMU10_BUILD2IR_G2F_DLI_WSYNC_SAFE_overlay.zip
+
+2. Rozbal ZIP.
+
+3. Obsah slozky pretahni do korene tveho Android/Java projektu v GitHub Desktop pracovni slozce.
+   Windows se zepta na prepsani souboru - potvrdit.
+
+4. Commit zprava:
+   BUILD2IR G2F DLI WSYNC safe
+
+5. Sestav APK stejne jako predtim.
+
+6. Testuj jen:
+   - Postcard_Atari_Rocky.xex
+   - Commando intro
+   - HL / Heartlight
+
+7. Kdyz to selze, posli:
+   - screenshot Postcard
+   - screenshot Commando intro
+   - ulozeny LOG
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.

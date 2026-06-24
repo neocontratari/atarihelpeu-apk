@@ -1,0 +1,49 @@
+AtariHelp.eu EMU-10 BUILD2IR_G2F_DLI_WSYNC_SAFE
+================================================
+
+NAVAZUJE NA:
+- BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE
+
+PROC TENHLE BUILD:
+- Test BUILD2IQ ukazal, ze Postcard_Atari_Rocky.xex zustal bez viditelne zmeny.
+- Postcard XEX z dodaneho vbxe_test_postcard baliku nema primy VBXE I/O operand $D640-$D6FF; neni to dalsi VBXE-scroll problem.
+- Proto se BUILD2IR zameruje na obecny ANTIC/GTIA/G2F/DLI raster problem, hlavne WSYNC.
+
+HLAVNI ZMENA:
+- Opravena emulace WSYNC v runScanline().
+- Stary model po zapisu WSYNC pustil CPU jeste ve stejne scanline na cyklu ~105.
+- Spravne chovani: STA WSYNC zastavi CPU do zacatku dalsi scanline.
+- To je dulezite pro G2F/rastry/DLI, kde kod typicky udela STA WSYNC a az na dalsi radce zapisuje COLPF/COLBK.
+- Snapshot pro render se ted nevezme pred pozdnimi DLI barvami stejne radky.
+
+CO SE NEMENILO:
+- VBXE XDL/BCB/MEMAC renderer zustal z BUILD2IQ.
+- UI, joystick, klavesnice, kazetak, NET HRY, skin zustaly beze zmen.
+- Zadny hack na Postcard, Commando, Popeye, Heartlight nebo W3D podle nazvu souboru.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO TESTOVAT:
+1) Postcard_Atari_Rocky.xex
+   - hlavni test: jestli se zmensi/fixnou pruhy a barvy.
+2) Commando intro
+   - jen rychle: jestli Arnold aspon problikne / ukaze se.
+3) HL / Heartlight
+   - jen kontrola, ze se nevratil sedy obdelnik.
+
+NETESTUJ TED:
+- W3D
+- Textmode
+- DACTest
+- dlouhy maraton stejnych her
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2IR_G2F_DLI_WSYNC_SAFE pripraven
+- BUILD2IR: presnejsi WSYNC/DLI model v kodu runScanline()
+
+POZNAMKA PRO DALSI CHAT:
+- Tohle je prechod od slepeho VBXE scroll ladeni k obecnemu ANTIC/GTIA/G2F raster/DLI problemu.
+- Pokud Postcard zustane spatny, dalsi krok musi byt uz cilene v ANTIC DLI/color timing a GTIA mode timing, ne v XDL/OVSCRL.
