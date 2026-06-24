@@ -1,0 +1,167 @@
+--- BUILD2IR/index.html
++++ BUILD2IS/index.html
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IQ</title>
++<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IS</title>
+ <style>
+ :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
+ *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+@@ -1656,6 +1656,7 @@
+       else if(g===0x1D) gtia.gractl=v;
+       else if(g===0x1E){ for(let i=0;i<4;i++){ gtia.cMPF[i]=0;gtia.cPPF[i]=0;gtia.cMPL[i]=0;gtia.cPPL[i]=0; } }
+       else if(g===0x1F){ const sp=(v>>3)&1; if(sp!==gtia.speaker){gtia.speaker=sp; pokey.dirty=true; M.onSpeaker&&M.onSpeaker(sp);} }
++      gtiaColorTrack(g,v); // BUILD2IS: G2F/DLI umi menit GTIA barvy behem jedne scanline
+       return;
+     }
+     if(page===0xD200){
+@@ -1847,10 +1848,34 @@
+     M.vbxePmMaskFrame.set(pml,base);
+   }
+   const hsBuf=new Uint32Array(512), hsCls=new Uint8Array(512);
++  function gtiaSegXFromCycle(cyc){
++    // BUILD2IS: hruby, ale obecny paprskovy prevod CPU cyklu na X.
++    // Atari viditelna cast zacina zhruba po HBLANKU; 1 CPU cyklus ~= 4 pixely v nasem 384px fb.
++    return Math.max(0,Math.min(383,32+((cyc-24)<<2)));
++  }
++  function gtiaRegAt(g,x){
++    let v;
++    if(g>=0x12 && g<=0x15) v=gtia.colpm[g-0x12];
++    else if(g>=0x16 && g<=0x19) v=gtia.colpf[g-0x16];
++    else if(g===0x1A) v=gtia.colbk;
++    else if(g===0x1B) v=gtia.prior;
++    else return 0;
++    if(gtSeg.n){
++      for(let i=0;i<gtSeg.n;i++){
++        if(gtSeg.r[i]===g && x>=gtSeg.x[i]) v=gtSeg.v[i];
++      }
++    }
++    return v&0xFF;
++  }
++  function pfColorAt(cls,x){
++    if(cls<=0) return palette[gtiaRegAt(0x1A,x)];
++    return palette[gtiaRegAt(0x15+cls,x)];
++  }
+   function renderScanline(){
+     const y=M.line-8; if(y<0||y>=240) return;
+     const fb=M.fb, off=y*384, bk=palette[gtia.colbk];
+-    for(let x=0;x<384;x++) fb[off+x]=bk;
++    if(gtSeg.n){ for(let x=0;x<384;x++) fb[off+x]=pfColorAt(0,x); }
++    else { for(let x=0;x<384;x++) fb[off+x]=bk; }
+     pfc.fill(0);
+     if(antic.done||!(antic.dmactl&0x20)||antic.mode===0) { renderPMG(y); return; }
+     const md=MODE[antic.mode]; if(!md){renderPMG(y);return;}
+@@ -1879,6 +1904,8 @@
+       return (val&0xFC)<<8;
+     }
+     const PF=[palette[gtia.colbk],palette[gtia.colpf[0]],palette[gtia.colpf[1]],palette[gtia.colpf[2]],palette[gtia.colpf[3]]];
++    const useGtSeg=gtSeg.n>0;
++    function PFC(cls,x){ return useGtSeg?pfColorAt(cls,x):PF[cls]; }
+     let xs;
+     if(md.t==='ch2'){
+       xs=192-nb*4;
+@@ -1892,7 +1919,7 @@
+         let line=row; if(antic.mode===3){ if(line>=8)line-=8; }
+         bits=anticRead(chAt(i)+((sc&0x7F)<<3)+(line&7));
+         if(sc&0x80){ if(antic.chactl&1) bits=0; else if(antic.chactl&2) bits^=0xFF; }
+-        for(let b=0;b<8;b++){ const on=!!(bits&(0x80>>b)); TB[TO+xs+i*8+b]=on?fg:bg; TC[xs+i*8+b]=on?fgCls:3; }
++        for(let b=0;b<8;b++){ const on=!!(bits&(0x80>>b)); { const xx=xs+i*8+b; const bg2=useGtSeg?pfColorAt(3,xx):bg; TB[TO+xx]=on?fg:bg2; TC[xx]=on?fgCls:3; } }
+       }
+     } else if(md.t==='ch4'){
+       xs=192-nb*4;
+@@ -1903,7 +1930,7 @@
+         for(let p=0;p<4;p++){
+           let v=(bits>>(6-p*2))&3;
+           let cls=v===0?0:(v===3&&(sc&0x80)?4:v);
+-          let col=v===0?PF[0]:(v===3&&(sc&0x80)?PF[4]:PF[v]);
++          let col=v===0?PFC(0,xs+i*8+p*2):(v===3&&(sc&0x80)?PFC(4,xs+i*8+p*2):PFC(v,xs+i*8+p*2));
+           TB[TO+xs+i*8+p*2]=col; TB[TO+xs+i*8+p*2+1]=col;
+           TC[xs+i*8+p*2]=cls; TC[xs+i*8+p*2+1]=cls;
+         }
+@@ -1914,24 +1941,25 @@
+       for(let i=0;i<nb;i++){
+         const sc=anticRead(antic.lms+i);
+         const bits=anticRead(chAt(i)+((sc&0x3F)<<3)+(l&7));
+-        const col=PF[1+((sc>>6)&3)];
+-        const cls=1+((sc>>6)&3);
++        const cls6=1+((sc>>6)&3);
++        const col=PFC(cls6,xs+i*16);
++        const cls=cls6;
+         for(let b=0;b<8;b++){ const on=bits&(0x80>>b);
+-          TB[TO+xs+i*16+b*2]=on?col:PF[0]; TB[TO+xs+i*16+b*2+1]=on?col:PF[0];
++          { const xx=xs+i*16+b*2; const bg0=PFC(0,xx); TB[TO+xx]=on?col:bg0; TB[TO+xx+1]=on?col:bg0; }
+           TC[xs+i*16+b*2]=on?cls:0; TC[xs+i*16+b*2+1]=on?cls:0; }
+       }
+     } else if(md.t==='m1bpp'){
+       const pxw=320/(nb*8); xs=192-160;
+       for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
+-        for(let b=0;b<8;b++){ const on=bits&(0x80>>b), col=on?PF[1]:PF[0];
++        for(let b=0;b<8;b++){ const on=bits&(0x80>>b);
+           const x0=xs+((i*8+b)*pxw)|0;
+-          for(let k=0;k<pxw;k++){ TB[TO+x0+k]=col; TC[x0+k]=on?1:0; } } }
++          for(let k=0;k<pxw;k++){ const xx=x0+k; TB[TO+xx]=on?PFC(1,xx):PFC(0,xx); TC[xx]=on?1:0; } } }
+     } else if(md.t==='m2bpp'){
+       const pxw=320/(nb*4); xs=192-160;
+       for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
+-        for(let p=0;p<4;p++){ const v=(bits>>(6-p*2))&3; const col=PF[v];
++        for(let p=0;p<4;p++){ const v=(bits>>(6-p*2))&3;
+           const x0=xs+((i*4+p)*pxw)|0;
+-          for(let k=0;k<pxw;k++){ TB[TO+x0+k]=col; TC[x0+k]=v; } } }
++          for(let k=0;k<pxw;k++){ const xx=x0+k; TB[TO+xx]=PFC(v,xx); TC[xx]=v; } } }
+     } else if(md.t==='hires'){
+       xs=192-nb*4;
+       const gmode=gtia.prior&0xC0;
+@@ -1954,7 +1982,7 @@
+         const fg=xcolor?palette[gtia.colpf[1]&0xFF]:palette[(bgC&0xF0)|fgL], bg=palette[bgC];
+         const fgCls=xcolor?2:3;
+         for(let i=0;i<nb;i++){ const bits=anticRead(antic.lms+i);
+-          for(let b=0;b<8;b++){ const on=!!(bits&(0x80>>b)); TB[TO+xs+i*8+b]=on?fg:bg; TC[xs+i*8+b]=on?fgCls:3; }
++          for(let b=0;b<8;b++){ const xx=xs+i*8+b; const on=!!(bits&(0x80>>b)); const bg2=useGtSeg?pfColorAt(3,xx):bg; TB[TO+xx]=on?fg:bg2; TC[xx]=on?fgCls:3; }
+         }
+       }
+     }
+@@ -2010,6 +2038,24 @@
+     vbxeStorePriorityLine(y);
+   }
+   const chSeg={n:0, c:new Int32Array(6), v:new Uint8Array(6), base:0};   // CHBASE zapisy behem radky (zavod s paprskem)
++  const gtSeg={n:0, x:new Int32Array(32), r:new Uint8Array(32), v:new Uint8Array(32)}; // BUILD2IS: COLPF/COLBK/PRIOR zmeny behem scanline
++  M.gtiaSegDebugCount=0;
++  function gtiaColorTrack(g,v){
++    if(g<0x12 || g>0x1B) return;
++    if(M.line<8 || M.line>=248) return;
++    if(!M.lineCyc0 && M.lineCyc0!==0) return;
++    const cyc=((cpu.cycles||0)-M.lineCyc0)|0;
++    if(cyc<0 || cyc>113) return;
++    if(gtSeg.n>=gtSeg.x.length) return;
++    const idx=gtSeg.n++;
++    gtSeg.x[idx]=gtiaSegXFromCycle(cyc);
++    gtSeg.r[idx]=g&0xFF;
++    gtSeg.v[idx]=v&0xFF;
++    if(M.vbxeDebug && M.gtiaSegDebugCount<20 && (g>=0x16 || g===0x1A || g===0x1B)){
++      M.gtiaSegDebugCount++;
++      M.vbxeDebug('GTIA COLOR SEG BUILD2IS line='+M.line+' cyc='+cyc+' x='+gtSeg.x[idx]+' reg=$D0'+hx2(g)+' val=$'+hx2(v));
++    }
++  }
+   M.lineCyc0=0;
+   // ---- snapshot render-registru (stav v HBLANKU radky) ----
+   const SNAP_G=['colbk','prior','grafm','sizem','gractl'];
+@@ -2409,7 +2455,7 @@
+     // COLPF/COLBK. Stary model bral snapshot pred temito zapisy, a tim vznikaly pruhy/barvy mimo.
+     // Zapisy v prvnich ~28 cyklech aktualni radky plati pro tuto radku, pozdejsi az pro dalsi.
+     const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+28;
+-    M.lineCyc0=lineStart; chSeg.n=0; chSeg.base=antic.chbase;
++    M.lineCyc0=lineStart; chSeg.n=0; chSeg.base=antic.chbase; gtSeg.n=0;
+     while(cpu.cycles<snapAt){
+       if(M.wsync){
+         M.wsync=false;
+@@ -5362,7 +5408,7 @@
+     log('AtariHelp.eu EMU-10 BUILD2IM_VBXE_PRIORITY_XCOLOR_SAFE pripraven - zaklad zustava BUILD2IF/APK/2IL bez sedeho HL obdelniku. Pridan obecny XDL priority pass nad ulozenou ANTIC/PMG mapou celeho frame a XCOLOR PF1 hires zachazeni. Zadny hack na jednu hru, UI/loader/joystick/RAM320/NET HRY beze zmeny.');
+     log('AtariHelp.eu EMU-10 BUILD2IP_VBXE_OVSCROLL_MAP_PF3_SAFE pripraven - navazuji na bezpecny BUILD2IO. Pridavam obecny OVSCRL pro SR/LR/HR graficky overlay a opravu atributove mapy: PF3 se uz nesmi prebarvovat jako PF2. Zadny hack na HL/Popeye/Commando/W3D/Postcard.');
+     log('AtariHelp.eu EMU-10 BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE pripraven - XDL enable/adresa az na VSYNC, non-VBXE XEX/ATR tvrde vypne VBXE overlay, audit opraven na IO operand $D640-$D6FF a xexInfo uz nepada na hx4.');
+-    log('AtariHelp.eu EMU-10 BUILD2IR_G2F_DLI_WSYNC_SAFE pripraven - obecna oprava WSYNC/DLI: STA WSYNC zastavi CPU do dalsi scanline, ne do cyklu 105 stejne radky. Cili Postcard/G2F/rastry testujeme jako ANTIC+GTIA problem, ne dalsi VBXE scroll pokus.');
++    log('AtariHelp.eu EMU-10 BUILD2IS_G2F_GTIA_COLOR_SEGMENTS_SAFE pripraven - navazuje na BUILD2IR. Pridana obecna paprskova emulace COLPF/COLBK/PRIOR zmen behem jedne scanline pro G2F/DLI obrazky typu Postcard. VBXE core, UI, joystick, kazeta beze zmen.');
+     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
+     log('BUILD2HL_VBXE_BCB21_BLITTER_CORE: BCB21 oprava: VBXE blitter BCB ma podle fx.pdf 21 bajtu, ne 19. Opravuji parse source/dest/step/width/height/masks/zoom/pattern/control a chain stride 21. RAM320 + tlumeny log z HK zustavaji. Bez hernich hacku.');
+     requestAnimationFrame(tick);

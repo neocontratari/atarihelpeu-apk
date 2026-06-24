@@ -1,0 +1,14 @@
+NAVOD PRO RENEHO - BUILD2IS
+
+1) ZIP rozbal do rootu projektu pres GitHub Desktop / lokalni slozku projektu.
+2) Prepis soubory.
+3) Commit text:
+   BUILD2IS G2F GTIA color segments safe
+4) Sestav APK jako obvykle.
+5) Testuj hlavne:
+   - Postcard_Atari_Rocky.xex
+   - HL / Heartlight jen kontrola sedeho obdelniku
+   - Commando intro jen informacne
+6) Posli zpet screenshot Postcard + ulozeny LOG/CHYBA.
+
+BASIC / Altirra testovaci kody JSOU STEJNE.

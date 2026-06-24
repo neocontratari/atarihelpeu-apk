@@ -1,0 +1,52 @@
+AtariHelp.eu EMU-10 BUILD2IS_G2F_GTIA_COLOR_SEGMENTS_SAFE
+
+ZAKLAD:
+- Navazuje na BUILD2IR_G2F_DLI_WSYNC_SAFE.
+- BUILD2IR podle testu Postcard zlepsil obraz trochu, ale barvy porad nejsou a pruhy zustaly.
+- BUILD2IS proto nejde znovu do VBXE XDL/OVSCROLL, protoze Postcard_Atari_Rocky.xex je podle logu bez VBXE signatury a bez IO operandu $D640-$D6FF.
+- Cili je to ANTIC/GTIA/G2F/DLI problem, ne VBXE overlay problem.
+
+CO JE ZMENENO:
+- app/src/main/assets/emu_vbxe/index.html
+
+HLAVNI OPRAVA:
+- Pridana obecna paprskova emulace zmen GTIA barev behem jedne scanline.
+- Sleduji se zapisy do COLPM0-COLPM3, COLPF0-COLPF3, COLBK a PRIOR v prubehu radky.
+- Renderer umi pouzit segmenty COLPF/COLBK podle X pozice v radce.
+- Cilem jsou G2F/DLI obrazky, kde program meni barvy nejen mezi radky, ale i behem radky.
+
+PROC TO DELAM:
+- Postcard ukazuje lepsi geometrii po BUILD2IR, ale chybi barvy a zustavaji pruhy.
+- To odpovida chybejicimu/nekorektnimu mid-scanline GTIA color timing, ne dalsimu VBXE scrollu.
+
+CO JSEM NEMENIL:
+- VBXE BCB21 core zustava z predchozi vetve.
+- VBXE XDL/VRAM/MEMAC cesta zustava zachovana.
+- UI, skin, joystick, klavesnice, kazeta, NET HRY beze zmen.
+- Zadny hack na Postcard, Commando, Popeye, HL ani W3D podle nazvu souboru.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+TEST PLAN:
+1) Postcard_Atari_Rocky.xex
+   - Hlavni test.
+   - Ocekavany posun: barvy v obrazcich / mensi pruhovani / lepsi G2F raster.
+   - Pokud se zlepsi barvy, spravny smer je dal ladit GTIA color segment timing.
+   - Pokud zadna zmena, je nutny dalsi audit DLI/NMI casovani a ANTIC display-list fetch.
+
+2) HL / Heartlight
+   - Jen rychla kontrola, ze se nevratil sedy obdelnik.
+
+3) Commando intro
+   - Jen informacne, zda Arnold problikne.
+   - Tenhle build neni primarne Commando fix.
+
+NETESTOVAT POVINNE:
+- W3D, Textmode, DACTest ted nejsou povinne. Nehonit testera v tom samem kolecku.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2IS_G2F_GTIA_COLOR_SEGMENTS_SAFE pripraven
+- GTIA COLOR SEG BUILD2IS line=... cyc=... x=... reg=$D0.. val=$..
