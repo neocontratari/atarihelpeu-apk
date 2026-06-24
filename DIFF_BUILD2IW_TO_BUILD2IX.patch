@@ -1,0 +1,174 @@
+--- /tmp/index_iw.html	2026-06-24 11:18:18.000833569 +0000
++++ /tmp/index_ix.html	2026-06-24 11:18:18.013952557 +0000
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IW</title>
++<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IX</title>
+ <style>
+ :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
+ *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+@@ -352,11 +352,11 @@
+    jednou na celou scanline, takze tyhle barevne GTIA useky nikdy nenakreslil.
+    Oprava je obecna: ANTIC mode F se rozhoduje pro kazdy 4px nibble podle GPRIOR v dane X pozici,
+    vcetne COLBK/COLPF/COLPM z GTIA segmentu. Bez hacku na Postcard nebo jmeno hry. */
+-/* BUILD2IW_VBXE_BCB19_DUAL_DECODE_SAFE:
+-   Po Tetris VBXE testu a znovucteni fx.pdf/vbxefx.ah zastavuji dalsi barevne odhady.
+-   Oficialni FX BCB ma 19 bajtu; EMU mel tvrdou BCB21 interpretaci a chain skakal po 21 bajtech.
+-   Blitter ted dekoduje BCB19 i BCB21, vybere pres skóre realnejsi variantu a chain posouva spravnym stride.
+-   Cíl: realnejsi VBXE blitter pro Tetris, Popeye, Commando a dalsi XEX bez hacku na jmeno hry. */
++/* BUILD2IX_VBXE_BCB19_REVERT_BCB21_SAFE:
++   BUILD2IW byl destruktivni vetev: BCB19-auto vybral falesny BCB19 a spoustel velke const fill
++   blity 258x256 pres cele VBXE banky. To rozbilo Tetris/Popeye/Commando.
++   BUILD2IX proto VRACI blitter na posledni bezpecne BCB21 chovani z BUILD2IV a pridava jasny log.
++   BCB19 zustava pouze predmetem budouciho presneho offline auditu, ne vykonavani v emu. */
+ 
+ /* BUILD2IU_CPU_BRANCH_NMI_TIMING_SAFE:
+    Po testu BUILD2IT se Postcard/HL/Popeye/Commando vizualne nepohnuly.
+@@ -1273,69 +1273,16 @@
+       M.vbxeDebug('VBXE MEMAC '+name+'=$'+hx2(v)+' '+((v&0x80)?'ON':'OFF')+' bank='+(v&(off<0x4E?0x3F:0x1F)));
+     }
+   }
+-  function vbxeBlitReadBCB(addr,len){
+-    // BUILD2IW: oficialni FX dokumentace definuje BCB jako 19 bajtu.
+-    // Stary EMU-10 mel BCB21 parser; ponechavam ho jen jako fallback pro kompatibilitu,
+-    // ale primarne se parsuje/skóruje BCB19. Tohle je obecny blitter fix, ne hack na hru.
+-    len=len||19;
+-    var b=new Uint8Array(len);
+-    for(var i=0;i<len;i++) b[i]=vbxeVramRead(addr+i);
++  function vbxeBlitReadBCB(addr){
++    // BUILD2IX: po testu BUILD2IW je potvrzene, ze BCB19-auto dekodovani vybere falesny blok.
++    // Vraci se posledni bezpecny BCB21 parser z BUILD2IV/HL.
++    // DULEZITE: pokud log z testu ukaze BCB19, neni to BUILD2IX nebo je ve slozce stary index.
++    var b=new Uint8Array(21);
++    for(var i=0;i<21;i++) b[i]=vbxeVramRead(addr+i);
+     return b;
+   }
+   function vbxeSign12(v){ v&=0x0FFF; return (v&0x0800) ? (v-0x1000) : v; }
+   function vbxeSign8(v){ v&=0xFF; return (v&0x80) ? (v-0x100) : v; }
+-  function vbxeDecodeBCB19(addr){
+-    var b=vbxeBlitReadBCB(addr,19);
+-    return {
+-      layout:'BCB19', stride:19, addr:addr&0x7FFFF,
+-      src:(b[0]|(b[1]<<8)|((b[2]&0x07)<<16))&0x7FFFF,
+-      srcStep:vbxeSign12(b[3]|((b[4]&0x0F)<<8)), srcStepX:1,
+-      dst:(b[5]|(b[6]<<8)|((b[7]&0x07)<<16))&0x7FFFF,
+-      dstStep:vbxeSign12(b[8]|((b[9]&0x0F)<<8)), dstStepX:1,
+-      w:(b[10]|((b[11]&1)<<8))+1, h:b[12]+1,
+-      andm:b[13], xorm:b[14], collm:b[15], zoom:b[16], patt:b[17], ctrl:b[18]
+-    };
+-  }
+-  function vbxeDecodeBCB21(addr){
+-    var b=vbxeBlitReadBCB(addr,21);
+-    return {
+-      layout:'BCB21', stride:21, addr:addr&0x7FFFF,
+-      src:(b[0]|(b[1]<<8)|((b[2]&0x07)<<16))&0x7FFFF,
+-      srcStep:vbxeSign12(b[3]|((b[4]&0x0F)<<8)), srcStepX:vbxeSign8(b[5]),
+-      dst:(b[6]|(b[7]<<8)|((b[8]&0x07)<<16))&0x7FFFF,
+-      dstStep:vbxeSign12(b[9]|((b[10]&0x0F)<<8)), dstStepX:vbxeSign8(b[11]),
+-      w:(b[12]|((b[13]&1)<<8))+1, h:b[14]+1,
+-      andm:b[15], xorm:b[16], collm:b[17], zoom:b[18], patt:b[19], ctrl:b[20]
+-    };
+-  }
+-  function vbxeBCBScore(o){
+-    var score=0, mode=o.ctrl&7, zx=(o.zoom&7)+1, zy=((o.zoom>>4)&7)+1;
+-    if(o.w>=1 && o.w<=512) score+=20; else score-=10000;
+-    if(o.h>=1 && o.h<=256) score+=20; else score-=10000;
+-    if(mode<=6) score+=8; else score-=80;
+-    if((o.srcStep>=-4095 && o.srcStep<=4095) && (o.dstStep>=-4095 && o.dstStep<=4095)) score+=8;
+-    if(zx>=1 && zx<=8 && zy>=1 && zy<=8) score+=4;
+-    if(o.andm===0xFF || o.andm===0x00) score+=8;
+-    if(o.dstStep===320 || o.srcStep===320) score+=18;       // bezny SR 320 bajtu/radek (Tetris/VBXE bitmapy)
+-    if(o.dstStep===512 || o.srcStep===512) score+=10;       // 512 stride casty u VBXE tile/sprite bufferu
+-    if(o.w===320 || o.w===160 || o.w===40 || o.w===24 || o.w===16 || o.w===8) score+=8;
+-    if(o.h===240 || o.h===21 || o.h===16 || o.h===8) score+=8;
+-    if(o.dstStepX===0 || Math.abs(o.dstStepX)>8) score-=12;
+-    if(o.srcStepX===0 || Math.abs(o.srcStepX)>8) score-=12;
+-    if(o.layout==='BCB19') score+=6; // oficialni FX BCB je 19 bajtu; BCB21 je jen fallback
+-    return score;
+-  }
+-  function vbxeDecodeBCBAuto(addr){
+-    var b19=vbxeDecodeBCB19(addr), b21=vbxeDecodeBCB21(addr);
+-    var s19=vbxeBCBScore(b19), s21=vbxeBCBScore(b21);
+-    var pick=(s19>=s21)?b19:b21;
+-    pick.score=s19>=s21?s19:s21; pick.altScore=s19>=s21?s21:s19;
+-    if(!vbxe.bcbDecodeLogged && M.vbxeDebug){
+-      vbxe.bcbDecodeLogged=true;
+-      M.vbxeDebug('VBXE BCB DECODE BUILD2IW: auto '+pick.layout+' score='+pick.score+' alt='+pick.altScore+' src=$'+pick.src.toString(16).toUpperCase().padStart(5,'0')+' dst=$'+pick.dst.toString(16).toUpperCase().padStart(5,'0')+' w='+pick.w+' h='+pick.h+' stride='+pick.stride+'.');
+-    }
+-    return pick;
+-  }
+   function vbxeCollisionSr(dv,collm){
+     dv&=0xFF; collm&=0xFF;
+     if(!collm || dv===0) return false;
+@@ -1478,11 +1425,15 @@
+     var totalBytes=0, blocks=0, startAdr=adr, copied=0, totalDestOps=0, chainStillNext=false;
+ 
+     for(var bi=0;bi<CHAIN_LIMIT;bi++){
+-      var b=vbxeDecodeBCBAuto(adr);
+-      var src=b.src, srcStep=b.srcStep, srcStepX=b.srcStepX;
+-      var dst=b.dst, dstStep=b.dstStep, dstStepX=b.dstStepX;
+-      var w=b.w, h=b.h;
+-      var andm=b.andm, xorm=b.xorm, collm=b.collm, zoom=b.zoom, patt=b.patt, ctrl=b.ctrl;
++      var b=vbxeBlitReadBCB(adr);
++      var src=(b[0]|(b[1]<<8)|((b[2]&0x07)<<16))&0x7FFFF;
++      var srcStep=vbxeSign12(b[3]|((b[4]&0x0F)<<8));
++      var srcStepX=vbxeSign8(b[5]);
++      var dst=(b[6]|(b[7]<<8)|((b[8]&0x07)<<16))&0x7FFFF;
++      var dstStep=vbxeSign12(b[9]|((b[10]&0x0F)<<8));
++      var dstStepX=vbxeSign8(b[11]);
++      var w=(b[12]|((b[13]&1)<<8))+1, h=b[14]+1;
++      var andm=b[15], xorm=b[16], collm=b[17], zoom=b[18], patt=b[19], ctrl=b[20];
+       var mode=ctrl&7, next=!!(ctrl&8), sx=!!(ctrl&0x10), sy=!!(ctrl&0x20), dx=!!(ctrl&0x40), dy=!!(ctrl&0x80);
+       var constant=(andm===0); // fx.pdf: constant source iff blt_and_mask == 0
+       // BUILD2HL: fx.pdf/vbxefx.ah - blt_zoom: b0-b2 ZOOMX, b3 INTLVE, b4-b6 ZOOMY, b7 nepouzity.
+@@ -1502,13 +1453,13 @@
+           ' dst=$'+dst.toString(16).toUpperCase().padStart(5,'0')+
+           ' w='+w+' h='+h+' mode='+mode+' next='+(next?1:0)+' const='+(constant?1:0)+
+           ' ssy='+srcStep+' ssx='+srcStepX+' dsy='+dstStep+' dsx='+dstStepX+
+-          ' zoom=$'+hx2(zoom)+' zx='+zoomX+' zy='+zoomY+' intlv='+(intlv?1:0)+' patt=$'+hx2(patt)+' '+b.layout+' stride='+b.stride);
++          ' zoom=$'+hx2(zoom)+' zx='+zoomX+' zy='+zoomY+' intlv='+(intlv?1:0)+' patt=$'+hx2(patt)+' BCB21');
+       } else if(vbxe.bltStarts===13 && M.vbxeDebug){
+         M.vbxeDebug('VBXE BLITTER FAST: detailni log startu potlacen, dal jen souhrny.');
+       }
+       if((zoom!==0 || patt!==0) && !vbxe.blitFeatureLogged && M.vbxeDebug){
+         vbxe.blitFeatureLogged=true;
+-        M.vbxeDebug('VBXE BLITTER FEATURE BUILD2IW: BCB19/BCB21 auto-decode + ZOOM/INTLVE/PATTERN + source snapshot; zadny screen-paint.');
++        M.vbxeDebug('VBXE BLITTER FEATURE BUILD2IX: BCB21 ONLY rollback po rozbitem BUILD2IW + ZOOM/INTLVE/PATTERN + source snapshot; zadny screen-paint.');
+       }
+ 
+       // BUILD2HL: Popeye po HF narazil na velke, ale porad smysluplne blity nad 1M operaci.
+@@ -1559,7 +1510,7 @@
+       }
+ 
+       totalBytes+=opBytes;
+-      adr=(adr+b.stride)&0x7FFFF;
++      adr=(adr+21)&0x7FFFF;
+       chainStillNext=next;
+       if(!next) break;
+     }
+@@ -5509,19 +5460,20 @@
+     buildOSK(document.getElementById('osk'));
+     bindKeyboard();
+     updateTapeCounter();
+-    log('AtariHelp.eu EMU-10 BUILD2IW_VBXE_BCB19_DUAL_DECODE_SAFE pripraven.');
++    log('AtariHelp.eu EMU-10 BUILD2IX_VBXE_BCB19_REVERT_BCB21_SAFE pripraven - BUILD2IW zrusen, BCB19-autodecode vypnut, blitter vracen na BCB21 z BUILD2IV.');
+     log('AtariHelp.eu EMU-10 BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX pripraven - HP hitboxy zustaly, HELP manual a MENU navrat opraveny, landscape obraz aspect-fit bez orezani + FIRE/DOOR v bocnim prostoru; core BUILD2HL beze zmen.');
+     log('AtariHelp.eu EMU-10 BUILD2HR_VBXE_POWER_ON_130XE_HELP_FIX pripraven - POWER BASIC je neviditelny hitbox na napisu 130XE + jemna zelena LED; HELP navod doplnen; VBXE core BUILD2HL beze zmen.');
+     log('AtariHelp.eu EMU-10 BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE pripraven - NET HRY zustava, XEX/OBX turbo zustava a nove ma ATR/D1 rychlejsi SIO jen pri diskovem prenosu. Landscape HQ safe. VBXE core BUILD2HL GOLD beze zmen.');
+-    log('AtariHelp.eu EMU-10 BUILD2IW_VBXE_BCB19_DUAL_DECODE_SAFE pripraven - blitter umi oficialni BCB19 podle FX dokumentace a BCB21 fallback jen pri lepsim score. UI/loader/skin beze zmen.');
++    log('AtariHelp.eu EMU-10 BUILD2IF_VBXE_HR_CANVAS_CHAIN_SAFE pripraven - zachovan BUILD2IE ostrejsi Textmode, pridavam nativni 640px HR canvas pro VBXE HR overlay a zvysuji bezpecny BCB chain limit pro Commando/Popeye. W3D barvy, palety, BCB21, RAM320, loader, UI a hitboxy zustavaji.');
+     log('AtariHelp.eu EMU-10 BUILD2IM_VBXE_PRIORITY_XCOLOR_SAFE pripraven - zaklad zustava BUILD2IF/APK/2IL bez sedeho HL obdelniku. Pridan obecny XDL priority pass nad ulozenou ANTIC/PMG mapou celeho frame a XCOLOR PF1 hires zachazeni. Zadny hack na jednu hru, UI/loader/joystick/RAM320/NET HRY beze zmeny.');
+     log('AtariHelp.eu EMU-10 BUILD2IP_VBXE_OVSCROLL_MAP_PF3_SAFE pripraven - navazuji na bezpecny BUILD2IO. Pridavam obecny OVSCRL pro SR/LR/HR graficky overlay a opravu atributove mapy: PF3 se uz nesmi prebarvovat jako PF2. Zadny hack na HL/Popeye/Commando/W3D/Postcard.');
+     log('AtariHelp.eu EMU-10 BUILD2IQ_VBXE_VSYNC_RESET_NONVBXE_SAFE pripraven - XDL enable/adresa az na VSYNC, non-VBXE XEX/ATR tvrde vypne VBXE overlay, audit opraven na IO operand $D640-$D6FF a xexInfo uz nepada na hx4.');
+     log('AtariHelp.eu EMU-10 BUILD2IS_G2F_GTIA_COLOR_SEGMENTS_SAFE pripraven - navazuje na BUILD2IR. Pridana obecna paprskova emulace COLPF/COLBK/PRIOR zmen behem jedne scanline pro G2F/DLI obrazky typu Postcard. VBXE core, UI, joystick, kazeta beze zmen.');
+     log('AtariHelp.eu EMU-10 BUILD2IU_CPU_BRANCH_NMI_TIMING_SAFE pripraven - navazuje na BUILD2IT. Opraveny presne cykly 6502 vetvi (taken/pagecross) a NMI/IRQ service jako samostatny step. Cil: G2F/Postcard raster timing, HL text barvy, bez hacku na jednu hru.');
+     log('AtariHelp.eu EMU-10 BUILD2IV_GTIA_DYNAMIC_GPRIOR_SAFE pripraven - oprava neni odhad: Postcard/G2F kernel prepina $D01B behem radky, proto ANTIC F renderer bere GTIA 9/10/11 rezim podle X pozice, ne jednou pro celou scanline.');
++    log('BUILD2IX_VBXE_BCB19_REVERT_BCB21_SAFE: v logu nesmi byt stary IW BCB-decode marker ani BCB19-auto vykonavani. Pokud je, testuje se spatny/stary index.');
+     log('BUILD2FP AUDIT: grafika vracena na graficky zaklad APK. Hledani duchu: EMULATOR i START+OPTION jsou jen neviditelne hit-zony nad PNG; bez dalsich prekryvu.');
+-    log('BUILD2IW_VBXE_BCB19_DUAL_DECODE_SAFE: oprava blitteru podle FX dokumentace - BCB19 je primarni, BCB21 zustava fallback. Chain stride se pocita podle realne zvoleneho layoutu. Bez hernich hacku.');
++    log('BUILD2IX_VBXE_BCB19_REVERT_BCB21_SAFE: blitter je zpet BCB21-only jako v BUILD2IV; destruktivni BCB19 auto z BUILD2IW je odstranen. Bez hernich hacku.');
+     requestAnimationFrame(tick);
+     if(!AH_AUTORUN_FROM_NET){ setTimeout(function(){ var p=document.getElementById('btnPower'); if(p) p.click(); }, 120); } else { log('NET AUTORUN: auto POWER BASIC vypnut, cekam na soubor z webu.'); }
+   });

@@ -1,0 +1,41 @@
+AtariHelp.eu EMU-10 / VBXE 130XE
+BUILD2IX_VBXE_BCB19_REVERT_BCB21_SAFE
+
+DUVOD:
+BUILD2IW byl spatny smer. Test Reného ukazal, ze po zapnuti BCB19 auto-decode se Tetris VBXE, Commando i Popeye rozpadly na caj / nenajely. Log BUILD2IW potvrzuje, ze auto vybral BCB19 na $000E0 a spoustel velke const fill blity 258x256 pres cele VBXE banky. To byl destruktivni falesny BCB19 vyklad, ne realna oprava.
+
+CO JE ZMENENE:
+- Zaklad je vracen na BUILD2IV, tedy posledni stav pred destruktivnim BCB19 auto-decode.
+- BCB19 auto-decode z BUILD2IW je odstranen z vykonavani.
+- Blitter je zpet BCB21-only jako v BUILD2IV/BUILD2HL.
+- Pridan jasny BUILD2IX log, aby bylo videt, ze se netestuje stary BUILD2IW.
+- GTIA dynamic GPRIOR oprava z BUILD2IV zustava zachovana.
+- UI, klavesnice, joystick, kazeta, NET HRY, loader, skin beze zmen.
+
+CO TO NENI:
+- Neni to hack na Tetris, Popeye, Commando, HL ani Postcard.
+- Neni to screen-paint.
+- Neni to dalsi slepy barevny pokus.
+- Neni to finalni VBXE oprava; je to nutny rollback spatne vetve a vycisteni zakladu.
+
+KODY JSOU ZMENENE:
+app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO TESTOVAT:
+1) Tetris VBXE - hlavni test: musi byt zpatky minimalne na stav pred BUILD2IW, tedy ne caj z BCB19.
+2) Popeye - nesmi byt horsi / nesmi zustat rozbity jako BUILD2IW.
+3) Commando - hra musi znovu bezet; Arnold porad muze chybet, ale nesmi byt rozbita hra.
+4) HL / Heartlight - rychla kontrola, ze se nevratil sedy obdelnik.
+
+V LOGU HLEDEJ:
+AtariHelp.eu EMU-10 BUILD2IX_VBXE_BCB19_REVERT_BCB21_SAFE pripraven
+BUILD2IX_VBXE_BCB19_REVERT_BCB21_SAFE: blitter je zpet BCB21-only
+
+V LOGU NESMI BYT:
+VBXE BCB DECODE BUILD2IW
+auto BCB19
+
+POZNAMKA PRO DALSI KROK:
+BCB19 podle dokumentace existuje, ale tento projekt ma realne herni buildy, kde dosavadni auto-volba vybrala falesny BCB19 a znicila VRAM. Pokud se BCB19 ma znovu resit, nesmi se nejdriv vykonavat. Musi se udelat offline audit konkretniho BCB memory dumpu: adresa startu, 19/21 interpretace, NEXT, src/dst/width/height, a porovnani se znamym vystupem Altirry. Do te doby vykonavat jen BCB21 safe baseline.

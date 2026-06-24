@@ -1,0 +1,7 @@
+NAVOD - BUILD2IX
+1. Zavri Android Studio / emulator build, pokud drzi soubory.
+2. ZIP rozbal primo pres root projektu v GitHub Desktop repozitari.
+3. Potvrd prepsani souboru.
+4. V GitHub Desktop zkontroluj zmeny a udelej commit:
+   BUILD2IX_VBXE_BCB19_REVERT_BCB21_SAFE
+5. Sestav APK a testuj jen Tetris VBXE, Popeye, Commando, HL.
