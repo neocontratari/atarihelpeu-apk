@@ -1,0 +1,19 @@
+NAVOD PRO RENEHO - BUILD2IU ZIP OVERLAY
+
+1) Rozbal ZIP overlay do korene projektu v GitHub Desktop repozitari.
+2) Potvrd prepsani souboru.
+3) V GitHub Desktop zkontroluj zmeny.
+4) Commit message doporuceni:
+   BUILD2IU CPU branch/NMI timing safe
+5) Buildni APK stejnym postupem jako minule.
+6) Testuj jen:
+   - Postcard_Atari_Rocky.xex
+   - HL / Heartlight
+   - Popeye kratce
+   - Commando intro kratce
+7) Posli zpet screen + LOG / CHYBA.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.

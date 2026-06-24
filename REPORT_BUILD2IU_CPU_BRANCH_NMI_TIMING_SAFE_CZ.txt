@@ -1,0 +1,61 @@
+AtariHelp.eu EMU-10 / VBXE 130XE
+BUILD2IU_CPU_BRANCH_NMI_TIMING_SAFE
+Datum: 2026-06-24
+
+VYCHOZI STAV
+- Navazuje na BUILD2IT_G2F_PMG_PRIORITY_COLOR_SAFE.
+- Reneho test BUILD2IT: Postcard_Atari_Rocky.xex bez viditelne zmeny a bez barev, HL stale bez sedeho obdelniku, Popeye beze zmen, Commando intro stale bez Arnolda.
+- Proto se zastavuje dalsi slepe kolecko GTIA/PF/PMG barev.
+
+HLAVNI ZMENA
+- Opraven obecny CPU 6502 timing vetveni:
+  * vzata vetev BPL/BMI/BVC/BVS/BCC/BCS/BNE/BEQ = 3 cykly
+  * prekroceni stranky pri vzate vetvi = +1 cyklus
+  * nevzata vetev zustava 2 cykly
+- Opraveno CPU service(): NMI/IRQ obsluha je samostatna udalost za 7 cyklu.
+  Stary stav v jednom CPU step provedl interrupt service a hned jeste opcode na nove PC.
+
+PROC TOHLE
+- G2F/Postcard neni VBXE test, ale ANTIC/GTIA raster kernel.
+- Postcard synchronizuje obraz pomoci VCOUNT/WSYNC a presne casovanych BNE/BEQ/BPL smycek.
+- V BUILD2IT byly vsechny vzate vetve stale jen 2 cykly, coz posouva zapisy COLPF/COLPM/PRIOR proti paprsku.
+- To je obecna chyba jadra, ne hack na Postcard.
+
+KODY JSOU ZMENENE
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+UI / joystick / klavesnice / kazeta / NET HRY / skin JSOU BEZE ZMENY.
+VBXE blitter/XDL renderer zustava z BUILD2IT, neni menen.
+
+TEST PLAN
+1) Postcard_Atari_Rocky.xex
+   - hlavni test
+   - sleduj, jestli se vrati barvy nebo se zmensi/posunou pruhy
+   - pokud se obraz vyrazne zhorsil, posli screen + log
+
+2) HL / Heartlight
+   - jen rychla kontrola
+   - sedy obdelnik se nesmi vratit
+   - predherni text muze byt porad jine barvy nez Altirra, ale nesmi se rozsypat
+
+3) Popeye
+   - jen kratce
+   - nesmi byt horsi nez BUILD2IT
+
+4) Commando intro
+   - jen jestli Arnold problikne nebo zustane beze zmen
+
+NETESTOVAT TED
+- W3D
+- Textmode
+- DACTest
+
+LOG MARKERY
+- AtariHelp.eu EMU-10 BUILD2IU_CPU_BRANCH_NMI_TIMING_SAFE pripraven
+- BUILD2IR/IS/IT markery mohou zustat v historii logu, ale aktualni build musi hlasit BUILD2IU.
+
+POZNAMKA PRO DALSI KROK
+Pokud BUILD2IU nepohne Postcardem, dalsi krok nema byt dalsi barevny pokus.
+Dalsi smer: ANTIC DL/LMS a DMA fetch timing + VCOUNT/WSYNC start-of-line audit, pripadne CPU page-cross cykly u indexed read instrukci.
