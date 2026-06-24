@@ -1,0 +1,69 @@
+AtariHelp.eu EMU-10 BUILD2JB_VBXE_MSEL_OVSHIFT_PRIORITY_SAFE
+================================================================
+
+Navazuje na: BUILD2JA_XEX_LIVE_MEMAC_PAYLOAD_SAFE
+Datum: 2026-06-24
+
+DUVOD:
+BUILD2JA potvrdil spravny smer: Tetris VBXE ma realny bitmapovy podklad, tedy XEX/MEMAC/VRAM cesta je spravna.
+Popeye, Commando/Arnold a Postcard se ale nepohnuly dost. Novy dodany VBXE dokument jasne ukazuje, ze dalsi chyba je v obecnem VBXE register modelu:
+- $D644 je MSEL, ne barevny index.
+- $D645-$D648 jsou MB0-MB3 buffery.
+- Palette RGB se ma zapsat az pri MSEL=$C0-$C3.
+- Priority P0-P3 se maji zapsat az pri MSEL=$80.
+- XDLC_OVATT byte 1 neni paleta; obsahuje OV_WIDTH a OV_COLOR_SHIFT.
+
+CO JE ZMENENE:
+- Opraven MSEL/RGB:
+  - MB0=$D645 = index barvy
+  - MB1=$D646 = R
+  - MB2=$D647 = G
+  - MB3=$D648 = B
+  - MSEL=$D644, hodnota $C0-$C3 provede zapis do palety 0-3.
+- Opraven MSEL/PRIORMAP:
+  - MSEL=$80 ulozi P0-P3 z MB0-MB3 do vnitrnich priority latchu.
+  - Atributova mapa uz bere P0-P3 z techto latchu, ne z falesnych registru $D655+.
+- Opraven XDLC_OVATT:
+  - bity 0-1 = OV_WIDTH
+  - bity 2-5 = OV_COLOR_SHIFT
+  - uz se nepouzivaji jako falesne ovPal/pfPal.
+- Overlay renderer pouziva OV_COLOR_SHIFT pro SR/LR/HR/text overlay pixely.
+- BUILD2JA MEMAC preload/live cesta zustava zachovana.
+- BCB19 auto decode zustava vypnuty.
+- BCB21 safe zustava.
+- UI, joystick, klavesnice, kazeta, NET HRY, skin beze zmen.
+
+KODY JSOU ZMENENE:
+app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+CO TESTOVAT:
+1) Tetris VBXE
+   - musi zustat bitmapove pozadi jako v BUILD2JA/IZ.
+   - jestli zmizi bitmapa nebo se zmeni na caj, poslat log.
+
+2) HL / Heartlight
+   - sedy obdelnik se nesmi vratit.
+   - sleduj hlavne predherni text: barvy se mohou zmenit, idealne se priblizi Altirre.
+   - hra musi zustat v poradku.
+
+3) Popeye
+   - sleduj, jestli se zlepsi barvy/vrstvy/texty.
+   - nesmi se vratit BUILD2IW caj.
+
+4) Commando
+   - hra musi dal bezet.
+   - sleduj, jestli se objevi/problikne Arnold nebo zmeni intro.
+
+5) Postcard / Mission jen kontrolne
+   - tento build neni primarne G2F/Postcard fix, ale MSEL/OVSHIFT muze ovlivnit barvy.
+
+LOG MARKERY:
+AtariHelp.eu EMU-10 BUILD2JB_VBXE_MSEL_OVSHIFT_PRIORITY_SAFE pripraven
+VBXE MSEL/RGB BUILD2JB
+VBXE MSEL/PRIORMAP BUILD2JB
+VBXE XDL REC ... ovShift=...
+
+DULEZITE:
+Tohle neni hack na Tetris/Popeye/Commando. Je to oprava obecne VBXE FX register logiky podle dokumentace.

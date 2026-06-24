@@ -1,0 +1,12 @@
+NAVOD - BUILD2JB overlay
+=======================
+
+1. Rozbal ZIP.
+2. Celou slozku app z overlaye pretahni do korene projektu v GitHub Desktop / working copy.
+3. Potvrd prepsani souboru.
+4. Commit zprava:
+   BUILD2JB VBXE MSEL OVSHIFT PRIORITY SAFE
+5. Pockej na GitHub Actions APK.
+6. Nainstaluj APK do NOX / mobilu.
+7. Otestuj Tetris VBXE, HL, Popeye, Commando, pripadne Postcard/Mission.
+8. Pri problemu posli screen + LOG/CHYBA.
