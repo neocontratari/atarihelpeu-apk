@@ -1,0 +1,134 @@
+--- /mnt/data/tmpdiff_ix/app/src/main/assets/emu_vbxe/index.html	2026-06-24 13:17:38.465859093 +0000
++++ /mnt/data/tmpdiff_iy/app/src/main/assets/emu_vbxe/index.html	2026-06-24 13:17:38.496094048 +0000
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IX</title>
++<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IY</title>
+ <style>
+ :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
+ *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+@@ -1138,7 +1138,9 @@
+     blitFeatureLogged:false, blitFeatureSuppressed:false, blitOverlapSnapshotLogged:false, bigBlitLogged:false,
+     preXdlProbeSkippedLogged:false, preXdlProbeAllowedLogged:false,
+     ioWritten:false, readbackLogged:false, coreReadLogged:false, legacyUnsafeIgnored:0,
+-    pal:new Uint32Array(4*256), psel:0, csel:0, cr:0, cg:0, cb:0, palWrites:0, palLogSuppressed:false
++    pal:new Uint32Array(4*256), psel:0, csel:0, cr:0, cg:0, cb:0, palWrites:0, palLogSuppressed:false,
++    // BUILD2IY: posledni realne nakreslena velka VBXE plocha z blitteru; pouzije se jen jako fallback, kdyz XDL bezi, ale parser zatim nevidi zadny viditelny record.
++    surfaceValid:false, surfaceAddr:0, surfaceStep:320, surfaceWidth:320, surfaceHeight:240, surfacePal:1, surfaceMode:1, surfaceScore:0, surfaceLogged:false, surfaceFallbackLogged:false
+   };
+   M.vbxe=vbxe;
+   M.vbxeDebug=null;
+@@ -1158,6 +1160,7 @@
+     vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false;
+     vbxe.xdlMapApplyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false;
+     vbxe.xdlParseCount=0; vbxe.xdlScanCount=0; vbxe.lastXdlLogScan=0;
++    vbxe.surfaceValid=false; vbxe.surfaceAddr=0; vbxe.surfaceStep=320; vbxe.surfaceWidth=320; vbxe.surfaceHeight=240; vbxe.surfaceScore=0; vbxe.surfaceLogged=false; vbxe.surfaceFallbackLogged=false;
+     if(M.vbxePfClassFrame) M.vbxePfClassFrame.fill(0);
+     if(M.vbxePmMaskFrame) M.vbxePmMaskFrame.fill(0);
+     vbxeInitPaletteDefaults();
+@@ -1413,6 +1416,31 @@
+     return copied;
+   }
+ 
++  function vbxeRememberSurfaceCandidate(dst,w,h,dstStep,constant,src,mode){
++    // BUILD2IY: presny opak predchoziho hadani. Tady si pouze pamatuji skutecny velky blit do VBXE VRAM.
++    // Pouziti: kdyz XDL parser vidi jen OFF/neplatny seznam, ale program realne vykreslil surface do VRAM,
++    // smi se jako fallback zobrazit prave tato plocha. Typicky Mad Pascal/Tebe VBXE unit: BMP -> vram+88*320.
++    w|=0; h|=0; dst&=0x7FFFF; dstStep=(dstStep|0)||320;
++    var area=w*h;
++    if(area<8192 || w<64 || h<32) return;
++    if(w>1024 || h>1024) return;
++    // Konstantni velke clear/fill si nechavam jen slabsi; realny copy ma prednost.
++    var score=area + (constant?0:1000000) + (mode===0?10000:0);
++    if(score < (vbxe.surfaceScore||0) && !constant) return;
++    vbxe.surfaceValid=true;
++    vbxe.surfaceAddr=dst;
++    vbxe.surfaceStep=Math.abs(dstStep)||320;
++    vbxe.surfaceWidth=w;
++    vbxe.surfaceHeight=Math.min(240,h);
++    vbxe.surfacePal=(vbxe.regs[0x45]&3) || 1;
++    vbxe.surfaceMode=1; // byte-per-pixel/SR fallback; HR/TEXT XDL ma vlastni render a sem nespadne
++    vbxe.surfaceScore=score;
++    if(!vbxe.surfaceLogged && M.vbxeDebug){
++      vbxe.surfaceLogged=true;
++      M.vbxeDebug('VBXE SURFACE CANDIDATE BUILD2IY: realny blit dst=$'+dst.toString(16).toUpperCase().padStart(5,'0')+' w='+w+' h='+h+' step='+vbxe.surfaceStep+' const='+(constant?1:0)+' src=$'+(src&0x7FFFF).toString(16).toUpperCase().padStart(5,'0'));
++    }
++  }
++
+   function vbxeRunBlitter(){
+     var adr=(vbxe.regs[0x50]|(vbxe.regs[0x51]<<8)|((vbxe.regs[0x52]&0x07)<<16))&0x7FFFF;
+     vbxe.bltStarts++;
+@@ -1507,6 +1535,7 @@
+         }
+         vbxe.renderBase = dst & 0x7C000;
+         vbxe.renderDirty = true;
++        vbxeRememberSurfaceCandidate(dst,w,h,dstStep,constant,src,mode);
+       }
+ 
+       totalBytes+=opBytes;
+@@ -3092,6 +3121,43 @@
+     return drew;
+   }
+ 
++  function vbxeRenderSurfaceFallback(reason){
++    // BUILD2IY: fallback jen z realne VBXE VRAM, zadny obrazek podle nazvu hry.
++    if(!vbxe.surfaceValid) return 0;
++    var w=vbxe.surfaceWidth|0, h=vbxe.surfaceHeight|0, step=vbxe.surfaceStep|0;
++    if(w<64 || h<32 || step<=0) return 0;
++    // Vyber viditelne sirky podle realneho blitu. 320 je nejbeznejsi Mad Pascal/VGAMed.
++    var drawW = (w>=600 ? 640 : (w>=330 ? 336 : (w>=300 ? 320 : (w>=250 ? 256 : w))));
++    var srcW = Math.min(w, drawW);
++    var fb=M.fb, drew=0, palNo=(vbxe.surfacePal||1)&3;
++    var x0=(384-Math.min(drawW,384))>>1; if(x0<0) x0=0;
++    var base=vbxe.surfaceAddr&0x7FFFF;
++    var lines=Math.min(240,h);
++    for(var yy=0; yy<lines; yy++){
++      var src=(base + yy*step)&0x7FFFF;
++      var gy=yy;
++      if(drawW>=384){
++        for(var x=0;x<384;x++){
++          var sx=(x*srcW/drawW)|0;
++          var v=vbxeVramRead((src+sx)&0x7FFFF)&0xFF;
++          if(!vbxeTransparent8(v)){ fb[gy*384+x]=vbxeColor(v,palNo); drew++; }
++        }
++      } else {
++        for(var x2=0;x2<Math.min(drawW,384);x2++){
++          var sx2=(x2*srcW/drawW)|0;
++          var v2=vbxeVramRead((src+sx2)&0x7FFFF)&0xFF;
++          var px=x0+x2;
++          if(px>=0 && px<384 && !vbxeTransparent8(v2)){ fb[gy*384+px]=vbxeColor(v2,palNo); drew++; }
++        }
++      }
++    }
++    if(drew>0 && !vbxe.surfaceFallbackLogged && M.vbxeDebug){
++      vbxe.surfaceFallbackLogged=true;
++      M.vbxeDebug('VBXE SURFACE FALLBACK BUILD2IY: reason='+reason+' addr=$'+base.toString(16).toUpperCase().padStart(5,'0')+' w='+w+' h='+h+' step='+step+' pal='+palNo+' pixels='+drew+'; kreslim realnou VBXE VRAM, ne hack podle hry.');
++    }
++    return drew;
++  }
++
+   function vbxeRenderXdl(){
+     if(M) M.vbxeTextHiActive=false;
+     if(!vbxe || !vbxe.xdlEnabled) return false;
+@@ -3104,6 +3170,10 @@
+       if(recs[ri0].mode===1 || recs[ri0].mode===2 || recs[ri0].mode===3) hasGraph=true;
+       if(recs[ri0].mode===4) hasText=true;
+     }
++    if(!hasGraph && !hasText){
++      var sf=vbxeRenderSurfaceFallback('no-visible-XDL-records');
++      if(sf>0) return true;
++    }
+     var hasHR=false;
+     for(var rh=0; rh<recs.length; rh++){ if(recs[rh].mode===2) { hasHR=true; break; } }
+     var pureText=(hasText && !hasGraph);
+@@ -5460,7 +5530,7 @@
+     buildOSK(document.getElementById('osk'));
+     bindKeyboard();
+     updateTapeCounter();
+-    log('AtariHelp.eu EMU-10 BUILD2IX_VBXE_BCB19_REVERT_BCB21_SAFE pripraven - BUILD2IW zrusen, BCB19-autodecode vypnut, blitter vracen na BCB21 z BUILD2IV.');
++    log('AtariHelp.eu EMU-10 BUILD2IY_VBXE_SURFACE_FALLBACK_MADPASCAL_SAFE pripraven - BCB21 safe zustava, pridana surface fallback cesta z realne VBXE VRAM pri XDL bez viditelnych recordu.');
+     log('AtariHelp.eu EMU-10 BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX pripraven - HP hitboxy zustaly, HELP manual a MENU navrat opraveny, landscape obraz aspect-fit bez orezani + FIRE/DOOR v bocnim prostoru; core BUILD2HL beze zmen.');
+     log('AtariHelp.eu EMU-10 BUILD2HR_VBXE_POWER_ON_130XE_HELP_FIX pripraven - POWER BASIC je neviditelny hitbox na napisu 130XE + jemna zelena LED; HELP navod doplnen; VBXE core BUILD2HL beze zmen.');
+     log('AtariHelp.eu EMU-10 BUILD2HW_VBXE_ATR_D1_FASTLOAD_SAFE pripraven - NET HRY zustava, XEX/OBX turbo zustava a nove ma ATR/D1 rychlejsi SIO jen pri diskovem prenosu. Landscape HQ safe. VBXE core BUILD2HL GOLD beze zmen.');

@@ -1,0 +1,72 @@
+AtariHelp.eu EMU-10 / VBXE 130XE
+BUILD2IY_VBXE_SURFACE_FALLBACK_MADPASCAL_SAFE
+
+NAVAZUJE NA:
+- BUILD2IX_VBXE_BCB19_REVERT_BCB21_SAFE
+- BUILD2IW je porad spatna vetev a zustava zrusena.
+- BCB19 auto vykonavani NENI vraceno.
+
+PROC TENTO BUILD:
+- Test BUILD2IX vratil Tetris/Popeye/Commando z rozbiteho BUILD2IW zpet, ale neposunul VBXE dopredu.
+- Tetris VBXE z dodaneho baliku ukazuje dulezitou chybu: program realne kresli velkou VBXE VRAM plochu pres blitter, ale XDL parser muze videt jen OFF/neviditelne recordy a renderer potom realnou VBXE plochu zahodi.
+- Logy ukazuji porad realne BCB21 blity a VRAM praci, ale obraz v nekterych VBXE programech neni slozeny spravne.
+
+CO JE ZMENENE:
+1) BCB21 safe zustava.
+   - BCB19 auto decode z BUILD2IW zustava vypnuty.
+   - Blitter se nevraci do rozbiteho stavu.
+
+2) Pridana surface candidate pamet ve VBXE blitteru.
+   - Emulator si pamatuje posledni velky realny VBXE blit do VRAM.
+   - Kandidat je ulozen jen kdyz jde o smysluplnou plochu, ne o male 8x8/16x16 sprite blity.
+   - Uklada se skutecny dst, width, height, dst_step a paleta.
+
+3) Pridany XDL surface fallback.
+   - Pokud je XDL zapnuty, ale XDL parser nema zadny viditelny record, renderer uz automaticky nezahodi realne naplnenou VBXE VRAM.
+   - V takove situaci vykresli posledni realny surface candidate jako SR/VGAMed 256barevnou plochu.
+   - To miri na Mad Pascal/Tebe styl: BMP -> VBXE VRAM, XDL zatim OFF/neviditelny podle parseru.
+
+CO TO NENI:
+- Neni to screen-paint.
+- Neni to hack podle nazvu hry.
+- Neni to special pro Tetris, Popeye, Commando ani HL.
+- Nekresli se vlozeny obrazek; kresli se pouze realna VBXE VRAM, kterou predtim naplnil program pres MEMAC/blitter.
+
+OCEKAVANY DOPAD:
+- Tetris VBXE: mel by se pohnout dopredu, idealne se ma objevit bitmapove pozadi misto ciste modre/textove obrazovky.
+- Popeye/Commando: nemelo by se vratit rozbiti z BUILD2IW; pokud maji podobny surface stav, muze se objevit posun.
+- HL: nesmi se vratit sedy obdelnik.
+- Postcard: tento build primarne neresi Postcard; je to ANTIC/G2F smer, ne VBXE surface.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2IY_VBXE_SURFACE_FALLBACK_MADPASCAL_SAFE pripraven
+- VBXE SURFACE CANDIDATE BUILD2IY
+- VBXE SURFACE FALLBACK BUILD2IY
+
+TEST PLAN:
+1) Tetris VBXE
+   - Nahraj tetris_vbxe.xex z Tetris vxbe.zip.
+   - Ocekavani: nesmi byt caj jako BUILD2IW; ma byt videt posun proti BUILD2IX, hlavne bitmapove pozadi / realna VBXE plocha.
+   - Log: hledej SURFACE CANDIDATE a SURFACE FALLBACK.
+
+2) Popeye
+   - Jen kontrola, ze se nerozbil jako BUILD2IW.
+   - Ocekavani: minimalne stav jako BUILD2IX, idealne posun ve vrstvach.
+
+3) Commando
+   - Kontrola, ze hra porad bezi.
+   - Arnold muze porad chybet; pokud fallback narazi na intro surface, muze se objevit posun.
+
+4) HL / Heartlight
+   - Sedivy obdelnik se nesmi vratit.
+   - Hra musi zustat funkcni.
+
+CO POSLAT ZPET:
+- Screenshot Tetris VBXE.
+- Screenshot Popeye, pokud se zmeni.
+- Log po testu Tetris + Popeye + Commando + HL.

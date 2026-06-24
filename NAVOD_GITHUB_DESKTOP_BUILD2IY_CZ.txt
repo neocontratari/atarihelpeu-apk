@@ -1,0 +1,21 @@
+NAVOD PRO RENEHO - BUILD2IY
+
+1) ZIP rozbal presne pres projekt v GitHub Desktop slozce.
+2) Nevybirat rucne jednotlive soubory, overlay ma prepsat cestu:
+   app/src/main/assets/emu_vbxe/index.html
+   a design PNG zustanou stejne.
+3) V GitHub Desktop zkontroluj zmenu index.html.
+4) Commit message doporucena:
+   BUILD2IY VBXE surface fallback Mad Pascal safe
+5) Buildni APK stejne jako predchozi overlaye.
+6) Testuj jen kratky plan z reportu.
+
+KONTROLA:
+V logu musi byt:
+AtariHelp.eu EMU-10 BUILD2IY_VBXE_SURFACE_FALLBACK_MADPASCAL_SAFE pripraven
+
+U Tetris/VBXE by idealne melo byt:
+VBXE SURFACE CANDIDATE BUILD2IY
+VBXE SURFACE FALLBACK BUILD2IY
+
+Pokud v logu zustane BUILD2IX jako hlavni marker a BUILD2IY tam nebude, overlay se neprepsal.
