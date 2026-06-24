@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2IZ</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JA</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -357,7 +357,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    blity 258x256 pres cele VBXE banky. To rozbilo Tetris/Popeye/Commando.
    BUILD2IX proto VRACI blitter na posledni bezpecne BCB21 chovani z BUILD2IV a pridava jasny log.
    BCB19 zustava pouze predmetem budouciho presneho offline auditu, ne vykonavani v emu. */
-/* BUILD2IZ_XEX_INITAD_MEMAC_PRELOAD_SAFE:
+/* BUILD2JA_XEX_LIVE_MEMAC_PAYLOAD_SAFE:
    Po Tetris VBXE zdrojaku a logu: problem neni ROM, ale XEX loader + MEMAC init bloky.
    Nektere VBXE XEX pouzivaji klasickou sekvenci: maly INITAD kod nastavi legacy MEMAC $D65F,
    dalsi XEX blok $B000-$BFFF se tim nahraje do VBXE VRAM banky. Nas rychly SIO loader mohl pri
@@ -1080,9 +1080,63 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return {segments:segments,bytes:bytes,firstBank:firstBank,lastBank:lastBank};
   }
 
+  function vbxePreloadRangeForCpuAddr(a){
+    // BUILD2JA: zive mapovani podle aktualniho MEMAC stavu tesne pred servirovanim XEX payloadu.
+    // Tim se neodhadují banky podle jmena hry; pouziva se stejna cesta jako cpuWrite()/cpuRead().
+    a&=0xFFFF;
+    const va=vbxeCpuMapAddr(a);
+    if(va<0) return -1;
+    return va&0x7FFFF;
+  }
+
+  function applyXexVbxeLiveMemacPayload(X,r){
+    // BUILD2JA: obecny doplnkovy side-effect pro XEX turbo loader.
+    // Normalni OS/loader porad dostane payload pres SIO; tady pouze dorovnavam stav VBXE VRAM,
+    // ktery by vznikl, kdyby SIO zapisovalo do CPU adresy s prave aktivnim MEMAC oknem.
+    if(!r || r.vbxeLiveMemacDone || !vbxe || !vbxe.vram || !r.pay || !r.len) return 0;
+    const pay=r.pay, base=r.dst&0xFFFF;
+    let copied=0, firstCpu=-1, firstVram=-1, lastCpu=-1, segs=0;
+    let runCpu=-1, runVram=-1, runLen=0;
+    function flush(){
+      if(runLen<=0) return;
+      segs++;
+      if(M.vbxeDebug && X && (X.vbxeLiveMemacLog||0)<12){
+        X.vbxeLiveMemacLog=(X.vbxeLiveMemacLog||0)+1;
+        M.vbxeDebug('VBXE XEX LIVE MEMAC BUILD2JA: CPU $'+hx4(runCpu)+'-$'+hx4((runCpu+runLen-1)&0xFFFF)+' -> VRAM $'+runVram.toString(16).toUpperCase().padStart(5,'0')+' len='+runLen+'; podle aktualnich MEMAC registru, ne podle hry.');
+      }
+      runLen=0; runCpu=-1; runVram=-1;
+    }
+    for(let k=0;k<pay.length;k++){
+      const ca=(base+k)&0xFFFF;
+      const va=vbxePreloadRangeForCpuAddr(ca);
+      if(va<0){ flush(); continue; }
+      vbxe.vram[va]=pay[k]&0xFF;
+      copied++;
+      if(firstCpu<0){ firstCpu=ca; firstVram=va; }
+      lastCpu=ca;
+      if(runLen>0 && ((runCpu+runLen)&0xFFFF)===ca && ((runVram+runLen)&0x7FFFF)===va){ runLen++; }
+      else { flush(); runCpu=ca; runVram=va; runLen=1; }
+    }
+    flush();
+    if(copied>0){
+      r.vbxeLiveMemacDone=true;
+      vbxe.renderDirty=true;
+      vbxe.renderBase=firstVram&0x7C000;
+      if(X){
+        X.vbxeLiveMemacDone=(X.vbxeLiveMemacDone||0)+1;
+        X.vbxeLiveMemacBytes=(X.vbxeLiveMemacBytes||0)+copied;
+        X.vbxeLiveMemacSegments=(X.vbxeLiveMemacSegments||0)+segs;
+      }
+    }
+    return copied;
+  }
+
   function applyXexVbxePreloadRecord(X,r){
-    // BUILD2IZ: vykona doplnkovy MEMAC write ve stejnem okamziku, kdy rychly loader servíruje payload.
-    // CPU/OS porad dostane normalni payload; jen opravujeme vedlejsi efekt MEMAC okna, ktery realny init-loader vyvolal.
+    // BUILD2JA: nejdriv zkus zive MEMAC mapovani podle skutecneho stavu registru.
+    // Pokud u konkretniho XEX loaderu neni MEMAC v okamziku servirovani jeste videt,
+    // nechavam i BUILD2IZ staticky fallback pro Tetris/Mad Pascal $B000 bloky.
+    const live=applyXexVbxeLiveMemacPayload(X,r);
+    if(live>0) return;
     if(!r || !r.vbxePreload || r.vbxePreloadDone || !vbxe || !vbxe.vram) return;
     const m=r.vbxePreload, pay=r.pay||new Uint8Array(0);
     const lim=Math.min(m.len|0, Math.max(0,pay.length-(m.off|0)));
@@ -1094,7 +1148,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(X){ X.vbxePreloadDone=(X.vbxePreloadDone||0)+1; X.vbxePreloadBytes=(X.vbxePreloadBytes||0)+lim; }
     if(M.vbxeDebug && (!X || (X.vbxePreloadLog||0)<12)){
       if(X) X.vbxePreloadLog=(X.vbxePreloadLog||0)+1;
-      M.vbxeDebug('VBXE XEX MEMAC PRELOAD BUILD2IZ: $B000 payload -> VRAM $'+(m.vram&0x7FFFF).toString(16).toUpperCase().padStart(5,'0')+' len='+lim+' bank=$'+hx2(m.bank)+'; obecny INITAD/MEMAC loader, ne herni hack.');
+      M.vbxeDebug('VBXE XEX MEMAC PRELOAD BUILD2IZ/JA FALLBACK: $B000 payload -> VRAM $'+(m.vram&0x7FFFF).toString(16).toUpperCase().padStart(5,'0')+' len='+lim+' bank=$'+hx2(m.bank)+'; staticky fallback pro INITAD/MEMAC loader.');
     }
   }
 
@@ -1133,7 +1187,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         recs.length=0; recs.push(...norm, ...dfr); if(eof)recs.push(eof);
       }
     }
-    sio.xex={recs:recs,cur:0,pserved:false,loading:true,fastLogged:false,vbxePreloadInfo:vbxePreloadInfo,vbxePreloadDone:0,vbxePreloadBytes:0,vbxePreloadLog:0};
+    sio.xex={recs:recs,cur:0,pserved:false,loading:true,fastLogged:false,vbxePreloadInfo:vbxePreloadInfo,vbxePreloadDone:0,vbxePreloadBytes:0,vbxePreloadLog:0,vbxeLiveMemacDone:0,vbxeLiveMemacBytes:0,vbxeLiveMemacSegments:0,vbxeLiveMemacLog:0};
     // boot disk: jen 2 sektory zavadece
     const bin=atob(XEX_LOADER_B64), disk=new Uint8Array(256);
     for(let k=0;k<bin.length;k++) disk[k]=bin.charCodeAt(k)&0xFF;
@@ -4217,7 +4271,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     setTimeout(function(){ consolState.option=false; if(M)M.consol(false,false,false); },1500); // jen na dobu coldstartu - drzene OPTION mate hry, ktere ho ctou na titulce
     running=true; document.getElementById('led').classList.add('on');
     log('NAHRAJ XEX: '+name+' ('+info.bytes+' B, '+info.records+' zaznamu, zavadec v2 primo na cilove adresy + BUILD2HW turbo SIO behem loaderu)');
-    if(info.vbxePreloadSegments) log('VBXE XEX MEMAC PRELOAD BUILD2IZ: detekovano '+info.vbxePreloadSegments+' MEMAC-A $B000 bloku, '+info.vbxePreloadBytes+' B pujde soucasne do VBXE VRAM podle INITAD bank-loaderu.');
+    if(info.vbxePreloadSegments) log('VBXE XEX MEMAC PRELOAD BUILD2IZ/JA: detekovano '+info.vbxePreloadSegments+' MEMAC-A $B000 bloku, '+info.vbxePreloadBytes+' B pujde soucasne do VBXE VRAM podle INITAD bank-loaderu.');
+      log('VBXE XEX LIVE MEMAC BUILD2JA: aktivni obecna payload cesta - kazdy XEX blok se pri servirovani kontroluje proti aktualnim MEMAC oknum $2000-$3FFF, $4000-$7FFF a legacy $B000; nic podle nazvu hry.');
     if(info.manyRecords) log('XEX BUILD2GR: mnoho zaznamu je povoleno - Popeye VBXE ma stovky malych segmentu/INITAD, neni to automaticky chyba.');
     log('Boot pres prave SIO: OS -> boot sektory -> stage2 $0100 -> SIOV zaznamy. OPTION drzene (BASIC OFF).');
     if(info.underRom) log('POZOR: program piše pod OS ROM ($C000+) - vyzaduje RAM pod ROM, plna podpora v BUILD3. Muze selhat.');
@@ -5599,6 +5654,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2JA_XEX_LIVE_MEMAC_PAYLOAD_SAFE pripraven - navazuje na BUILD2IZ; pridana ziva MEMAC payload cesta pro XEX bloky pres aktualni $D64C-$D64F i legacy MEMAC okna. Tetris preload zachovan, BCB21 safe, bez hernich hacku.');
     log('AtariHelp.eu EMU-10 BUILD2IZ_XEX_INITAD_MEMAC_PRELOAD_SAFE pripraven - navazuje na BUILD2IY/IX safe, BCB21 zustava, pridana obecna XEX INITAD/MEMAC-A preload cesta pro VBXE VRAM bank-load bloky.');
     log('AtariHelp.eu EMU-10 BUILD2IY_VBXE_SURFACE_FALLBACK_MADPASCAL_SAFE pripraven - BCB21 safe zustava, pridana surface fallback cesta z realne VBXE VRAM pri XDL bez viditelnych recordu.');
     log('AtariHelp.eu EMU-10 BUILD2HQ_VBXE_LANDSCAPE_SAFE_HELP_MENU_FIX pripraven - HP hitboxy zustaly, HELP manual a MENU navrat opraveny, landscape obraz aspect-fit bez orezani + FIRE/DOOR v bocnim prostoru; core BUILD2HL beze zmen.');

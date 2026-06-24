@@ -1,0 +1,62 @@
+AtariHelp.eu EMU-10 / VBXE 130XE
+BUILD2JA_XEX_LIVE_MEMAC_PAYLOAD_SAFE
+
+NAVAZUJE NA:
+- BUILD2IZ_XEX_INITAD_MEMAC_PRELOAD_SAFE
+- BUILD2IZ prinesl realny posun v Tetris VBXE: bitmapovy podklad se objevil.
+- BUILD2IW/BCB19 zustava zrusena spatna vetev.
+
+PROC TENTO BUILD:
+- Tetris ukazal, ze problem nebyl primarne v barvach ani v BCB19, ale v tom, ze XEX loader pri turbo servirovani payloadu nedorovnaval vedlejsi efekt MEMAC okna do VBXE VRAM.
+- BUILD2IZ resil konkretni bezpecny vzor MEMAC-A $B000 pro Tetris/Mad Pascal.
+- BUILD2JA to zobecnuje: pri kazdem XEX payload bloku se bere aktualni stav MEMAC registru v okamziku servirovani payloadu a pokud CPU adresa miri do VBXE VRAM, payload se soucasne zapise do skutecne VBXE VRAM.
+
+CO JE ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+- Pridan helper vbxePreloadRangeForCpuAddr(a).
+- Pridana funkce applyXexVbxeLiveMemacPayload(X,r).
+- applyXexVbxePreloadRecord() nejdriv zkusi zive MEMAC mapovani podle aktualnich registru a teprve potom pouzije puvodni BUILD2IZ staticky fallback.
+- BCB21 safe zustava.
+- BCB19 auto decode se nevraci.
+- UI / joystick / klavesnice / kazeta / NET HRY / skin beze zmen.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+NEJDE O HACK:
+- Nehleda se nazev hry.
+- Nepaintuje se obrazovka.
+- Zapisuje se jen payload XEX do VBXE VRAM tam, kam by pri aktivnim MEMAC okne smeroval realny CPU zapis.
+
+TEST PLAN:
+1) Tetris VBXE
+   - musi zustat bitmapove pozadi jako v BUILD2IZ.
+   - nesmi se vratit modra/textova plocha ani caj z BUILD2IW.
+
+2) Commando
+   - hra musi dal bezet.
+   - hlavni sledovani: jestli se objevi/problikne Arnold nebo aspon neni krok zpet.
+   - v logu hlidej, zda se objevi VBXE XEX LIVE MEMAC BUILD2JA pro bloky $4000-$7FFF nebo $8000-$BFFF.
+
+3) Popeye
+   - nesmi se vratit caj z BUILD2IW.
+   - sleduj, jestli se zmeni vrstvy/grafika.
+   - pokud bude beze zmeny, posli log a budeme potrebovat dalsi audit XDL/CARRY/priority, ne loader.
+
+4) HL / Heartlight
+   - sedy obdelnik se nesmi vratit.
+   - textove barvy mohou byt porad jinak poskladane, ale hra musi zustat v poradku.
+
+5) Postcard
+   - jen kontrolne; tento build primarne miri na VBXE XEX/MEMAC payloady, ne na G2F/GTIA Postcard.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2JA_XEX_LIVE_MEMAC_PAYLOAD_SAFE pripraven
+- VBXE XEX LIVE MEMAC BUILD2JA: CPU $....-$.... -> VRAM $..... len=...
+- VBXE XEX MEMAC PRELOAD BUILD2IZ/JA FALLBACK: $B000 payload -> VRAM $.....
+
+KDYZ SELZE:
+- Poslat log hned po Tetris + Popeye + Commando.
+- Hlavne napsat, jestli se v logu objevuje VBXE XEX LIVE MEMAC BUILD2JA a pro jake CPU/VRAM rozsahy.

@@ -1,0 +1,16 @@
+NAVOD PRO RENEHO - BUILD2JA ZIP OVERLAY
+
+1. Stahni ZIP overlay.
+2. Rozbal ho do korene projektu AtariHelp.eu APK tak, aby se prepsal soubor:
+   app/src/main/assets/emu_vbxe/index.html
+3. Otevri GitHub Desktop.
+4. Zkontroluj zmeny.
+5. Commit message doporucena:
+   BUILD2JA VBXE live MEMAC payload safe
+6. Pushni / nech GitHub Actions vyrobit APK.
+7. V Noxu nebo mobilu otestuj podle reportu.
+
+DULEZITE:
+- Nepouzivat BUILD2IW jako zaklad.
+- BUILD2JA navazuje na BUILD2IZ.
+- Pokud se v logu neobjevi marker BUILD2JA, bezi stary APK nebo se neprepsal index.html.
