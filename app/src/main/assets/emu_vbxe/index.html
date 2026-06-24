@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JI</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JL</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -346,6 +346,23 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    Tento build prida obecny D740 alias na stejne VBXE registry, rozšíří audit IO operandů na D640 i D740
    a zachova BUILD2JA/JC Tetris MEMAC cestu. Zadny BCB19, zadna MSEL barevna zmena, zadny hack hry. */
 
+
+/* BUILD2JL_CPU_NOP_FULL_BLITTER_CONST_PM_SAFE:
+   Navazuje na BUILD2JK, ale bere z externiho auditu jen smysluplne obecne veci: presnejsi neoficialni NOP cykly
+   (imm=2, zp=3, zp,x=4 + dummy read, abs=4, abs,x=4+page-cross), VBXE HR/SR collision jako primy AND
+   a konstantni zdroj blitteru pri (andm===xorm). Zachovava Tetris MEMAC, D740, INITAD shadow, PM VDELAY,
+   BCB21 safe; BCB19 a MSEL/OVSHIFT zustavaji vypnute. Bez hernich hacku. */
+
+/* BUILD2JJ_CPU_NOP_ABX_AND_VBXE_COLLISION_SAFE:
+   Navazuje na BUILD2JI bez rollbacku: Tetris/MEMAC, D740, INITAD shadow a BCB21 safe zustavaji.
+   Opravuje dve obecne chyby z auditu: neoficialni 6502 NOP abs,x ($1C/$3C/$5C/$7C/$DC/$FC)
+   musi mit page-cross +1 cyklus a VBXE SR blitter collision mask je bitovy AND (collm & dest),
+   ne segment podle dest>>5. Bez zmeny MSEL/OVSHIFT renderu a bez hernich hacku. */
+
+/* BUILD2JK_CPU_NOP_COLLISION_PM_VDELAY_SAFE:
+   Dva kroky naraz bez rollbacku: drzi BUILD2JI/JJ CPU/VBXE opravy a pridava GTIA VDELAY ($D01C)
+   pro player/missile DMA. Cilem jsou obecne sprity a intro/transition obrazovky typu Decathlon,
+   Popeye, Commando, Donkey, Pitstop bez vraceni rozbitych BCB19/MSEL/OVSHIFT vetvi. */
 
 /* BUILD2JI_6502_INDEXED_PAGECROSS_TIMING_SAFE:
    Ne rollback: zaklad zustava JE/JD/JA/JH. Tetris MEMAC, D740, INITAD shadow a kratky BLITTER_BUSY zustavaji.
@@ -807,9 +824,14 @@ function CPU6502(read, write){
         // undocumented: common NOPs consume operands; JAM opcodes halt
         if(op===0x02||op===0x12||op===0x22||op===0x32||op===0x42||op===0x52||
            op===0x62||op===0x72||op===0x92||op===0xB2||op===0xD2||op===0xF2){ c.jam=true; c.jamOp=op; c.jamPc=(c.pc-1)&0xFFFF; }
-        else if(op===0x80||op===0x82||op===0x89||op===0xC2||op===0xE2||op===0x04||op===0x44||op===0x64||
-                op===0x14||op===0x34||op===0x54||op===0x74||op===0xD4||op===0xF4){ c.pc=(c.pc+1)&0xFFFF; cyc=3; }
-        else if(op===0x0C||op===0x1C||op===0x3C||op===0x5C||op===0x7C||op===0xDC||op===0xFC){ c.pc=(c.pc+2)&0xFFFF; cyc=4; }
+        else if(op===0x80||op===0x82||op===0x89||op===0xC2||op===0xE2){ c.pc=(c.pc+1)&0xFFFF; cyc=2; } // BUILD2JL: NOP immediate = 2 cykly
+        else if(op===0x04||op===0x44||op===0x64){ c.pc=(c.pc+1)&0xFFFF; cyc=3; } // BUILD2JL: NOP zp = 3 cykly
+        else if(op===0x14||op===0x34||op===0x54||op===0x74||op===0xD4||op===0xF4){ ea=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; rd(ea); cyc=4; } // BUILD2JL: NOP zp,x = 4 cykly + dummy read
+        else if(op===0x0C){ c.pc=(c.pc+2)&0xFFFF; cyc=4; } // BUILD2JL: NOP abs = 4 cykly
+        else if(op===0x1C||op===0x3C||op===0x5C||op===0x7C||op===0xDC||op===0xFC){
+          // BUILD2JL: neoficialni NOP abs,x cte operand na (abs+X) a pri page-cross ma +1 cyklus.
+          t=rdAbsBase(); ea=(t+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; rd(ea); cyc=4+pg(t,ea);
+        }
         else cyc=2; // 1-byte undocumented NOPs
         break;
     }
@@ -855,7 +877,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
                hposp:[0,0,0,0], hposm:[0,0,0,0], sizep:[0,0,0,0], sizem:0,
                grafp:[0,0,0,0], grafm:0, colpm:[0,0,0,0], colpf:[0,0,0,0], colbk:0,
                cMPF:[0,0,0,0], cPPF:[0,0,0,0], cMPL:[0,0,0,0], cPPL:[0,0,0,0],
-               gractl:0, pal:0x01 /* PAL */ };
+               gractl:0, vdelay:0, pmPrevP:[0,0,0,0], pmPrevM:0, vdelayLogged:false,
+               pal:0x01 /* PAL */ };
   // ---------------- POKEY -----------------
   const pokey={ audf:[0,0,0,0], audc:[0,0,0,0], audctl:0, skctl:0,
                 t1:0, t2:0, t4:0,   // odpocty casovacu v CPU cyklech (IRQ bity 0/1/2)
@@ -1593,14 +1616,15 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function vbxeCollisionSr(dv,collm){
     dv&=0xFF; collm&=0xFF;
     if(!collm || dv===0) return false;
-    var seg=dv>>5;
-    return !!(collm&(1<<seg));
+    // BUILD2JJ: fx blitter collision pro SR je primo (collision_mask & dest) != 0.
+    // Stare deleni dest>>5 davalo falesne/neviditelne kolize pro hry, ktere BLT_COLLISION_CODE ctu.
+    return !!(collm & dv);
   }
   function vbxeCollisionHrNib(dn,collm){
     dn&=0x0F; collm&=0x0F;
     if(!collm || dn===0) return false;
-    // VBXE HR kolize je po nibblech; pro prvni pruchod mapuju 4bit nibbly na 4 segmenty po ctyrech barvach.
-    return !!(collm&(1<<(dn>>2)));
+    // BUILD2JL: VBXE HR kolize je po nibblech; dokumentace rika dest[3:0] & mask[3:0], ne segment dn>>2.
+    return !!(collm & dn);
   }
   function vbxeApplyBlitByte(mode,sv,dv,collm){
     sv&=0xFF; dv&=0xFF; collm&=0xFF;
@@ -1767,7 +1791,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       var w=(b[12]|((b[13]&1)<<8))+1, h=b[14]+1;
       var andm=b[15], xorm=b[16], collm=b[17], zoom=b[18], patt=b[19], ctrl=b[20];
       var mode=ctrl&7, next=!!(ctrl&8), sx=!!(ctrl&0x10), sy=!!(ctrl&0x20), dx=!!(ctrl&0x40), dy=!!(ctrl&0x80);
-      var constant=(andm===0); // fx.pdf: constant source iff blt_and_mask == 0
+      var constant=(andm===0)||(andm===xorm); // BUILD2JL: konstantni zdroj kdyz (~andm ^ xorm)==$FF, tj. andm===xorm; andm===0 ponechano jako rychla cesta
       // BUILD2HL: fx.pdf/vbxefx.ah - blt_zoom: b0-b2 ZOOMX, b3 INTLVE, b4-b6 ZOOMY, b7 nepouzity.
       // HD mel chybu: pocital INTLVE do ZOOMX a hledal INTLVE v b7, proto zoom=$29 vysel zx=10 misto spravne zx=2,intlv=1.
       var zoomX=(zoom&0x07)+1;
@@ -2064,6 +2088,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(g<=0x19) gtia.colpf[g-0x16]=v;
       else if(g===0x1A) gtia.colbk=v;
       else if(g===0x1B) gtia.prior=v;
+      else if(g===0x1C){ gtia.vdelay=v&0xFF; if(v && !gtia.vdelayLogged && M.vbxeDebug){ gtia.vdelayLogged=true; M.vbxeDebug('GTIA PMG VDELAY BUILD2JK: $D01C=$'+hx2(v)+' aktivni; player/missile DMA pouzije jednradkovy delay latch.'); } }
       else if(g===0x1D) gtia.gractl=v;
       else if(g===0x1E){ for(let i=0;i<4;i++){ gtia.cMPF[i]=0;gtia.cPPF[i]=0;gtia.cMPL[i]=0;gtia.cPPL[i]=0; } }
       else if(g===0x1F){ const sp=(v>>3)&1; if(sp!==gtia.speaker){gtia.speaker=sp; pokey.dirty=true; M.onSpeaker&&M.onSpeaker(sp);} }
@@ -2520,9 +2545,29 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function pmDmaFetch(){
     if(M.line<8 || M.line>=248) return;
     const dbl=!(antic.dmactl&0x10), base=(antic.pmbase&(dbl?0xFC:0xF8))<<8, li=dbl?(M.line>>1):M.line;
-    if((antic.dmactl&0x08)&&(gtia.gractl&2)){ const o=base+(dbl?512:1024)+li, st=dbl?128:256;
-      gtia.grafp[0]=anticRead(o); gtia.grafp[1]=anticRead(o+st); gtia.grafp[2]=anticRead(o+st*2); gtia.grafp[3]=anticRead(o+st*3); }
-    if((antic.dmactl&0x0C)&&(gtia.gractl&1)) gtia.grafm=anticRead(base+(dbl?384:768)+li);
+    // BUILD2JK: GTIA VDELAY ($D01C). Realny stroj umi zpozdit DMA data pro P0-P3/M0-M3
+    // o jednu radku; spousta intr/sportovnich her tim sklada sprity a prechodove obrazovky.
+    // Kdyz DMA neni aktivni, registry zustanou zmrazene jako predtim.
+    if((antic.dmactl&0x08)&&(gtia.gractl&2)){
+      const o=base+(dbl?512:1024)+li, st=dbl?128:256;
+      const np0=anticRead(o), np1=anticRead(o+st), np2=anticRead(o+st*2), np3=anticRead(o+st*3);
+      const np=[np0,np1,np2,np3];
+      for(let p=0;p<4;p++){
+        const prev=gtia.pmPrevP[p]&0xFF;
+        gtia.grafp[p]=(gtia.vdelay&(1<<p))?prev:np[p];
+        gtia.pmPrevP[p]=np[p]&0xFF;
+      }
+    }
+    if((antic.dmactl&0x0C)&&(gtia.gractl&1)){
+      const nm=anticRead(base+(dbl?384:768)+li)&0xFF;
+      let gm=0, old=gtia.pmPrevM&0xFF;
+      for(let p=0;p<4;p++){
+        const sh=p*2, bits=((gtia.vdelay&(0x10<<p))?old:nm)>>sh;
+        gm|=(bits&3)<<sh;
+      }
+      gtia.grafm=gm&0xFF;
+      gtia.pmPrevM=nm;
+    }
   }
   function cassetteToneFreqAt(t, bitIndex, byteIndex){
     if(!t) return 5327;
@@ -5882,7 +5927,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2JL_CPU_NOP_FULL_BLITTER_CONST_PM_SAFE pripraven - zaklad BUILD2JK/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, PM VDELAY. Doplnene presnejsi neoficialni NOP cykly, VBXE SR/HR collision direct AND a blitter constant source andm==xorm. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
+    log('AtariHelp.eu EMU-10 BUILD2JK_CPU_NOP_COLLISION_PM_VDELAY_SAFE pripraven - zaklad BUILD2JI/JJ zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Dva kroky naraz: NOP abs,x + VBXE collision z JJ a nove GTIA PMG VDELAY $D01C pro sprity/intra. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
     log('AtariHelp.eu EMU-10 BUILD2JI_6502_INDEXED_PAGECROSS_TIMING_SAFE pripraven - navazuje na BUILD2JE/JD/JA/JH: Tetris MEMAC + D740 + INITAD shadow zachovan, BCB19 vypnuty, MSEL/OVSHIFT render vypnuty. Nově obecna oprava 6502 page-cross cyklu pro ABS,X/ABS,Y/(ZP),Y cteni; cíl intro/DLI/bitmap timing, ne hack na hru.');
+    log('AtariHelp.eu EMU-10 BUILD2JJ_CPU_NOP_ABX_AND_VBXE_COLLISION_SAFE pripraven - JI zachovan, doplnen NOP abs,x page-cross +1 a opraven VBXE blitter collision mask podle bitoveho AND. BCB19 vypnuty, MSEL/OVSHIFT render vypnuty, zadny rollback.');
     log('AtariHelp.eu EMU-10 BUILD2JE_XEX_INITAD_MEMAC_SHADOW_SAFE pripraven - navazuje na BUILD2JD; D740 alias zachovan, Tetris/Mission safe, pridany staticky XEX INITAD/MEMAC shadow preload pro obecne VBXE loadery. BCB19 vypnuty, MSEL/OVSHIFT render stale vypnuty.');
     log('AtariHelp.eu EMU-10 BUILD2JD_VBXE_D740_ALIAS_SAFE pripraven - zachovan JC/JA Tetris MEMAC fix, zrusena JB barvova regrese; pridany obecny mirror VBXE registru $D740-$D75F na $D640-$D65F a audit IO operandů D640/D740.');
     log('AtariHelp.eu EMU-10 BUILD2JC_VBXE_RESTORE_JA_MSEL_AUDIT_SAFE pripraven - BUILD2JB MSEL/OVSHIFT render zrusen kvuli rozbite grafice; funkcni BUILD2JA Tetris/MEMAC cesta zachovana; pridany jen stinovy audit $D644-$D648 bez zmeny renderu.');
