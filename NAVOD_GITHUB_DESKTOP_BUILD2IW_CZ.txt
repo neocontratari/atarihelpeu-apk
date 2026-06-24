@@ -1,0 +1,9 @@
+NAVOD PRO GITHUB DESKTOP - BUILD2IW
+===================================
+1) Rozbal ZIP overlay.
+2) Obsah slozky pretahni do korene projektu AtariHelp EMU-10.
+3) Potvrd prepsani souboru.
+4) V GitHub Desktop zkontroluj zmeny.
+5) Commit message doporucena:
+   BUILD2IW VBXE BCB19 dual decode safe
+6) Buildni APK stejne jako predchozi buildy.

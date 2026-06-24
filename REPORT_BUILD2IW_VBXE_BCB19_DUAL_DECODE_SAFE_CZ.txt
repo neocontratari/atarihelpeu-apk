@@ -1,0 +1,58 @@
+AtariHelp.eu EMU-10 BUILD2IW_VBXE_BCB19_DUAL_DECODE_SAFE
+==============================================================
+
+NAVAZUJE NA:
+- BUILD2IV_GTIA_DYNAMIC_GPRIOR_SAFE
+
+PROC TENTO BUILD:
+- Rene poslal Tetris VBXE test a log z BUILD2IV.
+- Postcard se trochu pohnul, ale porad spatne.
+- Tetris v Altirre ukazuje plny VBXE bitmapovy obraz, ale v EMU-10 se zobrazi hlavne prazdne plochy/text.
+- To ukazuje na nizsi problem ve VBXE blitteru / BCB decode, ne dalsi barevny odhad.
+
+HLAVNI OPRAVA:
+- Opraven obecny VBXE blitter BCB decode.
+- Oficialni FX dokumentace definuje BCB jako 19 bajtu.
+- Stary kod tvrdil a pouzival BCB21 stride, takze chain blitteru mohl skakat po spatne delce.
+- BUILD2IW dekoduje BCB19 i BCB21, vyhodnoti realnejsi variantu podle rozmeru/stride/mode/stepu a chain posouva podle zvoleneho stride.
+- BCB19 je primarni, BCB21 zustava jen kompatibilni fallback, kdyz vyjde realneji.
+
+CO SE NEMENI:
+- UI skin, joystick, klavesnice, kazeta, NET HRY, loader zustavaji beze zmen.
+- Zadny hack podle nazvu hry.
+- Zadny screen-paint.
+- GTIA/Postcard dynamicky GPRIOR z BUILD2IV zustava.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_vbxe/index.html
+
+BASIC / Altirra testovaci kody JSOU STEJNE.
+
+TEST PLAN:
+1) Tetris VBXE z dodaneho ZIPu
+   - hlavni test pro BUILD2IW
+   - cekany posun: musi se zkusit, jestli se objevi bitmapove pozadi / realnejsi VBXE obraz
+   - pokud zustane jen prazdna modra obrazovka, posli log
+
+2) Popeye
+   - kratce zkontrolovat, jestli se nezlepsily vrstvy/grafika
+   - nesmi byt horsi nez BUILD2IV
+
+3) Commando intro
+   - jen kontrola, jestli Arnold aspon problikne / zacne byt videt
+
+4) HL / Heartlight
+   - rychla kontrola, ze se nevratil sedy obdelnik
+
+5) Postcard_Atari_Rocky.xex
+   - kontrolne, jestli BCB oprava nahodou neovlivni stav; primarne ale tento build miri na VBXE blitter.
+
+LOG MARKERY:
+- AtariHelp.eu EMU-10 BUILD2IW_VBXE_BCB19_DUAL_DECODE_SAFE pripraven
+- VBXE BCB DECODE BUILD2IW: auto BCB19 nebo BCB21
+- VBXE BLITTER FAST ... BCB19 stride=19 nebo BCB21 stride=21
+
+CO POSLAT ZPET PRI FAILU:
+- screenshot Tetris VBXE v EMU-10
+- screenshot Tetris VBXE v Altirre, pokud je po ruce
+- log z LOG/CHYBA po testu Tetris + Popeye/Commando
