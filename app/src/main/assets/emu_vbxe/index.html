@@ -1953,7 +1953,20 @@ function Atari130XE(osRom, basicRom, CPUctor){
         M.vbxeDebug('VBXE MSEL SHADOW AUDIT BUILD2JC: detailni log potlacen, dal po 256 zapisech. Render palety zustava BUILD2JA safe.');
       }
     }
-    if(off===0x44){ vbxe.csel=v&0xFF; }
+    if(off===0x44){
+      vbxe.csel=v&0xFF;
+      // BUILD2JL fix: MSEL/PRIORMAP ($80-$BF): fx.pdf sekce MSEL/PRIORMAP.
+      // Zapise MB0-MB3 jako P0-P3 predefinovane prioritni registry pouzivane barevnou atributovou mapou.
+      // Bez tohoto handleru zustavaji regs[0x55-0x58]=0 → priorita 0 → overlay se nikdy nevykresluje
+      // tam, kde je aktivni mapa (Popeye, Commando, Mission a jine hry s mapou).
+      if((v&0xC0)===0x80){
+        vbxe.regs[0x55]=vbxe.regs[0x45]&0xFF; // P0 <- MB0
+        vbxe.regs[0x56]=vbxe.regs[0x46]&0xFF; // P1 <- MB1
+        vbxe.regs[0x57]=vbxe.regs[0x47]&0xFF; // P2 <- MB2
+        vbxe.regs[0x58]=vbxe.regs[0x48]&0xFF; // P3 <- MB3
+        if(M.vbxeDebug) M.vbxeDebug('VBXE MSEL PRIORMAP BUILD2JL: MSEL=$'+hx2(v)+' P0=$'+hx2(vbxe.regs[0x55])+' P1=$'+hx2(vbxe.regs[0x56])+' P2=$'+hx2(vbxe.regs[0x57])+' P3=$'+hx2(vbxe.regs[0x58]));
+      }
+    }
     if(off===0x45){ vbxe.psel=v&0x03; }
     if(off===0x46){ vbxe.cr=v&0xFE; }
     if(off===0x47){ vbxe.cg=v&0xFE; }
@@ -2231,6 +2244,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
       for(var i=0;i<256;i++) vbxe.pal[p*256+i]=palette[i];
     }
     vbxe.psel=0; vbxe.csel=0; vbxe.cr=0; vbxe.cg=0; vbxe.cb=0;
+    // BUILD2JL fix: P0-P3 predefinovane priority registry default na 0xFF (overlay nad vsim).
+    // Bez tohoto nastaveni jsou 0 → overlay pod vsim → XDL grafika neviditelna pri aktivni mape.
+    vbxe.regs[0x55]=0xFF; vbxe.regs[0x56]=0xFF; vbxe.regs[0x57]=0xFF; vbxe.regs[0x58]=0xFF;
   }
   vbxeInitPaletteDefaults();
 
@@ -3280,7 +3296,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     else if(pf===2) need|=0x20;   // PF1
     else if(pf===3) need|=0x40;   // PF2
     else if(pf===4) need|=0x80;   // PF3
-    else if(!pm) need|=0x80;      // COLBAK / prazdny podklad
+    else if(!pm) return true; // BUILD2JL fix: fx.pdf: "the only colour always overridden by the Overlay is COLBAK" — COLBAK pixely vzdy povolují overlay, nenastavujeme need
     return (pri & need) === need;
   }
   function vbxePriorityAllowsPixel(r,x384,y){
