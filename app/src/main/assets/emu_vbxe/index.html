@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JY</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JZ</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -355,13 +355,6 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    Pridava obecny XDL-SR rescue: kdyz je XDL platny, ma graficky SR record a standardni render vrati nulu,
    emulator zkusi najit spravnou 16KB VRAM stranku se stejnym offsetem a vykresli jen realna VBXE data.
    Night Driver a Decathlon zatim dal hlasi PM audit; GTIA priorita se nehackuje. */
-/* BUILD2JY_JX_SUCCESS_STABILITY_GUARD:
-   JX poprve ukazal Commando Arnold bez vlozeneho obrazku. Zpetna vazba: W3D nabehne,
-   Night Driver ma novy spodni VBXE obraz ale duchy, Decathlon beze zmeny, Mission ma drobne chyby.
-   Proto JY NEprepisuje Commando opravu, ale prida bezpečnostni branu: no-blitter XDL render
-   se smi pouzit jen pro aktualni VBXE program potvrzeny scanem/loaderem, nebo kdyz existuje
-   realny BCB/surface kandidát. Slabe non-VBXE XEX nesmi ziskat stary XDL/VRAM obraz.
-*/
 /* BUILD2JX_XDL_RENDER_WITHOUT_BLITTER_SAFE:
    Test BUILD2JW ukazal dulezity fakt: Commando po MEMAC loaderu zapne VBXE XDL base=$20000,
    ale log nema zadny VBXE BLITTER start. Stary renderVbxeProbe vracel hned na bltStarts<1,
@@ -1504,7 +1497,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     lastGoodXdlRecords:null, lastGoodXdlBase:0, lastGoodXdlWarned:false, xdlHoldLogged:false, lastXdlLogScan:0, xdlCarryState:null, xdlCarryLogged:false,
     blitFeatureLogged:false, blitFeatureSuppressed:false, blitOverlapSnapshotLogged:false, bigBlitLogged:false,
     preXdlProbeSkippedLogged:false, preXdlProbeAllowedLogged:false,
-    currentProgramName:'', currentProgramKind:'', currentProgramVbxe:false, noBlitterBlockedLogged:false, currentProgramLogged:false,
     ioWritten:false, readbackLogged:false, coreReadLogged:false, legacyUnsafeIgnored:0,
     pal:new Uint32Array(4*256), psel:0, csel:0, cr:0, cg:0, cb:0, palWrites:0, palLogSuppressed:false,
     // BUILD2JC: jen audit registru $D644-$D648. Nepouziva se k renderu, aby se neopakovala regrese BUILD2JB.
@@ -1531,7 +1523,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false; vbxe.xdlNoBlitterRenderLogged=false;
     vbxe.xdlMapApplyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false;
     vbxe.xdlParseCount=0; vbxe.xdlScanCount=0; vbxe.lastXdlLogScan=0;
-    vbxe.currentProgramName=''; vbxe.currentProgramKind=''; vbxe.currentProgramVbxe=false; vbxe.noBlitterBlockedLogged=false; vbxe.currentProgramLogged=false;
     vbxe.surfaceValid=false; vbxe.surfaceAddr=0; vbxe.surfaceStep=320; vbxe.surfaceWidth=320; vbxe.surfaceHeight=240; vbxe.surfaceScore=0; vbxe.surfaceLogged=false; vbxe.surfaceFallbackLogged=false;
     vbxe.tileSurface={valid:false,base:0,step:512,minX:9999,maxX:0,minY:9999,maxY:0,blocks:0,bytes:0,score:0,lastFrame:0,logged:false,renderLogged:false,underlayLogged:false};
     if(M.vbxePfClassFrame) M.vbxePfClassFrame.fill(0);
@@ -4130,17 +4121,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return false;
   }
 
-  function vbxeNoBlitterXdlAllowed(){
-    // BUILD2JY: JX je spravny pro Commando/VBXE, ale nesmi se omylem pouzit po slabe/non-VBXE hře
-    // se zatoulanym xdlSawValid. Povoluji jen aktualni potvrzeny VBXE program nebo realny BCB/surface kandidat.
-    if(!vbxe) return false;
-    if((vbxe.bltStarts|0)>0) return true;
-    if(!!vbxe.currentProgramVbxe) return true;
-    if(!!vbxe.surfaceValid) return true;
-    if(vbxe.tileSurface && vbxe.tileSurface.valid && ((vbxe.tileSurface.bytes|0)>0 || (vbxe.tileSurface.blocks|0)>0)) return true;
-    return false;
-  }
-
   M.renderVbxeProbe=function(){
     M.vbxeTextHiActive=false;
     if(!vbxe) return;
@@ -4149,21 +4129,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // ale bltStarts zustalo 0, proto se predtim renderer vubec nespustil.
     // Pokud hra naplnila VBXE VRAM pres MEMAC/CPU, XDL se musi zkusit vykreslit i bez BCB blitter startu.
     if(vbxe.xdlEnabled || vbxe.xdlSawValid){
-      if(!vbxeNoBlitterXdlAllowed()){
-        if(!vbxe.noBlitterBlockedLogged && M.vbxeDebug){
-          vbxe.noBlitterBlockedLogged=true;
-          M.vbxeDebug('VBXE XDL NO-BLITTER BLOCK BUILD2JY: XDL/sawValid existuje, ale aktualni program neni potvrzeny VBXE a nejsou BCB/surface data; nekreslim stary VRAM obraz pres normalni hru. program='+(vbxe.currentProgramName||'?'));
-        }
-        return;
-      }
       if((vbxe.bltStarts|0)<1 && !vbxe.xdlNoBlitterRenderLogged && M.vbxeDebug){
         vbxe.xdlNoBlitterRenderLogged=true;
-        M.vbxeDebug('VBXE XDL RENDER WITHOUT BLITTER BUILD2JX/JY: XDL je zapnuty/platny, bltStarts=0, programVbxe='+(vbxe.currentProgramVbxe?1:0)+'; zkousim realny XDL render z VRAM/MEMAC, ne screen-paint.');
+        M.vbxeDebug('VBXE XDL RENDER WITHOUT BLITTER BUILD2JX: XDL je zapnuty/platny, ale bltStarts=0; zkousim realny XDL render z VRAM/MEMAC, ne screen-paint.');
       }
       if(vbxeRenderXdl()) return;
       if(!vbxe.xdlProbeBlockedLogged && M.vbxeDebug){
         vbxe.xdlProbeBlockedLogged=true;
-        M.vbxeDebug('VBXE VRAM PROBE BLOCKED BUILD2HL/JX/JY: platny nebo zapnuty XDL ma prednost; fallback probe uz nesmi malovat caj pres realny XDL obraz.');
+        M.vbxeDebug('VBXE VRAM PROBE BLOCKED BUILD2HL/JX: platny nebo zapnuty XDL ma prednost; fallback probe uz nesmi malovat caj pres realny XDL obraz.');
       }
       return;
     }
@@ -5047,16 +5020,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       log('VBXE AUDIT MATRIX BUILD2JP: XEX/MEMAC payload potvrzen az loaderem (preload='+(info.vbxePreloadSegments||0)+', shadow='+(info.vbxeShadowSegments||0)+') -> zapinam VBXE profil bez spolehání na slabý byte-scan.');
     }
     M.coldStart({option:true});
-    if(vbxe){
-      vbxe.currentProgramName=name||'';
-      vbxe.currentProgramKind='XEX';
-      vbxe.currentProgramVbxe=!!isVbxe;
-      if(M.vbxeDebug && !vbxe.currentProgramLogged){
-        vbxe.currentProgramLogged=true;
-        M.vbxeDebug('VBXE CURRENT PROGRAM BUILD2JY: '+(name||'?')+' vbxe='+(isVbxe?1:0)+' - JX no-blitter XDL je povolen jen pro potvrzene VBXE/surface cesty.');
-      }
-    }
-    if(!isVbxe && M.disableVbxeForPlainProgram){ M.disableVbxeForPlainProgram('XEX '+name+' BUILD2JP weak-io-safe'); if(vbxe){ vbxe.currentProgramName=name||''; vbxe.currentProgramKind='XEX'; vbxe.currentProgramVbxe=false; } }
+    if(!isVbxe && M.disableVbxeForPlainProgram) M.disableVbxeForPlainProgram('XEX '+name+' BUILD2JP weak-io-safe');
     consolState.option=true; M.consol(false,false,true);
     setTimeout(function(){ consolState.option=false; if(M)M.consol(false,false,false); },1500); // jen na dobu coldstartu - drzene OPTION mate hry, ktere ho ctou na titulce
     running=true; document.getElementById('led').classList.add('on');
@@ -6429,7 +6393,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2JY-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2JZ-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -6445,8 +6409,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2JY_JX_SUCCESS_STABILITY_GUARD pripraven - navazuje na BUILD2JX. Commando Arnold z JX zachovan; pridana bezpecnostni brana, aby no-blitter XDL render nesahl na slabe/non-VBXE hry a nezanesl stare VRAM/XDL duchy do Mission/W3D/regrese. Night Driver/Decathlon zatim bez nasili, dal audit. KODY JSOU STEJNE.');
-    log('AtariHelp.eu EMU-10 BUILD2JX_XDL_RENDER_WITHOUT_BLITTER_SAFE zachovan - navazuje na BUILD2JW. XDL renderer uz neni blokovany podminkou bltStarts>0: pokud hra zapne XDL a data prijdou pres MEMAC/CPU, kresli se realna VBXE VRAM i bez blitter startu. Cil: Commando Arnold pred PRESS ANY KEY, Night Driver VBXE obraz; bez screen-paintu. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2JZ_ROLLBACK_TO_JX_SUCCESS_SAFE pripraven - JY safety guard vracen pryc, protoze rozbil Commando Arnold. Jadro renderu je zpet na JX, kde Arnold ANO + hra ANO. Zadny novy hack, jen navrat na posledni potvrzeny uspech. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2JX_XDL_RENDER_WITHOUT_BLITTER_SAFE pripraven - navazuje na BUILD2JW. XDL renderer uz neni blokovany podminkou bltStarts>0: pokud hra zapne XDL a data prijdou pres MEMAC/CPU, kresli se realna VBXE VRAM i bez blitter startu. Cil: Commando Arnold pred PRESS ANY KEY, Night Driver VBXE obraz; bez screen-paintu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JW_XDL_TILE_UNDERLAY_AFTER_ZERO_GRAPH_SAFE pripraven - navazuje na BUILD2JV/JU/JT/JS. Oprava podle logu: Commando ma realny VBXE blitter blocks=862/bytes=66864, ale zero-XDL blokoval tile underlay. JW pusti realny BCB tile-surface i po XDL grafice s 0 pixely, jen do COLBK pozadi. PM audit zustava pro Night Driver/Decathlon. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JS_GTIA_PM_DMA_LATCH_SAFE pripraven - navazuje na BUILD2JR/JQ safe, JO DMA vetev zustava mrtva. Oprava podle Altirra manualu: P/M DMA data se na zacatku scanline nactou do GTIA latchu a render teto radky pouziva latched GRAFP/GRAFM, ne pozdeji prepsane CPU registry. Cíl: Night Driver auto, Decathlon/Popeye PM sprity; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JR_HIRES_BG_TRANSPARENT_PM_PRIORITY_SAFE pripraven - navazuje na BUILD2JQ/JI safe, JO DMA vetev mrtva. Podle Altirra HW manualu opravuji ANTIC hi-res 2/3/F priority tridu: 0 bit = pozadi pro P/M priority/kolize, 1 bit = PF2. Cíl: Night Driver auto, Decathlon/Popeye sprity/vrstvy; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
