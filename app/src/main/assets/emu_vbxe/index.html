@@ -884,7 +884,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
                hposp:[0,0,0,0], hposm:[0,0,0,0], sizep:[0,0,0,0], sizem:0,
                grafp:[0,0,0,0], grafm:0, colpm:[0,0,0,0], colpf:[0,0,0,0], colbk:0,
                cMPF:[0,0,0,0], cPPF:[0,0,0,0], cMPL:[0,0,0,0], cPPL:[0,0,0,0],
-               gractl:0, vdelay:0, pmPrevP:[0,0,0,0], pmPrevM:0, vdelayLogged:false,
+               gractl:0, vdelay:0, pmPrevP:[0,0,0,0], pmPrevM:0, pmLineP:[0,0,0,0], pmLineM:0, pmDmaLatchLogged:false, vdelayLogged:false,
                pal:0x01 /* PAL */ };
   // ---------------- POKEY -----------------
   const pokey={ audf:[0,0,0,0], audc:[0,0,0,0], audctl:0, skctl:0,
@@ -2532,7 +2532,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
       for(let p=0;p<4;p++){
         for(let x=0;x<384;x++){
           const gr=pmRegAt(0x1D,x,gtia.gractl);
-          const g=pmRegAt(0x0D+p,x,gtia.grafp[p]);
+          const baseP=((pmDma && gtia.pmLineP)?gtia.pmLineP[p]:gtia.grafp[p])&0xFF;
+          const g=pmRegAt(0x0D+p,x,baseP);
           if(!g) continue;
           // Zachovavam starou kompatibilitu: kdyz GRAFP obsahuje data, kresli se jako driv;
           // gractl se bere hlavne pro paprskove zmeny, ne jako tvrde vypnuti starych her.
@@ -2552,7 +2553,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }
       for(let p=0;p<4;p++){
         for(let x=0;x<384;x++){
-          const gm=pmRegAt(0x11,x,gtia.grafm);
+          const baseM=(mDma?gtia.pmLineM:gtia.grafm)&0xFF;
+          const gm=pmRegAt(0x11,x,baseM);
           const bits=(gm>>(p*2))&3; if(!bits) continue;
           const w=[1,2,1,4][(pmRegAt(0x0C,x,gtia.sizem)>>(p*2))&3];
           const x0=pmRegAt(0x04+p,x,gtia.hposm[p])*2-64;
@@ -2571,7 +2573,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
 
     for(let p=0;p<4;p++){
-      let g=gtia.grafp[p];   // GRAFP drzi DMA-nactenou nebo zmrazenou hodnotu (plni pmDmaFetch)
+      let g=(pmDma && gtia.pmLineP ? gtia.pmLineP[p] : gtia.grafp[p])&0xFF;   // BUILD2JS: DMA latch radky, ne pozdejsi snapshot GRAFP
       if(!g) continue;
       const w=[1,2,1,4][gtia.sizep[p]&3];
       const x0=gtia.hposp[p]*2-64;   // leva hrana fb = color clock $20
@@ -2583,7 +2585,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           if(pmShowAt(p,c,x)) fb[off+x]=pmColAt(p,x); } } } }
     }
     // missiles
-    let gm=gtia.grafm;   // GRAFM drzi DMA-nactenou nebo zmrazenou hodnotu
+    let gm=(mDma ? gtia.pmLineM : gtia.grafm)&0xFF;   // BUILD2JS: DMA latch radky pro missiles
     if(gm){ for(let p=0;p<4;p++){ const bits=(gm>>(p*2))&3; if(!bits)continue;
       const w=[1,2,1,4][(gtia.sizem>>(p*2))&3];
       const x0=gtia.hposm[p]*2-64;
@@ -2682,8 +2684,16 @@ function Atari130XE(osRom, basicRom, CPUctor){
         // Když je bit nastaven, GTIA přijme DMA latch jen na lichých scanlinech; na sudých drží starý GRAFP.
         if(!(gtia.vdelay&(1<<p)) || oddLine) gtia.grafp[p]=np[p]&0xFF;
         gtia.pmPrevP[p]=np[p]&0xFF;
+        // BUILD2JS: hodnota nacitana DMA na zacatku scanline je samostatny GTIA latch pro tuto radku.
+        // Pozdejsi CPU zapis do GRAFP nesmi zpetne smazat sprite, renderer bere pmLineP jako zaklad
+        // a teprve paprskove segmenty GRAFP mohou menit data od sve X pozice.
+        gtia.pmLineP[p]=gtia.grafp[p]&0xFF;
       }
       if(gtia.vdelay && M.vbxeDebug && !M.gtiaVdelayExactLogged){ M.gtiaVdelayExactLogged=true; M.vbxeDebug('GTIA VDELAY BUILD2JQ: latch se pri nastavenem bitu nacita jen na lichych scanlinech; prime GRAFP/GRAFM zapisy se nezpozduji.'); }
+      if(M.vbxeDebug && !gtia.pmDmaLatchLogged && ((gtia.pmLineP[0]|gtia.pmLineP[1]|gtia.pmLineP[2]|gtia.pmLineP[3])&0xFF)){
+        gtia.pmDmaLatchLogged=true;
+        M.vbxeDebug('GTIA PM DMA LATCH BUILD2JS: prvni nenulovy player latch line='+M.line+' PMBASE=$'+hx2(antic.pmbase)+' DMACTL=$'+hx2(antic.dmactl)+' GRACTL=$'+hx2(gtia.gractl)+' P='+gtia.pmLineP.map(function(v){return hx2(v);}).join(','));
+      }
     }
     if((antic.dmactl&0x0C)&&(gtia.gractl&1)){
       const nm=anticRead(base+(dbl?384:768)+li)&0xFF;
@@ -2697,6 +2707,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }
       gtia.grafm=gm&0xFF;
       gtia.pmPrevM=nm;
+      gtia.pmLineM=gtia.grafm&0xFF; // BUILD2JS: radkovy DMA latch missile dat
+      if(M.vbxeDebug && !gtia.pmDmaLatchLogged && (gtia.pmLineM&0xFF)){
+        gtia.pmDmaLatchLogged=true;
+        M.vbxeDebug('GTIA PM DMA LATCH BUILD2JS: prvni nenulovy missile latch line='+M.line+' PMBASE=$'+hx2(antic.pmbase)+' DMACTL=$'+hx2(antic.dmactl)+' GRACTL=$'+hx2(gtia.gractl)+' M=$'+hx2(gtia.pmLineM));
+      }
     }
   }
   function cassetteToneFreqAt(t, bitIndex, byteIndex){
@@ -6067,6 +6082,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2JS_GTIA_PM_DMA_LATCH_SAFE pripraven - navazuje na BUILD2JR/JQ safe, JO DMA vetev zustava mrtva. Oprava podle Altirra manualu: P/M DMA data se na zacatku scanline nactou do GTIA latchu a render teto radky pouziva latched GRAFP/GRAFM, ne pozdeji prepsane CPU registry. Cíl: Night Driver auto, Decathlon/Popeye PM sprity; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JR_HIRES_BG_TRANSPARENT_PM_PRIORITY_SAFE pripraven - navazuje na BUILD2JQ/JI safe, JO DMA vetev mrtva. Podle Altirra HW manualu opravuji ANTIC hi-res 2/3/F priority tridu: 0 bit = pozadi pro P/M priority/kolize, 1 bit = PF2. Cíl: Night Driver auto, Decathlon/Popeye sprity/vrstvy; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JQ_GTIA_PRIORITY_VDELAY_DOC_SAFE pripraven - zaklad BUILD2JP/JN/JM/JL/JI, bez JO DMA regrese. Cteno podle Altirra HW manualu: opraveno GTIA PRIOR $D01B poradi hlavne rezim $08, VDELAY $D01C nyni nacita DMA jen na lichych scanlinech a CHACTL $D401 D2 vertikalni reflect pro ANTIC 2/3. BCB21/Tetris MEMAC/D740/INITAD shadow zustava, BCB19/MSEL/OVSHIFT vypnute.');
     log('AtariHelp.eu EMU-10 BUILD2JM_GTIA_PMG_BEAM_SEGMENTS_SAFE pripraven - zaklad BUILD2JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Novy krok: paprskove segmenty GTIA P/M registru HPOS/SIZE/GRAF/GRACTL pro intra/sprity bez BCB19/MSEL/OVSHIFT a bez hacku hry.');
