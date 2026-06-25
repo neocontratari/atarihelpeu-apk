@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JT</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JU</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -347,7 +347,7 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    a zachova BUILD2JA/JC Tetris MEMAC cestu. Zadny BCB19, zadna MSEL barevna zmena, zadny hack hry. */
 
 
-/* BUILD2JT_PM_VISIBILITY_AUDIT_SAFE:
+/* BUILD2JU_VBXE_TILE_UNDERLAY_PM_AUDIT_SAFE:
    Diagnosticky navazujici build na potvrzeny BUILD2JS. Nemeni grafiku, VBXE renderer,
    loader, kazetu, joystick ani UI. Pridava jen pravdivy GTIA/ANTIC/P-M audit pro hry
    Night Driver / Decathlon / Mission / Popeye: DMACTL, GRACTL, PMBASE, PM single/double line,
@@ -1480,7 +1480,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // BUILD2JC: jen audit registru $D644-$D648. Nepouziva se k renderu, aby se neopakovala regrese BUILD2JB.
     mselAuditCount:0, mselAuditSuppressed:false, d740AliasCount:0, d740AliasSuppressed:false,
     // BUILD2IY: posledni realne nakreslena velka VBXE plocha z blitteru; pouzije se jen jako fallback, kdyz XDL bezi, ale parser zatim nevidi zadny viditelny record.
-    surfaceValid:false, surfaceAddr:0, surfaceStep:320, surfaceWidth:320, surfaceHeight:240, surfacePal:1, surfaceMode:1, surfaceScore:0, surfaceLogged:false, surfaceFallbackLogged:false
+    surfaceValid:false, surfaceAddr:0, surfaceStep:320, surfaceWidth:320, surfaceHeight:240, surfacePal:1, surfaceMode:1, surfaceScore:0, surfaceLogged:false, surfaceFallbackLogged:false,
+    tileSurface:{valid:false,base:0,step:512,minX:9999,maxX:0,minY:9999,maxY:0,blocks:0,bytes:0,score:0,lastFrame:0,logged:false,renderLogged:false,underlayLogged:false}
   };
   M.vbxe=vbxe;
   M.vbxeDebug=null;
@@ -1501,6 +1502,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     vbxe.xdlMapApplyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false;
     vbxe.xdlParseCount=0; vbxe.xdlScanCount=0; vbxe.lastXdlLogScan=0;
     vbxe.surfaceValid=false; vbxe.surfaceAddr=0; vbxe.surfaceStep=320; vbxe.surfaceWidth=320; vbxe.surfaceHeight=240; vbxe.surfaceScore=0; vbxe.surfaceLogged=false; vbxe.surfaceFallbackLogged=false;
+    vbxe.tileSurface={valid:false,base:0,step:512,minX:9999,maxX:0,minY:9999,maxY:0,blocks:0,bytes:0,score:0,lastFrame:0,logged:false,renderLogged:false,underlayLogged:false};
     if(M.vbxePfClassFrame) M.vbxePfClassFrame.fill(0);
     if(M.vbxePmMaskFrame) M.vbxePmMaskFrame.fill(0);
     vbxeInitPaletteDefaults();
@@ -1782,6 +1784,81 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
   }
 
+
+  function vbxeRememberTileSurfaceCandidate(dst,w,h,dstStep,dstStepX,constant,src,mode,zoomX,zoomY,intlv){
+    // BUILD2JU: obecny pred-XDL tile/blitter surface tracker.
+    // Nekresli nic sam od sebe podle nazvu hry. Pouze si pamatuje, ze program realne sklada
+    // obraz do VBXE VRAM jako mozaiku malych BCB bloku se stride 512. To je presne odlisne
+    // od nahodneho VRAM caje: mnoho ne-konstantnich kopii, pravidelny krok radku, rozumna sirka/vyska.
+    if(!vbxe || !vbxe.vram) return;
+    w|=0; h|=0; dst&=0x7FFFF; dstStep=(dstStep|0)||0; dstStepX=(dstStepX|0)||1;
+    zoomX=Math.max(1,zoomX|0); zoomY=Math.max(1,zoomY|0);
+    if(constant || mode!==0) return;
+    var step=Math.abs(dstStep)||0;
+    if(step<256 || step>1024) return;
+    if(Math.abs(dstStepX)!==1) return;
+    if(w<4 || h<4 || w>96 || h>96) return;
+    if(intlv) return;
+    var drawW=w*zoomX, drawH=h*zoomY;
+    if(drawW>160 || drawH>160) return;
+    // 16KB zarovnani odpovida 512B stride * 32 radku. Kdyz obraz pokracuje pres vice stranek,
+    // bere se nejmensi zaznamenana 16KB stranka jako globalni zacatek surface.
+    var page=dst & 0x7C000;
+    var t=vbxe.tileSurface;
+    if(!t || !t.valid || Math.abs(step-(t.step||512))>0 || page < (t.base||0) || (M.frame-(t.lastFrame||0))>900){
+      t=vbxe.tileSurface={valid:true,base:page,step:step,minX:9999,maxX:0,minY:9999,maxY:0,blocks:0,bytes:0,score:0,lastFrame:M.frame|0,logged:false,renderLogged:false,underlayLogged:false};
+    }
+    var rel=(dst-(t.base||0));
+    if(rel<0 || rel>0x7FFFF) return;
+    var x=rel % step;
+    var y=(rel / step)|0;
+    if(x<0 || x>=step || y<0 || y>260) return;
+    t.minX=Math.min(t.minX,x); t.maxX=Math.max(t.maxX,x+drawW-1);
+    t.minY=Math.min(t.minY,y); t.maxY=Math.max(t.maxY,y+drawH-1);
+    t.blocks++; t.bytes += (w*h)|0; t.lastFrame=M.frame|0;
+    var bw=Math.max(0,t.maxX-t.minX+1), bh=Math.max(0,t.maxY-t.minY+1);
+    t.score=(t.blocks*64) + Math.min(200000,bw*bh) + Math.min(200000,t.bytes);
+    if(!t.logged && t.blocks>=64 && t.bytes>=4096 && M.vbxeDebug){
+      t.logged=true;
+      M.vbxeDebug('VBXE TILE SURFACE BUILD2JU: realne BCB tile blity base=$'+(t.base&0x7FFFF).toString(16).toUpperCase().padStart(5,'0')+' step='+t.step+' bbox='+t.minX+','+t.minY+'-'+t.maxX+','+t.maxY+' blocks='+t.blocks+' bytes='+t.bytes+'; zatim jen kandidat pro pre-XDL underlay, ne hack podle hry.');
+    }
+  }
+
+  function vbxeRenderTileSurfaceUnderlay(reason,bgOnly){
+    // BUILD2JU: vykresleni skutecne VBXE VRAM mozaiky jako podklad. Kdyz uz je Atari obraz aktivni,
+    // kreslim jen do COLBK pixelu, aby se neprelepil ANTIC text/sprity. Tohle je rozdil proti starem
+    // VRAM probe, ktere malovalo pres vsechno a u Popeye delalo caj.
+    var t=vbxe.tileSurface;
+    if(!t || !t.valid) return 0;
+    if((t.blocks|0)<64 || (t.bytes|0)<4096) return 0;
+    var step=t.step|0, base=t.base&0x7FFFF;
+    if(step<256 || step>1024) return 0;
+    var minX=Math.max(0,Math.min(383,t.minX|0));
+    var maxX=Math.max(0,Math.min(383,t.maxX|0));
+    var minY=Math.max(0,Math.min(239,t.minY|0));
+    var maxY=Math.max(0,Math.min(239,t.maxY|0));
+    if(maxX<minX || maxY<minY) return 0;
+    var fb=M.fb, bg=palette[gtia.colbk&0xFF], drew=0, palNo=(vbxe.regs[0x45]&3)||1;
+    for(var y=minY;y<=maxY;y++){
+      var src=(base + y*step + minX)&0x7FFFF;
+      var dst=y*384 + minX;
+      for(var x=minX;x<=maxX;x++,src=(src+1)&0x7FFFF,dst++){
+        if(bgOnly && fb[dst]!==bg) continue;
+        var v=vbxe.vram[src]&0xFF;
+        if(v===0) continue;
+        fb[dst]=vbxeColor(v,palNo); drew++;
+      }
+    }
+    if(drew>0 && M.vbxeDebug){
+      if(bgOnly){
+        if(!t.underlayLogged){ t.underlayLogged=true; M.vbxeDebug('VBXE TILE UNDERLAY BUILD2JU: reason='+reason+' kreslim jen do COLBK pozadi, pixels='+drew+' bbox='+minX+','+minY+'-'+maxX+','+maxY+' base=$'+base.toString(16).toUpperCase().padStart(5,'0')+' step='+step+'; ANTIC text/sprity zustavaji nahore.'); }
+      } else if(!t.renderLogged){
+        t.renderLogged=true; M.vbxeDebug('VBXE TILE SURFACE RENDER BUILD2JU: reason='+reason+' pixels='+drew+' bbox='+minX+','+minY+'-'+maxX+','+maxY+' base=$'+base.toString(16).toUpperCase().padStart(5,'0')+' step='+step+'.');
+      }
+    }
+    return drew;
+  }
+
   function vbxeRunBlitter(){
     var adr=(vbxe.regs[0x50]|(vbxe.regs[0x51]<<8)|((vbxe.regs[0x52]&0x07)<<16))&0x7FFFF;
     vbxe.bltStarts++;
@@ -1877,6 +1954,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         vbxe.renderBase = dst & 0x7C000;
         vbxe.renderDirty = true;
         vbxeRememberSurfaceCandidate(dst,w,h,dstStep,constant,src,mode);
+        vbxeRememberTileSurfaceCandidate(dst,w,h,dstStep,dstStepX,constant,src,mode,zoomX,zoomY,intlv);
       }
 
       totalBytes+=opBytes;
@@ -3916,12 +3994,16 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!vbxe.renderDirty) return;
 
     if(vbxeAtariFrameLooksActive()){
+      var td=vbxeRenderTileSurfaceUnderlay('active-atari-bg-only',true);
+      if(td>0) return;
       if(!vbxe.preXdlProbeSkippedLogged && M.vbxeDebug){
         vbxe.preXdlProbeSkippedLogged=true;
-        M.vbxeDebug('VBXE VRAM PROBE SKIP BUILD2HL: pred-XDL diagnostiku nekreslim pres aktivni Atari/ANTIC obraz. To ma zastavit Popeye zluty/teckovy caj na score/title/game obrazovkach.');
+        M.vbxeDebug('VBXE VRAM PROBE SKIP BUILD2JU: pred-XDL diagnostiku nekreslim pres aktivni Atari/ANTIC obraz. Vyjimka je jen realny tile-surface underlay do COLBK pozadi; kdyz neni silny kandidat, blokuje se to kvuli Popeye caji.');
       }
       return;
     }
+    var tdFull=vbxeRenderTileSurfaceUnderlay('inactive-atari-full',false);
+    if(tdFull>0) return;
     if(!vbxe.preXdlProbeAllowedLogged && M.vbxeDebug){
       vbxe.preXdlProbeAllowedLogged=true;
       M.vbxeDebug('VBXE VRAM PROBE ALLOW BUILD2HL: Atari framebuffer je prazdny, povoluji jen pred-XDL diagnosticky VBXE obraz. Jakmile XDL nabehne, probe je blokovan.');
@@ -6159,7 +6241,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2JT-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2JU-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -6175,7 +6257,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2JT_PM_VISIBILITY_AUDIT_SAFE pripraven - navazuje presne na BUILD2JS. Tohle je diagnosticky overlay: nemeni obraz, loader, VBXE, kazetu ani UI; meri P/M DMA/priority/offscreen stav pro Night Driver, Decathlon, Mission a dalsi hry. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2JU_VBXE_TILE_UNDERLAY_PM_AUDIT_SAFE pripraven - navazuje na BUILD2JT/JS. Pridava obecny VBXE tile-surface underlay z realnych BCB blitu do VRAM pro pred-XDL obraz na COLBK pozadi, plus ponechava PM audit. Cíl: Commando intro Arnold bez screen-paintu; Night Driver/Decathlon dal meri PM pipeline. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JS_GTIA_PM_DMA_LATCH_SAFE pripraven - navazuje na BUILD2JR/JQ safe, JO DMA vetev zustava mrtva. Oprava podle Altirra manualu: P/M DMA data se na zacatku scanline nactou do GTIA latchu a render teto radky pouziva latched GRAFP/GRAFM, ne pozdeji prepsane CPU registry. Cíl: Night Driver auto, Decathlon/Popeye PM sprity; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JR_HIRES_BG_TRANSPARENT_PM_PRIORITY_SAFE pripraven - navazuje na BUILD2JQ/JI safe, JO DMA vetev mrtva. Podle Altirra HW manualu opravuji ANTIC hi-res 2/3/F priority tridu: 0 bit = pozadi pro P/M priority/kolize, 1 bit = PF2. Cíl: Night Driver auto, Decathlon/Popeye sprity/vrstvy; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JQ_GTIA_PRIORITY_VDELAY_DOC_SAFE pripraven - zaklad BUILD2JP/JN/JM/JL/JI, bez JO DMA regrese. Cteno podle Altirra HW manualu: opraveno GTIA PRIOR $D01B poradi hlavne rezim $08, VDELAY $D01C nyni nacita DMA jen na lichych scanlinech a CHACTL $D401 D2 vertikalni reflect pro ANTIC 2/3. BCB21/Tetris MEMAC/D740/INITAD shadow zustava, BCB19/MSEL/OVSHIFT vypnute.');
