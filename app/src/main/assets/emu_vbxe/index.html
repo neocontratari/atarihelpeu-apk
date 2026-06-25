@@ -364,6 +364,12 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    zapisy do D640/D740 se ignoruji a XDL/MAP se nesmi rozjet u nepotvrzene VBXE hry.
    Commando/Night Driver se silnou VBXE signaturou zustavaji na JX/JZ ceste. Bez hacku podle nazvu hry.
 */
+/* BUILD2KB_PLAIN_RENDER_LOCK_NO_IO_BREAK_SAFE:
+   KA byla moc tvrda: u Mission jako weak-IO/plain programu ignorovala D640/D740 cteni/zapisy a hra po intru uz nenabehla.
+   KB proto vraci IO chovani na JZ kompatibilni cestu (read/write se nezastavi), ale ponecha jen render-only plain lock:
+   nepotvrzeny titul nesmi pres nahodne XDL/MAP pustit VBXE overlay do obrazu. Cilem je vratit Mission do behu,
+   chranit Commando Arnold ANO + hra ANO a zatim nerozbijet Night Driver/Decathlon dalsim rezem.
+*/
 /* BUILD2JX_XDL_RENDER_WITHOUT_BLITTER_SAFE:
    Test BUILD2JW ukazal dulezity fakt: Commando po MEMAC loaderu zapne VBXE XDL base=$20000,
    ale log nema zadny VBXE BLITTER start. Stary renderVbxeProbe vracel hned na bltStarts<1,
@@ -1545,20 +1551,20 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // BUILD2KA: po weak-io-safe resetu uz nesmi obycejna hra nahodnym zapisem do D640/D740
     // znovu zapnout XDL/MAP overlay. Mission presne takhle po JZ dostala nedokreslenou grafiku.
     vbxe.plainProgramLock=true;
-    if(M.vbxeDebug) M.vbxeDebug('VBXE PLAIN LOCK BUILD2KA: '+(reason||'plain program')+' -> XDL/OFF, VRAM clear, dalsi D640/D740 zapisy ignoruji; chrani Mission/Decathlon pred nahodnym VBXE overlayem.');
+    if(M.vbxeDebug) M.vbxeDebug('VBXE PLAIN RENDER LOCK BUILD2KB: '+(reason||'plain program')+' -> XDL/OFF, VRAM clear, IO nechavam JZ-kompatibilni; blokuje se jen VBXE overlay/render u nepotvrzeneho titulu.');
   };
   M.setVbxeProfileActive=function(active,reason){
     vbxe.plainProgramLock=!active;
     if(active){
       vbxe.plainLockReadLogged=false; vbxe.plainLockWriteLogged=false; vbxe.plainLockVsyncLogged=false; vbxe.plainLockIgnoredWrites=0;
-      if(M.vbxeDebug) M.vbxeDebug('VBXE PROFILE ACTIVE BUILD2KA: '+(reason||'confirmed VBXE')+' -> VBXE IO/XDL povoleno.');
+      if(M.vbxeDebug) M.vbxeDebug('VBXE PROFILE ACTIVE BUILD2KB: '+(reason||'confirmed VBXE')+' -> VBXE IO/XDL/render povoleno pro potvrzeny VBXE titul.');
     } else M.disableVbxeForPlainProgram(reason);
   };
   function vbxeApplyVsyncPending(){
     if(vbxe.plainProgramLock){
       if(vbxe.xdlPendingApply || vbxe.xdlEnabled || vbxe.xdlSawValid){
         vbxe.xdlPendingApply=false; vbxe.xdlPendingEnabled=false; vbxe.xdlEnabled=false; vbxe.xdlSawValid=false; vbxe.xdlDirty=false; vbxe.xdlRecords=[];
-        if(M.vbxeDebug && !vbxe.plainLockVsyncLogged){ vbxe.plainLockVsyncLogged=true; M.vbxeDebug('VBXE PLAIN LOCK VSYNC BUILD2KA: zahazuji pending XDL u nepotvrzeneho titulu.'); }
+        if(M.vbxeDebug && !vbxe.plainLockVsyncLogged){ vbxe.plainLockVsyncLogged=true; M.vbxeDebug('VBXE PLAIN RENDER LOCK VSYNC BUILD2KB: zahazuji pending XDL u nepotvrzeneho titulu, ale IO cteni/zapisy se nelamou.'); }
       }
       return;
     }
@@ -2028,13 +2034,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function vbxeRead(a){
     var off=a&0xFF, v=0x00;
     if(vbxe.plainProgramLock){
-      // BUILD2KA: nepotvrzena VBXE hra vidi stav jako bez VBXE hardwaru, ne latch z emulovaneho FX profilu.
-      // $FF je bezpecnejsi nez $10 CORE_VERSION, protoze obycejny titul nesmi omylem projit VBXE detekci.
+      // BUILD2KB: KA vracela $FF a tim Mission po intru nenabehla.
+      // Cteni nechavam JZ-kompatibilni; plain lock blokuje az XDL/render, ne programovy tok.
       if(!vbxe.plainLockReadLogged && M.vbxeDebug){
         vbxe.plainLockReadLogged=true;
-        M.vbxeDebug('VBXE PLAIN LOCK READ BUILD2KA: R $'+hx4(a)+' -> $FF, VBXE profil je vypnuty pro nepotvrzeny/weak-IO titul.');
+        M.vbxeDebug('VBXE PLAIN RENDER LOCK READ BUILD2KB: R $'+hx4(a)+' nechavam projit JZ-kompatibilne; blokuje se jen XDL/render, ne IO tok hry.');
       }
-      return 0xFF;
     }
     // BUILD2HL: genericky VBXE FX read model podle fx1.26-en.pdf / vbxefx.ah.
     // D640 a D641 nejsou latch zapisovanych hodnot: pri cteni jsou to read-only CORE_VERSION
@@ -2082,9 +2087,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
       vbxe.plainLockIgnoredWrites=(vbxe.plainLockIgnoredWrites||0)+1;
       if(!vbxe.plainLockWriteLogged && M.vbxeDebug){
         vbxe.plainLockWriteLogged=true;
-        M.vbxeDebug('VBXE PLAIN LOCK WRITE BUILD2KA: W $'+hx4(a)+'=$'+hx2(v)+' ignoruji, protoze soubor nema potvrzenou VBXE signaturu/MEMAC payload.');
+        M.vbxeDebug('VBXE PLAIN RENDER LOCK WRITE BUILD2KB: W $'+hx4(a)+'=$'+hx2(v)+' registr nechavam zapsat, ale XDL/render zustane zamceny pro nepotvrzeny titul.');
       }
-      return;
     }
     vbxe.ioWritten=true;
     vbxe.regs[off]=v;
@@ -6440,7 +6444,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2JZ-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2KB-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -6456,6 +6460,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2KB_PLAIN_RENDER_LOCK_NO_IO_BREAK_SAFE pripraven - oprava po KA: nepotvrzene/weak-IO hry maji zamceny jen VBXE XDL/render overlay, ale D640/D740 IO uz nelamu ani nevracim tvrde $FF. Cil: vratit Mission po intru do hry, zachovat Commando Arnold ANO + hra ANO. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KA_PLAIN_PROGRAM_VBXE_LOCK_MISSION_SAFE pripraven - navazuje na JZ/JX uspech. Commando Arnold cesta zustava, ale nepotvrzene/weak-IO hry dostaly trvaly VBXE plain-lock, aby Mission/Decathlon nemohly nahodne zapnout XDL/MAP z D640/D740 sumu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JZ_ROLLBACK_TO_JX_SUCCESS_SAFE pripraven - JY safety guard vracen pryc, protoze rozbil Commando Arnold. Jadro renderu je zpet na JX, kde Arnold ANO + hra ANO. Zadny novy hack, jen navrat na posledni potvrzeny uspech. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JX_XDL_RENDER_WITHOUT_BLITTER_SAFE pripraven - navazuje na BUILD2JW. XDL renderer uz neni blokovany podminkou bltStarts>0: pokud hra zapne XDL a data prijdou pres MEMAC/CPU, kresli se realna VBXE VRAM i bez blitter startu. Cil: Commando Arnold pred PRESS ANY KEY, Night Driver VBXE obraz; bez screen-paintu. KODY JSOU STEJNE.');
