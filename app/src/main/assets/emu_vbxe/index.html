@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JL</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JM</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -347,7 +347,14 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    a zachova BUILD2JA/JC Tetris MEMAC cestu. Zadny BCB19, zadna MSEL barevna zmena, zadny hack hry. */
 
 
-/* BUILD2JL_CPU_NOP_FULL_BLITTER_CONST_PM_SAFE:
+/* BUILD2JM_GTIA_PMG_BEAM_SEGMENTS_SAFE:
+   Navazuje na BUILD2JL/JI chráněný základ: Tetris MEMAC, D740 alias, INITAD shadow, BCB21 safe,
+   bez BCB19 a bez MSEL/OVSHIFT větve. Tentokrát nejde o další barvu ani rollback.
+   Přidává paprskové segmenty GTIA P/M registrů během scanline: HPOSP/HPOSM, SIZEP/SIZEM,
+   GRAFP/GRAFM a GRACTL. Stávající renderer už uměl segmentovat COLPF/COLPM/PRIOR, ale P/M
+   pozice a grafická data bral jako jeden snapshot pro celou řádku. To může přesně rozbíjet intra,
+   sprity a přechodové obrazovky typu Decathlon/Popeye/Commando/Donkey/Pitstop bez hacku hry. */
+  /* BUILD2JL_CPU_NOP_FULL_BLITTER_CONST_PM_SAFE:
    Navazuje na BUILD2JK, ale bere z externiho auditu jen smysluplne obecne veci: presnejsi neoficialni NOP cykly
    (imm=2, zp=3, zp,x=4 + dummy read, abs=4, abs,x=4+page-cross), VBXE HR/SR collision jako primy AND
    a konstantni zdroj blitteru pri (andm===xorm). Zachovava Tetris MEMAC, D740, INITAD shadow, PM VDELAY,
@@ -2105,6 +2112,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(g===0x1D) gtia.gractl=v;
       else if(g===0x1E){ for(let i=0;i<4;i++){ gtia.cMPF[i]=0;gtia.cPPF[i]=0;gtia.cMPL[i]=0;gtia.cPPL[i]=0; } }
       else if(g===0x1F){ const sp=(v>>3)&1; if(sp!==gtia.speaker){gtia.speaker=sp; pokey.dirty=true; M.onSpeaker&&M.onSpeaker(sp);} }
+      gtiaPmTrack(g,v);    // BUILD2JM: P/M HPOS/SIZE/GRAF segmenty behem scanline
       gtiaColorTrack(g,v); // BUILD2IS: G2F/DLI umi menit GTIA barvy behem jedne scanline
       return;
     }
@@ -2479,7 +2487,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   function renderPMG(y){
     pml.fill(0);
-    if(!(gtia.gractl&3) && !(gtia.grafp[0]|gtia.grafp[1]|gtia.grafp[2]|gtia.grafp[3]|gtia.grafm)){ vbxeStorePriorityLine(y); return; }
+    if(!(gtia.gractl&3) && !(gtia.grafp[0]|gtia.grafp[1]|gtia.grafp[2]|gtia.grafp[3]|gtia.grafm) && (!pmSeg || pmSeg.n===0)){ vbxeStorePriorityLine(y); return; }
     const fb=M.fb, off=y*384, line=M.line;
     const dbl=!(antic.dmactl&0x10);
     const pmDma=(antic.dmactl&0x08)&&(gtia.gractl&2), mDma=((antic.dmactl&0x0C))&&(gtia.gractl&1); // player DMA fetchuje i missily (HW kvirk)
@@ -2491,6 +2499,55 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const pr=gtiaRegAt(0x1B,x);
       return palette[(pr&0x10)?gtiaRegAt(0x19,x):gtiaRegAt(0x12+p,x)];
     }
+
+    // BUILD2JM: kdyz byly behem radky zapsane P/M registry, nekreslim celou radku jednim snapshotem.
+    // Pocitam pixel proti aktualnimu paprskovemu stavu HPOS/SIZE/GRAF/GRACTL v dane X pozici.
+    if(pmSeg && pmSeg.n){
+      if(M.vbxeDebug && !M.gtiaPmBeamLogged){
+        M.gtiaPmBeamLogged=true;
+        M.vbxeDebug('GTIA PMG BEAM RENDER BUILD2JM: aktivni paprskove HPOS/SIZE/GRAF segmenty pro P/M.');
+      }
+      for(let p=0;p<4;p++){
+        for(let x=0;x<384;x++){
+          const gr=pmRegAt(0x1D,x,gtia.gractl);
+          const g=pmRegAt(0x0D+p,x,gtia.grafp[p]);
+          if(!g) continue;
+          // Zachovavam starou kompatibilitu: kdyz GRAFP obsahuje data, kresli se jako driv;
+          // gractl se bere hlavne pro paprskove zmeny, ne jako tvrde vypnuti starych her.
+          const w=[1,2,1,4][pmRegAt(0x08+p,x,gtia.sizep[p])&3];
+          const x0=pmRegAt(p,x,gtia.hposp[p])*2-64;
+          const rel=x-x0;
+          if(rel<0) continue;
+          const bit=(rel/(2*w))|0;
+          if(bit<0 || bit>=8) continue;
+          if(g&(0x80>>bit)){
+            const c=pfc[x]; if(c) gtia.cPPF[p]|=1<<(c-1);
+            const mm=pml[x]; if(mm){ gtia.cPPL[p]|=mm; for(let q=0;q<4;q++) if(mm&(1<<q)) gtia.cPPL[q]|=(1<<p); }
+            pml[x]|=(1<<p);
+            if(pmShowAt(p,c,x)) fb[off+x]=pmColAt(p,x);
+          }
+        }
+      }
+      for(let p=0;p<4;p++){
+        for(let x=0;x<384;x++){
+          const gm=pmRegAt(0x11,x,gtia.grafm);
+          const bits=(gm>>(p*2))&3; if(!bits) continue;
+          const w=[1,2,1,4][(pmRegAt(0x0C,x,gtia.sizem)>>(p*2))&3];
+          const x0=pmRegAt(0x04+p,x,gtia.hposm[p])*2-64;
+          const rel=x-x0; if(rel<0) continue;
+          const bit=(rel/(2*w))|0;
+          if(bit<0 || bit>=2) continue;
+          if(bits&(2>>bit)){
+            const c=pfc[x]; if(c) gtia.cMPF[p]|=1<<(c-1);
+            gtia.cMPL[p]|=pml[x];
+            if(pmShowAt(p,c,x)) fb[off+x]=missileColAt(p,x);
+          }
+        }
+      }
+      vbxeStorePriorityLine(y);
+      return;
+    }
+
     for(let p=0;p<4;p++){
       let g=gtia.grafp[p];   // GRAFP drzi DMA-nactenou nebo zmrazenou hodnotu (plni pmDmaFetch)
       if(!g) continue;
@@ -2517,7 +2574,36 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   const chSeg={n:0, c:new Int32Array(6), v:new Uint8Array(6), base:0};   // CHBASE zapisy behem radky (zavod s paprskem)
   const gtSeg={n:0, x:new Int32Array(96), r:new Uint8Array(96), v:new Uint8Array(96)}; // BUILD2IT: COLPM/COLPF/COLBK/PRIOR zmeny behem scanline, vic slotu pro G2F
-  M.gtiaSegDebugCount=0;
+  // BUILD2JM: GTIA P/M registr segmenty behem scanline.
+  // Nejde o nove barvy ani hack hry: stejny paprskovy princip jako gtSeg pro COLPF/COLPM/PRIOR,
+  // ale pro HPOSP/HPOSM/SIZEP/SIZEM/GRAFP/GRAFM/GRACTL. Pomaha intrum a PMG multiplexu.
+  const pmSeg={n:0, x:new Int32Array(160), r:new Uint8Array(160), v:new Uint8Array(160)};
+  function gtiaPmTrack(g,v){
+    if(!((g>=0x00&&g<=0x11)||g===0x1D)) return;
+    if(M.line<8 || M.line>=248) return;
+    if(!M.lineCyc0 && M.lineCyc0!==0) return;
+    const cyc=((cpu.cycles||0)-M.lineCyc0)|0;
+    if(cyc<0 || cyc>113) return;
+    if(pmSeg.n>=pmSeg.x.length) return;
+    const idx=pmSeg.n++;
+    pmSeg.x[idx]=gtiaSegXFromCycle(cyc);
+    pmSeg.r[idx]=g&0xFF;
+    pmSeg.v[idx]=v&0xFF;
+    if(M.vbxeDebug && M.gtiaPmSegDebugCount<24){
+      M.gtiaPmSegDebugCount++;
+      M.vbxeDebug('GTIA PMG SEG BUILD2JM line='+M.line+' cyc='+cyc+' x='+pmSeg.x[idx]+' reg=$D0'+hx2(g)+' val=$'+hx2(v));
+    }
+  }
+  function pmRegAt(g,x,fallback){
+    let v=fallback&0xFF;
+    if(pmSeg.n){
+      for(let i=0;i<pmSeg.n;i++){
+        if(pmSeg.r[i]===g && x>=pmSeg.x[i]) v=pmSeg.v[i];
+      }
+    }
+    return v&0xFF;
+  }
+  M.gtiaSegDebugCount=0; M.gtiaPmSegDebugCount=0;
   function gtiaColorTrack(g,v){
     if(g<0x12 || g>0x1B) return;
     if(M.line<8 || M.line>=248) return;
@@ -2953,7 +3039,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // COLPF/COLBK. Stary model bral snapshot pred temito zapisy, a tim vznikaly pruhy/barvy mimo.
     // Zapisy v prvnich ~28 cyklech aktualni radky plati pro tuto radku, pozdejsi az pro dalsi.
     const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+28;
-    M.lineCyc0=lineStart; chSeg.n=0; chSeg.base=antic.chbase; gtSeg.n=0;
+    M.lineCyc0=lineStart; chSeg.n=0; chSeg.base=antic.chbase; gtSeg.n=0; pmSeg.n=0;
     while(cpu.cycles<snapAt){
       if(M.wsync){
         M.wsync=false;
@@ -5943,6 +6029,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2JM_GTIA_PMG_BEAM_SEGMENTS_SAFE pripraven - zaklad BUILD2JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Novy krok: paprskove segmenty GTIA P/M registru HPOS/SIZE/GRAF/GRACTL pro intra/sprity bez BCB19/MSEL/OVSHIFT a bez hacku hry.');
     log('AtariHelp.eu EMU-10 BUILD2JL_CPU_NOP_FULL_BLITTER_CONST_PM_SAFE pripraven - zaklad BUILD2JK/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, PM VDELAY. Doplnene presnejsi neoficialni NOP cykly, VBXE SR/HR collision direct AND a blitter constant source andm==xorm. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
     log('AtariHelp.eu EMU-10 BUILD2JK_CPU_NOP_COLLISION_PM_VDELAY_SAFE pripraven - zaklad BUILD2JI/JJ zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Dva kroky naraz: NOP abs,x + VBXE collision z JJ a nove GTIA PMG VDELAY $D01C pro sprity/intra. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
     log('AtariHelp.eu EMU-10 BUILD2JI_6502_INDEXED_PAGECROSS_TIMING_SAFE pripraven - navazuje na BUILD2JE/JD/JA/JH: Tetris MEMAC + D740 + INITAD shadow zachovan, BCB19 vypnuty, MSEL/OVSHIFT render vypnuty. Nově obecna oprava 6502 page-cross cyklu pro ABS,X/ABS,Y/(ZP),Y cteni; cíl intro/DLI/bitmap timing, ne hack na hru.');
