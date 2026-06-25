@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JP</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JQ</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2379,7 +2379,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
       for(let i=0;i<nb;i++){
         const sc=anticRead(antic.lms+i);
         let bits=os[0]===undefined?0:0;
-        let line=row; if(antic.mode===3){ if(line>=8)line-=8; }
+        let line=row;
+        if(antic.chactl&4) line=7-(line&7);             // BUILD2JQ: CHACTL D2 vertical reflect pro ANTIC 2/3
+        else if(antic.mode===3 && line>=8) line-=8;
         bits=anticRead(chAt(i)+((sc&0x7F)<<3)+(line&7));
         if(sc&0x80){ if(antic.chactl&1) bits=0; else if(antic.chactl&2) bits^=0xFF; }
         for(let b=0;b<8;b++){ const on=!!(bits&(0x80>>b)); { const xx=xs+i*8+b; const bg2=useGtSeg?pfColorAt(3,xx):bg; TB[TO+xx]=on?fg:bg2; TC[xx]=on?fgCls:3; } }
@@ -2476,16 +2478,28 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     renderPMG(y);
   }
-  function pmShowAt(p,c,x){ // BUILD2IT: priorita podle PRIOR v dane X pozici (c: 0=BAK, 1..4=PF0..PF3)
+  function pmShowAt(p,c,x){ // BUILD2JQ: presna GTIA PRIOR tabulka podle Altirra HW manualu (c: 0=BAK, 1..4=PF0..PF3)
     if(!c) return true;
-    // GTIA PRIOR bity 0-3 tvori rezimy priority. Prakticky pro G2F je dulezite,
-    // aby P/M barevne vrstvy nespadly cele pod playfield jen kvuli jednomu plochemu snapshotu.
     const pr=gtiaRegAt(0x1B,x)&0x0F;
-    if(pr&1) return p<2 ? true : c>=3;   // P0/P1 nad vse, P2/P3 pod PF0/PF1
-    if(pr&2) return p<2;                 // P0/P1 nad cele PF, P2/P3 pod
-    if(pr&4) return c>=3;                // PF0/PF1 nad P/M, P/M nad PF2/PF3
-    if(pr&8) return false;               // cely playfield nad P/M
-    return true;                         // default: P/M nad PF
+    // PRIOR neni postupne maskovani "kdyz bit sedí". Je to volba priority poradi.
+    // Stary kod mel bit3 ($08) spatne jako "playfield vsechno nad P/M"; manual rika:
+    // PF0 > PF1 > P0 > P1 > P2 > P3 > PF2 > PF3 > BAK.
+    let rp, rf;
+    if(pr&0x08){          // 1000
+      rp=2+p;             // P0..P3 mezi PF1 a PF2
+      rf=(c===1)?0:(c===2)?1:(c===3)?6:7;
+    } else if(pr&0x04){   // 0100
+      rp=4+p;             // vsechen playfield nad P/M
+      rf=c-1;
+    } else if(pr&0x02){   // 0010
+      rp=(p<2)?p:(6+p);   // P0/P1 nad PF, P2/P3 pod PF
+      rf=2+(c-1);
+    } else {              // 0001 nebo 0000 fallback: P/M nad playfield
+      rp=p;
+      rf=4+(c-1);
+    }
+    if((pr&0x08) && M.vbxeDebug && !M.gtiaPrior8Logged){ M.gtiaPrior8Logged=true; M.vbxeDebug('GTIA PRIOR BUILD2JQ: rezim $08 pouzit jako PF0>PF1>P0>P1>P2>P3>PF2>PF3, ne jako playfield-nad-vsim.'); }
+    return rp<rf;
   }
   function renderPMG(y){
     pml.fill(0);
@@ -2656,18 +2670,24 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const o=base+(dbl?512:1024)+li, st=dbl?128:256;
       const np0=anticRead(o), np1=anticRead(o+st), np2=anticRead(o+st*2), np3=anticRead(o+st*3);
       const np=[np0,np1,np2,np3];
+      const oddLine=!!(M.line&1);
       for(let p=0;p<4;p++){
-        const prev=gtia.pmPrevP[p]&0xFF;
-        gtia.grafp[p]=(gtia.vdelay&(1<<p))?prev:np[p];
+        // BUILD2JQ podle Altirra HW manualu: VDELAY nelaguje software zápisy a není univerzální "prev line".
+        // Když je bit nastaven, GTIA přijme DMA latch jen na lichých scanlinech; na sudých drží starý GRAFP.
+        if(!(gtia.vdelay&(1<<p)) || oddLine) gtia.grafp[p]=np[p]&0xFF;
         gtia.pmPrevP[p]=np[p]&0xFF;
       }
+      if(gtia.vdelay && M.vbxeDebug && !M.gtiaVdelayExactLogged){ M.gtiaVdelayExactLogged=true; M.vbxeDebug('GTIA VDELAY BUILD2JQ: latch se pri nastavenem bitu nacita jen na lichych scanlinech; prime GRAFP/GRAFM zapisy se nezpozduji.'); }
     }
     if((antic.dmactl&0x0C)&&(gtia.gractl&1)){
       const nm=anticRead(base+(dbl?384:768)+li)&0xFF;
-      let gm=0, old=gtia.pmPrevM&0xFF;
+      const oddLine=!!(M.line&1);
+      let gm=gtia.grafm&0xFF;
       for(let p=0;p<4;p++){
-        const sh=p*2, bits=((gtia.vdelay&(0x10<<p))?old:nm)>>sh;
-        gm|=(bits&3)<<sh;
+        const sh=p*2;
+        if(!(gtia.vdelay&(0x10<<p)) || oddLine){
+          gm=(gm & ~(3<<sh)) | (((nm>>sh)&3)<<sh);
+        }
       }
       gtia.grafm=gm&0xFF;
       gtia.pmPrevM=nm;
@@ -6041,7 +6061,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2JP_PLAIN_ATARI_WEAK_VBXE_DETECT_SAFE pripraven - BUILD2JO DMA cycle-steal vetev zrusena kvuli skoku do SELF TESTU. Zaklad BUILD2JN/JM/JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, BCB19/MSEL/OVSHIFT vypnute. Novy krok: slaby staticky IO-only nalez $D640/$D740 uz nezapina VBXE profil pro obycejne Atari hry; VBXE se potvrzuje silnou signaturou nebo XEX/MEMAC loaderem.');
+    log('AtariHelp.eu EMU-10 BUILD2JQ_GTIA_PRIORITY_VDELAY_DOC_SAFE pripraven - zaklad BUILD2JP/JN/JM/JL/JI, bez JO DMA regrese. Cteno podle Altirra HW manualu: opraveno GTIA PRIOR $D01B poradi hlavne rezim $08, VDELAY $D01C nyni nacita DMA jen na lichych scanlinech a CHACTL $D401 D2 vertikalni reflect pro ANTIC 2/3. BCB21/Tetris MEMAC/D740/INITAD shadow zustava, BCB19/MSEL/OVSHIFT vypnute.');
     log('AtariHelp.eu EMU-10 BUILD2JM_GTIA_PMG_BEAM_SEGMENTS_SAFE pripraven - zaklad BUILD2JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Novy krok: paprskove segmenty GTIA P/M registru HPOS/SIZE/GRAF/GRACTL pro intra/sprity bez BCB19/MSEL/OVSHIFT a bez hacku hry.');
     log('AtariHelp.eu EMU-10 BUILD2JL_CPU_NOP_FULL_BLITTER_CONST_PM_SAFE pripraven - zaklad BUILD2JK/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, PM VDELAY. Doplnene presnejsi neoficialni NOP cykly, VBXE SR/HR collision direct AND a blitter constant source andm==xorm. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
     log('AtariHelp.eu EMU-10 BUILD2JK_CPU_NOP_COLLISION_PM_VDELAY_SAFE pripraven - zaklad BUILD2JI/JJ zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Dva kroky naraz: NOP abs,x + VBXE collision z JJ a nove GTIA PMG VDELAY $D01C pro sprity/intra. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
