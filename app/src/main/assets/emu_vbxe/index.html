@@ -355,6 +355,13 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    Pridava obecny XDL-SR rescue: kdyz je XDL platny, ma graficky SR record a standardni render vrati nulu,
    emulator zkusi najit spravnou 16KB VRAM stranku se stejnym offsetem a vykresli jen realna VBXE data.
    Night Driver a Decathlon zatim dal hlasi PM audit; GTIA priorita se nehackuje. */
+/* BUILD2JX_XDL_RENDER_WITHOUT_BLITTER_SAFE:
+   Test BUILD2JW ukazal dulezity fakt: Commando po MEMAC loaderu zapne VBXE XDL base=$20000,
+   ale log nema zadny VBXE BLITTER start. Stary renderVbxeProbe vracel hned na bltStarts<1,
+   takze XDL renderer se vubec nespustil a zustal jen ANTIC text PRESS ANY KEY TO START.
+   JX presouva XDL render pred blitter podminku: XDL se smi kreslit i kdyz obraz prisel pres MEMAC/CPU,
+   ne jen pres blitter. Bez jmen her, bez vlozeneho obrazku, bez screen-paintu.
+*/
 /* BUILD2JW_XDL_TILE_UNDERLAY_AFTER_ZERO_GRAPH_SAFE:
    Test BUILD2JV: Commando stale neukazuje Arnolda, ale log porad potvrzuje realny VBXE blitter
    blocks=862 bytes=66864 do VRAM. Rescue nevidel/nedal viditelny XDL pixel, proto je chyba v tom,
@@ -1513,7 +1520,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     vbxe.xdlEnabled=false; vbxe.xdlPendingEnabled=false; vbxe.xdlPendingApply=false; vbxe.xdlDirty=false;
     vbxe.xdlRecords=[]; vbxe.xdlSig=''; vbxe.xdlSawValid=false; vbxe.lastGoodXdlRecords=null; vbxe.lastGoodXdlBase=0;
     vbxe.xdlCarryState=null; vbxe.xdlCarryLogged=false; vbxe.bigBlitLogged=false;
-    vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false;
+    vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false; vbxe.xdlNoBlitterRenderLogged=false;
     vbxe.xdlMapApplyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false;
     vbxe.xdlParseCount=0; vbxe.xdlScanCount=0; vbxe.lastXdlLogScan=0;
     vbxe.surfaceValid=false; vbxe.surfaceAddr=0; vbxe.surfaceStep=320; vbxe.surfaceWidth=320; vbxe.surfaceHeight=240; vbxe.surfaceScore=0; vbxe.surfaceLogged=false; vbxe.surfaceFallbackLogged=false;
@@ -4116,15 +4123,26 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
   M.renderVbxeProbe=function(){
     M.vbxeTextHiActive=false;
-    if(!vbxe || vbxe.bltStarts<1) return;
-    if(vbxeRenderXdl()) return;
+    if(!vbxe) return;
+
+    // BUILD2JX: XDL neni zavisle na blitteru. Commando log z JW ukazal XDL base=$20000,
+    // ale bltStarts zustalo 0, proto se predtim renderer vubec nespustil.
+    // Pokud hra naplnila VBXE VRAM pres MEMAC/CPU, XDL se musi zkusit vykreslit i bez BCB blitter startu.
     if(vbxe.xdlEnabled || vbxe.xdlSawValid){
+      if((vbxe.bltStarts|0)<1 && !vbxe.xdlNoBlitterRenderLogged && M.vbxeDebug){
+        vbxe.xdlNoBlitterRenderLogged=true;
+        M.vbxeDebug('VBXE XDL RENDER WITHOUT BLITTER BUILD2JX: XDL je zapnuty/platny, ale bltStarts=0; zkousim realny XDL render z VRAM/MEMAC, ne screen-paint.');
+      }
+      if(vbxeRenderXdl()) return;
       if(!vbxe.xdlProbeBlockedLogged && M.vbxeDebug){
         vbxe.xdlProbeBlockedLogged=true;
-        M.vbxeDebug('VBXE VRAM PROBE BLOCKED BUILD2HL: platny nebo zapnuty XDL ma prednost; fallback probe uz nesmi malovat caj pres realny XDL obraz.');
+        M.vbxeDebug('VBXE VRAM PROBE BLOCKED BUILD2HL/JX: platny nebo zapnuty XDL ma prednost; fallback probe uz nesmi malovat caj pres realny XDL obraz.');
       }
       return;
     }
+
+    if((vbxe.bltStarts|0)<1) return;
+    if(vbxeRenderXdl()) return;
     if(!vbxe.renderDirty) return;
 
     if(vbxeAtariFrameLooksActive()){
@@ -6375,7 +6393,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2JW-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2JX-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -6391,6 +6409,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2JX_XDL_RENDER_WITHOUT_BLITTER_SAFE pripraven - navazuje na BUILD2JW. XDL renderer uz neni blokovany podminkou bltStarts>0: pokud hra zapne XDL a data prijdou pres MEMAC/CPU, kresli se realna VBXE VRAM i bez blitter startu. Cil: Commando Arnold pred PRESS ANY KEY, Night Driver VBXE obraz; bez screen-paintu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JW_XDL_TILE_UNDERLAY_AFTER_ZERO_GRAPH_SAFE pripraven - navazuje na BUILD2JV/JU/JT/JS. Oprava podle logu: Commando ma realny VBXE blitter blocks=862/bytes=66864, ale zero-XDL blokoval tile underlay. JW pusti realny BCB tile-surface i po XDL grafice s 0 pixely, jen do COLBK pozadi. PM audit zustava pro Night Driver/Decathlon. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JS_GTIA_PM_DMA_LATCH_SAFE pripraven - navazuje na BUILD2JR/JQ safe, JO DMA vetev zustava mrtva. Oprava podle Altirra manualu: P/M DMA data se na zacatku scanline nactou do GTIA latchu a render teto radky pouziva latched GRAFP/GRAFM, ne pozdeji prepsane CPU registry. Cíl: Night Driver auto, Decathlon/Popeye PM sprity; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JR_HIRES_BG_TRANSPARENT_PM_PRIORITY_SAFE pripraven - navazuje na BUILD2JQ/JI safe, JO DMA vetev mrtva. Podle Altirra HW manualu opravuji ANTIC hi-res 2/3/F priority tridu: 0 bit = pozadi pro P/M priority/kolize, 1 bit = PF2. Cíl: Night Driver auto, Decathlon/Popeye sprity/vrstvy; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
