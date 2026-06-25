@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JM</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JN</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2167,7 +2167,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(p===0x05) antic.vscrol=v&15;
       else if(p===0x07) antic.pmbase=v;
       else if(p===0x09){ antic.chbase=v;
-        if(chSeg.n<6){ chSeg.c[chSeg.n]=cpu.cycles-M.lineCyc0; chSeg.v[chSeg.n]=v; chSeg.n++; }
+        if(chSeg.n<chSeg.c.length){ chSeg.c[chSeg.n]=cpu.cycles-M.lineCyc0; chSeg.v[chSeg.n]=v; chSeg.n++; }
         if(M.chLog)M.chLog.push([M.line,v,cpu.pc]); }
       else if(p===0x0A){ M.wsync=true; }       // WSYNC: stall CPU to line end
       else if(p===0x0E){ antic.nmien=v; }
@@ -2349,19 +2349,21 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const left=192-((nb*(md.t==='ch6'?16:(md.px? md.px*8/ (md.b===10?1: (md.b===20?2:4)) :8)))>>1); // computed below per type instead
     const row=antic.row;
     const ch=(antic.chbase&0xFC)<<8;
-    // horizontalni split JEN kdyz hra behem radky prepne font na JINOU hodnotu
-    // (zavod s paprskem - Karate). Jinak (jediny zapis na zacatku, nebo zadny)
-    // se chova jako bezny font - zadne pruhy.
-    let chMulti=false;
-    if((md.t==='ch2'||md.t==='ch4'||md.t==='ch6') && chSeg.n>=2){
-      const f0=chSeg.v[0]&0xFC;
-      for(let k=1;k<chSeg.n;k++){ if((chSeg.v[k]&0xFC)!==f0){ chMulti=true; break; } }
-    }
+    // BUILD2JN: CHBASE je skutecny ANTIC paprsek, ne jen "vic nez dva zapisy".
+    // Jediny STA CHBASE po WSYNC muze menit font pro zbytek radky; Decathlon/Popeye
+    // a dalsi intro/loga casto skladaji obraz prave takhle. Startujeme ze snapshotu
+    // CHBASE na zacatku radky a aplikujeme vsechny zapisy podle pozice znaku.
+    const chBeam=(md.t==='ch2'||md.t==='ch4'||md.t==='ch6') && chSeg.n>0;
     const chStep=76/nb;
     function chAt(i){
-      if(!chMulti) return ch;
-      const fc=46+i*chStep; let val=chSeg.v[0];
+      if(!chBeam) return ch;
+      const fc=46+i*chStep;
+      let val=chSeg.base&0xFF;
       for(let k=0;k<chSeg.n;k++){ if(chSeg.c[k]<=fc) val=chSeg.v[k]; }
+      if(M.vbxeDebug && !M.anticChbaseBeamLogged){
+        M.anticChbaseBeamLogged=true;
+        M.vbxeDebug('ANTIC CHBASE BEAM BUILD2JN: jedno i vice STA CHBASE behem radky se aplikuje podle paprsku; base=$'+hx2(chSeg.base)+' segs='+chSeg.n+'.');
+      }
       return (val&0xFC)<<8;
     }
     const PF=[palette[gtia.colbk],palette[gtia.colpf[0]],palette[gtia.colpf[1]],palette[gtia.colpf[2]],palette[gtia.colpf[3]]];
@@ -2572,7 +2574,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           if(pmShowAt(p,c,x)) fb[off+x]=missileColAt(p,x); } } } } } }
     vbxeStorePriorityLine(y);
   }
-  const chSeg={n:0, c:new Int32Array(6), v:new Uint8Array(6), base:0};   // CHBASE zapisy behem radky (zavod s paprskem)
+  const chSeg={n:0, c:new Int32Array(16), v:new Uint8Array(16), base:0};   // BUILD2JN: CHBASE zapisy behem radky; vice slotu pro DLI/font kernely
   const gtSeg={n:0, x:new Int32Array(96), r:new Uint8Array(96), v:new Uint8Array(96)}; // BUILD2IT: COLPM/COLPF/COLBK/PRIOR zmeny behem scanline, vic slotu pro G2F
   // BUILD2JM: GTIA P/M registr segmenty behem scanline.
   // Nejde o nove barvy ani hack hry: stejny paprskovy princip jako gtSeg pro COLPF/COLPM/PRIOR,
@@ -6029,6 +6031,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2JN_ANTIC_CHBASE_SINGLE_WRITE_BEAM_SAFE pripraven - zaklad BUILD2JM/JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, BCB19/MSEL/OVSHIFT vypnute. Novy krok: ANTIC CHBASE paprsek aplikuje i jeden STA CHBASE behem radky pro obycejne hry a intro/font kernely; zadny hack hry.');
     log('AtariHelp.eu EMU-10 BUILD2JM_GTIA_PMG_BEAM_SEGMENTS_SAFE pripraven - zaklad BUILD2JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Novy krok: paprskove segmenty GTIA P/M registru HPOS/SIZE/GRAF/GRACTL pro intra/sprity bez BCB19/MSEL/OVSHIFT a bez hacku hry.');
     log('AtariHelp.eu EMU-10 BUILD2JL_CPU_NOP_FULL_BLITTER_CONST_PM_SAFE pripraven - zaklad BUILD2JK/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, PM VDELAY. Doplnene presnejsi neoficialni NOP cykly, VBXE SR/HR collision direct AND a blitter constant source andm==xorm. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
     log('AtariHelp.eu EMU-10 BUILD2JK_CPU_NOP_COLLISION_PM_VDELAY_SAFE pripraven - zaklad BUILD2JI/JJ zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Dva kroky naraz: NOP abs,x + VBXE collision z JJ a nove GTIA PMG VDELAY $D01C pro sprity/intra. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
