@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JQ</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JT</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -347,6 +347,12 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    a zachova BUILD2JA/JC Tetris MEMAC cestu. Zadny BCB19, zadna MSEL barevna zmena, zadny hack hry. */
 
 
+/* BUILD2JT_PM_VISIBILITY_AUDIT_SAFE:
+   Diagnosticky navazujici build na potvrzeny BUILD2JS. Nemeni grafiku, VBXE renderer,
+   loader, kazetu, joystick ani UI. Pridava jen pravdivy GTIA/ANTIC/P-M audit pro hry
+   Night Driver / Decathlon / Mission / Popeye: DMACTL, GRACTL, PMBASE, PM single/double line,
+   nenulove P/M DMA latch bajty, HPOS/SIZE/GRAF zapisy, priority blokace a offscreen stav.
+   Cil: dalsi oprava se opre o log, ne o hadani ani herni hack. */
 /* BUILD2JM_GTIA_PMG_BEAM_SEGMENTS_SAFE:
    Navazuje na BUILD2JL/JI chráněný základ: Tetris MEMAC, D740 alias, INITAD shadow, BCB21 safe,
    bez BCB19 a bez MSEL/OVSHIFT větve. Tentokrát nejde o další barvu ani rollback.
@@ -2114,6 +2120,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(g===0x1F){ const sp=(v>>3)&1; if(sp!==gtia.speaker){gtia.speaker=sp; pokey.dirty=true; M.onSpeaker&&M.onSpeaker(sp);} }
       gtiaPmTrack(g,v);    // BUILD2JM: P/M HPOS/SIZE/GRAF segmenty behem scanline
       gtiaColorTrack(g,v); // BUILD2IS: G2F/DLI umi menit GTIA barvy behem jedne scanline
+      pmAuditGtWrite(g,v); // BUILD2JT: jen log P/M registru pro dalsi opravu
       return;
     }
     if(page===0xD200){
@@ -2172,6 +2179,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(p===0x0A){ M.wsync=true; }       // WSYNC: stall CPU to line end
       else if(p===0x0E){ antic.nmien=v; }
       else if(p===0x0F){ antic.nmist=0x1F; }   // NMIRES
+      pmAuditAnticWrite(p,v); // BUILD2JT: jen audit ANTIC DMA/DLIST/PMBASE zapisu
       return;
     }
   }
@@ -2219,6 +2227,80 @@ function Atari130XE(osRom, basicRom, CPUctor){
   const cpu=CPUctor(cpuRead,cpuWrite);
   M.cpu=cpu; M.ram=ram; M.portB=portB; M.pokey=pokey; M.gtia=gtia; M.antic=antic; M.anticRead=anticRead;
   M.peek=cpuRead; M.poke=cpuWrite;
+
+  // BUILD2JT: pravdivy audit P/M grafiky. Jen meri a loguje, nic neopravuje a nic nekresli navic.
+  const pmAudit={enabled:false,name:'',startFrame:0,lastFrameLog:-9999,lastRegLog:0,lastDmaLog:0,
+    frames:0, lines:0, pDmaLines:0, mDmaLines:0, pNonzeroLines:0, mNonzeroLines:0,
+    pSet:0,mSet:0,pDraw:0,mDraw:0,pBlock:0,mBlock:0,pOff:0,mOff:0,
+    pmSegLines:0, pmSegWrites:0, gtiaWrites:0, anticWrites:0,
+    lastPmBase:-1,lastDmactl:-1,lastGractl:-1,lastPrior:-1,lastMode:-1,lastDlist:-1,
+    pFirst:false,mFirst:false, framesSinceStart:0};
+  function pmAuditResetCounters(){
+    pmAudit.lines=0; pmAudit.pDmaLines=0; pmAudit.mDmaLines=0; pmAudit.pNonzeroLines=0; pmAudit.mNonzeroLines=0;
+    pmAudit.pSet=0; pmAudit.mSet=0; pmAudit.pDraw=0; pmAudit.mDraw=0; pmAudit.pBlock=0; pmAudit.mBlock=0; pmAudit.pOff=0; pmAudit.mOff=0;
+    pmAudit.pmSegLines=0; pmAudit.pmSegWrites=0; pmAudit.gtiaWrites=0; pmAudit.anticWrites=0;
+  }
+  function pmAuditSafeName(n){ return String(n||'XEX').replace(/\s+/g,' ').slice(0,64); }
+  M.setPmAuditName=function(name){
+    pmAudit.enabled=true; pmAudit.name=pmAuditSafeName(name); pmAudit.startFrame=M.frame|0; pmAudit.lastFrameLog=-9999; pmAudit.lastRegLog=0; pmAudit.lastDmaLog=0;
+    pmAudit.lastPmBase=-1; pmAudit.lastDmactl=-1; pmAudit.lastGractl=-1; pmAudit.lastPrior=-1; pmAudit.lastMode=-1; pmAudit.lastDlist=-1; pmAudit.pFirst=false; pmAudit.mFirst=false;
+    pmAuditResetCounters();
+    if(M.vbxeDebug) M.vbxeDebug('BUILD2JT PM AUDIT START: '+pmAudit.name+' - jen diagnostika P/M pipeline, zadny screen paint, zadny hack hry. Posli LOG po 20-40 s hry nebo po chybe obrazu.');
+  };
+  function pmAuditRegSnapshot(force,tag){
+    if(!pmAudit.enabled || !M.vbxeDebug) return;
+    const pmb=antic.pmbase&0xFF, dma=antic.dmactl&0xFF, gr=gtia.gractl&0xFF, pr=gtia.prior&0xFF, mode=antic.mode&0xFF, dl=antic.dlist&0xFFFF;
+    if(force || pmb!==pmAudit.lastPmBase || dma!==pmAudit.lastDmactl || gr!==pmAudit.lastGractl || pr!==pmAudit.lastPrior || mode!==pmAudit.lastMode || dl!==pmAudit.lastDlist){
+      pmAudit.lastPmBase=pmb; pmAudit.lastDmactl=dma; pmAudit.lastGractl=gr; pmAudit.lastPrior=pr; pmAudit.lastMode=mode; pmAudit.lastDlist=dl;
+      const dbl=!(dma&0x10), base=(pmb&(dbl?0xFC:0xF8))<<8;
+      M.vbxeDebug('BUILD2JT PM REG '+(tag||'SNAP')+': frame='+M.frame+' line='+M.line+' DL=$'+hx4(dl)+' mode=$'+hx2(mode)+' DMACTL=$'+hx2(dma)+' GRACTL=$'+hx2(gr)+' PRIOR=$'+hx2(pr)+' PMBASE=$'+hx2(pmb)+' '+(dbl?'DOUBLE':'SINGLE')+' base=$'+hx4(base)+' HPOSP='+gtia.hposp.map(hx2).join(',')+' SIZEP='+gtia.sizep.join(',')+' COLPM='+gtia.colpm.map(hx2).join(','));
+    }
+  }
+  function pmAuditGtWrite(g,v){
+    if(!pmAudit.enabled) return; pmAudit.gtiaWrites++;
+    if(!M.vbxeDebug) return;
+    if(pmAudit.lastRegLog<32 && ((g<=0x11)||g===0x1B||g===0x1C||g===0x1D)){
+      pmAudit.lastRegLog++;
+      M.vbxeDebug('BUILD2JT GTIA W: frame='+M.frame+' line='+M.line+' cyc='+(((cpu.cycles||0)-M.lineCyc0)|0)+' reg=$D0'+hx2(g)+' val=$'+hx2(v)+' PC=$'+hx4(cpu.pc));
+    }
+  }
+  function pmAuditAnticWrite(p,v){
+    if(!pmAudit.enabled) return; pmAudit.anticWrites++;
+    if((p===0 || p===7 || p===2 || p===3) && M.vbxeDebug && pmAudit.lastRegLog<48){
+      pmAudit.lastRegLog++;
+      M.vbxeDebug('BUILD2JT ANTIC W: frame='+M.frame+' line='+M.line+' cyc='+(((cpu.cycles||0)-M.lineCyc0)|0)+' reg=$D4'+hx2(p)+' val=$'+hx2(v)+' PC=$'+hx4(cpu.pc));
+    }
+  }
+  function pmAuditDmaFetch(base,dbl,li,np,nm){
+    if(!pmAudit.enabled) return;
+    pmAudit.lines++;
+    const pd=!!((antic.dmactl&0x08)&&(gtia.gractl&2));
+    const md=!!((antic.dmactl&0x0C)&&(gtia.gractl&1));
+    if(pd) pmAudit.pDmaLines++; if(md) pmAudit.mDmaLines++;
+    const por=np?((np[0]|np[1]|np[2]|np[3])&0xFF):0, mor=(nm==null?0:(nm&0xFF));
+    if(por){ pmAudit.pNonzeroLines++; if(!pmAudit.pFirst && M.vbxeDebug){ pmAudit.pFirst=true; M.vbxeDebug('BUILD2JT PM DMA FIRST PLAYER: frame='+M.frame+' line='+M.line+' li='+li+' PMBASE=$'+hx2(antic.pmbase)+' base=$'+hx4(base)+' '+(dbl?'DOUBLE':'SINGLE')+' P='+np.map(hx2).join(',')+' HPOSP='+gtia.hposp.map(hx2).join(',')+' PRIOR=$'+hx2(gtia.prior)); } }
+    if(mor){ pmAudit.mNonzeroLines++; if(!pmAudit.mFirst && M.vbxeDebug){ pmAudit.mFirst=true; M.vbxeDebug('BUILD2JT PM DMA FIRST MISSILE: frame='+M.frame+' line='+M.line+' li='+li+' PMBASE=$'+hx2(antic.pmbase)+' base=$'+hx4(base)+' '+(dbl?'DOUBLE':'SINGLE')+' M=$'+hx2(nm)+' HPOSM='+gtia.hposm.map(hx2).join(',')+' PRIOR=$'+hx2(gtia.prior)); } }
+    if(M.vbxeDebug && pmAudit.lastDmaLog<20 && (por||mor)){
+      pmAudit.lastDmaLog++;
+      M.vbxeDebug('BUILD2JT PM DMA LINE: f='+M.frame+' y='+(M.line-8)+' li='+li+' P='+(np?np.map(hx2).join(','):'-')+' M=$'+hx2(nm||0)+' DMACTL=$'+hx2(antic.dmactl)+' GRACTL=$'+hx2(gtia.gractl)+' PMBASE=$'+hx2(antic.pmbase));
+    }
+  }
+  function pmAuditMarkSegLine(){ if(pmAudit.enabled){ pmAudit.pmSegLines++; pmAudit.pmSegWrites+=pmSeg?pmSeg.n:0; } }
+  function pmAuditObj(kind,drawn,blocked,offscreen){
+    if(!pmAudit.enabled) return;
+    if(kind==='P'){ pmAudit.pSet++; if(drawn)pmAudit.pDraw++; if(blocked)pmAudit.pBlock++; if(offscreen)pmAudit.pOff++; }
+    else { pmAudit.mSet++; if(drawn)pmAudit.mDraw++; if(blocked)pmAudit.mBlock++; if(offscreen)pmAudit.mOff++; }
+  }
+  function pmAuditFrameEnd(){
+    if(!pmAudit.enabled) return;
+    pmAudit.framesSinceStart=(M.frame-pmAudit.startFrame)|0;
+    const need=(pmAudit.framesSinceStart<8)||(pmAudit.framesSinceStart===20)||(pmAudit.framesSinceStart===60)||((pmAudit.framesSinceStart%120)===0);
+    if(!need || !M.vbxeDebug || M.frame===pmAudit.lastFrameLog) return;
+    pmAudit.lastFrameLog=M.frame;
+    pmAuditRegSnapshot(false,'FRAME');
+    M.vbxeDebug('BUILD2JT PM SUMMARY '+pmAudit.name+': frame='+M.frame+' since='+pmAudit.framesSinceStart+' pDmaLines='+pmAudit.pDmaLines+' mDmaLines='+pmAudit.mDmaLines+' pNonzeroLines='+pmAudit.pNonzeroLines+' mNonzeroLines='+pmAudit.mNonzeroLines+' pPixels='+pmAudit.pSet+' pDraw='+pmAudit.pDraw+' pBlockedPF='+pmAudit.pBlock+' pOff='+pmAudit.pOff+' mPixels='+pmAudit.mSet+' mDraw='+pmAudit.mDraw+' mBlockedPF='+pmAudit.mBlock+' mOff='+pmAudit.mOff+' pmSegLines='+pmAudit.pmSegLines+' pmSegWrites='+pmAudit.pmSegWrites+' gtiaWrites='+pmAudit.gtiaWrites+' anticWrites='+pmAudit.anticWrites+' PC=$'+hx4(cpu.pc)+' PORTB=$'+hx2(portB()));
+    pmAuditResetCounters();
+  }
   // ---------------- Palette (PAL) ---------
   const palette=new Uint32Array(256);
   (function(){
@@ -2529,6 +2611,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         M.gtiaPmBeamLogged=true;
         M.vbxeDebug('GTIA PMG BEAM RENDER BUILD2JM: aktivni paprskove HPOS/SIZE/GRAF segmenty pro P/M.');
       }
+      pmAuditMarkSegLine();
       for(let p=0;p<4;p++){
         for(let x=0;x<384;x++){
           const gr=pmRegAt(0x1D,x,gtia.gractl);
@@ -2547,7 +2630,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
             const c=pfc[x]; if(c) gtia.cPPF[p]|=1<<(c-1);
             const mm=pml[x]; if(mm){ gtia.cPPL[p]|=mm; for(let q=0;q<4;q++) if(mm&(1<<q)) gtia.cPPL[q]|=(1<<p); }
             pml[x]|=(1<<p);
-            if(pmShowAt(p,c,x)) fb[off+x]=pmColAt(p,x);
+            const show=pmShowAt(p,c,x); if(show) fb[off+x]=pmColAt(p,x);
+            pmAuditObj('P',show,!show,0);
           }
         }
       }
@@ -2564,7 +2648,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
           if(bits&(2>>bit)){
             const c=pfc[x]; if(c) gtia.cMPF[p]|=1<<(c-1);
             gtia.cMPL[p]|=pml[x];
-            if(pmShowAt(p,c,x)) fb[off+x]=missileColAt(p,x);
+            const show=pmShowAt(p,c,x); if(show) fb[off+x]=missileColAt(p,x);
+            pmAuditObj('M',show,!show,0);
           }
         }
       }
@@ -2578,11 +2663,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const w=[1,2,1,4][gtia.sizep[p]&3];
       const x0=gtia.hposp[p]*2-64;   // leva hrana fb = color clock $20
       for(let b=0;b<8;b++){ if(g&(0x80>>b)){
-        for(let k=0;k<2*w;k++){ const x=x0+b*2*w+k; if(x>=0&&x<384){
+        let anyOn=false;
+        for(let k=0;k<2*w;k++){ const x=x0+b*2*w+k; if(x>=0&&x<384){ anyOn=true;
           const c=pfc[x]; if(c) gtia.cPPF[p]|=1<<(c-1);
           const mm=pml[x]; if(mm){ gtia.cPPL[p]|=mm; for(let q=0;q<4;q++) if(mm&(1<<q)) gtia.cPPL[q]|=(1<<p); }
           pml[x]|=(1<<p);
-          if(pmShowAt(p,c,x)) fb[off+x]=pmColAt(p,x); } } } }
+          const show=pmShowAt(p,c,x); if(show) fb[off+x]=pmColAt(p,x); pmAuditObj('P',show,!show,0); } }
+        if(!anyOn) pmAuditObj('P',false,false,1);
+      } }
     }
     // missiles
     let gm=(mDma ? gtia.pmLineM : gtia.grafm)&0xFF;   // BUILD2JS: DMA latch radky pro missiles
@@ -2590,10 +2678,13 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const w=[1,2,1,4][(gtia.sizem>>(p*2))&3];
       const x0=gtia.hposm[p]*2-64;
       for(let b=0;b<2;b++){ if(bits&(2>>b)){
-        for(let k=0;k<2*w;k++){ const x=x0+b*2*w+k; if(x>=0&&x<384){
+        let anyOn=false;
+        for(let k=0;k<2*w;k++){ const x=x0+b*2*w+k; if(x>=0&&x<384){ anyOn=true;
           const c=pfc[x]; if(c) gtia.cMPF[p]|=1<<(c-1);
           gtia.cMPL[p]|=pml[x];
-          if(pmShowAt(p,c,x)) fb[off+x]=missileColAt(p,x); } } } } } }
+          const show=pmShowAt(p,c,x); if(show) fb[off+x]=missileColAt(p,x); pmAuditObj('M',show,!show,0); } }
+        if(!anyOn) pmAuditObj('M',false,false,1);
+      } } } }
     vbxeStorePriorityLine(y);
   }
   const chSeg={n:0, c:new Int32Array(16), v:new Uint8Array(16), base:0};   // BUILD2JN: CHBASE zapisy behem radky; vice slotu pro DLI/font kernely
@@ -2671,13 +2762,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function pmDmaFetch(){
     if(M.line<8 || M.line>=248) return;
     const dbl=!(antic.dmactl&0x10), base=(antic.pmbase&(dbl?0xFC:0xF8))<<8, li=dbl?(M.line>>1):M.line;
+    let auditNp=null, auditNm=0;
     // BUILD2JK: GTIA VDELAY ($D01C). Realny stroj umi zpozdit DMA data pro P0-P3/M0-M3
     // o jednu radku; spousta intr/sportovnich her tim sklada sprity a prechodove obrazovky.
     // Kdyz DMA neni aktivni, registry zustanou zmrazene jako predtim.
     if((antic.dmactl&0x08)&&(gtia.gractl&2)){
       const o=base+(dbl?512:1024)+li, st=dbl?128:256;
       const np0=anticRead(o), np1=anticRead(o+st), np2=anticRead(o+st*2), np3=anticRead(o+st*3);
-      const np=[np0,np1,np2,np3];
+      const np=[np0,np1,np2,np3]; auditNp=np;
       const oddLine=!!(M.line&1);
       for(let p=0;p<4;p++){
         // BUILD2JQ podle Altirra HW manualu: VDELAY nelaguje software zápisy a není univerzální "prev line".
@@ -2696,7 +2788,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }
     }
     if((antic.dmactl&0x0C)&&(gtia.gractl&1)){
-      const nm=anticRead(base+(dbl?384:768)+li)&0xFF;
+      const nm=anticRead(base+(dbl?384:768)+li)&0xFF; auditNm=nm;
       const oddLine=!!(M.line&1);
       let gm=gtia.grafm&0xFF;
       for(let p=0;p<4;p++){
@@ -2713,6 +2805,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         M.vbxeDebug('GTIA PM DMA LATCH BUILD2JS: prvni nenulovy missile latch line='+M.line+' PMBASE=$'+hx2(antic.pmbase)+' DMACTL=$'+hx2(antic.dmactl)+' GRACTL=$'+hx2(gtia.gractl)+' M=$'+hx2(gtia.pmLineM));
       }
     }
+    pmAuditDmaFetch(base,dbl,li,auditNp,auditNm);
   }
   function cassetteToneFreqAt(t, bitIndex, byteIndex){
     if(!t) return 5327;
@@ -3108,7 +3201,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(antic.rowsLeft>0) antic.rowsLeft--;
     }
     M.line++;
-    if(M.line>=LINES){ M.line=0; M.frame++; }
+    if(M.line>=LINES){ M.line=0; M.frame++; pmAuditFrameEnd(); }
   }
 
   function vbxeAddr3(a0,a1,a2){
@@ -4678,7 +4771,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var isVbxe=vbxeScanAndLog(name,u8,'XEX');
     if(isVbxe) log('VBXE BUILD2JD: obecna detekce nastavena na FX v1.26a: $D640/$D740 read=$10, minor=$26, D642/D643 read=$FF. RAM: main 64K + EXT buffer 320K + VBXE VRAM 512K; CPU 320K banky jen pres PORTB b2,b3,b5,b6, ANTIC zatim 130XE-safe. Stiskni ULOZIT LOG po zastaveni.');
     startAudio();
-    M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(audio&&audio.sh)audio.sh.head=-1;
+    M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(M.setPmAuditName) M.setPmAuditName(name); if(audio&&audio.sh)audio.sh.head=-1;
     if(audio) M.onSpeaker=function(level){ audio.st.spkLevel=level?1:-1; audio.st.spkDecay=(audio.ac.sampleRate*0.004)|0; };
     if(u8[0]===0x96&&u8[1]===0x02){
       log('NAHRAJ XEX: '+name+' je ATR obraz disku - montuji jako disketu D1:.');
@@ -4714,7 +4807,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var isVbxe=vbxeScanAndLog(name,u8,'ATR');
     if(isVbxe) log('VBXE BUILD2JD: obecna detekce nastavena na FX v1.26a: $D640/$D740 read=$10, minor=$26, D642/D643 read=$FF. RAM: main 64K + EXT buffer 320K + VBXE VRAM 512K; CPU 320K banky jen pres PORTB b2,b3,b5,b6, ANTIC zatim 130XE-safe. Stiskni ULOZIT LOG po zastaveni.');
     startAudio();
-    M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(audio&&audio.sh)audio.sh.head=-1;
+    M=window.EMU10.createMachine(); M.audioQ=[]; attachMachineHooks(); if(M.setPmAuditName) M.setPmAuditName(name); if(audio&&audio.sh)audio.sh.head=-1;
     if(audio) M.onSpeaker=function(level){ audio.st.spkLevel=level?1:-1; audio.st.spkDecay=(audio.ac.sampleRate*0.004)|0; };
     M.mountDisk(u8);
     try{ if(M.diskFastStats){ M._hwDiskName=name; } }catch(_e){}
@@ -6066,7 +6159,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2BR-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2JT-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -6082,6 +6175,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2JT_PM_VISIBILITY_AUDIT_SAFE pripraven - navazuje presne na BUILD2JS. Tohle je diagnosticky overlay: nemeni obraz, loader, VBXE, kazetu ani UI; meri P/M DMA/priority/offscreen stav pro Night Driver, Decathlon, Mission a dalsi hry. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JS_GTIA_PM_DMA_LATCH_SAFE pripraven - navazuje na BUILD2JR/JQ safe, JO DMA vetev zustava mrtva. Oprava podle Altirra manualu: P/M DMA data se na zacatku scanline nactou do GTIA latchu a render teto radky pouziva latched GRAFP/GRAFM, ne pozdeji prepsane CPU registry. Cíl: Night Driver auto, Decathlon/Popeye PM sprity; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JR_HIRES_BG_TRANSPARENT_PM_PRIORITY_SAFE pripraven - navazuje na BUILD2JQ/JI safe, JO DMA vetev mrtva. Podle Altirra HW manualu opravuji ANTIC hi-res 2/3/F priority tridu: 0 bit = pozadi pro P/M priority/kolize, 1 bit = PF2. Cíl: Night Driver auto, Decathlon/Popeye sprity/vrstvy; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JQ_GTIA_PRIORITY_VDELAY_DOC_SAFE pripraven - zaklad BUILD2JP/JN/JM/JL/JI, bez JO DMA regrese. Cteno podle Altirra HW manualu: opraveno GTIA PRIOR $D01B poradi hlavne rezim $08, VDELAY $D01C nyni nacita DMA jen na lichych scanlinech a CHACTL $D401 D2 vertikalni reflect pro ANTIC 2/3. BCB21/Tetris MEMAC/D740/INITAD shadow zustava, BCB19/MSEL/OVSHIFT vypnute.');
