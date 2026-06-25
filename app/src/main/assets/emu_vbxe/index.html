@@ -364,13 +364,13 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    zapisy do D640/D740 se ignoruji a XDL/MAP se nesmi rozjet u nepotvrzene VBXE hry.
    Commando/Night Driver se silnou VBXE signaturou zustavaji na JX/JZ ceste. Bez hacku podle nazvu hry.
 */
-/* BUILD2KD_RESULTS_PASS_NIGHTDRIVER_DECATHLON_CORE:
-   Stop mikrokolecek: navazuji na KB/JZ stabilitu a delam jeden vetsi obecny rez.
-   1) SR low-address XDL overlay uz nebere prvni radky primo z prostoru XDL tabulky jako grafiku.
-      Cíl: Night Driver - auto zustava, uzky caj u auta pryc/mensi.
-   2) P/M DMA z PMBASE=$00 se nepouziva jako obrazova data, protoze taha zero-page/OS pracovni RAM
-      a prebije software GRAFP multiplex. Cíl: Decathlon - min garbage/atleticke vrstvy bez hacku podle jmena.
-   KODY JSOU STEJNE.
+/* BUILD2KE_CONSOLIDATED_XDL_PMG_PIPELINE_PASS:
+   Navazuje na KB/JZ/JX, ne na KC/KD. Stop mikrokolecek: jeden konsolidovany rez podle logu a predavaciho baliku.
+   1) Night Driver: SR XDL record z velmi nizke VRAM adresy ve spodnim obrazu nebere XDL/hlavickove bajty jako grafiku.
+      Preskakuji cele low-origin pasmo az pod $0800, ne jen 2 radky jako KD. Bez nazvu hry, bez screen-paintu.
+   2) Decathlon/PMG: kdyz je PM DMA aktivni, ale radkovy DMA latch je nulovy, software GRAFP/GRAFM snapshot/beam zapis smi overrideovat nulovy latch.
+      To vraci obecne softwarove PMG multiplexy, aniz by se lamal PMBASE nebo D640/D740.
+   3) KD PMBASE=$00 zasah je pryc. Commando Arnold a Mission KB cesta se chrani. KODY JSOU STEJNE.
 */
 
 /* BUILD2KB_PLAIN_RENDER_LOCK_NO_IO_BREAK_SAFE:
@@ -1517,7 +1517,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     xdlEnabled:false, xdlPendingEnabled:false, xdlPendingApply:false, xdlDirty:false, xdlBase:0, xdlLogged:false, xdlRecords:[], xdlSig:'', xdlParseCount:0, xdlScanCount:0,
     xdlRenderLogged:false, xdlFallbackLogged:false, xdlTextSkipLogged:false,
     plainProgramLock:false, plainLockReadLogged:false, plainLockWriteLogged:false, plainLockVsyncLogged:false, plainLockIgnoredWrites:0,
-    xdlSrOriginFixLogged:false,
+    xdlSrLowOriginKeLogged:false, pmSoftOverrideKeLogged:false,
     xdlSawValid:false, xdlProbeBlockedLogged:false, xdlTextRenderLogged:false, xdlTextEmptyLogged:false,
     xdlMapLogged:false, xdlMapApplyLogged:false,
     lastGoodXdlRecords:null, lastGoodXdlBase:0, lastGoodXdlWarned:false, xdlHoldLogged:false, lastXdlLogScan:0, xdlCarryState:null, xdlCarryLogged:false,
@@ -1546,7 +1546,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     vbxe.xdlEnabled=false; vbxe.xdlPendingEnabled=false; vbxe.xdlPendingApply=false; vbxe.xdlDirty=false;
     vbxe.xdlRecords=[]; vbxe.xdlSig=''; vbxe.xdlSawValid=false; vbxe.lastGoodXdlRecords=null; vbxe.lastGoodXdlBase=0;
     vbxe.plainProgramLock=false; vbxe.plainLockReadLogged=false; vbxe.plainLockWriteLogged=false; vbxe.plainLockVsyncLogged=false; vbxe.plainLockIgnoredWrites=0;
-    vbxe.xdlSrOriginFixLogged=false;
+    vbxe.xdlSrLowOriginKeLogged=false; vbxe.pmSoftOverrideKeLogged=false;
     vbxe.xdlCarryState=null; vbxe.xdlCarryLogged=false; vbxe.bigBlitLogged=false;
     vbxe.xdlRenderLogged=false; vbxe.xdlFallbackLogged=false; vbxe.xdlTextRenderLogged=false; vbxe.xdlTextEmptyLogged=false; vbxe.xdlNoBlitterRenderLogged=false;
     vbxe.xdlMapApplyLogged=false; vbxe.xdlProbeBlockedLogged=false; vbxe.renderProbeLogged=false;
@@ -2754,8 +2754,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!(gtia.gractl&3) && !(gtia.grafp[0]|gtia.grafp[1]|gtia.grafp[2]|gtia.grafp[3]|gtia.grafm) && (!pmSeg || pmSeg.n===0)){ vbxeStorePriorityLine(y); return; }
     const fb=M.fb, off=y*384, line=M.line;
     const dbl=!(antic.dmactl&0x10);
-    const pmBaseOk=((antic.pmbase&(dbl?0xFC:0xF8))!==0);
-    const pmDma=pmBaseOk&&(antic.dmactl&0x08)&&(gtia.gractl&2), mDma=pmBaseOk&&((antic.dmactl&0x0C))&&(gtia.gractl&1); // BUILD2KD: PMBASE $00 nesmi tahat zero-page jako obraz
+    const pmDma=(antic.dmactl&0x08)&&(gtia.gractl&2), mDma=((antic.dmactl&0x0C))&&(gtia.gractl&1); // player DMA fetchuje i missily (HW kvirk)
     // BUILD2IT: G2F pouziva PMG jako barevne vrstvy. COLPM/PRIOR se proto nesmi brat
     // jako jedna hodnota pro celou scanline; DLI muze menit barvy a prioritu po STA WSYNC
     // nebo i uvnitr radky. Beru stejne GTIA segmenty jako playfield renderer.
@@ -2776,7 +2775,13 @@ function Atari130XE(osRom, basicRom, CPUctor){
       for(let p=0;p<4;p++){
         for(let x=0;x<384;x++){
           const gr=pmRegAt(0x1D,x,gtia.gractl);
-          const baseP=((pmDma && gtia.pmLineP)?gtia.pmLineP[p]:gtia.grafp[p])&0xFF;
+          let baseP=((pmDma && gtia.pmLineP)?gtia.pmLineP[p]:gtia.grafp[p])&0xFF;
+          // BUILD2KE: kdyz DMA latch pro radku prinese 0, ale CPU uz behem HBLANKU/scanline zapsal GRAFP,
+          // software PMG multiplex nesmi byt prebit nulovym DMA latchem. Paprskove GRAFP segmenty maji stale prednost.
+          if(pmDma && baseP===0 && (gtia.grafp[p]&0xFF)){
+            baseP=gtia.grafp[p]&0xFF;
+            if(M.vbxeDebug && vbxe && !vbxe.pmSoftOverrideKeLogged){ vbxe.pmSoftOverrideKeLogged=true; M.vbxeDebug('GTIA PMG SOFTWARE OVERRIDE BUILD2KE: nulovy PM DMA latch neprebije software GRAFP/GRAFM multiplex; PMBASE ani IO nelamu.'); }
+          }
           const g=pmRegAt(0x0D+p,x,baseP);
           if(!g) continue;
           // Zachovavam starou kompatibilitu: kdyz GRAFP obsahuje data, kresli se jako driv;
@@ -2798,7 +2803,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }
       for(let p=0;p<4;p++){
         for(let x=0;x<384;x++){
-          const baseM=(mDma?gtia.pmLineM:gtia.grafm)&0xFF;
+          let baseM=(mDma?gtia.pmLineM:gtia.grafm)&0xFF;
+          if(mDma && baseM===0 && (gtia.grafm&0xFF)){
+            baseM=gtia.grafm&0xFF;
+            if(M.vbxeDebug && vbxe && !vbxe.pmSoftOverrideKeLogged){ vbxe.pmSoftOverrideKeLogged=true; M.vbxeDebug('GTIA PMG SOFTWARE OVERRIDE BUILD2KE: nulovy PM DMA latch neprebije software GRAFP/GRAFM multiplex; PMBASE ani IO nelamu.'); }
+          }
           const gm=pmRegAt(0x11,x,baseM);
           const bits=(gm>>(p*2))&3; if(!bits) continue;
           const w=[1,2,1,4][(pmRegAt(0x0C,x,gtia.sizem)>>(p*2))&3];
@@ -2923,16 +2932,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function pmDmaFetch(){
     if(M.line<8 || M.line>=248) return;
     const dbl=!(antic.dmactl&0x10), base=(antic.pmbase&(dbl?0xFC:0xF8))<<8, li=dbl?(M.line>>1):M.line;
-    const pmBaseOk=((antic.pmbase&(dbl?0xFC:0xF8))!==0);
-    if(!pmBaseOk && (antic.dmactl&0x0C) && (gtia.gractl&3) && M.vbxeDebug && !gtia.pmBaseZeroSuppressedLogged){
-      gtia.pmBaseZeroSuppressedLogged=true;
-      M.vbxeDebug('GTIA PMBASE ZERO DMA FIX BUILD2KD: PM DMA je zapnuta, ale PMBASE=$00; nepouzivam zero-page jako P/M obraz, nechavam software GRAFP/GRAFM multiplex.');
-    }
     let auditNp=null, auditNm=0;
     // BUILD2JK: GTIA VDELAY ($D01C). Realny stroj umi zpozdit DMA data pro P0-P3/M0-M3
     // o jednu radku; spousta intr/sportovnich her tim sklada sprity a prechodove obrazovky.
     // Kdyz DMA neni aktivni, registry zustanou zmrazene jako predtim.
-    if(pmBaseOk && (antic.dmactl&0x08)&&(gtia.gractl&2)){
+    if((antic.dmactl&0x08)&&(gtia.gractl&2)){
       const o=base+(dbl?512:1024)+li, st=dbl?128:256;
       const np0=anticRead(o), np1=anticRead(o+st), np2=anticRead(o+st*2), np3=anticRead(o+st*3);
       const np=[np0,np1,np2,np3]; auditNp=np;
@@ -2953,7 +2957,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         M.vbxeDebug('GTIA PM DMA LATCH BUILD2JS: prvni nenulovy player latch line='+M.line+' PMBASE=$'+hx2(antic.pmbase)+' DMACTL=$'+hx2(antic.dmactl)+' GRACTL=$'+hx2(gtia.gractl)+' P='+gtia.pmLineP.map(function(v){return hx2(v);}).join(','));
       }
     }
-    if(pmBaseOk && (antic.dmactl&0x0C)&&(gtia.gractl&1)){
+    if((antic.dmactl&0x0C)&&(gtia.gractl&1)){
       const nm=anticRead(base+(dbl?384:768)+li)&0xFF; auditNm=nm;
       const oddLine=!!(M.line&1);
       let gm=gtia.grafm&0xFF;
@@ -3871,10 +3875,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
 
 
-  function vbxeSrOriginFixRows(r){
-    // BUILD2KD: SR overlay z velmi nizke VRAM adresy je typicky XDL/hlavicka, ne graficky radek.
-    // Obecne pravidlo: platny SR record, dolni cast obrazovky, ovAddr pred $80, krok 256/320.
-    // Nepouziva jmeno hry ani nevklada obraz; jen neposila prvni XDL-bajty na obrazovku jako uzky caj.
+
+  function vbxeSrLowOriginSkipRowsKE(r){
+    // BUILD2KE: Night Driver log ukazal XDL base=$00000 a SR record y=182/lines=54/ov=$00010/step=256.
+    // To znamena, ze prvni radky SR cte primo z oblasti XDL tabulky/hlavice a kresli vodorovny caj u auta.
+    // Obecne pravidlo bez nazvu hry: jen SR, spodni cast obrazu, velmi nizka OVADR, krok 256/320,
+    // narrow width. Preskoci se tolik radku, kolik stale bere zdroj pod $0800.
     if(!r || r.mode!==1) return 0;
     var addr=(r.ovAddr||0)&0x7FFFF;
     var step=(r.ovStep||0)&0x0FFF;
@@ -3883,18 +3889,18 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(y<150 || lines<16 || lines>112) return 0;
     if(step!==256 && step!==320) return 0;
     if((r.widthSel|0)!==0) return 0;
-    // Kdyz prvni radky berou z $0000-$02FF, jsou to casto XDL/registr data. Preskoc max 2 radky.
     var rows=0;
-    for(var yy=0; yy<Math.min(2,lines); yy++){
+    for(var yy=0; yy<Math.min(12,lines); yy++){
       var src=(addr + vbxeGraphLocalY(r,yy)*step)&0x7FFFF;
-      if(src<0x300) rows++;
+      if(src<0x0800) rows=yy+1;
     }
-    if(rows>0 && M.vbxeDebug && !vbxe.xdlSrOriginFixLogged){
-      vbxe.xdlSrOriginFixLogged=true;
-      M.vbxeDebug('VBXE SR ORIGIN FIX BUILD2KD: preskakuji '+rows+' uvodni SR radku z nizke VRAM/XDL oblasti rec y='+(r.y|0)+' lines='+(r.lines|0)+' ov=$'+addr.toString(16).toUpperCase().padStart(5,'0')+' step='+step+'; realna data, zadny screen-paint.');
+    if(rows>0 && M.vbxeDebug && !vbxe.xdlSrLowOriginKeLogged){
+      vbxe.xdlSrLowOriginKeLogged=true;
+      M.vbxeDebug('VBXE SR LOW-ORIGIN SANITIZE BUILD2KE: preskakuji '+rows+' SR radku z nizke VRAM oblasti rec y='+(r.y|0)+' lines='+(r.lines|0)+' ov=$'+addr.toString(16).toUpperCase().padStart(5,'0')+' step='+step+'; odstranuji XDL/hlavickovy caj, ne screen-paint.');
     }
     return rows;
   }
+
 
 
   function vbxeVisibleWidthHi(widthSel){
@@ -3913,9 +3919,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if(r.mode===1){ // SR: 1 byte = 1 color-clock pixel = 2 hires pixely
       var bytes=widthHi>>1;
-      var kdSkip=vbxeSrOriginFixRows(r);
+      var keSkip=vbxeSrLowOriginSkipRowsKE(r);
       for(var yy=0;yy<lines;yy++){
-        if(yy<kdSkip) continue;
+        if(yy<keSkip) continue;
         var src=vbxeGraphSourceAddr(r,yy), gy=r.y+yy, hs=vbxeGraphHScrollHi(r)>>1;
         for(var x=0;x<bytes;x++){
           var v=vram[(src+x+hs)&0x7FFFF]&0xFF;
@@ -4056,9 +4062,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
       var x0=(384-width)>>1; if(x0<0) x0=0;
       var hs=vbxeGraphHScrollHi(r)>>1, hp=vbxeGraphHScrollHi(r)&1;
       var forceOpaque=((vbxe.regs[0x40]&0x04)!==0) || ((r.priority&0xFF)===0xFF);
-      var kdSkip=vbxeSrOriginFixRows(r);
+      var keSkip=vbxeSrLowOriginSkipRowsKE(r);
       for(var yy=0; yy<lines; yy++){
-        if(yy<kdSkip) continue;
+        if(yy<keSkip) continue;
         var src=(base + vbxeGraphLocalY(r,yy)*step + hs)&0x7FFFF;
         var gy=(r.y+yy)|0;
         if(gy<0 || gy>=240) continue;
@@ -4129,9 +4135,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(lines<=0) continue;
 
       if(r.mode===1){ // SR: 1 byte = 1 pixel, 256 barev
-        var kdSkip=vbxeSrOriginFixRows(r);
+        var keSkip=vbxeSrLowOriginSkipRowsKE(r);
         for(var yy=0;yy<lines;yy++){
-          if(yy<kdSkip) continue;
+          if(yy<keSkip) continue;
           var src=vbxeGraphSourceAddr(r,yy), dst=(r.y+yy)*384+x0, hs=vbxeGraphHScrollHi(r)>>1, hp=vbxeGraphHScrollHi(r)&1;
           for(var x=0;x<width && x0+x<384;x++){
             var v=vram[(src+x+hs)&0x7FFFF]&0xFF;
@@ -4314,7 +4320,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     pia.orA=0xFF;pia.ddrA=0;pia.orB=0xFF;pia.ddrB=0;pia.ctlA=0;pia.ctlB=0;
     pokey.irqen=0;pokey.irqpend=0;pokey.kbcode=0xFF;pokey.keyDown=false;pokey.outBusy=0;pokey.shiftBusy=0;
     antic.dmactl=0;antic.nmien=0;antic.nmist=0x1F;antic.dlist=0;
-    gtia.consol=7; gtia.pmBaseZeroSuppressedLogged=false;
+    gtia.consol=7;
     if(opt&&opt.start) gtia.consol&=~1;
     if(opt&&opt.select) gtia.consol&=~2;
     if(opt&&opt.option) gtia.consol&=~4;
@@ -6493,7 +6499,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2KD-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2KE-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -6509,7 +6515,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KD_RESULTS_PASS_NIGHTDRIVER_DECATHLON_CORE pripraven - jeden vetsi rez po KB: Commando/JX zustava, Mission/KB zustava, Night Driver SR low-address origin fix pro uzky caj u auta, Decathlon PMBASE=$00 DMA zero-page potlaceno ve prospech software GRAFP/GRAFM multiplexu. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KE_CONSOLIDATED_XDL_PMG_PIPELINE_PASS pripraven - navazuje na KB/JZ/JX, ne na KC/KD. Night Driver: SR low-origin sanitize az pod $0800 proti caji u auta. Decathlon: software GRAFP/GRAFM override nuloveho PM DMA latche, bez lamani PMBASE nebo D640/D740. Commando Arnold a Mission KB chraneno. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KB_PLAIN_RENDER_LOCK_NO_IO_BREAK_SAFE pripraven - oprava po KA: nepotvrzene/weak-IO hry maji zamceny jen VBXE XDL/render overlay, ale D640/D740 IO uz nelamu ani nevracim tvrde $FF. Cil: vratit Mission po intru do hry, zachovat Commando Arnold ANO + hra ANO. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KA_PLAIN_PROGRAM_VBXE_LOCK_MISSION_SAFE pripraven - navazuje na JZ/JX uspech. Commando Arnold cesta zustava, ale nepotvrzene/weak-IO hry dostaly trvaly VBXE plain-lock, aby Mission/Decathlon nemohly nahodne zapnout XDL/MAP z D640/D740 sumu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JZ_ROLLBACK_TO_JX_SUCCESS_SAFE pripraven - JY safety guard vracen pryc, protoze rozbil Commando Arnold. Jadro renderu je zpet na JX, kde Arnold ANO + hra ANO. Zadny novy hack, jen navrat na posledni potvrzeny uspech. KODY JSOU STEJNE.');

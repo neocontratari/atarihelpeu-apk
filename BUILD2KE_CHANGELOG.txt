@@ -1,0 +1,7 @@
+BUILD2KE consolidated change log
+- Base: BUILD2KB/JZ/JX stable path.
+- Removed KD PMBASE=$00 suppression by not basing on KD.
+- Added VBXE SR low-origin sanitize for bottom SR records using source below $0800.
+- Added PMG software override of zero DMA latch for GRAFP/GRAFM software multiplex.
+- No UI/cassette/joystick/loader changes.
+- KODY JSOU STEJNE.
