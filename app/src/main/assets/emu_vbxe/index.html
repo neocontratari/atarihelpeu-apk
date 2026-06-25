@@ -2375,7 +2375,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const xcolor=!!(vbxe && (vbxe.regs[0x40]&0x02));
       const fgL=gtia.colpf[1]&0x0F, bgC=gtia.colpf[2];
       const fg=xcolor?palette[gtia.colpf[1]&0xFF]:palette[(bgC&0xF0)|fgL], bg=palette[bgC];
-      const fgCls=xcolor?2:3;
+      // BUILD2JR: v ANTIC 2/3 nulovy bit je pro GTIA priority/kolize pozadi, ne PF2 objekt.
+      // Jednickovy bit se v hi-res modech pocita jako PF2 (manual: PF2C).
+      const fgCls=3;
+      if(M.vbxeDebug && !M.hiresBgTransparentLogged){ M.hiresBgTransparentLogged=true; M.vbxeDebug('ANTIC HIRES BG PRIORITY BUILD2JR: nulove bity ANTIC 2/3/F jsou pozadi pro P/M, jednickove bity PF2; oprava podle Altirra manualu.'); }
       for(let i=0;i<nb;i++){
         const sc=anticRead(antic.lms+i);
         let bits=os[0]===undefined?0:0;
@@ -2384,7 +2387,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         else if(antic.mode===3 && line>=8) line-=8;
         bits=anticRead(chAt(i)+((sc&0x7F)<<3)+(line&7));
         if(sc&0x80){ if(antic.chactl&1) bits=0; else if(antic.chactl&2) bits^=0xFF; }
-        for(let b=0;b<8;b++){ const on=!!(bits&(0x80>>b)); { const xx=xs+i*8+b; const bg2=useGtSeg?pfColorAt(3,xx):bg; TB[TO+xx]=on?fg:bg2; TC[xx]=on?fgCls:3; } }
+        for(let b=0;b<8;b++){ const on=!!(bits&(0x80>>b)); { const xx=xs+i*8+b; const bg2=useGtSeg?pfColorAt(3,xx):bg; TB[TO+xx]=on?fg:bg2; TC[xx]=on?fgCls:0; } }
       }
     } else if(md.t==='ch4'){
       xs=192-nb*4;
@@ -2457,12 +2460,15 @@ function Atari130XE(osRom, basicRom, CPUctor){
             const pf1=gtiaRegAt(0x17,x0), pf2=gtiaRegAt(0x18,x0);
             const fg=xcolor?palette[pf1&0xFF]:palette[((pf2&0xF0)|(pf1&0x0F))&0xFF];
             const bg=palette[pf2&0xFF];
-            const fgCls=xcolor?2:3;
+            // BUILD2JR: ANTIC F hi-res: 1 bity jsou PF2 pro GTIA prioritu/kolize,
+            // 0 bity jsou pozadi bez playfield collision. Viz Altirra HW manual 6.6.
+            const fgCls=3;
+            if(M.vbxeDebug && !M.hiresBgTransparentLogged){ M.hiresBgTransparentLogged=true; M.vbxeDebug('ANTIC HIRES BG PRIORITY BUILD2JR: nulove bity ANTIC 2/3/F jsou pozadi pro P/M, jednickove bity PF2; oprava podle Altirra manualu.'); }
             for(let b=0;b<4;b++){
               const xx=x0+b;
               const on=!!(bits&(0x80>>(h*4+b)));
               TB[TO+xx]=on?fg:bg;
-              TC[xx]=on?fgCls:3;
+              TC[xx]=on?fgCls:0;
             }
           }
         }
@@ -6061,6 +6067,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2JR_HIRES_BG_TRANSPARENT_PM_PRIORITY_SAFE pripraven - navazuje na BUILD2JQ/JI safe, JO DMA vetev mrtva. Podle Altirra HW manualu opravuji ANTIC hi-res 2/3/F priority tridu: 0 bit = pozadi pro P/M priority/kolize, 1 bit = PF2. Cíl: Night Driver auto, Decathlon/Popeye sprity/vrstvy; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JQ_GTIA_PRIORITY_VDELAY_DOC_SAFE pripraven - zaklad BUILD2JP/JN/JM/JL/JI, bez JO DMA regrese. Cteno podle Altirra HW manualu: opraveno GTIA PRIOR $D01B poradi hlavne rezim $08, VDELAY $D01C nyni nacita DMA jen na lichych scanlinech a CHACTL $D401 D2 vertikalni reflect pro ANTIC 2/3. BCB21/Tetris MEMAC/D740/INITAD shadow zustava, BCB19/MSEL/OVSHIFT vypnute.');
     log('AtariHelp.eu EMU-10 BUILD2JM_GTIA_PMG_BEAM_SEGMENTS_SAFE pripraven - zaklad BUILD2JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Novy krok: paprskove segmenty GTIA P/M registru HPOS/SIZE/GRAF/GRACTL pro intra/sprity bez BCB19/MSEL/OVSHIFT a bez hacku hry.');
     log('AtariHelp.eu EMU-10 BUILD2JL_CPU_NOP_FULL_BLITTER_CONST_PM_SAFE pripraven - zaklad BUILD2JK/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, PM VDELAY. Doplnene presnejsi neoficialni NOP cykly, VBXE SR/HR collision direct AND a blitter constant source andm==xorm. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
