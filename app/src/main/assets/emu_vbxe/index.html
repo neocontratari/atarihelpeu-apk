@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JV</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JW</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -355,6 +355,13 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    Pridava obecny XDL-SR rescue: kdyz je XDL platny, ma graficky SR record a standardni render vrati nulu,
    emulator zkusi najit spravnou 16KB VRAM stranku se stejnym offsetem a vykresli jen realna VBXE data.
    Night Driver a Decathlon zatim dal hlasi PM audit; GTIA priorita se nehackuje. */
+/* BUILD2JW_XDL_TILE_UNDERLAY_AFTER_ZERO_GRAPH_SAFE:
+   Test BUILD2JV: Commando stale neukazuje Arnolda, ale log porad potvrzuje realny VBXE blitter
+   blocks=862 bytes=66864 do VRAM. Rescue nevidel/nedal viditelny XDL pixel, proto je chyba v tom,
+   ze platny/zero XDL blokuje pred-XDL tile surface underlay. JW povoluje realny tile underlay i po
+   zero-graph XDL, ale jen do COLBK pozadi, aby ANTIC/VBXE text zustal nahore. Bez nazvu hry, bez bitmapy.
+*/
+
 /* BUILD2JU_VBXE_TILE_UNDERLAY_PM_AUDIT_SAFE:
    Diagnosticky navazujici build na potvrzeny BUILD2JS. Nemeni grafiku, VBXE renderer,
    loader, kazetu, joystick ani UI. Pridava jen pravdivy GTIA/ANTIC/P-M audit pro hry
@@ -4055,6 +4062,19 @@ function Atari130XE(osRom, basicRom, CPUctor){
       var rescueDrew=vbxeRenderXdlGraphRescue(recs,'valid-XDL-graph-zero');
       if(rescueDrew>0){ drew+=rescueDrew; graphDrew+=rescueDrew; }
     }
+    // BUILD2JW: kdyz XDL existuje, ale graficky SR/LR/HR record nedal zadny pixel,
+    // nesmi to zablokovat realny tile surface slozeny blitterem do VBXE VRAM (Commando intro typ).
+    // Kreslim pouze do COLBK pozadi, takze text a bezny Atari/VBXE obraz zustava nahore.
+    if((hasGraph || hasText) && graphDrew===0){
+      var jwTile=vbxeRenderTileSurfaceUnderlay('xdl-zero-graph-bg-only',true);
+      if(jwTile>0){
+        drew+=jwTile; graphDrew+=jwTile;
+        if(M.vbxeDebug && !vbxe.xdlTileUnderlayJwLogged){
+          vbxe.xdlTileUnderlayJwLogged=true;
+          M.vbxeDebug('VBXE XDL TILE UNDERLAY BUILD2JW: XDL grafika mela 0 pixelu, proto pouzivam realny BCB tile-surface jen do COLBK pozadi; pixels='+jwTile+'. Bez screen-paintu a bez hacku podle hry.');
+        }
+      }
+    }
     if(useHiCanvas && drew>0) M.vbxeTextHiActive=true;
     if(textDrew>0 && !vbxe.xdlTextRenderLogged && M.vbxeDebug){
       vbxe.xdlTextRenderLogged=true;
@@ -6355,7 +6375,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       }
       try{ var blob=new Blob([LOGBUF.join('\n')],{type:'text/plain'});
         var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-        a.download='atarihelp-EMU10-BUILD2JV-log-'+Date.now()+'.txt'; a.click();
+        a.download='atarihelp-EMU10-BUILD2JW-log-'+Date.now()+'.txt'; a.click();
       }catch(e){ log('Stazeni v teto aplikaci nejde - pouzijte KOPIROVAT.'); }
     });
     document.getElementById('btnLogClose').addEventListener('click',function(){
@@ -6371,7 +6391,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2JV_XDL_SR_RESCUE_PM_AUDIT_SAFE pripraven - navazuje na BUILD2JU/JT/JS. Pridava obecny rescue pro platny VBXE XDL SR zaznam, kdy XDL parser vidi realny graficky record, ale bez viditelnych pixelu; vybere realnou VRAM stranku podle obsahu, ne podle jmena hry. PM audit zustava pro Night Driver/Decathlon. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2JW_XDL_TILE_UNDERLAY_AFTER_ZERO_GRAPH_SAFE pripraven - navazuje na BUILD2JV/JU/JT/JS. Oprava podle logu: Commando ma realny VBXE blitter blocks=862/bytes=66864, ale zero-XDL blokoval tile underlay. JW pusti realny BCB tile-surface i po XDL grafice s 0 pixely, jen do COLBK pozadi. PM audit zustava pro Night Driver/Decathlon. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JS_GTIA_PM_DMA_LATCH_SAFE pripraven - navazuje na BUILD2JR/JQ safe, JO DMA vetev zustava mrtva. Oprava podle Altirra manualu: P/M DMA data se na zacatku scanline nactou do GTIA latchu a render teto radky pouziva latched GRAFP/GRAFM, ne pozdeji prepsane CPU registry. Cíl: Night Driver auto, Decathlon/Popeye PM sprity; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JR_HIRES_BG_TRANSPARENT_PM_PRIORITY_SAFE pripraven - navazuje na BUILD2JQ/JI safe, JO DMA vetev mrtva. Podle Altirra HW manualu opravuji ANTIC hi-res 2/3/F priority tridu: 0 bit = pozadi pro P/M priority/kolize, 1 bit = PF2. Cíl: Night Driver auto, Decathlon/Popeye sprity/vrstvy; bez herniho hacku, Tetris MEMAC/D740/BCB21 zustava.');
     log('AtariHelp.eu EMU-10 BUILD2JQ_GTIA_PRIORITY_VDELAY_DOC_SAFE pripraven - zaklad BUILD2JP/JN/JM/JL/JI, bez JO DMA regrese. Cteno podle Altirra HW manualu: opraveno GTIA PRIOR $D01B poradi hlavne rezim $08, VDELAY $D01C nyni nacita DMA jen na lichych scanlinech a CHACTL $D401 D2 vertikalni reflect pro ANTIC 2/3. BCB21/Tetris MEMAC/D740/INITAD shadow zustava, BCB19/MSEL/OVSHIFT vypnute.');
