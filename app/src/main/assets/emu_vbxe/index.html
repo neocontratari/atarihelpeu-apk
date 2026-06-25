@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JN</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JO</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2269,6 +2269,35 @@ function Atari130XE(osRom, basicRom, CPUctor){
     0x0E:{b:40,sl:1, t:'m2bpp',px:8},  0x0F:{b:40,sl:1,t:'hires'} };
   function pfBytesW(base,w){ if(w<=1)return base*0.8|0; if(w>=3)return base*1.2|0; return base; }
   function pfBytes(base){ return pfBytesW(base, antic.dmactl&3); }
+  // BUILD2JO: ANTIC DMA cycle stealing.
+  // Dosud CPU dostaval plnych 114 cyklu i na radkach, kde realny ANTIC krade pametove cykly
+  // pro playfield a P/M DMA. To je obecna chyba: raster/DLI/PMG kody pak bezi moc rychle proti
+  // paprsku. Nejde o hack hry; zpomaluji CPU jen o odhad realne DMA zateze dane scanline.
+  function anticDmaCpuBudgetForLine(){
+    let budget=CYC_LINE, steal=0;
+    if(M.line>=8 && M.line<248 && !antic.done && (antic.dmactl&0x20) && antic.mode){
+      const md=MODE[antic.mode];
+      if(md){
+        const wNow=antic.dmactl&3;
+        const nb=antic.hsLine?pfBytesW(md.b,Math.min(3,wNow+1)):pfBytes(md.b);
+        // Hruba, ale stabilni emulace ANTIC DMA: graficke/znakove bajty kradou pametove cykly.
+        // Normal 40B radka ubere cca 13 cyklu, wide o neco vic; conservative, aby se nerozbil Tetris/HL.
+        steal += Math.max(0,Math.round(nb/3));
+        if(antic.hsLine) steal += 2;
+        if((antic.dmactl&0x08) && (gtia.gractl&2)) steal += 5; // player DMA
+        if((antic.dmactl&0x04) && (gtia.gractl&1)) steal += 2; // missile DMA
+        if(md.t==='m2bpp' || md.t==='hires' || md.t==='m1bpp') steal += 1;
+        steal=Math.max(0,Math.min(34,steal|0));
+        budget=Math.max(76,CYC_LINE-steal);
+        if(M.vbxeDebug && !M.anticDmaStealLogged && steal>0){
+          M.anticDmaStealLogged=true;
+          M.vbxeDebug('ANTIC DMA STEAL BUILD2JO: mode=$'+antic.mode.toString(16).toUpperCase()+' nb='+nb+' steal='+steal+' cpuBudget='+budget+' line='+M.line+' dmactl=$'+hx2(antic.dmactl)+' gractl=$'+hx2(gtia.gractl));
+        }
+      }
+    }
+    M.lineCpuBudget=budget;
+    return budget;
+  }
   function startFrame(){
     vbxeApplyVsyncPending();
     antic.dlptr=antic.dlist; antic.rowsLeft=0; antic.done=!(antic.dmactl&0x20);
@@ -2310,9 +2339,13 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   const hsBuf=new Uint32Array(512), hsCls=new Uint8Array(512);
   function gtiaSegXFromCycle(cyc){
-    // BUILD2IS: hruby, ale obecny paprskovy prevod CPU cyklu na X.
-    // Atari viditelna cast zacina zhruba po HBLANKU; 1 CPU cyklus ~= 4 pixely v nasem 384px fb.
-    return Math.max(0,Math.min(383,32+((cyc-24)<<2)));
+    // BUILD2JO: kdyz ANTIC krade CPU cykly, CPU cyklus uz neni pevne 4 pixely pres celou radku.
+    // Pro normalni 114 cyklu nechavam starou mapu; pro DMA-steal radky skaluji dostupny CPU cas
+    // na stejnou viditelnou sirku paprsku.
+    const bud=M.lineCpuBudget||CYC_LINE;
+    if(bud>=112) return Math.max(0,Math.min(383,32+((cyc-24)<<2)));
+    const den=Math.max(1,bud-24);
+    return Math.max(0,Math.min(383,32+Math.round(((cyc-24)*352)/den)));
   }
   function gtiaRegAt(g,x){
     let v;
@@ -3040,7 +3073,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // do zacatku dalsi scanline; typicky DLI udela STA WSYNC a teprve na dalsi radce zapise
     // COLPF/COLBK. Stary model bral snapshot pred temito zapisy, a tim vznikaly pruhy/barvy mimo.
     // Zapisy v prvnich ~28 cyklech aktualni radky plati pro tuto radku, pozdejsi az pro dalsi.
-    const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+28;
+    const lineStart=cpu.cycles, lineBudget=anticDmaCpuBudgetForLine(), target=lineStart+lineBudget, snapAt=lineStart+Math.min(28,Math.max(12,lineBudget-8));
     M.lineCyc0=lineStart; chSeg.n=0; chSeg.base=antic.chbase; gtSeg.n=0; pmSeg.n=0;
     while(cpu.cycles<snapAt){
       if(M.wsync){
@@ -6031,7 +6064,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2JN_ANTIC_CHBASE_SINGLE_WRITE_BEAM_SAFE pripraven - zaklad BUILD2JM/JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, BCB19/MSEL/OVSHIFT vypnute. Novy krok: ANTIC CHBASE paprsek aplikuje i jeden STA CHBASE behem radky pro obycejne hry a intro/font kernely; zadny hack hry.');
+    log('AtariHelp.eu EMU-10 BUILD2JO_ANTIC_DMA_CYCLE_STEAL_SAFE pripraven - zaklad BUILD2JN/JM/JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, BCB19/MSEL/OVSHIFT vypnute. Novy krok: obecne ANTIC DMA cycle stealing pro playfield a P/M DMA, aby CPU/DLI/PMG raster nebezel proti paprsku moc rychle; zadny hack hry.');
     log('AtariHelp.eu EMU-10 BUILD2JM_GTIA_PMG_BEAM_SEGMENTS_SAFE pripraven - zaklad BUILD2JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Novy krok: paprskove segmenty GTIA P/M registru HPOS/SIZE/GRAF/GRACTL pro intra/sprity bez BCB19/MSEL/OVSHIFT a bez hacku hry.');
     log('AtariHelp.eu EMU-10 BUILD2JL_CPU_NOP_FULL_BLITTER_CONST_PM_SAFE pripraven - zaklad BUILD2JK/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, PM VDELAY. Doplnene presnejsi neoficialni NOP cykly, VBXE SR/HR collision direct AND a blitter constant source andm==xorm. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
     log('AtariHelp.eu EMU-10 BUILD2JK_CPU_NOP_COLLISION_PM_VDELAY_SAFE pripraven - zaklad BUILD2JI/JJ zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Dva kroky naraz: NOP abs,x + VBXE collision z JJ a nove GTIA PMG VDELAY $D01C pro sprity/intra. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
