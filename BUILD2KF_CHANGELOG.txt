@@ -1,0 +1,7 @@
+BUILD2KF_DOC_GUIDED_NIGHTDRIVER_AUDIO_STRIPE_PASS
+- Base: BUILD2KE/KB/JZ/JX, not KC/KD.
+- Added content-based SR low-origin stripe row filter for Night Driver bottom SR overlay.
+- Added robust AudioContext resume in startAudio for Android/Nox/WebView audio silence.
+- Left KD PMBASE=$00 Decathlon intervention out.
+- Protected Commando Arnold, Mission KB, Tetris/HL baseline.
+- KODY JSOU STEJNE.

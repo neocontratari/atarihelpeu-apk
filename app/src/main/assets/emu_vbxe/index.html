@@ -3902,6 +3902,47 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
 
 
+  function vbxeSrLowOriginCandidateKF(r){
+    if(!r || r.mode!==1) return false;
+    var addr=(r.ovAddr||0)&0x7FFFF, step=(r.ovStep||0)&0x0FFF;
+    var y=(r.y||0)|0, lines=(r.lines||0)|0;
+    return (addr<0x80 && y>=150 && lines>=16 && lines<=112 && (step===256 || step===320) && ((r.widthSel|0)===0));
+  }
+  function vbxeSrRowStatsKF(r,yy,bytes,hs){
+    var st={opaque:0,maxRun:0,trans:0};
+    if(!r || yy<0 || yy>=(r.lines|0)) return st;
+    var src=vbxeGraphSourceAddr(r,yy), run=0;
+    for(var x=0;x<bytes;x++){
+      var v=vbxe.vram[(src+x+hs)&0x7FFFF]&0xFF;
+      if(vbxeTransparent8(v)){ st.trans++; run=0; }
+      else { st.opaque++; run++; if(run>st.maxRun) st.maxRun=run; }
+    }
+    return st;
+  }
+  function vbxeSrArtifactRowKF(r,yy,bytes,hs){
+    // BUILD2KF podle dodane VBXE dokumentace: SR overlay je 1 byte = 1 pixel a transparentnost
+    // ridi VIDEO_CONTROL (index 0 / trans15). Night Driver ma legitimni SR auto ve spodnim XDL
+    // recordu, ale zaroven cte z velmi nizke VRAM oblasti. Misto pevneho "preskoc N radku"
+    // hledam izolovany vodorovny stripe podle obsahu radky a sousedu. Tím se nerusi cele auto.
+    if(!vbxeSrLowOriginCandidateKF(r)) return false;
+    var cur=vbxeSrRowStatsKF(r,yy,bytes,hs);
+    if(cur.opaque<48 || cur.maxRun<40) return false;
+    var prev=vbxeSrRowStatsKF(r,yy-1,bytes,hs), next=vbxeSrRowStatsKF(r,yy+1,bytes,hs);
+    var nOpaque=(prev.opaque+next.opaque)/2, nRun=(prev.maxRun+next.maxRun)/2;
+    var isolated=(cur.opaque>nOpaque*1.45+18) || (cur.maxRun>nRun*1.55+18);
+    var extreme=(cur.maxRun>=96 && cur.opaque>=96);
+    // Spodni SR record v Night Driveru nese auto; strip je uzky, horizontalni a izolovany.
+    // V dolnich 14 radcich uz radky nechavam radeji byt, aby se neurizla maska/karoserie.
+    var localLimit=Math.max(12,((r.lines|0)-14));
+    var hit=(yy<localLimit) && (isolated || extreme);
+    if(hit && M.vbxeDebug && !vbxe.xdlSrStripeKfLogged){
+      vbxe.xdlSrStripeKfLogged=true;
+      M.vbxeDebug('VBXE SR STRIPE FILTER BUILD2KF: vynechavam izolovanou vodorovnou SR artefakt-radku yy='+yy+' y='+(r.y+yy)+' opaque='+cur.opaque+' run='+cur.maxRun+' neighOpaque='+(nOpaque|0)+' neighRun='+(nRun|0)+'; obsahovy filtr podle SR transparentnosti, ne screen-paint.');
+    }
+    return hit;
+  }
+
+
 
   function vbxeVisibleWidthHi(widthSel){
     // BUILD2IF: skutecna VBXE hires sirka. Normal = 640 px, narrow = 512, wide = 672.
@@ -3923,6 +3964,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       for(var yy=0;yy<lines;yy++){
         if(yy<keSkip) continue;
         var src=vbxeGraphSourceAddr(r,yy), gy=r.y+yy, hs=vbxeGraphHScrollHi(r)>>1;
+        if(vbxeSrArtifactRowKF(r,yy,bytes,hs)) continue;
         for(var x=0;x<bytes;x++){
           var v=vram[(src+x+hs)&0x7FFFF]&0xFF;
           if(!vbxeTransparent8(v)){ var px=x0+x*2 - (vbxeGraphHScrollHi(r)&1)*2; putIdx(px,gy,v); putIdx(px+1,gy,v); }
@@ -4486,9 +4528,17 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   }
   var poly4=makePoly(4,3,2), poly5=makePoly(5,4,2), poly9=makePoly(9,8,3), poly17=makePoly(17,16,11);
   function startAudio(){
-    if(audio) return;
+    // BUILD2KF: WebView/Nox/Android umi AudioContext po pickeru nebo delsi pauze nechat "suspended".
+    // Pak POKEY registry sice bezi, ale uzivatel slysi ticho. Start/resume je obecny audio fix,
+    // ne hack hry; pomaha i titulům jako Night Driver, ktere pouzivaji POKEY/GTIA zvuk.
+    if(audio){
+      try{ if(audio.ac && audio.ac.state==='suspended') audio.ac.resume(); }catch(_e){}
+      return;
+    }
     var AC=window.AudioContext||window.webkitAudioContext; if(!AC){ log('AUDIO: AudioContext neni k dispozici'); return; }
-    var ac=new AC(), sp=ac.createScriptProcessor(4096,0,1); // 4096: WebView nestiha 2048 -> chrasteni
+    var ac=new AC();
+    try{ if(ac.state==='suspended') ac.resume(); }catch(_e){}
+    var sp=ac.createScriptProcessor(4096,0,1); // 4096: WebView nestiha 2048 -> chrasteni
     var CPS=1773447/ac.sampleRate; // cyklu na vzorek (PAL)
     var st={cnt:[0,0,0,0], out:[0,0,0,0], p4:0,p5:0,p9:0,p17:0, clock:0, spkLevel:0, spkDecay:0, dcx:0, dcy:0};
     var sh={ audf:[0,0,0,0], audc:[0,0,0,0], audctl:0, head:-1, qi:0 };  // stinove registry rizene frontou udalosti
@@ -6515,7 +6565,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KE_CONSOLIDATED_XDL_PMG_PIPELINE_PASS pripraven - navazuje na KB/JZ/JX, ne na KC/KD. Night Driver: SR low-origin sanitize az pod $0800 proti caji u auta. Decathlon: software GRAFP/GRAFM override nuloveho PM DMA latche, bez lamani PMBASE nebo D640/D740. Commando Arnold a Mission KB chraneno. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KF_DOC_GUIDED_NIGHTDRIVER_AUDIO_STRIPE_PASS pripraven - navazuje na KE/KB/JZ/JX. Night Driver: obsahovy SR stripe filtr podle XDL/transparent pravidel + robustni AudioContext resume pro POKEY/GTIA zvuk. Decathlon PMBASE hack z KD zustava pryc; bez dalsiho slepeho rezu. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KB_PLAIN_RENDER_LOCK_NO_IO_BREAK_SAFE pripraven - oprava po KA: nepotvrzene/weak-IO hry maji zamceny jen VBXE XDL/render overlay, ale D640/D740 IO uz nelamu ani nevracim tvrde $FF. Cil: vratit Mission po intru do hry, zachovat Commando Arnold ANO + hra ANO. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KA_PLAIN_PROGRAM_VBXE_LOCK_MISSION_SAFE pripraven - navazuje na JZ/JX uspech. Commando Arnold cesta zustava, ale nepotvrzene/weak-IO hry dostaly trvaly VBXE plain-lock, aby Mission/Decathlon nemohly nahodne zapnout XDL/MAP z D640/D740 sumu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2JZ_ROLLBACK_TO_JX_SUCCESS_SAFE pripraven - JY safety guard vracen pryc, protoze rozbil Commando Arnold. Jadro renderu je zpet na JX, kde Arnold ANO + hra ANO. Zadny novy hack, jen navrat na posledni potvrzeny uspech. KODY JSOU STEJNE.');
