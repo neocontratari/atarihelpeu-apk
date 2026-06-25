@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JO</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JP</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2269,35 +2269,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     0x0E:{b:40,sl:1, t:'m2bpp',px:8},  0x0F:{b:40,sl:1,t:'hires'} };
   function pfBytesW(base,w){ if(w<=1)return base*0.8|0; if(w>=3)return base*1.2|0; return base; }
   function pfBytes(base){ return pfBytesW(base, antic.dmactl&3); }
-  // BUILD2JO: ANTIC DMA cycle stealing.
-  // Dosud CPU dostaval plnych 114 cyklu i na radkach, kde realny ANTIC krade pametove cykly
-  // pro playfield a P/M DMA. To je obecna chyba: raster/DLI/PMG kody pak bezi moc rychle proti
-  // paprsku. Nejde o hack hry; zpomaluji CPU jen o odhad realne DMA zateze dane scanline.
-  function anticDmaCpuBudgetForLine(){
-    let budget=CYC_LINE, steal=0;
-    if(M.line>=8 && M.line<248 && !antic.done && (antic.dmactl&0x20) && antic.mode){
-      const md=MODE[antic.mode];
-      if(md){
-        const wNow=antic.dmactl&3;
-        const nb=antic.hsLine?pfBytesW(md.b,Math.min(3,wNow+1)):pfBytes(md.b);
-        // Hruba, ale stabilni emulace ANTIC DMA: graficke/znakove bajty kradou pametove cykly.
-        // Normal 40B radka ubere cca 13 cyklu, wide o neco vic; conservative, aby se nerozbil Tetris/HL.
-        steal += Math.max(0,Math.round(nb/3));
-        if(antic.hsLine) steal += 2;
-        if((antic.dmactl&0x08) && (gtia.gractl&2)) steal += 5; // player DMA
-        if((antic.dmactl&0x04) && (gtia.gractl&1)) steal += 2; // missile DMA
-        if(md.t==='m2bpp' || md.t==='hires' || md.t==='m1bpp') steal += 1;
-        steal=Math.max(0,Math.min(34,steal|0));
-        budget=Math.max(76,CYC_LINE-steal);
-        if(M.vbxeDebug && !M.anticDmaStealLogged && steal>0){
-          M.anticDmaStealLogged=true;
-          M.vbxeDebug('ANTIC DMA STEAL BUILD2JO: mode=$'+antic.mode.toString(16).toUpperCase()+' nb='+nb+' steal='+steal+' cpuBudget='+budget+' line='+M.line+' dmactl=$'+hx2(antic.dmactl)+' gractl=$'+hx2(gtia.gractl));
-        }
-      }
-    }
-    M.lineCpuBudget=budget;
-    return budget;
-  }
   function startFrame(){
     vbxeApplyVsyncPending();
     antic.dlptr=antic.dlist; antic.rowsLeft=0; antic.done=!(antic.dmactl&0x20);
@@ -2339,13 +2310,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   const hsBuf=new Uint32Array(512), hsCls=new Uint8Array(512);
   function gtiaSegXFromCycle(cyc){
-    // BUILD2JO: kdyz ANTIC krade CPU cykly, CPU cyklus uz neni pevne 4 pixely pres celou radku.
-    // Pro normalni 114 cyklu nechavam starou mapu; pro DMA-steal radky skaluji dostupny CPU cas
-    // na stejnou viditelnou sirku paprsku.
-    const bud=M.lineCpuBudget||CYC_LINE;
-    if(bud>=112) return Math.max(0,Math.min(383,32+((cyc-24)<<2)));
-    const den=Math.max(1,bud-24);
-    return Math.max(0,Math.min(383,32+Math.round(((cyc-24)*352)/den)));
+    // BUILD2IS: hruby, ale obecny paprskovy prevod CPU cyklu na X.
+    // Atari viditelna cast zacina zhruba po HBLANKU; 1 CPU cyklus ~= 4 pixely v nasem 384px fb.
+    return Math.max(0,Math.min(383,32+((cyc-24)<<2)));
   }
   function gtiaRegAt(g,x){
     let v;
@@ -3073,7 +3040,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // do zacatku dalsi scanline; typicky DLI udela STA WSYNC a teprve na dalsi radce zapise
     // COLPF/COLBK. Stary model bral snapshot pred temito zapisy, a tim vznikaly pruhy/barvy mimo.
     // Zapisy v prvnich ~28 cyklech aktualni radky plati pro tuto radku, pozdejsi az pro dalsi.
-    const lineStart=cpu.cycles, lineBudget=anticDmaCpuBudgetForLine(), target=lineStart+lineBudget, snapAt=lineStart+Math.min(28,Math.max(12,lineBudget-8));
+    const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+28;
     M.lineCyc0=lineStart; chSeg.n=0; chSeg.base=antic.chbase; gtSeg.n=0; pmSeg.n=0;
     while(cpu.cycles<snapAt){
       if(M.wsync){
@@ -4630,30 +4597,36 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   function vbxeScanAndLog(name,u8,kind){
     try{
       var s=vbxeByteString(u8, Math.min(u8.length, 1048576));
-      var hit=/VBXE|WOLF3D NEEDS VBXE|No VBXE found|FX core|Core revision|improper core|\$D640|\$D740|XDL/i.test(s);
-      // BUILD2JD: nehledej jen textove hlasky. Nektere VBXE programy sahaji primo na $D640-$D65F nebo $D740-$D75F.
+      var textStrong=/VBXE|WOLF3D NEEDS VBXE|No VBXE found|FX core|Core revision|improper core|XDL/i.test(s);
+      // BUILD2JP: staticky byte-scan samotnych hodnot $D640/$D740 muze u obycejnych her trefit nahodna data.
+      // Decathlon v logu trefil jen 6 operandovych dvojic a tim se chybne tvaril jako VBXE.
+      // Proto male IO-only nalezy beru jen jako audit a VBXE zapnu az pri silne signatuře,
+      // větším poctu IO operandů, nebo pozdeji po potvrzeni XEX/MEMAC preloadu z mountXex().
       var ioHits=0, ioD640=0, ioD740=0;
       for(var ai=0; ai+1<u8.length && ioHits<64; ai++){
         var lo=u8[ai]&255, hi=u8[ai+1]&255;
         if(hi===0xD6 && lo>=0x40 && lo<=0x5F){ ioHits++; ioD640++; }
         else if(hi===0xD7 && lo>=0x40 && lo<=0x5F){ ioHits++; ioD740++; }
       }
-      if(ioHits>0) hit=true;
+      var ioStrong = (ioHits>=10) || (ioD640>=4 && ioD740>=4);
+      var hit = !!(textStrong || ioStrong);
       var xi=vbxeQuickXexInfo(u8);
       log('VBXE AUDIT MATRIX BUILD2HL: soubor='+name+' kind='+(kind||'GAME')+' size='+u8.length+' B'+(xi.ok?(' xexRecords='+xi.records+' first='+xi.first+' INITAD='+xi.initad+' RUNAD='+xi.runad+' underROM='+xi.underRom):(' xexInfo='+xi.error))+'.');
       if(hit){
-        log('VBXE AUDIT MATRIX BUILD2JD: VBXE signatura/IO operand nalezen (ioHits='+ioHits+', D640='+ioD640+', D740='+ioD740+'). Emuluji obecny FX profil: CORE_VERSION=$10, MINOR_REVISION=$26 (FX v1.26a), cteni D642/D643=$FF, MEMAC D64C-D64F + alias D740-D75F.');
+        log('VBXE AUDIT MATRIX BUILD2JP: VBXE silna signatura potvrzena (text='+(textStrong?1:0)+', ioHits='+ioHits+', D640='+ioD640+', D740='+ioD740+'). Emuluji obecny FX profil: CORE_VERSION=$10, MINOR_REVISION=$26 (FX v1.26a), cteni D642/D643=$FF, MEMAC D64C-D64F + alias D740-D75F.');
         if(/No VBXE or improper core/i.test(s)) log('VBXE AUDIT MATRIX BUILD2HL: program obsahuje hlasku "No VBXE or improper core" -> prvni brana je D640=$10 a (D641&$70)==$20.');
         if(/Core revision <> 1\.20/i.test(s)) log('VBXE AUDIT MATRIX BUILD2HL: program chce kompatibilni FX 1.20 radu -> D641=$26 ma projit maskou $70.');
         if(/VBXE not found/i.test(s)) log('VBXE AUDIT MATRIX BUILD2HL: program umi nahlasit "VBXE not found" -> sleduj v logu CORE READ a prvni cteni $D640/$D641.');
         if(/\.obx$/i.test(name)) log('VBXE AUDIT MATRIX BUILD2HL: OBX beru jako stejny Atari binarni kontejner jako XEX, ne jako jiny fake loader.');
-        log('VBXE AUDIT MATRIX BUILD2HL: tohle NENI hack na jednu hru; stejna detekce bezi pro Textmode/DACTest/MrProper/Heartlight/Commando/Popeye/W3D.');
+        log('VBXE AUDIT MATRIX BUILD2JP: silna detekce neni hack na hru; slabý IO-only scan uz nespousti VBXE profil sam od sebe.');
+      } else if(ioHits>0){
+        log('VBXE AUDIT MATRIX BUILD2JP: slaby IO-only nalez (ioHits='+ioHits+', D640='+ioD640+', D740='+ioD740+') muze byt nahodny kod/data obycejne hry; zatim spoustim jako bezny Atari titul. Pokud mountXex potvrdi MEMAC/XDL payload, VBXE se zapne dodatecne.');
       } else {
-        log('VBXE AUDIT MATRIX BUILD2JD: bez VBXE signatury a bez operandů $D640-$D65F/$D740-$D75F, spoustim jako bezny Atari/ANTIC titul; VBXE overlay bude po coldstartu tvrde vypnuty.');
+        log('VBXE AUDIT MATRIX BUILD2JP: bez silne VBXE signatury a bez potvrzeneho MEMAC/XDL payloadu spoustim jako bezny Atari/ANTIC titul; VBXE overlay bude po coldstartu tvrde vypnuty.');
       }
       return hit;
     }catch(e){
-      log('VBXE AUDIT MATRIX BUILD2HL: scan selhal - '+e.message);
+      log('VBXE AUDIT MATRIX BUILD2JP: scan selhal - '+e.message);
       return false;
     }
   }
@@ -4674,8 +4647,12 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     try{ info=M.mountXex(u8); }
     catch(err){ log('NAHRAJ XEX: '+name+' - CHYBA: '+err.message); return; }
     if(info&&info.error){ log('NAHRAJ XEX: '+name+' - CHYBA: '+info.error); running=true; return; }
+    if(!isVbxe && info && (info.vbxePreloadSegments || info.vbxeShadowSegments)){
+      isVbxe=true;
+      log('VBXE AUDIT MATRIX BUILD2JP: XEX/MEMAC payload potvrzen az loaderem (preload='+(info.vbxePreloadSegments||0)+', shadow='+(info.vbxeShadowSegments||0)+') -> zapinam VBXE profil bez spolehání na slabý byte-scan.');
+    }
     M.coldStart({option:true});
-    if(!isVbxe && M.disableVbxeForPlainProgram) M.disableVbxeForPlainProgram('XEX '+name);
+    if(!isVbxe && M.disableVbxeForPlainProgram) M.disableVbxeForPlainProgram('XEX '+name+' BUILD2JP weak-io-safe');
     consolState.option=true; M.consol(false,false,true);
     setTimeout(function(){ consolState.option=false; if(M)M.consol(false,false,false); },1500); // jen na dobu coldstartu - drzene OPTION mate hry, ktere ho ctou na titulce
     running=true; document.getElementById('led').classList.add('on');
@@ -6064,7 +6041,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2JO_ANTIC_DMA_CYCLE_STEAL_SAFE pripraven - zaklad BUILD2JN/JM/JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, BCB19/MSEL/OVSHIFT vypnute. Novy krok: obecne ANTIC DMA cycle stealing pro playfield a P/M DMA, aby CPU/DLI/PMG raster nebezel proti paprsku moc rychle; zadny hack hry.');
+    log('AtariHelp.eu EMU-10 BUILD2JP_PLAIN_ATARI_WEAK_VBXE_DETECT_SAFE pripraven - BUILD2JO DMA cycle-steal vetev zrusena kvuli skoku do SELF TESTU. Zaklad BUILD2JN/JM/JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, BCB19/MSEL/OVSHIFT vypnute. Novy krok: slaby staticky IO-only nalez $D640/$D740 uz nezapina VBXE profil pro obycejne Atari hry; VBXE se potvrzuje silnou signaturou nebo XEX/MEMAC loaderem.');
     log('AtariHelp.eu EMU-10 BUILD2JM_GTIA_PMG_BEAM_SEGMENTS_SAFE pripraven - zaklad BUILD2JL/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Novy krok: paprskove segmenty GTIA P/M registru HPOS/SIZE/GRAF/GRACTL pro intra/sprity bez BCB19/MSEL/OVSHIFT a bez hacku hry.');
     log('AtariHelp.eu EMU-10 BUILD2JL_CPU_NOP_FULL_BLITTER_CONST_PM_SAFE pripraven - zaklad BUILD2JK/JI zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe, PM VDELAY. Doplnene presnejsi neoficialni NOP cykly, VBXE SR/HR collision direct AND a blitter constant source andm==xorm. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
     log('AtariHelp.eu EMU-10 BUILD2JK_CPU_NOP_COLLISION_PM_VDELAY_SAFE pripraven - zaklad BUILD2JI/JJ zachovan: Tetris MEMAC, D740, INITAD shadow, BCB21 safe. Dva kroky naraz: NOP abs,x + VBXE collision z JJ a nove GTIA PMG VDELAY $D01C pro sprity/intra. BCB19 i MSEL/OVSHIFT zustavaji vypnute.');
