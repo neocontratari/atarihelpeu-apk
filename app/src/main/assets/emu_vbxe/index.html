@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JZ</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LE</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2231,50 +2231,62 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   const CYC_LINE=114, LINES=312, VBI_LINE=248;
 
-  // BUILD2LD: ANTIC DMA/HALT model.
-  // Predchozi jadro nechavalo 6502 bezet plnych 114 cyklu na kazde scanline a ANTIC
-  // data teprve dodatecne precetlo v rendereru. To u DLI/PMG titulu typu Decathlon
-  // znamena, ze CPU stihne zapsat barvy/sprity driv nez na skutecnem Atari. Tady
-  // vkladame bez vykonani instrukce ztracene cykly (HALT), aby CPU/DLI bezely proti
-  // paprsku pomaleji. Nejde o hack na hru; pocet cyklu vychazi z aktualni ANTIC
-  // mode/DMACTL/sirka/PMG DMA a je rozlozen behem viditelne casti radky.
-  function anticDmaHaltBudgetLD(){
+  // BUILD2LE: ANTIC DMA/HALT model - realnejsi kradez CPU cyklu.
+  // LD byl jen maly pevny odhad (5-8 cyklu/radek). Podle dodane analyzy a GTIA/ANTIC
+  // dokumentace to pro Decathlon nestaci: ANTIC krade DRAM refresh + playfield DMA + PMG DMA.
+  // Tohle neni hack podle nazvu hry: budget vychazi z aktualniho ANTIC modu, DMACTL, radku znaku
+  // a zapnute PMG DMA. CLOAD/CSAVE a fake-fast loader timhle nelamu.
+  function anticDmaHaltBudgetLE(){
     if(M.line<8 || M.line>=248) return 0;
     if(antic.done || !(antic.dmactl&0x20) || !MODE[antic.mode]) return 0;
-    const m=antic.mode&0x0F;
+    const m=antic.mode&0x0F, md=MODE[m];
+    const wNow=antic.dmactl&3;
+    const nb=antic.hsLine?pfBytesW(md.b,Math.min(3,wNow+1)):pfBytes(md.b);
     let b=0;
-    // Bezpecny prvni krok: Decathlon/Graphics 12/ANTIC 4-5 dostava 7 cyklu,
-    // jak pozadoval audit. Ostatni mody maji konzervativni budget, aby se nerozbily
-    // Donkey/Commando/loader cesty.
-    if(m===0x04 || m===0x05) b=7;
-    else if(m===0x02 || m===0x03) b=5;
-    else if(m===0x06 || m===0x07) b=5;
-    else if(m>=0x08 && m<=0x0C) b=6;
-    else if(m>=0x0D && m<=0x0F) b=8;
-    const w=antic.dmactl&3;
-    if(w===3) b+=1;
-    else if(w===0) b=Math.max(0,b-1);
-    if(antic.hsLine) b+=1;
-    if(antic.dmactl&0x04) b+=1;
-    if(antic.dmactl&0x08) b+=2;
-    if(b>14) b=14;
+
+    // DRAM refresh: ANTIC normalne sezere cca 9 CPU cyklu na viditelne radce.
+    // U hires textu je refresh mensi, ale nula to byt nesmi.
+    b += (md.t==='ch2') ? 1 : 9;
+
+    // Playfield DMA: jedna ukradena CPU faze pro kazdy nacteny playfield/glyph bajt.
+    // Znakove mody navic na zacatku znakoveho radku tahaji display-list/screen bajty.
+    if(md.t==='ch2' || md.t==='ch4' || md.t==='ch6'){
+      b += nb;                         // glyph/data fetch na teto scanline
+      if((antic.row|0)===0) b += nb;    // screen-memory fetch na zacatku znakoveho radku
+    }else{
+      b += nb;                         // bitmap data fetch
+    }
+
+    // Display list/LMS fetch okolo zacatku novych radku.
+    if((antic.row|0)===0) b += (antic.instr&0x40)?3:1;
+
+    // Player/Missile DMA presne podle dokumentace: missile 1 cyklus, players 4 cykly.
+    if((antic.dmactl&0x04) && (gtia.gractl&0x01)) b += 1;
+    if((antic.dmactl&0x08) && (gtia.gractl&0x02)) b += 4;
+
+    // Bezpecnost: nenechat CPU umrit. Normalni sirka/mody typicky vyjdou pod 60.
+    if(b<0) b=0;
+    if(b>72) b=72;
     return b|0;
   }
   function anticDmaHaltSetupLD(){
-    M.anticHaltBudget=anticDmaHaltBudgetLD();
+    // Zachovavam stare jmeno volani, ale obsah je BUILD2LE.
+    M.anticHaltBudget=anticDmaHaltBudgetLE();
     M.anticHaltDone=0;
   }
   function anticDmaHaltStepLD(limit){
     const budget=M.anticHaltBudget|0;
     if(!budget || M.anticHaltDone>=budget) return false;
     const local=(cpu.cycles-M.lineCyc0)|0;
-    const next=20 + (M.anticHaltDone*3);
+    // Rozlozeni DMA kradeze pres viditelnou cast radky. LD mel krok po 3 cyklech,
+    // coz pri vetsim budgetu nestihlo ukrast potrebne cykly. LE distribuuje pres 104 cyklu.
+    const next=(M.anticHaltDone*104/budget)|0;
     if(local>=next && cpu.cycles<limit){
       cpu.cycles++;
       M.anticHaltDone++;
-      if(M.vbxeDebug && !M.anticDmaHaltLdLogged){
-        M.anticDmaHaltLdLogged=true;
-        M.vbxeDebug('ANTIC DMA HALT BUILD2LD: CPU kradez cyklu aktivni; mode=$'+hx2(antic.mode)+' DMACTL=$'+hx2(antic.dmactl)+' budget='+budget+' line='+M.line+'.');
+      if(M.vbxeDebug && !M.anticDmaHaltLeLogged){
+        M.anticDmaHaltLeLogged=true;
+        M.vbxeDebug('ANTIC DMA HALT BUILD2LE: realnejsi kradez CPU cyklu aktivni; mode=$'+hx2(antic.mode)+' type='+(MODE[antic.mode]&&MODE[antic.mode].t||'?')+' DMACTL=$'+hx2(antic.dmactl)+' row='+antic.row+' budget='+budget+' line='+M.line+'.');
       }
       return true;
     }
@@ -2378,7 +2390,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(g===0x1A) gtia.colbk=v;
       else if(g===0x1B) gtia.prior=v;
       else if(g===0x1C){ gtia.vdelay=v&0xFF; if(v && !gtia.vdelayLogged && M.vbxeDebug){ gtia.vdelayLogged=true; M.vbxeDebug('GTIA PMG VDELAY BUILD2JK: $D01C=$'+hx2(v)+' aktivni; player/missile DMA pouzije jednradkovy delay latch.'); } }
-      else if(g===0x1D) gtia.gractl=v;
+      else if(g===0x1D){ gtia.gractl=v&0x07; if((v&0xF8) && M.vbxeDebug && !gtia.gractlMaskLeLogged){ gtia.gractlMaskLeLogged=true; M.vbxeDebug('GTIA GRACTL MASK BUILD2LE: $D01D zapis $'+hx2(v)+' -> realne bity $'+hx2(gtia.gractl)+'; vysoke bity ignorovany jako na HW.'); } }
       else if(g===0x1E){ for(let i=0;i<4;i++){ gtia.cMPF[i]=0;gtia.cPPF[i]=0;gtia.cMPL[i]=0;gtia.cPPL[i]=0; } }
       else if(g===0x1F){ const sp=(v>>3)&1; if(sp!==gtia.speaker){gtia.speaker=sp; pokey.dirty=true; M.onSpeaker&&M.onSpeaker(sp);} }
       gtiaPmTrack(g,v);    // BUILD2JM: P/M HPOS/SIZE/GRAF segmenty behem scanline
@@ -6874,6 +6886,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2LE_REAL_ANTIC_DMA_STEAL_DECATHLON_CORE pripraven - navazuje na LD, ale zahazuje pevny 5-8 cyklu odhad. ANTIC DMA/HALT ted pocita DRAM refresh + playfield/glyph DMA + display-list fetch + PMG DMA podle skutecneho ANTIC modu a DMACTL. Cil: Decathlon telo/nohy/napis, obecne DLI/PMG casovani; Donkey Arcade/Junior PMG faze chranena; fast load jen pro nahravani; CLOAD/CSAVE bez fake. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LD_ANTIC_DMA_HALT_DLI_VBL_TIMING_CORE pripraven - navazuje na LC/KZ/KV. Hlavni rez uz neni loader ani dalsi slepa VBXE paleta: pridana radkova ANTIC DMA/HALT kradez CPU cyklu pro narocne ANTIC mody, DLI/VBI zustava ve stejne kooperativni smycce a PAL ramec drzi 312 radku. Cil: Decathlon telo/nohy/napis, obecne DLI barvy a duchove u non-VBXE her. Fast XEX/ATR zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. Donkey Arcade/Junior PMG faze chranena. Bez screen-paintu, bez hacku podle nazvu hry. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LC_GRAPH_CORE_REAL_PASS_FAST_SAFE pripraven - navazuje na LB/KZ/KV. XEX/OBX a ATR fake-fast zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. VBXE SR/HR/LR pouziva XDL OV palette jako zdroj grafickych barev, MAP zustava pro PF/prioritu; graph transparent guard a SR stripe filtr zustavaji jako LC zaklad.');
     log('AtariHelp.eu EMU-10 BUILD2KS_GTIA_ALL_BITMAP_MODES_DOC_CORE pripraven - audit podle GTIA dokumentace: GTIA mody 9/10/11 plati pro jakykoliv ANTIC mod, ne jen F. Implementovan GTIA pixel generator pro m1bpp/m2bpp bitmapove radky (ANTIC D/E/A/8/B/C), GTIA11 opraveno na hue=(COLBK hue OR pixel), luma=COLBK. KR/KQ/KP line-latch/staging vetev je mimo. KODY JSOU STEJNE.');
