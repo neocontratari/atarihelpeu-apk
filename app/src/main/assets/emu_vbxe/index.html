@@ -2615,6 +2615,15 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(gtiaG2fLineLatchActive() && g>=0x12 && g<=0x1B) return gtiaLineRegAtStart(g);
     return gtiaRegAt(g,x);
   }
+  function gtiaG2fPmgLineStagingActive(){
+    // BUILD2KP: KO porad nechavalo PMG objektove registry (HPOS/SIZE/GRAF/GRACTL)
+    // paprskove prepinat uvnitr viditelne radky. U G2F kernelu jsou tyto zapisy typicky
+    // priprava dalsi scanline po WSYNC/HBLANKu; kdyz je promítneme do aktualni radky,
+    // vzniknou svisle rozbite barevne sloupce. Pro ANTIC F + GTIA9/11 + husty DLI
+    // proto pouzijeme line-staged P/M stav pro celou radku a paprskove PMG segmenty
+    // nechame jen pro bezne hry/intra mimo tuto G2F cestu.
+    return gtiaG2fLineLatchActive();
+  }
   function pfColorAt(cls,x){
     if(cls<=0) return gtiaPal(gtiaRegAt(0x1A,x));
     return gtiaPal(gtiaRegAt(0x15+cls,x));
@@ -2876,8 +2885,17 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
 
     // BUILD2JM: kdyz byly behem radky zapsane P/M registry, nekreslim celou radku jednim snapshotem.
+    // BUILD2KP: pro G2F/Postcard cestu je ale prave tohle zdroj svislych sloupcu: DLI/WSYNC
+    // priprava P/M registru se nesmi prekladat jako okamzite zmeny uvnitr aktualni radky.
+    // Proto u ANTIC F + GTIA9/11 + husty G2F kernel ignoruji pmSeg pro aktualni render a
+    // pouziju line-staged snapshot; bezne hry stale pouzivaji paprskove PMG segmenty.
+    const g2fPmgLineStage=gtiaG2fPmgLineStagingActive();
+    if(g2fPmgLineStage && pmSeg && pmSeg.n && M.vbxeDebug && !M.gtiaG2fPmgStageKpLogged){
+      M.gtiaG2fPmgStageKpLogged=true;
+      M.vbxeDebug('GTIA G2F PMG LINE STAGING BUILD2KP: PMG HPOS/SIZE/GRAF/GRACTL segmenty se u ANTIC F + GTIA9/11 berou jako priprava cele scanline, ne jako svisle pruhy.');
+    }
     // Pocitam pixel proti aktualnimu paprskovemu stavu HPOS/SIZE/GRAF/GRACTL v dane X pozici.
-    if(pmSeg && pmSeg.n){
+    if(pmSeg && pmSeg.n && !g2fPmgLineStage){
       if(M.vbxeDebug && !M.gtiaPmBeamLogged){
         M.gtiaPmBeamLogged=true;
         M.vbxeDebug('GTIA PMG BEAM RENDER BUILD2JM: aktivni paprskove HPOS/SIZE/GRAF segmenty pro P/M.');
@@ -6686,6 +6704,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2KP_G2F_PMG_LINE_STAGING_CORE pripraven - navazuje na KM/KN/KO stopu. Novy rez: u ANTIC F + GTIA9/11 + husty G2F/DLI kernel uz nepouzivam behem jedne radky paprskove PMG segmenty jako okamzity obraz; P/M objektove registry se berou jako line-staged stav pro celou radku. Cil: odstranit spatne svisle PMG/GTIA barevne pruhy u Postcard/G2F bez screen-paintu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KO_G2F_PM_COLOR_LINE_LATCH_CORE pripraven - navazuje na KN/KM maly posun. Novy rez: u ANTIC F + GTIA9/11 + husty G2F/DLI kernel se line-latch netyka jen COLBK/GPRIOR zakladniho pixel generatoru, ale i COLPM/PRIOR pro PMG barevne vrstvy. Cil: zmensit zbytky fialovych/tyrkysovych pruhu bez screen-paintu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KM_GTIA9_11_PIXEL_GENERATOR_FULL_CORE pripraven - navazuje na KL, ale uz nejde po PMG masce. Oprava primo v GTIA 9/11 pixel generatoru: GTIA9 pouziva plny 4bit jas z pixelu, GTIA11 pouziva standardni hue=pixel/luma=COLBK bez KL OR-hue chyby. Soucasne se rusi tvrde KK blokovani PMG pres GTIA obraz a vraci se normalni PRIOR cesta, aby G2F mohl barvit obraz realnou PMG vrstvou. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KL_WSYNC_HBLANK_GTIA11_G2F_CORE pripraven - navazuje na KK. Oprava podle logu: PMG uz je blokovane, ale obraz se nehnul, tedy chyba je v zakladnim GTIA/G2F rastru. WSYNC ted pousti CPU do HBLANK casti radky pro pripravu dalsiho scanline a GTIA11 ma opravenou barvu podle COLBK hue/luma. KODY JSOU STEJNE.');
