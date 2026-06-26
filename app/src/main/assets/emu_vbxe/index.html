@@ -1144,10 +1144,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
   };
   M.unmountDisk=function(){ sio.disk=null; sio.diskTurbo=false; sio.diskTurboUntil=0; };
   M.xexLoading=function(){
-    // BUILD2KY: oprava po KX. KX vypinal turbo uz po prvnim payloadu, kdyz INITAD/RUN kod
-    // kratce skocil do RAM (PC=$2004/$4009/$8CC0 atd.). To zpomalilo zbytek XEX, hlavne VBXE
-    // tituly s mnoha zaznamy/Popeye/W3D. KY drzi turbo az do posledniho datoveho XEX zaznamu;
-    // az potom resi neprecteny EOF/header, aby hra samotna neutekla rychle. Bez RAM injectu.
+    // BUILD2KZ: navazuje na KY. Uživatel výslovně povolil jediny snesitelny fake: rychlost nahravani
+    // XEX/OBX. Data stale tecou pres nas OS/SIO loader a CLOAD/CSAVE se nesmi zrychlit. Turbo drzi
+    // record-aware do posledniho datoveho XEX zaznamu, potom se vypne normalni rychlost hry.
     const X=sio.xex;
     if(!X || !X.loading) return false;
     const f=(M.frame||0);
@@ -1162,16 +1161,16 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const allDataServed=(X.cur>lastDataIndex) || (X.cur===lastDataIndex && !!X.pserved) || (eofIndex===0);
 
     if(!allDataServed){
-      if(M.vbxeDebug && !X.kyRecordTurboLogged){
-        X.kyRecordTurboLogged=true;
-        M.vbxeDebug('XEX FAST LOAD BUILD2KY: record-aware turbo drzi nahravani az do posledniho XEX datoveho zaznamu; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
+      if(M.vbxeDebug && !X.kzRecordTurboLogged){
+        X.kzRecordTurboLogged=true;
+        M.vbxeDebug('XEX FAST LOAD BUILD2KZ: fake-fast record-aware XEX/OBX nahravani drzi az do posledniho XEX datoveho zaznamu; CLOAD/CSAVE nedotceno; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
       }
       // ochrana proti zavadeci, ktery uz do dalsiho SIO nikdy nevleze: po dlouhem tichu v RAM radsi pustim normalni rychlost.
       if(staleSince>900 && lastPay && !qBusy){
         X.loading=false;
         if(M.vbxeDebug && !X.loadingAutoStopLogged){
           X.loadingAutoStopLogged=true;
-          M.vbxeDebug('XEX FAST LOAD BUILD2KY: fail-safe ukoncil turbo pred EOF po dlouhem tichu; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
+          M.vbxeDebug('XEX FAST LOAD BUILD2KZ: fail-safe ukoncil fake-fast turbo pred EOF po dlouhem tichu; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
         }
         return false;
       }
@@ -1185,12 +1184,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
       try{ if(sio.rxq) sio.rxq.length=0; sio.rxPos=0; if(sio.frame) sio.frame.length=0; }catch(_e){}
       if(M.vbxeDebug && !X.loadingAutoStopLogged){
         X.loadingAutoStopLogged=true;
-        M.vbxeDebug('XEX FAST LOAD BUILD2KY: EOF/stale guard ukoncil turbo az po poslednim datovem zaznamu; cur='+X.cur+'/'+eofIndex+' stale='+staleSince+' payload='+stalePayload+' PC=$'+hx4(pc)+'.');
+        M.vbxeDebug('XEX FAST LOAD BUILD2KZ: EOF/stale guard ukoncil fake-fast turbo az po poslednim datovem zaznamu; cur='+X.cur+'/'+eofIndex+' stale='+staleSince+' payload='+stalePayload+' PC=$'+hx4(pc)+'.');
       }
       return false;
     }
     return true;
-  }; // BUILD2KY: rychle nahravani pro vsechny XEX zaznamy, normalni rychlost po poslednim payloadu.
+  }; // BUILD2KZ: fake-fast XEX/OBX loading; CLOAD/CSAVE nedotceno; normalni rychlost po poslednim payloadu.
   M.diskFastLoading=function(){ return !!(sio.disk && !sio.xex && sio.diskTurbo && (sio.rxPos<sio.rxq.length || (M.frame||0)<(sio.diskTurboUntil||0))); };
   M.diskFastStats=function(){ return {reads:sio.diskTurboReads||0, active:!!(sio.diskTurbo), until:sio.diskTurboUntil||0}; };
   // XEX zavadec v2: boot sektory 1-2 = stage1+stage2 (stage2 bezi z $0100),
@@ -2020,8 +2019,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
           ' w='+w+' h='+h+' mode='+mode+' next='+(next?1:0)+' const='+(constant?1:0)+
           ' ssy='+srcStep+' ssx='+srcStepX+' dsy='+dstStep+' dsx='+dstStepX+
           ' zoom=$'+hx2(zoom)+' zx='+zoomX+' zy='+zoomY+' intlv='+(intlv?1:0)+' patt=$'+hx2(patt)+' BCB21');
-      } else if(vbxe.bltStarts===13 && M.vbxeDebug){
-        M.vbxeDebug('VBXE BLITTER FAST: detailni log startu potlacen, dal jen souhrny.');
+      } else if(vbxe.bltStarts===13 && M.vbxeDebug && !vbxe.blitFastDetailSuppressedLogged){
+        vbxe.blitFastDetailSuppressedLogged=true;
+        M.vbxeDebug('VBXE BLITTER FAST BUILD2KZ: detailni log startu potlacen, dal jen souhrny; mensi log-spam pri VBXE hrach.');
       }
       if((zoom!==0 || patt!==0) && !vbxe.blitFeatureLogged && M.vbxeDebug){
         vbxe.blitFeatureLogged=true;
@@ -4325,18 +4325,28 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(recs[ri0].mode===1 || recs[ri0].mode===2 || recs[ri0].mode===3) hasGraph=true;
       if(recs[ri0].mode===4) hasText=true;
     }
+    // BUILD2KZ: MAPON/MAPADR je nezavisly na overlay grafice. Rumble/nektera intra maji XDL mode OFF,
+    // ale stale platnou atributovou mapu. Stary kod pri no-graph/no-text spadl do surface fallbacku
+    // a mapa se neaplikovala, coz davalo magenta/rozhozeny obraz. Nejdriv tedy mapu aplikujeme,
+    // a pokud XDL nema zadny overlay, povazujeme map-only frame za platny vystup.
+    var mapDrew=vbxeApplyAttributeMapToAtari(recs);
     if(!hasGraph && !hasText){
+      if(mapDrew>0){
+        if(M.vbxeDebug && !vbxe.xdlMapOnlyKzLogged){
+          vbxe.xdlMapOnlyKzLogged=true;
+          M.vbxeDebug('VBXE MAP-ONLY XDL BUILD2KZ: mode OFF + MAPON kresli atributy do ANTIC obrazu; surface fallback zablokovan, zadny screen-paint. pixels='+mapDrew+'.');
+        }
+        return true;
+      }
       var sf=vbxeRenderSurfaceFallback('no-visible-XDL-records');
       if(sf>0) return true;
     }
+
     var hasHR=false;
     for(var rh=0; rh<recs.length; rh++){ if(recs[rh].mode===2) { hasHR=true; break; } }
     var pureText=(hasText && !hasGraph);
     var useHiCanvas=(pureText || hasHR);
     if(useHiCanvas) vbxePrepareHiTextFb();
-
-    // BUILD2IO: MAPON muze zlepsit ANTIC obraz i bez overlaye; aplikuj atributy pred OVERLAY.
-    var mapDrew=vbxeApplyAttributeMapToAtari(recs);
     if(useHiCanvas && mapDrew>0) vbxePrepareHiTextFb();
 
     for(var ri=0;ri<recs.length;ri++){
@@ -6581,9 +6591,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var diskTurbo = !xexTurbo && !!(M.diskFastLoading && M.diskFastLoading());
     if(xexTurbo){
       // BUILD2HW: turbo jen behem naseho obecneho XEX/OBX SIO loaderu. Nezrychluje kazetu/CLOAD ani bezici hru.
-      if(!M._hvTurboLogged){ M._hvTurboLogged=true; log('XEX FAST LOAD BUILD2HW: zrychluji jen emulovany SIO loader, po RUN/EOF se automaticky vratim na normalni rychlost. Zadny screen paint, zadny herni hack.'); }
+      if(!M._hvTurboLogged){ M._hvTurboLogged=true; log('XEX FAST LOAD BUILD2KZ: fake-fast XEX/OBX nahravani zapnuto jen pro emulovany SIO loader; CLOAD/CSAVE bez zmeny; po loaderu normalni rychlost hry.'); }
       acc=0; last=ts;
-      var maxFast = 28; // BUILD2KY: record-aware turbo drzi vsechny XEX zaznamy; vyssi limit vraci rychle nahravani bez zrychleni hry.
+      var maxFast = 96; // BUILD2KZ: uzivatel povolil fake rychlost nahravani XEX/OBX; CLOAD/CSAVE mimo tuto vetev.
       while(n<maxFast){ typeStep(); M.runFrame(); typeStep(); n++;
         if(!(M.xexLoading && M.xexLoading())) break;
         if(M.cpu.jam){ running=false; log('CPU JAM op $'+M.cpu.jamOp.toString(16).toUpperCase()+' na $'+M.cpu.jamPc.toString(16).toUpperCase()+' frame '+M.frame); log('PC=$'+M.cpu.pc.toString(16).toUpperCase()+' PORTB=$'+M.portB().toString(16).toUpperCase()); break; }
@@ -6743,7 +6753,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KY_XEX_RECORD_TURBO_RESTORE_SAFE pripraven - navazuje na KX/KV. Oprava nahravani: KX vypinal turbo uz po prvnim RAM skoku INITAD/RUN, proto VBXE hry a delsi XEX dohravaly zbytek pomalu. KY drzi turbo az do posledniho datoveho XEX zaznamu a normalni rychlost pusti az po EOF/stale guardu. Donkey Arcade/Junior PMG faze zustava, GTIA color-clock/HBLANK guard zustava. Grafiku Postcard/Decathlon/Night Driver nelakuju jako hotovou. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KZ_FAST_LOAD_FAKE_OK_AND_VBXE_MAP_OFF_CORE pripraven - navazuje na KY. Rychlost nahravani XEX/OBX je zamerne fake-fast, protoze byla povolena; CLOAD/CSAVE zustava bez zrychleni. KY record-aware loader zachovan, maxFast zvednut. Oprava VBXE MAP-only XDL: mode OFF + MAPON uz nepadne do surface fallbacku, ale aplikuje atributovou mapu. Donkey Arcade/Junior PMG faze zustava. Grafiku Decathlon/Postcard/Night Driver nelakuju jako hotovou. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KS_GTIA_ALL_BITMAP_MODES_DOC_CORE pripraven - audit podle GTIA dokumentace: GTIA mody 9/10/11 plati pro jakykoliv ANTIC mod, ne jen F. Implementovan GTIA pixel generator pro m1bpp/m2bpp bitmapove radky (ANTIC D/E/A/8/B/C), GTIA11 opraveno na hue=(COLBK hue OR pixel), luma=COLBK. KR/KQ/KP line-latch/staging vetev je mimo. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KM_GTIA9_11_PIXEL_GENERATOR_FULL_CORE pripraven - navazuje na KL, ale uz nejde po PMG masce. Oprava primo v GTIA 9/11 pixel generatoru: GTIA9 pouziva plny 4bit jas z pixelu, GTIA11 pouziva standardni hue=pixel/luma=COLBK bez KL OR-hue chyby. Soucasne se rusi tvrdé KK blokovani PMG pres GTIA obraz a vraci se normalni PRIOR cesta, aby G2F mohl barvit obraz realnou PMG vrstvou. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KL_WSYNC_HBLANK_GTIA11_G2F_CORE pripraven - navazuje na KK. Oprava podle logu: PMG uz je blokovane, ale obraz se nehnul, tedy chyba je v zakladnim GTIA/G2F rastru. WSYNC ted pousti CPU do HBLANK casti radky pro pripravu dalsiho scanline a GTIA11 ma opravenou barvu podle COLBK hue/luma. KODY JSOU STEJNE.');
