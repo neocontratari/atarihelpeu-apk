@@ -2718,8 +2718,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
             const cb=gtiaRegAt(0x1A,x0);
             let col;
             if(gm===0x40) col=gtiaPal((cb&0xF0)|(nib&0x0E));                  // GTIA 9: hue COLBK + 16 jasu
-            else if(gm===0xC0) col=gtiaPal(((nib<<4)|(cb&0x0E))&0xFF); // GTIA 11: 16 odstinu + lum COLBK
-            else col=gtiaPal(gtia10Color(nib,x0));                     // GTIA 10: 9 barvovych registru
+            else if(gm===0xC0){
+              // BUILD2KL: GTIA11 neni (nib<<4)|luma naslepo. Dokumentace: pixel 0 = hue COLBK/luma 0,
+              // pixel 1-15 = (COLBKhue OR pixel_value) + luminance COLBK. To je dulezite pro G2F/Postcard.
+              const hue = (nib===0) ? (cb&0xF0) : ((((cb>>4)|nib)&0x0F)<<4);
+              const lum = (nib===0) ? 0 : (cb&0x0E);
+              col=gtiaPal((hue|lum)&0xFF);
+              if(M.vbxeDebug && !M.gtia11KlLogged){ M.gtia11KlLogged=true; M.vbxeDebug('GTIA11 COLOR BUILD2KL: pixel0 bere COLBK hue/luma0, pixel1-15 OR hue s nibble a luma z COLBK.'); }
+            } else col=gtiaPal(gtia10Color(nib,x0));                     // GTIA 10: 9 barvovych registru
             TB[TO+x0]=col; TB[TO+x0+1]=col; TB[TO+x0+2]=col; TB[TO+x0+3]=col;
             const gcls=gtiaModePfClass(nib,gm,x0);
             TC[x0]=gcls; TC[x0+1]=gcls; TC[x0+2]=gcls; TC[x0+3]=gcls;
@@ -3401,23 +3407,30 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // COLPF/COLBK. Stary model bral snapshot pred temito zapisy, a tim vznikaly pruhy/barvy mimo.
     // Zapisy v prvnich ~28 cyklech aktualni radky plati pro tuto radku, pozdejsi az pro dalsi.
     const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+28;
+    // BUILD2KL: WSYNC na realnem Atari pusti CPU jeste do HBLANK casti radky (cca cc=208/cyc=104),
+    // aby DLI/G2F kernel mohl pripravit COLPF/COLBK/PRIOR pro dalsi scanline. Stary model skocil az
+    // na konec radky a zabil techto ~10 cyklu, takze barvy pro dalsi radku prisly pozde a delaly pruhy.
+    const wsyncRelease=lineStart+104;
+    function handleWsyncKL(){
+      if(!M.wsync) return false;
+      M.wsync=false;
+      if(cpu.cycles < wsyncRelease){
+        cpu.cycles=wsyncRelease;
+        if(M.vbxeDebug && !M.wsyncKlLogged){ M.wsyncKlLogged=true; M.vbxeDebug('WSYNC HBLANK BUILD2KL: WSYNC konci na cyklu 104, HBLANK CPU zapis muze pripravit dalsi scanline.'); }
+      } else {
+        cpu.cycles=target;
+      }
+      return true;
+    }
     M.lineCyc0=lineStart; chSeg.n=0; chSeg.base=antic.chbase; gtSeg.n=0; pmSeg.n=0;
     while(cpu.cycles<snapAt){
-      if(M.wsync){
-        M.wsync=false;
-        cpu.cycles=target;       // WSYNC = konec aktualni scanline, pokracovani az v dalsi
-        break;
-      }
+      if(handleWsyncKL()) break;
       cpu.step();
       if(cpu.jam){ cpu.cycles=target; break; }
     }
     snapTake();                                        // zmrazeni stavu pro render teto radky (stav v HBLANKU)
     while(cpu.cycles<target){
-      if(M.wsync){
-        M.wsync=false;
-        cpu.cycles=target;       // BUILD2IR: zadny navrat do stejne radky po WSYNC
-        break;
-      }
+      if(handleWsyncKL()) continue;
       cpu.step();
       if(cpu.jam){ cpu.cycles=target; break; }
     }
@@ -6621,7 +6634,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KK_FIX_KJ_GPRIOR_MASK_BUG_CORE pripraven - hlubsi graficky rez po KI: GTIA barvy ignoruji bit0 jako realny GTIA vystup, GTIA9/11 pixely tvori PF masku i pri nulove hodnote a neutralni PRIOR=$40/$C0 nepousti PMG barevne vrstvy pres cely GTIA obraz. Cil: Postcard/G2F pruhy; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KL_WSYNC_HBLANK_GTIA11_G2F_CORE pripraven - navazuje na KK. Oprava podle logu: PMG uz je blokovane, ale obraz se nehnul, tedy chyba je v zakladnim GTIA/G2F rastru. WSYNC ted pousti CPU do HBLANK casti radky pro pripravu dalsiho scanline a GTIA11 ma opravenou barvu podle COLBK hue/luma. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KI_CPU_IO_WRITE_CYCLE_GTIA_RASTER_CORE pripraven - hlubsi raster rez po KH: GTIA/ANTIC/PMG zapisy do D0xx/D4xx uz maji cas skutecneho 6502 write-cyklu, ne zacatek instrukce. Cil: G2F/Postcard svisle pruhy a obecny DLI/PMG timing; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KH_DEEP_GTIA_PMG_VDELAY_OVERLAP_CORE pripraven - skutecny dalsi rez po neuspesnem KG. Postcard/G2F: opraven VDELAY jako predchozi DMA radka podle dodane dokumentace + GTIA PRIOR bit5 player-overlap barva. Night Driver/Decathlon nelakuji jako hotove. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KF_DOC_GUIDED_NIGHTDRIVER_AUDIO_STRIPE_PASS pripraven - navazuje na KE/KB/JZ/JX. Night Driver: obsahovy SR stripe filtr podle XDL/transparent pravidel + robustni AudioContext resume pro POKEY/GTIA zvuk. Decathlon PMBASE hack z KD zustava pryc; bez dalsiho slepeho rezu. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
