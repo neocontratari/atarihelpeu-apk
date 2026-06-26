@@ -1095,12 +1095,13 @@ function Atari130XE(osRom, basicRom, CPUctor){
       sioQueue(5,[0x43]);              // COMPLETE
       sioQueue(8,st.concat([sioChk(st)]),pb); // BUILD2HW: D1: turbo jen pro diskovy SIO prenos
     } else if(cmd===0x52 && sio.xex && sec===1){ // novy boot (hra/RESET restartovala) -> pretoc na zacatek
-      sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true;
+      sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true; sio.xex.startFrame=(M.frame||0); sio.xex.lastSioFrame=(M.frame||0); sio.xex.loadingAutoStopLogged=false; M._hvTurboLogged=false; M._hvTurboDone=false;
       const off=(sec-1)*sio.secSize, d=[];
       for(let k=0;k<sio.secSize;k++) d.push(sio.disk[off+k]||0);
       sioQueue(3,[0x41]); sioQueue(5,[0x43]); sioQueue(8,d.concat([sioChk(d)]),1); // BUILD2HV turbo boot sektor pro XEX loader, ne pro kazetu/CLOAD.
     } else if(cmd===0x52 && sio.xex && (a2===0x71||a2===0x72||a2===0x73)){ // XEX loader v3: index drzi MECHANIKA
       const X=sio.xex;
+      X.lastSioFrame=(M.frame||0);
       if(X.cur>=X.recs.length) X.cur=X.recs.length-1;
       if(a2===0x73){ // legacy v3 posun - uz se nepouziva, neskodny
         const d=[X.cur&0xFF];
@@ -1118,7 +1119,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         const r=X.recs[X.cur];
         if(!r.len){ sioQueue(6,[0x4E]); return; }
         applyXexVbxePreloadRecord(X,r); // BUILD2IZ: pokud XEX/INITAD nastavil MEMAC, stejne payload zapise i do VBXE VRAM
-        X.pserved=true;
+        X.pserved=true; X.lastPayloadFrame=(M.frame||0);
         const data=Array.from(r.pay);
         var pb=(sio.xex&&sio.xex.loading)?1:2;
         sioQueue(3,[0x41]); sioQueue(5,[0x43]); sioQueue(8,data.concat([sioChk(data)]),pb);
@@ -1142,7 +1143,23 @@ function Atari130XE(osRom, basicRom, CPUctor){
     sio.diskTurbo=true; sio.diskTurboUntil=(M.frame||0)+120; sio.diskTurboReads=0; sio.diskTurboLogged=false; sio.diskTurboDone=false;
   };
   M.unmountDisk=function(){ sio.disk=null; sio.diskTurbo=false; sio.diskTurboUntil=0; };
-  M.xexLoading=function(){ return !!(sio.xex && sio.xex.loading); }; // BUILD2HW: UI tick muze turbo-zrychlit jen realny XEX SIO loader, po EOF se vrati normal.
+  M.xexLoading=function(){
+    // BUILD2KV: turbo je jen pro aktivni XEX SIO loader. Nektere XEXy po poslednim payloadu uz nectou EOF header
+    // a rovnou bezi hru; stary stav loading pak zustal true a UI tick je drzel v rychlem rezimu.
+    const X=sio.xex;
+    if(!X || !X.loading) return false;
+    const f=(M.frame||0), last=X.lastSioFrame||X.startFrame||f;
+    const noPending = (!sio.rxq || sio.rxPos>=sio.rxq.length) && (!sio.frame || sio.frame.length===0);
+    if(noPending && (f-last)>90){
+      X.loading=false;
+      if(M.vbxeDebug && !X.loadingAutoStopLogged){
+        X.loadingAutoStopLogged=true;
+        M.vbxeDebug('XEX FAST LOAD BUILD2KV: idle-guard ukoncil turbo loader po '+(f-last)+' framech bez SIO; hra bezi normalni rychlosti.');
+      }
+      return false;
+    }
+    return true;
+  }; // BUILD2KV: UI tick muze turbo-zrychlit jen realny XEX SIO loader; idle guard chrani hry, ktere neprectou EOF header.
   M.diskFastLoading=function(){ return !!(sio.disk && !sio.xex && sio.diskTurbo && (sio.rxPos<sio.rxq.length || (M.frame||0)<(sio.diskTurboUntil||0))); };
   M.diskFastStats=function(){ return {reads:sio.diskTurboReads||0, active:!!(sio.diskTurbo), until:sio.diskTurboUntil||0}; };
   // XEX zavadec v2: boot sektory 1-2 = stage1+stage2 (stage2 bezi z $0100),
@@ -1452,7 +1469,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
         recs.length=0; recs.push(...norm, ...dfr); if(eof)recs.push(eof);
       }
     }
-    sio.xex={recs:recs,cur:0,pserved:false,loading:true,fastLogged:false,vbxePreloadInfo:vbxePreloadInfo,vbxePreloadDone:0,vbxePreloadBytes:0,vbxePreloadLog:0,vbxeLiveMemacDone:0,vbxeLiveMemacBytes:0,vbxeLiveMemacSegments:0,vbxeLiveMemacLog:0};
+    sio.xex={recs:recs,cur:0,pserved:false,loading:true,fastLogged:false,startFrame:(M.frame||0),lastSioFrame:(M.frame||0),loadingAutoStopLogged:false,vbxePreloadInfo:vbxePreloadInfo,vbxePreloadDone:0,vbxePreloadBytes:0,vbxePreloadLog:0,vbxeLiveMemacDone:0,vbxeLiveMemacBytes:0,vbxeLiveMemacSegments:0,vbxeLiveMemacLog:0};
+    // BUILD2KV: kazdy novy XEX musi resetovat turbo stav UI ticku. Jinak druha/treti hra mohla zustat v rychlem rezimu bez noveho 'loader skoncil' markeru.
+    M._hvTurboLogged=false; M._hvTurboDone=false;
     // boot disk: jen 2 sektory zavadece
     const bin=atob(XEX_LOADER_B64), disk=new Uint8Array(256);
     for(let k=0;k<bin.length;k++) disk[k]=bin.charCodeAt(k)&0xFF;
@@ -2615,17 +2634,17 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const cb=gtiaRegAt(0x1A,x)&0xFF;
     nib&=0x0F; gm&=0xC0;
     if(gm===0x40){
-      if(M.vbxeDebug && !M.gtia9KtLogged){ M.gtia9KtLogged=true; M.vbxeDebug('GTIA9 RAW LUMA BUILD2KU: GTIA9 pouziva plny 4bit pixelovy jas bez masky bit0; COLBK dodava hue.'); }
+      if(M.vbxeDebug && !M.gtia9KtLogged){ M.gtia9KtLogged=true; M.vbxeDebug('GTIA9 RAW LUMA BUILD2KV: GTIA9 pouziva plny 4bit pixelovy jas bez masky bit0; COLBK dodava hue.'); }
       return gtiaPalRaw(((cb&0xF0)|nib)&0xFF);
     }
     if(gm===0x80){
-      if(M.vbxeDebug && !M.gtia10KtLogged){ M.gtia10KtLogged=true; M.vbxeDebug('GTIA10 COLOR BUILD2KU: GTIA10 generator zustava registrovy; COLPM/COLPF/COLBK se normalizuji jako realne barevne registry.'); }
+      if(M.vbxeDebug && !M.gtia10KtLogged){ M.gtia10KtLogged=true; M.vbxeDebug('GTIA10 COLOR BUILD2KV: GTIA10 generator zustava registrovy; COLPM/COLPF/COLBK se normalizuji jako realne barevne registry.'); }
       return gtiaPal(gtia10ColorRaw(nib,x));
     }
     if(gm===0xC0){
       const hue = nib ? (((cb>>4)|nib)&0x0F) : ((cb>>4)&0x0F);
       const lum = nib ? (cb&0x0E) : 0;
-      if(M.vbxeDebug && !M.gtia11KtLogged){ M.gtia11KtLogged=true; M.vbxeDebug('GTIA11 COLOR BUILD2KU: hue=(COLBK hue OR pixel), luma=COLBK, pixel0 nulovy jas; registr luma bit0 zustava ignorovan.'); }
+      if(M.vbxeDebug && !M.gtia11KtLogged){ M.gtia11KtLogged=true; M.vbxeDebug('GTIA11 COLOR BUILD2KV: hue=(COLBK hue OR pixel), luma=COLBK, pixel0 nulovy jas; registr luma bit0 zustava ignorovan.'); }
       return gtiaPalRaw(((hue<<4)|lum)&0xFF);
     }
     return 0;
@@ -2643,7 +2662,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       TB[TO+xx]=gtiaModeColorFromNib(nib,useGm,xx);
       TC[xx]=gtiaModePfClass(nib,useGm,xx);
     }
-    if(M.vbxeDebug && !M.gtiaColorClockKuLogged){ M.gtiaColorClockKuLogged=true; M.vbxeDebug('GTIA COLOR CLOCK BUILD2KU: GTIA9/10/11 barva/priorita se u bitmap/hires berou podle X uvnitr sirsiho pixelu, ne jen z leve hrany.'); }
+    if(M.vbxeDebug && !M.gtiaColorClockKuLogged){ M.gtiaColorClockKuLogged=true; M.vbxeDebug('GTIA COLOR CLOCK BUILD2KV: GTIA9/10/11 barva/priorita se u bitmap/hires berou podle X uvnitr sirsiho pixelu, ne jen z leve hrany.'); }
   }
   function renderScanline(){
     const y=M.line-8; if(y<0||y>=240) return;
@@ -2741,7 +2760,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
             const nib=(bits>>(g?0:4))&0x0F;
             const gw=(pxw*4)|0;
             gtiaModePaintRunKU(TB,TC,TO,x0,gw,nib,gm);
-            if(M.vbxeDebug && !M.gtiaBitmapKsLogged){ M.gtiaBitmapKsLogged=true; M.vbxeDebug('GTIA BITMAP MODES BUILD2KU: GTIA 9/10/11 bezi pres spolecny pixel-generator pro hires/m1bpp/m2bpp; barva je per color-clock X.'); }
+            if(M.vbxeDebug && !M.gtiaBitmapKsLogged){ M.gtiaBitmapKsLogged=true; M.vbxeDebug('GTIA BITMAP MODES BUILD2KV: GTIA 9/10/11 bezi pres spolecny pixel-generator pro hires/m1bpp/m2bpp; barva je per color-clock X.'); }
           }else{
             for(let bb=0;bb<4;bb++){ const b=g*4+bb; const on=bits&(0x80>>b);
               const xb=xs+((i*8+b)*pxw)|0;
@@ -2763,7 +2782,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
             const nib=((v0<<2)|v1)&0x0F;
             const gw=(pxw*2)|0;
             gtiaModePaintRunKU(TB,TC,TO,x0,gw,nib,gm);
-            if(M.vbxeDebug && !M.gtiaBitmapKsLogged){ M.gtiaBitmapKsLogged=true; M.vbxeDebug('GTIA BITMAP MODES BUILD2KU: GTIA 9/10/11 bezi pres spolecny pixel-generator pro hires/m1bpp/m2bpp; barva je per color-clock X.'); }
+            if(M.vbxeDebug && !M.gtiaBitmapKsLogged){ M.gtiaBitmapKsLogged=true; M.vbxeDebug('GTIA BITMAP MODES BUILD2KV: GTIA 9/10/11 bezi pres spolecny pixel-generator pro hires/m1bpp/m2bpp; barva je per color-clock X.'); }
           }else{
             for(let pp=p0;pp<=p1;pp++){ const v=(bits>>(6-pp*2))&3;
               const xb=xs+((i*4+pp)*pxw)|0;
@@ -2841,7 +2860,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if(M.vbxeDebug && !M.gtiaPriorKtLogged){
       M.gtiaPriorKtLogged=true;
-      M.vbxeDebug('GTIA PRIOR TABLE BUILD2KU: opraveno poradi bit2/bit1/bit0 podle dokumentace; PMG barevne vrstvy uz nejsou blokovane spatnym bit2 vykladem.');
+      M.vbxeDebug('GTIA PRIOR TABLE BUILD2KV: opraveno poradi bit2/bit1/bit0 podle dokumentace; PMG barevne vrstvy uz nejsou blokovane spatnym bit2 vykladem.');
     }
     return !!show;
   }
@@ -3043,11 +3062,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function pmDmaFetch(){
     if(M.line<8 || M.line>=248) return;
     const dbl=!(antic.dmactl&0x10), base=(antic.pmbase&(dbl?0xFC:0xF8))<<8;
-    // BUILD2KU: ANTIC playfield renderer kresli viditelne y jako M.line-8. PMG DMA musi pouzit stejnou
-    // viditelnou fazi, jinak G2F barevne masky a sportovni sprity sedi o nekolik radku mimo telo/pozadi.
-    const liVis=Math.max(0,M.line-8);
-    const li=dbl?(liVis>>1):liVis;
-    if(M.vbxeDebug && !gtia.pmPhaseKuLogged && M.line>=8){ gtia.pmPhaseKuLogged=true; M.vbxeDebug('GTIA PMG VERTICAL PHASE BUILD2KU: PMG DMA line index fazovan na visibleY=M.line-8; li='+li+' line='+M.line+'.'); }
+    // BUILD2KV: KU faze visibleY=M.line-8 posunula PMG objekty pod zebrik/zakladnu a Decathlon telo/nohy zustaly spatne.
+    // Vracim fyzickou scanline fazi z KT: PMG pamet obsahuje hornich 8 scanline jako soucast obrazu.
+    const li=dbl?(M.line>>1):M.line;
+    if(M.vbxeDebug && !gtia.pmPhaseKvLogged && M.line>=8){ gtia.pmPhaseKvLogged=true; M.vbxeDebug('GTIA PMG VERTICAL PHASE BUILD2KV: rollback na fyzickou scanline; li='+li+' line='+M.line+' (KU visibleY rollback).'); }
     let auditNp=null, auditNm=0;
     // BUILD2JK: GTIA VDELAY ($D01C). Realny stroj umi zpozdit DMA data pro P0-P3/M0-M3
     // o jednu radku; spousta intr/sportovnich her tim sklada sprity a prechodove obrazovky.
@@ -4494,7 +4512,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     M.line=0;M.frame=0;M.wsync=false;cpu.jam=false;cpu.irqLine=0;
     M.clearCassetteTransport();
     if(vbxe){ vbxeResetRuntimeState(false); }
-    if(sio.xex){ sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true; }
+    if(sio.xex){ sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true; sio.xex.startFrame=(M.frame||0); sio.xex.lastSioFrame=(M.frame||0); sio.xex.loadingAutoStopLogged=false; M._hvTurboLogged=false; M._hvTurboDone=false; }
 
     cpu.reset();
   };
@@ -6690,7 +6708,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KU_PMG_VERTICAL_PHASE_AND_GTIA_COLOR_CLOCK_CORE pripraven - komplexni rez po KT: PMG DMA se fazuje proti stejne viditelne Y souradnici jako ANTIC playfield (telo/nohy, G2F masky), GTIA9/10/11 barvy se u bitmapovych modu vyhodnocuji per color-clock X, pozadi pouziva normalizovanou GTIA barvu. Bez screen-paintu, bez hacku podle nazvu hry. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KV_PMG_PHASE_ROLLBACK_XEX_TURBO_GUARD_CORE pripraven - navazuje na KU. PMG DMA Y faze vracena na fyzickou scanline jako v KT, protoze KU posunul postavy pod zebrik/zakladnu a Decathlon telo/nohy zustaly mimo. GTIA color-clock a barvove zlepseni z KU zustavaji. XEX turbo ma novy idle-guard a pri kazdem novem XEX se resetuje stav turbo logu, aby hry po loaderu nezustaly rychle. Bez screen-paintu, bez hacku podle nazvu hry. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KS_GTIA_ALL_BITMAP_MODES_DOC_CORE pripraven - audit podle GTIA dokumentace: GTIA mody 9/10/11 plati pro jakykoliv ANTIC mod, ne jen F. Implementovan GTIA pixel generator pro m1bpp/m2bpp bitmapove radky (ANTIC D/E/A/8/B/C), GTIA11 opraveno na hue=(COLBK hue OR pixel), luma=COLBK. KR/KQ/KP line-latch/staging vetev je mimo. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KM_GTIA9_11_PIXEL_GENERATOR_FULL_CORE pripraven - navazuje na KL, ale uz nejde po PMG masce. Oprava primo v GTIA 9/11 pixel generatoru: GTIA9 pouziva plny 4bit jas z pixelu, GTIA11 pouziva standardni hue=pixel/luma=COLBK bez KL OR-hue chyby. Soucasne se rusi tvrdé KK blokovani PMG pres GTIA obraz a vraci se normalni PRIOR cesta, aby G2F mohl barvit obraz realnou PMG vrstvou. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KL_WSYNC_HBLANK_GTIA11_G2F_CORE pripraven - navazuje na KK. Oprava podle logu: PMG uz je blokovane, ale obraz se nehnul, tedy chyba je v zakladnim GTIA/G2F rastru. WSYNC ted pousti CPU do HBLANK casti radky pro pripravu dalsiho scanline a GTIA11 ma opravenou barvu podle COLBK hue/luma. KODY JSOU STEJNE.');
