@@ -2596,7 +2596,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if(cls && M.vbxeDebug && !M.gtiaModePfClassKjLogged){
       M.gtiaModePfClassKjLogged=true;
-      M.vbxeDebug('GTIA MODE PFCLASS BUILD2KJ: GTIA9/11 zero i nonzero pixely tvori PF masku; PMG uz nema tect pres GTIA obraz jako svisle pruhy.');
+      M.vbxeDebug('GTIA MODE PFCLASS BUILD2KK: GTIA9/11 zero i nonzero pixely tvori PF masku; KJ mask bug opraven v pmShowAt.');
     }
     return cls&7;
   }
@@ -2753,10 +2753,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     renderPMG(y);
   }
-  function pmShowAt(p,c,x){ // BUILD2JQ: presna GTIA PRIOR tabulka podle Altirra HW manualu (c: 0=BAK, 1..4=PF0..PF3)
+  function pmShowAt(p,c,x){ // BUILD2JQ/KK: presna GTIA PRIOR tabulka podle Altirra HW manualu (c: 0=BAK, 1..4=PF0..PF3)
     if(!c) return true;
-    const pr=gtiaRegAt(0x1B,x)&0x0F;
-    // PRIOR neni postupne maskovani "kdyz bit sedí". Je to volba priority poradi.
+    // BUILD2KK: KJ bugfix. KJ si GPRIOR orezal na low nibble hned tady,
+    // a pak testoval (pr&0xC0), coz nikdy nemohlo byt true. Proto Postcard porad
+    // ukazoval pBlockedPF=0 a PMG barevne vrstvy tekly pres GTIA9/11 obraz.
+    const gpriorFull=gtiaRegAt(0x1B,x)&0xFF;
+    const pr=gpriorFull&0x0F;
+    // PRIOR neni postupne maskovani "kdyz bit sedi". Je to volba priority poradi.
     // Stary kod mel bit3 ($08) spatne jako "playfield vsechno nad P/M"; manual rika:
     // PF0 > PF1 > P0 > P1 > P2 > P3 > PF2 > PF3 > BAK.
     let rp, rf;
@@ -2778,8 +2782,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // through every GTIA playfield pixel when the low priority nibble is zero. Treat the GTIA
     // playfield mask as opaque for PMG in that neutral priority case. This is generic for GTIA
     // picture kernels, not a Postcard filename check.
-    if(c && (pr&0xC0) && ((pr&0x0F)===0)){
-      if(M.vbxeDebug && !M.gtiaModePmMaskKjLogged){ M.gtiaModePmMaskKjLogged=true; M.vbxeDebug('GTIA PMG MASK BUILD2KJ: GTIA9/11 PF mask drzi PMG barevne vrstvy pod obrazem pri neutralnim PRIOR low-nibble=0.'); }
+    if(c && (gpriorFull&0xC0) && ((gpriorFull&0x0F)===0)){
+      if(M.vbxeDebug && !M.gtiaModePmMaskKjLogged){ M.gtiaModePmMaskKjLogged=true; M.vbxeDebug('GTIA PMG MASK BUILD2KK: oprava KJ bug - plny GPRIOR $'+hx2(gpriorFull)+' blokuje PMG pres GTIA9/11 PF masku; cekej pBlockedPF>0.'); }
       return false;
     }
     return rp<rf;
@@ -6617,7 +6621,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KJ_GTIA9_PMG_MASK_LUMA_CORE pripraven - hlubsi graficky rez po KI: GTIA barvy ignoruji bit0 jako realny GTIA vystup, GTIA9/11 pixely tvori PF masku i pri nulove hodnote a neutralni PRIOR=$40/$C0 nepousti PMG barevne vrstvy pres cely GTIA obraz. Cil: Postcard/G2F pruhy; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KK_FIX_KJ_GPRIOR_MASK_BUG_CORE pripraven - hlubsi graficky rez po KI: GTIA barvy ignoruji bit0 jako realny GTIA vystup, GTIA9/11 pixely tvori PF masku i pri nulove hodnote a neutralni PRIOR=$40/$C0 nepousti PMG barevne vrstvy pres cely GTIA obraz. Cil: Postcard/G2F pruhy; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KI_CPU_IO_WRITE_CYCLE_GTIA_RASTER_CORE pripraven - hlubsi raster rez po KH: GTIA/ANTIC/PMG zapisy do D0xx/D4xx uz maji cas skutecneho 6502 write-cyklu, ne zacatek instrukce. Cil: G2F/Postcard svisle pruhy a obecny DLI/PMG timing; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KH_DEEP_GTIA_PMG_VDELAY_OVERLAP_CORE pripraven - skutecny dalsi rez po neuspesnem KG. Postcard/G2F: opraven VDELAY jako predchozi DMA radka podle dodane dokumentace + GTIA PRIOR bit5 player-overlap barva. Night Driver/Decathlon nelakuji jako hotove. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KF_DOC_GUIDED_NIGHTDRIVER_AUDIO_STRIPE_PASS pripraven - navazuje na KE/KB/JZ/JX. Night Driver: obsahovy SR stripe filtr podle XDL/transparent pravidel + robustni AudioContext resume pro POKEY/GTIA zvuk. Decathlon PMBASE hack z KD zustava pryc; bez dalsiho slepeho rezu. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
