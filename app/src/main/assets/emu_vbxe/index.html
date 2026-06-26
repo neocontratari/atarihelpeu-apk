@@ -1095,7 +1095,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       sioQueue(5,[0x43]);              // COMPLETE
       sioQueue(8,st.concat([sioChk(st)]),pb); // BUILD2HW: D1: turbo jen pro diskovy SIO prenos
     } else if(cmd===0x52 && sio.xex && sec===1){ // novy boot (hra/RESET restartovala) -> pretoc na zacatek
-      sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true; sio.xex.startFrame=(M.frame||0); sio.xex.lastSioFrame=(M.frame||0); sio.xex.loadingAutoStopLogged=false; M._hvTurboLogged=false; M._hvTurboDone=false;
+      sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true; sio.xex.startFrame=(M.frame||0); sio.xex.lastSioFrame=(M.frame||0); sio.xex.loadingAutoStopLogged=false; sio.xex.kyRecordTurboLogged=false; M._hvTurboLogged=false; M._hvTurboDone=false;
       const off=(sec-1)*sio.secSize, d=[];
       for(let k=0;k<sio.secSize;k++) d.push(sio.disk[off+k]||0);
       sioQueue(3,[0x41]); sioQueue(5,[0x43]); sioQueue(8,d.concat([sioChk(d)]),1); // BUILD2HV turbo boot sektor pro XEX loader, ne pro kazetu/CLOAD.
@@ -1144,11 +1144,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
   };
   M.unmountDisk=function(){ sio.disk=null; sio.diskTurbo=false; sio.diskTurboUntil=0; };
   M.xexLoading=function(){
-    // BUILD2KX: turbo je rychle zpatky, ale uz neujede do hry.
-    // KW vypinal turbo po 37 framech bez SIO a tim zpomalil samotne nahravani: logy ukazuji PC=$EBxx
-    // (OS/loader rutina) jeste dlouho po stale-guardu. KX proto hlida PC: dokud CPU bezi v OS ROM
-    // nebo v nasem boot/stage loaderu, nechavam XEX turbo. Jakmile program skoci do hry RAM,
-    // turbo vypnu i kdyby ve fronte zustal EOF/header bajt. Bez patchovani RAM, bez hacku podle nazvu.
+    // BUILD2KY: oprava po KX. KX vypinal turbo uz po prvnim payloadu, kdyz INITAD/RUN kod
+    // kratce skocil do RAM (PC=$2004/$4009/$8CC0 atd.). To zpomalilo zbytek XEX, hlavne VBXE
+    // tituly s mnoha zaznamy/Popeye/W3D. KY drzi turbo az do posledniho datoveho XEX zaznamu;
+    // az potom resi neprecteny EOF/header, aby hra samotna neutekla rychle. Bez RAM injectu.
     const X=sio.xex;
     if(!X || !X.loading) return false;
     const f=(M.frame||0);
@@ -1157,22 +1156,41 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const lastPay=X.lastPayloadFrame||0;
     const staleSince=(f-last)|0;
     const stalePayload=lastPay?((f-lastPay)|0):0;
-    const inOs=(pc>=0xC000);
-    const inLoader=(pc>=0x0100&&pc<0x0200)||(pc>=0x0400&&pc<0x0500)||(pc>=0xEB00&&pc<0xEC00);
     const qBusy=!!(sio.rxq && sio.rxPos<sio.rxq.length);
-    if((inOs||inLoader) && (staleSince<900 || qBusy)) return true;
-    if((lastPay && stalePayload>10) || staleSince>24 || (!inOs&&!inLoader&&lastPay)){
+    const eofIndex=(X.recs&&X.recs.length)?(X.recs.length-1):0;
+    const lastDataIndex=Math.max(0,eofIndex-1);
+    const allDataServed=(X.cur>lastDataIndex) || (X.cur===lastDataIndex && !!X.pserved) || (eofIndex===0);
+
+    if(!allDataServed){
+      if(M.vbxeDebug && !X.kyRecordTurboLogged){
+        X.kyRecordTurboLogged=true;
+        M.vbxeDebug('XEX FAST LOAD BUILD2KY: record-aware turbo drzi nahravani az do posledniho XEX datoveho zaznamu; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
+      }
+      // ochrana proti zavadeci, ktery uz do dalsiho SIO nikdy nevleze: po dlouhem tichu v RAM radsi pustim normalni rychlost.
+      if(staleSince>900 && lastPay && !qBusy){
+        X.loading=false;
+        if(M.vbxeDebug && !X.loadingAutoStopLogged){
+          X.loadingAutoStopLogged=true;
+          M.vbxeDebug('XEX FAST LOAD BUILD2KY: fail-safe ukoncil turbo pred EOF po dlouhem tichu; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
+        }
+        return false;
+      }
+      return true;
+    }
+
+    // Vsechna data uz byla predana. Pokud si hra neprecte EOF header, ukoncim turbo kratce po doprazdneni SIO.
+    if(qBusy) return true;
+    if(stalePayload>2 || staleSince>8){
       X.loading=false;
-      // Zahodim jen zbytky naseho SIO handshake po skoku do hry; herni RAM ani registry se neupravuji.
       try{ if(sio.rxq) sio.rxq.length=0; sio.rxPos=0; if(sio.frame) sio.frame.length=0; }catch(_e){}
       if(M.vbxeDebug && !X.loadingAutoStopLogged){
         X.loadingAutoStopLogged=true;
-        M.vbxeDebug('XEX FAST LOAD BUILD2KX: pc-aware guard ukoncil turbo loader po '+staleSince+' framech bez noveho SIO / '+stalePayload+' framech od payloadu; PC=$'+hx4(pc)+'; hra bezi normalni rychlosti.');
+        M.vbxeDebug('XEX FAST LOAD BUILD2KY: EOF/stale guard ukoncil turbo az po poslednim datovem zaznamu; cur='+X.cur+'/'+eofIndex+' stale='+staleSince+' payload='+stalePayload+' PC=$'+hx4(pc)+'.');
       }
       return false;
     }
     return true;
-  }; // BUILD2KX: rychle nahravani zustava, hra samotna uz nebezi turbo.
+  }; // BUILD2KY: rychle nahravani pro vsechny XEX zaznamy, normalni rychlost po poslednim payloadu.
   M.diskFastLoading=function(){ return !!(sio.disk && !sio.xex && sio.diskTurbo && (sio.rxPos<sio.rxq.length || (M.frame||0)<(sio.diskTurboUntil||0))); };
   M.diskFastStats=function(){ return {reads:sio.diskTurboReads||0, active:!!(sio.diskTurbo), until:sio.diskTurboUntil||0}; };
   // XEX zavadec v2: boot sektory 1-2 = stage1+stage2 (stage2 bezi z $0100),
@@ -1482,7 +1500,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         recs.length=0; recs.push(...norm, ...dfr); if(eof)recs.push(eof);
       }
     }
-    sio.xex={recs:recs,cur:0,pserved:false,loading:true,fastLogged:false,startFrame:(M.frame||0),lastSioFrame:(M.frame||0),loadingAutoStopLogged:false,vbxePreloadInfo:vbxePreloadInfo,vbxePreloadDone:0,vbxePreloadBytes:0,vbxePreloadLog:0,vbxeLiveMemacDone:0,vbxeLiveMemacBytes:0,vbxeLiveMemacSegments:0,vbxeLiveMemacLog:0};
+    sio.xex={recs:recs,cur:0,pserved:false,loading:true,fastLogged:false,startFrame:(M.frame||0),lastSioFrame:(M.frame||0),loadingAutoStopLogged:false,kyRecordTurboLogged:false,vbxePreloadInfo:vbxePreloadInfo,vbxePreloadDone:0,vbxePreloadBytes:0,vbxePreloadLog:0,vbxeLiveMemacDone:0,vbxeLiveMemacBytes:0,vbxeLiveMemacSegments:0,vbxeLiveMemacLog:0};
     // BUILD2KV: kazdy novy XEX musi resetovat turbo stav UI ticku. Jinak druha/treti hra mohla zustat v rychlem rezimu bez noveho 'loader skoncil' markeru.
     M._hvTurboLogged=false; M._hvTurboDone=false;
     // boot disk: jen 2 sektory zavadece
@@ -4529,7 +4547,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     M.line=0;M.frame=0;M.wsync=false;cpu.jam=false;cpu.irqLine=0;
     M.clearCassetteTransport();
     if(vbxe){ vbxeResetRuntimeState(false); }
-    if(sio.xex){ sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true; sio.xex.startFrame=(M.frame||0); sio.xex.lastSioFrame=(M.frame||0); sio.xex.loadingAutoStopLogged=false; M._hvTurboLogged=false; M._hvTurboDone=false; }
+    if(sio.xex){ sio.xex.cur=0; sio.xex.pserved=false; sio.xex.loading=true; sio.xex.startFrame=(M.frame||0); sio.xex.lastSioFrame=(M.frame||0); sio.xex.loadingAutoStopLogged=false; sio.xex.kyRecordTurboLogged=false; M._hvTurboLogged=false; M._hvTurboDone=false; }
 
     cpu.reset();
   };
@@ -6565,7 +6583,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       // BUILD2HW: turbo jen behem naseho obecneho XEX/OBX SIO loaderu. Nezrychluje kazetu/CLOAD ani bezici hru.
       if(!M._hvTurboLogged){ M._hvTurboLogged=true; log('XEX FAST LOAD BUILD2HW: zrychluji jen emulovany SIO loader, po RUN/EOF se automaticky vratim na normalni rychlost. Zadny screen paint, zadny herni hack.'); }
       acc=0; last=ts;
-      var maxFast = 16; // BUILD2KX: vratit rychle nahravani, turbo konci PC-aware az pri skutecnem skoku do hry.
+      var maxFast = 28; // BUILD2KY: record-aware turbo drzi vsechny XEX zaznamy; vyssi limit vraci rychle nahravani bez zrychleni hry.
       while(n<maxFast){ typeStep(); M.runFrame(); typeStep(); n++;
         if(!(M.xexLoading && M.xexLoading())) break;
         if(M.cpu.jam){ running=false; log('CPU JAM op $'+M.cpu.jamOp.toString(16).toUpperCase()+' na $'+M.cpu.jamPc.toString(16).toUpperCase()+' frame '+M.frame); log('PC=$'+M.cpu.pc.toString(16).toUpperCase()+' PORTB=$'+M.portB().toString(16).toUpperCase()); break; }
@@ -6725,7 +6743,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KX_FAST_XEX_AND_HBLANK_RASTER_GUARD_CORE pripraven - navazuje na KW/KV. Donkey Arcade/Junior PMG fyzicka faze z KV zustava. XEX turbo je PC-aware: drzi rychle nahravani v OS/loaderu, ale vypne po skoku do hry. GTIA/PMG/CHBASE zapisy v HBLANKU po WSYNC uz nedelaji segment aktualni radky; zustanou jako stav dalsi scanline. Cili Postcard pruhy, Decathlon vrstvy a Night Driver caj bez screen-paintu. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KY_XEX_RECORD_TURBO_RESTORE_SAFE pripraven - navazuje na KX/KV. Oprava nahravani: KX vypinal turbo uz po prvnim RAM skoku INITAD/RUN, proto VBXE hry a delsi XEX dohravaly zbytek pomalu. KY drzi turbo az do posledniho datoveho XEX zaznamu a normalni rychlost pusti az po EOF/stale guardu. Donkey Arcade/Junior PMG faze zustava, GTIA color-clock/HBLANK guard zustava. Grafiku Postcard/Decathlon/Night Driver nelakuju jako hotovou. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KS_GTIA_ALL_BITMAP_MODES_DOC_CORE pripraven - audit podle GTIA dokumentace: GTIA mody 9/10/11 plati pro jakykoliv ANTIC mod, ne jen F. Implementovan GTIA pixel generator pro m1bpp/m2bpp bitmapove radky (ANTIC D/E/A/8/B/C), GTIA11 opraveno na hue=(COLBK hue OR pixel), luma=COLBK. KR/KQ/KP line-latch/staging vetev je mimo. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KM_GTIA9_11_PIXEL_GENERATOR_FULL_CORE pripraven - navazuje na KL, ale uz nejde po PMG masce. Oprava primo v GTIA 9/11 pixel generatoru: GTIA9 pouziva plny 4bit jas z pixelu, GTIA11 pouziva standardni hue=pixel/luma=COLBK bez KL OR-hue chyby. Soucasne se rusi tvrdé KK blokovani PMG pres GTIA obraz a vraci se normalni PRIOR cesta, aby G2F mohl barvit obraz realnou PMG vrstvou. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KL_WSYNC_HBLANK_GTIA11_G2F_CORE pripraven - navazuje na KK. Oprava podle logu: PMG uz je blokovane, ale obraz se nehnul, tedy chyba je v zakladnim GTIA/G2F rastru. WSYNC ted pousti CPU do HBLANK casti radky pro pripravu dalsiho scanline a GTIA11 ma opravenou barvu podle COLBK hue/luma. KODY JSOU STEJNE.');
