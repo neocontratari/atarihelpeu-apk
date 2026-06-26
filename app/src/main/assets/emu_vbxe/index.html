@@ -2605,6 +2605,16 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     return pr&0xC0;
   }
+  function gtiaG2fLineLatchActive(){
+    // BUILD2KO: KN lathoval COLBK/GPRIOR jen pro zakladni GTIA pixel generator.
+    // Postcard/G2F ale pouziva PMG jako barevnou masku; pokud COLPM/PRIOR zapisy z HBLANKu
+    // cteme jako zmeny uvnitr viditelne casti, zustavaji svisle fialove/tyrkysove pruhy.
+    return (antic.mode===0x0F) && (gtSeg.n>=8) && (gtiaLineGmForG2F()!==0);
+  }
+  function gtiaG2fRegAt(g,x){
+    if(gtiaG2fLineLatchActive() && g>=0x12 && g<=0x1B) return gtiaLineRegAtStart(g);
+    return gtiaRegAt(g,x);
+  }
   function pfColorAt(cls,x){
     if(cls<=0) return gtiaPal(gtiaRegAt(0x1A,x));
     return gtiaPal(gtiaRegAt(0x15+cls,x));
@@ -2802,7 +2812,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // BUILD2KK: KJ bugfix. KJ si GPRIOR orezal na low nibble hned tady,
     // a pak testoval (pr&0xC0), coz nikdy nemohlo byt true. Proto Postcard porad
     // ukazoval pBlockedPF=0 a PMG barevne vrstvy tekly pres GTIA9/11 obraz.
-    const gpriorFull=gtiaRegAt(0x1B,x)&0xFF;
+    const gpriorFull=(gtiaG2fLineLatchActive()?gtiaLineRegAtStart(0x1B):gtiaRegAt(0x1B,x))&0xFF;
     const pr=gpriorFull&0x0F;
     // PRIOR neni postupne maskovani "kdyz bit sedi". Je to volba priority poradi.
     // Stary kod mel bit3 ($08) spatne jako "playfield vsechno nad P/M"; manual rika:
@@ -2837,27 +2847,32 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const fb=M.fb, off=y*384, line=M.line;
     const dbl=!(antic.dmactl&0x10);
     const pmDma=(antic.dmactl&0x08)&&(gtia.gractl&2), mDma=((antic.dmactl&0x0C))&&(gtia.gractl&1); // player DMA fetchuje i missily (HW kvirk)
-    // BUILD2IT: G2F pouziva PMG jako barevne vrstvy. COLPM/PRIOR se proto nesmi brat
-    // jako jedna hodnota pro celou scanline; DLI muze menit barvy a prioritu po STA WSYNC
-    // nebo i uvnitr radky. Beru stejne GTIA segmenty jako playfield renderer.
-    function pmColAt(p,x){ return gtiaPal(gtiaRegAt(0x12+p,x)); }
+    // BUILD2IT/KO: G2F pouziva PMG jako barevne vrstvy. COLPM/PRIOR se normalne berou
+    // paprskove, ale v hustem GTIA9/11 G2F kernelu musi byt HBLANK priprava lathovana pro celou radku.
+    const g2fPmLatch=gtiaG2fLineLatchActive();
+    if(g2fPmLatch && M.vbxeDebug && !M.gtiaG2fPmColorLatchKoLogged){
+      M.gtiaG2fPmColorLatchKoLogged=true;
+      M.vbxeDebug('GTIA G2F PM COLOR LATCH BUILD2KO: COLPM/PRIOR pro PMG barevne vrstvy beru ze zacatku radky, aby HBLANK priprava nedelala svisle pruhy.');
+    }
+    function pmRegColorAt(g,x){ return g2fPmLatch ? gtiaLineRegAtStart(g) : gtiaRegAt(g,x); }
+    function pmColAt(p,x){ return gtiaPal(pmRegColorAt(0x12+p,x)); }
     function pmColorWithOverlap(p,x,oldMask){
       // BUILD2KH: GTIA PRIOR bit5 = player overlap color. G2F obrazky ho pouzivaji jako dalsi barvy.
-      // Pary jsou P0+P1 a P2+P3. Kdyz bit5 neni nastaveny, realny overlap pari hracu je cerny.
-      const pr=gtiaRegAt(0x1B,x);
+      // Pary jsou P0+P1 a P2+P3. Kdyz bit5 neni nastaveny, realny overlap paru hracu je cerny.
+      const pr=pmRegColorAt(0x1B,x);
       const pair=p^1;
       if(oldMask & (1<<pair)){
         if(pr&0x20){
           if(M.vbxeDebug && !M.gtiaOverlapKhLogged){ M.gtiaOverlapKhLogged=true; M.vbxeDebug('GTIA PLAYER OVERLAP BUILD2KH: PRIOR bit5 kresli prekryv paru P0/P1 nebo P2/P3 jako OR COLPM barev.'); }
-          return gtiaPal((gtiaRegAt(0x12+p,x)|gtiaRegAt(0x12+pair,x))&0xFF);
+          return gtiaPal((pmRegColorAt(0x12+p,x)|pmRegColorAt(0x12+pair,x))&0xFF);
         }
         return gtiaPal(0);
       }
-      return gtiaPal(gtiaRegAt(0x12+p,x));
+      return gtiaPal(pmRegColorAt(0x12+p,x));
     }
     function missileColAt(p,x){
-      const pr=gtiaRegAt(0x1B,x);
-      return gtiaPal((pr&0x10)?gtiaRegAt(0x19,x):gtiaRegAt(0x12+p,x));
+      const pr=pmRegColorAt(0x1B,x);
+      return gtiaPal((pr&0x10)?pmRegColorAt(0x19,x):pmRegColorAt(0x12+p,x));
     }
 
     // BUILD2JM: kdyz byly behem radky zapsane P/M registry, nekreslim celou radku jednim snapshotem.
@@ -6671,7 +6686,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KN_G2F_GTIA_LINE_LATCH_RASTER_CORE pripraven - navazuje na KM, kde uz byl videt maly posun. Novy rez: pro ANTIC F + GTIA9/11 + husty G2F/DLI kernel se COLBK/GPRIOR lathuje na zacatek viditelne radky, aby se HBLANK priprava neprekladala jako fialove/tyrkysove svisle pruhy. Neni to hack na Postcard, je to raster/GTIA line-latch rez. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KO_G2F_PM_COLOR_LINE_LATCH_CORE pripraven - navazuje na KN/KM maly posun. Novy rez: u ANTIC F + GTIA9/11 + husty G2F/DLI kernel se line-latch netyka jen COLBK/GPRIOR zakladniho pixel generatoru, ale i COLPM/PRIOR pro PMG barevne vrstvy. Cil: zmensit zbytky fialovych/tyrkysovych pruhu bez screen-paintu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KM_GTIA9_11_PIXEL_GENERATOR_FULL_CORE pripraven - navazuje na KL, ale uz nejde po PMG masce. Oprava primo v GTIA 9/11 pixel generatoru: GTIA9 pouziva plny 4bit jas z pixelu, GTIA11 pouziva standardni hue=pixel/luma=COLBK bez KL OR-hue chyby. Soucasne se rusi tvrde KK blokovani PMG pres GTIA obraz a vraci se normalni PRIOR cesta, aby G2F mohl barvit obraz realnou PMG vrstvou. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KL_WSYNC_HBLANK_GTIA11_G2F_CORE pripraven - navazuje na KK. Oprava podle logu: PMG uz je blokovane, ale obraz se nehnul, tedy chyba je v zakladnim GTIA/G2F rastru. WSYNC ted pousti CPU do HBLANK casti radky pro pripravu dalsiho scanline a GTIA11 ma opravenou barvu podle COLBK hue/luma. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KI_CPU_IO_WRITE_CYCLE_GTIA_RASTER_CORE pripraven - hlubsi raster rez po KH: GTIA/ANTIC/PMG zapisy do D0xx/D4xx uz maji cas skutecneho 6502 write-cyklu, ne zacatek instrukce. Cil: G2F/Postcard svisle pruhy a obecny DLI/PMG timing; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
