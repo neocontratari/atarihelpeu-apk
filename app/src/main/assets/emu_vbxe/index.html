@@ -2485,6 +2485,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
   })();
   M.palette=palette;
+  // BUILD2KJ: real GTIA color output ignores color bit0. Keep palette table intact,
+  // but all GTIA register derived colors go through this normalizer. This matters in
+  // G2F/GTIA9/11 pictures where odd luminance values produce wrong purple/cyan bands.
+  function gtiaPal(v){ return palette[(v&0xFE)&0xFF]; }
 
   // BUILD2HB: VBXE ma 4 RGB palety po 256 barvach.
   // Format Uint32 je stejny jako M.fb: AABBGGRR kvuli ImageData bufferu.
@@ -2574,25 +2578,25 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return v&0xFF;
   }
   function pfColorAt(cls,x){
-    if(cls<=0) return palette[gtiaRegAt(0x1A,x)];
-    return palette[gtiaRegAt(0x15+cls,x)];
+    if(cls<=0) return gtiaPal(gtiaRegAt(0x1A,x));
+    return gtiaPal(gtiaRegAt(0x15+cls,x));
   }
   function gtiaModePfClass(nib,gm,x){
-    // BUILD2KG: GTIA 9/10/11 pixely nejsou pro P/M prioritu vzdycky COLBK/background.
-    // G2F obrazky (Postcard/Rocky) barvi bitmapu pres PMG a rychle meni PRIOR; kdyz je pfc=0,
-    // PMG se kresli pres vsechno a vznikaji svisle fialove/zelene pruhy.
+    // BUILD2KG/KJ: GTIA 9/10/11 pixels are real playfield pixels for collision/priority.
+    // KJ is stricter for G2F: even GTIA9/11 value 0 is not "empty COLBK" for PMG masking,
+    // otherwise P/M color planes leak as vertical purple/cyan bars through the picture.
     let cls=0;
-    if(gm===0x80){ // GTIA 10: nibble vybira 9 barev; PF registry mapuji na PF0-PF3
+    if(gm===0x80){ // GTIA 10: 0-3 behave like PM color registers, 4-7/12-15 like PF0-PF3, 8-11 background
       if(nib>=4 && nib<8) cls=1+(nib-4);
       else if(nib>=12 && nib<16) cls=1+(nib-12);
-      else if(nib>=0 && nib<4) cls=1+nib; // COLPM0-3 se pro prioritu chovaji jako viditelna barevna vrstva
+      else if(nib>=0 && nib<4) cls=1+nib;
       else cls=0;
-    }else{ // GTIA 9/11: nenulovy jas/odstin je viditelny PF obraz pro P/M PRIOR
-      cls=nib?3:0;
+    }else if(gm===0x40 || gm===0xC0){ // GTIA 9/11: every 4-bit GTIA pixel occupies PF graphics for P/M masking
+      cls=3;
     }
-    if(cls && M.vbxeDebug && !M.gtiaModePfClassKgLogged){
-      M.gtiaModePfClassKgLogged=true;
-      M.vbxeDebug('GTIA MODE PFCLASS BUILD2KG: GTIA 9/10/11 pixely vstupuji do P/M PRIOR/collision masky; PMG uz neni vzdy pres GTIA obraz.');
+    if(cls && M.vbxeDebug && !M.gtiaModePfClassKjLogged){
+      M.gtiaModePfClassKjLogged=true;
+      M.vbxeDebug('GTIA MODE PFCLASS BUILD2KJ: GTIA9/11 zero i nonzero pixely tvori PF masku; PMG uz nema tect pres GTIA obraz jako svisle pruhy.');
     }
     return cls&7;
   }
@@ -2630,7 +2634,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }
       return (val&0xFC)<<8;
     }
-    const PF=[palette[gtia.colbk],palette[gtia.colpf[0]],palette[gtia.colpf[1]],palette[gtia.colpf[2]],palette[gtia.colpf[3]]];
+    const PF=[gtiaPal(gtia.colbk),gtiaPal(gtia.colpf[0]),gtiaPal(gtia.colpf[1]),gtiaPal(gtia.colpf[2]),gtiaPal(gtia.colpf[3])];
     const useGtSeg=gtSeg.n>0;
     function PFC(cls,x){ return useGtSeg?pfColorAt(cls,x):PF[cls]; }
     let xs;
@@ -2638,7 +2642,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       xs=192-nb*4;
       const xcolor=!!(vbxe && (vbxe.regs[0x40]&0x02));
       const fgL=gtia.colpf[1]&0x0F, bgC=gtia.colpf[2];
-      const fg=xcolor?palette[gtia.colpf[1]&0xFF]:palette[(bgC&0xF0)|fgL], bg=palette[bgC];
+      const fg=xcolor?gtiaPal(gtia.colpf[1]&0xFF):gtiaPal((bgC&0xF0)|fgL), bg=gtiaPal(bgC);
       // BUILD2JR: v ANTIC 2/3 nulovy bit je pro GTIA priority/kolize pozadi, ne PF2 objekt.
       // Jednickovy bit se v hi-res modech pocita jako PF2 (manual: PF2C).
       const fgCls=3;
@@ -2713,9 +2717,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
           if(gm){
             const cb=gtiaRegAt(0x1A,x0);
             let col;
-            if(gm===0x40) col=palette[(cb&0xF0)|nib];                  // GTIA 9: hue COLBK + 16 jasu
-            else if(gm===0xC0) col=palette[((nib<<4)|(cb&0x0F))&0xFF]; // GTIA 11: 16 odstinu + lum COLBK
-            else col=palette[gtia10Color(nib,x0)];                     // GTIA 10: 9 barvovych registru
+            if(gm===0x40) col=gtiaPal((cb&0xF0)|(nib&0x0E));                  // GTIA 9: hue COLBK + 16 jasu
+            else if(gm===0xC0) col=gtiaPal(((nib<<4)|(cb&0x0E))&0xFF); // GTIA 11: 16 odstinu + lum COLBK
+            else col=gtiaPal(gtia10Color(nib,x0));                     // GTIA 10: 9 barvovych registru
             TB[TO+x0]=col; TB[TO+x0+1]=col; TB[TO+x0+2]=col; TB[TO+x0+3]=col;
             const gcls=gtiaModePfClass(nib,gm,x0);
             TC[x0]=gcls; TC[x0+1]=gcls; TC[x0+2]=gcls; TC[x0+3]=gcls;
@@ -2723,8 +2727,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
             // Normalni ANTIC F hires v ramci téhož nibblu. Barvy beru v dane X pozici,
             // aby DLI/G2F zmeny COLPF1/COLPF2 fungovaly i bez GTIA modu.
             const pf1=gtiaRegAt(0x17,x0), pf2=gtiaRegAt(0x18,x0);
-            const fg=xcolor?palette[pf1&0xFF]:palette[((pf2&0xF0)|(pf1&0x0F))&0xFF];
-            const bg=palette[pf2&0xFF];
+            const fg=xcolor?gtiaPal(pf1&0xFF):gtiaPal(((pf2&0xF0)|(pf1&0x0F))&0xFF);
+            const bg=gtiaPal(pf2&0xFF);
             // BUILD2JR: ANTIC F hi-res: 1 bity jsou PF2 pro GTIA prioritu/kolize,
             // 0 bity jsou pozadi bez playfield collision. Viz Altirra HW manual 6.6.
             const fgCls=3;
@@ -2770,6 +2774,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
       rf=4+(c-1);
     }
     if((pr&0x08) && M.vbxeDebug && !M.gtiaPrior8Logged){ M.gtiaPrior8Logged=true; M.vbxeDebug('GTIA PRIOR BUILD2JQ: rezim $08 pouzit jako PF0>PF1>P0>P1>P2>P3>PF2>PF3, ne jako playfield-nad-vsim.'); }
+    // BUILD2KJ: In GTIA9/11 picture modes (GPRIOR bits 6/7), G2F color planes must not bleed
+    // through every GTIA playfield pixel when the low priority nibble is zero. Treat the GTIA
+    // playfield mask as opaque for PMG in that neutral priority case. This is generic for GTIA
+    // picture kernels, not a Postcard filename check.
+    if(c && (pr&0xC0) && ((pr&0x0F)===0)){
+      if(M.vbxeDebug && !M.gtiaModePmMaskKjLogged){ M.gtiaModePmMaskKjLogged=true; M.vbxeDebug('GTIA PMG MASK BUILD2KJ: GTIA9/11 PF mask drzi PMG barevne vrstvy pod obrazem pri neutralnim PRIOR low-nibble=0.'); }
+      return false;
+    }
     return rp<rf;
   }
   function renderPMG(y){
@@ -2781,7 +2793,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // BUILD2IT: G2F pouziva PMG jako barevne vrstvy. COLPM/PRIOR se proto nesmi brat
     // jako jedna hodnota pro celou scanline; DLI muze menit barvy a prioritu po STA WSYNC
     // nebo i uvnitr radky. Beru stejne GTIA segmenty jako playfield renderer.
-    function pmColAt(p,x){ return palette[gtiaRegAt(0x12+p,x)]; }
+    function pmColAt(p,x){ return gtiaPal(gtiaRegAt(0x12+p,x)); }
     function pmColorWithOverlap(p,x,oldMask){
       // BUILD2KH: GTIA PRIOR bit5 = player overlap color. G2F obrazky ho pouzivaji jako dalsi barvy.
       // Pary jsou P0+P1 a P2+P3. Kdyz bit5 neni nastaveny, realny overlap pari hracu je cerny.
@@ -2790,15 +2802,15 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(oldMask & (1<<pair)){
         if(pr&0x20){
           if(M.vbxeDebug && !M.gtiaOverlapKhLogged){ M.gtiaOverlapKhLogged=true; M.vbxeDebug('GTIA PLAYER OVERLAP BUILD2KH: PRIOR bit5 kresli prekryv paru P0/P1 nebo P2/P3 jako OR COLPM barev.'); }
-          return palette[(gtiaRegAt(0x12+p,x)|gtiaRegAt(0x12+pair,x))&0xFF];
+          return gtiaPal((gtiaRegAt(0x12+p,x)|gtiaRegAt(0x12+pair,x))&0xFF);
         }
-        return palette[0];
+        return gtiaPal(0);
       }
-      return palette[gtiaRegAt(0x12+p,x)];
+      return gtiaPal(gtiaRegAt(0x12+p,x));
     }
     function missileColAt(p,x){
       const pr=gtiaRegAt(0x1B,x);
-      return palette[(pr&0x10)?gtiaRegAt(0x19,x):gtiaRegAt(0x12+p,x)];
+      return gtiaPal((pr&0x10)?gtiaRegAt(0x19,x):gtiaRegAt(0x12+p,x));
     }
 
     // BUILD2JM: kdyz byly behem radky zapsane P/M registry, nekreslim celou radku jednim snapshotem.
@@ -6605,6 +6617,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2KJ_GTIA9_PMG_MASK_LUMA_CORE pripraven - hlubsi graficky rez po KI: GTIA barvy ignoruji bit0 jako realny GTIA vystup, GTIA9/11 pixely tvori PF masku i pri nulove hodnote a neutralni PRIOR=$40/$C0 nepousti PMG barevne vrstvy pres cely GTIA obraz. Cil: Postcard/G2F pruhy; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KI_CPU_IO_WRITE_CYCLE_GTIA_RASTER_CORE pripraven - hlubsi raster rez po KH: GTIA/ANTIC/PMG zapisy do D0xx/D4xx uz maji cas skutecneho 6502 write-cyklu, ne zacatek instrukce. Cil: G2F/Postcard svisle pruhy a obecny DLI/PMG timing; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KH_DEEP_GTIA_PMG_VDELAY_OVERLAP_CORE pripraven - skutecny dalsi rez po neuspesnem KG. Postcard/G2F: opraven VDELAY jako predchozi DMA radka podle dodane dokumentace + GTIA PRIOR bit5 player-overlap barva. Night Driver/Decathlon nelakuji jako hotove. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KF_DOC_GUIDED_NIGHTDRIVER_AUDIO_STRIPE_PASS pripraven - navazuje na KE/KB/JZ/JX. Night Driver: obsahovy SR stripe filtr podle XDL/transparent pravidel + robustni AudioContext resume pro POKEY/GTIA zvuk. Decathlon PMBASE hack z KD zustava pryc; bez dalsiho slepeho rezu. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
