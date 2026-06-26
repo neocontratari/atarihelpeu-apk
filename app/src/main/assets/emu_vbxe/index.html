@@ -2576,6 +2576,35 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     return v&0xFF;
   }
+  // BUILD2KN: G2F/DLI kernel casto pripravi COLBK/GPRIOR v HBLANKU pred viditelnou casti radky.
+  // Pokud takove zapisy omylem prekladame jako zmeny uvnitr viditelne radky, vzniknou fialove/tyrkysove
+  // svisle pruhy. Pro ANTIC F + GTIA9/11 + husty raster vezmeme pro zakladni GTIA pixel generator
+  // line-latch stav na zacatku viditelne casti. PMG barvici vrstva zustava normalni pres PRIOR.
+  function gtiaLineRegAtStart(g){
+    let v;
+    if(g>=0x12 && g<=0x15) v=gtia.colpm[g-0x12];
+    else if(g>=0x16 && g<=0x19) v=gtia.colpf[g-0x16];
+    else if(g===0x1A) v=gtia.colbk;
+    else if(g===0x1B) v=gtia.prior;
+    else return 0;
+    if(gtSeg.n){
+      for(let i=0;i<gtSeg.n;i++){
+        if(gtSeg.r[i]===g && gtSeg.x[i]<=0) v=gtSeg.v[i];
+      }
+    }
+    return v&0xFF;
+  }
+  function gtiaLineGmForG2F(){
+    let pr=gtiaLineRegAtStart(0x1B)&0xC0;
+    if(!pr && gtSeg.n){
+      // Nektere kernely zapisi GPRIOR hned po zacatku; pro GTIA pixel generator je dulezite,
+      // ze radka je zamerne v GTIA9/11 modu, ne presne jmeno XEXu.
+      for(let i=0;i<gtSeg.n;i++){
+        if(gtSeg.r[i]===0x1B && (gtSeg.v[i]&0xC0)){ pr=gtSeg.v[i]&0xC0; break; }
+      }
+    }
+    return pr&0xC0;
+  }
   function pfColorAt(cls,x){
     if(cls<=0) return gtiaPal(gtiaRegAt(0x1A,x));
     return gtiaPal(gtiaRegAt(0x15+cls,x));
@@ -2707,14 +2736,21 @@ function Atari130XE(osRom, basicRom, CPUctor){
         if(nib<12) return gtiaRegAt(0x1A,x);
         return gtiaRegAt(0x16+(nib-12),x);
       }
+      const g2fLineLatch = (gtSeg.n>=8) && (gtiaLineGmForG2F()!==0);
+      const g2fLineGm = g2fLineLatch ? gtiaLineGmForG2F() : 0;
+      const g2fLineCb = g2fLineLatch ? gtiaLineRegAtStart(0x1A) : 0;
+      if(g2fLineLatch && M.vbxeDebug && !M.gtiaG2fLineLatchKnLogged){
+        M.gtiaG2fLineLatchKnLogged=true;
+        M.vbxeDebug('GTIA G2F LINE LATCH BUILD2KN: ANTIC F + GTIA9/11 + husty DLI kernel bere COLBK/GPRIOR ze zacatku radky, ne jako svisle pruhy uvnitr obrazu.');
+      }
       for(let i=0;i<nb;i++){
         const bits=anticRead(antic.lms+i);
         for(let h=0;h<2;h++){
           const nib=h?(bits&15):(bits>>4);
           const x0=xs+i*8+h*4;
-          const gm=gtiaRegAt(0x1B,x0)&0xC0;
+          const gm=g2fLineLatch ? g2fLineGm : (gtiaRegAt(0x1B,x0)&0xC0);
           if(gm){
-            const cb=gtiaRegAt(0x1A,x0);
+            const cb=g2fLineLatch ? g2fLineCb : gtiaRegAt(0x1A,x0);
             let col;
             if(gm===0x40){
               // BUILD2KM: GTIA 9 = hue z COLBK + plny 4bit pixelovy jas.
@@ -6635,7 +6671,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KM_GTIA9_11_PIXEL_GENERATOR_FULL_CORE pripraven - navazuje na KL, ale uz nejde po PMG masce. Oprava primo v GTIA 9/11 pixel generatoru: GTIA9 pouziva plny 4bit jas z pixelu, GTIA11 pouziva standardni hue=pixel/luma=COLBK bez KL OR-hue chyby. Soucasne se rusi tvrdé KK blokovani PMG pres GTIA obraz a vraci se normalni PRIOR cesta, aby G2F mohl barvit obraz realnou PMG vrstvou. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KN_G2F_GTIA_LINE_LATCH_RASTER_CORE pripraven - navazuje na KM, kde uz byl videt maly posun. Novy rez: pro ANTIC F + GTIA9/11 + husty G2F/DLI kernel se COLBK/GPRIOR lathuje na zacatek viditelne radky, aby se HBLANK priprava neprekladala jako fialove/tyrkysove svisle pruhy. Neni to hack na Postcard, je to raster/GTIA line-latch rez. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KM_GTIA9_11_PIXEL_GENERATOR_FULL_CORE pripraven - navazuje na KL, ale uz nejde po PMG masce. Oprava primo v GTIA 9/11 pixel generatoru: GTIA9 pouziva plny 4bit jas z pixelu, GTIA11 pouziva standardni hue=pixel/luma=COLBK bez KL OR-hue chyby. Soucasne se rusi tvrde KK blokovani PMG pres GTIA obraz a vraci se normalni PRIOR cesta, aby G2F mohl barvit obraz realnou PMG vrstvou. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KL_WSYNC_HBLANK_GTIA11_G2F_CORE pripraven - navazuje na KK. Oprava podle logu: PMG uz je blokovane, ale obraz se nehnul, tedy chyba je v zakladnim GTIA/G2F rastru. WSYNC ted pousti CPU do HBLANK casti radky pro pripravu dalsiho scanline a GTIA11 ma opravenou barvu podle COLBK hue/luma. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KI_CPU_IO_WRITE_CYCLE_GTIA_RASTER_CORE pripraven - hlubsi raster rez po KH: GTIA/ANTIC/PMG zapisy do D0xx/D4xx uz maji cas skutecneho 6502 write-cyklu, ne zacatek instrukce. Cil: G2F/Postcard svisle pruhy a obecny DLI/PMG timing; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KH_DEEP_GTIA_PMG_VDELAY_OVERLAP_CORE pripraven - skutecny dalsi rez po neuspesnem KG. Postcard/G2F: opraven VDELAY jako predchozi DMA radka podle dodane dokumentace + GTIA PRIOR bit5 player-overlap barva. Night Driver/Decathlon nelakuji jako hotove. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
