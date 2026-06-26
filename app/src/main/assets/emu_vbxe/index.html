@@ -1144,7 +1144,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   };
   M.unmountDisk=function(){ sio.disk=null; sio.diskTurbo=false; sio.diskTurboUntil=0; };
   M.xexLoading=function(){
-    // BUILD2KZ: navazuje na KY. Uživatel výslovně povolil jediny snesitelny fake: rychlost nahravani
+    // BUILD2LB: navazuje na potvrzeny KZ/KV, bez nove graficke hadanky. Uživatel výslovně povolil jediny snesitelny fake: rychlost nahravani
     // XEX/OBX. Data stale tecou pres nas OS/SIO loader a CLOAD/CSAVE se nesmi zrychlit. Turbo drzi
     // record-aware do posledniho datoveho XEX zaznamu, potom se vypne normalni rychlost hry.
     const X=sio.xex;
@@ -1163,14 +1163,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!allDataServed){
       if(M.vbxeDebug && !X.kzRecordTurboLogged){
         X.kzRecordTurboLogged=true;
-        M.vbxeDebug('XEX FAST LOAD BUILD2KZ: fake-fast record-aware XEX/OBX nahravani drzi az do posledniho XEX datoveho zaznamu; CLOAD/CSAVE nedotceno; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
+        M.vbxeDebug('XEX FAST LOAD BUILD2LC: locked fake-fast XEX/OBX drzi az do posledniho XEX datoveho zaznamu; CLOAD/CSAVE nedotceno; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
       }
       // ochrana proti zavadeci, ktery uz do dalsiho SIO nikdy nevleze: po dlouhem tichu v RAM radsi pustim normalni rychlost.
       if(staleSince>900 && lastPay && !qBusy){
         X.loading=false;
         if(M.vbxeDebug && !X.loadingAutoStopLogged){
           X.loadingAutoStopLogged=true;
-          M.vbxeDebug('XEX FAST LOAD BUILD2KZ: fail-safe ukoncil fake-fast turbo pred EOF po dlouhem tichu; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
+          M.vbxeDebug('XEX FAST LOAD BUILD2LC: fail-safe ukoncil fake-fast turbo pred EOF po dlouhem tichu; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
         }
         return false;
       }
@@ -1184,7 +1184,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       try{ if(sio.rxq) sio.rxq.length=0; sio.rxPos=0; if(sio.frame) sio.frame.length=0; }catch(_e){}
       if(M.vbxeDebug && !X.loadingAutoStopLogged){
         X.loadingAutoStopLogged=true;
-        M.vbxeDebug('XEX FAST LOAD BUILD2KZ: EOF/stale guard ukoncil fake-fast turbo az po poslednim datovem zaznamu; cur='+X.cur+'/'+eofIndex+' stale='+staleSince+' payload='+stalePayload+' PC=$'+hx4(pc)+'.');
+        M.vbxeDebug('XEX FAST LOAD BUILD2LC: EOF/stale guard ukoncil fake-fast turbo az po poslednim datovem zaznamu; cur='+X.cur+'/'+eofIndex+' stale='+staleSince+' payload='+stalePayload+' PC=$'+hx4(pc)+'.');
       }
       return false;
     }
@@ -2021,7 +2021,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           ' zoom=$'+hx2(zoom)+' zx='+zoomX+' zy='+zoomY+' intlv='+(intlv?1:0)+' patt=$'+hx2(patt)+' BCB21');
       } else if(vbxe.bltStarts===13 && M.vbxeDebug && !vbxe.blitFastDetailSuppressedLogged){
         vbxe.blitFastDetailSuppressedLogged=true;
-        M.vbxeDebug('VBXE BLITTER FAST BUILD2KZ: detailni log startu potlacen, dal jen souhrny; mensi log-spam pri VBXE hrach.');
+        M.vbxeDebug('VBXE BLITTER FAST BUILD2LC: detailni log startu potlacen, dal jen souhrny; mensi log-spam pri VBXE hrach.');
       }
       if((zoom!==0 || patt!==0) && !vbxe.blitFeatureLogged && M.vbxeDebug){
         vbxe.blitFeatureLogged=true;
@@ -2230,6 +2230,56 @@ function Atari130XE(osRom, basicRom, CPUctor){
     vbxeTrace('W',a,v);
   }
   const CYC_LINE=114, LINES=312, VBI_LINE=248;
+
+  // BUILD2LD: ANTIC DMA/HALT model.
+  // Predchozi jadro nechavalo 6502 bezet plnych 114 cyklu na kazde scanline a ANTIC
+  // data teprve dodatecne precetlo v rendereru. To u DLI/PMG titulu typu Decathlon
+  // znamena, ze CPU stihne zapsat barvy/sprity driv nez na skutecnem Atari. Tady
+  // vkladame bez vykonani instrukce ztracene cykly (HALT), aby CPU/DLI bezely proti
+  // paprsku pomaleji. Nejde o hack na hru; pocet cyklu vychazi z aktualni ANTIC
+  // mode/DMACTL/sirka/PMG DMA a je rozlozen behem viditelne casti radky.
+  function anticDmaHaltBudgetLD(){
+    if(M.line<8 || M.line>=248) return 0;
+    if(antic.done || !(antic.dmactl&0x20) || !MODE[antic.mode]) return 0;
+    const m=antic.mode&0x0F;
+    let b=0;
+    // Bezpecny prvni krok: Decathlon/Graphics 12/ANTIC 4-5 dostava 7 cyklu,
+    // jak pozadoval audit. Ostatni mody maji konzervativni budget, aby se nerozbily
+    // Donkey/Commando/loader cesty.
+    if(m===0x04 || m===0x05) b=7;
+    else if(m===0x02 || m===0x03) b=5;
+    else if(m===0x06 || m===0x07) b=5;
+    else if(m>=0x08 && m<=0x0C) b=6;
+    else if(m>=0x0D && m<=0x0F) b=8;
+    const w=antic.dmactl&3;
+    if(w===3) b+=1;
+    else if(w===0) b=Math.max(0,b-1);
+    if(antic.hsLine) b+=1;
+    if(antic.dmactl&0x04) b+=1;
+    if(antic.dmactl&0x08) b+=2;
+    if(b>14) b=14;
+    return b|0;
+  }
+  function anticDmaHaltSetupLD(){
+    M.anticHaltBudget=anticDmaHaltBudgetLD();
+    M.anticHaltDone=0;
+  }
+  function anticDmaHaltStepLD(limit){
+    const budget=M.anticHaltBudget|0;
+    if(!budget || M.anticHaltDone>=budget) return false;
+    const local=(cpu.cycles-M.lineCyc0)|0;
+    const next=20 + (M.anticHaltDone*3);
+    if(local>=next && cpu.cycles<limit){
+      cpu.cycles++;
+      M.anticHaltDone++;
+      if(M.vbxeDebug && !M.anticDmaHaltLdLogged){
+        M.anticDmaHaltLdLogged=true;
+        M.vbxeDebug('ANTIC DMA HALT BUILD2LD: CPU kradez cyklu aktivni; mode=$'+hx2(antic.mode)+' DMACTL=$'+hx2(antic.dmactl)+' budget='+budget+' line='+M.line+'.');
+      }
+      return true;
+    }
+    return false;
+  }
   M.fb=new Uint32Array(384*240);          // RGBA frame buffer (visible lines 8..247)
   // ---------------- Bus -------------------
 
@@ -3532,14 +3582,18 @@ function Atari130XE(osRom, basicRom, CPUctor){
       return true;
     }
     M.lineCyc0=lineStart; chSeg.n=0; chSeg.base=antic.chbase; gtSeg.n=0; pmSeg.n=0;
+    anticDmaHaltSetupLD();
+    if(M.line===8 && M.vbxeDebug && !M.vblLdLogged){ M.vblLdLogged=true; M.vbxeDebug('VBL/DLI TIMING BUILD2LD: PAL frame=312 radku, VBI line='+VBI_LINE+', DLI/NMI obsluha zustava v jednovlaknove scanline smycce pred dalsim render krokem.'); }
     while(cpu.cycles<snapAt){
       if(handleWsyncKL()) break;
+      if(anticDmaHaltStepLD(snapAt)) continue;
       cpu.step();
       if(cpu.jam){ cpu.cycles=target; break; }
     }
-    snapTake();                                        // zmrazeni stavu pro render teto radky (stav v HBLANKU)
+    snapTake();                                        // zmrazeni stavu pro render teto radky (stav po casnem DMA/DLI okne)
     while(cpu.cycles<target){
       if(handleWsyncKL()) continue;
+      if(anticDmaHaltStepLD(target)) continue;
       cpu.step();
       if(cpu.jam){ cpu.cycles=target; break; }
     }
@@ -3842,6 +3896,42 @@ function Atari130XE(osRom, basicRom, CPUctor){
     var ma=vbxeMapAttrAtPixel(r,x384,y);
     return ma ? ma.ovPal : ((r && r.ovPal!=null ? r.ovPal : 1)&3);
   }
+
+  // BUILD2LC: graficky overlay nesmi brat barvovou paletu naslepo z atributove mapy.
+  // MAP ma ridit Atari PF barvy/prioritu. U SR/HR/LR grafiky je zakladni barvova banka XDL OV palette.
+  // To je dulezite pro Popeye/rrumble/W3D: spatna mapa umela prehodit grafiku do magenty.
+  function vbxeGraphPalAtHiLC(r,px640,y){
+    if(!r) return 1;
+    var base=(r.ovPal==null?1:r.ovPal)&3;
+    var ma=vbxeMapAttrAtHi(r,px640,y);
+    if(!ma) return base;
+    // Kdyz priorita recordu je $FF, overlay je plny graficky layer; atributova mapa zustava PF/priorita.
+    if(((r.priority==null?255:r.priority)&0xFF)===0xFF) return base;
+    // Pokud MAP atribut nema realne nastavenou overlay paletu, nechavam XDL paletu.
+    if((ma.raw&0x30)===0) return base;
+    return ma.ovPal&3;
+  }
+  function vbxeGraphPalAtPixelLC(r,x384,y){
+    return vbxeGraphPalAtHiLC(r, ((x384*640/384)|0), y);
+  }
+  function vbxeGraphTransparent8LC(r,idx){
+    idx&=0xFF;
+    // U grafickeho XDL recordu s priority=$FF se nula nesmi automaticky rozpadnout do pozadi,
+    // pokud hardware/VC zrovna kresli plny overlay. Tohle opravuje rozpadle title obrazky bez screen-paintu.
+    if(r && (((r.priority==null?255:r.priority)&0xFF)===0xFF) && (r.mapOn || r.mode===2 || r.mode===1)){
+      if(vbxe.regs[0x40]&0x08) return ((idx&0x0F)===0x0F);
+      return false;
+    }
+    return vbxeTransparent8(idx);
+  }
+  function vbxeGraphTransparent4LC(r,idx){
+    idx&=0x0F;
+    if(r && (((r.priority==null?255:r.priority)&0xFF)===0xFF) && (r.mapOn || r.mode===2)){
+      if(vbxe.regs[0x40]&0x08) return idx===0x0F;
+      return false;
+    }
+    return vbxeTransparent4(idx);
+  }
   function vbxePriorityValueForHi(r,px640,y){
     var ma=vbxeMapAttrAtHi(r,px640,y);
     if(ma) return vbxe.regs[0x55+(ma.priSel&3)]&0xFF; // P0..P3 podle mapy atributu
@@ -3980,7 +4070,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           }
           if(!rescued) color=vbxeTextBgColor(attr1);
         }
-        if(color>=0 && vbxePriorityAllowsPixel(r,x0+sx,gy)){ fb[dst+sx]=vbxeColor(color,vbxeOverlayPalAtPixel(r,x0+sx,gy)); drew++; }
+        if(color>=0 && vbxePriorityAllowsPixel(r,x0+sx,gy)){ fb[dst+sx]=vbxeColor(color,vbxeGraphPalAtPixelLC(r,x0+sx,gy)); drew++; }
       }
     }
     return drew;
@@ -4119,6 +4209,36 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     return hit;
   }
+  function vbxeSrArtifactRowLC(r,yy,bytes,hs){
+    // BUILD2LC: obecny SR stripe filtr, ale bez nazvu hry a bez obrazku.
+    // Kdyz radka vypada jako izolovany dlouhy vodorovny pruh z hlavicky/mezidat,
+    // a sousedni radky takove nejsou, nekreslim ji jako grafiku. Chrani Night Driver pruh,
+    // ale nesezere normalni auto/postavy, protoze vyzaduje izolovanost a velky stejny beh.
+    if(vbxeSrArtifactRowKF(r,yy,bytes,hs)) return true;
+    if(!r || r.mode!==1) return false;
+    var y=(r.y||0)+yy;
+    if(y<96) return false;
+    function stats(row){
+      var out={opaque:0,maxRun:0,sameRun:0,trans:0};
+      if(row<0 || row>=(r.lines|0)) return out;
+      var src=vbxeGraphSourceAddr(r,row), run=0, same=0, last=-1;
+      for(var x=0;x<bytes;x++){
+        var v=vbxe.vram[(src+x+hs)&0x7FFFF]&0xFF;
+        if(vbxeGraphTransparent8LC(r,v)){ out.trans++; run=0; same=0; last=-1; }
+        else { out.opaque++; run++; if(run>out.maxRun) out.maxRun=run; if(v===last) same++; else { same=1; last=v; } if(same>out.sameRun) out.sameRun=same; }
+      }
+      return out;
+    }
+    var cur=stats(yy), prev=stats(yy-1), next=stats(yy+1);
+    var neigh=(prev.opaque+next.opaque)/2;
+    var neighRun=(prev.maxRun+next.maxRun)/2;
+    var hit=(cur.opaque>=64 && cur.sameRun>=48 && cur.maxRun>=64 && cur.opaque>neigh*1.65+24 && cur.maxRun>neighRun*1.45+24);
+    if(hit && M.vbxeDebug && !vbxe.xdlSrStripeLcLogged){
+      vbxe.xdlSrStripeLcLogged=true;
+      M.vbxeDebug('VBXE SR STRIPE FILTER BUILD2LC: izolovana SR artefakt-radka y='+y+' yy='+yy+' opaque='+cur.opaque+' run='+cur.maxRun+' same='+cur.sameRun+' neigh='+(neigh|0)+'; bez screen-paintu.');
+    }
+    return !!hit;
+  }
 
 
 
@@ -4133,7 +4253,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(lines<=0) return 0;
     function putIdx(px,py,idx){
       if(px>=0 && px<640 && py>=0 && py<240 && vbxePriorityAllowsHiPixel(r,px,py)){
-        hi[py*640+px]=vbxeColor(idx,vbxeOverlayPalAtHi(r,px,py)); drew++;
+        hi[py*640+px]=vbxeColor(idx,vbxeGraphPalAtHiLC(r,px,py)); drew++;
       }
     }
     if(r.mode===1){ // SR: 1 byte = 1 color-clock pixel = 2 hires pixely
@@ -4142,10 +4262,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
       for(var yy=0;yy<lines;yy++){
         if(yy<keSkip) continue;
         var src=vbxeGraphSourceAddr(r,yy), gy=r.y+yy, hs=vbxeGraphHScrollHi(r)>>1;
-        if(vbxeSrArtifactRowKF(r,yy,bytes,hs)) continue;
+        if(vbxeSrArtifactRowLC(r,yy,bytes,hs)) continue;
         for(var x=0;x<bytes;x++){
           var v=vram[(src+x+hs)&0x7FFFF]&0xFF;
-          if(!vbxeTransparent8(v)){ var px=x0+x*2 - (vbxeGraphHScrollHi(r)&1)*2; putIdx(px,gy,v); putIdx(px+1,gy,v); }
+          if(!vbxeGraphTransparent8LC(r,v)){ var px=x0+x*2 - (vbxeGraphHScrollHi(r)&1)*2; putIdx(px,gy,v); putIdx(px+1,gy,v); }
         }
       }
     } else if(r.mode===3){ // LR: 1 byte = 4 hires pixely
@@ -4154,7 +4274,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         var src2=vbxeGraphSourceAddr(r,yy2), gy2=r.y+yy2, hs2=vbxeGraphHScrollHi(r)>>2, hp2=vbxeGraphHScrollHi(r)&3;
         for(var lx=0;lx<lbytes;lx++){
           var v2=vram[(src2+lx+hs2)&0x7FFFF]&0xFF;
-          if(!vbxeTransparent8(v2)){ var px2=x0+lx*4-hp2; putIdx(px2,gy2,v2); putIdx(px2+1,gy2,v2); putIdx(px2+2,gy2,v2); putIdx(px2+3,gy2,v2); }
+          if(!vbxeGraphTransparent8LC(r,v2)){ var px2=x0+lx*4-hp2; putIdx(px2,gy2,v2); putIdx(px2+1,gy2,v2); putIdx(px2+2,gy2,v2); putIdx(px2+3,gy2,v2); }
         }
       }
     } else if(r.mode===2){ // HR: 1 byte = 2 skutecne hires pixely, oba nibbly kreslim samostatne
@@ -4164,8 +4284,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
         for(var bx=0;bx<hbytes;bx++){
           var b=vram[(src3+bx+byteOff3)&0x7FFFF]&0xFF;
           var hiNib=(b>>4)&0x0F, loNib=b&0x0F, px3=x0+bx*2-nibbleOff3;
-          if(!vbxeTransparent4(hiNib)) putIdx(px3,gy3,hiNib);
-          if(!vbxeTransparent4(loNib)) putIdx(px3+1,gy3,loNib);
+          if(!vbxeGraphTransparent4LC(r,hiNib)) putIdx(px3,gy3,hiNib);
+          if(!vbxeGraphTransparent4LC(r,loNib)) putIdx(px3+1,gy3,loNib);
         }
       }
     }
@@ -4191,14 +4311,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
         for(var x=0;x<384;x++){
           var sx=(x*srcW/drawW)|0;
           var v=vbxeVramRead((src+sx)&0x7FFFF)&0xFF;
-          if(!vbxeTransparent8(v)){ fb[gy*384+x]=vbxeColor(v,palNo); drew++; }
+          if(!vbxeGraphTransparent8LC({mode:1,priority:0xFF,ovPal:palNo,mapOn:false},v)){ fb[gy*384+x]=vbxeColor(v,palNo); drew++; }
         }
       } else {
         for(var x2=0;x2<Math.min(drawW,384);x2++){
           var sx2=(x2*srcW/drawW)|0;
           var v2=vbxeVramRead((src+sx2)&0x7FFFF)&0xFF;
           var px=x0+x2;
-          if(px>=0 && px<384 && !vbxeTransparent8(v2)){ fb[gy*384+px]=vbxeColor(v2,palNo); drew++; }
+          if(px>=0 && px<384 && !vbxeGraphTransparent8LC({mode:1,priority:0xFF,ovPal:palNo,mapOn:false},v2)){ fb[gy*384+px]=vbxeColor(v2,palNo); drew++; }
         }
       }
     }
@@ -4292,10 +4412,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
           var px=x0+x-hp;
           if(px<0 || px>=384) continue;
           var v=vram[(src+x)&0x7FFFF]&0xFF;
-          if(!forceOpaque && vbxeTransparent8(v)) continue;
-          if(forceOpaque || !vbxeTransparent8(v)){
+          if(!forceOpaque && vbxeGraphTransparent8LC(r,v)) continue;
+          if(forceOpaque || !vbxeGraphTransparent8LC(r,v)){
             if((r.priority&0xFF)===0xFF || vbxePriorityAllowsPixel(r,px,gy)){
-              fb[gy*384+px]=vbxeColor(v,pal);
+              fb[gy*384+px]=vbxeColor(v,vbxeGraphPalAtPixelLC(r,px,gy));
               drew++;
             }
           }
@@ -4325,7 +4445,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(recs[ri0].mode===1 || recs[ri0].mode===2 || recs[ri0].mode===3) hasGraph=true;
       if(recs[ri0].mode===4) hasText=true;
     }
-    // BUILD2KZ: MAPON/MAPADR je nezavisly na overlay grafice. Rumble/nektera intra maji XDL mode OFF,
+    // BUILD2LC: MAPON/MAPADR je nezavisly na overlay grafice. Rumble/nektera intra maji XDL mode OFF,
     // ale stale platnou atributovou mapu. Stary kod pri no-graph/no-text spadl do surface fallbacku
     // a mapa se neaplikovala, coz davalo magenta/rozhozeny obraz. Nejdriv tedy mapu aplikujeme,
     // a pokud XDL nema zadny overlay, povazujeme map-only frame za platny vystup.
@@ -4334,7 +4454,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(mapDrew>0){
         if(M.vbxeDebug && !vbxe.xdlMapOnlyKzLogged){
           vbxe.xdlMapOnlyKzLogged=true;
-          M.vbxeDebug('VBXE MAP-ONLY XDL BUILD2KZ: mode OFF + MAPON kresli atributy do ANTIC obrazu; surface fallback zablokovan, zadny screen-paint. pixels='+mapDrew+'.');
+          M.vbxeDebug('VBXE MAP-ONLY XDL BUILD2LC: mode OFF + MAPON kresli atributy do ANTIC obrazu; surface fallback zablokovan, zadny screen-paint. pixels='+mapDrew+'.');
         }
         return true;
       }
@@ -4381,7 +4501,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           var src2=vbxeGraphSourceAddr(r,yy2), dst2=(r.y+yy2)*384+x0, hs2=vbxeGraphHScrollHi(r)>>2, hp2=vbxeGraphHScrollHi(r)&3;
           for(var lx=0;lx<lrw && x0+lx*2+1<384;lx++){
             var v2=vram[(src2+lx+hs2)&0x7FFFF]&0xFF;
-            if(!vbxeTransparent8(v2)){ var pxA=x0+lx*2-((hp2/2)|0), gyA=r.y+yy2; if(pxA>=0 && pxA<384 && vbxePriorityAllowsPixel(r,pxA,gyA)){ fb[gyA*384+pxA]=vbxeColor(v2,vbxeOverlayPalAtPixel(r,pxA,gyA)); drew++; graphDrew++; } if(pxA+1>=0 && pxA+1<384 && vbxePriorityAllowsPixel(r,pxA+1,gyA)){ fb[gyA*384+pxA+1]=vbxeColor(v2,vbxeOverlayPalAtPixel(r,pxA+1,gyA)); drew++; graphDrew++; } }
+            if(!vbxeGraphTransparent8LC(r,v2)){ var pxA=x0+lx*2-((hp2/2)|0), gyA=r.y+yy2; if(pxA>=0 && pxA<384 && vbxePriorityAllowsPixel(r,pxA,gyA)){ fb[gyA*384+pxA]=vbxeColor(v2,vbxeGraphPalAtPixelLC(r,pxA,gyA)); drew++; graphDrew++; } if(pxA+1>=0 && pxA+1<384 && vbxePriorityAllowsPixel(r,pxA+1,gyA)){ fb[gyA*384+pxA+1]=vbxeColor(v2,vbxeGraphPalAtPixelLC(r,pxA+1,gyA)); drew++; graphDrew++; } }
           }
         }
       } else if(r.mode===2){ // HR: 2 VBXE pixely v bajtu, na canvasu downsample 2:1
@@ -4391,9 +4511,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
           for(var bx=0;bx<bytes && hx0+bx<384;bx++){
             var b=vram[(src3+bx+hs3)&0x7FFFF]&0xFF;
             var hi=(b>>4)&0x0F, lo=b&0x0F;
-            var vv = !vbxeTransparent4(hi) ? hi : (!vbxeTransparent4(lo) ? lo : -1);
+            var vv = !vbxeGraphTransparent4LC(r,hi) ? hi : (!vbxeGraphTransparent4LC(r,lo) ? lo : -1);
             var px3=hx0+bx-hp3;
-            if(px3>=0 && px3<384 && vv>=0 && vbxePriorityAllowsPixel(r,px3,r.y+yy3)){ fb[(r.y+yy3)*384+px3]=vbxeColor(vv,vbxeOverlayPalAtPixel(r,px3,r.y+yy3)); drew++; graphDrew++; }
+            if(px3>=0 && px3<384 && vv>=0 && vbxePriorityAllowsPixel(r,px3,r.y+yy3)){ fb[(r.y+yy3)*384+px3]=vbxeColor(vv,vbxeGraphPalAtPixelLC(r,px3,r.y+yy3)); drew++; graphDrew++; }
           }
         }
       }
@@ -4427,7 +4547,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if(graphDrew>0 && !vbxe.xdlRenderLogged && M.vbxeDebug){
       vbxe.xdlRenderLogged=true;
-      M.vbxeDebug((hasHR?'VBXE HR/SR XDL RENDER BUILD2IP: graficky overlay kreslim s OVSCRL korekci; ':'VBXE XDL RENDER BUILD2IP: kreslim graficke XDL segmenty podle fx.pdf + OVSCRL, ')+'graphPixels='+graphDrew+'.');
+      M.vbxeDebug((hasHR?'VBXE HR/SR XDL RENDER BUILD2LC: graficky overlay kreslim s XDL OV palette + MAP priority guard + OVSCRL; ':'VBXE XDL RENDER BUILD2LC: kreslim graficke XDL segmenty s LC palette/transparent guard + OVSCRL, ')+'graphPixels='+graphDrew+'.');
     }
     if(drew>0) return true;
     if((hasGraph||hasText) && !vbxe.xdlFallbackLogged && M.vbxeDebug){
@@ -6591,9 +6711,9 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var diskTurbo = !xexTurbo && !!(M.diskFastLoading && M.diskFastLoading());
     if(xexTurbo){
       // BUILD2HW: turbo jen behem naseho obecneho XEX/OBX SIO loaderu. Nezrychluje kazetu/CLOAD ani bezici hru.
-      if(!M._hvTurboLogged){ M._hvTurboLogged=true; log('XEX FAST LOAD BUILD2KZ: fake-fast XEX/OBX nahravani zapnuto jen pro emulovany SIO loader; CLOAD/CSAVE bez zmeny; po loaderu normalni rychlost hry.'); }
+      if(!M._hvTurboLogged){ M._hvTurboLogged=true; log('XEX FAST LOAD BUILD2LC: locked fake-fast XEX/OBX nahravani zapnuto jen pro emulovany SIO loader; CLOAD/CSAVE bez zmeny; po loaderu normalni rychlost hry.'); }
       acc=0; last=ts;
-      var maxFast = 96; // BUILD2KZ: uzivatel povolil fake rychlost nahravani XEX/OBX; CLOAD/CSAVE mimo tuto vetev.
+      var maxFast = 192; // BUILD2LB: silnejsi stabilni fake-fast XEX/OBX; CLOAD/CSAVE mimo tuto vetev.
       while(n<maxFast){ typeStep(); M.runFrame(); typeStep(); n++;
         if(!(M.xexLoading && M.xexLoading())) break;
         if(M.cpu.jam){ running=false; log('CPU JAM op $'+M.cpu.jamOp.toString(16).toUpperCase()+' na $'+M.cpu.jamPc.toString(16).toUpperCase()+' frame '+M.frame); log('PC=$'+M.cpu.pc.toString(16).toUpperCase()+' PORTB=$'+M.portB().toString(16).toUpperCase()); break; }
@@ -6601,7 +6721,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     } else if(diskTurbo){
       if(!M._hwDiskTurboLogged){ M._hwDiskTurboLogged=true; log('ATR D1 FAST LOAD BUILD2HW: emulovany cas bezi rychleji jen pri aktivnim D1: SIO prenosu. Hra se nepatchuje, data zustavaji v ATR.'); }
       acc=0; last=ts;
-      var maxDiskFast = 8;
+      var maxDiskFast = 48; // BUILD2LB: ATR/D1 fake-fast jen pri aktivnim diskovem SIO; CLOAD/CSAVE nedotceno.
+      if(!M._hvDiskTurboLbLogged){ M._hvDiskTurboLbLogged=true; log('ATR D1 FAST LOAD BUILD2LC: fake-fast ATR/D1 nahravani zapnuto jen pri diskovem SIO cteni; CLOAD/CSAVE bez zmeny.'); }
       while(n<maxDiskFast){ typeStep(); M.runFrame(); typeStep(); n++;
         if(!(M.diskFastLoading && M.diskFastLoading())) break;
         if(M.cpu.jam){ running=false; log('CPU JAM op $'+M.cpu.jamOp.toString(16).toUpperCase()+' na $'+M.cpu.jamPc.toString(16).toUpperCase()+' frame '+M.frame); log('PC=$'+M.cpu.pc.toString(16).toUpperCase()+' PORTB=$'+M.portB().toString(16).toUpperCase()); break; }
@@ -6753,7 +6874,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KZ_FAST_LOAD_FAKE_OK_AND_VBXE_MAP_OFF_CORE pripraven - navazuje na KY. Rychlost nahravani XEX/OBX je zamerne fake-fast, protoze byla povolena; CLOAD/CSAVE zustava bez zrychleni. KY record-aware loader zachovan, maxFast zvednut. Oprava VBXE MAP-only XDL: mode OFF + MAPON uz nepadne do surface fallbacku, ale aplikuje atributovou mapu. Donkey Arcade/Junior PMG faze zustava. Grafiku Decathlon/Postcard/Night Driver nelakuju jako hotovou. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2LD_ANTIC_DMA_HALT_DLI_VBL_TIMING_CORE pripraven - navazuje na LC/KZ/KV. Hlavni rez uz neni loader ani dalsi slepa VBXE paleta: pridana radkova ANTIC DMA/HALT kradez CPU cyklu pro narocne ANTIC mody, DLI/VBI zustava ve stejne kooperativni smycce a PAL ramec drzi 312 radku. Cil: Decathlon telo/nohy/napis, obecne DLI barvy a duchove u non-VBXE her. Fast XEX/ATR zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. Donkey Arcade/Junior PMG faze chranena. Bez screen-paintu, bez hacku podle nazvu hry. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2LC_GRAPH_CORE_REAL_PASS_FAST_SAFE pripraven - navazuje na LB/KZ/KV. XEX/OBX a ATR fake-fast zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. VBXE SR/HR/LR pouziva XDL OV palette jako zdroj grafickych barev, MAP zustava pro PF/prioritu; graph transparent guard a SR stripe filtr zustavaji jako LC zaklad.');
     log('AtariHelp.eu EMU-10 BUILD2KS_GTIA_ALL_BITMAP_MODES_DOC_CORE pripraven - audit podle GTIA dokumentace: GTIA mody 9/10/11 plati pro jakykoliv ANTIC mod, ne jen F. Implementovan GTIA pixel generator pro m1bpp/m2bpp bitmapove radky (ANTIC D/E/A/8/B/C), GTIA11 opraveno na hue=(COLBK hue OR pixel), luma=COLBK. KR/KQ/KP line-latch/staging vetev je mimo. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KM_GTIA9_11_PIXEL_GENERATOR_FULL_CORE pripraven - navazuje na KL, ale uz nejde po PMG masce. Oprava primo v GTIA 9/11 pixel generatoru: GTIA9 pouziva plny 4bit jas z pixelu, GTIA11 pouziva standardni hue=pixel/luma=COLBK bez KL OR-hue chyby. Soucasne se rusi tvrdé KK blokovani PMG pres GTIA obraz a vraci se normalni PRIOR cesta, aby G2F mohl barvit obraz realnou PMG vrstvou. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KL_WSYNC_HBLANK_GTIA11_G2F_CORE pripraven - navazuje na KK. Oprava podle logu: PMG uz je blokovane, ale obraz se nehnul, tedy chyba je v zakladnim GTIA/G2F rastru. WSYNC ted pousti CPU do HBLANK casti radky pro pripravu dalsiho scanline a GTIA11 ma opravenou barvu podle COLBK hue/luma. KODY JSOU STEJNE.');
