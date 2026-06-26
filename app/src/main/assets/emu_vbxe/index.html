@@ -2615,24 +2615,39 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const cb=gtiaRegAt(0x1A,x)&0xFF;
     nib&=0x0F; gm&=0xC0;
     if(gm===0x40){
-      if(M.vbxeDebug && !M.gtia9KtLogged){ M.gtia9KtLogged=true; M.vbxeDebug('GTIA9 RAW LUMA BUILD2KT: GTIA9 pouziva plny 4bit pixelovy jas bez masky bit0; COLBK dodava hue.'); }
+      if(M.vbxeDebug && !M.gtia9KtLogged){ M.gtia9KtLogged=true; M.vbxeDebug('GTIA9 RAW LUMA BUILD2KU: GTIA9 pouziva plny 4bit pixelovy jas bez masky bit0; COLBK dodava hue.'); }
       return gtiaPalRaw(((cb&0xF0)|nib)&0xFF);
     }
     if(gm===0x80){
-      if(M.vbxeDebug && !M.gtia10KtLogged){ M.gtia10KtLogged=true; M.vbxeDebug('GTIA10 COLOR BUILD2KT: GTIA10 generator zustava registrovy; COLPM/COLPF/COLBK se normalizuji jako realne barevne registry.'); }
+      if(M.vbxeDebug && !M.gtia10KtLogged){ M.gtia10KtLogged=true; M.vbxeDebug('GTIA10 COLOR BUILD2KU: GTIA10 generator zustava registrovy; COLPM/COLPF/COLBK se normalizuji jako realne barevne registry.'); }
       return gtiaPal(gtia10ColorRaw(nib,x));
     }
     if(gm===0xC0){
       const hue = nib ? (((cb>>4)|nib)&0x0F) : ((cb>>4)&0x0F);
       const lum = nib ? (cb&0x0E) : 0;
-      if(M.vbxeDebug && !M.gtia11KtLogged){ M.gtia11KtLogged=true; M.vbxeDebug('GTIA11 COLOR BUILD2KT: hue=(COLBK hue OR pixel), luma=COLBK, pixel0 nulovy jas; registr luma bit0 zustava ignorovan.'); }
+      if(M.vbxeDebug && !M.gtia11KtLogged){ M.gtia11KtLogged=true; M.vbxeDebug('GTIA11 COLOR BUILD2KU: hue=(COLBK hue OR pixel), luma=COLBK, pixel0 nulovy jas; registr luma bit0 zustava ignorovan.'); }
       return gtiaPalRaw(((hue<<4)|lum)&0xFF);
     }
     return 0;
   }
+  function gtiaModePaintRunKU(TB,TC,TO,x0,w,nib,gm){
+    // BUILD2KU: G2F/DLI muze menit COLBK/COLPF/COLPM/PRIOR i uprostred sirsiho GTIA pixelu.
+    // Nibble zustava stejny (data z ANTIC), ale barva/priorita se bere v realne X pozici.
+    // Tim se nelepí obraz podle hry; je to jen jemnejsi GTIA color-clock vyhodnoceni.
+    nib&=0x0F; gm&=0xC0;
+    for(let k=0;k<w;k++){
+      const xx=x0+k;
+      if(xx<0||xx>=384) continue;
+      const gmX=gtiaRegAt(0x1B,xx)&0xC0;
+      const useGm=gmX||gm;
+      TB[TO+xx]=gtiaModeColorFromNib(nib,useGm,xx);
+      TC[xx]=gtiaModePfClass(nib,useGm,xx);
+    }
+    if(M.vbxeDebug && !M.gtiaColorClockKuLogged){ M.gtiaColorClockKuLogged=true; M.vbxeDebug('GTIA COLOR CLOCK BUILD2KU: GTIA9/10/11 barva/priorita se u bitmap/hires berou podle X uvnitr sirsiho pixelu, ne jen z leve hrany.'); }
+  }
   function renderScanline(){
     const y=M.line-8; if(y<0||y>=240) return;
-    const fb=M.fb, off=y*384, bk=palette[gtia.colbk];
+    const fb=M.fb, off=y*384, bk=gtiaPal(gtia.colbk); // BUILD2KU: COLBK vystup stejne jako HW barevny registr (bit0 ignorovan)
     if(gtSeg.n){ for(let x=0;x<384;x++) fb[off+x]=pfColorAt(0,x); }
     else { for(let x=0;x<384;x++) fb[off+x]=bk; }
     pfc.fill(0);
@@ -2724,11 +2739,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
           const gm=gtiaRegAt(0x1B,x0)&0xC0;
           if(gm){
             const nib=(bits>>(g?0:4))&0x0F;
-            const col=gtiaModeColorFromNib(nib,gm,x0);
-            const cls=gtiaModePfClass(nib,gm,x0);
             const gw=(pxw*4)|0;
-            for(let k=0;k<gw;k++){ const xx=x0+k; TB[TO+xx]=col; TC[xx]=cls; }
-            if(M.vbxeDebug && !M.gtiaBitmapKsLogged){ M.gtiaBitmapKsLogged=true; M.vbxeDebug('GTIA BITMAP MODES BUILD2KT: GTIA 9/10/11 bezi pres spolecny pixel-generator pro hires/m1bpp/m2bpp; GTIA9 raw luma opravena.'); }
+            gtiaModePaintRunKU(TB,TC,TO,x0,gw,nib,gm);
+            if(M.vbxeDebug && !M.gtiaBitmapKsLogged){ M.gtiaBitmapKsLogged=true; M.vbxeDebug('GTIA BITMAP MODES BUILD2KU: GTIA 9/10/11 bezi pres spolecny pixel-generator pro hires/m1bpp/m2bpp; barva je per color-clock X.'); }
           }else{
             for(let bb=0;bb<4;bb++){ const b=g*4+bb; const on=bits&(0x80>>b);
               const xb=xs+((i*8+b)*pxw)|0;
@@ -2748,11 +2761,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
           const gm=gtiaRegAt(0x1B,x0)&0xC0;
           if(gm){
             const nib=((v0<<2)|v1)&0x0F;
-            const col=gtiaModeColorFromNib(nib,gm,x0);
-            const cls=gtiaModePfClass(nib,gm,x0);
             const gw=(pxw*2)|0;
-            for(let k=0;k<gw;k++){ const xx=x0+k; TB[TO+xx]=col; TC[xx]=cls; }
-            if(M.vbxeDebug && !M.gtiaBitmapKsLogged){ M.gtiaBitmapKsLogged=true; M.vbxeDebug('GTIA BITMAP MODES BUILD2KT: GTIA 9/10/11 bezi pres spolecny pixel-generator pro hires/m1bpp/m2bpp; GTIA9 raw luma opravena.'); }
+            gtiaModePaintRunKU(TB,TC,TO,x0,gw,nib,gm);
+            if(M.vbxeDebug && !M.gtiaBitmapKsLogged){ M.gtiaBitmapKsLogged=true; M.vbxeDebug('GTIA BITMAP MODES BUILD2KU: GTIA 9/10/11 bezi pres spolecny pixel-generator pro hires/m1bpp/m2bpp; barva je per color-clock X.'); }
           }else{
             for(let pp=p0;pp<=p1;pp++){ const v=(bits>>(6-pp*2))&3;
               const xb=xs+((i*4+pp)*pxw)|0;
@@ -2773,10 +2784,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           const x0=xs+i*8+h*4;
           const gm=gtiaRegAt(0x1B,x0)&0xC0;
           if(gm){
-            const col=gtiaModeColorFromNib(nib,gm,x0);
-            TB[TO+x0]=col; TB[TO+x0+1]=col; TB[TO+x0+2]=col; TB[TO+x0+3]=col;
-            const gcls=gtiaModePfClass(nib,gm,x0);
-            TC[x0]=gcls; TC[x0+1]=gcls; TC[x0+2]=gcls; TC[x0+3]=gcls;
+            gtiaModePaintRunKU(TB,TC,TO,x0,4,nib,gm);
           }else{
             // Normalni ANTIC F hires v ramci téhož nibblu. Barvy beru v dane X pozici,
             // aby DLI/G2F zmeny COLPF1/COLPF2 fungovaly i bez GTIA modu.
@@ -2833,7 +2841,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if(M.vbxeDebug && !M.gtiaPriorKtLogged){
       M.gtiaPriorKtLogged=true;
-      M.vbxeDebug('GTIA PRIOR TABLE BUILD2KT: opraveno poradi bit2/bit1/bit0 podle dokumentace; PMG barevne vrstvy uz nejsou blokovane spatnym bit2 vykladem.');
+      M.vbxeDebug('GTIA PRIOR TABLE BUILD2KU: opraveno poradi bit2/bit1/bit0 podle dokumentace; PMG barevne vrstvy uz nejsou blokovane spatnym bit2 vykladem.');
     }
     return !!show;
   }
@@ -3034,7 +3042,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
   // softwarovou hodnotu, coz delalo zbytky grafiky (napr. bloky v nebi v Pitstopu).
   function pmDmaFetch(){
     if(M.line<8 || M.line>=248) return;
-    const dbl=!(antic.dmactl&0x10), base=(antic.pmbase&(dbl?0xFC:0xF8))<<8, li=dbl?(M.line>>1):M.line;
+    const dbl=!(antic.dmactl&0x10), base=(antic.pmbase&(dbl?0xFC:0xF8))<<8;
+    // BUILD2KU: ANTIC playfield renderer kresli viditelne y jako M.line-8. PMG DMA musi pouzit stejnou
+    // viditelnou fazi, jinak G2F barevne masky a sportovni sprity sedi o nekolik radku mimo telo/pozadi.
+    const liVis=Math.max(0,M.line-8);
+    const li=dbl?(liVis>>1):liVis;
+    if(M.vbxeDebug && !gtia.pmPhaseKuLogged && M.line>=8){ gtia.pmPhaseKuLogged=true; M.vbxeDebug('GTIA PMG VERTICAL PHASE BUILD2KU: PMG DMA line index fazovan na visibleY=M.line-8; li='+li+' line='+M.line+'.'); }
     let auditNp=null, auditNm=0;
     // BUILD2JK: GTIA VDELAY ($D01C). Realny stroj umi zpozdit DMA data pro P0-P3/M0-M3
     // o jednu radku; spousta intr/sportovnich her tim sklada sprity a prechodove obrazovky.
@@ -6677,7 +6690,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KT_GTIA_COLOR_PRIORITY_COMPLEX_PASS pripraven - komplexni graficky rez po KS: oddelena normalizace barevnych registru od GTIA9 raw 4bit luminance, GTIA11 ponechan podle dokumentace, opraven PRIOR bit2/bit1/bit0 pro PMG barevne vrstvy. Cíl: barvy + pruhy u Postcard/G2F, Decathlon, Donkey bez screen-paintu. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KU_PMG_VERTICAL_PHASE_AND_GTIA_COLOR_CLOCK_CORE pripraven - komplexni rez po KT: PMG DMA se fazuje proti stejne viditelne Y souradnici jako ANTIC playfield (telo/nohy, G2F masky), GTIA9/10/11 barvy se u bitmapovych modu vyhodnocuji per color-clock X, pozadi pouziva normalizovanou GTIA barvu. Bez screen-paintu, bez hacku podle nazvu hry. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KS_GTIA_ALL_BITMAP_MODES_DOC_CORE pripraven - audit podle GTIA dokumentace: GTIA mody 9/10/11 plati pro jakykoliv ANTIC mod, ne jen F. Implementovan GTIA pixel generator pro m1bpp/m2bpp bitmapove radky (ANTIC D/E/A/8/B/C), GTIA11 opraveno na hue=(COLBK hue OR pixel), luma=COLBK. KR/KQ/KP line-latch/staging vetev je mimo. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KM_GTIA9_11_PIXEL_GENERATOR_FULL_CORE pripraven - navazuje na KL, ale uz nejde po PMG masce. Oprava primo v GTIA 9/11 pixel generatoru: GTIA9 pouziva plny 4bit jas z pixelu, GTIA11 pouziva standardni hue=pixel/luma=COLBK bez KL OR-hue chyby. Soucasne se rusi tvrdé KK blokovani PMG pres GTIA obraz a vraci se normalni PRIOR cesta, aby G2F mohl barvit obraz realnou PMG vrstvou. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KL_WSYNC_HBLANK_GTIA11_G2F_CORE pripraven - navazuje na KK. Oprava podle logu: PMG uz je blokovane, ale obraz se nehnul, tedy chyba je v zakladnim GTIA/G2F rastru. WSYNC ted pousti CPU do HBLANK casti radky pro pripravu dalsiho scanline a GTIA11 ma opravenou barvu podle COLBK hue/luma. KODY JSOU STEJNE.');
