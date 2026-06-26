@@ -2779,6 +2779,20 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // jako jedna hodnota pro celou scanline; DLI muze menit barvy a prioritu po STA WSYNC
     // nebo i uvnitr radky. Beru stejne GTIA segmenty jako playfield renderer.
     function pmColAt(p,x){ return palette[gtiaRegAt(0x12+p,x)]; }
+    function pmColorWithOverlap(p,x,oldMask){
+      // BUILD2KH: GTIA PRIOR bit5 = player overlap color. G2F obrazky ho pouzivaji jako dalsi barvy.
+      // Pary jsou P0+P1 a P2+P3. Kdyz bit5 neni nastaveny, realny overlap pari hracu je cerny.
+      const pr=gtiaRegAt(0x1B,x);
+      const pair=p^1;
+      if(oldMask & (1<<pair)){
+        if(pr&0x20){
+          if(M.vbxeDebug && !M.gtiaOverlapKhLogged){ M.gtiaOverlapKhLogged=true; M.vbxeDebug('GTIA PLAYER OVERLAP BUILD2KH: PRIOR bit5 kresli prekryv paru P0/P1 nebo P2/P3 jako OR COLPM barev.'); }
+          return palette[(gtiaRegAt(0x12+p,x)|gtiaRegAt(0x12+pair,x))&0xFF];
+        }
+        return palette[0];
+      }
+      return palette[gtiaRegAt(0x12+p,x)];
+    }
     function missileColAt(p,x){
       const pr=gtiaRegAt(0x1B,x);
       return palette[(pr&0x10)?gtiaRegAt(0x19,x):gtiaRegAt(0x12+p,x)];
@@ -2815,8 +2829,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
           if(g&(0x80>>bit)){
             const c=pfc[x]; if(c) gtia.cPPF[p]|=1<<(c-1);
             const mm=pml[x]; if(mm){ gtia.cPPL[p]|=mm; for(let q=0;q<4;q++) if(mm&(1<<q)) gtia.cPPL[q]|=(1<<p); }
+            const show=pmShowAt(p,c,x); if(show) fb[off+x]=pmColorWithOverlap(p,x,mm);
             pml[x]|=(1<<p);
-            const show=pmShowAt(p,c,x); if(show) fb[off+x]=pmColAt(p,x);
             pmAuditObj('P',show,!show,0);
           }
         }
@@ -2857,8 +2871,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         for(let k=0;k<2*w;k++){ const x=x0+b*2*w+k; if(x>=0&&x<384){ anyOn=true;
           const c=pfc[x]; if(c) gtia.cPPF[p]|=1<<(c-1);
           const mm=pml[x]; if(mm){ gtia.cPPL[p]|=mm; for(let q=0;q<4;q++) if(mm&(1<<q)) gtia.cPPL[q]|=(1<<p); }
-          pml[x]|=(1<<p);
-          const show=pmShowAt(p,c,x); if(show) fb[off+x]=pmColAt(p,x); pmAuditObj('P',show,!show,0); } }
+          const show=pmShowAt(p,c,x); if(show) fb[off+x]=pmColorWithOverlap(p,x,mm); pml[x]|=(1<<p); pmAuditObj('P',show,!show,0); } }
         if(!anyOn) pmAuditObj('P',false,false,1);
       } }
     }
@@ -2960,18 +2973,20 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const o=base+(dbl?512:1024)+li, st=dbl?128:256;
       const np0=anticRead(o), np1=anticRead(o+st), np2=anticRead(o+st*2), np3=anticRead(o+st*3);
       const np=[np0,np1,np2,np3]; auditNp=np;
-      const oddLine=!!(M.line&1);
       for(let p=0;p<4;p++){
-        // BUILD2JQ podle Altirra HW manualu: VDELAY nelaguje software zápisy a není univerzální "prev line".
-        // Když je bit nastaven, GTIA přijme DMA latch jen na lichých scanlinech; na sudých drží starý GRAFP.
-        if(!(gtia.vdelay&(1<<p)) || oddLine) gtia.grafp[p]=np[p]&0xFF;
-        gtia.pmPrevP[p]=np[p]&0xFF;
+        // BUILD2KH: VDELAY podle dodane GTIA dokumentace: nastaveny bit nepouzije "jen lichou radku",
+        // ale vezme predchozi DMA hodnotu a az potom ulozi aktualni pro pristi scanline.
+        // To je dulezite pro G2F/Postcard PMG barevne vrstvy a obecne PMG multiplexy.
+        const cur=np[p]&0xFF;
+        const delayed=!!(gtia.vdelay&(1<<p));
+        gtia.grafp[p]=delayed?(gtia.pmPrevP[p]&0xFF):cur;
+        gtia.pmPrevP[p]=cur;
         // BUILD2JS: hodnota nacitana DMA na zacatku scanline je samostatny GTIA latch pro tuto radku.
         // Pozdejsi CPU zapis do GRAFP nesmi zpetne smazat sprite, renderer bere pmLineP jako zaklad
         // a teprve paprskove segmenty GRAFP mohou menit data od sve X pozice.
         gtia.pmLineP[p]=gtia.grafp[p]&0xFF;
       }
-      if(gtia.vdelay && M.vbxeDebug && !M.gtiaVdelayExactLogged){ M.gtiaVdelayExactLogged=true; M.vbxeDebug('GTIA VDELAY BUILD2JQ: latch se pri nastavenem bitu nacita jen na lichych scanlinech; prime GRAFP/GRAFM zapisy se nezpozduji.'); }
+      if(gtia.vdelay && M.vbxeDebug && !M.gtiaVdelayExactLogged){ M.gtiaVdelayExactLogged=true; M.vbxeDebug('GTIA VDELAY BUILD2KH: nastaveny bit pouziva predchozi DMA radku, aktualni se uklada pro pristi scanline.'); }
       if(M.vbxeDebug && !gtia.pmDmaLatchLogged && ((gtia.pmLineP[0]|gtia.pmLineP[1]|gtia.pmLineP[2]|gtia.pmLineP[3])&0xFF)){
         gtia.pmDmaLatchLogged=true;
         M.vbxeDebug('GTIA PM DMA LATCH BUILD2JS: prvni nenulovy player latch line='+M.line+' PMBASE=$'+hx2(antic.pmbase)+' DMACTL=$'+hx2(antic.dmactl)+' GRACTL=$'+hx2(gtia.gractl)+' P='+gtia.pmLineP.map(function(v){return hx2(v);}).join(','));
@@ -2979,16 +2994,16 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if((antic.dmactl&0x0C)&&(gtia.gractl&1)){
       const nm=anticRead(base+(dbl?384:768)+li)&0xFF; auditNm=nm;
-      const oddLine=!!(M.line&1);
       let gm=gtia.grafm&0xFF;
       for(let p=0;p<4;p++){
         const sh=p*2;
-        if(!(gtia.vdelay&(0x10<<p)) || oddLine){
-          gm=(gm & ~(3<<sh)) | (((nm>>sh)&3)<<sh);
-        }
+        const cur=(nm>>sh)&3;
+        const prev=(gtia.pmPrevM>>sh)&3;
+        const use=!!(gtia.vdelay&(0x10<<p)) ? prev : cur;
+        gm=(gm & ~(3<<sh)) | ((use&3)<<sh);
       }
       gtia.grafm=gm&0xFF;
-      gtia.pmPrevM=nm;
+      gtia.pmPrevM=nm&0xFF;
       gtia.pmLineM=gtia.grafm&0xFF; // BUILD2JS: radkovy DMA latch missile dat
       if(M.vbxeDebug && !gtia.pmDmaLatchLogged && (gtia.pmLineM&0xFF)){
         gtia.pmDmaLatchLogged=true;
@@ -6585,7 +6600,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2KG_GTIA_MODE_PRIORITY_PMG_COLOR_MASK_PASS pripraven - navazuje na KF/KE/KB/JZ/JX. Postcard/G2F: GTIA 9/10/11 pixely uz maji PF priority/collision tridu, takze PMG barvici vrstvy respektuji PRIOR a nemaji kreslit fialove/zelene pruhy pres obraz. Night Driver/Commando/Mission chraneno, Decathlon PMBASE hack zustava pryc. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2KH_DEEP_GTIA_PMG_VDELAY_OVERLAP_CORE pripraven - skutecny dalsi rez po neuspesnem KG. Postcard/G2F: opraven VDELAY jako predchozi DMA radka podle dodane dokumentace + GTIA PRIOR bit5 player-overlap barva. Night Driver/Decathlon nelakuji jako hotove. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KF_DOC_GUIDED_NIGHTDRIVER_AUDIO_STRIPE_PASS pripraven - navazuje na KE/KB/JZ/JX. Night Driver: obsahovy SR stripe filtr podle XDL/transparent pravidel + robustni AudioContext resume pro POKEY/GTIA zvuk. Decathlon PMBASE hack z KD zustava pryc; bez dalsiho slepeho rezu. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KB_PLAIN_RENDER_LOCK_NO_IO_BREAK_SAFE pripraven - oprava po KA: nepotvrzene/weak-IO hry maji zamceny jen VBXE XDL/render overlay, ale D640/D740 IO uz nelamu ani nevracim tvrde $FF. Cil: vratit Mission po intru do hry, zachovat Commando Arnold ANO + hra ANO. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KA_PLAIN_PROGRAM_VBXE_LOCK_MISSION_SAFE pripraven - navazuje na JZ/JX uspech. Commando Arnold cesta zustava, ale nepotvrzene/weak-IO hry dostaly trvaly VBXE plain-lock, aby Mission/Decathlon nemohly nahodne zapnout XDL/MAP z D640/D740 sumu. KODY JSOU STEJNE.');
