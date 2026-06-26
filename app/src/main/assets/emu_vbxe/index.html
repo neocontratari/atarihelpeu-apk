@@ -2606,10 +2606,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return pr&0xC0;
   }
   function gtiaG2fLineLatchActive(){
-    // BUILD2KO: KN lathoval COLBK/GPRIOR jen pro zakladni GTIA pixel generator.
-    // Postcard/G2F ale pouziva PMG jako barevnou masku; pokud COLPM/PRIOR zapisy z HBLANKu
-    // cteme jako zmeny uvnitr viditelne casti, zustavaji svisle fialove/tyrkysove pruhy.
-    return (antic.mode===0x0F) && (gtSeg.n>=8) && (gtiaLineGmForG2F()!==0);
+    // BUILD2KQ: Po auditu GTIA dokumentace a logu KP je chyba v tom, ze G2F rastr neni
+    // jen ANTIC F + GTIA9/11. Postcard strida ANTIC E/F a barvy/PMG pripravuje po radkach.
+    // Predchozi KN/KO/KP lathovaly jen F+GTIA, takze cast obrazku (ANTIC E/m2bpp) porad
+    // kreslila COLPF/COLPM/HPOS jako svisle pruhy. Husty G2F kernel = mnoho GTIA zapisu
+    // v radce; pro ANTIC E i F pouzijeme radkovy stav, ne paprskove pruhy.
+    return (gtSeg.n>=8) && (antic.mode===0x0E || antic.mode===0x0F);
   }
   function gtiaG2fRegAt(g,x){
     if(gtiaG2fLineLatchActive() && g>=0x12 && g<=0x1B) return gtiaLineRegAtStart(g);
@@ -2625,8 +2627,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return gtiaG2fLineLatchActive();
   }
   function pfColorAt(cls,x){
-    if(cls<=0) return gtiaPal(gtiaRegAt(0x1A,x));
-    return gtiaPal(gtiaRegAt(0x15+cls,x));
+    // BUILD2KQ: line-latch musi platit i pro ANTIC E/F playfield barvy, ne jen pro GTIA pixel generator.
+    // Jinak G2F obraz sklada misto ploch vodorovnych barev svisle pruhy z COLPF/COLBK zapisu.
+    if(cls<=0) return gtiaPal(gtiaG2fRegAt(0x1A,x));
+    return gtiaPal(gtiaG2fRegAt(0x15+cls,x));
   }
   function gtiaModePfClass(nib,gm,x){
     // BUILD2KG/KJ: GTIA 9/10/11 pixels are real playfield pixels for collision/priority.
@@ -2755,12 +2759,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
         if(nib<12) return gtiaRegAt(0x1A,x);
         return gtiaRegAt(0x16+(nib-12),x);
       }
-      const g2fLineLatch = (gtSeg.n>=8) && (gtiaLineGmForG2F()!==0);
+      const g2fLineLatch = gtiaG2fLineLatchActive();
       const g2fLineGm = g2fLineLatch ? gtiaLineGmForG2F() : 0;
       const g2fLineCb = g2fLineLatch ? gtiaLineRegAtStart(0x1A) : 0;
       if(g2fLineLatch && M.vbxeDebug && !M.gtiaG2fLineLatchKnLogged){
         M.gtiaG2fLineLatchKnLogged=true;
-        M.vbxeDebug('GTIA G2F LINE LATCH BUILD2KN: ANTIC F + GTIA9/11 + husty DLI kernel bere COLBK/GPRIOR ze zacatku radky, ne jako svisle pruhy uvnitr obrazu.');
+        M.vbxeDebug('GTIA G2F LINE LATCH BUILD2KQ: ANTIC E/F + husty G2F kernel bere COLBK/COLPF/GPRIOR jako radkovy stav, ne svisle pruhy.');
       }
       for(let i=0;i<nb;i++){
         const bits=anticRead(antic.lms+i);
@@ -2789,7 +2793,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
           }else{
             // Normalni ANTIC F hires v ramci téhož nibblu. Barvy beru v dane X pozici,
             // aby DLI/G2F zmeny COLPF1/COLPF2 fungovaly i bez GTIA modu.
-            const pf1=gtiaRegAt(0x17,x0), pf2=gtiaRegAt(0x18,x0);
+            const pf1=gtiaG2fRegAt(0x17,x0), pf2=gtiaG2fRegAt(0x18,x0);
             const fg=xcolor?gtiaPal(pf1&0xFF):gtiaPal(((pf2&0xF0)|(pf1&0x0F))&0xFF);
             const bg=gtiaPal(pf2&0xFF);
             // BUILD2JR: ANTIC F hi-res: 1 bity jsou PF2 pro GTIA prioritu/kolize,
@@ -2861,7 +2865,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const g2fPmLatch=gtiaG2fLineLatchActive();
     if(g2fPmLatch && M.vbxeDebug && !M.gtiaG2fPmColorLatchKoLogged){
       M.gtiaG2fPmColorLatchKoLogged=true;
-      M.vbxeDebug('GTIA G2F PM COLOR LATCH BUILD2KO: COLPM/PRIOR pro PMG barevne vrstvy beru ze zacatku radky, aby HBLANK priprava nedelala svisle pruhy.');
+      M.vbxeDebug('GTIA G2F PM COLOR LATCH BUILD2KQ: COLPM/PRIOR pro PMG barevne vrstvy beru radkove pro ANTIC E/F G2F.');
     }
     function pmRegColorAt(g,x){ return g2fPmLatch ? gtiaLineRegAtStart(g) : gtiaRegAt(g,x); }
     function pmColAt(p,x){ return gtiaPal(pmRegColorAt(0x12+p,x)); }
@@ -2892,7 +2896,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const g2fPmgLineStage=gtiaG2fPmgLineStagingActive();
     if(g2fPmgLineStage && pmSeg && pmSeg.n && M.vbxeDebug && !M.gtiaG2fPmgStageKpLogged){
       M.gtiaG2fPmgStageKpLogged=true;
-      M.vbxeDebug('GTIA G2F PMG LINE STAGING BUILD2KP: PMG HPOS/SIZE/GRAF/GRACTL segmenty se u ANTIC F + GTIA9/11 berou jako priprava cele scanline, ne jako svisle pruhy.');
+      M.vbxeDebug('GTIA G2F PMG LINE STAGING BUILD2KQ: PMG HPOS/SIZE/GRAF/GRACTL se u ANTIC E/F G2F berou jako stav cele scanline, ne svisle pruhy.');
     }
     // Pocitam pixel proti aktualnimu paprskovemu stavu HPOS/SIZE/GRAF/GRACTL v dane X pozici.
     if(pmSeg && pmSeg.n && !g2fPmgLineStage){
@@ -6704,6 +6708,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2KQ_G2F_ANTIC_EF_RASTER_AUDIT_CORE pripraven - audit podle GTIA dokumentace: G2F/Postcard nepouziva jen ANTIC F+GTIA9/11, ale strida ANTIC E/F. Proto lathuji COLBK/COLPF/COLPM/PRIOR i PMG objektove registry radkove pro husty ANTIC E/F G2F kernel. Cil: konec svislych fialovo/tyrkysovych pruhu bez screen-paintu a bez hacku podle nazvu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KP_G2F_PMG_LINE_STAGING_CORE pripraven - navazuje na KM/KN/KO stopu. Novy rez: u ANTIC F + GTIA9/11 + husty G2F/DLI kernel uz nepouzivam behem jedne radky paprskove PMG segmenty jako okamzity obraz; P/M objektove registry se berou jako line-staged stav pro celou radku. Cil: odstranit spatne svisle PMG/GTIA barevne pruhy u Postcard/G2F bez screen-paintu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KO_G2F_PM_COLOR_LINE_LATCH_CORE pripraven - navazuje na KN/KM maly posun. Novy rez: u ANTIC F + GTIA9/11 + husty G2F/DLI kernel se line-latch netyka jen COLBK/GPRIOR zakladniho pixel generatoru, ale i COLPM/PRIOR pro PMG barevne vrstvy. Cil: zmensit zbytky fialovych/tyrkysovych pruhu bez screen-paintu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KM_GTIA9_11_PIXEL_GENERATOR_FULL_CORE pripraven - navazuje na KL, ale uz nejde po PMG masce. Oprava primo v GTIA 9/11 pixel generatoru: GTIA9 pouziva plny 4bit jas z pixelu, GTIA11 pouziva standardni hue=pixel/luma=COLBK bez KL OR-hue chyby. Soucasne se rusi tvrde KK blokovani PMG pres GTIA obraz a vraci se normalni PRIOR cesta, aby G2F mohl barvit obraz realnou PMG vrstvou. KODY JSOU STEJNE.');
