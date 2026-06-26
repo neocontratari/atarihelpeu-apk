@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2JZ</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2KR</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -356,6 +356,14 @@ canvas#scr{position:absolute;left:0;top:0;width:100% !important;height:100% !imp
    emulator zkusi najit spravnou 16KB VRAM stranku se stejnym offsetem a vykresli jen realna VBXE data.
    Night Driver a Decathlon zatim dal hlasi PM audit; GTIA priorita se nehackuje. */
 
+
+/* BUILD2KR_G2F_BEAM_EXACT_NO_LATCH_CORE:
+   Audit po KQ: Postcard/G2F je plne paprskovy raster kernel, ne staticky radkovy obraz.
+   KN-KQ line-latch/staging v praxi nepohnuly obrazem, proto je vypinam a vracim
+   GTIA/COLPF/COLPM/PRIOR i PMG HPOS/SIZE/GRAF na presne beam segmenty podle cyklu.
+   Soucasne opravuji 6502 write-cycle timestamp na posledni cyklus instrukce (0-based),
+   a render snapshot na cc=48/cpu=24 dle GTIA dokumentace. Bez screen-paintu, bez hacku podle nazvu. */
+
 /* BUILD2KA_PLAIN_PROGRAM_VBXE_LOCK_MISSION_SAFE:
    BUILD2JZ potvrdil navrat JX uspechu: Commando Arnold ANO + hra ANO.
    Log z Mission ale ukazal slabou IO-only detekci (obycejny Atari titul), pote se pres nahodne D640/D64x
@@ -612,7 +620,15 @@ function CPU6502(read, write){
   const rd=read, wr=write;
   // BUILD2KI: memory-mapped I/O writes must be timestamped at the actual 6502 write cycle,
   // not at opcode start. GTIA/G2F kernels depend on this for COLPM/COLPF/PRIOR/HPOS timing.
-  function wrt(a,v,cycEnd){ c.ioWriteCycle=(c.cycles+(cycEnd||0))|0; wr(a,v); c.ioWriteCycle=-1; }
+  function wrt(a,v,cycEnd){
+    // BUILD2KR: 6502 cykly jsou v emulatoru 0-based. STA abs trva 4 cykly,
+    // ale zapis je na poslednim cyklu instrukce, tedy start+3, ne start+4.
+    // G2F/Postcard ceka presne na tyhle hranice; +1 cyklus posouval split o 4 pixely.
+    const ce=(cycEnd||0);
+    c.ioWriteCycle=(c.cycles+(ce>0?ce-1:0))|0;
+    wr(a,v);
+    c.ioWriteCycle=-1;
+  }
   function nz(v){ c.zf=v===0?1:0; c.nf=(v>>7)&1; }
   function push(v){ wr(0x100|c.sp, v&0xFF); c.sp=(c.sp-1)&0xFF; }
   function pop(){ c.sp=(c.sp+1)&0xFF; return rd(0x100|c.sp); }
@@ -2606,25 +2622,19 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return pr&0xC0;
   }
   function gtiaG2fLineLatchActive(){
-    // BUILD2KQ: Po auditu GTIA dokumentace a logu KP je chyba v tom, ze G2F rastr neni
-    // jen ANTIC F + GTIA9/11. Postcard strida ANTIC E/F a barvy/PMG pripravuje po radkach.
-    // Predchozi KN/KO/KP lathovaly jen F+GTIA, takze cast obrazku (ANTIC E/m2bpp) porad
-    // kreslila COLPF/COLPM/HPOS jako svisle pruhy. Husty G2F kernel = mnoho GTIA zapisu
-    // v radce; pro ANTIC E i F pouzijeme radkovy stav, ne paprskove pruhy.
-    return (gtSeg.n>=8) && (antic.mode===0x0E || antic.mode===0x0F);
+    // BUILD2KR: KQ dokazal, ze radkove lathovani COLBK/COLPF/COLPM/PRIOR je spatny smer.
+    // G2F/Postcard je paprskovy kernel: prave zmeny uvnitr radky kresli hranice obrazku.
+    // Proto se sem vraci presny beam renderer: gtiaRegAt(g,x) podle skutecneho cyklu zapisu.
+    return false;
   }
   function gtiaG2fRegAt(g,x){
     if(gtiaG2fLineLatchActive() && g>=0x12 && g<=0x1B) return gtiaLineRegAtStart(g);
     return gtiaRegAt(g,x);
   }
   function gtiaG2fPmgLineStagingActive(){
-    // BUILD2KP: KO porad nechavalo PMG objektove registry (HPOS/SIZE/GRAF/GRACTL)
-    // paprskove prepinat uvnitr viditelne radky. U G2F kernelu jsou tyto zapisy typicky
-    // priprava dalsi scanline po WSYNC/HBLANKu; kdyz je promítneme do aktualni radky,
-    // vzniknou svisle rozbite barevne sloupce. Pro ANTIC F + GTIA9/11 + husty DLI
-    // proto pouzijeme line-staged P/M stav pro celou radku a paprskove PMG segmenty
-    // nechame jen pro bezne hry/intra mimo tuto G2F cestu.
-    return gtiaG2fLineLatchActive();
+    // BUILD2KR: vypnuto. PMG HPOS/SIZE/GRAF/GRACTL musi jit paprskove podle cyklu,
+    // protoze G2F pouziva P/M presne jako barevne masky a hranice v obrazku.
+    return false;
   }
   function pfColorAt(cls,x){
     // BUILD2KQ: line-latch musi platit i pro ANTIC E/F playfield barvy, ne jen pro GTIA pixel generator.
@@ -3480,7 +3490,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // do zacatku dalsi scanline; typicky DLI udela STA WSYNC a teprve na dalsi radce zapise
     // COLPF/COLBK. Stary model bral snapshot pred temito zapisy, a tim vznikaly pruhy/barvy mimo.
     // Zapisy v prvnich ~28 cyklech aktualni radky plati pro tuto radku, pozdejsi az pro dalsi.
-    const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+28;
+    const lineStart=cpu.cycles, target=lineStart+CYC_LINE, snapAt=lineStart+24; // BUILD2KR: PF normal start cc=48 => cpu cycle 24
     // BUILD2KL: WSYNC na realnem Atari pusti CPU jeste do HBLANK casti radky (cca cc=208/cyc=104),
     // aby DLI/G2F kernel mohl pripravit COLPF/COLBK/PRIOR pro dalsi scanline. Stary model skocil az
     // na konec radky a zabil techto ~10 cyklu, takze barvy pro dalsi radku prisly pozde a delaly pruhy.
@@ -6708,6 +6718,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2KR_G2F_BEAM_EXACT_NO_LATCH_CORE pripraven - audit po KQ: vypinam neuspesne G2F line-latch/staging a vracim Postcard/G2F na presny paprskovy renderer. Opraven 6502 IO write timestamp na posledni cyklus instrukce a snapshot na PF start cpu=24. Bez screen-paintu, bez hacku podle nazvu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KQ_G2F_ANTIC_EF_RASTER_AUDIT_CORE pripraven - audit podle GTIA dokumentace: G2F/Postcard nepouziva jen ANTIC F+GTIA9/11, ale strida ANTIC E/F. Proto lathuji COLBK/COLPF/COLPM/PRIOR i PMG objektove registry radkove pro husty ANTIC E/F G2F kernel. Cil: konec svislych fialovo/tyrkysovych pruhu bez screen-paintu a bez hacku podle nazvu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KP_G2F_PMG_LINE_STAGING_CORE pripraven - navazuje na KM/KN/KO stopu. Novy rez: u ANTIC F + GTIA9/11 + husty G2F/DLI kernel uz nepouzivam behem jedne radky paprskove PMG segmenty jako okamzity obraz; P/M objektove registry se berou jako line-staged stav pro celou radku. Cil: odstranit spatne svisle PMG/GTIA barevne pruhy u Postcard/G2F bez screen-paintu. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KO_G2F_PM_COLOR_LINE_LATCH_CORE pripraven - navazuje na KN/KM maly posun. Novy rez: u ANTIC F + GTIA9/11 + husty G2F/DLI kernel se line-latch netyka jen COLBK/GPRIOR zakladniho pixel generatoru, ale i COLPM/PRIOR pro PMG barevne vrstvy. Cil: zmensit zbytky fialovych/tyrkysovych pruhu bez screen-paintu. KODY JSOU STEJNE.');
