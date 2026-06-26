@@ -610,6 +610,9 @@ function CPU6502(read, write){
   const c={a:0,x:0,y:0,sp:0xFF,pc:0,nf:0,vf:0,df:0,if_:1,zf:0,cf:0,
            nmiPending:false,irqLine:0,jam:false,cycles:0};
   const rd=read, wr=write;
+  // BUILD2KI: memory-mapped I/O writes must be timestamped at the actual 6502 write cycle,
+  // not at opcode start. GTIA/G2F kernels depend on this for COLPM/COLPF/PRIOR/HPOS timing.
+  function wrt(a,v,cycEnd){ c.ioWriteCycle=(c.cycles+(cycEnd||0))|0; wr(a,v); c.ioWriteCycle=-1; }
   function nz(v){ c.zf=v===0?1:0; c.nf=(v>>7)&1; }
   function push(v){ wr(0x100|c.sp, v&0xFF); c.sp=(c.sp-1)&0xFF; }
   function pop(){ c.sp=(c.sp+1)&0xFF; return rd(0x100|c.sp); }
@@ -741,24 +744,24 @@ function CPU6502(read, write){
       case 0x79: t=rdAbsBase(); ea=(t+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; adc(rd(ea)); cyc=4+pg(t,ea); break; // ADC aby BUILD2JI page-cross
       case 0x7D: t=rdAbsBase(); ea=(t+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; adc(rd(ea)); cyc=4+pg(t,ea); break; // ADC abx BUILD2JI page-cross
       case 0x7E: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; v=rd(ea); t=c.cf; c.cf=v&1; v=(v>>1)|(t<<7); nz(v); wr(ea,v); cyc=7; break; // ROR abx
-      case 0x81: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); wr(ea,c.a); cyc=6; break; // STA izx
-      case 0x84: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; wr(ea,c.y); cyc=3; break; // STY zp
-      case 0x85: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; wr(ea,c.a); cyc=3; break; // STA zp
-      case 0x86: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; wr(ea,c.x); cyc=3; break; // STX zp
+      case 0x81: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); wrt(ea,c.a,6); cyc=6; break; // STA izx BUILD2KI io write timing
+      case 0x84: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; wrt(ea,c.y,3); cyc=3; break; // STY zp BUILD2KI io write timing
+      case 0x85: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; wrt(ea,c.a,3); cyc=3; break; // STA zp BUILD2KI io write timing
+      case 0x86: ea=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; wrt(ea,c.x,3); cyc=3; break; // STX zp BUILD2KI io write timing
       case 0x88:  c.y=(c.y-1)&0xFF; nz(c.y); cyc=2; break; // DEY imp
       case 0x8A:  c.a=c.x; nz(c.a); cyc=2; break; // TXA imp
-      case 0x8C: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; wr(ea,c.y); cyc=4; break; // STY abs
-      case 0x8D: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; wr(ea,c.a); cyc=4; break; // STA abs
-      case 0x8E: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; wr(ea,c.x); cyc=4; break; // STX abs
+      case 0x8C: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; wrt(ea,c.y,4); cyc=4; break; // STY abs BUILD2KI io write timing
+      case 0x8D: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; wrt(ea,c.a,4); cyc=4; break; // STA abs BUILD2KI io write timing
+      case 0x8E: ea=rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8); c.pc=(c.pc+2)&0xFFFF; wrt(ea,c.x,4); cyc=4; break; // STX abs BUILD2KI io write timing
       case 0x90: t=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; cyc=br(!c.cf,t); break; // BCC rel BUILD2IU exact branch cycles
-      case 0x91: t=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; ea=((rd(t)|(rd((t+1)&0xFF)<<8))+c.y)&0xFFFF; wr(ea,c.a); cyc=6; break; // STA izy
+      case 0x91: t=rd(c.pc); c.pc=(c.pc+1)&0xFFFF; ea=((rd(t)|(rd((t+1)&0xFF)<<8))+c.y)&0xFFFF; wrt(ea,c.a,6); cyc=6; break; // STA izy BUILD2KI io write timing
       case 0x94: ea=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; wr(ea,c.y); cyc=4; break; // STY zpx
       case 0x95: ea=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; wr(ea,c.a); cyc=4; break; // STA zpx
       case 0x96: ea=(rd(c.pc)+c.y)&0xFF; c.pc=(c.pc+1)&0xFFFF; wr(ea,c.x); cyc=4; break; // STX zpy
       case 0x98:  c.a=c.y; nz(c.a); cyc=2; break; // TYA imp
-      case 0x99: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; wr(ea,c.a); cyc=5; break; // STA aby
+      case 0x99: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.y)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; wrt(ea,c.a,5); cyc=5; break; // STA aby BUILD2KI io write timing
       case 0x9A:  c.sp=c.x; cyc=2; break; // TXS imp
-      case 0x9D: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; wr(ea,c.a); cyc=5; break; // STA abx
+      case 0x9D: ea=((rd(c.pc)|(rd((c.pc+1)&0xFFFF)<<8))+c.x)&0xFFFF; c.pc=(c.pc+2)&0xFFFF; wrt(ea,c.a,5); cyc=5; break; // STA abx BUILD2KI io write timing
       case 0xA0: ea=c.pc; c.pc=(c.pc+1)&0xFFFF; c.y=rd(ea); nz(c.y); cyc=2; break; // LDY imm
       case 0xA1: t=(rd(c.pc)+c.x)&0xFF; c.pc=(c.pc+1)&0xFFFF; ea=rd(t)|(rd((t+1)&0xFF)<<8); c.a=rd(ea); nz(c.a); cyc=6; break; // LDA izx
       case 0xA2: ea=c.pc; c.pc=(c.pc+1)&0xFFFF; c.x=rd(ea); nz(c.x); cyc=2; break; // LDX imm
@@ -2334,7 +2337,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       else if(p===0x05) antic.vscrol=v&15;
       else if(p===0x07) antic.pmbase=v;
       else if(p===0x09){ antic.chbase=v;
-        if(chSeg.n<chSeg.c.length){ chSeg.c[chSeg.n]=cpu.cycles-M.lineCyc0; chSeg.v[chSeg.n]=v; chSeg.n++; }
+        if(chSeg.n<chSeg.c.length){ const wcy=(cpu.ioWriteCycle!==undefined && cpu.ioWriteCycle>=0)?cpu.ioWriteCycle:cpu.cycles; chSeg.c[chSeg.n]=wcy-M.lineCyc0; chSeg.v[chSeg.n]=v; chSeg.n++; }
         if(M.chLog)M.chLog.push([M.line,v,cpu.pc]); }
       else if(p===0x0A){ M.wsync=true; }       // WSYNC: stall CPU to line end
       else if(p===0x0E){ antic.nmien=v; }
@@ -2421,14 +2424,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!M.vbxeDebug) return;
     if(pmAudit.lastRegLog<32 && ((g<=0x11)||g===0x1B||g===0x1C||g===0x1D)){
       pmAudit.lastRegLog++;
-      M.vbxeDebug('BUILD2JT GTIA W: frame='+M.frame+' line='+M.line+' cyc='+(((cpu.cycles||0)-M.lineCyc0)|0)+' reg=$D0'+hx2(g)+' val=$'+hx2(v)+' PC=$'+hx4(cpu.pc));
+      M.vbxeDebug('BUILD2JT GTIA W: frame='+M.frame+' line='+M.line+' cyc='+((((cpu.ioWriteCycle!==undefined&&cpu.ioWriteCycle>=0)?cpu.ioWriteCycle:(cpu.cycles||0))-M.lineCyc0)|0)+' reg=$D0'+hx2(g)+' val=$'+hx2(v)+' PC=$'+hx4(cpu.pc));
     }
   }
   function pmAuditAnticWrite(p,v){
     if(!pmAudit.enabled) return; pmAudit.anticWrites++;
     if((p===0 || p===7 || p===2 || p===3) && M.vbxeDebug && pmAudit.lastRegLog<48){
       pmAudit.lastRegLog++;
-      M.vbxeDebug('BUILD2JT ANTIC W: frame='+M.frame+' line='+M.line+' cyc='+(((cpu.cycles||0)-M.lineCyc0)|0)+' reg=$D4'+hx2(p)+' val=$'+hx2(v)+' PC=$'+hx4(cpu.pc));
+      M.vbxeDebug('BUILD2JT ANTIC W: frame='+M.frame+' line='+M.line+' cyc='+((((cpu.ioWriteCycle!==undefined&&cpu.ioWriteCycle>=0)?cpu.ioWriteCycle:(cpu.cycles||0))-M.lineCyc0)|0)+' reg=$D4'+hx2(p)+' val=$'+hx2(v)+' PC=$'+hx4(cpu.pc));
     }
   }
   function pmAuditDmaFetch(base,dbl,li,np,nm){
@@ -2900,7 +2903,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!((g>=0x00&&g<=0x11)||g===0x1D)) return;
     if(M.line<8 || M.line>=248) return;
     if(!M.lineCyc0 && M.lineCyc0!==0) return;
-    const cyc=((cpu.cycles||0)-M.lineCyc0)|0;
+    const wcy=(cpu.ioWriteCycle!==undefined && cpu.ioWriteCycle>=0)?cpu.ioWriteCycle:(cpu.cycles||0);
+    const cyc=(wcy-M.lineCyc0)|0;
     if(cyc<0 || cyc>113) return;
     if(pmSeg.n>=pmSeg.x.length) return;
     const idx=pmSeg.n++;
@@ -2926,7 +2930,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(g<0x12 || g>0x1B) return;
     if(M.line<8 || M.line>=248) return;
     if(!M.lineCyc0 && M.lineCyc0!==0) return;
-    const cyc=((cpu.cycles||0)-M.lineCyc0)|0;
+    const wcy=(cpu.ioWriteCycle!==undefined && cpu.ioWriteCycle>=0)?cpu.ioWriteCycle:(cpu.cycles||0);
+    const cyc=(wcy-M.lineCyc0)|0;
     if(cyc<0 || cyc>113) return;
     if(gtSeg.n>=gtSeg.x.length) return;
     const idx=gtSeg.n++;
@@ -6600,6 +6605,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2KI_CPU_IO_WRITE_CYCLE_GTIA_RASTER_CORE pripraven - hlubsi raster rez po KH: GTIA/ANTIC/PMG zapisy do D0xx/D4xx uz maji cas skutecneho 6502 write-cyklu, ne zacatek instrukce. Cil: G2F/Postcard svisle pruhy a obecny DLI/PMG timing; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KH_DEEP_GTIA_PMG_VDELAY_OVERLAP_CORE pripraven - skutecny dalsi rez po neuspesnem KG. Postcard/G2F: opraven VDELAY jako predchozi DMA radka podle dodane dokumentace + GTIA PRIOR bit5 player-overlap barva. Night Driver/Decathlon nelakuji jako hotove. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KF_DOC_GUIDED_NIGHTDRIVER_AUDIO_STRIPE_PASS pripraven - navazuje na KE/KB/JZ/JX. Night Driver: obsahovy SR stripe filtr podle XDL/transparent pravidel + robustni AudioContext resume pro POKEY/GTIA zvuk. Decathlon PMBASE hack z KD zustava pryc; bez dalsiho slepeho rezu. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KB_PLAIN_RENDER_LOCK_NO_IO_BREAK_SAFE pripraven - oprava po KA: nepotvrzene/weak-IO hry maji zamceny jen VBXE XDL/render overlay, ale D640/D740 IO uz nelamu ani nevracim tvrde $FF. Cil: vratit Mission po intru do hry, zachovat Commando Arnold ANO + hra ANO. KODY JSOU STEJNE.');
