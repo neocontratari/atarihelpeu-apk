@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LM</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LN</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2930,9 +2930,13 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const R=md.px||((md.t==='ch6')?16:8);
       const xs0=192-((nbN*R)>>1), sh=antic.hscrol*2;
       for(let x=xs0;x<xs0+nbN*R;x++){
-        const s=x-sh;
-        if(s>=0&&s<512){ fb[off+x]=hsBuf[s]; pfc[x]=hsCls[s]; }
+        // BUILD2LN: ANTIC HSCROL phase. Extra fetch data are on the hidden side of the line;
+        // sampling forward instead of backward matches left-scrolling score/banner kernels better.
+        // If this hurts a HSCROL game, revert to LM immediately.
+        const src=x+sh;
+        if(src>=0&&src<512){ fb[off+x]=hsBuf[src]; pfc[x]=hsCls[src]; }
       }
+      if(M.vbxeDebug && !M.anticHscrollPhaseLnLogged){ M.anticHscrollPhaseLnLogged=true; M.vbxeDebug('ANTIC HSCROL PHASE BUILD2LN: HSCROL kopiruje z x+hscroll misto x-hscroll; cil Decathlon scroll nastenka.'); }
     }
     renderPMG(y);
   }
@@ -3125,8 +3129,23 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function pmRegAt(g,x,fallback){
     let v=fallback&0xFF;
     if(pmSeg.n){
+      // BUILD2LN: HBLANK/pre-display writes of PMG position/size/control are line setup, not visible tear.
+      // Earlier LK used only the early snapshot and missed writes that happen after snapAt but before the visible
+      // part of the line. Here we collapse early PMG setup segments (roughly <= x48) into the whole-line base,
+      // then later visible segments still work as true beam changes. This targets Decathlon body/legs without
+      // returning LK's global HPOS freeze.
+      const posSizeCtrl=(g>=0x00 && g<=0x0C) || g===0x1D;
+      if(posSizeCtrl){
+        for(let i=0;i<pmSeg.n;i++){
+          if(pmSeg.r[i]===g && pmSeg.x[i]<=48) v=pmSeg.v[i];
+        }
+        if(M.vbxeDebug && !M.pmEarlyHblankLnLogged){
+          M.pmEarlyHblankLnLogged=true;
+          M.vbxeDebug('GTIA PMG EARLY HBLANK BUILD2LN: ranne HPOS/SIZE/GRACTL segmenty do x48 plati pro celou radku; viditelne segmenty zustavaji. Cil: Decathlon telo/nohy bez LK freeze.');
+        }
+      }
       for(let i=0;i<pmSeg.n;i++){
-        if(pmSeg.r[i]===g && x>=pmSeg.x[i]) v=pmSeg.v[i];
+        if(pmSeg.r[i]===g && x>=pmSeg.x[i] && (!posSizeCtrl || pmSeg.x[i]>48)) v=pmSeg.v[i];
       }
     }
     return v&0xFF;
@@ -6916,6 +6935,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2LN_PMG_EARLY_HBLANK_AND_HSCROL_PHASE_DECATHLON_SAFE pripraven - zaklad je potvrzeny LM/LL: River Raid TOP a rychle nahravani chraneno. Nove jen pro Decathlon smer: ranne PMG HPOS/SIZE/GRACTL zapisy do x48 se berou jako priprava cele radky, ne trhani uprostred; HSCROL faze zkousi kopirovat z x+hscroll pro scroll nastenku. Night Driver pruh zatim bez opravy. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LM_PLAYER_OVERLAP_AND_HSCROL_DECATHLON_SAFE pripraven - zaklad je potvrzeny LL: River Raid a rychlejsi chytani her chraneno. Zachovano LL PRIOR=$01 + XEX turbo exit + LJ CHBASE 512. Nove: normalni overlap P0/P1 a P2/P3 bez PRIOR bit5 uz nedela cernou diru, cil Decathlon telo/nohy; HSCROL po konci znakoveho radku posouva LMS o viditelne bytes, ne o extra fetch, cil scrolling nastenka. Night Driver pruh zatim nelakuji jako opraveny. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LL_PRIORITY01_RIVERRAID_AND_XEX_TURBO_EXIT_SAFE pripraven - zaklad je LJ, ne LK. LK stabilni HPOS/SIZE nepomohl na Decathlon telo/nohy a mohl sahat do PMG her, proto je vynechan. Zachovana LJ CHBASE 512 oprava pro Decathlon nastenku. Nove: PRIOR=$01 uz neschova P2/P3, cil River Raid protivnici; XEX turbo se vypina hned po prechodu PC do herni RAM bez SIO, cil startovni zasek/zvukove koktani a pomale chytani her. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LJ_CHBASE_512_ANTIC6_DECATHLON_TEXT_CORE pripraven - zaklad je LH, ne LI. LI pozdni PMG latch nehlasim jako uspesny a neni v teto oprave. Zmena je jen v ANTIC znakove adrese: mode 6/7 bere CHBASE na 512B hranici (&FE), ne na 1KB (&FC). Decathlon zapisuje CHBASE=$12, takze stary kod cetl font z $1000 misto $1200. Cil: horni scoreboard/nastenka/text; PMBASE=$00 a LH priorita zustavaji. UI/klavesnice/kazeta/joystick/CLOAD beze zmen. KODY JSOU STEJNE.');
