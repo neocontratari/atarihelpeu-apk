@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LU</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LV</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -4233,34 +4233,18 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
 
   function vbxeSrLowOriginSkipRowsKE(r){
-    // BUILD2KE: Night Driver log ukazal XDL base=$00000 a SR record y=182/lines=54/ov=$00010/step=256.
-    // To znamena, ze prvni radky SR cte primo z oblasti XDL tabulky/hlavice a kresli vodorovny caj u auta.
-    // Obecne pravidlo bez nazvu hry: jen SR, spodni cast obrazu, velmi nizka OVADR, krok 256/320,
-    // narrow width. Preskoci se tolik radku, kolik stale bere zdroj pod $0800.
-    if(!r || r.mode!==1) return 0;
-    var addr=(r.ovAddr||0)&0x7FFFF;
-    var step=(r.ovStep||0)&0x0FFF;
-    var y=(r.y||0)|0, lines=(r.lines||0)|0;
-    if(addr>=0x80) return 0;
-    if(y<150 || lines<16 || lines>112) return 0;
-    if(step!==256 && step!==320) return 0;
-    if((r.widthSel|0)!==0) return 0;
-    var rows=0;
-    // BUILD2LU: LT vycistil Night Driver pruh, ale pevny skok az do $1400 (20 radku)
-    // u nizkeho SR recordu sebral zacatek auta. Vracim cast horni karoserie: pevny skip je
-    // mensi (do $0F00, max 15 radku) a zbytek nechavam na obsahovy BUILD2KF/LC stripe filtr.
-    // Tohle porad neni screen-paint ani nazev hry: pravidlo zustava jen SR + nizka VRAM + spodni record.
-    var safeLimit=0x0F00;
-    var maxRows=Math.min(15,lines);
-    for(var yy=0; yy<maxRows; yy++){
-      var src=(addr + vbxeGraphLocalY(r,yy)*step)&0x7FFFF;
-      if(src<safeLimit) rows=yy+1;
+    // BUILD2LV: rusim pevne preskakovani prvnich SR radku z nizke VRAM.
+    // LT/LU dokazaly odstranit Night Driver pruh, ale rezaly legitimni grafiku auta.
+    // Obecna cesta ted neni "zahod N radku", ale pixelovy/runovy filtr nize:
+    // dlouhe vodorovne artefakt segmenty se vynechaji, normalni kompaktni objekt se kresli.
+    if(r && r.mode===1 && M.vbxeDebug && !vbxe.xdlSrLowOriginLvLogged){
+      var addr=(r.ovAddr||0)&0x7FFFF, step=(r.ovStep||0)&0x0FFF;
+      if(addr<0x200 && ((r.y||0)|0)>=140 && (step===256 || step===320)){
+        vbxe.xdlSrLowOriginLvLogged=true;
+        M.vbxeDebug('VBXE SR LOW-ORIGIN PIXEL FILTER BUILD2LV: pevny skip radku vypnut; filtruji jen dlouhe vodorovne SR artefakt segmenty, aby se nerezala legitimni grafika.');
+      }
     }
-    if(rows>0 && M.vbxeDebug && !vbxe.xdlSrLowOriginKeLogged){
-      vbxe.xdlSrLowOriginKeLogged=true;
-      M.vbxeDebug('VBXE SR LOW-ORIGIN CAR PRESERVE BUILD2LU: preskakuji '+rows+' SR radku z nizke VRAM oblasti rec y='+(r.y|0)+' lines='+(r.lines|0)+' ov=$'+addr.toString(16).toUpperCase().padStart(5,'0')+' step='+step+' limit=$'+safeLimit.toString(16).toUpperCase()+' maxRows='+maxRows+'; cil Night Driver pruh pryc, ale predek auta zachovat.');
-    }
-    return rows;
+    return 0;
   }
 
 
@@ -4336,6 +4320,40 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
 
 
+
+  function vbxeSrNoisePixelLV(r,yy,x,bytes,hs,v){
+    // BUILD2LV obecny VBXE SR segmentovy filtr:
+    // neresi konkretni hru ani souradnice auta. Plati jen pro podezrele SR recordy z velmi nizke VRAM,
+    // kde se mohou kreslit XDL/hlavickova data jako dlouhe horizontalni pruhy.
+    // Rozdil proti LT/LU: nevyhazuje celou radku. Vynecha jen dlouhy jednobarevny beh,
+    // ktery se dotyka okraje nebo zabira vetsinu sirky. Kompaktni objekt uprostred zustane.
+    if(!vbxeSrLowOriginCandidateKF(r)) return false;
+    if(vbxeGraphTransparent8LC(r,v)) return false;
+    var src=vbxeGraphSourceAddr(r,yy), col=v&0xFF;
+    var l=x, rr=x;
+    while(l>0){
+      var vl=vbxe.vram[(src+l-1+hs)&0x7FFFF]&0xFF;
+      if(vl!==col || vbxeGraphTransparent8LC(r,vl)) break;
+      l--;
+      if(x-l>192) break;
+    }
+    while(rr<bytes-1){
+      var vr=vbxe.vram[(src+rr+1+hs)&0x7FFFF]&0xFF;
+      if(vr!==col || vbxeGraphTransparent8LC(r,vr)) break;
+      rr++;
+      if(rr-x>192) break;
+    }
+    var run=rr-l+1;
+    var edge=(l<=2 || rr>=bytes-3);
+    var majority=(run>=Math.max(96,(bytes*0.52)|0));
+    var hit=(run>=64 && (edge || majority));
+    if(hit && M.vbxeDebug && !vbxe.xdlSrPixelFilterLvLogged){
+      vbxe.xdlSrPixelFilterLvLogged=true;
+      M.vbxeDebug('VBXE SR SEGMENT FILTER BUILD2LV: vynechavam dlouhy SR beh yy='+yy+' x='+l+'-'+rr+' run='+run+' bytes='+bytes+' edge='+(edge?1:0)+' majority='+(majority?1:0)+'; objektove radky se nerezou cele.');
+    }
+    return hit;
+  }
+
   function vbxeVisibleWidthHi(widthSel){
     // BUILD2IF: skutecna VBXE hires sirka. Normal = 640 px, narrow = 512, wide = 672.
     return widthSel===0 ? 512 : (widthSel===2 ? 672 : 640);
@@ -4359,7 +4377,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         if(vbxeSrArtifactRowLC(r,yy,bytes,hs)) continue;
         for(var x=0;x<bytes;x++){
           var v=vram[(src+x+hs)&0x7FFFF]&0xFF;
-          if(!vbxeGraphTransparent8LC(r,v)){ var px=x0+x*2 - (vbxeGraphHScrollHi(r)&1)*2; putIdx(px,gy,v); putIdx(px+1,gy,v); }
+          if(!vbxeGraphTransparent8LC(r,v) && !vbxeSrNoisePixelLV(r,yy,x,bytes,hs,v)){ var px=x0+x*2 - (vbxeGraphHScrollHi(r)&1)*2; putIdx(px,gy,v); putIdx(px+1,gy,v); }
         }
       }
     } else if(r.mode===3){ // LR: 1 byte = 4 hires pixely
@@ -6984,6 +7002,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2LV_CORE_SR_SEGMENT_FILTER_NO_GAME_PATCH pripraven - zaklad je BUILD2LU/LR, ale LT/LU pevne SR radkove rezani je vypnute. Night Driver uz nebude reseny odrezanim N radku: obecny VBXE SR segmentovy filtr vynecha jen dlouhe vodorovne artefakt behy z nizke VRAM a ma zachovat auto. River Raid TOP + loader LR zustava chranen. Decathlon/Popeye nejsou lakovane jako hotove; dalsi rez bude core audit, ne lepeni podle nazvu hry. UI/klavesnice/joystick/kazeta/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LU_NIGHTDRIVER_CAR_PRESERVE_DECATHLON_AUDIT_SAFE pripraven - zaklad je BUILD2LT/LR: River Raid TOP + rychly loader chraneny. Night Driver: LT dokazal odstranit pruh, ale urizl predek auta; LU zmensuje low-origin SR skip a nechava obsahovy stripe filtr, aby se auto vratilo. Decathlon: LS zahozena, LT ponechan jen jako audit/bezpečný raster smer; dalsi graficky rez podle vysledku. UI/klavesnice/joystick/kazeta/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LT_GRAPH_CORE_RASTER_STRIPE_SAFE pripraven - zaklad je BUILD2LR, LS zahozena. Loader/River Raid/Popeye-W3D rychlost zustava z LR. Nove jen grafika: ranne GTIA/PMG HBLANK zapisy plati od x=0 pro Decathlon text/PMG fazi; VBXE SR low-origin sanitize je silnejsi pro Night Driver pruh. Popeye VBXE grafiku zatim nehlasim jako opravenou. CLOAD/CSAVE/UI/loader beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LR_VBXE_TURBO_KEYBOARD_SAFE pripraven - zaklad je BUILD2LQ/LO: River Raid TOP a povoleny fake-fast loader chranen. Oprava: potvrzene VBXE XEX/ATR uz po nahrani automaticky neskace do joysticku, zustava klavesnice pro uvodni volby; joystick lze zapnout rucne a landscape ovladani se nemeni. Popeye many-record turbo je zjemnene pro mene UI zaseku, W3D/VBXE ATR D1 turbo ma delsi okno a rychlejsi diskove faze. Grafika Popeye/Decathlon/Night Driver se tim nehlasi jako opravena. CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');

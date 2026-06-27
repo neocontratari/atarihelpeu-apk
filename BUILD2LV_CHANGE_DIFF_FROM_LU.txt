@@ -1,0 +1,7 @@
+BUILD2LV_CHANGE_DIFF_FROM_LU
+
+- Zruseno pevne SR low-origin radkove preskakovani z BUILD2LT/LU.
+- Pridana funkce vbxeSrNoisePixelLV(): obecny filtr dlouhych horizontalnich SR segmentu z nizke VRAM.
+- SR renderer uz nevynechava cele radky; vynecha jen podezrely dlouhy beh pixelu.
+- Loader/River Raid/UI/CLOAD/CSAVE beze zmen.
+- Cilem je odstranit Night Driver stripe bez ukrojeni auta, ale bez herniho patchovani podle nazvu.
