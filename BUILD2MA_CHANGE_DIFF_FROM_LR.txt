@@ -1,0 +1,13 @@
+BUILD2MA zmeny proti BUILD2LR:
+
+- index.html: startup log BUILD2MA.
+- vbxeCollisionSr(): oprava podle fx1.26 segmentu misto direct (mask & dest).
+- vbxeCollisionHrNib(): oprava podle fx1.26 HR nibble segmentu.
+- vbxeRunBlitter(): constant source je pouze AND=$00.
+- vbxeRunBlitter(): control byte pouziva pouze MODE+NEXT; b4-b7 jsou rezervovane a nejsou smer.
+- vbxeRunBlitter(): signed source/dest step_x/step_y se pouziji primo, bez fallbacku ||1 a bez smerovych bitu z control.
+
+Nereseno v tomto buildu:
+- zadny novy herni filtr pro Night Driver.
+- zadny CRC/nazev hry patch.
+- Decathlon ANTIC/PMG neni predmet tohoto kroku.

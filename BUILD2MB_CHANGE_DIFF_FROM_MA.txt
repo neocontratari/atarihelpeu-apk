@@ -1,0 +1,25 @@
+BUILD2MB changes from BUILD2MA
+==============================
+
+1) Removed wrong legacy MSEL/PRIORMAP path on D644.
+   Before: if off===0x44 and value $80-$BF, code copied regs[0x45..0x48] into P0-P3.
+   Now: D644 is always CSEL in FX1.26 and never triggers priority map.
+
+2) Added direct FX1.26 regmap logging:
+   D644 CSEL
+   D645 PSEL
+   D646 CR
+   D647 CG
+   D648 CB
+   D655-D658 P0-P3
+
+3) Palette update is kept in FX1.26 model:
+   CR/CG/CB writes change the selected palette/color immediately.
+   CB write increments CSEL.
+
+4) Blitter fixes from BUILD2MA preserved:
+   constant source only AND=$00;
+   BCB21 control MODE+NEXT;
+   collision SR/HR segment model.
+
+No game-name hacks, no CRC exceptions, no screen paint.

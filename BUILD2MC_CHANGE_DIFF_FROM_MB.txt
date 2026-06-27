@@ -1,0 +1,21 @@
+BUILD2MC_CHANGE_DIFF_FROM_MB
+
+1) XDL transparentnost podle fx1.26
+- Odstranena vyjimka: priority=$FF uz nedela SR/LR index 0 a HR nibble 0 opaque.
+- Duvod: FX1.26 definuje transparentnost pres VIDEO_CONTROL no_trans/trans15, ne pres priority.
+
+2) Attribute Map souradnice
+- AM lookup uz nepocita pole v 640px HR souradnicich.
+- Nove: AM je v ANTIC GR.8 logice 256/320/336 pixelu.
+
+3) Attribute Map overlay palette
+- Pokud je AM aktivni, MAP OV palette ma prednost pred XDL OV palette.
+- Paleta 0 se bere jako platna, ne jako default/nenastaveno.
+
+4) Priority bits
+- PF0 = b4, PF1 = b5, PF2 i PF3 = b6, COLBAK = b7.
+- Stary kod daval PF3 na b7 a COLBAK povoloval automaticky.
+
+5) Night Driver filtry vypnute
+- Vypnuto low-origin skip i SR stripe content filter.
+- Duvod: nejsou ve fx1.26 dokumentaci a rezaly realne auto.

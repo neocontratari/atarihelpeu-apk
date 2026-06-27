@@ -1,0 +1,26 @@
+REFERENCE INPUTS ULOZENE V TETO VETVI
+
+Uzivatel poslal a byly projite:
+- /mnt/data/cores126.zip
+  Obsah: FX v1.26 / GTIA v1.06 cores, config-en.pdf, ATR core tools.
+- /mnt/data/docs.zip
+  Obsah: Documentation/Programming/fx1.26-en.pdf a fx1.26-pl.pdf.
+- /mnt/data/examples.zip
+  Obsah: FX examples, Candle examples, vbxe.lib, XDL/BCB/blitter priklady.
+- /mnt/data/cores.zip
+  Obsahove shodne s cores126.zip podle vypisu.
+- /mnt/data/release-install (1).zip
+  Obsah: hardware/install dokumentace VBXE v1.x/v2.x.
+- http://www.64kib.com/pokeymax_files/1.29_20241221/
+  Obsah: POKEYMAX build directories/logs 1.29 z 2024-12-21. Pro aktualni VBXE render fix neni primarni, ale je ulozeno jako reference pro budouci POKEY/audio.
+- Lotharek VBXE product page
+  Potvrzuje VBXE XE hardware/features a linky Release CORES/DOCS/EXAMPLES/Last CORES 1.26.
+- Pigwa FTP
+  Atari archiv, pomocny zdroj.
+
+Klicovy lokalni text pro audit:
+- /mnt/data/vbxe_ref_audit/fx126.txt  (vytazeno z fx1.26-en.pdf)
+- /mnt/data/vbxe_ref_audit/config_en.txt
+
+POZNAMKA PRO DALSI CHAT
+Nez delat dalsi build, porovnat BUILD2MC s fx1.26 manualem. Nepouzivat herni hacky ani screen filtry.
