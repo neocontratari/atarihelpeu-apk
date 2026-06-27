@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LL</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LM</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2990,10 +2990,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
       const pair=p^1;
       if(oldMask & (1<<pair)){
         if(pr&0x20){
-          if(M.vbxeDebug && !M.gtiaOverlapKhLogged){ M.gtiaOverlapKhLogged=true; M.vbxeDebug('GTIA PLAYER OVERLAP BUILD2KH: PRIOR bit5 kresli prekryv paru P0/P1 nebo P2/P3 jako OR COLPM barev.'); }
+          if(M.vbxeDebug && !M.gtiaOverlapKhLogged){ M.gtiaOverlapKhLogged=true; M.vbxeDebug('GTIA PLAYER OVERLAP BUILD2KH/LM: PRIOR bit5 kresli prekryv paru P0/P1 nebo P2/P3 jako OR COLPM barev.'); }
           return gtiaPal((gtiaRegAt(0x12+p,x)|gtiaRegAt(0x12+pair,x))&0xFF);
         }
-        return gtiaPal(0);
+        // BUILD2LM: bez PRIOR bit5 nesmi overlap paru hracu udelat cernou diru.
+        // Realne hry casto skladaji jednobarevny sprite z P0/P1 nebo P2/P3; predchozi cerny overlap
+        // dokazal roztrhnout postavu na casti. Kdyz OR-overlap neni zapnuty, nechavam videt aktualni player.
+        if(M.vbxeDebug && !M.gtiaOverlapNormalLmLogged){ M.gtiaOverlapNormalLmLogged=true; M.vbxeDebug('GTIA PLAYER OVERLAP NORMAL BUILD2LM: bez PRIOR bit5 uz overlap P0/P1 nebo P2/P3 nedela cernou diru; aktualni player zustava videt. Cil: Decathlon telo/nohy, bez screen-paintu.'); }
+        return gtiaPal(gtiaRegAt(0x12+p,x));
       }
       return gtiaPal(gtiaRegAt(0x12+p,x));
     }
@@ -3637,7 +3641,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if(M.line>=8 && M.line<248){
       snapSwap(); renderScanline(); snapSwap();        // kresli ze zmrazeneho stavu
-      if(!antic.done && antic.rowsLeft>0 && antic.mode!==0){ antic.rowsLeft--; antic.row++; if(antic.rowsLeft>0){} else { antic.lms=(antic.lms+(antic.hsLine?pfBytesW(MODE[antic.mode].b,Math.min(3,(antic.dmactl&3)+1)):pfBytes(MODE[antic.mode].b)))&0xFFFF; } }
+      if(!antic.done && antic.rowsLeft>0 && antic.mode!==0){ antic.rowsLeft--; antic.row++; if(antic.rowsLeft>0){} else { const mdEnd=MODE[antic.mode]; const adv=pfBytes(mdEnd.b); if(antic.hsLine && M.vbxeDebug && !M.anticHscrollLmsLmLogged){ M.anticHscrollLmsLmLogged=true; M.vbxeDebug('ANTIC HSCROL LMS BUILD2LM: HSCROL fetch zustava sirsi, ale memory scan counter po radku jde o viditelne bytes, ne o extra fetch. Cil: scrolling text/nastenky.'); } antic.lms=(antic.lms+adv)&0xFFFF; } }
       else if(antic.rowsLeft>0) antic.rowsLeft--;
     }
     M.line++;
@@ -6912,6 +6916,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2LM_PLAYER_OVERLAP_AND_HSCROL_DECATHLON_SAFE pripraven - zaklad je potvrzeny LL: River Raid a rychlejsi chytani her chraneno. Zachovano LL PRIOR=$01 + XEX turbo exit + LJ CHBASE 512. Nove: normalni overlap P0/P1 a P2/P3 bez PRIOR bit5 uz nedela cernou diru, cil Decathlon telo/nohy; HSCROL po konci znakoveho radku posouva LMS o viditelne bytes, ne o extra fetch, cil scrolling nastenka. Night Driver pruh zatim nelakuji jako opraveny. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LL_PRIORITY01_RIVERRAID_AND_XEX_TURBO_EXIT_SAFE pripraven - zaklad je LJ, ne LK. LK stabilni HPOS/SIZE nepomohl na Decathlon telo/nohy a mohl sahat do PMG her, proto je vynechan. Zachovana LJ CHBASE 512 oprava pro Decathlon nastenku. Nove: PRIOR=$01 uz neschova P2/P3, cil River Raid protivnici; XEX turbo se vypina hned po prechodu PC do herni RAM bez SIO, cil startovni zasek/zvukove koktani a pomale chytani her. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LJ_CHBASE_512_ANTIC6_DECATHLON_TEXT_CORE pripraven - zaklad je LH, ne LI. LI pozdni PMG latch nehlasim jako uspesny a neni v teto oprave. Zmena je jen v ANTIC znakove adrese: mode 6/7 bere CHBASE na 512B hranici (&FE), ne na 1KB (&FC). Decathlon zapisuje CHBASE=$12, takze stary kod cetl font z $1000 misto $1200. Cil: horni scoreboard/nastenka/text; PMBASE=$00 a LH priorita zustavaji. UI/klavesnice/kazeta/joystick/CLOAD beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LH_PMBASE_ZERO_GUARD_ROLLBACK_REAL_PRIORITY_CORE pripraven - LG PMBASE zero guard zrusen, protoze test dokazal zmizeni atletu; PMBASE=$00 je povolene, player data se ctou z $0400-$0700. Priorita vracena na KT/LF vyklad PRIOR=$04: PF0/PF1 nad PMG, PMG nad PF2/PF3. LF rollback LE DMA/HALT zustava, Donkey Arcade/Junior faze chranena, fast load jen pro nahravani, CLOAD/CSAVE bez fake. KODY JSOU STEJNE.');

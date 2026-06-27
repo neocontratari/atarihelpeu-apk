@@ -1,0 +1,23 @@
+BUILD2LM change diff from BUILD2LL
+
+Base: BUILD2LL_PRIORITY01_RIVERRAID_AND_XEX_TURBO_EXIT_SAFE
+
+Kept from LL:
+- PRIOR=$01 correction for River Raid P2/P3.
+- XEX turbo early exit when PC is already in RAM and SIO is quiet.
+- LJ CHBASE 512 for ANTIC 6/7.
+- LK stable HPOS/SIZE remains discarded.
+
+New changes:
+1) pmColorWithOverlap()
+- Before: if P0/P1 or P2/P3 overlap and PRIOR bit5 was off, renderer returned black.
+- Now: if PRIOR bit5 is off, current player color remains visible.
+- If PRIOR bit5 is on, OR overlap behavior remains unchanged.
+- Purpose: avoid black split/crack in sprites built from paired players, target Decathlon athlete body/legs.
+
+2) runScanline() end-of-row LMS advance
+- Before: if DL instruction had HSCROL, LMS advanced by widened fetch byte count.
+- Now: HSCROL still fetches wider data for render, but LMS advances by visible playfield byte count.
+- Purpose: HSCROL text/scroller lines should not consume extra characters after a character row, target Decathlon upper board/scroller.
+
+No UI/CLOAD/CSAVE/test XEX changes.
