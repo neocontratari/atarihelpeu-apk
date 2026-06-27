@@ -1,0 +1,6 @@
+BUILD2MD_CHANGE_DIFF_FROM_MC
+
+- Opravena Attribute Map pro HR/SR/LR HI canvas: MC prevadel px640 -> 384px -> GR.8, coz mapu posouvalo proti realnemu VBXE overlay. MD prevadi primo px640 -> GR.8 podle widthSel.
+- Opraven blitter zoom podle fx1.26: b0-b2 ZOOMX, b4-b6 ZOOMY, b3/b7 reserved. Stare INTLVE z bitu3 vypnuto.
+- Opraven SR hscroll v HI canvasu: OVSCRL jednotka je 1 VBXE hires pixel; MC posouval lichy hscroll o 2 pixely.
+- Pridany jasne BUILD2MD log markery kvuli kontrole, ze se skutecne testuje nova APK/assets.
