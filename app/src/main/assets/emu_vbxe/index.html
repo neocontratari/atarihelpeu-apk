@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LP</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LQ</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -1077,7 +1077,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!sio.disk || sio.xex) return;
     sio.diskTurbo=true;
     sio.diskTurboReads++;
-    sio.diskTurboUntil=Math.max(sio.diskTurboUntil||0,(M.frame||0)+45); // BUILD2LP: delsi aktivni okno pro pomalejsi ATR VBXE loadery typu W3D, porad jen behem D1: SIO.
+    sio.diskTurboUntil=Math.max(sio.diskTurboUntil||0,(M.frame||0)+360); // BUILD2LQ: agresivnejsi D1 turbo okno pro VBXE ATR/W3D; stale jen pri realne D1 SIO aktivite.
     if(!sio.diskTurboLogged && M.sioDebug){ M.sioDebug('ATR_TURBO_START',[sec&255,(sec>>8)&255]); }
   }
   function sioCommand(f){
@@ -1140,7 +1140,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(u8[0]===0x96&&u8[1]===0x02){ sio.secSize=u8[4]|(u8[5]<<8); sio.disk=u8.subarray(16); }
     else { sio.secSize=128; sio.disk=u8; }
     sio.rxq.length=0; sio.frame.length=0;
-    sio.diskTurbo=true; sio.diskTurboUntil=(M.frame||0)+120; sio.diskTurboReads=0; sio.diskTurboLogged=false; sio.diskTurboDone=false;
+    sio.diskTurbo=true; sio.diskTurboUntil=(M.frame||0)+900; sio.diskTurboReads=0; sio.diskTurboLogged=false; sio.diskTurboDone=false; // BUILD2LQ: VBXE ATR boot/loader ma delsi turbo okno; porad jen disk/boot rychlost, ne patch hry.
   };
   M.unmountDisk=function(){ sio.disk=null; sio.diskTurbo=false; sio.diskTurboUntil=0; };
   M.xexLoading=function(){
@@ -1194,7 +1194,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         M.vbxeDebug('XEX FAST LOAD BUILD2LC: locked fake-fast XEX/OBX drzi az do posledniho XEX datoveho zaznamu; CLOAD/CSAVE nedotceno; cur='+X.cur+'/'+eofIndex+' PC=$'+hx4(pc)+'.');
       }
       // ochrana proti zavadeci, ktery uz do dalsiho SIO nikdy nevleze: po dlouhem tichu v RAM radsi pustim normalni rychlost.
-      if(staleSince>(manyRecordTurbo?2400:900) && lastPay && !qBusy){
+      if(!manyRecordTurbo && staleSince>900 && lastPay && !qBusy){
         X.loading=false;
         if(M.vbxeDebug && !X.loadingAutoStopLogged){
           X.loadingAutoStopLogged=true;
@@ -1220,6 +1220,25 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }; // BUILD2KZ: fake-fast XEX/OBX loading; CLOAD/CSAVE nedotceno; normalni rychlost po poslednim payloadu.
   M.diskFastLoading=function(){ return !!(sio.disk && !sio.xex && sio.diskTurbo && (sio.rxPos<sio.rxq.length || (M.frame||0)<(sio.diskTurboUntil||0))); };
   M.diskFastStats=function(){ return {reads:sio.diskTurboReads||0, active:!!(sio.diskTurbo), until:sio.diskTurboUntil||0}; };
+  // BUILD2LQ: povoleny jediny fake - rychlost nahravani. Pro potvrzene VBXE ATR drzim kratky boot turbo rezim,
+  // kdyz CPU porad beha v OS/SIO oblasti ($E000+) a hra jeste neni v beznem hernim kodu. Neni to RAM inject ani screen paint.
+  M.enableVbxeAtrBootTurbo=function(reason){ M._vbxeAtrBootTurbo=true; M._vbxeAtrBootTurboUntil=(M.frame||0)+42000; M._vbxeAtrBootTurboReason=reason||'VBXE ATR'; M._vbxeAtrBootTurboLogged=false; M._vbxeAtrBootTurboDone=false; M._vbxeAtrBootTurboQuiet=0; };
+  M.vbxeAtrBootTurboLoading=function(){
+    if(!M._vbxeAtrBootTurbo || !sio.disk || sio.xex) return false;
+    const pc=(cpu&&cpu.pc!==undefined)?(cpu.pc&0xFFFF):0;
+    const f=(M.frame||0);
+    // aktivni jen v OS/SIO boot/read smyckach nebo kratce po D1 prenosu; kdyz hra prejede do vlastni RAM dlouhodobe, turbo skonci
+    const osSio=(pc>=0xE000);
+    const diskBusy=!!(sio.rxq && sio.rxPos<sio.rxq.length);
+    const diskRecent=f<(sio.diskTurboUntil||0);
+    if((osSio||diskBusy||diskRecent) && f<(M._vbxeAtrBootTurboUntil||0)){
+      if(M.vbxeDebug && !M._vbxeAtrBootTurboLogged){ M._vbxeAtrBootTurboLogged=true; M.vbxeDebug('VBXE ATR BOOT TURBO BUILD2LQ: aktivni pro '+(M._vbxeAtrBootTurboReason||'VBXE ATR')+'; zrychluji OS/D1 boot cekani, ne hru ani CLOAD.'); }
+      return true;
+    }
+    M._vbxeAtrBootTurbo=false;
+    if(M.vbxeDebug && !M._vbxeAtrBootTurboDone){ M._vbxeAtrBootTurboDone=true; M.vbxeDebug('VBXE ATR BOOT TURBO BUILD2LQ: konec, PC=$'+hx4(pc)+' frame='+f+'.'); }
+    return false;
+  };
   // XEX zavadec v2: boot sektory 1-2 = stage1+stage2 (stage2 bezi z $0100),
   // data tecou PRIMO na cilove adresy pres "records":
   //   DAUX $7001 = header aktualniho recordu (5 B: dst,len,flags do ZP $80)
@@ -2576,6 +2595,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function pmAuditFrameEnd(){
     if(!pmAudit.enabled) return;
     pmAudit.framesSinceStart=(M.frame-pmAudit.startFrame)|0;
+    // BUILD2LQ: pri povolenem loader/ATR turbo netopit mobil obrovskym PM SUMMARY logem; audit se po nahrani vrati.
+    const turboQuiet = !!((sio.xex&&sio.xex.loading) || (sio.disk&&sio.diskTurbo&&((sio.rxq&&sio.rxPos<sio.rxq.length)||((M.frame||0)<(sio.diskTurboUntil||0)))) || M._vbxeAtrBootTurbo);
+    if(turboQuiet && pmAudit.framesSinceStart>60){ pmAuditResetCounters(); return; }
     const need=(pmAudit.framesSinceStart<8)||(pmAudit.framesSinceStart===20)||(pmAudit.framesSinceStart===60)||((pmAudit.framesSinceStart%120)===0);
     if(!need || !M.vbxeDebug || M.frame===pmAudit.lastFrameLog) return;
     pmAudit.lastFrameLog=M.frame;
@@ -5567,6 +5589,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     M.coldStart({option:opt});
     if(M.setVbxeProfileActive) M.setVbxeProfileActive(!!isVbxe, 'ATR '+name+(isVbxe?' confirmed VBXE':' plain disk'));
     else if(!isVbxe && M.disableVbxeForPlainProgram) M.disableVbxeForPlainProgram('ATR '+name);
+    if(isVbxe && M.enableVbxeAtrBootTurbo) M.enableVbxeAtrBootTurbo(name);
     if(opt){ consolState.option=true; M.consol(false,false,true);
       setTimeout(function(){ consolState.option=false; if(M)M.consol(false,false,false); },5000); }
     running=true; document.getElementById('led').classList.add('on');
@@ -6764,11 +6787,12 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     var n=0;
     var xexTurbo = !!(M.xexLoading && M.xexLoading());
     var diskTurbo = !xexTurbo && !!(M.diskFastLoading && M.diskFastLoading());
+    var vbxeAtrBootTurbo = !xexTurbo && !diskTurbo && !!(M.vbxeAtrBootTurboLoading && M.vbxeAtrBootTurboLoading());
     if(xexTurbo){
       // BUILD2HW: turbo jen behem naseho obecneho XEX/OBX SIO loaderu. Nezrychluje kazetu/CLOAD ani bezici hru.
       if(!M._hvTurboLogged){ M._hvTurboLogged=true; log('XEX FAST LOAD BUILD2LC: locked fake-fast XEX/OBX nahravani zapnuto jen pro emulovany SIO loader; CLOAD/CSAVE bez zmeny; po loaderu normalni rychlost hry.'); }
       acc=0; last=ts;
-      var maxFast = (M._xexManyTurbo?320:192); // BUILD2LP: mnoho-zaznamovy VBXE XEX drzi bezpecnejsi, rychlejsi loader turbo; CLOAD/CSAVE mimo tuto vetev.
+      var maxFast = (M._xexManyTurbo?1800:260); // BUILD2LQ: mnoho-zaznamovy VBXE XEX (Popeye) jede agresivneji; CLOAD/CSAVE mimo tuto vetev.
       while(n<maxFast){ typeStep(); M.runFrame(); typeStep(); n++;
         if(!(M.xexLoading && M.xexLoading())) break;
         if(M.cpu.jam){ running=false; log('CPU JAM op $'+M.cpu.jamOp.toString(16).toUpperCase()+' na $'+M.cpu.jamPc.toString(16).toUpperCase()+' frame '+M.frame); log('PC=$'+M.cpu.pc.toString(16).toUpperCase()+' PORTB=$'+M.portB().toString(16).toUpperCase()); break; }
@@ -6776,10 +6800,18 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     } else if(diskTurbo){
       if(!M._hwDiskTurboLogged){ M._hwDiskTurboLogged=true; log('ATR D1 FAST LOAD BUILD2HW: emulovany cas bezi rychleji jen pri aktivnim D1: SIO prenosu. Hra se nepatchuje, data zustavaji v ATR.'); }
       acc=0; last=ts;
-      var maxDiskFast = 72; // BUILD2LP: jemne rychlejsi ATR/D1 fake-fast jen pri aktivnim diskovem SIO; CLOAD/CSAVE nedotceno.
+      var maxDiskFast = 900; // BUILD2LQ: agresivnejsi ATR/D1 fake-fast pro W3D/VBXE ATR; CLOAD/CSAVE nedotceno.
       if(!M._hvDiskTurboLbLogged){ M._hvDiskTurboLbLogged=true; log('ATR D1 FAST LOAD BUILD2LC: fake-fast ATR/D1 nahravani zapnuto jen pri diskovem SIO cteni; CLOAD/CSAVE bez zmeny.'); }
       while(n<maxDiskFast){ typeStep(); M.runFrame(); typeStep(); n++;
         if(!(M.diskFastLoading && M.diskFastLoading())) break;
+        if(M.cpu.jam){ running=false; log('CPU JAM op $'+M.cpu.jamOp.toString(16).toUpperCase()+' na $'+M.cpu.jamPc.toString(16).toUpperCase()+' frame '+M.frame); log('PC=$'+M.cpu.pc.toString(16).toUpperCase()+' PORTB=$'+M.portB().toString(16).toUpperCase()); break; }
+      }
+    } else if(vbxeAtrBootTurbo){
+      if(!M._vbxeAtrBootTurboUiLogged){ M._vbxeAtrBootTurboUiLogged=true; log('VBXE ATR BOOT TURBO BUILD2LQ: zrychluji pomale OS/D1 boot faze potvrzeneho VBXE ATR. CLOAD/CSAVE a normalni hry beze zmen.'); }
+      acc=0; last=ts;
+      var maxAtrBootFast = 900;
+      while(n<maxAtrBootFast){ typeStep(); M.runFrame(); typeStep(); n++;
+        if(!(M.vbxeAtrBootTurboLoading && M.vbxeAtrBootTurboLoading())) break;
         if(M.cpu.jam){ running=false; log('CPU JAM op $'+M.cpu.jamOp.toString(16).toUpperCase()+' na $'+M.cpu.jamPc.toString(16).toUpperCase()+' frame '+M.frame); log('PC=$'+M.cpu.pc.toString(16).toUpperCase()+' PORTB=$'+M.portB().toString(16).toUpperCase()); break; }
       }
     } else {
@@ -6929,7 +6961,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2LP_VBXE_LOADER_TURBO_SAFE pripraven - zaklad je BUILD2LO potvrzeny: River Raid zpet TOP, Decathlon/Night Driver beze zmen. Zmena jen v povolenem fake smeru: rychlost nahravani. Velke mnoho-zaznamove VBXE XEX drzi turbo do EOF misto predcasneho vypnuti po INITAD; ATR/D1 ma jemne rychlejsi SIO okno; VBXE blitter detail log je ztlumen, aby nezpomaloval test. Grafika Popeye/Decathlon/Night Driver se tim nehlasi jako opravena. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2LQ_VBXE_AGGRESSIVE_LOADER_TURBO_SAFE pripraven - zaklad je BUILD2LP/LO potvrzeny: River Raid TOP zustava chraneny. Zmena jen v povolenem fake smeru rychlosti nahravani: mnoho-zaznamovy VBXE XEX uz nema 2400f fail-safe vypnuti pred EOF, jede vyssi turbo; VBXE ATR/W3D ma silnejsi D1/OS boot turbo; PM audit log se pri turbo fazi tlumi. Grafika Popeye/Decathlon/Night Driver se tim nehlasi jako opravena. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LO_RIVERRAID_TOP_ROLLBACK_LN_SAFE pripraven - LN zahozena: HSCROL PHASE a PMG EARLY HBLANK se vraci pryc, protoze River Raid zhorsil scroll/grafiku. Zaklad je potvrzeny LM/LL, kde River Raid byl TOP a nahravani lepsi. Zachovano LL PRIOR=$01 + XEX turbo exit + LJ CHBASE 512 + LM overlap/HSCROL LMS. Decathlon porad neni opraveny, Night Driver pruh porad otevreny. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LM_PLAYER_OVERLAP_AND_HSCROL_DECATHLON_SAFE pripraven - zaklad je potvrzeny LL: River Raid a rychlejsi chytani her chraneno. Zachovano LL PRIOR=$01 + XEX turbo exit + LJ CHBASE 512. Nove: normalni overlap P0/P1 a P2/P3 bez PRIOR bit5 uz nedela cernou diru, cil Decathlon telo/nohy; HSCROL po konci znakoveho radku posouva LMS o viditelne bytes, ne o extra fetch, cil scrolling nastenka. Night Driver pruh zatim nelakuji jako opraveny. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LL_PRIORITY01_RIVERRAID_AND_XEX_TURBO_EXIT_SAFE pripraven - zaklad je LJ, ne LK. LK stabilni HPOS/SIZE nepomohl na Decathlon telo/nohy a mohl sahat do PMG her, proto je vynechan. Zachovana LJ CHBASE 512 oprava pro Decathlon nastenku. Nove: PRIOR=$01 uz neschova P2/P3, cil River Raid protivnici; XEX turbo se vypina hned po prechodu PC do herni RAM bez SIO, cil startovni zasek/zvukove koktani a pomale chytani her. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');

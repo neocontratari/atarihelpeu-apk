@@ -1,0 +1,18 @@
+BUILD2LQ z BUILD2LP:
+
+- BUILD2LP potvrzen: River Raid excelentni TOP; normalni XEX zrychleni OK.
+- Problem: Popeye VBXE XEX a W3D ATR stale pomale.
+
+Upravy:
+- XEX many-record fail-safe: pro manyRecords se uz nevypina po 2400 framech pred EOF.
+- XEX turbo step: 320 -> 1800 pro many-record XEX.
+- ATR diskTurboUntil: start 120 -> 900, read mark 45 -> 360.
+- ATR turbo step: 72 -> 900.
+- Pridan VBXE ATR OS boot turbo: potvrzene VBXE ATR zrychluje OS/SIO faze PC=$E000+ do limitu 42000 frame.
+- PM audit summary se pri loader turbo fazi neloguje, aby nezpomaloval mobil.
+
+Nedotceno:
+- CLOAD/CSAVE.
+- UI/keyboard/joystick/cassette.
+- Graficke core fixy Decathlon/Night Driver/Popeye.
+- River Raid PRIOR01 fix.
