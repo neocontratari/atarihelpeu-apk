@@ -1,0 +1,18 @@
+BUILD2LU_CHANGE_DIFF_FROM_LT
+
+1) Night Driver / VBXE SR low-origin
+- LT skip: low-origin SR preskocil az do $1400, max. 20 radku.
+- LU skip: snizen na $0F00, max. 15 radku.
+- Cíl: zachovat odstraneni pruhu z LT, ale vratit predek auta.
+- Obsahovy BUILD2KF/LC stripe filtr zustava aktivni pro zbytek artefaktu.
+
+2) Decathlon
+- Zadna LS zmena se nevraci.
+- Render CH6/HSCROL zustava z LT/LJ/LM, pridany jen audit marker s CHBASE/HSCROL/LMS.
+- Cíl: dalsi krok ma byt podle konkretniho logu, ne dalsi slepy HSCROL prepal.
+
+3) Beze zmen
+- Loader/River Raid/Popeye-W3D rychlost.
+- UI/klavesnice/joystick/kazeta.
+- CLOAD/CSAVE.
+- Testovaci XEX/ATR: KODY JSOU STEJNE.
