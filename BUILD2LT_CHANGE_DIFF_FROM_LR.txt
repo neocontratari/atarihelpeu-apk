@@ -1,0 +1,8 @@
+BUILD2LT_CHANGE_DIFF_FROM_LR
+
+- LS nepouzita. Build vychazi z LR.
+- Pridan GTIA/PMG early-HBLANK mapper: cykly <=31 v gtiaSegXFromCycle se mapuji na x=0.
+  Duvod: Decathlon log ukazuje silne PMG/GTIA raster zapisy; predchozi x=32 mohlo delat posun textu/PMG od leveho okraje.
+- Zesilen VBXE SR low-origin sanitize: pro nizkou SR oblast max. 20 radku / limit $1400 misto stareho $0800.
+  Duvod: Night Driver log ukazuje XDL SR y=182 lines=54 ov=$00010 step=256 a stary skip 8 radku nechaval pruh.
+- Loader, UI, CLOAD/CSAVE a test assety beze zmen.
