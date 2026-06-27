@@ -1,0 +1,6 @@
+BUILD2LZ z BUILD2LR:
+- nebere jako zaklad LT/LU/LV/LW/LY.
+- upravena VBXE transparentnost: priority=$FF uz neblokuje transparentni 0 u grafickych HR/SR/LR modu.
+- SR stripe filter zmenen z preskoceni cele radky na pixelovou podporu podle sousednich radek.
+- tile surface underlay povolen pro slabsi realne BCB kandidaty a kresli do COLBK/cerneho pozadi pred HR overlay.
+- bez nazvu hry, bez CRC, bez screen-paintu.
