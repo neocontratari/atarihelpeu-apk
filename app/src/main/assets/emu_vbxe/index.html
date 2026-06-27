@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LK</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LL</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -1144,6 +1144,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
   };
   M.unmountDisk=function(){ sio.disk=null; sio.diskTurbo=false; sio.diskTurboUntil=0; };
   M.xexLoading=function(){
+    // BUILD2LL: stale jen XEX/OBX loader turbo, ale uz nesmi bezet do hry.
+    // LK/LJ logy ukazaly, ze loader zustal aktivni i pri PC v hernim kodu ($99FC/$AE9C)
+    // a fail-safe to vypnul az po dlouhem tichu. To delalo zasek/zvukove koktani na startu hry.
+    // Jakmile je SIO fronta prazdna, neni SIO aktivita a PC je v RAM/game oblasti, turbo se ukonci rychle.
+    // CLOAD/CSAVE ani diskovy ATR turbo se tim nemeni.
     // BUILD2LB: navazuje na potvrzeny KZ/KV, bez nove graficke hadanky. Uživatel výslovně povolil jediny snesitelny fake: rychlost nahravani
     // XEX/OBX. Data stale tecou pres nas OS/SIO loader a CLOAD/CSAVE se nesmi zrychlit. Turbo drzi
     // record-aware do posledniho datoveho XEX zaznamu, potom se vypne normalni rychlost hry.
@@ -1159,6 +1164,17 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const eofIndex=(X.recs&&X.recs.length)?(X.recs.length-1):0;
     const lastDataIndex=Math.max(0,eofIndex-1);
     const allDataServed=(X.cur>lastDataIndex) || (X.cur===lastDataIndex && !!X.pserved) || (eofIndex===0);
+    const pcLooksLikeGame=(pc>=0x2000 && pc<0xC000);
+    const noSioQuiet=(!qBusy && staleSince>18 && (lastPay?stalePayload>18:staleSince>18));
+    if(!allDataServed && pcLooksLikeGame && noSioQuiet){
+      X.loading=false;
+      try{ if(sio.rxq) sio.rxq.length=0; sio.rxPos=0; if(sio.frame) sio.frame.length=0; }catch(_e){}
+      if(M.vbxeDebug && !X.loadingAutoStopLogged){
+        X.loadingAutoStopLogged=true;
+        M.vbxeDebug('XEX FAST LOAD BUILD2LL: hra uz bezi v RAM PC=$'+hx4(pc)+' bez SIO ticha '+staleSince+'f; turbo vypnuto hned, ne az po dlouhem fail-safe. cur='+X.cur+'/'+eofIndex+'.');
+      }
+      return false;
+    }
 
     if(!allDataServed){
       if(M.vbxeDebug && !X.kzRecordTurboLogged){
@@ -2939,15 +2955,21 @@ function Atari130XE(osRom, basicRom, CPUctor){
       // bit1: P0+P1 nad celym PF, P2+P3 pod celym PF
       show=(p<2);
     }else if(pr&0x01){
-      // bit0: P0+P1 nad PF0+PF1, P2+P3 pod PF0+PF1; PF2/PF3 nechavam nad P/M.
-      show=(p<2 && c<=2);
+      // BUILD2LL: predchozi LH/LJ vetev tu omylem schovala P2/P3 za vsech okolnosti.
+      // River Raid v logu pouziva hlavne P2/P3 a pak protivnici zmizeli, i kdyz PM DMA bezelo.
+      // Pro PRIOR=$01 vracim P/M nad playfield; PRIOR=$04 pro Decathlon nechavam podle LH.
+      show=true;
+      if(M.vbxeDebug && !M.gtiaPrior01LlLogged){
+        M.gtiaPrior01LlLogged=true;
+        M.vbxeDebug('GTIA PRIOR01 BUILD2LL: P2/P3 uz nejsou trvale schovane; River Raid PMG protivnici maji byt znovu videt. PRIOR=$01, p='+p+' c='+c+'.');
+      }
     }else{
       // PRIOR=0: P/M nad playfield
       show=true;
     }
     if(M.vbxeDebug && !M.gtiaPriorLhLogged){
       M.gtiaPriorLhLogged=true;
-      M.vbxeDebug('GTIA PRIOR TABLE BUILD2LH: LG bitmask priorita zrusena; vracim KT poradi PRIOR=$04 PF0/PF1 nad PMG, PMG nad PF2/PF3.');
+      M.vbxeDebug('GTIA PRIOR TABLE BUILD2LL/LH: PRIOR=$04 Decathlon nechavam LH/KZ cestou, PRIOR=$01 opraven pro P2/P3/River Raid.');
     }
     return !!show;
   }
@@ -2957,7 +2979,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     const fb=M.fb, off=y*384, line=M.line;
     const dbl=!(antic.dmactl&0x10);
     const pmDma=(antic.dmactl&0x08)&&(gtia.gractl&2), mDma=((antic.dmactl&0x0C))&&(gtia.gractl&1); // player DMA fetchuje i missily (HW kvirk)
-    M.pmDmaStablePosLK=!!((pmDma||mDma) && pmSeg && pmSeg.n); // BUILD2LK: HPOS/SIZE pri DMA netrhat uvnitr radky
     // BUILD2IT: G2F pouziva PMG jako barevne vrstvy. COLPM/PRIOR se proto nesmi brat
     // jako jedna hodnota pro celou scanline; DLI muze menit barvy a prioritu po STA WSYNC
     // nebo i uvnitr radky. Beru stejne GTIA segmenty jako playfield renderer.
@@ -3098,16 +3119,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
   }
   function pmRegAt(g,x,fallback){
-    // BUILD2LK: pri zapnutem P/M DMA se HPOS/SIZE registr bere pro celou scanline ze snapshotu.
-    // Mid-scanline HPOS/SIZE zapisy patri az dalsimu paprsku/radce; jinak se slozene postavy
-    // trhaji na telo a nohy. GRAFP/GRAFM segmenty nechavam, protoze ty opravdu meni data paprskem.
-    if(M.pmDmaStablePosLK && ((g>=0x00 && g<=0x0C))){
-      if(M.vbxeDebug && !M.pmStablePosLkLogged){
-        M.pmStablePosLkLogged=true;
-        M.vbxeDebug('GTIA PMG STABLE POS BUILD2LK: pri P/M DMA ignoruji viditelne HPOS/SIZE segmenty v ramci radky; pozice je snapshot, GRAFP/GRAFM segmenty zustavaji. Cil: Decathlon telo/nohy bez screen-paintu.');
-      }
-      return fallback&0xFF;
-    }
     let v=fallback&0xFF;
     if(pmSeg.n){
       for(let i=0;i<pmSeg.n;i++){
@@ -6901,7 +6912,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2LK_STABLE_PMG_HPOS_SIZE_PLUS_LJ_TEXT_CORE pripraven - zaklad je LJ, protoze LJ zlepsil Decathlon horni text. Novy rez: pri zapnutem P/M DMA se HPOS/SIZE neprepina uprostred vykreslene radky podle pozdnich segmentu; bere se radkovy snapshot a pozdni HPOS/SIZE plati az pro dalsi radku/paprsek. GRAFP/GRAFM paprskove segmenty zustavaji. Cil: Decathlon telo/nohy atleta bez screen-paintu a bez hacku podle nazvu hry. UI/klavesnice/kazeta/joystick/CLOAD beze zmen. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2LL_PRIORITY01_RIVERRAID_AND_XEX_TURBO_EXIT_SAFE pripraven - zaklad je LJ, ne LK. LK stabilni HPOS/SIZE nepomohl na Decathlon telo/nohy a mohl sahat do PMG her, proto je vynechan. Zachovana LJ CHBASE 512 oprava pro Decathlon nastenku. Nove: PRIOR=$01 uz neschova P2/P3, cil River Raid protivnici; XEX turbo se vypina hned po prechodu PC do herni RAM bez SIO, cil startovni zasek/zvukove koktani a pomale chytani her. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LJ_CHBASE_512_ANTIC6_DECATHLON_TEXT_CORE pripraven - zaklad je LH, ne LI. LI pozdni PMG latch nehlasim jako uspesny a neni v teto oprave. Zmena je jen v ANTIC znakove adrese: mode 6/7 bere CHBASE na 512B hranici (&FE), ne na 1KB (&FC). Decathlon zapisuje CHBASE=$12, takze stary kod cetl font z $1000 misto $1200. Cil: horni scoreboard/nastenka/text; PMBASE=$00 a LH priorita zustavaji. UI/klavesnice/kazeta/joystick/CLOAD beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LH_PMBASE_ZERO_GUARD_ROLLBACK_REAL_PRIORITY_CORE pripraven - LG PMBASE zero guard zrusen, protoze test dokazal zmizeni atletu; PMBASE=$00 je povolene, player data se ctou z $0400-$0700. Priorita vracena na KT/LF vyklad PRIOR=$04: PF0/PF1 nad PMG, PMG nad PF2/PF3. LF rollback LE DMA/HALT zustava, Donkey Arcade/Junior faze chranena, fast load jen pro nahravani, CLOAD/CSAVE bez fake. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LD_ANTIC_DMA_HALT_DLI_VBL_TIMING_CORE pripraven - navazuje na LC/KZ/KV. Hlavni rez uz neni loader ani dalsi slepa VBXE paleta: pridana radkova ANTIC DMA/HALT kradez CPU cyklu pro narocne ANTIC mody, DLI/VBI zustava ve stejne kooperativni smycce a PAL ramec drzi 312 radku. Cil: Decathlon telo/nohy/napis, obecne DLI barvy a duchove u non-VBXE her. Fast XEX/ATR zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. Donkey Arcade/Junior PMG faze chranena. Bez screen-paintu, bez hacku podle nazvu hry. KODY JSOU STEJNE.');

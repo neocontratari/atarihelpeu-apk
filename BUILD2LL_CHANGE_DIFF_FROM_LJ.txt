@@ -1,0 +1,15 @@
+BUILD2LL change diff from BUILD2LJ:
+
+index.html:
+1) Title changed BUILD2LJ -> BUILD2LL.
+2) M.xexLoading(): added game-PC quick turbo exit.
+   - If not all XEX control records are consumed but SIO queue is empty, silence >18 frames and PC is in $2000-$BFFF, XEX turbo stops immediately.
+   - This targets logs where Decathlon PC=$99FC and River Raid PC=$AE9C while fake-fast remained active until long fail-safe.
+3) pmShowAt(): fixed PRIOR=$01 branch.
+   - Old LH/LJ: show=(p<2 && c<=2), which hid P2/P3 permanently.
+   - New LL: PRIOR=$01 show=true for PMG over playfield.
+   - PRIOR=$04 left as LH path for Decathlon.
+4) Startup log added for BUILD2LL.
+
+Not included:
+- BUILD2LK stable HPOS/SIZE branch is not included.
