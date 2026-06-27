@@ -1,0 +1,28 @@
+BUILD2LP zmeny proti BUILD2LO
+
+1) app/src/main/assets/emu_vbxe/index.html
+- title/build marker zmenen na BUILD2LP.
+- M.mountXex: sio.xex dostal manyRecords/recCount/manyRecordTurboHoldLogged.
+- M.xexLoading:
+  * pro mnoho-zaznamovy XEX (>250 recs) se predcasne nevypina turbo pri PC v RAM pred EOF.
+  * log marker: XEX MANY-RECORD TURBO BUILD2LP.
+  * fail-safe ticho pro mnoho-zaznamovy XEX prodlouzeno 900 -> 2400 frame.
+- hlavni tick:
+  * XEX maxFast 192 zustava pro bezne XEX.
+  * mnoho-zaznamovy XEX pouziva maxFast 320.
+  * ATR/D1 maxDiskFast 48 -> 72.
+- diskTurboMark:
+  * aktivni okno D1 turbo 28 -> 45 frame jen pri D1: SIO.
+- vbxeRunBlitter:
+  * detailni log dlouhych chainu se potlaci po prvnich blocich, aby log-spam nebrzdil VBXE hry.
+  * blitter kopirovani/data zustavaji stejne.
+
+2) test_assets
+- pridany Popeye (VBXE, PAL Version)(2).xex jako test asset.
+
+Nezmeneno:
+- UI, klavesnice, joystick, kazeta, CLOAD/CSAVE.
+- River Raid PRIOR=$01 / LO rollback stav.
+- Decathlon grafika.
+- Night Driver grafika.
+- Popeye VBXE grafika zatim neni opravena.
