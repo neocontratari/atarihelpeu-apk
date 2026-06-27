@@ -1,0 +1,8 @@
+BUILD2LS changes from BUILD2LR:
+
+- Do not increase loader turbo further. LR/LQ speed is preserved as confirmed good enough; avoiding more keyboard/UI freezes.
+- Added ANTIC CH6 high-CHBASE HSCROL scale guard for Decathlon-style scrolling scoreboard.
+- Added GTIA PRIOR=$04 P2/P3 line guard so P2/P3 are not fully eaten by narrow PF0/PF1 lines.
+- Expanded VBXE SR low-origin artifact detection/stripe filter for Night Driver bottom noise line.
+- No changes to River Raid PRIOR=$01 path.
+- No changes to CLOAD/CSAVE/UI/test assets.

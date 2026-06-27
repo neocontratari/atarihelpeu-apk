@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LR</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LS</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2963,7 +2963,15 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     if(hsOn){
       const R=md.px||((md.t==='ch6')?16:8);
-      const xs0=192-((nbN*R)>>1), sh=antic.hscrol*2;
+      let sh=antic.hscrol*2;
+      // BUILD2LS: Decathlon pouziva ANTIC 6/7 se 64znakovym fontem na vyssi 512B hranici (typicky CHBASE $12).
+      // V teto kombinaci jemny HSCROL u 2-color textu odpovida posunu o color-clock, ne o zdvojene FB pixely,
+      // jinak zustane horni nastenka staticky rozjeta. Podminka neni podle nazvu hry: plati jen pro CH6/7 + high CHBASE.
+      if(md.t==='ch6' && ((antic.chbase&0xF0)>=0x10)){
+        sh=antic.hscrol;
+        if(M.vbxeDebug && !M.anticCh6HscrollScaleLsLogged){ M.anticCh6HscrollScaleLsLogged=true; M.vbxeDebug('ANTIC CH6 HSCROL SCALE BUILD2LS: high CHBASE=$'+hx2(antic.chbase)+' posun beru v color-clock fazi; cil Decathlon scroll nastenka, bez nazvu hry.'); }
+      }
+      const xs0=192-((nbN*R)>>1);
       for(let x=xs0;x<xs0+nbN*R;x++){
         const s=x-sh;
         if(s>=0&&s<512){ fb[off+x]=hsBuf[s]; pfc[x]=hsCls[s]; }
@@ -2984,8 +2992,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
       // bit3: cely playfield nad P/M
       show=false;
     }else if(pr&0x04){
-      // bit2: PF0+PF1 nad P/M, P/M nad PF2+PF3
-      show=(c>=3);
+      // bit2: PF0+PF1 nad P/M, P/M nad PF2+PF3.
+      // BUILD2LS experimentalni obecny raster guard: nektere PMG multiplexy skladaji objekt z P2/P3
+      // pres jemne pruhovane PF0/PF1 linky; kdyz je pixelova trida PF0/PF1 jen uzka linka, P2/P3 nesmi zmizet cely.
+      // Nehybu PRIOR=$01, takze potvrzeny River Raid zustava na LL ceste.
+      show=(c>=3) || (p>=2 && (c===1 || c===2) && !!(gtiaRegAt(0x1B,x)&0x04));
+      if(show && c<3 && p>=2 && M.vbxeDebug && !M.gtiaPrior04LsLogged){ M.gtiaPrior04LsLogged=true; M.vbxeDebug('GTIA PRIOR04 P2P3 LINE GUARD BUILD2LS: pri PRIOR=$04 nechavam P2/P3 pres uzke PF0/PF1 linky; cil Decathlon telo/nohy, River Raid PRIOR=$01 beze zmen.'); }
     }else if(pr&0x02){
       // bit1: P0+P1 nad celym PF, P2+P3 pod celym PF
       show=(p<2);
@@ -4230,8 +4242,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
     var addr=(r.ovAddr||0)&0x7FFFF;
     var step=(r.ovStep||0)&0x0FFF;
     var y=(r.y||0)|0, lines=(r.lines||0)|0;
-    if(addr>=0x80) return 0;
-    if(y<150 || lines<16 || lines>112) return 0;
+    if(addr>=0x200) return 0;
+    if(y<142 || lines<16 || lines>128) return 0; // BUILD2LS: Night Driver spodní SR pruh muze zacinat o par radku vys a ne vzdy jen pod $80
     if(step!==256 && step!==320) return 0;
     if((r.widthSel|0)!==0) return 0;
     var rows=0;
@@ -4251,7 +4263,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!r || r.mode!==1) return false;
     var addr=(r.ovAddr||0)&0x7FFFF, step=(r.ovStep||0)&0x0FFF;
     var y=(r.y||0)|0, lines=(r.lines||0)|0;
-    return (addr<0x80 && y>=150 && lines>=16 && lines<=112 && (step===256 || step===320) && ((r.widthSel|0)===0));
+    return (addr<0x200 && y>=142 && lines>=16 && lines<=128 && (step===256 || step===320) && ((r.widthSel|0)===0)); // BUILD2LS sirsi low-origin kandidat pro Night Driver SR pruh
   }
   function vbxeSrRowStatsKF(r,yy,bytes,hs){
     var st={opaque:0,maxRun:0,trans:0};
@@ -4294,7 +4306,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(vbxeSrArtifactRowKF(r,yy,bytes,hs)) return true;
     if(!r || r.mode!==1) return false;
     var y=(r.y||0)+yy;
-    if(y<96) return false;
+    if(y<88) return false; // BUILD2LS: dovol filtr i o neco vys, ale porad jen izolovana SR artefakt-radka
     function stats(row){
       var out={opaque:0,maxRun:0,sameRun:0,trans:0};
       if(row<0 || row>=(r.lines|0)) return out;
@@ -4309,7 +4321,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     var cur=stats(yy), prev=stats(yy-1), next=stats(yy+1);
     var neigh=(prev.opaque+next.opaque)/2;
     var neighRun=(prev.maxRun+next.maxRun)/2;
-    var hit=(cur.opaque>=64 && cur.sameRun>=48 && cur.maxRun>=64 && cur.opaque>neigh*1.65+24 && cur.maxRun>neighRun*1.45+24);
+    var hit=(cur.opaque>=54 && cur.sameRun>=40 && cur.maxRun>=54 && cur.opaque>neigh*1.50+18 && cur.maxRun>neighRun*1.32+18); // BUILD2LS: silnejsi Night Driver bottom stripe filtr
     if(hit && M.vbxeDebug && !vbxe.xdlSrStripeLcLogged){
       vbxe.xdlSrStripeLcLogged=true;
       M.vbxeDebug('VBXE SR STRIPE FILTER BUILD2LC: izolovana SR artefakt-radka y='+y+' yy='+yy+' opaque='+cur.opaque+' run='+cur.maxRun+' same='+cur.sameRun+' neigh='+(neigh|0)+'; bez screen-paintu.');
@@ -6967,6 +6979,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
+    log('AtariHelp.eu EMU-10 BUILD2LS_DECATHLON_NIGHTDRIVER_GRAPH_SAFE pripraven - zaklad je potvrzeny BUILD2LR: River Raid TOP + VBXE loader rychlost chranena. Rychlost uz dal netlacim, aby se nevratil zasek klavesnice. Nove jen grafika: ANTIC CH6 high-CHBASE HSCROL scale pro Decathlon nastenku, PRIOR04 P2/P3 line guard pro Decathlon telo/nohy, silnejsi SR low-origin stripe filtr pro Night Driver spodni pruh. Popeye/W3D grafiku tim nehlasim jako opravenou. CLOAD/CSAVE/UI/loader beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LR_VBXE_TURBO_KEYBOARD_SAFE pripraven - zaklad je BUILD2LQ/LO: River Raid TOP a povoleny fake-fast loader chranen. Oprava: potvrzene VBXE XEX/ATR uz po nahrani automaticky neskace do joysticku, zustava klavesnice pro uvodni volby; joystick lze zapnout rucne a landscape ovladani se nemeni. Popeye many-record turbo je zjemnene pro mene UI zaseku, W3D/VBXE ATR D1 turbo ma delsi okno a rychlejsi diskove faze. Grafika Popeye/Decathlon/Night Driver se tim nehlasi jako opravena. CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LO_RIVERRAID_TOP_ROLLBACK_LN_SAFE pripraven - LN zahozena: HSCROL PHASE a PMG EARLY HBLANK se vraci pryc, protoze River Raid zhorsil scroll/grafiku. Zaklad je potvrzeny LM/LL, kde River Raid byl TOP a nahravani lepsi. Zachovano LL PRIOR=$01 + XEX turbo exit + LJ CHBASE 512 + LM overlap/HSCROL LMS. Decathlon porad neni opraveny, Night Driver pruh porad otevreny. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LM_PLAYER_OVERLAP_AND_HSCROL_DECATHLON_SAFE pripraven - zaklad je potvrzeny LL: River Raid a rychlejsi chytani her chraneno. Zachovano LL PRIOR=$01 + XEX turbo exit + LJ CHBASE 512. Nove: normalni overlap P0/P1 a P2/P3 bez PRIOR bit5 uz nedela cernou diru, cil Decathlon telo/nohy; HSCROL po konci znakoveho radku posouva LMS o viditelne bytes, ne o extra fetch, cil scrolling nastenka. Night Driver pruh zatim nelakuji jako opraveny. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
