@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LI</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LJ</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2482,7 +2482,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   M.peek=cpuRead; M.poke=cpuWrite;
 
   // BUILD2JT: pravdivy audit P/M grafiky. Jen meri a loguje, nic neopravuje a nic nekresli navic.
-  const pmAudit={enabled:false,name:'',startFrame:0,lastFrameLog:-9999,lastRegLog:0,lastDmaLog:0,lastLiLineLog:0,
+  const pmAudit={enabled:false,name:'',startFrame:0,lastFrameLog:-9999,lastRegLog:0,lastDmaLog:0,
     frames:0, lines:0, pDmaLines:0, mDmaLines:0, pNonzeroLines:0, mNonzeroLines:0,
     pSet:0,mSet:0,pDraw:0,mDraw:0,pBlock:0,mBlock:0,pOff:0,mOff:0,
     pmSegLines:0, pmSegWrites:0, gtiaWrites:0, anticWrites:0,
@@ -2495,7 +2495,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   function pmAuditSafeName(n){ return String(n||'XEX').replace(/\s+/g,' ').slice(0,64); }
   M.setPmAuditName=function(name){
-    pmAudit.enabled=true; pmAudit.name=pmAuditSafeName(name); pmAudit.startFrame=M.frame|0; pmAudit.lastFrameLog=-9999; pmAudit.lastRegLog=0; pmAudit.lastDmaLog=0; pmAudit.lastLiLineLog=0;
+    pmAudit.enabled=true; pmAudit.name=pmAuditSafeName(name); pmAudit.startFrame=M.frame|0; pmAudit.lastFrameLog=-9999; pmAudit.lastRegLog=0; pmAudit.lastDmaLog=0;
     pmAudit.lastPmBase=-1; pmAudit.lastDmactl=-1; pmAudit.lastGractl=-1; pmAudit.lastPrior=-1; pmAudit.lastMode=-1; pmAudit.lastDlist=-1; pmAudit.pFirst=false; pmAudit.mFirst=false;
     pmAuditResetCounters();
     if(M.vbxeDebug) M.vbxeDebug('BUILD2JT PM AUDIT START: '+pmAudit.name+' - jen diagnostika P/M pipeline, zadny screen paint, zadny hack hry. Posli LOG po 20-40 s hry nebo po chybe obrazu.');
@@ -2536,10 +2536,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(M.vbxeDebug && pmAudit.lastDmaLog<20 && (por||mor)){
       pmAudit.lastDmaLog++;
       M.vbxeDebug('BUILD2JT PM DMA LINE: f='+M.frame+' y='+(M.line-8)+' li='+li+' P='+(np?np.map(hx2).join(','):'-')+' M=$'+hx2(nm||0)+' DMACTL=$'+hx2(antic.dmactl)+' GRACTL=$'+hx2(gtia.gractl)+' PMBASE=$'+hx2(antic.pmbase));
-    }
-    if(M.vbxeDebug && pmAudit.lastLiLineLog<24 && (por||mor)){
-      pmAudit.lastLiLineLog++;
-      M.vbxeDebug('BUILD2LI PM LATE-LATCH LINE: f='+M.frame+' physLine='+M.line+' visibleY='+(M.line-8)+' anticRow='+antic.row+' li='+li+' snapCyc='+(cpu.cycles-M.lineCyc0)+' P='+(np?np.map(hx2).join(','):'-')+' M=$'+hx2(nm||0)+' HPOSP='+gtia.hposp.map(hx2).join(',')+' PRIOR=$'+hx2(gtia.prior)+' DMACTL=$'+hx2(antic.dmactl)+' GRACTL=$'+hx2(gtia.gractl)+' PMBASE=$'+hx2(antic.pmbase));
     }
   }
   function pmAuditMarkSegLine(){ if(pmAudit.enabled){ pmAudit.pmSegLines++; pmAudit.pmSegWrites+=pmSeg?pmSeg.n:0; } }
@@ -2757,7 +2753,20 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(hsOn){ hsBuf.fill(bk); hsCls.fill(0); }
     const left=192-((nb*(md.t==='ch6'?16:(md.px? md.px*8/ (md.b===10?1: (md.b===20?2:4)) :8)))>>1); // computed below per type instead
     const row=antic.row;
-    const ch=(antic.chbase&0xFC)<<8;
+    function anticCharBaseAddrLJ(val,t){
+      val&=0xFF;
+      // BUILD2LJ: ANTIC 6/7 pouziva jen 64 znaku, tedy charset muze byt na 512B hranici.
+      // Stary mask &FC posilal CHBASE=$12 na $1000 misto $1200 a Decathlon scoreboard pak cetl spatny font.
+      if(t==='ch6'){
+        if(M.vbxeDebug && !M.anticChbase512LJLogged && (val&0x02)){
+          M.anticChbase512LJLogged=true;
+          M.vbxeDebug('ANTIC CHBASE 512 BUILD2LJ: mode 6/7 bere CHBASE=$'+hx2(val)+' jako $'+hx4((val&0xFE)<<8)+'; stary 1K mask by cetl $'+hx4((val&0xFC)<<8)+'. Cil: Decathlon scoreboard/nastenka text, bez screen-paintu.');
+        }
+        return (val&0xFE)<<8;
+      }
+      return (val&0xFC)<<8;
+    }
+    const ch=anticCharBaseAddrLJ(antic.chbase,md.t);
     // BUILD2JN: CHBASE je skutecny ANTIC paprsek, ne jen "vic nez dva zapisy".
     // Jediny STA CHBASE po WSYNC muze menit font pro zbytek radky; Decathlon/Popeye
     // a dalsi intro/loga casto skladaji obraz prave takhle. Startujeme ze snapshotu
@@ -2773,7 +2782,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         M.anticChbaseBeamLogged=true;
         M.vbxeDebug('ANTIC CHBASE BEAM BUILD2JN: jedno i vice STA CHBASE behem radky se aplikuje podle paprsku; base=$'+hx2(chSeg.base)+' segs='+chSeg.n+'.');
       }
-      return (val&0xFC)<<8;
+      return anticCharBaseAddrLJ(val,md.t);
     }
     const PF=[gtiaPal(gtia.colbk),gtiaPal(gtia.colpf[0]),gtiaPal(gtia.colpf[1]),gtiaPal(gtia.colpf[2]),gtiaPal(gtia.colpf[3])];
     const useGtSeg=gtSeg.n>0;
@@ -3148,10 +3157,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // Vracim fyzickou scanline fazi z KT: PMG pamet obsahuje hornich 8 scanline jako soucast obrazu.
     const li=dbl?(M.line>>1):M.line;
     if(M.vbxeDebug && !gtia.pmPhaseKvLogged && M.line>=8){ gtia.pmPhaseKvLogged=true; M.vbxeDebug('GTIA PMG VERTICAL PHASE BUILD2KX: PMG fyzicka scanline z KV zachovana; li='+li+' line='+M.line+' (KU visibleY rollback).'); }
-    if(M.vbxeDebug && !gtia.pmLateLatchLiLogged && M.line>=8){
-      gtia.pmLateLatchLiLogged=true;
-      M.vbxeDebug('GTIA PMG LATE LATCH BUILD2LI: PM DMA fetch se dela az po casnem CPU/DLI okne a pred renderem; PMBASE/GRACTL/PRIOR/HPOS z ranneho rastru uz nejsou o radku pozadu. line='+M.line+' visibleY='+(M.line-8)+' li='+li+' anticRow='+antic.row+'.');
-    }
     let auditNp=null, auditNm=0;
     const pmDmaOn=!!((antic.dmactl&0x08)&&(gtia.gractl&2));
     const mDmaOn=!!((antic.dmactl&0x0C)&&(gtia.gractl&1));
@@ -3501,9 +3506,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       antic.nmist=(antic.nmist|0x40)&~0x80;
       if(antic.nmien&0x40) cpu.nmiPending=true;
     }
-    // BUILD2LI: PM/M DMA latch uz se nedela uplne na zacatku radky. Decathlon ukazal Y/scoreboard posun:
-    // DLI/WSYNC priprava v prvnich cyklech nastavuje PMBASE/GRACTL/HPOS/PRIOR pro aktualni raster,
-    // zatimco stary model uz mel PMG latch hotovy ze stareho stavu. Tim se PMG a playfield rozjely o radku.
+    pmDmaFetch();   // PM/M DMA do registru GRAFP/GRAFM (nebo zmrazeni pri vyplem DMA)
     timersTick(114);                                               // POKEY casovace 1/2/4
     advanceCassetteToneLine();                                      // BUILD2FE: virtualni XC12/PCM hrany na SKSTAT bit4
     // serial out udalosti
@@ -3604,7 +3607,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(cpu.jam){ cpu.cycles=target; break; }
     }
     snapTake();                                        // zmrazeni stavu pro render teto radky (stav po casnem DMA/DLI okne)
-    pmDmaFetch();                                      // BUILD2LI: PMG DMA latch az po rannem DLI/WSYNC okne, pred pozdejsim CPU během radky
     while(cpu.cycles<target){
       if(handleWsyncKL()) continue;
       if(anticDmaHaltStepLD(target)) continue;
@@ -6888,7 +6890,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2LI_PMG_LATE_LATCH_DECATHLON_SCANLINE_CORE pripraven - zaklad je LH. Zmena je jen v PMG/scanline jadru: P/M DMA latch se provede az po rannem CPU/DLI/WSYNC okne a pred renderem radky, aby PMBASE/GRACTL/HPOS/PRIOR z raster pripravy nebyly o radku pozadu proti playfieldu. Cil: Decathlon horni atlet a scoreboard/nastenka. LG PMBASE zero guard zustava zruseny, LF WSYNC line-end zustava, UI/klavesnice/kazeta/joystick beze zmen. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2LJ_CHBASE_512_ANTIC6_DECATHLON_TEXT_CORE pripraven - zaklad je LH, ne LI. LI pozdni PMG latch nehlasim jako uspesny a neni v teto oprave. Zmena je jen v ANTIC znakove adrese: mode 6/7 bere CHBASE na 512B hranici (&FE), ne na 1KB (&FC). Decathlon zapisuje CHBASE=$12, takze stary kod cetl font z $1000 misto $1200. Cil: horni scoreboard/nastenka/text; PMBASE=$00 a LH priorita zustavaji. UI/klavesnice/kazeta/joystick/CLOAD beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LH_PMBASE_ZERO_GUARD_ROLLBACK_REAL_PRIORITY_CORE pripraven - LG PMBASE zero guard zrusen, protoze test dokazal zmizeni atletu; PMBASE=$00 je povolene, player data se ctou z $0400-$0700. Priorita vracena na KT/LF vyklad PRIOR=$04: PF0/PF1 nad PMG, PMG nad PF2/PF3. LF rollback LE DMA/HALT zustava, Donkey Arcade/Junior faze chranena, fast load jen pro nahravani, CLOAD/CSAVE bez fake. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LD_ANTIC_DMA_HALT_DLI_VBL_TIMING_CORE pripraven - navazuje na LC/KZ/KV. Hlavni rez uz neni loader ani dalsi slepa VBXE paleta: pridana radkova ANTIC DMA/HALT kradez CPU cyklu pro narocne ANTIC mody, DLI/VBI zustava ve stejne kooperativni smycce a PAL ramec drzi 312 radku. Cil: Decathlon telo/nohy/napis, obecne DLI barvy a duchove u non-VBXE her. Fast XEX/ATR zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. Donkey Arcade/Junior PMG faze chranena. Bez screen-paintu, bez hacku podle nazvu hry. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LC_GRAPH_CORE_REAL_PASS_FAST_SAFE pripraven - navazuje na LB/KZ/KV. XEX/OBX a ATR fake-fast zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. VBXE SR/HR/LR pouziva XDL OV palette jako zdroj grafickych barev, MAP zustava pro PF/prioritu; graph transparent guard a SR stripe filtr zustavaji jako LC zaklad.');

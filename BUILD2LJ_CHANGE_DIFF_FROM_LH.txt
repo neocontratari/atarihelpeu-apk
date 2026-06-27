@@ -1,0 +1,50 @@
+--- /mnt/data/workemu/LH/app/src/main/assets/emu_vbxe/index.html	2026-06-27 09:42:01.000000000 +0000
++++ /mnt/data/build2lj/app/src/main/assets/emu_vbxe/index.html	2026-06-27 11:43:00.779981936 +0000
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LH</title>
++<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LJ</title>
+ <style>
+ :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
+ *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+@@ -2753,7 +2753,20 @@
+     if(hsOn){ hsBuf.fill(bk); hsCls.fill(0); }
+     const left=192-((nb*(md.t==='ch6'?16:(md.px? md.px*8/ (md.b===10?1: (md.b===20?2:4)) :8)))>>1); // computed below per type instead
+     const row=antic.row;
+-    const ch=(antic.chbase&0xFC)<<8;
++    function anticCharBaseAddrLJ(val,t){
++      val&=0xFF;
++      // BUILD2LJ: ANTIC 6/7 pouziva jen 64 znaku, tedy charset muze byt na 512B hranici.
++      // Stary mask &FC posilal CHBASE=$12 na $1000 misto $1200 a Decathlon scoreboard pak cetl spatny font.
++      if(t==='ch6'){
++        if(M.vbxeDebug && !M.anticChbase512LJLogged && (val&0x02)){
++          M.anticChbase512LJLogged=true;
++          M.vbxeDebug('ANTIC CHBASE 512 BUILD2LJ: mode 6/7 bere CHBASE=$'+hx2(val)+' jako $'+hx4((val&0xFE)<<8)+'; stary 1K mask by cetl $'+hx4((val&0xFC)<<8)+'. Cil: Decathlon scoreboard/nastenka text, bez screen-paintu.');
++        }
++        return (val&0xFE)<<8;
++      }
++      return (val&0xFC)<<8;
++    }
++    const ch=anticCharBaseAddrLJ(antic.chbase,md.t);
+     // BUILD2JN: CHBASE je skutecny ANTIC paprsek, ne jen "vic nez dva zapisy".
+     // Jediny STA CHBASE po WSYNC muze menit font pro zbytek radky; Decathlon/Popeye
+     // a dalsi intro/loga casto skladaji obraz prave takhle. Startujeme ze snapshotu
+@@ -2769,7 +2782,7 @@
+         M.anticChbaseBeamLogged=true;
+         M.vbxeDebug('ANTIC CHBASE BEAM BUILD2JN: jedno i vice STA CHBASE behem radky se aplikuje podle paprsku; base=$'+hx2(chSeg.base)+' segs='+chSeg.n+'.');
+       }
+-      return (val&0xFC)<<8;
++      return anticCharBaseAddrLJ(val,md.t);
+     }
+     const PF=[gtiaPal(gtia.colbk),gtiaPal(gtia.colpf[0]),gtiaPal(gtia.colpf[1]),gtiaPal(gtia.colpf[2]),gtiaPal(gtia.colpf[3])];
+     const useGtSeg=gtSeg.n>0;
+@@ -6877,6 +6890,7 @@
+     buildOSK(document.getElementById('osk'));
+     bindKeyboard();
+     updateTapeCounter();
++    log('AtariHelp.eu EMU-10 BUILD2LJ_CHBASE_512_ANTIC6_DECATHLON_TEXT_CORE pripraven - zaklad je LH, ne LI. LI pozdni PMG latch nehlasim jako uspesny a neni v teto oprave. Zmena je jen v ANTIC znakove adrese: mode 6/7 bere CHBASE na 512B hranici (&FE), ne na 1KB (&FC). Decathlon zapisuje CHBASE=$12, takze stary kod cetl font z $1000 misto $1200. Cil: horni scoreboard/nastenka/text; PMBASE=$00 a LH priorita zustavaji. UI/klavesnice/kazeta/joystick/CLOAD beze zmen. KODY JSOU STEJNE.');
+     log('AtariHelp.eu EMU-10 BUILD2LH_PMBASE_ZERO_GUARD_ROLLBACK_REAL_PRIORITY_CORE pripraven - LG PMBASE zero guard zrusen, protoze test dokazal zmizeni atletu; PMBASE=$00 je povolene, player data se ctou z $0400-$0700. Priorita vracena na KT/LF vyklad PRIOR=$04: PF0/PF1 nad PMG, PMG nad PF2/PF3. LF rollback LE DMA/HALT zustava, Donkey Arcade/Junior faze chranena, fast load jen pro nahravani, CLOAD/CSAVE bez fake. KODY JSOU STEJNE.');
+     log('AtariHelp.eu EMU-10 BUILD2LD_ANTIC_DMA_HALT_DLI_VBL_TIMING_CORE pripraven - navazuje na LC/KZ/KV. Hlavni rez uz neni loader ani dalsi slepa VBXE paleta: pridana radkova ANTIC DMA/HALT kradez CPU cyklu pro narocne ANTIC mody, DLI/VBI zustava ve stejne kooperativni smycce a PAL ramec drzi 312 radku. Cil: Decathlon telo/nohy/napis, obecne DLI barvy a duchove u non-VBXE her. Fast XEX/ATR zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. Donkey Arcade/Junior PMG faze chranena. Bez screen-paintu, bez hacku podle nazvu hry. KODY JSOU STEJNE.');
+     log('AtariHelp.eu EMU-10 BUILD2LC_GRAPH_CORE_REAL_PASS_FAST_SAFE pripraven - navazuje na LB/KZ/KV. XEX/OBX a ATR fake-fast zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. VBXE SR/HR/LR pouziva XDL OV palette jako zdroj grafickych barev, MAP zustava pro PF/prioritu; graph transparent guard a SR stripe filtr zustavaji jako LC zaklad.');
