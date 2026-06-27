@@ -1,0 +1,18 @@
+BUILD2LW_CHANGE_DIFF_FROM_LR
+
+- Zaklad je BUILD2LR.
+- Nebere se BUILD2LT/LU/LV jako zaklad, protoze to byly Night Driver filtry a vedly k pruh vs ukrojene auto.
+- Zmena v app/src/main/assets/emu_vbxe/index.html:
+  1) vbxeGraphTransparent8LC(): pro VBXE SR mode (mode==1) se vraci k VIDEO_CONTROL transparentnosti.
+     Index 0 je transparentni, pokud neni VC_NO_TRANS; TRANS15 funguje podle registru.
+  2) vbxeGraphTransparent4LC(): pro VBXE LR mode (mode==3) se vraci k VIDEO_CONTROL transparentnosti.
+  3) Pridany log markery BUILD2LW.
+
+Bez zmen:
+- loader / fake-fast rychlost
+- River Raid LL/LR cesta
+- CLOAD / CSAVE
+- UI / skin / klavesnice / joystick / kazeta
+- test XEX/ATR
+
+KODY JSOU STEJNE.
