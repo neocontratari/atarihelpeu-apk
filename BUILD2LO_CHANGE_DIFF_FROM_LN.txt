@@ -1,0 +1,23 @@
+BUILD2LO_CHANGE_DIFF_FROM_LN
+
+Duvod:
+- BUILD2LN zhorsil River Raid: spatne scrollovani/text, grafika uz nebyla TOP.
+- Uzivatel potvrdil, ze LM/LL predtim River Raid TOP a nahravani lepsi.
+
+Technicky rollback:
+- Vracim index.html na BUILD2LM zaklad.
+- Titulek preznacen na BUILD2LO.
+- Pridan pouze startovni log BUILD2LO, aby bylo jasne, ze LN je zahozena.
+
+Odstranene z LN:
+- HSCROL phase x+hscroll experiment.
+- PMG early HBLANK HPOS/SIZE/GRACTL collapse experiment.
+
+Zachovane:
+- LL PRIOR01 River Raid fix.
+- LL XEX turbo exit.
+- LJ CHBASE 512.
+- LM player overlap normal.
+- LM HSCROL LMS.
+
+KODY JSOU STEJNE.
