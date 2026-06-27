@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LG</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LH</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -2907,25 +2907,34 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
     renderPMG(y);
   }
-  function pmShowAt(p,c,x){ // BUILD2LG: GTIA PRIOR po skupinach hracu, ne zjednodusena globalni tabulka.
-    if(!c) return true; // COLBK/pozadi: P/M je videt
-    const pr=(gtiaRegAt(0x1B,x)&0x0F);
-    // Realny nizky nibble PRIOR neurcuje jednu globalni masku pro vsechny hrace.
-    // Bity se vztahuji na skupiny: bit0 P0/P1 nad PF0/PF1, bit1 P0/P1 nad PF2/PF3,
-    // bit2 P2/P3 nad PF0/PF1, bit3 P2/P3 nad PF2/PF3.
-    // To je dulezite pro Decathlon: PRIOR=$04 nesmi delat vsechny PMG nad PF2/PF3.
-    let show;
-    if(pr===0){
-      show=true; // zakladni rezim: P/M nad playfield
+  function pmShowAt(p,c,x){ // BUILD2LH: navrat na KT spravnou PRIOR tabulku; LG bitmask vetve byla spatne.
+    if(!c) return true;
+    const gpriorFull=gtiaRegAt(0x1B,x)&0xFF;
+    const pr=gpriorFull&0x0F;
+    // PRIOR neni sada nezavislych bitu pro kazdou skupinu, ale volba poradi.
+    // LG to vylozil jako bitmasku a u PRIOR=$04 schoval velkou cast Decathlon atleta.
+    // Vraci se KT vyklad: bit2 = PF0/PF1 nad P/M, ale P/M nad PF2/PF3.
+    // c: 1=PF0, 2=PF1, 3=PF2, 4=PF3.
+    let show=true;
+    if(pr&0x08){
+      // bit3: cely playfield nad P/M
+      show=false;
+    }else if(pr&0x04){
+      // bit2: PF0+PF1 nad P/M, P/M nad PF2+PF3
+      show=(c>=3);
+    }else if(pr&0x02){
+      // bit1: P0+P1 nad celym PF, P2+P3 pod celym PF
+      show=(p<2);
+    }else if(pr&0x01){
+      // bit0: P0+P1 nad PF0+PF1, P2+P3 pod PF0+PF1; PF2/PF3 nechavam nad P/M.
+      show=(p<2 && c<=2);
     }else{
-      const group=(p<2)?0:1;
-      const pfgrp=(c<=2)?0:1; // PF0/PF1 proti PF2/PF3
-      const bit=(group===0 ? (pfgrp===0?0x01:0x02) : (pfgrp===0?0x04:0x08));
-      show=!!(pr&bit);
+      // PRIOR=0: P/M nad playfield
+      show=true;
     }
-    if(M.vbxeDebug && !M.gtiaPriorLgLogged){
-      M.gtiaPriorLgLogged=true;
-      M.vbxeDebug('GTIA PRIOR TABLE BUILD2LG: PRIOR low nibble pocitan podle skupin P0/P1 a P2/P3 proti PF0/PF1/PF2/PF3; cil Decathlon/PMG bez screen-paintu.');
+    if(M.vbxeDebug && !M.gtiaPriorLhLogged){
+      M.gtiaPriorLhLogged=true;
+      M.vbxeDebug('GTIA PRIOR TABLE BUILD2LH: LG bitmask priorita zrusena; vracim KT poradi PRIOR=$04 PF0/PF1 nad PMG, PMG nad PF2/PF3.');
     }
     return !!show;
   }
@@ -3138,19 +3147,13 @@ function Atari130XE(osRom, basicRom, CPUctor){
     let auditNp=null, auditNm=0;
     const pmDmaOn=!!((antic.dmactl&0x08)&&(gtia.gractl&2));
     const mDmaOn=!!((antic.dmactl&0x0C)&&(gtia.gractl&1));
-    // BUILD2LG: Deep audit Decathlon ukazal PMBASE=$00 + aktivni PMG DMA. Cist P/M data z $0000
-    // znamena brat zeropage/stack/systemove promenne jako sprity (typicky FF/00 sum). To je presne horsi grafika.
-    // Obecny guard: kdyz je PMBASE maskovana nula a hra pritom bezi s PMG DMA, nenecham DMA prebit
-    // software GRAFP/GRAFM/beam segmenty nahodnymi daty ze systemove oblasti. Neni to podle nazvu hry.
-    if((pmDmaOn||mDmaOn) && pmMaskedBase===0){
-      for(let p=0;p<4;p++) gtia.pmLineP[p]=gtia.grafp[p]&0xFF;
-      gtia.pmLineM=gtia.grafm&0xFF;
-      if(M.vbxeDebug && !gtia.pmBaseZeroGuardLgLogged){
-        gtia.pmBaseZeroGuardLgLogged=true;
-        M.vbxeDebug('GTIA PMBASE ZERO DMA GUARD BUILD2LG: PMBASE=$'+hx2(antic.pmbase)+' maskovana base=$0000 pri DMACTL=$'+hx2(antic.dmactl)+' GRACTL=$'+hx2(gtia.gractl)+'; P/M DMA z nulte stranky ignorovana, zustava software GRAFP/GRAFM/beam.');
-      }
-      pmAuditDmaFetch(base,dbl,li,null,0);
-      return;
+    // BUILD2LH: LG PMBASE zero guard je zrusen. Test dokazal, ze tim zmizeli atleti.
+    // PMBASE=$00 neni automaticky chyba: v single-line PMG se player data ctou od base+$0400..$0700,
+    // a Decathlon v logu z pred-LG realne daval pNonzeroLines/pPixels. Proto se PMG DMA z base=$0000
+    // znovu povoluje; opravuje se priorita, ne vypinani dat.
+    if((pmDmaOn||mDmaOn) && pmMaskedBase===0 && M.vbxeDebug && !gtia.pmBaseZeroAllowedLhLogged){
+      gtia.pmBaseZeroAllowedLhLogged=true;
+      M.vbxeDebug('GTIA PMBASE ZERO DMA ALLOWED BUILD2LH: LG guard zrusen; PMBASE=$00 povolen, protoze player data jsou v single-line oblasti $0400-$0700.');
     }
     // BUILD2JK: GTIA VDELAY ($D01C). Realny stroj umi zpozdit DMA data pro P0-P3/M0-M3
     // o jednu radku; spousta intr/sportovnich her tim sklada sprity a prechodove obrazovky.
@@ -6874,7 +6877,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2LG_PMBASE_ZERO_DMA_GUARD_PRIORITY_CORE pripraven - LF rollback zachovan, ale podle auditu se resi skutecny Decathlon problem: PMBASE=$00 s aktivnim PMG DMA nesmi tahat sprity z nulte stranky/stacku jako sum. BUILD2LG prida obecny PMBASE zero DMA guard a opravi GTIA PRIOR nizky nibble podle skupin P0/P1 a P2/P3. Donkey Arcade/Junior faze zustava chranena, fast load jen pro nahravani, CLOAD/CSAVE bez fake. KODY JSOU STEJNE.');
+    log('AtariHelp.eu EMU-10 BUILD2LH_PMBASE_ZERO_GUARD_ROLLBACK_REAL_PRIORITY_CORE pripraven - LG PMBASE zero guard zrusen, protoze test dokazal zmizeni atletu; PMBASE=$00 je povolene, player data se ctou z $0400-$0700. Priorita vracena na KT/LF vyklad PRIOR=$04: PF0/PF1 nad PMG, PMG nad PF2/PF3. LF rollback LE DMA/HALT zustava, Donkey Arcade/Junior faze chranena, fast load jen pro nahravani, CLOAD/CSAVE bez fake. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LD_ANTIC_DMA_HALT_DLI_VBL_TIMING_CORE pripraven - navazuje na LC/KZ/KV. Hlavni rez uz neni loader ani dalsi slepa VBXE paleta: pridana radkova ANTIC DMA/HALT kradez CPU cyklu pro narocne ANTIC mody, DLI/VBI zustava ve stejne kooperativni smycce a PAL ramec drzi 312 radku. Cil: Decathlon telo/nohy/napis, obecne DLI barvy a duchove u non-VBXE her. Fast XEX/ATR zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. Donkey Arcade/Junior PMG faze chranena. Bez screen-paintu, bez hacku podle nazvu hry. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LC_GRAPH_CORE_REAL_PASS_FAST_SAFE pripraven - navazuje na LB/KZ/KV. XEX/OBX a ATR fake-fast zustava jen pro nahravani, CLOAD/CSAVE bez zrychleni. VBXE SR/HR/LR pouziva XDL OV palette jako zdroj grafickych barev, MAP zustava pro PF/prioritu; graph transparent guard a SR stripe filtr zustavaji jako LC zaklad.');
     log('AtariHelp.eu EMU-10 BUILD2KS_GTIA_ALL_BITMAP_MODES_DOC_CORE pripraven - audit podle GTIA dokumentace: GTIA mody 9/10/11 plati pro jakykoliv ANTIC mod, ne jen F. Implementovan GTIA pixel generator pro m1bpp/m2bpp bitmapove radky (ANTIC D/E/A/8/B/C), GTIA11 opraveno na hue=(COLBK hue OR pixel), luma=COLBK. KR/KQ/KP line-latch/staging vetev je mimo. KODY JSOU STEJNE.');
