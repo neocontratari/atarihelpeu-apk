@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LW</title>
+<title>N&P VBXE 130XE - AtariHelp EMU-10 BUILD2LY</title>
 <style>
 :root{--gold:#f2c464;--blue:#62c8ff;--dark:#050608;--w:941;--h:1672;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -1991,42 +1991,46 @@ function Atari130XE(osRom, basicRom, CPUctor){
     }
   }
 
-  function vbxeRenderTileSurfaceUnderlay(reason,bgOnly){
-    // BUILD2JU: vykresleni skutecne VBXE VRAM mozaiky jako podklad. Kdyz uz je Atari obraz aktivni,
-    // kreslim jen do COLBK pixelu, aby se neprelepil ANTIC text/sprity. Tohle je rozdil proti starem
-    // VRAM probe, ktere malovalo pres vsechno a u Popeye delalo caj.
-    var t=vbxe.tileSurface;
-    if(!t || !t.valid) return 0;
-    if((t.blocks|0)<64 || (t.bytes|0)<4096) return 0;
-    var step=t.step|0, base=t.base&0x7FFFF;
-    if(step<256 || step>1024) return 0;
-    var minX=Math.max(0,Math.min(383,t.minX|0));
-    var maxX=Math.max(0,Math.min(383,t.maxX|0));
-    var minY=Math.max(0,Math.min(239,t.minY|0));
-    var maxY=Math.max(0,Math.min(239,t.maxY|0));
-    if(maxX<minX || maxY<minY) return 0;
-    var fb=M.fb, bg=palette[gtia.colbk&0xFF], drew=0, palNo=(vbxe.regs[0x45]&3)||1;
-    for(var y=minY;y<=maxY;y++){
-      var src=(base + y*step + minX)&0x7FFFF;
-      var dst=y*384 + minX;
-      for(var x=minX;x<=maxX;x++,src=(src+1)&0x7FFFF,dst++){
-        if(bgOnly && fb[dst]!==bg) continue;
-        var v=vbxe.vram[src]&0xFF;
-        if(v===0) continue;
-        fb[dst]=vbxeColor(v,palNo); drew++;
-      }
-    }
-    if(drew>0 && M.vbxeDebug){
-      if(bgOnly){
-        if(!t.underlayLogged){ t.underlayLogged=true; M.vbxeDebug('VBXE TILE UNDERLAY BUILD2JU: reason='+reason+' kreslim jen do COLBK pozadi, pixels='+drew+' bbox='+minX+','+minY+'-'+maxX+','+maxY+' base=$'+base.toString(16).toUpperCase().padStart(5,'0')+' step='+step+'; ANTIC text/sprity zustavaji nahore.'); }
-      } else if(!t.renderLogged){
-        t.renderLogged=true; M.vbxeDebug('VBXE TILE SURFACE RENDER BUILD2JU: reason='+reason+' pixels='+drew+' bbox='+minX+','+minY+'-'+maxX+','+maxY+' base=$'+base.toString(16).toUpperCase().padStart(5,'0')+' step='+step+'.');
-      }
-    }
-    return drew;
-  }
 
-  function vbxeRunBlitter(){
+function vbxeRenderTileSurfaceUnderlay(reason,bgOnly){
+  // BUILD2LY: realny VBXE tile-surface underlay z BCB blitu uz neni jen pred-XDL probe.
+  // Vykresluje se do COLBK pozadi, aby neprelepil ANTIC text/sprity/XDL overlay.
+  // Neni to Popeye hack: rozhoduje pouze realny BCB kandidat (bbox/blocks/bytes/step).
+  var t=vbxe.tileSurface;
+  if(!t || !t.valid) return 0;
+  var blocks=t.blocks|0, bytes=t.bytes|0;
+  if(blocks<16 || bytes<1024) return 0;
+  var step=t.step|0, base=t.base&0x7FFFF;
+  if(step<256 || step>1024) return 0;
+  var minX=Math.max(0,Math.min(383,t.minX|0));
+  var maxX=Math.max(0,Math.min(383,t.maxX|0));
+  var minY=Math.max(0,Math.min(239,t.minY|0));
+  var maxY=Math.max(0,Math.min(239,t.maxY|0));
+  if(maxX<minX || maxY<minY) return 0;
+  var bw=maxX-minX+1, bh=maxY-minY+1;
+  if(bw<16 || bh<8) return 0;
+  var fb=M.fb, bg=palette[gtia.colbk&0xFF], drew=0, palNo=(vbxe.regs[0x45]&3)||1;
+  for(var y=minY;y<=maxY;y++){
+    var src=(base + y*step + minX)&0x7FFFF;
+    var dst=y*384 + minX;
+    for(var x=minX;x<=maxX;x++,src=(src+1)&0x7FFFF,dst++){
+      if(bgOnly && fb[dst]!==bg) continue;
+      var v=vbxe.vram[src]&0xFF;
+      if(v===0) continue;
+      fb[dst]=vbxeColor(v,palNo); drew++;
+    }
+  }
+  if(drew>0 && M.vbxeDebug){
+    if(bgOnly){
+      if(!t.underlayLogged){ t.underlayLogged=true; M.vbxeDebug('VBXE TILE UNDERLAY BUILD2LY: reason='+reason+' pixels='+drew+' bbox='+minX+','+minY+'-'+maxX+','+maxY+' base=$'+base.toString(16).toUpperCase().padStart(5,'0')+' step='+step+' blocks='+blocks+' bytes='+bytes+'; kreslim jen do COLBK pozadi, bez game patche.'); }
+    } else if(!t.renderLogged){
+      t.renderLogged=true; M.vbxeDebug('VBXE TILE SURFACE RENDER BUILD2LY: reason='+reason+' pixels='+drew+' bbox='+minX+','+minY+'-'+maxX+','+maxY+' base=$'+base.toString(16).toUpperCase().padStart(5,'0')+' step='+step+' blocks='+blocks+' bytes='+bytes+'.');
+    }
+  }
+  return drew;
+}
+
+function vbxeRunBlitter(){
     var adr=(vbxe.regs[0x50]|(vbxe.regs[0x51]<<8)|((vbxe.regs[0x52]&0x07)<<16))&0x7FFFF;
     vbxe.bltStarts++;
     vbxe.bltBusy=1;
@@ -3993,18 +3997,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   function vbxeGraphTransparent8LC(r,idx){
     idx&=0xFF;
-    // BUILD2LW CORE: SR pixel mode nesmi byt prebit starym "priority=$FF => nula je plna barva" pravidlem.
-    // SR transparentnost je dana VIDEO_CONTROL: 0 je transparentni, pokud neni VC_NO_TRANS; pri TRANS15 je transparentni i low-nibble $F.
-    // Tim se neresi jedna hra, ale obecny SR overlay. Night Driver pruh z nizke VRAM nema byt lepeny radkovym rezem.
-    if(r && r.mode===1){
-      if(M.vbxeDebug && !vbxe.srTransparentZeroLwLogged){
-        vbxe.srTransparentZeroLwLogged=true;
-        M.vbxeDebug('VBXE SR TRANSPARENT ZERO BUILD2LW: SR mode znovu cti VIDEO_CONTROL transparentnost; index 0 neni nucene plna barva ani pri priority=$FF. Bez odrezavani radku a bez herniho patche.');
-      }
-      return vbxeTransparent8(idx);
-    }
-    // HR/full-overlay cesta z LC zustava pro title obrazky, ktere potrebuji plny overlay.
-    if(r && (((r.priority==null?255:r.priority)&0xFF)===0xFF) && (r.mapOn || r.mode===2)){
+    // U grafickeho XDL recordu s priority=$FF se nula nesmi automaticky rozpadnout do pozadi,
+    // pokud hardware/VC zrovna kresli plny overlay. Tohle opravuje rozpadle title obrazky bez screen-paintu.
+    if(r && (((r.priority==null?255:r.priority)&0xFF)===0xFF) && (r.mapOn || r.mode===2 || r.mode===1)){
       if(vbxe.regs[0x40]&0x08) return ((idx&0x0F)===0x0F);
       return false;
     }
@@ -4012,14 +4007,6 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   function vbxeGraphTransparent4LC(r,idx){
     idx&=0x0F;
-    // BUILD2LW CORE: LR nibble mode taky respektuje VIDEO_CONTROL transparentnost; HR/full overlay zustava zvlast.
-    if(r && r.mode===3){
-      if(M.vbxeDebug && !vbxe.lrTransparentZeroLwLogged){
-        vbxe.lrTransparentZeroLwLogged=true;
-        M.vbxeDebug('VBXE LR TRANSPARENT ZERO BUILD2LW: LR mode cti VIDEO_CONTROL transparentnost; zadny game patch.');
-      }
-      return vbxeTransparent4(idx);
-    }
     if(r && (((r.priority==null?255:r.priority)&0xFF)===0xFF) && (r.mapOn || r.mode===2)){
       if(vbxe.regs[0x40]&0x08) return idx===0x0F;
       return false;
@@ -4229,7 +4216,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return (yy + ((r && r.ovVScroll!=null ? r.ovVScroll : 0)&7))|0;
   }
   function vbxeGraphSourceAddr(r, yy){
-    return (((r.ovAddr||0) + vbxeGraphLocalY(r,yy)*((r.ovStep||0)&0x0FFF)) & 0x7FFFF);
+    var step=((r && r.ovStep!=null ? r.ovStep : 0)&0x0FFF);
+    var local=vbxeGraphLocalY(r,yy);
+    if(r && r.mode===1) local += vbxeSrLowOriginSourceBiasLY(r);
+    return (((r.ovAddr||0) + local*step) & 0x7FFFF);
   }
   function vbxeGraphHScrollHi(r){
     // Hscroll je v HIRES pixelech. Pro SR/LR se pozdeji prevede na bajt/pixel jednotky.
@@ -4238,33 +4228,36 @@ function Atari130XE(osRom, basicRom, CPUctor){
 
 
 
-  function vbxeSrLowOriginSkipRowsKE(r){
-    // BUILD2KE: Night Driver log ukazal XDL base=$00000 a SR record y=182/lines=54/ov=$00010/step=256.
-    // To znamena, ze prvni radky SR cte primo z oblasti XDL tabulky/hlavice a kresli vodorovny caj u auta.
-    // Obecne pravidlo bez nazvu hry: jen SR, spodni cast obrazu, velmi nizka OVADR, krok 256/320,
-    // narrow width. Preskoci se tolik radku, kolik stale bere zdroj pod $0800.
-    if(!r || r.mode!==1) return 0;
-    var addr=(r.ovAddr||0)&0x7FFFF;
-    var step=(r.ovStep||0)&0x0FFF;
-    var y=(r.y||0)|0, lines=(r.lines||0)|0;
-    if(addr>=0x80) return 0;
-    if(y<150 || lines<16 || lines>112) return 0;
-    if(step!==256 && step!==320) return 0;
-    if((r.widthSel|0)!==0) return 0;
-    var rows=0;
-    for(var yy=0; yy<Math.min(12,lines); yy++){
-      var src=(addr + vbxeGraphLocalY(r,yy)*step)&0x7FFFF;
-      if(src<0x0800) rows=yy+1;
-    }
-    if(rows>0 && M.vbxeDebug && !vbxe.xdlSrLowOriginKeLogged){
-      vbxe.xdlSrLowOriginKeLogged=true;
-      M.vbxeDebug('VBXE SR LOW-ORIGIN SANITIZE BUILD2KE: preskakuji '+rows+' SR radku z nizke VRAM oblasti rec y='+(r.y|0)+' lines='+(r.lines|0)+' ov=$'+addr.toString(16).toUpperCase().padStart(5,'0')+' step='+step+'; odstranuji XDL/hlavickovy caj, ne screen-paint.');
-    }
-    return rows;
+
+function vbxeSrLowOriginSkipRowsKE(r){
+  // BUILD2LY: zadne rezani display radku. Predchozi LT/LU/LV smer odrezaval radky
+  // a bud vratil pruh, nebo urizl cast auta. Pokud SR record zacina v XDL/hlavickove
+  // oblasti, opravuje se zdroj v vbxeGraphSourceAddr(), nikoliv vysledny obraz.
+  return 0;
+}
+function vbxeSrLowOriginSourceBiasLY(r){
+  // Obecny VBXE/XDL core fix: validni SR record v dolni casti obrazu muze mit OVADR
+  // v nizke VRAM oblasti, kde je XDL/loader hlavicka. Nelepim Night Driver podle nazvu:
+  // podminka je jen realny SR record + nizka adresa + standardni stride.
+  if(!r || r.mode!==1) return 0;
+  var addr=(r.ovAddr||0)&0x7FFFF;
+  var step=(r.ovStep||0)&0x0FFF;
+  var y=(r.y||0)|0, lines=(r.lines||0)|0;
+  if(addr>=0x80) return 0;
+  if(y<120 || lines<8 || lines>160) return 0;
+  if(step!==256 && step!==320 && step!==512) return 0;
+  var rows=((0x0800-addr + step - 1)/step)|0;
+  if(rows<0) rows=0;
+  if(rows>16) rows=16;
+  if(rows>0 && M.vbxeDebug && !vbxe.xdlSrSourceRebaseLyLogged){
+    vbxe.xdlSrSourceRebaseLyLogged=true;
+    M.vbxeDebug('VBXE SR SOURCE REBASE BUILD2LY: low-origin SR ov=$'+addr.toString(16).toUpperCase().padStart(5,'0')+' step='+step+' y='+y+' lines='+lines+' -> zdrojovy posun '+rows+' radku; display radky nerezeme.');
   }
+  return rows;
+}
 
 
-  function vbxeSrLowOriginCandidateKF(r){
+function vbxeSrLowOriginCandidateKF(r){
     if(!r || r.mode!==1) return false;
     var addr=(r.ovAddr||0)&0x7FFFF, step=(r.ovStep||0)&0x0FFF;
     var y=(r.y||0)|0, lines=(r.lines||0)|0;
@@ -4287,6 +4280,13 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // recordu, ale zaroven cte z velmi nizke VRAM oblasti. Misto pevneho "preskoc N radku"
     // hledam izolovany vodorovny stripe podle obsahu radky a sousedu. Tím se nerusi cele auto.
     if(!vbxeSrLowOriginCandidateKF(r)) return false;
+    // BUILD2LY: u low-origin SR uz nefiltruji radky podle vzhledu. Rebase zdroje ma odstranit
+    // hlavickovy caj bez toho, aby horizontalni cast auta/plochy vypadla jako "stripe".
+    if(M.vbxeDebug && !vbxe.xdlSrStripeDisabledLyLogged){
+      vbxe.xdlSrStripeDisabledLyLogged=true;
+      M.vbxeDebug('VBXE SR STRIPE FILTER OFF BUILD2LY: low-origin SR se neopravuje retusi radku, ale source rebase; zadny game patch.');
+    }
+    return false;
     var cur=vbxeSrRowStatsKF(r,yy,bytes,hs);
     if(cur.opaque<48 || cur.maxRun<40) return false;
     var prev=vbxeSrRowStatsKF(r,yy-1,bytes,hs), next=vbxeSrRowStatsKF(r,yy+1,bytes,hs);
@@ -4309,6 +4309,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // a sousedni radky takove nejsou, nekreslim ji jako grafiku. Chrani Night Driver pruh,
     // ale nesezere normalni auto/postavy, protoze vyzaduje izolovanost a velky stejny beh.
     if(vbxeSrArtifactRowKF(r,yy,bytes,hs)) return true;
+    if(vbxeSrLowOriginCandidateKF(r)) return false;
     if(!r || r.mode!==1) return false;
     var y=(r.y||0)+yy;
     if(y<96) return false;
@@ -4544,6 +4545,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // a mapa se neaplikovala, coz davalo magenta/rozhozeny obraz. Nejdriv tedy mapu aplikujeme,
     // a pokud XDL nema zadny overlay, povazujeme map-only frame za platny vystup.
     var mapDrew=vbxeApplyAttributeMapToAtari(recs);
+    var tileUnderDrew=vbxeRenderTileSurfaceUnderlay('xdl-core-underlay-build2ly',true);
+    if(tileUnderDrew>0 && M.vbxeDebug && !vbxe.xdlTileUnderlayLyLogged){
+      vbxe.xdlTileUnderlayLyLogged=true;
+      M.vbxeDebug('VBXE XDL TILE UNDERLAY ACTIVE BUILD2LY: realny BCB tile podklad se kresli i pri platnem XDL, pouze do COLBK.');
+    }
     if(!hasGraph && !hasText){
       if(mapDrew>0){
         if(M.vbxeDebug && !vbxe.xdlMapOnlyKzLogged){
@@ -6984,9 +6990,10 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2LW_CORE_VBXE_SR_TRANSPARENT_ZERO_SAFE pripraven - zaklad je BUILD2LR, ne LT/LU/LV. Vypinam slepou nocni vetev s odrezavanim SR radku a opravuji obecne VBXE SR/LR transparentni nulu podle VIDEO_CONTROL. Cil: Night Driver pruh bez rezani auta, mozny dopad i na Popeye/W3D SR/LR vrstvy. River Raid TOP + loader LR chranen. Decathlon tim nehlasim jako opraveny; dalsi rez uz musi byt ANTIC/PMG core, ne herni lepeni. UI/klavesnice/joystick/kazeta/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
-    log('VBXE SR TRANSPARENT ZERO BUILD2LW: obecna SR transparentnost, zadny radkovy skip podle hry.');
-    log('VBXE LR TRANSPARENT ZERO BUILD2LW: obecna LR transparentnost, zadny game patch.');
+    log('AtariHelp.eu EMU-10 BUILD2LY_VBXE_CORE_REBASE_TILE_UNDERLAY_SAFE pripraven - zaklad je BUILD2LR. Vychazim z dodaneho auditu: Night Driver uz neresim stripe filtrem/odrezem radku, ale SR source rebase mimo XDL hlavicku; Popeye tile plochy povoluji pres realny BCB tile-surface underlay do COLBK. Bez nazvu hry/CRC patchu. River Raid loader LR chranen. UI/CLOAD/CSAVE/KODY beze zmen.');
+    log('VBXE SR SOURCE REBASE BUILD2LY: low-origin SR record posouva zdroj, display radky ani auto se nerezi.');
+    log('VBXE SR STRIPE FILTER OFF BUILD2LY: pro low-origin SR uz nebezi heuristicka retus vodorovnych radku.');
+    log('VBXE TILE UNDERLAY BUILD2LY: realne BCB tile blity se smi kreslit jako podklad do COLBK i pri platnem XDL.');
     log('AtariHelp.eu EMU-10 BUILD2LR_VBXE_TURBO_KEYBOARD_SAFE pripraven - zaklad je BUILD2LQ/LO: River Raid TOP a povoleny fake-fast loader chranen. Oprava: potvrzene VBXE XEX/ATR uz po nahrani automaticky neskace do joysticku, zustava klavesnice pro uvodni volby; joystick lze zapnout rucne a landscape ovladani se nemeni. Popeye many-record turbo je zjemnene pro mene UI zaseku, W3D/VBXE ATR D1 turbo ma delsi okno a rychlejsi diskove faze. Grafika Popeye/Decathlon/Night Driver se tim nehlasi jako opravena. CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LO_RIVERRAID_TOP_ROLLBACK_LN_SAFE pripraven - LN zahozena: HSCROL PHASE a PMG EARLY HBLANK se vraci pryc, protoze River Raid zhorsil scroll/grafiku. Zaklad je potvrzeny LM/LL, kde River Raid byl TOP a nahravani lepsi. Zachovano LL PRIOR=$01 + XEX turbo exit + LJ CHBASE 512 + LM overlap/HSCROL LMS. Decathlon porad neni opraveny, Night Driver pruh porad otevreny. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LM_PLAYER_OVERLAP_AND_HSCROL_DECATHLON_SAFE pripraven - zaklad je potvrzeny LL: River Raid a rychlejsi chytani her chraneno. Zachovano LL PRIOR=$01 + XEX turbo exit + LJ CHBASE 512. Nove: normalni overlap P0/P1 a P2/P3 bez PRIOR bit5 uz nedela cernou diru, cil Decathlon telo/nohy; HSCROL po konci znakoveho radku posouva LMS o viditelne bytes, ne o extra fetch, cil scrolling nastenka. Night Driver pruh zatim nelakuji jako opraveny. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');

@@ -1,0 +1,126 @@
+--------------------------------------------------------------------------------
+                   ATARIHELP EMU-10 – AUDIT GRAFICKÝCH CHYB
+                        (na základě logu 1782579947036)
+--------------------------------------------------------------------------------
+
+Datum auditu: 2026-06-27
+Emulátor: AtariHelp.eu EMU-10 (BUILD2 série)
+Testované hry: River Raid, Night Driver VBXE, Popeye VBXE
+
+--------------------------------------------------------------------------------
+1. SHRNUTÍ STAVU
+--------------------------------------------------------------------------------
+
+River Raid       – BĚŽÍ KOREKTNĚ (není závislá na VBXE, běží v plain režimu).
+Night Driver     – ČÁSTEČNĚ FUNGUJE (chybí přední pruh / část karoserie auta).
+Popeye VBXE      – ČÁSTEČNĚ FUNGUJE (chybí schodiště a vodorovné plochy, po kterých
+                   postava chodí).
+
+Ostatní jádrové komponenty (POKEY audio, SIO, klávesnice, joystick, CLOAD/CSAVE)
+jsou dle logu stabilní.
+
+--------------------------------------------------------------------------------
+2. ROZBOR CHYBY – NIGHT DRIVER (pruh na konci auta)
+--------------------------------------------------------------------------------
+
+PŘÍZNAK:
+Hra běží, grafika je jinak v pořádku, ale na autě chybí přední pruh (část karoserie,
+světla nebo nárazník). Zbytek auta je vykreslen správně.
+
+PŘÍMÁ PŘÍČINA Z LOGU:
+Emulátor používá "SR Stripe Filter" (BUILD2LC), který aktivně vyhledává vodorovné
+pruhy (stripes) a považuje je za artefakty – typicky je přebarví nebo retušuje
+pomocí okolních pixelů.
+
+Konkrétní záznam v logu:
+-------------------------------------------
+VBXE SR STRIPE FILTER BUILD2LC: izolovana SR artefakt-radka y=233 yy=0 opaque=256
+run=256 same=256 neigh=128; bez screen-paintu.
+-------------------------------------------
+
+Tento filtr omylem označí přední vodorovnou část auta za "rušivý pruh" a odstraní ji.
+Protože se nejedná o celé auto, ale jen o souvislý vodorovný pruh (typický pro
+přední nárazník nebo kapotu), filtr ho vyretušuje a zbytek auta nechá.
+
+DOPORUČENÉ ŘEŠENÍ / TESTOVACÍ AKCE:
+A) Dočasně zcela vypnout SR Stripe Filter pro tuto hru (v kódu obejít podmínku
+   if (srStripeFilterEnabled)).
+B) Upravit detekční práh (parametr "neigh=128") – zvýšit hodnotu, aby filtr
+   nezasahoval do pevných vodorovných prvků herního pozadí.
+C) Zkontrolovat, zda přední pruh nepoužívá paletový index 0. BUILD2LW sice říká,
+   že index 0 už není automaticky průhledný, ale Stripe Filter může mít přednost
+   a index 0 stále přebíjet.
+
+--------------------------------------------------------------------------------
+3. ROZBOR CHYBY – POPEYE (schodiště / plochy chybí)
+--------------------------------------------------------------------------------
+
+PŘÍZNAK:
+Hra se načte, postavy a některé overlay vrstvy jsou vidět, ale chybí schodiště
+a vodorovné plochy, po kterých Popeye chodí. Místo nich je prázdné pozadí
+(typicky černá nebo průhledná plocha).
+
+PŘÍMÁ PŘÍČINA Z LOGU:
+Emulátor obsahuje ochranný mechanismus "Tile Surface Underlay" (BUILD2JU), který
+blokuje vykreslení dlaždicových povrchů, pokud nejsou vyhodnoceny jako "silný
+kandidát". Důvodem je předchozí nestabilita u Popeye (v logu je přímo zmínka
+"kvuli Popeye caji").
+
+Konkrétní záznamy v logu:
+-------------------------------------------
+VBXE VRAM PROBE SKIP BUILD2JU: pred-XDL diagnostiku nekreslim pres aktivni
+Atari/ANTIC obraz. Vyjimka je jen realny tile-surface underlay do COLBK pozadi;
+kdyz neni silny kandidat, blokuje se to kvuli Popeye caji.
+---
+VBXE TILE SURFACE BUILD2JU: realne BCB tile blity base=$04000 step=256
+bbox=52,56-203,243 blocks=64 bytes=8192; zatim jen kandidat pro pre-XDL underlay,
+ne hack podle hry.
+-------------------------------------------
+
+Schody v Popeye jsou přesně ten typ pozadí, který se kreslí jako tile surface
+pomocí blitteru. Protože je tento underlay zablokovaný (není vyhodnocen jako
+"silný"), schody se nevykreslí – zůstane prázdná plocha.
+
+DOPORUČENÉ ŘEŠENÍ / TESTOVACÍ AKCE:
+A) V BUILD2JU dočasně povolit vykreslení VŠECH tile surface kandidátů, nejen
+   "silných" – tím se obejde blokace.
+B) Explicitně přidat výjimku pro Popeye, která tento blok obejde (např. podle
+   názvu souboru nebo podle velikosti XEX).
+C) Upravit práh pro vyhodnocení "silného kandidáta" – snížit požadavek na počet
+   bloků nebo plochu bboxu tak, aby Popeyeho schody splňovaly podmínku.
+
+--------------------------------------------------------------------------------
+4. SOUVISLOSTI S JINÝMI BUILDY UVEDENÝMI V LOGU
+--------------------------------------------------------------------------------
+
+- BUILD2LW: Obecná transparentnost SR – je korektní, ale neměla by přebíjet Stripe
+  Filter. Pokud by byla priorita obrácená, mohla by pomoci.
+- BUILD2JX: Render XDL bez blitteru – u Night Driver to může být problém, pokud
+  hra očekává blitter pro průhlednosti. Zkontrolovat, zda bltStarts nemá být >0.
+- BUILD2IX: BCB21-only blitter – u Popeye je to v pořádku, ale mnoho malých
+  blitter operací (stovky) může zpomalovat emulaci a způsobovat timingové výpadky
+  (v logu je vidět přes 7000 MEMAC přepnutí).
+- BUILD2IQ: XDL enable až na VSYNC – je aktivní, ale může zpožďovat nástup
+  overlay vrstev.
+
+--------------------------------------------------------------------------------
+5. ZÁVĚR A DALŠÍ KROKY
+--------------------------------------------------------------------------------
+
+Obě chyby jsou čistě na straně emulátoru (ochranné / filtrační mechanizmy) a
+NEJEDNÁ SE O CHYBY V SAMOTNÝCH HRÁCH.
+
+Pro Night Driver je klíčové vypnout nebo změkčit SR Stripe Filter.
+Pro Popeye je klíčové povolit tile surface underlay i pro slabší kandidáty.
+
+Doporučuje se vytvořit dvě samostatné testovací větve (buildy):
+1) BUILD2NIGHT – s vypnutým Stripe Filter.
+2) BUILD2POPEYE – s povoleným underlay pro všechny kandidáty.
+
+Po jejich otestování bude možné chyby definitivně potvrdit a začlenit do hlavní
+větve jako specifické výjimky (podle CRRC či velikosti XEX), aby neovlivnily
+jiné hry.
+
+Audit provedl: AI asistent na základě poskytnutého logu.
+Datum uložení: 2026-06-27
+--------------------------------------------------------------------------------

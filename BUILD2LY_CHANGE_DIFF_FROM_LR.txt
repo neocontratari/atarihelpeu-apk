@@ -1,0 +1,17 @@
+
+BUILD2LY_CHANGE_DIFF_FROM_LR
+
+Changed file:
+- app/src/main/assets/emu_vbxe/index.html
+
+Code changes:
+- vbxeSrLowOriginSkipRowsKE(): now returns 0; no display-row cutting.
+- Added vbxeSrLowOriginSourceBiasLY(): source localY bias for valid low-origin SR records.
+- vbxeGraphSourceAddr(): applies source bias to SR records.
+- vbxeSrArtifactRowKF()/LC path: low-origin SR records no longer use heuristic stripe filtering.
+- vbxeRenderTileSurfaceUnderlay(): relaxed real BCB tile candidate criteria and logs BUILD2LY; still draws only into COLBK when bgOnly.
+- vbxeRenderXdl(): calls tile underlay during normal XDL rendering before graph/text overlay.
+- startup logs updated to BUILD2LY.
+
+Not changed:
+- loader, CLOAD/CSAVE, UI, joystick/keyboard, test XEX/ATR.

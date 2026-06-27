@@ -1,0 +1,301 @@
+--------------------------------------------------------------------------------
+                   ATARIHELP EMU-10 – AUDIT GRAFICKÝCH CHYB
+                        (na základě logu 1782579947036)
+                        + PSEUDO-KÓD OPRAV (KOMPLET)
+--------------------------------------------------------------------------------
+
+Datum auditu: 2026-06-27
+Emulátor: AtariHelp.eu EMU-10 (BUILD2 série)
+Testované hry: River Raid, Night Driver VBXE, Popeye VBXE
+
+--------------------------------------------------------------------------------
+1. SHRNUTÍ STAVU
+--------------------------------------------------------------------------------
+
+River Raid       – BĚŽÍ KOREKTNĚ (není závislá na VBXE, běží v plain režimu).
+Night Driver     – ČÁSTEČNĚ FUNGUJE (chybí přední pruh / část karoserie auta).
+Popeye VBXE      – ČÁSTEČNĚ FUNGUJE (chybí schodiště a vodorovné plochy, po kterých
+                   postava chodí).
+
+Ostatní jádrové komponenty (POKEY audio, SIO, klávesnice, joystick, CLOAD/CSAVE)
+jsou dle logu stabilní.
+
+--------------------------------------------------------------------------------
+2. ROZBOR CHYBY – NIGHT DRIVER (pruh na konci auta)
+--------------------------------------------------------------------------------
+
+PŘÍZNAK:
+Hra běží, grafika je jinak v pořádku, ale na autě chybí přední pruh (část karoserie,
+světla nebo nárazník). Zbytek auta je vykreslen správně.
+
+PŘÍMÁ PŘÍČINA Z LOGU:
+Emulátor používá "SR Stripe Filter" (BUILD2LC), který aktivně vyhledává vodorovné
+pruhy (stripes) a považuje je za artefakty – typicky je přebarví nebo retušuje
+pomocí okolních pixelů.
+
+Konkrétní záznam v logu:
+-------------------------------------------
+VBXE SR STRIPE FILTER BUILD2LC: izolovana SR artefakt-radka y=233 yy=0 opaque=256
+run=256 same=256 neigh=128; bez screen-paintu.
+-------------------------------------------
+
+Tento filtr omylem označí přední vodorovnou část auta za "rušivý pruh" a odstraní ji.
+Protože se nejedná o celé auto, ale jen o souvislý vodorovný pruh (typický pro
+přední nárazník nebo kapotu), filtr ho vyretušuje a zbytek auta nechá.
+
+--------------------------------------------------------------------------------
+3. ROZBOR CHYBY – POPEYE (schodiště / plochy chybí)
+--------------------------------------------------------------------------------
+
+PŘÍZNAK:
+Hra se načte, postavy a některé overlay vrstvy jsou vidět, ale chybí schodiště
+a vodorovné plochy, po kterých Popeye chodí. Místo nich je prázdné pozadí
+(typicky černá nebo průhledná plocha).
+
+PŘÍMÁ PŘÍČINA Z LOGU:
+Emulátor obsahuje ochranný mechanismus "Tile Surface Underlay" (BUILD2JU), který
+blokuje vykreslení dlaždicových povrchů, pokud nejsou vyhodnoceny jako "silný
+kandidát". Důvodem je předchozí nestabilita u Popeye (v logu je přímo zmínka
+"kvuli Popeye caji").
+
+Konkrétní záznamy v logu:
+-------------------------------------------
+VBXE VRAM PROBE SKIP BUILD2JU: pred-XDL diagnostiku nekreslim pres aktivni
+Atari/ANTIC obraz. Vyjimka je jen realny tile-surface underlay do COLBK pozadi;
+kdyz neni silny kandidat, blokuje se to kvuli Popeye caji.
+---
+VBXE TILE SURFACE BUILD2JU: realne BCB tile blity base=$04000 step=256
+bbox=52,56-203,243 blocks=64 bytes=8192; zatim jen kandidat pro pre-XDL underlay,
+ne hack podle hry.
+-------------------------------------------
+
+Schody v Popeye jsou přesně ten typ pozadí, který se kreslí jako tile surface
+pomocí blitteru. Protože je tento underlay zablokovaný (není vyhodnocen jako
+"silný"), schody se nevykreslí – zůstane prázdná plocha.
+
+--------------------------------------------------------------------------------
+4. KOMPLETNÍ PSEUDO-KÓD OPRAV (PRO OBA PROBLÉMY)
+--------------------------------------------------------------------------------
+
+Následující kód je navržen tak, aby bylo možné ho vložit přímo do renderovacího
+jádra emulátoru (C++ / JavaScript / C# – styl je univerzální). Všechny části jsou
+zde najednou, v logickém pořadí, včetně identifikace her a hlavního rozhodovacího
+mechanismu.
+
+-------------------------------------------------------------------------------
+// ================================================================
+//  KOSTRA RENDER KONTEXTU A KONFIGURACE (použijte podle vašeho kódu)
+// ================================================================
+
+struct RenderContext {
+    string loadedFileName;      // název načteného souboru (malá písmena)
+    uint32 fileCRC;            // volitelně – pro identifikaci podle CRC
+    bool isNightDriver;        // předpočítaný flag
+    bool isPopeye;             // předpočítaný flag
+    int currentScanlineY;      // aktuální Y pro stripe filtr
+    int stripeOpaque;          // parametry z XDL
+    int stripeRun;
+    int stripeSame;
+    int stripeNeigh;
+};
+
+struct TileCandidate {
+    int base;                  // začátek v VRAM
+    int step;                  // krok mezi řádky
+    int bboxX1, bboxY1;        // ohraničující obdélník
+    int bboxX2, bboxY2;
+    int blocks;                // počet bloků
+    int bytes;                 // celková velikost v bytech
+    bool isStrong;             // systémem vyhodnocený "silný" kandidát
+};
+
+struct EmulatorConfig {
+    bool srStripeFilterEnabled;   // globální povolení filtru (výchozí true)
+    int stripeNeighborThreshold;  // práh pro detekci (výchozí 128)
+    bool allowWeakTileUnderlay;   // globální povolení slabých kandidátů (výchozí false)
+};
+
+// ================================================================
+//  IDENTIFIKACE HER (podle názvu nebo CRC)
+// ================================================================
+
+void identifyGame(RenderContext &ctx) {
+    string name = ctx.loadedFileName;
+    // převod na malá písmena pro jistotu
+    transform(name.begin(), name.end(), name.begin(), ::tolower);
+    
+    ctx.isNightDriver = (name.find("nightdriver") != string::npos) ||
+                        (name.find("night_driver") != string::npos) ||
+                        (ctx.fileCRC == 0x12345678); // doplňte skutečný CRC Night Driver
+    
+    ctx.isPopeye = (name.find("popeye") != string::npos) ||
+                   (ctx.fileCRC == 0x87654321);       // doplňte skutečný CRC Popeye
+}
+
+// ================================================================
+//  OPRAVA 1 – NIGHT DRIVER: SR STRIPE FILTER BYPASS
+// ================================================================
+
+bool shouldApplyStripeFilter(RenderContext ctx, EmulatorConfig cfg) {
+    // 1. Pokud je filtr globálně vypnutý, nepouštět
+    if (!cfg.srStripeFilterEnabled) return false;
+    
+    // 2. Speciální chování pro Night Driver
+    if (ctx.isNightDriver) {
+        // MOŽNOST A – ÚPLNÉ VYPNUTÍ (nejjednodušší)
+        return false;
+        
+        /* MOŽNOST B – ZMĚKČENÍ (pokud chcete ponechat filtr pro jiné artefakty)
+        // Zvýšíme práh natolik, aby běžné pruhy nebyly odstraňovány
+        int originalNeigh = ctx.stripeNeigh;          // původní hodnota z XDL (např. 128)
+        int newThreshold = cfg.stripeNeighborThreshold; // globální práh (můžeme ho nastavit na 256)
+        if (originalNeigh < newThreshold) {
+            // Pokud je "sousedství" menší než práh, považujeme to za slabý artefakt -> nechat být
+            return false;
+        }
+        // Jinak pokračovat s filtrem (pro opravdu silné artefakty)
+        return true;
+        */
+    }
+    
+    // 3. Výchozí chování pro všechny ostatní hry
+    return true;
+}
+
+// Samotná aplikace filtru (volá se pouze pokud shouldApplyStripeFilter vrátí true)
+void applyStripeFilter(int y, int opaque, int run, int same, int neigh) {
+    // Původní kód – retušování pruhů
+    // ... (zde je vaše implementace BUILD2LC)
+}
+
+// ================================================================
+//  OPRAVA 2 – POPEYE: TILE SURFACE UNDERLAY FORCE
+// ================================================================
+
+bool shouldRenderTileUnderlay(TileCandidate candidate, RenderContext ctx, EmulatorConfig cfg) {
+    // 1. Pokud je globálně povoleno vykreslovat i slabé kandidáty, vykreslit vše
+    if (cfg.allowWeakTileUnderlay) return true;
+    
+    // 2. Speciální chování pro Popeye
+    if (ctx.isPopeye) {
+        // Popeye: povolíme vykreslení, pokud má alespoň 1 blok a rozumnou velikost
+        // (ignorujeme příznak "isStrong")
+        if (candidate.blocks > 0 && candidate.bytes > 100) {
+            return true;   // VYKRESLI
+        }
+        return false;      // žádný dlaždicový povrch – nic nekreslit
+    }
+    
+    // 3. Výchozí logika pro ostatní hry (pouze "strong" kandidáti)
+    return candidate.isStrong;
+}
+
+// Samotné vykreslení underlay (volá se pouze pokud shouldRenderTileUnderlay vrátí true)
+void renderTileUnderlay(TileCandidate candidate) {
+    // Původní kód pro blitter kopii – např.:
+    // blit(candidate.base, candidate.step, candidate.bbox...)
+    // ... (zde je vaše implementace BUILD2JU)
+}
+
+// ================================================================
+//  HLAVNÍ RENDEROVACÍ CYKLUS (KAŽDÝ SNÍMEK)
+// ================================================================
+
+void renderFrame() {
+    // Získání aktuálního kontextu a konfigurace
+    RenderContext ctx = getCurrentRenderContext();
+    EmulatorConfig cfg = getCurrentConfig();
+    
+    // Předpočítání identifikace her (stačí jednou po načtení souboru)
+    identifyGame(ctx);
+    
+    // --- KROK 1: ZPRACOVÁNÍ SR / HR OVERLAY (VBXE) ---
+    if (vbxeEnabled) {
+        
+        // 1a) Pro každý SR scanline rozhodneme o použití Stripe Filter
+        for each scanline in srScanlines {
+            // Naplníme parametry do kontextu
+            ctx.currentScanlineY = scanline.y;
+            ctx.stripeOpaque = scanline.opaque;
+            ctx.stripeRun = scanline.run;
+            ctx.stripeSame = scanline.same;
+            ctx.stripeNeigh = scanline.neigh;
+            
+            if (shouldApplyStripeFilter(ctx, cfg)) {
+                applyStripeFilter(scanline.y, scanline.opaque, 
+                                  scanline.run, scanline.same, scanline.neigh);
+            }
+            // Jinak scanline necháme beze změny – pruh zůstane zachován
+        }
+        
+        // 1b) Zpracování tile surface kandidátů (underlay)
+        List<TileCandidate> candidates = detectTileCandidates(); // vaše detekce
+        for each candidate in candidates {
+            if (shouldRenderTileUnderlay(candidate, ctx, cfg)) {
+                renderTileUnderlay(candidate);
+            }
+        }
+    }
+    
+    // --- KROK 2: KRESLENÍ ANTIC/GTIA POZADÍ A PMG ---
+    renderAnticAndPMG();
+    
+    // --- KROK 3: FINÁLNÍ KOMPOZICE ---
+    composeFinalImage();
+}
+
+// ================================================================
+//  JAK NASTAVIT KONFIGURACI PRO TYTO DVĚ HRY (PŘÍKLAD)
+// ================================================================
+
+void setupGameSpecificConfig(EmulatorConfig &cfg, RenderContext &ctx) {
+    // Výchozí hodnoty
+    cfg.srStripeFilterEnabled = true;
+    cfg.stripeNeighborThreshold = 128;
+    cfg.allowWeakTileUnderlay = false;
+    
+    // Night Driver
+    if (ctx.isNightDriver) {
+        cfg.srStripeFilterEnabled = false;   // úplně vypneme
+        // nebo cfg.stripeNeighborThreshold = 256; // změkčíme
+    }
+    
+    // Popeye
+    if (ctx.isPopeye) {
+        cfg.allowWeakTileUnderlay = true;    // povolíme všechny kandidáty
+    }
+}
+
+// ================================================================
+//  POZNÁMKY K IMPLEMENTACI
+// ================================================================
+//  - Identifikace podle názvu souboru je nejjednodušší, ale lze ji nahradit CRC.
+//  - Funkce getCurrentRenderContext() a getCurrentConfig() jsou vaše.
+//  - detectTileCandidates() je vaše detekce (pravděpodobně z BUILD2JU).
+//  - applyStripeFilter a renderTileUnderlay jsou vaše stávající funkce.
+//  - Důležité: všechny změny jsou čistě v emulátoru, nezasahují do herního kódu.
+
+--------------------------------------------------------------------------------
+5. ZÁVĚR A DOPORUČENÉ DALŠÍ KROKY
+--------------------------------------------------------------------------------
+
+Obě chyby jsou čistě na straně emulátoru (ochranné / filtrační mechanizmy) a
+NEJEDNÁ SE O CHYBY V SAMOTNÝCH HRÁCH.
+
+Pro Night Driver je klíčové vypnout nebo změkčit SR Stripe Filter.
+Pro Popeye je klíčové povolit tile surface underlay i pro slabší kandidáty.
+
+Doporučuje se vytvořit dvě samostatné testovací větve (buildy):
+1) BUILD2NIGHT – s vypnutým Stripe Filter (nastavení cfg.srStripeFilterEnabled = false)
+2) BUILD2POPEYE – s povoleným underlay pro všechny kandidáty (cfg.allowWeakTileUnderlay = true)
+
+Po jejich otestování bude možné chyby definitivně potvrdit a začlenit do hlavní
+větve jako specifické výjimky (podle CRC či velikosti XEX), aby neovlivnily
+jiné hry.
+
+Veškerý potřebný pseudo-kód je obsažen výše v jednom celku – stačí ho převést
+do vašeho programovacího jazyka a vložit na příslušná místa v renderovacím jádru.
+
+Audit provedl: AI asistent na základě poskytnutého logu.
+Datum uložení: 2026-06-27
+--------------------------------------------------------------------------------
