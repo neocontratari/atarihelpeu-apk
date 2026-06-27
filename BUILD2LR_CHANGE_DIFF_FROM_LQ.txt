@@ -1,0 +1,26 @@
+BUILD2LR_VBXE_TURBO_KEYBOARD_SAFE - rozdil proti BUILD2LQ
+
+Zaklad:
+- BUILD2LQ / BUILD2LO zustava.
+- River Raid TOP stav se chrani.
+- LN zustava mrtva, nevraci se.
+- Decathlon grafika, Night Driver pruh a Popeye VBXE grafika se timto buildem nehlasi jako opravene.
+
+Zmeny:
+1) VBXE XEX/ATR po nahrani automaticky neskace do joysticku.
+   - Popeye VBXE a podobne mnoho-zaznamove VBXE XEX zustanou po startu na KLAVESNICI.
+   - W3D/VBXE ATR zustane na KLAVESNICI kvuli uvodnim volbam.
+   - JOYSTICK jde zapnout rucne tlacitkem.
+   - Landscape bocni joystick/FIRE se nemenil.
+   - Normalni hry bez VBXE, napr. River Raid, zustavaji jako driv: po nahrani rovnou joystick.
+
+2) Popeye VBXE many-record turbo je zjemnene pro UI.
+   - BUILD2LQ mel hodne agresivni 1800 frame krok, ktery mohl kousat klavesnici/skin.
+   - BUILD2LR pousti UI casteji, ale porad drzi rychle many-record XEX turbo.
+
+3) W3D/VBXE ATR disk turbo je posilene jen pro diskove SIO faze.
+   - D1 turbo okno je delsi.
+   - Diskove a boot turbo kroky jsou vyssi.
+   - Nejde o RAM inject, screen paint ani patch hry.
+
+KODY JSOU STEJNE.
