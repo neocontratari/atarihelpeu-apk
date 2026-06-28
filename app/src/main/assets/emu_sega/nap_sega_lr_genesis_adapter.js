@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7
+ * BUILD2MU_SEGA_LRUSSO_CLOSURE_EVAL_BOOT_STAGE8
  *
  * NAP adapter for the lrusso Genesis/PicoDrive browser core API.
  * It does not include ROMs and it does not paint fake gameplay. It only tries
@@ -15,7 +15,7 @@
 (function(global){
 'use strict';
 
-var BUILD='BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7';
+var BUILD='BUILD2MU_SEGA_LRUSSO_CLOSURE_EVAL_BOOT_STAGE8';
 var LOCAL_ENGINE_CANDIDATES=[
   'cores/Genesis.min.js',
   'cores/Genesis.js',
@@ -52,6 +52,20 @@ var KEY_MAP={
   Z:{code:'KeyE',key:'e',keyCode:69}
 };
 function log(msg){ try{ adapterLog('SEGA LRUSSO ADAPTER '+BUILD+': '+msg); }catch(e){ try{ console.log('[NAP SEGA LRUSSO] '+msg); }catch(_e){} } }
+
+function installRuntimeErrorProbe(){
+  if(global.__napSegaLrussoRuntimeErrorProbe) return;
+  global.__napSegaLrussoRuntimeErrorProbe=true;
+  try{
+    global.addEventListener('error',function(ev){
+      try{ log('WINDOW_ERROR '+(ev.message||'')+' source='+(ev.filename||'')+' line='+(ev.lineno||0)+':'+(ev.colno||0)); }catch(_e){}
+    },true);
+    global.addEventListener('unhandledrejection',function(ev){
+      try{ log('UNHANDLED_REJECTION '+((ev.reason && (ev.reason.message||ev.reason.name)) || String(ev.reason))); }catch(_e){}
+    },true);
+  }catch(e){}
+}
+installRuntimeErrorProbe();
 function byId(id){ return global.document ? document.getElementById(id) : null; }
 function hideOverlay(){
   try{ var ov=byId('monitorOverlay'); if(ov) ov.classList.remove('show'); }catch(e){}
@@ -227,11 +241,9 @@ function tryLocalEngines(){
     if(getEmbedGenesis()){ return Promise.resolve('ENGINE_ALREADY_PRESENT:'+embedSource()); }
     if(i>=LOCAL_ENGINE_CANDIDATES.length){ return Promise.reject(new Error('LOCAL_ENGINE_NOT_FOUND')); }
     var url=LOCAL_ENGINE_CANDIDATES[i++];
-    log('zkousim lokalni lrusso Genesis engine '+url);
-    return scriptLoad(url,9000).then(function(){
-      if(getEmbedGenesis()) return 'LOCAL_ENGINE_READY:'+url+':'+embedSource();
-      log(url+' nacten, ale embedGenesis symbol neni pritomen');
-      return next();
+    log('zkousim lokalni lrusso Genesis engine text/closure '+url);
+    return fetchText(url,9000).then(function(code){
+      return evalEngineClosure('local:'+url, code);
     }).catch(function(e){
       log(url+' -> '+(e.message||String(e)));
       return next();
@@ -239,38 +251,18 @@ function tryLocalEngines(){
   }
   return next();
 }
-function patchLrussoSource(code){
-  var src=String(code||'');
-  var before=src.length;
-  // The upstream file contains a tiny anti-cross-origin script-tag guard.
-  // For the online probe we fetch as text and run as a same-session blob, so
-  // remove only that guard. This is not a gameplay patch and does not touch emulation logic.
-  src=src.replace('if("undefined"!=typeof document&&document.currentScript&&document.currentScript.src.split("/").slice(0,3).join("/")!==window.location.origin)throw new Error("Error.");','');
-  if(src.length===before){
-    src=src.replace(/if\("undefined"!=typeof document&&document\.currentScript&&document\.currentScript\.src\.split\("\/"\)\.slice\(0,3\)\.join\("\/"\)!==window\.location\.origin\)throw new Error\("Error\."\);?/,'');
-  }
-  return src;
-}
+
 function loadOnlineEngine(){
   if(!ALLOW_ONLINE_PROBE) return Promise.reject(new Error('ONLINE_PROBE_DISABLED'));
-  if(!global.fetch) return Promise.reject(new Error('FETCH_NOT_AVAILABLE_IN_WEBVIEW'));
-  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako realny engine. Pokud WebView povoli skript, musi vzniknout embedGenesis symbol.', 'boot');
-  log('lokalni engine chybi, zkousim ONLINE probe lrusso Genesis.min.js');
-  return fetch(ONLINE_ENGINE_URL,{cache:'no-store'}).then(function(res){
-    if(!res || !res.ok) throw new Error('ONLINE_FETCH_HTTP_'+(res && res.status));
-    return res.text();
-  }).then(function(code){
-    drawCoreScreen('ENGINE SCRIPT LOADED', 'Genesis.min.js stazen: '+code.length+' B. Hledam window nebo global-lexical embedGenesis.', 'boot');
-    log('online Genesis.min.js stazeny jako text, velikost '+code.length+' B; patchuji jen cross-origin guard');
-    var patched=patchLrussoSource(code);
-    var blob=new Blob([patched+'\n//# sourceURL=nap_lrusso_genesis_online_probe.js'],{type:'application/javascript'});
-    var url=URL.createObjectURL(blob);
-    return scriptLoad(url,12000).then(function(){
-      if(getEmbedGenesis()) return 'ONLINE_ENGINE_READY:lrusso_Genesis_min_js:'+embedSource();
-      throw new Error('ONLINE_SCRIPT_LOADED_BUT_EMBEDGENESIS_MISSING:'+embedSource());
-    });
+  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako text. BUILD2MU ho spusti pres closure eval, ne pres iframe.', 'boot');
+  log('lokalni engine chybi, zkousim ONLINE closure-eval probe lrusso Genesis.min.js');
+  return fetchText(ONLINE_ENGINE_URL,22000).then(function(code){
+    drawCoreScreen('ENGINE SCRIPT LOADED', 'Genesis.min.js stazen: '+code.length+' B. Provadim closure eval a export embedGenesis.', 'boot');
+    log('online Genesis.min.js stazeny jako text, velikost '+code.length+' B; spoustim closure eval');
+    return evalEngineClosure('online:lrusso/Genesis.min.js', code);
   });
 }
+
 function ensureEngine(){
   if(getEmbedGenesis()) return Promise.resolve('ENGINE_ALREADY_PRESENT:'+embedSource());
   if(enginePromise) return enginePromise;
@@ -383,11 +375,7 @@ var adapter={
       restoreCanvasFallback();
       drawCoreScreen('REAL CORE FAILED', msg, 'error');
       log('loadRom FAILED '+msg);
-      if(bootLiveIframeFallback(msg, info||{})){
-        log('loadRom FALLBACK MODE LIVE_IFRAME_READY - toto neni automaticky Sonic boot; je to realny lrusso core v iframe, ROM se v nem vybira samostatne nebo DEMO pres PLAY.');
-        showToast('Primy embed selhal, ale oteviram realny live core fallback.',6200);
-        return 'LIVE_IFRAME_FALLBACK_READY:'+msg;
-      }
+      log('BUILD2MU: iframe fallback vypnuty - upstream Genesis.htm v iframe nespousti UI kvuli window.top === window.self; pokracuji jen po realne closure-eval ceste.');
       showToast('Real core se nepodarilo nacist: '+msg);
       throw e;
     });

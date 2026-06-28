@@ -1,0 +1,18 @@
+BUILD2MU_SEGA_LRUSSO_CLOSURE_EVAL_BOOT_STAGE8
+
+Changed files:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+- app/src/main/assets/index.html
+
+KODY JSOU ZMENENE.
+
+Main change:
+- BUILD2MT iframe fallback removed from active path.
+- BUILD2MU uses text fetch + closure eval for lrusso Genesis.min.js.
+- It exports embedGenesis from closure to window.embedGenesis, then sends selected local ROM buffer to real core.
+- Better runtime error probes: window error + unhandledrejection.
+- No ROM in APK/ZIP. No fake graphics/gameplay.

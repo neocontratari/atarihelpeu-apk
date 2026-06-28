@@ -1,23 +1,14 @@
-AtariHelp.eu EMU-10 BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7
+AtariHelp.eu EMU-10 SEGA REAL CORE SLOT
+BUILD2MU_SEGA_LRUSSO_CLOSURE_EVAL_BOOT_STAGE8
 
-Tahle slozka je pripravena pro offline realny Sega/Mega Drive core adapter.
-Podporovane nazvy, ktere autoload zkousi:
-- nap_sega_real_core.js
-- sega_real_core.js
-- sega_core.js
-- genesis_core.js
-- genesis_plus_gx.js
-- gpgx.js
-- jsmoo_genesis.js
-- jsmoo.js
-- megadrive_core.js
-- md_core.js
-- genesis_emulator.js
-- Genesis.min.js / Genesis.js pro lrusso cestu
+Sem je mozne vlozit legalne pouzitelny realny Mega Drive / Genesis JS core adapter.
+Preferovane nazvy lokalniho lrusso engine:
+- Genesis.min.js
+- Genesis.js
+- lrusso_Genesis.min.js
+- lrusso_Genesis.js
 
-BUILD2MT navic umi pri selhani primeho lrusso embedGenesis otevrit LIVE fallback iframe:
-https://lrusso.github.io/Genesis/Genesis.htm?demo=
+BUILD2MU zkousi lokalni soubor nacist jako text a spustit closure-eval cestou.
+Duvod: samotne vlozeni jako <script> v Android WebView muze narazit na currentScript/origin guard.
 
-To neni finalni offline core. Je to realny online graficky test bez fake gameplay.
-ROMy se sem nepridavaji.
-Dodrz licenci konkretniho core projektu.
+ROMy sem nedavat. ROM vybira tester lokalne pres HRY/SBIRKA/CARTRIDGE.
