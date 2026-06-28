@@ -1,0 +1,14 @@
+BUILD2NO_SEGA_AUDIO_LOW_LATENCY_CROP_REGION_STAGE28
+
+Zmenene soubory:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin, bez zmen grafiky)
+
+Stav:
+- Reset/power-cycle z BUILD2NM/NN zachovan.
+- Ovladac zachovan.
+- Audio prepnuto na nizsi latenci bez vynuceneho sampleRate.
+- Crop mirne vracen z BUILD2NN, aby se snizil odskok obrazu.
+- Region hint pro EU/PAL ROMky zapisuje do logu.
