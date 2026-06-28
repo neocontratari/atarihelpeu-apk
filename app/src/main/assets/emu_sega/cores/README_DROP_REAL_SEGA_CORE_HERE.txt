@@ -1,31 +1,16 @@
-AtariHelp.eu EMU-10 / SEGA Mega Drive real core slot
-BUILD2MQ_SEGA_ADAPTER_FACTORY_PROBE_STAGE4
+BUILD2MR_SEGA_LRUSSO_GENESIS_ONLINE_CORE_PROBE_STAGE5
 
-Sem patri skutecny Mega Drive core adapter, ne ROM.
+Sem patri realny lokalni Mega Drive / Genesis core engine pro offline finalni build.
+BUILD2MR umi automaticky zkusit zejmena:
+- cores/Genesis.min.js
+- cores/Genesis.js
+- cores/lrusso_Genesis.min.js
+- cores/lrusso_Genesis.js
 
-ROM soubory (.gen/.bin/.md/.smd) se v appce vybírají pres SBIRKA / HRY / CARTRIDGE SLOT.
-Do slozky cores/ patri jen realny emulatorovy JS/WASM adapter.
+BUILD2MR obsahuje adapter nap_sega_lr_genesis_adapter.js pro lrusso Genesis/PicoDrive browser API embedGenesis().
 
-BUILD2MQ umi automaticky hledat napriklad:
-- cores/nap_sega_real_core.js
-- cores/sega_real_core.js
-- cores/genesis_core.js
-- cores/genesis_plus_gx.js
-- cores/gpgx.js
-- cores/jsmoo_genesis.js
-- cores/megadrive_core.js
-- cores/md_core.js
+ROM SOUBORY SEM NEPATRI.
+Sonic/Aladdin/komercni ROM se do APK/ZIP nepridavaji. ROM vybira tester lokalne pres HRY/SBIRKA/CARTRIDGE.
 
-Adapter muze byt:
-- globalni objekt window.NAP_SEGA_REAL_CORE
-- factory window.GenesisPlusGX.create(options)
-- constructor/class window.JSMooGenesis
-
-Minimalni API adapteru:
-  init({ canvas, width, height, sampleRate, log })  // optional
-  loadRom(Uint8Array, info)                        // povinne, nebo loadROM/insertCartridge/loadGame
-  press(button) + release(button)                  // optional input
-  start() / run()                                  // optional
-  reset()                                          // optional
-
-Bez tohoto API appka nesmi kreslit fake obraz.
+LICENCE:
+Pokud se sem prida cizi open-source core, musi se spolu s nim pridat odpovidajici licence a idealne i odkaz/source notice. Finalni app nema tise schovavat cizi emulator bez licence.

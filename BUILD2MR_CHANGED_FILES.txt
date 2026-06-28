@@ -1,0 +1,14 @@
+BUILD2MR_SEGA_LRUSSO_GENESIS_ONLINE_CORE_PROBE_STAGE5
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+
+KODY JSOU STEJNE / NEDOTCENE:
+- Atari/VBXE/EMU2 modul
+- hlavni Atari emulator
+- ROM soubory nejsou pridane
+- APK stale neobsahuje Sonic/Aladdin ani zadnou komercni ROM

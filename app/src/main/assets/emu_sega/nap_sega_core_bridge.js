@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MQ_SEGA_ADAPTER_FACTORY_PROBE_STAGE4
+ * BUILD2MR_SEGA_LRUSSO_GENESIS_ONLINE_CORE_PROBE_STAGE5
  *
  * This file is intentionally NOT a fake Mega Drive emulator.
  * It prepares and probes a real-core adapter safely: object adapter, factory,
@@ -22,7 +22,7 @@
 (function(global){
 'use strict';
 
-var BRIDGE_BUILD = 'BUILD2MQ_SEGA_ADAPTER_FACTORY_PROBE_STAGE4';
+var BRIDGE_BUILD = 'BUILD2MR_SEGA_LRUSSO_GENESIS_ONLINE_CORE_PROBE_STAGE5';
 var CANDIDATE_NAMES = [
   'NAP_SEGA_REAL_CORE','NAP_REAL_SEGA_CORE','NAP_SEGA_ADAPTER',
   'SegaMDCore','GenesisCore','GenesisPlusGX','GPGX','JSMooGenesis',
