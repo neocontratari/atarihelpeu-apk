@@ -1,0 +1,20 @@
+BUILD2NX_SEGA_CROP_GHOST_HIDE_STAGE37
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin v overlayi)
+
+KODY JSOU ZMENENE.
+
+Zachovano z BUILD2NW:
+- ovladac
+- reset/power-cycle
+- audio 2NN/playback 48k + 2f late safe sync
+- cartridge picker
+
+Uprava:
+- pouze mikro crop proti hornimu duchu/lezoucimu pismu
+- portrait frame z -3.6/-6.6/107.2/110.0 na -3.6/-7.1/107.2/110.2
+- landscape z -1.4vw/-5.8vh/102.8vw/108.2vh na -1.4vw/-6.3vh/102.8vw/108.6vh
