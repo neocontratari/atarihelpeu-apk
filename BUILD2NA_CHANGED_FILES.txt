@@ -1,0 +1,17 @@
+BUILD2NA_SEGA_NATIVE_BIND_NO_ART_STAGE14
+
+ZMENENE / PRIDANE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/genesis_runner.html
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+- app/src/main/assets/index.html
+
+HLAVNI ZMENA:
+- Moje BUILD2MZ konzolova grafika je vypnuta.
+- Fokus je realny core boot, ne design.
+- Oprava Illegal invocation: native browser funkce se bindi na window.
+- Kdyz primy lrusso embedGenesis spadne na Illegal invocation, spusti se same-origin runner iframe genesis_runner.html a ROM se mu posle pres postMessage.
+- Zadny fake Sonic / zadny fake gameplay / zadna ROM v APK.

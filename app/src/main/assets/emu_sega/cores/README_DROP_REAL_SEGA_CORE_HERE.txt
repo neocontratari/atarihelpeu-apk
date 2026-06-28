@@ -1,14 +1,9 @@
-AtariHelp.eu EMU-10 SEGA REAL CORE SLOT
-BUILD2MZ_SEGA_CONSOLE_TOGGLE_ROMFLOW_STAGE13
+BUILD2NA_SEGA_NATIVE_BIND_NO_ART_STAGE14
 
-Sem je mozne vlozit legalne pouzitelny realny Mega Drive / Genesis JS core adapter.
-Preferovane nazvy lokalniho lrusso engine:
-- Genesis.min.js
-- Genesis.js
-- lrusso_Genesis.min.js
-- lrusso_Genesis.js
+Sem lze pozdeji vlozit lokalni/offline realny Sega Mega Drive core soubor:
+- Genesis.min.js nebo Genesis.js pro lrusso/PicoDrive cestu
+- pripadne jiny JS/WASM adapter s API loadRom/press/release
 
-BUILD2MZ zkousi lokalni soubor nacist jako text a spustit closure-eval cestou.
-Duvod: samotne vlozeni jako <script> v Android WebView muze narazit na currentScript/origin guard.
-
-ROMy sem nedavat. ROM vybira tester lokalne pres HRY/SBIRKA/CARTRIDGE.
+BUILD2NA zatim neobsahuje ROM a nepridava fake obraz.
+Moje konzolova grafika z BUILD2MZ je vypnuta.
+Primarni cil BUILD2NA je rozjet realny core boot a odstranit Illegal invocation.
