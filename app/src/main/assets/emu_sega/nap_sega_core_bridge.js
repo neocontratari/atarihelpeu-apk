@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MR_SEGA_LRUSSO_GENESIS_ONLINE_CORE_PROBE_STAGE5
+ * BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6
  *
  * This file is intentionally NOT a fake Mega Drive emulator.
  * It prepares and probes a real-core adapter safely: object adapter, factory,
@@ -22,7 +22,7 @@
 (function(global){
 'use strict';
 
-var BRIDGE_BUILD = 'BUILD2MR_SEGA_LRUSSO_GENESIS_ONLINE_CORE_PROBE_STAGE5';
+var BRIDGE_BUILD = 'BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6';
 var CANDIDATE_NAMES = [
   'NAP_SEGA_REAL_CORE','NAP_REAL_SEGA_CORE','NAP_SEGA_ADAPTER',
   'SegaMDCore','GenesisCore','GenesisPlusGX','GPGX','JSMooGenesis',
@@ -154,6 +154,8 @@ NAPSegaCoreBridge.prototype._clearCanvas = function(label){
     this.ctx.fillStyle = 'rgba(143,216,255,0.40)';
     this.ctx.font = 'bold 10px monospace';
     this.ctx.fillText('NO FAKE VIDEO - WAITING FOR REAL CORE', this.width/2, this.height/2 + 12);
+    this.ctx.strokeStyle='rgba(80,180,255,.45)'; this.ctx.strokeRect(22,22,this.width-44,this.height-44);
+    for(var y=26;y<this.height-26;y+=8){ this.ctx.fillStyle='rgba(40,140,255,.10)'; this.ctx.fillRect(24,y,this.width-48,1); }
   }catch(e){ this.lastError = e.message || String(e); }
 };
 NAPSegaCoreBridge.prototype._useAdapter = function(obj, name, kind){

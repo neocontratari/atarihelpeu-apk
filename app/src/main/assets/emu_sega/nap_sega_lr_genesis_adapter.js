@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MR_SEGA_LRUSSO_GENESIS_ONLINE_CORE_PROBE_STAGE5
+ * BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6
  *
  * NAP adapter for the lrusso Genesis/PicoDrive browser core API.
  * It does not include ROMs and it does not paint fake gameplay. It only tries
@@ -15,7 +15,7 @@
 (function(global){
 'use strict';
 
-var BUILD='BUILD2MR_SEGA_LRUSSO_GENESIS_ONLINE_CORE_PROBE_STAGE5';
+var BUILD='BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6';
 var LOCAL_ENGINE_CANDIDATES=[
   'cores/Genesis.min.js',
   'cores/Genesis.js',
@@ -60,6 +60,82 @@ function showToast(msg){
     global.__segaToastTimer=setTimeout(function(){ el.classList.remove('show'); },4200);
   }catch(e){}
 }
+
+var lastEmbedGenesisSource='MISSING';
+function getEmbedGenesis(){
+  try{
+    if(typeof global.embedGenesis === 'function'){
+      lastEmbedGenesisSource='window.embedGenesis';
+      return global.embedGenesis;
+    }
+  }catch(e){}
+  // Some browser bundles expose top-level let/const/function symbols in the
+  // global lexical environment. They are callable by later scripts, but they do
+  // NOT become window.embedGenesis. BUILD2MR missed this case and therefore
+  // reported EMBEDGENESIS_MISSING even after the 2 MB engine script loaded.
+  try{
+    if(typeof global.eval === 'function'){
+      var fn=global.eval('(typeof embedGenesis === "function") ? embedGenesis : null');
+      if(typeof fn === 'function'){
+        lastEmbedGenesisSource='global-lexical embedGenesis';
+        return fn;
+      }
+    }
+  }catch(e2){}
+  try{
+    var fn2=(0,eval)('(typeof embedGenesis === "function") ? embedGenesis : null');
+    if(typeof fn2 === 'function'){
+      lastEmbedGenesisSource='indirect-global-lexical embedGenesis';
+      return fn2;
+    }
+  }catch(e3){}
+  lastEmbedGenesisSource='MISSING';
+  return null;
+}
+function embedSource(){ getEmbedGenesis(); return lastEmbedGenesisSource; }
+function drawCoreScreen(title, detail, mode){
+  try{
+    var c=byId('mdVideo');
+    if(!c || !c.getContext) return;
+    c.style.display='block';
+    if(mountEl) mountEl.style.display='none';
+    var ctx=c.getContext('2d',{alpha:false}) || c.getContext('2d');
+    if(!ctx) return;
+    var w=c.width||320, h=c.height||224;
+    var t=(Date.now()/1000)%1000;
+    ctx.fillStyle='#020611'; ctx.fillRect(0,0,w,h);
+    var grad=ctx.createRadialGradient(w*.5,h*.43,4,w*.5,h*.45,w*.68);
+    grad.addColorStop(0,'#062f64'); grad.addColorStop(.62,'#010914'); grad.addColorStop(1,'#000000');
+    ctx.fillStyle=grad; ctx.fillRect(0,0,w,h);
+    for(var y=0;y<h;y+=4){ ctx.fillStyle=(y%8===0)?'rgba(28,120,255,.13)':'rgba(255,255,255,.025)'; ctx.fillRect(0,y,w,1); }
+    for(var x=0;x<w;x+=16){ ctx.fillStyle='rgba(60,160,255,.055)'; ctx.fillRect(x,0,1,h); }
+    var pulse=Math.floor((Math.sin(t*5)+1)*54)+64;
+    ctx.strokeStyle='rgba(80,180,255,.55)'; ctx.lineWidth=2; ctx.strokeRect(10,10,w-20,h-20);
+    ctx.strokeStyle='rgba(130,220,255,.30)'; ctx.lineWidth=1; ctx.strokeRect(16,16,w-32,h-32);
+    ctx.fillStyle='rgb('+pulse+','+(pulse+70)+',255)';
+    ctx.font='bold 15px monospace'; ctx.textAlign='center'; ctx.fillText('SEGA REAL CORE',w/2,42);
+    ctx.fillStyle='rgba(225,245,255,.95)'; ctx.font='bold 12px monospace';
+    wrapCanvasText(ctx,String(title||'CORE BOOT PROBE'),w/2,70,w-38,14);
+    ctx.fillStyle='rgba(143,216,255,.80)'; ctx.font='bold 10px monospace';
+    wrapCanvasText(ctx,String(detail||''),w/2,118,w-42,12);
+    var bx=44, by=178, bw=232, bh=10;
+    ctx.strokeStyle='rgba(110,200,255,.45)'; ctx.strokeRect(bx,by,bw,bh);
+    var p=(mode==='error')?bw:Math.floor(((t*55)%bw));
+    ctx.fillStyle=mode==='error'?'rgba(255,80,80,.75)':'rgba(80,180,255,.75)';
+    ctx.fillRect(bx+1,by+1,Math.max(4,p),bh-2);
+    ctx.fillStyle='rgba(180,230,255,.62)'; ctx.font='bold 9px monospace'; ctx.fillText(mode==='error'?'ENGINE FAILED - LOG ULOZENE':'NO FAKE VIDEO - REAL ENGINE ONLY',w/2,205);
+  }catch(e){ log('DRAW CORE SCREEN FAILED '+(e.message||String(e))); }
+}
+function wrapCanvasText(ctx,text,x,y,maxWidth,lineHeight){
+  var words=String(text||'').split(/\s+/), line='', lines=[];
+  for(var n=0;n<words.length;n++){
+    var test=line?line+' '+words[n]:words[n];
+    if(ctx.measureText(test).width>maxWidth && line){ lines.push(line); line=words[n]; }
+    else line=test;
+  }
+  if(line) lines.push(line);
+  for(var i=0;i<Math.min(lines.length,5);i++) ctx.fillText(lines[i],x,y+i*lineHeight);
+}
 function prepareMount(){
   mountEl=byId('genesisMount');
   if(!mountEl){
@@ -99,12 +175,12 @@ function scriptLoad(url, timeoutMs){
 function tryLocalEngines(){
   var i=0;
   function next(){
-    if(global.embedGenesis){ return Promise.resolve('ENGINE_ALREADY_PRESENT'); }
+    if(getEmbedGenesis()){ return Promise.resolve('ENGINE_ALREADY_PRESENT:'+embedSource()); }
     if(i>=LOCAL_ENGINE_CANDIDATES.length){ return Promise.reject(new Error('LOCAL_ENGINE_NOT_FOUND')); }
     var url=LOCAL_ENGINE_CANDIDATES[i++];
     log('zkousim lokalni lrusso Genesis engine '+url);
     return scriptLoad(url,9000).then(function(){
-      if(global.embedGenesis) return 'LOCAL_ENGINE_READY:'+url;
+      if(getEmbedGenesis()) return 'LOCAL_ENGINE_READY:'+url+':'+embedSource();
       log(url+' nacten, ale embedGenesis symbol neni pritomen');
       return next();
     }).catch(function(e){
@@ -129,34 +205,37 @@ function patchLrussoSource(code){
 function loadOnlineEngine(){
   if(!ALLOW_ONLINE_PROBE) return Promise.reject(new Error('ONLINE_PROBE_DISABLED'));
   if(!global.fetch) return Promise.reject(new Error('FETCH_NOT_AVAILABLE_IN_WEBVIEW'));
+  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako realny engine. Pokud WebView povoli skript, musi vzniknout embedGenesis symbol.', 'boot');
   log('lokalni engine chybi, zkousim ONLINE probe lrusso Genesis.min.js');
   return fetch(ONLINE_ENGINE_URL,{cache:'no-store'}).then(function(res){
     if(!res || !res.ok) throw new Error('ONLINE_FETCH_HTTP_'+(res && res.status));
     return res.text();
   }).then(function(code){
+    drawCoreScreen('ENGINE SCRIPT LOADED', 'Genesis.min.js stazen: '+code.length+' B. Hledam window nebo global-lexical embedGenesis.', 'boot');
     log('online Genesis.min.js stazeny jako text, velikost '+code.length+' B; patchuji jen cross-origin guard');
     var patched=patchLrussoSource(code);
     var blob=new Blob([patched+'\n//# sourceURL=nap_lrusso_genesis_online_probe.js'],{type:'application/javascript'});
     var url=URL.createObjectURL(blob);
     return scriptLoad(url,12000).then(function(){
-      if(global.embedGenesis) return 'ONLINE_ENGINE_READY:lrusso_Genesis_min_js';
-      throw new Error('ONLINE_SCRIPT_LOADED_BUT_EMBEDGENESIS_MISSING');
+      if(getEmbedGenesis()) return 'ONLINE_ENGINE_READY:lrusso_Genesis_min_js:'+embedSource();
+      throw new Error('ONLINE_SCRIPT_LOADED_BUT_EMBEDGENESIS_MISSING:'+embedSource());
     });
   });
 }
 function ensureEngine(){
-  if(global.embedGenesis) return Promise.resolve('ENGINE_ALREADY_PRESENT');
+  if(getEmbedGenesis()) return Promise.resolve('ENGINE_ALREADY_PRESENT:'+embedSource());
   if(enginePromise) return enginePromise;
   enginePromise=tryLocalEngines().catch(function(localErr){
     log('LOCAL engine probe neuspel: '+(localErr.message||String(localErr)));
     return loadOnlineEngine();
   }).then(function(status){
-    if(!global.embedGenesis) throw new Error('ENGINE_READY_STATUS_BUT_EMBEDGENESIS_MISSING:'+status);
+    if(!getEmbedGenesis()) throw new Error('ENGINE_READY_STATUS_BUT_EMBEDGENESIS_MISSING:'+status+':'+embedSource());
     log('CORE ENGINE READY '+status);
     return status;
   }).catch(function(e){
     enginePromise=null;
     restoreCanvasFallback();
+    drawCoreScreen('CORE ENGINE LOAD FAILED', (e.message||String(e)), 'error');
     log('CORE ENGINE LOAD FAILED '+(e.message||String(e)));
     throw e;
   });
@@ -201,7 +280,10 @@ function bootWithEmbedGenesis(romBuffer, info){
   var title=(info && (info.overseas || info.domestic || info.name)) || lastRomName || 'SEGA Mega Drive ROM';
   showToast('Startuji realny Genesis/PicoDrive core: '+title);
   log('embedGenesis START title='+title+' size='+romBuffer.byteLength);
-  global.embedGenesis({
+  var embedGenesisFn=getEmbedGenesis();
+  if(!embedGenesisFn) throw new Error('EMBEDGENESIS_SYMBOL_MISSING_AT_BOOT:'+embedSource());
+  log('embedGenesis symbol source='+embedSource());
+  embedGenesisFn({
     container:'genesisMount',
     name:title,
     rom:romBuffer,
@@ -237,12 +319,14 @@ var adapter={
   loadRom:function(romBytes, info){
     lastRomName=(info && (info.overseas || info.domestic || info.name)) || 'SEGA ROM';
     var romBuffer=toArrayBuffer(romBytes);
+    drawCoreScreen('BOOTING '+lastRomName, 'ROM overena, spoustim realny lrusso Genesis/PicoDrive engine. Zadny fake obraz.', 'boot');
     log('loadRom prijato title='+lastRomName+' size='+romBuffer.byteLength+'; spoustim engine ensure');
     return ensureEngine().then(function(engineStatus){
       log('engineStatus='+engineStatus+'; posilam ROM do embedGenesis');
       return bootWithEmbedGenesis(romBuffer,info||{});
     }).catch(function(e){
       restoreCanvasFallback();
+      drawCoreScreen('REAL CORE FAILED', (e.message||String(e)), 'error');
       showToast('Real core se nepodarilo nacist: '+(e.message||String(e)));
       log('loadRom FAILED '+(e.message||String(e)));
       throw e;
@@ -262,7 +346,7 @@ var adapter={
   buttonDown:function(button){ return dispatchKey('keydown',button); },
   buttonUp:function(button){ return dispatchKey('keyup',button); },
   setButton:function(button,down){ return dispatchKey(down?'keydown':'keyup',button); },
-  getStatus:function(){ return running ? 'LRUSSO_GENESIS_RUNNING' : (global.embedGenesis ? 'LRUSSO_ENGINE_READY' : 'LRUSSO_ENGINE_WAITING'); }
+  getStatus:function(){ return running ? 'LRUSSO_GENESIS_RUNNING' : (getEmbedGenesis() ? ('LRUSSO_ENGINE_READY:'+embedSource()) : 'LRUSSO_ENGINE_WAITING'); }
 };
 
 global.NAP_SEGA_REAL_CORE=adapter;
