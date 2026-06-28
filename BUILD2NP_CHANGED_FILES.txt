@@ -1,0 +1,15 @@
+BUILD2NP_SEGA_AUDIO_CLEAN_POWER_CROP_STAGE29
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin, beze zmen grafiky)
+
+STAV:
+- RESET z BUILD2NM/NN zachovan.
+- Ovladac z BUILD2NK/NN zachovan.
+- Zrusen audio latency/sampleRate patch z BUILD2NO.
+- Pridano sledovani a zavirani AudioContextu pri resetu/vymene hry.
+- Power-off mezikrok prodlouzen, aby se zvukovy runtime stihl zavrit.
+- Crop vracen na stabilnejsi hodnoty z BUILD2NI.
