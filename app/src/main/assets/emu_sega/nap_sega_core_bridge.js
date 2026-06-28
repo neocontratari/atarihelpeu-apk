@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MY_SEGA_DOC_CURRENTSCRIPT_BIND_STAGE12
+ * BUILD2MZ_SEGA_CONSOLE_TOGGLE_ROMFLOW_STAGE13
  *
  * This file is intentionally NOT a fake Mega Drive emulator.
  * It prepares and probes a real-core adapter safely: object adapter, factory,
@@ -22,7 +22,7 @@
 (function(global){
 'use strict';
 
-var BRIDGE_BUILD = 'BUILD2MY_SEGA_DOC_CURRENTSCRIPT_BIND_STAGE12';
+var BRIDGE_BUILD = 'BUILD2MZ_SEGA_CONSOLE_TOGGLE_ROMFLOW_STAGE13';
 var CANDIDATE_NAMES = [
   'NAP_SEGA_REAL_CORE','NAP_REAL_SEGA_CORE','NAP_SEGA_ADAPTER',
   'SegaMDCore','GenesisCore','GenesisPlusGX','GPGX','JSMooGenesis',

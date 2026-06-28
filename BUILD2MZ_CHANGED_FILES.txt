@@ -1,0 +1,17 @@
+BUILD2MZ_SEGA_CONSOLE_TOGGLE_ROMFLOW_STAGE13
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+- app/src/main/assets/index.html
+
+CO JE NOVE:
+- kratky klik KONZOLE uz realne zobrazi samostatnou konzolovou UI vrstvu pres joystick cast
+- kratky klik JOYSTICK vrati joystick obrazovku
+- monitor uz pri startu jasne ukaze CORE READY / VYBER ROM, ne jen mrtve cekani
+- LOG pri stavu bez ROM napise TEST STAV: ROM jeste nebyla vybrana
+- lrusso closure-eval cesta z BUILD2MZ zachovana, zadny fake gameplay
+- Atari/VBXE/EMU2 beze zmeny

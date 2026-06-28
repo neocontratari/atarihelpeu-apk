@@ -1,5 +1,5 @@
 AtariHelp.eu EMU-10 SEGA REAL CORE SLOT
-BUILD2MY_SEGA_DOC_CURRENTSCRIPT_BIND_STAGE12
+BUILD2MZ_SEGA_CONSOLE_TOGGLE_ROMFLOW_STAGE13
 
 Sem je mozne vlozit legalne pouzitelny realny Mega Drive / Genesis JS core adapter.
 Preferovane nazvy lokalniho lrusso engine:
@@ -8,7 +8,7 @@ Preferovane nazvy lokalniho lrusso engine:
 - lrusso_Genesis.min.js
 - lrusso_Genesis.js
 
-BUILD2MY zkousi lokalni soubor nacist jako text a spustit closure-eval cestou.
+BUILD2MZ zkousi lokalni soubor nacist jako text a spustit closure-eval cestou.
 Duvod: samotne vlozeni jako <script> v Android WebView muze narazit na currentScript/origin guard.
 
 ROMy sem nedavat. ROM vybira tester lokalne pres HRY/SBIRKA/CARTRIDGE.
