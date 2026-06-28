@@ -1,0 +1,17 @@
+BUILD2NC_SEGA_RESTORE_SKIN_DIRECT_ROM_STAGE16
+
+ZMENENO:
+- OPRAVA PRUSERU Z BUILD2NB: sega_megadrive_screen.png byl poskozeny a WebView proto ukazal cernou obrazovku s rozbitym obrazkem. PNG vraceno z funkcniho BUILD2NA.
+- Zruseno vynucovani ROM pickeru na ULOZENE/KONZOLE/JOYSTICK/monitor.
+- ROM picker zustava jen na HRY / SBIRKA / CARTRIDGE SLOT.
+- Moje konzolova grafika zustava vypnuta.
+- Lrusso real-core cesta zustava beze zmeny, dalsi log musi byt az po skutecnem vyberu ROM.
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/genesis_runner.html
+- app/src/main/assets/index.html

@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2NB_SEGA_NO_ART_ROM_PICKER_FORCE_STAGE15
+ * BUILD2NC_SEGA_RESTORE_SKIN_DIRECT_ROM_STAGE16
  *
  * Real-core slot loader. This does NOT emulate Sega Mega Drive and does NOT
  * draw fake frames. It only loads local/external JS/WASM glue and lets
@@ -9,7 +9,7 @@
 (function(global){
 'use strict';
 
-var SLOT_BUILD = 'BUILD2NB_SEGA_NO_ART_ROM_PICKER_FORCE_STAGE15';
+var SLOT_BUILD = 'BUILD2NC_SEGA_RESTORE_SKIN_DIRECT_ROM_STAGE16';
 var ADAPTER_NAMES = [
   'NAP_SEGA_REAL_CORE','NAP_REAL_SEGA_CORE','NAP_SEGA_ADAPTER',
   'SegaMDCore','GenesisCore','GenesisPlusGX','GPGX','JSMooGenesis',

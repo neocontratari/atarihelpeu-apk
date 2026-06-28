@@ -40,7 +40,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .toast.show{display:block;}
 #logBadge{position:absolute;z-index:8;left:20.4%;top:94.15%;width:11.0%;text-align:center;pointer-events:none;color:#8fd8ff;font:900 clamp(9px,2.3vw,16px) "Courier New",monospace;text-shadow:0 0 10px #0076ff,0 0 18px #0076ff;letter-spacing:.08em;}
 
-#consoleModeArt{display:none!important;} /* BUILD2NB: moje konzolova grafika vypnuta - resime core, design doda Rene */
+#consoleModeArt{display:none!important;} /* BUILD2NC: moje konzolova grafika vypnuta - resime core, design doda Rene */
 .stage.console-mode #consoleModeArt{display:none!important;}
 #consoleModeArt:before{content:"";position:absolute;left:8%;right:8%;top:18%;height:45%;border-radius:24px 24px 52px 52px;background:linear-gradient(180deg,#1b2532,#06090f 64%,#020305);border:2px solid rgba(120,180,230,.35);box-shadow:0 18px 40px rgba(0,0,0,.92),0 0 34px rgba(0,90,255,.35) inset;}
 #consoleModeArt:after{content:"MEGA DRIVE\A 16-BIT CONSOLE VIEW";white-space:pre;position:absolute;left:0;right:0;top:9%;text-align:center;color:#bfe8ff;font:900 clamp(12px,3.1vw,25px)/1.25 "Courier New",monospace;letter-spacing:.10em;text-shadow:0 0 12px #007cff,0 0 22px #007cff;}
@@ -84,7 +84,7 @@ input[type=file]{display:none;}
   <button id="dpad" class="hit" type="button">DPAD</button>
   <input id="romInput" type="file" accept=".gen,.bin,.md,.smd,application/octet-stream">
   <input id="coreInput" type="file" accept=".js,.mjs,.wasm,application/javascript,application/wasm">
-  <div id="toast" class="toast">SEGA MEGA DRIVE BUILD2NB: NO-ART ROM picker force.</div>
+  <div id="toast" class="toast">SEGA MEGA DRIVE BUILD2NC: RESTORE SKIN direct ROM flow.</div>
 </main>
 <script src="nap_sega_lr_genesis_adapter.js"></script>
 <script src="nap_sega_core_slot.js"></script>
@@ -92,7 +92,7 @@ input[type=file]{display:none;}
 <script>
 (function(){
 'use strict';
-var BUILD='BUILD2NB_SEGA_NO_ART_ROM_PICKER_FORCE_STAGE15';
+var BUILD='BUILD2NC_SEGA_RESTORE_SKIN_DIRECT_ROM_STAGE16';
 var coreReady=false;
 var segaLog=[];
 var lastRomInfo=null;
@@ -125,7 +125,7 @@ function hideMonitor(){
 function setScreenMode(mode){
   var stage=document.querySelector('.stage');
   if(stage) stage.classList.remove('console-mode');
-  log('SEGA SCREEN MODE BUILD2NB: '+String(mode).toUpperCase()+' klik prijat - vlastni konzolova grafika vypnuta, zustava original Sega skin; resime jen realny core.');
+  log('SEGA SCREEN MODE BUILD2NC: '+String(mode).toUpperCase()+' klik prijat - vlastni konzolova grafika vypnuta, zustava original Sega skin; resime jen realny core.');
 }
 function drawRomPrompt(status){
   try{
@@ -225,8 +225,8 @@ function analyzeRom(bytes,name){
 function openRomPicker(reason){
   var inp=document.getElementById('romInput');
   reason=reason||'manual';
-  log('SEGA ROM PICKER BUILD2NB OPEN reason='+reason);
-  if(!inp){ toast('ROM picker chybi v HTML.',3600); log('SEGA ROM PICKER BUILD2NB ERROR input_missing'); return; }
+  log('SEGA ROM PICKER BUILD2NC OPEN reason='+reason);
+  if(!inp){ toast('ROM picker chybi v HTML.',3600); log('SEGA ROM PICKER BUILD2NC ERROR input_missing'); return; }
   inp.value='';
   try{
     hideMonitor();
@@ -235,12 +235,12 @@ function openRomPicker(reason){
     toast('Vyber ROM .gen / .bin / .md / .smd. Bez ROM se core nespusti.',5200);
   }catch(e){
     toast('ROM picker se nepodarilo otevrit: '+e.message,4500);
-    log('SEGA ROM PICKER BUILD2NB CLICK_FAILED '+(e.message||String(e)));
+    log('SEGA ROM PICKER BUILD2NC CLICK_FAILED '+(e.message||String(e)));
   }
 }
 function detectCoreSlot(){
   coreSlot = window.NAP_SEGA_CORE_SLOT || null;
-  if(!coreSlot){ coreSlotInfo='CORE_SLOT_SCRIPT_MISSING'; log('SEGA CORE SLOT BUILD2NB: nap_sega_core_slot.js nenalezen'); }
+  if(!coreSlot){ coreSlotInfo='CORE_SLOT_SCRIPT_MISSING'; log('SEGA CORE SLOT BUILD2NC: nap_sega_core_slot.js nenalezen'); }
   return coreSlot;
 }
 function openCorePicker(){
@@ -253,7 +253,7 @@ function openCorePicker(){
 function rescanCoreBridge(reason){
   try{ segaBridge=null; coreReady=false; }catch(e){}
   var b=initSegaBridge();
-  log('SEGA CORE RESCAN BUILD2NB reason='+(reason||'manual')+' status='+coreStatusLine());
+  log('SEGA CORE RESCAN BUILD2NC reason='+(reason||'manual')+' status='+coreStatusLine());
   return b;
 }
 function startCoreSlotAutoload(){
@@ -262,12 +262,12 @@ function startCoreSlotAutoload(){
   try{
     slot.loadBuiltInCandidates(log,function(res){
       coreSlotInfo=(res && res.status) ? res.status : 'CORE_SLOT_AUTOLOAD_DONE_UNKNOWN';
-      log('SEGA CORE SLOT BUILD2NB AUTOLOAD RESULT: '+coreSlotInfo);
+      log('SEGA CORE SLOT BUILD2NC AUTOLOAD RESULT: '+coreSlotInfo);
       rescanCoreBridge('autoload:'+coreSlotInfo);
     });
   }catch(e){
     coreSlotInfo='CORE_SLOT_AUTOLOAD_FAILED:'+e.message;
-    log('SEGA CORE SLOT BUILD2NB AUTOLOAD ERROR: '+e.message);
+    log('SEGA CORE SLOT BUILD2NC AUTOLOAD ERROR: '+e.message);
   }
 }
 function explainWrongCoreFile(fileName, status){
@@ -289,7 +289,7 @@ function explainWasmNeedsGlue(fileName, status){
   var txt='SEGA CORE PICKER - WASM NESTACI SAMOTNY\n\n';
   txt+='Soubor: '+(fileName||'neznamy')+'\n';
   txt+='Status: '+(status||'WASM_STORED_JS_ADAPTER_REQUIRED')+'\n\n';
-  txt+='WASM je jen binarni jadro. V Android WebView ho musi spustit JS glue/adapter, ktery vytvori globalni adapter napr. NAP_SEGA_REAL_CORE nebo GenesisPlusGX. BUILD2NB umi ulozit WASM blob URL pro navazany JS adapter.\n\n';
+  txt+='WASM je jen binarni jadro. V Android WebView ho musi spustit JS glue/adapter, ktery vytvori globalni adapter napr. NAP_SEGA_REAL_CORE nebo GenesisPlusGX. BUILD2NC umi ulozit WASM blob URL pro navazany JS adapter.\n\n';
   txt+='Ted jsem WASM jen ulozil jako blob URL pro adapter, ale hra jeste nebezi.';
   showMonitor(txt);
   toast('WASM ulozen, ale chybi JS glue/adapter.',6200);
@@ -312,7 +312,7 @@ function handleCoreFile(file){
   var lower=fname.toLowerCase();
   if(/\.(gen|bin|md|smd|sms|gg|zip|7z|rar)$/i.test(lower)){
     coreSlotInfo='ROM_SELECTED_IN_CORE_PICKER';
-    log('SEGA CORE SLOT BUILD2NB: ROM vybrana omylem do CORE pickeru: '+fname);
+    log('SEGA CORE SLOT BUILD2NC: ROM vybrana omylem do CORE pickeru: '+fname);
     rescanCoreBridge('external:'+coreSlotInfo);
     explainWrongCoreFile(fname, coreSlotInfo);
     return;
@@ -339,7 +339,7 @@ function handleCoreFile(file){
         toast('Core JS se nepodarilo nacist.',5200);
         return;
       }
-      var txt='SEGA REAL CORE SLOT - BUILD2NB\n\n';
+      var txt='SEGA REAL CORE SLOT - BUILD2NC\n\n';
       txt+='Soubor: '+fname+'\n';
       txt+='Status: '+coreSlotInfo+'\n';
       txt+='Bridge: '+coreStatusLine()+'\n\n';
@@ -364,17 +364,17 @@ function initSegaBridge(){
   if(segaBridge) return segaBridge;
   try{
     if(!window.NAPSegaCoreBridge){
-      log('SEGA CORE BRIDGE BUILD2NB: nap_sega_core_bridge.js nenalezen');
+      log('SEGA CORE BRIDGE BUILD2NC: nap_sega_core_bridge.js nenalezen');
       coreReady=false;
       return null;
     }
     segaBridge=new window.NAPSegaCoreBridge(document.getElementById('mdVideo'), log);
     coreReady=!!segaBridge.init();
-    log('SEGA CORE BRIDGE BUILD2NB STATUS: '+segaBridge.getStatusLine());
+    log('SEGA CORE BRIDGE BUILD2NC STATUS: '+segaBridge.getStatusLine());
     return segaBridge;
   }catch(e){
     coreReady=false;
-    log('SEGA CORE BRIDGE BUILD2NB INIT ERROR: '+e.message);
+    log('SEGA CORE BRIDGE BUILD2NC INIT ERROR: '+e.message);
     return null;
   }
 }
@@ -395,7 +395,7 @@ function segaInput(button,down){
   var b=initSegaBridge();
   var ok=false;
   if(b) ok=down ? b.press(button) : b.release(button);
-  log('SEGA INPUT BUILD2NB '+(down?'DOWN ':'UP ')+button+' -> '+(ok?'SENT_TO_REAL_CORE':'CORE_NOT_READY'));
+  log('SEGA INPUT BUILD2NC '+(down?'DOWN ':'UP ')+button+' -> '+(ok?'SENT_TO_REAL_CORE':'CORE_NOT_READY'));
   if(down && !ok) toast(button+' vstup pripraven. Ceka na realny core adapter.',1300);
   return ok;
 }
@@ -410,7 +410,7 @@ function handleRomFile(file){
       var bytes=new Uint8Array(reader.result);
       var info=analyzeRom(bytes,file.name);
       lastRomInfo=info;
-      log('SEGA ROM HEADER BUILD2NB file='+info.name+' size='+info.len+' console='+info.consoleName+' title='+info.overseas+' region='+info.region+' crc32='+info.crc32);
+      log('SEGA ROM HEADER BUILD2NC file='+info.name+' size='+info.len+' console='+info.consoleName+' title='+info.overseas+' region='+info.region+' crc32='+info.crc32);
       if(!info.ok){
         showMonitor('SEGA ROM CHECK\n\nCHYBA: header neobsahuje SEGA.\nSoubor: '+info.name+'\nVelikost: '+info.originalLen+' B');
         toast('Tohle nevypada jako Mega Drive ROM.',4200);
@@ -418,7 +418,7 @@ function handleRomFile(file){
       }
       var coreRes=attemptCoreLoad(info);
       var txt='SEGA ROM CHECK - OK\n';
-      txt+='BUILD2NB ROM PICKER FORCE + CORE BOOT STAGE15\n\n';
+      txt+='BUILD2NC ROM PICKER FORCE + CORE BOOT STAGE15\n\n';
       txt+='Soubor: '+info.name+'\n';
       txt+='Format: '+info.format+'\n';
       txt+='Velikost: '+Math.round(info.len/1024)+' KB\n';
@@ -466,8 +466,9 @@ if(consoleBtn){
     hideMonitor();
     setScreenMode('console');
     if(!lastRomInfo){
-      log('SEGA CONSOLE CLICK BUILD2NB: bez ROM oteviram ROM picker misto graficke vrstvy.');
-      openRomPicker('btnConsole_no_rom');
+      log('SEGA CONSOLE CLICK BUILD2NC: bez ROM nic nevynucuji; ROM vybirej pres HRY/SBIRKA/CARTRIDGE.');
+      drawRomPrompt('KONZOLE OK - VYBER ROM PRES HRY');
+      toast('KONZOLE: zadna nova grafika, zadny picker nasilu. Vyber ROM pres HRY.',3200);
     }else{
       toast('KONZOLE: ROM uz je vybrana, core probe zustava aktivni.',2600);
     }
@@ -480,8 +481,9 @@ if(joyBtn){
     hideMonitor();
     setScreenMode('joystick');
     if(!lastRomInfo){
-      log('SEGA JOYSTICK CLICK BUILD2NB: bez ROM oteviram ROM picker.');
-      openRomPicker('btnJoystick_no_rom');
+      log('SEGA JOYSTICK CLICK BUILD2NC: bez ROM nic nevynucuji; cekam na HRY/SBIRKA/CARTRIDGE.');
+      drawRomPrompt('JOYSTICK OK - VYBER ROM PRES HRY');
+      toast('JOYSTICK: ovladani ceka na ROM. Vyber ROM pres HRY.',3200);
     }else{
       toast('JOYSTICK vstupy jsou aktivni pro vybranou ROM.',2600);
     }
@@ -525,8 +527,8 @@ if(dpadEl){
 }
 
 function buildLogText(){
-  var txt='SEGA LOG / BUILD2NB\n';
-  txt+='AtariHelp.eu EMU-10 BUILD2NB_SEGA_NO_ART_ROM_PICKER_FORCE_STAGE15\n\n';
+  var txt='SEGA LOG / BUILD2NC\n';
+  txt+='AtariHelp.eu EMU-10 BUILD2NC_SEGA_RESTORE_SKIN_DIRECT_ROM_STAGE16\n\n';
   txt+='STAV:\n';
   txt+='- monitor ma real-core video canvas 320x224\n';
   txt+='- ROM picker/header audit aktivni\n';
@@ -559,24 +561,24 @@ function b64utf8(txt){
   try{return btoa(unescape(encodeURIComponent(txt)));}catch(e){try{return btoa(txt);}catch(_){return '';}}
 }
 function tryAndroidSaveText(filename,txt){
-  // BUILD2NB: realni nativni bridge v tehle appce neni window.Android, ale AHSAVE.
+  // BUILD2NC: realni nativni bridge v tehle appce neni window.Android, ale AHSAVE.
   // MainActivity uz dlouho umi AHSAVE.save(name,text) a uklada do Downloads/AtariHelp.
   try{
     if(window.AHSAVE && typeof window.AHSAVE.save==='function'){
       var res=window.AHSAVE.save(filename,txt);
-      log('SEGA LOG DOWNLOAD BUILD2NB: AHSAVE.save -> '+res);
+      log('SEGA LOG DOWNLOAD BUILD2NC: AHSAVE.save -> '+res);
       window.__segaLastSaveResult=res||('DOWNLOADS_OK: Downloads/AtariHelp/'+filename);
       return true;
     }
-  }catch(e0){ log('SEGA LOG DOWNLOAD BUILD2NB: AHSAVE.save failed '+e0.message); }
+  }catch(e0){ log('SEGA LOG DOWNLOAD BUILD2NC: AHSAVE.save failed '+e0.message); }
   try{
     if(window.AHSAVE && typeof window.AHSAVE.saveBase64==='function'){
       var res2=window.AHSAVE.saveBase64(filename,b64utf8(txt));
-      log('SEGA LOG DOWNLOAD BUILD2NB: AHSAVE.saveBase64 -> '+res2);
+      log('SEGA LOG DOWNLOAD BUILD2NC: AHSAVE.saveBase64 -> '+res2);
       window.__segaLastSaveResult=res2||('DOWNLOADS_OK: Downloads/AtariHelp/'+filename);
       return true;
     }
-  }catch(e00){ log('SEGA LOG DOWNLOAD BUILD2NB: AHSAVE.saveBase64 failed '+e00.message); }
+  }catch(e00){ log('SEGA LOG DOWNLOAD BUILD2NC: AHSAVE.saveBase64 failed '+e00.message); }
   try{
     if(window.Android){
       var b64=b64utf8(txt);
@@ -594,13 +596,13 @@ function tryAndroidSaveText(filename,txt){
         var name=methods[i][0], args=methods[i][1];
         if(typeof window.Android[name]==='function'){
           window.Android[name].apply(window.Android,args);
-          log('SEGA LOG DOWNLOAD BUILD2NB: Android.'+name+' -> '+filename);
+          log('SEGA LOG DOWNLOAD BUILD2NC: Android.'+name+' -> '+filename);
           window.__segaLastSaveResult='ANDROID_OK: '+name+' '+filename;
           return true;
         }
       }
     }
-  }catch(e){ log('SEGA LOG DOWNLOAD BUILD2NB: Android save failed '+e.message); }
+  }catch(e){ log('SEGA LOG DOWNLOAD BUILD2NC: Android save failed '+e.message); }
   return false;
 }
 function tryBrowserDownload(filename,txt){
@@ -614,9 +616,9 @@ function tryBrowserDownload(filename,txt){
     document.body.appendChild(a);
     a.click();
     setTimeout(function(){try{URL.revokeObjectURL(url);a.remove();}catch(e){}},1600);
-    log('SEGA LOG DOWNLOAD BUILD2NB: browser download -> '+filename);
+    log('SEGA LOG DOWNLOAD BUILD2NC: browser download -> '+filename);
     return true;
-  }catch(e){ log('SEGA LOG DOWNLOAD BUILD2NB: blob download failed '+e.message); }
+  }catch(e){ log('SEGA LOG DOWNLOAD BUILD2NC: blob download failed '+e.message); }
   try{
     var a2=document.createElement('a');
     a2.href='data:text/plain;charset=utf-8,'+encodeURIComponent(txt);
@@ -625,9 +627,9 @@ function tryBrowserDownload(filename,txt){
     document.body.appendChild(a2);
     a2.click();
     setTimeout(function(){try{a2.remove();}catch(e){}},1600);
-    log('SEGA LOG DOWNLOAD BUILD2NB: data download -> '+filename);
+    log('SEGA LOG DOWNLOAD BUILD2NC: data download -> '+filename);
     return true;
-  }catch(e2){ log('SEGA LOG DOWNLOAD BUILD2NB: data download failed '+e2.message); }
+  }catch(e2){ log('SEGA LOG DOWNLOAD BUILD2NC: data download failed '+e2.message); }
   return false;
 }
 function saveLogToDownloads(txt){
@@ -636,7 +638,7 @@ function saveLogToDownloads(txt){
   try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt); } }catch(e){}
   if(ok){
     var res=window.__segaLastSaveResult||('Downloads/AtariHelp/'+filename);
-    log('SEGA LOG DOWNLOAD BUILD2NB: ulozeno bez zobrazeni pres monitor overlay -> '+res);
+    log('SEGA LOG DOWNLOAD BUILD2NC: ulozeno bez zobrazeni pres monitor overlay -> '+res);
     toast('LOG ulozen: '+filename,4200);
   } else {
     toast('LOG zobrazen v monitoru, automaticke ulozeni selhalo.',4200);
@@ -660,8 +662,9 @@ function bindRomPickerHotZones(){
     el.addEventListener('click',function(e){
       if(lastRomInfo) return;
       e.preventDefault(); e.stopPropagation();
-      log('SEGA ROM HOTZONE BUILD2NB: '+id+' klik bez ROM -> picker');
-      openRomPicker(id+'_no_rom');
+      log('SEGA ROM HOTZONE BUILD2NC: '+id+' klik bez ROM -> bez vynuceni pickeru, jen instrukce. ROM vybirej pres HRY/SBIRKA/CARTRIDGE.');
+      drawRomPrompt('VYBER ROM PRES HRY / SBIRKA / CARTRIDGE');
+      toast('ROM vybirej pres HRY / SBIRKA / CARTRIDGE. Nic neblokuju.',3600);
     },true);
   });
 }
@@ -677,8 +680,8 @@ function bindSavesButton(){
     if(!long){
       e.preventDefault(); e.stopPropagation();
       if(!lastRomInfo){
-        log('SEGA LOG BUTTON BUILD2NB: kratky klik bez ROM -> oteviram ROM picker, dlouhy stisk uklada log.');
-        openRomPicker('btnSaves_no_rom');
+        log('SEGA LOG BUTTON BUILD2NC: kratky klik bez ROM uklada log; ROM picker jen HRY/SBIRKA/CARTRIDGE.');
+        showSegaLog(false);
       }else{
         showSegaLog(false);
       }
@@ -688,7 +691,7 @@ function bindSavesButton(){
 }
 bindSavesButton();
 var manuals=document.getElementById('btnManuals');
-if(manuals) manuals.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor('NAVODY - SEGA MEGA DRIVE\n\nSBIRKA / HRY / CARTRIDGE SLOT:\n- vyber .gen / .bin / .md / .smd ROM\n\nOVLADANI:\n- D-PAD vlevo\n- A/B/C vpravo\n- START uprostred\n\nBUILD2NB:\n- real ROM picker\n- real header/checksum audit\n- video canvas 320x224\n- core bridge pro realny Mega Drive adapter\n- core picker rozlisuje ROM omyl vs .js/.wasm adapter\n- adapter zkousi lokalni/online lrusso Genesis/PicoDrive pres fetchText + closure-eval\n- BUILD2NB: moje konzolova grafika vypnuta; fokus je realny core boot\n- normalni klik ULOZENE jen ulozi log a neprekryje monitor\n- zadna fake emulace');},true);
+if(manuals) manuals.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor('NAVODY - SEGA MEGA DRIVE\n\nSBIRKA / HRY / CARTRIDGE SLOT:\n- vyber .gen / .bin / .md / .smd ROM\n\nOVLADANI:\n- D-PAD vlevo\n- A/B/C vpravo\n- START uprostred\n\nBUILD2NC:\n- real ROM picker\n- real header/checksum audit\n- video canvas 320x224\n- core bridge pro realny Mega Drive adapter\n- core picker rozlisuje ROM omyl vs .js/.wasm adapter\n- adapter zkousi lokalni/online lrusso Genesis/PicoDrive pres fetchText + closure-eval\n- BUILD2NC: opravena poskozena PNG grafika; zadna moje nova konzolova grafika\n- normalni klik ULOZENE jen ulozi log a neprekryje monitor\n- zadna fake emulace');},true);
 var web=document.getElementById('btnWeb');
 if(web) web.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openWeb('https://atarihelp.eu/');},true);
 var coreInp=document.getElementById('coreInput');
@@ -696,18 +699,18 @@ if(coreInp) coreInp.addEventListener('change',function(){ handleCoreFile(coreInp
 var inp=document.getElementById('romInput');
 if(inp) inp.addEventListener('change',function(){
   var f=inp.files && inp.files[0];
-  log('SEGA ROM PICKER BUILD2NB CHANGE file='+(f && f.name ? f.name : 'NONE_OR_CANCEL'));
+  log('SEGA ROM PICKER BUILD2NC CHANGE file='+(f && f.name ? f.name : 'NONE_OR_CANCEL'));
   handleRomFile(f);
 },false);
 initSegaBridge();
 startCoreSlotAutoload();
 setTimeout(function(){ if(!lastRomInfo){ drawRomPrompt('CORE READY - VYBER ROM'); } },650);
 log('AtariHelp.eu EMU-10 '+BUILD+' pripraven - SEGA monitor canvas 320x224, ROM picker/header audit, LOG do Downloads; zadny ROM v APK, zadny fake Sonic.');
-log('SEGA VIDEO CANVAS BUILD2NB: monitor ma 320x224 canvas pro realny Mega Drive core vystup.');
-log('SEGA LOG DOWNLOAD BUILD2NB: ULOZENE uklada TXT pres AHSAVE.save do Downloads/AtariHelp; normalni klik uz nezobrazuje log pres monitor, aby nevznikal obraz-v-obraze.');
-log('SEGA ROM PICKER BUILD2NB: HRY/SBIRKA/CARTRIDGE/monitor/KONZOLE/ULOZENE bez ROM otevre lokalni .gen/.bin/.md/.smd soubor.');
-log('SEGA CORE BRIDGE BUILD2NB: bez realneho adapteru se hra nespousti; BUILD2NB zkousi lrusso Genesis.min.js pres closure-eval bez iframe a bez fake obrazu.');
-toast('BUILD2NB: bez ROM skoro kazdy klik otevre ROM picker. Vyber Sonic/Aladdin .gen. ',4200);
+log('SEGA VIDEO CANVAS BUILD2NC: monitor ma 320x224 canvas pro realny Mega Drive core vystup.');
+log('SEGA LOG DOWNLOAD BUILD2NC: ULOZENE uklada TXT pres AHSAVE.save do Downloads/AtariHelp; normalni klik uz nezobrazuje log pres monitor, aby nevznikal obraz-v-obraze.');
+log('SEGA ROM PICKER BUILD2NC: HRY/SBIRKA/CARTRIDGE otevre lokalni .gen/.bin/.md/.smd soubor; ostatni tlacitka uz nevnucuji picker.');
+log('SEGA CORE BRIDGE BUILD2NC: bez realneho adapteru se hra nespousti; BUILD2NC zkousi lrusso Genesis.min.js pres closure-eval bez iframe a bez fake obrazu.');
+toast('BUILD2NC: skin obnoven. ROM vybirej pres HRY/SBIRKA/CARTRIDGE. ',4200);
 })();
 </script>
 </body>
