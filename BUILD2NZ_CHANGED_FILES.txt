@@ -1,0 +1,15 @@
+BUILD2NZ_INTRO_PS1_MENU_STAGE39
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/index.html
+- app/src/main/assets/nap_ui/nap_vision_intro_screen1.png
+- app/src/main/assets/emu_ps1/index.html
+- app/src/main/assets/emu_ps1/ps1_final_screen.png
+
+CO JE NOVE:
+- Uvodni obrazovka pouziva dodany screen 1 1:1.
+- Tlacitka ATARI / SEGA / PLAYER / PS1 / ATARIHELP.EU / HELP jsou napojena.
+- Podpis Rene Frank vede na Facebook profil https://www.facebook.com/renatus.honda.
+- PS1 tlacitko vede na novy emu_ps1/index.html se screenem 2 1:1.
+- PS1 obrazovka ma hitboxy BACK / SETTINGS / RESET / MEMORY CARD / CD ISO / LOAD GAME / SAVE GAME.
+- Sega modul se nemeni, Atari modul se nemeni, ovladac/zvuk/reset Sega se nemeni.

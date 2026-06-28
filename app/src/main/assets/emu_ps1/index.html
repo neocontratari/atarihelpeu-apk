@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>N&amp;P VISION — PS1 PlayStation</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:#02060b;color:#dfeaff;font-family:"Courier New",monospace;overflow-x:hidden;}
+body{display:flex;justify-content:center;align-items:flex-start;}
+.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#02060b;overflow:hidden;box-shadow:0 0 56px rgba(0,0,0,.95);}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
+.hit{position:absolute;z-index:8;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
+.hit:active{background:rgba(110,190,255,.13);box-shadow:0 0 34px rgba(110,190,255,.25) inset;border-radius:18px;}
+#btnBack{left:3.8%;top:3.1%;width:10.5%;height:6.2%;}
+#btnSettings{left:85.1%;top:3.1%;width:10.5%;height:6.2%;}
+#psMonitor{left:5.4%;top:14.2%;width:89.2%;height:41.7%;}
+#padLeft{left:14.5%;top:60.3%;width:23.0%;height:16.2%;}
+#padRight{left:62.0%;top:60.3%;width:24.0%;height:16.2%;}
+#btnSelect{left:43.1%;top:70.1%;width:7.7%;height:4.0%;}
+#btnStart{left:52.1%;top:70.1%;width:7.7%;height:4.0%;}
+#btnReset{left:3.2%;top:82.7%;width:17.0%;height:12.9%;}
+#btnMemory{left:22.0%;top:82.7%;width:17.0%;height:12.9%;}
+#btnCd{left:40.8%;top:82.7%;width:18.0%;height:12.9%;}
+#btnLoad{left:60.0%;top:82.7%;width:17.5%;height:12.9%;}
+#btnSave{left:79.1%;top:82.7%;width:17.5%;height:12.9%;}
+#fileInput{display:none;}
+.toast{position:absolute;left:5%;right:5%;bottom:3.8%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(120,200,255,.56);box-shadow:0 0 22px rgba(70,170,255,.18);color:#dff6ff;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
+.toast.show{display:block;}
+.panel{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#dfeaff;}
+.panel.open{display:block;}
+.panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#07101b,#02060b);border:1px solid rgba(125,200,255,.45);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(80,170,255,.16) inset;}
+.panel h2{font:900 23px "Courier New",monospace;margin-bottom:12px;color:#f1d78e;text-align:center;}
+.panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
+.panel b{color:#8ee7ff;}
+.panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d8b65a;color:#06070a;font:900 15px "Courier New",monospace;}
+@media (orientation:landscape) and (max-height:760px){
+ .stage{height:100vh;width:auto;max-width:none;}
+ .toast{bottom:2%;font-size:11px;padding:6px 8px;}
+}
+</style>
+</head>
+<body>
+<main class="stage" aria-label="PS1 PlayStation">
+  <img class="skin" src="ps1_final_screen.png" alt="PS1 PlayStation screen">
+  <a id="btnBack" class="hit" href="../index.html">BACK</a>
+  <button id="btnSettings" class="hit" type="button">SETTINGS</button>
+  <button id="psMonitor" class="hit" type="button">MONITOR</button>
+  <button id="padLeft" class="hit" type="button">DPAD</button>
+  <button id="padRight" class="hit" type="button">ACTIONS</button>
+  <button id="btnSelect" class="hit" type="button">SELECT</button>
+  <button id="btnStart" class="hit" type="button">START</button>
+  <button id="btnReset" class="hit" type="button">RESET</button>
+  <button id="btnMemory" class="hit" type="button">MEMORY CARD</button>
+  <button id="btnCd" class="hit" type="button">CD ISO</button>
+  <button id="btnLoad" class="hit" type="button">LOAD GAME</button>
+  <button id="btnSave" class="hit" type="button">SAVE GAME</button>
+  <input id="fileInput" type="file" accept=".bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream">
+  <div id="toast" class="toast">PS1 BUILD2NZ</div>
+</main>
+
+<div id="helpPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>PS1 — PlayStation 1</h2>
+    <p>Tahle obrazovka je zatim <b>UI modul podle dodane grafiky 1:1</b>.</p>
+    <p><b>CD / ISO</b> a <b>LOAD GAME</b> otevre picker pro PS1 soubor.</p>
+    <p><b>RESET / MEMORY CARD / SAVE GAME</b> maji pripraveny hitbox a logiku pro dalsi napojeni emulatoru.</p>
+    <p>Zadny fake gameplay — realny PS1 core se bude napojovat jako dalsi krok.</p>
+    <button id="helpClose" type="button">ZAVRIT</button>
+  </div>
+</div>
+<script>
+(function(){'use strict';
+var BUILD='BUILD2NZ_PS1_UI_STAGE39';
+function $(id){return document.getElementById(id);}
+function log(t){try{console.log('[NAP PS1 '+BUILD+'] '+t);}catch(e){}}
+function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napPs1Toast);window.__napPs1Toast=setTimeout(function(){el.classList.remove('show');},ms||2400);log(t);}
+function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}toast('PS1 HELP',1300);}
+function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function openPicker(reason){toast(reason+': vyber PS1 CD/ISO',2200);var i=$('fileInput');if(i){try{i.value='';}catch(_){} i.click();}}
+$('btnSettings').addEventListener('click',function(e){e.preventDefault();showHelp();},true);
+$('psMonitor').addEventListener('click',function(e){e.preventDefault();toast('PS1 monitor pripraven pro realny core',2400);},true);
+$('btnReset').addEventListener('click',function(e){e.preventDefault();toast('PS1 RESET pripraven',1800);},true);
+$('btnMemory').addEventListener('click',function(e){e.preventDefault();toast('MEMORY CARD pripraveno',1800);},true);
+$('btnCd').addEventListener('click',function(e){e.preventDefault();openPicker('CD / ISO');},true);
+$('btnLoad').addEventListener('click',function(e){e.preventDefault();openPicker('LOAD GAME');},true);
+$('btnSave').addEventListener('click',function(e){e.preventDefault();toast('SAVE GAME pripraveno',1800);},true);
+$('padLeft').addEventListener('click',function(e){e.preventDefault();toast('PS1 D-PAD hitbox OK',1200);},true);
+$('padRight').addEventListener('click',function(e){e.preventDefault();toast('PS1 ACTION hitbox OK',1200);},true);
+$('btnSelect').addEventListener('click',function(e){e.preventDefault();toast('SELECT',900);},true);
+$('btnStart').addEventListener('click',function(e){e.preventDefault();toast('START',900);},true);
+$('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
+$('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0]; if(f){toast('Vybran PS1 soubor: '+f.name,3200);log('FILE_SELECTED '+f.name+' size='+f.size);} },true);
+log('BUILD2NZ PS1 UI ready: 1:1 screen, back/settings/reset/memory/cd/load/save hitboxes.');
+})();
+</script>
+</body>
+</html>

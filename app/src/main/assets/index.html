@@ -2,87 +2,91 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P VISION — Command Center</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>N&amp;P VISION — Retro Universe</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{min-height:100%;background:#050608;color:#f2c464;font-family:"Courier New",monospace;overflow-x:hidden;}
+html,body{min-height:100%;background:#050302;color:#f7d477;font-family:"Courier New",monospace;overflow-x:hidden;}
 body{display:flex;justify-content:center;align-items:flex-start;}
-.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050608;overflow:hidden;box-shadow:0 0 48px rgba(0,0,0,.95);}
-.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;}
-.hit{position:absolute;z-index:5;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
-.hit:active{background:rgba(255,202,92,.10);box-shadow:0 0 26px rgba(255,202,92,.20) inset;border-radius:18px;}
-/* Normalizovane hitzony podle obrazku 941x1672 */
-#btnMenu{left:6.7%;top:3.9%;width:11.2%;height:5.8%;}
-#btnSettingsTop{left:80.5%;top:3.9%;width:11.2%;height:5.8%;}
-#btnEmulator{left:5.9%;top:52.8%;width:44.1%;height:15.1%;}
-#btnPlayer{left:50.0%;top:52.8%;width:44.1%;height:15.1%;}
-#btnAtariHelp{left:5.9%;top:69.1%;width:44.1%;height:15.0%;}
-#btnHelp{left:50.0%;top:69.1%;width:44.1%;height:15.0%;}
-#btnFooterLeft{left:5.9%;top:87.2%;width:22.5%;height:8.0%;}
-#btnFooterName{left:28.8%;top:87.2%;width:42.4%;height:8.0%;}
-#btnFooterRight{left:71.1%;top:87.2%;width:22.9%;height:8.0%;}
-#helpPanel{display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.92);padding:20px;overflow:auto;color:#f2c464;}
-#helpPanel.open{display:block;}
-#helpPanel .box{max-width:720px;margin:0 auto;background:#090d12;border:1px solid rgba(242,196,100,.44);border-radius:16px;padding:18px;box-shadow:0 0 36px rgba(0,0,0,.8);}
-#helpPanel h2{font:900 24px "Courier New",monospace;margin-bottom:12px;color:#ffd879;}
-#helpPanel p,#helpPanel li{font:800 14px/1.4 "Courier New",monospace;margin:8px 0;color:#dfe6ef;}
-#helpPanel b{color:#8fd8ff;}
-#helpClose{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d9b25c;color:#111;font:900 15px "Courier New",monospace;}
+.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050302;overflow:hidden;box-shadow:0 0 56px rgba(0,0,0,.95);}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
+.hit{position:absolute;z-index:8;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
+.hit:active{background:rgba(255,186,55,.12);box-shadow:0 0 34px rgba(255,186,55,.28) inset;border-radius:18px;}
+#btnMenu{left:4.1%;top:3.1%;width:10.5%;height:6.2%;}
+#btnSettings{left:85.1%;top:3.1%;width:10.5%;height:6.2%;}
+#btnAtari{left:3.0%;top:67.6%;width:45.9%;height:9.7%;}
+#btnSega{left:51.1%;top:67.6%;width:45.9%;height:9.7%;}
+#btnPlayer{left:3.0%;top:78.9%;width:45.9%;height:9.7%;}
+#btnPs1{left:51.1%;top:78.9%;width:45.9%;height:9.7%;}
+#btnWeb{left:3.0%;top:90.0%;width:45.9%;height:7.5%;}
+#btnHelp{left:51.1%;top:90.0%;width:45.9%;height:7.5%;}
+#btnRene{left:22.0%;top:96.1%;width:56.0%;height:3.5%;}
+.toast{position:absolute;left:5%;right:5%;bottom:4.6%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(255,200,80,.56);box-shadow:0 0 22px rgba(255,170,35,.18);color:#ffe6a0;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
+.toast.show{display:block;}
+.panel{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#f7d477;}
+.panel.open{display:block;}
+.panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#100904,#060403);border:1px solid rgba(255,195,64,.50);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(255,163,20,.18) inset;}
+.panel h2{font:900 23px "Courier New",monospace;margin-bottom:12px;color:#ffe49a;text-align:center;}
+.panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
+.panel b{color:#8ee7ff;}
+.panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d8a947;color:#070402;font:900 15px "Courier New",monospace;}
+@media (orientation:landscape) and (max-height:760px){
+ .stage{height:100vh;width:auto;max-width:none;}
+ .toast{bottom:2%;font-size:11px;padding:6px 8px;}
+}
 </style>
 </head>
 <body>
-<main class="stage" aria-label="N&P VISION Command Center">
-  <img class="skin" src="nap_ui/nap_intro_command_center.png" alt="N&P VISION Command Center">
+<main class="stage" aria-label="N&P VISION Retro Universe">
+  <img class="skin" src="nap_ui/nap_vision_intro_screen1.png" alt="N&P VISION Retro Universe">
   <button id="btnMenu" class="hit" type="button">MENU</button>
-  <button id="btnSettingsTop" class="hit" type="button">SETTINGS</button>
-  <a id="btnEmulator" class="hit" href="emu_vbxe/index.html">EMULATOR</a>
-  <a id="btnPlayer" class="hit" href="player/index.html">PREHRAVAC</a>
-  <a id="btnAtariHelp" class="hit" href="https://atarihelp.eu/">ATARIHELP.EU</a>
+  <button id="btnSettings" class="hit" type="button">SETTINGS</button>
+  <a id="btnAtari" class="hit" href="emu_vbxe/index.html">ATARI 130XE EMULATOR</a>
+  <a id="btnSega" class="hit" href="emu_sega/index.html">SEGA MEGA DRIVE</a>
+  <a id="btnPlayer" class="hit" href="player/index.html">PLAYER MP3 WAV</a>
+  <a id="btnPs1" class="hit" href="emu_ps1/index.html">PS1 PLAYSTATION</a>
+  <a id="btnWeb" class="hit" href="https://atarihelp.eu/" data-external="1">ATARIHELP.EU</a>
   <button id="btnHelp" class="hit" type="button">HELP</button>
-  <a id="btnFooterLeft" class="hit" href="emu_sega/index.html">SEGA MEGA DRIVE</a>
-  <a id="btnFooterName" class="hit" href="https://www.facebook.com/renatus.honda">RENE FRANK</a>
-  <button id="btnFooterRight" class="hit" type="button">RETRO POWER</button>
+  <a id="btnRene" class="hit" href="https://www.facebook.com/renatus.honda" data-external="1">Rene Frank Facebook</a>
+  <div id="toast" class="toast">N&amp;P VISION BUILD2NZ</div>
 </main>
 
-<div id="helpPanel" aria-hidden="true">
+<div id="helpPanel" class="panel" aria-hidden="true">
   <div class="box">
-    <h2>N&P VISION — HELP</h2>
-    <p><b>EMULATOR</b> otevře současný Atari 130XE / VBXE EMU2 modul.</p><p><b>ATARI ikona vlevo dole</b> otevře nový samostatný SEGA MEGA DRIVE modul. Hlavní obrazovka, přehrávač, web a HELP zůstávají beze změn.</p>
-    <p><b>PŘEHRÁVAČ</b> otevře přesnou obrazovku cassette playeru s MP3/WAV přehráváním.</p>
-    <p><b>ATARIHELP.EU</b> otevře https://atarihelp.eu/ jako web.</p>
-    <p><b>YOUTUBE</b> v přehrávači otevře https://www.youtube.com/ jako web, ne emulator.</p>
-    <button id="helpClose" type="button">ZAVŘÍT HELP</button>
+    <h2>N&amp;P VISION — HELP</h2>
+    <p><b>ATARI 130XE</b> otevre Atari emulator modul.</p>
+    <p><b>SEGA MEGA DRIVE</b> otevre funkcni Sega modul s ClownMDEmu wrapperem.</p>
+    <p><b>PLAYER</b> otevre MP3 / WAV prehravac.</p>
+    <p><b>PS1</b> otevre novou PlayStation obrazovku podle dodane grafiky.</p>
+    <p><b>ATARIHELP.EU</b> otevre oficialni web.</p>
+    <p><b>Podpis Rene Frank</b> vede na Facebook profil.</p>
+    <button id="helpClose" type="button">ZAVRIT HELP</button>
   </div>
 </div>
 
 <script>
-(function(){
-'use strict';
-function log(t){ try{console.log('[NAP INTRO] '+t);}catch(e){} }
-function openWeb(url){
-  log('OPEN WEB '+url);
-  try{
-    if(window.Android && typeof window.Android.openExternal==='function'){ window.Android.openExternal(url); return; }
-    if(window.Android && typeof window.Android.openUrl==='function'){ window.Android.openUrl(url); return; }
-    if(window.Android && typeof window.Android.openExternalUrl==='function'){ window.Android.openExternalUrl(url); return; }
-  }catch(e){ log('Android bridge failed: '+e.message); }
-  try{ window.location.href=url; }catch(e){ location.href=url; }
+(function(){'use strict';
+var BUILD='BUILD2NZ_INTRO_PS1_MENU_STAGE39';
+function $(id){return document.getElementById(id);}
+function log(t){try{console.log('[NAP INTRO '+BUILD+'] '+t);}catch(e){}}
+function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napIntroToast);window.__napIntroToast=setTimeout(function(){el.classList.remove('show');},ms||2200);}
+function openExternal(url){
+  log('OPEN_EXTERNAL '+url);
+  try{if(window.Android&&typeof window.Android.openExternal==='function'){window.Android.openExternal(url);return;}}catch(e){}
+  try{if(window.Android&&typeof window.Android.openUrl==='function'){window.Android.openUrl(url);return;}}catch(e){}
+  try{if(window.Android&&typeof window.Android.openExternalUrl==='function'){window.Android.openExternalUrl(url);return;}}catch(e){}
+  try{window.location.href=url;}catch(_){location.href=url;}
 }
-function showHelp(){
-  var p=document.getElementById('helpPanel');
-  if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}
-}
-function closeHelp(){
-  var p=document.getElementById('helpPanel');
-  if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}
-}
-document.getElementById('btnHelp').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);
-document.getElementById('btnSettingsTop').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);
-
-document.getElementById('btnMenu').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);
-document.getElementById('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
-log('BUILD2MI: EMULATOR vede na EMU2/VBXE, spodni leva ATARI ikona vede na SEGA modul. Ostatni odkazy zustavaji.');
+function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}toast('HELP otevren',1500);}
+function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+['btnMenu','btnSettings','btnHelp'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
+var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
+Array.prototype.forEach.call(document.querySelectorAll('a[data-external="1"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openExternal(a.href);},true);});
+$('btnAtari')&&$('btnAtari').addEventListener('click',function(){toast('ATARI 130XE EMULATOR',900);},true);
+$('btnSega')&&$('btnSega').addEventListener('click',function(){toast('SEGA MEGA DRIVE',900);},true);
+$('btnPlayer')&&$('btnPlayer').addEventListener('click',function(){toast('PLAYER MP3 / WAV',900);},true);
+$('btnPs1')&&$('btnPs1').addEventListener('click',function(){toast('PS1 PLAYSTATION',900);},true);
+log('BUILD2NZ ready: intro screen buttons Atari/Sega/Player/PS1/Web/Help/Rene Facebook wired.');
 })();
 </script>
 </body>
