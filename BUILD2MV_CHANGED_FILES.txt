@@ -1,0 +1,16 @@
+BUILD2MV_SEGA_FETCHTEXT_EVAL_REPAIR_NO_PIP_STAGE9
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+- app/src/main/assets/index.html
+
+OPRAVY:
+- doplnena chybejici funkce fetchText() pro lokalni/online nacitani Genesis engine textu
+- doplnena funkce evalEngineClosure() pro realny export embedGenesis z lrusso Genesis.min.js
+- ULOZENE uz pri normalnim kliknuti jen uklada LOG do Downloads/AtariHelp a neschovava monitor logem
+- dlouhy stisk ULOZENE cca 0.85s zobrazi servisni nahled logu, kdyz je potreba
+- zadny fake Sonic, zadny screen paint

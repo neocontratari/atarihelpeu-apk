@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MU_SEGA_LRUSSO_CLOSURE_EVAL_BOOT_STAGE8
+ * BUILD2MV_SEGA_FETCHTEXT_EVAL_REPAIR_NO_PIP_STAGE9
  *
  * NAP adapter for the lrusso Genesis/PicoDrive browser core API.
  * It does not include ROMs and it does not paint fake gameplay. It only tries
@@ -15,7 +15,7 @@
 (function(global){
 'use strict';
 
-var BUILD='BUILD2MU_SEGA_LRUSSO_CLOSURE_EVAL_BOOT_STAGE8';
+var BUILD='BUILD2MV_SEGA_FETCHTEXT_EVAL_REPAIR_NO_PIP_STAGE9';
 var LOCAL_ENGINE_CANDIDATES=[
   'cores/Genesis.min.js',
   'cores/Genesis.js',
@@ -235,6 +235,91 @@ function scriptLoad(url, timeoutMs){
     document.head.appendChild(s);
   });
 }
+
+function fetchText(url, timeoutMs){
+  return new Promise(function(resolve,reject){
+    var finished=false;
+    function doneOk(text){ if(finished) return; finished=true; resolve(String(text||'')); }
+    function doneErr(err){ if(finished) return; finished=true; reject(err instanceof Error ? err : new Error(String(err))); }
+    try{
+      var xhr=new XMLHttpRequest();
+      xhr.open('GET',url,true);
+      try{ xhr.overrideMimeType('text/plain; charset=utf-8'); }catch(_e){}
+      xhr.timeout=timeoutMs||12000;
+      xhr.onload=function(){
+        var st=xhr.status;
+        if(st===0 || (st>=200 && st<300)){
+          var text=xhr.responseText || '';
+          if(!text || text.length<64) doneErr(new Error('FETCHTEXT_EMPTY_OR_TOO_SMALL '+url+' status='+st+' len='+(text?text.length:0)));
+          else doneOk(text);
+        }else doneErr(new Error('FETCHTEXT_HTTP_'+st+' '+url));
+      };
+      xhr.onerror=function(){ doneErr(new Error('FETCHTEXT_XHR_ERROR '+url)); };
+      xhr.ontimeout=function(){ doneErr(new Error('FETCHTEXT_TIMEOUT '+url)); };
+      xhr.send(null);
+    }catch(xhrErr){
+      try{
+        if(typeof fetch!=='function') throw xhrErr;
+        var timer=setTimeout(function(){ doneErr(new Error('FETCHTEXT_FETCH_TIMEOUT '+url)); }, timeoutMs||12000);
+        fetch(url,{cache:'no-store'}).then(function(r){
+          if(!r.ok && r.status!==0) throw new Error('FETCHTEXT_FETCH_HTTP_'+r.status+' '+url);
+          return r.text();
+        }).then(function(text){ clearTimeout(timer); if(!text || text.length<64) doneErr(new Error('FETCHTEXT_FETCH_EMPTY '+url)); else doneOk(text); })
+          .catch(function(e){ clearTimeout(timer); doneErr(e); });
+      }catch(fetchErr){ doneErr(fetchErr); }
+    }
+  });
+}
+function evalEngineClosure(sourceLabel, code){
+  code=String(code||'');
+  var hasEmbed=/embedGenesis/.test(code);
+  var hasCurrentScript=/currentScript/.test(code);
+  var hasTopSelf=/window\.top|top\s*===\s*window|window\.self/.test(code);
+  log('ENGINE SOURCE SCAN '+sourceLabel+' len='+code.length+' embedGenesis='+(hasEmbed?'YES':'NO')+' currentScript='+(hasCurrentScript?'YES':'NO')+' topSelf='+(hasTopSelf?'YES':'NO'));
+  if(!code || code.length<1024) throw new Error('ENGINE_SOURCE_TOO_SMALL '+sourceLabel+' len='+code.length);
+  if(!hasEmbed) throw new Error('ENGINE_SOURCE_HAS_NO_EMBEDGENESIS_TOKEN '+sourceLabel);
+  var clean=code.replace(/\/\/# sourceMappingURL=.*$/mg,'');
+  var src=(sourceLabel.indexOf('online:')===0) ? ONLINE_ENGINE_URL : sourceLabel.replace(/^local:/,'');
+  var docShim=null;
+  try{
+    docShim=Object.create(document);
+    Object.defineProperty(docShim,'currentScript',{value:{src:src,parentNode:document.head},configurable:true});
+  }catch(e){ docShim=document; }
+  var runner=null;
+  try{
+    runner=new Function('window','document','__napSourceLabel',
+      'var self=window; var global=window; var globalThis=window;\n'+
+      'try{ window.__napSegaEngineEvalSource=__napSourceLabel; }catch(_e){}\n'+
+      clean+'\n'+
+      'return (typeof embedGenesis==="function") ? embedGenesis : (window.embedGenesis || (typeof Genesis!=="undefined" ? Genesis : null));\n'
+    );
+  }catch(makeErr){
+    throw new Error('CLOSURE_EVAL_COMPILE_FAILED '+sourceLabel+' '+(makeErr.message||String(makeErr)));
+  }
+  try{
+    var exported=runner(global,docShim,sourceLabel);
+    if(typeof exported==='function'){
+      global.embedGenesis=exported;
+      lastEmbedGenesisSource='closure-eval '+sourceLabel;
+      log('CLOSURE EVAL OK embedGenesis exported source='+sourceLabel);
+      return 'CLOSURE_EVAL_OK:'+sourceLabel;
+    }
+    if(exported && typeof exported.embedGenesis==='function'){
+      global.embedGenesis=exported.embedGenesis;
+      lastEmbedGenesisSource='closure-eval object.embedGenesis '+sourceLabel;
+      log('CLOSURE EVAL OK object.embedGenesis exported source='+sourceLabel);
+      return 'CLOSURE_EVAL_OK_OBJECT:'+sourceLabel;
+    }
+    var fn=getEmbedGenesis();
+    if(fn){
+      log('CLOSURE EVAL OK embedGenesis found after eval source='+sourceLabel+' src='+embedSource());
+      return 'CLOSURE_EVAL_OK_AFTER:'+sourceLabel;
+    }
+    throw new Error('CLOSURE_EVAL_RAN_BUT_NO_EMBEDGENESIS '+sourceLabel+' returned='+(exported?typeof exported:'null'));
+  }catch(runErr){
+    throw new Error('CLOSURE_EVAL_RUN_FAILED '+sourceLabel+' '+(runErr.message||String(runErr)));
+  }
+}
 function tryLocalEngines(){
   var i=0;
   function next(){
@@ -254,7 +339,7 @@ function tryLocalEngines(){
 
 function loadOnlineEngine(){
   if(!ALLOW_ONLINE_PROBE) return Promise.reject(new Error('ONLINE_PROBE_DISABLED'));
-  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako text. BUILD2MU ho spusti pres closure eval, ne pres iframe.', 'boot');
+  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako text. BUILD2MV ho spusti pres closure eval, ne pres iframe.', 'boot');
   log('lokalni engine chybi, zkousim ONLINE closure-eval probe lrusso Genesis.min.js');
   return fetchText(ONLINE_ENGINE_URL,22000).then(function(code){
     drawCoreScreen('ENGINE SCRIPT LOADED', 'Genesis.min.js stazen: '+code.length+' B. Provadim closure eval a export embedGenesis.', 'boot');
@@ -375,7 +460,7 @@ var adapter={
       restoreCanvasFallback();
       drawCoreScreen('REAL CORE FAILED', msg, 'error');
       log('loadRom FAILED '+msg);
-      log('BUILD2MU: iframe fallback vypnuty - upstream Genesis.htm v iframe nespousti UI kvuli window.top === window.self; pokracuji jen po realne closure-eval ceste.');
+      log('BUILD2MV: iframe fallback vypnuty - upstream Genesis.htm v iframe nespousti UI kvuli window.top === window.self; pokracuji jen po realne closure-eval ceste.');
       showToast('Real core se nepodarilo nacist: '+msg);
       throw e;
     });
