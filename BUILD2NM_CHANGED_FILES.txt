@@ -1,0 +1,12 @@
+BUILD2NM_SEGA_CLOWNMD_TWO_PHASE_POWER_STAGE26
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin pouze pribalen)
+
+HLAVNI ZMENA:
+- Ovladac z BUILD2NK zustava zachovan.
+- Reset a vymena hry uz nejdou jen pres iframe reload.
+- Pridana mezistranka sega_poweroff.html: wrapper se vypne, WebView prejede na cerny POWER OFF krok, az pak se nacte index a bootuje dalsi ROM.
