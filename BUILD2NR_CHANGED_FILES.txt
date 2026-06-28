@@ -1,0 +1,14 @@
+BUILD2NR_SEGA_AUDIO_SYNC_MONITOR_FIX_STAGE31 - CHANGED FILES
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png  (puvodni skin, bez nove grafiky)
+
+SMYSL ZMENY:
+- NENI rollback na BUILD2NN. Je to nova oprava nad funkcni vetvi.
+- Cisty zvukovy zaklad z BUILD2NN zustava, ale pridava se video-sync delay cca 65 ms, aby se obraz srovnal se zpozdenym zvukem.
+- Pri power-off/reset/vymene hry se explicitne zaviraji AudioContexty, aby po resetu nezustaval ruch/chraplani.
+- Monitorovy vyrez je zvetsen a jemne presazen, protoze Aladdin a dalsi hry se zdaly moc male/ujet.
+- Ovladac a reset/power-cycle zustavaji z funkcni vetve; DPAD/A/B/C se zamerne nemeni.
