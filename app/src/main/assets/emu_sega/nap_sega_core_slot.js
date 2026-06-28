@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MO_SEGA_REAL_CORE_SLOT_STAGE2
+ * BUILD2MP_SEGA_CORE_PICKER_CLARITY_STAGE3
  *
  * Real-core slot loader. This does NOT emulate Sega Mega Drive and does NOT
  * draw fake frames. It only tries to load a real local JS/WASM adapter and then
@@ -9,7 +9,7 @@
 (function(global){
 'use strict';
 
-var SLOT_BUILD = 'BUILD2MO_SEGA_REAL_CORE_SLOT_STAGE2';
+var SLOT_BUILD = 'BUILD2MP_SEGA_CORE_PICKER_CLARITY_STAGE3';
 var ADAPTER_NAMES = ['NAP_SEGA_REAL_CORE','NAP_REAL_SEGA_CORE','NAP_SEGA_ADAPTER','SegaMDCore','GenesisCore','GenesisPlusGX','GPGX','JSMooGenesis'];
 var CANDIDATE_SCRIPTS = [
   'nap_sega_real_core.js',
@@ -109,8 +109,8 @@ function loadExternalCoreFile(file, logger, done){
     return;
   }
   if(!lower.endsWith('.js')){
-    safeLog(logger, 'SEGA CORE SLOT ' + SLOT_BUILD + ': nepodporovany core soubor ' + name);
-    done && done({ok:false, status:'UNSUPPORTED_CORE_FILE_EXTENSION', fileName:name});
+    safeLog(logger, 'SEGA CORE SLOT ' + SLOT_BUILD + ': nepodporovany core soubor ' + name + ' (pravdepodobne ROM vybrana do CORE pickeru)');
+    done && done({ok:false, status:'UNSUPPORTED_CORE_FILE_EXTENSION', fileName:name, hint:'ROM_GOES_TO_GAMES_PICKER_CORE_PICKER_NEEDS_JS_OR_WASM_GLUE'});
     return;
   }
   var reader = new FileReader();

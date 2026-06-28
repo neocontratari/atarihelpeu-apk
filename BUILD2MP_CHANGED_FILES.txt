@@ -1,0 +1,10 @@
+BUILD2MP_SEGA_CORE_PICKER_CLARITY_STAGE3
+
+Zmenene soubory:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+
+KODY JSOU ZMENENE.
+Atari/VBXE/EMU2 se nemeni.

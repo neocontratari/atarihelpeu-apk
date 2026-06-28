@@ -1,20 +1,16 @@
-BUILD2MO Sega real-core slot
+AtariHelp.eu EMU-10 / N&P VISION
+BUILD2MP_SEGA_CORE_PICKER_CLARITY_STAGE3
 
-Sem se muze pozdeji vlozit realny Mega Drive JS adapter, napr.:
-- nap_sega_real_core.js
-- sega_real_core.js
-- sega_core.js
-- genesis_core.js
-- genesis_plus_gx.js
+Sem patri REALNY Sega Mega Drive core adapter, ne ROM.
 
-Dulezite: samotny .wasm nestaci. Musi existovat JS/glue adapter, ktery vytvori jeden z globalnich objektu:
-NAP_SEGA_REAL_CORE, NAP_REAL_SEGA_CORE, NAP_SEGA_ADAPTER, SegaMDCore, GenesisCore, GenesisPlusGX, GPGX nebo JSMooGenesis.
+ROM / cartridge:
+- .gen / .bin / .md / .smd
+- vybira se v appce pres SBIRKA / HRY / CARTRIDGE SLOT
 
-Minimalni API adapteru:
-init({canvas,width,height,sampleRate,log})
-loadRom(Uint8Array, info)
-press(button)
-release(button)
-reset/start/pause volitelne
+CORE adapter:
+- typicky .js glue/adapter + pripadne .wasm
+- musi vytvorit globalni adapter, napr. window.NAP_SEGA_REAL_CORE, window.GenesisPlusGX, window.GPGX apod.
+- minimalni API: init(canvas/options), loadRom/loadROM/insertCartridge, reset/start/run, press/release
 
-Zadny fake obraz. Bez realneho adapteru zustane status CORE_MISSING.
+Samotny .wasm bez JS glue nestaci.
+V BUILD2MP appka jasne hlasi, kdyz se omylem vybere ROM do CORE pickeru.
