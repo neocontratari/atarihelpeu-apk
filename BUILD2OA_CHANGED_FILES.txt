@@ -1,0 +1,15 @@
+BUILD2OA_SEGA_AUDIO_CLEAN_DIRECT_STAGE39
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (jen puvodni skin v overlayi)
+- app/src/main/assets/emu_sega/sega_poweroff.html (beze zmeny, kvuli kompletnimu overlayi)
+
+CO JE ZMENENO:
+- pouze zvukova cesta
+- obraz/crop z BUILD2NY zachovan
+- reset/power-cycle zachovan
+- ovladac zachovan
+- vypnuta video-sync kopirovaci smycka, ktera mohla ve WebView/Nox zatezovat audio a zpusobovat chrceni
+- AudioContext zustava na cistem zakladu: latencyHint=playback + preferred sampleRate 48000
