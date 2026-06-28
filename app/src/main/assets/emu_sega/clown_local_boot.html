@@ -1,5 +1,5 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>NaP ClownMDEmu Local Boot NR</title>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>NaP ClownMDEmu Local Boot NT</title>
 <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#8fd8ff;font:12px monospace;}#displayCanvas{display:none;width:100vw;height:100vh;background:#000;image-rendering:pixelated;}#canvas{display:block;position:static;left:auto;top:auto;width:100vw;height:100vh;opacity:1;pointer-events:auto;background:#000;image-rendering:pixelated;}#status{position:absolute;left:6px;right:6px;bottom:6px;padding:4px 6px;background:rgba(0,0,0,.50);color:#8fd8ff;text-align:center;z-index:5;white-space:pre-wrap;pointer-events:none;}#log{position:absolute;left:6px;top:6px;right:6px;max-height:42%;overflow:hidden;color:#8fd8ff;background:rgba(0,0,0,.42);z-index:4;white-space:pre-wrap;display:none}</style>
 </head><body><canvas id="displayCanvas" tabindex="0"></canvas><canvas id="canvas" tabindex="-1"></canvas><div id="log"></div><div id="status">WAITING FOR NAP ROM...</div>
 <script>
@@ -15,32 +15,35 @@ function installAudioTuning(){
     function TunedAudioContext(opts){
       var o={};
       if(opts&&typeof opts==='object'){for(var k in opts){try{o[k]=opts[k];}catch(_){}}}
-      if(!o.latencyHint)o.latencyHint='playback';
+      // BUILD2NT: zachovat cisty 48k zaklad z 2NN, ale misto playback delay zkusit rozumny numeric target.
+      // Interactive bylo chraplave; 0.080s je stred mezi cistotou a mensim opozdenim.
+      if(!o.latencyHint)o.latencyHint=0.080;
       if(!o.sampleRate)o.sampleRate=48000;
       var ctx=null;
       try{ctx=new NativeAC(o);}
-      catch(e1){try{delete o.sampleRate;ctx=new NativeAC(o);parentLog('AUDIO_TUNE fallback_no_sampleRate '+(e1.message||e1));}
-      catch(e2){ctx=new NativeAC();parentLog('AUDIO_TUNE fallback_plain '+(e2.message||e2));}}
-      try{audioContexts.push(ctx);parentLog('AUDIO_TUNE AudioContext sampleRate='+(ctx&&ctx.sampleRate)+' latencyHint='+(o.latencyHint||'default')+' tracked='+(audioContexts.length));}catch(_){}
+      catch(e1){try{o.latencyHint='playback';ctx=new NativeAC(o);parentLog('AUDIO_TUNE fallback_playback_keep_48k '+(e1.message||e1));}
+      catch(e2){try{delete o.sampleRate;ctx=new NativeAC(o);parentLog('AUDIO_TUNE fallback_no_sampleRate '+(e2.message||e2));}
+      catch(e3){ctx=new NativeAC();parentLog('AUDIO_TUNE fallback_plain '+(e3.message||e3));}}}
+      try{audioContexts.push(ctx);parentLog('AUDIO_TUNE AudioContext sampleRate='+(ctx&&ctx.sampleRate)+' latencyHint='+(o.latencyHint||'default')+' baseLatency='+(ctx&&ctx.baseLatency||'n/a')+' outputLatency='+(ctx&&ctx.outputLatency||'n/a')+' tracked='+(audioContexts.length));}catch(_){}
       return ctx;
     }
     try{TunedAudioContext.prototype=NativeAC.prototype; Object.setPrototypeOf&&Object.setPrototypeOf(TunedAudioContext,NativeAC);}catch(_){}
     window.AudioContext=TunedAudioContext;
     if(window.webkitAudioContext)window.webkitAudioContext=TunedAudioContext;
-    parentLog('AUDIO_TUNE installed latencyHint=playback preferredSampleRate=48000');
+    parentLog('AUDIO_TUNE installed latencyHint=0.080 preferredSampleRate=48000 clean2NN_syncTarget');
   }catch(e){parentLog('AUDIO_TUNE_FAIL '+(e.message||e));}
 }
 installAudioTuning();
 
 function installVideoSyncDelay(delayFrames){
-  parentLog('VIDEO_SYNC_DIRECT_CANVAS mode=visible_real_canvas no_mirror_delay reason=BUILD2NS_BLACK_SCREEN_FIX');
+  parentLog('VIDEO_SYNC_DIRECT_CANVAS mode=visible_real_canvas no_mirror_delay reason=BUILD2NT_BLACK_SCREEN_FIX');
 }
 
 function status(msg){var s=document.getElementById('status');if(s)s.textContent=msg;parentLog(msg);}
 function keyDefs(btn){return {UP:[['ArrowUp','ArrowUp',38]],DOWN:[['ArrowDown','ArrowDown',40]],LEFT:[['ArrowLeft','ArrowLeft',37]],RIGHT:[['ArrowRight','ArrowRight',39]],A:[['z','KeyZ',90],['Z','KeyZ',90],['a','KeyA',65],['A','KeyA',65],[' ','Space',32]],B:[['x','KeyX',88],['X','KeyX',88],['s','KeyS',83],['S','KeyS',83]],C:[['c','KeyC',67],['C','KeyC',67],['d','KeyD',68],['D','KeyD',68]],START:[['Enter','Enter',13]]}[btn]||null;}
 function makeKeyEvent(type,def){var key=def[0],ch=key.length===1?key.charCodeAt(0):0;var ev=new KeyboardEvent(type,{key:key,code:def[1],bubbles:true,cancelable:true,composed:true,repeat:false,view:window});try{Object.defineProperty(ev,'keyCode',{get:function(){return def[2];}});Object.defineProperty(ev,'which',{get:function(){return def[2];}});Object.defineProperty(ev,'charCode',{get:function(){return type==='keypress'?ch:0;}});Object.defineProperty(ev,'isComposing',{get:function(){return false;}});}catch(_){}return ev;}
 function sendKey(btn,down){pad[btn]=!!down;try{(document.getElementById('displayCanvas')||document.getElementById('canvas')).focus();window.focus();}catch(_){}var defs=keyDefs(btn)||[];var targets=[window,document,document.body,document.getElementById('displayCanvas'),document.getElementById('canvas'),document.activeElement].filter(Boolean);var types=down?['keydown','keypress']:['keyup'];var ok=0;defs.forEach(function(def){targets.forEach(function(t){types.forEach(function(type){try{t.dispatchEvent(makeKeyEvent(type,def));ok++;}catch(e){}});});});try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}if(down&&(btn==='A'||btn==='B'||btn==='C')){setTimeout(function(){try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}},45);setTimeout(function(){try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}},95);}parentLog('INPUT '+btn+' '+(down?'DOWN':'UP')+' dispatched='+ok+' multiKeys='+defs.length+' dpadNoWasd=YES abcMirrorPad=YES');}
-function clonePad(){var axes=[pad.LEFT?-1:(pad.RIGHT?1:0),pad.UP?-1:(pad.DOWN?1:0),0,0];var anyABC=!!(pad.A||pad.B||pad.C);return {id:'NaP Virtual Mega Drive Pad BUILD2NS',index:0,connected:true,timestamp:performance.now(),mapping:'standard',axes:axes,buttons:[{pressed:pad.B||anyABC,value:(pad.B||anyABC)?1:0},{pressed:pad.C||anyABC,value:(pad.C||anyABC)?1:0},{pressed:pad.A||anyABC,value:(pad.A||anyABC)?1:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:pad.START,value:pad.START?1:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:pad.UP,value:pad.UP?1:0},{pressed:pad.DOWN,value:pad.DOWN?1:0},{pressed:pad.LEFT,value:pad.LEFT?1:0},{pressed:pad.RIGHT,value:pad.RIGHT?1:0}]};}
+function clonePad(){var axes=[pad.LEFT?-1:(pad.RIGHT?1:0),pad.UP?-1:(pad.DOWN?1:0),0,0];var anyABC=!!(pad.A||pad.B||pad.C);return {id:'NaP Virtual Mega Drive Pad BUILD2NT',index:0,connected:true,timestamp:performance.now(),mapping:'standard',axes:axes,buttons:[{pressed:pad.B||anyABC,value:(pad.B||anyABC)?1:0},{pressed:pad.C||anyABC,value:(pad.C||anyABC)?1:0},{pressed:pad.A||anyABC,value:(pad.A||anyABC)?1:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:pad.START,value:pad.START?1:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:pad.UP,value:pad.UP?1:0},{pressed:pad.DOWN,value:pad.DOWN?1:0},{pressed:pad.LEFT,value:pad.LEFT?1:0},{pressed:pad.RIGHT,value:pad.RIGHT?1:0}]};}
 function installGamepad(){try{var gp=function(){return [clonePad()];};try{Object.defineProperty(navigator,'getGamepads',{value:gp,configurable:true});}catch(_){navigator.getGamepads=gp;}try{Object.defineProperty(navigator,'webkitGetGamepads',{value:gp,configurable:true});}catch(_){navigator.webkitGetGamepads=gp;}gamepadTimer=setInterval(function(){try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}},1600);parentLog('VIRTUAL_GAMEPAD_READY defineProperty=YES poll=1600ms audioFriendly=YES');}catch(e){parentLog('VIRTUAL_GAMEPAD_FAIL '+(e.message||e));}}
 function startClown(name,buf){if(booted){status('ROM ALREADY BOOTED - reloadni wrapper pro dalsi ROM');return;}booted=true;installGamepad();installVideoSyncDelay(0);try{romBlobUrl=URL.createObjectURL(new Blob([buf],{type:'application/octet-stream'}));status('BOOTING_ROM '+name+' bytes='+buf.byteLength+' blob='+romBlobUrl.slice(0,32));
 window.Module={arguments:[romBlobUrl],locateFile:function(path){return remoteBase+path;},canvas:document.getElementById('canvas'),preRun:[],postRun:[function(){parentLog('MODULE_POSTRUN');}],print:function(text){parentLog('PRINT '+text);},printErr:function(text){parentLog('ERR '+text);},setStatus:function(text){if(text)status('STATUS '+text);},totalDependencies:0,onRuntimeInitialized:function(){parentLog('RUNTIME_INITIALIZED');},noInitialRun:false};

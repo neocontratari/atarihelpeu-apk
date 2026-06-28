@@ -1,0 +1,10 @@
+BUILD2NT_SEGA_AUDIO_SYNC_80MS_FULL_MONITOR_STAGE33
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin, beze zmen grafiky)
+
+KODY JSOU ZMENENE.
+Ovladac a reset z funkcni vetve jsou zachovane.
