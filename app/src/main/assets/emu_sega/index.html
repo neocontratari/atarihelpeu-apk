@@ -2,72 +2,70 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
-<title>SEGA MEGA DRIVE - BUILD2MH</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>SEGA Mega Drive — N&P Vision</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
-html,body{width:100%;height:100%;background:#02050b;overflow:hidden;font-family:Arial,sans-serif}
-#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#02050b}
-#screen{display:block;max-width:100vw;max-height:100vh;width:auto;height:auto;object-fit:contain;filter:none}
-.hit{position:absolute;border:0;background:transparent;color:transparent;outline:0;cursor:pointer}
-#log{position:fixed;left:2vw;right:2vw;bottom:2vh;display:none;z-index:30;background:rgba(0,0,0,.82);border:1px solid rgba(0,140,255,.7);border-radius:10px;color:#8fd4ff;font:12px/1.35 monospace;padding:10px;white-space:pre-wrap;text-align:left}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:#02050a;color:#8fd8ff;font-family:"Courier New",monospace;overflow-x:hidden;}
+body{display:flex;justify-content:center;align-items:flex-start;}
+.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#02050a;overflow:hidden;box-shadow:0 0 48px rgba(0,0,0,.95);}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;}
+.hit{position:absolute;z-index:5;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
+.hit:active{background:rgba(0,118,255,.12);box-shadow:0 0 32px rgba(0,118,255,.25) inset;border-radius:18px;}
+/* Hit zony podle 941x1672 PNG */
+#btnConsole{left:68.3%;top:3.3%;width:14.1%;height:4.3%;}
+#btnJoystick{left:82.0%;top:3.3%;width:14.1%;height:4.3%;}
+#btnCollection{left:3.3%;top:90.2%;width:13.4%;height:7.2%;}
+#btnSaves{left:19.2%;top:90.2%;width:13.4%;height:7.2%;}
+#btnGames{left:35.2%;top:90.2%;width:13.4%;height:7.2%;}
+#btnManuals{left:51.2%;top:90.2%;width:13.4%;height:7.2%;}
+#btnWeb{left:67.1%;top:90.2%;width:13.4%;height:7.2%;}
+#btnMenu{left:83.1%;top:90.2%;width:13.4%;height:7.2%;}
+.toast{position:absolute;left:5%;right:5%;bottom:11%;z-index:8;display:none;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.82);border:1px solid rgba(75,155,255,.55);color:#d9ecff;font:900 13px/1.35 "Courier New",monospace;text-align:center;}
+.toast.show{display:block;}
 </style>
 </head>
 <body>
-<div id="stage">
-  <img id="screen" src="sega_megadrive_screen.png" alt="N&P SEGA MEGA DRIVE">
-</div>
-<div id="log">SEGA MODULE BUILD2MH: nacitana 1:1 obrazovka. Mega Drive core zatim neni vlozen. Zadny fake Sonic.</div>
+<main class="stage" aria-label="SEGA Mega Drive module">
+  <img class="skin" src="sega_megadrive_screen.png" alt="SEGA Mega Drive">
+  <button id="btnConsole" class="hit" type="button">KONZOLE</button>
+  <button id="btnJoystick" class="hit" type="button">JOYSTICK</button>
+  <button id="btnCollection" class="hit" type="button">SBIRKA</button>
+  <button id="btnSaves" class="hit" type="button">ULOZENE</button>
+  <button id="btnGames" class="hit" type="button">HRY</button>
+  <button id="btnManuals" class="hit" type="button">NAVODY</button>
+  <button id="btnWeb" class="hit" type="button">WEB</button>
+  <a id="btnMenu" class="hit" href="../index.html">MENU</a>
+  <div id="toast" class="toast">SEGA MEGA DRIVE modul pripraven. Core/ROM loader prijde v dalsim kroku - zadny fake Sonic.</div>
+</main>
 <script>
 (function(){
-  'use strict';
-  var BUILD='BUILD2MH_RETRO_SEGA_EXACT_SCREEN_SLOT_SAFE';
-  console.log('AtariHelp.eu EMU-10 '+BUILD+' pripraven');
-  console.log('RETRO MAIN ROUTER BUILD2MH: EMU1/EMULATOR -> EMU2/VBXE, EMU2/ATARI LEGACY -> SEGA');
-  console.log('SEGA EXACT SCREEN BUILD2MH: 941x1672 PNG vlozeno 1:1, bez fake core');
-
-  var img=document.getElementById('screen');
-  var stage=document.getElementById('stage');
-  var log=document.getElementById('log');
-  var baseW=941, baseH=1672;
-  var hits=[];
-  function addHit(name,x,y,w,h,fn){
-    var b=document.createElement('button');
-    b.className='hit'; b.setAttribute('aria-label',name); b.title=name;
-    b.onclick=function(e){e.preventDefault(); e.stopPropagation(); fn();};
-    document.body.appendChild(b);
-    hits.push({el:b,x:x,y:y,w:w,h:h});
-  }
-  function placeHits(){
-    var r=img.getBoundingClientRect();
-    var sx=r.width/baseW, sy=r.height/baseH;
-    hits.forEach(function(h){
-      h.el.style.left=(r.left+h.x*sx)+'px';
-      h.el.style.top=(r.top+h.y*sy)+'px';
-      h.el.style.width=(h.w*sx)+'px';
-      h.el.style.height=(h.h*sy)+'px';
-    });
-  }
-  function msg(t){ log.style.display='block'; log.textContent+='\n'+t; clearTimeout(log._t); log._t=setTimeout(function(){log.style.display='none';},2600); }
-  function backMenu(){ location.href='../index.html'; }
-  function noCore(label){ msg(label+': priprava. Mega Drive core bude az dalsi krok. Zadny fake.'); }
-  function openWeb(){ location.href='https://atarihelp.eu/'; }
-
-  // souradnice podle dodaneho PNG 941x1672
-  addHit('KONZOLE', 638, 22, 150, 64, function(){ noCore('KONZOLE'); });
-  addHit('JOYSTICK', 790, 22, 130, 64, function(){ noCore('JOYSTICK'); });
-  addHit('SBIRKA', 30, 1532, 130, 115, function(){ noCore('SBIRKA'); });
-  addHit('ULOZENE', 175, 1532, 130, 115, function(){ noCore('ULOZENE'); });
-  addHit('HRY', 323, 1532, 132, 115, function(){ noCore('HRY'); });
-  addHit('NAVODY', 474, 1532, 132, 115, function(){ noCore('NAVODY'); });
-  addHit('WEB', 626, 1532, 132, 115, openWeb);
-  addHit('MENU', 782, 1532, 130, 115, backMenu);
-  addHit('CARTRIDGE SLOT', 723, 1225, 162, 170, function(){ noCore('CARTRIDGE SLOT'); });
-  addHit('START', 430, 1010, 90, 70, function(){ noCore('START'); });
-
-  window.addEventListener('resize', placeHits);
-  img.addEventListener('load', placeHits);
-  setTimeout(placeHits,80);
+'use strict';
+function log(t){ try{console.log('[NAP SEGA] '+t);}catch(e){} }
+function toast(t){
+  var el=document.getElementById('toast');
+  if(!el) return;
+  el.textContent=t;
+  el.classList.add('show');
+  clearTimeout(window.__segaToastTimer);
+  window.__segaToastTimer=setTimeout(function(){ el.classList.remove('show'); },2200);
+}
+function openWeb(url){
+  log('OPEN WEB '+url);
+  try{
+    if(window.Android && typeof window.Android.openExternal==='function'){ window.Android.openExternal(url); return; }
+    if(window.Android && typeof window.Android.openUrl==='function'){ window.Android.openUrl(url); return; }
+    if(window.Android && typeof window.Android.openExternalUrl==='function'){ window.Android.openExternalUrl(url); return; }
+  }catch(e){ log('Android bridge failed: '+e.message); }
+  try{ window.location.href=url; }catch(e){ location.href=url; }
+}
+['btnConsole','btnJoystick','btnCollection','btnSaves','btnGames','btnManuals'].forEach(function(id){
+  var b=document.getElementById(id);
+  if(b) b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();toast('SEGA slot pripraven. Emulator core jeste neni vlozeny.');},true);
+});
+var web=document.getElementById('btnWeb');
+if(web) web.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openWeb('https://atarihelp.eu/');},true);
+log('BUILD2MI: SEGA MEGA DRIVE placeholder 1:1 obrazovka nactena. MENU vraci na N&P VISION.');
 })();
 </script>
 </body>
