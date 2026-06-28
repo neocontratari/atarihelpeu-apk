@@ -1,0 +1,14 @@
+BUILD2NS_SEGA_AUDIO_VISIBLE_CANVAS_SYNC_SAFE_STAGE32
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png  (puvodni skin v overlayi)
+
+SMYSL OPRAVY:
+- BUILD2NR mel super zvuk a monitor, ale po bootu zustal cerny obraz.
+- Pricina je pravdepodobne zrcadleny/delay canvas v clown_local_boot.html.
+- BUILD2NS nechava audio 2NN/playback/48000, reset/power-cycle i ovladac.
+- Vypina zrcadleny video delay a vraci realny ClownMDEmu canvas jako primo viditelny.
+- Zadny rollback bez souhlasu, zadna nova grafika.
