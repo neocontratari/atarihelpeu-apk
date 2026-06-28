@@ -1,0 +1,15 @@
+BUILD2NW_SEGA_AUDIO_SYNC_BOTTOM_SAFE_STAGE36
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin v overlayi)
+
+ZMENY:
+- ovladac zachovan z funkcni vetve
+- reset/power-cycle zachovan
+- zvukovy zaklad zachovan: playback + 48000 Hz jako cisty baseline
+- video sync zmenseny z 3f na 2f, aby se mene zhorsoval zvuk
+- fallback direct zkracen, aby nebezel dlouho zbytecny overlay pokus
+- monitor crop jemne zmenseny: ma vratit dolni HUD/zivoty Sonica a porad skryt Clown menu
