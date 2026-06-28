@@ -1,0 +1,6 @@
+BUILD2MH proti BUILD2MG:
+- Oprava nepochopeni slotu: emu2 / emu_2 uz nejde na Atari, ale na SEGA.
+- EMU1 / EMULATOR alias stale vede na emu_vbxe, tedy na soucasny Atari EMU2.
+- SEGA modul uz nepouziva textovy placeholder, ale dodany PNG navrh 941x1672 1:1.
+- Root index.html se stale nepribaluje; hlavni N&P VISION obrazovka zustava zachovana.
+- Atari/VBXE core, CLOAD/CSAVE, player, web, help beze zmen.

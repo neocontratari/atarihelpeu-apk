@@ -2,35 +2,73 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>N&P SEGA MEGA DRIVE - BUILD2MG SLOT</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>SEGA MEGA DRIVE - BUILD2MH</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{min-height:100%;background:#050608;color:#f2c464;font-family:"Courier New",monospace;display:flex;align-items:center;justify-content:center;text-align:center}
-.card{width:min(92vw,760px);border:2px solid #f2c464;border-radius:22px;padding:28px;background:linear-gradient(180deg,#151516,#050608);box-shadow:0 0 40px rgba(242,196,100,.18)}
-h1{font-size:clamp(26px,6vw,54px);letter-spacing:.04em;color:#fff;text-shadow:0 0 12px rgba(242,196,100,.7)}
-.logo{font-size:clamp(18px,4vw,34px);color:#ff9b2e;margin-bottom:14px}.small{color:#ccc;margin:14px 0 24px;line-height:1.45}.warn{color:#9ee6ff;margin:18px 0;line-height:1.45}
-.buttons{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:18px}button{font:900 15px "Courier New",monospace;border:1px solid #f2c464;border-radius:12px;background:#191919;color:#f2c464;padding:13px 18px;min-width:150px}button:active{transform:translateY(1px);filter:brightness(1.3)}.primary{background:#7b2a00;color:#fff}.disabled{opacity:.45}#log{margin-top:18px;text-align:left;white-space:pre-wrap;font-size:12px;color:#aee;padding:12px;border:1px solid rgba(158,230,255,.25);border-radius:12px;background:#030405;min-height:72px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{width:100%;height:100%;background:#02050b;overflow:hidden;font-family:Arial,sans-serif}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#02050b}
+#screen{display:block;max-width:100vw;max-height:100vh;width:auto;height:auto;object-fit:contain;filter:none}
+.hit{position:absolute;border:0;background:transparent;color:transparent;outline:0;cursor:pointer}
+#log{position:fixed;left:2vw;right:2vw;bottom:2vh;display:none;z-index:30;background:rgba(0,0,0,.82);border:1px solid rgba(0,140,255,.7);border-radius:10px;color:#8fd4ff;font:12px/1.35 monospace;padding:10px;white-space:pre-wrap;text-align:left}
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="logo">N&amp;P VISION MODULE</div>
-  <h1>SEGA MEGA DRIVE</h1>
-  <div class="small">BUILD2MG: samostatny slot pro budoucou Segu. Atari/VBXE modul zustava oddeleny.</div>
-  <div class="warn">Mega Drive core zatim neni vlozen. ROM hry nejsou a nebudou soucasti aplikace. Dalsi krok: open-source Mega Drive core + .bin/.md/.gen picker pro Sonic test.</div>
-  <div class="buttons">
-    <button class="primary" id="btnBack">ZPET NA MENU</button>
-    <button class="disabled" id="btnRom">NAHRAJ ROM - PRIPRAVA</button>
-    <button id="btnLog">LOG</button>
-  </div>
-  <div id="log">SEGA MODULE BUILD2MG: placeholder nacten. Zadny fake Sonic, zadny fake core.</div>
+<div id="stage">
+  <img id="screen" src="sega_megadrive_screen.png" alt="N&P SEGA MEGA DRIVE">
 </div>
+<div id="log">SEGA MODULE BUILD2MH: nacitana 1:1 obrazovka. Mega Drive core zatim neni vlozen. Zadny fake Sonic.</div>
 <script>
-function log(t){var l=document.getElementById('log'); l.textContent += '\n'+t;}
-document.getElementById('btnBack').onclick=function(){ location.href='../index.html'; };
-document.getElementById('btnRom').onclick=function(){ log('ROM picker zatim neni zapojen. Dalsi build: Mega Drive core + vlastni soubory uzivatele.'); };
-document.getElementById('btnLog').onclick=function(){ log('BUILD2MG: SEGA slot OK, bez ROM, bez BIOS, bez fake emulace.'); };
+(function(){
+  'use strict';
+  var BUILD='BUILD2MH_RETRO_SEGA_EXACT_SCREEN_SLOT_SAFE';
+  console.log('AtariHelp.eu EMU-10 '+BUILD+' pripraven');
+  console.log('RETRO MAIN ROUTER BUILD2MH: EMU1/EMULATOR -> EMU2/VBXE, EMU2/ATARI LEGACY -> SEGA');
+  console.log('SEGA EXACT SCREEN BUILD2MH: 941x1672 PNG vlozeno 1:1, bez fake core');
+
+  var img=document.getElementById('screen');
+  var stage=document.getElementById('stage');
+  var log=document.getElementById('log');
+  var baseW=941, baseH=1672;
+  var hits=[];
+  function addHit(name,x,y,w,h,fn){
+    var b=document.createElement('button');
+    b.className='hit'; b.setAttribute('aria-label',name); b.title=name;
+    b.onclick=function(e){e.preventDefault(); e.stopPropagation(); fn();};
+    document.body.appendChild(b);
+    hits.push({el:b,x:x,y:y,w:w,h:h});
+  }
+  function placeHits(){
+    var r=img.getBoundingClientRect();
+    var sx=r.width/baseW, sy=r.height/baseH;
+    hits.forEach(function(h){
+      h.el.style.left=(r.left+h.x*sx)+'px';
+      h.el.style.top=(r.top+h.y*sy)+'px';
+      h.el.style.width=(h.w*sx)+'px';
+      h.el.style.height=(h.h*sy)+'px';
+    });
+  }
+  function msg(t){ log.style.display='block'; log.textContent+='\n'+t; clearTimeout(log._t); log._t=setTimeout(function(){log.style.display='none';},2600); }
+  function backMenu(){ location.href='../index.html'; }
+  function noCore(label){ msg(label+': priprava. Mega Drive core bude az dalsi krok. Zadny fake.'); }
+  function openWeb(){ location.href='https://atarihelp.eu/'; }
+
+  // souradnice podle dodaneho PNG 941x1672
+  addHit('KONZOLE', 638, 22, 150, 64, function(){ noCore('KONZOLE'); });
+  addHit('JOYSTICK', 790, 22, 130, 64, function(){ noCore('JOYSTICK'); });
+  addHit('SBIRKA', 30, 1532, 130, 115, function(){ noCore('SBIRKA'); });
+  addHit('ULOZENE', 175, 1532, 130, 115, function(){ noCore('ULOZENE'); });
+  addHit('HRY', 323, 1532, 132, 115, function(){ noCore('HRY'); });
+  addHit('NAVODY', 474, 1532, 132, 115, function(){ noCore('NAVODY'); });
+  addHit('WEB', 626, 1532, 132, 115, openWeb);
+  addHit('MENU', 782, 1532, 130, 115, backMenu);
+  addHit('CARTRIDGE SLOT', 723, 1225, 162, 170, function(){ noCore('CARTRIDGE SLOT'); });
+  addHit('START', 430, 1010, 90, 70, function(){ noCore('START'); });
+
+  window.addEventListener('resize', placeHits);
+  img.addEventListener('load', placeHits);
+  setTimeout(placeHits,80);
+})();
 </script>
 </body>
 </html>
