@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MN_SEGA_REAL_CORE_BRIDGE_STAGE1
+ * BUILD2MO_SEGA_REAL_CORE_SLOT_STAGE2
  *
  * This file is intentionally NOT a fake Mega Drive emulator.
  * It prepares the real-core bridge, video canvas, ROM handoff and joypad input
@@ -24,8 +24,8 @@
 (function(global){
 'use strict';
 
-var BRIDGE_BUILD = 'BUILD2MN_SEGA_REAL_CORE_BRIDGE_STAGE1';
-var CANDIDATE_NAMES = ['NAP_SEGA_REAL_CORE','NAP_REAL_SEGA_CORE','SegaMDCore','GenesisCore'];
+var BRIDGE_BUILD = 'BUILD2MO_SEGA_REAL_CORE_SLOT_STAGE2';
+var CANDIDATE_NAMES = ['NAP_SEGA_REAL_CORE','NAP_REAL_SEGA_CORE','NAP_SEGA_ADAPTER','SegaMDCore','GenesisCore','GenesisPlusGX','GPGX','JSMooGenesis'];
 
 function safeLog(logger, msg){
   try{
