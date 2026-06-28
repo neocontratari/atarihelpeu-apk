@@ -1,0 +1,13 @@
+BUILD2NH_SEGA_CLOWNMD_URL_CARTRIDGE_GAMEPAD_STAGE21
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin, bez nove grafiky)
+
+KODY JSOU ZMENENE.
+
+CIL:
+- prestat pouzivat drag/drop, ktery podle logu skoncil cernou obrazovkou
+- pouzit oficialni ClownMDEmu URL cartridge mechaniku: ?cartridge=<URL>
+- male ROM jako Sonic poslat jako Data URL primo do iframe URL
+- pridat landscape a vic klaves/gamepad mapovani
