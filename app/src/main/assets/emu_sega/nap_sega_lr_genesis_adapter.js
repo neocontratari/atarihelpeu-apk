@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6
+ * BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7
  *
  * NAP adapter for the lrusso Genesis/PicoDrive browser core API.
  * It does not include ROMs and it does not paint fake gameplay. It only tries
@@ -15,7 +15,7 @@
 (function(global){
 'use strict';
 
-var BUILD='BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6';
+var BUILD='BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7';
 var LOCAL_ENGINE_CANDIDATES=[
   'cores/Genesis.min.js',
   'cores/Genesis.js',
@@ -25,12 +25,17 @@ var LOCAL_ENGINE_CANDIDATES=[
   'Genesis.js'
 ];
 var ONLINE_ENGINE_URL='https://raw.githubusercontent.com/lrusso/Genesis/main/Genesis.min.js';
+var LIVE_EMULATOR_DEMO_URL='https://lrusso.github.io/Genesis/Genesis.htm?demo=';
+var LIVE_EMULATOR_PICKER_URL='https://lrusso.github.io/Genesis/Genesis.htm';
 var ALLOW_ONLINE_PROBE=true;
 var enginePromise=null;
 var adapterLog=function(){};
 var mountEl=null;
 var lastRomName='';
 var running=false;
+var liveFallback=false;
+var liveIframe=null;
+var liveFallbackReason='';
 var keyState={};
 var KEY_MAP={
   UP:{code:'ArrowUp',key:'ArrowUp',keyCode:38},
@@ -160,6 +165,50 @@ function restoreCanvasFallback(){
     if(mountEl) mountEl.style.display='none';
   }catch(e){}
 }
+
+function bootLiveIframeFallback(reason, info){
+  try{
+    liveFallback=true;
+    liveFallbackReason=String(reason||'UNKNOWN');
+    prepareMount();
+    if(!mountEl) throw new Error('MOUNT_ELEMENT_MISSING');
+    mountEl.innerHTML='';
+    mountEl.style.display='block';
+    mountEl.style.background='#000';
+    mountEl.style.border='1px solid rgba(70,180,255,.55)';
+    mountEl.style.boxShadow='0 0 18px rgba(0,130,255,.45) inset';
+    var frameWrap=document.createElement('div');
+    frameWrap.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;background:#000;overflow:hidden;border-radius:16px;';
+    var infoBar=document.createElement('div');
+    infoBar.style.cssText='position:absolute;left:0;right:0;bottom:0;z-index:3;padding:4px 6px;background:rgba(0,0,0,.72);color:#8fd8ff;font:bold 8px monospace;text-align:center;letter-spacing:.03em;pointer-events:none;';
+    var romName=(info && info.name) ? info.name : lastRomName;
+    infoBar.textContent='LIVE REAL CORE FALLBACK: klikni cerveny PLAY nebo upload ikonku uvnitr monitoru. Lokalni ROM '+(romName||'')+' nejde automaticky predat do cross-origin iframe.';
+    var iframe=document.createElement('iframe');
+    liveIframe=iframe;
+    iframe.title='AtariHelp Sega live real core fallback';
+    iframe.src=LIVE_EMULATOR_DEMO_URL;
+    iframe.allow='autoplay; fullscreen; gamepad; clipboard-read; clipboard-write';
+    iframe.referrerPolicy='no-referrer';
+    iframe.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;border:0;background:#000;transform:scale(1);transform-origin:0 0;';
+    iframe.onload=function(){
+      log('LIVE IFRAME FALLBACK LOAD FIRED url='+LIVE_EMULATOR_DEMO_URL+' reason='+liveFallbackReason+'; klikni cerveny PLAY v monitoru pro realny demo core, nebo v dalsim kroku pouzijeme offline/local engine.');
+      showToast('LIVE real core fallback nacten - klikni cerveny PLAY v monitoru.',5200);
+    };
+    frameWrap.appendChild(iframe);
+    frameWrap.appendChild(infoBar);
+    mountEl.appendChild(frameWrap);
+    var mdVideo=byId('mdVideo');
+    if(mdVideo) mdVideo.style.display='none';
+    hideOverlay();
+    log('LIVE IFRAME FALLBACK READY demoUrl='+LIVE_EMULATOR_DEMO_URL+' pickerUrl='+LIVE_EMULATOR_PICKER_URL+' reason='+liveFallbackReason+' selectedRom='+(romName||'none')+' NOTE=not fake; remote lrusso real core, local ROM not auto-passed due browser isolation');
+    showToast('Oteviram LIVE real Genesis core v monitoru. Klikni cerveny PLAY.',6200);
+    return true;
+  }catch(e){
+    liveFallback=false;
+    log('LIVE IFRAME FALLBACK FAILED '+(e.message||String(e)));
+    return false;
+  }
+}
 function scriptLoad(url, timeoutMs){
   return new Promise(function(resolve,reject){
     var s=document.createElement('script');
@@ -250,6 +299,11 @@ function toArrayBuffer(romBytes){
   throw new Error('ROM_BYTES_UNSUPPORTED_TYPE');
 }
 function dispatchKey(type, button){
+  if(liveFallback){
+    try{ if(liveIframe && liveIframe.focus) liveIframe.focus(); }catch(_e){}
+    log('LIVE_IFRAME_INPUT_NOT_BRIDGED '+String(button||'')+' '+type+' - iframe ma vlastni ovladani; tohle neni fake potvrzeni vstupu');
+    return false;
+  }
   var map=KEY_MAP[String(button||'').toUpperCase()];
   if(!map) return false;
   var id=map.code;
@@ -325,10 +379,16 @@ var adapter={
       log('engineStatus='+engineStatus+'; posilam ROM do embedGenesis');
       return bootWithEmbedGenesis(romBuffer,info||{});
     }).catch(function(e){
+      var msg=(e && e.message) ? e.message : String(e);
       restoreCanvasFallback();
-      drawCoreScreen('REAL CORE FAILED', (e.message||String(e)), 'error');
-      showToast('Real core se nepodarilo nacist: '+(e.message||String(e)));
-      log('loadRom FAILED '+(e.message||String(e)));
+      drawCoreScreen('REAL CORE FAILED', msg, 'error');
+      log('loadRom FAILED '+msg);
+      if(bootLiveIframeFallback(msg, info||{})){
+        log('loadRom FALLBACK MODE LIVE_IFRAME_READY - toto neni automaticky Sonic boot; je to realny lrusso core v iframe, ROM se v nem vybira samostatne nebo DEMO pres PLAY.');
+        showToast('Primy embed selhal, ale oteviram realny live core fallback.',6200);
+        return 'LIVE_IFRAME_FALLBACK_READY:'+msg;
+      }
+      showToast('Real core se nepodarilo nacist: '+msg);
       throw e;
     });
   },
@@ -346,7 +406,7 @@ var adapter={
   buttonDown:function(button){ return dispatchKey('keydown',button); },
   buttonUp:function(button){ return dispatchKey('keyup',button); },
   setButton:function(button,down){ return dispatchKey(down?'keydown':'keyup',button); },
-  getStatus:function(){ return running ? 'LRUSSO_GENESIS_RUNNING' : (getEmbedGenesis() ? ('LRUSSO_ENGINE_READY:'+embedSource()) : 'LRUSSO_ENGINE_WAITING'); }
+  getStatus:function(){ return liveFallback ? ('LRUSSO_LIVE_IFRAME_READY_PICK_OR_DEMO:'+liveFallbackReason) : (running ? 'LRUSSO_GENESIS_RUNNING' : (getEmbedGenesis() ? ('LRUSSO_ENGINE_READY:'+embedSource()) : 'LRUSSO_ENGINE_WAITING')); }
 };
 
 global.NAP_SEGA_REAL_CORE=adapter;

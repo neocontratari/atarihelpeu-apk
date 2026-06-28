@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6
+ * BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7
  *
  * Real-core slot loader. This does NOT emulate Sega Mega Drive and does NOT
  * draw fake frames. It only loads local/external JS/WASM glue and lets
@@ -9,7 +9,7 @@
 (function(global){
 'use strict';
 
-var SLOT_BUILD = 'BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6';
+var SLOT_BUILD = 'BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7';
 var ADAPTER_NAMES = [
   'NAP_SEGA_REAL_CORE','NAP_REAL_SEGA_CORE','NAP_SEGA_ADAPTER',
   'SegaMDCore','GenesisCore','GenesisPlusGX','GPGX','JSMooGenesis',

@@ -1,22 +1,23 @@
-BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6
+AtariHelp.eu EMU-10 BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7
 
-Sem patri realny lokalni Mega Drive / Genesis core engine pro offline finalni build.
-BUILD2MS umi automaticky zkusit zejmena:
-- cores/Genesis.min.js
-- cores/Genesis.js
-- cores/lrusso_Genesis.min.js
-- cores/lrusso_Genesis.js
+Tahle slozka je pripravena pro offline realny Sega/Mega Drive core adapter.
+Podporovane nazvy, ktere autoload zkousi:
+- nap_sega_real_core.js
+- sega_real_core.js
+- sega_core.js
+- genesis_core.js
+- genesis_plus_gx.js
+- gpgx.js
+- jsmoo_genesis.js
+- jsmoo.js
+- megadrive_core.js
+- md_core.js
+- genesis_emulator.js
+- Genesis.min.js / Genesis.js pro lrusso cestu
 
-BUILD2MS obsahuje adapter nap_sega_lr_genesis_adapter.js pro lrusso Genesis/PicoDrive browser API embedGenesis().
+BUILD2MT navic umi pri selhani primeho lrusso embedGenesis otevrit LIVE fallback iframe:
+https://lrusso.github.io/Genesis/Genesis.htm?demo=
 
-ROM SOUBORY SEM NEPATRI.
-Sonic/Aladdin/komercni ROM se do APK/ZIP nepridavaji. ROM vybira tester lokalne pres HRY/SBIRKA/CARTRIDGE.
-
-LICENCE:
-Pokud se sem prida cizi open-source core, musi se spolu s nim pridat odpovidajici licence a idealne i odkaz/source notice. Finalni app nema tise schovavat cizi emulator bez licence.
-
-
-BUILD2MS NOTE:
-Nejlepsi lokalni test: vlozit legalne ziskany lrusso Genesis.min.js do teto slozky jako cores/Genesis.min.js.
-Pak se nacita jako same-origin asset a ochranny guard v engine by nemel padat.
-Online probe zustava jen diagnosticky fallback.
+To neni finalni offline core. Je to realny online graficky test bez fake gameplay.
+ROMy se sem nepridavaji.
+Dodrz licenci konkretniho core projektu.

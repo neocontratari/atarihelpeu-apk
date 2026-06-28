@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6
+ * BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7
  *
  * This file is intentionally NOT a fake Mega Drive emulator.
  * It prepares and probes a real-core adapter safely: object adapter, factory,
@@ -22,7 +22,7 @@
 (function(global){
 'use strict';
 
-var BRIDGE_BUILD = 'BUILD2MS_SEGA_LRUSSO_GLOBAL_LEXICAL_BOOT_STAGE6';
+var BRIDGE_BUILD = 'BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7';
 var CANDIDATE_NAMES = [
   'NAP_SEGA_REAL_CORE','NAP_REAL_SEGA_CORE','NAP_SEGA_ADAPTER',
   'SegaMDCore','GenesisCore','GenesisPlusGX','GPGX','JSMooGenesis',

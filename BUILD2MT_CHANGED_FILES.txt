@@ -1,0 +1,18 @@
+AtariHelp.eu EMU-10 BUILD2MT_SEGA_LRUSSO_LIVE_IFRAME_FALLBACK_STAGE7
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+- app/src/main/assets/index.html
+
+CO JE NOVE:
+- Pokud prime nacteni lrusso Genesis.min.js selze stavem EMBEDGENESIS_MISSING, BUILD2MT uz nekonci jen cervenou chybou.
+- Otevre v SEGA monitoru LIVE real-core fallback iframe: https://lrusso.github.io/Genesis/Genesis.htm?demo=
+- Tohle je realny lrusso/PicoDrive browser emulator, ne fake video.
+- V iframe klikni cerveny PLAY pro demo test grafiky.
+- Lokalni Sonic/Aladdin ROM z nasi appky se do cross-origin iframe z bezpecnostnich duvodu nepreda automaticky.
+- App tlacitka A/B/C/D-PAD do cross-origin iframe nejsou poctive potvrzovana jako funkcni vstupy.
+- Atari/VBXE/EMU2 se nemeni.
