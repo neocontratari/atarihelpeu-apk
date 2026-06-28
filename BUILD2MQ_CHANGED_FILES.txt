@@ -1,0 +1,13 @@
+BUILD2MQ_SEGA_ADAPTER_FACTORY_PROBE_STAGE4
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+
+KODY JSOU STEJNE / NEZASAZENE:
+- Atari/VBXE/EMU2 cast
+- hlavni menu mimo Sega odkaz
+- Sega PNG skin
+- ROMy nejsou v ZIPu ani v APK

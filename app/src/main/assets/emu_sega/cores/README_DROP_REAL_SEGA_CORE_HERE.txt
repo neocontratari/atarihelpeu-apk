@@ -1,16 +1,31 @@
-AtariHelp.eu EMU-10 / N&P VISION
-BUILD2MP_SEGA_CORE_PICKER_CLARITY_STAGE3
+AtariHelp.eu EMU-10 / SEGA Mega Drive real core slot
+BUILD2MQ_SEGA_ADAPTER_FACTORY_PROBE_STAGE4
 
-Sem patri REALNY Sega Mega Drive core adapter, ne ROM.
+Sem patri skutecny Mega Drive core adapter, ne ROM.
 
-ROM / cartridge:
-- .gen / .bin / .md / .smd
-- vybira se v appce pres SBIRKA / HRY / CARTRIDGE SLOT
+ROM soubory (.gen/.bin/.md/.smd) se v appce vybírají pres SBIRKA / HRY / CARTRIDGE SLOT.
+Do slozky cores/ patri jen realny emulatorovy JS/WASM adapter.
 
-CORE adapter:
-- typicky .js glue/adapter + pripadne .wasm
-- musi vytvorit globalni adapter, napr. window.NAP_SEGA_REAL_CORE, window.GenesisPlusGX, window.GPGX apod.
-- minimalni API: init(canvas/options), loadRom/loadROM/insertCartridge, reset/start/run, press/release
+BUILD2MQ umi automaticky hledat napriklad:
+- cores/nap_sega_real_core.js
+- cores/sega_real_core.js
+- cores/genesis_core.js
+- cores/genesis_plus_gx.js
+- cores/gpgx.js
+- cores/jsmoo_genesis.js
+- cores/megadrive_core.js
+- cores/md_core.js
 
-Samotny .wasm bez JS glue nestaci.
-V BUILD2MP appka jasne hlasi, kdyz se omylem vybere ROM do CORE pickeru.
+Adapter muze byt:
+- globalni objekt window.NAP_SEGA_REAL_CORE
+- factory window.GenesisPlusGX.create(options)
+- constructor/class window.JSMooGenesis
+
+Minimalni API adapteru:
+  init({ canvas, width, height, sampleRate, log })  // optional
+  loadRom(Uint8Array, info)                        // povinne, nebo loadROM/insertCartridge/loadGame
+  press(button) + release(button)                  // optional input
+  start() / run()                                  // optional
+  reset()                                          // optional
+
+Bez tohoto API appka nesmi kreslit fake obraz.
