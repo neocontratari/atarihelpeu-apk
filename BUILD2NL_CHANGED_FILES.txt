@@ -1,0 +1,12 @@
+BUILD2NL_SEGA_CLOWNMD_HARD_POWER_RELOAD_STAGE25
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin v overlayi, bez nove grafiky)
+
+KODY JSOU ZMENENE proti BUILD2NK:
+- reset a vymena hry uz nedelaji jen iframe reload
+- ROM se pred rebootem uklada do IndexedDB/sessionStorage
+- cela SEGA stranka se nacte znovu a az potom se ROM bootuje do wrapperu
+- ovladac z BUILD2NK zachovan: DPAD jen sipky, A/B/C jsou akce
