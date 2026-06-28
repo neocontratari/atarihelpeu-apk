@@ -1,0 +1,9 @@
+BUILD2MG vs BUILD2MF
+
+- MF chybne vytvoril nove root/hub menu a sahal na vnitrni Atari NET HRY tlacitko.
+- MG root index.html vubec nepribaluje, aby se nezmenila zakladni N&P VISION grafika.
+- MG vraci emu_vbxe/index.html z BUILD2ME, tedy bez MF presmerovani NET HRY -> SEGA uvnitr Atari.
+- MG pridava jen smerovaci aliasy:
+  emu/emu1/emu_1 -> emu_vbxe
+  emu2/emu_2/atari/atari_8bit/legacy_atari -> emu_sega
+- SEGA je samostatny placeholder, bez core/ROM/fake.
