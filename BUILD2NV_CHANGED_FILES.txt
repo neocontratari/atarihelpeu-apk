@@ -1,0 +1,14 @@
+BUILD2NV_SEGA_AUDIO_SYNC_CENTER_FINE_STAGE35
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin jen prilozeny v overlayi)
+
+STAV:
+- ovladac zachovan z funkcni vetve
+- reset/power-cycle zachovan
+- cisty audio zaklad 2NN/2NS zachovan
+- oprava maleho zpozdeni zvuku: late-safe video delay 3 snimky, direct obraz zustava videt dokud overlay nema realne pixely
+- jemne precentrovany crop, bez Clown menu

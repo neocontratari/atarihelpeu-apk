@@ -1,6 +1,6 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>NaP ClownMDEmu Local Boot NU</title>
-<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#8fd8ff;font:12px monospace;}#displayCanvas{display:block;position:absolute;left:0;top:0;width:100vw;height:100vh;z-index:2;background:#000;image-rendering:pixelated;}#canvas{display:block;position:absolute;left:0;top:0;width:100vw;height:100vh;opacity:.01;z-index:1;pointer-events:none;background:#000;image-rendering:pixelated;}body.nap-direct #displayCanvas{display:none;}body.nap-direct #canvas{opacity:1;z-index:2;pointer-events:auto;}#status{position:absolute;left:6px;right:6px;bottom:6px;padding:4px 6px;background:rgba(0,0,0,.50);color:#8fd8ff;text-align:center;z-index:5;white-space:pre-wrap;pointer-events:none;}#log{position:absolute;left:6px;top:6px;right:6px;max-height:42%;overflow:hidden;color:#8fd8ff;background:rgba(0,0,0,.42);z-index:4;white-space:pre-wrap;display:none}</style>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>NaP ClownMDEmu Local Boot NV</title>
+<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#8fd8ff;font:12px monospace;}#displayCanvas{display:none;position:absolute;left:0;top:0;width:100vw;height:100vh;z-index:3;background:#000;image-rendering:pixelated;}#canvas{display:block;position:absolute;left:0;top:0;width:100vw;height:100vh;opacity:1;z-index:2;pointer-events:auto;background:#000;image-rendering:pixelated;}body.nap-delay-ready #displayCanvas{display:block;}body.nap-delay-ready #canvas{opacity:.01;z-index:1;pointer-events:none;}body.nap-direct #displayCanvas{display:none!important;}body.nap-direct #canvas{opacity:1!important;z-index:2;pointer-events:auto;}#status{position:absolute;left:6px;right:6px;bottom:6px;padding:4px 6px;background:rgba(0,0,0,.50);color:#8fd8ff;text-align:center;z-index:5;white-space:pre-wrap;pointer-events:none;}#log{position:absolute;left:6px;top:6px;right:6px;max-height:42%;overflow:hidden;color:#8fd8ff;background:rgba(0,0,0,.42);z-index:4;white-space:pre-wrap;display:none}</style>
 </head><body><canvas id="displayCanvas" tabindex="0"></canvas><canvas id="canvas" tabindex="-1"></canvas><div id="log"></div><div id="status">WAITING FOR NAP ROM...</div>
 <script>
 (function(){'use strict';
@@ -27,7 +27,7 @@ function installAudioTuning(){
     try{TunedAudioContext.prototype=NativeAC.prototype; Object.setPrototypeOf&&Object.setPrototypeOf(TunedAudioContext,NativeAC);}catch(_){}
     window.AudioContext=TunedAudioContext;
     if(window.webkitAudioContext)window.webkitAudioContext=TunedAudioContext;
-    parentLog('AUDIO_TUNE installed latencyHint=playback preferredSampleRate=48000 safeVideoDelay=4f');
+    parentLog('AUDIO_TUNE installed latencyHint=playback preferredSampleRate=48000 lateSafeVideoDelay=3f');
   }catch(e){parentLog('AUDIO_TUNE_FAIL '+(e.message||e));}
 }
 installAudioTuning();
@@ -35,31 +35,51 @@ installAudioTuning();
 function installVideoSyncDelay(delayFrames){
   try{
     var src=document.getElementById('canvas'), dst=document.getElementById('displayCanvas');
-    if(!src||!dst){parentLog('VIDEO_SYNC_SAFE missing canvas');document.body.classList.add('nap-direct');return;}
+    if(!src||!dst){parentLog('VIDEO_SYNC_LATE_SAFE missing canvas');document.body.classList.add('nap-direct');return;}
     var dctx=dst.getContext('2d',{alpha:false})||dst.getContext('2d');
-    var frames=Math.max(1,delayFrames||4), videoBuffers=[], lastW=0, lastH=0, raf=0, ticks=0, seenPixels=false, fallbackDone=false;
+    var frames=Math.max(1,delayFrames||3), videoBuffers=[], lastW=0, lastH=0, raf=0, ticks=0, seenPixels=false, overlayReady=false, fallbackDone=false;
     function directFallback(reason){
       if(fallbackDone)return; fallbackDone=true;
-      try{if(raf)cancelAnimationFrame(raf);}catch(_){}
+      try{if(raf)cancelAnimationFrame(raf);}catch(_){ }
+      document.body.classList.remove('nap-delay-ready');
       document.body.classList.add('nap-direct');
-      parentLog('VIDEO_SYNC_SAFE_FALLBACK_DIRECT reason='+reason+' ticks='+ticks+' seenPixels='+seenPixels);
+      parentLog('VIDEO_SYNC_LATE_SAFE_DIRECT reason='+reason+' ticks='+ticks+' seenPixels='+seenPixels+' overlayReady='+overlayReady);
     }
     function ensureBuffers(){
       var w=src.width||320,h=src.height||224;
       if(w===lastW&&h===lastH&&videoBuffers.length===frames)return;
       lastW=w; lastH=h; dst.width=w; dst.height=h; videoBuffers=[];
-      for(var i=0;i<frames;i++){var c=document.createElement('canvas');c.width=w;c.height=h;try{c.getContext('2d',{alpha:false}).fillRect(0,0,w,h);}catch(_){}videoBuffers.push(c);}
-      parentLog('VIDEO_SYNC_SAFE resize '+w+'x'+h+' frames='+frames+' approx=65ms sourceVisible=0.01');
+      for(var i=0;i<frames;i++){
+        var c=document.createElement('canvas');c.width=w;c.height=h;
+        try{var cx=c.getContext('2d',{alpha:false})||c.getContext('2d');cx.fillStyle='#000';cx.fillRect(0,0,w,h);}catch(_){ }
+        videoBuffers.push(c);
+      }
+      parentLog('VIDEO_SYNC_LATE_SAFE resize '+w+'x'+h+' frames='+frames+' directUntilPixels=YES');
     }
-    function sampleVisible(){
+    function sampleDelayedCanvas(){
       try{
-        if(ticks%24!==0)return;
-        var x=Math.max(0,Math.floor(dst.width*0.50)-2), y=Math.max(0,Math.floor(dst.height*0.50)-2);
-        var d=dctx.getImageData(x,y,4,4).data, sum=0;
-        for(var i=0;i<d.length;i+=4)sum+=d[i]+d[i+1]+d[i+2];
-        if(sum>180)seenPixels=true;
-        if(!seenPixels && ticks>240)directFallback('black_guard_no_pixels');
-      }catch(e){ if(ticks>240)directFallback('sample_error_'+(e.message||e)); }
+        if(ticks%10!==0)return;
+        var pts=[[.50,.50],[.25,.30],[.75,.30],[.25,.72],[.75,.72]];
+        var total=0;
+        for(var p=0;p<pts.length;p++){
+          var x=Math.max(0,Math.min(dst.width-4,Math.floor(dst.width*pts[p][0])));
+          var y=Math.max(0,Math.min(dst.height-4,Math.floor(dst.height*pts[p][1])));
+          var d=dctx.getImageData(x,y,4,4).data;
+          for(var i=0;i<d.length;i+=4)total+=d[i]+d[i+1]+d[i+2];
+        }
+        if(total>900){
+          seenPixels=true;
+          if(!overlayReady && ticks>frames+6){
+            overlayReady=true;
+            document.body.classList.remove('nap-direct');
+            document.body.classList.add('nap-delay-ready');
+            parentLog('VIDEO_SYNC_LATE_SAFE_ENABLED frames='+frames+' approx='+(frames*16)+'ms total='+total);
+          }
+        }
+        if(!seenPixels && ticks>900){directFallback('no_pixels_after_warmup');}
+      }catch(e){
+        if(ticks>900)directFallback('sample_error_'+(e.message||e));
+      }
     }
     function loop(){
       if(!booted){raf=0;return;}
@@ -70,22 +90,22 @@ function installVideoSyncDelay(delayFrames){
         bctx.drawImage(src,0,0,b.width,b.height);
         videoBuffers.push(b);
         dctx.drawImage(videoBuffers[0],0,0,dst.width,dst.height);
-        ticks++; sampleVisible();
-      }catch(e){ parentLog('VIDEO_SYNC_SAFE_FAIL '+(e.message||e)); directFallback('draw_fail'); return; }
+        ticks++; sampleDelayedCanvas();
+      }catch(e){ parentLog('VIDEO_SYNC_LATE_SAFE_FAIL '+(e.message||e)); directFallback('draw_fail'); return; }
       if(!fallbackDone)raf=requestAnimationFrame(loop);
     }
-    parentLog('VIDEO_SYNC_SAFE installed frames='+frames+' approx=65ms clean2NN blackGuard=YES');
+    parentLog('VIDEO_SYNC_LATE_SAFE installed frames='+frames+' approx='+(frames*16)+'ms direct canvas visible until real delayed pixels');
     raf=requestAnimationFrame(loop);
-  }catch(e){ parentLog('VIDEO_SYNC_SAFE_INSTALL_FAIL '+(e.message||e)); try{document.body.classList.add('nap-direct');}catch(_){} }
+  }catch(e){ parentLog('VIDEO_SYNC_LATE_SAFE_INSTALL_FAIL '+(e.message||e)); try{document.body.classList.add('nap-direct');}catch(_){ } }
 }
 
 function status(msg){var s=document.getElementById('status');if(s)s.textContent=msg;parentLog(msg);}
 function keyDefs(btn){return {UP:[['ArrowUp','ArrowUp',38]],DOWN:[['ArrowDown','ArrowDown',40]],LEFT:[['ArrowLeft','ArrowLeft',37]],RIGHT:[['ArrowRight','ArrowRight',39]],A:[['z','KeyZ',90],['Z','KeyZ',90],['a','KeyA',65],['A','KeyA',65],[' ','Space',32]],B:[['x','KeyX',88],['X','KeyX',88],['s','KeyS',83],['S','KeyS',83]],C:[['c','KeyC',67],['C','KeyC',67],['d','KeyD',68],['D','KeyD',68]],START:[['Enter','Enter',13]]}[btn]||null;}
 function makeKeyEvent(type,def){var key=def[0],ch=key.length===1?key.charCodeAt(0):0;var ev=new KeyboardEvent(type,{key:key,code:def[1],bubbles:true,cancelable:true,composed:true,repeat:false,view:window});try{Object.defineProperty(ev,'keyCode',{get:function(){return def[2];}});Object.defineProperty(ev,'which',{get:function(){return def[2];}});Object.defineProperty(ev,'charCode',{get:function(){return type==='keypress'?ch:0;}});Object.defineProperty(ev,'isComposing',{get:function(){return false;}});}catch(_){}return ev;}
 function sendKey(btn,down){pad[btn]=!!down;try{(document.getElementById('displayCanvas')||document.getElementById('canvas')).focus();window.focus();}catch(_){}var defs=keyDefs(btn)||[];var targets=[window,document,document.body,document.getElementById('displayCanvas'),document.getElementById('canvas'),document.activeElement].filter(Boolean);var types=down?['keydown','keypress']:['keyup'];var ok=0;defs.forEach(function(def){targets.forEach(function(t){types.forEach(function(type){try{t.dispatchEvent(makeKeyEvent(type,def));ok++;}catch(e){}});});});try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}if(down&&(btn==='A'||btn==='B'||btn==='C')){setTimeout(function(){try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}},45);setTimeout(function(){try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}},95);}parentLog('INPUT '+btn+' '+(down?'DOWN':'UP')+' dispatched='+ok+' multiKeys='+defs.length+' dpadNoWasd=YES abcMirrorPad=YES');}
-function clonePad(){var axes=[pad.LEFT?-1:(pad.RIGHT?1:0),pad.UP?-1:(pad.DOWN?1:0),0,0];var anyABC=!!(pad.A||pad.B||pad.C);return {id:'NaP Virtual Mega Drive Pad BUILD2NU',index:0,connected:true,timestamp:performance.now(),mapping:'standard',axes:axes,buttons:[{pressed:pad.B||anyABC,value:(pad.B||anyABC)?1:0},{pressed:pad.C||anyABC,value:(pad.C||anyABC)?1:0},{pressed:pad.A||anyABC,value:(pad.A||anyABC)?1:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:pad.START,value:pad.START?1:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:pad.UP,value:pad.UP?1:0},{pressed:pad.DOWN,value:pad.DOWN?1:0},{pressed:pad.LEFT,value:pad.LEFT?1:0},{pressed:pad.RIGHT,value:pad.RIGHT?1:0}]};}
-function installGamepad(){try{var gp=function(){return [clonePad()];};try{Object.defineProperty(navigator,'getGamepads',{value:gp,configurable:true});}catch(_){navigator.getGamepads=gp;}try{Object.defineProperty(navigator,'webkitGetGamepads',{value:gp,configurable:true});}catch(_){navigator.webkitGetGamepads=gp;}gamepadTimer=setInterval(function(){try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}},1600);parentLog('VIRTUAL_GAMEPAD_READY defineProperty=YES poll=1600ms audioFriendly=YES');}catch(e){parentLog('VIRTUAL_GAMEPAD_FAIL '+(e.message||e));}}
-function startClown(name,buf){if(booted){status('ROM ALREADY BOOTED - reloadni wrapper pro dalsi ROM');return;}booted=true;installGamepad();installVideoSyncDelay(0);try{romBlobUrl=URL.createObjectURL(new Blob([buf],{type:'application/octet-stream'}));status('BOOTING_ROM '+name+' bytes='+buf.byteLength+' blob='+romBlobUrl.slice(0,32));
+function clonePad(){var axes=[pad.LEFT?-1:(pad.RIGHT?1:0),pad.UP?-1:(pad.DOWN?1:0),0,0];var anyABC=!!(pad.A||pad.B||pad.C);return {id:'NaP Virtual Mega Drive Pad BUILD2NV',index:0,connected:true,timestamp:performance.now(),mapping:'standard',axes:axes,buttons:[{pressed:pad.B||anyABC,value:(pad.B||anyABC)?1:0},{pressed:pad.C||anyABC,value:(pad.C||anyABC)?1:0},{pressed:pad.A||anyABC,value:(pad.A||anyABC)?1:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:pad.START,value:pad.START?1:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:pad.UP,value:pad.UP?1:0},{pressed:pad.DOWN,value:pad.DOWN?1:0},{pressed:pad.LEFT,value:pad.LEFT?1:0},{pressed:pad.RIGHT,value:pad.RIGHT?1:0}]};}
+function installGamepad(){try{var gp=function(){return [clonePad()];};try{Object.defineProperty(navigator,'getGamepads',{value:gp,configurable:true});}catch(_){navigator.getGamepads=gp;}try{Object.defineProperty(navigator,'webkitGetGamepads',{value:gp,configurable:true});}catch(_){navigator.webkitGetGamepads=gp;}gamepadTimer=setInterval(function(){try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}},1800);parentLog('VIRTUAL_GAMEPAD_READY defineProperty=YES poll=1800ms audioFriendly=YES');}catch(e){parentLog('VIRTUAL_GAMEPAD_FAIL '+(e.message||e));}}
+function startClown(name,buf){if(booted){status('ROM ALREADY BOOTED - reloadni wrapper pro dalsi ROM');return;}booted=true;installGamepad();installVideoSyncDelay(3);try{romBlobUrl=URL.createObjectURL(new Blob([buf],{type:'application/octet-stream'}));status('BOOTING_ROM '+name+' bytes='+buf.byteLength+' blob='+romBlobUrl.slice(0,32));
 window.Module={arguments:[romBlobUrl],locateFile:function(path){return remoteBase+path;},canvas:document.getElementById('canvas'),preRun:[],postRun:[function(){parentLog('MODULE_POSTRUN');}],print:function(text){parentLog('PRINT '+text);},printErr:function(text){parentLog('ERR '+text);},setStatus:function(text){if(text)status('STATUS '+text);},totalDependencies:0,onRuntimeInitialized:function(){parentLog('RUNTIME_INITIALIZED');},noInitialRun:false};
 window.onerror=function(m,u,l,c,e){parentLog('WINDOW_ERROR '+m+' @'+l+':'+c);};window.onunhandledrejection=function(e){parentLog('UNHANDLED_REJECTION '+(e.reason&&e.reason.message||e.reason||''));};
 var s=document.createElement('script');s.async=true;s.src=remoteBase+'clownmdemu.js';s.onload=function(){parentLog('CLOWN_SCRIPT_LOADED');};s.onerror=function(){status('SCRIPT_ERROR clownmdemu.js');};document.body.appendChild(s);parentLog('SCRIPT_APPEND '+s.src);setTimeout(function(){try{(document.getElementById('displayCanvas')||document.getElementById('canvas')).focus();}catch(_){}},500);
