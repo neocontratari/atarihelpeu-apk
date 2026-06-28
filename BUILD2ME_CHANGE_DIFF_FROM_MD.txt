@@ -1,0 +1,19 @@
+BUILD2ME changes from BUILD2MD:
+
+- Added VBXE display VRAM snapshot at start of visible frame (line 8/startFrame):
+  displayVram.set(vbxe.vram), displayValid=true.
+- XDL parser, Attribute Map lookups, HR/SR/LR/TEXT renderer, tile/surface fallback and VRAM probe read from display snapshot during render.
+- Live CPU/MEMAC/blitter writes still write to real vbxe.vram; snapshot is only for display readback.
+- Changed blitter collision back to fx1.26:
+  * SR/BCB modes 1-5: collision when (dest & blt_collision_mask) != 0
+  * HR mode 6: collision per nibble with dest_nibble & low collision mask
+- Kept all MA/MB/MC/MD fixes:
+  * CONST only AND=$00
+  * BCB21 control mode bits0-2, NEXT bit3
+  * FX126 CSEL/PSEL/CR/CG/CB palette map
+  * transparent index/nibble 0
+  * MAP palette priority
+  * PF2/PF3/COLBAK priority bits
+  * HI canvas Attribute Map direct coordinates
+  * zoom b3/b7 reserved
+  * SR hscroll 1 hires pixel

@@ -998,6 +998,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   const vbxe={
     regs:new Uint8Array(0x100),
     vram:new Uint8Array(512*1024),       // BUILD2HB: realna 512 KB VBXE VRAM
+    displayVram:new Uint8Array(512*1024), displayValid:false, displayFrame:-1, displaySnapshotLogged:false,
     traceCount:0, traceLimit:24, traceSuppressed:0, seen:{},
     coreVersion:0x10, coreMinor:0x26, coreMinorLegacy:0x09, coreProfile:'FX v1.26a', coreLogged:false,
     bltCollision:0, bltBusy:0, bltBusyReadDelay:0, bltIrq:0, bltStarts:0, bltSuppressed:0,
@@ -1034,10 +1035,10 @@ function Atari130XE(osRom, basicRom, CPUctor){
     // BUILD2IQ: jedna pravdiva cesta pro reset VBXE stavu. Pouziva se pri coldStart i pri non-VBXE XEX.
     // Cilem je zastavit opakovane testovani stale stejneho Postcard pruhu z moznych starych XDL/overlay stavů.
     vbxe.regs.fill(0);
-    if(!keepVram) vbxe.vram.fill(0);
+    if(!keepVram){ vbxe.vram.fill(0); vbxe.displayVram.fill(0); vbxe.displayValid=false; }
     vbxe.traceCount=0; vbxe.traceSuppressed=0; vbxe.seen={};
     vbxe.bltCollision=0; vbxe.bltBusy=0; vbxe.bltBusyReadDelay=0; vbxe.bltIrq=0; vbxe.bltStarts=0;
-    vbxe.renderDirty=false; vbxe.renderBase=0;
+    vbxe.renderDirty=false; vbxe.renderBase=0; vbxe.displayFrame=-1; vbxe.displaySnapshotLogged=false;
     vbxe.xdlEnabled=false; vbxe.xdlPendingEnabled=false; vbxe.xdlPendingApply=false; vbxe.xdlDirty=false;
     vbxe.xdlRecords=[]; vbxe.xdlSig=''; vbxe.xdlSawValid=false; vbxe.lastGoodXdlRecords=null; vbxe.lastGoodXdlBase=0;
     vbxe.plainProgramLock=false; vbxe.plainLockReadLogged=false; vbxe.plainLockWriteLogged=false; vbxe.plainLockVsyncLogged=false; vbxe.plainLockIgnoredWrites=0;
@@ -1096,6 +1097,23 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
   function vbxeVramRead(a){ return vbxe.vram[a&0x7FFFF]; }
   function vbxeVramWrite(a,v){ vbxe.vram[a&0x7FFFF]=v&0xFF; }
+  function vbxeSnapshotDisplayVramME(reason){
+    if(!vbxe || !vbxe.vram || !vbxe.displayVram) return;
+    // BUILD2ME: VBXE/XDL hardware cte obraz paprskem v ramci frame. Emulator ale dosud renderoval
+    // az po dobehnuti celeho CPU frame a cetl uz pozdni VRAM po dalsich blitech. To delalo Popeye
+    // viditelne, ale na spatnych mistech, a Night Driver SR radky se mohly brat z rozpracovaneho bufferu.
+    vbxe.displayVram.set(vbxe.vram);
+    vbxe.displayValid=true; vbxe.displayFrame=M.frame|0;
+    if(M.vbxeDebug && !vbxe.displaySnapshotLogged){
+      vbxe.displaySnapshotLogged=true;
+      M.vbxeDebug('VBXE FRAME SNAPSHOT BUILD2ME: display VRAM snapshot frame='+M.frame+' reason='+(reason||'vsync')+' xdl='+(vbxe.xdlEnabled?1:0)+' base=$'+vbxeGetXdlBase().toString(16).toUpperCase().padStart(5,'0'));
+    }
+  }
+  function vbxeRenderRead(a){
+    var mem=(vbxe.displayValid && vbxe.displayVram) ? vbxe.displayVram : vbxe.vram;
+    return mem[a&0x7FFFF];
+  }
+  function vbxeRenderMem(){ return (vbxe.displayValid && vbxe.displayVram) ? vbxe.displayVram : vbxe.vram; }
 
   function vbxeLegacyAAddr(a,isAntic){
     // Starsi MEMAC-A: $D65E = MEMAC_CONTROL, $D65F = MEMAC_BANK_SEL.
@@ -1193,18 +1211,15 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function vbxeCollisionSr(dv,collm){
     dv&=0xFF; collm&=0xFF;
     if(!collm || dv===0) return false;
-    // BUILD2MA: fx1.26 blitter collision SR neni bitove (collm & dest).
-    // Mask bit odpovida 32-barevnemu segmentu: 1..31, 32..63, ... 224..255.
-    var bit = (dv<=31) ? 0x01 : (1 << ((dv>>5)&7));
-    return !!(collm & bit);
+    // BUILD2ME podle fx1.26 blitter modes 1-5: collision je bitove (dest & blt_collision_mask).
+    // Segmentove 32-barevne masky patri overlay/raster kolizim, ne BCB SR blitteru.
+    return !!(dv & collm);
   }
   function vbxeCollisionHrNib(dn,collm){
-    dn&=0x0F; collm&=0xFF;
+    dn&=0x0F; collm&=0x0F;
     if(!collm || dn===0) return false;
-    // BUILD2MA: HR mode 6 collision podle fx1.26: bit0 pro 1, bit1 pro 2-3,
-    // bit2 pro 4-5 ... bit7 pro 14-15. Nibble 0 je transparentni/nekolizni.
-    var bit = (dn===1) ? 0x01 : (1 << (dn>>1));
-    return !!(collm & bit);
+    // BUILD2ME podle fx1.26 mode 6: pro kazdy nibble se testuje dest_nibble & collision_mask_low_nibble.
+    return !!(dn & collm);
   }
   function vbxeApplyBlitByte(mode,sv,dv,collm){
     sv&=0xFF; dv&=0xFF; collm&=0xFF;
@@ -1409,7 +1424,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       var dst=y*384 + minX;
       for(var x=minX;x<=maxX;x++,src=(src+1)&0x7FFFF,dst++){
         if(bgOnly && fb[dst]!==bg) continue;
-        var v=vbxe.vram[src]&0xFF;
+        var v=vbxeRenderRead(src)&0xFF;
         if(v===0) continue;
         fb[dst]=vbxeColor(v,palNo); drew++;
       }
@@ -1450,11 +1465,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
       // Smery urcuji podepsane source_step_x/y a dest_step_x/y bajty v BCB21.
       var sx=false, sy=false, dx=false, dy=false;
       var constant=(andm===0); // fx1.26: konstantni zdroj jen kdyz AND maska je $00; AND=$FF XOR=$FF znamena invertovat zdroj, ne plny fill
-      // BUILD2HL: fx.pdf/vbxefx.ah - blt_zoom: b0-b2 ZOOMX, b3 INTLVE, b4-b6 ZOOMY, b7 nepouzity.
-      // HD mel chybu: pocital INTLVE do ZOOMX a hledal INTLVE v b7, proto zoom=$29 vysel zx=10 misto spravne zx=2,intlv=1.
+      // BUILD2MD podle fx1.26: blt_zoom b0-b2 ZOOMX, b4-b6 ZOOMY, b3/b7 jsou rezervovane.
+      // Stare INTLVE z bitu3 delalo pri nekterych blitech mezerovani/posun objektu.
       var zoomX=(zoom&0x07)+1;
       var zoomY=((zoom>>4)&0x07)+1;
-      var intlv=!!(zoom&0x08);
+      var intlv=false;
       var patternUse=!!(patt&0x80);
       var patternWidth=(patt&0x3F)+1;
       var opBytes=w*h, destOps=w*h*zoomX*zoomY;
@@ -1474,7 +1489,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }
       if((zoom!==0 || patt!==0) && !vbxe.blitFeatureLogged && M.vbxeDebug){
         vbxe.blitFeatureLogged=true;
-        M.vbxeDebug('VBXE BLITTER FEATURE BUILD2MC: BCB21 podle fx1.26: CONST jen AND=$00, control MODE+NEXT, signed step_x/y; ZOOM/INTLVE/PATTERN/source snapshot bez screen-paintu.');
+        M.vbxeDebug('VBXE BLITTER FEATURE BUILD2ME: BCB21 podle fx1.26: CONST jen AND=$00, control MODE+NEXT, signed step_x/y, collision DEST&MASK; ZOOM/PATTERN/source snapshot bez screen-paintu.');
       }
 
       // BUILD2HL: Popeye po HF narazil na velke, ale porad smysluplne blity nad 1M operaci.
@@ -2070,6 +2085,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   function pfBytes(base){ return pfBytesW(base, antic.dmactl&3); }
   function startFrame(){
     vbxeApplyVsyncPending();
+    if(vbxe.xdlEnabled || vbxe.xdlSawValid) vbxeSnapshotDisplayVramME('start-visible-frame');
     antic.dlptr=antic.dlist; antic.rowsLeft=0; antic.done=!(antic.dmactl&0x20);
     antic.mode=0; antic.blankRows=0; antic.row=0; antic.vsPrev=false; antic.hsLine=false;
   }
@@ -3170,7 +3186,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     var y=0, end=false, safe=0;
 
     while(!end && safe++<128 && y<260){
-      var lo=vbxeVramRead(p); var hi=vbxeVramRead((p+1)&0x7FFFF); p=(p+2)&0x7FFFF;
+      var lo=vbxeRenderRead(p); var hi=vbxeRenderRead((p+1)&0x7FFFF); p=(p+2)&0x7FFFF;
       var xdlc=lo|(hi<<8);
       var rpt=1;
 
@@ -3190,11 +3206,11 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(mapon && !mapoff) st.mapOn=true;
       else if(mapoff || (mapon && mapoff)) st.mapOn=false;
 
-      if(rptl){ rpt=(vbxeVramRead(p)&0xFF)+1; p=(p+1)&0x7FFFF; }
+      if(rptl){ rpt=(vbxeRenderRead(p)&0xFF)+1; p=(p+1)&0x7FFFF; }
 
       if(ovadr){
-        var a0=vbxeVramRead(p), a1=vbxeVramRead((p+1)&0x7FFFF), a2=vbxeVramRead((p+2)&0x7FFFF);
-        var s0=vbxeVramRead((p+3)&0x7FFFF), s1=vbxeVramRead((p+4)&0x7FFFF);
+        var a0=vbxeRenderRead(p), a1=vbxeRenderRead((p+1)&0x7FFFF), a2=vbxeRenderRead((p+2)&0x7FFFF);
+        var s0=vbxeRenderRead((p+3)&0x7FFFF), s1=vbxeRenderRead((p+4)&0x7FFFF);
         st.ovAddr=vbxeAddr3(a0,a1,a2);
         st.ovStep=(s0|((s1&0x0F)<<8))&0x0FFF;
         st.ovAddrValid=true;
@@ -3203,21 +3219,21 @@ function Atari130XE(osRom, basicRom, CPUctor){
         p=(p+5)&0x7FFFF;
       }
       if(ovscrl){
-        st.ovHScroll=vbxeVramRead(p)&0x07;
-        st.ovVScroll=vbxeVramRead((p+1)&0x7FFFF)&0x07;
+        st.ovHScroll=vbxeRenderRead(p)&0x07;
+        st.ovVScroll=vbxeRenderRead((p+1)&0x7FFFF)&0x07;
         // BUILD2IC: vscroll je skutecna faze glyphu, ne jen hodnota do logu.
         st.textPhase=st.ovVScroll&7;
         p=(p+2)&0x7FFFF;
       }
       if(chbase){
         // fx.pdf: CHBASE je cislo 0..255, skutecna adresa fontu = CHBASE * $800.
-        st.chBase=(vbxeVramRead(p)&0xFF)<<11;
+        st.chBase=(vbxeRenderRead(p)&0xFF)<<11;
         p=(p+1)&0x7FFFF;
       }
       if(mapadr){
         // BUILD2IO: XDLC_MAPADR = 19bit AMAP + 12bit MAPSTEP, stejne poradi jako OVADR.
-        var ma0=vbxeVramRead(p), ma1=vbxeVramRead((p+1)&0x7FFFF), ma2=vbxeVramRead((p+2)&0x7FFFF);
-        var ms0=vbxeVramRead((p+3)&0x7FFFF), ms1=vbxeVramRead((p+4)&0x7FFFF);
+        var ma0=vbxeRenderRead(p), ma1=vbxeRenderRead((p+1)&0x7FFFF), ma2=vbxeRenderRead((p+2)&0x7FFFF);
+        var ms0=vbxeRenderRead((p+3)&0x7FFFF), ms1=vbxeRenderRead((p+4)&0x7FFFF);
         st.mapAddr=vbxeAddr3(ma0,ma1,ma2);
         st.mapStep=(ms0|((ms1&0x0F)<<8))&0x0FFF;
         st.mapAddrValid=true;
@@ -3226,15 +3242,15 @@ function Atari130XE(osRom, basicRom, CPUctor){
       }
       if(mappar){
         // BUILD2IO: MAPPAR = hscroll, vscroll, width-1, height-1; jednotky jsou hires pixely.
-        st.mapHScroll=vbxeVramRead(p)&0x1F;
-        st.mapVScroll=vbxeVramRead((p+1)&0x7FFFF)&0x1F;
-        st.mapWidth=vbxeVramRead((p+2)&0x7FFFF)&0x1F;
-        st.mapHeight=vbxeVramRead((p+3)&0x7FFFF)&0x1F;
+        st.mapHScroll=vbxeRenderRead(p)&0x1F;
+        st.mapVScroll=vbxeRenderRead((p+1)&0x7FFFF)&0x1F;
+        st.mapWidth=vbxeRenderRead((p+2)&0x7FFFF)&0x1F;
+        st.mapHeight=vbxeRenderRead((p+3)&0x7FFFF)&0x1F;
         st.mapPhase=st.mapVScroll&31;
         p=(p+4)&0x7FFFF;
       }
       if(ovatt){
-        var o0=vbxeVramRead(p), o1=vbxeVramRead((p+1)&0x7FFFF);
+        var o0=vbxeRenderRead(p), o1=vbxeRenderRead((p+1)&0x7FFFF);
         st.widthSel=o0&0x03;
         st.ovPal=(o0>>4)&0x03;  // b4-b5 = XDL OV PALETTE
         st.pfPal=(o0>>6)&0x03;  // b6-b7 = XDL PF PALETTE
@@ -3354,7 +3370,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return vbxe.pal[((palNo&3)<<8)|(idx&0xFF)];
   }
   function vbxeMapAttrAtGr8(r,gx,y){
-    // BUILD2MC: Attribute Map souradnice jsou podle fx1.26 v pixelech ANTIC GR.8
+    // BUILD2MD: Attribute Map souradnice jsou podle fx1.26 v pixelech ANTIC GR.8
     // (normal 320, narrow 256, wide 336), ne v 640px HR overlay souradnicich.
     if(!r || !r.mapOn || !r.mapAddrValid) return null;
     y|=0; gx|=0;
@@ -3369,12 +3385,35 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(ly<0) return null;
     var col=(lx/mw)|0, row=(ly/mh)|0;
     var addr=((r.mapAddr||0) + row*((r.mapStep||0)&0x0FFF) + col*4)&0x7FFFF;
-    var a0=vbxeVramRead(addr), a1=vbxeVramRead((addr+1)&0x7FFFF), a2=vbxeVramRead((addr+2)&0x7FFFF), a3=vbxeVramRead((addr+3)&0x7FFFF);
+    var a0=vbxeRenderRead(addr), a1=vbxeRenderRead((addr+1)&0x7FFFF), a2=vbxeRenderRead((addr+2)&0x7FFFF), a3=vbxeRenderRead((addr+3)&0x7FFFF);
     return {pf0:a0&0xFF, pf1:a1&0xFF, pf2:a2&0xFF, priSel:a3&3, res:!!(a3&4), catt:!!(a3&8), ovPal:(a3>>4)&3, pfPal:(a3>>6)&3, raw:a3&0xFF};
   }
   function vbxeMapAttrAtHi(r,px640,y){
-    // Prevod hi-canvas souradnice zpet do naseho 384px framebufferu; AM zustava GR.8 mapa.
-    return vbxeMapAttrAtGr8(r, ((px640*384/640)|0), y);
+    // BUILD2MD: HI canvas ma 640 VBXE hires pixelu. Attribute Map je ale v ANTIC GR.8
+    // souradnicich 256/320/336. MC delal mezikrok pres 384px framebuffer a tim mapu
+    // posunul proti HR/SR/TEXT overlay. Tady prevadim primo: 2 hires pixely = 1 GR.8 pixel.
+    if(!r || !r.mapOn || !r.mapAddrValid) return null;
+    y|=0; px640|=0;
+    if(y<0 || y>=240) return null;
+    var widthHi=vbxeVisibleWidthHi(r.widthSel);
+    var widthGr8=vbxeVisibleWidth(r.widthSel);
+    var x0Hi=((640-widthHi)>>1);
+    var lxHi=px640 - x0Hi;
+    if(lxHi<0 || lxHi>=widthHi) return null;
+    var lx=(lxHi>>1) + ((r.mapHScroll||0)&31);
+    if(lx<0 || lx>=widthGr8+32) return null;
+    var mw=((r.mapWidth==null?7:r.mapWidth)&31)+1;
+    var mh=((r.mapHeight==null?7:r.mapHeight)&31)+1;
+    var ly=(y - (r.y||0)) + ((r.mapPhase==null?(r.mapVScroll||0):r.mapPhase)&31);
+    if(ly<0) return null;
+    var col=(lx/mw)|0, row=(ly/mh)|0;
+    var addr=((r.mapAddr||0) + row*((r.mapStep||0)&0x0FFF) + col*4)&0x7FFFF;
+    var a0=vbxeRenderRead(addr), a1=vbxeRenderRead((addr+1)&0x7FFFF), a2=vbxeRenderRead((addr+2)&0x7FFFF), a3=vbxeRenderRead((addr+3)&0x7FFFF);
+    if(M.vbxeDebug && !vbxe.hiMapCoordMdLogged){
+      vbxe.hiMapCoordMdLogged=true;
+      M.vbxeDebug('VBXE HICANVAS MAP COORD BUILD2MD: px640='+px640+' -> gr8x='+lx+' widthHi='+widthHi+' widthGr8='+widthGr8+' x0Hi='+x0Hi+' mapCell='+col+','+row+'; bez 384px mezikroku.');
+    }
+    return {pf0:a0&0xFF, pf1:a1&0xFF, pf2:a2&0xFF, priSel:a3&3, res:!!(a3&4), catt:!!(a3&8), ovPal:(a3>>4)&3, pfPal:(a3>>6)&3, raw:a3&0xFF};
   }
   function vbxeMapAttrAtPixel(r,x384,y){
     return vbxeMapAttrAtGr8(r, x384|0, y);
@@ -3395,7 +3434,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!r) return 1;
     var base=(r.ovPal==null?1:r.ovPal)&3;
     var ma=vbxeMapAttrAtHi(r,px640,y);
-    // BUILD2MC: fx1.26 manual: kdyz je Attribute Map aktivni, MAP OV palette ma
+    // BUILD2MD: fx1.26 manual: kdyz je Attribute Map aktivni, MAP OV palette ma
     // prednost pred XDL OV palette. Hodnota 0 je platna paleta 0, neni to 'nenastaveno'.
     return ma ? (ma.ovPal&3) : base;
   }
@@ -3403,14 +3442,14 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return vbxeGraphPalAtHiLC(r, ((x384*640/384)|0), y);
   }
   function vbxeGraphTransparent8LC(r,idx){
-    // BUILD2MC: fx1.26 manual rika jasne: v SR/LR je index 0 transparentni,
+    // BUILD2MD: fx1.26 manual rika jasne: v SR/LR je index 0 transparentni,
     // pokud VC_NO_TRANS neni nastaven. Priorita $FF NESMI menit transparentnost na opaque.
     // BUILD2LZ/MB porad zdedily starou vyjimku a tim mohly prelepit Popeye schody/plosiny
     // nulovou overlay vrstvou.
     return vbxeTransparent8(idx);
   }
   function vbxeGraphTransparent4LC(r,idx){
-    // BUILD2MC: HR nibble 0 je transparentni podle VC_NO_TRANS/TRANS15, ne podle priority.
+    // BUILD2MD: HR nibble 0 je transparentni podle VC_NO_TRANS/TRANS15, ne podle priority.
     return vbxeTransparent4(idx);
   }
   function vbxePriorityValueForHi(r,px640,y){
@@ -3435,8 +3474,8 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(pm&8) need|=0x08;
     if(pf===1) need|=0x10;        // PF0
     else if(pf===2) need|=0x20;   // PF1
-    else if(pf===3 || pf===4) need|=0x40; // BUILD2MC: fx1.26 b6 = PF2 i PF3
-    else if(!pm) need|=0x80;      // BUILD2MC: b7 = COLBAK, neni automaticky vzdy prekryty
+    else if(pf===3 || pf===4) need|=0x40; // BUILD2MD: fx1.26 b6 = PF2 i PF3
+    else if(!pm) need|=0x80;      // BUILD2MD: b7 = COLBAK, neni automaticky vzdy prekryty
     return (pri & need) === need;
   }
   function vbxePriorityAllowsPixel(r,x384,y){
@@ -3502,7 +3541,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return !((vbxe.regs[0x40]&0x08) && ((c&0x0F)===0x0F));
   }
   function vbxeRenderTextRecord(r){
-    var fb=M.fb, vram=vbxe.vram, drew=0;
+    var fb=M.fb, vram=vbxeRenderMem(), drew=0;
     var chars=vbxeTextCharsForWidth(r.widthSel), width=chars*4;
     var x0=(384-width)>>1; if(x0<0) x0=0;
     var lines=r.lines; if(r.y+lines>240) lines=240-r.y;
@@ -3571,7 +3610,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
   }
 
   function vbxeRenderTextRecordHi(r){
-    var hi=M.vbxeTextHiFb || vbxePrepareHiTextFb(), vram=vbxe.vram, drew=0;
+    var hi=M.vbxeTextHiFb || vbxePrepareHiTextFb(), vram=vbxeRenderMem(), drew=0;
     var chars=vbxeTextCharsForWidth(r.widthSel), width=chars*8;
     var x0=(640-width)>>1; if(x0<0) x0=0;
     var lines=r.lines; if(r.y+lines>240) lines=240-r.y;
@@ -3647,7 +3686,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(!r || yy<0 || yy>=(r.lines|0)) return st;
     var src=vbxeGraphSourceAddr(r,yy), run=0;
     for(var x=0;x<bytes;x++){
-      var v=vbxe.vram[(src+x+hs)&0x7FFFF]&0xFF;
+      var v=vbxeRenderRead((src+x+hs)&0x7FFFF)&0xFF;
       if(vbxeTransparent8(v)){ st.trans++; run=0; }
       else { st.opaque++; run++; if(run>st.maxRun) st.maxRun=run; }
     }
@@ -3669,7 +3708,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     return widthSel===0 ? 512 : (widthSel===2 ? 672 : 640);
   }
   function vbxeRenderGraphRecordHi(r){
-    var hi=M.vbxeTextHiFb || vbxePrepareHiTextFb(), vram=vbxe.vram, drew=0;
+    var hi=M.vbxeTextHiFb || vbxePrepareHiTextFb(), vram=vbxeRenderMem(), drew=0;
     var widthHi=vbxeVisibleWidthHi(r.widthSel), x0=((640-widthHi)>>1);
     var lines=r.lines; if(r.y+lines>240) lines=240-r.y;
     if(lines<=0) return 0;
@@ -3687,7 +3726,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         if(vbxeSrArtifactRowLC(r,yy,bytes,hs)) continue;
         for(var x=0;x<bytes;x++){
           var v=vram[(src+x+hs)&0x7FFFF]&0xFF;
-          if(!vbxeGraphTransparent8LC(r,v)){ var px=x0+x*2 - (vbxeGraphHScrollHi(r)&1)*2; putIdx(px,gy,v); putIdx(px+1,gy,v); }
+          if(!vbxeGraphTransparent8LC(r,v)){ var px=x0+x*2 - (vbxeGraphHScrollHi(r)&1); putIdx(px,gy,v); putIdx(px+1,gy,v); }
         }
       }
     } else if(r.mode===3){ // LR: 1 byte = 4 hires pixely
@@ -3732,13 +3771,13 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(drawW>=384){
         for(var x=0;x<384;x++){
           var sx=(x*srcW/drawW)|0;
-          var v=vbxeVramRead((src+sx)&0x7FFFF)&0xFF;
+          var v=vbxeRenderRead((src+sx)&0x7FFFF)&0xFF;
           if(!vbxeGraphTransparent8LC({mode:1,priority:0xFF,ovPal:palNo,mapOn:false},v)){ fb[gy*384+x]=vbxeColor(v,palNo); drew++; }
         }
       } else {
         for(var x2=0;x2<Math.min(drawW,384);x2++){
           var sx2=(x2*srcW/drawW)|0;
-          var v2=vbxeVramRead((src+sx2)&0x7FFFF)&0xFF;
+          var v2=vbxeRenderRead((src+sx2)&0x7FFFF)&0xFF;
           var px=x0+x2;
           if(px>=0 && px<384 && !vbxeGraphTransparent8LC({mode:1,priority:0xFF,ovPal:palNo,mapOn:false},v2)){ fb[gy*384+px]=vbxeColor(v2,palNo); drew++; }
         }
@@ -3760,7 +3799,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     for(var yy=0; yy<lines; yy+=2){
       var src=(addr + yy*step)&0x7FFFF;
       for(var x=0; x<width; x+=2){
-        var v=vbxeVramRead((src+x)&0x7FFFF)&0xFF;
+        var v=vbxeRenderRead((src+x)&0x7FFFF)&0xFF;
         sample++;
         if(v!==0) score+=4;
       }
@@ -3820,7 +3859,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
         continue;
       }
       var base=found.addr&0x7FFFF;
-      var fb=M.fb, vram=vbxe.vram, drew=0, pal=(r.ovPal==null?1:r.ovPal)&3;
+      var fb=M.fb, vram=vbxeRenderMem(), drew=0, pal=(r.ovPal==null?1:r.ovPal)&3;
       var x0=(384-width)>>1; if(x0<0) x0=0;
       var hs=vbxeGraphHScrollHi(r)>>1, hp=vbxeGraphHScrollHi(r)&1;
       var forceOpaque=((vbxe.regs[0x40]&0x04)!==0) || ((r.priority&0xFF)===0xFF);
@@ -3862,7 +3901,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
     vbxe.xdlDirty=false;
     if(!recs || !recs.length) return false;
 
-    var fb=M.fb, vram=vbxe.vram, drew=0, graphDrew=0, textDrew=0, hasGraph=false, hasText=false;
+    var fb=M.fb, vram=vbxeRenderMem(), drew=0, graphDrew=0, textDrew=0, hasGraph=false, hasText=false;
     for(var ri0=0;ri0<recs.length;ri0++){
       if(recs[ri0].mode===1 || recs[ri0].mode===2 || recs[ri0].mode===3) hasGraph=true;
       if(recs[ri0].mode===4) hasText=true;
@@ -4046,7 +4085,7 @@ function Atari130XE(osRom, basicRom, CPUctor){
       M.vbxeDebug('VBXE VRAM PROBE RENDER BUILD2HL: pouze pred-XDL diagnostika z VRAM. Po platnem XDL je probe blokovan.');
     }
 
-    var fb=M.fb, vram=vbxe.vram, base=vbxe.renderBase&0x7C000;
+    var fb=M.fb, vram=vbxeRenderMem(), base=vbxe.renderBase&0x7C000;
 
     // Fallback neni finalni obraz: vybere deterministicky 16KB stranku s nejvice daty,
     // aby se uz neprepinaval nahodne podle posledniho 1-bajt blitu.
@@ -6312,14 +6351,14 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     buildOSK(document.getElementById('osk'));
     bindKeyboard();
     updateTapeCounter();
-    log('AtariHelp.eu EMU-10 BUILD2MC_DOC_XDL_TRANSPARENCY_PRIORITY_MAP_SAFE pripraven - zaklad je BUILD2LR + BUILD2MA/MB doc fix. Po znovu-projiti docs.zip/examples.zip/cores126.zip a Lotharek/Pigwa: MC uz neresi obraz filtrem. Oprava: XDL transparentnost indexu 0 podle VIDEO_CONTROL bez vyjimky pro priority=$FF, Attribute Map souradnice v GR.8 pixelech, MAP OV palette ma prednost i kdyz je 0, priority bit6=PF2/PF3 a bit7=COLBAK. SR stripe/low-origin filtry vypnuty, aby se nerezalo auto. UI/loader/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
-    log('VBXE XDL TRANSPARENCY DOC BUILD2MC: SR/LR index 0 a HR nibble 0 jsou transparentni, pokud VC_NO_TRANS=0; priority=$FF transparentnost nemeni.');
-    log('VBXE ATTRIBUTE MAP GR8 DOC BUILD2MC: AM souradnice jsou ANTIC GR.8 pixely 256/320/336, ne 640px HR canvas.');
-    log('VBXE MAP PALETTE DOC BUILD2MC: aktivni Attribute Map OV palette ma prednost pred XDL OV palette; paleta 0 je platna.');
-    log('VBXE PRIORITY DOC BUILD2MC: priority bit6 = PF2 i PF3, bit7 = COLBAK; zadne automaticke COLBK always-over.');
-    log('VBXE SR FILTERS OFF BUILD2MC: zadny stripe/low-origin odrez radku; Night Driver auto nesmi byt rezane filtrem.');
-    log('VBXE FX126 REGMAP BUILD2MC: D644=CSEL, D645=PSEL, D646=CR, D647=CG, D648=CB; D655-D658 prime P0-P3 priority registry.');
-    log('VBXE BLITTER DOC BUILD2MC: CONST jen AND=$00, BCB21 MODE b0-b2/NEXT b3, kolize podle fx1.26 segmentu.');
+    log('AtariHelp.eu EMU-10 BUILD2ME_DOC_FRAME_SNAPSHOT_COLLISION_SAFE pripraven - zaklad je BUILD2LR + MA/MB/MC/MD dokumentacni opravy. ME navazuje na MD, kde Popeye/Night Driver poprve realne posunuly grafiku: frame renderer ted cte display snapshot VBXE VRAM ze zacatku viditelneho frame, ne pozdni VRAM po dalsich blitech CPU; blitter collision je vracena podle fx1.26 na DEST & MASK. UI/loader/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
+    log('VBXE BUILD VERIFY BUILD2ME: pokud v ulozenem logu NENI tahle BUILD2ME radka, testuje se stary APK/assets, ne ME.');
+    log('VBXE HICANVAS MAP COORD DOC BUILD2MD: Attribute Map pro HR/SR/LR HI canvas jde primo px640 -> GR.8 x podle widthSel; konec posunu pres 384px mezikrok.');
+    log('VBXE BLITTER ZOOM DOC BUILD2MD: fx1.26 zoom b0-b2=ZOOMX, b4-b6=ZOOMY, b3/b7 reserved; zadne INTLVE z bitu3.');
+    log('VBXE SR HSCROLL HI DOC BUILD2MD: OVSCRL hscroll je 1 VBXE hires pixel; SR uz neposouva lichy hscroll o 2 pixely.');
+    log('VBXE MC DOC FIXES KEPT BUILD2MD: transparentni index 0, FX126 CSEL/PSEL/CR/CG/CB, MAP palette, priority PF2/PF3/COLBAK a blitter CONST jen AND=$00 zustavaji.');
+    log('VBXE FRAME SNAPSHOT DOC BUILD2ME: XDL/HR/SR/LR renderer cte snimek VBXE VRAM zachyceny na zacatku viditelneho frame, ne pozdni VRAM po dokresleni CPU.');
+    log('VBXE BLITTER COLLISION DOC BUILD2ME: blitter kolize vracena podle fx1.26 na bitove DEST & COLLISION_MASK; segmentove masky patri overlay/raster kolizim, ne BCB modu 1-5.');
 
     log('AtariHelp.eu EMU-10 BUILD2LM_PLAYER_OVERLAP_AND_HSCROL_DECATHLON_SAFE pripraven - zaklad je potvrzeny LL: River Raid a rychlejsi chytani her chraneno. Zachovano LL PRIOR=$01 + XEX turbo exit + LJ CHBASE 512. Nove: normalni overlap P0/P1 a P2/P3 bez PRIOR bit5 uz nedela cernou diru, cil Decathlon telo/nohy; HSCROL po konci znakoveho radku posouva LMS o viditelne bytes, ne o extra fetch, cil scrolling nastenka. Night Driver pruh zatim nelakuji jako opraveny. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2LL_PRIORITY01_RIVERRAID_AND_XEX_TURBO_EXIT_SAFE pripraven - zaklad je LJ, ne LK. LK stabilni HPOS/SIZE nepomohl na Decathlon telo/nohy a mohl sahat do PMG her, proto je vynechan. Zachovana LJ CHBASE 512 oprava pro Decathlon nastenku. Nove: PRIOR=$01 uz neschova P2/P3, cil River Raid protivnici; XEX turbo se vypina hned po prechodu PC do herni RAM bez SIO, cil startovni zasek/zvukove koktani a pomale chytani her. UI/klavesnice/kazeta/joystick/CLOAD/CSAVE beze zmen. KODY JSOU STEJNE.');
