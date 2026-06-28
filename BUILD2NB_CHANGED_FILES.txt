@@ -1,0 +1,20 @@
+BUILD2NB_SEGA_NO_ART_ROM_PICKER_FORCE_STAGE15
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/genesis_runner.html
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+- app/src/main/assets/index.html
+
+ZAMER:
+- zadna moje nova grafika / zadna konzolova vrstva
+- oprava test flow: bez vybrane ROM se uz nema ukladat prazdny log jako test
+- kratky klik ULOZENE bez ROM otevre ROM picker
+- klik monitoru bez ROM otevre ROM picker
+- kratky KONZOLE/JOYSTICK bez ROM otevre ROM picker
+- HRY/SBIRKA/CARTRIDGE zustavaji ROM picker
+- dlouhy stisk ULOZENE porad ulozi servisni log
+- lrusso real-core cesta z BUILD2NA zachovana

@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2NA_SEGA_NATIVE_BIND_NO_ART_STAGE14
+ * BUILD2NB_SEGA_NO_ART_ROM_PICKER_FORCE_STAGE15
  *
  * This file is intentionally NOT a fake Mega Drive emulator.
  * It prepares and probes a real-core adapter safely: object adapter, factory,
@@ -22,7 +22,7 @@
 (function(global){
 'use strict';
 
-var BRIDGE_BUILD = 'BUILD2NA_SEGA_NATIVE_BIND_NO_ART_STAGE14';
+var BRIDGE_BUILD = 'BUILD2NB_SEGA_NO_ART_ROM_PICKER_FORCE_STAGE15';
 var CANDIDATE_NAMES = [
   'NAP_SEGA_REAL_CORE','NAP_REAL_SEGA_CORE','NAP_SEGA_ADAPTER',
   'SegaMDCore','GenesisCore','GenesisPlusGX','GPGX','JSMooGenesis',

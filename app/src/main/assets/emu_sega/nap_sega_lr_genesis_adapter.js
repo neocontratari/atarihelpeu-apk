@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2NA_SEGA_NATIVE_BIND_NO_ART_STAGE14
+ * BUILD2NB_SEGA_NO_ART_ROM_PICKER_FORCE_STAGE15
  *
  * NAP adapter for the lrusso Genesis/PicoDrive browser core API.
  * It does not include ROMs and it does not paint fake gameplay. It only tries
@@ -15,7 +15,7 @@
 (function(global){
 'use strict';
 
-var BUILD='BUILD2NA_SEGA_NATIVE_BIND_NO_ART_STAGE14';
+var BUILD='BUILD2NB_SEGA_NO_ART_ROM_PICKER_FORCE_STAGE15';
 var LOCAL_ENGINE_CANDIDATES=[
   'cores/Genesis.min.js',
   'cores/Genesis.js',
@@ -277,7 +277,7 @@ function patchEngineOriginGuards(sourceLabel, code){
   var phrase2='Error. This emulator cannot be used from a different origin.';
   var hitPhrase=(code.indexOf(phrase1)>=0 || code.indexOf(phrase2)>=0);
   var patches=0;
-  function mark(m){ patches++; return 'console.warn(\"NAP BUILD2NA origin guard neutralized: '+m.replace(/[\\\"\n\r]/g,' ')+'\"); void 0;'; }
+  function mark(m){ patches++; return 'console.warn(\"NAP BUILD2NB origin guard neutralized: '+m.replace(/[\\\"\n\r]/g,' ')+'\"); void 0;'; }
   // lrusso Genesis.min.js contains an explicit same-origin guard. In Android
   // WebView we evaluate the engine from a local appassets/file context while
   // the text was downloaded or copied locally. This patch removes only that
@@ -288,9 +288,9 @@ function patchEngineOriginGuards(sourceLabel, code){
   // If a minifier wrote the guard as an Error constructor inside a comma/ternary,
   // keep the expression valid by replacing the constructor text with a harmless null.
   var guardCtor=/new\s+Error\s*\(\s*[\"'](?:Error\.\s*)?This emulator cannot be used from a different origin\.[\"']\s*\)/g;
-  if(guardCtor.test(code)){ guardCtor.lastIndex=0; code=code.replace(guardCtor,function(m){ patches++; return '(console.warn(\"NAP BUILD2NA origin Error ctor neutralized\"),null)'; }); }
+  if(guardCtor.test(code)){ guardCtor.lastIndex=0; code=code.replace(guardCtor,function(m){ patches++; return '(console.warn(\"NAP BUILD2NB origin Error ctor neutralized\"),null)'; }); }
 
-  // BUILD2NA safety: previous BUILD2MW could create `console.warn(...)var`
+  // BUILD2NB safety: previous BUILD2MW could create `console.warn(...)var`
   // when a minified throw statement was followed by `var` and the optional
   // semicolon was consumed by the regex. Keep syntax valid before eval.
   code=code.replace(/(console\.warn\([^)]*\))(\s*)(var\s+)/g,function(_,a,b,c){ patches++; return a+'; void 0; '+c; });
@@ -316,7 +316,7 @@ function evalEngineClosure(sourceLabel, code){
       log('CURRENT_SCRIPT SRC SHIM online original='+src+' safe='+safeSrc);
     }
   }catch(_safeErr){}
-  // BUILD2NA: do NOT pass Object.create(document) into the engine. DOM methods
+  // BUILD2NB: do NOT pass Object.create(document) into the engine. DOM methods
   // such as document.getElementById/createElement throw "Illegal invocation" when
   // their this-object is not the real Document. Instead replace only the
   // document.currentScript token with our small shim and run the engine with the
@@ -386,7 +386,7 @@ function tryLocalEngines(){
 
 function loadOnlineEngine(){
   if(!ALLOW_ONLINE_PROBE) return Promise.reject(new Error('ONLINE_PROBE_DISABLED'));
-  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako text. BUILD2NA ho spusti pres closure eval, ne pres iframe.', 'boot');
+  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako text. BUILD2NB ho spusti pres closure eval, ne pres iframe.', 'boot');
   log('lokalni engine chybi, zkousim ONLINE closure-eval probe lrusso Genesis.min.js');
   return fetchText(ONLINE_ENGINE_URL,22000).then(function(code){
     drawCoreScreen('ENGINE SCRIPT LOADED', 'Genesis.min.js stazen: '+code.length+' B. Origin guard + document.currentScript patch + closure eval.', 'boot');
@@ -465,8 +465,8 @@ function bootSameOriginRunner(romBuffer, info, reason){
     mountEl.style.background='#000';
     var frame=document.createElement('iframe');
     liveIframe=frame;
-    frame.title='AtariHelp Sega BUILD2NA same-origin runner';
-    frame.src='genesis_runner.html?build=2NA&ts='+Date.now();
+    frame.title='AtariHelp Sega BUILD2NB same-origin runner';
+    frame.src='genesis_runner.html?build=2NB&ts='+Date.now();
     frame.allow='autoplay; fullscreen; gamepad';
     frame.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;border:0;background:#000;';
     var sent=false;
@@ -476,9 +476,9 @@ function bootSameOriginRunner(romBuffer, info, reason){
       try{
         var copy=romBuffer.slice(0);
         frame.contentWindow.postMessage({napSega:true,type:'rom',name:title,rom:copy},'*',[copy]);
-        log('BUILD2NA RUNNER ROM POSTED title='+title+' size='+romBuffer.byteLength+' reason='+(reason||'direct'));
+        log('BUILD2NB RUNNER ROM POSTED title='+title+' size='+romBuffer.byteLength+' reason='+(reason||'direct'));
       }catch(e){
-        log('BUILD2NA RUNNER ROM POST FAILED '+(e.message||String(e)));
+        log('BUILD2NB RUNNER ROM POST FAILED '+(e.message||String(e)));
         throw e;
       }
     }
@@ -491,17 +491,17 @@ function bootSameOriginRunner(romBuffer, info, reason){
       if(d.type==='failed'){ showToast('SEGA runner selhal: '+String(d.msg||'')); }
     }
     global.addEventListener('message',onMsg,false);
-    frame.onload=function(){ log('BUILD2NA RUNNER IFRAME LOAD - cekam READY a posilam ROM'); setTimeout(sendRom,800); };
+    frame.onload=function(){ log('BUILD2NB RUNNER IFRAME LOAD - cekam READY a posilam ROM'); setTimeout(sendRom,800); };
     mountEl.appendChild(frame);
     var mdVideo=byId('mdVideo'); if(mdVideo) mdVideo.style.display='none';
     hideOverlay();
-    showToast('BUILD2NA: zkousim same-origin runner bez moji grafiky.',4200);
-    log('BUILD2NA RUNNER FALLBACK START reason='+(reason||'none')+' title='+title);
+    showToast('BUILD2NB: zkousim same-origin runner bez moji grafiky.',4200);
+    log('BUILD2NB RUNNER FALLBACK START reason='+(reason||'none')+' title='+title);
     return true;
   }catch(e){
     restoreCanvasFallback();
     drawCoreScreen('RUNNER FAILED', e.message||String(e), 'error');
-    log('BUILD2NA RUNNER FALLBACK FAILED '+(e.message||String(e)));
+    log('BUILD2NB RUNNER FALLBACK FAILED '+(e.message||String(e)));
     throw e;
   }
 }
@@ -539,7 +539,7 @@ function bootWithEmbedGenesis(romBuffer, info){
     }
   };
   try{
-    // BUILD2NA: first call inside the same global lexical context that owns
+    // BUILD2NB: first call inside the same global lexical context that owns
     // embedGenesis. BUILD2MX extracted the function and Android WebView returned
     // Illegal invocation. This avoids fake graphics and keeps the real core call.
     global.__napSegaEmbedOpts=opts;
@@ -554,7 +554,7 @@ function bootWithEmbedGenesis(romBuffer, info){
     var emsg=(firstErr && firstErr.message) ? firstErr.message : String(firstErr);
     log('embedGenesis CALL FAILED final '+emsg);
     if(/Illegal invocation|Invocation/i.test(emsg)){
-      log('BUILD2NA: Illegal invocation pri primem volani - spoustim same-origin runner fallback bez moji konzolove grafiky.');
+      log('BUILD2NB: Illegal invocation pri primem volani - spoustim same-origin runner fallback bez moji konzolove grafiky.');
       return bootSameOriginRunner(romBuffer, info, emsg);
     }
     throw firstErr;
@@ -591,7 +591,7 @@ var adapter={
       restoreCanvasFallback();
       drawCoreScreen('REAL CORE FAILED', msg, 'error');
       log('loadRom FAILED '+msg);
-      log('BUILD2NA: iframe fallback vypnuty; vlastni konzolova grafika vypnuta; pokracuji jen realny core call + native browser binding probe.');
+      log('BUILD2NB: iframe fallback vypnuty; vlastni konzolova grafika vypnuta; pokracuji jen realny core call + native browser binding probe.');
       showToast('Real core se nepodarilo nacist: '+msg);
       throw e;
     });
