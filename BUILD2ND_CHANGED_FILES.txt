@@ -1,0 +1,14 @@
+BUILD2ND_SEGA_CLOWNMD_WEB_FRONTEND_DIRECT_STAGE17
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- BUILD2ND_README_TEST_PLAN.txt
+- BUILD2ND_CHANGED_FILES.txt
+
+CO SE MENI:
+- ZAHOZEN aktivni lrusso/closure-eval pokus pro dalsi testy.
+- HRY / SBIRKA / CARTRIDGE SLOT ted otevre oficialni ClownMDEmu web frontend: https://clownmdemu.clownacy.com/
+- Nepridava se zadna nova grafika, nemeni se Sega skin.
+- Cilem testu je videt realnou grafiku/zvuk pres ClownMDEmu frontend, ne dalsi textove CORE_MISSING obrazovky.
+
+KODY JSOU ZMENENE.
