@@ -1,5 +1,5 @@
 AtariHelp.eu EMU-10 SEGA REAL CORE SLOT
-BUILD2MW_SEGA_ORIGIN_GUARD_PATCH_STAGE10
+BUILD2MX_SEGA_ORIGIN_GUARD_SEMICOLON_STAGE11
 
 Sem je mozne vlozit legalne pouzitelny realny Mega Drive / Genesis JS core adapter.
 Preferovane nazvy lokalniho lrusso engine:
@@ -8,7 +8,7 @@ Preferovane nazvy lokalniho lrusso engine:
 - lrusso_Genesis.min.js
 - lrusso_Genesis.js
 
-BUILD2MW zkousi lokalni soubor nacist jako text a spustit closure-eval cestou.
+BUILD2MX zkousi lokalni soubor nacist jako text a spustit closure-eval cestou.
 Duvod: samotne vlozeni jako <script> v Android WebView muze narazit na currentScript/origin guard.
 
 ROMy sem nedavat. ROM vybira tester lokalne pres HRY/SBIRKA/CARTRIDGE.

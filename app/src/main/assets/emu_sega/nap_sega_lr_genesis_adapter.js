@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MW_SEGA_ORIGIN_GUARD_PATCH_STAGE10
+ * BUILD2MX_SEGA_ORIGIN_GUARD_SEMICOLON_STAGE11
  *
  * NAP adapter for the lrusso Genesis/PicoDrive browser core API.
  * It does not include ROMs and it does not paint fake gameplay. It only tries
@@ -15,7 +15,7 @@
 (function(global){
 'use strict';
 
-var BUILD='BUILD2MW_SEGA_ORIGIN_GUARD_PATCH_STAGE10';
+var BUILD='BUILD2MX_SEGA_ORIGIN_GUARD_SEMICOLON_STAGE11';
 var LOCAL_ENGINE_CANDIDATES=[
   'cores/Genesis.min.js',
   'cores/Genesis.js',
@@ -277,7 +277,7 @@ function patchEngineOriginGuards(sourceLabel, code){
   var phrase2='Error. This emulator cannot be used from a different origin.';
   var hitPhrase=(code.indexOf(phrase1)>=0 || code.indexOf(phrase2)>=0);
   var patches=0;
-  function mark(m){ patches++; return 'console.warn(\"NAP BUILD2MW origin guard neutralized: '+m.replace(/[\\"\n\r]/g,' ')+'\")'; }
+  function mark(m){ patches++; return 'console.warn(\"NAP BUILD2MX origin guard semicolon neutralized: '+m.replace(/[\\\"\n\r]/g,' ')+'\"); void 0;'; }
   // lrusso Genesis.min.js contains an explicit same-origin guard. In Android
   // WebView we evaluate the engine from a local appassets/file context while
   // the text was downloaded or copied locally. This patch removes only that
@@ -288,9 +288,14 @@ function patchEngineOriginGuards(sourceLabel, code){
   // If a minifier wrote the guard as an Error constructor inside a comma/ternary,
   // keep the expression valid by replacing the constructor text with a harmless null.
   var guardCtor=/new\s+Error\s*\(\s*[\"'](?:Error\.\s*)?This emulator cannot be used from a different origin\.[\"']\s*\)/g;
-  if(guardCtor.test(code)){ guardCtor.lastIndex=0; code=code.replace(guardCtor,function(m){ patches++; return '(console.warn(\"NAP BUILD2MW origin Error ctor neutralized\"),null)'; }); }
-  if(hitPhrase || patches){ log('ORIGIN GUARD PATCH '+sourceLabel+' phrase='+(hitPhrase?'YES':'NO')+' patches='+patches+' bytesBefore='+before+' bytesAfter='+code.length); }
-  else { log('ORIGIN GUARD PATCH '+sourceLabel+' no explicit origin-guard phrase found'); }
+  if(guardCtor.test(code)){ guardCtor.lastIndex=0; code=code.replace(guardCtor,function(m){ patches++; return '(console.warn(\"NAP BUILD2MX origin Error ctor neutralized\"),null)'; }); }
+
+  // BUILD2MX safety: previous BUILD2MW could create `console.warn(...)var`
+  // when a minified throw statement was followed by `var` and the optional
+  // semicolon was consumed by the regex. Keep syntax valid before eval.
+  code=code.replace(/(console\.warn\([^)]*\))(\s*)(var\s+)/g,function(_,a,b,c){ patches++; return a+'; void 0; '+c; });
+  if(hitPhrase || patches){ log('ORIGIN GUARD SEMICOLON PATCH '+sourceLabel+' phrase='+(hitPhrase?'YES':'NO')+' patches='+patches+' bytesBefore='+before+' bytesAfter='+code.length); }
+  else { log('ORIGIN GUARD SEMICOLON PATCH '+sourceLabel+' no explicit origin-guard phrase found'); }
   return code;
 }
 function evalEngineClosure(sourceLabel, code){
@@ -370,10 +375,10 @@ function tryLocalEngines(){
 
 function loadOnlineEngine(){
   if(!ALLOW_ONLINE_PROBE) return Promise.reject(new Error('ONLINE_PROBE_DISABLED'));
-  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako text. BUILD2MW ho spusti pres closure eval, ne pres iframe.', 'boot');
+  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako text. BUILD2MX ho spusti pres closure eval, ne pres iframe.', 'boot');
   log('lokalni engine chybi, zkousim ONLINE closure-eval probe lrusso Genesis.min.js');
   return fetchText(ONLINE_ENGINE_URL,22000).then(function(code){
-    drawCoreScreen('ENGINE SCRIPT LOADED', 'Genesis.min.js stazen: '+code.length+' B. Origin guard patch + closure eval.', 'boot');
+    drawCoreScreen('ENGINE SCRIPT LOADED', 'Genesis.min.js stazen: '+code.length+' B. Origin guard semicolon patch + closure eval.', 'boot');
     log('online Genesis.min.js stazeny jako text, velikost '+code.length+' B; spoustim closure eval');
     return evalEngineClosure('online:lrusso/Genesis.min.js', code);
   });
@@ -491,7 +496,7 @@ var adapter={
       restoreCanvasFallback();
       drawCoreScreen('REAL CORE FAILED', msg, 'error');
       log('loadRom FAILED '+msg);
-      log('BUILD2MW: iframe fallback vypnuty - upstream Genesis.htm v iframe nespousti UI kvuli window.top === window.self; pokracuji jen po realne closure-eval ceste.');
+      log('BUILD2MX: iframe fallback vypnuty - upstream Genesis.htm v iframe nespousti UI kvuli window.top === window.self; pokracuji jen po realne closure-eval ceste.');
       showToast('Real core se nepodarilo nacist: '+msg);
       throw e;
     });

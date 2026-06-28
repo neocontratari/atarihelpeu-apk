@@ -1,0 +1,20 @@
+BUILD2MX_SEGA_ORIGIN_GUARD_SEMICOLON_STAGE11
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+- app/src/main/assets/index.html
+
+OPRAVA PROTI BUILD2MW:
+- BUILD2MW skutecne patchnul origin guard, ale pri nahrazeni throw statementu mohl odstranit strednik.
+- V minifikovanem Genesis.min.js to mohlo vyrobit konstrukci `console.warn(...)var`, proto chyba Unexpected token 'var'.
+- BUILD2MX vraci do patchovaneho guardu strednik + `void 0;` a pridava safety cleanup `console.warn(...) var` -> `console.warn(...); void 0; var`.
+
+BEZ FAKE:
+- zadny ROM v ZIPu
+- zadny fake Sonic obraz
+- zadny fake gameplay
+- Atari/VBXE/EMU2 nedotceno
