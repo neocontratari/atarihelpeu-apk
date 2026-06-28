@@ -1,0 +1,14 @@
+BUILD2NU_SEGA_AUDIO_SYNC_CROP_SAFE_STAGE34
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin jen v overlayi)
+
+ZAMER:
+- nevracet BUILD2NT
+- neukazovat Clown menu Software/Save States
+- zachovat cisty zvuk 2NN/2NS
+- pridat safe video delay proti opozdenemu zvuku bez cerne obrazovky
+- precentrovat a zmensit crop, aby Sonic/Aladdin nebyly urezane
