@@ -1,0 +1,16 @@
+BUILD2MY_SEGA_DOC_CURRENTSCRIPT_BIND_STAGE12
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+- app/src/main/assets/index.html
+
+HLAVNI OPRAVA:
+- BUILD2MX dosel k realnemu embedGenesis, ale padl na Illegal invocation.
+- BUILD2MY uz engine nepousti s Object.create(document), protoze DOM metody pak padaji.
+- document.currentScript se nahrazuje tokenem window.__napSegaCurrentScriptShim, ale do core se dava skutecny document.
+- embedGenesis se vola s window jako this.
+- Kratky KONZOLE/JOYSTICK uz neprekryva monitor servisnim textem.
