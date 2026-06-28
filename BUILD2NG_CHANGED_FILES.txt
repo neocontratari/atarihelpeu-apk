@@ -1,0 +1,9 @@
+BUILD2NG_SEGA_CLOWNMD_CARTRIDGE_DROP_GAMEPAD_LANDSCAPE_STAGE20
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin zachovan, kopie jen kvuli overlayi)
+
+POZNAMKA:
+- Zadny novy skin/grafika navic.
+- Zamer: nas ROM picker -> auto drag/drop cartridge do ClownMDEmu iframe, virtual gamepad pro A/B/C, landscape hitboxy.
