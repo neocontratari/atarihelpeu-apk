@@ -1,0 +1,12 @@
+BUILD2NE_SEGA_CLOWNMD_IN_APP_FRAME_KEYS_STAGE18
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+STAV:
+- zachovan original Sega skin
+- HRY/SBIRKA/CARTRIDGE uz neodhodi uzivatele mimo skin, ale nacte oficialni ClownMDEmu frontend do monitoru v nasi Sega obrazovce
+- nase tlacitka zkousi mapovat defaultni ClownMDEmu klavesy: D-PAD=sipky, A=Z, B=X, C=C, START=Enter
+- zadna moje nova grafika
+- zadny fake Sonic

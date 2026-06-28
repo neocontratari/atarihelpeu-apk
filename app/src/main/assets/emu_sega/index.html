@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>SEGA Mega Drive — N&P Vision</title>
+<title>SEGA Mega Drive — N&P Vision / ClownMDEmu</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{min-height:100%;background:#02050a;color:#8fd8ff;font-family:"Courier New",monospace;overflow-x:hidden;}
 body{display:flex;justify-content:center;align-items:flex-start;}
 .stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#02050a;overflow:hidden;box-shadow:0 0 48px rgba(0,0,0,.95);}
-.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;}
-.hit{position:absolute;z-index:8;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
-.hit:active{background:rgba(0,118,255,.12);box-shadow:0 0 32px rgba(0,118,255,.25) inset;border-radius:18px;}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
+.hit{position:absolute;z-index:20;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
+.hit:active{background:rgba(0,118,255,.14);box-shadow:0 0 32px rgba(0,118,255,.28) inset;border-radius:18px;}
 /* Hit zony podle 941x1672 PNG */
 #btnConsole{left:68.3%;top:3.3%;width:14.1%;height:4.3%;}
 #btnJoystick{left:82.0%;top:3.3%;width:14.1%;height:4.3%;}
@@ -28,45 +28,25 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnC{left:80.0%;top:49.2%;width:8.8%;height:7.0%;}
 #dpad{left:14.3%;top:49.3%;width:22.0%;height:15.4%;}
 #monitorBlank{cursor:pointer;touch-action:manipulation;position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:5;border-radius:20px;overflow:hidden;background:radial-gradient(circle at 50% 45%,rgba(5,24,45,.92) 0%,rgba(0,0,0,.98) 70%);border:1px solid rgba(80,170,255,.30);box-shadow:0 0 34px rgba(0,102,255,.25) inset,0 0 18px rgba(0,0,0,.75);}
-#monitorBlank:after{content:"SEGA MEGA DRIVE\A READY";white-space:pre;position:absolute;left:0;right:0;top:40%;text-align:center;color:rgba(144,216,255,.50);font:900 clamp(10px,2.8vw,18px)/1.3 "Courier New",monospace;text-shadow:0 0 12px rgba(0,112,255,.55);letter-spacing:.08em;}
+#monitorBlank:after{content:"CLOWNMDEMU READY\A KLIKNI HRY / CARTRIDGE";white-space:pre;position:absolute;left:0;right:0;top:38%;text-align:center;color:rgba(144,216,255,.62);font:900 clamp(10px,2.8vw,18px)/1.3 "Courier New",monospace;text-shadow:0 0 12px rgba(0,112,255,.55);letter-spacing:.08em;}
 #mdVideo{cursor:pointer;touch-action:manipulation;position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:6;border-radius:20px;background:#000;image-rendering:pixelated;image-rendering:crisp-edges;display:block;}
-#genesisMount{cursor:pointer;touch-action:manipulation;position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:6;border-radius:20px;overflow:hidden;background:#000;display:none;}
-#genesisMount canvas,#genesisMount video{width:100%!important;height:100%!important;display:block!important;image-rendering:pixelated;image-rendering:crisp-edges;background:#000;}
-#genesisMount *{box-sizing:border-box;}
-#monitorOverlay{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:7;display:none;align-items:center;justify-content:center;border-radius:20px;overflow:hidden;background:rgba(0,0,0,.86);border:1px solid rgba(80,170,255,.38);box-shadow:0 0 28px rgba(0,102,255,.25) inset;}
+#clownFrameWrap{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:7;border-radius:20px;overflow:hidden;background:#000;border:1px solid rgba(80,170,255,.25);display:none;}
+#clownFrame{width:100%;height:100%;border:0;background:#000;display:block;}
+#monitorOverlay{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:9;display:none;align-items:center;justify-content:center;border-radius:20px;overflow:hidden;background:rgba(0,0,0,.88);border:1px solid rgba(80,170,255,.38);box-shadow:0 0 28px rgba(0,102,255,.25) inset;pointer-events:none;}
 #monitorOverlay.show{display:flex;}
 #monitorText{white-space:pre-wrap;text-align:left;width:88%;max-height:84%;overflow:hidden;color:#d9ecff;text-shadow:0 0 8px rgba(0,120,255,.7);font:900 clamp(9px,2.3vw,16px)/1.34 "Courier New",monospace;}
-.toast{position:absolute;left:5%;right:5%;bottom:11%;z-index:10;display:none;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.84);border:1px solid rgba(75,155,255,.55);color:#d9ecff;font:900 13px/1.35 "Courier New",monospace;text-align:center;}
+.toast{position:absolute;left:5%;right:5%;bottom:11%;z-index:30;display:none;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.84);border:1px solid rgba(75,155,255,.55);color:#d9ecff;font:900 13px/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
-#logBadge{position:absolute;z-index:8;left:20.4%;top:94.15%;width:11.0%;text-align:center;pointer-events:none;color:#8fd8ff;font:900 clamp(9px,2.3vw,16px) "Courier New",monospace;text-shadow:0 0 10px #0076ff,0 0 18px #0076ff;letter-spacing:.08em;}
-
-#consoleModeArt{display:none!important;} /* BUILD2ND: moje konzolova grafika vypnuta - resime core, design doda Rene */
-.stage.console-mode #consoleModeArt{display:none!important;}
-#consoleModeArt:before{content:"";position:absolute;left:8%;right:8%;top:18%;height:45%;border-radius:24px 24px 52px 52px;background:linear-gradient(180deg,#1b2532,#06090f 64%,#020305);border:2px solid rgba(120,180,230,.35);box-shadow:0 18px 40px rgba(0,0,0,.92),0 0 34px rgba(0,90,255,.35) inset;}
-#consoleModeArt:after{content:"MEGA DRIVE\A 16-BIT CONSOLE VIEW";white-space:pre;position:absolute;left:0;right:0;top:9%;text-align:center;color:#bfe8ff;font:900 clamp(12px,3.1vw,25px)/1.25 "Courier New",monospace;letter-spacing:.10em;text-shadow:0 0 12px #007cff,0 0 22px #007cff;}
-#consoleModeArt .slot{position:absolute;left:31%;top:26%;width:38%;height:25%;border-radius:18px;background:radial-gradient(circle at 50% 45%,#0d1826,#030509 72%);border:2px solid rgba(70,150,230,.55);box-shadow:0 0 18px rgba(0,120,255,.45) inset;}
-#consoleModeArt .cart{position:absolute;left:38%;top:32%;width:24%;height:32%;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg,#27374a,#0b1018);border:1px solid rgba(170,220,255,.40);box-shadow:0 0 14px rgba(0,120,255,.25);}
-#consoleModeArt .cart:before{content:"CARTRIDGE\A SLOT";white-space:pre;position:absolute;left:8%;right:8%;top:18%;text-align:center;color:#9fd9ff;font:900 clamp(8px,2vw,15px)/1.25 "Courier New",monospace;text-shadow:0 0 8px #0076ff;}
-#consoleModeArt .power{position:absolute;left:13%;top:58%;width:18%;height:8%;border-radius:999px;background:linear-gradient(90deg,#071120,#14365e,#071120);border:1px solid rgba(80,170,255,.55);box-shadow:0 0 14px rgba(0,120,255,.45);}
-#consoleModeArt .power:after{content:"POWER";position:absolute;left:0;right:0;top:118%;text-align:center;color:#77c9ff;font:900 clamp(8px,1.8vw,14px) "Courier New",monospace;}
-#consoleModeArt .reset{position:absolute;right:13%;top:58%;width:18%;height:8%;border-radius:999px;background:linear-gradient(90deg,#071120,#14365e,#071120);border:1px solid rgba(80,170,255,.55);box-shadow:0 0 14px rgba(0,120,255,.45);}
-#consoleModeArt .reset:after{content:"RESET";position:absolute;left:0;right:0;top:118%;text-align:center;color:#77c9ff;font:900 clamp(8px,1.8vw,14px) "Courier New",monospace;}
-#consoleModeArt .hint{position:absolute;left:5%;right:5%;bottom:6%;text-align:center;color:#d7f2ff;font:900 clamp(9px,2.3vw,17px)/1.25 "Courier New",monospace;text-shadow:0 0 9px #0076ff;letter-spacing:.03em;}
-
-input[type=file]{display:none;}
+#logBadge{position:absolute;z-index:12;left:20.4%;top:94.15%;width:11.0%;text-align:center;pointer-events:none;color:#8fd8ff;font:900 clamp(9px,2.3vw,16px) "Courier New",monospace;text-shadow:0 0 10px #0076ff,0 0 18px #0076ff;letter-spacing:.08em;}
 </style>
 </head>
 <body>
 <main class="stage" aria-label="SEGA Mega Drive module">
   <img class="skin" src="sega_megadrive_screen.png" alt="SEGA Mega Drive">
   <div id="monitorBlank" aria-hidden="true"></div>
-  <canvas id="mdVideo" width="320" height="224" aria-label="SEGA Mega Drive real-core video canvas"></canvas>
-  <div id="genesisMount" aria-label="SEGA Mega Drive real-core mount"></div>
+  <canvas id="mdVideo" width="320" height="224" aria-label="SEGA Mega Drive status canvas"></canvas>
+  <div id="clownFrameWrap"><iframe id="clownFrame" title="ClownMDEmu official frontend" allow="autoplay; fullscreen; gamepad" tabindex="0"></iframe></div>
   <div id="monitorOverlay"><pre id="monitorText"></pre></div>
-  <div id="consoleModeArt" aria-hidden="true">
-    <div class="slot"></div><div class="cart"></div><div class="power"></div><div class="reset"></div>
-    <div class="hint">KONZOLE REZIM: KLIKNI CARTRIDGE / HRY A VYBER ROM</div>
-  </div>
   <div id="logBadge" aria-hidden="true">LOG</div>
   <button id="btnConsole" class="hit" type="button">KONZOLE</button>
   <button id="btnJoystick" class="hit" type="button">JOYSTICK</button>
@@ -82,647 +62,46 @@ input[type=file]{display:none;}
   <button id="btnB" class="hit" type="button">B</button>
   <button id="btnC" class="hit" type="button">C</button>
   <button id="dpad" class="hit" type="button">DPAD</button>
-  <input id="romInput" type="file" accept=".gen,.bin,.md,.smd,application/octet-stream">
-  <input id="coreInput" type="file" accept=".js,.mjs,.wasm,application/javascript,application/wasm">
-  <div id="toast" class="toast">SEGA MEGA DRIVE BUILD2ND: RESTORE SKIN direct ROM flow.</div>
+  <div id="toast" class="toast">BUILD2NE: ClownMDEmu v monitoru, skin zachovan.</div>
 </main>
-<script src="nap_sega_lr_genesis_adapter.js"></script>
-<script src="nap_sega_core_slot.js"></script>
-<script src="nap_sega_core_bridge.js"></script>
 <script>
 (function(){
 'use strict';
-var BUILD='BUILD2ND_SEGA_CLOWNMD_WEB_FRONTEND_DIRECT_STAGE17';
-var coreReady=false;
-var segaLog=[];
-var lastRomInfo=null;
-var segaBridge=null;
+var BUILD='BUILD2NE_SEGA_CLOWNMD_IN_APP_FRAME_KEYS_STAGE18';
+var CLOWN_URL='https://clownmdemu.clownacy.com/';
+var logLines=[];
+var frameLoaded=false;
+var lastKeyStatus='NO_KEY_SENT';
 var activeDpadDir=null;
-var coreSlot=null;
-var coreSlotInfo="CORE_SLOT_NOT_STARTED";
-var consoleLongPressTimer=0;
-var consoleLongPressFired=false;
-function pushLog(t){ var line=new Date().toLocaleTimeString()+' '+t; segaLog.push(line); if(segaLog.length>80) segaLog.shift(); return line; }
-function log(t){ try{console.log('[NAP SEGA] '+t);}catch(e){} pushLog(t); }
-function toast(t,ms){
-  var el=document.getElementById('toast');
-  if(!el) return;
-  el.textContent=t;
-  el.classList.add('show');
-  clearTimeout(window.__segaToastTimer);
-  window.__segaToastTimer=setTimeout(function(){ el.classList.remove('show'); },ms||2400);
-}
-function showMonitor(t){
-  var ov=document.getElementById('monitorOverlay');
-  var tx=document.getElementById('monitorText');
-  if(tx) tx.textContent=t;
-  if(ov) ov.classList.add('show');
-}
-function hideMonitor(){
-  var ov=document.getElementById('monitorOverlay');
-  if(ov) ov.classList.remove('show');
-}
-function setScreenMode(mode){
-  var stage=document.querySelector('.stage');
-  if(stage) stage.classList.remove('console-mode');
-  log('SEGA SCREEN MODE BUILD2ND: '+String(mode).toUpperCase()+' klik prijat - vlastni konzolova grafika vypnuta, zustava original Sega skin; resime jen realny core.');
-}
-function drawRomPrompt(status){
-  try{
-    var c=document.getElementById('mdVideo'); if(!c||!c.getContext) return;
-    c.width=320; c.height=224; var ctx=c.getContext('2d',{alpha:false})||c.getContext('2d'); if(!ctx) return;
-    ctx.fillStyle='#020611'; ctx.fillRect(0,0,320,224);
-    var g=ctx.createRadialGradient(160,95,8,160,112,190);
-    g.addColorStop(0,'#06386c'); g.addColorStop(.65,'#030b16'); g.addColorStop(1,'#000000');
-    ctx.fillStyle=g; ctx.fillRect(0,0,320,224);
-    for(var y=0;y<224;y+=7){ctx.fillStyle='rgba(60,150,255,.12)';ctx.fillRect(22,y,276,1);}
-    ctx.strokeStyle='rgba(90,185,255,.55)'; ctx.lineWidth=2; ctx.strokeRect(24,24,272,176);
-    ctx.strokeStyle='rgba(145,220,255,.25)'; ctx.lineWidth=1; ctx.strokeRect(31,31,258,162);
-    ctx.textAlign='center'; ctx.fillStyle='#bfe9ff'; ctx.font='bold 15px monospace'; ctx.fillText('SEGA CORE READY',160,62);
-    ctx.fillStyle='#89d6ff'; ctx.font='bold 12px monospace'; ctx.fillText('ROM JESTE NENI VYBRANA',160,90);
-    ctx.fillStyle='#d9f4ff'; ctx.font='bold 11px monospace'; ctx.fillText('KLIKNI HRY / SBIRKA / CARTRIDGE',160,122);
-    ctx.fillText('A VYBER .GEN / .BIN / .MD / .SMD',160,140);
-    ctx.fillStyle='rgba(255,220,120,.95)'; ctx.font='bold 10px monospace'; ctx.fillText(status||'NO FAKE VIDEO - CEKAM NA ROM',160,176);
-  }catch(e){ log('ROM PROMPT DRAW FAILED '+(e.message||String(e))); }
-}
-function openWeb(url){
-  log('OPEN WEB '+url);
-  try{
-    if(window.Android && typeof window.Android.openExternal==='function'){ window.Android.openExternal(url); return; }
-    if(window.Android && typeof window.Android.openUrl==='function'){ window.Android.openUrl(url); return; }
-    if(window.Android && typeof window.Android.openExternalUrl==='function'){ window.Android.openExternalUrl(url); return; }
-  }catch(e){ log('Android bridge failed: '+e.message); }
-  try{ window.location.href=url; }catch(e){ location.href=url; }
-}
-function ascii(bytes,off,len){
-  var s='';
-  for(var i=0;i<len && off+i<bytes.length;i++){
-    var c=bytes[off+i];
-    s += (c>=32 && c<=126) ? String.fromCharCode(c) : ' ';
-  }
-  return s.replace(/\s+/g,' ').trim();
-}
-function hex2(n){return ('0'+(n&255).toString(16).toUpperCase()).slice(-2);}
-function hex4(n){return ('000'+(n&65535).toString(16).toUpperCase()).slice(-4);}
-function crc32(bytes){
-  var c, table=[];
-  for(var n=0;n<256;n++){
-    c=n;
-    for(var k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);
-    table[n]=c>>>0;
-  }
-  c=0xFFFFFFFF;
-  for(var i=0;i<bytes.length;i++) c=table[(c^bytes[i])&0xFF]^(c>>>8);
-  return (c^0xFFFFFFFF)>>>0;
-}
-function mdChecksum(bytes){
-  var sum=0;
-  for(var i=0x200;i+1<bytes.length;i+=2){
-    sum=(sum+((bytes[i]<<8)|bytes[i+1]))&0xFFFF;
-  }
-  return sum;
-}
-function read16(bytes,off){return ((bytes[off]<<8)|bytes[off+1])&0xFFFF;}
-function looksSmd(bytes){
-  return bytes.length>0x4200 && (bytes.length%0x4000)===512 && ascii(bytes,0x100+512,16).indexOf('SEGA')>=0;
-}
-function deinterleaveSmd(bytes){
-  var header=512;
-  var out=new Uint8Array(bytes.length-header);
-  var pos=0;
-  for(var block=header; block<bytes.length; block+=0x4000){
-    var end=Math.min(block+0x4000,bytes.length);
-    var half=(end-block)>>1;
-    for(var i=0;i<half;i++){
-      out[pos+i*2]=bytes[block+half+i];
-      out[pos+i*2+1]=bytes[block+i];
-    }
-    pos+=half*2;
-  }
-  return out;
-}
-function analyzeRom(bytes,name){
-  var originalLen=bytes.length;
-  var format='RAW BIN/GEN/MD';
-  if(looksSmd(bytes)){
-    bytes=deinterleaveSmd(bytes);
-    format='SMD deinterleaved';
-  }
-  if(bytes.length<0x200) throw new Error('Soubor je moc maly pro Mega Drive ROM header.');
-  var consoleName=ascii(bytes,0x100,16);
-  var domestic=ascii(bytes,0x120,48);
-  var overseas=ascii(bytes,0x150,48);
-  var serial=ascii(bytes,0x180,14);
-  var hdrCrc=read16(bytes,0x18E);
-  var calcCrc=mdChecksum(bytes);
-  var io=ascii(bytes,0x190,16);
-  var region=ascii(bytes,0x1F0,16);
-  var ok=/SEGA/.test(consoleName);
-  var crc=crc32(bytes).toString(16).toUpperCase();
-  while(crc.length<8) crc='0'+crc;
-  return {ok:ok,name:name,format:format,originalLen:originalLen,len:bytes.length,romBytes:bytes,consoleName:consoleName,domestic:domestic,overseas:overseas,serial:serial,hdrCrc:hdrCrc,calcCrc:calcCrc,io:io,region:region,crc32:crc};
-}
-function openRomPicker(reason){
-  var inp=document.getElementById('romInput');
-  reason=reason||'manual';
-  log('SEGA ROM PICKER BUILD2ND OPEN reason='+reason);
-  if(!inp){ toast('ROM picker chybi v HTML.',3600); log('SEGA ROM PICKER BUILD2ND ERROR input_missing'); return; }
-  inp.value='';
-  try{
-    hideMonitor();
-    drawRomPrompt('OTEVIRAM ROM PICKER');
-    inp.click();
-    toast('Vyber ROM .gen / .bin / .md / .smd. Bez ROM se core nespusti.',5200);
-  }catch(e){
-    toast('ROM picker se nepodarilo otevrit: '+e.message,4500);
-    log('SEGA ROM PICKER BUILD2ND CLICK_FAILED '+(e.message||String(e)));
-  }
-}
-function detectCoreSlot(){
-  coreSlot = window.NAP_SEGA_CORE_SLOT || null;
-  if(!coreSlot){ coreSlotInfo='CORE_SLOT_SCRIPT_MISSING'; log('SEGA CORE SLOT BUILD2ND: nap_sega_core_slot.js nenalezen'); }
-  return coreSlot;
-}
-function openCorePicker(){
-  var inp=document.getElementById('coreInput');
-  if(!inp){ toast('CORE picker chybi.',3000); return; }
-  inp.value='';
-  try{ inp.click(); toast('CORE picker: jen .js adapter nebo .wasm + JS glue. ROM patri do HRY/SBIRKA.',4200); }
-  catch(e){ toast('CORE picker se nepodarilo otevrit: '+e.message,3500); }
-}
-function rescanCoreBridge(reason){
-  try{ segaBridge=null; coreReady=false; }catch(e){}
-  var b=initSegaBridge();
-  log('SEGA CORE RESCAN BUILD2ND reason='+(reason||'manual')+' status='+coreStatusLine());
-  return b;
-}
-function startCoreSlotAutoload(){
-  var slot=detectCoreSlot();
-  if(!slot || typeof slot.loadBuiltInCandidates!=='function') return;
-  try{
-    slot.loadBuiltInCandidates(log,function(res){
-      coreSlotInfo=(res && res.status) ? res.status : 'CORE_SLOT_AUTOLOAD_DONE_UNKNOWN';
-      log('SEGA CORE SLOT BUILD2ND AUTOLOAD RESULT: '+coreSlotInfo);
-      rescanCoreBridge('autoload:'+coreSlotInfo);
-    });
-  }catch(e){
-    coreSlotInfo='CORE_SLOT_AUTOLOAD_FAILED:'+e.message;
-    log('SEGA CORE SLOT BUILD2ND AUTOLOAD ERROR: '+e.message);
-  }
-}
-function explainWrongCoreFile(fileName, status){
-  var txt='SEGA CORE PICKER - TOHLE NENI CORE\n\n';
-  txt+='Vybrany soubor: '+(fileName||'neznamy')+'\n';
-  txt+='Status: '+(status||'UNSUPPORTED_CORE_FILE_EXTENSION')+'\n\n';
-  txt+='Tohle vypada jako ROM / cartridge, ne jako emulatorovy core adapter.\n\n';
-  txt+='PRO HRU SONIC / ALADDIN / ROM:\n';
-  txt+='- pouzij SBIRKA, HRY nebo CARTRIDGE SLOT\n';
-  txt+='- podporovane ROM: .gen / .bin / .md / .smd\n\n';
-  txt+='PRO REALNY CORE:\n';
-  txt+='- dlouhy stisk KONZOLE bere .js/.mjs adapter nebo .wasm + JS glue\n';
-  txt+='- samotny .wasm nestaci bez JS glue/adapteru\n\n';
-  txt+='ROM zustava nactena, ale core porad chybi. Zadny fake obraz nespoustim.';
-  showMonitor(txt);
-  toast('Vybral jsi ROM do CORE pickeru. Pro Sonic pouzij HRY/SBIRKA/CARTRIDGE.',6200);
-}
-function explainWasmNeedsGlue(fileName, status){
-  var txt='SEGA CORE PICKER - WASM NESTACI SAMOTNY\n\n';
-  txt+='Soubor: '+(fileName||'neznamy')+'\n';
-  txt+='Status: '+(status||'WASM_STORED_JS_ADAPTER_REQUIRED')+'\n\n';
-  txt+='WASM je jen binarni jadro. V Android WebView ho musi spustit JS glue/adapter, ktery vytvori globalni adapter napr. NAP_SEGA_REAL_CORE nebo GenesisPlusGX. BUILD2ND umi ulozit WASM blob URL pro navazany JS adapter.\n\n';
-  txt+='Ted jsem WASM jen ulozil jako blob URL pro adapter, ale hra jeste nebezi.';
-  showMonitor(txt);
-  toast('WASM ulozen, ale chybi JS glue/adapter.',6200);
-}
-function explainJsLoadedNoAdapter(fileName, status){
-  var txt='SEGA CORE PICKER - JS NACTEN, ALE BEZ ADAPTERU\n\n';
-  txt+='Soubor: '+(fileName||'neznamy')+'\n';
-  txt+='Status: '+(status||'EXTERNAL_JS_LOADED_BUT_NO_ADAPTER')+'\n\n';
-  txt+='Soubor se nacetl, ale nevytvoril zadny znamy adapter symbol/API. Hledam napr.:\n';
-  txt+='NAP_SEGA_REAL_CORE, NAP_REAL_SEGA_CORE, SegaMDCore, GenesisCore, GenesisPlusGX, GPGX, JSMooGenesis, MegaDriveCore, MDCore, JSMD.\n\n';
-  txt+='Bez toho nebudu kreslit fake obraz.';
-  showMonitor(txt);
-  toast('JS nacten, ale neobsahuje rozpoznany Sega adapter.',6200);
-}
-function handleCoreFile(file){
-  if(!file) return;
-  var slot=detectCoreSlot();
-  if(!slot || typeof slot.loadExternalCoreFile!=='function'){ toast('CORE SLOT loader neni dostupny.',3600); return; }
-  var fname=file.name||'';
-  var lower=fname.toLowerCase();
-  if(/\.(gen|bin|md|smd|sms|gg|zip|7z|rar)$/i.test(lower)){
-    coreSlotInfo='ROM_SELECTED_IN_CORE_PICKER';
-    log('SEGA CORE SLOT BUILD2ND: ROM vybrana omylem do CORE pickeru: '+fname);
-    rescanCoreBridge('external:'+coreSlotInfo);
-    explainWrongCoreFile(fname, coreSlotInfo);
-    return;
-  }
-  toast('Nacitam realny core soubor: '+fname,3600);
-  try{
-    slot.loadExternalCoreFile(file,log,function(res){
-      coreSlotInfo=(res && res.status) ? res.status : 'CORE_SLOT_EXTERNAL_DONE_UNKNOWN';
-      rescanCoreBridge('external:'+coreSlotInfo);
-      if(coreSlotInfo==='UNSUPPORTED_CORE_FILE_EXTENSION'){
-        explainWrongCoreFile(fname, coreSlotInfo);
-        return;
-      }
-      if(coreSlotInfo==='WASM_STORED_JS_ADAPTER_REQUIRED'){
-        explainWasmNeedsGlue(fname, coreSlotInfo);
-        return;
-      }
-      if(coreSlotInfo==='EXTERNAL_JS_LOADED_BUT_NO_ADAPTER'){
-        explainJsLoadedNoAdapter(fname, coreSlotInfo);
-        return;
-      }
-      if(coreSlotInfo.indexOf('EXTERNAL_JS_LOAD_FAILED')===0 || coreSlotInfo.indexOf('EXTERNAL_JS_READ_FAILED')===0){
-        showMonitor('SEGA REAL CORE SLOT - CHYBA\n\nSoubor: '+fname+'\nStatus: '+coreSlotInfo);
-        toast('Core JS se nepodarilo nacist.',5200);
-        return;
-      }
-      var txt='SEGA REAL CORE SLOT - BUILD2ND\n\n';
-      txt+='Soubor: '+fname+'\n';
-      txt+='Status: '+coreSlotInfo+'\n';
-      txt+='Bridge: '+coreStatusLine()+'\n\n';
-      txt+='Pokud je adapter nalezeny a ROM uz byla vybrana, zkousim ROM znovu poslat do realneho core.\n';
-      if(lastRomInfo){
-        var r=attemptCoreLoad(lastRomInfo);
-        txt+='ROM resend: '+(r.status||'UNKNOWN')+'\n';
-      } else {
-        txt+='ROM resend: zatim neni vybrana ROM.\n';
-      }
-      showMonitor(txt);
-      toast(coreReady ? 'Realny core adapter nalezen.' : 'Soubor nacten, ale realny kompatibilni adapter API porad neni pripraven.',5200);
-    });
-  }catch(e){
-    coreSlotInfo='CORE_SLOT_EXTERNAL_FAILED:'+e.message;
-    showMonitor('SEGA REAL CORE SLOT - CHYBA\n\n'+coreSlotInfo);
-    toast('Core load chyba: '+e.message,4200);
-  }
-}
-
-function initSegaBridge(){
-  if(segaBridge) return segaBridge;
-  try{
-    if(!window.NAPSegaCoreBridge){
-      log('SEGA CORE BRIDGE BUILD2ND: nap_sega_core_bridge.js nenalezen');
-      coreReady=false;
-      return null;
-    }
-    segaBridge=new window.NAPSegaCoreBridge(document.getElementById('mdVideo'), log);
-    coreReady=!!segaBridge.init();
-    log('SEGA CORE BRIDGE BUILD2ND STATUS: '+segaBridge.getStatusLine());
-    return segaBridge;
-  }catch(e){
-    coreReady=false;
-    log('SEGA CORE BRIDGE BUILD2ND INIT ERROR: '+e.message);
-    return null;
-  }
-}
-function coreStatusLine(){
-  var b=initSegaBridge();
-  if(!b) return 'BRIDGE_SCRIPT_MISSING';
-  return b.getStatusLine();
-}
-function attemptCoreLoad(info){
-  var b=initSegaBridge();
-  if(!b) return {ok:false,status:'BRIDGE_SCRIPT_MISSING'};
-  var romBytes=(info && info.romBytes) ? info.romBytes : null;
-  var res=b.loadRom(romBytes,info || {});
-  coreReady=!!(res && res.ok);
-  return res || {ok:false,status:'CORE_LOAD_NO_RESULT'};
-}
-function segaInput(button,down){
-  var b=initSegaBridge();
-  var ok=false;
-  if(b) ok=down ? b.press(button) : b.release(button);
-  log('SEGA INPUT BUILD2ND '+(down?'DOWN ':'UP ')+button+' -> '+(ok?'SENT_TO_REAL_CORE':'CORE_NOT_READY'));
-  if(down && !ok) toast(button+' vstup pripraven. Ceka na realny core adapter.',1300);
-  return ok;
-}
-
-
-var CLOWNMD_OFFICIAL_URL='https://clownmdemu.clownacy.com/';
-function openClownMDEmu(reason){
-  try{
-    log('SEGA CLOWNMD BUILD2ND OPEN reason='+(reason||'manual')+' url='+CLOWNMD_OFFICIAL_URL+' ; prepinam cele WebView na oficialni ClownMDEmu web frontend');
-    toast('Oteviram oficialni ClownMDEmu frontend. Tam vyber ROM a spust hru.',5200);
-    showMonitor('CLOWNMDEMU OFFICIAL FRONTEND\n\nTed opoustim moji rozpracovanou JS cestu.\nOtevru oficialni ClownMDEmu web frontend.\n\nV nem vyber ROM soubor a zkus grafiku/zvuk.\n\nZadny fake Sonic. Toto je skutecny ClownMDEmu frontend.');
-  }catch(e){}
-  setTimeout(function(){ window.location.href=CLOWNMD_OFFICIAL_URL; },450);
-}
-
-function handleRomFile(file){
-  if(!file) return;
-  var reader=new FileReader();
-  toast('Nacitam ROM: '+file.name,3000);
-  reader.onerror=function(){toast('CHYBA: ROM soubor nejde precist.',4000);};
-  reader.onload=function(){
-    try{
-      var bytes=new Uint8Array(reader.result);
-      var info=analyzeRom(bytes,file.name);
-      lastRomInfo=info;
-      log('SEGA ROM HEADER BUILD2ND file='+info.name+' size='+info.len+' console='+info.consoleName+' title='+info.overseas+' region='+info.region+' crc32='+info.crc32);
-      if(!info.ok){
-        showMonitor('SEGA ROM CHECK\n\nCHYBA: header neobsahuje SEGA.\nSoubor: '+info.name+'\nVelikost: '+info.originalLen+' B');
-        toast('Tohle nevypada jako Mega Drive ROM.',4200);
-        return;
-      }
-      var coreRes=attemptCoreLoad(info);
-      var txt='SEGA ROM CHECK - OK\n';
-      txt+='BUILD2ND ROM PICKER FORCE + CORE BOOT STAGE15\n\n';
-      txt+='Soubor: '+info.name+'\n';
-      txt+='Format: '+info.format+'\n';
-      txt+='Velikost: '+Math.round(info.len/1024)+' KB\n';
-      txt+='Console: '+info.consoleName+'\n';
-      txt+='Title: '+(info.overseas||info.domestic)+'\n';
-      txt+='Serial: '+info.serial+'\n';
-      txt+='Region: '+info.region+'\n';
-      txt+='Header CRC: $'+hex4(info.hdrCrc)+'\n';
-      txt+='Calc CRC:   $'+hex4(info.calcCrc)+(info.hdrCrc===info.calcCrc?' OK':' DIFF')+'\n';
-      txt+='File CRC32: '+info.crc32+'\n\n';
-      txt+='CORE BRIDGE: '+(coreRes.status||'UNKNOWN')+'\n';
-      txt+='CANVAS: 320x224 real-core video target\n';
-      txt+='Zadny fake Sonic. Pokud chybi realny core adapter, hra se nespusti.';
-      if((coreRes.status||'').indexOf('ROM_LOAD_PROMISE_PENDING')===0){
-        hideMonitor();
-        toast('Core probe nastartovan - cekam na realny engine/obraz.',5200);
-      }else{
-        showMonitor(txt);
-        toast(coreRes.ok ? ('ROM poslana do realneho core: '+(info.overseas||info.domestic)) : ('ROM OK, core jeste chybi: '+(info.overseas||info.domestic)),5200);
-      }
-    }catch(e){
-      showMonitor('SEGA ROM CHECK\n\nCHYBA: '+e.message);
-      toast('ROM chyba: '+e.message,4200);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-['btnCollection','btnGames','cartSlot'].forEach(function(id){
-  var b=document.getElementById(id);
-  if(b) b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openClownMDEmu(id);},true);
-});
-var consoleBtn=document.getElementById('btnConsole');
-if(consoleBtn){
-  consoleBtn.addEventListener('pointerdown',function(e){
-    consoleLongPressFired=false;
-    clearTimeout(consoleLongPressTimer);
-    consoleLongPressTimer=setTimeout(function(){ consoleLongPressFired=true; openCorePicker(); },850);
-  },true);
-  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){
-    consoleBtn.addEventListener(ev,function(){ clearTimeout(consoleLongPressTimer); },true);
-  });
-  consoleBtn.addEventListener('click',function(e){
-    e.preventDefault(); e.stopPropagation();
-    if(consoleLongPressFired){ consoleLongPressFired=false; return; }
-    hideMonitor();
-    setScreenMode('console');
-    if(!lastRomInfo){
-      log('SEGA CONSOLE CLICK BUILD2ND: bez ROM nic nevynucuji; ROM vybirej pres HRY/SBIRKA/CARTRIDGE.');
-      drawRomPrompt('KONZOLE OK - VYBER ROM PRES HRY');
-      toast('KONZOLE: zadna nova grafika, zadny picker nasilu. Vyber ROM pres HRY.',3200);
-    }else{
-      toast('KONZOLE: ROM uz je vybrana, core probe zustava aktivni.',2600);
-    }
-  },true);
-}
-var joyBtn=document.getElementById('btnJoystick');
-if(joyBtn){
-  joyBtn.addEventListener('click',function(e){
-    e.preventDefault(); e.stopPropagation();
-    hideMonitor();
-    setScreenMode('joystick');
-    if(!lastRomInfo){
-      log('SEGA JOYSTICK CLICK BUILD2ND: bez ROM nic nevynucuji; cekam na HRY/SBIRKA/CARTRIDGE.');
-      drawRomPrompt('JOYSTICK OK - VYBER ROM PRES HRY');
-      toast('JOYSTICK: ovladani ceka na ROM. Vyber ROM pres HRY.',3200);
-    }else{
-      toast('JOYSTICK vstupy jsou aktivni pro vybranou ROM.',2600);
-    }
-  },true);
-}
-function bindButtonInput(id,button){
-  var b=document.getElementById(id);
-  if(!b) return;
-  b.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{b.setPointerCapture(e.pointerId);}catch(_e){}segaInput(button,true);},true);
-  b.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();segaInput(button,false);},true);
-  b.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();segaInput(button,false);},true);
-  b.addEventListener('pointerleave',function(e){if(e.buttons){segaInput(button,false);}},true);
-  b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);
-}
-function dpadDirectionFromEvent(e){
-  var b=document.getElementById('dpad');
-  if(!b) return null;
-  var r=b.getBoundingClientRect();
-  var x=(e.clientX-r.left)/Math.max(1,r.width)-0.5;
-  var y=(e.clientY-r.top)/Math.max(1,r.height)-0.5;
-  if(Math.abs(x)<0.12 && Math.abs(y)<0.12) return null;
-  return Math.abs(x)>Math.abs(y) ? (x<0?'LEFT':'RIGHT') : (y<0?'UP':'DOWN');
-}
-function setDpadDir(dir){
-  if(activeDpadDir===dir) return;
-  if(activeDpadDir) segaInput(activeDpadDir,false);
-  activeDpadDir=dir;
-  if(activeDpadDir) segaInput(activeDpadDir,true);
-}
-bindButtonInput('btnA','A');
-bindButtonInput('btnB','B');
-bindButtonInput('btnC','C');
-bindButtonInput('btnStart','START');
-var dpadEl=document.getElementById('dpad');
-if(dpadEl){
-  dpadEl.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{dpadEl.setPointerCapture(e.pointerId);}catch(_e){}setDpadDir(dpadDirectionFromEvent(e));},true);
-  dpadEl.addEventListener('pointermove',function(e){if(e.buttons){e.preventDefault();e.stopPropagation();setDpadDir(dpadDirectionFromEvent(e));}},true);
-  dpadEl.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);
-  dpadEl.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);
-  dpadEl.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);
-}
-
-function buildLogText(){
-  var txt='SEGA LOG / BUILD2ND\n';
-  txt+='AtariHelp.eu EMU-10 BUILD2ND_SEGA_CLOWNMD_WEB_FRONTEND_DIRECT_STAGE17\n\n';
-  txt+='STAV:\n';
-  txt+='- monitor ma real-core video canvas 320x224\n';
-  txt+='- ROM picker/header audit aktivni\n';
-  txt+='- LOG tlacitko uklada TXT pres nativni AHSAVE do Downloads/AtariHelp\n';
-  txt+='- core bridge hleda realny adapter, zadna fake emulace\n';
-  txt+='- ROM neni v APK ani v ZIPu\n';
-  txt+='- BUILD2ND: HRY/SBIRKA/CARTRIDGE otevre oficialni ClownMDEmu web frontend\n';
-  txt+='- CORE STATUS: '+coreStatusLine()+'\n';
-  txt+='- CORE SLOT STATUS: '+coreSlotInfo+'\n';
-  txt+='- CORE SLOT: autoload hleda lokalni adaptery; dlouhy stisk KONZOLE je jen pro .js/.wasm adapter, ne pro ROM\n';
-  txt+='- KONZOLE/JOYSTICK: moje grafika je vypnuta; nespousti zadne moje obludy\n\n';
-  if(lastRomInfo){
-    txt+='POSLEDNI ROM:\n';
-    txt+='soubor: '+lastRomInfo.name+'\n';
-    txt+='title: '+(lastRomInfo.overseas||lastRomInfo.domestic)+'\n';
-    txt+='region: '+lastRomInfo.region+'\n';
-    txt+='crc32: '+lastRomInfo.crc32+'\n\n';
-  }else{
-    txt+='POSLEDNI ROM: zatim nic nenacteno\n';
-    txt+='TEST STAV: ROM jeste nebyla vybrana, takze core jeste nemel co spustit. Klikni HRY / SBIRKA / CARTRIDGE, monitor, KONZOLE nebo ULOZENE a vyber Sonic/Aladdin. Kratky LOG bez ROM ted otevre ROM picker; dlouhy LOG ulozi TXT.\n\n';
-  }
-  txt+='POSLEDNI UDALOSTI:\n'+(segaLog.length?segaLog.slice(-18).join('\n'):'zadne');
-  return txt;
-}
-function pad2(n){return ('0'+n).slice(-2);}
-function logFileName(){
-  var d=new Date();
-  return 'AtariHelp_SEGA_LOG_'+d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+'_'+pad2(d.getHours())+pad2(d.getMinutes())+pad2(d.getSeconds())+'.txt';
-}
-function b64utf8(txt){
-  try{return btoa(unescape(encodeURIComponent(txt)));}catch(e){try{return btoa(txt);}catch(_){return '';}}
-}
-function tryAndroidSaveText(filename,txt){
-  // BUILD2ND: realni nativni bridge v tehle appce neni window.Android, ale AHSAVE.
-  // MainActivity uz dlouho umi AHSAVE.save(name,text) a uklada do Downloads/AtariHelp.
-  try{
-    if(window.AHSAVE && typeof window.AHSAVE.save==='function'){
-      var res=window.AHSAVE.save(filename,txt);
-      log('SEGA LOG DOWNLOAD BUILD2ND: AHSAVE.save -> '+res);
-      window.__segaLastSaveResult=res||('DOWNLOADS_OK: Downloads/AtariHelp/'+filename);
-      return true;
-    }
-  }catch(e0){ log('SEGA LOG DOWNLOAD BUILD2ND: AHSAVE.save failed '+e0.message); }
-  try{
-    if(window.AHSAVE && typeof window.AHSAVE.saveBase64==='function'){
-      var res2=window.AHSAVE.saveBase64(filename,b64utf8(txt));
-      log('SEGA LOG DOWNLOAD BUILD2ND: AHSAVE.saveBase64 -> '+res2);
-      window.__segaLastSaveResult=res2||('DOWNLOADS_OK: Downloads/AtariHelp/'+filename);
-      return true;
-    }
-  }catch(e00){ log('SEGA LOG DOWNLOAD BUILD2ND: AHSAVE.saveBase64 failed '+e00.message); }
-  try{
-    if(window.Android){
-      var b64=b64utf8(txt);
-      var methods=[
-        ['saveSegaLog',[txt,filename]],
-        ['saveLog',[txt,filename]],
-        ['saveTextToDownloads',[filename,txt]],
-        ['saveTextFile',[filename,txt]],
-        ['downloadText',[filename,txt]],
-        ['saveFile',[filename,txt]],
-        ['saveBase64ToDownloads',[filename,b64,'text/plain']],
-        ['saveBase64File',[filename,b64,'text/plain']]
-      ];
-      for(var i=0;i<methods.length;i++){
-        var name=methods[i][0], args=methods[i][1];
-        if(typeof window.Android[name]==='function'){
-          window.Android[name].apply(window.Android,args);
-          log('SEGA LOG DOWNLOAD BUILD2ND: Android.'+name+' -> '+filename);
-          window.__segaLastSaveResult='ANDROID_OK: '+name+' '+filename;
-          return true;
-        }
-      }
-    }
-  }catch(e){ log('SEGA LOG DOWNLOAD BUILD2ND: Android save failed '+e.message); }
-  return false;
-}
-function tryBrowserDownload(filename,txt){
-  try{
-    var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');
-    a.href=url;
-    a.download=filename;
-    a.style.display='none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function(){try{URL.revokeObjectURL(url);a.remove();}catch(e){}},1600);
-    log('SEGA LOG DOWNLOAD BUILD2ND: browser download -> '+filename);
-    return true;
-  }catch(e){ log('SEGA LOG DOWNLOAD BUILD2ND: blob download failed '+e.message); }
-  try{
-    var a2=document.createElement('a');
-    a2.href='data:text/plain;charset=utf-8,'+encodeURIComponent(txt);
-    a2.download=filename;
-    a2.style.display='none';
-    document.body.appendChild(a2);
-    a2.click();
-    setTimeout(function(){try{a2.remove();}catch(e){}},1600);
-    log('SEGA LOG DOWNLOAD BUILD2ND: data download -> '+filename);
-    return true;
-  }catch(e2){ log('SEGA LOG DOWNLOAD BUILD2ND: data download failed '+e2.message); }
-  return false;
-}
-function saveLogToDownloads(txt){
-  var filename=logFileName();
-  var ok=tryAndroidSaveText(filename,txt) || tryBrowserDownload(filename,txt);
-  try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt); } }catch(e){}
-  if(ok){
-    var res=window.__segaLastSaveResult||('Downloads/AtariHelp/'+filename);
-    log('SEGA LOG DOWNLOAD BUILD2ND: ulozeno bez zobrazeni pres monitor overlay -> '+res);
-    toast('LOG ulozen: '+filename,4200);
-  } else {
-    toast('LOG zobrazen v monitoru, automaticke ulozeni selhalo.',4200);
-  }
-  return ok;
-}
-function showSegaLog(showOnScreen){
-  var txt=buildLogText();
-  var ok=saveLogToDownloads(txt);
-  if(showOnScreen || !ok){
-    showMonitor(ok ? ('LOG ULOZEN DO DOWNLOADS/ATARIHELP\n\nDLOUHY LOG JE V TXT SOUBORU.\nTENTO NAHLED JE JEN SERVISNI, NE HRA.') : txt);
-  }else{
-    hideMonitor();
-  }
-}
-
-function bindRomPickerHotZones(){
-  ['mdVideo','monitorBlank','genesisMount'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(!el) return;
-    el.addEventListener('click',function(e){
-      if(lastRomInfo) return;
-      e.preventDefault(); e.stopPropagation();
-      log('SEGA ROM HOTZONE BUILD2ND: '+id+' klik bez ROM -> bez vynuceni pickeru, jen instrukce. ROM vybirej pres HRY/SBIRKA/CARTRIDGE.');
-      drawRomPrompt('VYBER ROM PRES HRY / SBIRKA / CARTRIDGE');
-      toast('ROM vybirej pres HRY / SBIRKA / CARTRIDGE. Nic neblokuju.',3600);
-    },true);
-  });
-}
-bindRomPickerHotZones();
-
-function bindSavesButton(){
-  var saves=document.getElementById('btnSaves');
-  if(!saves) return;
-  var timer=0, long=false;
-  saves.addEventListener('pointerdown',function(e){ long=false; clearTimeout(timer); timer=setTimeout(function(){ long=true; showSegaLog(true); },850); },true);
-  saves.addEventListener('pointerup',function(e){
-    clearTimeout(timer);
-    if(!long){
-      e.preventDefault(); e.stopPropagation();
-      if(!lastRomInfo){
-        log('SEGA LOG BUTTON BUILD2ND: kratky klik bez ROM uklada log; ROM picker jen HRY/SBIRKA/CARTRIDGE.');
-        showSegaLog(false);
-      }else{
-        showSegaLog(false);
-      }
-    }
-  },true);
-  saves.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); },true);
-}
-bindSavesButton();
-var manuals=document.getElementById('btnManuals');
-if(manuals) manuals.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor('NAVODY - SEGA MEGA DRIVE\n\nSBIRKA / HRY / CARTRIDGE SLOT:\n- vyber .gen / .bin / .md / .smd ROM\n\nOVLADANI:\n- D-PAD vlevo\n- A/B/C vpravo\n- START uprostred\n\nBUILD2ND:\n- real ROM picker\n- real header/checksum audit\n- video canvas 320x224\n- core bridge pro realny Mega Drive adapter\n- core picker rozlisuje ROM omyl vs .js/.wasm adapter\n- adapter zkousi lokalni/online lrusso Genesis/PicoDrive pres fetchText + closure-eval\n- BUILD2ND: opravena poskozena PNG grafika; zadna moje nova konzolova grafika\n- normalni klik ULOZENE jen ulozi log a neprekryje monitor\n- zadna fake emulace');},true);
-var web=document.getElementById('btnWeb');
-if(web) web.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openWeb('https://atarihelp.eu/');},true);
-var coreInp=document.getElementById('coreInput');
-if(coreInp) coreInp.addEventListener('change',function(){ handleCoreFile(coreInp.files && coreInp.files[0]); },false);
-var inp=document.getElementById('romInput');
-if(inp) inp.addEventListener('change',function(){
-  var f=inp.files && inp.files[0];
-  log('SEGA ROM PICKER BUILD2ND CHANGE file='+(f && f.name ? f.name : 'NONE_OR_CANCEL'));
-  handleRomFile(f);
-},false);
-initSegaBridge();
-startCoreSlotAutoload();
-setTimeout(function(){ if(!lastRomInfo){ drawRomPrompt('CLOWNMD FRONTEND - KLIKNI HRY'); } },650);
-log('AtariHelp.eu EMU-10 '+BUILD+' pripraven - SEGA monitor canvas 320x224, ROM picker/header audit, LOG do Downloads; zadny ROM v APK, zadny fake Sonic.');
-log('SEGA VIDEO CANVAS BUILD2ND: monitor ma 320x224 canvas pro realny Mega Drive core vystup.');
-log('SEGA LOG DOWNLOAD BUILD2ND: ULOZENE uklada TXT pres AHSAVE.save do Downloads/AtariHelp; normalni klik uz nezobrazuje log pres monitor, aby nevznikal obraz-v-obraze.');
-log('SEGA CLOWNMD BUILD2ND: HRY/SBIRKA/CARTRIDGE otevre oficialni ClownMDEmu web frontend '+CLOWNMD_OFFICIAL_URL+'; lokalni lrusso pokus vypnut.');
-log('SEGA CLOWNMD BUILD2ND: misto dalsiho lakovani se pouzije oficialni ClownMDEmu frontend; ROM vyberes az uvnitr oficialni stranky.');
-toast('BUILD2ND: HRY/SBIRKA/CARTRIDGE otevre oficialni ClownMDEmu frontend.',5200);
+function pushLog(t){var line=new Date().toLocaleTimeString()+' '+t;logLines.push(line);if(logLines.length>120)logLines.shift();try{console.log('[NAP SEGA] '+t);}catch(e){}return line;}
+function toast(t,ms){var el=document.getElementById('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__segaToastTimer);window.__segaToastTimer=setTimeout(function(){el.classList.remove('show');},ms||2600);}
+function showMonitor(t){var ov=document.getElementById('monitorOverlay'),tx=document.getElementById('monitorText');if(tx)tx.textContent=t;if(ov)ov.classList.add('show');}
+function hideMonitor(){var ov=document.getElementById('monitorOverlay');if(ov)ov.classList.remove('show');}
+function drawPrompt(msg){try{var c=document.getElementById('mdVideo');if(!c||!c.getContext)return;var ctx=c.getContext('2d',{alpha:false})||c.getContext('2d');ctx.fillStyle='#020611';ctx.fillRect(0,0,320,224);var g=ctx.createRadialGradient(160,95,8,160,112,190);g.addColorStop(0,'#06386c');g.addColorStop(.65,'#030b16');g.addColorStop(1,'#000');ctx.fillStyle=g;ctx.fillRect(0,0,320,224);for(var y=0;y<224;y+=7){ctx.fillStyle='rgba(60,150,255,.12)';ctx.fillRect(22,y,276,1);}ctx.strokeStyle='rgba(90,185,255,.55)';ctx.lineWidth=2;ctx.strokeRect(24,24,272,176);ctx.textAlign='center';ctx.fillStyle='#bfe9ff';ctx.font='bold 15px monospace';ctx.fillText('CLOWNMDEMU WEB CORE',160,64);ctx.fillStyle='#d9f4ff';ctx.font='bold 11px monospace';ctx.fillText('HRY / SBIRKA / CARTRIDGE',160,106);ctx.fillText('OTEVRE OFICIALNI FRONTEND',160,124);ctx.fillStyle='rgba(255,220,120,.95)';ctx.font='bold 10px monospace';ctx.fillText(msg||'ZADNY FAKE - CEKAM NA CLOWNMD',160,172);}catch(e){pushLog('PROMPT DRAW FAILED '+(e.message||String(e)));}}
+function focusFrame(){var fr=document.getElementById('clownFrame');if(!fr)return false;var ok=false;try{fr.focus();ok=true;}catch(e){pushLog('CLOWNMD FRAME focus element failed '+e.message);}try{if(fr.contentWindow&&typeof fr.contentWindow.focus==='function'){fr.contentWindow.focus();ok=true;}}catch(e2){pushLog('CLOWNMD FRAME focus window blocked '+e2.message);}return ok;}
+function openClown(reason){hideMonitor();var wrap=document.getElementById('clownFrameWrap'),fr=document.getElementById('clownFrame'),canvas=document.getElementById('mdVideo'),blank=document.getElementById('monitorBlank');if(!wrap||!fr){toast('Chybi iframe pro ClownMDEmu.',4000);return;}if(canvas)canvas.style.display='none';if(blank)blank.style.display='none';wrap.style.display='block';if(!frameLoaded){pushLog('BUILD2NE CLOWNMD FRAME OPEN reason='+reason+' url='+CLOWN_URL);fr.onload=function(){pushLog('BUILD2NE CLOWNMD FRAME onload - oficialni frontend nacten do monitoru');toast('ClownMDEmu je v nasi obrazovce. V monitoru: Software -> vyber ROM.',5200);focusFrame();};fr.src=CLOWN_URL;frameLoaded=true;toast('Nacitám ClownMDEmu do nasi obrazovky...',4200);}else{pushLog('BUILD2NE CLOWNMD FRAME FOCUS reason='+reason);toast('ClownMDEmu uz bezi v monitoru.',2500);focusFrame();}}
+function keyDef(btn){var m={UP:['ArrowUp','ArrowUp',38],DOWN:['ArrowDown','ArrowDown',40],LEFT:['ArrowLeft','ArrowLeft',37],RIGHT:['ArrowRight','ArrowRight',39],A:['z','KeyZ',90],B:['x','KeyX',88],C:['c','KeyC',67],START:['Enter','Enter',13]};return m[btn]||null;}
+function makeKeyEvent(type,def){var ev=new KeyboardEvent(type,{key:def[0],code:def[1],bubbles:true,cancelable:true});try{Object.defineProperty(ev,'keyCode',{get:function(){return def[2];}});Object.defineProperty(ev,'which',{get:function(){return def[2];}});}catch(e){}return ev;}
+function sendKey(btn,down){if(!frameLoaded)openClown('button:'+btn);var fr=document.getElementById('clownFrame');var def=keyDef(btn);if(!def||!fr){lastKeyStatus='NO_FRAME_OR_KEYDEF';return false;}var type=down?'keydown':'keyup';var ok=false,detail=[];focusFrame();try{fr.contentWindow.dispatchEvent(makeKeyEvent(type,def));ok=true;detail.push('contentWindow.dispatchEvent OK');}catch(e){detail.push('contentWindow.dispatchEvent BLOCKED '+(e.message||String(e)));}
+try{window.dispatchEvent(makeKeyEvent(type,def));document.dispatchEvent(makeKeyEvent(type,def));detail.push('parent.dispatchEvent OK');}catch(e2){detail.push('parent.dispatchEvent FAILED '+(e2.message||String(e2)));}
+lastKeyStatus=(ok?'KEY_SENT_TO_FRAME':'KEY_SENT_PARENT_ONLY_OR_BLOCKED')+' '+btn+' '+type+' '+detail.join(' | ');pushLog('BUILD2NE INPUT '+btn+' '+type+' -> '+lastKeyStatus);if(down&&!ok)toast(btn+': iframe muze blokovat synteticke klavesy. Klepni do hry / testni HW klavesnici.',2500);return ok;}
+function bindKeyButton(id,btn){var el=document.getElementById(id);if(!el)return;el.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{el.setPointerCapture(e.pointerId);}catch(_){}sendKey(btn,true);},true);el.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();sendKey(btn,false);},true);el.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();sendKey(btn,false);},true);el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
+function dpadDirectionFromEvent(e){var b=document.getElementById('dpad');if(!b)return null;var r=b.getBoundingClientRect();var x=(e.clientX-r.left)/Math.max(1,r.width)-.5;var y=(e.clientY-r.top)/Math.max(1,r.height)-.5;if(Math.abs(x)<.12&&Math.abs(y)<.12)return null;return Math.abs(x)>Math.abs(y)?(x<0?'LEFT':'RIGHT'):(y<0?'UP':'DOWN');}
+function setDpadDir(dir){if(activeDpadDir===dir)return;if(activeDpadDir)sendKey(activeDpadDir,false);activeDpadDir=dir;if(activeDpadDir)sendKey(activeDpadDir,true);}
+function buildLogText(){return 'SEGA LOG / BUILD2NE\nAtariHelp.eu EMU-10 '+BUILD+'\n\nSTAV:\n- original Sega skin zachovan\n- HRY/SBIRKA/CARTRIDGE otevre oficialni ClownMDEmu frontend do nasi monitorove obrazovky\n- Sonic v oficialnim ClownMDEmu byl uz overen uzivatelem ve WebView/Nox\n- nase tlacitka A/B/C/START/D-PAD zkousi posilat defaultni ClownMDEmu klavesy: Z/X/C/Enter/sipky\n- ROM neni v APK ani v ZIPu\n- zadny fake gameplay\n- posledni key status: '+lastKeyStatus+'\n- frameLoaded: '+frameLoaded+'\n\nPOSLEDNI UDALOSTI:\n'+(logLines.length?logLines.slice(-30).join('\n'):'zadne');}
+function pad2(n){return ('0'+n).slice(-2);}function logFileName(){var d=new Date();return 'AtariHelp_SEGA_LOG_'+d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+'_'+pad2(d.getHours())+pad2(d.getMinutes())+pad2(d.getSeconds())+'.txt';}
+function saveLog(){var txt=buildLogText(),fn=logFileName(),ok=false;try{if(window.AHSAVE&&typeof window.AHSAVE.save==='function'){window.AHSAVE.save(fn,txt);ok=true;}}catch(e){pushLog('AHSAVE.save failed '+e.message);}if(!ok){try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1200);ok=true;}catch(e2){showMonitor(txt);}}pushLog('BUILD2NE LOG SAVE '+(ok?'OK ':'FAILED ')+fn);toast(ok?'LOG ulozen: '+fn:'LOG zobrazen v monitoru',3200);}
+['btnCollection','btnGames','cartSlot'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openClown(id);},true);});
+var con=document.getElementById('btnConsole');if(con)con.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openClown('console');toast('KONZOLE: ClownMDEmu v monitoru, moje grafika vypnuta.',2600);},true);
+var joy=document.getElementById('btnJoystick');if(joy)joy.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openClown('joystick');toast('JOYSTICK: focus na ClownMDEmu, tlacitka zkousi klavesy.',2800);},true);
+var mon=document.getElementById('mdVideo');if(mon)mon.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openClown('monitor');},true);
+var blank=document.getElementById('monitorBlank');if(blank)blank.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openClown('monitorBlank');},true);
+bindKeyButton('btnA','A');bindKeyButton('btnB','B');bindKeyButton('btnC','C');bindKeyButton('btnStart','START');
+var dpad=document.getElementById('dpad');if(dpad){dpad.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{dpad.setPointerCapture(e.pointerId);}catch(_){}setDpadDir(dpadDirectionFromEvent(e));},true);dpad.addEventListener('pointermove',function(e){if(e.buttons){e.preventDefault();e.stopPropagation();setDpadDir(dpadDirectionFromEvent(e));}},true);dpad.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);dpad.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);dpad.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
+var saves=document.getElementById('btnSaves');if(saves)saves.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();saveLog();},true);
+var man=document.getElementById('btnManuals');if(man)man.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor('BUILD2NE - CLOWNMDEMU V NASI OBRAZOVCE\n\nHRY / SBIRKA / CARTRIDGE:\n- nacte oficialni ClownMDEmu frontend do monitoru\n- v monitoru pouzij menu Software a vyber ROM\n\nNASE TLACITKA:\n- D-PAD = sipky\n- A = Z\n- B = X\n- C = C\n- START = Enter\n\nPoznamka: pokud WebView blokuje synteticke klavesy do iframe, log napise KEY...BLOCKED. Pak dalsi krok je native WebView KeyEvent bridge, ne dalsi grafika.');},true);
+var web=document.getElementById('btnWeb');if(web)web.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();try{location.href='https://atarihelp.eu/';}catch(_){}});
+drawPrompt('KLIKNI HRY / CARTRIDGE');pushLog('AtariHelp.eu EMU-10 '+BUILD+' pripraven - ClownMDEmu se bude nacitat primo do nasi Sega obrazovky; zadny fake Sonic.');toast('BUILD2NE: klikni HRY/CARTRIDGE, ClownMDEmu se otevre v nasi obrazovce.',5200);
 })();
 </script>
 </body>
