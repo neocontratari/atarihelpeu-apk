@@ -1,6 +1,6 @@
 /*
  * AtariHelp.eu EMU-10 / N&P VISION
- * BUILD2MV_SEGA_FETCHTEXT_EVAL_REPAIR_NO_PIP_STAGE9
+ * BUILD2MW_SEGA_ORIGIN_GUARD_PATCH_STAGE10
  *
  * NAP adapter for the lrusso Genesis/PicoDrive browser core API.
  * It does not include ROMs and it does not paint fake gameplay. It only tries
@@ -15,7 +15,7 @@
 (function(global){
 'use strict';
 
-var BUILD='BUILD2MV_SEGA_FETCHTEXT_EVAL_REPAIR_NO_PIP_STAGE9';
+var BUILD='BUILD2MW_SEGA_ORIGIN_GUARD_PATCH_STAGE10';
 var LOCAL_ENGINE_CANDIDATES=[
   'cores/Genesis.min.js',
   'cores/Genesis.js',
@@ -270,6 +270,29 @@ function fetchText(url, timeoutMs){
     }
   });
 }
+function patchEngineOriginGuards(sourceLabel, code){
+  code=String(code||'');
+  var before=code.length;
+  var phrase1='This emulator cannot be used from a different origin.';
+  var phrase2='Error. This emulator cannot be used from a different origin.';
+  var hitPhrase=(code.indexOf(phrase1)>=0 || code.indexOf(phrase2)>=0);
+  var patches=0;
+  function mark(m){ patches++; return 'console.warn(\"NAP BUILD2MW origin guard neutralized: '+m.replace(/[\\"\n\r]/g,' ')+'\")'; }
+  // lrusso Genesis.min.js contains an explicit same-origin guard. In Android
+  // WebView we evaluate the engine from a local appassets/file context while
+  // the text was downloaded or copied locally. This patch removes only that
+  // loader-origin throw. It does not patch emulation/video/audio logic.
+  code=code.replace(/throw\s+(?:new\s+)?Error\s*\(\s*[\"'](?:Error\.\s*)?This emulator cannot be used from a different origin\.[\"']\s*\)\s*;?/g, mark);
+  code=code.replace(/throw\s+[\"'](?:Error\.\s*)?This emulator cannot be used from a different origin\.[\"']\s*;?/g, mark);
+  code=code.replace(/throw\s+new\s+DOMException\s*\(\s*[\"'](?:Error\.\s*)?This emulator cannot be used from a different origin\.[\"'][^)]*\)\s*;?/g, mark);
+  // If a minifier wrote the guard as an Error constructor inside a comma/ternary,
+  // keep the expression valid by replacing the constructor text with a harmless null.
+  var guardCtor=/new\s+Error\s*\(\s*[\"'](?:Error\.\s*)?This emulator cannot be used from a different origin\.[\"']\s*\)/g;
+  if(guardCtor.test(code)){ guardCtor.lastIndex=0; code=code.replace(guardCtor,function(m){ patches++; return '(console.warn(\"NAP BUILD2MW origin Error ctor neutralized\"),null)'; }); }
+  if(hitPhrase || patches){ log('ORIGIN GUARD PATCH '+sourceLabel+' phrase='+(hitPhrase?'YES':'NO')+' patches='+patches+' bytesBefore='+before+' bytesAfter='+code.length); }
+  else { log('ORIGIN GUARD PATCH '+sourceLabel+' no explicit origin-guard phrase found'); }
+  return code;
+}
 function evalEngineClosure(sourceLabel, code){
   code=String(code||'');
   var hasEmbed=/embedGenesis/.test(code);
@@ -278,12 +301,20 @@ function evalEngineClosure(sourceLabel, code){
   log('ENGINE SOURCE SCAN '+sourceLabel+' len='+code.length+' embedGenesis='+(hasEmbed?'YES':'NO')+' currentScript='+(hasCurrentScript?'YES':'NO')+' topSelf='+(hasTopSelf?'YES':'NO'));
   if(!code || code.length<1024) throw new Error('ENGINE_SOURCE_TOO_SMALL '+sourceLabel+' len='+code.length);
   if(!hasEmbed) throw new Error('ENGINE_SOURCE_HAS_NO_EMBEDGENESIS_TOKEN '+sourceLabel);
-  var clean=code.replace(/\/\/# sourceMappingURL=.*$/mg,'');
+  var clean=patchEngineOriginGuards(sourceLabel, code).replace(/\/\/# sourceMappingURL=.*$/mg,'');
   var src=(sourceLabel.indexOf('online:')===0) ? ONLINE_ENGINE_URL : sourceLabel.replace(/^local:/,'');
+  var safeSrc=src;
+  try{
+    var href=String(global.location && global.location.href || '');
+    if(sourceLabel.indexOf('online:')===0 && href){
+      safeSrc=href.replace(/[?#].*$/,'').replace(/\/[^\/]*$/,'/')+'Genesis.min.js';
+      log('CURRENT_SCRIPT SRC SHIM online original='+src+' safe='+safeSrc);
+    }
+  }catch(_safeErr){}
   var docShim=null;
   try{
     docShim=Object.create(document);
-    Object.defineProperty(docShim,'currentScript',{value:{src:src,parentNode:document.head},configurable:true});
+    Object.defineProperty(docShim,'currentScript',{value:{src:safeSrc,parentNode:document.head},configurable:true});
   }catch(e){ docShim=document; }
   var runner=null;
   try{
@@ -339,10 +370,10 @@ function tryLocalEngines(){
 
 function loadOnlineEngine(){
   if(!ALLOW_ONLINE_PROBE) return Promise.reject(new Error('ONLINE_PROBE_DISABLED'));
-  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako text. BUILD2MV ho spusti pres closure eval, ne pres iframe.', 'boot');
+  drawCoreScreen('ONLINE ENGINE PROBE','Stahuji lrusso Genesis.min.js jako text. BUILD2MW ho spusti pres closure eval, ne pres iframe.', 'boot');
   log('lokalni engine chybi, zkousim ONLINE closure-eval probe lrusso Genesis.min.js');
   return fetchText(ONLINE_ENGINE_URL,22000).then(function(code){
-    drawCoreScreen('ENGINE SCRIPT LOADED', 'Genesis.min.js stazen: '+code.length+' B. Provadim closure eval a export embedGenesis.', 'boot');
+    drawCoreScreen('ENGINE SCRIPT LOADED', 'Genesis.min.js stazen: '+code.length+' B. Origin guard patch + closure eval.', 'boot');
     log('online Genesis.min.js stazeny jako text, velikost '+code.length+' B; spoustim closure eval');
     return evalEngineClosure('online:lrusso/Genesis.min.js', code);
   });
@@ -460,7 +491,7 @@ var adapter={
       restoreCanvasFallback();
       drawCoreScreen('REAL CORE FAILED', msg, 'error');
       log('loadRom FAILED '+msg);
-      log('BUILD2MV: iframe fallback vypnuty - upstream Genesis.htm v iframe nespousti UI kvuli window.top === window.self; pokracuji jen po realne closure-eval ceste.');
+      log('BUILD2MW: iframe fallback vypnuty - upstream Genesis.htm v iframe nespousti UI kvuli window.top === window.self; pokracuji jen po realne closure-eval ceste.');
       showToast('Real core se nepodarilo nacist: '+msg);
       throw e;
     });

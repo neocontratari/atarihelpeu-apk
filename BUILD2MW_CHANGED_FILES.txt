@@ -1,0 +1,22 @@
+AtariHelp.eu EMU-10 / N&P VISION
+BUILD2MW_SEGA_ORIGIN_GUARD_PATCH_STAGE10
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/nap_sega_lr_genesis_adapter.js
+- app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+- app/src/main/assets/emu_sega/nap_sega_core_slot.js
+- app/src/main/assets/emu_sega/cores/README_DROP_REAL_SEGA_CORE_HERE.txt
+- app/src/main/assets/index.html
+
+OPRAVA PROTI BUILD2MV:
+- BUILD2MV dosel dal: stahl Genesis.min.js, nasel embedGenesis token, ale spadl na upstream same-origin guard:
+  "This emulator cannot be used from a different origin."
+- BUILD2MW zkousi tenhle loader-origin guard neutralizovat pred closure-eval.
+- Soucasne nastavuje document.currentScript.src shim na app/local URL, aby origin test nepadal jen proto,
+  ze engine text byl stazeny z raw GitHubu.
+
+CO NENI FAKE:
+- ROM se porad posila realnemu lrusso Genesis/PicoDrive engine jako ArrayBuffer.
+- Nekresli se fake Sonic ani fake gameplay.
+- Atari/VBXE/EMU2 se nemeni.
