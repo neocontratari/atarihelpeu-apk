@@ -1,0 +1,15 @@
+BUILD2NF_SEGA_CLOWNMD_FIT_KEYS_STAGE19
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+
+NEZMENENO:
+- original Sega skin PNG zustava stejny
+- Atari/VBXE/EMU2 beze zmeny
+- ROM neni v APK/ZIP
+
+OPRAVY:
+- A/B/C/D-PAD hitboxy presunute na skutecnou polohu ovladace ve skinu
+- KONZOLE = menu rezim pro oficialni ClownMDEmu Software/ROM vyber
+- JOYSTICK = herni vyrez/crop, schova horni ClownMDEmu menu a lepe vycentruje obraz v monitoru
+- odesilani klaves do iframe rozsireno na keydown+keypress+keyup a vice targetu
