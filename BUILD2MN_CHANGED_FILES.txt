@@ -1,0 +1,13 @@
+BUILD2MN changed/new files:
+
+CHANGED:
+app/src/main/assets/emu_sega/index.html
+
+NEW:
+app/src/main/assets/emu_sega/nap_sega_core_bridge.js
+BUILD2MN_README_TEST_PLAN.txt
+BUILD2MN_CHANGED_FILES.txt
+
+UNCHANGED BUT INCLUDED FOR SAFETY:
+app/src/main/assets/index.html
+app/src/main/assets/emu_sega/sega_megadrive_screen.png

@@ -29,12 +29,13 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #dpad{left:14.3%;top:49.3%;width:22.0%;height:15.4%;}
 #monitorBlank{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:5;border-radius:20px;overflow:hidden;background:radial-gradient(circle at 50% 45%,rgba(5,24,45,.92) 0%,rgba(0,0,0,.98) 70%);border:1px solid rgba(80,170,255,.30);box-shadow:0 0 34px rgba(0,102,255,.25) inset,0 0 18px rgba(0,0,0,.75);}
 #monitorBlank:after{content:"SEGA MEGA DRIVE\A READY";white-space:pre;position:absolute;left:0;right:0;top:40%;text-align:center;color:rgba(144,216,255,.50);font:900 clamp(10px,2.8vw,18px)/1.3 "Courier New",monospace;text-shadow:0 0 12px rgba(0,112,255,.55);letter-spacing:.08em;}
-#monitorOverlay{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:6;display:none;align-items:center;justify-content:center;border-radius:20px;overflow:hidden;background:rgba(0,0,0,.86);border:1px solid rgba(80,170,255,.38);box-shadow:0 0 28px rgba(0,102,255,.25) inset;}
+#mdVideo{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:6;border-radius:20px;background:#000;image-rendering:pixelated;image-rendering:crisp-edges;display:block;}
+#monitorOverlay{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:7;display:none;align-items:center;justify-content:center;border-radius:20px;overflow:hidden;background:rgba(0,0,0,.86);border:1px solid rgba(80,170,255,.38);box-shadow:0 0 28px rgba(0,102,255,.25) inset;}
 #monitorOverlay.show{display:flex;}
 #monitorText{white-space:pre-wrap;text-align:left;width:88%;max-height:84%;overflow:hidden;color:#d9ecff;text-shadow:0 0 8px rgba(0,120,255,.7);font:900 clamp(9px,2.3vw,16px)/1.34 "Courier New",monospace;}
 .toast{position:absolute;left:5%;right:5%;bottom:11%;z-index:10;display:none;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.84);border:1px solid rgba(75,155,255,.55);color:#d9ecff;font:900 13px/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
-#logBadge{position:absolute;z-index:7;left:20.4%;top:94.15%;width:11.0%;text-align:center;pointer-events:none;color:#8fd8ff;font:900 clamp(9px,2.3vw,16px) "Courier New",monospace;text-shadow:0 0 10px #0076ff,0 0 18px #0076ff;letter-spacing:.08em;}
+#logBadge{position:absolute;z-index:8;left:20.4%;top:94.15%;width:11.0%;text-align:center;pointer-events:none;color:#8fd8ff;font:900 clamp(9px,2.3vw,16px) "Courier New",monospace;text-shadow:0 0 10px #0076ff,0 0 18px #0076ff;letter-spacing:.08em;}
 input[type=file]{display:none;}
 </style>
 </head>
@@ -42,6 +43,7 @@ input[type=file]{display:none;}
 <main class="stage" aria-label="SEGA Mega Drive module">
   <img class="skin" src="sega_megadrive_screen.png" alt="SEGA Mega Drive">
   <div id="monitorBlank" aria-hidden="true"></div>
+  <canvas id="mdVideo" width="320" height="224" aria-label="SEGA Mega Drive real-core video canvas"></canvas>
   <div id="monitorOverlay"><pre id="monitorText"></pre></div>
   <div id="logBadge" aria-hidden="true">LOG</div>
   <button id="btnConsole" class="hit" type="button">KONZOLE</button>
@@ -59,15 +61,18 @@ input[type=file]{display:none;}
   <button id="btnC" class="hit" type="button">C</button>
   <button id="dpad" class="hit" type="button">DPAD</button>
   <input id="romInput" type="file" accept=".gen,.bin,.md,.smd,application/octet-stream">
-  <div id="toast" class="toast">SEGA MEGA DRIVE BUILD2MM: cisty monitor + ROM picker + LOG do Downloads.</div>
+  <div id="toast" class="toast">SEGA MEGA DRIVE BUILD2MN: real-core bridge + ROM picker + LOG do Downloads.</div>
 </main>
+<script src="nap_sega_core_bridge.js"></script>
 <script>
 (function(){
 'use strict';
-var BUILD='BUILD2MM_SEGA_AHSAVE_DOWNLOAD_LOG_SAFE';
+var BUILD='BUILD2MN_SEGA_REAL_CORE_BRIDGE_STAGE1';
 var coreReady=false;
 var segaLog=[];
 var lastRomInfo=null;
+var segaBridge=null;
+var activeDpadDir=null;
 function pushLog(t){ var line=new Date().toLocaleTimeString()+' '+t; segaLog.push(line); if(segaLog.length>80) segaLog.shift(); return line; }
 function log(t){ try{console.log('[NAP SEGA] '+t);}catch(e){} pushLog(t); }
 function toast(t,ms){
@@ -163,7 +168,7 @@ function analyzeRom(bytes,name){
   var ok=/SEGA/.test(consoleName);
   var crc=crc32(bytes).toString(16).toUpperCase();
   while(crc.length<8) crc='0'+crc;
-  return {ok:ok,name:name,format:format,originalLen:originalLen,len:bytes.length,consoleName:consoleName,domestic:domestic,overseas:overseas,serial:serial,hdrCrc:hdrCrc,calcCrc:calcCrc,io:io,region:region,crc32:crc};
+  return {ok:ok,name:name,format:format,originalLen:originalLen,len:bytes.length,romBytes:bytes,consoleName:consoleName,domestic:domestic,overseas:overseas,serial:serial,hdrCrc:hdrCrc,calcCrc:calcCrc,io:io,region:region,crc32:crc};
 }
 function openRomPicker(){
   var inp=document.getElementById('romInput');
@@ -171,6 +176,47 @@ function openRomPicker(){
   inp.value='';
   try{ inp.click(); }catch(e){ toast('ROM picker se nepodarilo otevrit: '+e.message,3500); }
 }
+
+function initSegaBridge(){
+  if(segaBridge) return segaBridge;
+  try{
+    if(!window.NAPSegaCoreBridge){
+      log('SEGA CORE BRIDGE BUILD2MN: nap_sega_core_bridge.js nenalezen');
+      coreReady=false;
+      return null;
+    }
+    segaBridge=new window.NAPSegaCoreBridge(document.getElementById('mdVideo'), log);
+    coreReady=!!segaBridge.init();
+    log('SEGA CORE BRIDGE BUILD2MN STATUS: '+segaBridge.getStatusLine());
+    return segaBridge;
+  }catch(e){
+    coreReady=false;
+    log('SEGA CORE BRIDGE BUILD2MN INIT ERROR: '+e.message);
+    return null;
+  }
+}
+function coreStatusLine(){
+  var b=initSegaBridge();
+  if(!b) return 'BRIDGE_SCRIPT_MISSING';
+  return b.getStatusLine();
+}
+function attemptCoreLoad(info){
+  var b=initSegaBridge();
+  if(!b) return {ok:false,status:'BRIDGE_SCRIPT_MISSING'};
+  var romBytes=(info && info.romBytes) ? info.romBytes : null;
+  var res=b.loadRom(romBytes,info || {});
+  coreReady=!!(res && res.ok);
+  return res || {ok:false,status:'CORE_LOAD_NO_RESULT'};
+}
+function segaInput(button,down){
+  var b=initSegaBridge();
+  var ok=false;
+  if(b) ok=down ? b.press(button) : b.release(button);
+  log('SEGA INPUT BUILD2MN '+(down?'DOWN ':'UP ')+button+' -> '+(ok?'SENT_TO_REAL_CORE':'CORE_NOT_READY'));
+  if(down && !ok) toast(button+' vstup pripraven. Ceka na realny core adapter.',1300);
+  return ok;
+}
+
 function handleRomFile(file){
   if(!file) return;
   var reader=new FileReader();
@@ -181,14 +227,15 @@ function handleRomFile(file){
       var bytes=new Uint8Array(reader.result);
       var info=analyzeRom(bytes,file.name);
       lastRomInfo=info;
-      log('SEGA ROM HEADER BUILD2MM file='+info.name+' size='+info.len+' console='+info.consoleName+' title='+info.overseas+' region='+info.region+' crc32='+info.crc32);
+      log('SEGA ROM HEADER BUILD2MN file='+info.name+' size='+info.len+' console='+info.consoleName+' title='+info.overseas+' region='+info.region+' crc32='+info.crc32);
       if(!info.ok){
         showMonitor('SEGA ROM CHECK\n\nCHYBA: header neobsahuje SEGA.\nSoubor: '+info.name+'\nVelikost: '+info.originalLen+' B');
         toast('Tohle nevypada jako Mega Drive ROM.',4200);
         return;
       }
-      var txt='SEGA ROM CHECK — OK\n';
-      txt+='BUILD2MM ROM PICKER\n\n';
+      var coreRes=attemptCoreLoad(info);
+      var txt='SEGA ROM CHECK - OK\n';
+      txt+='BUILD2MN REAL-CORE BRIDGE STAGE1\n\n';
       txt+='Soubor: '+info.name+'\n';
       txt+='Format: '+info.format+'\n';
       txt+='Velikost: '+Math.round(info.len/1024)+' KB\n';
@@ -199,10 +246,11 @@ function handleRomFile(file){
       txt+='Header CRC: $'+hex4(info.hdrCrc)+'\n';
       txt+='Calc CRC:   $'+hex4(info.calcCrc)+(info.hdrCrc===info.calcCrc?' OK':' DIFF')+'\n';
       txt+='File CRC32: '+info.crc32+'\n\n';
-      txt+='CORE STATUS: not inserted yet\n';
-      txt+='Zadny fake Sonic. Tohle je priprava pro realny Mega Drive core.';
+      txt+='CORE BRIDGE: '+(coreRes.status||'UNKNOWN')+'\n';
+      txt+='CANVAS: 320x224 real-core video target\n';
+      txt+='Zadny fake Sonic. Pokud chybi realny core adapter, hra se nespusti.';
       showMonitor(txt);
-      toast('ROM OK: '+(info.overseas||info.domestic),4200);
+      toast(coreRes.ok ? ('ROM poslana do realneho core: '+(info.overseas||info.domestic)) : ('ROM OK, core jeste chybi: '+(info.overseas||info.domestic)),4200);
     }catch(e){
       showMonitor('SEGA ROM CHECK\n\nCHYBA: '+e.message);
       toast('ROM chyba: '+e.message,4200);
@@ -216,21 +264,55 @@ function handleRomFile(file){
 });
 ['btnConsole','btnJoystick'].forEach(function(id){
   var b=document.getElementById(id);
-  if(b) b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();toast(id==='btnConsole'?'KONZOLE obrazovka aktivni.':'JOYSTICK rezim pripraven pro budouci core.');},true);
+  if(b) b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor(id==='btnConsole'?('KONZOLE - SEGA CORE STATUS\n\n'+coreStatusLine()+'\n\nCanvas 320x224 je pripraveny v monitoru.'):('JOYSTICK - SEGA INPUT MAP\n\nD-PAD, A, B, C, START se posilaji do realneho core adapteru, pokud je vlozeny.'));toast(id==='btnConsole'?'KONZOLE status zobrazen.':'JOYSTICK vstupy pripraveny.');},true);
 });
-['btnA','btnB','btnC','btnStart','dpad'].forEach(function(id){
+function bindButtonInput(id,button){
   var b=document.getElementById(id);
-  if(b) b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();toast((id==='dpad'?'D-PAD':id.replace('btn',''))+' vstup pripraven. Core zatim neni vlozeny.');},true);
-});
+  if(!b) return;
+  b.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{b.setPointerCapture(e.pointerId);}catch(_e){}segaInput(button,true);},true);
+  b.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();segaInput(button,false);},true);
+  b.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();segaInput(button,false);},true);
+  b.addEventListener('pointerleave',function(e){if(e.buttons){segaInput(button,false);}},true);
+  b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);
+}
+function dpadDirectionFromEvent(e){
+  var b=document.getElementById('dpad');
+  if(!b) return null;
+  var r=b.getBoundingClientRect();
+  var x=(e.clientX-r.left)/Math.max(1,r.width)-0.5;
+  var y=(e.clientY-r.top)/Math.max(1,r.height)-0.5;
+  if(Math.abs(x)<0.12 && Math.abs(y)<0.12) return null;
+  return Math.abs(x)>Math.abs(y) ? (x<0?'LEFT':'RIGHT') : (y<0?'UP':'DOWN');
+}
+function setDpadDir(dir){
+  if(activeDpadDir===dir) return;
+  if(activeDpadDir) segaInput(activeDpadDir,false);
+  activeDpadDir=dir;
+  if(activeDpadDir) segaInput(activeDpadDir,true);
+}
+bindButtonInput('btnA','A');
+bindButtonInput('btnB','B');
+bindButtonInput('btnC','C');
+bindButtonInput('btnStart','START');
+var dpadEl=document.getElementById('dpad');
+if(dpadEl){
+  dpadEl.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{dpadEl.setPointerCapture(e.pointerId);}catch(_e){}setDpadDir(dpadDirectionFromEvent(e));},true);
+  dpadEl.addEventListener('pointermove',function(e){if(e.buttons){e.preventDefault();e.stopPropagation();setDpadDir(dpadDirectionFromEvent(e));}},true);
+  dpadEl.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);
+  dpadEl.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);
+  dpadEl.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);
+}
+
 function buildLogText(){
-  var txt='SEGA LOG / BUILD2MM\n';
-  txt+='AtariHelp.eu EMU-10 BUILD2MM_SEGA_AHSAVE_DOWNLOAD_LOG_SAFE\n\n';
+  var txt='SEGA LOG / BUILD2MN\n';
+  txt+='AtariHelp.eu EMU-10 BUILD2MN_SEGA_REAL_CORE_BRIDGE_STAGE1\n\n';
   txt+='STAV:\n';
-  txt+='- monitor podkres Sonic zakryt cernym SEGA monitorem\n';
+  txt+='- monitor ma real-core video canvas 320x224\n';
   txt+='- ROM picker/header audit aktivni\n';
   txt+='- LOG tlacitko uklada TXT pres nativni AHSAVE do Downloads/AtariHelp\n';
-  txt+='- Mega Drive core zatim neni vlozeny, hra jeste nebootuje\n';
-  txt+='- ROM neni v APK ani v ZIPu\n\n';
+  txt+='- core bridge hleda realny adapter, zadna fake emulace\n';
+  txt+='- ROM neni v APK ani v ZIPu\n';
+  txt+='- CORE STATUS: '+coreStatusLine()+'\n\n';
   if(lastRomInfo){
     txt+='POSLEDNI ROM:\n';
     txt+='soubor: '+lastRomInfo.name+'\n';
@@ -252,24 +334,24 @@ function b64utf8(txt){
   try{return btoa(unescape(encodeURIComponent(txt)));}catch(e){try{return btoa(txt);}catch(_){return '';}}
 }
 function tryAndroidSaveText(filename,txt){
-  // BUILD2MM: realni nativni bridge v tehle appce neni window.Android, ale AHSAVE.
+  // BUILD2MN: realni nativni bridge v tehle appce neni window.Android, ale AHSAVE.
   // MainActivity uz dlouho umi AHSAVE.save(name,text) a uklada do Downloads/AtariHelp.
   try{
     if(window.AHSAVE && typeof window.AHSAVE.save==='function'){
       var res=window.AHSAVE.save(filename,txt);
-      log('SEGA LOG DOWNLOAD BUILD2MM: AHSAVE.save -> '+res);
+      log('SEGA LOG DOWNLOAD BUILD2MN: AHSAVE.save -> '+res);
       window.__segaLastSaveResult=res||('DOWNLOADS_OK: Downloads/AtariHelp/'+filename);
       return true;
     }
-  }catch(e0){ log('SEGA LOG DOWNLOAD BUILD2MM: AHSAVE.save failed '+e0.message); }
+  }catch(e0){ log('SEGA LOG DOWNLOAD BUILD2MN: AHSAVE.save failed '+e0.message); }
   try{
     if(window.AHSAVE && typeof window.AHSAVE.saveBase64==='function'){
       var res2=window.AHSAVE.saveBase64(filename,b64utf8(txt));
-      log('SEGA LOG DOWNLOAD BUILD2MM: AHSAVE.saveBase64 -> '+res2);
+      log('SEGA LOG DOWNLOAD BUILD2MN: AHSAVE.saveBase64 -> '+res2);
       window.__segaLastSaveResult=res2||('DOWNLOADS_OK: Downloads/AtariHelp/'+filename);
       return true;
     }
-  }catch(e00){ log('SEGA LOG DOWNLOAD BUILD2MM: AHSAVE.saveBase64 failed '+e00.message); }
+  }catch(e00){ log('SEGA LOG DOWNLOAD BUILD2MN: AHSAVE.saveBase64 failed '+e00.message); }
   try{
     if(window.Android){
       var b64=b64utf8(txt);
@@ -287,13 +369,13 @@ function tryAndroidSaveText(filename,txt){
         var name=methods[i][0], args=methods[i][1];
         if(typeof window.Android[name]==='function'){
           window.Android[name].apply(window.Android,args);
-          log('SEGA LOG DOWNLOAD BUILD2MM: Android.'+name+' -> '+filename);
+          log('SEGA LOG DOWNLOAD BUILD2MN: Android.'+name+' -> '+filename);
           window.__segaLastSaveResult='ANDROID_OK: '+name+' '+filename;
           return true;
         }
       }
     }
-  }catch(e){ log('SEGA LOG DOWNLOAD BUILD2MM: Android save failed '+e.message); }
+  }catch(e){ log('SEGA LOG DOWNLOAD BUILD2MN: Android save failed '+e.message); }
   return false;
 }
 function tryBrowserDownload(filename,txt){
@@ -307,9 +389,9 @@ function tryBrowserDownload(filename,txt){
     document.body.appendChild(a);
     a.click();
     setTimeout(function(){try{URL.revokeObjectURL(url);a.remove();}catch(e){}},1600);
-    log('SEGA LOG DOWNLOAD BUILD2MM: browser download -> '+filename);
+    log('SEGA LOG DOWNLOAD BUILD2MN: browser download -> '+filename);
     return true;
-  }catch(e){ log('SEGA LOG DOWNLOAD BUILD2MM: blob download failed '+e.message); }
+  }catch(e){ log('SEGA LOG DOWNLOAD BUILD2MN: blob download failed '+e.message); }
   try{
     var a2=document.createElement('a');
     a2.href='data:text/plain;charset=utf-8,'+encodeURIComponent(txt);
@@ -318,9 +400,9 @@ function tryBrowserDownload(filename,txt){
     document.body.appendChild(a2);
     a2.click();
     setTimeout(function(){try{a2.remove();}catch(e){}},1600);
-    log('SEGA LOG DOWNLOAD BUILD2MM: data download -> '+filename);
+    log('SEGA LOG DOWNLOAD BUILD2MN: data download -> '+filename);
     return true;
-  }catch(e2){ log('SEGA LOG DOWNLOAD BUILD2MM: data download failed '+e2.message); }
+  }catch(e2){ log('SEGA LOG DOWNLOAD BUILD2MN: data download failed '+e2.message); }
   return false;
 }
 function saveLogToDownloads(txt){
@@ -346,17 +428,18 @@ function showSegaLog(){
 var saves=document.getElementById('btnSaves');
 if(saves) saves.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showSegaLog();},true);
 var manuals=document.getElementById('btnManuals');
-if(manuals) manuals.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor('NÁVODY — SEGA MEGA DRIVE\n\nSBÍRKA / HRY / CARTRIDGE SLOT:\n- vyber .gen / .bin / .md / .smd ROM\n\nOVLÁDÁNÍ:\n- D-PAD vlevo\n- A/B/C vpravo\n- START uprostřed\n\nBUILD2MM:\n- real ROM picker\n- real header/checksum audit\n- zatím bez fake emulace');},true);
+if(manuals) manuals.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor('NAVODY - SEGA MEGA DRIVE\n\nSBIRKA / HRY / CARTRIDGE SLOT:\n- vyber .gen / .bin / .md / .smd ROM\n\nOVLADANI:\n- D-PAD vlevo\n- A/B/C vpravo\n- START uprostred\n\nBUILD2MN:\n- real ROM picker\n- real header/checksum audit\n- video canvas 320x224\n- core bridge pro realny Mega Drive adapter\n- zadna fake emulace');},true);
 var web=document.getElementById('btnWeb');
 if(web) web.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openWeb('https://atarihelp.eu/');},true);
 var inp=document.getElementById('romInput');
 if(inp) inp.addEventListener('change',function(){ handleRomFile(inp.files && inp.files[0]); },false);
-log('AtariHelp.eu EMU-10 '+BUILD+' pripraven - SEGA monitor vycisten, ROM picker/header audit, LOG se uklada do Downloads; zadny ROM v APK, zadny fake Sonic.');
-log('SEGA MONITOR CLEAN BUILD2MM: Sonic podkres v monitoru je prekryty cistym cernym monitorem pro budouci realny video canvas.');
-log('SEGA LOG DOWNLOAD BUILD2MM: ULOZENE tlacitko zobrazi interni SEGA log a ulozi TXT pres AHSAVE.save do Downloads/AtariHelp.');
-log('SEGA ROM PICKER BUILD2MM: HRY/SBIRKA/CARTRIDGE otevre lokalni .gen/.bin/.md/.smd soubor.');
-log('SEGA CORE NOT FAKE BUILD2MM: bez realneho core se hra nespousti, jen se validuje ROM hlavicka/checksum.');
-toast('BUILD2MM: HRY/SBIRKA/CARTRIDGE = ROM. ULOZENE = LOG do Downloads/AtariHelp.',4200);
+initSegaBridge();
+log('AtariHelp.eu EMU-10 '+BUILD+' pripraven - SEGA monitor canvas 320x224, ROM picker/header audit, LOG do Downloads; zadny ROM v APK, zadny fake Sonic.');
+log('SEGA VIDEO CANVAS BUILD2MN: monitor ma 320x224 canvas pro realny Mega Drive core vystup.');
+log('SEGA LOG DOWNLOAD BUILD2MN: ULOZENE tlacitko zobrazi interni SEGA log a ulozi TXT pres AHSAVE.save do Downloads/AtariHelp.');
+log('SEGA ROM PICKER BUILD2MN: HRY/SBIRKA/CARTRIDGE otevre lokalni .gen/.bin/.md/.smd soubor.');
+log('SEGA CORE BRIDGE BUILD2MN: bez realneho adapteru se hra nespousti, jen se validuje ROM a pripravi handoff.');
+toast('BUILD2MN: ROM + core bridge. ULOZENE = LOG do Downloads/AtariHelp.',4200);
 })();
 </script>
 </body>
