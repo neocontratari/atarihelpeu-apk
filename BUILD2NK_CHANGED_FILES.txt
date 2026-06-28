@@ -1,0 +1,8 @@
+BUILD2NK_SEGA_CLOWNMD_CLEAN_DPAD_ABC_RESET_STAGE24
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin v overlayi)
+
+KODY JSOU ZMENENE.
