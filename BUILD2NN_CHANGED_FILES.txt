@@ -1,0 +1,14 @@
+BUILD2NN_SEGA_AUDIO_CROP_TUNE_STAGE27
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin, bez nove grafiky)
+
+STAV:
+- Reset z BUILD2NM zachovan.
+- Ovladac z BUILD2NK/BUILD2NM zachovan.
+- Pridano ladeni zvuku v local wrapperu: AudioContext latencyHint=playback, prefer 48000 Hz, pokud to WebView dovoli.
+- Pridano jemne posunuti herniho vyrezu v monitoru nahoru: top -10.7 %, height 123 %.
+- Landscape herni vyrez posunut nahoru: top -9.5vh, height 118vh.
