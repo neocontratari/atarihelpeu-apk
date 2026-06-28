@@ -1,0 +1,9 @@
+BUILD2NY_SEGA_TOP_NOISE_MICRO_STAGE38
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+
+Co je zmeneno:
+- mikro posun play cropu v portrait z top -7.1% na -7.35%
+- mikro posun play cropu v landscape z top -6.3vh na -6.55vh
+- zvuk / reset / ovladac / wrapper beze zmeny proti funkcni vetvi
+- cil: schovat posledni horni sum/ducha, zivoty dole zachovat
