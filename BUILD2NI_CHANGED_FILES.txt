@@ -1,0 +1,11 @@
+BUILD2NI_SEGA_CLOWNMD_LOCAL_WRAPPER_BLOB_BOOT_STAGE22
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (puvodni skin, beze zmeny grafiky)
+
+SMER:
+- ClownMDEmu uz nedostava obri Data URL v iframe adrese.
+- ROM vybrana v nasi appce se posila do lokalniho wrapperu jako ArrayBuffer.
+- Wrapper vytvori Blob URL uvnitr sveho okna a spusti oficialni clownmdemu.js s Module.arguments=[blobURL].

@@ -3,16 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
-<title>SEGA Mega Drive — N&P Vision / ClownMDEmu URL Cartridge</title>
+<title>SEGA Mega Drive — N&P Vision / ClownMDEmu local wrapper</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{min-height:100%;background:#02050a;color:#8fd8ff;font-family:"Courier New",monospace;overflow-x:hidden;}
+html,body{min-height:100%;background:#02050a;color:#8fd8ff;font-family:"Courier New",monospace;overflow:hidden;}
 body{display:flex;justify-content:center;align-items:flex-start;}
 .stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#02050a;overflow:hidden;box-shadow:0 0 48px rgba(0,0,0,.95);}
 .skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
-.hit{position:absolute;z-index:40;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
-.hit:active{background:rgba(0,118,255,.14);box-shadow:0 0 32px rgba(0,118,255,.28) inset;border-radius:18px;}
-/* Portret: hit zony podle 941x1672 PNG. */
+.hit{position:absolute;z-index:60;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:none;}
+.hit:active{background:rgba(0,118,255,.18);box-shadow:0 0 32px rgba(0,118,255,.28) inset;border-radius:18px;}
 #btnConsole{left:68.3%;top:3.3%;width:14.1%;height:4.3%;}
 #btnJoystick{left:82.0%;top:3.3%;width:14.1%;height:4.3%;}
 #btnCollection{left:3.3%;top:90.2%;width:13.4%;height:7.2%;}
@@ -21,53 +20,49 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnManuals{left:51.2%;top:90.2%;width:13.4%;height:7.2%;}
 #btnWeb{left:67.1%;top:90.2%;width:13.4%;height:7.2%;}
 #btnMenu{left:83.1%;top:90.2%;width:13.4%;height:7.2%;}
-#cartSlot{left:73.3%;top:76.1%;width:22.0%;height:9.8%;}
-#btnStart{left:44.7%;top:62.4%;width:10.7%;height:5.1%;}
-#btnA{left:59.4%;top:58.9%;width:13.5%;height:8.5%;}
-#btnB{left:67.0%;top:57.4%;width:14.0%;height:8.7%;}
-#btnC{left:74.6%;top:55.9%;width:14.3%;height:8.8%;}
-#dpad{left:13.0%;top:54.0%;width:29.0%;height:17.5%;}
-#monitorBlank{cursor:pointer;touch-action:manipulation;position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:5;border-radius:20px;overflow:hidden;background:radial-gradient(circle at 50% 45%,rgba(5,24,45,.92) 0%,rgba(0,0,0,.98) 70%);border:1px solid rgba(80,170,255,.30);box-shadow:0 0 34px rgba(0,102,255,.25) inset,0 0 18px rgba(0,0,0,.75);}
-#monitorBlank:after{content:"CLOWNMDEMU READY\A HRY/SBIRKA/CARTRIDGE = NAS ROM";white-space:pre;position:absolute;left:0;right:0;top:38%;text-align:center;color:rgba(144,216,255,.62);font:900 clamp(10px,2.8vw,18px)/1.3 "Courier New",monospace;text-shadow:0 0 12px rgba(0,112,255,.55);letter-spacing:.08em;}
-#mdVideo{cursor:pointer;touch-action:manipulation;position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:6;border-radius:20px;background:#000;image-rendering:pixelated;image-rendering:crisp-edges;display:block;}
-#clownFrameWrap{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:7;border-radius:20px;overflow:hidden;background:#000;border:1px solid rgba(80,170,255,.25);display:none;}
+#cartSlot{left:70.6%;top:74.6%;width:26.5%;height:13.5%;}
+#btnStart{left:44.2%;top:62.0%;width:11.8%;height:5.8%;}
+#btnA{left:58.5%;top:57.6%;width:14.4%;height:10.6%;}
+#btnB{left:66.4%;top:56.0%;width:14.9%;height:10.8%;}
+#btnC{left:74.2%;top:54.4%;width:15.2%;height:11.0%;}
+#dpad{left:11.4%;top:52.8%;width:31.0%;height:19.0%;}
+#monitorBlank{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:5;border-radius:20px;overflow:hidden;background:#000;border:1px solid rgba(80,170,255,.30);box-shadow:0 0 34px rgba(0,102,255,.25) inset;}
+#mdVideo{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:6;border-radius:20px;background:#000;image-rendering:pixelated;display:block;pointer-events:none;}
+#clownFrameWrap{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:7;border-radius:20px;overflow:hidden;background:#000;border:1px solid rgba(80,170,255,.25);display:none;pointer-events:auto;}
 #clownFrame{position:absolute;left:0;top:0;width:100%;height:100%;border:0;background:#000;display:block;}
-/* KONZOLE = menu cely frontend; JOYSTICK = herni crop bez horniho menu. */
-#clownFrameWrap.menuMode #clownFrame{left:0;top:0;width:100%;height:100%;transform:none;}
-#clownFrameWrap.playMode #clownFrame{left:-11%;top:-12.5%;width:122%;height:131%;transform:none;}
-#clownFrameWrap.booting::after{content:"NACITAM NAS CARTRIDGE...";position:absolute;left:0;right:0;bottom:6px;text-align:center;color:#ffe17a;font:900 clamp(9px,2.2vw,15px) "Courier New",monospace;text-shadow:0 0 10px #000;background:rgba(0,0,0,.45);padding:4px 2px;pointer-events:none;}
+#clownFrameWrap.menuMode #clownFrame{left:0;top:0;width:100%;height:100%;}
+#clownFrameWrap.playMode #clownFrame{left:-8%;top:-9%;width:116%;height:121%;}
+#clownFrameWrap.booting::after{content:"LOCAL CLOWNMD BOOT...";position:absolute;left:0;right:0;bottom:6px;text-align:center;color:#ffe17a;font:900 clamp(9px,2.2vw,15px) "Courier New",monospace;text-shadow:0 0 10px #000;background:rgba(0,0,0,.50);padding:4px 2px;pointer-events:none;}
 #monitorOverlay{position:absolute;left:8.45%;top:14.95%;width:83.2%;height:31.1%;z-index:9;display:none;align-items:center;justify-content:center;border-radius:20px;overflow:hidden;background:rgba(0,0,0,.88);border:1px solid rgba(80,170,255,.38);box-shadow:0 0 28px rgba(0,102,255,.25) inset;pointer-events:none;}
 #monitorOverlay.show{display:flex;}
 #monitorText{white-space:pre-wrap;text-align:left;width:88%;max-height:84%;overflow:hidden;color:#d9ecff;text-shadow:0 0 8px rgba(0,120,255,.7);font:900 clamp(9px,2.3vw,16px)/1.34 "Courier New",monospace;}
-.toast{position:absolute;left:5%;right:5%;bottom:11%;z-index:50;display:none;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.84);border:1px solid rgba(75,155,255,.55);color:#d9ecff;font:900 13px/1.35 "Courier New",monospace;text-align:center;}
+.toast{position:absolute;left:5%;right:5%;bottom:11%;z-index:70;display:none;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.84);border:1px solid rgba(75,155,255,.55);color:#d9ecff;font:900 13px/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
 #logBadge{position:absolute;z-index:12;left:20.4%;top:94.15%;width:11.0%;text-align:center;pointer-events:none;color:#8fd8ff;font:900 clamp(9px,2.3vw,16px) "Courier New",monospace;text-shadow:0 0 10px #0076ff,0 0 18px #0076ff;letter-spacing:.08em;}
 #romInput{display:none;}
 @media (orientation:landscape) and (max-height:760px){
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;}
-  body{display:block;}
-  .stage{width:100vw;height:100vh;max-width:none;aspect-ratio:auto;background:#000;box-shadow:none;}
-  .skin{object-fit:cover;opacity:.18;filter:brightness(.72) contrast(1.1);}
-  #monitorBlank,#mdVideo,#clownFrameWrap,#monitorOverlay{left:0;top:0;width:100%;height:100%;border-radius:0;border:0;}
-  #clownFrameWrap.playMode #clownFrame{left:0;top:-8vh;width:100%;height:116vh;}
-  #clownFrameWrap.menuMode #clownFrame{left:0;top:0;width:100%;height:100%;}
-  #dpad{left:1.2%;top:52%;width:28%;height:45%;}
-  #btnA{left:69%;top:66%;width:9.5%;height:18%;}
-  #btnB{left:79%;top:61%;width:9.5%;height:18%;}
-  #btnC{left:89%;top:56%;width:9.5%;height:18%;}
-  #btnStart{left:43.5%;top:80%;width:13%;height:14%;}
-  #btnConsole{left:2%;top:2%;width:16%;height:11%;}
-  #btnJoystick{left:19%;top:2%;width:16%;height:11%;}
-  #btnCollection{left:37%;top:2%;width:11%;height:11%;}
-  #btnSaves{left:49%;top:2%;width:11%;height:11%;}
-  #btnGames{left:61%;top:2%;width:11%;height:11%;}
-  #btnManuals{left:73%;top:2%;width:11%;height:11%;}
-  #btnWeb{left:85%;top:2%;width:7%;height:11%;}
-  #btnMenu{left:92.5%;top:2%;width:6%;height:11%;}
-  #cartSlot{left:37%;top:86%;width:26%;height:13%;}
-  .hit:active{background:rgba(0,118,255,.22);border-radius:16px;}
-  #logBadge{display:none;}
-  .toast{left:1%;right:1%;bottom:1%;font-size:11px;padding:6px 8px;}
+ html,body{width:100%;height:100%;overflow:hidden;background:#000;}body{display:block;}
+ .stage{width:100vw;height:100vh;max-width:none;aspect-ratio:auto;background:#000;box-shadow:none;}
+ .skin{object-fit:cover;opacity:.20;filter:brightness(.72) contrast(1.1);}
+ #monitorBlank,#mdVideo,#clownFrameWrap,#monitorOverlay{left:0;top:0;width:100%;height:100%;border-radius:0;border:0;}
+ #clownFrameWrap.playMode #clownFrame{left:0;top:-8vh;width:100%;height:116vh;}
+ #clownFrameWrap.menuMode #clownFrame{left:0;top:0;width:100%;height:100%;}
+ #dpad{left:1.2%;top:51%;width:28%;height:47%;}
+ #btnA{left:68.5%;top:66%;width:10%;height:19%;}
+ #btnB{left:79%;top:60%;width:10%;height:19%;}
+ #btnC{left:89%;top:55%;width:10%;height:19%;}
+ #btnStart{left:43.5%;top:80%;width:13%;height:14%;}
+ #btnConsole{left:2%;top:2%;width:16%;height:11%;}
+ #btnJoystick{left:19%;top:2%;width:16%;height:11%;}
+ #btnCollection{left:37%;top:2%;width:11%;height:11%;}
+ #btnSaves{left:49%;top:2%;width:11%;height:11%;}
+ #btnGames{left:61%;top:2%;width:11%;height:11%;}
+ #btnManuals{left:73%;top:2%;width:11%;height:11%;}
+ #btnWeb{left:85%;top:2%;width:7%;height:11%;}
+ #btnMenu{left:92.5%;top:2%;width:6%;height:11%;}
+ #cartSlot{left:37%;top:86%;width:26%;height:13%;}
+ .hit:active{background:rgba(0,118,255,.22);border-radius:16px;}
+ #logBadge{display:none;}.toast{left:1%;right:1%;bottom:1%;font-size:11px;padding:6px 8px;}
 }
 </style>
 </head>
@@ -76,7 +71,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <img class="skin" src="sega_megadrive_screen.png" alt="SEGA Mega Drive">
   <div id="monitorBlank" aria-hidden="true"></div>
   <canvas id="mdVideo" width="320" height="224" aria-label="SEGA Mega Drive status canvas"></canvas>
-  <div id="clownFrameWrap"><iframe id="clownFrame" title="ClownMDEmu official frontend" allow="autoplay; fullscreen; gamepad" tabindex="0"></iframe></div>
+  <div id="clownFrameWrap"><iframe id="clownFrame" title="ClownMDEmu local wrapper" allow="autoplay; fullscreen; gamepad" tabindex="0"></iframe></div>
   <div id="monitorOverlay"><pre id="monitorText"></pre></div>
   <div id="logBadge" aria-hidden="true">LOG</div>
   <input id="romInput" type="file" accept=".gen,.bin,.md,.smd,.zip,application/zip,application/octet-stream">
@@ -94,83 +89,46 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnB" class="hit" type="button">B</button>
   <button id="btnC" class="hit" type="button">C</button>
   <button id="dpad" class="hit" type="button">DPAD</button>
-  <div id="toast" class="toast">BUILD2NH: nas cartridge pres URL prikaz + virtual gamepad.</div>
+  <div id="toast" class="toast">BUILD2NI: lokalni wrapper, ROM do ClownMDEmu bez data URL.</div>
 </main>
 <script>
-(function(){
-'use strict';
-var BUILD='BUILD2NH_SEGA_CLOWNMD_URL_CARTRIDGE_GAMEPAD_STAGE21';
-var CLOWN_BASE_URL='https://sonicresearch.org/clownacy/clownmdemu.html';
-var CLOWN_URL=CLOWN_BASE_URL;
-var logLines=[];
-var frameLoaded=false;
-var frameOpenRequested=false;
-var lastKeyStatus='NO_KEY_SENT';
-var lastDropStatus='NO_ROM_SELECTED';
-var lastPadStatus='NO_PAD_INJECT';
-var selectedRomName='zadna';
-var selectedRomFile=null;
-var pendingRomDrop=false;
-var activeDpadDir=null;
+(function(){'use strict';
+var BUILD='BUILD2NI_SEGA_CLOWNMD_LOCAL_WRAPPER_BLOB_BOOT_STAGE22';
+var logLines=[], frameLoaded=false, selectedRomName='zadna', selectedRomSize=0, selectedRomBuffer=null, lastBootStatus='NO_ROM', lastKeyStatus='NO_KEY', activeDpadDir=null;
 var padButtons={A:false,B:false,C:false,START:false,UP:false,DOWN:false,LEFT:false,RIGHT:false};
-function pushLog(t){var line=new Date().toLocaleTimeString()+' '+t;logLines.push(line);if(logLines.length>160)logLines.shift();try{console.log('[NAP SEGA] '+t);}catch(e){}return line;}
-function toast(t,ms){var el=document.getElementById('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__segaToastTimer);window.__segaToastTimer=setTimeout(function(){el.classList.remove('show');},ms||2600);}
-function showMonitor(t){var ov=document.getElementById('monitorOverlay'),tx=document.getElementById('monitorText');if(tx)tx.textContent=t;if(ov)ov.classList.add('show');}
-function hideMonitor(){var ov=document.getElementById('monitorOverlay');if(ov)ov.classList.remove('show');}
-function drawPrompt(msg){try{var c=document.getElementById('mdVideo');if(!c||!c.getContext)return;var ctx=c.getContext('2d',{alpha:false})||c.getContext('2d');ctx.fillStyle='#020611';ctx.fillRect(0,0,320,224);var g=ctx.createRadialGradient(160,95,8,160,112,190);g.addColorStop(0,'#06386c');g.addColorStop(.65,'#030b16');g.addColorStop(1,'#000');ctx.fillStyle=g;ctx.fillRect(0,0,320,224);for(var y=0;y<224;y+=7){ctx.fillStyle='rgba(60,150,255,.12)';ctx.fillRect(22,y,276,1);}ctx.strokeStyle='rgba(90,185,255,.55)';ctx.lineWidth=2;ctx.strokeRect(24,24,272,176);ctx.textAlign='center';ctx.fillStyle='#bfe9ff';ctx.font='bold 15px monospace';ctx.fillText('CLOWNMDEMU READY',160,60);ctx.fillStyle='#d9f4ff';ctx.font='bold 11px monospace';ctx.fillText('CARTRIDGE / HRY / SBIRKA',160,106);ctx.fillText('VYBER NAS ROM - ZKUSIM URL CARTRIDGE',160,124);ctx.fillStyle='rgba(255,220,120,.95)';ctx.font='bold 10px monospace';ctx.fillText(msg||'JOYSTICK = HRA / KONZOLE = MENU',160,172);}catch(e){pushLog('PROMPT DRAW FAILED '+(e.message||String(e)));}}
-function focusFrame(){var fr=document.getElementById('clownFrame');if(!fr)return false;var ok=false;try{fr.focus();ok=true;}catch(e){pushLog('CLOWNMD FRAME focus element failed '+e.message);}try{if(fr.contentWindow&&typeof fr.contentWindow.focus==='function'){fr.contentWindow.focus();ok=true;}}catch(e2){pushLog('CLOWNMD FRAME focus window blocked '+e2.message);}return ok;}
-function setFrameMode(mode,reason){var wrap=document.getElementById('clownFrameWrap');if(!wrap)return;wrap.classList.remove('menuMode','playMode');wrap.classList.add(mode==='play'?'playMode':'menuMode');pushLog('BUILD2NH FRAME MODE '+(mode==='play'?'PLAY_CROP':'MENU_FULL')+' reason='+reason);}
-function buildClownUrl(cartridgeUrl){var url=CLOWN_BASE_URL;if(cartridgeUrl){url+='?cartridge='+encodeURIComponent(cartridgeUrl);}return url;}
-function estimateDataUrlTooBig(file){return !!(file&&file.size&&file.size>1150000);}
-function openClown(reason,mode,urlOverride){hideMonitor();var wrap=document.getElementById('clownFrameWrap'),fr=document.getElementById('clownFrame'),canvas=document.getElementById('mdVideo'),blank=document.getElementById('monitorBlank');if(!wrap||!fr){toast('Chybi iframe pro ClownMDEmu.',4000);return;}if(canvas)canvas.style.display='none';if(blank)blank.style.display='none';wrap.style.display='block';setFrameMode(mode||'play',reason);frameOpenRequested=true;var targetUrl=urlOverride||CLOWN_URL;var mustReload=!frameLoaded || fr.getAttribute('data-current-url')!==targetUrl;if(mustReload){frameLoaded=false;fr.setAttribute('data-current-url',targetUrl);pushLog('BUILD2NH CLOWNMD FRAME OPEN reason='+reason+' url='+targetUrl.substring(0,180)+(targetUrl.length>180?'...':''));fr.onload=function(){pushLog('BUILD2NH CLOWNMD FRAME onload - frontend nacten do monitoru urlMode='+(targetUrl.indexOf('cartridge=')>=0?'CARTRIDGE_URL':'MENU'));frameLoaded=true;focusFrame();injectVirtualPad();setTimeout(function(){focusFrame();injectVirtualPad();},1200);setTimeout(function(){setFrameMode('play','onload_crop');focusFrame();},2200);toast(targetUrl.indexOf('cartridge=')>=0?'ClownMDEmu nacten s cartridge URL. Cekam na boot hry.':'ClownMDEmu nacten. HRY/SBIRKA/CARTRIDGE vybere nas ROM.',5200);};fr.src=targetUrl;toast(targetUrl.indexOf('cartridge=')>=0?'Nacitam ClownMDEmu primo s nasim cartridge...':'Nacitam ClownMDEmu...',3200);}else{pushLog('BUILD2NH CLOWNMD FRAME FOCUS reason='+reason+' mode='+(mode||'play'));focusFrame();injectVirtualPad();}}
-function requestRom(reason){var input=document.getElementById('romInput');if(!input){toast('Chybi ROM picker input.',3500);return;}pushLog('BUILD2NH REQUEST ROM PICKER reason='+reason);try{input.value='';}catch(_){}input.click();}
-function onRomSelected(file){if(!file){pushLog('BUILD2NH ROM PICKER CANCELLED');return;}selectedRomFile=file;selectedRomName=file.name||'unknown';pendingRomDrop=false;lastDropStatus='ROM_SELECTED_BUILDING_CARTRIDGE_URL '+selectedRomName+' size='+file.size;pushLog('BUILD2NH ROM SELECTED name='+selectedRomName+' size='+file.size+' type='+(file.type||'n/a'));toast('Nas cartridge: '+selectedRomName+' - vytvarim URL cartridge prikaz pro ClownMDEmu.',5200);var wrap=document.getElementById('clownFrameWrap');if(wrap)wrap.classList.add('booting');var useDataUrl=!estimateDataUrlTooBig(file);if(useDataUrl){var reader=new FileReader();reader.onload=function(){var dataUrl=String(reader.result||'');lastDropStatus='URL_CARTRIDGE_DATA_URL_READY '+selectedRomName+' chars='+dataUrl.length;pushLog('BUILD2NH URL_CARTRIDGE DATA_URL_READY name='+selectedRomName+' chars='+dataUrl.length+' size='+file.size);var url=buildClownUrl(dataUrl);openClown('romSelectedDataUrl:'+selectedRomName,'play',url);setTimeout(function(){if(wrap)wrap.classList.remove('booting');},6500);};reader.onerror=function(){lastDropStatus='URL_CARTRIDGE_DATA_URL_FAILED '+(reader.error&&reader.error.message||'reader error');pushLog('BUILD2NH URL_CARTRIDGE DATA_URL_FAILED '+lastDropStatus);toast('Data URL se nepovedl. Zkousim blob URL.',4500);tryBlobCartridge(file,wrap);};reader.readAsDataURL(file);}else{pushLog('BUILD2NH URL_CARTRIDGE file je velky pro DataURL '+file.size+' -> zkousim Blob URL');tryBlobCartridge(file,wrap);}}
-function tryBlobCartridge(file,wrap){try{var blobUrl=URL.createObjectURL(file);lastDropStatus='URL_CARTRIDGE_BLOB_READY '+(file.name||'rom')+' url='+blobUrl;pushLog('BUILD2NH URL_CARTRIDGE BLOB_URL_READY '+(file.name||'rom')+' '+blobUrl);openClown('romSelectedBlobUrl:'+(file.name||'rom'),'play',buildClownUrl(blobUrl));setTimeout(function(){if(wrap)wrap.classList.remove('booting');},6500);}catch(e){lastDropStatus='URL_CARTRIDGE_FAILED '+(e.message||String(e));pushLog('BUILD2NH URL_CARTRIDGE FAILED '+lastDropStatus);toast('Nepodarilo se vytvorit URL cartridge. Pouzij KONZOLE > Software rucne.',7000);if(wrap)wrap.classList.remove('booting');}}
-function makeDragEvent(type,dt){var ev;try{ev=new DragEvent(type,{bubbles:true,cancelable:true,composed:true,dataTransfer:dt});}catch(e){ev=document.createEvent('Event');ev.initEvent(type,true,true);try{Object.defineProperty(ev,'dataTransfer',{value:dt});}catch(_){ev.dataTransfer=dt;}}return ev;}
-function findDropTargets(fr){var targets=[];try{var d=fr.contentWindow.document;var canvas=d.querySelector('canvas');if(canvas)targets.push(['frameCanvas',canvas]);var c2=d.getElementById('canvas');if(c2&&c2!==canvas)targets.push(['frameCanvasId',c2]);if(d.body)targets.push(['frameBody',d.body]);targets.push(['frameDoc',d]);}catch(e){targets.push(['frameDocBlocked',null,e]);}targets.push(['iframeElement',fr]);targets.push(['parentDoc',document]);return targets;}
-function autoDropRomIntoClown(file,reason){var fr=document.getElementById('clownFrame');var wrap=document.getElementById('clownFrameWrap');if(!file||!fr){lastDropStatus='DROP_NO_FILE_OR_FRAME';pushLog('BUILD2NH AUTO_DROP '+lastDropStatus+' reason='+reason);return false;}openClown('autoDrop:'+reason,'play');focusFrame();injectVirtualPad();var detail=[],ok=false,dt=null;
-  try{dt=new DataTransfer();dt.items.add(file);detail.push('DataTransfer OK');}catch(e){detail.push('DataTransfer FAILED '+(e.message||String(e)));lastDropStatus='DROP_DATATRANSFER_FAILED '+detail.join(' | ');pushLog('BUILD2NH AUTO_DROP FAILED '+lastDropStatus);toast('Android WebView nepovolil DataTransfer pro auto cartridge. Otevri KONZOLE > Software a vyber ROM rucne.',7000);if(wrap)wrap.classList.remove('booting');return false;}
-  var targets=findDropTargets(fr);
-  for(var i=0;i<targets.length;i++){var name=targets[i][0],target=targets[i][1];if(!target||!target.dispatchEvent){detail.push(name+':NO_TARGET');continue;}try{target.dispatchEvent(makeDragEvent('dragenter',dt));target.dispatchEvent(makeDragEvent('dragover',dt));var r=target.dispatchEvent(makeDragEvent('drop',dt));detail.push(name+':DROP_OK ret='+r);ok=true;}catch(e2){detail.push(name+':DROP_ERR '+(e2.message||String(e2)));}}
-  pendingRomDrop=false;lastDropStatus=(ok?'DROP_SENT':'DROP_FAILED')+' '+selectedRomName+' reason='+reason+' '+detail.join(' | ');pushLog('BUILD2NH AUTO_DROP '+lastDropStatus);toast(ok?'Nas cartridge poslan jako DROP: '+selectedRomName:'Auto drop se nepodaril - pouzij menu Software.',ok?3600:7000);setTimeout(function(){if(wrap)wrap.classList.remove('booting');},2600);setTimeout(function(){setFrameMode('play','autoDropDone');focusFrame();},900);return ok;
-}
-function padSnapshot(){var buttons=new Array(17).fill(0).map(function(_,i){return {pressed:false,touched:false,value:0};});function press(i){if(buttons[i]){buttons[i].pressed=true;buttons[i].touched=true;buttons[i].value=1;}}
-  /* Standard gamepad -> Clown default: Controller X=A, A=B, B=C, Start=Start. */
-  if(padButtons.A)press(2); if(padButtons.B)press(0); if(padButtons.C)press(1); if(padButtons.START)press(9);
-  if(padButtons.UP)press(12); if(padButtons.DOWN)press(13); if(padButtons.LEFT)press(14); if(padButtons.RIGHT)press(15);
-  var axes=[0,0,0,0]; if(padButtons.LEFT)axes[0]=-1; if(padButtons.RIGHT)axes[0]=1; if(padButtons.UP)axes[1]=-1; if(padButtons.DOWN)axes[1]=1;
-  return {id:'N&P Vision Virtual Mega Drive Pad',index:0,connected:true,mapping:'standard',timestamp:Date.now(),axes:axes,buttons:buttons};
-}
-function postPadState(){var fr=document.getElementById('clownFrame');var snap=padSnapshot();try{if(fr&&fr.contentWindow){fr.contentWindow.postMessage({type:'NAP_PAD_STATE',pad:snap},'*');fr.contentWindow.__napPadState=snap;lastPadStatus='PAD_POST_OK';}}catch(e){lastPadStatus='PAD_POST_ERR '+(e.message||String(e));}try{window.__napParentPadState=snap;}catch(_){}return snap;}
-function injectVirtualPad(){var fr=document.getElementById('clownFrame');if(!fr||!fr.contentWindow){lastPadStatus='PAD_NO_FRAME';return false;}try{var d=fr.contentWindow.document;if(!d){lastPadStatus='PAD_NO_DOC';return false;}if(d.getElementById('napVirtualPadScript')){postPadState();return true;}var s=d.createElement('script');s.id='napVirtualPadScript';s.textContent="(function(){try{if(window.__napVirtualPadInstalled)return;window.__napVirtualPadInstalled=true;window.__napPadState={id:'N&P Vision Virtual Mega Drive Pad',index:0,connected:true,mapping:'standard',timestamp:Date.now(),axes:[0,0,0,0],buttons:[]};function clonePad(p){p=p||window.__napPadState;var b=(p.buttons||[]).map(function(x){return {pressed:!!x.pressed,touched:!!x.touched,value:x.value||0};});return {id:p.id||'N&P Vision Virtual Mega Drive Pad',index:0,connected:true,mapping:'standard',timestamp:Date.now(),axes:(p.axes||[0,0,0,0]).slice(),buttons:b};}var orig=(navigator.getGamepads?navigator.getGamepads.bind(navigator):function(){return[]});function patched(){var arr=[];try{arr=orig()||[];}catch(e){arr=[];}var out=[];for(var i=0;i<Math.max(4,arr.length);i++)out[i]=arr[i]||null;out[0]=clonePad();return out;}try{Object.defineProperty(navigator,'getGamepads',{value:patched,configurable:true});}catch(e1){try{Navigator.prototype.getGamepads=patched;}catch(e2){}}window.addEventListener('message',function(ev){if(ev&&ev.data&&ev.data.type==='NAP_PAD_STATE'){window.__napPadState=ev.data.pad||window.__napPadState;try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}}});try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}console.log('[NAP_PAD] virtual gamepad injected');}catch(e){console.log('[NAP_PAD] inject failed '+e.message);}})();";d.documentElement.appendChild(s);lastPadStatus='PAD_INJECT_OK';pushLog('BUILD2NH VIRTUAL GAMEPAD INJECT OK');postPadState();return true;}catch(e){lastPadStatus='PAD_INJECT_ERR '+(e.message||String(e));pushLog('BUILD2NH VIRTUAL GAMEPAD INJECT FAILED '+lastPadStatus);return false;}}
-function keyDefs(btn){var m={UP:[['ArrowUp','ArrowUp',38]],DOWN:[['ArrowDown','ArrowDown',40]],LEFT:[['ArrowLeft','ArrowLeft',37]],RIGHT:[['ArrowRight','ArrowRight',39]],A:[['z','KeyZ',90],['y','KeyY',89],[' ','Space',32]],B:[['x','KeyX',88],['z','KeyZ',90]],C:[['c','KeyC',67],['x','KeyX',88]],START:[['Enter','Enter',13]]};return m[btn]||null;}
-function keyDef(btn){var list=keyDefs(btn);return list&&list[0];}
-function makeKeyEvent(type,def,upper){var key=upper&&def[0].length===1?def[0].toUpperCase():def[0];var ch=(key&&key.length===1)?key.charCodeAt(0):0;var ev=new KeyboardEvent(type,{key:key,code:def[1],bubbles:true,cancelable:true,composed:true,ctrlKey:false,altKey:false,shiftKey:false,metaKey:false,repeat:false});try{Object.defineProperty(ev,'keyCode',{get:function(){return def[2];}});Object.defineProperty(ev,'which',{get:function(){return def[2];}});Object.defineProperty(ev,'charCode',{get:function(){return type==='keypress'?ch:0;}});Object.defineProperty(ev,'isTrusted',{get:function(){return true;}});}catch(e){}return ev;}
-function dispatchOne(target,type,def,detail,label,upper){try{target.dispatchEvent(makeKeyEvent(type,def,upper));detail.push(label+':'+type+(upper?':UPPER':'')+':OK');return true;}catch(e){detail.push(label+':'+type+':'+(e.message||String(e)));return false;}}
-function sendKey(btn,down){if(!frameLoaded)openClown('button:'+btn,'play');var fr=document.getElementById('clownFrame');var defs=keyDefs(btn);if(!defs||!fr){lastKeyStatus='NO_FRAME_OR_KEYDEF';return false;}var detail=[],ok=false;focusFrame();injectVirtualPad();padButtons[btn]=!!down;postPadState();var targets=[];try{targets.push(['frameWin',fr.contentWindow]);}catch(e){}try{if(fr.contentWindow&&fr.contentWindow.document){var fd=fr.contentWindow.document;targets.push(['frameDoc',fd]);targets.push(['frameBody',fd.body]);targets.push(['frameActive',fd.activeElement]);var canvas=fd.querySelector('canvas');if(canvas){targets.push(['frameCanvas',canvas]);try{canvas.focus();}catch(_){}}}}catch(e2){detail.push('frameDoc blocked '+(e2.message||String(e2)));}
-targets.push(['parentWin',window],['parentDoc',document],['parentActive',document.activeElement]);
-var types=down?['keydown','keypress']:['keyup'];
-for(var di=0;di<defs.length;di++){var def=defs[di];for(var i=0;i<targets.length;i++){var name=targets[i][0],target=targets[i][1];if(!target||!target.dispatchEvent)continue;for(var j=0;j<types.length;j++){ok=dispatchOne(target,types[j],def,detail,name,false)||ok;if(def[0].length===1)ok=dispatchOne(target,types[j],def,detail,name,true)||ok;}}}
-lastKeyStatus=(ok?'KEY_SENT_URL_PAD':'KEY_BLOCKED')+' '+btn+' '+(down?'DOWN':'UP')+' '+detail.slice(0,28).join(' | ')+' | '+lastPadStatus;pushLog('BUILD2NH INPUT '+btn+' '+(down?'DOWN':'UP')+' -> '+lastKeyStatus);if(down)toast(btn+' -> key/pad multi',900);return ok;}
-function bindKeyButton(id,btn){var el=document.getElementById(id);if(!el)return;el.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{el.setPointerCapture(e.pointerId);}catch(_){}sendKey(btn,true);},true);el.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();sendKey(btn,false);},true);el.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();sendKey(btn,false);},true);el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
-function dpadDirectionFromEvent(e){var b=document.getElementById('dpad');if(!b)return null;var r=b.getBoundingClientRect();var x=(e.clientX-r.left)/Math.max(1,r.width)-.5;var y=(e.clientY-r.top)/Math.max(1,r.height)-.5;if(Math.abs(x)<.10&&Math.abs(y)<.10)return null;return Math.abs(x)>Math.abs(y)?(x<0?'LEFT':'RIGHT'):(y<0?'UP':'DOWN');}
-function setDpadDir(dir){if(activeDpadDir===dir)return;if(activeDpadDir){padButtons[activeDpadDir]=false;sendKey(activeDpadDir,false);}activeDpadDir=dir;if(activeDpadDir){padButtons[activeDpadDir]=true;sendKey(activeDpadDir,true);}postPadState();}
-function buildLogText(){return 'SEGA LOG / BUILD2NH\nAtariHelp.eu EMU-10 '+BUILD+'\n\nSTAV:\n- ClownMDEmu oficialni frontend bezi v nasi monitorove obrazovce\n- HRY/SBIRKA/CARTRIDGE otevre NAS ROM picker v appce\n- BUILD2NH uz nezkousi drag/drop, ale official URL cartridge: ?cartridge=<ROM URL>\n- mala ROM se prevede na Data URL a ClownMDEmu ma nabootovat rovnou bez menu\n- velka ROM zkusi Blob URL fallback\n- KONZOLE = menu cely frontend; JOYSTICK = herni crop + focus\n- portret i landscape maji samostatne hitboxy pro ovladac\n- A/B/C posila vic variant klaves + virtual Gamepad API\n- START=Enter + pad Start, DPAD=sipky + pad osy/tlacitka\n- zadny fake gameplay, ROM neni v APK ani v ZIPu\n- vybrana ROM: '+selectedRomName+'\n- frameLoaded: '+frameLoaded+'\n- posledni cartridge status: '+lastDropStatus+'\n- posledni key status: '+lastKeyStatus+'\n- posledni pad status: '+lastPadStatus+'\n\nPOSLEDNI UDALOSTI:\n'+(logLines.length?logLines.slice(-54).join('\n'):'zadne');}
+function $(id){return document.getElementById(id);}
+function pushLog(t){var line=new Date().toLocaleTimeString()+' '+t;logLines.push(line);if(logLines.length>220)logLines.shift();try{console.log('[NAP SEGA NI] '+t);}catch(e){}return line;}
+function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__segaToastTimer);window.__segaToastTimer=setTimeout(function(){el.classList.remove('show');},ms||2600);}
+function showMonitor(t){var ov=$('monitorOverlay'),tx=$('monitorText');if(tx)tx.textContent=t;if(ov)ov.classList.add('show');}
+function hideMonitor(){var ov=$('monitorOverlay');if(ov)ov.classList.remove('show');}
+function drawStatus(title,sub){try{var c=$('mdVideo'),ctx=c.getContext('2d',{alpha:false})||c.getContext('2d');ctx.fillStyle='#020611';ctx.fillRect(0,0,320,224);for(var y=0;y<224;y+=7){ctx.fillStyle='rgba(60,150,255,.12)';ctx.fillRect(22,y,276,1);}ctx.strokeStyle='rgba(90,185,255,.55)';ctx.lineWidth=2;ctx.strokeRect(24,24,272,176);ctx.textAlign='center';ctx.fillStyle='#bfe9ff';ctx.font='bold 15px monospace';ctx.fillText(title||'CLOWNMD LOCAL READY',160,72);ctx.fillStyle='#d9f4ff';ctx.font='bold 11px monospace';(sub||'HRY/SBIRKA/CARTRIDGE = VYBER ROM').split('\n').forEach(function(line,i){ctx.fillText(line,160,104+i*17);});}catch(e){}}
+function setFrameMode(mode,reason){var w=$('clownFrameWrap');if(!w)return;w.classList.remove('menuMode','playMode','booting');w.classList.add(mode==='menu'?'menuMode':'playMode');pushLog('BUILD2NI FRAME MODE '+mode+' reason='+reason);}
+function focusFrame(){try{var fr=$('clownFrame');fr&&fr.focus();fr&&fr.contentWindow&&fr.contentWindow.focus();}catch(e){}}
+function requestRom(reason){pushLog('BUILD2NI REQUEST ROM PICKER reason='+reason);var inp=$('romInput');if(inp){try{inp.value='';}catch(_){} inp.click();}else toast('ROM picker nenalezen',2500);}
+function openLocalWrapper(reason,mode){hideMonitor();drawStatus('LOCAL CLOWNMD BOOT','CEKAM NA WRAPPER / ROM');var w=$('clownFrameWrap'),fr=$('clownFrame');if(!w||!fr)return;w.style.display='block';w.classList.add('booting');setFrameMode(mode||'play',reason);frameLoaded=false;lastBootStatus='WRAPPER_LOADING';fr.onload=function(){frameLoaded=true;pushLog('BUILD2NI WRAPPER IFRAME onload reason='+reason);setTimeout(postRomToWrapper,120);};fr.src='clown_local_boot.html#'+Date.now();toast('Nacitam lokalni ClownMDEmu wrapper...',2200);}
+function postRomToWrapper(){var fr=$('clownFrame');if(!fr||!fr.contentWindow||!selectedRomBuffer){pushLog('BUILD2NI POST_ROM skipped frame/buffer missing');return;}try{var copy=selectedRomBuffer.slice(0);fr.contentWindow.postMessage({type:'nap-rom',build:BUILD,name:selectedRomName,buffer:copy},'*',[copy]);lastBootStatus='ROM_POSTED_TO_LOCAL_WRAPPER '+selectedRomName+' bytes='+selectedRomSize;pushLog('BUILD2NI ROM_POST_TO_LOCAL_WRAPPER name='+selectedRomName+' size='+selectedRomSize);toast('ROM poslana do lokalniho ClownMDEmu wrapperu',2600);}catch(e){lastBootStatus='ROM_POST_FAILED '+(e.message||String(e));pushLog('BUILD2NI ROM_POST FAILED '+lastBootStatus);showMonitor('ROM POST FAILED\n'+lastBootStatus);}}
+function onRomSelected(f){if(!f){pushLog('BUILD2NI ROM SELECT cancelled');return;}selectedRomName=f.name||'unknown.rom';selectedRomSize=f.size||0;lastBootStatus='READING_ROM';pushLog('BUILD2NI ROM SELECTED name='+selectedRomName+' size='+selectedRomSize+' type='+(f.type||''));toast('ROM vybrana: '+selectedRomName,1800);var r=new FileReader();r.onerror=function(){lastBootStatus='FILE_READ_ERROR';pushLog('BUILD2NI FILE_READ_ERROR '+selectedRomName);showMonitor('FILE READ ERROR\n'+selectedRomName);};r.onload=function(){selectedRomBuffer=r.result;pushLog('BUILD2NI ROM READ OK name='+selectedRomName+' bytes='+selectedRomBuffer.byteLength);openLocalWrapper('romSelected:'+selectedRomName,'play');};r.readAsArrayBuffer(f);}
+function keyDefs(btn){return {UP:[['ArrowUp','ArrowUp',38]],DOWN:[['ArrowDown','ArrowDown',40]],LEFT:[['ArrowLeft','ArrowLeft',37]],RIGHT:[['ArrowRight','ArrowRight',39]],A:[['z','KeyZ',90],['Z','KeyZ',90]],B:[['x','KeyX',88],['X','KeyX',88]],C:[['c','KeyC',67],['C','KeyC',67]],START:[['Enter','Enter',13]]}[btn]||null;}
+function postPad(){var fr=$('clownFrame');try{fr&&fr.contentWindow&&fr.contentWindow.postMessage({type:'nap-input-state',buttons:JSON.parse(JSON.stringify(padButtons))},'*');}catch(e){}}
+function sendToWrapper(btn,down){var fr=$('clownFrame');if(!fr||!fr.contentWindow){lastKeyStatus='NO_FRAME';return false;}padButtons[btn]=!!down;postPad();try{fr.contentWindow.postMessage({type:'nap-input',button:btn,down:!!down},'*');lastKeyStatus='POST_TO_WRAPPER '+btn+' '+(down?'DOWN':'UP');pushLog('BUILD2NI INPUT '+lastKeyStatus);return true;}catch(e){lastKeyStatus='POST_FAIL '+(e.message||String(e));pushLog('BUILD2NI INPUT FAIL '+lastKeyStatus);return false;}}
+function bindKeyButton(id,btn){var el=$(id);if(!el)return;el.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{el.setPointerCapture(e.pointerId);}catch(_){}focusFrame();sendToWrapper(btn,true);},true);el.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();sendToWrapper(btn,false);},true);el.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();sendToWrapper(btn,false);},true);el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
+function dpadDirectionFromEvent(e){var b=$('dpad');if(!b)return null;var r=b.getBoundingClientRect();var x=(e.clientX-r.left)/Math.max(1,r.width)-.5;var y=(e.clientY-r.top)/Math.max(1,r.height)-.5;if(Math.abs(x)<.10&&Math.abs(y)<.10)return null;return Math.abs(x)>Math.abs(y)?(x<0?'LEFT':'RIGHT'):(y<0?'UP':'DOWN');}
+function setDpadDir(dir){if(activeDpadDir===dir)return;if(activeDpadDir)sendToWrapper(activeDpadDir,false);activeDpadDir=dir;if(activeDpadDir)sendToWrapper(activeDpadDir,true);}
+function buildLogText(){return 'SEGA LOG / BUILD2NI\nAtariHelp.eu EMU-10 '+BUILD+'\n\nSTAV:\n- ClownMDEmu se uz neotevira s obri DATA URL v adrese\n- HRY/SBIRKA/CARTRIDGE otevre NAS ROM picker\n- ROM se posle do lokalniho wrapperu clown_local_boot.html jako ArrayBuffer\n- wrapper vytvori Blob URL uvnitr sveho okna a spusti oficialni ClownMDEmu JS s Module.arguments=[blobURL]\n- cil: ClownMDEmu nacita NAS cartridge bez rucniho Software menu\n- A/B/C/START/DPAD posilaji postMessage do wrapperu, kde se generuji lokalni klavesy + virtual gamepad\n- portrait/landscape hitboxy zachovany\n- zadny fake gameplay, ROM neni v APK ani v ZIPu\n- vybrana ROM: '+selectedRomName+' size='+selectedRomSize+'\n- frameLoaded: '+frameLoaded+'\n- boot status: '+lastBootStatus+'\n- key status: '+lastKeyStatus+'\n\nPOSLEDNI UDALOSTI:\n'+(logLines.length?logLines.slice(-90).join('\n'):'zadne');}
 function pad2(n){return ('0'+n).slice(-2);}function logFileName(){var d=new Date();return 'AtariHelp_SEGA_LOG_'+d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+'_'+pad2(d.getHours())+pad2(d.getMinutes())+pad2(d.getSeconds())+'.txt';}
-function saveLog(){var txt=buildLogText(),fn=logFileName(),ok=false;try{if(window.AHSAVE&&typeof window.AHSAVE.save==='function'){window.AHSAVE.save(fn,txt);ok=true;}}catch(e){pushLog('AHSAVE.save failed '+e.message);}if(!ok){try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1200);ok=true;}catch(e2){showMonitor(txt);}}pushLog('BUILD2NH LOG SAVE '+(ok?'OK ':'FAILED ')+fn);toast(ok?'LOG ulozen: '+fn:'LOG zobrazen v monitoru',3200);}
-['btnCollection','btnGames','cartSlot'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();requestRom(id);},true);});
-var romInput=document.getElementById('romInput');if(romInput)romInput.addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];onRomSelected(f);},true);
-var con=document.getElementById('btnConsole');if(con)con.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openClown('console','menu');toast('KONZOLE: menu rezim. Software porad muzes pouzit rucne.',2600);},true);
-var joy=document.getElementById('btnJoystick');if(joy)joy.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openClown('joystick','play');injectVirtualPad();toast('JOYSTICK: herni crop + focus + virtual gamepad.',3000);},true);
-var mon=document.getElementById('mdVideo');if(mon)mon.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();requestRom('monitor');},true);
-var blank=document.getElementById('monitorBlank');if(blank)blank.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();requestRom('monitorBlank');},true);
+function saveLog(){var txt=buildLogText(),fn=logFileName(),ok=false;try{if(window.AHSAVE&&typeof window.AHSAVE.save==='function'){window.AHSAVE.save(fn,txt);ok=true;}}catch(e){pushLog('AHSAVE.save failed '+e.message);}if(!ok){try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1200);ok=true;}catch(e2){showMonitor(txt);}}pushLog('BUILD2NI LOG SAVE '+(ok?'OK ':'FAILED ')+fn);toast(ok?'LOG ulozen: '+fn:'LOG zobrazen v monitoru',3200);}
+window.addEventListener('message',function(ev){var d=ev.data||{};if(!d||!d.type)return;if(d.type==='nap-wrapper-log'){pushLog('WRAPPER '+d.msg);if(/BOOT_FAIL|RUNTIME_ERROR|SCRIPT_ERROR|WASM|FETCH/.test(d.msg||'')){lastBootStatus='WRAPPER_'+d.msg;}if(/MAIN_STARTED|MODULE_POSTRUN|CANVAS_READY|BOOTING_ROM/.test(d.msg||'')){lastBootStatus=d.msg;}}},false);
+['btnCollection','btnGames','cartSlot'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();requestRom(id);},true);});
+var romInput=$('romInput');if(romInput)romInput.addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];onRomSelected(f);},true);
+var con=$('btnConsole');if(con)con.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();if(frameLoaded){setFrameMode('menu','console');toast('KONZOLE: cely wrapper/menu rezim',2200);}else{openLocalWrapper('consoleNoRom','menu');}},true);
+var joy=$('btnJoystick');if(joy)joy.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();if(frameLoaded){setFrameMode('play','joystick');focusFrame();toast('JOYSTICK: herni vyrez + focus',2200);}else toast('Nejdriv vyber ROM pres HRY/SBIRKA/CARTRIDGE',2600);},true);
 bindKeyButton('btnA','A');bindKeyButton('btnB','B');bindKeyButton('btnC','C');bindKeyButton('btnStart','START');
-var dpad=document.getElementById('dpad');if(dpad){dpad.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{dpad.setPointerCapture(e.pointerId);}catch(_){}setDpadDir(dpadDirectionFromEvent(e));},true);dpad.addEventListener('pointermove',function(e){if(e.buttons){e.preventDefault();e.stopPropagation();setDpadDir(dpadDirectionFromEvent(e));}},true);dpad.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);dpad.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);dpad.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
-var saves=document.getElementById('btnSaves');if(saves)saves.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();saveLog();},true);
-var man=document.getElementById('btnManuals');if(man)man.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor('BUILD2NH - CLOWNMDEMU URL CARTRIDGE + GAMEPAD\n\nHRY/SBIRKA/CARTRIDGE:\n- otevrou NAS ROM picker v aplikaci\n- vybrany soubor se zkusi poslat do ClownMDEmu jako URL cartridge prikaz\n\nJOYSTICK:\n- herni crop + focus\n- A/B/C: keyboard + virtual Gamepad API\n\nLANDSCAPE:\n- obrazovka se roztahne na cely mobil\n- hitboxy ovladace se prepocitaji pro landscape\n\nPOCTIVE:\n- kdyz WebView/ClownMDEmu odmitne Data/Blob URL, v logu bude URL_CARTRIDGE_FAILED a dalsi krok musi byt native/local server bridge.');},true);
-var web=document.getElementById('btnWeb');if(web)web.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();try{location.href='https://atarihelp.eu/';}catch(_){}},true);
-window.addEventListener('orientationchange',function(){pushLog('BUILD2NH ORIENTATION CHANGE '+(screen.orientation&&screen.orientation.type||'unknown'));setTimeout(function(){if(frameOpenRequested)setFrameMode('play','orientationchange');},400);});
-drawPrompt('URL CARTRIDGE / LANDSCAPE READY');pushLog('AtariHelp.eu EMU-10 '+BUILD+' pripraven - ClownMDEmu v monitoru; HRY/SBIRKA/CARTRIDGE vytvori URL cartridge prikaz; virtual gamepad pro A/B/C a landscape hitboxy.');toast('BUILD2NH: HRY/SBIRKA/CARTRIDGE vyber ROM; zkusim direct ?cartridge= bez menu.',6200);
+var dpad=$('dpad');if(dpad){dpad.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{dpad.setPointerCapture(e.pointerId);}catch(_){}setDpadDir(dpadDirectionFromEvent(e));},true);dpad.addEventListener('pointermove',function(e){if(e.buttons){e.preventDefault();e.stopPropagation();setDpadDir(dpadDirectionFromEvent(e));}},true);dpad.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);dpad.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);dpad.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
+var saves=$('btnSaves');if(saves)saves.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();saveLog();},true);
+var man=$('btnManuals');if(man)man.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor('BUILD2NI\n\nHRY/SBIRKA/CARTRIDGE:\n- vyberes ROM v nasi appce\n- ROM se neposila jako DATA URL do adresy\n- posle se do lokalniho wrapperu jako ArrayBuffer\n- wrapper vytvori Blob URL a spusti ClownMDEmu s Module.arguments\n\nKdyz to spadne, LOG ukaze WRAPPER chybu.');},true);
+var web=$('btnWeb');if(web)web.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();try{location.href='https://atarihelp.eu/';}catch(_){}},true);
+window.addEventListener('orientationchange',function(){pushLog('BUILD2NI ORIENTATION CHANGE '+(screen.orientation&&screen.orientation.type||'unknown'));setTimeout(function(){if(frameLoaded)setFrameMode('play','orientationchange');},400);});
+drawStatus('LOCAL CLOWNMD READY','HRY/SBIRKA/CARTRIDGE = VYBER ROM');pushLog('AtariHelp.eu EMU-10 '+BUILD+' pripraven - lokalni wrapper pro ClownMDEmu Blob cartridge bez data URL v adrese.');toast('BUILD2NI: vyber ROM pres HRY/SBIRKA/CARTRIDGE. Zadny data URL v adrese.',5200);
 })();
 </script>
 </body>
