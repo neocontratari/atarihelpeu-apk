@@ -1,5 +1,5 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>NaP ClownMDEmu Local Boot OM Auto Compat</title>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>NaP ClownMDEmu Local Boot OV Mobile Real Device</title>
 <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#8fd8ff;font:12px monospace;}#displayCanvas{display:none;position:absolute;left:0;top:0;width:100vw;height:100vh;z-index:3;background:#000;image-rendering:pixelated;}#canvas{display:block;position:absolute;left:0;top:0;width:100vw;height:100vh;opacity:1;z-index:2;pointer-events:auto;background:#000;image-rendering:pixelated;}body.nap-delay-ready #displayCanvas{display:block;}body.nap-delay-ready #canvas{opacity:.01;z-index:1;pointer-events:none;}body.nap-direct #displayCanvas{display:none!important;}body.nap-direct #canvas{opacity:1!important;z-index:2;pointer-events:auto;}#status{position:absolute;left:6px;right:6px;bottom:6px;padding:4px 6px;background:rgba(0,0,0,.50);color:#8fd8ff;text-align:center;z-index:5;white-space:pre-wrap;pointer-events:none;}#log{position:absolute;left:6px;top:6px;right:6px;max-height:42%;overflow:hidden;color:#8fd8ff;background:rgba(0,0,0,.42);z-index:4;white-space:pre-wrap;display:none}</style>
 </head><body><canvas id="displayCanvas" tabindex="0"></canvas><canvas id="canvas" tabindex="-1"></canvas><div id="log"></div><div id="status">WAITING FOR NAP ROM...</div>
 <script>
@@ -7,6 +7,8 @@
 var remoteBase='https://sonicresearch.org/clownacy/';
 function qp(n){try{return new URLSearchParams(location.search).get(n)||'';}catch(e){return'';}}
 var napAudioSession=qp('napAudioSession')||String(Date.now());
+var napAudioMode=qp('napAudioMode')||'';
+var napNoPrime=qp('napNoPrime')==='1';
 var napRegionInfo={mode:'AUTO',pal:false,japanese:false,label:'AUTO -> USA/NTSC International',source:'default'};
 var napRegionConfigWritten=false;
 var booted=false, romBlobUrl=null, gamepadTimer=null, videoSyncRaf=0, videoBuffers=[], audioContexts=[], pad={A:false,B:false,C:false,START:false,UP:false,DOWN:false,LEFT:false,RIGHT:false};
@@ -98,7 +100,7 @@ function installAudioTuning(){
     function TunedAudioContext(opts){
       var o={};
       if(opts&&typeof opts==='object'){for(var k in opts){try{o[k]=opts[k];}catch(_){}}}
-      if(!o.latencyHint)o.latencyHint='playback';
+      if(!o.latencyHint)o.latencyHint=(napAudioMode==='mobileBalanced'?'balanced':'playback');
       if(!o.sampleRate)o.sampleRate=48000;
       var ctx=null;
       try{ctx=new NativeAC(o);}
@@ -110,7 +112,7 @@ function installAudioTuning(){
     try{TunedAudioContext.prototype=NativeAC.prototype; Object.setPrototypeOf&&Object.setPrototypeOf(TunedAudioContext,NativeAC);}catch(_){}
     window.AudioContext=TunedAudioContext;
     if(window.webkitAudioContext)window.webkitAudioContext=TunedAudioContext;
-    parentLog('AUDIO_TUNE installed latencyHint=playback preferredSampleRate=48000 audioHardReset=YES cleanStable=YES deferredKill=YES session='+napAudioSession);
+    parentLog('AUDIO_TUNE installed latencyHint='+(napAudioMode==='mobileBalanced'?'balanced':'playback')+' preferredSampleRate=48000 audioHardReset=YES mobileMode='+(napAudioMode||'normal')+' noPrime='+napNoPrime+' deferredKill=YES session='+napAudioSession);
   }catch(e){parentLog('AUDIO_TUNE_FAIL '+(e.message||e));}
 }
 installAudioTuning();
@@ -135,14 +137,15 @@ function resumeTrackedAudioContexts(reason){
   try{audioContexts.forEach(function(ctx,idx){try{if(ctx&&ctx.state==='suspended'&&ctx.resume){ctx.resume().then(function(){parentLog('AUDIO_CONTEXT_RESUME_DONE reason='+(reason||'')+' idx='+idx+' state='+(ctx&&ctx.state));}).catch(function(e){parentLog('AUDIO_CONTEXT_RESUME_REJECT '+idx+' '+(e&&e.message||e));});}}catch(e1){parentLog('AUDIO_CONTEXT_RESUME_FAIL '+idx+' '+(e1.message||e1));}});}catch(e){parentLog('AUDIO_CONTEXT_RESUME_LOOP_FAIL '+(e.message||e));}
 }
 function primeAudioBeforeClown(done){
+  if(napNoPrime){try{parentLog('AUDIO_PRIME_SKIP noPrime=YES mobileMode='+(napAudioMode||'normal')+' session='+napAudioSession);}catch(_){} try{done&&done();}catch(e0){} return;}
   var called=false;
   function finish(tag){if(called)return;called=true;try{parentLog('AUDIO_PRIME_DONE '+tag+' session='+napAudioSession);}catch(_){} try{done&&done();}catch(e){parentLog('AUDIO_PRIME_CALLBACK_FAIL '+(e.message||e));}}
   try{
     var NativeAC=window.__napNativeAudioContext||window.AudioContext||window.webkitAudioContext;
     if(!NativeAC){finish('noAudioContext');return;}
     var ctx=null;
-    try{ctx=new NativeAC({latencyHint:'playback',sampleRate:48000});}
-    catch(e1){try{ctx=new NativeAC({latencyHint:'playback'});parentLog('AUDIO_PRIME fallback_no_sampleRate '+(e1.message||e1));}catch(e2){ctx=new NativeAC();parentLog('AUDIO_PRIME fallback_plain '+(e2.message||e2));}}
+    try{ctx=new NativeAC({latencyHint:(napAudioMode==='mobileBalanced'?'balanced':'playback'),sampleRate:48000});}
+    catch(e1){try{ctx=new NativeAC({latencyHint:(napAudioMode==='mobileBalanced'?'balanced':'playback')});parentLog('AUDIO_PRIME fallback_no_sampleRate '+(e1.message||e1));}catch(e2){ctx=new NativeAC();parentLog('AUDIO_PRIME fallback_plain '+(e2.message||e2));}}
     parentLog('AUDIO_PRIME_START sampleRate='+(ctx&&ctx.sampleRate)+' state='+(ctx&&ctx.state)+' baseLatency='+(ctx&&ctx.baseLatency)+' outputLatency='+(ctx&&ctx.outputLatency)+' session='+napAudioSession);
     try{
       var gain=ctx.createGain();gain.gain.value=0;

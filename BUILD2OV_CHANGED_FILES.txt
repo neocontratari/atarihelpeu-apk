@@ -1,0 +1,17 @@
+BUILD2OV_SEGA_MOBILE_REAL_DEVICE_TUNE_STAGE60
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- portrait/Nox baseline z BUILD2OT/2OS/2OR/2OT ponechan, hitboxy portraitu se nemeni
+- landscape iframe/canvas agresivneji roztazen do stran: cover pokus
+- landscape joystick posunut vic dolu a doleva
+- landscape A/B/C posunuty vic dolu a doprava, blize k sobe
+- landscape START skryty
+- landscape horni nav zmensena a zpruhlednena; duplicitni cartridge text odstranen
+- real Android audio test: napAudioMode=mobileBalanced + napNoPrime=1
+- LOG zustava na diskete ULOZENE
