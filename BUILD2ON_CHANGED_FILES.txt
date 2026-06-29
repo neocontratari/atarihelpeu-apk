@@ -1,0 +1,30 @@
+BUILD2ON_SEGA_FINAL_UI_SKIN_STAGE52
+
+KODY JSOU ZMENENE / PRIDANE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+CIL:
+- nasadit schvaleny Sega final UI navrh do hlavni Sega obrazovky
+- zachovat BUILD2OM funkcni auto-compat emulator vetev
+- odstranit viditelne i aktivni prepinace KONZOLE / JOYSTICK
+- odstranit LOG z finalni uzivatelske obrazovky
+- cartridge zustava hlavni klikaci prvek pro vyber/vymenu hry
+- zachovat barevne ikonky: SBIRKA, ULOZENE, HRY, NAVODY, WEB s N&P logem, MENU
+
+FUNKCE TLACITEK:
+- SBIRKA -> ROM picker / vyber hry
+- HRY -> ROM picker / vyber hry
+- viditelna cartridge -> ROM picker / vymena hry
+- ULOZENE -> zatim informacni sekce, nestahuje LOG
+- NAVODY -> info/navod pro uzivatele
+- WEB -> atarihelp.eu
+- MENU -> zpet na hlavni menu
+
+EMULATOR / AUDIO:
+- zachovan bezpecny Module.arguments=[blobURL]
+- zachovan playback 48 kHz + hard reset
+- zachovana EU compat logika z BUILD2OM/2OL
+- ROM se patchuje jen jako kopie v pameti, originalni soubor se nemeni

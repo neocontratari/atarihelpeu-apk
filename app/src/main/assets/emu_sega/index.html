@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
-<title>SEGA Mega Drive AUTO COMPAT — N&P Vision</title>
+<title>SEGA Mega Drive FINAL UI — N&P Vision</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{min-height:100%;background:#02050a;color:#8fd8ff;font-family:"Courier New",monospace;overflow:hidden;}
@@ -12,18 +12,18 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
 .hit{position:absolute;z-index:60;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:none;}
 .hit:active{background:rgba(0,118,255,.18);box-shadow:0 0 32px rgba(0,118,255,.28) inset;border-radius:18px;}
-#btnConsole{left:68.3%;top:3.3%;width:14.1%;height:4.3%;}
-#btnJoystick{left:82.0%;top:3.3%;width:14.1%;height:4.3%;}
-#btnCollection{left:3.3%;top:90.2%;width:13.4%;height:7.2%;}
-#btnSaves{left:19.2%;top:90.2%;width:13.4%;height:7.2%;}
-#btnGames{left:35.2%;top:90.2%;width:13.4%;height:7.2%;}
-#btnManuals{left:51.2%;top:90.2%;width:13.4%;height:7.2%;}
-#btnWeb{left:67.1%;top:90.2%;width:13.4%;height:7.2%;}
-#btnMenu{left:83.1%;top:90.2%;width:13.4%;height:7.2%;}
-#btnEuBranch{left:3.5%;top:78.9%;width:21.5%;height:10.0%;}
-#cartSlot{left:73.0%;top:80.4%;width:24.4%;height:8.5%;}
-#cartCenter{left:26.8%;top:72.0%;width:46.4%;height:13.8%;}
-#btnReset{left:82.0%;top:74.2%;width:14.6%;height:6.6%;}
+#btnConsole{display:none;pointer-events:none;}
+#btnJoystick{display:none;pointer-events:none;}
+#btnCollection{left:2.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnSaves{left:18.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnGames{left:34.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnManuals{left:50.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnWeb{left:66.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnMenu{left:82.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnEuBranch{display:none;pointer-events:none;}
+#cartSlot{left:68.0%;top:76.4%;width:29.0%;height:10.9%;}
+#cartCenter{left:68.0%;top:76.4%;width:29.0%;height:10.9%;}
+#btnReset{display:none;pointer-events:none;}
 #btnStart{left:44.2%;top:62.0%;width:11.8%;height:5.8%;}
 #btnA{left:58.5%;top:57.6%;width:14.4%;height:10.6%;}
 #btnB{left:66.4%;top:56.0%;width:14.9%;height:10.8%;}
@@ -41,7 +41,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #monitorText{white-space:pre-wrap;text-align:left;width:88%;max-height:84%;overflow:hidden;color:#d9ecff;text-shadow:0 0 8px rgba(0,120,255,.7);font:900 clamp(9px,2.3vw,16px)/1.34 "Courier New",monospace;}
 .toast{position:absolute;left:5%;right:5%;bottom:11%;z-index:70;display:none;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.84);border:1px solid rgba(75,155,255,.55);color:#d9ecff;font:900 13px/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
-#logBadge{position:absolute;z-index:12;left:20.4%;top:94.15%;width:11.0%;text-align:center;pointer-events:none;color:#8fd8ff;font:900 clamp(9px,2.3vw,16px) "Courier New",monospace;text-shadow:0 0 10px #0076ff,0 0 18px #0076ff;letter-spacing:.08em;}
+#logBadge{display:none;pointer-events:none;}
 #romInput{display:none;}
 @media (orientation:landscape) and (max-height:760px){
  html,body{width:100%;height:100%;overflow:hidden;background:#000;}body{display:block;}
@@ -55,18 +55,18 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #btnB{left:79%;top:60%;width:10%;height:19%;}
  #btnC{left:89%;top:55%;width:10%;height:19%;}
  #btnStart{left:43.5%;top:80%;width:13%;height:14%;}
- #btnConsole{left:2%;top:2%;width:16%;height:11%;}
- #btnJoystick{left:19%;top:2%;width:16%;height:11%;}
- #btnCollection{left:37%;top:2%;width:11%;height:11%;}
- #btnSaves{left:49%;top:2%;width:11%;height:11%;}
- #btnGames{left:61%;top:2%;width:11%;height:11%;}
- #btnManuals{left:73%;top:2%;width:11%;height:11%;}
- #btnWeb{left:85%;top:2%;width:7%;height:11%;}
- #btnMenu{left:92.5%;top:2%;width:6%;height:11%;}
- #btnEuBranch{left:1%;top:80%;width:20%;height:18%;}
- #cartSlot{left:58%;top:86%;width:20%;height:13%;}
- #cartCenter{left:36%;top:82%;width:26%;height:17%;}
- #btnReset{left:80%;top:86%;width:17%;height:13%;}
+ #btnConsole{display:none;pointer-events:none;}
+ #btnJoystick{display:none;pointer-events:none;}
+ #btnCollection{left:2%;top:2%;width:12%;height:12%;}
+ #btnSaves{left:15%;top:2%;width:12%;height:12%;}
+ #btnGames{left:28%;top:2%;width:12%;height:12%;}
+ #btnManuals{left:41%;top:2%;width:12%;height:12%;}
+ #btnWeb{left:54%;top:2%;width:12%;height:12%;}
+ #btnMenu{left:67%;top:2%;width:12%;height:12%;}
+ #btnEuBranch{display:none;pointer-events:none;}
+ #cartSlot{left:80%;top:84%;width:19%;height:15%;}
+ #cartCenter{left:80%;top:84%;width:19%;height:15%;}
+ #btnReset{display:none;pointer-events:none;}
  .hit:active{background:rgba(0,118,255,.22);border-radius:16px;}
  #logBadge{display:none;}.toast{left:1%;right:1%;bottom:1%;font-size:11px;padding:6px 8px;}
 }
@@ -98,14 +98,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnB" class="hit" type="button">B</button>
   <button id="btnC" class="hit" type="button">C</button>
   <button id="dpad" class="hit" type="button">DPAD</button>
-  <div id="toast" class="toast">BUILD2OM: hlavni Sega auto-compat vetev.</div>
+  <div id="toast" class="toast">BUILD2ON: finalni Sega UI skin + auto compat.</div>
 </main>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2OM_SEGA_MAIN_EU_COMPAT_STAGE51';
+var BUILD='BUILD2ON_SEGA_FINAL_UI_SKIN_STAGE52';
 var logLines=[], frameLoaded=false, selectedRomName='zadna', selectedRomSize=0, selectedRomBuffer=null, lastBootStatus='NO_ROM', lastKeyStatus='NO_KEY', activeDpadDir=null;
 var imageTuneStatus='PLAY_CROP_TOP_NOISE_MICRO_NY left=7.95 top=14.55 width=84.25 height=31.85 frame=-3.6/-7.35/107.2/110.2 visibleCanvas=lateSafeDelay2f landscape=-1.4vw/-6.55vh/102.8vw/108.6vh';
-var audioTuneStatus='WRAPPER_AUDIO_CLEAN_STABLE_2OD_PLAYBACK_48K_HARD_RESET + MAIN_EU_COMPAT_2OM';
+var audioTuneStatus='WRAPPER_AUDIO_CLEAN_STABLE_2OD_PLAYBACK_48K_HARD_RESET + MAIN_EU_COMPAT_2ON_FINAL_UI';
 var regionModeSetting='MAIN_EU_COMPAT', lastRegionStatus='MAIN AUTO COMPAT -> FORCE EUROPE / PAL / International';
 var lastEuPatchStatus='NO_PATCH_YET';
 var bootAutoloadStarted=false;
@@ -128,38 +128,38 @@ function dbGet(key){return dbOpen().then(function(db){return new Promise(functio
 function dbDel(key){return dbOpen().then(function(db){return new Promise(function(resolve,reject){try{var tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).delete(key);tx.oncomplete=function(){try{db.close();}catch(_){} resolve();};tx.onerror=function(){try{db.close();}catch(_){} reject(tx.error||new Error('indexedDB del fail'));};}catch(e){try{db.close();}catch(_){} reject(e);}});});}
 function arrayBufferToBase64(buf){var bytes=new Uint8Array(buf),chunk=0x8000,parts=[];for(var i=0;i<bytes.length;i+=chunk){parts.push(String.fromCharCode.apply(null,bytes.subarray(i,i+chunk)));}return btoa(parts.join(''));}
 function base64ToArrayBuffer(b64){var bin=atob(b64),len=bin.length,bytes=new Uint8Array(len);for(var i=0;i<len;i++)bytes[i]=bin.charCodeAt(i);return bytes.buffer;}
-function storeHardBootRom(name,buf,reason){var rec={name:name||'cartridge.gen',size:buf.byteLength||0,time:Date.now(),reason:reason||'unknown',buffer:buf};return dbPut('rom',rec).then(function(){pushLog('BUILD2OM HARDBOOT_STORE indexedDB OK name='+rec.name+' bytes='+rec.size+' reason='+rec.reason);return 'indexedDB';}).catch(function(e){pushLog('BUILD2OM HARDBOOT_STORE indexedDB FAILED '+(e.message||e)+' - zkousim sessionStorage');try{sessionStorage.setItem('napSegaHardBootRom',JSON.stringify({name:rec.name,size:rec.size,time:rec.time,reason:rec.reason,b64:arrayBufferToBase64(buf)}));pushLog('BUILD2OM HARDBOOT_STORE sessionStorage OK name='+rec.name+' bytes='+rec.size);return 'sessionStorage';}catch(e2){pushLog('BUILD2OM HARDBOOT_STORE FAILED '+(e2.message||e2));throw e2;}});}
-function loadHardBootRom(){return dbGet('rom').then(function(rec){if(rec&&rec.buffer){pushLog('BUILD2OM HARDBOOT_LOAD indexedDB OK name='+rec.name+' bytes='+rec.size+' reason='+rec.reason);return dbDel('rom').then(function(){return rec;}).catch(function(){return rec;});}try{var txt=sessionStorage.getItem('napSegaHardBootRom');if(txt){sessionStorage.removeItem('napSegaHardBootRom');var r=JSON.parse(txt);r.buffer=base64ToArrayBuffer(r.b64);delete r.b64;pushLog('BUILD2OM HARDBOOT_LOAD sessionStorage OK name='+r.name+' bytes='+r.size);return r;}}catch(e){pushLog('BUILD2OM HARDBOOT_LOAD sessionStorage FAIL '+(e.message||e));}return null;}).catch(function(e){pushLog('BUILD2OM HARDBOOT_LOAD FAIL '+(e.message||e));return null;});}
+function storeHardBootRom(name,buf,reason){var rec={name:name||'cartridge.gen',size:buf.byteLength||0,time:Date.now(),reason:reason||'unknown',buffer:buf};return dbPut('rom',rec).then(function(){pushLog('BUILD2ON HARDBOOT_STORE indexedDB OK name='+rec.name+' bytes='+rec.size+' reason='+rec.reason);return 'indexedDB';}).catch(function(e){pushLog('BUILD2ON HARDBOOT_STORE indexedDB FAILED '+(e.message||e)+' - zkousim sessionStorage');try{sessionStorage.setItem('napSegaHardBootRom',JSON.stringify({name:rec.name,size:rec.size,time:rec.time,reason:rec.reason,b64:arrayBufferToBase64(buf)}));pushLog('BUILD2ON HARDBOOT_STORE sessionStorage OK name='+rec.name+' bytes='+rec.size);return 'sessionStorage';}catch(e2){pushLog('BUILD2ON HARDBOOT_STORE FAILED '+(e2.message||e2));throw e2;}});}
+function loadHardBootRom(){return dbGet('rom').then(function(rec){if(rec&&rec.buffer){pushLog('BUILD2ON HARDBOOT_LOAD indexedDB OK name='+rec.name+' bytes='+rec.size+' reason='+rec.reason);return dbDel('rom').then(function(){return rec;}).catch(function(){return rec;});}try{var txt=sessionStorage.getItem('napSegaHardBootRom');if(txt){sessionStorage.removeItem('napSegaHardBootRom');var r=JSON.parse(txt);r.buffer=base64ToArrayBuffer(r.b64);delete r.b64;pushLog('BUILD2ON HARDBOOT_LOAD sessionStorage OK name='+r.name+' bytes='+r.size);return r;}}catch(e){pushLog('BUILD2ON HARDBOOT_LOAD sessionStorage FAIL '+(e.message||e));}return null;}).catch(function(e){pushLog('BUILD2ON HARDBOOT_LOAD FAIL '+(e.message||e));return null;});}
 function powerOffWrapperBeforeNavigation(reason){
   var fr=$('clownFrame'), w=$('clownFrameWrap');
-  pushLog('BUILD2OM POWER_OFF_WRAPPER_BEGIN reason='+reason+' deferredKill=YES');
+  pushLog('BUILD2ON POWER_OFF_WRAPPER_BEGIN reason='+reason+' deferredKill=YES');
   try{Object.keys(padButtons).forEach(function(k){padButtons[k]=false;});postPad();}catch(_){}
-  try{if(fr&&fr.contentWindow){fr.contentWindow.postMessage({type:'nap-poweroff',reason:reason},'*');pushLog('BUILD2OM POWER_OFF_POST_SENT waitForAudioClose=900ms');}}catch(e){pushLog('BUILD2OM POWER_OFF_POST_FAIL '+(e.message||e));}
+  try{if(fr&&fr.contentWindow){fr.contentWindow.postMessage({type:'nap-poweroff',reason:reason},'*');pushLog('BUILD2ON POWER_OFF_POST_SENT waitForAudioClose=900ms');}}catch(e){pushLog('BUILD2ON POWER_OFF_POST_FAIL '+(e.message||e));}
   setTimeout(function(){
-    try{if(fr&&fr.contentWindow&&typeof fr.contentWindow.stop==='function'){fr.contentWindow.stop();pushLog('BUILD2OM POWER_OFF_FRAME_WINDOW_STOP deferred OK');}}catch(e2){pushLog('BUILD2OM POWER_OFF_FRAME_STOP_FAIL '+(e2.message||e2));}
-    try{if(fr){fr.onload=null;fr.src='about:blank';pushLog('BUILD2OM POWER_OFF_ABOUTBLANK deferred OK');}}catch(e3){pushLog('BUILD2OM POWER_OFF_ABOUTBLANK_FAIL '+(e3.message||e3));}
+    try{if(fr&&fr.contentWindow&&typeof fr.contentWindow.stop==='function'){fr.contentWindow.stop();pushLog('BUILD2ON POWER_OFF_FRAME_WINDOW_STOP deferred OK');}}catch(e2){pushLog('BUILD2ON POWER_OFF_FRAME_STOP_FAIL '+(e2.message||e2));}
+    try{if(fr){fr.onload=null;fr.src='about:blank';pushLog('BUILD2ON POWER_OFF_ABOUTBLANK deferred OK');}}catch(e3){pushLog('BUILD2ON POWER_OFF_ABOUTBLANK_FAIL '+(e3.message||e3));}
     try{if(w){w.classList.remove('booting','menuMode','playMode');w.style.display='none';}}catch(_){}
   },900);
   frameLoaded=false;
   lastBootStatus='TWO_PHASE_POWER_OFF_DEFERRED '+reason;
 }
 function pagePowerReload(reason){
-  pushLog('BUILD2OM TWO_PHASE_POWER_NAV reason='+reason);
+  pushLog('BUILD2ON TWO_PHASE_POWER_NAV reason='+reason);
   powerOffWrapperBeforeNavigation(reason);
   var url='sega_poweroff.html?return=index.html&stamp='+Date.now()+'&reason='+encodeURIComponent(reason||'unknown');
   setTimeout(function(){try{location.replace(url);}catch(_){location.href=url;}},1850);
 }
-function hardPowerBootBuffer(name,buf,reason){lastBootStatus='HARD_POWER_STORE '+reason;drawStatus('SEGA POWER OFF','VYPINAM CLOWNMD CORE / UKLADAM CARTRIDGE\n'+(name||''));toast('SEGA POWER OFF/ON: ciste vypnuti core + low latency audio',2400);storeHardBootRom(name,buf,reason).then(function(mode){pushLog('BUILD2OM HARD_POWER_BOOT mode='+mode+' name='+name+' reason='+reason);setTimeout(function(){pagePowerReload(reason);},320);}).catch(function(e){lastBootStatus='HARD_POWER_STORE_FAILED '+(e.message||e);showMonitor('HARD POWER STORE FAILED\n'+lastBootStatus);});}
-function tryAutoBootAfterPowerCycle(){if(bootAutoloadStarted)return;bootAutoloadStarted=true;loadHardBootRom().then(function(rec){if(!rec||!rec.buffer){pushLog('BUILD2OM HARDBOOT no pending ROM');return;}selectedRomName=rec.name||'cartridge.gen';selectedRomSize=rec.size||rec.buffer.byteLength||0;selectedRomBuffer=rec.buffer;pushLog('BUILD2OM HARDBOOT AUTOBOOT name='+selectedRomName+' bytes='+selectedRomSize+' reason='+(rec.reason||''));drawStatus('POWER CYCLE OK','BOOTUJI '+selectedRomName);toast('POWER ON: '+selectedRomName,1600);setTimeout(function(){openLocalWrapper('hardboot:'+selectedRomName,'play');},1050);});}
-function setFrameMode(mode,reason){var w=$('clownFrameWrap');if(!w)return;w.classList.remove('menuMode','playMode','booting');w.classList.add(mode==='menu'?'menuMode':'playMode');pushLog('BUILD2OM FRAME MODE '+mode+' reason='+reason);}
+function hardPowerBootBuffer(name,buf,reason){lastBootStatus='HARD_POWER_STORE '+reason;drawStatus('SEGA POWER OFF','VYPINAM CLOWNMD CORE / UKLADAM CARTRIDGE\n'+(name||''));toast('SEGA POWER OFF/ON: ciste vypnuti core + low latency audio',2400);storeHardBootRom(name,buf,reason).then(function(mode){pushLog('BUILD2ON HARD_POWER_BOOT mode='+mode+' name='+name+' reason='+reason);setTimeout(function(){pagePowerReload(reason);},320);}).catch(function(e){lastBootStatus='HARD_POWER_STORE_FAILED '+(e.message||e);showMonitor('HARD POWER STORE FAILED\n'+lastBootStatus);});}
+function tryAutoBootAfterPowerCycle(){if(bootAutoloadStarted)return;bootAutoloadStarted=true;loadHardBootRom().then(function(rec){if(!rec||!rec.buffer){pushLog('BUILD2ON HARDBOOT no pending ROM');return;}selectedRomName=rec.name||'cartridge.gen';selectedRomSize=rec.size||rec.buffer.byteLength||0;selectedRomBuffer=rec.buffer;pushLog('BUILD2ON HARDBOOT AUTOBOOT name='+selectedRomName+' bytes='+selectedRomSize+' reason='+(rec.reason||''));drawStatus('POWER CYCLE OK','BOOTUJI '+selectedRomName);toast('POWER ON: '+selectedRomName,1600);setTimeout(function(){openLocalWrapper('hardboot:'+selectedRomName,'play');},1050);});}
+function setFrameMode(mode,reason){var w=$('clownFrameWrap');if(!w)return;w.classList.remove('menuMode','playMode','booting');w.classList.add(mode==='menu'?'menuMode':'playMode');pushLog('BUILD2ON FRAME MODE '+mode+' reason='+reason);}
 function focusFrame(){try{var fr=$('clownFrame');fr&&fr.focus();fr&&fr.contentWindow&&fr.contentWindow.focus();}catch(e){}}
-function requestRom(reason){pushLog('BUILD2OM REQUEST ROM PICKER reason='+reason+(selectedRomBuffer?' oldRom='+selectedRomName:''));var inp=$('romInput');if(inp){try{inp.value='';}catch(_){} inp.click();toast('SEGA AUTO COMPAT: vyber ROM / vymena cartridge',2200);}else toast('ROM picker nenalezen',2500);}
-function replaceFrame(reason){var w=$('clownFrameWrap'),old=$('clownFrame');if(!w)return null;try{if(old){old.onload=null;old.src='about:blank';old.remove();}}catch(_){}var fr=document.createElement('iframe');fr.id='clownFrame';fr.title='ClownMDEmu local wrapper';fr.allow='autoplay; fullscreen; gamepad';fr.tabIndex=0;w.appendChild(fr);pushLog('BUILD2OM FRAME_REPLACED reason='+reason);return fr;}
-function openLocalWrapper(reason,mode){hideMonitor();drawStatus('LOCAL CLOWNMD BOOT','CEKAM NA WRAPPER / ROM');var w=$('clownFrameWrap');if(!w)return;var fr=replaceFrame(reason);if(!fr)return;w.style.display='block';w.classList.add('booting');setFrameMode(mode||'play',reason);frameLoaded=false;lastBootStatus='WRAPPER_LOADING_CLEAN';fr.onload=function(){frameLoaded=true;pushLog('BUILD2OM WRAPPER IFRAME onload reason='+reason);setTimeout(postRomToWrapper,260);};fr.src='clown_local_boot.html?napAudioSession='+encodeURIComponent(Date.now()+'_'+Math.random().toString(16).slice(2))+'#'+Date.now();toast('Nacitam lokalni ClownMDEmu wrapper...',1800);}
+function requestRom(reason){pushLog('BUILD2ON REQUEST ROM PICKER reason='+reason+(selectedRomBuffer?' oldRom='+selectedRomName:''));var inp=$('romInput');if(inp){try{inp.value='';}catch(_){} inp.click();toast('SEGA AUTO COMPAT: vyber ROM / vymena cartridge',2200);}else toast('ROM picker nenalezen',2500);}
+function replaceFrame(reason){var w=$('clownFrameWrap'),old=$('clownFrame');if(!w)return null;try{if(old){old.onload=null;old.src='about:blank';old.remove();}}catch(_){}var fr=document.createElement('iframe');fr.id='clownFrame';fr.title='ClownMDEmu local wrapper';fr.allow='autoplay; fullscreen; gamepad';fr.tabIndex=0;w.appendChild(fr);pushLog('BUILD2ON FRAME_REPLACED reason='+reason);return fr;}
+function openLocalWrapper(reason,mode){hideMonitor();drawStatus('LOCAL CLOWNMD BOOT','CEKAM NA WRAPPER / ROM');var w=$('clownFrameWrap');if(!w)return;var fr=replaceFrame(reason);if(!fr)return;w.style.display='block';w.classList.add('booting');setFrameMode(mode||'play',reason);frameLoaded=false;lastBootStatus='WRAPPER_LOADING_CLEAN';fr.onload=function(){frameLoaded=true;pushLog('BUILD2ON WRAPPER IFRAME onload reason='+reason);setTimeout(postRomToWrapper,260);};fr.src='clown_local_boot.html?napAudioSession='+encodeURIComponent(Date.now()+'_'+Math.random().toString(16).slice(2))+'#'+Date.now();toast('Nacitam lokalni ClownMDEmu wrapper...',1800);}
 function readAsciiFromRom(u8,off,len){var s='';try{for(var i=0;i<len&&off+i<u8.length;i++){var c=u8[off+i];s+=c>=32&&c<127?String.fromCharCode(c):' ';}}catch(_){}return s;}
-function writeAsciiToRom(u8,off,str,len){try{for(var i=0;i<len&&off+i<u8.length;i++){u8[off+i]=i<str.length?str.charCodeAt(i)&255:32;}}catch(e){pushLog('BUILD2OM EU_COMPAT writeAscii fail '+(e.message||e));}}
+function writeAsciiToRom(u8,off,str,len){try{for(var i=0;i<len&&off+i<u8.length;i++){u8[off+i]=i<str.length?str.charCodeAt(i)&255:32;}}catch(e){pushLog('BUILD2ON EU_COMPAT writeAscii fail '+(e.message||e));}}
 function findBytes(u8,pat){outer:for(var i=0;i<=u8.length-pat.length;i++){for(var j=0;j<pat.length;j++){if(u8[i+j]!==pat[j])continue outer;}return i;}return -1;}
-function updateGenesisChecksum(u8){try{if(u8.length<0x202)return -1;var sum=0;for(var i=0x200;i+1<u8.length;i+=2){sum=(sum+((u8[i]<<8)|u8[i+1]))&0xffff;}u8[0x18e]=(sum>>8)&255;u8[0x18f]=sum&255;return sum;}catch(e){pushLog('BUILD2OM EU_COMPAT checksum fail '+(e.message||e));return -1;}}
+function updateGenesisChecksum(u8){try{if(u8.length<0x202)return -1;var sum=0;for(var i=0x200;i+1<u8.length;i+=2){sum=(sum+((u8[i]<<8)|u8[i+1]))&0xffff;}u8[0x18e]=(sum>>8)&255;u8[0x18f]=sum&255;return sum;}catch(e){pushLog('BUILD2ON EU_COMPAT checksum fail '+(e.message||e));return -1;}}
 function applyEuCompatibilityPatches(name,buf){
   var u8=new Uint8Array(buf), notes=[], codePatched=false;
   try{
@@ -167,7 +167,7 @@ function applyEuCompatibilityPatches(name,buf){
     var region=readAsciiFromRom(u8,0x1f0,16).trim().toUpperCase();
     var nm=String(name||'').toUpperCase();
     var looksEu=(region.indexOf('E')>=0||nm.indexOf('EUROPE')>=0||nm.indexOf('(E)')>=0||nm.indexOf('PAL')>=0);
-    if(!looksEu){lastEuPatchStatus='NO_PATCH nonEU region='+region;pushLog('BUILD2OM EU_COMPAT_SKIP nonEU name='+name+' headerRegion='+region);return {buffer:buf,patched:false,summary:lastEuPatchStatus};}
+    if(!looksEu){lastEuPatchStatus='NO_PATCH nonEU region='+region;pushLog('BUILD2ON EU_COMPAT_SKIP nonEU name='+name+' headerRegion='+region);return {buffer:buf,patched:false,summary:lastEuPatchStatus};}
     if(u8.length>=0x200){
       writeAsciiToRom(u8,0x1f0,'U',16);
       notes.push('HEADER_REGION_E_TO_U_0x1F0');
@@ -234,41 +234,41 @@ function applyEuCompatibilityPatches(name,buf){
     var checksum=-1;
     if(codePatched){checksum=updateGenesisChecksum(u8);notes.push('CHECKSUM_0x'+(('0000'+(checksum&0xffff).toString(16).toUpperCase()).slice(-4)));}
     lastEuPatchStatus=notes.length?notes.join(' | '):'NO_MATCHED_PATCH';
-    pushLog('BUILD2OM EU_COMPAT_APPLIED name='+name+' headerRegion='+region+' title='+title.trim()+' notes='+lastEuPatchStatus);
+    pushLog('BUILD2ON EU_COMPAT_APPLIED name='+name+' headerRegion='+region+' title='+title.trim()+' notes='+lastEuPatchStatus);
     return {buffer:u8.buffer,patched:notes.length>0,summary:lastEuPatchStatus};
-  }catch(e){lastEuPatchStatus='PATCH_ERROR '+(e.message||e);pushLog('BUILD2OM EU_COMPAT_ERROR '+lastEuPatchStatus);return {buffer:buf,patched:false,summary:lastEuPatchStatus};}
+  }catch(e){lastEuPatchStatus='PATCH_ERROR '+(e.message||e);pushLog('BUILD2ON EU_COMPAT_ERROR '+lastEuPatchStatus);return {buffer:buf,patched:false,summary:lastEuPatchStatus};}
 }
-function postRomToWrapper(){var fr=$('clownFrame');if(!fr||!fr.contentWindow||!selectedRomBuffer){pushLog('BUILD2OM POST_ROM skipped frame/buffer missing');return;}try{var copy=selectedRomBuffer.slice(0);var patch=applyEuCompatibilityPatches(selectedRomName,copy);copy=patch.buffer;var region=detectRegionForRom(selectedRomName);fr.contentWindow.postMessage({type:'nap-rom',build:BUILD,name:selectedRomName,buffer:copy,regionMode:region,euPatch:patch.summary},'*',[copy]);lastBootStatus='ROM_POSTED_TO_LOCAL_WRAPPER '+selectedRomName+' bytes='+selectedRomSize+' region='+lastRegionStatus+' euPatch='+lastEuPatchStatus;pushLog('BUILD2OM ROM_POST_TO_LOCAL_WRAPPER name='+selectedRomName+' size='+selectedRomSize+' region='+lastRegionStatus+' mode='+region+' euPatch='+lastEuPatchStatus);toast('ROM poslana s AUTO compatibility patchem',2600);}catch(e){lastBootStatus='ROM_POST_FAILED '+(e.message||String(e));pushLog('BUILD2OM ROM_POST FAILED '+lastBootStatus);showMonitor('ROM POST FAILED\n'+lastBootStatus);}}
-function stopWrapper(reason){var w=$('clownFrameWrap'),fr=$('clownFrame');pushLog('BUILD2OM STOP_WRAPPER local cleanup reason='+reason);try{if(fr){fr.onload=null;fr.src='about:blank';fr.remove();}}catch(_){} if(w){w.style.display='none';w.classList.remove('booting','menuMode','playMode');}frameLoaded=false;lastBootStatus='WRAPPER_STOPPED_LOCAL '+reason;drawStatus('CARTRIDGE EJECTED','HRY/SBIRKA/CARTRIDGE = VYBER ROM');}
-function resetCurrent(reason){if(!selectedRomBuffer){pushLog('BUILD2OM HARD RESET ignored no ROM reason='+reason);toast('RESET: neni vlozena ROM',2200);return;}pushLog('BUILD2OM HARD POWER RESET current ROM '+selectedRomName+' reason='+reason);hardPowerBootBuffer(selectedRomName,selectedRomBuffer,'reset:'+reason);}
+function postRomToWrapper(){var fr=$('clownFrame');if(!fr||!fr.contentWindow||!selectedRomBuffer){pushLog('BUILD2ON POST_ROM skipped frame/buffer missing');return;}try{var copy=selectedRomBuffer.slice(0);var patch=applyEuCompatibilityPatches(selectedRomName,copy);copy=patch.buffer;var region=detectRegionForRom(selectedRomName);fr.contentWindow.postMessage({type:'nap-rom',build:BUILD,name:selectedRomName,buffer:copy,regionMode:region,euPatch:patch.summary},'*',[copy]);lastBootStatus='ROM_POSTED_TO_LOCAL_WRAPPER '+selectedRomName+' bytes='+selectedRomSize+' region='+lastRegionStatus+' euPatch='+lastEuPatchStatus;pushLog('BUILD2ON ROM_POST_TO_LOCAL_WRAPPER name='+selectedRomName+' size='+selectedRomSize+' region='+lastRegionStatus+' mode='+region+' euPatch='+lastEuPatchStatus);toast('ROM poslana s AUTO compatibility patchem',2600);}catch(e){lastBootStatus='ROM_POST_FAILED '+(e.message||String(e));pushLog('BUILD2ON ROM_POST FAILED '+lastBootStatus);showMonitor('ROM POST FAILED\n'+lastBootStatus);}}
+function stopWrapper(reason){var w=$('clownFrameWrap'),fr=$('clownFrame');pushLog('BUILD2ON STOP_WRAPPER local cleanup reason='+reason);try{if(fr){fr.onload=null;fr.src='about:blank';fr.remove();}}catch(_){} if(w){w.style.display='none';w.classList.remove('booting','menuMode','playMode');}frameLoaded=false;lastBootStatus='WRAPPER_STOPPED_LOCAL '+reason;drawStatus('CARTRIDGE EJECTED','HRY/SBIRKA/CARTRIDGE = VYBER ROM');}
+function resetCurrent(reason){if(!selectedRomBuffer){pushLog('BUILD2ON HARD RESET ignored no ROM reason='+reason);toast('RESET: neni vlozena ROM',2200);return;}pushLog('BUILD2ON HARD POWER RESET current ROM '+selectedRomName+' reason='+reason);hardPowerBootBuffer(selectedRomName,selectedRomBuffer,'reset:'+reason);}
 function ejectCurrent(reason){selectedRomBuffer=null;selectedRomName='zadna';selectedRomSize=0;lastKeyStatus='NO_KEY';stopWrapper('eject:'+reason);toast('CARTRIDGE vytazena',2200);}
 
-function onRomSelected(f){if(!f){pushLog('BUILD2OM ROM SELECT cancelled');return;}selectedRomName=f.name||'unknown.rom';selectedRomSize=f.size||0;lastBootStatus='READING_ROM_FOR_HARD_POWER';pushLog('BUILD2OM ROM SELECTED name='+selectedRomName+' size='+selectedRomSize+' type='+(f.type||''));toast('ROM vybrana: '+selectedRomName+' - delam power-cycle',1800);var r=new FileReader();r.onerror=function(){lastBootStatus='FILE_READ_ERROR';pushLog('BUILD2OM FILE_READ_ERROR '+selectedRomName);showMonitor('FILE READ ERROR\n'+selectedRomName);};r.onload=function(){selectedRomBuffer=r.result;pushLog('BUILD2OM ROM READ OK name='+selectedRomName+' bytes='+selectedRomBuffer.byteLength);hardPowerBootBuffer(selectedRomName,selectedRomBuffer,'romSelected');};r.readAsArrayBuffer(f);}
+function onRomSelected(f){if(!f){pushLog('BUILD2ON ROM SELECT cancelled');return;}selectedRomName=f.name||'unknown.rom';selectedRomSize=f.size||0;lastBootStatus='READING_ROM_FOR_HARD_POWER';pushLog('BUILD2ON ROM SELECTED name='+selectedRomName+' size='+selectedRomSize+' type='+(f.type||''));toast('ROM vybrana: '+selectedRomName+' - delam power-cycle',1800);var r=new FileReader();r.onerror=function(){lastBootStatus='FILE_READ_ERROR';pushLog('BUILD2ON FILE_READ_ERROR '+selectedRomName);showMonitor('FILE READ ERROR\n'+selectedRomName);};r.onload=function(){selectedRomBuffer=r.result;pushLog('BUILD2ON ROM READ OK name='+selectedRomName+' bytes='+selectedRomBuffer.byteLength);hardPowerBootBuffer(selectedRomName,selectedRomBuffer,'romSelected');};r.readAsArrayBuffer(f);}
 function keyDefs(btn){return {UP:[['ArrowUp','ArrowUp',38]],DOWN:[['ArrowDown','ArrowDown',40]],LEFT:[['ArrowLeft','ArrowLeft',37]],RIGHT:[['ArrowRight','ArrowRight',39]],A:[['z','KeyZ',90],['Z','KeyZ',90]],B:[['x','KeyX',88],['X','KeyX',88]],C:[['c','KeyC',67],['C','KeyC',67]],START:[['Enter','Enter',13]]}[btn]||null;}
 function postPad(){var fr=$('clownFrame');try{fr&&fr.contentWindow&&fr.contentWindow.postMessage({type:'nap-input-state',buttons:JSON.parse(JSON.stringify(padButtons))},'*');}catch(e){}}
-function sendToWrapper(btn,down){var fr=$('clownFrame');if(!fr||!fr.contentWindow){lastKeyStatus='NO_FRAME';return false;}padButtons[btn]=!!down;postPad();try{fr.contentWindow.postMessage({type:'nap-input',button:btn,down:!!down},'*');lastKeyStatus='POST_TO_WRAPPER '+btn+' '+(down?'DOWN':'UP');pushLog('BUILD2OM INPUT '+lastKeyStatus);return true;}catch(e){lastKeyStatus='POST_FAIL '+(e.message||String(e));pushLog('BUILD2OM INPUT FAIL '+lastKeyStatus);return false;}}
+function sendToWrapper(btn,down){var fr=$('clownFrame');if(!fr||!fr.contentWindow){lastKeyStatus='NO_FRAME';return false;}padButtons[btn]=!!down;postPad();try{fr.contentWindow.postMessage({type:'nap-input',button:btn,down:!!down},'*');lastKeyStatus='POST_TO_WRAPPER '+btn+' '+(down?'DOWN':'UP');pushLog('BUILD2ON INPUT '+lastKeyStatus);return true;}catch(e){lastKeyStatus='POST_FAIL '+(e.message||String(e));pushLog('BUILD2ON INPUT FAIL '+lastKeyStatus);return false;}}
 var holdTimers={};function releaseButtonDelayed(btn,delay){clearTimeout(holdTimers[btn]);holdTimers[btn]=setTimeout(function(){sendToWrapper(btn,false);},delay||120);}
 function bindKeyButton(id,btn){var el=$(id);if(!el)return;el.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{el.setPointerCapture(e.pointerId);}catch(_){}focusFrame();clearTimeout(holdTimers[btn]);sendToWrapper(btn,true);},true);el.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();releaseButtonDelayed(btn,(btn==='A'||btn==='B'||btn==='C')?150:95);},true);el.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();releaseButtonDelayed(btn,60);},true);el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
 function dpadDirectionFromEvent(e){var b=$('dpad');if(!b)return null;var r=b.getBoundingClientRect();var x=(e.clientX-r.left)/Math.max(1,r.width)-.5;var y=(e.clientY-r.top)/Math.max(1,r.height)-.5;if(Math.abs(x)<.10&&Math.abs(y)<.10)return null;return Math.abs(x)>Math.abs(y)?(x<0?'LEFT':'RIGHT'):(y<0?'UP':'DOWN');}
 function setDpadDir(dir){if(activeDpadDir===dir)return;if(activeDpadDir)sendToWrapper(activeDpadDir,false);activeDpadDir=dir;if(activeDpadDir)sendToWrapper(activeDpadDir,true);}
-function buildLogText(){return 'SEGA LOG / BUILD2OM\nAtariHelp.eu EMU-10 '+BUILD+'\n\nSTAV:\n- ClownMDEmu se uz neotevira s obri DATA URL v adrese\n- HRY/SBIRKA/CARTRIDGE otevre NAS ROM picker\n- ROM se posle do lokalniho wrapperu clown_local_boot.html jako ArrayBuffer\n- wrapper vytvori Blob URL uvnitr sveho okna a spusti oficialni ClownMDEmu JS s Module.arguments=[blobURL]\n- cil: ClownMDEmu nacita NAS cartridge bez rucniho Software menu\n- A/B/C/START/DPAD posilaji postMessage do wrapperu, kde se generuji lokalni klavesy + virtual gamepad\n- audio neni rollback: cisty zaklad 2NN/playback 48k + BUILD2OM deferred iframe kill a poweroff pauza proti chrceni po druhe ROM\n- monitorovy vyrez mikro upraven: skryje horni duch/lezouci pismo a drzi dolni Sonic HUD\n- portrait/landscape hitboxy zachovany\n- zadny fake gameplay, ROM neni v APK ani v ZIPu\n- vybrana ROM: '+selectedRomName+' size='+selectedRomSize+'\n- frameLoaded: '+frameLoaded+'\n- boot status: '+lastBootStatus+'\n- key status: '+lastKeyStatus+'\n- image tune: '+imageTuneStatus+'\n- audio tune: '+audioTuneStatus+'\n- EU compat patch: '+lastEuPatchStatus+'\n\nPOSLEDNI UDALOSTI:\n'+(logLines.length?logLines.slice(-90).join('\n'):'zadne');}
+function buildLogText(){return 'SEGA LOG / BUILD2ON\nAtariHelp.eu EMU-10 '+BUILD+'\n\nSTAV:\n- ClownMDEmu se uz neotevira s obri DATA URL v adrese\n- HRY/SBIRKA/CARTRIDGE otevre NAS ROM picker\n- ROM se posle do lokalniho wrapperu clown_local_boot.html jako ArrayBuffer\n- wrapper vytvori Blob URL uvnitr sveho okna a spusti oficialni ClownMDEmu JS s Module.arguments=[blobURL]\n- cil: ClownMDEmu nacita NAS cartridge bez rucniho Software menu\n- A/B/C/START/DPAD posilaji postMessage do wrapperu, kde se generuji lokalni klavesy + virtual gamepad\n- audio neni rollback: cisty zaklad 2NN/playback 48k + BUILD2ON deferred iframe kill a poweroff pauza proti chrceni po druhe ROM\n- monitorovy vyrez mikro upraven: skryje horni duch/lezouci pismo a drzi dolni Sonic HUD\n- portrait/landscape hitboxy zachovany\n- zadny fake gameplay, ROM neni v APK ani v ZIPu\n- vybrana ROM: '+selectedRomName+' size='+selectedRomSize+'\n- frameLoaded: '+frameLoaded+'\n- boot status: '+lastBootStatus+'\n- key status: '+lastKeyStatus+'\n- image tune: '+imageTuneStatus+'\n- audio tune: '+audioTuneStatus+'\n- EU compat patch: '+lastEuPatchStatus+'\n\nPOSLEDNI UDALOSTI:\n'+(logLines.length?logLines.slice(-90).join('\n'):'zadne');}
 function pad2(n){return ('0'+n).slice(-2);}function logFileName(){var d=new Date();return 'AtariHelp_SEGA_LOG_'+d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+'_'+pad2(d.getHours())+pad2(d.getMinutes())+pad2(d.getSeconds())+'.txt';}
-function saveLog(){var txt=buildLogText(),fn=logFileName(),ok=false;try{if(window.AHSAVE&&typeof window.AHSAVE.save==='function'){window.AHSAVE.save(fn,txt);ok=true;}}catch(e){pushLog('AHSAVE.save failed '+e.message);}if(!ok){try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1200);ok=true;}catch(e2){showMonitor(txt);}}pushLog('BUILD2OM LOG SAVE '+(ok?'OK ':'FAILED ')+fn);toast(ok?'LOG ulozen: '+fn:'LOG zobrazen v monitoru',3200);}
+function saveLog(){var txt=buildLogText(),fn=logFileName(),ok=false;try{if(window.AHSAVE&&typeof window.AHSAVE.save==='function'){window.AHSAVE.save(fn,txt);ok=true;}}catch(e){pushLog('AHSAVE.save failed '+e.message);}if(!ok){try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1200);ok=true;}catch(e2){showMonitor(txt);}}pushLog('BUILD2ON LOG SAVE '+(ok?'OK ':'FAILED ')+fn);toast(ok?'LOG ulozen: '+fn:'LOG zobrazen v monitoru',3200);}
 window.addEventListener('message',function(ev){var d=ev.data||{};if(!d||!d.type)return;if(d.type==='nap-wrapper-log'){pushLog('WRAPPER '+d.msg);if(/BOOT_FAIL|RUNTIME_ERROR|SCRIPT_ERROR|WASM|FETCH/.test(d.msg||'')){lastBootStatus='WRAPPER_'+d.msg;}if(/MAIN_STARTED|MODULE_POSTRUN|CANVAS_READY|BOOTING_ROM/.test(d.msg||'')){lastBootStatus=d.msg;}}},false);
 
-var euBranch=$('btnEuBranch');if(euBranch)euBranch.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();pushLog('BUILD2OM AUTO_COMPAT_INFO panel=16BIT');toast('SEGA AUTO COMPAT: jedna hlavni vetev',1800);showMonitor(['BUILD2OM SEGA AUTO COMPAT','','Tahle hlavni Sega vetev pouziva stabilni EU compatibility kod z BUILD2OL.','','USA/World ROM: bez patchu.','EU problemove ROM: patch jen v pameti.','Original ROM soubor se nemeni.','Zvuk: playback 48 kHz + hard reset.','','PANEL 16-BIT je ted jen info, ne prepinas vetve.'].join("\\n"));},true);
+var euBranch=$('btnEuBranch');if(euBranch)euBranch.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();pushLog('BUILD2ON AUTO_COMPAT_INFO panel=16BIT');toast('SEGA AUTO COMPAT: jedna hlavni vetev',1800);showMonitor(['BUILD2ON SEGA AUTO COMPAT','','Tahle hlavni Sega vetev pouziva stabilni EU compatibility kod z BUILD2OL.','','USA/World ROM: bez patchu.','EU problemove ROM: patch jen v pameti.','Original ROM soubor se nemeni.','Zvuk: playback 48 kHz + hard reset.','','PANEL 16-BIT je ted jen info, ne prepinas vetve.'].join("\\n"));},true);
 ['btnCollection','btnGames','cartSlot','cartCenter'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();requestRom(id);},true);});
-var resetBtn=$('btnReset');if(resetBtn){resetBtn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();resetCurrent('btnReset');},true);resetBtn.addEventListener('contextmenu',function(e){e.preventDefault();e.stopPropagation();resetCurrent('btnResetLongAsReset');},true);}
+var resetBtn=$('btnReset');if(resetBtn)resetBtn.disabled=true;
 var romInput=$('romInput');if(romInput)romInput.addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];onRomSelected(f);},true);
-var con=$('btnConsole');if(con)con.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();if(frameLoaded){setFrameMode('menu','console');toast('KONZOLE: cely wrapper/menu rezim',2200);}else{openLocalWrapper('consoleNoRom','menu');}},true);
-var joy=$('btnJoystick');if(joy)joy.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();if(frameLoaded){setFrameMode('play','joystick');focusFrame();toast('JOYSTICK: herni vyrez + focus',2200);}else toast('Nejdriv vyber ROM pres HRY/SBIRKA/CARTRIDGE',2600);},true);
+var con=$('btnConsole');if(con)con.disabled=true;
+var joy=$('btnJoystick');if(joy)joy.disabled=true;
 bindKeyButton('btnA','A');bindKeyButton('btnB','B');bindKeyButton('btnC','C');bindKeyButton('btnStart','START');
 var dpad=$('dpad');if(dpad){dpad.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();try{dpad.setPointerCapture(e.pointerId);}catch(_){}setDpadDir(dpadDirectionFromEvent(e));},true);dpad.addEventListener('pointermove',function(e){if(e.buttons){e.preventDefault();e.stopPropagation();setDpadDir(dpadDirectionFromEvent(e));}},true);dpad.addEventListener('pointerup',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);dpad.addEventListener('pointercancel',function(e){e.preventDefault();e.stopPropagation();setDpadDir(null);},true);dpad.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
-var saves=$('btnSaves');if(saves)saves.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();saveLog();},true);
-var man=$('btnManuals');if(man)man.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor('BUILD2OM\n\nHRY/SBIRKA/CARTRIDGE:\n- vyberes ROM v nasi appce\n- ROM se neposila jako DATA URL do adresy\n- posle se do lokalniho wrapperu jako ArrayBuffer\n- wrapper vytvori Blob URL a spusti ClownMDEmu s Module.arguments\n\nRESET vpravo u cartridge dela dvoufazovy POWER OFF/ON cele SEGA stranky. CARTRIDGE SLOT / vlozena cartridge otevre picker pro novou hru a taky se provede power-cycle, aby nezustal bezet stary ClownMDEmu runtime. DPAD neposila zadny skok, A/B/C zustavaji akcni tlacitka. BUILD2OM povysuje nejlepsi EU compat vetev na hlavni Sega stranku. ROM picker je jeden. USA/World ROMy jedou bez patchu, problemove EU ROMy se patchuji jen jako kopie v pameti. Original ROM soubor se nemeni. Playback zvuk 48 kHz + hard reset zustava.');},true);
+var saves=$('btnSaves');if(saves)saves.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();pushLog('BUILD2ON ULOZENE_INFO no_log_button');toast('ULOZENE: sekce pripravena, LOG tlacitko odstraneno',2200);showMonitor('ULOZENE\n\nTahle sekce je pripravena pro budouci ulozene hry / stav.\n\nLOG tlacitko je z finalni Sega obrazovky odstraneno.');},true);
+var man=$('btnManuals');if(man)man.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showMonitor('BUILD2ON SEGA FINAL UI\n\nSBIRKA / HRY / CARTRIDGE:\n- vyber ROM v nasi appce\n- cartridge je hlavni klikaci misto pro vymenu hry\n- ROM se posle do lokalniho wrapperu jako ArrayBuffer\n- wrapper vytvori Blob URL a spusti ClownMDEmu s Module.arguments\n\nAUTO COMPAT:\n- USA/World ROMy jedou bez patchu\n- problemove EU ROMy se patchuji jen jako kopie v pameti\n- original ROM soubor se nemeni\n- zvuk: playback 48 kHz + hard reset\n\nFinal UI: bez prepinace KONZOLE/JOYSTICK a bez LOG tlacitka.');},true);
 var web=$('btnWeb');if(web)web.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();try{location.href='https://atarihelp.eu/';}catch(_){}},true);
-window.addEventListener('orientationchange',function(){pushLog('BUILD2OM ORIENTATION CHANGE '+(screen.orientation&&screen.orientation.type||'unknown'));setTimeout(function(){if(frameLoaded)setFrameMode('play','orientationchange');},400);});
-drawStatus('SEGA SEGA AUTO COMPAT READY','HRY/SBIRKA/CARTRIDGE = VYBER ROM\nPANEL 16-BIT = AUTO COMPAT INFO');pushLog('AtariHelp.eu EMU-10 '+BUILD+' pripraven - MAIN AUTO COMPAT vetev: hlavni Sega vetev; regionMode MAIN_EU_COMPAT; zvuk 2OD playback 48k + hard reset zachovan; cartridge loading bezpecne Module.arguments=[blobURL]; patchuje jen kopii ROM v pameti; pridany generic C0->80 patch + presny Ayrton/Senna 80->C0 patch, original soubor nemeni; obraz zatim stejny, novy design doda uzivatel.');tryAutoBootAfterPowerCycle();toast('BUILD2OM AUTO: compat patch3 pro Asterix/Aladdin/Probotector/Ayrton test.',5200);
+window.addEventListener('orientationchange',function(){pushLog('BUILD2ON ORIENTATION CHANGE '+(screen.orientation&&screen.orientation.type||'unknown'));setTimeout(function(){if(frameLoaded)setFrameMode('play','orientationchange');},400);});
+drawStatus('SEGA MEGA DRIVE READY','SBIRKA / HRY / CARTRIDGE = VYBER ROM');pushLog('AtariHelp.eu EMU-10 '+BUILD+' pripraven - FINAL SEGA UI skin: hlavni auto-compat vetev; bez KONZOLE/JOYSTICK prepinace a bez LOG tlacitka; cartridge je hlavni vymena hry; zvuk 2OD playback 48k + hard reset zachovan; ROM patch jen kopie v pameti, original se nemeni.');tryAutoBootAfterPowerCycle();toast('BUILD2ON: finalni Sega UI + auto compat pripraven.',5200);
 })();
 </script>
 </body>
