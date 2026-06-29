@@ -1,0 +1,25 @@
+BUILD2OJ_SEGA_EU_COMPAT_PATCH_STAGE48
+
+KODY JSOU ZMENENE / PRIDANE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega_eu/index.html
+- app/src/main/assets/emu_sega_eu/clown_local_boot.html
+- app/src/main/assets/emu_sega_eu/sega_poweroff.html
+- app/src/main/assets/emu_sega_eu/sega_megadrive_screen.png
+
+CO JE NOVE:
+- USA vetev zustava stabilni a bezpecna.
+- EU vetev zustava oddelena pres tlacitko/panel 16-BIT POWERED BY SEGA.
+- EU vetev pred odeslanim ROM do ClownMDEmu patchuje jen pracovni kopii ArrayBufferu v pameti.
+- Originalni ROM soubor uzivatele se nemeni a neni ulozen do ZIPu/APK.
+- Obecny EU compatibility krok: header region na 0x1F0 se v kopii prepise z E na U, aby hra nepadala na EU/PAL locku proti NTSC/US core.
+- Asterix Europe navic hleda presny region-lock pattern a meni compare 0xC0 -> 0x80, aby evropska ROM prijala overseas NTSC hardware, ktere dava soucasny remote ClownMDEmu.
+- U Asterix patch se prepocita Sega checksum v headeru.
+- Aladdin Europe zatim dostava header compatibility patch, protoze jeho startovaci region rutina porovnava kod regionu proti headeru.
+
+NEJDE O FINALNI CORE-LEVEL PAL EMULACI:
+- Je to EU compatibility patch pro testovaci vetev.
+- Skutecne cisty PAL/EU core zustava dalsi velka prace.
+- Tento build ma overit, zda takto rozjedeme dodane EU test hry bez rozbiti USA vetve.
