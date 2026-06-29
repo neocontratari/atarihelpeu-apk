@@ -1,0 +1,26 @@
+BUILD2OL_SEGA_EU_COMPAT_PATCH3_SENNA_STAGE50
+
+KODY JSOU ZMENENE / PRIDANE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega_eu/index.html
+- app/src/main/assets/emu_sega_eu/clown_local_boot.html
+- app/src/main/assets/emu_sega_eu/sega_poweroff.html
+- app/src/main/assets/emu_sega_eu/sega_megadrive_screen.png
+
+HLAVNI ZMENA:
+- USA stabilni vetev zustava zachovana.
+- EU vetev stale patchuje jen kopii ROM v pameti.
+- Pridan presny patch pro Ayrton Senna's Super Monaco GP II (Japan, Europe):
+  $A10001 region guard cmp #$80 -> cmp #$C0.
+- Header region E/JE se stale prepise v kopii ROM na U kvuli remote ClownMDEmu ceste.
+- Po kodovem patchi se prepocita Sega checksum.
+- Zvuk zustava BUILD2OD/2OK playback 48 kHz + hard reset.
+
+OCEKAVANY LOG PRO SENNU:
+- EU_COMPAT_APPLIED
+- HEADER_REGION_E_TO_U_0x1F0
+- AYRTON_REGION_CMP_80_TO_C0_COUNT_1_FIRST_0x34F5
+- CHECKSUM_0x0142
+- MODULE_POSTRUN

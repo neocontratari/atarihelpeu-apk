@@ -1,0 +1,22 @@
+LOCAL AUDIT - Ayrton Senna's Super Monaco GP II (Japan, Europe) (En,Ja).gen
+
+ROM size: 1048576 bytes
+Header region before: JE
+Problem: hra hlasi region lock pro hardware v North/South America.
+
+Found region guard pattern:
+Offset start: 0x34E8
+Bytes before:
+10 39 00 A1 00 01 02 00 00 C0 0C 00 00 80 66 00 03 1A
+Meaning:
+- read $A10001
+- mask $C0
+- compare with $80 (USA/export bits)
+- when equal, hra spadne do region warning
+
+Patch in memory:
+- byte 0x34F5: 0x80 -> 0xC0
+- header region 0x1F0: JE -> U
+- checksum recalculated: 0x0142
+
+Original ROM file is not modified.
