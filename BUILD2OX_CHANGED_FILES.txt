@@ -1,0 +1,17 @@
+BUILD2OX_SEGA_MOBILE_AUDIO_BRANCH_PAD_STAGE62
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- jina mobilni audio vetev: mobileInteractiveNative + noPrime
+- AudioContext v mobilni vetvi bez nuceneho sampleRate=48000, necha native vystup zarizeni
+- landscape input mode mobileLean: mene duplicitnich keyboard eventu, porad virtual gamepad
+- joystick v landscape vetsi, posunuty z kraje vic dovnitr a vys, aby nebyl nalepeny na levou/dolni hranu
+- A/B/C v landscape vetsi, dole vpravo a vedle sebe
+- START v landscape skryty
+- kruhove hlidani hitboxu pro A/B/C a dpad, aby nereagovaly rohy obdelniku
+- portrait/Nox zaklad ponechan
