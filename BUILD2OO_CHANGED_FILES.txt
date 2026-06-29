@@ -1,0 +1,16 @@
+BUILD2OO_SEGA_FINAL_UI_TUNE_STAGE53
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- disketa ULOZENE znovu uklada LOG pro testy
+- LOG je funkcni, ale neni extra samostatne viditelne tlacitko
+- zmensene a vycentrovane hitboxy A/B/C
+- dpad hitbox zmenseny a posunuty doprava na stred krize
+- start hitbox lehce doladen
+- monitor / iframe vyrez zvetsen a play crop pritazen proti prosvitani skinoveho Sonica
+- emulator core a auto-compat logika ponechany z BUILD2OM/2ON
