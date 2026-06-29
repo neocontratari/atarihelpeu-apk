@@ -1,0 +1,17 @@
+BUILD2OY_SEGA_MOBILE_NTSC_AUDIO_PAD_SAFE_STAGE63
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- BUILD2OX audio/input vetev stopnuta
+- navrat na stabilni mobilePlayback/noPrime z BUILD2OW, aby se Nox znovu nerozbil
+- mobilni region prehozen na NTSC_US po in-memory EU compat patchi
+- cil zvuku: otestovat, jestli mobilni ozvena nevznika z PAL/50Hz rezimu na Androidu
+- joystick v landscape vetsi, posunuty z kraje vic dovnitr a nahoru
+- A/B/C ponechany na normalni input ceste, vpravo dole vedle sebe
+- START v landscape skryty
+- portrait/Nox zaklad se nema menit
