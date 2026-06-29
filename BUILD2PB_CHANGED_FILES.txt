@@ -1,0 +1,15 @@
+BUILD2PB_SEGA_MOBILE_AUDIO_GAIN_TEST_STAGE66
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- vychazi z BUILD2PA, kde funguje multitouch joystick a A/B/C soucasne
+- portrait/Nox a ovladani nemeneno zamerne
+- pridany WebAudio master gain test napMasterGain=0.62 pro mobilni zvuk
+- audio zustava latencyHint=playback + native sampleRate + noPrime=1
+- master gain se vklada pred vystup do AudioDestinationNode, aby se otestovalo, zda mobilni chraplak/ozvena neni clipping/prebuzeny vystup
+- remote core bez local-first hlasky zachovan
