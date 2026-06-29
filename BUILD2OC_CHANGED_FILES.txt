@@ -1,0 +1,24 @@
+BUILD2OC_SEGA_AUDIO_LOW_LATENCY_STAGE41
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+
+CO SE MENI:
+- Navazuje na BUILD2OB, ktery zlepsil chrceni hard resetem WebAudio mezi hrami.
+- Prepina wrapper AudioContext z latencyHint=playback na latencyHint=interactive.
+- Ponechava preferredSampleRate=48000.
+- Ponechava dvoufazovy poweroff/hard reset mezi ROM.
+- Zkracuje audio prime z dlouheho playback bufferu na kratky low-latency prime.
+- Pridava log baseLatency/outputLatency pro skutecnou kontrolu WebView/Nox.
+- Pri stisku tlacitka zkusi probudit suspended AudioContext.
+- Virtual gamepad poll zkracen z 1800ms na 900ms kvuli rychlejsi reakci pri akci.
+
+CO SE NEMENI:
+- Obraz/crop/monitorovy vyrez zustava z BUILD2OB.
+- ROM picker / Blob URL / ClownMDEmu local wrapper zustava.
+- Ovladac A/B/C/START/DPAD zustava.
+- Zadne fake gameplay, ROM neni v APK ani v ZIPu.
+
+KODY JSOU ZMENENE.
