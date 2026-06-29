@@ -1,0 +1,19 @@
+BUILD2OM_SEGA_MAIN_EU_COMPAT_STAGE51
+
+KODY JSOU ZMENENE / PRIDANE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+- app/src/main/assets/emu_sega_usa_stable/index.html
+- app/src/main/assets/emu_sega_usa_stable/clown_local_boot.html
+- app/src/main/assets/emu_sega_usa_stable/sega_poweroff.html
+- app/src/main/assets/emu_sega_usa_stable/sega_megadrive_screen.png
+
+HLAVNI ZMENA:
+- EU compat vetev z BUILD2OL je povysena na hlavni Sega stranku app/src/main/assets/emu_sega/index.html.
+- Viditelne uz neni potreba USA/EU prepinac. Panel 16-BIT/POWERED BY SEGA je jen info.
+- USA stabilni vetev je ulozena jen jako zaloha do emu_sega_usa_stable, neni primarni.
+- ROMy se porad nenahravaji do APK/ZIP.
+- EU patche se delaji jen nad kopii ROM v pameti. Originalni soubor se nemeni.
+- Zvuk zustava playback 48 kHz + hard reset.
