@@ -1,0 +1,15 @@
+BUILD2OR_SEGA_FINAL_UI_FINE_TUNE_STAGE56
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- B hitbox jemne dolu
+- C hitbox jemne dolu a doprava
+- START hitbox jemne doleva
+- monitor maska o chlup rozsiren a zvednuta proti sumu nahore
+- herni obraz roztazen vic do stran s opatrnym zachovanim dolnich zivotu/HUD
+- LOG zustava na disketu ULOZENE
