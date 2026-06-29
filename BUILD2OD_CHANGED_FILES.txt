@@ -1,0 +1,16 @@
+BUILD2OD_SEGA_AUDIO_CLEAN_STABLE_STAGE42
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+
+HLAVNI ZMENY:
+- zvuk vracen z latencyHint=interactive zpet na latencyHint=playback
+- hard reset mezi hrami zachovan
+- AudioContext zustava preferovane 48 kHz
+- audio prime lehce prodlouzen pro klidnejsi start
+- virtual gamepad poll vracen na 2200 ms kvuli nizsi zatezi
+- odstranen extra opakovany A/B/C down impuls v index.html
+- wrapper uz neposila extra gamepadconnected burst po A/B/C stisku
+- priorita: stoprocentne cisty zvuk > mensi prodleva
