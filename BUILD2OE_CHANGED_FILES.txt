@@ -1,0 +1,25 @@
+BUILD2OE_SEGA_REGION_AUTO_PAL_NTSC_STAGE43
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+
+NAVAZUJE NA:
+- BUILD2OD_SEGA_AUDIO_CLEAN_STABLE_STAGE42
+
+HLAVNI ZMENY:
+- cisty stabilni zvuk z 2OD zachovan: latencyHint=playback, 48 kHz, hard reset mezi hrami
+- pridana AUTO detekce regionu podle nazvu ROM:
+  * Europe / EUR / PAL / SECAM / (E) -> PAL_EU: pal=on, japanese=off
+  * USA / US / Genesis / NTSC-U / (U) -> NTSC_US: pal=off, japanese=off
+  * Japan / Japanese / NTSC-J / (J) -> NTSC_JP: pal=off, japanese=on
+  * World / (W) -> fallback NTSC_US
+- wrapper pred spustenim ClownMDEmu zapise konfiguraci do:
+  /libsdl/clownacy/clownmdemu-frontend/configuration.ini
+- konfigurace obsahuje i default klavesove bindy, aby se nerozbilo ovladani
+- log pridava REGION_CONFIG_WRITTEN a REGION_MODE
+
+DULEZITE:
+- Tohle neni fake region screen paint. Je to pokus nastavit official ClownMDEmu frontend konfiguraci pred startem ROM.
+- Pokud Asterix Europe porad ukaze PAL/SECAM hlasku, dalsi krok bude manualni region prepinac nebo deeper patch core/frontend.
