@@ -1,0 +1,18 @@
+BUILD2OS_SEGA_FINAL_UI_LAST_PORTRAIT_TUNE_STAGE57
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- kriz beze zmeny
+- A beze zmeny
+- B hitbox trosku doprava
+- C hitbox trosku dolu
+- START hitbox trosku dolu
+- herni iframe roztazen vic do stran
+- horni sum monitoru potlacen: iframe crop + cerna maska ve skinu
+- Sonic zivoty/HUD se snazime nechat zachovane
+- LOG zustava na diskete ULOZENE
