@@ -1,0 +1,22 @@
+BUILD2OQ_SEGA_FINAL_UI_USER_TUNE_STAGE55
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- oprava jde z BUILD2OP, ne z rozhozeneho BUILD2OO
+- pomocne uzivatelske napisy z monitoru odstranene: zadne READY/SBIRKA/HRY texty pro finalni uzivatele
+- startup/toast pomocne bubliny skryte; log se stale vede interně
+- LOG zustava na disketě ULOZENE pro testy
+- monitor maska ve skinu lehce rozsirena nahoru i do vysky proti malemu ruseni od napisu
+- obraz hry/canvas/iframe lehce roztazeny do realne obrazovky
+- dpad jemne posunuty nahoru a doprava
+- A jemne posunuto dolu a doprava
+- B jemne posunuto dolu
+- C jemne posunuto dolu
+- START jemne posunuty doleva
+- pro A/B/C pridana kruhova filtracni kontrola, aby hrany obdelniku nespoustely tlacitko mimo kolecko
+- landscape ovladani zatim nechano na dalsi samostatne ladeni
