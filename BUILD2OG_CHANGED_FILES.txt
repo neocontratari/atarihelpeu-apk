@@ -1,0 +1,17 @@
+BUILD2OG_SEGA_REGION_USERDIR_ARGS_STAGE45
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+
+HLAVNI ZMENY:
+- zvuk zustava ze stabilni vetve BUILD2OD: playback 48 kHz + hard reset
+- region detekce zustava podle nazvu ROM: Europe/PAL/Secam -> PAL_EU, USA -> NTSC_US, Japan -> NTSC_JP
+- misto spolehani na default SDL_GetPrefPath se vytvari pevny userdir: /nap_sega_region_config
+- ClownMDEmu se spousti pres Module.arguments: --user /nap_sega_region_config --cartridge <blobROM>
+- configuration.ini se pise do vice cest vcetne /nap_sega_region_config/configuration.ini
+- log vypise REGION_ARGUMENTS, REGION_CONFIG_MULTI_DONE a vsechny zapsane cesty
+
+PROC:
+BUILD2OF uz dokazal configuration.ini zapsat v Module.preRun, ale EU hry porad ukazaly PAL/SECAM region lock. BUILD2OG zkousi oficialni cestu --user + --cartridge, aby frontend nacetl prave nas configuration.ini jeste pred LoadConfiguration().
