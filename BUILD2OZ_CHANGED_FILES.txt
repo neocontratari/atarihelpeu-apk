@@ -1,0 +1,21 @@
+BUILD2OZ_SEGA_MOBILE_SAFE_INPUT_OFFLINE_DIAG_STAGE64
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- BUILD2OX stopnuty, 2OZ vychazi z bezpecnejsi 2OY/2OW cesty
+- Nox audio ponechano na playback/noPrime, zadny interactive-native experiment
+- mobilni joystick v landscape vetsi, posunuty dovnitr a vys, ne nalepeny na kraj
+- dpad pointermove uz neceka jen na e.buttons, sleduje aktivni pointer id
+- A/B/C release zrychlen pro opakovany skok v landscape
+- A/B/C zustava na normalni input ceste, bez 2OX rozbiteho lean omezeni
+- virtual gamepad uz nema anyABC hack, A/B/C jsou oddelene
+- clown_local_boot zkousi local clownmdemu.js pred remote corem a loguje offline chybu
+
+DULEZITE:
+Offline Sega porad nebude fungovat bez realneho lokalniho souboru clownmdemu.js v assets/emu_sega.
+Tento build jen pripravi local-first cestu a jasnou diagnostiku. Core neni v ZIPu, protoze ho v projektu zatim nemame.
