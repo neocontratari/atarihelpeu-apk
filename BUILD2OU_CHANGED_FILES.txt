@@ -1,0 +1,19 @@
+BUILD2OU_SEGA_MOBILE_LANDSCAPE_PERF_STAGE59
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- portrait / Nox baseline z BUILD2OT zachovan
+- landscape / real mobil ma vlastni rezim
+- v landscape se vypina tezky Sega skin kvuli vykonu
+- emulator iframe/canvas jde pres celou obrazovku v landscape
+- pridany viditelny pruhledny kruhovy joystick vlevo dole
+- pridana pruhledna A/B/C tlacitka vpravo dole
+- START je pruhledne uprostred dole
+- horni male systemove tlacitka v landscape zustavaji pro SBIRKA/ULOZENE/HRY/NAVODY/WEB/MENU/CARTRIDGE
+- LOG zustava na diskete ULOZENE
+- cil: prvni real Android 12 performance/orientation test
