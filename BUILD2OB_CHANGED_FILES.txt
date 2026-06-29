@@ -1,0 +1,21 @@
+BUILD2OB_SEGA_AUDIO_HARD_RESET_STAGE40
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png (beze zmeny, jen soucast kompletniho overlaye)
+
+CO JE ZMENENO:
+- pouze SEGA zvukovy zivotni cyklus / restart runtime
+- obraz/crop z BUILD2OA zachovan
+- ovladac A/B/C/START/DPAD zachovan
+- ROM picker / Blob URL cesta zachovana
+- pri vymene hry uz parent iframe nezabije okamzite; nejdriv posle nap-poweroff a ceka 900 ms
+- wrapper pred vypnutim zkusi ukoncit Module, zavrit tracked AudioContext pres Promise a posle POWER_OFF_DONE_ACK
+- poweroff mezistranka ceka 2200 ms, aby Android WebView stihl pustit stary audio mixer
+- novy wrapper dostava unikatni napAudioSession v URL a dela kratky tichy AUDIO_PRIME pred startem ClownMDEmu
+
+PROC:
+- podle testu chrci prvni start a/nebo druha hra po nacteni; to odpovida tomu, ze stary WebAudio runtime zustava viset mezi ROMkami
+- BUILD2OB nemeni emulator ani grafiku, jen dava audiu cas na korektni zavreni a znovuotevreni
