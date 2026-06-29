@@ -1,0 +1,25 @@
+BUILD2OI_SEGA_EU_BRANCH_BUTTON_STAGE47
+
+KODY JSOU ZMENENE / PRIDANE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega_eu/index.html
+- app/src/main/assets/emu_sega_eu/clown_local_boot.html
+- app/src/main/assets/emu_sega_eu/sega_poweroff.html
+- app/src/main/assets/emu_sega_eu/sega_megadrive_screen.png
+
+CO JE NOVE:
+- BUILD2OH zustava bezpecny zaklad pro USA/World hry.
+- Do hlavni USA Sega obrazovky je pridane neviditelne aktivni tlacitko pres panel "16-BIT / POWERED BY SEGA".
+- Tlacitko vede do nove samostatne vetve: app/src/main/assets/emu_sega_eu/index.html
+- EU vetev ma oddeleny IndexedDB hardboot store: nap_sega_eu_hardboot_v1
+- EU vetev vynucuje regionMode PAL_EU pri postMessage do wrapperu.
+- EU vetev zatim pouziva stejnou grafiku; uzivatel doda novy Sega EU skin pozdeji.
+- V EU vetvi je stejne tlacitko na panelu 16-BIT nastavene jako navrat zpet do USA vetve.
+
+POCTIVY STATUS:
+- Tohle je priprava samostatne EU/PAL vetve a bezpecne oddeleni od USA vetve.
+- Tohle samo o sobe nemusi opravit hry, ktere vyzaduji skutecny PAL core/register.
+- Dalsi realny krok je napojit do emu_sega_eu lokalni PAL-capable core nebo upraveny ClownMDEmu core.
+- ROM soubory nejsou v ZIPu a nejsou distribuovane.

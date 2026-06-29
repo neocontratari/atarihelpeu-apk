@@ -1,0 +1,25 @@
+ROMY DODANE UZIVATELEM PRO TEST - NEJSOU SOUCASTI ZIP OVERLAYE
+
+Aladdin (Europe).gen
+- size: 2097152
+- console header: SEGA MEGA DRIVE
+- region header 0x1F0: E
+- SHA256: 3fbaee79d52b426f554e817e70397fa51279aca0705fe6df304e7f61bfe8ec5f
+
+Asterix and the Great Rescue (Europe) (En,Fr,De,Es,It).gen
+- size: 2097152
+- console header: SEGA MEGADRIVE
+- region header 0x1F0: E
+- SHA256: c7bf42d03b445fc87561e7966e349588603bd1fafa47844e6857431e889fead6
+
+Aladdin (USA) (Final Cut).gen
+- size: 2384052
+- console header: SEGA GENESIS
+- region header 0x1F0: U
+- SHA256: e18516722c0ff3466bf6f4d0c1092cc4bdab926c846db37876394ac300849b65
+
+Asterix and the Great Rescue (USA).gen
+- size: 2097152
+- console header: SEGA GENESIS
+- region header 0x1F0: U
+- SHA256: d65159bb03f3545736ad37ead4aaa65410d304ff3ac9265e03fd455aee7e2b6c
