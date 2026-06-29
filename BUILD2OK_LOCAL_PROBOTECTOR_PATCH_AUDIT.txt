@@ -1,0 +1,2 @@
+Probotector pattern count=1 first=0x3BB checksum_after=0xAF21
+Original file not modified; this is only an audit of the in-memory patch logic.

@@ -1,0 +1,26 @@
+BUILD2OK_SEGA_EU_COMPAT_PATCH2_STAGE49
+
+KODY JSOU ZMENENE / PRIDANE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega_eu/index.html
+- app/src/main/assets/emu_sega_eu/clown_local_boot.html
+- app/src/main/assets/emu_sega_eu/sega_poweroff.html
+- app/src/main/assets/emu_sega_eu/sega_megadrive_screen.png
+
+CIL:
+- zachovat funkcni USA stabilni vetev z BUILD2OJ
+- zachovat funkcni EU patch pro Aladdin Europe a Asterix Europe
+- pridat dalsi EU compat patch pro hry typu Probotector a Ayrton Senna
+
+HLAVNI ZMENY:
+- EU vetev uz nepatchuje C0->80 jen specialne pro Asterix
+- pridany generic pattern: move.b $A10001,d0 + andi #$C0 + cmpi #$C0
+- patch meni cmp #$C0 na cmp #$80 v kopii ROM v pameti
+- Probotector by mel dostat log PROBOTECTOR_GENERIC_REGION_CMP_C0_TO_80...
+- Ayrton/Senna by mel dostat log AYRTON_GENERIC_REGION_CMP_C0_TO_80... pokud ma stejnou region rutinu
+- pokud se meni kod ROM, prepocita se Sega checksum v headeru
+- original ROM soubor se nikdy nemeni
+- ROM neni v APK ani v ZIPu
+- zvuk zustava playback 48 kHz + hard reset
