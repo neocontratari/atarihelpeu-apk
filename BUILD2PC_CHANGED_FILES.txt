@@ -1,0 +1,21 @@
+BUILD2PC_SEGA_MOBILE_AUDIO_CLEAN_CONFIG_STAGE67
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+BEZPECNY ZAKLAD:
+- vychazi z BUILD2PA, ne z rozbite 2OX
+- joystick/multitouch z BUILD2PA zustava beze zmen
+- online/offline remote core chovani z BUILD2PA zustava
+
+AUDIO/PERFORMANCE TEST:
+- pridany query parametr napAudioClean=1
+- v configuration.ini pri audioClean=YES:
+  - low-pass-filter = off
+  - low-volume-distortion = off
+  - rewinding = off
+- audio zustava native playback + noPrime
+- cil: omezit ozvenu/chraplak/zasekavani na Android WebView bez rozbiti ovladani
