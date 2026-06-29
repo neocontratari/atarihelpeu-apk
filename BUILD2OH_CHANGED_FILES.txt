@@ -1,0 +1,16 @@
+BUILD2OH_SEGA_SAFE_REGION_ROLLBACK_STAGE46
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+
+CO TENTO BUILD DELA:
+- OPRAVA PO BUILD2OG: vypina --user / --cartridge argumenty, ktere rozbily nahravani ROM.
+- Vraci cartridge boot na bezpecnou cestu Module.arguments=[blobURL], ktera fungovala v 2OD/2OF.
+- Zachovava cisty zvuk z 2OD: latencyHint=playback, 48 kHz, hard reset mezi hrami.
+- Zachovava preRun config pokus z 2OF, ale jen jako neskodne logovani / zapis configu.
+- NEDAVA fake region opravu. Pokud EU hry porad hlasi PAL/SECAM, dalsi realna cesta je lokalni build core/frontendu.
+
+DULEZITE:
+- BUILD2OG je oznacen jako slepa / nebezpecna vetev pro tento remote ClownMDEmu JS, protoze --cartridge blob: neni prijaty a hry pak hlasi Failed to load the cartridge file.
