@@ -1,0 +1,17 @@
+BUILD2OT_SEGA_FINAL_UI_SCREEN_STRETCH_STAGE58
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- kriz a A ponechany beze zmeny
+- B hitbox trosicku doprava
+- C hitbox trosicku dolu
+- START hitbox trosicku dolu
+- horni mini-sum prekryt tenkou cernou maskou v play rezimu
+- obraz hry roztazen vic do stran pres silnejsi crop/zoom iframe
+- zivoty/HUD hlidany - vertikalni posun jen opatrny
+- LOG zustava na disketu ULOZENE
