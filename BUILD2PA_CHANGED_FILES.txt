@@ -1,0 +1,16 @@
+BUILD2PA_SEGA_MOBILE_MULTITOUCH_AUDIO_DIAG_STAGE65
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- stop local-first core pokusu v beznem online rezimu: uz nema vyskakovat local clownmdemu.js chyba pri zapnutem internetu
+- krajina/mobile dostal globalni multitouch engine: D-pad smer + A/B/C muzou bezet soucasne
+- pointer eventy v landscape pro dotyk potlaceny, aby se nepraly s multitouch enginem
+- joystick v landscape je posunuty trochu dovnitr a vys nez 2OZ/2OW, ne lepeny na kraj
+- A/B/C zustavaji vedle sebe vpravo dole a maji vlastni multi-touch snimani
+- zvukova diagnostika: mobileNativePlayback = playback latencyHint, ale bez nuceneho sampleRate 48000
+- LOG zustava pod disketou ULOZENE
