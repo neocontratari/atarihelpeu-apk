@@ -1,0 +1,18 @@
+BUILD2OF_SEGA_REGION_PRERUN_PAL_NTSC_STAGE44
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+
+HLAVNI ZMENY:
+- navazuje na BUILD2OE
+- zvuk z BUILD2OD/2OE zustava: playback 48 kHz + hard reset mezi hrami
+- opravena hlavni chyba BUILD2OE: region config se nepsal, protoze FS jeste neexistoval
+- BUILD2OF zapisuje configuration.ini v Module.preRun, kdy uz Emscripten FS existuje a jeste pred startem C++ frontendu
+- cesta zustava oficialni ClownMDEmu Emscripten persistent path: /libsdl/clownacy/clownmdemu-frontend/configuration.ini
+- region se porad voli automaticky podle nazvu ROM:
+  * Europe/EUR/PAL/SECAM/(E) -> PAL_EU: pal=on, japanese=off
+  * USA/US/Genesis/(U) -> NTSC_US: pal=off, japanese=off
+  * Japan/Japanese/(J) -> NTSC_JP: pal=off, japanese=on
+- pridany logy REGION_PRERUN_START / REGION_CONFIG_WRITTEN / REGION_PRERUN_DONE
