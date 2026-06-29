@@ -1,0 +1,17 @@
+BUILD2OP_SEGA_FINAL_UI_REAL_SCREEN_HITBOX_STAGE54
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- oprava po BUILD2OO: monitor uz neni posouvany od oka
+- skinovy Sonic/gameplay v monitoru je v PNG realne prelepen cernou obrazovkou, aby nemohl prosvitat
+- iframe/canvas je vlozen do presne zmereneho vnitrniho okna monitoru
+- disketa ULOZENE uklada LOG pro dalsi testy
+- A/B/C hitboxy jsou male kruhove zony podle skutecnych stredů tlacitek
+- D-pad hitbox je vracen na skutecny stred krize, ne vlevo
+- START hitbox doladen
+- Sega emulator core, EU/USA auto compat a audio zustavaji z BUILD2OM/2ON
