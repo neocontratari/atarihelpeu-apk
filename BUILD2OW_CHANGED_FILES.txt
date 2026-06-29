@@ -1,0 +1,16 @@
+BUILD2OW_SEGA_MOBILE_LANDSCAPE_PAD_AUDIO_STAGE61
+
+KODY JSOU ZMENENE:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+HLAVNI ZMENY:
+- portrait/Nox zaklad ponechany
+- zvukovy experiment balanced z BUILD2OV zrusen; mobile jde zpet na playback + noPrime test
+- landscape joystick vetsi, vice doleva a dolu, vizualne vylepseny, pruhledny ale viditelny
+- A/B/C v landscape vetsi, vedle sebe dole vpravo
+- START v landscape zustava skryty
+- horni landscape menu vice pruhledne
+- obraz v landscape jeste agresivneji roztazen do stran
