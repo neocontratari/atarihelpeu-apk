@@ -9,7 +9,7 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 10
-        versionName "EMU10-BUILD2PS-NATIVE-CPP-LOG-EXPORT"
+        versionName "EMU10-BUILD2PT-NATIVE-CPP-IN-PLACE"
 
         externalNativeBuild {
             cmake {

@@ -49,7 +49,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2PS NATIVE C++ INPUT/AUDIO/LOG PROOF OK\n"
+    std::string s = "BUILD2PT NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -105,12 +105,12 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRomInfo(JNIEnv* env, jclas
         out << "- Mega Drive header: NE / soubor je mensi nez 0x200\n";
     }
 
-    out << "\nBUILD2PS DULEZITE:\n";
+    out << "\nBUILD2PT DULEZITE:\n";
     out << "ROM je ted realne prectena v Jave a analyzovana v C++.\n";
     out << "Native proof pattern ma v BUILD2PS cil 60 FPS, aby se overila nativni cesta pred Sega core.\n";
     out << "Dalsi krok je vymena proof patternu za skutecny Sega C++ core.\n";
     std::string s = out.str();
-    NAPLOG("BUILD2PS ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
+    NAPLOG("BUILD2PT ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
     return env->NewStringUTF(s.c_str());
 }
 
@@ -215,4 +215,44 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(JNIEnv* env,
         phase += step;
     }
     env->SetShortArrayRegion(pcmOut, 0, n, pcm.data());
+}
+
+
+// BUILD2PT: same native core exposed to MainActivity/WebView in-place bridge.
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
+    std::string s = "BUILD2PT NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
+                    "JNI bridge: OK\n"
+                    "C++ library: napsega_native_proof\n"
+                    "ROM header parser: OK\n"
+                    "C++ input state: OK\n"
+                    "C++ PCM audio generator: OK\n"
+                    "C++ render pattern: OK\n"
+                    "Status: integrated into normal Sega UI, proof only, no fake Sega gameplay, no ROM in APK";
+    return env->NewStringUTF(s.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_romInfo(JNIEnv* env, jclass, jbyteArray romBytes) {
+    return Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRomInfo(env, nullptr, romBytes);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_renderPattern(JNIEnv* env, jclass, jint width, jint height, jint frame, jintArray argbOut) {
+    Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRenderPattern(env, nullptr, width, height, frame, argbOut);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_setInput(JNIEnv* env, jclass, jint key, jboolean pressed) {
+    Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeSetInput(env, nullptr, key, pressed);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_inputStatus(JNIEnv* env, jclass) {
+    return Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeGetInputStatus(env, nullptr);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_makeAudioTone(JNIEnv* env, jclass, jshortArray pcmOut, jint sampleRate, jdouble hz) {
+    Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(env, nullptr, pcmOut, sampleRate, hz);
 }

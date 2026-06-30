@@ -1,0 +1,45 @@
+BUILD2PT_SEGA_NATIVE_CPP_IN_PLACE_NORMAL_UI_STAGE84
+
+ZMENENE SOUBORY:
+- app/build.gradle
+  - zustava Android NDK/CMake pro native C++ knihovnu.
+  - versionName zmenen na EMU10-BUILD2PT-NATIVE-CPP-IN-PLACE.
+
+- app/src/main/AndroidManifest.xml
+  - odstranena registrace samostatne NativeSegaProofActivity.
+  - C++ uz nema otevirat dalsi hnusne okno; jede primo pres MainActivity / normalni Sega obrazovku.
+
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+  - WebView je ted v root FrameLayoutu.
+  - nad normalni Sega monitorem se umi zobrazit nativni C++ render overlay.
+  - pridany AHNATIVE metody:
+    enableInPlace(), setNativeRect(), loadRomBase64(), input(), audioTest(), saveLog().
+  - C++ audio test bezi pres Android AudioTrack.
+  - C++ log se uklada do Downloads/AtariHelp.
+
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+  - novy maly Java -> JNI bridge pro normalni Sega UI.
+
+- app/src/main/cpp/CMakeLists.txt
+  - native knihovna napsega_native_proof.
+
+- app/src/main/cpp/nap_sega_native_proof.cpp
+  - pridany JNI exporty pro NativeSegaCoreBridge.
+  - ROM header/checksum, input state, render pattern a PCM tone dostupne primo z MainActivity.
+
+- app/src/main/assets/emu_sega/index.html
+  - BUILD2PT.
+  - tlacitko C++ CORE uz neotevira dalsi aktivitu.
+  - C++ CORE zapne native mode primo v normalni Sega obrazovce.
+  - CARTRIDGE/SBIRKA v native mode posila ROM do C++.
+  - stejny DPAD/A/B/C/START posila input do C++.
+  - dalsi stisk C++ CORE pusti C++ AUDIO TEST.
+  - disketa ULOZENE uklada bezny Sega log + C++ in-place log.
+
+KODY JSOU ZMENENE: ANO
+
+POZOR:
+- Tohle porad neni hotovy Sega gameplay.
+- Proof pattern bude dalsi krok nahrazen skutecnym Sega C++ core.
+- WebView ClownMDEmu zustava jako zaloha.
+- Joystick a tlacitka se nemazu ani neprelepuji novym oknem.
