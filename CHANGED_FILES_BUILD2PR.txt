@@ -1,0 +1,19 @@
+BUILD2PR_SEGA_NATIVE_CPP_LOG_EXPORT_STAGE82
+
+ZMENENE SOUBORY:
+app/src/main/java/eu/atarihelp/emu10/NativeSegaProofActivity.java
+app/src/main/cpp/nap_sega_native_proof.cpp
+app/src/main/assets/emu_sega/index.html
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+app/build.gradle
+
+NOVE/POMOCNE SOUBORY:
+BUILD2PR_README_TEST_PLAN.txt
+CHANGED_FILES_BUILD2PR.txt
+
+KODY JSOU ZMENENE: ANO
+
+DULEZITE:
+- WebView Sega zustava zaloha.
+- Joystick WebView Segy se nemeni.
+- Native C++ test ma vlastni log export.
