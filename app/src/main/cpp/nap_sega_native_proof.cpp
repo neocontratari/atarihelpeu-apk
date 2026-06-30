@@ -12,8 +12,10 @@
 #include <csignal>
 #include <csetjmp>
 #include <atomic>
-#include <thread>
 #include <chrono>
+#include <pthread.h>
+#include <unistd.h>
+#include <sched.h>
 
 #if NAP_SEGA_VENDOR_CORE_PRESENT
 #include "clownmdemu.h"
@@ -29,8 +31,8 @@ static uint16_t g_lastChecksumCalc = 0;
 static std::string g_lastTitle = "";
 
 
-// BUILD2QI: native signal guard for real-core bring-up.
-// User reported full app process crash after ROM selection in BUILD2QI/QC. Java try/catch cannot catch SIGSEGV/SIGABRT.
+// BUILD2QJ: native signal guard for real-core bring-up.
+// User reported full app process crash after ROM selection in BUILD2QJ/QC. Java try/catch cannot catch SIGSEGV/SIGABRT.
 // This guard is debug-stage only: it catches a native signal inside the C++ core-load call and returns a log marker instead of killing the app.
 static sigjmp_buf g_nap_sega_sig_jmp;
 static std::atomic<int> g_nap_sega_guard_active{0};
@@ -63,7 +65,7 @@ static const char* nap_signal_name(int sig) {
 }
 
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-// BUILD2QI: tiny Android frontend for the real ClownMDEmu-core.
+// BUILD2QJ: tiny Android frontend for the real ClownMDEmu-core.
 // It is intentionally small: ROM load -> hard reset -> iterate -> scanline framebuffer -> existing in-place view.
 // Audio mixing is not wired yet; this stage is the first real core import/visual boot attempt, no fake gameplay.
 struct NapRealCoreState {
@@ -86,23 +88,43 @@ static NapRealCoreState g_real;
 static std::mutex g_real_mutex;
 static bool g_real_core_loaded_but_render_guarded = false;
 static uint32_t g_guard_frame_counter = 0;
-static int g_real_step_stage = 0; // BUILD2QI: explicit core step: 0 constant, 1 init, 2 setcart, 3 hardreset, 4 iterate
+static int g_real_step_stage = 0; // BUILD2QJ: explicit core step: 0 constant, 1 init, 2 setcart, 3 hardreset, 4 iterate
 static size_t g_real_staged_bytes = 0;
-static std::thread g_real_thread;
+static pthread_t g_real_thread{};
+static std::atomic<int> g_real_thread_created{0};
 static std::atomic<int> g_real_thread_run{0};
 static std::atomic<int> g_real_thread_alive{0};
 static std::atomic<int> g_real_thread_generation{0};
 static std::atomic<uint32_t> g_real_thread_iterations{0};
+static void* nap_real_worker_thread_entry(void *arg);
 static void nap_real_worker_thread(int generation);
 static void nap_real_stop_worker() {
     g_real_thread_run.store(0);
-    if (g_real_thread.joinable()) {
-        try { g_real_thread.join(); } catch (...) {}
+    if (g_real_thread_created.load() != 0) {
+        pthread_join(g_real_thread, nullptr);
+        g_real_thread_created.store(0);
     }
     g_real_thread_alive.store(0);
 }
 
-// BUILD2QI: forward declaration required by C++ before nap_real_load_rom_bytes().
+// BUILD2QJ: reset the huge core struct in-place. Do NOT use `g_real = NapRealCoreState()`: \n// ClownMDEmu is >1 MB and a temporary can overflow Android/WebView thread stack.
+static void nap_real_reset_state_locked() {
+    g_real.loaded = false;
+    g_real.frame_ready = false;
+    g_real.frame_w = 320;
+    g_real.frame_h = 224;
+    g_real.frame_counter = 0;
+    g_real.iterations_last = 0;
+    g_real.cart_words.clear();
+    g_real.frame_argb.clear();
+    for (int i = 0; i < 0x10000; ++i) g_real.palette[i] = 0xff000000u;
+    std::memset(&g_real.emu, 0, sizeof(g_real.emu));
+    std::memset(&g_real.cfg, 0, sizeof(g_real.cfg));
+    std::memset(&g_real.cb, 0, sizeof(g_real.cb));
+    g_real.status = "REAL_CORE_NOT_LOADED";
+}
+
+// BUILD2QJ: forward declaration required by C++ before nap_real_load_rom_bytes().
 static void nap_real_setup_cfg_callbacks();
 
 static uint32_t nap_md_colour_to_argb(cc_u16f colour) {
@@ -198,15 +220,14 @@ static cc_bool nap_save_size(void*, const char*, size_t*) { return cc_false; }
 static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
     if (!bytes || size < 0x200) return "REAL_CORE_LOAD_ERROR bad rom";
 
-    // BUILD2QI: do not run ClownMDEmu from the WebView JavaBridge thread or from View.onDraw.
+    // BUILD2QJ: do not run ClownMDEmu from the WebView JavaBridge thread or from View.onDraw.
     // The previous builds could crash the whole app after ROM selection. Host-side core test passed,
     // so this build moves real init/reset/iterate to one dedicated native worker thread.
     nap_real_stop_worker();
 
     {
         std::lock_guard<std::mutex> lock(g_real_mutex);
-        g_real = NapRealCoreState();
-        for (int i = 0; i < 0x10000; ++i) g_real.palette[i] = 0xff000000u;
+        nap_real_reset_state_locked();
         g_real.frame_argb.assign(320 * 224, 0xff000000u);
         g_real_core_loaded_but_render_guarded = false;
         g_guard_frame_counter = 0;
@@ -226,19 +247,26 @@ static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
     int generation = g_real_thread_generation.fetch_add(1) + 1;
     g_real_thread_run.store(1);
     g_real_thread_alive.store(1);
-    try {
-        g_real_thread = std::thread(nap_real_worker_thread, generation);
-    } catch (...) {
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    // BUILD2QJ: ClownMDEmu core state is large and the emulator core can use more native stack than Android's default.
+    // Give the worker 8 MB so ROM selection does not kill the process with stack overflow.
+    pthread_attr_setstacksize(&attr, 8 * 1024 * 1024);
+    int rc = pthread_create(&g_real_thread, &attr, nap_real_worker_thread_entry, (void*)(intptr_t)generation);
+    pthread_attr_destroy(&attr);
+    if (rc != 0) {
         g_real_thread_run.store(0);
         g_real_thread_alive.store(0);
-        return "REAL_CORE_THREAD_START_ERROR std::thread failed";
+        g_real_thread_created.store(0);
+        return std::string("REAL_CORE_THREAD_START_ERROR pthread_create rc=") + std::to_string(rc);
     }
+    g_real_thread_created.store(1);
 
     std::ostringstream out;
     out << "REAL_CORE_THREAD_START_OK\n";
     out << "core=ClownMDEmu-core offline/vendor\n";
     out << "bytes=" << size << " words=" << ((size + 1) / 2) << "\n";
-    out << "threading=DEDICATED_NATIVE_WORKER_THREAD; no core calls from WebView bridge; no core calls from UI onDraw\n";
+    out << "threading=DEDICATED_NATIVE_WORKER_THREAD_BIGSTACK_8MB; no core calls from WebView bridge; no core calls from UI onDraw; reset=no_stack_temporary\n";
     out << "pattern=OFF; fake/proof moving cubes removed\n";
     out << "render=CACHED_FRAME_COPY_ONLY_FROM_NATIVE_MONITOR_DRAW\n";
     out << "audio=not wired yet; Java C++ AUDIO button remains tone-test only";
@@ -276,7 +304,7 @@ static void nap_real_setup_cfg_callbacks() {
 static std::string nap_real_step_once() {
     std::lock_guard<std::mutex> lock(g_real_mutex);
     std::ostringstream out;
-    out << "REAL_CORE_STEP_DISABLED_IN_BUILD2QI\n";
+    out << "REAL_CORE_STEP_DISABLED_IN_BUILD2QJ\n";
     out << "reason=core now runs from native monitor render under single mutex after ROM load\n";
     out << "loaded=" << (g_real.loaded ? "YES" : "NO") << "\n";
     out << "status=" << g_real.status;
@@ -288,7 +316,7 @@ static bool nap_real_render_to_argb(int out_w, int out_h, jint *out_px) {
     std::lock_guard<std::mutex> lock(g_real_mutex);
     if (!g_real.loaded || g_real.frame_argb.empty() || g_real.frame_w <= 0 || g_real.frame_h <= 0) return false;
 
-    // BUILD2QI: never call ClownMDEmu_Iterate() from Android View.onDraw.
+    // BUILD2QJ: never call ClownMDEmu_Iterate() from Android View.onDraw.
     // The worker thread owns all core execution; UI only copies the latest cached framebuffer.
     const int sw = g_real.frame_w;
     const int sh = g_real.frame_h;
@@ -308,9 +336,15 @@ static bool nap_real_render_to_argb(int out_w, int out_h, jint *out_px) {
 }
 
 
+static void* nap_real_worker_thread_entry(void *arg) {
+    int generation = (int)(intptr_t)arg;
+    nap_real_worker_thread(generation);
+    return nullptr;
+}
+
 static void nap_real_worker_thread(int generation) {
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-    NAPLOG("BUILD2QI real core worker start gen=%d", generation);
+    NAPLOG("BUILD2QJ real core worker start gen=%d bigstack=8MB", generation);
     try {
         static bool constants_ready = false;
         {
@@ -348,8 +382,8 @@ static void nap_real_worker_thread(int generation) {
             }
             auto t1 = std::chrono::steady_clock::now();
             auto used = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0);
-            if (used.count() < 16) std::this_thread::sleep_for(std::chrono::milliseconds(16 - used.count()));
-            else std::this_thread::yield();
+            if (used.count() < 16) usleep((useconds_t)((16 - used.count()) * 1000));
+            else sched_yield();
         }
     } catch (const std::exception &e) {
         std::lock_guard<std::mutex> lock(g_real_mutex);
@@ -359,7 +393,7 @@ static void nap_real_worker_thread(int generation) {
         g_real.status = "REAL_CORE_WORKER_UNKNOWN_EXCEPTION";
     }
     g_real_thread_alive.store(0);
-    NAPLOG("BUILD2QI real core worker stop gen=%d", generation);
+    NAPLOG("BUILD2QJ real core worker stop gen=%d", generation);
 #endif
 }
 
@@ -369,7 +403,7 @@ static void nap_render_guard_frame(int width, int height, jintArray argbOut, JNI
     int needed = width * height;
     if (len < needed) return;
     std::vector<jint> px((size_t)needed, (jint)0xff03070au);
-    // BUILD2QI: blank guarded monitor. No running cubes, no center square, no hash bars.
+    // BUILD2QJ: blank guarded monitor. No running cubes, no center square, no hash bars.
     // Subtle blue border only shows the native view is alive and placed correctly.
     auto put = [&](int x0,int y0,int rw,int rh,uint32_t c){
         int x1=std::max(0,x0), y1=std::max(0,y0), x2=std::min(width,x0+rw), y2=std::min(height,y0+rh);
@@ -415,7 +449,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2QI NATIVE C++ REAL CORE RENDER FIRST OK\n"
+    std::string s = "BUILD2QJ NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -423,7 +457,7 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* en
                     "C++ PCM audio generator: OK\n"
                     "C++ native log export: OK\n"
                     "C++ 60Hz timing proof target: OK\n"
-                    "Status: real ClownMDEmu-core worker-thread render in normal Sega monitor; no ROM in APK";
+                    "Status: real ClownMDEmu-core big-stack pthread render in normal Sega monitor; no ROM in APK";
     return env->NewStringUTF(s.c_str());
 }
 
@@ -471,12 +505,12 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRomInfo(JNIEnv* env, jclas
         out << "- Mega Drive header: NE / soubor je mensi nez 0x200\n";
     }
 
-    out << "\nBUILD2QI DULEZITE:\n";
+    out << "\nBUILD2QJ DULEZITE:\n";
     out << "ROM je ted realne prectena v Jave a analyzovana v C++.\n";
-    out << "BUILD2QI ma vypnuty proof pattern a chrani real-core load proti padu aplikace.\n";
+    out << "BUILD2QJ ma vypnuty proof pattern a chrani real-core load proti padu aplikace.\n";
     out << "Dalsi krok je podle logu opravit konkretni core init/reset/iterate misto dalsich fake patternu.\n";
     std::string s = out.str();
-    NAPLOG("BUILD2QI ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
+    NAPLOG("BUILD2QJ ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
     return env->NewStringUTF(s.c_str());
 }
 
@@ -593,17 +627,17 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(JNIEnv* env,
 }
 
 
-// BUILD2QI: same native core exposed to MainActivity/WebView in-place bridge.
+// BUILD2QJ: same native core exposed to MainActivity/WebView in-place bridge.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2QI NATIVE C++ REAL CORE RENDER FIRST OK\n"
+    std::string s = "BUILD2QJ NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
                     "C++ input state: OK\n"
                     "C++ PCM audio generator: OK\n"
                     "C++ guarded render: OK\n"
-                    "Status: normal Sega UI; real ClownMDEmu-core worker-thread render path; no ROM in APK";
+                    "Status: normal Sega UI; real ClownMDEmu-core big-stack pthread render path; no ROM in APK";
     return env->NewStringUTF(s.c_str());
 }
 
@@ -647,7 +681,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_makeAudioTone(JNIEnv* env, jclass, 
     Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(env, nullptr, pcmOut, sampleRate, hz);
 }
 
-// BUILD2QI REAL CORE ADAPTER SLOT
+// BUILD2QJ REAL CORE ADAPTER SLOT
 // This stage imports local vendored ClownMDEmu-core sources and links only interpreter/core libraries into the native .so.
 #ifndef NAP_SEGA_VENDOR_CORE_PRESENT
 #define NAP_SEGA_VENDOR_CORE_PRESENT 0
@@ -660,7 +694,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_realCoreStatus(JNIEnv* env, jclass)
     out << "REAL_CORE_PRESENT=YES\n";
     out << "core=ClownMDEmu-core\n";
     out << "vendor_offline=local ZIP sources; no FetchContent; no tools/tests\n";
-    out << "mode=real core runs on dedicated native worker thread; monitor draw copies cached frame\n";
+    out << "mode=real core runs on dedicated native worker pthread with 8MB stack; monitor draw copies cached frame\n";
     out << "REAL_CORE_WORKER_ALIVE=" << (g_real_thread_alive.load() ? "YES" : "NO") << "\n";
     out << "pattern=OFF no running cubes/no squares; cached real frame path active\n";
     out << "loaded=" << (g_real.loaded ? "YES" : "NO");

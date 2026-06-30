@@ -224,8 +224,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2QI\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2QI_SEGA_NATIVE_CPP_CORE_THREAD_RENDER_STAGE99\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2QJ\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2QJ_SEGA_NATIVE_CPP_CORE_BIGSTACK_THREAD_STACK_FIX_STAGE100\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -309,8 +309,7 @@ public class MainActivity extends Activity {
                 String info = NativeSegaCoreBridge.romInfo(data);
                 long dt = System.currentTimeMillis() - t0;
 
-                // BUILD2QI: stage ROM in C++ memory only. Do not auto-run ClownMDEmu here.
-                // User can press C++ STEP to run one guarded native step at a time.
+                // BUILD2QJ: load ROM into C++ using big-stack worker thread. No core calls from WebView/UI draw threads.
                 String realCore = NativeSegaCoreBridge.realCoreLoadRom(data);
 
                 nativeLastRomInfo = "ROM: " + safeFileName(name) + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
@@ -391,7 +390,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String saveLog() {
             try {
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QI_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QJ_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
@@ -429,7 +428,7 @@ public class MainActivity extends Activity {
             int n = w * h;
             if (argb.length != n) { argb = new int[n]; bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); }
             try {
-                // BUILD2QI: real ClownMDEmu-core render path.
+                // BUILD2QJ: real ClownMDEmu-core render path.
                 // Native calls are internally mutexed with ROM load, so WebView picker thread and UI render thread do not touch core concurrently.
                 NativeSegaCoreBridge.renderPattern(w, h, frame, argb);
                 bitmap.setPixels(argb, 0, w, 0, 0, w, h);
