@@ -1,0 +1,15 @@
+CHANGED_FILES_BUILD2PZ
+
+app/build.gradle
+app/src/main/cpp/CMakeLists.txt
+app/src/main/cpp/nap_sega_native_proof.cpp
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+app/src/main/java/eu/atarihelp/emu10/NativeSegaProofActivity.java
+app/src/main/assets/emu_sega/index.html
+
+BUILD2PZ opravuje rozbity BUILD2PX/2PY smer:
+- CMake uz netaha submoduly naslepo.
+- FetchContent je rozdelene na Populate + explicitni git submodule update --init --recursive.
+- Pokud selze fetch/submodule, log ukaze presnou FATAL_ERROR zpravu BUILD2PZ.
+- Normalni Sega UI a C++ in-place monitor zustavaji.
