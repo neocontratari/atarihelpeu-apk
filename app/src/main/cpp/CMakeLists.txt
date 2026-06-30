@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(napsega_native_proof LANGUAGES C CXX)
 
-# BUILD2QL: offline/vendor ClownMDEmu-core build.
+# BUILD2QM: offline/vendor ClownMDEmu-core build.
 # No FetchContent, no GitHub during GitHub Actions, no submodule update,
 # no disassembler tools, no microcode generator executable, no tests.
 set(CMAKE_C_STANDARD 99)
@@ -16,16 +16,16 @@ set(NAP_M68K_DIR ${NAP_VENDOR_DIR}/libraries/clown68000)
 set(NAP_Z80_DIR ${NAP_VENDOR_DIR}/libraries/clownz80)
 
 if(NOT EXISTS ${NAP_CORE_DIR}/clownmdemu.h)
-    message(FATAL_ERROR "BUILD2QL: offline vendor missing source/clownmdemu.h")
+    message(FATAL_ERROR "BUILD2QM: offline vendor missing source/clownmdemu.h")
 endif()
 if(NOT EXISTS ${NAP_M68K_DIR}/source/interpreter/clown68000.c)
-    message(FATAL_ERROR "BUILD2QL: offline vendor missing clown68000 interpreter")
+    message(FATAL_ERROR "BUILD2QM: offline vendor missing clown68000 interpreter")
 endif()
 if(NOT EXISTS ${NAP_Z80_DIR}/source/interpreter.c)
-    message(FATAL_ERROR "BUILD2QL: offline vendor missing clownz80 interpreter")
+    message(FATAL_ERROR "BUILD2QM: offline vendor missing clownz80 interpreter")
 endif()
 if(NOT EXISTS ${NAP_COMMON_DIR}/clowncommon.h)
-    message(FATAL_ERROR "BUILD2QL: offline vendor missing clowncommon.h")
+    message(FATAL_ERROR "BUILD2QM: offline vendor missing clowncommon.h")
 endif()
 
 add_library(clown68000-common STATIC
@@ -98,7 +98,7 @@ target_compile_features(napsega_native_proof PRIVATE cxx_std_17)
 target_compile_definitions(napsega_native_proof PRIVATE
         NAP_SEGA_VENDOR_CORE_PRESENT=1
         NAP_SEGA_VENDOR_CLOWNMDEMU_OFFLINE=1
-        NAP_SEGA_BUILD2QL=1)
+        NAP_SEGA_BUILD2QM=1)
 
 target_include_directories(napsega_native_proof PRIVATE
         ${NAP_CORE_DIR}
