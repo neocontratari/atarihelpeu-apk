@@ -1,0 +1,19 @@
+BUILD2QN_SEGA_NATIVE_CPP_PSG_SYNC_LIGHT_STAGE104
+
+KODY JSOU ZMENENE: ano
+
+Zmenene soubory:
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/CMakeLists.txt
+- app/build.gradle
+- app/src/main/AndroidManifest.xml
+- app/src/main/cpp/vendor/**
+
+Cil:
+- navazuje na 2QM, ne na spatny 2QL mixer
+- Sonic jump/ring: vraci PSG do vystupu, ale jen LIGHT / tlumene
+- PCM/CDDA zustava diagnostika, nemicha se
+- chunk 384, FIFO target 1024, max 4096
+- normalni Sega UI, zadne dalsi C++ okno
