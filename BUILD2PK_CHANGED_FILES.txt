@@ -1,0 +1,20 @@
+BUILD2PK_SEGA_MOBILE_AUDIO_LOG_SHIELD_NO_INPUT_CHANGE_STAGE75
+
+KODY JSOU ZMENENE: ANO
+ZAKLAD: BUILD2PI / BUILD2PH safe Sega branch
+CIL: mobilni Sega zvuk bez zasahu do joysticku, multitouch, hitboxu, rychlosti mackani, ROM pickeru, UI, region patche nebo grafiky.
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+
+CO SE ZMENILO:
+- Build marker zmenen na BUILD2PK.
+- Zachovan 2PI clean audio config: low-pass-filter off, low-volume-distortion off, rewinding off, noScriptProcessorPatch.
+- Zachovan 2PI joystick/input dispatch 1:1: stejne targety, stejne keyDefs, stejny virtual gamepad poll, stejny dpad/multitouch kod.
+- Zmeneno pouze logovani input udalosti: prvnich 12 udalosti + potom kazda 20. udalost, aby mobilni WebView nemusel pri hrani posilat stovky log postMessage zprav.
+- Pridany markery inputLogShield=YES a noInputChange=YES.
+
+CO SE NESMI ZMENIT:
+- Hratelnost, rychlost pohybu, skoky, multitouch, A/B/C/START/DPAD.
+- UI, grafika, cartridge picker, EU compat patch, wrapper boot.
