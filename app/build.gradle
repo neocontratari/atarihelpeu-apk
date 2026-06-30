@@ -9,7 +9,13 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 10
-        versionName "EMU10-BUILD1"
+        versionName "EMU10-BUILD2PP-NATIVE-PROOF"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17 -O2"
+            }
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -17,5 +23,11 @@ android {
     }
     buildTypes {
         debug { }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
     }
 }

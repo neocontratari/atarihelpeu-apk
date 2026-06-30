@@ -176,6 +176,21 @@ public class MainActivity extends Activity {
             ui.post(() -> openBridgePicker("text"));
         }
     }
+    public class AHNative {
+        @JavascriptInterface
+        public void openSegaCppProof() {
+            ui.post(() -> {
+                try {
+                    Intent i = new Intent(MainActivity.this, NativeSegaProofActivity.class);
+                    startActivity(i);
+                } catch (Throwable t) {
+                    try {
+                        web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote("SEGA C++ TEST: nelze otevrit native aktivitu - " + t.getMessage()) + ")", null);
+                    } catch (Throwable ignored) {}
+                }
+            });
+        }
+    }
 
     public class AHNet {
         @JavascriptInterface
@@ -254,6 +269,7 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHSave(), "AHSAVE");
         web.addJavascriptInterface(new AHPick(), "AHPICK");
         web.addJavascriptInterface(new AHNet(), "AHNET");
+        web.addJavascriptInterface(new AHNative(), "AHNATIVE");
         web.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb,

@@ -1,0 +1,8 @@
+app/build.gradle
+app/src/main/AndroidManifest.xml
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+app/src/main/java/eu/atarihelp/emu10/NativeSegaProofActivity.java
+app/src/main/cpp/CMakeLists.txt
+app/src/main/cpp/nap_sega_native_proof.cpp
+app/src/main/assets/emu_sega/index.html
+BUILD2PP_README_TEST_PLAN.txt
