@@ -1,0 +1,9 @@
+CHANGED_FILES_BUILD2PY
+
+app/build.gradle
+app/src/main/cpp/CMakeLists.txt
+app/src/main/cpp/nap_sega_native_proof.cpp
+BUILD2PY_README_TEST_PLAN.txt
+
+POZNAMKA:
+BUILD2PY navazuje na BUILD2PV/2PW in-place C++ monitor a nahrazuje slepy CORE_VENDOR_MISSING smer realnym ClownMDEmu-core importem.
