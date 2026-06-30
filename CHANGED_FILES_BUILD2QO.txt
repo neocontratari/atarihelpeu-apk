@@ -1,0 +1,34 @@
+BUILD2QO_SEGA_NATIVE_CPP_LIFECYCLE_AUDIO_SYNC_STAGE105
+
+KODY JSOU ZMENENE: ano
+
+NAVAZUJE NA:
+- BUILD2QN_SEGA_NATIVE_CPP_PSG_SYNC_LIGHT_STAGE104
+
+Zmenene soubory v tomto overlay:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/assets/emu_sega/index.html
+
+Co je opraveno naraz:
+1) KRITICKY lifecycle / z-order bug:
+   - Native Sega C++ view se smi zobrazovat jen nad emu_sega/index.html.
+   - Pri odchodu ze Sega do MENU / Intro / VBXE / Atari / PS1 / web se vola tvrdy stop:
+     audio stop, input release, native worker shutdown, audio FIFO clear, view GONE + removeView.
+   - MainActivity hlida onPageStarted/onPageFinished a JS vola stop pri MENU/WEB/pagehide/beforeunload.
+   - Cil: Sonic obraz ani hudba nesmi zustat pres jinou stranku.
+
+2) Sonic audio sync / chrceni:
+   - Worker uz nejede hrube sleep 16 ms. BUILD2QO pouziva presny frame clock:
+     NTSC ~16.666667 ms, PAL 20.000 ms.
+   - Java AudioTrack thread dostal THREAD_PRIORITY_AUDIO.
+   - Audio ma kratky prefill pred track.play(), chunk 320, vetsi bezpecny buffer pro S8/A12.
+   - C++ audio FIFO: target 1536, max 3072, FM/PSG desync guard 640.
+   - FM/PSG gain snizeny a je pridany soft-knee proti mobilnimu clippingu.
+   - PCM/CDDA zustava diagnostika, nemicha se.
+
+Poctivy status:
+- Tohle neni tvrzeni "100 procent hotovo" bez testu.
+- Je to konkretni oprava obou nahlasenych zavad podle posledniho Sonic testu.
+- Hlavni test: Sonic The Hedgehog (USA, Europe).gen.
