@@ -24,7 +24,7 @@ static uint16_t g_lastChecksumCalc = 0;
 static std::string g_lastTitle = "";
 
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-// BUILD2PZ: tiny Android frontend for the real ClownMDEmu-core.
+// BUILD2QA: tiny Android frontend for the real ClownMDEmu-core.
 // It is intentionally small: ROM load -> hard reset -> iterate -> scanline framebuffer -> existing in-place view.
 // Audio mixing is not wired yet; this stage is the first real core import/visual boot attempt, no fake gameplay.
 struct NapRealCoreState {
@@ -181,9 +181,9 @@ static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
     g_real.loaded = true;
     std::ostringstream out;
     out << "REAL_CORE_LOAD_OK bytes=" << size << " words=" << g_real.cart_words.size() << "\n";
-    out << "core=ClownMDEmu-core fetched+linked by CMake\n";
+    out << "core=ClownMDEmu-core offline vendored + selectively linked by CMake\n";
     out << "video=first native Iterate/render attempt enabled\n";
-    out << "audio=not mixed yet, old C++ tone test remains only audio proof";
+    out << "audio=core callbacks drained; C++ tone test remains separate output proof";
     g_real.status = out.str();
     return g_real.status;
 }
@@ -246,7 +246,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2PZ NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
+    std::string s = "BUILD2QA NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -302,12 +302,12 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRomInfo(JNIEnv* env, jclas
         out << "- Mega Drive header: NE / soubor je mensi nez 0x200\n";
     }
 
-    out << "\nBUILD2PZ DULEZITE:\n";
+    out << "\nBUILD2QA DULEZITE:\n";
     out << "ROM je ted realne prectena v Jave a analyzovana v C++.\n";
-    out << "Native proof pattern ma v BUILD2PZ cil 60 FPS, aby se overila nativni cesta pred Sega core.\n";
+    out << "Native proof pattern ma v BUILD2QA cil 60 FPS, aby se overila nativni cesta pred Sega core.\n";
     out << "Dalsi krok je vymena proof patternu za skutecny Sega C++ core.\n";
     std::string s = out.str();
-    NAPLOG("BUILD2PZ ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
+    NAPLOG("BUILD2QA ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
     return env->NewStringUTF(s.c_str());
 }
 
@@ -422,10 +422,10 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(JNIEnv* env,
 }
 
 
-// BUILD2PZ: same native core exposed to MainActivity/WebView in-place bridge.
+// BUILD2QA: same native core exposed to MainActivity/WebView in-place bridge.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2PZ NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
+    std::string s = "BUILD2QA NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -443,6 +443,19 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_romInfo(JNIEnv* env, jclass, jbyteA
 
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_renderPattern(JNIEnv* env, jclass, jint width, jint height, jint frame, jintArray argbOut) {
+#if NAP_SEGA_VENDOR_CORE_PRESENT
+    if (argbOut && width > 0 && height > 0) {
+        jsize len = env->GetArrayLength(argbOut);
+        int needed = width * height;
+        if (len >= needed) {
+            std::vector<jint> px((size_t)needed);
+            if (nap_real_render_to_argb((int)width, (int)height, px.data())) {
+                env->SetIntArrayRegion(argbOut, 0, needed, px.data());
+                return;
+            }
+        }
+    }
+#endif
     Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRenderPattern(env, nullptr, width, height, frame, argbOut);
 }
 
@@ -461,8 +474,8 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_makeAudioTone(JNIEnv* env, jclass, 
     Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(env, nullptr, pcmOut, sampleRate, hz);
 }
 
-// BUILD2PZ REAL CORE ADAPTER SLOT
-// This stage imports the official ClownMDEmu-core source through CMake/FetchContent explicit-submodule and links it into the native .so.
+// BUILD2QA REAL CORE ADAPTER SLOT
+// This stage imports local vendored ClownMDEmu-core sources and links only interpreter/core libraries into the native .so.
 #ifndef NAP_SEGA_VENDOR_CORE_PRESENT
 #define NAP_SEGA_VENDOR_CORE_PRESENT 0
 #endif
@@ -473,7 +486,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_realCoreStatus(JNIEnv* env, jclass)
     std::ostringstream out;
     out << "REAL_CORE_PRESENT=YES\n";
     out << "core=ClownMDEmu-core\n";
-    out << "vendor_fetch=GitHub CMake FetchContent explicit submodule fix\n";
+    out << "vendor_offline=local ZIP sources; no FetchContent; no tools/tests\n";
     out << "mode=first real core boot attempt in normal Sega monitor\n";
     out << "loaded=" << (g_real.loaded ? "YES" : "NO");
     return env->NewStringUTF(out.str().c_str());

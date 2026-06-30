@@ -9,7 +9,7 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 10
-        versionName "EMU10-BUILD2PW-NATIVE-CPP-IN-PLACE"
+        versionName "EMU10-BUILD2QA-SEGA-NATIVE-CPP-OFFLINE-VENDOR"
 
         externalNativeBuild {
             cmake {

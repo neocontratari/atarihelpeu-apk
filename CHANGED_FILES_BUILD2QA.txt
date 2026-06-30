@@ -1,0 +1,15 @@
+BUILD2QA_SEGA_NATIVE_CPP_OFFLINE_VENDOR_FIRST_CORE_STAGE91
+
+Zmenene/pridane soubory:
+- app/build.gradle
+- app/src/main/cpp/CMakeLists.txt
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/cpp/vendor/clownmdemu-core/** (offline vendored source from user ZIPs)
+- app/src/main/assets/emu_sega/index.html
+
+Cil:
+- zadny FetchContent / zadny GitHub fetch pri build APK
+- zadne disassembler tooly / testy / microcode generator targety
+- normalni Sega UI, zadne dalsi C++ okno
+- ROM picker -> C++ -> ClownMDEmu-core load -> Iterate/render pokus
+- pattern jen fallback kdyz real core nenabehne; log musi rict stav.
