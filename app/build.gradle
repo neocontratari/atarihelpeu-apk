@@ -9,7 +9,7 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 10
-        versionName "EMU10-BUILD2PP-NATIVE-PROOF"
+        versionName "EMU10-BUILD2PQ-NATIVE-INPUT-AUDIO-PROOF"
 
         externalNativeBuild {
             cmake {

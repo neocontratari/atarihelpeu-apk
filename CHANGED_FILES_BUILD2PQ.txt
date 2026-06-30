@@ -1,0 +1,16 @@
+BUILD2PQ_SEGA_NATIVE_CPP_INPUT_AUDIO_PROOF_STAGE81
+
+Changed files:
+app/build.gradle
+app/src/main/AndroidManifest.xml
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+app/src/main/java/eu/atarihelp/emu10/NativeSegaProofActivity.java
+app/src/main/cpp/CMakeLists.txt
+app/src/main/cpp/nap_sega_native_proof.cpp
+app/src/main/assets/emu_sega/index.html
+BUILD2PQ_README_TEST_PLAN.txt
+CHANGED_FILES_BUILD2PQ.txt
+
+Note:
+- WebView Sega input/joystick/gameplay path is not changed intentionally.
+- This is native proof only, not fake Sega gameplay.
