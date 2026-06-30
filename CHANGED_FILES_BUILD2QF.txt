@@ -1,0 +1,13 @@
+BUILD2QF changed files:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/cpp/CMakeLists.txt
+- app/src/main/cpp/vendor/clownmdemu-core/**
+
+Summary:
+- Rebased from BUILD2QE stable no-crash black-monitor baseline.
+- Added explicit C++ STEP bridge.
+- ROM selection stages ROM into native memory but does not auto execute core.
+- Each C++ STEP runs one guarded real-core step.
