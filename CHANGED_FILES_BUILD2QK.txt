@@ -1,0 +1,7 @@
+BUILD2QK changed files:
+- app/build.gradle
+- app/src/main/cpp/CMakeLists.txt
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/assets/emu_sega/index.html

@@ -9,7 +9,7 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 10
-        versionName "EMU10-BUILD2QJ-SEGA-NATIVE-CPP-BIGSTACK-THREAD-STACK-FIX"
+        versionName "EMU10-BUILD2QK-SEGA-NATIVE-CPP-REGION-AUDIO-FIRST"
 
         externalNativeBuild {
             cmake {
