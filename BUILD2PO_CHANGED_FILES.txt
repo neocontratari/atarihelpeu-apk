@@ -1,0 +1,24 @@
+BUILD2PO_SEGA_MOBILE_VIEWPORT_PERF_GOVERNOR_NO_INPUT_CHANGE_STAGE79
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+
+BASIS:
+- Navazuje na BUILD2PN, protoze PN mel nejlepsi Nox zlepseni a prinesl realny AUDIO_SP_DIAG.
+- Joystick/input zustava 2PI/2PK/2PN 1:1.
+
+ZMENY:
+- Pridan viewport/perf governor pro landscape.
+- Landscape iframe crop zmenseno z 176vw/123vh top -10.5vh na 164vw/116vh top -5.8vh.
+- Cil: mensi GPU/WebView zatez + lepsi sance zobrazit Sonic/Aladdin HUD/zivoty po otoceni.
+- Audio prime + ScriptProcessor DIAG zachovany z PN.
+- Pridan DEVICE_INFO a PARENT/WRAPPER_PERF_MONITOR log.
+
+NEZMENENO:
+- DPAD/A/B/C/START hitboxy.
+- Multitouch engine.
+- Dispatch tlacitek.
+- ROM picker / Blob URL boot.
+- EU compatibility patch.
+- Zadny ScriptProcessor buffer patch.
