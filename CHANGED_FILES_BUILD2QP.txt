@@ -1,0 +1,22 @@
+AtariHelp.eu EMU-10 BUILD2QP_SEGA_NATIVE_CPP_REENTER_CLEAN_AUDIO_STAGE106
+
+ZMENENE SOUBORY:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/assets/emu_sega/index.html
+
+OPRAVY PROTI BUILD2QO:
+1) Sega C++ po navratu z Atari/VBXE/Intro:
+   - C++ CORE uz nema poustet cernou native vrstvu bez ROM.
+   - Pokud je v pameti posledni ROM, C++ CORE ji rovnou znovu nahraje do C++ core.
+   - Pokud ROM v pameti neni, zobrazi se instrukce vybrat ROM pres SBIRKA/CARTRIDGE.
+   - Native view se pri re-enteru znovu korektne pripoji do rootFrame.
+
+2) Zvuk Sonic/Aladdin:
+   - Hard stop aktivniho AudioTracku pri odchodu / vymene ROM.
+   - Vetsi, ale porad nizkolatencni AudioTrack buffer pro S8/A12.
+   - Native mixer: nizsi FM/PSG gain, soft limiter, de-click underrun fade, jemny low-pass.
+   - FIFO target 2048 / max 4096, aby necvakal pri drobnem jitteru, ale nevznikla 0.5s ozvena.
+
+KODY JSOU ZMENENE.
