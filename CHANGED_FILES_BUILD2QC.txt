@@ -1,0 +1,21 @@
+BUILD2QC_SEGA_NATIVE_CPP_CORE_CRASH_GUARD_NO_PATTERN_STAGE93
+KODY JSOU ZMENENE: ano
+
+Zmenene soubory:
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/cpp/CMakeLists.txt
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/build.gradle
+- vendor Clown zdrojaky zustavaji z 2QB offline/vendor
+
+Cil:
+- zastavit pad po vyberu ROM v C++ CORE
+- vypnout behajici proof kostky/pattern
+- zachovat C++ in-place v normalni Sega obrazovce
+- ROM dal jde do C++ a ClownMDEmu-core se inicializuje, ale automaticky Iterate/render je docasne guardovany
+
+Dulezite:
+- 2QB build prosel, ale padal po ROM pri realtime Iterate z Android View render threadu.
+- 2QC nevraci WebView cestu, jen vypina nebezpecny auto-render core smycky.
+- Tohle porad neni hotovy Sonic/Aladdin gameplay.
