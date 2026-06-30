@@ -1,0 +1,12 @@
+BUILD2PN_SEGA_MOBILE_AUDIO_PRIME_DIAG_NATIVE_NO_INPUT_CHANGE_STAGE78
+
+CHANGED FILES:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+
+ZMENY:
+- Navrat na native playback smer z 2PK, ne 2PL/2PM forced/balanced.
+- Joystick/input/multitouch/hitboxy NEZMENENY: stejny dispatch a gamepad jako 2PI/2PK.
+- Zapnut kratky real WebAudio prime pred startem ClownMDEmu: napNoPrime=0.
+- Pridan ScriptProcessor DIAG pouze pro log: zapisuje requested/actual bufferSize, ctx sampleRate a latency.
+- Zadny ScriptProcessor buffer patch, zadny hard gate, zadny region experiment, zadna graficka uprava.
