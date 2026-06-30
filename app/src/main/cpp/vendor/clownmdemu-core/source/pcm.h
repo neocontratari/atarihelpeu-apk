@@ -42,7 +42,7 @@ typedef struct PCM
 
 void PCM_Initialise(PCM *pcm);
 void PCM_WriteRegister(PCM *pcm, cc_u16f reg, cc_u8f value);
-cc_u8f PCM_ReadRegister(const PCM *pcm, cc_u8f reg);
+cc_u8f PCM_ReadRegister(const PCM *pcm, cc_u16f reg);
 cc_u8f PCM_ReadWaveRAM(const PCM* pcm, cc_u16f address);
 void PCM_WriteWaveRAM(PCM* pcm, cc_u16f address, cc_u8f value);
 void PCM_Update(PCM *pcm, cc_s16l *sample_buffer, size_t total_frames);

@@ -1,8 +1,8 @@
-BUILD2QA TEST PLAN
+BUILD2QB TEST PLAN
 
 1) Nasad overlay pres GitHub Desktop.
 2) Nech GitHub Actions vytvorit APK.
-3) Pokud build spadne, posli cervene radky kolem BUILD2QA / CMake / ninja.
+3) Pokud build spadne, posli cervene radky kolem BUILD2QB / CMake / ninja.
 4) Pokud build projde:
    - SEGA -> C++ CORE
    - vyber Sonic/Aladdin pres normalni cartridge
@@ -12,7 +12,7 @@ BUILD2QA TEST PLAN
    - ULOZENE -> poslat log + screenshot
 
 Ocekavane log markery:
-- BUILD2QA_SEGA_NATIVE_CPP_OFFLINE_VENDOR_FIRST_CORE_STAGE91
+- BUILD2QB_SEGA_NATIVE_CPP_OFFLINE_VENDOR_PCM_HEADER_FIX_STAGE92
 - REAL_CORE_PRESENT=YES
 - vendor_offline=local ZIP sources
 - REAL_CORE_LOAD_OK

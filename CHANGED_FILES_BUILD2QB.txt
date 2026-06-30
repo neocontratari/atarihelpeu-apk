@@ -1,0 +1,10 @@
+BUILD2QB changed files:
+- app/build.gradle
+- app/src/main/AndroidManifest.xml
+- app/src/main/cpp/CMakeLists.txt
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/cpp/vendor/clownmdemu-core/**
+
+Critical fix:
+- app/src/main/cpp/vendor/clownmdemu-core/source/pcm.h
+  PCM_ReadRegister signature fixed from cc_u8f reg to cc_u16f reg to match pcm.c.
