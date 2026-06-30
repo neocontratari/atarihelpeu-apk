@@ -1,0 +1,24 @@
+BUILD2QD_SEGA_NATIVE_CPP_SIGNAL_GUARD_NO_CRASH_STAGE94
+
+KODY JSOU ZMENENE: ANO
+
+Zmenene soubory:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/cpp/CMakeLists.txt
+- app/src/main/cpp/vendor/clownmdemu-core/**
+- app/build.gradle
+- app/src/main/AndroidManifest.xml
+
+Ucel:
+- Oprava padu po vyberu ROM v C++ CORE modu.
+- Vypnute behajici proof kostky / hash ctverecky.
+- Native monitor ukazuje jen tmavy guard obraz s jemnym okrajem.
+- Real core load je obalen signal guardem pro SIGSEGV/SIGBUS/SIGABRT, aby appka pokud mozno nespadla bez logu.
+- ClownMDEmu-core je stale offline/vendor, bez GitHub fetch.
+- Nezapina se automaticky realtime Iterate/render loop.
+
+Poznamka:
+- Toto neni hotovy gameplay. Je to no-crash diagnostika presne na problem z 2QB/2QC: po ROM pickeru appka spadla a nesel ulozit log.
