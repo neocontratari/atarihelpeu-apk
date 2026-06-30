@@ -1,0 +1,20 @@
+AtariHelp.eu EMU-10 BUILD2PL_SEGA_MOBILE_AUDIO_BALANCED_NATIVE_NO_INPUT_CHANGE_STAGE76
+
+CHANGED FILES:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+
+KODY JSOU ZMENENE: ANO
+
+ZMENY:
+- navazuje na BUILD2PK / 2PI / 2PH safe branch
+- joystick, multitouch, DPAD, A/B/C/START, rychlost mackani a input dispatch zustavaji beze zmen
+- meni se pouze WebAudio otevreni na mobilu: napAudioMode=mobileBalancedNative
+- latencyHint se meni z playback na balanced
+- sampleRate zustava native, zadny forced 44100/48000 experiment
+- input log shield zustava jako v 2PK
+- low-pass-filter=off, low-volume-distortion=off, rewinding=off zustava
+- zadny ScriptProcessor buffer patch, zadny hard gate, zadny region/UI/grafika patch
+
+CIL:
+- overit, jestli mobilni WebView prestane chrcet/chroupat pri balanced latency ceste, kdyz Nox je cisty.
