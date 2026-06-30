@@ -37,13 +37,13 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * BUILD2PR_SEGA_NATIVE_CPP_LOG_EXPORT_STAGE82
+ * BUILD2PS_SEGA_NATIVE_CPP_60FPS_TIMING_LOG_STAGE83
  *
  * POZOR: Tohle jeste NENI hotovy Sega emulator.
- * Je to treti native C++ proof vedle stavajici WebView Segy:
- * - PP overil Activity -> JNI -> C++ -> ROM header/checksum
- * - PQ overil C++ input stav + C++ generovany PCM audio test
- * - PR pridava vlastni C++ TEST LOG primo z native obrazovky
+ * Je to dalsi native C++ proof vedle stavajici WebView Segy:
+ * - PP/PQ/PR overily Java -> JNI -> C++ -> ROM/input/audio/log
+ * - PS opravuje test pattern z 30 FPS na realny 60Hz cil
+ * - PS pridava timing log, aby bylo videt, co zvladne Nox/S8/A12 v native ceste
  * - WebView Sega zustava beze zmen jako zaloha
  * - zadny fake gameplay, zadna ROM v APK
  */
@@ -77,12 +77,13 @@ public class NativeSegaProofActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        appendLog("BUILD2PR NativeSegaProofActivity onCreate");
+        appendLog("BUILD2PS NativeSegaProofActivity onCreate");
         appendLog(deviceLine());
         try {
             String build = nativeCoreBuildString();
             nativeOk = build != null && build.length() > 0;
             appendLog("nativeCoreBuildString OK nativeOk=" + nativeOk);
+            appendLog("NATIVE_PATTERN_TARGET targetFps=60 frameDelayMs=16 proofOnly=YES");
         } catch (Throwable t) {
             nativeOk = false;
             appendLog("nativeCoreBuildString ERROR " + safe(t.getMessage()));
@@ -108,7 +109,7 @@ public class NativeSegaProofActivity extends Activity {
         title.setTextColor(Color.rgb(255, 225, 122));
         title.setTextSize(18);
         title.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
-        title.setText("SEGA C++ TEST / BUILD2PR");
+        title.setText("SEGA C++ TEST / BUILD2PS");
         right.addView(title);
 
         LinearLayout row1 = new LinearLayout(this);
@@ -239,17 +240,18 @@ public class NativeSegaProofActivity extends Activity {
         } else {
             sb.append("NATIVE LIBRARY NENAHRANA. Pokud build spadne, chybi NDK/CMake.\n\n");
         }
-        sb.append("STAV BUILD2PR:\n");
-        sb.append("- PP proof OK: Java -> JNI -> C++ -> ROM header.\n");
-        sb.append("- PQ pridal C++ input stav a C++ PCM audio tone.\n");
-        sb.append("- PR pridal vlastni ULOZIT C++ LOG primo v native obrazovce.\n");
+        sb.append("STAV BUILD2PS:\n");
+        sb.append("- PP/PQ/PR proof OK: Java -> JNI -> C++ -> ROM/input/audio/log.\n");
+        sb.append("- PS meni jen native proof timing: test pattern jede cilem 60 FPS misto 30 FPS.\n");
+        sb.append("- Tohle meri native cestu Nox/S8/A12 pred vlozenim skutecneho Sega C++ core.\n");
         sb.append("- Toto stale NENI fake Sega gameplay.\n");
         sb.append("- WebView Sega zustava zaloha beze zmen.\n\n");
         sb.append("KROK:\n");
         sb.append("1. Vyber ROM - C++ vrati header/checksum.\n");
-        sb.append("2. Zmackni C++ AUDIO TEST - ma pipnout kratky cisty ton.\n");
-        sb.append("3. Drz DPAD/A/B/C/START - barevny pattern musi reagovat.\n");
-        sb.append("4. Dej ULOZIT C++ LOG a posli TXT.\n\n");
+        sb.append("2. Sleduj LIVE nativePatternFPS - cil je kolem 55-60 na silnejsim zarizeni.\n");
+        sb.append("3. Zmackni C++ AUDIO TEST - ma pipnout kratky cisty ton.\n");
+        sb.append("4. Drz DPAD/A/B/C/START - barevny pattern musi reagovat.\n");
+        sb.append("5. Dej ULOZIT C++ LOG a posli TXT.\n\n");
         sb.append("POSLEDNI LOG: ").append(lastSavedLogPath).append("\n\n");
         sb.append(lastRomBlock).append("\n");
         return sb.toString();
@@ -391,19 +393,20 @@ public class NativeSegaProofActivity extends Activity {
 
     private String buildCppLogText() {
         StringBuilder sb = new StringBuilder();
-        sb.append("SEGA C++ TEST LOG / BUILD2PR\n");
-        sb.append("AtariHelp.eu EMU-10 BUILD2PR_SEGA_NATIVE_CPP_LOG_EXPORT_STAGE82\n\n");
+        sb.append("SEGA C++ TEST LOG / BUILD2PS\n");
+        sb.append("AtariHelp.eu EMU-10 BUILD2PS_SEGA_NATIVE_CPP_60FPS_TIMING_LOG_STAGE83\n\n");
         sb.append(deviceLine()).append("\n");
         sb.append("nativeOk=").append(nativeOk).append("\n");
         sb.append("lastSavedLogPath=").append(lastSavedLogPath).append("\n");
         sb.append("inputEvents=").append(inputEvents).append("\n");
+        sb.append("nativePatternTarget=60fps frameDelayMs=16\n");
         try { sb.append("nativeInputStatus=").append(nativeGetInputStatus()).append("\n"); } catch (Throwable t) { sb.append("nativeInputStatus ERROR ").append(t.getMessage()).append("\n"); }
         try { sb.append("patternFps=").append(pattern == null ? "NA" : pattern.getFpsText()).append("\n"); } catch (Throwable ignored) {}
         sb.append("\nROM BLOCK:\n").append(lastRomBlock).append("\n");
         sb.append("\nEVENTS:\n").append(cppLog);
         sb.append("\nDULEZITE:\n");
         sb.append("- Tohle neni fake Sega gameplay.\n");
-        sb.append("- Toto overuje Java -> JNI -> C++ -> ROM/input/audio/log.\n");
+        sb.append("- Toto overuje Java -> JNI -> C++ -> ROM/input/audio/log/timing.\n");
         sb.append("- WebView Sega zustava zaloha beze zmen.\n");
         return sb.toString();
     }
@@ -436,7 +439,7 @@ public class NativeSegaProofActivity extends Activity {
         try {
             appendLog("SAVE_CPP_LOG pressed");
             String stamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-            String file = "AtariHelp_SEGA_CPP_LOG_BUILD2PR_" + stamp + ".txt";
+            String file = "AtariHelp_SEGA_CPP_LOG_BUILD2PS_" + stamp + ".txt";
             String path = writeTextToDownloads(file, buildCppLogText());
             lastSavedLogPath = path;
             appendLog("SAVE_CPP_LOG OK path=" + path);
@@ -464,7 +467,7 @@ public class NativeSegaProofActivity extends Activity {
             @Override public void run() {
                 frame++;
                 invalidate();
-                handler.postDelayed(this, 33);
+                handler.postDelayed(this, 16);
             }
         };
 

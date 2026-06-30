@@ -1,0 +1,17 @@
+BUILD2PS changed files:
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaProofActivity.java
+  - build label BUILD2PS
+  - native proof pattern tick 33ms -> 16ms
+  - C++ log pridava nativePatternTarget=60fps frameDelayMs=16
+  - texty/test plan aktualizovane na 60FPS timing proof
+- app/src/main/cpp/nap_sega_native_proof.cpp
+  - build string BUILD2PS
+  - ROM info hlasi 60FPS timing proof
+- app/src/main/assets/emu_sega/index.html
+  - build label BUILD2PS a C++ TEST popis
+
+Nezmeneno:
+- normalni WebView Sega input/joystick/hitboxy
+- ROM picker pro WebView Segu
+- existujici native C++ bridge
+- zadny fake gameplay, zadna ROM v APK
