@@ -1,0 +1,11 @@
+BUILD2QH changed files:
+- app/src/main/cpp/nap_sega_native_proof.cpp
+  * added forward declaration for nap_real_setup_cfg_callbacks()
+  * build label updated to BUILD2QH
+- app/src/main/cpp/CMakeLists.txt
+  * build label updated to BUILD2QH
+- app/src/main/assets/emu_sega/index.html
+  * build label updated to BUILD2QH
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+  * build label/comment updated to BUILD2QH
+- app/build.gradle / AndroidManifest if present from prior C++ path retained

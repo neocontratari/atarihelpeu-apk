@@ -1,7 +1,7 @@
 package eu.atarihelp.emu10;
 
 /**
- * BUILD2QG: Java -> JNI bridge for C++ core directly inside the normal Sega screen.
+ * BUILD2QH: Java -> JNI bridge for C++ core directly inside the normal Sega screen.
  * WebView Sega remains fallback. This bridge is slot-ready for a real native Sega core.
  */
 public final class NativeSegaCoreBridge {
@@ -18,7 +18,7 @@ public final class NativeSegaCoreBridge {
     public static native String inputStatus();
     public static native void makeAudioTone(short[] pcmOut, int sampleRate, double hz);
 
-    // BUILD2QG: real-core adapter slot. It compiles now and reports whether a vendor core is present.
+    // BUILD2QH: real-core adapter slot. It compiles now and reports whether a vendor core is present.
     // Without the real C/C++ Sega core source dropped into app/src/main/cpp/vendor, it must NOT fake gameplay.
     public static native String realCoreStatus();
     public static native String realCoreLoadRom(byte[] romBytes);
