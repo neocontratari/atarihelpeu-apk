@@ -1,0 +1,29 @@
+AtariHelp.eu EMU-10 BUILD2PI_SEGA_MOBILE_AUDIO_CLEAN_CONFIG_STAGE73
+
+Upravene soubory:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+
+Co se meni:
+- JEN Sega mobilni audio v lokalnim wrapperu.
+- Zaklad je BUILD2PH safe rollback / 2PA locked baseline.
+- UI, graficky skin, hitboxy, landscape multitouch joystick, ROM picker, EU compat patch a region FORCE USA po in-memory patchi zustavaji zachovane.
+- V ClownMDEmu configuration.ini se vypina:
+  * low-pass-filter = off
+  * low-volume-distortion = off
+  * rewinding = off
+- AudioContext pro tento test pouziva mobileCleanConfig:
+  * latencyHint zustava playback,
+  * sampleRate se nevynucuje z wrapperu, necha se nativni WebView/ClownMDEmu cesta,
+  * napNoPrime zustava 1,
+  * zadny hard gate,
+  * zadny ScriptProcessor patch,
+  * zadna zmena bufferu 2048.
+- Pridany audio watchdog pouze pro log a resume suspended contextu:
+  * loguje baseLatency/outputLatency/sampleRate/state,
+  * neprepisuje buffer core,
+  * po cca 12 s sam skonci.
+
+Proc:
+- BUILD2PE rozbil buffer 4096 vs expected 2048, proto se nesmi sahat na ScriptProcessor velikost.
+- Real mobil hlasi chraplavy/ozvena/sekani zvuk; BUILD2PI zkousi cistit ClownMDEmu audio konfiguraci a logovat skutecny stav WebAudio na mobilu bez zasahu do funkcni grafiky.
