@@ -1,0 +1,31 @@
+BUILD2QT_SEGA_NATIVE_CPP_ONLY_BUTTON_FIX_QP_AUDIO_STAGE110
+
+KODY JSOU ZMENENE.
+
+Zmenene soubory:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+
+Hlavni oprava BUILD2QT:
+1) Oprava Sega UI tlacitek, ktera v BUILD2QS jen blikla, ale akce se neprovedla.
+   - kriticke UI akce se uz nevazou jen na click
+   - pridano pointerup / touchend / mouseup / click pro Android WebView
+   - SBIRKA, HRY, CARTRIDGE SLOT, CARTRIDGE, ULOZENE, NAVODY, WEB, MENU, C++ CORE maji bindUiAction
+   - landscape multitouch engine uz nesmi sezrat dotyk na hornich/spodnich UI tlacitkach
+   - file picker ROM ma prime volani z uzivatelskeho gesta
+
+2) Sega zustava C++ only.
+   - Java/WebView wrapper stale vypnuty
+   - zadny Java fallback
+   - zadne first Java then C++
+
+3) Audio profil se v teto oprave neladi agresivne.
+   - ponechan QP/QS clean audio smer, protoze ted bylo potreba nejdriv vratit ovladani ROM/tlacitek
+
+Test po aplikaci:
+- Sega stranka musi jit ovladat: SBIRKA/CARTRIDGE musi otevrit picker ROM.
+- Po vyberu Sonic musi jit ROM primo do C++.
+- ULOZENE musi ulozit log.
+- MENU musi odejit ze Sega a vypnout native C++.
