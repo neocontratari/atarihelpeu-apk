@@ -1,0 +1,15 @@
+BUILD2PM_SEGA_MOBILE_AUDIO_PLAYBACK_48000_NO_INPUT_CHANGE_STAGE77
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+
+CO SE MENI:
+- BUILD2PL balanced/native vetev se NEbere jako dobra, protoze zacal chraptet i Nox.
+- Vraci se playback latency smer.
+- AudioContext ma explicitni 48000 Hz, latencyHint=playback.
+- Joystick/input zustava beze zmen z 2PI/2PK: targety, keyDefs, dispatch, multitouch, rychlost mackani.
+- Log shield zustava, ale nezasahuje do ovladani.
+- Zadny ScriptProcessor buffer patch, zadny hard gate, zadne UI/grafika/hitbox zmeny.
+
+KODY JSOU ZMENENE: ANO, jen Sega audio wrapper/index parametry.
