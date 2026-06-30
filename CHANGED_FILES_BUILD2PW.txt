@@ -1,0 +1,18 @@
+BUILD2PW_SEGA_NATIVE_CPP_CORE_SLOT_READY_STAGE87
+
+ZMENENE SOUBORY:
+- app/build.gradle
+- app/src/main/AndroidManifest.xml
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaProofActivity.java
+- app/src/main/cpp/CMakeLists.txt
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/cpp/vendor/README_DROP_REAL_NATIVE_SEGA_CORE_HERE.txt
+
+KODY JSOU ZMENENE: ANO.
+
+POZOR:
+BUILD2PW neni dalsi samostatne okno. C++ zustava primo v normalni Sega obrazovce.
+BUILD2PW pridava real-core vendor slot. Bez skutecneho native Sega core source vraci CORE_VENDOR_MISSING a nesmi fakeovat gameplay.

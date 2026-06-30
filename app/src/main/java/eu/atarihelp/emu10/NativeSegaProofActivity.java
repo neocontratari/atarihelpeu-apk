@@ -37,7 +37,7 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * BUILD2PS_SEGA_NATIVE_CPP_60FPS_TIMING_LOG_STAGE83
+ * BUILD2PW_SEGA_NATIVE_CPP_CORE_SLOT_READY_STAGE87
  *
  * POZOR: Tohle jeste NENI hotovy Sega emulator.
  * Je to dalsi native C++ proof vedle stavajici WebView Segy:
@@ -77,7 +77,7 @@ public class NativeSegaProofActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        appendLog("BUILD2PS NativeSegaProofActivity onCreate");
+        appendLog("BUILD2PW NativeSegaProofActivity onCreate");
         appendLog(deviceLine());
         try {
             String build = nativeCoreBuildString();
@@ -109,7 +109,7 @@ public class NativeSegaProofActivity extends Activity {
         title.setTextColor(Color.rgb(255, 225, 122));
         title.setTextSize(18);
         title.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
-        title.setText("SEGA C++ TEST / BUILD2PS");
+        title.setText("SEGA C++ TEST / BUILD2PW");
         right.addView(title);
 
         LinearLayout row1 = new LinearLayout(this);
@@ -240,7 +240,7 @@ public class NativeSegaProofActivity extends Activity {
         } else {
             sb.append("NATIVE LIBRARY NENAHRANA. Pokud build spadne, chybi NDK/CMake.\n\n");
         }
-        sb.append("STAV BUILD2PS:\n");
+        sb.append("STAV BUILD2PW:\n");
         sb.append("- PP/PQ/PR proof OK: Java -> JNI -> C++ -> ROM/input/audio/log.\n");
         sb.append("- PS meni jen native proof timing: test pattern jede cilem 60 FPS misto 30 FPS.\n");
         sb.append("- Tohle meri native cestu Nox/S8/A12 pred vlozenim skutecneho Sega C++ core.\n");
@@ -393,8 +393,8 @@ public class NativeSegaProofActivity extends Activity {
 
     private String buildCppLogText() {
         StringBuilder sb = new StringBuilder();
-        sb.append("SEGA C++ TEST LOG / BUILD2PS\n");
-        sb.append("AtariHelp.eu EMU-10 BUILD2PS_SEGA_NATIVE_CPP_60FPS_TIMING_LOG_STAGE83\n\n");
+        sb.append("SEGA C++ TEST LOG / BUILD2PW\n");
+        sb.append("AtariHelp.eu EMU-10 BUILD2PW_SEGA_NATIVE_CPP_CORE_SLOT_READY_STAGE87\n\n");
         sb.append(deviceLine()).append("\n");
         sb.append("nativeOk=").append(nativeOk).append("\n");
         sb.append("lastSavedLogPath=").append(lastSavedLogPath).append("\n");
@@ -439,7 +439,7 @@ public class NativeSegaProofActivity extends Activity {
         try {
             appendLog("SAVE_CPP_LOG pressed");
             String stamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-            String file = "AtariHelp_SEGA_CPP_LOG_BUILD2PS_" + stamp + ".txt";
+            String file = "AtariHelp_SEGA_CPP_LOG_BUILD2PW_" + stamp + ".txt";
             String path = writeTextToDownloads(file, buildCppLogText());
             lastSavedLogPath = path;
             appendLog("SAVE_CPP_LOG OK path=" + path);

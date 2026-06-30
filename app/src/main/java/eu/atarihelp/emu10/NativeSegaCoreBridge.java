@@ -1,8 +1,8 @@
 package eu.atarihelp.emu10;
 
 /**
- * BUILD2PU: tiny Java -> JNI bridge for C++ proof directly inside the normal Sega screen.
- * This is not Sega gameplay yet; it only exposes ROM header/checksum, input, pattern render and PCM tone.
+ * BUILD2PW: Java -> JNI bridge for C++ core directly inside the normal Sega screen.
+ * WebView Sega remains fallback. This bridge is slot-ready for a real native Sega core.
  */
 public final class NativeSegaCoreBridge {
     static {
@@ -17,4 +17,9 @@ public final class NativeSegaCoreBridge {
     public static native void setInput(int key, boolean pressed);
     public static native String inputStatus();
     public static native void makeAudioTone(short[] pcmOut, int sampleRate, double hz);
+
+    // BUILD2PW: real-core adapter slot. It compiles now and reports whether a vendor core is present.
+    // Without the real C/C++ Sega core source dropped into app/src/main/cpp/vendor, it must NOT fake gameplay.
+    public static native String realCoreStatus();
+    public static native String realCoreLoadRom(byte[] romBytes);
 }

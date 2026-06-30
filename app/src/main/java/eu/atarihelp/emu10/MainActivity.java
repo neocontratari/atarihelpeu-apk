@@ -224,8 +224,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2PV\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2PV_SEGA_NATIVE_CPP_IN_PLACE_RECT_DPR_FIX_STAGE86\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2PW\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2PW_SEGA_NATIVE_CPP_CORE_SLOT_READY_STAGE87\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -233,8 +233,9 @@ public class MainActivity extends Activity {
            .append(" cores=").append(Runtime.getRuntime().availableProcessors()).append("\n");
         out.append("nativeInPlaceEnabled=").append(nativeInPlaceEnabled).append("\n");
         out.append("nativeLastStatus=").append(nativeLastStatus).append("\n");
-        out.append("nativeInputEvents=").append(nativeInputEvents).append("\n\n");
-        out.append("ROM BLOCK:\n").append(nativeLastRomInfo == null ? "" : nativeLastRomInfo).append("\n\n");
+        out.append("nativeInputEvents=").append(nativeInputEvents).append("\n");
+        try { out.append("realCoreStatus=").append(NativeSegaCoreBridge.realCoreStatus().replace('\n',' ')).append("\n"); } catch (Throwable t) { out.append("realCoreStatus=ERROR ").append(safeMsg(t)).append("\n"); }
+        out.append("\nROM BLOCK:\n").append(nativeLastRomInfo == null ? "" : nativeLastRomInfo).append("\n\n");
         out.append("EVENTS:\n");
         synchronized (nativeLog) { out.append(nativeLog.toString()); }
         out.append("\nDULEZITE:\n- Tohle porad neni hotovy Sega gameplay.\n");
@@ -304,11 +305,13 @@ public class MainActivity extends Activity {
                 byte[] data = Base64.decode(clean, Base64.DEFAULT);
                 long t0 = System.currentTimeMillis();
                 String info = NativeSegaCoreBridge.romInfo(data);
+                String realCore = NativeSegaCoreBridge.realCoreLoadRom(data);
                 long dt = System.currentTimeMillis() - t0;
-                nativeLastRomInfo = "ROM: " + safeFileName(name) + "\n" + info;
-                nativeLastStatus = "ROM_TO_CPP_OK bytes=" + data.length + " ms=" + dt;
+                nativeLastRomInfo = "ROM: " + safeFileName(name) + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
+                nativeLastStatus = "ROM_TO_CPP_OK bytes=" + data.length + " ms=" + dt + " | " + realCore.replace('\n', ' ');
                 appendNativeLog("ROM_TO_CPP name=" + safeFileName(name) + " bytes=" + data.length + " ms=" + dt);
-                return nativeLastStatus + "\n" + info;
+                appendNativeLog("REAL_CORE_LOAD " + realCore.replace('\n', ' '));
+                return nativeLastStatus + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
             } catch (Throwable t) {
                 nativeLastStatus = "ROM_TO_CPP_ERROR " + safeMsg(t);
                 appendNativeLog(nativeLastStatus);
@@ -366,7 +369,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String saveLog() {
             try {
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2PV_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2PW_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
