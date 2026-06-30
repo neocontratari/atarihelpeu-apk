@@ -1,0 +1,29 @@
+BUILD2QS_SEGA_NATIVE_CPP_ONLY_QP_AUDIO_RENDER_WATCHDOG_STAGE109 overlay
+
+ZMENENE SOUBORY:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/assets/emu_sega/index.html
+
+HLAVNI OPRAVY:
+1) Sega zustava C++ only.
+   - Java/WebView ClownMDEmu wrapper je stale vypnuty.
+   - ROM picker posila ROM rovnou do C++ native core.
+   - Zadny automaticky Java hardboot / zadny Java fallback.
+
+2) Zvuk vracen smerem k QP profilu.
+   - QQ/QR small/clean-sync profil byl podle testu chraplavejsi.
+   - QS vraci QP-clean audio blok: chunk 384, vetsi stabilni AudioTrack buffer, prefill 1536 max, FIFO 2048/4096.
+   - C++ mixer: FM 44 %, PSG 16 %, QP smoothing, PCM/CDDA stale diagnostic only.
+
+3) Cerna obrazovka se zvukem po ROM / Aladdin.
+   - Pridan native render watchdog.
+   - realCoreStatus vraci frameReady/frameCounter/frameSize/iterations.
+   - Pokud do cca 1.35 s neni realny frame, watchdog jednou provede cisty reload core.
+   - Pokud ani po reloadu neni frame, audio se zastavi, aby nezustal stav "zvuk bezi, obraz cerny".
+   - Guard frame je viditelnejsi modry diagnosticky stav, ne fake gameplay.
+
+4) EU/Aladdin compatibility i pro C++ cestu.
+   - Pred poslanim ROM do C++ se aplikuje stejny in-memory EU compatibility patch jako drive pro wrapper.
+   - Original ROM soubor se nemeni.
