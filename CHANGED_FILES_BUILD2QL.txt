@@ -1,0 +1,12 @@
+BUILD2QL_SEGA_NATIVE_CPP_AUDIO_SYNC_PSG_LANDSCAPE_FIX_STAGE102
+
+Zmenene soubory:
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/cpp/CMakeLists.txt
+- app/build.gradle
+- app/src/main/cpp/vendor/clownmdemu-core/** (offline vendor zachovan z 2QB)
+
+KODY JSOU ZMENENE: ano

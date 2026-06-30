@@ -226,8 +226,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2QK\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2QK_SEGA_NATIVE_CPP_CORE_REGION_AUDIO_FIRST_STAGE101\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2QL\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2QL_SEGA_NATIVE_CPP_AUDIO_SYNC_PSG_LANDSCAPE_FIX_STAGE102\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -249,53 +249,74 @@ public class MainActivity extends Activity {
 
     private synchronized void startNativeCoreAudioStream() {
         if (nativeCoreAudioRun && nativeCoreAudioThread != null && nativeCoreAudioThread.isAlive()) {
-            appendNativeLog("NATIVE_AUDIO_STREAM_ALREADY_RUNNING");
+            appendNativeLog("NATIVE_AUDIO_STREAM_ALREADY_RUNNING_LOW_LATENCY");
             return;
         }
         nativeCoreAudioRun = true;
         nativeCoreAudioThread = new Thread(() -> {
             final int sampleRate = 48000;
-            final int chunk = 1024;
+            final int chunk = 256; // BUILD2QL: lower chunk = lower latency than 2QK 1024-frame writes
             AudioTrack track = null;
             try {
                 int min = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
-                int bufferBytes = Math.max(min, chunk * 8);
+                int wantedBytes = chunk * 2 * 4;
+                int bufferBytes = Math.max(min, wantedBytes);
+                AudioTrack.Builder builder = null;
                 if (Build.VERSION.SDK_INT >= 21) {
-                    track = new AudioTrack.Builder()
+                    builder = new AudioTrack.Builder()
                             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
                             .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(sampleRate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
                             .setBufferSizeInBytes(bufferBytes)
-                            .setTransferMode(AudioTrack.MODE_STREAM)
-                            .build();
+                            .setTransferMode(AudioTrack.MODE_STREAM);
+                    if (Build.VERSION.SDK_INT >= 26) {
+                        try { builder.setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY); } catch (Throwable ignored) {}
+                    }
+                    track = builder.build();
                 } else {
                     track = new AudioTrack(android.media.AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferBytes, AudioTrack.MODE_STREAM);
                 }
+                int setFrames = -1;
+                if (Build.VERSION.SDK_INT >= 23) {
+                    try { setFrames = track.setBufferSizeInFrames(Math.max(384, chunk * 3)); } catch (Throwable ignored) {}
+                }
                 short[] pcm = new short[chunk];
                 track.play();
-                appendNativeLog("NATIVE_AUDIO_STREAM_START sampleRate=" + sampleRate + " bufferBytes=" + bufferBytes);
+                appendNativeLog("NATIVE_AUDIO_STREAM_START_LOW_LATENCY sampleRate=" + sampleRate + " chunk=" + chunk + " minBytes=" + min + " bufferBytes=" + bufferBytes + " setFrames=" + setFrames + " perfLowLatency=" + (Build.VERSION.SDK_INT >= 26));
                 int loops = 0;
+                int underrunLoops = 0;
                 while (nativeCoreAudioRun) {
                     int got = 0;
                     try { got = NativeSegaCoreBridge.pullAudio(pcm, pcm.length); }
                     catch (Throwable pullErr) { appendNativeLog("NATIVE_AUDIO_PULL_ERROR " + safeMsg(pullErr)); got = 0; }
-                    if (loops < 8 || loops % 120 == 0) appendNativeLog("NATIVE_AUDIO_PULL got=" + got + " loop=" + loops);
-                    track.write(pcm, 0, pcm.length);
+                    if (got <= 0) underrunLoops++;
+                    if (loops < 12 || loops % 180 == 0) appendNativeLog("NATIVE_AUDIO_PULL_LOW_LAT got=" + got + " loop=" + loops + " underrunLoops=" + underrunLoops);
+                    int off = 0;
+                    while (off < pcm.length && nativeCoreAudioRun) {
+                        int wr = track.write(pcm, off, pcm.length - off);
+                        if (wr <= 0) break;
+                        off += wr;
+                    }
                     loops++;
                 }
             } catch (Throwable t) {
                 appendNativeLog("NATIVE_AUDIO_STREAM_ERROR " + safeMsg(t));
             } finally {
-                try { if (track != null) { track.stop(); track.release(); } } catch (Throwable ignored) {}
-                appendNativeLog("NATIVE_AUDIO_STREAM_STOP");
+                try { if (track != null) { track.pause(); track.flush(); track.stop(); track.release(); } } catch (Throwable ignored) {}
+                appendNativeLog("NATIVE_AUDIO_STREAM_STOP_LOW_LATENCY");
             }
-        }, "AtariHelpSegaNativeAudio");
+        }, "AtariHelpSegaNativeAudioLowLatency");
         nativeCoreAudioThread.setDaemon(true);
+        try { nativeCoreAudioThread.setPriority(Thread.MAX_PRIORITY); } catch (Throwable ignored) {}
         nativeCoreAudioThread.start();
     }
 
     private synchronized void stopNativeCoreAudioStream() {
         nativeCoreAudioRun = false;
-        appendNativeLog("NATIVE_AUDIO_STREAM_STOP_REQUEST");
+        Thread t = nativeCoreAudioThread;
+        if (t != null && t.isAlive() && Thread.currentThread() != t) {
+            try { t.join(220); } catch (Throwable ignored) {}
+        }
+        appendNativeLog("NATIVE_AUDIO_STREAM_STOP_REQUEST_LOW_LATENCY");
     }
 
     public class AHNative {
@@ -363,7 +384,8 @@ public class MainActivity extends Activity {
                 String info = NativeSegaCoreBridge.romInfo(data);
                 long dt = System.currentTimeMillis() - t0;
 
-                // BUILD2QK: load ROM into C++ using big-stack worker thread. No core calls from WebView/UI draw threads.
+                // BUILD2QL: restart AudioTrack for every new ROM so old buffered sound cannot lag behind the new game.
+                stopNativeCoreAudioStream();
                 String realCore = NativeSegaCoreBridge.realCoreLoadRom(data);
                 startNativeCoreAudioStream();
 
@@ -445,7 +467,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String saveLog() {
             try {
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QK_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QL_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
@@ -483,7 +505,7 @@ public class MainActivity extends Activity {
             int n = w * h;
             if (argb.length != n) { argb = new int[n]; bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); }
             try {
-                // BUILD2QK: real ClownMDEmu-core render path.
+                // BUILD2QL: real ClownMDEmu-core render path.
                 // Native calls are internally mutexed with ROM load, so WebView picker thread and UI render thread do not touch core concurrently.
                 NativeSegaCoreBridge.renderPattern(w, h, frame, argb);
                 bitmap.setPixels(argb, 0, w, 0, 0, w, h);
