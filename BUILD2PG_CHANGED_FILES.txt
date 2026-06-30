@@ -1,0 +1,12 @@
+BUILD2PG_SEGA_SAFE_REBASE_AUTO_REGION_AUDIO_STAGE71
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+
+DUVOD:
+- BUILD2PE/2PF nejsou dobry smer. PE rozbil audio buffer, PF vratil zvuk, ale mobil nacitani bylo nespolehlive a porad se tahlo vynucene NTSC.
+- BUILD2PG je bezpecny rebase z BUILD2PA: joystick/multitouch zustava, hard audio gate neni, ScriptProcessor patch neni.
+- Audio vraceno na cistejsi 2OD/2OU styl: playback 48k + audio prime ON.
+- Region uz neni vynucene NTSC pro vsechny ROM. EU-only/PAL ROM jde do PAL_EU bez in-memory region lock patchu. USA/JUE zustava NTSC_US.
+- Landscape top texty jsou schovane, ale ULOZENE hitbox zustava pro LOG.
