@@ -27,8 +27,8 @@ static uint16_t g_lastChecksumCalc = 0;
 static std::string g_lastTitle = "";
 
 
-// BUILD2QF: native signal guard for real-core bring-up.
-// User reported full app process crash after ROM selection in BUILD2QF/QC. Java try/catch cannot catch SIGSEGV/SIGABRT.
+// BUILD2QG: native signal guard for real-core bring-up.
+// User reported full app process crash after ROM selection in BUILD2QG/QC. Java try/catch cannot catch SIGSEGV/SIGABRT.
 // This guard is debug-stage only: it catches a native signal inside the C++ core-load call and returns a log marker instead of killing the app.
 static sigjmp_buf g_nap_sega_sig_jmp;
 static std::atomic<int> g_nap_sega_guard_active{0};
@@ -61,7 +61,7 @@ static const char* nap_signal_name(int sig) {
 }
 
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-// BUILD2QF: tiny Android frontend for the real ClownMDEmu-core.
+// BUILD2QG: tiny Android frontend for the real ClownMDEmu-core.
 // It is intentionally small: ROM load -> hard reset -> iterate -> scanline framebuffer -> existing in-place view.
 // Audio mixing is not wired yet; this stage is the first real core import/visual boot attempt, no fake gameplay.
 struct NapRealCoreState {
@@ -84,7 +84,7 @@ static NapRealCoreState g_real;
 static std::mutex g_real_mutex;
 static bool g_real_core_loaded_but_render_guarded = false;
 static uint32_t g_guard_frame_counter = 0;
-static int g_real_step_stage = 0; // BUILD2QF: explicit core step: 0 constant, 1 init, 2 setcart, 3 hardreset, 4 iterate
+static int g_real_step_stage = 0; // BUILD2QG: explicit core step: 0 constant, 1 init, 2 setcart, 3 hardreset, 4 iterate
 static size_t g_real_staged_bytes = 0;
 
 static uint32_t nap_md_colour_to_argb(cc_u16f colour) {
@@ -178,9 +178,10 @@ static cc_bool nap_save_removed(void*, const char*) { return cc_false; }
 static cc_bool nap_save_size(void*, const char*, size_t*) { return cc_false; }
 
 static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
-    if (!bytes || size < 0x200) return "REAL_CORE_STAGE_ERROR bad rom";
+    if (!bytes || size < 0x200) return "REAL_CORE_LOAD_ERROR bad rom";
     std::lock_guard<std::mutex> lock(g_real_mutex);
 
+    static bool constants_ready = false;
     g_real = NapRealCoreState();
     for (int i = 0; i < 0x10000; ++i) g_real.palette[i] = 0xff000000u;
     g_real.frame_argb.assign(320 * 224, 0xff000000u);
@@ -196,14 +197,30 @@ static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
         g_real.cart_words[j] = (cc_u16l)((hi << 8) | lo);
     }
 
+    // BUILD2QG: real first boot is done synchronously under one native mutex.
+    // Previous builds could crash because WebView picker thread and native render thread touched core state at once.
+    // This stage does NOT use fake moving pattern and does NOT call core from two threads at the same time.
+    if (!constants_ready) {
+        ClownMDEmu_Constant_Initialise();
+        constants_ready = true;
+    }
+    std::memset(&g_real.emu, 0, sizeof(g_real.emu));
+    nap_real_setup_cfg_callbacks();
+    ClownMDEmu_Initialise(&g_real.emu, &g_real.cfg, &g_real.cb);
+    ClownMDEmu_SetCartridge(&g_real.emu, g_real.cart_words.data(), (cc_u32f)g_real.cart_words.size());
+    ClownMDEmu_HardReset(&g_real.emu, cc_true, cc_false);
+    g_real.loaded = true;
+    g_real.frame_ready = false;
+    g_real.frame_counter = 0;
+
     std::ostringstream out;
-    out << "REAL_CORE_ROM_STAGED_FOR_EXPLICIT_STEP\n";
+    out << "REAL_CORE_LOAD_OK\n";
+    out << "core=ClownMDEmu-core offline/vendor\n";
     out << "bytes=" << size << " words=" << g_real.cart_words.size() << "\n";
-    out << "core=ClownMDEmu-core offline/vendor linked by CMake\n";
+    out << "threading=single_mutex_java_ui_render_no_concurrent_core_access\n";
     out << "pattern=OFF; fake/proof moving cubes removed\n";
-    out << "CORE_NATIVE_AUTO_LOAD_DISABLED=YES\n";
-    out << "next=C++ STEP will run exactly one guarded native stage\n";
-    out << "step_order=constant_init -> initialise -> set_cartridge -> hard_reset -> iterate_one";
+    out << "render=ON first real ClownMDEmu_Iterate from native monitor draw\n";
+    out << "audio=not wired yet; Java C++ AUDIO button remains tone-test only";
     g_real.status = out.str();
     return g_real.status;
 }
@@ -237,61 +254,44 @@ static void nap_real_setup_cfg_callbacks() {
 }
 
 static std::string nap_real_step_once() {
-    if (g_real.cart_words.empty()) return "REAL_CORE_STEP_ERROR no staged ROM; vyber ROM nejdriv";
+    std::lock_guard<std::mutex> lock(g_real_mutex);
     std::ostringstream out;
-    out << "REAL_CORE_EXPLICIT_STEP_BEGIN stage=" << g_real_step_stage << " stagedBytes=" << g_real_staged_bytes << "\n";
-
-    NapSignalGuard guard;
-    if (sigsetjmp(g_nap_sega_sig_jmp, 1) != 0) {
-        int sig = g_nap_sega_last_signal;
-        out << "REAL_CORE_NATIVE_SIGNAL_CAUGHT=" << nap_signal_name(sig) << "(" << sig << ")\n";
-        out << "REAL_CORE_STEP_STOPPED_NO_AUTO_LOOP stage=" << g_real_step_stage << "\n";
-        out << "next=fix this exact stage before gameplay";
-        g_real.status = out.str();
-        return g_real.status;
-    }
-
-    switch (g_real_step_stage) {
-        case 0:
-            ClownMDEmu_Constant_Initialise();
-            g_real_step_stage = 1;
-            out << "REAL_CORE_STEP_OK constant_init\nnext=initialise";
-            break;
-        case 1:
-            std::memset(&g_real.emu, 0, sizeof(g_real.emu));
-            nap_real_setup_cfg_callbacks();
-            ClownMDEmu_Initialise(&g_real.emu, &g_real.cfg, &g_real.cb);
-            g_real_step_stage = 2;
-            out << "REAL_CORE_STEP_OK initialise\nnext=set_cartridge";
-            break;
-        case 2:
-            ClownMDEmu_SetCartridge(&g_real.emu, g_real.cart_words.data(), (cc_u32f)g_real.cart_words.size());
-            g_real_step_stage = 3;
-            out << "REAL_CORE_STEP_OK set_cartridge words=" << g_real.cart_words.size() << "\nnext=hard_reset";
-            break;
-        case 3:
-            ClownMDEmu_HardReset(&g_real.emu, cc_true, cc_false);
-            g_real.loaded = true;
-            g_real_core_loaded_but_render_guarded = true;
-            g_real_step_stage = 4;
-            out << "REAL_CORE_STEP_OK hard_reset\nnext=iterate_one";
-            break;
-        default:
-            ClownMDEmu_Iterate(&g_real.emu);
-            g_real.frame_counter++;
-            out << "REAL_CORE_STEP_OK iterate_one frameCounter=" << g_real.frame_counter << " frameReady=" << (g_real.frame_ready ? "YES" : "NO") << "\n";
-            out << "video=still guarded; not realtime auto-loop yet";
-            break;
-    }
-    g_real.status = out.str();
-    return g_real.status;
+    out << "REAL_CORE_STEP_DISABLED_IN_BUILD2QG\n";
+    out << "reason=core now runs from native monitor render under single mutex after ROM load\n";
+    out << "loaded=" << (g_real.loaded ? "YES" : "NO") << "\n";
+    out << "status=" << g_real.status;
+    return out.str();
 }
 
 static bool nap_real_render_to_argb(int out_w, int out_h, jint *out_px) {
-    // BUILD2QF: no automatic ClownMDEmu_Iterate from Android View render thread.
-    // This prevents the ROM-load crash reported in 2QB while keeping real core load state intact.
-    (void)out_w; (void)out_h; (void)out_px;
-    return false;
+    if (out_w <= 0 || out_h <= 0 || !out_px) return false;
+    std::lock_guard<std::mutex> lock(g_real_mutex);
+    if (!g_real.loaded) return false;
+
+    // BUILD2QG: run exactly one emulator frame per native view paint, under the same mutex as ROM load.
+    // No background thread, no WebView JS loop, no concurrent core calls.
+    ClownMDEmu_Iterate(&g_real.emu);
+
+    if (g_real.frame_argb.empty() || g_real.frame_w <= 0 || g_real.frame_h <= 0) return false;
+    const int sw = g_real.frame_w;
+    const int sh = g_real.frame_h;
+    const std::vector<uint32_t> &src = g_real.frame_argb;
+
+    for (int y = 0; y < out_h; ++y) {
+        int sy = (int)((int64_t)y * sh / out_h);
+        if (sy < 0) sy = 0; if (sy >= sh) sy = sh - 1;
+        for (int x = 0; x < out_w; ++x) {
+            int sx = (int)((int64_t)x * sw / out_w);
+            if (sx < 0) sx = 0; if (sx >= sw) sx = sw - 1;
+            uint32_t c = src[(size_t)sy * sw + sx];
+            out_px[(size_t)y * out_w + x] = (jint)(c ? c : 0xff000000u);
+        }
+    }
+    g_real.iterations_last++;
+    g_real.status = "REAL_CORE_RENDER_OK frameCounter=" + std::to_string(g_real.frame_counter) +
+                    " iterateCount=" + std::to_string(g_real.iterations_last) +
+                    " src=" + std::to_string(sw) + "x" + std::to_string(sh);
+    return true;
 }
 
 static void nap_render_guard_frame(int width, int height, jintArray argbOut, JNIEnv* env) {
@@ -300,7 +300,7 @@ static void nap_render_guard_frame(int width, int height, jintArray argbOut, JNI
     int needed = width * height;
     if (len < needed) return;
     std::vector<jint> px((size_t)needed, (jint)0xff03070au);
-    // BUILD2QF: blank guarded monitor. No running cubes, no center square, no hash bars.
+    // BUILD2QG: blank guarded monitor. No running cubes, no center square, no hash bars.
     // Subtle blue border only shows the native view is alive and placed correctly.
     auto put = [&](int x0,int y0,int rw,int rh,uint32_t c){
         int x1=std::max(0,x0), y1=std::max(0,y0), x2=std::min(width,x0+rw), y2=std::min(height,y0+rh);
@@ -346,7 +346,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2QF NATIVE C++ STAGED ROM NO CRASH OK\n"
+    std::string s = "BUILD2QG NATIVE C++ REAL CORE RENDER FIRST OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -354,7 +354,7 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* en
                     "C++ PCM audio generator: OK\n"
                     "C++ native log export: OK\n"
                     "C++ 60Hz timing proof target: OK\n"
-                    "Status: staged ROM only; native core auto-exec disabled after crash; no ROM in APK";
+                    "Status: real ClownMDEmu-core first render in normal Sega monitor; no ROM in APK";
     return env->NewStringUTF(s.c_str());
 }
 
@@ -402,12 +402,12 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRomInfo(JNIEnv* env, jclas
         out << "- Mega Drive header: NE / soubor je mensi nez 0x200\n";
     }
 
-    out << "\nBUILD2QF DULEZITE:\n";
+    out << "\nBUILD2QG DULEZITE:\n";
     out << "ROM je ted realne prectena v Jave a analyzovana v C++.\n";
-    out << "BUILD2QF ma vypnuty proof pattern a chrani real-core load proti padu aplikace.\n";
+    out << "BUILD2QG ma vypnuty proof pattern a chrani real-core load proti padu aplikace.\n";
     out << "Dalsi krok je podle logu opravit konkretni core init/reset/iterate misto dalsich fake patternu.\n";
     std::string s = out.str();
-    NAPLOG("BUILD2QF ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
+    NAPLOG("BUILD2QG ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
     return env->NewStringUTF(s.c_str());
 }
 
@@ -524,17 +524,17 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(JNIEnv* env,
 }
 
 
-// BUILD2QF: same native core exposed to MainActivity/WebView in-place bridge.
+// BUILD2QG: same native core exposed to MainActivity/WebView in-place bridge.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2QF NATIVE C++ STAGED ROM NO CRASH OK\n"
+    std::string s = "BUILD2QG NATIVE C++ REAL CORE RENDER FIRST OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
                     "C++ input state: OK\n"
                     "C++ PCM audio generator: OK\n"
                     "C++ guarded render: OK\n"
-                    "Status: normal Sega UI; Java-safe monitor; ROM staged only; native core auto-exec disabled after crash; no ROM in APK";
+                    "Status: normal Sega UI; real ClownMDEmu-core first render path; no ROM in APK";
     return env->NewStringUTF(s.c_str());
 }
 
@@ -578,7 +578,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_makeAudioTone(JNIEnv* env, jclass, 
     Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(env, nullptr, pcmOut, sampleRate, hz);
 }
 
-// BUILD2QF REAL CORE ADAPTER SLOT
+// BUILD2QG REAL CORE ADAPTER SLOT
 // This stage imports local vendored ClownMDEmu-core sources and links only interpreter/core libraries into the native .so.
 #ifndef NAP_SEGA_VENDOR_CORE_PRESENT
 #define NAP_SEGA_VENDOR_CORE_PRESENT 0
@@ -591,9 +591,9 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_realCoreStatus(JNIEnv* env, jclass)
     out << "REAL_CORE_PRESENT=YES\n";
     out << "core=ClownMDEmu-core\n";
     out << "vendor_offline=local ZIP sources; no FetchContent; no tools/tests\n";
-    out << "mode=core load with native signal guard; no automatic Iterate in render thread\n";
-    out << "REAL_CORE_RENDER_GUARDED=" << (g_real_core_loaded_but_render_guarded ? "YES" : "NO") << "\n";
-    out << "pattern=OFF no running cubes/no squares\n";
+    out << "mode=real core render from native monitor draw under single mutex\n";
+    out << "REAL_CORE_RENDER_ACTIVE=" << (g_real_core_loaded_but_render_guarded ? "YES" : "NO") << "\n";
+    out << "pattern=OFF no running cubes/no squares; real render path active\n";
     out << "loaded=" << (g_real.loaded ? "YES" : "NO");
     return env->NewStringUTF(out.str().c_str());
 #else

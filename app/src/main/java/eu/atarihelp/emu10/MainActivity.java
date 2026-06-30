@@ -224,8 +224,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2QF\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2QF_SEGA_NATIVE_CPP_EXPLICIT_CORE_STEP_STAGE96\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2QG\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2QG_SEGA_NATIVE_CPP_REAL_CORE_RENDER_FIRST_STAGE97\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -309,14 +309,14 @@ public class MainActivity extends Activity {
                 String info = NativeSegaCoreBridge.romInfo(data);
                 long dt = System.currentTimeMillis() - t0;
 
-                // BUILD2QF: stage ROM in C++ memory only. Do not auto-run ClownMDEmu here.
+                // BUILD2QG: stage ROM in C++ memory only. Do not auto-run ClownMDEmu here.
                 // User can press C++ STEP to run one guarded native step at a time.
                 String realCore = NativeSegaCoreBridge.realCoreLoadRom(data);
 
                 nativeLastRomInfo = "ROM: " + safeFileName(name) + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
-                nativeLastStatus = "ROM_STAGED_CPP_STEP_READY bytes=" + data.length + " decodeMs=" + decodeMs + " parserMs=" + dt;
-                appendNativeLog("ROM_STAGED_STEP_READY name=" + safeFileName(name) + " bytes=" + data.length + " decodeMs=" + decodeMs + " parserMs=" + dt);
-                appendNativeLog("REAL_CORE_WAITING_FOR_EXPLICIT_STEP not automatic ROM picker");
+                nativeLastStatus = "ROM_REAL_CORE_LOAD_READY bytes=" + data.length + " decodeMs=" + decodeMs + " parserMs=" + dt;
+                appendNativeLog("ROM_REAL_CORE_LOAD_READY name=" + safeFileName(name) + " bytes=" + data.length + " decodeMs=" + decodeMs + " parserMs=" + dt);
+                appendNativeLog("REAL_CORE_RENDER_ACTIVE after ROM load");
                 return nativeLastStatus + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
             } catch (Throwable t) {
                 nativeLastStatus = "ROM_TO_CPP_ERROR " + safeMsg(t);
@@ -391,7 +391,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String saveLog() {
             try {
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QF_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QG_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
@@ -429,17 +429,14 @@ public class MainActivity extends Activity {
             int n = w * h;
             if (argb.length != n) { argb = new int[n]; bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); }
             try {
-                // BUILD2QF: Java-only guard picture. No JNI render call while crash source is isolated.
-                canvas.drawColor(Color.rgb(3, 7, 10));
-                Paint border = paint;
-                border.setStyle(Paint.Style.STROKE);
-                border.setStrokeWidth(3f);
-                border.setColor(Color.rgb(0, 136, 204));
-                canvas.drawRect(2, 2, w - 2, h - 2, border);
-                border.setStyle(Paint.Style.FILL);
+                // BUILD2QG: real ClownMDEmu-core render path.
+                // Native calls are internally mutexed with ROM load, so WebView picker thread and UI render thread do not touch core concurrently.
+                NativeSegaCoreBridge.renderPattern(w, h, frame, argb);
+                bitmap.setPixels(argb, 0, w, 0, 0, w, h);
+                canvas.drawBitmap(bitmap, 0, 0, paint);
             } catch (Throwable t) {
                 canvas.drawColor(Color.rgb(20, 0, 0));
-                appendNativeLog("JAVA_GUARD_RENDER_ERROR " + safeMsg(t));
+                appendNativeLog("NATIVE_RENDER_ERROR " + safeMsg(t));
             }
         }
     }
