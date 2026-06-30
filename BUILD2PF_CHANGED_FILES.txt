@@ -1,0 +1,9 @@
+BUILD2PF changed files:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+- BUILD2PF_README_TEST_PLAN.txt
+- BUILD2PF_CHANGED_FILES.txt
+
+Poznamka: BUILD2PE je slepa vetev kvuli audio buffer mismatch 4096 vs 2048. BUILD2PF je navrat na stabilni 2PA audio/input + snizeni input/log zateze.
