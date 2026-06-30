@@ -1,0 +1,40 @@
+BUILD2QU_SEGA_NATIVE_CPP_ONLY_FRESH_VIDEO_QO_LATENCY_STAGE111
+
+KODY JSOU ZMENENE.
+
+Zmenene soubory:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+
+Proc:
+- BUILD2QT vratil tlacitka a zvuk byl lepsi, ale Sonic mel ~0.8 s zpozdeni.
+- Po skoku Atari 130XE -> Sega a novem vyberu ROM se stale muze stat: zvuk bezi, obraz cerny.
+- V logu QT je videt, ze tlacitka funguji a Java wrapper je pryc, ale prepnuti Sonic -> Aladdin startuje novy native core bez tvrdeho fresh-video cyklu.
+
+Hlavni opravy:
+1) Fresh ROM load:
+   - pred kazdym novym vyberem ROM se tvrde vypne stary native core/audio/view pres AHNATIVE.disableInPlace('freshRomBeforeLoad').
+   - po kratke pauze se view znovu vytvori a ROM jde do C++.
+   - file picker visibilityHidden se ignoruje, pokud je otevren ROM picker, aby Android/Nox picker nerozbil core lifecycle.
+
+2) Zadne audio bez prvniho framu:
+   - AudioTrack se uz nespousti hned po realCoreLoadRom.
+   - Java ceka na realCoreStatus frameReady=YES a frameCounter>0.
+   - az potom vycisti audio FIFO a spusti AudioTrack.
+   - pokud frame nenaskoci, watchdog zastavi audio a v logu to prizna.
+
+3) Latence:
+   - QT/QP zvuk byl cistsi, ale v testu Sonic ~0.8 s zpozdeni.
+   - QU jde zpet bliz QO latency profilu: chunk 320, mensi AudioTrack buffer, mensi prefill.
+   - native FIFO snizeno na target 1536 / max 3072 / desync 512.
+   - pridany latency trim: pokud FIFO bobtna, stare samply se zahazuji misto narustani prodlevy.
+
+4) Sonic JUE ROM:
+   - world/JUE region se uz nepatuje na U.
+   - EU patch se pouzije jen pro skutecne EU/PAL ROM, ne pro JUE/world Sonic.
+
+Stav:
+- Neni final.
+- Cilem testu je vratit zpozdeni Sonica bliz k QO/QP, zachovat cistsi zvuk z QT a zabit stav zvuk-bez-obrazu po navratu/novem ROM loadu.
