@@ -1,0 +1,22 @@
+AtariHelp.eu EMU-10 BUILD2PH_SEGA_SAFE_ROLLBACK_TO_2PA_LOCKED_STAGE72
+
+Upravene/soucasti overlay ZIPu:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+- app/src/main/assets/emu_sega/sega_megadrive_screen.png
+
+Smysl buildu:
+- STOP pro spatne vetev 2PE/2PF/2PG.
+- Bezpecny rollback na posledni potvrzeny funkcni zaklad BUILD2PA:
+  * Nox zvuk OK podle uzivatele.
+  * Mobil joystick/multitouch OK podle uzivatele.
+  * Online/offline hlasky byly pryc.
+  * Region-lock EU her pres in-memory compat patch zustava jako v 2PA.
+- Zadna zvlastni mobilni aplikace, zadne zdvojeni UI.
+- Zadna nova PAL/NTSC zmena.
+- Zadny hard audio gate, zadny ScriptProcessor patch, zadny fast-input quiet experiment.
+
+Dulezite:
+- Toto NENI tvrzena oprava mobilniho zvuku.
+- Toto je zachranny stabilizacni rollback, aby se projekt vratil pred rozbite audio/region vetev.
