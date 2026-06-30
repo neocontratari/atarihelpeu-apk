@@ -1,0 +1,18 @@
+BUILD2QI_SEGA_NATIVE_CPP_CORE_THREAD_RENDER_STAGE99
+
+ZMENENE SOUBORY:
+app/src/main/assets/emu_sega/index.html
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+app/src/main/cpp/nap_sega_native_proof.cpp
+app/src/main/cpp/CMakeLists.txt
+app/build.gradle
+app/src/main/AndroidManifest.xml
+app/src/main/cpp/vendor/clownmdemu-core/**
+
+HLAVNI ZMENA PROTI 2QH:
+- real ClownMDEmu-core uz nespousti init/reset/iterate ve WebView JavaBridge threadu ani v Android View.onDraw
+- pridan dedikovany native worker thread
+- View.onDraw jen kopiruje cached framebuffer
+- kostky/ctverecky/bile bloky zustavaji vypnute
+- zadne dalsi C++ okno
