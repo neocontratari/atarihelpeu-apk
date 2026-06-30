@@ -1,0 +1,25 @@
+BUILD2PE_SEGA_MOBILE_HARD_AUDIO_GATE_STAGE69
+
+Zmenene soubory:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+
+Postaveno z BUILD2PD, ale prakticky se vraci k dobremu BUILD2PA multitouch zakladu.
+
+Co je nove:
+1) HARD AUDIO GATE ve wrapperu:
+   - patch AudioNode.connect: vystup do AudioDestinationNode se presmeruje pres jeden master gain/limiter
+   - gain 0.74 + DynamicsCompressor jako ochrana proti prebuzeni Android WebView vystupu
+   - createScriptProcessor/createJavaScriptNode buffer v mobileHardGate rezimu min. 4096, max. 8192 proti zasekum/underrun
+   - log: AUDIO_HARD_GATE_CONNECT_PATCH, AUDIO_HARD_GATE_CHAIN_READY, AUDIO_SCRIPT_PROCESSOR_PATCH
+
+2) Landscape obraz/duchove:
+   - zruseny zoom/crop iframe v landscape: iframe 100vw x 100dvh
+   - top nav texty v landscape display:none, zustava jen neviditelny hitbox ULOZENE pro log
+   - cil: zadne prosvitajici SBIRKA/WEB/NAVODY/MENU a zadne ukrojene zivoty/HUD
+
+3) Ovládani:
+   - BUILD2PA multitouch zachovan
+   - joystick/A/B/C logika nemenena
+
+Neni fake oprava: pokud se zvuk zlepsi, problem byl audio vystup/buffer Android WebView. Pokud ne, dalsi krok je skutecne jina core/audio vetev.

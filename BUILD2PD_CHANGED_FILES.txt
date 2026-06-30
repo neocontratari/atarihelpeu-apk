@@ -1,0 +1,16 @@
+BUILD2PD_SEGA_MOBILE_SCREEN_GHOST_AUDIO_REPORT_STAGE68
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/assets/emu_sega/clown_local_boot.html
+- app/src/main/assets/emu_sega/sega_poweroff.html
+
+ZMENY:
+1) Landscape obraz: zrusen agresivni top crop z BUILD2PC, aby nebyly ukrojene zivoty/HUD u Sonica/Aladdina.
+2) Landscape horni navigace: napisy SBIRKA/ULOZENE/HRY/NAVODY/WEB/MENU/CART jsou vizualne skryte proti duchum/prosvitani, ale testovaci hitboxy zustavaji.
+3) Multitouch ovladani z BUILD2PA zachovano beze zmen.
+4) Audio: neprohlasuje opravu. BUILD2PC potvrdil, ze audio clean config nepomohl; mobilni zvuk zustava unresolved na remote ClownMDEmu/WebView pipeline.
+5) Core: stale remote ClownMDEmu, bez local-first hlasky.
+
+POZNAMKA:
+Tento build je screen/ghost fix + audio status report, ne dalsi fake audio oprava.

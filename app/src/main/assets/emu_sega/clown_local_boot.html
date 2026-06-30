@@ -1,5 +1,5 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>NaP ClownMDEmu Local Boot PC Mobile Audio Clean Config</title>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>NaP ClownMDEmu Local Boot PE Hard Audio Gate</title>
 <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#8fd8ff;font:12px monospace;}#displayCanvas{display:none;position:absolute;left:0;top:0;width:100vw;height:100vh;z-index:3;background:#000;image-rendering:pixelated;}#canvas{display:block;position:absolute;left:0;top:0;width:100vw;height:100vh;opacity:1;z-index:2;pointer-events:auto;background:#000;image-rendering:pixelated;}body.nap-delay-ready #displayCanvas{display:block;}body.nap-delay-ready #canvas{opacity:.01;z-index:1;pointer-events:none;}body.nap-direct #displayCanvas{display:none!important;}body.nap-direct #canvas{opacity:1!important;z-index:2;pointer-events:auto;}#status{position:absolute;left:6px;right:6px;bottom:6px;padding:4px 6px;background:rgba(0,0,0,.50);color:#8fd8ff;text-align:center;z-index:5;white-space:pre-wrap;pointer-events:none;}#log{position:absolute;left:6px;top:6px;right:6px;max-height:42%;overflow:hidden;color:#8fd8ff;background:rgba(0,0,0,.42);z-index:4;white-space:pre-wrap;display:none}</style>
 </head><body><canvas id="displayCanvas" tabindex="0"></canvas><canvas id="canvas" tabindex="-1"></canvas><div id="log"></div><div id="status">WAITING FOR NAP ROM...</div>
 <script>
@@ -11,6 +11,7 @@ var napAudioMode=qp('napAudioMode')||'';
 var napInputMode=qp('napInputMode')||'';
 var napCoreFallback=qp('napCoreFallback')||'';
 var napAudioClean=qp('napAudioClean')==='1';
+var napAudioHardGate=qp('napAudioHardGate')==='1'||napAudioMode==='mobileHardGate';
 var napNoPrime=qp('napNoPrime')==='1';
 var napRegionInfo={mode:'AUTO',pal:false,japanese:false,label:'AUTO -> USA/NTSC International',source:'default'};
 var napRegionConfigWritten=false;
@@ -100,6 +101,95 @@ function installAudioTuning(){
     var NativeAC=window.AudioContext||window.webkitAudioContext;
     if(!NativeAC){parentLog('AUDIO_TUNE AudioContext missing');return;}
     try{window.__napNativeAudioContext=NativeAC;}catch(_){ }
+
+    var NativeConnect=(window.AudioNode&&window.AudioNode.prototype&&window.AudioNode.prototype.connect)?window.AudioNode.prototype.connect:null;
+    var NativeDisconnect=(window.AudioNode&&window.AudioNode.prototype&&window.AudioNode.prototype.disconnect)?window.AudioNode.prototype.disconnect:null;
+    var masterMap=(typeof WeakMap!=='undefined')?new WeakMap():null;
+    var masterList=[];
+
+    function getMasterChain(ctx){
+      if(!ctx||!napAudioHardGate||!NativeConnect)return null;
+      try{if(masterMap&&masterMap.has(ctx))return masterMap.get(ctx);}catch(_){ }
+      for(var i=0;i<masterList.length;i++){if(masterList[i]&&masterList[i].ctx===ctx)return masterList[i];}
+      try{
+        var input=ctx.createGain();
+        var limiter=ctx.createDynamicsCompressor?ctx.createDynamicsCompressor():null;
+        try{input.gain.value=0.74;}catch(_){ }
+        if(limiter){
+          try{limiter.threshold.value=-14;}catch(_){ }
+          try{limiter.knee.value=8;}catch(_){ }
+          try{limiter.ratio.value=10;}catch(_){ }
+          try{limiter.attack.value=0.002;}catch(_){ }
+          try{limiter.release.value=0.075;}catch(_){ }
+          NativeConnect.call(input,limiter);
+          NativeConnect.call(limiter,ctx.destination);
+        }else{
+          NativeConnect.call(input,ctx.destination);
+        }
+        var chain={ctx:ctx,input:input,limiter:limiter};
+        try{if(masterMap)masterMap.set(ctx,chain);}catch(_){ }
+        masterList.push(chain);
+        parentLog('AUDIO_HARD_GATE_CHAIN_READY gain=0.74 limiter='+(limiter?'YES':'NO')+' sampleRate='+(ctx&&ctx.sampleRate)+' baseLatency='+(ctx&&ctx.baseLatency));
+        return chain;
+      }catch(e){parentLog('AUDIO_HARD_GATE_CHAIN_FAIL '+(e.message||e));return null;}
+    }
+
+    if(napAudioHardGate&&NativeConnect&&!window.__napHardGateConnectPatched){
+      window.__napHardGateConnectPatched=true;
+      try{
+        window.AudioNode.prototype.connect=function(dest){
+          try{
+            if(dest && dest.context && this && this.context && dest===dest.context.destination){
+              var chain=getMasterChain(dest.context);
+              if(chain&&chain.input){
+                var args=[chain.input];
+                for(var i=1;i<arguments.length;i++)args.push(arguments[i]);
+                return NativeConnect.apply(this,args);
+              }
+            }
+          }catch(e){try{parentLog('AUDIO_HARD_GATE_CONNECT_ROUTE_FAIL '+(e.message||e));}catch(_){} }
+          return NativeConnect.apply(this,arguments);
+        };
+        parentLog('AUDIO_HARD_GATE_CONNECT_PATCH installed routeDestinationToMaster=YES');
+      }catch(e0){parentLog('AUDIO_HARD_GATE_CONNECT_PATCH_FAIL '+(e0.message||e0));}
+    }
+
+    function patchContextForMobile(ctx){
+      if(!ctx||!napAudioHardGate)return ctx;
+      try{getMasterChain(ctx);}catch(_){ }
+      try{
+        if(ctx.createScriptProcessor&&!ctx.__napScriptProcessorPatched){
+          var origSP=ctx.createScriptProcessor.bind(ctx);
+          ctx.createScriptProcessor=function(bufferSize,inputChannels,outputChannels){
+            var bs=Number(bufferSize)||0;
+            var forced=bs;
+            if(!forced||forced<4096)forced=4096;
+            if(forced>8192)forced=8192;
+            var node=origSP(forced,inputChannels||0,outputChannels||2);
+            try{parentLog('AUDIO_SCRIPT_PROCESSOR_CREATE requested='+(bs||'auto')+' forced='+forced+' in='+(inputChannels||0)+' out='+(outputChannels||2));}catch(_){ }
+            return node;
+          };
+          ctx.__napScriptProcessorPatched=true;
+          parentLog('AUDIO_SCRIPT_PROCESSOR_PATCH installed min=4096 max=8192');
+        }
+      }catch(e1){parentLog('AUDIO_SCRIPT_PROCESSOR_PATCH_FAIL '+(e1.message||e1));}
+      try{
+        if(ctx.createJavaScriptNode&&!ctx.__napJavaScriptNodePatched){
+          var origJN=ctx.createJavaScriptNode.bind(ctx);
+          ctx.createJavaScriptNode=function(bufferSize,inputChannels,outputChannels){
+            var bs=Number(bufferSize)||0;
+            var forced=bs;
+            if(!forced||forced<4096)forced=4096;
+            if(forced>8192)forced=8192;
+            return origJN(forced,inputChannels||0,outputChannels||2);
+          };
+          ctx.__napJavaScriptNodePatched=true;
+          parentLog('AUDIO_JAVASCRIPT_NODE_PATCH installed min=4096 max=8192');
+        }
+      }catch(e2){parentLog('AUDIO_JAVASCRIPT_NODE_PATCH_FAIL '+(e2.message||e2));}
+      return ctx;
+    }
+
     function TunedAudioContext(opts){
       var o={};
       if(opts&&typeof opts==='object'){for(var k in opts){try{o[k]=opts[k];}catch(_){}}}
@@ -109,13 +199,14 @@ function installAudioTuning(){
       try{ctx=new NativeAC(o);}
       catch(e1){try{delete o.sampleRate;ctx=new NativeAC(o);parentLog('AUDIO_TUNE fallback_no_sampleRate '+(e1.message||e1));}
       catch(e2){ctx=new NativeAC();parentLog('AUDIO_TUNE fallback_plain '+(e2.message||e2));}}
-      try{audioContexts.push(ctx);parentLog('AUDIO_TUNE AudioContext sampleRate='+(ctx&&ctx.sampleRate)+' latencyHint='+(o.latencyHint||'default')+' baseLatency='+(ctx&&ctx.baseLatency)+' outputLatency='+(ctx&&ctx.outputLatency)+' tracked='+(audioContexts.length));}catch(_){}
+      try{patchContextForMobile(ctx);}catch(_){ }
+      try{audioContexts.push(ctx);parentLog('AUDIO_TUNE AudioContext sampleRate='+(ctx&&ctx.sampleRate)+' latencyHint='+(o.latencyHint||'default')+' baseLatency='+(ctx&&ctx.baseLatency)+' outputLatency='+(ctx&&ctx.outputLatency)+' tracked='+(audioContexts.length)+' hardGate='+(napAudioHardGate?'YES':'NO'));}catch(_){ }
       return ctx;
     }
-    try{TunedAudioContext.prototype=NativeAC.prototype; Object.setPrototypeOf&&Object.setPrototypeOf(TunedAudioContext,NativeAC);}catch(_){}
+    try{TunedAudioContext.prototype=NativeAC.prototype; Object.setPrototypeOf&&Object.setPrototypeOf(TunedAudioContext,NativeAC);}catch(_){ }
     window.AudioContext=TunedAudioContext;
     if(window.webkitAudioContext)window.webkitAudioContext=TunedAudioContext;
-    parentLog('AUDIO_TUNE installed latencyHint='+(napAudioMode==='mobileBalanced'?'balanced':'playback')+' preferredSampleRate='+(napAudioMode==='mobileNativePlayback'?'native':'48000')+' audioHardReset=YES mobileMode='+(napAudioMode||'normal')+' inputMode='+(napInputMode||'normal')+' noPrime='+napNoPrime+' deferredKill=YES session='+napAudioSession);
+    parentLog('AUDIO_TUNE installed latencyHint='+(napAudioMode==='mobileBalanced'?'balanced':'playback')+' preferredSampleRate='+(napAudioMode==='mobileNativePlayback'?'native':'48000')+' audioHardReset=YES mobileMode='+(napAudioMode||'normal')+' inputMode='+(napInputMode||'normal')+' noPrime='+napNoPrime+' hardGate='+(napAudioHardGate?'YES':'NO')+' deferredKill=YES session='+napAudioSession);
   }catch(e){parentLog('AUDIO_TUNE_FAIL '+(e.message||e));}
 }
 installAudioTuning();
@@ -140,7 +231,7 @@ function resumeTrackedAudioContexts(reason){
   try{audioContexts.forEach(function(ctx,idx){try{if(ctx&&ctx.state==='suspended'&&ctx.resume){ctx.resume().then(function(){parentLog('AUDIO_CONTEXT_RESUME_DONE reason='+(reason||'')+' idx='+idx+' state='+(ctx&&ctx.state));}).catch(function(e){parentLog('AUDIO_CONTEXT_RESUME_REJECT '+idx+' '+(e&&e.message||e));});}}catch(e1){parentLog('AUDIO_CONTEXT_RESUME_FAIL '+idx+' '+(e1.message||e1));}});}catch(e){parentLog('AUDIO_CONTEXT_RESUME_LOOP_FAIL '+(e.message||e));}
 }
 function primeAudioBeforeClown(done){
-  if(napNoPrime){try{parentLog('AUDIO_PRIME_SKIP noPrime=YES mobileMode='+(napAudioMode||'normal')+' session='+napAudioSession);}catch(_){} try{done&&done();}catch(e0){} return;}
+  if(napNoPrime){try{parentLog('AUDIO_PRIME_SKIP noPrime=YES mobileMode='+(napAudioMode||'normal')+' hardGate='+(napAudioHardGate?'YES':'NO')+' session='+napAudioSession);}catch(_){} try{done&&done();}catch(e0){} return;}
   var called=false;
   function finish(tag){if(called)return;called=true;try{parentLog('AUDIO_PRIME_DONE '+tag+' session='+napAudioSession);}catch(_){} try{done&&done();}catch(e){parentLog('AUDIO_PRIME_CALLBACK_FAIL '+(e.message||e));}}
   try{
@@ -232,8 +323,8 @@ function keyDefs(btn){return {UP:[['ArrowUp','ArrowUp',38]],DOWN:[['ArrowDown','
 function makeKeyEvent(type,def){var key=def[0],ch=key.length===1?key.charCodeAt(0):0;var ev=new KeyboardEvent(type,{key:key,code:def[1],bubbles:true,cancelable:true,composed:true,repeat:false,view:window});try{Object.defineProperty(ev,'keyCode',{get:function(){return def[2];}});Object.defineProperty(ev,'which',{get:function(){return def[2];}});Object.defineProperty(ev,'charCode',{get:function(){return type==='keypress'?ch:0;}});Object.defineProperty(ev,'isComposing',{get:function(){return false;}});}catch(_){}return ev;}
 function sendKey(btn,down){pad[btn]=!!down;if(down)resumeTrackedAudioContexts('input:'+btn);try{(document.getElementById('displayCanvas')||document.getElementById('canvas')).focus();window.focus();}catch(_){}var defs=keyDefs(btn)||[];var targets=[window,document,document.body,document.getElementById('displayCanvas'),document.getElementById('canvas'),document.activeElement].filter(Boolean);var types=down?['keydown','keypress']:['keyup'];var ok=0;defs.forEach(function(def){targets.forEach(function(t){types.forEach(function(type){try{t.dispatchEvent(makeKeyEvent(type,def));ok++;}catch(e){}});});});try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}parentLog('INPUT '+btn+' '+(down?'DOWN':'UP')+' dispatched='+ok+' multiKeys='+defs.length+' dpadNoWasd=YES abcMirrorPad=YES cleanStable=YES inputMode='+(napInputMode||'normal'));}
 function clonePad(){var axes=[pad.LEFT?-1:(pad.RIGHT?1:0),pad.UP?-1:(pad.DOWN?1:0),0,0];return {id:'NaP Virtual Mega Drive Pad BUILD2PA EU',index:0,connected:true,timestamp:performance.now(),mapping:'standard',axes:axes,buttons:[{pressed:!!pad.B,value:pad.B?1:0},{pressed:!!pad.C,value:pad.C?1:0},{pressed:!!pad.A,value:pad.A?1:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:pad.START,value:pad.START?1:0},{pressed:false,value:0},{pressed:false,value:0},{pressed:pad.UP,value:pad.UP?1:0},{pressed:pad.DOWN,value:pad.DOWN?1:0},{pressed:pad.LEFT,value:pad.LEFT?1:0},{pressed:pad.RIGHT,value:pad.RIGHT?1:0}]};}
-function installGamepad(){try{var gp=function(){return [clonePad()];};try{Object.defineProperty(navigator,'getGamepads',{value:gp,configurable:true});}catch(_){navigator.getGamepads=gp;}try{Object.defineProperty(navigator,'webkitGetGamepads',{value:gp,configurable:true});}catch(_){navigator.webkitGetGamepads=gp;}gamepadTimer=setInterval(function(){try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}},2200);parentLog('VIRTUAL_GAMEPAD_READY defineProperty=YES poll=2200ms cleanStableInput=YES audioFriendly=YES mobilePerf=YES playbackNoPrime=YES mobileNative=YES');}catch(e){parentLog('VIRTUAL_GAMEPAD_FAIL '+(e.message||e));}}
-function startClown(name,buf,regionOverride,euPatch){if(booted){status('ROM ALREADY BOOTED - reloadni wrapper pro dalsi ROM');return;}napRegionInfo=computeRegionInfo(name,regionOverride);writeRegionConfiguration(napRegionInfo);booted=true;installGamepad();try{document.body.classList.add('nap-direct');parentLog('VIDEO_SYNC_DISABLED_AUDIO_ONLY direct canvas, no copy loop');parentLog('REGION_MODE '+napRegionInfo.label+' pal='+napRegionInfo.pal+' japanese='+napRegionInfo.japanese+' source='+napRegionInfo.source);if(euPatch)parentLog('EU_COMPAT_PATCH '+euPatch);parentLog('REGION_SAFE_ROLLBACK_2PA using Module.arguments=[blobURL], no --user, no --cartridge');}catch(_){}primeAudioBeforeClown(function(){try{romBlobUrl=URL.createObjectURL(new Blob([buf],{type:'application/octet-stream'}));status('BOOTING_ROM '+name+' bytes='+buf.byteLength+' region='+(napRegionInfo&&napRegionInfo.label)+' blob='+romBlobUrl.slice(0,32));
+function installGamepad(){try{var gp=function(){return [clonePad()];};try{Object.defineProperty(navigator,'getGamepads',{value:gp,configurable:true});}catch(_){navigator.getGamepads=gp;}try{Object.defineProperty(navigator,'webkitGetGamepads',{value:gp,configurable:true});}catch(_){navigator.webkitGetGamepads=gp;}gamepadTimer=setInterval(function(){try{window.dispatchEvent(new GamepadEvent('gamepadconnected',{gamepad:clonePad()}));}catch(_){}},2200);parentLog('VIRTUAL_GAMEPAD_READY defineProperty=YES poll=2200ms cleanStableInput=YES audioFriendly=YES mobilePerf=YES hardAudioGate=YES');}catch(e){parentLog('VIRTUAL_GAMEPAD_FAIL '+(e.message||e));}}
+function startClown(name,buf,regionOverride,euPatch){if(booted){status('ROM ALREADY BOOTED - reloadni wrapper pro dalsi ROM');return;}napRegionInfo=computeRegionInfo(name,regionOverride);writeRegionConfiguration(napRegionInfo);booted=true;installGamepad();try{document.body.classList.add('nap-direct');parentLog('VIDEO_SYNC_DISABLED_AUDIO_ONLY direct canvas, no copy loop');parentLog('REGION_MODE '+napRegionInfo.label+' pal='+napRegionInfo.pal+' japanese='+napRegionInfo.japanese+' source='+napRegionInfo.source);if(euPatch)parentLog('EU_COMPAT_PATCH '+euPatch);parentLog('REGION_SAFE_ROLLBACK_2PA_PE using Module.arguments=[blobURL], no --user, no --cartridge');}catch(_){}primeAudioBeforeClown(function(){try{romBlobUrl=URL.createObjectURL(new Blob([buf],{type:'application/octet-stream'}));status('BOOTING_ROM '+name+' bytes='+buf.byteLength+' region='+(napRegionInfo&&napRegionInfo.label)+' blob='+romBlobUrl.slice(0,32));
 window.Module={arguments:[romBlobUrl],locateFile:function(path){return remoteBase+path;},canvas:document.getElementById('canvas'),preRun:[function(){try{parentLog('REGION_PRERUN_START label='+(napRegionInfo&&napRegionInfo.label)+' writtenBefore='+(napRegionConfigWritten?'YES':'NO'));var ok=writeRegionConfiguration(napRegionInfo);parentLog('REGION_PRERUN_DONE written='+(ok?'YES':'NO')+' pal='+(napRegionInfo&&napRegionInfo.pal)+' japanese='+(napRegionInfo&&napRegionInfo.japanese));}catch(e){parentLog('REGION_PRERUN_FAIL '+(e&&e.message||e));}}],postRun:[function(){parentLog('MODULE_POSTRUN regionConfigWritten='+(napRegionConfigWritten?'YES':'NO'));}],print:function(text){parentLog('PRINT '+text);},printErr:function(text){parentLog('ERR '+text);},setStatus:function(text){if(text)status('STATUS '+text);},totalDependencies:0,onRuntimeInitialized:function(){parentLog('RUNTIME_INITIALIZED');},noInitialRun:false};
 window.onerror=function(m,u,l,c,e){parentLog('WINDOW_ERROR '+m+' @'+l+':'+c);};window.onunhandledrejection=function(e){parentLog('UNHANDLED_REJECTION '+(e.reason&&e.reason.message||e.reason||''));};
 function appendCoreScript(src,label,next){var s=document.createElement('script');s.async=true;s.src=src;s.onload=function(){parentLog('CLOWN_SCRIPT_LOADED '+label);};s.onerror=function(){parentLog('SCRIPT_ERROR '+label+' '+src);try{s.remove();}catch(_){} if(next)next();else status('SCRIPT_ERROR '+label);};document.body.appendChild(s);parentLog('SCRIPT_APPEND '+label+' '+src+' session='+napAudioSession);}if(napCoreFallback==='localFirst'){appendCoreScript('clownmdemu.js','local',function(){if(navigator.onLine===false){parentLog('OFFLINE_CORE_MISSING local clownmdemu.js not bundled - remote unavailable');status('OFFLINE CORE MISSING - pridej clownmdemu.js do assets/emu_sega');return;}appendCoreScript(remoteBase+'clownmdemu.js','remote',null);});}else{appendCoreScript(remoteBase+'clownmdemu.js','remote',null);}setTimeout(function(){try{(document.getElementById('displayCanvas')||document.getElementById('canvas')).focus();}catch(_){}},500);
