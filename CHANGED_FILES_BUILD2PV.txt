@@ -1,0 +1,17 @@
+BUILD2PV_SEGA_NATIVE_CPP_IN_PLACE_RECT_DPR_FIX_STAGE86
+
+ZMENENE SOUBORY:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+CO SE MENI:
+- Oprava umisteni a velikosti C++ in-place obrazu v normalni Sega obrazovce.
+- Problem v BUILD2PU: C++ view pouzival CSS rect bez devicePixelRatio, proto se v Noxu/mobilu zobrazil zmenseny a vyjety nahoru/doleva.
+- BUILD2PV posila do Java vrstvy DPR-scaled rect: css rect * window.devicePixelRatio.
+- Pridany log NATIVE_RECT_DPR a SET_RECT_OK.
+
+CO SE NEMENI:
+- Normalni WebView Sega zustava zaloha.
+- Joystick / DPAD / A/B/C/START logika nemenena.
+- ROM picker nemenit.
+- C++ porad neni hotovy Sega emulator, jen in-place proof.

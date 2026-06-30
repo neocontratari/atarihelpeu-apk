@@ -224,8 +224,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2PU\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2PU_SEGA_NATIVE_CPP_IN_PLACE_BUILD_FIX_STAGE85\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2PV\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2PV_SEGA_NATIVE_CPP_IN_PLACE_RECT_DPR_FIX_STAGE86\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -287,6 +287,7 @@ public class MainActivity extends Activity {
                         lp.topMargin = Math.max(0, y);
                         nativeInPlaceView.setLayoutParams(lp);
                         nativeInPlaceView.setVisibility(nativeInPlaceEnabled ? View.VISIBLE : View.GONE);
+                        appendNativeLog("SET_RECT_OK x=" + Math.max(0, x) + " y=" + Math.max(0, y) + " w=" + ww + " h=" + hh);
                     } catch (Throwable t) { appendNativeLog("SET_RECT_ERROR " + safeMsg(t)); }
                 });
                 return "RECT_OK x=" + x + " y=" + y + " w=" + w + " h=" + h;
@@ -365,7 +366,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String saveLog() {
             try {
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2PU_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2PV_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
