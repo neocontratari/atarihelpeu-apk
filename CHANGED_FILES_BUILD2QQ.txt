@@ -1,0 +1,30 @@
+BUILD2QQ_SEGA_NATIVE_CPP_ONLY_LOW_LATENCY_STAGE107 overlay
+
+Changed files:
+- app/src/main/assets/emu_sega/index.html
+  * Sega page is now C++ only for runtime.
+  * Java/WebView ClownMDEmu wrapper autoload is disabled and stale hardboot key `rom` is purged on Sega page start.
+  * ROM picker always sends ROM directly to native C++ bridge.
+  * Selected ROM is stored as `nativeRom` in IndexedDB for return/re-enter.
+  * C++ CORE button now reloads last native ROM or opens picker; it no longer starts Java wrapper/core-step path.
+  * Input path always goes to AHNATIVE / JNI bridge.
+
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+  * AudioTrack tuned lower latency than BUILD2QP: 256-frame chunks, smaller requested buffer, smaller prefill.
+  * Keeps hard AudioTrack stop, lifecycle stop and native view removal from BUILD2QO/QP.
+  * Native log names updated to BUILD2QQ.
+
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+  * Comments/status updated: Sega WebView Java wrapper disabled; native bridge is the Sega runtime path.
+
+- app/src/main/cpp/nap_sega_native_proof.cpp
+  * Native FIFO target reduced from QP 2048/4096 to QQ 1280/2560.
+  * FM/PSG desync limit reduced to keep Sonic jump/ring closer to video.
+  * Slightly lower FM/PSG gain and lighter smoothing for lower delay while preserving clean sound.
+  * Shutdown/log markers updated to BUILD2QQ_CPP_ONLY.
+
+IMPORTANT:
+- This is not claimed final. It targets exactly Rene's BUILD2QP report:
+  1) old Java wrapper starts first and makes noise,
+  2) C++ after return can be black with audio/noise,
+  3) QP sound is cleaner but around 0.4 s delay.

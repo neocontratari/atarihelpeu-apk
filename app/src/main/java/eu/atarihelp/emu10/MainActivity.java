@@ -227,8 +227,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2QP\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2QP_SEGA_NATIVE_CPP_REENTER_CLEAN_AUDIO_STAGE106\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2QQ\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2QQ_SEGA_NATIVE_CPP_ONLY_LOW_LATENCY_STAGE107\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -250,23 +250,23 @@ public class MainActivity extends Activity {
 
     private synchronized void startNativeCoreAudioStream() {
         if (nativeCoreAudioRun && nativeCoreAudioThread != null && nativeCoreAudioThread.isAlive()) {
-            appendNativeLog("NATIVE_AUDIO_STREAM_ALREADY_RUNNING_QP_CLEAN");
+            appendNativeLog("NATIVE_AUDIO_STREAM_ALREADY_RUNNING_QQ_LOW_LATENCY");
             return;
         }
         nativeCoreAudioRun = true;
         nativeCoreAudioThread = new Thread(() -> {
-            // BUILD2QP: Sonic/Aladdin clean-audio pass.
-            // QO uz mel sync blizko (Sonic ~0.2 s, Aladdin ~0.1 s), ale chrapal.
-            // Tady nechavame nizkou latenci, ale davame AudioTracku trochu vetsi bezpecny polstar,
-            // tvrdsi stop stareho tracku a native mixer ma de-click/low-pass proti praskani.
+            // BUILD2QQ: C++ only + lower latency pass.
+            // QP zvuk uz byl cistsi, ale po Java wrapperu zustavalo cca 0.4 s zpozdeni.
+            // Tady je Java wrapper vypnuty a AudioTrack/FIFO jsou mensi: cil je vratit se bliz k QO syncu,
+            // ale nevratit QO chrapot.
             try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO); } catch (Throwable ignored) {}
             final int sampleRate = 48000;
-            final int chunk = 384; // 8 ms @ 48 kHz; stale nizka latence, ale klidnejsi pro S8/A12 a Nox WebView.
+            final int chunk = 256; // BUILD2QQ: ~5.3 ms @ 48 kHz; mensi write blok pro nizsi Sonic input/audio lag.
             AudioTrack track = null;
             try {
                 int min = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
-                int wantedBytes = chunk * 2 * 10; // ~80 ms HW buffer; realna latence zustava rizena FIFO, ale mene praska.
-                int bufferBytes = Math.max(min > 0 ? min * 2 : 0, wantedBytes);
+                int wantedBytes = chunk * 2 * 6; // BUILD2QQ: ~32 ms request; na S8/A12 porad stabilni, ale nizsi lag nez QP.
+                int bufferBytes = Math.max(min > 0 ? min : 0, wantedBytes);
                 AudioTrack.Builder builder = null;
                 if (Build.VERSION.SDK_INT >= 21) {
                     builder = new AudioTrack.Builder()
@@ -283,16 +283,16 @@ public class MainActivity extends Activity {
                 }
                 int setFrames = -1;
                 if (Build.VERSION.SDK_INT >= 23) {
-                    try { setFrames = track.setBufferSizeInFrames(Math.max(2048, chunk * 8)); } catch (Throwable ignored) {}
+                    try { setFrames = track.setBufferSizeInFrames(Math.max(1024, chunk * 5)); } catch (Throwable ignored) {}
                 }
                 short[] pcm = new short[chunk];
                 nativeCurrentAudioTrack = track;
-                appendNativeLog("NATIVE_AUDIO_STREAM_START_QP_CLEAN sampleRate=" + sampleRate + " chunk=" + chunk + " minBytes=" + min + " bufferBytes=" + bufferBytes + " setFrames=" + setFrames + " perfLowLatency=" + (Build.VERSION.SDK_INT >= 26));
+                appendNativeLog("NATIVE_AUDIO_STREAM_START_QQ_LOW_LATENCY sampleRate=" + sampleRate + " chunk=" + chunk + " minBytes=" + min + " bufferBytes=" + bufferBytes + " setFrames=" + setFrames + " perfLowLatency=" + (Build.VERSION.SDK_INT >= 26));
 
                 int prefilled = 0;
                 int preLoops = 0;
-                long preDeadline = System.currentTimeMillis() + 320;
-                while (nativeCoreAudioRun && prefilled < Math.min(1536, chunk * 4) && System.currentTimeMillis() < preDeadline) {
+                long preDeadline = System.currentTimeMillis() + 180;
+                while (nativeCoreAudioRun && prefilled < Math.min(768, chunk * 3) && System.currentTimeMillis() < preDeadline) {
                     int got = 0;
                     try { got = NativeSegaCoreBridge.pullAudio(pcm, pcm.length); }
                     catch (Throwable pullErr) { appendNativeLog("NATIVE_AUDIO_PREFILL_PULL_ERROR " + safeMsg(pullErr)); got = 0; }
@@ -300,21 +300,21 @@ public class MainActivity extends Activity {
                         int wr = track.write(pcm, 0, pcm.length);
                         if (wr > 0) prefilled += wr;
                     } else {
-                        try { Thread.sleep(6); } catch (Throwable ignored) {}
+                        try { Thread.sleep(3); } catch (Throwable ignored) {}
                     }
                     preLoops++;
                 }
 
                 track.play();
-                appendNativeLog("NATIVE_AUDIO_PREFILL_QP frames=" + prefilled + " loops=" + preLoops + " playState=" + track.getPlayState());
+                appendNativeLog("NATIVE_AUDIO_PREFILL_QQ frames=" + prefilled + " loops=" + preLoops + " playState=" + track.getPlayState());
                 int loops = 0;
                 int underrunLoops = 0;
                 while (nativeCoreAudioRun) {
                     int got = 0;
                     try { got = NativeSegaCoreBridge.pullAudio(pcm, pcm.length); }
                     catch (Throwable pullErr) { appendNativeLog("NATIVE_AUDIO_PULL_ERROR " + safeMsg(pullErr)); got = 0; }
-                    if (got <= chunk / 4) { underrunLoops++; try { Thread.sleep(2); } catch (Throwable ignored) {} }
-                    if (loops < 16 || loops % 180 == 0) appendNativeLog("NATIVE_AUDIO_PULL_QP_CLEAN got=" + got + " loop=" + loops + " underrunLoops=" + underrunLoops);
+                    if (got <= chunk / 4) { underrunLoops++; try { Thread.sleep(1); } catch (Throwable ignored) {} }
+                    if (loops < 16 || loops % 180 == 0) appendNativeLog("NATIVE_AUDIO_PULL_QQ_LOW_LATENCY got=" + got + " loop=" + loops + " underrunLoops=" + underrunLoops);
                     int off = 0;
                     while (off < pcm.length && nativeCoreAudioRun) {
                         int wr = track.write(pcm, off, pcm.length - off);
@@ -328,9 +328,9 @@ public class MainActivity extends Activity {
             } finally {
                 try { if (track != null) { track.pause(); track.flush(); track.stop(); track.release(); } } catch (Throwable ignored) {}
                 if (nativeCurrentAudioTrack == track) nativeCurrentAudioTrack = null;
-                appendNativeLog("NATIVE_AUDIO_STREAM_STOP_QP_CLEAN");
+                appendNativeLog("NATIVE_AUDIO_STREAM_STOP_QQ_LOW_LATENCY");
             }
-        }, "AtariHelpSegaNativeAudioQP");
+        }, "AtariHelpSegaNativeAudioQQ");
         nativeCoreAudioThread.setDaemon(true);
         try { nativeCoreAudioThread.setPriority(Thread.MAX_PRIORITY); } catch (Throwable ignored) {}
         nativeCoreAudioThread.start();
@@ -348,9 +348,9 @@ public class MainActivity extends Activity {
         if (t != null && t.isAlive() && Thread.currentThread() != t) {
             try { t.interrupt(); } catch (Throwable ignored) {}
             try { t.join(480); } catch (Throwable ignored) {}
-            if (t.isAlive()) appendNativeLog("NATIVE_AUDIO_THREAD_STILL_ALIVE_QP will die after AudioTrack unblocks");
+            if (t.isAlive()) appendNativeLog("NATIVE_AUDIO_THREAD_STILL_ALIVE_QQ will die after AudioTrack unblocks");
         }
-        appendNativeLog("NATIVE_AUDIO_STREAM_STOP_REQUEST_QP_CLEAN hardTrackStop=" + (at != null));
+        appendNativeLog("NATIVE_AUDIO_STREAM_STOP_REQUEST_QQ_LOW_LATENCY hardTrackStop=" + (at != null));
     }
 
     private boolean isSegaNativeOwnerUrl(String url) {
@@ -425,7 +425,7 @@ public class MainActivity extends Activity {
                         }
                         if (nativeInPlaceView.getParent() == null) {
                             rootFrame.addView(nativeInPlaceView, new FrameLayout.LayoutParams(320, 224));
-                            appendNativeLog("NATIVE_VIEW_REATTACH_QP parent=rootFrame");
+                            appendNativeLog("NATIVE_VIEW_REATTACH_QQ parent=rootFrame");
                         }
                         nativeInPlaceEnabled = true;
                         nativeInPlaceView.setAlpha(1f);
@@ -481,7 +481,7 @@ public class MainActivity extends Activity {
                 String info = NativeSegaCoreBridge.romInfo(data);
                 long dt = System.currentTimeMillis() - t0;
 
-                // BUILD2QP: restart AudioTrack for every new ROM so old buffered sound cannot lag behind the new game.
+                // BUILD2QQ: restart AudioTrack for every new ROM so old buffered sound cannot lag behind the new game.
                 stopNativeCoreAudioStream();
                 String realCore = NativeSegaCoreBridge.realCoreLoadRom(data);
                 startNativeCoreAudioStream();
@@ -569,7 +569,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String saveLog() {
             try {
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QP_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QQ_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
@@ -608,7 +608,7 @@ public class MainActivity extends Activity {
             int n = w * h;
             if (argb.length != n) { argb = new int[n]; bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); }
             try {
-                // BUILD2QP: real ClownMDEmu-core render path.
+                // BUILD2QQ: real ClownMDEmu-core render path.
                 // Native calls are internally mutexed with ROM load, so WebView picker thread and UI render thread do not touch core concurrently.
                 NativeSegaCoreBridge.renderPattern(w, h, frame, argb);
                 bitmap.setPixels(argb, 0, w, 0, 0, w, h);
