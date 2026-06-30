@@ -1,0 +1,26 @@
+BUILD2PU_SEGA_NATIVE_CPP_IN_PLACE_BUILD_FIX_STAGE85
+
+ZMENENE SOUBORY:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+  - DOPLNENO: skutecny AHNATIVE in-place bridge primo v MainActivity.
+  - DOPLNENO: FrameLayout root, aby se C++ render pattern mohl zobrazit primo pres normalni Sega monitor.
+  - DOPLNENO: enableInPlace(), setNativeRect(), loadRomBase64(), input(), audioTest(), saveLog().
+  - C++ log se uklada do Downloads/AtariHelp.
+
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+  - NOVY Java -> JNI bridge pro normalni Sega UI.
+
+- app/src/main/cpp/nap_sega_native_proof.cpp
+  - JNI exporty pro NativeSegaCoreBridge.
+
+- app/src/main/assets/emu_sega/index.html
+  - C++ CORE zustava primo v normalni Sega obrazovce.
+
+- app/build.gradle, app/src/main/cpp/CMakeLists.txt
+  - CMake/NDK native knihovna napsega_native_proof.
+
+DUVOD OPRAVY:
+- BUILD2PT spadl pri tvorbe APK. V logu od GitHub Actions je videt jen ocasek: BUILD FAILED / exit code 1.
+- Bez detailniho erroru nechci hadat, proto BUILD2PU opravuje nejpravdepodobnejsi realnou chybu PT: ZIP mel C++/HTML cast, ale chybel kompletni Java in-place bridge z MainActivity.
+
+KODY JSOU ZMENENE: ANO

@@ -17,17 +17,10 @@ import android.os.Looper;
 import android.provider.OpenableColumns;
 import android.provider.MediaStore;
 import android.util.Base64;
-import android.webkit.JavascriptInterface;
-import android.webkit.ValueCallback;
-import android.webkit.WebChromeClient;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.webkit.WebResourceRequest;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
@@ -37,6 +30,13 @@ import android.widget.FrameLayout;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -62,13 +62,12 @@ public class MainActivity extends Activity {
     private static final String EMU_URL = "file:///android_asset/emu/index.html";
     private WebView web;
     private FrameLayout rootFrame;
-    private NativeSegaInPlaceView nativeSegaView;
-    private boolean nativeSegaInPlaceActive = false;
-    private String nativeSegaLastRomName = "zadna";
-    private String nativeSegaLastRomInfo = "ROM: zatim nevybrana";
-    private String nativeSegaLastAudio = "C++ audio zatim nepusten";
-    private int nativeSegaInputEvents = 0;
-    private final StringBuilder nativeSegaLog = new StringBuilder();
+    private NativeInPlaceView nativeInPlaceView;
+    private boolean nativeInPlaceEnabled = false;
+    private String nativeLastRomInfo = "C++ ROM zatim nenactena";
+    private String nativeLastStatus = "NATIVE_OFF";
+    private int nativeInputEvents = 0;
+    private final StringBuilder nativeLog = new StringBuilder();
     private ValueCallback<Uri[]> pendingChooser;
     private byte[] pendingGame;
     private String pendingName;
@@ -197,105 +196,21 @@ public class MainActivity extends Activity {
             ui.post(() -> openBridgePicker("text"));
         }
     }
-    public class AHNative {
-        @JavascriptInterface
-        public void openSegaCppProof() {
-            // BUILD2PT: kvuli Renemu uz neotevirame dalsi hnusne okno.
-            // Stary nazev nechavame kvuli kompatibilite JS, ale zapina se C++ primo v Sega obrazovce.
-            enableNativeSegaInPlace("openSegaCppProof_compat");
-        }
+    private String nowStamp() {
+        try { return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(new Date()); }
+        catch (Throwable t) { return String.valueOf(System.currentTimeMillis()); }
+    }
 
-        @JavascriptInterface
-        public void enableInPlace() {
-            enableNativeSegaInPlace("enableInPlace");
-        }
-
-        @JavascriptInterface
-        public void disableInPlace() {
-            ui.post(() -> {
-                nativeSegaInPlaceActive = false;
-                appendNativeSegaLog("NATIVE_IN_PLACE_DISABLE");
-                if (nativeSegaView != null) nativeSegaView.setVisibility(View.GONE);
-            });
-        }
-
-        @JavascriptInterface
-        public void setNativeRect(final int left, final int top, final int width, final int height) {
-            ui.post(() -> setNativeSegaRect(left, top, width, height));
-        }
-
-        @JavascriptInterface
-        public String loadRomBase64(String name, String b64) {
-            try {
-                if (b64 == null) b64 = "";
-                byte[] data = Base64.decode(b64.replaceAll("\\s", ""), Base64.DEFAULT);
-                nativeSegaLastRomName = safeFileName(name == null ? "rom.gen" : name);
-                long t0 = System.currentTimeMillis();
-                String info = NativeSegaCoreBridge.romInfo(data);
-                long dt = System.currentTimeMillis() - t0;
-                nativeSegaLastRomInfo = "ROM: " + nativeSegaLastRomName + "\n" + info;
-                appendNativeSegaLog("NATIVE_ROM_LOADED name=" + nativeSegaLastRomName + " bytes=" + data.length + " nativeMs=" + dt);
-                appendNativeSegaLog(info.replace('\n', ' '));
-                ui.post(() -> {
-                    enableNativeSegaInPlace("loadRomBase64");
-                    if (nativeSegaView != null) nativeSegaView.invalidate();
-                });
-                return "BUILD2PT_NATIVE_ROM_OK name=" + nativeSegaLastRomName + " bytes=" + data.length + " nativeMs=" + dt + "\n" + info;
-            } catch (Throwable t) {
-                String msg = "BUILD2PT_NATIVE_ROM_ERROR " + safe(t.getMessage());
-                appendNativeSegaLog(msg);
-                return msg;
-            }
-        }
-
-        @JavascriptInterface
-        public String input(String button, boolean down) {
-            int key = nativeKey(button);
-            if (key < 0) return "UNKNOWN_BUTTON " + button;
-            try {
-                NativeSegaCoreBridge.setInput(key, down);
-                nativeSegaInputEvents++;
-                String line = "NATIVE_INPUT " + button + " " + (down ? "DOWN" : "UP") + " count=" + nativeSegaInputEvents;
-                appendNativeSegaLog(line);
-                if (nativeSegaView != null) nativeSegaView.invalidate();
-                return line + " | " + NativeSegaCoreBridge.inputStatus();
-            } catch (Throwable t) {
-                String msg = "NATIVE_INPUT_ERROR " + safe(t.getMessage());
-                appendNativeSegaLog(msg);
-                return msg;
-            }
-        }
-
-        @JavascriptInterface
-        public String audioTest() {
-            return playNativeSegaAudioTest();
-        }
-
-        @JavascriptInterface
-        public String getStatus() {
-            try {
-                return "nativeInPlace=" + nativeSegaInPlaceActive
-                        + " rom=" + nativeSegaLastRomName
-                        + " inputEvents=" + nativeSegaInputEvents
-                        + " " + NativeSegaCoreBridge.inputStatus();
-            } catch (Throwable t) {
-                return "native status error " + safe(t.getMessage());
-            }
-        }
-
-        @JavascriptInterface
-        public String saveLog() {
-            return saveNativeSegaLogToDownloads();
+    private void appendNativeLog(String line) {
+        synchronized (nativeLog) {
+            nativeLog.append(nowStamp()).append("  ").append(line == null ? "" : line).append("\n");
+            if (nativeLog.length() > 20000) nativeLog.delete(0, nativeLog.length() - 20000);
         }
     }
 
-
-
-    private String safe(String msg) { return msg == null ? "" : msg.replace("\n", " ").replace("\r", " "); }
-
-    private int nativeKey(String button) {
-        if (button == null) return -1;
-        String b = button.toUpperCase(Locale.ROOT);
+    private int mapNativeKey(String btn) {
+        if (btn == null) return -1;
+        String b = btn.toUpperCase(Locale.US);
         if ("UP".equals(b)) return 0;
         if ("DOWN".equals(b)) return 1;
         if ("LEFT".equals(b)) return 2;
@@ -307,135 +222,194 @@ public class MainActivity extends Activity {
         return -1;
     }
 
-    private void appendNativeSegaLog(String line) {
-        String ts = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(new Date());
-        synchronized (nativeSegaLog) {
-            nativeSegaLog.append(ts).append("  ").append(line == null ? "" : line).append("\n");
-            if (nativeSegaLog.length() > 24000) nativeSegaLog.delete(0, nativeSegaLog.length() - 24000);
-        }
+    private String buildNativeInPlaceLog() {
+        StringBuilder out = new StringBuilder();
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2PU\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2PU_SEGA_NATIVE_CPP_IN_PLACE_BUILD_FIX_STAGE85\n\n");
+        out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
+           .append(" release=").append(Build.VERSION.RELEASE)
+           .append(" brand=").append(Build.BRAND)
+           .append(" model=").append(Build.MODEL)
+           .append(" cores=").append(Runtime.getRuntime().availableProcessors()).append("\n");
+        out.append("nativeInPlaceEnabled=").append(nativeInPlaceEnabled).append("\n");
+        out.append("nativeLastStatus=").append(nativeLastStatus).append("\n");
+        out.append("nativeInputEvents=").append(nativeInputEvents).append("\n\n");
+        out.append("ROM BLOCK:\n").append(nativeLastRomInfo == null ? "" : nativeLastRomInfo).append("\n\n");
+        out.append("EVENTS:\n");
+        synchronized (nativeLog) { out.append(nativeLog.toString()); }
+        out.append("\nDULEZITE:\n- Tohle porad neni hotovy Sega gameplay.\n");
+        out.append("- Toto overuje normalni Sega UI -> Java -> JNI -> C++ -> ROM/input/audio/render/log.\n");
+        out.append("- WebView Sega zustava zaloha.\n");
+        return out.toString();
     }
 
-    private void enableNativeSegaInPlace(String reason) {
-        ui.post(() -> {
-            nativeSegaInPlaceActive = true;
-            appendNativeSegaLog("NATIVE_IN_PLACE_ENABLE reason=" + reason + " build=BUILD2PT normalSegaUI=YES noSeparateActivity=YES");
-            if (nativeSegaView != null) {
-                nativeSegaView.setVisibility(View.VISIBLE);
-                nativeSegaView.invalidate();
+    public class AHNative {
+        @JavascriptInterface
+        public String enableInPlace() {
+            try {
+                final String build = NativeSegaCoreBridge.buildString();
+                nativeLastStatus = "NATIVE_IN_PLACE_OK " + build.replace('\n', ' ');
+                appendNativeLog("ENABLE_IN_PLACE " + nativeLastStatus);
+                ui.post(() -> {
+                    try {
+                        if (rootFrame == null || web == null) return;
+                        if (nativeInPlaceView == null) {
+                            nativeInPlaceView = new NativeInPlaceView(MainActivity.this);
+                            nativeInPlaceView.setVisibility(View.GONE);
+                            rootFrame.addView(nativeInPlaceView, new FrameLayout.LayoutParams(320, 224));
+                        }
+                        nativeInPlaceEnabled = true;
+                        nativeInPlaceView.setVisibility(View.VISIBLE);
+                        nativeInPlaceView.start();
+                    } catch (Throwable t) {
+                        nativeLastStatus = "NATIVE_VIEW_ERROR " + safeMsg(t);
+                        appendNativeLog(nativeLastStatus);
+                    }
+                });
+                return nativeLastStatus;
+            } catch (Throwable t) {
+                nativeLastStatus = "NATIVE_ENABLE_ERROR " + safeMsg(t);
+                appendNativeLog(nativeLastStatus);
+                return nativeLastStatus;
             }
-        });
-    }
+        }
 
-    private void setNativeSegaRect(int left, int top, int width, int height) {
-        if (nativeSegaView == null || rootFrame == null) return;
-        if (width < 20 || height < 20) return;
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(width, height);
-        lp.leftMargin = Math.max(0, left);
-        lp.topMargin = Math.max(0, top);
-        nativeSegaView.setLayoutParams(lp);
-        if (nativeSegaInPlaceActive) nativeSegaView.setVisibility(View.VISIBLE);
-        appendNativeSegaLog("NATIVE_RECT left=" + left + " top=" + top + " width=" + width + " height=" + height);
-    }
-
-    private String playNativeSegaAudioTest() {
-        try {
-            int sampleRate = 48000;
-            short[] pcm = new short[16000];
-            NativeSegaCoreBridge.makeAudioTone(pcm, sampleRate, 440.0);
-            AudioTrack track;
-            if (Build.VERSION.SDK_INT >= 21) {
-                AudioAttributes attrs = new AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_GAME)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build();
-                AudioFormat fmt = new AudioFormat.Builder()
-                        .setSampleRate(sampleRate)
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                        .build();
-                track = new AudioTrack(attrs, fmt, pcm.length * 2, AudioTrack.MODE_STATIC, AudioTrack.AUDIO_SESSION_ID_GENERATE);
-            } else {
-                track = new AudioTrack(android.media.AudioManager.STREAM_MUSIC, sampleRate,
-                        AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT,
-                        pcm.length * 2, AudioTrack.MODE_STATIC);
+        @JavascriptInterface
+        public String setNativeRect(final int x, final int y, final int w, final int h) {
+            try {
+                ui.post(() -> {
+                    try {
+                        if (nativeInPlaceView == null || rootFrame == null) return;
+                        int ww = Math.max(64, w);
+                        int hh = Math.max(64, h);
+                        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ww, hh);
+                        lp.leftMargin = Math.max(0, x);
+                        lp.topMargin = Math.max(0, y);
+                        nativeInPlaceView.setLayoutParams(lp);
+                        nativeInPlaceView.setVisibility(nativeInPlaceEnabled ? View.VISIBLE : View.GONE);
+                    } catch (Throwable t) { appendNativeLog("SET_RECT_ERROR " + safeMsg(t)); }
+                });
+                return "RECT_OK x=" + x + " y=" + y + " w=" + w + " h=" + h;
+            } catch (Throwable t) {
+                return "RECT_ERROR " + safeMsg(t);
             }
-            int written = track.write(pcm, 0, pcm.length);
-            track.play();
-            appendNativeSegaLog("NATIVE_AUDIO_TEST_START sampleRate=" + sampleRate + " samples=" + pcm.length + " written=" + written + " playState=" + track.getPlayState());
-            ui.postDelayed(() -> {
-                try { track.stop(); } catch (Throwable ignored) {}
-                try { track.release(); } catch (Throwable ignored) {}
-                appendNativeSegaLog("NATIVE_AUDIO_TEST_STOP_RELEASE");
-            }, 760);
-            nativeSegaLastAudio = "C++ audio test OK written=" + written;
-            return nativeSegaLastAudio;
-        } catch (Throwable t) {
-            String msg = "C++ audio test ERROR " + safe(t.getMessage());
-            nativeSegaLastAudio = msg;
-            appendNativeSegaLog(msg);
-            return msg;
+        }
+
+        @JavascriptInterface
+        public String loadRomBase64(String name, String b64) {
+            try {
+                if (b64 == null) b64 = "";
+                String clean = b64.replaceAll("\\s", "");
+                byte[] data = Base64.decode(clean, Base64.DEFAULT);
+                long t0 = System.currentTimeMillis();
+                String info = NativeSegaCoreBridge.romInfo(data);
+                long dt = System.currentTimeMillis() - t0;
+                nativeLastRomInfo = "ROM: " + safeFileName(name) + "\n" + info;
+                nativeLastStatus = "ROM_TO_CPP_OK bytes=" + data.length + " ms=" + dt;
+                appendNativeLog("ROM_TO_CPP name=" + safeFileName(name) + " bytes=" + data.length + " ms=" + dt);
+                return nativeLastStatus + "\n" + info;
+            } catch (Throwable t) {
+                nativeLastStatus = "ROM_TO_CPP_ERROR " + safeMsg(t);
+                appendNativeLog(nativeLastStatus);
+                return nativeLastStatus;
+            }
+        }
+
+        @JavascriptInterface
+        public String input(String btn, boolean down) {
+            try {
+                int key = mapNativeKey(btn);
+                if (key < 0) return "INPUT_UNKNOWN " + btn;
+                NativeSegaCoreBridge.setInput(key, down);
+                nativeInputEvents++;
+                String st = NativeSegaCoreBridge.inputStatus();
+                if (nativeInputEvents <= 16 || nativeInputEvents % 20 == 0) appendNativeLog("INPUT " + btn + " " + (down ? "DOWN" : "UP") + " count=" + nativeInputEvents + " " + st);
+                return st;
+            } catch (Throwable t) {
+                String e = "INPUT_ERROR " + safeMsg(t);
+                appendNativeLog(e);
+                return e;
+            }
+        }
+
+        @JavascriptInterface
+        public String audioTest() {
+            try {
+                int sampleRate = 48000;
+                int samples = 16000;
+                short[] pcm = new short[samples];
+                NativeSegaCoreBridge.makeAudioTone(pcm, sampleRate, 440.0);
+                AudioTrack track;
+                if (Build.VERSION.SDK_INT >= 21) {
+                    track = new AudioTrack.Builder()
+                            .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                            .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(sampleRate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+                            .setBufferSizeInBytes(samples * 2)
+                            .setTransferMode(AudioTrack.MODE_STATIC)
+                            .build();
+                } else {
+                    track = new AudioTrack(android.media.AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, samples * 2, AudioTrack.MODE_STATIC);
+                }
+                int written = track.write(pcm, 0, pcm.length);
+                track.play();
+                appendNativeLog("AUDIO_TEST_PLAY sampleRate=" + sampleRate + " written=" + written + " state=" + track.getPlayState());
+                ui.postDelayed(() -> { try { track.stop(); track.release(); } catch (Throwable ignored) {} }, 850);
+                return "AUDIO_TEST_OK sampleRate=" + sampleRate + " written=" + written;
+            } catch (Throwable t) {
+                String e = "AUDIO_TEST_ERROR " + safeMsg(t);
+                appendNativeLog(e);
+                return e;
+            }
+        }
+
+        @JavascriptInterface
+        public String saveLog() {
+            try {
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2PU_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
+                appendNativeLog("SAVE_LOG_OK " + path);
+                return "SAVE_LOG_OK " + path;
+            } catch (Throwable t) {
+                String e = "SAVE_LOG_ERROR " + safeMsg(t);
+                appendNativeLog(e);
+                return e;
+            }
         }
     }
 
-    private String buildNativeSegaLogText() {
-        String build;
-        try { build = NativeSegaCoreBridge.buildString(); } catch (Throwable t) { build = "native build ERROR " + safe(t.getMessage()); }
-        String status;
-        try { status = NativeSegaCoreBridge.inputStatus(); } catch (Throwable t) { status = "native input ERROR " + safe(t.getMessage()); }
-        String events;
-        synchronized (nativeSegaLog) { events = nativeSegaLog.toString(); }
-        return "SEGA C++ IN-PLACE LOG / BUILD2PT\n"
-                + "AtariHelp.eu EMU-10 BUILD2PT_SEGA_NATIVE_CPP_IN_PLACE_NORMAL_UI_STAGE84\n\n"
-                + "DEVICE sdk=" + Build.VERSION.SDK_INT + " release=" + Build.VERSION.RELEASE + " brand=" + Build.BRAND + " model=" + Build.MODEL + " product=" + Build.PRODUCT + " cores=" + Runtime.getRuntime().availableProcessors() + "\n"
-                + "nativeInPlaceActive=" + nativeSegaInPlaceActive + "\n"
-                + "nativeBuild=\n" + build + "\n\n"
-                + "lastRomName=" + nativeSegaLastRomName + "\n"
-                + "inputEvents=" + nativeSegaInputEvents + "\n"
-                + "inputStatus=" + status + "\n"
-                + "lastAudio=" + nativeSegaLastAudio + "\n\n"
-                + "ROM BLOCK:\n" + nativeSegaLastRomInfo + "\n\n"
-                + "DULEZITE:\n"
-                + "- Tohle uz NEOTEVIRA dalsi C++ okno.\n"
-                + "- C++ bezi v normalni Sega obrazovce pres Java -> JNI -> C++.\n"
-                + "- Normalni WebView Sega zustava jako zaloha.\n"
-                + "- Toto porad neni hotovy Sega gameplay; proof pattern bude nahrazen realnym C++ core.\n\n"
-                + "EVENTS:\n" + events;
-    }
+    private String safeMsg(Throwable t) { return t == null ? "null" : (t.getMessage() == null ? t.toString() : t.getMessage()); }
 
-    private String saveNativeSegaLogToDownloads() {
-        try {
-            String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2PT_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
-            String path = writeBytesToDownloads(fn, buildNativeSegaLogText().getBytes("UTF-8"));
-            appendNativeSegaLog("NATIVE_LOG_SAVE_OK path=" + path);
-            return "DOWNLOADS_OK:" + path;
-        } catch (Throwable t) {
-            String msg = "NATIVE_LOG_SAVE_ERROR " + safe(t.getMessage());
-            appendNativeSegaLog(msg);
-            return msg;
-        }
-    }
-
-    private class NativeSegaInPlaceView extends View {
-        private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
-        private final Bitmap bitmap = Bitmap.createBitmap(320, 224, Bitmap.Config.ARGB_8888);
-        private final int[] pixels = new int[320 * 224];
+    private class NativeInPlaceView extends View {
+        private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
         private int frame = 0;
-        NativeSegaInPlaceView(Activity ctx) { super(ctx); setWillNotDraw(false); setFocusable(false); setClickable(false); }
+        private int[] argb = new int[0];
+        private Bitmap bitmap;
+        private boolean running = false;
+        private final Runnable tick = new Runnable() {
+            @Override public void run() {
+                if (!running) return;
+                frame++;
+                invalidate();
+                postDelayed(this, 16);
+            }
+        };
+        NativeInPlaceView(Activity a) { super(a); setWillNotDraw(false); }
+        void start() { if (!running) { running = true; post(tick); } }
+        @Override protected void onDetachedFromWindow() { running = false; super.onDetachedFromWindow(); }
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
-            if (!nativeSegaInPlaceActive) return;
+            int w = Math.max(16, getWidth());
+            int h = Math.max(16, getHeight());
+            int n = w * h;
+            if (argb.length != n) { argb = new int[n]; bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); }
             try {
-                NativeSegaCoreBridge.renderPattern(320, 224, frame++, pixels);
-                bitmap.setPixels(pixels, 0, 320, 0, 0, 320, 224);
-                canvas.drawBitmap(bitmap, null, new Rect(0, 0, getWidth(), getHeight()), paint);
+                NativeSegaCoreBridge.renderPattern(w, h, frame, argb);
+                bitmap.setPixels(argb, 0, w, 0, 0, w, h);
+                canvas.drawBitmap(bitmap, 0, 0, paint);
             } catch (Throwable t) {
-                paint.setColor(android.graphics.Color.rgb(0, 0, 0));
-                canvas.drawRect(0, 0, getWidth(), getHeight(), paint);
-                paint.setColor(android.graphics.Color.rgb(255, 225, 122));
-                paint.setTextSize(24);
-                canvas.drawText("C++ render error: " + safe(t.getMessage()), 20, 50, paint);
+                canvas.drawColor(Color.rgb(20, 0, 0));
+                appendNativeLog("RENDER_ERROR " + safeMsg(t));
             }
-            postInvalidateDelayed(16);
         }
     }
 
@@ -505,13 +479,7 @@ public class MainActivity extends Activity {
                 checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 10);
         }
-        rootFrame = new FrameLayout(this);
         web = new WebView(this);
-        rootFrame.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        nativeSegaView = new NativeSegaInPlaceView(this);
-        nativeSegaView.setVisibility(View.GONE);
-        FrameLayout.LayoutParams nlp = new FrameLayout.LayoutParams(1, 1);
-        rootFrame.addView(nativeSegaView, nlp);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -575,6 +543,8 @@ public class MainActivity extends Activity {
             }
         });
         web.loadUrl("file:///android_asset/index.html");
+        rootFrame = new FrameLayout(this);
+        rootFrame.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(rootFrame);
     }
 

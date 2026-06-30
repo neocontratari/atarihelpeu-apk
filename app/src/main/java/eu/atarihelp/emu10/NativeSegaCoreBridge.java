@@ -1,9 +1,8 @@
 package eu.atarihelp.emu10;
 
 /**
- * BUILD2PT_SEGA_NATIVE_CPP_IN_PLACE_NORMAL_UI_STAGE84
- * Small JNI bridge used directly by the normal Sega WebView UI.
- * No separate native test Activity is required for the in-place path.
+ * BUILD2PU: tiny Java -> JNI bridge for C++ proof directly inside the normal Sega screen.
+ * This is not Sega gameplay yet; it only exposes ROM header/checksum, input, pattern render and PCM tone.
  */
 public final class NativeSegaCoreBridge {
     static {

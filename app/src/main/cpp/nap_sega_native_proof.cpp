@@ -49,7 +49,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2PT NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
+    std::string s = "BUILD2PU NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -105,12 +105,12 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRomInfo(JNIEnv* env, jclas
         out << "- Mega Drive header: NE / soubor je mensi nez 0x200\n";
     }
 
-    out << "\nBUILD2PT DULEZITE:\n";
+    out << "\nBUILD2PU DULEZITE:\n";
     out << "ROM je ted realne prectena v Jave a analyzovana v C++.\n";
-    out << "Native proof pattern ma v BUILD2PS cil 60 FPS, aby se overila nativni cesta pred Sega core.\n";
+    out << "Native proof pattern ma v BUILD2PU cil 60 FPS, aby se overila nativni cesta pred Sega core.\n";
     out << "Dalsi krok je vymena proof patternu za skutecny Sega C++ core.\n";
     std::string s = out.str();
-    NAPLOG("BUILD2PT ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
+    NAPLOG("BUILD2PU ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
     return env->NewStringUTF(s.c_str());
 }
 
@@ -218,10 +218,10 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(JNIEnv* env,
 }
 
 
-// BUILD2PT: same native core exposed to MainActivity/WebView in-place bridge.
+// BUILD2PU: same native core exposed to MainActivity/WebView in-place bridge.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2PT NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
+    std::string s = "BUILD2PU NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
