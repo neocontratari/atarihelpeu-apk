@@ -1,0 +1,27 @@
+BUILD2QR_SEGA_NATIVE_CPP_ONLY_NO_AUTOBOOT_CLEAN_AUDIO_STAGE108 overlay
+
+KODY JSOU ZMENENE.
+
+Zmenene soubory:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+
+Hlavni opravy proti BUILD2QQ:
+1) Sega je porad C++ ONLY - Java/WebView ClownMDEmu wrapper zustava vypnuty.
+2) QR vypina AUTOLOAD posledni native ROM po navratu do Sega stranky.
+   - Duvod: BUILD2QQ po navratu z Atari/130XE dokazal spustit zvuk, ale obraz zustal cerny.
+   - QR po vstupu do Sega jen ARMS C++ a ceka na cisty vyber ROM pres SBIRKA/CARTRIDGE.
+3) QR maze stare Java hardboot klice a maze i nativeRom cache pri startu Sega stranky.
+   - Cilem je zabit stav "stary core / stary buffer / cerna obrazovka se zvukem".
+4) Audio: ustup od agresivniho QQ smallBuffer.
+   - Java AudioTrack chunk 320 misto 256.
+   - Stabilnejsi HW buffer ~53 ms, kratky prefill max ~960 frames.
+   - Native FIFO 1792/3584 misto QQ 1280/2560.
+   - Soft limiter + one-pole smoothing ponechan, ale trim neni tak agresivni.
+5) Render/re-enter: pridany redraw burst po loadRomBase64 a vice delayed DPR rect update.
+6) Render guard: pokud real core jeste nema hotovy prvni frame, nevraci cerny cached frame jako validni obraz.
+
+Poznamka:
+- QR je ladici build. Cilem je potvrdit: zadna Java Sega, zadny auto-reload black-screen-with-sound, cistsi zvuk nez QQ.
