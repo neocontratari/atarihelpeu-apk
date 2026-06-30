@@ -27,8 +27,8 @@ static uint16_t g_lastChecksumCalc = 0;
 static std::string g_lastTitle = "";
 
 
-// BUILD2QD: native signal guard for real-core bring-up.
-// User reported full app process crash after ROM selection in BUILD2QD/QC. Java try/catch cannot catch SIGSEGV/SIGABRT.
+// BUILD2QE: native signal guard for real-core bring-up.
+// User reported full app process crash after ROM selection in BUILD2QE/QC. Java try/catch cannot catch SIGSEGV/SIGABRT.
 // This guard is debug-stage only: it catches a native signal inside the C++ core-load call and returns a log marker instead of killing the app.
 static sigjmp_buf g_nap_sega_sig_jmp;
 static std::atomic<int> g_nap_sega_guard_active{0};
@@ -61,7 +61,7 @@ static const char* nap_signal_name(int sig) {
 }
 
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-// BUILD2QD: tiny Android frontend for the real ClownMDEmu-core.
+// BUILD2QE: tiny Android frontend for the real ClownMDEmu-core.
 // It is intentionally small: ROM load -> hard reset -> iterate -> scanline framebuffer -> existing in-place view.
 // Audio mixing is not wired yet; this stage is the first real core import/visual boot attempt, no fake gameplay.
 struct NapRealCoreState {
@@ -199,7 +199,7 @@ static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
     out << "core=ClownMDEmu-core offline/vendor linked by CMake\n";
     out << "pattern=OFF; fake/proof moving cubes removed\n";
 
-    // BUILD2QD: guarded bring-up. If ClownMDEmu crashes inside init/reset, catch signal and return diagnostic.
+    // BUILD2QE: guarded bring-up. If ClownMDEmu crashes inside init/reset, catch signal and return diagnostic.
     NapSignalGuard guard;
     if (sigsetjmp(g_nap_sega_sig_jmp, 1) != 0) {
         int sig = g_nap_sega_last_signal;
@@ -260,7 +260,7 @@ static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
 }
 
 static bool nap_real_render_to_argb(int out_w, int out_h, jint *out_px) {
-    // BUILD2QD: no automatic ClownMDEmu_Iterate from Android View render thread.
+    // BUILD2QE: no automatic ClownMDEmu_Iterate from Android View render thread.
     // This prevents the ROM-load crash reported in 2QB while keeping real core load state intact.
     (void)out_w; (void)out_h; (void)out_px;
     return false;
@@ -272,7 +272,7 @@ static void nap_render_guard_frame(int width, int height, jintArray argbOut, JNI
     int needed = width * height;
     if (len < needed) return;
     std::vector<jint> px((size_t)needed, (jint)0xff03070au);
-    // BUILD2QD: blank guarded monitor. No running cubes, no center square, no hash bars.
+    // BUILD2QE: blank guarded monitor. No running cubes, no center square, no hash bars.
     // Subtle blue border only shows the native view is alive and placed correctly.
     auto put = [&](int x0,int y0,int rw,int rh,uint32_t c){
         int x1=std::max(0,x0), y1=std::max(0,y0), x2=std::min(width,x0+rw), y2=std::min(height,y0+rh);
@@ -318,7 +318,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2QD NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
+    std::string s = "BUILD2QE NATIVE C++ STAGED ROM NO CRASH OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -326,7 +326,7 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* en
                     "C++ PCM audio generator: OK\n"
                     "C++ native log export: OK\n"
                     "C++ 60Hz timing proof target: OK\n"
-                    "Status: ClownMDEmu-core native import attempt; no ROM in APK";
+                    "Status: staged ROM only; native core auto-exec disabled after crash; no ROM in APK";
     return env->NewStringUTF(s.c_str());
 }
 
@@ -374,12 +374,12 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRomInfo(JNIEnv* env, jclas
         out << "- Mega Drive header: NE / soubor je mensi nez 0x200\n";
     }
 
-    out << "\nBUILD2QD DULEZITE:\n";
+    out << "\nBUILD2QE DULEZITE:\n";
     out << "ROM je ted realne prectena v Jave a analyzovana v C++.\n";
-    out << "BUILD2QD ma vypnuty proof pattern a chrani real-core load proti padu aplikace.\n";
+    out << "BUILD2QE ma vypnuty proof pattern a chrani real-core load proti padu aplikace.\n";
     out << "Dalsi krok je podle logu opravit konkretni core init/reset/iterate misto dalsich fake patternu.\n";
     std::string s = out.str();
-    NAPLOG("BUILD2QD ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
+    NAPLOG("BUILD2QE ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
     return env->NewStringUTF(s.c_str());
 }
 
@@ -496,17 +496,17 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(JNIEnv* env,
 }
 
 
-// BUILD2QD: same native core exposed to MainActivity/WebView in-place bridge.
+// BUILD2QE: same native core exposed to MainActivity/WebView in-place bridge.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2QD NATIVE C++ IN-PLACE NORMAL SEGA UI PROOF OK\n"
+    std::string s = "BUILD2QE NATIVE C++ STAGED ROM NO CRASH OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
                     "C++ input state: OK\n"
                     "C++ PCM audio generator: OK\n"
                     "C++ guarded render: OK\n"
-                    "Status: integrated into normal Sega UI; ClownMDEmu-core native import with signal guard; no ROM in APK";
+                    "Status: normal Sega UI; Java-safe monitor; ROM staged only; native core auto-exec disabled after crash; no ROM in APK";
     return env->NewStringUTF(s.c_str());
 }
 
@@ -550,7 +550,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_makeAudioTone(JNIEnv* env, jclass, 
     Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(env, nullptr, pcmOut, sampleRate, hz);
 }
 
-// BUILD2QD REAL CORE ADAPTER SLOT
+// BUILD2QE REAL CORE ADAPTER SLOT
 // This stage imports local vendored ClownMDEmu-core sources and links only interpreter/core libraries into the native .so.
 #ifndef NAP_SEGA_VENDOR_CORE_PRESENT
 #define NAP_SEGA_VENDOR_CORE_PRESENT 0
@@ -578,16 +578,19 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_realCoreLoadRom(JNIEnv* env, jclass, jbyteArray romBytes) {
     if (!romBytes) return env->NewStringUTF("REAL_CORE_LOAD_ERROR rom=null");
     jsize len = env->GetArrayLength(romBytes);
-#if NAP_SEGA_VENDOR_CORE_PRESENT
-    std::vector<uint8_t> data((size_t)len);
-    env->GetByteArrayRegion(romBytes, 0, len, reinterpret_cast<jbyte*>(data.data()));
-    std::string result = nap_real_load_rom_bytes(data.data(), data.size());
-    return env->NewStringUTF(result.c_str());
-#else
+    // BUILD2QE: DO NOT execute ClownMDEmu init/reset/iterate here.
+    // 2QB/2QC/2QD crashed the whole process after ROM selection, so this stage keeps app alive and returns a log marker.
     std::ostringstream out;
-    out << "REAL_CORE_LOAD_BLOCKED bytes=" << len << "\n";
-    out << "CORE_VENDOR_MISSING\n";
-    out << "C++ bridge is ready, but native core was not linked.";
-    return env->NewStringUTF(out.str().c_str());
+    out << "REAL_CORE_ROM_STAGED_ONLY_NO_NATIVE_EXEC bytes=" << len << "\n";
+#if NAP_SEGA_VENDOR_CORE_PRESENT
+    out << "REAL_CORE_PRESENT=YES but auto execution disabled in BUILD2QE\n";
+#else
+    out << "REAL_CORE_PRESENT=NO\n";
 #endif
+    out << "CORE_NATIVE_AUTO_LOAD_DISABLED=YES\n";
+    out << "pattern=OFF java-safe dark monitor only\n";
+    out << "reason=previous builds crashed before ULOZENE log after ROM picker\n";
+    out << "next_step=explicit single native core step with pre-save log, not automatic load from ROM picker";
+    return env->NewStringUTF(out.str().c_str());
 }
+

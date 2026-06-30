@@ -1,0 +1,16 @@
+BUILD2QE_SEGA_NATIVE_CPP_STAGED_ROM_NO_CRASH_STAGE95
+
+ZMENENE SOUBORY:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaProofActivity.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/cpp/CMakeLists.txt
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/cpp/vendor/... offline Clown vendor sources preserved
+
+OPRAVA:
+- Vypnuto automaticke spousteni real ClownMDEmu init/reset/iterate po vyberu ROM.
+- ROM se pouze nacte, zanalyzuje a STAGNE do bezpecneho logu.
+- Monitor kresli Java-only tmavy guard obraz bez JNI render smycky.
+- Cilem je zastavit pad aplikace a ziskat ULOZENE log po vyberu hry.

@@ -224,8 +224,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2QD\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2QD_SEGA_NATIVE_CPP_SIGNAL_GUARD_NO_CRASH_STAGE94\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2QE\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2QE_SEGA_NATIVE_CPP_STAGED_ROM_NO_CRASH_STAGE95\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -302,15 +302,28 @@ public class MainActivity extends Activity {
             try {
                 if (b64 == null) b64 = "";
                 String clean = b64.replaceAll("\\s", "");
+                long decodeStart = System.currentTimeMillis();
                 byte[] data = Base64.decode(clean, Base64.DEFAULT);
+                long decodeMs = System.currentTimeMillis() - decodeStart;
                 long t0 = System.currentTimeMillis();
                 String info = NativeSegaCoreBridge.romInfo(data);
-                String realCore = NativeSegaCoreBridge.realCoreLoadRom(data);
                 long dt = System.currentTimeMillis() - t0;
+
+                // BUILD2QE: user reported full process crash immediately after selecting ROM in 2QB/2QC/2QD.
+                // Do NOT call real ClownMDEmu init/reset/iterate from the UI yet. Stage the ROM, keep app alive,
+                // and make the normal ULOZENE log possible. Next build can call one controlled core step only.
+                String realCore = "REAL_CORE_ROM_STAGED_ONLY_NO_NATIVE_EXEC\n"
+                        + "bytes=" + data.length + "\n"
+                        + "decodeMs=" + decodeMs + " parserMs=" + dt + "\n"
+                        + "CORE_NATIVE_AUTO_LOAD_DISABLED=YES\n"
+                        + "reason=2QB/2QC/2QD crashed before log after ROM selection\n"
+                        + "pattern=OFF java-safe dark monitor only\n"
+                        + "next_step=single-step native init behind explicit guarded call, not automatic ROM picker";
+
                 nativeLastRomInfo = "ROM: " + safeFileName(name) + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
-                nativeLastStatus = "ROM_TO_CPP_OK bytes=" + data.length + " ms=" + dt + " | " + realCore.replace('\n', ' ');
-                appendNativeLog("ROM_TO_CPP name=" + safeFileName(name) + " bytes=" + data.length + " ms=" + dt);
-                appendNativeLog("REAL_CORE_LOAD " + realCore.replace('\n', ' '));
+                nativeLastStatus = "ROM_STAGED_CPP_SAFE_NO_CRASH bytes=" + data.length + " decodeMs=" + decodeMs + " parserMs=" + dt;
+                appendNativeLog("ROM_STAGED_SAFE name=" + safeFileName(name) + " bytes=" + data.length + " decodeMs=" + decodeMs + " parserMs=" + dt);
+                appendNativeLog("REAL_CORE_AUTO_LOAD_DISABLED due previous native crash; log must be savable now");
                 return nativeLastStatus + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
             } catch (Throwable t) {
                 nativeLastStatus = "ROM_TO_CPP_ERROR " + safeMsg(t);
@@ -369,7 +382,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String saveLog() {
             try {
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QD_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QE_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
@@ -407,12 +420,17 @@ public class MainActivity extends Activity {
             int n = w * h;
             if (argb.length != n) { argb = new int[n]; bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888); }
             try {
-                NativeSegaCoreBridge.renderPattern(w, h, frame, argb);
-                bitmap.setPixels(argb, 0, w, 0, 0, w, h);
-                canvas.drawBitmap(bitmap, 0, 0, paint);
+                // BUILD2QE: Java-only guard picture. No JNI render call while crash source is isolated.
+                canvas.drawColor(Color.rgb(3, 7, 10));
+                Paint border = paint;
+                border.setStyle(Paint.Style.STROKE);
+                border.setStrokeWidth(3f);
+                border.setColor(Color.rgb(0, 136, 204));
+                canvas.drawRect(2, 2, w - 2, h - 2, border);
+                border.setStyle(Paint.Style.FILL);
             } catch (Throwable t) {
                 canvas.drawColor(Color.rgb(20, 0, 0));
-                appendNativeLog("RENDER_ERROR " + safeMsg(t));
+                appendNativeLog("JAVA_GUARD_RENDER_ERROR " + safeMsg(t));
             }
         }
     }
