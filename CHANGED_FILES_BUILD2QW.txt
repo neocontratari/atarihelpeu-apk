@@ -1,0 +1,21 @@
+BUILD2QW - changed files
+
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- keeps QT/QP audio profile from BUILD2QV/QT; audio tuning is not changed.
+- fixes native view removal on UI thread; prevents Only-the-original-thread view hierarchy errors after leaving Sega/Atari/VBXE.
+- landscape phone mode: native C++ video becomes full-screen video layer behind transparent WebView controls.
+- native renderer now fetches 320x224 real frame and scales on Canvas instead of asking C++ to render huge phone-sized buffers.
+- Android WebView made transparent for mobile landscape overlay controls.
+
+app/src/main/assets/emu_sega/index.html
+- mobile landscape CSS: full-screen video, transparent joystick/buttons over image, no separate bottom joystick strip.
+- robust landscape detection using screen.orientation plus viewport fallback.
+- native rect in landscape is full screen, not 38% top strip.
+- file-picker visibilityHidden is ignored while ROM picker is open.
+- Sonic JUE/World ROM is no longer region-patched to U.
+
+app/src/main/cpp/nap_sega_native_proof.cpp
+- build markers updated to BUILD2QW; audio constants left on QT/QP profile.
+
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- build comments/markers updated.
