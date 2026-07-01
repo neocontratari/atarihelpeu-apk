@@ -1,0 +1,14 @@
+BUILD2RG changed files:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/assets/emu_sega/index.html
+
+Main changes:
+- AudioTrack now writes full chunks even on partial native got values.
+- Larger HIGH/LOW audio safety buffer and prefill.
+- Native C++ receives LOW/HIGH mode and changes audio FIFO target/max/lowWater.
+- Native worker has limited audio backlog catch-up.
+- Native pullAudio writes directly to Java short[] without per-call std::vector allocation.
+- FM/PSG/PCM callback temp buffers are thread_local to reduce allocation pressure.
+- LOG button de-dup in JS and Java to prevent 4 files from one tap.

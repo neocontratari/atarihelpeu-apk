@@ -1,7 +1,7 @@
 package eu.atarihelp.emu10;
 
 /**
- * BUILD2RF: Java -> JNI bridge for C++ core directly inside the normal Sega screen.
+ * BUILD2RG: Java -> JNI bridge for C++ core directly inside the normal Sega screen.
  * Sega WebView/Java wrapper is disabled on this page; this bridge is the only Sega runtime path.
  */
 public final class NativeSegaCoreBridge {
@@ -18,14 +18,15 @@ public final class NativeSegaCoreBridge {
     public static native String inputStatus();
     public static native void makeAudioTone(short[] pcmOut, int sampleRate, double hz);
 
-    // BUILD2RF: real-core adapter slot + C++ only QT-audio-kept + blackscreen guard lifecycle.
+    // BUILD2RG: real-core adapter slot + C++ only QT-audio-kept + blackscreen guard lifecycle.
     // Without the real C/C++ Sega core source dropped into app/src/main/cpp/vendor, it must NOT fake gameplay.
     public static native String realCoreStatus();
     public static native String realCoreLoadRom(byte[] romBytes);
     public static native String realCoreStep();
     public static native int pullAudio(short[] pcmOut, int frames);
+    public static native String setPerformanceMode(String mode);
 
-    // BUILD2RF: tvrdy lifecycle stop pro normalni app stranky.
+    // BUILD2RG: tvrdy lifecycle stop pro normalni app stranky.
     // Vypne native worker + audio FIFO, aby Sega obraz/zvuk nezustaval pres Intro/VBXE/Atari/PS1.
     public static native String shutdown();
 }
