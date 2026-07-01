@@ -1,0 +1,32 @@
+BUILD2QY_SEGA_NATIVE_CPP_ONLY_AUDIT_REGION_MOBILE_STAGE115
+
+KODY JSOU ZMENENE.
+
+Zmenene soubory:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+
+Co BUILD2QY cilene resi:
+1) Sega C++ only audit:
+   - C++ CORE tlacitko je odstranene/zakryte.
+   - Old Java/WebView ClownMDEmu iframe je vyhozen z DOM.
+   - Sega runtime zustava C++ native only pres SBIRKA/CARTRIDGE -> AHNATIVE -> C++.
+
+2) Region audit pro vsechny hry:
+   - C++ cesta uz neprepisuje Europe/PAL ROM header na U/NTSC.
+   - applyEuCompatibilityPatches() v native C++ ceste vraci NO_PATCH_RESPECT_ROM_HEADER.
+   - C++ core tak pouzije auto region podle ROM headeru: E = PAL/Overseas, J = JP/NTSC, U/JUE = US/NTSC.
+   - Duvod: Samurai Shodown (Europe) ukazal PAL/French lock message, protoze predchozi obecny E->U patch rozbil normalni Europe-only ROM.
+
+3) Mobile video cleanup:
+   - Landscape pouziva stage/viewport rect, ne stare iframe/canvas recty.
+   - Portrait navrat ignoruje docasne 0x0 / moc male recty ze Samsung WebView, aby se video neztratilo do cerne obrazovky.
+   - V landscape se UI blit capuje cca na 30 fps na starych telefonech; core/audio bezi dal podle C++ clocku. Je to ochrana proti 2fps WebView kresleni na S8/A12, ne final vykonovy profil.
+   - Zvukovy profil zustava QT/QP, neni dal ladeny.
+
+Co BUILD2QY NEslibuje:
+- Netvrdim final 100% Sega emulator.
+- Netvrdim, ze S8/A12 uz stihaji plnych 50/60 fps; to musi potvrdit realny test.
+- Neobsahuje ROM soubory.
