@@ -1,0 +1,10 @@
+BUILD2RI changed files:
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/assets/emu_sega/index.html
+
+BUILD2RI purpose:
+- FM music timing + bass clamp after BUILD2RH test showed video mostly holds but music slows/chrasti.
+- No UI/layout experiment, no skin patching.
+- Stop FM/PSG desync-drop losses and keep AudioTrack clock stable.
