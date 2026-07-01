@@ -1,0 +1,19 @@
+BUILD2QV_SEGA_NATIVE_CPP_ONLY_QT_AUDIO_BLACKSCREEN_GUARD_STAGE112
+
+KODY JSOU ZMENENE.
+
+Zmenene soubory:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/assets/emu_sega/index.html
+
+Co je cilem:
+- vratit zvukovy profil z BUILD2QT/QP clean a dal ho uz neladit,
+- zachovat Sega C++ only bez Java/WebView wrapperu,
+- opravit stav po navratu z Atari 130XE: cerna obrazovka + zvuk,
+- zvuk se nespusti, dokud native core nehlasi frameReady=YES a Android native View opravdu nekreslil.
+
+Dulezite:
+- Dve APK z GitHub workflow nejsou v tomto overlay opraveny, protoze k tomu je potreba workflow/build log.
+- Toto je realny overlay, ale nebyl prebuilden v Android Studiu v sandboxu.
