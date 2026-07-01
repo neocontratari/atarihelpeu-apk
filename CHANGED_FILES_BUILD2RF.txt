@@ -1,0 +1,24 @@
+BUILD2RF changed files:
+
+app/src/main/assets/emu_sega/index.html
+- BUILD label updated to BUILD2RF.
+- SBIRKA changed from ROM picker to HIGH/LOW performance selector.
+- CARTRIDGE / CART remains ROM picker.
+- Added perfMenu overlay (normal UI, not fake patch over skin).
+- Landscape A/B/C moved vertically on the right bottom side.
+- Logs performance mode in JS log.
+
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- BUILD label updated to BUILD2RF.
+- Added nativePerformanceMode HIGH/LOW controlled by AHNATIVE.setPerformanceMode().
+- Render thread uses HIGH=full presentation, LOW=reduced presentation pacing for S8/A12.
+- Native log includes nativePerformanceMode.
+- AudioTrack path keeps QT/QP profile and logs audio rollback markers.
+
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- BUILD comments updated to RF.
+
+app/src/main/cpp/nap_sega_native_proof.cpp
+- BUILD label updated to RF.
+- C++ audio callback path rolled back from RE thread_local buffer to previous vector callback style.
+- Audio status logs FM_PSG_QT_AUDIO_ROLLBACK_RF.
