@@ -1,0 +1,22 @@
+BUILD2QZ_SEGA_NATIVE_CPP_ONLY_CLEAN_TEXTURE_MOBILE_STAGE116
+
+ZMENENE SOUBORY:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/assets/emu_sega/index.html
+
+HLAVNI SMYSL:
+- Nelepit dalsi jednu ROM. Udelany Sega C++ mobile render audit.
+- Sega Java/WebView emulator wrapper zustava vypnuty.
+- C++ CORE tlacitko je odstranene z DOM; viditelny zbytek v PNG je zakryty jako plochy skin patch, ne jako nove tlacitko.
+- Video uz se nekresli pres Android View.onDraw/WebView invalidaci.
+- Native video pouziva Android TextureView s vlastnim render threadem AtariHelpSegaTextureQZ.
+- C++ renderPattern uz nealokuje std::vector pro kazdy frame; zapisuje primo do Java int[] pres GetIntArrayElements.
+- Audio profil zustava QT/QP, neladen.
+- Region ROM se neprepisuje; Samurai/Europe zustava PAL/E podle headeru.
+
+CO SE NEMENI:
+- Atari 130XE cast aplikace se nema menit.
+- Web/Help/Player/PS1/VBXE se nema menit.
+- Sega audio profil se nema dal ladit v tomto buildu.
