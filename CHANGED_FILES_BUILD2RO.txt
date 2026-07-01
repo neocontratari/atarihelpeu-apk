@@ -1,0 +1,18 @@
+BUILD2RO changed files:
+
+app/src/main/cpp/nap_sega_native_proof.cpp
+- Critical fix: zero scratch buffers before calling ClownMDEmu FM/PSG/PCM/CDDA audio generators.
+- Reason: ClownMDEmu FM_OutputSamples() and PSG_Update() use +=, so stale thread_local samples caused fake bass/gong/two-musics artefacts.
+- Enabled core low-pass again for reference Sega output.
+- Removed fake rumble filter from final mix.
+- Set audio status markers to FM_PSG_ZEROED_FRONTEND_RO.
+
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- Updated build/log markers to BUILD2RO.
+- startNativeCoreAudioStream now hard-stops any existing AudioTrack/thread before starting a new one.
+
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- Updated comments/build labels.
+
+app/src/main/assets/emu_sega/index.html
+- Updated build/log labels to BUILD2RO.
