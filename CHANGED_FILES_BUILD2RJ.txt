@@ -1,0 +1,17 @@
+BUILD2RJ_SEGA_NATIVE_CPP_ONLY_AUDIO_MASTER_FRONTEND_STAGE126
+
+ZMENENE SOUBORY:
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/assets/emu_sega/index.html
+
+KODY JSOU ZMENENE.
+
+HLAVNI ZMENA:
+- zahozene RI bass-clamp lepeni,
+- FM/YM2612 a PSG se batch-resampluji oddelene do 48 kHz,
+- FM gain prudce snizen,
+- master limiter je az na konci mixu,
+- LOW/HIGH uz nemeni audio clock/FIFO/gain, jen video prezentaci,
+- leve okrajove sloupce framebufferu jsou maskovane tvrdsi ochranou.
