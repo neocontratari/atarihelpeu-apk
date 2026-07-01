@@ -1,0 +1,19 @@
+BUILD2RM changed files:
+
+app/src/main/cpp/nap_sega_native_proof.cpp
+- Replaced RL volume/clamp frontend with box-average anti-alias audio frontend.
+- Added PSG 223 kHz -> 48 kHz averaging downsampler.
+- Added FM 53 kHz -> 48 kHz averaging downsampler.
+- Removed sample-pick downsampling path that could alias into fake bass/gong.
+- Updated gains to fmGain=64, psgGain=56, masterGain=92.
+- Added startup audio ramp against initial gong/thump.
+
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- Updated build/log labels to BUILD2RM.
+- AudioTrack path stays stereo 48 kHz and logs RM anti-alias markers.
+
+app/src/main/assets/emu_sega/index.html
+- Updated build/log/help labels to BUILD2RM.
+
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- Build label update only if present.
