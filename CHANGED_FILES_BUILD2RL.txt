@@ -1,0 +1,19 @@
+BUILD2RL_SEGA_NATIVE_CPP_ONLY_CLEAN_AUDIO_FRONTEND_STAGE128
+
+ZMENENE SOUBORY:
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/assets/emu_sega/index.html
+
+KODY JSOU ZMENENE.
+
+HLAVNI ZMENA:
+- nejde o dalsi ztiseni hudby,
+- odstranena bass-heavy one-pole low-pass smycka a underrun decay,
+- FM/YM2612 zustava stereo az do finalniho mixu,
+- PSG pouziva official CLOWNMDEMU_PSG_VOLUME_DIVISOR,
+- vystup do Android AudioTrack je stereo 48 kHz,
+- master limiter je jen na konci, bez basoveho clamp/lepeni,
+- LOW/HIGH nemeni audio clock/FIFO/gain, jen video prezentaci,
+- levy okraj framebufferu maskovan z 2px na 4px.

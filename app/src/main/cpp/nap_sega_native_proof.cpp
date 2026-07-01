@@ -33,7 +33,7 @@ static uint16_t g_lastChecksumStored = 0;
 static uint16_t g_lastChecksumCalc = 0;
 static std::string g_lastTitle = "";
 
-// BUILD2RK: C++ only + lower latency FM/PSG clean audio.
+// BUILD2RL: C++ only + lower latency FM/PSG clean audio.
 // BUILD2QM FM-only was cleaner but Sonic jump/ring PSG effects were missing and delay stayed ~1s.
 // BUILD2QL full FM+PSG+PCM mixer lowered delay but made Nox audio crackle badly.
 // This stage removes the WebView Java wrapper path and trims FIFO/AudioTrack latency while keeping attenuated FM+PSG and PCM/CDDA diagnostic only.
@@ -41,7 +41,14 @@ static ClownMDEmu_Region g_real_cfg_region = CLOWNMDEMU_REGION_OVERSEAS;
 static ClownMDEmu_TVStandard g_real_cfg_tv = CLOWNMDEMU_TV_STANDARD_NTSC;
 static std::string g_real_cfg_region_label = "DEFAULT_US_NTSC";
 static std::mutex g_audio_mutex;
-static std::deque<jshort> g_audio_fm_fifo;
+// BUILD2RL: clean Android audio frontend for ClownMDEmu.
+// This is NOT another volume-only patch. RK proved that merely lowering the music level
+// did not remove the user's "prebuzeny bass" complaint. The bad low-end came mostly from
+// our frontend: mono collapse + one-pole low-pass smoothing + underrun tail/decay.
+// RL keeps FM stereo separate until the final mix, applies the official PSG divisor,
+// removes the bass-heavy smoothing/decay path, and adds only a DC-blocker + final limiter.
+static std::deque<jshort> g_audio_fm_l_fifo;
+static std::deque<jshort> g_audio_fm_r_fifo;
 static std::deque<jshort> g_audio_psg_fifo;
 static double g_audio_fm_acc = 0.0;
 static double g_audio_psg_acc = 0.0;
@@ -53,20 +60,21 @@ static uint64_t g_audio_pull_count = 0;
 static uint64_t g_audio_drop_count = 0;
 static uint64_t g_audio_desync_drop_count = 0;
 static uint64_t g_audio_underrun_count = 0;
-static int32_t g_audio_last_out = 0;
+static int32_t g_audio_hp_x_l = 0;
+static int32_t g_audio_hp_y_l = 0;
+static int32_t g_audio_hp_x_r = 0;
+static int32_t g_audio_hp_y_r = 0;
 static const int NAP_AUDIO_OUT_RATE = 48000;
-// BUILD2RK: real Android audio frontend for ClownMDEmu.
-// FM/YM2612 and PSG arrive at different native rates; the Android frontend resamples them
-// separately to 48 kHz, batch-pushes them, then does one conservative master mix.
-// LOW/HIGH is video-only from this build: audio FIFO size/clock/gain must not change by mode.
 static std::atomic<int> g_native_perf_low{0};
 static inline size_t nap_audio_target_fifo() { return 4096u; }
 static inline size_t nap_audio_max_fifo() { return 16384u; }
-static inline size_t nap_audio_desync_limit() { return 0u; } // RK: no destructive FM-vs-PSG queue drop.
+static inline size_t nap_audio_desync_limit() { return 0u; } // RL: no destructive FM-vs-PSG queue drop.
 static inline size_t nap_audio_low_water() { return 1536u; }
-static const int NAP_FM_GAIN_PERCENT = 16;      // user: basy moc; Sonic FM music must be much lower.
-static const int NAP_PSG_GAIN_PERCENT = 12;     // keep rings/jump clear but not sharp.
-static const int NAP_MASTER_GAIN_PERCENT = 85;  // final headroom before soft limiter.
+// RL values: restore dynamics cleanly. These are frontend gains after official core divisors,
+// not fake bass clamps. FM is kept conservative, PSG uses the core divisor instead of arbitrary attenuation.
+static const int NAP_FM_GAIN_PERCENT = 10;
+static const int NAP_PSG_GAIN_PERCENT = 100;
+static const int NAP_MASTER_GAIN_PERCENT = 92;
 static std::atomic<int> g_render_capture_current{1};
 static std::atomic<uint64_t> g_render_skipped_frames{0};
 static std::atomic<uint64_t> g_render_captured_frames{0};
@@ -86,38 +94,49 @@ static inline jshort nap_clip16(int32_t v) {
     if (v < -32768) return (jshort)-32768;
     return (jshort)v;
 }
-static inline int32_t nap_soft_mix_clip(int32_t v) {
-    // BUILD2RK: final master limiter only. Do not fix bass by mangling channel timing.
+static inline int32_t nap_audio_dc_block(int32_t x, int32_t &x1, int32_t &y1) {
+    // Simple high-pass/DC blocker: y[n] = x[n] - x[n-1] + 0.995*y[n-1].
+    // It removes DC/rumble that sounded like overblown bass without muting real music.
+    int64_t y = (int64_t)x - (int64_t)x1 + ((int64_t)y1 * 995) / 1000;
+    x1 = x;
+    if (y > 32767) y = 32767;
+    if (y < -32768) y = -32768;
+    y1 = (int32_t)y;
+    return (int32_t)y;
+}
+static inline int32_t nap_master_limiter(int32_t v) {
     v = (v * NAP_MASTER_GAIN_PERCENT) / 100;
-    if (v > 18000) return 18000 + (v - 18000) / 10;
-    if (v < -18000) return -18000 + (v + 18000) / 10;
+    // RL: clean final limiter only. No low-pass smoothing and no bass clamp.
+    if (v > 26000) return 26000 + (v - 26000) / 6;
+    if (v < -26000) return -26000 + (v + 26000) / 6;
     return v;
 }
 static void nap_audio_trim_one_locked(std::deque<jshort>& q) {
     if (q.size() > nap_audio_max_fifo()) {
-        // Keep most of the real audio. Drop only the oldest excess above the max guard, not down to target.
         size_t drop = q.size() - nap_audio_max_fifo();
         while (drop-- && !q.empty()) { q.pop_front(); g_audio_drop_count++; }
     }
 }
 static void nap_audio_balance_locked() {
-    // BUILD2RK: do not force FM and PSG queues to the same length. ClownMDEmu invokes the callbacks separately;
-    // RH/RG dropped real FM music samples while waiting for PSG, which matches the user's "hudba se zpomali, efekty OK" report.
-    nap_audio_trim_one_locked(g_audio_fm_fifo);
+    // Keep all streams independent. Do not delete FM music because PSG has fewer samples.
+    nap_audio_trim_one_locked(g_audio_fm_l_fifo);
+    nap_audio_trim_one_locked(g_audio_fm_r_fifo);
     nap_audio_trim_one_locked(g_audio_psg_fifo);
 }
 static size_t nap_audio_min_fifo_locked() {
-    return std::min(g_audio_fm_fifo.size(), g_audio_psg_fifo.size());
+    return std::min(std::min(g_audio_fm_l_fifo.size(), g_audio_fm_r_fifo.size()), g_audio_psg_fifo.size());
 }
 static size_t nap_audio_min_fifo() {
     std::lock_guard<std::mutex> lock(g_audio_mutex);
     return nap_audio_min_fifo_locked();
 }
-static void nap_audio_push_fm_batch(const std::vector<jshort>& samples) {
-    if (samples.empty()) return;
+static void nap_audio_push_fm_batch(const std::vector<jshort>& left, const std::vector<jshort>& right) {
+    if (left.empty() && right.empty()) return;
     std::lock_guard<std::mutex> lock(g_audio_mutex);
-    g_audio_fm_fifo.insert(g_audio_fm_fifo.end(), samples.begin(), samples.end());
-    g_audio_fm_pushed += samples.size();
+    const size_t n = std::min(left.size(), right.size());
+    g_audio_fm_l_fifo.insert(g_audio_fm_l_fifo.end(), left.begin(), left.begin() + n);
+    g_audio_fm_r_fifo.insert(g_audio_fm_r_fifo.end(), right.begin(), right.begin() + n);
+    g_audio_fm_pushed += n;
     nap_audio_balance_locked();
 }
 static void nap_audio_push_psg_batch(const std::vector<jshort>& samples) {
@@ -131,37 +150,51 @@ static bool nap_audio_pop_locked(std::deque<jshort>& q, jshort &v) {
     if (q.empty()) { v = 0; return false; }
     v = q.front(); q.pop_front(); return true;
 }
-static int nap_audio_pull_mono(jshort *out, int frames) {
-    if (!out || frames <= 0) return 0;
+static int nap_audio_pull_stereo(jshort *out, int stereoFrames) {
+    if (!out || stereoFrames <= 0) return 0;
     int got = 0;
     std::lock_guard<std::mutex> lock(g_audio_mutex);
     nap_audio_balance_locked();
-    for (int i = 0; i < frames; ++i) {
-        jshort f=0,p=0;
-        bool hf = nap_audio_pop_locked(g_audio_fm_fifo, f);
-        bool hp = nap_audio_pop_locked(g_audio_psg_fifo, p);
-        int32_t mix;
-        if (hf || hp) {
+    for (int i = 0; i < stereoFrames; ++i) {
+        jshort fl=0, fr=0, p=0;
+        bool hfl = nap_audio_pop_locked(g_audio_fm_l_fifo, fl);
+        bool hfr = nap_audio_pop_locked(g_audio_fm_r_fifo, fr);
+        bool hp  = nap_audio_pop_locked(g_audio_psg_fifo, p);
+        int32_t l = 0, r = 0;
+        if (hfl || hfr || hp) {
             got++;
-            // Sonic: FM music + PSG jump/ring. QT keeps headroom and adds a small de-click LPF.
-            mix = nap_soft_mix_clip((int32_t)f + (int32_t)p);
+            l = (int32_t)fl + (int32_t)p;
+            r = (int32_t)fr + (int32_t)p;
+            l = nap_audio_dc_block(l, g_audio_hp_x_l, g_audio_hp_y_l);
+            r = nap_audio_dc_block(r, g_audio_hp_x_r, g_audio_hp_y_r);
+            l = nap_master_limiter(l);
+            r = nap_master_limiter(r);
         } else {
+            // RL: no decaying low-frequency tail. True silence on real underrun is cleaner than rumble.
             g_audio_underrun_count++;
-            // Never slam to zero on a mobile underrun; that was audible as "chrchleni".
-            mix = (g_audio_last_out * 7) / 8;
+            l = r = 0;
+            g_audio_hp_x_l = g_audio_hp_y_l = g_audio_hp_x_r = g_audio_hp_y_r = 0;
         }
-        // Gentle one-pole smoothing: removes zipper/crackle without adding noticeable input delay.
-        mix = ((mix * 3) + g_audio_last_out) / 4;
-        jshort clipped = nap_clip16(mix);
-        g_audio_last_out = clipped;
-        out[i] = clipped;
+        out[i * 2 + 0] = nap_clip16(l);
+        out[i * 2 + 1] = nap_clip16(r);
     }
     g_audio_pull_count++;
     return got;
 }
+static int nap_audio_pull_mono(jshort *out, int frames) {
+    if (!out || frames <= 0) return 0;
+    static thread_local std::vector<jshort> stereo;
+    stereo.assign((size_t)frames * 2u, 0);
+    int got = nap_audio_pull_stereo(stereo.data(), frames);
+    for (int i = 0; i < frames; ++i) {
+        out[i] = nap_clip16(((int32_t)stereo[i * 2] + (int32_t)stereo[i * 2 + 1]) / 2);
+    }
+    return got;
+}
 static void nap_audio_clear() {
     std::lock_guard<std::mutex> lock(g_audio_mutex);
-    g_audio_fm_fifo.clear();
+    g_audio_fm_l_fifo.clear();
+    g_audio_fm_r_fifo.clear();
     g_audio_psg_fifo.clear();
     g_audio_fm_acc = 0.0;
     g_audio_psg_acc = 0.0;
@@ -173,16 +206,17 @@ static void nap_audio_clear() {
     g_audio_drop_count = 0;
     g_audio_desync_drop_count = 0;
     g_audio_underrun_count = 0;
-    g_audio_last_out = 0;
+    g_audio_hp_x_l = g_audio_hp_y_l = g_audio_hp_x_r = g_audio_hp_y_r = 0;
     g_render_skipped_frames.store(0);
     g_render_captured_frames.store(0);
 }
 static std::string nap_audio_status_locked() {
     std::ostringstream out;
-    out << "audio_mode=FM_PSG_MASTER_FRONTEND_RK sonic_main fixedAudioClock=YES fmGain=16 psgGain=12 masterGain=85 target=" << nap_audio_target_fifo()
+    out << "audio_mode=FM_PSG_CLEAN_FRONTEND_RL sonic_main fixedAudioClock=YES stereo=YES noLowPass=YES dcBlock=YES fmGain=10 psgDivisor=core psgGain=100 masterGain=92 target=" << nap_audio_target_fifo()
         << " max=" << nap_audio_max_fifo()
         << " desyncLimit=" << nap_audio_desync_limit()
-        << " fm_fifo=" << g_audio_fm_fifo.size()
+        << " fm_l_fifo=" << g_audio_fm_l_fifo.size()
+        << " fm_r_fifo=" << g_audio_fm_r_fifo.size()
         << " psg_fifo=" << g_audio_psg_fifo.size()
         << " backlogMin=" << nap_audio_min_fifo_locked()
         << " perfLow=" << g_native_perf_low.load()
@@ -198,8 +232,8 @@ static std::string nap_audio_status_locked() {
     return out.str();
 }
 
-// BUILD2RK: native signal guard for real-core bring-up.
-// User reported full app process crash after ROM selection in BUILD2RK/QC. Java try/catch cannot catch SIGSEGV/SIGABRT.
+// BUILD2RL: native signal guard for real-core bring-up.
+// User reported full app process crash after ROM selection in BUILD2RL/QC. Java try/catch cannot catch SIGSEGV/SIGABRT.
 // This guard is debug-stage only: it catches a native signal inside the C++ core-load call and returns a log marker instead of killing the app.
 static sigjmp_buf g_nap_sega_sig_jmp;
 static std::atomic<int> g_nap_sega_guard_active{0};
@@ -232,7 +266,7 @@ static const char* nap_signal_name(int sig) {
 }
 
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-// BUILD2RK: tiny Android frontend for the real ClownMDEmu-core.
+// BUILD2RL: tiny Android frontend for the real ClownMDEmu-core.
 // It is intentionally small: ROM load -> hard reset -> iterate -> scanline framebuffer -> existing in-place view.
 // Audio mixing is not wired yet; this stage is the first real core import/visual boot attempt, no fake gameplay.
 struct NapRealCoreState {
@@ -257,10 +291,10 @@ struct NapRealCoreState {
 
 static NapRealCoreState g_real;
 static std::mutex g_real_mutex;
-static std::mutex g_frame_mutex; // BUILD2RK: render must not wait on full ClownMDEmu_Iterate()
+static std::mutex g_frame_mutex; // BUILD2RL: render must not wait on full ClownMDEmu_Iterate()
 static bool g_real_core_loaded_but_render_guarded = false;
 static uint32_t g_guard_frame_counter = 0;
-static int g_real_step_stage = 0; // BUILD2RK: explicit core step: 0 constant, 1 init, 2 setcart, 3 hardreset, 4 iterate
+static int g_real_step_stage = 0; // BUILD2RL: explicit core step: 0 constant, 1 init, 2 setcart, 3 hardreset, 4 iterate
 static size_t g_real_staged_bytes = 0;
 static pthread_t g_real_thread{};
 static std::atomic<int> g_real_thread_created{0};
@@ -279,7 +313,7 @@ static void nap_real_stop_worker() {
     g_real_thread_alive.store(0);
 }
 
-// BUILD2RK: reset the huge core struct in-place. Do NOT use `g_real = NapRealCoreState()`: \n// ClownMDEmu is >1 MB and a temporary can overflow Android/WebView thread stack.
+// BUILD2RL: reset the huge core struct in-place. Do NOT use `g_real = NapRealCoreState()`: \n// ClownMDEmu is >1 MB and a temporary can overflow Android/WebView thread stack.
 static void nap_real_reset_state_locked() {
     g_real.loaded = false;
     g_real.frame_ready = false;
@@ -300,7 +334,7 @@ static void nap_real_reset_state_locked() {
     g_real.status = "REAL_CORE_NOT_LOADED";
 }
 
-// BUILD2RK: forward declaration required by C++ before nap_real_load_rom_bytes().
+// BUILD2RL: forward declaration required by C++ before nap_real_load_rom_bytes().
 static void nap_real_setup_cfg_callbacks();
 
 static uint32_t nap_md_colour_to_argb(cc_u16f colour) {
@@ -339,11 +373,11 @@ static void nap_real_scanline_rendered(void *user_data, cc_u16f scanline, const 
     int right = std::min(sw, (int)right_boundary);
     if (right <= left) { left = 0; right = sw; }
     for (int x = 0; x < sw; ++x) {
-        // BUILD2RK: respect active horizontal boundaries and hide the long-standing bad left edge columns.
+        // BUILD2RL: respect active horizontal boundaries and hide the long-standing bad left edge columns.
         int sx = x;
         if (sx < left && left < sw) sx = left;
         if (sx >= right && right > 0) sx = right - 1;
-        if (sx < 2 && sw > 3) sx = 2;
+        if (sx < 4 && sw > 7) sx = 4;
         if (sx < 0) sx = 0;
         if (sx >= sw) sx = sw - 1;
         cc_u8l pix = pixels[sx];
@@ -353,7 +387,7 @@ static void nap_real_scanline_rendered(void *user_data, cc_u16f scanline, const 
     }
     if (y >= sh - 1) {
         g_render_captured_frames.fetch_add(1);
-        // BUILD2RK: worker writes into frame_argb, renderer reads only display_argb.
+        // BUILD2RL: worker writes into frame_argb, renderer reads only display_argb.
         // This avoids blocking mobile video on the full emulator iterate mutex and prevents torn partial frames.
         std::lock_guard<std::mutex> flock(g_frame_mutex);
         st->display_w = st->frame_w;
@@ -383,25 +417,28 @@ static cc_bool nap_real_input_requested(void *user_data, cc_u8f player_id, Clown
 
 static void nap_audio_fm(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu*, cc_s16l*, size_t)) {
     static thread_local std::vector<cc_s16l> tmp;
-    static thread_local std::vector<jshort> out;
+    static thread_local std::vector<jshort> outL;
+    static thread_local std::vector<jshort> outR;
     tmp.resize(n * CLOWNMDEMU_FM_CHANNEL_COUNT);
-    out.clear();
-    out.reserve((n * (size_t)NAP_AUDIO_OUT_RATE) / 53000u + 8u);
+    outL.clear();
+    outR.clear();
+    outL.reserve((n * (size_t)NAP_AUDIO_OUT_RATE) / 53000u + 8u);
+    outR.reserve((n * (size_t)NAP_AUDIO_OUT_RATE) / 53000u + 8u);
     if (gen && !tmp.empty()) gen(c, tmp.data(), n);
     if (tmp.empty()) return;
     const double srcRate = (g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL) ? (double)CLOWNMDEMU_FM_SAMPLE_RATE_PAL : (double)CLOWNMDEMU_FM_SAMPLE_RATE_NTSC;
     for (size_t i = 0; i < n; ++i) {
-        int32_t l = tmp[i * CLOWNMDEMU_FM_CHANNEL_COUNT + 0];
-        int32_t r = (CLOWNMDEMU_FM_CHANNEL_COUNT > 1) ? tmp[i * CLOWNMDEMU_FM_CHANNEL_COUNT + 1] : l;
-        int32_t mono = (l + r) / 2;
+        int32_t l = tmp[i * CLOWNMDEMU_FM_CHANNEL_COUNT + 0] / CLOWNMDEMU_FM_VOLUME_DIVISOR;
+        int32_t r = (CLOWNMDEMU_FM_CHANNEL_COUNT > 1) ? (tmp[i * CLOWNMDEMU_FM_CHANNEL_COUNT + 1] / CLOWNMDEMU_FM_VOLUME_DIVISOR) : l;
         g_audio_fm_acc += (double)NAP_AUDIO_OUT_RATE;
         if (g_audio_fm_acc >= srcRate) {
             g_audio_fm_acc -= srcRate;
-            // BUILD2RK: true frontend gain, not bass patching. FM/YM2612 music is the overdriven path.
-            out.push_back(nap_clip16((mono * NAP_FM_GAIN_PERCENT) / 100));
+            // BUILD2RL: preserve FM stereo; do not collapse to mono and then low-pass it into bass rumble.
+            outL.push_back(nap_clip16((l * NAP_FM_GAIN_PERCENT) / 100));
+            outR.push_back(nap_clip16((r * NAP_FM_GAIN_PERCENT) / 100));
         }
     }
-    nap_audio_push_fm_batch(out);
+    nap_audio_push_fm_batch(outL, outR);
 }
 static void nap_audio_psg(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu*, cc_s16l*, size_t)) {
     static thread_local std::vector<cc_s16l> tmp;
@@ -413,18 +450,19 @@ static void nap_audio_psg(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu
     if (tmp.empty()) return;
     const double srcRate = (g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL) ? (double)CLOWNMDEMU_PSG_SAMPLE_RATE_PAL : (double)CLOWNMDEMU_PSG_SAMPLE_RATE_NTSC;
     for (size_t i = 0; i < n; ++i) {
-        int32_t mono = tmp[i * CLOWNMDEMU_PSG_CHANNEL_COUNT];
+        // ClownMDEmu exposes a documented PSG volume divisor. Previous builds ignored it and then
+        // tried to compensate with random frontend gains, which helped neither authenticity nor bass.
+        int32_t mono = tmp[i * CLOWNMDEMU_PSG_CHANNEL_COUNT] / CLOWNMDEMU_PSG_VOLUME_DIVISOR;
         g_audio_psg_acc += (double)NAP_AUDIO_OUT_RATE;
         if (g_audio_psg_acc >= srcRate) {
             g_audio_psg_acc -= srcRate;
-            // BUILD2RK: keep short effects/rings clean. Do not use PSG timing to mask FM bass.
             out.push_back(nap_clip16((mono * NAP_PSG_GAIN_PERCENT) / 100));
         }
     }
     nap_audio_push_psg_batch(out);
 }
 static void nap_audio_pcm(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu*, cc_s16l*, size_t)) {
-    // BUILD2RK: PCM is diagnostic only for now. QL mixed PCM/CDDA and made audio strange/crackly.
+    // BUILD2RL: PCM is diagnostic only for now. QL mixed PCM/CDDA and made audio strange/crackly.
     static thread_local std::vector<cc_s16l> tmp;
     tmp.resize(n * CLOWNMDEMU_PCM_CHANNEL_COUNT);
     if (gen && !tmp.empty()) gen(c, tmp.data(), n);
@@ -482,7 +520,7 @@ static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
     const std::string regionMode = nap_real_detect_and_set_region(bytes, size);
     nap_audio_clear();
 
-    // BUILD2RK: do not run ClownMDEmu from the WebView JavaBridge thread or from View.onDraw.
+    // BUILD2RL: do not run ClownMDEmu from the WebView JavaBridge thread or from View.onDraw.
     // The previous builds could crash the whole app after ROM selection. Host-side core test passed,
     // so this build moves real init/reset/iterate to one dedicated native worker thread.
     nap_real_stop_worker();
@@ -518,7 +556,7 @@ static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
     g_real_thread_alive.store(1);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    // BUILD2RK: ClownMDEmu core state is large and the emulator core can use more native stack than Android's default.
+    // BUILD2RL: ClownMDEmu core state is large and the emulator core can use more native stack than Android's default.
     // Give the worker 8 MB so ROM selection does not kill the process with stack overflow.
     pthread_attr_setstacksize(&attr, 8 * 1024 * 1024);
     int rc = pthread_create(&g_real_thread, &attr, nap_real_worker_thread_entry, (void*)(intptr_t)generation);
@@ -539,7 +577,7 @@ static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
     out << "threading=DEDICATED_NATIVE_WORKER_THREAD_BIGSTACK_8MB; no core calls from WebView bridge; no core calls from UI onDraw; reset=no_stack_temporary\n";
     out << "pattern=OFF; fake/proof moving cubes removed\n";
     out << "render=CACHED_FRAME_COPY_ONLY_FROM_NATIVE_MONITOR_DRAW\n";
-    out << "audio=FM_PSG_MASTER_FRONTEND_RK to Java AudioTrack; Java wrapper disabled; no fake-fill; no FM/PSG desync drops; render watchdog prevents sound-only black screen";
+    out << "audio=FM_PSG_CLEAN_FRONTEND_RL stereo AudioTrack; no low-pass bass rumble; PSG official divisor; no fake-fill; no FM/PSG desync drops";
     return out.str();
 }
 
@@ -574,7 +612,7 @@ static void nap_real_setup_cfg_callbacks() {
 static std::string nap_real_step_once() {
     std::lock_guard<std::mutex> lock(g_real_mutex);
     std::ostringstream out;
-    out << "REAL_CORE_STEP_DISABLED_IN_BUILD2RK\n";
+    out << "REAL_CORE_STEP_DISABLED_IN_BUILD2RL\n";
     out << "reason=core now runs from native monitor render under single mutex after ROM load\n";
     out << "loaded=" << (g_real.loaded ? "YES" : "NO") << "\n";
     out << "status=" << g_real.status;
@@ -584,7 +622,7 @@ static std::string nap_real_step_once() {
 static bool nap_real_render_to_argb(int out_w, int out_h, jint *out_px) {
     if (out_w <= 0 || out_h <= 0 || !out_px) return false;
 
-    // BUILD2RK: renderer asks for 320x224. Copy directly under the frame mutex and avoid
+    // BUILD2RL: renderer asks for 320x224. Copy directly under the frame mutex and avoid
     // allocating/copying a temporary vector every TextureView tick on S8/A12.
     std::lock_guard<std::mutex> flock(g_frame_mutex);
     if (!g_real.frame_ready || g_real.display_frame_counter == 0 || g_real.display_argb.empty() || g_real.display_w <= 0 || g_real.display_h <= 0) return false;
@@ -620,7 +658,7 @@ static void* nap_real_worker_thread_entry(void *arg) {
 
 static void nap_real_worker_thread(int generation) {
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-    NAPLOG("BUILD2RK real core worker start gen=%d bigstack=8MB", generation);
+    NAPLOG("BUILD2RL real core worker start gen=%d bigstack=8MB", generation);
     try {
         static bool constants_ready = false;
         {
@@ -649,7 +687,7 @@ static void nap_real_worker_thread(int generation) {
         while (g_real_thread_run.load() != 0 && generation == g_real_thread_generation.load()) {
             next_tick += frame_period;
             if (g_real.loaded) {
-                // BUILD2RK: LOW/HIGH is video-only. HIGH captures every frame; LOW presents ~30 fps.
+                // BUILD2RL: LOW/HIGH is video-only. HIGH captures every frame; LOW presents ~30 fps.
                 // Audio frontend timing and FIFO sizes stay identical in both modes.
                 uint32_t preIt = g_real_thread_iterations.load();
                 int divisor = g_native_perf_low.load() ? 2 : 1;
@@ -670,7 +708,7 @@ static void nap_real_worker_thread(int generation) {
                     uint64_t mx = g_core_max_iter_ns.load();
                     bool stress = (avg > 12000000ULL || mx > 16000000ULL);
                     std::lock_guard<std::mutex> lock(g_real_mutex);
-                    g_real.status = "REAL_CORE_RENDER_OK_WORKER_THREAD_RK frameCounter=" + std::to_string(g_real.frame_counter) +
+                    g_real.status = "REAL_CORE_RENDER_OK_WORKER_THREAD_RL frameCounter=" + std::to_string(g_real.frame_counter) +
                                     " iterateCount=" + std::to_string(it) +
                                     " src=" + std::to_string(g_real.frame_w) + "x" + std::to_string(g_real.frame_h) +
                                     " frameClockNs=" + std::to_string(frame_period.count()) +
@@ -696,7 +734,7 @@ static void nap_real_worker_thread(int generation) {
             } else if (now < next_tick) {
                 std::this_thread::sleep_until(next_tick);
             } else {
-                // BUILD2RK: RF-style clock guard. If phone is late, resync; do not run extra frames that make Sonic rhythm drift.
+                // BUILD2RL: RF-style clock guard. If phone is late, resync; do not run extra frames that make Sonic rhythm drift.
                 if (now - next_tick > frame_period) next_tick = now;
                 sched_yield();
             }
@@ -709,7 +747,7 @@ static void nap_real_worker_thread(int generation) {
         g_real.status = "REAL_CORE_WORKER_UNKNOWN_EXCEPTION";
     }
     g_real_thread_alive.store(0);
-    NAPLOG("BUILD2RK real core worker stop gen=%d", generation);
+    NAPLOG("BUILD2RL real core worker stop gen=%d", generation);
 #endif
 }
 
@@ -719,7 +757,7 @@ static void nap_render_guard_frame(int width, int height, jintArray argbOut, JNI
     int needed = width * height;
     if (len < needed) return;
     std::vector<jint> px((size_t)needed, (jint)0xff06142au);
-    // BUILD2RK: blank guarded monitor. No running cubes, no center square, no hash bars.
+    // BUILD2RL: blank guarded monitor. No running cubes, no center square, no hash bars.
     // Subtle blue border only shows the native view is alive and placed correctly.
     auto put = [&](int x0,int y0,int rw,int rh,uint32_t c){
         int x1=std::max(0,x0), y1=std::max(0,y0), x2=std::min(width,x0+rw), y2=std::min(height,y0+rh);
@@ -766,7 +804,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2RK NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
+    std::string s = "BUILD2RL NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -822,12 +860,12 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRomInfo(JNIEnv* env, jclas
         out << "- Mega Drive header: NE / soubor je mensi nez 0x200\n";
     }
 
-    out << "\nBUILD2RK DULEZITE:\n";
+    out << "\nBUILD2RL DULEZITE:\n";
     out << "ROM je ted realne prectena v Jave a analyzovana v C++.\n";
-    out << "BUILD2RK ma vypnuty proof pattern a chrani real-core load proti padu aplikace.\n";
+    out << "BUILD2RL ma vypnuty proof pattern a chrani real-core load proti padu aplikace.\n";
     out << "Dalsi krok je podle logu opravit konkretni core init/reset/iterate misto dalsich fake patternu.\n";
     std::string s = out.str();
-    NAPLOG("BUILD2RK ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
+    NAPLOG("BUILD2RL ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
     return env->NewStringUTF(s.c_str());
 }
 
@@ -955,17 +993,17 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_setPerformanceMode(JNIEnv* env, jcl
     int low = (upper.find("LOW") != std::string::npos) ? 1 : 0;
     g_native_perf_low.store(low);
     std::ostringstream out;
-    out << "NATIVE_PERF_MODE_OK_RK mode=" << (low ? "LOW" : "HIGH")
+    out << "NATIVE_PERF_MODE_OK_RL mode=" << (low ? "LOW" : "HIGH")
         << " target=" << nap_audio_target_fifo()
         << " max=" << nap_audio_max_fifo()
         << " lowWater=" << nap_audio_low_water();
     return env->NewStringUTF(out.str().c_str());
 }
 
-// BUILD2RK: same native core exposed to MainActivity/WebView in-place bridge.
+// BUILD2RL: same native core exposed to MainActivity/WebView in-place bridge.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2RK NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
+    std::string s = "BUILD2RL NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -988,7 +1026,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_renderPattern(JNIEnv* env, jclass, 
         jsize len = env->GetArrayLength(argbOut);
         int needed = width * height;
         if (len >= needed) {
-            // BUILD2RK: mobile video fast path. Do not allocate a std::vector every frame and do not copy twice.
+            // BUILD2RL: mobile video fast path. Do not allocate a std::vector every frame and do not copy twice.
             // Java TextureView owns one 320x224 int[]; native writes directly into it.
             jint* out = env->GetIntArrayElements(argbOut, nullptr);
             if (out) {
@@ -1019,7 +1057,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_makeAudioTone(JNIEnv* env, jclass, 
     Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(env, nullptr, pcmOut, sampleRate, hz);
 }
 
-// BUILD2RK REAL CORE ADAPTER SLOT
+// BUILD2RL REAL CORE ADAPTER SLOT
 // This stage imports local vendored ClownMDEmu-core sources and links only interpreter/core libraries into the native .so.
 #ifndef NAP_SEGA_VENDOR_CORE_PRESENT
 #define NAP_SEGA_VENDOR_CORE_PRESENT 0
@@ -1067,10 +1105,10 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_shutdown(JNIEnv* env, jclass) {
         g_real.frame_ready = false;
         g_real.status = "REAL_CORE_STOPPED_BY_LIFECYCLE_QT_CPP_ONLY";
     }
-    return env->NewStringUTF("NATIVE_SHUTDOWN_OK_RK_QT_CPP_ONLY worker=STOPPED audio=CLEARED input=RELEASED");
+    return env->NewStringUTF("NATIVE_SHUTDOWN_OK_RL_QT_CPP_ONLY worker=STOPPED audio=CLEARED input=RELEASED");
 #else
     for (int i = 0; i < 8; ++i) g_input[i] = false;
-    return env->NewStringUTF("NATIVE_SHUTDOWN_OK_RK_QT_CPP_ONLY noVendor input=RELEASED");
+    return env->NewStringUTF("NATIVE_SHUTDOWN_OK_RL_QT_CPP_ONLY noVendor input=RELEASED");
 #endif
 }
 
@@ -1097,6 +1135,30 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_realCoreStep(JNIEnv* env, jclass) {
     return env->NewStringUTF(res.c_str());
 #else
     return env->NewStringUTF("REAL_CORE_STEP_ERROR CORE_VENDOR_MISSING");
+#endif
+}
+
+
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_pullAudioStereo(JNIEnv* env, jclass, jshortArray pcmOut, jint stereoFrames) {
+#if NAP_SEGA_VENDOR_CORE_PRESENT
+    if (!pcmOut || stereoFrames <= 0) return 0;
+    jsize len = env->GetArrayLength(pcmOut);
+    int n = std::min<int>((int)len / 2, (int)stereoFrames);
+    if (n <= 0) return 0;
+    jshort* out = env->GetShortArrayElements(pcmOut, nullptr);
+    if (!out) return 0;
+    int got = nap_audio_pull_stereo(out, n);
+    env->ReleaseShortArrayElements(pcmOut, out, 0);
+    return got;
+#else
+    (void)stereoFrames;
+    if (pcmOut) {
+        jsize len = env->GetArrayLength(pcmOut);
+        std::vector<jshort> zero((size_t)len, 0);
+        env->SetShortArrayRegion(pcmOut, 0, len, zero.data());
+    }
+    return 0;
 #endif
 }
 
