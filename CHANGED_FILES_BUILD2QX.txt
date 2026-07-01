@@ -1,0 +1,29 @@
+BUILD2QX_SEGA_NATIVE_CPP_ONLY_MOBILE_LANDSCAPE_RECOVER_STAGE114
+
+KODY JSOU ZMENENE proti BUILD2QW.
+
+Zmenene soubory:
+- app/src/main/assets/emu_sega/index.html
+  * C++ CORE tlacitko vizualne i funkcne odstraneno.
+  * Sega stranka zustava C++ only; vstup do ROM je pres SBIRKA/CARTRIDGE.
+  * Landscape mobil: WebView je jen transparentni ovladani, horni texty SBIRKA/ULOZENE/HRY/NAVODY/WEB/MENU/CART se skryji.
+  * Joystick/A/B/C zustavaji pruhledne nad obrazem.
+  * Monitor/canvas/wrapper HTML vrstvy se v landscape skryji, aby neprekryvaly native C++ obraz cernou plochou.
+  * visibilityHidden se v mobilni Sega strance uz nepouziva jako stop pri rotaci; activityPause/pagehide/menu stale zastavi core.
+  * Pri orientationchange/resize se native view znovu pripoji a rekt se prepocita podle realneho viewportu, ne podle lhaveho screen.orientation.
+
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+  * Logy/build znacka aktualizovany na BUILD2QX.
+  * Z-order v landscape: native video dole, transparentni WebView ovladani nahore.
+  * Nearest-neighbor Canvas scale bez filter bitmap kvuli S8/A12 a pixel artu.
+
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+  * Build komentare aktualizovany.
+
+- app/src/main/cpp/nap_sega_native_proof.cpp
+  * Build/log stringy aktualizovany na BUILD2QX.
+  * Audio profil zustava QT/QP keep; neladeno dal.
+
+Co se zamerne NEMENILO:
+- Audio profil QT/QP keep zustava, jak si chtel.
+- GitHub workflow se nemenil, protoze uz hlasi jednu APK.
