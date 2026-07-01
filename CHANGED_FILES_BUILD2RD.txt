@@ -1,0 +1,31 @@
+BUILD2RD_SEGA_NATIVE_CPP_ONLY_MULTIROM_PERFORMANCE_LAYOUT_STAGE120
+
+KODY JSOU ZMENENE.
+
+Zmenene soubory:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+
+Hlavni opravy proti BUILD2RC:
+1) Mobilni S8 multi-ROM zpomalovani
+- enableInPlace je idempotentni: pri orientation/resize/visibility se native TextureView uz nerecykluje stale dokola.
+- recoverNativeViewAfterMobileLayout dela jen rect-only recover, ne vytvareni dalsi native vrstvy.
+- stare AudioTrack vlakno se mezi ROM tvrde invaliduje, uvolni a ceka dele na ukonceni.
+- dlouhe delayed redraw bursty z predchozich ROM jsou zkracene.
+
+2) Landscape obraz
+- vracen full-stretch landscape bez bocnich pruhu.
+- obraz se kresli do cele native rect oblasti, aby nebyly zkracene leva/prava strana.
+
+3) Landscape ovladani
+- A/B/C posunuto niz k dolnimu okraji.
+- A/B/C a DPAD maji vetsi touch citlivost.
+
+4) Zachovano
+- Java/WebView Sega wrapper zustava vypnuty.
+- C++ CORE DOM tlacitko zustava odstranene.
+- region ROM se neprepisuje, respektuje se header.
+- zvukovy charakter QT/QP zustava ponechany.
+- Nox navrat z Atari 130XE zustava zachovan.
