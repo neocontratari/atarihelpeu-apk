@@ -1,0 +1,32 @@
+BUILD2RC_SEGA_NATIVE_CPP_ONLY_MULTIROM_AUDIO_VIDEO_FIX_STAGE119
+
+KODY JSOU ZMENENE.
+
+Zmenene soubory:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/assets/emu_sega/index.html
+
+Co opravuje BUILD2RC proti BUILD2RA:
+1) Multi-ROM zpomalovani po nahrani vice her:
+   - AudioTrack/native audio thread dostal generacni pojistku nativeAudioGeneration.
+   - Kdyz stare audio vlakno zustane viset po ROM zmene, uz se po startu dalsi ROM neprobere a nehraje paralelne.
+   - stopNativeCoreAudioStream() invalida stare generace pred kazdou dalsi ROM.
+
+2) Mobil landscape crop:
+   - Native TextureView uz ve landscape netaha obraz roztazeny/cropnuty pres cely displej.
+   - Genesis frame 320x224 se kresli aspect-fit, aby byly videt zivoty/HUD dole.
+   - A/B/C a DPAD jsou v landscape posunute nize a zustavaji pruhledne.
+
+3) C++ CORE grafika:
+   - DOM tlacitko uz bylo odstranene drive; RB zvetsuje skin cover pres zbytek vypaleneho C++ CORE artworku.
+
+4) Co zustava:
+   - Java/WebView Sega wrapper je stale vypnuty.
+   - Zvukovy profil zustava QT/QP, jak uzivatel chtel.
+   - Region ROM se respektuje podle headeru.
+
+BUILD2RC HOTFIX:
+- Opraven preklep v C++ symbolech: CLOWNMDEMU_*_SAMPLE_RBTE_* -> CLOWNMDEMU_*_SAMPLE_RATE_* a NAP_AUDIO_OUT_RBTE -> NAP_AUDIO_OUT_RATE.
+- Duvod: BUILD2RB mohl spadnout ve workflow na native compile chybě. Gameplay/audio/render logika zustava jako RB.

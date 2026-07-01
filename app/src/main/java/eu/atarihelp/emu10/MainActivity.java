@@ -72,7 +72,7 @@ public class MainActivity extends Activity {
     private int nativeInputEvents = 0;
     private final StringBuilder nativeLog = new StringBuilder();
     private volatile boolean nativeCoreAudioRun = false;
-    private volatile int nativeAudioGeneration = 0; // BUILD2RB: kills stale AudioTrack threads after every ROM change; prevents cumulative slowdown.
+    private volatile int nativeAudioGeneration = 0; // BUILD2RC: kills stale AudioTrack threads after every ROM change; prevents cumulative slowdown.
     private Thread nativeCoreAudioThread;
     private volatile AudioTrack nativeCurrentAudioTrack;
     private ValueCallback<Uri[]> pendingChooser;
@@ -236,8 +236,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2RB\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2RB_SEGA_NATIVE_CPP_ONLY_MULTIROM_AUDIO_VIDEO_FIX_STAGE118\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2RC\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2RC_SEGA_NATIVE_CPP_ONLY_MULTIROM_AUDIO_VIDEO_FIX_STAGE119\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -254,7 +254,7 @@ public class MainActivity extends Activity {
         synchronized (nativeLog) { out.append(nativeLog.toString()); }
         out.append("\nDULEZITE:\n- Tohle porad neni hotovy Sega gameplay.\n");
         out.append("- Toto overuje normalni Sega UI -> Java -> JNI -> C++ -> ROM/input/audio/render/log.\n");
-        out.append("- Sega emulace je v BUILD2RB C++ only; Java/WebView wrapper se nespousti; C++ CORE UI tlacitko je odstranene; audio profil zustava QT/QP; mobile visibility/orientation nesmi vypnout native video; C++ region respektuje ROM header; nulove recty se ignoruji.\n");
+        out.append("- Sega emulace je v BUILD2RC C++ only; Java/WebView wrapper se nespousti; C++ CORE UI tlacitko je odstranene; audio profil zustava QT/QP; mobile visibility/orientation nesmi vypnout native video; C++ region respektuje ROM header; nulove recty se ignoruji.\n");
         return out.toString();
     }
 
@@ -263,12 +263,12 @@ public class MainActivity extends Activity {
             appendNativeLog("NATIVE_AUDIO_STREAM_ALREADY_RUNNING_RB_QT_AUDIO gen=" + nativeAudioGeneration);
             return;
         }
-        final int audioGen = ++nativeAudioGeneration; // BUILD2RB: every new audio stream has a generation id; old delayed/stuck streams must die.
+        final int audioGen = ++nativeAudioGeneration; // BUILD2RC: every new audio stream has a generation id; old delayed/stuck streams must die.
         nativeCoreAudioRun = true;
         nativeCoreAudioThread = new Thread(() -> {
             try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO); } catch (Throwable ignored) {}
             final int sampleRate = 48000;
-            final int chunk = 384; // BUILD2RB: keep the QT/QP audio profile that user approved as usable.
+            final int chunk = 384; // BUILD2RC: keep the QT/QP audio profile that user approved as usable.
             AudioTrack track = null;
             try {
                 int min = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
@@ -348,7 +348,7 @@ public class MainActivity extends Activity {
     }
 
     private synchronized void stopNativeCoreAudioStream() {
-        final int stopGen = ++nativeAudioGeneration; // BUILD2RB: invalidate stale AudioTrack writers before starting another ROM.
+        final int stopGen = ++nativeAudioGeneration; // BUILD2RC: invalidate stale AudioTrack writers before starting another ROM.
         nativeCoreAudioRun = false;
         AudioTrack at = nativeCurrentAudioTrack;
         if (at != null) {
@@ -414,7 +414,7 @@ public class MainActivity extends Activity {
         }
         StringBuilder res = new StringBuilder();
         try { appendNativeLog("NATIVE_LIFECYCLE_STOP_BEGIN reason=" + reason); } catch (Throwable ignored) {}
-        nativeRomLoadGeneration++; // BUILD2RB: cancel stale delayed audio/render watchdogs when leaving Sega/Atari/VBXE.
+        nativeRomLoadGeneration++; // BUILD2RC: cancel stale delayed audio/render watchdogs when leaving Sega/Atari/VBXE.
         nativeInPlaceEnabled = false;
         try { stopNativeCoreAudioStream(); nativeCurrentAudioTrack = null; res.append("audioStop=OK "); } catch (Throwable t) { res.append("audioStop=ERR:").append(safeMsg(t)).append(' '); }
         try {
@@ -443,7 +443,7 @@ public class MainActivity extends Activity {
                 ui.post(() -> {
                     try {
                         if (rootFrame == null || web == null) return;
-                        // BUILD2RB: po navratu z Atari/130XE muze byt stary Android View zivý pro audio, ale uz nekresli.
+                        // BUILD2RC: po navratu z Atari/130XE muze byt stary Android View zivý pro audio, ale uz nekresli.
                         // Proto pri kazdem C++ vstupu vytvorime cisty native monitor View.
                         if (nativeInPlaceView != null) {
                             try { nativeInPlaceView.stop(); } catch (Throwable ignored) {}
@@ -456,7 +456,7 @@ public class MainActivity extends Activity {
                         nativeInPlaceView.setEnabled(false);
                         nativeInPlaceView.setFocusable(false);
                         nativeInPlaceView.setFocusableInTouchMode(false);
-                        // BUILD2RB: nikdy nezobrazovat native view na vychozim 0,0/320x224.
+                        // BUILD2RC: nikdy nezobrazovat native view na vychozim 0,0/320x224.
                         // QZ tim v Noxu udelal maly obraz hry vlevo nahore pres logo.
                         nativeInPlaceView.setVisibility(View.INVISIBLE);
                         try { nativeInPlaceView.setLayerType(View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
@@ -485,7 +485,7 @@ public class MainActivity extends Activity {
                 ui.post(() -> {
                     try {
                         if (nativeInPlaceView == null || rootFrame == null) return;
-                        // BUILD2RB: Samsung/WebView can send a transient 0x0 rect when returning from landscape.
+                        // BUILD2RC: Samsung/WebView can send a transient 0x0 rect when returning from landscape.
                         // Ignoring that rect prevents the native video from becoming black after portrait return.
                         if (w < 120 || h < 80) { appendNativeLog("SET_RECT_SKIP_SMALL_RB x=" + x + " y=" + y + " w=" + w + " h=" + h); return; }
                         int ww = Math.max(120, w);
@@ -499,7 +499,7 @@ public class MainActivity extends Activity {
                         boolean landscapeFull = ww > hh && x <= 4 && y <= 4;
                         nativeLandscapeFullVideo = landscapeFull;
                         if (landscapeFull && web != null) {
-                            // BUILD2RB: on real phones the C++ native view is the video layer, WebView is only transparent controls/log.
+                            // BUILD2RC: on real phones the C++ native view is the video layer, WebView is only transparent controls/log.
                             // This gives full-screen Sonic/Aladdin with transparent joystick/buttons over the picture.
                             try { nativeInPlaceView.setZ(0f); } catch (Throwable ignored) {}
                             try { web.setZ(10f); } catch (Throwable ignored) {}
@@ -533,7 +533,7 @@ public class MainActivity extends Activity {
                 String info = NativeSegaCoreBridge.romInfo(data);
                 long dt = System.currentTimeMillis() - t0;
 
-                // BUILD2RB: zvuk vracen na predchozi QT profil, ale uz nesmi bezet pred obrazem.
+                // BUILD2RC: zvuk vracen na predchozi QT profil, ale uz nesmi bezet pred obrazem.
                 // Tvrdý fresh start pred kazdou ROM brani stavu: Atari 130XE -> Sega -> nova ROM -> cerna obrazovka + zvuk.
                 final int loadGen = ++nativeRomLoadGeneration;
                 appendNativeLog("FRESH_ROM_GENERATION_RB gen=" + loadGen + " oldAudioGen=" + nativeAudioGeneration + " oldDraw=" + nativeViewDrawCounter);
@@ -634,7 +634,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String saveLog() {
             try {
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2RB_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2RC_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
@@ -805,7 +805,7 @@ public class MainActivity extends Activity {
                 }
                 long cost = System.nanoTime() - startNs;
                 nativeLastRenderCostNs = cost;
-                // BUILD2RB: video is no longer painted from WebView/UI invalidation. It has its own TextureView thread.
+                // BUILD2RC: video is no longer painted from WebView/UI invalidation. It has its own TextureView thread.
                 // Target mobile game speed first; if an old phone is overloaded, skip render sleeps rather than blocking UI.
                 long period = nativeLandscapeFullVideo ? 16666667L : 16666667L;
                 if (Build.VERSION.SDK_INT <= 28 && cost > 22000000L) period = 20000000L;
@@ -834,7 +834,7 @@ public class MainActivity extends Activity {
                 canvas.drawColor(Color.BLACK);
                 Rect dst;
                 if (nativeLandscapeFullVideo) {
-                    // BUILD2RB: on S8 landscape do not stretch/crop the 320x224 Mega Drive frame.
+                    // BUILD2RC: on S8 landscape do not stretch/crop the 320x224 Mega Drive frame.
                     // Aspect-fit keeps Sonic lives/bottom HUD visible; transparent controls sit over the picture.
                     double scale = Math.min(w / (double)SRC_W, h / (double)SRC_H);
                     int dw = Math.max(1, (int)Math.round(SRC_W * scale));
@@ -929,7 +929,7 @@ public class MainActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 10);
         }
         web = new WebView(this);
-        // BUILD2RB: WebView must be transparent in landscape; HTML is controls-only over native C++ video.
+        // BUILD2RC: WebView must be transparent in landscape; HTML is controls-only over native C++ video.
         try { web.setBackgroundColor(Color.TRANSPARENT); } catch (Throwable ignored) {}
         try { web.setLayerType(View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
         WebSettings s = web.getSettings();

@@ -33,7 +33,7 @@ static uint16_t g_lastChecksumStored = 0;
 static uint16_t g_lastChecksumCalc = 0;
 static std::string g_lastTitle = "";
 
-// BUILD2RB: C++ only + lower latency FM/PSG clean audio.
+// BUILD2RC: C++ only + lower latency FM/PSG clean audio.
 // BUILD2QM FM-only was cleaner but Sonic jump/ring PSG effects were missing and delay stayed ~1s.
 // BUILD2QL full FM+PSG+PCM mixer lowered delay but made Nox audio crackle badly.
 // This stage removes the WebView Java wrapper path and trims FIFO/AudioTrack latency while keeping attenuated FM+PSG and PCM/CDDA diagnostic only.
@@ -54,10 +54,10 @@ static uint64_t g_audio_drop_count = 0;
 static uint64_t g_audio_desync_drop_count = 0;
 static uint64_t g_audio_underrun_count = 0;
 static int32_t g_audio_last_out = 0;
-static const int NAP_AUDIO_OUT_RBTE = 48000;
-static const size_t NAP_AUDIO_TARGET_FIFO = 2048;      // BUILD2RB: navrat k QP clean profilu; QR bylo chraplavejsi.
-static const size_t NAP_AUDIO_MAX_FIFO = 4096;         // BUILD2RB: QP rezerva proti underrunu na S8/A12; stale tvrdý cap proti 0.5s ozvene.
-static const size_t NAP_AUDIO_DESYNC_LIMIT = 768;      // BUILD2RB: QP alignment; PSG ring/jump zustane slyset, ale nesjede za FM.
+static const int NAP_AUDIO_OUT_RATE = 48000;
+static const size_t NAP_AUDIO_TARGET_FIFO = 2048;      // BUILD2RC: navrat k QP clean profilu; QR bylo chraplavejsi.
+static const size_t NAP_AUDIO_MAX_FIFO = 4096;         // BUILD2RC: QP rezerva proti underrunu na S8/A12; stale tvrdý cap proti 0.5s ozvene.
+static const size_t NAP_AUDIO_DESYNC_LIMIT = 768;      // BUILD2RC: QP alignment; PSG ring/jump zustane slyset, ale nesjede za FM.
 static inline jshort nap_clip16(int32_t v) {
     if (v > 32767) return (jshort)32767;
     if (v < -32768) return (jshort)-32768;
@@ -164,8 +164,8 @@ static std::string nap_audio_status_locked() {
     return out.str();
 }
 
-// BUILD2RB: native signal guard for real-core bring-up.
-// User reported full app process crash after ROM selection in BUILD2RB/QC. Java try/catch cannot catch SIGSEGV/SIGABRT.
+// BUILD2RC: native signal guard for real-core bring-up.
+// User reported full app process crash after ROM selection in BUILD2RC/QC. Java try/catch cannot catch SIGSEGV/SIGABRT.
 // This guard is debug-stage only: it catches a native signal inside the C++ core-load call and returns a log marker instead of killing the app.
 static sigjmp_buf g_nap_sega_sig_jmp;
 static std::atomic<int> g_nap_sega_guard_active{0};
@@ -198,7 +198,7 @@ static const char* nap_signal_name(int sig) {
 }
 
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-// BUILD2RB: tiny Android frontend for the real ClownMDEmu-core.
+// BUILD2RC: tiny Android frontend for the real ClownMDEmu-core.
 // It is intentionally small: ROM load -> hard reset -> iterate -> scanline framebuffer -> existing in-place view.
 // Audio mixing is not wired yet; this stage is the first real core import/visual boot attempt, no fake gameplay.
 struct NapRealCoreState {
@@ -223,10 +223,10 @@ struct NapRealCoreState {
 
 static NapRealCoreState g_real;
 static std::mutex g_real_mutex;
-static std::mutex g_frame_mutex; // BUILD2RB: render must not wait on full ClownMDEmu_Iterate()
+static std::mutex g_frame_mutex; // BUILD2RC: render must not wait on full ClownMDEmu_Iterate()
 static bool g_real_core_loaded_but_render_guarded = false;
 static uint32_t g_guard_frame_counter = 0;
-static int g_real_step_stage = 0; // BUILD2RB: explicit core step: 0 constant, 1 init, 2 setcart, 3 hardreset, 4 iterate
+static int g_real_step_stage = 0; // BUILD2RC: explicit core step: 0 constant, 1 init, 2 setcart, 3 hardreset, 4 iterate
 static size_t g_real_staged_bytes = 0;
 static pthread_t g_real_thread{};
 static std::atomic<int> g_real_thread_created{0};
@@ -245,7 +245,7 @@ static void nap_real_stop_worker() {
     g_real_thread_alive.store(0);
 }
 
-// BUILD2RB: reset the huge core struct in-place. Do NOT use `g_real = NapRealCoreState()`: \n// ClownMDEmu is >1 MB and a temporary can overflow Android/WebView thread stack.
+// BUILD2RC: reset the huge core struct in-place. Do NOT use `g_real = NapRealCoreState()`: \n// ClownMDEmu is >1 MB and a temporary can overflow Android/WebView thread stack.
 static void nap_real_reset_state_locked() {
     g_real.loaded = false;
     g_real.frame_ready = false;
@@ -266,7 +266,7 @@ static void nap_real_reset_state_locked() {
     g_real.status = "REAL_CORE_NOT_LOADED";
 }
 
-// BUILD2RB: forward declaration required by C++ before nap_real_load_rom_bytes().
+// BUILD2RC: forward declaration required by C++ before nap_real_load_rom_bytes().
 static void nap_real_setup_cfg_callbacks();
 
 static uint32_t nap_md_colour_to_argb(cc_u16f colour) {
@@ -310,7 +310,7 @@ static void nap_real_scanline_rendered(void *user_data, cc_u16f scanline, const 
         st->frame_argb[(size_t)y * sw + x] = c;
     }
     if (y >= sh - 1) {
-        // BUILD2RB: worker writes into frame_argb, renderer reads only display_argb.
+        // BUILD2RC: worker writes into frame_argb, renderer reads only display_argb.
         // This avoids blocking mobile video on the full emulator iterate mutex and prevents torn partial frames.
         std::lock_guard<std::mutex> flock(g_frame_mutex);
         st->display_w = st->frame_w;
@@ -342,15 +342,15 @@ static void nap_audio_fm(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu*
     std::vector<cc_s16l> tmp(n * CLOWNMDEMU_FM_CHANNEL_COUNT);
     if (gen && !tmp.empty()) gen(c, tmp.data(), n);
     if (tmp.empty()) return;
-    const double srcRate = (g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL) ? (double)CLOWNMDEMU_FM_SAMPLE_RBTE_PAL : (double)CLOWNMDEMU_FM_SAMPLE_RBTE_NTSC;
+    const double srcRate = (g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL) ? (double)CLOWNMDEMU_FM_SAMPLE_RATE_PAL : (double)CLOWNMDEMU_FM_SAMPLE_RATE_NTSC;
     for (size_t i = 0; i < n; ++i) {
         int32_t l = tmp[i * CLOWNMDEMU_FM_CHANNEL_COUNT + 0];
         int32_t r = (CLOWNMDEMU_FM_CHANNEL_COUNT > 1) ? tmp[i * CLOWNMDEMU_FM_CHANNEL_COUNT + 1] : l;
         int32_t mono = (l + r) / 2;
-        g_audio_fm_acc += (double)NAP_AUDIO_OUT_RBTE;
+        g_audio_fm_acc += (double)NAP_AUDIO_OUT_RATE;
         if (g_audio_fm_acc >= srcRate) {
             g_audio_fm_acc -= srcRate;
-            // BUILD2RB: leave headroom for a light PSG path; avoid 2QL clipping/chrceni.
+            // BUILD2RC: leave headroom for a light PSG path; avoid 2QL clipping/chrceni.
             nap_audio_push_fm(nap_clip16((mono * 44) / 100));
         }
     }
@@ -359,19 +359,19 @@ static void nap_audio_psg(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu
     std::vector<cc_s16l> tmp(n * CLOWNMDEMU_PSG_CHANNEL_COUNT);
     if (gen && !tmp.empty()) gen(c, tmp.data(), n);
     if (tmp.empty()) return;
-    const double srcRate = (g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL) ? (double)CLOWNMDEMU_PSG_SAMPLE_RBTE_PAL : (double)CLOWNMDEMU_PSG_SAMPLE_RBTE_NTSC;
+    const double srcRate = (g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL) ? (double)CLOWNMDEMU_PSG_SAMPLE_RATE_PAL : (double)CLOWNMDEMU_PSG_SAMPLE_RATE_NTSC;
     for (size_t i = 0; i < n; ++i) {
         int32_t mono = tmp[i * CLOWNMDEMU_PSG_CHANNEL_COUNT];
-        g_audio_psg_acc += (double)NAP_AUDIO_OUT_RBTE;
+        g_audio_psg_acc += (double)NAP_AUDIO_OUT_RATE;
         if (g_audio_psg_acc >= srcRate) {
             g_audio_psg_acc -= srcRate;
-            // BUILD2RB: Sonic jump/ring effects live here. Keep audible, but much softer than QL to stop crackle.
+            // BUILD2RC: Sonic jump/ring effects live here. Keep audible, but much softer than QL to stop crackle.
             nap_audio_push_psg(nap_clip16((mono * 16) / 100));
         }
     }
 }
 static void nap_audio_pcm(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu*, cc_s16l*, size_t)) {
-    // BUILD2RB: PCM is diagnostic only for now. QL mixed PCM/CDDA and made audio strange/crackly.
+    // BUILD2RC: PCM is diagnostic only for now. QL mixed PCM/CDDA and made audio strange/crackly.
     std::vector<cc_s16l> tmp(n * CLOWNMDEMU_PCM_CHANNEL_COUNT);
     if (gen && !tmp.empty()) gen(c, tmp.data(), n);
     if (!tmp.empty()) { std::lock_guard<std::mutex> lock(g_audio_mutex); g_audio_pcm_seen += n; }
@@ -427,7 +427,7 @@ static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
     const std::string regionMode = nap_real_detect_and_set_region(bytes, size);
     nap_audio_clear();
 
-    // BUILD2RB: do not run ClownMDEmu from the WebView JavaBridge thread or from View.onDraw.
+    // BUILD2RC: do not run ClownMDEmu from the WebView JavaBridge thread or from View.onDraw.
     // The previous builds could crash the whole app after ROM selection. Host-side core test passed,
     // so this build moves real init/reset/iterate to one dedicated native worker thread.
     nap_real_stop_worker();
@@ -463,7 +463,7 @@ static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
     g_real_thread_alive.store(1);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    // BUILD2RB: ClownMDEmu core state is large and the emulator core can use more native stack than Android's default.
+    // BUILD2RC: ClownMDEmu core state is large and the emulator core can use more native stack than Android's default.
     // Give the worker 8 MB so ROM selection does not kill the process with stack overflow.
     pthread_attr_setstacksize(&attr, 8 * 1024 * 1024);
     int rc = pthread_create(&g_real_thread, &attr, nap_real_worker_thread_entry, (void*)(intptr_t)generation);
@@ -519,7 +519,7 @@ static void nap_real_setup_cfg_callbacks() {
 static std::string nap_real_step_once() {
     std::lock_guard<std::mutex> lock(g_real_mutex);
     std::ostringstream out;
-    out << "REAL_CORE_STEP_DISABLED_IN_BUILD2RB\n";
+    out << "REAL_CORE_STEP_DISABLED_IN_BUILD2RC\n";
     out << "reason=core now runs from native monitor render under single mutex after ROM load\n";
     out << "loaded=" << (g_real.loaded ? "YES" : "NO") << "\n";
     out << "status=" << g_real.status;
@@ -532,7 +532,7 @@ static bool nap_real_render_to_argb(int out_w, int out_h, jint *out_px) {
     int sw = 0, sh = 0;
     std::vector<uint32_t> local;
     {
-        // BUILD2RB: copy only the latest completed display frame. Do not lock g_real_mutex here,
+        // BUILD2RC: copy only the latest completed display frame. Do not lock g_real_mutex here,
         // because on S8 that made TextureView wait for the full ClownMDEmu_Iterate() and video looked like 1 frame / 10 s.
         std::lock_guard<std::mutex> flock(g_frame_mutex);
         if (!g_real.frame_ready || g_real.display_frame_counter == 0 || g_real.display_argb.empty() || g_real.display_w <= 0 || g_real.display_h <= 0) return false;
@@ -568,7 +568,7 @@ static void* nap_real_worker_thread_entry(void *arg) {
 
 static void nap_real_worker_thread(int generation) {
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-    NAPLOG("BUILD2RB real core worker start gen=%d bigstack=8MB", generation);
+    NAPLOG("BUILD2RC real core worker start gen=%d bigstack=8MB", generation);
     try {
         static bool constants_ready = false;
         {
@@ -598,7 +598,7 @@ static void nap_real_worker_thread(int generation) {
             next_tick += frame_period;
             auto iter_start = std::chrono::steady_clock::now();
             if (g_real.loaded) {
-                // BUILD2RB: do not hold g_real_mutex while the core iterates.
+                // BUILD2RC: do not hold g_real_mutex while the core iterates.
                 // Video reads the last completed display frame through g_frame_mutex only.
                 ClownMDEmu_Iterate(&g_real.emu);
                 g_real.iterations_last++;
@@ -632,7 +632,7 @@ static void nap_real_worker_thread(int generation) {
         g_real.status = "REAL_CORE_WORKER_UNKNOWN_EXCEPTION";
     }
     g_real_thread_alive.store(0);
-    NAPLOG("BUILD2RB real core worker stop gen=%d", generation);
+    NAPLOG("BUILD2RC real core worker stop gen=%d", generation);
 #endif
 }
 
@@ -642,7 +642,7 @@ static void nap_render_guard_frame(int width, int height, jintArray argbOut, JNI
     int needed = width * height;
     if (len < needed) return;
     std::vector<jint> px((size_t)needed, (jint)0xff06142au);
-    // BUILD2RB: blank guarded monitor. No running cubes, no center square, no hash bars.
+    // BUILD2RC: blank guarded monitor. No running cubes, no center square, no hash bars.
     // Subtle blue border only shows the native view is alive and placed correctly.
     auto put = [&](int x0,int y0,int rw,int rh,uint32_t c){
         int x1=std::max(0,x0), y1=std::max(0,y0), x2=std::min(width,x0+rw), y2=std::min(height,y0+rh);
@@ -689,7 +689,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2RB NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
+    std::string s = "BUILD2RC NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -745,12 +745,12 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeRomInfo(JNIEnv* env, jclas
         out << "- Mega Drive header: NE / soubor je mensi nez 0x200\n";
     }
 
-    out << "\nBUILD2RB DULEZITE:\n";
+    out << "\nBUILD2RC DULEZITE:\n";
     out << "ROM je ted realne prectena v Jave a analyzovana v C++.\n";
-    out << "BUILD2RB ma vypnuty proof pattern a chrani real-core load proti padu aplikace.\n";
+    out << "BUILD2RC ma vypnuty proof pattern a chrani real-core load proti padu aplikace.\n";
     out << "Dalsi krok je podle logu opravit konkretni core init/reset/iterate misto dalsich fake patternu.\n";
     std::string s = out.str();
-    NAPLOG("BUILD2RB ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
+    NAPLOG("BUILD2RC ROM info generated, bytes=%d fnv=0x%08x", len, fnv);
     return env->NewStringUTF(s.c_str());
 }
 
@@ -868,10 +868,10 @@ Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(JNIEnv* env,
 }
 
 
-// BUILD2RB: same native core exposed to MainActivity/WebView in-place bridge.
+// BUILD2RC: same native core exposed to MainActivity/WebView in-place bridge.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2RB NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
+    std::string s = "BUILD2RC NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -894,7 +894,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_renderPattern(JNIEnv* env, jclass, 
         jsize len = env->GetArrayLength(argbOut);
         int needed = width * height;
         if (len >= needed) {
-            // BUILD2RB: mobile video fast path. Do not allocate a std::vector every frame and do not copy twice.
+            // BUILD2RC: mobile video fast path. Do not allocate a std::vector every frame and do not copy twice.
             // Java TextureView owns one 320x224 int[]; native writes directly into it.
             jint* out = env->GetIntArrayElements(argbOut, nullptr);
             if (out) {
@@ -925,7 +925,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_makeAudioTone(JNIEnv* env, jclass, 
     Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(env, nullptr, pcmOut, sampleRate, hz);
 }
 
-// BUILD2RB REAL CORE ADAPTER SLOT
+// BUILD2RC REAL CORE ADAPTER SLOT
 // This stage imports local vendored ClownMDEmu-core sources and links only interpreter/core libraries into the native .so.
 #ifndef NAP_SEGA_VENDOR_CORE_PRESENT
 #define NAP_SEGA_VENDOR_CORE_PRESENT 0
