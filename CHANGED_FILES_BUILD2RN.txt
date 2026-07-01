@@ -1,0 +1,21 @@
+BUILD2RN changed files:
+
+app/src/main/cpp/nap_sega_native_proof.cpp
+- Replaced RM anti-alias/volume experiment with reference audio cleanup.
+- Disabled ClownMDEmu built-in VA4 low-pass for Android/Nox path.
+- Kept YM/FM stereo and raised FM back to audible level.
+- Added final rumble blocker for false low-frequency gong/bass artefact.
+- Kept native-rate FM/PSG average downsampling to 48 kHz.
+- Removed startup ramp; replaced with short startup mute.
+- LOW/HIGH keeps audio clock/gain unchanged.
+
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- Updated build/log labels to BUILD2RN.
+- AudioTrack stays stereo 48 kHz.
+- AudioAttributes content type changed away from MUSIC to avoid platform bass enhancement path.
+
+app/src/main/assets/emu_sega/index.html
+- Updated build/log/help labels to BUILD2RN.
+
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- Build label update only if present.
