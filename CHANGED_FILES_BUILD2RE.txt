@@ -1,0 +1,14 @@
+BUILD2RE changed files:
+- app/src/main/assets/emu_sega/index.html
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+
+Main changes:
+- remove fake black cppCoreArtCover overlay
+- safer landscape viewport detection using real visualViewport/inner size, not screen max/min
+- landscape controls lower, bigger touch zones preserved
+- Android TextureView aspect-fit destination; no HUD/lives crop
+- S8/A12 render thermal guard: old Android render thread draws lower FPS if overloaded
+- render perf log every 5 seconds
+- C++ audio callback thread_local buffers to reduce callback allocation churn
