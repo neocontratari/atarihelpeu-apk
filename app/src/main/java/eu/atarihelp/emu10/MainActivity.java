@@ -235,8 +235,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2QZ\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2QZ_SEGA_NATIVE_CPP_ONLY_CLEAN_TEXTURE_MOBILE_STAGE116\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2RA\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2RA_SEGA_NATIVE_CPP_ONLY_CLEAN_AUDIT_RENDER_STAGE117\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -252,28 +252,28 @@ public class MainActivity extends Activity {
         synchronized (nativeLog) { out.append(nativeLog.toString()); }
         out.append("\nDULEZITE:\n- Tohle porad neni hotovy Sega gameplay.\n");
         out.append("- Toto overuje normalni Sega UI -> Java -> JNI -> C++ -> ROM/input/audio/render/log.\n");
-        out.append("- Sega emulace je v BUILD2QZ C++ only; Java/WebView wrapper se nespousti; C++ CORE UI tlacitko je odstranene; audio profil zustava QT/QP; mobile visibility/orientation nesmi vypnout native video; C++ region respektuje ROM header; nulove recty se ignoruji.\n");
+        out.append("- Sega emulace je v BUILD2RA C++ only; Java/WebView wrapper se nespousti; C++ CORE UI tlacitko je odstranene; audio profil zustava QT/QP; mobile visibility/orientation nesmi vypnout native video; C++ region respektuje ROM header; nulove recty se ignoruji.\n");
         return out.toString();
     }
 
     private synchronized void startNativeCoreAudioStream() {
         if (nativeCoreAudioRun && nativeCoreAudioThread != null && nativeCoreAudioThread.isAlive()) {
-            appendNativeLog("NATIVE_AUDIO_STREAM_ALREADY_RUNNING_QZ_QT_AUDIO");
+            appendNativeLog("NATIVE_AUDIO_STREAM_ALREADY_RUNNING_RA_QT_AUDIO");
             return;
         }
         nativeCoreAudioRun = true;
         nativeCoreAudioThread = new Thread(() -> {
-            // BUILD2QZ: C++ only + clean-sync audio pass.
+            // BUILD2RA: C++ only + clean-sync audio pass.
             // QQ mensi buffer na Noxu zhorsil chrceni a zpozdeni.
             // QT vraci stabilnejsi QP/QO AudioTrack velikost, ale bez stare Java wrapper cesty
             // a bez velkeho prefillu, aby Sonic zustal bliz obrazu.
             try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO); } catch (Throwable ignored) {}
             final int sampleRate = 48000;
-            final int chunk = 384; // BUILD2QZ: navrat k QP audio bloku, protoze QR bylo chraplavejsi; porad nizka latence pro Sonic.
+            final int chunk = 384; // BUILD2RA: navrat k QP audio bloku, protoze QR bylo chraplavejsi; porad nizka latence pro Sonic.
             AudioTrack track = null;
             try {
                 int min = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT);
-                int wantedBytes = chunk * 2 * 10; // BUILD2QZ: QP clean buffer (~80 ms HW rezerva), bez Java wrapperu.
+                int wantedBytes = chunk * 2 * 10; // BUILD2RA: QP clean buffer (~80 ms HW rezerva), bez Java wrapperu.
                 int bufferBytes = Math.max(min > 0 ? min * 2 : 0, wantedBytes);
                 AudioTrack.Builder builder = null;
                 if (Build.VERSION.SDK_INT >= 21) {
@@ -295,7 +295,7 @@ public class MainActivity extends Activity {
                 }
                 short[] pcm = new short[chunk];
                 nativeCurrentAudioTrack = track;
-                appendNativeLog("NATIVE_AUDIO_STREAM_START_QZ_QT_AUDIO_KEEP sampleRate=" + sampleRate + " chunk=" + chunk + " minBytes=" + min + " bufferBytes=" + bufferBytes + " setFrames=" + setFrames + " perfLowLatency=" + (Build.VERSION.SDK_INT >= 26));
+                appendNativeLog("NATIVE_AUDIO_STREAM_START_RA_QT_AUDIO_KEEP sampleRate=" + sampleRate + " chunk=" + chunk + " minBytes=" + min + " bufferBytes=" + bufferBytes + " setFrames=" + setFrames + " perfLowLatency=" + (Build.VERSION.SDK_INT >= 26));
 
                 int prefilled = 0;
                 int preLoops = 0;
@@ -314,7 +314,7 @@ public class MainActivity extends Activity {
                 }
 
                 track.play();
-                appendNativeLog("NATIVE_AUDIO_PREFILL_QZ_QT_AUDIO_KEEP frames=" + prefilled + " loops=" + preLoops + " playState=" + track.getPlayState());
+                appendNativeLog("NATIVE_AUDIO_PREFILL_RA_QT_AUDIO_KEEP frames=" + prefilled + " loops=" + preLoops + " playState=" + track.getPlayState());
                 int loops = 0;
                 int underrunLoops = 0;
                 while (nativeCoreAudioRun) {
@@ -322,7 +322,7 @@ public class MainActivity extends Activity {
                     try { got = NativeSegaCoreBridge.pullAudio(pcm, pcm.length); }
                     catch (Throwable pullErr) { appendNativeLog("NATIVE_AUDIO_PULL_ERROR " + safeMsg(pullErr)); got = 0; }
                     if (got <= chunk / 4) { underrunLoops++; try { Thread.sleep(1); } catch (Throwable ignored) {} }
-                    if (loops < 16 || loops % 180 == 0) appendNativeLog("NATIVE_AUDIO_PULL_QZ_QT_AUDIO_KEEP got=" + got + " loop=" + loops + " underrunLoops=" + underrunLoops);
+                    if (loops < 16 || loops % 180 == 0) appendNativeLog("NATIVE_AUDIO_PULL_RA_QT_AUDIO_KEEP got=" + got + " loop=" + loops + " underrunLoops=" + underrunLoops);
                     int off = 0;
                     while (off < pcm.length && nativeCoreAudioRun) {
                         int wr = track.write(pcm, off, pcm.length - off);
@@ -336,9 +336,9 @@ public class MainActivity extends Activity {
             } finally {
                 try { if (track != null) { track.pause(); track.flush(); track.stop(); track.release(); } } catch (Throwable ignored) {}
                 if (nativeCurrentAudioTrack == track) nativeCurrentAudioTrack = null;
-                appendNativeLog("NATIVE_AUDIO_STREAM_STOP_QZ_QT_AUDIO_KEEP");
+                appendNativeLog("NATIVE_AUDIO_STREAM_STOP_RA_QT_AUDIO_KEEP");
             }
-        }, "AtariHelpSegaNativeAudioQZ");
+        }, "AtariHelpSegaNativeAudioRA");
         nativeCoreAudioThread.setDaemon(true);
         try { nativeCoreAudioThread.setPriority(Thread.MAX_PRIORITY); } catch (Throwable ignored) {}
         nativeCoreAudioThread.start();
@@ -356,9 +356,9 @@ public class MainActivity extends Activity {
         if (t != null && t.isAlive() && Thread.currentThread() != t) {
             try { t.interrupt(); } catch (Throwable ignored) {}
             try { t.join(480); } catch (Throwable ignored) {}
-            if (t.isAlive()) appendNativeLog("NATIVE_AUDIO_THREAD_STILL_ALIVE_QZ will die after AudioTrack unblocks");
+            if (t.isAlive()) appendNativeLog("NATIVE_AUDIO_THREAD_STILL_ALIVE_RA will die after AudioTrack unblocks");
         }
-        appendNativeLog("NATIVE_AUDIO_STREAM_STOP_REQUEST_QZ_QT_AUDIO_KEEP hardTrackStop=" + (at != null));
+        appendNativeLog("NATIVE_AUDIO_STREAM_STOP_REQUEST_RA_QT_AUDIO_KEEP hardTrackStop=" + (at != null));
     }
 
     private boolean isSegaNativeOwnerUrl(String url) {
@@ -393,11 +393,11 @@ public class MainActivity extends Activity {
                 if (old != null) {
                     try { old.stop(); } catch (Throwable ignored) {}
                     try { old.setVisibility(View.GONE); } catch (Throwable ignored) {}
-                    try { if (old.getParent() instanceof ViewGroup) ((ViewGroup) old.getParent()).removeView(old); } catch (Throwable t) { appendNativeLog("NATIVE_VIEW_REMOVE_UI_ERR_QZ " + safeMsg(t)); }
+                    try { if (old.getParent() instanceof ViewGroup) ((ViewGroup) old.getParent()).removeView(old); } catch (Throwable t) { appendNativeLog("NATIVE_VIEW_REMOVE_UI_ERR_RA " + safeMsg(t)); }
                 }
-                appendNativeLog("NATIVE_VIEW_REMOVE_UI_OK_QZ reason=" + reason);
+                appendNativeLog("NATIVE_VIEW_REMOVE_UI_OK_RA reason=" + reason);
             } catch (Throwable t) {
-                appendNativeLog("NATIVE_VIEW_REMOVE_UI_FAIL_QZ reason=" + reason + " " + safeMsg(t));
+                appendNativeLog("NATIVE_VIEW_REMOVE_UI_FAIL_RA reason=" + reason + " " + safeMsg(t));
             }
         };
         if (isUiThread()) r.run(); else ui.post(r);
@@ -410,7 +410,7 @@ public class MainActivity extends Activity {
         }
         StringBuilder res = new StringBuilder();
         try { appendNativeLog("NATIVE_LIFECYCLE_STOP_BEGIN reason=" + reason); } catch (Throwable ignored) {}
-        nativeRomLoadGeneration++; // BUILD2QZ: cancel stale delayed audio/render watchdogs when leaving Sega/Atari/VBXE.
+        nativeRomLoadGeneration++; // BUILD2RA: cancel stale delayed audio/render watchdogs when leaving Sega/Atari/VBXE.
         nativeInPlaceEnabled = false;
         try { stopNativeCoreAudioStream(); nativeCurrentAudioTrack = null; res.append("audioStop=OK "); } catch (Throwable t) { res.append("audioStop=ERR:").append(safeMsg(t)).append(' '); }
         try {
@@ -439,29 +439,29 @@ public class MainActivity extends Activity {
                 ui.post(() -> {
                     try {
                         if (rootFrame == null || web == null) return;
-                        // BUILD2QZ: po navratu z Atari/130XE muze byt stary Android View zivý pro audio, ale uz nekresli.
+                        // BUILD2RA: po navratu z Atari/130XE muze byt stary Android View zivý pro audio, ale uz nekresli.
                         // Proto pri kazdem C++ vstupu vytvorime cisty native monitor View.
                         if (nativeInPlaceView != null) {
                             try { nativeInPlaceView.stop(); } catch (Throwable ignored) {}
                             try { if (nativeInPlaceView.getParent() != null) ((ViewGroup) nativeInPlaceView.getParent()).removeView(nativeInPlaceView); } catch (Throwable ignored) {}
                             nativeInPlaceView = null;
-                            appendNativeLog("NATIVE_VIEW_RECREATE_QZ oldViewRemoved=YES");
+                            appendNativeLog("NATIVE_VIEW_RECREATE_RA oldViewRemoved=YES");
                         }
                         nativeInPlaceView = new NativeInPlaceView(MainActivity.this);
                         nativeInPlaceView.setClickable(false);
                         nativeInPlaceView.setEnabled(false);
                         nativeInPlaceView.setFocusable(false);
                         nativeInPlaceView.setFocusableInTouchMode(false);
-                        nativeInPlaceView.setVisibility(View.GONE);
+                        // BUILD2RA: nikdy nezobrazovat native view na vychozim 0,0/320x224.
+                        // QZ tim v Noxu udelal maly obraz hry vlevo nahore pres logo.
+                        nativeInPlaceView.setVisibility(View.INVISIBLE);
                         try { nativeInPlaceView.setLayerType(View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
-                        rootFrame.addView(nativeInPlaceView, 0, new FrameLayout.LayoutParams(320, 224));
-                        appendNativeLog("NATIVE_VIEW_REATTACH_QZ parent=rootFrame freshView=YES behindWebUntilRect=YES");
+                        rootFrame.addView(nativeInPlaceView, new FrameLayout.LayoutParams(1, 1));
+                        appendNativeLog("NATIVE_VIEW_REATTACH_RA parent=rootFrame freshView=YES hiddenUntilValidRect=YES");
                         nativeInPlaceEnabled = true;
                         nativeInPlaceView.setAlpha(1f);
                         nativeInPlaceView.setTranslationX(0f);
                         nativeInPlaceView.setTranslationY(0f);
-                        nativeInPlaceView.setVisibility(View.VISIBLE);
-                        nativeInPlaceView.start();
                     } catch (Throwable t) {
                         nativeLastStatus = "NATIVE_VIEW_ERROR " + safeMsg(t);
                         appendNativeLog(nativeLastStatus);
@@ -481,9 +481,9 @@ public class MainActivity extends Activity {
                 ui.post(() -> {
                     try {
                         if (nativeInPlaceView == null || rootFrame == null) return;
-                        // BUILD2QZ: Samsung/WebView can send a transient 0x0 rect when returning from landscape.
+                        // BUILD2RA: Samsung/WebView can send a transient 0x0 rect when returning from landscape.
                         // Ignoring that rect prevents the native video from becoming black after portrait return.
-                        if (w < 120 || h < 80) { appendNativeLog("SET_RECT_SKIP_SMALL_QZ x=" + x + " y=" + y + " w=" + w + " h=" + h); return; }
+                        if (w < 120 || h < 80) { appendNativeLog("SET_RECT_SKIP_SMALL_RA x=" + x + " y=" + y + " w=" + w + " h=" + h); return; }
                         int ww = Math.max(120, w);
                         int hh = Math.max(80, h);
                         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ww, hh);
@@ -491,15 +491,16 @@ public class MainActivity extends Activity {
                         lp.topMargin = Math.max(0, y);
                         nativeInPlaceView.setLayoutParams(lp);
                         nativeInPlaceView.setVisibility(nativeInPlaceEnabled ? View.VISIBLE : View.GONE);
+                        if (nativeInPlaceEnabled) nativeInPlaceView.start();
                         boolean landscapeFull = ww > hh && x <= 4 && y <= 4;
                         nativeLandscapeFullVideo = landscapeFull;
                         if (landscapeFull && web != null) {
-                            // BUILD2QZ: on real phones the C++ native view is the video layer, WebView is only transparent controls/log.
+                            // BUILD2RA: on real phones the C++ native view is the video layer, WebView is only transparent controls/log.
                             // This gives full-screen Sonic/Aladdin with transparent joystick/buttons over the picture.
                             try { nativeInPlaceView.setZ(0f); } catch (Throwable ignored) {}
                             try { web.setZ(10f); } catch (Throwable ignored) {}
                             try { rootFrame.bringChildToFront(web); } catch (Throwable ignored) {}
-                            appendNativeLog("NATIVE_Z_ORDER_QZ landscapeWebControlsOverNative=YES topLabelsHidden=YES");
+                            appendNativeLog("NATIVE_Z_ORDER_RA landscapeWebControlsOverNative=YES topLabelsHidden=YES");
                         } else {
                             try { if (web != null) web.setZ(0f); } catch (Throwable ignored) {}
                             try { nativeInPlaceView.setZ(20f); } catch (Throwable ignored) {}
@@ -507,7 +508,7 @@ public class MainActivity extends Activity {
                         }
                         nativeInPlaceView.requestLayout();
                         nativeInPlaceView.invalidate();
-                        appendNativeLog("SET_RECT_OK_QZ x=" + Math.max(0, x) + " y=" + Math.max(0, y) + " w=" + ww + " h=" + hh + " visible=" + nativeInPlaceEnabled + " landscapeFull=" + landscapeFull);
+                        appendNativeLog("SET_RECT_OK_RA x=" + Math.max(0, x) + " y=" + Math.max(0, y) + " w=" + ww + " h=" + hh + " visible=" + nativeInPlaceEnabled + " landscapeFull=" + landscapeFull);
                     } catch (Throwable t) { appendNativeLog("SET_RECT_ERROR " + safeMsg(t)); }
                 });
                 return "RECT_OK x=" + x + " y=" + y + " w=" + w + " h=" + h;
@@ -528,19 +529,19 @@ public class MainActivity extends Activity {
                 String info = NativeSegaCoreBridge.romInfo(data);
                 long dt = System.currentTimeMillis() - t0;
 
-                // BUILD2QZ: zvuk vracen na predchozi QT profil, ale uz nesmi bezet pred obrazem.
+                // BUILD2RA: zvuk vracen na predchozi QT profil, ale uz nesmi bezet pred obrazem.
                 // Tvrdý fresh start pred kazdou ROM brani stavu: Atari 130XE -> Sega -> nova ROM -> cerna obrazovka + zvuk.
                 final int loadGen = ++nativeRomLoadGeneration;
                 stopNativeCoreAudioStream();
-                try { NativeSegaCoreBridge.shutdown(); appendNativeLog("FRESH_ROM_HARD_STOP_BEFORE_LOAD_QZ gen=" + loadGen); } catch (Throwable ignored) {}
+                try { NativeSegaCoreBridge.shutdown(); appendNativeLog("FRESH_ROM_HARD_STOP_BEFORE_LOAD_RA gen=" + loadGen); } catch (Throwable ignored) {}
                 nativeViewDrawCounterAtRomLoad = nativeViewDrawCounter;
                 String realCore = NativeSegaCoreBridge.realCoreLoadRom(data);
 
                 nativeLastRomInfo = "ROM: " + safeFileName(name) + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
                 nativeLastStatus = "ROM_REAL_CORE_LOAD_READY bytes=" + data.length + " decodeMs=" + decodeMs + " parserMs=" + dt;
                 appendNativeLog("ROM_REAL_CORE_LOAD_READY name=" + safeFileName(name) + " bytes=" + data.length + " decodeMs=" + decodeMs + " parserMs=" + dt + " gen=" + loadGen);
-                appendNativeLog("REAL_CORE_RENDER_ACTIVE_QZ after ROM load audio=WAIT_FRAME_AND_VIEW_DRAW");
-                forceNativeViewRedrawBurst("afterRomLoad_QZ");
+                appendNativeLog("REAL_CORE_RENDER_ACTIVE_RA after ROM load audio=WAIT_FRAME_AND_VIEW_DRAW");
+                forceNativeViewRedrawBurst("afterRomLoad_RA");
                 scheduleNativeAudioAfterFrameAndViewDraw(name, data, loadGen, 1);
                 scheduleNativeRenderWatchdog(name, data, loadGen, 1);
                 return nativeLastStatus + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
@@ -628,7 +629,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String saveLog() {
             try {
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2QZ_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2RA_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
@@ -665,15 +666,15 @@ public class MainActivity extends Activity {
         final int delay = attempt <= 1 ? 220 : 320;
         ui.postDelayed(() -> {
             try {
-                if (gen != nativeRomLoadGeneration) { appendNativeLog("NATIVE_AUDIO_WAIT_CANCELLED_QZ staleGen=" + gen + " current=" + nativeRomLoadGeneration); return; }
+                if (gen != nativeRomLoadGeneration) { appendNativeLog("NATIVE_AUDIO_WAIT_CANCELLED_RA staleGen=" + gen + " current=" + nativeRomLoadGeneration); return; }
                 String st = NativeSegaCoreBridge.realCoreStatus();
                 boolean hasFrame = st != null && st.indexOf("frameReady=YES") >= 0 && st.indexOf("frameCounter=0") < 0;
                 boolean viewReady = nativeInPlaceEnabled && nativeInPlaceView != null && nativeInPlaceView.getParent() != null
                         && nativeInPlaceView.getVisibility() == View.VISIBLE && nativeViewDrawCounter > nativeViewDrawCounterAtRomLoad;
-                appendNativeLog("NATIVE_AUDIO_WAIT_FRAME_VIEW_QZ attempt=" + attempt + " gen=" + gen + " hasFrame=" + hasFrame + " viewReady=" + viewReady + " draw=" + nativeViewDrawCounter + "/" + nativeViewDrawCounterAtRomLoad + " " + (st == null ? "null" : st.replace('\n',' ').substring(0, Math.min(430, st.length()))));
+                appendNativeLog("NATIVE_AUDIO_WAIT_FRAME_VIEW_RA attempt=" + attempt + " gen=" + gen + " hasFrame=" + hasFrame + " viewReady=" + viewReady + " draw=" + nativeViewDrawCounter + "/" + nativeViewDrawCounterAtRomLoad + " " + (st == null ? "null" : st.replace('\n',' ').substring(0, Math.min(430, st.length()))));
                 if (hasFrame && viewReady) {
                     startNativeCoreAudioStream();
-                    appendNativeLog("NATIVE_AUDIO_START_AFTER_FRAME_VIEW_QZ name=" + safeFileName(romName) + " gen=" + gen + " audioProfile=QT_KEEP");
+                    appendNativeLog("NATIVE_AUDIO_START_AFTER_FRAME_VIEW_RA name=" + safeFileName(romName) + " gen=" + gen + " audioProfile=QT_KEEP");
                     return;
                 }
                 if (attempt < 10 && nativeInPlaceEnabled) {
@@ -681,11 +682,11 @@ public class MainActivity extends Activity {
                     return;
                 }
                 stopNativeCoreAudioStream();
-                nativeLastStatus = "NATIVE_AUDIO_NOT_STARTED_NO_VISIBLE_FRAME_QZ name=" + safeFileName(romName);
+                nativeLastStatus = "NATIVE_AUDIO_NOT_STARTED_NO_VISIBLE_FRAME_RA name=" + safeFileName(romName);
                 appendNativeLog(nativeLastStatus);
-                forceNativeViewRedrawBurst("audioNoVisibleFrame_QZ");
+                forceNativeViewRedrawBurst("audioNoVisibleFrame_RA");
             } catch (Throwable t) {
-                appendNativeLog("NATIVE_AUDIO_WAIT_FRAME_VIEW_QZ_ERROR " + safeMsg(t));
+                appendNativeLog("NATIVE_AUDIO_WAIT_FRAME_VIEW_RA_ERROR " + safeMsg(t));
             }
         }, delay);
     }
@@ -694,37 +695,37 @@ public class MainActivity extends Activity {
         final int delay = attempt <= 1 ? 1350 : 2600;
         ui.postDelayed(() -> {
             try {
-                if (gen != nativeRomLoadGeneration) { appendNativeLog("NATIVE_RENDER_WATCHDOG_CANCELLED_QZ staleGen=" + gen + " current=" + nativeRomLoadGeneration); return; }
+                if (gen != nativeRomLoadGeneration) { appendNativeLog("NATIVE_RENDER_WATCHDOG_CANCELLED_RA staleGen=" + gen + " current=" + nativeRomLoadGeneration); return; }
                 String st = NativeSegaCoreBridge.realCoreStatus();
                 boolean hasFrame = st != null && st.indexOf("frameReady=YES") >= 0 && st.indexOf("frameCounter=0") < 0;
                 boolean viewReady = nativeInPlaceEnabled && nativeInPlaceView != null && nativeInPlaceView.getParent() != null
                         && nativeInPlaceView.getVisibility() == View.VISIBLE && nativeViewDrawCounter > nativeViewDrawCounterAtRomLoad;
-                appendNativeLog("NATIVE_RENDER_WATCHDOG_QZ attempt=" + attempt + " gen=" + gen + " hasFrame=" + hasFrame + " viewReady=" + viewReady + " draw=" + nativeViewDrawCounter + "/" + nativeViewDrawCounterAtRomLoad + " " + (st == null ? "null" : st.replace('\n',' ').substring(0, Math.min(520, st.length()))));
+                appendNativeLog("NATIVE_RENDER_WATCHDOG_RA attempt=" + attempt + " gen=" + gen + " hasFrame=" + hasFrame + " viewReady=" + viewReady + " draw=" + nativeViewDrawCounter + "/" + nativeViewDrawCounterAtRomLoad + " " + (st == null ? "null" : st.replace('\n',' ').substring(0, Math.min(520, st.length()))));
                 if (hasFrame && viewReady) {
-                    forceNativeViewRedrawBurst("watchdogFrameViewOK_QZ");
+                    forceNativeViewRedrawBurst("watchdogFrameViewOK_RA");
                     return;
                 }
                 if (attempt <= 1 && romData != null && romData.length > 0 && nativeInPlaceEnabled) {
-                    appendNativeLog("NATIVE_RENDER_WATCHDOG_FRESH_RELOAD_QZ name=" + safeFileName(romName) + " bytes=" + romData.length + " gen=" + gen);
+                    appendNativeLog("NATIVE_RENDER_WATCHDOG_FRESH_RELOAD_RA name=" + safeFileName(romName) + " bytes=" + romData.length + " gen=" + gen);
                     try { stopNativeCoreAudioStream(); } catch (Throwable ignored) {}
                     try { NativeSegaCoreBridge.shutdown(); } catch (Throwable ignored) {}
                     nativeViewDrawCounterAtRomLoad = nativeViewDrawCounter;
                     String reload = NativeSegaCoreBridge.realCoreLoadRom(romData);
-                    nativeLastStatus = "NATIVE_RENDER_WATCHDOG_RELOAD_QZ " + (reload == null ? "null" : reload.replace('\n',' '));
+                    nativeLastStatus = "NATIVE_RENDER_WATCHDOG_RELOAD_RA " + (reload == null ? "null" : reload.replace('\n',' '));
                     appendNativeLog(nativeLastStatus.substring(0, Math.min(900, nativeLastStatus.length())));
-                    forceNativeViewRedrawBurst("watchdogFreshReload_QZ");
+                    forceNativeViewRedrawBurst("watchdogFreshReload_RA");
                     scheduleNativeAudioAfterFrameAndViewDraw(romName, romData, gen, 1);
                     scheduleNativeRenderWatchdog(romName, romData, gen, attempt + 1);
                     return;
                 }
                 if (!hasFrame || !viewReady) {
                     stopNativeCoreAudioStream();
-                    nativeLastStatus = "NATIVE_RENDER_NO_VISIBLE_FRAME_AUDIO_STOPPED_QZ name=" + safeFileName(romName);
+                    nativeLastStatus = "NATIVE_RENDER_NO_VISIBLE_FRAME_AUDIO_STOPPED_RA name=" + safeFileName(romName);
                     appendNativeLog(nativeLastStatus);
-                    forceNativeViewRedrawBurst("watchdogNoVisibleFrameAudioStopped_QZ");
+                    forceNativeViewRedrawBurst("watchdogNoVisibleFrameAudioStopped_RA");
                 }
             } catch (Throwable t) {
-                appendNativeLog("NATIVE_RENDER_WATCHDOG_QZ_ERROR " + safeMsg(t));
+                appendNativeLog("NATIVE_RENDER_WATCHDOG_RA_ERROR " + safeMsg(t));
             }
         }, delay);
     }
@@ -770,11 +771,11 @@ public class MainActivity extends Activity {
             if (!isAvailable()) return;
             Thread t = renderThread;
             if (t != null && t.isAlive()) return;
-            renderThread = new Thread(() -> renderLoop(reason), "AtariHelpSegaTextureQZ");
+            renderThread = new Thread(() -> renderLoop(reason), "AtariHelpSegaTextureRA");
             renderThread.setDaemon(true);
             try { renderThread.setPriority(Thread.MAX_PRIORITY - 1); } catch (Throwable ignored) {}
             renderThread.start();
-            appendNativeLog("NATIVE_TEXTURE_THREAD_START_QZ reason=" + reason + " view=" + getWidth() + "x" + getHeight());
+            appendNativeLog("NATIVE_TEXTURE_THREAD_START_RA reason=" + reason + " view=" + getWidth() + "x" + getHeight());
         }
 
         private void renderLoop(String reason) {
@@ -793,13 +794,13 @@ public class MainActivity extends Activity {
                     c = lockCanvas();
                     if (c != null) drawTextureFrame(c);
                 } catch (Throwable t) {
-                    appendNativeLog("NATIVE_TEXTURE_RENDER_ERROR_QZ " + safeMsg(t));
+                    appendNativeLog("NATIVE_TEXTURE_RENDER_ERROR_RA " + safeMsg(t));
                 } finally {
-                    try { if (c != null) unlockCanvasAndPost(c); } catch (Throwable t) { appendNativeLog("NATIVE_TEXTURE_UNLOCK_ERROR_QZ " + safeMsg(t)); }
+                    try { if (c != null) unlockCanvasAndPost(c); } catch (Throwable t) { appendNativeLog("NATIVE_TEXTURE_UNLOCK_ERROR_RA " + safeMsg(t)); }
                 }
                 long cost = System.nanoTime() - startNs;
                 nativeLastRenderCostNs = cost;
-                // BUILD2QZ: video is no longer painted from WebView/UI invalidation. It has its own TextureView thread.
+                // BUILD2RA: video is no longer painted from WebView/UI invalidation. It has its own TextureView thread.
                 // Target mobile game speed first; if an old phone is overloaded, skip render sleeps rather than blocking UI.
                 long period = nativeLandscapeFullVideo ? 16666667L : 16666667L;
                 if (Build.VERSION.SDK_INT <= 28 && cost > 22000000L) period = 20000000L;
@@ -812,7 +813,7 @@ public class MainActivity extends Activity {
                     try { Thread.yield(); } catch (Throwable ignored) {}
                 }
             }
-            appendNativeLog("NATIVE_TEXTURE_THREAD_STOP_QZ reason=" + reason + " drawCounter=" + nativeViewDrawCounter + " lastCostMs=" + (nativeLastRenderCostNs / 1000000.0));
+            appendNativeLog("NATIVE_TEXTURE_THREAD_STOP_RA reason=" + reason + " drawCounter=" + nativeViewDrawCounter + " lastCostMs=" + (nativeLastRenderCostNs / 1000000.0));
         }
 
         private void drawTextureFrame(Canvas canvas) {
@@ -829,11 +830,11 @@ public class MainActivity extends Activity {
                 canvas.drawBitmap(bitmap, null, new Rect(0, 0, w, h), paint);
                 nativeViewDrawCounter++;
                 if (nativeViewDrawCounter <= 4 || nativeViewDrawCounter % 300 == 0) {
-                    appendNativeLog("NATIVE_TEXTURE_FRAME_QZ count=" + nativeViewDrawCounter + " dst=" + w + "x" + h + " landscapeFull=" + nativeLandscapeFullVideo + " costMs=" + (nativeLastRenderCostNs / 1000000.0));
+                    appendNativeLog("NATIVE_TEXTURE_FRAME_RA count=" + nativeViewDrawCounter + " dst=" + w + "x" + h + " landscapeFull=" + nativeLandscapeFullVideo + " costMs=" + (nativeLastRenderCostNs / 1000000.0));
                 }
             } catch (Throwable t) {
                 try { canvas.drawColor(Color.rgb(20, 0, 0)); } catch (Throwable ignored) {}
-                appendNativeLog("NATIVE_TEXTURE_FRAME_ERROR_QZ " + safeMsg(t));
+                appendNativeLog("NATIVE_TEXTURE_FRAME_ERROR_RA " + safeMsg(t));
             }
         }
 
@@ -910,7 +911,7 @@ public class MainActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 10);
         }
         web = new WebView(this);
-        // BUILD2QZ: WebView must be transparent in landscape; HTML is controls-only over native C++ video.
+        // BUILD2RA: WebView must be transparent in landscape; HTML is controls-only over native C++ video.
         try { web.setBackgroundColor(Color.TRANSPARENT); } catch (Throwable ignored) {}
         try { web.setLayerType(View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
         WebSettings s = web.getSettings();

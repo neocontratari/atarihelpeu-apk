@@ -1,0 +1,30 @@
+BUILD2RA_SEGA_NATIVE_CPP_ONLY_CLEAN_AUDIT_RENDER_STAGE117
+
+KODY JSOU ZMENENE
+
+Zmenene soubory:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/assets/emu_sega/index.html
+
+DULEZITE OPRAVY:
+1) QZ chyba v Noxu: mala Sonic obrazovka vlevo nahore
+- Native TextureView uz nikdy nestartuje viditelne na vychozim 0,0/320x224.
+- View je po vytvoreni INVISIBLE/1x1 a zobrazi se az po platnem native rectu.
+- Portrait ma robustni fallback monitor rect, kdyz WebView/Samsung/Nox vrati 0x0.
+
+2) Mobil S8 video jako 1 snimek za 10 s
+- C++ core worker uz nedrzi g_real_mutex pres cely ClownMDEmu_Iterate().
+- Render thread uz necaka na celou emulacni iteraci.
+- Pridan display-frame snapshot buffer: worker pise do frame_argb, po hotovem framu zkopiruje do display_argb; renderer cte jen display_argb pres kratky frame mutex.
+
+3) Sega C++ ONLY zustava
+- Java/WebView Sega wrapper zustava vypnuty.
+- ROM picker posila ROM primo do C++.
+- Region ROM se respektuje podle headeru.
+- Zvuk zustava QT/QP profil, neladeno.
+
+4) UI cleanup
+- C++ CORE tlacitko je odstranene a zbytek kresby je agresivneji zakryty.
+- clownFrameWrap se pri C++ startu uz znovu nezapina.
