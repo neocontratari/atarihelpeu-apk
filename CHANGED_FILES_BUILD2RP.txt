@@ -1,0 +1,19 @@
+BUILD2RP changed files:
+
+app/src/main/cpp/nap_sega_native_proof.cpp
+- Kept RO zeroed FM/PSG scratch-buffer fix.
+- Reduced native FIFO target/max to cut audio latency.
+- Added latencyFrames/latencyMs/trimEvents/worker priority diagnostics.
+- Removed fake colored left-edge duplication in scanline path.
+- Added best-effort native worker priority.
+
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- Reduced AudioTrack chunk/prefill and requested smaller buffer size.
+- Added single audio path proof: nativeActiveAudioTracks, oldAudioKilled/javaAudioReleased log markers.
+- Added real TextureView source crop 4px for the left-edge strip.
+
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- Build/comment labels updated.
+
+app/src/main/assets/emu_sega/index.html
+- Build/log/help labels updated to BUILD2RP.
