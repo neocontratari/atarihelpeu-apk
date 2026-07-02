@@ -1,0 +1,23 @@
+BUILD2RQ changed files:
+
+app/src/main/cpp/nap_sega_native_proof.cpp
+- Labely BUILD2RQ.
+- Audio mode FM_PSG_ZEROED_BALANCED_CLOCK_RQ.
+- FIFO target 3072 / max 16384 / lowWater 1536.
+- Pridan audio-clock governor: jemne pribrzdeni core pri velkem audio backlogu misto tvrdych dropu.
+- Zachovano zeroInputBuffers=YES a coreLPF=ON.
+- Loguje clockSleeps, latencyFrames, latencyMs, trimEvents, drops.
+
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- Labely BUILD2RQ.
+- AudioTrack chunk zpet na 384 stereo frames.
+- Stabilnejsi buffer: setBufferSizeInFrames min 3072.
+- Vypnuto nucene PERFORMANCE_MODE_LOW_LATENCY.
+- Jedno kratke retry pri nizkem native pullu misto okamziteho zapisovani ticha.
+- Single audio path logy ponechane.
+
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- Komentar/label BUILD2RQ balanced audio-clock lifecycle.
+
+app/src/main/assets/emu_sega/index.html
+- Labely a log/help text BUILD2RQ.
