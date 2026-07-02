@@ -1,0 +1,19 @@
+BUILD2RZ changed files (POUZE HTML/JS - zadny zasah do C++/Java/CMake/vendor):
+- app/src/main/assets/emu_sega/index.html
+  * landscape ovladac v2: zony z procent obrazovky, diagonaly, poloprusvitny
+    overlay s popisky A/B/C (mapovani 1:1), portrait beze zmeny
+  * SBIRKA: tap = https://atarihelp.eu/?page_id=207 (stop native + navigace),
+    dlouhy stisk 700ms = puvodni SEGA VYKON menu
+  * BUILD label RZ
+- app/src/main/assets/emu_ps1/index.html
+  * LOG panel v SETTINGS (ring 400 radku, KOPIROVAT LOG)
+  * CD/ISO + LOAD GAME: realna analyza souboru - BIOS rozpoznani (SCPH model,
+    region, FNV otisky overene proti Reneho souborum) a PS1 disk markery
+    (RAW2352, CD001, Sony licencni region, SYSTEM.CNF, BOOT radek)
+  * poctivy stav: PS1 CORE NENI PRIPOJEN, zadny fake boot
+  * R2: LOAD GAME = "VYBER HRY", .cue parser (rekne ktery .bin patri k disku),
+    upozorneni na 7z/zip archivy, zapamatovani posledni vybrane hry
+  * design/hitboxy 1:1 nedotcene
+
+Overeni: oba <script> bloky prosly node --check; BIOS analyzer otestovan
+v Node proti vsem 4 realnym scph*.bin souborum (100% shoda modelu i regionu).

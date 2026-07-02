@@ -46,6 +46,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #romInput{display:none;}
 #perfMenu{position:absolute;left:6%;right:6%;top:31%;z-index:150;display:none;padding:14px;border-radius:18px;background:rgba(0,0,0,.88);border:1px solid rgba(80,170,255,.55);box-shadow:0 0 28px rgba(0,130,255,.30);color:#d9ecff;text-align:center;font:900 14px/1.35 "Courier New",monospace;}
 #perfMenu.show{display:block;}
+/* BUILD2RZ landscape pad overlay: decentni vizualni voditko + zdroj pravdy pro zony je JS (layoutLandPad) */
+#landPad{display:none;position:fixed;inset:0;z-index:60;pointer-events:none;}
+#landPad.show{display:block;}
+.lpRing{position:fixed;border:2px solid rgba(150,220,255,.34);border-radius:50%;background:rgba(20,60,110,.10);box-shadow:0 0 18px rgba(0,120,255,.10) inset;}
+.lpRing.on{border-color:rgba(180,240,255,.85);background:rgba(40,120,200,.22);}
+.lpBtnV{position:fixed;border:2px solid rgba(150,220,255,.38);border-radius:50%;background:rgba(20,60,110,.12);color:rgba(220,245,255,.55);font:900 18px "Courier New",monospace;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px #000;}
+.lpBtnV.on{border-color:rgba(255,235,160,.9);background:rgba(200,150,40,.28);color:#fff;}
+.lpCross{position:fixed;background:rgba(150,220,255,.20);border-radius:6px;}
 #perfMenu .pmTitle{font-size:15px;color:#ffe17a;margin-bottom:10px;text-shadow:0 0 8px #000;}
 #perfMenu button{display:block;width:100%;margin:8px 0;padding:12px;border-radius:14px;border:1px solid rgba(120,210,255,.60);background:rgba(8,32,58,.92);color:#e8f8ff;font:900 15px/1.15 "Courier New",monospace;box-shadow:inset 0 0 16px rgba(0,120,255,.28),0 0 18px rgba(0,130,255,.20);}
 #perfMenu button:active{background:rgba(0,95,170,.92);}
@@ -127,6 +135,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnB" class="hit" type="button">B</button>
   <button id="btnC" class="hit" type="button">C</button>
   <button id="dpad" class="hit" type="button">DPAD</button>
+  <div id="landPad" aria-hidden="true">
+    <div class="lpRing" id="lpDpad"></div>
+    <div class="lpCross" id="lpCrossH"></div>
+    <div class="lpCross" id="lpCrossV"></div>
+    <div class="lpBtnV" id="lpA">A</div>
+    <div class="lpBtnV" id="lpB">B</div>
+    <div class="lpBtnV" id="lpC">C</div>
+  </div>
   <div id="toast" class="toast"></div>
   <div id="perfMenu" aria-hidden="true">
     <div class="pmTitle">SEGA VYKON</div>
@@ -137,7 +153,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </main>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2RY_SEGA_NATIVE_CPP_ONLY_CORE_O3_VDP_LEFT_BLANK_STAGE141';
+var BUILD='BUILD2RZ_SEGA_UI_LANDSCAPE_PAD_V2_COLLECTION_LINK_STAGE142';
 var logLines=[], __lastSaveLogTap=0, frameLoaded=false, selectedRomName='zadna', selectedRomSize=0, selectedRomBuffer=null, lastBootStatus='NO_ROM', lastKeyStatus='NO_KEY', activeDpadDir=null, inputLogShieldCount=0;
 var nativeCppMode=true,nativeCppLastStatus='NATIVE_ARMED_CPP_ONLY',nativeCppInputCount=0;
 var FORCE_NATIVE_CPP_ONLY=true;
@@ -466,42 +482,81 @@ function setupLandscapeMultiTouch(){
   if(window.__napLandscapeMultiTouchInstalled)return;
   window.__napLandscapeMultiTouchInstalled=true;
   window.__napMobileTouchEngineActive=true;
-  var last={A:false,B:false,C:false,dir:null};
-  function rectOf(id){var el=$(id);return el?el.getBoundingClientRect():null;}
-  function insideCircle(r,x,y,scale){if(!r)return false;var cx=r.left+r.width/2,cy=r.top+r.height/2;var rad=Math.min(r.width,r.height)*(scale||.52);var dx=x-cx,dy=y-cy;return (dx*dx+dy*dy)<=rad*rad;}
-  function dpadDirAt(x,y){var r=rectOf('dpad');if(!r)return null;var cx=r.left+r.width/2,cy=r.top+r.height/2;var rx=(x-cx)/(r.width/2),ry=(y-cy)/(r.height/2);var d=Math.sqrt(rx*rx+ry*ry);if(d>1.24||d<.08)return null;return Math.abs(rx)>Math.abs(ry)?(rx<0?'LEFT':'RIGHT'):(ry<0?'UP':'DOWN');}
-  function applyButton(btn,on){if(last[btn]===on)return;last[btn]=on;sendToWrapper(btn,on);}
-  function applyDir(dir){if(last.dir===dir)return;if(last.dir)sendToWrapper(last.dir,false);last.dir=dir;if(last.dir)sendToWrapper(last.dir,true);}
+  /* BUILD2RZ LANDSCAPE PAD V2:
+     - zony uz NEJSOU odvozene z portrait skin elementu (v landscape sedely divne = "hnusny ovladac"),
+       ale z pevnych procent obrazovky: dpad vlevo dole, A/B/C oblouk vpravo dole jako na realnem MD padu.
+     - DIAGONALY: UP/DOWN/LEFT/RIGHT jsou nezavisle bity => Sonic muze bezet a koulet zaroven.
+     - Poloprumysvitny overlay ukazuje, kde zony jsou, a rozsviti se pri stisku.
+     - Mapovani je 1:1 s popisky: overlay "A" posila Genesis A, "B" -> B, "C" -> C (viz INPUT log). */
+  var last={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,C:false};
+  var Z=null;
+  function layoutLandPad(){
+    var W=window.innerWidth||0,H=window.innerHeight||0,m=Math.min(W,H);
+    Z={dcx:W*0.16,dcy:H*0.64,dr:m*0.21,
+       A:{x:W*0.695,y:H*0.845,r:m*0.105},
+       B:{x:W*0.80,y:H*0.695,r:m*0.105},
+       C:{x:W*0.89,y:H*0.535,r:m*0.105}};
+    function place(el,cx,cy,r){if(!el)return;el.style.left=(cx-r)+'px';el.style.top=(cy-r)+'px';el.style.width=(2*r)+'px';el.style.height=(2*r)+'px';}
+    place($('lpDpad'),Z.dcx,Z.dcy,Z.dr);
+    place($('lpA'),Z.A.x,Z.A.y,Z.A.r);place($('lpB'),Z.B.x,Z.B.y,Z.B.r);place($('lpC'),Z.C.x,Z.C.y,Z.C.r);
+    var ch=$('lpCrossH'),cv=$('lpCrossV'),t=Math.max(4,Z.dr*0.16);
+    if(ch){ch.style.left=(Z.dcx-Z.dr*0.72)+'px';ch.style.top=(Z.dcy-t/2)+'px';ch.style.width=(Z.dr*1.44)+'px';ch.style.height=t+'px';}
+    if(cv){cv.style.left=(Z.dcx-t/2)+'px';cv.style.top=(Z.dcy-Z.dr*0.72)+'px';cv.style.width=t+'px';cv.style.height=(Z.dr*1.44)+'px';}
+  }
+  function landPadVisible(v){var p=$('landPad');if(p){p.classList.toggle('show',!!v);p.setAttribute('aria-hidden',v?'false':'true');}}
+  function refreshLandPad(){var on=isLandscapeNow();if(on)layoutLandPad();landPadVisible(on);}
+  function inCircle(c,x,y,slop){var dx=x-c.x,dy=y-c.y;var rr=c.r*(slop||1.28);return dx*dx+dy*dy<=rr*rr;}
+  function dpadBitsAt(x,y){
+    if(!Z)return null;
+    var dx=x-Z.dcx,dy=y-Z.dcy,d=Math.sqrt(dx*dx+dy*dy);
+    if(d>Z.dr*1.55||d<Z.dr*0.10)return null;
+    var rx=dx/d,ry=dy/d;
+    return {LEFT:rx<-0.42,RIGHT:rx>0.42,UP:ry<-0.42,DOWN:ry>0.42};
+  }
+  function applyKey(k,on){if(last[k]===on)return;last[k]=on;sendToWrapper(k,on);}
+  function markVis(){
+    var dOn=last.UP||last.DOWN||last.LEFT||last.RIGHT;
+    var dp=$('lpDpad');if(dp)dp.classList.toggle('on',dOn);
+    ['A','B','C'].forEach(function(k){var el=$('lp'+k);if(el)el.classList.toggle('on',!!last[k]);});
+  }
   function update(ev){
     if(!isLandscapeNow())return;
+    if(!Z)layoutLandPad();
     var t0=(ev.touches&&ev.touches[0])||ev;
     try{
       var target=t0&&document.elementFromPoint(t0.clientX,t0.clientY);
       if(target && target.closest && target.closest('#btnCollection,#btnGames,#cartSlot,#cartCenter,#btnSaves,#btnManuals,#btnWeb,#btnMenu')){return;}
     }catch(_){ }
     var touches=ev.touches||[];
-    var want={A:false,B:false,C:false,dir:null};
+    var want={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,C:false};
     var touchedControl=false;
     for(var i=0;i<touches.length;i++){
       var x=touches[i].clientX,y=touches[i].clientY;
-      var d=dpadDirAt(x,y); if(d){want.dir=d;touchedControl=true;continue;}
-      if(insideCircle(rectOf('btnA'),x,y,.86)){want.A=true;touchedControl=true;continue;}
-      if(insideCircle(rectOf('btnB'),x,y,.86)){want.B=true;touchedControl=true;continue;}
-      if(insideCircle(rectOf('btnC'),x,y,.86)){want.C=true;touchedControl=true;continue;}
+      var bits=dpadBitsAt(x,y);
+      if(bits){want.UP=want.UP||bits.UP;want.DOWN=want.DOWN||bits.DOWN;want.LEFT=want.LEFT||bits.LEFT;want.RIGHT=want.RIGHT||bits.RIGHT;touchedControl=true;continue;}
+      if(inCircle(Z.A,x,y)){want.A=true;touchedControl=true;continue;}
+      if(inCircle(Z.B,x,y)){want.B=true;touchedControl=true;continue;}
+      if(inCircle(Z.C,x,y)){want.C=true;touchedControl=true;continue;}
     }
-    if(!touchedControl && !last.A && !last.B && !last.C && !last.dir)return;
+    var anyLast=last.UP||last.DOWN||last.LEFT||last.RIGHT||last.A||last.B||last.C;
+    if(!touchedControl && !anyLast)return;
     try{ev.preventDefault();ev.stopPropagation();}catch(_){ }
-    applyDir(want.dir);
-    applyButton('A',want.A);
-    applyButton('B',want.B);
-    applyButton('C',want.C);
+    ['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,want[k]);});
+    markVis();
   }
-  function releaseAll(ev){if(!isLandscapeNow())return;update(ev);if((ev.touches||[]).length===0){applyDir(null);applyButton('A',false);applyButton('B',false);applyButton('C',false);}}
+  function releaseAll(ev){
+    if(!isLandscapeNow())return;
+    update(ev);
+    if((ev.touches||[]).length===0){['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,false);});markVis();}
+  }
   var st=$('stage')||document.body;
   ['touchstart','touchmove'].forEach(function(type){st.addEventListener(type,update,{capture:true,passive:false});});
   ['touchend','touchcancel'].forEach(function(type){st.addEventListener(type,releaseAll,{capture:true,passive:false});});
-  window.addEventListener('orientationchange',function(){setTimeout(function(){applyDir(null);applyButton('A',false);applyButton('B',false);applyButton('C',false);},80);},true);
-  pushLog('BUILD2RV LANDSCAPE_MULTITOUCH_ENGINE_READY');
+  function onOrient(){setTimeout(function(){['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,false);});markVis();refreshLandPad();},80);}
+  window.addEventListener('orientationchange',onOrient,true);
+  window.addEventListener('resize',function(){refreshLandPad();},true);
+  refreshLandPad();
+  pushLog('BUILD2RZ LANDSCAPE_PAD_V2_READY zones=screenPercent diagonals=YES overlay=YES mapping=A/B/C-1:1');
 }
 setupLandscapeMultiTouch();
 
@@ -536,7 +591,22 @@ function bindPerfButtons(){
   if(lo)bindUiAction('perfLow','perfLow',function(){applyPerformanceMode('LOW','menu');});
 }
 bindPerfButtons();
-bindUiAction('btnCollection','perfMenu',function(){openPerformanceMenu();});
+/* BUILD2RZ: SBIRKA = odkaz na herni kolekci (kratky tap). Perf menu zustava na dlouhem stisku,
+   samostatna tlacitka perfHigh/perfLow funguji dal beze zmeny. */
+(function(){
+  var el=$('btnCollection'); if(!el) return;
+  var COLLECTION_URL='https://atarihelp.eu/?page_id=207';
+  var lpTimer=null,lpFired=false;
+  el.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();lpFired=false;clearTimeout(lpTimer);
+    lpTimer=setTimeout(function(){lpFired=true;pushLog('BUILD2RZ COLLECTION_LONGPRESS perfMenu');openPerformanceMenu();},700);},true);
+  function endPress(e,fire){e.preventDefault();e.stopPropagation();clearTimeout(lpTimer);
+    if(fire&&!lpFired){pushLog('BUILD2RZ COLLECTION_CLICK url='+COLLECTION_URL);
+      try{stopNativeCppInPlace('collectionButton');}catch(_){ }
+      try{location.href=COLLECTION_URL;}catch(_){ }}}
+  el.addEventListener('pointerup',function(e){endPress(e,true);},true);
+  el.addEventListener('pointercancel',function(e){endPress(e,false);},true);
+  el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);
+})();
 bindUiAction('btnGames','romPicker',function(){requestRom('btnGames');});
 bindUiAction('cartSlot','romPicker',function(){requestRom('cartSlot');});
 bindUiAction('cartCenter','romPicker',function(){requestRom('cartCenter');});

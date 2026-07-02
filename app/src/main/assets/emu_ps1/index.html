@@ -56,7 +56,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnLoad" class="hit" type="button">LOAD GAME</button>
   <button id="btnSave" class="hit" type="button">SAVE GAME</button>
   <input id="fileInput" type="file" accept=".bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream">
-  <div id="toast" class="toast">PS1 BUILD2NZ</div>
+  <div id="toast" class="toast">PS1 BUILD2RZ</div>
 </main>
 
 <div id="helpPanel" class="panel" aria-hidden="true">
@@ -66,32 +66,136 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <p><b>CD / ISO</b> a <b>LOAD GAME</b> otevre picker pro PS1 soubor.</p>
     <p><b>RESET / MEMORY CARD / SAVE GAME</b> maji pripraveny hitbox a logiku pro dalsi napojeni emulatoru.</p>
     <p>Zadny fake gameplay — realny PS1 core se bude napojovat jako dalsi krok.</p>
+    <p><b>STAV CORE:</b> <span id="coreState">PS1 CORE NENI PRIPOJEN — tato stranka zatim dela poctivou ANALYZU souboru (BIOS/CD/ISO) pro testy.</span></p>
+    <h2 style="margin-top:14px;">PS1 TEST LOG</h2>
+    <textarea id="ps1LogView" readonly style="width:100%;min-height:220px;background:#01050a;color:#bfe9ff;border:1px solid rgba(125,200,255,.45);border-radius:10px;font:700 11px/1.4 'Courier New',monospace;padding:8px;white-space:pre;"></textarea>
+    <button id="logCopy" type="button">KOPIROVAT LOG</button>
     <button id="helpClose" type="button">ZAVRIT</button>
   </div>
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2NZ_PS1_UI_STAGE39';
+var BUILD='BUILD2RZ_PS1_DIAG_BIOS_ISO_LOG_STAGE142_R2';
 function $(id){return document.getElementById(id);}
-function log(t){try{console.log('[NAP PS1 '+BUILD+'] '+t);}catch(e){}}
+/* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
+var LOG=[];
+function stamp(){var d=new Date();function p(n){return (n<10?'0':'')+n;}return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
+function log(t){
+  var line=stamp()+'  '+t;
+  LOG.push(line); if(LOG.length>400)LOG.splice(0,LOG.length-400);
+  try{console.log('[NAP PS1 '+BUILD+'] '+t);}catch(e){}
+  var v=$('ps1LogView'); if(v){v.value=LOG.join('\n');v.scrollTop=v.scrollHeight;}
+}
 function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napPs1Toast);window.__napPs1Toast=setTimeout(function(){el.classList.remove('show');},ms||2400);log(t);}
-function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}toast('PS1 HELP',1300);}
+function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v)v.value=LOG.join('\n');}
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
-function openPicker(reason){toast(reason+': vyber PS1 CD/ISO',2200);var i=$('fileInput');if(i){try{i.value='';}catch(_){} i.click();}}
+
+/* ===== BUILD2RZ ANALYZA SOUBORU (poctiva, zadny fake boot) =====
+   BIOS rozpoznani: velikost 524288 + retezec "System ROM Version" + region pismeno.
+   FNV otisky overene proti realnym souborum Reneho (scph1001/5500/5501/7502). */
+var KNOWN_BIOS={0x4B9CF0AF:'SCPH-1001 (USA, System ROM 2.2)',0x53C79B51:'SCPH-5500 (JAPAN, System ROM 3.0)',0xEB38BE02:'SCPH-5501 (USA, System ROM 3.0)',0xEBB5EFDF:'SCPH-7502 (EUROPE, System ROM 4.1)'};
+function fnv1a32(u8){var h=0x811C9DC5;for(var i=0;i<u8.length;i++){h^=u8[i];h=(h+((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0;}return h>>>0;}
+function hex32(n){var s=(n>>>0).toString(16).toUpperCase();while(s.length<8)s='0'+s;return '0x'+s;}
+function findAscii(u8,needle,from,to){
+  var n=[],i,j;for(i=0;i<needle.length;i++)n.push(needle.charCodeAt(i));
+  from=from||0; to=Math.min(to||u8.length,u8.length);
+  for(i=from;i<=to-n.length;i++){var ok=true;for(j=0;j<n.length;j++){if(u8[i+j]!==n[j]){ok=false;break;}}if(ok)return i;}
+  return -1;
+}
+function readAscii(u8,off,len){var out='';for(var i=off;i<Math.min(off+len,u8.length);i++){var c=u8[i];if(c<32||c>126)break;out+=String.fromCharCode(c);}return out;}
+function regionWord(ch){return ch==='A'?'USA/NTSC-U':ch==='J'?'JAPAN/NTSC-J':ch==='E'?'EUROPE/PAL':('? ('+ch+')');}
+function analyzeBios(u8,name){
+  var vOff=findAscii(u8,'System ROM Version',0x7F000,u8.length);
+  if(vOff<0)return null;
+  var ver=readAscii(u8,vOff,40);
+  var reg=ver.trim().slice(-1);
+  var f=fnv1a32(u8);
+  var known=KNOWN_BIOS[f];
+  log('BIOS_DETECT name='+name+' size='+u8.length+' fnv='+hex32(f)+' verze="'+ver+'" region='+regionWord(reg)+(known?(' MATCH='+known):' MATCH=neznamy dump (muze byt v poradku, jen neni v tabulce)'));
+  return 'BIOS: '+(known||ver)+' — '+regionWord(reg);
+}
+function analyzeDisc(u8,name,totalSize){
+  var out=[];
+  var raw2352=(u8.length>=16&&u8[0]===0x00&&u8[1]===0xFF&&u8[10]===0xFF&&u8[11]===0x00);
+  var i;for(i=1;i<10;i++){if(u8[i]!==0xFF){raw2352=false;break;}}
+  if(raw2352)out.push('RAW 2352B sektory (BIN/IMG z CD)');
+  var cd001=findAscii(u8,'CD001',0,Math.min(u8.length,300000));
+  if(cd001>=0)out.push('ISO9660 (CD001 @'+cd001+')');
+  var lic=findAscii(u8,'Sony Computer Entertainment',0,Math.min(u8.length,300000));
+  if(lic>=0){
+    var licStr=readAscii(u8,lic,50);
+    var reg=licStr.indexOf('Amer')>=0?'USA/NTSC-U':licStr.indexOf('Euro')>=0?'EUROPE/PAL':licStr.indexOf('Inc')>=0?'JAPAN/NTSC-J':'?';
+    out.push('PS1 licencni sektor ("'+licStr+'") region='+reg);
+  }
+  var pst=findAscii(u8,'PLAYSTATION',0,Math.min(u8.length,300000));
+  if(pst>=0)out.push('PLAYSTATION marker @'+pst);
+  var cnf=findAscii(u8,'SYSTEM.CNF',0,Math.min(u8.length,600000));
+  if(cnf>=0)out.push('SYSTEM.CNF nalezen');
+  var boot=findAscii(u8,'BOOT = cdrom',0,Math.min(u8.length,600000));
+  if(boot>=0)out.push('BOOT radek: "'+readAscii(u8,boot,60)+'"');
+  if(!out.length)return null;
+  log('DISC_DETECT name='+name+' totalSize='+totalSize+' | '+out.join(' | '));
+  return 'PS1 DISK: '+out[0]+(out.length>1?(' +'+(out.length-1)+' dalsich znaku (viz LOG)'):'');
+}
+function analyzeFile(f,reason){
+  log('FILE_SELECTED reason='+reason+' name='+f.name+' size='+f.size);
+  var lower=(f.name||'').toLowerCase();
+  if(lower.slice(-3)==='.7z'||lower.slice(-4)==='.zip'||lower.slice(-4)==='.rar'){
+    toast('ARCHIV ('+f.name+'): napred rozbal v pocitaci/telefonu a vyber rozbaleny .bin/.iso',5200);
+    log('ARCHIVE_NOT_SUPPORTED name='+f.name+' - 7z/zip/rar nejde cist primo, vyber rozbaleny .bin');
+    return;
+  }
+  if(lower.slice(-4)==='.cue'||f.size<4096&&lower.slice(-4)!=='.bin'){
+    var tr=new FileReader();
+    tr.onload=function(){
+      var txt=String(tr.result||'');
+      var m=txt.match(/FILE\s+"([^"]+)"/i)||txt.match(/FILE\s+(\S+)/i);
+      if(m){toast('.CUE obsah disku: patri k nemu soubor "'+m[1]+'" - vyber TEN pro analyzu',5600);log('CUE_PARSED name='+f.name+' file="'+m[1]+'" | '+txt.split(/\r?\n/)[0]);}
+      else{toast('.CUE precten, ale FILE radek nenalezen - vyber primo .bin',4200);log('CUE_NO_FILE_LINE name='+f.name);}
+    };
+    tr.onerror=function(){toast('CHYBA cteni .cue',2600);};
+    tr.readAsText(f.slice(0,65536));
+    return;
+  }
+  var isBiosSize=(f.size===524288);
+  var slice=isBiosSize?f:f.slice(0,1024*1024);
+  var r=new FileReader();
+  r.onerror=function(){toast('CHYBA cteni souboru: '+f.name,3200);};
+  r.onload=function(){
+    try{
+      var u8=new Uint8Array(r.result);
+      var res=null;
+      if(isBiosSize)res=analyzeBios(u8,f.name);
+      if(!res)res=analyzeDisc(u8,f.name,f.size);
+      if(res){toast(res,5200);
+        if(res.indexOf('PS1 DISK')===0){try{localStorage.setItem('napPs1LastGame',f.name);}catch(_){ } log('GAME_REMEMBERED name='+f.name);}}
+      else{toast('Soubor nerozpoznan jako PS1 BIOS ani PS1 disk: '+f.name,4200);log('DETECT_NONE name='+f.name+' prvnich16B='+Array.prototype.slice.call(u8,0,16).map(function(b){return('0'+b.toString(16)).slice(-2);}).join(' '));}
+      log('POZN: PS1 core NENI pripojen - analyza slouzi k overeni souboru pred napojenim realneho jadra. Zadny fake boot.');
+    }catch(err){toast('ANALYZA CHYBA: '+(err&&err.message),3600);}
+  };
+  r.readAsArrayBuffer(slice);
+}
+function openPicker(reason){
+  var lastGame='';try{lastGame=localStorage.getItem('napPs1LastGame')||'';}catch(_){ }
+  toast(reason+': vyber PS1 soubor (.bin/.iso/.img hra, .cue obsah, BIOS .bin)'+(lastGame?(' | posledni: '+lastGame):''),2800);
+  var i=$('fileInput');if(i){try{i.value='';}catch(_){} i.__napReason=reason; i.click();}
+}
 $('btnSettings').addEventListener('click',function(e){e.preventDefault();showHelp();},true);
-$('psMonitor').addEventListener('click',function(e){e.preventDefault();toast('PS1 monitor pripraven pro realny core',2400);},true);
+$('psMonitor').addEventListener('click',function(e){e.preventDefault();toast('PS1 monitor pripraven; core zatim nepripojen',2400);},true);
 $('btnReset').addEventListener('click',function(e){e.preventDefault();toast('PS1 RESET pripraven',1800);},true);
 $('btnMemory').addEventListener('click',function(e){e.preventDefault();toast('MEMORY CARD pripraveno',1800);},true);
 $('btnCd').addEventListener('click',function(e){e.preventDefault();openPicker('CD / ISO');},true);
-$('btnLoad').addEventListener('click',function(e){e.preventDefault();openPicker('LOAD GAME');},true);
+$('btnLoad').addEventListener('click',function(e){e.preventDefault();openPicker('LOAD GAME - VYBER HRY');},true);
 $('btnSave').addEventListener('click',function(e){e.preventDefault();toast('SAVE GAME pripraveno',1800);},true);
 $('padLeft').addEventListener('click',function(e){e.preventDefault();toast('PS1 D-PAD hitbox OK',1200);},true);
 $('padRight').addEventListener('click',function(e){e.preventDefault();toast('PS1 ACTION hitbox OK',1200);},true);
 $('btnSelect').addEventListener('click',function(e){e.preventDefault();toast('SELECT',900);},true);
 $('btnStart').addEventListener('click',function(e){e.preventDefault();toast('START',900);},true);
 $('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
-$('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0]; if(f){toast('Vybran PS1 soubor: '+f.name,3200);log('FILE_SELECTED '+f.name+' size='+f.size);} },true);
-log('BUILD2NZ PS1 UI ready: 1:1 screen, back/settings/reset/memory/cd/load/save hitboxes.');
+$('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps1LogView');if(!v)return;try{v.focus();v.select();document.execCommand('copy');toast('LOG zkopirovan do schranky',1800);}catch(err){toast('Kopirovani selhalo - oznac text rucne',2400);}},true);
+$('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
+$('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
+log(BUILD+' ready: CD/ISO+LOAD = picker s poctivou analyzou (BIOS rozpoznani vc. SCPH modelu, PS1 disk markery). LOG v SETTINGS. Core NENI pripojen, zadny fake.');
 })();
 </script>
 </body>
