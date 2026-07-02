@@ -1,0 +1,22 @@
+BUILD2RR changed files:
+
+app/src/main/cpp/nap_sega_native_proof.cpp
+- Added Android runtime profile from Java.
+- Added S8/Android9 no-starve native FIFO profile.
+- Added no-starve catchup and capture throttle when audio FIFO is low.
+- Kept zeroed FM/PSG callback buffers from RO/RQ.
+- Kept core LPF ON and no fake rumble filters.
+- Changed left-edge scanline handling: no duplicate active pixels into border.
+
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- Calls NativeSegaCoreBridge.configureRuntime().
+- Added S8 AudioTrack reservoir/prefill profile.
+- Keeps Nox on RQ-sized stable path.
+- Changed audio log markers to RR audio-master no-starve.
+- Removed Java 4px source crop; left-edge fix is native boundary mapping.
+
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- Added configureRuntime(int sdk, int cores, String model).
+
+app/src/main/assets/emu_sega/index.html
+- BUILD label and log/help text updated.
