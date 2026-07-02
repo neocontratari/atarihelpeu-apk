@@ -21,6 +21,7 @@
 #include <sys/resource.h>
 #include <cerrno>
 #include <thread>
+#include <malloc.h> // BUILD2RW: passive native heap audit only (mallinfo)
 
 #if NAP_SEGA_VENDOR_CORE_PRESENT
 #include "clownmdemu.h"
@@ -91,6 +92,137 @@ static inline size_t nap_audio_low_water() { return nap_mobile_no_starve() ? 307
 static const int NAP_FM_GAIN_PERCENT = 100;
 static const int NAP_PSG_GAIN_PERCENT = 100;
 static const int NAP_MASTER_GAIN_PERCENT = 90;
+// ============================================================================
+// BUILD2RW PASSIVE AUDIT ONLY. Nothing below changes emulation, region, FIFO
+// sizes, clocks, gain or render. It only measures and reports.
+// ============================================================================
+// 10s rolling FIFO window (guarded by g_audio_mutex)
+static uint64_t g_audit_win_start_ms = 0;
+static uint64_t g_audit_win_fifo_min = 0;
+static uint64_t g_audit_win_fifo_max = 0;
+static uint64_t g_audit_win_fifo_sum = 0;
+static uint64_t g_audit_win_fifo_samples = 0;
+static uint64_t g_audit_win_underruns_start = 0;
+static uint64_t g_audit_win_pull_ns_max = 0;
+static uint64_t g_audit_win_pull_ns_sum = 0;
+static uint64_t g_audit_win_pull_count = 0;
+// last completed 10s window snapshot (guarded by g_audio_mutex)
+static uint64_t g_audit_last_fifo_min = 0;
+static uint64_t g_audit_last_fifo_max = 0;
+static uint64_t g_audit_last_fifo_avg = 0;
+static uint64_t g_audit_last_underruns_delta = 0;
+static uint64_t g_audit_last_pull_us_max = 0;
+static uint64_t g_audit_last_pull_us_avg = 0;
+static uint64_t g_audit_last_pull_count = 0;
+static uint64_t g_audit_windows_done = 0;
+static inline uint64_t nap_audit_now_ms() {
+    return (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+static void nap_audit_fifo_sample_locked(size_t backlogMin, uint64_t pull_ns) {
+    const uint64_t now = nap_audit_now_ms();
+    if (g_audit_win_start_ms == 0) {
+        g_audit_win_start_ms = now;
+        g_audit_win_fifo_min = backlogMin;
+        g_audit_win_fifo_max = backlogMin;
+        g_audit_win_underruns_start = g_audio_underrun_count;
+    }
+    if (backlogMin < g_audit_win_fifo_min || g_audit_win_fifo_samples == 0) g_audit_win_fifo_min = backlogMin;
+    if (backlogMin > g_audit_win_fifo_max) g_audit_win_fifo_max = backlogMin;
+    g_audit_win_fifo_sum += backlogMin;
+    g_audit_win_fifo_samples++;
+    if (pull_ns > g_audit_win_pull_ns_max) g_audit_win_pull_ns_max = pull_ns;
+    g_audit_win_pull_ns_sum += pull_ns;
+    g_audit_win_pull_count++;
+    if (now - g_audit_win_start_ms >= 10000) {
+        g_audit_last_fifo_min = g_audit_win_fifo_min;
+        g_audit_last_fifo_max = g_audit_win_fifo_max;
+        g_audit_last_fifo_avg = g_audit_win_fifo_samples ? (g_audit_win_fifo_sum / g_audit_win_fifo_samples) : 0;
+        g_audit_last_underruns_delta = g_audio_underrun_count - g_audit_win_underruns_start;
+        g_audit_last_pull_us_max = g_audit_win_pull_ns_max / 1000u;
+        g_audit_last_pull_us_avg = g_audit_win_pull_count ? (g_audit_win_pull_ns_sum / g_audit_win_pull_count / 1000u) : 0;
+        g_audit_last_pull_count = g_audit_win_pull_count;
+        g_audit_windows_done++;
+        g_audit_win_start_ms = now;
+        g_audit_win_fifo_sum = 0; g_audit_win_fifo_samples = 0;
+        g_audit_win_pull_ns_max = 0; g_audit_win_pull_ns_sum = 0; g_audit_win_pull_count = 0;
+        g_audit_win_underruns_start = g_audio_underrun_count;
+    }
+}
+static void nap_audit_reset_locked() {
+    g_audit_win_start_ms = 0;
+    g_audit_win_fifo_min = g_audit_win_fifo_max = g_audit_win_fifo_sum = 0;
+    g_audit_win_fifo_samples = 0;
+    g_audit_win_underruns_start = 0;
+    g_audit_win_pull_ns_max = g_audit_win_pull_ns_sum = g_audit_win_pull_count = 0;
+    g_audit_last_fifo_min = g_audit_last_fifo_max = g_audit_last_fifo_avg = 0;
+    g_audit_last_underruns_delta = 0;
+    g_audit_last_pull_us_max = g_audit_last_pull_us_avg = g_audit_last_pull_count = 0;
+    g_audit_windows_done = 0;
+}
+// left-edge / stride passive audit (atomics, written from scanline callback)
+static std::atomic<int> g_audit_left_boundary{-1};
+static std::atomic<int> g_audit_right_boundary{-1};
+static std::atomic<int> g_audit_screen_w{0};
+static std::atomic<int> g_audit_screen_h{0};
+static std::atomic<uint64_t> g_audit_left_nonzero_frames{0};
+static std::atomic<uint64_t> g_audit_boundary_change_count{0};
+static std::atomic<uint64_t> g_audit_leftcol_black_frames{0};
+static std::atomic<uint64_t> g_audit_leftcol_nonblack_frames{0};
+static std::atomic<uint32_t> g_audit_midrow_left16_fnv{0};
+static std::string nap_audit_status_locked() {
+    std::ostringstream out;
+    out << "auditRW=PASSIVE_ONLY windowsDone=" << g_audit_windows_done
+        << " fifo10sMin=" << g_audit_last_fifo_min
+        << " fifo10sMax=" << g_audit_last_fifo_max
+        << " fifo10sAvg=" << g_audit_last_fifo_avg
+        << " underruns10s=" << g_audit_last_underruns_delta
+        << " pull10sUsAvg=" << g_audit_last_pull_us_avg
+        << " pull10sUsMax=" << g_audit_last_pull_us_max
+        << " pulls10s=" << g_audit_last_pull_count;
+    return out.str();
+}
+static std::string nap_audit_frame_status() {
+    std::ostringstream out;
+    out << "leftAuditRW leftBoundary=" << g_audit_left_boundary.load()
+        << " rightBoundary=" << g_audit_right_boundary.load()
+        << " coreScreen=" << g_audit_screen_w.load() << "x" << g_audit_screen_h.load()
+        << " leftNonzeroFrames=" << g_audit_left_nonzero_frames.load()
+        << " boundaryChanges=" << g_audit_boundary_change_count.load()
+        << " leftColBlackFrames=" << g_audit_leftcol_black_frames.load()
+        << " leftColNonBlackFrames=" << g_audit_leftcol_nonblack_frames.load()
+        << " midRowLeft16Fnv=0x" << std::hex << std::uppercase << std::setw(8) << std::setfill('0')
+        << g_audit_midrow_left16_fnv.load() << std::dec;
+    return out.str();
+}
+static std::string nap_audit_native_heap_status() {
+    // Passive: bionic mallinfo. Values are approximate but their GROWTH over time is what matters on S8.
+    std::ostringstream out;
+#if defined(__ANDROID__)
+    struct mallinfo mi = mallinfo();
+    out << "nativeMallocOrdblksKB=" << ((uint64_t)mi.uordblks / 1024u)
+        << " nativeMallocArenaKB=" << ((uint64_t)mi.arena / 1024u)
+        << " nativeMallocFreeKB=" << ((uint64_t)mi.fordblks / 1024u);
+#else
+    out << "nativeMalloc=NA";
+#endif
+    return out.str();
+}
+static std::string nap_region_clock_status() {
+    // Passive summary: what the core was ACTUALLY configured with (not just the label).
+    const bool pal = (g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL);
+    std::ostringstream out;
+    out << "regionClockRW label=" << g_real_cfg_region_label
+        << " tv=" << (pal ? "PAL" : "NTSC")
+        << " framePeriodNs=" << (pal ? 20000000LL : 16666667LL)
+        << " frameHz=" << (pal ? "50.00" : "59.94")
+#if NAP_SEGA_VENDOR_CORE_PRESENT
+        << " fmSrcRate=" << (pal ? (double)CLOWNMDEMU_FM_SAMPLE_RATE_PAL : (double)CLOWNMDEMU_FM_SAMPLE_RATE_NTSC)
+        << " psgSrcRate=" << (pal ? (double)CLOWNMDEMU_PSG_SAMPLE_RATE_PAL : (double)CLOWNMDEMU_PSG_SAMPLE_RATE_NTSC)
+#endif
+        << " outRate=" << NAP_AUDIO_OUT_RATE;
+    return out.str();
+}
 static std::atomic<int> g_render_capture_current{1};
 static std::atomic<uint64_t> g_render_skipped_frames{0};
 static std::atomic<uint64_t> g_render_captured_frames{0};
@@ -193,6 +325,7 @@ static bool nap_audio_pop_locked(std::deque<jshort>& q, jshort &v) {
 static int nap_audio_pull_stereo(jshort *out, int stereoFrames) {
     if (!out || stereoFrames <= 0) return 0;
     int got = 0;
+    const auto audit_pull_start = std::chrono::steady_clock::now(); // BUILD2RW passive audit
     std::lock_guard<std::mutex> lock(g_audio_mutex);
     nap_audio_balance_locked();
     for (int i = 0; i < stereoFrames; ++i) {
@@ -224,6 +357,12 @@ static int nap_audio_pull_stereo(jshort *out, int stereoFrames) {
         out[i * 2 + 1] = nap_clip16(r);
     }
     g_audio_pull_count++;
+    {
+        // BUILD2RW passive audit: record backlog + pull cost into the 10s window. Measure only.
+        const uint64_t pull_ns = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - audit_pull_start).count();
+        nap_audit_fifo_sample_locked(nap_audio_min_fifo_locked(), pull_ns);
+    }
     return got;
 }
 static int nap_audio_pull_mono(jshort *out, int frames) {
@@ -264,10 +403,21 @@ static void nap_audio_clear() {
     g_audio_startup_mute_remaining = NAP_AUDIO_STARTUP_MUTE_FRAMES;
     g_render_skipped_frames.store(0);
     g_render_captured_frames.store(0);
+    // BUILD2RW: fresh audit window per ROM session.
+    nap_audit_reset_locked();
+    g_audit_left_boundary.store(-1);
+    g_audit_right_boundary.store(-1);
+    g_audit_screen_w.store(0);
+    g_audit_screen_h.store(0);
+    g_audit_left_nonzero_frames.store(0);
+    g_audit_boundary_change_count.store(0);
+    g_audit_leftcol_black_frames.store(0);
+    g_audit_leftcol_nonblack_frames.store(0);
+    g_audit_midrow_left16_fnv.store(0);
 }
 static std::string nap_audio_status_locked() {
     std::ostringstream out;
-    out << "audio_mode=FM_PSG_ZEROED_RR_RECOVERY_SAFE_AUDIT_RV sonic_main fixedAudioClock=YES stereo=YES zeroInputBuffers=YES coreLPF=ON noRumbleFilter=YES noSamplePick=YES singleAudioPath=YES audioMasterClock=YES noStarve=YES noHardTrim=YES fmGain=100 psgGain=100 masterGain=90 target=" << nap_audio_target_fifo()
+    out << "audio_mode=FM_PSG_ZEROED_RV_UNCHANGED_PASSIVE_AUDIT_RW sonic_main fixedAudioClock=YES stereo=YES zeroInputBuffers=YES coreLPF=ON noRumbleFilter=YES noSamplePick=YES singleAudioPath=YES audioMasterClock=YES noStarve=YES noHardTrim=YES fmGain=100 psgGain=100 masterGain=90 target=" << nap_audio_target_fifo()
         << " max=" << nap_audio_max_fifo()
         << " desyncLimit=" << nap_audio_desync_limit()
         << " fm_l_fifo=" << g_audio_fm_l_fifo.size()
@@ -293,7 +443,8 @@ static std::string nap_audio_status_locked() {
         << " desyncDrops=" << g_audio_desync_drop_count
         << " underruns=" << g_audio_underrun_count
         << " videoCaptured=" << g_render_captured_frames.load()
-        << " videoSkipped=" << g_render_skipped_frames.load();
+        << " videoSkipped=" << g_render_skipped_frames.load()
+        << " | " << nap_audit_status_locked();
     return out.str();
 }
 
@@ -438,6 +589,15 @@ static void nap_real_scanline_rendered(void *user_data, cc_u16f scanline, const 
     int right = std::min(sw, (int)right_boundary);
     if (right <= left) { left = 0; right = sw; }
     const int activeW = std::max(0, right - left);
+    if (y == 0) {
+        // BUILD2RW passive left-edge audit: record what the core REALLY reports, do not change rendering.
+        int prevL = g_audit_left_boundary.exchange(left);
+        int prevR = g_audit_right_boundary.exchange(right);
+        g_audit_screen_w.store(sw);
+        g_audit_screen_h.store(sh);
+        if (prevL != -1 && (prevL != left || prevR != right)) g_audit_boundary_change_count.fetch_add(1);
+        if (left != 0) g_audit_left_nonzero_frames.fetch_add(1);
+    }
     for (int x = 0; x < sw; ++x) {
         // BUILD2RV: real left-edge fix. Do not duplicate the first active pixels into the border
         // (that produced the coloured shifted strip). Shift the active MD scanline to x=0 and
@@ -452,6 +612,21 @@ static void nap_real_scanline_rendered(void *user_data, cc_u16f scanline, const 
             if (c == 0) c = 0xff000000u;
         }
         st->frame_argb[(size_t)y * sw + x] = c;
+    }
+    if (y == sh / 2) {
+        // BUILD2RW passive: checksum of the 16 leftmost OUTPUT pixels of the middle row.
+        // If a coloured left strip exists in the produced framebuffer, this FNV changes and
+        // leftColNonBlackFrames grows; if the strip appears only on screen, the bug is in
+        // Java TextureView scaling/stride, not here.
+        uint32_t h32 = 2166136261u;
+        int limit = std::min(sw, 16);
+        for (int x = 0; x < limit; ++x) {
+            uint32_t c = st->frame_argb[(size_t)y * sw + x];
+            h32 ^= c; h32 *= 16777619u;
+        }
+        g_audit_midrow_left16_fnv.store(h32);
+        if (sw > 0 && st->frame_argb[(size_t)y * sw + 0] == 0xff000000u) g_audit_leftcol_black_frames.fetch_add(1);
+        else g_audit_leftcol_nonblack_frames.fetch_add(1);
     }
     if (y >= sh - 1) {
         g_render_captured_frames.fetch_add(1);
@@ -766,7 +941,7 @@ static void* nap_real_worker_thread_entry(void *arg) {
 
 static void nap_real_worker_thread(int generation) {
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-    NAPLOG("BUILD2RV real core worker start gen=%d bigstack=8MB", generation);
+    NAPLOG("BUILD2RW real core worker start gen=%d bigstack=8MB passiveAudit=YES", generation);
     nap_native_worker_set_priority_rp();
     try {
         static bool constants_ready = false;
@@ -879,7 +1054,7 @@ static void nap_real_worker_thread(int generation) {
         g_real.status = "REAL_CORE_WORKER_UNKNOWN_EXCEPTION";
     }
     g_real_thread_alive.store(0);
-    NAPLOG("BUILD2RV real core worker stop gen=%d", generation);
+    NAPLOG("BUILD2RW real core worker stop gen=%d", generation);
 #endif
 }
 
@@ -936,7 +1111,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2RV NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
+    std::string s = "BUILD2RW NATIVE C++ RV UNCHANGED + PASSIVE AUDIT ONLY OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -1156,7 +1331,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_setPerformanceMode(JNIEnv* env, jcl
 // BUILD2RV: same native core exposed to MainActivity/WebView in-place bridge.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2RV NATIVE C++ REAL CORE BIGSTACK THREAD STACK FIX OK\n"
+    std::string s = "BUILD2RW NATIVE C++ RV UNCHANGED + PASSIVE AUDIT ONLY OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -1226,6 +1401,9 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_realCoreStatus(JNIEnv* env, jclass)
     out << "mode=real core runs on dedicated native worker pthread with 8MB stack; Android TextureView copies cached 320x224 frame off WebView UI thread\n";
     out << "REAL_CORE_WORKER_ALIVE=" << (g_real_thread_alive.load() ? "YES" : "NO") << "\n";
     out << "nativeRegionAuto=" << g_real_cfg_region_label << "\n";
+    out << nap_region_clock_status() << "\n";       // BUILD2RW passive: real clock the core is configured with
+    out << nap_audit_frame_status() << "\n";        // BUILD2RW passive: left-edge/stride audit
+    out << nap_audit_native_heap_status() << "\n";  // BUILD2RW passive: native heap growth watch
     { std::lock_guard<std::mutex> alock(g_audio_mutex); out << nap_audio_status_locked() << "\n"; }
     out << "pattern=OFF no running cubes/no squares; cached real frame path active\n";
     {

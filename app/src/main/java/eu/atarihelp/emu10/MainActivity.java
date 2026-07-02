@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Build;
+import android.os.Debug; // BUILD2RW: passive heap/GC audit only
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.OpenableColumns;
@@ -222,7 +223,9 @@ public class MainActivity extends Activity {
     private void appendNativeLog(String line) {
         synchronized (nativeLog) {
             nativeLog.append(nowStamp()).append("  ").append(line == null ? "" : line).append("\n");
-            if (nativeLog.length() > 20000) nativeLog.delete(0, nativeLog.length() - 20000);
+            // BUILD2RW: bigger ring (~100 KB) so the 10s PASSIVE_AUDIT_RW rows survive a long S8
+            // degradation test. Memory cost is trivial; the point is to SEE what grows over time.
+            if (nativeLog.length() > 100000) nativeLog.delete(0, nativeLog.length() - 100000);
         }
     }
 
@@ -242,8 +245,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2RV\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2RV_SEGA_NATIVE_CPP_ONLY_RR_RECOVERY_SAFE_AUDIT_STAGE138\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2RW\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2RW_SEGA_NATIVE_CPP_ONLY_SAFE_PLAYABLE_PASSIVE_AUDIT_STAGE139\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -348,7 +351,12 @@ public class MainActivity extends Activity {
                             try { int got2 = NativeSegaCoreBridge.pullAudioStereo(pcm, chunk); if (got2 > got) got = got2; } catch (Throwable ignored) {}
                         }
                     }
-                    if (loops < 16 || loops % 180 == 0) appendNativeLog("NATIVE_AUDIO_PULL_RV_RR_RECOVERY_SAFE_AUDIT_QT gen=" + audioGen + " got=" + got + " loop=" + loops + " underrunLoops=" + underrunLoops + " mode=" + nativePerformanceMode);
+                    if (loops < 16 || loops % 180 == 0) {
+                        // BUILD2RW passive: also report the real Android AudioTrack underrun counter (API >= 24).
+                        int trackUnderruns = -1;
+                        try { if (Build.VERSION.SDK_INT >= 24) trackUnderruns = track.getUnderrunCount(); } catch (Throwable ignored) {}
+                        appendNativeLog("NATIVE_AUDIO_PULL_RW_PASSIVE_AUDIT gen=" + audioGen + " got=" + got + " loop=" + loops + " underrunLoops=" + underrunLoops + " audioTrackUnderruns=" + trackUnderruns + " mode=" + nativePerformanceMode);
+                    }
                     // BUILD2RV: feed AudioTrack one small full clock chunk. Native produces real samples or true silence only; RR uses balanced FIFO governor, not RP tiny buffer drops or RO huge delay.
                     int framesToWrite = pcm.length;
                     int off = 0;
@@ -596,6 +604,8 @@ public class MainActivity extends Activity {
                 forceNativeViewRedrawBurst("afterRomLoad_RV");
                 scheduleNativeAudioAfterFrameAndViewDraw(name, data, loadGen, 1);
                 scheduleNativeRenderWatchdog(name, data, loadGen, 1);
+                schedulePassiveAuditRW(loadGen, 1); // BUILD2RW: passive 10s audit rows, measure only
+                appendNativeLog("PASSIVE_AUDIT_RW_START gen=" + loadGen + " intervalMs=10000 changesNothing=YES");
                 return nativeLastStatus + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
             } catch (Throwable t) {
                 nativeLastStatus = "ROM_TO_CPP_ERROR " + safeMsg(t);
@@ -707,7 +717,7 @@ public class MainActivity extends Activity {
                     return "SAVE_LOG_DEDUP_RV";
                 }
                 nativeLastSaveLogAtMs = now;
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2RV_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2RW_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
@@ -765,6 +775,57 @@ public class MainActivity extends Activity {
                 appendNativeLog("NATIVE_AUDIO_WAIT_FRAME_VIEW_RV_ERROR " + safeMsg(t));
             }
         }, delay);
+    }
+
+    // BUILD2RW PASSIVE AUDIT: every 10s log one row with Java heap, native heap, GC, AudioTrack
+    // underruns, generations and the C++ audit block. It only reads and logs; it never changes
+    // region, FIFO, clocks, gain or render. Goal: after 10-15 min on S8 the log itself shows
+    // WHAT grows (heap? FIFO backlog? underruns? pull cost?) before we touch any fix.
+    private void schedulePassiveAuditRW(final int gen, final int tick) {
+        ui.postDelayed(() -> {
+            try {
+                if (gen != nativeRomLoadGeneration || !nativeInPlaceEnabled) {
+                    appendNativeLog("PASSIVE_AUDIT_RW_STOP gen=" + gen + " current=" + nativeRomLoadGeneration + " enabled=" + nativeInPlaceEnabled);
+                    return;
+                }
+                Runtime rt = Runtime.getRuntime();
+                long jUsedKb = (rt.totalMemory() - rt.freeMemory()) / 1024;
+                long jTotalKb = rt.totalMemory() / 1024;
+                long jMaxKb = rt.maxMemory() / 1024;
+                long nAllocKb = 0, nTotalKb = 0;
+                try { nAllocKb = Debug.getNativeHeapAllocatedSize() / 1024; nTotalKb = Debug.getNativeHeapSize() / 1024; } catch (Throwable ignored) {}
+                String gcCount = "na", gcTime = "na";
+                try {
+                    if (Build.VERSION.SDK_INT >= 23) {
+                        gcCount = Debug.getRuntimeStat("art.gc.gc-count");
+                        gcTime = Debug.getRuntimeStat("art.gc.gc-time");
+                    }
+                } catch (Throwable ignored) {}
+                int trackUnderruns = -1;
+                try {
+                    AudioTrack at = nativeCurrentAudioTrack;
+                    if (at != null && Build.VERSION.SDK_INT >= 24) trackUnderruns = at.getUnderrunCount();
+                } catch (Throwable ignored) {}
+                String st;
+                try { st = NativeSegaCoreBridge.realCoreStatus(); } catch (Throwable t) { st = "coreStatusErr=" + safeMsg(t); }
+                String flat = st == null ? "null" : st.replace('\n', ' ');
+                appendNativeLog("PASSIVE_AUDIT_RW tick=" + tick + " gen=" + gen
+                        + " upMin=" + ((tick * 10) / 60) + "." + String.format(Locale.US, "%02d", (tick * 10) % 60)
+                        + " javaHeapUsedKB=" + jUsedKb + " javaHeapTotalKB=" + jTotalKb + " javaHeapMaxKB=" + jMaxKb
+                        + " nativeHeapAllocKB=" + nAllocKb + " nativeHeapTotalKB=" + nTotalKb
+                        + " gcCount=" + gcCount + " gcTimeMs=" + gcTime
+                        + " audioTrackUnderruns=" + trackUnderruns
+                        + " activeAudioTracks=" + nativeActiveAudioTracks
+                        + " audioGen=" + nativeAudioGeneration + " romGen=" + nativeRomLoadGeneration
+                        + " drawCounter=" + nativeViewDrawCounter
+                        + " lastRenderCostMs=" + (nativeLastRenderCostNs / 1000000.0)
+                        + " perfMode=" + nativePerformanceMode
+                        + " core=" + flat.substring(0, Math.min(1400, flat.length())));
+                schedulePassiveAuditRW(gen, tick + 1);
+            } catch (Throwable t) {
+                appendNativeLog("PASSIVE_AUDIT_RW_ERROR " + safeMsg(t));
+            }
+        }, 10000);
     }
 
     private void scheduleNativeRenderWatchdog(final String romName, final byte[] romData, final int gen, final int attempt) {

@@ -1,0 +1,22 @@
+BUILD2RW changed files:
+- app/src/main/cpp/nap_sega_native_proof.cpp
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/src/main/assets/emu_sega/index.html
+
+BEZE ZMENY (v overlayi prilozen pro jistotu, obsah identicky s RV):
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+
+KODY JSOU ZMENENE, ALE POUZE PASIVNE:
+- Zadna zmena regionu (JUE zustava NTSC, E-only zustava PAL jako v RV).
+- Zadna zmena FIFO struktury, targetu, low-water, governoru, catchupu.
+- Zadna zmena frame clocku, gainu, basu, limiteru, renderu.
+- Pridane pouze: C++ auditni citace (FIFO 10s okno, pull timing, left-edge/stride audit,
+  region clock summary, mallinfo native heap), Java PASSIVE_AUDIT_RW 10s radek
+  (java/native heap, GC, AudioTrack underrun count, generace, render cost),
+  audioTrackUnderruns v periodickem audio pull logu, log ring 20 KB -> 100 KB,
+  build labely RV -> RW.
+
+Overeni:
+- C++ soubor prosel g++ -fsyntax-only kontrolou (proti stub hlavickam JNI/Android/ClownMDEmu,
+  vcetne __ANDROID__ vetve s mallinfo). Realny NDK build overi Rene / GitHub Actions.
+- Zadne zakazane RT/RU markery v zadnem souboru (grep overeno).
