@@ -1,0 +1,14 @@
+BUILD2RU changed files:
+- app/src/main/cpp/nap_sega_native_proof.cpp
+  * JUE multi-region ROM no longer forced to PAL.
+  * JUE now uses NTSC_US_60_OVERSEAS reason=JUE_AUTO_SAFE_NTSC_VISIBLE_FRAME_FIX.
+  * E-only ROM remains PAL_EU_50_OVERSEAS reason=ROM_E_ONLY.
+  * Keeps fixed audio ring audit and pure C++ audit markers.
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+  * Markers updated to BUILD2RU / stage137.
+- app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+  * Markers updated to BUILD2RU.
+- app/src/main/assets/emu_sega/index.html
+  * Build label updated to BUILD2RU_SEGA_NATIVE_CPP_ONLY_REGION_FIX_VISIBLE_FRAME_STAGE137.
+- BUILD2RU_README_TEST_PLAN.txt
+- CHANGED_FILES_BUILD2RU.txt
