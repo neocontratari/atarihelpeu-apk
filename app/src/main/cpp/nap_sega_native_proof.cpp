@@ -417,7 +417,7 @@ static void nap_audio_clear() {
 }
 static std::string nap_audio_status_locked() {
     std::ostringstream out;
-    out << "audio_mode=FM_PSG_ZEROED_RV_UNCHANGED_PASSIVE_AUDIT_RW sonic_main fixedAudioClock=YES stereo=YES zeroInputBuffers=YES coreLPF=ON noRumbleFilter=YES noSamplePick=YES singleAudioPath=YES audioMasterClock=YES noStarve=YES noHardTrim=YES fmGain=100 psgGain=100 masterGain=90 target=" << nap_audio_target_fifo()
+    out << "audio_mode=FM_PSG_ZEROED_RW_AUDIT_PCM_CDDA_SKIP_RX pcmCddaGen=SKIPPED_NO_CD sonic_main fixedAudioClock=YES stereo=YES zeroInputBuffers=YES coreLPF=ON noRumbleFilter=YES noSamplePick=YES singleAudioPath=YES audioMasterClock=YES noStarve=YES noHardTrim=YES fmGain=100 psgGain=100 masterGain=90 target=" << nap_audio_target_fifo()
         << " max=" << nap_audio_max_fifo()
         << " desyncLimit=" << nap_audio_desync_limit()
         << " fm_l_fifo=" << g_audio_fm_l_fifo.size()
@@ -734,19 +734,17 @@ static void nap_audio_psg(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu
     nap_audio_push_psg_batch(out);
 }
 static void nap_audio_pcm(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu*, cc_s16l*, size_t)) {
-    // BUILD2RV: PCM is diagnostic only for now; Sonic DAC is inside YM/FM, not Mega-CD PCM.
-    static thread_local std::vector<cc_s16l> tmp;
-    tmp.resize(n * CLOWNMDEMU_PCM_CHANNEL_COUNT);
-    std::fill(tmp.begin(), tmp.end(), 0);
-    if (gen && !tmp.empty()) gen(c, tmp.data(), n);
-    if (!tmp.empty()) { std::lock_guard<std::mutex> lock(g_audio_mutex); g_audio_pcm_seen += n; }
+    // BUILD2RX: RW audit proved the S8 problem is raw CPU (coreAvgMs=23.7 > 16.67 budget on Aladdin,
+    // progressive starvation on Ayrton) while heap/GC stayed flat. PCM was generated into a scratch
+    // buffer and thrown away (cd_add_on_enabled=false, Sonic DAC lives in FM). Stop paying CPU for
+    // discarded silence: do not call the generator at all. Counter stays for the audit.
+    (void)c; (void)gen;
+    if (n) { std::lock_guard<std::mutex> lock(g_audio_mutex); g_audio_pcm_seen += n; }
 }
 static void nap_audio_cdda(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu*, cc_s16l*, size_t)) {
-    static thread_local std::vector<cc_s16l> tmp;
-    tmp.resize(n * CLOWNMDEMU_CDDA_CHANNEL_COUNT);
-    std::fill(tmp.begin(), tmp.end(), 0);
-    if (gen && !tmp.empty()) gen(c, tmp.data(), n);
-    if (!tmp.empty()) { std::lock_guard<std::mutex> lock(g_audio_mutex); g_audio_pcm_seen += n; }
+    // BUILD2RX: same as PCM above - CDDA has no CD attached and its output was discarded.
+    (void)c; (void)gen;
+    if (n) { std::lock_guard<std::mutex> lock(g_audio_mutex); g_audio_pcm_seen += n; }
 }
 static void nap_cd_seeked(void*, cc_u32f) {}
 static void nap_cd_sector_read(void*, cc_u16l *buffer) { if (buffer) std::memset(buffer, 0, 2352); }
@@ -941,7 +939,7 @@ static void* nap_real_worker_thread_entry(void *arg) {
 
 static void nap_real_worker_thread(int generation) {
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-    NAPLOG("BUILD2RW real core worker start gen=%d bigstack=8MB passiveAudit=YES", generation);
+    NAPLOG("BUILD2RX real core worker start gen=%d bigstack=8MB passiveAudit=YES pcmCddaSkip=YES", generation);
     nap_native_worker_set_priority_rp();
     try {
         static bool constants_ready = false;
@@ -1054,7 +1052,7 @@ static void nap_real_worker_thread(int generation) {
         g_real.status = "REAL_CORE_WORKER_UNKNOWN_EXCEPTION";
     }
     g_real_thread_alive.store(0);
-    NAPLOG("BUILD2RW real core worker stop gen=%d", generation);
+    NAPLOG("BUILD2RX real core worker stop gen=%d", generation);
 #endif
 }
 
@@ -1111,7 +1109,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2RW NATIVE C++ RV UNCHANGED + PASSIVE AUDIT ONLY OK\n"
+    std::string s = "BUILD2RX NATIVE C++ RW AUDIT + PCM/CDDA CPU SKIP OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -1331,7 +1329,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_setPerformanceMode(JNIEnv* env, jcl
 // BUILD2RV: same native core exposed to MainActivity/WebView in-place bridge.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2RW NATIVE C++ RV UNCHANGED + PASSIVE AUDIT ONLY OK\n"
+    std::string s = "BUILD2RX NATIVE C++ RW AUDIT + PCM/CDDA CPU SKIP OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"

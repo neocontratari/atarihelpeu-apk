@@ -7,6 +7,8 @@ import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.content.ClipData;
 import android.net.Uri;
 import android.os.Bundle;
@@ -245,8 +247,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2RW\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2RW_SEGA_NATIVE_CPP_ONLY_SAFE_PLAYABLE_PASSIVE_AUDIT_STAGE139\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2RX\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2RX_SEGA_NATIVE_CPP_ONLY_PCM_SKIP_THERMAL_AUDIT_RECT_FIX_STAGE140\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -605,7 +607,7 @@ public class MainActivity extends Activity {
                 scheduleNativeAudioAfterFrameAndViewDraw(name, data, loadGen, 1);
                 scheduleNativeRenderWatchdog(name, data, loadGen, 1);
                 schedulePassiveAuditRW(loadGen, 1); // BUILD2RW: passive 10s audit rows, measure only
-                appendNativeLog("PASSIVE_AUDIT_RW_START gen=" + loadGen + " intervalMs=10000 changesNothing=YES");
+                appendNativeLog("PASSIVE_AUDIT_RX_START gen=" + loadGen + " intervalMs=10000 changesNothing=YES");
                 return nativeLastStatus + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
             } catch (Throwable t) {
                 nativeLastStatus = "ROM_TO_CPP_ERROR " + safeMsg(t);
@@ -717,7 +719,7 @@ public class MainActivity extends Activity {
                     return "SAVE_LOG_DEDUP_RV";
                 }
                 nativeLastSaveLogAtMs = now;
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2RW_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2RX_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
@@ -777,6 +779,38 @@ public class MainActivity extends Activity {
         }, delay);
     }
 
+    // BUILD2RX passive: battery temperature (sticky intent, no permission) + current CPU freq.
+    // RW data showed S8 degradation with FLAT heap/GC => prime suspect is thermal throttling.
+    // These two read-only values will prove or kill that theory.
+    private String readBatteryTempC() {
+        try {
+            Intent i = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            if (i == null) return "na";
+            int t = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
+            if (t < 0) return "na";
+            return String.format(Locale.US, "%.1f", t / 10.0);
+        } catch (Throwable t) { return "err"; }
+    }
+    private String readCpuFreqKHz(int cpu) {
+        try {
+            File f = new File("/sys/devices/system/cpu/cpu" + cpu + "/cpufreq/scaling_cur_freq");
+            if (!f.canRead()) return "na";
+            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(f));
+            String line = br.readLine();
+            br.close();
+            return line == null ? "na" : line.trim();
+        } catch (Throwable t) { return "na"; }
+    }
+    private String pickField(String flat, String key) {
+        try {
+            int i = flat.indexOf(key);
+            if (i < 0) return "na";
+            int end = flat.indexOf(' ', i);
+            if (end < 0) end = Math.min(flat.length(), i + 40);
+            return flat.substring(i + key.length(), end);
+        } catch (Throwable t) { return "na"; }
+    }
+
     // BUILD2RW PASSIVE AUDIT: every 10s log one row with Java heap, native heap, GC, AudioTrack
     // underruns, generations and the C++ audit block. It only reads and logs; it never changes
     // region, FIFO, clocks, gain or render. Goal: after 10-15 min on S8 the log itself shows
@@ -785,7 +819,7 @@ public class MainActivity extends Activity {
         ui.postDelayed(() -> {
             try {
                 if (gen != nativeRomLoadGeneration || !nativeInPlaceEnabled) {
-                    appendNativeLog("PASSIVE_AUDIT_RW_STOP gen=" + gen + " current=" + nativeRomLoadGeneration + " enabled=" + nativeInPlaceEnabled);
+                    appendNativeLog("PASSIVE_AUDIT_RX_STOP gen=" + gen + " current=" + nativeRomLoadGeneration + " enabled=" + nativeInPlaceEnabled);
                     return;
                 }
                 Runtime rt = Runtime.getRuntime();
@@ -809,8 +843,16 @@ public class MainActivity extends Activity {
                 String st;
                 try { st = NativeSegaCoreBridge.realCoreStatus(); } catch (Throwable t) { st = "coreStatusErr=" + safeMsg(t); }
                 String flat = st == null ? "null" : st.replace('\n', ' ');
-                appendNativeLog("PASSIVE_AUDIT_RW tick=" + tick + " gen=" + gen
+                // BUILD2RX: RW truncation cut coreAvgMs off the row; extract the key fields explicitly.
+                String coreAvg = pickField(flat, "coreAvgMs=");
+                String coreMax = pickField(flat, "coreMaxMs=");
+                String stress = pickField(flat, "sceneStress=");
+                String backlog = pickField(flat, "audioBacklog=");
+                appendNativeLog("PASSIVE_AUDIT_RX tick=" + tick + " gen=" + gen
                         + " upMin=" + ((tick * 10) / 60) + "." + String.format(Locale.US, "%02d", (tick * 10) % 60)
+                        + " batteryTempC=" + readBatteryTempC()
+                        + " cpu0KHz=" + readCpuFreqKHz(0) + " cpu4KHz=" + readCpuFreqKHz(4)
+                        + " coreAvgMs=" + coreAvg + " coreMaxMs=" + coreMax + " sceneStress=" + stress + " audioBacklog=" + backlog
                         + " javaHeapUsedKB=" + jUsedKb + " javaHeapTotalKB=" + jTotalKb + " javaHeapMaxKB=" + jMaxKb
                         + " nativeHeapAllocKB=" + nAllocKb + " nativeHeapTotalKB=" + nTotalKb
                         + " gcCount=" + gcCount + " gcTimeMs=" + gcTime
@@ -823,7 +865,7 @@ public class MainActivity extends Activity {
                         + " core=" + flat.substring(0, Math.min(1400, flat.length())));
                 schedulePassiveAuditRW(gen, tick + 1);
             } catch (Throwable t) {
-                appendNativeLog("PASSIVE_AUDIT_RW_ERROR " + safeMsg(t));
+                appendNativeLog("PASSIVE_AUDIT_RX_ERROR " + safeMsg(t));
             }
         }, 10000);
     }

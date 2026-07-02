@@ -137,7 +137,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </main>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2RW_SEGA_NATIVE_CPP_ONLY_SAFE_PLAYABLE_PASSIVE_AUDIT_STAGE139';
+var BUILD='BUILD2RX_SEGA_NATIVE_CPP_ONLY_PCM_SKIP_THERMAL_AUDIT_RECT_FIX_STAGE140';
 var logLines=[], __lastSaveLogTap=0, frameLoaded=false, selectedRomName='zadna', selectedRomSize=0, selectedRomBuffer=null, lastBootStatus='NO_ROM', lastKeyStatus='NO_KEY', activeDpadDir=null, inputLogShieldCount=0;
 var nativeCppMode=true,nativeCppLastStatus='NATIVE_ARMED_CPP_ONLY',nativeCppInputCount=0;
 var FORCE_NATIVE_CPP_ONLY=true;
@@ -309,6 +309,26 @@ function viewportRaw(){var vv=window.visualViewport;var vw=(vv&&vv.width)||windo
 function isLandscapeLayoutReady(){var v=viewportRaw();return isLandscapeNow() && v.w>v.h*1.12 && v.w>=520 && v.h>=240;}
 function nativeViewportSize(){var v=viewportRaw();if(isLandscapeLayoutReady()){return {w:Math.max(v.w,v.h),h:Math.min(v.w,v.h)};}return v;}
 var __lastNativeRectLog=0;
+/* BUILD2RX LEFT-STRIP FIX (Nox "odskok vlevo"):
+   #monitorBlank ma v C++ only skinu display:none => getBoundingClientRect() vraci 0x0,
+   takze KAZDA session padala do fallbackPortraitMonitorRect(), ktery prepocitava geometrii
+   stage z velikosti okna. Realny .stage ma ale width:min(100vw,941px) + aspect-ratio a klidne
+   PRETEKA viewport na vysku - fallback pak stage umele zmensil a vycentroval, cimz posunul
+   video o ~6 CSS px doprava a vlevo zustal videt pruh pozadi monitoru (Nox: fallback left=35,
+   realny stage left=29). RW C++ audit dokazal, ze framebuffer je OK (leftBoundary=0,
+   levy sloupec je herni obsah), takze chyba byla ciste v umisteni TextureView.
+   Fix: merit REALNY #stage element a aplikovat na nej stejna procenta jako CSS #monitorBlank
+   (left 6.42%, top 17.16%, w 87.28%, h 29.60%). Stary fallback zustava jen pro pripad,
+   ze by stage nesel zmerit. */
+function portraitMonitorRectFromStage(){
+  try{
+    var st=$('stage')||document.querySelector('.stage');
+    if(!st)return null;
+    var r=st.getBoundingClientRect();
+    if(!r||r.width<160||r.height<240)return null;
+    return {left:r.left+r.width*0.0642, top:r.top+r.height*0.1716, width:r.width*0.8728, height:r.height*0.2960, source:'stagePercent'};
+  }catch(e){return null;}
+}
 function fallbackPortraitMonitorRect(){
   var vp=nativeViewportSize();
   var sw=Math.max(320,vp.w||window.innerWidth||360);
@@ -332,10 +352,17 @@ function updateNativeCppRect(){try{
     cssW=Math.max(vp.w,320);
     cssH=Math.max(vp.h,180);
   } else if(cssW<120||cssH<80){
-    var fb=fallbackPortraitMonitorRect();
-    cssLeft=fb.left;cssTop=fb.top;cssW=fb.width;cssH=fb.height;
-    var now=Date.now();
-    if(now-__lastNativeRectLog>900){__lastNativeRectLog=now;pushLog('BUILD2RV NATIVE_RECT_FALLBACK_MONITOR css='+Math.round(cssLeft)+','+Math.round(cssTop)+','+Math.round(cssW)+'x'+Math.round(cssH));}
+    var sp=portraitMonitorRectFromStage();
+    if(sp){
+      cssLeft=sp.left;cssTop=sp.top;cssW=sp.width;cssH=sp.height;
+      var nowS=Date.now();
+      if(nowS-__lastNativeRectLog>900){__lastNativeRectLog=nowS;pushLog('BUILD2RX NATIVE_RECT_STAGE_PERCENT css='+Math.round(cssLeft)+','+Math.round(cssTop)+','+Math.round(cssW)+'x'+Math.round(cssH)+' leftStripFix=YES');}
+    } else {
+      var fb=fallbackPortraitMonitorRect();
+      cssLeft=fb.left;cssTop=fb.top;cssW=fb.width;cssH=fb.height;
+      var now=Date.now();
+      if(now-__lastNativeRectLog>900){__lastNativeRectLog=now;pushLog('BUILD2RV NATIVE_RECT_FALLBACK_MONITOR css='+Math.round(cssLeft)+','+Math.round(cssTop)+','+Math.round(cssW)+'x'+Math.round(cssH));}
+    }
   }
   if(cssW<120||cssH<80){var now2=Date.now();if(now2-__lastNativeRectLog>900){__lastNativeRectLog=now2;pushLog('BUILD2RV NATIVE_RECT_SKIP_ZERO_OR_SMALL css='+Math.round(cssLeft)+','+Math.round(cssTop)+','+Math.round(cssW)+'x'+Math.round(cssH)+' land='+land);}setTimeout(updateNativeCppRect,280);return;}
   var x=Math.round(cssLeft*dpr), y=Math.round(cssTop*dpr), ww=Math.round(cssW*dpr), hh=Math.round(cssH*dpr);

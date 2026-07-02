@@ -1,0 +1,12 @@
+BUILD2RX changed files:
+- app/src/main/cpp/nap_sega_native_proof.cpp   (PCM/CDDA generatory se nevolaji - CPU uspora; RX labely)
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java  (batteryTempC + cpu0/cpu4 KHz + explicitni coreAvgMs v PASSIVE_AUDIT_RX)
+- app/src/main/assets/emu_sega/index.html      (portrait rect z realneho #stage elementu - fix leveho odskoku; RX label)
+
+BEZE ZMENY (prilozen pro jistotu): NativeSegaCoreBridge.java
+
+GARANTOVANE NEDOTCENO: region detekce, FM/PSG cesta, FIFO velikosti/governor/no-starve,
+frame clock, gain/limiter, render/TextureView kresleni.
+
+Overeni: C++ g++ -fsyntax-only OK (vc. __ANDROID__ vetve), JS node --check OK,
+zavorky Java vyvazene, zadne RT/RU markery (grep).
