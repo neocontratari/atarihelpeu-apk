@@ -1,0 +1,26 @@
+BUILD2RT changed files:
+
+app/src/main/cpp/nap_sega_native_proof.cpp
+- Added hard audit markers: PURE_CPP_SEGA_PATH, Java/Web audio off, worker/audio registry.
+- Changed JUE ROM default for this EU app audit to PAL_EU_50 with explicit region reason and PAL/NTSC clocks in log.
+- Added native audio mode audit flag: STEREO/MONO.
+- Added lock/mix timing counters.
+- Replaced dynamic std::deque audio FIFO with fixed 65536-sample rings: no runtime audio allocations, no growing queue on S8.
+- Fixed duplicate audio mutex lock from RS audit branch before ROM load/audio clear.
+- Added region/memory audit markers: regionClockLocked, audioRingAudit=FIXED_RING_NO_DEQUE, regionMemoryAudit=YES.
+- Added raw framebuffer/left-edge audit: stride, left/right boundary, left8 checksum.
+- Removed RR active-left-boundary shift; raw ClownMDEmu scanline is copied 1:1 for proof.
+
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- Added Java-side hard audit: heap, native heap, audio pull/write timings, single AudioTrack registry.
+- Added STEREO/MONO AudioTrack mode switch.
+- Kept S8 reservoir but records whether AudioTrack or native pull is the bottleneck.
+- Updated log names/markers to BUILD2RT.
+
+app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java
+- Added setAudioMode(String mode).
+
+app/src/main/assets/emu_sega/index.html
+- SBIRKA now exposes AUDIO STEREO / AUDIO MONO TEST.
+- Updated hard-audit text and log markers.
+- CARTRIDGE remains ROM picker only.
