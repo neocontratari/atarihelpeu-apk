@@ -1,0 +1,15 @@
+BUILD2RY changed files:
+- app/build.gradle                                       (cFlags "-O3" + cppFlags "-O3"; drive C jadro jelo v debug APK na -O0!)
+- app/src/main/cpp/CMakeLists.txt                        (target_compile_options -O3 -fomit-frame-pointer pro vsech 6 targetu)
+- app/src/main/cpp/vendor/clownmdemu-core/source/vdp.c   (NAP VENDOR PATCH: implementace 'Blank 8 leftmost pixel columns')
+- app/src/main/cpp/vendor/clownmdemu-core/source/vdp.h   (NAP VENDOR PATCH: cc_bool left_column_blank v VDP_State)
+- app/src/main/cpp/nap_sega_native_proof.cpp             (pouze RY labely + markery coreOptO3/vdpLeftBlank)
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java (pouze RY labely v logu a nazvu souboru)
+- app/src/main/assets/emu_sega/index.html                (pouze RY BUILD label)
+
+GARANTOVANE NEDOTCENO: region detekce, FM/PSG audio cesta, FIFO/governor,
+frame clock, gain, render, RX pasivni audit (bezi dal beze zmeny).
+
+Overeni: patchnute vdp.c/h + clownmdemu.c zkompilovany gcc proti plnemu vendoru OK;
+CMake Debug build core knihoven OK s "-O3 -fomit-frame-pointer" ve flags.make;
+frontend syntax OK; JS beze zmen krome labelu; zadne RT/RU markery.

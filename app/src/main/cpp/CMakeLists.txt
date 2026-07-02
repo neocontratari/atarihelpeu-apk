@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(napsega_native_proof LANGUAGES C CXX)
 
-# BUILD2QN: offline/vendor ClownMDEmu-core build.
+# BUILD2QB: offline/vendor ClownMDEmu-core build.
 # No FetchContent, no GitHub during GitHub Actions, no submodule update,
 # no disassembler tools, no microcode generator executable, no tests.
 set(CMAKE_C_STANDARD 99)
@@ -15,22 +15,33 @@ set(NAP_COMMON_DIR ${NAP_VENDOR_DIR}/libraries/clowncommon)
 set(NAP_M68K_DIR ${NAP_VENDOR_DIR}/libraries/clown68000)
 set(NAP_Z80_DIR ${NAP_VENDOR_DIR}/libraries/clownz80)
 
+# BUILD2RY CRITICAL PERFORMANCE FIX:
+# GitHub Actions vyrabi DEBUG APK => CMake Debug => vsechny .c soubory jadra
+# (68000/Z80 interpretery, VDP, FM) se stavely s -O0 (BEZ optimalizace).
+# Namereno v BUILD2RX auditu: S8 coreAvgMs=17-18ms uz za studena pri max taktu
+# (NTSC budget je 16.67ms) -> hudba chrcela od zacatku; po CPU throttlingu
+# (2314->1703 MHz behem ~100s) coreAvgMs=24.6ms -> kolaps zvuku.
+# Nox (silne PC jadro) utahl i -O0 (8.4ms), proto tam zvuk drzel.
+# Tyto flagy vynuti optimalizovane jadro NEZAVISLE na debug/release variante.
+set(NAP_CORE_OPT_FLAGS -O3 -fomit-frame-pointer)
+
 if(NOT EXISTS ${NAP_CORE_DIR}/clownmdemu.h)
-    message(FATAL_ERROR "BUILD2QN: offline vendor missing source/clownmdemu.h")
+    message(FATAL_ERROR "BUILD2QB: offline vendor missing source/clownmdemu.h")
 endif()
 if(NOT EXISTS ${NAP_M68K_DIR}/source/interpreter/clown68000.c)
-    message(FATAL_ERROR "BUILD2QN: offline vendor missing clown68000 interpreter")
+    message(FATAL_ERROR "BUILD2QB: offline vendor missing clown68000 interpreter")
 endif()
 if(NOT EXISTS ${NAP_Z80_DIR}/source/interpreter.c)
-    message(FATAL_ERROR "BUILD2QN: offline vendor missing clownz80 interpreter")
+    message(FATAL_ERROR "BUILD2QB: offline vendor missing clownz80 interpreter")
 endif()
 if(NOT EXISTS ${NAP_COMMON_DIR}/clowncommon.h)
-    message(FATAL_ERROR "BUILD2QN: offline vendor missing clowncommon.h")
+    message(FATAL_ERROR "BUILD2QB: offline vendor missing clowncommon.h")
 endif()
 
 add_library(clown68000-common STATIC
         ${NAP_M68K_DIR}/source/common/opcode.c)
 target_compile_definitions(clown68000-common PUBLIC CC_USE_C99_INTEGERS=1)
+target_compile_options(clown68000-common PRIVATE ${NAP_CORE_OPT_FLAGS}) # BUILD2RY: -O3 i v debug APK
 target_include_directories(clown68000-common PUBLIC
         ${NAP_M68K_DIR}/source/common
         ${NAP_M68K_DIR}/libraries/clowncommon)
@@ -38,6 +49,7 @@ target_include_directories(clown68000-common PUBLIC
 add_library(clown68000-interpreter STATIC
         ${NAP_M68K_DIR}/source/interpreter/clown68000.c)
 target_compile_definitions(clown68000-interpreter PUBLIC CC_USE_C99_INTEGERS=1)
+target_compile_options(clown68000-interpreter PRIVATE ${NAP_CORE_OPT_FLAGS}) # BUILD2RY: -O3 i v debug APK
 target_include_directories(clown68000-interpreter PUBLIC
         ${NAP_M68K_DIR}/source/interpreter
         ${NAP_M68K_DIR}/source/common
@@ -47,6 +59,7 @@ target_link_libraries(clown68000-interpreter PRIVATE clown68000-common)
 add_library(clownz80-common STATIC
         ${NAP_Z80_DIR}/source/common.c)
 target_compile_definitions(clownz80-common PUBLIC CC_USE_C99_INTEGERS=1)
+target_compile_options(clownz80-common PRIVATE ${NAP_CORE_OPT_FLAGS}) # BUILD2RY: -O3 i v debug APK
 target_include_directories(clownz80-common PUBLIC
         ${NAP_Z80_DIR}/source
         ${NAP_Z80_DIR}/libraries/clowncommon)
@@ -54,6 +67,7 @@ target_include_directories(clownz80-common PUBLIC
 add_library(clownz80-interpreter STATIC
         ${NAP_Z80_DIR}/source/interpreter.c)
 target_compile_definitions(clownz80-interpreter PUBLIC CC_USE_C99_INTEGERS=1)
+target_compile_options(clownz80-interpreter PRIVATE ${NAP_CORE_OPT_FLAGS}) # BUILD2RY: -O3 i v debug APK
 target_include_directories(clownz80-interpreter PUBLIC
         ${NAP_Z80_DIR}/source
         ${NAP_Z80_DIR}/libraries/clowncommon)
@@ -84,6 +98,7 @@ add_library(clownmdemu-core STATIC
         ${NAP_CORE_DIR}/sync.c
         ${NAP_CORE_DIR}/vdp.c)
 target_compile_definitions(clownmdemu-core PUBLIC CC_USE_C99_INTEGERS=1)
+target_compile_options(clownmdemu-core PRIVATE ${NAP_CORE_OPT_FLAGS}) # BUILD2RY: -O3 i v debug APK
 target_include_directories(clownmdemu-core PUBLIC
         ${NAP_CORE_DIR}
         ${NAP_COMMON_DIR}
@@ -95,10 +110,11 @@ add_library(napsega_native_proof SHARED
         nap_sega_native_proof.cpp)
 
 target_compile_features(napsega_native_proof PRIVATE cxx_std_17)
+target_compile_options(napsega_native_proof PRIVATE ${NAP_CORE_OPT_FLAGS}) # BUILD2RY: -O3 i v debug APK
 target_compile_definitions(napsega_native_proof PRIVATE
         NAP_SEGA_VENDOR_CORE_PRESENT=1
         NAP_SEGA_VENDOR_CLOWNMDEMU_OFFLINE=1
-        NAP_SEGA_BUILD2QN=1)
+        NAP_SEGA_BUILD2QB=1)
 
 target_include_directories(napsega_native_proof PRIVATE
         ${NAP_CORE_DIR}

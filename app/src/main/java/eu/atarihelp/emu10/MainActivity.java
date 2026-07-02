@@ -247,8 +247,8 @@ public class MainActivity extends Activity {
 
     private String buildNativeInPlaceLog() {
         StringBuilder out = new StringBuilder();
-        out.append("SEGA C++ IN-PLACE LOG / BUILD2RX\n");
-        out.append("AtariHelp.eu EMU-10 BUILD2RX_SEGA_NATIVE_CPP_ONLY_PCM_SKIP_THERMAL_AUDIT_RECT_FIX_STAGE140\n\n");
+        out.append("SEGA C++ IN-PLACE LOG / BUILD2RY\n");
+        out.append("AtariHelp.eu EMU-10 BUILD2RY_SEGA_NATIVE_CPP_ONLY_CORE_O3_VDP_LEFT_BLANK_STAGE141\n\n");
         out.append("DEVICE sdk=").append(Build.VERSION.SDK_INT)
            .append(" release=").append(Build.VERSION.RELEASE)
            .append(" brand=").append(Build.BRAND)
@@ -719,7 +719,7 @@ public class MainActivity extends Activity {
                     return "SAVE_LOG_DEDUP_RV";
                 }
                 nativeLastSaveLogAtMs = now;
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2RX_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2RY_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;

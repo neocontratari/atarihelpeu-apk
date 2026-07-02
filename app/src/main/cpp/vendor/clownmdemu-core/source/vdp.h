@@ -162,6 +162,10 @@ typedef struct VDP_State
 	cc_bool sprite_tile_index_rebase;
 	cc_bool plane_a_tile_index_rebase;
 	cc_bool plane_b_tile_index_rebase;
+	/* NAP BUILD2RY VENDOR PATCH: VDP Mode Register 1 bit 5 - 'Blank leftmost 8 pixel columns'.
+	   Upstream ClownMDEmu marks this TODO; Sonic 1 sets it during gameplay to hide horizontal
+	   scroll wrap in the leftmost column, which otherwise shows as a garbage strip. */
+	cc_bool left_column_blank;
 
 	cc_u8l background_colour;
 	cc_u8l h_int_interval;

@@ -395,6 +395,7 @@ void VDP_Initialise(VDP* const vdp)
 	vdp->state.sprite_tile_index_rebase = cc_false;
 	vdp->state.plane_a_tile_index_rebase = cc_false;
 	vdp->state.plane_b_tile_index_rebase = cc_false;
+	vdp->state.left_column_blank = cc_false; /* NAP BUILD2RY VENDOR PATCH */
 
 	vdp->state.background_colour = 0;
 	vdp->state.h_int_interval = 0;
@@ -837,6 +838,17 @@ static void RenderForegroundAndSpritePlanes(const VDP* const vdp, const cc_u16f 
 		const cc_u16f clamped_left_boundary_pixels = CC_CLAMP(x_offset, x_offset + output_width, left_boundary_pixels) - x_offset;
 		const cc_u16f clamped_right_boundary_pixels = CC_CLAMP(x_offset, x_offset + output_width, right_boundary_pixels) - x_offset;
 
+		/* NAP BUILD2RY VENDOR PATCH: apply 'Blank 8 leftmost pixel columns' before handing
+		   the scanline to the frontend. The blanked area shows the backdrop colour, exactly
+		   like the initial background fill of this scanline buffer. Cheap: 8 bytes. */
+		if (state->left_column_blank)
+		{
+			cc_u8f nap_i;
+			cc_u8l* const nap_visible = plane_metapixels + x_offset;
+			for (nap_i = 0; nap_i < 8 && nap_i < output_width; ++nap_i)
+				nap_visible[nap_i] = state->background_colour;
+		}
+
 		scanline_rendered_callback((void*)scanline_rendered_callback_user_data, scanline, plane_metapixels + x_offset, clamped_left_boundary_pixels, clamped_right_boundary_pixels, output_width, output_height);
 	}
 }
@@ -1060,9 +1072,10 @@ void VDP_WriteControl(VDP* const vdp, const cc_u16f value, const VDP_ColourUpdat
 				case 0:
 					/* MODE SET REGISTER NO.1 */
 
-					/* TODO */
-					if ((data & (1 << 5)) != 0)
-						LogMessage("'Blank 8 leftmost pixel columns' flag set but is currently unemulated.");
+					/* NAP BUILD2RY VENDOR PATCH: implement 'Blank 8 leftmost pixel columns'
+					   (Mode Register 1, bit 5). Real hardware shows the backdrop colour in the
+					   leftmost 8 pixels when set; Sonic 1 relies on it to hide hscroll wrap. */
+					state->left_column_blank = (data & (1 << 5)) != 0;
 
 					state->h_int_enabled = (data & (1 << 4)) != 0;
 

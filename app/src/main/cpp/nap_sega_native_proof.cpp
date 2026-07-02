@@ -417,7 +417,7 @@ static void nap_audio_clear() {
 }
 static std::string nap_audio_status_locked() {
     std::ostringstream out;
-    out << "audio_mode=FM_PSG_ZEROED_RW_AUDIT_PCM_CDDA_SKIP_RX pcmCddaGen=SKIPPED_NO_CD sonic_main fixedAudioClock=YES stereo=YES zeroInputBuffers=YES coreLPF=ON noRumbleFilter=YES noSamplePick=YES singleAudioPath=YES audioMasterClock=YES noStarve=YES noHardTrim=YES fmGain=100 psgGain=100 masterGain=90 target=" << nap_audio_target_fifo()
+    out << "audio_mode=FM_PSG_ZEROED_RX_UNCHANGED_CORE_O3_RY pcmCddaGen=SKIPPED_NO_CD coreOptO3=YES vdpLeftBlank=IMPLEMENTED sonic_main fixedAudioClock=YES stereo=YES zeroInputBuffers=YES coreLPF=ON noRumbleFilter=YES noSamplePick=YES singleAudioPath=YES audioMasterClock=YES noStarve=YES noHardTrim=YES fmGain=100 psgGain=100 masterGain=90 target=" << nap_audio_target_fifo()
         << " max=" << nap_audio_max_fifo()
         << " desyncLimit=" << nap_audio_desync_limit()
         << " fm_l_fifo=" << g_audio_fm_l_fifo.size()
@@ -939,7 +939,7 @@ static void* nap_real_worker_thread_entry(void *arg) {
 
 static void nap_real_worker_thread(int generation) {
 #if NAP_SEGA_VENDOR_CORE_PRESENT
-    NAPLOG("BUILD2RX real core worker start gen=%d bigstack=8MB passiveAudit=YES pcmCddaSkip=YES", generation);
+    NAPLOG("BUILD2RY real core worker start gen=%d bigstack=8MB passiveAudit=YES pcmCddaSkip=YES", generation);
     nap_native_worker_set_priority_rp();
     try {
         static bool constants_ready = false;
@@ -1052,7 +1052,7 @@ static void nap_real_worker_thread(int generation) {
         g_real.status = "REAL_CORE_WORKER_UNKNOWN_EXCEPTION";
     }
     g_real_thread_alive.store(0);
-    NAPLOG("BUILD2RX real core worker stop gen=%d", generation);
+    NAPLOG("BUILD2RY real core worker stop gen=%d", generation);
 #endif
 }
 
@@ -1109,7 +1109,7 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeCoreBuildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2RX NATIVE C++ RW AUDIT + PCM/CDDA CPU SKIP OK\n"
+    std::string s = "BUILD2RY NATIVE C++ CORE O3 + VDP LEFT BLANK OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
@@ -1329,7 +1329,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_setPerformanceMode(JNIEnv* env, jcl
 // BUILD2RV: same native core exposed to MainActivity/WebView in-place bridge.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_buildString(JNIEnv* env, jclass) {
-    std::string s = "BUILD2RX NATIVE C++ RW AUDIT + PCM/CDDA CPU SKIP OK\n"
+    std::string s = "BUILD2RY NATIVE C++ CORE O3 + VDP LEFT BLANK OK\n"
                     "JNI bridge: OK\n"
                     "C++ library: napsega_native_proof\n"
                     "ROM header parser: OK\n"
