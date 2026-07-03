@@ -1,0 +1,20 @@
+Summary patch, PS1-only:
+
+MainActivity.java
+- Add ps1CurrentAudioTrack and ps1AudioThread.
+- AHPS1.ps1Stop() now calls stopPs1Audio() before NativePs1CoreBridge.stopSafe().
+- Before NativePs1CoreBridge.bootSafe(), stopPs1Audio() is called for a clean PS1 audio restart.
+- startPs1Audio() now:
+  - hard-stops any previous PS1 audio thread,
+  - creates a larger AudioTrack buffer,
+  - preloads audio frames before at.play(),
+  - uses AudioTrack.WRITE_BLOCKING on API 23+,
+  - logs BUILD2SA3B PS1_AUDIO_START / WRITE / STOP.
+- Keeps android.media.AudioManager.STREAM_MUSIC to avoid the GitHub compile error.
+
+nap_ps1_native.cpp
+- Add nap_audio_clear().
+- Call nap_audio_clear() after old core unload in ps1Boot().
+- Call nap_audio_clear() in ps1Stop().
+
+No Sega/Atari/build metadata files are part of this overlay.

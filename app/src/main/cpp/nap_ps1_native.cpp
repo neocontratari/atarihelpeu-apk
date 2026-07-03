@@ -114,6 +114,10 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
 static std::mutex g_amutex;
 static std::vector<int16_t> g_afifo; // interleaved L,R
 static const size_t NAP_PS1_AFIFO_MAX = 44100 * 2 * 2; // max 2 s, pak zahazujeme nejstarsi
+static void nap_audio_clear(void) {
+  std::lock_guard<std::mutex> lock(g_amutex);
+  g_afifo.clear();
+}
 static void nap_audio_push(const int16_t *data, size_t frames) {
   if (!data || !frames) return;
   std::lock_guard<std::mutex> lock(g_amutex);
@@ -162,6 +166,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
   g_generation.fetch_add(1); g_running.store(false);
   if (g_worker.joinable()) g_worker.join();
   if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+  nap_audio_clear();
   g_frames.store(0); g_dupe_frames.store(0); g_audio_samples_dropped.store(0); g_fw.store(0); g_fh.store(0);
   g_boot_error.clear();
   retro_set_environment(nap_env);
@@ -231,6 +236,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   g_generation.fetch_add(1); g_running.store(false);
   if (g_worker.joinable()) g_worker.join();
   if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+  nap_audio_clear();
   NAPLOG("BUILD2SA2 PS1 stop frames=%llu", (unsigned long long)g_frames.load());
   return env->NewStringUTF("PS1_STOPPED");
 }

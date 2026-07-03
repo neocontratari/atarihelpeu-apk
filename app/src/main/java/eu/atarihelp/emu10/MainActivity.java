@@ -72,6 +72,8 @@ public class MainActivity extends Activity {
     private static android.os.ParcelFileDescriptor ps1GamePfd = null; // BUILD2SA2: drzi fd otevrene hry
     private static volatile String ps1LastBootResult = "not_booted";
     private static volatile int ps1AudioGen = 0; // BUILD2SA3
+    private volatile AudioTrack ps1CurrentAudioTrack = null; // BUILD2SA3B: hard-stop pri prepnuti PS1 hry
+    private Thread ps1AudioThread = null;
     private static final String EMU_URL = "file:///android_asset/emu/index.html";
     private WebView web;
     private FrameLayout rootFrame;
@@ -258,7 +260,7 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface
         public String ps1Stop() {
-            ps1AudioGen++; // BUILD2SA3: zastavit audio vlakno
+            stopPs1Audio(); // BUILD2SA3B: zastavit AudioTrack jeste pred stopem jadra
             String r = NativePs1CoreBridge.stopSafe();
             try { if (ps1GamePfd != null) { ps1GamePfd.close(); ps1GamePfd = null; } } catch (Throwable ignored) {}
             return r;
@@ -1388,30 +1390,91 @@ public class MainActivity extends Activity {
     }
     // BUILD2SA3: PS1 zvuk - stejna disciplina jako Sega: dedikovane vlakno,
     // blocking AudioTrack.write jako tempo, generation guard, hard release.
-    private void startPs1Audio() {
+    private synchronized void startPs1Audio() {
+        stopPs1Audio(); // BUILD2SA3B: pred novou hrou zabit stare vlakno a uvolnit stary AudioTrack
         final int gen = ++ps1AudioGen;
-        new Thread(() -> {
+        ps1AudioThread = new Thread(() -> {
             AudioTrack at = null;
             try {
+                try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO); } catch (Throwable ignored) {}
                 int min = AudioTrack.getMinBufferSize(44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
-                int bufBytes = Math.max(min, 4 * 4096);
-                at = new AudioTrack(android.media.AudioManager.STREAM_MUSIC, 44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT, bufBytes, AudioTrack.MODE_STREAM);
+                int bufBytes = Math.max(min > 0 ? min * 3 : 0, 8192 * 2 * 2);
+                if (Build.VERSION.SDK_INT >= 21) {
+                    at = new AudioTrack.Builder()
+                            .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                            .setAudioFormat(new AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(44100).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
+                            .setBufferSizeInBytes(bufBytes)
+                            .setTransferMode(AudioTrack.MODE_STREAM)
+                            .build();
+                } else {
+                    at = new AudioTrack(android.media.AudioManager.STREAM_MUSIC, 44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT, bufBytes, AudioTrack.MODE_STREAM);
+                }
+                ps1CurrentAudioTrack = at;
+                short[] buf = new short[1024 * 2];
+                int prefillFrames = 0;
+                long prefillDeadline = System.currentTimeMillis() + 900;
+                while (gen == ps1AudioGen && prefillFrames < 4096 && System.currentTimeMillis() < prefillDeadline) {
+                    int got = NativePs1CoreBridge.pullAudioSafe(buf, 1024);
+                    if (got > 0) {
+                        int shorts = got * 2;
+                        int off = 0;
+                        while (off < shorts && gen == ps1AudioGen) {
+                            int wr = Build.VERSION.SDK_INT >= 23 ? at.write(buf, off, shorts - off, AudioTrack.WRITE_BLOCKING) : at.write(buf, off, shorts - off);
+                            if (wr <= 0) break;
+                            off += wr;
+                        }
+                        prefillFrames += got;
+                    } else {
+                        try { Thread.sleep(3); } catch (InterruptedException ignored) { break; }
+                    }
+                }
                 at.play();
-                appendNativeLog("BUILD2SA3 PS1_AUDIO_START gen=" + gen + " bufBytes=" + bufBytes);
-                short[] buf = new short[2048 * 2];
+                appendNativeLog("BUILD2SA3B PS1_AUDIO_START gen=" + gen + " bufBytes=" + bufBytes + " minBytes=" + min + " prefillFrames=" + prefillFrames);
                 int idle = 0;
+                int writes = 0;
                 while (gen == ps1AudioGen) {
-                    int got = NativePs1CoreBridge.pullAudioSafe(buf, 2048);
-                    if (got > 0) { at.write(buf, 0, got * 2); idle = 0; }
-                    else { if (++idle > 2500) break; try { Thread.sleep(4); } catch (InterruptedException ignored) {} }
+                    int got = NativePs1CoreBridge.pullAudioSafe(buf, 1024);
+                    if (got > 0) {
+                        int shorts = got * 2;
+                        int off = 0;
+                        while (off < shorts && gen == ps1AudioGen) {
+                            int wr = Build.VERSION.SDK_INT >= 23 ? at.write(buf, off, shorts - off, AudioTrack.WRITE_BLOCKING) : at.write(buf, off, shorts - off);
+                            if (wr <= 0) break;
+                            off += wr;
+                        }
+                        idle = 0;
+                        writes++;
+                        if (writes <= 6 || writes % 240 == 0) appendNativeLog("BUILD2SA3B PS1_AUDIO_WRITE gen=" + gen + " gotFrames=" + got + " writes=" + writes);
+                    }
+                    else { if (++idle > 5000) break; try { Thread.sleep(2); } catch (InterruptedException ignored) { break; } }
                 }
             } catch (Throwable t) {
-                appendNativeLog("BUILD2SA3 PS1_AUDIO_ERROR " + t.getMessage());
+                appendNativeLog("BUILD2SA3B PS1_AUDIO_ERROR " + t.getMessage());
             } finally {
-                try { if (at != null) { at.stop(); at.release(); } } catch (Throwable ignored) {}
-                appendNativeLog("BUILD2SA3 PS1_AUDIO_STOP gen=" + gen);
+                try { if (at != null) { at.pause(); at.flush(); at.stop(); at.release(); } } catch (Throwable ignored) {}
+                if (ps1CurrentAudioTrack == at) ps1CurrentAudioTrack = null;
+                appendNativeLog("BUILD2SA3B PS1_AUDIO_STOP gen=" + gen + " current=" + ps1AudioGen);
             }
-        }, "nap-ps1-audio").start();
+        }, "nap-ps1-audio");
+        ps1AudioThread.start();
+    }
+    private synchronized void stopPs1Audio() {
+        final int gen = ++ps1AudioGen;
+        AudioTrack at = ps1CurrentAudioTrack;
+        ps1CurrentAudioTrack = null;
+        if (at != null) {
+            try { at.pause(); } catch (Throwable ignored) {}
+            try { at.flush(); } catch (Throwable ignored) {}
+            try { at.stop(); } catch (Throwable ignored) {}
+            try { at.release(); } catch (Throwable ignored) {}
+        }
+        Thread t = ps1AudioThread;
+        if (t != null && t != Thread.currentThread()) {
+            try { t.interrupt(); } catch (Throwable ignored) {}
+            try { t.join(250); } catch (Throwable ignored) {}
+        }
+        if (ps1AudioThread == t) ps1AudioThread = null;
+        appendNativeLog("BUILD2SA3B PS1_AUDIO_STOP_REQUEST gen=" + gen + " hadTrack=" + (at != null));
     }
     private void injectPendingSegaGame() {
         try {
@@ -1590,6 +1653,7 @@ public class MainActivity extends Activity {
                     java.io.File saveDir = new java.io.File(getFilesDir(), "ps1_saves");
                     if (!sysDir.exists()) sysDir.mkdirs();
                     if (!saveDir.exists()) saveDir.mkdirs();
+                    stopPs1Audio(); // BUILD2SA3B: cisty audio restart pri prepnuti PS1 hry
                     ps1LastBootResult = "PS1_BOOTING...";
                     ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);
                     if (ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK")) startPs1Audio(); // BUILD2SA3
