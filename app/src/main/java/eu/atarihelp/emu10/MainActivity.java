@@ -1395,7 +1395,7 @@ public class MainActivity extends Activity {
             try {
                 int min = AudioTrack.getMinBufferSize(44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
                 int bufBytes = Math.max(min, 4 * 4096);
-                at = new AudioTrack(AudioManager.STREAM_MUSIC, 44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT, bufBytes, AudioTrack.MODE_STREAM);
+                at = new AudioTrack(android.media.AudioManager.STREAM_MUSIC, 44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT, bufBytes, AudioTrack.MODE_STREAM);
                 at.play();
                 appendNativeLog("BUILD2SA3 PS1_AUDIO_START gen=" + gen + " bufBytes=" + bufBytes);
                 short[] buf = new short[2048 * 2];
