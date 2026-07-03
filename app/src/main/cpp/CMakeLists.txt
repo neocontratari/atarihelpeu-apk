@@ -132,6 +132,15 @@ target_link_libraries(napsega_native_proof PRIVATE
 # ============ BUILD2SA1-FIX: PCSX-ReARMed presne dle jni/Android.mk (arm64, interpreter) ============
 # KILL-SWITCH: kdyz by PS1 blok zlobil, staci OFF a workflow je zeleny bez PS1.
 option(NAP_ENABLE_PS1 "Build PS1 core (napps1core)" ON)
+# BUILD2SA1-FIX3: Gradle stavi APK pro VSECHNY architektury (arm64, armeabi-v7a,
+# x86, x86_64). PS1 konfigurace je zamerena na arm64 (S8 a moderni telefony) -
+# na ostatnich ABI se PS1 PRESKOCI a Sega se stavi jak dosud. Zadna dalsi
+# architektura uz nemuze shodit workflow; Java most na ne-arm64 hlasi
+# PS1_CORE_LOAD_FAIL misto padu.
+if(ANDROID AND NOT (ANDROID_ABI STREQUAL "arm64-v8a"))
+    set(NAP_ENABLE_PS1 OFF)
+    message(STATUS "BUILD2SA1: PS1 core skipped for ABI '${ANDROID_ABI}' (arm64-v8a only for now)")
+endif()
 if(NAP_ENABLE_PS1)
 set(PS1_DIR ${CMAKE_CURRENT_LIST_DIR}/vendor/pcsx_rearmed)
 add_library(napps1core SHARED
