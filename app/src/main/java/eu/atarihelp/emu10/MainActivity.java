@@ -237,6 +237,24 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface
         public String ps1Status() { return NativePs1CoreBridge.statusSafe() + " | lastBoot=" + ps1LastBootResult; }
+        // BUILD2SA2B: nahled obrazu - realne snimky z jadra jako JPEG base64 (~10 fps).
+        // Neni to finalni render (ten pojede pres TextureView v SA2C), ale je to
+        // OPRAVDOVY obraz z beziciho jadra, zadny fake.
+        private int[] ps1PrevBuf = new int[1024 * 512];
+        @JavascriptInterface
+        public String ps1FramePreviewB64() {
+            try {
+                int wh = NativePs1CoreBridge.grabFrameSafe(ps1PrevBuf);
+                if (wh < 0) { int need = ((-wh) >> 16) * ((-wh) & 0xFFFF); ps1PrevBuf = new int[need + 1024]; wh = NativePs1CoreBridge.grabFrameSafe(ps1PrevBuf); }
+                if (wh <= 0) return "";
+                int w = wh >> 16, h = wh & 0xFFFF;
+                android.graphics.Bitmap bm = android.graphics.Bitmap.createBitmap(ps1PrevBuf, w, h, android.graphics.Bitmap.Config.ARGB_8888);
+                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                bm.compress(android.graphics.Bitmap.CompressFormat.JPEG, 72, bo);
+                bm.recycle();
+                return Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
+            } catch (Throwable t) { return ""; }
+        }
         @JavascriptInterface
         public String ps1Stop() {
             String r = NativePs1CoreBridge.stopSafe();
@@ -1359,7 +1377,7 @@ public class MainActivity extends Activity {
                     pendingSegaName = name;
                     String cur = web.getUrl();
                     if (cur != null && cur.startsWith(SEGA_URL)) injectPendingSegaGame();
-                    else { web.loadUrl(SEGA_URL); web.postDelayed(this::injectPendingSegaGame, 1800); }
+                    else { web.loadUrl(SEGA_URL); web.postDelayed(MainActivity.this::injectPendingSegaGame, 1800); }
                 });
             } catch (Exception ex) {
                 appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_FAIL " + ex.getMessage());
@@ -1434,6 +1452,39 @@ public class MainActivity extends Activity {
                 in.close();
                 final byte[] data = bos.toByteArray();
                 final String name = guessDownloadName(url, cdName);
+                // BUILD2SA2B: Reneho web umi hostovat jen ZIPy. Kouknem DOVNITR zipu:
+                // kdyz je uvnitr Sega ROM (.gen/.md/.smd/.sms), rozbalime a posleme
+                // do EMU SEGA. Jinak jede stara Atari cesta beze zmeny.
+                byte[] segaRomTmp = null; String segaNameTmp = null;
+                try {
+                    java.util.zip.ZipInputStream zi = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
+                    java.util.zip.ZipEntry ze;
+                    while ((ze = zi.getNextEntry()) != null) {
+                        String en = ze.getName() == null ? "" : ze.getName();
+                        if (hasSegaExtension(en)) {
+                            ByteArrayOutputStream ro = new ByteArrayOutputStream();
+                            byte[] rb = new byte[16384]; int rn;
+                            while ((rn = zi.read(rb)) > 0 && ro.size() < 16 * 1024 * 1024) ro.write(rb, 0, rn);
+                            segaRomTmp = ro.toByteArray();
+                            int sl = en.lastIndexOf('/');
+                            segaNameTmp = sl >= 0 ? en.substring(sl + 1) : en;
+                            break;
+                        }
+                        zi.closeEntry();
+                    }
+                    zi.close();
+                } catch (Throwable ignored) {}
+                final byte[] segaRom = segaRomTmp; final String segaName = segaNameTmp;
+                if (segaRom != null && segaRom.length > 0) {
+                    appendNativeLog("BUILD2SA2B ZIP_CONTAINS_SEGA name=" + segaName + " bytes=" + segaRom.length + " -> EMU_SEGA");
+                    ui.post(() -> {
+                        pendingSegaGame = segaRom; pendingSegaName = segaName;
+                        String cur = web.getUrl();
+                        if (cur != null && cur.startsWith(SEGA_URL)) injectPendingSegaGame();
+                        else { web.loadUrl(SEGA_URL); web.postDelayed(MainActivity.this::injectPendingSegaGame, 1800); }
+                    });
+                    return;
+                }
                 ui.post(() -> {
                     String cur = web.getUrl();
                     if (cur != null && cur.startsWith(EMU_URL)) {

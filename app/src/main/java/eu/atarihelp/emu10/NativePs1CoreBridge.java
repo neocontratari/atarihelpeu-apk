@@ -11,6 +11,11 @@ public final class NativePs1CoreBridge {
     private static native String ps1Boot(String systemDir, String saveDir, String gamePath);
     private static native String ps1Status();
     private static native String ps1Stop();
+    private static native int ps1GrabFrame(int[] out);
+    public static int grabFrameSafe(int[] out) {
+        if (!loaded) return 0;
+        try { return ps1GrabFrame(out); } catch (Throwable t) { return 0; }
+    }
     public static String coreInfoSafe() {
         if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;
         try { return ps1CoreInfo(); } catch (Throwable t) { return "PS1_CORE_CALL_FAIL " + t.getMessage(); }

@@ -1,4 +1,4 @@
-BUILD2SA2_PS1_REAL_BOOT_FD_SEGA_WEB_ROUTING_STAGE144
+BUILD2SA2B_PS1_SCREEN_PREVIEW_ZIP_ROUTING_STAGE145
 
 DVE VECI V JEDNOM BALICKU (nezavisle oblasti):
 
@@ -53,3 +53,27 @@ OVERENO U ME (slibena disciplina):
 - Oba JS bloky: node --check OK. Java zavorky vyvazene.
 - Kill-switch NAP_ENABLE_PS1 a arm64-only pojistka zustavaji.
 POZOR: plny NDK/Gradle build probehne v Actions; kdyby cervena, screenshot staci.
+
+===== SA2B DOPLNKY (po tvem testu 3.7. odpoledne) =====
+POTVRZENO Z TVEHO S8 LOGU: PS1_BOOT_OK, frames 5->64->124->184 (presne 60/s),
+res=256x240, RGB565, 44100 Hz vzorky se generuji. HRA BEZI V JADRE!
+
+1) OBRAZ - NAHLED (SA2B): nad PS1 monitorem se objevi REALNY obraz z jadra
+   (~10 fps JPEG nahled). Neni to finalni plynuly render - ten pojede pres
+   TextureView v SA2C - ale je to poctivy obraz z beziciho jadra.
+   Marker: PS1_SCREEN_PREVIEW_ON.
+   POZOR: prvnich ~20-30 s bootu PS1 byva cerna/logo - nech tomu chvili.
+   Interpreter je pomaly - hra pojede zpomalene, dynarec je dalsi etapa.
+2) ZVUK: SA3, dalsi balicek - FIFO + AudioTrack jako u Segy. Vzorky uz
+   z jadra tecou (audioDroppedSA2 roste), jen je jeste neposilame ven.
+3) SBIRKA ZIPY: web nemusi hostovat cisty .gen! Kazdy stazeny ZIP se ted
+   otevre a kdyz je UVNITR Sega ROM (.gen/.md/.smd/.sms), rozbali se a jede
+   do EMU SEGA. Jinak stara Atari cesta. Zadny tar netreba.
+   Marker: ZIP_CONTAINS_SEGA ... -> EMU_SEGA.
+4) Nox PS1 nejede - ocekavane (x86), PS1 je arm64/S8. Sega v Noxu bezi dal.
+
+TEST SA2B (S8): 1) LOAD GAME -> BIOS (PS1_BIOS_SAVED) 2) CD/ISO -> hra
+3) sleduj monitor - do minuty se musi objevit obraz (PS logo/intro)
+4) SBIRKA: klikni Sega ZIP na webu -> musi otevrit EMU SEGA a hrat.
+OVERENO U ME: ARM64 kriz. kompilace + --no-undefined link OK (5 JNI symbolu),
+JS parse OK, Java zavorky OK. Kill-switch + arm64-only pojistky zustavaji.

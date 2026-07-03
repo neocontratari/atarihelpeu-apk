@@ -189,6 +189,17 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Status(JNIEnv *env, jclass) {
     g_boot_error.empty()?"none":g_boot_error.c_str());
   return env->NewStringUTF(out);
 }
+// BUILD2SA2B: vyzvednuti snimku pro nahled (a pozdeji TextureView). Vraci (w<<16)|h, 0 = nic.
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1GrabFrame(JNIEnv *env, jclass, jintArray out) {
+  std::lock_guard<std::mutex> lock(g_frame_mutex);
+  const int w = g_fw.load(), h = g_fh.load();
+  if (w <= 0 || h <= 0 || g_frame_argb.size() < (size_t)w * h || !out) return 0;
+  jsize cap = env->GetArrayLength(out);
+  if (cap < w * h) return -(w << 16 | h); // buffer maly - Java si ho zvetsi
+  env->SetIntArrayRegion(out, 0, w * h, (const jint*)g_frame_argb.data());
+  return (w << 16) | h;
+}
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   std::lock_guard<std::mutex> life(g_life_mutex);
