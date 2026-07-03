@@ -77,11 +77,11 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #dpad:after{content:none!important;}
  #dpadNub{display:block!important;position:absolute;left:50%;top:50%;width:34%;height:34%;margin-left:-17%;margin-top:-17%;border-radius:50%;background:radial-gradient(circle at 36% 30%,rgba(255,255,255,.55),rgba(120,200,255,.34) 40%,rgba(20,70,130,.55) 100%);border:2px solid rgba(200,240,255,.55);box-shadow:0 0 16px rgba(60,180,255,.55),inset 0 0 10px rgba(255,255,255,.18);transition:transform .05s linear;pointer-events:none;}
  #dpad.on{border-color:rgba(200,245,255,.75);box-shadow:0 0 30px rgba(0,170,255,.55),inset 0 0 30px rgba(0,0,0,.42);opacity:.8;}
- #btnA,#btnB,#btnC{width:14.6vh;height:14.6vh;border-radius:50%;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.30),rgba(50,150,235,.18) 38%,rgba(4,16,34,.40) 78%);border:2px solid rgba(165,225,255,.40);box-shadow:0 0 16px rgba(0,140,255,.30),inset 0 0 16px rgba(0,0,0,.36);display:flex;align-items:center;justify-content:center;opacity:.60;}
- #btnA{left:auto;right:2.5vw;top:auto;bottom:33.4vh;}
- #btnB{left:auto;right:2.5vw;top:auto;bottom:17.8vh;}
- #btnC{left:auto;right:2.5vw;top:auto;bottom:2.3vh;}
- #btnA:before{content:"A";}#btnB:before{content:"B";}#btnC:before{content:"C";}#btnA:before,#btnB:before,#btnC:before{font:900 3.4vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 7px #000,0 0 12px rgba(0,180,255,.6);}
+ #btnA,#btnB,#btnC{width:17.5vh;height:17.5vh;border-radius:50%;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.30),rgba(50,150,235,.18) 38%,rgba(4,16,34,.40) 78%);border:2px solid rgba(165,225,255,.40);box-shadow:0 0 16px rgba(0,140,255,.30),inset 0 0 16px rgba(0,0,0,.36);display:flex;align-items:center;justify-content:center;opacity:.60;}
+ #btnA{left:auto;right:2.2vw;top:auto;bottom:40.6vh;}
+ #btnB{left:auto;right:2.2vw;top:auto;bottom:21.2vh;}
+ #btnC{left:auto;right:2.2vw;top:auto;bottom:1.8vh;}
+ #btnA:before{content:"A";}#btnB:before{content:"B";}#btnC:before{content:"C";}#btnA:before,#btnB:before,#btnC:before{font:900 4.1vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 7px #000,0 0 12px rgba(0,180,255,.6);}
  #btnA.on,#btnB.on,#btnC.on{opacity:1;border-color:rgba(255,240,180,.85);background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.45),rgba(230,170,60,.30) 40%,rgba(60,30,4,.45) 80%);box-shadow:0 0 24px rgba(255,190,60,.55),inset 0 0 14px rgba(0,0,0,.30);}
  #btnStart{display:none!important;pointer-events:none!important;}
  #btnStart:before{content:"";}
@@ -142,7 +142,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </main>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2RZ_SEGA_UI_LANDSCAPE_PAD_V3_THUMBSTICK_STAGE142_R4';
+var BUILD='BUILD2RZ_SEGA_UI_LANDSCAPE_PAD_V3_THUMBSTICK_STAGE142_R5_BIGGER_ABC';
 var logLines=[], __lastSaveLogTap=0, frameLoaded=false, selectedRomName='zadna', selectedRomSize=0, selectedRomBuffer=null, lastBootStatus='NO_ROM', lastKeyStatus='NO_KEY', activeDpadDir=null, inputLogShieldCount=0;
 var nativeCppMode=true,nativeCppLastStatus='NATIVE_ARMED_CPP_ONLY',nativeCppInputCount=0;
 var FORCE_NATIVE_CPP_ONLY=true;

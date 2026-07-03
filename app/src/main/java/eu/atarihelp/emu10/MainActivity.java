@@ -199,6 +199,12 @@ public class MainActivity extends Activity {
         }
     }
 
+    public class AHPS1 {
+        // BUILD2SA1: dukaz zivota PS1 jadra pro PS1 stranku. Zadny boot, jen identita.
+        @JavascriptInterface
+        public String ps1CoreInfo() { return NativePs1CoreBridge.coreInfoSafe(); }
+    }
+
     public class AHPick {
         @JavascriptInterface
         public void pickGame() {
@@ -1129,6 +1135,7 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         web.addJavascriptInterface(new AHSave(), "AHSAVE");
         web.addJavascriptInterface(new AHPick(), "AHPICK");
+        web.addJavascriptInterface(new AHPS1(), "AHPS1"); // BUILD2SA1
         web.addJavascriptInterface(new AHNet(), "AHNET");
         web.addJavascriptInterface(new AHNative(), "AHNATIVE");
         web.setWebChromeClient(new WebChromeClient() {
