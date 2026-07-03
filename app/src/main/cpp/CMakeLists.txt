@@ -231,5 +231,9 @@ if(ANDROID)
 endif()
 target_compile_options(napps1core PRIVATE ${NAP_CORE_OPT_FLAGS} -ffast-math -fno-strict-aliasing -Wno-unused -Wno-unused-function)
 find_package(Threads REQUIRED)
-target_link_libraries(napps1core ${log-lib} Threads::Threads m)
+# BUILD2SA1-FIX2: Android.mk ma LOCAL_LDLIBS := -lz -llog. Bez systemove zlib
+# (libchdr ji potrebuje) spadl NDK link - presne chyba z Actions #853.
+# --no-undefined = stejna prisnost jako NDK, chybejici symbol shodi uz muj test.
+target_link_libraries(napps1core ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS})
+target_link_options(napps1core PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif() # NAP_ENABLE_PS1
