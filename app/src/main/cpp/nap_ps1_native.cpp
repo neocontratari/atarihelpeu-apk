@@ -110,8 +110,21 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
   g_fw.store((int)w); g_fh.store((int)h);
   g_frames.fetch_add(1);
 }
-static void nap_audio_sample(int16_t, int16_t) { g_audio_samples_dropped.fetch_add(1); }
-static size_t nap_audio_batch(const int16_t*, size_t frames) { g_audio_samples_dropped.fetch_add(frames); return frames; } // SA3: sem prijde FIFO jako u Segy
+// BUILD2SA3: audio FIFO (44100 Hz stereo z jadra -> Java AudioTrack)
+static std::mutex g_amutex;
+static std::vector<int16_t> g_afifo; // interleaved L,R
+static const size_t NAP_PS1_AFIFO_MAX = 44100 * 2 * 2; // max 2 s, pak zahazujeme nejstarsi
+static void nap_audio_push(const int16_t *data, size_t frames) {
+  if (!data || !frames) return;
+  std::lock_guard<std::mutex> lock(g_amutex);
+  g_afifo.insert(g_afifo.end(), data, data + frames * 2);
+  if (g_afifo.size() > NAP_PS1_AFIFO_MAX) {
+    g_audio_samples_dropped.fetch_add((g_afifo.size() - NAP_PS1_AFIFO_MAX) / 2);
+    g_afifo.erase(g_afifo.begin(), g_afifo.begin() + (g_afifo.size() - NAP_PS1_AFIFO_MAX));
+  }
+}
+static void nap_audio_sample(int16_t l, int16_t r) { int16_t s[2] = { l, r }; nap_audio_push(s, 1); }
+static size_t nap_audio_batch(const int16_t *data, size_t frames) { nap_audio_push(data, frames); return frames; }
 static void nap_input_poll(void) {}
 static int16_t nap_input_state(unsigned, unsigned, unsigned, unsigned) { return 0; } // SA3: realny vstup
 
@@ -183,9 +196,9 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Status(JNIEnv *env, jclass) {
   char out[512];
-  snprintf(out,sizeof(out),"PS1_RUN running=%s frames=%llu dupes=%llu res=%dx%d pixfmt=%d audioDroppedSA2=%llu fps=%.2f err=%s",
+  snprintf(out,sizeof(out),"PS1_RUN running=%s frames=%llu dupes=%llu res=%dx%d pixfmt=%d audioFifoFrames=%zu audioDropped=%llu fps=%.2f err=%s",
     g_running.load()?"YES":"NO",(unsigned long long)g_frames.load(),(unsigned long long)g_dupe_frames.load(),
-    g_fw.load(),g_fh.load(),g_pixfmt.load(),(unsigned long long)g_audio_samples_dropped.load(),g_fps,
+    g_fw.load(),g_fh.load(),g_pixfmt.load(),({std::lock_guard<std::mutex> al(g_amutex); g_afifo.size()/2;}),(unsigned long long)g_audio_samples_dropped.load(),g_fps,
     g_boot_error.empty()?"none":g_boot_error.c_str());
   return env->NewStringUTF(out);
 }
@@ -199,6 +212,18 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1GrabFrame(JNIEnv *env, jclass, ji
   if (cap < w * h) return -(w << 16 | h); // buffer maly - Java si ho zvetsi
   env->SetIntArrayRegion(out, 0, w * h, (const jint*)g_frame_argb.data());
   return (w << 16) | h;
+}
+// BUILD2SA3: Java audio vlakno si tahne stereo framy; vraci pocet framu.
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PullAudio(JNIEnv *env, jclass, jshortArray out, jint frames) {
+  if (!out || frames <= 0) return 0;
+  std::lock_guard<std::mutex> lock(g_amutex);
+  size_t have = g_afifo.size() / 2;
+  size_t n = have < (size_t)frames ? have : (size_t)frames;
+  if (!n) return 0;
+  env->SetShortArrayRegion(out, 0, (jsize)(n * 2), (const jshort*)g_afifo.data());
+  g_afifo.erase(g_afifo.begin(), g_afifo.begin() + n * 2);
+  return (jint)n;
 }
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {

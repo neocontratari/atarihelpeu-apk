@@ -12,6 +12,11 @@ public final class NativePs1CoreBridge {
     private static native String ps1Status();
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
+    private static native int ps1PullAudio(short[] out, int frames);
+    public static int pullAudioSafe(short[] out, int frames) {
+        if (!loaded) return 0;
+        try { return ps1PullAudio(out, frames); } catch (Throwable t) { return 0; }
+    }
     public static int grabFrameSafe(int[] out) {
         if (!loaded) return 0;
         try { return ps1GrabFrame(out); } catch (Throwable t) { return 0; }

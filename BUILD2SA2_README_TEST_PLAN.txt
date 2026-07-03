@@ -1,4 +1,4 @@
-BUILD2SA2B_PS1_SCREEN_PREVIEW_ZIP_ROUTING_STAGE145
+BUILD2SA3_PS1_AUDIO_STAGE146
 
 DVE VECI V JEDNOM BALICKU (nezavisle oblasti):
 
@@ -77,3 +77,24 @@ TEST SA2B (S8): 1) LOAD GAME -> BIOS (PS1_BIOS_SAVED) 2) CD/ISO -> hra
 4) SBIRKA: klikni Sega ZIP na webu -> musi otevrit EMU SEGA a hrat.
 OVERENO U ME: ARM64 kriz. kompilace + --no-undefined link OK (5 JNI symbolu),
 JS parse OK, Java zavorky OK. Kill-switch + arm64-only pojistky zustavaji.
+
+===== SA3: PS1 ZVUK (po tvem testu 3.7. vecer) =====
+POTVRZENO Z TVYCH SCREENSHOTU: Medal of Honor intro a Crash Bandicoot menu
+BEZI NA S8! Zipy funguji na Noxu i S8. Milnik za milnikem.
+
+SA3 zapoji zvuk:
+- C++: vzorky z jadra (44100 Hz stereo) uz se nezahazuji - jdou do FIFO
+  (max 2 s, pri pretece se zahazuje nejstarsi a pocita se to).
+- Java: PS1_AUDIO vlakno - AudioTrack 44100/stereo, blocking write jako tempo,
+  generation guard, hard release pri stopu. Stejna disciplina jako Sega.
+- Status nove: audioFifoFrames=N (zdravy stav: par tisic, ne 0, ne 88200).
+- Rotace obrazovky + D-PAD/tlacitka = SA4, hned dalsi balicek.
+- POZOR: interpreter je pomaly => zvuk muze byt trhany/zpomaleny podle hry.
+  To NENI chyba zapojeni, to je rychlost jadra - dynarec etapa to vyresi.
+  Crash menu by melo hrat hudbu slusne, MoH video muze vaznout.
+
+TEST SA3 (S8): LOAD GAME->BIOS, CD/ISO->hra, obraz + MUSI ZACIT HRAT ZVUK.
+V logu: PS1_AUDIO_START gen=1 buf=..., audioFifoFrames v PS1_RUN radcich.
+ULOZIT LOG + rekni, jak zvuk zni (cisty/trhany/zpomaleny) - podle toho
+nastavime dalsi krok (dynarec vs. buffer).
+OVERENO U ME: ARM64 kriz. kompilace + --no-undefined link OK (6 JNI symbolu).

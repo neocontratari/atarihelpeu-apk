@@ -71,6 +71,7 @@ public class MainActivity extends Activity {
     private static String pendingSegaName = null;
     private static android.os.ParcelFileDescriptor ps1GamePfd = null; // BUILD2SA2: drzi fd otevrene hry
     private static volatile String ps1LastBootResult = "not_booted";
+    private static volatile int ps1AudioGen = 0; // BUILD2SA3
     private static final String EMU_URL = "file:///android_asset/emu/index.html";
     private WebView web;
     private FrameLayout rootFrame;
@@ -257,6 +258,7 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface
         public String ps1Stop() {
+            ps1AudioGen++; // BUILD2SA3: zastavit audio vlakno
             String r = NativePs1CoreBridge.stopSafe();
             try { if (ps1GamePfd != null) { ps1GamePfd.close(); ps1GamePfd = null; } } catch (Throwable ignored) {}
             return r;
@@ -1384,6 +1386,33 @@ public class MainActivity extends Activity {
             }
         }).start();
     }
+    // BUILD2SA3: PS1 zvuk - stejna disciplina jako Sega: dedikovane vlakno,
+    // blocking AudioTrack.write jako tempo, generation guard, hard release.
+    private void startPs1Audio() {
+        final int gen = ++ps1AudioGen;
+        new Thread(() -> {
+            AudioTrack at = null;
+            try {
+                int min = AudioTrack.getMinBufferSize(44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
+                int bufBytes = Math.max(min, 4 * 4096);
+                at = new AudioTrack(AudioManager.STREAM_MUSIC, 44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT, bufBytes, AudioTrack.MODE_STREAM);
+                at.play();
+                appendNativeLog("BUILD2SA3 PS1_AUDIO_START gen=" + gen + " bufBytes=" + bufBytes);
+                short[] buf = new short[2048 * 2];
+                int idle = 0;
+                while (gen == ps1AudioGen) {
+                    int got = NativePs1CoreBridge.pullAudioSafe(buf, 2048);
+                    if (got > 0) { at.write(buf, 0, got * 2); idle = 0; }
+                    else { if (++idle > 2500) break; try { Thread.sleep(4); } catch (InterruptedException ignored) {} }
+                }
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA3 PS1_AUDIO_ERROR " + t.getMessage());
+            } finally {
+                try { if (at != null) { at.stop(); at.release(); } } catch (Throwable ignored) {}
+                appendNativeLog("BUILD2SA3 PS1_AUDIO_STOP gen=" + gen);
+            }
+        }, "nap-ps1-audio").start();
+    }
     private void injectPendingSegaGame() {
         try {
             if (pendingSegaGame == null || pendingSegaName == null) return;
@@ -1563,6 +1592,7 @@ public class MainActivity extends Activity {
                     if (!saveDir.exists()) saveDir.mkdirs();
                     ps1LastBootResult = "PS1_BOOTING...";
                     ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);
+                    if (ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK")) startPs1Audio(); // BUILD2SA3
                 } catch (Throwable t) { ps1LastBootResult = "PS1_BOOT_EXCEPTION " + t.getMessage(); }
             }).start();
             return;
