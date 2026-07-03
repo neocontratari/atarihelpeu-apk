@@ -69,13 +69,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <p><b>STAV CORE:</b> <span id="coreState">PS1 CORE NENI PRIPOJEN — tato stranka zatim dela poctivou ANALYZU souboru (BIOS/CD/ISO) pro testy.</span></p>
     <h2 style="margin-top:14px;">PS1 TEST LOG</h2>
     <textarea id="ps1LogView" readonly style="width:100%;min-height:220px;background:#01050a;color:#bfe9ff;border:1px solid rgba(125,200,255,.45);border-radius:10px;font:700 11px/1.4 'Courier New',monospace;padding:8px;white-space:pre;"></textarea>
+    <button id="logSave" type="button">ULOZIT LOG (Downloads/AtariHelp)</button>
     <button id="logCopy" type="button">KOPIROVAT LOG</button>
     <button id="helpClose" type="button">ZAVRIT</button>
   </div>
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2RZ_PS1_DIAG_BIOS_ISO_LOG_STAGE142_R2';
+var BUILD='BUILD2RZ_PS1_DIAG_BIOS_ISO_LOG_STAGE142_R3';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
 var LOG=[];
@@ -192,9 +193,23 @@ $('padRight').addEventListener('click',function(e){e.preventDefault();toast('PS1
 $('btnSelect').addEventListener('click',function(e){e.preventDefault();toast('SELECT',900);},true);
 $('btnStart').addEventListener('click',function(e){e.preventDefault();toast('START',900);},true);
 $('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
+$('logSave').addEventListener('click',function(e){e.preventDefault();
+  var fn='AtariHelp_PS1_LOG_'+(function(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());})()+'.txt';
+  try{
+    if(window.AHSAVE&&window.AHSAVE.save){
+      var res=window.AHSAVE.save(fn,LOG.join('\n'));
+      log('LOG_SAVE '+res);
+      toast(String(res).indexOf('DOWNLOADS_OK')===0?('LOG ulozen: Downloads/AtariHelp/'+fn):('LOG ulozen (fallback): '+res),5200);
+    }else{
+      toast('AHSAVE most neni dostupny - pouzij KOPIROVAT LOG',3600);
+      log('LOG_SAVE_NO_BRIDGE window.AHSAVE chybi');
+    }
+  }catch(err){toast('ULOZENI LOGU CHYBA: '+(err&&err.message),3600);log('LOG_SAVE_ERROR '+(err&&err.message));}
+},true);
 $('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps1LogView');if(!v)return;try{v.focus();v.select();document.execCommand('copy');toast('LOG zkopirovan do schranky',1800);}catch(err){toast('Kopirovani selhalo - oznac text rucne',2400);}},true);
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
+log('POZN: CERNY MONITOR JE SPRAVNE - PS1 core neni pripojen, obraz se rozsviti az s realnym jadrem (zadny fake boot).');
 log(BUILD+' ready: CD/ISO+LOAD = picker s poctivou analyzou (BIOS rozpoznani vc. SCPH modelu, PS1 disk markery). LOG v SETTINGS. Core NENI pripojen, zadny fake.');
 })();
 </script>

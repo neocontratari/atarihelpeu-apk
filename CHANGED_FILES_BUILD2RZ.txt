@@ -13,6 +13,8 @@ BUILD2RZ changed files (POUZE HTML/JS - zadny zasah do C++/Java/CMake/vendor):
   * poctivy stav: PS1 CORE NENI PRIPOJEN, zadny fake boot
   * R2: LOAD GAME = "VYBER HRY", .cue parser (rekne ktery .bin patri k disku),
     upozorneni na 7z/zip archivy, zapamatovani posledni vybrane hry
+  * R3: ULOZIT LOG pres AHSAVE most do Downloads/AtariHelp (stejna slozka
+    jako Sega logy) + poznamka, ze cerny monitor bez core je spravne
   * design/hitboxy 1:1 nedotcene
 
 Overeni: oba <script> bloky prosly node --check; BIOS analyzer otestovan

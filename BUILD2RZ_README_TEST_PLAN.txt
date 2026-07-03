@@ -74,13 +74,17 @@ TEST PLAN (po lopate):
      ktery .bin k nemu patri.
    - POZOR: Crash Bandicoot mas jako .7z - ten musis NAPRED ROZBALIT
      (7z nejde v appce cist primo; stranka te na to upozorni).
-   - SETTINGS -> LOG -> KOPIROVAT LOG a posli mi ho.
+   - SETTINGS -> LOG: nove tlacitko "ULOZIT LOG (Downloads/AtariHelp)" -
+     ulozi soubor AtariHelp_PS1_LOG_*.txt do STEJNE slozky jako Sega logy
+     (zadny chaos). KOPIROVAT LOG zustava taky.
+   - CERNY MONITOR NA PS1 STRANCE JE SPRAVNE: core neni pripojen,
+     obraz se rozsviti az s realnym jadrem. Zadny fake boot.
 
 LOG MARKERY:
 - BUILD2RZ_SEGA_UI_LANDSCAPE_PAD_V2_COLLECTION_LINK_STAGE142
 - LANDSCAPE_PAD_V2_READY zones=screenPercent diagonals=YES overlay=YES
 - COLLECTION_CLICK url=... / COLLECTION_LONGPRESS perfMenu
-- BUILD2RZ_PS1_DIAG_BIOS_ISO_LOG_STAGE142_R2 + BIOS_DETECT / DISC_DETECT / CUE_PARSED radky
+- BUILD2RZ_PS1_DIAG_BIOS_ISO_LOG_STAGE142_R3 + LOG_SAVE DOWNLOADS_OK + BIOS_DETECT / DISC_DETECT / CUE_PARSED radky
 
 CO SE NESMI STAT:
 - Portrait ovladani se nesmi zmenit.
