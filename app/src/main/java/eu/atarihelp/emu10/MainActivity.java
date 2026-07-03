@@ -65,6 +65,12 @@ import java.net.URLDecoder;
 public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
     private static final int PICK_BRIDGE = 2;
+    private static final int PICK_PS1_GAME = 7; // BUILD2SA2
+    private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
+    private static byte[] pendingSegaGame = null;   // BUILD2SA2: hra ze SBIRKY cekajici na nacteni Sega stranky
+    private static String pendingSegaName = null;
+    private static android.os.ParcelFileDescriptor ps1GamePfd = null; // BUILD2SA2: drzi fd otevrene hry
+    private static volatile String ps1LastBootResult = "not_booted";
     private static final String EMU_URL = "file:///android_asset/emu/index.html";
     private WebView web;
     private FrameLayout rootFrame;
@@ -200,9 +206,43 @@ public class MainActivity extends Activity {
     }
 
     public class AHPS1 {
-        // BUILD2SA1: dukaz zivota PS1 jadra pro PS1 stranku. Zadny boot, jen identita.
         @JavascriptInterface
         public String ps1CoreInfo() { return NativePs1CoreBridge.coreInfoSafe(); }
+        // BUILD2SA2: ulozi BIOS (512KB base64 zvladne) do systemove slozky jadra
+        @JavascriptInterface
+        public String ps1SaveBios(String name, String b64) {
+            try {
+                if (name == null || b64 == null) return "PS1_BIOS_SAVE_FAIL empty";
+                java.io.File dir = new java.io.File(getFilesDir(), "ps1_system");
+                if (!dir.exists() && !dir.mkdirs()) return "PS1_BIOS_SAVE_FAIL mkdir";
+                String clean = name.toLowerCase().replaceAll("[^a-z0-9._-]", "_");
+                java.io.File f = new java.io.File(dir, clean);
+                byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                java.io.FileOutputStream fo = new java.io.FileOutputStream(f);
+                fo.write(data); fo.close();
+                return "PS1_BIOS_SAVED path=" + f.getAbsolutePath() + " bytes=" + data.length;
+            } catch (Throwable t) { return "PS1_BIOS_SAVE_FAIL " + t.getMessage(); }
+        }
+        // BUILD2SA2: nativni vyber hry -> fd -> /proc/self/fd (700MB bez kopirovani)
+        @JavascriptInterface
+        public void ps1PickGame() {
+            ui.post(() -> {
+                try {
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                    i.setType("*/*");
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    startActivityForResult(Intent.createChooser(i, "PS1: vyber .bin / .iso / .img hry"), PICK_PS1_GAME);
+                } catch (Throwable t) { ps1LastBootResult = "PS1_PICK_FAIL " + t.getMessage(); }
+            });
+        }
+        @JavascriptInterface
+        public String ps1Status() { return NativePs1CoreBridge.statusSafe() + " | lastBoot=" + ps1LastBootResult; }
+        @JavascriptInterface
+        public String ps1Stop() {
+            String r = NativePs1CoreBridge.stopSafe();
+            try { if (ps1GamePfd != null) { ps1GamePfd.close(); ps1GamePfd = null; } } catch (Throwable ignored) {}
+            return r;
+        }
     }
 
     public class AHPick {
@@ -725,7 +765,7 @@ public class MainActivity extends Activity {
                     return "SAVE_LOG_DEDUP_RV";
                 }
                 nativeLastSaveLogAtMs = now;
-                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2RY_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
+                String fn = "AtariHelp_SEGA_CPP_INPLACE_LOG_BUILD2SA2_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".txt";
                 String path = writeBytesToDownloads(fn, buildNativeInPlaceLog().getBytes("UTF-8"));
                 appendNativeLog("SAVE_LOG_OK " + path);
                 return "SAVE_LOG_OK " + path;
@@ -1064,7 +1104,9 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void runGameUrl(String url) {
             ui.post(() -> {
-                if (url != null && url.length() > 0) downloadAndRun(url);
+                if (url == null || url.length() == 0) return;
+                if (hasSegaExtension(url)) downloadAndRunSega(url); // BUILD2SA2
+                else downloadAndRun(url);
             });
         }
     }
@@ -1287,8 +1329,56 @@ public class MainActivity extends Activity {
         return false;
     }
 
+    // BUILD2SA2: hry ze SBIRKY se musi routovat podle typu - Sega ROM do emu_sega,
+    // ne do Atari. Atari cesta zustava pro xex/atr/com/exe/zip beze zmeny.
+    private boolean hasSegaExtension(String value) {
+        if (value == null) return false;
+        String v = value.toLowerCase();
+        int q = v.indexOf('?'); if (q >= 0) v = v.substring(0, q);
+        int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
+        return v.endsWith(".gen") || v.endsWith(".md") || v.endsWith(".smd") || v.endsWith(".sms") || v.endsWith(".68k") || v.endsWith(".sgd");
+    }
+    private void downloadAndRunSega(final String url) {
+        new Thread(() -> {
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                c.setInstanceFollowRedirects(true);
+                c.connect();
+                final String cdName = c.getHeaderField("Content-Disposition");
+                InputStream in = c.getInputStream();
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                byte[] buf = new byte[16384];
+                int n;
+                while ((n = in.read(buf)) > 0 && bos.size() < 16 * 1024 * 1024) bos.write(buf, 0, n);
+                in.close();
+                final byte[] dataArr = bos.toByteArray();
+                final String name = guessDownloadName(url, cdName);
+                appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_DOWNLOADED name=" + name + " bytes=" + dataArr.length);
+                ui.post(() -> {
+                    pendingSegaGame = dataArr;
+                    pendingSegaName = name;
+                    String cur = web.getUrl();
+                    if (cur != null && cur.startsWith(SEGA_URL)) injectPendingSegaGame();
+                    else { web.loadUrl(SEGA_URL); web.postDelayed(this::injectPendingSegaGame, 1800); }
+                });
+            } catch (Exception ex) {
+                appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_FAIL " + ex.getMessage());
+            }
+        }).start();
+    }
+    private void injectPendingSegaGame() {
+        try {
+            if (pendingSegaGame == null || pendingSegaName == null) return;
+            String b64 = Base64.encodeToString(pendingSegaGame, Base64.NO_WRAP);
+            String js = "try{napInjectRomBase64(" + jsQuote(pendingSegaName) + "," + jsQuote(b64) + ");}catch(e){console.log('napInject fail '+e);}";
+            web.evaluateJavascript(js, null);
+            appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_INJECTED name=" + pendingSegaName + " bytes=" + pendingSegaGame.length);
+            pendingSegaGame = null; pendingSegaName = null;
+        } catch (Throwable t) { appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_INJECT_FAIL " + t.getMessage()); }
+    }
     private boolean handleMaybeGameUrl(String url) {
         if (openExternalBrowserUrl(url)) return true;
+        if (hasSegaExtension(url)) { downloadAndRunSega(url); return true; } // BUILD2SA2: Sega ma prednost
         if (isGameUrl(url, null, null)) {
             downloadAndRun(url);
             return true;
@@ -1321,7 +1411,7 @@ public class MainActivity extends Activity {
                 + "document.addEventListener('click',function(e){"
                 + "var a=e.target;while(a&&a.tagName!=='A')a=a.parentElement;if(!a||!a.href)return;"
                 + "var h=a.href;"
-                + "if(/\\.(xex|zip|atr|com|exe)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe)/i.test(h)){"
+                + "if(/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)/i.test(h)){"
                 + "e.preventDefault();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}"
                 + "}"
                 + "},true);"
@@ -1404,6 +1494,28 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == PICK_PS1_GAME) { // BUILD2SA2
+            if (res != RESULT_OK || data == null || data.getData() == null) { ps1LastBootResult = "PS1_PICK_CANCELLED"; return; }
+            final Uri uri = data.getData();
+            new Thread(() -> {
+                try {
+                    android.os.ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
+                    if (pfd == null) { ps1LastBootResult = "PS1_PICK_FAIL pfd=null"; return; }
+                    synchronized (MainActivity.class) {
+                        try { if (ps1GamePfd != null) ps1GamePfd.close(); } catch (Throwable ignored) {}
+                        ps1GamePfd = pfd;
+                    }
+                    String fdPath = "/proc/self/fd/" + pfd.getFd();
+                    java.io.File sysDir = new java.io.File(getFilesDir(), "ps1_system");
+                    java.io.File saveDir = new java.io.File(getFilesDir(), "ps1_saves");
+                    if (!sysDir.exists()) sysDir.mkdirs();
+                    if (!saveDir.exists()) saveDir.mkdirs();
+                    ps1LastBootResult = "PS1_BOOTING...";
+                    ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);
+                } catch (Throwable t) { ps1LastBootResult = "PS1_BOOT_EXCEPTION " + t.getMessage(); }
+            }).start();
+            return;
+        }
         if (req == PICK_FILE && pendingChooser != null) {
             Uri[] out = (res == RESULT_OK && data != null && data.getData() != null)
                     ? new Uri[]{ data.getData() } : null;

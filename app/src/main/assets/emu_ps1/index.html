@@ -76,7 +76,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2SA1_PS1_CORE_COMPILED_PROBE_STAGE143';
+var BUILD='BUILD2RZ_PS1_DIAG_BIOS_ISO_LOG_STAGE142_R3';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
 var LOG=[];
@@ -166,7 +166,12 @@ function analyzeFile(f,reason){
     try{
       var u8=new Uint8Array(r.result);
       var res=null;
-      if(isBiosSize)res=analyzeBios(u8,f.name);
+      if(isBiosSize){res=analyzeBios(u8,f.name);
+        if(res&&window.AHPS1&&window.AHPS1.ps1SaveBios){
+          try{var b64=(function(bytes){var chunk=0x8000,parts=[];for(var i=0;i<bytes.length;i+=chunk){parts.push(String.fromCharCode.apply(null,bytes.subarray(i,i+chunk)));}return btoa(parts.join(''));})(u8);
+            log('PS1_BIOS_SAVE '+window.AHPS1.ps1SaveBios(f.name,b64));
+          }catch(be){log('PS1_BIOS_SAVE_ERROR '+(be&&be.message));}
+        }}
       if(!res)res=analyzeDisc(u8,f.name,f.size);
       if(res){toast(res,5200);
         if(res.indexOf('PS1 DISK')===0){try{localStorage.setItem('napPs1LastGame',f.name);}catch(_){ } log('GAME_REMEMBERED name='+f.name);}}
@@ -185,7 +190,16 @@ $('btnSettings').addEventListener('click',function(e){e.preventDefault();showHel
 $('psMonitor').addEventListener('click',function(e){e.preventDefault();toast('PS1 monitor pripraven; core zatim nepripojen',2400);},true);
 $('btnReset').addEventListener('click',function(e){e.preventDefault();toast('PS1 RESET pripraven',1800);},true);
 $('btnMemory').addEventListener('click',function(e){e.preventDefault();toast('MEMORY CARD pripraveno',1800);},true);
-$('btnCd').addEventListener('click',function(e){e.preventDefault();openPicker('CD / ISO');},true);
+$('btnCd').addEventListener('click',function(e){e.preventDefault();
+  if(window.AHPS1&&window.AHPS1.ps1PickGame){
+    log('PS1_BOOT_REQUEST pres nativni picker (fd, bez kopirovani)');
+    toast('PS1 BOOT: vyber .bin/.iso hry (napred uloz BIOS pres LOAD GAME!)',3600);
+    window.AHPS1.ps1PickGame();
+    if(!window.__napPs1Poll){window.__napPs1Poll=setInterval(function(){
+      try{var st=window.AHPS1.ps1Status();if(st!==window.__napPs1LastSt){window.__napPs1LastSt=st;log(st);}}catch(pe){}
+    },1000);}
+  } else openPicker('CD / ISO');
+},true);
 $('btnLoad').addEventListener('click',function(e){e.preventDefault();openPicker('LOAD GAME - VYBER HRY');},true);
 $('btnSave').addEventListener('click',function(e){e.preventDefault();toast('SAVE GAME pripraveno',1800);},true);
 $('padLeft').addEventListener('click',function(e){e.preventDefault();toast('PS1 D-PAD hitbox OK',1200);},true);
@@ -210,10 +224,6 @@ $('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
 log('POZN: CERNY MONITOR JE SPRAVNE - PS1 core neni pripojen, obraz se rozsviti az s realnym jadrem (zadny fake boot).');
-try{
-  if(window.AHPS1&&window.AHPS1.ps1CoreInfo){log('PS1_CORE_PROBE '+window.AHPS1.ps1CoreInfo());}
-  else{log('PS1_CORE_PROBE most AHPS1 neni (stary APK bez SA1 buildu)');}
-}catch(e){log('PS1_CORE_PROBE_ERROR '+(e&&e.message));}
 log(BUILD+' ready: CD/ISO+LOAD = picker s poctivou analyzou (BIOS rozpoznani vc. SCPH modelu, PS1 disk markery). LOG v SETTINGS. Core NENI pripojen, zadny fake.');
 })();
 </script>

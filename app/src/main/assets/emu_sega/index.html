@@ -142,7 +142,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </main>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2RZ_SEGA_UI_LANDSCAPE_PAD_V3_THUMBSTICK_STAGE142_R5_BIGGER_ABC';
+var BUILD='BUILD2SA2_SEGA_WEB_ROM_ROUTING_STAGE144';
 var logLines=[], __lastSaveLogTap=0, frameLoaded=false, selectedRomName='zadna', selectedRomSize=0, selectedRomBuffer=null, lastBootStatus='NO_ROM', lastKeyStatus='NO_KEY', activeDpadDir=null, inputLogShieldCount=0;
 var nativeCppMode=true,nativeCppLastStatus='NATIVE_ARMED_CPP_ONLY',nativeCppInputCount=0;
 var FORCE_NATIVE_CPP_ONLY=true;
@@ -595,6 +595,17 @@ bindUiAction('btnGames','romPicker',function(){requestRom('btnGames');});
 bindUiAction('cartSlot','romPicker',function(){requestRom('cartSlot');});
 bindUiAction('cartCenter','romPicker',function(){requestRom('cartCenter');});
 var resetBtn=$('btnReset');if(resetBtn)resetBtn.disabled=true;
+/* BUILD2SA2: vstup pro hry ze SBIRKY (web) - Java posle base64, tady se z nej
+   udela File a jede stejnou cestou jako rucni vyber ROM. */
+window.napInjectRomBase64=function(name,b64){
+  try{
+    var bin=atob(b64),len=bin.length,bytes=new Uint8Array(len);
+    for(var i=0;i<len;i++)bytes[i]=bin.charCodeAt(i);
+    var f=new File([bytes],name||'web.gen',{type:'application/octet-stream'});
+    pushLog('BUILD2SA2 WEB_ROM_INJECT name='+(name||'?')+' bytes='+len);
+    onRomSelected(f);
+  }catch(e){pushLog('BUILD2SA2 WEB_ROM_INJECT_FAIL '+(e.message||e));}
+};
 var romInput=$('romInput');if(romInput)romInput.addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];onRomSelected(f);},true);
 var con=$('btnConsole');if(con)con.disabled=true;
 var joy=$('btnJoystick');if(joy)joy.disabled=true;
