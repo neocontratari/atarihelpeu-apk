@@ -12,6 +12,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
+#include <cstdint>
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, "NAP_PS1", __VA_ARGS__)
 
 extern "C" {
@@ -61,6 +62,7 @@ static std::atomic<bool> g_running{false};
 static std::atomic<int> g_generation{0};
 static std::atomic<uint64_t> g_frames{0}, g_dupe_frames{0}, g_audio_samples_dropped{0};
 static std::atomic<int> g_fw{0}, g_fh{0};
+static std::atomic<uint32_t> g_input_bits{0}; // BUILD2SA4: libretro joypad bits
 static std::mutex g_frame_mutex;
 static std::vector<uint32_t> g_frame_argb; // SA2b si tenhle buffer vyzvedne pro TextureView
 static std::thread g_worker;
@@ -130,7 +132,11 @@ static void nap_audio_push(const int16_t *data, size_t frames) {
 static void nap_audio_sample(int16_t l, int16_t r) { int16_t s[2] = { l, r }; nap_audio_push(s, 1); }
 static size_t nap_audio_batch(const int16_t *data, size_t frames) { nap_audio_push(data, frames); return frames; }
 static void nap_input_poll(void) {}
-static int16_t nap_input_state(unsigned, unsigned, unsigned, unsigned) { return 0; } // SA3: realny vstup
+static int16_t nap_input_state(unsigned port, unsigned device, unsigned, unsigned id) {
+  // BUILD2SA4: RetroPad -> PS1 core. device 1 = RETRO_DEVICE_JOYPAD.
+  if (port != 0 || device != 1 || id >= 16) return 0;
+  return (g_input_bits.load(std::memory_order_relaxed) & (1u << id)) ? 1 : 0;
+}
 
 static void nap_worker(int gen) {
   NAPLOG("BUILD2SA2 PS1 worker start gen=%d fps=%.2f", gen, g_fps);
@@ -167,6 +173,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
   if (g_worker.joinable()) g_worker.join();
   if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
   nap_audio_clear();
+  g_input_bits.store(0);
   g_frames.store(0); g_dupe_frames.store(0); g_audio_samples_dropped.store(0); g_fw.store(0); g_fh.store(0);
   g_boot_error.clear();
   retro_set_environment(nap_env);
@@ -230,6 +237,13 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PullAudio(JNIEnv *env, jclass, js
   g_afifo.erase(g_afifo.begin(), g_afifo.begin() + n * 2);
   return (jint)n;
 }
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetInput(JNIEnv *, jclass, jint id, jboolean down) {
+  if (id < 0 || id >= 16) return;
+  const uint32_t bit = 1u << (uint32_t)id;
+  if (down) g_input_bits.fetch_or(bit, std::memory_order_relaxed);
+  else g_input_bits.fetch_and(~bit, std::memory_order_relaxed);
+}
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   std::lock_guard<std::mutex> life(g_life_mutex);
@@ -237,6 +251,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   if (g_worker.joinable()) g_worker.join();
   if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
   nap_audio_clear();
+  g_input_bits.store(0);
   NAPLOG("BUILD2SA2 PS1 stop frames=%llu", (unsigned long long)g_frames.load());
   return env->NewStringUTF("PS1_STOPPED");
 }

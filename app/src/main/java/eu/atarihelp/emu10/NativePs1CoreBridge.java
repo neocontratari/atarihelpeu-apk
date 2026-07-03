@@ -13,6 +13,7 @@ public final class NativePs1CoreBridge {
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
     private static native int ps1PullAudio(short[] out, int frames);
+    private static native void ps1SetInput(int id, boolean down);
     public static int pullAudioSafe(short[] out, int frames) {
         if (!loaded) return 0;
         try { return ps1PullAudio(out, frames); } catch (Throwable t) { return 0; }
@@ -20,6 +21,10 @@ public final class NativePs1CoreBridge {
     public static int grabFrameSafe(int[] out) {
         if (!loaded) return 0;
         try { return ps1GrabFrame(out); } catch (Throwable t) { return 0; }
+    }
+    public static void setInputSafe(int id, boolean down) {
+        if (!loaded) return;
+        try { ps1SetInput(id, down); } catch (Throwable ignored) {}
     }
     public static String coreInfoSafe() {
         if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;

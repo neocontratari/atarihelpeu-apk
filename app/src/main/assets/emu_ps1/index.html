@@ -15,16 +15,18 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnBack{left:3.8%;top:3.1%;width:10.5%;height:6.2%;}
 #btnSettings{left:85.1%;top:3.1%;width:10.5%;height:6.2%;}
 #psMonitor{left:5.4%;top:14.2%;width:89.2%;height:41.7%;}
-#padLeft{left:14.5%;top:60.3%;width:23.0%;height:16.2%;}
-#padRight{left:62.0%;top:60.3%;width:24.0%;height:16.2%;}
-#btnSelect{left:43.1%;top:70.1%;width:7.7%;height:4.0%;}
-#btnStart{left:52.1%;top:70.1%;width:7.7%;height:4.0%;}
+#padLeft{left:21.5%;top:59.8%;width:18.5%;height:11.8%;}
+#padRight{left:62.6%;top:59.4%;width:18.8%;height:12.4%;}
+#padLeft,#padRight,#btnSelect,#btnStart{touch-action:none;}
+#btnSelect{left:41.4%;top:66.7%;width:10.2%;height:8.7%;}
+#btnStart{left:51.4%;top:66.7%;width:10.2%;height:8.7%;}
 #btnReset{left:3.2%;top:82.7%;width:17.0%;height:12.9%;}
 #btnMemory{left:22.0%;top:82.7%;width:17.0%;height:12.9%;}
 #btnCd{left:40.8%;top:82.7%;width:18.0%;height:12.9%;}
 #btnLoad{left:60.0%;top:82.7%;width:17.5%;height:12.9%;}
 #btnSave{left:79.1%;top:82.7%;width:17.5%;height:12.9%;}
 #fileInput{display:none;}
+#ps1Screen{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:pixelated;display:none;pointer-events:none;}
 .toast{position:absolute;left:5%;right:5%;bottom:3.8%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(120,200,255,.56);box-shadow:0 0 22px rgba(70,170,255,.18);color:#dff6ff;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
 .panel{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#dfeaff;}
@@ -35,8 +37,23 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .panel b{color:#8ee7ff;}
 .panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d8b65a;color:#06070a;font:900 15px "Courier New",monospace;}
 @media (orientation:landscape) and (max-height:760px){
- .stage{height:100vh;width:auto;max-width:none;}
- .toast{bottom:2%;font-size:11px;padding:6px 8px;}
+ html,body{width:100%;height:100%;overflow:hidden;}
+ body{align-items:center;}
+ .stage{width:100vw;height:100vh;max-width:none;aspect-ratio:auto;}
+ .skin{opacity:.22;object-fit:cover;}
+ #psMonitor{left:0;top:0;width:100%;height:100%;z-index:2;border-radius:0;}
+ #ps1Screen{object-fit:fill!important;}
+ .hit{z-index:12;color:rgba(255,234,170,.96);font:900 12px/1 "Courier New",monospace;background:rgba(2,8,14,.34);border:1px solid rgba(220,190,100,.62);border-radius:999px;text-shadow:0 1px 2px #000;}
+ #padLeft{left:2.0%;top:38%;width:29%;height:51%;}
+ #padRight{left:69%;top:38%;width:29%;height:51%;}
+ #btnSelect{left:39%;top:84%;width:9%;height:10%;}
+ #btnStart{left:52%;top:84%;width:9%;height:10%;}
+ #btnBack{left:1%;top:2%;width:8%;height:10%;}
+ #btnSettings{left:91%;top:2%;width:8%;height:10%;}
+ #btnCd{left:39%;top:2%;width:10%;height:10%;}
+ #btnLoad{left:51%;top:2%;width:10%;height:10%;}
+ #btnReset,#btnMemory,#btnSave{display:none;}
+ .toast{bottom:2%;font-size:11px;padding:6px 8px;z-index:40;}
 }
 </style>
 </head>
@@ -76,7 +93,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2RZ_PS1_DIAG_BIOS_ISO_LOG_STAGE142_R3';
+var BUILD='BUILD2SA4_PS1_INPUT_WIDE_AUDIO_STAGE148';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
 var LOG=[];
@@ -186,8 +203,58 @@ function openPicker(reason){
   toast(reason+': vyber PS1 soubor (.bin/.iso/.img hra, .cue obsah, BIOS .bin)'+(lastGame?(' | posledni: '+lastGame):''),2800);
   var i=$('fileInput');if(i){try{i.value='';}catch(_){} i.__napReason=reason; i.click();}
 }
+var ps1Down={};
+function setPs1(btn,down){
+  if(!btn)return;
+  down=!!down;
+  if(ps1Down[btn]===down)return;
+  ps1Down[btn]=down;
+  try{if(window.AHPS1&&window.AHPS1.ps1Input)window.AHPS1.ps1Input(btn,down);}catch(e){}
+}
+function releaseButtons(list){for(var i=0;i<list.length;i++)setPs1(list[i],false);}
+function pointFromEvent(ev){
+  var t=(ev.touches&&ev.touches[0])||(ev.changedTouches&&ev.changedTouches[0])||ev;
+  return {x:t.clientX||0,y:t.clientY||0};
+}
+function bindHold(el,btn){
+  function down(ev){ev.preventDefault();setPs1(btn,true);}
+  function up(ev){ev.preventDefault();setPs1(btn,false);}
+  el.addEventListener('touchstart',down,{passive:false});el.addEventListener('touchend',up,{passive:false});el.addEventListener('touchcancel',up,{passive:false});
+  el.addEventListener('mousedown',down,true);el.addEventListener('mouseup',up,true);el.addEventListener('mouseleave',up,true);
+}
+function bindDpad(el){
+  var keys=['UP','DOWN','LEFT','RIGHT'];
+  function move(ev){
+    ev.preventDefault();
+    var p=pointFromEvent(ev),r=el.getBoundingClientRect();
+    var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
+    var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
+    var dead=.22;
+    setPs1('LEFT',nx<-dead);setPs1('RIGHT',nx>dead);setPs1('UP',ny<-dead);setPs1('DOWN',ny>dead);
+  }
+  function end(ev){ev.preventDefault();releaseButtons(keys);}
+  el.addEventListener('touchstart',move,{passive:false});el.addEventListener('touchmove',move,{passive:false});el.addEventListener('touchend',end,{passive:false});el.addEventListener('touchcancel',end,{passive:false});
+  el.addEventListener('mousedown',move,true);el.addEventListener('mousemove',function(ev){if(ev.buttons)move(ev);},true);el.addEventListener('mouseup',end,true);el.addEventListener('mouseleave',end,true);
+}
+function bindActions(el){
+  var keys=['CROSS','CIRCLE','SQUARE','TRIANGLE'];
+  function move(ev){
+    ev.preventDefault();
+    var p=pointFromEvent(ev),r=el.getBoundingClientRect();
+    var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
+    var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
+    releaseButtons(keys);
+    if(Math.abs(nx)>Math.abs(ny))setPs1(nx>0?'CIRCLE':'SQUARE',true);
+    else setPs1(ny>0?'CROSS':'TRIANGLE',true);
+  }
+  function end(ev){ev.preventDefault();releaseButtons(keys);}
+  el.addEventListener('touchstart',move,{passive:false});el.addEventListener('touchmove',move,{passive:false});el.addEventListener('touchend',end,{passive:false});el.addEventListener('touchcancel',end,{passive:false});
+  el.addEventListener('mousedown',move,true);el.addEventListener('mousemove',function(ev){if(ev.buttons)move(ev);},true);el.addEventListener('mouseup',end,true);el.addEventListener('mouseleave',end,true);
+}
+window.addEventListener('blur',function(){releaseButtons(['UP','DOWN','LEFT','RIGHT','CROSS','CIRCLE','SQUARE','TRIANGLE','START','SELECT']);},true);
+window.addEventListener('orientationchange',function(){setTimeout(function(){releaseButtons(['UP','DOWN','LEFT','RIGHT','CROSS','CIRCLE','SQUARE','TRIANGLE','START','SELECT']);},80);},true);
 $('btnSettings').addEventListener('click',function(e){e.preventDefault();showHelp();},true);
-$('psMonitor').addEventListener('click',function(e){e.preventDefault();toast('PS1 monitor pripraven; core zatim nepripojen',2400);},true);
+$('psMonitor').addEventListener('click',function(e){e.preventDefault();},true);
 $('btnReset').addEventListener('click',function(e){e.preventDefault();toast('PS1 RESET pripraven',1800);},true);
 $('btnMemory').addEventListener('click',function(e){e.preventDefault();toast('MEMORY CARD pripraveno',1800);},true);
 $('btnCd').addEventListener('click',function(e){e.preventDefault();
@@ -198,7 +265,7 @@ $('btnCd').addEventListener('click',function(e){e.preventDefault();
     if(!window.__napPs1Screen){
       var mon=$('psMonitor');
       if(mon){var im=document.createElement('img');im.id='ps1Screen';
-        im.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;background:#000;image-rendering:pixelated;display:none;pointer-events:none;';
+        im.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:pixelated;display:none;pointer-events:none;';
         try{var cs=getComputedStyle(mon);if(cs.position==='static')mon.style.position='relative';}catch(_){ }
         mon.appendChild(im);window.__napPs1Screen=im;
         window.__napPs1FramePoll=setInterval(function(){
@@ -215,10 +282,10 @@ $('btnCd').addEventListener('click',function(e){e.preventDefault();
 },true);
 $('btnLoad').addEventListener('click',function(e){e.preventDefault();openPicker('LOAD GAME - VYBER HRY');},true);
 $('btnSave').addEventListener('click',function(e){e.preventDefault();toast('SAVE GAME pripraveno',1800);},true);
-$('padLeft').addEventListener('click',function(e){e.preventDefault();toast('PS1 D-PAD hitbox OK',1200);},true);
-$('padRight').addEventListener('click',function(e){e.preventDefault();toast('PS1 ACTION hitbox OK',1200);},true);
-$('btnSelect').addEventListener('click',function(e){e.preventDefault();toast('SELECT',900);},true);
-$('btnStart').addEventListener('click',function(e){e.preventDefault();toast('START',900);},true);
+bindDpad($('padLeft'));
+bindActions($('padRight'));
+bindHold($('btnSelect'),'SELECT');
+bindHold($('btnStart'),'START');
 $('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 $('logSave').addEventListener('click',function(e){e.preventDefault();
   var fn='AtariHelp_PS1_LOG_'+(function(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());})()+'.txt';
