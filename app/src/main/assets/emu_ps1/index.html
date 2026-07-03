@@ -27,6 +27,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnSave{left:79.1%;top:82.7%;width:17.5%;height:12.9%;}
 #fileInput{display:none;}
 #ps1Screen{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:pixelated;display:none;pointer-events:none;}
+.dpadVis,.psBtn{display:none;pointer-events:none;}
 .toast{position:absolute;left:5%;right:5%;bottom:3.8%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(120,200,255,.56);box-shadow:0 0 22px rgba(70,170,255,.18);color:#dff6ff;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
 .panel{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#dfeaff;}
@@ -40,18 +41,32 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  html,body{width:100%;height:100%;overflow:hidden;}
  body{align-items:center;}
  .stage{width:100vw;height:100vh;max-width:none;aspect-ratio:auto;}
- .skin{opacity:.22;object-fit:cover;}
+ .skin{display:none;}
  #psMonitor{left:0;top:0;width:100%;height:100%;z-index:2;border-radius:0;}
  #ps1Screen{object-fit:fill!important;}
- .hit{z-index:12;color:rgba(255,234,170,.96);font:900 12px/1 "Courier New",monospace;background:rgba(2,8,14,.34);border:1px solid rgba(220,190,100,.62);border-radius:999px;text-shadow:0 1px 2px #000;}
- #padLeft{left:2.0%;top:38%;width:29%;height:51%;}
- #padRight{left:69%;top:38%;width:29%;height:51%;}
- #btnSelect{left:39%;top:84%;width:9%;height:10%;}
- #btnStart{left:52%;top:84%;width:9%;height:10%;}
- #btnBack{left:1%;top:2%;width:8%;height:10%;}
- #btnSettings{left:91%;top:2%;width:8%;height:10%;}
- #btnCd{left:39%;top:2%;width:10%;height:10%;}
- #btnLoad{left:51%;top:2%;width:10%;height:10%;}
+ .hit{z-index:12;color:transparent;font-size:0;background:transparent;border:0;text-shadow:none;border-radius:0;}
+ .hit:active{background:rgba(255,215,120,.08);box-shadow:0 0 18px rgba(255,220,120,.13) inset;border-radius:999px;}
+ #padLeft{left:0;top:32%;width:35%;height:66%;}
+ #padRight{left:65%;top:32%;width:35%;height:66%;}
+ #padLeft:active,#padRight:active{background:transparent;box-shadow:none;}
+ #padLeft .dpadVis{display:block;position:absolute;left:11%;bottom:9%;width:20vh;height:20vh;min-width:92px;min-height:92px;max-width:148px;max-height:148px;border-radius:50%;background:rgba(2,8,12,.20);border:1px solid rgba(230,200,120,.30);box-shadow:0 0 28px rgba(0,0,0,.62),0 0 26px rgba(90,180,255,.10) inset;}
+ #padLeft .dpadVis:before,#padLeft .dpadVis:after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:13px;background:linear-gradient(180deg,rgba(255,242,190,.52),rgba(143,119,68,.40));border:1px solid rgba(255,234,170,.34);box-shadow:0 2px 12px rgba(0,0,0,.50),0 0 16px rgba(255,223,132,.08) inset;}
+ #padLeft .dpadVis:before{width:72%;height:27%;}
+ #padLeft .dpadVis:after{width:27%;height:72%;}
+ #padLeft:active .dpadVis{border-color:rgba(255,229,145,.58);box-shadow:0 0 30px rgba(0,0,0,.62),0 0 24px rgba(255,214,112,.22) inset;}
+ #padRight .psBtn{display:flex;align-items:center;justify-content:center;position:absolute;width:8.2vh;height:8.2vh;min-width:42px;min-height:42px;max-width:60px;max-height:60px;border-radius:50%;border:1px solid rgba(235,205,126,.42);background:radial-gradient(circle at 35% 25%,rgba(255,255,236,.34),rgba(18,23,27,.24) 42%,rgba(0,0,0,.36));box-shadow:0 4px 18px rgba(0,0,0,.56),0 0 14px rgba(80,180,255,.09) inset;color:rgba(255,238,178,.90);font:900 22px/1 Arial,sans-serif;text-shadow:0 2px 4px #000;}
+ #padRight .psTri{right:24%;bottom:37%;}
+ #padRight .psCircle{right:6%;bottom:22%;}
+ #padRight .psCross{right:24%;bottom:7%;}
+ #padRight .psSquare{right:42%;bottom:22%;}
+ #padRight:active .psBtn{border-color:rgba(255,229,145,.62);box-shadow:0 4px 18px rgba(0,0,0,.56),0 0 18px rgba(255,214,112,.18) inset;}
+ #btnSelect,#btnStart,#btnBack,#btnSettings,#btnCd,#btnLoad{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.92);font:900 11px/1 "Courier New",monospace;background:rgba(3,8,12,.30);border:1px solid rgba(230,200,120,.42);border-radius:999px;box-shadow:0 3px 16px rgba(0,0,0,.52);text-shadow:0 1px 2px #000;}
+ #btnSelect{left:40%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
+ #btnStart{left:51.2%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
+ #btnBack{left:1.2%;top:2%;width:8.4%;height:8%;}
+ #btnSettings{left:89.2%;top:2%;width:9.6%;height:8%;}
+ #btnCd{left:38.6%;top:2%;width:9.8%;height:8%;}
+ #btnLoad{left:50%;top:2%;width:11.8%;height:8%;}
  #btnReset,#btnMemory,#btnSave{display:none;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;z-index:40;}
 }
@@ -93,7 +108,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2SA4_PS1_INPUT_WIDE_AUDIO_STAGE148';
+var BUILD='BUILD2SA4B_PS1_UI_POLISH_STAGE149';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
 var LOG=[];
@@ -222,11 +237,16 @@ function bindHold(el,btn){
   el.addEventListener('touchstart',down,{passive:false});el.addEventListener('touchend',up,{passive:false});el.addEventListener('touchcancel',up,{passive:false});
   el.addEventListener('mousedown',down,true);el.addEventListener('mouseup',up,true);el.addEventListener('mouseleave',up,true);
 }
+function controlRect(el,selector){
+  var visual=selector&&el&&el.querySelector?el.querySelector(selector):null;
+  if(visual&&visual.offsetWidth>8&&visual.offsetHeight>8)return visual.getBoundingClientRect();
+  return el.getBoundingClientRect();
+}
 function bindDpad(el){
   var keys=['UP','DOWN','LEFT','RIGHT'];
   function move(ev){
     ev.preventDefault();
-    var p=pointFromEvent(ev),r=el.getBoundingClientRect();
+    var p=pointFromEvent(ev),r=controlRect(el,'.dpadVis');
     var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
     var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
     var dead=.22;
@@ -236,6 +256,19 @@ function bindDpad(el){
   el.addEventListener('touchstart',move,{passive:false});el.addEventListener('touchmove',move,{passive:false});el.addEventListener('touchend',end,{passive:false});el.addEventListener('touchcancel',end,{passive:false});
   el.addEventListener('mousedown',move,true);el.addEventListener('mousemove',function(ev){if(ev.buttons)move(ev);},true);el.addEventListener('mouseup',end,true);el.addEventListener('mouseleave',end,true);
 }
+function nearestAction(el,p){
+  var defs=[['TRIANGLE','.psTri'],['CIRCLE','.psCircle'],['CROSS','.psCross'],['SQUARE','.psSquare']];
+  var best=null,bestDist=1e20;
+  for(var i=0;i<defs.length;i++){
+    var n=el.querySelector?el.querySelector(defs[i][1]):null;
+    if(!n||n.offsetWidth<=8||n.offsetHeight<=8)continue;
+    var r=n.getBoundingClientRect();
+    var cx=r.left+r.width/2,cy=r.top+r.height/2;
+    var dx=p.x-cx,dy=p.y-cy,dist=dx*dx+dy*dy;
+    if(dist<bestDist){bestDist=dist;best=defs[i][0];}
+  }
+  return best;
+}
 function bindActions(el){
   var keys=['CROSS','CIRCLE','SQUARE','TRIANGLE'];
   function move(ev){
@@ -244,12 +277,27 @@ function bindActions(el){
     var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
     var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
     releaseButtons(keys);
-    if(Math.abs(nx)>Math.abs(ny))setPs1(nx>0?'CIRCLE':'SQUARE',true);
+    var decorated=nearestAction(el,p);
+    if(decorated)setPs1(decorated,true);
+    else if(Math.abs(nx)>Math.abs(ny))setPs1(nx>0?'CIRCLE':'SQUARE',true);
     else setPs1(ny>0?'CROSS':'TRIANGLE',true);
   }
   function end(ev){ev.preventDefault();releaseButtons(keys);}
   el.addEventListener('touchstart',move,{passive:false});el.addEventListener('touchmove',move,{passive:false});el.addEventListener('touchend',end,{passive:false});el.addEventListener('touchcancel',end,{passive:false});
   el.addEventListener('mousedown',move,true);el.addEventListener('mousemove',function(ev){if(ev.buttons)move(ev);},true);el.addEventListener('mouseup',end,true);el.addEventListener('mouseleave',end,true);
+}
+function installPadDecor(){
+  var left=$('padLeft'),right=$('padRight');
+  if(left&&!left.__napDecor){
+    left.setAttribute('aria-label','D-pad');
+    left.innerHTML='<span class="dpadVis" aria-hidden="true"></span>';
+    left.__napDecor=true;
+  }
+  if(right&&!right.__napDecor){
+    right.setAttribute('aria-label','PS1 action buttons');
+    right.innerHTML='<span class="psBtn psTri" aria-hidden="true">&#9651;</span><span class="psBtn psCircle" aria-hidden="true">&#9675;</span><span class="psBtn psCross" aria-hidden="true">&#10005;</span><span class="psBtn psSquare" aria-hidden="true">&#9633;</span>';
+    right.__napDecor=true;
+  }
 }
 window.addEventListener('blur',function(){releaseButtons(['UP','DOWN','LEFT','RIGHT','CROSS','CIRCLE','SQUARE','TRIANGLE','START','SELECT']);},true);
 window.addEventListener('orientationchange',function(){setTimeout(function(){releaseButtons(['UP','DOWN','LEFT','RIGHT','CROSS','CIRCLE','SQUARE','TRIANGLE','START','SELECT']);},80);},true);
@@ -282,6 +330,7 @@ $('btnCd').addEventListener('click',function(e){e.preventDefault();
 },true);
 $('btnLoad').addEventListener('click',function(e){e.preventDefault();openPicker('LOAD GAME - VYBER HRY');},true);
 $('btnSave').addEventListener('click',function(e){e.preventDefault();toast('SAVE GAME pripraveno',1800);},true);
+installPadDecor();
 bindDpad($('padLeft'));
 bindActions($('padRight'));
 bindHold($('btnSelect'),'SELECT');
