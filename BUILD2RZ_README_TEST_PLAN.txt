@@ -59,11 +59,19 @@ ZMENENE SOUBORY:
 =========================================================
 TEST PLAN (po lopate):
 =========================================================
+0) R4 OPRAVA DVOU PADU (moje chyba, priznavam):
+   Landscape ovladac uz ve skinu EXISTOVAL (kruh s krizem vlevo + A/B/C sloupec
+   vpravo) a ja k nemu v R1-R3 pridal druhy. R4 muj duplikat KOMPLETNE odstranuje
+   a predelava ten puvodni podle tveho zadani:
+   - dpad: ZADNY kriz - thumbstick PUNTIK, ktery klouze pod palcem,
+     mala mrtva zona (7 %), diagonaly zustavaji
+   - A/B/C: zustavaji V PRIMCE VPRAVO NAD SEBOU (jak jsi chtel), hezci vzhled,
+     pri stisku se rozsviti zlute
+   - mapovani 1:1: horni=A, prostredni=B, spodni=C (overitelne v INPUT logu)
 1) SEGA landscape: otoc telefon/Nox na sirku pri hre.
-   - Mel bys VIDET poloprusvitny kriz vlevo a krouzky A B C vpravo.
-   - Drz RIGHT a pridej DOWN - Sonic se musi koulet v behu (diagonala).
-   - Kdyz overlay NEVIDIS, ale ovladani funguje, napis mi to - znamena to,
-     ze nativni video je v landscape nad strankou a vyresim to jinou vrstvou.
+   - MUSI byt videt JEN JEDEN ovladac: kruh s puntikem vlevo, A/B/C sloupec vpravo.
+   - Puntik musi klouzat pod palcem; tlacitka se pri stisku rozsviti.
+   - Zkontroluj popisky vs. akce ve hre (INPUT log ukaze A1/B1/C1).
 2) SBIRKA: kratky tap -> otevre se atarihelp.eu kolekce (hra se korektne
    zastavi). Dlouhy stisk -> SEGA VYKON menu.
 3) PS1: otevri PS1 stranku.
@@ -96,3 +104,24 @@ ODLOZENO (vedome, ne zapomenuto):
 - Levy pruh: pridame pasivni marker, ktery ukaze, jestli Sonic VDP blank flag
   vubec zapina. Jestli ne, pruh je autenticke chovani Mega Drive, ktere na CRT
   televizich schovaval overscan - pak ti nabidnu volitelny "CRT orez" 8 px.
+
+=========================================================
+PS1 JADRO - PLAN (zelena od Reneho 3.7.2026):
+=========================================================
+Vybrane jadro: PCSX-ReARMed (libretro), overeno: GitHub libretro/pcsx_rearmed,
+~18 MB zdrojaku, licence GPL-2.0, delane primo pro slabsi ARM telefony
+(dynarec = rychly preklad PS1 procesoru), idealni pro S8.
+Pozn. k licenci: GPL-2.0 vyzaduje dostupnost zdrojaku appky s jadrem - repo je
+na GitHubu, takze OK, jen to budeme uvadet.
+
+ETAPY (stejna disciplina jako u Segy - jedna vec, jeden log, jeden test):
+- SA1: offline vendor import jadra + CMake + kompilace .so v Actions.
+       Log marker: PS1_CORE_COMPILED. ZADNY obraz jeste.
+- SA2: BIOS boot - Java posle scph1001.bin do C++, jadro nabootuje BIOS,
+       prvni realny snimek (PS logo) pres stejny TextureView jako Sega.
+       Tvuj test: PS logo na obrazovce = "SEGA moment" pro PS1.
+- SA3: CD/ISO streaming - 700MB .bin NEJDE cist pres base64 jako Sega ROM;
+       Java preda nativnimu kodu file descriptor a jadro cte sektory primo
+       z disku. Boot Medal of Honor / Crash.
+- SA4: zvuk (SPU do stejne audio cesty jako Sega FIFO) + ovladani + memory card.
+Kazda etapa = samostatny overlay ZIP s test planem. BIOS/hry NIKDY v APK.

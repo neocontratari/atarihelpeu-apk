@@ -46,14 +46,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #romInput{display:none;}
 #perfMenu{position:absolute;left:6%;right:6%;top:31%;z-index:150;display:none;padding:14px;border-radius:18px;background:rgba(0,0,0,.88);border:1px solid rgba(80,170,255,.55);box-shadow:0 0 28px rgba(0,130,255,.30);color:#d9ecff;text-align:center;font:900 14px/1.35 "Courier New",monospace;}
 #perfMenu.show{display:block;}
-/* BUILD2RZ landscape pad overlay: decentni vizualni voditko + zdroj pravdy pro zony je JS (layoutLandPad) */
-#landPad{display:none;position:fixed;inset:0;z-index:60;pointer-events:none;}
-#landPad.show{display:block;}
-.lpRing{position:fixed;border:2px solid rgba(150,220,255,.34);border-radius:50%;background:rgba(20,60,110,.10);box-shadow:0 0 18px rgba(0,120,255,.10) inset;}
-.lpRing.on{border-color:rgba(180,240,255,.85);background:rgba(40,120,200,.22);}
-.lpBtnV{position:fixed;border:2px solid rgba(150,220,255,.38);border-radius:50%;background:rgba(20,60,110,.12);color:rgba(220,245,255,.55);font:900 18px "Courier New",monospace;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px #000;}
-.lpBtnV.on{border-color:rgba(255,235,160,.9);background:rgba(200,150,40,.28);color:#fff;}
-.lpCross{position:fixed;background:rgba(150,220,255,.20);border-radius:6px;}
+
 #perfMenu .pmTitle{font-size:15px;color:#ffe17a;margin-bottom:10px;text-shadow:0 0 8px #000;}
 #perfMenu button{display:block;width:100%;margin:8px 0;padding:12px;border-radius:14px;border:1px solid rgba(120,210,255,.60);background:rgba(8,32,58,.92);color:#e8f8ff;font:900 15px/1.15 "Courier New",monospace;box-shadow:inset 0 0 16px rgba(0,120,255,.28),0 0 18px rgba(0,130,255,.20);}
 #perfMenu button:active{background:rgba(0,95,170,.92);}
@@ -78,14 +71,18 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #monitorBlank,#mdVideo,#clownFrameWrap,#monitorOverlay{display:none!important;left:0;top:0;width:100vw;height:100vh;height:100dvh;border-radius:0;border:0;box-shadow:none;background:transparent!important;pointer-events:none!important;}
  #clownFrame{display:none!important;opacity:0!important;pointer-events:none!important;}
  .hit{z-index:120;color:rgba(255,255,255,.46);font:900 2.05vh/1 Arial,sans-serif;text-align:center;text-shadow:0 0 7px #000,0 0 10px rgba(0,150,255,.65);}
- #dpad{left:1.8vw;top:auto;bottom:2.0vh;width:43vh;height:43vh;border-radius:50%;font-size:0!important;background:radial-gradient(circle at 50% 50%,rgba(245,252,255,.13) 0 10%,rgba(70,185,255,.14) 11% 34%,rgba(0,0,0,.04) 35% 59%,rgba(0,140,255,.12) 60% 100%);border:2px solid rgba(170,232,255,.30);box-shadow:0 0 20px rgba(0,150,255,.34),inset 0 0 26px rgba(0,0,0,.35);opacity:.50;}
- #dpad:before{content:"";position:absolute;left:17%;right:17%;top:43%;height:14%;border-radius:14px;background:rgba(235,248,255,.26);box-shadow:0 0 10px rgba(0,180,255,.48),inset 0 0 8px rgba(255,255,255,.12);}
- #dpad:after{content:"";position:absolute;top:17%;bottom:17%;left:43%;width:14%;border-radius:14px;background:rgba(235,248,255,.26);box-shadow:0 0 10px rgba(0,180,255,.48),inset 0 0 8px rgba(255,255,255,.12);}
- #btnA,#btnB,#btnC{width:14.2vh;height:14.2vh;border-radius:50%;font-size:0!important;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.32),rgba(65,175,255,.20) 34%,rgba(0,0,0,.14) 72%);border:2px solid rgba(185,235,255,.34);box-shadow:0 0 18px rgba(0,150,255,.35),inset 0 0 15px rgba(0,0,0,.32);display:flex;align-items:center;justify-content:center;opacity:.54;}
- #btnA{left:auto;right:2.5vw;top:auto;bottom:32.5vh;}
- #btnB{left:auto;right:2.5vw;top:auto;bottom:17.4vh;}
+ #dpad{left:1.8vw;top:auto;bottom:2.0vh;width:43vh;height:43vh;border-radius:50%;font-size:0!important;background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.07),rgba(10,30,60,.30) 62%,rgba(0,0,0,.22) 100%);border:2px solid rgba(150,215,255,.34);box-shadow:0 0 22px rgba(0,140,255,.28),inset 0 0 30px rgba(0,0,0,.42);opacity:.55;}
+ /* BUILD2RZ v3: zadny kriz - thumbstick puntik, ktery klouze pod palcem */
+ #dpad:before{content:none!important;}
+ #dpad:after{content:none!important;}
+ #dpadNub{display:block!important;position:absolute;left:50%;top:50%;width:34%;height:34%;margin-left:-17%;margin-top:-17%;border-radius:50%;background:radial-gradient(circle at 36% 30%,rgba(255,255,255,.55),rgba(120,200,255,.34) 40%,rgba(20,70,130,.55) 100%);border:2px solid rgba(200,240,255,.55);box-shadow:0 0 16px rgba(60,180,255,.55),inset 0 0 10px rgba(255,255,255,.18);transition:transform .05s linear;pointer-events:none;}
+ #dpad.on{border-color:rgba(200,245,255,.75);box-shadow:0 0 30px rgba(0,170,255,.55),inset 0 0 30px rgba(0,0,0,.42);opacity:.8;}
+ #btnA,#btnB,#btnC{width:14.6vh;height:14.6vh;border-radius:50%;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.30),rgba(50,150,235,.18) 38%,rgba(4,16,34,.40) 78%);border:2px solid rgba(165,225,255,.40);box-shadow:0 0 16px rgba(0,140,255,.30),inset 0 0 16px rgba(0,0,0,.36);display:flex;align-items:center;justify-content:center;opacity:.60;}
+ #btnA{left:auto;right:2.5vw;top:auto;bottom:33.4vh;}
+ #btnB{left:auto;right:2.5vw;top:auto;bottom:17.8vh;}
  #btnC{left:auto;right:2.5vw;top:auto;bottom:2.3vh;}
- #btnA:before{content:"A";}#btnB:before{content:"B";}#btnC:before{content:"C";}#btnA:before,#btnB:before,#btnC:before{font:900 2.7vh/1 Arial,sans-serif;color:rgba(245,252,255,.62);text-shadow:0 0 7px #000,0 0 10px rgba(0,170,255,.58);}
+ #btnA:before{content:"A";}#btnB:before{content:"B";}#btnC:before{content:"C";}#btnA:before,#btnB:before,#btnC:before{font:900 3.4vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 7px #000,0 0 12px rgba(0,180,255,.6);}
+ #btnA.on,#btnB.on,#btnC.on{opacity:1;border-color:rgba(255,240,180,.85);background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.45),rgba(230,170,60,.30) 40%,rgba(60,30,4,.45) 80%);box-shadow:0 0 24px rgba(255,190,60,.55),inset 0 0 14px rgba(0,0,0,.30);}
  #btnStart{display:none!important;pointer-events:none!important;}
  #btnStart:before{content:"";}
  /* BUILD2RV: no top labels over mobile game. Invisible hit zones only; C++ CORE removed. */
@@ -134,15 +131,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnA" class="hit" type="button">A</button>
   <button id="btnB" class="hit" type="button">B</button>
   <button id="btnC" class="hit" type="button">C</button>
-  <button id="dpad" class="hit" type="button">DPAD</button>
-  <div id="landPad" aria-hidden="true">
-    <div class="lpRing" id="lpDpad"></div>
-    <div class="lpCross" id="lpCrossH"></div>
-    <div class="lpCross" id="lpCrossV"></div>
-    <div class="lpBtnV" id="lpA">A</div>
-    <div class="lpBtnV" id="lpB">B</div>
-    <div class="lpBtnV" id="lpC">C</div>
-  </div>
+  <button id="dpad" class="hit" type="button">DPAD<span id="dpadNub" aria-hidden="true" style="display:none;"></span></button>
   <div id="toast" class="toast"></div>
   <div id="perfMenu" aria-hidden="true">
     <div class="pmTitle">SEGA VYKON</div>
@@ -153,7 +142,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </main>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2RZ_SEGA_UI_LANDSCAPE_PAD_V2_COLLECTION_LINK_STAGE142';
+var BUILD='BUILD2RZ_SEGA_UI_LANDSCAPE_PAD_V3_THUMBSTICK_STAGE142_R4';
 var logLines=[], __lastSaveLogTap=0, frameLoaded=false, selectedRomName='zadna', selectedRomSize=0, selectedRomBuffer=null, lastBootStatus='NO_ROM', lastKeyStatus='NO_KEY', activeDpadDir=null, inputLogShieldCount=0;
 var nativeCppMode=true,nativeCppLastStatus='NATIVE_ARMED_CPP_ONLY',nativeCppInputCount=0;
 var FORCE_NATIVE_CPP_ONLY=true;
@@ -482,81 +471,76 @@ function setupLandscapeMultiTouch(){
   if(window.__napLandscapeMultiTouchInstalled)return;
   window.__napLandscapeMultiTouchInstalled=true;
   window.__napMobileTouchEngineActive=true;
-  /* BUILD2RZ LANDSCAPE PAD V2:
-     - zony uz NEJSOU odvozene z portrait skin elementu (v landscape sedely divne = "hnusny ovladac"),
-       ale z pevnych procent obrazovky: dpad vlevo dole, A/B/C oblouk vpravo dole jako na realnem MD padu.
-     - DIAGONALY: UP/DOWN/LEFT/RIGHT jsou nezavisle bity => Sonic muze bezet a koulet zaroven.
-     - Poloprumysvitny overlay ukazuje, kde zony jsou, a rozsviti se pri stisku.
-     - Mapovani je 1:1 s popisky: overlay "A" posila Genesis A, "B" -> B, "C" -> C (viz INPUT log). */
+  /* BUILD2RZ LANDSCAPE PAD V3:
+     - ZADNY druhy pad: pouziva se JEDEN puvodni skin ovladac (#dpad + #btnA/B/C sloupec vpravo).
+     - Dpad je thumbstick: puntik (#dpadNub) klouze pod palcem, zadny kriz.
+     - Citlivost: mala mrtva zona (7% polomeru), smerove bity s prekryvem = diagonaly.
+     - Mapovani 1:1: btnA -> Genesis A, btnB -> B, btnC -> C (sloupec vpravo nad sebou).
+     - Stisknute prvky se rozsviti (trida .on). Portrait ovladani beze zmeny. */
   var last={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,C:false};
-  var Z=null;
-  function layoutLandPad(){
-    var W=window.innerWidth||0,H=window.innerHeight||0,m=Math.min(W,H);
-    Z={dcx:W*0.16,dcy:H*0.64,dr:m*0.21,
-       A:{x:W*0.695,y:H*0.845,r:m*0.105},
-       B:{x:W*0.80,y:H*0.695,r:m*0.105},
-       C:{x:W*0.89,y:H*0.535,r:m*0.105}};
-    function place(el,cx,cy,r){if(!el)return;el.style.left=(cx-r)+'px';el.style.top=(cy-r)+'px';el.style.width=(2*r)+'px';el.style.height=(2*r)+'px';}
-    place($('lpDpad'),Z.dcx,Z.dcy,Z.dr);
-    place($('lpA'),Z.A.x,Z.A.y,Z.A.r);place($('lpB'),Z.B.x,Z.B.y,Z.B.r);place($('lpC'),Z.C.x,Z.C.y,Z.C.r);
-    var ch=$('lpCrossH'),cv=$('lpCrossV'),t=Math.max(4,Z.dr*0.16);
-    if(ch){ch.style.left=(Z.dcx-Z.dr*0.72)+'px';ch.style.top=(Z.dcy-t/2)+'px';ch.style.width=(Z.dr*1.44)+'px';ch.style.height=t+'px';}
-    if(cv){cv.style.left=(Z.dcx-t/2)+'px';cv.style.top=(Z.dcy-Z.dr*0.72)+'px';cv.style.width=t+'px';cv.style.height=(Z.dr*1.44)+'px';}
-  }
-  function landPadVisible(v){var p=$('landPad');if(p){p.classList.toggle('show',!!v);p.setAttribute('aria-hidden',v?'false':'true');}}
-  function refreshLandPad(){var on=isLandscapeNow();if(on)layoutLandPad();landPadVisible(on);}
-  function inCircle(c,x,y,slop){var dx=x-c.x,dy=y-c.y;var rr=c.r*(slop||1.28);return dx*dx+dy*dy<=rr*rr;}
-  function dpadBitsAt(x,y){
-    if(!Z)return null;
-    var dx=x-Z.dcx,dy=y-Z.dcy,d=Math.sqrt(dx*dx+dy*dy);
-    if(d>Z.dr*1.55||d<Z.dr*0.10)return null;
-    var rx=dx/d,ry=dy/d;
-    return {LEFT:rx<-0.42,RIGHT:rx>0.42,UP:ry<-0.42,DOWN:ry>0.42};
-  }
+  function rectOf(id){var el=$(id);if(!el)return null;var r=el.getBoundingClientRect();if(!r||r.width<10)return null;return{el:el,cx:r.left+r.width/2,cy:r.top+r.height/2,r:Math.min(r.width,r.height)/2};}
+  function inCircle(c,x,y,slop){if(!c)return false;var dx=x-c.cx,dy=y-c.cy,rr=c.r*(slop||1.22);return dx*dx+dy*dy<=rr*rr;}
   function applyKey(k,on){if(last[k]===on)return;last[k]=on;sendToWrapper(k,on);}
-  function markVis(){
-    var dOn=last.UP||last.DOWN||last.LEFT||last.RIGHT;
-    var dp=$('lpDpad');if(dp)dp.classList.toggle('on',dOn);
-    ['A','B','C'].forEach(function(k){var el=$('lp'+k);if(el)el.classList.toggle('on',!!last[k]);});
+  function setNub(dp,dx,dy){
+    var nub=$('dpadNub');if(!nub)return;
+    if(dp===null){nub.style.transform='translate(0px,0px)';return;}
+    var maxOff=dp.r*0.62;
+    var d=Math.sqrt(dx*dx+dy*dy)||1;
+    var k=Math.min(1,maxOff/d);
+    nub.style.transform='translate('+(dx*k)+'px,'+(dy*k)+'px)';
+  }
+  function markVis(dOn){
+    var dp=$('dpad');if(dp)dp.classList.toggle('on',!!dOn);
+    ['A','B','C'].forEach(function(k){var el=$('btn'+k);if(el)el.classList.toggle('on',!!last[k]);});
   }
   function update(ev){
     if(!isLandscapeNow())return;
-    if(!Z)layoutLandPad();
     var t0=(ev.touches&&ev.touches[0])||ev;
     try{
       var target=t0&&document.elementFromPoint(t0.clientX,t0.clientY);
       if(target && target.closest && target.closest('#btnCollection,#btnGames,#cartSlot,#cartCenter,#btnSaves,#btnManuals,#btnWeb,#btnMenu')){return;}
     }catch(_){ }
+    var dp=rectOf('dpad'),cA=rectOf('btnA'),cB=rectOf('btnB'),cC=rectOf('btnC');
     var touches=ev.touches||[];
     var want={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,C:false};
-    var touchedControl=false;
+    var touchedControl=false,nubDx=null,nubDy=null;
     for(var i=0;i<touches.length;i++){
       var x=touches[i].clientX,y=touches[i].clientY;
-      var bits=dpadBitsAt(x,y);
-      if(bits){want.UP=want.UP||bits.UP;want.DOWN=want.DOWN||bits.DOWN;want.LEFT=want.LEFT||bits.LEFT;want.RIGHT=want.RIGHT||bits.RIGHT;touchedControl=true;continue;}
-      if(inCircle(Z.A,x,y)){want.A=true;touchedControl=true;continue;}
-      if(inCircle(Z.B,x,y)){want.B=true;touchedControl=true;continue;}
-      if(inCircle(Z.C,x,y)){want.C=true;touchedControl=true;continue;}
+      if(dp&&inCircle(dp,x,y,1.35)){
+        var dx=x-dp.cx,dy=y-dp.cy,d=Math.sqrt(dx*dx+dy*dy);
+        touchedControl=true;
+        if(nubDx===null){nubDx=dx;nubDy=dy;}
+        if(d>=dp.r*0.07){
+          var rx=dx/d,ry=dy/d;
+          if(rx<-0.38)want.LEFT=true; if(rx>0.38)want.RIGHT=true;
+          if(ry<-0.38)want.UP=true;   if(ry>0.38)want.DOWN=true;
+        }
+        continue;
+      }
+      if(inCircle(cA,x,y)){want.A=true;touchedControl=true;continue;}
+      if(inCircle(cB,x,y)){want.B=true;touchedControl=true;continue;}
+      if(inCircle(cC,x,y)){want.C=true;touchedControl=true;continue;}
     }
     var anyLast=last.UP||last.DOWN||last.LEFT||last.RIGHT||last.A||last.B||last.C;
     if(!touchedControl && !anyLast)return;
     try{ev.preventDefault();ev.stopPropagation();}catch(_){ }
     ['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,want[k]);});
-    markVis();
+    setNub(nubDx===null?null:dp,nubDx||0,nubDy||0);
+    markVis(want.UP||want.DOWN||want.LEFT||want.RIGHT);
   }
   function releaseAll(ev){
     if(!isLandscapeNow())return;
     update(ev);
-    if((ev.touches||[]).length===0){['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,false);});markVis();}
+    if((ev.touches||[]).length===0){
+      ['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,false);});
+      setNub(null,0,0);markVis(false);
+    }
   }
   var st=$('stage')||document.body;
   ['touchstart','touchmove'].forEach(function(type){st.addEventListener(type,update,{capture:true,passive:false});});
   ['touchend','touchcancel'].forEach(function(type){st.addEventListener(type,releaseAll,{capture:true,passive:false});});
-  function onOrient(){setTimeout(function(){['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,false);});markVis();refreshLandPad();},80);}
-  window.addEventListener('orientationchange',onOrient,true);
-  window.addEventListener('resize',function(){refreshLandPad();},true);
-  refreshLandPad();
-  pushLog('BUILD2RZ LANDSCAPE_PAD_V2_READY zones=screenPercent diagonals=YES overlay=YES mapping=A/B/C-1:1');
+  window.addEventListener('orientationchange',function(){setTimeout(function(){['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,false);});setNub(null,0,0);markVis(false);},80);},true);
+  pushLog('BUILD2RZ LANDSCAPE_PAD_V3_READY singlePad=YES thumbstickNub=YES abcColumn=RIGHT diagonals=YES mapping=A/B/C-1:1');
 }
 setupLandscapeMultiTouch();
 

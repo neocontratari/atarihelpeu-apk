@@ -1,7 +1,8 @@
 BUILD2RZ changed files (POUZE HTML/JS - zadny zasah do C++/Java/CMake/vendor):
 - app/src/main/assets/emu_sega/index.html
-  * landscape ovladac v2: zony z procent obrazovky, diagonaly, poloprusvitny
-    overlay s popisky A/B/C (mapovani 1:1), portrait beze zmeny
+  * R4 landscape ovladac v3: duplikatni overlay ODSTRANEN; puvodni skin pad
+    predelan - thumbstick puntik misto krize, A/B/C sloupec vpravo nad sebou,
+    rozsviceni pri stisku, diagonaly, mapovani 1:1; portrait beze zmeny
   * SBIRKA: tap = https://atarihelp.eu/?page_id=207 (stop native + navigace),
     dlouhy stisk 700ms = puvodni SEGA VYKON menu
   * BUILD label RZ
