@@ -117,7 +117,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2SA5D_PS1_BIG_DPAD_SHOULDER_LOCK_STAGE153';
+var BUILD='BUILD2SA5E_PS1_QUIET_SHOULDER_LOCK_CALM_DPAD_STAGE154';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
 var LOG=[];
@@ -277,11 +277,11 @@ function bindLockHold(el,btn){
   function clearTimer(){if(timer){clearTimeout(timer);timer=null;}}
   function beginLockTimer(){
     longLock=false;clearTimer();
-    timer=setTimeout(function(){longLock=true;setShoulderLocked(btn,el,true);toast(btn+' zamknuto',900);},620);
+    timer=setTimeout(function(){longLock=true;setShoulderLocked(btn,el,true);},620);
   }
   function touchStart(ev){
     var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();
-    if(shoulderLocked[btn]){setShoulderLocked(btn,el,false);toast(btn+' uvolneno',800);return;}
+    if(shoulderLocked[btn]){setShoulderLocked(btn,el,false);return;}
     activeId=t.identifier;setPs1(btn,true);beginLockTimer();
   }
   function touchEnd(ev){
@@ -290,7 +290,7 @@ function bindLockHold(el,btn){
   }
   function mouseStart(ev){
     ev.preventDefault();
-    if(shoulderLocked[btn]){setShoulderLocked(btn,el,false);toast(btn+' uvolneno',800);return;}
+    if(shoulderLocked[btn]){setShoulderLocked(btn,el,false);return;}
     mouseDown=true;setPs1(btn,true);beginLockTimer();
   }
   function mouseEnd(ev){
@@ -323,9 +323,11 @@ function bindDpad(el){
     var r=controlRect(el,'.dpadVis');
     var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
     var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
-    var dead=.22;
+    var deadX=.42,deadY=.32,diagX=.56;
+    var left=nx<-deadX,right=nx>deadX,up=ny<-deadY,down=ny>deadY;
+    if((up||down)&&Math.abs(nx)<diagX){left=false;right=false;}
     moveKnob(nx,ny,true);
-    setPs1('LEFT',nx<-dead);setPs1('RIGHT',nx>dead);setPs1('UP',ny<-dead);setPs1('DOWN',ny>dead);
+    setPs1('LEFT',left);setPs1('RIGHT',right);setPs1('UP',up);setPs1('DOWN',down);
   }
   function touchStart(ev){var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();activeId=t.identifier;movePoint(touchPoint(t));}
   function touchMove(ev){if(activeId===null)return;var t=touchById(ev.touches,activeId);if(!t)return;ev.preventDefault();movePoint(touchPoint(t));}
@@ -466,7 +468,7 @@ $('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
-log(BUILD+' ready: vetsi D-pad s pohyblivym stredem, L1/L2/R1/R2 long-press lock aktivni.');
+log(BUILD+' ready: klidnejsi D-pad, tichy L1/L2/R1/R2 long-press lock aktivni.');
 })();
 </script>
 </body>
