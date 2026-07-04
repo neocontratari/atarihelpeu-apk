@@ -299,7 +299,7 @@ public class MainActivity extends Activity {
                 int w = wh >> 16, h = wh & 0xFFFF;
                 android.graphics.Bitmap bm = android.graphics.Bitmap.createBitmap(ps1PrevBuf, w, h, android.graphics.Bitmap.Config.ARGB_8888);
                 java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
-                bm.compress(android.graphics.Bitmap.CompressFormat.JPEG, 88, bo);
+                bm.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, bo);
                 bm.recycle();
                 return Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
             } catch (Throwable t) { return ""; }
@@ -1453,8 +1453,8 @@ public class MainActivity extends Activity {
             }
         }).start();
     }
-    // BUILD2SA3/SA5F: PS1 zvuk - dedikovane vlakno, maly jitter buffer,
-    // generation guard, silence cushion pri dirach a hard release pri prepnuti.
+    // BUILD2SA3/SA5G: PS1 zvuk - dedikovane vlakno, Sega-style S8 reservoir,
+    // retry misto okamziteho ticha, generation guard a hard release pri prepnuti.
     private synchronized void startPs1Audio() {
         stopPs1Audio(); // BUILD2SA3B: pred novou hrou zabit stare vlakno a uvolnit stary AudioTrack
         final int gen = ++ps1AudioGen;
@@ -1463,11 +1463,11 @@ public class MainActivity extends Activity {
             try {
                 try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO); } catch (Throwable ignored) {}
                 final int sampleRate = 44100;
+                final boolean s8NoStarve = (Build.VERSION.SDK_INT <= 28) || ((Build.MODEL == null ? "" : Build.MODEL).toUpperCase(Locale.US).contains("SM-G950"));
                 final int chunkFrames = 735;
-                final int silenceChunkFrames = 184;
                 int min = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
-                int wantedFrames = chunkFrames * 8;
-                int bufBytes = Math.max(min > 0 ? min * 2 : 0, wantedFrames * 2 * 2);
+                int wantedFrames = s8NoStarve ? 8192 : Math.max(4096, chunkFrames * 8);
+                int bufBytes = Math.max(min > 0 ? (s8NoStarve ? min * 3 : min * 2) : 0, wantedFrames * 2 * 2);
                 if (Build.VERSION.SDK_INT >= 21) {
                     at = new AudioTrack.Builder()
                             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
@@ -1478,12 +1478,15 @@ public class MainActivity extends Activity {
                 } else {
                     at = new AudioTrack(android.media.AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT, bufBytes, AudioTrack.MODE_STREAM);
                 }
+                int setFrames = -1;
+                if (Build.VERSION.SDK_INT >= 23) {
+                    try { setFrames = at.setBufferSizeInFrames(wantedFrames); } catch (Throwable ignored) {}
+                }
                 ps1CurrentAudioTrack = at;
                 short[] buf = new short[chunkFrames * 2];
-                short[] silence = new short[silenceChunkFrames * 2];
                 int prefillFrames = 0;
-                int prefillTarget = chunkFrames * 3;
-                long prefillDeadline = System.currentTimeMillis() + 420;
+                int prefillTarget = s8NoStarve ? chunkFrames * 8 : chunkFrames * 4;
+                long prefillDeadline = System.currentTimeMillis() + (s8NoStarve ? 900 : 320);
                 while (gen == ps1AudioGen && prefillFrames < prefillTarget && System.currentTimeMillis() < prefillDeadline) {
                     int got = NativePs1CoreBridge.pullAudioSafe(buf, chunkFrames);
                     if (got > 0) {
@@ -1496,14 +1499,23 @@ public class MainActivity extends Activity {
                 at.play();
                 int actualFrames = 0;
                 try { if (Build.VERSION.SDK_INT >= 23) actualFrames = at.getBufferSizeInFrames(); } catch (Throwable ignored) {}
-                appendNativeLog("BUILD2SA5F PS1_AUDIO_START gen=" + gen + " bufBytes=" + bufBytes + " minBytes=" + min + " actualFrames=" + actualFrames + " prefillFrames=" + prefillFrames + " prefillTarget=" + prefillTarget + " gain=7/8 chunk=" + chunkFrames + " silenceChunk=" + silenceChunkFrames + " fifoGovernor=ON");
+                appendNativeLog("BUILD2SA5G PS1_AUDIO_START gen=" + gen + " bufBytes=" + bufBytes + " minBytes=" + min + " setFrames=" + setFrames + " actualFrames=" + actualFrames + " prefillFrames=" + prefillFrames + " prefillTarget=" + prefillTarget + " gain=7/8 chunk=" + chunkFrames + " s8NoStarve=" + s8NoStarve + " retryNoSilence=ON");
                 int idle = 0;
                 int writes = 0;
                 int loops = 0;
-                long silenceFrames = 0;
+                int underrunLoops = 0;
                 while (gen == ps1AudioGen) {
                     int got = NativePs1CoreBridge.pullAudioSafe(buf, chunkFrames);
                     loops++;
+                    if (got <= chunkFrames / 4) {
+                        underrunLoops++;
+                        int retries = s8NoStarve ? 5 : 2;
+                        for (int rr = 0; rr < retries && got <= chunkFrames / 2 && gen == ps1AudioGen; rr++) {
+                            try { Thread.sleep(s8NoStarve ? 3 : 2); } catch (InterruptedException ignored) { break; }
+                            int got2 = NativePs1CoreBridge.pullAudioSafe(buf, chunkFrames);
+                            if (got2 > got) got = got2;
+                        }
+                    }
                     if (got > 0) {
                         softenPs1Pcm(buf, got * 2);
                         int wrote = writePs1AudioTrack(at, buf, got * 2, gen);
@@ -1512,21 +1524,17 @@ public class MainActivity extends Activity {
                         if (writes <= 6 || writes % 240 == 0) {
                             int underruns = -1;
                             try { if (Build.VERSION.SDK_INT >= 24) underruns = at.getUnderrunCount(); } catch (Throwable ignored) {}
-                            appendNativeLog("BUILD2SA5F PS1_AUDIO_WRITE gen=" + gen + " gotFrames=" + got + " wroteShorts=" + wrote + " writes=" + writes + " loops=" + loops + " silenceFrames=" + silenceFrames + " underruns=" + underruns);
+                            appendNativeLog("BUILD2SA5G PS1_AUDIO_WRITE gen=" + gen + " gotFrames=" + got + " wroteShorts=" + wrote + " writes=" + writes + " loops=" + loops + " underrunLoops=" + underrunLoops + " underruns=" + underruns);
                         }
                     }
                     else {
                         idle++;
-                        int wrote = writePs1AudioTrack(at, silence, silence.length, gen);
-                        if (wrote > 0) silenceFrames += wrote / 2;
                         if (idle > 5000) break;
-                        if (wrote <= 0) {
-                            try { Thread.sleep(2); } catch (InterruptedException ignored) { break; }
-                        }
+                        try { Thread.sleep(2); } catch (InterruptedException ignored) { break; }
                     }
                 }
             } catch (Throwable t) {
-                appendNativeLog("BUILD2SA5F PS1_AUDIO_ERROR " + t.getMessage());
+                appendNativeLog("BUILD2SA5G PS1_AUDIO_ERROR " + t.getMessage());
             } finally {
                 if (at != null) {
                     try { at.pause(); } catch (Throwable ignored) {}
@@ -1535,7 +1543,7 @@ public class MainActivity extends Activity {
                     try { at.release(); } catch (Throwable ignored) {}
                 }
                 if (ps1CurrentAudioTrack == at) ps1CurrentAudioTrack = null;
-                appendNativeLog("BUILD2SA5F PS1_AUDIO_STOP gen=" + gen + " current=" + ps1AudioGen);
+                appendNativeLog("BUILD2SA5G PS1_AUDIO_STOP gen=" + gen + " current=" + ps1AudioGen);
             }
         }, "nap-ps1-audio");
         ps1AudioThread.start();
@@ -1556,7 +1564,7 @@ public class MainActivity extends Activity {
             try { t.join(250); } catch (Throwable ignored) {}
         }
         if (ps1AudioThread == t) ps1AudioThread = null;
-        appendNativeLog("BUILD2SA5F PS1_AUDIO_STOP_REQUEST gen=" + gen + " hadTrack=" + (at != null));
+        appendNativeLog("BUILD2SA5G PS1_AUDIO_STOP_REQUEST gen=" + gen + " hadTrack=" + (at != null));
     }
     private int writePs1AudioTrack(AudioTrack at, short[] pcm, int shorts, int gen) {
         if (at == null || pcm == null || shorts <= 0) return 0;

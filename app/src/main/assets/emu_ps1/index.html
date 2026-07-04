@@ -117,7 +117,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2SA5F_PS1_AUDIO_GOVERNOR_STAGE155';
+var BUILD='BUILD2SA5G_PS1_SEGA_STYLE_AUDIO_RECOVERY_STAGE156';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
 var LOG=[];
@@ -395,9 +395,9 @@ function ensurePs1ScreenAndPoll(){
       mon.appendChild(im);window.__napPs1Screen=im;
       window.__napPs1FramePoll=setInterval(function(){
         try{var b64=window.AHPS1.ps1FramePreviewB64();
-          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_SCREEN_PREVIEW_ON realne snimky z jadra, ~15fps high-quality JPEG preview (plny render bude TextureView etapa)');}}
+          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_SCREEN_PREVIEW_ON realne snimky z jadra, ~20fps JPEG95 preview (plny render bude TextureView etapa)');}}
         }catch(fe){}
-      },66);
+      },50);
     }
   }
   if(!window.__napPs1Poll){window.__napPs1Poll=setInterval(function(){
@@ -468,7 +468,7 @@ $('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
-log(BUILD+' ready: PS1 audio governor + klidnejsi D-pad + tichy L1/L2/R1/R2 long-press lock aktivni.');
+log(BUILD+' ready: PS1 Sega-style audio retry + JPEG95 preview + klidnejsi D-pad + tichy L1/L2/R1/R2 long-press lock aktivni.');
 })();
 </script>
 </body>

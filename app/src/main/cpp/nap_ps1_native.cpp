@@ -121,8 +121,8 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
 // BUILD2SA3/SA5F: audio FIFO (44100 Hz stereo z jadra -> Java AudioTrack)
 static std::mutex g_amutex;
 static std::vector<int16_t> g_afifo; // interleaved L,R
-static const size_t NAP_PS1_AFIFO_TARGET_FRAMES = 735 * 3; // ~50 ms at 44.1 kHz
-static const size_t NAP_PS1_AFIFO_MAX_FRAMES = 735 * 8;    // ~133 ms, pak resync na target
+static const size_t NAP_PS1_AFIFO_TARGET_FRAMES = 735 * 8;  // ~133 ms at 44.1 kHz
+static const size_t NAP_PS1_AFIFO_MAX_FRAMES = 735 * 24;    // ~400 ms, jen runaway resync
 static void nap_audio_trim_locked(size_t targetFrames) {
   const size_t targetShorts = targetFrames * 2;
   if (g_afifo.size() <= targetShorts) return;
@@ -250,6 +250,9 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PullAudio(JNIEnv *env, jclass, js
     nap_audio_trim_locked(NAP_PS1_AFIFO_TARGET_FRAMES);
     have = g_afifo.size() / 2;
   }
+  const size_t requested = (size_t)frames;
+  const size_t minPull = requested > 64 ? requested - 16 : requested;
+  if (have < minPull) return 0;
   size_t n = have < (size_t)frames ? have : (size_t)frames;
   if (!n) return 0;
   env->SetShortArrayRegion(out, 0, (jsize)(n * 2), (const jshort*)g_afifo.data());
