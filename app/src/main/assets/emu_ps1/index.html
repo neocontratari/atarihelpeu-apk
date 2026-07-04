@@ -117,7 +117,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2SA5L_ATARIHELP_HTTP_FALLBACK_STAGE161';
+var BUILD='BUILD2SA5M_ATARIHELP_REQUEST_BRAKE_STAGE162';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
 var LOG=[];
@@ -468,7 +468,7 @@ $('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
-log(BUILD+' ready: PS1 audio lifecycle stop on leave + AtariHelp HTTPS/HTTP fallback diagnostics + internal game bridge + BIOS logo request + JPEG95 preview + klidnejsi D-pad + tichy L1/L2/R1/R2 long-press lock aktivni.');
+log(BUILD+' ready: PS1 audio lifecycle stop on leave + AtariHelp request brake/cooldown + internal game bridge + BIOS logo request + JPEG95 preview + klidnejsi D-pad + tichy L1/L2/R1/R2 long-press lock aktivni.');
 })();
 </script>
 </body>

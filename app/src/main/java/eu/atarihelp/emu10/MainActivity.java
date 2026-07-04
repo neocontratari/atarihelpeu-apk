@@ -69,6 +69,8 @@ public class MainActivity extends Activity {
     private static final int PICK_BRIDGE = 2;
     private static final int PICK_PS1_GAME = 7; // BUILD2SA2
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
+    private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
+    private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
     private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
     private static byte[] pendingSegaGame = null;   // BUILD2SA2: hra ze SBIRKY cekajici na nacteni Sega stranky
     private static String pendingSegaName = null;
@@ -78,7 +80,8 @@ public class MainActivity extends Activity {
     private volatile int ps1LifecycleGen = 0; // BUILD2SA5I: cancels stale PS1 boots/audio after leaving PS1.
     private volatile boolean ps1BootActive = false;
     private volatile boolean ps1SessionActive = false;
-    private volatile boolean atariHelpHttpFallbackTried = false; // BUILD2SA5L
+    private volatile long atariHelpLastRequestAtMs = 0L; // BUILD2SA5M
+    private volatile long atariHelpBlockedUntilMs = 0L;
     private volatile AudioTrack ps1CurrentAudioTrack = null; // BUILD2SA3B: hard-stop pri prepnuti PS1 hry
     private Thread ps1AudioThread = null;
     private volatile String ps1CurrentGameLabel = "ps1_game";
@@ -591,20 +594,57 @@ public class MainActivity extends Activity {
         if (normalWeb) appendNativeLog("BUILD2SA5K WEBVIEW_NORMAL_WEB reason=" + reason + " url=" + compactUrl(url));
     }
 
+    private synchronized boolean markAtariHelpRequestAllowed(String url, String reason) {
+        if (!isAtariHelpUrl(url)) return true;
+        long now = System.currentTimeMillis();
+        if (atariHelpBlockedUntilMs > now) {
+            showAtariHelpSafetyStop(url, reason, atariHelpBlockedUntilMs - now);
+            appendNativeLog("BUILD2SA5M ATARIHELP_REQUEST_BLOCKED_COOLDOWN reason=" + reason + " waitMs=" + (atariHelpBlockedUntilMs - now) + " url=" + compactUrl(url));
+            return false;
+        }
+        boolean userDownload = reason != null && reason.startsWith("download");
+        long elapsed = now - atariHelpLastRequestAtMs;
+        if (!userDownload && atariHelpLastRequestAtMs > 0 && elapsed < ATARIHELP_MIN_REQUEST_GAP_MS) {
+            long waitMs = ATARIHELP_MIN_REQUEST_GAP_MS - elapsed;
+            showAtariHelpSafetyStop(url, reason, waitMs);
+            appendNativeLog("BUILD2SA5M ATARIHELP_REQUEST_BLOCKED_RATE reason=" + reason + " waitMs=" + waitMs + " url=" + compactUrl(url));
+            return false;
+        }
+        atariHelpLastRequestAtMs = now;
+        appendNativeLog("BUILD2SA5M ATARIHELP_REQUEST_ALLOWED reason=" + reason + " url=" + compactUrl(url));
+        return true;
+    }
+
+    private void loadAtariHelpGuarded(String url, String reason) {
+        if (web == null || url == null) return;
+        if (!markAtariHelpRequestAllowed(url, reason)) return;
+        applyWebViewVisualMode(url, reason);
+        web.loadUrl(url);
+    }
+
+    private void showAtariHelpSafetyStop(final String url, final String reason, final long waitMs) {
+        Runnable r = () -> {
+            if (web == null) return;
+            applyWebViewVisualMode(url, "safetyStop");
+            long sec = Math.max(1L, (waitMs + 999L) / 1000L);
+            String html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                    + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px}.btn{display:block;margin:10px 0;padding:12px 14px;border:1px solid #111;border-radius:6px;background:#111;color:#fff;text-decoration:none;text-align:center;font-weight:700}.alt{background:#fff;color:#111}.warn{padding:10px;border-left:4px solid #b80;background:#fff7e6}code{word-break:break-all}</style></head>"
+                    + "<body><h1>AtariHelp ochranna brzda</h1>"
+                    + "<div class='warn'>Aplikace ted neposila dalsi pozadavky na web, aby nezhorsila IP ban / rate limit.</div>"
+                    + "<p><b>URL:</b> <code>" + escapeHtml(url) + "</code></p>"
+                    + "<p><b>Duvod:</b> <code>" + escapeHtml(reason) + "</code></p>"
+                    + "<p>Zkusit znovu nejdrive za " + sec + " s.</p>"
+                    + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat ZIP z telefonu</a>"
+                    + "</body></html>";
+            try { web.loadDataWithBaseURL("about:blank", html, "text/html", "UTF-8", null); } catch (Throwable ignored) {}
+        };
+        if (isUiThread()) r.run(); else ui.post(r);
+    }
+
     private void showAtariHelpLoadError(String url, String detail) {
         if (!isAtariHelpUrl(url) || web == null) return;
-        if (url != null && url.toLowerCase(Locale.US).startsWith("https://") && !atariHelpHttpFallbackTried) {
-            atariHelpHttpFallbackTried = true;
-            final String fallback = "http://" + url.substring("https://".length());
-            appendNativeLog("BUILD2SA5L ATARIHELP_HTTPS_FAILED_TRY_HTTP url=" + compactUrl(url) + " detail=" + detail);
-            try {
-                web.postDelayed(() -> {
-                    applyWebViewVisualMode(fallback, "httpFallback");
-                    web.loadUrl(fallback);
-                }, 350);
-            } catch (Throwable ignored) {}
-            return;
-        }
+        long now = System.currentTimeMillis();
+        atariHelpBlockedUntilMs = Math.max(atariHelpBlockedUntilMs, now + ATARIHELP_FAIL_COOLDOWN_MS);
         applyWebViewVisualMode(url, "loadError");
         String httpsUrl = url == null ? "https://atarihelp.eu/?page_id=207" : url.replace("http://", "https://");
         String httpUrl = url == null ? "http://atarihelp.eu/?page_id=207" : url.replace("https://", "http://");
@@ -615,14 +655,15 @@ public class MainActivity extends Activity {
                 + "<p><b>URL:</b> <code>" + escapeHtml(url) + "</code></p>"
                 + "<p><b>Chyba:</b> <code>" + escapeHtml(detail) + "</code></p>"
                 + "<div class='warn'>Stejna chyba je i v Nox browseru. To znamena blokaci hostingu/TLS/WEDOS ochrany pro Android/Nox, ne chybu ZIP loaderu.</div>"
-                + "<a class='btn' href='" + escapeHtml(httpsUrl) + "'>Zkusit HTTPS znovu</a>"
-                + "<a class='btn alt' href='" + escapeHtml(httpUrl) + "'>Zkusit HTTP fallback</a>"
+                + "<div class='warn'>Bezpecnostni brzda: appka ted 15 minut nebude automaticky opakovat requesty na AtariHelp.</div>"
+                + "<a class='btn' href='#' onclick='try{AHNET.openGames();}catch(e){}return false;'>Zkusit znovu pozdeji</a>"
+                + "<a class='btn alt' href='#' onclick='try{AHNET.openInBrowser(" + jsQuote(httpsUrl) + ");}catch(e){}return false;'>Otevrit HTTPS v externim browseru</a>"
+                + "<a class='btn alt' href='#' onclick='try{AHNET.openInBrowser(" + jsQuote(httpUrl) + ");}catch(e){}return false;'>Otevrit HTTP v externim browseru</a>"
                 + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat ZIP z telefonu</a>"
-                + "<a class='btn alt' href='#' onclick='try{AHNET.openInBrowser(" + jsQuote(httpsUrl) + ");}catch(e){}return false;'>Otevrit v externim browseru</a>"
                 + "<p>Trvale reseni: ve WEDOS/hostingu povolit Android WebView/Nox nebo presunout ZIPy na neblokovany subdomain/mirror.</p>"
                 + "</body></html>";
-        try { web.loadDataWithBaseURL(url, html, "text/html", "UTF-8", url); } catch (Throwable ignored) {}
-        appendNativeLog("BUILD2SA5L ATARIHELP_LOAD_ERROR url=" + compactUrl(url) + " detail=" + detail);
+        try { web.loadDataWithBaseURL("about:blank", html, "text/html", "UTF-8", null); } catch (Throwable ignored) {}
+        appendNativeLog("BUILD2SA5M ATARIHELP_LOAD_ERROR_COOLDOWN url=" + compactUrl(url) + " detail=" + detail);
     }
 
     private void configureGameHttpConnection(HttpURLConnection c, String url) {
@@ -1318,9 +1359,7 @@ public class MainActivity extends Activity {
             // Jen tak muze klik na ZIP/XEX/GEN projit pres AHNET.runGameUrl() a rovnou spustit emu.
             ui.post(() -> {
                 String url = "https://atarihelp.eu/?page_id=207";
-                atariHelpHttpFallbackTried = false;
-                applyWebViewVisualMode(url, "openGames");
-                web.loadUrl(url);
+                loadAtariHelpGuarded(url, "openGames");
             });
         }
         @JavascriptInterface
@@ -1446,14 +1485,18 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, String url) {
                 if (openExternalBrowserUrl(url)) return true;
-                return handleMaybeGameUrl(url);
+                if (handleMaybeGameUrl(url)) return true;
+                if (isAtariHelpUrl(url)) { loadAtariHelpGuarded(url, "navigation"); return true; }
+                return false;
             }
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
                 if (request != null && request.getUrl() != null) {
                     String url = request.getUrl().toString();
                     if (openExternalBrowserUrl(url)) return true;
-                    return handleMaybeGameUrl(url);
+                    if (handleMaybeGameUrl(url)) return true;
+                    if (isAtariHelpUrl(url)) { loadAtariHelpGuarded(url, "navigation"); return true; }
+                    return false;
                 }
                 return false;
             }
@@ -1612,6 +1655,7 @@ public class MainActivity extends Activity {
     private void downloadAndRunSega(final String url) {
         new Thread(() -> {
             try {
+                if (!markAtariHelpRequestAllowed(url, "downloadSega")) return;
                 HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
                 c.setInstanceFollowRedirects(true);
                 configureGameHttpConnection(c, url);
@@ -1823,6 +1867,7 @@ public class MainActivity extends Activity {
     private void downloadAndRun(final String url) {
         new Thread(() -> {
             try {
+                if (!markAtariHelpRequestAllowed(url, "downloadGame")) return;
                 HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
                 c.setInstanceFollowRedirects(true);
                 configureGameHttpConnection(c, url);
