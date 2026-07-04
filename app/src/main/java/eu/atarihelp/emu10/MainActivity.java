@@ -1235,7 +1235,9 @@ public class MainActivity extends Activity {
     public class AHNet {
         @JavascriptInterface
         public void openGames() {
-            ui.post(() -> openExternalBrowserUrl("https://atarihelp.eu/?page_id=207"));
+            // BUILD2SA5J: AtariHelp sbirka musi zustat uvnitr WebView.
+            // Jen tak muze klik na ZIP/XEX/GEN projit pres AHNET.runGameUrl() a rovnou spustit emu.
+            ui.post(() -> web.loadUrl("https://atarihelp.eu/?page_id=207"));
         }
         @JavascriptInterface
         public void runGameUrl(String url) {
@@ -1263,7 +1265,6 @@ public class MainActivity extends Activity {
 
             // Tyhle normalni weby musi jit ven pres browser Intent,
             // nikdy do downloadAndRun / BOOTANY / NAHRAJ XEX.
-            if (host.equals("atarihelp.eu") || host.equals("www.atarihelp.eu") || host.endsWith(".atarihelp.eu")) return true;
             if (host.equals("youtube.com") || host.equals("www.youtube.com") || host.endsWith(".youtube.com")) return true;
             if (host.equals("facebook.com") || host.equals("www.facebook.com") || host.endsWith(".facebook.com")) return true;
         } catch (Throwable ignored) {}
