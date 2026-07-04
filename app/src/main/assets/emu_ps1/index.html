@@ -67,10 +67,10 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #btnSelect,#btnStart,#btnL1,#btnL2,#btnR1,#btnR2{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.92);font:900 12px/1 "Courier New",monospace;background:rgba(3,8,12,.30);border:1px solid rgba(230,200,120,.42);border-radius:999px;box-shadow:0 3px 16px rgba(0,0,0,.52);text-shadow:0 1px 2px #000;z-index:16;}
  #btnSelect{left:40%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
  #btnStart{left:51.2%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
- #btnL1{left:6%;top:18%;width:8.5%;height:8%;}
- #btnL2{left:16%;top:18%;width:8.5%;height:8%;}
- #btnR1{left:76%;top:18%;width:8.5%;height:8%;}
- #btnR2{left:86%;top:18%;width:8.5%;height:8%;}
+ #btnL1{left:23.2%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
+ #btnL2{left:31.2%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
+ #btnR1{left:61.4%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
+ #btnR2{left:69.4%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
  #btnL1.locked,#btnL2.locked,#btnR1.locked,#btnR2.locked{color:#081017;background:linear-gradient(180deg,rgba(255,235,157,.96),rgba(196,151,68,.88));border-color:rgba(255,244,194,.95);box-shadow:0 3px 18px rgba(0,0,0,.58),0 0 22px rgba(255,214,112,.36);}
  #btnBack,#btnSettings,#btnCd,#btnReset,#btnLoad,#btnSave,#btnMemory{display:none;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;z-index:40;}
@@ -117,7 +117,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2SA5M_ATARIHELP_REQUEST_BRAKE_STAGE162';
+var BUILD='BUILD2SA5N_PS1_AUDIO_PRIORITY_SHOULDERS_STAGE163';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
 var LOG=[];
@@ -395,9 +395,9 @@ function ensurePs1ScreenAndPoll(){
       mon.appendChild(im);window.__napPs1Screen=im;
       window.__napPs1FramePoll=setInterval(function(){
         try{var b64=window.AHPS1.ps1FramePreviewB64();
-          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_SCREEN_PREVIEW_ON realne snimky z jadra, ~20fps JPEG95 preview (plny render bude TextureView etapa)');}}
+          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_SCREEN_PREVIEW_ON realne snimky z jadra, ~12fps JPEG95 audio-priority preview');}}
         }catch(fe){}
-      },50);
+      },80);
     }
   }
   if(!window.__napPs1Poll){window.__napPs1Poll=setInterval(function(){
@@ -468,7 +468,7 @@ $('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
-log(BUILD+' ready: PS1 audio lifecycle stop on leave + AtariHelp request brake/cooldown + internal game bridge + BIOS logo request + JPEG95 preview + klidnejsi D-pad + tichy L1/L2/R1/R2 long-press lock aktivni.');
+log(BUILD+' ready: PS1 audio-priority 735f pull + lower thumb L1/L2/R1/R2 + request brake + internal game bridge aktivni.');
 })();
 </script>
 </body>

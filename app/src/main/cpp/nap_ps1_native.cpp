@@ -132,7 +132,7 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
   g_fw.store((int)w); g_fh.store((int)h);
   g_frames.fetch_add(1);
 }
-// BUILD2SA3/SA5F: audio FIFO (44100 Hz stereo z jadra -> Java AudioTrack)
+// BUILD2SA3/SA5N: audio FIFO (44100 Hz stereo z jadra -> Java AudioTrack)
 static std::mutex g_amutex;
 static std::vector<int16_t> g_afifo; // interleaved L,R
 static const size_t NAP_PS1_AFIFO_TARGET_FRAMES = 735 * 8;  // ~133 ms at 44.1 kHz
@@ -264,7 +264,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PullAudio(JNIEnv *env, jclass, js
     nap_audio_trim_locked(NAP_PS1_AFIFO_TARGET_FRAMES);
     have = g_afifo.size() / 2;
   }
-  const size_t minPull = 128; // BUILD2SA5H: never drain 1-5 frame crumbs, but allow natural ~469 frame PS1 chunks.
+  const size_t minPull = 256; // BUILD2SA5N: avoid tiny crumbs; Java now pulls PS1-aligned 735f chunks.
   if (have < minPull) return 0;
   size_t n = have < (size_t)frames ? have : (size_t)frames;
   if (!n) return 0;
