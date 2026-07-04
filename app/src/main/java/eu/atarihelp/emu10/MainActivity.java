@@ -44,6 +44,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceError;
+import android.webkit.WebResourceResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -77,6 +78,7 @@ public class MainActivity extends Activity {
     private volatile int ps1LifecycleGen = 0; // BUILD2SA5I: cancels stale PS1 boots/audio after leaving PS1.
     private volatile boolean ps1BootActive = false;
     private volatile boolean ps1SessionActive = false;
+    private volatile boolean atariHelpHttpFallbackTried = false; // BUILD2SA5L
     private volatile AudioTrack ps1CurrentAudioTrack = null; // BUILD2SA3B: hard-stop pri prepnuti PS1 hry
     private Thread ps1AudioThread = null;
     private volatile String ps1CurrentGameLabel = "ps1_game";
@@ -591,17 +593,36 @@ public class MainActivity extends Activity {
 
     private void showAtariHelpLoadError(String url, String detail) {
         if (!isAtariHelpUrl(url) || web == null) return;
+        if (url != null && url.toLowerCase(Locale.US).startsWith("https://") && !atariHelpHttpFallbackTried) {
+            atariHelpHttpFallbackTried = true;
+            final String fallback = "http://" + url.substring("https://".length());
+            appendNativeLog("BUILD2SA5L ATARIHELP_HTTPS_FAILED_TRY_HTTP url=" + compactUrl(url) + " detail=" + detail);
+            try {
+                web.postDelayed(() -> {
+                    applyWebViewVisualMode(fallback, "httpFallback");
+                    web.loadUrl(fallback);
+                }, 350);
+            } catch (Throwable ignored) {}
+            return;
+        }
         applyWebViewVisualMode(url, "loadError");
+        String httpsUrl = url == null ? "https://atarihelp.eu/?page_id=207" : url.replace("http://", "https://");
+        String httpUrl = url == null ? "http://atarihelp.eu/?page_id=207" : url.replace("https://", "http://");
         String html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-                + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px}code{word-break:break-all}</style></head>"
+                + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px}code{word-break:break-all}.btn{display:block;margin:10px 0;padding:12px 14px;border:1px solid #111;border-radius:6px;background:#111;color:#fff;text-decoration:none;text-align:center;font-weight:700}.alt{background:#fff;color:#111}.warn{padding:10px;border-left:4px solid #b80;background:#fff7e6}</style></head>"
                 + "<body><h1>AtariHelp WebView nenacetl stranku</h1>"
-                + "<p>App bridge zustal aktivni, ale Android WebView vratil chybu nacitani.</p>"
+                + "<p>App bridge zustal aktivni, ale Android/Nox nedostal stranku z hostingu.</p>"
                 + "<p><b>URL:</b> <code>" + escapeHtml(url) + "</code></p>"
                 + "<p><b>Chyba:</b> <code>" + escapeHtml(detail) + "</code></p>"
-                + "<p>Zkusim znovu pres tlacitko NET HRY / SBIRKA. Pokud chyba zustane, je to sit/TLS/host blokace v Nox WebView, ne ZIP loader.</p>"
+                + "<div class='warn'>Stejna chyba je i v Nox browseru. To znamena blokaci hostingu/TLS/WEDOS ochrany pro Android/Nox, ne chybu ZIP loaderu.</div>"
+                + "<a class='btn' href='" + escapeHtml(httpsUrl) + "'>Zkusit HTTPS znovu</a>"
+                + "<a class='btn alt' href='" + escapeHtml(httpUrl) + "'>Zkusit HTTP fallback</a>"
+                + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat ZIP z telefonu</a>"
+                + "<a class='btn alt' href='#' onclick='try{AHNET.openInBrowser(" + jsQuote(httpsUrl) + ");}catch(e){}return false;'>Otevrit v externim browseru</a>"
+                + "<p>Trvale reseni: ve WEDOS/hostingu povolit Android WebView/Nox nebo presunout ZIPy na neblokovany subdomain/mirror.</p>"
                 + "</body></html>";
         try { web.loadDataWithBaseURL(url, html, "text/html", "UTF-8", url); } catch (Throwable ignored) {}
-        appendNativeLog("BUILD2SA5K ATARIHELP_LOAD_ERROR url=" + compactUrl(url) + " detail=" + detail);
+        appendNativeLog("BUILD2SA5L ATARIHELP_LOAD_ERROR url=" + compactUrl(url) + " detail=" + detail);
     }
 
     private void configureGameHttpConnection(HttpURLConnection c, String url) {
@@ -1297,9 +1318,14 @@ public class MainActivity extends Activity {
             // Jen tak muze klik na ZIP/XEX/GEN projit pres AHNET.runGameUrl() a rovnou spustit emu.
             ui.post(() -> {
                 String url = "https://atarihelp.eu/?page_id=207";
+                atariHelpHttpFallbackTried = false;
                 applyWebViewVisualMode(url, "openGames");
                 web.loadUrl(url);
             });
+        }
+        @JavascriptInterface
+        public void openInBrowser(String url) {
+            ui.post(() -> openRawExternalBrowserUrl(url));
         }
         @JavascriptInterface
         public void runGameUrl(String url) {
@@ -1333,14 +1359,22 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    private boolean openExternalBrowserUrl(String url) {
-        if (!isExternalBrowserUrl(url)) return false;
+    private boolean openRawExternalBrowserUrl(String url) {
+        if (url == null || url.trim().length() == 0) return false;
         try {
             Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             i.addCategory(Intent.CATEGORY_BROWSABLE);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);
+            return true;
         } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private boolean openExternalBrowserUrl(String url) {
+        if (!isExternalBrowserUrl(url)) return false;
+        try { openRawExternalBrowserUrl(url); } catch (Throwable ignored) {
             // DULEZITE: i kdyz by browser Intent selhal,
             // nevracet false, jinak by to sebral emulator loader.
         }
@@ -1450,6 +1484,15 @@ public class MainActivity extends Activity {
                 if (Build.VERSION.SDK_INT >= 23 && request != null && request.isForMainFrame() && request.getUrl() != null) {
                     CharSequence d = error == null ? "" : error.getDescription();
                     showAtariHelpLoadError(request.getUrl().toString(), String.valueOf(d));
+                }
+            }
+            @Override
+            public void onReceivedHttpError(WebView v, WebResourceRequest request, WebResourceResponse errorResponse) {
+                super.onReceivedHttpError(v, request, errorResponse);
+                if (Build.VERSION.SDK_INT >= 21 && request != null && request.isForMainFrame() && request.getUrl() != null && isAtariHelpUrl(request.getUrl().toString())) {
+                    int code = errorResponse == null ? 0 : errorResponse.getStatusCode();
+                    String reason = errorResponse == null ? "" : errorResponse.getReasonPhrase();
+                    if (code >= 400) showAtariHelpLoadError(request.getUrl().toString(), "HTTP " + code + " " + reason);
                 }
             }
         });
