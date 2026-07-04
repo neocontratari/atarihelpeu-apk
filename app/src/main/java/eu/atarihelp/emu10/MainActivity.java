@@ -1634,8 +1634,7 @@ public class MainActivity extends Activity {
         public void runGameUrl(String url) {
             ui.post(() -> {
                 if (url == null || url.length() == 0) return;
-                if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url); // BUILD2SA5T
-                else if (hasSegaExtension(url)) downloadAndRunSega(url); // BUILD2SA2
+                if (hasSegaExtension(url)) downloadAndRunSega(url); // BUILD2SA2
                 else downloadAndRun(url);
             });
         }
@@ -1824,8 +1823,8 @@ public class MainActivity extends Activity {
         web.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
             if (openExternalBrowserUrl(url)) return;
             if (isGameUrl(url, contentDisposition, mimetype)) {
-                if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url); // BUILD2SA5T
-                else downloadAndRun(url);
+                if (hasSegaExtension(url)) downloadAndRunSega(url); // BUILD2SA5U: raw Sega ROM only.
+                else downloadAndRun(url); // ZIP decides by content after download.
             } else if (isProviderBlockedUrl(url)) {
                 loadAtariHelpGuarded(url, "downloadListenerPageRelay");
             } else {
@@ -2222,7 +2221,6 @@ public class MainActivity extends Activity {
 
     private boolean handleMaybeGameUrl(String url) {
         if (openExternalBrowserUrl(url)) return true;
-        if (shouldRouteAsSegaDownload(url)) { downloadAndRunSegaArchive(url); return true; } // BUILD2SA5T
         if (hasSegaExtension(url)) { downloadAndRunSega(url); return true; } // BUILD2SA2: Sega ma prednost
         if (isGameUrl(url, null, null)) {
             downloadAndRun(url);
@@ -2268,17 +2266,17 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             try {
                 if (!markAtariHelpRequestAllowed(url, "downloadGame")) return;
-                FetchResult fetched = fetchUrlBytes(url, 8 * 1024 * 1024, "downloadGame", false);
+                FetchResult fetched = fetchUrlBytes(url, 16 * 1024 * 1024, "downloadGame", false);
                 final String cdName = fetched.contentDisposition;
                 final byte[] data = fetched.data;
                 final String name = guessDownloadName(url, cdName);
-                appendNativeLog("BUILD2SA5S WEB_GAME_DOWNLOADED name=" + name + " bytes=" + data.length + " via=" + compactUrl(fetched.via));
+                appendNativeLog("BUILD2SA5U WEB_GAME_DOWNLOADED name=" + name + " bytes=" + data.length + " via=" + compactUrl(fetched.via) + " zipContentDetect=ON");
                 // BUILD2SA2B: Reneho web umi hostovat jen ZIPy. Kouknem DOVNITR zipu:
                 // kdyz je uvnitr Sega ROM (.gen/.md/.smd/.sms), rozbalime a posleme
                 // do EMU SEGA. Jinak jede stara Atari cesta beze zmeny.
                 final SegaExtract sega = extractSegaRomFromMaybeZip(name, data);
                 if (sega != null && sega.data != null && sega.data.length > 0) {
-                    appendNativeLog("BUILD2SA5T ZIP_CONTAINS_SEGA name=" + sega.name + " bytes=" + sega.data.length + " -> EMU_SEGA");
+                    appendNativeLog("BUILD2SA5U ZIP_CONTAINS_SEGA name=" + sega.name + " bytes=" + sega.data.length + " -> EMU_SEGA");
                     ui.post(() -> openSegaRomBytes(sega.data, sega.name, "zipAutoDetect"));
                     return;
                 }
@@ -2293,7 +2291,7 @@ public class MainActivity extends Activity {
                     }
                 });
             } catch (Exception ex) {
-                appendNativeLog("BUILD2SA5T WEB_GAME_DOWNLOAD_FAIL " + safeMsg(ex));
+                appendNativeLog("BUILD2SA5U WEB_GAME_DOWNLOAD_FAIL " + safeMsg(ex));
                 ui.post(() -> {
                     try {
                         final String msg = ex.getMessage() == null ? "neznamá chyba" : ex.getMessage();
