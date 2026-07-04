@@ -74,6 +74,7 @@ public class MainActivity extends Activity {
     private static volatile int ps1AudioGen = 0; // BUILD2SA3
     private volatile AudioTrack ps1CurrentAudioTrack = null; // BUILD2SA3B: hard-stop pri prepnuti PS1 hry
     private Thread ps1AudioThread = null;
+    private volatile String ps1CurrentGameLabel = "ps1_game";
     private static final String EMU_URL = "file:///android_asset/emu/index.html";
     private WebView web;
     private FrameLayout rootFrame;
@@ -245,7 +246,47 @@ public class MainActivity extends Activity {
             int id = ps1ButtonId(button);
             if (id >= 0) NativePs1CoreBridge.setInputSafe(id, down);
         }
-        // BUILD2SA2B: nahled obrazu - realne snimky z jadra jako JPEG base64 (~10 fps).
+        private File ps1StateFile() {
+            File saveDir = new File(getFilesDir(), "ps1_saves");
+            if (!saveDir.exists()) saveDir.mkdirs();
+            String base = safeFileName(ps1CurrentGameLabel == null ? "ps1_game" : ps1CurrentGameLabel);
+            if (base.endsWith(".bin") || base.endsWith(".iso") || base.endsWith(".img") || base.endsWith(".cue")) {
+                int dot = base.lastIndexOf('.');
+                if (dot > 0) base = base.substring(0, dot);
+            }
+            return new File(saveDir, base + ".slot0.state");
+        }
+        @JavascriptInterface
+        public String ps1QuickSave() {
+            try {
+                File f = ps1StateFile();
+                String r = NativePs1CoreBridge.saveStateSafe(f.getAbsolutePath());
+                return r;
+            } catch (Throwable t) {
+                return "PS1_STATE_SAVE_EXCEPTION " + t.getMessage();
+            }
+        }
+        @JavascriptInterface
+        public String ps1QuickLoad() {
+            try {
+                File f = ps1StateFile();
+                if (!f.exists()) return "PS1_STATE_LOAD_FAIL missing_file path=" + f.getAbsolutePath();
+                String r = NativePs1CoreBridge.loadStateSafe(f.getAbsolutePath());
+                return r;
+            } catch (Throwable t) {
+                return "PS1_STATE_LOAD_EXCEPTION " + t.getMessage();
+            }
+        }
+        @JavascriptInterface
+        public String ps1SaveInfo() {
+            try {
+                File f = ps1StateFile();
+                return "PS1_SAVE_SLOT path=" + f.getAbsolutePath() + " exists=" + f.exists() + " bytes=" + (f.exists() ? f.length() : 0);
+            } catch (Throwable t) {
+                return "PS1_SAVE_SLOT_ERROR " + t.getMessage();
+            }
+        }
+        // BUILD2SA5: nahled obrazu - realne snimky z jadra jako kvalitnejsi JPEG base64.
         // Neni to finalni render (ten pojede pres TextureView v SA2C), ale je to
         // OPRAVDOVY obraz z beziciho jadra, zadny fake.
         private int[] ps1PrevBuf = new int[1024 * 512];
@@ -258,7 +299,7 @@ public class MainActivity extends Activity {
                 int w = wh >> 16, h = wh & 0xFFFF;
                 android.graphics.Bitmap bm = android.graphics.Bitmap.createBitmap(ps1PrevBuf, w, h, android.graphics.Bitmap.Config.ARGB_8888);
                 java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
-                bm.compress(android.graphics.Bitmap.CompressFormat.JPEG, 72, bo);
+                bm.compress(android.graphics.Bitmap.CompressFormat.JPEG, 88, bo);
                 bm.recycle();
                 return Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
             } catch (Throwable t) { return ""; }
@@ -1422,7 +1463,7 @@ public class MainActivity extends Activity {
             try {
                 try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO); } catch (Throwable ignored) {}
                 int min = AudioTrack.getMinBufferSize(44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
-                int bufBytes = Math.max(min > 0 ? min * 4 : 0, 16384 * 2 * 2);
+                int bufBytes = Math.max(min > 0 ? min * 6 : 0, 32768 * 2 * 2);
                 if (Build.VERSION.SDK_INT >= 21) {
                     at = new AudioTrack.Builder()
                             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
@@ -1437,7 +1478,7 @@ public class MainActivity extends Activity {
                 short[] buf = new short[735 * 2];
                 int prefillFrames = 0;
                 long prefillDeadline = System.currentTimeMillis() + 1100;
-                while (gen == ps1AudioGen && prefillFrames < 8192 && System.currentTimeMillis() < prefillDeadline) {
+                while (gen == ps1AudioGen && prefillFrames < 12288 && System.currentTimeMillis() < prefillDeadline) {
                     int got = NativePs1CoreBridge.pullAudioSafe(buf, 735);
                     if (got > 0) {
                         softenPs1Pcm(buf, got * 2);
@@ -1454,7 +1495,7 @@ public class MainActivity extends Activity {
                     }
                 }
                 at.play();
-                appendNativeLog("BUILD2SA4 PS1_AUDIO_START gen=" + gen + " bufBytes=" + bufBytes + " minBytes=" + min + " prefillFrames=" + prefillFrames + " gain=7/8 chunk=735");
+                appendNativeLog("BUILD2SA5 PS1_AUDIO_START gen=" + gen + " bufBytes=" + bufBytes + " minBytes=" + min + " prefillFrames=" + prefillFrames + " gain=7/8 chunk=735");
                 int idle = 0;
                 int writes = 0;
                 while (gen == ps1AudioGen) {
@@ -1470,7 +1511,7 @@ public class MainActivity extends Activity {
                         }
                         idle = 0;
                         writes++;
-                        if (writes <= 6 || writes % 240 == 0) appendNativeLog("BUILD2SA4 PS1_AUDIO_WRITE gen=" + gen + " gotFrames=" + got + " writes=" + writes);
+                        if (writes <= 6 || writes % 240 == 0) appendNativeLog("BUILD2SA5 PS1_AUDIO_WRITE gen=" + gen + " gotFrames=" + got + " writes=" + writes);
                     }
                     else { if (++idle > 5000) break; try { Thread.sleep(2); } catch (InterruptedException ignored) { break; } }
                 }
@@ -1479,7 +1520,7 @@ public class MainActivity extends Activity {
             } finally {
                 try { if (at != null) { at.pause(); at.flush(); at.stop(); at.release(); } } catch (Throwable ignored) {}
                 if (ps1CurrentAudioTrack == at) ps1CurrentAudioTrack = null;
-                appendNativeLog("BUILD2SA4 PS1_AUDIO_STOP gen=" + gen + " current=" + ps1AudioGen);
+                appendNativeLog("BUILD2SA5 PS1_AUDIO_STOP gen=" + gen + " current=" + ps1AudioGen);
             }
         }, "nap-ps1-audio");
         ps1AudioThread.start();
@@ -1500,7 +1541,7 @@ public class MainActivity extends Activity {
             try { t.join(250); } catch (Throwable ignored) {}
         }
         if (ps1AudioThread == t) ps1AudioThread = null;
-        appendNativeLog("BUILD2SA4 PS1_AUDIO_STOP_REQUEST gen=" + gen + " hadTrack=" + (at != null));
+        appendNativeLog("BUILD2SA5 PS1_AUDIO_STOP_REQUEST gen=" + gen + " hadTrack=" + (at != null));
     }
     private void softenPs1Pcm(short[] pcm, int shorts) {
         if (pcm == null) return;
@@ -1671,6 +1712,7 @@ public class MainActivity extends Activity {
         if (req == PICK_PS1_GAME) { // BUILD2SA2
             if (res != RESULT_OK || data == null || data.getData() == null) { ps1LastBootResult = "PS1_PICK_CANCELLED"; return; }
             final Uri uri = data.getData();
+            final String pickedName = safeFileName(getDisplayName(uri));
             new Thread(() -> {
                 try {
                     android.os.ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
@@ -1684,6 +1726,7 @@ public class MainActivity extends Activity {
                     java.io.File saveDir = new java.io.File(getFilesDir(), "ps1_saves");
                     if (!sysDir.exists()) sysDir.mkdirs();
                     if (!saveDir.exists()) saveDir.mkdirs();
+                    ps1CurrentGameLabel = pickedName;
                     stopPs1Audio(); // BUILD2SA3B: cisty audio restart pri prepnuti PS1 hry
                     ps1LastBootResult = "PS1_BOOTING...";
                     ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);

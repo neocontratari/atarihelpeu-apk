@@ -13,6 +13,8 @@
 #include <cstdio>
 #include <cstdarg>
 #include <cstdint>
+#include <fstream>
+#include <iterator>
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, "NAP_PS1", __VA_ARGS__)
 
 extern "C" {
@@ -44,6 +46,9 @@ extern "C" {
   bool retro_load_game(const struct retro_game_info*);
   void retro_unload_game(void);
   void retro_run(void);
+  size_t retro_serialize_size(void);
+  bool retro_serialize(void *data, size_t size);
+  bool retro_unserialize(const void *data, size_t size);
 }
 #define ENV_SET_PIXEL_FORMAT 10
 #define ENV_GET_SYSTEM_DIRECTORY 9
@@ -67,6 +72,7 @@ static std::mutex g_frame_mutex;
 static std::vector<uint32_t> g_frame_argb; // SA2b si tenhle buffer vyzvedne pro TextureView
 static std::thread g_worker;
 static std::mutex g_life_mutex;
+static std::mutex g_core_mutex; // BUILD2SA5: save/load state nesmi bezet soucasne s retro_run
 static double g_fps = 60.0;
 static std::atomic<bool> g_loaded{false};
 
@@ -143,7 +149,10 @@ static void nap_worker(int gen) {
   const auto period = std::chrono::nanoseconds((long long)(1e9 / (g_fps > 1 ? g_fps : 60.0)));
   auto next = std::chrono::steady_clock::now();
   while (g_running.load() && gen == g_generation.load()) {
-    retro_run();
+    {
+      std::lock_guard<std::mutex> core(g_core_mutex);
+      retro_run();
+    }
     next += period;
     auto now = std::chrono::steady_clock::now();
     if (next > now) std::this_thread::sleep_for(next - now); else next = now;
@@ -243,6 +252,54 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetInput(JNIEnv *, jclass, jint i
   const uint32_t bit = 1u << (uint32_t)id;
   if (down) g_input_bits.fetch_or(bit, std::memory_order_relaxed);
   else g_input_bits.fetch_and(~bit, std::memory_order_relaxed);
+}
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SaveState(JNIEnv *env, jclass, jstring jpath) {
+  if (!jpath) return env->NewStringUTF("PS1_STATE_SAVE_FAIL path=null");
+  if (!g_loaded.load()) return env->NewStringUTF("PS1_STATE_SAVE_FAIL core_not_loaded");
+  const char *pathChars = env->GetStringUTFChars(jpath, nullptr);
+  std::string path = pathChars ? pathChars : "";
+  env->ReleaseStringUTFChars(jpath, pathChars);
+  if (path.empty()) return env->NewStringUTF("PS1_STATE_SAVE_FAIL path_empty");
+  std::vector<uint8_t> data;
+  {
+    std::lock_guard<std::mutex> core(g_core_mutex);
+    size_t size = retro_serialize_size();
+    if (size == 0) return env->NewStringUTF("PS1_STATE_SAVE_FAIL serialize_size_0");
+    data.resize(size);
+    if (!retro_serialize(data.data(), data.size())) return env->NewStringUTF("PS1_STATE_SAVE_FAIL retro_serialize_false");
+  }
+  std::ofstream out(path.c_str(), std::ios::binary | std::ios::trunc);
+  if (!out.good()) return env->NewStringUTF("PS1_STATE_SAVE_FAIL open_failed");
+  out.write((const char*)data.data(), (std::streamsize)data.size());
+  out.close();
+  char msg[512];
+  snprintf(msg, sizeof(msg), "PS1_STATE_SAVE_OK bytes=%zu path=%s", data.size(), path.c_str());
+  return env->NewStringUTF(msg);
+}
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1LoadState(JNIEnv *env, jclass, jstring jpath) {
+  if (!jpath) return env->NewStringUTF("PS1_STATE_LOAD_FAIL path=null");
+  if (!g_loaded.load()) return env->NewStringUTF("PS1_STATE_LOAD_FAIL core_not_loaded");
+  const char *pathChars = env->GetStringUTFChars(jpath, nullptr);
+  std::string path = pathChars ? pathChars : "";
+  env->ReleaseStringUTFChars(jpath, pathChars);
+  if (path.empty()) return env->NewStringUTF("PS1_STATE_LOAD_FAIL path_empty");
+  std::ifstream in(path.c_str(), std::ios::binary);
+  if (!in.good()) return env->NewStringUTF("PS1_STATE_LOAD_FAIL missing_file");
+  std::vector<uint8_t> data((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+  in.close();
+  if (data.empty()) return env->NewStringUTF("PS1_STATE_LOAD_FAIL empty_file");
+  bool ok = false;
+  {
+    std::lock_guard<std::mutex> core(g_core_mutex);
+    ok = retro_unserialize(data.data(), data.size());
+  }
+  if (!ok) return env->NewStringUTF("PS1_STATE_LOAD_FAIL retro_unserialize_false");
+  nap_audio_clear();
+  char msg[512];
+  snprintf(msg, sizeof(msg), "PS1_STATE_LOAD_OK bytes=%zu path=%s", data.size(), path.c_str());
+  return env->NewStringUTF(msg);
 }
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
