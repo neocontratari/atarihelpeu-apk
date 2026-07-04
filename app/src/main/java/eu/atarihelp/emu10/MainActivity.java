@@ -43,6 +43,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceError;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -66,6 +67,7 @@ public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
     private static final int PICK_BRIDGE = 2;
     private static final int PICK_PS1_GAME = 7; // BUILD2SA2
+    private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
     private static byte[] pendingSegaGame = null;   // BUILD2SA2: hra ze SBIRKY cekajici na nacteni Sega stranky
     private static String pendingSegaName = null;
@@ -561,6 +563,62 @@ public class MainActivity extends Activity {
         if (url == null) return "null";
         String u = url.replace("file:///android_asset/", "asset:/");
         return u.length() > 96 ? u.substring(0, 96) : u;
+    }
+
+    private boolean isAtariHelpUrl(String url) {
+        if (url == null) return false;
+        String u = url.trim().toLowerCase(Locale.US);
+        if (!(u.startsWith("http://") || u.startsWith("https://"))) return false;
+        try {
+            Uri uri = Uri.parse(url);
+            String host = uri.getHost();
+            if (host == null) return false;
+            host = host.toLowerCase(Locale.US);
+            return host.equals("atarihelp.eu") || host.equals("www.atarihelp.eu") || host.endsWith(".atarihelp.eu");
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private void applyWebViewVisualMode(String url, String reason) {
+        if (web == null) return;
+        boolean normalWeb = isAtariHelpUrl(url);
+        try { web.setBackgroundColor(normalWeb ? Color.WHITE : Color.TRANSPARENT); } catch (Throwable ignored) {}
+        try { if (rootFrame != null) rootFrame.setBackgroundColor(normalWeb ? Color.WHITE : Color.BLACK); } catch (Throwable ignored) {}
+        try { web.setLayerType(normalWeb ? View.LAYER_TYPE_NONE : View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
+        if (normalWeb) appendNativeLog("BUILD2SA5K WEBVIEW_NORMAL_WEB reason=" + reason + " url=" + compactUrl(url));
+    }
+
+    private void showAtariHelpLoadError(String url, String detail) {
+        if (!isAtariHelpUrl(url) || web == null) return;
+        applyWebViewVisualMode(url, "loadError");
+        String html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px}code{word-break:break-all}</style></head>"
+                + "<body><h1>AtariHelp WebView nenacetl stranku</h1>"
+                + "<p>App bridge zustal aktivni, ale Android WebView vratil chybu nacitani.</p>"
+                + "<p><b>URL:</b> <code>" + escapeHtml(url) + "</code></p>"
+                + "<p><b>Chyba:</b> <code>" + escapeHtml(detail) + "</code></p>"
+                + "<p>Zkusim znovu pres tlacitko NET HRY / SBIRKA. Pokud chyba zustane, je to sit/TLS/host blokace v Nox WebView, ne ZIP loader.</p>"
+                + "</body></html>";
+        try { web.loadDataWithBaseURL(url, html, "text/html", "UTF-8", url); } catch (Throwable ignored) {}
+        appendNativeLog("BUILD2SA5K ATARIHELP_LOAD_ERROR url=" + compactUrl(url) + " detail=" + detail);
+    }
+
+    private void configureGameHttpConnection(HttpURLConnection c, String url) {
+        if (c == null) return;
+        try { c.setConnectTimeout(20000); } catch (Throwable ignored) {}
+        try { c.setReadTimeout(45000); } catch (Throwable ignored) {}
+        if (isAtariHelpUrl(url)) {
+            try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
+            try { c.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/zip,application/octet-stream,*/*;q=0.8"); } catch (Throwable ignored) {}
+            try { c.setRequestProperty("Accept-Language", "cs-CZ,cs;q=0.9,en;q=0.8"); } catch (Throwable ignored) {}
+            try { c.setRequestProperty("Referer", "https://atarihelp.eu/?page_id=207"); } catch (Throwable ignored) {}
+        }
+    }
+
+    private String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
     }
 
     private void stopNativeIfLeavingSega(String url, String source) {
@@ -1237,7 +1295,11 @@ public class MainActivity extends Activity {
         public void openGames() {
             // BUILD2SA5J: AtariHelp sbirka musi zustat uvnitr WebView.
             // Jen tak muze klik na ZIP/XEX/GEN projit pres AHNET.runGameUrl() a rovnou spustit emu.
-            ui.post(() -> web.loadUrl("https://atarihelp.eu/?page_id=207"));
+            ui.post(() -> {
+                String url = "https://atarihelp.eu/?page_id=207";
+                applyWebViewVisualMode(url, "openGames");
+                web.loadUrl(url);
+            });
         }
         @JavascriptInterface
         public void runGameUrl(String url) {
@@ -1309,10 +1371,17 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        try { s.setUserAgentString(ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
         s.setAllowFileAccess(true);
         s.setAllowUniversalAccessFromFileURLs(true);
         s.setAllowContentAccess(true);
         s.setMediaPlaybackRequiresUserGesture(false);
+        try { s.setLoadsImagesAutomatically(true); } catch (Throwable ignored) {}
+        try { s.setBlockNetworkImage(false); } catch (Throwable ignored) {}
+        try { s.setBlockNetworkLoads(false); } catch (Throwable ignored) {}
+        if (Build.VERSION.SDK_INT >= 21) {
+            try { s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW); } catch (Throwable ignored) {}
+        }
         web.addJavascriptInterface(new AHSave(), "AHSAVE");
         web.addJavascriptInterface(new AHPick(), "AHPICK");
         web.addJavascriptInterface(new AHPS1(), "AHPS1"); // BUILD2SA1
@@ -1335,6 +1404,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageStarted(WebView v, String url, Bitmap favicon) {
                 super.onPageStarted(v, url, favicon);
+                applyWebViewVisualMode(url, "onPageStarted");
                 stopNativeIfLeavingSega(url, "onPageStarted");
                 stopPs1IfLeaving(url, "onPageStarted");
             }
@@ -1355,6 +1425,7 @@ public class MainActivity extends Activity {
             }
             @Override
             public void onPageFinished(WebView v, String url) {
+                applyWebViewVisualMode(url, "onPageFinished");
                 stopNativeIfLeavingSega(url, "onPageFinished");
                 stopPs1IfLeaving(url, "onPageFinished");
                 if (pendingGame != null && url.startsWith(EMU_URL)) {
@@ -1363,6 +1434,22 @@ public class MainActivity extends Activity {
                 }
                 if (url != null && url.toLowerCase().contains("atarihelp.eu")) {
                     injectGameLinkBridge();
+                }
+            }
+            @Override
+            public void onReceivedError(WebView v, int errorCode, String description, String failingUrl) {
+                super.onReceivedError(v, errorCode, description, failingUrl);
+                String current = v == null ? null : v.getUrl();
+                if (current == null || current.equals(failingUrl)) {
+                    showAtariHelpLoadError(failingUrl, "code=" + errorCode + " " + description);
+                }
+            }
+            @Override
+            public void onReceivedError(WebView v, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(v, request, error);
+                if (Build.VERSION.SDK_INT >= 23 && request != null && request.isForMainFrame() && request.getUrl() != null) {
+                    CharSequence d = error == null ? "" : error.getDescription();
+                    showAtariHelpLoadError(request.getUrl().toString(), String.valueOf(d));
                 }
             }
         });
@@ -1378,11 +1465,12 @@ public class MainActivity extends Activity {
                 } catch (Exception ignored) {}
             }
         });
-        web.loadUrl("file:///android_asset/index.html");
         rootFrame = new FrameLayout(this);
         try { rootFrame.setBackgroundColor(Color.BLACK); } catch (Throwable ignored) {}
         rootFrame.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(rootFrame);
+        applyWebViewVisualMode("file:///android_asset/index.html", "startup");
+        web.loadUrl("file:///android_asset/index.html");
     }
 
     private void openBridgePicker(String kind) {
@@ -1483,6 +1571,7 @@ public class MainActivity extends Activity {
             try {
                 HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
                 c.setInstanceFollowRedirects(true);
+                configureGameHttpConnection(c, url);
                 c.connect();
                 final String cdName = c.getHeaderField("Content-Disposition");
                 InputStream in = c.getInputStream();
@@ -1693,6 +1782,7 @@ public class MainActivity extends Activity {
             try {
                 HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
                 c.setInstanceFollowRedirects(true);
+                configureGameHttpConnection(c, url);
                 c.connect();
                 final String cdName = c.getHeaderField("Content-Disposition");
                 InputStream in = c.getInputStream();
