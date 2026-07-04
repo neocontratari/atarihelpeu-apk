@@ -219,41 +219,58 @@ public class MainActivity extends Activity {
         }
     }
 
+    private String ps1CleanBiosName(String name) {
+        if (name == null) name = "bios.bin";
+        return name.toLowerCase(Locale.US).replaceAll("[^a-z0-9._-]", "_");
+    }
+
+    private void ps1WriteBytes(File f, byte[] data) throws IOException {
+        FileOutputStream fo = new FileOutputStream(f);
+        try { fo.write(data); } finally { fo.close(); }
+    }
+
+    private String ps1WriteBiosAliases(File dir, String clean, byte[] data) throws IOException {
+        if (dir == null || clean == null || data == null || data.length != 524288) return "";
+        String alias = "";
+        String compact = clean.replace("-", "").replace("_", "");
+        String canonical = null;
+        if (compact.matches("scph[0-9a-z]+\\.bin")) canonical = compact;
+        else if ("psxonpsp660.bin".equals(clean) || "psxonpsp660.bin".equals(compact)) canonical = "PSXONPSP660.bin";
+        else if (clean.contains("5500")) canonical = "scph5500.bin";
+        else if (clean.contains("5501")) canonical = "scph5501.bin";
+        else if (clean.contains("5502")) canonical = "scph5502.bin";
+        else if (clean.contains("1001")) canonical = "scph1001.bin";
+        else if (clean.contains("7502")) canonical = "scph7502.bin";
+        else if (clean.contains("7001")) canonical = "scph7001.bin";
+        else if (clean.contains("7003")) canonical = "scph7003.bin";
+
+        if (canonical != null && !canonical.equals(clean)) {
+            File cf = new File(dir, canonical);
+            ps1WriteBytes(cf, data);
+            alias += " alias=" + cf.getAbsolutePath();
+        } else if (canonical == null && !clean.matches("scph[0-9a-z]+\\.bin")) {
+            File cf = new File(dir, "scph5501.bin");
+            ps1WriteBytes(cf, data);
+            alias += " alias=" + cf.getAbsolutePath();
+        }
+        return alias;
+    }
+
     public class AHPS1 {
         @JavascriptInterface
         public String ps1CoreInfo() { return NativePs1CoreBridge.coreInfoSafe(); }
-        // BUILD2SA2: ulozi BIOS (512KB base64 zvladne) do systemove slozky jadra
+        // BUILD2SA2/SA5P: ulozi BIOS .bin do systemove slozky jadra, pokud ho uzivatel sam vybere.
         @JavascriptInterface
         public String ps1SaveBios(String name, String b64) {
             try {
                 if (name == null || b64 == null) return "PS1_BIOS_SAVE_FAIL empty";
                 java.io.File dir = new java.io.File(getFilesDir(), "ps1_system");
                 if (!dir.exists() && !dir.mkdirs()) return "PS1_BIOS_SAVE_FAIL mkdir";
-                String clean = name.toLowerCase().replaceAll("[^a-z0-9._-]", "_");
-                java.io.File f = new java.io.File(dir, clean);
+                String clean = ps1CleanBiosName(name);
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
-                java.io.FileOutputStream fo = new java.io.FileOutputStream(f);
-                fo.write(data); fo.close();
-                String alias = "";
-                if (data.length == 524288) {
-                    String compact = clean.replace("-", "").replace("_", "");
-                    if (compact.matches("scph[0-9a-z]+\\.bin") && !compact.equals(clean)) {
-                        java.io.File canonical = new java.io.File(dir, compact);
-                        java.io.FileOutputStream co = new java.io.FileOutputStream(canonical);
-                        co.write(data); co.close();
-                        alias += " alias=" + canonical.getAbsolutePath();
-                    } else if ("psxonpsp660.bin".equals(clean)) {
-                        java.io.File canonical = new java.io.File(dir, "PSXONPSP660.bin");
-                        java.io.FileOutputStream co = new java.io.FileOutputStream(canonical);
-                        co.write(data); co.close();
-                        alias += " alias=" + canonical.getAbsolutePath();
-                    } else if (!clean.matches("scph[0-9a-z]+\\.bin")) {
-                        java.io.File canonical = new java.io.File(dir, "scph5501.bin");
-                        java.io.FileOutputStream co = new java.io.FileOutputStream(canonical);
-                        co.write(data); co.close();
-                        alias += " alias=" + canonical.getAbsolutePath();
-                    }
-                }
+                java.io.File f = new java.io.File(dir, clean);
+                ps1WriteBytes(f, data);
+                String alias = ps1WriteBiosAliases(dir, clean, data);
                 return "PS1_BIOS_SAVED path=" + f.getAbsolutePath() + alias + " bytes=" + data.length;
             } catch (Throwable t) { return "PS1_BIOS_SAVE_FAIL " + t.getMessage(); }
         }

@@ -145,6 +145,7 @@ function findAscii(u8,needle,from,to){
   return -1;
 }
 function readAscii(u8,off,len){var out='';for(var i=off;i<Math.min(off+len,u8.length);i++){var c=u8[i];if(c<32||c>126)break;out+=String.fromCharCode(c);}return out;}
+function bytesToB64(bytes){var chunk=0x8000,parts=[];for(var i=0;i<bytes.length;i+=chunk){parts.push(String.fromCharCode.apply(null,bytes.subarray(i,i+chunk)));}return btoa(parts.join(''));}
 function regionWord(ch){return ch==='A'?'USA/NTSC-U':ch==='J'?'JAPAN/NTSC-J':ch==='E'?'EUROPE/PAL':('? ('+ch+')');}
 function analyzeBios(u8,name){
   var vOff=findAscii(u8,'System ROM Version',0x7F000,u8.length);
@@ -183,8 +184,8 @@ function analyzeFile(f,reason){
   log('FILE_SELECTED reason='+reason+' name='+f.name+' size='+f.size);
   var lower=(f.name||'').toLowerCase();
   if(lower.slice(-3)==='.7z'||lower.slice(-4)==='.zip'||lower.slice(-4)==='.rar'){
-    toast('ARCHIV ('+f.name+'): napred rozbal v pocitaci/telefonu a vyber rozbaleny .bin/.iso',5200);
-    log('ARCHIVE_NOT_SUPPORTED name='+f.name+' - 7z/zip/rar nejde cist primo, vyber rozbaleny .bin');
+    toast('ARCHIV ('+f.name+'): PS1 hru vyber rozbalenou jako .bin/.iso/.img',5200);
+    log('ARCHIVE_NOT_SUPPORTED name='+f.name+' - archiv nerozbaluju primo v appce');
     return;
   }
   if(lower.slice(-4)==='.cue'||f.size<4096&&lower.slice(-4)!=='.bin'){
@@ -209,7 +210,7 @@ function analyzeFile(f,reason){
       var res=null;
       if(isBiosSize){res=analyzeBios(u8,f.name);
         if(res&&window.AHPS1&&window.AHPS1.ps1SaveBios){
-          try{var b64=(function(bytes){var chunk=0x8000,parts=[];for(var i=0;i<bytes.length;i+=chunk){parts.push(String.fromCharCode.apply(null,bytes.subarray(i,i+chunk)));}return btoa(parts.join(''));})(u8);
+          try{var b64=bytesToB64(u8);
             log('PS1_BIOS_SAVE '+window.AHPS1.ps1SaveBios(f.name,b64));
           }catch(be){log('PS1_BIOS_SAVE_ERROR '+(be&&be.message));}
         }}
@@ -224,7 +225,7 @@ function analyzeFile(f,reason){
 }
 function openPicker(reason){
   var lastGame='';try{lastGame=localStorage.getItem('napPs1LastGame')||'';}catch(_){ }
-  toast(reason+': vyber PS1 soubor (.bin/.iso/.img hra, .cue obsah, BIOS .bin)'+(lastGame?(' | posledni: '+lastGame):''),2800);
+  toast(reason+': vyber PS1 hru (.bin/.iso/.img, pripadne .cue obsah)'+(lastGame?(' | posledni: '+lastGame):''),2800);
   var i=$('fileInput');if(i){try{i.value='';}catch(_){} i.__napReason=reason; i.click();}
 }
 var ps1Down={};
@@ -468,7 +469,7 @@ $('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
-log(BUILD+' ready: PS1 audio rollback 384f pull + async CD + BIOS audit + lower thumb L1/L2/R1/R2 + request brake + internal game bridge aktivni.');
+log(BUILD+' ready: PS1 audio rollback 384f pull + async CD + passive BIOS audit + lower thumb L1/L2/R1/R2 + request brake + internal game bridge aktivni.');
 })();
 </script>
 </body>
