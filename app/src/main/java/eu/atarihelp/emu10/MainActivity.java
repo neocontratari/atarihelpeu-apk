@@ -600,6 +600,14 @@ public class MainActivity extends Activity {
         return u.length() > 96 ? u.substring(0, 96) : u;
     }
 
+    private static class FetchResult {
+        byte[] data;
+        String contentType;
+        String contentDisposition;
+        String via;
+        int relayMode = -1;
+    }
+
     private boolean isAtariHelpUrl(String url) {
         if (url == null) return false;
         String u = url.trim().toLowerCase(Locale.US);
@@ -615,9 +623,25 @@ public class MainActivity extends Activity {
         }
     }
 
+    private boolean isProviderBlockedUrl(String url) {
+        if (url == null) return false;
+        String u = url.trim().toLowerCase(Locale.US);
+        if (!(u.startsWith("http://") || u.startsWith("https://"))) return false;
+        try {
+            Uri uri = Uri.parse(url);
+            String host = uri.getHost();
+            if (host == null) return false;
+            host = host.toLowerCase(Locale.US);
+            return host.equals("atarihelp.eu") || host.equals("www.atarihelp.eu") || host.endsWith(".atarihelp.eu")
+                    || host.equals("vedos.cz") || host.equals("www.vedos.cz") || host.endsWith(".vedos.cz");
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
     private void applyWebViewVisualMode(String url, String reason) {
         if (web == null) return;
-        boolean normalWeb = isAtariHelpUrl(url);
+        boolean normalWeb = isProviderBlockedUrl(url);
         try { web.setBackgroundColor(normalWeb ? Color.WHITE : Color.TRANSPARENT); } catch (Throwable ignored) {}
         try { if (rootFrame != null) rootFrame.setBackgroundColor(normalWeb ? Color.WHITE : Color.BLACK); } catch (Throwable ignored) {}
         try { web.setLayerType(normalWeb ? View.LAYER_TYPE_NONE : View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
@@ -625,6 +649,10 @@ public class MainActivity extends Activity {
     }
 
     private synchronized boolean markAtariHelpRequestAllowed(String url, String reason) {
+        if (isProviderBlockedUrl(url)) {
+            appendNativeLog("BUILD2SA5S PROVIDER_RELAY_REQUEST reason=" + reason + " url=" + compactUrl(url));
+            return true;
+        }
         if (!isAtariHelpUrl(url)) return true;
         long now = System.currentTimeMillis();
         if (atariHelpBlockedUntilMs > now) {
@@ -647,9 +675,230 @@ public class MainActivity extends Activity {
 
     private void loadAtariHelpGuarded(String url, String reason) {
         if (web == null || url == null) return;
+        if (isProviderBlockedUrl(url)) {
+            applyWebViewVisualMode(url, "relayLoad");
+            appendNativeLog("BUILD2SA5S ATARIHELP_RELAY_LOAD reason=" + reason + " url=" + compactUrl(url));
+            web.loadUrl(url);
+            return;
+        }
         if (!markAtariHelpRequestAllowed(url, reason)) return;
         applyWebViewVisualMode(url, reason);
         web.loadUrl(url);
+    }
+
+    private String providerRelayUrl(String url, int mode) throws IOException {
+        String enc = java.net.URLEncoder.encode(url, "UTF-8");
+        if (mode == 0) return "https://proxy.cors.sh/" + url; // BUILD2SA5S: tested HTML + binary ZIP relay.
+        if (mode == 1) return "https://api.allorigins.win/raw?url=" + enc;
+        if (mode == 2) return "https://corsproxy.io/?url=" + enc;
+        return "https://r.jina.ai/" + url; // Reader fallback: pages only, not binary downloads.
+    }
+
+    private FetchResult fetchViaProviderRelay(String url, int maxBytes, boolean allowReader, String reason) throws IOException {
+        IOException last = null;
+        int attempts = allowReader ? 4 : 3;
+        for (int i = 0; i < attempts; i++) {
+            String relay = providerRelayUrl(url, i);
+            HttpURLConnection c = null;
+            try {
+                c = (HttpURLConnection) new URL(relay).openConnection();
+                c.setInstanceFollowRedirects(true);
+                c.setConnectTimeout(18000);
+                c.setReadTimeout(50000);
+                try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
+                try { c.setRequestProperty("Accept", "*/*"); } catch (Throwable ignored) {}
+                if (i == 0) {
+                    try { c.setRequestProperty("Origin", "https://atarihelp.eu"); } catch (Throwable ignored) {}
+                    try { c.setRequestProperty("Referer", "https://atarihelp.eu/"); } catch (Throwable ignored) {}
+                }
+                int code = c.getResponseCode();
+                if (code < 200 || code >= 400) throw new IOException("relay HTTP " + code + " via=" + relay);
+                FetchResult out = new FetchResult();
+                out.data = readStreamLimited(c.getInputStream(), maxBytes);
+                out.contentType = c.getContentType();
+                out.contentDisposition = c.getHeaderField("Content-Disposition");
+                out.via = relay;
+                out.relayMode = i;
+                if (out.data == null || out.data.length == 0) throw new IOException("relay empty via=" + relay);
+                appendNativeLog("BUILD2SA5S PROVIDER_RELAY_OK reason=" + reason + " mode=" + i + " bytes=" + out.data.length + " via=" + compactUrl(relay) + " target=" + compactUrl(url));
+                return out;
+            } catch (IOException ex) {
+                last = ex;
+                appendNativeLog("BUILD2SA5S PROVIDER_RELAY_FAIL reason=" + reason + " try=" + i + " err=" + safeMsg(ex) + " target=" + compactUrl(url));
+            } finally {
+                try { if (c != null) c.disconnect(); } catch (Throwable ignored) {}
+            }
+        }
+        throw last == null ? new IOException("relay failed") : last;
+    }
+
+    private FetchResult fetchUrlBytes(String url, int maxBytes, String reason, boolean allowReader) throws IOException {
+        if (isProviderBlockedUrl(url)) return fetchViaProviderRelay(url, maxBytes, allowReader, reason);
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setInstanceFollowRedirects(true);
+        configureGameHttpConnection(c, url);
+        c.connect();
+        int code = c.getResponseCode();
+        if (code < 200 || code >= 400) throw new IOException("HTTP " + code + " " + c.getResponseMessage());
+        FetchResult out = new FetchResult();
+        out.data = readStreamLimited(c.getInputStream(), maxBytes);
+        out.contentType = c.getContentType();
+        out.contentDisposition = c.getHeaderField("Content-Disposition");
+        out.via = url;
+        try { c.disconnect(); } catch (Throwable ignored) {}
+        return out;
+    }
+
+    private byte[] readStreamLimited(InputStream in, int maxBytes) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buf = new byte[16384];
+        int n;
+        while ((n = in.read(buf)) > 0 && bos.size() < maxBytes) {
+            int take = Math.min(n, maxBytes - bos.size());
+            if (take > 0) bos.write(buf, 0, take);
+            if (take < n) break;
+        }
+        try { in.close(); } catch (Throwable ignored) {}
+        return bos.toByteArray();
+    }
+
+    private String responseMime(String url, String contentType, boolean mainFrame) {
+        if (contentType != null) {
+            int semi = contentType.indexOf(';');
+            String mime = (semi >= 0 ? contentType.substring(0, semi) : contentType).trim();
+            if (mime.length() > 0) return mime;
+        }
+        String guess = null;
+        try { guess = java.net.URLConnection.guessContentTypeFromName(Uri.parse(url).getPath()); } catch (Throwable ignored) {}
+        if (guess != null && guess.length() > 0) return guess;
+        return mainFrame ? "text/html" : "application/octet-stream";
+    }
+
+    private WebResourceResponse interceptProviderBlockedResource(String url, boolean mainFrame) {
+        if (!isProviderBlockedUrl(url)) return null;
+        try {
+            FetchResult r = fetchViaProviderRelay(url, mainFrame ? 4 * 1024 * 1024 : 12 * 1024 * 1024, mainFrame, mainFrame ? "webMain" : "webResource");
+            if (mainFrame && r.relayMode == 3) {
+                byte[] html = renderReaderRelayHtml(url, r.data);
+                return new WebResourceResponse("text/html", "UTF-8", new java.io.ByteArrayInputStream(html));
+            }
+            String mime = responseMime(url, r.contentType, mainFrame);
+            String enc = (mime.startsWith("text/") || mime.contains("javascript") || mime.contains("json") || mime.contains("xml")) ? "UTF-8" : null;
+            return new WebResourceResponse(mime, enc, new java.io.ByteArrayInputStream(r.data));
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA5S PROVIDER_INTERCEPT_FAIL main=" + mainFrame + " err=" + safeMsg(t) + " url=" + compactUrl(url));
+            return null;
+        }
+    }
+
+    private byte[] renderReaderRelayHtml(String url, byte[] data) throws IOException {
+        String md = new String(data, "UTF-8");
+        StringBuilder b = new StringBuilder();
+        b.append("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>")
+                .append("<style>body{background:#fff;color:#111;font:16px/1.45 sans-serif;margin:0;padding:18px}a{color:#0645ad;font-weight:700;text-decoration:none}.top{border-left:4px solid #111;background:#f2f2f2;padding:10px 12px;margin:0 0 14px}h1{font-size:22px;margin:8px 0 14px}.line{margin:8px 0}.bullet{padding-left:18px}.mono{font-family:monospace;white-space:pre-wrap}</style>")
+                .append("</head><body><div class='top'><b>AtariHelp relay reader</b><br>Provider cesta spadla, tahle stranka jde pres cteci relay. ZIP odkazy zustavaji klikatelne pro emulator.</div>");
+        b.append("<div class='line'><b>URL:</b> <span class='mono'>").append(escapeHtml(url)).append("</span></div>");
+        String[] lines = md.split("\\r?\\n");
+        boolean inBody = false;
+        for (String raw : lines) {
+            String line = raw == null ? "" : raw;
+            String trim = line.trim();
+            if (trim.length() == 0) continue;
+            if (trim.equals("Markdown Content:")) { inBody = true; continue; }
+            if (trim.startsWith("Title: ")) {
+                b.append("<h1>").append(escapeHtml(trim.substring(7))).append("</h1>");
+                continue;
+            }
+            if (trim.startsWith("URL Source:")) continue;
+            if (trim.startsWith("URL Source")) continue;
+            if (!inBody && trim.startsWith("Markdown Content")) continue;
+            if (trim.startsWith("*")) {
+                b.append("<div class='line bullet'>").append(markdownLinksToHtml(trim.replaceFirst("^\\*+\\s*", ""))).append("</div>");
+            } else if (trim.startsWith("#")) {
+                b.append("<h1>").append(markdownLinksToHtml(trim.replaceFirst("^#+\\s*", ""))).append("</h1>");
+            } else {
+                b.append("<div class='line'>").append(markdownLinksToHtml(trim)).append("</div>");
+            }
+        }
+        b.append("</body></html>");
+        return b.toString().getBytes("UTF-8");
+    }
+
+    private String markdownLinksToHtml(String s) {
+        if (s == null) return "";
+        StringBuilder out = new StringBuilder();
+        int pos = 0;
+        while (pos < s.length()) {
+            int a = s.indexOf('[', pos);
+            if (a < 0) {
+                out.append(linkifyPlainUrls(escapeHtml(s.substring(pos))));
+                break;
+            }
+            int b = s.indexOf("](", a);
+            int c = b < 0 ? -1 : s.indexOf(')', b + 2);
+            if (b < 0 || c < 0) {
+                out.append(linkifyPlainUrls(escapeHtml(s.substring(pos))));
+                break;
+            }
+            out.append(linkifyPlainUrls(escapeHtml(s.substring(pos, a))));
+            String label = s.substring(a + 1, b);
+            String href = s.substring(b + 2, c);
+            out.append("<a href='").append(escapeHtml(href)).append("'>").append(escapeHtml(label)).append("</a>");
+            pos = c + 1;
+        }
+        return out.toString();
+    }
+
+    private String linkifyPlainUrls(String escaped) {
+        if (escaped == null || escaped.indexOf("http") < 0) return escaped == null ? "" : escaped;
+        StringBuilder out = new StringBuilder();
+        int pos = 0;
+        while (pos < escaped.length()) {
+            int h1 = escaped.indexOf("https://", pos);
+            int h2 = escaped.indexOf("http://", pos);
+            int h;
+            if (h1 < 0) h = h2;
+            else if (h2 < 0) h = h1;
+            else h = Math.min(h1, h2);
+            if (h < 0) {
+                out.append(escaped.substring(pos));
+                break;
+            }
+            out.append(escaped.substring(pos, h));
+            int e = h;
+            while (e < escaped.length()) {
+                char ch = escaped.charAt(e);
+                if (ch <= ' ' || ch == '&' || ch == '<' || ch == '>' || ch == '\'' || ch == '"') break;
+                e++;
+            }
+            String href = escaped.substring(h, e);
+            out.append("<a href='").append(href).append("'>").append(href).append("</a>");
+            pos = e;
+        }
+        return out.toString();
+    }
+
+    private void showAtariHelpProviderBridge(final String url, final String reason, final String detail) {
+        Runnable r = () -> {
+            if (web == null) return;
+            applyWebViewVisualMode(url, "providerBridge");
+            String html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                    + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px;margin:0 0 12px}.box{padding:12px;border-left:4px solid #111;background:#f3f3f3;margin:12px 0}.warn{border-left-color:#b80;background:#fff7e6}.btn{display:block;margin:10px 0;padding:12px 14px;border:1px solid #111;border-radius:6px;background:#111;color:#fff;text-decoration:none;text-align:center;font-weight:700}.alt{background:#fff;color:#111}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #777;border-radius:6px;font:16px sans-serif}code{word-break:break-all}</style></head>"
+                    + "<body><h1>AtariHelp lokalni bridge</h1>"
+                    + "<div class='box warn'>Provider blokuje nebo zavira spojeni na AtariHelp/WEDOS. Appka proto tuhle domenu automaticky nenacita a neopakuje pozadavky.</div>"
+                    + "<p><b>Puvodni URL:</b> <code>" + escapeHtml(url) + "</code></p>"
+                    + "<p><b>Duvod:</b> <code>" + escapeHtml(reason) + " / " + escapeHtml(detail) + "</code></p>"
+                    + "<a class='btn' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat hru z telefonu</a>"
+                    + "<a class='btn alt' href='file:///android_asset/index.html'>Zpet do aplikace</a>"
+                    + "<div class='box'><b>Primy neblokovany odkaz</b><br><p>Sem jde vlozit odkaz na ZIP/XEX/ATR/GEN z jineho hostingu nebo mirroru.</p>"
+                    + "<input id='u' placeholder='https://mirror.example/hra.zip'>"
+                    + "<a class='btn' href='#' onclick='var u=document.getElementById(\"u\").value;if(u){try{AHNET.runGameUrl(u);}catch(e){location.href=u;}}return false;'>Spustit z odkazu</a></div>"
+                    + "<p>Tahle obrazovka je uvnitr APK, takze neni zavisla na providerovi ani na tom, jestli AtariHelp/WEDOS zrovna projde.</p>"
+                    + "</body></html>";
+            try { web.loadDataWithBaseURL("file:///android_asset/atarihelp_bridge.html", html, "text/html", "UTF-8", null); } catch (Throwable ignored) {}
+            appendNativeLog("BUILD2SA5Q ATARIHELP_PROVIDER_BRIDGE reason=" + reason + " detail=" + detail + " url=" + compactUrl(url));
+        };
+        if (isUiThread()) r.run(); else ui.post(r);
     }
 
     private void showAtariHelpSafetyStop(final String url, final String reason, final long waitMs) {
@@ -672,28 +921,8 @@ public class MainActivity extends Activity {
     }
 
     private void showAtariHelpLoadError(String url, String detail) {
-        if (!isAtariHelpUrl(url) || web == null) return;
-        long now = System.currentTimeMillis();
-        atariHelpBlockedUntilMs = Math.max(atariHelpBlockedUntilMs, now + ATARIHELP_FAIL_COOLDOWN_MS);
-        applyWebViewVisualMode(url, "loadError");
-        String httpsUrl = url == null ? "https://atarihelp.eu/?page_id=207" : url.replace("http://", "https://");
-        String httpUrl = url == null ? "http://atarihelp.eu/?page_id=207" : url.replace("https://", "http://");
-        String html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-                + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px}code{word-break:break-all}.btn{display:block;margin:10px 0;padding:12px 14px;border:1px solid #111;border-radius:6px;background:#111;color:#fff;text-decoration:none;text-align:center;font-weight:700}.alt{background:#fff;color:#111}.warn{padding:10px;border-left:4px solid #b80;background:#fff7e6}</style></head>"
-                + "<body><h1>AtariHelp WebView nenacetl stranku</h1>"
-                + "<p>App bridge zustal aktivni, ale Android/Nox nedostal stranku z hostingu.</p>"
-                + "<p><b>URL:</b> <code>" + escapeHtml(url) + "</code></p>"
-                + "<p><b>Chyba:</b> <code>" + escapeHtml(detail) + "</code></p>"
-                + "<div class='warn'>Stejna chyba je i v Nox browseru. To znamena blokaci hostingu/TLS/WEDOS ochrany pro Android/Nox, ne chybu ZIP loaderu.</div>"
-                + "<div class='warn'>Bezpecnostni brzda: appka ted 15 minut nebude automaticky opakovat requesty na AtariHelp.</div>"
-                + "<a class='btn' href='#' onclick='try{AHNET.openGames();}catch(e){}return false;'>Zkusit znovu pozdeji</a>"
-                + "<a class='btn alt' href='#' onclick='try{AHNET.openInBrowser(" + jsQuote(httpsUrl) + ");}catch(e){}return false;'>Otevrit HTTPS v externim browseru</a>"
-                + "<a class='btn alt' href='#' onclick='try{AHNET.openInBrowser(" + jsQuote(httpUrl) + ");}catch(e){}return false;'>Otevrit HTTP v externim browseru</a>"
-                + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat ZIP z telefonu</a>"
-                + "<p>Trvale reseni: ve WEDOS/hostingu povolit Android WebView/Nox nebo presunout ZIPy na neblokovany subdomain/mirror.</p>"
-                + "</body></html>";
-        try { web.loadDataWithBaseURL("about:blank", html, "text/html", "UTF-8", null); } catch (Throwable ignored) {}
-        appendNativeLog("BUILD2SA5M ATARIHELP_LOAD_ERROR_COOLDOWN url=" + compactUrl(url) + " detail=" + detail);
+        if (!isProviderBlockedUrl(url) || web == null) return;
+        showAtariHelpProviderBridge(url, "loadError", detail);
     }
 
     private void configureGameHttpConnection(HttpURLConnection c, String url) {
@@ -1430,6 +1659,10 @@ public class MainActivity extends Activity {
 
     private boolean openRawExternalBrowserUrl(String url) {
         if (url == null || url.trim().length() == 0) return false;
+        if (isProviderBlockedUrl(url)) {
+            loadAtariHelpGuarded(url, "openBrowserRelay");
+            return true;
+        }
         try {
             Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             i.addCategory(Intent.CATEGORY_BROWSABLE);
@@ -1516,7 +1749,7 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView v, String url) {
                 if (openExternalBrowserUrl(url)) return true;
                 if (handleMaybeGameUrl(url)) return true;
-                if (isAtariHelpUrl(url)) { loadAtariHelpGuarded(url, "navigation"); return true; }
+                if (isProviderBlockedUrl(url)) return false;
                 return false;
             }
             @Override
@@ -1525,7 +1758,7 @@ public class MainActivity extends Activity {
                     String url = request.getUrl().toString();
                     if (openExternalBrowserUrl(url)) return true;
                     if (handleMaybeGameUrl(url)) return true;
-                    if (isAtariHelpUrl(url)) { loadAtariHelpGuarded(url, "navigation"); return true; }
+                    if (isProviderBlockedUrl(url)) return false;
                     return false;
                 }
                 return false;
@@ -1542,6 +1775,19 @@ public class MainActivity extends Activity {
                 if (url != null && url.toLowerCase().contains("atarihelp.eu")) {
                     injectGameLinkBridge();
                 }
+            }
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView v, String url) {
+                WebResourceResponse rr = interceptProviderBlockedResource(url, false);
+                return rr != null ? rr : super.shouldInterceptRequest(v, url);
+            }
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest request) {
+                if (Build.VERSION.SDK_INT >= 21 && request != null && request.getUrl() != null) {
+                    WebResourceResponse rr = interceptProviderBlockedResource(request.getUrl().toString(), request.isForMainFrame());
+                    if (rr != null) return rr;
+                }
+                return super.shouldInterceptRequest(v, request);
             }
             @Override
             public void onReceivedError(WebView v, int errorCode, String description, String failingUrl) {
@@ -1562,7 +1808,7 @@ public class MainActivity extends Activity {
             @Override
             public void onReceivedHttpError(WebView v, WebResourceRequest request, WebResourceResponse errorResponse) {
                 super.onReceivedHttpError(v, request, errorResponse);
-                if (Build.VERSION.SDK_INT >= 21 && request != null && request.isForMainFrame() && request.getUrl() != null && isAtariHelpUrl(request.getUrl().toString())) {
+                if (Build.VERSION.SDK_INT >= 21 && request != null && request.isForMainFrame() && request.getUrl() != null && isProviderBlockedUrl(request.getUrl().toString())) {
                     int code = errorResponse == null ? 0 : errorResponse.getStatusCode();
                     String reason = errorResponse == null ? "" : errorResponse.getReasonPhrase();
                     if (code >= 400) showAtariHelpLoadError(request.getUrl().toString(), "HTTP " + code + " " + reason);
@@ -1573,6 +1819,8 @@ public class MainActivity extends Activity {
             if (openExternalBrowserUrl(url)) return;
             if (isGameUrl(url, contentDisposition, mimetype)) {
                 downloadAndRun(url);
+            } else if (isProviderBlockedUrl(url)) {
+                loadAtariHelpGuarded(url, "downloadListenerPageRelay");
             } else {
                 try {
                     Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
@@ -1686,20 +1934,11 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             try {
                 if (!markAtariHelpRequestAllowed(url, "downloadSega")) return;
-                HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-                c.setInstanceFollowRedirects(true);
-                configureGameHttpConnection(c, url);
-                c.connect();
-                final String cdName = c.getHeaderField("Content-Disposition");
-                InputStream in = c.getInputStream();
-                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                byte[] buf = new byte[16384];
-                int n;
-                while ((n = in.read(buf)) > 0 && bos.size() < 16 * 1024 * 1024) bos.write(buf, 0, n);
-                in.close();
-                final byte[] dataArr = bos.toByteArray();
+                FetchResult fetched = fetchUrlBytes(url, 16 * 1024 * 1024, "downloadSega", false);
+                final String cdName = fetched.contentDisposition;
+                final byte[] dataArr = fetched.data;
                 final String name = guessDownloadName(url, cdName);
-                appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_DOWNLOADED name=" + name + " bytes=" + dataArr.length);
+                appendNativeLog("BUILD2SA5S SEGA_WEB_ROM_DOWNLOADED name=" + name + " bytes=" + dataArr.length + " via=" + compactUrl(fetched.via));
                 ui.post(() -> {
                     pendingSegaGame = dataArr;
                     pendingSegaName = name;
@@ -1851,6 +2090,53 @@ public class MainActivity extends Activity {
             pendingSegaGame = null; pendingSegaName = null;
         } catch (Throwable t) { appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_INJECT_FAIL " + t.getMessage()); }
     }
+
+    private void runLocalPickedGame(String name, byte[] data) {
+        if (name == null) name = "local_game.zip";
+        if (data == null) return;
+        if (hasSegaExtension(name)) {
+            pendingSegaGame = data;
+            pendingSegaName = name;
+            String cur = web == null ? null : web.getUrl();
+            if (cur != null && cur.startsWith(SEGA_URL)) injectPendingSegaGame();
+            else { web.loadUrl(SEGA_URL); web.postDelayed(MainActivity.this::injectPendingSegaGame, 1800); }
+            appendNativeLog("BUILD2SA5Q LOCAL_PICK_SEGA name=" + name + " bytes=" + data.length);
+            return;
+        }
+        try {
+            java.util.zip.ZipInputStream zi = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
+            java.util.zip.ZipEntry ze;
+            while ((ze = zi.getNextEntry()) != null) {
+                String en = ze.getName() == null ? "" : ze.getName();
+                if (hasSegaExtension(en)) {
+                    ByteArrayOutputStream ro = new ByteArrayOutputStream();
+                    byte[] rb = new byte[16384]; int rn;
+                    while ((rn = zi.read(rb)) > 0 && ro.size() < 16 * 1024 * 1024) ro.write(rb, 0, rn);
+                    pendingSegaGame = ro.toByteArray();
+                    int sl = en.lastIndexOf('/');
+                    pendingSegaName = sl >= 0 ? en.substring(sl + 1) : en;
+                    zi.close();
+                    String cur = web == null ? null : web.getUrl();
+                    if (cur != null && cur.startsWith(SEGA_URL)) injectPendingSegaGame();
+                    else { web.loadUrl(SEGA_URL); web.postDelayed(MainActivity.this::injectPendingSegaGame, 1800); }
+                    appendNativeLog("BUILD2SA5Q LOCAL_PICK_ZIP_CONTAINS_SEGA name=" + pendingSegaName + " bytes=" + pendingSegaGame.length);
+                    return;
+                }
+                zi.closeEntry();
+            }
+            zi.close();
+        } catch (Throwable ignored) {}
+        String cur = web == null ? null : web.getUrl();
+        if (cur != null && cur.startsWith(EMU_URL)) {
+            injectGame(name, data);
+        } else {
+            pendingGame = data;
+            pendingName = name;
+            web.loadUrl(EMU_URL + "?autorun=1");
+        }
+        appendNativeLog("BUILD2SA5Q LOCAL_PICK_ATARI name=" + name + " bytes=" + data.length);
+    }
+
     private boolean handleMaybeGameUrl(String url) {
         if (openExternalBrowserUrl(url)) return true;
         if (hasSegaExtension(url)) { downloadAndRunSega(url); return true; } // BUILD2SA2: Sega ma prednost
@@ -1898,19 +2184,11 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             try {
                 if (!markAtariHelpRequestAllowed(url, "downloadGame")) return;
-                HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-                c.setInstanceFollowRedirects(true);
-                configureGameHttpConnection(c, url);
-                c.connect();
-                final String cdName = c.getHeaderField("Content-Disposition");
-                InputStream in = c.getInputStream();
-                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                byte[] buf = new byte[16384];
-                int n;
-                while ((n = in.read(buf)) > 0 && bos.size() < 8 * 1024 * 1024) bos.write(buf, 0, n);
-                in.close();
-                final byte[] data = bos.toByteArray();
+                FetchResult fetched = fetchUrlBytes(url, 8 * 1024 * 1024, "downloadGame", false);
+                final String cdName = fetched.contentDisposition;
+                final byte[] data = fetched.data;
                 final String name = guessDownloadName(url, cdName);
+                appendNativeLog("BUILD2SA5S WEB_GAME_DOWNLOADED name=" + name + " bytes=" + data.length + " via=" + compactUrl(fetched.via));
                 // BUILD2SA2B: Reneho web umi hostovat jen ZIPy. Kouknem DOVNITR zipu:
                 // kdyz je uvnitr Sega ROM (.gen/.md/.smd/.sms), rozbalime a posleme
                 // do EMU SEGA. Jinak jede stara Atari cesta beze zmeny.
@@ -2136,7 +2414,7 @@ public class MainActivity extends Activity {
                         byte[] bytes = readUriBytes(uri, max);
                         if ("audio".equals(pendingBridgeKind)) injectAudio(name, bytes);
                         else if ("text".equals(pendingBridgeKind)) injectText(name, bytes);
-                        else injectGame(name, bytes);
+                        else runLocalPickedGame(name, bytes);
                     }
                 } catch (Exception e) {
                     web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote(e.getMessage()) + ")", null);
