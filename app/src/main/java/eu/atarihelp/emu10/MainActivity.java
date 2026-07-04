@@ -224,7 +224,14 @@ public class MainActivity extends Activity {
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
                 java.io.FileOutputStream fo = new java.io.FileOutputStream(f);
                 fo.write(data); fo.close();
-                return "PS1_BIOS_SAVED path=" + f.getAbsolutePath() + " bytes=" + data.length;
+                String alias = "";
+                if (data.length == 524288 && !clean.matches("scph[0-9a-z]+\\.bin")) {
+                    java.io.File canonical = new java.io.File(dir, "scph5501.bin");
+                    java.io.FileOutputStream co = new java.io.FileOutputStream(canonical);
+                    co.write(data); co.close();
+                    alias = " alias=" + canonical.getAbsolutePath();
+                }
+                return "PS1_BIOS_SAVED path=" + f.getAbsolutePath() + alias + " bytes=" + data.length;
             } catch (Throwable t) { return "PS1_BIOS_SAVE_FAIL " + t.getMessage(); }
         }
         // BUILD2SA2: nativni vyber hry -> fd -> /proc/self/fd (700MB bez kopirovani)
@@ -1453,7 +1460,7 @@ public class MainActivity extends Activity {
             }
         }).start();
     }
-    // BUILD2SA3/SA5G: PS1 zvuk - dedikovane vlakno, Sega-style S8 reservoir,
+    // BUILD2SA3/SA5H: PS1 zvuk - dedikovane vlakno, Sega-style 384f chunks,
     // retry misto okamziteho ticha, generation guard a hard release pri prepnuti.
     private synchronized void startPs1Audio() {
         stopPs1Audio(); // BUILD2SA3B: pred novou hrou zabit stare vlakno a uvolnit stary AudioTrack
@@ -1464,7 +1471,7 @@ public class MainActivity extends Activity {
                 try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO); } catch (Throwable ignored) {}
                 final int sampleRate = 44100;
                 final boolean s8NoStarve = (Build.VERSION.SDK_INT <= 28) || ((Build.MODEL == null ? "" : Build.MODEL).toUpperCase(Locale.US).contains("SM-G950"));
-                final int chunkFrames = 735;
+                final int chunkFrames = 384;
                 int min = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
                 int wantedFrames = s8NoStarve ? 8192 : Math.max(4096, chunkFrames * 8);
                 int bufBytes = Math.max(min > 0 ? (s8NoStarve ? min * 3 : min * 2) : 0, wantedFrames * 2 * 2);
@@ -1485,7 +1492,7 @@ public class MainActivity extends Activity {
                 ps1CurrentAudioTrack = at;
                 short[] buf = new short[chunkFrames * 2];
                 int prefillFrames = 0;
-                int prefillTarget = s8NoStarve ? chunkFrames * 8 : chunkFrames * 4;
+                int prefillTarget = s8NoStarve ? 6144 : 3072;
                 long prefillDeadline = System.currentTimeMillis() + (s8NoStarve ? 900 : 320);
                 while (gen == ps1AudioGen && prefillFrames < prefillTarget && System.currentTimeMillis() < prefillDeadline) {
                     int got = NativePs1CoreBridge.pullAudioSafe(buf, chunkFrames);
@@ -1499,7 +1506,7 @@ public class MainActivity extends Activity {
                 at.play();
                 int actualFrames = 0;
                 try { if (Build.VERSION.SDK_INT >= 23) actualFrames = at.getBufferSizeInFrames(); } catch (Throwable ignored) {}
-                appendNativeLog("BUILD2SA5G PS1_AUDIO_START gen=" + gen + " bufBytes=" + bufBytes + " minBytes=" + min + " setFrames=" + setFrames + " actualFrames=" + actualFrames + " prefillFrames=" + prefillFrames + " prefillTarget=" + prefillTarget + " gain=7/8 chunk=" + chunkFrames + " s8NoStarve=" + s8NoStarve + " retryNoSilence=ON");
+                appendNativeLog("BUILD2SA5H PS1_AUDIO_START gen=" + gen + " bufBytes=" + bufBytes + " minBytes=" + min + " setFrames=" + setFrames + " actualFrames=" + actualFrames + " prefillFrames=" + prefillFrames + " prefillTarget=" + prefillTarget + " gain=7/8 chunk=" + chunkFrames + " s8NoStarve=" + s8NoStarve + " retryNoSilence=ON biosLogo=REQUESTED");
                 int idle = 0;
                 int writes = 0;
                 int loops = 0;
@@ -1524,7 +1531,7 @@ public class MainActivity extends Activity {
                         if (writes <= 6 || writes % 240 == 0) {
                             int underruns = -1;
                             try { if (Build.VERSION.SDK_INT >= 24) underruns = at.getUnderrunCount(); } catch (Throwable ignored) {}
-                            appendNativeLog("BUILD2SA5G PS1_AUDIO_WRITE gen=" + gen + " gotFrames=" + got + " wroteShorts=" + wrote + " writes=" + writes + " loops=" + loops + " underrunLoops=" + underrunLoops + " underruns=" + underruns);
+                            appendNativeLog("BUILD2SA5H PS1_AUDIO_WRITE gen=" + gen + " gotFrames=" + got + " wroteShorts=" + wrote + " writes=" + writes + " loops=" + loops + " underrunLoops=" + underrunLoops + " underruns=" + underruns);
                         }
                     }
                     else {
@@ -1534,7 +1541,7 @@ public class MainActivity extends Activity {
                     }
                 }
             } catch (Throwable t) {
-                appendNativeLog("BUILD2SA5G PS1_AUDIO_ERROR " + t.getMessage());
+                appendNativeLog("BUILD2SA5H PS1_AUDIO_ERROR " + t.getMessage());
             } finally {
                 if (at != null) {
                     try { at.pause(); } catch (Throwable ignored) {}
@@ -1543,7 +1550,7 @@ public class MainActivity extends Activity {
                     try { at.release(); } catch (Throwable ignored) {}
                 }
                 if (ps1CurrentAudioTrack == at) ps1CurrentAudioTrack = null;
-                appendNativeLog("BUILD2SA5G PS1_AUDIO_STOP gen=" + gen + " current=" + ps1AudioGen);
+                appendNativeLog("BUILD2SA5H PS1_AUDIO_STOP gen=" + gen + " current=" + ps1AudioGen);
             }
         }, "nap-ps1-audio");
         ps1AudioThread.start();
@@ -1564,7 +1571,7 @@ public class MainActivity extends Activity {
             try { t.join(250); } catch (Throwable ignored) {}
         }
         if (ps1AudioThread == t) ps1AudioThread = null;
-        appendNativeLog("BUILD2SA5G PS1_AUDIO_STOP_REQUEST gen=" + gen + " hadTrack=" + (at != null));
+        appendNativeLog("BUILD2SA5H PS1_AUDIO_STOP_REQUEST gen=" + gen + " hadTrack=" + (at != null));
     }
     private int writePs1AudioTrack(AudioTrack at, short[] pcm, int shorts, int gen) {
         if (at == null || pcm == null || shorts <= 0) return 0;

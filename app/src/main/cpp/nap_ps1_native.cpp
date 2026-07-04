@@ -80,6 +80,14 @@ static void nap_retro_log(int level, const char *fmt, ...) {
   char buf[512]; va_list ap; va_start(ap, fmt); vsnprintf(buf, sizeof(buf), fmt, ap); va_end(ap);
   __android_log_print(ANDROID_LOG_INFO, "NAP_PS1_CORE", "[%d] %s", level, buf);
 }
+static const char *nap_core_option_value(const char *key) {
+  if (!key) return nullptr;
+  if (strcmp(key, "pcsx_rearmed_bios") == 0) return "auto";
+  if (strcmp(key, "pcsx_rearmed_show_bios_bootlogo") == 0) return "enabled";
+  if (strcmp(key, "pcsx_rearmed_region") == 0) return "auto";
+  if (strcmp(key, "pcsx_rearmed_drc") == 0) return "enabled";
+  return nullptr;
+}
 static bool nap_env(unsigned cmd, void *data) {
   switch (cmd) {
     case ENV_SET_PIXEL_FORMAT: { g_pixfmt.store(*(const int*)data); return true; }
@@ -87,7 +95,13 @@ static bool nap_env(unsigned cmd, void *data) {
     case ENV_GET_SAVE_DIRECTORY: { *(const char**)data = g_savedir.c_str(); return true; }
     case ENV_GET_CAN_DUPE: { *(bool*)data = true; return true; }
     case ENV_GET_LOG_INTERFACE: { ((retro_log_callback*)data)->log = nap_retro_log; return true; }
-    case ENV_GET_VARIABLE: { ((retro_variable*)data)->value = nullptr; return false; } // core defaults
+    case ENV_GET_VARIABLE: {
+      retro_variable *var = (retro_variable*)data;
+      const char *value = var ? nap_core_option_value(var->key) : nullptr;
+      if (!value) { if (var) var->value = nullptr; return false; }
+      var->value = value;
+      return true;
+    }
     case ENV_GET_VARIABLE_UPDATE: { *(bool*)data = false; return true; }
     default: return false;
   }
@@ -250,8 +264,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PullAudio(JNIEnv *env, jclass, js
     nap_audio_trim_locked(NAP_PS1_AFIFO_TARGET_FRAMES);
     have = g_afifo.size() / 2;
   }
-  const size_t requested = (size_t)frames;
-  const size_t minPull = requested > 64 ? requested - 16 : requested;
+  const size_t minPull = 128; // BUILD2SA5H: never drain 1-5 frame crumbs, but allow natural ~469 frame PS1 chunks.
   if (have < minPull) return 0;
   size_t n = have < (size_t)frames ? have : (size_t)frames;
   if (!n) return 0;
