@@ -29,6 +29,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #ps1Screen{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:auto;display:none;pointer-events:none;}
 .dpadVis,.psBtn{display:none;pointer-events:none;}
 #btnL1,#btnL2,#btnR1,#btnR2{display:none;}
+.dpadKnob{display:none;pointer-events:none;}
 .toast{position:absolute;left:5%;right:5%;bottom:3.8%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(120,200,255,.56);box-shadow:0 0 22px rgba(70,170,255,.18);color:#dff6ff;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
 .panel{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#dfeaff;}
@@ -47,13 +48,15 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #ps1Screen{object-fit:fill!important;}
  .hit{z-index:12;color:transparent;font-size:0;background:transparent;border:0;text-shadow:none;border-radius:0;}
  .hit:active{background:rgba(255,215,120,.08);box-shadow:0 0 18px rgba(255,220,120,.13) inset;border-radius:999px;}
- #padLeft{left:0;top:32%;width:35%;height:66%;}
+ #padLeft{left:0;top:24%;width:42%;height:74%;}
  #padRight{left:65%;top:32%;width:35%;height:66%;}
  #padLeft:active,#padRight:active{background:transparent;box-shadow:none;}
- #padLeft .dpadVis{display:block;position:absolute;left:11%;bottom:9%;width:20vh;height:20vh;min-width:92px;min-height:92px;max-width:148px;max-height:148px;border-radius:50%;background:rgba(2,8,12,.20);border:1px solid rgba(230,200,120,.30);box-shadow:0 0 28px rgba(0,0,0,.62),0 0 26px rgba(90,180,255,.10) inset;}
+ #padLeft .dpadVis{display:block;position:absolute;left:6%;bottom:4%;width:30vh;height:30vh;min-width:128px;min-height:128px;max-width:220px;max-height:220px;border-radius:50%;background:rgba(2,8,12,.24);border:1px solid rgba(230,200,120,.36);box-shadow:0 0 30px rgba(0,0,0,.66),0 0 30px rgba(90,180,255,.12) inset;}
  #padLeft .dpadVis:before,#padLeft .dpadVis:after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:13px;background:linear-gradient(180deg,rgba(255,242,190,.52),rgba(143,119,68,.40));border:1px solid rgba(255,234,170,.34);box-shadow:0 2px 12px rgba(0,0,0,.50),0 0 16px rgba(255,223,132,.08) inset;}
- #padLeft .dpadVis:before{width:72%;height:27%;}
- #padLeft .dpadVis:after{width:27%;height:72%;}
+ #padLeft .dpadVis:before{width:74%;height:24%;}
+ #padLeft .dpadVis:after{width:24%;height:74%;}
+ #padLeft .dpadKnob{display:block;position:absolute;left:50%;top:50%;width:38%;height:38%;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 28%,rgba(255,255,236,.62),rgba(214,190,112,.42) 42%,rgba(24,30,32,.52));border:1px solid rgba(255,235,166,.48);box-shadow:0 5px 18px rgba(0,0,0,.64),0 0 18px rgba(255,218,118,.14) inset;transition:transform .06s linear,box-shadow .08s linear,border-color .08s linear;}
+ #padLeft .dpadVis.active .dpadKnob{border-color:rgba(255,239,180,.78);box-shadow:0 5px 20px rgba(0,0,0,.68),0 0 24px rgba(255,218,118,.28) inset,0 0 18px rgba(255,222,140,.22);}
  #padLeft:active .dpadVis{border-color:rgba(255,229,145,.58);box-shadow:0 0 30px rgba(0,0,0,.62),0 0 24px rgba(255,214,112,.22) inset;}
  #padRight .psBtn{display:flex;align-items:center;justify-content:center;position:absolute;width:8.2vh;height:8.2vh;min-width:42px;min-height:42px;max-width:60px;max-height:60px;border-radius:50%;border:1px solid rgba(235,205,126,.42);background:radial-gradient(circle at 35% 25%,rgba(255,255,236,.34),rgba(18,23,27,.24) 42%,rgba(0,0,0,.36));box-shadow:0 4px 18px rgba(0,0,0,.56),0 0 14px rgba(80,180,255,.09) inset;color:rgba(255,238,178,.90);font:900 22px/1 Arial,sans-serif;text-shadow:0 2px 4px #000;}
  #padRight .psTri{right:24%;bottom:37%;}
@@ -61,13 +64,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #padRight .psCross{right:24%;bottom:7%;}
  #padRight .psSquare{right:42%;bottom:22%;}
  #padRight:active .psBtn{border-color:rgba(255,229,145,.62);box-shadow:0 4px 18px rgba(0,0,0,.56),0 0 18px rgba(255,214,112,.18) inset;}
- #btnSelect,#btnStart,#btnL1,#btnL2,#btnR1,#btnR2{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.92);font:900 12px/1 "Courier New",monospace;background:rgba(3,8,12,.30);border:1px solid rgba(230,200,120,.42);border-radius:999px;box-shadow:0 3px 16px rgba(0,0,0,.52);text-shadow:0 1px 2px #000;}
+ #btnSelect,#btnStart,#btnL1,#btnL2,#btnR1,#btnR2{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.92);font:900 12px/1 "Courier New",monospace;background:rgba(3,8,12,.30);border:1px solid rgba(230,200,120,.42);border-radius:999px;box-shadow:0 3px 16px rgba(0,0,0,.52);text-shadow:0 1px 2px #000;z-index:16;}
  #btnSelect{left:40%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
  #btnStart{left:51.2%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
  #btnL1{left:6%;top:18%;width:8.5%;height:8%;}
  #btnL2{left:16%;top:18%;width:8.5%;height:8%;}
  #btnR1{left:76%;top:18%;width:8.5%;height:8%;}
  #btnR2{left:86%;top:18%;width:8.5%;height:8%;}
+ #btnL1.locked,#btnL2.locked,#btnR1.locked,#btnR2.locked{color:#081017;background:linear-gradient(180deg,rgba(255,235,157,.96),rgba(196,151,68,.88));border-color:rgba(255,244,194,.95);box-shadow:0 3px 18px rgba(0,0,0,.58),0 0 22px rgba(255,214,112,.36);}
  #btnBack,#btnSettings,#btnCd,#btnReset,#btnLoad,#btnSave,#btnMemory{display:none;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;z-index:40;}
 }
@@ -113,7 +117,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2SA5C_PS1_L1_L2_R1_R2_WIDE_CLEAN_STAGE152';
+var BUILD='BUILD2SA5D_PS1_BIG_DPAD_SHOULDER_LOCK_STAGE153';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
 var LOG=[];
@@ -224,6 +228,8 @@ function openPicker(reason){
   var i=$('fileInput');if(i){try{i.value='';}catch(_){} i.__napReason=reason; i.click();}
 }
 var ps1Down={};
+var shoulderLocked={};
+var shoulderLockElems={};
 function setPs1(btn,down){
   if(!btn)return;
   down=!!down;
@@ -231,7 +237,19 @@ function setPs1(btn,down){
   ps1Down[btn]=down;
   try{if(window.AHPS1&&window.AHPS1.ps1Input)window.AHPS1.ps1Input(btn,down);}catch(e){}
 }
-function releaseButtons(list){for(var i=0;i<list.length;i++)setPs1(list[i],false);}
+function setShoulderLocked(btn,el,on){
+  shoulderLocked[btn]=!!on;
+  if(el)shoulderLockElems[btn]=el;
+  var target=el||shoulderLockElems[btn];
+  if(target&&target.classList)target.classList.toggle('locked',!!on);
+  setPs1(btn,!!on);
+}
+function releaseButtons(list){
+  for(var i=0;i<list.length;i++){
+    if(shoulderLocked[list[i]])setShoulderLocked(list[i],null,false);
+    else setPs1(list[i],false);
+  }
+}
 function touchPoint(t){return {x:t&&t.clientX||0,y:t&&t.clientY||0};}
 function pointInside(p,r){return p.x>=r.left&&p.x<=r.right&&p.y>=r.top&&p.y<=r.bottom;}
 function touchById(list,id){
@@ -254,6 +272,33 @@ function bindHold(el,btn){
   el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
   el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
 }
+function bindLockHold(el,btn){
+  var activeId=null,mouseDown=false,timer=null,longLock=false;
+  function clearTimer(){if(timer){clearTimeout(timer);timer=null;}}
+  function beginLockTimer(){
+    longLock=false;clearTimer();
+    timer=setTimeout(function(){longLock=true;setShoulderLocked(btn,el,true);toast(btn+' zamknuto',900);},620);
+  }
+  function touchStart(ev){
+    var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();
+    if(shoulderLocked[btn]){setShoulderLocked(btn,el,false);toast(btn+' uvolneno',800);return;}
+    activeId=t.identifier;setPs1(btn,true);beginLockTimer();
+  }
+  function touchEnd(ev){
+    if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();
+    activeId=null;clearTimer();if(!longLock&&!shoulderLocked[btn])setPs1(btn,false);
+  }
+  function mouseStart(ev){
+    ev.preventDefault();
+    if(shoulderLocked[btn]){setShoulderLocked(btn,el,false);toast(btn+' uvolneno',800);return;}
+    mouseDown=true;setPs1(btn,true);beginLockTimer();
+  }
+  function mouseEnd(ev){
+    if(!mouseDown)return;ev.preventDefault();mouseDown=false;clearTimer();if(!longLock&&!shoulderLocked[btn])setPs1(btn,false);
+  }
+  el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
+  el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
+}
 function controlRect(el,selector){
   var visual=selector&&el&&el.querySelector?el.querySelector(selector):null;
   if(visual&&visual.offsetWidth>8&&visual.offsetHeight>8)return visual.getBoundingClientRect();
@@ -262,19 +307,32 @@ function controlRect(el,selector){
 function bindDpad(el){
   var keys=['UP','DOWN','LEFT','RIGHT'];
   var activeId=null,mouseDown=false;
+  function moveKnob(nx,ny,active){
+    var vis=el.querySelector?el.querySelector('.dpadVis'):null;
+    var knob=el.querySelector?el.querySelector('.dpadKnob'):null;
+    if(!vis||!knob)return;
+    if(!active){vis.classList.remove('active');knob.style.transform='translate(-50%,-50%)';return;}
+    var len=Math.sqrt(nx*nx+ny*ny);
+    if(len>1){nx/=len;ny/=len;}
+    var r=vis.getBoundingClientRect();
+    var travel=Math.min(r.width,r.height)*0.28;
+    knob.style.transform='translate(-50%,-50%) translate('+Math.round(nx*travel)+'px,'+Math.round(ny*travel)+'px)';
+    vis.classList.add('active');
+  }
   function movePoint(p){
     var r=controlRect(el,'.dpadVis');
     var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
     var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
     var dead=.22;
+    moveKnob(nx,ny,true);
     setPs1('LEFT',nx<-dead);setPs1('RIGHT',nx>dead);setPs1('UP',ny<-dead);setPs1('DOWN',ny>dead);
   }
   function touchStart(ev){var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();activeId=t.identifier;movePoint(touchPoint(t));}
   function touchMove(ev){if(activeId===null)return;var t=touchById(ev.touches,activeId);if(!t)return;ev.preventDefault();movePoint(touchPoint(t));}
-  function touchEnd(ev){if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();activeId=null;releaseButtons(keys);}
+  function touchEnd(ev){if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();activeId=null;moveKnob(0,0,false);releaseButtons(keys);}
   function mouseStart(ev){ev.preventDefault();mouseDown=true;movePoint(touchPoint(ev));}
   function mouseMove(ev){if(!mouseDown)return;ev.preventDefault();movePoint(touchPoint(ev));}
-  function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;releaseButtons(keys);}
+  function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;moveKnob(0,0,false);releaseButtons(keys);}
   el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchmove',touchMove,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
   el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mousemove',mouseMove,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
 }
@@ -317,7 +375,7 @@ function installPadDecor(){
   var left=$('padLeft'),right=$('padRight');
   if(left&&!left.__napDecor){
     left.setAttribute('aria-label','D-pad');
-    left.innerHTML='<span class="dpadVis" aria-hidden="true"></span>';
+    left.innerHTML='<span class="dpadVis" aria-hidden="true"><span class="dpadKnob"></span></span>';
     left.__napDecor=true;
   }
   if(right&&!right.__napDecor){
@@ -384,10 +442,10 @@ $('btnSave').addEventListener('click',function(e){e.preventDefault();ps1QuickSav
 installPadDecor();
 bindDpad($('padLeft'));
 bindActions($('padRight'));
-bindHold($('btnL1'),'L1');
-bindHold($('btnL2'),'L2');
-bindHold($('btnR1'),'R1');
-bindHold($('btnR2'),'R2');
+bindLockHold($('btnL1'),'L1');
+bindLockHold($('btnL2'),'L2');
+bindLockHold($('btnR1'),'R1');
+bindLockHold($('btnR2'),'R2');
 bindHold($('btnSelect'),'SELECT');
 bindHold($('btnStart'),'START');
 $('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
@@ -408,7 +466,7 @@ $('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
-log(BUILD+' ready: wide cisty gameplay overlay, L1/L2/R1/R2 aktivni, portrait menu LOAD/SAVE/MEMORY zustava.');
+log(BUILD+' ready: vetsi D-pad s pohyblivym stredem, L1/L2/R1/R2 long-press lock aktivni.');
 })();
 </script>
 </body>
