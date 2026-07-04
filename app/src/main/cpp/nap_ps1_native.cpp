@@ -65,7 +65,7 @@ static std::string g_sysdir, g_savedir, g_boot_error;
 static std::atomic<int> g_pixfmt{PIXFMT_0RGB1555};
 static std::atomic<bool> g_running{false};
 static std::atomic<int> g_generation{0};
-static std::atomic<uint64_t> g_frames{0}, g_dupe_frames{0}, g_audio_samples_dropped{0};
+static std::atomic<uint64_t> g_frames{0}, g_dupe_frames{0}, g_audio_samples_dropped{0}, g_audio_resyncs{0};
 static std::atomic<int> g_fw{0}, g_fh{0};
 static std::atomic<uint32_t> g_input_bits{0}; // BUILD2SA4: libretro joypad bits
 static std::mutex g_frame_mutex;
@@ -118,10 +118,19 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
   g_fw.store((int)w); g_fh.store((int)h);
   g_frames.fetch_add(1);
 }
-// BUILD2SA3: audio FIFO (44100 Hz stereo z jadra -> Java AudioTrack)
+// BUILD2SA3/SA5F: audio FIFO (44100 Hz stereo z jadra -> Java AudioTrack)
 static std::mutex g_amutex;
 static std::vector<int16_t> g_afifo; // interleaved L,R
-static const size_t NAP_PS1_AFIFO_MAX = 44100 * 2 * 2; // max 2 s, pak zahazujeme nejstarsi
+static const size_t NAP_PS1_AFIFO_TARGET_FRAMES = 735 * 3; // ~50 ms at 44.1 kHz
+static const size_t NAP_PS1_AFIFO_MAX_FRAMES = 735 * 8;    // ~133 ms, pak resync na target
+static void nap_audio_trim_locked(size_t targetFrames) {
+  const size_t targetShorts = targetFrames * 2;
+  if (g_afifo.size() <= targetShorts) return;
+  const size_t dropShorts = g_afifo.size() - targetShorts;
+  g_audio_samples_dropped.fetch_add(dropShorts / 2);
+  g_audio_resyncs.fetch_add(1);
+  g_afifo.erase(g_afifo.begin(), g_afifo.begin() + dropShorts);
+}
 static void nap_audio_clear(void) {
   std::lock_guard<std::mutex> lock(g_amutex);
   g_afifo.clear();
@@ -130,10 +139,7 @@ static void nap_audio_push(const int16_t *data, size_t frames) {
   if (!data || !frames) return;
   std::lock_guard<std::mutex> lock(g_amutex);
   g_afifo.insert(g_afifo.end(), data, data + frames * 2);
-  if (g_afifo.size() > NAP_PS1_AFIFO_MAX) {
-    g_audio_samples_dropped.fetch_add((g_afifo.size() - NAP_PS1_AFIFO_MAX) / 2);
-    g_afifo.erase(g_afifo.begin(), g_afifo.begin() + (g_afifo.size() - NAP_PS1_AFIFO_MAX));
-  }
+  if (g_afifo.size() / 2 > NAP_PS1_AFIFO_MAX_FRAMES) nap_audio_trim_locked(NAP_PS1_AFIFO_TARGET_FRAMES);
 }
 static void nap_audio_sample(int16_t l, int16_t r) { int16_t s[2] = { l, r }; nap_audio_push(s, 1); }
 static size_t nap_audio_batch(const int16_t *data, size_t frames) { nap_audio_push(data, frames); return frames; }
@@ -183,7 +189,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
   if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
   nap_audio_clear();
   g_input_bits.store(0);
-  g_frames.store(0); g_dupe_frames.store(0); g_audio_samples_dropped.store(0); g_fw.store(0); g_fh.store(0);
+  g_frames.store(0); g_dupe_frames.store(0); g_audio_samples_dropped.store(0); g_audio_resyncs.store(0); g_fw.store(0); g_fh.store(0);
   g_boot_error.clear();
   retro_set_environment(nap_env);
   retro_set_video_refresh(nap_video);
@@ -216,10 +222,10 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
 }
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Status(JNIEnv *env, jclass) {
-  char out[512];
-  snprintf(out,sizeof(out),"PS1_RUN running=%s frames=%llu dupes=%llu res=%dx%d pixfmt=%d audioFifoFrames=%zu audioDropped=%llu fps=%.2f err=%s",
+  char out[768];
+  snprintf(out,sizeof(out),"PS1_RUN running=%s frames=%llu dupes=%llu res=%dx%d pixfmt=%d audioFifoFrames=%zu audioDropped=%llu audioResyncs=%llu fps=%.2f err=%s",
     g_running.load()?"YES":"NO",(unsigned long long)g_frames.load(),(unsigned long long)g_dupe_frames.load(),
-    g_fw.load(),g_fh.load(),g_pixfmt.load(),({std::lock_guard<std::mutex> al(g_amutex); g_afifo.size()/2;}),(unsigned long long)g_audio_samples_dropped.load(),g_fps,
+    g_fw.load(),g_fh.load(),g_pixfmt.load(),({std::lock_guard<std::mutex> al(g_amutex); g_afifo.size()/2;}),(unsigned long long)g_audio_samples_dropped.load(),(unsigned long long)g_audio_resyncs.load(),g_fps,
     g_boot_error.empty()?"none":g_boot_error.c_str());
   return env->NewStringUTF(out);
 }
@@ -240,6 +246,10 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PullAudio(JNIEnv *env, jclass, js
   if (!out || frames <= 0) return 0;
   std::lock_guard<std::mutex> lock(g_amutex);
   size_t have = g_afifo.size() / 2;
+  if (have > NAP_PS1_AFIFO_MAX_FRAMES) {
+    nap_audio_trim_locked(NAP_PS1_AFIFO_TARGET_FRAMES);
+    have = g_afifo.size() / 2;
+  }
   size_t n = have < (size_t)frames ? have : (size_t)frames;
   if (!n) return 0;
   env->SetShortArrayRegion(out, 0, (jsize)(n * 2), (const jshort*)g_afifo.data());
