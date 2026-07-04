@@ -72,6 +72,9 @@ public class MainActivity extends Activity {
     private static android.os.ParcelFileDescriptor ps1GamePfd = null; // BUILD2SA2: drzi fd otevrene hry
     private static volatile String ps1LastBootResult = "not_booted";
     private static volatile int ps1AudioGen = 0; // BUILD2SA3
+    private volatile int ps1LifecycleGen = 0; // BUILD2SA5I: cancels stale PS1 boots/audio after leaving PS1.
+    private volatile boolean ps1BootActive = false;
+    private volatile boolean ps1SessionActive = false;
     private volatile AudioTrack ps1CurrentAudioTrack = null; // BUILD2SA3B: hard-stop pri prepnuti PS1 hry
     private Thread ps1AudioThread = null;
     private volatile String ps1CurrentGameLabel = "ps1_game";
@@ -313,10 +316,7 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface
         public String ps1Stop() {
-            stopPs1Audio(); // BUILD2SA3B: zastavit AudioTrack jeste pred stopem jadra
-            String r = NativePs1CoreBridge.stopSafe();
-            try { if (ps1GamePfd != null) { ps1GamePfd.close(); ps1GamePfd = null; } } catch (Throwable ignored) {}
-            return r;
+            return stopPs1SessionHard("jsPs1Stop"); // BUILD2SA5I: one path stops audio + core + fd.
         }
     }
     private int ps1ButtonId(String button) {
@@ -567,6 +567,48 @@ public class MainActivity extends Activity {
         if (!nativeInPlaceEnabled && !nativeCoreAudioRun && nativeInPlaceView == null) return;
         if (isSegaNativeOwnerUrl(url)) return;
         stopNativeInPlaceHard(source + ":" + compactUrl(url));
+    }
+
+    private boolean isPs1OwnerUrl(String url) {
+        if (url == null) return false;
+        String u = url.toLowerCase(Locale.US);
+        return u.startsWith("file:///android_asset/emu_ps1/index.html") || u.startsWith("file:///android_asset/emu_ps1/");
+    }
+
+    private void stopPs1IfLeaving(String url, String source) {
+        if (!ps1BootActive && !ps1SessionActive && ps1CurrentAudioTrack == null && ps1AudioThread == null) return;
+        if (isPs1OwnerUrl(url)) return;
+        stopPs1SessionHard(source + ":" + compactUrl(url));
+    }
+
+    private synchronized String stopPs1SessionHard(String reason) {
+        boolean hadSession = ps1BootActive || ps1SessionActive || ps1CurrentAudioTrack != null || ps1AudioThread != null;
+        if (!hadSession) return "PS1_ALREADY_STOPPED";
+        ps1LifecycleGen++;
+        ps1BootActive = false;
+        ps1SessionActive = false;
+        stopPs1Audio();
+        String r;
+        try {
+            r = NativePs1CoreBridge.stopSafe();
+        } catch (Throwable t) {
+            r = "PS1_STOP_EXCEPTION " + safeMsg(t);
+        }
+        closePs1GamePfdQuietly();
+        ps1LastBootResult = "PS1_STOPPED " + reason;
+        appendNativeLog("BUILD2SA5I PS1_SESSION_STOP reason=" + reason + " core=" + (r == null ? "null" : r.replace('\n', ' ')));
+        return r;
+    }
+
+    private void closePs1GamePfdQuietly() {
+        synchronized (MainActivity.class) {
+            try {
+                if (ps1GamePfd != null) {
+                    ps1GamePfd.close();
+                    ps1GamePfd = null;
+                }
+            } catch (Throwable ignored) {}
+        }
     }
 
     private boolean isUiThread() {
@@ -1193,7 +1235,7 @@ public class MainActivity extends Activity {
     public class AHNet {
         @JavascriptInterface
         public void openGames() {
-            ui.post(() -> web.loadUrl("https://atarihelp.eu/?page_id=207"));
+            ui.post(() -> openExternalBrowserUrl("https://atarihelp.eu/?page_id=207"));
         }
         @JavascriptInterface
         public void runGameUrl(String url) {
@@ -1221,6 +1263,7 @@ public class MainActivity extends Activity {
 
             // Tyhle normalni weby musi jit ven pres browser Intent,
             // nikdy do downloadAndRun / BOOTANY / NAHRAJ XEX.
+            if (host.equals("atarihelp.eu") || host.equals("www.atarihelp.eu") || host.endsWith(".atarihelp.eu")) return true;
             if (host.equals("youtube.com") || host.equals("www.youtube.com") || host.endsWith(".youtube.com")) return true;
             if (host.equals("facebook.com") || host.equals("www.facebook.com") || host.endsWith(".facebook.com")) return true;
         } catch (Throwable ignored) {}
@@ -1292,6 +1335,7 @@ public class MainActivity extends Activity {
             public void onPageStarted(WebView v, String url, Bitmap favicon) {
                 super.onPageStarted(v, url, favicon);
                 stopNativeIfLeavingSega(url, "onPageStarted");
+                stopPs1IfLeaving(url, "onPageStarted");
             }
 
             @Override
@@ -1311,6 +1355,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView v, String url) {
                 stopNativeIfLeavingSega(url, "onPageFinished");
+                stopPs1IfLeaving(url, "onPageFinished");
                 if (pendingGame != null && url.startsWith(EMU_URL)) {
                     injectGame(pendingName, pendingGame);
                     pendingGame = null;
@@ -1755,12 +1800,18 @@ public class MainActivity extends Activity {
             final Uri uri = data.getData();
             final String pickedName = safeFileName(getDisplayName(uri));
             new Thread(() -> {
+                int bootGen = 0;
                 try {
                     android.os.ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "r");
                     if (pfd == null) { ps1LastBootResult = "PS1_PICK_FAIL pfd=null"; return; }
                     synchronized (MainActivity.class) {
                         try { if (ps1GamePfd != null) ps1GamePfd.close(); } catch (Throwable ignored) {}
                         ps1GamePfd = pfd;
+                    }
+                    synchronized (MainActivity.this) {
+                        bootGen = ++ps1LifecycleGen;
+                        ps1BootActive = true;
+                        ps1SessionActive = false;
                     }
                     String fdPath = "/proc/self/fd/" + pfd.getFd();
                     java.io.File sysDir = new java.io.File(getFilesDir(), "ps1_system");
@@ -1771,8 +1822,28 @@ public class MainActivity extends Activity {
                     stopPs1Audio(); // BUILD2SA3B: cisty audio restart pri prepnuti PS1 hry
                     ps1LastBootResult = "PS1_BOOTING...";
                     ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);
-                    if (ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK")) startPs1Audio(); // BUILD2SA3
-                } catch (Throwable t) { ps1LastBootResult = "PS1_BOOT_EXCEPTION " + t.getMessage(); }
+                    boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK");
+                    boolean stillWanted = ok && bootGen == ps1LifecycleGen && ps1BootActive;
+                    ps1BootActive = false;
+                    if (stillWanted) {
+                        ps1SessionActive = true;
+                        startPs1Audio(); // BUILD2SA3
+                    } else {
+                        ps1SessionActive = false;
+                        stopPs1Audio();
+                        if (ok) {
+                            try { NativePs1CoreBridge.stopSafe(); } catch (Throwable ignored) {}
+                            closePs1GamePfdQuietly();
+                            ps1LastBootResult = "PS1_BOOT_CANCELLED_AFTER_LEAVE";
+                        }
+                    }
+                } catch (Throwable t) {
+                    ps1BootActive = false;
+                    ps1SessionActive = false;
+                    stopPs1Audio();
+                    closePs1GamePfdQuietly();
+                    ps1LastBootResult = "PS1_BOOT_EXCEPTION " + safeMsg(t);
+                }
             }).start();
             return;
         }
@@ -1825,6 +1896,7 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         if (web != null && web.canGoBack()) {
             stopNativeInPlaceHard("backPressedBeforeGoBack");
+            stopPs1SessionHard("backPressedBeforeGoBack");
             web.goBack();
         }
         else super.onBackPressed();
@@ -1834,12 +1906,14 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         stopNativeInPlaceHard("activityPause");
+        stopPs1SessionHard("activityPause");
         if (web != null) web.onPause();
     }
 
     @Override
     protected void onDestroy() {
         stopNativeInPlaceHard("activityDestroy");
+        stopPs1SessionHard("activityDestroy");
         super.onDestroy();
     }
 
