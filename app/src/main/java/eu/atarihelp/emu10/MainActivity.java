@@ -76,7 +76,10 @@ public class MainActivity extends Activity {
     private static final long ATARI_NET_OPEN_SETTLE_MS = 2600L; // BUILD2SA5AJ: like Sega delayed inject after opening emulator page.
     private static final long ATARI_NET_INJECT_SETTLE_MS = 900L;
     private static final long ATARI_NET_INJECT_FALLBACK_MS = 6200L;
+    private static final long PS1_REMOTE_MAX_BYTES = 1800L * 1024L * 1024L; // BUILD2SA5AK: PS1 image from Reneho PC, streamovane na disk.
     private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
+    private static final String PS1_URL = "file:///android_asset/emu_ps1/index.html"; // BUILD2SA5AM
+    private static final String PS1_GOOGLE_GAMES_URL = "https://atarihelp.eu/?page_id=1048"; // BUILD2SA5AM
     private static byte[] pendingSegaGame = null;   // BUILD2SA2: hra ze SBIRKY cekajici na nacteni Sega stranky
     private static String pendingSegaName = null;
     private static android.os.ParcelFileDescriptor ps1GamePfd = null; // BUILD2SA2: drzi fd otevrene hry
@@ -85,6 +88,8 @@ public class MainActivity extends Activity {
     private volatile int ps1LifecycleGen = 0; // BUILD2SA5I: cancels stale PS1 boots/audio after leaving PS1.
     private volatile boolean ps1BootActive = false;
     private volatile boolean ps1SessionActive = false;
+    private volatile boolean ps1RemoteDownloadActive = false;
+    private volatile String ps1RemoteDownloadStatus = "idle";
     private volatile long atariHelpLastRequestAtMs = 0L; // BUILD2SA5M
     private volatile long atariHelpBlockedUntilMs = 0L;
     private volatile AudioTrack ps1CurrentAudioTrack = null; // BUILD2SA3B: hard-stop pri prepnuti PS1 hry
@@ -308,7 +313,13 @@ public class MainActivity extends Activity {
             });
         }
         @JavascriptInterface
-        public String ps1Status() { return NativePs1CoreBridge.statusSafe() + " | lastBoot=" + ps1LastBootResult; }
+        public void ps1DownloadAndBoot(String url) {
+            startPs1RemoteDownloadAndBoot(url);
+        }
+        @JavascriptInterface
+        public String ps1Status() { return NativePs1CoreBridge.statusSafe() + " | lastBoot=" + ps1LastBootResult + " | remote=" + ps1RemoteDownloadStatus; }
+        @JavascriptInterface
+        public String ps1RemoteStatus() { return ps1RemoteDownloadStatus; }
         @JavascriptInterface
         public void ps1Input(String button, boolean down) {
             int id = ps1ButtonId(button);
@@ -862,15 +873,16 @@ public class MainActivity extends Activity {
     }
 
     private WebResourceResponse interceptMainFrameGameNavigation(final String url) {
-        if (url == null || !isGameUrl(url, null, null)) return null;
-        appendNativeLog("BUILD2SA5AF MAINFRAME_GAME_NAV route url=" + compactUrl(url));
+        if (url == null || (!isGameUrl(url, null, null) && !isGoogleDriveUrl(url) && !hasPs1RemoteExtension(url))) return null;
+        appendNativeLog("BUILD2SA5AM MAINFRAME_GAME_NAV route url=" + compactUrl(url));
         ui.post(() -> {
             try {
-                if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url);
+                if (isGoogleDriveUrl(url) || hasPs1RemoteExtension(url)) downloadAndRunPs1Remote(url, "mainFrameGameNav");
+                else if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url);
                 else if (hasSegaExtension(url)) downloadAndRunSega(url);
                 else downloadAndRun(url);
             } catch (Throwable t) {
-                appendNativeLog("BUILD2SA5AF MAINFRAME_GAME_NAV_FAIL " + safeMsg(t));
+                appendNativeLog("BUILD2SA5AM MAINFRAME_GAME_NAV_FAIL " + safeMsg(t));
             }
         });
         return htmlResponse("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -930,15 +942,18 @@ public class MainActivity extends Activity {
     }
 
     private void stopPs1IfLeaving(String url, String source) {
-        if (!ps1BootActive && !ps1SessionActive && ps1CurrentAudioTrack == null && ps1AudioThread == null) return;
+        if (!ps1RemoteDownloadActive && !ps1BootActive && !ps1SessionActive && ps1CurrentAudioTrack == null && ps1AudioThread == null) return;
         if (isPs1OwnerUrl(url)) return;
         stopPs1SessionHard(source + ":" + compactUrl(url));
     }
 
     private synchronized String stopPs1SessionHard(String reason) {
         boolean hadSession = ps1BootActive || ps1SessionActive || ps1CurrentAudioTrack != null || ps1AudioThread != null;
-        if (!hadSession) return "PS1_ALREADY_STOPPED";
+        boolean hadRemoteDownload = ps1RemoteDownloadActive;
+        if (!hadSession && !hadRemoteDownload) return "PS1_ALREADY_STOPPED";
         ps1LifecycleGen++;
+        ps1RemoteDownloadActive = false;
+        if (hadRemoteDownload) ps1RemoteDownloadStatus = "PS1_REMOTE_CANCELLED reason=" + reason;
         ps1BootActive = false;
         ps1SessionActive = false;
         stopPs1Audio();
@@ -1600,6 +1615,10 @@ public class MainActivity extends Activity {
             ui.post(() -> loadAtariHelpGuarded("https://atarihelp.eu/?page_id=21", "openGamesWeb"));
         }
         @JavascriptInterface
+        public void openPs1Games() {
+            ui.post(() -> loadAtariHelpGuarded(PS1_GOOGLE_GAMES_URL, "openPs1Games"));
+        }
+        @JavascriptInterface
         public void openInBrowser(String url) {
             ui.post(() -> openRawExternalBrowserUrl(url));
         }
@@ -1654,7 +1673,8 @@ public class MainActivity extends Activity {
         }
         String target = url.trim();
         appendNativeLog("BUILD2SA5AH ROUTE_GAME source=" + source + " url=" + compactUrl(target));
-        if (shouldRouteAsSegaDownload(target)) downloadAndRunSegaArchive(target); // BUILD2SA5AB
+        if (isGoogleDriveUrl(target) || hasPs1RemoteExtension(target)) downloadAndRunPs1Remote(target, source); // BUILD2SA5AM
+        else if (shouldRouteAsSegaDownload(target)) downloadAndRunSegaArchive(target); // BUILD2SA5AB
         else if (hasSegaExtension(target)) downloadAndRunSega(target); // BUILD2SA2
         else downloadAndRun(target);
     }
@@ -1928,6 +1948,10 @@ public class MainActivity extends Activity {
             }
         });
         web.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
+            if (isGoogleDriveUrl(url) || hasPs1RemoteExtension(url)) {
+                downloadAndRunPs1Remote(url, "downloadListenerPs1");
+                return;
+            }
             if (openExternalBrowserUrl(url)) return;
             if (isGameUrl(url, contentDisposition, mimetype)) {
                 if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url); // BUILD2SA5AB
@@ -2042,6 +2066,76 @@ public class MainActivity extends Activity {
         int q = v.indexOf('?'); if (q >= 0) v = v.substring(0, q);
         int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
         return v.endsWith(".gen") || v.endsWith(".md") || v.endsWith(".smd") || v.endsWith(".sms") || v.endsWith(".68k") || v.endsWith(".sgd");
+    }
+
+    private boolean hasPs1RemoteExtension(String value) {
+        if (value == null) return false;
+        String v = value.toLowerCase(Locale.US);
+        int q = v.indexOf('?'); if (q >= 0) v = v.substring(0, q);
+        int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
+        return v.endsWith(".cue") || v.endsWith(".bin") || v.endsWith(".iso") || v.endsWith(".img")
+                || v.endsWith(".pbp") || v.endsWith(".chd") || v.endsWith(".zip");
+    }
+
+    private boolean isGoogleDriveUrl(String url) {
+        if (url == null) return false;
+        String u = url.trim().toLowerCase(Locale.US);
+        if (!(u.startsWith("http://") || u.startsWith("https://"))) return false;
+        try {
+            Uri uri = Uri.parse(url);
+            String host = uri.getHost();
+            if (host == null) return false;
+            host = host.toLowerCase(Locale.US);
+            return host.equals("drive.google.com") || host.endsWith(".drive.google.com")
+                    || host.equals("drive.usercontent.google.com") || host.endsWith(".drive.usercontent.google.com")
+                    || host.equals("docs.google.com") || host.endsWith(".docs.google.com");
+        } catch (Throwable ignored) {
+            return u.contains("drive.google.com") || u.contains("drive.usercontent.google.com");
+        }
+    }
+
+    private String googleDriveFileId(String url) {
+        if (url == null) return null;
+        try {
+            Uri uri = Uri.parse(url);
+            String id = uri.getQueryParameter("id");
+            if (id != null && id.trim().length() > 0) return id.trim();
+            String path = uri.getPath();
+            if (path != null) {
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("/d/([^/]+)").matcher(path);
+                if (m.find()) return m.group(1);
+                m = java.util.regex.Pattern.compile("/file/d/([^/]+)").matcher(path);
+                if (m.find()) return m.group(1);
+            }
+        } catch (Throwable ignored) {}
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("/d/([^/?#]+)").matcher(url);
+        if (m.find()) return m.group(1);
+        m = java.util.regex.Pattern.compile("[?&]id=([^&#]+)").matcher(url);
+        if (m.find()) return m.group(1);
+        return null;
+    }
+
+    private String ps1ResolveRemoteDownloadUrl(String url) throws IOException {
+        if (!isGoogleDriveUrl(url)) return url;
+        String id = googleDriveFileId(url);
+        if (id == null || id.length() == 0) throw new IOException("Google Drive odkaz nema file id");
+        String enc = java.net.URLEncoder.encode(id, "UTF-8");
+        return "https://drive.usercontent.google.com/download?id=" + enc + "&export=download&confirm=t";
+    }
+
+    private void downloadAndRunPs1Remote(final String url, final String reason) {
+        appendNativeLog("BUILD2SA5AM PS1_REMOTE_ROUTE reason=" + reason + " url=" + compactUrl(url));
+        ui.post(() -> {
+            try {
+                String cur = web == null ? null : web.getUrl();
+                if (web != null && (cur == null || !isPs1OwnerUrl(cur))) {
+                    web.loadUrl(PS1_URL);
+                }
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA5AM PS1_REMOTE_OPEN_UI_FAIL " + safeMsg(t));
+            }
+        });
+        startPs1RemoteDownloadAndBoot(url);
     }
 
     private boolean hasAtariPayloadExtension(String value) {
@@ -2193,6 +2287,556 @@ public class MainActivity extends Activity {
             }
         }).start();
     }
+
+    private void setPs1RemoteStatus(String status) {
+        ps1RemoteDownloadStatus = status == null ? "" : status;
+        appendNativeLog("BUILD2SA5AN " + ps1RemoteDownloadStatus);
+    }
+
+    private File ps1RemoteGamesDir() throws IOException {
+        File dir = null;
+        try { dir = getExternalFilesDir("ps1_games"); } catch (Throwable ignored) {}
+        if (dir == null) dir = new File(getFilesDir(), "ps1_games");
+        if (!dir.exists() && !dir.mkdirs()) throw new IOException("nejde vytvorit PS1 slozka: " + dir.getAbsolutePath());
+        return dir;
+    }
+
+    private String ps1StableHash(String value) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-1");
+            byte[] dig = md.digest((value == null ? "" : value).getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : dig) {
+                String h = Integer.toHexString(b & 0xff);
+                if (h.length() < 2) sb.append('0');
+                sb.append(h);
+            }
+            return sb.toString();
+        } catch (Throwable ignored) {
+            return Integer.toHexString(value == null ? 0 : value.hashCode());
+        }
+    }
+
+    private String ps1RemoteCacheKey(String url) {
+        String id = isGoogleDriveUrl(url) ? googleDriveFileId(url) : null;
+        if (id != null && id.length() > 0) return safeFileName("gdrive_" + id);
+        return safeFileName("url_" + ps1StableHash(url));
+    }
+
+    private File ps1RemoteCacheDir(String url) throws IOException {
+        File root = ps1RemoteGamesDir();
+        File dir = new File(root, ps1RemoteCacheKey(url));
+        if (!dir.exists() && !dir.mkdirs()) throw new IOException("nejde vytvorit PS1 cache: " + dir.getAbsolutePath());
+        return dir;
+    }
+
+    private File ps1RemoteCacheMarker(File dir) {
+        return new File(dir, "_ps1_boot.name");
+    }
+
+    private boolean ps1CachedCueLooksComplete(File cueFile) {
+        InputStream in = null;
+        try {
+            in = new java.io.FileInputStream(cueFile);
+            byte[] cueBytes = readStreamLimited(in, 1024 * 1024);
+            java.util.List<String> refs = ps1CueReferencedFiles(cueBytes);
+            if (refs == null || refs.isEmpty()) return false;
+            File dir = cueFile.getParentFile();
+            for (String ref : refs) {
+                File f = new File(dir, safeFileName(ref));
+                if (!f.exists() || !f.isFile() || f.length() <= 0L) return false;
+            }
+            return true;
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA5AN PS1_REMOTE_CACHE_CUE_CHECK_FAIL " + safeMsg(t));
+            return false;
+        } finally {
+            try { if (in != null) in.close(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private File ps1ReadCachedBootFile(File dir) {
+        InputStream in = null;
+        try {
+            File marker = ps1RemoteCacheMarker(dir);
+            if (!marker.exists() || !marker.isFile()) return null;
+            in = new java.io.FileInputStream(marker);
+            String name = new String(readStreamLimited(in, 4096), "UTF-8").trim();
+            if (name.length() == 0 || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0) return null;
+            File boot = new File(dir, safeFileName(name));
+            if (!boot.exists() || !boot.isFile() || boot.length() <= 0L) return null;
+            if (isPs1CueName(boot.getName()) && !ps1CachedCueLooksComplete(boot)) return null;
+            return boot;
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA5AN PS1_REMOTE_CACHE_READ_FAIL " + safeMsg(t));
+            return null;
+        } finally {
+            try { if (in != null) in.close(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private void ps1WriteCacheMarker(File dir, File bootFile) {
+        try {
+            if (dir == null || bootFile == null) return;
+            ps1WriteBytes(ps1RemoteCacheMarker(dir), bootFile.getName().getBytes("UTF-8"));
+            appendNativeLog("BUILD2SA5AN PS1_REMOTE_CACHE_STORE boot=" + bootFile.getName() + " dir=" + dir.getName());
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA5AN PS1_REMOTE_CACHE_STORE_FAIL " + safeMsg(t));
+        }
+    }
+
+    private boolean isPs1RemoteImageName(String name) {
+        if (name == null) return false;
+        String n = name.toLowerCase(Locale.US);
+        return n.endsWith(".bin") || n.endsWith(".iso") || n.endsWith(".img")
+                || n.endsWith(".pbp") || n.endsWith(".chd") || n.endsWith(".cue") || n.endsWith(".zip");
+    }
+
+    private boolean isPs1CueName(String name) {
+        return name != null && name.toLowerCase(Locale.US).endsWith(".cue");
+    }
+
+    private boolean isPs1ZipName(String name) {
+        return name != null && name.toLowerCase(Locale.US).endsWith(".zip");
+    }
+
+    private String zipLeafName(String name) {
+        if (name == null) return "ps1_game.bin";
+        String n = name.replace("\\", "/");
+        int slash = n.lastIndexOf('/');
+        return slash >= 0 ? n.substring(slash + 1) : n;
+    }
+
+    private boolean isPs1ZipPayloadName(String name) {
+        if (name == null) return false;
+        String n = name.toLowerCase(Locale.US);
+        return n.endsWith(".cue") || n.endsWith(".bin") || n.endsWith(".iso") || n.endsWith(".img")
+                || n.endsWith(".pbp") || n.endsWith(".chd");
+    }
+
+    private boolean isPs1ZipPrimaryName(String name) {
+        if (name == null) return false;
+        String n = name.toLowerCase(Locale.US);
+        return n.endsWith(".iso") || n.endsWith(".img") || n.endsWith(".bin") || n.endsWith(".pbp") || n.endsWith(".chd");
+    }
+
+    private java.util.List<String> ps1CueReferencedFiles(byte[] cueBytes) throws IOException {
+        java.util.LinkedHashSet<String> refs = new java.util.LinkedHashSet<String>();
+        if (cueBytes == null) return new java.util.ArrayList<String>();
+        String text = new String(cueBytes, "ISO-8859-1");
+        String[] lines = text.split("\\r?\\n");
+        for (String line : lines) {
+            if (line == null) continue;
+            String t = line.trim();
+            if (!t.toUpperCase(Locale.US).startsWith("FILE ")) continue;
+            String ref = "";
+            int a = t.indexOf('"');
+            int b = a >= 0 ? t.indexOf('"', a + 1) : -1;
+            if (a >= 0 && b > a) {
+                ref = t.substring(a + 1, b);
+            } else {
+                String[] parts = t.split("\\s+");
+                if (parts.length >= 2) ref = parts[1];
+            }
+            ref = ref == null ? "" : ref.trim();
+            String low = ref.toLowerCase(Locale.US);
+            if (ref.length() > 0 && (low.endsWith(".bin") || low.endsWith(".img") || low.endsWith(".iso") || low.endsWith(".wav"))) {
+                refs.add(ref);
+            }
+        }
+        return new java.util.ArrayList<String>(refs);
+    }
+
+    private String ps1CueWithSafeLocalNames(byte[] cueBytes, java.util.List<String> refs) throws IOException {
+        String text = new String(cueBytes, "ISO-8859-1");
+        if (refs == null) return text;
+        for (String ref : refs) {
+            String safe = safeFileName(ref);
+            text = text.replace("\"" + ref + "\"", "\"" + safe + "\"");
+            text = text.replace("FILE " + ref, "FILE " + safe);
+        }
+        return text;
+    }
+
+    private String ps1ResolveRelativeUrl(String baseUrl, String ref) throws IOException {
+        String clean = ref == null ? "" : ref.trim().replace("\\", "/");
+        clean = clean.replace(" ", "%20");
+        return new URL(new URL(baseUrl), clean).toString();
+    }
+
+    private byte[] readZipEntryLimited(java.util.zip.ZipFile zip, java.util.zip.ZipEntry entry, int maxBytes) throws IOException {
+        InputStream in = zip.getInputStream(entry);
+        try {
+            return readStreamLimited(in, maxBytes);
+        } finally {
+            try { in.close(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private java.util.zip.ZipEntry findZipEntry(java.util.zip.ZipFile zip, String ref, String cueEntryName) {
+        if (zip == null || ref == null) return null;
+        String wanted = ref.replace("\\", "/").trim();
+        String wantedLower = wanted.toLowerCase(Locale.US);
+        String wantedLeaf = zipLeafName(wanted).toLowerCase(Locale.US);
+        String cueDir = "";
+        if (cueEntryName != null) {
+            String c = cueEntryName.replace("\\", "/");
+            int slash = c.lastIndexOf('/');
+            if (slash >= 0) cueDir = c.substring(0, slash + 1).toLowerCase(Locale.US);
+        }
+        java.util.Enumeration<? extends java.util.zip.ZipEntry> en = zip.entries();
+        while (en.hasMoreElements()) {
+            java.util.zip.ZipEntry ze = en.nextElement();
+            if (ze == null || ze.isDirectory()) continue;
+            String name = ze.getName() == null ? "" : ze.getName().replace("\\", "/");
+            String low = name.toLowerCase(Locale.US);
+            if (low.equals(wantedLower) || low.equals(cueDir + wantedLower) || low.endsWith("/" + wantedLower)) return ze;
+            if (zipLeafName(low).equals(wantedLeaf)) return ze;
+        }
+        return null;
+    }
+
+    private File extractZipEntryToFile(java.util.zip.ZipFile zip, java.util.zip.ZipEntry entry, File dir, String safeName) throws IOException {
+        File out = new File(dir, safeFileName(safeName == null ? zipLeafName(entry.getName()) : safeName));
+        File part = new File(dir, out.getName() + ".part");
+        try { if (part.exists()) part.delete(); } catch (Throwable ignored) {}
+        try { if (out.exists()) out.delete(); } catch (Throwable ignored) {}
+        InputStream in = zip.getInputStream(entry);
+        FileOutputStream fos = new FileOutputStream(part);
+        byte[] buf = new byte[65536];
+        long total = 0L;
+        long lastStatusAt = 0L;
+        try {
+            int n;
+            while ((n = in.read(buf)) >= 0) {
+                if (n == 0) continue;
+                total += n;
+                if (total > PS1_REMOTE_MAX_BYTES) throw new IOException("ZIP entry prekrocil limit " + formatMb(PS1_REMOTE_MAX_BYTES));
+                fos.write(buf, 0, n);
+                long now = System.currentTimeMillis();
+                if (now - lastStatusAt > 1200L) {
+                    lastStatusAt = now;
+                    ps1RemoteDownloadStatus = "PS1_REMOTE_ZIP_EXTRACT " + formatMb(total) + " " + out.getName();
+                }
+            }
+        } finally {
+            try { fos.close(); } catch (Throwable ignored) {}
+            try { in.close(); } catch (Throwable ignored) {}
+        }
+        if (total <= 0L) throw new IOException("ZIP entry je prazdny: " + entry.getName());
+        if (!part.renameTo(out)) throw new IOException("nejde prejmenovat .part na " + out.getName());
+        appendNativeLog("BUILD2SA5AM PS1_ZIP_EXTRACT_ENTRY name=" + out.getName() + " bytes=" + total);
+        return out;
+    }
+
+    private File extractPs1RemoteZip(File zipFile, File dir) throws IOException {
+        java.util.zip.ZipFile zip = new java.util.zip.ZipFile(zipFile);
+        try {
+            java.util.zip.ZipEntry cue = null;
+            java.util.zip.ZipEntry primary = null;
+            java.util.Enumeration<? extends java.util.zip.ZipEntry> en = zip.entries();
+            while (en.hasMoreElements()) {
+                java.util.zip.ZipEntry ze = en.nextElement();
+                if (ze == null || ze.isDirectory()) continue;
+                String name = ze.getName();
+                if (!isPs1ZipPayloadName(name)) continue;
+                if (cue == null && isPs1CueName(name)) cue = ze;
+                if (primary == null && isPs1ZipPrimaryName(name)) primary = ze;
+            }
+            if (cue != null) {
+                byte[] cueBytes = readZipEntryLimited(zip, cue, 1024 * 1024);
+                java.util.List<String> refs = ps1CueReferencedFiles(cueBytes);
+                if (refs == null || refs.isEmpty()) throw new IOException("ZIP CUE nema FILE radky: " + cue.getName());
+                setPs1RemoteStatus("PS1_REMOTE_ZIP_CUE " + zipLeafName(cue.getName()) + " files=" + refs.size());
+                for (String ref : refs) {
+                    java.util.zip.ZipEntry refEntry = findZipEntry(zip, ref, cue.getName());
+                    if (refEntry == null) throw new IOException("ZIP CUE odkaz nenalezen: " + ref);
+                    extractZipEntryToFile(zip, refEntry, dir, safeFileName(ref));
+                }
+                File cueOut = new File(dir, safeFileName(zipLeafName(cue.getName())));
+                String cueText = ps1CueWithSafeLocalNames(cueBytes, refs);
+                ps1WriteBytes(cueOut, cueText.getBytes("ISO-8859-1"));
+                appendNativeLog("BUILD2SA5AM PS1_ZIP_CUE_READY name=" + cueOut.getName() + " files=" + refs.size());
+                return cueOut;
+            }
+            if (primary != null) {
+                setPs1RemoteStatus("PS1_REMOTE_ZIP_PRIMARY " + zipLeafName(primary.getName()));
+                return extractZipEntryToFile(zip, primary, dir, zipLeafName(primary.getName()));
+            }
+            throw new IOException("ZIP neobsahuje PS1 .cue/.bin/.iso/.img/.pbp/.chd");
+        } finally {
+            try { zip.close(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private long contentLengthLong(HttpURLConnection c) {
+        if (c == null) return -1L;
+        try {
+            String h = c.getHeaderField("Content-Length");
+            if (h == null || h.trim().length() == 0) return -1L;
+            return Long.parseLong(h.trim());
+        } catch (Throwable ignored) {
+            return -1L;
+        }
+    }
+
+    private String formatMb(long bytes) {
+        if (bytes < 0) return "?MB";
+        return String.format(Locale.US, "%.1fMB", bytes / 1048576.0);
+    }
+
+    private File downloadPs1RemoteCompanionFile(String fileUrl, String safeName, File dir) throws IOException {
+        HttpURLConnection c = null;
+        File part = null;
+        try {
+            c = (HttpURLConnection) new URL(fileUrl).openConnection();
+            c.setInstanceFollowRedirects(true);
+            configureGameHttpConnection(c, fileUrl);
+            try { c.setConnectTimeout(22000); } catch (Throwable ignored) {}
+            try { c.setReadTimeout(70000); } catch (Throwable ignored) {}
+            try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
+            try { c.setRequestProperty("Accept", "application/octet-stream,*/*"); } catch (Throwable ignored) {}
+            c.connect();
+            int code = c.getResponseCode();
+            if (code < 200 || code >= 400) throw new IOException("HTTP " + code + " " + c.getResponseMessage());
+            long expected = contentLengthLong(c);
+            if (expected > PS1_REMOTE_MAX_BYTES) throw new IOException("soubor je moc velky: " + formatMb(expected));
+            File out = new File(dir, safeName);
+            part = new File(dir, safeName + ".part");
+            try { if (part.exists()) part.delete(); } catch (Throwable ignored) {}
+            try { if (out.exists()) out.delete(); } catch (Throwable ignored) {}
+            InputStream in = c.getInputStream();
+            FileOutputStream fos = new FileOutputStream(part);
+            byte[] buf = new byte[65536];
+            long total = 0L;
+            long lastStatusAt = 0L;
+            try {
+                int n;
+                while ((n = in.read(buf)) >= 0) {
+                    if (n == 0) continue;
+                    total += n;
+                    if (total > PS1_REMOTE_MAX_BYTES) throw new IOException("prekrocen limit " + formatMb(PS1_REMOTE_MAX_BYTES));
+                    fos.write(buf, 0, n);
+                    long now = System.currentTimeMillis();
+                    if (now - lastStatusAt > 1200L) {
+                        lastStatusAt = now;
+                        String progress = expected > 0
+                                ? (Math.min(99L, (total * 100L) / expected) + "% " + formatMb(total) + "/" + formatMb(expected))
+                                : formatMb(total);
+                        ps1RemoteDownloadStatus = "PS1_REMOTE_CUE_FILE " + progress + " " + safeName;
+                    }
+                }
+            } finally {
+                try { fos.close(); } catch (Throwable ignored) {}
+                try { in.close(); } catch (Throwable ignored) {}
+            }
+            if (total <= 0L) throw new IOException("stazeny soubor je prazdny: " + safeName);
+            if (!part.renameTo(out)) throw new IOException("nejde prejmenovat .part na " + out.getName());
+            appendNativeLog("BUILD2SA5AK PS1_REMOTE_CUE_FILE_READY name=" + safeName + " bytes=" + total);
+            return out;
+        } finally {
+            try { if (c != null) c.disconnect(); } catch (Throwable ignored) {}
+            try { if (part != null && part.exists()) part.delete(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private void startPs1RemoteDownloadAndBoot(final String rawUrl) {
+        final String url = rawUrl == null ? "" : rawUrl.trim();
+        if (!(url.startsWith("http://") || url.startsWith("https://"))) {
+            setPs1RemoteStatus("PS1_REMOTE_FAIL bad_url");
+            ps1LastBootResult = "PS1_REMOTE_FAIL bad_url";
+            return;
+        }
+        final int downloadGen;
+        synchronized (this) {
+            if (ps1RemoteDownloadActive) {
+                ps1RemoteDownloadStatus = "PS1_REMOTE_BUSY";
+                return;
+            }
+            downloadGen = ++ps1LifecycleGen;
+            ps1RemoteDownloadActive = true;
+            ps1RemoteDownloadStatus = "PS1_REMOTE_START " + compactUrl(url);
+        }
+        new Thread(() -> {
+            HttpURLConnection c = null;
+            File part = null;
+            try {
+                String downloadUrl = ps1ResolveRemoteDownloadUrl(url);
+                boolean googleDrive = isGoogleDriveUrl(url);
+                File dir = ps1RemoteCacheDir(url);
+                File cached = ps1ReadCachedBootFile(dir);
+                if (cached != null) {
+                    synchronized (MainActivity.this) {
+                        if (downloadGen != ps1LifecycleGen || !ps1RemoteDownloadActive) {
+                            setPs1RemoteStatus("PS1_REMOTE_CANCELLED_BEFORE_CACHE " + cached.getName());
+                            return;
+                        }
+                    }
+                    setPs1RemoteStatus("PS1_REMOTE_CACHE_HIT " + cached.getName() + " path=" + cached.getAbsolutePath());
+                    bootPs1FileOnCurrentThread(cached, cached.getName(), "remoteCache");
+                    return;
+                }
+                setPs1RemoteStatus("PS1_REMOTE_CONNECT " + compactUrl(url) + (googleDrive ? " via=google_drive" : ""));
+                c = (HttpURLConnection) new URL(downloadUrl).openConnection();
+                c.setInstanceFollowRedirects(true);
+                configureGameHttpConnection(c, downloadUrl);
+                try { c.setConnectTimeout(22000); } catch (Throwable ignored) {}
+                try { c.setReadTimeout(70000); } catch (Throwable ignored) {}
+                try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
+                try { c.setRequestProperty("Accept", "application/octet-stream,application/x-cd-image,application/x-chd,*/*"); } catch (Throwable ignored) {}
+                c.connect();
+                int code = c.getResponseCode();
+                if (code < 200 || code >= 400) throw new IOException("HTTP " + code + " " + c.getResponseMessage());
+                String contentType = c.getContentType();
+                String name = safeFileName(guessDownloadName(downloadUrl, c.getHeaderField("Content-Disposition")));
+                if (!isPs1RemoteImageName(name)) {
+                    if (googleDrive) {
+                        throw new IOException("Google Drive nevratil PS1 soubor. Nastav soubor na 'Kdokoli s odkazem - viewer' a na Drive dej .zip/.bin/.iso/.img/.pbp/.chd, ne .7z. contentType=" + contentType);
+                    }
+                    throw new IOException("PS1 URL musi koncit na .zip/.cue/.bin/.iso/.img/.pbp/.chd; ted je: " + name);
+                }
+                long expected = contentLengthLong(c);
+                if (expected > PS1_REMOTE_MAX_BYTES) throw new IOException("soubor je moc velky: " + formatMb(expected));
+
+                if (isPs1CueName(name)) {
+                    if (googleDrive) {
+                        throw new IOException("Google Drive .cue potrebuje vedle sebe i .bin soubory, ale Drive odkaz ukazuje jen jeden soubor. Pouzij radeji .iso/.chd/.pbp nebo primo .bin.");
+                    }
+                    byte[] cueBytes = readStreamLimited(c.getInputStream(), 1024 * 1024);
+                    if (cueBytes == null || cueBytes.length == 0) throw new IOException("CUE je prazdne");
+                    java.util.List<String> refs = ps1CueReferencedFiles(cueBytes);
+                    if (refs == null || refs.isEmpty()) throw new IOException("CUE neobsahuje FILE radky pro .bin/.img/.iso");
+                    setPs1RemoteStatus("PS1_REMOTE_CUE " + name + " files=" + refs.size());
+                    for (String ref : refs) {
+                        String safeRef = safeFileName(ref);
+                        String refUrl = ps1ResolveRelativeUrl(downloadUrl, ref);
+                        downloadPs1RemoteCompanionFile(refUrl, safeRef, dir);
+                    }
+                    File cueOut = new File(dir, name);
+                    String cueText = ps1CueWithSafeLocalNames(cueBytes, refs);
+                    ps1WriteBytes(cueOut, cueText.getBytes("ISO-8859-1"));
+                    synchronized (MainActivity.this) {
+                        if (downloadGen != ps1LifecycleGen || !ps1RemoteDownloadActive) {
+                            setPs1RemoteStatus("PS1_REMOTE_CANCELLED_AFTER_CUE " + name);
+                            return;
+                        }
+                    }
+                    setPs1RemoteStatus("PS1_REMOTE_READY " + name + " cueFiles=" + refs.size() + " path=" + cueOut.getAbsolutePath());
+                    ps1WriteCacheMarker(dir, cueOut);
+                    bootPs1FileOnCurrentThread(cueOut, name, "remoteCueUrl");
+                    return;
+                }
+                File out = new File(dir, name);
+                part = new File(dir, name + ".part");
+                try { if (part.exists()) part.delete(); } catch (Throwable ignored) {}
+                try { if (out.exists()) out.delete(); } catch (Throwable ignored) {}
+
+                InputStream in = c.getInputStream();
+                FileOutputStream fos = new FileOutputStream(part);
+                byte[] buf = new byte[65536];
+                long total = 0L;
+                long lastStatusAt = 0L;
+                try {
+                    int n;
+                    while ((n = in.read(buf)) >= 0) {
+                        if (n == 0) continue;
+                        total += n;
+                        if (total > PS1_REMOTE_MAX_BYTES) throw new IOException("prekrocen limit " + formatMb(PS1_REMOTE_MAX_BYTES));
+                        fos.write(buf, 0, n);
+                        long now = System.currentTimeMillis();
+                        if (now - lastStatusAt > 1200L) {
+                            lastStatusAt = now;
+                            String progress = expected > 0
+                                    ? (Math.min(99L, (total * 100L) / expected) + "% " + formatMb(total) + "/" + formatMb(expected))
+                                    : formatMb(total);
+                            ps1RemoteDownloadStatus = "PS1_REMOTE_DOWNLOAD " + progress + " " + name;
+                        }
+                    }
+                } finally {
+                    try { fos.close(); } catch (Throwable ignored) {}
+                    try { in.close(); } catch (Throwable ignored) {}
+                }
+                if (total <= 0L) throw new IOException("stazeny soubor je prazdny");
+                if (!part.renameTo(out)) throw new IOException("nejde prejmenovat .part na " + out.getName());
+
+                synchronized (MainActivity.this) {
+                    if (downloadGen != ps1LifecycleGen || !ps1RemoteDownloadActive) {
+                        setPs1RemoteStatus("PS1_REMOTE_CANCELLED_AFTER_DOWNLOAD " + name);
+                        return;
+                    }
+                }
+                if (isPs1ZipName(name)) {
+                    setPs1RemoteStatus("PS1_REMOTE_ZIP_READY " + name + " bytes=" + total);
+                    File bootFile = extractPs1RemoteZip(out, dir);
+                    try { out.delete(); } catch (Throwable ignored) {}
+                    setPs1RemoteStatus("PS1_REMOTE_READY " + bootFile.getName() + " fromZip=" + name + " path=" + bootFile.getAbsolutePath());
+                    ps1WriteCacheMarker(dir, bootFile);
+                    bootPs1FileOnCurrentThread(bootFile, bootFile.getName(), "remoteZipUrl");
+                    return;
+                }
+                setPs1RemoteStatus("PS1_REMOTE_READY " + name + " bytes=" + total + " path=" + out.getAbsolutePath());
+                ps1WriteCacheMarker(dir, out);
+                bootPs1FileOnCurrentThread(out, name, "remoteUrl");
+            } catch (Throwable t) {
+                ps1LastBootResult = "PS1_REMOTE_FAIL " + safeMsg(t);
+                setPs1RemoteStatus(ps1LastBootResult);
+                try { if (part != null && part.exists()) part.delete(); } catch (Throwable ignored) {}
+            } finally {
+                try { if (c != null) c.disconnect(); } catch (Throwable ignored) {}
+                synchronized (MainActivity.this) {
+                    ps1RemoteDownloadActive = false;
+                }
+            }
+        }, "nap-ps1-remote-download").start();
+    }
+
+    private void bootPs1FileOnCurrentThread(File gameFile, String label, String reason) {
+        int bootGen = 0;
+        try {
+            if (gameFile == null || !gameFile.exists() || !gameFile.isFile()) {
+                throw new IOException("PS1 soubor neexistuje");
+            }
+            closePs1GamePfdQuietly();
+            synchronized (MainActivity.this) {
+                bootGen = ++ps1LifecycleGen;
+                ps1BootActive = true;
+                ps1SessionActive = false;
+            }
+            java.io.File sysDir = new java.io.File(getFilesDir(), "ps1_system");
+            java.io.File saveDir = new java.io.File(getFilesDir(), "ps1_saves");
+            if (!sysDir.exists()) sysDir.mkdirs();
+            if (!saveDir.exists()) saveDir.mkdirs();
+            ps1CurrentGameLabel = safeFileName(label == null ? gameFile.getName() : label);
+            stopPs1Audio();
+            ps1LastBootResult = "PS1_REMOTE_BOOTING " + ps1CurrentGameLabel;
+            appendNativeLog("BUILD2SA5AK PS1_REMOTE_BOOT reason=" + reason + " name=" + ps1CurrentGameLabel + " bytes=" + gameFile.length() + " path=" + gameFile.getAbsolutePath());
+            appendNativeLog("BUILD2SA5AK PS1_BIOS_AUDIT " + ps1BiosAudit(sysDir));
+            ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), gameFile.getAbsolutePath());
+            boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK");
+            boolean stillWanted = ok && bootGen == ps1LifecycleGen && ps1BootActive;
+            ps1BootActive = false;
+            if (stillWanted) {
+                ps1SessionActive = true;
+                setPs1RemoteStatus("PS1_REMOTE_BOOT_OK " + ps1CurrentGameLabel);
+                startPs1Audio();
+            } else {
+                ps1SessionActive = false;
+                stopPs1Audio();
+                if (ok) {
+                    try { NativePs1CoreBridge.stopSafe(); } catch (Throwable ignored) {}
+                    ps1LastBootResult = "PS1_BOOT_CANCELLED_AFTER_LEAVE";
+                    setPs1RemoteStatus(ps1LastBootResult);
+                }
+            }
+        } catch (Throwable t) {
+            ps1BootActive = false;
+            ps1SessionActive = false;
+            stopPs1Audio();
+            ps1LastBootResult = "PS1_REMOTE_BOOT_EXCEPTION " + safeMsg(t);
+            setPs1RemoteStatus(ps1LastBootResult);
+        }
+    }
+
     // BUILD2SA3/SA5P: PS1 zvuk - dedikovane vlakno, Sega-style 384f chunks,
     // retry misto okamziteho ticha, generation guard a hard release pri prepnuti.
     private synchronized void startPs1Audio() {
@@ -2333,6 +2977,11 @@ public class MainActivity extends Activity {
         } catch (Throwable t) { appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_INJECT_FAIL " + t.getMessage()); }
     }
     private boolean handleMaybeGameUrl(String url) {
+        if (isGoogleDriveUrl(url) || hasPs1RemoteExtension(url)) {
+            appendNativeLog("BUILD2SA5AM HANDLE_GAME_URL route=ps1Remote url=" + compactUrl(url));
+            downloadAndRunPs1Remote(url, "handleMaybeGameUrl");
+            return true;
+        }
         if (openExternalBrowserUrl(url)) return true;
         if (shouldRouteAsSegaDownload(url)) {
             appendNativeLog("BUILD2SA5AF HANDLE_GAME_URL route=segaArchive url=" + compactUrl(url));
@@ -2377,7 +3026,7 @@ public class MainActivity extends Activity {
                 + "document.addEventListener('click',function(e){"
                 + "var a=e.target;while(a&&a.tagName!=='A')a=a.parentElement;if(!a||!a.href)return;"
                 + "var h=a.href;"
-                + "if(/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)/i.test(h)){"
+                + "if(/drive\\.google\\.com|drive\\.usercontent\\.google\\.com/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd|cue|bin|iso|img|pbp|chd)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd|cue|bin|iso|img|pbp|chd)/i.test(h)){"
                 + "e.preventDefault();e.stopPropagation();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}"
                 + "}"
                 + "},true);"
@@ -2385,7 +3034,7 @@ public class MainActivity extends Activity {
                 + "if(e.defaultPrevented)return;"
                 + "var n=e.target,fig=null;while(n&&n!==document){if(n.tagName==='FIGURE'||(n.className&&String(n.className).indexOf('wp-block-image')>=0)){fig=n;break;}n=n.parentElement;}"
                 + "if(!fig)return;var links=fig.getElementsByTagName('a');for(var i=0;i<links.length;i++){var h=links[i].href||'';"
-                + "if(/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)/i.test(h)){"
+                + "if(/drive\\.google\\.com|drive\\.usercontent\\.google\\.com/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd|cue|bin|iso|img|pbp|chd)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd|cue|bin|iso|img|pbp|chd)/i.test(h)){"
                 + "e.preventDefault();e.stopPropagation();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}return;"
                 + "}}"
                 + "},true);"
