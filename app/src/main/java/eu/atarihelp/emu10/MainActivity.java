@@ -634,12 +634,7 @@ public class MainActivity extends Activity {
     }
 
     private boolean isProviderBlockedUrl(String url) {
-        // BUILD2SA5AE: Infos Art/WEDOS blokace je vyresena. Primarni cesta je znovu normalni web.
-        // Relay zustava v kodu jako rucni fallback, ale atarihelp.eu/vedos.cz uz nevynucujeme pres proxy.
-        return false;
-    }
-
-    private boolean isVedosUrl(String url) {
+        // BUILD2SA5AF: web ochrana zpet. AtariHelp/WEDOS jdou pres chrany WebView relay/intercept.
         if (url == null) return false;
         String u = url.trim().toLowerCase(Locale.US);
         if (!(u.startsWith("http://") || u.startsWith("https://"))) return false;
@@ -648,7 +643,8 @@ public class MainActivity extends Activity {
             String host = uri.getHost();
             if (host == null) return false;
             host = host.toLowerCase(Locale.US);
-            return host.equals("vedos.cz") || host.equals("www.vedos.cz") || host.endsWith(".vedos.cz");
+            return host.equals("atarihelp.eu") || host.equals("www.atarihelp.eu") || host.endsWith(".atarihelp.eu")
+                    || host.equals("vedos.cz") || host.equals("www.vedos.cz") || host.endsWith(".vedos.cz");
         } catch (Throwable ignored) {
             return false;
         }
@@ -656,22 +652,19 @@ public class MainActivity extends Activity {
 
     private void applyWebViewVisualMode(String url, String reason) {
         if (web == null) return;
-        boolean normalWeb = isAtariHelpUrl(url) || isVedosUrl(url) || isProviderBlockedUrl(url);
+        boolean normalWeb = isProviderBlockedUrl(url);
         try { web.setBackgroundColor(normalWeb ? Color.WHITE : Color.TRANSPARENT); } catch (Throwable ignored) {}
         try { if (rootFrame != null) rootFrame.setBackgroundColor(normalWeb ? Color.WHITE : Color.BLACK); } catch (Throwable ignored) {}
         try { web.setLayerType(normalWeb ? View.LAYER_TYPE_NONE : View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
-        if (normalWeb) appendNativeLog("BUILD2SA5AE WEBVIEW_DIRECT_WEB reason=" + reason + " url=" + compactUrl(url));
+        if (normalWeb) appendNativeLog("BUILD2SA5AF WEBVIEW_PROTECTED_WEB reason=" + reason + " url=" + compactUrl(url));
     }
 
     private synchronized boolean markAtariHelpRequestAllowed(String url, String reason) {
         if (isProviderBlockedUrl(url)) {
-            appendNativeLog("BUILD2SA5AA PROVIDER_RELAY_REQUEST reason=" + reason + " url=" + compactUrl(url));
+            appendNativeLog("BUILD2SA5AF PROVIDER_RELAY_REQUEST reason=" + reason + " url=" + compactUrl(url));
             return true;
         }
         if (!isAtariHelpUrl(url)) return true;
-        appendNativeLog("BUILD2SA5AE ATARIHELP_DIRECT_ALLOWED reason=" + reason + " url=" + compactUrl(url));
-        return true;
-        /*
         long now = System.currentTimeMillis();
         if (atariHelpBlockedUntilMs > now) {
             showAtariHelpSafetyStop(url, reason, atariHelpBlockedUntilMs - now);
@@ -689,7 +682,6 @@ public class MainActivity extends Activity {
         atariHelpLastRequestAtMs = now;
         appendNativeLog("BUILD2SA5M ATARIHELP_REQUEST_ALLOWED reason=" + reason + " url=" + compactUrl(url));
         return true;
-        */
     }
 
     private void loadAtariHelpGuarded(String url, String reason) {
@@ -850,14 +842,14 @@ public class MainActivity extends Activity {
 
     private WebResourceResponse interceptMainFrameGameNavigation(final String url) {
         if (url == null || !isGameUrl(url, null, null)) return null;
-        appendNativeLog("BUILD2SA5AC MAINFRAME_GAME_NAV route url=" + compactUrl(url));
+        appendNativeLog("BUILD2SA5AF MAINFRAME_GAME_NAV route url=" + compactUrl(url));
         ui.post(() -> {
             try {
                 if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url);
                 else if (hasSegaExtension(url)) downloadAndRunSega(url);
                 else downloadAndRun(url);
             } catch (Throwable t) {
-                appendNativeLog("BUILD2SA5AC MAINFRAME_GAME_NAV_FAIL " + safeMsg(t));
+                appendNativeLog("BUILD2SA5AF MAINFRAME_GAME_NAV_FAIL " + safeMsg(t));
             }
         });
         return htmlResponse("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -1579,7 +1571,7 @@ public class MainActivity extends Activity {
             // BUILD2SA5J: AtariHelp sbirka musi zustat uvnitr WebView.
             // Jen tak muze klik na ZIP/XEX/GEN projit pres AHNET.runGameUrl() a rovnou spustit emu.
             ui.post(() -> {
-                loadAtariHelpGuarded("https://atarihelp.eu/?page_id=207", "openGamesDirect");
+                showAtariNetGamesBridge();
             });
         }
         @JavascriptInterface
@@ -1594,7 +1586,7 @@ public class MainActivity extends Activity {
         public void runGameUrl(String url) {
             ui.post(() -> {
                 if (url == null || url.length() == 0) return;
-                appendNativeLog("BUILD2SA5AC AHNET_RUN_GAME_URL url=" + compactUrl(url));
+                appendNativeLog("BUILD2SA5AF AHNET_RUN_GAME_URL url=" + compactUrl(url));
                 if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url); // BUILD2SA5AB
                 else if (hasSegaExtension(url)) downloadAndRunSega(url); // BUILD2SA2
                 else downloadAndRun(url);
@@ -1662,9 +1654,9 @@ public class MainActivity extends Activity {
         try {
             applyWebViewVisualMode("file:///android_asset/atari_xex_bridge.html", "atariNetBridge");
             web.loadDataWithBaseURL("file:///android_asset/atari_xex_bridge.html", sb.toString(), "text/html", "UTF-8", null);
-            appendNativeLog("BUILD2SA5AD ATARI_NET_BRIDGE_OPEN games=30");
+            appendNativeLog("BUILD2SA5AF ATARI_NET_BRIDGE_OPEN protectedWeb=ON games=30");
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5AD ATARI_NET_BRIDGE_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA5AF ATARI_NET_BRIDGE_FAIL " + safeMsg(t));
         }
     }
 
@@ -2260,17 +2252,17 @@ public class MainActivity extends Activity {
     private boolean handleMaybeGameUrl(String url) {
         if (openExternalBrowserUrl(url)) return true;
         if (shouldRouteAsSegaDownload(url)) {
-            appendNativeLog("BUILD2SA5AC HANDLE_GAME_URL route=segaArchive url=" + compactUrl(url));
+            appendNativeLog("BUILD2SA5AF HANDLE_GAME_URL route=segaArchive url=" + compactUrl(url));
             downloadAndRunSegaArchive(url);
             return true;
         } // BUILD2SA5AB: Sega ZIP nesmi spadnout do 130XE
         if (hasSegaExtension(url)) {
-            appendNativeLog("BUILD2SA5AC HANDLE_GAME_URL route=segaRaw url=" + compactUrl(url));
+            appendNativeLog("BUILD2SA5AF HANDLE_GAME_URL route=segaRaw url=" + compactUrl(url));
             downloadAndRunSega(url);
             return true;
         } // BUILD2SA2: Sega ma prednost
         if (isGameUrl(url, null, null)) {
-            appendNativeLog("BUILD2SA5AC HANDLE_GAME_URL route=atari url=" + compactUrl(url));
+            appendNativeLog("BUILD2SA5AF HANDLE_GAME_URL route=atari url=" + compactUrl(url));
             downloadAndRun(url);
             return true;
         }
@@ -2326,13 +2318,13 @@ public class MainActivity extends Activity {
                 final String cdName = fetched.contentDisposition;
                 final byte[] data = fetched.data;
                 final String name = guessDownloadName(url, cdName);
-                appendNativeLog("BUILD2SA5AC WEB_GAME_DOWNLOADED name=" + name + " bytes=" + data.length + " via=" + compactUrl(fetched.via));
+                appendNativeLog("BUILD2SA5AF WEB_GAME_DOWNLOADED name=" + name + " bytes=" + data.length + " via=" + compactUrl(fetched.via));
                 // BUILD2SA2B: Reneho web umi hostovat jen ZIPy. Kouknem DOVNITR zipu:
                 // kdyz je uvnitr Sega ROM (.gen/.md/.smd/.sms), rozbalime a posleme
                 // do EMU SEGA. Jinak jede stara Atari cesta beze zmeny.
                 final SegaExtract sega = extractSegaRomFromMaybeZip(name, data);
                 if (sega != null && sega.data != null && sega.data.length > 0) {
-                    appendNativeLog("BUILD2SA5AC ZIP_CONTAINS_SEGA name=" + sega.name + " bytes=" + sega.data.length + " -> EMU_SEGA");
+                    appendNativeLog("BUILD2SA5AF ZIP_CONTAINS_SEGA name=" + sega.name + " bytes=" + sega.data.length + " -> EMU_SEGA");
                     ui.post(() -> openSegaRomBytes(sega.data, sega.name, "genericZipInspect"));
                     return;
                 }
@@ -2340,7 +2332,7 @@ public class MainActivity extends Activity {
                 final byte[] atariData = (atari != null && atari.data != null && atari.data.length > 0) ? atari.data : data;
                 final String atariName = (atari != null && atari.name != null && atari.name.length() > 0) ? atari.name : name;
                 if (atari != null && atari.data != null && atari.data.length > 0) {
-                    appendNativeLog("BUILD2SA5AC ZIP_CONTAINS_ATARI name=" + atari.name + " bytes=" + atari.data.length + " -> EMU_130XE");
+                    appendNativeLog("BUILD2SA5AF ZIP_CONTAINS_ATARI name=" + atari.name + " bytes=" + atari.data.length + " -> EMU_130XE");
                 }
                 ui.post(() -> {
                     String cur = web.getUrl();
@@ -2355,7 +2347,7 @@ public class MainActivity extends Activity {
             } catch (Exception ex) {
                 ui.post(() -> {
                     try {
-                        appendNativeLog("BUILD2SA5AC WEB_GAME_DOWNLOAD_FAIL noEmuFallback " + safeMsg(ex));
+                        appendNativeLog("BUILD2SA5AF WEB_GAME_DOWNLOAD_FAIL noEmuFallback " + safeMsg(ex));
                         final String msg = ex.getMessage() == null ? "neznamá chyba" : ex.getMessage();
                         String curErr = web == null ? null : web.getUrl();
                         if (curErr != null && curErr.startsWith(EMU_URL)) {
