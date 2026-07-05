@@ -321,6 +321,16 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String ps1RemoteStatus() { return ps1RemoteDownloadStatus; }
         @JavascriptInterface
+        public String ps1RemoteCachePath() {
+            try { return ps1RemoteGamesDir().getAbsolutePath(); }
+            catch (Throwable t) { return "PS1_CACHE_PATH_FAIL " + safeMsg(t); }
+        }
+        @JavascriptInterface
+        public String ps1ClearRemoteCache() {
+            try { return clearPs1RemoteCaches(); }
+            catch (Throwable t) { return "PS1_CACHE_CLEAR_FAIL " + safeMsg(t); }
+        }
+        @JavascriptInterface
         public void ps1Input(String button, boolean down) {
             int id = ps1ButtonId(button);
             if (id >= 0) NativePs1CoreBridge.setInputSafe(id, down);
@@ -2290,15 +2300,78 @@ public class MainActivity extends Activity {
 
     private void setPs1RemoteStatus(String status) {
         ps1RemoteDownloadStatus = status == null ? "" : status;
-        appendNativeLog("BUILD2SA5AO " + ps1RemoteDownloadStatus);
+        appendNativeLog("BUILD2SA5AP " + ps1RemoteDownloadStatus);
     }
 
-    private File ps1RemoteGamesDir() throws IOException {
+    private boolean canUsePs1CacheDir(File dir) {
+        if (dir == null) return false;
+        File probe = null;
+        try {
+            if (!dir.exists() && !dir.mkdirs()) return false;
+            probe = new File(dir, ".nap_ps1_write_test");
+            FileOutputStream out = new FileOutputStream(probe);
+            try { out.write(1); } finally { out.close(); }
+            return probe.exists();
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA5AP PS1_CACHE_DIR_WRITE_FAIL path=" + (dir == null ? "null" : dir.getAbsolutePath()) + " err=" + safeMsg(t));
+            return false;
+        } finally {
+            try { if (probe != null && probe.exists()) probe.delete(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private File ps1PrivateRemoteGamesDir() {
         File dir = null;
         try { dir = getExternalFilesDir("ps1_games"); } catch (Throwable ignored) {}
         if (dir == null) dir = new File(getFilesDir(), "ps1_games");
-        if (!dir.exists() && !dir.mkdirs()) throw new IOException("nejde vytvorit PS1 slozka: " + dir.getAbsolutePath());
         return dir;
+    }
+
+    private File ps1RemoteGamesDir() throws IOException {
+        File publicDir = null;
+        try { publicDir = new File(getPublicAtariHelpDownloadsDir(), "PS1"); } catch (Throwable ignored) {}
+        if (canUsePs1CacheDir(publicDir)) return publicDir;
+
+        File dir = ps1PrivateRemoteGamesDir();
+        if (!dir.exists() && !dir.mkdirs()) throw new IOException("nejde vytvorit PS1 slozka: " + dir.getAbsolutePath());
+        appendNativeLog("BUILD2SA5AP PS1_CACHE_FALLBACK_APP_PRIVATE path=" + dir.getAbsolutePath());
+        return dir;
+    }
+
+    private boolean deleteTree(File f) {
+        if (f == null || !f.exists()) return true;
+        File[] kids = f.listFiles();
+        if (kids != null) {
+            for (File k : kids) deleteTree(k);
+        }
+        return f.delete();
+    }
+
+    private String clearPs1RemoteCaches() throws IOException {
+        if (ps1RemoteDownloadActive || ps1BootActive || ps1SessionActive) {
+            String busy = "PS1_CACHE_CLEAR_BUSY nejdriv ukonci PS1 hru/download";
+            setPs1RemoteStatus(busy);
+            return busy;
+        }
+        int targets = 0;
+        StringBuilder sb = new StringBuilder();
+        File publicDir = null;
+        try { publicDir = new File(getPublicAtariHelpDownloadsDir(), "PS1"); } catch (Throwable ignored) {}
+        if (publicDir != null && publicDir.exists()) {
+            targets++;
+            boolean ok = deleteTree(publicDir);
+            sb.append("downloads=").append(ok ? "OK" : "FAIL").append(":").append(publicDir.getAbsolutePath()).append(" ");
+        }
+        File privateDir = ps1PrivateRemoteGamesDir();
+        if (privateDir != null && privateDir.exists()) {
+            targets++;
+            boolean ok = deleteTree(privateDir);
+            sb.append("private=").append(ok ? "OK" : "FAIL").append(":").append(privateDir.getAbsolutePath()).append(" ");
+        }
+        if (targets == 0) sb.append("nic ke smazani");
+        String res = "PS1_CACHE_CLEAR " + sb.toString().trim();
+        setPs1RemoteStatus(res);
+        return res;
     }
 
     private String ps1StableHash(String value) {
@@ -2348,7 +2421,7 @@ public class MainActivity extends Activity {
             }
             return true;
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5AO PS1_REMOTE_CACHE_CUE_CHECK_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA5AP PS1_REMOTE_CACHE_CUE_CHECK_FAIL " + safeMsg(t));
             return false;
         } finally {
             try { if (in != null) in.close(); } catch (Throwable ignored) {}
@@ -2368,7 +2441,7 @@ public class MainActivity extends Activity {
             if (isPs1CueName(boot.getName()) && !ps1CachedCueLooksComplete(boot)) return null;
             return boot;
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5AO PS1_REMOTE_CACHE_READ_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA5AP PS1_REMOTE_CACHE_READ_FAIL " + safeMsg(t));
             return null;
         } finally {
             try { if (in != null) in.close(); } catch (Throwable ignored) {}
@@ -2379,9 +2452,9 @@ public class MainActivity extends Activity {
         try {
             if (dir == null || bootFile == null) return;
             ps1WriteBytes(ps1RemoteCacheMarker(dir), bootFile.getName().getBytes("UTF-8"));
-            appendNativeLog("BUILD2SA5AO PS1_REMOTE_CACHE_STORE boot=" + bootFile.getName() + " dir=" + dir.getName());
+            appendNativeLog("BUILD2SA5AP PS1_REMOTE_CACHE_STORE boot=" + bootFile.getName() + " dir=" + dir.getName());
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5AO PS1_REMOTE_CACHE_STORE_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA5AP PS1_REMOTE_CACHE_STORE_FAIL " + safeMsg(t));
         }
     }
 

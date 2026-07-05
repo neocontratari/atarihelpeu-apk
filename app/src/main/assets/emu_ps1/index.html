@@ -127,6 +127,8 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <textarea id="ps1LogView" readonly style="width:100%;min-height:220px;background:#01050a;color:#bfe9ff;border:1px solid rgba(125,200,255,.45);border-radius:10px;font:700 11px/1.4 'Courier New',monospace;padding:8px;white-space:pre;"></textarea>
     <button id="psGooglePage" type="button">PS1 GOOGLE DRIVE</button>
     <button id="psRemoteUrl" type="button">PS1 PRIMA URL</button>
+    <button id="psCachePath" type="button">PS1 CACHE CESTA</button>
+    <button id="psCacheClear" type="button">SMAZAT PS1 CACHE</button>
     <button id="logSave" type="button">ULOZIT LOG (Downloads/AtariHelp)</button>
     <button id="logCopy" type="button">KOPIROVAT LOG</button>
     <button id="helpClose" type="button">ZAVRIT</button>
@@ -134,7 +136,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2SA5AO_STAGE189_PS1_VISIBLE_DOWNLOAD_CACHE';
+var BUILD='BUILD2SA5AP_STAGE190_PS1_DOWNLOADS_CACHE_HIDE_BANNER';
 var PS1_GOOGLE_PAGE='https://atarihelp.eu/?page_id=1048';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
@@ -185,6 +187,11 @@ function updateRemoteBanner(st){
     b.classList.remove('show');
     return;
   }
+  if(/^PS1_REMOTE_BOOT_OK/.test(st)){
+    b.classList.remove('show');
+    clearTimeout(window.__napRemoteHideTimer);
+    return;
+  }
   var path='';
   var p=st.indexOf(' path=');
   if(p>=0){path=st.slice(p+6);st=st.slice(0,p);}
@@ -192,7 +199,7 @@ function updateRemoteBanner(st){
   else path=window.__napPs1RemoteLastPath||'';
   var pct=remoteProgressValue(st);
   var title=remoteTitleFor(st);
-  var active=/^PS1_REMOTE_(START|CONNECT|DOWNLOAD|ZIP|READY|CACHE_HIT|BUSY)/.test(st)||/^PS1_REMOTE_BOOT_OK/.test(st)||/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st);
+  var active=/^PS1_REMOTE_(START|CONNECT|DOWNLOAD|ZIP|READY|CACHE_HIT|BUSY)/.test(st)||/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st);
   if(!active){b.classList.remove('show');return;}
   $('remoteTitle').textContent=title;
   $('remotePercent').textContent=pct>0?(pct+'%'):'';
@@ -201,7 +208,7 @@ function updateRemoteBanner(st){
   $('remoteFill').style.width=Math.max(0,Math.min(100,pct))+'%';
   b.classList.add('show');
   clearTimeout(window.__napRemoteHideTimer);
-  if(/^PS1_REMOTE_BOOT_OK|^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st)){
+  if(/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st)){
     window.__napRemoteHideTimer=setTimeout(function(){b.classList.remove('show');},9000);
   }
 }
@@ -536,6 +543,25 @@ function bootPs1RemoteUrl(){
     log('PS1_REMOTE_ERROR '+(e&&e.message));
   }
 }
+function ps1ShowCachePath(){
+  try{
+    if(window.AHPS1&&window.AHPS1.ps1RemoteCachePath){
+      var r=String(window.AHPS1.ps1RemoteCachePath());
+      log('PS1_CACHE_PATH '+r);
+      toast('PS1 cache: '+r,7000);
+    }else toast('PS1 CACHE: AHPS1 most chybi',2600);
+  }catch(e){toast('PS1 CACHE cesta chyba: '+(e&&e.message),3600);}
+}
+function ps1ClearCache(){
+  try{
+    if(window.AHPS1&&window.AHPS1.ps1ClearRemoteCache){
+      if(!confirm('Smazat PS1 stazene hry/cache z telefonu?'))return;
+      var r=String(window.AHPS1.ps1ClearRemoteCache());
+      log('PS1_CACHE_CLEAR_RESULT '+r);
+      toast(r,7000);
+    }else toast('PS1 CACHE CLEAR: AHPS1 most chybi',2600);
+  }catch(e){toast('PS1 CACHE mazani chyba: '+(e&&e.message),4200);}
+}
 function ps1QuickSave(){
   try{
     if(window.AHPS1&&window.AHPS1.ps1QuickSave){
@@ -577,6 +603,8 @@ bindHold($('btnStart'),'START');
 $('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 if($('psRemoteUrl'))$('psRemoteUrl').addEventListener('click',function(e){e.preventDefault();bootPs1RemoteUrl();},true);
 if($('psGooglePage'))$('psGooglePage').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);
+if($('psCachePath'))$('psCachePath').addEventListener('click',function(e){e.preventDefault();ps1ShowCachePath();},true);
+if($('psCacheClear'))$('psCacheClear').addEventListener('click',function(e){e.preventDefault();ps1ClearCache();},true);
 $('logSave').addEventListener('click',function(e){e.preventDefault();
   var fn='AtariHelp_PS1_LOG_'+(function(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());})()+'.txt';
   try{
@@ -595,7 +623,7 @@ $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.fi
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
 ensurePs1ScreenAndPoll();
-log(BUILD+' ready: LOAD GAME otevre PS1 Google Drive stranku '+PS1_GOOGLE_PAGE+'; banner ukazuje CONNECT/DOWNLOAD/ZIP_EXTRACT/CACHE_HIT.');
+log(BUILD+' ready: LOAD GAME otevre PS1 Google Drive stranku '+PS1_GOOGLE_PAGE+'; cache je v Downloads/AtariHelp/PS1, BOOT_OK banner se hned schova.');
 })();
 </script>
 </body>
