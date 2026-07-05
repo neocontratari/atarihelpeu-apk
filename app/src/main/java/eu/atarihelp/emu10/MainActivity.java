@@ -71,10 +71,11 @@ public class MainActivity extends Activity {
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
-    private static final long ATARI_NET_INJECT_RETRY_MS = 300L; // BUILD2SA5AI: net XEX waits while 130XE page settles.
+    private static final long ATARI_NET_INJECT_RETRY_MS = 300L; // BUILD2SA5AJ: only polls; does not keep reloading 130XE.
     private static final int ATARI_NET_INJECT_MAX_ATTEMPTS = 42;
-    private static final long ATARI_NET_INJECT_SETTLE_MS = 1400L; // BUILD2SA5AH: local picker works after an already-settled 130XE page.
-    private static final long ATARI_NET_INJECT_FALLBACK_MS = 7600L;
+    private static final long ATARI_NET_OPEN_SETTLE_MS = 2600L; // BUILD2SA5AJ: like Sega delayed inject after opening emulator page.
+    private static final long ATARI_NET_INJECT_SETTLE_MS = 900L;
+    private static final long ATARI_NET_INJECT_FALLBACK_MS = 6200L;
     private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
     private static byte[] pendingSegaGame = null;   // BUILD2SA2: hra ze SBIRKY cekajici na nacteni Sega stranky
     private static String pendingSegaName = null;
@@ -2446,10 +2447,12 @@ public class MainActivity extends Activity {
         if (cur != null && cur.startsWith(EMU_URL)) {
             schedulePendingAtariGameInjection(reason + ":alreadyOn130xe");
         } else {
-            appendNativeLog("BUILD2SA5AI EMU130_FORCE_OPEN reason=" + reason + " from=" + compactUrl(cur));
-            try { web.stopLoading(); } catch (Throwable ignored) {}
+            appendNativeLog("BUILD2SA5AJ EMU130_OPEN_ONCE reason=" + reason + " from=" + compactUrl(cur) + " settleMs=" + ATARI_NET_OPEN_SETTLE_MS);
             web.loadUrl(EMU_URL);
-            schedulePendingAtariGameInjection(reason + ":forcedOpen");
+            final int seq = ++pendingGameInjectSeq;
+            appendNativeLog("BUILD2SA5AJ EMU130_INJECT_DELAYED_AFTER_OPEN reason=" + reason + " seq=" + seq + " name=" + pendingName + " bytes=" + pendingGame.length);
+            ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason + ":afterOpenDelay", 0), ATARI_NET_OPEN_SETTLE_MS);
+            ui.postDelayed(() -> commitPendingAtariGameInjection(seq, reason + ":lateDirectFallback"), ATARI_NET_INJECT_FALLBACK_MS);
         }
     }
 
@@ -2466,15 +2469,13 @@ public class MainActivity extends Activity {
         String cur = web.getUrl();
         if (cur == null || !cur.startsWith(EMU_URL)) {
             if (attempt < ATARI_NET_INJECT_MAX_ATTEMPTS) {
-                boolean forceOpen = attempt == 0 || attempt == 5 || attempt == 12 || attempt == 24;
-                if (forceOpen) {
-                    appendNativeLog("BUILD2SA5AI EMU130_INJECT_REOPEN reason=" + reason + " attempt=" + attempt + " cur=" + compactUrl(cur));
-                    try { web.stopLoading(); } catch (Throwable ignored) {}
-                    try { web.loadUrl(EMU_URL); } catch (Throwable t) { appendNativeLog("BUILD2SA5AI EMU130_REOPEN_ERROR " + safeMsg(t)); }
+                if (attempt == 0 || attempt == 8 || attempt == 20 || attempt == 36) {
+                    appendNativeLog("BUILD2SA5AJ EMU130_WAIT_URL reason=" + reason + " attempt=" + attempt + " cur=" + compactUrl(cur));
                 }
                 ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, attempt + 1), ATARI_NET_INJECT_RETRY_MS);
             } else {
-                appendNativeLog("BUILD2SA5AI EMU130_INJECT_NO_EMU_URL_TIMEOUT reason=" + reason + " cur=" + compactUrl(cur));
+                appendNativeLog("BUILD2SA5AJ EMU130_URL_TIMEOUT_TRY_DIRECT reason=" + reason + " cur=" + compactUrl(cur));
+                commitPendingAtariGameInjection(seq, reason + ":urlTimeoutDirect");
             }
             return;
         }
@@ -2508,7 +2509,11 @@ public class MainActivity extends Activity {
     private void commitPendingAtariGameInjection(final int seq, final String reason) {
         if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
         String cur = web.getUrl();
-        if (cur == null || !cur.startsWith(EMU_URL)) return;
+        boolean allowDirect = reason != null && reason.toLowerCase(Locale.US).contains("direct");
+        if (cur == null || !cur.startsWith(EMU_URL)) {
+            appendNativeLog("BUILD2SA5AJ EMU130_COMMIT_URL_MISMATCH reason=" + reason + " cur=" + compactUrl(cur) + " allowDirect=" + allowDirect);
+            if (!allowDirect) return;
+        }
         try {
             byte[] data = pendingGame;
             String name = pendingName;
