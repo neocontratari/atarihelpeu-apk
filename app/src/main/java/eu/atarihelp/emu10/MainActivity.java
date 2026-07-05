@@ -831,6 +831,31 @@ public class MainActivity extends Activity {
         }
     }
 
+    private WebResourceResponse htmlResponse(String html) {
+        try {
+            return new WebResourceResponse("text/html", "UTF-8", new java.io.ByteArrayInputStream(html.getBytes("UTF-8")));
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private WebResourceResponse interceptMainFrameGameNavigation(final String url) {
+        if (url == null || !isGameUrl(url, null, null)) return null;
+        appendNativeLog("BUILD2SA5AC MAINFRAME_GAME_NAV route url=" + compactUrl(url));
+        ui.post(() -> {
+            try {
+                if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url);
+                else if (hasSegaExtension(url)) downloadAndRunSega(url);
+                else downloadAndRun(url);
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA5AC MAINFRAME_GAME_NAV_FAIL " + safeMsg(t));
+            }
+        });
+        return htmlResponse("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<style>body{font-family:sans-serif;background:#fff;color:#111;padding:24px;line-height:1.4}code{word-break:break-all}</style></head>"
+                + "<body><h1>Spoustim hru...</h1><p><code>" + escapeHtml(url) + "</code></p></body></html>");
+    }
+
     private void showAtariHelpProviderBridge(final String url, final String reason, final String detail) {
         Runnable r = () -> {
             if (web == null) return;
@@ -1557,6 +1582,7 @@ public class MainActivity extends Activity {
         public void runGameUrl(String url) {
             ui.post(() -> {
                 if (url == null || url.length() == 0) return;
+                appendNativeLog("BUILD2SA5AC AHNET_RUN_GAME_URL url=" + compactUrl(url));
                 if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url); // BUILD2SA5AB
                 else if (hasSegaExtension(url)) downloadAndRunSega(url); // BUILD2SA2
                 else downloadAndRun(url);
@@ -1713,7 +1739,12 @@ public class MainActivity extends Activity {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest request) {
                 if (Build.VERSION.SDK_INT >= 21 && request != null && request.getUrl() != null) {
-                    WebResourceResponse rr = interceptProviderBlockedResource(request.getUrl().toString(), request.isForMainFrame());
+                    String reqUrl = request.getUrl().toString();
+                    if (request.isForMainFrame()) {
+                        WebResourceResponse game = interceptMainFrameGameNavigation(reqUrl);
+                        if (game != null) return game;
+                    }
+                    WebResourceResponse rr = interceptProviderBlockedResource(reqUrl, request.isForMainFrame());
                     if (rr != null) return rr;
                 }
                 return super.shouldInterceptRequest(v, request);
@@ -2151,9 +2182,18 @@ public class MainActivity extends Activity {
     }
     private boolean handleMaybeGameUrl(String url) {
         if (openExternalBrowserUrl(url)) return true;
-        if (shouldRouteAsSegaDownload(url)) { downloadAndRunSegaArchive(url); return true; } // BUILD2SA5AB: Sega ZIP nesmi spadnout do 130XE
-        if (hasSegaExtension(url)) { downloadAndRunSega(url); return true; } // BUILD2SA2: Sega ma prednost
+        if (shouldRouteAsSegaDownload(url)) {
+            appendNativeLog("BUILD2SA5AC HANDLE_GAME_URL route=segaArchive url=" + compactUrl(url));
+            downloadAndRunSegaArchive(url);
+            return true;
+        } // BUILD2SA5AB: Sega ZIP nesmi spadnout do 130XE
+        if (hasSegaExtension(url)) {
+            appendNativeLog("BUILD2SA5AC HANDLE_GAME_URL route=segaRaw url=" + compactUrl(url));
+            downloadAndRunSega(url);
+            return true;
+        } // BUILD2SA2: Sega ma prednost
         if (isGameUrl(url, null, null)) {
+            appendNativeLog("BUILD2SA5AC HANDLE_GAME_URL route=atari url=" + compactUrl(url));
             downloadAndRun(url);
             return true;
         }
@@ -2209,13 +2249,13 @@ public class MainActivity extends Activity {
                 final String cdName = fetched.contentDisposition;
                 final byte[] data = fetched.data;
                 final String name = guessDownloadName(url, cdName);
-                appendNativeLog("BUILD2SA5AA WEB_GAME_DOWNLOADED name=" + name + " bytes=" + data.length + " via=" + compactUrl(fetched.via));
+                appendNativeLog("BUILD2SA5AC WEB_GAME_DOWNLOADED name=" + name + " bytes=" + data.length + " via=" + compactUrl(fetched.via));
                 // BUILD2SA2B: Reneho web umi hostovat jen ZIPy. Kouknem DOVNITR zipu:
                 // kdyz je uvnitr Sega ROM (.gen/.md/.smd/.sms), rozbalime a posleme
                 // do EMU SEGA. Jinak jede stara Atari cesta beze zmeny.
                 final SegaExtract sega = extractSegaRomFromMaybeZip(name, data);
                 if (sega != null && sega.data != null && sega.data.length > 0) {
-                    appendNativeLog("BUILD2SA5AB ZIP_CONTAINS_SEGA name=" + sega.name + " bytes=" + sega.data.length + " -> EMU_SEGA");
+                    appendNativeLog("BUILD2SA5AC ZIP_CONTAINS_SEGA name=" + sega.name + " bytes=" + sega.data.length + " -> EMU_SEGA");
                     ui.post(() -> openSegaRomBytes(sega.data, sega.name, "genericZipInspect"));
                     return;
                 }
@@ -2223,7 +2263,7 @@ public class MainActivity extends Activity {
                 final byte[] atariData = (atari != null && atari.data != null && atari.data.length > 0) ? atari.data : data;
                 final String atariName = (atari != null && atari.name != null && atari.name.length() > 0) ? atari.name : name;
                 if (atari != null && atari.data != null && atari.data.length > 0) {
-                    appendNativeLog("BUILD2SA5AB ZIP_CONTAINS_ATARI name=" + atari.name + " bytes=" + atari.data.length + " -> EMU_130XE");
+                    appendNativeLog("BUILD2SA5AC ZIP_CONTAINS_ATARI name=" + atari.name + " bytes=" + atari.data.length + " -> EMU_130XE");
                 }
                 ui.post(() -> {
                     String cur = web.getUrl();
@@ -2238,7 +2278,7 @@ public class MainActivity extends Activity {
             } catch (Exception ex) {
                 ui.post(() -> {
                     try {
-                        appendNativeLog("BUILD2SA5AB WEB_GAME_DOWNLOAD_FAIL noEmuFallback " + safeMsg(ex));
+                        appendNativeLog("BUILD2SA5AC WEB_GAME_DOWNLOAD_FAIL noEmuFallback " + safeMsg(ex));
                         final String msg = ex.getMessage() == null ? "neznamá chyba" : ex.getMessage();
                         String curErr = web == null ? null : web.getUrl();
                         if (curErr != null && curErr.startsWith(EMU_URL)) {
