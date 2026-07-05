@@ -1570,9 +1570,12 @@ public class MainActivity extends Activity {
             // BUILD2SA5J: AtariHelp sbirka musi zustat uvnitr WebView.
             // Jen tak muze klik na ZIP/XEX/GEN projit pres AHNET.runGameUrl() a rovnou spustit emu.
             ui.post(() -> {
-                String url = "https://atarihelp.eu/?page_id=207";
-                loadAtariHelpGuarded(url, "openGames");
+                showAtariNetGamesBridge();
             });
+        }
+        @JavascriptInterface
+        public void openGamesWeb() {
+            ui.post(() -> loadAtariHelpGuarded("https://atarihelp.eu/?page_id=21", "openGamesWeb"));
         }
         @JavascriptInterface
         public void openInBrowser(String url) {
@@ -1590,6 +1593,71 @@ public class MainActivity extends Activity {
         }
     }
 
+
+    private void addAtariNetGame(StringBuilder sb, String title, String zipUrl) {
+        String safeTitle = escapeHtml(title == null ? "Atari XEX" : title);
+        String safeUrl = escapeHtml(zipUrl == null ? "" : zipUrl);
+        String jsUrl = jsQuote(zipUrl == null ? "" : zipUrl);
+        sb.append("<a class='game' href='").append(safeUrl).append("' onclick=\"try{AHNET.runGameUrl(")
+                .append(jsUrl).append(");}catch(e){location.href=").append(jsUrl).append(";}return false;\">")
+                .append(safeTitle).append("</a>");
+    }
+
+    private void showAtariNetGamesBridge() {
+        if (web == null) return;
+        StringBuilder sb = new StringBuilder(12000);
+        sb.append("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>");
+        sb.append("<style>");
+        sb.append("body{margin:0;background:#050505;color:#f4ead2;font-family:Arial,sans-serif;padding:18px 14px 28px}");
+        sb.append("h1{font-size:22px;margin:6px 0 14px;text-align:center;letter-spacing:.04em}");
+        sb.append(".bar{display:flex;gap:8px;justify-content:center;margin:0 0 14px;flex-wrap:wrap}");
+        sb.append(".cmd{border:1px solid #9e854c;color:#f4ead2;background:#14120c;border-radius:6px;padding:9px 12px;text-decoration:none;font-weight:700}");
+        sb.append(".grid{display:grid;grid-template-columns:1fr;gap:9px;max-width:620px;margin:0 auto}");
+        sb.append(".game{display:block;border:1px solid #8b743f;background:linear-gradient(180deg,#201b12,#0d0c09);color:#fff0c0;text-decoration:none;border-radius:6px;padding:13px 14px;font-size:17px;font-weight:700;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}");
+        sb.append(".game:active{background:#3a2f16;color:#fff}");
+        sb.append("</style></head><body>");
+        sb.append("<h1>Atari XEX</h1>");
+        sb.append("<div class='bar'><a class='cmd' href='#' onclick='try{AHNET.openGamesWeb();}catch(e){}return false;'>WEB</a></div>");
+        sb.append("<div class='grid'>");
+        addAtariNetGame(sb, "Atari Galactic Chase XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/galactic_chase.zip");
+        addAtariNetGame(sb, "Atari Moon Patrol XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/moon_patrol.zip");
+        addAtariNetGame(sb, "Atari Pac Man XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/de_re_pac-man.zip");
+        addAtariNetGame(sb, "Atari Donkey Kong XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/donkey_kong.zip");
+        addAtariNetGame(sb, "Atari Death Race XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/death_race.zip");
+        addAtariNetGame(sb, "Atari Super Cobra XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Super-Cobra.zip");
+        addAtariNetGame(sb, "Atari Pitstop 2 XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/pitstop_ii.zip");
+        addAtariNetGame(sb, "Atari River Raid XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/River-Raid.zip");
+        addAtariNetGame(sb, "Atari NaP Pitt-Kitt XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/PiTT-KiTT-NaP-Final.zip");
+        addAtariNetGame(sb, "Atari Bugi Bugi 3 XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/bugi_bugi_3.zip");
+        addAtariNetGame(sb, "Atari International Karate XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/international_karate_enhanced_version_2014.zip");
+        addAtariNetGame(sb, "Atari Tennis XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/atari_tennis.zip");
+        addAtariNetGame(sb, "Atari Bruce Lee XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Bruce-Lee.zip");
+        addAtariNetGame(sb, "Atari Alley Cat XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Alley-Cat.zip");
+        addAtariNetGame(sb, "Atari Bruce Lee's Return XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Bruce-Lees-Return.zip");
+        addAtariNetGame(sb, "Atari Ghostbusters XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Ghostbusters.zip");
+        addAtariNetGame(sb, "Atari Dawn Raider XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/dawn_raider.zip");
+        addAtariNetGame(sb, "Atari Mario Bros XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/mario_bros._xe_arcade.zip");
+        addAtariNetGame(sb, "Atari Montezuma's Revenge XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Montezumas-Revenge-.zip");
+        addAtariNetGame(sb, "Atari Shaft Raider XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/shaft_raider.zip");
+        addAtariNetGame(sb, "Atari Sidewinder XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/sidewinder.zip");
+        addAtariNetGame(sb, "Atari Vanguard XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Vanguard.zip");
+        addAtariNetGame(sb, "Atari Cross-Country Road Race XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/The-Great-American-Cross-Country-Road-Race.zip");
+        addAtariNetGame(sb, "Atari Activision Decathlon XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/The-Activision-Decathlon.zip");
+        addAtariNetGame(sb, "Atari Popeye Arcade XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Popeye-Arcade-Version.zip");
+        addAtariNetGame(sb, "Atari Ninja Title XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Ninja-Title-Version.zip");
+        addAtariNetGame(sb, "Atari Patent Pole Position XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Patent-Pole-Position.zip");
+        addAtariNetGame(sb, "Atari Bros XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Bros.zip");
+        addAtariNetGame(sb, "Atari Arkanoid XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Arkanoid.zip");
+        addAtariNetGame(sb, "Atari Star Wars XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Starwars.zip");
+        sb.append("</div></body></html>");
+        try {
+            applyWebViewVisualMode("file:///android_asset/atari_xex_bridge.html", "atariNetBridge");
+            web.loadDataWithBaseURL("file:///android_asset/atari_xex_bridge.html", sb.toString(), "text/html", "UTF-8", null);
+            appendNativeLog("BUILD2SA5AD ATARI_NET_BRIDGE_OPEN games=30");
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA5AD ATARI_NET_BRIDGE_FAIL " + safeMsg(t));
+        }
+    }
 
     // BUILD2GH: normalni WWW odkazy nesmi spadnout do emulator NET loaderu.
     // Hlavni chyba byla .com v domenach facebook.com / youtube.com:
