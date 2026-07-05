@@ -71,6 +71,9 @@ public class MainActivity extends Activity {
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
+    private static final long ATARI_NET_INJECT_RETRY_MS = 180L; // BUILD2SA5AG: net XEX waits until 130XE AHRECV bridge is ready.
+    private static final int ATARI_NET_INJECT_MAX_ATTEMPTS = 30;
+    private static final long ATARI_NET_INJECT_FALLBACK_MS = 3200L;
     private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
     private static byte[] pendingSegaGame = null;   // BUILD2SA2: hra ze SBIRKY cekajici na nacteni Sega stranky
     private static String pendingSegaName = null;
@@ -102,6 +105,7 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> pendingChooser;
     private byte[] pendingGame;
     private String pendingName;
+    private int pendingGameInjectSeq = 0;
     private String pendingBridgeKind;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private volatile int nativeRomLoadGeneration = 0;
@@ -1792,9 +1796,8 @@ public class MainActivity extends Activity {
                 applyWebViewVisualMode(url, "onPageFinished");
                 stopNativeIfLeavingSega(url, "onPageFinished");
                 stopPs1IfLeaving(url, "onPageFinished");
-                if (pendingGame != null && url.startsWith(EMU_URL)) {
-                    injectGame(pendingName, pendingGame);
-                    pendingGame = null;
+                if (pendingGame != null && url != null && url.startsWith(EMU_URL)) {
+                    schedulePendingAtariGameInjection("onPageFinished");
                 }
                 if (url != null && url.toLowerCase().contains("atarihelp.eu")) {
                     injectGameLinkBridge();
@@ -2335,14 +2338,7 @@ public class MainActivity extends Activity {
                     appendNativeLog("BUILD2SA5AF ZIP_CONTAINS_ATARI name=" + atari.name + " bytes=" + atari.data.length + " -> EMU_130XE");
                 }
                 ui.post(() -> {
-                    String cur = web.getUrl();
-                    if (cur != null && cur.startsWith(EMU_URL)) {
-                        injectGame(atariName, atariData);
-                    } else {
-                        pendingGame = atariData;
-                        pendingName = atariName;
-                        web.loadUrl(EMU_URL + "?autorun=1");   // otevri emulator bez auto POWER BASIC; soubor se vlozi po nacteni
-                    }
+                    queueAtariGameFor130xe(atariName, atariData, "netDownload");
                 });
             } catch (Exception ex) {
                 ui.post(() -> {
@@ -2359,19 +2355,102 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    private void queueAtariGameFor130xe(String name, byte[] data, String reason) {
+        if (data == null || data.length == 0 || web == null) {
+            appendNativeLog("BUILD2SA5AG EMU130_QUEUE_SKIP_EMPTY reason=" + reason + " name=" + name);
+            return;
+        }
+        pendingGame = data;
+        pendingName = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
+        appendNativeLog("BUILD2SA5AG EMU130_QUEUE reason=" + reason + " name=" + pendingName + " bytes=" + pendingGame.length);
+        String cur = web.getUrl();
+        if (cur != null && cur.startsWith(EMU_URL)) {
+            schedulePendingAtariGameInjection(reason + ":alreadyOn130xe");
+        } else {
+            web.loadUrl(EMU_URL + "?autorun=1");
+        }
+    }
+
+    private void schedulePendingAtariGameInjection(final String reason) {
+        if (pendingGame == null || web == null) return;
+        final int seq = ++pendingGameInjectSeq;
+        appendNativeLog("BUILD2SA5AG EMU130_INJECT_SCHEDULE reason=" + reason + " seq=" + seq + " name=" + pendingName + " bytes=" + pendingGame.length);
+        ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, 0), ATARI_NET_INJECT_RETRY_MS);
+        ui.postDelayed(() -> fallbackInjectPendingAtariGame(seq, reason), ATARI_NET_INJECT_FALLBACK_MS);
+    }
+
+    private void tryInjectPendingAtariGame(final int seq, final String reason, final int attempt) {
+        if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
+        String cur = web.getUrl();
+        if (cur == null || !cur.startsWith(EMU_URL)) return;
+        try {
+            web.evaluateJavascript("(typeof window.AHRECV_BEGIN==='function'&&typeof window.AHRECV_PART==='function'&&typeof window.AHRECV_END==='function')", value -> {
+                if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
+                boolean ready = "true".equals(String.valueOf(value)) || "\"true\"".equals(String.valueOf(value));
+                if (ready) {
+                    byte[] data = pendingGame;
+                    String name = pendingName;
+                    appendNativeLog("BUILD2SA5AG EMU130_INJECT_READY reason=" + reason + " attempt=" + attempt + " name=" + name + " bytes=" + data.length);
+                    try {
+                        injectGame(name, data);
+                        pendingGame = null;
+                        pendingName = null;
+                    } catch (Throwable t) {
+                        appendNativeLog("BUILD2SA5AG EMU130_INJECT_SEND_ERROR reason=" + reason + " " + safeMsg(t));
+                    }
+                    return;
+                }
+                if (attempt < ATARI_NET_INJECT_MAX_ATTEMPTS) {
+                    if (attempt == 0 || attempt == 8 || attempt == 20) {
+                        appendNativeLog("BUILD2SA5AG EMU130_INJECT_WAIT reason=" + reason + " attempt=" + attempt + " ready=" + value);
+                    }
+                    ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, attempt + 1), ATARI_NET_INJECT_RETRY_MS);
+                } else {
+                    appendNativeLog("BUILD2SA5AG EMU130_INJECT_TIMEOUT reason=" + reason + " name=" + pendingName + " bytes=" + pendingGame.length);
+                }
+            });
+        } catch (Throwable t) {
+            if (attempt < ATARI_NET_INJECT_MAX_ATTEMPTS) {
+                ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, attempt + 1), ATARI_NET_INJECT_RETRY_MS);
+            } else {
+                appendNativeLog("BUILD2SA5AG EMU130_INJECT_JS_ERROR reason=" + reason + " " + safeMsg(t));
+            }
+        }
+    }
+
+    private void fallbackInjectPendingAtariGame(final int seq, final String reason) {
+        if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
+        String cur = web.getUrl();
+        if (cur == null || !cur.startsWith(EMU_URL)) return;
+        try {
+            byte[] data = pendingGame;
+            String name = pendingName;
+            appendNativeLog("BUILD2SA5AG EMU130_INJECT_FALLBACK reason=" + reason + " name=" + name + " bytes=" + data.length);
+            injectGame(name, data);
+            pendingGame = null;
+            pendingName = null;
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA5AG EMU130_INJECT_FALLBACK_ERROR reason=" + reason + " " + safeMsg(t));
+        }
+    }
+
     private String jsQuote(String text) {
         if (text == null) text = "";
         return "'" + text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
     }
 
     private void injectGame(String name, byte[] data) {
+        appendNativeLog("BUILD2SA5AG EMU130_INJECT_SEND name=" + name + " bytes=" + (data == null ? 0 : data.length));
         web.evaluateJavascript("AHRECV_BEGIN(" + jsQuote(name) + ")", null);
         String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
+        int parts = 0;
         for (int i = 0; i < b64.length(); i += 262144) {
             String part = b64.substring(i, Math.min(i + 262144, b64.length()));
             web.evaluateJavascript("AHRECV_PART('" + part + "')", null);
+            parts++;
         }
         web.evaluateJavascript("AHRECV_END()", null);
+        appendNativeLog("BUILD2SA5AG EMU130_INJECT_SENT name=" + name + " parts=" + parts + " b64Chars=" + b64.length());
     }
 
     private void injectAudio(String name, byte[] data) {
