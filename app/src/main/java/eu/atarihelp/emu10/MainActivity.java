@@ -883,16 +883,16 @@ public class MainActivity extends Activity {
     }
 
     private WebResourceResponse interceptMainFrameGameNavigation(final String url) {
-        if (url == null || (!isGameUrl(url, null, null) && !isGoogleDriveUrl(url) && !hasPs1RemoteExtension(url))) return null;
-        appendNativeLog("BUILD2SA5AM MAINFRAME_GAME_NAV route url=" + compactUrl(url));
+        if (url == null || (!isGameUrl(url, null, null) && !shouldRouteAsPs1Download(url, "mainFrameGameNav"))) return null;
+        appendNativeLog("BUILD2SA5AQ MAINFRAME_GAME_NAV route url=" + compactUrl(url));
         ui.post(() -> {
             try {
-                if (isGoogleDriveUrl(url) || hasPs1RemoteExtension(url)) downloadAndRunPs1Remote(url, "mainFrameGameNav");
-                else if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url);
+                if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url);
+                else if (shouldRouteAsPs1Download(url, "mainFrameGameNav")) downloadAndRunPs1Remote(url, "mainFrameGameNav");
                 else if (hasSegaExtension(url)) downloadAndRunSega(url);
                 else downloadAndRun(url);
             } catch (Throwable t) {
-                appendNativeLog("BUILD2SA5AM MAINFRAME_GAME_NAV_FAIL " + safeMsg(t));
+                appendNativeLog("BUILD2SA5AQ MAINFRAME_GAME_NAV_FAIL " + safeMsg(t));
             }
         });
         return htmlResponse("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -1682,9 +1682,9 @@ public class MainActivity extends Activity {
             return;
         }
         String target = url.trim();
-        appendNativeLog("BUILD2SA5AH ROUTE_GAME source=" + source + " url=" + compactUrl(target));
-        if (isGoogleDriveUrl(target) || hasPs1RemoteExtension(target)) downloadAndRunPs1Remote(target, source); // BUILD2SA5AM
-        else if (shouldRouteAsSegaDownload(target)) downloadAndRunSegaArchive(target); // BUILD2SA5AB
+        appendNativeLog("BUILD2SA5AQ ROUTE_GAME source=" + source + " url=" + compactUrl(target));
+        if (shouldRouteAsSegaDownload(target)) downloadAndRunSegaArchive(target); // BUILD2SA5AQ: Sega ZIP ma prednost pred PS1 ZIP.
+        else if (shouldRouteAsPs1Download(target, source)) downloadAndRunPs1Remote(target, source);
         else if (hasSegaExtension(target)) downloadAndRunSega(target); // BUILD2SA2
         else downloadAndRun(target);
     }
@@ -1958,13 +1958,14 @@ public class MainActivity extends Activity {
             }
         });
         web.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
-            if (isGoogleDriveUrl(url) || hasPs1RemoteExtension(url)) {
+            if (shouldRouteAsPs1Download(url, "downloadListener")) {
                 downloadAndRunPs1Remote(url, "downloadListenerPs1");
                 return;
             }
             if (openExternalBrowserUrl(url)) return;
             if (isGameUrl(url, contentDisposition, mimetype)) {
                 if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url); // BUILD2SA5AB
+                else if (hasSegaExtension(url)) downloadAndRunSega(url);
                 else downloadAndRun(url);
             } else if (isProviderBlockedUrl(url)) {
                 loadAtariHelpGuarded(url, "downloadListenerPageRelay");
@@ -2084,7 +2085,15 @@ public class MainActivity extends Activity {
         int q = v.indexOf('?'); if (q >= 0) v = v.substring(0, q);
         int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
         return v.endsWith(".cue") || v.endsWith(".bin") || v.endsWith(".iso") || v.endsWith(".img")
-                || v.endsWith(".pbp") || v.endsWith(".chd") || v.endsWith(".zip");
+                || v.endsWith(".pbp") || v.endsWith(".chd");
+    }
+
+    private boolean hasZipExtension(String value) {
+        if (value == null) return false;
+        String v = value.toLowerCase(Locale.US);
+        int q = v.indexOf('?'); if (q >= 0) v = v.substring(0, q);
+        int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
+        return v.endsWith(".zip");
     }
 
     private boolean isGoogleDriveUrl(String url) {
@@ -2146,6 +2155,30 @@ public class MainActivity extends Activity {
             }
         });
         startPs1RemoteDownloadAndBoot(url);
+    }
+
+    private boolean isPs1CollectionContext() {
+        try {
+            String cur = web == null ? null : web.getUrl();
+            if (cur == null) return false;
+            String u = cur.toLowerCase(Locale.US);
+            return u.startsWith(PS1_URL) || u.contains("page_id=1048");
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private boolean isPs1RouteSource(String source) {
+        if (source == null) return false;
+        String s = source.toLowerCase(Locale.US);
+        return s.contains("ps1") || s.contains("remoteurl");
+    }
+
+    private boolean shouldRouteAsPs1Download(String url, String source) {
+        if (url == null) return false;
+        boolean ps1Context = isPs1CollectionContext() || isPs1RouteSource(source);
+        if (!ps1Context) return false;
+        return isGoogleDriveUrl(url) || hasPs1RemoteExtension(url) || hasZipExtension(url);
     }
 
     private boolean hasAtariPayloadExtension(String value) {
@@ -3050,24 +3083,24 @@ public class MainActivity extends Activity {
         } catch (Throwable t) { appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_INJECT_FAIL " + t.getMessage()); }
     }
     private boolean handleMaybeGameUrl(String url) {
-        if (isGoogleDriveUrl(url) || hasPs1RemoteExtension(url)) {
-            appendNativeLog("BUILD2SA5AM HANDLE_GAME_URL route=ps1Remote url=" + compactUrl(url));
+        if (shouldRouteAsSegaDownload(url)) {
+            appendNativeLog("BUILD2SA5AQ HANDLE_GAME_URL route=segaArchive url=" + compactUrl(url));
+            downloadAndRunSegaArchive(url);
+            return true;
+        } // BUILD2SA5AB: Sega ZIP nesmi spadnout do 130XE
+        if (shouldRouteAsPs1Download(url, "handleMaybeGameUrl")) {
+            appendNativeLog("BUILD2SA5AQ HANDLE_GAME_URL route=ps1Remote url=" + compactUrl(url));
             downloadAndRunPs1Remote(url, "handleMaybeGameUrl");
             return true;
         }
         if (openExternalBrowserUrl(url)) return true;
-        if (shouldRouteAsSegaDownload(url)) {
-            appendNativeLog("BUILD2SA5AF HANDLE_GAME_URL route=segaArchive url=" + compactUrl(url));
-            downloadAndRunSegaArchive(url);
-            return true;
-        } // BUILD2SA5AB: Sega ZIP nesmi spadnout do 130XE
         if (hasSegaExtension(url)) {
-            appendNativeLog("BUILD2SA5AF HANDLE_GAME_URL route=segaRaw url=" + compactUrl(url));
+            appendNativeLog("BUILD2SA5AQ HANDLE_GAME_URL route=segaRaw url=" + compactUrl(url));
             downloadAndRunSega(url);
             return true;
         } // BUILD2SA2: Sega ma prednost
         if (isGameUrl(url, null, null)) {
-            appendNativeLog("BUILD2SA5AF HANDLE_GAME_URL route=atari url=" + compactUrl(url));
+            appendNativeLog("BUILD2SA5AQ HANDLE_GAME_URL route=atari url=" + compactUrl(url));
             downloadAndRun(url);
             return true;
         }
