@@ -613,6 +613,11 @@ public class MainActivity extends Activity {
         String name;
     }
 
+    private static class AtariExtract {
+        byte[] data;
+        String name;
+    }
+
     private boolean isAtariHelpUrl(String url) {
         if (url == null) return false;
         String u = url.trim().toLowerCase(Locale.US);
@@ -1937,6 +1942,14 @@ public class MainActivity extends Activity {
         return v.endsWith(".gen") || v.endsWith(".md") || v.endsWith(".smd") || v.endsWith(".sms") || v.endsWith(".68k") || v.endsWith(".sgd");
     }
 
+    private boolean hasAtariPayloadExtension(String value) {
+        if (value == null) return false;
+        String v = value.toLowerCase();
+        int q = v.indexOf('?'); if (q >= 0) v = v.substring(0, q);
+        int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
+        return v.endsWith(".xex") || v.endsWith(".atr") || v.endsWith(".com") || v.endsWith(".exe");
+    }
+
     private boolean isSegaCollectionContext() {
         try {
             String cur = web == null ? null : web.getUrl();
@@ -1981,6 +1994,43 @@ public class MainActivity extends Activity {
                 zi.closeEntry();
             }
             zi.close();
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
+    private AtariExtract extractAtariPayloadFromMaybeZip(String name, byte[] data) {
+        if (data == null || data.length == 0) return null;
+        if (hasAtariPayloadExtension(name)) {
+            AtariExtract ex = new AtariExtract();
+            ex.data = data;
+            ex.name = name == null ? "atari_game.xex" : name;
+            return ex;
+        }
+        try {
+            java.util.zip.ZipInputStream zi = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
+            java.util.zip.ZipEntry ze;
+            AtariExtract atrFallback = null;
+            while ((ze = zi.getNextEntry()) != null) {
+                String en = ze.getName() == null ? "" : ze.getName();
+                boolean atari = hasAtariPayloadExtension(en);
+                if (atari) {
+                    ByteArrayOutputStream ro = new ByteArrayOutputStream();
+                    byte[] rb = new byte[16384]; int rn;
+                    while ((rn = zi.read(rb)) > 0 && ro.size() < 16 * 1024 * 1024) ro.write(rb, 0, rn);
+                    AtariExtract ex = new AtariExtract();
+                    ex.data = ro.toByteArray();
+                    int sl = en.lastIndexOf('/');
+                    ex.name = sl >= 0 ? en.substring(sl + 1) : en;
+                    if (en.toLowerCase(Locale.US).endsWith(".atr")) atrFallback = ex;
+                    else {
+                        zi.close();
+                        return ex;
+                    }
+                }
+                zi.closeEntry();
+            }
+            zi.close();
+            if (atrFallback != null) return atrFallback;
         } catch (Throwable ignored) {}
         return null;
     }
@@ -2255,8 +2305,16 @@ public class MainActivity extends Activity {
                 + "var a=e.target;while(a&&a.tagName!=='A')a=a.parentElement;if(!a||!a.href)return;"
                 + "var h=a.href;"
                 + "if(/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)/i.test(h)){"
-                + "e.preventDefault();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}"
+                + "e.preventDefault();e.stopPropagation();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}"
                 + "}"
+                + "},true);"
+                + "document.addEventListener('click',function(e){"
+                + "if(e.defaultPrevented)return;"
+                + "var n=e.target,fig=null;while(n&&n!==document){if(n.tagName==='FIGURE'||(n.className&&String(n.className).indexOf('wp-block-image')>=0)){fig=n;break;}n=n.parentElement;}"
+                + "if(!fig)return;var links=fig.getElementsByTagName('a');for(var i=0;i<links.length;i++){var h=links[i].href||'';"
+                + "if(/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)/i.test(h)){"
+                + "e.preventDefault();e.stopPropagation();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}return;"
+                + "}}"
                 + "},true);"
                 + "})();";
         web.evaluateJavascript(js, null);
@@ -2280,13 +2338,19 @@ public class MainActivity extends Activity {
                     ui.post(() -> openSegaRomBytes(sega.data, sega.name, "zipAutoDetect"));
                     return;
                 }
+                final AtariExtract atari = extractAtariPayloadFromMaybeZip(name, data);
+                final byte[] atariData = (atari != null && atari.data != null && atari.data.length > 0) ? atari.data : data;
+                final String atariName = (atari != null && atari.name != null && atari.name.length() > 0) ? atari.name : name;
+                if (atari != null && atari.data != null && atari.data.length > 0) {
+                    appendNativeLog("BUILD2SA5V ZIP_CONTAINS_ATARI name=" + atari.name + " bytes=" + atari.data.length + " -> EMU_130XE");
+                }
                 ui.post(() -> {
                     String cur = web.getUrl();
                     if (cur != null && cur.startsWith(EMU_URL)) {
-                        injectGame(name, data);
+                        injectGame(atariName, atariData);
                     } else {
-                        pendingGame = data;
-                        pendingName = name;
+                        pendingGame = atariData;
+                        pendingName = atariName;
                         web.loadUrl(EMU_URL + "?autorun=1");   // otevri emulator bez auto POWER BASIC; soubor se vlozi po nacteni
                     }
                 });
