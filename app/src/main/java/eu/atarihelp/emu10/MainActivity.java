@@ -2290,7 +2290,7 @@ public class MainActivity extends Activity {
 
     private void setPs1RemoteStatus(String status) {
         ps1RemoteDownloadStatus = status == null ? "" : status;
-        appendNativeLog("BUILD2SA5AN " + ps1RemoteDownloadStatus);
+        appendNativeLog("BUILD2SA5AO " + ps1RemoteDownloadStatus);
     }
 
     private File ps1RemoteGamesDir() throws IOException {
@@ -2348,7 +2348,7 @@ public class MainActivity extends Activity {
             }
             return true;
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5AN PS1_REMOTE_CACHE_CUE_CHECK_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA5AO PS1_REMOTE_CACHE_CUE_CHECK_FAIL " + safeMsg(t));
             return false;
         } finally {
             try { if (in != null) in.close(); } catch (Throwable ignored) {}
@@ -2368,7 +2368,7 @@ public class MainActivity extends Activity {
             if (isPs1CueName(boot.getName()) && !ps1CachedCueLooksComplete(boot)) return null;
             return boot;
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5AN PS1_REMOTE_CACHE_READ_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA5AO PS1_REMOTE_CACHE_READ_FAIL " + safeMsg(t));
             return null;
         } finally {
             try { if (in != null) in.close(); } catch (Throwable ignored) {}
@@ -2379,9 +2379,9 @@ public class MainActivity extends Activity {
         try {
             if (dir == null || bootFile == null) return;
             ps1WriteBytes(ps1RemoteCacheMarker(dir), bootFile.getName().getBytes("UTF-8"));
-            appendNativeLog("BUILD2SA5AN PS1_REMOTE_CACHE_STORE boot=" + bootFile.getName() + " dir=" + dir.getName());
+            appendNativeLog("BUILD2SA5AO PS1_REMOTE_CACHE_STORE boot=" + bootFile.getName() + " dir=" + dir.getName());
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5AN PS1_REMOTE_CACHE_STORE_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA5AO PS1_REMOTE_CACHE_STORE_FAIL " + safeMsg(t));
         }
     }
 
@@ -2676,7 +2676,7 @@ public class MainActivity extends Activity {
                     bootPs1FileOnCurrentThread(cached, cached.getName(), "remoteCache");
                     return;
                 }
-                setPs1RemoteStatus("PS1_REMOTE_CONNECT " + compactUrl(url) + (googleDrive ? " via=google_drive" : ""));
+                setPs1RemoteStatus("PS1_REMOTE_CONNECT " + compactUrl(url) + (googleDrive ? " via=google_drive" : "") + " path=" + dir.getAbsolutePath());
                 c = (HttpURLConnection) new URL(downloadUrl).openConnection();
                 c.setInstanceFollowRedirects(true);
                 configureGameHttpConnection(c, downloadUrl);

@@ -32,6 +32,13 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .dpadKnob{display:none;pointer-events:none;}
 .toast{position:absolute;left:5%;right:5%;bottom:3.8%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(120,200,255,.56);box-shadow:0 0 22px rgba(70,170,255,.18);color:#dff6ff;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
+.remoteBanner{position:absolute;left:7%;right:7%;top:13.4%;z-index:42;display:none;pointer-events:none;padding:9px 11px;border-radius:12px;background:rgba(0,0,0,.88);border:1px solid rgba(113,207,255,.72);box-shadow:0 0 26px rgba(55,165,255,.24),0 0 18px rgba(255,210,96,.12) inset;color:#dff7ff;font:900 clamp(10px,2.5vw,14px)/1.25 "Courier New",monospace;text-shadow:0 1px 2px #000;}
+.remoteBanner.show{display:block;}
+.remoteBanner .remoteTitle{display:flex;justify-content:space-between;gap:8px;color:#ffe39a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.remoteBanner .remoteDetail{margin-top:4px;color:#dff7ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.remoteBanner .remotePath{margin-top:3px;color:#9cdfff;font-size:.82em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.remoteBanner .remoteBar{height:6px;margin-top:7px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;}
+.remoteBanner .remoteFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#54d8ff,#ffe08b);box-shadow:0 0 12px rgba(116,210,255,.55);}
 .panel{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#dfeaff;}
 .panel.open{display:block;}
 .panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#07101b,#02060b);border:1px solid rgba(125,200,255,.45);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(80,170,255,.16) inset;}
@@ -74,6 +81,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #btnL1.locked,#btnL2.locked,#btnR1.locked,#btnR2.locked{color:#081017;background:linear-gradient(180deg,rgba(255,235,157,.96),rgba(196,151,68,.88));border-color:rgba(255,244,194,.95);box-shadow:0 3px 18px rgba(0,0,0,.58),0 0 22px rgba(255,214,112,.36);}
  #btnBack,#btnSettings,#btnCd,#btnReset,#btnLoad,#btnSave,#btnMemory{display:none;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;z-index:40;}
+ .remoteBanner{left:3%;right:3%;top:3.5%;padding:8px 10px;font-size:12px;z-index:50;}
 }
 </style>
 </head>
@@ -97,6 +105,12 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnLoad" class="hit" type="button">LOAD GAME</button>
   <button id="btnSave" class="hit" type="button">SAVE GAME</button>
   <input id="fileInput" type="file" accept=".bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream">
+  <div id="remoteBanner" class="remoteBanner" aria-live="polite">
+    <div class="remoteTitle"><span id="remoteTitle">PS1 DOWNLOAD</span><span id="remotePercent"></span></div>
+    <div id="remoteDetail" class="remoteDetail">Cekam...</div>
+    <div id="remotePath" class="remotePath"></div>
+    <div class="remoteBar"><div id="remoteFill" class="remoteFill"></div></div>
+  </div>
   <div id="toast" class="toast">PS1 BUILD2RZ</div>
 </main>
 
@@ -120,7 +134,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 </div>
 <script>
 (function(){'use strict';
-var BUILD='BUILD2SA5AN_STAGE188_PS1_GOOGLE_DRIVE_CACHE';
+var BUILD='BUILD2SA5AO_STAGE189_PS1_VISIBLE_DOWNLOAD_CACHE';
 var PS1_GOOGLE_PAGE='https://atarihelp.eu/?page_id=1048';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
@@ -133,6 +147,64 @@ function log(t){
   var v=$('ps1LogView'); if(v){v.value=LOG.join('\n');v.scrollTop=v.scrollHeight;}
 }
 function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napPs1Toast);window.__napPs1Toast=setTimeout(function(){el.classList.remove('show');},ms||2400);log(t);}
+function compactStatusText(t,max){
+  t=String(t||'').replace(/\s+/g,' ').trim();
+  max=max||96;
+  return t.length>max?t.slice(0,max-1)+'...':t;
+}
+function remoteProgressValue(st){
+  var m=String(st||'').match(/(\d+)%/);
+  if(m)return Math.max(0,Math.min(100,parseInt(m[1],10)||0));
+  if(/^PS1_REMOTE_CONNECT/.test(st))return 6;
+  if(/^PS1_REMOTE_DOWNLOAD/.test(st))return 18;
+  if(/^PS1_REMOTE_ZIP_READY/.test(st))return 62;
+  if(/^PS1_REMOTE_ZIP_(CUE|PRIMARY|EXTRACT)/.test(st))return 76;
+  if(/^PS1_REMOTE_READY/.test(st))return 92;
+  if(/^PS1_REMOTE_CACHE_HIT/.test(st))return 100;
+  if(/^PS1_REMOTE_BOOT_OK/.test(st))return 100;
+  if(/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st))return 100;
+  return 0;
+}
+function remoteTitleFor(st){
+  if(/^PS1_REMOTE_START/.test(st))return 'PS1: start';
+  if(/^PS1_REMOTE_CONNECT/.test(st))return 'PS1: pripojuji Drive';
+  if(/^PS1_REMOTE_DOWNLOAD/.test(st))return 'PS1: stahuji hru';
+  if(/^PS1_REMOTE_ZIP_READY/.test(st))return 'PS1: ZIP stazen';
+  if(/^PS1_REMOTE_ZIP_(CUE|PRIMARY|EXTRACT)/.test(st))return 'PS1: rozbaluji ZIP';
+  if(/^PS1_REMOTE_CACHE_HIT/.test(st))return 'PS1: nacteno z cache';
+  if(/^PS1_REMOTE_READY/.test(st))return 'PS1: pripraveno';
+  if(/^PS1_REMOTE_BOOT_OK/.test(st))return 'PS1: hra spustena';
+  if(/^PS1_REMOTE_BUSY/.test(st))return 'PS1: uz pracuje';
+  if(/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st))return 'PS1: chyba';
+  return 'PS1: stav';
+}
+function updateRemoteBanner(st){
+  st=String(st||'').trim();
+  var b=$('remoteBanner'); if(!b)return;
+  if(!st||st==='-'){
+    b.classList.remove('show');
+    return;
+  }
+  var path='';
+  var p=st.indexOf(' path=');
+  if(p>=0){path=st.slice(p+6);st=st.slice(0,p);}
+  if(path)window.__napPs1RemoteLastPath=path;
+  else path=window.__napPs1RemoteLastPath||'';
+  var pct=remoteProgressValue(st);
+  var title=remoteTitleFor(st);
+  var active=/^PS1_REMOTE_(START|CONNECT|DOWNLOAD|ZIP|READY|CACHE_HIT|BUSY)/.test(st)||/^PS1_REMOTE_BOOT_OK/.test(st)||/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st);
+  if(!active){b.classList.remove('show');return;}
+  $('remoteTitle').textContent=title;
+  $('remotePercent').textContent=pct>0?(pct+'%'):'';
+  $('remoteDetail').textContent=compactStatusText(st,110);
+  $('remotePath').textContent=path?('cache: '+compactStatusText(path,92)):'';
+  $('remoteFill').style.width=Math.max(0,Math.min(100,pct))+'%';
+  b.classList.add('show');
+  clearTimeout(window.__napRemoteHideTimer);
+  if(/^PS1_REMOTE_BOOT_OK|^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st)){
+    window.__napRemoteHideTimer=setTimeout(function(){b.classList.remove('show');},9000);
+  }
+}
 function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v)v.value=LOG.join('\n');}
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 
@@ -406,8 +478,19 @@ function ensurePs1ScreenAndPoll(){
     }
   }
   if(!window.__napPs1Poll){window.__napPs1Poll=setInterval(function(){
-    try{var st=window.AHPS1.ps1Status();if(st!==window.__napPs1LastSt){window.__napPs1LastSt=st;log(st);}}catch(pe){}
+    try{
+      var st=window.AHPS1.ps1Status();
+      var cs=$('coreState'); if(cs)cs.textContent=compactStatusText(st,150);
+      if(st!==window.__napPs1LastSt){window.__napPs1LastSt=st;log(st);}
+    }catch(pe){}
   },1000);}
+  if(!window.__napPs1RemotePoll){window.__napPs1RemotePoll=setInterval(function(){
+    try{
+      var rs=window.AHPS1.ps1RemoteStatus();
+      updateRemoteBanner(rs);
+      if(rs&&rs!==window.__napPs1LastRemoteSt){window.__napPs1LastRemoteSt=rs;log('REMOTE_STATUS '+rs);}
+    }catch(re){}
+  },450);}
 }
 function bootPs1Native(){
   if(window.AHPS1&&window.AHPS1.ps1PickGame){
@@ -445,7 +528,7 @@ function bootPs1RemoteUrl(){
     if(!/^https?:\/\//i.test(u)){toast('PS1 URL musi zacinat http:// nebo https://',3200);return;}
     try{localStorage.setItem('napPs1RemoteUrl',u);}catch(_){}
     log('PS1_REMOTE_REQUEST '+u);
-    toast('PS1: stahuju z PC, pockej na BOOT OK',3600);
+    toast('PS1: stahuju z Drive / netu, pockej na BOOT OK',3600);
     window.AHPS1.ps1DownloadAndBoot(u);
     ensurePs1ScreenAndPoll();
   }catch(e){
@@ -511,7 +594,8 @@ $('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
-log(BUILD+' ready: LOAD GAME otevre PS1 Google Drive stranku '+PS1_GOOGLE_PAGE+'; prvni klik stahne/rozbali, dalsi klik jede z PS1 cache.');
+ensurePs1ScreenAndPoll();
+log(BUILD+' ready: LOAD GAME otevre PS1 Google Drive stranku '+PS1_GOOGLE_PAGE+'; banner ukazuje CONNECT/DOWNLOAD/ZIP_EXTRACT/CACHE_HIT.');
 })();
 </script>
 </body>
