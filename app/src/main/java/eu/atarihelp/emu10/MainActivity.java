@@ -71,10 +71,10 @@ public class MainActivity extends Activity {
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
-    private static final long ATARI_NET_INJECT_RETRY_MS = 180L; // BUILD2SA5AG: net XEX waits until 130XE AHRECV bridge is ready.
-    private static final int ATARI_NET_INJECT_MAX_ATTEMPTS = 30;
+    private static final long ATARI_NET_INJECT_RETRY_MS = 300L; // BUILD2SA5AI: net XEX waits while 130XE page settles.
+    private static final int ATARI_NET_INJECT_MAX_ATTEMPTS = 42;
     private static final long ATARI_NET_INJECT_SETTLE_MS = 1400L; // BUILD2SA5AH: local picker works after an already-settled 130XE page.
-    private static final long ATARI_NET_INJECT_FALLBACK_MS = 5200L;
+    private static final long ATARI_NET_INJECT_FALLBACK_MS = 7600L;
     private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
     private static byte[] pendingSegaGame = null;   // BUILD2SA2: hra ze SBIRKY cekajici na nacteni Sega stranky
     private static String pendingSegaName = null;
@@ -2446,7 +2446,10 @@ public class MainActivity extends Activity {
         if (cur != null && cur.startsWith(EMU_URL)) {
             schedulePendingAtariGameInjection(reason + ":alreadyOn130xe");
         } else {
+            appendNativeLog("BUILD2SA5AI EMU130_FORCE_OPEN reason=" + reason + " from=" + compactUrl(cur));
+            try { web.stopLoading(); } catch (Throwable ignored) {}
             web.loadUrl(EMU_URL);
+            schedulePendingAtariGameInjection(reason + ":forcedOpen");
         }
     }
 
@@ -2461,7 +2464,20 @@ public class MainActivity extends Activity {
     private void tryInjectPendingAtariGame(final int seq, final String reason, final int attempt) {
         if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
         String cur = web.getUrl();
-        if (cur == null || !cur.startsWith(EMU_URL)) return;
+        if (cur == null || !cur.startsWith(EMU_URL)) {
+            if (attempt < ATARI_NET_INJECT_MAX_ATTEMPTS) {
+                boolean forceOpen = attempt == 0 || attempt == 5 || attempt == 12 || attempt == 24;
+                if (forceOpen) {
+                    appendNativeLog("BUILD2SA5AI EMU130_INJECT_REOPEN reason=" + reason + " attempt=" + attempt + " cur=" + compactUrl(cur));
+                    try { web.stopLoading(); } catch (Throwable ignored) {}
+                    try { web.loadUrl(EMU_URL); } catch (Throwable t) { appendNativeLog("BUILD2SA5AI EMU130_REOPEN_ERROR " + safeMsg(t)); }
+                }
+                ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, attempt + 1), ATARI_NET_INJECT_RETRY_MS);
+            } else {
+                appendNativeLog("BUILD2SA5AI EMU130_INJECT_NO_EMU_URL_TIMEOUT reason=" + reason + " cur=" + compactUrl(cur));
+            }
+            return;
+        }
         try {
             web.evaluateJavascript("(typeof window.AHRECV_BEGIN==='function'&&typeof window.AHRECV_PART==='function'&&typeof window.AHRECV_END==='function')", value -> {
                 if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
