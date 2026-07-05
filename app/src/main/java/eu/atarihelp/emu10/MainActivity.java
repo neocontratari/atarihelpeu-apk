@@ -73,7 +73,8 @@ public class MainActivity extends Activity {
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
     private static final long ATARI_NET_INJECT_RETRY_MS = 180L; // BUILD2SA5AG: net XEX waits until 130XE AHRECV bridge is ready.
     private static final int ATARI_NET_INJECT_MAX_ATTEMPTS = 30;
-    private static final long ATARI_NET_INJECT_FALLBACK_MS = 3200L;
+    private static final long ATARI_NET_INJECT_SETTLE_MS = 1400L; // BUILD2SA5AH: local picker works after an already-settled 130XE page.
+    private static final long ATARI_NET_INJECT_FALLBACK_MS = 5200L;
     private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
     private static byte[] pendingSegaGame = null;   // BUILD2SA2: hra ze SBIRKY cekajici na nacteni Sega stranky
     private static String pendingSegaName = null;
@@ -106,6 +107,8 @@ public class MainActivity extends Activity {
     private byte[] pendingGame;
     private String pendingName;
     private int pendingGameInjectSeq = 0;
+    private String lastAhGameBridgeUrl = "";
+    private long lastAhGameBridgeAtMs = 0L;
     private String pendingBridgeKind;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private volatile int nativeRomLoadGeneration = 0;
@@ -175,19 +178,32 @@ public class MainActivity extends Activity {
         return f.getAbsolutePath();
     }
 
+    private String appendNativeDebugToSavedLog(String name, String text) {
+        String out = text == null ? "" : text;
+        String n = name == null ? "" : name.toLowerCase(Locale.US);
+        if (!(n.endsWith(".log") || n.endsWith(".txt") || n.contains("log"))) return out;
+        StringBuilder sb = new StringBuilder(out.length() + 4096);
+        sb.append(out);
+        sb.append("\n\n==== ANDROID MAINACTIVITY LOG BUILD2SA5AH ====\n");
+        synchronized (nativeLog) { sb.append(nativeLog.toString()); }
+        return sb.toString();
+    }
+
     public class AHSave {
         @JavascriptInterface
         public String save(String name, String text) {
             try {
-                String path = writeBytesToDownloads(name, text.getBytes("UTF-8"));
+                String outText = appendNativeDebugToSavedLog(name, text);
+                String path = writeBytesToDownloads(name, outText.getBytes("UTF-8"));
                 return "DOWNLOADS_OK:" + path;
             } catch (Exception e) {
                 try {
                     File dir = getExternalFilesDir(null);
                     if (dir == null) dir = getFilesDir();
                     File f = new File(dir, safeFileName(name));
+                    String outText = appendNativeDebugToSavedLog(name, text);
                     FileOutputStream out = new FileOutputStream(f);
-                    out.write(text.getBytes("UTF-8"));
+                    out.write(outText.getBytes("UTF-8"));
                     out.close();
                     return "FALLBACK_APP_DIR:" + f.getAbsolutePath() + " | DOWNLOADS_CHYBA:" + e.getMessage();
                 } catch (Exception e2) {
@@ -1590,10 +1606,7 @@ public class MainActivity extends Activity {
         public void runGameUrl(String url) {
             ui.post(() -> {
                 if (url == null || url.length() == 0) return;
-                appendNativeLog("BUILD2SA5AF AHNET_RUN_GAME_URL url=" + compactUrl(url));
-                if (shouldRouteAsSegaDownload(url)) downloadAndRunSegaArchive(url); // BUILD2SA5AB
-                else if (hasSegaExtension(url)) downloadAndRunSega(url); // BUILD2SA2
-                else downloadAndRun(url);
+                routeGameDownloadUrl(url, "AHNET_RUN_GAME_URL");
             });
         }
     }
@@ -1601,11 +1614,71 @@ public class MainActivity extends Activity {
 
     private void addAtariNetGame(StringBuilder sb, String title, String zipUrl) {
         String safeTitle = escapeHtml(title == null ? "Atari XEX" : title);
-        String safeUrl = escapeHtml(zipUrl == null ? "" : zipUrl);
+        String bridgeUrl = bridgeGameHref(zipUrl);
+        String safeUrl = escapeHtml(bridgeUrl);
         String jsUrl = jsQuote(zipUrl == null ? "" : zipUrl);
         sb.append("<a class='game' href='").append(safeUrl).append("' onclick=\"try{AHNET.runGameUrl(")
-                .append(jsUrl).append(");}catch(e){location.href=").append(jsUrl).append(";}return false;\">")
+                .append(jsUrl).append(");return false;}catch(e){return true;}\">")
                 .append(safeTitle).append("</a>");
+    }
+
+    private String bridgeGameHref(String url) {
+        try {
+            return "ahgame://run?url=" + java.net.URLEncoder.encode(url == null ? "" : url, "UTF-8");
+        } catch (Throwable ignored) {
+            return "ahgame://run?url=";
+        }
+    }
+
+    private boolean isAhGameBridgeUrl(String url) {
+        if (url == null) return false;
+        String u = url.trim().toLowerCase(Locale.US);
+        return u.startsWith("ahgame://");
+    }
+
+    private String ahGameBridgeTarget(String url) {
+        try {
+            Uri u = Uri.parse(url);
+            String target = u.getQueryParameter("url");
+            return target == null ? "" : target.trim();
+        } catch (Throwable ignored) {
+            return "";
+        }
+    }
+
+    private void routeGameDownloadUrl(String url, String source) {
+        if (url == null || url.trim().length() == 0) {
+            appendNativeLog("BUILD2SA5AH ROUTE_GAME_SKIP_EMPTY source=" + source);
+            return;
+        }
+        String target = url.trim();
+        appendNativeLog("BUILD2SA5AH ROUTE_GAME source=" + source + " url=" + compactUrl(target));
+        if (shouldRouteAsSegaDownload(target)) downloadAndRunSegaArchive(target); // BUILD2SA5AB
+        else if (hasSegaExtension(target)) downloadAndRunSega(target); // BUILD2SA2
+        else downloadAndRun(target);
+    }
+
+    private boolean handleAhGameBridgeUrl(String url) {
+        if (!isAhGameBridgeUrl(url)) return false;
+        final String target = ahGameBridgeTarget(url);
+        long now = System.currentTimeMillis();
+        if (target.length() > 0 && target.equals(lastAhGameBridgeUrl) && now - lastAhGameBridgeAtMs < 1200L) {
+            appendNativeLog("BUILD2SA5AH AHGAME_DUPLICATE_IGNORED url=" + compactUrl(target));
+            return true;
+        }
+        lastAhGameBridgeUrl = target;
+        lastAhGameBridgeAtMs = now;
+        appendNativeLog("BUILD2SA5AH AHGAME_BRIDGE url=" + compactUrl(target));
+        ui.post(() -> routeGameDownloadUrl(target, "AHGAME_BRIDGE"));
+        return true;
+    }
+
+    private WebResourceResponse interceptAhGameBridgeNavigation(String url) {
+        if (!isAhGameBridgeUrl(url)) return null;
+        handleAhGameBridgeUrl(url);
+        return htmlResponse("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<style>body{font-family:sans-serif;background:#fff;color:#111;padding:24px;line-height:1.4}</style></head>"
+                + "<body><h1>Spoustim hru...</h1></body></html>");
     }
 
     private void showAtariNetGamesBridge() {
@@ -1775,6 +1848,7 @@ public class MainActivity extends Activity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, String url) {
+                if (handleAhGameBridgeUrl(url)) return true;
                 if (openExternalBrowserUrl(url)) return true;
                 if (handleMaybeGameUrl(url)) return true;
                 if (isProviderBlockedUrl(url)) return false;
@@ -1784,6 +1858,7 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
                 if (request != null && request.getUrl() != null) {
                     String url = request.getUrl().toString();
+                    if (handleAhGameBridgeUrl(url)) return true;
                     if (openExternalBrowserUrl(url)) return true;
                     if (handleMaybeGameUrl(url)) return true;
                     if (isProviderBlockedUrl(url)) return false;
@@ -1805,6 +1880,8 @@ public class MainActivity extends Activity {
             }
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, String url) {
+                WebResourceResponse bridge = interceptAhGameBridgeNavigation(url);
+                if (bridge != null) return bridge;
                 WebResourceResponse rr = interceptProviderBlockedResource(url, false);
                 return rr != null ? rr : super.shouldInterceptRequest(v, url);
             }
@@ -1813,6 +1890,8 @@ public class MainActivity extends Activity {
                 if (Build.VERSION.SDK_INT >= 21 && request != null && request.getUrl() != null) {
                     String reqUrl = request.getUrl().toString();
                     if (request.isForMainFrame()) {
+                        WebResourceResponse bridge = interceptAhGameBridgeNavigation(reqUrl);
+                        if (bridge != null) return bridge;
                         WebResourceResponse game = interceptMainFrameGameNavigation(reqUrl);
                         if (game != null) return game;
                     }
@@ -2367,7 +2446,7 @@ public class MainActivity extends Activity {
         if (cur != null && cur.startsWith(EMU_URL)) {
             schedulePendingAtariGameInjection(reason + ":alreadyOn130xe");
         } else {
-            web.loadUrl(EMU_URL + "?autorun=1");
+            web.loadUrl(EMU_URL);
         }
     }
 
@@ -2388,16 +2467,8 @@ public class MainActivity extends Activity {
                 if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
                 boolean ready = "true".equals(String.valueOf(value)) || "\"true\"".equals(String.valueOf(value));
                 if (ready) {
-                    byte[] data = pendingGame;
-                    String name = pendingName;
-                    appendNativeLog("BUILD2SA5AG EMU130_INJECT_READY reason=" + reason + " attempt=" + attempt + " name=" + name + " bytes=" + data.length);
-                    try {
-                        injectGame(name, data);
-                        pendingGame = null;
-                        pendingName = null;
-                    } catch (Throwable t) {
-                        appendNativeLog("BUILD2SA5AG EMU130_INJECT_SEND_ERROR reason=" + reason + " " + safeMsg(t));
-                    }
+                    appendNativeLog("BUILD2SA5AH EMU130_INJECT_READY_SETTLE reason=" + reason + " attempt=" + attempt + " name=" + pendingName + " bytes=" + pendingGame.length + " settleMs=" + ATARI_NET_INJECT_SETTLE_MS);
+                    ui.postDelayed(() -> commitPendingAtariGameInjection(seq, reason + ":readySettled"), ATARI_NET_INJECT_SETTLE_MS);
                     return;
                 }
                 if (attempt < ATARI_NET_INJECT_MAX_ATTEMPTS) {
@@ -2418,20 +2489,25 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void fallbackInjectPendingAtariGame(final int seq, final String reason) {
+    private void commitPendingAtariGameInjection(final int seq, final String reason) {
         if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
         String cur = web.getUrl();
         if (cur == null || !cur.startsWith(EMU_URL)) return;
         try {
             byte[] data = pendingGame;
             String name = pendingName;
-            appendNativeLog("BUILD2SA5AG EMU130_INJECT_FALLBACK reason=" + reason + " name=" + name + " bytes=" + data.length);
+            appendNativeLog("BUILD2SA5AH EMU130_INJECT_COMMIT reason=" + reason + " name=" + name + " bytes=" + data.length);
             injectGame(name, data);
             pendingGame = null;
             pendingName = null;
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5AG EMU130_INJECT_FALLBACK_ERROR reason=" + reason + " " + safeMsg(t));
+            appendNativeLog("BUILD2SA5AH EMU130_INJECT_COMMIT_ERROR reason=" + reason + " " + safeMsg(t));
         }
+    }
+
+    private void fallbackInjectPendingAtariGame(final int seq, final String reason) {
+        appendNativeLog("BUILD2SA5AH EMU130_INJECT_FALLBACK_CHECK reason=" + reason + " seq=" + seq);
+        commitPendingAtariGameInjection(seq, reason + ":fallback");
     }
 
     private String jsQuote(String text) {
