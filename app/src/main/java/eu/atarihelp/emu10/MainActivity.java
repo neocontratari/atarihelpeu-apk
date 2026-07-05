@@ -634,6 +634,12 @@ public class MainActivity extends Activity {
     }
 
     private boolean isProviderBlockedUrl(String url) {
+        // BUILD2SA5AE: Infos Art/WEDOS blokace je vyresena. Primarni cesta je znovu normalni web.
+        // Relay zustava v kodu jako rucni fallback, ale atarihelp.eu/vedos.cz uz nevynucujeme pres proxy.
+        return false;
+    }
+
+    private boolean isVedosUrl(String url) {
         if (url == null) return false;
         String u = url.trim().toLowerCase(Locale.US);
         if (!(u.startsWith("http://") || u.startsWith("https://"))) return false;
@@ -642,8 +648,7 @@ public class MainActivity extends Activity {
             String host = uri.getHost();
             if (host == null) return false;
             host = host.toLowerCase(Locale.US);
-            return host.equals("atarihelp.eu") || host.equals("www.atarihelp.eu") || host.endsWith(".atarihelp.eu")
-                    || host.equals("vedos.cz") || host.equals("www.vedos.cz") || host.endsWith(".vedos.cz");
+            return host.equals("vedos.cz") || host.equals("www.vedos.cz") || host.endsWith(".vedos.cz");
         } catch (Throwable ignored) {
             return false;
         }
@@ -651,11 +656,11 @@ public class MainActivity extends Activity {
 
     private void applyWebViewVisualMode(String url, String reason) {
         if (web == null) return;
-        boolean normalWeb = isProviderBlockedUrl(url);
+        boolean normalWeb = isAtariHelpUrl(url) || isVedosUrl(url) || isProviderBlockedUrl(url);
         try { web.setBackgroundColor(normalWeb ? Color.WHITE : Color.TRANSPARENT); } catch (Throwable ignored) {}
         try { if (rootFrame != null) rootFrame.setBackgroundColor(normalWeb ? Color.WHITE : Color.BLACK); } catch (Throwable ignored) {}
         try { web.setLayerType(normalWeb ? View.LAYER_TYPE_NONE : View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
-        if (normalWeb) appendNativeLog("BUILD2SA5K WEBVIEW_NORMAL_WEB reason=" + reason + " url=" + compactUrl(url));
+        if (normalWeb) appendNativeLog("BUILD2SA5AE WEBVIEW_DIRECT_WEB reason=" + reason + " url=" + compactUrl(url));
     }
 
     private synchronized boolean markAtariHelpRequestAllowed(String url, String reason) {
@@ -664,6 +669,9 @@ public class MainActivity extends Activity {
             return true;
         }
         if (!isAtariHelpUrl(url)) return true;
+        appendNativeLog("BUILD2SA5AE ATARIHELP_DIRECT_ALLOWED reason=" + reason + " url=" + compactUrl(url));
+        return true;
+        /*
         long now = System.currentTimeMillis();
         if (atariHelpBlockedUntilMs > now) {
             showAtariHelpSafetyStop(url, reason, atariHelpBlockedUntilMs - now);
@@ -681,6 +689,7 @@ public class MainActivity extends Activity {
         atariHelpLastRequestAtMs = now;
         appendNativeLog("BUILD2SA5M ATARIHELP_REQUEST_ALLOWED reason=" + reason + " url=" + compactUrl(url));
         return true;
+        */
     }
 
     private void loadAtariHelpGuarded(String url, String reason) {
@@ -1570,7 +1579,7 @@ public class MainActivity extends Activity {
             // BUILD2SA5J: AtariHelp sbirka musi zustat uvnitr WebView.
             // Jen tak muze klik na ZIP/XEX/GEN projit pres AHNET.runGameUrl() a rovnou spustit emu.
             ui.post(() -> {
-                showAtariNetGamesBridge();
+                loadAtariHelpGuarded("https://atarihelp.eu/?page_id=207", "openGamesDirect");
             });
         }
         @JavascriptInterface
