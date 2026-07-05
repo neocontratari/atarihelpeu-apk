@@ -1781,6 +1781,9 @@ public class MainActivity extends Activity {
                 applyWebViewVisualMode(url, "onPageFinished");
                 stopNativeIfLeavingSega(url, "onPageFinished");
                 stopPs1IfLeaving(url, "onPageFinished");
+                if (url != null && url.startsWith(EMU_URL)) {
+                    injectAtariMobileFilePickerBridge();
+                }
                 if (pendingGame != null && url != null && url.startsWith(EMU_URL)) {
                     schedulePendingAtariGameInjection("onPageFinished");
                 }
@@ -2311,6 +2314,33 @@ public class MainActivity extends Activity {
                 + "e.preventDefault();e.stopPropagation();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}return;"
                 + "}}"
                 + "},true);"
+                + "})();";
+        web.evaluateJavascript(js, null);
+    }
+
+    private void injectAtariMobileFilePickerBridge() {
+        if (web == null) return;
+        String js = "(function(){"
+                + "if(window.__AH_MOBILE_FILE_PICKER_BRIDGE)return;window.__AH_MOBILE_FILE_PICKER_BRIDGE=1;"
+                + "function logx(m){try{var l=document.getElementById('log');if(l){l.textContent+='\\n'+m;l.scrollTop=l.scrollHeight;}}catch(e){}}"
+                + "function sendFile(n,u8){try{AHRECV_BEGIN(n);}catch(e){logx('BUILD2SA5Z AHRECV_BEGIN error '+e.message);return;}"
+                + "var step=49152,parts=0;for(var i=0;i<u8.length;i+=step){var end=Math.min(i+step,u8.length),s='';"
+                + "for(var j=i;j<end;j++)s+=String.fromCharCode(u8[j]);"
+                + "try{AHRECV_PART(btoa(s));parts++;}catch(e){logx('BUILD2SA5Z AHRECV_PART error '+e.message);return;}}"
+                + "try{logx('BUILD2SA5Z AHRECV_END '+n+' bytes='+u8.length+' parts='+parts);AHRECV_END();}catch(e){logx('BUILD2SA5Z AHRECV_END error '+e.message);}}"
+                + "function pick(label,accept){var inp=document.getElementById('filePick');if(!inp){logx('BUILD2SA5Z '+label+': filePick missing');return;}"
+                + "inp.accept=accept;inp.onchange=function(){var f=inp.files&&inp.files[0];inp.value='';if(!f){logx('BUILD2SA5Z '+label+': no file');return;}"
+                + "logx('BUILD2SA5Z '+label+': selected '+f.name);var rd=new FileReader();"
+                + "rd.onload=function(){try{var u8=new Uint8Array(rd.result);logx('BUILD2SA5Z '+label+': read '+u8.length+' B');sendFile(f.name,u8);}catch(e){logx('BUILD2SA5Z '+label+': read handler error '+e.message);}};"
+                + "rd.onerror=function(){logx('BUILD2SA5Z '+label+': FileReader error');};rd.readAsArrayBuffer(f);};"
+                + "try{inp.click();}catch(e){logx('BUILD2SA5Z '+label+': input click error '+e.message);}}"
+                + "function hook(id,label,accept){var el=document.getElementById(id);if(!el){logx('BUILD2SA5Z '+id+': button missing');return;}var last=0;"
+                + "function h(e){var now=Date.now();try{e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();}catch(x){}"
+                + "if(now-last<450)return false;last=now;pick(label,accept);return false;}"
+                + "el.addEventListener('pointerup',h,true);el.addEventListener('click',h,true);}"
+                + "hook('dockXex','XEX MOBIL','.xex,.exe,.com,.zip,application/zip,application/octet-stream,*/*');"
+                + "hook('dockAtr','ATR DISK Z MOBILU','.atr,.zip,application/zip,application/octet-stream,*/*');"
+                + "logx('BUILD2SA5Z local mobile file picker bridge active');"
                 + "})();";
         web.evaluateJavascript(js, null);
     }
