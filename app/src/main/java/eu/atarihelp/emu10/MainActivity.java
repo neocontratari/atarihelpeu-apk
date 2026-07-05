@@ -71,8 +71,6 @@ public class MainActivity extends Activity {
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
-    private static final long ATARI_INJECT_AFTER_LOAD_MS = 750L; // BUILD2SA5Y: no callback dependency; WebView callbacks stalled local Atari pick in Nox.
-    private static final int ATARI_INJECT_CHUNK_CHARS = 65536; // BUILD2SA5Y: smaller fire-and-forget chunks for WebView.
     private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
     private static byte[] pendingSegaGame = null;   // BUILD2SA2: hra ze SBIRKY cekajici na nacteni Sega stranky
     private static String pendingSegaName = null;
@@ -104,7 +102,6 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> pendingChooser;
     private byte[] pendingGame;
     private String pendingName;
-    private int pendingGameInjectSeq = 0;
     private String pendingBridgeKind;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private volatile int nativeRomLoadGeneration = 0;
@@ -611,16 +608,6 @@ public class MainActivity extends Activity {
         int relayMode = -1;
     }
 
-    private static class SegaExtract {
-        byte[] data;
-        String name;
-    }
-
-    private static class AtariExtract {
-        byte[] data;
-        String name;
-    }
-
     private boolean isAtariHelpUrl(String url) {
         if (url == null) return false;
         String u = url.trim().toLowerCase(Locale.US);
@@ -663,7 +650,7 @@ public class MainActivity extends Activity {
 
     private synchronized boolean markAtariHelpRequestAllowed(String url, String reason) {
         if (isProviderBlockedUrl(url)) {
-            appendNativeLog("BUILD2SA5S PROVIDER_RELAY_REQUEST reason=" + reason + " url=" + compactUrl(url));
+            appendNativeLog("BUILD2SA5AA PROVIDER_RELAY_REQUEST reason=" + reason + " url=" + compactUrl(url));
             return true;
         }
         if (!isAtariHelpUrl(url)) return true;
@@ -690,7 +677,7 @@ public class MainActivity extends Activity {
         if (web == null || url == null) return;
         if (isProviderBlockedUrl(url)) {
             applyWebViewVisualMode(url, "relayLoad");
-            appendNativeLog("BUILD2SA5S ATARIHELP_RELAY_LOAD reason=" + reason + " url=" + compactUrl(url));
+            appendNativeLog("BUILD2SA5AA ATARIHELP_RELAY_LOAD reason=" + reason + " url=" + compactUrl(url));
             web.loadUrl(url);
             return;
         }
@@ -699,18 +686,52 @@ public class MainActivity extends Activity {
         web.loadUrl(url);
     }
 
-    private String providerRelayUrl(String url, int mode) throws IOException {
-        String enc = java.net.URLEncoder.encode(url, "UTF-8");
-        if (mode == 0) return "https://proxy.cors.sh/" + url; // BUILD2SA5S: tested HTML + binary ZIP relay.
-        if (mode == 1) return "https://api.allorigins.win/raw?url=" + enc;
-        if (mode == 2) return "https://corsproxy.io/?url=" + enc;
-        return "https://r.jina.ai/" + url; // Reader fallback: pages only, not binary downloads.
+    private void showAtariHelpSafetyStop(final String url, final String reason, final long waitMs) {
+        Runnable r = () -> {
+            if (web == null) return;
+            applyWebViewVisualMode(url, "safetyStop");
+            long sec = Math.max(1L, (waitMs + 999L) / 1000L);
+            String html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                    + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px}.btn{display:block;margin:10px 0;padding:12px 14px;border:1px solid #111;border-radius:6px;background:#111;color:#fff;text-decoration:none;text-align:center;font-weight:700}.alt{background:#fff;color:#111}.warn{padding:10px;border-left:4px solid #b80;background:#fff7e6}code{word-break:break-all}</style></head>"
+                    + "<body><h1>AtariHelp ochranna brzda</h1>"
+                    + "<div class='warn'>Aplikace ted neposila dalsi pozadavky na web, aby nezhorsila IP ban / rate limit.</div>"
+                    + "<p><b>URL:</b> <code>" + escapeHtml(url) + "</code></p>"
+                    + "<p><b>Duvod:</b> <code>" + escapeHtml(reason) + "</code></p>"
+                    + "<p>Zkusit znovu nejdrive za " + sec + " s.</p>"
+                    + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat ZIP z telefonu</a>"
+                    + "</body></html>";
+            try { web.loadDataWithBaseURL("about:blank", html, "text/html", "UTF-8", null); } catch (Throwable ignored) {}
+        };
+        if (isUiThread()) r.run(); else ui.post(r);
     }
 
-    private FetchResult fetchViaProviderRelay(String url, int maxBytes, boolean allowReader, String reason) throws IOException {
+    private void showAtariHelpLoadError(String url, String detail) {
+        if (!isProviderBlockedUrl(url) || web == null) return;
+        showAtariHelpProviderBridge(url, "loadError", detail);
+    }
+
+    private void configureGameHttpConnection(HttpURLConnection c, String url) {
+        if (c == null) return;
+        try { c.setConnectTimeout(20000); } catch (Throwable ignored) {}
+        try { c.setReadTimeout(45000); } catch (Throwable ignored) {}
+        if (isAtariHelpUrl(url)) {
+            try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
+            try { c.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/zip,application/octet-stream,*/*;q=0.8"); } catch (Throwable ignored) {}
+            try { c.setRequestProperty("Accept-Language", "cs-CZ,cs;q=0.9,en;q=0.8"); } catch (Throwable ignored) {}
+            try { c.setRequestProperty("Referer", "https://atarihelp.eu/?page_id=207"); } catch (Throwable ignored) {}
+        }
+    }
+
+    private String providerRelayUrl(String url, int mode) throws IOException {
+        String enc = java.net.URLEncoder.encode(url, "UTF-8");
+        if (mode == 0) return "https://proxy.cors.sh/" + url;
+        if (mode == 1) return "https://api.allorigins.win/raw?url=" + enc;
+        return "https://corsproxy.io/?url=" + enc;
+    }
+
+    private FetchResult fetchViaProviderRelay(String url, int maxBytes, String reason) throws IOException {
         IOException last = null;
-        int attempts = allowReader ? 4 : 3;
-        for (int i = 0; i < attempts; i++) {
+        for (int i = 0; i < 3; i++) {
             String relay = providerRelayUrl(url, i);
             HttpURLConnection c = null;
             try {
@@ -733,11 +754,11 @@ public class MainActivity extends Activity {
                 out.via = relay;
                 out.relayMode = i;
                 if (out.data == null || out.data.length == 0) throw new IOException("relay empty via=" + relay);
-                appendNativeLog("BUILD2SA5S PROVIDER_RELAY_OK reason=" + reason + " mode=" + i + " bytes=" + out.data.length + " via=" + compactUrl(relay) + " target=" + compactUrl(url));
+                appendNativeLog("BUILD2SA5AA PROVIDER_RELAY_OK reason=" + reason + " mode=" + i + " bytes=" + out.data.length + " via=" + compactUrl(relay) + " target=" + compactUrl(url));
                 return out;
             } catch (IOException ex) {
                 last = ex;
-                appendNativeLog("BUILD2SA5S PROVIDER_RELAY_FAIL reason=" + reason + " try=" + i + " err=" + safeMsg(ex) + " target=" + compactUrl(url));
+                appendNativeLog("BUILD2SA5AA PROVIDER_RELAY_FAIL reason=" + reason + " try=" + i + " err=" + safeMsg(ex) + " target=" + compactUrl(url));
             } finally {
                 try { if (c != null) c.disconnect(); } catch (Throwable ignored) {}
             }
@@ -745,8 +766,8 @@ public class MainActivity extends Activity {
         throw last == null ? new IOException("relay failed") : last;
     }
 
-    private FetchResult fetchUrlBytes(String url, int maxBytes, String reason, boolean allowReader) throws IOException {
-        if (isProviderBlockedUrl(url)) return fetchViaProviderRelay(url, maxBytes, allowReader, reason);
+    private FetchResult fetchUrlBytes(String url, int maxBytes, String reason) throws IOException {
+        if (isProviderBlockedUrl(url)) return fetchViaProviderRelay(url, maxBytes, reason);
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setInstanceFollowRedirects(true);
         configureGameHttpConnection(c, url);
@@ -790,105 +811,14 @@ public class MainActivity extends Activity {
     private WebResourceResponse interceptProviderBlockedResource(String url, boolean mainFrame) {
         if (!isProviderBlockedUrl(url)) return null;
         try {
-            FetchResult r = fetchViaProviderRelay(url, mainFrame ? 4 * 1024 * 1024 : 12 * 1024 * 1024, mainFrame, mainFrame ? "webMain" : "webResource");
-            if (mainFrame && r.relayMode == 3) {
-                byte[] html = renderReaderRelayHtml(url, r.data);
-                return new WebResourceResponse("text/html", "UTF-8", new java.io.ByteArrayInputStream(html));
-            }
+            FetchResult r = fetchViaProviderRelay(url, mainFrame ? 4 * 1024 * 1024 : 12 * 1024 * 1024, mainFrame ? "webMain" : "webResource");
             String mime = responseMime(url, r.contentType, mainFrame);
             String enc = (mime.startsWith("text/") || mime.contains("javascript") || mime.contains("json") || mime.contains("xml")) ? "UTF-8" : null;
             return new WebResourceResponse(mime, enc, new java.io.ByteArrayInputStream(r.data));
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5S PROVIDER_INTERCEPT_FAIL main=" + mainFrame + " err=" + safeMsg(t) + " url=" + compactUrl(url));
+            appendNativeLog("BUILD2SA5AA PROVIDER_INTERCEPT_FAIL main=" + mainFrame + " err=" + safeMsg(t) + " url=" + compactUrl(url));
             return null;
         }
-    }
-
-    private byte[] renderReaderRelayHtml(String url, byte[] data) throws IOException {
-        String md = new String(data, "UTF-8");
-        StringBuilder b = new StringBuilder();
-        b.append("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>")
-                .append("<style>body{background:#fff;color:#111;font:16px/1.45 sans-serif;margin:0;padding:18px}a{color:#0645ad;font-weight:700;text-decoration:none}.top{border-left:4px solid #111;background:#f2f2f2;padding:10px 12px;margin:0 0 14px}h1{font-size:22px;margin:8px 0 14px}.line{margin:8px 0}.bullet{padding-left:18px}.mono{font-family:monospace;white-space:pre-wrap}</style>")
-                .append("</head><body><div class='top'><b>AtariHelp relay reader</b><br>Provider cesta spadla, tahle stranka jde pres cteci relay. ZIP odkazy zustavaji klikatelne pro emulator.</div>");
-        b.append("<div class='line'><b>URL:</b> <span class='mono'>").append(escapeHtml(url)).append("</span></div>");
-        String[] lines = md.split("\\r?\\n");
-        boolean inBody = false;
-        for (String raw : lines) {
-            String line = raw == null ? "" : raw;
-            String trim = line.trim();
-            if (trim.length() == 0) continue;
-            if (trim.equals("Markdown Content:")) { inBody = true; continue; }
-            if (trim.startsWith("Title: ")) {
-                b.append("<h1>").append(escapeHtml(trim.substring(7))).append("</h1>");
-                continue;
-            }
-            if (trim.startsWith("URL Source:")) continue;
-            if (trim.startsWith("URL Source")) continue;
-            if (!inBody && trim.startsWith("Markdown Content")) continue;
-            if (trim.startsWith("*")) {
-                b.append("<div class='line bullet'>").append(markdownLinksToHtml(trim.replaceFirst("^\\*+\\s*", ""))).append("</div>");
-            } else if (trim.startsWith("#")) {
-                b.append("<h1>").append(markdownLinksToHtml(trim.replaceFirst("^#+\\s*", ""))).append("</h1>");
-            } else {
-                b.append("<div class='line'>").append(markdownLinksToHtml(trim)).append("</div>");
-            }
-        }
-        b.append("</body></html>");
-        return b.toString().getBytes("UTF-8");
-    }
-
-    private String markdownLinksToHtml(String s) {
-        if (s == null) return "";
-        StringBuilder out = new StringBuilder();
-        int pos = 0;
-        while (pos < s.length()) {
-            int a = s.indexOf('[', pos);
-            if (a < 0) {
-                out.append(linkifyPlainUrls(escapeHtml(s.substring(pos))));
-                break;
-            }
-            int b = s.indexOf("](", a);
-            int c = b < 0 ? -1 : s.indexOf(')', b + 2);
-            if (b < 0 || c < 0) {
-                out.append(linkifyPlainUrls(escapeHtml(s.substring(pos))));
-                break;
-            }
-            out.append(linkifyPlainUrls(escapeHtml(s.substring(pos, a))));
-            String label = s.substring(a + 1, b);
-            String href = s.substring(b + 2, c);
-            out.append("<a href='").append(escapeHtml(href)).append("'>").append(escapeHtml(label)).append("</a>");
-            pos = c + 1;
-        }
-        return out.toString();
-    }
-
-    private String linkifyPlainUrls(String escaped) {
-        if (escaped == null || escaped.indexOf("http") < 0) return escaped == null ? "" : escaped;
-        StringBuilder out = new StringBuilder();
-        int pos = 0;
-        while (pos < escaped.length()) {
-            int h1 = escaped.indexOf("https://", pos);
-            int h2 = escaped.indexOf("http://", pos);
-            int h;
-            if (h1 < 0) h = h2;
-            else if (h2 < 0) h = h1;
-            else h = Math.min(h1, h2);
-            if (h < 0) {
-                out.append(escaped.substring(pos));
-                break;
-            }
-            out.append(escaped.substring(pos, h));
-            int e = h;
-            while (e < escaped.length()) {
-                char ch = escaped.charAt(e);
-                if (ch <= ' ' || ch == '&' || ch == '<' || ch == '>' || ch == '\'' || ch == '"') break;
-                e++;
-            }
-            String href = escaped.substring(h, e);
-            out.append("<a href='").append(href).append("'>").append(href).append("</a>");
-            pos = e;
-        }
-        return out.toString();
     }
 
     private void showAtariHelpProviderBridge(final String url, final String reason, final String detail) {
@@ -898,56 +828,18 @@ public class MainActivity extends Activity {
             String html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
                     + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px;margin:0 0 12px}.box{padding:12px;border-left:4px solid #111;background:#f3f3f3;margin:12px 0}.warn{border-left-color:#b80;background:#fff7e6}.btn{display:block;margin:10px 0;padding:12px 14px;border:1px solid #111;border-radius:6px;background:#111;color:#fff;text-decoration:none;text-align:center;font-weight:700}.alt{background:#fff;color:#111}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #777;border-radius:6px;font:16px sans-serif}code{word-break:break-all}</style></head>"
                     + "<body><h1>AtariHelp lokalni bridge</h1>"
-                    + "<div class='box warn'>Provider blokuje nebo zavira spojeni na AtariHelp/WEDOS. Appka proto tuhle domenu automaticky nenacita a neopakuje pozadavky.</div>"
-                    + "<p><b>Puvodni URL:</b> <code>" + escapeHtml(url) + "</code></p>"
+                    + "<div class='box warn'>Provider blokuje nebo zavira spojeni na AtariHelp/WEDOS. Appka zkusi relay a necha aktivni herni bridge.</div>"
+                    + "<p><b>URL:</b> <code>" + escapeHtml(url) + "</code></p>"
                     + "<p><b>Duvod:</b> <code>" + escapeHtml(reason) + " / " + escapeHtml(detail) + "</code></p>"
-                    + "<a class='btn' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat hru z telefonu</a>"
-                    + "<a class='btn alt' href='file:///android_asset/index.html'>Zpet do aplikace</a>"
-                    + "<div class='box'><b>Primy neblokovany odkaz</b><br><p>Sem jde vlozit odkaz na ZIP/XEX/ATR/GEN z jineho hostingu nebo mirroru.</p>"
-                    + "<input id='u' placeholder='https://mirror.example/hra.zip'>"
+                    + "<a class='btn' href='#' onclick='try{AHNET.openGames();}catch(e){}return false;'>Zkusit znovu pres relay</a>"
+                    + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat hru z telefonu</a>"
+                    + "<div class='box'><b>Primy neblokovany odkaz</b><br><input id='u' placeholder='https://mirror.example/hra.zip'>"
                     + "<a class='btn' href='#' onclick='var u=document.getElementById(\"u\").value;if(u){try{AHNET.runGameUrl(u);}catch(e){location.href=u;}}return false;'>Spustit z odkazu</a></div>"
-                    + "<p>Tahle obrazovka je uvnitr APK, takze neni zavisla na providerovi ani na tom, jestli AtariHelp/WEDOS zrovna projde.</p>"
                     + "</body></html>";
             try { web.loadDataWithBaseURL("file:///android_asset/atarihelp_bridge.html", html, "text/html", "UTF-8", null); } catch (Throwable ignored) {}
-            appendNativeLog("BUILD2SA5Q ATARIHELP_PROVIDER_BRIDGE reason=" + reason + " detail=" + detail + " url=" + compactUrl(url));
+            appendNativeLog("BUILD2SA5AA ATARIHELP_PROVIDER_BRIDGE reason=" + reason + " detail=" + detail + " url=" + compactUrl(url));
         };
         if (isUiThread()) r.run(); else ui.post(r);
-    }
-
-    private void showAtariHelpSafetyStop(final String url, final String reason, final long waitMs) {
-        Runnable r = () -> {
-            if (web == null) return;
-            applyWebViewVisualMode(url, "safetyStop");
-            long sec = Math.max(1L, (waitMs + 999L) / 1000L);
-            String html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-                    + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px}.btn{display:block;margin:10px 0;padding:12px 14px;border:1px solid #111;border-radius:6px;background:#111;color:#fff;text-decoration:none;text-align:center;font-weight:700}.alt{background:#fff;color:#111}.warn{padding:10px;border-left:4px solid #b80;background:#fff7e6}code{word-break:break-all}</style></head>"
-                    + "<body><h1>AtariHelp ochranna brzda</h1>"
-                    + "<div class='warn'>Aplikace ted neposila dalsi pozadavky na web, aby nezhorsila IP ban / rate limit.</div>"
-                    + "<p><b>URL:</b> <code>" + escapeHtml(url) + "</code></p>"
-                    + "<p><b>Duvod:</b> <code>" + escapeHtml(reason) + "</code></p>"
-                    + "<p>Zkusit znovu nejdrive za " + sec + " s.</p>"
-                    + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat ZIP z telefonu</a>"
-                    + "</body></html>";
-            try { web.loadDataWithBaseURL("about:blank", html, "text/html", "UTF-8", null); } catch (Throwable ignored) {}
-        };
-        if (isUiThread()) r.run(); else ui.post(r);
-    }
-
-    private void showAtariHelpLoadError(String url, String detail) {
-        if (!isProviderBlockedUrl(url) || web == null) return;
-        showAtariHelpProviderBridge(url, "loadError", detail);
-    }
-
-    private void configureGameHttpConnection(HttpURLConnection c, String url) {
-        if (c == null) return;
-        try { c.setConnectTimeout(20000); } catch (Throwable ignored) {}
-        try { c.setReadTimeout(45000); } catch (Throwable ignored) {}
-        if (isAtariHelpUrl(url)) {
-            try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
-            try { c.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/zip,application/octet-stream,*/*;q=0.8"); } catch (Throwable ignored) {}
-            try { c.setRequestProperty("Accept-Language", "cs-CZ,cs;q=0.9,en;q=0.8"); } catch (Throwable ignored) {}
-            try { c.setRequestProperty("Referer", "https://atarihelp.eu/?page_id=207"); } catch (Throwable ignored) {}
-        }
     }
 
     private String escapeHtml(String s) {
@@ -1781,11 +1673,9 @@ public class MainActivity extends Activity {
                 applyWebViewVisualMode(url, "onPageFinished");
                 stopNativeIfLeavingSega(url, "onPageFinished");
                 stopPs1IfLeaving(url, "onPageFinished");
-                if (url != null && url.startsWith(EMU_URL)) {
-                    injectAtariMobileFilePickerBridge();
-                }
-                if (pendingGame != null && url != null && url.startsWith(EMU_URL)) {
-                    schedulePendingAtariGameInjection("onPageFinished");
+                if (pendingGame != null && url.startsWith(EMU_URL)) {
+                    injectGame(pendingName, pendingGame);
+                    pendingGame = null;
                 }
                 if (url != null && url.toLowerCase().contains("atarihelp.eu")) {
                     injectGameLinkBridge();
@@ -1833,8 +1723,7 @@ public class MainActivity extends Activity {
         web.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
             if (openExternalBrowserUrl(url)) return;
             if (isGameUrl(url, contentDisposition, mimetype)) {
-                if (hasSegaExtension(url)) downloadAndRunSega(url); // BUILD2SA5U: raw Sega ROM only.
-                else downloadAndRun(url); // ZIP decides by content after download.
+                downloadAndRun(url);
             } else if (isProviderBlockedUrl(url)) {
                 loadAtariHelpGuarded(url, "downloadListenerPageRelay");
             } else {
@@ -1946,145 +1835,33 @@ public class MainActivity extends Activity {
         int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
         return v.endsWith(".gen") || v.endsWith(".md") || v.endsWith(".smd") || v.endsWith(".sms") || v.endsWith(".68k") || v.endsWith(".sgd");
     }
-
-    private boolean hasAtariPayloadExtension(String value) {
-        if (value == null) return false;
-        String v = value.toLowerCase();
-        int q = v.indexOf('?'); if (q >= 0) v = v.substring(0, q);
-        int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
-        return v.endsWith(".xex") || v.endsWith(".atr") || v.endsWith(".com") || v.endsWith(".exe");
-    }
-
-    private boolean isSegaCollectionContext() {
-        try {
-            String cur = web == null ? null : web.getUrl();
-            if (cur == null) return false;
-            String u = cur.toLowerCase(Locale.US);
-            return u.startsWith(SEGA_URL) || u.contains("page_id=1003");
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private boolean shouldRouteAsSegaDownload(String url) {
-        if (hasSegaExtension(url)) return true;
-        if (!isGameUrl(url, null, null)) return false;
-        return isSegaCollectionContext();
-    }
-
-    private SegaExtract extractSegaRomFromMaybeZip(String name, byte[] data) {
-        if (data == null || data.length == 0) return null;
-        if (hasSegaExtension(name)) {
-            SegaExtract ex = new SegaExtract();
-            ex.data = data;
-            ex.name = name == null ? "sega_game.md" : name;
-            return ex;
-        }
-        try {
-            java.util.zip.ZipInputStream zi = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
-            java.util.zip.ZipEntry ze;
-            while ((ze = zi.getNextEntry()) != null) {
-                String en = ze.getName() == null ? "" : ze.getName();
-                if (hasSegaExtension(en)) {
-                    ByteArrayOutputStream ro = new ByteArrayOutputStream();
-                    byte[] rb = new byte[16384]; int rn;
-                    while ((rn = zi.read(rb)) > 0 && ro.size() < 16 * 1024 * 1024) ro.write(rb, 0, rn);
-                    zi.close();
-                    SegaExtract ex = new SegaExtract();
-                    ex.data = ro.toByteArray();
-                    int sl = en.lastIndexOf('/');
-                    ex.name = sl >= 0 ? en.substring(sl + 1) : en;
-                    return ex;
-                }
-                zi.closeEntry();
-            }
-            zi.close();
-        } catch (Throwable ignored) {}
-        return null;
-    }
-
-    private AtariExtract extractAtariPayloadFromMaybeZip(String name, byte[] data) {
-        if (data == null || data.length == 0) return null;
-        if (hasAtariPayloadExtension(name)) {
-            AtariExtract ex = new AtariExtract();
-            ex.data = data;
-            ex.name = name == null ? "atari_game.xex" : name;
-            return ex;
-        }
-        try {
-            java.util.zip.ZipInputStream zi = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
-            java.util.zip.ZipEntry ze;
-            AtariExtract atrFallback = null;
-            while ((ze = zi.getNextEntry()) != null) {
-                String en = ze.getName() == null ? "" : ze.getName();
-                boolean atari = hasAtariPayloadExtension(en);
-                if (atari) {
-                    ByteArrayOutputStream ro = new ByteArrayOutputStream();
-                    byte[] rb = new byte[16384]; int rn;
-                    while ((rn = zi.read(rb)) > 0 && ro.size() < 16 * 1024 * 1024) ro.write(rb, 0, rn);
-                    AtariExtract ex = new AtariExtract();
-                    ex.data = ro.toByteArray();
-                    int sl = en.lastIndexOf('/');
-                    ex.name = sl >= 0 ? en.substring(sl + 1) : en;
-                    if (en.toLowerCase(Locale.US).endsWith(".atr")) atrFallback = ex;
-                    else {
-                        zi.close();
-                        return ex;
-                    }
-                }
-                zi.closeEntry();
-            }
-            zi.close();
-            if (atrFallback != null) return atrFallback;
-        } catch (Throwable ignored) {}
-        return null;
-    }
-
-    private void openSegaRomBytes(byte[] data, String name, String reason) {
-        if (data == null || data.length == 0) return;
-        pendingSegaGame = data;
-        pendingSegaName = (name == null || name.length() == 0) ? "sega_game.md" : name;
-        String cur = web == null ? null : web.getUrl();
-        if (cur != null && cur.startsWith(SEGA_URL)) injectPendingSegaGame();
-        else { web.loadUrl(SEGA_URL); web.postDelayed(MainActivity.this::injectPendingSegaGame, 1800); }
-        appendNativeLog("BUILD2SA5T SEGA_ROUTE_OPEN reason=" + reason + " name=" + pendingSegaName + " bytes=" + data.length);
-    }
-
     private void downloadAndRunSega(final String url) {
         new Thread(() -> {
             try {
                 if (!markAtariHelpRequestAllowed(url, "downloadSega")) return;
-                FetchResult fetched = fetchUrlBytes(url, 16 * 1024 * 1024, "downloadSega", false);
-                final String cdName = fetched.contentDisposition;
-                final byte[] dataArr = fetched.data;
+                HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                c.setInstanceFollowRedirects(true);
+                configureGameHttpConnection(c, url);
+                c.connect();
+                final String cdName = c.getHeaderField("Content-Disposition");
+                InputStream in = c.getInputStream();
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                byte[] buf = new byte[16384];
+                int n;
+                while ((n = in.read(buf)) > 0 && bos.size() < 16 * 1024 * 1024) bos.write(buf, 0, n);
+                in.close();
+                final byte[] dataArr = bos.toByteArray();
                 final String name = guessDownloadName(url, cdName);
-                appendNativeLog("BUILD2SA5S SEGA_WEB_ROM_DOWNLOADED name=" + name + " bytes=" + dataArr.length + " via=" + compactUrl(fetched.via));
+                appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_DOWNLOADED name=" + name + " bytes=" + dataArr.length);
                 ui.post(() -> {
-                    openSegaRomBytes(dataArr, name, "rawSega");
+                    pendingSegaGame = dataArr;
+                    pendingSegaName = name;
+                    String cur = web.getUrl();
+                    if (cur != null && cur.startsWith(SEGA_URL)) injectPendingSegaGame();
+                    else { web.loadUrl(SEGA_URL); web.postDelayed(MainActivity.this::injectPendingSegaGame, 1800); }
                 });
             } catch (Exception ex) {
                 appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_FAIL " + ex.getMessage());
-            }
-        }).start();
-    }
-
-    private void downloadAndRunSegaArchive(final String url) {
-        new Thread(() -> {
-            try {
-                if (!markAtariHelpRequestAllowed(url, "downloadSegaArchive")) return;
-                FetchResult fetched = fetchUrlBytes(url, 16 * 1024 * 1024, "downloadSegaArchive", false);
-                final String cdName = fetched.contentDisposition;
-                final byte[] dataArr = fetched.data;
-                final String name = guessDownloadName(url, cdName);
-                final SegaExtract sega = extractSegaRomFromMaybeZip(name, dataArr);
-                if (sega == null || sega.data == null || sega.data.length == 0) {
-                    throw new IOException("Sega ZIP neobsahuje .gen/.md/.smd/.sms ROM: " + name);
-                }
-                appendNativeLog("BUILD2SA5T SEGA_ARCHIVE_DOWNLOADED zip=" + name + " rom=" + sega.name + " romBytes=" + sega.data.length + " via=" + compactUrl(fetched.via));
-                ui.post(() -> openSegaRomBytes(sega.data, sega.name, "segaArchive"));
-            } catch (Exception ex) {
-                appendNativeLog("BUILD2SA5T SEGA_ARCHIVE_FAIL " + safeMsg(ex));
-                // BUILD2SA5T: Sega sbirka nesmi pri chybe prepnout do 130XE.
             }
         }).start();
     }
@@ -2227,46 +2004,6 @@ public class MainActivity extends Activity {
             pendingSegaGame = null; pendingSegaName = null;
         } catch (Throwable t) { appendNativeLog("BUILD2SA2 SEGA_WEB_ROM_INJECT_FAIL " + t.getMessage()); }
     }
-
-    private void runLocalPickedGame(String name, byte[] data) {
-        if (name == null) name = "local_game.zip";
-        if (data == null) return;
-        if (hasSegaExtension(name)) {
-            pendingSegaGame = data;
-            pendingSegaName = name;
-            String cur = web == null ? null : web.getUrl();
-            if (cur != null && cur.startsWith(SEGA_URL)) injectPendingSegaGame();
-            else { web.loadUrl(SEGA_URL); web.postDelayed(MainActivity.this::injectPendingSegaGame, 1800); }
-            appendNativeLog("BUILD2SA5Q LOCAL_PICK_SEGA name=" + name + " bytes=" + data.length);
-            return;
-        }
-        try {
-            java.util.zip.ZipInputStream zi = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
-            java.util.zip.ZipEntry ze;
-            while ((ze = zi.getNextEntry()) != null) {
-                String en = ze.getName() == null ? "" : ze.getName();
-                if (hasSegaExtension(en)) {
-                    ByteArrayOutputStream ro = new ByteArrayOutputStream();
-                    byte[] rb = new byte[16384]; int rn;
-                    while ((rn = zi.read(rb)) > 0 && ro.size() < 16 * 1024 * 1024) ro.write(rb, 0, rn);
-                    pendingSegaGame = ro.toByteArray();
-                    int sl = en.lastIndexOf('/');
-                    pendingSegaName = sl >= 0 ? en.substring(sl + 1) : en;
-                    zi.close();
-                    String cur = web == null ? null : web.getUrl();
-                    if (cur != null && cur.startsWith(SEGA_URL)) injectPendingSegaGame();
-                    else { web.loadUrl(SEGA_URL); web.postDelayed(MainActivity.this::injectPendingSegaGame, 1800); }
-                    appendNativeLog("BUILD2SA5Q LOCAL_PICK_ZIP_CONTAINS_SEGA name=" + pendingSegaName + " bytes=" + pendingSegaGame.length);
-                    return;
-                }
-                zi.closeEntry();
-            }
-            zi.close();
-        } catch (Throwable ignored) {}
-        queueAtariGameFor130xe(name, data, "localPick");
-        appendNativeLog("BUILD2SA5Q LOCAL_PICK_ATARI name=" + name + " bytes=" + data.length);
-    }
-
     private boolean handleMaybeGameUrl(String url) {
         if (openExternalBrowserUrl(url)) return true;
         if (hasSegaExtension(url)) { downloadAndRunSega(url); return true; } // BUILD2SA2: Sega ma prednost
@@ -2303,44 +2040,9 @@ public class MainActivity extends Activity {
                 + "var a=e.target;while(a&&a.tagName!=='A')a=a.parentElement;if(!a||!a.href)return;"
                 + "var h=a.href;"
                 + "if(/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)/i.test(h)){"
-                + "e.preventDefault();e.stopPropagation();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}"
+                + "e.preventDefault();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}"
                 + "}"
                 + "},true);"
-                + "document.addEventListener('click',function(e){"
-                + "if(e.defaultPrevented)return;"
-                + "var n=e.target,fig=null;while(n&&n!==document){if(n.tagName==='FIGURE'||(n.className&&String(n.className).indexOf('wp-block-image')>=0)){fig=n;break;}n=n.parentElement;}"
-                + "if(!fig)return;var links=fig.getElementsByTagName('a');for(var i=0;i<links.length;i++){var h=links[i].href||'';"
-                + "if(/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)([?#].*)?$/i.test(h)||/\\.(xex|zip|atr|com|exe|gen|md|smd|sms|68k|sgd)/i.test(h)){"
-                + "e.preventDefault();e.stopPropagation();try{AHNET.runGameUrl(h);}catch(err){location.href=h;}return;"
-                + "}}"
-                + "},true);"
-                + "})();";
-        web.evaluateJavascript(js, null);
-    }
-
-    private void injectAtariMobileFilePickerBridge() {
-        if (web == null) return;
-        String js = "(function(){"
-                + "if(window.__AH_MOBILE_FILE_PICKER_BRIDGE)return;window.__AH_MOBILE_FILE_PICKER_BRIDGE=1;"
-                + "function logx(m){try{var l=document.getElementById('log');if(l){l.textContent+='\\n'+m;l.scrollTop=l.scrollHeight;}}catch(e){}}"
-                + "function sendFile(n,u8){try{AHRECV_BEGIN(n);}catch(e){logx('BUILD2SA5Z AHRECV_BEGIN error '+e.message);return;}"
-                + "var step=49152,parts=0;for(var i=0;i<u8.length;i+=step){var end=Math.min(i+step,u8.length),s='';"
-                + "for(var j=i;j<end;j++)s+=String.fromCharCode(u8[j]);"
-                + "try{AHRECV_PART(btoa(s));parts++;}catch(e){logx('BUILD2SA5Z AHRECV_PART error '+e.message);return;}}"
-                + "try{logx('BUILD2SA5Z AHRECV_END '+n+' bytes='+u8.length+' parts='+parts);AHRECV_END();}catch(e){logx('BUILD2SA5Z AHRECV_END error '+e.message);}}"
-                + "function pick(label,accept){var inp=document.getElementById('filePick');if(!inp){logx('BUILD2SA5Z '+label+': filePick missing');return;}"
-                + "inp.accept=accept;inp.onchange=function(){var f=inp.files&&inp.files[0];inp.value='';if(!f){logx('BUILD2SA5Z '+label+': no file');return;}"
-                + "logx('BUILD2SA5Z '+label+': selected '+f.name);var rd=new FileReader();"
-                + "rd.onload=function(){try{var u8=new Uint8Array(rd.result);logx('BUILD2SA5Z '+label+': read '+u8.length+' B');sendFile(f.name,u8);}catch(e){logx('BUILD2SA5Z '+label+': read handler error '+e.message);}};"
-                + "rd.onerror=function(){logx('BUILD2SA5Z '+label+': FileReader error');};rd.readAsArrayBuffer(f);};"
-                + "try{inp.click();}catch(e){logx('BUILD2SA5Z '+label+': input click error '+e.message);}}"
-                + "function hook(id,label,accept){var el=document.getElementById(id);if(!el){logx('BUILD2SA5Z '+id+': button missing');return;}var last=0;"
-                + "function h(e){var now=Date.now();try{e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();}catch(x){}"
-                + "if(now-last<450)return false;last=now;pick(label,accept);return false;}"
-                + "el.addEventListener('pointerup',h,true);el.addEventListener('click',h,true);}"
-                + "hook('dockXex','XEX MOBIL','.xex,.exe,.com,.zip,application/zip,application/octet-stream,*/*');"
-                + "hook('dockAtr','ATR DISK Z MOBILU','.atr,.zip,application/zip,application/octet-stream,*/*');"
-                + "logx('BUILD2SA5Z local mobile file picker bridge active');"
                 + "})();";
         web.evaluateJavascript(js, null);
     }
@@ -2349,36 +2051,60 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             try {
                 if (!markAtariHelpRequestAllowed(url, "downloadGame")) return;
-                FetchResult fetched = fetchUrlBytes(url, 16 * 1024 * 1024, "downloadGame", false);
+                FetchResult fetched = fetchUrlBytes(url, 16 * 1024 * 1024, "downloadGame");
                 final String cdName = fetched.contentDisposition;
                 final byte[] data = fetched.data;
                 final String name = guessDownloadName(url, cdName);
-                appendNativeLog("BUILD2SA5U WEB_GAME_DOWNLOADED name=" + name + " bytes=" + data.length + " via=" + compactUrl(fetched.via) + " zipContentDetect=ON");
+                appendNativeLog("BUILD2SA5AA WEB_GAME_DOWNLOADED name=" + name + " bytes=" + data.length + " via=" + compactUrl(fetched.via));
                 // BUILD2SA2B: Reneho web umi hostovat jen ZIPy. Kouknem DOVNITR zipu:
                 // kdyz je uvnitr Sega ROM (.gen/.md/.smd/.sms), rozbalime a posleme
                 // do EMU SEGA. Jinak jede stara Atari cesta beze zmeny.
-                final SegaExtract sega = extractSegaRomFromMaybeZip(name, data);
-                if (sega != null && sega.data != null && sega.data.length > 0) {
-                    appendNativeLog("BUILD2SA5U ZIP_CONTAINS_SEGA name=" + sega.name + " bytes=" + sega.data.length + " -> EMU_SEGA");
-                    ui.post(() -> openSegaRomBytes(sega.data, sega.name, "zipAutoDetect"));
+                byte[] segaRomTmp = null; String segaNameTmp = null;
+                try {
+                    java.util.zip.ZipInputStream zi = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
+                    java.util.zip.ZipEntry ze;
+                    while ((ze = zi.getNextEntry()) != null) {
+                        String en = ze.getName() == null ? "" : ze.getName();
+                        if (hasSegaExtension(en)) {
+                            ByteArrayOutputStream ro = new ByteArrayOutputStream();
+                            byte[] rb = new byte[16384]; int rn;
+                            while ((rn = zi.read(rb)) > 0 && ro.size() < 16 * 1024 * 1024) ro.write(rb, 0, rn);
+                            segaRomTmp = ro.toByteArray();
+                            int sl = en.lastIndexOf('/');
+                            segaNameTmp = sl >= 0 ? en.substring(sl + 1) : en;
+                            break;
+                        }
+                        zi.closeEntry();
+                    }
+                    zi.close();
+                } catch (Throwable ignored) {}
+                final byte[] segaRom = segaRomTmp; final String segaName = segaNameTmp;
+                if (segaRom != null && segaRom.length > 0) {
+                    appendNativeLog("BUILD2SA2B ZIP_CONTAINS_SEGA name=" + segaName + " bytes=" + segaRom.length + " -> EMU_SEGA");
+                    ui.post(() -> {
+                        pendingSegaGame = segaRom; pendingSegaName = segaName;
+                        String cur = web.getUrl();
+                        if (cur != null && cur.startsWith(SEGA_URL)) injectPendingSegaGame();
+                        else { web.loadUrl(SEGA_URL); web.postDelayed(MainActivity.this::injectPendingSegaGame, 1800); }
+                    });
                     return;
                 }
-                final AtariExtract atari = extractAtariPayloadFromMaybeZip(name, data);
-                final byte[] atariData = (atari != null && atari.data != null && atari.data.length > 0) ? atari.data : data;
-                final String atariName = (atari != null && atari.name != null && atari.name.length() > 0) ? atari.name : name;
-                if (atari != null && atari.data != null && atari.data.length > 0) {
-                    appendNativeLog("BUILD2SA5V ZIP_CONTAINS_ATARI name=" + atari.name + " bytes=" + atari.data.length + " -> EMU_130XE");
-                }
-                ui.post(() -> queueAtariGameFor130xe(atariName, atariData, "webDownload"));
+                ui.post(() -> {
+                    String cur = web.getUrl();
+                    if (cur != null && cur.startsWith(EMU_URL)) {
+                        injectGame(name, data);
+                    } else {
+                        pendingGame = data;
+                        pendingName = name;
+                        web.loadUrl(EMU_URL + "?autorun=1");   // otevri emulator bez auto POWER BASIC; soubor se vlozi po nacteni
+                    }
+                });
             } catch (Exception ex) {
-                appendNativeLog("BUILD2SA5U WEB_GAME_DOWNLOAD_FAIL " + safeMsg(ex));
                 ui.post(() -> {
                     try {
+                        if (web.getUrl() == null || !web.getUrl().startsWith(EMU_URL)) web.loadUrl(EMU_URL);
                         final String msg = ex.getMessage() == null ? "neznamá chyba" : ex.getMessage();
-                        String cur = web == null ? null : web.getUrl();
-                        if (cur != null && cur.startsWith(EMU_URL)) {
-                            web.postDelayed(() -> web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote("NET HRY: download selhal - " + msg) + ")", null), 500);
-                        }
+                        web.postDelayed(() -> web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote("NET HRY: download selhal - " + msg) + ")", null), 500);
                     } catch (Exception ignored) {}
                 });
             }
@@ -2390,58 +2116,14 @@ public class MainActivity extends Activity {
         return "'" + text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
     }
 
-    private void queueAtariGameFor130xe(String name, byte[] data, String reason) {
-        if (data == null || data.length == 0) {
-            appendNativeLog("BUILD2SA5Y EMU130_QUEUE_SKIP_EMPTY reason=" + reason + " name=" + name);
-            return;
-        }
-        pendingGame = data;
-        pendingName = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
-        appendNativeLog("BUILD2SA5Y EMU130_QUEUE reason=" + reason + " name=" + pendingName + " bytes=" + pendingGame.length);
-        String cur = web == null ? null : web.getUrl();
-        if (cur != null && cur.startsWith(EMU_URL)) {
-            schedulePendingAtariGameInjection(reason + ":alreadyOn130xe");
-        } else if (web != null) {
-            web.loadUrl(EMU_URL + "?autorun=1");
-        }
-    }
-
-    private void schedulePendingAtariGameInjection(final String reason) {
-        if (pendingGame == null || web == null) return;
-        final int seq = ++pendingGameInjectSeq;
-        ui.postDelayed(() -> injectPendingAtariGameNoCallback(seq, reason), ATARI_INJECT_AFTER_LOAD_MS);
-    }
-
-    private void injectPendingAtariGameNoCallback(final int seq, final String reason) {
-        if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
-        String cur = web.getUrl();
-        if (cur == null || !cur.startsWith(EMU_URL)) return;
-        try {
-            byte[] data = pendingGame;
-            String name = pendingName;
-            appendNativeLog("BUILD2SA5Y EMU130_INJECT_NO_CALLBACK reason=" + reason + " name=" + name + " bytes=" + data.length);
-            injectGame(name, data);
-            pendingGame = null;
-            pendingName = null;
-        } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5Y EMU130_INJECT_NO_CALLBACK_ERROR reason=" + reason + " " + safeMsg(t));
-        }
-    }
-
     private void injectGame(String name, byte[] data) {
-        appendNativeLog("BUILD2SA5Y EMU130_INJECT_SEND_LEGACY_SAFE name=" + name + " bytes=" + (data == null ? 0 : data.length));
-        if (data == null || data.length == 0 || web == null) return;
+        web.evaluateJavascript("AHRECV_BEGIN(" + jsQuote(name) + ")", null);
         String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
-        final String safeName = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
-        web.evaluateJavascript("try{AHRECV_BEGIN(" + jsQuote(safeName) + ");}catch(e){}", null);
-        int partIndex = 0;
-        for (int i = 0; i < b64.length(); i += ATARI_INJECT_CHUNK_CHARS) {
-            String part = b64.substring(i, Math.min(i + ATARI_INJECT_CHUNK_CHARS, b64.length()));
-            web.evaluateJavascript("try{AHRECV_PART('" + part + "');}catch(e){}", null);
-            partIndex++;
+        for (int i = 0; i < b64.length(); i += 262144) {
+            String part = b64.substring(i, Math.min(i + 262144, b64.length()));
+            web.evaluateJavascript("AHRECV_PART('" + part + "')", null);
         }
-        web.evaluateJavascript("try{AHRECV_END();}catch(e){}", null);
-        appendNativeLog("BUILD2SA5Y EMU130_INJECT_SENT_LEGACY_SAFE name=" + safeName + " parts=" + partIndex + " b64Chars=" + b64.length());
+        web.evaluateJavascript("AHRECV_END()", null);
     }
 
     private void injectAudio(String name, byte[] data) {
@@ -2599,7 +2281,7 @@ public class MainActivity extends Activity {
                         byte[] bytes = readUriBytes(uri, max);
                         if ("audio".equals(pendingBridgeKind)) injectAudio(name, bytes);
                         else if ("text".equals(pendingBridgeKind)) injectText(name, bytes);
-                        else runLocalPickedGame(name, bytes);
+                        else injectGame(name, bytes);
                     }
                 } catch (Exception e) {
                     web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote(e.getMessage()) + ")", null);
