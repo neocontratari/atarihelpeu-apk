@@ -71,9 +71,8 @@ public class MainActivity extends Activity {
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
-    private static final int ATARI_INJECT_MAX_ATTEMPTS = 80; // BUILD2SA5W: wait until 130XE page exposes AHRECV_* before sending a web game.
-    private static final long ATARI_INJECT_RETRY_MS = 250L;
-    private static final int ATARI_INJECT_CHUNK_CHARS = 65536; // BUILD2SA5X: ordered AHRECV transfer, smaller chunks for WebView.
+    private static final long ATARI_INJECT_AFTER_LOAD_MS = 750L; // BUILD2SA5Y: no callback dependency; WebView callbacks stalled local Atari pick in Nox.
+    private static final int ATARI_INJECT_CHUNK_CHARS = 65536; // BUILD2SA5Y: smaller fire-and-forget chunks for WebView.
     private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
     private static byte[] pendingSegaGame = null;   // BUILD2SA2: hra ze SBIRKY cekajici na nacteni Sega stranky
     private static String pendingSegaName = null;
@@ -2363,12 +2362,12 @@ public class MainActivity extends Activity {
 
     private void queueAtariGameFor130xe(String name, byte[] data, String reason) {
         if (data == null || data.length == 0) {
-            appendNativeLog("BUILD2SA5W EMU130_QUEUE_SKIP_EMPTY reason=" + reason + " name=" + name);
+            appendNativeLog("BUILD2SA5Y EMU130_QUEUE_SKIP_EMPTY reason=" + reason + " name=" + name);
             return;
         }
         pendingGame = data;
         pendingName = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
-        appendNativeLog("BUILD2SA5W EMU130_QUEUE reason=" + reason + " name=" + pendingName + " bytes=" + pendingGame.length);
+        appendNativeLog("BUILD2SA5Y EMU130_QUEUE reason=" + reason + " name=" + pendingName + " bytes=" + pendingGame.length);
         String cur = web == null ? null : web.getUrl();
         if (cur != null && cur.startsWith(EMU_URL)) {
             schedulePendingAtariGameInjection(reason + ":alreadyOn130xe");
@@ -2380,93 +2379,39 @@ public class MainActivity extends Activity {
     private void schedulePendingAtariGameInjection(final String reason) {
         if (pendingGame == null || web == null) return;
         final int seq = ++pendingGameInjectSeq;
-        ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, 0), 120L);
+        ui.postDelayed(() -> injectPendingAtariGameNoCallback(seq, reason), ATARI_INJECT_AFTER_LOAD_MS);
     }
 
-    private void tryInjectPendingAtariGame(final int seq, final String reason, final int attempt) {
+    private void injectPendingAtariGameNoCallback(final int seq, final String reason) {
         if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
         String cur = web.getUrl();
         if (cur == null || !cur.startsWith(EMU_URL)) return;
         try {
-            web.evaluateJavascript("(typeof window.AHRECV_BEGIN==='function'&&typeof window.AHRECV_PART==='function'&&typeof window.AHRECV_END==='function')", value -> {
-                if (seq != pendingGameInjectSeq || pendingGame == null) return;
-                boolean ready = "true".equals(String.valueOf(value)) || "\"true\"".equals(String.valueOf(value));
-                if (ready) {
-                    byte[] data = pendingGame;
-                    String name = pendingName;
-                    appendNativeLog("BUILD2SA5W EMU130_INJECT_READY reason=" + reason + " attempt=" + attempt + " name=" + name + " bytes=" + data.length);
-                    try {
-                        injectGame(name, data);
-                        pendingGame = null;
-                        pendingName = null;
-                    } catch (Throwable t) {
-                        appendNativeLog("BUILD2SA5W EMU130_INJECT_SEND_ERROR reason=" + reason + " " + safeMsg(t));
-                        if (attempt < ATARI_INJECT_MAX_ATTEMPTS) {
-                            ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, attempt + 1), ATARI_INJECT_RETRY_MS);
-                        }
-                    }
-                    return;
-                }
-                if (attempt < ATARI_INJECT_MAX_ATTEMPTS) {
-                    if (attempt == 0 || attempt == 8 || attempt == 20) {
-                        appendNativeLog("BUILD2SA5W EMU130_INJECT_WAIT reason=" + reason + " attempt=" + attempt + " ready=" + value);
-                    }
-                    ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, attempt + 1), ATARI_INJECT_RETRY_MS);
-                } else {
-                    appendNativeLog("BUILD2SA5W EMU130_INJECT_TIMEOUT reason=" + reason + " name=" + pendingName + " bytes=" + pendingGame.length);
-                }
-            });
+            byte[] data = pendingGame;
+            String name = pendingName;
+            appendNativeLog("BUILD2SA5Y EMU130_INJECT_NO_CALLBACK reason=" + reason + " name=" + name + " bytes=" + data.length);
+            injectGame(name, data);
+            pendingGame = null;
+            pendingName = null;
         } catch (Throwable t) {
-            if (attempt < ATARI_INJECT_MAX_ATTEMPTS) {
-                ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, attempt + 1), ATARI_INJECT_RETRY_MS);
-            } else {
-                appendNativeLog("BUILD2SA5W EMU130_INJECT_JS_ERROR reason=" + reason + " " + safeMsg(t));
-            }
+            appendNativeLog("BUILD2SA5Y EMU130_INJECT_NO_CALLBACK_ERROR reason=" + reason + " " + safeMsg(t));
         }
     }
 
     private void injectGame(String name, byte[] data) {
-        appendNativeLog("BUILD2SA5X EMU130_INJECT_SEND_ORDERED name=" + name + " bytes=" + (data == null ? 0 : data.length));
+        appendNativeLog("BUILD2SA5Y EMU130_INJECT_SEND_LEGACY_SAFE name=" + name + " bytes=" + (data == null ? 0 : data.length));
         if (data == null || data.length == 0 || web == null) return;
         String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
         final String safeName = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
-        web.evaluateJavascript("try{AHRECV_BEGIN(" + jsQuote(safeName) + ");'OK'}catch(e){'ERR:'+e.message}", value -> {
-            if (!isJsOk(value)) {
-                appendNativeLog("BUILD2SA5X EMU130_BEGIN_FAIL name=" + safeName + " result=" + value);
-                return;
-            }
-            appendNativeLog("BUILD2SA5X EMU130_BEGIN_OK name=" + safeName + " b64Chars=" + b64.length());
-            injectGamePartOrdered(safeName, b64, 0, 0);
-        });
-    }
-
-    private boolean isJsOk(String value) {
-        if (value == null) return false;
-        String v = String.valueOf(value);
-        return "\"OK\"".equals(v) || "OK".equals(v);
-    }
-
-    private void injectGamePartOrdered(final String name, final String b64, final int offset, final int partIndex) {
-        if (web == null) return;
-        if (offset >= b64.length()) {
-            web.evaluateJavascript("try{AHRECV_END();'OK'}catch(e){'ERR:'+e.message}", value -> {
-                if (isJsOk(value)) appendNativeLog("BUILD2SA5X EMU130_END_OK name=" + name + " parts=" + partIndex);
-                else appendNativeLog("BUILD2SA5X EMU130_END_FAIL name=" + name + " result=" + value);
-            });
-            return;
+        web.evaluateJavascript("try{AHRECV_BEGIN(" + jsQuote(safeName) + ");}catch(e){}", null);
+        int partIndex = 0;
+        for (int i = 0; i < b64.length(); i += ATARI_INJECT_CHUNK_CHARS) {
+            String part = b64.substring(i, Math.min(i + ATARI_INJECT_CHUNK_CHARS, b64.length()));
+            web.evaluateJavascript("try{AHRECV_PART('" + part + "');}catch(e){}", null);
+            partIndex++;
         }
-        final int end = Math.min(offset + ATARI_INJECT_CHUNK_CHARS, b64.length());
-        final String part = b64.substring(offset, end);
-        web.evaluateJavascript("try{AHRECV_PART('" + part + "');'OK'}catch(e){'ERR:'+e.message}", value -> {
-            if (!isJsOk(value)) {
-                appendNativeLog("BUILD2SA5X EMU130_PART_FAIL name=" + name + " part=" + partIndex + " result=" + value);
-                return;
-            }
-            if (partIndex == 0 || end >= b64.length() || (partIndex % 16) == 0) {
-                appendNativeLog("BUILD2SA5X EMU130_PART_OK name=" + name + " part=" + partIndex + " chars=" + end + "/" + b64.length());
-            }
-            injectGamePartOrdered(name, b64, end, partIndex + 1);
-        });
+        web.evaluateJavascript("try{AHRECV_END();}catch(e){}", null);
+        appendNativeLog("BUILD2SA5Y EMU130_INJECT_SENT_LEGACY_SAFE name=" + safeName + " parts=" + partIndex + " b64Chars=" + b64.length());
     }
 
     private void injectAudio(String name, byte[] data) {
