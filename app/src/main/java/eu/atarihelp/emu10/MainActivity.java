@@ -2381,10 +2381,18 @@ public class MainActivity extends Activity {
     }
 
     private String clearPs1RemoteCaches() throws IOException {
-        if (ps1RemoteDownloadActive || ps1BootActive || ps1SessionActive) {
-            String busy = "PS1_CACHE_CLEAR_BUSY nejdriv ukonci PS1 hru/download";
+        if (ps1RemoteDownloadActive) {
+            String busy = "PS1_CACHE_CLEAR_BUSY download prave bezi, pockej na dokonceni";
             setPs1RemoteStatus(busy);
             return busy;
+        }
+        // BUILD2SA5AR: drive tlacitko pri BEZICI hre jen tise ohlasilo BUSY a Rene
+        // si myslel, ze cache smazal. Ted se hra napred korektne zastavi a maze se.
+        if (ps1BootActive || ps1SessionActive) {
+            try { NativePs1CoreBridge.stopSafe(); } catch (Throwable ignored) {}
+            ps1BootActive = false;
+            ps1SessionActive = false;
+            appendNativeLog("BUILD2SA5AR PS1_CACHE_CLEAR_AUTOSTOP hra zastavena kvuli mazani cache");
         }
         int targets = 0;
         StringBuilder sb = new StringBuilder();
@@ -2746,6 +2754,43 @@ public class MainActivity extends Activity {
         }
     }
 
+    // BUILD2SA5AR: ENOSPC oprava. Kazda hra = zip (~700MB) + rozbaleny bin (~700MB)
+    // a cache drzela VSECHNY drivejsi hry => druha hra uz se na S8 nevesla.
+    private long ps1PurgeOtherRemoteGames(File keepDir) {
+        long freed = 0L;
+        try {
+            File[] roots = new File[] { new File(getPublicAtariHelpDownloadsDir(), "PS1"), ps1PrivateRemoteGamesDir() };
+            for (File root : roots) {
+                if (root == null || !root.exists()) continue;
+                File[] kids = root.listFiles();
+                if (kids == null) continue;
+                for (File k : kids) {
+                    if (keepDir != null && k.getAbsolutePath().equals(keepDir.getAbsolutePath())) continue;
+                    freed += dirSizeBytes(k);
+                    deleteTree(k);
+                }
+            }
+        } catch (Throwable t) { appendNativeLog("BUILD2SA5AR PS1_AUTO_CLEAN_ERR " + safeMsg(t)); }
+        if (freed > 0) appendNativeLog("BUILD2SA5AR PS1_CACHE_AUTO_CLEAN freed=" + formatMb(freed));
+        return freed;
+    }
+    private long dirSizeBytes(File f) {
+        if (f == null || !f.exists()) return 0L;
+        if (f.isFile()) return f.length();
+        long sum = 0L; File[] kids = f.listFiles();
+        if (kids != null) for (File k : kids) sum += dirSizeBytes(k);
+        return sum;
+    }
+    private void ps1EnsureFreeSpace(File dir, long contentLength) throws IOException {
+        long need = contentLength > 0 ? (contentLength * 2 + 200L * 1024 * 1024) : 1600L * 1024 * 1024;
+        long usable = 0L;
+        try { usable = dir.getUsableSpace(); } catch (Throwable ignored) {}
+        if (usable > 0 && usable < need) {
+            throw new IOException("MALO MISTA v telefonu: potreba ~" + formatMb(need) + ", volne " + formatMb(usable)
+                    + ". PS1 cache byla prave automaticky uklizena - uvolni jeste misto v telefonu a zkus znovu.");
+        }
+        appendNativeLog("BUILD2SA5AR PS1_SPACE_CHECK need=" + formatMb(need) + " usable=" + formatMb(usable));
+    }
     private void startPs1RemoteDownloadAndBoot(final String rawUrl) {
         final String url = rawUrl == null ? "" : rawUrl.trim();
         if (!(url.startsWith("http://") || url.startsWith("https://"))) {
@@ -2782,6 +2827,7 @@ public class MainActivity extends Activity {
                     bootPs1FileOnCurrentThread(cached, cached.getName(), "remoteCache");
                     return;
                 }
+                ps1PurgeOtherRemoteGames(dir); // BUILD2SA5AR: pred stazenim uklidit VSECHNY stare hry
                 setPs1RemoteStatus("PS1_REMOTE_CONNECT " + compactUrl(url) + (googleDrive ? " via=google_drive" : "") + " path=" + dir.getAbsolutePath());
                 c = (HttpURLConnection) new URL(downloadUrl).openConnection();
                 c.setInstanceFollowRedirects(true);
@@ -2794,6 +2840,9 @@ public class MainActivity extends Activity {
                 int code = c.getResponseCode();
                 if (code < 200 || code >= 400) throw new IOException("HTTP " + code + " " + c.getResponseMessage());
                 String contentType = c.getContentType();
+                long expectedLen = -1L;
+                try { expectedLen = c.getContentLengthLong(); } catch (Throwable ignored) {}
+                ps1EnsureFreeSpace(dir, expectedLen); // BUILD2SA5AR: srozumitelna hlaska misto ENOSPC v pulce
                 String name = safeFileName(guessDownloadName(downloadUrl, c.getHeaderField("Content-Disposition")));
                 if (!isPs1RemoteImageName(name)) {
                     if (googleDrive) {
@@ -2874,6 +2923,7 @@ public class MainActivity extends Activity {
                 if (isPs1ZipName(name)) {
                     setPs1RemoteStatus("PS1_REMOTE_ZIP_READY " + name + " bytes=" + total);
                     File bootFile = extractPs1RemoteZip(out, dir);
+                    try { long zb = out.length(); if (out.delete()) appendNativeLog("BUILD2SA5AR PS1_ZIP_DELETED_AFTER_EXTRACT freed=" + formatMb(zb)); } catch (Throwable ignored) {} // BUILD2SA5AR
                     try { out.delete(); } catch (Throwable ignored) {}
                     setPs1RemoteStatus("PS1_REMOTE_READY " + bootFile.getName() + " fromZip=" + name + " path=" + bootFile.getAbsolutePath());
                     ps1WriteCacheMarker(dir, bootFile);
