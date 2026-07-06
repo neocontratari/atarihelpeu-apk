@@ -2655,7 +2655,18 @@ public class MainActivity extends Activity {
                 String name = ze.getName();
                 if (!isPs1ZipPayloadName(name)) continue;
                 if (cue == null && isPs1CueName(name)) cue = ze;
-                if (primary == null && isPs1ZipPrimaryName(name)) primary = ze;
+                // BUILD2SA5AS: TEKKEN FIX - zip s vice .bin bez .cue: prvni entry byl
+                // klidne 28MB AUDIO track (Track 3) => hra se sekla. Bereme NEJVETSI
+                // payload (datovy track); "track 1" ma prednost pri stejne velikosti.
+                if (isPs1ZipPrimaryName(name)) {
+                    if (primary == null) primary = ze;
+                    else {
+                        long a = ze.getSize(), b = primary.getSize();
+                        String ln = name.toLowerCase(Locale.US);
+                        boolean t1 = ln.contains("track 1") || ln.contains("track 01") || ln.contains("track_1") || ln.contains("track1");
+                        if (a > b || (a == b && t1)) primary = ze;
+                    }
+                }
             }
             if (cue != null) {
                 byte[] cueBytes = readZipEntryLimited(zip, cue, 1024 * 1024);
@@ -2674,7 +2685,7 @@ public class MainActivity extends Activity {
                 return cueOut;
             }
             if (primary != null) {
-                setPs1RemoteStatus("PS1_REMOTE_ZIP_PRIMARY " + zipLeafName(primary.getName()));
+                setPs1RemoteStatus("PS1_REMOTE_ZIP_PRIMARY " + zipLeafName(primary.getName()) + " size=" + formatMb(Math.max(0, primary.getSize())) + " (nejvetsi payload; CD audio tracky se u her bez .cue preskakuji)");
                 return extractZipEntryToFile(zip, primary, dir, zipLeafName(primary.getName()));
             }
             throw new IOException("ZIP neobsahuje PS1 .cue/.bin/.iso/.img/.pbp/.chd");

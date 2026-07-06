@@ -558,6 +558,7 @@ function ps1ClearCache(){
       if(!confirm('Smazat PS1 stazene hry/cache z telefonu?'))return;
       var r=String(window.AHPS1.ps1ClearRemoteCache());
       log('PS1_CACHE_CLEAR_RESULT '+r);
+      try{var sc=document.getElementById('ps1Screen');if(sc){sc.style.display='none';sc.removeAttribute('src');}}catch(_){ } // BUILD2SA5AS: po smazani nesmi zustat obraz hry
       toast(r,7000);
     }else toast('PS1 CACHE CLEAR: AHPS1 most chybi',2600);
   }catch(e){toast('PS1 CACHE mazani chyba: '+(e&&e.message),4200);}
