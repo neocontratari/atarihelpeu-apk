@@ -12,6 +12,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
+#include <dirent.h> // BUILD2SA6: BIOS audit
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -230,8 +231,20 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
   const int gen = g_generation.load();
   g_running.store(true);
   g_worker = std::thread(nap_worker, gen);
-  snprintf(out,sizeof(out),"PS1_BOOT_OK path=%s fps=%.2f baseRes=%ux%u sampleRate=%.0f sysdir=%s",
-    gamePath.c_str(), av.timing.fps, av.geometry.base_width, av.geometry.base_height, av.timing.sample_rate, g_sysdir.c_str());
+  char biosList[256] = "prazdna";
+  { // BUILD2SA6: BIOS AUDIT - vypis, co jadro REALNE vidi v system slozce.
+    // Kdyz tu nebude scph1001.bin, mame pricinu chybejici SONY znelky (HLE BIOS).
+    DIR *d = opendir(g_sysdir.c_str());
+    if (d) { size_t off = 0; biosList[0] = 0; struct dirent *e;
+      while ((e = readdir(d)) && off < sizeof(biosList) - 40) {
+        if (e->d_name[0] == '.') continue;
+        off += snprintf(biosList + off, sizeof(biosList) - off, "%s%s", off ? "," : "", e->d_name);
+      }
+      closedir(d); if (!biosList[0]) snprintf(biosList, sizeof(biosList), "prazdna");
+    }
+  }
+  snprintf(out,sizeof(out),"PS1_BOOT_OK sysdirFiles=[%s] path=%s fps=%.2f baseRes=%ux%u sampleRate=%.0f sysdir=%s",
+    biosList, gamePath.c_str(), av.timing.fps, av.geometry.base_width, av.geometry.base_height, av.timing.sample_rate, g_sysdir.c_str());
   NAPLOG("%s", out);
   return env->NewStringUTF(out);
 }

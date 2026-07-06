@@ -132,6 +132,7 @@ target_link_libraries(napsega_native_proof PRIVATE
 # ============ BUILD2SA1-FIX: PCSX-ReARMed presne dle jni/Android.mk (arm64, interpreter) ============
 # KILL-SWITCH: kdyz by PS1 blok zlobil, staci OFF a workflow je zeleny bez PS1.
 option(NAP_ENABLE_PS1 "Build PS1 core (napps1core)" ON)
+enable_language(ASM) # BUILD2SA6: dynarec ma arm64 assembly (.S)
 # BUILD2SA1-FIX3: Gradle stavi APK pro VSECHNY architektury (arm64, armeabi-v7a,
 # x86, x86_64). PS1 konfigurace je zamerena na arm64 (S8 a moderni telefony) -
 # na ostatnich ABI se PS1 PRESKOCI a Sega se stavi jak dosud. Zadna dalsi
@@ -218,6 +219,11 @@ add_library(napps1core SHARED
     ${PS1_DIR}/deps/libretro-common/time/rtime.c
     ${PS1_DIR}/deps/libretro-common/vfs/vfs_implementation.c
     ${PS1_DIR}/libpcsxcore/new_dynarec/emu_if.c
+    ${PS1_DIR}/libpcsxcore/new_dynarec/new_dynarec.c
+    ${PS1_DIR}/libpcsxcore/new_dynarec/pcsxmem.c
+    ${PS1_DIR}/libpcsxcore/gte_arm64.S
+    ${PS1_DIR}/libpcsxcore/gte_nf_arm64.S
+    ${PS1_DIR}/libpcsxcore/new_dynarec/linkage_arm64.S
     ${PS1_DIR}/plugins/gpu_neon/psx_gpu/psx_gpu_simd.c
     ${PS1_DIR}/plugins/gpu_neon/psx_gpu_if.c
     ${PS1_DIR}/frontend/pcsxr-threads.c
@@ -231,7 +237,7 @@ target_include_directories(napps1core PRIVATE
 target_compile_definitions(napps1core PRIVATE
     HAVE_CHD Z7_ST ZSTD_DISABLE_ASM HAVE_LIBRETRO NO_FRONTEND REARMED
     P_HAVE_MMAP=1 P_HAVE_PTHREAD=1 P_HAVE_POSIX_MEMALIGN=1 USE_LIBRETRO_VFS
-    DRC_DISABLE LIGHTREC_CUSTOM_MAP=0 LIGHTREC_ENABLE_THREADED_COMPILER=0
+    NDRC_THREAD LIGHTREC_CUSTOM_MAP=0 LIGHTREC_ENABLE_THREADED_COMPILER=0
     LIGHTREC_ENABLE_DISASSEMBLER=0 LIGHTREC_NO_DEBUG=1
     NEON_BUILD TEXTURE_CACHE_4BPP TEXTURE_CACHE_8BPP GPU_NEON SIMD_BUILD
     USE_ASYNC_CDROM USE_ASYNC_GPU USE_ASYNC_SPU HAVE_RTHREADS NDEBUG)
