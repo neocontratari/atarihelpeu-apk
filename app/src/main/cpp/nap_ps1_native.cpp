@@ -12,7 +12,8 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
-#include <dirent.h> // BUILD2SA6: BIOS audit
+#include <dirent.h>
+#include <cctype> // BUILD2SA6: BIOS audit
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -47,6 +48,8 @@ extern "C" {
   bool retro_load_game(const struct retro_game_info*);
   void retro_unload_game(void);
   void retro_run(void);
+  void *retro_get_memory_data(unsigned id);
+  size_t retro_get_memory_size(unsigned id);
   size_t retro_serialize_size(void);
   bool retro_serialize(void *data, size_t size);
   bool retro_unserialize(const void *data, size_t size);
@@ -76,6 +79,46 @@ static std::mutex g_life_mutex;
 static std::mutex g_core_mutex; // BUILD2SA5: save/load state nesmi bezet soucasne s retro_run
 static double g_fps = 60.0;
 static std::atomic<bool> g_loaded{false};
+// BUILD2SA11: MEMORY CARD per hra
+static std::string g_srm_path;
+static uint32_t g_srm_last_fnv = 0;
+static uint32_t nap_fnv32(const uint8_t *d, size_t n) {
+  uint32_t h = 2166136261u;
+  for (size_t i = 0; i < n; ++i) { h ^= d[i]; h *= 16777619u; }
+  return h;
+}
+static void nap_srm_set_path(const std::string &gamePath) {
+  std::string leaf = gamePath;
+  size_t sl = leaf.find_last_of('/');
+  if (sl != std::string::npos) leaf = leaf.substr(sl + 1);
+  if (leaf.empty() || gamePath.rfind("/proc/self/fd/", 0) == 0) leaf = "rucni_vyber";
+  size_t dot = leaf.find_last_of('.');
+  if (dot != std::string::npos && dot > 0) leaf = leaf.substr(0, dot);
+  for (size_t i = 0; i < leaf.size(); ++i) { char c = leaf[i]; if (!isalnum((unsigned char)c) && c != '-' && c != '_') leaf[i] = '_'; }
+  g_srm_path = g_savedir + "/" + leaf + ".srm";
+}
+static void nap_srm_load() {
+  void *mem = retro_get_memory_data(0);
+  size_t sz = retro_get_memory_size(0);
+  if (!mem || !sz) { NAPLOG("BUILD2SA11 MEMCARD_NONE core nedava SAVE_RAM"); return; }
+  FILE *f = fopen(g_srm_path.c_str(), "rb");
+  if (f) { size_t rd = fread(mem, 1, sz, f); fclose(f);
+    NAPLOG("BUILD2SA11 MEMCARD_LOADED %s bytes=%zu/%zu", g_srm_path.c_str(), rd, sz);
+  } else NAPLOG("BUILD2SA11 MEMCARD_NEW %s size=%zu (prvni hrani teto hry)", g_srm_path.c_str(), sz);
+  g_srm_last_fnv = nap_fnv32((const uint8_t*)mem, sz);
+}
+static void nap_srm_save_if_dirty(const char *why) {
+  void *mem = retro_get_memory_data(0);
+  size_t sz = retro_get_memory_size(0);
+  if (!mem || !sz || g_srm_path.empty()) return;
+  uint32_t h = nap_fnv32((const uint8_t*)mem, sz);
+  if (h == g_srm_last_fnv) return;
+  FILE *f = fopen(g_srm_path.c_str(), "wb");
+  if (!f) { NAPLOG("BUILD2SA11 MEMCARD_SAVE_FAIL %s", g_srm_path.c_str()); return; }
+  fwrite(mem, 1, sz, f); fclose(f);
+  g_srm_last_fnv = h;
+  NAPLOG("BUILD2SA11 MEMCARD_SAVED %s bytes=%zu why=%s", g_srm_path.c_str(), sz, why);
+}
 
 static void nap_retro_log(int level, const char *fmt, ...) {
   char buf[512]; va_list ap; va_start(ap, fmt); vsnprintf(buf, sizeof(buf), fmt, ap); va_end(ap);
@@ -170,10 +213,12 @@ static void nap_worker(int gen) {
   NAPLOG("BUILD2SA2 PS1 worker start gen=%d fps=%.2f", gen, g_fps);
   const auto period = std::chrono::nanoseconds((long long)(1e9 / (g_fps > 1 ? g_fps : 60.0)));
   auto next = std::chrono::steady_clock::now();
+  uint64_t srmTick = 0;
   while (g_running.load() && gen == g_generation.load()) {
     {
       std::lock_guard<std::mutex> core(g_core_mutex);
       retro_run();
+      if (++srmTick % 300 == 0) nap_srm_save_if_dirty("periodic");
     }
     next += period;
     auto now = std::chrono::steady_clock::now();
@@ -202,7 +247,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
   // stop pripadneho predchoziho behu
   g_generation.fetch_add(1); g_running.store(false);
   if (g_worker.joinable()) g_worker.join();
-  if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+  if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("stop"); retro_unload_game(); retro_deinit(); }
   nap_audio_clear();
   g_input_bits.store(0);
   g_frames.store(0); g_dupe_frames.store(0); g_audio_samples_dropped.store(0); g_audio_resyncs.store(0); g_fw.store(0); g_fh.store(0);
@@ -225,6 +270,8 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
     return env->NewStringUTF(out);
   }
   g_loaded.store(true);
+  nap_srm_set_path(gamePath); // BUILD2SA11
+  nap_srm_load();
   retro_system_av_info av; memset(&av,0,sizeof(av));
   retro_get_system_av_info(&av);
   g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
@@ -346,7 +393,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   std::lock_guard<std::mutex> life(g_life_mutex);
   g_generation.fetch_add(1); g_running.store(false);
   if (g_worker.joinable()) g_worker.join();
-  if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+  if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("stop"); retro_unload_game(); retro_deinit(); }
   nap_audio_clear();
   g_input_bits.store(0);
   NAPLOG("BUILD2SA2 PS1 stop frames=%llu", (unsigned long long)g_frames.load());
