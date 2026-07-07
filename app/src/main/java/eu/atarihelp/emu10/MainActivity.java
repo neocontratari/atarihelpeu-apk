@@ -2999,6 +2999,12 @@ public class MainActivity extends Activity {
                 ps1WriteCacheMarker(dir, out);
                 bootPs1FileOnCurrentThread(out, name, "remoteUrl");
             } catch (Throwable t) {
+                // BUILD2SA10: instalace BIOSu neni chyba - nesmi se ukazat cerveny banner.
+                if (safeMsg(t) != null && safeMsg(t).startsWith("BIOS NAINSTALOVAN")) {
+                    ps1LastBootResult = "PS1_BIOS_INSTALLED " + safeMsg(t);
+                    setPs1RemoteStatus("PS1_BIOS_INSTALLED " + safeMsg(t));
+                    return;
+                }
                 ps1LastBootResult = "PS1_REMOTE_FAIL " + safeMsg(t);
                 setPs1RemoteStatus(ps1LastBootResult);
                 try { if (part != null && part.exists()) part.delete(); } catch (Throwable ignored) {}
