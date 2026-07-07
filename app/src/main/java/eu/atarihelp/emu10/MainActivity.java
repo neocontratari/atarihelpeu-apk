@@ -3058,8 +3058,73 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-            if (adopted > 0) appendNativeLog("BUILD2SA7 PS1_BIOS_ADOPTED count=" + adopted + " -> " + sysDir.getAbsolutePath());
-            else appendNativeLog("BUILD2SA7 PS1_BIOS_MISSING stahni BIOS ZIP z atarihelp.eu (page_id=1048) do Download/AtariHelp a spust hru znovu");
+            if (adopted > 0) { appendNativeLog("BUILD2SA7 PS1_BIOS_ADOPTED count=" + adopted + " -> " + sysDir.getAbsolutePath()); return; }
+            // BUILD2SA12: NULA KLIKU - appka si BIOS sama stahne z Reneho stranek.
+            // 1) precte stranku page_id=1048 a najde na ni BIOS ZIP odkaz
+            // 2) zkusi zname primé cesty jako zalohu
+            java.util.List<String> cand = new java.util.ArrayList<>();
+            // BUILD2SA12B: primy odkaz od Reneho (7.7.2026) - prvni volba, nejrychlejsi.
+            cand.add("https://atarihelp.eu/wp-content/uploads/2026/07/PS1-BIOS_.zip");
+            try {
+                HttpURLConnection pc = (HttpURLConnection) new URL("https://atarihelp.eu/?page_id=1048").openConnection();
+                pc.setConnectTimeout(8000); pc.setReadTimeout(8000);
+                pc.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 9) AtariHelpEMU10");
+                java.io.InputStream pin = pc.getInputStream();
+                ByteArrayOutputStream pbo = new ByteArrayOutputStream();
+                byte[] pb = new byte[16384]; int pn2;
+                while ((pn2 = pin.read(pb)) > 0 && pbo.size() < 512 * 1024) pbo.write(pb, 0, pn2);
+                pin.close();
+                String html = pbo.toString("UTF-8");
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?i)(href|src)=[\"']([^\"']*\\.zip)[\"']").matcher(html);
+                while (m.find()) {
+                    String u2 = m.group(2);
+                    if (!u2.toLowerCase(Locale.US).contains("bios")) continue;
+                    if (u2.startsWith("//")) u2 = "https:" + u2;
+                    else if (u2.startsWith("/")) u2 = "https://atarihelp.eu" + u2;
+                    cand.add(u2);
+                }
+            } catch (Throwable pt) { appendNativeLog("BUILD2SA12 PS1_BIOS_PAGE_SCAN_FAIL " + safeMsg(pt)); }
+            cand.add("https://atarihelp.eu/wp-content/uploads/2026/07/_PS1_-_BIOS_.ZIP");
+            for (String bu : cand) {
+                try {
+                    appendNativeLog("BUILD2SA12 PS1_BIOS_AUTO_DL_TRY " + bu);
+                    HttpURLConnection bc = (HttpURLConnection) new URL(bu).openConnection();
+                    bc.setConnectTimeout(10000); bc.setReadTimeout(20000);
+                    bc.setInstanceFollowRedirects(true);
+                    bc.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 9) AtariHelpEMU10");
+                    java.io.InputStream in3 = bc.getInputStream();
+                    ByteArrayOutputStream bo3 = new ByteArrayOutputStream();
+                    byte[] b3 = new byte[16384]; int n3;
+                    while ((n3 = in3.read(b3)) > 0 && bo3.size() < 8 * 1024 * 1024) bo3.write(b3, 0, n3);
+                    in3.close();
+                    byte[] zipData = bo3.toByteArray();
+                    int inst = 0;
+                    java.util.zip.ZipInputStream zi3 = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(zipData));
+                    java.util.zip.ZipEntry ze3;
+                    while ((ze3 = zi3.getNextEntry()) != null) {
+                        if (ze3.isDirectory()) continue;
+                        String zn3 = zipLeafName(ze3.getName()).toLowerCase(Locale.US);
+                        if (zn3.startsWith("scph") && zn3.endsWith(".bin")) {
+                            ByteArrayOutputStream eo = new ByteArrayOutputStream();
+                            byte[] eb = new byte[16384]; int en4;
+                            while ((en4 = zi3.read(eb)) > 0 && eo.size() <= 524288) eo.write(eb, 0, en4);
+                            if (eo.size() == 524288) {
+                                java.io.FileOutputStream ef = new java.io.FileOutputStream(new File(sysDir, zn3));
+                                eo.writeTo(ef); ef.close(); inst++;
+                            }
+                        }
+                        zi3.closeEntry();
+                    }
+                    zi3.close();
+                    if (inst > 0) {
+                        try { java.io.FileOutputStream kf2 = new java.io.FileOutputStream(new File(getPublicAtariHelpDownloadsDir(), "_PS1_-_BIOS_.ZIP")); kf2.write(zipData); kf2.close(); } catch (Throwable ignored) {}
+                        appendNativeLog("BUILD2SA12 PS1_BIOS_AUTO_DOWNLOADED url=" + bu + " count=" + inst);
+                        setPs1RemoteStatus("PS1_BIOS_AUTO_INSTALLED (" + inst + ") ze stranek atarihelp.eu - SONY logo pojede");
+                        return;
+                    }
+                } catch (Throwable dt) { appendNativeLog("BUILD2SA12 PS1_BIOS_AUTO_DL_FAIL " + bu + " " + safeMsg(dt)); }
+            }
+            appendNativeLog("BUILD2SA7 PS1_BIOS_MISSING auto-stazeni nevyslo - stahni BIOS ZIP z atarihelp.eu do Download/AtariHelp nebo pres LOAD GAME");
         } catch (Throwable t) { appendNativeLog("BUILD2SA7 PS1_BIOS_ADOPT_ERR " + safeMsg(t)); }
     }
     private void ps1CopyFile(File src, File dst) throws IOException {
