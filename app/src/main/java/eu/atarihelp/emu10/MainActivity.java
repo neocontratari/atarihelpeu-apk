@@ -2685,7 +2685,39 @@ public class MainActivity extends Activity {
                 return cueOut;
             }
             if (primary != null) {
-                setPs1RemoteStatus("PS1_REMOTE_ZIP_PRIMARY " + zipLeafName(primary.getName()) + " size=" + formatMb(Math.max(0, primary.getSize())) + " (nejvetsi payload; CD audio tracky se u her bez .cue preskakuji)");
+                // BUILD2SA7: MULTI-BIN bez .cue (treba 10 tracku) - rozbalime VSECHNY
+                // biny a .cue SI VYROBIME: nejvetsi/track1 = datovy MODE2/2352,
+                // ostatni AUDIO podle cisla tracku. Hra pak jede i s CD hudbou.
+                java.util.List<java.util.zip.ZipEntry> bins = new java.util.ArrayList<>();
+                java.util.Enumeration<? extends java.util.zip.ZipEntry> en3 = zip.entries();
+                while (en3.hasMoreElements()) {
+                    java.util.zip.ZipEntry z3 = en3.nextElement();
+                    if (z3 == null || z3.isDirectory()) continue;
+                    if (isPs1ZipPrimaryName(z3.getName()) && z3.getName().toLowerCase(Locale.US).endsWith(".bin")) bins.add(z3);
+                }
+                if (bins.size() > 1) {
+                    final java.util.zip.ZipEntry dataTrack = primary;
+                    java.util.Collections.sort(bins, (a, b) -> {
+                        if (a == dataTrack) return -1; if (b == dataTrack) return 1;
+                        return zipLeafName(a.getName()).compareToIgnoreCase(zipLeafName(b.getName()));
+                    });
+                    StringBuilder cueSb = new StringBuilder();
+                    int trackNo = 1;
+                    for (java.util.zip.ZipEntry bz : bins) {
+                        String leaf = safeFileName(zipLeafName(bz.getName()));
+                        extractZipEntryToFile(zip, bz, dir, leaf);
+                        cueSb.append("FILE \"").append(leaf).append("\" BINARY\n");
+                        if (trackNo == 1) cueSb.append("  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n");
+                        else cueSb.append(String.format(Locale.US, "  TRACK %02d AUDIO\n    INDEX 01 00:00:00\n", trackNo));
+                        trackNo++;
+                    }
+                    File synth = new File(dir, "_ps1_synth.cue");
+                    ps1WriteBytes(synth, cueSb.toString().getBytes("ISO-8859-1"));
+                    setPs1RemoteStatus("PS1_REMOTE_ZIP_MULTIBIN tracks=" + bins.size() + " cue=SYNTETIZOVANY (vc. CD hudby)");
+                    appendNativeLog("BUILD2SA7 PS1_CUE_SYNTH tracks=" + bins.size());
+                    return synth;
+                }
+                setPs1RemoteStatus("PS1_REMOTE_ZIP_PRIMARY " + zipLeafName(primary.getName()) + " size=" + formatMb(Math.max(0, primary.getSize())));
                 return extractZipEntryToFile(zip, primary, dir, zipLeafName(primary.getName()));
             }
             throw new IOException("ZIP neobsahuje PS1 .cue/.bin/.iso/.img/.pbp/.chd");
@@ -2957,6 +2989,58 @@ public class MainActivity extends Activity {
         }, "nap-ps1-remote-download").start();
     }
 
+    // BUILD2SA7: BIOS AUTO-ADOPT. Audit ukazal sysdirFiles=[prazdna] => jadro jelo
+    // na vestavene nahrade (zadne SONY logo/znelka). Rene-proof reseni: BIOS ZIP
+    // stazeny z atarihelp.eu do Download/AtariHelp si appka sama najde a adoptuje.
+    private void ps1EnsureBios(File sysDir) {
+        try {
+            File[] have = sysDir.listFiles();
+            if (have != null) for (File f : have) {
+                String n = f.getName().toLowerCase(Locale.US);
+                if (n.startsWith("scph") && n.endsWith(".bin") && f.length() == 524288) return; // BIOS uz je
+            }
+            File root = getPublicAtariHelpDownloadsDir();
+            File[] scan = new File[] { root, new File(root, "BIOS"), new File(root, "PS1_BIOS") };
+            int adopted = 0;
+            for (File d : scan) {
+                if (d == null || !d.isDirectory()) continue;
+                File[] kids = d.listFiles();
+                if (kids == null) continue;
+                for (File k : kids) {
+                    String n = k.getName().toLowerCase(Locale.US);
+                    if (k.isFile() && n.startsWith("scph") && n.endsWith(".bin") && k.length() == 524288) {
+                        ps1CopyFile(k, new File(sysDir, n)); adopted++;
+                    } else if (k.isFile() && n.endsWith(".zip") && n.contains("bios") && k.length() < 8L * 1024 * 1024) {
+                        java.util.zip.ZipFile z = new java.util.zip.ZipFile(k);
+                        try {
+                            java.util.Enumeration<? extends java.util.zip.ZipEntry> en2 = z.entries();
+                            while (en2.hasMoreElements()) {
+                                java.util.zip.ZipEntry ze2 = en2.nextElement();
+                                if (ze2 == null || ze2.isDirectory()) continue;
+                                String zn = zipLeafName(ze2.getName()).toLowerCase(Locale.US);
+                                if (zn.startsWith("scph") && zn.endsWith(".bin") && ze2.getSize() == 524288) {
+                                    java.io.InputStream in2 = z.getInputStream(ze2);
+                                    java.io.FileOutputStream fo2 = new java.io.FileOutputStream(new File(sysDir, zn));
+                                    byte[] b2 = new byte[16384]; int n2;
+                                    while ((n2 = in2.read(b2)) > 0) fo2.write(b2, 0, n2);
+                                    fo2.close(); in2.close(); adopted++;
+                                }
+                            }
+                        } finally { try { z.close(); } catch (Throwable ignored) {} }
+                    }
+                }
+            }
+            if (adopted > 0) appendNativeLog("BUILD2SA7 PS1_BIOS_ADOPTED count=" + adopted + " -> " + sysDir.getAbsolutePath());
+            else appendNativeLog("BUILD2SA7 PS1_BIOS_MISSING stahni BIOS ZIP z atarihelp.eu (page_id=1048) do Download/AtariHelp a spust hru znovu");
+        } catch (Throwable t) { appendNativeLog("BUILD2SA7 PS1_BIOS_ADOPT_ERR " + safeMsg(t)); }
+    }
+    private void ps1CopyFile(File src, File dst) throws IOException {
+        java.io.FileInputStream in = new java.io.FileInputStream(src);
+        java.io.FileOutputStream out2 = new java.io.FileOutputStream(dst);
+        byte[] b = new byte[65536]; int n;
+        while ((n = in.read(b)) > 0) out2.write(b, 0, n);
+        out2.close(); in.close();
+    }
     private void bootPs1FileOnCurrentThread(File gameFile, String label, String reason) {
         int bootGen = 0;
         try {
@@ -2978,7 +3062,8 @@ public class MainActivity extends Activity {
             ps1LastBootResult = "PS1_REMOTE_BOOTING " + ps1CurrentGameLabel;
             appendNativeLog("BUILD2SA5AK PS1_REMOTE_BOOT reason=" + reason + " name=" + ps1CurrentGameLabel + " bytes=" + gameFile.length() + " path=" + gameFile.getAbsolutePath());
             appendNativeLog("BUILD2SA5AK PS1_BIOS_AUDIT " + ps1BiosAudit(sysDir));
-            ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), gameFile.getAbsolutePath());
+            ps1EnsureBios(sysDir); // BUILD2SA7
+                    ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), gameFile.getAbsolutePath());
             boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK");
             boolean stillWanted = ok && bootGen == ps1LifecycleGen && ps1BootActive;
             ps1BootActive = false;
@@ -3460,6 +3545,7 @@ public class MainActivity extends Activity {
                     stopPs1Audio(); // BUILD2SA3B: cisty audio restart pri prepnuti PS1 hry
                     ps1LastBootResult = "PS1_BOOTING...";
                     appendNativeLog("BUILD2SA5P PS1_BIOS_AUDIT " + ps1BiosAudit(sysDir));
+                    ps1EnsureBios(sysDir); // BUILD2SA7
                     ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);
                     boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK");
                     boolean stillWanted = ok && bootGen == ps1LifecycleGen && ps1BootActive;
