@@ -2646,6 +2646,28 @@ public class MainActivity extends Activity {
     private File extractPs1RemoteZip(File zipFile, File dir) throws IOException {
         java.util.zip.ZipFile zip = new java.util.zip.ZipFile(zipFile);
         try {
+            // BUILD2SA9: LOAD GAME s BIOS ZIPem se drive pokusil BIOS spustit jako hru
+            // (viselo na 92 %). Ted BIOS pozname, nainstalujeme a rekneme to poctive.
+            int biosN = 0;
+            java.util.Enumeration<? extends java.util.zip.ZipEntry> enB = zip.entries();
+            java.io.File biosSys = new java.io.File(getFilesDir(), "ps1_system");
+            while (enB.hasMoreElements()) {
+                java.util.zip.ZipEntry zb = enB.nextElement();
+                if (zb == null || zb.isDirectory()) continue;
+                String nb = zipLeafName(zb.getName()).toLowerCase(Locale.US);
+                if (nb.startsWith("scph") && nb.endsWith(".bin") && zb.getSize() == 524288) {
+                    if (!biosSys.exists()) biosSys.mkdirs();
+                    java.io.InputStream ib = zip.getInputStream(zb);
+                    java.io.FileOutputStream ob = new java.io.FileOutputStream(new java.io.File(biosSys, nb));
+                    byte[] bb = new byte[16384]; int nn;
+                    while ((nn = ib.read(bb)) > 0) ob.write(bb, 0, nn);
+                    ob.close(); ib.close(); biosN++;
+                }
+            }
+            if (biosN > 0) {
+                appendNativeLog("BUILD2SA9 PS1_BIOS_INSTALLED_FROM_LOADGAME count=" + biosN);
+                throw new IOException("BIOS NAINSTALOVAN (" + biosN + " souboru) - tohle byl BIOS, ne hra. Ted spust HRU a SONY logo pojede.");
+            }
             java.util.zip.ZipEntry cue = null;
             java.util.zip.ZipEntry primary = null;
             java.util.Enumeration<? extends java.util.zip.ZipEntry> en = zip.entries();

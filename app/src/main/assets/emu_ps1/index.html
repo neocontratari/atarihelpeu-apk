@@ -58,20 +58,20 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #padLeft{left:0;top:24%;width:42%;height:74%;}
  #padRight{left:65%;top:32%;width:35%;height:66%;}
  #padLeft:active,#padRight:active{background:transparent;box-shadow:none;}
- #padLeft .dpadVis{display:block;position:absolute;left:6%;bottom:4%;width:30vh;height:30vh;min-width:128px;min-height:128px;max-width:220px;max-height:220px;border-radius:50%;background:rgba(2,8,12,.24);border:1px solid rgba(230,200,120,.36);box-shadow:0 0 30px rgba(0,0,0,.66),0 0 30px rgba(90,180,255,.12) inset;}
+ #padLeft .dpadVis{display:block;position:absolute;left:6%;bottom:4%;width:30vh;height:30vh;min-width:128px;min-height:128px;max-width:220px;max-height:220px;border-radius:50%;background:rgba(255,255,255,.045);border:1.5px solid rgba(255,255,255,.22);box-shadow:0 0 24px rgba(0,0,0,.35) inset;}
  #padLeft .dpadVis:before,#padLeft .dpadVis:after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:13px;background:linear-gradient(180deg,rgba(255,242,190,.52),rgba(143,119,68,.40));border:1px solid rgba(255,234,170,.34);box-shadow:0 2px 12px rgba(0,0,0,.50),0 0 16px rgba(255,223,132,.08) inset;}
- #padLeft .dpadVis:before{width:74%;height:24%;}
- #padLeft .dpadVis:after{width:24%;height:74%;}
- #padLeft .dpadKnob{display:block;position:absolute;left:50%;top:50%;width:38%;height:38%;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 28%,rgba(255,255,236,.62),rgba(214,190,112,.42) 42%,rgba(24,30,32,.52));border:1px solid rgba(255,235,166,.48);box-shadow:0 5px 18px rgba(0,0,0,.64),0 0 18px rgba(255,218,118,.14) inset;transition:transform .06s linear,box-shadow .08s linear,border-color .08s linear;}
+ #padLeft .dpadVis:before{content:none!important;}
+ #padLeft .dpadVis:after{content:none!important;} /* BUILD2SA9: moderni thumbstick bez krize */
+ #padLeft .dpadKnob{display:block;position:absolute;left:50%;top:50%;width:32%;height:32%;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 36% 28%,rgba(255,255,255,.50),rgba(200,215,225,.28) 45%,rgba(40,50,58,.40));border:1.5px solid rgba(255,255,255,.38);box-shadow:0 5px 18px rgba(0,0,0,.64),0 0 18px rgba(255,218,118,.14) inset;transition:transform .06s linear,box-shadow .08s linear,border-color .08s linear;}
  #padLeft .dpadVis.active .dpadKnob{border-color:rgba(255,239,180,.78);box-shadow:0 5px 20px rgba(0,0,0,.68),0 0 24px rgba(255,218,118,.28) inset,0 0 18px rgba(255,222,140,.22);}
  #padLeft:active .dpadVis{border-color:rgba(255,229,145,.58);box-shadow:0 0 30px rgba(0,0,0,.62),0 0 24px rgba(255,214,112,.22) inset;}
- #padRight .psBtn{display:flex;align-items:center;justify-content:center;position:absolute;width:8.2vh;height:8.2vh;min-width:42px;min-height:42px;max-width:60px;max-height:60px;border-radius:50%;border:1px solid rgba(235,205,126,.42);background:radial-gradient(circle at 35% 25%,rgba(255,255,236,.34),rgba(18,23,27,.24) 42%,rgba(0,0,0,.36));box-shadow:0 4px 18px rgba(0,0,0,.56),0 0 14px rgba(80,180,255,.09) inset;color:rgba(255,238,178,.90);font:900 22px/1 Arial,sans-serif;text-shadow:0 2px 4px #000;}
+ #padRight .psBtn{display:flex;align-items:center;justify-content:center;position:absolute;width:8.2vh;height:8.2vh;min-width:42px;min-height:42px;max-width:60px;max-height:60px;border-radius:50%;border:1.5px solid rgba(255,255,255,.24);background:rgba(255,255,255,.05);box-shadow:0 0 14px rgba(0,0,0,.30) inset;color:rgba(255,255,255,.62);font:700 20px/1 Arial,sans-serif;text-shadow:0 2px 4px #000;}
  #padRight .psTri{right:24%;bottom:37%;}
  #padRight .psCircle{right:6%;bottom:22%;}
  #padRight .psCross{right:24%;bottom:7%;}
  #padRight .psSquare{right:42%;bottom:22%;}
  #padRight:active .psBtn{border-color:rgba(255,229,145,.62);box-shadow:0 4px 18px rgba(0,0,0,.56),0 0 18px rgba(255,214,112,.18) inset;}
- #btnSelect,#btnStart,#btnL1,#btnL2,#btnR1,#btnR2{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.92);font:900 12px/1 "Courier New",monospace;background:rgba(3,8,12,.30);border:1px solid rgba(230,200,120,.42);border-radius:999px;box-shadow:0 3px 16px rgba(0,0,0,.52);text-shadow:0 1px 2px #000;z-index:16;}
+ #btnSelect,#btnStart,#btnL1,#btnL2,#btnR1,#btnR2{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.92);font:900 12px/1 "Courier New",monospace;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.22);border-radius:999px;box-shadow:none;text-shadow:0 1px 2px #000;color:rgba(255,255,255,.60);z-index:16;}
  #btnSelect{left:40%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
  #btnStart{left:51.2%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
  #btnL1{left:23.2%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
