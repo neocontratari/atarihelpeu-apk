@@ -3306,6 +3306,44 @@ public class MainActivity extends Activity {
                 // BUILD2SA2B: Reneho web umi hostovat jen ZIPy. Kouknem DOVNITR zipu:
                 // kdyz je uvnitr Sega ROM (.gen/.md/.smd/.sms), rozbalime a posleme
                 // do EMU SEGA. Jinak jede stara Atari cesta beze zmeny.
+                // BUILD2SA8: klik na BIOS ZIP na strankach = automaticka instalace.
+                // scph*.bin se rovnou adoptuji do systemove slozky jadra a kopie zipu
+                // jde do Download/AtariHelp (prezije preinstalaci; SA7 auto-adopt ji najde).
+                int biosCount = 0;
+                try {
+                    java.util.zip.ZipInputStream bzz = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
+                    java.util.zip.ZipEntry be;
+                    java.io.File biosSys = new java.io.File(getFilesDir(), "ps1_system");
+                    while ((be = bzz.getNextEntry()) != null) {
+                        if (be.isDirectory()) continue;
+                        String bn = be.getName();
+                        int bsl = bn.lastIndexOf('/'); if (bsl >= 0) bn = bn.substring(bsl + 1);
+                        bn = bn.toLowerCase(Locale.US);
+                        if (bn.startsWith("scph") && bn.endsWith(".bin")) {
+                            if (!biosSys.exists()) biosSys.mkdirs();
+                            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                            byte[] bb = new byte[16384]; int bnn;
+                            while ((bnn = bzz.read(bb)) > 0 && bo.size() <= 524288) bo.write(bb, 0, bnn);
+                            if (bo.size() == 524288) {
+                                java.io.FileOutputStream bf = new java.io.FileOutputStream(new java.io.File(biosSys, bn));
+                                bo.writeTo(bf); bf.close(); biosCount++;
+                            }
+                        }
+                        bzz.closeEntry();
+                    }
+                    bzz.close();
+                } catch (Throwable ignored) {}
+                if (biosCount > 0) {
+                    try {
+                        java.io.File keep = new java.io.File(getPublicAtariHelpDownloadsDir(), safeFileName(name));
+                        java.io.FileOutputStream kf = new java.io.FileOutputStream(keep);
+                        kf.write(data); kf.close();
+                    } catch (Throwable ignored) {}
+                    final int bc = biosCount;
+                    appendNativeLog("BUILD2SA8 PS1_BIOS_INSTALLED_FROM_WEB count=" + bc + " zip=" + name);
+                    ui.post(() -> { try { setPs1RemoteStatus("PS1_BIOS_INSTALLED count=" + bc + " - SONY logo pojede u dalsi hry"); } catch (Throwable ignored) {} });
+                    return;
+                }
                 final SegaExtract sega = extractSegaRomFromMaybeZip(name, data);
                 if (sega != null && sega.data != null && sega.data.length > 0) {
                     appendNativeLog("BUILD2SA5AF ZIP_CONTAINS_SEGA name=" + sega.name + " bytes=" + sega.data.length + " -> EMU_SEGA");
