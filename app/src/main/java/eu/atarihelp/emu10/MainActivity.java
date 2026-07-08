@@ -98,6 +98,80 @@ public class MainActivity extends Activity {
     private static final String EMU_URL = "file:///android_asset/emu/index.html";
     private WebView web;
     private FrameLayout rootFrame;
+    // ===== BUILD2SA13: VLASTNI TV VYSTUP PRO CELOU APKU =====
+    // Zadna externi appka: kdyz je pripojena TV/monitor (HDMI/USB-C adapter,
+    // nebo bezdratove pres systemove pripojeni displeje), appka na ni SAMA
+    // kresli svuj obraz (vsechny emulatory, prehravac, stranky). Kresli se
+    // rootFrame (WebView + TextureView = jde to, TextureView se do canvasu
+    // vykresli). ~25 fps, dvojity buffer, meritko podle TV.
+    private android.hardware.display.DisplayManager napDisplayManager;
+    private NapTvPresentation napTvPresentation;
+    private android.graphics.Bitmap napTvBmpA, napTvBmpB;
+    private boolean napTvUseA = true;
+    private final Runnable napTvFrameTick = new Runnable() {
+        @Override public void run() {
+            try {
+                if (napTvPresentation != null && napTvPresentation.isShowing() && rootFrame != null && rootFrame.getWidth() > 0) {
+                    int sw = rootFrame.getWidth(), sh = rootFrame.getHeight();
+                    float scale = 0.75f;
+                    int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
+                    android.graphics.Bitmap target = napTvUseA ? napTvBmpA : napTvBmpB;
+                    if (target == null || target.getWidth() != bw || target.getHeight() != bh) {
+                        target = android.graphics.Bitmap.createBitmap(bw, bh, android.graphics.Bitmap.Config.RGB_565);
+                        if (napTvUseA) napTvBmpA = target; else napTvBmpB = target;
+                    }
+                    android.graphics.Canvas cv = new android.graphics.Canvas(target);
+                    cv.drawColor(0xFF000000);
+                    cv.save(); cv.scale(scale, scale);
+                    rootFrame.draw(cv);
+                    cv.restore();
+                    napTvPresentation.showFrame(target);
+                    napTvUseA = !napTvUseA;
+                }
+            } catch (Throwable ignored) {}
+            if (napTvPresentation != null) ui.postDelayed(this, 40);
+        }
+    };
+    private final class NapTvPresentation extends android.app.Presentation {
+        private android.widget.ImageView iv;
+        NapTvPresentation(android.content.Context ctx, android.view.Display d) { super(ctx, d); }
+        @Override protected void onCreate(Bundle b) {
+            super.onCreate(b);
+            iv = new android.widget.ImageView(getContext());
+            iv.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+            iv.setBackgroundColor(0xFF000000);
+            setContentView(iv);
+        }
+        void showFrame(android.graphics.Bitmap bm) { if (iv != null) iv.setImageBitmap(bm); }
+    }
+    private void napTvUpdatePresentation() {
+        try {
+            if (napDisplayManager == null) return;
+            android.view.Display[] ds = napDisplayManager.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION);
+            android.view.Display ext = (ds != null && ds.length > 0) ? ds[0] : null;
+            if (ext != null && (napTvPresentation == null || napTvPresentation.getDisplay().getDisplayId() != ext.getDisplayId())) {
+                if (napTvPresentation != null) { try { napTvPresentation.dismiss(); } catch (Throwable ignored) {} }
+                napTvPresentation = new NapTvPresentation(this, ext);
+                try {
+                    napTvPresentation.show();
+                    appendNativeLog("BUILD2SA13 TV_MIRROR_ON display=" + ext.getName() + " id=" + ext.getDisplayId());
+                    ui.removeCallbacks(napTvFrameTick);
+                    ui.post(napTvFrameTick);
+                } catch (Throwable t) { appendNativeLog("BUILD2SA13 TV_MIRROR_SHOW_FAIL " + safeMsg(t)); napTvPresentation = null; }
+            } else if (ext == null && napTvPresentation != null) {
+                try { napTvPresentation.dismiss(); } catch (Throwable ignored) {}
+                napTvPresentation = null;
+                ui.removeCallbacks(napTvFrameTick);
+                appendNativeLog("BUILD2SA13 TV_MIRROR_OFF display odpojen");
+            }
+        } catch (Throwable t) { appendNativeLog("BUILD2SA13 TV_MIRROR_ERR " + safeMsg(t)); }
+    }
+    private final android.hardware.display.DisplayManager.DisplayListener napTvListener =
+            new android.hardware.display.DisplayManager.DisplayListener() {
+        @Override public void onDisplayAdded(int id) { ui.post(() -> napTvUpdatePresentation()); }
+        @Override public void onDisplayRemoved(int id) { ui.post(() -> napTvUpdatePresentation()); }
+        @Override public void onDisplayChanged(int id) { }
+    };
     private NativeInPlaceView nativeInPlaceView;
     private boolean nativeInPlaceEnabled = false;
     private String nativeLastRomInfo = "C++ ROM zatim nenactena";
@@ -1853,6 +1927,7 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHSave(), "AHSAVE");
         web.addJavascriptInterface(new AHPick(), "AHPICK");
         web.addJavascriptInterface(new AHPS1(), "AHPS1"); // BUILD2SA1
+        tvSetupDisplayListener(); // BUILD2SB1: TV vystup pro celou appku
         web.addJavascriptInterface(new AHNet(), "AHNET");
         web.addJavascriptInterface(new AHNative(), "AHNATIVE");
         web.setWebChromeClient(new WebChromeClient() {
@@ -1978,6 +2053,14 @@ public class MainActivity extends Activity {
             }
         });
         rootFrame = new FrameLayout(this);
+        // BUILD2SA13: TV vystup - hlidat pripojene displeje po celou dobu behu
+        try {
+            napDisplayManager = (android.hardware.display.DisplayManager) getSystemService(DISPLAY_SERVICE);
+            if (napDisplayManager != null) {
+                napDisplayManager.registerDisplayListener(napTvListener, ui);
+                ui.postDelayed(() -> napTvUpdatePresentation(), 1200);
+            }
+        } catch (Throwable t) { appendNativeLog("BUILD2SA13 TV_INIT_ERR " + safeMsg(t)); }
         try { rootFrame.setBackgroundColor(Color.BLACK); } catch (Throwable ignored) {}
         rootFrame.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(rootFrame);
@@ -2855,6 +2938,87 @@ public class MainActivity extends Activity {
                     + ". PS1 cache byla prave automaticky uklizena - uvolni jeste misto v telefonu a zkus znovu.");
         }
         appendNativeLog("BUILD2SA5AR PS1_SPACE_CHECK need=" + formatMb(need) + " usable=" + formatMb(usable));
+    }
+    // ============================================================================
+    // BUILD2SB1: VLASTNI TV VYSTUP (Presentation API) - infrastruktura pro CELOU
+    // appku. Kdyz je telefon pripojeny k externimu displeji (HDMI/DeX kabel nebo
+    // bezdratove pripojeni), appka na TV kresli VLASTNI cistou obrazovku - jen
+    // hru, zadne UI - a telefon slouzi jako ovladac. Efektivnejsi nez zrcadleni
+    // celeho telefonu. SB1 zapojuje PS1 (ma cisty frame API); Sega = dalsi krok,
+    // WebView emulatory (Atari pilot) = vlastni technika, v planu.
+    // ============================================================================
+    private android.app.Presentation tvPresentation = null;
+    private android.view.SurfaceView tvSurface = null;
+    private volatile boolean tvLoopRunning = false;
+    private int[] tvFrameBuf = new int[1024 * 512];
+    private void tvSetupDisplayListener() {
+        try {
+            android.hardware.display.DisplayManager dm =
+                    (android.hardware.display.DisplayManager) getSystemService(DISPLAY_SERVICE);
+            if (dm == null) return;
+            dm.registerDisplayListener(new android.hardware.display.DisplayManager.DisplayListener() {
+                public void onDisplayAdded(int id) { ui.post(() -> tvMaybeStart()); }
+                public void onDisplayRemoved(int id) { ui.post(() -> tvStop("display_removed")); }
+                public void onDisplayChanged(int id) {}
+            }, ui);
+            tvMaybeStart();
+        } catch (Throwable t) { appendNativeLog("BUILD2SB1 TV_LISTENER_ERR " + safeMsg(t)); }
+    }
+    private void tvMaybeStart() {
+        try {
+            if (tvPresentation != null) return;
+            android.hardware.display.DisplayManager dm =
+                    (android.hardware.display.DisplayManager) getSystemService(DISPLAY_SERVICE);
+            if (dm == null) return;
+            android.view.Display[] disp = dm.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION);
+            if (disp == null || disp.length == 0) return;
+            tvPresentation = new android.app.Presentation(this, disp[0]);
+            tvSurface = new android.view.SurfaceView(tvPresentation.getContext());
+            tvPresentation.setContentView(tvSurface);
+            tvPresentation.show();
+            appendNativeLog("BUILD2SB1 TV_OUTPUT_START display=" + disp[0].getName());
+            tvLoopRunning = true;
+            new Thread(this::tvRenderLoop, "nap-tv-render").start();
+        } catch (Throwable t) { appendNativeLog("BUILD2SB1 TV_START_ERR " + safeMsg(t)); }
+    }
+    private void tvStop(String why) {
+        tvLoopRunning = false;
+        try { if (tvPresentation != null) tvPresentation.dismiss(); } catch (Throwable ignored) {}
+        tvPresentation = null; tvSurface = null;
+        appendNativeLog("BUILD2SB1 TV_OUTPUT_STOP why=" + why);
+    }
+    private void tvRenderLoop() {
+        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
+        android.graphics.Bitmap bm = null;
+        int lastW = 0, lastH = 0;
+        long frames = 0;
+        while (tvLoopRunning) {
+            try {
+                android.view.SurfaceView sv = tvSurface;
+                if (sv == null) break;
+                int wh = NativePs1CoreBridge.grabFrameSafe(tvFrameBuf);
+                if (wh < 0) { int need = ((-wh) >> 16) * ((-wh) & 0xFFFF); tvFrameBuf = new int[need + 1024]; wh = NativePs1CoreBridge.grabFrameSafe(tvFrameBuf); }
+                if (wh > 0) {
+                    int w = wh >> 16, h = wh & 0xFFFF;
+                    if (bm == null || w != lastW || h != lastH) { bm = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888); lastW = w; lastH = h; }
+                    bm.setPixels(tvFrameBuf, 0, w, 0, 0, w, h);
+                    android.view.SurfaceHolder holder = sv.getHolder();
+                    android.graphics.Canvas c = holder.lockCanvas();
+                    if (c != null) {
+                        c.drawColor(0xFF000000);
+                        float scale = Math.min((float) c.getWidth() / w, (float) c.getHeight() / h);
+                        int dw = (int) (w * scale), dh = (int) (h * scale);
+                        int dx = (c.getWidth() - dw) / 2, dy = (c.getHeight() - dh) / 2;
+                        c.drawBitmap(bm, null, new Rect(dx, dy, dx + dw, dy + dh), paint);
+                        holder.unlockCanvasAndPost(c);
+                        if (++frames % 600 == 0) appendNativeLog("BUILD2SB1 TV_FRAMES " + frames);
+                    }
+                    Thread.sleep(16); // ~60 fps strop
+                } else {
+                    Thread.sleep(100); // nic nebezi - setrit CPU
+                }
+            } catch (Throwable t) { try { Thread.sleep(250); } catch (InterruptedException ignored) {} }
+        }
     }
     private void startPs1RemoteDownloadAndBoot(final String rawUrl) {
         final String url = rawUrl == null ? "" : rawUrl.trim();
@@ -3768,6 +3932,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        try { if (napTvPresentation != null) napTvPresentation.dismiss(); } catch (Throwable ignored) {} // BUILD2SA13
+        try { if (napDisplayManager != null) napDisplayManager.unregisterDisplayListener(napTvListener); } catch (Throwable ignored) {}
         stopNativeInPlaceHard("activityDestroy");
         stopPs1SessionHard("activityDestroy");
         super.onDestroy();
