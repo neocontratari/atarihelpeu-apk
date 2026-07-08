@@ -237,15 +237,23 @@ public class MainActivity extends Activity {
     private volatile boolean napTvWebSystemMirrorRequested = false;
     private volatile boolean napTvWebSystemMirrorActive = false;
     private volatile long napTvWebSystemLastFrameMs = 0;
+    private volatile long napTvWebSystemFallbackLogMs = 0;
     private volatile int napTvWebSystemWidth = 0;
     private volatile int napTvWebSystemHeight = 0;
     private volatile int napTvWebSystemDpi = 0;
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
             try {
+                boolean appCapture = true;
                 if (napTvWebRunning && napTvWebSystemMirrorActive) {
-                    // BUILD2SA13C9: whole-phone MediaProjection supplies frames via ImageReader.
-                } else if (napTvWebRunning && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
+                    long age = napTvWebSystemLastFrameMs == 0 ? 999999L : (System.currentTimeMillis() - napTvWebSystemLastFrameMs);
+                    appCapture = age > 1600L;
+                    if (appCapture && System.currentTimeMillis() - napTvWebSystemFallbackLogMs > 5000L) {
+                        napTvWebSystemFallbackLogMs = System.currentTimeMillis();
+                        appendNativeLog("BUILD2SA13C10 SCREEN_MIRROR_NO_FRAMES_FALLBACK ageMs=" + age);
+                    }
+                }
+                if (napTvWebRunning && appCapture && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
                     int sw = rootFrame.getWidth(), sh = rootFrame.getHeight();
                     boolean landscape = sw > sh;
                     int maxSide = landscape ? 760 : 1120;
@@ -395,6 +403,7 @@ public class MainActivity extends Activity {
             napTvWebSystemHeight = ch;
             napTvWebSystemDpi = dpi;
             napTvWebSystemLastFrameMs = 0;
+            napTvWebSystemFallbackLogMs = 0;
             napTvWebSystemMirrorRequested = false;
             napTvWebSystemMirrorActive = true;
             napTvWebVideoProfile = "SCREEN_FULL";
@@ -459,6 +468,7 @@ public class MainActivity extends Activity {
         napTvWebSystemHandler = null;
         napTvWebSystemWidth = 0;
         napTvWebSystemHeight = 0;
+        napTvWebSystemFallbackLogMs = 0;
         appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_OFF why=" + why);
     }
 
@@ -596,7 +606,6 @@ public class MainActivity extends Activity {
 
     private synchronized String napTvWebStart() {
         if (napTvWebRunning && napTvWebServer != null) {
-            napTvWebRequestSystemMirror();
             return "TV_WEB_CAST_OK " + napTvWebUrl() + (napTvWebSystemMirrorActive ? " SCREEN" : " APP");
         }
         try {
@@ -628,10 +637,9 @@ public class MainActivity extends Activity {
             napTvWebServerThread.start();
             ui.removeCallbacks(napTvWebFrameTick);
             ui.post(napTvWebFrameTick);
-            napTvWebRequestSystemMirror();
             String url = napTvWebUrl();
-            appendNativeLog("BUILD2SA13C9 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_screen_or_app audio=PCM16_STEREO");
-            return "TV_WEB_CAST_OK " + url + " SCREEN_REQUEST";
+            appendNativeLog("BUILD2SA13C10 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_app_default_screen_on_demand audio=PCM16_STEREO");
+            return "TV_WEB_CAST_OK " + url + " APP";
         } catch (Throwable t) {
             napTvWebRunning = false;
             appendNativeLog("BUILD2SA13C TV_WEB_CAST_START_FAIL " + safeMsg(t));
@@ -824,6 +832,15 @@ public class MainActivity extends Activity {
 
     public class AHTvWeb {
         @JavascriptInterface public String start() { return napTvWebStart(); }
+        @JavascriptInterface public String startScreen() {
+            String r = napTvWebStart();
+            napTvWebRequestSystemMirror();
+            return r + " SCREEN_REQUEST";
+        }
+        @JavascriptInterface public String screen() {
+            napTvWebRequestSystemMirror();
+            return napTvWebSystemMirrorActive ? "SCREEN_ACTIVE" : "SCREEN_REQUEST";
+        }
         @JavascriptInterface public String stop() { return napTvWebStop("js"); }
         @JavascriptInterface public String status() { return napTvWebUrl(); }
         @JavascriptInterface public String pushAtariPcm16(String b64, int sampleRate, int frames) {

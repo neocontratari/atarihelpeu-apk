@@ -612,6 +612,14 @@ document.getElementById('btnRec').onclick=function(){setStatus('RECORD • PRIPR
 
 document.getElementById('btnYoutube').onclick=function(e){
   e.preventDefault(); e.stopPropagation();
+  try{
+    if(window.AHTVWEB && typeof window.AHTVWEB.startScreen==='function'){
+      setStatus('YOUTUBE - POVOL SDILENI OBRAZOVKY');
+      window.AHTVWEB.startScreen();
+      setTimeout(function(){openWeb('https://m.youtube.com/');},1800);
+      return false;
+    }
+  }catch(_e){}
   openWeb('https://m.youtube.com/');
   return false;
 };
@@ -631,7 +639,7 @@ audio.onended=function(){
 
 updateVisuals();
 renderPlaylist();
-log('BUILD2SA13C8: in-app MP3/WAV library + TV WEB stereo audio bridge.');
+log('BUILD2SA13C10: stable app cast + on-demand screen mirror for YouTube.');
 })();
 </script>
 </body>
