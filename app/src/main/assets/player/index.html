@@ -126,12 +126,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   border-radius:16px;padding:18px;box-shadow:0 0 36px rgba(0,0,0,.8);
 }
 .box h2{font:900 24px "Courier New",monospace;margin-bottom:12px;color:#ffd879;}
-#playlistItems{display:flex;flex-direction:column;gap:8px;margin:10px 0;}
-#playlistItems button{
+#playlistItems,#libraryItems{display:flex;flex-direction:column;gap:8px;margin:10px 0;}
+#playlistItems button,#libraryItems button{
   width:100%;padding:11px;border:1px solid rgba(242,196,100,.38);border-radius:10px;
   background:#121821;color:#f2c464;text-align:left;font:900 13px "Courier New",monospace;
 }
-#playlistItems button.active{border-color:#8fd8ff;color:#8fd8ff;}
+#playlistItems button.active,#libraryItems button.active{border-color:#8fd8ff;color:#8fd8ff;}
+.libraryTitle{margin-top:12px;color:#8fd8ff;font:900 13px "Courier New",monospace;}
+.libraryInfo{color:#8fd8ff;padding:8px 0;font:900 13px "Courier New",monospace;}
 .panelBtn{
   width:100%;padding:13px;margin-top:8px;border:0;border-radius:10px;
   background:#d9b25c;color:#111;font:900 14px "Courier New",monospace;
@@ -206,7 +208,10 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <div class="box">
     <h2>MY PLAYLISTS — MP3 / WAV</h2>
     <div id="playlistItems"></div>
-    <button id="panelAdd" class="panelBtn" type="button">PRIDAT MP3 / WAV</button>
+    <div class="libraryTitle">MOBIL - LOKALNI MP3 / WAV</div>
+    <div id="libraryItems"></div>
+    <button id="panelScan" class="panelBtn" type="button">OBNOVIT SEZNAM V MOBILU</button>
+    <button id="panelAdd" class="panelBtn dark" type="button">VYBRAT SYSTEMOVE</button>
     <button id="panelClear" class="panelBtn dark" type="button">VYMAZAT PLAYLIST</button>
     <button id="panelClose" class="panelBtn dark" type="button">ZAVRIT</button>
   </div>
@@ -236,6 +241,7 @@ var pick=document.getElementById('filePick');
 var playlistPanel=document.getElementById('playlistPanel');
 var settingsPanel=document.getElementById('settingsPanel');
 var items=document.getElementById('playlistItems');
+var libraryItems=document.getElementById('libraryItems');
 var audio=new Audio();
 audio.volume=1;
 var tracks=[], active=-1;
@@ -259,6 +265,62 @@ function addTrack(name,url,revoke){
   tracks.push({name:name||('track_'+tracks.length),url:url,revoke:revoke!==false});
   if(active<0) loadTrack(0,false);
   renderPlaylist();
+}
+function formatSize(bytes){
+  bytes=Number(bytes||0);
+  if(bytes>1048576) return Math.round(bytes/104857.6)/10+' MB';
+  if(bytes>1024) return Math.round(bytes/1024)+' KB';
+  return '';
+}
+function hasLocalAudioLibrary(){
+  return !!(window.AHPICK && typeof window.AHPICK.listLocalAudio==='function');
+}
+function renderLocalLibrary(list){
+  if(!libraryItems) return;
+  libraryItems.innerHTML='';
+  if(!list || !list.length){
+    var empty=document.createElement('div');
+    empty.className='libraryInfo';
+    empty.textContent='ZADNE LOKALNI MP3/WAV NENALEZENO';
+    libraryItems.appendChild(empty);
+    return;
+  }
+  list.slice(0,120).forEach(function(t){
+    var b=document.createElement('button');
+    b.type='button';
+    b.textContent=t.name+(t.size?('  '+formatSize(t.size)):'');
+    b.onclick=function(){
+      var idx=tracks.length;
+      addTrack(t.name,t.uri,false);
+      closePlaylistPanel();
+      loadTrack(idx,true);
+    };
+    libraryItems.appendChild(b);
+  });
+}
+function refreshLocalLibrary(showStatus){
+  if(!libraryItems) return false;
+  if(!hasLocalAudioLibrary()){
+    renderLocalLibrary([]);
+    return false;
+  }
+  try{
+    if(showStatus) setStatus('HLEDAM MP3/WAV V MOBILU');
+    var raw=window.AHPICK.listLocalAudio();
+    var data=JSON.parse(raw||'{}');
+    if(data && data.ok){
+      renderLocalLibrary(data.items||[]);
+      if(showStatus) setStatus('NALEZENO MP3/WAV - '+((data.items&&data.items.length)||0));
+      return true;
+    }
+    renderLocalLibrary([]);
+    if(showStatus) setStatus('KNIHOVNA CHYBA');
+  }catch(e){
+    renderLocalLibrary([]);
+    setStatus('KNIHOVNA CHYBA');
+    log(e.message);
+  }
+  return false;
 }
 function openWeb(url){
   setStatus('OPEN WEB - '+url);
@@ -401,19 +463,31 @@ function clearAll(){
   tracks.forEach(function(t){try{if(t.revoke!==false)URL.revokeObjectURL(t.url);}catch(e){}});
   tracks=[]; active=-1; renderPlaylist(); setStatus('PLAYLIST VYMAZAN');
 }
-function openPlaylistPanel(){renderPlaylist();playlistPanel.classList.add('open');playlistPanel.setAttribute('aria-hidden','false');}
+function openPlaylistPanel(){
+  renderPlaylist();
+  playlistPanel.classList.add('open');
+  playlistPanel.setAttribute('aria-hidden','false');
+  refreshLocalLibrary(false);
+}
 function closePlaylistPanel(){playlistPanel.classList.remove('open');playlistPanel.setAttribute('aria-hidden','true');}
 function openSettingsPanel(){settingsPanel.classList.add('open');settingsPanel.setAttribute('aria-hidden','false');}
 function closeSettingsPanel(){settingsPanel.classList.remove('open');settingsPanel.setAttribute('aria-hidden','true');}
-function pickFiles(){
+function systemPickFiles(){
   try{
     if(window.AHPICK && typeof window.AHPICK.pickMp3==='function'){
-      setStatus('ANDROID VYBER MP3/WAV');
+      setStatus('SYSTEMOVY VYBER MP3/WAV');
       window.AHPICK.pickMp3();
       return;
     }
   }catch(e){ log('AHPICK MP3 chyba: '+e.message); }
   pick.click();
+}
+function pickFiles(){
+  if(hasLocalAudioLibrary()){
+    refreshLocalLibrary(true);
+    return;
+  }
+  systemPickFiles();
 }
 pick.onchange=function(){
   var files=Array.prototype.slice.call(pick.files||[]);
@@ -525,7 +599,8 @@ document.getElementById('btnMyPlaylists').onclick=openPlaylistPanel;
 document.getElementById('navPlaylists').onclick=openPlaylistPanel;
 document.getElementById('navLibrary').onclick=openPlaylistPanel;
 document.getElementById('btnTrackStrip').onclick=openPlaylistPanel;
-document.getElementById('panelAdd').onclick=pickFiles;
+document.getElementById('panelScan').onclick=pickFiles;
+document.getElementById('panelAdd').onclick=systemPickFiles;
 document.getElementById('panelClear').onclick=clearAll;
 document.getElementById('panelClose').onclick=closePlaylistPanel;
 document.getElementById('btnPlay').onclick=play;
@@ -556,7 +631,7 @@ audio.onended=function(){
 
 updateVisuals();
 renderPlaylist();
-log('BUILD2SA13C7: MP3/WAV Android picker + TV WEB stereo audio bridge.');
+log('BUILD2SA13C8: in-app MP3/WAV library + TV WEB stereo audio bridge.');
 })();
 </script>
 </body>

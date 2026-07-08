@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ContentValues;
+import android.content.ContentUris;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.content.Intent;
@@ -25,14 +26,21 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PixelFormat;
 import android.graphics.Rect;
+import android.hardware.display.VirtualDisplay;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
+import android.media.Image;
+import android.media.ImageReader;
 import android.media.AudioTrack;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.view.View;
 import android.view.TextureView;
 import android.graphics.SurfaceTexture;
 import android.view.ViewGroup;
+import android.util.DisplayMetrics;
 import android.widget.FrameLayout;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -60,7 +68,12 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashSet;
 
 /**
  * AtariHelp.eu EMU-10 BUILD2BM
@@ -75,6 +88,7 @@ public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
     private static final int PICK_BRIDGE = 2;
     private static final int PICK_PS1_GAME = 7; // BUILD2SA2
+    private static final int PICK_TV_WEB_SCREEN = 13; // BUILD2SA13C9: whole-phone MediaProjection mirror
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
@@ -105,6 +119,18 @@ public class MainActivity extends Activity {
     private static final String EMU_URL = "file:///android_asset/emu/index.html";
     private WebView web;
     private FrameLayout rootFrame;
+    private static class NapPlayerAudioItem {
+        String name;
+        String uri;
+        long size;
+        long modified;
+        NapPlayerAudioItem(String name, String uri, long size, long modified) {
+            this.name = name;
+            this.uri = uri;
+            this.size = size;
+            this.modified = modified;
+        }
+    }
     // ===== BUILD2SA13: VLASTNI TV VYSTUP PRO CELOU APKU =====
     // Zadna externi appka: kdyz je pripojena TV/monitor (HDMI/USB-C adapter,
     // nebo bezdratove pres systemove pripojeni displeje), appka na ni SAMA
@@ -202,10 +228,24 @@ public class MainActivity extends Activity {
     private volatile int napTvWebJpegQuality = 62;
     private volatile int napTvWebFrameDelayMs = 55;
     private volatile String napTvWebVideoProfile = "AUTO";
+    private MediaProjectionManager napTvWebProjectionManager;
+    private MediaProjection napTvWebProjection;
+    private VirtualDisplay napTvWebVirtualDisplay;
+    private ImageReader napTvWebImageReader;
+    private HandlerThread napTvWebSystemThread;
+    private Handler napTvWebSystemHandler;
+    private volatile boolean napTvWebSystemMirrorRequested = false;
+    private volatile boolean napTvWebSystemMirrorActive = false;
+    private volatile long napTvWebSystemLastFrameMs = 0;
+    private volatile int napTvWebSystemWidth = 0;
+    private volatile int napTvWebSystemHeight = 0;
+    private volatile int napTvWebSystemDpi = 0;
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
             try {
-                if (napTvWebRunning && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
+                if (napTvWebRunning && napTvWebSystemMirrorActive) {
+                    // BUILD2SA13C9: whole-phone MediaProjection supplies frames via ImageReader.
+                } else if (napTvWebRunning && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
                     int sw = rootFrame.getWidth(), sh = rootFrame.getHeight();
                     boolean landscape = sw > sh;
                     int maxSide = landscape ? 760 : 1120;
@@ -275,6 +315,151 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA13C TV_WEB_PUBLISH_ERR " + safeMsg(t));
         }
+    }
+
+    private void napTvWebRequestSystemMirror() {
+        if (Build.VERSION.SDK_INT < 21) {
+            appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_UNSUPPORTED sdk=" + Build.VERSION.SDK_INT);
+            return;
+        }
+        if (napTvWebSystemMirrorActive || napTvWebSystemMirrorRequested) return;
+        napTvWebSystemMirrorRequested = true;
+        ui.post(() -> {
+            try {
+                if (napTvWebProjectionManager == null) {
+                    napTvWebProjectionManager = (MediaProjectionManager)getSystemService(MEDIA_PROJECTION_SERVICE);
+                }
+                if (napTvWebProjectionManager == null) throw new RuntimeException("MediaProjectionManager null");
+                appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_PERMISSION_REQUEST");
+                startActivityForResult(napTvWebProjectionManager.createScreenCaptureIntent(), PICK_TV_WEB_SCREEN);
+            } catch (Throwable t) {
+                napTvWebSystemMirrorRequested = false;
+                appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_PERMISSION_FAIL " + safeMsg(t));
+            }
+        });
+    }
+
+    private void napTvWebStartSystemMirror(int resultCode, Intent data) {
+        if (Build.VERSION.SDK_INT < 21 || data == null) {
+            napTvWebSystemMirrorRequested = false;
+            appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_START_SKIP");
+            return;
+        }
+        try {
+            napTvWebReleaseSystemMirror("restart", true);
+            if (napTvWebProjectionManager == null) {
+                napTvWebProjectionManager = (MediaProjectionManager)getSystemService(MEDIA_PROJECTION_SERVICE);
+            }
+            napTvWebProjection = napTvWebProjectionManager.getMediaProjection(resultCode, data);
+            if (napTvWebProjection == null) throw new RuntimeException("getMediaProjection null");
+
+            DisplayMetrics dm = new DisplayMetrics();
+            if (Build.VERSION.SDK_INT >= 17) getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+            else getWindowManager().getDefaultDisplay().getMetrics(dm);
+            int sw = Math.max(2, dm.widthPixels);
+            int sh = Math.max(2, dm.heightPixels);
+            boolean landscape = sw > sh;
+            int maxSide = landscape ? 960 : 1120;
+            float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
+            int cw = Math.max(2, (int)(sw * scale)) & ~1;
+            int ch = Math.max(2, (int)(sh * scale)) & ~1;
+            int dpi = Math.max(120, dm.densityDpi);
+
+            napTvWebSystemThread = new HandlerThread("nap-tv-web-screen");
+            napTvWebSystemThread.start();
+            napTvWebSystemHandler = new Handler(napTvWebSystemThread.getLooper());
+            napTvWebImageReader = ImageReader.newInstance(cw, ch, PixelFormat.RGBA_8888, 2);
+            napTvWebImageReader.setOnImageAvailableListener(reader -> {
+                Image img = null;
+                try {
+                    img = reader.acquireLatestImage();
+                    napTvWebHandleSystemImage(img);
+                } catch (Throwable t) {
+                    appendNativeLog("BUILD2SA13C9 SCREEN_IMAGE_ERR " + safeMsg(t));
+                    try { if (img != null) img.close(); } catch (Throwable ignored) {}
+                }
+            }, napTvWebSystemHandler);
+
+            napTvWebProjection.registerCallback(new MediaProjection.Callback() {
+                @Override public void onStop() {
+                    napTvWebReleaseSystemMirror("projectionStop", false);
+                }
+            }, napTvWebSystemHandler);
+            napTvWebVirtualDisplay = napTvWebProjection.createVirtualDisplay(
+                    "AtariHelp-TV-WEB-SCREEN",
+                    cw, ch, dpi,
+                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    napTvWebImageReader.getSurface(), null, napTvWebSystemHandler);
+            if (napTvWebVirtualDisplay == null) throw new RuntimeException("createVirtualDisplay null");
+            napTvWebSystemWidth = cw;
+            napTvWebSystemHeight = ch;
+            napTvWebSystemDpi = dpi;
+            napTvWebSystemLastFrameMs = 0;
+            napTvWebSystemMirrorRequested = false;
+            napTvWebSystemMirrorActive = true;
+            napTvWebVideoProfile = "SCREEN_FULL";
+            appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_ON src=" + sw + "x" + sh + " cap=" + cw + "x" + ch + " dpi=" + dpi);
+        } catch (Throwable t) {
+            napTvWebSystemMirrorRequested = false;
+            appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_START_FAIL " + safeMsg(t));
+            napTvWebReleaseSystemMirror("startFail", true);
+        }
+    }
+
+    private void napTvWebHandleSystemImage(Image img) {
+        if (img == null) return;
+        try {
+            long now = System.currentTimeMillis();
+            int delay = Math.max(45, napTvWebFrameDelayMs);
+            if (now - napTvWebSystemLastFrameMs < delay) return;
+            napTvWebSystemLastFrameMs = now;
+            int w = img.getWidth();
+            int h = img.getHeight();
+            Image.Plane[] planes = img.getPlanes();
+            if (planes == null || planes.length == 0) return;
+            ByteBuffer buf = planes[0].getBuffer();
+            int pixelStride = planes[0].getPixelStride();
+            int rowStride = planes[0].getRowStride();
+            if (pixelStride != 4 || rowStride <= 0) {
+                appendNativeLog("BUILD2SA13C9 SCREEN_IMAGE_UNSUPPORTED pixelStride=" + pixelStride + " rowStride=" + rowStride);
+                return;
+            }
+            int rowPixels = Math.max(w, rowStride / pixelStride);
+            Bitmap padded = Bitmap.createBitmap(rowPixels, h, Bitmap.Config.ARGB_8888);
+            buf.rewind();
+            padded.copyPixelsFromBuffer(buf);
+            Bitmap frame = (rowPixels == w) ? padded : Bitmap.createBitmap(padded, 0, 0, w, h);
+            if (frame != padded) padded.recycle();
+            napTvWebJpegQuality = w > h ? 56 : 68;
+            napTvWebFrameDelayMs = w > h ? 60 : 55;
+            napTvWebVideoProfile = "SCREEN_FULL";
+            napTvWebPublishBitmap(frame, "SCREEN");
+            frame.recycle();
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C9 SCREEN_IMAGE_HANDLE_ERR " + safeMsg(t));
+        } finally {
+            try { img.close(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private synchronized void napTvWebReleaseSystemMirror(String why, boolean stopProjection) {
+        napTvWebSystemMirrorRequested = false;
+        napTvWebSystemMirrorActive = false;
+        try { if (napTvWebVirtualDisplay != null) napTvWebVirtualDisplay.release(); } catch (Throwable ignored) {}
+        napTvWebVirtualDisplay = null;
+        try { if (napTvWebImageReader != null) napTvWebImageReader.close(); } catch (Throwable ignored) {}
+        napTvWebImageReader = null;
+        MediaProjection mp = napTvWebProjection;
+        napTvWebProjection = null;
+        if (stopProjection && mp != null) {
+            try { mp.stop(); } catch (Throwable ignored) {}
+        }
+        try { if (napTvWebSystemThread != null) napTvWebSystemThread.quitSafely(); } catch (Throwable ignored) {}
+        napTvWebSystemThread = null;
+        napTvWebSystemHandler = null;
+        napTvWebSystemWidth = 0;
+        napTvWebSystemHeight = 0;
+        appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_OFF why=" + why);
     }
 
     private void napTvWebAudioPush(short[] pcm, int offset, int shorts, int sampleRate, String source) {
@@ -410,7 +595,10 @@ public class MainActivity extends Activity {
     }
 
     private synchronized String napTvWebStart() {
-        if (napTvWebRunning && napTvWebServer != null) return "TV_WEB_CAST_OK " + napTvWebUrl();
+        if (napTvWebRunning && napTvWebServer != null) {
+            napTvWebRequestSystemMirror();
+            return "TV_WEB_CAST_OK " + napTvWebUrl() + (napTvWebSystemMirrorActive ? " SCREEN" : " APP");
+        }
         try {
             ServerSocket ss;
             try { ss = new ServerSocket(8765); }
@@ -440,9 +628,10 @@ public class MainActivity extends Activity {
             napTvWebServerThread.start();
             ui.removeCallbacks(napTvWebFrameTick);
             ui.post(napTvWebFrameTick);
+            napTvWebRequestSystemMirror();
             String url = napTvWebUrl();
-            appendNativeLog("BUILD2SA13C TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_pixelcopy_webaudio profile=AUTO portrait=1120q72 landscape=760q54 audio=PCM16_STEREO");
-            return "TV_WEB_CAST_OK " + url;
+            appendNativeLog("BUILD2SA13C9 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_screen_or_app audio=PCM16_STEREO");
+            return "TV_WEB_CAST_OK " + url + " SCREEN_REQUEST";
         } catch (Throwable t) {
             napTvWebRunning = false;
             appendNativeLog("BUILD2SA13C TV_WEB_CAST_START_FAIL " + safeMsg(t));
@@ -453,6 +642,7 @@ public class MainActivity extends Activity {
     private synchronized String napTvWebStop(String why) {
         napTvWebRunning = false;
         napTvWebPixelCopyPending = false;
+        napTvWebReleaseSystemMirror(why, true);
         ui.removeCallbacks(napTvWebFrameTick);
         try { if (napTvWebServer != null) napTvWebServer.close(); } catch (Throwable ignored) {}
         try { if (napTvWebCopyThread != null) napTvWebCopyThread.quitSafely(); } catch (Throwable ignored) {}
@@ -504,7 +694,9 @@ public class MainActivity extends Activity {
             } else if ("/status".equals(path)) {
                 byte[] body = ("running=" + napTvWebRunning
                         + " seq=" + napTvWebSeq
+                        + " mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
                         + " profile=" + napTvWebVideoProfile
+                        + " screen=" + napTvWebSystemWidth + "x" + napTvWebSystemHeight
                         + " jpegQ=" + napTvWebJpegQuality
                         + " frameDelayMs=" + napTvWebFrameDelayMs
                         + " audioSeq=" + napTvWebAudioSeq
@@ -982,6 +1174,133 @@ public class MainActivity extends Activity {
         return -1;
     }
 
+    private String jsonQuote(String text) {
+        if (text == null) text = "";
+        StringBuilder sb = new StringBuilder(text.length() + 16);
+        sb.append('"');
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '"' || c == '\\') sb.append('\\').append(c);
+            else if (c == '\n') sb.append("\\n");
+            else if (c == '\r') sb.append("\\r");
+            else if (c == '\t') sb.append("\\t");
+            else if (c < 32) sb.append(' ');
+            else sb.append(c);
+        }
+        sb.append('"');
+        return sb.toString();
+    }
+
+    private boolean napPlayerIsAudioName(String name) {
+        if (name == null) return false;
+        String n = name.toLowerCase(Locale.US);
+        return n.endsWith(".mp3") || n.endsWith(".wav");
+    }
+
+    private void napPlayerAddAudioItem(ArrayList<NapPlayerAudioItem> out, HashSet<String> seen,
+                                       String name, String uri, long size, long modified) {
+        if (out == null || seen == null || uri == null || uri.length() == 0) return;
+        if (name == null || name.length() == 0) name = "audio";
+        if (!napPlayerIsAudioName(name)) return;
+        if (seen.contains(uri)) return;
+        seen.add(uri);
+        out.add(new NapPlayerAudioItem(name, uri, size, modified));
+    }
+
+    private void napPlayerScanAudioDir(File dir, int depth, ArrayList<NapPlayerAudioItem> out, HashSet<String> seen) {
+        if (dir == null || depth < 0 || out == null || out.size() >= 500) return;
+        try {
+            if (!dir.exists() || !dir.isDirectory()) return;
+            File[] files = dir.listFiles();
+            if (files == null) return;
+            for (File f : files) {
+                if (f == null || out.size() >= 500) break;
+                String n = f.getName();
+                if (n == null || n.startsWith(".")) continue;
+                if (f.isDirectory()) {
+                    napPlayerScanAudioDir(f, depth - 1, out, seen);
+                } else if (f.isFile() && napPlayerIsAudioName(n)) {
+                    napPlayerAddAudioItem(out, seen, n, Uri.fromFile(f).toString(), f.length(), f.lastModified() / 1000L);
+                }
+            }
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C8 PLAYER_SCAN_DIR_ERR " + safeMsg(t));
+        }
+    }
+
+    private String napPlayerListLocalAudioJson() {
+        ArrayList<NapPlayerAudioItem> items = new ArrayList<>();
+        HashSet<String> seen = new HashSet<>();
+        try {
+            String[] projection = new String[] {
+                    MediaStore.Audio.Media._ID,
+                    MediaStore.Audio.Media.DISPLAY_NAME,
+                    MediaStore.Audio.Media.SIZE,
+                    MediaStore.Audio.Media.DATE_MODIFIED,
+                    MediaStore.Audio.Media.MIME_TYPE
+            };
+            Cursor c = null;
+            try {
+                c = getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, null, null, null);
+                if (c != null) {
+                    int idCol = c.getColumnIndex(MediaStore.Audio.Media._ID);
+                    int nameCol = c.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME);
+                    int sizeCol = c.getColumnIndex(MediaStore.Audio.Media.SIZE);
+                    int modCol = c.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED);
+                    int mimeCol = c.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE);
+                    while (c.moveToNext() && items.size() < 500) {
+                        long id = idCol >= 0 ? c.getLong(idCol) : -1L;
+                        String name = nameCol >= 0 ? c.getString(nameCol) : null;
+                        String mime = mimeCol >= 0 ? c.getString(mimeCol) : "";
+                        boolean audioMime = mime != null && mime.toLowerCase(Locale.US).startsWith("audio/");
+                        if (id < 0 || (!napPlayerIsAudioName(name) && !audioMime)) continue;
+                        if (!napPlayerIsAudioName(name)) name = "audio_" + id + ".mp3";
+                        long size = sizeCol >= 0 ? c.getLong(sizeCol) : 0L;
+                        long modified = modCol >= 0 ? c.getLong(modCol) : 0L;
+                        Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
+                        napPlayerAddAudioItem(items, seen, name, uri.toString(), size, modified);
+                    }
+                }
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA13C8 PLAYER_MEDIASTORE_SCAN_ERR " + safeMsg(t));
+            } finally {
+                try { if (c != null) c.close(); } catch (Throwable ignored) {}
+            }
+
+            napPlayerScanAudioDir(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), 2, items, seen);
+            napPlayerScanAudioDir(new File(Environment.getExternalStorageDirectory(), "Downloads"), 2, items, seen);
+            napPlayerScanAudioDir(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), 2, items, seen);
+            napPlayerScanAudioDir(getPublicAtariHelpDownloadsDir(), 2, items, seen);
+
+            Collections.sort(items, new Comparator<NapPlayerAudioItem>() {
+                @Override public int compare(NapPlayerAudioItem a, NapPlayerAudioItem b) {
+                    long am = a == null ? 0 : a.modified;
+                    long bm = b == null ? 0 : b.modified;
+                    return am == bm ? 0 : (am < bm ? 1 : -1);
+                }
+            });
+
+            int limit = Math.min(items.size(), 240);
+            StringBuilder sb = new StringBuilder(4096);
+            sb.append("{\"ok\":true,\"count\":").append(items.size()).append(",\"items\":[");
+            for (int i = 0; i < limit; i++) {
+                NapPlayerAudioItem it = items.get(i);
+                if (i > 0) sb.append(',');
+                sb.append("{\"name\":").append(jsonQuote(it.name))
+                        .append(",\"uri\":").append(jsonQuote(it.uri))
+                        .append(",\"size\":").append(it.size)
+                        .append(",\"modified\":").append(it.modified)
+                        .append('}');
+            }
+            sb.append("]}");
+            appendNativeLog("BUILD2SA13C8 PLAYER_LOCAL_AUDIO_LIST count=" + items.size() + " returned=" + limit);
+            return sb.toString();
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C8 PLAYER_LOCAL_AUDIO_LIST_FAIL " + safeMsg(t));
+            return "{\"ok\":false,\"error\":" + jsonQuote(safeMsg(t)) + ",\"items\":[]}";
+        }
+    }
+
     public class AHPick {
         @JavascriptInterface
         public void pickGame() {
@@ -994,6 +1313,10 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void pickMp3() {
             ui.post(() -> openBridgePicker("mp3"));
+        }
+        @JavascriptInterface
+        public String listLocalAudio() {
+            return napPlayerListLocalAudioJson();
         }
         @JavascriptInterface
         public void openExternalUrl(String url) {
@@ -4326,6 +4649,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == PICK_TV_WEB_SCREEN) {
+            if (res == RESULT_OK && data != null) {
+                napTvWebStartSystemMirror(res, data);
+            } else {
+                napTvWebSystemMirrorRequested = false;
+                appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_PERMISSION_DENIED res=" + res);
+            }
+            return;
+        }
         if (req == PICK_PS1_GAME) { // BUILD2SA2
             if (res != RESULT_OK || data == null || data.getData() == null) { ps1LastBootResult = "PS1_PICK_CANCELLED"; return; }
             final Uri uri = data.getData();
