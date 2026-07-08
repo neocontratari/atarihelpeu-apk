@@ -1,0 +1,12 @@
+﻿RC5 - JEDINY KOD K POUZITI
+
+Nepatri do GitHub repa jako commit navic. Je to pouze predavaci overlay balicek.
+Neobsahuje .github ani workflows.
+
+Hlavni zmena:
+- YouTube se otevira uvnitr aplikace ve WebView pres AHTVWEB.youtubeInApp().
+- YouTube URL uz router neposila ven do externiho prohlizece/aplikace.
+- TV WEB CAST tedy snima appku, ne systemovy externi YouTube.
+
+Commit v repu, ze ktereho je balicek vytvoren:
+c739dc5 AtariHelp_EMU10_CLEAN_RC5_YOUTUBE_IN_APP
