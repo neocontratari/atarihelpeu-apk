@@ -1,0 +1,27 @@
+ATARIHELP EMU10 - CLEAN_RC1
+
+TOTO JE JEDINY BALIK K TESTU.
+Stare baliky C6 / C7 / C8 / C9 ignorovat.
+
+Obsahuje:
+- TV WEB CAST pres lokalni web server.
+- Whole-phone mirror pres Android MediaProjection, aby TV WEB CAST videl i obraz mimo AtariHelp, vcetne YouTube obrazu a systemovych obrazovek.
+- App-only fallback, kdyz uzivatel nepovoli sdileni cele obrazovky.
+- PS1/Sega audio do TV WEB CAST.
+- Atari WebAudio/POKEY audio do TV WEB CAST.
+- MP3/WAV player audio do TV WEB CAST az za EQ/bass/treble/balance/volume.
+- MP3/WAV vnitrni knihovnu v playeru.
+
+Testovat:
+1. Spust TV WEB CAST.
+2. Na telefonu potvrdit systemove sdileni obrazovky.
+3. Na TV/PC otevrit zobrazenou URL.
+4. /status ma ukazat mirror=SCREEN.
+5. Otevrit YouTube. TV ma videt obraz YouTube.
+6. YouTube zvuk na Samsung S8 / Android 9 pravdepodobne nepujde pres TV WEB audio kanal. To je limit Androidu, ne chyba player audio cesty.
+7. Zpatky v appce otestovat PS1/Sega/Atari a MP3/WAV.
+
+Kdyz neco selze, poslat:
+- /status,
+- log radky BUILD2SA13C9 SCREEN_MIRROR...,
+- jestli TV ukazuje mirror=SCREEN nebo mirror=APP.
