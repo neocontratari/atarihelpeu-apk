@@ -613,14 +613,14 @@ document.getElementById('btnRec').onclick=function(){setStatus('RECORD • PRIPR
 document.getElementById('btnYoutube').onclick=function(e){
   e.preventDefault(); e.stopPropagation();
   try{
-    if(window.AHTVWEB && typeof window.AHTVWEB.youtube==='function'){
-      setStatus('YOUTUBE - POVOL SDILENI OBRAZOVKY');
-      window.AHTVWEB.youtube();
+    if(window.AHTVWEB && typeof window.AHTVWEB.youtubeInApp==='function'){
+      setStatus('YOUTUBE - OTVIRAM V APCE');
+      window.AHTVWEB.youtubeInApp();
       return false;
     }
-    if(window.AHTVWEB && typeof window.AHTVWEB.openWithScreen==='function'){
-      setStatus('YOUTUBE - POVOL SDILENI OBRAZOVKY');
-      window.AHTVWEB.openWithScreen('https://m.youtube.com/');
+    if(window.AHTVWEB && typeof window.AHTVWEB.youtube==='function'){
+      setStatus('YOUTUBE - OTVIRAM V APCE');
+      window.AHTVWEB.youtube();
       return false;
     }
   }catch(_e){}
@@ -643,7 +643,7 @@ audio.onended=function(){
 
 updateVisuals();
 renderPlaylist();
-log('BUILD2SA13C12: MP3 safe stream + permission-gated YouTube screen mirror.');
+log('BUILD2SA13C13: MP3 safe stream + YouTube inside app WebView.');
 })();
 </script>
 </body>

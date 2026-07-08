@@ -246,6 +246,7 @@ public class MainActivity extends Activity {
     private volatile int napTvWebSystemHeight = 0;
     private volatile int napTvWebSystemDpi = 0;
     private volatile String napTvWebPendingScreenUrl = null;
+    private volatile long napTvWebYoutubeInAppUntilMs = 0;
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
             try {
@@ -389,6 +390,24 @@ public class MainActivity extends Activity {
             napTvWebJpegQuality = oldQ;
             try { if (bm != null) bm.recycle(); } catch (Throwable ignored) {}
         }
+    }
+
+    private void napTvWebOpenYoutubeInApp() {
+        final String url = "https://m.youtube.com/";
+        napTvWebStart();
+        napTvWebYoutubeInAppUntilMs = System.currentTimeMillis() + 60L * 60L * 1000L;
+        ui.post(() -> {
+            try {
+                if (web == null) return;
+                stopNativeInPlaceHard("tvWebYoutubeInApp");
+                stopPs1SessionHard("tvWebYoutubeInApp");
+                applyWebViewVisualMode(url, "tvWebYoutubeInApp");
+                web.loadUrl(url);
+                appendNativeLog("BUILD2SA13C13 YOUTUBE_IN_APP_OPEN url=" + url);
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA13C13 YOUTUBE_IN_APP_OPEN_FAIL " + safeMsg(t));
+            }
+        });
     }
 
     private void napTvWebRequestSystemMirror() {
@@ -724,7 +743,7 @@ public class MainActivity extends Activity {
             ui.removeCallbacks(napTvWebFrameTick);
             ui.post(napTvWebFrameTick);
             String url = napTvWebUrl();
-            appendNativeLog("BUILD2SA13C12 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_mp3_draw_safe_youtube_permission_gated audio=PCM16_STEREO");
+            appendNativeLog("BUILD2SA13C13 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_mp3_draw_safe_youtube_in_app audio=PCM16_STEREO");
             return "TV_WEB_CAST_OK " + url + " APP";
         } catch (Throwable t) {
             napTvWebRunning = false;
@@ -935,8 +954,12 @@ public class MainActivity extends Activity {
             napTvWebRequestSystemMirror(url);
             return r + " SCREEN_OPEN_REQUEST";
         }
+        @JavascriptInterface public String youtubeInApp() {
+            napTvWebOpenYoutubeInApp();
+            return "YOUTUBE_IN_APP";
+        }
         @JavascriptInterface public String youtube() {
-            return openWithScreen("https://m.youtube.com/");
+            return youtubeInApp();
         }
         @JavascriptInterface public String screen() {
             napTvWebRequestSystemMirror();
@@ -2780,9 +2803,29 @@ public class MainActivity extends Activity {
         }
     }
 
+    private boolean isYoutubeUrl(String url) {
+        if (url == null) return false;
+        String u = url.trim().toLowerCase(Locale.US);
+        if (!(u.startsWith("http://") || u.startsWith("https://"))) return false;
+        try {
+            Uri uri = Uri.parse(url);
+            String host = uri.getHost();
+            if (host == null) return false;
+            host = host.toLowerCase(Locale.US);
+            return host.equals("youtube.com")
+                    || host.equals("www.youtube.com")
+                    || host.equals("m.youtube.com")
+                    || host.endsWith(".youtube.com")
+                    || host.equals("youtu.be")
+                    || host.endsWith(".youtu.be");
+        } catch (Throwable ignored) {
+            return u.contains("youtube.com") || u.contains("youtu.be");
+        }
+    }
+
     // BUILD2GH: normalni WWW odkazy nesmi spadnout do emulator NET loaderu.
-    // Hlavni chyba byla .com v domenach facebook.com / youtube.com:
-    // stary isGameUrl bral ".com" kdekoliv v URL jako Atari COM soubor.
+    // BUILD2SA13C13: YouTube zustava v appce, aby ho TV WEB CAST videl.
+    // Facebook stale jde ven, aby nespadl do game/download routeru.
     private boolean isExternalBrowserUrl(String url) {
         if (url == null) return false;
         String u = url.trim().toLowerCase();
@@ -2793,9 +2836,7 @@ public class MainActivity extends Activity {
             if (host == null) return false;
             host = host.toLowerCase();
 
-            // Tyhle normalni weby musi jit ven pres browser Intent,
-            // nikdy do downloadAndRun / BOOTANY / NAHRAJ XEX.
-            if (host.equals("youtube.com") || host.equals("www.youtube.com") || host.endsWith(".youtube.com")) return true;
+            if (isYoutubeUrl(url)) return false;
             if (host.equals("facebook.com") || host.equals("www.facebook.com") || host.endsWith(".facebook.com")) return true;
         } catch (Throwable ignored) {}
         return false;
