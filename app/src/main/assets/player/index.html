@@ -359,7 +359,7 @@ function pushTvWebPlayerAudio(ev){
 function setupTvWebAudioTap(node){
   if(tvTap || !ctx || !node) return;
   try{
-    tvTap=ctx.createScriptProcessor(2048,2,2);
+    tvTap=ctx.createScriptProcessor(4096,2,2);
     tvZero=ctx.createGain();
     tvZero.gain.value=0;
     tvTap.onaudioprocess=pushTvWebPlayerAudio;
@@ -613,10 +613,14 @@ document.getElementById('btnRec').onclick=function(){setStatus('RECORD • PRIPR
 document.getElementById('btnYoutube').onclick=function(e){
   e.preventDefault(); e.stopPropagation();
   try{
-    if(window.AHTVWEB && typeof window.AHTVWEB.startScreen==='function'){
+    if(window.AHTVWEB && typeof window.AHTVWEB.youtube==='function'){
       setStatus('YOUTUBE - POVOL SDILENI OBRAZOVKY');
-      window.AHTVWEB.startScreen();
-      setTimeout(function(){openWeb('https://m.youtube.com/');},1800);
+      window.AHTVWEB.youtube();
+      return false;
+    }
+    if(window.AHTVWEB && typeof window.AHTVWEB.openWithScreen==='function'){
+      setStatus('YOUTUBE - POVOL SDILENI OBRAZOVKY');
+      window.AHTVWEB.openWithScreen('https://m.youtube.com/');
       return false;
     }
   }catch(_e){}
@@ -639,7 +643,7 @@ audio.onended=function(){
 
 updateVisuals();
 renderPlaylist();
-log('BUILD2SA13C11: safe-start app cast + on-demand screen mirror for YouTube.');
+log('BUILD2SA13C12: MP3 safe stream + permission-gated YouTube screen mirror.');
 })();
 </script>
 </body>

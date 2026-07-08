@@ -219,6 +219,7 @@ public class MainActivity extends Activity {
     private volatile boolean napTvWebPixelCopyPending = false;
     private volatile long napTvWebPixelCopyPendingAtMs = 0;
     private volatile long napTvWebPixelCopyFallbackLogMs = 0;
+    private volatile long napTvWebPixelCopyDisabledUntilMs = 0;
     private volatile long napTvWebLastFrameMs = 0;
     private HandlerThread napTvWebCopyThread;
     private Handler napTvWebCopyHandler;
@@ -244,6 +245,7 @@ public class MainActivity extends Activity {
     private volatile int napTvWebSystemWidth = 0;
     private volatile int napTvWebSystemHeight = 0;
     private volatile int napTvWebSystemDpi = 0;
+    private volatile String napTvWebPendingScreenUrl = null;
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
             try {
@@ -273,14 +275,27 @@ public class MainActivity extends Activity {
                     if (napTvWebPixelCopyPending && napTvWebPixelCopyPendingAtMs > 0 && nowTick - napTvWebPixelCopyPendingAtMs > 900L) {
                         napTvWebPixelCopyPending = false;
                         napTvWebPixelCopyPendingAtMs = 0;
+                        napTvWebPixelCopyDisabledUntilMs = nowTick + 12000L;
                         didTimeoutFallback = true;
                         if (nowTick - napTvWebPixelCopyFallbackLogMs > 5000L) {
                             napTvWebPixelCopyFallbackLogMs = nowTick;
-                            appendNativeLog("BUILD2SA13C11 TV_WEB_PIXELCOPY_TIMEOUT_FALLBACK");
+                            appendNativeLog("BUILD2SA13C12 TV_WEB_PIXELCOPY_TIMEOUT_FALLBACK_DRAW_COOLDOWN");
                         }
                         napTvWebCaptureByDraw(bw, bh, scale);
                     }
-                    if (!didTimeoutFallback && Build.VERSION.SDK_INT >= 26 && napTvWebCopyHandler != null && !napTvWebPixelCopyPending) {
+                    boolean playerAudioHot = "PLAYER".equals(napTvWebAudioSource)
+                            && napTvWebAudioLastPushMs > 0
+                            && nowTick - napTvWebAudioLastPushMs < 1500L;
+                    boolean pixelCopyAllowed = Build.VERSION.SDK_INT >= 26
+                            && napTvWebCopyHandler != null
+                            && !napTvWebPixelCopyPending
+                            && nowTick >= napTvWebPixelCopyDisabledUntilMs
+                            && !playerAudioHot;
+                    if (playerAudioHot) {
+                        napTvWebVideoProfile = "PLAYER_DRAW_SAFE";
+                        napTvWebFrameDelayMs = Math.max(napTvWebFrameDelayMs, 75);
+                    }
+                    if (!didTimeoutFallback && pixelCopyAllowed) {
                         int[] loc = new int[2];
                         rootFrame.getLocationInWindow(loc);
                         Rect src = new Rect(loc[0], loc[1], loc[0] + sw, loc[1] + sh);
@@ -293,16 +308,18 @@ public class MainActivity extends Activity {
                                     napTvWebPublishBitmap(target, "PIXELCOPY");
                                 } else {
                                     appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_FAIL result=" + result);
+                                    napTvWebPixelCopyDisabledUntilMs = System.currentTimeMillis() + 5000L;
                                     ui.post(() -> napTvWebCaptureByDraw(bw, bh, scale));
                                 }
                             } catch (Throwable t) {
                                 appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_ERR " + safeMsg(t));
+                                napTvWebPixelCopyDisabledUntilMs = System.currentTimeMillis() + 5000L;
                             } finally {
                                 napTvWebPixelCopyPending = false;
                                 napTvWebPixelCopyPendingAtMs = 0;
                             }
                         }, napTvWebCopyHandler);
-                    } else if (!didTimeoutFallback && (Build.VERSION.SDK_INT < 26 || napTvWebCopyHandler == null)) {
+                    } else if (!didTimeoutFallback) {
                         napTvWebCaptureByDraw(bw, bh, scale);
                     }
                 }
@@ -375,11 +392,26 @@ public class MainActivity extends Activity {
     }
 
     private void napTvWebRequestSystemMirror() {
+        napTvWebRequestSystemMirror(null);
+    }
+
+    private void napTvWebRequestSystemMirror(String afterUrl) {
         if (Build.VERSION.SDK_INT < 21) {
             appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_UNSUPPORTED sdk=" + Build.VERSION.SDK_INT);
             return;
         }
-        if (napTvWebSystemMirrorActive || napTvWebSystemMirrorRequested) return;
+        if (afterUrl != null && afterUrl.trim().length() > 0) {
+            napTvWebPendingScreenUrl = afterUrl.trim();
+        }
+        if (napTvWebSystemMirrorActive) {
+            String url = napTvWebPendingScreenUrl;
+            napTvWebPendingScreenUrl = null;
+            if (url != null && url.length() > 0) {
+                ui.postDelayed(() -> openRawExternalBrowserUrl(url), 350);
+            }
+            return;
+        }
+        if (napTvWebSystemMirrorRequested) return;
         napTvWebSystemMirrorRequested = true;
         ui.post(() -> {
             try {
@@ -667,6 +699,7 @@ public class MainActivity extends Activity {
             napTvWebPixelCopyPending = false;
             napTvWebPixelCopyPendingAtMs = 0;
             napTvWebPixelCopyFallbackLogMs = 0;
+            napTvWebPixelCopyDisabledUntilMs = 0;
             napTvWebLastFrameMs = 0;
             napTvWebEnsurePlaceholderFrame("STARTING");
             synchronized (napTvWebAudioLock) {
@@ -691,7 +724,7 @@ public class MainActivity extends Activity {
             ui.removeCallbacks(napTvWebFrameTick);
             ui.post(napTvWebFrameTick);
             String url = napTvWebUrl();
-            appendNativeLog("BUILD2SA13C11 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_safe_start_screen_on_demand audio=PCM16_STEREO");
+            appendNativeLog("BUILD2SA13C12 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_mp3_draw_safe_youtube_permission_gated audio=PCM16_STEREO");
             return "TV_WEB_CAST_OK " + url + " APP";
         } catch (Throwable t) {
             napTvWebRunning = false;
@@ -704,6 +737,8 @@ public class MainActivity extends Activity {
         napTvWebRunning = false;
         napTvWebPixelCopyPending = false;
         napTvWebPixelCopyPendingAtMs = 0;
+        napTvWebPixelCopyDisabledUntilMs = 0;
+        napTvWebPendingScreenUrl = null;
         napTvWebReleaseSystemMirror(why, true);
         ui.removeCallbacks(napTvWebFrameTick);
         try { if (napTvWebServer != null) napTvWebServer.close(); } catch (Throwable ignored) {}
@@ -803,7 +838,7 @@ public class MainActivity extends Activity {
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C();if(ac.resume)ac.resume();next=ac.currentTime+0.20;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}"
-                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var ab=await r.arrayBuffer();if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(ac.destination);var now=ac.currentTime;if(next<now+0.07)next=now+0.12;src.start(next);next+=frames/rate;}}catch(e){}setTimeout(pollAudio,35);}"
+                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var ab=await r.arrayBuffer();if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(ac.destination);var now=ac.currentTime;if(next<now+0.07)next=now+0.14;src.start(next);next+=frames/rate;}}catch(e){}setTimeout(pollAudio,65);}"
                 + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
                 + "setInterval(function(){if(!fb)label('MJPEG');},1000);})();</script></body></html>";
@@ -894,6 +929,14 @@ public class MainActivity extends Activity {
             String r = napTvWebStart();
             napTvWebRequestSystemMirror();
             return r + " SCREEN_REQUEST";
+        }
+        @JavascriptInterface public String openWithScreen(String url) {
+            String r = napTvWebStart();
+            napTvWebRequestSystemMirror(url);
+            return r + " SCREEN_OPEN_REQUEST";
+        }
+        @JavascriptInterface public String youtube() {
+            return openWithScreen("https://m.youtube.com/");
         }
         @JavascriptInterface public String screen() {
             napTvWebRequestSystemMirror();
@@ -1662,9 +1705,11 @@ public class MainActivity extends Activity {
     private void applyWebViewVisualMode(String url, String reason) {
         if (web == null) return;
         boolean normalWeb = isProviderBlockedUrl(url);
+        String lowUrl = url == null ? "" : url.toLowerCase(Locale.US);
+        boolean playerWeb = lowUrl.startsWith("file:///android_asset/player/");
         try { web.setBackgroundColor(normalWeb ? Color.WHITE : Color.TRANSPARENT); } catch (Throwable ignored) {}
         try { if (rootFrame != null) rootFrame.setBackgroundColor(normalWeb ? Color.WHITE : Color.BLACK); } catch (Throwable ignored) {}
-        try { web.setLayerType(normalWeb ? View.LAYER_TYPE_NONE : View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
+        try { web.setLayerType((normalWeb || playerWeb) ? View.LAYER_TYPE_NONE : View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
         if (normalWeb) appendNativeLog("BUILD2SA5AF WEBVIEW_PROTECTED_WEB reason=" + reason + " url=" + compactUrl(url));
     }
 
@@ -4725,8 +4770,15 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
         if (req == PICK_TV_WEB_SCREEN) {
+            String pendingScreenUrl = napTvWebPendingScreenUrl;
+            napTvWebPendingScreenUrl = null;
             if (res == RESULT_OK && data != null) {
                 napTvWebStartSystemMirror(res, data);
+                if (pendingScreenUrl != null && pendingScreenUrl.length() > 0 && napTvWebSystemMirrorActive) {
+                    ui.postDelayed(() -> openRawExternalBrowserUrl(pendingScreenUrl), 650);
+                } else if (pendingScreenUrl != null && pendingScreenUrl.length() > 0) {
+                    appendNativeLog("BUILD2SA13C12 SCREEN_MIRROR_PENDING_URL_NOT_OPENED mirrorActive=false");
+                }
             } else {
                 napTvWebSystemMirrorRequested = false;
                 appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_PERMISSION_DENIED res=" + res);
