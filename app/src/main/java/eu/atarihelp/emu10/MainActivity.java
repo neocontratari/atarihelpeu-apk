@@ -198,6 +198,7 @@ public class MainActivity extends Activity {
     private volatile long napTvWebAudioSeq = 0;
     private volatile int napTvWebAudioRate = 44100;
     private volatile long napTvWebAudioLastPushMs = 0;
+    private volatile String napTvWebAudioSource = "NONE";
     private volatile int napTvWebJpegQuality = 62;
     private volatile int napTvWebFrameDelayMs = 55;
     private volatile String napTvWebVideoProfile = "AUTO";
@@ -289,6 +290,10 @@ public class MainActivity extends Activity {
                     napTvWebAudioSeq = 0;
                     appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_RATE source=" + source + " hz=" + sampleRate);
                 }
+                if (source != null && !source.equals(napTvWebAudioSource)) {
+                    napTvWebAudioSource = source;
+                    appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_SOURCE " + source);
+                }
                 int cap = napTvWebAudioRing.length;
                 for (int i = start; i < limit; i++) {
                     short v = pcm[i];
@@ -301,6 +306,37 @@ public class MainActivity extends Activity {
             }
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_PUSH_ERR " + safeMsg(t));
+        }
+    }
+
+    private void napTvWebAudioPushMonoPcm16Bytes(byte[] pcm, int sampleRate, String source) {
+        if (!napTvWebRunning || pcm == null || pcm.length < 2) return;
+        try {
+            int len = Math.min(pcm.length & ~1, 65536);
+            synchronized (napTvWebAudioLock) {
+                if (sampleRate > 8000 && sampleRate != napTvWebAudioRate) {
+                    napTvWebAudioRate = sampleRate;
+                    napTvWebAudioSeq = 0;
+                    appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_RATE source=" + source + " hz=" + sampleRate);
+                }
+                if (source != null && !source.equals(napTvWebAudioSource)) {
+                    napTvWebAudioSource = source;
+                    appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_SOURCE " + source);
+                }
+                int cap = napTvWebAudioRing.length;
+                for (int i = 0; i < len; i += 2) {
+                    byte lo = pcm[i], hi = pcm[i + 1];
+                    int pos = (int)(napTvWebAudioSeq % cap);
+                    napTvWebAudioRing[pos] = lo;
+                    napTvWebAudioRing[(pos + 1) % cap] = hi;
+                    napTvWebAudioRing[(pos + 2) % cap] = lo;
+                    napTvWebAudioRing[(pos + 3) % cap] = hi;
+                    napTvWebAudioSeq += 4;
+                }
+                napTvWebAudioLastPushMs = System.currentTimeMillis();
+            }
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_MONO_PUSH_ERR source=" + source + " " + safeMsg(t));
         }
     }
 
@@ -360,6 +396,7 @@ public class MainActivity extends Activity {
             synchronized (napTvWebAudioLock) {
                 napTvWebAudioSeq = 0;
                 napTvWebAudioLastPushMs = 0;
+                napTvWebAudioSource = "NONE";
             }
             if (Build.VERSION.SDK_INT >= 26) {
                 try {
@@ -445,6 +482,7 @@ public class MainActivity extends Activity {
                         + " jpegQ=" + napTvWebJpegQuality
                         + " frameDelayMs=" + napTvWebFrameDelayMs
                         + " audioSeq=" + napTvWebAudioSeq
+                        + " audioSource=" + napTvWebAudioSource
                         + " audioRate=" + napTvWebAudioRate + "\n").getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, false);
                 out.write(body);
@@ -570,6 +608,19 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String start() { return napTvWebStart(); }
         @JavascriptInterface public String stop() { return napTvWebStop("js"); }
         @JavascriptInterface public String status() { return napTvWebUrl(); }
+        @JavascriptInterface public String pushAtariPcm16(String b64, int sampleRate, int frames) {
+            try {
+                if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
+                if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
+                byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                napTvWebAudioPushMonoPcm16Bytes(data, sampleRate, "ATARI");
+                return "TV_WEB_AUDIO_ATARI_OK bytes=" + data.length + " frames=" + frames + " hz=" + sampleRate;
+            } catch (Throwable t) {
+                String e = "TV_WEB_AUDIO_ATARI_FAIL " + safeMsg(t);
+                appendNativeLog("BUILD2SA13C " + e);
+                return e;
+            }
+        }
     }
     private NativeInPlaceView nativeInPlaceView;
     private boolean nativeInPlaceEnabled = false;

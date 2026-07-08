@@ -4901,6 +4901,24 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     return out;
   }
   var poly4=makePoly(4,3,2), poly5=makePoly(5,4,2), poly9=makePoly(9,8,3), poly17=makePoly(17,16,11);
+  var tvWebAtariAudioLastErr=0;
+  function pushTvWebAtariAudio(buf,sampleRate){
+    try{
+      if(!window.AHTVWEB || !window.AHTVWEB.pushAtariPcm16 || !buf || !buf.length) return;
+      var n=buf.length, bytes=new Uint8Array(n*2);
+      for(var i=0,j=0;i<n;i++,j+=2){
+        var x=buf[i]; if(x>1)x=1; else if(x<-1)x=-1;
+        var v=x<0 ? Math.round(x*32768) : Math.round(x*32767);
+        bytes[j]=v&255; bytes[j+1]=(v>>8)&255;
+      }
+      var s='', step=4096;
+      for(var p=0;p<bytes.length;p+=step) s+=String.fromCharCode.apply(null, bytes.subarray(p,p+step));
+      window.AHTVWEB.pushAtariPcm16(btoa(s), sampleRate|0, n|0);
+    }catch(e){
+      var now=Date.now();
+      if(now-tvWebAtariAudioLastErr>5000){ tvWebAtariAudioLastErr=now; try{ log('TV WEB AUDIO ATARI bridge chyba: '+(e&&e.message)); }catch(_e){} }
+    }
+  }
   function startAudio(){
     // BUILD2KF: WebView/Nox/Android umi AudioContext po pickeru nebo delsi pauze nechat "suspended".
     // Pak POKEY registry sice bezi, ale uzivatel slysi ticho. Start/resume je obecny audio fix,
@@ -4968,6 +4986,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         var dcout=s-st.dcx+0.995*st.dcy; st.dcx=s; st.dcy=dcout;   // DC-blocker
         buf[i]=dcout;
       }
+      pushTvWebAtariAudio(buf, ac.sampleRate);
     };
     sp.connect(ac.destination);
     audio={ac:ac,sp:sp,st:st,sh:sh};
