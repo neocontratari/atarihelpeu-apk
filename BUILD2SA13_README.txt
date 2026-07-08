@@ -21,3 +21,13 @@ vcetne Atari (pilot!).
 TEST: pripoj TV (adapter nebo bezdratove) -> na TV se objevi obraz apky ->
 spust hru (Sega i PS1) -> hra bezi na TV, telefon = ovladac.
 Log: TV_MIRROR_ON. Kdyby obraz na TV chybel, posli log + jak je TV pripojena.
+
+BUILD2SA13C - TV WEB CAST FALLBACK (kdyz Smart View/Miracast pada):
+- V PS1 panelu je tlacitko TV WEB CAST. Telefon spusti lokalni HTTP stream
+  obrazu appky pres Wi-Fi a vypise URL typu http://192.168.x.x:8765/.
+- Tuhle adresu otevri na TCL/Android TV v prohlizeci nebo receiver appce.
+  Je to workaround pro TV, ktera umi Chromecast/Google Home, ale neudrzi
+  Samsung Smart View/Miracast. Telefon zustava ovladac.
+- Neni to pravy YouTube Cast receiver: bez Google Cast receiver aplikace
+  Android appka nemuze sama spustit vlastni HTML/emulator na Chromecastu.
+- Markery: BUILD2SA13C TV_WEB_CAST_ON url=... / TV_WEB_CAST_OFF.

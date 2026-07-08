@@ -129,6 +129,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <button id="psRemoteUrl" type="button">PS1 PRIMA URL</button>
     <button id="psCachePath" type="button">PS1 CACHE CESTA</button>
     <button id="psCacheClear" type="button">SMAZAT PS1 CACHE</button>
+    <button id="tvWebCast" type="button">TV WEB CAST</button>
     <button id="logSave" type="button">ULOZIT LOG (Downloads/AtariHelp)</button>
     <button id="logCopy" type="button">KOPIROVAT LOG</button>
     <button id="helpClose" type="button">ZAVRIT</button>
@@ -563,6 +564,25 @@ function ps1ClearCache(){
     }else toast('PS1 CACHE CLEAR: AHPS1 most chybi',2600);
   }catch(e){toast('PS1 CACHE mazani chyba: '+(e&&e.message),4200);}
 }
+function tvWebCastStart(){
+  try{
+    if(window.AHTVWEB&&window.AHTVWEB.start){
+      var r=String(window.AHTVWEB.start());
+      var m=r.match(/https?:\/\/\S+/);
+      var url=m?m[0]:'';
+      log('TV_WEB_CAST '+r);
+      if(url){
+        try{prompt('Na TV otevri tuto adresu v prohlizeci / AirScreen browseru:',url);}catch(_){}
+        toast('TV WEB CAST: otevri na TV '+url,9000);
+      }else{
+        toast(r,7000);
+      }
+    }else toast('TV WEB CAST: AHTVWEB most chybi',3000);
+  }catch(e){
+    toast('TV WEB CAST chyba: '+(e&&e.message),5200);
+    log('TV_WEB_CAST_ERROR '+(e&&e.message));
+  }
+}
 function ps1QuickSave(){
   try{
     if(window.AHPS1&&window.AHPS1.ps1QuickSave){
@@ -606,6 +626,7 @@ if($('psRemoteUrl'))$('psRemoteUrl').addEventListener('click',function(e){e.prev
 if($('psGooglePage'))$('psGooglePage').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);
 if($('psCachePath'))$('psCachePath').addEventListener('click',function(e){e.preventDefault();ps1ShowCachePath();},true);
 if($('psCacheClear'))$('psCacheClear').addEventListener('click',function(e){e.preventDefault();ps1ClearCache();},true);
+if($('tvWebCast'))$('tvWebCast').addEventListener('click',function(e){e.preventDefault();tvWebCastStart();},true);
 $('logSave').addEventListener('click',function(e){e.preventDefault();
   var fn='AtariHelp_PS1_LOG_'+(function(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());})()+'.txt';
   try{

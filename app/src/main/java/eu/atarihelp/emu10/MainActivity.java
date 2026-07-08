@@ -52,8 +52,14 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.util.Enumeration;
 
 /**
  * AtariHelp.eu EMU-10 BUILD2BM
@@ -172,6 +178,228 @@ public class MainActivity extends Activity {
         @Override public void onDisplayRemoved(int id) { ui.post(() -> napTvUpdatePresentation()); }
         @Override public void onDisplayChanged(int id) { }
     };
+    // ===== BUILD2SA13C: TV WEB CAST FALLBACK =====
+    // Chromecast/Google Home screen cast is system owned and laggy for games.
+    // This fallback keeps everything inside the app: phone serves a low-latency
+    // JPEG stream over local Wi-Fi and the Android TV opens the shown URL.
+    private ServerSocket napTvWebServer;
+    private Thread napTvWebServerThread;
+    private volatile boolean napTvWebRunning = false;
+    private volatile int napTvWebPort = 0;
+    private volatile byte[] napTvWebJpeg = null;
+    private volatile long napTvWebSeq = 0;
+    private Bitmap napTvWebBitmap;
+    private final Runnable napTvWebFrameTick = new Runnable() {
+        @Override public void run() {
+            try {
+                if (napTvWebRunning && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
+                    int sw = rootFrame.getWidth(), sh = rootFrame.getHeight();
+                    float scale = Math.min(1.0f, 960.0f / Math.max(sw, sh));
+                    int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
+                    if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
+                        napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.RGB_565);
+                    }
+                    Canvas cv = new Canvas(napTvWebBitmap);
+                    cv.drawColor(Color.BLACK);
+                    cv.save();
+                    cv.scale(scale, scale);
+                    rootFrame.draw(cv);
+                    cv.restore();
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32768, bw * bh / 8));
+                    napTvWebBitmap.compress(Bitmap.CompressFormat.JPEG, 58, bos);
+                    napTvWebJpeg = bos.toByteArray();
+                    napTvWebSeq++;
+                }
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA13C TV_WEB_FRAME_ERR " + safeMsg(t));
+            }
+            if (napTvWebRunning) ui.postDelayed(this, 70);
+        }
+    };
+
+    private String napTvWebLocalIp() {
+        String fallback = "";
+        try {
+            Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
+            while (nets != null && nets.hasMoreElements()) {
+                NetworkInterface ni = nets.nextElement();
+                try { if (!ni.isUp() || ni.isLoopback()) continue; } catch (Throwable ignored) {}
+                String n = ni.getName() == null ? "" : ni.getName().toLowerCase(Locale.US);
+                Enumeration<InetAddress> addrs = ni.getInetAddresses();
+                while (addrs != null && addrs.hasMoreElements()) {
+                    InetAddress a = addrs.nextElement();
+                    if (a instanceof Inet4Address && !a.isLoopbackAddress()) {
+                        String host = a.getHostAddress();
+                        if (n.startsWith("wlan") || n.startsWith("swlan") || n.startsWith("ap")) return host;
+                        if (fallback.length() == 0) fallback = host;
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C TV_WEB_IP_ERR " + safeMsg(t));
+        }
+        return fallback.length() > 0 ? fallback : "127.0.0.1";
+    }
+
+    private String napTvWebUrl() {
+        if (!napTvWebRunning || napTvWebPort <= 0) return "TV_WEB_CAST_OFF";
+        return "http://" + napTvWebLocalIp() + ":" + napTvWebPort + "/";
+    }
+
+    private synchronized String napTvWebStart() {
+        if (napTvWebRunning && napTvWebServer != null) return "TV_WEB_CAST_OK " + napTvWebUrl();
+        try {
+            ServerSocket ss;
+            try { ss = new ServerSocket(8765); }
+            catch (Throwable busy) { ss = new ServerSocket(0); }
+            napTvWebServer = ss;
+            napTvWebPort = ss.getLocalPort();
+            napTvWebRunning = true;
+            napTvWebServerThread = new Thread(this::napTvWebAcceptLoop, "nap-tv-web-cast");
+            napTvWebServerThread.setDaemon(true);
+            napTvWebServerThread.start();
+            ui.removeCallbacks(napTvWebFrameTick);
+            ui.post(napTvWebFrameTick);
+            String url = napTvWebUrl();
+            appendNativeLog("BUILD2SA13C TV_WEB_CAST_ON url=" + url + " mode=browser_jpeg_stream maxSide=960 fpsApprox=14");
+            return "TV_WEB_CAST_OK " + url;
+        } catch (Throwable t) {
+            napTvWebRunning = false;
+            appendNativeLog("BUILD2SA13C TV_WEB_CAST_START_FAIL " + safeMsg(t));
+            return "TV_WEB_CAST_FAIL " + safeMsg(t);
+        }
+    }
+
+    private synchronized String napTvWebStop(String why) {
+        napTvWebRunning = false;
+        ui.removeCallbacks(napTvWebFrameTick);
+        try { if (napTvWebServer != null) napTvWebServer.close(); } catch (Throwable ignored) {}
+        napTvWebServer = null;
+        napTvWebPort = 0;
+        napTvWebJpeg = null;
+        appendNativeLog("BUILD2SA13C TV_WEB_CAST_OFF why=" + why);
+        return "TV_WEB_CAST_OFF " + why;
+    }
+
+    private void napTvWebAcceptLoop() {
+        while (napTvWebRunning) {
+            try {
+                ServerSocket ss = napTvWebServer;
+                if (ss == null) break;
+                Socket s = ss.accept();
+                new Thread(() -> napTvWebHandleClient(s), "nap-tv-web-client").start();
+            } catch (Throwable t) {
+                if (napTvWebRunning) appendNativeLog("BUILD2SA13C TV_WEB_ACCEPT_ERR " + safeMsg(t));
+                try { Thread.sleep(160); } catch (InterruptedException ignored) {}
+            }
+        }
+    }
+
+    private void napTvWebHandleClient(Socket s) {
+        try {
+            s.setTcpNoDelay(true);
+            InputStream in = s.getInputStream();
+            OutputStream out = s.getOutputStream();
+            byte[] buf = new byte[1200];
+            int n = in.read(buf);
+            String req = n > 0 ? new String(buf, 0, n, "ISO-8859-1") : "";
+            String path = "/";
+            int a = req.indexOf(' '), b = a < 0 ? -1 : req.indexOf(' ', a + 1);
+            if (a >= 0 && b > a) path = req.substring(a + 1, b);
+            int q = path.indexOf('?');
+            if (q >= 0) path = path.substring(0, q);
+            if ("/".equals(path) || "/index.html".equals(path)) {
+                napTvWebWriteHtml(out);
+            } else if ("/frame.jpg".equals(path)) {
+                napTvWebWriteFrame(out);
+            } else if ("/stream.mjpg".equals(path)) {
+                napTvWebWriteMjpeg(out);
+            } else if ("/status".equals(path)) {
+                byte[] body = ("running=" + napTvWebRunning + " seq=" + napTvWebSeq + "\n").getBytes("UTF-8");
+                napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, false);
+                out.write(body);
+            } else {
+                byte[] body = "not found\n".getBytes("UTF-8");
+                napTvWebHeader(out, "404 Not Found", "text/plain; charset=utf-8", body.length, false);
+                out.write(body);
+            }
+            out.flush();
+        } catch (Throwable ignored) {
+        } finally {
+            try { s.close(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private void napTvWebHeader(OutputStream out, String status, String type, int len, boolean close) throws IOException {
+        String h = "HTTP/1.1 " + status + "\r\n"
+                + "Content-Type: " + type + "\r\n"
+                + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
+                + "Pragma: no-cache\r\n"
+                + (len >= 0 ? "Content-Length: " + len + "\r\n" : "")
+                + "Connection: " + (close ? "close" : "keep-alive") + "\r\n\r\n";
+        out.write(h.getBytes("ISO-8859-1"));
+    }
+
+    private void napTvWebWriteHtml(OutputStream out) throws IOException {
+        String body = "<!doctype html><html><head><meta charset='utf-8'>"
+                + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<title>AtariHelp TV</title><style>"
+                + "html,body{margin:0;width:100%;height:100%;background:#000;color:#9fdcff;font:16px monospace;overflow:hidden}"
+                + "#v{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000}"
+                + "#s{position:fixed;left:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.55);border-radius:4px}"
+                + "</style></head><body><img id='v' alt='AtariHelp TV'><div id='s'>AtariHelp TV WEB CAST</div>"
+                + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),n=0;"
+                + "function tick(){v.onload=v.onerror=function(){setTimeout(tick,55)};v.src='/frame.jpg?'+Date.now();"
+                + "if((++n%60)===0)s.textContent='AtariHelp TV WEB CAST '+new Date().toLocaleTimeString();}"
+                + "tick();})();</script></body></html>";
+        byte[] b = body.getBytes("UTF-8");
+        napTvWebHeader(out, "200 OK", "text/html; charset=utf-8", b.length, false);
+        out.write(b);
+    }
+
+    private void napTvWebWriteFrame(OutputStream out) throws IOException {
+        byte[] img = napTvWebJpeg;
+        if (img == null) {
+            try { Thread.sleep(120); } catch (InterruptedException ignored) {}
+            img = napTvWebJpeg;
+        }
+        if (img == null) {
+            byte[] body = "frame not ready\n".getBytes("UTF-8");
+            napTvWebHeader(out, "503 Service Unavailable", "text/plain; charset=utf-8", body.length, true);
+            out.write(body);
+            return;
+        }
+        napTvWebHeader(out, "200 OK", "image/jpeg", img.length, true);
+        out.write(img);
+    }
+
+    private void napTvWebWriteMjpeg(OutputStream out) throws IOException {
+        String h = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: multipart/x-mixed-replace; boundary=napframe\r\n"
+                + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
+                + "Pragma: no-cache\r\n"
+                + "Connection: close\r\n\r\n";
+        out.write(h.getBytes("ISO-8859-1"));
+        long last = -1;
+        while (napTvWebRunning) {
+            byte[] img = napTvWebJpeg;
+            long seq = napTvWebSeq;
+            if (img != null && seq != last) {
+                out.write(("--napframe\r\nContent-Type: image/jpeg\r\nContent-Length: " + img.length + "\r\n\r\n").getBytes("ISO-8859-1"));
+                out.write(img);
+                out.write("\r\n".getBytes("ISO-8859-1"));
+                out.flush();
+                last = seq;
+            }
+            try { Thread.sleep(45); } catch (InterruptedException ignored) {}
+        }
+    }
+
+    public class AHTvWeb {
+        @JavascriptInterface public String start() { return napTvWebStart(); }
+        @JavascriptInterface public String stop() { return napTvWebStop("js"); }
+        @JavascriptInterface public String status() { return napTvWebUrl(); }
+    }
     private NativeInPlaceView nativeInPlaceView;
     private boolean nativeInPlaceEnabled = false;
     private String nativeLastRomInfo = "C++ ROM zatim nenactena";
@@ -1930,6 +2158,7 @@ public class MainActivity extends Activity {
         tvSetupDisplayListener(); // BUILD2SB1: TV vystup pro celou appku
         web.addJavascriptInterface(new AHNet(), "AHNET");
         web.addJavascriptInterface(new AHNative(), "AHNATIVE");
+        web.addJavascriptInterface(new AHTvWeb(), "AHTVWEB"); // BUILD2SA13C: browser-based TV cast fallback
         web.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb,
@@ -3932,6 +4161,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        try { napTvWebStop("activityDestroy"); } catch (Throwable ignored) {} // BUILD2SA13C
         try { if (napTvPresentation != null) napTvPresentation.dismiss(); } catch (Throwable ignored) {} // BUILD2SA13
         try { if (napDisplayManager != null) napDisplayManager.unregisterDisplayListener(napTvListener); } catch (Throwable ignored) {}
         stopNativeInPlaceHard("activityDestroy");
