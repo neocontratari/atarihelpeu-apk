@@ -217,6 +217,9 @@ public class MainActivity extends Activity {
     private volatile long napTvWebSeq = 0;
     private Bitmap napTvWebBitmap;
     private volatile boolean napTvWebPixelCopyPending = false;
+    private volatile long napTvWebPixelCopyPendingAtMs = 0;
+    private volatile long napTvWebPixelCopyFallbackLogMs = 0;
+    private volatile long napTvWebLastFrameMs = 0;
     private HandlerThread napTvWebCopyThread;
     private Handler napTvWebCopyHandler;
     private final Object napTvWebAudioLock = new Object();
@@ -265,11 +268,24 @@ public class MainActivity extends Activity {
                     if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
                         napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
                     }
-                    if (Build.VERSION.SDK_INT >= 26 && napTvWebCopyHandler != null && !napTvWebPixelCopyPending) {
+                    long nowTick = System.currentTimeMillis();
+                    boolean didTimeoutFallback = false;
+                    if (napTvWebPixelCopyPending && napTvWebPixelCopyPendingAtMs > 0 && nowTick - napTvWebPixelCopyPendingAtMs > 900L) {
+                        napTvWebPixelCopyPending = false;
+                        napTvWebPixelCopyPendingAtMs = 0;
+                        didTimeoutFallback = true;
+                        if (nowTick - napTvWebPixelCopyFallbackLogMs > 5000L) {
+                            napTvWebPixelCopyFallbackLogMs = nowTick;
+                            appendNativeLog("BUILD2SA13C11 TV_WEB_PIXELCOPY_TIMEOUT_FALLBACK");
+                        }
+                        napTvWebCaptureByDraw(bw, bh, scale);
+                    }
+                    if (!didTimeoutFallback && Build.VERSION.SDK_INT >= 26 && napTvWebCopyHandler != null && !napTvWebPixelCopyPending) {
                         int[] loc = new int[2];
                         rootFrame.getLocationInWindow(loc);
                         Rect src = new Rect(loc[0], loc[1], loc[0] + sw, loc[1] + sh);
                         napTvWebPixelCopyPending = true;
+                        napTvWebPixelCopyPendingAtMs = System.currentTimeMillis();
                         final Bitmap target = napTvWebBitmap;
                         android.view.PixelCopy.request(getWindow(), src, target, result -> {
                             try {
@@ -283,15 +299,17 @@ public class MainActivity extends Activity {
                                 appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_ERR " + safeMsg(t));
                             } finally {
                                 napTvWebPixelCopyPending = false;
+                                napTvWebPixelCopyPendingAtMs = 0;
                             }
                         }, napTvWebCopyHandler);
-                    } else if (Build.VERSION.SDK_INT < 26 || napTvWebCopyHandler == null) {
+                    } else if (!didTimeoutFallback && (Build.VERSION.SDK_INT < 26 || napTvWebCopyHandler == null)) {
                         napTvWebCaptureByDraw(bw, bh, scale);
                     }
                 }
             } catch (Throwable t) {
                 appendNativeLog("BUILD2SA13C TV_WEB_FRAME_ERR " + safeMsg(t));
                 napTvWebPixelCopyPending = false;
+                napTvWebPixelCopyPendingAtMs = 0;
             }
             if (napTvWebRunning) ui.postDelayed(this, Math.max(35, napTvWebFrameDelayMs));
         }
@@ -320,8 +338,39 @@ public class MainActivity extends Activity {
             bm.compress(Bitmap.CompressFormat.JPEG, Math.max(35, Math.min(86, napTvWebJpegQuality)), bos);
             napTvWebJpeg = bos.toByteArray();
             napTvWebSeq++;
+            napTvWebLastFrameMs = System.currentTimeMillis();
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA13C TV_WEB_PUBLISH_ERR " + safeMsg(t));
+        }
+    }
+
+    private void napTvWebEnsurePlaceholderFrame(String reason) {
+        if (napTvWebJpeg != null) return;
+        Bitmap bm = null;
+        int oldQ = napTvWebJpegQuality;
+        try {
+            bm = Bitmap.createBitmap(640, 360, Bitmap.Config.ARGB_8888);
+            Canvas cv = new Canvas(bm);
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            cv.drawColor(Color.BLACK);
+            p.setColor(Color.rgb(92, 220, 255));
+            p.setTextSize(28);
+            p.setFakeBoldText(true);
+            cv.drawText("AtariHelp TV WEB CAST", 32, 78, p);
+            p.setFakeBoldText(false);
+            p.setTextSize(19);
+            p.setColor(Color.rgb(210, 235, 245));
+            cv.drawText("Cekam na prvni snimek z telefonu...", 32, 122, p);
+            p.setTextSize(15);
+            p.setColor(Color.rgb(120, 165, 190));
+            cv.drawText(reason == null ? "START" : reason, 32, 164, p);
+            napTvWebJpegQuality = 72;
+            napTvWebPublishBitmap(bm, "PLACEHOLDER");
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C11 TV_WEB_PLACEHOLDER_ERR " + safeMsg(t));
+        } finally {
+            napTvWebJpegQuality = oldQ;
+            try { if (bm != null) bm.recycle(); } catch (Throwable ignored) {}
         }
     }
 
@@ -616,6 +665,10 @@ public class MainActivity extends Activity {
             napTvWebPort = ss.getLocalPort();
             napTvWebRunning = true;
             napTvWebPixelCopyPending = false;
+            napTvWebPixelCopyPendingAtMs = 0;
+            napTvWebPixelCopyFallbackLogMs = 0;
+            napTvWebLastFrameMs = 0;
+            napTvWebEnsurePlaceholderFrame("STARTING");
             synchronized (napTvWebAudioLock) {
                 napTvWebAudioSeq = 0;
                 napTvWebAudioLastPushMs = 0;
@@ -638,7 +691,7 @@ public class MainActivity extends Activity {
             ui.removeCallbacks(napTvWebFrameTick);
             ui.post(napTvWebFrameTick);
             String url = napTvWebUrl();
-            appendNativeLog("BUILD2SA13C10 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_app_default_screen_on_demand audio=PCM16_STEREO");
+            appendNativeLog("BUILD2SA13C11 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_safe_start_screen_on_demand audio=PCM16_STEREO");
             return "TV_WEB_CAST_OK " + url + " APP";
         } catch (Throwable t) {
             napTvWebRunning = false;
@@ -650,6 +703,7 @@ public class MainActivity extends Activity {
     private synchronized String napTvWebStop(String why) {
         napTvWebRunning = false;
         napTvWebPixelCopyPending = false;
+        napTvWebPixelCopyPendingAtMs = 0;
         napTvWebReleaseSystemMirror(why, true);
         ui.removeCallbacks(napTvWebFrameTick);
         try { if (napTvWebServer != null) napTvWebServer.close(); } catch (Throwable ignored) {}
@@ -659,6 +713,7 @@ public class MainActivity extends Activity {
         napTvWebServer = null;
         napTvWebPort = 0;
         napTvWebJpeg = null;
+        napTvWebLastFrameMs = 0;
         appendNativeLog("BUILD2SA13C TV_WEB_CAST_OFF why=" + why);
         return "TV_WEB_CAST_OFF " + why;
     }
@@ -705,6 +760,7 @@ public class MainActivity extends Activity {
                         + " mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
                         + " profile=" + napTvWebVideoProfile
                         + " screen=" + napTvWebSystemWidth + "x" + napTvWebSystemHeight
+                        + " frameAgeMs=" + (napTvWebLastFrameMs == 0 ? 999999 : (System.currentTimeMillis() - napTvWebLastFrameMs))
                         + " jpegQ=" + napTvWebJpegQuality
                         + " frameDelayMs=" + napTvWebFrameDelayMs
                         + " audioSeq=" + napTvWebAudioSeq
@@ -757,6 +813,7 @@ public class MainActivity extends Activity {
     }
 
     private void napTvWebWriteFrame(OutputStream out) throws IOException {
+        napTvWebEnsurePlaceholderFrame("FRAME_CONNECT");
         byte[] img = napTvWebJpeg;
         if (img == null) {
             try { Thread.sleep(120); } catch (InterruptedException ignored) {}
@@ -809,6 +866,7 @@ public class MainActivity extends Activity {
     }
 
     private void napTvWebWriteMjpeg(OutputStream out) throws IOException {
+        napTvWebEnsurePlaceholderFrame("MJPEG_CONNECT");
         String h = "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: multipart/x-mixed-replace; boundary=napframe\r\n"
                 + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
