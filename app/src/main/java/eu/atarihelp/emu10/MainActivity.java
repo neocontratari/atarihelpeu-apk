@@ -198,12 +198,20 @@ public class MainActivity extends Activity {
     private volatile long napTvWebAudioSeq = 0;
     private volatile int napTvWebAudioRate = 44100;
     private volatile long napTvWebAudioLastPushMs = 0;
+    private volatile int napTvWebJpegQuality = 62;
+    private volatile int napTvWebFrameDelayMs = 55;
+    private volatile String napTvWebVideoProfile = "AUTO";
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
             try {
                 if (napTvWebRunning && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
                     int sw = rootFrame.getWidth(), sh = rootFrame.getHeight();
-                    float scale = Math.min(1.0f, 960.0f / Math.max(sw, sh));
+                    boolean landscape = sw > sh;
+                    int maxSide = landscape ? 760 : 1120;
+                    napTvWebJpegQuality = landscape ? 54 : 72;
+                    napTvWebFrameDelayMs = landscape ? 75 : 55;
+                    napTvWebVideoProfile = landscape ? "LANDSCAPE_FAST" : "PORTRAIT_HD";
+                    float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
                     if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
                         napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
@@ -236,7 +244,7 @@ public class MainActivity extends Activity {
                 appendNativeLog("BUILD2SA13C TV_WEB_FRAME_ERR " + safeMsg(t));
                 napTvWebPixelCopyPending = false;
             }
-            if (napTvWebRunning) ui.postDelayed(this, 55);
+            if (napTvWebRunning) ui.postDelayed(this, Math.max(35, napTvWebFrameDelayMs));
         }
     };
 
@@ -260,7 +268,7 @@ public class MainActivity extends Activity {
     private void napTvWebPublishBitmap(Bitmap bm, String mode) {
         try {
             ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32768, bm.getWidth() * bm.getHeight() / 8));
-            bm.compress(Bitmap.CompressFormat.JPEG, 62, bos);
+            bm.compress(Bitmap.CompressFormat.JPEG, Math.max(35, Math.min(86, napTvWebJpegQuality)), bos);
             napTvWebJpeg = bos.toByteArray();
             napTvWebSeq++;
         } catch (Throwable t) {
@@ -349,6 +357,10 @@ public class MainActivity extends Activity {
             napTvWebPort = ss.getLocalPort();
             napTvWebRunning = true;
             napTvWebPixelCopyPending = false;
+            synchronized (napTvWebAudioLock) {
+                napTvWebAudioSeq = 0;
+                napTvWebAudioLastPushMs = 0;
+            }
             if (Build.VERSION.SDK_INT >= 26) {
                 try {
                     napTvWebCopyThread = new HandlerThread("nap-tv-web-pixelcopy");
@@ -366,7 +378,7 @@ public class MainActivity extends Activity {
             ui.removeCallbacks(napTvWebFrameTick);
             ui.post(napTvWebFrameTick);
             String url = napTvWebUrl();
-            appendNativeLog("BUILD2SA13C TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_pixelcopy_webaudio maxSide=960 fpsApprox=18 audio=PCM16_STEREO");
+            appendNativeLog("BUILD2SA13C TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_pixelcopy_webaudio profile=AUTO portrait=1120q72 landscape=760q54 audio=PCM16_STEREO");
             return "TV_WEB_CAST_OK " + url;
         } catch (Throwable t) {
             napTvWebRunning = false;
@@ -427,7 +439,13 @@ public class MainActivity extends Activity {
             } else if ("/audio.raw".equals(path)) {
                 napTvWebWriteAudioRaw(out, napTvWebQueryLong(fullPath, "after", -1));
             } else if ("/status".equals(path)) {
-                byte[] body = ("running=" + napTvWebRunning + " seq=" + napTvWebSeq + " audioSeq=" + napTvWebAudioSeq + " audioRate=" + napTvWebAudioRate + "\n").getBytes("UTF-8");
+                byte[] body = ("running=" + napTvWebRunning
+                        + " seq=" + napTvWebSeq
+                        + " profile=" + napTvWebVideoProfile
+                        + " jpegQ=" + napTvWebJpegQuality
+                        + " frameDelayMs=" + napTvWebFrameDelayMs
+                        + " audioSeq=" + napTvWebAudioSeq
+                        + " audioRate=" + napTvWebAudioRate + "\n").getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, false);
                 out.write(body);
             } else {

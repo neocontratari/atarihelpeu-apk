@@ -35,6 +35,13 @@ BUILD2SA13C - TV WEB CAST FALLBACK (kdyz Smart View/Miracast pada):
   Na TV/PC strance potvrd tlacitko AUDIO OK nebo zmackni OK/Enter, jinak
   muze prohlizec zvuk blokovat kvuli autoplay pravidlum.
 - BUILD2SA13C4 odstranuje diagnosticky LIVE/PIXELCOPY napis primo z obrazu.
+- BUILD2SA13C5 ladeni obrazu/Wi-Fi: na vysku PORTRAIT_HD 1120px/q72,
+  na sirku LANDSCAPE_FAST 760px/q54 a pomalejsi tempo snimku, aby se S8/TCL
+  pri slabsi Wi-Fi mene kousaly.
+- DULEZITE AUDIO: TV WEB AUDIO ted bere PCM z PS1 a Sega Java/Native audio
+  cesty. Atari 130XE WebView emu zvuk zatim do TV WEB CAST nejde, protoze
+  jeho WebAudio/JS zdroj neni v tomto overlay ZIPu a Android 9/S8 nedava
+  obecne zachyceni zvuku z WebView bez specialni upravy Atari assetu.
 - Neni to pravy YouTube Cast receiver: bez Google Cast receiver aplikace
   Android appka nemuze sama spustit vlastni HTML/emulator na Chromecastu.
 - Markery: BUILD2SA13C TV_WEB_CAST_ON url=... / TV_WEB_CAST_OFF.
