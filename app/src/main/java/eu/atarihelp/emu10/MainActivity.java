@@ -340,6 +340,32 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void napTvWebAudioPushStereoPcm16Bytes(byte[] pcm, int sampleRate, String source) {
+        if (!napTvWebRunning || pcm == null || pcm.length < 4) return;
+        try {
+            int len = Math.min(pcm.length & ~3, 65536);
+            synchronized (napTvWebAudioLock) {
+                if (sampleRate > 8000 && sampleRate != napTvWebAudioRate) {
+                    napTvWebAudioRate = sampleRate;
+                    napTvWebAudioSeq = 0;
+                    appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_RATE source=" + source + " hz=" + sampleRate);
+                }
+                if (source != null && !source.equals(napTvWebAudioSource)) {
+                    napTvWebAudioSource = source;
+                    appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_SOURCE " + source);
+                }
+                int cap = napTvWebAudioRing.length;
+                for (int i = 0; i < len; i++) {
+                    napTvWebAudioRing[(int)(napTvWebAudioSeq % cap)] = pcm[i];
+                    napTvWebAudioSeq++;
+                }
+                napTvWebAudioLastPushMs = System.currentTimeMillis();
+            }
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_STEREO_PUSH_ERR source=" + source + " " + safeMsg(t));
+        }
+    }
+
     private long napTvWebQueryLong(String fullPath, String key, long fallback) {
         try {
             int q = fullPath == null ? -1 : fullPath.indexOf('?');
@@ -617,6 +643,20 @@ public class MainActivity extends Activity {
                 return "TV_WEB_AUDIO_ATARI_OK bytes=" + data.length + " frames=" + frames + " hz=" + sampleRate;
             } catch (Throwable t) {
                 String e = "TV_WEB_AUDIO_ATARI_FAIL " + safeMsg(t);
+                appendNativeLog("BUILD2SA13C " + e);
+                return e;
+            }
+        }
+        @JavascriptInterface public String pushPlayerPcm16(String b64, int sampleRate, int frames, int channels) {
+            try {
+                if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
+                if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
+                byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                if (channels <= 1) napTvWebAudioPushMonoPcm16Bytes(data, sampleRate, "PLAYER");
+                else napTvWebAudioPushStereoPcm16Bytes(data, sampleRate, "PLAYER");
+                return "TV_WEB_AUDIO_PLAYER_OK bytes=" + data.length + " frames=" + frames + " hz=" + sampleRate + " ch=" + channels;
+            } catch (Throwable t) {
+                String e = "TV_WEB_AUDIO_PLAYER_FAIL " + safeMsg(t);
                 appendNativeLog("BUILD2SA13C " + e);
                 return e;
             }
@@ -954,6 +994,10 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void pickMp3() {
             ui.post(() -> openBridgePicker("mp3"));
+        }
+        @JavascriptInterface
+        public void openExternalUrl(String url) {
+            ui.post(() -> openRawExternalBrowserUrl(url));
         }
         @JavascriptInterface
         public void pickText() {
@@ -2528,7 +2572,7 @@ public class MainActivity extends Activity {
         i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         if ("mp3".equals(kind)) {
             i.setType("audio/*");
-            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/mpeg", "audio/mp3", "audio/*", "application/octet-stream"});
+            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/*", "application/octet-stream"});
             i.putExtra("android.content.extra.SHOW_ADVANCED", true);
             i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
             i.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
@@ -4209,6 +4253,22 @@ public class MainActivity extends Activity {
         web.evaluateJavascript("AHLOCAL_AUDIO_END()", null);
     }
 
+    private void injectMp3Uri(String name, Uri uri) {
+        if (web == null || uri == null) return;
+        try {
+            try {
+                grantUriPermission(getPackageName(), uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (Throwable ignored) {}
+            String js = "if(typeof AHLOCAL_MP3_URI==='function'){AHLOCAL_MP3_URI("
+                    + jsQuote(name) + "," + jsQuote(uri.toString()) + ");}"
+                    + "else if(typeof AHJAVA_ERROR==='function'){AHJAVA_ERROR('MP3 player bridge neni pripraveny');}";
+            web.evaluateJavascript(js, null);
+            appendNativeLog("BUILD2SA13C7 PLAYER_MP3_URI name=" + name + " uri=" + compactUrl(uri.toString()));
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C7 PLAYER_MP3_URI_FAIL " + safeMsg(t));
+        }
+    }
+
     private void injectText(String name, byte[] data) {
         web.evaluateJavascript("AHLOCAL_TEXT_BEGIN(" + jsQuote(name) + ")", null);
         String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
@@ -4332,23 +4392,21 @@ public class MainActivity extends Activity {
                 try {
                     int max = ("audio".equals(pendingBridgeKind) || "mp3".equals(pendingBridgeKind)) ? 64 * 1024 * 1024 : ("text".equals(pendingBridgeKind) ? 2 * 1024 * 1024 : 16 * 1024 * 1024);
                     if ("mp3".equals(pendingBridgeKind)) {
-                        web.evaluateJavascript("AHLOCAL_MP3_PLAYLIST_BEGIN()", null);
+                        web.evaluateJavascript("if(typeof AHLOCAL_MP3_PLAYLIST_BEGIN==='function')AHLOCAL_MP3_PLAYLIST_BEGIN()", null);
                         ClipData clip = data.getClipData();
                         if (clip != null && clip.getItemCount() > 0) {
                             for (int k = 0; k < clip.getItemCount(); k++) {
                                 Uri uri = clip.getItemAt(k).getUri();
                                 if (uri == null) continue;
                                 String name = getDisplayName(uri);
-                                byte[] bytes = readUriBytes(uri, max);
-                                injectAudio(name, bytes);
+                                injectMp3Uri(name, uri);
                             }
                         } else if (data.getData() != null) {
                             Uri uri = data.getData();
                             String name = getDisplayName(uri);
-                            byte[] bytes = readUriBytes(uri, max);
-                            injectAudio(name, bytes);
+                            injectMp3Uri(name, uri);
                         }
-                        web.evaluateJavascript("AHLOCAL_MP3_PLAYLIST_END()", null);
+                        web.evaluateJavascript("if(typeof AHLOCAL_MP3_PLAYLIST_END==='function')AHLOCAL_MP3_PLAYLIST_END()", null);
                     } else if (data.getData() != null) {
                         Uri uri = data.getData();
                         String name = getDisplayName(uri);

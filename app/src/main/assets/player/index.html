@@ -182,7 +182,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnFwd" class="hit" type="button">FAST FWD</button>
   <button id="btnRec" class="hit" type="button">RECORD</button>
   <button id="btnMyPlaylists" class="hit" type="button">MY PLAYLISTS</button>
-  <a id="btnYoutube" class="hit" href="https://www.youtube.com/">YOUTUBE</a>
+  <button id="btnYoutube" class="hit" type="button">YOUTUBE</button>
   <button id="btnTrackStrip" class="hit" type="button">TRACK</button>
 
   <button id="eq60" class="eqZone" type="button" aria-label="Equalizer 60Hz"></button>
@@ -241,20 +241,70 @@ audio.volume=1;
 var tracks=[], active=-1;
 
 var ctx=null, source=null, eqFilters=[], bassFilter=null, trebleFilter=null, panNode=null, gainNode=null;
+var tvTap=null, tvZero=null, tvAudioLastErr=0;
+var nativeMp3Added=0, nativeAudioName='', nativeAudioParts=[];
 var eqFreq=[60,250,1000,4000,16000];
 var soundState={eq:[0,0,0,0,0], bass:0, treble:0, balance:0, volume:1};
 
 function log(t){try{console.log('[NAP PLAYER] '+t);}catch(e){}}
 function setStatus(t){status.textContent=t;log(t);}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+function mimeForName(name){
+  var n=(name||'').toLowerCase();
+  if(/\.wav$/.test(n)) return 'audio/wav';
+  return 'audio/mpeg';
+}
+function addTrack(name,url,revoke){
+  if(!url) return;
+  tracks.push({name:name||('track_'+tracks.length),url:url,revoke:revoke!==false});
+  if(active<0) loadTrack(0,false);
+  renderPlaylist();
+}
 function openWeb(url){
-  setStatus('OPEN WEB • '+url);
+  setStatus('OPEN WEB - '+url);
+  var handed=false;
   try{
-    if(window.Android && typeof window.Android.openExternal==='function'){ window.Android.openExternal(url); }
-    else if(window.Android && typeof window.Android.openUrl==='function'){ window.Android.openUrl(url); }
-    else if(window.Android && typeof window.Android.openExternalUrl==='function'){ window.Android.openExternalUrl(url); }
+    if(window.AHPICK && typeof window.AHPICK.openExternalUrl==='function'){ window.AHPICK.openExternalUrl(url); handed=true; }
+    else if(window.Android && typeof window.Android.openExternal==='function'){ window.Android.openExternal(url); handed=true; }
+    else if(window.Android && typeof window.Android.openUrl==='function'){ window.Android.openUrl(url); handed=true; }
+    else if(window.Android && typeof window.Android.openExternalUrl==='function'){ window.Android.openExternalUrl(url); handed=true; }
   }catch(e){ log('Android bridge failed: '+e.message); }
+  if(handed) return;
   try{ setTimeout(function(){ window.location.assign(url); }, 10); }catch(e){ try{ location.href=url; }catch(_){} }
+}
+
+function pushTvWebPlayerAudio(ev){
+  try{
+    if(!window.AHTVWEB || typeof window.AHTVWEB.pushPlayerPcm16!=='function') return;
+    var input=ev.inputBuffer, frames=input.length;
+    if(!frames) return;
+    var l=input.getChannelData(0), r=input.numberOfChannels>1?input.getChannelData(1):l;
+    var bytes=new Uint8Array(frames*4);
+    for(var i=0,j=0;i<frames;i++,j+=4){
+      var lv=clamp(l[i],-1,1), rv=clamp(r[i],-1,1);
+      var li=lv<0?Math.round(lv*32768):Math.round(lv*32767);
+      var ri=rv<0?Math.round(rv*32768):Math.round(rv*32767);
+      bytes[j]=li&255; bytes[j+1]=(li>>8)&255; bytes[j+2]=ri&255; bytes[j+3]=(ri>>8)&255;
+    }
+    var s='', step=4096;
+    for(var p=0;p<bytes.length;p+=step) s+=String.fromCharCode.apply(null, bytes.subarray(p,p+step));
+    window.AHTVWEB.pushPlayerPcm16(btoa(s), (ctx&&ctx.sampleRate)||44100, frames|0, 2);
+  }catch(e){
+    var now=Date.now();
+    if(now-tvAudioLastErr>5000){ tvAudioLastErr=now; log('TV WEB AUDIO PLAYER bridge chyba: '+(e&&e.message)); }
+  }
+}
+function setupTvWebAudioTap(node){
+  if(tvTap || !ctx || !node) return;
+  try{
+    tvTap=ctx.createScriptProcessor(2048,2,2);
+    tvZero=ctx.createGain();
+    tvZero.gain.value=0;
+    tvTap.onaudioprocess=pushTvWebPlayerAudio;
+    node.connect(tvTap);
+    tvTap.connect(tvZero);
+    tvZero.connect(ctx.destination);
+  }catch(e){ log('TV WEB AUDIO PLAYER tap nejde: '+e.message); }
 }
 
 
@@ -283,8 +333,9 @@ function initAudioGraph(){
     if(panNode){ trebleFilter.connect(panNode); panNode.connect(gainNode); }
     else { trebleFilter.connect(gainNode); }
     gainNode.connect(ctx.destination);
+    setupTvWebAudioTap(gainNode);
     applySoundState();
-  }catch(e){ log('WebAudio graph unavailable: '+e.message); }
+  }catch(e){ log('WebAudio graph unavailable: '+e.message); ctx=null; source=null; }
 }
 function applySoundState(){
   if(eqFilters.length){
@@ -320,14 +371,14 @@ function renderPlaylist(){
 }
 function loadTrack(i,autoplay){
   if(i<0||i>=tracks.length)return;
-  active=i; audio.src=tracks[i].url; audio.currentTime=0; renderPlaylist();
+  active=i; audio.src=tracks[i].url; try{audio.currentTime=0;}catch(e){} renderPlaylist();
   setStatus('NACITANO • '+tracks[i].name);
   if(autoplay) play();
 }
 function play(){
   initAudioGraph();
   if(ctx && ctx.state==='suspended') ctx.resume();
-  if(!tracks.length){openPlaylistPanel(); pick.click(); return;}
+  if(!tracks.length){openPlaylistPanel(); pickFiles(); return;}
   if(active<0) loadTrack(0,false);
   try{
     var p=audio.play();
@@ -347,24 +398,68 @@ function seek(delta){
 }
 function clearAll(){
   stop();
-  tracks.forEach(function(t){try{URL.revokeObjectURL(t.url);}catch(e){}});
+  tracks.forEach(function(t){try{if(t.revoke!==false)URL.revokeObjectURL(t.url);}catch(e){}});
   tracks=[]; active=-1; renderPlaylist(); setStatus('PLAYLIST VYMAZAN');
 }
 function openPlaylistPanel(){renderPlaylist();playlistPanel.classList.add('open');playlistPanel.setAttribute('aria-hidden','false');}
 function closePlaylistPanel(){playlistPanel.classList.remove('open');playlistPanel.setAttribute('aria-hidden','true');}
 function openSettingsPanel(){settingsPanel.classList.add('open');settingsPanel.setAttribute('aria-hidden','false');}
 function closeSettingsPanel(){settingsPanel.classList.remove('open');settingsPanel.setAttribute('aria-hidden','true');}
-function pickFiles(){pick.click();}
+function pickFiles(){
+  try{
+    if(window.AHPICK && typeof window.AHPICK.pickMp3==='function'){
+      setStatus('ANDROID VYBER MP3/WAV');
+      window.AHPICK.pickMp3();
+      return;
+    }
+  }catch(e){ log('AHPICK MP3 chyba: '+e.message); }
+  pick.click();
+}
 pick.onchange=function(){
   var files=Array.prototype.slice.call(pick.files||[]);
   files.forEach(function(f){
     if(!/\.(mp3|wav)$/i.test(f.name||'')){setStatus('PRESKOCENO • NE MP3/WAV');return;}
-    tracks.push({name:f.name,url:URL.createObjectURL(f)});
+    addTrack(f.name,URL.createObjectURL(f),true);
   });
   pick.value=''; renderPlaylist();
   if(active<0 && tracks.length) loadTrack(0,false);
   closePlaylistPanel(); setStatus('PLAYLIST READY • '+tracks.length+' TRACKU');
 };
+
+window.AHLOCAL_MP3_PLAYLIST_BEGIN=function(){
+  nativeMp3Added=0;
+  setStatus('ANDROID VYBER - PRIJIMAM MP3/WAV');
+};
+window.AHLOCAL_MP3_URI=function(name,uri){
+  addTrack(name||'audio',uri,false);
+  nativeMp3Added++;
+  setStatus('PRIDANO - '+(name||'audio'));
+};
+window.AHLOCAL_MP3_PLAYLIST_END=function(){
+  renderPlaylist();
+  if(active<0 && tracks.length) loadTrack(0,false);
+  closePlaylistPanel();
+  setStatus(nativeMp3Added>0 ? ('PLAYLIST READY - '+tracks.length+' TRACKU') : 'NIC NEVYBRANO');
+};
+window.AHLOCAL_AUDIO_BEGIN=function(name){
+  nativeAudioName=name||'audio';
+  nativeAudioParts=[];
+  setStatus('ANDROID AUDIO - NACITAM '+nativeAudioName);
+};
+window.AHLOCAL_AUDIO_PART=function(b64){nativeAudioParts.push(b64);};
+window.AHLOCAL_AUDIO_END=function(){
+  try{
+    var raw=atob(nativeAudioParts.join(''));
+    var bytes=new Uint8Array(raw.length);
+    for(var i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i)&255;
+    var blob=new Blob([bytes],{type:mimeForName(nativeAudioName)});
+    addTrack(nativeAudioName,URL.createObjectURL(blob),true);
+    nativeMp3Added++;
+    nativeAudioParts=[];
+    setStatus('PRIDANO - '+nativeAudioName);
+  }catch(e){setStatus('AUDIO CHYBA');log(e.message);}
+};
+window.AHJAVA_ERROR=function(msg){setStatus('ANDROID CHYBA - '+(msg||''));};
 
 function updateVisuals(){ /* BUILD2GD: vizualni posuvniky vypnute, zvuk se ladi pres neviditelne hitzony. */ }
 
@@ -440,7 +535,11 @@ document.getElementById('btnRew').onclick=function(){seek(-10);};
 document.getElementById('btnFwd').onclick=function(){seek(10);};
 document.getElementById('btnRec').onclick=function(){setStatus('RECORD • PRIPRAVENO PRO BUDOUCI CAPTURE');};
 
-document.getElementById('btnYoutube').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();},true);
+document.getElementById('btnYoutube').onclick=function(e){
+  e.preventDefault(); e.stopPropagation();
+  openWeb('https://m.youtube.com/');
+  return false;
+};
 
 document.getElementById('btnMenu').onclick=function(){location.href='../index.html';};
 document.getElementById('btnSettingsTop').onclick=openSettingsPanel;
@@ -457,7 +556,7 @@ audio.onended=function(){
 
 updateVisuals();
 renderPlaylist();
-log('BUILD2GE: YouTube je cisty HTML odkaz bez JS/Android bridge/intent.');
+log('BUILD2SA13C7: MP3/WAV Android picker + TV WEB stereo audio bridge.');
 })();
 </script>
 </body>
