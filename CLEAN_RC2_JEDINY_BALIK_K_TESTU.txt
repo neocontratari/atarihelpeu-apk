@@ -1,0 +1,28 @@
+ATARIHELP EMU10 - CLEAN_RC2
+
+TOTO JE JEDINY BALIK K TESTU.
+Ignorovat stare C6/C7/C8/C9 i CLEAN_RC1.
+
+Co CLEAN_RC2 opravuje proti RC1:
+- TV WEB CAST uz pri startu automaticky nespousti whole-phone MediaProjection.
+- Nejdriv se spusti stabilni app-only stream, aby po zobrazeni IP hned tekly snimky jako driv.
+- Whole-phone mirror se zapina az on-demand pres AHTVWEB.startScreen(), hlavne pri tlacitku YouTube.
+- Kdyz MediaProjection nedoda snimky, stream se vrati na app-only fallback misto cerneho/zasekleho proudu.
+
+Obsahuje:
+- TV WEB CAST lokalni server.
+- PS1/Sega/Atari audio do TV WEB CAST.
+- MP3/WAV player audio do TV WEB CAST az za EQ/bass/treble/balance/volume.
+- MP3/WAV vnitrni knihovnu.
+- On-demand whole-phone mirror pro YouTube obraz a systemove obrazovky.
+
+Test:
+1. Spust TV WEB CAST.
+2. Hned otevri IP na TV/PC.
+3. Musi tect app obraz. /status ma byt mirror=APP.
+4. Pak v playeru stiskni YouTube.
+5. Telefon pozada o povoleni sdileni obrazovky. Povolit.
+6. /status by se mel zmenit na mirror=SCREEN a TV ma videt YouTube obraz.
+
+Zvuk YouTube:
+- Na Samsung S8 / Android 9 pravdepodobne nepujde pres nas TV WEB audio kanal. Obraz ano, zvuk cizich aplikaci je limit Androidu.
