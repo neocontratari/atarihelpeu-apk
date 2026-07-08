@@ -16,6 +16,7 @@ import android.os.Environment;
 import android.os.Build;
 import android.os.Debug; // BUILD2RW: passive heap/GC audit only
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.provider.OpenableColumns;
 import android.provider.MediaStore;
@@ -189,6 +190,9 @@ public class MainActivity extends Activity {
     private volatile byte[] napTvWebJpeg = null;
     private volatile long napTvWebSeq = 0;
     private Bitmap napTvWebBitmap;
+    private volatile boolean napTvWebPixelCopyPending = false;
+    private HandlerThread napTvWebCopyThread;
+    private Handler napTvWebCopyHandler;
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
             try {
@@ -197,25 +201,75 @@ public class MainActivity extends Activity {
                     float scale = Math.min(1.0f, 960.0f / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
                     if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
-                        napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.RGB_565);
+                        napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
                     }
-                    Canvas cv = new Canvas(napTvWebBitmap);
-                    cv.drawColor(Color.BLACK);
-                    cv.save();
-                    cv.scale(scale, scale);
-                    rootFrame.draw(cv);
-                    cv.restore();
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32768, bw * bh / 8));
-                    napTvWebBitmap.compress(Bitmap.CompressFormat.JPEG, 58, bos);
-                    napTvWebJpeg = bos.toByteArray();
-                    napTvWebSeq++;
+                    if (Build.VERSION.SDK_INT >= 26 && napTvWebCopyHandler != null && !napTvWebPixelCopyPending) {
+                        int[] loc = new int[2];
+                        rootFrame.getLocationInWindow(loc);
+                        Rect src = new Rect(loc[0], loc[1], loc[0] + sw, loc[1] + sh);
+                        napTvWebPixelCopyPending = true;
+                        final Bitmap target = napTvWebBitmap;
+                        android.view.PixelCopy.request(getWindow(), src, target, result -> {
+                            try {
+                                if (result == android.view.PixelCopy.SUCCESS) {
+                                    napTvWebPublishBitmap(target, "PIXELCOPY");
+                                } else {
+                                    appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_FAIL result=" + result);
+                                    ui.post(() -> napTvWebCaptureByDraw(bw, bh, scale));
+                                }
+                            } catch (Throwable t) {
+                                appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_ERR " + safeMsg(t));
+                            } finally {
+                                napTvWebPixelCopyPending = false;
+                            }
+                        }, napTvWebCopyHandler);
+                    } else if (Build.VERSION.SDK_INT < 26 || napTvWebCopyHandler == null) {
+                        napTvWebCaptureByDraw(bw, bh, scale);
+                    }
                 }
             } catch (Throwable t) {
                 appendNativeLog("BUILD2SA13C TV_WEB_FRAME_ERR " + safeMsg(t));
+                napTvWebPixelCopyPending = false;
             }
-            if (napTvWebRunning) ui.postDelayed(this, 70);
+            if (napTvWebRunning) ui.postDelayed(this, 55);
         }
     };
+
+    private void napTvWebCaptureByDraw(int bw, int bh, float scale) {
+        try {
+            if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
+                napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+            }
+            Canvas cv = new Canvas(napTvWebBitmap);
+            cv.drawColor(Color.BLACK);
+            cv.save();
+            cv.scale(scale, scale);
+            if (rootFrame != null) rootFrame.draw(cv);
+            cv.restore();
+            napTvWebPublishBitmap(napTvWebBitmap, "DRAW");
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C TV_WEB_DRAW_CAPTURE_ERR " + safeMsg(t));
+        }
+    }
+
+    private void napTvWebPublishBitmap(Bitmap bm, String mode) {
+        try {
+            Canvas stampCanvas = new Canvas(bm);
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setColor(0xCC000000);
+            stampCanvas.drawRect(6, 6, Math.min(bm.getWidth(), 250), 34, p);
+            p.setColor(0xFF7FE6FF);
+            p.setTextSize(18);
+            p.setFakeBoldText(true);
+            stampCanvas.drawText("LIVE " + nowStamp().substring(11, 19) + " #" + (napTvWebSeq + 1) + " " + mode, 12, 27, p);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32768, bm.getWidth() * bm.getHeight() / 8));
+            bm.compress(Bitmap.CompressFormat.JPEG, 62, bos);
+            napTvWebJpeg = bos.toByteArray();
+            napTvWebSeq++;
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C TV_WEB_PUBLISH_ERR " + safeMsg(t));
+        }
+    }
 
     private String napTvWebLocalIp() {
         String fallback = "";
@@ -255,13 +309,25 @@ public class MainActivity extends Activity {
             napTvWebServer = ss;
             napTvWebPort = ss.getLocalPort();
             napTvWebRunning = true;
+            napTvWebPixelCopyPending = false;
+            if (Build.VERSION.SDK_INT >= 26) {
+                try {
+                    napTvWebCopyThread = new HandlerThread("nap-tv-web-pixelcopy");
+                    napTvWebCopyThread.start();
+                    napTvWebCopyHandler = new Handler(napTvWebCopyThread.getLooper());
+                } catch (Throwable t) {
+                    appendNativeLog("BUILD2SA13C TV_WEB_COPY_THREAD_FAIL " + safeMsg(t));
+                    napTvWebCopyThread = null;
+                    napTvWebCopyHandler = null;
+                }
+            }
             napTvWebServerThread = new Thread(this::napTvWebAcceptLoop, "nap-tv-web-cast");
             napTvWebServerThread.setDaemon(true);
             napTvWebServerThread.start();
             ui.removeCallbacks(napTvWebFrameTick);
             ui.post(napTvWebFrameTick);
             String url = napTvWebUrl();
-            appendNativeLog("BUILD2SA13C TV_WEB_CAST_ON url=" + url + " mode=browser_jpeg_stream maxSide=960 fpsApprox=14");
+            appendNativeLog("BUILD2SA13C TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_pixelcopy maxSide=960 fpsApprox=18");
             return "TV_WEB_CAST_OK " + url;
         } catch (Throwable t) {
             napTvWebRunning = false;
@@ -272,8 +338,12 @@ public class MainActivity extends Activity {
 
     private synchronized String napTvWebStop(String why) {
         napTvWebRunning = false;
+        napTvWebPixelCopyPending = false;
         ui.removeCallbacks(napTvWebFrameTick);
         try { if (napTvWebServer != null) napTvWebServer.close(); } catch (Throwable ignored) {}
+        try { if (napTvWebCopyThread != null) napTvWebCopyThread.quitSafely(); } catch (Throwable ignored) {}
+        napTvWebCopyThread = null;
+        napTvWebCopyHandler = null;
         napTvWebServer = null;
         napTvWebPort = 0;
         napTvWebJpeg = null;
@@ -348,10 +418,11 @@ public class MainActivity extends Activity {
                 + "#v{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000}"
                 + "#s{position:fixed;left:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.55);border-radius:4px}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><div id='s'>AtariHelp TV WEB CAST</div>"
-                + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),n=0;"
-                + "function tick(){v.onload=v.onerror=function(){setTimeout(tick,55)};v.src='/frame.jpg?'+Date.now();"
-                + "if((++n%60)===0)s.textContent='AtariHelp TV WEB CAST '+new Date().toLocaleTimeString();}"
-                + "tick();})();</script></body></html>";
+                + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),n=0,fb=false;"
+                + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString();}"
+                + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
+                + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
+                + "setInterval(function(){if(!fb)label('MJPEG');},1000);})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
         napTvWebHeader(out, "200 OK", "text/html; charset=utf-8", b.length, false);
         out.write(b);

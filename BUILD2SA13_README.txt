@@ -28,6 +28,9 @@ BUILD2SA13C - TV WEB CAST FALLBACK (kdyz Smart View/Miracast pada):
 - Tuhle adresu otevri na TCL/Android TV v prohlizeci nebo receiver appce.
   Je to workaround pro TV, ktera umi Chromecast/Google Home, ale neudrzi
   Samsung Smart View/Miracast. Telefon zustava ovladac.
+- BUILD2SA13C2 pouziva primarne MJPEG stream a na Androidu 8+ PixelCopy
+  ze skutecneho okna. V obrazu je maly napis LIVE cas #frame PIXELCOPY/DRAW:
+  kdyz se cas a cislo hybou, stream je zivy.
 - Neni to pravy YouTube Cast receiver: bez Google Cast receiver aplikace
   Android appka nemuze sama spustit vlastni HTML/emulator na Chromecastu.
 - Markery: BUILD2SA13C TV_WEB_CAST_ON url=... / TV_WEB_CAST_OFF.
