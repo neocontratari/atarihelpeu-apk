@@ -249,6 +249,7 @@ var tracks=[], active=-1;
 var ctx=null, source=null, eqFilters=[], bassFilter=null, trebleFilter=null, panNode=null, gainNode=null;
 var tvTap=null, tvZero=null, tvAudioLastErr=0;
 var nativeMp3Added=0, nativeAudioName='', nativeAudioParts=[];
+var nativeAudioAutoplay=false;
 var eqFreq=[60,250,1000,4000,16000];
 var soundState={eq:[0,0,0,0,0], bass:0, treble:0, balance:0, volume:1};
 
@@ -290,6 +291,13 @@ function renderLocalLibrary(list){
     b.type='button';
     b.textContent=t.name+(t.size?('  '+formatSize(t.size)):'');
     b.onclick=function(){
+      if(window.AHPICK && typeof window.AHPICK.playLocalAudio==='function'){
+        nativeAudioAutoplay=true;
+        closePlaylistPanel();
+        setStatus('NACITAM Z MOBILU - '+t.name);
+        window.AHPICK.playLocalAudio(t.name,t.uri);
+        return;
+      }
       var idx=tracks.length;
       addTrack(t.name,t.uri,false);
       closePlaylistPanel();
@@ -313,6 +321,12 @@ function refreshLocalLibrary(showStatus){
       if(showStatus) setStatus('NALEZENO MP3/WAV - '+((data.items&&data.items.length)||0));
       return true;
     }
+    if(data && data.needsPermission){
+      renderLocalLibrary([]);
+      if(window.AHPICK && typeof window.AHPICK.requestAudioPermission==='function') window.AHPICK.requestAudioPermission();
+      if(showStatus) setStatus('POVOL PRISTUP K HUDBE V MOBILU');
+      return false;
+    }
     renderLocalLibrary([]);
     if(showStatus) setStatus('KNIHOVNA CHYBA');
   }catch(e){
@@ -322,6 +336,7 @@ function refreshLocalLibrary(showStatus){
   }
   return false;
 }
+window.AHREFRESH_LOCAL_LIBRARY=function(){return refreshLocalLibrary(true);};
 function openWeb(url){
   setStatus('OPEN WEB - '+url);
   var handed=false;
@@ -527,9 +542,14 @@ window.AHLOCAL_AUDIO_END=function(){
     var bytes=new Uint8Array(raw.length);
     for(var i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i)&255;
     var blob=new Blob([bytes],{type:mimeForName(nativeAudioName)});
+    var idx=tracks.length;
     addTrack(nativeAudioName,URL.createObjectURL(blob),true);
     nativeMp3Added++;
     nativeAudioParts=[];
+    if(nativeAudioAutoplay){
+      nativeAudioAutoplay=false;
+      loadTrack(idx,true);
+    }
     setStatus('PRIDANO - '+nativeAudioName);
   }catch(e){setStatus('AUDIO CHYBA');log(e.message);}
 };

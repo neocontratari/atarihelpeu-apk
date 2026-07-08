@@ -88,6 +88,7 @@ public class MainActivity extends Activity {
     private static final int PICK_FILE = 1;
     private static final int PICK_BRIDGE = 2;
     private static final int PICK_PS1_GAME = 7; // BUILD2SA2
+    private static final int PICK_AUDIO_PERMISSION = 14; // BUILD2SA13C14: local MP3/WAV library permissions
     private static final int PICK_TV_WEB_SCREEN = 13; // BUILD2SA13C9: whole-phone MediaProjection mirror
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
@@ -404,10 +405,60 @@ public class MainActivity extends Activity {
                 applyWebViewVisualMode(url, "tvWebYoutubeInApp");
                 web.loadUrl(url);
                 appendNativeLog("BUILD2SA13C13 YOUTUBE_IN_APP_OPEN url=" + url);
+                napTvWebScheduleYoutubeAudioBridge("openYoutubeInApp");
             } catch (Throwable t) {
                 appendNativeLog("BUILD2SA13C13 YOUTUBE_IN_APP_OPEN_FAIL " + safeMsg(t));
             }
         });
+    }
+
+    private void napTvWebScheduleYoutubeAudioBridge(String reason) {
+        if (web == null) return;
+        ui.postDelayed(() -> napTvWebInjectYoutubeAudioBridge(reason + ":900"), 900);
+        ui.postDelayed(() -> napTvWebInjectYoutubeAudioBridge(reason + ":2200"), 2200);
+        ui.postDelayed(() -> napTvWebInjectYoutubeAudioBridge(reason + ":5200"), 5200);
+    }
+
+    private void napTvWebInjectYoutubeAudioBridge(String reason) {
+        if (web == null) return;
+        try {
+            String js =
+                    "(function(){try{"
+                    + "if(window.__AHTV_YT_AUDIO_BRIDGE&&window.__AHTV_YT_AUDIO_BRIDGE.ok)return 'already';"
+                    + "var v=document.querySelector('video');"
+                    + "if(!v)return 'no_video';"
+                    + "var C=window.AudioContext||window.webkitAudioContext;"
+                    + "if(!C)return 'no_audio_context';"
+                    + "var ctx=window.__AHTV_YT_AUDIO_CTX||new C();window.__AHTV_YT_AUDIO_CTX=ctx;"
+                    + "try{if(ctx.resume)ctx.resume();}catch(_r){}"
+                    + "var src=v.__ahtvSrc||ctx.createMediaElementSource(v);v.__ahtvSrc=src;"
+                    + "var tap=ctx.createScriptProcessor(4096,2,2);"
+                    + "tap.onaudioprocess=function(e){try{"
+                    + "var input=e.inputBuffer,output=e.outputBuffer,frames=input.length;"
+                    + "var l=input.getChannelData(0),r=input.numberOfChannels>1?input.getChannelData(1):l;"
+                    + "for(var c=0;c<output.numberOfChannels;c++){var o=output.getChannelData(c),inp=c===0?l:r;for(var i=0;i<frames;i++)o[i]=inp[i];}"
+                    + "if(!window.AHTVWEB||!window.AHTVWEB.pushYoutubePcm16)return;"
+                    + "var bytes=new Uint8Array(frames*4),peak=0;"
+                    + "for(var i=0,j=0;i<frames;i++,j+=4){"
+                    + "var lv=Math.max(-1,Math.min(1,l[i])),rv=Math.max(-1,Math.min(1,r[i]));"
+                    + "peak=Math.max(peak,Math.abs(lv),Math.abs(rv));"
+                    + "var li=lv<0?Math.round(lv*32768):Math.round(lv*32767);"
+                    + "var ri=rv<0?Math.round(rv*32768):Math.round(rv*32767);"
+                    + "bytes[j]=li&255;bytes[j+1]=(li>>8)&255;bytes[j+2]=ri&255;bytes[j+3]=(ri>>8)&255;"
+                    + "}"
+                    + "if(peak<0.0005)return;"
+                    + "var s='',step=4096;for(var p=0;p<bytes.length;p+=step)s+=String.fromCharCode.apply(null,bytes.subarray(p,p+step));"
+                    + "window.AHTVWEB.pushYoutubePcm16(btoa(s),ctx.sampleRate||44100,frames|0,2);"
+                    + "}catch(_e){}};"
+                    + "src.connect(tap);tap.connect(ctx.destination);"
+                    + "window.__AHTV_YT_AUDIO_BRIDGE={ok:true,at:Date.now()};"
+                    + "document.addEventListener('click',function(){try{ctx.resume&&ctx.resume();}catch(_e){}},true);"
+                    + "return 'ok';"
+                    + "}catch(e){return 'fail '+(e&&e.message?e.message:e);}})()";
+            web.evaluateJavascript(js, value -> appendNativeLog("BUILD2SA13C14 YOUTUBE_AUDIO_BRIDGE reason=" + reason + " result=" + value));
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C14 YOUTUBE_AUDIO_BRIDGE_INJECT_FAIL " + safeMsg(t));
+        }
     }
 
     private void napTvWebRequestSystemMirror() {
@@ -994,6 +1045,20 @@ public class MainActivity extends Activity {
                 return e;
             }
         }
+        @JavascriptInterface public String pushYoutubePcm16(String b64, int sampleRate, int frames, int channels) {
+            try {
+                if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
+                if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
+                byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                if (channels <= 1) napTvWebAudioPushMonoPcm16Bytes(data, sampleRate, "YOUTUBE");
+                else napTvWebAudioPushStereoPcm16Bytes(data, sampleRate, "YOUTUBE");
+                return "TV_WEB_AUDIO_YOUTUBE_OK bytes=" + data.length + " frames=" + frames + " hz=" + sampleRate + " ch=" + channels;
+            } catch (Throwable t) {
+                String e = "TV_WEB_AUDIO_YOUTUBE_FAIL " + safeMsg(t);
+                appendNativeLog("BUILD2SA13C14 " + e);
+                return e;
+            }
+        }
     }
     private NativeInPlaceView nativeInPlaceView;
     private boolean nativeInPlaceEnabled = false;
@@ -1338,6 +1403,37 @@ public class MainActivity extends Activity {
         return n.endsWith(".mp3") || n.endsWith(".wav");
     }
 
+    private boolean napPlayerHasAudioPermission() {
+        if (Build.VERSION.SDK_INT < 23) return true;
+        try {
+            if (Build.VERSION.SDK_INT >= 33) {
+                return checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED;
+            }
+            return checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+        } catch (Throwable ignored) {
+            return true;
+        }
+    }
+
+    private void napPlayerRequestAudioPermission(String reason) {
+        if (Build.VERSION.SDK_INT < 23) return;
+        ui.post(() -> {
+            try {
+                if (napPlayerHasAudioPermission()) return;
+                if (Build.VERSION.SDK_INT >= 33) {
+                    requestPermissions(new String[]{Manifest.permission.READ_MEDIA_AUDIO}, PICK_AUDIO_PERMISSION);
+                } else if (Build.VERSION.SDK_INT < 29) {
+                    requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, PICK_AUDIO_PERMISSION);
+                } else {
+                    requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, PICK_AUDIO_PERMISSION);
+                }
+                appendNativeLog("BUILD2SA13C14 PLAYER_AUDIO_PERMISSION_REQUEST reason=" + reason + " sdk=" + Build.VERSION.SDK_INT);
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA13C14 PLAYER_AUDIO_PERMISSION_REQUEST_FAIL " + safeMsg(t));
+            }
+        });
+    }
+
     private void napPlayerAddAudioItem(ArrayList<NapPlayerAudioItem> out, HashSet<String> seen,
                                        String name, String uri, long size, long modified) {
         if (out == null || seen == null || uri == null || uri.length() == 0) return;
@@ -1373,6 +1469,10 @@ public class MainActivity extends Activity {
         ArrayList<NapPlayerAudioItem> items = new ArrayList<>();
         HashSet<String> seen = new HashSet<>();
         try {
+            if (!napPlayerHasAudioPermission()) {
+                napPlayerRequestAudioPermission("listLocalAudio");
+                return "{\"ok\":false,\"needsPermission\":true,\"error\":\"Povol pristup k hudbe v mobilu\",\"items\":[]}";
+            }
             String[] projection = new String[] {
                     MediaStore.Audio.Media._ID,
                     MediaStore.Audio.Media.DISPLAY_NAME,
@@ -1409,8 +1509,14 @@ public class MainActivity extends Activity {
             }
 
             napPlayerScanAudioDir(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), 2, items, seen);
+            napPlayerScanAudioDir(new File(Environment.getExternalStorageDirectory(), "Download"), 2, items, seen);
             napPlayerScanAudioDir(new File(Environment.getExternalStorageDirectory(), "Downloads"), 2, items, seen);
             napPlayerScanAudioDir(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), 2, items, seen);
+            napPlayerScanAudioDir(new File(Environment.getExternalStorageDirectory(), "Music"), 2, items, seen);
+            napPlayerScanAudioDir(new File(Environment.getExternalStorageDirectory(), "Documents"), 2, items, seen);
+            napPlayerScanAudioDir(new File(Environment.getExternalStorageDirectory(), "Podcasts"), 2, items, seen);
+            napPlayerScanAudioDir(new File(Environment.getExternalStorageDirectory(), "Ringtones"), 2, items, seen);
+            napPlayerScanAudioDir(new File(Environment.getExternalStorageDirectory(), "AtariHelp"), 3, items, seen);
             napPlayerScanAudioDir(getPublicAtariHelpDownloadsDir(), 2, items, seen);
 
             Collections.sort(items, new Comparator<NapPlayerAudioItem>() {
@@ -1458,6 +1564,36 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String listLocalAudio() {
             return napPlayerListLocalAudioJson();
+        }
+        @JavascriptInterface
+        public String requestAudioPermission() {
+            napPlayerRequestAudioPermission("js");
+            return napPlayerHasAudioPermission() ? "AUDIO_PERMISSION_OK" : "AUDIO_PERMISSION_REQUESTED";
+        }
+        @JavascriptInterface
+        public String playLocalAudio(String name, String uriText) {
+            try {
+                if (uriText == null || uriText.trim().length() == 0) return "LOCAL_AUDIO_EMPTY_URI";
+                final String safeName = (name == null || name.length() == 0) ? "audio" : name;
+                final String safeUri = uriText;
+                new Thread(() -> {
+                    try {
+                        Uri uri = Uri.parse(safeUri);
+                        byte[] bytes = readUriBytes(uri, 96 * 1024 * 1024);
+                        ui.post(() -> injectAudio(safeName, bytes));
+                        appendNativeLog("BUILD2SA13C14 PLAYER_LOCAL_AUDIO_LOAD_OK name=" + safeName + " bytes=" + bytes.length + " uri=" + compactUrl(safeUri));
+                    } catch (Throwable t) {
+                        String msg = "LOCAL AUDIO CHYBA - " + safeMsg(t);
+                        appendNativeLog("BUILD2SA13C14 PLAYER_LOCAL_AUDIO_LOAD_FAIL " + msg + " uri=" + compactUrl(safeUri));
+                        ui.post(() -> {
+                            try { if (web != null) web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote(msg) + ")", null); } catch (Throwable ignored) {}
+                        });
+                    }
+                }, "nap-player-local-audio").start();
+                return "LOCAL_AUDIO_LOADING";
+            } catch (Throwable t) {
+                return "LOCAL_AUDIO_FAIL " + safeMsg(t);
+            }
         }
         @JavascriptInterface
         public void openExternalUrl(String url) {
@@ -2881,10 +3017,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (Build.VERSION.SDK_INT >= 23 && Build.VERSION.SDK_INT < 29 &&
-                checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 10);
-        }
+        napPlayerRequestAudioPermission("startup");
         web = new WebView(this);
         // BUILD2RV: WebView must be transparent in landscape; HTML is controls-only over native C++ video.
         try { web.setBackgroundColor(Color.TRANSPARENT); } catch (Throwable ignored) {}
@@ -2957,6 +3090,7 @@ public class MainActivity extends Activity {
                 applyWebViewVisualMode(url, "onPageFinished");
                 stopNativeIfLeavingSega(url, "onPageFinished");
                 stopPs1IfLeaving(url, "onPageFinished");
+                if (isYoutubeUrl(url)) napTvWebScheduleYoutubeAudioBridge("onPageFinished");
                 if (pendingGame != null && url != null && url.startsWith(EMU_URL)) {
                     schedulePendingAtariGameInjection("onPageFinished");
                 }
@@ -3088,7 +3222,12 @@ public class MainActivity extends Activity {
     }
 
     private byte[] readUriBytes(Uri uri, int maxBytes) throws Exception {
-        InputStream in = getContentResolver().openInputStream(uri);
+        InputStream in;
+        if (uri != null && "file".equalsIgnoreCase(uri.getScheme())) {
+            in = new java.io.FileInputStream(new File(uri.getPath()));
+        } else {
+            in = getContentResolver().openInputStream(uri);
+        }
         if (in == null) throw new Exception("Nelze otevrit soubor");
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] buf = new byte[16384];
@@ -4804,6 +4943,20 @@ public class MainActivity extends Activity {
             return sb.toString();
         } catch (Throwable t) {
             return "audit_error=" + safeMsg(t);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PICK_AUDIO_PERMISSION) {
+            boolean ok = napPlayerHasAudioPermission();
+            appendNativeLog("BUILD2SA13C14 PLAYER_AUDIO_PERMISSION_RESULT ok=" + ok + " sdk=" + Build.VERSION.SDK_INT);
+            if (web != null) {
+                try {
+                    web.evaluateJavascript("try{if(typeof AHREFRESH_LOCAL_LIBRARY==='function')AHREFRESH_LOCAL_LIBRARY();}catch(e){}", null);
+                } catch (Throwable ignored) {}
+            }
         }
     }
 
