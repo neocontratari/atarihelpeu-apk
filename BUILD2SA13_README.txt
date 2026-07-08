@@ -31,6 +31,10 @@ BUILD2SA13C - TV WEB CAST FALLBACK (kdyz Smart View/Miracast pada):
 - BUILD2SA13C2 pouziva primarne MJPEG stream a na Androidu 8+ PixelCopy
   ze skutecneho okna. V obrazu je maly napis LIVE cas #frame PIXELCOPY/DRAW:
   kdyz se cas a cislo hybou, stream je zivy.
+- BUILD2SA13C3 pridava WEB AUDIO pro PS1/Sega: PCM16 stereo se rozbocuje
+  z AudioTrack cesty do /audio.raw a TV stranka ho prehrava pres WebAudio.
+  Na TV/PC strance potvrd tlacitko AUDIO OK nebo zmackni OK/Enter, jinak
+  muze prohlizec zvuk blokovat kvuli autoplay pravidlum.
 - Neni to pravy YouTube Cast receiver: bez Google Cast receiver aplikace
   Android appka nemuze sama spustit vlastni HTML/emulator na Chromecastu.
 - Markery: BUILD2SA13C TV_WEB_CAST_ON url=... / TV_WEB_CAST_OFF.

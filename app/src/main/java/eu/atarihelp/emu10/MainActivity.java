@@ -193,6 +193,11 @@ public class MainActivity extends Activity {
     private volatile boolean napTvWebPixelCopyPending = false;
     private HandlerThread napTvWebCopyThread;
     private Handler napTvWebCopyHandler;
+    private final Object napTvWebAudioLock = new Object();
+    private final byte[] napTvWebAudioRing = new byte[1024 * 1024];
+    private volatile long napTvWebAudioSeq = 0;
+    private volatile int napTvWebAudioRate = 44100;
+    private volatile long napTvWebAudioLastPushMs = 0;
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
             try {
@@ -271,6 +276,48 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void napTvWebAudioPush(short[] pcm, int offset, int shorts, int sampleRate, String source) {
+        if (!napTvWebRunning || pcm == null || shorts <= 0) return;
+        try {
+            int start = Math.max(0, offset);
+            int limit = Math.min(pcm.length, start + shorts);
+            if (((limit - start) & 1) != 0) limit--; // stereo alignment
+            if (limit <= start) return;
+            synchronized (napTvWebAudioLock) {
+                if (sampleRate > 8000 && sampleRate != napTvWebAudioRate) {
+                    napTvWebAudioRate = sampleRate;
+                    napTvWebAudioSeq = 0;
+                    appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_RATE source=" + source + " hz=" + sampleRate);
+                }
+                int cap = napTvWebAudioRing.length;
+                for (int i = start; i < limit; i++) {
+                    short v = pcm[i];
+                    int pos = (int)(napTvWebAudioSeq % cap);
+                    napTvWebAudioRing[pos] = (byte)(v & 0xFF);
+                    napTvWebAudioRing[(pos + 1) % cap] = (byte)((v >> 8) & 0xFF);
+                    napTvWebAudioSeq += 2;
+                }
+                napTvWebAudioLastPushMs = System.currentTimeMillis();
+            }
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C TV_WEB_AUDIO_PUSH_ERR " + safeMsg(t));
+        }
+    }
+
+    private long napTvWebQueryLong(String fullPath, String key, long fallback) {
+        try {
+            int q = fullPath == null ? -1 : fullPath.indexOf('?');
+            if (q < 0 || q + 1 >= fullPath.length()) return fallback;
+            String[] parts = fullPath.substring(q + 1).split("&");
+            for (String part : parts) {
+                int eq = part.indexOf('=');
+                String k = eq >= 0 ? part.substring(0, eq) : part;
+                if (key.equals(k)) return Long.parseLong(eq >= 0 ? part.substring(eq + 1) : "0");
+            }
+        } catch (Throwable ignored) {}
+        return fallback;
+    }
+
     private String napTvWebLocalIp() {
         String fallback = "";
         try {
@@ -327,7 +374,7 @@ public class MainActivity extends Activity {
             ui.removeCallbacks(napTvWebFrameTick);
             ui.post(napTvWebFrameTick);
             String url = napTvWebUrl();
-            appendNativeLog("BUILD2SA13C TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_pixelcopy maxSide=960 fpsApprox=18");
+            appendNativeLog("BUILD2SA13C TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_pixelcopy_webaudio maxSide=960 fpsApprox=18 audio=PCM16_STEREO");
             return "TV_WEB_CAST_OK " + url;
         } catch (Throwable t) {
             napTvWebRunning = false;
@@ -376,6 +423,7 @@ public class MainActivity extends Activity {
             String path = "/";
             int a = req.indexOf(' '), b = a < 0 ? -1 : req.indexOf(' ', a + 1);
             if (a >= 0 && b > a) path = req.substring(a + 1, b);
+            String fullPath = path;
             int q = path.indexOf('?');
             if (q >= 0) path = path.substring(0, q);
             if ("/".equals(path) || "/index.html".equals(path)) {
@@ -384,8 +432,10 @@ public class MainActivity extends Activity {
                 napTvWebWriteFrame(out);
             } else if ("/stream.mjpg".equals(path)) {
                 napTvWebWriteMjpeg(out);
+            } else if ("/audio.raw".equals(path)) {
+                napTvWebWriteAudioRaw(out, napTvWebQueryLong(fullPath, "after", -1));
             } else if ("/status".equals(path)) {
-                byte[] body = ("running=" + napTvWebRunning + " seq=" + napTvWebSeq + "\n").getBytes("UTF-8");
+                byte[] body = ("running=" + napTvWebRunning + " seq=" + napTvWebSeq + " audioSeq=" + napTvWebAudioSeq + " audioRate=" + napTvWebAudioRate + "\n").getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, false);
                 out.write(body);
             } else {
@@ -417,10 +467,14 @@ public class MainActivity extends Activity {
                 + "html,body{margin:0;width:100%;height:100%;background:#000;color:#9fdcff;font:16px monospace;overflow:hidden}"
                 + "#v{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000}"
                 + "#s{position:fixed;left:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.55);border-radius:4px}"
-                + "</style></head><body><img id='v' alt='AtariHelp TV'><div id='s'>AtariHelp TV WEB CAST</div>"
-                + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),n=0,fb=false;"
-                + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString();}"
+                + "#a{position:fixed;right:10px;bottom:8px;padding:8px 10px;background:rgba(10,30,40,.78);border:1px solid #64dfff;border-radius:5px;color:#dfffff;font:700 15px monospace}"
+                + "</style></head><body><img id='v' alt='AtariHelp TV'><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button'>AUDIO OK</button>"
+                + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,next=0,aseq=0,aon=false;"
+                + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
+                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C();if(ac.resume)ac.resume();next=ac.currentTime+0.20;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}"
+                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var ab=await r.arrayBuffer();if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(ac.destination);var now=ac.currentTime;if(next<now+0.07)next=now+0.12;src.start(next);next+=frames/rate;}}catch(e){}setTimeout(pollAudio,35);}"
+                + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
                 + "setInterval(function(){if(!fb)label('MJPEG');},1000);})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
@@ -442,6 +496,42 @@ public class MainActivity extends Activity {
         }
         napTvWebHeader(out, "200 OK", "image/jpeg", img.length, true);
         out.write(img);
+    }
+
+    private void napTvWebWriteAudioRaw(OutputStream out, long after) throws IOException {
+        byte[] body;
+        long start;
+        long end;
+        int rate;
+        long age;
+        synchronized (napTvWebAudioLock) {
+            end = napTvWebAudioSeq & ~3L;
+            rate = napTvWebAudioRate;
+            age = napTvWebAudioLastPushMs == 0 ? 999999 : (System.currentTimeMillis() - napTvWebAudioLastPushMs);
+            int cap = napTvWebAudioRing.length;
+            long oldest = Math.max(0, end - cap);
+            if (after >= oldest && after <= end) start = after & ~3L;
+            else start = Math.max(oldest, end - Math.max(8192, (rate * 4L) / 5L)) & ~3L;
+            long maxBytes = Math.min(65536L, Math.max(8192L, (rate * 4L) / 3L));
+            if (end - start > maxBytes) start = (end - maxBytes) & ~3L;
+            int len = (int)Math.max(0, end - start);
+            body = new byte[len];
+            for (int i = 0; i < len; i++) {
+                body[i] = napTvWebAudioRing[(int)((start + i) % cap)];
+            }
+        }
+        String h = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: application/octet-stream\r\n"
+                + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
+                + "Pragma: no-cache\r\n"
+                + "X-NAP-AUDIO-START: " + start + "\r\n"
+                + "X-NAP-AUDIO-SEQ: " + end + "\r\n"
+                + "X-NAP-AUDIO-RATE: " + rate + "\r\n"
+                + "X-NAP-AUDIO-AGE: " + age + "\r\n"
+                + "Content-Length: " + body.length + "\r\n"
+                + "Connection: close\r\n\r\n";
+        out.write(h.getBytes("ISO-8859-1"));
+        out.write(body);
     }
 
     private void napTvWebWriteMjpeg(OutputStream out) throws IOException {
@@ -961,6 +1051,7 @@ public class MainActivity extends Activity {
                         if (wr <= 0) break;
                         off += wr;
                     }
+                    if (off > 0) napTvWebAudioPush(pcm, 0, off, sampleRate, "SEGA");
                     loops++;
                 }
             } catch (Throwable t) {
@@ -3768,6 +3859,7 @@ public class MainActivity extends Activity {
             if (wr <= 0) break;
             off += wr;
         }
+        if (off > 0) napTvWebAudioPush(pcm, 0, off, 44100, "PS1");
         return off;
     }
     private void softenPs1Pcm(short[] pcm, int shorts) {
