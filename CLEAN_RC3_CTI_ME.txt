@@ -1,0 +1,15 @@
+﻿CLEAN_RC3 - jediny aktualni balik k testu
+
+Co opravuje:
+- TV WEB CAST po otevreni IP okamzite posle prvni obraz, aby stream nezustal prazdny.
+- Kdyz PixelCopy zustane viset, appka po cca 0.9 s spadne zpatky na DRAW snimek a stream pokracuje.
+- /status ukazuje frameAgeMs, takze poznas, jestli se obraz opravdu obnovuje.
+
+Test:
+1) Spust TV WEB CAST a otevri IP.
+2) Na TV/PC musi byt hned videt bud appka, nebo docasny AtariHelp TV WEB CAST obraz.
+3) Otevri /status. frameAgeMs by mel byt maly a seq se ma menit.
+4) YouTube testuj az potom: tlacitko YouTube vyzada povoleni sdileni obrazovky.
+
+GitHub Desktop:
+Tento balik neni dalsi pokus. Aktualni kod je CLEAN_RC3 / BUILD2SA13C11.
