@@ -259,14 +259,6 @@ public class MainActivity extends Activity {
 
     private void napTvWebPublishBitmap(Bitmap bm, String mode) {
         try {
-            Canvas stampCanvas = new Canvas(bm);
-            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-            p.setColor(0xCC000000);
-            stampCanvas.drawRect(6, 6, Math.min(bm.getWidth(), 250), 34, p);
-            p.setColor(0xFF7FE6FF);
-            p.setTextSize(18);
-            p.setFakeBoldText(true);
-            stampCanvas.drawText("LIVE " + nowStamp().substring(11, 19) + " #" + (napTvWebSeq + 1) + " " + mode, 12, 27, p);
             ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32768, bm.getWidth() * bm.getHeight() / 8));
             bm.compress(Bitmap.CompressFormat.JPEG, 62, bos);
             napTvWebJpeg = bos.toByteArray();
