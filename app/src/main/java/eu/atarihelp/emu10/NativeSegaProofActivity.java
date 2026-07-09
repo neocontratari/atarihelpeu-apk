@@ -454,7 +454,7 @@ public class NativeSegaProofActivity extends Activity {
     }
 
     public static class NativePatternView extends View {
-        private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+        private final Paint paint = new Paint();
         private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Handler handler = new Handler(Looper.getMainLooper());
         private Bitmap bmp;
@@ -484,6 +484,7 @@ public class NativeSegaProofActivity extends Activity {
         @Override protected void onAttachedToWindow() {
             super.onAttachedToWindow();
             handler.post(tick);
+            try { paint.setFilterBitmap(false); paint.setDither(false); } catch (Throwable ignored) {}
         }
 
         @Override protected void onDetachedFromWindow() {

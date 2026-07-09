@@ -235,8 +235,8 @@ public class MainActivity extends Activity {
     private volatile float napTvWebTrebleGain = 0f;
     private volatile float napTvWebBalance = 0f;
     private volatile float napTvWebVolume = 1f;
-    private volatile int napTvWebJpegQuality = 62;
-    private volatile int napTvWebFrameDelayMs = 55;
+    private volatile int napTvWebJpegQuality = 90;
+    private volatile int napTvWebFrameDelayMs = 45;
     private volatile String napTvWebVideoProfile = "AUTO";
     private MediaProjectionManager napTvWebProjectionManager;
     private MediaProjection napTvWebProjection;
@@ -268,10 +268,10 @@ public class MainActivity extends Activity {
                 if (napTvWebRunning && appCapture && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
                     int sw = rootFrame.getWidth(), sh = rootFrame.getHeight();
                     boolean landscape = sw > sh;
-                    int maxSide = landscape ? 760 : 1120;
-                    napTvWebJpegQuality = landscape ? 54 : 72;
-                    napTvWebFrameDelayMs = landscape ? 75 : 55;
-                    napTvWebVideoProfile = landscape ? "LANDSCAPE_FAST" : "PORTRAIT_HD";
+                    int maxSide = landscape ? 1600 : 1600;
+                    napTvWebJpegQuality = landscape ? 88 : 92;
+                    napTvWebFrameDelayMs = 45;
+                    napTvWebVideoProfile = landscape ? "LANDSCAPE_SHARP" : "PORTRAIT_SHARP";
                     float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
                     if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
@@ -299,8 +299,8 @@ public class MainActivity extends Activity {
                             && nowTick >= napTvWebPixelCopyDisabledUntilMs
                             && !playerAudioHot;
                     if (playerAudioHot) {
-                        napTvWebVideoProfile = "PLAYER_DRAW_SAFE";
-                        napTvWebFrameDelayMs = Math.max(napTvWebFrameDelayMs, 75);
+                        napTvWebVideoProfile = "PLAYER_DRAW_SHARP";
+                        napTvWebFrameDelayMs = Math.max(napTvWebFrameDelayMs, 55);
                     }
                     if (!didTimeoutFallback && pixelCopyAllowed) {
                         int[] loc = new int[2];
@@ -359,7 +359,7 @@ public class MainActivity extends Activity {
     private void napTvWebPublishBitmap(Bitmap bm, String mode) {
         try {
             ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32768, bm.getWidth() * bm.getHeight() / 8));
-            bm.compress(Bitmap.CompressFormat.JPEG, Math.max(35, Math.min(86, napTvWebJpegQuality)), bos);
+            bm.compress(Bitmap.CompressFormat.JPEG, Math.max(60, Math.min(95, napTvWebJpegQuality)), bos);
             napTvWebJpeg = bos.toByteArray();
             napTvWebSeq++;
             napTvWebLastFrameMs = System.currentTimeMillis();
@@ -388,7 +388,7 @@ public class MainActivity extends Activity {
             p.setTextSize(15);
             p.setColor(Color.rgb(120, 165, 190));
             cv.drawText(reason == null ? "START" : reason, 32, 164, p);
-            napTvWebJpegQuality = 72;
+            napTvWebJpegQuality = 90;
             napTvWebPublishBitmap(bm, "PLACEHOLDER");
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA13C11 TV_WEB_PLACEHOLDER_ERR " + safeMsg(t));
@@ -417,13 +417,13 @@ public class MainActivity extends Activity {
             napTvWebTrebleGain = napTvWebClampFloat(o.optDouble("treble", napTvWebTrebleGain), -12f, 12f);
             napTvWebBalance = napTvWebClampFloat(o.optDouble("balance", napTvWebBalance), -1f, 1f);
             napTvWebVolume = napTvWebClampFloat(o.optDouble("volume", napTvWebVolume), 0f, 1.4f);
-            appendNativeLog("BUILD2SA13C18 TV_WEB_SOUND_STATE eq="
+            appendNativeLog("BUILD2SA13C19 TV_WEB_SOUND_STATE eq="
                     + napTvWebEqGains[0] + "," + napTvWebEqGains[1] + "," + napTvWebEqGains[2] + "," + napTvWebEqGains[3] + "," + napTvWebEqGains[4]
                     + " bass=" + napTvWebBassGain + " treble=" + napTvWebTrebleGain
                     + " balance=" + napTvWebBalance + " volume=" + napTvWebVolume);
             return "TV_WEB_EQ_OK";
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA13C18 TV_WEB_SOUND_STATE_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA13C19 TV_WEB_SOUND_STATE_FAIL " + safeMsg(t));
             return "TV_WEB_EQ_FAIL " + safeMsg(t);
         }
     }
@@ -477,7 +477,7 @@ public class MainActivity extends Activity {
                     + ",AHTV_TREBLE=" + trebleJs
                     + ",AHTV_BAL=" + balanceJs
                     + ",AHTV_VOL=" + volumeJs + ";"
-                    + "var AHTV_STATE=window.__AHTV_YT_SOUND_STATE||{eq:(AHTV_EQ||[0,0,0,0,0]).slice(0),bass:AHTV_BASS||0,treble:AHTV_TREBLE||0,balance:AHTV_BAL||0,volume:(AHTV_VOL==null?1:AHTV_VOL)};window.__AHTV_YT_SOUND_STATE=AHTV_STATE;"
+                    + "var AHTV_STATE=window.__AHTV_YT_SOUND_STATE||{eq:[0,0,0,0,0],bass:0,treble:0,balance:0,volume:1};window.__AHTV_YT_SOUND_STATE=AHTV_STATE;"
                     + "function ahtvClamp(v,min,max){v=parseFloat(v);if(!isFinite(v))v=0;return Math.max(min,Math.min(max,v));}"
                     + "function ahtvSave(){try{if(window.AHTVWEB&&window.AHTVWEB.setSoundState)window.AHTVWEB.setSoundState(JSON.stringify(AHTV_STATE));}catch(_e){}}"
                     + "function ahtvApply(br){try{"
@@ -501,7 +501,7 @@ public class MainActivity extends Activity {
                     + "row('TREBLE',-12,12,.5,function(){return AHTV_STATE.treble||0;},function(v){AHTV_STATE.treble=v;});"
                     + "row('BALANCE',-1,1,.05,function(){return AHTV_STATE.balance||0;},function(v){AHTV_STATE.balance=v;});"
                     + "var bands=[['60',0],['250',1],['1K',2],['4K',3],['16K',4]];for(var bi=0;bi<bands.length;bi++){(function(n,i){row('EQ '+n,-12,12,.5,function(){return(AHTV_STATE.eq||[0,0,0,0,0])[i]||0;},function(v){AHTV_STATE.eq=AHTV_STATE.eq||[0,0,0,0,0];AHTV_STATE.eq[i]=v;});})(bands[bi][0],bands[bi][1]);}"
-                    + "var reset=d.createElement('button');reset.type='button';reset.textContent='RESET';reset.style.cssText='width:48%;margin-top:4px;padding:8px;background:#1b2a36;color:#fff;border:1px solid #3f5666;border-radius:6px;font:800 12px monospace;';"
+                    + "var reset=d.createElement('button');reset.type='button';reset.textContent='1:1 RESET';reset.style.cssText='width:48%;margin-top:4px;padding:8px;background:#1b2a36;color:#fff;border:1px solid #3f5666;border-radius:6px;font:800 12px monospace;';"
                     + "var close=d.createElement('button');close.type='button';close.textContent='ZAVRIT';close.style.cssText='width:48%;float:right;margin-top:4px;padding:8px;background:#1b2a36;color:#fff;border:1px solid #3f5666;border-radius:6px;font:800 12px monospace;';"
                     + "reset.onclick=function(e){stop(e);AHTV_STATE.eq=[0,0,0,0,0];AHTV_STATE.bass=0;AHTV_STATE.treble=0;AHTV_STATE.balance=0;AHTV_STATE.volume=1;ahtvApply(window.__AHTV_YT_AUDIO_BRIDGE);ahtvSave();try{btn.parentNode&&btn.parentNode.removeChild(btn);panel.parentNode&&panel.parentNode.removeChild(panel);}catch(_e){}ahtvInstallControls();};"
                     + "close.onclick=function(e){stop(e);panel.style.display='none';};panel.appendChild(reset);panel.appendChild(close);"
@@ -525,44 +525,40 @@ public class MainActivity extends Activity {
                     + "var treble=ctx.createBiquadFilter();treble.type='highshelf';treble.frequency.value=3500;treble.gain.value=0;node.connect(treble);node=treble;"
                     + "var pan=ctx.createStereoPanner?ctx.createStereoPanner():null,gain=ctx.createGain();gain.gain.value=1;"
                     + "if(pan){node.connect(pan);pan.connect(gain);}else{node.connect(gain);}"
-                    + "var tap=ctx.createScriptProcessor(2048,2,2);"
+                    + "var tap=ctx.createScriptProcessor(4096,2,2);"
                     + "window.__AHTV_YT_AUDIO_Q=window.__AHTV_YT_AUDIO_Q||[];"
                     + "window.__AHTV_YT_AUDIO_DRAIN=window.__AHTV_YT_AUDIO_DRAIN||setInterval(function(){try{"
                     + "var q=window.__AHTV_YT_AUDIO_Q||[];"
                     + "if(!q.length||!window.AHTVWEB||!window.AHTVWEB.pushYoutubePcm16)return;"
                     + "var n=Math.min(2,q.length);"
                     + "for(var qi=0;qi<n;qi++){var item=q.shift();window.AHTVWEB.pushYoutubePcm16(item.b64,item.rate,item.frames,2);}"
-                    + "if(q.length>10)q.splice(0,q.length-10);"
-                    + "}catch(_e){}},38);"
+                    + "if(q.length>8)q.splice(0,q.length-8);"
+                    + "}catch(_e){}},24);"
                     + "tap.onaudioprocess=function(e){try{"
                     + "var input=e.inputBuffer,output=e.outputBuffer,frames=input.length;"
                     + "var l=input.getChannelData(0),r=input.numberOfChannels>1?input.getChannelData(1):l;"
                     + "for(var c=0;c<output.numberOfChannels;c++){var o=output.getChannelData(c),inp=c===0?l:r;for(var i=0;i<frames;i++)o[i]=inp[i];}"
                     + "var q=window.__AHTV_YT_AUDIO_Q;if(!q)return;"
-                    + "var bytes=new Uint8Array(frames*4),peak=0;"
+                    + "var bytes=new Uint8Array(frames*4);"
                     + "for(var i=0,j=0;i<frames;i++,j+=4){"
-                    + "var lv=Math.max(-1,Math.min(1,l[i]*0.86)),rv=Math.max(-1,Math.min(1,r[i]*0.86));"
-                    + "peak=Math.max(peak,Math.abs(lv),Math.abs(rv));"
-                    + "if(Math.abs(lv)>0.94)lv=0.94*Math.tanh(lv/0.94);"
-                    + "if(Math.abs(rv)>0.94)rv=0.94*Math.tanh(rv/0.94);"
+                    + "var lv=Math.max(-1,Math.min(1,l[i])),rv=Math.max(-1,Math.min(1,r[i]));"
                     + "var li=lv<0?Math.round(lv*32768):Math.round(lv*32767);"
                     + "var ri=rv<0?Math.round(rv*32768):Math.round(rv*32767);"
                     + "bytes[j]=li&255;bytes[j+1]=(li>>8)&255;bytes[j+2]=ri&255;bytes[j+3]=(ri>>8)&255;"
                     + "}"
-                    + "if(peak<0.0005)return;"
                     + "var s='',step=4096;for(var p=0;p<bytes.length;p+=step)s+=String.fromCharCode.apply(null,bytes.subarray(p,p+step));"
                     + "q.push({b64:btoa(s),rate:ctx.sampleRate||44100,frames:frames|0});"
-                    + "if(q.length>16)q.splice(0,q.length-16);"
+                    + "if(q.length>12)q.splice(0,q.length-12);"
                     + "}catch(_e){}};"
                     + "gain.connect(tap);tap.connect(ctx.destination);"
                     + "var br={ok:true,at:Date.now(),video:v,filters:filters,bass:bass,treble:treble,pan:pan,gain:gain};"
                     + "window.__AHTV_YT_AUDIO_BRIDGE=br;ahtvApply(br);ahtvInstallControls();"
                     + "document.addEventListener('click',function(){try{ctx.resume&&ctx.resume();}catch(_e){}},true);"
-                    + "return 'ok_live_eq';"
+                    + "return 'ok_hifi_live_eq';"
                     + "}catch(e){return 'fail '+(e&&e.message?e.message:e);}})()";
-            web.evaluateJavascript(js, value -> appendNativeLog("BUILD2SA13C18 YOUTUBE_AUDIO_BRIDGE_LIVE_EQ reason=" + reason + " result=" + value));
+            web.evaluateJavascript(js, value -> appendNativeLog("BUILD2SA13C19 YOUTUBE_AUDIO_BRIDGE_HIFI reason=" + reason + " result=" + value));
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA13C18 YOUTUBE_AUDIO_BRIDGE_INJECT_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA13C19 YOUTUBE_AUDIO_BRIDGE_INJECT_FAIL " + safeMsg(t));
         }
     }
 
@@ -675,7 +671,7 @@ public class MainActivity extends Activity {
         if (img == null) return;
         try {
             long now = System.currentTimeMillis();
-            int delay = Math.max(45, napTvWebFrameDelayMs);
+            int delay = Math.max(40, napTvWebFrameDelayMs);
             if (now - napTvWebSystemLastFrameMs < delay) return;
             napTvWebSystemLastFrameMs = now;
             int w = img.getWidth();
@@ -695,9 +691,9 @@ public class MainActivity extends Activity {
             padded.copyPixelsFromBuffer(buf);
             Bitmap frame = (rowPixels == w) ? padded : Bitmap.createBitmap(padded, 0, 0, w, h);
             if (frame != padded) padded.recycle();
-            napTvWebJpegQuality = w > h ? 56 : 68;
-            napTvWebFrameDelayMs = w > h ? 60 : 55;
-            napTvWebVideoProfile = "SCREEN_FULL";
+            napTvWebJpegQuality = w > h ? 88 : 92;
+            napTvWebFrameDelayMs = 45;
+            napTvWebVideoProfile = "SCREEN_FULL_SHARP";
             napTvWebPublishBitmap(frame, "SCREEN");
             frame.recycle();
         } catch (Throwable t) {
@@ -899,7 +895,7 @@ public class MainActivity extends Activity {
             ui.removeCallbacks(napTvWebFrameTick);
             ui.post(napTvWebFrameTick);
             String url = napTvWebUrl();
-            appendNativeLog("BUILD2SA13C13 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_mp3_draw_safe_youtube_in_app audio=PCM16_STEREO");
+            appendNativeLog("BUILD2SA13C19 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_sharp_hifi_youtube_in_app audio=PCM16_STEREO");
             return "TV_WEB_CAST_OK " + url + " APP";
         } catch (Throwable t) {
             napTvWebRunning = false;
@@ -1005,15 +1001,15 @@ public class MainActivity extends Activity {
                 + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
                 + "<title>AtariHelp TV</title><style>"
                 + "html,body{margin:0;width:100%;height:100%;background:#000;color:#9fdcff;font:16px monospace;overflow:hidden}"
-                + "#v{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000}"
+                + "#v{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000;image-rendering:auto}"
                 + "#s{position:fixed;left:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.55);border-radius:4px}"
                 + "#a{position:fixed;right:10px;bottom:8px;padding:8px 10px;background:rgba(10,30,40,.78);border:1px solid #64dfff;border-radius:5px;color:#dfffff;font:700 15px monospace}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button'>AUDIO OK</button>"
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,next=0,aseq=0,aon=false;"
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
-                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'playback'});if(ac.resume)ac.resume();next=ac.currentTime+0.26;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}"
-                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var ab=await r.arrayBuffer();if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(ac.destination);var now=ac.currentTime;if(next<now+0.10)next=now+0.20;if(next>now+0.65)next=now+0.32;src.start(next);next+=frames/rate;}}catch(e){}setTimeout(pollAudio,48);}"
+                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'playback'});if(ac.resume)ac.resume();next=ac.currentTime+0.42;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}"
+                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var ab=await r.arrayBuffer();if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(ac.destination);var now=ac.currentTime;if(next<now+0.08)next=now+0.18;if(next>now+0.90)next=now+0.45;src.start(next);next+=frames/rate;}}catch(e){}setTimeout(pollAudio,32);}"
                 + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
                 + "setInterval(function(){if(!fb)label('MJPEG');},1000);})();</script></body></html>";
@@ -4258,7 +4254,8 @@ public class MainActivity extends Activity {
         appendNativeLog("BUILD2SB1 TV_OUTPUT_STOP why=" + why);
     }
     private void tvRenderLoop() {
-        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
+        android.graphics.Paint paint = new android.graphics.Paint();
+        try { paint.setFilterBitmap(false); paint.setDither(false); } catch (Throwable ignored) {}
         android.graphics.Bitmap bm = null;
         int lastW = 0, lastH = 0;
         long frames = 0;
