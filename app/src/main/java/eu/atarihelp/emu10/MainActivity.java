@@ -1439,8 +1439,10 @@ public class MainActivity extends Activity {
         if (out == null || seen == null || uri == null || uri.length() == 0) return;
         if (name == null || name.length() == 0) name = "audio";
         if (!napPlayerIsAudioName(name)) return;
-        if (seen.contains(uri)) return;
+        String key = name.toLowerCase(Locale.US) + "|" + size + "|" + modified;
+        if (seen.contains(uri) || seen.contains(key)) return;
         seen.add(uri);
+        seen.add(key);
         out.add(new NapPlayerAudioItem(name, uri, size, modified));
     }
 
@@ -1506,6 +1508,44 @@ public class MainActivity extends Activity {
                 appendNativeLog("BUILD2SA13C8 PLAYER_MEDIASTORE_SCAN_ERR " + safeMsg(t));
             } finally {
                 try { if (c != null) c.close(); } catch (Throwable ignored) {}
+            }
+
+            try {
+                Uri filesUri = MediaStore.Files.getContentUri("external");
+                String[] fileProjection = new String[] {
+                        MediaStore.Files.FileColumns._ID,
+                        MediaStore.Files.FileColumns.DISPLAY_NAME,
+                        MediaStore.Files.FileColumns.SIZE,
+                        MediaStore.Files.FileColumns.DATE_MODIFIED,
+                        MediaStore.Files.FileColumns.MIME_TYPE
+                };
+                Cursor fc = null;
+                try {
+                    fc = getContentResolver().query(filesUri, fileProjection, null, null, null);
+                    if (fc != null) {
+                        int idCol = fc.getColumnIndex(MediaStore.Files.FileColumns._ID);
+                        int nameCol = fc.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME);
+                        int sizeCol = fc.getColumnIndex(MediaStore.Files.FileColumns.SIZE);
+                        int modCol = fc.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED);
+                        int mimeCol = fc.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE);
+                        while (fc.moveToNext() && items.size() < 500) {
+                            long id = idCol >= 0 ? fc.getLong(idCol) : -1L;
+                            String name = nameCol >= 0 ? fc.getString(nameCol) : null;
+                            String mime = mimeCol >= 0 ? fc.getString(mimeCol) : "";
+                            boolean audioMime = mime != null && mime.toLowerCase(Locale.US).startsWith("audio/");
+                            if (id < 0 || (!napPlayerIsAudioName(name) && !audioMime)) continue;
+                            if (!napPlayerIsAudioName(name)) name = "audio_file_" + id + ".mp3";
+                            long size = sizeCol >= 0 ? fc.getLong(sizeCol) : 0L;
+                            long modified = modCol >= 0 ? fc.getLong(modCol) : 0L;
+                            Uri uri = ContentUris.withAppendedId(filesUri, id);
+                            napPlayerAddAudioItem(items, seen, name, uri.toString(), size, modified);
+                        }
+                    }
+                } finally {
+                    try { if (fc != null) fc.close(); } catch (Throwable ignored) {}
+                }
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA13C15 PLAYER_MEDIASTORE_FILES_SCAN_ERR " + safeMsg(t));
             }
 
             napPlayerScanAudioDir(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), 2, items, seen);
