@@ -230,6 +230,11 @@ public class MainActivity extends Activity {
     private volatile int napTvWebAudioRate = 44100;
     private volatile long napTvWebAudioLastPushMs = 0;
     private volatile String napTvWebAudioSource = "NONE";
+    private final float[] napTvWebEqGains = new float[]{0f, 0f, 0f, 0f, 0f};
+    private volatile float napTvWebBassGain = 0f;
+    private volatile float napTvWebTrebleGain = 0f;
+    private volatile float napTvWebBalance = 0f;
+    private volatile float napTvWebVolume = 1f;
     private volatile int napTvWebJpegQuality = 62;
     private volatile int napTvWebFrameDelayMs = 55;
     private volatile String napTvWebVideoProfile = "AUTO";
@@ -393,6 +398,45 @@ public class MainActivity extends Activity {
         }
     }
 
+    private float napTvWebClampFloat(double v, float min, float max) {
+        if (Double.isNaN(v) || Double.isInfinite(v)) return min;
+        return (float)Math.max(min, Math.min(max, v));
+    }
+
+    private synchronized String napTvWebSetSoundStateJson(String json) {
+        try {
+            if (json == null || json.length() == 0) return "TV_WEB_EQ_EMPTY";
+            org.json.JSONObject o = new org.json.JSONObject(json);
+            org.json.JSONArray eq = o.optJSONArray("eq");
+            if (eq != null) {
+                for (int i = 0; i < napTvWebEqGains.length && i < eq.length(); i++) {
+                    napTvWebEqGains[i] = napTvWebClampFloat(eq.optDouble(i, 0.0), -12f, 12f);
+                }
+            }
+            napTvWebBassGain = napTvWebClampFloat(o.optDouble("bass", napTvWebBassGain), -12f, 12f);
+            napTvWebTrebleGain = napTvWebClampFloat(o.optDouble("treble", napTvWebTrebleGain), -12f, 12f);
+            napTvWebBalance = napTvWebClampFloat(o.optDouble("balance", napTvWebBalance), -1f, 1f);
+            napTvWebVolume = napTvWebClampFloat(o.optDouble("volume", napTvWebVolume), 0f, 1.4f);
+            appendNativeLog("BUILD2SA13C17 TV_WEB_SOUND_STATE eq="
+                    + napTvWebEqGains[0] + "," + napTvWebEqGains[1] + "," + napTvWebEqGains[2] + "," + napTvWebEqGains[3] + "," + napTvWebEqGains[4]
+                    + " bass=" + napTvWebBassGain + " treble=" + napTvWebTrebleGain
+                    + " balance=" + napTvWebBalance + " volume=" + napTvWebVolume);
+            return "TV_WEB_EQ_OK";
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA13C17 TV_WEB_SOUND_STATE_FAIL " + safeMsg(t));
+            return "TV_WEB_EQ_FAIL " + safeMsg(t);
+        }
+    }
+
+    private synchronized String napTvWebEqJsArray() {
+        return "[" + String.format(Locale.US, "%.3f,%.3f,%.3f,%.3f,%.3f",
+                napTvWebEqGains[0], napTvWebEqGains[1], napTvWebEqGains[2], napTvWebEqGains[3], napTvWebEqGains[4]) + "]";
+    }
+
+    private String napTvWebFloatJs(float v) {
+        return String.format(Locale.US, "%.3f", v);
+    }
+
     private void napTvWebOpenYoutubeInApp() {
         final String url = "https://m.youtube.com/";
         napTvWebStart();
@@ -422,16 +466,40 @@ public class MainActivity extends Activity {
     private void napTvWebInjectYoutubeAudioBridge(String reason) {
         if (web == null) return;
         try {
+            final String eqJs = napTvWebEqJsArray();
+            final String bassJs = napTvWebFloatJs(napTvWebBassGain);
+            final String trebleJs = napTvWebFloatJs(napTvWebTrebleGain);
+            final String balanceJs = napTvWebFloatJs(napTvWebBalance);
+            final String volumeJs = napTvWebFloatJs(napTvWebVolume);
             String js =
-                    "(function(){try{"
-                    + "if(window.__AHTV_YT_AUDIO_BRIDGE&&window.__AHTV_YT_AUDIO_BRIDGE.ok)return 'already';"
+                    "(function(){try{var AHTV_EQ=" + eqJs
+                    + ",AHTV_BASS=" + bassJs
+                    + ",AHTV_TREBLE=" + trebleJs
+                    + ",AHTV_BAL=" + balanceJs
+                    + ",AHTV_VOL=" + volumeJs + ";"
+                    + "function ahtvApply(br){try{"
+                    + "var eg=AHTV_EQ||[0,0,0,0,0];"
+                    + "if(br.filters){for(var i=0;i<br.filters.length;i++){br.filters[i].gain.value=eg[i]||0;}}"
+                    + "if(br.bass)br.bass.gain.value=AHTV_BASS||0;"
+                    + "if(br.treble)br.treble.gain.value=AHTV_TREBLE||0;"
+                    + "if(br.pan)br.pan.pan.value=Math.max(-1,Math.min(1,AHTV_BAL||0));"
+                    + "if(br.gain)br.gain.gain.value=Math.max(0,Math.min(1.4,AHTV_VOL==null?1:AHTV_VOL));"
+                    + "}catch(_e){}}"
                     + "var v=document.querySelector('video');"
                     + "if(!v)return 'no_video';"
+                    + "var old=window.__AHTV_YT_AUDIO_BRIDGE;"
+                    + "if(old&&old.ok&&old.video===v){ahtvApply(old);return 'updated_eq';}"
                     + "var C=window.AudioContext||window.webkitAudioContext;"
                     + "if(!C)return 'no_audio_context';"
                     + "var ctx=window.__AHTV_YT_AUDIO_CTX||new C();window.__AHTV_YT_AUDIO_CTX=ctx;"
                     + "try{if(ctx.resume)ctx.resume();}catch(_r){}"
                     + "var src=v.__ahtvSrc||ctx.createMediaElementSource(v);v.__ahtvSrc=src;"
+                    + "var freqs=[60,250,1000,4000,16000],filters=[],node=src;"
+                    + "for(var fi=0;fi<freqs.length;fi++){var biq=ctx.createBiquadFilter();biq.type='peaking';biq.frequency.value=freqs[fi];biq.Q.value=1.0;biq.gain.value=0;node.connect(biq);node=biq;filters.push(biq);}"
+                    + "var bass=ctx.createBiquadFilter();bass.type='lowshelf';bass.frequency.value=180;bass.gain.value=0;node.connect(bass);node=bass;"
+                    + "var treble=ctx.createBiquadFilter();treble.type='highshelf';treble.frequency.value=3500;treble.gain.value=0;node.connect(treble);node=treble;"
+                    + "var pan=ctx.createStereoPanner?ctx.createStereoPanner():null,gain=ctx.createGain();gain.gain.value=1;"
+                    + "if(pan){node.connect(pan);pan.connect(gain);}else{node.connect(gain);}"
                     + "var tap=ctx.createScriptProcessor(2048,2,2);"
                     + "window.__AHTV_YT_AUDIO_Q=window.__AHTV_YT_AUDIO_Q||[];"
                     + "window.__AHTV_YT_AUDIO_DRAIN=window.__AHTV_YT_AUDIO_DRAIN||setInterval(function(){try{"
@@ -461,14 +529,15 @@ public class MainActivity extends Activity {
                     + "q.push({b64:btoa(s),rate:ctx.sampleRate||44100,frames:frames|0});"
                     + "if(q.length>16)q.splice(0,q.length-16);"
                     + "}catch(_e){}};"
-                    + "src.connect(tap);tap.connect(ctx.destination);"
-                    + "window.__AHTV_YT_AUDIO_BRIDGE={ok:true,at:Date.now()};"
+                    + "gain.connect(tap);tap.connect(ctx.destination);"
+                    + "var br={ok:true,at:Date.now(),video:v,filters:filters,bass:bass,treble:treble,pan:pan,gain:gain};"
+                    + "window.__AHTV_YT_AUDIO_BRIDGE=br;ahtvApply(br);"
                     + "document.addEventListener('click',function(){try{ctx.resume&&ctx.resume();}catch(_e){}},true);"
                     + "return 'ok';"
                     + "}catch(e){return 'fail '+(e&&e.message?e.message:e);}})()";
-            web.evaluateJavascript(js, value -> appendNativeLog("BUILD2SA13C16 YOUTUBE_AUDIO_BRIDGE_CLEANER reason=" + reason + " result=" + value));
+            web.evaluateJavascript(js, value -> appendNativeLog("BUILD2SA13C17 YOUTUBE_AUDIO_BRIDGE_EQ reason=" + reason + " result=" + value));
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA13C16 YOUTUBE_AUDIO_BRIDGE_INJECT_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA13C17 YOUTUBE_AUDIO_BRIDGE_INJECT_FAIL " + safeMsg(t));
         }
     }
 
@@ -1022,6 +1091,12 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public String youtube() {
             return youtubeInApp();
+        }
+        @JavascriptInterface public String setSoundState(String json) {
+            return napTvWebSetSoundStateJson(json);
+        }
+        @JavascriptInterface public String setPlayerSound(String json) {
+            return napTvWebSetSoundStateJson(json);
         }
         @JavascriptInterface public String screen() {
             napTvWebRequestSystemMirror();

@@ -252,6 +252,8 @@ var nativeMp3Added=0, nativeAudioName='', nativeAudioParts=[];
 var nativeAudioAutoplay=false;
 var eqFreq=[60,250,1000,4000,16000];
 var soundState={eq:[0,0,0,0,0], bass:0, treble:0, balance:0, volume:1};
+var tvSoundSyncTimer=0;
+var tvSoundLastJson='';
 
 function log(t){try{console.log('[NAP PLAYER] '+t);}catch(e){}}
 function setStatus(t){status.textContent=t;log(t);}
@@ -424,6 +426,21 @@ function applySoundState(){
   if(gainNode) gainNode.gain.value=soundState.volume;
   audio.volume=soundState.volume;
   updateVisuals();
+  syncTvWebSoundState(false);
+}
+function syncTvWebSoundState(force){
+  function send(){
+    try{
+      if(!window.AHTVWEB || typeof window.AHTVWEB.setSoundState!=='function') return;
+      var json=JSON.stringify(soundState);
+      if(json===tvSoundLastJson && !force) return;
+      tvSoundLastJson=json;
+      window.AHTVWEB.setSoundState(json);
+    }catch(e){ log('TV WEB SOUND sync chyba: '+(e&&e.message)); }
+  }
+  try{ if(tvSoundSyncTimer) clearTimeout(tvSoundSyncTimer); }catch(_e){}
+  if(force) send();
+  else tvSoundSyncTimer=setTimeout(send,90);
 }
 function resetSoundState(){
   soundState={eq:[0,0,0,0,0], bass:0, treble:0, balance:0, volume:1};
@@ -633,6 +650,7 @@ document.getElementById('btnRec').onclick=function(){setStatus('RECORD • PRIPR
 document.getElementById('btnYoutube').onclick=function(e){
   e.preventDefault(); e.stopPropagation();
   try{
+    syncTvWebSoundState(true);
     if(window.AHTVWEB && typeof window.AHTVWEB.youtubeInApp==='function'){
       setStatus('YOUTUBE - OTVIRAM V APCE');
       window.AHTVWEB.youtubeInApp();
@@ -663,7 +681,7 @@ audio.onended=function(){
 
 updateVisuals();
 renderPlaylist();
-log('BUILD2SA13C16: RC8 cleaner YouTube audio bridge + local audio MediaStore.Files scan.');
+log('BUILD2SA13C17: RC9 YouTube audio EQ bridge + local audio MediaStore.Files scan.');
 })();
 </script>
 </body>
