@@ -432,32 +432,43 @@ public class MainActivity extends Activity {
                     + "var ctx=window.__AHTV_YT_AUDIO_CTX||new C();window.__AHTV_YT_AUDIO_CTX=ctx;"
                     + "try{if(ctx.resume)ctx.resume();}catch(_r){}"
                     + "var src=v.__ahtvSrc||ctx.createMediaElementSource(v);v.__ahtvSrc=src;"
-                    + "var tap=ctx.createScriptProcessor(4096,2,2);"
+                    + "var tap=ctx.createScriptProcessor(2048,2,2);"
+                    + "window.__AHTV_YT_AUDIO_Q=window.__AHTV_YT_AUDIO_Q||[];"
+                    + "window.__AHTV_YT_AUDIO_DRAIN=window.__AHTV_YT_AUDIO_DRAIN||setInterval(function(){try{"
+                    + "var q=window.__AHTV_YT_AUDIO_Q||[];"
+                    + "if(!q.length||!window.AHTVWEB||!window.AHTVWEB.pushYoutubePcm16)return;"
+                    + "var n=Math.min(2,q.length);"
+                    + "for(var qi=0;qi<n;qi++){var item=q.shift();window.AHTVWEB.pushYoutubePcm16(item.b64,item.rate,item.frames,2);}"
+                    + "if(q.length>10)q.splice(0,q.length-10);"
+                    + "}catch(_e){}},38);"
                     + "tap.onaudioprocess=function(e){try{"
                     + "var input=e.inputBuffer,output=e.outputBuffer,frames=input.length;"
                     + "var l=input.getChannelData(0),r=input.numberOfChannels>1?input.getChannelData(1):l;"
                     + "for(var c=0;c<output.numberOfChannels;c++){var o=output.getChannelData(c),inp=c===0?l:r;for(var i=0;i<frames;i++)o[i]=inp[i];}"
-                    + "if(!window.AHTVWEB||!window.AHTVWEB.pushYoutubePcm16)return;"
+                    + "var q=window.__AHTV_YT_AUDIO_Q;if(!q)return;"
                     + "var bytes=new Uint8Array(frames*4),peak=0;"
                     + "for(var i=0,j=0;i<frames;i++,j+=4){"
-                    + "var lv=Math.max(-1,Math.min(1,l[i])),rv=Math.max(-1,Math.min(1,r[i]));"
+                    + "var lv=Math.max(-1,Math.min(1,l[i]*0.86)),rv=Math.max(-1,Math.min(1,r[i]*0.86));"
                     + "peak=Math.max(peak,Math.abs(lv),Math.abs(rv));"
+                    + "if(Math.abs(lv)>0.94)lv=0.94*Math.tanh(lv/0.94);"
+                    + "if(Math.abs(rv)>0.94)rv=0.94*Math.tanh(rv/0.94);"
                     + "var li=lv<0?Math.round(lv*32768):Math.round(lv*32767);"
                     + "var ri=rv<0?Math.round(rv*32768):Math.round(rv*32767);"
                     + "bytes[j]=li&255;bytes[j+1]=(li>>8)&255;bytes[j+2]=ri&255;bytes[j+3]=(ri>>8)&255;"
                     + "}"
                     + "if(peak<0.0005)return;"
                     + "var s='',step=4096;for(var p=0;p<bytes.length;p+=step)s+=String.fromCharCode.apply(null,bytes.subarray(p,p+step));"
-                    + "window.AHTVWEB.pushYoutubePcm16(btoa(s),ctx.sampleRate||44100,frames|0,2);"
+                    + "q.push({b64:btoa(s),rate:ctx.sampleRate||44100,frames:frames|0});"
+                    + "if(q.length>16)q.splice(0,q.length-16);"
                     + "}catch(_e){}};"
                     + "src.connect(tap);tap.connect(ctx.destination);"
                     + "window.__AHTV_YT_AUDIO_BRIDGE={ok:true,at:Date.now()};"
                     + "document.addEventListener('click',function(){try{ctx.resume&&ctx.resume();}catch(_e){}},true);"
                     + "return 'ok';"
                     + "}catch(e){return 'fail '+(e&&e.message?e.message:e);}})()";
-            web.evaluateJavascript(js, value -> appendNativeLog("BUILD2SA13C14 YOUTUBE_AUDIO_BRIDGE reason=" + reason + " result=" + value));
+            web.evaluateJavascript(js, value -> appendNativeLog("BUILD2SA13C16 YOUTUBE_AUDIO_BRIDGE_CLEANER reason=" + reason + " result=" + value));
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA13C14 YOUTUBE_AUDIO_BRIDGE_INJECT_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA13C16 YOUTUBE_AUDIO_BRIDGE_INJECT_FAIL " + safeMsg(t));
         }
     }
 
@@ -907,8 +918,8 @@ public class MainActivity extends Activity {
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,next=0,aseq=0,aon=false;"
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
-                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C();if(ac.resume)ac.resume();next=ac.currentTime+0.20;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}"
-                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var ab=await r.arrayBuffer();if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(ac.destination);var now=ac.currentTime;if(next<now+0.07)next=now+0.14;src.start(next);next+=frames/rate;}}catch(e){}setTimeout(pollAudio,65);}"
+                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'playback'});if(ac.resume)ac.resume();next=ac.currentTime+0.26;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}"
+                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var ab=await r.arrayBuffer();if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(ac.destination);var now=ac.currentTime;if(next<now+0.10)next=now+0.20;if(next>now+0.65)next=now+0.32;src.start(next);next+=frames/rate;}}catch(e){}setTimeout(pollAudio,48);}"
                 + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
                 + "setInterval(function(){if(!fb)label('MJPEG');},1000);})();</script></body></html>";
@@ -1055,7 +1066,7 @@ public class MainActivity extends Activity {
                 return "TV_WEB_AUDIO_YOUTUBE_OK bytes=" + data.length + " frames=" + frames + " hz=" + sampleRate + " ch=" + channels;
             } catch (Throwable t) {
                 String e = "TV_WEB_AUDIO_YOUTUBE_FAIL " + safeMsg(t);
-                appendNativeLog("BUILD2SA13C14 " + e);
+                appendNativeLog("BUILD2SA13C16 " + e);
                 return e;
             }
         }
