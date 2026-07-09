@@ -26,7 +26,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnLoad{left:60.0%;top:82.7%;width:17.5%;height:12.9%;}
 #btnSave{left:79.1%;top:82.7%;width:17.5%;height:12.9%;}
 #fileInput{display:none;}
-#ps1Screen{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:pixelated;display:none;pointer-events:none;}
+#ps1Screen{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:auto;display:none;pointer-events:none;}
 .dpadVis,.psBtn{display:none;pointer-events:none;}
 #btnL1,#btnL2,#btnR1,#btnR2{display:none;}
 .dpadKnob{display:none;pointer-events:none;}
@@ -475,7 +475,7 @@ function ensurePs1ScreenAndPoll(){
   if(!window.__napPs1Screen){
     var mon=$('psMonitor');
     if(mon){var im=document.createElement('img');im.id='ps1Screen';
-      im.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:pixelated;display:none;pointer-events:none;';
+      im.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:auto;display:none;pointer-events:none;';
       try{var cs=getComputedStyle(mon);if(cs.position==='static')mon.style.position='relative';}catch(_){ }
       mon.appendChild(im);window.__napPs1Screen=im;
       window.__napPs1FramePoll=setInterval(function(){
