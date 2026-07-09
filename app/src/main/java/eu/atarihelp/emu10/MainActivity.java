@@ -417,13 +417,13 @@ public class MainActivity extends Activity {
             napTvWebTrebleGain = napTvWebClampFloat(o.optDouble("treble", napTvWebTrebleGain), -12f, 12f);
             napTvWebBalance = napTvWebClampFloat(o.optDouble("balance", napTvWebBalance), -1f, 1f);
             napTvWebVolume = napTvWebClampFloat(o.optDouble("volume", napTvWebVolume), 0f, 1.4f);
-            appendNativeLog("BUILD2SA13C17 TV_WEB_SOUND_STATE eq="
+            appendNativeLog("BUILD2SA13C18 TV_WEB_SOUND_STATE eq="
                     + napTvWebEqGains[0] + "," + napTvWebEqGains[1] + "," + napTvWebEqGains[2] + "," + napTvWebEqGains[3] + "," + napTvWebEqGains[4]
                     + " bass=" + napTvWebBassGain + " treble=" + napTvWebTrebleGain
                     + " balance=" + napTvWebBalance + " volume=" + napTvWebVolume);
             return "TV_WEB_EQ_OK";
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA13C17 TV_WEB_SOUND_STATE_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA13C18 TV_WEB_SOUND_STATE_FAIL " + safeMsg(t));
             return "TV_WEB_EQ_FAIL " + safeMsg(t);
         }
     }
@@ -477,18 +477,43 @@ public class MainActivity extends Activity {
                     + ",AHTV_TREBLE=" + trebleJs
                     + ",AHTV_BAL=" + balanceJs
                     + ",AHTV_VOL=" + volumeJs + ";"
+                    + "var AHTV_STATE=window.__AHTV_YT_SOUND_STATE||{eq:(AHTV_EQ||[0,0,0,0,0]).slice(0),bass:AHTV_BASS||0,treble:AHTV_TREBLE||0,balance:AHTV_BAL||0,volume:(AHTV_VOL==null?1:AHTV_VOL)};window.__AHTV_YT_SOUND_STATE=AHTV_STATE;"
+                    + "function ahtvClamp(v,min,max){v=parseFloat(v);if(!isFinite(v))v=0;return Math.max(min,Math.min(max,v));}"
+                    + "function ahtvSave(){try{if(window.AHTVWEB&&window.AHTVWEB.setSoundState)window.AHTVWEB.setSoundState(JSON.stringify(AHTV_STATE));}catch(_e){}}"
                     + "function ahtvApply(br){try{"
-                    + "var eg=AHTV_EQ||[0,0,0,0,0];"
+                    + "var st=window.__AHTV_YT_SOUND_STATE||AHTV_STATE;var eg=st.eq||[0,0,0,0,0];"
                     + "if(br.filters){for(var i=0;i<br.filters.length;i++){br.filters[i].gain.value=eg[i]||0;}}"
-                    + "if(br.bass)br.bass.gain.value=AHTV_BASS||0;"
-                    + "if(br.treble)br.treble.gain.value=AHTV_TREBLE||0;"
-                    + "if(br.pan)br.pan.pan.value=Math.max(-1,Math.min(1,AHTV_BAL||0));"
-                    + "if(br.gain)br.gain.gain.value=Math.max(0,Math.min(1.4,AHTV_VOL==null?1:AHTV_VOL));"
+                    + "if(br.bass)br.bass.gain.value=st.bass||0;"
+                    + "if(br.treble)br.treble.gain.value=st.treble||0;"
+                    + "if(br.pan)br.pan.pan.value=ahtvClamp(st.balance||0,-1,1);"
+                    + "if(br.gain)br.gain.gain.value=ahtvClamp(st.volume==null?1:st.volume,0,1.4);"
                     + "}catch(_e){}}"
+                    + "function ahtvInstallControls(){try{"
+                    + "if(document.getElementById('ahtvEqBtn'))return;"
+                    + "var d=document,stop=function(e){try{e.stopPropagation();}catch(_e){}};"
+                    + "var btn=d.createElement('button');btn.id='ahtvEqBtn';btn.type='button';btn.textContent='EQ';"
+                    + "btn.style.cssText='position:fixed;right:8px;bottom:84px;z-index:2147483647;background:#06131d;color:#9ee9ff;border:1px solid #71d9ff;border-radius:8px;padding:9px 11px;font:800 13px monospace;box-shadow:0 0 16px #000;opacity:.95;';"
+                    + "var panel=d.createElement('div');panel.id='ahtvEqPanel';panel.style.cssText='display:none;position:fixed;left:8px;right:8px;bottom:132px;max-height:58vh;overflow:auto;z-index:2147483647;background:rgba(2,9,15,.96);color:#d8f6ff;border:1px solid #71d9ff;border-radius:8px;padding:10px 11px;font:700 12px monospace;box-shadow:0 0 24px #000;';"
+                    + "var head=d.createElement('div');head.textContent='LIVE YOUTUBE EQ';head.style.cssText='color:#ffe07a;font-size:14px;margin-bottom:8px;';panel.appendChild(head);"
+                    + "function row(name,min,max,step,get,set){var w=d.createElement('div');w.style.cssText='margin:7px 0 10px;';var l=d.createElement('div');l.textContent=name;var val=d.createElement('span');val.style.cssText='float:right;color:#fff;';l.appendChild(val);var inp=d.createElement('input');inp.type='range';inp.min=min;inp.max=max;inp.step=step;inp.value=get();inp.style.cssText='width:100%;accent-color:#71d9ff;';function upd(){var n=ahtvClamp(inp.value,min,max);set(n);val.textContent=(name==='VOL'?n.toFixed(2):n.toFixed(1));ahtvApply(window.__AHTV_YT_AUDIO_BRIDGE);ahtvSave();}inp.oninput=upd;upd();w.appendChild(l);w.appendChild(inp);panel.appendChild(w);}"
+                    + "row('VOL',0,1.4,.01,function(){return AHTV_STATE.volume==null?1:AHTV_STATE.volume;},function(v){AHTV_STATE.volume=v;});"
+                    + "row('BASS',-12,12,.5,function(){return AHTV_STATE.bass||0;},function(v){AHTV_STATE.bass=v;});"
+                    + "row('TREBLE',-12,12,.5,function(){return AHTV_STATE.treble||0;},function(v){AHTV_STATE.treble=v;});"
+                    + "row('BALANCE',-1,1,.05,function(){return AHTV_STATE.balance||0;},function(v){AHTV_STATE.balance=v;});"
+                    + "var bands=[['60',0],['250',1],['1K',2],['4K',3],['16K',4]];for(var bi=0;bi<bands.length;bi++){(function(n,i){row('EQ '+n,-12,12,.5,function(){return(AHTV_STATE.eq||[0,0,0,0,0])[i]||0;},function(v){AHTV_STATE.eq=AHTV_STATE.eq||[0,0,0,0,0];AHTV_STATE.eq[i]=v;});})(bands[bi][0],bands[bi][1]);}"
+                    + "var reset=d.createElement('button');reset.type='button';reset.textContent='RESET';reset.style.cssText='width:48%;margin-top:4px;padding:8px;background:#1b2a36;color:#fff;border:1px solid #3f5666;border-radius:6px;font:800 12px monospace;';"
+                    + "var close=d.createElement('button');close.type='button';close.textContent='ZAVRIT';close.style.cssText='width:48%;float:right;margin-top:4px;padding:8px;background:#1b2a36;color:#fff;border:1px solid #3f5666;border-radius:6px;font:800 12px monospace;';"
+                    + "reset.onclick=function(e){stop(e);AHTV_STATE.eq=[0,0,0,0,0];AHTV_STATE.bass=0;AHTV_STATE.treble=0;AHTV_STATE.balance=0;AHTV_STATE.volume=1;ahtvApply(window.__AHTV_YT_AUDIO_BRIDGE);ahtvSave();try{btn.parentNode&&btn.parentNode.removeChild(btn);panel.parentNode&&panel.parentNode.removeChild(panel);}catch(_e){}ahtvInstallControls();};"
+                    + "close.onclick=function(e){stop(e);panel.style.display='none';};panel.appendChild(reset);panel.appendChild(close);"
+                    + "btn.onclick=function(e){stop(e);panel.style.display=panel.style.display==='none'?'block':'none';};"
+                    + "['click','pointerdown','touchstart','touchmove'].forEach(function(ev){btn.addEventListener(ev,stop,false);panel.addEventListener(ev,stop,false);});"
+                    + "(d.body||d.documentElement).appendChild(btn);(d.body||d.documentElement).appendChild(panel);"
+                    + "}catch(_e){}}"
+                    + "ahtvInstallControls();"
                     + "var v=document.querySelector('video');"
                     + "if(!v)return 'no_video';"
                     + "var old=window.__AHTV_YT_AUDIO_BRIDGE;"
-                    + "if(old&&old.ok&&old.video===v){ahtvApply(old);return 'updated_eq';}"
+                    + "if(old&&old.ok&&old.video===v){ahtvApply(old);return 'updated_live_eq';}"
                     + "var C=window.AudioContext||window.webkitAudioContext;"
                     + "if(!C)return 'no_audio_context';"
                     + "var ctx=window.__AHTV_YT_AUDIO_CTX||new C();window.__AHTV_YT_AUDIO_CTX=ctx;"
@@ -531,13 +556,13 @@ public class MainActivity extends Activity {
                     + "}catch(_e){}};"
                     + "gain.connect(tap);tap.connect(ctx.destination);"
                     + "var br={ok:true,at:Date.now(),video:v,filters:filters,bass:bass,treble:treble,pan:pan,gain:gain};"
-                    + "window.__AHTV_YT_AUDIO_BRIDGE=br;ahtvApply(br);"
+                    + "window.__AHTV_YT_AUDIO_BRIDGE=br;ahtvApply(br);ahtvInstallControls();"
                     + "document.addEventListener('click',function(){try{ctx.resume&&ctx.resume();}catch(_e){}},true);"
-                    + "return 'ok';"
+                    + "return 'ok_live_eq';"
                     + "}catch(e){return 'fail '+(e&&e.message?e.message:e);}})()";
-            web.evaluateJavascript(js, value -> appendNativeLog("BUILD2SA13C17 YOUTUBE_AUDIO_BRIDGE_EQ reason=" + reason + " result=" + value));
+            web.evaluateJavascript(js, value -> appendNativeLog("BUILD2SA13C18 YOUTUBE_AUDIO_BRIDGE_LIVE_EQ reason=" + reason + " result=" + value));
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA13C17 YOUTUBE_AUDIO_BRIDGE_INJECT_FAIL " + safeMsg(t));
+            appendNativeLog("BUILD2SA13C18 YOUTUBE_AUDIO_BRIDGE_INJECT_FAIL " + safeMsg(t));
         }
     }
 
