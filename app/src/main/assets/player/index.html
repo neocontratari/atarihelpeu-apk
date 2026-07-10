@@ -389,6 +389,7 @@ function setupTvWebAudioTap(node){
 
 function initAudioGraph(){
   if(ctx) return;
+  log('AUDIO GRAF: stavim az ted (prvni pouziti zvukoveho ovladace) - do teto chvile hral original');
   try{
     ctx=new (window.AudioContext||window.webkitAudioContext)();
     source=ctx.createMediaElementSource(audio);
@@ -470,7 +471,9 @@ function loadTrack(i,autoplay){
   if(autoplay) play();
 }
 function play(){
-  initAudioGraph();
+  /* BUILD2SA15: ORIGINAL FIRST - zadny audio graf pri prehravani.
+     MP3 hraje 100% nedotcene primo z <audio> elementu. Graf (EQ/basy/vysky/
+     balance/TV odboc) se postavi AZ kdyz sahnes na zvukovy ovladac. */
   if(ctx && ctx.state==='suspended') ctx.resume();
   if(!tracks.length){openPlaylistPanel(); pickFiles(); return;}
   if(active<0) loadTrack(0,false);
