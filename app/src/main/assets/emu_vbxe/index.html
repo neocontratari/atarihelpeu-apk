@@ -2705,7 +2705,12 @@ function Atari130XE(osRom, basicRom, CPUctor){
       if(m===1){
         const lo=dlFetch(), hi=dlFetch();
         if(ins&0x40){ antic.done=true; antic.dlist=(hi<<8)|lo; return; } // JVB
-        antic.dlptr=(hi<<8)|lo; continue;                                  // JMP
+        // BUILD2SB2: realny ANTIC DL JMP spotrebuje jeden scanline (blank radka) a respektuje DLI bit.
+        // Bez toho je spodek obrazu o 1 radku na kazdy mid-screen JMP vys a VCOUNT-dispatch DLI kernely
+        // (Decathlon: CMP #$6D/BEQ pro spodni scroller) padaji do default vetve -> zamrzly scroll/panel.
+        antic.dlptr=(hi<<8)|lo;
+        antic.mode=0; antic.rowsLeft=1; antic.dli=!!(ins&0x80);
+        return;                                                            // JMP = 1 blank line jako na HW
       }
       if(ins&0x40){ const lo=dlFetch(), hi=dlFetch(); antic.lms=(hi<<8)|lo; }
       antic.mode=m; const md=MODE[m];
@@ -6995,6 +7000,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     log('AtariHelp.eu EMU-10 BUILD2KL_WSYNC_HBLANK_GTIA11_G2F_CORE pripraven - navazuje na KK. Oprava podle logu: PMG uz je blokovane, ale obraz se nehnul, tedy chyba je v zakladnim GTIA/G2F rastru. WSYNC ted pousti CPU do HBLANK casti radky pro pripravu dalsiho scanline a GTIA11 ma opravenou barvu podle COLBK hue/luma. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KI_CPU_IO_WRITE_CYCLE_GTIA_RASTER_CORE pripraven - hlubsi raster rez po KH: GTIA/ANTIC/PMG zapisy do D0xx/D4xx uz maji cas skutecneho 6502 write-cyklu, ne zacatek instrukce. Cil: G2F/Postcard svisle pruhy a obecny DLI/PMG timing; Night Driver/Decathlon zatim nelakuji jako hotove. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KH_DEEP_GTIA_PMG_VDELAY_OVERLAP_CORE pripraven - skutecny dalsi rez po neuspesnem KG. Postcard/G2F: opraven VDELAY jako predchozi DMA radka podle dodane dokumentace + GTIA PRIOR bit5 player-overlap barva. Night Driver/Decathlon nelakuji jako hotove. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
+    log('BUILD2SB2 ANTIC DL JMP SCANLINE: mid-screen JMP v display listu nyni spotrebuje 1 scanline a respektuje DLI bit (jako realny ANTIC). Overeno headless: Decathlon WELCOME/THE MOST IMPORTANT vertikalni scroll + spodni credits scroll bezi, posledni DLI cte VCOUNT=$6D. Zadny hack na jmeno hry.');
     log('AtariHelp.eu EMU-10 BUILD2KF_DOC_GUIDED_NIGHTDRIVER_AUDIO_STRIPE_PASS pripraven - navazuje na KE/KB/JZ/JX. Night Driver: obsahovy SR stripe filtr podle XDL/transparent pravidel + robustni AudioContext resume pro POKEY/GTIA zvuk. Decathlon PMBASE hack z KD zustava pryc; bez dalsiho slepeho rezu. Commando Arnold, Mission, Tetris chraneno. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KB_PLAIN_RENDER_LOCK_NO_IO_BREAK_SAFE pripraven - oprava po KA: nepotvrzene/weak-IO hry maji zamceny jen VBXE XDL/render overlay, ale D640/D740 IO uz nelamu ani nevracim tvrde $FF. Cil: vratit Mission po intru do hry, zachovat Commando Arnold ANO + hra ANO. KODY JSOU STEJNE.');
     log('AtariHelp.eu EMU-10 BUILD2KA_PLAIN_PROGRAM_VBXE_LOCK_MISSION_SAFE pripraven - navazuje na JZ/JX uspech. Commando Arnold cesta zustava, ale nepotvrzene/weak-IO hry dostaly trvaly VBXE plain-lock, aby Mission/Decathlon nemohly nahodne zapnout XDL/MAP z D640/D740 sumu. KODY JSOU STEJNE.');

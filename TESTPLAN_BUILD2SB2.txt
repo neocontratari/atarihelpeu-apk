@@ -1,0 +1,49 @@
+BUILD2SB2 - ATARI RENDER: ANTIC DL JMP SCANLINE FIX - TEST PLAN
+================================================================
+Zmeneny soubor: app/src/main/assets/emu_vbxe/index.html
+(prekopirovat pres stavajici, prebuildit APK, zadne dalsi zmeny)
+
+KORENOVA PRICINA (nalezena headless behem Decathlonu v Node.js)
+Realny ANTIC spotrebuje na instrukci JMP v display listu JEDEN scanline
+(prazdna radka) a respektuje na ni DLI bit. Nas motor JMP provadel okamzite.
+Decathlon ma v DL dva mid-screen JMPy -> spodni cast obrazu byla o 2 radky
+vys -> DLI dispatcher hry (vetveni podle VCOUNT, presna rovnost CMP #$6D)
+padal do default vetve -> kernel spodniho credits scrolleru nikdy nebezel
+-> a horni WELCOME panel je hrou podmineny pozici spodniho scrolleru
+(CMP $093A,#$7B), takze stal taky. Jedna chyba, cela kaskada.
+POZNAMKA K HANDOFFU: grafp latch + VDELAY cesty (kroky z handoffu) jsem
+proveril - jsou v poradku; dira byla v ANTIC DL casovani, ne v PM renderu.
+
+CO SE ZMENILO (1 misto v nextInstr, zadny hack na jmeno hry)
+JMP (ne JVB) nyni: nastavi dlptr na cil, vykresli 1 blank radku,
+respektuje DLI bit. JVB beze zmeny.
+
+OVERENO HEADLESS (Node.js, primo tento soubor, 6000 snimku Decathlonu):
+- VSCROL prochazi 0-7 (predtim trvale 0) = WELCOME/THE MOST IMPORTANT
+  vertikalni scroll BEZI
+- spodni credits radek: 121 ruznych LMS pozic (predtim 1) = scroll BEZI
+- posledni DLI cte VCOUNT=$6D presne, jak hra vyzaduje
+
+TEST NA ZARIZENI
+A) Decathlon: titulka musi scrollovat WELCOME -> THE MOST IMPORTANT...
+   (porovnat s Altirra referenci). Nechat bezet 2 minuty attract.
+B) Decathlon gameplay: START, rozbehnout - telo/nohy bezce KOMPLETNI
+   (DLI kernely ted sedi na spravnych radcich; pokud jeste neco zbyva,
+   nahrat novy PM audit log - bude to uz jina, mensi dira).
+C) Popeye VBXE: nahrat, zkontrolovat hraci pole. Popeye tu nebyl k
+   dispozici na headless test; pokud jeho DL taky pouziva mid-screen JMP
+   + VCOUNT dispatch, muze ho tento fix opravit taky. Kdyz ne, poslat
+   DL rozbor (mode bajty) - motor je na to pripraveny.
+D) REGRESE (povinne dle pravidel): Tetris, Commando Arnold, Mission,
+   Night Driver, Postcard/G2F. Mid-screen JMP ted pridava 1 radku jako
+   na realnem HW - hry s presne ladenym DL se mohou posunout o 1-2 radky
+   (to je KOREKTNI chovani), ale kontrolovat DLI barvy/rozdeleni.
+E) V logu emulatoru musi byt radka "BUILD2SB2 ANTIC DL JMP SCANLINE"
+   (dukaz, ze overlay je aktivni).
+
+KILL-SWITCH
+Vratit predchozi index.html (BUILD2SA17/BUILD2KH) a prebuildit.
+Zmena je jen v jednom souboru.
+
+DALSI KROK (samostatny overlay, nemichat): prejmenovani fake-fast ->
+TURBO_LOAD + prepinac autenticke rychlosti (bod 4 handoffu).
