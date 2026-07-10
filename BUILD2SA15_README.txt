@@ -22,3 +22,21 @@ rychlosti pribalim do Atari fixu, at je to jedna Atari smena.
 TEST: 1) MP3: pustit skladbu BEZ sahnuti na EQ - musi znit presne jako
 v jinem prehravaci; pak pohnout basy - graf se postavi (log) a funguje.
 2) YT: bez EQ = original. 3) Poslat Atari seznam + Decathlon log.
+
+===== SA16 DOPLNKY (10.7.) =====
+1) EQ PANEL CITELNY: plne nepruhledne pozadi (uz neprosvita YouTube),
+   kazdy radek = popisek vlevo / HODNOTA vpravo s pevnou sirkou (nikdy
+   se neusekne) / posuvnik pres celou sirku pod nimi. Vetsi pismo, ram.
+2) ATARI SONDA HOTOVA (na zaklade tvych dvou her):
+   - GRAFP/GRAFM (prime zapisy sprite registru) = 0 vyskytu v motoru
+     -> NEIMPLEMENTOVANO. Presne typ diry, ktery odpovida "telo jinde
+     nez nohy" (Decathlon) - stejny druh nalezu jako VDP blank u Segy.
+   - HSCROL (jemny scroll pro "Welcome" text) existuje (35 vyskytu),
+     ale Decathlon ho zjevne pouziva zpusobem, ktery ma diru - potrebuji
+     debug log z bezici hry.
+   - Popeye (chybi zebriky/plosiny pri viditelnych postavickach) =
+     priznak diry v prioritach/hracim poli (PRIOR/CHBASE cesta).
+   DALSI ATARI SMENA (rekni "jedem atari"): implementace GRAFP/GRAFM +
+   VDELAY overeni + oprava rezimu podle debug logu z Decathlonu a Popeye
+   + prejmenovani fake-fast -> TURBO_LOAD + prepinac autenticke rychlosti.
+   Obe hry mam od tebe ulozene jako testovaci pripady.
