@@ -1,0 +1,37 @@
+BUILD2SB1 - TV MIRROR AUDIO FIX (chrceni) - TEST PLAN
+=====================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(prekopirovat pres stavajici, prebuildit, zadne dalsi zmeny)
+
+CO SE ZMENILO
+1) Streamer (napTvWebWriteAudioRaw):
+   - resync uz neskace 0.8 s zpet, jen maly polstar ~0.25 s pred konec
+   - kazdy nespojity strih (resync i orez pri velkem zpozdeni TV) posila
+     hlavicku X-NAP-AUDIO-DISCONTINUITY: 1
+2) TV klient (stranka servirovana z telefonu):
+   - jitter buffer: zvuk se planuje 350 ms dopredu (scheduled AudioContext
+     buffery), zadne prehravani hned po prijeti
+   - pri discontinuity (hlavicka NEBO nesedici sekvence NEBO dochazejici
+     polstar) fade-out 10 ms -> novy polstar -> fade-in, misto tvrdeho lepeni
+   - odstranene stare tvrde resety casu (next=now+0.20 / now+0.32), ktere
+     zpusobovaly prekryvy a diry = praskani
+
+TEST (podle handoffu)
+A) Zakladni: pustit YT hudbu, zapnout TV mirror, na TV kliknout AUDIO OK.
+   Poslouchat 5 minut v kuse. Kriterium: ANI JEDNO prasknuti/chrcnuti.
+B) Zatezovy: behem prehravani na telefonu chvili scrollovat/prepnout appku
+   a vratit se (vyvola zpozdeni TV pollingu). Kriterium: max. kratke tiche
+   "prehoupnuti" (fade), zadne prasknuti.
+C) Restart zvuku: na TV strance F5 (reload), znovu AUDIO OK. Kriterium:
+   zvuk nabehne do ~1 s, cisty.
+D) Regrese obrazu: MJPEG stream i JPEG fallback beze zmeny (nedotceno).
+
+KILL-SWITCH
+Pri jakekoli pochybe vratit predchozi MainActivity.java (BUILD2SA17)
+a prebuildit - zmena je jen v jednom souboru, zadna migrace dat.
+
+POZNAMKA
+Hlavicka X-NAP-AUDIO-DISCONTINUITY je pridana navic, stary klient ji
+ignoruje; novy klient funguje i proti staremu streameru (detekce podle
+sekvence X-NAP-AUDIO-START). Obe strany jsou ale v jednom souboru,
+takze se nasazuji spolu.

@@ -1016,11 +1016,12 @@ public class MainActivity extends Activity {
                 + "#s{position:fixed;left:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.55);border-radius:4px}"
                 + "#a{position:fixed;right:10px;bottom:8px;padding:8px 10px;background:rgba(10,30,40,.78);border:1px solid #64dfff;border-radius:5px;color:#dfffff;font:700 15px monospace}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button'>AUDIO OK</button>"
-                + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,next=0,aseq=0,aon=false;"
+                + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[];" // BUILD2SB1
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
-                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'playback'});if(ac.resume)ac.resume();next=ac.currentTime+0.26;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}"
-                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var ab=await r.arrayBuffer();if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(ac.destination);var now=ac.currentTime;if(next<now+0.10)next=now+0.20;if(next>now+0.65)next=now+0.32;src.start(next);next+=frames/rate;}}catch(e){}setTimeout(pollAudio,48);}"
+                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'playback'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+0.35;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
+                + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+0.36;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
+                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||(!isNaN(st)&&expected>0&&st!==expected)||next<now+0.05)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+0.36;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,50);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
                 + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
                 + "setInterval(function(){if(!fb)label('MJPEG');},1000);})();</script></body></html>";
@@ -1047,21 +1048,37 @@ public class MainActivity extends Activity {
     }
 
     private void napTvWebWriteAudioRaw(OutputStream out, long after) throws IOException {
+        // BUILD2SB1 (fix TV audio chrceni, strana A - streamer):
+        // 1) resync uz neskace 0.8 s zpet, ale jen na maly polstar ~0.25 s pred konec ringu
+        // 2) KAZDY nespojity strih (resync i orez pres maxBytes) se ohlasi hlavickou
+        //    X-NAP-AUDIO-DISCONTINUITY: 1, aby TV klient udelal fade misto tvrdeho lepeni
         byte[] body;
         long start;
         long end;
         int rate;
         long age;
+        boolean discontinuity;
         synchronized (napTvWebAudioLock) {
             end = napTvWebAudioSeq & ~3L;
             rate = napTvWebAudioRate;
             age = napTvWebAudioLastPushMs == 0 ? 999999 : (System.currentTimeMillis() - napTvWebAudioLastPushMs);
             int cap = napTvWebAudioRing.length;
             long oldest = Math.max(0, end - cap);
-            if (after >= oldest && after <= end) start = after & ~3L;
-            else start = Math.max(oldest, end - Math.max(8192, (rate * 4L) / 5L)) & ~3L;
+            if (after >= 0 && after >= oldest && after <= end) {
+                start = after & ~3L;
+                discontinuity = false;
+            } else {
+                // maly polstar: ~0.25 s pri 16bit stereo (rate*4 bajtu/s -> rate bajtu = 1/4 s)
+                long pad = Math.max(8192L, (long) rate) & ~3L;
+                start = Math.max(oldest, end - pad) & ~3L;
+                discontinuity = true;
+            }
             long maxBytes = Math.min(65536L, Math.max(8192L, (rate * 4L) / 3L));
-            if (end - start > maxBytes) start = (end - maxBytes) & ~3L;
+            if (end - start > maxBytes) {
+                // klient zaostal vic nez maxBytes: orez = taky nespojity strih, ohlasit
+                start = (end - maxBytes) & ~3L;
+                discontinuity = true;
+            }
             int len = (int)Math.max(0, end - start);
             body = new byte[len];
             for (int i = 0; i < len; i++) {
@@ -1076,6 +1093,7 @@ public class MainActivity extends Activity {
                 + "X-NAP-AUDIO-SEQ: " + end + "\r\n"
                 + "X-NAP-AUDIO-RATE: " + rate + "\r\n"
                 + "X-NAP-AUDIO-AGE: " + age + "\r\n"
+                + "X-NAP-AUDIO-DISCONTINUITY: " + (discontinuity ? 1 : 0) + "\r\n" // BUILD2SB1
                 + "Content-Length: " + body.length + "\r\n"
                 + "Connection: close\r\n\r\n";
         out.write(h.getBytes("ISO-8859-1"));
