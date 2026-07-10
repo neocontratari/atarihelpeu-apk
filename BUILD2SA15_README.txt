@@ -40,3 +40,24 @@ v jinem prehravaci; pak pohnout basy - graf se postavi (log) a funguje.
    VDELAY overeni + oprava rezimu podle debug logu z Decathlonu a Popeye
    + prejmenovani fake-fast -> TURBO_LOAD + prepinac autenticke rychlosti.
    Obe hry mam od tebe ulozene jako testovaci pripady.
+
+===== SA17 DOPLNKY (finalni tohoto balicku) =====
+1) YT ZVUK 1:1 GARANCE: v EQ panelu nove ZELENE tlacitko "1:1 ORIGINAL".
+   Technicka pravda bez lakovani: jakmile se audio graf JEDNOU postavi
+   (prvnim otevrenim EQ), prohlizec ho neumi "odpojit" - i v neutralu
+   zustava zvuk routovany pres graf (temer, ale ne matematicky presne
+   1:1). Tlacitko 1:1 ORIGINAL: vynuluje vse, ulozi a ZNOVU NACTE stranku
+   -> graf je pryc, zvuk je garantovane bit-perfect original.
+   A pokud EQ vubec neotevres, hraje original od zacatku (SA14/15).
+2) ATARI - KOREKCE MEHO NALEZU (poctivost): GRAFP/GRAFM i VDELAY v motoru
+   JSOU (muj vcerejsi grep mel chybny vzor - moje chyba). Registry se
+   ukladaji; otazka je vykreslovaci cast. Motor uz ma zabudovany PM audit
+   (BUILD2JT), ktery presne tohle meri.
+   => PROSIM: spust Decathlon a pak Popeye, u kazdeho chvili hraj
+   a uloz VBXE DEBUG LOG (oba posli). V logu budou BUILD2JT PM REG radky
+   s GRACTL/DMACTL/GRAF stavem - ty mi reknou PRESNE, kterou cestou hry
+   sprity kresli a kde je dira. Pak prijde chirurgicky fix render cesty
+   + TURBO_LOAD prejmenovani + prepinac autenticke rychlosti - jedna
+   Atari smena, podlozena tvymi logy. Obe hry mam jako testovaci pripady.
+TEST: YT -> otevri EQ -> pohni posuvniky -> 1:1 ORIGINAL -> stranka se
+znovu nacte a zvuk je presne jako v Chromu. MP3 stejne (bez EQ = original).
