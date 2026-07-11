@@ -56,11 +56,11 @@ body{display:flex;flex-direction:column;align-items:center;padding:10px 8px 24px
 .tBtn:active{transform:translateY(1px);}
 
 /* rady EQ knobu (svisle mini slidery) */
-.eqRow{display:flex;gap:8px;justify-content:space-around;margin-bottom:10px;}
-.mini{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;}
-.miniName{font:800 9px "Courier New",monospace;color:#c79a4a;letter-spacing:1px;}
-.miniVal{font:900 9px "Courier New",monospace;color:#8fd8ff;height:11px;}
-.miniTrack{position:relative;width:26px;height:96px;border-radius:7px;background:linear-gradient(180deg,#241a0c,#0c0906);border:1px solid rgba(242,196,100,.28);touch-action:none;overflow:hidden;}
+.eqRow{display:flex;gap:3px;justify-content:space-between;margin-bottom:10px;}
+.mini{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0;}
+.miniName{font:800 8px "Courier New",monospace;color:#c79a4a;letter-spacing:0;white-space:nowrap;}
+.miniVal{font:900 8px "Courier New",monospace;color:#8fd8ff;height:10px;}
+.miniTrack{position:relative;width:100%;max-width:22px;height:92px;border-radius:6px;background:linear-gradient(180deg,#241a0c,#0c0906);border:1px solid rgba(242,196,100,.28);touch-action:none;overflow:hidden;}
 .miniLeds{position:absolute;inset:4px 9px;display:flex;flex-direction:column-reverse;gap:1px;pointer-events:none;}
 .miniLeds i{flex:1;border-radius:1px;background:#3a2c14;}
 .miniLeds i.lit{background:#ffb43c;box-shadow:0 0 4px rgba(255,180,60,.8);}
@@ -124,8 +124,8 @@ body{display:flex;flex-direction:column;align-items:center;padding:10px 8px 24px
   .platter{height:56px;margin-bottom:8px;}
   .transport{margin-bottom:8px;}
   .tBtn{padding:12px 0;font-size:12px;}     /* vetsi na prst */
-  .eqRow{margin-bottom:8px;}
-  .miniTrack{height:78px;width:30px;}       /* sirsi pro palec */
+  .eqRow{margin-bottom:8px;gap:2px;}
+  .miniTrack{height:74px;max-width:24px;}       /* 10 pasem na sirku */
   .bigTrack{height:92px;width:40px;}
   .centerCol{width:150px;}
   .xfTrack{height:52px;}                     /* siroky crossfader na palec */
@@ -268,13 +268,16 @@ body{display:flex;flex-direction:column;align-items:center;padding:10px 8px 24px
   var ctx=null;
   function ac(){ if(!ctx){ ctx=new (window.AudioContext||window.webkitAudioContext)(); } if(ctx.state==='suspended')ctx.resume(); return ctx; }
 
+  // BUILD2SG1: 10-pasmovy EQ na kazdy deck (Hi-Fi frekvence)
+  var DJ_EQ_FREQ=[31,62,125,250,500,1000,2000,4000,8000,16000];
+
   // stav jednoho decku
   function makeDeck(id){
     return {
       id:id, audio:new Audio(), src:null, name:'— prázdný —',
-      node:null, eqLow:null, eqMid:null, eqHigh:null, gain:null, xfGain:null, analyser:null,
+      node:null, eqBands:[], gain:null, xfGain:null, analyser:null,
       playing:false, tempo:0, gainv:0.8,
-      eq:{low:0,mid:0,high:0}, cuePoint:0, built:false
+      eq:[0,0,0,0,0,0,0,0,0,0], cuePoint:0, built:false
     };
   }
   var A=makeDeck('A'), B=makeDeck('B');
@@ -286,20 +289,59 @@ body{display:flex;flex-direction:column;align-items:center;padding:10px 8px 24px
     master=c.createGain(); master.gain.value=1;
     masterAnalyser=c.createAnalyser(); masterAnalyser.fftSize=256;
     master.connect(masterAnalyser); masterAnalyser.connect(c.destination);
+    setupDjTvTap(master); // BUILD2SH1: stream zvuku pultu na projektor
+  }
+
+  // ===== BUILD2SH1: TV WEB AUDIO TAP (stejny jako prehravac) =====
+  // Odchyti finalni mix (A+B) a posle ho pres AHTVWEB.pushPlayerPcm16
+  // do nativni vrstvy -> projektor. Bez toho pult na projektor nezni.
+  var djTvTap=null, djTvZero=null, djTvErrMs=0;
+  function clampAudio(v){ return v<-1?-1:(v>1?1:v); }
+  function setupDjTvTap(node){
+    if(djTvTap || !ctx || !node) return;
+    try{
+      djTvTap=ctx.createScriptProcessor(4096,2,2);
+      djTvZero=ctx.createGain(); djTvZero.gain.value=0;
+      djTvTap.onaudioprocess=function(ev){
+        try{
+          if(!window.AHTVWEB || typeof window.AHTVWEB.pushPlayerPcm16!=='function') return;
+          var input=ev.inputBuffer, frames=input.length;
+          if(!frames) return;
+          var l=input.getChannelData(0), r=input.numberOfChannels>1?input.getChannelData(1):l;
+          var bytes=new Uint8Array(frames*4);
+          for(var i=0,j=0;i<frames;i++,j+=4){
+            var lv=clampAudio(l[i]), rv=clampAudio(r[i]);
+            var li=lv<0?Math.round(lv*32768):Math.round(lv*32767);
+            var ri=rv<0?Math.round(rv*32768):Math.round(rv*32767);
+            bytes[j]=li&255; bytes[j+1]=(li>>8)&255; bytes[j+2]=ri&255; bytes[j+3]=(ri>>8)&255;
+          }
+          var s='', step=4096;
+          for(var p=0;p<bytes.length;p+=step) s+=String.fromCharCode.apply(null, bytes.subarray(p,p+step));
+          window.AHTVWEB.pushPlayerPcm16(btoa(s), (ctx&&ctx.sampleRate)||44100, frames|0, 2);
+        }catch(e){
+          var now=Date.now(); if(now-djTvErrMs>5000){ djTvErrMs=now; }
+        }
+      };
+      node.connect(djTvTap); djTvTap.connect(djTvZero); djTvZero.connect(ctx.destination);
+    }catch(e){}
   }
 
   function buildDeck(d){
     if(d.built) return;
     var c=ac(); buildMaster();
     try{ d.node=c.createMediaElementSource(d.audio); }catch(e){ /* uz pripojeny */ return; }
-    d.eqLow=c.createBiquadFilter(); d.eqLow.type='lowshelf'; d.eqLow.frequency.value=200;
-    d.eqMid=c.createBiquadFilter(); d.eqMid.type='peaking'; d.eqMid.frequency.value=1000; d.eqMid.Q.value=0.9;
-    d.eqHigh=c.createBiquadFilter(); d.eqHigh.type='highshelf'; d.eqHigh.frequency.value=3500;
+    // 10 peaking filtru za sebou
+    d.eqBands=[];
+    var node=d.node;
+    DJ_EQ_FREQ.forEach(function(f){
+      var biq=c.createBiquadFilter();
+      biq.type='peaking'; biq.frequency.value=f; biq.Q.value=1.1; biq.gain.value=0;
+      node.connect(biq); node=biq; d.eqBands.push(biq);
+    });
     d.gain=c.createGain(); d.gain.value=d.gainv;
     d.xfGain=c.createGain();
     d.analyser=c.createAnalyser(); d.analyser.fftSize=256;
-    d.node.connect(d.eqLow); d.eqLow.connect(d.eqMid); d.eqMid.connect(d.eqHigh);
-    d.eqHigh.connect(d.gain); d.gain.connect(d.analyser); d.analyser.connect(d.xfGain);
+    node.connect(d.gain); d.gain.connect(d.analyser); d.analyser.connect(d.xfGain);
     d.xfGain.connect(master);
     d.built=true;
     applyEq(d); applyXfade();
@@ -307,7 +349,7 @@ body{display:flex;flex-direction:column;align-items:center;padding:10px 8px 24px
 
   function applyEq(d){
     if(!d.built) return;
-    d.eqLow.gain.value=d.eq.low; d.eqMid.gain.value=d.eq.mid; d.eqHigh.gain.value=d.eq.high;
+    for(var i=0;i<d.eqBands.length;i++){ if(d.eqBands[i]) d.eqBands[i].gain.value=d.eq[i]; }
     d.gain.gain.value=d.gainv;
     d.audio.volume=1; // gain resi WebAudio; element na 1
     if(d.audio.playbackRate!==undefined) d.audio.playbackRate=1+d.tempo/100;
@@ -398,14 +440,15 @@ body{display:flex;flex-direction:column;align-items:center;padding:10px 8px 24px
   // EQ + tempo + gain pro oba decky
   [A,B].forEach(function(d){
     var eqRow=document.querySelector('[data-eq="'+d.id+'"]');
-    [['LOW','low'],['MID','mid'],['HIGH','high']].forEach(function(p){
+    // BUILD2SG1: 10 pasem misto 3
+    DJ_EQ_FREQ.forEach(function(f,idx){
+      var label=f>=1000?(f/1000)+'k':(''+f);
       var wrap=document.createElement('div'); wrap.className='mini';
-      var nm=document.createElement('div'); nm.className='miniName'; nm.textContent=p[0];
+      var nm=document.createElement('div'); nm.className='miniName'; nm.textContent=label;
       var tr=document.createElement('div'); tr.className='miniTrack';
       var vv=document.createElement('div'); vv.className='miniVal';
       wrap.appendChild(nm); wrap.appendChild(tr); wrap.appendChild(vv); eqRow.appendChild(wrap);
-      var key=p[1];
-      vSlider(tr,{get:function(){return d.eq[key];},set:function(v){d.eq[key]=Math.max(-12,Math.min(12,v));},min:-12,max:12,center:true,fmt:function(v){return fmtDb(v);},valEl:vv,leds:14,onchange:function(){buildDeck(d);applyEq(d);}});
+      vSlider(tr,{get:function(){return d.eq[idx];},set:function(v){d.eq[idx]=Math.max(-12,Math.min(12,v));},min:-12,max:12,center:true,fmt:function(v){return fmtDb(v);},valEl:vv,leds:12,onchange:function(){buildDeck(d);applyEq(d);}});
     });
     // tempo
     var tt=document.querySelector('[data-tempo="'+d.id+'"]');

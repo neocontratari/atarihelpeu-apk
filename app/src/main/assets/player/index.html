@@ -145,107 +145,6 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 /* BUILD2GD: zadne hnusne dodatecne posuvniky/pointery pres obrazek.
    Ladeni zvuku zustava funkcni naslepo pres puvodni grafiku/hitzony. */
 .eqTrack,.eqHandle,.knobPointer,.valueLabel{display:none!important;visibility:hidden!important;opacity:0!important;}
-
-/* ============================================================
-   BUILD2SD1: DETAILNI LADICI OKNA (HIGH-RES STEREO)
-   Klik na EQ / BASS / TREBLE / VOLUME / BALANCE otevre okno
-   s vice posuvniky ve stejnem zlato-cernem retro stylu.
-   ============================================================ */
-#tunePanel{
-  display:none;position:fixed;inset:0;z-index:220;
-  background:radial-gradient(120% 90% at 50% 0%, rgba(40,26,6,.96) 0%, rgba(4,5,7,.98) 70%);
-  padding:16px;overflow:auto;color:#f2c464;
-  font-family:"Courier New",monospace;
-  -webkit-user-select:none;user-select:none;
-}
-#tunePanel.open{display:block;}
-.tuneBox{
-  max-width:760px;margin:8px auto 20px;
-  background:linear-gradient(180deg,#15100a 0%,#0a0906 100%);
-  border:1px solid rgba(242,196,100,.5);border-radius:18px;
-  padding:18px 16px 22px;
-  box-shadow:0 0 44px rgba(0,0,0,.85), 0 0 0 1px rgba(0,0,0,.6) inset,
-             0 2px 0 rgba(242,196,100,.15) inset;
-}
-.tuneHead{
-  display:flex;align-items:center;justify-content:space-between;
-  border-bottom:1px solid rgba(242,196,100,.28);padding-bottom:12px;margin-bottom:6px;
-}
-.tuneHead h2{
-  font:900 20px "Courier New",monospace;letter-spacing:2px;color:#ffd879;
-  text-shadow:0 0 10px rgba(255,184,60,.5);
-}
-.tuneHead .sub{font:700 10px "Courier New",monospace;color:#c79a4a;letter-spacing:3px;margin-top:2px;}
-.tuneClose{
-  border:1px solid rgba(242,196,100,.4);border-radius:10px;background:#2a2114;color:#ffd879;
-  font:900 13px "Courier New",monospace;padding:8px 14px;letter-spacing:1px;
-}
-.tuneClose:active{background:#3a2e18;}
-
-/* stereo prepinac */
-.tuneChanRow{display:flex;gap:8px;margin:14px 0 6px;}
-.tuneChan{
-  flex:1;text-align:center;padding:9px 0;border-radius:10px;letter-spacing:2px;
-  border:1px solid rgba(242,196,100,.35);background:#120d07;color:#c79a4a;
-  font:900 12px "Courier New",monospace;
-}
-.tuneChan.on{
-  background:linear-gradient(180deg,#e7b24e,#b9863a);color:#160f04;border-color:#ffd879;
-  box-shadow:0 0 16px rgba(255,184,60,.45);
-}
-
-/* radek posuvniku */
-.sliderRow{
-  display:flex;gap:10px;justify-content:center;align-items:flex-end;
-  padding:18px 4px 6px;flex-wrap:wrap;
-}
-.sld{display:flex;flex-direction:column;align-items:center;gap:8px;width:52px;}
-.sldName{font:800 10px "Courier New",monospace;color:#e9c877;letter-spacing:1px;height:12px;}
-.sldVal{font:900 12px "Courier New",monospace;color:#8fd8ff;height:14px;}
-.sldTrack{
-  position:relative;width:34px;height:190px;border-radius:9px;
-  background:linear-gradient(180deg,#241a0c,#0c0906);
-  border:1px solid rgba(242,196,100,.3);
-  box-shadow:0 0 0 1px rgba(0,0,0,.6) inset;
-  touch-action:none;overflow:hidden;
-}
-/* jantarova ledova skala uvnitr drazky */
-.sldLeds{position:absolute;inset:5px 12px;display:flex;flex-direction:column-reverse;gap:2px;pointer-events:none;}
-.sldLeds i{
-  flex:1;border-radius:2px;background:#3a2c14;transition:background .05s,box-shadow .05s;
-}
-.sldLeds i.lit{background:#ffb43c;box-shadow:0 0 6px rgba(255,180,60,.9);}
-.sldLeds i.lit.hot{background:#ff7a2c;box-shadow:0 0 8px rgba(255,120,44,.95);}
-.sldMid{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(242,196,100,.35);}
-.sldKnob{
-  position:absolute;left:50%;transform:translate(-50%,50%);
-  width:40px;height:20px;border-radius:6px;pointer-events:none;
-  background:linear-gradient(180deg,#f3d488,#a97e35);
-  border:1px solid #6d4d18;
-  box-shadow:0 2px 4px rgba(0,0,0,.7),0 0 10px rgba(255,184,60,.35);
-}
-.sldKnob::after{content:"";position:absolute;left:6px;right:6px;top:50%;height:2px;transform:translateY(-1px);
-  background:#4a340f;border-radius:2px;box-shadow:0 3px 0 #4a340f,0 -3px 0 #4a340f;}
-
-.tuneBtnRow{display:flex;gap:8px;margin-top:16px;}
-.tuneBtn{
-  flex:1;padding:13px;border:0;border-radius:11px;letter-spacing:1px;
-  background:linear-gradient(180deg,#e7b24e,#b9863a);color:#160f04;
-  font:900 13px "Courier New",monospace;box-shadow:0 2px 0 #6d4d18;
-}
-.tuneBtn.dark{background:#242019;color:#f2c464;box-shadow:0 2px 0 #000;}
-.tuneBtn:active{transform:translateY(1px);}
-.tuneHint{margin-top:12px;font:700 11px/1.5 "Courier New",monospace;color:#b79350;text-align:center;letter-spacing:.5px;}
-
-/* single (mono) posuvnik varianta - sirsi */
-.sliderRow.single .sld{width:120px;}
-.sliderRow.single .sldTrack{width:46px;height:220px;}
-
-@media (max-width:420px){
-  .sld{width:46px;}
-  .sldTrack{width:30px;height:170px;}
-}
-
 /* Cívky: nechávám původní obrázek čistý. Dodatečná reel overlay animace vypnutá, protože přelep přes skin je hnusný. */
 .reel{display:none!important;visibility:hidden!important;opacity:0!important;}
 .stage.playing .reel,.stage.seeking .reel{display:none!important;animation:none!important;}
@@ -333,30 +232,6 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   </div>
 </div>
 
-<!-- BUILD2SD1: detailni ladici okno (obsah se generuje dynamicky) -->
-<div id="tunePanel" aria-hidden="true">
-  <div class="tuneBox">
-    <div class="tuneHead">
-      <div>
-        <h2 id="tuneTitle">EQUALIZER</h2>
-        <div class="sub" id="tuneSub">HIGH-RES STEREO</div>
-      </div>
-      <button id="tuneClose" class="tuneClose" type="button">ZAVRIT ✕</button>
-    </div>
-    <div class="tuneChanRow" id="tuneChanRow">
-      <button class="tuneChan on" id="chanBoth" type="button">STEREO L+R</button>
-      <button class="tuneChan" id="chanL" type="button">LEVY</button>
-      <button class="tuneChan" id="chanR" type="button">PRAVY</button>
-    </div>
-    <div class="sliderRow" id="tuneSliders"></div>
-    <div class="tuneBtnRow">
-      <button class="tuneBtn dark" id="tuneReset" type="button">VYNULOVAT</button>
-      <button class="tuneBtn" id="tuneDone" type="button">HOTOVO</button>
-    </div>
-    <div class="tuneHint" id="tuneHint">TAHNI POSUVNIK NAHORU/DOLU · ZMENY SE PROJEVI IHNED</div>
-  </div>
-</div>
-
 <script>
 (function(){
 'use strict';
@@ -377,24 +252,6 @@ var nativeMp3Added=0, nativeAudioName='', nativeAudioParts=[];
 var nativeAudioAutoplay=false;
 var eqFreq=[60,250,1000,4000,16000];
 var soundState={eq:[0,0,0,0,0], bass:0, treble:0, balance:0, volume:1};
-
-/* ===== BUILD2SD1: HIGH-RES STEREO ladici stav (nadstavba nad soundState) =====
-   Puvodni soundState zustava PANI - zpetne kompatibilni s TV castingem.
-   Zde drzime jemnejsi rozliseni, ktere se do soundState/grafu promita. */
-var HR_EQ_FREQ=[31,62,125,250,500,1000,2000,4000,8000,16000]; // 10 pasem Hi-Fi
-var hrState={
-  eqL:[0,0,0,0,0,0,0,0,0,0],
-  eqR:[0,0,0,0,0,0,0,0,0,0],
-  bass:{low:0,mid:0,high:0},      // 3-pasmovy bass detail (Hz: 60/120/180)
-  treble:{low:0,mid:0,high:0},    // 3-pasmovy treble detail (kHz: 4/8/16)
-  balance:0,
-  volume:1
-};
-var HR_BASS_FREQ={low:60,mid:120,high:180};
-var HR_TREB_FREQ={low:4000,mid:8000,high:16000};
-/* rozsirene stereo audio uzly (stavi se az pri prvnim pouziti okna) */
-var hrEqL=[], hrEqR=[], hrSplitter=null, hrMergerReady=false;
-var hrBassL=[], hrBassR=[], hrTrebL=[], hrTrebR=[];
 var tvSoundSyncTimer=0;
 var tvSoundLastJson='';
 
@@ -532,122 +389,35 @@ function setupTvWebAudioTap(node){
 
 function initAudioGraph(){
   if(ctx) return;
-  log('AUDIO GRAF: BUILD2SD2 plne stereo (nezavisle L/R filtry) - stavim az ted');
+  log('AUDIO GRAF: stavim az ted (prvni pouziti zvukoveho ovladace) - do teto chvile hral original');
   try{
     ctx=new (window.AudioContext||window.webkitAudioContext)();
     source=ctx.createMediaElementSource(audio);
-
-    // ===== BUILD2SD2: PLNE STEREO GRAF =====
-    // source -> splitter(L,R) -> [10x peaking + lowshelf + highshelf] per kanal
-    //        -> merger -> balance(pan) -> volume(gain) -> destination (+ TV tap)
-    // Kazdy kanal ma VLASTNI nezavisle filtry. hrState.eqL / eqR je ridi.
-    var haveStereo=false;
-    try{
-      hrSplitter=ctx.createChannelSplitter(2);
-      var merger=ctx.createChannelMerger(2);
-      source.connect(hrSplitter);
-
-      hrEqL=[]; hrEqR=[]; hrBassL=[]; hrBassR=[]; hrTrebL=[]; hrTrebR=[];
-
-      function buildChannelChain(chanIndex, eqArr, bassArr, trebArr){
-        // splitter da 1-kanalovy signal; retez filtru; vysledek do mergeru na chanIndex
-        var n=hrSplitter; // vystupni pin resime pri connect nize
-        // prvni uzel retezu bereme z konkretniho vystupu splitteru
-        var first=null, last=null;
-        HR_EQ_FREQ.forEach(function(f){
-          var biq=ctx.createBiquadFilter();
-          biq.type='peaking'; biq.frequency.value=f; biq.Q.value=1.1; biq.gain.value=0;
-          if(!first){ first=biq; } else { last.connect(biq); }
-          last=biq; eqArr.push(biq);
-        });
-        var bass=ctx.createBiquadFilter(); bass.type='lowshelf'; bass.frequency.value=180; bass.gain.value=0;
-        var treb=ctx.createBiquadFilter(); treb.type='highshelf'; treb.frequency.value=3500; treb.gain.value=0;
-        last.connect(bass); bass.connect(treb);
-        bassArr.push(bass); trebArr.push(treb);
-        // napojeni: splitter[chanIndex] -> first ... treb -> merger[chanIndex]
-        hrSplitter.connect(first, chanIndex);
-        treb.connect(merger, 0, chanIndex);
-        return treb;
-      }
-
-      buildChannelChain(0, hrEqL, hrBassL, hrTrebL); // LEVY
-      buildChannelChain(1, hrEqR, hrBassR, hrTrebR); // PRAVY
-
-      panNode=ctx.createStereoPanner?ctx.createStereoPanner():null;
-      gainNode=ctx.createGain(); gainNode.gain.value=1;
-      if(panNode){ merger.connect(panNode); panNode.connect(gainNode); }
-      else { merger.connect(gainNode); }
-      gainNode.connect(ctx.destination);
-      setupTvWebAudioTap(gainNode);
-      hrMergerReady=true;
-      haveStereo=true;
-      // zpetna kompatibilita: eqFilters ukazuje na levy retez (pro stare volani)
-      eqFilters=hrEqL;
-      bassFilter=hrBassL[0]||null; trebleFilter=hrTrebL[0]||null;
-    }catch(eStereo){
-      log('BUILD2SD2 stereo graf nejde, padam na mono: '+(eStereo&&eStereo.message));
-      haveStereo=false;
-    }
-
-    if(!haveStereo){
-      // ---- FALLBACK: puvodni mono graf (kdyby stereo v prohlizeci selhalo) ----
-      var node=source;
-      eqFilters=[];
-      eqFreq.forEach(function(f){
-        var biq=ctx.createBiquadFilter();
-        biq.type='peaking'; biq.frequency.value=f; biq.Q.value=1.0; biq.gain.value=0;
-        node.connect(biq); node=biq; eqFilters.push(biq);
-      });
-      bassFilter=ctx.createBiquadFilter(); bassFilter.type='lowshelf'; bassFilter.frequency.value=180; bassFilter.gain.value=0;
-      trebleFilter=ctx.createBiquadFilter(); trebleFilter.type='highshelf'; trebleFilter.frequency.value=3500; trebleFilter.gain.value=0;
-      node.connect(bassFilter); bassFilter.connect(trebleFilter);
-      panNode=ctx.createStereoPanner?ctx.createStereoPanner():null;
-      gainNode=ctx.createGain(); gainNode.gain.value=1;
-      if(panNode){ trebleFilter.connect(panNode); panNode.connect(gainNode); }
-      else { trebleFilter.connect(gainNode); }
-      gainNode.connect(ctx.destination);
-      setupTvWebAudioTap(gainNode);
-    }
-
+    var node=source;
+    eqFilters=[];
+    eqFreq.forEach(function(f){
+      var biq=ctx.createBiquadFilter();
+      biq.type='peaking';
+      biq.frequency.value=f;
+      biq.Q.value=1.0;
+      biq.gain.value=0;
+      node.connect(biq);
+      node=biq;
+      eqFilters.push(biq);
+    });
+    bassFilter=ctx.createBiquadFilter(); bassFilter.type='lowshelf'; bassFilter.frequency.value=180; bassFilter.gain.value=0;
+    trebleFilter=ctx.createBiquadFilter(); trebleFilter.type='highshelf'; trebleFilter.frequency.value=3500; trebleFilter.gain.value=0;
+    node.connect(bassFilter); bassFilter.connect(trebleFilter);
+    panNode=ctx.createStereoPanner?ctx.createStereoPanner():null;
+    gainNode=ctx.createGain(); gainNode.gain.value=1;
+    if(panNode){ trebleFilter.connect(panNode); panNode.connect(gainNode); }
+    else { trebleFilter.connect(gainNode); }
+    gainNode.connect(ctx.destination);
+    setupTvWebAudioTap(gainNode);
     applySoundState();
-    applyHrToGraph();
   }catch(e){ log('WebAudio graph unavailable: '+e.message); ctx=null; source=null; }
 }
-
-// BUILD2SD2: promitne cely hrState (nezavisle L/R) primo do stereo filtru.
-function applyHrToGraph(){
-  if(!hrMergerReady) return;
-  try{
-    for(var i=0;i<HR_EQ_FREQ.length;i++){
-      if(hrEqL[i]) hrEqL[i].gain.value=hrState.eqL[i];
-      if(hrEqR[i]) hrEqR[i].gain.value=hrState.eqR[i];
-    }
-    // bass: 3 pasma slozime do jednoho lowshelf gainu (prumer) per kanal,
-    // aby to sedelo do jednoho shelf filtru; jemne rozliseni zustava v EQ pasmech.
-    var bAvg=(hrState.bass.low+hrState.bass.mid+hrState.bass.high)/3;
-    var tAvg=(hrState.treble.low+hrState.treble.mid+hrState.treble.high)/3;
-    if(hrBassL[0]) hrBassL[0].gain.value=bAvg;
-    if(hrBassR[0]) hrBassR[0].gain.value=bAvg;
-    if(hrTrebL[0]) hrTrebL[0].gain.value=tAvg;
-    if(hrTrebR[0]) hrTrebR[0].gain.value=tAvg;
-    if(panNode) panNode.pan.value=hrState.balance;
-    if(gainNode) gainNode.gain.value=hrState.volume;
-    audio.volume=hrState.volume;
-  }catch(e){ log('BUILD2SD2 applyHrToGraph chyba: '+(e&&e.message)); }
-}
-
 function applySoundState(){
-  if(hrMergerReady){
-    // BUILD2SD2: kdyz bezi stereo graf, ridi ho hrState (viz applyHrToGraph).
-    // Tady jen dopocteme balance/volume z hrState a syncneme casting.
-    if(panNode) panNode.pan.value=hrState.balance;
-    if(gainNode) gainNode.gain.value=hrState.volume;
-    audio.volume=hrState.volume;
-    updateVisuals();
-    syncTvWebSoundState(false);
-    return;
-  }
-  // ---- puvodni mono cesta (fallback) ----
   if(eqFilters.length){
     soundState.eq.forEach(function(v,i){ if(eqFilters[i]) eqFilters[i].gain.value=v; });
   }
@@ -703,16 +473,28 @@ function loadTrack(i,autoplay){
 function play(){
   /* BUILD2SA15: ORIGINAL FIRST - zadny audio graf pri prehravani.
      MP3 hraje 100% nedotcene primo z <audio> elementu. Graf (EQ/basy/vysky/
-     balance/TV odboc) se postavi AZ kdyz sahnes na zvukovy ovladac. */
+     balance/TV odboc) se postavi AZ kdyz sahnes na zvukovy ovladac.
+     BUILD2SH1: VYJIMKA - kdyz bezi TV WEB casting, graf (a audio tap) se
+     musi postavit HNED, jinak by zvuk neslo streamovat na projektor
+     (obraz jde, zvuk ne). Kdyz casting nebezi, chova se jako dosud. */
   if(ctx && ctx.state==='suspended') ctx.resume();
   if(!tracks.length){openPlaylistPanel(); pickFiles(); return;}
   if(active<0) loadTrack(0,false);
+  try{ if(napTvWebIsCasting()) initAudioGraph(); }catch(e){}
   try{
     var p=audio.play();
     if(p&&p.catch)p.catch(function(e){setStatus('PLAY BLOKOVAN • KLIKNI ZNOVU');log(e.message);});
     stage.classList.add('playing'); stage.classList.remove('seeking');
     setStatus('PLAY • '+tracks[active].name);
   }catch(e){setStatus('PLAY CHYBA');log(e.message);}
+}
+// BUILD2SH1: zjisti jestli bezi TV WEB casting (pak je potreba audio tap)
+function napTvWebIsCasting(){
+  try{
+    if(!window.AHTVWEB || typeof window.AHTVWEB.status!=='function') return false;
+    var st=window.AHTVWEB.status();
+    return !!(st && st.indexOf('http')===0);
+  }catch(e){ return false; }
 }
 function pause(){try{audio.pause();stage.classList.remove('playing','seeking');setStatus('PAUSE');}catch(e){log(e.message);}}
 function stop(){try{audio.pause();audio.currentTime=0;stage.classList.remove('playing','seeking');setStatus('STOP');}catch(e){log(e.message);}}
@@ -846,235 +628,24 @@ function bindHorizontal(zoneEl, setter, min, max, statusPrefix){
   });
 }
 
-/* BUILD2SD1: kazda zona nyni pozna KRATKY TAP vs TAH.
-   - Kratky tap (bez posunu) -> otevre DETAILNI ladici okno.
-   - Tah -> ladi naslepo jako dosud (rychla zmena primo na skinu).
-   Puvodni bindVertical/bindHorizontal chovani zustava pod tahem. */
-function bindZoneWithTapOpen(el, tuneMode, dragBinder){
-  var startX=0,startY=0,moved=false,downT=0;
-  el.addEventListener('pointerdown',function(ev){
-    startX=ev.clientX; startY=ev.clientY; moved=false; downT=Date.now();
-  }, true);
-  el.addEventListener('pointermove',function(ev){
-    if(ev.buttons===0) return;
-    if(Math.abs(ev.clientX-startX)>6 || Math.abs(ev.clientY-startY)>6) moved=true;
-  }, true);
-  el.addEventListener('pointerup',function(ev){
-    var quick=(Date.now()-downT)<320;
-    if(!moved && quick){
-      ev.preventDefault(); ev.stopPropagation();
-      if(window.openTuneWindow) window.openTuneWindow(tuneMode);
-    }
-  }, true);
-  dragBinder(); // ponech puvodni tah-ladeni
-}
-
 eqFreq.forEach(function(freq, idx){
   var el=document.getElementById(idx===0?'eq60':idx===1?'eq250':idx===2?'eq1k':idx===3?'eq4k':'eq16k');
-  bindZoneWithTapOpen(el, 'eq', function(){
-    bindVertical(el, function(){return soundState.eq[idx];}, function(v){
-      initAudioGraph(); soundState.eq[idx]=clamp(v,-12,12); applySoundState();
-    }, -12, 12, 'EQ '+freq+'Hz');
-  });
+  bindVertical(el, function(){return soundState.eq[idx];}, function(v){
+    initAudioGraph(); soundState.eq[idx]=clamp(v,-12,12); applySoundState();
+  }, -12, 12, 'EQ '+freq+'Hz');
 });
-bindZoneWithTapOpen(document.getElementById('knBalance'), 'balance', function(){
-  bindHorizontal(document.getElementById('knBalance'), function(v){
-    initAudioGraph(); soundState.balance=clamp(v,-1,1); applySoundState();
-  }, -1, 1, 'BALANCE');
-});
-bindZoneWithTapOpen(document.getElementById('knBass'), 'bass', function(){
-  bindVertical(document.getElementById('knBass'), function(){return soundState.bass;}, function(v){
-    initAudioGraph(); soundState.bass=clamp(v,-12,12); applySoundState();
-  }, -12, 12, 'BASS');
-});
-bindZoneWithTapOpen(document.getElementById('knTreble'), 'treble', function(){
-  bindVertical(document.getElementById('knTreble'), function(){return soundState.treble;}, function(v){
-    initAudioGraph(); soundState.treble=clamp(v,-12,12); applySoundState();
-  }, -12, 12, 'TREBLE');
-});
-bindZoneWithTapOpen(document.getElementById('knVolume'), 'volume', function(){
-  bindVertical(document.getElementById('knVolume'), function(){return soundState.volume;}, function(v){
-    initAudioGraph(); soundState.volume=clamp(v,0,1); applySoundState();
-  }, 0, 1, 'VOLUME');
-});
-
-/* ================= BUILD2SD1: DETAILNI LADICI OKNA ================= */
-(function(){
-  var panel=document.getElementById('tunePanel');
-  var titleEl=document.getElementById('tuneTitle');
-  var subEl=document.getElementById('tuneSub');
-  var slidersEl=document.getElementById('tuneSliders');
-  var hintEl=document.getElementById('tuneHint');
-  var chanRow=document.getElementById('tuneChanRow');
-  var chanBoth=document.getElementById('chanBoth'), chanL=document.getElementById('chanL'), chanR=document.getElementById('chanR');
-  var curMode=null;      // 'eq' | 'bass' | 'treble' | 'volume' | 'balance'
-  var curChan='both';    // 'both' | 'L' | 'R'
-  var LED_COUNT=22;
-
-  function openPanel(){ panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); }
-  function closePanel(){ panel.classList.remove('open'); panel.setAttribute('aria-hidden','true'); }
-
-  // Namapuje high-res stereo stav zpet do puvodniho soundState (pro TV casting),
-  // a zaroven BUILD2SD2 promitne cely hrState primo do STEREO grafu (nezavisle L/R).
-  function pushToLegacy(){
-    // EQ: 10 HR pasem -> 5 puvodnich (parove prumery), stereo -> mono prumer
-    // (soundState slouzi UZ JEN pro TV casting; skutecny zvuk ridi hrState/graf)
-    function mono(i){ return (hrState.eqL[i]+hrState.eqR[i])/2; }
-    soundState.eq[0]=(mono(0)+mono(1))/2;   // ~31/62 -> 60
-    soundState.eq[1]=(mono(2)+mono(3))/2;   // 125/250 -> 250
-    soundState.eq[2]=(mono(4)+mono(5))/2;   // 500/1k -> 1k
-    soundState.eq[3]=(mono(6)+mono(7))/2;   // 2k/4k -> 4k
-    soundState.eq[4]=(mono(8)+mono(9))/2;   // 8k/16k -> 16k
-    soundState.bass=(hrState.bass.low+hrState.bass.mid+hrState.bass.high)/3;
-    soundState.treble=(hrState.treble.low+hrState.treble.mid+hrState.treble.high)/3;
-    soundState.balance=hrState.balance;
-    soundState.volume=hrState.volume;
-    if(typeof initAudioGraph==='function') initAudioGraph();
-    // BUILD2SD2: skutecne nezavisle L/R do grafu
-    if(typeof applyHrToGraph==='function') applyHrToGraph();
-    if(typeof applySoundState==='function') applySoundState(); // sync castingu
-  }
-
-  function fmtDb(v){ v=Math.round(v*10)/10; return (v>0?'+':'')+v+'dB'; }
-  function fmtPct(v){ return Math.round(v*100)+'%'; }
-  function fmtBal(v){ if(v<-0.08) return 'L'+Math.round(-v*100); if(v>0.08) return 'R'+Math.round(v*100); return 'STŘED'; }
-
-  // Vytvori jeden svisly posuvnik s ledovou skalou.
-  function makeSlider(cfg){
-    // cfg: {name, get, set, min, max, fmt, center}
-    var wrap=document.createElement('div'); wrap.className='sld';
-    var nm=document.createElement('div'); nm.className='sldName'; nm.textContent=cfg.name;
-    var val=document.createElement('div'); val.className='sldVal';
-    var track=document.createElement('div'); track.className='sldTrack';
-    var leds=document.createElement('div'); leds.className='sldLeds';
-    var larr=[];
-    for(var k=0;k<LED_COUNT;k++){ var li=document.createElement('i'); leds.appendChild(li); larr.push(li); }
-    var mid=document.createElement('div'); mid.className='sldMid';
-    var knob=document.createElement('div'); knob.className='sldKnob';
-    track.appendChild(leds); if(cfg.center) track.appendChild(mid); track.appendChild(knob);
-    wrap.appendChild(nm); wrap.appendChild(track); wrap.appendChild(val);
-
-    function render(){
-      var v=cfg.get();
-      var t=(v-cfg.min)/(cfg.max-cfg.min); // 0..1
-      t=Math.max(0,Math.min(1,t));
-      knob.style.bottom=(t*100)+'%';
-      var litCount=Math.round(t*LED_COUNT);
-      for(var k=0;k<LED_COUNT;k++){
-        var on=k<litCount;
-        larr[k].className=on?('lit'+(k>=LED_COUNT-4?' hot':'')):'';
-      }
-      val.textContent=cfg.fmt(v);
-    }
-    function fromEvent(ev){
-      var r=track.getBoundingClientRect();
-      var y=ev.clientY-r.top;
-      var t=1-Math.max(0,Math.min(1,y/r.height));
-      var v=cfg.min+t*(cfg.max-cfg.min);
-      cfg.set(v); render(); pushToLegacy();
-    }
-    track.addEventListener('pointerdown',function(ev){ev.preventDefault();track.setPointerCapture(ev.pointerId);fromEvent(ev);});
-    track.addEventListener('pointermove',function(ev){if(ev.buttons===0)return;fromEvent(ev);});
-    cfg._render=render; render();
-    return {el:wrap,render:render};
-  }
-
-  var renderers=[];
-  function rerenderAll(){ renderers.forEach(function(r){r.render();}); }
-
-  // Vytvori obsah okna podle rezimu + kanalu.
-  function buildSliders(){
-    slidersEl.innerHTML=''; renderers=[];
-    slidersEl.className='sliderRow'+((curMode==='volume'||curMode==='balance')?' single':'');
-    var chanArr = curChan==='both' ? ['eqL','eqR'] : (curChan==='L'?['eqL']:['eqR']);
-
-    if(curMode==='eq'){
-      HR_EQ_FREQ.forEach(function(f,i){
-        var label=f>=1000?(f/1000)+'k':(''+f);
-        // pri STEREO editujeme obe strany naraz (prumer zobrazime z L)
-        var s=makeSlider({
-          name:label, min:-12,max:12,center:true,fmt:fmtDb,
-          get:function(){ return curChan==='R'?hrState.eqR[i]:hrState.eqL[i]; },
-          set:function(v){
-            v=Math.max(-12,Math.min(12,v));
-            if(curChan==='both'){ hrState.eqL[i]=v; hrState.eqR[i]=v; }
-            else if(curChan==='L'){ hrState.eqL[i]=v; }
-            else { hrState.eqR[i]=v; }
-          }
-        });
-        slidersEl.appendChild(s.el); renderers.push(s);
-      });
-    } else if(curMode==='bass'){
-      [['low','60Hz'],['mid','120Hz'],['high','180Hz']].forEach(function(p){
-        var key=p[0];
-        var s=makeSlider({name:p[1],min:-12,max:12,center:true,fmt:fmtDb,
-          get:function(){return hrState.bass[key];},
-          set:function(v){hrState.bass[key]=Math.max(-12,Math.min(12,v));}});
-        slidersEl.appendChild(s.el); renderers.push(s);
-      });
-    } else if(curMode==='treble'){
-      [['low','4kHz'],['mid','8kHz'],['high','16kHz']].forEach(function(p){
-        var key=p[0];
-        var s=makeSlider({name:p[1],min:-12,max:12,center:true,fmt:fmtDb,
-          get:function(){return hrState.treble[key];},
-          set:function(v){hrState.treble[key]=Math.max(-12,Math.min(12,v));}});
-        slidersEl.appendChild(s.el); renderers.push(s);
-      });
-    } else if(curMode==='volume'){
-      var s=makeSlider({name:'HLASITOST',min:0,max:1,center:false,fmt:fmtPct,
-        get:function(){return hrState.volume;},
-        set:function(v){hrState.volume=Math.max(0,Math.min(1,v));}});
-      slidersEl.appendChild(s.el); renderers.push(s);
-    } else if(curMode==='balance'){
-      var s2=makeSlider({name:'VYVAZENI',min:-1,max:1,center:true,fmt:fmtBal,
-        get:function(){return hrState.balance;},
-        set:function(v){hrState.balance=Math.max(-1,Math.min(1,v));}});
-      slidersEl.appendChild(s2.el); renderers.push(s2);
-    }
-  }
-
-  function setChan(c){
-    curChan=c;
-    chanBoth.className='tuneChan'+(c==='both'?' on':'');
-    chanL.className='tuneChan'+(c==='L'?' on':'');
-    chanR.className='tuneChan'+(c==='R'?' on':'');
-    buildSliders();
-  }
-
-  var META={
-    eq:{title:'EQUALIZER',sub:'10 PÁSEM · HIGH-RES STEREO',chan:true,hint:'TAHNI PÁSMO NAHORU/DOLU · L+R NEBO ZVLÁŠŤ'},
-    bass:{title:'BASY',sub:'3 PÁSMA NÍZKÝCH · 60 / 120 / 180 Hz',chan:false,hint:'DOLAĎ SPODNÍ KONEC PO TŘETINÁCH'},
-    treble:{title:'VÝŠKY',sub:'3 PÁSMA VYSOKÝCH · 4 / 8 / 16 kHz',chan:false,hint:'DOLAĎ HORNÍ KONEC PO TŘETINÁCH'},
-    volume:{title:'HLASITOST',sub:'MASTER VOLUME',chan:false,hint:'JEDEN POSUVNIK · 0 AŽ 100 %'},
-    balance:{title:'VYVÁŽENÍ',sub:'STEREO BALANCE L / R',chan:false,hint:'STŘED = ROVNOMĚRNĚ DO OBOU STRAN'}
-  };
-
-  window.openTuneWindow=function(mode){
-    curMode=mode;
-    var m=META[mode]||META.eq;
-    titleEl.textContent=m.title; subEl.textContent=m.sub; hintEl.textContent=m.hint;
-    chanRow.style.display=m.chan?'flex':'none';
-    if(!m.chan) curChan='both';
-    setChan(curChan);
-    openPanel();
-  };
-
-  chanBoth.onclick=function(){setChan('both');};
-  chanL.onclick=function(){setChan('L');};
-  chanR.onclick=function(){setChan('R');};
-  document.getElementById('tuneClose').onclick=closePanel;
-  document.getElementById('tuneDone').onclick=closePanel;
-  document.getElementById('tuneReset').onclick=function(){
-    if(curMode==='eq'){ for(var i=0;i<HR_EQ_FREQ.length;i++){hrState.eqL[i]=0;hrState.eqR[i]=0;} }
-    else if(curMode==='bass'){ hrState.bass={low:0,mid:0,high:0}; }
-    else if(curMode==='treble'){ hrState.treble={low:0,mid:0,high:0}; }
-    else if(curMode==='volume'){ hrState.volume=1; }
-    else if(curMode==='balance'){ hrState.balance=0; }
-    buildSliders(); pushToLegacy();
-    setStatus('VYNULOVANO • '+(META[curMode]?META[curMode].title:'')); 
-  };
-  panel.addEventListener('click',function(ev){ if(ev.target===panel) closePanel(); });
-})();
+bindHorizontal(document.getElementById('knBalance'), function(v){
+  initAudioGraph(); soundState.balance=clamp(v,-1,1); applySoundState();
+}, -1, 1, 'BALANCE');
+bindVertical(document.getElementById('knBass'), function(){return soundState.bass;}, function(v){
+  initAudioGraph(); soundState.bass=clamp(v,-12,12); applySoundState();
+}, -12, 12, 'BASS');
+bindVertical(document.getElementById('knTreble'), function(){return soundState.treble;}, function(v){
+  initAudioGraph(); soundState.treble=clamp(v,-12,12); applySoundState();
+}, -12, 12, 'TREBLE');
+bindVertical(document.getElementById('knVolume'), function(){return soundState.volume;}, function(v){
+  initAudioGraph(); soundState.volume=clamp(v,0,1); applySoundState();
+}, 0, 1, 'VOLUME');
 
 document.getElementById('btnMyPlaylists').onclick=openPlaylistPanel;
 document.getElementById('navPlaylists').onclick=openPlaylistPanel;
@@ -1125,6 +696,10 @@ audio.onended=function(){
 
 updateVisuals();
 renderPlaylist();
+// BUILD2SH1: kdyz se casting zapne az behem prehravani, doplnit audio tap
+setInterval(function(){
+  try{ if(!ctx && !audio.paused && napTvWebIsCasting()){ initAudioGraph(); } }catch(e){}
+}, 1500);
 log('BUILD2SA13C18: RC10 YouTube live EQ panel + local audio MediaStore.Files scan.');
 })();
 </script>

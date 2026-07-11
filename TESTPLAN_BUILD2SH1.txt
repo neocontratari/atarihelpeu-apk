@@ -1,0 +1,55 @@
+BUILD2SH1 - OPRAVA: ZVUK NA PROJEKTOR (MP3 PREHRAVAC I DJ PULT) - TEST PLAN
+============================================================================
+Zmenene soubory (3):
+  app/src/main/assets/player/index.html   (audio tap se postavi hned pri play)
+  app/src/main/assets/dj/index.html        (pridan TV WEB audio tap - chybel)
+  app/src/main/assets/index.html           (tlacitko Rene Frank -> pult)
+(prekopirovat pres stavajici, prebuildit APK)
+
+NALEZENA PRICINA (obraz jde, zvuk ne)
+Zvuk se na projektor odchytava pres "audio tap" (setupTvWebAudioTap ->
+AHTVWEB.pushPlayerPcm16). Tap se ale v prehravaci stavel AZ kdyz clovek
+SAHNE NA EQ/knoby (initAudioGraph se volal jen z ovladacu zvuku).
+Kdyz jsi jen pustil hudbu a nesahnul na EQ, tap NEEXISTOVAL -> zvuk
+tekl primo z <audio> do reproduktoru, ale nikdy se neodchytil pro
+projektor. Proto obraz sel (nezavisly) a zvuk ne.
+DJ PULT navic tap NEMEL VUBEC (pri stavbe pultu nebyl napojen).
+
+CO OPRAVA DELA
+1) PREHRAVAC: pri PLAY se zkontroluje, jestli bezi casting
+   (AHTVWEB.status() vraci http...). Kdyz ANO -> audio graf + tap se
+   postavi HNED, i bez doteku EQ. Kdyz casting nebezi -> chova se jako
+   dosud (ciste MP3 z <audio>, zadny graf).
+2) POJISTKA: kazdych 1.5s se zkontroluje - kdyz hudba hraje a casting
+   se zapnul az potom, tap se doplni za behu.
+3) DJ PULT: master mixu (A+B) ma nyni stejny TV WEB audio tap jako
+   prehravac -> pult streamuje zvuk na projektor.
+
+DULEZITE: NIC se nemeni, kdyz projektor NEPOUZIVAS. Tap se stavi jen
+kdyz casting bezi. Zvuk z telefonu hraje jako dosud.
+
+JAK OVERIT ZE TO ZABRALO (jednoduse, krok za krokem)
+1) Spusť casting na projektor jako obvykle (obraz uz ti chodi).
+2) Otevri MP3 prehravac, pusť skladbu. BEZ dotyku EQ.
+   -> na projektoru MA BYT ZVUK. (Drive ticho dokud jsi nesahnul na EQ.)
+3) Otevri DJ pult (Rene Frank), nahraj track, pusť.
+   -> na projektoru MA BYT ZVUK i z pultu.
+4) KONTROLA (kdyby porad ticho): na projektoru/telefonu otevri v
+   prohlizeci adresu castingu + "/status" na konci, napr:
+      http://192.168.X.X:8765/status
+   Pusť pritom hudbu a sleduj tyto radky:
+   - audioSeq=  (ma RUST, ne zustavat na 0)
+   - audioSource=PLAYER   (kdyz hraje prehravac/pult)
+   - audioRate=44100 (nebo podobne)
+   Kdyz audioSeq ROSTE a audioSource=PLAYER -> zvuk DORAZI do serveru
+     a chyba uz je jen v prehravaci na projektoru (klikni do obrazu,
+     hlaska dole musi byt AUDIO ON).
+   Kdyz audioSeq=0 / audioSource=NONE i pri hrajici hudbe -> zvuk se
+     porad neodchytava; posli tento vysledek a doladim dal.
+
+KILL-SWITCH
+Vratit predchozi verze player/index.html a dj/index.html, prebuildit.
+
+POZNAMKA
+Oprava predpoklada, ze casting (napTvWebStart) bezi driv nebo se spusti
+behem prehravani. Samotne zapnuti castingu (tlacitko CAST) se nemeni.
