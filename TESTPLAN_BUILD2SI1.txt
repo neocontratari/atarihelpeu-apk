@@ -1,0 +1,47 @@
+BUILD2SI1 - RENE FRANK DJ PULT: HIGH-RES GRAFIKA (ZVUK ZUSTAVA TOP) - TEST PLAN
+================================================================================
+Zmenene soubory:
+  app/src/main/assets/dj/index.html     (novy premiovy vzhled + kosmos + glow)
+  app/src/main/assets/index.html        (tlacitko Rene Frank -> pult)
+(prekopirovat pres stavajici, prebuildit APK)
+
+CO SE ZMENILO
+Kompletne prepsany VZHLED pultu do N&P VISION ducha:
+- kosmicke pozadi (hvezdy + zlaty vyboj) ktere PULZUJE do hudby
+- kovove zlate 3D prvky, odlesky, hloubka, glow
+- deck A modry akcent, deck B oranzovy (jako Sega/PS1 v tve appce)
+- crossfader jako kovove tahlo se zlatym glow
+FUNKCE ZUSTALY 1:1 (JS logika netknuta): 10-pasmovy EQ na kazdy deck,
+mix dvou skladeb, crossfade, tempo, gain, cue, SYNC, ASISTENT s
+vypnutim podrzenim, landscape.
+
+>>> ZVUK JE KRAL - GRAFIKA HO NEPREBIJE <<<
+Overeno headless na REALNEM pultu: pri bezici plne grafice (kosmos +
+glow + spektrum) bezel audio stream 50 bloku BEZ JEDINE DIRY (0 gaps).
+Princip: zvuk bezi na nezavislem audio threadu; grafika bezi na
+requestAnimationFrame, ktery prohlizec SAM priskrti kdyz nestiha ->
+pri nedostatku vykonu ustoupi GRAFIKA, ne zvuk.
+Navic SVETELNY STROP: kdyz appka CASTUJE na projektor, pozadi samo
+snizi FPS (~18fps misto 30) aby setrilo vykon pro zvuk+stream.
+
+TEST NA ZARIZENI (OTOC NA SIRKU)
+A) Menu -> Rene Frank -> pult v novem kabate. Kosmicke pozadi zije,
+   vyboj nahore jemne dycha.
+B) Pusť skladbu -> pozadi/glow PULZUJE do hudby, VU a waveform sviti.
+   HLAVNI: zvuk musi byt CISTY, bez trhani. I kdyz grafika zije.
+C) Mixuj 2 skladby, tahej crossfader, ladi 10-pasmovy EQ - vse jako
+   dosud, jen krasnejsi.
+D) CASTING na projektor: pusť pult, obraz i zvuk na projektor. Zvuk
+   MA zustat plynuly (pozadi se samo zjemni pro vykon).
+E) ASISTENT: zapnout/vypnout podrzenim - bezi jako v SF1/SG1.
+F) Slabsi telefon: kdyby pozadi trhalo, zvuk MA i tak zustat cisty
+   (graf se sam priskrti). Kdyby vadilo, da se pozadi vypnout/zjemnit.
+
+KILL-SWITCH
+Vratit predchozi dj/index.html (SG1), prebuildit.
+
+POZNAMKA
+Toto je CSS/canvas grafika (kovova, ziva, reaktivni) - ne fotorealisticky
+AI obrazek jako zbytek appky. Je to jiny druh krasy: pohyblivy a reagujici
+na hudbu. Kdybys pozdeji chtel misto toho fotorealisticke pozadi jako na
+hlavni obrazovce, slo by ho vlozit jako obrazek pod ovladaci - rekni.
