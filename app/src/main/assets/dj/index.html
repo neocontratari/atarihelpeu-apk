@@ -304,7 +304,10 @@ body{display:flex;flex-direction:column;align-items:center;padding:10px 8px 24px
       djTvZero=ctx.createGain(); djTvZero.gain.value=0;
       djTvTap.onaudioprocess=function(ev){
         try{
-          if(!window.AHTVWEB || typeof window.AHTVWEB.pushPlayerPcm16!=='function') return;
+          if(!window.AHTVWEB || typeof window.AHTVWEB.pushPlayerPcm16!=='function'){
+            if(!window.__djTapWarned){window.__djTapWarned=true;try{console.log('[NAP DJ] SH2 TAP: AHTVWEB.pushPlayerPcm16 NENI k dispozici');}catch(_){}}
+            return;
+          }
           var input=ev.inputBuffer, frames=input.length;
           if(!frames) return;
           var l=input.getChannelData(0), r=input.numberOfChannels>1?input.getChannelData(1):l;
@@ -317,12 +320,15 @@ body{display:flex;flex-direction:column;align-items:center;padding:10px 8px 24px
           }
           var s='', step=4096;
           for(var p=0;p<bytes.length;p+=step) s+=String.fromCharCode.apply(null, bytes.subarray(p,p+step));
-          window.AHTVWEB.pushPlayerPcm16(btoa(s), (ctx&&ctx.sampleRate)||44100, frames|0, 2);
+          var ret=window.AHTVWEB.pushPlayerPcm16(btoa(s), (ctx&&ctx.sampleRate)||44100, frames|0, 2);
+          var now=Date.now();
+          if(!window.__djTapLogMs || now-window.__djTapLogMs>5000){ window.__djTapLogMs=now; try{console.log('[NAP DJ] SH2 TAP->push ret='+ret);}catch(_){} }
         }catch(e){
-          var now=Date.now(); if(now-djTvErrMs>5000){ djTvErrMs=now; }
+          var now=Date.now(); if(now-djTvErrMs>5000){ djTvErrMs=now; try{console.log('[NAP DJ] SH2 TAP chyba: '+(e&&e.message));}catch(_){} }
         }
       };
       node.connect(djTvTap); djTvTap.connect(djTvZero); djTvZero.connect(ctx.destination);
+      try{console.log('[NAP DJ] SH2: TV audio tap postaven (stream na projektor pripraven)');}catch(_){}
     }catch(e){}
   }
 

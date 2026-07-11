@@ -1,0 +1,50 @@
+BUILD2SH2 - ZVUK NA PROJEKTOR + DIAGNOSTICKY LOG - TEST PLAN
+=============================================================
+Zmenene soubory (4):
+  app/src/main/assets/player/index.html   (tap hned pri play + LOG)
+  app/src/main/assets/dj/index.html        (TV audio tap + LOG)
+  app/src/main/assets/index.html           (tlacitko Rene Frank -> pult)
+  app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+        (zachyt JS console -> nativni log, aby slo poslat log)
+(prekopirovat pres stavajici, prebuildit APK)
+
+CO JE NOVE OPROTI SH1
+Krome opravy (tap se stavi hned pri play, ne az po doteku EQ; pult ma
+nyni taky tap) je pridana DIAGNOSTIKA, ktera pise do NATIVNIHO LOGU
+(toho, ktery posilas). Nemusis koukat na zadny /status - staci
+otestovat a poslat log.
+
+CO HLEDAT V LOGU (radky zacinaji "JSLOG")
+Pri PLAY v prehravaci:
+  JSLOG [NAP PLAYER] SH2 PLAY: casting BEZI -> stavim audio graf pro stream
+    = casting jede, tap se stavi. DOBRE.
+  NEBO:
+  JSLOG [NAP PLAYER] SH2 PLAY: casting nebezi (status=...)
+    = casting NEBEZI -> zvuk se nema kam poslat. Musis nejdriv zapnout
+      cast na TV. (Tohle by byla priciny "nic nejde".)
+
+Kdyz tap bezi, kazdych ~5s:
+  JSLOG [NAP PLAYER] SH2 TAP->push ret=TV_WEB_AUDIO_PLAYER_OK bytes=... 
+    = zvuk REALNE ODCHAZI do nativni vrstvy. DOBRE - pak uz je vse na
+      strane serveru/projektoru (na projektoru klikni do obrazu -> AUDIO ON).
+  JSLOG [NAP PLAYER] SH2 TAP->push ret=TV_WEB_AUDIO_OFF
+    = casting se mezitim vypnul (napTvWebRunning=false).
+  JSLOG [NAP PLAYER] SH2 TAP: AHTVWEB.pushPlayerPcm16 NENI k dispozici
+    = most vubec neni -> problem v napojeni WebView (posli log, doresim).
+
+DJ pult - stejne radky s "[NAP DJ]":
+  JSLOG [NAP DJ] SH2: TV audio tap postaven ...
+  JSLOG [NAP DJ] SH2 TAP->push ret=...
+
+TEST NA ZARIZENI
+1) Zapni cast na TV/projektor (obraz uz ti chodi).
+2) MP3 prehravac -> pusť skladbu BEZ dotyku EQ. Chvili nech hrat.
+3) DJ pult (Rene Frank) -> nahraj track, pusť. Chvili nech hrat.
+4) Posli mi LOG. Podle radku JSLOG SH2 hned uvidim, kde to je:
+   - casting nebezi? -> jen zapnout cast
+   - tap posila OK ale na projektoru ticho? -> klik do obrazu na projektoru
+   - most chybi? -> doladim napojeni
+Zvuk bys uz mel slyset; kdyby ne, log rekne proc.
+
+KILL-SWITCH
+Vratit predchozi 4 soubory, prebuildit.

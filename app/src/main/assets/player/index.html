@@ -354,7 +354,10 @@ function openWeb(url){
 
 function pushTvWebPlayerAudio(ev){
   try{
-    if(!window.AHTVWEB || typeof window.AHTVWEB.pushPlayerPcm16!=='function') return;
+    if(!window.AHTVWEB || typeof window.AHTVWEB.pushPlayerPcm16!=='function'){
+      if(!window.__napTapWarned){window.__napTapWarned=true;log('SH2 TAP: AHTVWEB.pushPlayerPcm16 NENI k dispozici');}
+      return;
+    }
     var input=ev.inputBuffer, frames=input.length;
     if(!frames) return;
     var l=input.getChannelData(0), r=input.numberOfChannels>1?input.getChannelData(1):l;
@@ -367,7 +370,13 @@ function pushTvWebPlayerAudio(ev){
     }
     var s='', step=4096;
     for(var p=0;p<bytes.length;p+=step) s+=String.fromCharCode.apply(null, bytes.subarray(p,p+step));
-    window.AHTVWEB.pushPlayerPcm16(btoa(s), (ctx&&ctx.sampleRate)||44100, frames|0, 2);
+    var ret=window.AHTVWEB.pushPlayerPcm16(btoa(s), (ctx&&ctx.sampleRate)||44100, frames|0, 2);
+    // SH2: diagnostika - zaloguj prvni odpoved + kazdych ~5s vzorek
+    var now=Date.now();
+    if(!window.__napTapLogMs || now-window.__napTapLogMs>5000){
+      window.__napTapLogMs=now;
+      log('SH2 TAP->push ret='+ret);
+    }
   }catch(e){
     var now=Date.now();
     if(now-tvAudioLastErr>5000){ tvAudioLastErr=now; log('TV WEB AUDIO PLAYER bridge chyba: '+(e&&e.message)); }
@@ -480,7 +489,7 @@ function play(){
   if(ctx && ctx.state==='suspended') ctx.resume();
   if(!tracks.length){openPlaylistPanel(); pickFiles(); return;}
   if(active<0) loadTrack(0,false);
-  try{ if(napTvWebIsCasting()) initAudioGraph(); }catch(e){}
+  try{ if(napTvWebIsCasting()){ log('SH2 PLAY: casting BEZI -> stavim audio graf pro stream'); initAudioGraph(); } else { log('SH2 PLAY: casting nebezi (status='+(window.AHTVWEB&&window.AHTVWEB.status?window.AHTVWEB.status():'AHTVWEB chybi')+')'); } }catch(e){ log('SH2 PLAY chyba: '+e.message); }
   try{
     var p=audio.play();
     if(p&&p.catch)p.catch(function(e){setStatus('PLAY BLOKOVAN • KLIKNI ZNOVU');log(e.message);});
