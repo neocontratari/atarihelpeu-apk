@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>RENE FRANK — DJ MIX PULT</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+html,body{min-height:100%;background:#050403;color:#f2c464;font-family:"Courier New",monospace;overflow-x:hidden;}
+body{display:flex;flex-direction:column;align-items:center;padding:10px 8px 24px;}
+
+/* ---- horni lista ---- */
+.topbar{width:100%;max-width:940px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.brand{display:flex;flex-direction:column;line-height:1;}
+.brand .big{font:900 22px "Courier New",monospace;letter-spacing:2px;color:#ffd879;text-shadow:0 0 12px rgba(255,184,60,.5);}
+.brand .sub{font:700 9px "Courier New",monospace;letter-spacing:4px;color:#c79a4a;margin-top:3px;}
+.backBtn{border:1px solid rgba(242,196,100,.4);border-radius:10px;background:#2a2114;color:#ffd879;font:900 12px "Courier New",monospace;padding:9px 14px;letter-spacing:1px;}
+.backBtn:active{background:#3a2e18;}
+
+/* ---- deska pultu ---- */
+.console{
+  width:100%;max-width:940px;
+  background:linear-gradient(180deg,#17110a 0%,#0b0906 100%);
+  border:1px solid rgba(242,196,100,.5);border-radius:20px;
+  box-shadow:0 0 44px rgba(0,0,0,.85),0 2px 0 rgba(242,196,100,.15) inset;
+  padding:14px;
+}
+.decks{display:flex;gap:12px;}
+.deck{flex:1;min-width:0;background:linear-gradient(180deg,#120d07,#0a0805);border:1px solid rgba(242,196,100,.32);border-radius:16px;padding:12px 10px;}
+.deck.a{box-shadow:0 0 0 1px rgba(120,200,255,.12) inset;}
+.deck.b{box-shadow:0 0 0 1px rgba(255,140,80,.12) inset;}
+.deckHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.deckName{font:900 15px "Courier New",monospace;letter-spacing:2px;}
+.deck.a .deckName{color:#8fd8ff;}
+.deck.b .deckName{color:#ff9a5c;}
+.deckLoad{border:1px solid rgba(242,196,100,.4);border-radius:8px;background:#241a0c;color:#ffd879;font:900 10px "Courier New",monospace;padding:6px 8px;letter-spacing:1px;}
+.deckLoad:active{background:#3a2e18;}
+
+/* jehla / platnovy pruh */
+.platter{
+  position:relative;height:74px;border-radius:12px;margin-bottom:10px;overflow:hidden;
+  background:radial-gradient(60% 120% at 50% -10%, #241a0c 0%, #0c0906 70%);
+  border:1px solid rgba(242,196,100,.26);
+}
+.wave{position:absolute;inset:0;display:flex;align-items:center;gap:2px;padding:0 8px;pointer-events:none;}
+.wave i{flex:1;height:20%;background:#3a2c14;border-radius:1px;transition:height .08s,background .08s;}
+.deck.a .wave i.on{background:#7ec8ff;box-shadow:0 0 5px rgba(120,200,255,.7);}
+.deck.b .wave i.on{background:#ff9a5c;box-shadow:0 0 5px rgba(255,140,80,.7);}
+.trackName{position:absolute;left:8px;bottom:5px;right:8px;font:800 10px "Courier New",monospace;color:#e9c877;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px #000;}
+
+/* transport */
+.transport{display:flex;gap:6px;margin-bottom:10px;}
+.tBtn{flex:1;padding:10px 0;border:1px solid rgba(242,196,100,.34);border-radius:9px;background:#160f07;color:#f2c464;font:900 11px "Courier New",monospace;letter-spacing:1px;}
+.tBtn.play.on{background:linear-gradient(180deg,#e7b24e,#b9863a);color:#160f04;border-color:#ffd879;box-shadow:0 0 14px rgba(255,184,60,.5);}
+.tBtn.cue.on{background:#2a3a4a;color:#8fd8ff;border-color:#8fd8ff;}
+.tBtn:active{transform:translateY(1px);}
+
+/* rady EQ knobu (svisle mini slidery) */
+.eqRow{display:flex;gap:8px;justify-content:space-around;margin-bottom:10px;}
+.mini{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;}
+.miniName{font:800 9px "Courier New",monospace;color:#c79a4a;letter-spacing:1px;}
+.miniVal{font:900 9px "Courier New",monospace;color:#8fd8ff;height:11px;}
+.miniTrack{position:relative;width:26px;height:96px;border-radius:7px;background:linear-gradient(180deg,#241a0c,#0c0906);border:1px solid rgba(242,196,100,.28);touch-action:none;overflow:hidden;}
+.miniLeds{position:absolute;inset:4px 9px;display:flex;flex-direction:column-reverse;gap:1px;pointer-events:none;}
+.miniLeds i{flex:1;border-radius:1px;background:#3a2c14;}
+.miniLeds i.lit{background:#ffb43c;box-shadow:0 0 4px rgba(255,180,60,.8);}
+.miniLeds i.lit.hot{background:#ff7a2c;}
+.miniMid{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(242,196,100,.3);}
+.miniKnob{position:absolute;left:50%;transform:translate(-50%,50%);width:30px;height:14px;border-radius:5px;pointer-events:none;background:linear-gradient(180deg,#f3d488,#a97e35);border:1px solid #6d4d18;box-shadow:0 2px 3px rgba(0,0,0,.6);}
+
+/* tempo + volume + VU */
+.deckBottom{display:flex;gap:8px;align-items:stretch;}
+.tempoWrap,.volWrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.bigTrack{position:relative;width:34px;height:120px;border-radius:8px;background:linear-gradient(180deg,#241a0c,#0c0906);border:1px solid rgba(242,196,100,.3);touch-action:none;overflow:hidden;}
+.bigLeds{position:absolute;inset:5px 11px;display:flex;flex-direction:column-reverse;gap:2px;pointer-events:none;}
+.bigLeds i{flex:1;border-radius:2px;background:#3a2c14;}
+.bigLeds i.lit{background:#ffb43c;box-shadow:0 0 5px rgba(255,180,60,.85);}
+.bigLeds i.lit.hot{background:#ff7a2c;}
+.bigMid{position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(242,196,100,.3);}
+.bigKnob{position:absolute;left:50%;transform:translate(-50%,50%);width:40px;height:18px;border-radius:6px;pointer-events:none;background:linear-gradient(180deg,#f3d488,#a97e35);border:1px solid #6d4d18;box-shadow:0 2px 4px rgba(0,0,0,.7);}
+.lbl{font:800 9px "Courier New",monospace;color:#c79a4a;letter-spacing:1px;}
+.val{font:900 10px "Courier New",monospace;color:#8fd8ff;height:12px;}
+/* VU metr */
+.vu{width:14px;border-radius:6px;background:#0c0906;border:1px solid rgba(242,196,100,.3);display:flex;flex-direction:column-reverse;gap:2px;padding:4px 3px;overflow:hidden;}
+.vu i{flex:1;border-radius:1px;background:#241a0c;}
+.vu i.on{background:#5fd06a;box-shadow:0 0 4px rgba(95,208,106,.7);}
+.vu i.on.mid{background:#ffcf3c;}
+.vu i.on.hot{background:#ff5a3c;box-shadow:0 0 5px rgba(255,90,60,.9);}
+
+/* ---- crossfader ---- */
+.centerCol{width:120px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6px 0;}
+.masterVU{display:flex;gap:5px;margin-bottom:6px;}
+.xfWrap{width:100%;padding:0 6px;}
+.xfLabel{display:flex;justify-content:space-between;font:900 11px "Courier New",monospace;margin-bottom:6px;}
+.xfLabel .l{color:#8fd8ff;} .xfLabel .r{color:#ff9a5c;}
+.xfTrack{position:relative;height:44px;border-radius:12px;background:linear-gradient(90deg,#12202c,#241a0c 50%,#2a1a10);border:1px solid rgba(242,196,100,.35);touch-action:none;}
+.xfFill{position:absolute;inset:0;border-radius:12px;pointer-events:none;
+  background:linear-gradient(90deg,rgba(120,200,255,.25),rgba(0,0,0,0) 45%,rgba(0,0,0,0) 55%,rgba(255,140,80,.25));}
+.xfKnob{position:absolute;top:50%;transform:translate(-50%,-50%);width:30px;height:52px;border-radius:8px;pointer-events:none;
+  background:linear-gradient(180deg,#f3d488,#a97e35);border:1px solid #6d4d18;box-shadow:0 3px 6px rgba(0,0,0,.7),0 0 12px rgba(255,184,60,.4);}
+.xfKnob::after{content:"";position:absolute;left:50%;top:8px;bottom:8px;width:2px;transform:translateX(-1px);background:#4a340f;border-radius:2px;box-shadow:-5px 0 0 #4a340f,5px 0 0 #4a340f;}
+.mixHint{font:700 9px "Courier New",monospace;color:#b79350;text-align:center;margin-top:8px;letter-spacing:1px;}
+.centerBtns{display:flex;flex-direction:column;gap:6px;width:100%;padding:0 6px;margin-top:6px;}
+.cBtn{padding:9px 0;border:1px solid rgba(242,196,100,.36);border-radius:9px;background:#160f07;color:#f2c464;font:900 10px "Courier New",monospace;letter-spacing:1px;}
+.cBtn:active{transform:translateY(1px);}
+.cBtn.sync{background:linear-gradient(180deg,#e7b24e,#b9863a);color:#160f04;}
+
+@media (max-width:720px) and (orientation:portrait){
+  .decks{flex-direction:column;}
+  .centerCol{width:100%;order:3;}
+  .deck.a{order:1;} .centerCol{order:2;} .deck.b{order:3;}
+  .bigTrack{height:100px;}
+}
+
+/* ===== LANDSCAPE (mobil/tablet na sirku) - hlavni rezim pro zivé hrani =====
+   Decky VEDLE sebe, vyuzit celou sirku, vetsi dotykove plochy. */
+@media (orientation:landscape){
+  body{padding:6px 8px 10px;justify-content:center;}
+  .topbar{max-width:100%;margin-bottom:6px;}
+  .brand .big{font-size:18px;}
+  .console{max-width:100%;padding:10px;}
+  .decks{gap:10px;align-items:stretch;}
+  .deck{padding:10px 8px;}
+  .platter{height:56px;margin-bottom:8px;}
+  .transport{margin-bottom:8px;}
+  .tBtn{padding:12px 0;font-size:12px;}     /* vetsi na prst */
+  .eqRow{margin-bottom:8px;}
+  .miniTrack{height:78px;width:30px;}       /* sirsi pro palec */
+  .bigTrack{height:92px;width:40px;}
+  .centerCol{width:150px;}
+  .xfTrack{height:52px;}                     /* siroky crossfader na palec */
+  .xfKnob{width:38px;height:60px;}
+  .cBtn{padding:11px 0;font-size:11px;}
+}
+/* velmi nizke landscape (telefony na sirku) - kompaktnejsi */
+@media (orientation:landscape) and (max-height:460px){
+  .platter{height:44px;}
+  .miniTrack{height:64px;}
+  .bigTrack{height:76px;}
+  .brand .sub{display:none;}
+}
+
+/* ===================== BUILD2SF1: ASISTENT ===================== */
+.asstBar{
+  width:100%;max-width:940px;display:flex;align-items:center;gap:10px;
+  margin-bottom:10px;padding:8px 12px;border-radius:14px;
+  background:linear-gradient(180deg,#141b12,#0a0c07);
+  border:1px solid rgba(140,220,120,.4);
+}
+.asstBar.off{border-color:rgba(242,196,100,.3);background:linear-gradient(180deg,#1a1509,#0a0806);}
+.asstLed{width:12px;height:12px;border-radius:50%;flex:0 0 auto;background:#3a2c14;box-shadow:0 0 0 2px #0a0c07 inset;}
+.asstBar.on .asstLed{background:#5fd06a;box-shadow:0 0 10px rgba(95,208,106,.9);animation:asstPulse 2s infinite;}
+@keyframes asstPulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+.asstText{flex:1;min-width:0;font:800 11px/1.3 "Courier New",monospace;color:#bfe6b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.asstBar.off .asstText{color:#c79a4a;}
+.asstMode{border:1px solid rgba(140,220,120,.4);border-radius:9px;background:#101609;color:#bfe6b0;font:900 10px "Courier New",monospace;padding:8px 10px;letter-spacing:1px;flex:0 0 auto;}
+.asstMode:active{transform:translateY(1px);}
+.asstPower{
+  flex:0 0 auto;border:1px solid rgba(140,220,120,.5);border-radius:10px;
+  background:linear-gradient(180deg,#2a4a24,#173015);color:#d9ffcf;
+  font:900 11px "Courier New",monospace;padding:9px 14px;letter-spacing:1px;position:relative;overflow:hidden;
+}
+.asstBar.off .asstPower{background:linear-gradient(180deg,#4a3a18,#2a2110);color:#ffd879;border-color:rgba(242,196,100,.5);}
+.asstPower .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,90,60,.5);pointer-events:none;transition:none;}
+.asstPower .lab{position:relative;z-index:2;}
+/* potvrzovaci overlay */
+.confirmWrap{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.82);align-items:center;justify-content:center;padding:20px;}
+.confirmWrap.open{display:flex;}
+.confirmBox{max-width:420px;width:100%;background:linear-gradient(180deg,#1a120a,#0b0906);border:1px solid rgba(255,150,60,.5);border-radius:16px;padding:18px;box-shadow:0 0 40px rgba(0,0,0,.8);text-align:center;}
+.confirmBox h3{font:900 16px "Courier New",monospace;color:#ffb43c;margin-bottom:10px;letter-spacing:1px;}
+.confirmBox p{font:800 12px/1.5 "Courier New",monospace;color:#e9c877;margin-bottom:16px;}
+.confirmBtns{display:flex;gap:10px;}
+.confirmBtns button{flex:1;padding:13px;border:0;border-radius:11px;font:900 12px "Courier New",monospace;letter-spacing:1px;}
+.cYes{background:linear-gradient(180deg,#e7b24e,#b9863a);color:#160f04;}
+.cNo{background:#242019;color:#f2c464;}
+</style>
+</head>
+<body>
+<div class="asstBar on" id="asstBar">
+  <div class="asstLed"></div>
+  <div class="asstText" id="asstText">ASISTENT ZAPNUT · hlídá návaznost a bezpečné meze</div>
+  <button class="asstMode" id="asstMode" type="button">REŽIM: POLOAUTO</button>
+  <button class="asstPower" id="asstPower" type="button"><span class="fill" id="asstFill"></span><span class="lab" id="asstPowerLab">VYPNOUT (podrž)</span></button>
+</div>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="big">RENE FRANK</span>
+    <span class="sub">DJ MIX PULT · DUAL DECK</span>
+  </div>
+  <button class="backBtn" id="backBtn" type="button">◄ ZPĚT</button>
+</div>
+
+<div class="console">
+  <div class="decks">
+    <!-- DECK A -->
+    <div class="deck a" id="deckA">
+      <div class="deckHead">
+        <span class="deckName">DECK A</span>
+        <button class="deckLoad" data-deck="A" type="button">◇ NAHRÁT</button>
+      </div>
+      <div class="platter"><div class="wave" data-wave="A"></div><div class="trackName" data-tn="A">— prázdný —</div></div>
+      <div class="transport">
+        <button class="tBtn cue" data-cue="A" type="button">CUE</button>
+        <button class="tBtn play" data-play="A" type="button">▶ PLAY</button>
+      </div>
+      <div class="eqRow" data-eq="A"></div>
+      <div class="deckBottom">
+        <div class="tempoWrap"><div class="lbl">TEMPO</div><div class="bigTrack" data-tempo="A"></div><div class="val" data-tempoval="A">0%</div></div>
+        <div class="volWrap"><div class="lbl">GAIN</div><div class="bigTrack" data-vol="A"></div><div class="val" data-volval="A">80%</div></div>
+        <div class="vu" data-vu="A"></div>
+      </div>
+    </div>
+
+    <!-- STŘED: crossfader -->
+    <div class="centerCol">
+      <div class="masterVU"><div class="vu" data-vu="ML"></div><div class="vu" data-vu="MR"></div></div>
+      <div class="xfWrap">
+        <div class="xfLabel"><span class="l">A</span><span style="color:#c79a4a">CROSSFADE</span><span class="r">B</span></div>
+        <div class="xfTrack" id="xfTrack"><div class="xfFill"></div><div class="xfKnob" id="xfKnob"></div></div>
+        <div class="mixHint" id="mixHint">STŘED = OBA STEJNĚ</div>
+      </div>
+      <div class="centerBtns">
+        <button class="cBtn sync" id="btnSync" type="button">⇄ SYNC BPM</button>
+        <button class="cBtn" id="btnCutA" type="button">◄ HARD A</button>
+        <button class="cBtn" id="btnCutB" type="button">HARD B ►</button>
+      </div>
+    </div>
+
+    <!-- DECK B -->
+    <div class="deck b" id="deckB">
+      <div class="deckHead">
+        <span class="deckName">DECK B</span>
+        <button class="deckLoad" data-deck="B" type="button">◇ NAHRÁT</button>
+      </div>
+      <div class="platter"><div class="wave" data-wave="B"></div><div class="trackName" data-tn="B">— prázdný —</div></div>
+      <div class="transport">
+        <button class="tBtn cue" data-cue="B" type="button">CUE</button>
+        <button class="tBtn play" data-play="B" type="button">▶ PLAY</button>
+      </div>
+      <div class="eqRow" data-eq="B"></div>
+      <div class="deckBottom">
+        <div class="tempoWrap"><div class="lbl">TEMPO</div><div class="bigTrack" data-tempo="B"></div><div class="val" data-tempoval="B">0%</div></div>
+        <div class="volWrap"><div class="lbl">GAIN</div><div class="bigTrack" data-vol="B"></div><div class="val" data-volval="B">80%</div></div>
+        <div class="vu" data-vu="B"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input id="fileA" type="file" accept=".mp3,.wav,audio/*" style="display:none">
+<input id="fileB" type="file" accept=".mp3,.wav,audio/*" style="display:none">
+
+<div class="confirmWrap" id="confirmWrap">
+  <div class="confirmBox">
+    <h3 id="confirmTitle">POTVRDIT AKCI</h3>
+    <p id="confirmMsg">Opravdu?</p>
+    <div class="confirmBtns">
+      <button class="cNo" id="confirmNo" type="button">ZPĚT</button>
+      <button class="cYes" id="confirmYes" type="button">PROVÉST</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var ctx=null;
+  function ac(){ if(!ctx){ ctx=new (window.AudioContext||window.webkitAudioContext)(); } if(ctx.state==='suspended')ctx.resume(); return ctx; }
+
+  // stav jednoho decku
+  function makeDeck(id){
+    return {
+      id:id, audio:new Audio(), src:null, name:'— prázdný —',
+      node:null, eqLow:null, eqMid:null, eqHigh:null, gain:null, xfGain:null, analyser:null,
+      playing:false, tempo:0, gainv:0.8,
+      eq:{low:0,mid:0,high:0}, cuePoint:0, built:false
+    };
+  }
+  var A=makeDeck('A'), B=makeDeck('B');
+  var master=null, masterAnalyser=null, xfade=0.5;
+
+  function buildMaster(){
+    if(master) return;
+    var c=ac();
+    master=c.createGain(); master.gain.value=1;
+    masterAnalyser=c.createAnalyser(); masterAnalyser.fftSize=256;
+    master.connect(masterAnalyser); masterAnalyser.connect(c.destination);
+  }
+
+  function buildDeck(d){
+    if(d.built) return;
+    var c=ac(); buildMaster();
+    try{ d.node=c.createMediaElementSource(d.audio); }catch(e){ /* uz pripojeny */ return; }
+    d.eqLow=c.createBiquadFilter(); d.eqLow.type='lowshelf'; d.eqLow.frequency.value=200;
+    d.eqMid=c.createBiquadFilter(); d.eqMid.type='peaking'; d.eqMid.frequency.value=1000; d.eqMid.Q.value=0.9;
+    d.eqHigh=c.createBiquadFilter(); d.eqHigh.type='highshelf'; d.eqHigh.frequency.value=3500;
+    d.gain=c.createGain(); d.gain.value=d.gainv;
+    d.xfGain=c.createGain();
+    d.analyser=c.createAnalyser(); d.analyser.fftSize=256;
+    d.node.connect(d.eqLow); d.eqLow.connect(d.eqMid); d.eqMid.connect(d.eqHigh);
+    d.eqHigh.connect(d.gain); d.gain.connect(d.analyser); d.analyser.connect(d.xfGain);
+    d.xfGain.connect(master);
+    d.built=true;
+    applyEq(d); applyXfade();
+  }
+
+  function applyEq(d){
+    if(!d.built) return;
+    d.eqLow.gain.value=d.eq.low; d.eqMid.gain.value=d.eq.mid; d.eqHigh.gain.value=d.eq.high;
+    d.gain.gain.value=d.gainv;
+    d.audio.volume=1; // gain resi WebAudio; element na 1
+    if(d.audio.playbackRate!==undefined) d.audio.playbackRate=1+d.tempo/100;
+  }
+
+  // equal-power crossfade
+  function applyXfade(){
+    var gl=Math.cos(xfade*Math.PI/2), gr=Math.sin(xfade*Math.PI/2);
+    if(A.xfGain) A.xfGain.gain.value=gl;
+    if(B.xfGain) B.xfGain.gain.value=gr;
+    var hint=document.getElementById('mixHint');
+    if(xfade<0.12) hint.textContent='PLNĚ DECK A';
+    else if(xfade>0.88) hint.textContent='PLNĚ DECK B';
+    else if(xfade>0.42&&xfade<0.58) hint.textContent='STŘED = OBA STEJNĚ';
+    else hint.textContent = xfade<0.5 ? ('VÍCE A ('+Math.round((1-xfade)*100)+'%)') : ('VÍCE B ('+Math.round(xfade*100)+'%)');
+  }
+
+  // ---- nacteni souboru ----
+  function loadFile(d, file){
+    if(!file) return;
+    if(d.src){ try{ URL.revokeObjectURL(d.src); }catch(e){} }
+    d.src=URL.createObjectURL(file);
+    d.audio.src=d.src; d.name=file.name;
+    document.querySelector('[data-tn="'+d.id+'"]').textContent=file.name;
+    buildDeck(d);
+    setPlay(d,false);
+  }
+  document.querySelectorAll('.deckLoad').forEach(function(b){
+    b.onclick=function(){ document.getElementById('file'+b.getAttribute('data-deck')).click(); };
+  });
+  document.getElementById('fileA').onchange=function(){ if(this.files[0]) loadFile(A,this.files[0]); this.value=''; };
+  document.getElementById('fileB').onchange=function(){ if(this.files[0]) loadFile(B,this.files[0]); this.value=''; };
+
+  // most z prehravace: umoznit nacist track z playlistu (volано zvenci)
+  window.RENE_LOAD=function(deck, name, url){
+    var d = deck==='B'?B:A;
+    d.src=null; d.audio.src=url; d.name=name||'track';
+    document.querySelector('[data-tn="'+d.id+'"]').textContent=d.name;
+    buildDeck(d); setPlay(d,false);
+  };
+
+  // ---- transport ----
+  function setPlay(d, on){
+    buildDeck(d);
+    if(on){ ac(); var p=d.audio.play(); if(p&&p.catch)p.catch(function(){}); d.playing=true; }
+    else { d.audio.pause(); d.playing=false; }
+    document.querySelector('[data-play="'+d.id+'"]').classList.toggle('on',d.playing);
+    document.querySelector('[data-play="'+d.id+'"]').textContent=d.playing?'❚❚ PAUZA':'▶ PLAY';
+  }
+  document.querySelectorAll('[data-play]').forEach(function(b){
+    b.onclick=function(){ var d=b.getAttribute('data-play')==='B'?B:A; if(!d.audio.src){ document.getElementById('file'+d.id).click(); return; } setPlay(d,!d.playing); };
+  });
+  document.querySelectorAll('[data-cue]').forEach(function(b){
+    b.onclick=function(){ var d=b.getAttribute('data-cue')==='B'?B:A; if(!d.audio.src)return;
+      // CUE: skoc na cue point (0 nebo ulozeny) a hraj dokud drzis - zde toggle preview
+      try{ d.audio.currentTime=d.cuePoint||0; }catch(e){}
+      setPlay(d,true);
+      b.classList.add('on'); setTimeout(function(){b.classList.remove('on');},250);
+    };
+  });
+
+  // ---- svisly slider builder ----
+  function vSlider(track, opts){
+    // opts: get,set,min,max,center,fmt,onchange,leds(count),cls
+    var ledCount=opts.leds||14;
+    var ledsWrap=document.createElement('div'); ledsWrap.className=opts.big?'bigLeds':'miniLeds';
+    var arr=[]; for(var k=0;k<ledCount;k++){var i=document.createElement('i');ledsWrap.appendChild(i);arr.push(i);}
+    var mid=document.createElement('div'); mid.className=opts.big?'bigMid':'miniMid';
+    var knob=document.createElement('div'); knob.className=opts.big?'bigKnob':'miniKnob';
+    track.appendChild(ledsWrap); if(opts.center) track.appendChild(mid); track.appendChild(knob);
+    function render(){
+      var v=opts.get(); var t=(v-opts.min)/(opts.max-opts.min); t=Math.max(0,Math.min(1,t));
+      knob.style.bottom=(t*100)+'%';
+      var lit=Math.round(t*ledCount);
+      for(var k=0;k<ledCount;k++){ arr[k].className=(k<lit)?('lit'+(k>=ledCount-3?' hot':'')):''; }
+      if(opts.valEl) opts.valEl.textContent=opts.fmt(v);
+    }
+    function fromEv(ev){ var r=track.getBoundingClientRect(); var y=ev.clientY-r.top; var t=1-Math.max(0,Math.min(1,y/r.height)); opts.set(opts.min+t*(opts.max-opts.min)); render(); if(opts.onchange)opts.onchange(); }
+    track.addEventListener('pointerdown',function(ev){ev.preventDefault();track.setPointerCapture(ev.pointerId);fromEv(ev);});
+    track.addEventListener('pointermove',function(ev){if(ev.buttons===0)return;fromEv(ev);});
+    render(); opts._render=render; return render;
+  }
+
+  function fmtDb(v){v=Math.round(v);return (v>0?'+':'')+v;}
+  function fmtPct(v){return Math.round(v*100)+'%';}
+  function fmtTempo(v){return (v>0?'+':'')+Math.round(v)+'%';}
+
+  // EQ + tempo + gain pro oba decky
+  [A,B].forEach(function(d){
+    var eqRow=document.querySelector('[data-eq="'+d.id+'"]');
+    [['LOW','low'],['MID','mid'],['HIGH','high']].forEach(function(p){
+      var wrap=document.createElement('div'); wrap.className='mini';
+      var nm=document.createElement('div'); nm.className='miniName'; nm.textContent=p[0];
+      var tr=document.createElement('div'); tr.className='miniTrack';
+      var vv=document.createElement('div'); vv.className='miniVal';
+      wrap.appendChild(nm); wrap.appendChild(tr); wrap.appendChild(vv); eqRow.appendChild(wrap);
+      var key=p[1];
+      vSlider(tr,{get:function(){return d.eq[key];},set:function(v){d.eq[key]=Math.max(-12,Math.min(12,v));},min:-12,max:12,center:true,fmt:function(v){return fmtDb(v);},valEl:vv,leds:14,onchange:function(){buildDeck(d);applyEq(d);}});
+    });
+    // tempo
+    var tt=document.querySelector('[data-tempo="'+d.id+'"]');
+    vSlider(tt,{get:function(){return d.tempo;},set:function(v){d.tempo=Math.max(-8,Math.min(8,v));},min:-8,max:8,center:true,big:true,fmt:fmtTempo,valEl:document.querySelector('[data-tempoval="'+d.id+'"]'),leds:16,onchange:function(){buildDeck(d);applyEq(d);}});
+    // gain
+    var gt=document.querySelector('[data-vol="'+d.id+'"]');
+    vSlider(gt,{get:function(){return d.gainv;},set:function(v){d.gainv=Math.max(0,Math.min(1,v)); if(window.__asstClampGain)window.__asstClampGain(d);},min:0,max:1,big:true,fmt:fmtPct,valEl:document.querySelector('[data-volval="'+d.id+'"]'),leds:16,onchange:function(){buildDeck(d);applyEq(d);}});
+  });
+
+  // ---- crossfader ----
+  var xfTrack=document.getElementById('xfTrack'), xfKnob=document.getElementById('xfKnob');
+  function renderXf(){ xfKnob.style.left=(xfade*100)+'%'; }
+  function xfFrom(ev){ var r=xfTrack.getBoundingClientRect(); var x=ev.clientX-r.left; xfade=Math.max(0,Math.min(1,x/r.width)); renderXf(); applyXfade(); }
+  xfTrack.addEventListener('pointerdown',function(ev){ev.preventDefault();xfTrack.setPointerCapture(ev.pointerId);xfFrom(ev);});
+  xfTrack.addEventListener('pointermove',function(ev){if(ev.buttons===0)return;xfFrom(ev);});
+  document.getElementById('btnCutA').onclick=function(){xfade=0;renderXf();applyXfade();};
+  document.getElementById('btnCutB').onclick=function(){xfade=1;renderXf();applyXfade();};
+  document.getElementById('btnSync').onclick=function(){
+    // jednoduchy BPM sync: srovna tempo B na tempo A (bez detekce BPM - vyrovna playbackRate)
+    B.tempo=A.tempo; buildDeck(B); applyEq(B);
+    var tv=document.querySelector('[data-tempoval="B"]'); if(tv)tv.textContent=fmtTempo(B.tempo);
+    // prekresli B tempo slider
+    document.querySelectorAll('[data-tempo="B"]').forEach(function(){});
+    flash('SYNC · TEMPO B = TEMPO A');
+  };
+  renderXf(); applyXfade();
+
+  // ---- VU metry + waveform animace ----
+  function drawVU(el, level){
+    var bars=el.children, n=bars.length, lit=Math.round(level*n);
+    for(var i=0;i<n;i++){ var on=i<lit; var cls=on?'on':''; if(on){ if(i>=n-2)cls+=' hot'; else if(i>=n-5)cls+=' mid'; } bars[i].className=cls; }
+  }
+  function ensureVU(el,n){ if(el.children.length)return; for(var i=0;i<n;i++)el.appendChild(document.createElement('i')); }
+  ['A','B','ML','MR'].forEach(function(id){ ensureVU(document.querySelector('[data-vu="'+id+'"]'),12); });
+  // waveform bary
+  ['A','B'].forEach(function(id){ var w=document.querySelector('[data-wave="'+id+'"]'); for(var i=0;i<40;i++)w.appendChild(document.createElement('i')); });
+
+  function levelOf(analyser){
+    if(!analyser)return 0;
+    var buf=new Uint8Array(analyser.frequencyBinCount); analyser.getByteFrequencyData(buf);
+    var s=0; for(var i=0;i<buf.length;i++)s+=buf[i]; return Math.min(1,(s/buf.length)/140);
+  }
+  function drawWave(id, d){
+    var w=document.querySelector('[data-wave="'+id+'"]'); var bars=w.children;
+    if(!d.analyser){ for(var i=0;i<bars.length;i++){bars[i].className='';bars[i].style.height='20%';} return; }
+    var buf=new Uint8Array(d.analyser.frequencyBinCount); d.analyser.getByteFrequencyData(buf);
+    var step=Math.floor(buf.length/bars.length)||1;
+    for(var i=0;i<bars.length;i++){
+      var v=buf[i*step]/255; bars[i].style.height=(15+v*85)+'%';
+      bars[i].className = (d.playing && v>0.08)?'on':'';
+    }
+  }
+  function loop(){
+    var la=A.built?levelOf(A.analyser):0, lb=B.built?levelOf(B.analyser):0;
+    drawVU(document.querySelector('[data-vu="A"]'), A.playing?la:0);
+    drawVU(document.querySelector('[data-vu="B"]'), B.playing?lb:0);
+    var lm=masterAnalyser?levelOf(masterAnalyser):0;
+    drawVU(document.querySelector('[data-vu="ML"]'), lm);
+    drawVU(document.querySelector('[data-vu="MR"]'), lm*0.92);
+    drawWave('A',A); drawWave('B',B);
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  function flash(t){ var h=document.getElementById('mixHint'); var old=h.textContent; h.textContent=t; setTimeout(function(){applyXfade();},900); }
+
+  // zpet do menu
+  document.getElementById('backBtn').onclick=function(){ try{ location.href='../index.html'; }catch(e){} };
+
+  // auto-loop konce -> zastav play stav
+  [A,B].forEach(function(d){ d.audio.addEventListener('ended',function(){ setPlay(d,false); }); });
+
+  /* ==================== BUILD2SF1: ASISTENT ==================== */
+  var ASST={ on:true, mode:'poloauto' }; // 'poloauto' | 'auto'
+  var asstBar=document.getElementById('asstBar');
+  var asstText=document.getElementById('asstText');
+  var asstModeBtn=document.getElementById('asstMode');
+  var asstPower=document.getElementById('asstPower');
+  var asstFill=document.getElementById('asstFill');
+  var asstPowerLab=document.getElementById('asstPowerLab');
+
+  function asstRender(){
+    asstBar.classList.toggle('on',ASST.on);
+    asstBar.classList.toggle('off',!ASST.on);
+    asstModeBtn.style.display=ASST.on?'block':'none';
+    if(ASST.on){
+      asstText.textContent = ASST.mode==='auto'
+        ? 'ASISTENT ZAPNUT · AUTOMAT: dojede playlist sám, když nezasáhneš'
+        : 'ASISTENT ZAPNUT · hlídá návaznost a bezpečné meze';
+      asstPowerLab.textContent='VYPNOUT (podrž)';
+    } else {
+      asstText.textContent='ASISTENT VYPNUT · jsi jen ty a pult, nic tě nebrzdí';
+      asstPowerLab.textContent='ZAPNOUT ASISTENTA';
+    }
+    asstModeBtn.textContent = 'REŽIM: '+(ASST.mode==='auto'?'AUTOMAT':'POLOAUTO');
+  }
+  asstModeBtn.onclick=function(){ if(!ASST.on)return; ASST.mode = ASST.mode==='auto'?'poloauto':'auto'; asstRender(); };
+
+  // ---- VYPINAC: podrzet 1.6s (proti nechtenemu). ZAPNUTI je okamzite. ----
+  var holdTimer=null, holdStart=0, HOLD_MS=1600, holdRAF=null;
+  function startHold(){
+    if(!ASST.on){ // zapnuti hned
+      ASST.on=true; asstRender(); return;
+    }
+    holdStart=Date.now();
+    function tick(){
+      var t=(Date.now()-holdStart)/HOLD_MS;
+      if(t>=1){ asstFill.style.width='0%'; ASST.on=false; asstRender(); if(holdRAF)cancelAnimationFrame(holdRAF); holdRAF=null; return; }
+      asstFill.style.width=(t*100)+'%';
+      holdRAF=requestAnimationFrame(tick);
+    }
+    if(holdRAF)cancelAnimationFrame(holdRAF);
+    holdRAF=requestAnimationFrame(tick);
+  }
+  function endHold(){ if(holdRAF){cancelAnimationFrame(holdRAF);holdRAF=null;} asstFill.style.width='0%'; }
+  asstPower.addEventListener('pointerdown',function(ev){ev.preventDefault();startHold();});
+  asstPower.addEventListener('pointerup',endHold);
+  asstPower.addEventListener('pointercancel',endHold);
+  asstPower.addEventListener('pointerleave',endHold);
+
+  // ---- POTVRZENI riskantnich akci (jen kdyz asistent ON) ----
+  var confirmWrap=document.getElementById('confirmWrap');
+  var pendingYes=null;
+  function askConfirm(title,msg,onYes){
+    if(!ASST.on){ onYes(); return; } // asistent OFF = zadne brzdy
+    document.getElementById('confirmTitle').textContent=title;
+    document.getElementById('confirmMsg').textContent=msg;
+    pendingYes=onYes; confirmWrap.classList.add('open');
+  }
+  document.getElementById('confirmNo').onclick=function(){ confirmWrap.classList.remove('open'); pendingYes=null; };
+  document.getElementById('confirmYes').onclick=function(){ confirmWrap.classList.remove('open'); if(pendingYes){var f=pendingYes;pendingYes=null;f();} };
+  window.ASST_CONFIRM=askConfirm; // pro pripadne dalsi akce
+
+  // ---- BEZPECNE MEZE: hlida ze se gain nerozjede do zkresleni ----
+  function asstClampGain(d){
+    if(!ASST.on) return; // OFF = zadne meze
+    if(d.gainv>0.95){ d.gainv=0.95; } // strop proti clippingu
+  }
+  window.__asstClampGain=asstClampGain;
+
+  // ---- AUTO-NAVAZNOST: kdyz dojizdi skladba, plynule prejed na druhy deck ----
+  function otherDeck(d){ return d===A?B:A; }
+  function asstMonitorLoop(){
+    if(ASST.on){
+      [A,B].forEach(function(d){
+        if(!d.playing || !d.audio.duration) return;
+        var remain=d.audio.duration-d.audio.currentTime;
+        var od=otherDeck(d);
+        // 8s pred koncem: pokud druhy deck ma track a nehraje, priprav prechod
+        if(remain<8 && remain>0){
+          if(od.audio.src && !od.playing && ASST.mode==='auto'){
+            // AUTOMAT: spustí druhy deck a zacne crossfadovat
+            if(!od.playing){ setPlay(od,true); }
+            asstAutoCrossfadeTo(od);
+          } else if(!od.audio.src){
+            // neni na co navazat -> aspon upozorni v liste
+            asstText.textContent='POZOR · deck '+d.id+' dojíždí ('+Math.ceil(remain)+'s) · nahraj druhý!';
+          }
+        }
+      });
+    }
+    requestAnimationFrame(asstMonitorLoop);
+  }
+  var autoXfActive=false;
+  function asstAutoCrossfadeTo(target){
+    if(autoXfActive) return; autoXfActive=true;
+    var toB = (target===B);
+    var step=function(){
+      if(!ASST.on || ASST.mode!=='auto'){ autoXfActive=false; return; } // sef zasahl
+      xfade += toB ? 0.006 : -0.006;
+      xfade=Math.max(0,Math.min(1,xfade));
+      renderXf(); applyXfade();
+      if((toB && xfade>=1) || (!toB && xfade<=0)){ autoXfActive=false; return; }
+      setTimeout(step,60);
+    };
+    step();
+  }
+  // kdyz sef sahne na crossfader, auto prechod se zrusi (respekt k sefovi)
+  xfTrack.addEventListener('pointerdown',function(){ autoXfActive=false; },true);
+
+  asstRender();
+  asstMonitorLoop();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+BUILD2SF1 - RENE FRANK PULT: ASISTENT + LANDSCAPE (MOBIL/TABLET) - TEST PLAN
+=============================================================================
+Zmenene soubory (nadstavba nad BUILD2SE1):
+  app/src/main/assets/dj/index.html     (pridan ASISTENT + landscape ladeni)
+  app/src/main/assets/index.html        (tlacitko Rene Frank -> pult, jako v SE1)
+(prekopirovat pres stavajici, prebuildit APK, zadne dalsi zmeny)
+
+FILOZOFIE (dle domluvy: "sef jsem ja, soft mi jen pomaha")
+Asistent POMAHA, ale NIKDY nebrzdi za kazdou cenu. Sef ho jednim
+podrzenim vypne a pak neni zadna brzda. Software hlida TECHNIKU
+(navaznost, meze), NE cloveka - kolik sis dal asistent neresi a
+netvrdime opak.
+
+CO ASISTENT DELA (kdyz ZAPNUT - zelena lista nahore)
+- AUTO-NAVAZNOST: kdyz dojizdi skladba na decku (8s pred koncem) a
+  druhy deck ma nahrano:
+    * REZIM AUTOMAT -> sam spusti druhy deck a plynule prejede crossfade
+    * REZIM POLOAUTO -> jen hlidas ty, asistent upozorni
+  Kdyz neni na co navazat -> varovani v liste "deck X dojizdi, nahraj!"
+- BEZPECNE MEZE: gain se nepusti nad 95% (strop proti zkresleni/clippingu)
+- OCHRANA PROTI PREHMATU: riskantni akce pres potvrzeni (pripraveno pres
+  ASST_CONFIRM; zaklad pro budouci "smazat deck" apod.)
+- REZIM: prepinac POLOAUTO / AUTOMAT
+
+VYPINAC (hlavni pozadavek sefa)
+- Velke tlacitko vpravo v zelene liste.
+- VYPNUTI = PODRZET 1.6s (proti nechtenemu vypnuti uprostred setu).
+  Behem drzeni se plni cerveny pruh; po naplneni ASISTENT VYPNUT.
+- ZAPNUTI = jeden dotek (okamzite).
+- Kdyz je VYPNUTY: zadne meze, zadne potvrzovani, zadna auto-navaznost.
+  Jsi jen ty a pult.
+- Kdyz sef sahne na crossfader behem auto-prechodu -> auto se OKAMZITE
+  zrusi (respekt k sefovi).
+
+OVERENO HEADLESS
+- Vypinac: start ON; podrzeni 1.8s -> VYPNUTO; kratky dotek pri vyplem ->
+  ZAPNE; kratky tik pri zaplem -> NEVYPNE (ochrana funguje).
+- Landscape tablet (1024x600) i telefon na sirku (844x390):
+  decky VEDLE sebe, crossfader 138x52px (palcovy), nic nepretyka
+  (overflowX=false), asistent lista viditelna. Stranka bez JS chyb.
+
+TEST NA ZARIZENI (OTOC MOBIL/TABLET NA SIRKU)
+A) Menu -> Rene Frank -> pult. Otoc na SIRKU: decky vedle sebe,
+   crossfader uprostred, asistent lista nahore zelena.
+B) VYPINAC: kratce klepni na "VYPNOUT (podrz)" -> NIC (ochrana). Podrz
+   ~2s -> cerveny pruh se naplni -> ASISTENT VYPNUT (lista zezloutne).
+   Klepni znovu -> hned ZAPNUTY. TOHLE JE HLAVNI TEST.
+C) AUTO-NAVAZNOST (REZIM AUTOMAT): nahraj obe skladby, pusť A skoro na
+   konci, prepni REZIM na AUTOMAT -> 8s pred koncem se rozjede B a
+   crossfade prejede. Sahni na crossfader -> auto se zrusi, hrajes ty.
+D) MEZE: tahni GAIN nahoru na doraz -> pri ZAPNUTEM asistentovi se
+   zastavi na 95%. Vypni asistenta -> gain jde az na 100%.
+E) POLOAUTO: 8s pred koncem decku jen VAROVANI v liste, neprepina samo.
+F) Vsechny funkce pultu (mix, EQ, tempo, crossfade) jako v SE1.
+
+KILL-SWITCH
+Vratit BUILD2SE1 verzi dj/index.html (nebo puvodni). Zmena je v souboru.
+
+POZNAMKA
+Landscape je hlavni rezim (mobil/tablet na sirku pro zive hrani). Portrait
+funguje take (decky pod sebou), ale pult je delany na sirku.
