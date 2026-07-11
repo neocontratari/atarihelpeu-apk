@@ -1,0 +1,51 @@
+BUILD2SD1 - MP3 PREHRAVAC: DETAILNI LADICI OKNA (HIGH-RES STEREO) - TEST PLAN
+==============================================================================
+Zmeneny soubor: app/src/main/assets/player/index.html
+(prekopirovat pres stavajici, prebuildit APK, zadne dalsi zmeny)
+
+CO PRIBYLO
+Klik (kratky tap) na kterykoli zvukovy ovladac na skinu prehravace
+otevre DETAILNI ladici okno ve stejnem zlato-cernem retro stylu
+(jantarove diody, mosazna tahla):
+- EQUALIZER   -> 10 pasem (31/62/125/250/500/1k/2k/4k/8k/16k Hz),
+                 prepinac STEREO L+R / LEVY / PRAVY (high-res stereo)
+- BASY        -> 3 pasma nizkych (60/120/180 Hz)
+- VYSKY       -> 3 pasma vysokych (4/8/16 kHz)
+- HLASITOST   -> jeden posuvnik (0-100 %)
+- VYVAZENI    -> jeden posuvnik (L - STRED - R)
+Kazde okno ma VYNULOVAT (jen svuj rezim) a HOTOVO (zavrit).
+
+JAK TO NEROZBIJE STAVAJICI ZVUK (dulezite)
+- Puvodni soundState {eq[5],bass,treble,balance,volume} zustava PANI.
+  High-res okna zapisuji do hrState a to se MAPUJE zpet do soundState
+  (pushToLegacy): 10 pasem -> 5 puvodnich prumerem, stereo -> mono prumer.
+- Diky tomu TV CASTING (setSoundState / pushPlayerPcm16) i puvodni
+  Web Audio graf hraji dal BEZE ZMENY - overeno: pushPlayerPcm16,
+  syncTvWebSoundState, initAudioGraph, applySoundState netknute.
+- TAH prstem po ovladaci na skinu ladi naslepo jako dosud; jen KRATKY
+  TAP (bez posunu, <320ms) otevre detailni okno. Nekoliduji.
+
+TEST NA ZARIZENI
+A) Pusť MP3. Kratce klepni na EQUALIZER (pasma vlevo) -> otevre se okno
+   s 10 posuvniky. Tahni pasmo -> zvuk se meni IHNED, diody se rozsviti.
+B) Prepni STEREO L+R -> LEVY: uprav jen levy kanal, over v obraze
+   (a sluchem pres sluchatka) ze prava strana zustala.
+C) BASY: klepni na knob BASS -> okno se 3 pasmy. VYSKY: knob TREBLE
+   -> 3 pasma. HLASITOST/VYVAZENI: jeden posuvnik.
+D) VYNULOVAT v okne EQ vrati jen EQ; ostatni (bass/treble/vol) zustanou.
+   Panelove RESET ZVUKU (v Nastaveni) porad nuluje vse jako dosud.
+E) CASTING/PROJEKTOR: nastav EQ v detailnim okne, zkontroluj ze se
+   zmena projevi i na zrcadlenem obraze/zvuku (mapovani do soundState).
+F) TAH-LADENI NASLEPO: pretahni pasmo primo na skinu (nepouštěj hned)
+   -> ladi jako pred touto zmenou, okno se NEOTEVRE.
+G) REGRESE: PLAY/PAUSE/STOP/REWIND/FWD, playlist, knihovna MP3,
+   YOUTUBE tlacitko, Nastaveni - vse jako dosud.
+
+KILL-SWITCH
+Vratit predchozi player/index.html a prebuildit. Zmena je jen v 1 souboru.
+
+POZNAMKA
+Jemne per-kanalove stereo EQ uzly (hrEqL/hrEqR) jsou pripravene ve stavu,
+ale audio se ridi pres mapovani do soundState (bezpecne, nemeni graf).
+Pokud budes chtit PLNE nezavisle L/R filtrovani v grafu (ne jen
+mapovanim), je to dalsi samostatny overlay nad timto - rekni a pridam.
