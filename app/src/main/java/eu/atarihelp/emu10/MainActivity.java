@@ -290,17 +290,25 @@ public class MainActivity extends Activity {
                         }
                         napTvWebCaptureByDraw(bw, bh, scale);
                     }
+                    // BUILD2SH3: DRIV se pri hrajici hudbe VYPINAL PixelCopy a
+                    // prepinalo na draw() -> obraz na projektoru zamrzal a barevne
+                    // schema nenaskocilo (WebView se pres Canvas.draw nevykresli verne).
+                    // Ted PixelCopy BEZI i pri prehravani (verny obraz), jen mirne
+                    // zvednem interval snimku, aby zvuk mel prostor a netrhal se.
                     boolean playerAudioHot = "PLAYER".equals(napTvWebAudioSource)
                             && napTvWebAudioLastPushMs > 0
                             && nowTick - napTvWebAudioLastPushMs < 1500L;
                     boolean pixelCopyAllowed = Build.VERSION.SDK_INT >= 26
                             && napTvWebCopyHandler != null
                             && !napTvWebPixelCopyPending
-                            && nowTick >= napTvWebPixelCopyDisabledUntilMs
-                            && !playerAudioHot;
+                            && nowTick >= napTvWebPixelCopyDisabledUntilMs;
+                            // BUILD2SH3: odstraneno "&& !playerAudioHot" - obraz musi
+                            // zustat verny i behem hudby.
                     if (playerAudioHot) {
-                        napTvWebVideoProfile = "PLAYER_DRAW_SAFE";
-                        napTvWebFrameDelayMs = Math.max(napTvWebFrameDelayMs, 75);
+                        // jen lehke uleveni snimkovani, aby audio worker stihal,
+                        // ALE stale pres PixelCopy (verny obraz), ne draw.
+                        napTvWebVideoProfile = "PLAYER_PIXELCOPY_BAL";
+                        napTvWebFrameDelayMs = Math.max(napTvWebFrameDelayMs, landscape ? 90 : 70);
                     }
                     if (!didTimeoutFallback && pixelCopyAllowed) {
                         int[] loc = new int[2];
@@ -1021,7 +1029,7 @@ public class MainActivity extends Activity {
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'playback'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+0.35;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+0.36;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
-                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||(!isNaN(st)&&expected>0&&st!==expected)||next<now+0.05)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+0.36;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,50);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
+                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||(!isNaN(st)&&expected>0&&st!==expected)||next<now+0.04)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+0.22;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
                 + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
                 + "setInterval(function(){if(!fb)label('MJPEG');},1000);})();</script></body></html>";

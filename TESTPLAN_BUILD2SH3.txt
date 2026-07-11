@@ -1,0 +1,49 @@
+BUILD2SH3 - OPRAVA: OBRAZ ZAMRZAL PRI HUDBE + PLYNULEJSI ZVUK - TEST PLAN
+==========================================================================
+Zmeneny soubor:
+  app/src/main/java/eu/atarihelp/emu10/MainActivity.java
++ z SH2 zustavaji: player/index.html, dj/index.html, index.html
+  (audio tap se stavi pri play; pult ma tap)
+(prekopirovat vse pres stavajici, prebuildit APK)
+
+NALEZENA PRICINA (obraz "zamrzly, barevne schema nenaskace jak v apce")
+V kodu byla podminka: kdyz HRAJE ZVUK z prehravace (playerAudioHot),
+VYPNE se PixelCopy a prepne se na Canvas.draw(). PixelCopy = verny obraz
+(barvy, prechody jak v appce). draw() = WebView se casto vykresli jako
+prazdne/zamrzle pozadi (HW akcelerovany obsah se do Canvasu nepromitne).
+=> Jakmile jsi pustil hudbu, obraz na projektoru prepnul na draw a
+   ZAMRZL / barevne schema nenaskocilo. Presne tvuj popis.
+
+CO SE OPRAVILO
+1) OBRAZ: PixelCopy bezi DAL i behem prehravani hudby (verny obraz).
+   Odstranena podminka "&& !playerAudioHot". Pri hudbe se jen mirne
+   zvedne interval snimku (landscape 90ms / portrait 70ms), aby audio
+   worker stihal - ale porad pres PixelCopy, ne draw.
+2) ZVUK (plynulost, "neni to ono"): v prehravaci na projektoru:
+   - polling zvuku 50ms -> 20ms (bloky prichazeji casteji, min der)
+   - jitter buffer 0.36s -> 0.22s (mensi zpozdeni, stabilnejsi navaznost)
+   - cutover prah 0.05 -> 0.04 (jemnejsi)
+
+TEST NA ZARIZENI
+1) Zapni cast na projektor.
+2) MP3 prehravac -> pusť skladbu. SLEDUJ PROJEKTOR:
+   - obraz uz NEMA zamrznout, ma ukazovat presne co v appce (vcetne
+     barev/EQ diod), i kdyz hraje hudba. TOHLE JE HLAVNI OPRAVA.
+   - zvuk ma byt plynulejsi nez pred tim.
+3) DJ pult -> nahraj, pusť, mixuj. Obraz i zvuk na projektoru zive.
+4) Pohyb v appce (prepinani stranek, EQ) se ma na projektoru
+   projevit plynule, ne zamrzle.
+
+KDYBY OBRAZ PORAD ZAMRZAL
+Nektera zarizeni maji PixelCopy pomaly. V logu by byl radek
+"TV_WEB_PIXELCOPY_TIMEOUT" nebo "PIXELCOPY_FAIL". Pokud to nastane,
+napis - lze doladit interval nebo rozliseni snimku pro tvuj telefon.
+
+KILL-SWITCH
+Vratit predchozi MainActivity.java (a SH2 assets), prebuildit.
+
+POZNAMKA
+Obraz i zvuk se ted deli o vykon. Na slabsim telefonu muze byt v
+landscape obraz o neco mekci (nizsi FPS), aby zvuk zustal plynuly -
+to je zamerny kompromis. Kdyby ti vic vadilo jedno nebo druhe, da se
+poměr posunout (ostrejsi obraz vs. hladsi zvuk).
