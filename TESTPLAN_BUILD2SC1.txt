@@ -1,0 +1,64 @@
+BUILD2SC1 - YOUTUBE: GOOGLE LOGIN VEN Z WEBVIEW (EQ ZUSTAVA) - TEST PLAN
+=========================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(prekopirovat pres stavajici, prebuildit APK, zadne dalsi zmeny)
+
+KORENOVA PRICINA (nalezena v kodu, ne bug nasi appky)
+Google ZAMERNE blokuje prihlaseni k uctu uvnitr Android WebView
+(hlaska "nepodporovany prohlizec" / disallowed_useragent). Podvrzeny
+desktop Chrome User-Agent (ATARIHELP_BROWSER_UA, BUILD2SA5K) to
+neobejde - Google WebView detekuje i jinak a obchazeni je proti jeho
+podminkam. Prihlaseni ve WebView tedy NIKDY fungovat nebude; korektni
+cesta je otevrit login v systemovem prohlizeci telefonu.
+
+CO SE ZMENILO (3 hooky + 3 nove metody, zadny zasah do EQ)
+1) isGoogleSignInUrl() - detekce prihlasovacich URL:
+   accounts.google.com, accounts.youtube.com,
+   youtube.com/signin|/servicelogin|/accounts|/logout,
+   google.com/...ServiceLogin|/accounts
+2) handleGoogleSignInExternal() - otevre login pres Intent ACTION_VIEW
+   v prohlizeci telefonu + Toast "PRIHLASENI GOOGLE - OTEVIRAM V
+   PROHLIZECI TELEFONU" + log marker.
+3) napBlockSignInPageStarted() - pojistka v onPageStarted pro
+   server-side 302 redirecty, ktere obejdou shouldOverrideUrlLoading
+   (stopLoading + otevrit externe + goBack).
+Hooky: onPageStarted, shouldOverrideUrlLoading (String i
+WebResourceRequest varianta) - vzdy PRED game/bridge routerem,
+aby login nespadl do emulator loaderu.
+
+CO SE NEZMENILO (overeno diffem, bajt po bajtu identicke)
+- napTvWebOpenYoutubeInApp (YouTube prehravani zustava ve WebView)
+- napTvWebScheduleYoutubeAudioBridge + napTvWebInjectYoutubeAudioBridge
+  (LIVE YOUTUBE EQ - BUILD2SA13C18) - EQ BEZI DAL BEZE ZMENY
+- pushYoutubePcm16 audio cesta
+- ATARIHELP_BROWSER_UA (netykam se ho - pouziva se i pro relay stahovani)
+
+TEST NA ZARIZENI
+A) Player -> YOUTUBE: musi se otevrit m.youtube.com V APCE jako dosud.
+   Pustit video, overit ze LIVE YOUTUBE EQ panel bezi (sloupce skacou)
+   a zvuk jde pres aplikaci. TOHLE JE HLAVNI REGRESNI TEST.
+B) Na YouTube ve WebView kliknout "Prihlasit se": misto hlasky
+   "nepodporovany prohlizec" se musi objevit Toast a login se otevre
+   v Chrome/vychozim prohlizeci telefonu. WebView zustava na YouTube.
+C) V logu appky musi byt radka:
+   "BUILD2SC1 YT_LOGIN_EXTERNAL_OPEN source=..." (dukaz, ze hook chytil).
+   Pokud tam je "...FAIL", na zarizeni chybi prohlizec - nahlasit.
+D) Prihlasit se v prohlizeci a vratit se do appky: WebView JE DAL
+   NEPRIHLASENE - to je OCEKAVANE (WebView ma vlastni cookies, Google
+   je nesdili). Prehravani bez loginu funguje dal. Pokud projekt
+   potrebuje prihlaseny YouTube PRIMO v appce, je to samostatne tema
+   (oficialni YouTube API / Data API klic), ne oprava tohoto bugu.
+E) REGRESE: Atari 130XE, VBXE, Sega, PS1 stranky - login hook se jich
+   netyka, ale projet zakladni smoke test (spusteni hry, zvuk, navrat
+   do intra). Facebook odkaz musi porad jit ven (BUILD2GH beze zmeny).
+F) TV WEB CAST rezim s YouTube: overit ze cast bezi jako dosud
+   (BUILD2SA13C13 cesta netknuta).
+
+KILL-SWITCH
+Vratit predchozi MainActivity.java (verze bez BUILD2SC1) a prebuildit.
+Zmena je jen v jednom souboru.
+
+DALSI KROK (samostatny overlay, nemichat): PS1 memory card UI
+(nativni MEMCARD cesta BUILD2SA11 uz existuje, chybi jen napojeni
+tlacitka MEMORY CARD v emu_ps1/index.html) + Atari cartridge podpora
+(.car/.rom) podle vysledku testu nefunkcnich her.

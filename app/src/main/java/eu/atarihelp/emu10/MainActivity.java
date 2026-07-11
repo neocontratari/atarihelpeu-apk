@@ -3135,6 +3135,66 @@ public class MainActivity extends Activity {
         }
     }
 
+    // BUILD2SC1: Google prihlaseni NESMI bezet ve WebView. Google embedded
+    // WebView pro OAuth/login zamerne blokuje ("nepodporovany prohlizec" /
+    // disallowed_useragent) a zadny User-Agent trik to korektne neobejde.
+    // Login se proto otevre v systemovem prohlizeci telefonu.
+    // DULEZITE: YouTube PREHRAVANI zustava ve WebView (BUILD2SA13C13) a
+    // LIVE EQ audio bridge (BUILD2SA13C18) se NIJAK nemeni - EQ bezi dal.
+    private boolean isGoogleSignInUrl(String url) {
+        if (url == null) return false;
+        String u = url.trim().toLowerCase(Locale.US);
+        if (!(u.startsWith("http://") || u.startsWith("https://"))) return false;
+        try {
+            Uri uri = Uri.parse(url);
+            String host = uri.getHost();
+            if (host == null) return false;
+            host = host.toLowerCase(Locale.US);
+            String path = uri.getPath() == null ? "" : uri.getPath().toLowerCase(Locale.US);
+            if (host.equals("accounts.google.com") || host.endsWith(".accounts.google.com")) return true;
+            if (host.equals("accounts.youtube.com")) return true;
+            boolean ytHost = host.equals("youtube.com") || host.equals("www.youtube.com")
+                    || host.equals("m.youtube.com") || host.endsWith(".youtube.com");
+            if (ytHost && (path.startsWith("/signin") || path.startsWith("/servicelogin")
+                    || path.startsWith("/accounts") || path.startsWith("/logout"))) return true;
+            boolean gHost = host.equals("google.com") || host.equals("www.google.com")
+                    || host.endsWith(".google.com");
+            if (gHost && (path.contains("servicelogin") || path.startsWith("/accounts"))) return true;
+            return false;
+        } catch (Throwable ignored) {
+            return u.contains("accounts.google.") || u.contains("servicelogin");
+        }
+    }
+
+    private boolean handleGoogleSignInExternal(String url, String source) {
+        if (!isGoogleSignInUrl(url)) return false;
+        appendNativeLog("BUILD2SC1 YT_LOGIN_EXTERNAL_OPEN source=" + source + " url=" + compactUrl(url));
+        try {
+            android.widget.Toast.makeText(this,
+                    "PRIHLASENI GOOGLE - OTEVIRAM V PROHLIZECI TELEFONU",
+                    android.widget.Toast.LENGTH_LONG).show();
+        } catch (Throwable ignored) {}
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            i.addCategory(Intent.CATEGORY_BROWSABLE);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SC1 YT_LOGIN_EXTERNAL_FAIL " + safeMsg(t));
+        }
+        return true; // login nikdy nepustit do WebView, ani kdyz Intent selze
+    }
+
+    // BUILD2SC1: pojistka pro server-side 302 redirecty, ktere obejdou
+    // shouldOverrideUrlLoading a doletely by na accounts.google.com primo.
+    private boolean napBlockSignInPageStarted(WebView v, String url) {
+        if (v == null || !isGoogleSignInUrl(url)) return false;
+        try { v.stopLoading(); } catch (Throwable ignored) {}
+        handleGoogleSignInExternal(url, "onPageStarted302");
+        try { if (v.canGoBack()) v.goBack(); } catch (Throwable ignored) {}
+        return true;
+    }
+
     // BUILD2GH: normalni WWW odkazy nesmi spadnout do emulator NET loaderu.
     // BUILD2SA13C13: YouTube zustava v appce, aby ho TV WEB CAST videl.
     // Facebook stale jde ven, aby nespadl do game/download routeru.
@@ -3236,6 +3296,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageStarted(WebView v, String url, Bitmap favicon) {
                 super.onPageStarted(v, url, favicon);
+                if (napBlockSignInPageStarted(v, url)) return; // BUILD2SC1
                 applyWebViewVisualMode(url, "onPageStarted");
                 stopNativeIfLeavingSega(url, "onPageStarted");
                 stopPs1IfLeaving(url, "onPageStarted");
@@ -3243,6 +3304,7 @@ public class MainActivity extends Activity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, String url) {
+                if (handleGoogleSignInExternal(url, "shouldOverrideStr")) return true; // BUILD2SC1
                 if (handleAhGameBridgeUrl(url)) return true;
                 if (openExternalBrowserUrl(url)) return true;
                 if (handleMaybeGameUrl(url)) return true;
@@ -3253,6 +3315,7 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest request) {
                 if (request != null && request.getUrl() != null) {
                     String url = request.getUrl().toString();
+                    if (handleGoogleSignInExternal(url, "shouldOverrideReq")) return true; // BUILD2SC1
                     if (handleAhGameBridgeUrl(url)) return true;
                     if (openExternalBrowserUrl(url)) return true;
                     if (handleMaybeGameUrl(url)) return true;
