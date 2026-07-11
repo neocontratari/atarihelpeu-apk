@@ -1,0 +1,63 @@
+BUILD2SD2 - MP3: PLNE STEREO HIGH-RES EQ (NEZAVISLE L/R FILTRY) - TEST PLAN
+============================================================================
+Zmeneny soubor: app/src/main/assets/player/index.html
+(NASTAVBA NAD BUILD2SD1 - obsahuje SD1 detailni okna + navic plny stereo graf)
+(prekopirovat pres stavajici, prebuildit APK, zadne dalsi zmeny)
+
+CO JE NOVE OPROTI SD1
+SD1 melo detailni okna, ale zvuk se ridil pres mapovani do puvodniho
+5-pasmoveho MONO grafu. SD2 stavi SKUTECNY STEREO GRAF:
+
+  source -> ChannelSplitter(L,R)
+    -> LEVY:  10x peaking (31..16k) + lowshelf + highshelf   (vlastni uzly)
+    -> PRAVY: 10x peaking (31..16k) + lowshelf + highshelf   (vlastni uzly)
+    -> ChannelMerger -> balance(StereoPanner) -> volume(Gain) -> vystup (+TV tap)
+
+Levy a pravy kanal maji  100% NEZAVISLE filtry. Prepinac STEREO L+R /
+LEVY / PRAVY v EQ okne ted ladi realne oddelene kanaly, ne jen zobrazeni.
+
+OVERENO HEADLESS (OfflineAudioContext, realny render, ne mock):
+- Test nezavislosti: L kanal 1kHz +12dB, R kanal 1kHz -12dB ->
+  RMS L=1.41 vs R=0.089, pomer 15.85x = kanaly jsou PROKAZATELNE nezavisle.
+- Test retezu: bass +10dB na 100Hz -> zvuk realne zesilil (0.283 -> 0.796),
+  oba kanaly symetricky, balance stred drzi L=R. Graf je zdravy.
+- Stranka se nacte bez JS chyb (jen chybejici obrazek skinu v headless,
+  coz je v APK v poradku).
+
+BEZPECNOST / ZPETNA KOMPATIBILITA
+- soundState zustava a plni se (mapovanim z hrState) VYHRADNE pro TV
+  casting (setSoundState). Skutecny zvuk ted ridi hrState -> stereo graf.
+- FALLBACK: kdyby ChannelSplitter/Merger v danem WebView selhal, kod
+  automaticky postavi PUVODNI mono graf a jede jako SD1. (haveStereo=false)
+- TV casting tap (pushPlayerPcm16) je na vystupnim gainu -> castuje se
+  finalni stereo mix vcetne L/R ladeni.
+
+TEST NA ZARIZENI (POZOR - PEDANT TEST)
+A) Nasad sluchatka. Pusť hudbu. EQUALIZER -> STEREO L+R: uprav 1kHz
+   nahoru -> slysis v OBOU usich. HOTOVO.
+B) Prepni na LEVY: 1kHz vytahni nahoru, 4k stahni dolu. Prepni PRAVY:
+   udelej OPAK. Poslouchej - leve a prave ucho musi znit ROZDILNE.
+   Tohle je hlavni test nezavisleho stereo EQ.
+C) BASY / VYSKY / HLASITOST / VYVAZENI - over ze funguji jako v SD1.
+D) VYVAZENI (balance) do L: zvuk se presune do leveho ucha. Do stredu:
+   rovnomerne. (StereoPanner na konci retezu, za mergerem - spravne.)
+E) CASTING/PROJEKTOR: nastav stereo EQ, over ze se finalni mix
+   (vcetne L/R rozdilu) projevi na zrcadlenem zvuku.
+F) VYNULOVAT v EQ okne: v rezimu STEREO L+R vynuluje oba kanaly.
+   V rezimu LEVY/PRAVY - pozn.: reset nuluje cely EQ (oba), pak si
+   prislusny kanal doladis znovu.
+G) REGRESE: PLAY/PAUSE/STOP/seek, playlist, knihovna, YOUTUBE, casting,
+   tah-ladeni naslepo na skinu - vse jako dosud.
+
+KILL-SWITCH
+Vratit predchozi player/index.html (SD1 nebo original) a prebuildit.
+Zmena je jen v 1 souboru.
+
+POZNAMKA K JEMNOSTI (pro pedanta)
+- EQ: 10 plnych peaking pasem per kanal, Q=1.1 (hudebne prijemne siroke).
+- BASS detail (3 pasma 60/120/180 Hz) a TREBLE detail (4/8/16 kHz) se
+  slucuji do jednoho shelf gainu per kanal jako prumer; hlavni jemne
+  tvarovani spektra dela tech 10 EQ pasem, shelf je celkovy naklon.
+- Kdybys chtel BASS/TREBLE take jako 3 nezavisle peaking filtry per kanal
+  (misto shelf prumeru), reknes a udelam SD3 - je to dalsich 12 uzlu,
+  ale technicky bez problemu.

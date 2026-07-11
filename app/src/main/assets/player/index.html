@@ -532,35 +532,122 @@ function setupTvWebAudioTap(node){
 
 function initAudioGraph(){
   if(ctx) return;
-  log('AUDIO GRAF: stavim az ted (prvni pouziti zvukoveho ovladace) - do teto chvile hral original');
+  log('AUDIO GRAF: BUILD2SD2 plne stereo (nezavisle L/R filtry) - stavim az ted');
   try{
     ctx=new (window.AudioContext||window.webkitAudioContext)();
     source=ctx.createMediaElementSource(audio);
-    var node=source;
-    eqFilters=[];
-    eqFreq.forEach(function(f){
-      var biq=ctx.createBiquadFilter();
-      biq.type='peaking';
-      biq.frequency.value=f;
-      biq.Q.value=1.0;
-      biq.gain.value=0;
-      node.connect(biq);
-      node=biq;
-      eqFilters.push(biq);
-    });
-    bassFilter=ctx.createBiquadFilter(); bassFilter.type='lowshelf'; bassFilter.frequency.value=180; bassFilter.gain.value=0;
-    trebleFilter=ctx.createBiquadFilter(); trebleFilter.type='highshelf'; trebleFilter.frequency.value=3500; trebleFilter.gain.value=0;
-    node.connect(bassFilter); bassFilter.connect(trebleFilter);
-    panNode=ctx.createStereoPanner?ctx.createStereoPanner():null;
-    gainNode=ctx.createGain(); gainNode.gain.value=1;
-    if(panNode){ trebleFilter.connect(panNode); panNode.connect(gainNode); }
-    else { trebleFilter.connect(gainNode); }
-    gainNode.connect(ctx.destination);
-    setupTvWebAudioTap(gainNode);
+
+    // ===== BUILD2SD2: PLNE STEREO GRAF =====
+    // source -> splitter(L,R) -> [10x peaking + lowshelf + highshelf] per kanal
+    //        -> merger -> balance(pan) -> volume(gain) -> destination (+ TV tap)
+    // Kazdy kanal ma VLASTNI nezavisle filtry. hrState.eqL / eqR je ridi.
+    var haveStereo=false;
+    try{
+      hrSplitter=ctx.createChannelSplitter(2);
+      var merger=ctx.createChannelMerger(2);
+      source.connect(hrSplitter);
+
+      hrEqL=[]; hrEqR=[]; hrBassL=[]; hrBassR=[]; hrTrebL=[]; hrTrebR=[];
+
+      function buildChannelChain(chanIndex, eqArr, bassArr, trebArr){
+        // splitter da 1-kanalovy signal; retez filtru; vysledek do mergeru na chanIndex
+        var n=hrSplitter; // vystupni pin resime pri connect nize
+        // prvni uzel retezu bereme z konkretniho vystupu splitteru
+        var first=null, last=null;
+        HR_EQ_FREQ.forEach(function(f){
+          var biq=ctx.createBiquadFilter();
+          biq.type='peaking'; biq.frequency.value=f; biq.Q.value=1.1; biq.gain.value=0;
+          if(!first){ first=biq; } else { last.connect(biq); }
+          last=biq; eqArr.push(biq);
+        });
+        var bass=ctx.createBiquadFilter(); bass.type='lowshelf'; bass.frequency.value=180; bass.gain.value=0;
+        var treb=ctx.createBiquadFilter(); treb.type='highshelf'; treb.frequency.value=3500; treb.gain.value=0;
+        last.connect(bass); bass.connect(treb);
+        bassArr.push(bass); trebArr.push(treb);
+        // napojeni: splitter[chanIndex] -> first ... treb -> merger[chanIndex]
+        hrSplitter.connect(first, chanIndex);
+        treb.connect(merger, 0, chanIndex);
+        return treb;
+      }
+
+      buildChannelChain(0, hrEqL, hrBassL, hrTrebL); // LEVY
+      buildChannelChain(1, hrEqR, hrBassR, hrTrebR); // PRAVY
+
+      panNode=ctx.createStereoPanner?ctx.createStereoPanner():null;
+      gainNode=ctx.createGain(); gainNode.gain.value=1;
+      if(panNode){ merger.connect(panNode); panNode.connect(gainNode); }
+      else { merger.connect(gainNode); }
+      gainNode.connect(ctx.destination);
+      setupTvWebAudioTap(gainNode);
+      hrMergerReady=true;
+      haveStereo=true;
+      // zpetna kompatibilita: eqFilters ukazuje na levy retez (pro stare volani)
+      eqFilters=hrEqL;
+      bassFilter=hrBassL[0]||null; trebleFilter=hrTrebL[0]||null;
+    }catch(eStereo){
+      log('BUILD2SD2 stereo graf nejde, padam na mono: '+(eStereo&&eStereo.message));
+      haveStereo=false;
+    }
+
+    if(!haveStereo){
+      // ---- FALLBACK: puvodni mono graf (kdyby stereo v prohlizeci selhalo) ----
+      var node=source;
+      eqFilters=[];
+      eqFreq.forEach(function(f){
+        var biq=ctx.createBiquadFilter();
+        biq.type='peaking'; biq.frequency.value=f; biq.Q.value=1.0; biq.gain.value=0;
+        node.connect(biq); node=biq; eqFilters.push(biq);
+      });
+      bassFilter=ctx.createBiquadFilter(); bassFilter.type='lowshelf'; bassFilter.frequency.value=180; bassFilter.gain.value=0;
+      trebleFilter=ctx.createBiquadFilter(); trebleFilter.type='highshelf'; trebleFilter.frequency.value=3500; trebleFilter.gain.value=0;
+      node.connect(bassFilter); bassFilter.connect(trebleFilter);
+      panNode=ctx.createStereoPanner?ctx.createStereoPanner():null;
+      gainNode=ctx.createGain(); gainNode.gain.value=1;
+      if(panNode){ trebleFilter.connect(panNode); panNode.connect(gainNode); }
+      else { trebleFilter.connect(gainNode); }
+      gainNode.connect(ctx.destination);
+      setupTvWebAudioTap(gainNode);
+    }
+
     applySoundState();
+    applyHrToGraph();
   }catch(e){ log('WebAudio graph unavailable: '+e.message); ctx=null; source=null; }
 }
+
+// BUILD2SD2: promitne cely hrState (nezavisle L/R) primo do stereo filtru.
+function applyHrToGraph(){
+  if(!hrMergerReady) return;
+  try{
+    for(var i=0;i<HR_EQ_FREQ.length;i++){
+      if(hrEqL[i]) hrEqL[i].gain.value=hrState.eqL[i];
+      if(hrEqR[i]) hrEqR[i].gain.value=hrState.eqR[i];
+    }
+    // bass: 3 pasma slozime do jednoho lowshelf gainu (prumer) per kanal,
+    // aby to sedelo do jednoho shelf filtru; jemne rozliseni zustava v EQ pasmech.
+    var bAvg=(hrState.bass.low+hrState.bass.mid+hrState.bass.high)/3;
+    var tAvg=(hrState.treble.low+hrState.treble.mid+hrState.treble.high)/3;
+    if(hrBassL[0]) hrBassL[0].gain.value=bAvg;
+    if(hrBassR[0]) hrBassR[0].gain.value=bAvg;
+    if(hrTrebL[0]) hrTrebL[0].gain.value=tAvg;
+    if(hrTrebR[0]) hrTrebR[0].gain.value=tAvg;
+    if(panNode) panNode.pan.value=hrState.balance;
+    if(gainNode) gainNode.gain.value=hrState.volume;
+    audio.volume=hrState.volume;
+  }catch(e){ log('BUILD2SD2 applyHrToGraph chyba: '+(e&&e.message)); }
+}
+
 function applySoundState(){
+  if(hrMergerReady){
+    // BUILD2SD2: kdyz bezi stereo graf, ridi ho hrState (viz applyHrToGraph).
+    // Tady jen dopocteme balance/volume z hrState a syncneme casting.
+    if(panNode) panNode.pan.value=hrState.balance;
+    if(gainNode) gainNode.gain.value=hrState.volume;
+    audio.volume=hrState.volume;
+    updateVisuals();
+    syncTvWebSoundState(false);
+    return;
+  }
+  // ---- puvodni mono cesta (fallback) ----
   if(eqFilters.length){
     soundState.eq.forEach(function(v,i){ if(eqFilters[i]) eqFilters[i].gain.value=v; });
   }
@@ -827,10 +914,11 @@ bindZoneWithTapOpen(document.getElementById('knVolume'), 'volume', function(){
   function openPanel(){ panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); }
   function closePanel(){ panel.classList.remove('open'); panel.setAttribute('aria-hidden','true'); }
 
-  // Namapuje high-res stereo stav zpet do puvodniho soundState (5 pasem),
-  // aby TV casting i puvodni graf hraly dal. Pak aplikuje.
+  // Namapuje high-res stereo stav zpet do puvodniho soundState (pro TV casting),
+  // a zaroven BUILD2SD2 promitne cely hrState primo do STEREO grafu (nezavisle L/R).
   function pushToLegacy(){
     // EQ: 10 HR pasem -> 5 puvodnich (parove prumery), stereo -> mono prumer
+    // (soundState slouzi UZ JEN pro TV casting; skutecny zvuk ridi hrState/graf)
     function mono(i){ return (hrState.eqL[i]+hrState.eqR[i])/2; }
     soundState.eq[0]=(mono(0)+mono(1))/2;   // ~31/62 -> 60
     soundState.eq[1]=(mono(2)+mono(3))/2;   // 125/250 -> 250
@@ -842,18 +930,9 @@ bindZoneWithTapOpen(document.getElementById('knVolume'), 'volume', function(){
     soundState.balance=hrState.balance;
     soundState.volume=hrState.volume;
     if(typeof initAudioGraph==='function') initAudioGraph();
-    if(typeof applySoundState==='function') applySoundState();
-    applyHrStereo();
-  }
-
-  // Aplikuje jemne stereo doladeni na rozsirene uzly (pokud existuji).
-  function applyHrStereo(){
-    try{
-      for(var i=0;i<HR_EQ_FREQ.length;i++){
-        if(hrEqL[i]) hrEqL[i].gain.value=hrState.eqL[i];
-        if(hrEqR[i]) hrEqR[i].gain.value=hrState.eqR[i];
-      }
-    }catch(e){}
+    // BUILD2SD2: skutecne nezavisle L/R do grafu
+    if(typeof applyHrToGraph==='function') applyHrToGraph();
+    if(typeof applySoundState==='function') applySoundState(); // sync castingu
   }
 
   function fmtDb(v){ v=Math.round(v*10)/10; return (v>0?'+':'')+v+'dB'; }
