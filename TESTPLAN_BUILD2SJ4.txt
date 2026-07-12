@@ -1,0 +1,49 @@
+BUILD2SJ4 - N&P VISION: PLNY 3D REDESIGN (fadery/tlacitka/pady/pismo)
+=====================================================================
+Zmenene soubory:
+  app/src/main/assets/dj/index.html     (vsechny prvky 3D + moderni pismo)
+  app/src/main/assets/index.html        (tlacitko Rene Frank -> pult)
+  NAVOD_NP_VISION_DJ.html               (navod)
+(prekopirovat pres stavajici, prebuildit APK)
+
+CO SE ZMENILO (dle tveho "vsechno 3D, ne omalovanka")
+- FADERY (tempo/gain/EQ): ted 3D KOVOVE HLAVY co vystupuji z drazky a
+  vrhaji STIN. Kovovy lesk (svetla 228, tmava 20 = plasticky kov).
+  Drazka uprostred kudy hlava jede. Grip linka na hlave.
+- CROSSFADER: velka 3D kovova hlava se svislym gripem, hloubkova drazka.
+- TLACITKA (transport/nav/mix/deckActs/sampler): 3D s hloubkou, hornim
+  leskem a spodnim stinem. Pri stisku se ZAMACKNOU (translateY+stin).
+  PLAY/SYNC sviti zlate (deck A) / modre (deck B) s leskem.
+- HOT CUE PADY: 3D gumova tlacitka (horni highlight, spodni stin,
+  zamacknuti pri stisku). Aktivni pad sviti.
+- SAMPLER PADY: 3D, pri klepnuti se zamacknou a zezlatnou.
+- PISMO: moderni kondenzovane (Rajdhani/Oswald) misto monospace.
+  Fallback na Segoe/sans-serif kdyby nebyl net.
+- LP DESKY (jog) z SJ3 zustavaji - ocelove, toci se.
+
+OVERENO
+- 3D kontrast: fadery 228/20, crossfader 180/18 = kov. Pady maji
+  hloubku (horni hrana svetlejsi nez stred nez spodni stin).
+- ZVUK: 50 bloku BEZ DIRY i s plnym 3D. Zustava KING.
+- Landscape (telefon 1480, tablet): nic nepreteka, deck B uvnitr.
+
+TEST NA ZARIZENI (NA SIRKU)
+A) Menu -> Rene Frank -> pult. Vsechny prvky maji 3D HLOUBKU:
+   fadery jsou kovove hlavy co vystupuji, tlacitka maji lesk a stin,
+   pady vypadaji jako gumove. Pismo moderni kondenzovane.
+B) Stiskni tlacitko -> ZAMACKNE se. Tahni fader -> kovova hlava jede
+   po drazce a vrha stin. Pusť skladbu -> LP deska se toci.
+C) Sampler dela spravne zvuky (KICK/SNARE...), pady se zamacknou.
+D) Zvuk CISTY, playlist A i B, mix, EQ - vse funguje.
+
+POZNAMKA K PISMU
+Pismo se stahuje z Google Fonts (Rajdhani/Oswald). Kdyz telefon nema
+net, pouzije se hezky systemovy fallback (Segoe/sans). Chces-li pismo
+napevno v APK (bez netu), reknu jak ho vlozit lokalne.
+
+KILL-SWITCH
+Vratit predchozi dj/index.html, prebuildit.
+
+STALE PLATI: kdyz chces PLNY fotorealismus jako tvoje navrhy (ne
+CSS 3D), je cesta vlozit tvuj AI obrazek jako pozadi. Ale tohle uz
+je poradny 3D kabat, ne placka.
