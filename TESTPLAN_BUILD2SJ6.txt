@@ -1,0 +1,20 @@
+BUILD2SJ6 - N&P VISION: EQ SIROKY RADEK + MENSI STREDNI TLACITKA
+================================================================
+Zmenene soubory:
+  app/src/main/assets/dj/index.html
+  app/src/main/assets/index.html
+  NAVOD_NP_VISION_DJ.html
+(prekopirovat pres stavajici, prebuildit APK)
+
+CO SE OPRAVILO (razantne, dle feedbacku)
+1) STREDNI TLACITKA (SYNC BPM/HARD A/HARD B) VYRAZNE MENSI:
+   mixer 172->140px, tlacitka font 9->8px, mensi padding.
+2) EQ ROZDELEN DO VLASTNIHO SIROKEHO RADKU pod fadery (pres celou
+   sirku decku). Slidery 30px siroke s 10px mezerami (drive natesnane).
+   OVERENO: sliderW=30, gap=10.
+3) HITBOXY EQ presne: vrsek +12, stred 0, spodek -12 (OVERENO).
+4) Nic nepreteka, zvuk 50 bloku BEZ DIRY.
+
+STAV: vzhled uz slusny, EQ pouzitelne. HOTOVO k testovani funkcnosti.
+
+KILL-SWITCH: vratit predchozi dj/index.html, prebuildit.
