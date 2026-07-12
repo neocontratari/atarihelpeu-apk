@@ -1,0 +1,52 @@
+BUILD2SJ1 - N&P VISION PRO DJ MIXER (podle tvych navrhu) - TEST PLAN
+=====================================================================
+Zmenene soubory:
+  app/src/main/assets/dj/index.html     (KOMPLETNE novy pro pult)
+  app/src/main/assets/index.html        (tlacitko Rene Frank -> pult)
+(prekopirovat pres stavajici, prebuildit APK)
+
+CO JE NOVE (podle tvych 3 navrhu N&P VISION PRO DJ MIXER)
+- LAYOUT jako pro DJ pult: horni lista (ZPET/MIXER/WAVEFORM + N&P VISION
+  logo + SETTINGS), dva velke JOG WHEELY ktere se TOCI do hudby (kovovy
+  talir, N&P VISION uprostred, svetelny prstenec + rotujici tick),
+  stredni MIXER s N&P logem, MASTER VU metry (skacou do hudby),
+  crossfader, SYNC/HARD tlacitka, HOT CUE pady (8 na deck), SAMPLER
+  (KICK/SNARE/HAT/CLAP/BASS/SYNTH/VOCAL/FX), MASTER LIMITER, footer.
+- MODERNI PISMO (Rajdhani/Segoe, ne monospace jako predtim).
+- DECK A zlaty, DECK B modry (jako tvoje navrhy).
+
+>>> PLAYLIST NA OBA DECKY (tvuj pozadavek) <<<
+- Tlacitko PLAYLIST na kazdem decku otevre seznam skladeb TOHO decku.
+- + PRIDAT nahraje skladby (i vic naraz) do playlistu daneho decku.
+- Kazda skladba ma NACIST -> natahne ji na dany deck (druha hraje HRAJE).
+- Deck A a deck B maji SVOJ NEZAVISLY playlist.
+- Track info (nazev/interpret/cas) se ukazuje nahore na decku.
+
+>>> ZVUK JE KRAL (overeno) <<<
+Headless test na REALNEM pultu: pri bezici PLNE grafice (jog rotace +
+kosmos + VU + waveform naraz) bezel audio stream 60 bloku BEZ JEDINE
+DIRY (0 gaps). Grafika bezi na rAF (prohlizec ji priskrti kdyz nestiha)
+-> pri nedostatku vykonu ustoupi GRAFIKA, ne zvuk. Pri castingu na
+projektor se grafika sama zjemni (nizsi FPS) pro vykon.
++ TV WEB audio tap je napojeny -> pult streamuje zvuk na projektor.
+
+TEST NA ZARIZENI (OTOC NA SIRKU)
+A) Menu -> Rene Frank -> pravy pro pult. Jog wheely, mixer, pady, sampler.
+B) DECK A -> PLAYLIST -> + PRIDAT -> vyber skladby. Prvni se natahne.
+   Klepni NACIST u jine -> prehodi se. To same DECK B se svym playlistem.
+C) PLAY na obou -> obe hraji, jog wheely se TOCI, VU/waveform skacou,
+   kosmos pulzuje. Crossfader mixuje. HLAVNI: zvuk CISTY.
+D) 10-pasmovy EQ na kazdem decku, TEMPO, GAIN, SYNC BPM - funguji.
+E) SAMPLER pady - klepni, prehraje ton. HOT CUE pady sviti.
+F) CASTING na projektor: obraz i zvuk, zvuk plynuly (grafika se zjemni).
+G) ASISTENT: vypnuti podrzenim, navaznost - jako v predchozich buildech.
+H) LANDSCAPE telefon i tablet: decky vedle sebe, nic nepreteka.
+   PORTRAIT: decky pod sebou, mixer mezi nimi.
+
+KILL-SWITCH
+Vratit predchozi dj/index.html, prebuildit.
+
+POZNAMKA
+Je to ziva CSS/canvas grafika (jog se toci, vse reaguje na hudbu) v
+duchu N&P VISION - ne fotorealisticky AI obrazek. Kdybys chtel pod to
+vlozit svuj fotorealisticky obrazek jako pozadi, jde to - rekni.
