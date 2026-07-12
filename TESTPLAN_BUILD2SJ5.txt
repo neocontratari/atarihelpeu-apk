@@ -1,0 +1,35 @@
+BUILD2SJ5 - N&P VISION: OPRAVY (tick osa, EQ hitboxy, tlacitka, ram)
+=====================================================================
+Zmenene soubory:
+  app/src/main/assets/dj/index.html     (5 oprav dle feedbacku)
+  app/src/main/assets/index.html
+  NAVOD_NP_VISION_DJ.html
+(prekopirovat pres stavajici, prebuildit APK)
+
+CO SE OPRAVILO (tve pripominky)
+1) SIPKA (tick) NA DESCE MIMO OSU - u OBOU decku: osa rotace se ted
+   nastavuje dynamicky presne na stred jogu. OVERENO: tick obiha kolem
+   stredu konstantne (vzdalenost 65-68px pri 0/90/180/270 st = kruh,
+   ne elipsa). Sipka uz neujizdi.
+2) PROSTREDNI TLACITKA (SYNC BPM / HARD A / HARD B) MOC VELKA:
+   zmenseny mixer (200->172px) i pismo tlacitek (10->9px, mensi padding).
+3) EQ TAHLA MOC U SEBE: rozestup gap 3->6px, sirsi hitbox (24->26px).
+4) HITBOXY EQ SERIZENY NA VYBORNOU: pridano mrtve pasmo 8% nahore/dole
+   -> vrsek dava presne +12, stred 0, spodek -12 (OVERENO). EQ se ted
+   da presne a plynule ladit. Kurzor ns-resize.
+5) KOSTRA KOLEM PULTU (tenka carka) PREDELANA: ted VYRAZNY zlaty kovovy
+   RAM s hloubkou (gradient obruba + inset stiny), navazuje topbar ->
+   deck-console jako jeden kus. Zadna tenka carka.
+
+ZVUK: 50 bloku BEZ DIRY. King zustava.
+
+TEST NA ZARIZENI (NA SIRKU)
+A) Sipka na tocici se desce jde presne po obvodu, ne mimo osu (oba decky).
+B) Prostredni tlacitka mensi, vic mista.
+C) EQ tahla vic od sebe - da se chytit prst. Tahni EQ pasmo az nahoru
+   -> +12 snadno, az dolu -> -12. Presne ladeni.
+D) Ram kolem pultu je vyrazny zlaty kov, ne tenka carka.
+E) Zvuk cisty, vse funguje.
+
+KILL-SWITCH
+Vratit predchozi dj/index.html, prebuildit.
