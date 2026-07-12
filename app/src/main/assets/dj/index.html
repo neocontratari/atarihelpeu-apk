@@ -77,36 +77,72 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   background:linear-gradient(180deg,#1c1a14,#0e0d0a);border:1px solid rgba(240,201,106,.18);}
 .deck.b .deckActs button{color:#9fc4e8;border-color:rgba(80,160,240,.18);}
 
-/* JOG WHEEL */
-.jogWrap{display:flex;justify-content:center;padding:6px 0;}
-.jog{position:relative;width:190px;height:190px;border-radius:50%;
+/* ===== 3D OCELOVA LP DESKA (jog wheel) ===== */
+.jogWrap{display:flex;justify-content:center;padding:8px 0;perspective:600px;}
+.jog{position:relative;width:200px;height:200px;border-radius:50%;
+  transform:rotateX(8deg);transform-style:preserve-3d;
+  /* vnejsi ocelovy prstenec - kartacovana ocel */
   background:
-    radial-gradient(circle at 50% 50%, #0a0a0c 0 28%, transparent 28.5%),
-    conic-gradient(from 0deg,#2a2620,#0e0d0b,#3a352a,#0e0d0b,#2a2620);
-  box-shadow:0 8px 24px rgba(0,0,0,.7),inset 0 0 30px rgba(0,0,0,.8),0 0 0 6px #0a0908,0 0 0 7px rgba(240,201,106,.15);}
-.jog::before{content:'';position:absolute;inset:8px;border-radius:50%;
-  background:repeating-radial-gradient(circle at 50% 50%, #17150f 0 1px, #0d0c0a 1px 2px);
-  box-shadow:inset 0 0 20px rgba(0,0,0,.9);}
-.jogRing{position:absolute;inset:-4px;border-radius:50%;pointer-events:none;
-  background:conic-gradient(var(--rc,#c9962f) 0deg,transparent 40deg,transparent 320deg,var(--rc,#c9962f) 360deg);
-  opacity:.0;filter:blur(1px);}
+    conic-gradient(from 0deg,
+      #6a6d72 0deg,#c8ccd2 25deg,#4a4d52 55deg,#9aa0a8 90deg,
+      #3a3d42 130deg,#b0b6be 165deg,#5a5d62 200deg,#d0d4da 235deg,
+      #454a50 270deg,#a0a6ae 305deg,#5a5d62 340deg,#6a6d72 360deg);
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.75),
+    0 3px 8px rgba(0,0,0,.6),
+    inset 0 2px 4px rgba(255,255,255,.35),
+    inset 0 -4px 10px rgba(0,0,0,.7),
+    0 0 0 1px rgba(0,0,0,.5);}
+/* prstenec svetla podle decku (rozsviti se do hudby) */
+.jogRing{position:absolute;inset:-3px;border-radius:50%;pointer-events:none;opacity:.15;
+  box-shadow:0 0 18px 3px var(--rc,#c9962f),inset 0 0 12px 2px var(--rc,#c9962f);}
 .deck.a .jog{--rc:#ffb43c;}
 .deck.b .jog{--rc:#4fc3ff;}
-.deck.a .jogRing{background:conic-gradient(#ffb43c,transparent 30%,transparent 70%,#ffb43c);}
-.deck.b .jogRing{background:conic-gradient(#4fc3ff,transparent 30%,transparent 70%,#4fc3ff);}
-.jogCenter{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:82px;height:82px;border-radius:50%;
-  background:radial-gradient(circle at 42% 35%,#2a2318,#0c0b08);border:2px solid rgba(240,201,106,.4);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.7),inset 0 1px 2px rgba(255,255,255,.15);}
-.deck.b .jogCenter{border-color:rgba(80,180,255,.4);}
-.jogCenter .np{font:800 18px var(--font);letter-spacing:1px;
-  background:linear-gradient(180deg,#ffe9ad,#c9962f);-webkit-background-clip:text;background-clip:text;color:transparent;}
+/* LP deska - cerny vinyl s koncentrickymi drazkami */
+.jog::before{content:'';position:absolute;inset:14px;border-radius:50%;
+  background:
+    repeating-radial-gradient(circle at 50% 50%,
+      rgba(255,255,255,.04) 0 1px, rgba(0,0,0,0) 1px 2.5px),
+    radial-gradient(circle at 38% 32%, #2a2a2e 0%, #141416 30%, #08080a 70%, #050505 100%);
+  box-shadow:inset 0 0 30px rgba(0,0,0,.95),inset 0 3px 6px rgba(255,255,255,.08);}
+/* lesklý odraz svetla na vinylu (staticky highlight) */
+.jog::after{content:'';position:absolute;inset:14px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(ellipse 60% 40% at 40% 26%, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 55%);}
+/* rotujici label - kovovy stred s N&P (label LP desky) */
+.jogCenter{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:88px;height:88px;border-radius:50%;
+  background:
+    radial-gradient(circle at 40% 32%, #3a3222 0%, #241d10 45%, #0c0a06 100%);
+  border:2px solid rgba(240,201,106,.5);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-shadow:
+    0 3px 10px rgba(0,0,0,.8),
+    inset 0 2px 4px rgba(255,255,255,.25),
+    inset 0 -3px 8px rgba(0,0,0,.7),
+    0 0 0 5px rgba(0,0,0,.5),
+    0 0 0 6px rgba(240,201,106,.2);}
+.deck.b .jogCenter{border-color:rgba(80,180,255,.5);box-shadow:0 3px 10px rgba(0,0,0,.8),inset 0 2px 4px rgba(255,255,255,.25),inset 0 -3px 8px rgba(0,0,0,.7),0 0 0 5px rgba(0,0,0,.5),0 0 0 6px rgba(80,180,255,.2);}
+.jogCenter .np{font:800 19px var(--font);letter-spacing:1px;background:linear-gradient(180deg,#ffe9ad,#c9962f);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));}
+.deck.b .jogCenter .np{background:linear-gradient(180deg,#cfeeff,#4fa8e8);-webkit-background-clip:text;background-clip:text;color:transparent;}
 .jogCenter .vis{font:700 7px var(--font);letter-spacing:3px;color:#b8903f;}
-.jogTick{position:absolute;top:6px;left:50%;width:3px;height:14px;border-radius:2px;transform-origin:50% 89px;
-  background:var(--rc,#c9962f);box-shadow:0 0 6px var(--rc,#c9962f);}
+.deck.b .jogCenter .vis{color:#5a9fd0;}
+/* stredovy dot (osa gramofonu) */
+.jogCenter::after{content:'';position:absolute;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#888);box-shadow:0 1px 2px rgba(0,0,0,.8),inset 0 0 2px rgba(0,0,0,.5);}
+/* rotujici vinyl vrstva - drazky + sektorovy lesk (toci se) */
+.jogVinyl{position:absolute;inset:14px;border-radius:50%;pointer-events:none;z-index:2;
+  background:
+    conic-gradient(from 0deg, rgba(255,255,255,.10) 0deg, rgba(255,255,255,0) 30deg, rgba(255,255,255,0) 150deg, rgba(255,255,255,.06) 180deg, rgba(255,255,255,0) 210deg, rgba(255,255,255,0) 340deg, rgba(255,255,255,.10) 360deg),
+    repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.05) 0 1px, rgba(0,0,0,0) 1px 3px);
+  will-change:transform;}
+/* tick marker - svetelna znacka na okraji desky co rotuje */
+.jogTick{position:absolute;top:8px;left:50%;width:4px;height:20px;border-radius:2px;transform-origin:50% 92px;z-index:3;
+  background:linear-gradient(180deg,var(--rc,#c9962f),transparent);
+  box-shadow:0 0 8px var(--rc,#c9962f),0 0 3px var(--rc,#c9962f);}
 
 /* leva sekce decku: tempo + play pruh */
-.deckCtl{display:flex;gap:8px;align-items:stretch;}
-.tempoCol{display:flex;flex-direction:column;align-items:center;gap:4px;width:52px;flex:0 0 auto;}
+.deckCtl{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;}
+.faderPair{display:flex;gap:8px;flex:0 0 auto;}
+.eqZone{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.tempoCol{display:flex;flex-direction:column;align-items:center;gap:4px;width:48px;flex:0 0 auto;}
 .miniLbl{font:700 8px var(--font);letter-spacing:1px;color:#a89a70;}
 .bigTrack{position:relative;width:38px;height:120px;border-radius:9px;touch-action:none;overflow:hidden;
   background:linear-gradient(180deg,#1a1209,#080605);border:1px solid var(--edge);box-shadow:inset 0 2px 8px rgba(0,0,0,.7);}
@@ -332,21 +368,24 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       <div class="jog" data-jog="A">
         <div class="jogRing" data-ring="A"></div>
         <div class="jogTick" data-tick="A"></div>
-        <div class="jogCenter"><span class="np">N&amp;P</span><span class="vis">VISION</span></div>
+        <div class="jogVinyl" data-vinyl="A"></div>
+        <div class="jogCenter" data-label="A"><span class="np">N&amp;P</span><span class="vis">VISION</span></div>
       </div>
     </div>
     <div class="deckCtl">
-      <div class="tempoCol">
-        <span class="miniLbl">TEMPO</span>
-        <div class="bigTrack" data-tempo="A"></div>
-        <span class="bigVal" data-tempoval="A">0%</span>
+      <div class="faderPair">
+        <div class="tempoCol">
+          <span class="miniLbl">TEMPO</span>
+          <div class="bigTrack" data-tempo="A"></div>
+          <span class="bigVal" data-tempoval="A">0%</span>
+        </div>
+        <div class="tempoCol">
+          <span class="miniLbl">GAIN</span>
+          <div class="bigTrack" data-vol="A"></div>
+          <span class="bigVal" data-volval="A">80%</span>
+        </div>
       </div>
-      <div class="tempoCol">
-        <span class="miniLbl">GAIN</span>
-        <div class="bigTrack" data-vol="A"></div>
-        <span class="bigVal" data-volval="A">80%</span>
-      </div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+      <div class="eqZone">
         <div class="eqRow" data-eq="A"></div>
         <div class="pads" data-pads="A"></div>
       </div>
@@ -406,23 +445,26 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       <div class="jog" data-jog="B">
         <div class="jogRing" data-ring="B"></div>
         <div class="jogTick" data-tick="B"></div>
-        <div class="jogCenter"><span class="np">N&amp;P</span><span class="vis">VISION</span></div>
+        <div class="jogVinyl" data-vinyl="B"></div>
+        <div class="jogCenter" data-label="B"><span class="np">N&amp;P</span><span class="vis">VISION</span></div>
       </div>
     </div>
     <div class="deckCtl">
-      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+      <div class="eqZone">
         <div class="eqRow" data-eq="B"></div>
         <div class="pads" data-pads="B"></div>
       </div>
-      <div class="tempoCol">
-        <span class="miniLbl">GAIN</span>
-        <div class="bigTrack" data-vol="B"></div>
-        <span class="bigVal" data-volval="B">80%</span>
-      </div>
-      <div class="tempoCol">
-        <span class="miniLbl">TEMPO</span>
-        <div class="bigTrack" data-tempo="B"></div>
-        <span class="bigVal" data-tempoval="B">0%</span>
+      <div class="faderPair">
+        <div class="tempoCol">
+          <span class="miniLbl">GAIN</span>
+          <div class="bigTrack" data-vol="B"></div>
+          <span class="bigVal" data-volval="B">80%</span>
+        </div>
+        <div class="tempoCol">
+          <span class="miniLbl">TEMPO</span>
+          <div class="bigTrack" data-tempo="B"></div>
+          <span class="bigVal" data-tempoval="B">0%</span>
+        </div>
       </div>
     </div>
     <div class="transport">
@@ -675,12 +717,38 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   document.querySelectorAll('[data-sync]').forEach(function(b){b.onclick=syncBpm;});
   renderXf();applyXfade();
 
-  // sampler + limiter
+  // sampler + limiter - REALNE bicí zvuky syntetizovane pres Web Audio
   var SAMP=[['1','KICK'],['2','SNARE'],['3','HAT'],['4','CLAP'],['5','BASS'],['6','SYNTH'],['7','VOCAL'],['8','FX']];
   var sampEl=document.getElementById('sampler');
   SAMP.forEach(function(s){var d=document.createElement('div');d.className='sPad';d.innerHTML='<b>'+s[0]+'</b>'+s[1];
-    d.onclick=function(){beep(120+parseInt(s[0])*80);};sampEl.appendChild(d);});
-  function beep(freq){try{var c=ac();var o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;o.connect(g);g.connect(master||c.destination);g.gain.setValueAtTime(0.001,c.currentTime);g.gain.exponentialRampToValueAtTime(0.25,c.currentTime+0.01);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.18);o.start();o.stop(c.currentTime+0.2);}catch(e){}}
+    d.onclick=function(){playSample(s[1]);d.style.transform='scale(.95)';setTimeout(function(){d.style.transform='';},90);};sampEl.appendChild(d);});
+
+  function noiseBuffer(c,dur){var n=Math.floor(c.sampleRate*dur),buf=c.createBuffer(1,n,c.sampleRate),d=buf.getChannelData(0);for(var i=0;i<n;i++)d[i]=Math.random()*2-1;return buf;}
+  function playSample(kind){
+    try{
+      var c=ac(); var out=master||c.destination; var t=c.currentTime;
+      function env(g,peak,dur,atk){g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+(atk||0.005));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);}
+      if(kind==='KICK'){
+        var o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(45,t+0.12);
+        env(g,0.9,0.4);o.connect(g);g.connect(out);o.start(t);o.stop(t+0.45);
+      } else if(kind==='SNARE'){
+        var ns=c.createBufferSource();ns.buffer=noiseBuffer(c,0.2);var nf=c.createBiquadFilter();nf.type='highpass';nf.frequency.value=1200;var ng=c.createGain();env(ng,0.5,0.2);ns.connect(nf);nf.connect(ng);ng.connect(out);ns.start(t);ns.stop(t+0.2);
+        var o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=180;env(g,0.4,0.12);o.connect(g);g.connect(out);o.start(t);o.stop(t+0.13);
+      } else if(kind==='HAT'){
+        var ns=c.createBufferSource();ns.buffer=noiseBuffer(c,0.06);var nf=c.createBiquadFilter();nf.type='highpass';nf.frequency.value=7000;var ng=c.createGain();env(ng,0.35,0.06,0.002);ns.connect(nf);nf.connect(ng);ng.connect(out);ns.start(t);ns.stop(t+0.06);
+      } else if(kind==='CLAP'){
+        for(var k=0;k<3;k++){(function(k){var ns=c.createBufferSource();ns.buffer=noiseBuffer(c,0.12);var nf=c.createBiquadFilter();nf.type='bandpass';nf.frequency.value=1400;nf.Q.value=1.2;var ng=c.createGain();var tt=t+k*0.012;ng.gain.setValueAtTime(0.0001,tt);ng.gain.exponentialRampToValueAtTime(0.4,tt+0.004);ng.gain.exponentialRampToValueAtTime(0.0001,tt+0.13);ns.connect(nf);nf.connect(ng);ng.connect(out);ns.start(tt);ns.stop(tt+0.14);})(k);}
+      } else if(kind==='BASS'){
+        var o=c.createOscillator(),g=c.createGain();o.type='sawtooth';o.frequency.value=80;var f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=400;env(g,0.5,0.35);o.connect(f);f.connect(g);g.connect(out);o.start(t);o.stop(t+0.4);
+      } else if(kind==='SYNTH'){
+        var o=c.createOscillator(),o2=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=440;o2.type='sawtooth';o2.frequency.value=660;env(g,0.3,0.3);o.connect(g);o2.connect(g);g.connect(out);o.start(t);o2.start(t);o.stop(t+0.32);o2.stop(t+0.32);
+      } else if(kind==='VOCAL'){
+        var o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(330,t);o.frequency.linearRampToValueAtTime(392,t+0.15);var f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=800;f.Q.value=3;env(g,0.4,0.35);o.connect(f);f.connect(g);g.connect(out);o.start(t);o.stop(t+0.4);
+      } else { // FX - sweep
+        var o=c.createOscillator(),g=c.createGain();o.type='sawtooth';o.frequency.setValueAtTime(200,t);o.frequency.exponentialRampToValueAtTime(3000,t+0.4);env(g,0.3,0.45);o.connect(g);g.connect(out);o.start(t);o.stop(t+0.5);
+      }
+    }catch(e){}
+  }
   var limBar=document.getElementById('limBar');for(var i=0;i<18;i++)limBar.appendChild(document.createElement('i'));
 
   // ==== VU / waveform / jog ====
@@ -707,14 +775,18 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     drawVU(document.querySelector('[data-vu="ML"]'),lm);
     drawVU(document.querySelector('[data-vu="MR"]'),lm*0.92);
     drawWave('A',A);drawWave('B',B);drawLimiter(lm);
-    // jog rotace + tick + prstenec do hudby
+    // jog rotace + tick + prstenec do hudby (3D LP deska se toci)
     [['A',A,la],['B',B,lb]].forEach(function(x){
       var id=x[0],d=x[1],lv=x[2];
       if(d.playing){d.jogAngle=(d.jogAngle+2.2+lv*4)%360;}
       var tick=document.querySelector('[data-tick="'+id+'"]');
       if(tick)tick.style.transform='translateX(-50%) rotate('+d.jogAngle+'deg)';
+      var vinyl=document.querySelector('[data-vinyl="'+id+'"]');
+      if(vinyl)vinyl.style.transform='rotate('+d.jogAngle+'deg)';
+      var label=document.querySelector('[data-label="'+id+'"]');
+      if(label)label.style.transform='translate(-50%,-50%) rotate('+(d.jogAngle*0.25)+'deg)';
       var ring=document.querySelector('[data-ring="'+id+'"]');
-      if(ring){ring.style.opacity=d.playing?(0.35+lv*0.6):0.12;ring.style.transform='rotate('+(d.jogAngle*0.5)+'deg)';}
+      if(ring){ring.style.opacity=d.playing?(0.35+lv*0.65):0.12;}
     });
     // cas
     [['A',A],['B',B]].forEach(function(x){var d=x[1];if(d.audio.src){var el=document.querySelector('[data-tt="'+d.id+'"]');if(el)el.textContent=fmtTime(d.audio.currentTime)+' / '+fmtTime(d.audio.duration);}});

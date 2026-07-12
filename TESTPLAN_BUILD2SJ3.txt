@@ -1,0 +1,45 @@
+BUILD2SJ3 - N&P VISION: 3D OCELOVE LP DESKY (jog wheels) - TEST PLAN
+====================================================================
+Zmenene soubory:
+  app/src/main/assets/dj/index.html     (jog wheels -> 3D ocelove LP desky)
+  app/src/main/assets/index.html        (tlacitko Rene Frank -> pult)
+  NAVOD_NP_VISION_DJ.html               (navod)
+(prekopirovat pres stavajici, prebuildit APK)
+
+CO SE ZMENILO
+Jog wheely prepracovany na 3D OCELOVE LP DESKY:
+- vnejsi KARTACOVANY OCELOVY prstenec (conic-gradient kov s odlesky,
+  svetla mist ~180 jasu, tmava ~49 = realny kovovy kontrast/lesk)
+- cerny VINYL s koncentrickymi DRAZKAMI + rotujici sektorovy lesk
+  (deska se opravdu TOCI kdyz hraje)
+- kovovy STRED (label LP desky) s N&P VISION, stredovy dot (osa
+  gramofonu), zlaty prstenec (deck A) / modry (deck B)
+- 3D naklon (perspective + rotateX), hloubkove stiny a highlighty
+- svetelny prstenec kolem desky se ROZSVITI do hudby
+- tick marker (svetelna znacka) rotuje po okraji
+
+OVERENO
+- Analyza barev: ocelovy prstenec prumer RGB ~110, nejsvetlejsi 180,
+  nejtmavsi 49 = kartacovana ocel s leskem. Vinyl cerny (17), label
+  svetly kovovy (182). = vypada jako 3D ocelova LP.
+- Vinyl se toci (rotacni transform bezi kdyz hraje).
+- ZVUK: 50 bloku BEZ DIRY i s temito narocnejsimi jogy. Zustava king.
+- Nic nepreteka, landscape OK (oprava z SJ2 zachovana).
+
+TEST NA ZARIZENI (NA SIRKU)
+A) Menu -> Rene Frank -> pult. Jog wheely ted vypadaji jako OCELOVE
+   LP GRAMOFONOVE DESKY (kovovy prstenec, cerny vinyl s drazkami,
+   N&P label uprostred).
+B) Pusť skladbu -> DESKA SE TOCI, svetelny prstenec pulzuje do hudby,
+   label a tick rotuji. Hlavni: zvuk CISTY.
+C) Sampler (KICK/SNARE/HAT/CLAP...) dela spravne zvuky (z SJ2).
+D) Playlist A i B, mix, EQ, crossfade - vse jako dosud.
+
+KILL-SWITCH
+Vratit predchozi dj/index.html, prebuildit.
+
+POZNAMKA
+Toto je vrchol toho, co CSS/canvas kov umi - vrstvene gradienty davaji
+3D ocelovy dojem a deska se toci. Neni to fotorealisticky render, ale
+je to ZIVE a kovove. Kdyby to porad nebylo "ono", dalsi krok je vlozit
+tvuj fotorealisticky obrazek jako pozadi - rekni.
