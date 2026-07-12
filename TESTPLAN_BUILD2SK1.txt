@@ -1,0 +1,67 @@
+BUILD2SK1 - N&P VISION: FOTOREALISTICKY PULT DLE GRAFICKEHO NAVRHU
+==================================================================
+Zmenene/nove soubory:
+  app/src/main/assets/dj/index.html   (kompletne novy - fotorealisticky rezim)
+  app/src/main/assets/dj/bg.jpg       (NOVY - tvuj graficky navrh, 1536x1024, 287 kB)
+(prekopirovat pres stavajici, prebuildit APK; assets/index.html se NEMENI,
+ btnRene uz na dj/index.html ukazuje)
+
+CO SE UDELALO
+1) Tvuj obrazek pultu = pozadi 1:1 (bg.jpg). Zadne CSS kreslene prvky,
+   presne jak je udelana cela appka: ovladani = neviditelne hitzony
+   v % souradnicich, takze sedi na kazdem rozliseni (stage drzi pomer
+   3:2, letterbox dopolni kosmicke pozadi).
+2) Ziva data prekryvaji obrazek jen tam, kde se musi hybat:
+   nazev/interpret, cas, BPM (pocita se z tempa), waveformy (zluta/modra,
+   klepnutim seek + bily playhead), MASTER VU (2 sloupce), LIMITER LED pruh.
+3) ZVUKOVA LOGIKA = BUILD2SJ6 BEZE ZMENY (10pasm. EQ, equal-power
+   crossfade, tempo +-8%, CUE, SYNC, playlisty A/B, sampler Web Audio,
+   asistent vc. drzeni 1.6 s, TV tap AHTVWEB.pushPlayerPcm16).
+
+MAPA OVLADANI (co ktera zona dela)
+- USB1/USB2/obal skladby/BROWSE/LIBRARY -> playlist decku (+PRIDAT/NACIST)
+- ozubene kolo v radku decku / EFFECTS -> 10pasmovy EQ panel (VYNULOVAT)
+- HIGH/MID/LOW mini fadery u FX sloupcu -> EQ skupiny (31-125/250-2k/4k-16k)
+- FX ON + velky FX fader -> lowpass filtr decku (fader = 200 Hz - 8 kHz)
+- fader 1/2 -> hlasitost decku (gain cap 95 % pri zaplem asistentovi)
+- MASTER fader -> master gain; ON u limiteru -> vypina/zapina limiter
+  (novy DynamicsCompressor -3 dB, ratio 20 - realny brickwall)
+- TEMPO fadery po stranach, RESET, -/+ = krok 0.5 %, KEY LOCK =
+  preservesPitch (tempo bez zmeny toniny - NOVE, byla otevrena otazka)
+- pady 3x2/deck: 1. klep ulozi hot cue, dalsi klep skoci, podrzeni 0.6 s
+  smaze; DELETE prepne mazaci rezim
+- LOOP: 1. klep zacatek, 2. klep konec+smycka, 3. klep vypne
+- TAP: vytukas BPM decku (meni zobrazene BPM)
+- transport: CUE / PLAY-PAUZA / STUTTER / << >> (+-5 s) / SYNC
+- RECORD: nahrava master (MediaRecorder), 2. klep ulozi .webm
+- crossfader + A/B cut; SETTINGS/ozubene kolo nahore -> asistent;
+  MENU/vypinac -> zpet (vypinac pres potvrzeni); HELP -> napoveda v pultu
+- 3x klep na logo N&P -> zvyrazni vsechny hitzony (kalibrace, kdyz nekde
+  nesedi klik, napis kde a posunu souradnice)
+
+NEFUNKCNI OZDOBY (jen glow, schvalne): WAVEFORM, MIDI, FILTER/REVERB
+dropdown, SAMPLER dropdown, QUANT/SLICER/VINYL/SLIP (toggle svetlo),
+JOG FEEL, BOOTH/HEADPHONES/CUE MIX fadery (telefon nema druhy vystup).
+
+MERENI (pred odeslanim)
+- JS syntaxe: node --check OK, zavorky {}()[] parove (454/1375/100).
+- jsdom + WebView stub: nacteni bez chyb, PROKLIK VSECH 92 hitzon,
+  14 faderu a 20 EQ slideru = 0 JS chyb.
+- overflowX: stage = aspect-ratio 1536/1024, max 100vw/100vh, body
+  overflow hidden -> na 1480x720 vyjde 1080x720 na stred, nic nepretece.
+- zvuk: audio graf identicky s BUILD2SJ6 (0 vypadku overeno tam);
+  pridany limiter je jeden nod v masteru, grafika dal na rAF a pri
+  castingu se sama zjemni (gap 22->50 ms).
+- bg.jpg 287 kB (z PNG 2.2 MB), kvalita 86 - na telefonu nerozeznatelne.
+
+JAK OTESTOVAT NA TELEFONU (na sirku)
+1) Menu -> Rene Frank -> pult se otevre s tvou grafikou pres celou vysku.
+2) USB 1 -> +PRIDAT -> vyber mp3 -> PLAY (tlacitko ▶III se rozsviti).
+3) Sahni na waveform -> skladba skoci; fader 1 ubira/pridava.
+4) Ozubene kolo u decku A -> 10pasmovy EQ -> tahni 31 Hz nahoru = basy.
+5) FX ON + velky FX fader dolu = utlum vysek (lowpass).
+6) Pad -> ulozi cue (rozsviti se) -> pad znovu = skok.
+7) RECORD -> chvili hraj -> RECORD znovu = stahne se mix.webm.
+8) 3x klep na logo = cervene ramecky hitzon; kdyz nekde nesedi, vyfot.
+
+KILL-SWITCH: vratit dj/index.html z BUILD2SJ6, smazat dj/bg.jpg, prebuildit.

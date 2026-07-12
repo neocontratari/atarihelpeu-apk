@@ -7,590 +7,211 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
+/* =====================================================================
+   BUILD2SK1 — FOTOREALISTICKY PULT
+   Grafika = obrazek uzivatele (bg.jpg, 1536x1024) jako CSS pozadi.
+   Ovladani = neviditelne hitzony v % souradnicich (jako cela appka).
+   Zvukova logika = beze zmeny z BUILD2SJ6 (zvuk je kral).
+   ===================================================================== */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
 :root{
-  --gold:#f0c96a;--gold2:#c9962f;--goldLt:#ffe9ad;--goldDk:#6e5015;
-  --blue:#3fa9ff;--blueLt:#8fd0ff;--amber:#ffb43c;
-  --pnl:#14130f;--pnl2:#0c0b09;--ink:#08070a;--edge:rgba(240,201,106,.28);
+  --gold:#f0c96a;--goldLt:#ffe9ad;--blue:#3fa9ff;--blueLt:#8fd0ff;
   --font:'Rajdhani','Segoe UI','Arial Narrow',sans-serif;
-  --fontHead:'Oswald','Rajdhani','Segoe UI',sans-serif;
 }
-html,body{min-height:100%;background:#050506;color:#e9dcb8;font-family:var(--font);overflow-x:hidden;}
-body{position:relative;display:flex;flex-direction:column;align-items:center;padding:0;}
+html,body{height:100%;background:#050506;color:#e9dcb8;font-family:var(--font);overflow:hidden;}
+body{display:flex;align-items:center;justify-content:center;position:relative;}
 #cosmos{position:fixed;inset:0;z-index:0;pointer-events:none;}
-.wrap{position:relative;z-index:1;width:100%;max-width:1180px;padding:8px;}
 
-/* ==== horni lista ==== */
-.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:10px 14px;border-radius:18px 18px 0 0;position:relative;
-  background:linear-gradient(180deg,#26241c,#14130f);
-  border:none;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.1),inset 0 0 0 2px rgba(30,28,22,.9),inset 0 0 0 3px rgba(90,75,35,.4);}
-.topbar::before{content:'';position:absolute;inset:0;border-radius:18px 18px 0 0;pointer-events:none;padding:3px;
-  background:linear-gradient(180deg,rgba(200,160,70,.55),rgba(120,90,30,.2));
-  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;}
-.navL,.navR{display:flex;gap:6px;flex-wrap:wrap;}
-.navBtn{font:700 11px var(--font);letter-spacing:1px;padding:9px 13px;border-radius:9px;color:#c9b477;
-  background:linear-gradient(180deg,#33302a,#201d16 45%,#131210 55%,#0a0908);border:1px solid #050403;
-  box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.15),inset 0 -1px 3px rgba(0,0,0,.5);white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.7);}
-.navBtn.on{color:#160f04;background:linear-gradient(180deg,#ffe08a,#ffd06a 45%,#d0a030 60%,#a8801f);border-color:#8a6810;
-  box-shadow:0 0 14px rgba(255,184,60,.5),inset 0 1px 1px rgba(255,255,255,.6);text-shadow:0 1px 0 rgba(255,255,255,.3);}
-.navBtn.pw{color:#ff8a6a;}
-.navBtn:active{transform:translateY(1px);}
-.brandTop{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;}
-.brandTop .lg{font:800 22px var(--font);letter-spacing:4px;
-  background:linear-gradient(180deg,#ffe9ad,#f0c96a 45%,#c9962f);-webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 0 10px rgba(255,184,60,.35));}
-.brandTop .sm{font:700 9px var(--font);letter-spacing:6px;color:#b8903f;margin-top:1px;}
+/* ==== STAGE: drzi pomer 3:2 presne podle obrazku, hitzony v % vzdy sedi ==== */
+#stage{position:relative;z-index:1;aspect-ratio:1536/1024;max-width:100vw;max-height:100vh;width:100vw;}
+@media (min-aspect-ratio:1536/1024){ #stage{width:auto;height:100vh;} }
+#stage .bg{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;
+  border-radius:6px;box-shadow:0 0 60px rgba(0,0,0,.9);}
 
-/* ==== hlavni deska ==== */
-.deck-console{display:flex;gap:8px;padding:14px;
-  background:linear-gradient(180deg,rgba(28,26,20,.95),rgba(10,10,12,.97));
-  border:none;border-radius:0 0 18px 18px;position:relative;
-  box-shadow:
-    0 0 60px rgba(0,0,0,.8),
-    inset 0 2px 0 rgba(255,255,255,.08),
-    inset 0 0 0 2px rgba(30,28,22,.9),
-    inset 0 0 0 3px rgba(90,75,35,.4),
-    inset 0 -40px 80px rgba(0,0,0,.5);}
-/* zlaty kovovy ram - vnejsi obruba */
-.deck-console::before{content:'';position:absolute;inset:0;border-radius:0 0 18px 18px;pointer-events:none;
-  padding:3px;
-  background:linear-gradient(180deg,rgba(200,160,70,.5),rgba(120,90,30,.2) 30%,rgba(60,50,25,.15) 70%,rgba(140,110,45,.35));
-  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;}
+/* ==== hitzony ==== */
+.hz{position:absolute;z-index:5;border-radius:8px;cursor:pointer;}
+.hz.dbg{outline:1px solid rgba(255,60,60,.85);background:rgba(255,60,60,.12);}
+.hz:active{background:rgba(255,220,140,.10);}
+.hz.on{box-shadow:inset 0 0 0 2px rgba(255,208,102,.85),0 0 14px rgba(255,184,60,.55);}
+.hz.onB{box-shadow:inset 0 0 0 2px rgba(90,190,255,.85),0 0 14px rgba(80,180,255,.55);}
+.hz.onR{box-shadow:inset 0 0 0 2px rgba(255,90,70,.9),0 0 14px rgba(255,80,60,.6);}
+.hz.padHot{box-shadow:inset 0 0 0 2px rgba(255,208,102,.95),inset 0 0 18px rgba(255,184,60,.45);}
+.hz.padHotB{box-shadow:inset 0 0 0 2px rgba(90,190,255,.95),inset 0 0 18px rgba(80,180,255,.45);}
 
-/* ==== DECK (A/B) ==== */
-.deck{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px;}
-.deckTop{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:11px;
-  background:linear-gradient(180deg,#1a1812,#0d0c0a);border:1px solid var(--edge);}
-.deckTag{font:800 13px var(--font);letter-spacing:1px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;flex:0 0 auto;}
-.deck.a .deckTag{color:#160f04;background:linear-gradient(180deg,#ffd873,#c9962f);}
-.deck.b .deckTag{color:#08131f;background:linear-gradient(180deg,#7fd0ff,#2b86d8);}
-.deckTitle{font:700 13px var(--font);letter-spacing:1px;}
-.deck.a .deckTitle{color:var(--gold);}
-.deck.b .deckTitle{color:var(--blueLt);}
-.deckBpm{margin-left:auto;font:700 11px var(--font);color:#b8a878;}
-.deckBpm b{color:#e9dcb8;font-size:13px;}
+/* ==== zive prekryvy (cas, nazev, bpm, waveform, VU) ==== */
+.cover{position:absolute;z-index:4;background:rgba(9,9,10,.94);border-radius:6px;pointer-events:none;
+  display:flex;flex-direction:column;justify-content:center;overflow:hidden;}
+.cover .tn{font:700 1.05em var(--font);color:#f0e4c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;}
+.cover .ta{font:600 .8em var(--font);color:#a89a70;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;}
+.cover.tm{font:700 1em var(--font);letter-spacing:1px;padding:0 4px;}
+.cover.tm.a{color:var(--gold);} .cover.tm.b{color:var(--blueLt);}
+.cover.bpm{font:700 .95em var(--font);color:#e9dcb8;align-items:flex-start;padding:0 4px;}
 
-/* track info + waveform */
-.trackBox{padding:9px;border-radius:11px;background:linear-gradient(180deg,#141310,#0a0a08);border:1px solid var(--edge);}
-.trackRow{display:flex;gap:9px;align-items:center;}
-.artCover{width:46px;height:46px;border-radius:8px;flex:0 0 auto;overflow:hidden;
-  background:radial-gradient(circle at 40% 30%,#3a2a5a,#0a0a14);border:1px solid rgba(255,255,255,.1);
-  display:flex;align-items:center;justify-content:center;font-size:20px;}
-.trackMeta{flex:1;min-width:0;}
-.trackName{font:700 13px var(--font);color:#f0e4c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.trackArtist{font:600 11px var(--font);color:#a89a70;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.trackTime{font:600 11px var(--font);color:#8fd8ff;margin-top:2px;}
-.deck.a .trackTime{color:var(--gold);}
-.wave{height:40px;margin-top:8px;display:flex;align-items:center;gap:1px;overflow:hidden;}
-.wave i{flex:1;height:15%;border-radius:1px;background:#2a2417;transition:height .07s;}
-.deck.a .wave i.on{background:linear-gradient(180deg,#ffd066,#c9871f);box-shadow:0 0 4px rgba(255,180,60,.7);}
-.deck.b .wave i.on{background:linear-gradient(180deg,#8fd0ff,#2b86d8);box-shadow:0 0 4px rgba(80,180,255,.7);}
+.waveBox{position:absolute;z-index:4;background:#0a0a08;border-radius:6px;overflow:hidden;
+  display:flex;align-items:center;gap:1px;padding:2px;cursor:pointer;}
+.waveBox i{flex:1;height:14%;border-radius:1px;background:#241f12;transition:height .07s;}
+.waveBox.a i.on{background:linear-gradient(180deg,#ffd066,#c9871f);box-shadow:0 0 4px rgba(255,180,60,.7);}
+.waveBox.b i.on{background:linear-gradient(180deg,#8fd0ff,#2b86d8);box-shadow:0 0 4px rgba(80,180,255,.7);}
+.waveBox .ph{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.85);box-shadow:0 0 6px rgba(255,255,255,.7);left:0;}
 
-/* akcni pruh */
-.deckActs{display:flex;gap:5px;}
-.deckActs button{flex:1;font:700 9px var(--font);letter-spacing:.5px;padding:9px 2px;border-radius:8px;color:#c9b477;
-  background:linear-gradient(180deg,#33302a,#201d16 45%,#131210 55%,#0a0908);border:1px solid #050403;
-  box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.15);text-shadow:0 1px 1px rgba(0,0,0,.7);}
-.deck.b .deckActs button{color:#9fc4e8;}
-.deckActs button:active{transform:translateY(1px);}
+.vuBox{position:absolute;z-index:4;background:rgba(8,8,9,.9);border-radius:4px;display:flex;flex-direction:column-reverse;gap:2px;padding:3px;pointer-events:none;}
+.vuBox i{flex:1;border-radius:1px;background:#1c1a12;}
+.vuBox i.on{background:#39c46a;box-shadow:0 0 4px rgba(60,220,110,.6);}
+.vuBox i.on.mid{background:#ffb43c;box-shadow:0 0 4px rgba(255,180,60,.6);}
+.vuBox i.on.hot{background:#ff4d3c;box-shadow:0 0 5px rgba(255,70,50,.7);}
+.limBox{position:absolute;z-index:4;background:rgba(8,8,9,.9);border-radius:4px;display:flex;gap:2px;padding:3px;pointer-events:none;}
+.limBox i{flex:1;border-radius:1px;background:#1c1a12;}
+.limBox i.on{background:#39c46a;} .limBox i.on.mid{background:#ffb43c;} .limBox i.on.hot{background:#ff4d3c;}
 
-/* ===== 3D OCELOVA LP DESKA (jog wheel) ===== */
-.jogWrap{display:flex;justify-content:center;padding:8px 0;perspective:600px;}
-.jog{position:relative;width:200px;height:200px;border-radius:50%;
-  transform:rotateX(8deg);transform-style:preserve-3d;
-  /* vnejsi ocelovy prstenec - kartacovana ocel */
-  background:
-    conic-gradient(from 0deg,
-      #6a6d72 0deg,#c8ccd2 25deg,#4a4d52 55deg,#9aa0a8 90deg,
-      #3a3d42 130deg,#b0b6be 165deg,#5a5d62 200deg,#d0d4da 235deg,
-      #454a50 270deg,#a0a6ae 305deg,#5a5d62 340deg,#6a6d72 360deg);
-  box-shadow:
-    0 14px 30px rgba(0,0,0,.75),
-    0 3px 8px rgba(0,0,0,.6),
-    inset 0 2px 4px rgba(255,255,255,.35),
-    inset 0 -4px 10px rgba(0,0,0,.7),
-    0 0 0 1px rgba(0,0,0,.5);}
-/* prstenec svetla podle decku (rozsviti se do hudby) */
-.jogRing{position:absolute;inset:-3px;border-radius:50%;pointer-events:none;opacity:.15;
-  box-shadow:0 0 18px 3px var(--rc,#c9962f),inset 0 0 12px 2px var(--rc,#c9962f);}
-.deck.a .jog{--rc:#ffb43c;}
-.deck.b .jog{--rc:#4fc3ff;}
-/* LP deska - cerny vinyl s koncentrickymi drazkami */
-.jog::before{content:'';position:absolute;inset:14px;border-radius:50%;
-  background:
-    repeating-radial-gradient(circle at 50% 50%,
-      rgba(255,255,255,.04) 0 1px, rgba(0,0,0,0) 1px 2.5px),
-    radial-gradient(circle at 38% 32%, #2a2a2e 0%, #141416 30%, #08080a 70%, #050505 100%);
-  box-shadow:inset 0 0 30px rgba(0,0,0,.95),inset 0 3px 6px rgba(255,255,255,.08);}
-/* lesklý odraz svetla na vinylu (staticky highlight) */
-.jog::after{content:'';position:absolute;inset:14px;border-radius:50%;pointer-events:none;
-  background:radial-gradient(ellipse 60% 40% at 40% 26%, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 55%);}
-/* rotujici label - kovovy stred s N&P (label LP desky) */
-.jogCenter{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:88px;height:88px;border-radius:50%;
-  background:
-    radial-gradient(circle at 40% 32%, #3a3222 0%, #241d10 45%, #0c0a06 100%);
-  border:2px solid rgba(240,201,106,.5);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  box-shadow:
-    0 3px 10px rgba(0,0,0,.8),
-    inset 0 2px 4px rgba(255,255,255,.25),
-    inset 0 -3px 8px rgba(0,0,0,.7),
-    0 0 0 5px rgba(0,0,0,.5),
-    0 0 0 6px rgba(240,201,106,.2);}
-.deck.b .jogCenter{border-color:rgba(80,180,255,.5);box-shadow:0 3px 10px rgba(0,0,0,.8),inset 0 2px 4px rgba(255,255,255,.25),inset 0 -3px 8px rgba(0,0,0,.7),0 0 0 5px rgba(0,0,0,.5),0 0 0 6px rgba(80,180,255,.2);}
-.jogCenter .np{font:800 19px var(--font);letter-spacing:1px;background:linear-gradient(180deg,#ffe9ad,#c9962f);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));}
-.deck.b .jogCenter .np{background:linear-gradient(180deg,#cfeeff,#4fa8e8);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.jogCenter .vis{font:700 7px var(--font);letter-spacing:3px;color:#b8903f;}
-.deck.b .jogCenter .vis{color:#5a9fd0;}
-/* stredovy dot (osa gramofonu) */
-.jogCenter::after{content:'';position:absolute;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#888);box-shadow:0 1px 2px rgba(0,0,0,.8),inset 0 0 2px rgba(0,0,0,.5);}
-/* rotujici vinyl vrstva - drazky + sektorovy lesk (toci se) */
-.jogVinyl{position:absolute;inset:14px;border-radius:50%;pointer-events:none;z-index:2;
-  background:
-    conic-gradient(from 0deg, rgba(255,255,255,.10) 0deg, rgba(255,255,255,0) 30deg, rgba(255,255,255,0) 150deg, rgba(255,255,255,.06) 180deg, rgba(255,255,255,0) 210deg, rgba(255,255,255,0) 340deg, rgba(255,255,255,.10) 360deg),
-    repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.05) 0 1px, rgba(0,0,0,0) 1px 3px);
-  will-change:transform;}
-/* tick marker - svetelna znacka na okraji desky co rotuje */
-.jogTick{position:absolute;top:6px;left:calc(50% - 2px);width:4px;height:22px;border-radius:2px;z-index:4;
-  background:linear-gradient(180deg,var(--rc,#c9962f),transparent);
-  box-shadow:0 0 8px var(--rc,#c9962f),0 0 3px var(--rc,#c9962f);}
+/* ==== fader hitzony s zivym jezdcem ==== */
+.fz{position:absolute;z-index:5;cursor:pointer;touch-action:none;}
+.fz .kn{position:absolute;left:6%;right:6%;height:10px;border-radius:3px;pointer-events:none;
+  background:linear-gradient(180deg,#fff8e0,#f0c96a 45%,#8a6a20);box-shadow:0 2px 6px rgba(0,0,0,.8),0 0 8px rgba(255,200,90,.5);transform:translateY(50%);}
+.fz.b .kn{background:linear-gradient(180deg,#e6f6ff,#5ab8ff 45%,#1a5c96);box-shadow:0 2px 6px rgba(0,0,0,.8),0 0 8px rgba(90,190,255,.5);}
+.fz.h .kn{left:auto;right:auto;top:8%;bottom:8%;height:auto;width:12px;transform:translateX(-50%);}
+.fz .vl{position:absolute;left:0;right:0;top:-16px;text-align:center;font:700 10px var(--font);color:#ffd985;text-shadow:0 1px 2px #000;pointer-events:none;}
+.fz.b .vl{color:#8fd0ff;}
 
-/* leva sekce decku: tempo + play pruh */
-.deckCtl{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;}
-.faderPair{display:flex;gap:8px;flex:0 0 auto;}
-.eqZone{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
-.tempoCol{display:flex;flex-direction:column;align-items:center;gap:4px;width:48px;flex:0 0 auto;}
-.miniLbl{font:700 8px var(--font);letter-spacing:1px;color:#a89a70;}
-.bigTrack{position:relative;width:42px;height:120px;border-radius:6px;touch-action:none;overflow:visible;
-  background:linear-gradient(90deg,#0a0806 0%,#1a1510 12%,#050403 50%,#1a1510 88%,#0a0806 100%);border:1px solid rgba(0,0,0,.8);
-  box-shadow:inset 0 2px 8px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.06);}
-.bigTrack::before{content:'';position:absolute;left:50%;top:8px;bottom:8px;width:4px;transform:translateX(-50%);border-radius:2px;
-  background:linear-gradient(180deg,#000,#1a1a1e 50%,#000);box-shadow:inset 0 0 3px rgba(0,0,0,.9);}
-.bigLeds{position:absolute;inset:8px 14px;display:flex;flex-direction:column-reverse;gap:2px;pointer-events:none;z-index:1;}
-.bigLeds i{flex:1;border-radius:1px;background:#1a1408;}
-.bigLeds i.lit{background:linear-gradient(90deg,#ffcf5a,#ff9a2c);box-shadow:0 0 6px rgba(255,180,60,.9);}
-.bigLeds i.lit.hot{background:linear-gradient(90deg,#ff7a2c,#ff4a1c);}
-.deck.b .bigLeds i.lit{background:linear-gradient(90deg,#7fd0ff,#2b86d8);box-shadow:0 0 6px rgba(80,180,255,.9);}
-.deck.b .bigLeds i.lit.hot{background:linear-gradient(90deg,#4fc3ff,#1c7ad8);}
-.bigMid{display:none;}
-.bigKnob{position:absolute;left:50%;transform:translate(-50%,50%);width:52px;height:26px;border-radius:6px;pointer-events:none;z-index:3;
-  background:linear-gradient(180deg,#fdfdfd 0%,#c8ccd2 18%,#8a8f96 50%,#5a5e64 51%,#3a3d42 82%,#1a1c1e 100%);border:1px solid #0a0a0c;
-  box-shadow:0 6px 10px rgba(0,0,0,.75),0 2px 3px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.9),inset 0 -1px 2px rgba(0,0,0,.6);}
-.bigKnob::after{content:'';position:absolute;left:6px;right:6px;top:50%;height:3px;transform:translateY(-1.5px);border-radius:2px;
-  background:linear-gradient(180deg,#0a0a0c,#2a2a2e);box-shadow:0 -5px 0 -1px rgba(0,0,0,.4),0 5px 0 -1px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.15);}
-.bigVal{font:700 9px var(--font);color:#8fd8ff;}
-.deck.a .bigVal{color:var(--gold);}
+/* ==== panely (playlist / EQ / asistent / help / confirm) ==== */
+.ovl{position:fixed;inset:0;z-index:40;background:rgba(4,4,6,.72);display:none;align-items:center;justify-content:center;padding:12px;}
+.ovl.open{display:flex;}
+.panel{width:min(720px,96vw);max-height:88vh;overflow:auto;border-radius:14px;padding:14px;
+  background:linear-gradient(180deg,#1c1a14,#0b0b09);border:1px solid rgba(240,201,106,.35);
+  box-shadow:0 20px 60px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.08);}
+.pHead{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.pHead .tag{font:800 13px var(--font);width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;}
+.pHead h3{font:700 15px var(--font);letter-spacing:1.5px;color:var(--gold);flex:1;}
+.pBtn{font:700 11px var(--font);letter-spacing:1px;padding:9px 14px;border-radius:9px;color:#160f04;border:1px solid #8a6810;
+  background:linear-gradient(180deg,#ffe08a,#d0a030);box-shadow:0 2px 5px rgba(0,0,0,.5);}
+.pBtn.dim{background:linear-gradient(180deg,#33302a,#131210);color:#c9b477;border-color:#050403;}
+.plItem{display:flex;align-items:center;gap:9px;padding:9px;border-radius:9px;background:rgba(255,255,255,.04);margin-bottom:6px;}
+.plItem .ic{font-size:15px;color:var(--gold);} .plItem .nm{flex:1;font:600 13px var(--font);color:#e9dcb8;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.plItem .ld{font:700 10px var(--font);padding:7px 12px;border-radius:7px;border:none;}
+.plEmpty{padding:22px;text-align:center;color:#a89a70;font:600 13px var(--font);}
 
-/* transport */
-.transport{display:flex;gap:5px;flex-wrap:wrap;}
-.tBtn{flex:1;min-width:0;padding:12px 2px;border-radius:9px;font:800 11px var(--font);letter-spacing:.5px;
-  background:linear-gradient(180deg,#3a3630 0%,#232019 45%,#141210 55%,#0a0908 100%);
-  border:1px solid #050403;color:#f2d488;
-  box-shadow:0 3px 5px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 4px rgba(0,0,0,.6);
-  text-shadow:0 1px 1px rgba(0,0,0,.8);}
-.deck.b .tBtn{color:#9fc4e8;}
-.tBtn.play.on{background:linear-gradient(180deg,#ffe08a,#ffd06a 40%,#d0a030 60%,#a8801f);color:#160f04;border-color:#8a6810;
-  box-shadow:0 0 18px rgba(255,184,60,.6),inset 0 1px 1px rgba(255,255,255,.7),inset 0 -2px 4px rgba(120,80,10,.5);text-shadow:0 1px 0 rgba(255,255,255,.3);}
-.deck.b .tBtn.play.on{background:linear-gradient(180deg,#a8e0ff,#7fd0ff 40%,#3a92d8 60%,#1c6ab0);color:#08131f;border-color:#0a4a80;box-shadow:0 0 18px rgba(80,180,255,.6),inset 0 1px 1px rgba(255,255,255,.7);}
-.tBtn.cue.on{background:linear-gradient(180deg,#4a5a2a,#2a3315);}
-.tBtn:active{transform:translateY(2px);box-shadow:0 1px 2px rgba(0,0,0,.6),inset 0 2px 6px rgba(0,0,0,.7);}
+/* EQ panel slidery */
+.eqRow{display:flex;gap:10px;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding:6px 2px;}
+.mini{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 0 auto;}
+.miniName{font:700 10px var(--font);color:#b8a878;}
+.miniVal{font:700 10px var(--font);color:#ffd985;min-height:12px;}
+.miniTrack{position:relative;width:30px;height:120px;border-radius:7px;background:linear-gradient(180deg,#050505,#141210);
+  border:1px solid rgba(240,201,106,.25);cursor:pointer;touch-action:none;}
+.miniMid{position:absolute;left:3px;right:3px;top:50%;height:1px;background:rgba(255,255,255,.25);}
+.miniKnob{position:absolute;left:3px;right:3px;height:9px;border-radius:3px;transform:translateY(50%);
+  background:linear-gradient(180deg,#fff8e0,#f0c96a 45%,#8a6a20);box-shadow:0 1px 4px rgba(0,0,0,.8);pointer-events:none;bottom:50%;}
+.eqB .miniKnob{background:linear-gradient(180deg,#e6f6ff,#5ab8ff 45%,#1a5c96);}
+.eqB .miniVal{color:#8fd0ff;}
+.miniLeds{display:none;}
 
-/* EQ rada */
-.eqRow{display:flex;gap:10px;justify-content:space-between;width:100%;}
-.mini{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0;}
-.miniName{font:700 9px var(--font);color:#b8a878;white-space:nowrap;}
-.miniVal{font:700 9px var(--font);color:#8fd8ff;height:11px;}
-.deck.a .miniVal{color:var(--gold);}
-.miniTrack{position:relative;width:100%;max-width:34px;height:92px;border-radius:5px;touch-action:none;overflow:visible;cursor:ns-resize;
-  background:linear-gradient(90deg,#0a0806,#1a1510 20%,#050403 50%,#1a1510 80%,#0a0806);border:1px solid rgba(0,0,0,.8);box-shadow:inset 0 2px 6px rgba(0,0,0,.9);}
-.eqFull{width:100%;padding:6px 8px 4px;margin-bottom:6px;border-radius:10px;
-  background:linear-gradient(180deg,rgba(20,18,12,.6),rgba(8,8,10,.5));border:1px solid rgba(90,75,35,.25);box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
-.padsZone{flex:1;min-width:0;display:flex;align-items:center;}
-.padsZone .pads{width:100%;}
-.miniTrack::before{content:'';position:absolute;left:50%;top:6px;bottom:6px;width:3px;transform:translateX(-50%);border-radius:2px;background:linear-gradient(180deg,#000,#18181c 50%,#000);}
-.miniLeds{position:absolute;inset:4px 8px;display:flex;flex-direction:column-reverse;gap:1px;pointer-events:none;z-index:1;}
-.miniLeds i{flex:1;border-radius:1px;background:#1a1408;}
-.miniLeds i.lit{background:linear-gradient(90deg,#ffcf5a,#ff9a2c);box-shadow:0 0 4px rgba(255,180,60,.9);}
-.miniLeds i.lit.hot{background:linear-gradient(90deg,#ff7a2c,#ff4a1c);}
-.deck.b .miniLeds i.lit{background:linear-gradient(90deg,#7fd0ff,#2b86d8);}
-.deck.b .miniLeds i.lit.hot{background:linear-gradient(90deg,#4fc3ff,#1c7ad8);}
-.miniMid{display:none;}
-.miniKnob{position:absolute;left:50%;transform:translate(-50%,50%);width:30px;height:16px;border-radius:4px;pointer-events:none;z-index:3;
-  background:linear-gradient(180deg,#fbfbfb,#c0c4ca 20%,#7a7f86 50%,#4a4d52 51%,#2a2c30 100%);border:1px solid #08080a;
-  box-shadow:0 4px 6px rgba(0,0,0,.7),inset 0 1px 1px rgba(255,255,255,.9),inset 0 -1px 2px rgba(0,0,0,.5);}
-.miniKnob::after{content:'';position:absolute;left:4px;right:4px;top:50%;height:2px;transform:translateY(-1px);background:#0a0a0c;box-shadow:0 1px 0 rgba(255,255,255,.15);}
-
-/* HOT CUE pady - 3D gumova tlacitka */
-.pads{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
-.pad{aspect-ratio:1.5;border-radius:8px;position:relative;
-  background:linear-gradient(180deg,#2a2620 0%,#1a1712 40%,#0e0c0a 100%);
-  border:1px solid #050403;
-  box-shadow:0 3px 5px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.15),inset 0 -2px 4px rgba(0,0,0,.7);}
-.pad::before{content:'';position:absolute;inset:3px;border-radius:5px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,0) 50%);pointer-events:none;}
-.deck.b .pad{border-color:#050a0f;}
-.pad.hot{background:linear-gradient(180deg,#ffcf5a,#e0a020 50%,#a8701a);box-shadow:0 0 14px rgba(255,180,60,.6),inset 0 1px 1px rgba(255,255,255,.6),inset 0 -2px 4px rgba(120,80,10,.5);}
-.deck.b .pad.hot{background:linear-gradient(180deg,#7fd0ff,#2b86d8 50%,#1a5a90);box-shadow:0 0 14px rgba(80,180,255,.6),inset 0 1px 1px rgba(255,255,255,.6);}
-.pad:active{transform:translateY(2px);box-shadow:inset 0 2px 6px rgba(0,0,0,.7);}
-
-/* ==== STŘED: mixér ==== */
-.mixer{width:140px;flex:0 0 auto;display:flex;flex-direction:column;gap:7px;align-items:center;padding:0 3px;}
-.mixLogo{width:74px;height:74px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:radial-gradient(circle at 42% 35%,#241d10,#0a0906);border:2px solid rgba(240,201,106,.5);
-  box-shadow:0 0 22px rgba(255,184,60,.25),inset 0 1px 3px rgba(255,255,255,.15);position:relative;}
-.mixLogo::before{content:'';position:absolute;inset:-6px;border-radius:50%;border:1px solid rgba(240,201,106,.25);}
-.mixLogo .np{font:800 20px var(--font);letter-spacing:1px;background:linear-gradient(180deg,#ffe9ad,#c9962f);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.mixLogo .vis{font:700 7px var(--font);letter-spacing:3px;color:#b8903f;}
-.mixSlogan{font:700 8px var(--font);letter-spacing:2px;color:#8f7a3f;}
-
-/* master VU */
-.masterVU{display:flex;gap:5px;justify-content:center;height:130px;align-items:stretch;}
-.vu{width:14px;border-radius:6px;display:flex;flex-direction:column-reverse;gap:2px;padding:3px 2px;overflow:hidden;
-  background:linear-gradient(180deg,#0d0a07,#060505);border:1px solid var(--edge);box-shadow:inset 0 2px 6px rgba(0,0,0,.7);}
-.vu i{flex:1;border-radius:1px;background:#1a1408;}
-.vu i.on{background:linear-gradient(90deg,#5fd06a,#3aa848);box-shadow:0 0 4px rgba(95,208,106,.6);}
-.vu i.on.mid{background:linear-gradient(90deg,#ffcf3c,#e0a020);}
-.vu i.on.hot{background:linear-gradient(90deg,#ff5a3c,#e03018);box-shadow:0 0 6px rgba(255,90,60,.9);}
-.vuLbl{font:700 8px var(--font);letter-spacing:2px;color:#8f7a3f;text-align:center;}
-
-/* crossfader */
-.xfWrap{width:100%;}
-.xfLabel{display:flex;justify-content:space-between;font:800 12px var(--font);margin-bottom:6px;}
-.xfLabel .l{color:var(--gold);}.xfLabel .r{color:var(--blueLt);}
-.xfTrack{position:relative;height:44px;border-radius:10px;touch-action:none;
-  background:linear-gradient(90deg,#2a1e10 0%,#0a0806 15%,#050403 50%,#0a0806 85%,#12263a 100%);
-  border:1px solid rgba(0,0,0,.8);box-shadow:inset 0 3px 10px rgba(0,0,0,.85),inset 0 -1px 0 rgba(255,255,255,.05);}
-.xfTrack::before{content:'';position:absolute;left:8px;right:8px;top:50%;height:4px;transform:translateY(-50%);border-radius:2px;background:linear-gradient(90deg,#000,#18181c 50%,#000);}
-.xfKnob{position:absolute;top:50%;transform:translate(-50%,-50%);width:34px;height:56px;border-radius:8px;pointer-events:none;z-index:3;
-  background:linear-gradient(180deg,#fdfdfd 0%,#c8ccd2 16%,#8a8f96 48%,#5a5e64 52%,#3a3d42 84%,#1a1c1e 100%);border:1px solid #08080a;
-  box-shadow:0 6px 12px rgba(0,0,0,.75),0 2px 4px rgba(0,0,0,.6),inset 0 1px 1px rgba(255,255,255,.9),inset 0 -2px 3px rgba(0,0,0,.6);}
-.xfKnob::after{content:'';position:absolute;left:50%;top:8px;bottom:8px;width:3px;transform:translateX(-1.5px);border-radius:2px;
-  background:linear-gradient(180deg,#0a0a0c,#2a2a2e);box-shadow:-7px 0 0 -1px rgba(0,0,0,.35),7px 0 0 -1px rgba(0,0,0,.35);}
-.mixHint{font:700 8px var(--font);color:#8f7a3f;text-align:center;margin-top:6px;letter-spacing:1px;}
-.mixBtns{display:flex;flex-direction:column;gap:6px;width:100%;}
-.mixBtns button{padding:7px 4px;border-radius:7px;font:700 8px var(--font);letter-spacing:.5px;
-  background:linear-gradient(180deg,#3a3630,#232019 45%,#141210 55%,#0a0908);border:1px solid #050403;color:#f2d488;
-  box-shadow:0 2px 3px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.18),inset 0 -1px 3px rgba(0,0,0,.6);text-shadow:0 1px 1px rgba(0,0,0,.8);}
-.mixBtns button:active{transform:translateY(2px);box-shadow:inset 0 2px 6px rgba(0,0,0,.7);}
-.mixBtns button.sync{background:linear-gradient(180deg,#ffe08a,#ffd06a 40%,#d0a030 60%,#a8801f);color:#160f04;border-color:#8a6810;box-shadow:0 0 14px rgba(255,184,60,.45),inset 0 1px 1px rgba(255,255,255,.7);}
-
-/* ==== SAMPLER + limiter ==== */
-.bottomBar{display:flex;gap:8px;align-items:center;margin-top:8px;padding:8px 10px;border-radius:12px;
-  background:linear-gradient(180deg,#161510,#0b0a08);border:1px solid var(--edge);}
-.sampler{display:flex;gap:5px;flex:1;flex-wrap:wrap;}
-.sPad{flex:1;min-width:56px;padding:9px 4px;border-radius:8px;text-align:center;font:700 9px var(--font);color:#c9b477;
-  background:linear-gradient(180deg,#33302a,#201d16 45%,#131210 55%,#0a0908);border:1px solid #050403;
-  box-shadow:0 3px 5px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.15),inset 0 -2px 4px rgba(0,0,0,.6);transition:transform .06s;}
-.sPad b{display:block;font-size:13px;color:#ffd879;text-shadow:0 1px 2px rgba(0,0,0,.8);}
-.sPad:active{transform:translateY(2px) scale(.97);background:linear-gradient(180deg,#ffd06a,#c9962f);color:#160f04;box-shadow:inset 0 2px 6px rgba(0,0,0,.5);}
-.limiter{display:flex;flex-direction:column;gap:4px;flex:0 0 auto;}
-.limLbl{font:700 9px var(--font);letter-spacing:1px;color:#a89a70;}
-.limBar{display:flex;gap:2px;}
-.limBar i{width:6px;height:14px;border-radius:1px;background:#1a1408;}
-.limBar i.on{background:#5fd06a;}.limBar i.on.mid{background:#ffcf3c;}.limBar i.on.hot{background:#ff5a3c;}
-
-/* footer */
-.footer{display:flex;justify-content:space-between;padding:8px 12px;font:700 9px var(--font);letter-spacing:2px;color:#8f7a3f;}
-.footer .gold{color:var(--gold);}
-
-/* ==== PLAYLIST panel ==== */
-.plWrap{display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.86);align-items:center;justify-content:center;padding:16px;}
-.plWrap.open{display:flex;}
-.plBox{max-width:520px;width:100%;max-height:82vh;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;
-  background:linear-gradient(180deg,#161510,#0b0a08);border:1px solid var(--edge);box-shadow:0 0 50px rgba(0,0,0,.85);}
-.plHead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--edge);}
-.plHead h3{font:800 15px var(--font);letter-spacing:1px;color:var(--gold);flex:1;}
-.plHead .tag{font:800 12px var(--font);padding:4px 10px;border-radius:6px;}
-.plAdd{font:700 11px var(--font);padding:8px 12px;border-radius:9px;color:#160f04;background:linear-gradient(180deg,#ffd873,#c9962f);letter-spacing:1px;}
-.plClose{font:700 11px var(--font);padding:8px 12px;border-radius:9px;color:#f2c464;background:#242019;}
-.plList{overflow:auto;padding:8px;}
-.plItem{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;margin-bottom:6px;
-  background:linear-gradient(180deg,#1a1812,#0e0d0a);border:1px solid rgba(240,201,106,.18);}
-.plItem .ic{width:34px;height:34px;border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:15px;
-  background:radial-gradient(circle at 40% 30%,#3a2a5a,#0a0a14);}
-.plItem .nm{flex:1;min-width:0;font:700 12px var(--font);color:#f0e4c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.plItem .ld{font:800 10px var(--font);padding:7px 11px;border-radius:8px;letter-spacing:1px;}
-.plEmpty{padding:30px;text-align:center;font:700 12px var(--font);color:#8f7a3f;}
-
-/* ==== ASISTENT ==== */
-.asstBar{display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:8px 13px;border-radius:14px;
-  background:linear-gradient(180deg,rgba(20,30,18,.9),rgba(8,10,7,.92));border:1px solid rgba(120,220,140,.4);
-  box-shadow:0 0 18px rgba(60,200,120,.13);}
-.asstBar.off{border-color:rgba(240,201,106,.4);background:linear-gradient(180deg,rgba(30,24,10,.9),rgba(10,8,6,.92));}
-.asstLed{width:12px;height:12px;border-radius:50%;flex:0 0 auto;background:#2a2010;}
-.asstBar.on .asstLed{background:radial-gradient(circle at 35% 30%,#a8ffb0,#3ad06a);box-shadow:0 0 12px rgba(95,220,120,.9);animation:pulse 1.8s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
-.asstText{flex:1;min-width:0;font:700 11px var(--font);color:#c8f0b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.asstBar.off .asstText{color:#e6c885;}
-.asstMode{border:1px solid rgba(120,220,140,.4);border-radius:10px;background:rgba(16,26,14,.8);color:#c8f0b8;font:700 10px var(--font);padding:8px 11px;letter-spacing:1px;}
-.asstPower{border:1px solid rgba(120,220,140,.5);border-radius:11px;position:relative;overflow:hidden;
-  background:linear-gradient(180deg,#2e5228,#173015);color:#e0ffd6;font:800 11px var(--font);padding:10px 15px;letter-spacing:1px;}
-.asstBar.off .asstPower{background:linear-gradient(180deg,#5a4418,#2e2410);color:#ffd879;border-color:rgba(240,201,106,.5);}
-.asstPower .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,90,60,.55);pointer-events:none;}
-.asstPower .lab{position:relative;z-index:2;}
-
-.confirmWrap{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:20px;}
-.confirmWrap.open{display:flex;}
-.confirmBox{max-width:430px;width:100%;border-radius:16px;padding:20px;text-align:center;background:linear-gradient(180deg,#1c140b,#0b0906);border:1px solid rgba(255,150,60,.5);}
-.confirmBox h3{font:800 16px var(--font);color:#ffb43c;margin-bottom:10px;}
-.confirmBox p{font:700 12px var(--font);color:#e9c877;margin-bottom:16px;}
-.confirmBtns{display:flex;gap:10px;}
-.confirmBtns button{flex:1;padding:14px;border:0;border-radius:12px;font:800 12px var(--font);}
-.cYes{background:linear-gradient(180deg,#ffd06a,#c9962f);color:#160f04;}.cNo{background:#242019;color:#f2c464;}
-
-/* ==== PORTRAIT (na výšku) ==== */
-@media (max-width:820px) and (orientation:portrait){
-  .deck-console{flex-direction:column;}
-  .mixer{width:100%;order:2;flex-direction:row;flex-wrap:wrap;justify-content:center;}
-  .deck.a{order:1;}.deck.b{order:3;}
-  .masterVU{height:90px;}
-  .jog{width:150px;height:150px;}
-}
-/* landscape jemné doladění */
-@media (orientation:landscape){
-  .jog{width:170px;height:170px;}
-  .miniTrack{height:72px;}
-}
-@media (orientation:landscape) and (max-height:480px){
-  .jog{width:130px;height:130px;}
-  .miniTrack{height:60px;}.bigTrack{height:96px;}
-}
+.asstRow{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;}
+#asstText{font:700 13px var(--font);color:#7fe89a;}
+#asstText.off{color:#ff8a6a;}
+#asstPower{position:relative;overflow:hidden;}
+#asstFill{position:absolute;left:0;top:0;bottom:0;width:0%;background:rgba(255,80,60,.4);pointer-events:none;}
+.helpTxt{font:600 13px var(--font);color:#cfc39a;line-height:1.55;}
+.helpTxt b{color:var(--gold);}
+input[type=file]{display:none;}
 </style>
 </head>
 <body>
 <canvas id="cosmos"></canvas>
-<div class="wrap">
 
-<div class="asstBar on" id="asstBar">
-  <div class="asstLed"></div>
-  <div class="asstText" id="asstText">ASISTENT ZAPNUT · hlídá návaznost a bezpečné meze</div>
-  <button class="asstMode" id="asstMode" type="button">REŽIM: POLOAUTO</button>
-  <button class="asstPower" id="asstPower" type="button"><span class="fill" id="asstFill"></span><span class="lab" id="asstPowerLab">VYPNOUT (podrž)</span></button>
+<div id="stage">
+  <img class="bg" src="bg.jpg" alt="">
+  <!-- hitzony + zive prekryvy generuje JS podle % mapy nize -->
 </div>
 
-<div class="topbar">
-  <div class="navL">
-    <button class="navBtn" id="backBtn" type="button">◄ ZPĚT</button>
-    <button class="navBtn on" type="button">MIXER</button>
-    <button class="navBtn" type="button">WAVEFORM</button>
+<!-- PLAYLIST -->
+<div class="ovl" id="plWrap"><div class="panel">
+  <div class="pHead"><div class="tag" id="plTag">A</div><h3 id="plTitle">PLAYLIST</h3>
+    <button class="pBtn" id="plAdd">+ PŘIDAT</button><button class="pBtn dim" id="plClose">ZAVŘÍT</button></div>
+  <div id="plList"></div>
+</div></div>
+
+<!-- 10 PASMOVY EQ -->
+<div class="ovl" id="eqWrap"><div class="panel">
+  <div class="pHead"><div class="tag" id="eqTag">A</div><h3 id="eqTitle">EQ · 10 PÁSEM (31 Hz – 16 kHz, ±12 dB)</h3>
+    <button class="pBtn dim" id="eqFlat">VYNULOVAT</button><button class="pBtn dim" id="eqClose">ZAVŘÍT</button></div>
+  <div class="eqRow" id="eqRowA"></div>
+  <div class="eqRow eqB" id="eqRowB" style="display:none"></div>
+</div></div>
+
+<!-- ASISTENT -->
+<div class="ovl" id="asstWrap"><div class="panel">
+  <div class="pHead"><h3>ASISTENT</h3><button class="pBtn dim" id="asstClose">ZAVŘÍT</button></div>
+  <div id="asstText">ASISTENT ZAPNUT · hlídá návaznost a bezpečné meze</div>
+  <div class="asstRow">
+    <button class="pBtn dim" id="asstMode">REŽIM: POLOAUTO</button>
+    <button class="pBtn dim" id="asstPower"><span id="asstFill"></span><span id="asstPowerLab">VYPNOUT (podrž)</span></button>
   </div>
-  <div class="brandTop">
-    <span class="lg">N&amp;P VISION</span>
-    <span class="sm">PRO DJ MIXER</span>
-  </div>
-  <div class="navR">
-    <button class="navBtn" type="button">SETTINGS</button>
-    <button class="navBtn pw" type="button">⏻</button>
-  </div>
-</div>
+  <p class="helpTxt" style="margin-top:10px">Pravidlo: <b>ty jsi šéf</b>. Vypnutí = podržet 1,6 s (proti přehmatu), zapnutí = 1 klik. Asistent hlídá jen techniku (gain cap 95 %, dojezd skladby, AUTOMAT = auto-crossfade).</p>
+</div></div>
 
-<div class="deck-console">
+<!-- HELP -->
+<div class="ovl" id="helpWrap"><div class="panel">
+  <div class="pHead"><h3>NÁPOVĚDA · CO KDE JE</h3><button class="pBtn dim" id="helpClose">ZAVŘÍT</button></div>
+  <p class="helpTxt">
+  <b>USB 1 / USB 2 / obal skladby / BROWSE / LIBRARY</b> → playlist decku (PŘIDAT, NAČÍST).<br>
+  <b>Ozubené kolo v řádku decku / EFFECTS</b> → 10pásmový EQ decku.<br>
+  <b>HIGH-MID-LOW mini fadery u FX sloupců</b> → rychlé EQ skupiny decku.<br>
+  <b>FX ON + velký FX fader</b> → lowpass filtr decku (fader = frekvence).<br>
+  <b>Fader 1 / 2</b> → hlasitost decku · <b>MASTER fader</b> → celková hlasitost.<br>
+  <b>TEMPO</b> po stranách ±8 % · <b>RESET</b> vynuluje · <b>− / +</b> jemný krok 0,5 % · <b>KEY LOCK</b> drží tóninu.<br>
+  <b>Waveform</b> → klepnutím přeskočíš ve skladbě.<br>
+  <b>HOT CUE pady</b> → 1. klep uloží bod, další klep skočí, podržení smaže. <b>DELETE</b> = mazací režim.<br>
+  <b>LOOP</b> → 1. klep začátek, 2. klep konec+smyčka, 3. klep vypne.<br>
+  <b>TAP</b> → vyťukej BPM · <b>SYNC</b> → srovná tempo podle druhého decku.<br>
+  <b>RECORD</b> → nahrává master do souboru (2. klep uloží).<br>
+  <b>SETTINGS / ozubené kolo nahoře</b> → asistent · <b>MENU / vypínač</b> → zpět do appky.<br>
+  <b>3× klep na logo N&P</b> → zvýrazní hitzóny (kalibrace).
+  </p>
+</div></div>
 
-  <!-- ===== DECK A ===== -->
-  <div class="deck a" id="deckA">
-    <div class="deckTop">
-      <div class="deckTag">A</div>
-      <div class="deckTitle">DECK A</div>
-      <div class="deckBpm">BPM <b data-bpm="A">—</b></div>
-    </div>
-    <div class="trackBox">
-      <div class="trackRow">
-        <div class="artCover">♪</div>
-        <div class="trackMeta">
-          <div class="trackName" data-tn="A">— prázdný —</div>
-          <div class="trackArtist" data-ta="A">natáhni skladbu z playlistu</div>
-          <div class="trackTime" data-tt="A">0:00 / 0:00</div>
-        </div>
-      </div>
-      <div class="wave" data-wave="A"></div>
-    </div>
-    <div class="deckActs">
-      <button data-pl="A">PLAYLIST</button>
-      <button data-load="A">◇ NAHRÁT</button>
-      <button data-cue="A" class="cueBtn">CUE</button>
-    </div>
-    <div class="jogWrap">
-      <div class="jog" data-jog="A">
-        <div class="jogRing" data-ring="A"></div>
-        <div class="jogTick" data-tick="A"></div>
-        <div class="jogVinyl" data-vinyl="A"></div>
-        <div class="jogCenter" data-label="A"><span class="np">N&amp;P</span><span class="vis">VISION</span></div>
-      </div>
-    </div>
-    <div class="deckCtl">
-      <div class="faderPair">
-        <div class="tempoCol">
-          <span class="miniLbl">TEMPO</span>
-          <div class="bigTrack" data-tempo="A"></div>
-          <span class="bigVal" data-tempoval="A">0%</span>
-        </div>
-        <div class="tempoCol">
-          <span class="miniLbl">GAIN</span>
-          <div class="bigTrack" data-vol="A"></div>
-          <span class="bigVal" data-volval="A">80%</span>
-        </div>
-      </div>
-      <div class="padsZone">
-        <div class="pads" data-pads="A"></div>
-      </div>
-    </div>
-    <div class="eqFull"><div class="eqRow" data-eq="A"></div></div>
-    <div class="transport">
-      <button class="tBtn play" data-play="A" type="button">▶ PLAY</button>
-      <button class="tBtn" data-stutter="A" type="button">STUTTER</button>
-      <button class="tBtn" data-sync="A" type="button">SYNC</button>
-    </div>
-  </div>
+<!-- CONFIRM -->
+<div class="ovl" id="confirmWrap"><div class="panel" style="width:min(420px,92vw)">
+  <div class="pHead"><h3 id="confirmTitle">POTVRZENÍ</h3></div>
+  <p class="helpTxt" id="confirmMsg"></p>
+  <div class="asstRow"><button class="pBtn" id="confirmYes">ANO</button><button class="pBtn dim" id="confirmNo">NE</button></div>
+</div></div>
 
-  <!-- ===== MIXÉR ===== -->
-  <div class="mixer">
-    <div class="mixLogo"><span class="np">N&amp;P</span><span class="vis">VISION</span></div>
-    <div class="mixSlogan">THE MIX IS YOURS</div>
-    <div class="masterVU">
-      <div class="vu" data-vu="ML"></div>
-      <div class="vu" data-vu="MR"></div>
-    </div>
-    <div class="vuLbl">MASTER</div>
-    <div class="xfWrap">
-      <div class="xfLabel"><span class="l">A</span><span style="color:#8f7a3f">CROSSFADE</span><span class="r">B</span></div>
-      <div class="xfTrack" id="xfTrack"><div class="xfKnob" id="xfKnob"></div></div>
-      <div class="mixHint" id="mixHint">STŘED = OBA STEJNĚ</div>
-    </div>
-    <div class="mixBtns">
-      <button class="sync" id="btnSync" type="button">⇄ SYNC BPM</button>
-      <button id="btnCutA" type="button">◄ HARD A</button>
-      <button id="btnCutB" type="button">HARD B ►</button>
-    </div>
-  </div>
-
-  <!-- ===== DECK B ===== -->
-  <div class="deck b" id="deckB">
-    <div class="deckTop">
-      <div class="deckTag">B</div>
-      <div class="deckTitle">DECK B</div>
-      <div class="deckBpm">BPM <b data-bpm="B">—</b></div>
-    </div>
-    <div class="trackBox">
-      <div class="trackRow">
-        <div class="artCover">♪</div>
-        <div class="trackMeta">
-          <div class="trackName" data-tn="B">— prázdný —</div>
-          <div class="trackArtist" data-ta="B">natáhni skladbu z playlistu</div>
-          <div class="trackTime" data-tt="B">0:00 / 0:00</div>
-        </div>
-      </div>
-      <div class="wave" data-wave="B"></div>
-    </div>
-    <div class="deckActs">
-      <button data-pl="B">PLAYLIST</button>
-      <button data-load="B">◇ NAHRÁT</button>
-      <button data-cue="B" class="cueBtn">CUE</button>
-    </div>
-    <div class="jogWrap">
-      <div class="jog" data-jog="B">
-        <div class="jogRing" data-ring="B"></div>
-        <div class="jogTick" data-tick="B"></div>
-        <div class="jogVinyl" data-vinyl="B"></div>
-        <div class="jogCenter" data-label="B"><span class="np">N&amp;P</span><span class="vis">VISION</span></div>
-      </div>
-    </div>
-    <div class="deckCtl">
-      <div class="padsZone">
-        <div class="pads" data-pads="B"></div>
-      </div>
-      <div class="faderPair">
-        <div class="tempoCol">
-          <span class="miniLbl">GAIN</span>
-          <div class="bigTrack" data-vol="B"></div>
-          <span class="bigVal" data-volval="B">80%</span>
-        </div>
-        <div class="tempoCol">
-          <span class="miniLbl">TEMPO</span>
-          <div class="bigTrack" data-tempo="B"></div>
-          <span class="bigVal" data-tempoval="B">0%</span>
-        </div>
-      </div>
-    </div>
-    <div class="eqFull"><div class="eqRow" data-eq="B"></div></div>
-    <div class="transport">
-      <button class="tBtn" data-sync="B" type="button">SYNC</button>
-      <button class="tBtn" data-stutter="B" type="button">STUTTER</button>
-      <button class="tBtn play" data-play="B" type="button">▶ PLAY</button>
-    </div>
-  </div>
-
-</div>
-
-<div class="bottomBar">
-  <div class="sampler" id="sampler"></div>
-  <div class="limiter">
-    <span class="limLbl">MASTER LIMITER</span>
-    <div class="limBar" id="limBar"></div>
-  </div>
-</div>
-
-<div class="footer">
-  <span class="gold">N&amp;P VISION</span>
-  <span>BUILT FOR PERFORMANCE</span>
-  <span class="gold">MIX · CREATE · INSPIRE</span>
-</div>
-
-</div>
-
-<input id="fileA" type="file" accept=".mp3,.wav,audio/*" multiple style="display:none">
-<input id="fileB" type="file" accept=".mp3,.wav,audio/*" multiple style="display:none">
-
-<!-- PLAYLIST panel -->
-<div class="plWrap" id="plWrap">
-  <div class="plBox">
-    <div class="plHead">
-      <span class="tag" id="plTag">A</span>
-      <h3 id="plTitle">PLAYLIST · DECK A</h3>
-      <button class="plAdd" id="plAdd" type="button">+ PŘIDAT</button>
-      <button class="plClose" id="plClose" type="button">ZAVŘÍT</button>
-    </div>
-    <div class="plList" id="plList"></div>
-  </div>
-</div>
-
-<div class="confirmWrap" id="confirmWrap">
-  <div class="confirmBox">
-    <h3 id="confirmTitle">POTVRDIT AKCI</h3>
-    <p id="confirmMsg">Opravdu?</p>
-    <div class="confirmBtns">
-      <button class="cNo" id="confirmNo" type="button">ZPĚT</button>
-      <button class="cYes" id="confirmYes" type="button">PROVÉST</button>
-    </div>
-  </div>
-</div>
+<input type="file" id="fileA" accept="audio/*" multiple>
+<input type="file" id="fileB" accept="audio/*" multiple>
 
 <script>
 (function(){
   "use strict";
+  /* ================= AUDIO ENGINE (BUILD2SJ6, beze zmeny logiky) ================= */
   var ctx=null;
   function ac(){ if(!ctx){ctx=new (window.AudioContext||window.webkitAudioContext)();} if(ctx.state==='suspended')ctx.resume(); return ctx; }
   var DJ_EQ_FREQ=[31,62,125,250,500,1000,2000,4000,8000,16000];
 
   function makeDeck(id){
     return {id:id, audio:new Audio(), src:null, name:'', artist:'',
-      node:null, eqBands:[], gain:null, xfGain:null, analyser:null,
+      node:null, eqBands:[], gain:null, xfGain:null, analyser:null, fx:null,
       playing:false, tempo:0, gainv:0.8, eq:[0,0,0,0,0,0,0,0,0,0], built:false,
-      playlist:[], jogAngle:0};
+      playlist:[], baseBpm:(id==='A'?123.4:124.8), fxOn:false, fxFreq:900,
+      hotcues:[null,null,null,null,null,null,null,null], delMode:false,
+      loopA:-1, loopB:-1, loopOn:false, keylock:false, taps:[]};
   }
   var A=makeDeck('A'), B=makeDeck('B');
-  var master=null, masterAnalyser=null, xfade=0.5;
+  var master=null, masterAnalyser=null, limiter=null, limOn=true, xfade=0.5;
+  var recDest=null, recorder=null, recChunks=[], recOn=false;
 
   function buildMaster(){
     if(master) return;
     var c=ac();
     master=c.createGain(); master.gain.value=1;
+    limiter=c.createDynamicsCompressor();
+    limiter.threshold.value=-3; limiter.knee.value=0; limiter.ratio.value=20;
+    limiter.attack.value=0.002; limiter.release.value=0.12;
     masterAnalyser=c.createAnalyser(); masterAnalyser.fftSize=256;
-    master.connect(masterAnalyser); masterAnalyser.connect(c.destination);
+    master.connect(limiter); limiter.connect(masterAnalyser); masterAnalyser.connect(c.destination);
+    try{recDest=c.createMediaStreamDestination(); masterAnalyser.connect(recDest);}catch(e){}
     setupTvTap(master);
   }
+  function setLimiter(on){ limOn=on; if(limiter){limiter.threshold.value=on?-3:0; limiter.ratio.value=on?20:1;} }
 
-  // TV WEB audio tap - stream na projektor (jako přehrávač)
+  // TV WEB audio tap - stream na projektor (jako prehravac)
   var tvTap=null,tvZero=null,tvErr=0;
   function clampA(v){return v<-1?-1:(v>1?1:v);}
   function setupTvTap(node){
@@ -619,10 +240,12 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     try{d.node=c.createMediaElementSource(d.audio);}catch(e){return;}
     d.eqBands=[]; var node=d.node;
     DJ_EQ_FREQ.forEach(function(f){var b=c.createBiquadFilter();b.type='peaking';b.frequency.value=f;b.Q.value=1.1;b.gain.value=0;node.connect(b);node=b;d.eqBands.push(b);});
+    d.fx=c.createBiquadFilter(); d.fx.type='peaking'; d.fx.gain.value=0; d.fx.frequency.value=d.fxFreq;
+    node.connect(d.fx); node=d.fx;
     d.gain=c.createGain();d.gain.value=d.gainv; d.xfGain=c.createGain();
     d.analyser=c.createAnalyser();d.analyser.fftSize=256;
     node.connect(d.gain);d.gain.connect(d.analyser);d.analyser.connect(d.xfGain);d.xfGain.connect(master);
-    d.built=true; applyEq(d); applyXfade();
+    d.built=true; applyEq(d); applyFx(d); applyXfade();
   }
   function applyEq(d){
     if(!d.built)return;
@@ -630,28 +253,116 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     d.gain.gain.value=d.gainv; d.audio.volume=1;
     if(d.audio.playbackRate!==undefined)d.audio.playbackRate=1+d.tempo/100;
   }
+  function applyFx(d){
+    if(!d.fx)return;
+    if(d.fxOn){d.fx.type='lowpass';d.fx.frequency.value=d.fxFreq;d.fx.Q.value=0.8;}
+    else{d.fx.type='peaking';d.fx.gain.value=0;}
+  }
+  function applyKeylock(d){ try{d.audio.preservesPitch=d.keylock; d.audio.webkitPreservesPitch=d.keylock;}catch(e){} }
   function applyXfade(){
     var gl=Math.cos(xfade*Math.PI/2),gr=Math.sin(xfade*Math.PI/2);
     if(A.xfGain)A.xfGain.gain.value=gl; if(B.xfGain)B.xfGain.gain.value=gr;
-    var h=document.getElementById('mixHint');
-    if(xfade<0.12)h.textContent='PLNĚ DECK A'; else if(xfade>0.88)h.textContent='PLNĚ DECK B';
-    else if(xfade>0.42&&xfade<0.58)h.textContent='STŘED = OBA STEJNĚ';
-    else h.textContent=xfade<0.5?('VÍCE A '+Math.round((1-xfade)*100)+'%'):('VÍCE B '+Math.round(xfade*100)+'%');
   }
-
   function fmtTime(s){if(!s||isNaN(s))return '0:00';var m=Math.floor(s/60),ss=Math.floor(s%60);return m+':'+(ss<10?'0':'')+ss;}
+
+  /* ================= STAGE + HITZONY (fotorealisticky rezim) =================
+     Souradnice v px navrhu 1536x1024 -> prevedeno na %. */
+  var stage=document.getElementById('stage');
+  var IW=1536, IH=1024;
+  function pc(px,py,pw,ph){return {left:(px/IW*100)+'%',top:(py/IH*100)+'%',width:(pw/IW*100)+'%',height:(ph/IH*100)+'%'};}
+  function zone(px,py,pw,ph,cls){
+    var el=document.createElement('div'); el.className='hz'+(cls?' '+cls:'');
+    var p=pc(px,py,pw,ph); el.style.left=p.left;el.style.top=p.top;el.style.width=p.width;el.style.height=p.height;
+    stage.appendChild(el); return el;
+  }
+  function coverBox(px,py,pw,ph,cls){
+    var el=document.createElement('div'); el.className='cover'+(cls?' '+cls:'');
+    var p=pc(px,py,pw,ph); el.style.left=p.left;el.style.top=p.top;el.style.width=p.width;el.style.height=p.height;
+    stage.appendChild(el); return el;
+  }
+  function flash(el,cls){el.classList.add(cls||'on');setTimeout(function(){el.classList.remove(cls||'on');},220);}
+
+  /* --- svisly/vodorovny fader hitzone se zivym jezdcem --- */
+  function fader(px,py,pw,ph,opts){
+    var el=document.createElement('div'); el.className='fz'+(opts.cls?' '+opts.cls:'');
+    var p=pc(px,py,pw,ph); el.style.left=p.left;el.style.top=p.top;el.style.width=p.width;el.style.height=p.height;
+    var kn=document.createElement('div');kn.className='kn';el.appendChild(kn);
+    var vl=null; if(opts.label){vl=document.createElement('div');vl.className='vl';el.appendChild(vl);}
+    stage.appendChild(el);
+    function render(){
+      var t=(opts.get()-opts.min)/(opts.max-opts.min); t=Math.max(0,Math.min(1,t));
+      if(opts.horiz){kn.style.left=(t*100)+'%';} else {kn.style.bottom=(t*100)+'%';}
+      if(vl)vl.textContent=opts.fmt?opts.fmt(opts.get()):'';
+    }
+    function fromEv(ev){
+      var r=el.getBoundingClientRect(),t;
+      if(opts.horiz){ t=(ev.clientX-r.left)/r.width; }
+      else{ var pad=r.height*0.08; t=1-((ev.clientY-r.top)-pad)/(r.height-2*pad); }
+      t=Math.max(0,Math.min(1,t));
+      opts.set(opts.min+t*(opts.max-opts.min)); render(); if(opts.onchange)opts.onchange();
+    }
+    el.addEventListener('pointerdown',function(ev){ev.preventDefault();try{el.setPointerCapture(ev.pointerId);}catch(e){}fromEv(ev);if(opts.ondown)opts.ondown();});
+    el.addEventListener('pointermove',function(ev){if(ev.buttons===0)return;ev.preventDefault();fromEv(ev);});
+    render(); opts._r=render; return render;
+  }
+  function fmtDb(v){v=Math.round(v);return (v>0?'+':'')+v;}
+  function fmtPct(v){return Math.round(v*100)+'%';}
+  function fmtTempo(v){return (v>0?'+':'')+(Math.round(v*10)/10)+'%';}
+
+  /* ================= ZIVE PREKRYVY ================= */
+  // nazev + interpret
+  var nmA=coverBox(146,150,290,46); nmA.innerHTML='<div class="tn" data-tn="A">Atari Nights</div><div class="ta" data-ta="A">natáhni skladbu z playlistu</div>';
+  var nmB=coverBox(1148,150,300,46); nmB.innerHTML='<div class="tn" data-tn="B">Neon Skyline</div><div class="ta" data-ta="B">natáhni skladbu z playlistu</div>';
+  var tmA=coverBox(134,196,235,28,'tm a'); tmA.textContent='0:00 / 0:00'; tmA.setAttribute('data-tt','A');
+  var tmB=coverBox(1134,196,240,28,'tm b'); tmB.textContent='0:00 / 0:00'; tmB.setAttribute('data-tt','B');
+  var bpA=coverBox(350,94,112,28,'bpm'); var bpB=coverBox(1328,94,110,28,'bpm');
   function setTrackInfo(d){
     document.querySelector('[data-tn="'+d.id+'"]').textContent=d.name||'— prázdný —';
     document.querySelector('[data-ta="'+d.id+'"]').textContent=d.artist||(d.name?'':'natáhni skladbu z playlistu');
   }
+  function renderBpm(){
+    bpA.textContent=(Math.round(A.baseBpm*(1+A.tempo/100)*10)/10)+' BPM';
+    bpB.textContent=(Math.round(B.baseBpm*(1+B.tempo/100)*10)/10)+' BPM';
+  }
+  renderBpm();
 
-  // ==== nacteni souboru + playlist ====
+  // waveformy (48 barů) + playhead + seek klepnutim
+  function makeWave(px,py,pw,ph,d,cls){
+    var w=document.createElement('div');w.className='waveBox '+cls;
+    var p=pc(px,py,pw,ph);w.style.left=p.left;w.style.top=p.top;w.style.width=p.width;w.style.height=p.height;
+    for(var i=0;i<48;i++)w.appendChild(document.createElement('i'));
+    var phl=document.createElement('div');phl.className='ph';w.appendChild(phl);
+    w.addEventListener('pointerdown',function(ev){
+      if(!d.audio.src||!d.audio.duration)return;
+      var r=w.getBoundingClientRect(),t=(ev.clientX-r.left)/r.width;
+      try{d.audio.currentTime=Math.max(0,Math.min(1,t))*d.audio.duration;}catch(e){}
+    });
+    stage.appendChild(w); return {el:w,ph:phl};
+  }
+  var waveA=makeWave(33,238,464,62,A,'a'), waveB=makeWave(1040,238,462,62,B,'b');
+
+  // master VU (2 sloupce vedle master faderu) + limiter LED pruh
+  function makeVU(px,py,pw,ph,n){
+    var v=document.createElement('div');v.className='vuBox';
+    var p=pc(px,py,pw,ph);v.style.left=p.left;v.style.top=p.top;v.style.width=p.width;v.style.height=p.height;
+    for(var i=0;i<n;i++)v.appendChild(document.createElement('i'));
+    stage.appendChild(v);return v;
+  }
+  var vuL=makeVU(679,275,17,178,16), vuR=makeVU(821,275,17,178,16);
+  var limBar=document.createElement('div');limBar.className='limBox';
+  (function(){var p=pc(1208,928,222,20);limBar.style.left=p.left;limBar.style.top=p.top;limBar.style.width=p.width;limBar.style.height=p.height;
+   for(var i=0;i<18;i++)limBar.appendChild(document.createElement('i'));stage.appendChild(limBar);})();
+
+  /* ================= PLAYLIST ================= */
+  var plWrap=document.getElementById('plWrap'),plList=document.getElementById('plList'),curPlDeck=null;
   function loadToDeck(d,file){
     if(!file)return;
     if(d.src){try{URL.revokeObjectURL(d.src);}catch(e){}}
     d.src=URL.createObjectURL(file); d.audio.src=d.src;
     d.name=file.name.replace(/\.[^.]+$/,''); d.artist='N&P VISION';
-    setTrackInfo(d); buildDeck(d); setPlay(d,false);
+    d.hotcues=[null,null,null,null,null,null,null,null]; renderPads(d);
+    d.loopA=-1;d.loopB=-1;d.loopOn=false;
+    setTrackInfo(d); buildDeck(d); applyKeylock(d); setPlay(d,false);
   }
   function addToPlaylist(d,files){
     for(var i=0;i<files.length;i++){var f=files[i];
@@ -659,29 +370,20 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     if(!d.audio.src && d.playlist.length){ loadToDeck(d,d.playlist[0].file); }
     renderPlaylist(d);
   }
-  document.querySelectorAll('[data-load]').forEach(function(b){b.onclick=function(){document.getElementById('file'+b.getAttribute('data-load')).click();};});
-  document.getElementById('fileA').onchange=function(){if(this.files.length)addToPlaylist(A,this.files);this.value='';};
-  document.getElementById('fileB').onchange=function(){if(this.files.length)addToPlaylist(B,this.files);this.value='';};
-
-  // most z prehravace
-  window.RENE_LOAD=function(deck,name,url){var d=deck==='B'?B:A;d.audio.src=url;d.name=name||'track';d.artist='';setTrackInfo(d);buildDeck(d);setPlay(d,false);};
-
-  // ==== PLAYLIST panel ====
-  var plWrap=document.getElementById('plWrap'),plList=document.getElementById('plList'),curPlDeck=null;
   function openPlaylist(d){
     curPlDeck=d;
-    document.getElementById('plTag').textContent=d.id;
-    document.getElementById('plTag').style.background=d.id==='A'?'linear-gradient(180deg,#ffd873,#c9962f)':'linear-gradient(180deg,#7fd0ff,#2b86d8)';
-    document.getElementById('plTag').style.color=d.id==='A'?'#160f04':'#08131f';
+    var tag=document.getElementById('plTag');
+    tag.textContent=d.id;
+    tag.style.background=d.id==='A'?'linear-gradient(180deg,#ffd873,#c9962f)':'linear-gradient(180deg,#7fd0ff,#2b86d8)';
+    tag.style.color=d.id==='A'?'#160f04':'#08131f';
     document.getElementById('plTitle').textContent='PLAYLIST · DECK '+d.id;
     renderPlaylist(d); plWrap.classList.add('open');
   }
   function renderPlaylist(d){
-    if(curPlDeck!==d && plWrap.classList.contains('open'))return;
     if(curPlDeck!==d)return;
     plList.innerHTML='';
     if(!d.playlist.length){plList.innerHTML='<div class="plEmpty">Zatím prázdno.<br>Klepni + PŘIDAT a vyber skladby.</div>';return;}
-    d.playlist.forEach(function(it,idx){
+    d.playlist.forEach(function(it){
       var row=document.createElement('div');row.className='plItem';
       var loaded=(d.name===it.name);
       row.innerHTML='<div class="ic">♪</div><div class="nm">'+it.name+'</div>';
@@ -693,186 +395,351 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       row.appendChild(btn); plList.appendChild(row);
     });
   }
-  document.querySelectorAll('[data-pl]').forEach(function(b){b.onclick=function(){openPlaylist(b.getAttribute('data-pl')==='B'?B:A);};});
+  document.getElementById('fileA').onchange=function(){if(this.files.length)addToPlaylist(A,this.files);this.value='';};
+  document.getElementById('fileB').onchange=function(){if(this.files.length)addToPlaylist(B,this.files);this.value='';};
   document.getElementById('plAdd').onclick=function(){if(curPlDeck)document.getElementById('file'+curPlDeck.id).click();};
   document.getElementById('plClose').onclick=function(){plWrap.classList.remove('open');};
   plWrap.addEventListener('click',function(e){if(e.target===plWrap)plWrap.classList.remove('open');});
+  // most z prehravace
+  window.RENE_LOAD=function(deck,name,url){var d=deck==='B'?B:A;d.audio.src=url;d.name=name||'track';d.artist='';setTrackInfo(d);buildDeck(d);setPlay(d,false);};
 
-  // ==== transport ====
+  /* ================= TRANSPORT ================= */
+  var playZ={}; // hitzony play pro glow
   function setPlay(d,on){
     buildDeck(d);
     if(on){ac();var p=d.audio.play();if(p&&p.catch)p.catch(function(){});d.playing=true;}
     else{d.audio.pause();d.playing=false;}
-    var pb=document.querySelector('[data-play="'+d.id+'"]');
-    pb.classList.toggle('on',d.playing); pb.textContent=d.playing?'❚❚ PAUZA':'▶ PLAY';
+    if(playZ[d.id])playZ[d.id].classList.toggle(d.id==='A'?'on':'onB',d.playing);
   }
-  document.querySelectorAll('[data-play]').forEach(function(b){b.onclick=function(){var d=b.getAttribute('data-play')==='B'?B:A;if(!d.audio.src){openPlaylist(d);return;}setPlay(d,!d.playing);};});
-  document.querySelectorAll('[data-cue]').forEach(function(b){b.onclick=function(){var d=b.getAttribute('data-cue')==='B'?B:A;if(!d.audio.src)return;try{d.audio.currentTime=0;}catch(e){}setPlay(d,true);b.classList.add('on');setTimeout(function(){b.classList.remove('on');},250);};});
-  document.querySelectorAll('[data-stutter]').forEach(function(b){b.onclick=function(){var d=b.getAttribute('data-stutter')==='B'?B:A;if(!d.audio.src)return;try{d.audio.currentTime=Math.max(0,d.audio.currentTime-0.15);}catch(e){}};});
+  function doCue(d,el){if(!d.audio.src)return;try{d.audio.currentTime=0;}catch(e){}setPlay(d,true);if(el)flash(el,d.id==='A'?'on':'onB');}
+  function nudge(d,dt){if(!d.audio.src)return;try{d.audio.currentTime=Math.max(0,d.audio.currentTime+dt);}catch(e){}}
+  function sync(d){var o=(d===A)?B:A;d.tempo=o.tempo;buildDeck(d);applyEq(d);renderBpm();if(tempoR[d.id])tempoR[d.id]();}
+  function tapBpm(d,el){
+    var n=Date.now();d.taps=d.taps.filter(function(t){return n-t<3000;});d.taps.push(n);
+    if(d.taps.length>=2){var iv=0;for(var i=1;i<d.taps.length;i++)iv+=d.taps[i]-d.taps[i-1];iv/=d.taps.length-1;
+      d.baseBpm=Math.round(60000/iv*10)/10;renderBpm();}
+    flash(el,d.id==='A'?'on':'onB');
+  }
+  // loop
+  function loopBtn(d,el){
+    if(!d.audio.src)return;
+    if(d.loopA<0){d.loopA=d.audio.currentTime;el.classList.add(d.id==='A'?'on':'onB');}
+    else if(!d.loopOn){d.loopB=d.audio.currentTime;if(d.loopB<=d.loopA+0.1)d.loopB=d.loopA+1;d.loopOn=true;}
+    else{d.loopOn=false;d.loopA=-1;d.loopB=-1;el.classList.remove('on','onB');}
+  }
+  [A,B].forEach(function(d){
+    d.audio.addEventListener('timeupdate',function(){
+      if(d.loopOn&&d.loopB>0&&d.audio.currentTime>=d.loopB){try{d.audio.currentTime=d.loopA;}catch(e){}}
+    });
+    d.audio.addEventListener('ended',function(){setPlay(d,false);});
+  });
 
-  // ==== svisly slider ====
-  function vSlider(track,opts){
-    var lc=opts.leds||12;
-    var lw=document.createElement('div');lw.className=opts.big?'bigLeds':'miniLeds';
-    var arr=[];for(var k=0;k<lc;k++){var i=document.createElement('i');lw.appendChild(i);arr.push(i);}
-    var mid=document.createElement('div');mid.className=opts.big?'bigMid':'miniMid';
-    var kn=document.createElement('div');kn.className=opts.big?'bigKnob':'miniKnob';
-    track.appendChild(lw);if(opts.center)track.appendChild(mid);track.appendChild(kn);
-    function render(){var v=opts.get(),t=(v-opts.min)/(opts.max-opts.min);t=Math.max(0,Math.min(1,t));
-      kn.style.bottom=(t*100)+'%';var lit=Math.round(t*lc);
-      for(var k=0;k<lc;k++)arr[k].className=(k<lit)?('lit'+(k>=lc-3?' hot':'')):'';
-      if(opts.valEl)opts.valEl.textContent=opts.fmt(v);}
-    function fromEv(ev){
-      var r=track.getBoundingClientRect();
-      // mrtve pasmo 8% nahore/dole aby sly snadno dosahnout +max/-max
-      var pad=r.height*0.08;
-      var y=ev.clientY-r.top;
-      var t=1-(y-pad)/(r.height-2*pad);
-      t=Math.max(0,Math.min(1,t));
-      opts.set(opts.min+t*(opts.max-opts.min));render();if(opts.onchange)opts.onchange();
+  /* ================= HOT CUE PADY ================= */
+  var padEls={A:[],B:[]};
+  function renderPads(d){
+    padEls[d.id].forEach(function(p,i){
+      p.classList.toggle(d.id==='A'?'padHot':'padHotB',d.hotcues[i]!==null);
+    });
+  }
+  function bindPad(d,el,idx){
+    var holdT=null;
+    el.addEventListener('pointerdown',function(ev){ev.preventDefault();
+      holdT=setTimeout(function(){holdT=null;d.hotcues[idx]=null;renderPads(d);},600);
+    });
+    function up(){
+      if(!holdT)return; clearTimeout(holdT);holdT=null;
+      if(!d.audio.src)return;
+      if(d.delMode){d.hotcues[idx]=null;}
+      else if(d.hotcues[idx]===null){d.hotcues[idx]=d.audio.currentTime;}
+      else{try{d.audio.currentTime=d.hotcues[idx];}catch(e){} if(!d.playing)setPlay(d,true);}
+      renderPads(d);
     }
+    el.addEventListener('pointerup',up);
+    el.addEventListener('pointercancel',function(){if(holdT){clearTimeout(holdT);holdT=null;}});
+  }
+
+  /* ================= EQ PANEL (10 pasem) ================= */
+  var eqWrap=document.getElementById('eqWrap'),curEqDeck=A;
+  function miniSlider(track,opts){
+    var mid=document.createElement('div');mid.className='miniMid';
+    var kn=document.createElement('div');kn.className='miniKnob';
+    track.appendChild(mid);track.appendChild(kn);
+    function render(){var v=opts.get(),t=(v-opts.min)/(opts.max-opts.min);t=Math.max(0,Math.min(1,t));
+      kn.style.bottom=(t*100)+'%';if(opts.valEl)opts.valEl.textContent=opts.fmt(v);}
+    function fromEv(ev){var r=track.getBoundingClientRect();var pad=r.height*0.08;
+      var t=1-((ev.clientY-r.top)-pad)/(r.height-2*pad);t=Math.max(0,Math.min(1,t));
+      opts.set(opts.min+t*(opts.max-opts.min));render();if(opts.onchange)opts.onchange();}
     track.addEventListener('pointerdown',function(ev){ev.preventDefault();try{track.setPointerCapture(ev.pointerId);}catch(e){}fromEv(ev);});
     track.addEventListener('pointermove',function(ev){if(ev.buttons===0)return;ev.preventDefault();fromEv(ev);});
     render();opts._r=render;return render;
   }
-  function fmtDb(v){v=Math.round(v);return (v>0?'+':'')+v;}
-  function fmtPct(v){return Math.round(v*100)+'%';}
-  function fmtTempo(v){return (v>0?'+':'')+Math.round(v)+'%';}
-
-  [A,B].forEach(function(d){
-    var eqRow=document.querySelector('[data-eq="'+d.id+'"]');
+  var eqRenders={A:[],B:[]};
+  [ [A,'eqRowA'], [B,'eqRowB'] ].forEach(function(x){
+    var d=x[0],row=document.getElementById(x[1]);
     DJ_EQ_FREQ.forEach(function(f,idx){
       var lab=f>=1000?(f/1000)+'k':(''+f);
       var w=document.createElement('div');w.className='mini';
       var nm=document.createElement('div');nm.className='miniName';nm.textContent=lab;
       var tr=document.createElement('div');tr.className='miniTrack';
       var vv=document.createElement('div');vv.className='miniVal';
-      w.appendChild(nm);w.appendChild(tr);w.appendChild(vv);eqRow.appendChild(w);
-      vSlider(tr,{get:function(){return d.eq[idx];},set:function(v){d.eq[idx]=Math.max(-12,Math.min(12,v));},min:-12,max:12,center:true,fmt:fmtDb,valEl:vv,leds:10,onchange:function(){buildDeck(d);applyEq(d);}});
+      w.appendChild(nm);w.appendChild(tr);w.appendChild(vv);row.appendChild(w);
+      var r=miniSlider(tr,{get:function(){return d.eq[idx];},set:function(v){d.eq[idx]=Math.max(-12,Math.min(12,v));},
+        min:-12,max:12,fmt:fmtDb,valEl:vv,onchange:function(){buildDeck(d);applyEq(d);groupR[d.id].forEach(function(fn){fn();});}});
+      eqRenders[d.id].push(r);
     });
-    vSlider(document.querySelector('[data-tempo="'+d.id+'"]'),{get:function(){return d.tempo;},set:function(v){d.tempo=Math.max(-8,Math.min(8,v));},min:-8,max:8,center:true,big:true,fmt:fmtTempo,valEl:document.querySelector('[data-tempoval="'+d.id+'"]'),leds:14,onchange:function(){buildDeck(d);applyEq(d);}});
-    vSlider(document.querySelector('[data-vol="'+d.id+'"]'),{get:function(){return d.gainv;},set:function(v){d.gainv=Math.max(0,Math.min(1,v));if(window.__asstClampGain)window.__asstClampGain(d);},min:0,max:1,big:true,fmt:fmtPct,valEl:document.querySelector('[data-volval="'+d.id+'"]'),leds:14,onchange:function(){buildDeck(d);applyEq(d);}});
-    // pady
-    var pw=document.querySelector('[data-pads="'+d.id+'"]');
-    for(var pi=0;pi<8;pi++){(function(pi){var p=document.createElement('div');p.className='pad';
-      p.onclick=function(){if(!d.audio.src)return;p.classList.toggle('hot');};pw.appendChild(p);})(pi);}
   });
+  function openEq(d){
+    curEqDeck=d;
+    var tag=document.getElementById('eqTag');
+    tag.textContent=d.id;
+    tag.style.background=d.id==='A'?'linear-gradient(180deg,#ffd873,#c9962f)':'linear-gradient(180deg,#7fd0ff,#2b86d8)';
+    tag.style.color=d.id==='A'?'#160f04':'#08131f';
+    document.getElementById('eqRowA').style.display=d.id==='A'?'flex':'none';
+    document.getElementById('eqRowB').style.display=d.id==='B'?'flex':'none';
+    eqRenders[d.id].forEach(function(r){r();});
+    eqWrap.classList.add('open');
+  }
+  document.getElementById('eqClose').onclick=function(){eqWrap.classList.remove('open');};
+  document.getElementById('eqFlat').onclick=function(){var d=curEqDeck;for(var i=0;i<10;i++)d.eq[i]=0;applyEq(d);eqRenders[d.id].forEach(function(r){r();});groupR[d.id].forEach(function(fn){fn();});};
+  eqWrap.addEventListener('click',function(e){if(e.target===eqWrap)eqWrap.classList.remove('open');});
 
-  // crossfader
-  var xfTrack=document.getElementById('xfTrack'),xfKnob=document.getElementById('xfKnob');
-  function renderXf(){xfKnob.style.left=(xfade*100)+'%';}
-  function xfFrom(ev){var r=xfTrack.getBoundingClientRect(),x=ev.clientX-r.left;xfade=Math.max(0,Math.min(1,x/r.width));renderXf();applyXfade();}
-  xfTrack.addEventListener('pointerdown',function(ev){ev.preventDefault();xfTrack.setPointerCapture(ev.pointerId);xfFrom(ev);autoXf=false;});
-  xfTrack.addEventListener('pointermove',function(ev){if(ev.buttons===0)return;xfFrom(ev);});
-  document.getElementById('btnCutA').onclick=function(){xfade=0;renderXf();applyXfade();};
-  document.getElementById('btnCutB').onclick=function(){xfade=1;renderXf();applyXfade();};
-  function syncBpm(){B.tempo=A.tempo;buildDeck(B);applyEq(B);var tv=document.querySelector('[data-tempoval="B"]');if(tv)tv.textContent=fmtTempo(B.tempo);document.querySelectorAll('[data-tempo="B"]').forEach(function(t){});}
-  document.getElementById('btnSync').onclick=syncBpm;
-  document.querySelectorAll('[data-sync]').forEach(function(b){b.onclick=syncBpm;});
-  renderXf();applyXfade();
+  // EQ skupiny LOW(31-125) MID(250-2k) HIGH(4k-16k) pro mini fadery u FX sloupcu
+  var GRP={LOW:[0,1,2],MID:[3,4,5,6],HIGH:[7,8,9]};
+  function grpGet(d,g){var s=0;GRP[g].forEach(function(i){s+=d.eq[i];});return s/GRP[g].length;}
+  function grpSet(d,g,v){GRP[g].forEach(function(i){d.eq[i]=Math.max(-12,Math.min(12,v));});buildDeck(d);applyEq(d);}
+  var groupR={A:[],B:[]};
 
-  // sampler + limiter - REALNE bicí zvuky syntetizovane pres Web Audio
-  var SAMP=[['1','KICK'],['2','SNARE'],['3','HAT'],['4','CLAP'],['5','BASS'],['6','SYNTH'],['7','VOCAL'],['8','FX']];
-  var sampEl=document.getElementById('sampler');
-  SAMP.forEach(function(s){var d=document.createElement('div');d.className='sPad';d.innerHTML='<b>'+s[0]+'</b>'+s[1];
-    d.onclick=function(){playSample(s[1]);d.style.transform='scale(.95)';setTimeout(function(){d.style.transform='';},90);};sampEl.appendChild(d);});
+  /* ================= HITZONY — MAPA DLE NAVRHU (px 1536x1024) ================= */
+  var dbg=false, allZones=[];
+  function Z(px,py,pw,ph,fn,cls){var el=zone(px,py,pw,ph,cls);allZones.push(el);
+    if(fn)el.addEventListener('pointerdown',function(ev){ev.preventDefault();fn(el,ev);});return el;}
+  function toggleZ(el,cls){el.classList.toggle(cls);return el.classList.contains(cls);}
 
+  /* --- horni lista --- */
+  Z(52,20,92,38,function(el){flash(el);openPlaylist(A);});                    // BROWSE -> playlist A
+  Z(150,20,88,38,function(el){flash(el);openPlaylist(B);});                   // LIBRARY -> playlist B
+  Z(244,20,98,38,function(el){flash(el);});                                   // WAVEFORM (vizual)
+  Z(354,20,92,38,function(el){flash(el);openEq(A);});                         // EFFECTS -> EQ A
+  Z(1080,20,80,38,function(el){flash(el);goBack();});                         // MENU -> zpet
+  Z(1172,20,86,38,function(el){flash(el);asstWrap.classList.add('open');});   // SETTINGS -> asistent
+  Z(1268,20,72,38,function(el){flash(el);});                                  // MIDI (vizual)
+  Z(1350,20,70,38,function(el){flash(el);document.getElementById('helpWrap').classList.add('open');}); // HELP
+  Z(1432,20,42,38,function(el){flash(el);asstWrap.classList.add('open');});   // ozubene kolo
+  Z(1478,20,44,38,function(el){flash(el,'onR');ASST_CONFIRM('OPUSTIT PULT','Vrátit se do hlavní appky?',goBack);}); // power
+  // logo: 3x klep = kalibrace hitzon
+  var logoTaps=[];
+  Z(706,90,124,126,function(){var n=Date.now();logoTaps=logoTaps.filter(function(t){return n-t<900;});logoTaps.push(n);
+    if(logoTaps.length>=3){logoTaps=[];dbg=!dbg;allZones.forEach(function(z){z.classList.toggle('dbg',dbg);});}});
+
+  /* --- deck A hlavicka --- */
+  Z(266,92,80,32,function(el){flash(el);openPlaylist(A);});                   // USB 1 -> playlist
+  Z(36,150,78,74,function(el){flash(el);openPlaylist(A);});                   // obal skladby
+  Z(428,183,64,30,function(el){flash(el);sync(A);});                          // SYNC hlavicka
+  Z(23,317,76,33,function(el){toggleZ(el,'on');});                            // QUANT (vizual toggle)
+  Z(110,317,84,33,function(el){flash(el);});                                  // HOT CUE (info)
+  Z(202,317,74,33,function(el){loopBtn(A,el);});                              // LOOP
+  Z(282,317,72,33,function(el){flash(el);nudge(A,-0.15);});                   // ROLL = stutter zpet
+  Z(360,317,78,33,function(el){toggleZ(el,'on');});                           // SLICER (vizual toggle)
+  Z(444,317,52,33,function(el){flash(el);openEq(A);});                        // ozubene kolo -> EQ A
+
+  /* --- deck A leva strana --- */
+  Z(26,368,74,33,function(el){toggleZ(el,'on');});                            // VINYL toggle
+  Z(26,407,74,33,function(el){toggleZ(el,'on');});                            // SLIP toggle
+  var tempoR={};
+  tempoR.A=fader(40,462,50,132,{get:function(){return A.tempo;},set:function(v){A.tempo=Math.max(-8,Math.min(8,v));},
+    min:-8,max:8,label:true,fmt:fmtTempo,onchange:function(){buildDeck(A);applyEq(A);renderBpm();}});
+  Z(26,600,74,33,function(el){flash(el);A.tempo=0;applyEq(A);renderBpm();tempoR.A();});          // RESET
+  Z(24,662,38,36,function(el){flash(el);A.tempo=Math.max(-8,A.tempo-0.5);applyEq(A);renderBpm();tempoR.A();}); // RANGE -
+  Z(64,662,38,36,function(el){flash(el);A.tempo=Math.min(8,A.tempo+0.5);applyEq(A);renderBpm();tempoR.A();});  // RANGE +
+  Z(40,732,48,42,function(el){A.keylock=toggleZ(el,'on');applyKeylock(A);});                      // KEY LOCK
+
+  /* --- deck A pady + delete + beat + fx on --- */
+  (function(){
+    var xs=[148,243,338],ys=[630,710];
+    for(var r=0;r<2;r++)for(var c=0;c<3;c++){
+      var el=Z(xs[c],ys[r],78,64,null);padEls.A.push(el);bindPad(A,el,r*3+c);
+    }
+  })();
+  Z(252,606,66,22,function(el){A.delMode=toggleZ(el,'onR');});                // DELETE rezim
+  Z(432,652,30,32,function(el){flash(el);nudge(A,-0.15);});                   // BEAT <
+  Z(470,652,30,32,function(el){flash(el);nudge(A,0.15);});                    // BEAT >
+  Z(426,582,52,34,function(el){A.fxOn=toggleZ(el,'on');applyFx(A);});         // FX ON A
+
+  /* --- deck A transport --- */
+  Z(44,804,70,38,function(el){doCue(A,el);});                                                     // CUE
+  playZ.A=Z(122,804,72,38,function(){if(!A.audio.src){openPlaylist(A);return;}setPlay(A,!A.playing);}); // PLAY/PAUZA
+  Z(202,804,74,38,function(el){flash(el);nudge(A,-0.15);});                                       // STUTTER
+  Z(283,804,56,38,function(el){flash(el);nudge(A,-5);});                                          // <<
+  Z(348,804,56,38,function(el){flash(el);nudge(A,5);});                                           // >>
+  Z(416,804,70,38,function(el){flash(el);sync(A);});                                              // SYNC
+
+  /* --- FX1 sloupec (deck A) --- */
+  Z(548,102,84,34,function(el){flash(el);});                                  // FILTER dropdown (vizual)
+  Z(554,144,66,32,function(el){tapBpm(A,el);});                               // TAP -> vytukani BPM A
+  fader(560,192,54,200,{get:function(){return A.fxFreq;},set:function(v){A.fxFreq=v;},min:200,max:8000,
+    onchange:function(){applyFx(A);}});                                       // FX fader = frekvence filtru
+  groupR.A.push(fader(552,428,66,56,{get:function(){return grpGet(A,'HIGH');},set:function(v){grpSet(A,'HIGH',v);},min:-12,max:12}));
+  groupR.A.push(fader(552,490,66,56,{get:function(){return grpGet(A,'MID');},set:function(v){grpSet(A,'MID',v);},min:-12,max:12}));
+  groupR.A.push(fader(552,552,66,56,{get:function(){return grpGet(A,'LOW');},set:function(v){grpSet(A,'LOW',v);},min:-12,max:12}));
+  Z(548,642,70,34,function(el){doCue(A,el);});                                // CUE 1
+  fader(556,692,56,146,{get:function(){return A.gainv;},set:function(v){A.gainv=Math.max(0,Math.min(1,v));asstClampGain(A);},
+    min:0,max:1,label:true,fmt:fmtPct,onchange:function(){buildDeck(A);applyEq(A);}});            // FADER 1 = hlasitost A
+
+  /* --- stred: master + crossfader --- */
+  fader(738,264,50,196,{get:function(){return master?master.gain.value:1;},set:function(v){buildMaster();master.gain.value=v;},
+    min:0,max:1.25,onchange:function(){}});                                   // MASTER
+  var xfR=fader(676,838,184,46,{horiz:true,cls:'h',get:function(){return xfade;},set:function(v){xfade=v;applyXfade();},
+    min:0,max:1,ondown:function(){autoXf=false;}});                            // CROSSFADER
+  Z(640,846,30,30,function(el){flash(el);xfade=0;applyXfade();xfR();});       // A cut
+  Z(866,846,30,30,function(el){flash(el,'onB');xfade=1;applyXfade();xfR();}); // B cut
+
+  /* --- FX2 sloupec (deck B) --- */
+  Z(902,102,86,34,function(el){flash(el,'onB');});                            // REVERB dropdown (vizual)
+  Z(910,144,66,32,function(el){tapBpm(B,el);});                               // TAP B
+  fader(916,192,54,200,{cls:'b',get:function(){return B.fxFreq;},set:function(v){B.fxFreq=v;},min:200,max:8000,
+    onchange:function(){applyFx(B);}});
+  groupR.B.push(fader(908,428,66,56,{cls:'b',get:function(){return grpGet(B,'HIGH');},set:function(v){grpSet(B,'HIGH',v);},min:-12,max:12}));
+  groupR.B.push(fader(908,490,66,56,{cls:'b',get:function(){return grpGet(B,'MID');},set:function(v){grpSet(B,'MID',v);},min:-12,max:12}));
+  groupR.B.push(fader(908,552,66,56,{cls:'b',get:function(){return grpGet(B,'LOW');},set:function(v){grpSet(B,'LOW',v);},min:-12,max:12}));
+  Z(906,642,70,34,function(el){doCue(B,el);});                                // CUE 2
+  fader(914,692,56,146,{cls:'b',get:function(){return B.gainv;},set:function(v){B.gainv=Math.max(0,Math.min(1,v));asstClampGain(B);},
+    min:0,max:1,label:true,fmt:fmtPct,onchange:function(){buildDeck(B);applyEq(B);}});            // FADER 2 = hlasitost B
+
+  /* --- deck B hlavicka --- */
+  Z(1232,92,84,32,function(el){flash(el,'onB');openPlaylist(B);});            // USB 2
+  Z(1040,150,84,74,function(el){flash(el,'onB');openPlaylist(B);});           // obal skladby B
+  Z(1420,183,68,30,function(el){flash(el,'onB');sync(B);});                   // SYNC hlavicka B
+  Z(1034,317,76,33,function(el){toggleZ(el,'onB');});                         // QUANT B
+  Z(1122,317,84,33,function(el){flash(el,'onB');});                           // HOT CUE B
+  Z(1214,317,74,33,function(el){loopBtn(B,el);});                             // LOOP B
+  Z(1294,317,72,33,function(el){flash(el,'onB');nudge(B,-0.15);});            // ROLL B
+  Z(1370,317,78,33,function(el){toggleZ(el,'onB');});                         // SLICER B
+  Z(1448,317,50,33,function(el){flash(el,'onB');openEq(B);});                 // ozubene kolo -> EQ B
+
+  /* --- deck B prava strana --- */
+  Z(1436,368,74,33,function(el){toggleZ(el,'onB');});                         // VINYL B
+  Z(1436,407,74,33,function(el){toggleZ(el,'onB');});                         // SLIP B
+  tempoR.B=fader(1446,462,50,132,{cls:'b',get:function(){return B.tempo;},set:function(v){B.tempo=Math.max(-8,Math.min(8,v));},
+    min:-8,max:8,label:true,fmt:fmtTempo,onchange:function(){buildDeck(B);applyEq(B);renderBpm();}});
+  Z(1436,600,74,33,function(el){flash(el,'onB');B.tempo=0;applyEq(B);renderBpm();tempoR.B();});
+  Z(1434,662,38,36,function(el){flash(el,'onB');B.tempo=Math.max(-8,B.tempo-0.5);applyEq(B);renderBpm();tempoR.B();});
+  Z(1474,662,38,36,function(el){flash(el,'onB');B.tempo=Math.min(8,B.tempo+0.5);applyEq(B);renderBpm();tempoR.B();});
+  Z(1448,732,48,42,function(el){B.keylock=toggleZ(el,'onB');applyKeylock(B);});
+
+  /* --- deck B pady + delete + beat + fx on --- */
+  (function(){
+    var xs=[1112,1207,1302],ys=[630,710];
+    for(var r=0;r<2;r++)for(var c=0;c<3;c++){
+      var el=Z(xs[c],ys[r],78,64,null);padEls.B.push(el);bindPad(B,el,r*3+c);
+    }
+  })();
+  Z(1216,606,66,22,function(el){B.delMode=toggleZ(el,'onR');});
+  Z(1032,652,30,32,function(el){flash(el,'onB');nudge(B,-0.15);});
+  Z(1070,652,30,32,function(el){flash(el,'onB');nudge(B,0.15);});
+  Z(1056,582,52,34,function(el){B.fxOn=toggleZ(el,'onB');applyFx(B);});
+
+  /* --- deck B transport --- */
+  Z(1046,804,70,38,function(el){doCue(B,el);});
+  playZ.B=Z(1124,804,72,38,function(){if(!B.audio.src){openPlaylist(B);return;}setPlay(B,!B.playing);});
+  Z(1204,804,74,38,function(el){flash(el,'onB');nudge(B,-0.15);});
+  Z(1284,804,56,38,function(el){flash(el,'onB');nudge(B,-5);});
+  Z(1348,804,56,38,function(el){flash(el,'onB');nudge(B,5);});
+  Z(1416,804,70,38,function(el){flash(el,'onB');sync(B);});
+
+  /* --- dolni lista: record, sampler, limiter --- */
+  var recZ=Z(42,910,94,46,function(el){toggleRecord(el);});
+  Z(196,910,124,46,function(el){flash(el);});                                 // SAMPLER dropdown (vizual)
+  var SAMP=['KICK','SNARE','HAT','CLAP','BASS','SYNTH','VOCAL','FX'];
+  var sx=[350,437,524,611,697,784,871,958];
+  SAMP.forEach(function(k,i){ Z(sx[i],908,70,52,function(el){flash(el);playSample(k);}); });
+  Z(1438,914,56,40,function(el){setLimiter(!limOn);el.classList.toggle('onR',!limOn);flash(el);}); // LIMITER ON
+
+  /* ================= RECORD (master -> soubor) ================= */
+  function toggleRecord(el){
+    buildMaster();
+    if(!recOn){
+      if(!recDest||!window.MediaRecorder){flash(el,'onR');return;}
+      try{
+        recChunks=[];recorder=new MediaRecorder(recDest.stream);
+        recorder.ondataavailable=function(e){if(e.data&&e.data.size)recChunks.push(e.data);};
+        recorder.onstop=function(){
+          try{var b=new Blob(recChunks,{type:recorder.mimeType||'audio/webm'});
+          var a=document.createElement('a');a.href=URL.createObjectURL(b);
+          a.download='NP_VISION_mix_'+Date.now()+'.webm';document.body.appendChild(a);a.click();
+          setTimeout(function(){try{URL.revokeObjectURL(a.href);a.remove();}catch(e){}},4000);}catch(e){}
+        };
+        recorder.start();recOn=true;el.classList.add('onR');
+      }catch(e){flash(el,'onR');}
+    }else{
+      try{recorder.stop();}catch(e){}
+      recOn=false;el.classList.remove('onR');
+    }
+  }
+
+  /* ================= SAMPLER (Web Audio synteza, BUILD2SJ6) ================= */
   function noiseBuffer(c,dur){var n=Math.floor(c.sampleRate*dur),buf=c.createBuffer(1,n,c.sampleRate),d=buf.getChannelData(0);for(var i=0;i<n;i++)d[i]=Math.random()*2-1;return buf;}
   function playSample(kind){
     try{
-      var c=ac(); var out=master||c.destination; var t=c.currentTime;
+      var c=ac(); buildMaster(); var out=master||c.destination; var t=c.currentTime;
       function env(g,peak,dur,atk){g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+(atk||0.005));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);}
       if(kind==='KICK'){
         var o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(45,t+0.12);
         env(g,0.9,0.4);o.connect(g);g.connect(out);o.start(t);o.stop(t+0.45);
       } else if(kind==='SNARE'){
         var ns=c.createBufferSource();ns.buffer=noiseBuffer(c,0.2);var nf=c.createBiquadFilter();nf.type='highpass';nf.frequency.value=1200;var ng=c.createGain();env(ng,0.5,0.2);ns.connect(nf);nf.connect(ng);ng.connect(out);ns.start(t);ns.stop(t+0.2);
-        var o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=180;env(g,0.4,0.12);o.connect(g);g.connect(out);o.start(t);o.stop(t+0.13);
+        var o2=c.createOscillator(),g2=c.createGain();o2.type='triangle';o2.frequency.value=180;env(g2,0.4,0.12);o2.connect(g2);g2.connect(out);o2.start(t);o2.stop(t+0.13);
       } else if(kind==='HAT'){
-        var ns=c.createBufferSource();ns.buffer=noiseBuffer(c,0.06);var nf=c.createBiquadFilter();nf.type='highpass';nf.frequency.value=7000;var ng=c.createGain();env(ng,0.35,0.06,0.002);ns.connect(nf);nf.connect(ng);ng.connect(out);ns.start(t);ns.stop(t+0.06);
+        var ns2=c.createBufferSource();ns2.buffer=noiseBuffer(c,0.06);var nf2=c.createBiquadFilter();nf2.type='highpass';nf2.frequency.value=7000;var ng2=c.createGain();env(ng2,0.35,0.06,0.002);ns2.connect(nf2);nf2.connect(ng2);ng2.connect(out);ns2.start(t);ns2.stop(t+0.06);
       } else if(kind==='CLAP'){
         for(var k=0;k<3;k++){(function(k){var ns=c.createBufferSource();ns.buffer=noiseBuffer(c,0.12);var nf=c.createBiquadFilter();nf.type='bandpass';nf.frequency.value=1400;nf.Q.value=1.2;var ng=c.createGain();var tt=t+k*0.012;ng.gain.setValueAtTime(0.0001,tt);ng.gain.exponentialRampToValueAtTime(0.4,tt+0.004);ng.gain.exponentialRampToValueAtTime(0.0001,tt+0.13);ns.connect(nf);nf.connect(ng);ng.connect(out);ns.start(tt);ns.stop(tt+0.14);})(k);}
       } else if(kind==='BASS'){
-        var o=c.createOscillator(),g=c.createGain();o.type='sawtooth';o.frequency.value=80;var f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=400;env(g,0.5,0.35);o.connect(f);f.connect(g);g.connect(out);o.start(t);o.stop(t+0.4);
+        var o3=c.createOscillator(),g3=c.createGain();o3.type='sawtooth';o3.frequency.value=80;var f3=c.createBiquadFilter();f3.type='lowpass';f3.frequency.value=400;env(g3,0.5,0.35);o3.connect(f3);f3.connect(g3);g3.connect(out);o3.start(t);o3.stop(t+0.4);
       } else if(kind==='SYNTH'){
-        var o=c.createOscillator(),o2=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=440;o2.type='sawtooth';o2.frequency.value=660;env(g,0.3,0.3);o.connect(g);o2.connect(g);g.connect(out);o.start(t);o2.start(t);o.stop(t+0.32);o2.stop(t+0.32);
+        var o4=c.createOscillator(),o5=c.createOscillator(),g4=c.createGain();o4.type='square';o4.frequency.value=440;o5.type='sawtooth';o5.frequency.value=660;env(g4,0.3,0.3);o4.connect(g4);o5.connect(g4);g4.connect(out);o4.start(t);o5.start(t);o4.stop(t+0.32);o5.stop(t+0.32);
       } else if(kind==='VOCAL'){
-        var o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(330,t);o.frequency.linearRampToValueAtTime(392,t+0.15);var f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=800;f.Q.value=3;env(g,0.4,0.35);o.connect(f);f.connect(g);g.connect(out);o.start(t);o.stop(t+0.4);
-      } else { // FX - sweep
-        var o=c.createOscillator(),g=c.createGain();o.type='sawtooth';o.frequency.setValueAtTime(200,t);o.frequency.exponentialRampToValueAtTime(3000,t+0.4);env(g,0.3,0.45);o.connect(g);g.connect(out);o.start(t);o.stop(t+0.5);
+        var o6=c.createOscillator(),g6=c.createGain();o6.type='sine';o6.frequency.setValueAtTime(330,t);o6.frequency.linearRampToValueAtTime(392,t+0.15);var f6=c.createBiquadFilter();f6.type='bandpass';f6.frequency.value=800;f6.Q.value=3;env(g6,0.4,0.35);o6.connect(f6);f6.connect(g6);g6.connect(out);o6.start(t);o6.stop(t+0.4);
+      } else {
+        var o7=c.createOscillator(),g7=c.createGain();o7.type='sawtooth';o7.frequency.setValueAtTime(200,t);o7.frequency.exponentialRampToValueAtTime(3000,t+0.4);env(g7,0.3,0.45);o7.connect(g7);g7.connect(out);o7.start(t);o7.stop(t+0.5);
       }
     }catch(e){}
   }
-  var limBar=document.getElementById('limBar');for(var i=0;i<18;i++)limBar.appendChild(document.createElement('i'));
 
-  // ==== VU / waveform / jog ====
-  function ensureVU(el,n){if(el.children.length)return;for(var i=0;i<n;i++)el.appendChild(document.createElement('i'));}
-  ['ML','MR'].forEach(function(id){ensureVU(document.querySelector('[data-vu="'+id+'"]'),14);});
-  ['A','B'].forEach(function(id){var w=document.querySelector('[data-wave="'+id+'"]');for(var i=0;i<48;i++)w.appendChild(document.createElement('i'));});
+  /* ================= VIZUALNI SMYCKA (rAF, zvuk ma prednost) ================= */
   function levelOf(an){if(!an)return 0;var b=new Uint8Array(an.frequencyBinCount);an.getByteFrequencyData(b);var s=0;for(var i=0;i<b.length;i++)s+=b[i];return Math.min(1,(s/b.length)/140);}
-  function drawVU(el,lv){var bars=el.children,n=bars.length,lit=Math.round(lv*n);for(var i=0;i<n;i++){var on=i<lit,cls=on?'on':'';if(on){if(i>=n-2)cls+=' hot';else if(i>=n-5)cls+=' mid';}bars[i].className=cls;}}
-  function drawWave(id,d){var w=document.querySelector('[data-wave="'+id+'"]'),bars=w.children;
-    if(!d.analyser){for(var i=0;i<bars.length;i++){bars[i].className='';bars[i].style.height='15%';}return;}
+  function drawVU(el,lv){var bars=el.children,n=bars.length,lit=Math.round(lv*n);
+    for(var i=0;i<n;i++){var on=i<lit,cls=on?'on':'';if(on){if(i>=n-2)cls+=' hot';else if(i>=n-5)cls+=' mid';}bars[i].className=cls;}}
+  function drawWave(wv,d){
+    var bars=wv.el.querySelectorAll('i');
+    if(!d.analyser){for(var i=0;i<bars.length;i++){bars[i].className='';bars[i].style.height='14%';}wv.ph.style.left='0%';return;}
     var b=new Uint8Array(d.analyser.frequencyBinCount);d.analyser.getByteFrequencyData(b);var step=Math.floor(b.length/bars.length)||1;
-    for(var i=0;i<bars.length;i++){var v=b[i*step]/255;bars[i].style.height=(12+v*88)+'%';bars[i].className=(d.playing&&v>0.08)?'on':'';}}
-  function drawLimiter(lv){var bars=limBar.children,n=bars.length,lit=Math.round(lv*n);for(var i=0;i<n;i++){var on=i<lit,cls=on?'on':'';if(on){if(i>=n-3)cls+=' hot';else if(i>=n-7)cls+=' mid';}bars[i].className=cls;}}
-
+    for(var i=0;i<bars.length;i++){var v=b[i*step]/255;bars[i].style.height=(12+v*88)+'%';bars[i].className=(d.playing&&v>0.08)?'on':'';}
+    if(d.audio.duration)wv.ph.style.left=(d.audio.currentTime/d.audio.duration*100)+'%';
+  }
+  function drawLimiter(lv){var bars=limBar.children,n=bars.length,lit=Math.round(lv*n);
+    for(var i=0;i<n;i++){var on=i<lit,cls=on?'on':'';if(on){if(i>=n-3)cls+=' hot';else if(i>=n-7)cls+=' mid';}bars[i].className=cls;}}
   var lastVis=0;
   function visLoop(now){
-    // grafika bezi na rAF; kdyz nestiha, prohlizec ji priskrti -> zvuk nikdy netrpi
     var casting=false;try{casting=!!(window.AHTVWEB&&window.AHTVWEB.status&&(''+window.AHTVWEB.status()).indexOf('http')===0);}catch(e){}
     var gap=casting?50:22;
     if(now-lastVis<gap){requestAnimationFrame(visLoop);return;}
     lastVis=now;
-    var la=A.built?levelOf(A.analyser):0,lb=B.built?levelOf(B.analyser):0;
     var lm=masterAnalyser?levelOf(masterAnalyser):0;
-    drawVU(document.querySelector('[data-vu="ML"]'),lm);
-    drawVU(document.querySelector('[data-vu="MR"]'),lm*0.92);
-    drawWave('A',A);drawWave('B',B);drawLimiter(lm);
-    // jog rotace + tick + prstenec do hudby (3D LP deska se toci)
-    [['A',A,la],['B',B,lb]].forEach(function(x){
-      var id=x[0],d=x[1],lv=x[2];
-      if(d.playing){d.jogAngle=(d.jogAngle+2.2+lv*4)%360;}
-      var tick=document.querySelector('[data-tick="'+id+'"]');
-      if(tick){
-        // BUILD2SJ5: presna osa - origin = stred jogu vzhledem k ticku
-        if(!tick._originSet){
-          var jogEl=document.querySelector('[data-jog="'+id+'"]');
-          if(jogEl){var jh=jogEl.getBoundingClientRect().height;var tt=6;
-            tick.style.transformOrigin='50% '+(jh/2-tt)+'px';tick._originSet=true;}
-        }
-        tick.style.transform='rotate('+d.jogAngle+'deg)';
-      }
-      var vinyl=document.querySelector('[data-vinyl="'+id+'"]');
-      if(vinyl)vinyl.style.transform='rotate('+d.jogAngle+'deg)';
-      var label=document.querySelector('[data-label="'+id+'"]');
-      if(label)label.style.transform='translate(-50%,-50%) rotate('+(d.jogAngle*0.25)+'deg)';
-      var ring=document.querySelector('[data-ring="'+id+'"]');
-      if(ring){ring.style.opacity=d.playing?(0.35+lv*0.65):0.12;}
-    });
-    // cas
-    [['A',A],['B',B]].forEach(function(x){var d=x[1];if(d.audio.src){var el=document.querySelector('[data-tt="'+d.id+'"]');if(el)el.textContent=fmtTime(d.audio.currentTime)+' / '+fmtTime(d.audio.duration);}});
+    drawVU(vuL,lm);drawVU(vuR,lm*0.92);
+    drawWave(waveA,A);drawWave(waveB,B);drawLimiter(lm);
+    [[A,tmA],[B,tmB]].forEach(function(x){var d=x[0];if(d.audio.src){x[1].textContent=fmtTime(d.audio.currentTime)+' / '+fmtTime(d.audio.duration);}});
     requestAnimationFrame(visLoop);
   }
   requestAnimationFrame(visLoop);
 
-  [A,B].forEach(function(d){d.audio.addEventListener('ended',function(){setPlay(d,false);});});
-  // BUILD2SJ5: nastav presnou osu ticku hned pri startu (oba decky)
-  ['A','B'].forEach(function(id){
-    var tick=document.querySelector('[data-tick="'+id+'"]');
-    var jogEl=document.querySelector('[data-jog="'+id+'"]');
-    if(tick&&jogEl){var jh=jogEl.getBoundingClientRect().height;tick.style.transformOrigin='50% '+(jh/2-6)+'px';tick._originSet=true;}
-  });
-  document.getElementById('backBtn').onclick=function(){try{location.href='../index.html';}catch(e){}};
-
-  // ==== ASISTENT ====
+  /* ================= ASISTENT (BUILD2SJ6 pravidla) ================= */
+  var asstWrap=document.getElementById('asstWrap');
   var ASST={on:true,mode:'poloauto'};
-  var asstBar=document.getElementById('asstBar'),asstText=document.getElementById('asstText'),
-      asstModeBtn=document.getElementById('asstMode'),asstPower=document.getElementById('asstPower'),
-      asstFill=document.getElementById('asstFill'),asstPowerLab=document.getElementById('asstPowerLab');
+  var asstText=document.getElementById('asstText'),asstModeBtn=document.getElementById('asstMode'),
+      asstPower=document.getElementById('asstPower'),asstFill=document.getElementById('asstFill'),
+      asstPowerLab=document.getElementById('asstPowerLab');
   function asstRender(){
-    asstBar.classList.toggle('on',ASST.on);asstBar.classList.toggle('off',!ASST.on);
-    asstModeBtn.style.display=ASST.on?'block':'none';
+    asstText.classList.toggle('off',!ASST.on);
+    asstModeBtn.style.display=ASST.on?'inline-block':'none';
     asstText.textContent=ASST.on?(ASST.mode==='auto'?'ASISTENT · AUTOMAT: dojede sám, když nezasáhneš':'ASISTENT ZAPNUT · hlídá návaznost a bezpečné meze'):'ASISTENT VYPNUT · jsi jen ty a pult';
     asstPowerLab.textContent=ASST.on?'VYPNOUT (podrž)':'ZAPNOUT ASISTENTA';
     asstModeBtn.textContent='REŽIM: '+(ASST.mode==='auto'?'AUTOMAT':'POLOAUTO');
@@ -885,9 +752,9 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   function endHold(){if(holdRAF){cancelAnimationFrame(holdRAF);holdRAF=null;}asstFill.style.width='0%';}
   asstPower.addEventListener('pointerdown',function(e){e.preventDefault();startHold();});
   asstPower.addEventListener('pointerup',endHold);asstPower.addEventListener('pointercancel',endHold);asstPower.addEventListener('pointerleave',endHold);
+  document.getElementById('asstClose').onclick=function(){asstWrap.classList.remove('open');};
+  asstWrap.addEventListener('click',function(e){if(e.target===asstWrap)asstWrap.classList.remove('open');});
   function asstClampGain(d){if(!ASST.on)return;if(d.gainv>0.95)d.gainv=0.95;}
-  window.__asstClampGain=asstClampGain;
-  // auto-navaznost
   var autoXf=false;
   function otherDeck(d){return d===A?B:A;}
   function asstMonitor(){
@@ -896,25 +763,28 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       var rem=d.audio.duration-d.audio.currentTime,od=otherDeck(d);
       if(rem<8&&rem>0){
         if(od.audio.src&&!od.playing&&ASST.mode==='auto'){setPlay(od,true);autoCrossTo(od);}
-        else if(!od.audio.src){asstText.textContent='POZOR · deck '+d.id+' dojíždí ('+Math.ceil(rem)+'s) · nahraj druhý!';}
       }
     });}
     setTimeout(asstMonitor,1000);
   }
   function autoCrossTo(target){if(autoXf)return;autoXf=true;var toB=(target===B);
-    function step(){if(!ASST.on||ASST.mode!=='auto'){autoXf=false;return;}xfade+=toB?0.006:-0.006;xfade=Math.max(0,Math.min(1,xfade));renderXf();applyXfade();if((toB&&xfade>=1)||(!toB&&xfade<=0)){autoXf=false;return;}setTimeout(step,60);}step();}
+    function step(){if(!ASST.on||ASST.mode!=='auto'){autoXf=false;return;}xfade+=toB?0.006:-0.006;xfade=Math.max(0,Math.min(1,xfade));applyXfade();xfR();if((toB&&xfade>=1)||(!toB&&xfade<=0)){autoXf=false;return;}setTimeout(step,60);}step();}
   asstRender();asstMonitor();
 
-  // ==== confirm ====
+  /* ================= CONFIRM + HELP + zpet ================= */
   var confirmWrap=document.getElementById('confirmWrap'),pendingYes=null;
-  window.ASST_CONFIRM=function(t,m,y){if(!ASST.on){y();return;}document.getElementById('confirmTitle').textContent=t;document.getElementById('confirmMsg').textContent=m;pendingYes=y;confirmWrap.classList.add('open');};
+  function ASST_CONFIRM(t,m,y){if(!ASST.on){y();return;}document.getElementById('confirmTitle').textContent=t;document.getElementById('confirmMsg').textContent=m;pendingYes=y;confirmWrap.classList.add('open');}
+  window.ASST_CONFIRM=ASST_CONFIRM;
   document.getElementById('confirmNo').onclick=function(){confirmWrap.classList.remove('open');pendingYes=null;};
   document.getElementById('confirmYes').onclick=function(){confirmWrap.classList.remove('open');if(pendingYes){var f=pendingYes;pendingYes=null;f();}};
+  document.getElementById('helpClose').onclick=function(){document.getElementById('helpWrap').classList.remove('open');};
+  function goBack(){try{location.href='../index.html';}catch(e){}}
 
-  // ==== KOSMOS pozadi (lehke, zvuk ma prednost) ====
+  /* ================= KOSMOS pozadi (letterbox pruhy) ================= */
   (function cosmos(){
     var cv=document.getElementById('cosmos');if(!cv)return;
     var cx=cv.getContext('2d'),W=0,H=0,stars=[],DPR=Math.min(2,window.devicePixelRatio||1);
+    if(!cx)return;
     function resize(){W=cv.width=Math.floor(innerWidth*DPR);H=cv.height=Math.floor(innerHeight*DPR);cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';stars=[];var n=Math.min(80,Math.floor(innerWidth*innerHeight/16000));for(var i=0;i<n;i++)stars.push({x:Math.random()*W,y:Math.random()*H,r:(Math.random()*1.3+.3)*DPR,tw:Math.random()*6.28,sp:Math.random()*.7+.2});}
     resize();addEventListener('resize',resize);
     function energy(){try{if(masterAnalyser){var b=new Uint8Array(masterAnalyser.frequencyBinCount);masterAnalyser.getByteFrequencyData(b);var s=0;for(var i=0;i<b.length;i++)s+=b[i];return Math.min(1,(s/b.length)/140);}}catch(e){}return 0;}
