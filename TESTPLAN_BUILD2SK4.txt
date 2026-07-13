@@ -1,0 +1,117 @@
+BUILD2SK4 - 6 OPRAV, VSE DOHLEDANO V KODU NEBO OVERENO TESTEM
+================================================================
+Zmeneny soubor: app/src/main/assets/dj/index.html (jediny; SK3 zaklad)
+Nedotceno: emu Atari/Sega/PS1, player/index.html, assets/index.html.
+
+0) N&P NAPIS + TICK (z minula) - DRZI
+   Na tvych screenshotech je videt, ze napis N&P uvnitr desky se ted
+   toci spolu s tickem na obou deckach (diagonalni natoceni sedi u obou).
+   Beze zmeny v tomhle kole, jen potvrzuji ze oprava z SK3 stoji.
+
+1) POMALY START / "KOUSNUTI" PRI PRVNIM OTEVRENI
+   Pricina (nalezeno v <head>, bylo tam uz PRED mymi zasahy - overeno
+   diffem proti puvodnimu SJ6 z tveho APK, takze to neni muj novy bug,
+   ale povodni chyba, kterou jsem ted odhalil):
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link href="https://fonts.googleapis.com/css2?...&display=swap" rel="stylesheet">
+   Druhy radek je BLOKUJICI zdroj - prohlizec musi pockat na DNS+TLS+
+   stazeni tohoto CSS (a to CSS jeste odkazuje na DALSI googlovskou
+   domenu fonts.gstatic.com pro samotna pisma, dalsi kolo) drive nez
+   smi vykreslit prvni snimek. Na miste s neidealnim wifi/LTE presne
+   odpovida "dlouho se nacita, jakoby se kousla".
+   OPRAVA: oba radky smazany. DJ pult nema duvod zavisiet na siti jen
+   kvuli fontu - system font fallback (Segoe UI/Arial Narrow/sans-serif)
+   uz byl v --font definovany, pouzije se okamzite, offline, bez cekani.
+
+2) EQ ROZDELENO NA DVA RADKY + SIRSI SLIDERY
+   Bylo: 10 sliderů v jedne radce (flex), kazdy max 34px - na sirku
+   telefonu natlacene, spatne se poznavalo co se maci.
+   OPRAVA: .eqRow je ted CSS grid 5 sloupcu -> 10 pasem se samo zalomi
+   do 2 radek po peti (31-500Hz nahore, 1k-16k dole). Kazdy slider
+   ma zaroven vic mista, tak jsem rozsiril z 34px na 46px (+35%).
+
+3) BICI: LAG (hloubkovejc nez minule) + SKUTECNE ZNIT REALNE
+   a) LAG - presnejsi pricina: v SK3 jsem prehodil sampler na
+      pointerdown, ale porad se PRI KAZDEM uderu realtime syntetizoval
+      zvuk (nove oscilatory/filtry/bufery na miste). To je porad prace
+      navic v momente doteku, i kdyz mala. OPRAVA JE RADIKALNEJSI:
+      vsech 8 zvuku se TEĎ PREDRENDERUJE JEDNOU pres OfflineAudioContext
+      do hotoveho AudioBufferu (spousti se pri prvnim dotyku kdekoli
+      v pultu - diky prewarm z minula). Klepnuti na pad pak uz jen
+      PREHRAJE hotovy buffer - stejna architektura jako u sample-based
+      automatu, ne syntezer. To je nejrychlejsi mozna cesta v cistem JS.
+      OVERENO INSTRUMENTOVANYM TESTEM (ne odhad):
+        1. dotek na KICK -> spusti se 8 pre-renderu + realtime fallback
+           (buffery jeste nejsou hotove) = 16 oscilatoru celkem napric
+           vsemi 8 zvuky + fallbackem - sedi presne na vypocet.
+        2. dalsi dotek na KICK (po dorenderovani) -> 1 novy BufferSource
+           se prehraje, ALE 0 novych oscilatoru = potvrzeno, ze uz jede
+           cistě z cache, ne syntezou.
+      Realtime synteza zustava jen jako zalozni cesta pro ten uplne prvni
+      klik nez se pre-render stihne (typicky pod 50ms).
+   b) ZVUK - vymenil jsem hrubou syntezu (sinus/sum) za poctive
+      drum-machine techniky (stejny princip jako TR-808/909 - to jsou
+      taky "jen" syntezovane zvuky, ne sample, a povazuji se za realny
+      DJ/produkcni standard):
+        KICK: pitch-swept sinus (185->40Hz) + klik transient (uder
+          palicky, kratky highpass sum) + saturace (WaveShaper) pro
+          teplo/razanci.
+        SNARE: 2 tonalni oscilatory (telo bubnu) + filtrovany sum
+          (prasknuti/strunky) - oddelene obalky.
+        HAT: 6 ctvercovych oscilatoru v neharmonickem pomeru (presne
+          technika z 808 hi-hatu) pres highpass -> kovovy zvuk, ne
+          jen filtrovany sum jako predtim.
+        CLAP: 4 mikro-posunute sumove impulzy (imituje vice rukou
+          co netlesknou uplne synchronne) + delsi ohon.
+        BASS/SYNTH/VOCAL/FX: sytejsi obalky, filtrove sweepy, saturace.
+      POCTIVE UPOZORNENI: v tomhle prostredi nemam pristup ke stazeni
+      licencovanych realnych zvukovych sample (sit je omezena jen na
+      registry balicku typu npm/pypi/github, ne na knihovny zvuku) -
+      tohle je nejlepsi mozna kvalita cistou syntezou v prohlizeci,
+      ne nahrany skutecny buben. Pokud chces DOSLOVA nahrane bicí
+      (napr. z vlastni knihovny sample), posli mi kratke zvukove
+      soubory (kick.wav, snare.wav...) a zapojim je jako skutecne
+      prehravane soubory misto syntezy - to uz by byl 1:1 realny zvuk.
+
+4) "VYPADA TO JAKO OMALOVANKY"
+   Bez oznaceneho screenshotu nevim jistě, kde presne to nejvic bije
+   do oci, ale jedno konkretni zjisteni mam jiste (dohledano v kodu):
+   RECORD a MASTER LIMITER ON tlacitka, ktera jsem pridaval v SK2,
+   mela plossi styl (jen 2stupnovy gradient, chybel spodni vnitrni
+   stin) nez zbytek pultu z puvodniho SJ6 (ktery ma 4stupnove
+   gradienty + horni/spodni vnitrni stin = vic "kovoveho" dojmu).
+   OPRAVA: sjednoceno na stejny recept jako ostatni tlacitka (navBtn/
+   tBtn) - 4stupnovy gradient, vnitrni highlight nahore, vnitrni stin
+   dole, text-shadow. USB/TAP/KEY stitky z minula take dostaly stejne
+   sjednoceni. Pokud porad nesedi - vyfot a zakrouzkuj presne to misto,
+   at to neresim znovu naslepo (uz jednou jsem trefil vedle s cely
+   statickym obrazkem, to se nechci opakovat).
+
+MERENI (pred odeslanim)
+- node --check: syntaxe OK. Zavorky parove: {}509 ()1426 []139,
+  div 101/101, button 43/43 (zadny prvek nepribyl/neubyl oproti SK3).
+- Google Fonts link v DOM: potvrzeno ZADNY (drive pritomen).
+- eqRow: potvrzeno CSS grid 5 sloupcu (10 pasem -> 2 radky po peti).
+- Plny regresni proklik (SK2/SK3 test): 43 tlacitek + 16 hot cue padu +
+  8 sampleru + 20 EQ slideru + 4 velke fadery + crossfader = 0 JS chyb.
+- Rozsireny test s OfflineAudioContext stubem: vsech 8 sampleru
+  proklepnuto 2x (fallback i cache cesta) = 0 JS chyb.
+- Instrumentovany test prerenderu: popsano v bode 3a vyse - cislovky
+  souhlasi s rucnim vypoctem oscilatoru pro kazdy zvuk.
+
+JAK OTESTOVAT (telefon na sirku)
+1) Zavri a znovu otevri pult (cerstve, ne z cache) - mel by najet
+   znatelne rychleji, bez pauzy pred prvnim vykreslenim.
+2) EQ radek u decku A i B - ted 2 radky po peti, sirsi slidery.
+3) Sampler: klepni 4-5x rychle po sobe na KICK, pak na SNARE/HAT/CLAP -
+   prvni klepnuti kdykoli po otevreni muze mit nepatrne zpozdeni (jeste
+   se dorenderovava), VSECHNY DALSI uz maji byt bez znatelne prodlevy.
+   A hlavne - poslechni si, jestli KICK/SNARE/HAT/CLAP zni razantneji/
+   presvedcivěji nez predtim (basak s klikem palicky, snare s praskem,
+   hi-hat kovove ne jen sum).
+4) RECORD a MASTER LIMITER ON - mely by ted vypadat "objemneji"
+   (svetlo/stin), ne jako ploche pilulky.
+5) Pokud "omalovankovy" dojem pretrvava - vyfot a zakrouzkuj KONKRETNI
+   misto, ať vim presne kam sahnout.
+
+KILL-SWITCH: vratit dj/index.html z BUILD2SK3 (predchozi build).
