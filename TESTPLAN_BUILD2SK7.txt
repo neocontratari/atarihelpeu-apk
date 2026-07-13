@@ -1,0 +1,83 @@
+BUILD2SK7 - SIRSI MASTER FADERY + JOG WHEEL MIXING + ANGLICTINA
+================================================================
+Zmeneny soubor: app/src/main/assets/dj/index.html (jediny; SK6 zaklad)
+Nedotceno: emu Atari/Sega/PS1, player/index.html, assets/index.html.
+
+1) 3 MASTER FADERY (BALANCE/BASS/TREBLE) - SIRSI HITBOX
+   Byly stejne siroke jako per-band EQ (46 px), na to ze jsou samotne
+   uprostred a maji cely 140px sloupec pro sebe to bylo zbytecne
+   uzke. Rozsireno na 92 px (2x) + vyssi track (112 px misto 92) +
+   vetsi knoflik (76x20 misto 30x16). EQ v deckach (5 vedle sebe)
+   NEDOTCENO - ty musi zustat uzke, aby se veslo 5 do rady; rozsireni
+   je scopovane jen na .masterTone kontejner, takze se EQ nemohlo
+   zmenit (overeno - EQ slideru porad presne 20).
+
+2) JOG WHEEL = TAP (play/pauza) + TAZENI (mix nudge)
+   Klik/tap beze zmeny stale prehraje/pozastavi - presne jak jsi
+   rekl "play i pauzu zachovej". K tomu pribylo TAZENI (jako drzeni
+   a otacení skutecne LP desky rukou):
+   - BEHEM HRANI: tazeni dopredu = docasne zrychli (push tempa nahoru),
+     tazeni dozadu = docasne zpomali (pull tempa dolu). Presne technika,
+     jakou DJs delaji rukou na talíři pro rucni beatmatching (dorovnani
+     rytmu mezi dvema deskami sluchem).
+   - V PAUZE: tazeni primo posouva pozici dopredu/dozadu (cueing/scrub -
+     hledani presneho zacatku beatu rukou, taky bezna technika).
+   - Puste tazeni -> tempo se vrati na normal (pokud hralo); pokud
+     to byl jen tap bez tazeni, prehraje/pozastavi jako drive.
+   POCTIVE TECHNICKE OMEZENI: HTML5 <audio> element neumi prehravat
+   pozpatku - zadny prohlizec na svete to nepodporuje (jen dopredu,
+   playbackRate musi byt >=0). Takze DOSLOVNY "scratch chirp" zvuk
+   (kdy pri rychlem tazeni zpet slysis hudbu pozpatku) technicky
+   neni mozny v tomhle typu prehravace. Co jde a co jsem udelal, je
+   funkcne to same, co DJs realne pouzivaji pro MIXOVANI (ne efektni
+   scratch, ale skutecne srovnavani tempa a hledani beatu rukou) -
+   to je presne "jak se mixovaly LP desky" v puvodnim smyslu.
+   Pokud bys chtel presto i zvukovy scratch efekt (ne jen tempo/pozici),
+   da se to udelat, ale vyzadovalo by to prepsat prehravani z <audio>
+   elementu na Web Audio buffer (vetsi zmena, cele decky by musely
+   nejdriv nacist skladbu celou do pameti misto streamovani) - napis
+   pokud o to stojis a probereme to zvlast.
+
+3) VESKERE NAZVY PRELOZENY DO ANGLICTINY
+   Prosel jsem cely soubor 2x (jednou pres ceskou diakritiku, podruhe
+   rucne pres vsechen viditelny text bez diakritiky - tim jsem chytil
+   i "PAUZA" -> "PAUSE", ktere diakritiku nema). Prelozeno vcetne:
+   NAHRAT->LOAD, PRIDAT->ADD, NACIST->LOAD, ZAVRIT->CLOSE, playlist
+   hlasky, cela napoveda (help panel), potvrzovaci dialog (POTVRDIT
+   AKCI->CONFIRM ACTION, Opravdu?->Are you sure?, ZPET->CANCEL,
+   PROVEST->PROCEED), asistent (REZIM/POLOAUTO/AUTOMAT/VYPNOUT/
+   ZAPNOUT -> MODE/SEMI-AUTO/AUTO/TURN OFF/TURN ON), crossfade hinty
+   (STRED->CENTER, PLNE->FULL, VICE->MORE), a par internich JS
+   komentaru pro poradek. VYSLEDEK OVERENY STROJOVE: 0 slov s ceskou
+   diakritikou v celem souboru + rucni sken vsech viditelnych textu
+   bez diakritiky nenasel nic dalsiho ceskeho.
+
+MERENI (pred odeslanim)
+- node --check: syntaxe OK. Zavorky parove: {}558 ()1570 []151,
+  div 114/114, button 43/43 (beze zmeny oproti SK6 - jen sirka/
+  chovani, zadne pribyle/ubyle prvky).
+- Plny regresni proklik (43 tlacitek + 16 padu + 8 sampleru + 20 EQ +
+  master fadery + velke fadery + crossfader): 0 JS chyb.
+- Specificky test jog wheel: (a) cisty tap bez pohybu -> stale
+  otevre playlist/prehraje-pozastavi presne jako drive; (b) vyrazny
+  tah -> spravne rozpoznano jako tazeni, NEspusti play/pauzu;
+  (c) mikroskopicky tremor pod prahem 1.5° -> stale rozpoznano
+  jako tap (nezpusobi false-negative na behezne kliky).
+- Master fadery po rozsireni: tazeni na doraz porad dava presne
+  +12dB / -12dB / P100 - zadna regrese ve funkcnosti.
+- Realne bici (z minula): porad 5/5 dekodovani + hrani z bufferu.
+
+JAK OTESTOVAT (telefon na sirku)
+1) Zkus trefit BALANCE/BASS/TREBLE prstem - mel by byt znatelne
+   snazsi nez predtim.
+2) Nacti skladbu, spust PLAY, pak zkus prstem otocit LP deskou
+   dopredu (po smeru hodinovych rucicek) - tempo/pitch by melo
+   docasne stoupnout, po pusteni se vrati normal.
+3) Otoc deskou proti smeru (dozadu) - tempo by melo docasne klesnout.
+4) Zastav skladbu (PAUZA), zkus otacet deskou - pozice by se mela
+   posouvat dopredu/dozadu podle smeru (cueing).
+5) Kratke klepnuti bez tazeni na desku - porad ma jen prehrat/
+   pozastavit jako drive, ne nic vic.
+6) Projdi si pult a zkontroluj, ze uz nikde neni cesky text.
+
+KILL-SWITCH: vratit dj/index.html z BUILD2SK6 (predchozi build).

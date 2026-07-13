@@ -107,8 +107,8 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 
 /* ===== 3D OCELOVA LP DESKA (jog wheel) ===== */
 .jogWrap{display:flex;justify-content:center;padding:8px 0;perspective:600px;}
-.jog:active{transform:rotateX(8deg) scale(.98);filter:brightness(.85);}
-.jog{position:relative;width:200px;height:200px;border-radius:50%;cursor:pointer;touch-action:manipulation;
+.jog:active{transform:rotateX(8deg) scale(.98);filter:brightness(.85);cursor:grabbing;}
+.jog{position:relative;width:200px;height:200px;border-radius:50%;cursor:grab;touch-action:none;
   transition:transform .08s,filter .08s;
   transform:rotateX(8deg);transform-style:preserve-3d;
   /* vnejsi ocelovy prstenec - kartacovana ocel */
@@ -135,7 +135,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       rgba(255,255,255,.04) 0 1px, rgba(0,0,0,0) 1px 2.5px),
     radial-gradient(circle at 38% 32%, #2a2a2e 0%, #141416 30%, #08080a 70%, #050505 100%);
   box-shadow:inset 0 0 30px rgba(0,0,0,.95),inset 0 3px 6px rgba(255,255,255,.08);}
-/* lesklý odraz svetla na vinylu (staticky highlight) */
+/* glossy light reflection on the vinyl (static highlight) */
 .jog::after{content:'';position:absolute;inset:14px;border-radius:50%;pointer-events:none;
   background:radial-gradient(ellipse 60% 40% at 40% 26%, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 55%);}
 /* rotujici label - kovovy stred s N&P (label LP desky) */
@@ -247,7 +247,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 .deck.b .pad.hot{background:linear-gradient(180deg,#7fd0ff,#2b86d8 50%,#1a5a90);box-shadow:0 0 14px rgba(80,180,255,.6),inset 0 1px 1px rgba(255,255,255,.6);}
 .pad:active{transform:translateY(2px);box-shadow:inset 0 2px 6px rgba(0,0,0,.7);}
 
-/* ==== STŘED: mixér ==== */
+/* ==== CENTER: mixer ==== */
 .mixer{width:140px;flex:0 0 auto;display:flex;flex-direction:column;gap:7px;align-items:center;padding:0 3px;}
 .mixLogo{width:74px;height:74px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
   background:radial-gradient(circle at 42% 35%,#241d10,#0a0906);border:2px solid rgba(240,201,106,.5);
@@ -283,6 +283,10 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 .mixHint{font:700 8px var(--font);color:#8f7a3f;text-align:center;margin-top:6px;letter-spacing:1px;}
 .mixBtns{display:flex;flex-direction:column;gap:6px;width:100%;}
 .masterTone{display:flex;flex-direction:column;gap:16px;width:100%;align-items:center;margin-top:8px;padding-top:12px;border-top:1px solid rgba(210,190,150,.18);}
+.masterTone .miniTrack{max-width:92px;height:112px;}
+.masterTone .miniKnob{width:76px;height:20px;}
+.masterTone .miniName{font-size:10px;letter-spacing:2px;}
+.masterTone .miniVal{font-size:11px;}
 .mixBtns button{padding:7px 4px;border-radius:7px;font:700 8px var(--font);letter-spacing:.5px;
   background:linear-gradient(180deg,#3a3630,#232019 45%,#141210 55%,#0a0908);border:1px solid #050403;color:#f2d488;
   box-shadow:0 2px 3px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.18),inset 0 -1px 3px rgba(0,0,0,.6);text-shadow:0 1px 1px rgba(0,0,0,.8);}
@@ -389,7 +393,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 .confirmBtns button{flex:1;padding:14px;border:0;border-radius:12px;font:800 12px var(--font);}
 .cYes{background:linear-gradient(180deg,#ffd06a,#c9962f);color:#160f04;}.cNo{background:#242019;color:#f2c464;}
 
-/* ==== PORTRAIT (na výšku) ==== */
+/* ==== PORTRAIT (vertical) ==== */
 @media (max-width:820px) and (orientation:portrait){
   .deck-console{flex-direction:column;}
   .mixer{width:100%;order:2;flex-direction:row;flex-wrap:wrap;justify-content:center;}
@@ -397,7 +401,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   .masterVU{height:90px;}
   .jog{width:150px;height:150px;}
 }
-/* landscape jemné doladění */
+/* landscape fine-tuning */
 @media (orientation:landscape){
   .jog{width:170px;height:170px;}
   .miniTrack{height:72px;}
@@ -414,9 +418,9 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 
 <div class="asstBar on" id="asstBar">
   <div class="asstLed"></div>
-  <div class="asstText" id="asstText">ASISTENT ZAPNUT · hlídá návaznost a bezpečné meze</div>
-  <button class="asstMode" id="asstMode" type="button">REŽIM: POLOAUTO</button>
-  <button class="asstPower" id="asstPower" type="button"><span class="fill" id="asstFill"></span><span class="lab" id="asstPowerLab">VYPNOUT (podrž)</span></button>
+  <div class="asstText" id="asstText">ASSISTANT ON · watches continuity and safe limits</div>
+  <button class="asstMode" id="asstMode" type="button">MODE: SEMI-AUTO</button>
+  <button class="asstPower" id="asstPower" type="button"><span class="fill" id="asstFill"></span><span class="lab" id="asstPowerLab">TURN OFF (hold)</span></button>
 </div>
 
 <div class="topbar">
@@ -453,8 +457,8 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       <div class="trackRow">
         <div class="artCover">♪</div>
         <div class="trackMeta">
-          <div class="trackName" data-tn="A">— prázdný —</div>
-          <div class="trackArtist" data-ta="A">natáhni skladbu z playlistu</div>
+          <div class="trackName" data-tn="A">— empty —</div>
+          <div class="trackArtist" data-ta="A">load a track from the playlist</div>
           <div class="trackTime" data-tt="A">0:00 / 0:00</div>
         </div>
       </div>
@@ -462,7 +466,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     </div>
     <div class="deckActs">
       <button data-pl="A">PLAYLIST</button>
-      <button data-load="A">◇ NAHRÁT</button>
+      <button data-load="A">◇ LOAD</button>
       <button data-cue="A" class="cueBtn">CUE</button>
     </div>
     <div class="jogWrap">
@@ -501,7 +505,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     </div>
   </div>
 
-  <!-- ===== MIXÉR ===== -->
+  <!-- ===== MIXER ===== -->
   <div class="mixer">
     <div class="mixLogo"><span class="np">N&amp;P</span><span class="vis">VISION</span></div>
     <div class="mixSlogan">THE MIX IS YOURS</div>
@@ -513,7 +517,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     <div class="xfWrap">
       <div class="xfLabel"><span class="l">A</span><span style="color:#8f7a3f">CROSSFADE</span><span class="r">B</span></div>
       <div class="xfTrack" id="xfTrack"><div class="xfKnob" id="xfKnob"></div></div>
-      <div class="mixHint" id="mixHint">STŘED = OBA STEJNĚ</div>
+      <div class="mixHint" id="mixHint">CENTER = BOTH EQUAL</div>
     </div>
     <div class="mixBtns">
       <button class="sync" id="btnSync" type="button">⇄ SYNC BPM</button>
@@ -522,8 +526,8 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     </div>
     <div class="masterTone">
       <div class="mini"><div class="miniName">BALANCE</div><div class="miniTrack" data-tone="balance"></div><div class="miniVal" data-toneval="balance"></div></div>
-      <div class="mini"><div class="miniName">BASY</div><div class="miniTrack" data-tone="bass"></div><div class="miniVal" data-toneval="bass"></div></div>
-      <div class="mini"><div class="miniName">VÝŠKY</div><div class="miniTrack" data-tone="highs"></div><div class="miniVal" data-toneval="highs"></div></div>
+      <div class="mini"><div class="miniName">BASS</div><div class="miniTrack" data-tone="bass"></div><div class="miniVal" data-toneval="bass"></div></div>
+      <div class="mini"><div class="miniName">TREBLE</div><div class="miniTrack" data-tone="highs"></div><div class="miniVal" data-toneval="highs"></div></div>
     </div>
   </div>
 
@@ -541,8 +545,8 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       <div class="trackRow">
         <div class="artCover">♪</div>
         <div class="trackMeta">
-          <div class="trackName" data-tn="B">— prázdný —</div>
-          <div class="trackArtist" data-ta="B">natáhni skladbu z playlistu</div>
+          <div class="trackName" data-tn="B">— empty —</div>
+          <div class="trackArtist" data-ta="B">load a track from the playlist</div>
           <div class="trackTime" data-tt="B">0:00 / 0:00</div>
         </div>
       </div>
@@ -550,7 +554,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     </div>
     <div class="deckActs">
       <button data-pl="B">PLAYLIST</button>
-      <button data-load="B">◇ NAHRÁT</button>
+      <button data-load="B">◇ LOAD</button>
       <button data-cue="B" class="cueBtn">CUE</button>
     </div>
     <div class="jogWrap">
@@ -619,8 +623,8 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     <div class="plHead">
       <span class="tag" id="plTag">A</span>
       <h3 id="plTitle">PLAYLIST · DECK A</h3>
-      <button class="plAdd" id="plAdd" type="button">+ PŘIDAT</button>
-      <button class="plClose" id="plClose" type="button">ZAVŘÍT</button>
+      <button class="plAdd" id="plAdd" type="button">+ ADD</button>
+      <button class="plClose" id="plClose" type="button">CLOSE</button>
     </div>
     <div class="plList" id="plList"></div>
   </div>
@@ -628,25 +632,25 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 
 <div class="helpWrap" id="helpWrap">
   <div class="helpBox">
-    <h3>NÁPOVĚDA · N&amp;P VISION DJ</h3>
-    <p><b>USB 1/2, PLAYLIST, BROWSE, LIBRARY</b> → playlist decku (+ PŘIDAT, NAČÍST).<br>
-    <b>CUE</b> = skok na začátek a hraj · <b>▶ PLAY / ❚❚</b> · <b>STUTTER</b> −0,15 s · <b>◀◀ / ▶▶</b> ±5 s · <b>SYNC</b> srovná tempo podle druhého decku.<br>
-    <b>TAP</b> = vyťukej BPM decku (min. 2 klepnutí) · <b>KEY</b> = key lock, tempo bez změny tóniny.<br>
-    <b>TEMPO</b> ±8 % · <b>GAIN</b> hlasitost decku · <b>EQ</b> 10 pásem pod fadery.<br>
-    <b>HOT CUE pady</b>: 1. klep uloží bod, další klep skočí, podržení smaže.<br>
-    <b>RECORD</b> = nahrává master, 2. klep uloží soubor · <b>MASTER LIMITER ON</b> = brickwall ochrana.<br>
-    <b>EFFECTS</b> nahoře schová/ukáže EQ řádky · <b>SETTINGS</b> ukáže asistenta · <b>MENU / ⏻</b> = zpět do appky.</p>
-    <button class="plClose" id="helpClose" type="button">ZAVŘÍT</button>
+    <h3>HELP · N&amp;P VISION DJ</h3>
+    <p><b>USB 1/2, PLAYLIST, BROWSE, LIBRARY</b> → deck's playlist (+ ADD, LOAD).<br>
+    <b>CUE</b> = jump to start and play · <b>▶ PLAY / ❚❚</b> · <b>STUTTER</b> −0.15 s · <b>◀◀ / ▶▶</b> ±5 s · <b>SYNC</b> matches tempo to the other deck.<br>
+    <b>TAP</b> = tap out the deck's BPM (min. 2 taps) · <b>KEY</b> = key lock, tempo without pitch change.<br>
+    <b>TEMPO</b> ±8% · <b>GAIN</b> deck volume · <b>EQ</b> 10 bands under the faders.<br>
+    <b>HOT CUE pads</b>: 1st tap saves a point, next tap jumps to it, hold to delete.<br>
+    <b>RECORD</b> = records the master, 2nd tap saves the file · <b>MASTER LIMITER ON</b> = brickwall protection.<br>
+    <b>EFFECTS</b> up top hides/shows the EQ rows · <b>SETTINGS</b> shows the assistant · <b>MENU / ⏻</b> = back to the app.</p>
+    <button class="plClose" id="helpClose" type="button">CLOSE</button>
   </div>
 </div>
 
 <div class="confirmWrap" id="confirmWrap">
   <div class="confirmBox">
-    <h3 id="confirmTitle">POTVRDIT AKCI</h3>
-    <p id="confirmMsg">Opravdu?</p>
+    <h3 id="confirmTitle">CONFIRM ACTION</h3>
+    <p id="confirmMsg">Are you sure?</p>
     <div class="confirmBtns">
-      <button class="cNo" id="confirmNo" type="button">ZPĚT</button>
-      <button class="cYes" id="confirmYes" type="button">PROVÉST</button>
+      <button class="cNo" id="confirmNo" type="button">CANCEL</button>
+      <button class="cYes" id="confirmYes" type="button">PROCEED</button>
     </div>
   </div>
 </div>
@@ -692,7 +696,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   }
   function setLimiter(on){limOn=on;if(limiter){limiter.threshold.value=on?-3:0;limiter.ratio.value=on?20:1;}}
 
-  // TV WEB audio tap - stream na projektor (jako přehrávač)
+  // TV WEB audio tap - stream to the projector (like a player)
   var tvTap=null,tvZero=null,tvErr=0;
   function clampA(v){return v<-1?-1:(v>1?1:v);}
   function setupTvTap(node){
@@ -736,15 +740,15 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     var gl=Math.cos(xfade*Math.PI/2),gr=Math.sin(xfade*Math.PI/2);
     if(A.xfGain)A.xfGain.gain.value=gl; if(B.xfGain)B.xfGain.gain.value=gr;
     var h=document.getElementById('mixHint');
-    if(xfade<0.12)h.textContent='PLNĚ DECK A'; else if(xfade>0.88)h.textContent='PLNĚ DECK B';
-    else if(xfade>0.42&&xfade<0.58)h.textContent='STŘED = OBA STEJNĚ';
-    else h.textContent=xfade<0.5?('VÍCE A '+Math.round((1-xfade)*100)+'%'):('VÍCE B '+Math.round(xfade*100)+'%');
+    if(xfade<0.12)h.textContent='FULL DECK A'; else if(xfade>0.88)h.textContent='FULL DECK B';
+    else if(xfade>0.42&&xfade<0.58)h.textContent='CENTER = BOTH EQUAL';
+    else h.textContent=xfade<0.5?('MORE A '+Math.round((1-xfade)*100)+'%'):('MORE B '+Math.round(xfade*100)+'%');
   }
 
   function fmtTime(s){if(!s||isNaN(s))return '0:00';var m=Math.floor(s/60),ss=Math.floor(s%60);return m+':'+(ss<10?'0':'')+ss;}
   function setTrackInfo(d){
-    document.querySelector('[data-tn="'+d.id+'"]').textContent=d.name||'— prázdný —';
-    document.querySelector('[data-ta="'+d.id+'"]').textContent=d.artist||(d.name?'':'natáhni skladbu z playlistu');
+    document.querySelector('[data-tn="'+d.id+'"]').textContent=d.name||'— empty —';
+    document.querySelector('[data-ta="'+d.id+'"]').textContent=d.artist||(d.name?'':'load a track from the playlist');
   }
 
   // ==== nacteni souboru + playlist ====
@@ -785,13 +789,13 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     if(curPlDeck!==d && plWrap.classList.contains('open'))return;
     if(curPlDeck!==d)return;
     plList.innerHTML='';
-    if(!d.playlist.length){plList.innerHTML='<div class="plEmpty">Zatím prázdno.<br>Klepni + PŘIDAT a vyber skladby.</div>';return;}
+    if(!d.playlist.length){plList.innerHTML='<div class="plEmpty">Empty for now.<br>Tap + ADD and pick some tracks.</div>';return;}
     d.playlist.forEach(function(it,idx){
       var row=document.createElement('div');row.className='plItem';
       var loaded=(d.name===it.name);
       row.innerHTML='<div class="ic">♪</div><div class="nm">'+it.name+'</div>';
       var btn=document.createElement('button');btn.className='ld';
-      btn.textContent=loaded?'HRAJE':'NAČÍST';
+      btn.textContent=loaded?'PLAYING':'LOAD';
       btn.style.background=d.id==='A'?'linear-gradient(180deg,#ffd873,#c9962f)':'linear-gradient(180deg,#7fd0ff,#2b86d8)';
       btn.style.color=d.id==='A'?'#160f04':'#08131f';
       btn.onclick=function(){loadToDeck(d,it.file);renderPlaylist(d);};
@@ -809,14 +813,51 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     if(on){ac();var p=d.audio.play();if(p&&p.catch)p.catch(function(){});d.playing=true;}
     else{d.audio.pause();d.playing=false;}
     var pb=document.querySelector('[data-play="'+d.id+'"]');
-    pb.classList.toggle('on',d.playing); pb.textContent=d.playing?'❚❚ PAUZA':'▶ PLAY';
+    pb.classList.toggle('on',d.playing); pb.textContent=d.playing?'❚❚ PAUSE':'▶ PLAY';
   }
   document.querySelectorAll('[data-play]').forEach(function(b){b.onclick=function(){var d=b.getAttribute('data-play')==='B'?B:A;if(!d.audio.src){openPlaylist(d);return;}setPlay(d,!d.playing);};});
-  // BUILD2SK5: klik na tocici se LP desku (jog wheel) = play/pauza, stejne jako tlacitko PLAY
-  document.querySelectorAll('[data-jog]').forEach(function(j){j.addEventListener('pointerdown',function(ev){ev.preventDefault();
-    var d=j.getAttribute('data-jog')==='B'?B:A;
-    if(!d.audio.src){openPlaylist(d);return;}
-    setPlay(d,!d.playing);});});
+  // BUILD2SK7: jog wheel = tap (play/pauza, zachovano z minula) + tazeni (mix nudge).
+  // Behem hrani: tazeni dopredu = docasne zrychli (push tempa nahoru), dozadu = docasne
+  // zpomali (pull tempa dolu) - presne technika na rucni beatmatching s vinylem.
+  // V pauze: tazeni primo posouva pozici (cueing/scrub dopredu i dozadu).
+  // POZOR: HTML5 <audio> technicky neumi prehravat pozpatku (zadny prohlizec to
+  // nepodporuje), takze skutecny reverzni "scratch chirp" zvuk neni mozny - tohle
+  // je nejblizsi funkcni ekvivalent (a je to i presne to, jak se realne dela
+  // beatmatching rukou na talíři).
+  document.querySelectorAll('[data-jog]').forEach(function(j){
+    var d0=j.getAttribute('data-jog')==='B'?B:A;
+    var dragging=false, moved=false, lastAngle=0;
+    function angleAt(ev){
+      var r=j.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+      return Math.atan2(ev.clientY-cy,ev.clientX-cx)*180/Math.PI;
+    }
+    j.addEventListener('pointerdown',function(ev){
+      ev.preventDefault();try{j.setPointerCapture(ev.pointerId);}catch(e){}
+      dragging=true;moved=false;lastAngle=angleAt(ev);
+    });
+    j.addEventListener('pointermove',function(ev){
+      if(!dragging)return;ev.preventDefault();
+      var a=angleAt(ev),delta=a-lastAngle;
+      if(delta>180)delta-=360; if(delta<-180)delta+=360;
+      if(Math.abs(delta)>1.5)moved=true;
+      lastAngle=a;
+      var d=d0; if(!d.audio.src)return;
+      if(d.playing){
+        var bend=Math.max(-1.6,Math.min(1.6,delta*0.26));
+        try{d.audio.playbackRate=Math.max(0.05,(1+d.tempo/100)+bend);}catch(e){}
+      } else {
+        try{d.audio.currentTime=Math.max(0,Math.min((d.audio.duration||1e9)-0.05,d.audio.currentTime+delta*0.012));}catch(e){}
+      }
+    });
+    function endDrag(){
+      if(!dragging)return; dragging=false;
+      var d=d0;
+      if(d.playing){try{d.audio.playbackRate=1+d.tempo/100;}catch(e){}}
+      if(!moved){ if(!d.audio.src){openPlaylist(d);return;} setPlay(d,!d.playing); }
+    }
+    j.addEventListener('pointerup',endDrag);
+    j.addEventListener('pointercancel',endDrag);
+  });
   document.querySelectorAll('[data-cue]').forEach(function(b){b.onclick=function(){var d=b.getAttribute('data-cue')==='B'?B:A;if(!d.audio.src)return;try{d.audio.currentTime=0;}catch(e){}setPlay(d,true);b.classList.add('on');setTimeout(function(){b.classList.remove('on');},250);};});
   document.querySelectorAll('[data-stutter]').forEach(function(b){b.onclick=function(){var d=b.getAttribute('data-stutter')==='B'?B:A;if(!d.audio.src)return;try{d.audio.currentTime=Math.max(0,d.audio.currentTime-0.15);}catch(e){}};});
 
@@ -908,7 +949,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   document.querySelectorAll('[data-sync]').forEach(function(b){b.onclick=syncBpm;});
   renderXf();applyXfade();
 
-  // sampler + limiter - REALNE bicí zvuky syntetizovane pres Web Audio
+  // sampler + limiter - REAL drum sounds + synthesis via Web Audio
   var SAMP=[['1','KICK'],['2','SNARE'],['3','HAT'],['4','CLAP'],['5','BASS'],['6','SYNTH'],['7','VOCAL'],['8','FX']];
   var sampEl=document.getElementById('sampler');
   SAMP.forEach(function(s){var d=document.createElement('div');d.className='sPad';d.innerHTML='<b>'+s[0]+'</b>'+s[1];
@@ -1131,7 +1172,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   document.getElementById('helpClose').onclick=function(){document.getElementById('helpWrap').classList.remove('open');};
   document.getElementById('helpWrap').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
   document.getElementById('navPower').onclick=function(){
-    window.ASST_CONFIRM('OPUSTIT PULT','Vrátit se do hlavní appky?',function(){try{location.href='../index.html';}catch(e){}});};
+    window.ASST_CONFIRM('LEAVE THE DECK','Return to the main app?',function(){try{location.href='../index.html';}catch(e){}});};
   // USB chipy -> playlist, CUE v transportu, prevliknuti/pretaceni
   document.querySelectorAll('[data-pl2]').forEach(function(b){b.onclick=function(){openPlaylist(b.getAttribute('data-pl2')==='B'?B:A);};});
   document.querySelectorAll('[data-cue2]').forEach(function(b){b.onclick=function(){var d=b.getAttribute('data-cue2')==='B'?B:A;
@@ -1177,11 +1218,11 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   function asstRender(){
     asstBar.classList.toggle('on',ASST.on);asstBar.classList.toggle('off',!ASST.on);
     asstModeBtn.style.display=ASST.on?'block':'none';
-    asstText.textContent=ASST.on?(ASST.mode==='auto'?'ASISTENT · AUTOMAT: dojede sám, když nezasáhneš':'ASISTENT ZAPNUT · hlídá návaznost a bezpečné meze'):'ASISTENT VYPNUT · jsi jen ty a pult';
-    asstPowerLab.textContent=ASST.on?'VYPNOUT (podrž)':'ZAPNOUT ASISTENTA';
-    asstModeBtn.textContent='REŽIM: '+(ASST.mode==='auto'?'AUTOMAT':'POLOAUTO');
+    asstText.textContent=ASST.on?(ASST.mode==='auto'?'ASSISTANT \u00b7 AUTO: finishes on its own if you don\u2019t step in':'ASSISTANT ON \u00b7 watches continuity and safe limits'):'ASSISTANT OFF \u00b7 it\u2019s just you and the deck';
+    asstPowerLab.textContent=ASST.on?'TURN OFF (hold)':'TURN ON ASSISTANT';
+    asstModeBtn.textContent='MODE: '+(ASST.mode==='auto'?'AUTO':'SEMI-AUTO');
   }
-  asstModeBtn.onclick=function(){if(!ASST.on)return;ASST.mode=ASST.mode==='auto'?'poloauto':'auto';asstRender();};
+  asstModeBtn.onclick=function(){if(!ASST.on)return;ASST.mode=ASST.mode==='auto'?'semiauto':'auto';asstRender();};
   var holdRAF=null,holdStart=0,HOLD=1600;
   function startHold(){if(!ASST.on){ASST.on=true;asstRender();return;}holdStart=Date.now();
     function t(){var p=(Date.now()-holdStart)/HOLD;if(p>=1){asstFill.style.width='0%';ASST.on=false;asstRender();holdRAF=null;return;}asstFill.style.width=(p*100)+'%';holdRAF=requestAnimationFrame(t);}
@@ -1200,7 +1241,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       var rem=d.audio.duration-d.audio.currentTime,od=otherDeck(d);
       if(rem<8&&rem>0){
         if(od.audio.src&&!od.playing&&ASST.mode==='auto'){setPlay(od,true);autoCrossTo(od);}
-        else if(!od.audio.src){asstText.textContent='POZOR · deck '+d.id+' dojíždí ('+Math.ceil(rem)+'s) · nahraj druhý!';}
+        else if(!od.audio.src){asstText.textContent='HEADS UP \u00b7 deck '+d.id+' is ending in '+Math.ceil(rem)+'s \u00b7 load the other one!';}
       }
     });}
     setTimeout(asstMonitor,1000);
