@@ -1,0 +1,83 @@
+BUILD2SK5 - VZHLED (font/pozadi/3D) + LP DESKA = PLAY/PAUZA
+================================================================
+Zmeneny soubor: app/src/main/assets/dj/index.html (jediny; SK4 zaklad)
+Nedotceno: emu Atari/Sega/PS1, player/index.html, assets/index.html.
+
+POTVRZUJI: VIDIM OBA TVE SCREENSHOTY (14:21, 14:19, baterie 81 %/83 %)
+- Obr. 1: EQ uz na dve rady po peti (31-500Hz nahore, 1k-16k dole) -
+  presne jak jsem poslal v SK4, potvrzeno ze to bezi. LED sloupce u
+  boostnutych pasem (+12,+8,+2,+12,+12...) hezky svitit oranzovo-
+  cervene, prazdny deck B na 0 svisi modre.
+- Obr. 2: nactena "Depeche Mode - Freelove", 4:18, deck B prazdny.
+  Jog wheely s N&P textem nahore rovne (protoze skladba jeste bezi
+  od 0:00, tick jeste neodjel) - to je spravne, ne chyba.
+
+1) KLIK NA LP DESKU (JOG WHEEL) = PLAY/PAUZA
+   Pridano presne podle popisu: klepnuti na tocici se desku ted dela
+   totez co tlacitko PLAY - 1. klik prehraje, 2. klik pauzne. Pokud
+   deck nema nactenou skladbu, otevre playlist (stejne jako PLAY
+   tlacitko na prazdnem decku - overeno testem). Pridan i "stisk"
+   efekt (mirne zmenseni + ztlumeni) at je hned poznat ze reaguje.
+
+2) PISMO - ZMENENO A ZABUDOVANO NAPEVNO (zadna sit)
+   Minule jsem kvuli pomalemu startu smazal Google Fonts odkaz, ale
+   nedal jsem misto toho nic noveho - proto ti to na tech dvou novych
+   screenech spadlo do obycejneho systemoveho pisma (proto to teď
+   vypadalo hur nez pred tim). OPRAVA: fonty jsou ted PRIMO V SOUBORU
+   (base64, cca 64 kB, zdroj: oficialni npm balicky @fontsource) -
+   zadny odkaz na internet, nulove riziko pomaleho startu, a soucasne
+   lepsi pismo nez pred tim:
+     - RAJDHANI (500/600/700) - hlavni citelne pismo na tlacitkach,
+       hodnotach, popiskach (puvodni volba, jen ted offline).
+     - ORBITRON (700/900) - novy, vyrazne "ocelovo-futuristicky" font,
+       pouzity JEN na 3 logo mista (N&P VISION nahore, N&P uprostred
+       mixeru, N&P na obou LP deskach) - podle zasady "jedna vyrazna
+       vec, zbytek klidny" at to nepusobi rozkriceně po celem pultu.
+
+3) POZADI + 3D / "OCELOVE"
+   Pridal jsem jemnou kartacovanou texturu (brushed steel - tenke
+   diagonalni proužky, sotva znatelne, presne jak to ma realny brouseny
+   hlinik/ocel) na 4 hlavni plochy pultu - horni listu, cely ram pultu,
+   hlavicku kazdeho decku a spodni listu se samplerem. Kombinuje se
+   s existujicimi vnitrnimi stiny/highlighty (uz tam predtim byly, jen
+   bez textury pusobily ploseji). Jog wheel uz mel kartacovanou ocel
+   v prstenci od zacatku (conic-gradient v puvodnim SJ6) - ten jsem
+   nechal, uz vypadal dobre.
+   POCTIVE: bez zakrouzkovaneho screenshotu porad nevim jistě, jestli
+   tohle trefuje presne to, co ti vadilo - je to muj nejlepsi odhad
+   podle slov "font/pozadi/3D/ocelove". Pokud furt neco konkretniho
+   sedi spatne, klidne jen popis slovy ("ty cerne tlacitka dole
+   vypadaji ploche" apod.), nemusis nic kreslit.
+
+MERENI (pred odeslanim)
+- node --check: syntaxe OK. Zavorky parove: {}518 ()1463 []140,
+  div 101/101, button 43/43 (zadny prvek nepribyl/neubyl).
+- Google Fonts link v DOM: potvrzeno ZADNY.
+- Font soubory: 5 @font-face bloku v souboru, vsechny base64 (offline).
+- Plny regresni proklik: 43 tlacitek + 16 hot cue padu + 8 sampleru +
+  20 EQ slideru + 4 velke fadery + crossfader = 0 JS chyb.
+- Novy test kliku na jog: prazdny deck -> otevre playlist (stejne
+  chovani jako PLAY tlacitko, overeno primo).
+- Sampler pre-render (z minula, porad plati): 1. klik = fallback
+  synteza + spusti 8 pre-renderu, 2. klik = 0 novych oscilatoru,
+  hraje z hotoveho bufferu.
+- Velikost souboru: 156 kB (drive 76 kB) - narust je z vlozenych
+  fontu, ale je to LOKALNI soubor v APK, ne stahovani ze site, takze
+  na rychlost startu to nema vliv (na rozdil od puvodniho Google
+  Fonts odkazu).
+
+JAK OTESTOVAT (telefon na sirku)
+1) Klepni primo na tocici se LP desku (ne na tlacitko PLAY) - ma se
+   spustit/pozastavit prehravani stejne jako tlacitkem.
+2) Podivej se na pismo - N&P VISION nahore a na obou deskach by melo
+   vypadat vyrazneji/ostreji nez system font, zbytek textu (tlacitka,
+   hodnoty) zustava citelny Rajdhani jako drive.
+3) Zavri a znovu otevri pult (cerstve) - i s vetsim souborem by mel
+   naskocit rychle, bez pauzy (fonty uz nejsou ze site).
+4) Podivej se zblizka na horni listu, ram pultu, hlavicku decku a
+   spodni listu se samplerem - mel bys videt jemne kartacovane
+   proužky v kovu, ne uplne hladkou plochu.
+5) Pokud vzhled porad nesedi - popis slovy KONKRETNE ktery prvek
+   (nazev tlacitka/plochy) a v cem, at to reším cileně.
+
+KILL-SWITCH: vratit dj/index.html z BUILD2SK4 (predchozi build).
