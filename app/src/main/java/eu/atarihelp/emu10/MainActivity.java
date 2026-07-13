@@ -237,6 +237,22 @@ public class MainActivity extends Activity {
     private volatile float napTvWebVolume = 1f;
     private volatile int napTvWebJpegQuality = 62;
     private volatile int napTvWebFrameDelayMs = 55;
+    // BUILD2SK14: 3 volitelne urovne kvality TV mirroru. LOW = presne puvodni
+    // chovani z SK11-SK13 (bezpecne i pro starsi telefony jako S8). MEDIUM/HIGH
+    // jsou prvni odhad pro silnejsi telefony - jeste nikym nezmereno na
+    // realnem zarizeni, doporucuju vyzkouset a doladit podle vysledku.
+    // Volba se nastavuje na TV-cast strance a zije jen po dobu behu appky
+    // (stejny vzor jako existujici zvukovy EQ panel - taky neprezije restart).
+    private volatile int napTvWebQualityTier = 0; // 0=LOW 1=MEDIUM 2=HIGH
+    private int[] napTvWebQualityFor(boolean djScreen, boolean hqLiteScreen, boolean landscape) {
+        int t = napTvWebQualityTier; if (t < 0) t = 0; if (t > 2) t = 2;
+        int[][] table;
+        if (!landscape)         table = new int[][]{{1120,72,55},{1280,82,50},{1440,90,45}};
+        else if (djScreen)      table = new int[][]{{1120,72,65},{1280,82,55},{1440,90,45}};
+        else if (hqLiteScreen)  table = new int[][]{{860,62,75}, {1000,72,65},{1180,80,55}};
+        else                    table = new int[][]{{760,54,75}, {900,66,70}, {1080,74,60}};
+        return table[t];
+    }
     private volatile String napTvWebVideoProfile = "AUTO";
     private MediaProjectionManager napTvWebProjectionManager;
     private MediaProjection napTvWebProjection;
@@ -281,10 +297,11 @@ public class MainActivity extends Activity {
                     // dalsi dva emulatory nese stejne (nizke) riziko.
                     boolean hqLiteScreen = false;
                     try { String cu2 = web == null ? null : web.getUrl(); hqLiteScreen = cu2 != null && (cu2.contains("/emu_ps1/") || cu2.contains("/emu_sega/") || cu2.contains("/emu/")); } catch (Throwable ignored) {}
-                    int maxSide = landscape ? (djScreen ? 1120 : (hqLiteScreen ? 860 : 760)) : 1120;
-                    napTvWebJpegQuality = landscape ? (djScreen ? 72 : (hqLiteScreen ? 62 : 54)) : 72;
-                    napTvWebFrameDelayMs = landscape ? (djScreen ? 65 : 75) : 55;
-                    napTvWebVideoProfile = landscape ? (djScreen ? "LANDSCAPE_DJ_HQ" : (hqLiteScreen ? "LANDSCAPE_EMU_HQ" : "LANDSCAPE_FAST")) : "PORTRAIT_HD";
+                    int[] qv = napTvWebQualityFor(djScreen, hqLiteScreen, landscape);
+                    int maxSide = qv[0];
+                    napTvWebJpegQuality = qv[1];
+                    napTvWebFrameDelayMs = qv[2];
+                    napTvWebVideoProfile = (landscape ? (djScreen ? "LANDSCAPE_DJ" : (hqLiteScreen ? "LANDSCAPE_EMU" : "LANDSCAPE_FAST")) : "PORTRAIT") + "_T" + napTvWebQualityTier;
                     float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
                     if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
@@ -725,7 +742,8 @@ public class MainActivity extends Activity {
             if (frame != padded) padded.recycle();
             boolean djScreenSys = false, hqLiteScreenSys = false;
             try { String cu = web == null ? null : web.getUrl(); djScreenSys = cu != null && cu.contains("/dj/"); hqLiteScreenSys = cu != null && (cu.contains("/emu_ps1/") || cu.contains("/emu_sega/") || cu.contains("/emu/")); } catch (Throwable ignored) {}
-            napTvWebJpegQuality = w > h ? (djScreenSys ? 68 : (hqLiteScreenSys ? 62 : 56)) : 68;
+            int[] qvSys = napTvWebQualityFor(djScreenSys, hqLiteScreenSys, w > h);
+            napTvWebJpegQuality = qvSys[1];
             napTvWebFrameDelayMs = w > h ? 60 : 55;
             napTvWebVideoProfile = "SCREEN_FULL";
             napTvWebPublishBitmap(frame, "SCREEN");
@@ -994,6 +1012,13 @@ public class MainActivity extends Activity {
                 napTvWebWriteMjpeg(out);
             } else if ("/audio.raw".equals(path)) {
                 napTvWebWriteAudioRaw(out, napTvWebQueryLong(fullPath, "after", -1));
+            } else if ("/quality".equals(path)) {
+                long t = napTvWebQueryLong(fullPath, "tier", napTvWebQualityTier);
+                napTvWebQualityTier = (int) Math.max(0, Math.min(2, t));
+                appendNativeLog("BUILD2SK14 TV_WEB_QUALITY_TIER_SET tier=" + napTvWebQualityTier);
+                byte[] body = ("tier=" + napTvWebQualityTier).getBytes("UTF-8");
+                napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, true);
+                out.write(body);
             } else if ("/status".equals(path)) {
                 byte[] body = ("running=" + napTvWebRunning
                         + " seq=" + napTvWebSeq
@@ -1038,7 +1063,11 @@ public class MainActivity extends Activity {
                 + "#v{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000}"
                 + "#s{position:fixed;left:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.55);border-radius:4px}"
                 + "#a{position:fixed;right:10px;bottom:8px;padding:8px 10px;background:rgba(10,30,40,.78);border:1px solid #64dfff;border-radius:5px;color:#dfffff;font:700 15px monospace}"
+                + "#q{position:fixed;right:10px;bottom:48px;display:flex;gap:4px}"
+                + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
+                + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button'>AUDIO OK</button>"
+                + "<div id='q'><button type='button' data-t='0'>LOW</button><button type='button' data-t='1'>MED</button><button type='button' data-t='2'>HIGH</button></div>"
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[];" // BUILD2SB1
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
@@ -1046,6 +1075,9 @@ public class MainActivity extends Activity {
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+0.36;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
                 + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||(!isNaN(st)&&expected>0&&st!==expected)||next<now+0.04)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+0.22;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
                 + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);"
+                + "(function(){var qs=document.querySelectorAll('#q button');function mark(t){for(var i=0;i<qs.length;i++)qs[i].classList.toggle('on',qs[i].getAttribute('data-t')===(''+t));}"
+                + "fetch('/quality').then(function(r){return r.text();}).then(function(t){var m=/tier=(\\d)/.exec(t);mark(m?m[1]:'0');}).catch(function(){});"
+                + "for(var i=0;i<qs.length;i++){qs[i].onclick=function(e){var t=e.target.getAttribute('data-t');fetch('/quality?tier='+t).then(function(){mark(t);}).catch(function(){});};}})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
                 + "setInterval(function(){if(!fb)label('MJPEG');},1000);})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");

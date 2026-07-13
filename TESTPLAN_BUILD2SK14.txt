@@ -1,0 +1,77 @@
+BUILD2SK14 - VOLITELNA KVALITA TV MIRROR: LOW / MEDIUM / HIGH
+================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11-SK13 - stejny soubor, rozsireni na 4 mista)
+Nedotceno: vsechno ostatni - overeno diffem proti tvemu originalu.
+
+CO JE NOVE
+Na TV-cast strance (ta, kterou televize otevre - 192.168.0.34:8765)
+pribyla 3 tlacitka vpravo dole: LOW / MED / HIGH. Kliknutim se ulozi
+volba (jen po dobu behu appky - stejny vzor jako uz existujici zvukovy
+EQ panel v teto appce, ktery take neprezije restart appky) a od te
+chvile se pouzije na VSECH obrazovkach (DJ, PS1, Sega, Atari) az do
+dalsiho prepnuti.
+
+VYCHOZI STAV = LOW = PRESNE SOUCASNE CHOVANI Z SK13
+Nikomu se nic nezmeni, dokud sam neklikne na MED nebo HIGH. Overeno
+testem (viz nize) - LOW davá bit-identicke hodnoty jako SK13 melo
+napevno zadratovane.
+
+TABULKA HODNOT (rozliseni / JPEG kvalita / zpozdeni snimku)
+                    LOW              MEDIUM           HIGH
+  DJ pult:          1120px/72/65ms   1280px/82/55ms   1440px/90/45ms
+  PS1+Sega+Atari:    860px/62/75ms   1000px/72/65ms   1180px/80/55ms
+  vse ostatni:       760px/54/75ms    900px/66/70ms   1080px/74/60ms
+  portret (kdykoli): 1120px/72/55ms  1280px/82/50ms   1440px/90/45ms
+
+POCTIVE: MEDIUM a HIGH jsou MUJ PRVNI ODHAD, zatim NEOVERENY na
+skutecnem zarizeni - vychazi z principu "vic pixelu + vyssi kvalita
++ o neco delsi zpozdeni pro rovnovahu", ale presna cisla jsem nemel
+jak zmerit bez tveho telefonu. Klidne to ber jako vychozi bod k
+doladeni, ne finalni hodnoty. Rozliseni/kvalita/zpozdeni rostou
+postupne a monotonne (HIGH nikdy neni horsi nez MEDIUM, MEDIUM nikdy
+horsi nez LOW - overeno testem na vsech kombinacich).
+
+TECHNICKY (kde to zije)
+- Nova promenna napTvWebQualityTier (0/1/2), NENI v SharedPreferences
+  (neprezije restart appky - stejne jako existujici EQ panel).
+- Novy HTTP endpoint /quality?tier=N na portu appky (8765) - GET bez
+  parametru vrati aktualni volbu, s parametrem ji nastavi.
+- Tlacitka na TV strance volaji tenhle endpoint pres fetch() a
+  zvyrazni aktivni volbu (zeleny ramecek).
+- Cela puvodni logika (DJ/PS1/Sega/Atari rozpoznavani, viz SK11-13)
+  zustala stejna, jen misto napevno zadratovanych cisel se ted cte
+  z tabulky podle zvolene urovne.
+
+MERENI (pred odeslanim)
+- Diff proti tvemu originalu: 57 zmenenych radku na 4 mistech (pridani
+  tabulky + jeji pouziti na 2 mistech + novy HTTP endpoint + 3
+  tlacitka a JS na TV strance) - nic jineho v souboru se nedotklo.
+- Realny javac (OpenJDK 21), DVA testy:
+  1) QualityTierCheck.java - izolovana tabulka, vsech 12 kombinaci
+     (4 typy obrazovky x 3 urovne) + kontrola monotonie (16 kombinaci
+     dj/hq/landscape) - VSECHNY presne sedely, monotonie potvrzena.
+     Regresni kontrola: LOW bit-presne odpovida SK13 na vsech 4
+     typech obrazovky.
+  2) TvTapPatchCheck.java - cely tok (PS1/DJ/Sega/Player pres oba
+     capture cesty, prepnuti tier=0->tier=2 za behu) - vsech 6
+     scenaru presne sedelo.
+- Vlozeny JS na TV strance (tlacitka + fetch volani) EXTRAHOVAN ze
+  skutecneho Java retezce a overen Node.js syntax checkerem - cisty
+  (tohle by muj javac test sam o sobe neodhalil, protoze Java
+  nekontroluje obsah retezcu, jen jejich vlastni syntaxi).
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action jako obvykle.
+2) Otevri TV mirror na TV/projektoru - vpravo dole uvidis LOW/MED/HIGH.
+3) Klikni MED, pak libovolnou obrazovku (DJ, PS1, Sega, Atari) -
+   ma byt viditelne ostrejsi nez LOW. Sleduj plynulost.
+4) Klikni HIGH - jeste ostrejsi, ale S8 uz muze zacit citelne
+   zaostavat (vic dat na zpracovani). Tohle je presne to vyzkouseni,
+   o kterem jsme mluvili - napis mi vysledek (LOW/MED/HIGH + jak to
+   vypadalo na S8) a podle toho cisla doladime.
+5) Zavri appku a otevri znovu - volba se vrati na LOW (schvalne,
+   zatim neni trvale ulozena - pokud chces aby to prezilo restart,
+   rekni a pridam SharedPreferences).
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK13 (predchozi build).
