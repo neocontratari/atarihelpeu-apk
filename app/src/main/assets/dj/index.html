@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation;}
 :root{
   --gold:#f0c96a;--gold2:#c9962f;--goldLt:#ffe9ad;--goldDk:#6e5015;
   --blue:#3fa9ff;--blueLt:#8fd0ff;--amber:#ffb43c;
@@ -61,7 +61,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 
 /* ==== DECK (A/B) ==== */
 .deck{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px;}
-.deckTop{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:11px;flex-wrap:wrap;
+.deckTop{display:flex;align-items:center;gap:8px;row-gap:9px;padding:8px 9px;border-radius:11px;flex-wrap:wrap;
   background:linear-gradient(180deg,#1a1812,#0d0c0a);border:1px solid var(--edge);}
 .deckTag{font:800 13px var(--font);letter-spacing:1px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;flex:0 0 auto;}
 .deck.a .deckTag{color:#160f04;background:linear-gradient(180deg,#ffd873,#c9962f);}
@@ -295,13 +295,14 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 .footer .gold{color:var(--gold);}
 
 /* ==== BUILD2SK2: prvky dle grafickeho navrhu ==== */
-.usbChip,.tapChip,.keyChip{font:700 10px var(--font);letter-spacing:.5px;padding:6px 8px;border-radius:7px;color:#c9b477;
+.usbChip,.tapChip,.keyChip{font:700 10px var(--font);letter-spacing:.5px;padding:9px 12px;min-height:22px;
+  display:inline-flex;align-items:center;justify-content:center;border-radius:8px;color:#c9b477;
   background:linear-gradient(180deg,#2c2922,#161410 55%,#0a0908);border:1px solid #050403;
-  box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12);white-space:nowrap;}
+  box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12);white-space:nowrap;touch-action:manipulation;}
 .usbChip:active,.tapChip:active{transform:translateY(1px);}
 .tapChip.hit{color:#160f04;background:linear-gradient(180deg,#ffe08a,#d0a030);}
-.keyChip{display:flex;flex-direction:column;align-items:center;gap:0;line-height:1;padding:4px 8px;font-size:7px;color:#8f7a3f;}
-.keyChip b{font-size:11px;color:#c9b477;}
+.keyChip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1;padding:7px 12px;min-height:22px;font-size:7px;color:#8f7a3f;}
+.keyChip b{font-size:12px;color:#c9b477;}
 .keyChip.on{border-color:#8a6810;box-shadow:0 0 10px rgba(255,184,60,.5),inset 0 1px 1px rgba(255,255,255,.3);}
 .keyChip.on b{color:var(--goldLt);}
 .deck.b .keyChip.on{border-color:#2b86d8;box-shadow:0 0 10px rgba(80,180,255,.5);}
@@ -857,9 +858,15 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   var SAMP=[['1','KICK'],['2','SNARE'],['3','HAT'],['4','CLAP'],['5','BASS'],['6','SYNTH'],['7','VOCAL'],['8','FX']];
   var sampEl=document.getElementById('sampler');
   SAMP.forEach(function(s){var d=document.createElement('div');d.className='sPad';d.innerHTML='<b>'+s[0]+'</b>'+s[1];
-    d.onclick=function(){playSample(s[1]);d.style.transform='scale(.95)';setTimeout(function(){d.style.transform='';},90);};sampEl.appendChild(d);});
+    d.addEventListener('pointerdown',function(ev){ev.preventDefault();playSample(s[1]);d.style.transform='scale(.95)';});
+    d.addEventListener('pointerup',function(){d.style.transform='';});
+    d.addEventListener('pointercancel',function(){d.style.transform='';});
+    sampEl.appendChild(d);});
 
-  function noiseBuffer(c,dur){var n=Math.floor(c.sampleRate*dur),buf=c.createBuffer(1,n,c.sampleRate),d=buf.getChannelData(0);for(var i=0;i<n;i++)d[i]=Math.random()*2-1;return buf;}
+  var noiseCache={};
+  function noiseBuffer(c,dur){var key=dur.toFixed(3);if(noiseCache[key])return noiseCache[key];
+    var n=Math.floor(c.sampleRate*dur),buf=c.createBuffer(1,n,c.sampleRate),d=buf.getChannelData(0);for(var i=0;i<n;i++)d[i]=Math.random()*2-1;
+    noiseCache[key]=buf;return buf;}
   function playSample(kind){
     try{
       var c=ac(); var out=master||c.destination; var t=c.currentTime;
@@ -928,7 +935,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       var vinyl=document.querySelector('[data-vinyl="'+id+'"]');
       if(vinyl)vinyl.style.transform='rotate('+d.jogAngle+'deg)';
       var label=document.querySelector('[data-label="'+id+'"]');
-      if(label)label.style.transform='translate(-50%,-50%) rotate('+(d.jogAngle*0.25)+'deg)';
+      if(label)label.style.transform='translate(-50%,-50%) rotate('+d.jogAngle+'deg)';
       var ring=document.querySelector('[data-ring="'+id+'"]');
       if(ring){ring.style.opacity=d.playing?(0.35+lv*0.65):0.12;}
     });
@@ -946,6 +953,8 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     if(tick&&jogEl){var jh=jogEl.getBoundingClientRect().height;tick.style.transformOrigin='50% '+(jh/2-6)+'px';tick._originSet=true;}
   });
   document.getElementById('backBtn').onclick=function(){try{location.href='../index.html';}catch(e){}};
+  // predehrev AudioContextu pri prvnim dotyku kdekoli - dalsi udery na samplery uz nejsou studeny start
+  document.addEventListener('pointerdown',function(){try{ac();buildMaster();}catch(e){}},{capture:true,once:true});
 
   // ==== BUILD2SK2: prvky dle grafickeho navrhu ====
   function applyKeylock(d){try{d.audio.preservesPitch=d.keylock;d.audio.webkitPreservesPitch=d.keylock;}catch(e){}}

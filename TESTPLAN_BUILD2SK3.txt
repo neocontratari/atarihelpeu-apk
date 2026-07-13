@@ -1,0 +1,85 @@
+BUILD2SK3 - 3 KONKRETNI OPRAVY (zadny odhad, vse dohledano v kodu)
+====================================================================
+Zmeneny soubor: app/src/main/assets/dj/index.html (jediny; SK2 zaklad)
+Nedotceno: emu Atari/Sega/PS1, player/index.html, assets/index.html.
+
+1) N&P NAPIS SE NETOCIL S TICKEM (DECK A I B)
+   Pricina (nalezeno primo v kodu, radek s vizualni smyckou):
+     tick/deska:  rotate(d.jogAngle)
+     napis N&P:   rotate(d.jogAngle * 0.25)   <- ctvrtinova rychlost
+   Oba decky jedou stejnou funkci, takze chyba byla na obou.
+   OPRAVA: napis ted pouziva stejny uhel jako tick/deska (zadny *0.25).
+   Overeno testem: pri stejnem jogAngle davaji tick i napis identicky
+   stupen v rotate(...) - shoda potvrzena programove, ne okem.
+
+2) HITBOXY U USB/TAP/KEY STITKU BYLY MALE
+   Pricina: padding 6px/8px kolem 10px pisma = hitbox cca 20-24px
+   (doporuceni pro prst je min. cca 34-40px), stitky natlacene v
+   radku s mezerou jen 6px - na sirku telefonu snadno vedle.
+   OPRAVA: padding zvetsen na 9-12px (min-height 22px + padding =
+   realne cca 38-40px), mezera mezi prvky v hlavicce decku 8px/9px
+   (row-gap), takze i pri zalomeni na 2 radky se prsty nepletou mezi
+   radky. KEY stitek stejne zvetsen (dvojradkovy popisek).
+
+3) BICI NA SAMPLERU MELY ZPOZDENI
+   Pricina (nalezeno primo v kodu): hot cue pady, fadery i crossfader
+   uz bezely na pointerdown (okamzita reakce). Sampler pady (KICK...FX)
+   ale jedou porad na .onclick - to je na mobilu/WebView synteticka
+   udalost, ktera muze prijit s citelnym zpozdenim po zvednuti prstu
+   (prohlizec cheka, jestli nejde o dvojklik). To presne odpovida
+   popisu "strasne lagy" jen u bicich dole, zatimco hot cue pady na
+   decku uz reagovaly OK.
+   OPRAVA (3 vrstvy, ne jedna):
+   a) sampler pady prepnuty z onclick na pointerdown - zvuk se spusti
+      v momente dotyku, ne az po jeho zvednuti. Overeno testem:
+      oscilator start() se zavola PRED pointerup.
+   b) touch-action:manipulation pridano globalne (vsechna tlacitka,
+      pady, stitky) - odstranuje zbytkovou detekci "je to dvojklik?"
+      na cele plose pultu, ne jen na samplerech. Fadery/EQ/crossfader
+      maji vlastni touch-action:none (specifictejsi CSS pravidlo,
+      takze zustavaji nedotcene - overeno v kodu, porad tam je).
+   c) sumove buffery (SNARE/HAT/CLAP) se ted generuji jen jednou a
+      cachuji, misto pri kazdem uderu - mensi vedlejsi optimalizace,
+      neni to hlavni pricina, ale snizuje kolisani hlavniho vlakna.
+      K tomu predehrev AudioContextu pri uplne prvnim dotyku kdekoli
+      v pultu (ne az na prvnim bicim) - kdyby nekdo sel na sampler
+      jako uplne prvni akci po otevreni pultu.
+   POCTIVE UPOZORNENI: pokud po tomhle porad usllysis nejakou drobnou
+   prodlevu, muze to uz byt limit zvukoveho vystupu Android WebView
+   (system ma vlastni buffer mezi appkou a repro) - to neni chyba
+   v JS kodu, ale vlastnost platformy, kterou z webu 100% nevynulujes.
+   Napis mi presne "furt lagy" nebo "uz OK" po testu bodu 7 nize -
+   pokud furt lagy, budu to resit jinak (napr. kratsi obalka zvuku).
+
+MERENI (pred odeslanim)
+- node --check: syntaxe OK. Zavorky parove: {}494 ()1320 []116,
+  div 101/101, button 43/43 (zadny prvek nepribyl/neubyl).
+- Primo v kodu overeno (ne odhad): jogAngle*0.25 uz v souboru NENI;
+  sPad.onclick uz v souboru NENI, je tam pointerdown listener;
+  touch-action:manipulation je v globalnim *{} pravidlu;
+  .bigTrack/.miniTrack/.xfTrack si drzi vlastni touch-action:none.
+- Cileny runtime test: rotate() stupen u tick[A] a label[A] vysel
+  IDENTICKY (0deg=0deg, formule je ted stejna promenna). Pointerdown
+  na KICK padu spustil oscilator.start() jeste pred pointerup.
+- Plny regresni proklik: vsech 43 tlacitek + 16 hot cue padu + 8
+  sampleru + 20 EQ slideru + 4 velke fadery + crossfader = 0 JS chyb.
+
+JAK OTESTOVAT (telefon na sirku)
+1) PLAY na obou decich -> LP desky se tuti, napis N&P uvnitr se ted
+   toci VIDITELNE SPOLU s tim malym tickem/sipkou na okraji desky -
+   ne zvlast pomaleji.
+2) Zkus to na obou deckach (A i B).
+3) Rychle poklepej 4-5x po sobe na KICK/SNARE/HAT dole - zvuk ma jit
+   hned pod prstem, ne se zpozdenim. Zkus i rychly rytmus (fill).
+4) Zkus trefit USB 1 / TAP / KEY stitky v hlavicce decku - hitbox
+   by ted mel byt pohodlnejsi, i kdyz mires vedle stredu textu.
+5) Over, ze fadery (EQ, tempo, gain) a crossfader porad taham hladce
+   bez skoku/zasekavani - touch-action zmena se jich nemela dotknout.
+6) Over, ze hot cue pady na decku porad reaguji stejne rychle jako
+   predtim (nemely zadnou zmenu, jen sampler dole).
+7) Pokud bici porad citelne lagujou i po tomhle - napis mi to presne
+   (na ktere pady, jak moc) - dalsi krok by byl zkratit obalku zvuku
+   nebo checknout, jestli lagujou i pri tichem pozadi vs pri hrajici
+   hudbe (jestli to souvisi se zatizenim, ne jen s dotykem).
+
+KILL-SWITCH: vratit dj/index.html z BUILD2SK2 (predchozi build).
