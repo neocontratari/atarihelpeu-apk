@@ -1,0 +1,86 @@
+BUILD2SK6 - REALNE BICI + 3 MASTER FADERY + VIC OCEL NA EQ
+================================================================
+Zmeneny soubor: app/src/main/assets/dj/index.html (jediny; SK5 zaklad)
+Nedotceno: emu Atari/Sega/PS1, player/index.html, assets/index.html.
+
+1) BICI JSOU TED SKUTECNE NAHRANE SAMPLY (ne synteza)
+   Minule jsem upgradoval jen syntezu (808/909 techniky) - porad ti
+   to prislo "hrozny", coz beru vazne. Tentokrat jsem sel jinou cestou:
+   KICK, SNARE, HAT, CLAP a BASS jsou ted SKUTECNE NAHRANE zvukove
+   soubory (WAV), ne generovane v prohlizeci. Zdroj: verejny GitHub
+   repozitar Boochi44/free-drum-samples, licence CC0 1.0 (= volne dilo,
+   pouzitelne i komercne bez uvedeni autora) - odvozeno z TR-808
+   nahravek Edwarda Lovealla, take CC0. Vybral jsem kit "02-bounce"
+   (cisty, kulaty zvuk, ne prehnane zkresleny). Clap jsem oriznul
+   z puvodnich 2 sekund (dlouhy dozvuk) na 0.36 s s jemnym fade-outem,
+   aby při rychlem tukani neznel rozmazane.
+   SYNTH/VOCAL/FX zustavaji na synteze - nejsou to "bubny", tam synteza
+   sedi (jsou to spis tony/efekty nez perkuse).
+   TECHNICKY: soubory jsou vlozene primo v kodu (base64 WAV, ~157 kB
+   celkem), zadne stahovani za behu. Dekoduji se JEDNOU pri prvnim
+   dotyku (stejny prewarm mechanismus jako drive) a hraji se z hotoveho
+   bufferu - stejna "nulovy lag" architektura jako predtim, jen misto
+   syntetizovaneho bufferu je v nem ted skutecna nahravka.
+   OVERENO TESTEM: 5 souboru se dekoduje pri prvnim dotyku, po dekodovani
+   hraje z bufferu (0 novych oscilatoru = potvrzeno ze uz nejede synteza).
+
+2) 3 NOVE MASTER FADERY UPROSTRED (BALANCE / BASY / VYSKY)
+   Presne tam, kde byla prazdna plocha pod HARD A/HARD B - pridany
+   3 stribrne ocelove fadery pod sebe, stejny vizualni jazyk jako EQ
+   (stejna mechanika, jen sam pro sebe, ne na deck):
+     BALANCE - stereo vyvazeni CELEHO masteru (leva/prava, stred=C,
+       jinak L##/P##). Novy StereoPannerNode v audio retezci.
+     BASY - master lowshelf (~160 Hz), ±12 dB, ovlivnuje OBA decky
+       najednou (na rozdil od per-deck EQ, ktere ovlivnuje jen jeden
+       deck).
+     VYSKY - master highshelf (~4.5 kHz), ±12 dB, stejne pro cely mix.
+   Zapojeno do zvukoveho retezce PRED limiterem (master -> bass ->
+   highs -> balance -> limiter -> vystup), takze limiter chrani i po
+   pripadnem boostu, a TV cast/nahravani slysi presne to co ty.
+   OVERENO TESTEM: tazeni faderu az na doraz da presne +12 / -12 / P100.
+
+3) VIC OCELOVEHO EFEKTU NA EQ KNOFLICICH (obe strany, gold/blue barva)
+   Pridal jsem jemnou kartacovanou texturu primo na knoflik (stejna
+   jako na panelech z minula), ostrejsi kontrast highlight/stin (bilejsi
+   spicka, tmavsi spodek = vic "vypouklý chrom"), a jemny barevny lesk
+   kolem knoflíku - zlaty na decku A, modry na decku B ("v te barve"
+   presne jak jsi psal). Stejne vylepseni dostaly i velke tempo/gain
+   fadery po strankach.
+
+MERENI (pred odeslanim)
+- node --check: syntaxe OK. Zavorky parove: {}539 ()1532 []151,
+  div 114/114 (+13 novych - 3x mini wrapper + 3x track + 3x val +
+  masterTone kontejner + par vnitrnich), button 43/43 (beze zmeny).
+- DULEZITE: behem testovani jsem nasel a opravil DIRU VE VLASTNIM
+  TESTOVACIM STUBU (ne v appce) - muj falesny BiquadFilter node
+  v testech nemel .gain vlastnost, coz by u REALNEHO prohlizece
+  nikdy nenastalo (kazdy BiquadFilterNode .gain vzdy ma), ale u me
+  v testu to maskovalo, ze bych jinak nevidel, ze master retezec
+  dobehne cely. Opraveno, cely test sad prebehl znovu od nuly.
+- Plny regresni proklik: 43 tlacitek + 16 hot cue padu + 8 sampleru +
+  20 EQ slideru + 3 nove master fadery + 4 velke fadery + crossfader
+  = 0 JS chyb (po oprave stubu).
+- Specificky test bicich: 5 souboru (kick/snare/hat/clap/bass) se
+  dekoduje pri prvnim dotyku, druhy dotek hraje z hotoveho bufferu
+  bez jedineho noveho oscilatoru.
+- Specificky test master faderu: tazeni na doraz -> presne +12dB /
+  -12dB / P100, zadna chyba.
+- Velikost souboru: 359 kB (drive 157 kB) - narust je z vlozenych
+  zvukovych souboru, vse LOKALNI v APK, zadny vliv na rychlost startu.
+
+JAK OTESTOVAT (telefon na sirku)
+1) Klepni na KICK/SNARE/HAT/CLAP/BASS - ma to znit jako skutecny
+   nahrany zvuk, ne "pipnuti z pocitace". SYNTH/VOCAL/FX zustavaji
+   synteticke (schvalne, nejsou to bubny).
+2) Podivej se doprostred pod HARD A/HARD B - 3 stribrne fadery
+   BALANCE/BASY/VYSKY. Zkus je potahat - BASY nahoru = cely mix
+   (oba decky) zesili basy, VYSKY dolu = ubere vysky na celem mixu.
+   BALANCE do stredu = C, na kraj = L100/P100 (jen leva/prava strana).
+3) Podivej se zblizka na EQ knoflicky po strankach (31Hz-16kHz) -
+   mely by ted vypadat "chromovaneji", s jemnym zlatym (deck A) /
+   modrym (deck B) leskem kolem.
+4) Overit ze puvodni funkce (SYNC, hot cue pady, tempo, crossfader,
+   RECORD, LIMITER) porad funguji stejne jako predtim - zadna z nich
+   se nemela zmenit.
+
+KILL-SWITCH: vratit dj/index.html z BUILD2SK5 (predchozi build).
