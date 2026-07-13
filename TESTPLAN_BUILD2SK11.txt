@@ -1,0 +1,76 @@
+BUILD2SK11 - OSTROST TV MIRROR PRO DJ PULT (nativni kod, ne web assets)
+==========================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(NATIVNI Android kod - jina cast projektu nez dj/index.html, se kterym
+jsem pracoval v BUILD2SK1-SK10)
+Nedotceno: uplne vsechno ostatni v projektu (assets/dj/, assets/player/,
+assets/emu*, ...) - tenhle build se te webove casti vubec netyka.
+
+CO SE ZMENILO A PROC (shrnuti z konverzace)
+Zjistil jsi, ze pri TV/mirror castingu je obraz rozmazany, i kdyz na
+telefonu samotnem je ostry. To ukazalo, ze problem neni v dj/index.html
+(tam jsem uz opravil zapraskavani zvuku v BUILD2SK9), ale v NATIVNIM
+kodu, ktery zachytava obrazovku a posila ji na TV jako MJPEG stream.
+
+V MainActivity.java jsem nasel presnou pricinu: kod ma DVE cesty
+zachytavani obrazu (draw-capture a MediaProjection/system-capture) a
+OBE mely pro LANDSCAPE (DJ pult vzdy bezi na sirku) systematicky nizsi
+kvalitu nez pro portret:
+  draw cesta:   landscape = max. 760px / JPEG kvalita 54
+                portret   = max. 1120px / JPEG kvalita 72
+  system cesta: landscape = JPEG kvalita 56
+                portret   = JPEG kvalita 68
+JPEG kvalita 54-56 na skale 0-100 je znatelne komprimovana - presne
+odpovida popsanemu rozmazani.
+
+OPRAVA: appka uz umi zjistit aktualne nactenou URL (web.getUrl()).
+Pridal jsem do obou cest kontrolu "je to DJ pult (/dj/ v URL)?":
+  DJ PULT v landscape ted dostane STEJNE hodnoty jako portret
+    (1120px / kvalita 72 na draw ceste, kvalita 68 na system ceste).
+  COKOLI JINEHO (emulatory Atari/Sega/PS1 atd.) ZUSTAVA UPLNE BEZE
+    ZMENY - puvodni "rychle ale mekci" nastaveni pro plynuly pohyb
+    ve hrach jsem schvalne nechal netknute.
+
+MERENI (pred odeslanim)
+- Diff proti tvemu puvodnimu MainActivity.java: zmeneny jen 2 mista
+  (radky ~271-280 a ~719-721), zbytek 5314radkoveho souboru beze
+  zmeny - overeno strojove, ne odhadem.
+- POCTIVE OMEZENI: v tomto prostredi nemam Android SDK (WebView,
+  Bitmap, MediaProjection nejdou zkompilovat bez nej - Google Maven
+  neni v me povolene siti), takze CELY soubor jako Android projekt
+  jsem nemohl zkompilovat.
+- CO JSEM MISTO TOHO UDELAL: nainstaloval jsem si realny Java
+  kompilator (javac, OpenJDK 21) a napsal minimalni test, ktery bere
+  PRESNE ty radky, co diff ukazuje jako pridane (zkopirovano
+  programove ze souboru, ne prepsano rucne), obali je do stub tridy
+  se skutecnymi typy (WebView.getUrl()->String, napTvWebJpegQuality
+  ->int, napTvWebFrameDelayMs->int, napTvWebVideoProfile->String -
+  presne jak jsou deklarovany ve skutecnem MainActivity.java) a
+  SKUTECNE to zkompiluje a spusti. Priloz eny je i ten test
+  (TvTapPatchCheck.java) - kdokoli s Javou si to muze overit sam:
+  javac TvTapPatchCheck.java && java TvTapPatchCheck
+- VYSLEDEK TESTU (4 scenare, vsechny presne sedely):
+    emulator URL + landscape -> quality=54 delay=75 profile=LANDSCAPE_FAST
+    DJ URL + landscape       -> quality=72 delay=65 profile=LANDSCAPE_DJ_HQ
+    emulator URL (system cesta) -> quality=56
+    DJ URL (system cesta)       -> quality=68
+  Presne odpovida ocekavani: DJ pult dostava boost, vse ostatni ne.
+- CO TENHLE TEST NEDOKAZUJE: ze cely soubor jako celek projde
+  Android/Gradle buildem (resource linking, R.java, manifest, ...) -
+  to muze potvrdit jen tvuj skutecny build pipeline (commit + Action).
+
+JAK OTESTOVAT
+1) Nahrad soubor app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+   timhle (presna stejna cesta jako ve tvem projektu).
+2) Commit + Action jako obvykle.
+3) Po instalaci: otevri DJ pult, spust TV mirror - obraz by mel byt
+   znatelne ostrejsi nez pred timhle buildem.
+4) Otevri libovolny emulator (Atari/Sega/PS1) a spust TV mirror tam -
+   MELO BY TO VYPADAT/CHOVAT SE UPLNE STEJNE jako pred timhle buildem
+   (zadna zmena v kvalite ani plynulosti). Tohle je dulezita kontrola,
+   ze oprava skutecne zasahuje jen DJ pult.
+5) Pokud DJ pult porad neni dost ostry, muzeme jit jeste vys (napr.
+   maxSide 1120->1280 jen pro DJ pult) - napis a upravim.
+
+KILL-SWITCH: vratit puvodni MainActivity.java z tveho app.zip (soubor,
+ktery jsi mi poslal pred timhle buildem).

@@ -268,10 +268,16 @@ public class MainActivity extends Activity {
                 if (napTvWebRunning && appCapture && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
                     int sw = rootFrame.getWidth(), sh = rootFrame.getHeight();
                     boolean landscape = sw > sh;
-                    int maxSide = landscape ? 760 : 1120;
-                    napTvWebJpegQuality = landscape ? 54 : 72;
-                    napTvWebFrameDelayMs = landscape ? 75 : 55;
-                    napTvWebVideoProfile = landscape ? "LANDSCAPE_FAST" : "PORTRAIT_HD";
+                    // BUILD2SK11: DJ obrazovka je staticka UI (jemny text, EQ tahla) - vyhody
+                    // je z ostrosti vic nez z vysokeho FPS jako u emulatoru s pohybujici se hrou.
+                    // V landscape proto dostane stejnou kvalitu/rozliseni jako portret misto
+                    // "rychleho ale mekkeho" profilu, ktery zustava beze zmeny pro vse ostatni.
+                    boolean djScreen = false;
+                    try { String cu = web == null ? null : web.getUrl(); djScreen = cu != null && cu.contains("/dj/"); } catch (Throwable ignored) {}
+                    int maxSide = landscape ? (djScreen ? 1120 : 760) : 1120;
+                    napTvWebJpegQuality = landscape ? (djScreen ? 72 : 54) : 72;
+                    napTvWebFrameDelayMs = landscape ? (djScreen ? 65 : 75) : 55;
+                    napTvWebVideoProfile = landscape ? (djScreen ? "LANDSCAPE_DJ_HQ" : "LANDSCAPE_FAST") : "PORTRAIT_HD";
                     float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
                     if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
@@ -710,7 +716,9 @@ public class MainActivity extends Activity {
             padded.copyPixelsFromBuffer(buf);
             Bitmap frame = (rowPixels == w) ? padded : Bitmap.createBitmap(padded, 0, 0, w, h);
             if (frame != padded) padded.recycle();
-            napTvWebJpegQuality = w > h ? 56 : 68;
+            boolean djScreenSys = false;
+            try { String cu = web == null ? null : web.getUrl(); djScreenSys = cu != null && cu.contains("/dj/"); } catch (Throwable ignored) {}
+            napTvWebJpegQuality = w > h ? (djScreenSys ? 68 : 56) : 68;
             napTvWebFrameDelayMs = w > h ? 60 : 55;
             napTvWebVideoProfile = "SCREEN_FULL";
             napTvWebPublishBitmap(frame, "SCREEN");
