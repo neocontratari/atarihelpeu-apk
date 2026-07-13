@@ -139,7 +139,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 .jog::after{content:'';position:absolute;inset:14px;border-radius:50%;pointer-events:none;
   background:radial-gradient(ellipse 60% 40% at 40% 26%, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 55%);}
 /* rotujici label - kovovy stred s N&P (label LP desky) */
-.jogCenter{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:88px;height:88px;border-radius:50%;
+.jogCenter{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:88px;height:88px;border-radius:50%;cursor:pointer;z-index:5;
   background:
     radial-gradient(circle at 40% 32%, #3a3222 0%, #241d10 45%, #0c0a06 100%);
   border:2px solid rgba(240,201,106,.5);
@@ -164,7 +164,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.05) 0 1px, rgba(0,0,0,0) 1px 3px);
   will-change:transform;}
 /* tick marker - svetelna znacka na okraji desky co rotuje */
-.jogTick{position:absolute;top:6px;left:calc(50% - 2px);width:4px;height:22px;border-radius:2px;z-index:4;
+.jogTick{position:absolute;top:6px;left:calc(50% - 2px);width:4px;height:22px;border-radius:2px;z-index:4;pointer-events:none;
   background:linear-gradient(180deg,var(--rc,#c9962f),transparent);
   box-shadow:0 0 8px var(--rc,#c9962f),0 0 3px var(--rc,#c9962f);}
 
@@ -816,30 +816,37 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     pb.classList.toggle('on',d.playing); pb.textContent=d.playing?'❚❚ PAUSE':'▶ PLAY';
   }
   document.querySelectorAll('[data-play]').forEach(function(b){b.onclick=function(){var d=b.getAttribute('data-play')==='B'?B:A;if(!d.audio.src){openPlaylist(d);return;}setPlay(d,!d.playing);};});
-  // BUILD2SK7: jog wheel = tap (play/pauza, zachovano z minula) + tazeni (mix nudge).
-  // Behem hrani: tazeni dopredu = docasne zrychli (push tempa nahoru), dozadu = docasne
-  // zpomali (pull tempa dolu) - presne technika na rucni beatmatching s vinylem.
-  // V pauze: tazeni primo posouva pozici (cueing/scrub dopredu i dozadu).
-  // POZOR: HTML5 <audio> technicky neumi prehravat pozpatku (zadny prohlizec to
-  // nepodporuje), takze skutecny reverzni "scratch chirp" zvuk neni mozny - tohle
-  // je nejblizsi funkcni ekvivalent (a je to i presne to, jak se realne dela
-  // beatmatching rukou na talíři).
+  // BUILD2SK8: jog wheel rozdelen na 2 NEZAVISLE zony (presne podle zadani):
+  // STRED (.jogCenter, N&P VISION napis) = vyhrazene tlacitko play/pauza,
+  // VZDY cisty tap - zadna detekce tazeni, takze zadne chveni prstu poblíž
+  // stredu nemuze byt spatne vyhodnoceno jako tazeni (to byla puvodni chyba:
+  // maly polomer u stredu = i drobny pohyb v px vychazi jako velky uhel).
+  // OKRAJ (zbytek kotouce) = tazeni pro mix nudge; tap na okraji bez tazeni
+  // nedela nic - jeho ucel je vyhradne otacive tazeni.
   document.querySelectorAll('[data-jog]').forEach(function(j){
     var d0=j.getAttribute('data-jog')==='B'?B:A;
-    var dragging=false, moved=false, lastAngle=0;
+    var centerEl=j.querySelector('.jogCenter');
+    if(centerEl){
+      centerEl.addEventListener('pointerdown',function(ev){
+        ev.preventDefault();ev.stopPropagation();
+        var d=d0;
+        if(!d.audio.src){openPlaylist(d);return;}
+        setPlay(d,!d.playing);
+      });
+    }
+    var dragging=false,lastAngle=0;
     function angleAt(ev){
-      var r=j.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+      var r=j.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
       return Math.atan2(ev.clientY-cy,ev.clientX-cx)*180/Math.PI;
     }
     j.addEventListener('pointerdown',function(ev){
       ev.preventDefault();try{j.setPointerCapture(ev.pointerId);}catch(e){}
-      dragging=true;moved=false;lastAngle=angleAt(ev);
+      dragging=true;lastAngle=angleAt(ev);
     });
     j.addEventListener('pointermove',function(ev){
       if(!dragging)return;ev.preventDefault();
       var a=angleAt(ev),delta=a-lastAngle;
       if(delta>180)delta-=360; if(delta<-180)delta+=360;
-      if(Math.abs(delta)>1.5)moved=true;
       lastAngle=a;
       var d=d0; if(!d.audio.src)return;
       if(d.playing){
@@ -853,7 +860,6 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       if(!dragging)return; dragging=false;
       var d=d0;
       if(d.playing){try{d.audio.playbackRate=1+d.tempo/100;}catch(e){}}
-      if(!moved){ if(!d.audio.src){openPlaylist(d);return;} setPlay(d,!d.playing); }
     }
     j.addEventListener('pointerup',endDrag);
     j.addEventListener('pointercancel',endDrag);

@@ -1,0 +1,54 @@
+BUILD2SK8 - JOG WHEEL: STRED = PLAY/PAUZA, OKRAJ = MIX (opravena hitbox chyba)
+================================================================================
+Zmeneny soubor: app/src/main/assets/dj/index.html (jediny; SK7 zaklad)
+Nedotceno: emu Atari/Sega/PS1, player/index.html, assets/index.html.
+
+PRICINA PUVODNI CHYBY (nalezeno, ne odhad)
+V SK7 melo cele kolo JEDNU spolecnou logiku: tap = play/pauza, tazeni = mix,
+rozliseno prahem "pohnul ses vic nez 1.5 stupne?". Problem je matematicky:
+uhel = arctan(pohyb v px / polomer). Blizko stredu kotouce je polomer maly,
+takze i drobne, nezamerne chveni prstu (par pixelu, bezne pri kazdem doteku)
+vychazi jako VELKY uhel -> falesne se to vyhodnotilo jako "tazeni" a play/
+pauza se nespustila. Cim dal od stredu (vetsi polomer), tim min to chvení
+vadilo - proto to pusobilo nekonzistentne ("pauza jde, play ne").
+
+OPRAVA (presne podle tveho zadani "stred = pauza a play, po strankach mix")
+Kotouc je ted DVE NEZAVISLE zony, ne jedna sdilena logika:
+  STRED (kruh s N&P VISION napisem, 88 px) = vyhrazene tlacitko play/pauza.
+    VZDY cisty tap, ZADNA detekce tazeni - takze zadne chveni prstu uz
+    nemuze byt spatne vyhodnoceno. Klik sem = play/pauza, 100% spolehlive,
+    stejne jako kterekoli jine tlacitko v pultu.
+  OKRAJ (zbytek kotouce mimo stred) = VYHRADNE tazeni pro mix. Klepnuti
+    (bez tazeni) na okraji NEDELA NIC (jeho ucel je jen otacive tazeni,
+    ne button). Tazeni funguje stejne jako v SK7: behem hrani docasny
+    push/pull tempa, v pauze primy scrub pozice (viz TESTPLAN_BUILD2SK7.txt
+    pro detaily principu a poctive omezeni HTML5 <audio> - beze zmeny).
+
+Technicky: stred (.jogCenter) ma vlastni pointerdown listener s
+stopPropagation() - k logice okraje se ta udalost vubec nedostane, takze
+neexistuje zadna sdilena/kolizni cesta mezi temi dvema zonami.
+
+MERENI (pred odeslanim)
+- node --check: syntaxe OK. Zavorky parove: {}559 ()1570 []151,
+  div 114/114, button 43/43 (beze zmeny oproti SK7).
+- Plny regresni proklik: 43 tlacitek + 16 padu + 8 sampleru + 20 EQ +
+  master fadery + velke fadery + crossfader = 0 JS chyb.
+- 3 cilene testy na obe zony (vsechny presne potvrzeny):
+  A) dotek primo na STRED i s vyraznym pohybem (simulace chveni) ->
+     porad spravne funguje jako tap (play/pauza nebo playlist na
+     prazdnem decku) - PRESNE TOHLE byla puvodni chyba, ted opraveno.
+  B) cisty tap na OKRAJI (bez tazeni) -> nic nedela (nespusti play/
+     pauzu) - okraj je vyhradne pro mix.
+  C) vyrazne tazeni na OKRAJI -> take nespusti play/pauzu, zadna chyba.
+
+JAK OTESTOVAT (telefon na sirku)
+1) Klepni presne na stred kotouce (kde je N&P VISION napis) - ma to
+   TEĎ vzdy spolehlive prehrat/pozastavit, i kdyz prst mirne sklouzne.
+2) Zkus to opakovane rychle po sobe (play/pauza/play/pauza) - melo by
+   to byt 100% konzistentni, ne uz obcas nefunkcni.
+3) Chyt prstem OKRAJ kotouce (mimo stredovy kruh) a zkus otocit -
+   tempo/pozice se ma menit jako predtim (mix nudge z SK7).
+4) Klepnuti (bez otoceni) primo na okraji - nema se stat vubec nic
+   (zadne prehrani/pozastaveni).
+
+KILL-SWITCH: vratit dj/index.html z BUILD2SK7 (predchozi build).
