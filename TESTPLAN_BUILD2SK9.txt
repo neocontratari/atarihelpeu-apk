@@ -1,0 +1,73 @@
+BUILD2SK9 - PRASKANI PRI MIRROROVANI (AudioWorklet misto ScriptProcessorNode)
+================================================================================
+Zmeneny soubor: app/src/main/assets/dj/index.html (jediny; SK8 zaklad)
+Nedotceno: emu Atari/Sega/PS1, player/index.html, assets/index.html.
+
+PRICINA (nalezeno v kodu, presne odpovida popisu "sem tam")
+TV/mirror vetev pouzivala ScriptProcessorNode (ctx.createScriptProcessor) -
+tohle API bezi na HLAVNIM vlakne prohlizece, tom samem, ktere kresli
+waveformy, VU metry, otaceni desek, ocelove textury atd. Kdykoli se hlavni
+vlakno na par milisekund zasekne (vykresleni snimku, garbage collection,
+layout po zmene DOM), zvukovy callback se opozdi - a to se projevi jako
+prasknuti PRAVE v datech poslanych na TV (mistni zvuk na telefonu jede
+pres nativni Android audio pipeline, ktera timhle netrpi - proto to bylo
+znatelne jen "pri nasem mirroru", presne jak jsi popsal).
+ScriptProcessorNode je kvuli presne tomuhle oficialne oznaceny za
+zastaraly. Nahrada AudioWorkletNode existuje presne proto, aby to
+vyresila - bezi na samostatnem, vyhrazenem realtime zvukovem vlakne,
+ktere hlavni vlakno vubec neovlivni.
+
+OPRAVA (2 vrstvy)
+1) HLAVNI: TV tap prepsan na AudioWorkletNode. Vsechno vzorkove
+   zpracovani (float->int16 prevod, packing bytu) ted dela worklet
+   na samostatnem vlakne - hlavni vlakno dostane uz hotovy buffer
+   pres postMessage a jen ho base64 zakoduje a posle na nativni most
+   (male, rychle, netyka se to casovani audio grafu).
+   BEZPECNY FALLBACK: pokud AudioWorklet na danem WebView neni
+   dostupny (starsi engine, problem se secure-context na lokalnim
+   puvodu) nebo modul se nepodari nacist, automaticky se pouzije
+   puvodni ScriptProcessorNode cesta - cast nikdy nezustane ticha.
+2) VEDLEJSI: vizualni smycka pri detekovanem castingu ted bezi jeste
+   o neco pomaleji (drive 20/16.7 snimku/s pri castingu, ted 12.5/11) -
+   vic prostoru pro hlavni vlakno, kdyby na nem porad neco viselo.
+   Mimo casting beze zmeny (plna plynulost na telefonu).
+
+POCTIVE OMEZENI TESTU
+AudioWorklet vyzaduje "secure context" a jsdom (v tomto sandboxu) ho
+vubec neimplementuje, takze USPESNOU vetev (kdy worklet skutecne
+nabehne) jsem nemohl spustit naziva - overil jsem ji rucne (syntax
+check extrahovaneho worklet kodu ZVLAST, protoze se parsuje az za
+behu jako samostatny modul - to by muj hlavni node --check jinak
+neodhalil) a code review pripojeni grafu. FALLBACK vetev (kdyz
+AudioWorklet neni k dispozici) se v testu spustila automaticky,
+protoze jsdom AudioWorklet nema - a cela zbyla appka po ni beze
+zmeny prosla vsemi testy = potvrzeno ze fallback nic nerozbiji.
+Realne chovani USPESNE vetve na tvem WebView uz musi potvrdit test
+na miste - pokud by z nejakeho duvodu AudioWorklet selhal ticha,
+fallback to zachyti, ale rekni mi vysledek at vim jistě, ktera vetev
+se skutecne pouziva.
+
+MERENI (pred odeslanim)
+- node --check na hlavnim skriptu: syntax OK. Zavorky parove:
+  {}582 ()1633 []173, div 114/114, button 43/43 (beze zmeny).
+- node --check na EXTRAHOVANEM worklet kodu (samostatny modul,
+  jinak neodhalitelny hlavnim checkem): syntax OK.
+- Plny regresni proklik (fallback vetev, protoze test prostredi
+  nema AudioWorklet): 43 tlacitek + 16 padu + 8 sampleru + 20 EQ +
+  master fadery + jog zony + crossfader = 0 JS chyb - potvrzeno,
+  ze zmena TV tapu nic jineho neovlivnila.
+
+JAK OTESTOVAT
+1) Spust mirror/cast jako obvykle, pust skladbu, chvili mixuj
+   (tahej fadery, EQ, otacej deckem) presne jako kdyz se to drive
+   praskalo.
+2) Poslouchej, jestli prasakni porad prichazeji. Pokud ano, napis
+   mi prosim jestli casteji/mene casto nez drive, at vim jestli
+   AudioWorklet skutecne nabehl (mel by to prakticky vyresit uplne)
+   nebo zarizeni spadlo do fallbacku (mel by to aspon zmirnit diky
+   bodu 2 vyse, ale ne uplne vyresit).
+3) Pokud mas pristup k Android logcat/konzoli WebView, hledej chybu
+   pri "audioWorklet" nebo "AudioWorkletNode" - potvrdilo by to,
+   ktera vetev bezi.
+
+KILL-SWITCH: vratit dj/index.html z BUILD2SK8 (predchozi build).

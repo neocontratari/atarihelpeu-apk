@@ -697,9 +697,17 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   function setLimiter(on){limOn=on;if(limiter){limiter.threshold.value=on?-3:0;limiter.ratio.value=on?20:1;}}
 
   // TV WEB audio tap - stream to the projector (like a player)
-  var tvTap=null,tvZero=null,tvErr=0;
+  // BUILD2SK9: predtim ScriptProcessorNode (bezi na HLAVNIM vlakne - pri jakemkoli
+  // zaneprazdneni hlavniho vlakna - vykresleni snimku, GC pauza - dojde ke zpozdeni
+  // callbacku a tim k prasknuti ve zvuku poslanem na TV). AudioWorkletNode resi presne
+  // tohle - bezi na samostatnem realtime zvukovem vlakne, imunni vuci hlavnimu vlaknu.
+  // Vzorkove zpracovani (float->int16, packing bytu) dela worklet; hlavni vlakno uz jen
+  // prevezme hotovy buffer a posle na nativni most (male, rychle, netyka se to audio grafu).
+  // Bezpecny fallback na puvodni ScriptProcessorNode, pokud AudioWorklet na danem WebView
+  // neni dostupny (napr. starsi engine nebo problem se secure-context na file:// puvodu).
+  var tvTap=null,tvZero=null,tvErr=0,tvWorkletTried=false;
   function clampA(v){return v<-1?-1:(v>1?1:v);}
-  function setupTvTap(node){
+  function setupTvTapLegacy(node){
     if(tvTap||!ctx||!node)return;
     try{
       tvTap=ctx.createScriptProcessor(4096,2,2); tvZero=ctx.createGain(); tvZero.gain.value=0;
@@ -718,6 +726,43 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
       };
       node.connect(tvTap); tvTap.connect(tvZero); tvZero.connect(ctx.destination);
     }catch(e){}
+  }
+  function setupTvTap(node){
+    if(tvTap||!ctx||!node)return;
+    if(!ctx.audioWorklet||typeof AudioWorkletNode==='undefined'){setupTvTapLegacy(node);return;}
+    if(tvWorkletTried)return; tvWorkletTried=true;
+    try{
+      var procCode="class TvTapProcessor extends AudioWorkletProcessor{"
+        +"constructor(){super();this.n=4096;this.bl=new Float32Array(this.n);this.br=new Float32Array(this.n);this.pos=0;}"
+        +"flush(){var fr=this.pos;if(!fr)return;var by=new Uint8Array(fr*4);"
+        +"for(var i=0,j=0;i<fr;i++,j+=4){var lv=this.bl[i]<-1?-1:(this.bl[i]>1?1:this.bl[i]);var rv=this.br[i]<-1?-1:(this.br[i]>1?1:this.br[i]);"
+        +"var li=lv<0?Math.round(lv*32768):Math.round(lv*32767),ri=rv<0?Math.round(rv*32768):Math.round(rv*32767);"
+        +"by[j]=li&255;by[j+1]=(li>>8)&255;by[j+2]=ri&255;by[j+3]=(ri>>8)&255;}"
+        +"this.port.postMessage({buf:by.buffer,fr:fr},[by.buffer]);this.pos=0;}"
+        +"process(inputs){var inp=inputs[0];if(!inp||!inp[0]||!inp[0].length)return true;"
+        +"var l=inp[0],r=inp.length>1?inp[1]:l,len=l.length;"
+        +"for(var i=0;i<len;i++){this.bl[this.pos]=l[i];this.br[this.pos]=r[i];this.pos++;if(this.pos>=this.n)this.flush();}"
+        +"return true;}}"
+        +"registerProcessor('tv-tap-processor',TvTapProcessor);";
+      var blobUrl=URL.createObjectURL(new Blob([procCode],{type:'application/javascript'}));
+      ctx.audioWorklet.addModule(blobUrl).then(function(){
+        try{
+          var wn=new AudioWorkletNode(ctx,'tv-tap-processor',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
+          wn.port.onmessage=function(ev){
+            try{
+              if(!window.AHTVWEB||typeof window.AHTVWEB.pushPlayerPcm16!=='function')return;
+              var by=new Uint8Array(ev.data.buf),fr=ev.data.fr;
+              var s='',st=4096; for(var p=0;p<by.length;p+=st)s+=String.fromCharCode.apply(null,by.subarray(p,p+st));
+              window.AHTVWEB.pushPlayerPcm16(btoa(s),(ctx&&ctx.sampleRate)||44100,fr|0,2);
+            }catch(e){var n=Date.now();if(n-tvErr>5000){tvErr=n;}}
+          };
+          tvZero=ctx.createGain(); tvZero.gain.value=0;
+          node.connect(wn); wn.connect(tvZero); tvZero.connect(ctx.destination);
+          tvTap=wn;
+          try{URL.revokeObjectURL(blobUrl);}catch(e){}
+        }catch(e){setupTvTapLegacy(node);}
+      }).catch(function(){setupTvTapLegacy(node);});
+    }catch(e){setupTvTapLegacy(node);}
   }
 
   function buildDeck(d){
@@ -1114,7 +1159,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   function visLoop(now){
     // grafika bezi na rAF; kdyz nestiha, prohlizec ji priskrti -> zvuk nikdy netrpi
     var casting=false;try{casting=!!(window.AHTVWEB&&window.AHTVWEB.status&&(''+window.AHTVWEB.status()).indexOf('http')===0);}catch(e){}
-    var gap=casting?50:22;
+    var gap=casting?80:22;
     if(now-lastVis<gap){requestAnimationFrame(visLoop);return;}
     lastVis=now;
     var la=A.built?levelOf(A.analyser):0,lb=B.built?levelOf(B.analyser):0;
@@ -1272,7 +1317,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
     var last=0;
     function frame(now){
       var casting=false;try{casting=!!(window.AHTVWEB&&window.AHTVWEB.status&&(''+window.AHTVWEB.status()).indexOf('http')===0);}catch(e){}
-      var gap=casting?60:34;
+      var gap=casting?90:34;
       if(now-last<gap){requestAnimationFrame(frame);return;}last=now;
       var e=energy();cx.clearRect(0,0,W,H);
       var cxp=W*0.5,cyp=H*0.18,rad=(0.3+e*0.2)*Math.min(W,H);
