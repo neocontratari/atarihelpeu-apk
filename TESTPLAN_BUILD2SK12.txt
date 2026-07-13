@@ -1,0 +1,85 @@
+BUILD2SK12 - PS1 KONZERVATIVNI ZLEPSENI OSTROSTI (2 RUZNE OSY VYSVETLENY)
+============================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na BUILD2SK11 - stejny soubor, dalsi 2 mala mista)
+Nedotceno: Sega, Atari, vsechno ostatni - overeno testem (viz nize).
+
+NEJDRIV DULEZITE VYSVETLENI - DVE RUZNE VECI
+Z tveho popisu ("graficke zmeny jsou trhane") a screenshotu vyplyva,
+ze tu jsou DVE ODDELENE veci, ne jeden problem:
+  1) OSTROST jednotliveho snimku (staticka kvalita) - TOHLE jsem
+     resil v SK11 pro DJ pult a ted v SK12 pro PS1.
+  2) PLYNULOST POHYBU (kolik snimku za sekundu prijde a jak rovnomerne) -
+     to je JINA promenna v kodu (napTvWebFrameDelayMs = jak casto se
+     posila novy snimek). Ty jsi sam rekl, ze "trhanost" byla i pred
+     timhle buildem - takze to NENI regrese, kterou jsem zpusobil, je
+     to vlastnost, kterou jsem zatim vubec nezkousel menit.
+Necham to oddelene schvalne: kdybych zmenil OBOJI najednou a neco se
+zhorsi, nevedeli bychom, ktera zmena to zpusobila. Tenhle build se
+tyka JEN ostrosti u PS1, plynulost je netknuta.
+
+CO JSEM UDELAL PRO PS1 (a proc OPATRNE, ne jako u DJ)
+DJ pult je STATICKA UI (text, tahla, skoro se nic nehybe) - tam davalo
+smysl jit rovnou na portretovou kvalitu (1120px/72). PS1 ale ma
+NEUSTALE SE MENICI 3D obsah (jak jsi videl na tech dvou screenech se
+Star Wars intrem a tim korytorem - to je presne ten typ obsahu, kde
+VELKY skok v kvalite/rozliseni muze paradoxne PLYNULOST jeste zhorsit
+(vetsi/kvalitnejsi snimky = dele se komprimuji a posilaji, takze pri
+stejne siti muze prijit MENE snimku za sekundu = jeste trhanejsi pohyb).
+Proto PS1 dostal KONZERVATIVNI, ne plny boost:
+  puvodne:  760px / JPEG kvalita 54
+  PS1 ted:  860px / JPEG kvalita 62   (DJ pro srovnani: 1120px/72)
+FRAME DELAY (rychlost snimku) jsem u PS1 SCHVALNE NEZMENIL - zustava
+presne stejny jako driv (75ms), aby tenhle build testoval JEN jednu
+promennou (ostrost) a dal se jasny vysledek: zlepsi se ostrost bez
+zhorseni plynulosti, nebo ne?
+
+CO JSEM NEUDELAL (schvalne)
+Sega a Atari zustavaji uplne beze zmeny - nejmenoval jsi je, tak jsem
+tam nesahal. Pokud chces stejne zachazeni i pro ne, staci rict a je
+to rychla, uz overena zmena (presne stejny vzorec jako PS1).
+
+CO BY MOHLO RESIT TU "TRHANOST" (JINY UKOL, JESTE NEUDELANO)
+Pokud chces resit i plynulost pohybu, to by byla samostatna zmena
+napTvWebFrameDelayMs (a mozna dalsi veci na siti/serveru). Je to
+svuj vlastni kompromis (rychlejsi snimky = plynulejsi pohyb, ale
+bud vetsi zatez site, nebo jeste nizsi kvalita/rozliseni na kompenzaci) -
+napis, jestli o to mam jit, az uvidime jak dopadne tenhle build.
+
+K "ROZDILU KVALITY NA VYSKU/SIRKU" CO JSI ZMINIL
+Tohle uz vime a je to zamerne v puvodnim kodu (z BUILD2SK10 analyzy) -
+portret vzdy dostaval vyssi kvalitu/rozliseni nez landscape, u obou
+cest zachytavani. DJ a ted PS1 v landscape uz maji kvalitu blizko
+portretove urovni; Sega/Atari v landscape zustavaji na puvodni nizsi
+urovni. Neni to novy bug, je to ta puvodni nerovnost, kterou postupne
+resime obrazovku po obrazovce.
+
+MERENI (pred odeslanim)
+- Diff proti tvemu puvodnimu souboru (pred SK11 i SK12 dohromady):
+  zmeneny presne 2 mista, nic jineho v 5314+ radkovem souboru.
+- Realny javac (OpenJDK 21) + spusteni s 6 scenari (rozsireny test
+  z minula, TvTapPatchCheck.java prilozen):
+    SEGA landscape  -> 54/75/LANDSCAPE_FAST      (beze zmeny) OK
+    PS1 landscape   -> 62/75/LANDSCAPE_PS1_HQ    (delay NEZMENEN) OK
+    DJ landscape    -> 72/65/LANDSCAPE_DJ_HQ     (beze zmeny od SK11) OK
+    ATARI landscape -> 54                        (beze zmeny) OK
+    SEGA sys cesta  -> 56                        (beze zmeny) OK
+    PS1 sys cesta   -> 62                        (boost) OK
+  Vsech 6 presne sedelo s ocekavanim.
+- Stejne poctive omezeni jako v SK11: nemam Android SDK, takze cely
+  soubor jako Android projekt nejde v tomto prostredi zkompilovat -
+  jen tenhle izolovany javac test presnych pridanych radku.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java timhle, commit + Action jako obvykle.
+2) Spust PS1 emulator, zapni TV mirror, srovnej se screenshoty co jsi
+   poslal (Star Wars intro, ten koridor s creditama) - mel by byt
+   snimek ostrejsi.
+3) DULEZITA KONTROLA: sleduj, jestli PLYNULOST pohybu (ne ostrost)
+   zustala stejna jako driv, nebo se zhorsila. Tohle je presne ten
+   trade-off, o kterem mluvim vyse - potrebuju vedet vysledek, abych
+   vedel, jestli jit s Sega/Atari stejnou cestou, nebo jeste opatrneji.
+4) Zkontroluj Segu/Atari - mely by byt UPLNE STEJNE jako pred timhle
+   buildem (nic se tam nezmenilo).
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK11 (predchozi build).

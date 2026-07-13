@@ -274,10 +274,17 @@ public class MainActivity extends Activity {
                     // "rychleho ale mekkeho" profilu, ktery zustava beze zmeny pro vse ostatni.
                     boolean djScreen = false;
                     try { String cu = web == null ? null : web.getUrl(); djScreen = cu != null && cu.contains("/dj/"); } catch (Throwable ignored) {}
-                    int maxSide = landscape ? (djScreen ? 1120 : 760) : 1120;
-                    napTvWebJpegQuality = landscape ? (djScreen ? 72 : 54) : 72;
+                    // BUILD2SK12: PS1 dostava KONZERVATIVNI boost (ne az na uroven DJ) -
+                    // PS1 ma rychle se menici 3D obsah, takze prilis velky skok v kvalite/
+                    // rozliseni by mohl zhorsit uz existujici "trhanost" (frame rate), coz
+                    // je JINA osa nez ostrost a schvalne se jí tady nedotykam (frameDelay
+                    // zustava stejny jako driv i pro PS1 - testujeme jen jednu promennou).
+                    boolean ps1Screen = false;
+                    try { String cu2 = web == null ? null : web.getUrl(); ps1Screen = cu2 != null && cu2.contains("/emu_ps1/"); } catch (Throwable ignored) {}
+                    int maxSide = landscape ? (djScreen ? 1120 : (ps1Screen ? 860 : 760)) : 1120;
+                    napTvWebJpegQuality = landscape ? (djScreen ? 72 : (ps1Screen ? 62 : 54)) : 72;
                     napTvWebFrameDelayMs = landscape ? (djScreen ? 65 : 75) : 55;
-                    napTvWebVideoProfile = landscape ? (djScreen ? "LANDSCAPE_DJ_HQ" : "LANDSCAPE_FAST") : "PORTRAIT_HD";
+                    napTvWebVideoProfile = landscape ? (djScreen ? "LANDSCAPE_DJ_HQ" : (ps1Screen ? "LANDSCAPE_PS1_HQ" : "LANDSCAPE_FAST")) : "PORTRAIT_HD";
                     float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
                     if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
@@ -716,9 +723,9 @@ public class MainActivity extends Activity {
             padded.copyPixelsFromBuffer(buf);
             Bitmap frame = (rowPixels == w) ? padded : Bitmap.createBitmap(padded, 0, 0, w, h);
             if (frame != padded) padded.recycle();
-            boolean djScreenSys = false;
-            try { String cu = web == null ? null : web.getUrl(); djScreenSys = cu != null && cu.contains("/dj/"); } catch (Throwable ignored) {}
-            napTvWebJpegQuality = w > h ? (djScreenSys ? 68 : 56) : 68;
+            boolean djScreenSys = false, ps1ScreenSys = false;
+            try { String cu = web == null ? null : web.getUrl(); djScreenSys = cu != null && cu.contains("/dj/"); ps1ScreenSys = cu != null && cu.contains("/emu_ps1/"); } catch (Throwable ignored) {}
+            napTvWebJpegQuality = w > h ? (djScreenSys ? 68 : (ps1ScreenSys ? 62 : 56)) : 68;
             napTvWebFrameDelayMs = w > h ? 60 : 55;
             napTvWebVideoProfile = "SCREEN_FULL";
             napTvWebPublishBitmap(frame, "SCREEN");
