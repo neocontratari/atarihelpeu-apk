@@ -1,0 +1,75 @@
+BUILD2SK2 - N&P VISION: GRAFIKA DLE NAVRHU, VSE ZIVE, LP DESKY ZUSTAVAJI
+========================================================================
+Zmenene soubory:
+  app/src/main/assets/dj/index.html   (JEDINY zmeneny soubor)
+(prekopirovat pres stavajici, prebuildit APK)
+
+NEDOTCENO (zakaz respektovan): emu atari, emu sega, emu PS1, MP3
+prehravac (player/index.html), hlavni menu (assets/index.html).
+
+AUDIT Z TVEHO APK (app-debug.apk)
+- V APK je cisty BUILD2SJ6 dj pult (bajt po bajtu shodny s tvym zipem).
+- Moje minula SK1 v APK NENI -> MP3 prehravac jsem rozbit nemohl,
+  player/index.html je puvodni vc. audio tapu (pushPlayerPcm16 na miste).
+- "AUDIO OFF" na tvem screenshotu SK1: v tu chvili nehrala zadna
+  skladba (prazdne waveformy) - tap posila zvuk az kdyz neco hraje.
+- Zaver: SK1 letela do kose opravnene kvuli grafice; appku nerozbila.
+
+CO JE SK2
+Zaklad = overeny BUILD2SJ6 (vse citelne, vsechna tlacitka a tahla se
+hybou, 3D LP desky s tocicim se N&P zustavaji). Na nej grafika a prvky
+z tveho navrhu - zadny staticky obrazek:
+1) HORNI LISTA dle navrhu: BROWSE (playlist A), LIBRARY (playlist B),
+   EFFECTS (schova/ukaze EQ radky - setri misto), znacka uprostred,
+   MENU (zpet), SETTINGS (ukaze asistenta), HELP (napoveda v pultu),
+   vypinac (zpet pres potvrzeni).
+2) HLAVICKA DECKU dle navrhu: A/B stitek, USB 1/2 chip (playlist),
+   TAP (vytukas BPM, min. 2 klepnuti), ZIVE BPM (pocita se z tempa,
+   vychozi 123.4/124.8), KEY badge = KEY LOCK - tempo bez zmeny
+   toniny (preservesPitch; otevrena otazka z predani = vyresena).
+3) TRANSPORT dle navrhu, 6 tlacitek: CUE / PLAY-PAUZA / STUTTER /
+   << / >> (+-5 s) / SYNC. Deck B zrcadlove.
+4) HOT CUE PADY ted funkcni: 1. klep ulozi bod (rozsviti se), dalsi
+   klep skoci na bod, podrzeni 0.6 s smaze. Novy track = pady cistе.
+5) DOLNI LISTA dle navrhu: RECORD (nahrava master, 2. klep ulozi
+   .webm soubor, cervene blika), sampler 1-8, MASTER LIMITER LED +
+   ON tlacitko (skutecny brickwall: DynamicsCompressor -3 dB/20:1
+   v master retezci; ON zelene = aktivni).
+6) LP DESKY, tempo/gain fadery, siroky 10pasm. EQ, crossfader,
+   asistent, playlisty - vse z SJ6 BEZE ZMENY.
+
+ZVUK (kral)
+- Audio graf: deck -> 10x EQ -> gain -> analyser -> xfade -> master
+  -> limiter -> analyser -> vystup. TV tap sedi na masteru PRED
+  limiterem = stream na projektor identicky s SJ6.
+- Grafika dal na rAF, pri castingu se sama zjemni (22 -> 50 ms).
+
+MERENI (pred odeslanim)
+- node --check: syntaxe OK. Zavorky parove: {}484 ()1308 []113,
+  div 101/101, button 43/43.
+- jsdom + WebView stub: nacteni bez chyb; PROKLIK vsech 43 tlacitek,
+  16 padu, 8 sampler padu, 20 EQ + 4 velkych faderu + crossfaderu
+  = 0 JS chyb. BPM se prepocitava pri pohybu tempa (overeno: 123.4
+  -> 113.5 pri tempu -8 %).
+- Playwright/Chromium v tomto prostredi nejde (CDN prohlizecu mimo
+  povolene domeny) - jsdom pokryva DOM+logiku, audio graf je shodny
+  s SJ6, ktery mel na zarizeni 50 bloku bez diry.
+
+JAK OTESTOVAT (telefon na sirku)
+1) Menu -> Rene Frank -> pult. Vse citelne, LP desky na miste.
+2) USB 1 (nebo PLAYLIST) -> +PRIDAT -> mp3 -> PLAY. Deska se toci,
+   waveform hraje, BPM sviti.
+3) Tahni TEMPO -> BPM cislo se meni. KEY badge -> rozsviti se,
+   tempo ted nemeni toninu (slysitelne pri +-8 %).
+4) TAP 4x do rytmu -> BPM se prepise podle vytukani.
+5) Pad -> rozsviti se (ulozeny bod) -> pad znovu -> skok. Podrzet
+   = zhasne.
+6) << / >> preskakuji po 5 s. CUE = od zacatku.
+7) RECORD -> chvili mixuj -> RECORD znovu -> stahne se
+   NP_VISION_mix_*.webm.
+8) LIMITER ON vypni pri hlasitem mixu -> spicky prestanou byt
+   orezavane (a naopak).
+9) EFFECTS nahore -> EQ radky zmizi/objevi se (vic mista na pady).
+10) Casting na projektor: obraz + zvuk jako v SJ6 (tap beze zmeny).
+
+KILL-SWITCH: vratit dj/index.html z BUILD2SJ6, prebuildit.
