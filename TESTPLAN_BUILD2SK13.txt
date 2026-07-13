@@ -1,0 +1,49 @@
+BUILD2SK13 - SEGA + ATARI DOSTAVAJI STEJNY BOOST JAKO PS1
+================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11+SK12 - stejny soubor, stejna 2 mista rozsirena)
+Nedotceno: DJ pult zustava na svem vyssim boostu z SK11 (1120px/72),
+vse ostatni beze zmeny.
+
+CO SE ZMENILO
+Potvrdil jsi, ze u PS1 (SK12) zustala plynulost stejna jako pred tim -
+takze konzervativni boost (860px / JPEG kvalita 62) je bezpecny. Presne
+STEJNE (uz otestovane) hodnoty jsem ted pouzil i pro:
+  SEGA (/emu_sega/)
+  ATARI (/emu/ - potvrzeno v kodu znackami EMU130/ATARI_NET v logu)
+Zadne nove cislo, zadny novy odhad - jen rozsireni jiz overeneho
+nastaveni na dalsi dve obrazovky. DJ pult zustava na svem vyssim
+levelu (1120px/72) beze zmeny.
+
+MERENI (pred odeslanim)
+- Diff proti tvemu originalu: porad jen ta 2 mista (radky ~271-287
+  a ~726-728), nic jineho v souboru.
+- Realny javac + spusteni, 7 scenaru:
+    PS1 landscape    -> 62/75/LANDSCAPE_EMU_HQ   OK
+    SEGA landscape   -> 62/75/LANDSCAPE_EMU_HQ   OK (nove boostnuto)
+    ATARI landscape  -> 62/75/LANDSCAPE_EMU_HQ   OK (nove boostnuto)
+    DJ landscape     -> 72/65/LANDSCAPE_DJ_HQ    OK (beze zmeny)
+    PLAYER landscape -> 54 (nema se chytit)      OK (spravne se nechytilo)
+    SEGA sys cesta   -> 62                       OK
+    ATARI sys cesta  -> 62                       OK
+  "PLAYER" scenar overuje, ze substring test "/emu/" se neomylem
+  nechytne na jinou slozku (napr. player/) - kontrola falesne shody.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action jako obvykle.
+2) Spust Segu, zapni TV mirror - ma byt ostrejsi nez pred timhle
+   buildem, plynulost by mela zustat podobna jako u PS1 (protoze
+   presne stejne cislo).
+3) Stejne pro Atari.
+4) DJ pult - ma zustat uplne stejny jako po SK11 (nic se tam nemenilo).
+
+K TVEMU NAPADU S NASTAVITELNOU KVALITOU (S8 vs. novejsi telefony)
+Dobry napad a dava smysl - S8 ma podstatne slabsi CPU nez soucasne
+telefony, a JPEG komprese/zachytavani obrazovky je narocna na CPU,
+takze na silnejsim telefonu by se dalo jit vyrazne vys bez rizika
+zpomaleni. Tohle by ale byla vetsi zmena (potrebuje UI pro vyber,
+ulozeni volby, propojeni s touhle logikou) - navrhuju to jako
+SAMOSTATNY dalsi krok, az se tenhle build osvedci. Napis, jestli na
+to mam rovnou jit, nebo nejdriv chces vyzkouset tenhle build v praxi.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK12 (predchozi build).
