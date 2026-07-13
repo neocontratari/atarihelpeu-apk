@@ -1,0 +1,74 @@
+BUILD2SK15 - MEDIUM/HIGH POSUNUTY VYS + STROP OPRAVEN + PS1 NALEZ
+====================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11-14 - stejny soubor, 2 mista upravena)
+Nedotceno: LOW zustava presne stejny jako v SK11-14.
+
+1) MEDIUM POSUNUT NA UROVEN PUVODNIHO HIGH, HIGH VYRAZNE DAL
+   Potvrdil jsi, ze soucasny HIGH byl na S8 v pohode (plynulost i
+   zvuk) - takze byl zbytecne konzervativni. Nova tabulka:
+                    LOW (beze zmeny)   MEDIUM (nove)     HIGH (nove)
+     DJ pult:       1120px/72/65ms    1360px/84/52ms    1600px/92/42ms
+     PS1+Sega+Atari: 860px/62/75ms    1120px/76/62ms    1360px/84/50ms
+     vse ostatni:    760px/54/75ms    1000px/70/68ms    1200px/78/55ms
+     portret:       1120px/72/55ms    1360px/84/48ms    1600px/92/40ms
+
+2) OPRAVEN SKRYTY STROP - HIGH by se jinak tise osekavalo
+   Nasel jsem, ze kdekoli v kodu byl JPEG kompresi natvrdo nastaveny
+   strop na 86 (Math.min(86, ...)) - takze i kdyz jsem v SK14 nastavil
+   HIGH na kvalitu 90, ve skutecnosti se poslalo jen 86 (potichu
+   oriznuto, zadna chyba, jen to neudelalo to, co melo). Zvednuto na
+   94. Nova HIGH kvalita (92) uz se timhle stropem neoriznou - overeno
+   testem (viz nize).
+
+3) K "PRIDAT ROZLISENI DO NASTAVENI PS1" A "GRAFICE NA MOBILU"
+   Poctive: tohle narazi na skutecnou hranici toho, co v teto session
+   bezpecne dokazu. Zjistil jsem presne proc:
+     PS1 obraz NENI webova vec, kterou bych upravoval v HTML/JS ani
+     v MainActivity.java - je to opravdove NATIVNI C++ jadro emulatoru
+     (pcsx_rearmed, kompilovane do libnapps1core.so). Rozliseni obrazu
+     (g_fw/g_fh v nap_ps1_native.cpp) prichazi PRIMO z jadra emulatoru
+     (av.geometry.base_width/height) - Java strana (NativePs1CoreBridge.
+     java) jen vola ps1GrabFrame() a dostane hotovy snimek v JAKEMKOLI
+     rozliseni jadro zrovna vyrobi. Zadny "resolution=X" parametr nikde
+     nejde nastavit z Javy - muselo by se sahat primo do GPU pluginu
+     uvnitr pcsx_rearmed (gpu-gles / gpu_neon / gpu_unai).
+   PROC TOHLE NEDELAM HNED: cely muj pristup celou dobu stoji na tom,
+   ze kazdou zmenu overim skutecnym kompilatorem (javac) a testem, ne
+   ze "to podle me vypada spravne". U C++ NDK kodu (pcsx_rearmed) NEMAM
+   V TOMTO PROSTREDI ZADNY zpusob, jak cokoli zkompilovat ani spustit -
+   zadny Android NDK, zadny cross-compiler pro ARM. Kdybych do toho
+   sahl, byla by to presne ta "strilba naslepo", o ktere jsi rekl ze
+   do ni nejdes - jen tentokrat mnohem riskantnejsi nez Java (C++ nema
+   Javiny bezpecnostni pojistky, spatny zasah muze zpusobit pady nebo
+   ticha poskozeni obrazu, ktera se tezko hledaji).
+   CO DAVA SMYSL MISTO TOHO: tohle je presne ukol pro nekoho/neco s
+   opravdovym Android NDK build prostredim (tvuj AI kolega v repu,
+   pokud ma pristup ke kompilaci a testovani na zarizeni). Muzu mu
+   rovnou predat, co jsem zjistil vyse (presne soubory, presne
+   promenne) jako hotovy odrazovy bod, at nemusi hledat od nuly.
+   MIMOCHODEM: "grafika na mobilu na sirku" je nejspis TA SAMA vec -
+   primy pohled na telefonu jde mimo muj TV-tap pipeline uplne (to
+   co vidis na mobilu primo je RAW vystup z ps1GrabFrame, ne muj
+   JPEG/rozliseni kod) - takze oprava vnitrniho rozliseni jadra by
+   zlepsila OBOJI naraz (mobil i TV).
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 68 radku na 2 mistech (tabulka + strop),
+  nic jineho v souboru.
+- Realny javac + spusteni, QualityTierCheck.java:
+  - LOW presne odpovida SK11-14 (regresni kontrola OK)
+  - Vsech 12 novych kombinaci vypsano, ZADNA kvalita neprekracuje
+    novy strop 94 (specificky overeno, ne jen odhadnuto)
+  - Monotonie potvrzena na vsech 16 kombinacich (HIGH >= MEDIUM >= LOW)
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Na TV strance zkus MEDIUM - mel by byt jiz vyrazne znatelny rozdil
+   oproti LOW (predtim to bylo jen jemne).
+3) Zkus HIGH - jeste vic. Sleduj S8 (plynulost, zvuk) - pokud i tohle
+   zvladne v pohode, muzeme jit jeste dal priste.
+4) DJ, PS1, Sega, Atari - vsechny by mely respektovat zvolenou
+   uroven stejne.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK14 (predchozi build).

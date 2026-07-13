@@ -237,20 +237,18 @@ public class MainActivity extends Activity {
     private volatile float napTvWebVolume = 1f;
     private volatile int napTvWebJpegQuality = 62;
     private volatile int napTvWebFrameDelayMs = 55;
-    // BUILD2SK14: 3 volitelne urovne kvality TV mirroru. LOW = presne puvodni
-    // chovani z SK11-SK13 (bezpecne i pro starsi telefony jako S8). MEDIUM/HIGH
-    // jsou prvni odhad pro silnejsi telefony - jeste nikym nezmereno na
-    // realnem zarizeni, doporucuju vyzkouset a doladit podle vysledku.
-    // Volba se nastavuje na TV-cast strance a zije jen po dobu behu appky
-    // (stejny vzor jako existujici zvukovy EQ panel - taky neprezije restart).
+    // BUILD2SK15: potvrzeno na S8 ze soucasny HIGH byl v pohode (plynulost i zvuk) -
+    // takze byl zbytecne konzervativni. MEDIUM posunut na uroven puvodniho HIGH,
+    // HIGH posunut vyrazne dal. LOW zustava PRESNE stejny jako v SK11-14 (nikomu
+    // se nic nemeni, dokud sam neprepne).
     private volatile int napTvWebQualityTier = 0; // 0=LOW 1=MEDIUM 2=HIGH
     private int[] napTvWebQualityFor(boolean djScreen, boolean hqLiteScreen, boolean landscape) {
         int t = napTvWebQualityTier; if (t < 0) t = 0; if (t > 2) t = 2;
         int[][] table;
-        if (!landscape)         table = new int[][]{{1120,72,55},{1280,82,50},{1440,90,45}};
-        else if (djScreen)      table = new int[][]{{1120,72,65},{1280,82,55},{1440,90,45}};
-        else if (hqLiteScreen)  table = new int[][]{{860,62,75}, {1000,72,65},{1180,80,55}};
-        else                    table = new int[][]{{760,54,75}, {900,66,70}, {1080,74,60}};
+        if (!landscape)         table = new int[][]{{1120,72,55},{1360,84,48},{1600,92,40}};
+        else if (djScreen)      table = new int[][]{{1120,72,65},{1360,84,52},{1600,92,42}};
+        else if (hqLiteScreen)  table = new int[][]{{860,62,75}, {1120,76,62},{1360,84,50}};
+        else                    table = new int[][]{{760,54,75}, {1000,70,68},{1200,78,55}};
         return table[t];
     }
     private volatile String napTvWebVideoProfile = "AUTO";
@@ -397,7 +395,7 @@ public class MainActivity extends Activity {
     private void napTvWebPublishBitmap(Bitmap bm, String mode) {
         try {
             ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32768, bm.getWidth() * bm.getHeight() / 8));
-            bm.compress(Bitmap.CompressFormat.JPEG, Math.max(35, Math.min(86, napTvWebJpegQuality)), bos);
+            bm.compress(Bitmap.CompressFormat.JPEG, Math.max(35, Math.min(94, napTvWebJpegQuality)), bos);
             napTvWebJpeg = bos.toByteArray();
             napTvWebSeq++;
             napTvWebLastFrameMs = System.currentTimeMillis();
