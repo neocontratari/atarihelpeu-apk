@@ -1,0 +1,86 @@
+BUILD2SK20 - CILENE SNIZENI ZVUKOVEHO ZPOZDENI (opatrny krok, ne skok)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11-19 - stejny soubor, 2 cisla zmenena)
+
+DIKY ZA PRESNOU ODPOVED
+"Fixni, ne rostouci, bez praskani" presne potvrzuje, ze jde o
+jednorazove startovni zpozdeni (prefill buffer pred prvnim
+prehranim), ne o rozdilnou rychlost hodin mezi zvukem a obrazem.
+To umoznuje CILENOU, relativne bezpecnou opravu - kdyby to bylo
+rostouci, potreboval by to skutecnou synchronizaci s casovymi
+znackami, coz je vetsi a riskantnejsi zmena.
+
+CO SE ZMENILO
+Prefill buffer pro S8 pred startem PS1 zvuku:
+  puvodne: 6144 snimku (~139ms typickeho zpozdeni pred prvnim zvukem)
+  ted:     4096 snimku (~93ms) - o ~46ms min
+Krajni pojistka (deadline, jen pro nejhorsi pripad) take mirne
+snizena z 900ms na 650ms.
+NEDOTCENO SCHVALNE: velikost bufferu pro BEZICI prehravani
+(wantedFrames/bufBytes o par radku vedle) - to resi odolnost proti
+vypadkum BEHEM hrani, je to jina vec nez startovni zpozdeni, a
+nechtel jsem to rozhodit.
+
+POCTIVE - PROC JEN OPATRNY KROK, NE VETSI
+Tenhle "s8NoStarve" mechanismus byl evidentne pridan cilene proti
+konkretnimu problemu (praskani zvuku na S8 - odtud nazev). Snizeni
+prefillu je REALNY KOMPROMIS: kratsi cekani = rychlejsi start, ale
+o neco vetsi riziko, ze prvni zlomek zvuku bude mit drobny zaskyt/
+prasknuti, pokud jadro nestihne v tu chvili dodavat data dost rychle.
+Sel jsem jen o ~1/3 dolu (ne na nulu ci blizko), abych tenhle
+polstar hodne nezmensil. Pokud po tomhle porad slysis znatelne
+zpozdeni, muzeme jit dal - ale chci nejdriv vedet, jestli se
+NEOBJEVILO praskani, ktere tam predtim nebylo (to by byl signal ze
+uz jsme na hrane a dal uz nejit).
+
+K DALSIM DVEMA TEMATUM Z TVE ZPRAVY (zatim beze zmeny kodu)
+
+1) PROBLIKAVANI PRI REFRESH / PRECHODU NA DJ PULT
+   Diky za upresneni ze je to jen na TV/PC, nikdy na mobilu - to
+   potvrzuje, ze je to v zachytavacim potrubi (co jsem upravoval),
+   ne v samotnych strankach. SK19 (hystereze proti kmitani) by MELA
+   pomoct i tady, protoze jde o STEJNY kod - kazdy cerstvy restart
+   mirroru (at uz z duvodu opusteni PS1, refresh, nebo prechodu na
+   DJ pult) zacina s "zadne snimky jeste nedorazily", coz spusti
+   fallback, a hystereze pak zabrani rychlemu kmitani nez se system
+   mirror rozjede. ALE nejsem si 100% jisty, jestli jsi SK19 zkousel
+   presne na TYHLE nove popsane scenare (refresh, PS1->DJ) - pokud
+   ano a porad to blika, potrebuju to vedet, je to pak asi jiny kus
+   kodu nez ten, co jsem opravil, a budu muset hledat dal. Napis mi
+   to prosim konkretne.
+
+2) "RADIKALNEJSI KROK" U OBRAZU
+   Rozumim tomu jako navrhu vratit se k napadu s poradnym video
+   kodekem (H.264) misto MJPEG (sled JPEG obrazku) - to jsem zminil
+   minule jako teoretickou moznost pro skutecne 1:1 kvalitu.
+   Na rovinu: tohle NENI dalsi cislo v tabulce, je to NOVA
+   ARCHITEKTURA prenosu obrazu - potrebovalo by MediaCodec H.264
+   enkoder na telefonu A odpovidajici prehravani na TV strane
+   (soucasny jednoduchy <img> tag cyklici JPEG snimky by na to
+   nestacil - potreboval by HLS/DASH segmentovane doruceni nebo
+   WebRTC). Je to radove vetsi projekt nez cokoli dosud - dny prace,
+   ne hodiny, a idealne s pristupem k realnemu zarizeni prubezne
+   behem vyvoje, ne jen na konci. Pokud o to stojis, klidne to
+   otevreme jako SAMOSTATNY dalsi krok/projekt - ale chci to
+   pojmenovat jasne jako novou vetev prace, ne jako "jeste jednu
+   opravu" v tomhle proudu zmen.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 180 radku (SK11-20 dohromady).
+- Zmena je 2 cisla (prefillTarget, prefillDeadline) - aritmeticky
+  overeno: 6144/44100=139ms, 4096/44100=93ms, presne jak popsano.
+  Zavorky/hranate zavorky v celem souboru porad vyvazene.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Zahraj PS1 intro s mluvenym slovem znovu - poslouchej DVE veci:
+   a) je zpozdeni znatelne mensi nez predtim?
+   b) NEOBJEVILO SE nove praskani/zaskoky na zacatku zvuku, ktere
+      tam predtim nebylo? (tohle je dulezitejsi nez a) - pokud ano,
+      recknu prefill zpatky nahoru, uz jsme prekrocili bezpecnou hranici)
+3) K flickeru: zkus SPECIFICKY scenare co jsi popsal (refresh stranky,
+   prechod PS1->DJ pult) a napis mi presne jestli SK19 hystereze
+   tohle uz resi, nebo porad blika.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK19 (predchozi build).

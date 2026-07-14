@@ -4826,8 +4826,15 @@ public class MainActivity extends Activity {
                 ps1CurrentAudioTrack = at;
                 short[] buf = new short[chunkFrames * 2];
                 int prefillFrames = 0;
-                int prefillTarget = s8NoStarve ? 6144 : 3072;
-                long prefillDeadline = System.currentTimeMillis() + (s8NoStarve ? 900 : 320);
+                // BUILD2SK20: puvodne 6144 snimku (~139ms typickeho zpozdeni pred
+                // prvnim zvukem) - nahlaseno jako FIXNI (ne rostouci) zpozdeni zvuku
+                // za obrazem na S8, bez praskani pri soucasnem nastaveni. Snizeno na
+                // 4096 (~93ms) - stale bezpecnostni polstar proti praskani, jen mensi.
+                // NEDOTCENO: wantedFrames/bufBytes o par radku vyse (velikost bufferu
+                // pro BEZICI prehravani, resi odolnost proti vypadkum BEHEM hrani, ne
+                // startovni zpozdeni - to je jina vec, nez ktera se resi tady).
+                int prefillTarget = s8NoStarve ? 4096 : 3072;
+                long prefillDeadline = System.currentTimeMillis() + (s8NoStarve ? 650 : 320);
                 while (gen == ps1AudioGen && prefillFrames < prefillTarget && System.currentTimeMillis() < prefillDeadline) {
                     int got = NativePs1CoreBridge.pullAudioSafe(buf, chunkFrames);
                     if (got > 0) {
