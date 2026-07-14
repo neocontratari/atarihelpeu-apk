@@ -1,0 +1,94 @@
+BUILD2SK16 - PRAVA PRICINA "ZADNY ROZDIL" + STOPA K PRASKAJICIMU LOGU
+==========================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11-15 - stejny soubor, 2 dalsi mista)
+
+1) PROC NEBYL ROZDIL MEZI LOW/MEDIUM/HIGH (nalezeno, ne odhad)
+   PS1 (a pravdepodobne Sega) bezi pres SYSTEMOVY MEDIAPROJECTION
+   mirror (celoobrazovkovy zaznam - pouziva se pro verne zachyceni
+   GPU vykreslovani, ktere obycejny WebView draw() spolehlive
+   nezachyti). Tenhle system mirror ma svou VLASTNI cestu k nastaveni
+   rozliseni (napTvWebRequestSystemMirror), UPLNE ODDELENOU od te,
+   kterou jsem upravoval v SK11-15. A tahle cesta mela porad natvrdo
+   napsano:
+     int maxSide = landscape ? 960 : 1120;
+   COMPLETNE bez ohledu na zvolenou uroven kvality! Takze vsechna
+   moje prace v SK11-15 na rozliseni... se na PS1/Sega/system-mirror
+   pripadech VUBEC neprojevila - jen JPEG KVALITA (tu jsem tam taky
+   upravil) se skutecne menila, a ta sama o sobe je vizualne mnohem
+   subtilnejsi zmena nez rozliseni. Presne proto "znatelne rozdily
+   jsou slabe".
+   OPRAVA: mirror-start ted pouziva stejnou tabulku urovni jako
+   zbytek (napTvWebQualityFor), s DJ-urovni jako zakladem (nejvyssi
+   rozliseni v ramci zvolene urovne - viz DUVOD nize).
+   DULEZITE OMEZENI (poctive): rozliseni system mirroru se NASTAVI
+   JEDNOU pri STARTU mirrorovani a po dobu cele session uz se NEMENI
+   (nejde technicky za behu prepnout, aniz by se cely mirror zastavil
+   a znovu nastartoval - VirtualDisplay/ImageReader maji pevnou
+   velikost). Takze: PREPNUTI UROVNE BEHEM JIZ BEZICIHO CASTU zmeni
+   OKAMZITE jpeg kvalitu, ale ROZLISENI az po vypnuti a znovu-zapnuti
+   TV mirroru. Napsal jsem to do JAK OTESTOVAT nize.
+   PROC DJ-uroven jako zaklad: protoze rozliseni je fixni na celou
+   dobu session a NEMUZE se prizpusobovat tomu, na jakou obrazovku
+   zrovna prepnes (na rozdil od kvality, ktera se dal spravne meni
+   snimek po snimku podle aktualni URL) - takze radsi dam vyssi
+   rozliseni hned na zacatku (min(1.0,...) stejne zabrani zbytecnemu
+   upscalovani, kdyz by bylo vic nez potreba).
+   POCTIVE OZNACENI ZMENY CHOVANI I NA LOW: puvodni natvrdo 960px
+   nebyla "bezpecny LOW default" - byla to proste zapomenuta cislice,
+   ktera nikdy nebyla soucasti zadneho systemu urovni. Takze LOW ted
+   dava 1120px misto puvodnich 960px pro system-mirror rozliseni -
+   tohle NENI stejne jako muj obvykly slib "LOW = nic se nemeni",
+   protoze puvodni hodnota sama nikdy nebyla navrzena jako soucast
+   zamerneho LOW rezimu. Rozdil je maly (960->1120, +17 %) a smerem
+   k lepsimu, ale chci to mit zapsane cerne na bilem, ne schovane.
+
+2) STOPA K "SONY LOGO PROBLIKAVA DO HRY"
+   Zjistil jsem (nasel primo v kodu emu_ps1/index.html), ze stranka
+   MA vlastni staticky obrazek "ps1_final_screen.png" (alt="PS1
+   PlayStation screen") jako full-screen pozadi (.skin trida,
+   inset:0, 100%/100%). V @media dotazu pro landscape s malou vyskou
+   (presne tvuj typ pouziti na S8) se tohle pozadi schovava pres CSS
+   display:none, jakmile prebira zivy nahled hry.
+   V native kodu jsem nasel: kdyz system-mirror snimky na chvili
+   nedorazi (>1.6s), appka se DOCASNE PRESUNE na zachytavani primo
+   WebView vrstvy (draw()/PixelCopy) - a POKUD se to trefi presne do
+   momentu, kdy CSS jeste "neusadilo" schovani .skin (napr. pri
+   prechodu stranky nebo zmene orientace), muze se na jeden snimek
+   zachytit ten skryty PS1 obrazek MISTO zive hry. To by presne
+   vysvetlilo, proc to "problikne" a hned zase zmizi.
+   OPRAVA (castecna, opatrna): zvednuti prahu z 1.6s na 3.5s - system
+   mirror ted ma vic prostoru prekonat kratke zaseknuti/vypadek, driv
+   nez appka spadne na fallback zachytavani, ktere muze tohle zpusobit.
+   POCTIVE: tohle SNIZUJE frekvenci fallbacku (a tedy pravdepodobnost
+   problikavani), ale nemuzu 100% zarucit ze fallback uz nikdy
+   nenastane (skutecny dlouhy vypadek mirroru porad spustí fallback
+   po 3.5s - to je zamerne, jinak by se obraz uplne zasekl). Pokud
+   problikavani po tomhle buildu porad obcas nastane (jen mene casto),
+   je dalsi krok bud jeste vic zvednout prah, nebo se podivat na to,
+   proc .skin schovani neni spolehlive OKAMZITE pri nacteni stranky
+   (coz uz zasahuje do te PS1 stranky/JS, ne jen do timeoutu).
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 90 radku na 6 mistech celkem (SK11-16
+  dohromady), nic jineho v souboru.
+- Realny javac + spusteni (Sk16Check.java): mirror-start rozliseni
+  pro LOW/MEDIUM/HIGH na S8-typickem rozliseni (2960x1440) vyslo
+  1120/1360/1598px - presne odpovida tabulce, monotonie potvrzena.
+  Puvodni hardcoded chovani (vzdy ~960 bez ohledu na uroven)
+  explicitne zaznamenano jako zmena.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) DULEZITE PRO TEST ROZLISENI: zvol si uroven (napr. HIGH) PRED
+   tim, nez zapnes TV mirror (nebo mirror vypni a znovu zapni po
+   zmene urovne) - jen tak se projevi ROZDIL V ROZLISENI na PS1/
+   Sega. Kdyz zmenis uroven zatimco uz castujes, hned se zmeni jen
+   ostrost/kvalita JPEG, rozliseni az po restartu mirroru.
+3) Zkontroluj, jestli teď MEZI LOW/MEDIUM/HIGH vidis jasny rozdil
+   na PS1 (melo by byt VYRAZNE znatelnejsi nez predtim).
+4) Hraj PS1 delsi dobu a sleduj, jestli se Sony logo porad
+   problikava - napis mi jestli mene casto, porad stejne, nebo
+   uplne zmizelo.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK15 (predchozi build).

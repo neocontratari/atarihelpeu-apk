@@ -273,7 +273,13 @@ public class MainActivity extends Activity {
                 boolean appCapture = true;
                 if (napTvWebRunning && napTvWebSystemMirrorActive) {
                     long age = napTvWebSystemLastFrameMs == 0 ? 999999L : (System.currentTimeMillis() - napTvWebSystemLastFrameMs);
-                    appCapture = age > 1600L;
+                    // BUILD2SK16: 1.6s bylo prilis netrpelive - kratke sitove/timing
+                    // zaseknuti system mirroru spustilo WebView fallback, ktery muze
+                    // na okamzik zachytit skryty .skin obrazek (PS1 "logo") misto
+                    // ziveho nahledu, protoze CSS display:none se jeste nemusi stihnout
+                    // "usadit" pri prechodu. 3.5s da vic prostoru prekonat drobne
+                    // vypadky, porad dost rychle na skutecne selhani mirroru.
+                    appCapture = age > 3500L;
                     if (appCapture && System.currentTimeMillis() - napTvWebSystemFallbackLogMs > 5000L) {
                         napTvWebSystemFallbackLogMs = System.currentTimeMillis();
                         appendNativeLog("BUILD2SA13C10 SCREEN_MIRROR_NO_FRAMES_FALLBACK ageMs=" + age);
@@ -666,7 +672,15 @@ public class MainActivity extends Activity {
             int sw = Math.max(2, dm.widthPixels);
             int sh = Math.max(2, dm.heightPixels);
             boolean landscape = sw > sh;
-            int maxSide = landscape ? 960 : 1120;
+            // BUILD2SK16: drive natvrdo 960/1120 - VUBEC nerespektovalo zvolenou
+            // uroven kvality (LOW/MEDIUM/HIGH), proto byl rozdil mezi urovnemi na
+            // PS1/Sega/Atari sotva znatelny (jen JPEG kvalita se menila, rozliseni
+            // ne). Rozliseni system mirroru je FIXNI na celou dobu behu (nemuze
+            // se za chodu menit pri prepnuti obrazovky), takze pouzivame nejvyssi
+            // (DJ-uroven) rozliseni zvolene urovne jako zaklad - kvalita (JPEG) se
+            // dal spravne meni za behu podle aktualni obrazovky.
+            int[] qv0 = napTvWebQualityFor(true, false, landscape);
+            int maxSide = qv0[0];
             float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
             int cw = Math.max(2, (int)(sw * scale)) & ~1;
             int ch = Math.max(2, (int)(sh * scale)) & ~1;
