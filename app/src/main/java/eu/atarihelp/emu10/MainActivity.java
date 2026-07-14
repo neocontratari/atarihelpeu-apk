@@ -345,13 +345,24 @@ public class MainActivity extends Activity {
                     if (napTvWebPixelCopyPending && napTvWebPixelCopyPendingAtMs > 0 && nowTick - napTvWebPixelCopyPendingAtMs > 900L) {
                         napTvWebPixelCopyPending = false;
                         napTvWebPixelCopyPendingAtMs = 0;
-                        napTvWebPixelCopyDisabledUntilMs = nowTick + 12000L;
+                        // BUILD2SK22: PS1/Sega/Atari maji nativni GPU vykreslovani,
+                        // ktere se pres Canvas.draw() NEZACHYTI VERNE (viz BUILD2SH3
+                        // komentar nize - "WebView se pres Canvas.draw nevykresli
+                        // verne" - tohle uz drive ZPUSOBOVALO presne tenhle typ
+                        // problemu a bylo to znamo, jen draw() zustal jako fallback
+                        // presne pro tenhle timeout pripad). Kratsi cooldown (2s
+                        // misto 12s) pro nativni obsah, at se PixelCopy zkusi znovu
+                        // driv - u ostatniho obsahu (DJ pult, menu) draw() funguje
+                        // spolehlive, tam cooldown zustava puvodnich 12s.
+                        napTvWebPixelCopyDisabledUntilMs = nowTick + (hqLiteScreen ? 2000L : 12000L);
                         didTimeoutFallback = true;
                         if (nowTick - napTvWebPixelCopyFallbackLogMs > 5000L) {
                             napTvWebPixelCopyFallbackLogMs = nowTick;
-                            appendNativeLog("BUILD2SA13C12 TV_WEB_PIXELCOPY_TIMEOUT_FALLBACK_DRAW_COOLDOWN");
+                            appendNativeLog("BUILD2SA13C12 TV_WEB_PIXELCOPY_TIMEOUT_FALLBACK_DRAW_COOLDOWN hqLite=" + hqLiteScreen);
                         }
-                        napTvWebCaptureByDraw(bw, bh, scale);
+                        if (!hqLiteScreen) { napTvWebCaptureByDraw(bw, bh, scale); }
+                        // hqLiteScreen==true: NEVOLAME draw() - radeji zmrazit
+                        // posledni dobry PixelCopy snimek nez zobrazit nevery obraz.
                     }
                     // BUILD2SH3: DRIV se pri hrajici hudbe VYPINAL PixelCopy a
                     // prepinalo na draw() -> obraz na projektoru zamrzal a barevne
@@ -385,9 +396,9 @@ public class MainActivity extends Activity {
                                 if (result == android.view.PixelCopy.SUCCESS) {
                                     napTvWebPublishBitmap(target, "PIXELCOPY");
                                 } else {
-                                    appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_FAIL result=" + result);
-                                    napTvWebPixelCopyDisabledUntilMs = System.currentTimeMillis() + 5000L;
-                                    ui.post(() -> napTvWebCaptureByDraw(bw, bh, scale));
+                                    appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_FAIL result=" + result + " hqLite=" + hqLiteScreen);
+                                    napTvWebPixelCopyDisabledUntilMs = System.currentTimeMillis() + (hqLiteScreen ? 2000L : 5000L);
+                                    if (!hqLiteScreen) { ui.post(() -> napTvWebCaptureByDraw(bw, bh, scale)); }
                                 }
                             } catch (Throwable t) {
                                 appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_ERR " + safeMsg(t));
@@ -398,7 +409,9 @@ public class MainActivity extends Activity {
                             }
                         }, napTvWebCopyHandler);
                     } else if (!didTimeoutFallback) {
-                        napTvWebCaptureByDraw(bw, bh, scale);
+                        if (!hqLiteScreen) { napTvWebCaptureByDraw(bw, bh, scale); }
+                        // hqLiteScreen==true: zmrazit posledni dobry snimek misto
+                        // zobrazeni nevereho draw() obrazu (viz komentare vyse).
                     }
                 }
             } catch (Throwable t) {
@@ -1174,7 +1187,7 @@ public class MainActivity extends Activity {
                 + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button'>AUDIO OK</button>"
-                + "<div id='q'><button type='button' data-t='0'>LOW</button><button type='button' data-t='1'>MED</button><button type='button' data-t='2'>HIGH</button></div>"
+                + "<div id='q'><button type='button' data-t='0'>LOW</button><button type='button' data-t='1'>MED</button><button type='button' data-t='2'>HIGH</button><button type='button' id='fs'>⛶ FULL</button></div>"
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[];" // BUILD2SB1
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
@@ -1185,6 +1198,10 @@ public class MainActivity extends Activity {
                 + "(function(){var qs=document.querySelectorAll('#q button');function mark(t){for(var i=0;i<qs.length;i++)qs[i].classList.toggle('on',qs[i].getAttribute('data-t')===(''+t));}"
                 + "fetch('/quality').then(function(r){return r.text();}).then(function(t){var m=/tier=(\\d)/.exec(t);mark(m?m[1]:'0');}).catch(function(){});"
                 + "for(var i=0;i<qs.length;i++){qs[i].onclick=function(e){var t=e.target.getAttribute('data-t');fetch('/quality?tier='+t).then(function(){mark(t);}).catch(function(){});};}})();"
+                + "(function(){var fb=document.getElementById('fs');function isFs(){return !!(document.fullscreenElement||document.webkitFullscreenElement||document.msFullscreenElement);}"
+                + "function upd(){fb.textContent=isFs()?'⛶ EXIT':'⛶ FULL';}"
+                + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
+                + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
                 + "setInterval(function(){if(!fb)label('MJPEG');},1000);})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");

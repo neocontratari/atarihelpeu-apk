@@ -1,0 +1,74 @@
+BUILD2SK22 - SPRAVNA OPRAVA BLIKANI (draw/PixelCopy, ne system-mirror)
+              + FULLSCREEN TLACITKO
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11-21 - stejny soubor, 4 mista + 2 mala mista pro fullscreen)
+
+PREDEM: MOJE CHYBA VE SCOPINGU (viz tvuj log)
+Tvuj log ukazal cerne na bilem: "mode=...draw_safe..." hned na zacatku,
+a ANI JEDNOU se v celem logu neobjevilo "SCREEN_MIRROR_RESIZED" presto,
+ze jsi prepnul uroven 8x. To znamena, ze system-mirror (na ktery cilily
+SK18, SK19 i SK21) NEBYL v tvem testu vubec aktivni - pouzival se
+draw()/PixelCopy mechanismus, ktery jsem v tehle konkretni souvislosti
+nezkoumal. Diky za log, bez nej bych to nenasel.
+
+SKUTECNA PRICINA (tentokrat ve spravnem kodu)
+V draw()/PixelCopy ceste je HISTORICKY ZNAMY problem (nasel jsem
+komentar "BUILD2SH3" primo v kodu, ktery uz driv reseny podobny
+problem): "WebView se pres Canvas.draw nevykresli verne" pro nativni
+GPU vykreslovany obsah (PS1, nejspis i Sega). PixelCopy je proto
+PREFEROVANA metoda pro tenhle typ obsahu - ale kdyz PixelCopy
+SELZE nebo se ZPOZDI (900ms timeout), kod na 3 mistech FALLBACKOVAL
+na draw() - presne tu metodu, o ktere uz drive vime, ze pro tenhle
+obsah neni verna. Vysledek: kdykoli PixelCopy zaskobrtne (a na
+starsim S8 pri narocnem PS1 obsahu se to stane), na chvili (puvodne
+az 12 vterin!) se misto hry ukazovalo neco jineho pres draw() -
+presne to problikavani, co jsi popsal.
+
+OPRAVA (na vsech 3 mistech, kde kod padal na draw())
+Appka uz umi rozpoznat, jestli je aktualni obrazovka PS1/Sega/Atari
+(stejna detekce jako u kvalitni tabulky z SK11-17). Pro tenhle typ
+obsahu draw() JIZ VUBEC NEVOLAME - misto toho se ten konkretni
+snimek proste presskoci a zustane zobrazeny posledni DOBRY (PixelCopy)
+snimek, dokud PixelCopy znovu neuspeje. Zadny skok na nevery obraz.
+Navic zkraceny cooldown (2s misto 12s specificky pro PS1/Sega/Atari)
+- PixelCopy se zkusi znovu driv, takze i to "zmrazeni" by melo byt
+kratsi.
+DULEZITE: DJ pult a ostatni obsah (kde draw() funguje spolehlive,
+zadny nahlaseny problem) zustavaji UPLNE BEZE ZMENY - tam draw()
+funguje presne jako predtim. Overeno testem (viz nize).
+
+BONUS: FULLSCREEN TLACITKO
+Pridano vedle LOW/MED/HIGH na TV strance - "⛶ FULL" prepina
+prohlizec do celoobrazovkoveho rezimu (standardni Fullscreen API,
+funguje v Chrome/Edge/Firefox na PC i na TV prohlizeci), tlacitko
+se prepne na "⛶ EXIT" kdyz uz je fullscreen aktivni.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 247 radku (SK11-22 dohromady).
+- Realny javac + spusteni (DrawFallbackCheck.java): simulace vsech
+  3 mist draw() fallbacku pro PS1/Sega/Atari (hqLiteScreen=true) ->
+  0 volani draw() ve vsech scenarich. Pro DJ/ostatni obsah
+  (hqLiteScreen=false) -> VSECHNY 4 puvodni volani draw() presla
+  beze zmeny - potvrzuje, ze existujici funkcni chovani je nedotcene.
+  Cooldown doba: PS1/Sega/Atari 2s, DJ/ostatni beze zmeny 12s/5s.
+- Vlozeny JS pro fullscreen tlacitko extrahovan ze skutecneho Java
+  retezce a overen Node.js syntax checkerem - cisty.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Spust PS1 (nebo cokoli s intenzivnejsim obsahem), zapni TV
+   mirror, hraj chvili - sleduj, jestli uz neproblikava. Tohle by
+   MELO byt konecne ta spravna oprava, protoze cili presne na kod,
+   ktery tve testovani skutecne pouzivalo.
+3) Zkus i DJ pult - musi vypadat/chovat se UPLNE STEJNE jako predtim,
+   zadna zmena tam neni zamyslena.
+4) Klikni na "⛶ FULL" na TV strance - mel by prejit obraz na celou
+   obrazovku, tlacitko se zmeni na "⛶ EXIT".
+5) Poslete mi prosim znovu log ze stejneho typu testu (PS1 boot +
+   nejaka minuta hrani) - bude v nem videt "PIXELCOPY" jako
+   prevazujici zaznam mista misto driveho "DRAW", a pripadne
+   TV_WEB_PIXELCOPY_TIMEOUT_FALLBACK_DRAW_COOLDOWN hqLite=true
+   zaznamy (tam by uz nemelo byt zadne "draw()" volani nasledovat).
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK21 (predchozi build).
