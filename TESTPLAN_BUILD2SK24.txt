@@ -1,0 +1,85 @@
+BUILD2SK24 - "ZAMRZLO A PROBLIKAVALO" PRI PRECHODU PS1->DJ (nalezeno v logu)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(hotfix/oprava na SK23 - 2 mala mista)
+
+POTVRZENI: STAR WARS (PS1 samotne) UZ NEPROBLIKAVA
+Diky za potvrzeni - SK22 oprava (draw() fallback pro PS1/Sega/Atari)
+funguje presne jak mela. Tohle je JINY problem, specificky pri
+PRECHODU z PS1 na DJ pult.
+
+CO JSEM NASEL V LOGU (presne, ne odhad)
+17:36:43.000 - PS1_AUDIO_STOP (opoustis PS1)
+17:36:47.918 az 17:37:07.558 (a dal) - "Window doesn't have a backing
+  surface!" OPAKOVANE, PRESNE 330x, kazdych ~47ms (= kazdy dalsi
+  pokus o snimek), bez preruseni pres 20 vterin v kuse.
+17:38:06.792 - konecne se objevi TV_WEB_AUDIO_SOURCE PLAYER (novy
+  zvukovy zdroj - DJ pult)
+Cely prechod trval kolem 83 vterin, z toho aspon 20 vterin byla appka
+v teto chybove smycce.
+
+CO TO ZNAMENA
+"Window doesn't have a backing surface" je znama Android vyjimka -
+nastava, kdyz se zkousi vyfotit (PixelCopy) okno, ktere prave prochazi
+prechodem (stara nativni PS1 vrstva se odstranuje, nova DJ stranka se
+teprve nacita) a docasne nema platny "povrch" k vyfoceni. Appka to
+DRIV zkousela hned znovu na DALSIM tiku (~40-90ms pozdeji) - a protoze
+tenhle stav trval nekolik vterin, vzniklo presne to "zamrzlo a
+problikavalo", co jsi popsal: stovky rychle za sebou jdoucich
+neuspesnych pokusu.
+Tohle je JINY mechanismus nez to, co resilo SK22 (tam slo o
+ASYNCHRONNI selhani/timeout PixelCopy vysledku) - tady jde o
+SYNCHRONNI vyjimku primo pri volani, kterou chytá az UPLNE VNEJSI
+zachytavac chyb. Proto to SK22 nemohlo zachytit.
+
+OPRAVA
+Presne pro tuhle konkretni vyjimku ("backing surface" v hlasce) appka
+ted pocka 700ms navic pred dalsim pokusem, misto normalnich ~40-90ms.
+Ostatni vyjimky (kdyby nejake byly) zustavaji na normalnim rychlem
+retry - tohle je cilene JEN na tenhle konkretni, v logu potvrzeny
+pripad.
+Vysledek: misto 425 pokusu za 20 vterin (jak ukazal log) by to melo
+byt kolem 25 pokusu za stejnou dobu - 17x mene "bicovani" okna, ktere
+se stejne prave snazi prejit do stabilniho stavu.
+
+POCTIVE: tohle NEZKRACUJE, jak dlouho SAMOTNY prechod PS1->DJ trva
+(to je otazka Androidu/systemu, ne meho kodu) - jen ho udela MENE
+rusivym na pohled (misto rychleho blikani uvidis spis "chvilkove
+zamrznuti", ktere se pak vyresi). Pokud 83 vterin na cely prechod
+je porad moc dlouho, to uz je jina otazka (mozna zkoumat, proc PS1
+audio/video sesion trva tak dlouho se zastavit) - napis, jestli to
+je vlastni.
+
+K TOMU ZPOZDENI ZVUKU (~1,5s) - POCTIVE NEVIM JISTE, POTREBUJI VIC INFO
+V logu vidim, ze SK20 zmena je aktivni (prefillFrames=4224 cilove
+4096 presne jak melo byt) - to je jen ~93ms zpozdeni na startu zvuku,
+zdaleka ne 1,5 vteriny. Takze bud:
+  a) je tam JINY, vetsi zdroj zpozdeni, ktery jsem jeste nenasel, NEBO
+  b) (moje aktualni podezreni) neni to zvuk, kdo se opozduje - je to
+     VIDEO, ktere je POMALEJSI nez zvuk. Video jde cez cely retezec
+     (nahrat snimek -> zkomprimovat -> poslat po siti -> prohlizec
+     dekoduje -> zobrazi) - to muze snadno trvat vic nez zvuk, ktery
+     jde primeji.
+Nechci do tohohle sahat naslepo - je to presne ten typ veci, kde by
+pomohl bud dalsi log s konkretnejsim casovym razitkem (napr. kdy
+zmackneš tlacitko a kdy uslysis/uvidis reakci), nebo to proste
+pocka na vetsi H.264 projekt pro PS1, o kterem jsme se bavili - pokud
+je to skutecne video, co zaostava, cely MJPEG pristup ma svuj strop
+a oprava by patrila tam.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 271 radku (SK11-24 dohromady).
+- Realny javac + spusteni (BackoffCheck.java): normalni tik a jina
+  vyjimka -> beze zmeny (75ms), presne "backing surface" vyjimka ->
+  775ms (75+700). Pocet pokusu za 20s: 425 -> 25 (17x mene).
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Zopakuj presne to, co jsi delal - hraj PS1, pak prejdi na DJ pult.
+3) Sleduj, jestli misto rychleho problikavani uvidis spis kratke
+   (nebo aspon MENE rusive) zamrznuti pred tim, nez se DJ pult
+   ustali. Pokud mas chut, posli mi zas log ze stejneho testu - uvidim
+   v nem primo, kolikrat se "backing surface" jeste objevi a jak
+   dlouho cely prechod trva.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK23 (predchozi build).

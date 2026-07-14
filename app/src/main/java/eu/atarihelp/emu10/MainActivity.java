@@ -275,6 +275,7 @@ public class MainActivity extends Activity {
     private volatile long napTvWebYoutubeInAppUntilMs = 0;
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
+            long extraDelay = 0;
             try {
                 // BUILD2SK21: behem vedome prestavby VirtualDisplay (zmena urovne
                 // kvality, viz napTvWebResizeSystemMirror) NECHCEME zachytavat vubec -
@@ -416,11 +417,22 @@ public class MainActivity extends Activity {
                     }
                 }
             } catch (Throwable t) {
-                appendNativeLog("BUILD2SA13C TV_WEB_FRAME_ERR " + safeMsg(t));
+                String errMsg = safeMsg(t);
+                appendNativeLog("BUILD2SA13C TV_WEB_FRAME_ERR " + errMsg);
                 napTvWebPixelCopyPending = false;
                 napTvWebPixelCopyPendingAtMs = 0;
+                // BUILD2SK24: "Window doesn't have a backing surface!" nastava behem
+                // prechodu mezi obrazovkami (napr. opusteni PS1 - okno docasne nema
+                // platny povrch, dokud se nova obrazovka neusadi). V logu bylo videt
+                // 330x za sebou kazdych ~47ms po dobu pres 20 vterin - appka to
+                // zkousela znovu tak rychle, ze si to uzivatel spravne vsiml jako
+                // "zamrzlo a problikavalo". Misto normalniho rychleho retry pockame
+                // pri TOMHLE konkretnim selhani dele, at ma okno cas se usadit.
+                if (errMsg != null && errMsg.contains("backing surface")) {
+                    extraDelay = 700L;
+                }
             }
-            if (napTvWebRunning) ui.postDelayed(this, Math.max(35, napTvWebFrameDelayMs));
+            if (napTvWebRunning) ui.postDelayed(this, Math.max(35, napTvWebFrameDelayMs) + extraDelay);
         }
     };
 
