@@ -1,0 +1,73 @@
+BUILD2SK19 - OPRAVA KMITANI PRI OPUSTENI PS1 (+ nalez ke zvukovemu zpozdeni)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11-18 - stejny soubor, 2 mista: 2 nove promenne + logika)
+
+NEJDRIV SHRNUTI TVYCH 5 POZOROVANI (co je co)
+1) "Vetsi zlepseni bych cekal" + 3) "ovladac ma vyraznejsi rozdil nez
+   hra" + 5) "u DJ pultu je zlepseni jasne videt" - VSECHNY TRI JSOU
+   TA SAMA VEC, potvrzuje fyziku, kterou jsem popisoval minule: ostra
+   vektorova UI grafika (ovladac, DJ pult) ziska z vyssi JPEG kvality
+   hodne, zrnita/fotograficka herni grafika (PS1 FMV) mnohem min.
+   Neni to nova chyba, je to presne to, co jsem cekal ze se stane -
+   diky, ze jsi to potvrdil vlastnim pozorovanim.
+2) Zvuk mluveni se rozchazi s obrazem - VIZ NALEZ NIZE.
+6) Problikavani "tam zpet a zpet" pri opusteni PS1 - OPRAVENO, viz niz.
+
+OPRAVA: KMITANI PRI OPUSTENI PS1 (bod 6)
+Nasel jsem to primo v kodu, ktery jsem sam upravoval v SK16: prah
+"3.5s bez snimku = fallback" se prepocitava KAZDY tik (kazdych
+35-75ms) BEZ HYSTEREZE. Behem prechodu z PS1 na jinou obrazovku
+mohou system-mirror snimky chodit chvilku nepravidelne (jednou
+"age" pod prahem, hned zase nad) - a bez hystereze appka kazdou
+takovou zmenu OKAMZITE prepne zpusob zachytavani = presne to
+"problikavani tam a zpet", co jsi popsal.
+OPRAVA: klasicka technika proti kmitani prahovych prepinacu -
+jakmile appka JEDNOU spadne do fallbacku, vyzaduje NEKOLIK PO SOBE
+JDOUCICH cerstvych snimku (ne jen jeden), nez se vrati zpet na
+system mirror. Diky tomu jeden kratky vypadek/probliknuti behem
+prechodu uz nezpusobi retez rychlych prepnuti.
+
+NALEZ KE ZVUKOVEMU ZPOZDENI (bod 2) - ZATIM NEOPRAVENO, potrebuje
+tvou odpoved nez do toho pujdu
+Nasel jsem v kodu rezim "s8NoStarve" - a je LITERALNE pojmenovany
+podle tveho telefonu (kontroluje Build.MODEL obsahujici "SM-G950",
+coz je presne oznaceni Samsung Galaxy S8). Tenhle rezim pri startu
+PS1 zvuku ZAMERNE ceka az 900ms (nebo dokud se nenaplni 6144 snimku
+bufferu), nez zacne prehravat - je to nejspis puvodni oprava proti
+"praskani/vypadavani" zvuku prave na S8 (odtud nazev "NoStarve" =
+"bez hladoveni bufferu"). VIDEO zadne takove zamerne zpozdeni nema.
+To by mohlo vysvetlit FIXNI zpozdeni zvuku na zacatku PS1 relace.
+CO POTREBUJI VEDET, NEZ DO TOHO SAHNU: rozjizdi se to zvuk vic a
+vic cim dal hrajes (rostouci zpozdeni), NEBO je to porad +- stejny
+male zpozdeni od zacatku do konce? Tohle je dulezite, protoze:
+  - Pokud FIXNI zpozdeni od zacatku -> nejspis prave tenhle
+    "NoStarve" prefill, oprava by byla cilena a relativne bezpecna.
+  - Pokud ROSTOUCI zpozdeni -> je to jina vec (rozdilna rychlost
+    mezi audio a video hodinami), potrebovalo by to skutecnou
+    synchronizaci s casovymi znackami - vetsi zmena, chci to nejdriv
+    pochopit poradne, ne hadat.
+Tenhle rezim jsem SCHVALNE nezmenil v tomto buildu - je videt, ze byl
+pridan cilene proti konkretnimu problemu (praskani zvuku na S8), a
+nechci do neho sahat bez jistoty, ze to nerozbiju to, co uz reseno
+bylo.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 167 radku (SK11-19 dohromady).
+- Realny javac + spusteni (HysteresisCheck.java): simulace
+  turbulentniho prechodu (system-mirror snimky nepravidelne kolem
+  prahu) - STARA logika kmitla 6x, NOVA jen 2x (jednou dovnitr
+  fallbacku, jednou zpet ven, zadne blikani mezitim). Presne
+  odpovida popsanemu symptomu a jeho opravě.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Hraj PS1 chvili, pak precepni na jinou obrazovku (menu, jiny
+   emulator) - sleduj, jestli porad problikava tam a zpet, nebo uz
+   jen jednou hladce prejde.
+3) K bodu 2 (zvuk): zahraj si PS1 s mluvenym slovem (FMV scena) na
+   ZACATKU relace a znovu po nekolika minutach hrani - rozjizdi se
+   to vic, nebo zustava +- stejne? Napis mi to, at vim kterym smerem
+   jit.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK18 (predchozi build).

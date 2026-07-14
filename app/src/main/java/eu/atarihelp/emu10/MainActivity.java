@@ -264,6 +264,8 @@ public class MainActivity extends Activity {
     private volatile boolean napTvWebSystemMirrorActive = false;
     private volatile long napTvWebSystemLastFrameMs = 0;
     private volatile long napTvWebSystemFallbackLogMs = 0;
+    private volatile boolean napTvWebSystemInFallback = false;
+    private volatile int napTvWebSystemFreshStreak = 0;
     private volatile int napTvWebSystemWidth = 0;
     private volatile int napTvWebSystemHeight = 0;
     private volatile int napTvWebSystemDpi = 0;
@@ -275,13 +277,22 @@ public class MainActivity extends Activity {
                 boolean appCapture = true;
                 if (napTvWebRunning && napTvWebSystemMirrorActive) {
                     long age = napTvWebSystemLastFrameMs == 0 ? 999999L : (System.currentTimeMillis() - napTvWebSystemLastFrameMs);
-                    // BUILD2SK16: 1.6s bylo prilis netrpelive - kratke sitove/timing
-                    // zaseknuti system mirroru spustilo WebView fallback, ktery muze
-                    // na okamzik zachytit skryty .skin obrazek (PS1 "logo") misto
-                    // ziveho nahledu, protoze CSS display:none se jeste nemusi stihnout
-                    // "usadit" pri prechodu. 3.5s da vic prostoru prekonat drobne
-                    // vypadky, porad dost rychle na skutecne selhani mirroru.
-                    appCapture = age > 3500L;
+                    // BUILD2SK19: SK16 pridalo 3.5s prah, ale bez hystereze - pri
+                    // turbulentnim prechodu (napr. opusteni PS1) mohou system-mirror
+                    // snimky chodit nepravidelne kolem prahu, coz zpusobi RYCHLE
+                    // KMITANI appCapture tam a zpet (presne "problikavani tam zpet
+                    // a zpet", ktere bylo nahlaseno). Oprava: jakmile jednou spadneme
+                    // do fallbacku, vyzadujeme NEKOLIK PO SOBE JDOUCICH cerstvych
+                    // snimku (ne jen jeden), nez se vratime zpet - klasicka hystereze
+                    // proti kmitani prahoveho prepinace.
+                    if (age <= 250L) napTvWebSystemFreshStreak++; else napTvWebSystemFreshStreak = 0;
+                    if (!napTvWebSystemInFallback) {
+                        appCapture = age > 3500L;
+                        if (appCapture) napTvWebSystemInFallback = true;
+                    } else {
+                        appCapture = napTvWebSystemFreshStreak < 3;
+                        if (!appCapture) napTvWebSystemInFallback = false;
+                    }
                     if (appCapture && System.currentTimeMillis() - napTvWebSystemFallbackLogMs > 5000L) {
                         napTvWebSystemFallbackLogMs = System.currentTimeMillis();
                         appendNativeLog("BUILD2SA13C10 SCREEN_MIRROR_NO_FRAMES_FALLBACK ageMs=" + age);
