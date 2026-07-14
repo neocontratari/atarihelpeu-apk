@@ -1,0 +1,67 @@
+BUILD2SK21 - BLIKANI PRI PREPNUTI MED/HIGH: ZMRAZENI MISTO FALLBACKU
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11-20 - stejny soubor, 5 mist: 2 nove promenne, resize
+funkce, prijem snimku, zacatek hlavni smycky)
+
+PRESNA PRICINA (potvrzeno tvym pozorovanim "blika pri MED/HIGH")
+Kdyz prepneš uroven, SK18 zboura stary VirtualDisplay a postavi novy
+(jina velikost). Mezi zborenim a prvnim snimkem z NOVEHO VirtualDisplay
+NUTNE ubehne chvile - a behem ni "age" (stari posledniho snimku)
+okamzite preskoci na "nekonecno", coz i s SK19 hysterezi ZNAMENA
+JEDEN garantovany skok do fallback zachytavani (hystereze resi jen
+RYCHLE KMITANI, ne tenhle prvni, ocekavany skok). SK19 tedy pomohla
+s kmitanim behem navigace, ale tohle je JINY spoustec (vedomá zmena
+urovne), ktery porad zpusoboval aspon jedno probliknuti.
+
+OPRAVA: MISTO FALLBACKU - ZMRAZENI POSLEDNIHO SNIMKU
+Behem vedome prestavby (zmena urovne) appka ted VUBEC nezkousi zadne
+zachytavani - proste ponecha bezet posledni uz odeslany snimek, dokud
+nedorazi prvni cerstvy z noveho VirtualDisplay. Zadny fallback,
+zadny skryty PS1 obrazek, ktery by mohl probliknout - jen kratka
+pauza na stejnem obrazku, nez se obraz zaostri.
+POJISTKY (aby se nic nezaseklo navzdy):
+  - Pokud novy VirtualDisplay neposle snimek do 4 vterin (chyba,
+    edge case), appka se cekani vzda a vrati se k normalnimu provozu
+    (radeji kratke probliknuti nez trvale zamrznuti).
+  - Pokud samotne vytvoreni noveho VirtualDisplay selze (vyjimka),
+    priznak zmrazeni se hned uklidi.
+
+DULEZITY DETAIL OVERENY TESTEM (snadno se da zkazit)
+V Jave "return" uvnitr try bloku presko čí i kod PO try/catch - a
+prave tam byl radek, ktery planuje DALSI tik teto smycky. Kdybych
+na to zapomnel, appka by se po prvnim zmrazeni uz NIKDY nezkusila
+znovu a TV/PC obraz by zustal navzdy zaseknuty na poslednim snimku.
+Overil jsem si to testem (ne jen precetenim) - viz FreezeControlFlow
+Check.java, scenar 2 a 3 nize.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 206 radku (SK11-21 dohromady).
+- Realny javac + spusteni (FreezeControlFlowCheck.java), 3 scenare:
+  1) Normalni provoz (zadna prestavba) - beze zmeny, 5/5 tiku
+     zachytavalo a planovalo dalsi normalne.
+  2) Prestavba probiha 3 tiky, pak dorazi snimek - BEHEM cekani 0
+     zachytavani (obraz zmrazen), ale KAZDY tik se sam naplanoval
+     dal (appka "zije"). Po prijeti snimku normalni provoz OKAMZITE
+     obnoven.
+  3) Prestavba NIKDY nedorazi (nejhorsi pripad) - po ~4.1s pojistka
+     zabrala, priznak se uklidil, zachytavani pokracovalo dal -
+     POTVRZENO, ze obraz NEzustane zamrzly navzdy.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Prepni mezi LOW/MED/HIGH nekolikrat po sobe na TV strance -
+   misto probliknuti by mel obraz na okamzik jen "zamrznout" (zustat
+   na poslednim snimku) a pak se plynule zaostrit, bez zablikani.
+3) Zkus to i na PS1 konkretne (kde jsi to hlasil) a napis mi jestli
+   uz je to cisté.
+
+DALSI DVA BODY Z TVE ZPRAVY - ZATIM BEZE ZMENY, POTREBUJI VIC INFO
+NEBO JE TO VETSI PROJEKT (viz hlavni odpoved v chatu):
+- "V landscape se grafika rozejde jinak nez na mobilu" - potrebuju
+  vic detailu (co presne je jinak - roztazene? oriznute? cerne
+  pruhy?) nez budu moct cilit opravu.
+- H.264 pro PS1 - prijato jako samostatny dalsi projekt, viz planovaci
+  navrh v chatu.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK20 (predchozi build).

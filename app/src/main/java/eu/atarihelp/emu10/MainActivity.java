@@ -266,6 +266,8 @@ public class MainActivity extends Activity {
     private volatile long napTvWebSystemFallbackLogMs = 0;
     private volatile boolean napTvWebSystemInFallback = false;
     private volatile int napTvWebSystemFreshStreak = 0;
+    private volatile boolean napTvWebResizeInProgress = false;
+    private volatile long napTvWebResizeStartedMs = 0;
     private volatile int napTvWebSystemWidth = 0;
     private volatile int napTvWebSystemHeight = 0;
     private volatile int napTvWebSystemDpi = 0;
@@ -274,6 +276,20 @@ public class MainActivity extends Activity {
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
             try {
+                // BUILD2SK21: behem vedome prestavby VirtualDisplay (zmena urovne
+                // kvality, viz napTvWebResizeSystemMirror) NECHCEME zachytavat vubec -
+                // obraz zustane zmrazeny na poslednim dobrem snimku, misto aby na
+                // okamzik probliknul fallback WebView zachytavanim. 4s pojistka proti
+                // trvalemu zamrznuti, kdyby novy VirtualDisplay z nejakeho duvodu
+                // nikdy neposlal prvni snimek.
+                if (napTvWebResizeInProgress) {
+                    if (System.currentTimeMillis() - napTvWebResizeStartedMs > 4000L) {
+                        napTvWebResizeInProgress = false; // vzdavame cekani, pokracuj normalne
+                    } else {
+                        if (napTvWebRunning) ui.postDelayed(this, 40);
+                        return;
+                    }
+                }
                 boolean appCapture = true;
                 if (napTvWebRunning && napTvWebSystemMirrorActive) {
                     long age = napTvWebSystemLastFrameMs == 0 ? 999999L : (System.currentTimeMillis() - napTvWebSystemLastFrameMs);
@@ -748,6 +764,7 @@ public class MainActivity extends Activity {
             int delay = Math.max(45, napTvWebFrameDelayMs);
             if (now - napTvWebSystemLastFrameMs < delay) return;
             napTvWebSystemLastFrameMs = now;
+            napTvWebResizeInProgress = false;
             int w = img.getWidth();
             int h = img.getHeight();
             Image.Plane[] planes = img.getPlanes();
@@ -825,6 +842,12 @@ public class MainActivity extends Activity {
             if (cw == napTvWebSystemWidth && ch == napTvWebSystemHeight) return; // uz na cilove velikosti
             int dpi = Math.max(120, dm.densityDpi);
 
+            // BUILD2SK21: behem teto vedome, uzivatelem vyvolane prestavby (zmena
+            // urovne kvality) NECHCEME padat na WebView fallback vubec - misto toho
+            // appka jednoduse zmrazi posledni dobry snimek, dokud novy VirtualDisplay
+            // nezacne posilat cerstve (viz napTvWebFrameTick a napTvWebHandleSystemImage).
+            napTvWebResizeInProgress = true;
+            napTvWebResizeStartedMs = System.currentTimeMillis();
             try { if (napTvWebVirtualDisplay != null) napTvWebVirtualDisplay.release(); } catch (Throwable ignored) {}
             napTvWebVirtualDisplay = null;
             try { if (napTvWebImageReader != null) napTvWebImageReader.close(); } catch (Throwable ignored) {}
@@ -850,6 +873,7 @@ public class MainActivity extends Activity {
             napTvWebSystemLastFrameMs = 0;
             appendNativeLog("BUILD2SK18 SCREEN_MIRROR_RESIZED cap=" + cw + "x" + ch + " tier=" + napTvWebQualityTier);
         } catch (Throwable t) {
+            napTvWebResizeInProgress = false; // pojistka - jinak by obraz zustal zmrazeny navzdy pri chybe
             appendNativeLog("BUILD2SK18 SCREEN_MIRROR_RESIZE_FAIL " + safeMsg(t));
         }
     }
