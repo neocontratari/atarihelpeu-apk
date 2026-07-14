@@ -391,14 +391,15 @@ public class MainActivity extends Activity {
                         napTvWebPixelCopyPending = true;
                         napTvWebPixelCopyPendingAtMs = System.currentTimeMillis();
                         final Bitmap target = napTvWebBitmap;
+                        final boolean hqLiteScreenFinal = hqLiteScreen;
                         android.view.PixelCopy.request(getWindow(), src, target, result -> {
                             try {
                                 if (result == android.view.PixelCopy.SUCCESS) {
                                     napTvWebPublishBitmap(target, "PIXELCOPY");
                                 } else {
-                                    appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_FAIL result=" + result + " hqLite=" + hqLiteScreen);
-                                    napTvWebPixelCopyDisabledUntilMs = System.currentTimeMillis() + (hqLiteScreen ? 2000L : 5000L);
-                                    if (!hqLiteScreen) { ui.post(() -> napTvWebCaptureByDraw(bw, bh, scale)); }
+                                    appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_FAIL result=" + result + " hqLite=" + hqLiteScreenFinal);
+                                    napTvWebPixelCopyDisabledUntilMs = System.currentTimeMillis() + (hqLiteScreenFinal ? 2000L : 5000L);
+                                    if (!hqLiteScreenFinal) { ui.post(() -> napTvWebCaptureByDraw(bw, bh, scale)); }
                                 }
                             } catch (Throwable t) {
                                 appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_ERR " + safeMsg(t));

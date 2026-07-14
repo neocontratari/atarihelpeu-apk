@@ -1,0 +1,63 @@
+BUILD2SK23 - OPRAVA COMPILE CHYBY ZE SK22 (hotfix, zadna zmena chovani)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(hotfix na SK22 - 2 mala mista)
+
+DIKY ZA LOG - PRESNE TO JSEM POTREBOVAL
+javac: MainActivity.java:399-401: error: local variables referenced from
+a lambda expression must be final or effectively final
+
+CO SE STALO (moje chyba, presne pojmenovana)
+V SK22 jsem pouzil promennou "hqLiteScreen" uvnitr lambdy (callback
+PixelCopy.request(...)). Tahle promenna se ale v metode NEJDRIV
+inicializuje (boolean hqLiteScreen = false;) a POTOM jeste jednou
+preprisuje uvnitr try bloku (hqLiteScreen = ...;). Java pocita
+KAZDE prirazeni, i to prvni inicializacni - takze i kdyz se hodnota
+"usadi" driv, nez se k lambdě vubec dostane, Java ji formalne
+nepovazuje za "effectively final" (nemenna od zacatku do konce) a
+odmita ji v lambde pouzit.
+Kdyz jsem si to sam driv overoval, nasel jsem "1 prirazeni" a
+spatne jsem to precetl jako "jen jedno, takze OK" - ve skutecnosti
+tam byla DVE (inicializace + to jedno prirazeni), a presne to Javu
+vadi. Moje chyba ve vlastni kontrole, ne v logice te opravy samotne.
+
+OPRAVA
+Presne ten vzorec, ktery uz appka na jinem miste pouziva pro stejny
+ucel (Bitmap target vedle): "final boolean hqLiteScreenFinal =
+hqLiteScreen;" TESNE PRED lambdou, a uvnitr lambdy uz se pouziva jen
+tahle nova, skutecne nemenna kopie. Logika a chovani jsou UPLNE
+STEJNE jako v SK22 melo byt - tohle NENI zmena funkcionality, jen
+oprava toho, aby se to vubec zkompilovalo.
+
+CO JSEM UDELAL NAVIC, ABYCH SI BYL JIST, ZE TAM NENI JESTE DALSI
+STEJNA CHYBA
+Projel jsem VSECHNY lambdy, ktere jsem v SK11-22 pridal (jen 2
+v celem diffu) - druha (setOnImageAvailableListener pro novy
+VirtualDisplay) pouziva jen svou vlastni lokalni promennou "img",
+zadnou vnejsi promennou nezachytava, takze tam stejny problem
+nehrozi. Overeno primym precetenim kodu, ne jen odhadem.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 249 radku (SK11-23 dohromady).
+- Zavorky/hranate zavorky v celem souboru vyvazene.
+- Primo precteno (ne jen strojove vyhledano) vsech 5 mist, kde se
+  hqLiteScreen/hqLiteScreenFinal pouziva - potvrzeno, ze presne ty
+  3 mista uvnitr lambdy (kde byla chyba) ted pouzivaji Final variantu,
+  zbyle 2 mista (mimo lambdu, kde to Java nevadi) zustavaji na puvodni
+  promenne beze zmeny.
+- POCTIVE: porad nemam Android SDK, takze porad nemuzu spustit
+  skutecny javac na celem souboru - tohle je oprava PRESNE toho
+  typu chyby, kterou muj kompilator bez Android SDK nemohl uvidet
+  (protoze ten padal driv na chybejicich Android tridach). Skutecne
+  overeni musi prijit z tveho Action behu.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Tentokrat by "Sestaveni" krok mel projit (zeleny hacek, ne cerveny
+   krizek). Pokud ne, posli mi prosim znovu presne to same - vyhledej
+   v logu "error:" a poslu screenshot/text té casti.
+3) Pokud sestaveni projde, pokracuj v testovani SK22 (blikani u PS1
+   pri draw/PixelCopy fallbacku) podle TESTPLAN_BUILD2SK22.txt.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK21 (posledni build,
+o kterem vime jiste ze se zkompiloval).
