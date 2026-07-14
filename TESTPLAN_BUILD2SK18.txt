@@ -1,0 +1,90 @@
+BUILD2SK18 - ZADNY RESTART NENI POTREBA + VOLBA SE PAMATUJE TRVALE
+======================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11-17 - stejny soubor, 3 mista: onCreate, novy endpoint
+chovani, nova funkce napTvWebResizeSystemMirror)
+
+DIKY ZA INFORMACI - MENIM PRISTUP
+Rekl jsi, ze appka nema cistou cestu jak "vypnout a zapnout jen
+mirror" a ze to, co jsi zkusil, vedlo k restartu, ktery appku vratil
+na LOW a bez zvuku. Ma predchozi rada "vypni a znovu zapni cast" byla
+tedy nepouzitelna - beru to a resim to jinak, poradne.
+
+CO SE ZMENILO
+1) VOLBA KVALITY SE TED PAMATUJE TRVALE (SharedPreferences)
+   Drive zila jen v pameti (jako existujici zvukovy EQ panel) - kazdy
+   restart appky ji vracel na LOW. Ted se uklada na disk pri kazde
+   zmene a nacita zpet pri startu appky - i po uplnem zavreni a
+   znovuotevreni appky zustane tam, kde jsi ji nechal.
+
+2) ZMENA UROVNE ZA BEHU TED PREKONFIGURUJE ROZLISENI OKAMZITE -
+   BEZ JAKEHOKOLI RESTARTU
+   Drive: zmena urovne behem jiz beziciho castu zmenila jen JPEG
+   kvalitu; rozliseni system mirroru (VirtualDisplay) bylo zamrazene
+   od startu a zmenit se dalo jen znovu-vytvorenim cele mirror session
+   (coz appka, jak jsi zjistil, nedava cistou cestou udelat).
+   Ted: klepnuti na LOW/MED/HIGH na TV strance rovnou preskladuje
+   VirtualDisplay+ImageReader na novou velikost, BEZ nutnosti znovu
+   zadat MediaProjection povoleni (to uz mame ulozene) a BEZ dotyku
+   zvukoveho potrubi VUBEC - zvuk by tedy nemel mit duvod se prerusit,
+   protoze tahle funkce se zvukem vubec nepracuje.
+   Pokud uz jsi na spravne velikosti (napr. klikl LOW kdyz uz LOW
+   bezi), nic se zbytecne neprestavuje - overeno testem.
+
+POCTIVE - CO JE TOHLE ZA ZMENU (dulezite precist, je jina nez predtim)
+Tohle NENI dalsi ladeni cisel v tabulce - je to NOVA FUNKCIONALITA:
+za behu boura a znovu staví VirtualDisplay/ImageReader (systemove
+Android objekty pro zachytavani obrazovky). Riziko je vyssi nez u
+predchozich buildu, protoze:
+  - Nemam Android SDK v tomto prostredi, takze jsem NEMOHL zkompilovat
+    ani spustit skutecne Android API volani (MediaProjection,
+    ImageReader, VirtualDisplay) - tohle uz javac sam o sobe neumi
+    overit bez skutecnych Android trid.
+  - Co JSEM overil: (a) rozhodovaci logika (kdy prestavet, o jakou
+    velikost) je cisty Java kod, otestovany realnym javac se 4
+    scenari - vsechny sedely presne. (b) STROJOVE jsem srovnal, ze
+    nova funkce pouziva PRESNE STEJNA API volani (stejne nazvy metod,
+    stejne konstanty, stejne poradi parametru) jako uz existujici a
+    overeny kod, ktery appka pouziva pri PRVNIM startu mirroru - takze
+    nejde o vymyslenou novou cestu, je to znovupouziti overeneho
+    vzorce na nove misto.
+  - Co NEMUZU zarucit bez tveho testu na realnem zarizeni: zda Android
+    skutecne dovoli vytvorit novy VirtualDisplay ze stejneho jiz
+    ziskaneho MediaProjection objektu bez problemu (podle dokumentace
+    by melo jit, ale zivy test to musi potvrdit), a zda prechod mezi
+    velikostmi nezpusobi kratky vypadek obrazu (par desetin sekundy
+    cerne/prazdne, nez novy VirtualDisplay zacne posilat snimky - to
+    by byl prijatelny kompromis, ne chyba, ale chci to zminit predem).
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 155 radku na vice mistech (SK11-18
+  dohromady), nic mimo tyto zmeny v souboru.
+- Realny javac + spusteni (ResizeLogicCheck.java), 4 scenare:
+  - Pozadavek na uroven, na ktere uz jsme -> null (nic se neprestavi)
+  - Prepnuti na HIGH -> spravny novy cil [1918,934]
+  - Opakovany pozadavek na HIGH -> null (zadny zbytecny restart)
+  - Prepnuti na MEDIUM -> spravny mensi cil [1360,660]
+- Strojove porovnani API volani nove funkce vs. puvodni (uz overene)
+  start-funkce: IDENTICKA sada volani (ImageReader.newInstance,
+  createVirtualDisplay, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_
+  MIRROR, PixelFormat.RGBA_8888, getWindowManager()...) - potvrzeno
+  primo porovnanim textu, ne odhadem.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Zapni TV mirror normalne (poprve appka porad pozada o povoleni
+   jako drive).
+3) Na TV strance klikni MED, pak HIGH - sleduj, jestli se obraz behem
+   par okamziku zaostri BEZ toho, abys cokoli jineho delal. Zvuk by
+   mel bezet dal nepretrzite.
+4) Zavri celou appku a znovu ji otevri, znovu zapni cast - uroven by
+   mela zustat tam, kde jsi ji nechal (ne zpet na LOW).
+5) Pokud pri prepnuti urovne uvidis kratke zablikani/vypadek obrazu
+   (zlomek vteriny), je to ocekavany kompromis teto techniky (novy
+   VirtualDisplay potrebuje chvilku, nez zacne posilat snimky) - napis
+   mi jak dlouho to trva, at vime jestli je to prijatelne.
+6) Pokud se cokoli chova divne (appka spadne, obraz uplne zamrzne),
+   napis mi presne co a kdy - tohle je slozitejsi zmena nez predtim,
+   takze chci vedet hned, kdyby neco nesedelo.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK17 (predchozi build).

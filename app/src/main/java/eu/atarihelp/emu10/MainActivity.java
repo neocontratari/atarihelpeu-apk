@@ -245,10 +245,12 @@ public class MainActivity extends Activity {
     private int[] napTvWebQualityFor(boolean djScreen, boolean hqLiteScreen, boolean landscape) {
         int t = napTvWebQualityTier; if (t < 0) t = 0; if (t > 2) t = 2;
         int[][] table;
-        if (!landscape)         table = new int[][]{{1120,72,55},{1360,84,48},{1600,92,40}};
-        else if (djScreen)      table = new int[][]{{1120,72,65},{1360,84,52},{1600,92,42}};
-        else if (hqLiteScreen)  table = new int[][]{{860,62,75}, {1120,76,62},{1360,84,50}};
-        else                    table = new int[][]{{760,54,75}, {1000,70,68},{1200,78,55}};
+        // BUILD2SK17: HIGH tlacen jeste dal - S8 potvrzeno v pohode na predchozim
+        // HIGH (SK15), takze je prostor. LOW a MEDIUM beze zmeny.
+        if (!landscape)         table = new int[][]{{1120,72,55},{1360,84,48},{1920,94,36}};
+        else if (djScreen)      table = new int[][]{{1120,72,65},{1360,84,52},{1920,94,38}};
+        else if (hqLiteScreen)  table = new int[][]{{860,62,75}, {1120,76,62},{1680,90,45}};
+        else                    table = new int[][]{{760,54,75}, {1000,70,68},{1440,86,48}};
         return table[t];
     }
     private volatile String napTvWebVideoProfile = "AUTO";
@@ -788,6 +790,59 @@ public class MainActivity extends Activity {
         appendNativeLog("BUILD2SA13C9 SCREEN_MIRROR_OFF why=" + why);
     }
 
+    // BUILD2SK18: prekonfiguruje JEN VirtualDisplay+ImageReader (ktere maji pevnou
+    // velikost od sveho vzniku) na novou velikost odpovidajici prave zvolene
+    // urovni kvality - BEZ opetovneho zadani o MediaProjection povoleni (to uz
+    // mame v napTvWebProjection) a BEZ dotyku zvukoveho potrubi vubec, takze
+    // zvuk pri zmene urovne kvality nema duvod se prerusit. Volano pri kazde
+    // zmene urovne z /quality endpointu, pokud system mirror prave bezi -
+    // zadny "vypni a zapni cast" uz neni potreba.
+    private synchronized void napTvWebResizeSystemMirror() {
+        if (!napTvWebSystemMirrorActive || napTvWebProjection == null || napTvWebSystemHandler == null) return;
+        MediaProjection mp = napTvWebProjection;
+        try {
+            DisplayMetrics dm = new DisplayMetrics();
+            if (Build.VERSION.SDK_INT >= 17) getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+            else getWindowManager().getDefaultDisplay().getMetrics(dm);
+            int sw = Math.max(2, dm.widthPixels), sh = Math.max(2, dm.heightPixels);
+            boolean landscape = sw > sh;
+            int[] qv0 = napTvWebQualityFor(true, false, landscape);
+            int maxSide = qv0[0];
+            float scale = Math.min(1.0f, (float) maxSide / Math.max(sw, sh));
+            int cw = Math.max(2, (int) (sw * scale)) & ~1;
+            int ch = Math.max(2, (int) (sh * scale)) & ~1;
+            if (cw == napTvWebSystemWidth && ch == napTvWebSystemHeight) return; // uz na cilove velikosti
+            int dpi = Math.max(120, dm.densityDpi);
+
+            try { if (napTvWebVirtualDisplay != null) napTvWebVirtualDisplay.release(); } catch (Throwable ignored) {}
+            napTvWebVirtualDisplay = null;
+            try { if (napTvWebImageReader != null) napTvWebImageReader.close(); } catch (Throwable ignored) {}
+            napTvWebImageReader = null;
+
+            napTvWebImageReader = ImageReader.newInstance(cw, ch, PixelFormat.RGBA_8888, 2);
+            napTvWebImageReader.setOnImageAvailableListener(reader -> {
+                Image img = null;
+                try { img = reader.acquireLatestImage(); napTvWebHandleSystemImage(img); }
+                catch (Throwable t) {
+                    appendNativeLog("BUILD2SK18 SCREEN_IMAGE_ERR " + safeMsg(t));
+                    try { if (img != null) img.close(); } catch (Throwable ignored) {}
+                }
+            }, napTvWebSystemHandler);
+            napTvWebVirtualDisplay = mp.createVirtualDisplay(
+                    "AtariHelp-TV-WEB-SCREEN",
+                    cw, ch, dpi,
+                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    napTvWebImageReader.getSurface(), null, napTvWebSystemHandler);
+            if (napTvWebVirtualDisplay == null) throw new RuntimeException("resize createVirtualDisplay null");
+            napTvWebSystemWidth = cw;
+            napTvWebSystemHeight = ch;
+            napTvWebSystemLastFrameMs = 0;
+            appendNativeLog("BUILD2SK18 SCREEN_MIRROR_RESIZED cap=" + cw + "x" + ch + " tier=" + napTvWebQualityTier);
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SK18 SCREEN_MIRROR_RESIZE_FAIL " + safeMsg(t));
+        }
+    }
+
     private void napTvWebAudioPush(short[] pcm, int offset, int shorts, int sampleRate, String source) {
         if (!napTvWebRunning || pcm == null || shorts <= 0) return;
         try {
@@ -1027,7 +1082,12 @@ public class MainActivity extends Activity {
             } else if ("/quality".equals(path)) {
                 long t = napTvWebQueryLong(fullPath, "tier", napTvWebQualityTier);
                 napTvWebQualityTier = (int) Math.max(0, Math.min(2, t));
-                appendNativeLog("BUILD2SK14 TV_WEB_QUALITY_TIER_SET tier=" + napTvWebQualityTier);
+                try { getSharedPreferences("nap_tv_prefs", MODE_PRIVATE).edit().putInt("quality_tier", napTvWebQualityTier).apply(); } catch (Throwable ignored) {}
+                appendNativeLog("BUILD2SK18 TV_WEB_QUALITY_TIER_SET tier=" + napTvWebQualityTier);
+                // BUILD2SK18: pokud uz system mirror bezi, prekonfiguruj VirtualDisplay
+                // na nove rozliseni HNED - zadny "vypni a zapni cast" jiz neni potreba
+                // (ukazalo se, ze appka nema pro uzivatele cistou cestu jak to udelat).
+                if (napTvWebSystemMirrorActive) { ui.post(this::napTvWebResizeSystemMirror); }
                 byte[] body = ("tier=" + napTvWebQualityTier).getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, true);
                 out.write(body);
@@ -3260,6 +3320,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // BUILD2SK18: obnov ulozenou volbu kvality TV mirroru z minula (drive se
+        // pri kazdem znovuotevreni appky vracela na LOW - ted si to appka pamatuje).
+        try { napTvWebQualityTier = getSharedPreferences("nap_tv_prefs", MODE_PRIVATE).getInt("quality_tier", 0); } catch (Throwable ignored) {}
         napPlayerRequestAudioPermission("startup");
         web = new WebView(this);
         // BUILD2RV: WebView must be transparent in landscape; HTML is controls-only over native C++ video.
