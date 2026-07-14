@@ -1,0 +1,63 @@
+BUILD2SK26 - RESENI NA KORENI: OBRAZOVKA UZ NEUSNE BEHEM TV CASTU
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11-25 - stejny soubor, 2 mala mista)
+
+DIKY ZA UPRESNENI - MENI TO CELOU DIAGNOZU
+"Pokazdy po druhe smycce se uspi telefon - coz by nemelo" - tohle
+je presne to, co jsem hledal. Kdyz obrazovka telefonu zhasne (Android
+ji sam zamkne po chvili, kdy se ji nikdo nedotyka - a pri sledovani
+TV/PC monitoru se prirozene nedotykas telefonu), aktivita dostane
+"pauza" - PRESNE to "PS1_SESSION_STOP reason=activityPause", co jsem
+nasel v logu minule! Tohle neni chyba v mem TV-cast kodu ani v
+zadnem konkretnim emulatoru - je to normalni Android chovani
+(setrit baterku), ktere ale v tomhle kontextu (telefon jede jako
+"server" pro TV, ne jako neco, co drzis v ruce) neni zadouci.
+
+RESENI NA KORENI (misto dalsiho zmirnovani nasledku)
+SK24 a SK25 zmirnovaly, jak moc rusive vypada zotaveni PO tom, co
+se aktivita pozastavi - ale nereseji, PROC se pozastavuje. Tenhle
+build resi PRICINU: dokud bezi TV cast, appka ted drzi obrazovku
+telefonu vzhuru (FLAG_KEEP_SCREEN_ON - stejny mechanismus, jaky
+pouzivaji video prehravace nebo navigace, aby obrazovka nezhasla
+uprostred jizdy). Jakmile TV cast vypnes, drzeni se zase uvolni -
+telefon se pak chova normalne (setri baterku jako driv).
+Tohle by melo VYRAZNE snizit, jak casto vubec dochazi k tomu
+"activityPause" spousteci udalosti - a tim padem i k te dlouhe
+"backing surface" smycce, kterou uz SK24/SK25 jen zmirnovaly.
+
+CO ZUSTAVA JAKO POJISTKA
+SK24 (delsi cekani pri "backing surface") a SK25 (eskalujici cekani
+pri opakovanem selhani) zustavaji v kodu beze zmeny - kdyby k
+pozastaveni aktivity doslo z JINEHO duvodu (napr. prijde telefonat,
+notifikace prekryje appku, nebo cokoli jineho, co FLAG_KEEP_SCREEN_ON
+nezachyti), porad tam mas tuhle pojistku, aby se to zotavilo co
+nejmene rusive.
+
+MERENI （pred odeslanim)
+- Diff proti originalu: 304 radku (SK11-26 dohromady).
+- getWindow() uz byl v souboru drive pouzity (radek 397, existujici
+  kod pro PixelCopy) - potvrzeno, ze je to platna, dostupna metoda
+  v teto tride, ne neco, co jsem si jen domyslel.
+- Zavorky/hranate zavorky v celem souboru vyvazene.
+- FLAG_KEEP_SCREEN_ON se prida presne jednou pri uspesnem startu
+  TV castu a odebere presne jednou pri jeho zastaveni (overeno
+  poctem vyskytu v souboru - 1x pridani, 1x odebrani).
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Zapni TV cast, pak nech telefon lezet BEZ DOTYKU tak dlouho, jak
+   jsi to delal predtim (pres 2 smycky intra, nebo jakkoli dlouho to
+   drive trvalo, nez usnul) - obrazovka by TEĎ nemela zhasnout, dokud
+   cast bezi.
+3) Zopakuj cely postup, co jsi popsal (PS1 -> DJ pult -> Sega ->
+   rozcestnik) na HIGH - sleduj, jestli uz k tomu dlouhemu
+   problikavani vubec dochazi.
+4) Vypni TV cast a zkontroluj, ze telefon zase normalne usne po
+   chvili necinnosti (jako pred timhle buildem) - jen behem castu
+   ma zustat vzhuru, ne porad.
+5) Pokud i po tomhle jeste nekdy uvidis kratke problikavani, je to
+   ocekavane (SK24/SK25 pojistka pro jine pripady) - ale melo by
+   byt MNOHEM vzacnejsi a kratsi nez predtim.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK25 (predchozi build).

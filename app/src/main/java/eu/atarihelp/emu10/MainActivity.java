@@ -268,6 +268,7 @@ public class MainActivity extends Activity {
     private volatile int napTvWebSystemFreshStreak = 0;
     private volatile boolean napTvWebResizeInProgress = false;
     private volatile long napTvWebResizeStartedMs = 0;
+    private volatile int napTvWebBackingSurfaceFailStreak = 0;
     private volatile int napTvWebSystemWidth = 0;
     private volatile int napTvWebSystemHeight = 0;
     private volatile int napTvWebSystemDpi = 0;
@@ -428,10 +429,22 @@ public class MainActivity extends Activity {
                 // zkousela znovu tak rychle, ze si to uzivatel spravne vsiml jako
                 // "zamrzlo a problikavalo". Misto normalniho rychleho retry pockame
                 // pri TOMHLE konkretnim selhani dele, at ma okno cas se usadit.
+                // BUILD2SK25: dalsi log ukazal, ze i s 700ms krokem umi tenhle stav
+                // trvat pres 49 vterin (60+ pokusu) - typicky kdyz jde o vetsi
+                // systemovou udalost (aktivita se pozastavi/obnovi, ne jen navigace
+                // v ramci stranky). Pridana ESKALACE: kazde dalsi selhani v rade
+                // prodlouzi dalsi cekani o 400ms, az do stropu 3s - takze dlouhy
+                // zaseknuty stav se retryuje mnohem miň casto (odhadem ~3x mene
+                // pokusu za stejnou dobu), zatimco kratke, rychle vyresene zaseknuti
+                // porad zacne na puvodnich 700ms.
                 if (errMsg != null && errMsg.contains("backing surface")) {
-                    extraDelay = 700L;
+                    napTvWebBackingSurfaceFailStreak++;
+                    extraDelay = Math.min(3000L, 700L + (long) (napTvWebBackingSurfaceFailStreak - 1) * 400L);
+                } else {
+                    napTvWebBackingSurfaceFailStreak = 0;
                 }
             }
+            if (extraDelay == 0) napTvWebBackingSurfaceFailStreak = 0;
             if (napTvWebRunning) ui.postDelayed(this, Math.max(35, napTvWebFrameDelayMs) + extraDelay);
         }
     };
@@ -1076,6 +1089,13 @@ public class MainActivity extends Activity {
             ui.post(napTvWebFrameTick);
             String url = napTvWebUrl();
             appendNativeLog("BUILD2SA13C13 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_mp3_draw_safe_youtube_in_app audio=PCM16_STEREO");
+            // BUILD2SK26: telefon si po chvili necinnosti (nikdo se ho behem
+            // sledovani TV nedotyka) sam zamkne obrazovku - to zpusobi
+            // "activityPause" (potvrzeno v logu), po kterem nasleduje dlouha
+            // "backing surface" smycka (SK24/SK25 ji jen zmirnuji, neresi na
+            // koreni). Reseni na koreni: dokud bezi TV cast, drz obrazovku
+            // vzhuru (stejny mechanismus jako video prehravace/navigace).
+            try { ui.post(() -> { try { getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
             return "TV_WEB_CAST_OK " + url + " APP";
         } catch (Throwable t) {
             napTvWebRunning = false;
@@ -1086,6 +1106,9 @@ public class MainActivity extends Activity {
 
     private synchronized String napTvWebStop(String why) {
         napTvWebRunning = false;
+        // BUILD2SK26: uvolni drzeni obrazovky vzhuru - mimo TV cast se telefon
+        // ma chovat normalne (nezustavat zbytecne vzhuru a zrat baterku).
+        try { ui.post(() -> { try { getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
         napTvWebPixelCopyPending = false;
         napTvWebPixelCopyPendingAtMs = 0;
         napTvWebPixelCopyDisabledUntilMs = 0;
@@ -1204,9 +1227,9 @@ public class MainActivity extends Activity {
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[];" // BUILD2SB1
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
-                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'playback'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+0.35;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
+                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+0.15;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+0.36;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
-                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||(!isNaN(st)&&expected>0&&st!==expected)||next<now+0.04)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+0.22;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
+                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||(!isNaN(st)&&expected>0&&st!==expected)||next<now+0.04)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+0.10;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
                 + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);"
                 + "(function(){var qs=document.querySelectorAll('#q button');function mark(t){for(var i=0;i<qs.length;i++)qs[i].classList.toggle('on',qs[i].getAttribute('data-t')===(''+t));}"
                 + "fetch('/quality').then(function(r){return r.text();}).then(function(t){var m=/tier=(\\d)/.exec(t);mark(m?m[1]:'0');}).catch(function(){});"
