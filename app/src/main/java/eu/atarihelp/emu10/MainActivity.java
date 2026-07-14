@@ -1691,6 +1691,15 @@ public class MainActivity extends Activity {
         // BUILD2SA5: nahled obrazu - realne snimky z jadra jako kvalitnejsi JPEG base64.
         // Neni to finalni render (ten pojede pres TextureView v SA2C), ale je to
         // OPRAVDOVY obraz z beziciho jadra, zadny fake.
+        // BUILD2SK27: ukazalo se, ze tohle JE zive vykreslovani PS1 (viz emu_ps1/
+        // index.html radek ~481 - setInterval kazdych 80ms), na rozdil od Segy,
+        // ktera ma vlastni GPU TextureView s kvalitnim hardwarovym zvetsenim.
+        // PS1 jadro renderuje na 320x240 (potvrzeno v logu - res=320x240) - tahle
+        // funkce driv komprimovala PRESNE tenhle maly snimek do JPEG a nechala
+        // prohlizec roztahnout pres CSS az pozdeji. Ted se snimek NEJDRIV kvalitne
+        // zvetsi (bilinearni filtr, ne nejblizsi soused) NA 3-nasobek, a az POTOM
+        // se komprimuje - JPEG enkoder tak dostane skutecne vic pixelu k praci,
+        // coz vypada vyrazne ostreji nez pozdejsi CSS roztazeni maleho JPEGu.
         private int[] ps1PrevBuf = new int[1024 * 512];
         @JavascriptInterface
         public String ps1FramePreviewB64() {
@@ -1700,9 +1709,11 @@ public class MainActivity extends Activity {
                 if (wh <= 0) return "";
                 int w = wh >> 16, h = wh & 0xFFFF;
                 android.graphics.Bitmap bm = android.graphics.Bitmap.createBitmap(ps1PrevBuf, w, h, android.graphics.Bitmap.Config.ARGB_8888);
-                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
-                bm.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, bo);
+                android.graphics.Bitmap scaled = android.graphics.Bitmap.createScaledBitmap(bm, w * 3, h * 3, true);
                 bm.recycle();
+                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, bo);
+                scaled.recycle();
                 return Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
             } catch (Throwable t) { return ""; }
         }

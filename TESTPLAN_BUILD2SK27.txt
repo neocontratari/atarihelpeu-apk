@@ -1,0 +1,74 @@
+BUILD2SK27 - PS1 OSTROST: NALEZENA SKUTECNA PRICINA "JINE LIGY"
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(1 funkce upravena)
+
+POTVRZENO Z LOGU: SK26 VYRESIL PROBLIKAVANI
+V novem PS1 logu je "backing surface" 0x (drive 330x). Diky za
+potvrzeni, ze telefon uz neusina - reseni na koreni (drzeni obrazovky
+vzhuru) funguje presne jak melo.
+
+PROC JE PS1 "JINA LIGA" - NASEL JSEM PRESNOU PRICINU
+Srovnal jsem, jak Sega a PS1 skutecne vykreslujou obraz:
+  SEGA: nativni jadro renderuje na 320x224, ale HNED se to posle
+    do GPU-akcelerovaneho TextureView, ktery to kvalitne (bilinearni
+    hardwarovy filtr) zvetsi na 1384x672 - AZ TOHLE se pak zachytava
+    pro TV prenos. Zadna JPEG komprese pred tim.
+  PS1: nativni jadro TAKY renderuje na male rozliseni (320x240,
+    potvrzeno v logu - res=320x240) - ALE misto GPU TextureView se
+    tenhle maly snimek rovnou komprimuje do JPEGu (byt kvalitniho,
+    95) a posila se do stranky jako <img>, kde ho teprve prohlizec
+    roztahne pres CSS. Zadne hardwarove zvetseni predtim.
+Tenhle rozdil v architekture (ne v mem TV-cast kodu) je presna
+pricina "jine ligy" - PS1 obraz jde pres jeden navic destruktivni
+krok (komprimovat MALY obraz, pak ho roztahnout), zatimco Sega ma
+kvalitni zvetseni HNED na zacatku, pred jakoukoli kompresi.
+
+OPRAVA (presne to "fake", na ktere jsi dal svoleni)
+Pred kompresi do JPEGu se ted snimek NEJDRIV kvalitne zvetsi
+(bilinearni filtr - `Bitmap.createScaledBitmap(..., true)`, ne
+nejblizsi soused) na TROJNASOBEK (960x720 misto 320x240). JPEG
+enkoder tak dostane skutecne vic pixelu k praci, misto aby se
+maly obraz komprimoval a roztahoval az pozdeji v prohlizeci pres CSS.
+Tohle by melo byt ZNATELNE ostrejsi, at uz koukas primo na mobilu
+nebo pres TV cast (obojí totiz cerpa ze STEJNE stranky/obrazku).
+Kvalita JPEGu mirne snizena z 95 na 90 (kompenzace za vetsi rozmery
+snimku - vetsi obraz pri stejne kvalite = vetsi datovy tok; 90 na
+960x720 by melo porad vypadat lepe nez 95 na 320x240).
+
+CO JSEM SCHVALNE NEZMENIL
+Snimkovou frekvenci (80ms = ~12.5fps) jsem nechal beze zmeny - chtel
+jsem zmenit jen jednu vec najednou (ostrost), abychom presne videli,
+co pomohlo. Pokud po tomhle bude obraz dost ostry ale porad trochu
+"trhany", muzeme se v pristim kroku podivat na zvyseni snimkove
+frekvence zvlast.
+
+K TVYM DALSIM POZNAMKAM (zaznamenano, ne reseno v tomhle buildu)
+- "F5 refresh pri LOW pred prepnutim Medium/High na Atari/Sega":
+  zaznamenano, ale zatim nemam dost silnou stopu na to, abych to
+  cilene opravil bez hadani. Pokud te to netrapi (rikal jsi, ze u DJ
+  pultu ti to nevadi), muzeme se na to podivat pozdeji.
+- Atari vnitrni problemy: podle tveho pokynu NErizeno v tomhle
+  buildu.
+- DJ pult graficky prepracovani: az prijde na radu, dej vedet.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 323 radku (SK11-27 dohromady), zmena jen v
+  jedne funkci (ps1FramePreviewB64).
+- Zavorky/hranate zavorky v celem souboru vyvazene.
+- Obe bitmapy (puvodni mala + zvetsena) se spravne uvolnuji
+  (bm.recycle() + scaled.recycle()) - zadny unik pameti.
+- POCTIVE: nemam zpusob, jak zmerit VIZUALNI dopad bez tveho
+  zarizeni - tohle je legitimni, dobre zdokumentovana technika
+  (bilinearni interpolace pred kompresi), ale skutecny vysledek
+  musi potvrdit tvuj test.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Spust PS1 (primo na mobilu i pres TV cast) - srovnej ostrost s
+   predchozim stavem. Mel by byt znatelny rozdil.
+3) Sleduj vykon na S8 - zvetsovani snimku 12.5x za vterinu prida
+   trochu prace navic; pokud by se objevilo sekani, ktere tam
+   predtim nebylo, napis mi to.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK26 (predchozi build).
