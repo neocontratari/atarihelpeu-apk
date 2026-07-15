@@ -450,34 +450,47 @@ public class MainActivity extends Activity {
     };
 
     private volatile long napTvWebBitmapResizePendingSince = 0;
+    private volatile long napTvWebBitmapStruggleStartMs = 0;
     private volatile int napTvWebBitmapPendingW = 0;
     private volatile int napTvWebBitmapPendingH = 0;
     private void napTvWebCaptureByDraw(int bw, int bh, float scale) {
         try {
             if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
-                // BUILD2SK28: nahlaseno opakovane (4x nezavisle) ze prechod MEZI
-                // JAKYMKOLI dvema obrazovkami (ne jen PS1) na urovni MEDIUM/HIGH
-                // problikava, zatimco LOW je v pohode. Pricina: na MEDIUM/HIGH se
-                // cilova velikost bitmapy MEZI RUZNYMI TYPY OBRAZOVEK (DJ/emu/
-                // ostatni) lisi vic nez na LOW, takze prechod castej spousti
-                // PRESTAVBU bitmapy - a pokud se prave v tu chvili zachyti view
-                // hierarchie UPROSTRED WebView navigace (stara stranka mizi, nova
-                // se teprve sklada), vznikne presne to probliknuti.
-                // OPRAVA (stejna filozofie jako SK21 pro system-mirror): kdyz se
-                // cilova velikost zmeni, NEZACHYCUJEME hned - pockame ~150ms, at
-                // se prechod stihne usadit, a do te doby dal servírujeme posledni
-                // znamy DOBRY snimek (zmrazeny), misto probliknuti prechodoveho stavu.
+                // BUILD2SK28: prechod mezi obrazovkami na MEDIUM/HIGH problikaval,
+                // protoze se ihned zachytilo do nove bitmapy uprostred neusazene
+                // WebView navigace. SK28 pridalo cekani na usazeni cile.
+                // BUILD2SK30: SK28 mela diru - ZADNA TOLERANCE na drobny sum v bw/bh
+                // (napr. z rootFrame.getWidth()/getHeight()) znamenala, ze pokud se
+                // cilova velikost mezi tiky lisila byt i o 1px, odpocet se STALE
+                // DOKOLA RESETOVAL a NIKDY nedobehl - trvale zamrznuti vyzadujici
+                // rucni refresh stranky, presne jak bylo nahlaseno ("musim dat
+                // refresh", "blikani je neustale"). Oprava dvema NEZAVISLYMI
+                // pojistkami:
+                // 1) TOLERANCE 4px - drobny rozdil se nepocita jako "novy cil",
+                //    jen jako sum, takze odpocet NA USAZENI se timhle uz neresetuje.
+                // 2) TVRDY LIMIT 2000ms merenej OD PRVNIHO zaseknuti (ne od
+                //    posledniho resetu cile) - i kdyby se cil porad GENUINE menil
+                //    (nad ramec tolerance), po 2 vterinach appka prestane cekat a
+                //    proste pokracuje s aktualni velikosti. Zadny scenar uz nemuze
+                //    vest k trvalemu zamrznuti.
                 long now = System.currentTimeMillis();
-                if (napTvWebBitmapPendingW != bw || napTvWebBitmapPendingH != bh) {
+                if (napTvWebBitmapStruggleStartMs == 0) napTvWebBitmapStruggleStartMs = now;
+                boolean hardTimeout = (now - napTvWebBitmapStruggleStartMs) > 2000L;
+                boolean withinTolerance = napTvWebBitmapResizePendingSince > 0
+                        && Math.abs(napTvWebBitmapPendingW - bw) <= 4
+                        && Math.abs(napTvWebBitmapPendingH - bh) <= 4;
+                if (!withinTolerance && !hardTimeout) {
                     napTvWebBitmapPendingW = bw;
                     napTvWebBitmapPendingH = bh;
                     napTvWebBitmapResizePendingSince = now;
                     return;
                 }
-                if (now - napTvWebBitmapResizePendingSince < 150L) {
+                if (!hardTimeout && (now - napTvWebBitmapResizePendingSince) < 150L) {
                     return;
                 }
                 napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+                napTvWebBitmapResizePendingSince = 0;
+                napTvWebBitmapStruggleStartMs = 0;
             }
             Canvas cv = new Canvas(napTvWebBitmap);
             cv.drawColor(Color.BLACK);

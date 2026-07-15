@@ -1,0 +1,72 @@
+BUILD2SK30 - OPRAVA REGRESE ZE SK28 (moje chyba, na rovinu)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(1 funkce prepracovana - napTvWebCaptureByDraw)
+
+NA ROVINU: SK28 MELA DIRU A ZHORSILA TO
+Popsal jsi presne to, co se stalo: "zasekava se... nekdy jen video,
+zvuk bezi... musim dat refresh... blikani je neustale." To je horsi
+nez pred SK28, ne lepsi - beru za to zodpovednost.
+
+PRICINA (nasel jsem to, ne jen odhaduji)
+SK28 pridala cekani 150ms pri zmene cilove velikosti bitmapy, aby se
+nezachytilo uprostred neusazeneho prechodu mezi strankami. ALE: kdyz
+se cilova velikost mezi tiky lisila byt i o par pixelu (napr. z
+maleho kolisani rootFrame.getWidth()/getHeight() - nemusi to byt
+genuinni zmena obrazovky, staci drobny sum), muj kod to vyhodnotil
+jako "novy cil" a ZACAL ODPOCET ZNOVU. Pokud se tohle delo furt
+dokola (i o 1px), odpocet NIKDY nedosahl 150ms - obraz zustal
+NAVZDY zmrazeny, presne jak jsi popsal. Zvuk bezel dal, protoze
+tahle cast kodu se zvuku vubec netyka - proto "nekdy jen video".
+
+OPRAVA - DVE NEZAVISLE POJISTKY
+1) TOLERANCE 4px: drobny rozdil v cilove velikosti (do 4 pixelu) se
+   uz NEPOCITA jako "novy cil" - odpocet na usazeni se timhle
+   nadale neresetuje. Tohle by melo resit hlavni pricinu.
+2) TVRDY LIMIT 2000ms: i kdyby se cil PORAD GENUINE menil (nad ramec
+   tolerance, neco co si jeste neumim presne predstavit ale chci mit
+   pojistku), appka po 2 vterinach PRESTANE cekat na usazeni a proste
+   pokracuje s aktualni velikosti. Tohle merim OD PRVNIHO zaseknuti,
+   ne od posledniho resetu cile - takze i kdyby se cil menil porad
+   dokola, po 2s se to VZDY zachrani. Zadny scenar uz nemuze vest k
+   trvalemu zamrznuti vyzadujicimu rucni refresh.
+
+PROC JSEM SI TIMHLE TENTOKRAT JISTEJSI
+Napsal jsem test se TREMI scenari, vcetne toho NEJHORSIHO (cil se
+meni O VIC NEZ 4px KAZDY jednotlivy tik, cili tolerance sama o sobe
+by nepomohla) - a i TENHLE extremni pripad se spolehlive zachrani do
+2 vterin diky druhe pojistce. Driv jsem otestoval jen "normalni"
+scenar (stabilni cil), ne PATOLOGICKY pripad, ktery presne odpovida
+tomu, co se tobe realne stalo - to uz se tentokrat nestane.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 374 radku (SK11-30 dohromady).
+- Zavorky/hranate zavorky vyvazene.
+- Realny javac + spusteni (SettleFixCheck.java), TRI scenare s
+  REALISTICKYMI casovymi znackami (ne od nuly - System.currentTime
+  Millis() nikdy nevraci 0, testoval jsem to poprve s casem od 0 a
+  dostal jsem falesny neuspech, kterej jsem si overil a opravil driv
+  nez jsem cokoli poslal):
+  1) Stabilni cil -> settle presne po 150ms, 1 kresleni. OK.
+  2) KRITICKY TEST - drobny sum +-2px kazdy tik (presne typ chyby,
+     co se ti stala) -> uspesne nakresleno v case ~175ms navzdory
+     nepretrzitemu kolisani. POTVRZENO OPRAVENO.
+  3) Patologicky - cil se meni o 20px kazdy tik (nikdy v toleranci)
+     -> tvrdy limit zachranil situaci v case ~2050ms. Zadny trvaly
+     zaseknuti scenar.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Zopakuj presne to, co jsi delal, kdyz se to zaseklo - sleduj FPS
+   pocitadlo (z SK28/29) - melo by zustat nenulove i behem prechodu,
+   maximalne kratce klesnout, ale NIKDY se nezastavit uplne.
+3) DULEZITE: zkus to DELSI dobu (nekolik minut, vic prechodu za
+   sebou) - tohle byla chyba, ktera se projevovala postupne/nahodne,
+   takze kratky test nemusi stacit na potvrzeni.
+4) Pokud se to jeste NEKDY zasekne, posli mi prosim znovu log - a
+   tentokrat i cislo, kolikrat jsi musel dat refresh, at vidim jestli
+   se to aspon VYRAZNE zlepsilo, i kdyby to nebylo 100%.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK27 (posledni build
+pred timhle problemem - nema FPS pocitadlo ani settle logiku, ale
+je jiste stabilni).
