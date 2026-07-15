@@ -1,0 +1,78 @@
+BUILD2SK35 - SKUTECNA PRICINA NALEZENA (dukaz z tveho logu) + POUCENI ZE SK32
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+DUKAZ, NE HADANI
+Tve SK34 mereni prineslo presne to, co jsem potreboval:
+  TV_WEB_PIXELCOPY_SLOW latencyMs=1160 result=0 hqLite=FALSE tier=2
+PixelCopy pozadavek na NE-hqLite obsahu (DJ pult/Atari/uvodni
+obrazovka) cekal 1160 milisekund. Puvodni (SK31) kod zkousel
+PixelCopy VZDY, pro VSECHEN obsah, bez ohledu na typ - hqLiteScreen
+rozhodovalo jen o tom, co se stane PRI SELHANI. Presne tohle
+zpusobovalo hlasene zasekavani/probliknuti specificky na Atari, DJ
+pultu a uvodni obrazovce, zatimco PS1/Sega/MP3 prehravac (kde
+PixelCopy funguje rychle a spolehlive) byly v poradku.
+
+CO SE ZMENILO
+PixelCopy se ted zkousi VYHRADNE pro hqLiteScreen obsah (PS1/Sega/
+Atari - technicka detekce, presne popisujes ze SAMOTNE Atari
+funguje spatne i kdyz je ve stejne kategorii jako PS1/Sega, k tomu
+vic nize). Pro VSECHNO ostatni (DJ pult, uvodni obrazovka, cokoli
+jineho) appka jde VZDY primo pres draw(), PixelCopy se pro tenhle
+obsah vubec nezkousi.
+
+POUCENI ZE SK32 - PROC TENTOKRAT BY TO NEMELO ZPUSOBIT "PS1 SE
+PAMATUJE"
+SK32 delalo TOTEZ zakladni rozdeleni, ale melo dve konkretni chyby,
+ktere jsem tentokrat cilene opravil:
+1) Cisteni "visiciho" PixelCopy pozadavku bylo uvnitr if(hqLiteScreen)
+   bloku - jakmile jsi odesel z hqLite obrazovky, cisteni PRESTALO
+   bezet. Ted bezi VZDY, kazdy tik, bez ohledu na aktualni typ obsahu.
+2) (Hlavni pricina te katastrofy) Kdyz stary, jeste neodpovezeny
+   PixelCopy pozadavek z PS1 KONECNE dorazil - treba az po tom, co
+   jsi byl uz dávno na DJ pultu - jeho vysledek se proste PUBLIKOVAL,
+   coz PREPSALO cerstvy obraz z draw() stary snimek z PS1. Pridal
+   jsem GENERACNI CITAC: kazdy PixelCopy pozadavek si nese cislo
+   "generace", a kdyz prijde odpoved, porovna se s AKTUALNI generaci
+   (ktera se zvysi pri KAZDEM draw() volani). Pokud se neshoduji,
+   vysledek se ZAHODI - nikdy neprepise novejsi obsah.
+
+K TVEMU POSTREHU O ATARI - JESTE NEVYRESENO, POCTIVE
+Rekl jsi, ze Atari NEFUNGUJE spravne, presto ze je ve stejne kategorii
+(hqLiteScreen) jako Sega a PS1, ktere FUNGUJI. To by znamenalo, ze
+bud (a) nektera Atari hra pouziva jinou URL adresu, kterou moje
+detekce "/emu/" nezachyti (v drivejsim zkoumani jsem nasel priklad
+"/emu_vbxe/" pro jednu konkretni hru), takze by SPADLA do "ostatni"
+kategorie a mela by TED fungovat spravne diky tomuhle buildu - nebo
+(b) neco jineho, co jeste nevim. Zkus prosim po tomhle buildu Atari
+znovu a dej vedet, jestli se to zlepsilo.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 514 radku.
+- Zavorky/hranate zavorky vyvazene.
+- Zadne osirele odkazy na odstranene promenne (didTimeoutFallback,
+  hqLiteScreenFinal) - overeno pocitanim, 0 vyskytu.
+- Realny javac + spusteni (StaleRaceCheck.java), 4 scenare vcetne
+  toho KRITICKEHO - presne simulace zpozdene PS1 odpovedi PO
+  prechodu na DJ pult:
+  1) Zastaraly pozdni PixelCopy vysledek PO prechodu na jinou
+     obrazovku -> SPRAVNE zahozen (0 publikovano, 1 zahozeno) -
+     nepreprise cerstvy draw() obraz.
+  2) Normalni provoz bez zmeny obrazovky -> PixelCopy funguje
+     spravne (1 publikovano, 0 zahozeno).
+  3) Ne-hqLite obsah nikdy nezkousi PixelCopy, vzdy jen draw().
+  4) Prepnuti hqLite->non-hqLite->hqLite -> pending flag se
+     nezasekne, novy pozadavek jde vydat po 900ms timeoutu.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) DJ pult, Atari, uvodni obrazovka na MEDIUM/HIGH - hlavni test.
+3) Prechody MEZI vsemi obrazovkami vicekrat za sebou, delsi dobu.
+4) Otevri /log v druhem panelu pro jistotu - pokud se objevi
+   "PIXELCOPY_STALE_DISCARDED", je to OCEKAVANE a SPRAVNE chovani
+   (znamena ze pojistka funguje), ne chyba.
+5) Posli mi vysledek - a pokud budes mit chut natocit dalsi video,
+   klidne, podivam se na nej poradne (vytahnu si z nej snimky).
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK34 (predchozi build -
+ma jeste puvodni SK31 logiku + SK34 mereni, bez tohohle prepracovani).
