@@ -89,14 +89,18 @@ function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttr
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 ['btnMenu','btnHelp'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
 var sp=$('settingsPanel');
-function toggleSettings(){
-  if(!sp)return;
-  var open=sp.classList.contains('open');
-  if(open){sp.classList.remove('open');sp.setAttribute('aria-hidden','true');}
-  else{sp.classList.add('open');sp.setAttribute('aria-hidden','false');}
-}
+function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');}
+function closeSettings(){if(!sp)return;sp.classList.remove('open');sp.setAttribute('aria-hidden','true');}
+function toggleSettings(){if(!sp)return;if(sp.classList.contains('open'))closeSettings();else openSettings();}
 var bs=$('btnSettings');
 if(bs)bs.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();toggleSettings();},true);
+// BUILD2SK39: pojistka - klik KAMKOLI mimo panel ho zavre, i kdyby se explicitni
+// zavreni po akci uvnitr nespustilo spolehlive.
+document.addEventListener('click',function(e){
+  if(!sp||!sp.classList.contains('open'))return;
+  if(e.target===sp||sp.contains(e.target)||e.target===bs)return;
+  closeSettings();
+},true);
 var stTv=$('stStartTv');
 if(stTv)stTv.addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
@@ -108,7 +112,7 @@ if(stTv)stTv.addEventListener('click',function(e){
     log('SETTINGS_TV_START_ERR '+err);
     toast('WEB TV: chyba pri spousteni',2200);
   }
-  toggleSettings();
+  closeSettings();
 },true);
 var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 Array.prototype.forEach.call(document.querySelectorAll('a[data-external="1"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openExternal(a.href);},true);});

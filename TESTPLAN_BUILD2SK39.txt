@@ -1,0 +1,61 @@
+BUILD2SK39 - TVRDY LIMIT SNIZEN + 3X FPS NA HIGH + OPRAVA PANELU
+================================================================================
+Zmenene soubory:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java (2 mista)
+- app/src/main/assets/index.html (oprava zavirani panelu)
+
+1) NOVY DUKAZ Z TVEHO LOGU - A CO Z NEJ VYPLYVA
+"mode=DRAW compressMs=27 gapMs=1244" - tohle potvrzuje DVE veci
+najednou:
+  a) SK38 funguje spravne - zadny PixelCopy se pro tenhle obsah
+     nezkousi (jinak by tam bylo mode=PIXELCOPY).
+  b) I presto tam byla mezera pres vterinu - takze pricina teto
+     KONKRETNI mezery uz neni v tom, co SK38 opravovalo. Je to
+     uvnitr same funkce draw() - konkretne v "usazovaci" logice
+     (SK30), ktera umi cekat az 2000ms na usazeni cilove velikosti
+     pri prechodu mezi obrazovkami. SK38 odstranilo PixelCopy jako
+     soupere o tenhle cas, ale tahle 2000ms pojistka tam porad byla
+     a ted je vic videt.
+OPRAVA: tvrdy limit snizen z 2000ms na 400ms. Porad dava WebView
+chvili na usazeni po prechodu, ale uz ne skoro dve vteriny cekani.
+
+2) 3X FPS NA HIGH - PRESNE JAK JSI ZADAL
+Delay hodnoty na HIGH urovni snizeny na tretinu (rozliseni ANI
+kvalita NEDOTCENY):
+  portret:  36ms -> 12ms
+  DJ pult:  38ms -> 13ms
+  PS1/Sega: 45ms -> 15ms
+  ostatni:  48ms -> 16ms
+DULEZITY DETAIL: appka mela skryty "floor" (minimalni mozne
+zpozdeni) natvrdo na 35ms - kdybych ho nechal, tvoje ztrojnasobena
+cisla (12-16ms) by se tise oriznula zpet na 35ms a test by nebyl
+platny. Snizil jsem floor na 10ms, aby se tvoje cisla skutecne
+projevila.
+
+3) OPRAVA PANELU NASTAVENI
+Prepsano na explicitni open/close funkce (misto pouhopohleho toggle)
++ pridana pojistka: klik KAMKOLI mimo panel ho ted taky zavre. I
+kdyby se puvodni "zavri po akci" cesta z nejakeho duvodu nespustila
+spolehlive, tahle druha cesta by mela fungovat vzdy.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 489 radku.
+- Zavorky/hranate zavorky vyvazene.
+- Primo overeny presne cisla v souboru (12/13/15/16 na spravnych
+  mistech, floor=10) - ne odhadem.
+- index.html: JS extrahovan a overen Node.js syntax checkerem - cisty.
+
+JAK OTESTOVAT
+1) Nahrad OBA soubory.
+2) K bodu 1 (hlavni): DJ pult, Atari, uvodni obrazovka na MEDIUM/HIGH
+   - prechody mezi nimi by ted mely byt vyrazne rychlejsi (max ~400ms
+   misto ~2s), i kdyz mozna porad ne dokonale.
+3) K bodu 2 (tvuj pozadavek): zkus HIGH s timhle 3x vyssim FPS -
+   podle tveho ocekavani by to nemelo zmenit povahu problikavani/
+   zasekavani. Dej vedet, jestli se potvrdilo.
+4) K bodu 3: klikni SETTINGS, pak klikni NEKAM JINAM (ne na tlacitko
+   uvnitr) - panel by se mel zavrit. Pak zkus znovu SETTINGS -> SPUSTIT
+   WEB TV - panel by se mel zavrit po kliknuti.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK38 (predchozi build -
+ma stejnou PixelCopy/draw opravu, jen bez timhle 3 zmenami).

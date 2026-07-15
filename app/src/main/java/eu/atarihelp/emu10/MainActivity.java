@@ -248,10 +248,12 @@ public class MainActivity extends Activity {
         int[][] table;
         // BUILD2SK17: HIGH tlacen jeste dal - S8 potvrzeno v pohode na predchozim
         // HIGH (SK15), takze je prostor. LOW a MEDIUM beze zmeny.
-        if (!landscape)         table = new int[][]{{1120,72,55},{1360,84,48},{1920,94,36}};
-        else if (djScreen)      table = new int[][]{{1120,72,65},{1360,84,52},{1920,94,38}};
-        else if (hqLiteScreen)  table = new int[][]{{860,62,75}, {1120,76,62},{1680,90,45}};
-        else                    table = new int[][]{{760,54,75}, {1000,70,68},{1440,86,48}};
+        // BUILD2SK39: na vyslovny pozadavek - HIGH delay ztrojnasoben (hodnoty
+        // snizeny na tretinu), rozliseni ANI kvalita NEDOTCENY - jen rychlost.
+        if (!landscape)         table = new int[][]{{1120,72,55},{1360,84,48},{1920,94,12}};
+        else if (djScreen)      table = new int[][]{{1120,72,65},{1360,84,52},{1920,94,13}};
+        else if (hqLiteScreen)  table = new int[][]{{860,62,75}, {1120,76,62},{1680,90,15}};
+        else                    table = new int[][]{{760,54,75}, {1000,70,68},{1440,86,16}};
         return table[t];
     }
     private volatile String napTvWebVideoProfile = "AUTO";
@@ -481,7 +483,13 @@ public class MainActivity extends Activity {
                 }
             }
             if (extraDelay == 0) napTvWebBackingSurfaceFailStreak = 0;
-            if (napTvWebRunning) ui.postDelayed(this, Math.max(35, napTvWebFrameDelayMs) + extraDelay);
+            // BUILD2SK39: floor snizen z 35ms na 10ms - Rene chce primo overit,
+            // jestli vyssi snimkova frekvence na HIGH neco meni (jeho hypoteza:
+            // ne). Puvodni 35ms floor by ztrojnasobene HIGH hodnoty tise osekaval
+            // zpet, takze by test nebyl platny - skutecna dosazitelna rychlost je
+            // stejne omezena tim, jak dlouho trva zachytit+zkomprimovat snimek,
+            // tenhle floor jen urcuje jak agresivne se appka o to snazi.
+            if (napTvWebRunning) ui.postDelayed(this, Math.max(10, napTvWebFrameDelayMs) + extraDelay);
         }
     };
 
@@ -511,7 +519,14 @@ public class MainActivity extends Activity {
                 //    vest k trvalemu zamrznuti.
                 long now = System.currentTimeMillis();
                 if (napTvWebBitmapStruggleStartMs == 0) napTvWebBitmapStruggleStartMs = now;
-                boolean hardTimeout = (now - napTvWebBitmapStruggleStartMs) > 2000L;
+                // BUILD2SK39: log z 15:35:16 ukazal "mode=DRAW compressMs=27
+                // gapMs=1244" - SK38 uspesne odstranilo PixelCopy jako pricinu
+                // (potvrzeno mode=DRAW), ale TATO settle logika (SK30) sama umi
+                // cekat az 2000ms na "usazeni" cilove velikosti - a presne tohle
+                // se ted projevuje jako "graficky se to nevrati" po prechodu.
+                // Snizeno na 400ms - porad davá WebView chvili na usazeni po
+                // prechodu, ale uz ne skoro dve vteriny cekani.
+                boolean hardTimeout = (now - napTvWebBitmapStruggleStartMs) > 400L;
                 boolean withinTolerance = napTvWebBitmapResizePendingSince > 0
                         && Math.abs(napTvWebBitmapPendingW - bw) <= 4
                         && Math.abs(napTvWebBitmapPendingH - bh) <= 4;
