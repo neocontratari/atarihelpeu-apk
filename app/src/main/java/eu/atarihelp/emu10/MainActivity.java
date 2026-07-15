@@ -343,6 +343,19 @@ public class MainActivity extends Activity {
                     float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
                     if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
+                        // BUILD2SK40: stara bitmapa se DRIV NIKDY neuvolnovala
+                        // (.recycle()) pred vytvorenim nove - na HIGH urovni jde o
+                        // ~7MB na bitmapu (1920x934 ARGB_8888), a pri castych
+                        // prechodech mezi obrazovkami (kazda ma jinou velikost) se
+                        // tohle mohlo hromadit. Presne odpovida popsanym symptomum:
+                        // postupne zpomalovani v case, plny restart appky to spravi.
+                        // Recyklujeme jen kdyz zadny PixelCopy pozadavek prave
+                        // nebezi (jinak riskujeme uvolneni bitmapy, do ktere jeste
+                        // zapisuje) - v beznem provozu tohle pokryje drtivou
+                        // vetsinu prechodu.
+                        if (napTvWebBitmap != null && !napTvWebPixelCopyPending) {
+                            try { napTvWebBitmap.recycle(); } catch (Throwable ignored) {}
+                        }
                         napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
                     }
                     long nowTick = System.currentTimeMillis();
@@ -538,6 +551,9 @@ public class MainActivity extends Activity {
                 }
                 if (!hardTimeout && (now - napTvWebBitmapResizePendingSince) < 150L) {
                     return;
+                }
+                if (napTvWebBitmap != null && !napTvWebPixelCopyPending) {
+                    try { napTvWebBitmap.recycle(); } catch (Throwable ignored) {}
                 }
                 napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
                 napTvWebBitmapResizePendingSince = 0;

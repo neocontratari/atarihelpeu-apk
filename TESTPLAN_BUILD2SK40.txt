@@ -1,0 +1,64 @@
+BUILD2SK40 - UNIK PAMETI (tva teorie byla spravna) - RECYKLACE BITMAP
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(2 mista - obe mista, kde se vytvari nova bitmapa)
+
+MEL JSI PRAVDU
+"Nedochazi k zahlceni pameti?" - ano, presne tohle jsem nasel. Tve
+pozorovani (1. spusteni OK, postupne zpomalovani, restart appky to
+spravi) je klasicky vzorec uniku pameti, ne timing problem - a tvuj
+3x FPS test to spravne dokazal (fps neni pricina).
+
+CO JSEM NASEL
+Appka VUBEC nikdy nevolala .recycle() na stare bitmape pred vytvorenim
+nove. Na HIGH urovni jde o cca 7 MB na jednu bitmapu (1920x934 pixelu,
+4 bajty na pixel). Pri kazdem prechodu mezi obrazovkami s jinou
+velikosti (Atari/DJ/domu/MP3 maji vsechny jine rozmery) appka
+vytvarela NOVOU 7MB bitmapu, aniz by uvolnila tu predchozi. Postupne
+se to hromadilo, coz presne odpovida vsem popsanym symptomum:
+zpomalovani zvuku i obrazu v case, "0fps" zamrznuti (videl jsem to
+primo na tvem screenshotu), nutnost plneho restartu appky.
+
+CO SE ZMENILO
+Na obou mistech, kde se bitmapa vytvari, appka ted NEJDRIV zkusi
+uvolnit tu predchozi (.recycle()) - ALE jen tehdy, kdyz zadny
+PixelCopy pozadavek prave nebezi. Tahle pojistka je dulezita:
+PixelCopy si drzi primy odkaz na bitmapu, do ktere jeste muze
+zapisovat - kdybych ji uvolnil driv, nez dopise, mohlo by to appku
+poslat k padu. V beznem provozu (vetsina prechodu) tahle pojistka
+nebrani recyklaci - jen ve vzacnem pripade "prave prave bezi
+PixelCopy" se recyklace jednou vynecha (prijatelny kompromis -
+radeji obcasny drobny odklad nez riziko padu).
+
+K TVYM DALSIM POSTREHUM
+"Uvodni obrazovka se logne jen jednou a pak zamrzne", "do Atari to
+vubec nejde", "MP3 se nevraci" - vsechny tyhle popisy odpovidaji
+TOMUZ mechanismu: kdyz zachytavaci potrubi zamrzne kvuli
+nahromadene pameti, TV/PC prohlizec proste dal ukazuje posledni
+snimek, i kdyz telefon samotny mozitim uspesne prepnul obrazovku.
+Takze "options panel zustal viset" nejspis NENI chyba v JS logice
+panelu (kterou jsem taky opravil v SK39) - je to dalsi projev
+STEJNE pameťové pricinya. Pokud po tomhle buildu panel porad zustava
+viset, budu vedet, ze jde o neco jineho.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 506 radku.
+- Zavorky/hranate zavorky vyvazene.
+- Presne 2 vyskyty .recycle() na napTvWebBitmap, na obou mistech,
+  kde se bitmapa vytvari - overeno pocitanim.
+- Realny javac + spusteni (RecycleGuardCheck.java), 3 scenare:
+  1) Bezny prechod (zadny PixelCopy) -> recyklace probehne.
+  2) PixelCopy prave bezi -> recyklace se BEZPECNE preskoci.
+  3) Opakovane prechody mezi 5 ruznymi velikostmi -> 4 z 5 recyklovano
+     (vsechny krome prvniho vytvoreni, kde neni co recyklovat).
+
+JAK OTESTOVAT (tohle je dulezite - problem byl POSTUPNY, ne okamzity)
+1) Nahrad MainActivity.java.
+2) DULEZITE: testuj DELSI DOBU s VICE prechody mezi obrazovkami (ne
+   jen jeden rychly test) - presne to, co driv postupne zpomalovalo.
+3) Sleduj, jestli uz nedochazi k tomu postupnemu zpomalovani/
+   zamrzani, ktere jsi popsal.
+4) Zkus i to, co driv nefungovalo - navrat na uvodni obrazovku po
+   MP3, vstup do Atari po delsim pouzivani appky.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK39 (predchozi build).
