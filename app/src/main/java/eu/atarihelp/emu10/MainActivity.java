@@ -392,10 +392,19 @@ public class MainActivity extends Activity {
                         Rect src = new Rect(loc[0], loc[1], loc[0] + sw, loc[1] + sh);
                         napTvWebPixelCopyPending = true;
                         napTvWebPixelCopyPendingAtMs = System.currentTimeMillis();
+                        final long requestStartMs = napTvWebPixelCopyPendingAtMs;
                         final Bitmap target = napTvWebBitmap;
                         final boolean hqLiteScreenFinal = hqLiteScreen;
                         android.view.PixelCopy.request(getWindow(), src, target, result -> {
                             try {
+                                // BUILD2SK34: primy dukaz misto dalsiho hadani - kolik
+                                // casu skutecne uplynulo mezi zadanim PixelCopy a jeho
+                                // vysledkem (uspesnym i neuspesnym).
+                                long latencyMs = System.currentTimeMillis() - requestStartMs;
+                                if (latencyMs > 200L) {
+                                    appendNativeLog("BUILD2SK34 TV_WEB_PIXELCOPY_SLOW latencyMs=" + latencyMs
+                                            + " result=" + result + " hqLite=" + hqLiteScreenFinal + " tier=" + napTvWebQualityTier);
+                                }
                                 if (result == android.view.PixelCopy.SUCCESS) {
                                     napTvWebPublishBitmap(target, "PIXELCOPY");
                                 } else {
@@ -506,11 +515,28 @@ public class MainActivity extends Activity {
 
     private void napTvWebPublishBitmap(Bitmap bm, String mode) {
         try {
+            long compressStart = System.currentTimeMillis();
+            long prevPublishMs = napTvWebLastFrameMs;
             ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32768, bm.getWidth() * bm.getHeight() / 8));
             bm.compress(Bitmap.CompressFormat.JPEG, Math.max(35, Math.min(94, napTvWebJpegQuality)), bos);
+            long compressMs = System.currentTimeMillis() - compressStart;
             napTvWebJpeg = bos.toByteArray();
             napTvWebSeq++;
             napTvWebLastFrameMs = System.currentTimeMillis();
+            long gapMs = prevPublishMs == 0 ? 0 : (napTvWebLastFrameMs - prevPublishMs);
+            // BUILD2SK34: primy dukaz misto dalsiho hadani. Zaznamenej, kdyz
+            // samotna JPEG komprese trva podezrele dlouho NEBO kdyz mezi dvema
+            // po sobe jdoucimi snimky ubehla podezrele velka mezera - naznacuje
+            // zaseknuti NEKDE v ceste, i kdyz zadna vyjimka nenastala (Rene
+            // opakovane potvrdil, ze problem je jen na MEDIUM/HIGH a v logu
+            // dosud nebyla vidět zadna chyba - tohle by mohlo byt proste fyzicke
+            // zpomaleni pri vetsim rozliseni na starsim S8 hardwaru, ne logicka
+            // chyba, a takove zpomaleni by se v dosavadnim logu vubec neprojevilo).
+            if (compressMs > 200L || gapMs > 400L) {
+                appendNativeLog("BUILD2SK34 TV_WEB_SLOW_FRAME mode=" + mode + " compressMs=" + compressMs
+                        + " gapMs=" + gapMs + " w=" + bm.getWidth() + " h=" + bm.getHeight()
+                        + " q=" + napTvWebJpegQuality + " tier=" + napTvWebQualityTier);
+            }
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA13C TV_WEB_PUBLISH_ERR " + safeMsg(t));
         }

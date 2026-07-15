@@ -1,0 +1,65 @@
+BUILD2SK34 - PRIME MERENI MISTO DALSIHO HADANI (na zaklade SK31+log endpoint)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK33 - 2 mista pridavaji casove mereni, ZADNA zmena
+chovani, jen nova diagnostika)
+
+PROC TENHLE BUILD
+Mas pravdu - "pri LOW to nedela ten problik, chyba je u HIGH a
+MEDIUM" jsi rekl opakovane a jasne. Problem je, ze v logu (i s novym
+/log endpointem) porad NENI videt ZADNA chyba/vyjimka behem momentu,
+kdy appka viditelne sekala. To znamena bud (a) chyba se deje v miste,
+ktere jeste nezaznamenavam, nebo (b) neni to logicka chyba vubec -
+je to proste FYZICKE ZPOMALENI (vetsi bitmapy na HIGH/MEDIUM = vic
+prace pro S8 procesor), ktere by se v dosavadnim logu nikdy neprojevilo,
+protoze zadna vyjimka nenastava, jen to trva dele.
+
+CO JSEM PRIDAL - JEN MERENI, ZADNA ZMENA CHOVANI
+1) V napTvWebPublishBitmap: meri se, jak dlouho trva SAMOTNA JPEG
+   komprese, a jak velka je MEZERA od predchoziho publikovaneho
+   snimku. Pokud komprese trva > 200ms NEBO mezera je > 400ms,
+   zapise se do logu presne cislo (v milisekundach) + rozmery
+   bitmapy + kvalita + uroven.
+2) U PixelCopy pozadavku: meri se, kolik casu skutecne uplyne mezi
+   zadanim a vysledkem (uspesnym i neuspesnym). Pokud > 200ms,
+   zapise se do logu.
+V OBOU PRIPADECH: pokud je vse v poradku (rychle), NIC se nezaznamena -
+log se nezaplni zbytecnymi radky, jen tehdy, kdyz neco SKUTECNE trva
+podezrele dlouho.
+
+CO TOHLE UKAZE
+Pri dalsim testu (MEDIUM/HIGH, prechody mezi obrazovkami) uvidis v
+/log bud:
+  - "TV_WEB_SLOW_FRAME" radky s konkretnimi cisly (kolik ms komprese
+    trvala, jak velka byla mezera, jake rozliseni/kvalita) - tohle by
+    POTVRDILO, ze jde o vykonnostni problem, ne o logickou chybu, a
+    daloby mi presna cisla k dalsimu reseni (napr. jak moc snizit
+    rozliseni na HIGH, aby se S8 vratil pod tuhle hranici).
+  - "TV_WEB_PIXELCOPY_SLOW" radky - podobne, ale specificky pro
+    samotny PixelCopy pozadavek (ne JPEG kompresi).
+  - NEBO: pokud se NIC z tohoto nezobrazi, ani behem viditelneho
+    sekani - pak to POTVRDI, ze problem NENI v tehle casti kodu
+    vubec, a budu muset hledat uplne jinde (napr. v tom, jak
+    prohlizec na PC/TV strane prijima a zobrazuje data, ne v tom,
+    jak appka na telefonu snimky vyrabi).
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 441 radku (SK11-31 + log endpoint + tohle).
+- Zavorky/hranate zavorky vyvazene.
+- requestStartMs je jedine prirazena (genuinne final), bezpecne pro
+  zachyceni v lambde - overeno primo, ne odhadem (poucil jsem se
+  z minule chyby s hqLiteScreen).
+- ZADNA zmena rozhodovaci logiky, rozliseni, kvality ani casovani -
+  cisty pridavek diagnostiky.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Otevri http://192.168.0.34:8765/log v druhem panelu (jako predtim).
+3) Prepni na MEDIUM nebo HIGH, zopakuj presne tu sekvenci, kde to
+   sekalo/blikalo.
+4) Po problemu obnov /log stranku - hledej radky "SLOW_FRAME" nebo
+   "PIXELCOPY_SLOW". Posli mi screenshot/text CELE teto casti logu
+   (idealne vcetne par radku pred a po, at vidim kontext).
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK33 (predchozi build -
+identicke chovani, jen bez tohohle mereni).
