@@ -1,0 +1,62 @@
+BUILD2SK31 - OBRANNE VYCISTENI PS1 (tvuj navrh "totalni vymaz")
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(1 nova pomocna funkce + 4 mista, kde se vola)
+
+TVUJ POSTREH BYL SPRAVNY
+"Ten problik je neustale z PS1" + "pamatuje si to PS1" - prosel jsem
+kod a nasel jsem, ze presne tohle je mezera: kdyz appka zastavuje
+PS1 relaci (stopPs1SessionHard - hlavni cesta pri odchodu), zastavi
+NATIVNI jadro a zvuk, ale NIKDE nerekne WEBOVE strance "prestan volat
+ziva-nahledova funkce a smaz obrazek". Ta stranka ma vlastni smycku
+(z SK27 - kazdych 80ms tahá novy snimek z jadra a ukazuje ho jako
+obrazek), a standardni prechod stranky by MEL tuhle smycku zastavit
+sam - ale nespolehali jsme se na to, a presne to (nebo neco velmi
+podobneho) vysvetluje, proc se PS1 obsah "drzel" i po odchodu.
+
+OPRAVA - PRESNE TVUJ NAVRH, JEN CILENE NA JS VRSTVU
+Pridana funkce ps1ClearJsPreview(), ktera EXPLICITNE:
+1) Zastavi tu pollovaci smycku (clearInterval)
+2) Smaze zobrazeny obrazek (src='', schova ho)
+Volana ze VSECH CTYR mist v kodu, kde se PS1 jadro zastavuje:
+- Hlavni cesta (odchod ze stranky - stopPs1SessionHard)
+- Mazani cache behem bezici hry
+- Dva edge-case pripady ("boot prave dokoncen, ale uzivatel uz mezitim
+  odesel" - jak pro vzdalene, tak pro lokalni hry)
+Neresi to "totalni vypnuti cele aktivity", jak jsi navrhoval doslovne
+- to by bylo mnohem vetsi a riskantnejsi zasah (a pravdepodobne by to
+  taky vypnulo TV cast, coz asi nechces). Misto toho cili presne na
+  ten mechanismus, ktery jsem nasel a ktery odpovida tvemu popisu.
+
+POCTIVE
+Nemuzu 100% zarucit, ze tohle je JEDINY mechanismus za "problikavani
+je porad z PS1" - je to nejsilnejsi stopa, kterou jsem v kodu nasel
+a ktera presne odpovida tvemu popisu, ale bez zivého zarizeni si
+nemuzu byt jisty na 100 %. Pokud po tomhle porad neco podobneho
+uvidis, budu vedet, ze je to jinde, a posli mi prosim znovu presny
+popis (idealne s videm jako predtim - moc pomohlo).
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 397 radku (SK11-31 dohromady).
+- Zavorky/hranate zavorky vyvazene.
+- ps1ClearJsPreview() - presne 5 vyskytu v souboru (1 definice + 4
+  volani) - overeno pocitanim, ne odhadem.
+- JS obsah (uvnitr evaluateJavascript) NEMA ZADNY backslash znak
+  (na rozdil od minule chyby s regexem) - overeno pocitanim, zadne
+  riziko spatneho escapovani tentokrat. Extrahovano a overeno primo
+  Node.js syntax checkerem - cisty.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Zopakuj presne to, co jsi popsal - hraj PS1, odejdi do menu/DJ/
+   Segy na MEDIUM nebo HIGH - sleduj, jestli se jeste objevuje PS1
+   obsah na jinych obrazovkach.
+3) K FPS zjisteni (portret ~20fps vs landscape ~15fps na HIGH,
+   DJ pult jen ~10fps) - tohle je REALNE a dulezite zjisteni, ale
+   NEUPRAVOVAL jsem kvuli tomu zadna cisla v tomto buildu. Chci to
+   nejdriv poradne pochopit (mam podezreni, ze na landscape proste
+   fyzicky trva dele nakreslit+zkomprimovat snimek pri stejne
+   kvalite, ne ze je to chyba v nastaveni) - to je dalsi krok, az
+   potvrdime, ze tahle konkretni oprava zabrala.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK30 (predchozi build).

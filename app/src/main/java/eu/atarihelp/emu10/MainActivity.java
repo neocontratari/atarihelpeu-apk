@@ -2569,6 +2569,20 @@ public class MainActivity extends Activity {
         stopPs1SessionHard(source + ":" + compactUrl(url));
     }
 
+    // BUILD2SK31: sdilena obranna JS-cistici funkce - volana z KAZDEHO mista, kde
+    // se PS1 jadro zastavuje (hlavni odchod ze stranky, mazani cache behem hry,
+    // "boot dokoncen az po odchodu" edge-case), aby se predesla stara PS1
+    // predview obrazek nezustaval ukazovan na zadne dalsi obrazovce.
+    private void ps1ClearJsPreview() {
+        try {
+            if (web != null) {
+                web.evaluateJavascript(
+                    "try{if(window.__napPs1FramePoll){clearInterval(window.__napPs1FramePoll);window.__napPs1FramePoll=null;}"
+                    + "var im=document.getElementById('ps1Screen');if(im){im.src='';im.style.display='none';}}catch(e){}",
+                    null);
+            }
+        } catch (Throwable ignored) {}
+    }
     private synchronized String stopPs1SessionHard(String reason) {
         boolean hadSession = ps1BootActive || ps1SessionActive || ps1CurrentAudioTrack != null || ps1AudioThread != null;
         boolean hadRemoteDownload = ps1RemoteDownloadActive;
@@ -2586,6 +2600,7 @@ public class MainActivity extends Activity {
             r = "PS1_STOP_EXCEPTION " + safeMsg(t);
         }
         closePs1GamePfdQuietly();
+        ps1ClearJsPreview();
         ps1LastBootResult = "PS1_STOPPED " + reason;
         appendNativeLog("BUILD2SA5I PS1_SESSION_STOP reason=" + reason + " core=" + (r == null ? "null" : r.replace('\n', ' ')));
         return r;
@@ -4050,6 +4065,7 @@ public class MainActivity extends Activity {
             try { NativePs1CoreBridge.stopSafe(); } catch (Throwable ignored) {}
             ps1BootActive = false;
             ps1SessionActive = false;
+            ps1ClearJsPreview();
             appendNativeLog("BUILD2SA5AR PS1_CACHE_CLEAR_AUTOSTOP hra zastavena kvuli mazani cache");
         }
         int targets = 0;
@@ -4908,6 +4924,7 @@ public class MainActivity extends Activity {
                 stopPs1Audio();
                 if (ok) {
                     try { NativePs1CoreBridge.stopSafe(); } catch (Throwable ignored) {}
+                    ps1ClearJsPreview();
                     ps1LastBootResult = "PS1_BOOT_CANCELLED_AFTER_LEAVE";
                     setPs1RemoteStatus(ps1LastBootResult);
                 }
@@ -5482,6 +5499,7 @@ public class MainActivity extends Activity {
                         stopPs1Audio();
                         if (ok) {
                             try { NativePs1CoreBridge.stopSafe(); } catch (Throwable ignored) {}
+                            ps1ClearJsPreview();
                             closePs1GamePfdQuietly();
                             ps1LastBootResult = "PS1_BOOT_CANCELLED_AFTER_LEAVE";
                         }
