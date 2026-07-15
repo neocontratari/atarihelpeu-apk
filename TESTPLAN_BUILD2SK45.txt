@@ -1,0 +1,63 @@
+BUILD2SK45 - KLIENTSKA STRANA: CHYBEJICI SEBEOZDRAVNY MECHANISMUS
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(TV-cast stranka - JS na strane klienta)
+
+CELOU DOBU JSEM SE DIVAL JEN NA JEDNU POLOVINU
+Az doted jsem zkoumal vyhradne serverovou stranu (MainActivity.java -
+jak appka snimky VYRABI a ODESILA). Nikdy jsem poradne neprosel JS,
+ktery bezi v PROHLIZECI na TV/PC strane. Tohle byla chyba - a je to
+presne ta chybejici polovina.
+
+CO JSEM NASEL
+TV stranka nacita video pres <img src='/stream.mjpg'> - standardni
+MJPEG multipart stream. Ma jeden ochranny mechanismus: kdyz nacitani
+selze (onerror), prepne se na zalozni JPEG polling. ALE: kdyz spojeni
+proste TICHE SKONCI UPROSTRED STREAMU (server ho zavre, sit ho preruse,
+cokoli) - NENI JISTE, ze prohlizec v teto situaci onerror vubec spusti
+(z pohledu <img> elementu to nemusi byt "chyba", jen "stream skoncil").
+A kdyz onerror nespusti, NIC v kodu to nezachyti - obraz zustane
+navzdy na poslednim prijatem snimku. Server pritom klidne dal vyrabi
+nove snimky (seq roste, presne jak jsi opakovane videl v logu) - ale
+prohlizec uz nikdy nedostane sanci to zjistit.
+Tohle presne odpovida VSEMU, co jsi popisoval: server "zdravy" (seq
+roste), obraz "mrtvy" - a ZADNY zpusob, jak by se to samo opravilo,
+protoze nic takovou situaci nedetekovalo.
+
+OPRAVA
+Appka uz kazdou vterinu kontroluje /status a pocita FPS (SK28). Ted
+NAVIC pocita, kolikrat PO SOBE se "seq" vubec nezmenilo. Pokud se
+nezmeni 4x v rade (~4 vteriny zadneho noveho snimku), appka POZNA,
+ze je stream zaseknuty NA STRANE PROHLIZECE (i kdyz server bezi dal),
+a SAMA VYNUTI NOVE PRIPOJENI (znovu nastavi zdroj obrazku na cerstvou
+adresu streamu). Tohle by melo fungovat bez ohledu na PRICINU
+zaseknuti - slaba WiFi, prohlizec na pozadi, muj vlastni watchdog ze
+SK42, cokoli - klient se ted umí sam ozdravit.
+
+POCTIVE
+Tohle je nejsilnejsi teorie, kterou jsem zatim mel, protoze poprve
+vysvětluje PRESNE oba pozorovane jevy najednou (server zdravy + obraz
+mrtvy) JEDNIM mechanismem, ne dalsi domnenkou o konkretni obrazovce.
+Ale porad to musi potvrdit tvuj test - nemam zpusob, jak v tomto
+prostredi simulovat skutecny prohlizec a skutecne prerusene spojeni.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 589 radku.
+- Zavorky/hranate zavorky vyvazene.
+- KRITICKA KONTROLA ZPETNYCH LOMITEK (uz podruhe jsem si tu udelal
+  chybu pri psani noveho JS regexu do Java retezce - tentokrat jsem
+  ji chytil PRED odeslanim): overil jsem POCITANIM znaku, ne pohledem
+  na repr() vystup, ze v CELEM souboru je presne JEDEN vyskyt "seq=("
+  a ma presne 2 zpetna lomitka (spravne pro \\d v Java zdrojaku).
+- Vlozeny JS extrahovan a overen Node.js syntax checkerem - cisty.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java (index.html beze zmeny, muzes nechat SK44).
+2) Zopakuj presne to, co delas normalne - prepinej mezi obrazovkami,
+   portret i landscape, delsi dobu.
+3) Pokud obraz nekdy "zamrzne" (server zdravy, obraz mrtvy) - sleduj,
+   jestli se do ~4 vterin sam obnovi. Pokud ano, oprava funguje.
+4) I kdyby se to jeste obcas stalo na chvilku (kratke problikavani pri
+   znovupripojeni), melo by uz byt PRECHODNE, ne trvale.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK44 (predchozi build).
