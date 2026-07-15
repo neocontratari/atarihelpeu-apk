@@ -1,0 +1,49 @@
+BUILD2SK44 - PORTRET JE JINY PROBLEM NEZ SK43 (nizkorizikovy pokus)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(1 radek pridan)
+
+CO TVOJE ODPOVED ZMENILA
+"Celou dobu na vysku" + tvuj log ukazujici bmW/bmH KONSTANTNI (603x1120)
+po celou dobu na VSECH strankach dohromady potvrzuje: v portretu ma
+kvalitni tabulka jen JEDNU sadu cisel, bez ohledu na DJ/Atari/PS1/Sega/
+domu. Bitmapa se tedy NIKDY neprestavuje. SK43 (oprava "usazovaci"
+logiky pri ZMENE velikosti) tady tedy fyzicky NEMELA JAK zasahnout -
+neni to spatna oprava, jen mirila na scenar, ktery se v tvem testu
+vubec nestal.
+
+NOVA HYPOTEZA (poctive - nejsem si jisty, je to pokus)
+Tvuj presny popis - "domovska stranka zamrzne, MP3 zustane viset na
+starem obsahu, i kdyz seq a url v logu spravne ukazuji prechod" -
+odpovida znamemu chovani Androidu: draw() na hardwarove-akcelerovanem
+WebView muze OBCAS vratit zastaralou hardwarovou vrstvu (cache), misto
+aby skutecne cerstve prekreslilo obsah - i kdyz appka nativne spravne
+vi, ze se stranka zmenila (proto seq/url v logu vypadaji v poradku).
+OPRAVA (pokus, ne jistota): pridano rootFrame.invalidate() TESNE PRED
+kazdym draw() volanim - standardni Android technika, jak rict "tohle
+uz neni platne, prekresli to znovu", nez se to vyfoti.
+POCTIVE: nejsem si 100% jisty, ze tohle pomuze. Android rendering je
+z principu ASYNCHRONNI (invalidate() jen OZNACI potrebu prekresleni,
+nemusi to vynutit OKAMZITE synchronni prekresleni pred nasledujicim
+radkem kodu). Je to standardni, bezpecny pokus (nemuze nic rozbit -
+invalidate() je jen "priznak", zadna destruktivni operace), ale
+skutecny efekt musi potvrdit tvuj test.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 589 radku.
+- Zavorky/hranate zavorky vyvazene.
+- Zmena je JEDEN pridany radek (invalidate() pred draw()) - minimalni
+  moznost zavlecni nove chyby.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java.
+2) DULEZITE: zustan na vysku (portret), presne jako predtim.
+3) Zopakuj presne tu sekvenci - pockej, az domovska stranka "zamrzne"
+   (nebo proste normalne testuj), pak vejdi do MP3 prehravace.
+4) Sleduj, jestli se obraz ted spravne prepne na MP3 obsah, nebo
+   jestli zustava viset na starem.
+5) At uz to pomuze nebo ne, dej mi vedet presny vysledek - pokud
+   nepomuze, budu vedet, ze "zastarala hardwarova vrstva" neni ta
+   spravna teorie, a musim hledat jinam.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK43 (predchozi build).

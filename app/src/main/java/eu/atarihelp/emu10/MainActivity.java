@@ -552,6 +552,19 @@ public class MainActivity extends Activity {
             cv.drawColor(Color.BLACK);
             cv.save();
             cv.scale(scale, scale);
+            // BUILD2SK44: Rene potvrdil, ze test byl CELOU DOBU na vysku (portret) -
+            // v portretu ma appka jen JEDNU sadu cisel bez ohledu na obrazovku, takze
+            // bw/bh se NIKDY nemeni (potvrzeno v logu - 603x1120 porad stejne). SK43
+            // oprava (settle logika pri ZMENE velikosti) tedy v portretu vubec
+            // nemohla zasahnout - je to jiny problem. Popis "domovska stranka
+            // zamrzne, MP3 zustane viset na starem obsahu, i kdyz url v logu
+            // spravne ukazuje prechod" odpovida znamemu Android chovani: draw() na
+            // hardwarove-akcelerovanem WebView muze obcas vratit ZASTARALOU
+            // hardwarovou vrstvu misto cerstveho prekresleni. invalidate() pred
+            // draw() oznaci View jako potrebujici prekresleni - NEJSEM SI JISTY na
+            // 100 %, ze tohle vynuti OKAMZITE cerstve prekresleni (Android rendering
+            // je z principu asynchronni), ale je to bezpecny, standardni pokus.
+            if (rootFrame != null) rootFrame.invalidate();
             if (rootFrame != null) rootFrame.draw(cv);
             cv.restore();
             napTvWebPublishBitmap(napTvWebBitmap, "DRAW");
