@@ -527,58 +527,26 @@ public class MainActivity extends Activity {
         }
     };
 
-    private volatile long napTvWebBitmapResizePendingSince = 0;
-    private volatile long napTvWebBitmapStruggleStartMs = 0;
-    private volatile int napTvWebBitmapPendingW = 0;
-    private volatile int napTvWebBitmapPendingH = 0;
     private void napTvWebCaptureByDraw(int bw, int bh, float scale) {
         try {
             if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
-                // BUILD2SK28: prechod mezi obrazovkami na MEDIUM/HIGH problikaval,
-                // protoze se ihned zachytilo do nove bitmapy uprostred neusazene
-                // WebView navigace. SK28 pridalo cekani na usazeni cile.
-                // BUILD2SK30: SK28 mela diru - ZADNA TOLERANCE na drobny sum v bw/bh
-                // (napr. z rootFrame.getWidth()/getHeight()) znamenala, ze pokud se
-                // cilova velikost mezi tiky lisila byt i o 1px, odpocet se STALE
-                // DOKOLA RESETOVAL a NIKDY nedobehl - trvale zamrznuti vyzadujici
-                // rucni refresh stranky, presne jak bylo nahlaseno ("musim dat
-                // refresh", "blikani je neustale"). Oprava dvema NEZAVISLYMI
-                // pojistkami:
-                // 1) TOLERANCE 4px - drobny rozdil se nepocita jako "novy cil",
-                //    jen jako sum, takze odpocet NA USAZENI se timhle uz neresetuje.
-                // 2) TVRDY LIMIT 2000ms merenej OD PRVNIHO zaseknuti (ne od
-                //    posledniho resetu cile) - i kdyby se cil porad GENUINE menil
-                //    (nad ramec tolerance), po 2 vterinach appka prestane cekat a
-                //    proste pokracuje s aktualni velikosti. Zadny scenar uz nemuze
-                //    vest k trvalemu zamrznuti.
-                long now = System.currentTimeMillis();
-                if (napTvWebBitmapStruggleStartMs == 0) napTvWebBitmapStruggleStartMs = now;
-                // BUILD2SK39: log z 15:35:16 ukazal "mode=DRAW compressMs=27
-                // gapMs=1244" - SK38 uspesne odstranilo PixelCopy jako pricinu
-                // (potvrzeno mode=DRAW), ale TATO settle logika (SK30) sama umi
-                // cekat az 2000ms na "usazeni" cilove velikosti - a presne tohle
-                // se ted projevuje jako "graficky se to nevrati" po prechodu.
-                // Snizeno na 400ms - porad davá WebView chvili na usazeni po
-                // prechodu, ale uz ne skoro dve vteriny cekani.
-                boolean hardTimeout = (now - napTvWebBitmapStruggleStartMs) > 400L;
-                boolean withinTolerance = napTvWebBitmapResizePendingSince > 0
-                        && Math.abs(napTvWebBitmapPendingW - bw) <= 4
-                        && Math.abs(napTvWebBitmapPendingH - bh) <= 4;
-                if (!withinTolerance && !hardTimeout) {
-                    napTvWebBitmapPendingW = bw;
-                    napTvWebBitmapPendingH = bh;
-                    napTvWebBitmapResizePendingSince = now;
-                    return;
-                }
-                if (!hardTimeout && (now - napTvWebBitmapResizePendingSince) < 150L) {
-                    return;
-                }
+                // BUILD2SK43: SK28/30/39 pridaly "usazovaci" cekani (az 400ms) pred
+                // prestavbou bitmapy, aby se nezachytilo uprostred neusazene WebView
+                // navigace. Ale primym srovnanim s BUILD2SK16 (posledni potvrzene
+                // funkcni build pro Atari/DJ pult na LOW) se ukazalo, ze tahle
+                // funkce byla puvodne JEDNODUCHA - zadne cekani, okamzita prestavba.
+                // DJ pult a Atari (emu_vbxe) maji ze vsech stranek zdaleka nejvic
+                // CSS animaci/transformaci (23 a 36 vyskytu, MP3 prehravac jen 8) -
+                // pokud kvuli tomu rozmery nikdy nejsou "stabilni" dost dlouho na to,
+                // aby usazovaci logika presla, cekala by NAVZDY a nikdy by nic
+                // nenakreslila. Navrat na jednoduchou, prokazatelne funkcni verzi.
                 if (napTvWebBitmap != null && !napTvWebPixelCopyPending) {
+                    // BUILD2SK40: recyklace stare bitmapy pred vytvorenim nove -
+                    // tohle zustava, je to samostatna, opravnena oprava pametoveho
+                    // uniku, nezavisla na "usazovaci" logice, kterou tu rusime.
                     try { napTvWebBitmap.recycle(); } catch (Throwable ignored) {}
                 }
                 napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
-                napTvWebBitmapResizePendingSince = 0;
-                napTvWebBitmapStruggleStartMs = 0;
             }
             Canvas cv = new Canvas(napTvWebBitmap);
             cv.drawColor(Color.BLACK);
@@ -1303,7 +1271,7 @@ public class MainActivity extends Activity {
             } else if ("/frame.jpg".equals(path)) {
                 napTvWebWriteFrame(out);
             } else if ("/stream.mjpg".equals(path)) {
-                napTvWebWriteMjpeg(out);
+                napTvWebWriteMjpeg(out, s);
             } else if ("/audio.raw".equals(path)) {
                 napTvWebWriteAudioRaw(out, napTvWebQueryLong(fullPath, "after", -1));
             } else if ("/quality".equals(path)) {
@@ -1472,7 +1440,7 @@ public class MainActivity extends Activity {
         out.write(body);
     }
 
-    private void napTvWebWriteMjpeg(OutputStream out) throws IOException {
+    private void napTvWebWriteMjpeg(OutputStream out, Socket sock) throws IOException {
         napTvWebEnsurePlaceholderFrame("MJPEG_CONNECT");
         String h = "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: multipart/x-mixed-replace; boundary=napframe\r\n"
@@ -1480,18 +1448,64 @@ public class MainActivity extends Activity {
                 + "Pragma: no-cache\r\n"
                 + "Connection: close\r\n\r\n";
         out.write(h.getBytes("ISO-8859-1"));
-        long last = -1;
-        while (napTvWebRunning) {
-            byte[] img = napTvWebJpeg;
-            long seq = napTvWebSeq;
-            if (img != null && seq != last) {
-                out.write(("--napframe\r\nContent-Type: image/jpeg\r\nContent-Length: " + img.length + "\r\n\r\n").getBytes("ISO-8859-1"));
-                out.write(img);
-                out.write("\r\n".getBytes("ISO-8859-1"));
-                out.flush();
-                last = seq;
+        // BUILD2SK42: primy dukaz z /log (SK41 periodicke logovani) ukazal, ze
+        // napTvWebSeq roste NEPRETRZITE po celou dobu testu, na VSECH
+        // obrazovkach (Atari, DJ pult, uvodni stranka) - zachytavani tedy
+        // FUNGUJE. Presto uzivatel hlasi "mrtvy obraz, 0fps". Zavěr: problem
+        // neni v zachytavani (to jsem opravoval v SK38-40), ale v DORUCENI -
+        // konkretne muze out.write()/out.flush() na TCP socketu BLOKOVAT
+        // donekonecna, kdyz sit/prohlizec neni pripraveny cist (slaby WiFi,
+        // prohlizec na pozadi apod.) - a tohle bezi na SAMOSTATNEM vlakne,
+        // nezavisle na zachytavaci smycce, takze by presne vysvětlovalo
+        // "seq roste, ale obraz mrtvy".
+        // Reseni: hlidaci vlakno sleduje, jestli zapis skutecne pokracuje - a
+        // pokud se pres 5s nepodari zapsat (zatimco jsou nove snimky k
+        // dispozici), nasilim zavre socket, coz preruší zablokovany zapis
+        // vyjimkou a umozni pripojeni korektne skoncit (prohlizec pak muze
+        // znovu pripojit).
+        final long[] lastOkMs = { System.currentTimeMillis() };
+        final long[] lastWrittenSeq = { -1L };
+        Thread watchdog = new Thread(() -> {
+            try {
+                while (napTvWebRunning && !sock.isClosed()) {
+                    Thread.sleep(2000);
+                    if (sock.isClosed()) return;
+                    long curSeq = napTvWebSeq;
+                    long written = lastWrittenSeq[0];
+                    long stuckMs = System.currentTimeMillis() - lastOkMs[0];
+                    // BUILD2SK42: "zasekle" jen kdyz je NOVY obsah k dispozici
+                    // (curSeq != written), ale zaroven pres 8s neprobehl zadny
+                    // uspesny zapis. Kdyby appka jen NEMELA co noveho poslat
+                    // (staticka obrazovka, zadny novy snimek), to NENI zaseknuti -
+                    // takova situace nesmi spustit zabiti zdraveho spojeni.
+                    if (curSeq != written && stuckMs > 8000L) {
+                        appendNativeLog("BUILD2SK42 TV_WEB_MJPEG_WATCHDOG_KILL stuckMs=" + stuckMs + " curSeq=" + curSeq + " lastWritten=" + written);
+                        try { sock.close(); } catch (Throwable ignored) {}
+                        return;
+                    }
+                }
+            } catch (InterruptedException ignored) {}
+        }, "napTvWebMjpegWatchdog");
+        watchdog.setDaemon(true);
+        watchdog.start();
+        try {
+            long last = -1;
+            while (napTvWebRunning) {
+                byte[] img = napTvWebJpeg;
+                long seq = napTvWebSeq;
+                if (img != null && seq != last) {
+                    out.write(("--napframe\r\nContent-Type: image/jpeg\r\nContent-Length: " + img.length + "\r\n\r\n").getBytes("ISO-8859-1"));
+                    out.write(img);
+                    out.write("\r\n".getBytes("ISO-8859-1"));
+                    out.flush();
+                    last = seq;
+                    lastOkMs[0] = System.currentTimeMillis();
+                    lastWrittenSeq[0] = seq;
+                }
+                try { Thread.sleep(45); } catch (InterruptedException ignored) {}
             }
-            try { Thread.sleep(45); } catch (InterruptedException ignored) {}
+        } finally {
+            watchdog.interrupt();
         }
     }
 

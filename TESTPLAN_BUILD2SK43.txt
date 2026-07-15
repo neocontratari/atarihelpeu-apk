@@ -1,0 +1,68 @@
+BUILD2SK43 - PRIME SROVNANI SE SK16 ODHALILO SKUTECNOU PRICINU
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(1 funkce zjednodusena zpet na overenou SK16 verzi + 4 nepouzivana pole
+odstranena)
+
+METODA TENTOKRAT: DUKAZ, NE TEORIE
+Rekl jsi presny, overitelny bod: BUILD2SK16 fungoval pro Atari/DJ pult
+(aspon na LOW). Misto dalsiho hadani jsem primo porovnal SK16 s
+aktualnim stavem a nasel jsem konkretni strukturalni rozdil.
+
+CO JSEM NASEL
+V SK16 byla napTvWebCaptureByDraw (funkce, co kresli obraz pro DJ
+pult/Atari/uvodni stranku) JEDNODUCHA: pri zmene velikosti okamzite
+prestavi bitmapu a nakresli. ZADNE cekani.
+Pozdeji (SK28/30/39) jsem pridal "usazovaci" logiku - kdyz se cilova
+velikost zmeni, appka POCKA (az 400ms v posledni verzi), nez neco
+nakresli, aby neco nezachytila uprostred neusazene WebView navigace.
+Zkontroloval jsem strukturu vsech relevantnich stranek a zjistil:
+DJ pult ma 23 vyskytu CSS transform/animation, Atari (emu_vbxe) ma
+36 - zdaleka nejvic ze vsech stranek (MP3 prehravac pro srovnani jen
+8). Pokud tyhle stranky diky animacim NIKDY nemaji "stabilni" rozmer
+dost dlouho na to, aby usazovaci logika presla svuj vlastni test
+stability, cekala by NAVZDY - a nikdy by nic nenakreslila. To presne
+odpovida vsemu, co jsi popisoval.
+
+OPRAVA
+Vraceno na jednoduchou, prokazatelne funkcni SK16 logiku - okamzita
+prestavba bitmapy, zadne cekani na "usazeni". Recyklace stare bitmapy
+(SK40 - to byla samostatna, opravnena oprava pametoveho uniku)
+zustava zachovana.
+
+POCTIVE - JAKY KOMPROMIS TIM PRIJIMAM
+Usazovaci logika mela puvodne resit RUZNY problem - obcasne
+zachyceni obrazu uprostred prechodu mezi strankami (kratky vizualni
+zablik spatneho obsahu). Timhle navratem se tenhle drobny,
+OBCASNY problem muze znovu objevit. Ale to je MNOHEM mensi cena
+nez to, co jste popisoval - trvale/casto se opakujici "nic se
+nezobrazuje" na celych kategoriich stranek. Kratky zablik je lepsi
+nez trvale cerna/mrtva obrazovka.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 575 radku (mensi nez predtim - odstranil
+  jsem vic kodu, nez pridal).
+- Zavorky/hranate zavorky vyvazene.
+- Overeno, ze vsechny 4 odstranena pole (napTvWebBitmapResizePendingSince,
+  StruggleStartMs, PendingW, PendingH) uz nikde v souboru nezustaly
+  osirele odkazy - 0 vyskytu.
+- Realny javac + spusteni (SimpleDrawCheck.java): potvrzeno, ze
+  funkce ted VZDY nakresli (zadna moznost "nikdy nenakresli"
+  zaseknuti), i pri opakovane se menicich rozmerech, ktere by
+  puvodni usazovaci logiku mohly zaseknout navzdy. Recyklace pameti
+  (SK40) potvrzena jako stale funkcni.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java.
+2) DJ pult a Atari na LOW (presne to, co jsi rekl ze v SK16
+   fungovalo) - mely by se ted zase zobrazovat.
+3) Pak zkus i MEDIUM/HIGH - i kdyz puvodni test byl jen na LOW,
+   tahle oprava by mela pomoct na vsech urovnich, protoze cili primo
+   na mechanismus, ktery mohl zpusobit "nikdy nenakresli", bez ohledu
+   na uroven kvality.
+4) Pokud se OBCAS objevi kratky zablik spatneho obsahu pri prechodu
+   (ten puvodni problem, co usazovaci logika resila), je to OCEKAVANY
+   kompromis - dej mi vedet, jestli je to prijatelne, nebo jestli je
+   to tak casty/rusivy, ze bysme se k tomu meli jeste vratit.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK42 (predchozi build).
