@@ -30,6 +30,10 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
 .panel b{color:#8ee7ff;}
 .panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d8a947;color:#070402;font:900 15px "Courier New",monospace;}
+#settingsPanel{display:none;position:absolute;right:2%;top:10.5%;z-index:50;min-width:54%;background:linear-gradient(180deg,#100904,#060403);border:1px solid rgba(255,195,64,.50);border-radius:14px;padding:12px;box-shadow:0 0 30px rgba(0,0,0,.85);}
+#settingsPanel.open{display:block;}
+#settingsPanel .stlabel{color:#ffe49a;font:900 12px "Courier New",monospace;margin-bottom:8px;letter-spacing:.05em;}
+#settingsPanel button{display:block;width:100%;padding:12px;border:0;border-radius:10px;background:#d8a947;color:#070402;font:900 13px "Courier New",monospace;}
 @media (orientation:landscape) and (max-height:760px){
  .stage{height:100vh;width:auto;max-width:none;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;}
@@ -41,6 +45,10 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <img class="skin" src="nap_ui/nap_vision_intro_screen1.png" alt="N&P VISION Retro Universe">
   <button id="btnMenu" class="hit" type="button">MENU</button>
   <button id="btnSettings" class="hit" type="button">SETTINGS</button>
+  <div id="settingsPanel" aria-hidden="true">
+    <div class="stlabel">OPTIONS</div>
+    <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
+  </div>
   <a id="btnAtari" class="hit" href="emu_vbxe/index.html">ATARI 130XE EMULATOR</a>
   <a id="btnSega" class="hit" href="emu_sega/index.html">SEGA MEGA DRIVE</a>
   <a id="btnPlayer" class="hit" href="player/index.html">PLAYER MP3 WAV</a>
@@ -80,8 +88,17 @@ function openExternal(url){
 function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}toast('HELP otevren',1500);}
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 ['btnMenu','btnHelp'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
+var sp=$('settingsPanel');
+function toggleSettings(){
+  if(!sp)return;
+  var open=sp.classList.contains('open');
+  if(open){sp.classList.remove('open');sp.setAttribute('aria-hidden','true');}
+  else{sp.classList.add('open');sp.setAttribute('aria-hidden','false');}
+}
 var bs=$('btnSettings');
-if(bs)bs.addEventListener('click',function(e){
+if(bs)bs.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();toggleSettings();},true);
+var stTv=$('stStartTv');
+if(stTv)stTv.addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
   try{
     var r=(window.AHTVWEB&&typeof window.AHTVWEB.start==='function')?window.AHTVWEB.start():null;
@@ -91,6 +108,7 @@ if(bs)bs.addEventListener('click',function(e){
     log('SETTINGS_TV_START_ERR '+err);
     toast('WEB TV: chyba pri spousteni',2200);
   }
+  toggleSettings();
 },true);
 var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 Array.prototype.forEach.call(document.querySelectorAll('a[data-external="1"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openExternal(a.href);},true);});

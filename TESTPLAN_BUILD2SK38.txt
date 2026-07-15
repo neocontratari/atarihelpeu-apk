@@ -1,0 +1,69 @@
+BUILD2SK38 - MINIMALNI ZASAH (poucen ze dvou predchozich katastrof)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(index.html beze zmeny od SK37, prilozeno pro uplnost balicku)
+
+PROC TENTOKRAT JINAK
+SK32 a SK35 obe zpusobily vazne regrese, protoze obe VELKA
+PREPRACOVANI cele rozhodovaci sekce - vic prilezitosti pro chybu,
+kterou muj izolovany test (psany podle meho ZAMERU, ne podle
+skutecneho obsahu souboru) nemusel odhalit. Tentokrat: JEDNA
+PODMINKA pridana do JIZ EXISTUJICIHO, jiz fungujiciho kodu - zbytek
+struktury zustava presne stejny jako v SK31/34.
+
+CO SE ZMENILO (doslova jedno misto + drobne doplnky)
+Pridano "hqLiteScreen &&" na zacatek existujici podminky
+"pixelCopyAllowed". To je cela zmena chovani - vsechno ostatni
+(vcetne "if(!hqLiteScreen) draw()" ve dvou fallback vetvich) uz V
+KODU EXISTOVALO, jen se do nej driv nikdy nedostalo pro normalni
+(ne-timeout) pripad, protoze pixelCopyAllowed byvalo true i pro
+ne-hqLite obsah.
+Dale pridan generacni citac (napTvWebPixelCopyRequestGen) jako
+ochrana proti zpozdene odpovedi PixelCopy pozadavku z PREDCHOZI
+hqLite obrazovky - zvysi se pri kazdem draw() volani, a PixelCopy
+callback svou generaci porovna s aktualni pred publikovanim. Pokud
+nesedi, vysledek se zahodi.
+
+JAK JSEM SI TENTOKRAT OVERIL, ZE TO NENI DALSI SK35
+1) Rucne jsem protrasoval VSECHNY 4 klicove scenare PRIMO na textu
+   vytazenem ze skutecneho souboru (ne na pretypovane kopii) - viz
+   detaily v predchozi zprave v chatu.
+2) Zkontroloval jsem CELY soubor na dalsi vyskyty "PixelCopy.request"
+   nebo "pixelCopyAllowed" - je JEN JEDNO misto, uz opravene.
+3) requestGen je explicitne "final" (ne jen odvozene efektivne final
+   jako pri minule chybe s hqLiteScreenFinal) - Java by chybu
+   kompilace vynutila, kdybych se pokusil znovu prirait.
+4) javac test tentokrat VERNE kopiruje presnou strukturu z realneho
+   souboru (radek po radku), ne zjednodusenou reprezentaci meho
+   zameru.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 474 radku.
+- Zavorky/hranate zavorky vyvazene (kulate maji drobny rozdil 6,
+  ale to je normalni artefakt komentaru s nespárovanymi zavorkami,
+  potvrzeno uz mnohokrat drive v tomhle souboru).
+- napTvWebPixelCopyRequestGen: presne 6 vyskytu, vsechny na
+  ocekavanych mistech (1 deklarace, 2x zvyseni pri draw(), 1x
+  zachyceni pri vydani, 2x porovnani v callbacku).
+- Realny javac + spusteni (Sk38Check.java), VERNA kopie skutecne
+  struktury, 4 scenare:
+  1) Ne-hqLite obsah nikdy nezkousi PixelCopy - 5/5 tiku pouzilo
+     draw().
+  2) hqLite obsah funguje normalne (PS1/Sega beze zmeny chovani).
+  3) KRITICKA rasova podminka (zpozdena PS1 odpoved po prechodu na
+     DJ pult) - spravne zahozena, draw() obraz nedotcen.
+  4) Prechod hqLite->non-hqLite->hqLite - draw() funguje OKAMZITE
+     bez ohledu na "zaseknuty" pending stav z predchozi obrazovky.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java (index.html muzes nechat ze SK37, je
+   stejny).
+2) DJ pult, Atari, uvodni obrazovka na MEDIUM/HIGH - hlavni test.
+3) PS1 a Sega na HIGH - potvrd, ze se NIC nezmenilo (meli by fungovat
+   presne jako driv).
+4) Prechody MEZI vsemi obrazovkami vicekrat, delsi dobu.
+5) /log v druhem panelu - pokud uvidis "PIXELCOPY_STALE_DISCARDED",
+   je to SPRAVNE chovani (pojistka funguje), ne chyba.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK37 (= SK34, bezpecny
+zaklad bez teto zmeny).
