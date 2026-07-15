@@ -277,6 +277,7 @@ public class MainActivity extends Activity {
     private volatile int napTvWebSystemDpi = 0;
     private volatile String napTvWebPendingScreenUrl = null;
     private volatile long napTvWebYoutubeInAppUntilMs = 0;
+    private volatile long napTvWebPeriodicLogMs = 0;
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
             long extraDelay = 0;
@@ -317,6 +318,26 @@ public class MainActivity extends Activity {
                     if (appCapture && System.currentTimeMillis() - napTvWebSystemFallbackLogMs > 5000L) {
                         napTvWebSystemFallbackLogMs = System.currentTimeMillis();
                         appendNativeLog("BUILD2SA13C10 SCREEN_MIRROR_NO_FRAMES_FALLBACK ageMs=" + age);
+                    }
+                }
+                // BUILD2SK41: periodicke logovani stavu (kazde ~2s) - misto
+                // pozadovani presneho casovani od uzivatele (nemozne trefit rucne)
+                // si appka zaznamenava sama, prubezne, po celou dobu testu. Pri
+                // rozboru logu pak uvidime PRESNY stav v okamziku, kdy k
+                // zasekavani doslo, aniz by bylo treba cokoli casovat.
+                {
+                    long nowLog = System.currentTimeMillis();
+                    if (nowLog - napTvWebPeriodicLogMs > 2000L) {
+                        napTvWebPeriodicLogMs = nowLog;
+                        String curUrl = "?";
+                        try { curUrl = web == null ? "null" : web.getUrl(); } catch (Throwable ignored) {}
+                        appendNativeLog("BUILD2SK41 TV_WEB_PERIODIC mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
+                                + " appCapture=" + appCapture + " seq=" + napTvWebSeq
+                                + " bmW=" + (napTvWebBitmap == null ? -1 : napTvWebBitmap.getWidth())
+                                + " bmH=" + (napTvWebBitmap == null ? -1 : napTvWebBitmap.getHeight())
+                                + " pcPending=" + napTvWebPixelCopyPending
+                                + " gen=" + napTvWebPixelCopyRequestGen
+                                + " url=" + curUrl);
                     }
                 }
                 if (napTvWebRunning && appCapture && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {

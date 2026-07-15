@@ -1,0 +1,48 @@
+BUILD2SK41 - AUTOMATICKE PERIODICKE LOGOVANI (zadne casovani od tebe)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(1 nove pole + 1 novy blok logovani - CISTE PRIDANI, zadna zmena
+existujiciho chovani)
+
+MEL JSI PRAVDU
+Chtit po tobe, abys rucne trefil presnou vterinu selhani pres /status,
+byl nerozumny pozadavek - to se prakticky neda. Moje chyba v tom, co
+jsem zadal, ne v tom, jestli umim programovat.
+
+CO SE ZMENILO
+Appka si ted SAMA, automaticky, kazde 2 vteriny zapisuje do /log
+radek s klicovymi udaji:
+  mirror=APP/SCREEN (ktera zachytavaci cesta bezi)
+  appCapture=true/false (jestli se prave vubec zachytava)
+  seq=cislo (roste-li snimkovy citac)
+  bmW/bmH (aktualni rozmery bitmapy)
+  pcPending (jestli prave bezi PixelCopy pozadavek)
+  gen (generacni citac)
+  url (jaka stranka je prave nactena)
+Zadne casovani z tve strany neni potreba - proste udelej svuj bezny
+test (prepinej mezi obrazovkami jak chces, jak dlouho chces), a v
+/log pak uvidim CELOU historii stavu v pravidelnych 2s krocich,
+vcetne presne toho okamziku, kdy nastane 0fps.
+
+DULEZITE - TOHLE JE JEN DIAGNOSTIKA, ZADNA OPRAVA
+Tenhle build nic neopravuje - jen prida moznost VIDET, co se skutecne
+deje, misto abych dal hadal. Chovani appky je jinak UPLNE STEJNE jako
+v SK40.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 529 radku.
+- Zavorky/hranate zavorky vyvazene.
+- appCapture potvrzeno jako platna, jiz drive deklarovana promenna v
+  teto same metode (radek 299) - zadny novy stav, jen cteni existujiciho.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java.
+2) Udelej svuj bezny test - prepinej mezi obrazovkami (Atari, DJ pult,
+   uvodni obrazovka, MP3, PS1, Sega) tak dlouho, jak potrebujes, at uz
+   se problem objevi.
+3) Otevri /log a posli mi CELY obsah (nebo aspon poslednich pár desitek
+   radku) - najdu si presne "BUILD2SK41 TV_WEB_PERIODIC" radky kolem
+   momentu, kdy nastalo 0fps, a uvidim presne co se delo.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK40 (identicke chovani,
+jen bez tohohle logovani).
