@@ -1,0 +1,71 @@
+BUILD2SK33 - NAVRAT NA BEZPECNY ZAKLAD + LOG DOSTUPNY Z PC/TV
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+DVE VECI, NA ROVINU
+
+1) VRACENO Z BUILD2SK32 NA BUILD2SK31
+SK32 (velke prepracovani dispecerske logiky) zpusobilo, ze se streamu
+"zaseklo" jen na PS1 obsahu, a nesla se z toho dostat zadnou jinou
+obrazovkou (jak jsi presne popsal: MP3 prehravac, Sega, PS1 fungovaly,
+DJ pult, Atari, uvodni stranka NE). To je horsi nez cokoli predtim -
+prestavam experimentovat na tvem zivem systemu a vracim se na
+posledni stav, ktery byl prokazatelne MENE rozbity (BUILD2SK31 -
+obsahuje SK11-31 vcetne PS1 JS cistici funkce, ALE BEZ SK32
+prepracovani, ktere zpusobilo tenhle novy problem).
+POCTIVE: SK31 sam o sobe jeste nebyl potvrzeny jako plne funkcni -
+predtim jsi hlasil "obraz se obcas zasekne" i s SK31/SK30. Tenhle
+build tedy NENI tvrzeni "ted uz je vse opraveno" - je to navrat na
+posledni znamy, MENE spatny stav, plus novy nastroj (viz nize), abych
+mohl dalsi problem diagnostikovat poradne, misto dalsiho hadani.
+
+2) NOVY /log ENDPOINT - PRESNE TVUJ NAPAD
+Vysvetlil jsi, proc jsem nemohl dostat log z jinych obrazovek nez
+PS1 - log byl videt jen zevnitr PS1 stranky. Appka ale UZ MELA
+sdileny log buffer (nativeLog, pouziva se pro appendNativeLog() po
+celem kodu) - jen nebyl dostupny odjinud. Pridal jsem novy endpoint
+na UZ BEZICIM TV-cast serveru (stejny, co obsluhuje /status, /quality
+atd.):
+
+  http://192.168.0.34:8765/log
+
+Tenhle endpoint FUNGUJE NEZAVISLE na tom, ktera obrazovka je zrovna
+aktivni na telefonu - je to soucast HTTP serveru, ktery bezi po celou
+dobu TV castu. Staci ho otevrit v PC/TV prohlizeci (nova zalozka nebo
+i primo ta stejna, kde je TV cast) KDYKOLI a uvidis posledni logy
+(az cca 100 KB historie) bez ohledu na to, jestli jsi zrovna v PS1,
+Sega, Atari, DJ pultu nebo na uvodni strance.
+
+JAK TOHLE POMUZE PRISTE
+Az se znovu objevi problem s prechodem mezi obrazovkami (DJ pult,
+Atari, cokoli), muzes:
+1) Otevrit http://192.168.0.34:8765/log v druhem panelu prohlizece
+   PRED tim, nez zacnes testovat.
+2) Zopakovat presne tu sekvenci, co delas.
+3) Po problemu proste obnovit tu /log stranku (F5) - uvidis CELOU
+   historii logu vcetne toho, co se delo na OBRAZOVKACH, ze kterych
+   driv nesel log poslat vubec.
+Nemusis nic ukladat/exportovat ze zarizeni - staci mi poslat
+screenshot nebo zkopirovat text z tehle stranky.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 411 radku (SK11-31 + novy /log endpoint,
+  BEZ SK32).
+- Potvrzeno primym porovnanim, ze pracovni kopie po revertu presne
+  odpovida SK31 zakladu (0 rozdilu pred pridanim /log endpointu).
+- Zavorky/hranate zavorky vyvazene.
+- nativeLog je jiz existujici private final StringBuilder pole,
+  pristupne z noveho endpointu bez jakekoli dalsi zmeny jinde.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Zkontroluj, ze se JIZ NEDA reprodukovat "zasekne se jen na PS1,
+   nejde pryc" problem ze SK32 - to by melo byt pryc navratem.
+3) Otevri http://192.168.0.34:8765/log v prohlizeci - meel bys videt
+   text logu (bude prazdny/kratky, pokud jsi TV cast prave zapnul).
+4) Pri pristim testovani prechodu mezi obrazovkami nech tenhle log
+   otevreny v druhem panelu a posli mi po problemu jeho obsah.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK30 (jeste o krok zpet,
+kdyby i tohle delalo problemy - ale SK31 uz by nemel obsahovat nic
+riskantniho, co SK30 nemelo, krome PS1 JS cisteni).
