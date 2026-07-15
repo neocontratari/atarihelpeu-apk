@@ -1,0 +1,49 @@
+BUILD2SK29 - OPRAVA COMPILE CHYBY ZE SK28 (moje vlastni chyba pri overovani)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(1 znak - doslova jeden pridany backslash)
+
+CO SE STALO - NA ROVINU
+javac: MainActivity.java:1267: error: illegal escape character
+
+V regexu pro FPS pocitadlo (SK28) mel byt v Java zdrojaku napsan
+DVOJITY backslash "\\d" (aby po zkompilovani Javy vzniklo v JS
+spravne "\d" - regex zkratka pro cislici). Ja jsem si ale PRI
+KONTROLE PRED ODESLANIM spletl pocet zpetnych lomitek, kdyz jsem
+cetl vystup Python funkce repr() - je to skutecne snadne zamenit
+(repr zobrazuje kazdy jeden backslash jako DVA znaky, takze pri
+vice lomitkach za sebou se to na pohled snadno popocita spatne).
+Vysledek: v souboru byl jen JEDEN backslash pred "d" - a "\d" bez
+zdvojeni NENI v Jave platna escape sekvence (Java zna jen \\, \',
+\", \n, \t, \r, \b, \f, \uXXXX a osmickove kody - "\d" mezi nimi
+neni), takze to spravne odmitl kompilator.
+
+POUCENI - ZMENIL JSEM SI VLASTNI ZPUSOB OVEROVANI
+Driv jsem u escape-sekvenci spolehal na vizualni cteni repr()
+vystupu ("vypada to spravne"). Ted misto toho pocitam ZNAK PO ZNAKU
+(iteruji retezec a pocitam po sobe jdouci backslash znaky, misto
+abych je odhadoval z pohledu na retezec) - presne to, co me na tenhle
+konkretni druh chyby melo upozornit uz driv. Navic jsem timhle
+zpusobem prosel CELY soubor (ne jen tohle jedno misto), jestli
+nemam podobnou chybu jeste nekde jinde - nemam, potvrzeno.
+
+OPRAVA
+Pridan presne JEDEN backslash znak na spravne misto - z "\d+" na
+"\\d+" v Java zdrojaku. Zadna jina zmena.
+
+MERENI (pred odeslanim) - TENTOKRAT PRESNE, NE ODHADEM
+- Diff proti originalu: 360 radku (stejne jako SK28 - jen 1 znak
+  pridan, pocet radku se nemeni).
+- Zavorky/hranate zavorky vyvazene.
+- POCITANI ZNAK PO ZNAKU (ne repr): v .java zdrojaku presne 2
+  po sobe jdouci backslash znaky pred 'd' - potvrzeno.
+- SKEN CELEHO SOUBORU na jakykoli jiny backslash nasledovany
+  neplatnym znakem (mimo \\, \', \", \n, \t, \r, \b, \f, cislice,
+  u) - 0 nalezu, tohle bylo jedine takove misto v celem souboru.
+- Extrakce HTML/JS + Node.js syntax check: cisty.
+- POCITANI ZNAK PO ZNAKU i ve VYSLEDNEM JS (po projiti celym
+  retezcem Java->HTML->JS): presne 1 backslash pred 'd' - spravne
+  \d pro JavaScript regex.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK27 (posledni build,
+o kterem jiste vime, ze se uspesne zkompiloval).
