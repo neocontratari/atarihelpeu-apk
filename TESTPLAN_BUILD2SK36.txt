@@ -1,0 +1,69 @@
+BUILD2SK36 - NAVRAT NA SK34 + OZUBENE KOLECKO PRO WEB TV (konecne)
+================================================================================
+Zmenene soubory:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java (navrat na SK34)
+- app/src/main/assets/index.html (nova zmena - ozubene kolecko)
+
+NA ROVINU
+Mel jsi pravdu - SK35 udelalo situaci horsi (nic se vubec neukazovalo,
+ani na LOW), a ignoroval jsem tvuj opakovany pozadavek na ozubene
+kolecko. Obojí napravuji v tomhle buildu.
+
+1) NAVRAT NA BUILD2SK34
+Overeno primo diffem (0 rozdilu) - MainActivity.java je presne SK34:
+SK31 logika (PixelCopy zkousi VZDY pro vsechen obsah, hqLiteScreen jen
+ovlivnuje fallback pri selhani) + SK34 casove mereni (jen zapisuje do
+logu, nic nemeni na chovani) + /log endpoint (SK33). Trikrat za sebou
+jsem pri pokusu o "opravu" zpusobil neco horsiho - prestavam
+experimentovat s touhle konkretni casti kodu, dokud nebudu mit
+mnohem silnejsi jistotu.
+
+2) OZUBENE KOLECKO - KONECNE UDELANO
+Nasel jsem, ze uvodni stranka (index.html) uz MA tlacitko SETTINGS
+presne vpravo nahore (proprava pozice v CSS: left:85.1%, top:3.1%) -
+akorat delalo to same jako MENU a HELP (otevrelo help panel). Ted
+SETTINGS DELA neco jineho: primo zavola window.AHTVWEB.start() (ta
+sama funkce, kterou appka pouziva pro spusteni TV castu jinde) a
+ukaze potvrzeni s adresou (192.168.0.34:8765).
+Presne jak jsi rikal - tohle ti umozni testovat prechody mezi
+obrazovkami primo z uvodni stranky, bez nutnosti nejdriv otevrit
+jinou obrazovku a hledat tam spousteci tlacitko.
+
+MIMOCHODEM - DULEZITY NALEZ Z TVEHO SCREENSHOTU
+V index.html jsem nasel presny dukaz: Atari tlacitko vede na
+"emu_vbxe/index.html", NE na "/emu/". To znamena, ze Atari NIKDY
+nebyla v me "hqLiteScreen" kategorii (ktera hleda jen "/emu_ps1/",
+"/emu_sega/", "/emu/") - byla VZDY ve stejne "ostatni" kategorii jako
+DJ pult a uvodni stranka. Tohle presne odpovida tomu, cos popisoval -
+Atari, DJ pult a uvodni stranka sdileji STEJNY kod (jsou "ostatni"),
+takze sdileji i stejny problem. Tahle informace bude dulezita az se
+vratim k oprave PixelCopy/draw() logiky - priste uz budu vedet
+presne, ktere obrazovky do ktere kategorie patri, misto abych to
+odhadoval.
+
+MERENI (pred odeslanim)
+- MainActivity.java: primo overeno diffem, 0 rozdilu proti SK34.
+- index.html: JS extrahovan a overen Node.js syntax checkerem - cisty.
+- btnSettings ma ted VLASTNI, oddeleny click handler (uz neni ve
+  spolecne skupine s btnMenu/btnHelp).
+
+JAK OTESTOVAT
+1) Nahrad OBA soubory (MainActivity.java i index.html), commit +
+   Action.
+2) Potvrd, ze SK35 problem (nic se neukazuje) je pryc - Atari/DJ
+   pult/uvodni stranka by se mely zase zobrazovat (i kdyz s tim
+   puvodnim problikavanim, ktere jeste neni vyresene).
+3) Na uvodni strance klikni na SETTINGS (vpravo nahore) - meli bys
+   videt potvrzeni "WEB TV zapnuto" a appka by mela zacit castovat
+   na 192.168.0.34:8765 bez toho, abys musel otevrit DJ pult nebo
+   jinou obrazovku prvni.
+
+CO JE DALSI KROK (az potvrdis, ze tohle je stabilni)
+S timhle novym poznatkem (Atari = "ostatni" kategorie, ne hqLite) se
+vratim k PixelCopy/draw() oprave - ale tentokrat s vic casu na
+peclive otestovani te "zastarale odpovedi" rasové podminky, ktera
+zpusobila SK35 katastrofu, drive nez ti cokoli posli.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK33 (jeste o krok
+zpet, bez SK34 mereni, kdyby to bylo potreba - ale SK34 samotne by
+nemelo menit zadne chovani, jen pridava logovani).

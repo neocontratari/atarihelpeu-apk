@@ -79,7 +79,19 @@ function openExternal(url){
 }
 function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}toast('HELP otevren',1500);}
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
-['btnMenu','btnSettings','btnHelp'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
+['btnMenu','btnHelp'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
+var bs=$('btnSettings');
+if(bs)bs.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  try{
+    var r=(window.AHTVWEB&&typeof window.AHTVWEB.start==='function')?window.AHTVWEB.start():null;
+    log('SETTINGS_TV_START result='+r);
+    toast('WEB TV zapnuto — 192.168.0.34:8765',2600);
+  }catch(err){
+    log('SETTINGS_TV_START_ERR '+err);
+    toast('WEB TV: chyba pri spousteni',2200);
+  }
+},true);
 var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 Array.prototype.forEach.call(document.querySelectorAll('a[data-external="1"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openExternal(a.href);},true);});
 $('btnAtari')&&$('btnAtari').addEventListener('click',function(){toast('ATARI 130XE EMULATOR',900);},true);

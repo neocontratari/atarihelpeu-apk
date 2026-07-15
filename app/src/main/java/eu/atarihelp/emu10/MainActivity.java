@@ -218,7 +218,6 @@ public class MainActivity extends Activity {
     private volatile long napTvWebSeq = 0;
     private Bitmap napTvWebBitmap;
     private volatile boolean napTvWebPixelCopyPending = false;
-    private volatile long napTvWebPixelCopyRequestGen = 0;
     private volatile long napTvWebPixelCopyPendingAtMs = 0;
     private volatile long napTvWebPixelCopyFallbackLogMs = 0;
     private volatile long napTvWebPixelCopyDisabledUntilMs = 0;
@@ -344,83 +343,87 @@ public class MainActivity extends Activity {
                         napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
                     }
                     long nowTick = System.currentTimeMillis();
-                    // BUILD2SK35: cisteni "visiciho" pozadavku ted bezi VZDY, kazdy
-                    // tik, bez ohledu na hqLiteScreen. V SK32 bylo tohle uvnitr
-                    // if(hqLiteScreen) bloku - jakmile uzivatel odesel z hqLite
-                    // obrazovky, cisteni PRESTALO bezet a "visici" pozadavek z
-                    // PREDCHOZI obrazovky mohl zustat nevycisteny donekonecna.
+                    boolean didTimeoutFallback = false;
                     if (napTvWebPixelCopyPending && napTvWebPixelCopyPendingAtMs > 0 && nowTick - napTvWebPixelCopyPendingAtMs > 900L) {
                         napTvWebPixelCopyPending = false;
                         napTvWebPixelCopyPendingAtMs = 0;
+                        // BUILD2SK22: PS1/Sega/Atari maji nativni GPU vykreslovani,
+                        // ktere se pres Canvas.draw() NEZACHYTI VERNE (viz BUILD2SH3
+                        // komentar nize - "WebView se pres Canvas.draw nevykresli
+                        // verne" - tohle uz drive ZPUSOBOVALO presne tenhle typ
+                        // problemu a bylo to znamo, jen draw() zustal jako fallback
+                        // presne pro tenhle timeout pripad). Kratsi cooldown (2s
+                        // misto 12s) pro nativni obsah, at se PixelCopy zkusi znovu
+                        // driv - u ostatniho obsahu (DJ pult, menu) draw() funguje
+                        // spolehlive, tam cooldown zustava puvodnich 12s.
+                        napTvWebPixelCopyDisabledUntilMs = nowTick + (hqLiteScreen ? 2000L : 12000L);
+                        didTimeoutFallback = true;
+                        if (nowTick - napTvWebPixelCopyFallbackLogMs > 5000L) {
+                            napTvWebPixelCopyFallbackLogMs = nowTick;
+                            appendNativeLog("BUILD2SA13C12 TV_WEB_PIXELCOPY_TIMEOUT_FALLBACK_DRAW_COOLDOWN hqLite=" + hqLiteScreen);
+                        }
+                        if (!hqLiteScreen) { napTvWebCaptureByDraw(bw, bh, scale); }
+                        // hqLiteScreen==true: NEVOLAME draw() - radeji zmrazit
+                        // posledni dobry PixelCopy snimek nez zobrazit nevery obraz.
                     }
-                    // BUILD2SH3: behem hrajici hudby (PLAYER audio) lehce zvys interval
-                    // snimku, aby zvukove vlakno melo prostor a nezasekavalo se.
+                    // BUILD2SH3: DRIV se pri hrajici hudbe VYPINAL PixelCopy a
+                    // prepinalo na draw() -> obraz na projektoru zamrzal a barevne
+                    // schema nenaskocilo (WebView se pres Canvas.draw nevykresli verne).
+                    // Ted PixelCopy BEZI i pri prehravani (verny obraz), jen mirne
+                    // zvednem interval snimku, aby zvuk mel prostor a netrhal se.
                     boolean playerAudioHot = "PLAYER".equals(napTvWebAudioSource)
                             && napTvWebAudioLastPushMs > 0
                             && nowTick - napTvWebAudioLastPushMs < 1500L;
+                    boolean pixelCopyAllowed = Build.VERSION.SDK_INT >= 26
+                            && napTvWebCopyHandler != null
+                            && !napTvWebPixelCopyPending
+                            && nowTick >= napTvWebPixelCopyDisabledUntilMs;
+                            // BUILD2SH3: odstraneno "&& !playerAudioHot" - obraz musi
+                            // zustat verny i behem hudby.
                     if (playerAudioHot) {
+                        // jen lehke uleveni snimkovani, aby audio worker stihal,
+                        // ALE stale pres PixelCopy (verny obraz), ne draw.
                         napTvWebVideoProfile = "PLAYER_PIXELCOPY_BAL";
                         napTvWebFrameDelayMs = Math.max(napTvWebFrameDelayMs, landscape ? 90 : 70);
                     }
-                    // BUILD2SK35: SK34 mereni prineslo PRIMY DUKAZ - PixelCopy pozadavek
-                    // na NE-hqLite obsahu (DJ pult/Atari/uvodni obrazovka) trval az
-                    // 1160ms (zaznamenano v logu: "latencyMs=1160 hqLite=false tier=2").
-                    // PredSK32 kod (SK31, tenhle) zkousel PixelCopy VZDY, bez ohledu na
-                    // typ obsahu - jen FALLBACK pri selhani se lisil podle hqLiteScreen.
-                    // Presne tohle zpusobovalo hlasene zasekavani na DJ/Atari/menu.
-                    // Oprava: PixelCopy se pro ne-hqLite obsah VUBEC nezkousi, VZDY
-                    // primo draw() (opakovane potvrzeno jako spolehlivy a rychly).
-                    // POUCENI ZE SK32 (proc TOHLE by nemelo zpusobit "PS1 se pamatuje"):
-                    // generacni citac napTvWebPixelCopyRequestGen se zvysi pri KAZDEM
-                    // draw() volani - pokud tedy nejaky STARY hqLite PixelCopy pozadavek
-                    // odpovi AZ PO prechodu na jinou obrazovku, jeho callback pozna, ze
-                    // uz neni aktualni, a vysledek ZAHODI misto aby prepsal cerstvy obraz.
-                    if (hqLiteScreen) {
-                        boolean pixelCopyAllowed = Build.VERSION.SDK_INT >= 26
-                                && napTvWebCopyHandler != null
-                                && !napTvWebPixelCopyPending;
-                        if (pixelCopyAllowed) {
-                            int[] loc = new int[2];
-                            rootFrame.getLocationInWindow(loc);
-                            Rect src = new Rect(loc[0], loc[1], loc[0] + sw, loc[1] + sh);
-                            napTvWebPixelCopyPending = true;
-                            napTvWebPixelCopyPendingAtMs = nowTick;
-                            final long requestStartMs = nowTick;
-                            final long requestGen = ++napTvWebPixelCopyRequestGen;
-                            final Bitmap target = napTvWebBitmap;
-                            android.view.PixelCopy.request(getWindow(), src, target, result -> {
-                                try {
-                                    long latencyMs = System.currentTimeMillis() - requestStartMs;
-                                    if (latencyMs > 200L) {
-                                        appendNativeLog("BUILD2SK34 TV_WEB_PIXELCOPY_SLOW latencyMs=" + latencyMs
-                                                + " result=" + result + " hqLite=true tier=" + napTvWebQualityTier);
-                                    }
-                                    if (requestGen != napTvWebPixelCopyRequestGen) {
-                                        appendNativeLog("BUILD2SK35 TV_WEB_PIXELCOPY_STALE_DISCARDED gen=" + requestGen + " current=" + napTvWebPixelCopyRequestGen);
-                                        return;
-                                    }
-                                    if (result == android.view.PixelCopy.SUCCESS) {
-                                        napTvWebPublishBitmap(target, "PIXELCOPY");
-                                    } else {
-                                        appendNativeLog("BUILD2SK35 TV_WEB_PIXELCOPY_FAIL_HQLITE result=" + result);
-                                    }
-                                } catch (Throwable t) {
-                                    appendNativeLog("BUILD2SK35 TV_WEB_PIXELCOPY_ERR_HQLITE " + safeMsg(t));
-                                } finally {
-                                    napTvWebPixelCopyPending = false;
-                                    napTvWebPixelCopyPendingAtMs = 0;
+                    if (!didTimeoutFallback && pixelCopyAllowed) {
+                        int[] loc = new int[2];
+                        rootFrame.getLocationInWindow(loc);
+                        Rect src = new Rect(loc[0], loc[1], loc[0] + sw, loc[1] + sh);
+                        napTvWebPixelCopyPending = true;
+                        napTvWebPixelCopyPendingAtMs = System.currentTimeMillis();
+                        final long requestStartMs = napTvWebPixelCopyPendingAtMs;
+                        final Bitmap target = napTvWebBitmap;
+                        final boolean hqLiteScreenFinal = hqLiteScreen;
+                        android.view.PixelCopy.request(getWindow(), src, target, result -> {
+                            try {
+                                // BUILD2SK34: primy dukaz misto dalsiho hadani - kolik
+                                // casu skutecne uplynulo mezi zadanim PixelCopy a jeho
+                                // vysledkem (uspesnym i neuspesnym).
+                                long latencyMs = System.currentTimeMillis() - requestStartMs;
+                                if (latencyMs > 200L) {
+                                    appendNativeLog("BUILD2SK34 TV_WEB_PIXELCOPY_SLOW latencyMs=" + latencyMs
+                                            + " result=" + result + " hqLite=" + hqLiteScreenFinal + " tier=" + napTvWebQualityTier);
                                 }
-                            }, napTvWebCopyHandler);
-                        }
-                        // pixelCopyAllowed==false: predchozi pozadavek jeste bezi
-                        // (< 900ms stary) - tenhle tik nic nedela, zmrazi se posledni
-                        // znamy snimek.
-                    } else {
-                        napTvWebCaptureByDraw(bw, bh, scale);
-                        // zvys generaci, aby se pripadny drive vydany (jeste
-                        // neodpovezeny) hqLite PixelCopy pozadavek oznacil jako
-                        // zastaraly - kdyz pozde odpovi, jeho vysledek se zahodi.
-                        napTvWebPixelCopyRequestGen++;
+                                if (result == android.view.PixelCopy.SUCCESS) {
+                                    napTvWebPublishBitmap(target, "PIXELCOPY");
+                                } else {
+                                    appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_FAIL result=" + result + " hqLite=" + hqLiteScreenFinal);
+                                    napTvWebPixelCopyDisabledUntilMs = System.currentTimeMillis() + (hqLiteScreenFinal ? 2000L : 5000L);
+                                    if (!hqLiteScreenFinal) { ui.post(() -> napTvWebCaptureByDraw(bw, bh, scale)); }
+                                }
+                            } catch (Throwable t) {
+                                appendNativeLog("BUILD2SA13C TV_WEB_PIXELCOPY_ERR " + safeMsg(t));
+                                napTvWebPixelCopyDisabledUntilMs = System.currentTimeMillis() + 5000L;
+                            } finally {
+                                napTvWebPixelCopyPending = false;
+                                napTvWebPixelCopyPendingAtMs = 0;
+                            }
+                        }, napTvWebCopyHandler);
+                    } else if (!didTimeoutFallback) {
+                        if (!hqLiteScreen) { napTvWebCaptureByDraw(bw, bh, scale); }
+                        // hqLiteScreen==true: zmrazit posledni dobry snimek misto
+                        // zobrazeni nevereho draw() obrazu (viz komentare vyse).
                     }
                 }
             } catch (Throwable t) {
