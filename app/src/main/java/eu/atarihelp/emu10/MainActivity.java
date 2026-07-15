@@ -449,9 +449,34 @@ public class MainActivity extends Activity {
         }
     };
 
+    private volatile long napTvWebBitmapResizePendingSince = 0;
+    private volatile int napTvWebBitmapPendingW = 0;
+    private volatile int napTvWebBitmapPendingH = 0;
     private void napTvWebCaptureByDraw(int bw, int bh, float scale) {
         try {
             if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
+                // BUILD2SK28: nahlaseno opakovane (4x nezavisle) ze prechod MEZI
+                // JAKYMKOLI dvema obrazovkami (ne jen PS1) na urovni MEDIUM/HIGH
+                // problikava, zatimco LOW je v pohode. Pricina: na MEDIUM/HIGH se
+                // cilova velikost bitmapy MEZI RUZNYMI TYPY OBRAZOVEK (DJ/emu/
+                // ostatni) lisi vic nez na LOW, takze prechod castej spousti
+                // PRESTAVBU bitmapy - a pokud se prave v tu chvili zachyti view
+                // hierarchie UPROSTRED WebView navigace (stara stranka mizi, nova
+                // se teprve sklada), vznikne presne to probliknuti.
+                // OPRAVA (stejna filozofie jako SK21 pro system-mirror): kdyz se
+                // cilova velikost zmeni, NEZACHYCUJEME hned - pockame ~150ms, at
+                // se prechod stihne usadit, a do te doby dal servírujeme posledni
+                // znamy DOBRY snimek (zmrazeny), misto probliknuti prechodoveho stavu.
+                long now = System.currentTimeMillis();
+                if (napTvWebBitmapPendingW != bw || napTvWebBitmapPendingH != bh) {
+                    napTvWebBitmapPendingW = bw;
+                    napTvWebBitmapPendingH = bh;
+                    napTvWebBitmapResizePendingSince = now;
+                    return;
+                }
+                if (now - napTvWebBitmapResizePendingSince < 150L) {
+                    return;
+                }
                 napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
             }
             Canvas cv = new Canvas(napTvWebBitmap);
@@ -1224,8 +1249,8 @@ public class MainActivity extends Activity {
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button'>AUDIO OK</button>"
                 + "<div id='q'><button type='button' data-t='0'>LOW</button><button type='button' data-t='1'>MED</button><button type='button' data-t='2'>HIGH</button><button type='button' id='fs'>⛶ FULL</button></div>"
-                + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[];" // BUILD2SB1
-                + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+(aon?' AUDIO ON':' AUDIO OFF');}"
+                + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0;" // BUILD2SB1
+                + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+0.15;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+0.36;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
@@ -1239,7 +1264,8 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "setInterval(function(){if(!fb)label('MJPEG');},1000);})();</script></body></html>";
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\d+)/.exec(t);if(m){var sq=parseInt(m[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}lastSeq=sq;lastSeqT=now;}if(!fb)label('MJPEG');}).catch(function(){if(!fb)label('MJPEG');});}" // BUILD2SK28: FPS pocitano ze skutecneho rustu seq na /status za znamy cas
+                + "setInterval(pollFps,1000);})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
         napTvWebHeader(out, "200 OK", "text/html; charset=utf-8", b.length, false);
         out.write(b);

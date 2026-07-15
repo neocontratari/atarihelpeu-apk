@@ -1,0 +1,70 @@
+BUILD2SK28 - FPS POCITADLO + OPRAVA OBECNEHO BLIKANI (ne jen PS1)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(navazuje na SK11-27 - stejny soubor, 2 nezavisle zmeny)
+
+DIKY ZA KLICOVOU OPRAVU DIAGNOZY
+"4x po sobe jdoucich testech" a "z jakehokoli EMU do jakehokoli
+dalsiho" - tohle zmenilo, kde jsem hledal. Predtim jsem se soustredil
+na PS1 specificky, ale ukazuje se, ze jde o obecny mechanismus.
+
+1) FPS POCITADLO (jak jsi zadal - vpravo na stavovem radku)
+Appka uz posilala "seq=" v /status (cislo, ktere se zvysi pri kazdem
+publikovanem snimku). TV stranka ted kazdou vterinu tohle cislo
+prectete a spocita SKUTECNOU snimkovou frekvenci jako rozdil za znamy
+cas - zadny odhad, realne mereni. Zobrazuje se primo v tom radku,
+kde je cas ("AtariHelp TV WEB CAST MJPEG HH:MM:SS X.Xfps AUDIO ON").
+POZOR PRI VLASTNI UPRAVE TOHOTO KODU (jen pro info, ne pro tebe teď):
+pri psani JS regexu uvnitr Java retezce jsem si sam spletl pocet
+zpetnych lomitek na prvni pokus (ctyri misto dvou) - odhalilo by se
+to az v prohlizeci jako nefungujici pocitadlo, ne jako chyba
+kompilace. Nasel jsem to a opravil pred odeslanim diky tomu, ze
+kazdou zmenu v HTML/JS overuji extrakci + Node.js syntax checkerem,
+ne jen okem.
+
+2) OBECNE BLIKANI PRI MEDIUM/HIGH (ne jen PS1) - NOVA OPRAVA
+Nasel jsem pravdepodobnou pricinu v draw() zachytavaci ceste (ta,
+kterou pouziva VETSINA obrazovek vcetne DJ pultu, Atari, Segy - ne
+jen PS1). Kdyz se meni cilova velikost bitmapy (a na MEDIUM/HIGH se
+lisi VIC mezi ruznymi typy obrazovek nez na LOW - proto je LOW v
+pohode), doslo k OKAMZITEMU vytvoreni nove bitmapy a zachyceni PRESNE
+v tu chvili - coz muze byt uprostred WebView prechodu (stara stranka
+mizi, nova se sklada), takze se zachyti neusazeny, prechodovy stav.
+OPRAVA (stejna filozofie jako uz overena SK21 pro system-mirror):
+kdyz se cilova velikost zmeni, appka NEZACHYTI hned - pocka ~150ms,
+at se prechod stihne usadit, a do te doby dal posila posledni znamy
+DOBRY snimek (zmrazeny). Pokud se cil behem cekani jeste zmeni
+(nestabilni prechod), odpocet se resetuje a ceka znovu.
+
+CO JESTE ZBYVA (do pristiho kola, ne ted)
+- Landscape vs portret rozdil kvality u PS1 (zminil jsi to, mam
+  teorii o pomeru stran, ale chci to nejdriv overit FPS pocitadlem
+  a tvym zpetnym testem, nez do toho pujdu).
+- Dalsi ladeni PS1 ostrosti smerem k tvym inspiracnim cislum.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 360 radku (SK11-28 dohromady).
+- FPS: cely retezec Java->HTML->JS overen extrakci + Node.js syntax
+  checkerem, regex po plnem de-escapovani ma presne JEDNO zpetne
+  lomitko (spravne \d, ne doslovne zpetne-lomitko-d).
+- Settle logika: realny javac + spusteni (BitmapSettleCheck.java),
+  3 scenare:
+  1) Stabilni velikost (bitmapa uz existuje) -> kresli kazdy tik
+     normalne, 2/2.
+  2) Zmena velikosti -> 3 tiky zmrazeno (0 kresleni), pak po 150ms
+     obnoveno kresleni (2 uspesne kresleni z 5 tiku celkem).
+  3) Nestabilni cil (zmeni se 2x rychle za sebou) -> odpocet se
+     spravne resetuje, kresli az kdyz je cil STABILNI po 150ms.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Sleduj FPS cislo v levem dolnim rohu TV stranky - dava ti ted
+   objektivni cislo pro srovnani zmen (misto "vypada to lip?").
+3) Na MEDIUM nebo HIGH zkus prechazet mezi RUZNYMI obrazovkami
+   (PS1->DJ, DJ->Sega, Sega->Atari, cokoli) - misto probliknuti by
+   melo byt kratke (~150ms) zamrznuti a pak plynuly prechod.
+4) Pokud porad blika i po tomhle, posli mi prosim znovu log - budu
+   hledat presne v tomhle novem mechanismu (draw() bitmap resize),
+   ne uz v system-mirroru nebo backing surface (ty uz jsou vyresene).
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK27 (predchozi build).
