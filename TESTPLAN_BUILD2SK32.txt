@@ -1,0 +1,87 @@
+BUILD2SK32 - SKUTECNY AUDIT: VELKE ZJEDNODUSENI MISTO DALSI ZAPLATY
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(1 velky blok prepracovan - dispecerska logika mezi PixelCopy a draw())
+
+UDELAL JSEM TO, CO JSI CHTEL - AUDIT, NE DALSI ZALEPENI
+Prosel jsem celou napTvWebFrameTick funkci radek po radku od zacatku
+do konce. Zjisteni: za SK18 az SK31 se na tuhle jednu funkci
+navrstvilo PET nezavisle bezicich casovanych mechanismu (cooldown
+2/5/12s po neuspechu PixelCopy, hystereze pro system-mirror, freeze
+pri resize system-mirroru, settle-tolerance pro draw() bitmapu,
+eskalujici backoff pro "backing surface"). Tyhle mechanismy se mohly
+prekryvat zpusoby, ktere uz neslo spolehlive odhadnout jen ctenim
+kodu - a presne to byla nejspis pricina "obraz se zasekne, zvuk jede"
+i po predchozich opravach.
+
+CO JSEM ZJISTIL A ZMENIL
+Cely problem byl soustredeny do JEDNOHO mista: rozhodovani MEZI
+PixelCopy a draw() melo slozitou kaskadu (zkus PixelCopy -> pokud
+selze/timeoutne, na 2-12 vterin ho VYPNI a bud zkus draw() nebo
+zmrzni -> pri dalsim pokusu znovu...). Po celem tomhle ladeni uz
+presne vime:
+  - PS1/Sega/Atari: draw() je pro ne NEVERY (GPU obsah), takze ho
+    NIKDY nechceme jako fallback - jen zmrazit posledni dobry snimek.
+  - DJ pult/menu/vse ostatni: draw() je SPOLEHLIVY (potvrzeno
+    opakovane tebou), PixelCopy pro tenhle obsah vubec neni potreba
+    zkouset.
+Takze misto slozite kaskady je to ted PRIMY VYBER:
+  hqLiteScreen (PS1/Sega/Atari) -> VYHRADNE PixelCopy, zadny draw()
+    fallback vubec. Zadny dlouhy cooldown - jen prirozeny 900ms
+    timeout na "vislici" pozadavek, hned dalsi tik zkusi znovu.
+  Vse ostatni -> VYHRADNE draw(), PixelCopy se pro tenhle obsah
+    vubec nezkousi.
+
+PROC BY TO MELO VYRESIT "OBRAZ SE ZASEKNE PO OPUSTENI PS1"
+Driv: pri opusteni PS1 (hqLiteScreen prestane byt true) mohl zustat
+"nastaveny" cooldown na PixelCopy z PREDCHOZI (PS1) obrazovky - a
+podle stareho kodu i pro NOVOU (ne-hqLite) obrazovku mohl tenhle
+cooldown ovlivnit, kdy se poprve zkusi draw(). Ted: draw() se pro
+ne-hqLite obsah vola VZDY, KAZDY tik, bez ohledu na cokoli, co se
+delo na predchozi obrazovce. Zadna zavislost, zadne "zdedene" cekani.
+
+ODSTRANENE MECHANISMY (uz nejsou potreba diky primemu pristupu)
+- 3 ruzne cooldown doby (2s/5s/12s) po neuspechu PixelCopy - PRYC.
+- "didTimeoutFallback" slozita mezistavova promenna - PRYC.
+- Nekolik vnorenych if/else vetvi rozhodujicich MEZI PixelCopy a
+  draw() podle casu - nahrazeno jednim primym if(hqLiteScreen).
+PONECHANO BEZE ZMENY (jiz overeno, funguje spravne):
+- SK19 hystereze pro system-mirror (jiny mechanismus, netykal se
+  tohohle problemu presne).
+- SK21 freeze pri system-mirror resize.
+- SK30 settle-tolerance uvnitr napTvWebCaptureByDraw (sama o sobe
+  spravna, jen ted dostava draw() volani jinak/castej).
+- SK24/25 backoff pro "backing surface" vyjimku (jiny mechanismus).
+- SK31 PS1 JS cistici funkce (nezavisla na tomhle, zustava v platnosti).
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 463 radku (SK11-32 dohromady).
+- Zavorky/hranate zavorky vyvazene.
+- Overeno, ze zadne osirele odkazy na odstranene promenne
+  (didTimeoutFallback, hqLiteScreenFinal) nezustaly - 0 vyskytu.
+- Realny javac + spusteni (SimplifiedDispatchCheck.java), 4 scenare
+  s realistickymi casovymi znackami:
+  1) Ne-hqLite obsah -> draw() VZDY, 10/10 tiku, PixelCopy se
+     nedotkne vubec.
+  2) hqLite obsah, PixelCopy uspesne -> pravidelne pokusy, zadny
+     draw() nikdy.
+  3) hqLite obsah, PixelCopy "visi" (nikdy neodpovi) -> prirozeny
+     900ms timeout ho spolehlive uvolni, zadne trvale zaseknuti.
+  4) KRITICKY scenar - prechod PS1->DJ pult -> draw() zafunguje
+     OKAMZITE na prvnim tiku po prepnuti, bez ohledu na predchozi
+     PixelCopy stav z PS1 obrazovky.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Zopakuj presne to, co jsi delal - hraj PS1 na MEDIUM/HIGH, odejdi
+   do DJ/menu/Segy. Sleduj FPS pocitadlo - nemelo by nikdy uplne
+   spadnout na 0 a zustat tam.
+3) Zkus to opakovane, delsi dobu, ruzne kombinace prechodu - tohle
+   je zásadní prepracovani, chci vedet jestli konecne drzi ve vsech
+   scenarich, ne jen v jednom.
+4) Pokud se PORAD neco podobneho objevi, posli mi prosim log + video
+   presne jako driv - ale ted uz vime, ze hlavni podezrely mechanismus
+   je pryc, takze pripadny zbytek problemu bude jinde a budu to muset
+   hledat jinde.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK31 (predchozi build).
