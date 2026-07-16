@@ -1,0 +1,51 @@
+BUILD2SK47 - MP3 PREHRAVAC PRIDAN (mezera v mem drivejsim mereni)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(2 mista - stejna zmena jako SK46, jen dalsi URL vzorec)
+
+SKVELE ZPRAVY NEJDRIV
+LOW bez blikani vsude, Atari i DJ pult ted funguji - SK46 (canvas
+teorie) se potvrdila spravne pro tyhle dve obrazovky.
+
+NOVA MEZERA, KTEROU JSEM NASEL
+Rekl jsi: po odchodu z MP3 prehravace se domovska obrazovka "nechyta".
+Kdyz jsem se vratil zkontrolovat, proc MP3 samo o sobe "funguje" (a
+tim padem jsem ho drive vyloucil z hqLiteScreen), zjistil jsem chybu
+ve svem VLASTNIM drivejsim mereni: hledal jsem vyskyty "<video", ale
+NIKDY jsem nezkontroloval "<audio"! A primo v kodu player/index.html
+je komentar: "MP3 hraje 100% nedotcene primo z <audio> elementu. Graf
+(EQ/basy/vysky/...)" - ma tedy <audio> element s WebAudio EQ grafem,
+STEJNY vzorec jako DJ pult (ktery uz opraven byl v SK46).
+
+OPRAVA
+Pridan /player/ do stejne hqLiteScreen kategorie jako PS1/Sega/Atari/
+DJ pult - MP3 prehravac ted taky pouziva PixelCopy misto draw().
+Hypoteza: <audio>+WebAudio graf muze zanechat podobny hardwarovy stav
+jako canvas, ktery ovlivnuje NASLEDUJICI draw() zachytavani (proto
+"MP3 samo o sobe vypadalo v poradku", ale nasledna domovska
+obrazovka ne).
+
+POCTIVE - CO PORAD ZUSTAVA OTEVRENE
+Domovska stranka (index.html) sama nema ani canvas, ani audio/video
+elementy - takze tenhle vzorec ji primo neresi. Tenhle build resi
+JEN to, ze MP3 uz sam nebude pouzivat draw() (a tim padem nemusi
+zanechavat problem). Pokud domovska stranka porad bude mit problemy
+i po tomhle, budeme vedet, ze zbyva jeste jeden samostatny problem.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 608 radku.
+- Zavorky/hranate zavorky vyvazene.
+- Primo overeno, ze "/player/" pribyl na obou existujicich detekcnich
+  mistech (2 vyskyty, spravne).
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java.
+2) Zopakuj presne to, co jsi delal - jdi na MP3 prehravac, pak zpet
+   na domovskou obrazovku. Sleduj, jestli uz domovska obrazovka
+   spravne "chyta" (zobrazuje se).
+3) Potvrd, ze Atari a DJ pult porad funguji (SK46 by nemelo byt
+   dotcene touhle zmenou).
+4) Pokud domovska stranka porad ma problem i po tomhle, napis mi to -
+   bude to znamenat, ze MP3 nebyl (jedinou) pricinou.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK46 (predchozi build).
