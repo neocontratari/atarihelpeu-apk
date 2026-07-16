@@ -355,7 +355,18 @@ public class MainActivity extends Activity {
                     // potvrdil ze plynulost u PS1 zustala stejna, takze stejne zachazeni pro
                     // dalsi dva emulatory nese stejne (nizke) riziko.
                     boolean hqLiteScreen = false;
-                    try { String cu2 = web == null ? null : web.getUrl(); hqLiteScreen = cu2 != null && (cu2.contains("/emu_ps1/") || cu2.contains("/emu_sega/") || cu2.contains("/emu/")); } catch (Throwable ignored) {}
+                    try { String cu2 = web == null ? null : web.getUrl(); hqLiteScreen = cu2 != null && (cu2.contains("/emu_ps1/") || cu2.contains("/emu_sega/") || cu2.contains("/emu/") || cu2.contains("/emu_vbxe/") || cu2.contains("/dj/")); } catch (Throwable ignored) {}
+                    // BUILD2SK46: Atari (emu_vbxe) a DJ pult pridany do hqLiteScreen
+                    // detekce. Duvod: log potvrdil, ze na Atari "seq" roste normalne
+                    // (server zdravy), ale obraz nefunguje - takze problem NENI
+                    // doruceni (to resila SK45), je to OBSAH toho, co se zachyti.
+                    // Atari a DJ pult maji ze vsech stranek zdaleka nejvic canvas
+                    // prvku (3 a 9 vyskytu, MP3 prehravac ktery funguje 0) - presne
+                    // ten typ obsahu, ktery draw() nedokaze verne zachytit (stejny
+                    // duvod, proc PS1/Sega uz davno potrebuji PixelCopy). "djScreen"
+                    // (pro rozliseni, kontrolovano zvlast a DRIV v tabulce kvality)
+                    // zustava NEDOTCENO - DJ pult si drzi svoje vlastni rozliseni,
+                    // meni se jen ZPUSOB zachytavani.
                     int[] qv = napTvWebQualityFor(djScreen, hqLiteScreen, landscape);
                     int maxSide = qv[0];
                     napTvWebJpegQuality = qv[1];
@@ -946,7 +957,7 @@ public class MainActivity extends Activity {
             Bitmap frame = (rowPixels == w) ? padded : Bitmap.createBitmap(padded, 0, 0, w, h);
             if (frame != padded) padded.recycle();
             boolean djScreenSys = false, hqLiteScreenSys = false;
-            try { String cu = web == null ? null : web.getUrl(); djScreenSys = cu != null && cu.contains("/dj/"); hqLiteScreenSys = cu != null && (cu.contains("/emu_ps1/") || cu.contains("/emu_sega/") || cu.contains("/emu/")); } catch (Throwable ignored) {}
+            try { String cu = web == null ? null : web.getUrl(); djScreenSys = cu != null && cu.contains("/dj/"); hqLiteScreenSys = cu != null && (cu.contains("/emu_ps1/") || cu.contains("/emu_sega/") || cu.contains("/emu/") || cu.contains("/emu_vbxe/") || cu.contains("/dj/")); } catch (Throwable ignored) {}
             int[] qvSys = napTvWebQualityFor(djScreenSys, hqLiteScreenSys, w > h);
             napTvWebJpegQuality = qvSys[1];
             napTvWebFrameDelayMs = w > h ? 60 : 55;

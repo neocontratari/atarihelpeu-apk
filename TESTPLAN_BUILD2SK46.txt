@@ -1,0 +1,54 @@
+BUILD2SK46 - ATARI A DJ PULT PRIDANY K PS1/SEGA (canvas obsah)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(2 mista - stejna zmena na obou existujicich detekcnich bodech)
+
+DUKAZ Z TVEHO LOGU
+Na Atari (emu_vbxe) "seq" roste naprosto normalne (519->546->572->598
+->624->650->677 za sebou, zadna mezera, zadna chyba) - server je
+zdravy. SK45 (detekce zaseknuteho "seq") tady tedy nemuze pomoct,
+protoze seq se vubec nezasekava - problem neni v DORUCENI (to SK45
+resila), je v OBSAHU toho, co se zachyti.
+
+CO JSEM ZNOVU ZKONTROLOVAL
+Atari a DJ pult maji ze vsech stranek zdaleka nejvic canvas prvku (3
+a 9 vyskytu - primo pocitano v souborech), MP3 prehravac (ktery
+funguje) 0. Tohle je presne ten typ obsahu, ktery draw() nedokaze
+verne zachytit - stejny duvod, proc uz davno PS1/Sega potrebuji
+PixelCopy misto draw().
+
+OPRAVA
+Atari (/emu_vbxe/) a DJ pult (/dj/) pridany do stejne "hqLiteScreen"
+kategorie jako PS1/Sega - ted taky pouzivaji PixelCopy misto draw().
+DULEZITE: DJ pult ma vlastni, samostatnou kontrolu pro ROZLISENI
+(djScreen), ktera se kontroluje jinde a DRIV v tabulce kvality - ta
+zustava UPLNE NEDOTCENA. Meni se jen ZPUSOB zachytavani (PixelCopy
+misto draw()), ne jake rozliseni/kvalitu DJ pult dostava.
+
+POCTIVE - CO TENHLE BUILD NERESI
+Domovska stranka (index.html) nema ZADNE canvas prvky (0 vyskytu) -
+tahle teorie ji tedy nevysvětluje, a tenhle build ji NEOPRAVUJE.
+Zustava jako oddeleny, jeste nevyresenej problem. Pokud SK46 spravi
+Atari a DJ pult, ale domovska stranka porad bude mit problemy,
+budeme vedet, ze jde o DVE ruzne priciny, ne jednu - a budu muset
+hledat, co je na domovske strance jinak nez u MP3 prehravace (ktery
+funguje a taky nema canvas).
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 600 radku.
+- Zavorky/hranate zavorky vyvazene.
+- Realny javac + spusteni (Sk46Check.java): overeno, ze DJ pult ted
+  ma djScreen=true (rozliseni nedotceno) SOUCASNE s hqLiteScreen=true
+  (PixelCopy) - obe nezavisle, jak ma byt. Atari, PS1, Sega vsechny
+  hqLiteScreen=true. MP3 a domovska stranka zustavaji hqLiteScreen=
+  false (draw(), beze zmeny).
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java.
+2) Atari a DJ pult na LOW/MEDIUM/HIGH - hlavni test, mely by se ted
+   konecne spolehlive zobrazovat.
+3) PS1 a Sega - potvrd, ze se NIC nezmenilo (fungujou jako driv).
+4) Domovska stranka - pokud porad ma problemy, je to OCEKAVANE (tenhle
+   build ji neresi) - napis mi to, at vim ze jde hledat jinam.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK45 (predchozi build).
