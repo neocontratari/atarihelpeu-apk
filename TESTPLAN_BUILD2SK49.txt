@@ -1,0 +1,68 @@
+BUILD2SK49 - PIXELCOPY PRO VSECHNO (draw() uz nikdy k zachytavani)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(1 zasadni zjednoduseni - hqLiteScreen je ted vzdy true)
+
+PROC TENHLE KROK
+Tve video + log z posledniho testu ukazaly rozpor: log tvrdil, ze
+appka spravne vi, ze je na domovske strance (url=index.html, seq
+plyne), ale video ukazovalo, ze se po prechodu z Atari/Segy porad
+zobrazuje STARY obsah predchozi obrazovky. To znamena, ze draw()
+(pouzivany pro domovskou stranku) obcas zachyti zastaraly obsah,
+presne jako uz opakovane selhaval na Atari, DJ pultu a MP3
+prehravaci - jen driv jsem to pokazde opravoval jako "problem
+tohohle konkretniho typu obsahu" (canvas, audio graf...). Po
+ctvrtem opakovani stejneho vzorce na ctvrtem druhu obsahu uz to neni
+nahoda - je to draw() samotny, ktery neni na tomhle WebView
+spolehlivy zpusob zachytavani, at uz je obsah jakykoli.
+
+CO SE ZMENILO
+hqLiteScreen (promenna, ktera rozhoduje mezi PixelCopy a draw()) je
+ted VZDY true. PixelCopy se pouziva pro UPLNE VSECHNO - domovskou
+stranku, DJ pult, Atari, PS1, Sega, MP3 prehravac. draw() uz se pro
+zachytavani vubec nevola (kod zustava v souboru jako neaktivni
+zaloha, ale hqLiteScreen=true ho nikdy nespusti).
+
+PROC UZ TOHLE NENI STEJNE RIZIKOVE JAKO SK32/35 KATASTROFY
+Kdyz jsem se o univerzalni PixelCopy pokusil drive (SK32, SK35), oba
+pokusy zpusobily vazne regrese - appka se "zaseknuti na PS1 navzdy"
+nebo "nic se vubec nezobrazuje". Pricinou obou byly konkretni chyby,
+ktere jsem mezitim opravil a UZ JSOU NA SVEM MISTE:
+  - SK38: kdyz uzivatel odejde z obrazovky drive, nez PixelCopy
+    pozadavek dorazi, jeho POZDNI vysledek se ted spolehlive
+    ZAHAZUJE (generacni citac), misto aby prepsal cerstvy obsah.
+  - SK48: draw() a PixelCopy uz nikdy nesdileji jednu bitmapu -
+    nemuze dojit k "zavodu dvou pisaru" do stejneho objektu.
+Tyhle dve opravy byly presne ty diry, kvuli kterym univerzalni
+PixelCopy driv selhal. Ted uz by nemely.
+
+POCTIVE
+Tohle je vetsi architektonicka sazka nez moje poslednich nekolik
+zmen - misto pridavani dalsi vyjimky do seznamu rikam "cely seznam
+vyjimek je zbytecny, pouzivejme jen tu spolehlivou cestu vsude".
+Logicky to davá smysl a dve klicove pojistky jsou na miste, ale
+skutecne potvrzeni muze dat jen tvuj test.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 623 radku.
+- Zavorky/hranate zavorky vyvazene.
+- Overeno, ze "boolean hqLiteScreen = true" je v souboru presne
+  jednou, na spravnem miste.
+- Overeno, ze vsechna volani napTvWebCaptureByDraw jsou chranena
+  "!hqLiteScreen" podminkou - jsou tedy bezpecne nedosazitelna
+  (zadny kompilacni problem, jen nepouzivany kod, ktery zustava
+  jako zaloha).
+- Odstraneny osirele komentare po predchozich upravach (SK46/47),
+  ktere by jinak zustaly viset bez navaznosti na kod pod nimi.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java.
+2) Presne tu sekvenci z posledniho videa - Atari -> domu, Sega ->
+   domu, MP3 -> domu, PS1 -> domu. Vicekrat za sebou, LOW i HIGH.
+3) Tohle je klicovy test: pokud se ted domovska stranka VZDY spravne
+   objevi (ne stary obsah predchozi obrazovky), je to potvrzeni.
+4) Sleduj i vykon - PixelCopy pro VSECHNO muze mit jiny dopad na FPS
+   nez pred tim (kdy DJ pult/Atari/MP3/domovska stranka pouzivaly
+   draw()) - dej vedet, jak to vypada.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK48 (predchozi build).

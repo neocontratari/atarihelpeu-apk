@@ -356,27 +356,17 @@ public class MainActivity extends Activity {
                     // uz otestovane hodnoty jako PS1 (860px/62) - zadne nove cislo, uzivatel
                     // potvrdil ze plynulost u PS1 zustala stejna, takze stejne zachazeni pro
                     // dalsi dva emulatory nese stejne (nizke) riziko.
-                    boolean hqLiteScreen = false;
-                    try { String cu2 = web == null ? null : web.getUrl(); hqLiteScreen = cu2 != null && (cu2.contains("/emu_ps1/") || cu2.contains("/emu_sega/") || cu2.contains("/emu/") || cu2.contains("/emu_vbxe/") || cu2.contains("/dj/") || cu2.contains("/player/")); } catch (Throwable ignored) {}
-                    // BUILD2SK47: pridan i /player/ (MP3) - moje drivejsi mereni
-                    // hledalo jen "<video", NE "<audio" - player/index.html ma
-                    // <audio> element s WebAudio EQ grafem (potvrzeno primo
-                    // komentarem v souboru), stejny vzorec jako DJ pult. Rene
-                    // hlasi, ze po odchodu z MP3 prehravace domovska obrazovka
-                    // "nechyta" - moznost, ze <audio>+WebAudio graf zanecha
-                    // podobny hardwarovy stav jako canvas, ktery ovlivnuje NASLEDUJICI
-                    // draw() zachytavani.
-                    // BUILD2SK46: Atari (emu_vbxe) a DJ pult pridany do hqLiteScreen
-                    // detekce. Duvod: log potvrdil, ze na Atari "seq" roste normalne
-                    // (server zdravy), ale obraz nefunguje - takze problem NENI
-                    // doruceni (to resila SK45), je to OBSAH toho, co se zachyti.
-                    // Atari a DJ pult maji ze vsech stranek zdaleka nejvic canvas
-                    // prvku (3 a 9 vyskytu, MP3 prehravac ktery funguje 0) - presne
-                    // ten typ obsahu, ktery draw() nedokaze verne zachytit (stejny
-                    // duvod, proc PS1/Sega uz davno potrebuji PixelCopy). "djScreen"
-                    // (pro rozliseni, kontrolovano zvlast a DRIV v tabulce kvality)
-                    // zustava NEDOTCENO - DJ pult si drzi svoje vlastni rozliseni,
-                    // meni se jen ZPUSOB zachytavani.
+                    // BUILD2SK49: draw() opakovane selhaval na ruznem obsahu (Atari, DJ pult,
+                    // MP3, a video/log dukaz ted ukazal ze i uvodni stranka po prechodu z
+                    // hqLite obrazovky) - vzorec uz neni "tenhle konkretni typ obsahu", je to
+                    // "draw() na tomhle WebView neni spolehlivy zpusob zachytavani vubec".
+                    // PixelCopy naproti tomu spolehlive fungoval na VSEM, kam byl nasazen.
+                    // Dve opravy, ktere driv delaly univerzalni PixelCopy nebezpecnym (SK32/35
+                    // katastrofy), uz jsou na miste: SK38 (zahazovani zastaralych vysledku
+                    // podle generace) a SK48 (draw() a PixelCopy uz nesdileji jednu bitmapu).
+                    // hqLiteScreen je ted VZDY true - PixelCopy pro vsechen obsah, draw() se
+                    // pro zachytavani uz vubec nepouziva.
+                    boolean hqLiteScreen = true;
                     int[] qv = napTvWebQualityFor(djScreen, hqLiteScreen, landscape);
                     int maxSide = qv[0];
                     napTvWebJpegQuality = qv[1];
