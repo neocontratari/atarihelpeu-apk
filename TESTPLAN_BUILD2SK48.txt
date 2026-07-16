@@ -1,0 +1,57 @@
+BUILD2SK48 - ODDELENI BITMAP (skutecna pricina "skace do MP3/Segy")
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(strukturalni oddeleni - 1 nove pole, 2 mista upravena)
+
+TVUJ POPIS BYL PRESNY A DULEZITY
+"Skace do MP3 prehravace misto domu", "pamatuje si Segu jako pilotni
+obrazovku" - tohle NENI "nezobrazuje se nic" (jak jsem si driv myslel
+z logu, ktery ukazoval jen zdravi serveru), je to "ukazuje se SPATNY,
+STARY obsah". To je jiny druh chyby, a presne tenhle popis mi pomohl
+najit skutecnou pricinu.
+
+CO JSEM NASEL
+napTvWebBitmap (objekt, do ktereho se kresli/kopiruje obraz) byla
+SDILENA mezi PixelCopy cestou (PS1/Sega/MP3/DJ/Atari) A draw() cestou
+(domovska stranka a cokoli dalsiho). V portretu maji ruzne obrazovky
+CASTO stejnou velikost (603x1120 pro vsechno) - takze se bitmapa
+NIKDY nepresta vela. Kdyz jsi odesel ze Segy (PixelCopy jeste mohlo
+asynchronne dopisovat do bitmapy) a appka mezitim zkusila nakreslit
+domovskou stranku (draw() do TE SAME bitmapy) - dva ruzne mechanismy
+zapisovaly do JEDNOHO objektu prakticky soucasne. Vysledek byl
+nepredvidatelny - obcas "vyhralo" PixelCopy se starym obsahem Segy,
+misto aby se ukazala cerstve nakreslena domovska stranka.
+
+OPRAVA
+draw() ma ted SVOJI VLASTNI bitmapu (napTvWebBitmapDraw), uplne
+oddelenou od te, kterou pouziva PixelCopy (napTvWebBitmap). Uz nikdy
+nemuzou souperit o stejny objekt, bez ohledu na to, jestli maji
+stejnou velikost nebo ne.
+
+MERENI (pred odeslanim)
+- Diff proti originalu: 633 radku.
+- Zavorky/hranate zavorky vyvazene.
+- Primo overeno cetenim, ze napTvWebBitmap se ted pripravuje VYHRADNE
+  uvnitr "if(hqLiteScreen)" bloku - draw() cesta uz na ni vubec
+  nesahne, pouziva jen napTvWebBitmapDraw.
+- Periodicky log (SK41) rozsiren o rozmery OBOU bitmap zvlast
+  (bmW/bmH pro PixelCopy, bmDrawW/bmDrawH pro draw()) - pro pripad
+  dalsi diagnostiky.
+
+K TVE POZNAMCE O PS1 FPS NA HIGH (poloviyni pokles)
+Zaznamenano, ale zamerne NEreseno v tomhle buildu - chci nejdriv
+potvrdit, ze tahle strukturalni oprava vyresila to hlavni (spatny
+obsah pri prechodech), nez pridam dalsi zmenu. Pokud se potvrdi ze
+tohle funguje, vratim se k FPS otazce zvlast.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java.
+2) Presne tu sekvenci, co jsi popsal: Sega (zahraj chvili) -> zpet na
+   domu. PS1 -> zpet na domu. MP3 -> zpet na domu. Sleduj, jestli se
+   TEĎ spravne ukazuje domovska stranka, ne stary obsah predchozi
+   obrazovky.
+3) Zkus to na LOW i HIGH.
+4) Atari a DJ pult - potvrd, ze porad funguji (tahle zmena by je
+   nemela ovlivnit).
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK47 (predchozi build).

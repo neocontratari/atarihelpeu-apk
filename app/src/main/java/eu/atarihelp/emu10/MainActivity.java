@@ -335,6 +335,8 @@ public class MainActivity extends Activity {
                                 + " appCapture=" + appCapture + " seq=" + napTvWebSeq
                                 + " bmW=" + (napTvWebBitmap == null ? -1 : napTvWebBitmap.getWidth())
                                 + " bmH=" + (napTvWebBitmap == null ? -1 : napTvWebBitmap.getHeight())
+                                + " bmDrawW=" + (napTvWebBitmapDraw == null ? -1 : napTvWebBitmapDraw.getWidth())
+                                + " bmDrawH=" + (napTvWebBitmapDraw == null ? -1 : napTvWebBitmapDraw.getHeight())
                                 + " pcPending=" + napTvWebPixelCopyPending
                                 + " gen=" + napTvWebPixelCopyRequestGen
                                 + " url=" + curUrl);
@@ -382,21 +384,33 @@ public class MainActivity extends Activity {
                     napTvWebVideoProfile = (landscape ? (djScreen ? "LANDSCAPE_DJ" : (hqLiteScreen ? "LANDSCAPE_EMU" : "LANDSCAPE_FAST")) : "PORTRAIT") + "_T" + napTvWebQualityTier;
                     float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
-                    if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
-                        // BUILD2SK40: stara bitmapa se DRIV NIKDY neuvolnovala
-                        // (.recycle()) pred vytvorenim nove - na HIGH urovni jde o
-                        // ~7MB na bitmapu (1920x934 ARGB_8888), a pri castych
-                        // prechodech mezi obrazovkami (kazda ma jinou velikost) se
-                        // tohle mohlo hromadit. Presne odpovida popsanym symptomum:
-                        // postupne zpomalovani v case, plny restart appky to spravi.
-                        // Recyklujeme jen kdyz zadny PixelCopy pozadavek prave
-                        // nebezi (jinak riskujeme uvolneni bitmapy, do ktere jeste
-                        // zapisuje) - v beznem provozu tohle pokryje drtivou
-                        // vetsinu prechodu.
-                        if (napTvWebBitmap != null && !napTvWebPixelCopyPending) {
-                            try { napTvWebBitmap.recycle(); } catch (Throwable ignored) {}
+                    // BUILD2SK48: KRITICKY NALEZ - napTvWebBitmap byla SDILENA mezi
+                    // PixelCopy (hqLite obsah) A draw() (ostatni obsah). V portretu
+                    // maji ruzne obrazovky CASTO stejnou velikost (603x1120 pro vse),
+                    // takze se bitmapa NIKDY nepresta vela - a pokud PixelCopy z
+                    // PREDCHOZI (hqLite) obrazovky jeste asynchronne zapisovalo do
+                    // teto SDILENE bitmapy prave ve chvili, kdy draw() (pro NOVOU,
+                    // ne-hqLite obrazovku jako domovska stranka) do TE SAME bitmapy
+                    // kreslilo - vysledek byl nepredvidatelny "zavod dvou pisaru do
+                    // jedne bitmapy". Presne to odpovida hlasenemu chovani ("skace
+                    // do MP3 prehravace misto domu", "pamatuje si Segu jako pilotni
+                    // obrazovku"). Oprava: tahle bitmapa (napTvWebBitmap) se ted
+                    // pripravuje VYHRADNE kdyz se skutecne pouzije PixelCopy
+                    // (hqLiteScreen) - draw() ma od ted SVOJI VLASTNI, oddelenou
+                    // bitmapu (napTvWebBitmapDraw, viz napTvWebCaptureByDraw), takze
+                    // uz nikdy nemuzou souperit o stejny objekt.
+                    if (hqLiteScreen) {
+                        if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
+                            // BUILD2SK40: stara bitmapa se DRIV NIKDY neuvolnovala
+                            // (.recycle()) pred vytvorenim nove - na HIGH urovni jde o
+                            // ~7MB na bitmapu (1920x934 ARGB_8888), a pri castych
+                            // prechodech mezi obrazovkami (kazda ma jinou velikost) se
+                            // tohle mohlo hromadit.
+                            if (napTvWebBitmap != null && !napTvWebPixelCopyPending) {
+                                try { napTvWebBitmap.recycle(); } catch (Throwable ignored) {}
+                            }
+                            napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
                         }
-                        napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
                     }
                     long nowTick = System.currentTimeMillis();
                     boolean didTimeoutFallback = false;
@@ -546,47 +560,39 @@ public class MainActivity extends Activity {
         }
     };
 
+    private volatile Bitmap napTvWebBitmapDraw;
     private void napTvWebCaptureByDraw(int bw, int bh, float scale) {
         try {
-            if (napTvWebBitmap == null || napTvWebBitmap.getWidth() != bw || napTvWebBitmap.getHeight() != bh) {
-                // BUILD2SK43: SK28/30/39 pridaly "usazovaci" cekani (az 400ms) pred
-                // prestavbou bitmapy, aby se nezachytilo uprostred neusazene WebView
-                // navigace. Ale primym srovnanim s BUILD2SK16 (posledni potvrzene
-                // funkcni build pro Atari/DJ pult na LOW) se ukazalo, ze tahle
-                // funkce byla puvodne JEDNODUCHA - zadne cekani, okamzita prestavba.
-                // DJ pult a Atari (emu_vbxe) maji ze vsech stranek zdaleka nejvic
-                // CSS animaci/transformaci (23 a 36 vyskytu, MP3 prehravac jen 8) -
-                // pokud kvuli tomu rozmery nikdy nejsou "stabilni" dost dlouho na to,
-                // aby usazovaci logika presla, cekala by NAVZDY a nikdy by nic
-                // nenakreslila. Navrat na jednoduchou, prokazatelne funkcni verzi.
-                if (napTvWebBitmap != null && !napTvWebPixelCopyPending) {
+            // BUILD2SK48: tahle funkce ted pouziva SVOJI VLASTNI bitmapu
+            // (napTvWebBitmapDraw), NIKDY sdilenou s PixelCopy cestou
+            // (napTvWebBitmap). Driv sdilely jednu bitmapu, coz v portretu (kde
+            // ruzne obrazovky casto vychazi na stejnou velikost, takze se bitmapa
+            // NIKDY neprestavela) mohlo zpusobit soubeh: PixelCopy z PREDCHOZI
+            // hqLite obrazovky (Sega/PS1/MP3/...) jeste asynchronne zapisovalo do
+            // bitmapy, zatimco draw() (pro NOVOU, ne-hqLite obrazovku jako domovska
+            // stranka) do TE SAME bitmapy kreslilo - nepredvidatelny vysledek,
+            // presne odpovidajici hlasenemu "skace do MP3 prehravace misto domu",
+            // "pamatuje si Segu jako pilotni obrazovku".
+            if (napTvWebBitmapDraw == null || napTvWebBitmapDraw.getWidth() != bw || napTvWebBitmapDraw.getHeight() != bh) {
+                if (napTvWebBitmapDraw != null) {
                     // BUILD2SK40: recyklace stare bitmapy pred vytvorenim nove -
-                    // tohle zustava, je to samostatna, opravnena oprava pametoveho
-                    // uniku, nezavisla na "usazovaci" logice, kterou tu rusime.
-                    try { napTvWebBitmap.recycle(); } catch (Throwable ignored) {}
+                    // tahle bitmapa neni sdilena s PixelCopy, takze recyklace muze
+                    // byt VZDY bezpecna (na rozdil od napTvWebBitmap, kde jeste
+                    // musime kontrolovat napTvWebPixelCopyPending).
+                    try { napTvWebBitmapDraw.recycle(); } catch (Throwable ignored) {}
                 }
-                napTvWebBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+                napTvWebBitmapDraw = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
             }
-            Canvas cv = new Canvas(napTvWebBitmap);
+            Canvas cv = new Canvas(napTvWebBitmapDraw);
             cv.drawColor(Color.BLACK);
             cv.save();
             cv.scale(scale, scale);
-            // BUILD2SK44: Rene potvrdil, ze test byl CELOU DOBU na vysku (portret) -
-            // v portretu ma appka jen JEDNU sadu cisel bez ohledu na obrazovku, takze
-            // bw/bh se NIKDY nemeni (potvrzeno v logu - 603x1120 porad stejne). SK43
-            // oprava (settle logika pri ZMENE velikosti) tedy v portretu vubec
-            // nemohla zasahnout - je to jiny problem. Popis "domovska stranka
-            // zamrzne, MP3 zustane viset na starem obsahu, i kdyz url v logu
-            // spravne ukazuje prechod" odpovida znamemu Android chovani: draw() na
-            // hardwarove-akcelerovanem WebView muze obcas vratit ZASTARALOU
-            // hardwarovou vrstvu misto cerstveho prekresleni. invalidate() pred
-            // draw() oznaci View jako potrebujici prekresleni - NEJSEM SI JISTY na
-            // 100 %, ze tohle vynuti OKAMZITE cerstve prekresleni (Android rendering
-            // je z principu asynchronni), ale je to bezpecny, standardni pokus.
+            // BUILD2SK44: invalidate() pred draw() - pokus vynutit cerstve
+            // prekresleni misto zastarale hardwarove vrstvy.
             if (rootFrame != null) rootFrame.invalidate();
             if (rootFrame != null) rootFrame.draw(cv);
             cv.restore();
-            napTvWebPublishBitmap(napTvWebBitmap, "DRAW");
+            napTvWebPublishBitmap(napTvWebBitmapDraw, "DRAW");
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA13C TV_WEB_DRAW_CAPTURE_ERR " + safeMsg(t));
         }
