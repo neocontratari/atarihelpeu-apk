@@ -1,0 +1,52 @@
+BUILD2SK61 - NALEZENA SKUTECNA PRICINA (spatne vlakno pro web.getUrl)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+NALEZENO
+Tvuj log ukazal presne jednu vec: "PAGE LOADED" se zalogovalo (novy
+JS bezi, [SK60] bylo videt na obrazovce), ale ANI JEDNA dalsi
+"TV_WEB_CLIENT" zprava nikdy nedorazila - konkretne "pollFps detected
+PS1" se nikdy neobjevilo, i kdyz FPS pocitadlo na strance bezelo (tedy
+/status se uspesne volalo porad dokola).
+
+To zuzilo problem presne na jednu vec: detekce PS1 v /status vzdy
+vratila "ne", i kdyz PS1 bezel. Nasel jsem proc: /status bezi na
+SAMOSTATNEM vlakne (kazdy pripojeny prohlizec dostane vlastni vlakno -
+napTvWebHandleClient), NE na hlavnim UI vlakne appky. Muj kod tam volal
+web.getUrl() PRIMO - ale WebView metody (vcetne getUrl()) v Androidu
+OCEKAVAJI, ze se volaji z UI vlakna. Kdyz se zavolaji odjinud, castokrat
+tise selzou/hodi vyjimku - a muj try/catch to tise polykal, takze
+"url=" v /status bylo VZDY prazdne. Klient tedy nikdy nemohl poznat, ze
+je na PS1, takze nikdy nezavolal startH264().
+
+Duvod, proc tohle uniklo drivejsim testum: kazde JINE misto v appce,
+ktere volalo web.getUrl() pro detekci PS1/DJ/atd. (napr. vyber
+PixelCopy vs draw(), volba kvality), to delalo z hlavni tick smycky -
+ktera BEZI na UI vlakne. Muj NOVY /status kod byl prvni misto, ktere
+to volalo z JINEHO vlakna - proto to fungovalo VSUDE JINDE spravne a
+jen tady ne.
+
+OPRAVA
+URL se ted bezpecne cachuje do noveho pole (napTvWebCurrentUrl) presne
+tam, kde uz appka beztak bezpecne vola web.getUrl() na UI vlakne (tick
+smycka, periodicky log). /status ted jen CTE tuhle cache - uz nikdy
+nevola web.getUrl() ze spatneho vlakna.
+
+MERENI (pred odeslanim)
+- { } 1699/1699, [ ] 299/299 - vyvazene.
+- napTvWebCurrentUrl: presne 3 vyskyty (deklarace, zapis v tick
+  smycce na UI vlakne, cteni v /status) - zadne zbyvajici primo
+  volani web.getUrl() uvnitr /status handleru.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, novou
+   navigaci na TV stranku (uz vim, ze tohle delas spravne kazde
+   kolo).
+2) PS1, HIGH.
+3) Melo by se ted prepnout z "MJPEG" na "H264" v textu dole na
+   strance behem par sekund.
+4) Pokud ano - sleduj FPS, jestli uz je blizko 30 na HIGH.
+5) Pokud porad ne - posli log, ted uz by tam melo byt vic nez jen
+   "PAGE LOADED".
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56.

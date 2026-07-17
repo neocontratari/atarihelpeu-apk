@@ -257,6 +257,18 @@ public class MainActivity extends Activity {
     private volatile long napTvWebH264Seq = 0;
     private volatile long napTvWebH264LastFrameMs = 0;
     private volatile long napTvWebH264FrameIndex = 0;
+    // BUILD2SK61: KRITICKA OPRAVA - /status endpoint bezi na SAMOSTATNEM
+    // vlakne per-klient (napTvWebHandleClient), NE na UI vlakne. Volani
+    // web.getUrl() PRIMO z tohoto vlakna je nebezpecne (WebView metody
+    // ocekavaji UI vlakno) a tise SELHAVALO (catch(Throwable) to
+    // polykalo) - proto klient v /status VZDY videl prazdne "url=",
+    // takze detekce PS1 na strane prohlizece NIKDY neuspela a H264 se
+    // nikdy nespustilo, i kdyz vsechno ostatni (SK57-60) bylo spravne.
+    // Reseni: URL se ted bezpecne cachuje ZDE, v tick smycce (UI vlakno,
+    // presne tam, kde uz web.getUrl() beztak bezpecne volame pro
+    // periodicky log), a /status jen cte tuhle cache - zadne dalsi
+    // volani web.getUrl() mimo UI vlakno.
+    private volatile String napTvWebCurrentUrl = "";
     // kazdy pripojeny /stream.h264 klient ma vlastni frontu - na rozdil od
     // MJPEG (kde stačí poslat jen NEJNOVEJSI snimek) tady KAZDA jednotka
     // (NAL) musi dorazit VSEM klientum V PORADI, jinak dekoder dostane
@@ -361,6 +373,7 @@ public class MainActivity extends Activity {
                         napTvWebPeriodicLogMs = nowLog;
                         String curUrl = "?";
                         try { curUrl = web == null ? "null" : web.getUrl(); } catch (Throwable ignored) {}
+                        napTvWebCurrentUrl = curUrl; // BUILD2SK61: cache pro /status - viz vysvetleni u deklarace pole
                         appendNativeLog("BUILD2SK41 TV_WEB_PERIODIC mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
                                 + " appCapture=" + appCapture + " seq=" + napTvWebSeq
                                 + " bmW=" + (napTvWebBitmap == null ? -1 : napTvWebBitmap.getWidth())
@@ -1546,8 +1559,7 @@ public class MainActivity extends Activity {
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, true);
                 out.write(body);
             } else if ("/status".equals(path)) {
-                String curUrl3 = "";
-                try { curUrl3 = web == null ? "" : (web.getUrl() == null ? "" : web.getUrl()); } catch (Throwable ignored) {}
+                String curUrl3 = napTvWebCurrentUrl; // BUILD2SK61: bezpecna cache z UI vlakna, viz vysvetleni u deklarace pole
                 byte[] body = ("running=" + napTvWebRunning
                         + " seq=" + napTvWebSeq
                         + " mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
