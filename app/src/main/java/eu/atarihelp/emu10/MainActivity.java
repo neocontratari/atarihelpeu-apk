@@ -250,10 +250,14 @@ public class MainActivity extends Activity {
         // HIGH (SK15), takze je prostor. LOW a MEDIUM beze zmeny.
         // BUILD2SK39: na vyslovny pozadavek - HIGH delay ztrojnasoben (hodnoty
         // snizeny na tretinu), rozliseni ANI kvalita NEDOTCENY - jen rychlost.
-        if (!landscape)         table = new int[][]{{1120,72,55},{1360,84,48},{1920,94,12}};
-        else if (djScreen)      table = new int[][]{{1120,72,65},{1360,84,52},{1920,94,13}};
-        else if (hqLiteScreen)  table = new int[][]{{860,62,75}, {1120,76,62},{1680,90,15}};
-        else                    table = new int[][]{{760,54,75}, {1000,70,68},{1440,86,16}};
+        // BUILD2SK55: na vyslovny pozadavek - FPS ted PEVNE fixovane misto
+        // promenlivych hodnot podle vetve: LOW=20fps(50ms), MEDIUM=25fps(40ms),
+        // HIGH=30fps(33ms). Rozliseni a kvalita% NEDOTCENY, meni se jen treti
+        // sloupec (frame delay) ve vsech ctyrech vetvich.
+        if (!landscape)         table = new int[][]{{1120,72,50},{1360,84,40},{1920,94,33}};
+        else if (djScreen)      table = new int[][]{{1120,72,50},{1360,84,40},{1920,94,33}};
+        else if (hqLiteScreen)  table = new int[][]{{860,62,50}, {1120,76,40},{1680,90,33}};
+        else                    table = new int[][]{{760,54,50}, {1000,70,40},{1440,86,33}};
         return table[t];
     }
     private volatile String napTvWebVideoProfile = "AUTO";

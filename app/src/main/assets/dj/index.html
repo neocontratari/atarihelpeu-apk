@@ -121,10 +121,16 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.15),inset 0 -2px 4px rgba(0,0,0,.5);white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.8);}
 .usbChip:active,.tapChip:active{transform:translateY(1px);}
 .tapChip.hit{color:#160f04;background:linear-gradient(180deg,#ffe08a,#d0a030);}
-.keyChip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1;padding:8px 13px;min-height:22px;font-size:7px;color:#8f7a3f;}
-.keyChip b{font-size:13px;color:#c9b477;}
-.keyChip.on{border-color:#8a6810;box-shadow:0 0 10px rgba(255,184,60,.5),inset 0 1px 1px rgba(255,255,255,.3);}
-.keyChip.on b{color:var(--goldLt);}
+.keyChip{display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;padding:10px 13px;min-height:22px;
+  background:linear-gradient(180deg,#3a3630 0%,#232019 45%,#141210 55%,#0a0908 100%);border:1px solid #050403;color:#8f7a3f;
+  box-shadow:0 2px 4px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.15),inset 0 -2px 4px rgba(0,0,0,.5);}
+.lockIco{font-size:12px;filter:grayscale(1) brightness(.7);}
+.lockLbl{font:700 9px var(--font);letter-spacing:.5px;white-space:nowrap;}
+.keyChip.on{border-color:#8a6810;background:linear-gradient(180deg,#ffe08a,#ffd06a 40%,#d0a030 60%,#a8801f);color:#160f04;
+  box-shadow:0 0 12px rgba(255,184,60,.5),inset 0 1px 1px rgba(255,255,255,.5);}
+.keyChip.on .lockIco{filter:none;}
+.deck.b .keyChip.on{background:linear-gradient(180deg,#a8e0ff,#7fd0ff 40%,#3a92d8 60%,#1c6ab0);color:#08131f;border-color:#0a4a80;
+  box-shadow:0 0 12px rgba(80,180,255,.5),inset 0 1px 1px rgba(255,255,255,.5);}
 .deck.b .keyChip.on{border-color:#2b86d8;box-shadow:0 0 10px rgba(80,180,255,.5);}
 .deck.b .keyChip.on b{color:var(--blueLt);}
 
@@ -202,7 +208,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 .jogCenter .vis{position:relative;z-index:2;font:800 9px var(--font);letter-spacing:4px;color:rgba(20,14,4,.75);}
 .deck.b .jogCenter .vis{color:rgba(3,15,22,.75);}
 .jogCenter::after{content:'';position:relative;z-index:2;margin-top:3px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#8a8a8a);box-shadow:0 1px 3px rgba(0,0,0,.7);}
-.jogTick{position:absolute;top:8px;left:calc(50% - 2px);width:4px;height:26px;border-radius:2px;z-index:4;pointer-events:none;
+.jogTick{position:absolute;top:6px;left:calc(50% - 2px);width:4px;height:26px;border-radius:2px;z-index:4;pointer-events:none;
   background:linear-gradient(180deg,var(--rc,#c9962f),transparent);
   box-shadow:0 0 10px var(--rc,#c9962f),0 0 4px var(--rc,#c9962f);}
 
@@ -403,6 +409,40 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   .jog{width:180px;height:180px;}
   .jogCenter{width:92px;height:92px;}
 }
+/* ==== KOMPAKTNI REZIM - siroka ale nizka obrazovka (telefon na sirku) ==== */
+@media (max-height:520px) and (min-width:560px){
+  .wrap{gap:8px;padding:6px;}
+  .chassis,.panelDark{padding:9px;}
+  .asstBar{padding:6px 10px;}
+  .topbar{padding:8px 14px;}
+  .trackStrip{gap:8px;}
+  .deckTop{padding:6px 9px;gap:5px;}
+  .trackBox{padding:7px;}
+  .trackRow{gap:7px;}
+  .artCover{width:38px;height:38px;font-size:16px;}
+  .trackName{font-size:13px;}
+  .wave{height:26px;margin-top:5px;}
+  .deckActs{gap:5px;}
+  .deckActs button{padding:6px 4px;font-size:9px;}
+  .heroRow{padding:4px 0;gap:8px;}
+  .jog{width:150px;height:150px;}
+  .jogCenter{width:66px;height:66px;}
+  .jogCenter .np{font-size:14px;}
+  .heroCenter{width:110px;gap:6px;}
+  .masterVU{height:80px;}
+  .xfTrack{height:32px;}
+  .ctlRow{gap:8px;}
+  .deckCtl{gap:6px;}
+  .bigTrack{width:32px;height:80px;}
+  .bigKnob{width:42px;height:20px;}
+  .transport{gap:4px;margin-top:5px;}
+  .tBtn{padding:8px 3px;font-size:9px;}
+  .pads{gap:4px;}
+  .panelHead{margin-bottom:8px;}
+  .panelHead h2{font-size:13px;letter-spacing:2px;}
+  .eqRow .mini .miniTrack{height:60px;}
+  .bottomBar{gap:8px;}
+}
 </style>
 <body>
 <canvas id="cosmos"></canvas>
@@ -443,7 +483,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
         <button class="usbChip" data-pl2="A" type="button">USB 1 ▾</button>
         <button class="tapChip" data-tap="A" type="button">TAP</button>
         <div class="deckBpm"><b data-bpm="A">123.4</b> BPM</div>
-        <button class="keyChip" data-key="A" type="button">KEY<b>8A</b></button>
+        <button class="keyChip" data-key="A" type="button"><span class="lockIco">&#128274;</span><span class="lockLbl">KEY LOCK</span></button>
       </div>
       <div class="trackBox window">
         <div class="trackRow">
@@ -475,7 +515,7 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
         <button class="usbChip" data-pl2="B" type="button">USB 2 ▾</button>
         <button class="tapChip" data-tap="B" type="button">TAP</button>
         <div class="deckBpm"><b data-bpm="B">124.8</b> BPM</div>
-        <button class="keyChip" data-key="B" type="button">KEY<b>9A</b></button>
+        <button class="keyChip" data-key="B" type="button"><span class="lockIco">&#128274;</span><span class="lockLbl">KEY LOCK</span></button>
       </div>
       <div class="trackBox window">
         <div class="trackRow">

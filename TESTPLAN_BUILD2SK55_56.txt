@@ -1,0 +1,88 @@
+BUILD2SK55+56 - DJ PULT OPRAVY (FINALNI) + FIXACE FPS PODLE ZADANI
+================================================================================
+
+CAST 1: DJ PULT - OPRAVA KONKRETNICH CHYB (app/src/main/assets/dj/index.html)
+
+Diky za konkretni screenshot vlastniho vysledku - to bylo presne to, co
+jsem potreboval, abych nasel skutecne chyby, ne jen hadal.
+
+1) KEY LOCK BYLO SPATNE OZNACENE - OPRAVENO
+   Zjistil jsem v originalnim JS, ze "data-key" NENI zobrazeni hudebniho
+   klice (jako "8A"/"9A") - je to PRESNE TOTO: prepinac KEY LOCK (drzi
+   tonynu beze zmeny pri zmene tempa, "preservesPitch"). Vymyslel jsem si
+   falesne "8A"/"9A" zobrazeni, ktere nemelo zadnou datovou oporu.
+   Opraveno na spravny zamkovy prepinac s popiskem "KEY LOCK".
+
+2) JEHLA NA DESCE NEBYLA VYCENTROVANA - OPRAVENO
+   JS pocita otacecí bod (transform-origin) jehly s pevne zakodovanym
+   predpokladem, ze jehla zacina 6px od okraje gramofonu. Moje CSS mela
+   8px - 2px rozdil zpusoboval mirne mimostredove otaceni. Opraveno na
+   presnych 6px.
+
+3) "NEFUNGUJE ROZLOZENI NA SIRKU" - PRIDAN KOMPAKTNI REZIM
+   Muj layout je zakladne svisly sled sekci - na telefonu na sirku (kde
+   je malo vysky, ale dost sirky) to nutilo k nadmernemu scrollovani.
+   Pridal jsem specialni "kompaktni rezim" pro siroke-ale-nizke
+   obrazovky (@media max-height:520px and min-width:560px) - zmensuje
+   gramofony, mezery, padding, aby se toho vesel vic bez scrollovani.
+
+POCTIVE - CO JESTE NEOVERENO
+- "Barevne efekty pri hrani u stopy" - overil jsem, ze CSS pro barevne
+  vlnovky (.wave i.on) existuje a je spravne umistene v DOM strome, ale
+  bez zivého testu na telefonu s hrajici stopou si nejsem 100% jisty, ze
+  je to presne ta vec, na kterou jsi narazel. Pokud to porad nebude
+  fungovat, dej vedet - budu potrebovat vic detailu (co presne jsi
+  cekal, co jsi videl misto toho).
+- "Casovy odpocet" - element pro cas (0:00/0:00) je spravne napojeny na
+  JS presne jako v originalu. Pokud zadna stopa neni nahrana, ukazuje
+  0:00/0:00 - to je ocekavane chovani, ne chyba. Pokud problem
+  pretrvava I s nahranou stopou, dej vedet.
+- VINYL/SLIP/BEAT/RESET tlacitka z referencniho obrazku jsem NEPRIDAL -
+  overil jsem v JS, ze tyto funkce v aplikaci vubec neexistuji (0
+  vyskytu). Pridat je by znamenalo tlacitka, ktera nic nedelaji.
+
+Vsechna predchozi overeni (JS bajt po bajtu identicky, vsech 30 data-*
+atributu a 41 ID, div/svg tagy, CSS zavorky) znovu potvrzena na tomto
+finalnim souboru.
+
+================================================================================
+CAST 2: FIXACE FPS (app/src/main/java/eu/atarihelp/emu10/MainActivity.java)
+
+Presne podle zadani - tabulka kvalitnich urovni (napTvWebQualityFor)
+mela promenlive zpozdeni mezi snimky podle vetve (landscape/djScreen/
+hqLite/ostatni). Ted je treti sloupec (frame delay) PEVNE fixovany na
+vsech ctyrech vetvich:
+- LOW: 50ms = presne 20 fps
+- MEDIUM: 40ms = presne 25 fps
+- HIGH: 33ms = presne 30 fps (33.33 zaokrouhleno na 33)
+
+Rozliseni (prvni sloupec) a JPEG kvalita v % (druhy sloupec) zustavaji
+NEDOTCENE - zmenil jsem vyhradne rychlost snimku.
+
+POCTIVE - DVE MISTA, KTERA JSEM VEDOME NEDOTKL
+- Behem aktivniho prehravani hudby (MP3 prehravac) existuje bezpecnostni
+  pojistka, ktera DODATECNE zpomali snimkovani (na min. 90ms landscape/
+  70ms portret), aby zvukovy vlakno melo dost CPU. Tohle je zamerny
+  existujici mechanismus na jinou vec (prevence praskani zvuku), ne
+  soucast tveho zadani - nechal jsem ho beze zmeny.
+- V systemove mirror ceste (MediaProjection - momentalne NEAKTIVNI,
+  cely tento log pouziva mirror=APP) je frame delay natvrdo 60/55ms bez
+  ohledu na urovne kvality - to uz bylo takhle PRED mou upravou (ani
+  nepouzivalo tabulku), takze jsem to nechal beze zmeny, protoze to
+  neni cast aktivni cesty.
+
+MERENI
+- MainActivity.java: zavorky { } 1620/1620, [ ] 277/277 - vyvazene.
+- dj/index.html: div 130/130, svg 6/6, CSS zavorky 297/297, JS bajt po
+  bajtu identicky s originalem, vsech 30 data-* a 41 ID potvrzeno.
+
+JAK OTESTOVAT
+1) DJ pult: over KEY LOCK tlacitko (melo by se prepinat a menit tempo
+   beze zmeny toniny), zkontroluj vycentrovani jehly pri otaceni, a
+   zejmena vyzkousej na telefonu NA SIRKU, jestli uz je to pouzitelne
+   bez nadmerneho scrollovani.
+2) FPS: preved na kazdou uroven (LOW/MEDIUM/HIGH) a zkontroluj FPS
+   pocitadlo na TV strance - mely by ted ukazovat stabilne 20/25/30.
+
+KILL-SWITCH: vratit oba soubory z BUILD2SK49 (posledni stabilni pred
+vizualnim prepracovanim DJ pultu a touto FPS zmenou).
