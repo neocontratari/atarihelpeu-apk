@@ -1,0 +1,59 @@
+BUILD2SK60 - OKAMZITY MAJAK (potvrzeni, ze novy JS vubec bezi)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+CO JSEM ZJISTIL Z TVEHO POSLEDNIHO LOGU
+Zase nula "TV_WEB_CLIENT" zaznamu. Ale tenhle log mi rekl neco
+uzitecneho: telefon MA funkcni internetove pripojeni (ve stejne
+relaci nacital atarihelp.eu pres proxy pro vyber PS1 her) a server
+spravne vidi PS1 aktivni (seq roste, zvuk hraje normalne). Takze
+"zadny internet" neni vysvetleni. Nejpravdepodobnejsi vysvetleni:
+bud se testuje se starsim APK (bez SK57-59 zmen), nebo je otevrena
+stara zalozka prohlizece se starym JS v pameti prohlizece (ktery se
+nenacetl znovu).
+
+CO TENHLE BUILD PRIDAVA - JEDNODUCHY TEST
+Pridal jsem DVE VECI, ktere fungujici NEZAVISLE na tom, jestli H264
+cast vubec dojde az k PS1 detekci:
+1) Hned pri startu skriptu (driv nez cokoli jineho) se posle
+   "PAGE LOADED build=SK60" do /log.
+2) Verze buildu "[SK60]" je ted VIDET PRIMO NA TV STRANCE - v tom
+   textu dole, co ukazuje FPS a cas (mel bys tam videt "AtariHelp TV
+   WEB CAST [SK60] ...").
+
+PROC TOHLE POMUZE
+Tohle je NEJRYCHLEJSI zpusob, jak zjistit, jestli vubec bezi novy
+kod - stejny test funguje at uz jsi na domovske obrazovce, PS1, nebo
+kdekoli jinem, protoze nezavisi na PS1 detekci ani na H264 logice
+vubec. Staci se podivat na spodni text na TV strance.
+
+JAK OTESTOVAT (tohle konkretne, prosim presne v tomhle poradi)
+1) Nahrad MainActivity.java, commit + Action, POCKEJ na dokonceni
+   Action a NAINSTALUJ novy APK (over si datum/cas sestaveni, pokud
+   muzes).
+2) Na telefonu/appce: pokud web cast uz bezel, VYPNI ho a ZNOVU
+   ZAPNI (aby appka urcite posilala novou HTML stranku).
+3) Na PC/TV strane: ZAVRI existujici zalozku s TV castem UPLNE (ne
+   jen zavri kartu a otevri znovu ze historie - opravdu nova
+   navigace na http://192.168.0.34:8765/).
+4) Podivej se na text DOLE na strance - vidis tam "[SK60]"?
+   - ANO -> novy kod bezi, pokracuj na PS1 a posli mi log s
+     "TV_WEB_CLIENT" radky (ted uz by tam nejaky mel byt).
+   - NE (porad stary text bez "[SK60]") -> novy kod se NEDOSTAL do
+     prohlizece. V tom pripade problem neni v H264 logice vubec -
+     je nekde v cestě APK build -> instalace -> nacteni stranky, a
+     na to se musime zamerit driv, nez cokoli dalsiho v H264 kodu.
+
+Poctive - je mi lito, ze uz je to nekolikate kolo jen na "proc se to
+vubec nespusti". Ale tohle je presne ten typ zakladniho testu, ktery
+bud problem vyresi, nebo aspon jasne uka ze, ze neni v tom, co jsem
+zatim upravoval.
+
+MERENI (pred odeslanim)
+- { } 1701/1701, [ ] 299/299 - vyvazene.
+- Klientsky JS overen Node.js syntax checkerem: STAVI SE SPRAVNE.
+- "PAGE LOADED build=SK60" pritomno presne jednou, na spravnem
+  miste (uplne na zacatku skriptu).
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK56 (pred celou H264
+praci, cisty MJPEG pro vse vcetne PS1).
