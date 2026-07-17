@@ -1,0 +1,56 @@
+BUILD2SK58 - OPRAVA ROZLOZENI (DESKY VEDLE SEBE) + VYSVETLENI K ZALOZE
+================================================================================
+Zmeneny soubor: app/src/main/assets/dj/index.html
+
+NEJDRIV POCTIVE K TE ZALOZE Z "BUILD 49"
+Zkontroloval jsem to znovu - milestone balicek, co jsem ti driv poslal
+("NP_VISION_MILESTONE_BUILD2SK49.zip"), obsahoval jen MainActivity.java
+a domovskou obrazovku (index.html). DJ pult (dj/index.html) jsem si
+NEULOZIL, protoze v tu chvili jsme resili TV-cast pipeline, ne DJ pult
+- to byla chyba na me strane, mel jsem na to myslet a ulozit vsechno.
+Presnou puvodni verzi uz na sve strane nemam. Tvuj git repozitar (GitHub
+Actions build) ji pravdepodobne porad ma v historii, kdybys ji nekdy
+potreboval - ale rozumim, ze to resit nechces, takze misto hledani
+zaloh opravuji primo soucasny (novy) navrh.
+
+HLAVNI OPRAVA - DESKY SLOZENE POD SEBOU MISTO VEDLE SEBE
+Nasel jsem to: mel jsem prah "@media (max-width:900px)", ktery sklapel
+gramofony/desky pod sebe uz na docela bezne sirokych oknech/obrazovkach
+- prilis agresivni prah. Ted:
+- Do 900px sirky: gramofony se jen ZMENSI, desky ZUSTAVAJI vedle sebe.
+- Az pod 640px (opravdu uzka/portretova obrazovka): teprve ted se
+  sklopi pod sebe.
+- Kompaktni rezim pro sirokou-ale-nizkou obrazovku (telefon na sirku)
+  ted VYSLOVNE VYNUCUJE postranni rozlozeni (flex-direction:row
+  !important), takze i na nizkem displeji zustanou desky vedle sebe,
+  jen zmensene.
+
+K "NENI NAZEV SONGU / CASOVY ODPOCET"
+Overil jsem strukturu znovu - JS (bajt po bajtu nezmeneny po celou
+dobu) zapisuje nazev/cas presne do stejnych mist (data-tn, data-ta,
+data-tt), CSS pro tyto prvky nema zadne oriznuti ani skryvani. Muj
+odhad: tohle byl vetsinou VEDLEJSI PRIZNAK toho sklopeneho rozlozeni -
+kdyz se stranka nescekavane protahla na vysku kvuli sklopenym deskam,
+mohlo to vypadat, jako by informace o skladbe "chybely", i kdyz data
+byla technicky spravne, jen mimo viditelnou/ocekavanou oblast. Pokud
+po teto oprave porad neco chybi i s nahranou stopou, dej vedet presne
+co vidis (a nejlip zase screenshot, jako minule - to byla ta nejlepsi
+cesta, jak jsem skutecne nasel spravnou chybu).
+
+MERENI (pred odeslanim)
+- div 130/130, svg 6/6, CSS zavorky 303/303.
+- JS: bajt po bajtu presne odpovida originalu (overeno primym
+  retezcovym porovnanim).
+- Vsech 30 data-* atributu a 41 ID potvrzeno pritomnych.
+
+JAK OTESTOVAT
+1) Nahrad index.html, over ze DVE DESKY jsou vedle sebe (ne pod
+   sebou) na sirce, kterou bezne pouzivas.
+2) Nahraj testovaci stopu a zkontroluj, ze se nazev/umelec/cas
+   zobrazuji a cas bezi behem prehravani.
+
+KILL-SWITCH: Vzhledem k tomu, ze presna puvodni verze uz neni k
+dispozici na me strane, kill-switch pro DJ pult specificky ted neni
+moznost "vratit na stary vzhled" - jen dalsi opravy tohoto navrhu.
+Pokud bys chtel skutecny navrat k puvodnimu vzhledu, tvuj git
+repozitar je nejspolehlivejsi zdroj.

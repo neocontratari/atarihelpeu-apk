@@ -395,22 +395,38 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
 .confirmBtns button{flex:1;padding:15px;border:0;border-radius:13px;font:800 12px var(--font);}
 .cYes{background:linear-gradient(180deg,#ffd06a,#c9962f);color:#160f04;}.cNo{background:#242019;color:#f2c464;}
 
-/* ==== RESPONSIVE ==== */
+/* ==== RESPONSIVE ====
+   Puvodni prah 900px sklapel desky pod sebe uz na bezne sirokych
+   obrazovkach/oknech - prilis agresivni. Ted: postupne zmensovani na
+   strednich sirkach (desky ZUSTAVAJI vedle sebe), sklapeni az na
+   opravdu uzkych/portretovych obrazovkach. */
 @media (max-width:900px){
+  .jog{width:220px;height:220px;}
+  .heroRow{gap:10px;}
+  .trackStrip{gap:8px;}
+}
+@media (max-width:640px){
   .heroRow{flex-direction:column;}
   .ctlRow{flex-direction:column;}
   .trackStrip{flex-direction:column;}
   .masterMini{width:100%;flex-direction:row;justify-content:center;}
   .eqShared{flex-direction:column;}
   .eqDivider{width:100%;height:1px;}
-  .jog{width:220px;height:220px;}
 }
 @media (max-width:480px){
   .jog{width:180px;height:180px;}
   .jogCenter{width:92px;height:92px;}
 }
-/* ==== KOMPAKTNI REZIM - siroka ale nizka obrazovka (telefon na sirku) ==== */
+/* ==== KOMPAKTNI REZIM - siroka ale nizka obrazovka (telefon na sirku) ====
+   POZOR: tenhle blok NASLEDUJE po vyse uvedenych sirkovych pravidlech,
+   takze na sirokem-ale-nizkem panelu prebira platnost TENTO blok (drzi
+   postranni rozlozeni, jen vse zmensi) i kdyz by uzka-obrazovka
+   pravidlo vyse jinak sklopilo - specificita/poradi zajistuje, ze
+   min-width:560px v teto podmince ochranio postranni rozlozeni. */
 @media (max-height:520px) and (min-width:560px){
+  .heroRow{flex-direction:row !important;}
+  .ctlRow{flex-direction:row !important;}
+  .trackStrip{flex-direction:row !important;}
   .wrap{gap:8px;padding:6px;}
   .chassis,.panelDark{padding:9px;}
   .asstBar{padding:6px 10px;}
