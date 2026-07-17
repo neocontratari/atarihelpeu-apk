@@ -1,0 +1,65 @@
+BUILD2SK59 - H264 DIAGNOSTIKA (najit proc SK57 nikdy nenaskocilo)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+CO SE STALO V SK57 A PROC TO NEBYLO VIDET
+V logu, co jsi poslal, bylo NULA zaznamu "H264"/"SK57" - to znamena,
+ze se prohlizec NIKDY ani nepokusil pripojit na /stream.h264. Server
+o tom tedy nemel jak vedet a nemel co logovat. Problem byl NEKDE V
+PROHLIZECI, driv nez se pozadavek vubec dostal k appce - a tam jsem
+predtim nemel ZADNOU viditelnost.
+
+CO TENHLE BUILD PRIDAVA
+1) NOVY /clientlog ENDPOINT - JS v prohlizeci ted hlasi KAZDY
+   dulezity krok zpet do appky (ktera si to zapise do /log presne
+   jako cokoli jineho): detekce PS1, zacatek nacitani JMuxer.js,
+   uspech/selhani nacteni, vytvoreni JMuxer instance, zacatek
+   pripojovani na /stream.h264, stav odpovedi, prijeti prvniho
+   kousku dat, jakakoli chyba pri zpracovani. Ted uvidim PRESNE, kde
+   se to zastavi, misto ticha.
+2) OPRAVENA VERZE JMUXER V CDN ADRESE - mel jsem "jmuxer@2.0.3", coz
+   je stara verze (aktualni je 2.1.1). Zmeneno na "jmuxer@2" (jen
+   hlavni verze), takze CDN vzdy posle aktualni stabilni verzi.
+3) ZALOZNI CDN - pokud jsdelivr.net z nejakeho duvodu neodpovi/je
+   zablokovana, JS ted automaticky zkusi unpkg.com jako druhou
+   moznost, misto aby proste ticho selhalo.
+
+DULEZITE PRO TEST - HARD REFRESH
+Tahle zmena je JEN v JavaScriptu, ktery se posila TV strance -
+appka samotna (APK) se meni min, ale stranka v PROHLIZECI se musi
+NACIST ZNOVU (ne jen zustat na stare otevrene zalozce), jinak
+uvidis porad stary kod bez tehle diagnostiky. Nejlip zavri zalozku
+uplne a otevri znovu (nebo Ctrl+Shift+R pro tvrde obnoveni bez
+cache), az bude novy APK nainstalovany.
+
+MERENI (pred odeslanim)
+- MainActivity.java: { } 1701/1701, [ ] 298/298 - vyvazene.
+- Klientsky JS extrahovan a overen primo pres Node.js syntax
+  checker (ne jen pocitanim zavorek): STAVI SE SPRAVNE.
+- /clientlog endpoint a napTvWebQueryString funkce - kazde presne
+  jednou definovane, spravne propojene.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action, nainstaluj novy APK.
+2) DULEZITE: zavri stavajici zalozku s TV castem a otevri ji znovu
+   (ne jen refresh - kompletne novou zalozku/pripojeni).
+3) Otevri PS1 emulator, spust Web TV cast.
+4) At uz to tentokrat zabere nebo ne, otevri http://<IP>:8765/log a
+   podivej se na radky "BUILD2SK59 TV_WEB_CLIENT ..." - ty mi ted
+   REKNOU presne, co se stalo:
+   - Zadne "TV_WEB_CLIENT" radky vubec = JS se z nejakeho duvodu
+     vubec nespustil (mozna stara zalozka/cache - zkus znovu s
+     opravdu novou zalozkou).
+   - "pollFps detected PS1, calling startH264" ale nic dal = JMuxer
+     se nepodarilo nacist ani z jednoho CDN (mozny problem s
+     internetovym pripojenim telefonu/PC, nebo firewall).
+   - "JMuxer loaded ok" + "fetch status 200" + "first chunk bytes=N"
+     = spojeni funguje, prehravani by melo bezet. Pokud presto
+     nevidis obraz, problem je pak uz jen v samotnem
+     dekodovani/zobrazeni, ne v pripojeni.
+5) Posli mi cely tenhle usek logu (at uz funguje nebo ne) - s touhle
+   diagnostikou uz budu vedet presne, na cem dal pracovat, misto
+   abych zase hadal naslepo.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK56 (pred H264 praci
+celkove, cisty MJPEG pro vse vcetne PS1).

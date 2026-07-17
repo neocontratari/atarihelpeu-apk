@@ -1356,6 +1356,25 @@ public class MainActivity extends Activity {
         return fallback;
     }
 
+    // BUILD2SK59: string varianta pro /clientlog - stejny vzor jako
+    // napTvWebQueryLong, jen vraci URL-dekodovany retezec misto cisla.
+    private String napTvWebQueryString(String fullPath, String key, String fallback) {
+        try {
+            int q = fullPath == null ? -1 : fullPath.indexOf('?');
+            if (q < 0 || q + 1 >= fullPath.length()) return fallback;
+            String[] parts = fullPath.substring(q + 1).split("&");
+            for (String part : parts) {
+                int eq = part.indexOf('=');
+                String k = eq >= 0 ? part.substring(0, eq) : part;
+                if (key.equals(k)) {
+                    String v = eq >= 0 ? part.substring(eq + 1) : "";
+                    return java.net.URLDecoder.decode(v, "UTF-8");
+                }
+            }
+        } catch (Throwable ignored) {}
+        return fallback;
+    }
+
     private String napTvWebLocalIp() {
         String fallback = "";
         try {
@@ -1499,6 +1518,19 @@ public class MainActivity extends Activity {
                 napTvWebWriteMjpeg(out, s);
             } else if ("/stream.h264".equals(path)) {
                 napTvWebWriteH264Stream(out, s);
+            } else if ("/clientlog".equals(path)) {
+                // BUILD2SK59: klient (prohlizec) posila kratke diagnosticke
+                // zpravy o prubehu H264/JMuxer inicializace - bez tohohle
+                // jsem nemel VUBEC zadnou viditelnost do toho, co se deje
+                // na strane prohlizece, kdyz neco selze (SK57 nikdy nedoslo
+                // ani k prvnimu pokusu o pripojeni - zadny zpusob, jak
+                // rozlisit "klient se nikdy nepokusil" od "klient zkusil a
+                // selhal driv, nez server cokoli zaznamenal").
+                String msg = napTvWebQueryString(fullPath, "m", "");
+                appendNativeLog("BUILD2SK59 TV_WEB_CLIENT " + msg);
+                byte[] ok = "ok".getBytes("UTF-8");
+                napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", ok.length, false);
+                out.write(ok);
             } else if ("/audio.raw".equals(path)) {
                 napTvWebWriteAudioRaw(out, napTvWebQueryLong(fullPath, "after", -1));
             } else if ("/quality".equals(path)) {
@@ -1581,11 +1613,25 @@ public class MainActivity extends Activity {
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false;" // BUILD2SK57
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"
-                + "function stopH264(){h264Active=false;if(h264Reader){try{h264Reader.cancel();}catch(e){}h264Reader=null;}h264v.style.display='none';v.style.display='';}"
-                + "function startH264(){if(h264Active||h264Loading)return;if(!window.JMuxer){h264Loading=true;var sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/jmuxer@2.0.3/dist/jmuxer.min.js';sc.onload=function(){h264Loading=false;startH264();};sc.onerror=function(){h264Loading=false;};document.head.appendChild(sc);return;}"
-                + "v.style.display='none';h264v.style.display='';h264Active=true;"
-                + "try{jm=new JMuxer({node:'h264v',mode:'video',flushingTime:0,fps:30,debug:false});}catch(e){h264Active=false;return;}"
-                + "fetch('/stream.h264?'+Date.now()).then(function(r){h264Reader=r.body.getReader();function pump(){if(!h264Active)return;h264Reader.read().then(function(res){if(res.done||!h264Active)return;try{jm.feed({video:res.value});}catch(e){}pump();}).catch(function(){});}pump();}).catch(function(){h264Active=false;v.style.display='';h264v.style.display='none';});}" // BUILD2SK57: syrovy H.264 (Annex-B) ze serveru -> JMuxer.js remuxuje na fMP4 primo v prohlizeci -> MSE -> <video>. Zadny MP4 box format na Android strane.
+                + "function clog(m){try{fetch('/clientlog?m='+encodeURIComponent(m));}catch(e){}}" // BUILD2SK59: diagnostika z prohlizece zpet do /log - bez tohohle zadna viditelnost, kdyz H264 cesta selze drive, nez se server vubec dozvi
+                + "var h264CdnTried=0,h264CdnUrls=['https://cdn.jsdelivr.net/npm/jmuxer@2/dist/jmuxer.min.js','https://unpkg.com/jmuxer@2/dist/jmuxer.min.js'];"
+                + "function stopH264(){if(h264Active)clog('stopH264');h264Active=false;if(h264Reader){try{h264Reader.cancel();}catch(e){}h264Reader=null;}h264v.style.display='none';v.style.display='';}"
+                + "function startH264(){if(h264Active||h264Loading)return;"
+                + "if(!window.JMuxer){if(h264CdnTried>=h264CdnUrls.length){clog('JMuxer CDN failed all '+h264CdnTried+' tries');return;}"
+                + "h264Loading=true;var url=h264CdnUrls[h264CdnTried];h264CdnTried++;clog('loading JMuxer from '+url);"
+                + "var sc=document.createElement('script');sc.src=url;"
+                + "sc.onload=function(){clog('JMuxer loaded ok');h264Loading=false;startH264();};"
+                + "sc.onerror=function(){clog('JMuxer load FAILED '+url);h264Loading=false;startH264();};"
+                + "document.head.appendChild(sc);return;}"
+                + "clog('JMuxer ready, starting');v.style.display='none';h264v.style.display='';h264Active=true;"
+                + "try{jm=new JMuxer({node:'h264v',mode:'video',flushingTime:0,fps:30,debug:false,onError:function(e){clog('jmuxer onError '+e);}});}"
+                + "catch(e){clog('JMuxer ctor threw '+e);h264Active=false;v.style.display='';h264v.style.display='none';return;}"
+                + "clog('fetching stream.h264');"
+                + "fetch('/stream.h264?'+Date.now()).then(function(r){clog('fetch status '+r.status);h264Reader=r.body.getReader();var first=true;"
+                + "function pump(){if(!h264Active)return;h264Reader.read().then(function(res){if(res.done||!h264Active){clog('stream ended');return;}"
+                + "if(first){first=false;clog('first chunk bytes='+res.value.length);}try{jm.feed({video:res.value});}catch(e){clog('feed err '+e);}pump();"
+                + "}).catch(function(e){clog('read err '+e);});}pump();"
+                + "}).catch(function(e){clog('fetch FAILED '+e);h264Active=false;v.style.display='';h264v.style.display='none';});}" // BUILD2SK57+SK59: syrovy H.264 (Annex-B) ze serveru -> JMuxer.js remuxuje na fMP4 primo v prohlizeci -> MSE -> <video>
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+0.15;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+0.36;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
@@ -1599,7 +1645,7 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var isPs1=t.indexOf('/emu_ps1/')>=0;if(isPs1&&!h264Active&&!h264Loading){startH264();}else if(!isPs1&&h264Active){stopH264();}if(m){var sq=parseInt(m[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(){label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57: stale-reconnect jen v MJPEG rezimu (H264 ma vlastni fetch/reader cyklus); "seq" v /status je porad ta sama zachytavaci sekvence, takze fps pocitadlo funguje spravne v obou rezimech
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var isPs1=t.indexOf('/emu_ps1/')>=0;if(isPs1&&!h264Active&&!h264Loading){clog('pollFps detected PS1, calling startH264');startH264();}else if(!isPs1&&h264Active){stopH264();}if(m){var sq=parseInt(m[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 + "setInterval(pollFps,1000);})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
         napTvWebHeader(out, "200 OK", "text/html; charset=utf-8", b.length, false);
