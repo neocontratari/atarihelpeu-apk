@@ -1,0 +1,50 @@
+BUILD2SK54 - OPRAVENO NA ZAKLADE PRIMEHO SROVNANI SNIMKU OBRAZOVKY
+================================================================================
+Zmeneny soubor: app/src/main/assets/dj/index.html
+
+DIKY ZA TEN SNIMEK OBRAZOVKY - PRVNI KRAT JSEM SKUTECNE VIDEL SVUJ
+VLASTNI VYSLEDEK
+Do tehle chvile jsem posuzoval svuj kod jen ctenim CSS, nikdy jsem
+neporovnal skutecny vyrenderovany vysledek vedle tveho referencniho
+obrazku. Kdyz jsem to ted udelal, nasel jsem konkretni, jasnou chybu:
+
+MUJ KOVOVY PRSTEN KOLEM GRAMOFONU BYL CISTE STRIBRNY/CHROMOVY
+(barvy jako #7a7d84, #e4e8ee - studene sede tony beze stopy tepla),
+zatimco tvuj navrh ma prsten teply, harmonizujici se zlatym telem.
+Tenhle studeny kovovy prsten na horkem zlatem pozadi byl
+pravdepodobne NEJNAPADNEJSI vec, ktera z toho delala "jiny svet" na
+prvni pohled - vic nez jemnost textury, na kterou jsem se soustredil
+predtim.
+
+CO JSEM OPRAVIL
+1) Kovovy prsten prebarven na tepe mosazne/champagne tony (misto
+   sede) - stale cte jako kov, ale harmonizuje se zlatym telem misto
+   aby s nim bojoval.
+2) Zuzen kovovy prsten (z 19px na 26px odsazeni) - vic prostoru pro
+   vinyl a LED tecky, ktere jsou na tvem obrazku dominantnejsi nez
+   kovovy ram.
+3) Master VU metry zesileny (z 16px na 26px sirky, vic mezery) - na
+   tvem screenshotu byly moje jen tenke nitky, tvuj navrh ma plne,
+   viditelne segmentovane sloupce.
+
+MERENI (pred odeslanim)
+- Div tagy: 130/130. SVG tagy: 6/6. CSS zavorky: 263/263.
+- JS: presne odpovida ulozene kopii originalu.
+- Vsech 30 data-* atributu a 41 ID pritomno.
+
+NAHLED
+Prilozeny dj_pult_nahled_v5.html - otevri primo v prohlizeci a
+poloz vedle sebe s referencnim obrazkem, presne jako jsi to udelal
+pro me.
+
+JAK OTESTOVAT
+1) Otevri nahled, srovnej s referencnim obrazkem - hlavne se podivej
+   na barvu kovoveho prstenu kolem gramofonu.
+2) Nahrad index.html v appce, over funkcnost.
+3) Pokud jeste neco preskakuje do oci, klidne mi zase posli
+   screenshot sveho vysledku vedle referencniho obrazku presne jako
+   ted - je to zdaleka nejucinnejsi zpusob, jak ti pomoct, protoze
+   ted uz vim, ze CTENI CSS mi nestaci k tomu, abych chybu nasel sam.
+
+KILL-SWITCH: vratit index.html z BUILD2SK49 (stabilni stav pred
+vizualnim prepracovanim).
