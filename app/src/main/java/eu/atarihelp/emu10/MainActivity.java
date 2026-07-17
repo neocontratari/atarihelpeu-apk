@@ -34,6 +34,9 @@ import android.media.AudioFormat;
 import android.media.Image;
 import android.media.ImageReader;
 import android.media.AudioTrack;
+import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
+import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.view.View;
@@ -238,6 +241,29 @@ public class MainActivity extends Activity {
     private volatile float napTvWebVolume = 1f;
     private volatile int napTvWebJpegQuality = 62;
     private volatile int napTvWebFrameDelayMs = 55;
+    // === BUILD2SK57: H.264 STREAM PRO PS1 (misto MJPEG) ===
+    // Pouzivame MediaCodec v ByteBuffer rezimu (ne Surface) - vstupem je
+    // rucne prevedeny YUV420 obraz z JIZ existujici PixelCopy Bitmapy
+    // (stejny zdroj, ktery uz spolehlive funguje pro PS1 od SK46), takze
+    // se PS1 zachytavani vubec nemeni - meni se jen co se s tim snimkem
+    // dal deje. Vystup enkoderu je surovy H.264 elementarni stream
+    // (Annex-B, start-kody 00 00 00 01) - presne format, ktery ocekava
+    // JMuxer.js na klientovi (zadne MP4 balenu na Android strane, zadny
+    // rizikovy externi muxer s neoverenym API).
+    private MediaCodec napTvWebH264Encoder;
+    private final Object napTvWebH264Lock = new Object();
+    private volatile int napTvWebH264W = 0;
+    private volatile int napTvWebH264H = 0;
+    private volatile long napTvWebH264Seq = 0;
+    private volatile long napTvWebH264LastFrameMs = 0;
+    private volatile long napTvWebH264FrameIndex = 0;
+    // kazdy pripojeny /stream.h264 klient ma vlastni frontu - na rozdil od
+    // MJPEG (kde stačí poslat jen NEJNOVEJSI snimek) tady KAZDA jednotka
+    // (NAL) musi dorazit VSEM klientum V PORADI, jinak dekoder dostane
+    // poskozeny bitstream (P-snimky zavisi na predchozich).
+    private final java.util.List<java.util.concurrent.LinkedBlockingQueue<byte[]>> napTvWebH264ClientQueues =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
+
     // BUILD2SK15: potvrzeno na S8 ze soucasny HIGH byl v pohode (plynulost i zvuk) -
     // takze byl zbytecne konzervativni. MEDIUM posunut na uroven puvodniho HIGH,
     // HIGH posunut vyrazne dal. LOW zustava PRESNE stejny jako v SK11-14 (nikomu
@@ -616,8 +642,175 @@ public class MainActivity extends Activity {
                         + " gapMs=" + gapMs + " w=" + bm.getWidth() + " h=" + bm.getHeight()
                         + " q=" + napTvWebJpegQuality + " tier=" + napTvWebQualityTier);
             }
+            // BUILD2SK57: H.264 stream pro PS1 - beh JEN kdyz (a) aktualni
+            // obrazovka je PS1 A (b) aspon jeden klient je pripojeny na
+            // /stream.h264 (jinak by se zbytecne plytvalo CPU na enkodovani,
+            // ktere nikdo nesleduje). MJPEG cesta vyse zustava beze zmeny -
+            // beží dal at uz PS1 nebo ne, jako bezpecna zaloha/pro ostatni
+            // obrazovky.
+            if (!napTvWebH264ClientQueues.isEmpty()) {
+                try {
+                    String cu3 = web == null ? null : web.getUrl();
+                    if (cu3 != null && cu3.contains("/emu_ps1/")) {
+                        napTvWebH264FeedFrame(bm);
+                    }
+                } catch (Throwable ignored) {}
+            }
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA13C TV_WEB_PUBLISH_ERR " + safeMsg(t));
+        }
+    }
+
+    // === BUILD2SK57: H.264 PS1 STREAM - ENKODOVACI PIPELINE ===
+    private void napTvWebH264EnsureEncoder(int w, int h) {
+        w = w - (w % 2); h = h - (h % 2); // 4:2:0 vyzaduje sude rozmery
+        if (w <= 0 || h <= 0) return;
+        synchronized (napTvWebH264Lock) {
+            if (napTvWebH264Encoder != null && napTvWebH264W == w && napTvWebH264H == h) return;
+            napTvWebH264ReleaseEncoderLocked();
+            try {
+                MediaFormat fmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, w, h);
+                // COLOR_FormatYUV420Planar - nejsirsi historicka podpora napric
+                // vyrobci/API urovnemi. RIZIKO: nektere novejsi zarizeni mohou
+                // preferovat/vyzadovat jiny format (Flexible/NV12) - pokud
+                // encoder.configure() selze na konkretnim telefonu, tohle je
+                // prvni misto na zmenu (zjistit skutecne podporovane formaty
+                // pres getCodecInfo().getCapabilitiesForType() a vybrat za behu).
+                fmt.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
+                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(700000, w * h * 4));
+                fmt.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
+                fmt.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
+                if (Build.VERSION.SDK_INT >= 23) {
+                    try { fmt.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline); } catch (Throwable ignored) {}
+                }
+                MediaCodec enc = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
+                enc.configure(fmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+                enc.start();
+                napTvWebH264Encoder = enc;
+                napTvWebH264W = w; napTvWebH264H = h;
+                napTvWebH264FrameIndex = 0;
+                appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h);
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_FAIL " + safeMsg(t));
+                napTvWebH264Encoder = null;
+            }
+        }
+    }
+
+    private void napTvWebH264ReleaseEncoderLocked() {
+        if (napTvWebH264Encoder != null) {
+            try { napTvWebH264Encoder.stop(); } catch (Throwable ignored) {}
+            try { napTvWebH264Encoder.release(); } catch (Throwable ignored) {}
+            napTvWebH264Encoder = null;
+        }
+        napTvWebH264W = 0; napTvWebH264H = 0;
+    }
+
+    private void napTvWebH264FeedFrame(Bitmap bm) {
+        int w = bm.getWidth() - (bm.getWidth() % 2);
+        int h = bm.getHeight() - (bm.getHeight() % 2);
+        if (w <= 0 || h <= 0) return;
+        napTvWebH264EnsureEncoder(w, h);
+        MediaCodec enc;
+        synchronized (napTvWebH264Lock) { enc = napTvWebH264Encoder; }
+        if (enc == null) return;
+        try {
+            int[] px = new int[w * h];
+            bm.getPixels(px, 0, w, 0, 0, w, h);
+            byte[] yuv = napTvWebH264RgbToYuv420(px, w, h);
+            int inIdx = enc.dequeueInputBuffer(4000);
+            if (inIdx >= 0) {
+                ByteBuffer inBuf = enc.getInputBuffer(inIdx);
+                inBuf.clear();
+                inBuf.put(yuv);
+                long ptsUs = napTvWebH264FrameIndex * 1000000L / 30L;
+                enc.queueInputBuffer(inIdx, 0, yuv.length, ptsUs, 0);
+                napTvWebH264FrameIndex++;
+            }
+            napTvWebH264DrainEncoder(enc);
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SK57 TV_WEB_H264_FEED_ERR " + safeMsg(t));
+        }
+    }
+
+    // BT.601 studio-range RGB->YUV420 Planar (I420: cely Y, pak cele U, pak
+    // cele V). Celociselna aritmetika (bez plovouci carky) kvuli rychlosti -
+    // bezi kazdy snimek, u vetsich rozliseni by float verze mohla byt znatelne
+    // pomalejsi.
+    private byte[] napTvWebH264RgbToYuv420(int[] argb, int w, int h) {
+        byte[] out = new byte[w * h * 3 / 2];
+        int uOff = w * h, vOff = w * h + (w * h) / 4;
+        for (int j = 0; j < h; j++) {
+            int rowBase = j * w;
+            for (int i = 0; i < w; i++) {
+                int p = argb[rowBase + i];
+                int r = (p >> 16) & 0xFF, g = (p >> 8) & 0xFF, b = p & 0xFF;
+                int y = ((66 * r + 129 * g + 25 * b + 128) >> 8) + 16;
+                out[rowBase + i] = (byte) (y < 0 ? 0 : (y > 255 ? 255 : y));
+                if ((j & 1) == 0 && (i & 1) == 0) {
+                    int u = ((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128;
+                    int v = ((112 * r - 94 * g - 18 * b + 128) >> 8) + 128;
+                    int idx = (j / 2) * (w / 2) + (i / 2);
+                    out[uOff + idx] = (byte) (u < 0 ? 0 : (u > 255 ? 255 : u));
+                    out[vOff + idx] = (byte) (v < 0 ? 0 : (v > 255 ? 255 : v));
+                }
+            }
+        }
+        return out;
+    }
+
+    private void napTvWebH264DrainEncoder(MediaCodec enc) {
+        MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+        while (true) {
+            int outIdx;
+            try { outIdx = enc.dequeueOutputBuffer(info, 0); } catch (Throwable t) { break; }
+            if (outIdx == MediaCodec.INFO_TRY_AGAIN_LATER) break;
+            if (outIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) continue;
+            if (outIdx < 0) continue;
+            try {
+                ByteBuffer outBuf = enc.getOutputBuffer(outIdx);
+                if (outBuf != null && info.size > 0) {
+                    byte[] chunk = new byte[info.size];
+                    outBuf.position(info.offset);
+                    outBuf.limit(info.offset + info.size);
+                    outBuf.get(chunk);
+                    napTvWebH264Seq++;
+                    napTvWebH264LastFrameMs = System.currentTimeMillis();
+                    for (java.util.concurrent.LinkedBlockingQueue<byte[]> q : napTvWebH264ClientQueues) {
+                        q.offer(chunk);
+                    }
+                }
+            } finally {
+                try { enc.releaseOutputBuffer(outIdx, false); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    private void napTvWebWriteH264Stream(OutputStream out, Socket sock) throws IOException {
+        String h = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: video/h264\r\n"
+                + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
+                + "Pragma: no-cache\r\n"
+                + "Connection: close\r\n\r\n";
+        out.write(h.getBytes("ISO-8859-1"));
+        java.util.concurrent.LinkedBlockingQueue<byte[]> myQueue = new java.util.concurrent.LinkedBlockingQueue<>(300);
+        napTvWebH264ClientQueues.add(myQueue);
+        appendNativeLog("BUILD2SK57 TV_WEB_H264_CLIENT_CONNECT clients=" + napTvWebH264ClientQueues.size());
+        try {
+            while (napTvWebRunning && !sock.isClosed()) {
+                byte[] chunk;
+                try { chunk = myQueue.poll(2000, java.util.concurrent.TimeUnit.MILLISECONDS); }
+                catch (InterruptedException ie) { break; }
+                if (chunk == null) continue;
+                out.write(chunk);
+                out.flush();
+            }
+        } finally {
+            napTvWebH264ClientQueues.remove(myQueue);
+            if (napTvWebH264ClientQueues.isEmpty()) {
+                synchronized (napTvWebH264Lock) { napTvWebH264ReleaseEncoderLocked(); }
+            }
+            appendNativeLog("BUILD2SK57 TV_WEB_H264_CLIENT_DISCONNECT clients=" + napTvWebH264ClientQueues.size());
         }
     }
 
@@ -1304,6 +1497,8 @@ public class MainActivity extends Activity {
                 napTvWebWriteFrame(out);
             } else if ("/stream.mjpg".equals(path)) {
                 napTvWebWriteMjpeg(out, s);
+            } else if ("/stream.h264".equals(path)) {
+                napTvWebWriteH264Stream(out, s);
             } else if ("/audio.raw".equals(path)) {
                 napTvWebWriteAudioRaw(out, napTvWebQueryLong(fullPath, "after", -1));
             } else if ("/quality".equals(path)) {
@@ -1319,6 +1514,8 @@ public class MainActivity extends Activity {
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, true);
                 out.write(body);
             } else if ("/status".equals(path)) {
+                String curUrl3 = "";
+                try { curUrl3 = web == null ? "" : (web.getUrl() == null ? "" : web.getUrl()); } catch (Throwable ignored) {}
                 byte[] body = ("running=" + napTvWebRunning
                         + " seq=" + napTvWebSeq
                         + " mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
@@ -1329,7 +1526,8 @@ public class MainActivity extends Activity {
                         + " frameDelayMs=" + napTvWebFrameDelayMs
                         + " audioSeq=" + napTvWebAudioSeq
                         + " audioSource=" + napTvWebAudioSource
-                        + " audioRate=" + napTvWebAudioRate + "\n").getBytes("UTF-8");
+                        + " audioRate=" + napTvWebAudioRate
+                        + " url=" + curUrl3 + "\n").getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, false);
                 out.write(body);
             } else if ("/log".equals(path)) {
@@ -1378,10 +1576,16 @@ public class MainActivity extends Activity {
                 + "#q{position:fixed;right:10px;bottom:48px;display:flex;gap:4px}"
                 + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
-                + "</style></head><body><img id='v' alt='AtariHelp TV'><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button'>AUDIO OK</button>"
+                + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button'>AUDIO OK</button>"
                 + "<div id='q'><button type='button' data-t='0'>LOW</button><button type='button' data-t='1'>MED</button><button type='button' data-t='2'>HIGH</button><button type='button' id='fs'>⛶ FULL</button></div>"
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
+                + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false;" // BUILD2SK57
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"
+                + "function stopH264(){h264Active=false;if(h264Reader){try{h264Reader.cancel();}catch(e){}h264Reader=null;}h264v.style.display='none';v.style.display='';}"
+                + "function startH264(){if(h264Active||h264Loading)return;if(!window.JMuxer){h264Loading=true;var sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/jmuxer@2.0.3/dist/jmuxer.min.js';sc.onload=function(){h264Loading=false;startH264();};sc.onerror=function(){h264Loading=false;};document.head.appendChild(sc);return;}"
+                + "v.style.display='none';h264v.style.display='';h264Active=true;"
+                + "try{jm=new JMuxer({node:'h264v',mode:'video',flushingTime:0,fps:30,debug:false});}catch(e){h264Active=false;return;}"
+                + "fetch('/stream.h264?'+Date.now()).then(function(r){h264Reader=r.body.getReader();function pump(){if(!h264Active)return;h264Reader.read().then(function(res){if(res.done||!h264Active)return;try{jm.feed({video:res.value});}catch(e){}pump();}).catch(function(){});}pump();}).catch(function(){h264Active=false;v.style.display='';h264v.style.display='none';});}" // BUILD2SK57: syrovy H.264 (Annex-B) ze serveru -> JMuxer.js remuxuje na fMP4 primo v prohlizeci -> MSE -> <video>. Zadny MP4 box format na Android strane.
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+0.15;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+0.36;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
@@ -1395,7 +1599,7 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);if(m){var sq=parseInt(m[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}if(!fb)label('MJPEG');}).catch(function(){if(!fb)label('MJPEG');});}" // BUILD2SK45: pokud seq neroste 4 kontroly v rade (~4s) - stream je zasekly na strane klienta, i kdyz server bezi dal - vynuti nove pripojeni
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var isPs1=t.indexOf('/emu_ps1/')>=0;if(isPs1&&!h264Active&&!h264Loading){startH264();}else if(!isPs1&&h264Active){stopH264();}if(m){var sq=parseInt(m[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(){label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57: stale-reconnect jen v MJPEG rezimu (H264 ma vlastni fetch/reader cyklus); "seq" v /status je porad ta sama zachytavaci sekvence, takze fps pocitadlo funguje spravne v obou rezimech
                 + "setInterval(pollFps,1000);})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
         napTvWebHeader(out, "200 OK", "text/html; charset=utf-8", b.length, false);

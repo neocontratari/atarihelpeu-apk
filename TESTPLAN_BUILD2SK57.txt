@@ -1,0 +1,97 @@
+BUILD2SK57 - H.264 STREAM PRO PS1 (DOKONCENO A DODANO)
+================================================================================
+Zmenene soubory:
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+- app/build.gradle (beze zmeny oproti puvodnimu - Media3 zavislost jsem
+  pridal a pak zase odebral, viz "ARCHITEKTONICKE ROZHODNUTI" nize)
+
+OMLOUVAM SE PREDEM
+Minule jsem tuhle praci nechal na pul cesty a NEDODAL - napsal jsem
+enkoder v Jave, ale nepridal HTTP cestu, nezmenil klientsky JS, nic
+neposlal. Proto jsi logicky videl porad jen stary MJPEG. Tentokrat je
+to DOKONCENE od zacatku do konce - server i klient.
+
+ARCHITEKTONICKE ROZHODNUTI (proc takhle)
+Zvazoval jsem oficialni AndroidX Media3 knihovnu (FragmentedMp4Muxer)
+pro balenim H.264 do MP4 primo na telefonu, ale narazil jsem na
+nekolik znamych chyb v teto knihovne (IllegalStateException pady
+hlasene jinymi vyvojari) a nemam moznost si presnou verzi API sam
+overit kompilaci. Misto toho: Android strana pouziva JEN stabilni,
+dobre zdokumentovane MediaCodec API (bez rizika), posila SUROVA H.264
+data primo, a MP4 baleni pro prehravani v prohlizeci (Media Source
+Extensions) resi az klient pomoci JMuxer.js - male, specificky pro
+tohle urcene knihovny nactene z CDN. Nizsi riziko chyby na strane,
+kterou nemuzu sam otestovat pred odeslanim.
+
+CO PRESNE DELA (kompletni tok)
+1) Kdyz je aktivni obrazovka PS1 A alespon jeden klient je pripojeny
+   na novy endpoint /stream.h264, kazdy zachyceny snimek (stejna
+   PixelCopy Bitmapa, co uz spolehlive funguje od SK46) se navic
+   prevede na YUV420 a posle do MediaCodec H.264 enkoderu.
+2) Enkoder produkuje surovy H.264 elementarni stream (Annex-B format
+   se start-kody) - presne to, co JMuxer.js ocekava.
+3) Kazdy pripojeny klient dostava tato data pres HTTP chunked prenos
+   (stejny vzor jako uz existujici MJPEG endpoint).
+4) Na TV strance: kdyz JS detekuje (pres /status) ze aktivni obrazovka
+   je PS1, automaticky nacte JMuxer.js z CDN, prepne z <img> (MJPEG)
+   na <video> element, a zacne cist /stream.h264 - JMuxer prevadi
+   surova data na prehratelny format za behu v prohlizeci (Media
+   Source Extensions). Kdyz uzivatel odejde z PS1 na jinou obrazovku,
+   prepne se zpatky na MJPEG automaticky.
+
+DULEZITE - PROC TOHLE SAMO O SOBE NEMUSI STACIT NA 30FPS
+Podival jsem se do logu, co jsi poslal. Nasel jsem tohle:
+"TV_WEB_PIXELCOPY_SLOW latencyMs=251" - a z casovych razitek
+periodickeho logu vychazi bezne tempo kolem 17-20fps na HIGH, presto
+ze jsem drive nastavil cilove zpozdeni na 33ms (~30fps). Tohle
+ukazuje, ze SAMOTNE ZACHYTAVANI (PixelCopy) + JPEG komprese uz beznou
+trva vic nez tech 33ms - takze zmena cisla "zpozdeni" sama o sobe
+nemohla pomoct, protoze skutecny cyklus byl uz driv pomalejsi nez
+cilova hodnota.
+H.264 cesta MENI, co se deje PO zachyceni (misto JPEG komprese ->
+YUV prevod + H.264 enkodovani, coz je typicky RYCHLEJSI a
+efektivnejsi), ale NEMENI SAMOTNE ZACHYTAVANI (PixelCopy pořád beží
+stejne jako driv). Pokud PixelCopy samotne zustane pomale, H.264
+cesta muze pomoct CASTECNE (rychlejsi zpracovani po zachyceni), ale
+nemusi to VYRESIT cely problem sama o sobe. Pokud po tomhle buildu
+porad neuvidis 30fps, dalsi krok je zamerit se primo na PixelCopy
+latenci, ne dalsi upravy enkodovani.
+
+POCTIVE - RIZIKOVA MISTA (poprve testovano, nemuzu sam overit)
+- COLOR_FormatYUV420Planar: format, ktery jsem zvolil pro vstup do
+  enkoderu, ma nejsirsi historickou podporu, ale NENI garantovano, ze
+  ho tvuj konkretni telefon/enkoder podporuje. Pokud enc.configure()
+  spadne s vyjimkou, uvidis "TV_WEB_H264_ENCODER_FAIL" v /log - to je
+  prvni misto, kam se podivat.
+- Cela tahle cesta (enkoder, YUV prevod, HTTP stream, JMuxer na
+  klientovi) je NOVA a NIKDY nebyla spustena na skutecnem zarizeni -
+  psal jsem ji podle dokumentovaneho API, ale bez moznosti to sam
+  zkompilovat/spustit. Prvni realny test na tvem telefonu je tedy
+  DULEZITY - a je pravdepodobne, ze bude potreba jedno ci dve kola
+  doladovani, stejne jako u DJ pultu.
+- JMuxer.js se nacita z CDN (jsdelivr) - telefon potrebuje pripojeni
+  k internetu pro PRVNI nacteni PS1 TV stranky (pak uz by mel byt v
+  cache prohlizece).
+
+MERENI (pred odeslanim)
+- MainActivity.java: { } 1688/1688, [ ] 294/294 - vyvazene.
+- Klientsky JS (extrahovany a overeny primo pres Node.js syntax
+  checker, ne jen pocitanim zavorek): STAVI SE SPRAVNE.
+- /stream.h264 se objevuje presne na ocekavanych 4 mistech (routovani,
+  volani metody, klientsky fetch, log komentar).
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit + Action.
+2) Otevri PS1 emulator, spust Web TV cast, preved na HIGH.
+3) Na PC/TV strance by se melo do par sekund prepnout z MJPEG na H264
+   (vpravo dole misto "MJPEG" uvidis "H264").
+4) Sleduj FPS pocitadlo - je to ted blizko 30 na HIGH?
+5) Pokud NEFUNGUJE (cerna obrazovka, video se nezobrazi): otevri /log
+   a hledej "TV_WEB_H264" radky - budou primo rikat, kde to selhalo
+   (enkoder start, feed, apod). Posli mi ten log, at muzu presne
+   diagnostikovat, ne hadat.
+6) Odejdi z PS1 na jinou obrazovku (Atari/Sega) - meloby se to samo
+   prepnout zpet na MJPEG.
+
+KILL-SWITCH: vratit MainActivity.java z BUILD2SK56 (stabilni pred
+touto H.264 zmenou, MJPEG pro vsechno vcetne PS1).
