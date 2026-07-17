@@ -1,0 +1,48 @@
+BUILD2SK62 - STEJNA CHYBA, DRUHE MISTO (proc byla cerna obrazovka)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+CO TVUJ POSLEDNI LOG UKAZAL
+Velky posun - "H264" uz naskocilo, spojeni se navazalo (fetch status
+200 na obou pokusech). Ale nikdy nedorazil "first chunk" - zadna data
+nikdy nezacala tect, proto cerna obrazovka i s bezicim zvukem.
+
+A v serverovem logu chybelo uplne "TV_WEB_H264_ENCODER_START" -
+enkoder se vubec nikdy nespustil.
+
+PRICINA
+Presne stejna chyba jako v SK61, jen na DRUHEM miste. Kod, ktery
+rozhoduje "mam enkodovat H264 snimek?" (uvnitr
+napTvWebPublishBitmap), TAKY volal web.getUrl() primo, misto aby
+pouzil tu novou bezpecnou cache z SK61. Kdyz kontrola URL tise
+selhala, podminka "je tohle PS1?" vysla vzdy jako ne -> enkoder
+nikdy nedostal zadny snimek -> zadna data k odeslani -> klient cekal
+navzdy na prvni kousek, ktery nikdy neprisel.
+
+Vedlejsi ucinek, ktery tohle taky vysvetluje: druhe pripojeni v logu
+ukazovalo "clients=2" misto "clients=1" - prvni klientovo vlakno na
+serveru zustalo trcet v nekonecne smycce cekani (nikdy nedostalo
+data k zapisu, tak nikdy nezjistilo, ze druha strana uz je pryc).
+Tohle by se melo samo napravit, jakmile zacnou data skutecne tect.
+
+OPRAVA
+Stejny vzor jako SK61 - misto primeho web.getUrl() se ted cte z
+bezpecne cachovane napTvWebCurrentUrl (aktualizovane z UI vlakna v
+tick smycce).
+
+MERENI (pred odeslanim)
+- { } 1699/1699, [ ] 299/299 - vyvazene.
+- napTvWebCurrentUrl: 4 vyskyty (deklarace + zapis + 2x cteni -
+  /status a H264 hradlo).
+- Zbyvajicich 16 primych web.getUrl() volani jsou vsechna v jiz
+  overenych UI-vlaknovych kontextech (hlavni tick smycka) - zadne
+  dalsi v HTTP-vlaknovem kontextu.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, HIGH.
+3) Tentokrat by se melo skutecne zobrazit VIDEO, ne cerna obrazovka.
+4) Sleduj FPS cislo - je uz blizko 30?
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56 (pred celou H264 praci).

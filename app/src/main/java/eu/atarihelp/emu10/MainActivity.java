@@ -663,7 +663,7 @@ public class MainActivity extends Activity {
             // obrazovky.
             if (!napTvWebH264ClientQueues.isEmpty()) {
                 try {
-                    String cu3 = web == null ? null : web.getUrl();
+                    String cu3 = napTvWebCurrentUrl; // BUILD2SK62: stejna oprava jako /status (SK61) - nikdy nevolat web.getUrl() mimo jiste UI vlakno
                     if (cu3 != null && cu3.contains("/emu_ps1/")) {
                         napTvWebH264FeedFrame(bm);
                     }
