@@ -1,0 +1,66 @@
+BUILD2SK53 - SKUTECNE VYRENDEROVANE TEXTURY (ne jen CSS gradient)
+================================================================================
+Zmeneny soubor: app/src/main/assets/dj/index.html
+
+NA ROVINU, PROC TO PORAD VYPADALO "STEJNE"
+Zeptal ses, jestli ten rozdil skutecne nevidim - a odpoved je: driv
+jsem porovnaval SPRAVNE prvky (barvy, rozlozeni), ale nedosel jsem k
+tomu skutecnemu jadru veci. Tvuj referencni obrazek je fotorealisticky
+vyrenderovany (AI generovany obraz se skutecnym vypoctem svetla a
+odlesku na materialu). CSS gradienty, at uz sebelepe poskladane,
+maji strop - nikdy nedosahnou tehle hloubky, protoze CSS gradient je
+matematicky JEDNODUCHY prechod barev, ne simulace svetla na povrchu.
+
+CO JSEM TENTOKRAT ZKUSIL JINAK
+Misto dalsiho skladani CSS gradientu jsem vygeneroval SKUTECNE
+BITMAPOVE TEXTURY primo v Pythonu (numpy + PIL) - realny obrazovy
+sum simulujici nepravidelnost kartacovaneho kovu (nahodne tahy,
+rozostrene vodorovne presne jako skutecny brousici pas), ne
+periodicky opakujici se CSS vzor (ktery pusobi plasticky/umele,
+protoze se DOSLOVA opakuje porad stejne). Tyhle textury jsou vlozene
+jako obrazky (stejnym zpusobem, jakym uz appka vklada vlastni fonty)
+a KOMBINOVANE s CSS gradientem pro celkove smerove osvetleni -
+textura dava jemny realisticky detail, CSS gradient dava sirokou
+svetlo/stin kompozici.
+Pouzito na: zlaty chassis (hlavni telo mixeru) a ocelovy prstenec
+gramofonu.
+
+POCTIVE - KAM AZ TOHLE DOJDE
+Timhle se priblizim vic k fotorealistickemu vzhledu, ale nebudu ti
+lhat - plne "identicke s AI vygenerovanym konceptualnim obrazkem" se
+pravdepodobne nepodari dosahnout uplne, protoze:
+- Nemam v tomhle prostredi nastroj na generovani obrazku (jen
+  vyhledavani existujicich, coz by bylo autorskopravne problematicke
+  pouzit primo v produktu).
+- Realny 3D render (jako ma tvuj referencni obrazek) pocita svetlo
+  fyzikalne (jak se odrazi, lomi, rozptyluje) - prochazejici skript
+  v Pythonu dokaze simulovat POVRCHOVY SUM realisticky, ale ne
+  kompletni fyziku svetla jako opravdovy 3D renderer.
+Pokud tohle porad nebude dost blizko, dalsi realisticky krok by byl
+pouzit skutecny 3D rendering nastroj (napr. Three.js/WebGL primo v
+strance) pro klicove prvky jako gramofon - to uz je vetsi technicka
+zmena a rad probereme, jestli do toho jit.
+
+MERENI (pred odeslanim)
+- Div tagy: 130/130. SVG tagy: 6/6. CSS zavorky: 263/263.
+- JS: presne odpovida ulozene kopii originalu.
+- Vsech 30 data-* atributu a 41 ID pritomno.
+- 3 vlozene PNG obrazky - vsechny s platnou PNG hlavickou, uspesne
+  dekodovatelne (overeno primo, ne jen "mely by byt v poradku").
+- Velikost souboru: ~532 KB (narust cca 150 KB kvuli texturam -
+  rozumne pro webview asset).
+
+NAHLED
+Prilozeny dj_pult_nahled_v4.html - otevri v prohlizeci, hlavne se
+podivej zblizka na zlaty povrch a prsten gramofonu, jestli uz textura
+vypada jako skutecny kov, ne ploche pole barev.
+
+JAK OTESTOVAT
+1) Otevri nahled, zoomni si na chassis povrch a gramofon.
+2) Nahrad index.html v appce, over funkcnost.
+3) Rekni mi upimne, jestli tohle uz je citelny posun, nebo jestli
+   uvazujeme o tom vetsim kroku (WebGL/3D render pro signature
+   prvky).
+
+KILL-SWITCH: vratit index.html z BUILD2SK49 (stabilni stav pred
+vizualnim prepracovanim).
