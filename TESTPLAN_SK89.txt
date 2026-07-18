@@ -1,0 +1,59 @@
+BUILD2SK89 - VYNUCENA ALFA PRIMO V DATECH + DIAGNOSTIKA
+================================================================================
+CO SE STALO
+Rene poslal novy log ze SK88 testu (bohaty format, obsahuje i PS1_RUN
+status s pixfmt=2) + screenshot - PS1 obrazovka STALE cerna, ovladaci
+prvky (D-pad, tlacitka) se vykresluji spravne pres nima.
+
+DULEZITE ZJISTENI: log neobsahoval ZADNY zpusob, jak overit, ze skutecne
+bezel build SK88 (s opravou setHasAlpha) - vsechny PS1_NATIVE_TEXTURE_*
+radky jsou porad tagovane "BUILD2SK87" (protoze jsem tenkrat nezmenil text
+tech konkretnich logovacich radku, jen pridal setHasAlpha o par radku
+vys). Nemohu tedy s jistotou rict, jestli SK88 oprava vubec byla
+otestovana. TOHLE JE MOJE CHYBA V METODOLOGII - opraveno nize (bod 3).
+
+CO SE ZMENILO
+1) VYNUCENA ALFA PRIMO V DATECH (silnejsi nez SK88): misto spolehani na
+   Bitmap.setHasAlpha(false) (neni jiste, jestli tohle vubec ovlivnuje
+   Canvas render/composite cestu, nebo je to hlavne ulozny hint) se ted
+   KAZDY int v poli argb[] upravi primo: argb[i] |= 0xFF000000 - horni
+   bajt (alfa) se natvrdo nastavi na 0xFF, bez ohledu na to, co tam
+   skutecne bylo. Tohle je zarucene spravne, protoze meni samotna DATA,
+   ne spoleha na chovani nejakeho API. setHasAlpha(false) zustava jako
+   dalsi (neskodna) pojistka navrch.
+2) DIAGNOSTIKA: jednou po aktivaci (ne kazdy snimek) se do logu zapise
+   PS1_NATIVE_RAW_PIXEL_SAMPLE se SKUTECNOU hodnotou prvniho a stredoveho
+   pixelu v hexu (0xAARRGGBB format). Tohle KONECNE ukaze, co jadro
+   doopravdy vraci - misto dalsiho hadani.
+3) VERZOVACI ZNACKA: THREAD_START log ted obsahuje
+   "codeVersion=SK89_FORCED_ALPHA" - v pristim logu uz nebude pochyb, jestli
+   tenhle build skutecne bezel.
+
+CO HLEDAT V PRISTIM LOGU (klicove pro diagnozu)
+- "BUILD2SK89 PS1_NATIVE_TEXTURE_THREAD_START ... codeVersion=SK89_FORCED_ALPHA"
+  - POKUD TOHLE V LOGU NENI, build SK89 se vubec nespustil (spatny APK,
+    stary build atd.) - v tom pripade neni co diagnostikovat, je potreba
+    nejdriv zajistit, ze se skutecne nainstalovala TATO verze.
+- "BUILD2SK89 PS1_NATIVE_RAW_PIXEL_SAMPLE p0=0x... pMid=0x..." - podivej
+  se na prvni dva znaky (alfa bajt): byl to "00" (potvrzuje puvodni
+  hypotezu - pruhledne) nebo neco jineho? At uz to bylo cokoli, VYNUCENI
+  alfy primo v datech by melo obraz zviditelnit bez ohledu na puvodni
+  hodnotu.
+
+RIZIKO
+Vynuceni alfy v poli: minimalni - jednoduchy cyklus pres pole (max
+640x480=307200 polozek, radove desetiny milisekundy), zadna zmena jinde.
+Diagnostika: zanedbatelna (jen jednou, ne kazdy snimek).
+Overeno: {}/[] sedi (1873/1873, 311/311), vsechny pouzite tridy/metody
+proti importum overeny (String.format(Locale.US,...) uz 7x pouzity vzor
+jinde v souboru, Locale importovana).
+
+JAK OTESTOVAT
+1) PS1 v landscapu - je videt obraz?
+2) V /log najdi radek s "codeVersion=SK89_FORCED_ALPHA" - potvrzuje, ze
+   tenhle build skutecne bezel.
+3) V /log najdi "PS1_NATIVE_RAW_PIXEL_SAMPLE" - jaka byla puvodni hodnota?
+
+KILL-SWITCH
+Porad plati SK86 jako posledni jiste funkcni verze (viditelna v obou
+orientacich, jen pomalejsi kvuli JPEG u PS1).

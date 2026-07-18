@@ -475,6 +475,42 @@ pixelu z grabFrameSafe() (RGB i alfa slozku zvlast v hex) - misto dalsiho
 hadani. Pripadne zvazit navrat k Sega-stylu overeneho zdroje (Sega jadro
 je jina knihovna, moznost, ze NEMA stejny alfa problem).
 
+================================================================================
+DODATEK 2026-07-18 (noc) - BUILD2SK89 - VYNUCENA ALFA + DIAGNOSTIKA +
+METODOLOGICKA OPRAVA (verzovaci znacky)
+================================================================================
+SK88 test: Rene poslal bohatsi log (obsahuje i primy PS1_RUN core status
+- "pixfmt=2" hodnota, jinak nedokumentovana) + screenshot - PS1 obrazovka
+STALE cerna, ovladaci prvky (D-pad/tlacitka) se vykreslily spravne pres.
+Rene: "davam ti posledni sanci", "nechci tvoje vymluvy".
+
+KRITICKY METODOLOGICKY NEDOSTATEK ODHALEN: log NEMEL ZADNY zpusob, jak
+overit, ze skutecne bezel SK88 (setHasAlpha oprava) - PS1_NATIVE_TEXTURE_*
+radky zustaly tagovane BUILD2SK87 (text tech radku se v SK88 nezmenil).
+Nebylo tedy mozne s jistotou rict, jestli byla SK88 oprava vubec
+otestovana. PONAUCENI PRO PRISTE: KAZDA zmena chovani MUSI mit vlastni,
+jednoznacnou znacku v logu, ne jen zmenu kodu bez zmeny toho, co se
+zaloguje - jinak nejde z logu poznat, co skutecne bezelo.
+
+OPRAVENO (SK89):
+1) Alfa se ted VYNUCUJE PRIMO V DATECH (argb[i] |= 0xFF000000) - silnejsi
+   a jistejsi nez SK88 spolehani na Bitmap.setHasAlpha() (nejiste, jestli
+   tohle vubec ovlivnuje Canvas render cestu na vsech API urovnich).
+2) Pridana jednorazova diagnostika PS1_NATIVE_RAW_PIXEL_SAMPLE - KONECNE
+   uvidime skutecnou hodnotu, kterou grabFrameSafe() vraci, misto dalsiho
+   hadani.
+3) Pridana vyslovna verzovaci znacka "codeVersion=SK89_FORCED_ALPHA" v
+   THREAD_START logu - v pristim logu uz nebude pochyb, jestli tenhle
+   build skutecne bezel.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na vysledek SK89 testu.
+NEJDRIV zkontrolovat, ze log obsahuje "codeVersion=SK89_FORCED_ALPHA"
+(potvrzuje spravny build) - pokud NE, problem je v procesu buildu/instalace,
+ne v kodu. Pokud ANO a obraz je porad cerny, hypoteza o alfe byla spatne
+a je potreba se podivat jinam (napr. zpet na Z-poradi vrstev, nebo na to,
+jestli WebView vubec ma na tehle obrazovce transparentni pozadi).
+
+
 
 
 

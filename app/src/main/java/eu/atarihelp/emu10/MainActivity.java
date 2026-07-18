@@ -4292,6 +4292,7 @@ public class MainActivity extends Activity {
         private int[] argb = new int[1024 * 512];
         private Bitmap bitmap;
         private int curSrcW = 0, curSrcH = 0;
+        private boolean ps1AlphaDiagLogged = false; // BUILD2SK89: jednorazova diagnostika syroveho pixelu
         private volatile boolean running = false;
         private Thread renderThread;
         private long frameCount = 0;
@@ -4324,7 +4325,7 @@ public class MainActivity extends Activity {
             renderThread = new Thread(() -> renderLoop(reason), "AtariHelpPs1TextureRG");
             renderThread.setDaemon(true);
             renderThread.start();
-            appendNativeLog("BUILD2SK87 PS1_NATIVE_TEXTURE_THREAD_START reason=" + reason + " view=" + getWidth() + "x" + getHeight());
+            appendNativeLog("BUILD2SK89 PS1_NATIVE_TEXTURE_THREAD_START reason=" + reason + " view=" + getWidth() + "x" + getHeight() + " codeVersion=SK89_FORCED_ALPHA");
         }
 
         private void renderLoop(String reason) {
@@ -4384,21 +4385,31 @@ public class MainActivity extends Activity {
                 if (wh <= 0) { canvas.drawColor(Color.BLACK); return; }
                 int srcW = wh >> 16, srcH = wh & 0xFFFF;
                 if (srcW <= 0 || srcH <= 0) { canvas.drawColor(Color.BLACK); return; }
+                // BUILD2SK89: DIAGNOSTIKA PRED jakoukoli upravou - syrova hodnota
+                // prvniho a stredoveho pixelu tak, jak je opravdu vraci
+                // grabFrameSafe(), v hexu. Jednou za aktivaci (ne kazdy snimek).
+                // Konecne UVIDIME cislo, misto dalsiho hadani.
+                if (!ps1AlphaDiagLogged && srcW > 0 && srcH > 0) {
+                    ps1AlphaDiagLogged = true;
+                    int p0 = argb[0];
+                    int pMid = argb[(srcH / 2) * srcW + (srcW / 2)];
+                    appendNativeLog(String.format(Locale.US,
+                            "BUILD2SK89 PS1_NATIVE_RAW_PIXEL_SAMPLE p0=0x%08X pMid=0x%08X srcW=%d srcH=%d (format ocekavany ARGB: 0xAARRGGBB - AA=alfa)",
+                            p0, pMid, srcW, srcH));
+                }
+                // BUILD2SK89: KRITICKA OPRAVA (posiluje SK88) - misto spolehani na
+                // Bitmap.setHasAlpha() (neni jiste, jestli tohle vubec ovlivnuje
+                // Canvas render/composite cestu na kazde API urovni, nebo je to
+                // hlavne ulozny/serializacni hint) VYNUTIME alfu PRIMO V DATECH -
+                // kazdy int v poli dostane horni bajt 0xFF bez ohledu na to, co
+                // tam skutecne bylo. Tohle je zarucene spravne, protoze meni
+                // samotna data, ne spoleha na chovani nejakeho API.
+                for (int i = 0, n = srcW * srcH; i < n; i++) {
+                    argb[i] |= 0xFF000000;
+                }
                 if (bitmap == null || curSrcW != srcW || curSrcH != srcH) {
                     bitmap = Bitmap.createBitmap(srcW, srcH, Bitmap.Config.ARGB_8888);
-                    // BUILD2SK88: KRITICKA OPRAVA - grabFrameSafe() nikdy driv neprosla
-                    // cestou, ktera by alfa kanal skutecne pouzila. Stara preview cesta
-                    // (ps1FramePreviewB64) konci JPEG kompresi, ktera alfu VZDY zahazuje
-                    // (JPEG alfu nema) - takze i kdyby jadro vracelo alfa=0 (pruhledne),
-                    // nikdy by to nebylo videt. Tahle nova cesta kresli bitmapu PRIMO pres
-                    // Canvas, ktery alfu RESPEKTUJE - pokud jadro vraci cokoli jineho nez
-                    // plne neprubledne (0xFF), snimek se smisi jako NEVIDITELNY s tim, co
-                    // je pod nim (= canvas.drawColor(BLACK) o par radku niz) - presne
-                    // "cerna obrazovka, jen zvuk", co Rene nahlasil. setHasAlpha(false) tomu
-                    // rika: povazuj kazdy pixel za plne neprubledny, bez ohledu na to, co je
-                    // skutecne v alfa bajtu - obchazi problem, aniz by bylo nutne znat presne,
-                    // jakou hodnotu jadro doopravdy vraci.
-                    bitmap.setHasAlpha(false);
+                    bitmap.setHasAlpha(false); // BUILD2SK88: ponechano jako dalsi (neskodna) pojistka navrch.
                     curSrcW = srcW; curSrcH = srcH;
                 }
                 bitmap.setPixels(argb, 0, srcW, 0, 0, srcW, srcH);
