@@ -257,6 +257,7 @@ public class MainActivity extends Activity {
     private volatile long napTvWebH264Seq = 0;
     private volatile long napTvWebH264LastFrameMs = 0;
     private volatile long napTvWebH264FrameIndex = 0;
+    private volatile long napTvWebH264StartNanos = 0;
     // BUILD2SK61: KRITICKA OPRAVA - /status endpoint bezi na SAMOSTATNEM
     // vlakne per-klient (napTvWebHandleClient), NE na UI vlakne. Volani
     // web.getUrl() PRIMO z tohoto vlakna je nebezpecne (WebView metody
@@ -833,7 +834,13 @@ public class MainActivity extends Activity {
                 // pres getCodecInfo().getCapabilitiesForType() a vybrat za behu).
                 fmt.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
                 fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(700000, w * h * 4));
-                fmt.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
+                // BUILD2SK72: bylo 30 - po SK71 (odstraneni umeleho stropu) appka
+                // bezi realne na 38-50+ fps podle urovne. Nesoulad mezi timhle
+                // deklarovanym cislem a SKUTECNOU rychlosti dorucovani snimku
+                // mohl matlit enkoderovo vnitrni rizeni datoveho toku (kolik bitu
+                // na snimek alokovat) - 60 je bezpecny horni odhad pro vsechny
+                // urovne kvality.
+                fmt.setInteger(MediaFormat.KEY_FRAME_RATE, 60);
                 fmt.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
                 if (Build.VERSION.SDK_INT >= 23) {
                     try { fmt.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline); } catch (Throwable ignored) {}
@@ -844,6 +851,7 @@ public class MainActivity extends Activity {
                 napTvWebH264Encoder = enc;
                 napTvWebH264W = w; napTvWebH264H = h;
                 napTvWebH264FrameIndex = 0;
+                napTvWebH264StartNanos = System.nanoTime();
                 napTvWebH264Generation++;
                 appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation);
             } catch (Throwable t) {
@@ -964,7 +972,18 @@ public class MainActivity extends Activity {
                 ByteBuffer inBuf = enc.getInputBuffer(inIdx);
                 inBuf.clear();
                 inBuf.put(yuv);
-                long ptsUs = napTvWebH264FrameIndex * 1000000L / 30L;
+                // BUILD2SK72: PUVODNI vypocet predpokladal PEVNYCH 30 snimku za
+                // sekundu bez ohledu na SKUTECNOU rychlost dorucovani snimku.
+                // Po SK71 (odstraneni umeleho stropu) appka ted bezi na 50+ fps -
+                // ale PTS se porad pocitaly, jako by kazdy snimek byl 33ms od
+                // predchoziho (30fps tempo). Tenhle nesoulad (dekl. 30fps vs
+                // skutecnych 50+fps) zpusoboval, ze PTS casem zaostavaly za
+                // realnym casem - prehravac pak myslel, ze snimky prichazeji
+                // "predcasne" a cekal/bufferoval, coz vytvarelo presne to
+                // sekani/trhani, co Rene popsal (ne signal, ne prenos - cisty
+                // nesoulad casovych znacek). Ted: PTS = SKUTECNY uplynuly cas od
+                // prvniho snimku teto enkoderove generace, ne pevny predpoklad.
+                long ptsUs = (System.nanoTime() - napTvWebH264StartNanos) / 1000L;
                 enc.queueInputBuffer(inIdx, 0, yuv.length, ptsUs, 0);
                 napTvWebH264FrameIndex++;
             }

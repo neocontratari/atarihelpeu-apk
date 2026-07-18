@@ -1,0 +1,49 @@
+BUILD2SK72 - OPRAVA CASOVYCH ZNACEK (PTS) - PRICINA SEKANI PO USPECHU FPS
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+NEJDRIV - GRATULACE
+LOW 50+, MEDIUM 45+, HIGH 38+ fps - to je nad vsechny tve puvodni
+cile. SK71 (odstraneni umeleho stropu) fungovalo presne, jak jsme
+cekali.
+
+CO ZPUSOBOVALO SEKANI (nebylo to prenos ani wifi)
+Nasel jsem to primo v kodu: casova znacka kazdeho snimku (PTS -
+"presentation timestamp", rika prehravaci KDY ma ktery snimek
+zobrazit) se pocitala jako pevny predpoklad "kazdy snimek je presne
+33ms po tom predchozim" (= 30 snimku za sekundu), BEZ OHLEDU na to,
+jak rychle snimky doopravdy prichazely.
+
+Po SK71 appka najednou bezi na 50+ snimku za sekundu - snimky
+skutecne prichazeji kazdych ~20ms, ale appka porad rikala prehravaci
+"tenhle je o 33ms pozdeji". Casem se ta oznacena casova znacka cim
+dal vic OPOZDOVALA za skutecnym casem - prehravac pak musel neustale
+"dohanet" (nebo naopak cekat, podle smeru chyby), coz vytvarelo presne
+to sekani/trhani, ktere jsi popsal. Nesouvisi to s wifi signalem ani
+prenosem - je to cistě nesoulad v tom, jak appka OZNACOVALA cas
+snimku, ne jak rychle je posilala.
+
+OPRAVA
+Casova znacka se ted pocita ze SKUTECNEHO uplynuleho casu od prvniho
+snimku aktualni enkoderove generace (System.nanoTime()), ne z pevneho
+predpokladu o snimkove frekvenci. Take jsem aktualizoval deklarovanou
+snimkovou frekvenci enkoderu z 30 na 60 (bezpecny horni odhad pro
+vsechny urovne kvality po SK71) - drivejsi nesoulad (deklarovanych 30
+vs skutecnych 38-50+) mohl take matlit enkoderovo vnitrni rizeni
+datoveho toku.
+
+MERENI (pred odeslanim)
+- { } 1741/1741, [ ] 302/302 - vyvazene.
+- napTvWebH264StartNanos: 3 vyskyty (deklarace, nastaveni pri startu
+  enkoderu, cteni pri vypoctu PTS) - spravne propojeno.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, kazda uroven, landscape - hlavne se podivej, jestli obraz
+   ted plyne hladce (ne jen jestli FPS cislo je vysoke - to uz vime,
+   ze je).
+3) FPS by melo zustat na stejnych vysokych hodnotach jako predtim -
+   tahle zmena resi PLYNULOST prehravani, ne rychlost.
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56 (pred celou H264 praci).
