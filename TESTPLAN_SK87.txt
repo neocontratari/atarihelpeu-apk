@@ -1,0 +1,78 @@
+BUILD2SK87 - PS1 NATIVNI TEXTUREVIEW (skutecna oprava, ne dalsi zaplata)
+================================================================================
+CO SE ZMENILO
+Pridana nova trida NativePs1InPlaceView - presny protejsek jiz overene
+NativeInPlaceView (Sega). Grabne snimek PRIMO z PS1 jadra
+(NativePs1CoreBridge.grabFrameSafe - stejna funkce, jakou uz pouziva
+tvRenderLoop pro druhou obrazovku) a nakresli ho rovnou na Surface teto
+TextureView. ZADNY JPEG. ZADNY base64. ZADNY WebView round-trip.
+
+Aktivuje se automaticky pri uspesnem bootu PS1 hry (oba boot-cesty - remote
+i lokalni soubor), deaktivuje pri stopPs1SessionHard (stejne misto, kde uz
+existoval ps1ClearJsPreview).
+
+ROZSAH: JEN LANDSCAPE. Portret zustava 100% beze zmeny - stara JPEG preview
+cesta (ps1FramePreviewB64, 80ms interval) tam jede uplne stejne jako pred
+touto zmenou. V landscape se ta stara cesta ted VUBEC nespousti (JS ji
+preskakuje) - misto ni kresli nova nativni vrstva.
+
+PROC JEN LANDSCAPE (poctive priznani, ne skryvani)
+Portret ma dekorativni "skin" (viz .stage/.skin v CSS) s #psMonitor
+pozicovanym na procenta (5.4%/14.2%/89.2%/41.7%) uvnitr teto dekorace.
+Presne umisteni nativni vrstvy v portretu by chtelo bud (a) replikovat
+tuhle CSS matematiku v Jave, nebo (b) pridat JS->Java rect-reporting most
+(Sega ma presne tohle - setNativeRect - ale nemel jsem k dispozici
+emu_sega/index.html, abych videl PRESNY vzor, jak to Sega dela, a
+neriskoval jsem hadat na necem, co by v portretu vypadalo rozbite).
+Landscape matematika (16:9 stred-fit) je naproti tomu PRESNA kopie
+existujici CSS #psMonitor pravidla pro landscape - zadny hadany krok.
+
+RIZIKO
+STREDNI-VYSSI - je to novy kod dotykajici se hlavniho PS1 zobrazeni, nikdy
+netestovany na realnem zarizeni. Zmirneno tim, ze:
+- Kazdy jednotlivy kus (grabFrameSafe pull, setPixels+drawBitmap kresleni,
+  TextureView render-thread vzor) uz existuje a funguje jinde v TOMHLE
+  SOUBORU (Sega NativeInPlaceView, tvRenderLoop) - zadna nova, neoverena
+  technika, jen novy soucet jiz overenych casti.
+- Portret NENI dotceny vubec (zadne riziko tam).
+- Cely render beh je v try/catch(Throwable) - selhani nakresli tmave
+  cervenou barvu a zaloguje chybu, appka nespadne.
+- Overeno: {}/[] v .java (1869/1869, 308/308) i .html (310/310) sedi, JS
+  overen node --check, VSECHNY pouzite tridy proslé rucni kontrolou proti
+  importum (viz metodologie nize - stejna kontrola, co minule odhalila
+  FileInputStream, ted spustena PREVENTIVNE pred odeslanim, ne az po chybe).
+- rootFrame.getChildAt/getChildCount se nikde jinde v kodu nepouziva -
+  pridani noveho view na index 0 nema jak rozbit neco jineho.
+
+CO OVEROVAT PRI TESTU
+1) PS1 v LANDSCAPE: hraje se plynuleji? V /log najdi "PS1_NATIVE_TEXTURE_"
+   radky - PS1_NATIVE_TEXTURE_FRAME by se mel objevit brzy po startu hry,
+   PS1_NATIVE_TEXTURE_SLOW by se NEMEL objevovat casto (>30ms na snimek by
+   znamenalo problem).
+2) Sedi video presne tam, kde je dotykove ovladani (D-pad, tlacitka)? To je
+   nejvetsi vizualni riziko teto zmeny - kdyby box nesedel s #psMonitor,
+   bylo by to hned videt.
+3) PS1 v PORTRETU: melo by vypadat/chovat se UPLNE STEJNE jako pred touto
+   zmenou (JPEG preview, 80ms). Zadny rozdil by tu byt nemel.
+4) Otoceni telefonu behem hrani (portret <-> landscape) - melo by prepnout
+   plynule, bez zamrznuti/cerne obrazovky na del nez zlomek sekundy.
+5) TV-cast/H264 cast (co appka posila NA TV) - melo by teď zachytavat tuhle
+   novou, ostrejsi/plynulejsi PS1 vrstvu presne stejnym mechanismem
+   (PixelCopy) jako driv - zadna zmena v TV-cast pipeline samotne.
+
+KILL-SWITCH
+Kdyby landscape PS1 vypadalo hur nez pred touto zmenou (rozbity obraz,
+spatna pozice, casty SLOW log) - staci se vratit na predchozi balicek
+(SK86) - ZADNA jina cast appky se touto zmenou nedotkla.
+
+DALSI KROKY (necekaji na potvrzeni teto zpravy, jen navrh poradi)
+1) Overit SK87 na PS1 landscape - tohle NEJDRIV.
+2) Kdyz sedi: zvazit stejny pristup pro Segu/Atari - ti maji JINY problem
+   (pevnych 320x224, zadny JPEG) - TextureView uz maji, jen SRC_W/SRC_H by
+   slo zkusit zvysit (nejisty vysledek bez pristupu ke zdrojaku jadra -
+   API bere w/h jako parametry, coz naznacuje flexibilitu, ale neni to
+   jiste).
+3) Settings obrazovka (LOW/MEDIUM/HIGH podle telefonu, ozubene kolecko na
+   uvodni obrazovce) - navrhuji AZ PO bodech 1-2, protoze teprve pak bude
+   jasne, jake "LOW/MEDIUM/HIGH" hodnoty vubec davaji smysl nabizet (driv
+   by to znamenalo stavet UI kolem cisel, ktera se za tyden zase zmeni).

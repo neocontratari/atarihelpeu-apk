@@ -402,5 +402,46 @@ se zeptat, jestli chce jit do vetsi PS1 TextureView zmeny (jediny znamy
 zpusob, jak PS1 preview skutecne zrychlit bez vedlejsich ucinku na
 TV-cast).
 
+================================================================================
+DODATEK 2026-07-18 (pozde vecer) - BUILD2SK87 - SKUTECNA PS1 OPRAVA
+================================================================================
+SK86 test: castecne zlepseni (PS1 HIGH ~18fps->~34fps), ale ne plny navrat
+na SK80 uroven (~40-50fps). Rene: "chci tu vetsi opravu... napric celou
+apkou - ale klidne muzeme zacit u ps1" + potvrdil zajem o LOW/MEDIUM/HIGH
+podle telefonu (puvodni bod 4 z uplne prvniho predani) + "rozhodnuti
+necham na tobe".
+
+POSTAVENO: NativePs1InPlaceView - PS1 protejsek Segy NativeInPlaceView.
+grabFrameSafe() primo na Surface, ZADNY JPEG. Aktivni JEN V LANDSCAPE
+(vedomy zaber - portret ma dekorativni "skin" s procentualnim pozicovanim,
+nemel jsem emu_sega/index.html po ruce, abych videl PRESNY Sega vzor pro
+portret /setNativeRect/, takze jsem to neriskoval hadat). Portret zustava
+100% na stare JPEG ceste, beze zmeny. Landscape matematika (16:9 stred-fit)
+je presna kopie CSS #psMonitor landscape pravidla.
+
+Zapojeno do stavajiciho lifecycle (ps1SessionActive=true po uspesnem
+bootu na OBOU boot-cestach, ps1DeactivateNativeView() vedle existujiciho
+ps1ClearJsPreview() ve stopPs1SessionHard).
+
+NEUDELANO (vedomy zaber teto verze):
+- Portret PS1 pres nativni view (chtelo by CSS-matematiku nebo JS rect-
+  reporting most jako Sega - neoverene bez rizika).
+- Sega/Atari 320x224 strop (jiny problem - zadny JPEG, ale pevne nizke
+  nativni rozliseni z jadra - nejisty vysledek bez pristupu ke zdrojaku).
+- Settings obrazovka LOW/MEDIUM/HIGH podle telefonu - navrzeno AZ PO
+  overeni bodu vyse, aby UI nestavelo na cislech, ktera se jeste zmeni.
+
+METODOLOGIE (posilena po FileInputStream chybe): pred kazdym odeslanim
+ted bezi skript, co extrahuje VSECHNY "new Trida(" a deklarace z diffu a
+overuje kazdou proti seznamu importu + lokalnim tridam + java.lang - ne
+jen pocitani zavorek.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: pockat na vysledek SK87 testu
+(landscape PS1 - plynulost, presnost pozice videa vuci ovladacim
+tlacitkum, portret beze zmeny). Podle vysledku bud ladit tuhle cestu dal,
+nebo pokracovat na Segu/Atari ci settings obrazovku (viz TESTPLAN_SK87.txt
+"DALSI KROKY" pro navrzene poradi).
+
+
 
 
