@@ -1,0 +1,53 @@
+BUILD2SK67 - TVA OTAZKA BYLA DOBRA: DETEKCE DUPLICITNICH SNIMKU
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+(obsahuje i SK66 casovaci diagnostiku z minuleho kola - jeste jsi ji
+netestoval, takze ted mas OBOJI v jednom buildu, jeden test staci)
+
+TVA OTAZKA
+Zeptal ses, jestli neni problem uz v samotnem PS1 vykreslovani. Mel
+jsi pravdu, ze tohle jsem NEOVERIL - predpokladal jsem, ze bottleneck
+je v me web-cast pipeline, ale nikdy jsem nezkontroloval, jak rychle
+PS1 emulator (WASM jadro renderujici do <canvas> uvnitr WebView)
+SKUTECNE produkuje novy obsah k zachyceni.
+
+Pokud emulator sam bezi pomaleji, nez se ho appka snazi zachytit,
+opakovane by se zachytavaly a zbytecne enkodovaly UPLNE STEJNE
+snimky - a v tom pripade by zadna optimalizace me H264 pipeline
+nepomohla, protoze bottleneck by byl driv, nez se moje pipeline
+vubec dostane ke slovu. Tohle by taky presne vysvetlovalo, proc
+HIGH/MEDIUM/LOW ukazuji tak podobna cisla bez ohledu na rozliseni.
+
+CO JSEM PRIDAL
+Levna kontrola primo v zachytavaci smycce (nezavisle na H264 - bezi
+i pro MJPEG): pri kazdem zachycenem PS1 snimku se vezme par
+vzorkovanych pixelu (8 bodu, ne cely snimek - to by samo pridalo
+naklad) a porovna s minulym snimkem. Kazdych 60 zachyceni se do
+/log zapise pomer "kolik z poslednich 60 zachyceni bylo IDENTICKYCH
+s tim predchozim".
+
+CO CISLA ZNAMENAJI
+- Pokud "sameFrames" je nizke (blizko 0/60) - PS1 renderuje novy
+  obsah rychleji nebo srovnatelne s tim, jak ho zachytavame. Bottleneck
+  je pak skutecne v me pipeline (a data z SK66 casovani mi reknou kde).
+- Pokud "sameFrames" je vysoke (napr. 40+/60) - PS1 sam nestiha
+  produkovat novy obsah tak rychle. V tom pripade by dalsi ladeni H264
+  pipeline melo malo smyslu - problem by byl v emulatoru samotnem
+  (mimo muj primy dosah - je to WASM jadro, ne kod, ktery jsem psal ja).
+
+MERENI (pred odeslanim)
+- { } 1729/1729, [ ] 302/302 - vyvazene.
+- Diagnosticka pole spravne propojena a pocitana.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, jakakoli uroven, landscape - nech bezet aspon 2-3 minuty pro
+   dost vzorku obou diagnostik.
+3) Otevri /log a posli mi:
+   - Vsechny radky "TV_WEB_PS1_DUPCHECK" (tohle je ta nova, dulezita
+     otazka)
+   - Vsechny radky "TV_WEB_H264_FRAME_AVG" pro kazdou uroven kvality,
+     kterou vyzkousis (z minuleho kola, timing rozpis)
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56 (pred celou H264 praci).

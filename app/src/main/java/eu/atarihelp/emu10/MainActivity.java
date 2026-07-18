@@ -269,6 +269,10 @@ public class MainActivity extends Activity {
     // periodicky log), a /status jen cte tuhle cache - zadne dalsi
     // volani web.getUrl() mimo UI vlakno.
     private volatile String napTvWebCurrentUrl = "";
+    // BUILD2SK67: detekce duplicitnich snimku - overuje jestli PS1
+    // emulator sam produkuje novy obsah tak rychle, jak ho zachytavame
+    private long napTvWebLastSampleHash = Long.MIN_VALUE;
+    private int napTvWebDupCheckCount = 0, napTvWebDupCheckSame = 0;
     // BUILD2SK63: kdyz se enkoder restartuje kvuli zmene rozliseni (napr.
     // portret<->landscape, zmena kvalitni urovne), NOVY enkoder produkuje
     // NOVE SPS/PPS (parametry kodeku). Pokud tohle dorazi klientovi
@@ -688,6 +692,38 @@ public class MainActivity extends Activity {
                     }
                 } catch (Throwable ignored) {}
             }
+            // BUILD2SK67: overeni podezreni - produkuje PS1 emulator (WASM
+            // jadro renderujici do <canvas> uvnitr WebView) skutecne NOVY
+            // obsah tak rychle, jak se ho snazime zachytit? Pokud emulator
+            // sam bezi pomaleji nez muj zachytavaci cyklus, opakovane bych
+            // zachytaval a zbytecne enkodoval IDENTICKE snimky - v tom
+            // pripade by zadna oprava H264 pipeline nepomohla, protoze
+            // bottleneck by byl driv, nez se moje pipeline vubec dostane
+            // ke slovu. Levna kontrola: porovnat par vzorkovanych pixelu
+            // (ne cely snimek - to by samo pridalo naklad) s minulym
+            // snimkem. Beží nezavisle na H264 - i pro MJPEG chceme vedet,
+            // jestli zachytavame duplicity.
+            try {
+                if (napTvWebCurrentUrl != null && napTvWebCurrentUrl.contains("/emu_ps1/")) {
+                    int bw = bm.getWidth(), bh = bm.getHeight();
+                    if (bw > 8 && bh > 8) {
+                        long sample = 0;
+                        for (int si = 0; si < 8; si++) {
+                            int sx = (bw * si) / 8, sy = (bh * si) / 8;
+                            sample = sample * 31 + bm.getPixel(sx, sy);
+                        }
+                        napTvWebDupCheckCount++;
+                        if (sample == napTvWebLastSampleHash) napTvWebDupCheckSame++;
+                        napTvWebLastSampleHash = sample;
+                        if (napTvWebDupCheckCount >= 60) {
+                            appendNativeLog("BUILD2SK67 TV_WEB_PS1_DUPCHECK sameFrames=" + napTvWebDupCheckSame
+                                    + "/" + napTvWebDupCheckCount + " (pokud je toto cislo vysoke, PS1 nevykresluje"
+                                    + " novy obsah tak rychle, jak ho zachytavame)");
+                            napTvWebDupCheckCount = 0; napTvWebDupCheckSame = 0;
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA13C TV_WEB_PUBLISH_ERR " + safeMsg(t));
         }
@@ -754,10 +790,12 @@ public class MainActivity extends Activity {
         if (bm == null) return;
         napTvWebH264EnsureWorker();
         Bitmap copy;
+        long t0 = System.nanoTime();
         try {
             Bitmap.Config cfg = bm.getConfig() != null ? bm.getConfig() : Bitmap.Config.ARGB_8888;
             copy = bm.copy(cfg, false);
         } catch (Throwable t) { return; }
+        napTvWebH264DiagCopyMs += (System.nanoTime() - t0) / 1000000; // BUILD2SK66: hruby soucet, jen pro diagnostiku - drobna zavodni podminka mezi vlakny je tu prijatelna
         Bitmap old;
         synchronized (napTvWebH264PendingLock) {
             old = napTvWebH264PendingBitmap;
@@ -803,6 +841,9 @@ public class MainActivity extends Activity {
     private byte[] napTvWebH264YuvBuf = null;
     private int napTvWebH264BufW = 0, napTvWebH264BufH = 0;
 
+    private long napTvWebH264DiagFrameCount = 0;
+    private long napTvWebH264DiagCopyMs = 0, napTvWebH264DiagPixelsMs = 0, napTvWebH264DiagYuvMs = 0, napTvWebH264DiagDequeueMs = 0, napTvWebH264DiagDrainMs = 0;
+
     private void napTvWebH264FeedFrameInternal(Bitmap bm) {
         int w = bm.getWidth() - (bm.getWidth() % 2);
         int h = bm.getHeight() - (bm.getHeight() % 2);
@@ -819,9 +860,19 @@ public class MainActivity extends Activity {
             }
             int[] px = napTvWebH264PxBuf;
             byte[] yuv = napTvWebH264YuvBuf;
+            // BUILD2SK66: podrobne casovani kazde faze - HIGH bezelo
+            // rychleji nez LOW, coz nedava smysl, pokud by hlavni naklad
+            // byl umerny poctu pixelu (YUV prevod, getPixels). To ukazuje
+            // na FIXNI naklad nezavisly na rozliseni (nejspis samotny
+            // enkoder - dequeueInputBuffer) - tohle mereni to bud potvrdi,
+            // nebo ukaze neco jineho.
+            long t0 = System.nanoTime();
             bm.getPixels(px, 0, w, 0, 0, w, h);
+            long t1 = System.nanoTime();
             napTvWebH264RgbToYuv420(px, yuv, w, h);
+            long t2 = System.nanoTime();
             int inIdx = enc.dequeueInputBuffer(4000);
+            long t3 = System.nanoTime();
             if (inIdx >= 0) {
                 ByteBuffer inBuf = enc.getInputBuffer(inIdx);
                 inBuf.clear();
@@ -831,6 +882,30 @@ public class MainActivity extends Activity {
                 napTvWebH264FrameIndex++;
             }
             napTvWebH264DrainEncoder(enc);
+            long t4 = System.nanoTime();
+            napTvWebH264DiagPixelsMs += (t1 - t0) / 1000000;
+            napTvWebH264DiagYuvMs += (t2 - t1) / 1000000;
+            napTvWebH264DiagDequeueMs += (t3 - t2) / 1000000;
+            napTvWebH264DiagDrainMs += (t4 - t3) / 1000000;
+            napTvWebH264DiagFrameCount++;
+            long totalMs = (t4 - t0) / 1000000;
+            if (totalMs > 80) {
+                appendNativeLog("BUILD2SK66 TV_WEB_H264_FRAME_SLOW totalMs=" + totalMs
+                        + " pixelsMs=" + ((t1 - t0) / 1000000) + " yuvMs=" + ((t2 - t1) / 1000000)
+                        + " dequeueMs=" + ((t3 - t2) / 1000000) + " drainMs=" + ((t4 - t3) / 1000000)
+                        + " w=" + w + " h=" + h);
+            }
+            if (napTvWebH264DiagFrameCount >= 30) {
+                appendNativeLog("BUILD2SK66 TV_WEB_H264_FRAME_AVG n=" + napTvWebH264DiagFrameCount
+                        + " avgCopyMs=" + (napTvWebH264DiagCopyMs / napTvWebH264DiagFrameCount)
+                        + " avgPixelsMs=" + (napTvWebH264DiagPixelsMs / napTvWebH264DiagFrameCount)
+                        + " avgYuvMs=" + (napTvWebH264DiagYuvMs / napTvWebH264DiagFrameCount)
+                        + " avgDequeueMs=" + (napTvWebH264DiagDequeueMs / napTvWebH264DiagFrameCount)
+                        + " avgDrainMs=" + (napTvWebH264DiagDrainMs / napTvWebH264DiagFrameCount)
+                        + " w=" + w + " h=" + h);
+                napTvWebH264DiagFrameCount = 0;
+                napTvWebH264DiagCopyMs = 0; napTvWebH264DiagPixelsMs = 0; napTvWebH264DiagYuvMs = 0; napTvWebH264DiagDequeueMs = 0; napTvWebH264DiagDrainMs = 0;
+            }
         } catch (Throwable t) {
             appendNativeLog("BUILD2SK57 TV_WEB_H264_FEED_ERR " + safeMsg(t));
         }
