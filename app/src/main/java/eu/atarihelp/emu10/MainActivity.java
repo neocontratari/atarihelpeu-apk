@@ -273,6 +273,13 @@ public class MainActivity extends Activity {
     // emulator sam produkuje novy obsah tak rychle, jak ho zachytavame
     private long napTvWebLastSampleHash = Long.MIN_VALUE;
     private int napTvWebDupCheckCount = 0, napTvWebDupCheckSame = 0;
+    // BUILD2SK68: prumerovani PixelCopy latence a JPEG komprese pro
+    // VSECHNY snimky (ne jen "pomale" vyjimky) - viz vysvetleni u
+    // mista pouziti
+    private long napTvWebPcDiagSumMs = 0;
+    private int napTvWebPcDiagCount = 0;
+    private long napTvWebCompressDiagSumMs = 0;
+    private int napTvWebCompressDiagCount = 0;
     // BUILD2SK63: kdyz se enkoder restartuje kvuli zmene rozliseni (napr.
     // portret<->landscape, zmena kvalitni urovne), NOVY enkoder produkuje
     // NOVE SPS/PPS (parametry kodeku). Pokud tohle dorazi klientovi
@@ -544,6 +551,22 @@ public class MainActivity extends Activity {
                                     appendNativeLog("BUILD2SK34 TV_WEB_PIXELCOPY_SLOW latencyMs=" + latencyMs
                                             + " result=" + result + " hqLite=" + hqLiteScreenFinal + " tier=" + napTvWebQualityTier);
                                 }
+                                // BUILD2SK68: driv se logovaly jen "pomale" pripady (>200ms) -
+                                // ale H264 diagnostika (SK66) ukazala, ze me enkodovani samo
+                                // trva jen ~5ms, takze zbytek casu (u ~13fps to je ~70-80ms na
+                                // snimek) se musi ztracet NEKDE JINDE. Tohle meri PRUMER pro
+                                // UPLNE VSECHNY pozadavky (ne jen ty > 200ms), abych zjistil,
+                                // jestli je to prave PixelCopy latence (i "normalni", ne jen
+                                // vyjimecne pomala), co dominuje.
+                                if (hqLiteScreenFinal) {
+                                    napTvWebPcDiagSumMs += latencyMs;
+                                    napTvWebPcDiagCount++;
+                                    if (napTvWebPcDiagCount >= 30) {
+                                        appendNativeLog("BUILD2SK68 TV_WEB_PIXELCOPY_AVG n=" + napTvWebPcDiagCount
+                                                + " avgLatencyMs=" + (napTvWebPcDiagSumMs / napTvWebPcDiagCount));
+                                        napTvWebPcDiagCount = 0; napTvWebPcDiagSumMs = 0;
+                                    }
+                                }
                                 // BUILD2SK38: pokud uzivatel mezitim odesel na ne-hqLite
                                 // obrazovku (generace se zvysila pri draw() volani), tenhle
                                 // pozadavek uz je zastaraly - jeho vysledek ZAHODIME, misto
@@ -656,41 +679,61 @@ public class MainActivity extends Activity {
 
     private void napTvWebPublishBitmap(Bitmap bm, String mode) {
         try {
-            long compressStart = System.currentTimeMillis();
+            // BUILD2SK69: driv se JPEG komprese delala VZDY, i pro PS1 snimky,
+            // kdyz H264 uz aktivne bezelo - nikdo MJPEG v tu chvili nesleduje,
+            // takze to byla CISTA ZBYTECNA PRACE na kazdem jednom snimku.
+            // Ted: pokud je tohle PS1 A H264 klient je pripojeny, JPEG
+            // komprese se preskoci UPLNE (napTvWebJpeg proste zustane
+            // nezmeneny - stary snimek - dokud se nekdo neodpoji od H264,
+            // pak se MJPEG cesta zase prirozene obnovi).
+            String curUrlNow = napTvWebCurrentUrl;
+            boolean isPs1Now = curUrlNow != null && curUrlNow.contains("/emu_ps1/");
+            boolean h264Handling = isPs1Now && !napTvWebH264ClientQueues.isEmpty();
+
             long prevPublishMs = napTvWebLastFrameMs;
-            ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32768, bm.getWidth() * bm.getHeight() / 8));
-            bm.compress(Bitmap.CompressFormat.JPEG, Math.max(35, Math.min(94, napTvWebJpegQuality)), bos);
-            long compressMs = System.currentTimeMillis() - compressStart;
-            napTvWebJpeg = bos.toByteArray();
-            napTvWebSeq++;
-            napTvWebLastFrameMs = System.currentTimeMillis();
-            long gapMs = prevPublishMs == 0 ? 0 : (napTvWebLastFrameMs - prevPublishMs);
-            // BUILD2SK34: primy dukaz misto dalsiho hadani. Zaznamenej, kdyz
-            // samotna JPEG komprese trva podezrele dlouho NEBO kdyz mezi dvema
-            // po sobe jdoucimi snimky ubehla podezrele velka mezera - naznacuje
-            // zaseknuti NEKDE v ceste, i kdyz zadna vyjimka nenastala (Rene
-            // opakovane potvrdil, ze problem je jen na MEDIUM/HIGH a v logu
-            // dosud nebyla vidět zadna chyba - tohle by mohlo byt proste fyzicke
-            // zpomaleni pri vetsim rozliseni na starsim S8 hardwaru, ne logicka
-            // chyba, a takove zpomaleni by se v dosavadnim logu vubec neprojevilo).
-            if (compressMs > 200L || gapMs > 400L) {
-                appendNativeLog("BUILD2SK34 TV_WEB_SLOW_FRAME mode=" + mode + " compressMs=" + compressMs
-                        + " gapMs=" + gapMs + " w=" + bm.getWidth() + " h=" + bm.getHeight()
-                        + " q=" + napTvWebJpegQuality + " tier=" + napTvWebQualityTier);
+            if (!h264Handling) {
+                long compressStart = System.currentTimeMillis();
+                ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32768, bm.getWidth() * bm.getHeight() / 8));
+                bm.compress(Bitmap.CompressFormat.JPEG, Math.max(35, Math.min(94, napTvWebJpegQuality)), bos);
+                long compressMs = System.currentTimeMillis() - compressStart;
+                napTvWebCompressDiagSumMs += compressMs;
+                napTvWebCompressDiagCount++;
+                if (napTvWebCompressDiagCount >= 30) {
+                    appendNativeLog("BUILD2SK68 TV_WEB_COMPRESS_AVG n=" + napTvWebCompressDiagCount
+                            + " avgCompressMs=" + (napTvWebCompressDiagSumMs / napTvWebCompressDiagCount)
+                            + " w=" + bm.getWidth() + " h=" + bm.getHeight());
+                    napTvWebCompressDiagCount = 0; napTvWebCompressDiagSumMs = 0;
+                }
+                napTvWebJpeg = bos.toByteArray();
+                napTvWebSeq++;
+                napTvWebLastFrameMs = System.currentTimeMillis();
+                long gapMs = prevPublishMs == 0 ? 0 : (napTvWebLastFrameMs - prevPublishMs);
+                // BUILD2SK34: primy dukaz misto dalsiho hadani. Zaznamenej, kdyz
+                // samotna JPEG komprese trva podezrele dlouho NEBO kdyz mezi dvema
+                // po sobe jdoucimi snimky ubehla podezrele velka mezera - naznacuje
+                // zaseknuti NEKDE v ceste, i kdyz zadna vyjimka nenastala (Rene
+                // opakovane potvrdil, ze problem je jen na MEDIUM/HIGH a v logu
+                // dosud nebyla vidět zadna chyba - tohle by mohlo byt proste fyzicke
+                // zpomaleni pri vetsim rozliseni na starsim S8 hardwaru, ne logicka
+                // chyba, a takove zpomaleni by se v dosavadnim logu vubec neprojevilo).
+                if (compressMs > 200L || gapMs > 400L) {
+                    appendNativeLog("BUILD2SK34 TV_WEB_SLOW_FRAME mode=" + mode + " compressMs=" + compressMs
+                            + " gapMs=" + gapMs + " w=" + bm.getWidth() + " h=" + bm.getHeight()
+                            + " q=" + napTvWebJpegQuality + " tier=" + napTvWebQualityTier);
+                }
+            } else {
+                // H264 obsluhuje - JPEG preskoceno, ale seq/frameMs se pořád
+                // aktualizuji (jine casti kodu - napr. /status, stale-detekce -
+                // na nich zavisi at uz je aktivni JPEG nebo H264 cesta).
+                napTvWebSeq++;
+                napTvWebLastFrameMs = System.currentTimeMillis();
             }
             // BUILD2SK57: H.264 stream pro PS1 - beh JEN kdyz (a) aktualni
             // obrazovka je PS1 A (b) aspon jeden klient je pripojeny na
             // /stream.h264 (jinak by se zbytecne plytvalo CPU na enkodovani,
-            // ktere nikdo nesleduje). MJPEG cesta vyse zustava beze zmeny -
-            // beží dal at uz PS1 nebo ne, jako bezpecna zaloha/pro ostatni
-            // obrazovky.
-            if (!napTvWebH264ClientQueues.isEmpty()) {
-                try {
-                    String cu3 = napTvWebCurrentUrl; // BUILD2SK62: stejna oprava jako /status (SK61) - nikdy nevolat web.getUrl() mimo jiste UI vlakno
-                    if (cu3 != null && cu3.contains("/emu_ps1/")) {
-                        napTvWebH264FeedFrame(bm);
-                    }
-                } catch (Throwable ignored) {}
+            // ktere nikdo nesleduje).
+            if (h264Handling) {
+                try { napTvWebH264FeedFrame(bm); } catch (Throwable ignored) {}
             }
             // BUILD2SK67: overeni podezreni - produkuje PS1 emulator (WASM
             // jadro renderujici do <canvas> uvnitr WebView) skutecne NOVY

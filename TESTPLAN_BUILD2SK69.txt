@@ -1,0 +1,45 @@
+BUILD2SK69 - JPEG KOMPRESE UZ SE PRO PS1+H264 VUBEC NEDELA
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+VYSVETLENI (na tvou otazku) A OPRAVA V JEDNOM
+Mel jsi pravdu se svym zmatkem - a byl to dobry postrehl. Kdyz jsem
+pridaval H264 (SK57), NIKDY jsem nevypnul puvodni JPEG kompresi -
+zamerne jsem ji nechal bezet DAL na kazdem snimku jako "bezpecnou
+zalohu pro ostatni obrazovky", ale tohle jsem drive jasne nezduraznil.
+Dusledek: PS1 snimek se pri aktivnim H264 zpracovaval DVAKRAT - jednou
+zbytecna JPEG komprese (nikdo ji nesledoval), jednou H264. To byla
+CISTA ZBYTECNA PRACE na kazdem jednom snimku - a moznou vysvetleni
+velke casti tech chybejicich ~70ms, co jsme hledali.
+
+OPRAVA
+Ted: pokud je aktualni obrazovka PS1 A alespon jeden H264 klient je
+pripojeny, JPEG komprese se PRESKOCI UPLNE - zadna zbytecna prace.
+Jakmile nikdo H264 nesleduje (nebo je aktivni jina obrazovka), JPEG/
+MJPEG cesta se prirozene vrati k puvodnimu chovani - zadna zmena pro
+Atari/Segu/DJ pult/MP3/domovskou stranku, tam JPEG/MJPEG zustava
+jedinou cestou jako driv.
+
+CO OCEKAVAT
+Tohle by melo FPS zvednout, protoze mizi cela jedna zbytecna faze
+zpracovani na kazdem snimku PS1. Diagnostika z minula (PIXELCOPY_AVG,
+COMPRESS_AVG) zustava zapnuta - COMPRESS_AVG uz proste prestane
+logovat behem H264 (protoze se JPEG neprovadi), ale PIXELCOPY_AVG
+porad bezi a poví nam, jestli PixelCopy samotne je driv/po teto
+oprave jeste podezrelé pomale.
+
+MERENI (pred odeslanim)
+- { } 1733/1733, [ ] 302/302 - vyvazene.
+- napTvWebPublishBitmap definovana presne jednou, h264Handling
+  spravne propojene (deklarace + 2 pouziti).
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, kazda uroven (LOW/MEDIUM/HIGH), landscape - sleduj FPS.
+3) Posli mi radky "TV_WEB_PIXELCOPY_AVG" z /log pro kazdou uroven -
+   uz vim, ze H264 vlastni zpracovani je rychle (~5ms), takze pokud
+   FPS porad nestaci, PixelCopy latence je ted hlavni podezrely, na
+   ktereho se zamerime dal.
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56 (pred celou H264 praci).
