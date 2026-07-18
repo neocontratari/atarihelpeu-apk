@@ -368,4 +368,39 @@ bodu 1/2 vyse. Az prijde dalsi log: zkontrolovat PS1_PREVIEW_AVG (avgMs -
 stiha se 40ms interval, nebo je prirozene pomalejsi?) a subjektivni dojem
 z PS1 plynulosti na TV.
 
+================================================================================
+DODATEK 2026-07-18 (jeste pozdeji) - BUILD2SK86 - REGRESE ZE SK85 A REVERT
+================================================================================
+SK85 v realnem testu SELHALO - presny opak zameru. Rene nahlasil razantni
+propad fps na PS1 (vsechny 3 urovne, subjektivne ~13fps) a Sega HIGH taky
+dolu (~30fps, min zavazne). Log to potvrdil cisly: PS1 PixelCopy latence
+a H264 draw+drain vzrostly 3-4x oproti SK80 zakladu (napr. H264 draw+drain
+PS1 HIGH: 52.3ms, drive - cisty SK80 PS1 log - 11.9ms prumer).
+
+PRICINA: nova PS1_PREVIEW_AVG diagnostika (ze SK85) primo ukazala, ze
+JEDNO volani ps1FramePreviewB64() trva prumerne 49.7ms - VIC nez 40ms JS
+interval, na ktery bylo nastaveno. Preview smycka tedy bezela prakticky
+nepretrzite a soutezila o CPU s celou TV-cast H264 cestou - to stahlo
+FPS na VSECH obrazovkach/urovnich, ne jen na PS1 samotnem.
+
+REVERT (SK86): JS interval vracen na osvedcenych 80ms. Bitmapa-reuse
+optimalizace ze SK85 ZUSTAVA (cisty prinos, jen sama nestacila). Zadna
+dalsi zmena.
+
+PONAUCENI (dulezite pro dalsi chat): rychly/"bezpecny" pokus o zrychleni
+PS1 preview (jen zmenit cislo intervalu) NEFUNGUJE - 80ms je realny strop
+teto KONKRETNI metody (JPEG polling) na testovanem hardware. Skutecne
+zlepseni PS1 plynulosti vyzaduje VETSI zmenu - postavit TextureView pro
+PS1 (jako uz ma Sega, viz komentar u ps1FramePreviewB64 "SA2C"), ktera by
+JPEG kompresi odstranila uplne. Tenhle navrh uz byl dan Renovi k potvrzeni
+drive (viz DODATEK vyse) a POSLE SK86 REVERTU JE JESTE DULEZITEJSI - bez
+teto vetsi zmeny se PS1 preview rychlost dal bezpecne zvysit neda.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: pockat, az Rene otestuje SK86
+(ocekavany navrat k SK80-podobnym fps cislum na vsech obrazovkach). Pak
+se zeptat, jestli chce jit do vetsi PS1 TextureView zmeny (jediny znamy
+zpusob, jak PS1 preview skutecne zrychlit bez vedlejsich ucinku na
+TV-cast).
+
+
 

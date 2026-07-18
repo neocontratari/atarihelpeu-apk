@@ -480,9 +480,9 @@ function ensurePs1ScreenAndPoll(){
       mon.appendChild(im);window.__napPs1Screen=im;
       window.__napPs1FramePoll=setInterval(function(){
         try{var b64=window.AHPS1.ps1FramePreviewB64();
-          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_SCREEN_PREVIEW_ON realne snimky z jadra, cilene ~25fps JPEG90 (BUILD2SK85) - skutecna dosazena rychlost viz PS1_PREVIEW_AVG v /log');}}
+          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_SCREEN_PREVIEW_ON realne snimky z jadra, JPEG90 preview (BUILD2SK86: vraceno na 80ms - 40ms z SK85 zmereno jako PRILIS agresivni, jedno volani stoji ~50ms samo o sobe, viz PS1_PREVIEW_AVG v /log, souteziv o CPU s TV-cast H264 a stahovalo fps na VSECH obrazovkach)');}}
         }catch(fe){}
-      },40);
+      },80);
     }
   }
   if(!window.__napPs1Poll){window.__napPs1Poll=setInterval(function(){

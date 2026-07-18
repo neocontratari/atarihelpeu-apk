@@ -2570,6 +2570,18 @@ public class MainActivity extends Activity {
         // pres WebView bridge, poradne odstraneni by znamenalo postavit
         // TextureView cestu jako u Segy - VETSI zmena, zatim NEUDELANA, viz
         // predavaci poznamka).
+        // BUILD2SK86: 40ms bylo PRILIS agresivni - zmereny realny log ukazal
+        // avgMs~50 (min 33, max 171) PRO JEDNO volani teto funkce, tedy VIC
+        // nez samotny 40ms interval. Vysledek: preview smycka bezela prakticky
+        // nepretrzite (zadny prostoj mezi volanimi), coz souteziv o CPU
+        // stahlo CELOU TV-cast H264 cestu (PixelCopy latence i H264 draw+drain
+        // vzrostly 3-4x oproti SK80 zakladu, VSECHNY tri kvalitni urovne PS1
+        // razantne pomalejsi - presne to, co Rene nahlasil). JS interval
+        // vraceny zpet na 80ms (viz emu_ps1/index.html) - bitmapa reuse (nize)
+        // zustava, je to porad cisty prinos, jen sama o sobe nestacila na to,
+        // aby byl 40ms bezpecny. Skutecne zrychleni PS1 preview beze skody na
+        // TV-castu by vyzadovalo odstranit JPEG kompresi uplne (TextureView
+        // pristup jako u Segy) - viz predavaci poznamka, ceka na potvrzeni.
         private int[] ps1PrevBuf = new int[1024 * 512];
         private Bitmap ps1PreviewSrcBmp;
         private Bitmap ps1PreviewScaledBmp;

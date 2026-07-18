@@ -1,0 +1,62 @@
+BUILD2SK86 - REVERT REGRESE ZE SK85
+================================================================================
+CO SE STALO
+Rene nahlasil po SK85: PS1 na VSECH urovnich (LOW/MEDIUM/HIGH) razantne
+pomalejsi (~13fps subjektivne), Sega na HIGH ~30fps. Zmereno z jeho logu
+(2026-07-18 19:56-20:04), presne cislo za cislem:
+
+               avgTickGapMs  ~fps   PixelCopy   H264 draw+drain
+PS1  LOW        43.3ms      23.1fps   40.2ms        33.5ms
+PS1  MEDIUM     59.2ms      16.9fps   57.0ms        52.8ms
+PS1  HIGH       55.1ms      18.2fps   59.2ms        52.3ms
+SEGA LOW        26.0ms      38.5fps   13.8ms         6.0ms
+SEGA HIGH       31.7ms      31.5fps   17.6ms         6.9ms
+(pro srovnani, SK80 zaklad - CISTE PS1 log z minula: PixelCopy avg 18.6ms,
+H264 draw avg 11.9ms - tedy PS1 bylo 3-4x rychlejsi PRED SK85.)
+
+PRICINA (potvrzeno primo z dat, ne dohad)
+BUILD2SK85 pridalo diagnostiku PS1_PREVIEW_AVG - a ta ukazala, ze JEDNO
+volani ps1FramePreviewB64() trva v prumeru 49.7ms (min 33, max 171). JS
+interval byl ale nastaveny na 40ms - tedy KRATSI, nez samo volani trva!
+Vysledek: preview smycka bezela prakticky nepretrzite, bez prostoje mezi
+volanimi, a soutezila o CPU s celou TV-cast H264 cestou - to vysvetluje,
+proc byly PixelCopy latence i H264 draw+drain 3-4x vyssi PRAVE u PS1 (kde
+tahle smycka bezi), zatimco Sega (kde ps1FramePreviewB64 vubec nebezi,
+jina cesta pres NativeInPlaceView) byla citelne min postizena.
+
+Toto je PRESNE scenar, ktery uz TESTPLAN_SK85.txt predem popisoval jako
+kill-switch podminku ("kdyby 40ms bylo na S8 moc rychle, PS1_PREVIEW_AVG
+by ukazal avgMs blizko/nad 40") - jen misto "blizko" to bylo "nad", a
+dusledek byl vetsi, nez jsem cekal (ovlivnilo to CELOU TV-cast cestu,
+ne jen PS1 preview samotny).
+
+CO SE ZMENILO
+- emu_ps1/index.html: JS interval vracen ze 40ms zpet na 80ms (osvedcena,
+  SK80-testovana hodnota).
+- MainActivity.java: bitmapa-reuse zmena ze SK85 ZUSTAVA (to byla cista
+  optimalizace bez negativniho efektu, jen sama o sobe nestacila).
+- Zadna dalsi zmena.
+
+CO TO ZNAMENA PRO CIL "PS1 plynulejsi"
+Tenhle bezpecny pokus (jen zrychlit existujici JPEG-polling smycku) NEVYSEL
+- 80ms je strop, ktery tahle KONKRETNI metoda (nativni grab + bitmapa +
+  JPEG komprese, ~50ms cisteho vykonu na snimek) nejde bezpecne prekonat
+  na tomhle hardware. Skutecne zrychleni by vyzadovalo cely JPEG krok
+  odstranit (TextureView misto JPEG pollingu, jako uz ma Sega) - vetsi
+  zmena, stale ceka na Renovo potvrzeni z minula.
+
+RIZIKO TOHOTO REVERTU
+Minimalni - vraceni jednoho cisla na jiz DRIV overenou hodnotu (80),
+zbytek nezmeneny. Overeno: {}/[] v MainActivity.java sedi (1796/1796,
+305/305), {} v emu_ps1/index.html sedi (309/309), JS syntax OK (node
+--check), zadny bare-import problem (rucne prosla cela zmena).
+
+JAK OTESTOVAT
+1) PS1 na LOW/MEDIUM/HIGH - fps by se melo vratit do okoli puvodnich
+   hodnot (LOW ~50, MEDIUM ~45, HIGH ~40, podle Reneho vlastniho SK80
+   hlaseni).
+2) Sega na HIGH - taky by se melo vratit blizko puvodnim cislum (melo by
+   byt min ovlivnene, ale pro jistotu zkontrolovat).
+3) V /log zkontrolovat PS1_PREVIEW_AVG znovu - avgMs by mel byt STEJNY
+   jako v poslednim logu (~50ms), protoze samotna prace se nezmenila,
+   jen frekvence volani.
