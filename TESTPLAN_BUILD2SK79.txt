@@ -1,0 +1,51 @@
+BUILD2SK79 - PS1 LANDSCAPE: 16:9 MISTO ROZTAZENI NA CELOU SIRKU TELEFONU
+================================================================================
+Zmeneny soubor: app/src/main/assets/emu_ps1/index.html
+(POZOR: tentokrat NE MainActivity.java - jiny soubor!)
+
+CO JSEM NASEL
+Tvuj postreh o 4:3 vs 16:9 me navedl presne tam, kam bylo treba.
+Zkontroloval jsem zachytavana rozliseni v logu (bmW=1384 bmH=672,
+pomer stran ~2.06:1) - a zjistil jsem dve veci:
+
+1) Muj SK78 zasah (zvyseni cilove urovne na 1920) NEMEL na tomhle
+   telefonu zadny vizualni efekt - kod ma "Math.min(1.0f, ...)" ktery
+   NIKDY neumoznuje zvetseni nad prirozene rozliseni zdroje. Pokud
+   telefon prirozene renderuje na 1384px sirky v landscape, appka to
+   tak zachyti bez ohledu na to, jestli je cilova hodnota 1680 nebo
+   1920 - obe uz jsou nad prirozenym rozlisenim, takze se nic
+   nezvetsuje. (Zvyseny bitrate ale porad plati a pomaha detailum.)
+
+2) TOHLE je ta skutecna prekvapiva cast: v landscape rezimu PS1
+   stranky je "#psMonitor{width:100%;height:100%}" v ramci stage,
+   ktera je "100vw x 100vh" - herni obraz se tedy roztahuje na
+   CELOU sirku telefonu (~2.06:1 na tomhle zarizeni), NE na 16:9.
+   Puvodni hra je 4:3 - roztazena na 2.06:1 misto 16:9 je VYRAZNE
+   vic zkreslena, nez jsi cekal. Tohle vysvetluje pozorovanou
+   "nedokonalost" grafiky vic nez komprese/rozliseni.
+
+OPRAVA
+#psMonitor (kontejner, ve kterem se hra zobrazuje) je ted omezeny na
+presny pomer 16:9 a VYCENTROVANY v ramci sirsi obrazovky telefonu -
+misto roztazeni na celou (sirsi) sirku. Vysledek: po stranach
+zustanou cerne pruhy (pillarboxing), ale samotna hra bude mit spravny
+16:9 pomer, ne roztazeny na cokoli, co ma telefon za tvar displeje.
+
+Ovladaci prvky (padLeft/padRight/tlacitka) jsou pozicovane relativne
+k CELE OBRAZOVCE (stage), ne k psMonitor - takze zustavaji beze zmeny,
+porad pokryvaji okraje obrazovky jako doteď.
+
+MERENI (pred odeslanim)
+- CSS zavorky v souboru: 77/77 - vyvazene.
+
+JAK OTESTOVAT
+1) Nahrad emu_ps1/index.html, commit, Action, novy APK.
+2) Otevri PS1 primo na telefonu (ne jen TV cast) v landscape - hra by
+   ted mela byt vycentrovana s cernymi pruhy po stranach, ne
+   roztazena pres celou sirku.
+3) Zkontroluj i TV cast - stejny efekt by mel byt videt tam.
+4) Over, ze ovladani (virtualni tlacitka) porad funguje spravne -
+   zmenil se jen VIZUALNI vzhled hry, ne umisteni dotykovych zon.
+
+KILL-SWITCH: vratit emu_ps1/index.html na predchozi verzi (zmena je
+izolovana v jednom radku CSS, snadno dohledatelna v historii).
