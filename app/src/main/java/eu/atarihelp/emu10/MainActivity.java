@@ -350,8 +350,35 @@ public class MainActivity extends Activity {
     private volatile String napTvWebPendingScreenUrl = null;
     private volatile long napTvWebYoutubeInAppUntilMs = 0;
     private volatile long napTvWebPeriodicLogMs = 0;
+    // BUILD2SK70: mereni celeho tick-to-tick cyklu
+    private long napTvWebTickLastStartMs = 0;
+    private long napTvWebTickDiagSumMs = 0;
+    private int napTvWebTickDiagCount = 0;
     private final Runnable napTvWebFrameTick = new Runnable() {
         @Override public void run() {
+            // BUILD2SK70: PixelCopy (~25ms) + H264 zpracovani (~5ms) dohromady
+            // nevysvetluji pozorovany cca 65-77ms interval mezi snimky - musi
+            // byt jeste dalsi ~35-45ms nekde, co jsem dosud nemeril. Tohle meri
+            // PRIMO cely cyklus tick-to-tick (od zacatku jednoho behu run() po
+            // zacatek dalsiho) - konecne uvidim, jestli je to planovani/cekani,
+            // nebo dalsi neznama prace uvnitr teto metody.
+            long tickNow = System.currentTimeMillis();
+            if (napTvWebTickLastStartMs > 0) {
+                long tickGap = tickNow - napTvWebTickLastStartMs;
+                try {
+                    if (napTvWebCurrentUrl != null && napTvWebCurrentUrl.contains("/emu_ps1/") && !napTvWebH264ClientQueues.isEmpty()) {
+                        napTvWebTickDiagSumMs += tickGap;
+                        napTvWebTickDiagCount++;
+                        if (napTvWebTickDiagCount >= 30) {
+                            appendNativeLog("BUILD2SK70 TV_WEB_TICK_AVG n=" + napTvWebTickDiagCount
+                                    + " avgTickGapMs=" + (napTvWebTickDiagSumMs / napTvWebTickDiagCount)
+                                    + " targetDelayMs=" + napTvWebFrameDelayMs);
+                            napTvWebTickDiagCount = 0; napTvWebTickDiagSumMs = 0;
+                        }
+                    }
+                } catch (Throwable ignored) {}
+            }
+            napTvWebTickLastStartMs = tickNow;
             long extraDelay = 0;
             try {
                 // BUILD2SK21: behem vedome prestavby VirtualDisplay (zmena urovne

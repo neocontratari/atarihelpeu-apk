@@ -1,0 +1,39 @@
+BUILD2SK70 - HLEDAME ZBYVAJICICH ~35-45MS PRIMYM MERENIM CELEHO CYKLU
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+STAV PO TVEM POSLEDNIM TESTU
+Dulezita data: PixelCopy latence je KONZISTENTNE ~20-30ms po CELOU
+dobu testu - stejne na LOW jako na HIGH, zadny rozdil podle rozliseni.
+COMPRESS_AVG se v logu vubec neobjevilo - to potvrzuje, ze SK69
+oprava funguje (JPEG se pro PS1+H264 skutecne preskakuje).
+
+Soucet: PixelCopy (~25ms) + H264 zpracovani (~5ms, z minule) = ~30ms.
+Ale pozorovany interval mezi snimky pri 13-15fps je ~65-77ms. Chybi
+~35-45ms, ktere jsem jeste NIKDY presne nezmeril - vim jen, ze to
+NENI v PixelCopy ani v me H264 ceste ani v JPEG (ten uz nebezi).
+
+CO TENHLE BUILD MERI
+Primo cely cyklus "tick-to-tick" - od zacatku jednoho behu hlavni
+zachytavaci smycky po zacatek toho dalsiho. Tohle zahrnuje UPLNE
+VSECHNO (planovani, cekani, PixelCopy, H264, cokoli dalsiho v teto
+metode, co jsem dosud nemeril) - takze porovnanim s tim, co uz vim
+(PixelCopy+H264 ~30ms), bych mel konecne videt, jestli je to (a)
+zpozdeni/planovani samo, nebo (b) neco dalsiho uvnitr smycky, co jsem
+zatim nezachytil zadnym z predchozich mereni.
+
+MERENI (pred odeslanim)
+- { } 1738/1738, [ ] 302/302 - vyvazene.
+- napTvWebTickLastStartMs spravne propojeno (4 vyskyty: deklarace,
+  cteni pro vypocet gap, kontrola > 0, zapis na konci).
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, jakakoli uroven, landscape - nech bezet aspon minutu.
+3) Posli mi radky "TV_WEB_TICK_AVG" z /log - "avgTickGapMs" porovname
+   s "targetDelayMs" (co appka CHCE) a s tim, co uz vime o PixelCopy+
+   H264 (~30ms) - rozdil mezi temito cisly nam ukaze presne, kde se
+   ten zbyvajici cas ztraci.
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56 (pred celou H264 praci).
