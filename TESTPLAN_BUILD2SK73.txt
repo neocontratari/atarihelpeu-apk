@@ -1,0 +1,45 @@
+BUILD2SK73 - DRUHA POLOVINA STEJNE CHYBY, TENTOKRAT NA STRANE PROHLIZECE
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+CO JSEM NASEL
+Overil jsem si dokumentaci JMuxer.js primo: "fps... bude pouzito pro
+vypocet delky trvani snimku, POKUD neni k dispozici skutecna delka
+trvani s poskytnutymi daty." Ja jsem zadnou "duration" nikdy neposilal
+- takze JMuxer VUBEC nepocital se skutecnym casovanim, jen slepe
+pouzival muj natvrdo nastaveny "fps:30" a kazdy snimek povazoval za
+presne 33ms dlouhy, bez ohledu na to, jak rychle doopravdy prichazely
+(ted 50+ za sekundu = ~20ms mezi nimi).
+
+Tohle je PRESNE stejna chyba jako SK72 (server rikal prehravaci
+"kazdy snimek je 33ms po tom predchozim" bez ohledu na realitu), jen
+na DRUHE STRANE - na klientovi. Opravil jsem server (SK72), ale
+klientska strana mela svou VLASTNI, nezavislou verzi stejneho
+problemu, kterou jsem tim neresil.
+
+OPRAVA
+Misto spoleham na pevny odhad "fps" ted JS primo MERI skutecny cas
+mezi kazdymi dvema prijatymi kousky dat (Date.now() rozdil) a posila
+tenhle SKUTECNY cas jako "duration" primo do jm.feed(). JMuxer uz pak
+nemusi nic odhadovat - dostava presnou informaci, jak dlouho kazdy
+snimek doopravdy trval. Pojistky: minimalni 4ms, maximalni 200ms
+(kdyby doslo k vypadku/pauze, aby jeden extremni skok nezpusobil
+jeste horsi chovani), a pri kazdem novem pripojeni streamu se
+pocitadlo resetuje, aby prvni snimek po pripojeni nemel umele
+"nafouklou" hodnotu ze stareho spojeni.
+
+MERENI (pred odeslanim)
+- { } 1741/1741, [ ] 302/302 - vyvazene.
+- Klientsky JS overen Node.js syntax checkerem: STAVI SE SPRAVNE.
+- h264LastFeedMs: 3 vyskyty (deklarace, vypocet+aktualizace v pump(),
+  reset pri novem pripojeni) - spravne propojeno.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, kazda uroven, landscape - hlavne se dukladne podivej na
+   PLYNULOST obrazu (ne jen FPS cislo).
+3) Tohle by konecne mela byt ta oprava, co sekani odstrani - obe
+   poloviny stejneho problemu (server i klient) jsou ted opravene.
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56 (pred celou H264 praci).

@@ -1907,7 +1907,7 @@ public class MainActivity extends Activity {
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button'>AUDIO OK</button>"
                 + "<div id='q'><button type='button' data-t='0'>LOW</button><button type='button' data-t='1'>MED</button><button type='button' data-t='2'>HIGH</button><button type='button' id='fs'>⛶ FULL</button></div>"
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
-                + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false;" // BUILD2SK57
+                + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST [SK60] '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function clog(m){try{fetch('/clientlog?m='+encodeURIComponent(m));}catch(e){}}" // BUILD2SK59: diagnostika z prohlizece zpet do /log - bez tohohle zadna viditelnost, kdyz H264 cesta selze drive, nez se server vubec dozvi
                 + "clog('PAGE LOADED build=SK60 ts='+Date.now());" // BUILD2SK60: OKAMZITY majak hned pri behu skriptu - pokud tohle v /log NENI, novy JS se vubec nespustil (stara zalozka/APK), a je zbytecne hledat chybu dal v H264 toku
@@ -1920,13 +1920,13 @@ public class MainActivity extends Activity {
                 + "sc.onload=function(){clog('JMuxer loaded ok');h264Loading=false;startH264();};"
                 + "sc.onerror=function(){clog('JMuxer load FAILED '+url);h264Loading=false;startH264();};"
                 + "document.head.appendChild(sc);return;}"
-                + "clog('JMuxer ready, starting');v.style.display='none';h264v.style.display='';h264Active=true;"
-                + "try{jm=new JMuxer({node:'h264v',mode:'video',flushingTime:0,fps:30,debug:false,onError:function(e){clog('jmuxer onError '+e);}});}"
+                + "clog('JMuxer ready, starting');v.style.display='none';h264v.style.display='';h264Active=true;h264LastFeedMs=0;"
+                + "try{jm=new JMuxer({node:'h264v',mode:'video',flushingTime:0,fps:60,debug:false,onError:function(e){clog('jmuxer onError '+e);}});}"
                 + "catch(e){clog('JMuxer ctor threw '+e);h264Active=false;v.style.display='';h264v.style.display='none';return;}"
                 + "clog('fetching stream.h264');"
                 + "fetch('/stream.h264?'+Date.now()).then(function(r){clog('fetch status '+r.status);h264Reader=r.body.getReader();var first=true;"
                 + "function pump(){if(!h264Active)return;h264Reader.read().then(function(res){if(res.done||!h264Active){clog('stream ended, resetting');h264Active=false;h264Reader=null;h264v.style.display='none';v.style.display='';return;}"
-                + "if(first){first=false;clog('first chunk bytes='+res.value.length);}try{jm.feed({video:res.value});}catch(e){clog('feed err '+e);}pump();"
+                + "var nowMs=Date.now(),dur=h264LastFeedMs?Math.max(4,Math.min(200,nowMs-h264LastFeedMs)):20;h264LastFeedMs=nowMs;if(first){first=false;clog('first chunk bytes='+res.value.length);}try{jm.feed({video:res.value,duration:dur});}catch(e){clog('feed err '+e);}pump();"
                 + "}).catch(function(e){clog('read err '+e);});}pump();"
                 + "}).catch(function(e){clog('fetch FAILED '+e);h264Active=false;v.style.display='';h264v.style.display='none';});}" // BUILD2SK57+SK59: syrovy H.264 (Annex-B) ze serveru -> JMuxer.js remuxuje na fMP4 primo v prohlizeci -> MSE -> <video>
                 + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
