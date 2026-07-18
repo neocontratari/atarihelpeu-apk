@@ -1,0 +1,54 @@
+BUILD2SK64 - H264 PREVOD/ENKODOVANI NA SAMOSTATNE VLAKNO (FPS vykon)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+CO JSEM V LOGU NASEL
+Zadny "SLOW_FRAME" ani opakovane "PIXELCOPY_SLOW" zaznamy - samotne
+zachytavani snimku je v poradku. Takze zpomaleni na 6-9fps neni
+zachytavani - je to nekde MEZI zachycenim a odeslanim.
+
+PRICINA
+Moje YUV konverze (prevod barevneho obrazu na format, ktery H.264
+enkoder potrebuje) je RUCNE PSANY JAVA KOD, ktery prochazi UPLNE
+KAZDY PIXEL obrazu jednotlive. Pro landscape rozliseni (1384x672 =
+pres 900 000 pixelu) tohle realisticky muze trvat desitky milisekund
+- a tenhle kod bezel SYNCHRONNE primo v hlavni zachytavaci smycce.
+Jinymi slovy: kazdy H.264 snimek DOCASNE ZASTAVIL cely zachytavaci
+cyklus, dokud se neprevedl a neposlal do enkoderu - coz pak zpomalilo
+UPLNE VSECHNO (i dalsi zachytavani), ne jen H.264 vystup.
+
+OPRAVA
+YUV prevod + enkodovani se ted deje na SAMOSTATNEM pracovnim vlakne,
+ne primo v zachytavaci smycce. Hlavni smycka ted jen RYCHLE zkopiruje
+bitmapu (nativni operace, rychla) a preda ji pracovnimu vlaknu -
+zachytavani uz na nic neceka. Pokud pracovni vlakno nestiha drzet
+krok, proste se pouzije nejnovejsi snimek a ten mezitim nezpracovany
+se zahodi - presne stejny princip, jaky uz MJPEG cesta pouziva (radeji
+preskocit stary snimek nez cekat na nej).
+
+POCTIVE - CO TOHLE JESTE NEMUSI STACIT
+Tohle by melo VYRAZNE pomoct, protoze uz zachytavani neni blokovane.
+Ale pokud samotna YUV konverze + enkodovani porad trva vic nez cca
+33ms na snimek (cil pro 30fps), pracovni vlakno bude porad zahazovat
+snimky (fps na H.264 vystupu bude nizsi nez 30, i kdyz zachytavani
+samotne pobezi rychle). Pokud po tomhle buildu FPS porad nestaci,
+dalsi krok by byl zrychlit samotnou YUV konverzi (napr. rozdelit
+praci mezi vice vlaken najednou), ne jen presunout, kde bezi.
+
+MERENI (pred odeslanim)
+- { } 1720/1720, [ ] 299/299 - vyvazene.
+- Kazda nova/prejmenovana metoda (napTvWebH264FeedFrame,
+  napTvWebH264FeedFrameInternal, napTvWebH264EnsureWorker) definovana
+  presne jednou.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, HIGH, landscape (na sirku) - sleduj FPS pocitadlo. Je to uz
+   blizko 30, nebo aspon vyrazne lepsi nez predchozich 6-9fps?
+3) Zkus i LOW a MEDIUM na sirku - mely by byt jeste rychlejsi (mensi
+   rozliseni = mene prace na snimek).
+4) Zmena orientace/kvality behem hrani by porad mela fungovat (kratke
+   preruseni, pak obnoveni) - to uz je z SK63.
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56 (pred celou H264 praci).

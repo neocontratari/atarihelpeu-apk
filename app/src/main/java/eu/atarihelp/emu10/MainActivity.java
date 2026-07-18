@@ -282,6 +282,12 @@ public class MainActivity extends Activity {
     // prirozene, a jeho JS (SK63 oprava) se kvuli tomu spravne resetuje
     // a pri dalsim pollFps cyklu se pripoji ZNOVU s cerstvym JMuxerem.
     private volatile long napTvWebH264Generation = 0;
+    // BUILD2SK64: predavaci mechanismus pro pracovni vlakno (viz
+    // napTvWebH264FeedFrame vs napTvWebH264FeedFrameInternal)
+    private final Object napTvWebH264PendingLock = new Object();
+    private Bitmap napTvWebH264PendingBitmap = null;
+    private volatile Thread napTvWebH264WorkerThread = null;
+    private volatile boolean napTvWebH264WorkerRunning = false;
     // kazdy pripojeny /stream.h264 klient ma vlastni frontu - na rozdil od
     // MJPEG (kde stačí poslat jen NEJNOVEJSI snimek) tady KAZDA jednotka
     // (NAL) musi dorazit VSEM klientum V PORADI, jinak dekoder dostane
@@ -733,7 +739,57 @@ public class MainActivity extends Activity {
         napTvWebH264W = 0; napTvWebH264H = 0;
     }
 
+    // BUILD2SK64: PUVODNI napTvWebH264FeedFrame delala YUV prevod +
+    // enkodovani SYNCHRONNE, primo volane z hlavni zachytavaci smycky
+    // (UI vlakno). Rucne psana YUV konverze je cisty Java kod bez
+    // hardwaroveho zrychleni - u landscape rozliseni (1384x672 = pres
+    // 900 000 pixelu) to realisticky muze trvat desitky milisekund,
+    // COZ PRIMO BLOKOVALO dalsi zachytavaci cyklus. Ted: hlavni smycka
+    // jen ZKOPIRUJE bitmapu (rychla nativni operace) a preda ji
+    // samostatnemu pracovnimu vlaknu - YUV+enkodovani uz nikdy
+    // neblokuje zachytavani. Pokud pracovni vlakno nestiha, proste se
+    // novejsi snimek prepise pres jeste nezpracovany - stejny princip
+    // "zahodit stare, ne cekat", jaky uz MJPEG cesta pouziva.
     private void napTvWebH264FeedFrame(Bitmap bm) {
+        if (bm == null) return;
+        napTvWebH264EnsureWorker();
+        Bitmap copy;
+        try {
+            Bitmap.Config cfg = bm.getConfig() != null ? bm.getConfig() : Bitmap.Config.ARGB_8888;
+            copy = bm.copy(cfg, false);
+        } catch (Throwable t) { return; }
+        Bitmap old;
+        synchronized (napTvWebH264PendingLock) {
+            old = napTvWebH264PendingBitmap;
+            napTvWebH264PendingBitmap = copy;
+        }
+        if (old != null) { try { old.recycle(); } catch (Throwable ignored) {} }
+    }
+
+    private void napTvWebH264EnsureWorker() {
+        if (napTvWebH264WorkerThread != null && napTvWebH264WorkerThread.isAlive()) return;
+        napTvWebH264WorkerRunning = true;
+        napTvWebH264WorkerThread = new Thread(() -> {
+            while (napTvWebH264WorkerRunning) {
+                Bitmap bm;
+                synchronized (napTvWebH264PendingLock) {
+                    bm = napTvWebH264PendingBitmap;
+                    napTvWebH264PendingBitmap = null;
+                }
+                if (bm == null) {
+                    try { Thread.sleep(4); } catch (InterruptedException ie) { break; }
+                    continue;
+                }
+                try { napTvWebH264FeedFrameInternal(bm); }
+                catch (Throwable t) { appendNativeLog("BUILD2SK64 TV_WEB_H264_WORKER_ERR " + safeMsg(t)); }
+                finally { try { bm.recycle(); } catch (Throwable ignored) {} }
+            }
+        }, "nap-h264-worker");
+        napTvWebH264WorkerThread.setDaemon(true);
+        napTvWebH264WorkerThread.start();
+    }
+
+    private void napTvWebH264FeedFrameInternal(Bitmap bm) {
         int w = bm.getWidth() - (bm.getWidth() % 2);
         int h = bm.getHeight() - (bm.getHeight() % 2);
         if (w <= 0 || h <= 0) return;
