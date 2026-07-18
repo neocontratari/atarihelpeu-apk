@@ -324,10 +324,17 @@ public class MainActivity extends Activity {
         // promenlivych hodnot podle vetve: LOW=20fps(50ms), MEDIUM=25fps(40ms),
         // HIGH=30fps(33ms). Rozliseni a kvalita% NEDOTCENY, meni se jen treti
         // sloupec (frame delay) ve vsech ctyrech vetvich.
+        // BUILD2SK78: landscape (hqLiteScreen/ostatni radky) mela driv nizsi
+        // cilove rozliseni nez portret VE VSECH urovnich - Rene to potvrdil
+        // vizualne ("landscape nesaha portretu"), a cisla to primo dokazuji
+        // (HIGH portret 1920 vs landscape 1680, stejny vzorec u LOW/MEDIUM).
+        // Tohle nejspis vzniklo driv kvuli vykonu - po Surface prepracovani
+        // (SK75, zadna Java YUV smycka) uz je vykonova rezerva vetsi, takze
+        // landscape rozliseni ted odpovida portretu ve vsech trech urovnich.
         if (!landscape)         table = new int[][]{{1120,72,50},{1360,84,40},{1920,94,33}};
         else if (djScreen)      table = new int[][]{{1120,72,50},{1360,84,40},{1920,94,33}};
-        else if (hqLiteScreen)  table = new int[][]{{860,62,50}, {1120,76,40},{1680,90,33}};
-        else                    table = new int[][]{{760,54,50}, {1000,70,40},{1440,86,33}};
+        else if (hqLiteScreen)  table = new int[][]{{1120,62,50},{1360,76,40},{1920,90,33}};
+        else                    table = new int[][]{{1120,54,50},{1360,70,40},{1920,86,33}};
         return table[t];
     }
     private volatile String napTvWebVideoProfile = "AUTO";

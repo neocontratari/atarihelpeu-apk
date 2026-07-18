@@ -1,0 +1,54 @@
+BUILD2SK78 - LANDSCAPE ROZLISENI SROVNANO NA UROVEN PORTRETU
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+Zaklad: BUILD2SK77
+
+NEJDRIV - MAIN PROFIL FUNGUJE SPRAVNE
+Zkontroloval jsem tvuj log - nula "FEED_ERR", "ENCODER_FAIL" nebo
+jinych znamek problemu s B-snimky. Main profil (SK77) bezi cistě,
+zadne zamrzani/poskozeni. Zlepseni kvality, co jsi videl, je skutecne
+a bezpecne.
+
+CO JSEM NASEL K "LANDSCAPE NESAHA PORTRETU"
+Bylo to ve skutecnosti presne meritelne, ne jen dojem: tabulka
+kvality mela landscape nastaveny na NIZSI cilove rozliseni nez
+portret VE VSECH TREHCH UROVNICH:
+- HIGH: portret 1920, landscape 1680
+- MEDIUM: portret 1360, landscape 1120
+- LOW: portret 1120, landscape 860
+
+Landscape byl proste doslova zaslany na mene pixelu - odsud ten
+rozdil, ktery jsi videl. Tohle nejspis vzniklo davno kvuli vykonovym
+obavam, driv nez jsme mely Surface-based enkodovani (SK75).
+
+OPRAVA
+Landscape rozliseni ted odpovida portretu ve vsech trech urovnich
+(1120/1360/1920 pro LOW/MEDIUM/HIGH, stejne jako portret).
+
+POCTIVE - CO SLEDOVAT
+Vetsi rozliseni = vic prace pro Surface kresleni a enkodovani. Diky
+Surface prepracovani (SK75) a vyssimu datovemu toku (SK76/77) by to
+melo zvladnout bez ztraty FPS, ale je to vetsi zatez nez predtim -
+pokud FPS na HIGH landscape klesne pod tvoje soucasne ~30fps, dej
+vedet, budeme muset najit rovnovahu.
+
+DALSI KROK - ZVUK
+Zminil jsi, ze zvuk je "trosku opozdeny" - tohle je presne to, na co
+jsme se ptali minule (video a audio jsou dve nezavisle cesty bez
+sdileneho casovani). Zatim jsem se soustredil na tenhle konkretni
+grafickyy krok (jak jsi rekl "nejdriv grafika"), ale zvukova
+synchronizace zustava na rade jako dalsi ukol.
+
+MERENI (pred odeslanim)
+- { } 1747/1747, [ ] 298/298 - vyvazene.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, HIGH, landscape - hlavni otazka: uz je kvalita srovnatelna s
+   portretem?
+3) Sleduj FPS - zustava kolem 30, nebo klesa kvuli vetsimu rozliseni?
+4) MEDIUM a LOW taky stoji za rychlou kontrolu pro srovnani.
+
+KILL-SWITCH: NP_VISION_BASELINE_SK73_FULL.zip (kompletni navrat) nebo
+BUILD2SK77 (pred timhle konkretnim krokem rozliseni).
