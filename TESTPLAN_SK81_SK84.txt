@@ -1,0 +1,104 @@
+BUILD2SK81-SK84 - TESTOVACI POSTUP
+================================================================================
+KONTEXT - PROC TENHLE BALICEK VZNIKL
+Poslal jsi log, ktery mel podle popisu obsahovat cely test (Sega, Atari, DJ
+pult, domu, Sega LOW/MED/HIGH, PS1 HIGH), ale ve skutecnosti obsahoval jen
+segment PS1 - a byl BYTE PRESNE stejny (stejne casy na milisekundu) jako
+log z predchoziho balicku. Tedy bud se poslal stejny soubor znovu omylem,
+NEBO (a tohle jsem potvrdil v kodu) je v tom skutecna chyba - viz SK82.
+Zaroven tenhle balicek jeste neobsahoval moji minulou SK81 opravu (logicke,
+jeste jsi nestihl buildnout/testovat).
+
+================================================================================
+CO SE ZMENILO (4 nezavisle zmeny, popsano zvlast)
+================================================================================
+
+1) BUILD2SK81 - OPRAVA STAREHO DIAGNOSTICKEHO LOGU (z minula)
+   Cistě kosmeticka oprava - TICK_AVG log hlasil "targetDelayMs=33" misto
+   skutecne pouzivane hodnoty (5ms, zavedene v SK80). Appka fungovala
+   spravne, jen si log rikal neco jineho. Nulove riziko, jen presnejsi cislo
+   v logu.
+
+2) BUILD2SK82 - KOREN PRICINY "LOG ZTRACI STARSI CASTI" (tohle jsi se ptal)
+   PRICINA: nativeLog je pamet'ovy "ring buffer" tvrde omezeny na 100 000
+   znaku (~100KB) - kdyz se naplni, NEJSTARSI radky se potichu mazou. Byl
+   navrzen driv pro kratky 10s test na S8 (BUILD2RW/RX éra), ne pro rucni
+   test s vice obrazovkami a urovnemi kvality v jedne relaci - diagnosticke
+   radky (TICK_AVG, PIXELCOPY_AVG, FRAME_AVG, PERIODIC...) samotne snadno
+   prekroci 100KB behem par minut, takze v okamziku, kdy otevres /log NA
+   KONCI testu, uz tam zbyde jen posledni testovana obrazovka. PRESNE to,
+   co jsi videl.
+   OPRAVA: kazdy radek logu se ted navic prubezne zapisuje na disk (soubor
+   se zalozi cerstvy pri kazdem startu appky, viz onCreate) - a /log
+   endpoint ted cte PRIMARNE z tohoto souboru, ne z ringu. Zapis bezi na
+   samostatnem vlakne (fronta), takze nic (UI smycka, audio, H264) na to
+   necela. Bezpecnostni strop 30MB pro pripad, ze by appka bezela dny (u
+   tveho rucniho testu v minutach je to prakticky nekonecno).
+   DOPAD PRO TEBE: uz nezalezi, KDY behem/po testu otevres /log - bude tam
+   VSECHNO od spusteni appky, ne jen poslednich pár minut.
+
+3) BUILD2SK83 - ZNACKA "tier=" PRIMO V KAZDEM DIAGNOSTICKEM RADKU
+   Driv jsem musel slozite parovat casy mezi ruznymi typy logu, abych
+   zjistil, ktera uroven kvality (LOW/MEDIUM/HIGH) k jakym cislum patri.
+   Ted TICK_AVG, PIXELCOPY_AVG, H264_FRAME_AVG/SLOW i ENCODER_START rovnou
+   obsahuji "tier=0/1/2" (a ENCODER_START navic i "bitrate="). Zadna zmena
+   chovani, jen vic kontextu v datech.
+
+4) BUILD2SK84 - TEPLOTA/TAKT PROCESORU/POWER SAVE PRO TVOJI HYPOTEZU
+   "NEJEDE TO NA PLNO"
+   V kodu uz DRIV existoval (jina, starsi vysetrovani, BUILD2RX) hotovy
+   zpusob, jak cist teplotu baterie a takt CPU (readBatteryTempC,
+   readCpuFreqKHz) - ale pouzival se JEN behem nativniho Sega/Atari jadra,
+   ne behem TV-cast/H264 (coz je PS1, DJ pult, domu, a i Sega/Atari
+   POKUD je sleduju pres TV cast). Ted stejne ctecky bezi i tam, kazde 2s,
+   spolu s "powerSave=" (zapnuta uspora baterie?) a "thermal=" (Android
+   oficialni tepelny stav telefonu - NONE/LIGHT/MODERATE/SEVERE/...).
+   Navic appka ted pri TV-cast pozada system o "sustained performance
+   mode" (hint pro OS "tohle je dlouhy rovnomerny beh, ne kratky spicak") -
+   neni to zaruka (a NENI to totez jako tepelne hrdlo - to OS SCHVALNE
+   nejde obejit, je to hardwarova pojistka, appka to respektuje).
+   DOPAD PRO TEBE: v pristim logu uz uvidime CISLA (teplota, takt, thermal
+   stav) pro kazdou obrazovku/uroven kvality zvlast - misto abychom jen
+   hadali, jestli je to tim.
+
+================================================================================
+RIZIKO
+================================================================================
+SK81, SK83: nulove - jen texty v logu.
+SK84: nizke - sustainedPerformanceMode/isPowerSaveMode/getCurrentThermalStatus
+jsou vsechny v try/catch, pri jakemkoli problemu appka jen zaloguje "na" a
+jede dal presne jako driv.
+SK82: nejvetsi zmena (novy soubor, nove vlakno), ale bezny, uz jednou
+osvedceny vzor (stejna fronta+vlakno technika jako H264 feed z SK64). Zapis
+NIKDY neblokuje volajici vlakno. Kdyby zapis na disk selhal (napr. plne
+uloziste), /log se ticho vrati k puvodnimu ringu - appka nikdy nespadne
+kvuli tomuhle.
+Overeno: {}/[] zavorky v MainActivity.java sedi (1787/1787, 305/305).
+Zadna zmena v dj/index.html, emu_ps1/index.html, index.html, build.gradle.
+
+================================================================================
+JAK OTESTOVAT (navrh - uprav dle potreby)
+================================================================================
+1) Spust TV-cast, projed normalne cely svuj test (Sega, Atari, DJ pult,
+   domu, Sega LOW/MED/HIGH, PS1 HIGH) - presne jak jsi to delal.
+2) NEMUSIS uz spechat s /log hned po dokonceni - klidne pockej, otevri
+   ho treba az za 10 minut. Mel by tam byt UPLNE cely test od zacatku.
+3) V logu zkontroluj:
+   - Jsou tam VSECHNY testovane obrazovky (ne jen posledni)?
+   - Radky TV_WEB_PERIODIC pro kazdou obrazovku/uroven - podivej se na
+     "thermal=" (melo by byt NONE nebo LIGHT po vetsinu casu; MODERATE a
+     vys by znamenalo, ze telefon opravdu brzdi) a "battTempC="/"cpu*KHz="
+     (zajimave hlavne v TRENDU - roste teplota/klesa takt behem testu?).
+   - U LOW/MEDIUM/HIGH primo srovnej "tier=" radky - lisi se skutecne
+     namerene avgDrawMs/avgLatencyMs mezi urovnemi tak, jak by se cekalo,
+     nebo jsou podezrele podobne (coz by ukazovalo na hrdlo)?
+4) Kdyby chces jeste cistsi srovnani LOW/MED/HIGH: zkus jednu uroven hned
+   na cerstvo po startu appky (driv nez se cokoli zahreje) a stejnou
+   uroven znovu az na konci dlouhe relace - rozdil mezi temahle dvema by
+   ukazal, kolik "vypada hur, protoze uz to beselo 10 minut" je v tom
+   schovane, oddelene od "tahle uroven kvality proste neni o moc lepsi".
+
+KILL-SWITCH
+Pokud by /log po SK82 vratil PRAZDNY nebo useknuty vystup: appka spadne
+zpet na stary in-memory ring automaticky (viz kod), takze uvidis aspon
+poslednich ~100KB jako driv - nic se nezhorsi oproti puvodnimu stavu.

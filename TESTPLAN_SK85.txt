@@ -1,0 +1,87 @@
+BUILD2SK85 - TESTOVACI POSTUP
+================================================================================
+KONTEXT
+Rene opravil dve veci z minula: (1) teplota/CPU takt uz byly u Segy driv
+proverene a NEJSOU to - SK84 v teto podobe se tedy NEINSTALUJE samostatne,
+(2) chtel vysvetlit "qJpeg" v logu, kdyz jedeme pres H264. To vedlo k
+zevrubne kontrole cele cesty obrazu - a nasel se SKUTECNY, mnohem vetsi
+problem, presne odpovidajici Renove vlastni teorii ("pokud appka neposila
+kvalitnejsi obraz, TV mirror nic nevylepsi").
+
+CO SE NASLO (jen ke ctení, zadna akce sama o sobe)
+- napTvWebJpegQuality (to "qJpeg=") je nazev z doby PRED H264 (MJPEG éra).
+  Kdyz je H264 klient pripojeny (coz je VZDY tenhle pripad), JPEG komprese
+  se CELA PRESKAKUJE - viz napTvWebPublishBitmap. To cislo tedy NEMA ZADNY
+  vliv na to, co vidis na TV. Odstraneno z logu (matlo, nic nerikalo).
+- SKUTECNY problem je JINDE a je JINY pro kazdy typ obrazovky:
+  * PS1 (emu_ps1): herni obraz NENI zachytavany primo. Bezi pres
+    ps1FramePreviewB64() - jadro renderuje na 320x240, JS strana ho
+    POLLOVALA kazdych 80ms (~12fps), a KAZDY snimek se JESTE PRED tim, nez
+    se vubec dostane do WebView (natoz do TV-cast H264), komprimoval do
+    JPEG kvalita 90. Tohle je STROP - zadna uroven kvality v TV-castu
+    nemuze zlepsit neco, co uz dorazi jen 12x/s a uz jednou komprimovane.
+  * Sega/Atari/VBXE (NativeInPlaceView + NativeSegaCoreBridge - sdileny
+    bridge pro vsechny tri): herni obraz renderuje NATIVNE na PEVNYCH
+    320x224 pixelech, pak se GPU (TextureView) roztahne na cely displej
+    BEZ vyhlazeni (nejblizsi soused, ne bilinearni) - schvalne ostry
+    "pixel-art" vzhled. Ale znamena to, ze zadne zvyseni TV-cast rozliseni/
+    bitrate nemuze pridat detail, ktery tam proste neni.
+  * DJ pult, domu: cisty WebView/CSS, renderuje se v plnem rozliseni
+    telefonu - ZADNY z techto dvou stropu se ho netyka. PRESNE proto bylo
+    driv videt zlepseni na DJ pultu/D-padu, ale ne na hernich pozadich -
+    (drivejsi hypoteza "detailni textury potrebuji vic bitu" byla castecne
+    vedle - skutecny duvod je, ze herni obraz ma mnohem nizsi zdrojove
+    rozliseni/fps nez zbytek UI, uplne mimo TV-cast).
+  * Zajimavost: v kodu u PS1 preview je stary komentar "Neni to finalni
+    render (ten pojede pres TextureView v SA2C)" - nekdo uz DRIV planoval
+    presne tohle (postavit PS1 TextureView jako ma Sega), jen se to nikdy
+    nedokoncilo.
+
+CO SE ZMENILO (jen bezpecna cast, viz "CO SE NEDELALO" nize pro vetsi krok)
+1) BUILD2SK85 (Java): ps1FramePreviewB64() uz nealokuje 2 cerstve bitmapy
+   (320x240 + 960x720, ~2.8MB) PRI KAZDEM volani - opakovane pouzivane
+   bitmapy (stejna licence jako SK65-66 u H264 YUV bufferu). Pridana
+   diagnostika PS1_PREVIEW_AVG (kazdych 50 volani) - uvidime SKUTECNOU
+   dosazenou rychlost/cas, ne odhad.
+2) BUILD2SK85 (JS, emu_ps1/index.html): interval pollovani snizen z 80ms
+   na 40ms (cil ~25fps misto ~12fps) - bezpecne diky bodu 1.
+3) Odstraneno matouci "qJpeg=" z TV_WEB_PERIODIC logu (viz vyse).
+4) Zbytek SK81-84 (log na disk, tier tagging, sustained perf mode) zustava
+   - vsechno nizke riziko, uz overene, zadny duvod to vyhazovat. Battery/
+   CPU/thermal logovani take zustava (je zdarma), i kdyz uz teplotu
+   nepovazujeme za hlavniho podezreleho.
+
+CO SE NEDELALO (vetsi krok, ceka na tve rozhodnuti - viz zprava v chatu)
+- Postavit skutecny TextureView pro PS1 (jako ma Sega) MISTO JPEG pollingu
+  - odstranilo by to JPEG kompresi UPLNE a zvysilo fps nad ramec toho, co
+    dovoli 40ms JS interval. Vetsi zasah do funkcniho kodu, chce potvrzeni.
+- Zmena Sega/Atari nejblizsi-soused na bilinearni vyhlazeni pri roztazeni
+  320x224 - VKUSOVA volba (ostry pixel-art vs hladsi obraz), ne oprava.
+
+================================================================================
+RIZIKO
+================================================================================
+Zmena v ps1FramePreviewB64(): STREDNI - dotyka se PS1 preview cesty, ktera
+BEZI (na rozdil od cisteho pridavani logovacich radku). Zmirneno tim, ze
+logika ZUSTAVA STEJNA (stejny vypocet, stejny JPEG vystup) - meni se JEN
+TO, ZE se bitmapy pouzivaji opakovane misto pri kazdem volani znovu.
+Kill-switch: kdyby 40ms bylo na S8 moc rychle (PS1_PREVIEW_AVG by ukazal
+avgMs blizko/nad 40), staci v JS vratit cislo zpet na 80 (jeden radek).
+Zmena v TV_WEB_PERIODIC (odebrani qJpeg): nulove riziko, jen kratsi log radek.
+Overeno: {}/[] zavorky v MainActivity.java sedi (1796/1796, 305/305), JS v
+emu_ps1/index.html overen pres `node --check` (OK), {} v HTML sedi (309/309).
+
+================================================================================
+JAK OTESTOVAT
+================================================================================
+1) Spust PS1 hru, hraj chvili normalne.
+2) V /log najdi "BUILD2SK85 PS1_PREVIEW_AVG" - podivej se na avgMs (kolik
+   ve skutecnosti trva jeden snimek pripravit) - melo by byt dost pod 40,
+   jinak JS interval prirozene omezi realnou rychlost na tohle cislo misto
+   cilenych ~25fps.
+3) Subjektivne - vypada PS1 obraz na TV plynuleji nez driv? (POZOR: porad
+   to bude viditelne min plynule nez Sega/Atari/DJ pult - 40ms/25fps je
+   pořád dal od 60fps H264 stropu, tohle je jen prvni bezpecny krok, ne
+   finalni reseni.)
+4) Zkontroluj, ze "qJpeg=" uz v TV_WEB_PERIODIC neni a nic jineho se
+   nerozbilo (zbytek radku stejny jako driv).

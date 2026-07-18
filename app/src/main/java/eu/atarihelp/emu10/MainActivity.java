@@ -241,6 +241,11 @@ public class MainActivity extends Activity {
     private volatile float napTvWebVolume = 1f;
     private volatile int napTvWebJpegQuality = 62;
     private volatile int napTvWebFrameDelayMs = 55;
+    // BUILD2SK81: pojmenovana konstanta pro H264 rychly tick strop (drive bylo
+    // "5" napsane natvrdo jen v gate, zatimco TICK_AVG log porad vypisoval
+    // stary tier-based napTvWebFrameDelayMs - log tak lhal, i kdyz appka
+    // fungovala spravne). Ted jedno misto pravdy pro obe strany.
+    private static final int napTvWebH264FastTickMs = 5;
     // === BUILD2SK57: H.264 STREAM PRO PS1 (misto MJPEG) ===
     // Pouzivame MediaCodec v ByteBuffer rezimu (ne Surface) - vstupem je
     // rucne prevedeny YUV420 obraz z JIZ existujici PixelCopy Bitmapy
@@ -379,9 +384,17 @@ public class MainActivity extends Activity {
                         napTvWebTickDiagSumMs += tickGap;
                         napTvWebTickDiagCount++;
                         if (napTvWebTickDiagCount >= 30) {
-                            appendNativeLog("BUILD2SK70 TV_WEB_TICK_AVG n=" + napTvWebTickDiagCount
+                            // BUILD2SK81: tenhle log se vola jen kdyz H264 fronta NENI
+                            // prazdna (podminka o par radku vyse) - skutecny strop pro
+                            // TENTO tick je tedy VZDY napTvWebH264FastTickMs, nikdy stary
+                            // tier-based napTvWebFrameDelayMs.
+                            // BUILD2SK83: + tier=, aby se dalo primo (bez cross-referencu
+                            // s TV_WEB_PERIODIC podle casu) videt, ktera uroven kvality
+                            // (0=LOW/1=MEDIUM/2=HIGH) k temhle cislum patri.
+                            appendNativeLog("BUILD2SK81 TV_WEB_TICK_AVG n=" + napTvWebTickDiagCount
                                     + " avgTickGapMs=" + (napTvWebTickDiagSumMs / napTvWebTickDiagCount)
-                                    + " targetDelayMs=" + napTvWebFrameDelayMs);
+                                    + " targetDelayMs=" + napTvWebH264FastTickMs
+                                    + " tier=" + napTvWebQualityTier);
                             napTvWebTickDiagCount = 0; napTvWebTickDiagSumMs = 0;
                         }
                     }
@@ -440,7 +453,23 @@ public class MainActivity extends Activity {
                         String curUrl = "?";
                         try { curUrl = web == null ? "null" : web.getUrl(); } catch (Throwable ignored) {}
                         napTvWebCurrentUrl = curUrl; // BUILD2SK61: cache pro /status - viz vysvetleni u deklarace pole
-                        appendNativeLog("BUILD2SK41 TV_WEB_PERIODIC mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
+                        // BUILD2SK84: battery/CPU/thermal kontext PRIMO v periodickem logu.
+                        // readBatteryTempC()/readCpuFreqKHz() uz existovaly (BUILD2RX) a
+                        // uz drive proverovaly tepelne hrdlo Segy na S8 - ale JEN dokud
+                        // bezelo nativni Sega/Atari jadro (nativeInPlaceEnabled). TV-cast
+                        // H264 cesta (PS1, DJ pult, domovska obrazovka, i Sega/Atari pres
+                        // TV-cast) timhle vubec nebyla pokryta. Ted je to tady pro VSECHNY
+                        // obrazovky, tagovane primo s tier - takze LOW/MEDIUM/HIGH srovnani
+                        // uz nemusi byt jen dohad "asi to hrdli", ale primo videt v datech.
+                        String powerSave = "na", thermal = "na";
+                        try {
+                            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+                            if (pm != null) {
+                                powerSave = String.valueOf(pm.isPowerSaveMode());
+                                if (Build.VERSION.SDK_INT >= 29) thermal = napTvWebThermalName(pm.getCurrentThermalStatus());
+                            }
+                        } catch (Throwable ignored) {}
+                        appendNativeLog("BUILD2SK84 TV_WEB_PERIODIC mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
                                 + " appCapture=" + appCapture + " seq=" + napTvWebSeq
                                 + " bmW=" + (napTvWebBitmap == null ? -1 : napTvWebBitmap.getWidth())
                                 + " bmH=" + (napTvWebBitmap == null ? -1 : napTvWebBitmap.getHeight())
@@ -448,6 +477,15 @@ public class MainActivity extends Activity {
                                 + " bmDrawH=" + (napTvWebBitmapDraw == null ? -1 : napTvWebBitmapDraw.getHeight())
                                 + " pcPending=" + napTvWebPixelCopyPending
                                 + " gen=" + napTvWebPixelCopyRequestGen
+                                // BUILD2SK85: "qJpeg" se ZDE ZALMERNE NEUVADI - napTvWebJpegQuality je
+                                // nazev z pred-H264 (MJPEG) éry a kdyz je H264 klient pripojeny (coz
+                                // je vzdy tenhle pripad), JPEG komprese se cele PRESKAKUJE (viz
+                                // napTvWebPublishBitmap) - to cislo by tu jen matlo, nic nerika o
+                                // tom, co skutecne vidis na TV.
+                                + " tier=" + napTvWebQualityTier
+                                + " battTempC=" + readBatteryTempC()
+                                + " cpu0KHz=" + readCpuFreqKHz(0) + " cpu4KHz=" + readCpuFreqKHz(4)
+                                + " powerSave=" + powerSave + " thermal=" + thermal
                                 + " url=" + curUrl);
                     }
                 }
@@ -598,8 +636,10 @@ public class MainActivity extends Activity {
                                     napTvWebPcDiagSumMs += latencyMs;
                                     napTvWebPcDiagCount++;
                                     if (napTvWebPcDiagCount >= 30) {
-                                        appendNativeLog("BUILD2SK68 TV_WEB_PIXELCOPY_AVG n=" + napTvWebPcDiagCount
-                                                + " avgLatencyMs=" + (napTvWebPcDiagSumMs / napTvWebPcDiagCount));
+                                        // BUILD2SK83: + tier=, viz vysvetleni u TICK_AVG.
+                                        appendNativeLog("BUILD2SK83 TV_WEB_PIXELCOPY_AVG n=" + napTvWebPcDiagCount
+                                                + " avgLatencyMs=" + (napTvWebPcDiagSumMs / napTvWebPcDiagCount)
+                                                + " tier=" + napTvWebQualityTier);
                                         napTvWebPcDiagCount = 0; napTvWebPcDiagSumMs = 0;
                                     }
                                 }
@@ -689,7 +729,7 @@ public class MainActivity extends Activity {
             long effectiveDelay = Math.max(10, napTvWebFrameDelayMs);
             try {
                 if (!napTvWebH264ClientQueues.isEmpty()) {
-                    effectiveDelay = 5;
+                    effectiveDelay = napTvWebH264FastTickMs;
                 }
             } catch (Throwable ignored) {}
             if (napTvWebRunning) ui.postDelayed(this, effectiveDelay + extraDelay);
@@ -894,7 +934,10 @@ public class MainActivity extends Activity {
                 napTvWebH264W = w; napTvWebH264H = h;
                 napTvWebH264FrameIndex = 0;
                 napTvWebH264Generation++;
-                appendNativeLog("BUILD2SK78 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation + " mode=SURFACE");
+                // BUILD2SK83: + bitrate=/tier= - drive se muselo dopocitavat rucne z w*h,
+                // ted primo v logu (a rovnou i jestli to byla podlaha 1.8M nebo w*h*6).
+                appendNativeLog("BUILD2SK83 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation
+                        + " mode=SURFACE bitrate=" + Math.max(1800000, w * h * 6) + " tier=" + napTvWebQualityTier);
             } catch (Throwable t) {
                 appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_FAIL " + safeMsg(t));
                 napTvWebH264Encoder = null;
@@ -1017,13 +1060,14 @@ public class MainActivity extends Activity {
             if (totalMs > 80) {
                 appendNativeLog("BUILD2SK75 TV_WEB_H264_FRAME_SLOW totalMs=" + totalMs
                         + " drawMs=" + ((t1 - t0) / 1000000) + " drainMs=" + ((t2 - t1) / 1000000)
-                        + " w=" + w + " h=" + h);
+                        + " w=" + w + " h=" + h + " tier=" + napTvWebQualityTier);
             }
             if (napTvWebH264DiagFrameCount >= 30) {
-                appendNativeLog("BUILD2SK75 TV_WEB_H264_FRAME_AVG n=" + napTvWebH264DiagFrameCount
+                // BUILD2SK83: + tier= (w/h uz tu byly, tier chybel).
+                appendNativeLog("BUILD2SK83 TV_WEB_H264_FRAME_AVG n=" + napTvWebH264DiagFrameCount
                         + " avgDrawMs=" + (napTvWebH264DiagPixelsMs / napTvWebH264DiagFrameCount)
                         + " avgDrainMs=" + (napTvWebH264DiagDrainMs / napTvWebH264DiagFrameCount)
-                        + " w=" + w + " h=" + h);
+                        + " w=" + w + " h=" + h + " tier=" + napTvWebQualityTier);
                 napTvWebH264DiagFrameCount = 0;
                 napTvWebH264DiagCopyMs = 0; napTvWebH264DiagPixelsMs = 0; napTvWebH264DiagYuvMs = 0; napTvWebH264DiagDequeueMs = 0; napTvWebH264DiagDrainMs = 0;
             }
@@ -1762,6 +1806,11 @@ public class MainActivity extends Activity {
             // koreni). Reseni na koreni: dokud bezi TV cast, drz obrazovku
             // vzhuru (stejny mechanismus jako video prehravace/navigace).
             try { ui.post(() -> { try { getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
+            // BUILD2SK84: pozadat OS o rovnomerny vykon (ne "kratky burst pak sporeni")
+            // po celou dobu TV-cast relace - jen HINT, OS smi ignorovat, a NENI to
+            // totez co tepelne hrdlo (to je bezpecnostni pojistka hardwaru, kterou appka
+            // schvalne nejde a nema obchazet - viz TV_WEB_PERIODIC thermal= log misto).
+            try { ui.post(() -> { try { getWindow().setSustainedPerformanceMode(true); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
             return "TV_WEB_CAST_OK " + url + " APP";
         } catch (Throwable t) {
             napTvWebRunning = false;
@@ -1775,6 +1824,7 @@ public class MainActivity extends Activity {
         // BUILD2SK26: uvolni drzeni obrazovky vzhuru - mimo TV cast se telefon
         // ma chovat normalne (nezustavat zbytecne vzhuru a zrat baterku).
         try { ui.post(() -> { try { getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
+        try { ui.post(() -> { try { getWindow().setSustainedPerformanceMode(false); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
         napTvWebPixelCopyPending = false;
         napTvWebPixelCopyPendingAtMs = 0;
         napTvWebPixelCopyDisabledUntilMs = 0;
@@ -1881,9 +1931,25 @@ public class MainActivity extends Activity {
                 // vystavuje pres HTTP na stejnem serveru, co uz bezi pro TV cast,
                 // takze jde otevrit v PC/TV prohlizeci KDYKOLI, nezavisle na tom,
                 // ktera nativni obrazovka je zrovna aktivni na telefonu.
-                String logText;
-                synchronized (nativeLog) { logText = nativeLog.toString(); }
-                byte[] body = logText.getBytes("UTF-8");
+                // BUILD2SK82: ring (nativeLog) je omezeny na 100KB - u delsiho testu
+                // (vic obrazovek + vic urovni kvality v jedne relaci) stary obsah
+                // VYPADAVAL drive, nez se stihlo otevrit /log na konci. Ted se cte
+                // PRIMARNE z souboru na disku (napTvWebLogFile), kam appka pise
+                // prubezne od onCreate - ring zustava jen jako fallback pro pripad,
+                // ze by zapis na disk selhal (napr. uloziste plne).
+                byte[] body = null;
+                File lf = napTvWebLogFile;
+                if (lf != null) {
+                    try {
+                        byte[] fromFile = napTvWebReadFileBytes(lf);
+                        if (fromFile.length > 0) body = fromFile;
+                    } catch (Throwable ignored) {}
+                }
+                if (body == null) {
+                    String logText;
+                    synchronized (nativeLog) { logText = nativeLog.toString(); }
+                    body = logText.getBytes("UTF-8");
+                }
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, true);
                 out.write(body);
             } else {
@@ -2182,6 +2248,31 @@ public class MainActivity extends Activity {
     private String nativeLastStatus = "NATIVE_OFF";
     private int nativeInputEvents = 0;
     private final StringBuilder nativeLog = new StringBuilder();
+    // BUILD2SK82: nativeLog (vyse) je in-memory ring omezeny na 100KB (viz
+    // appendNativeLog) - u delsiho rucniho testu (Sega, Atari, DJ pult, domu,
+    // Sega LOW/MED/HIGH, PS1 HIGH v jedne relaci) starsi radky VYPADNOU drive,
+    // nez se stihne otevrit /log na konci - v praxi zbyde jen posledni
+    // testovana obrazovka. Reseni: KAZDY radek se navic prubezne zapisuje na
+    // disk (soubor cerstvy pri kazdem startu appky, viz napTvWebLogFileInit
+    // volane z onCreate) a /log endpoint ted cte PRIMARNE z tohoto souboru
+    // (ring zustava jen jako fallback, kdyby zapis na disk selhal) - takze
+    // zadna cast testu uz nezmizi, bez ohledu na to, jak dlouho test trva
+    // nebo kdy se /log nakonec otevre. Zapis BEZI NA SAMOSTATNEM VLAKNE
+    // (fronta + producer/consumer, stejny osvedceny vzor jako H264 feed) -
+    // zadne volajici vlakno (UI tick, audio, HTTP) nikdy neceka na disk I/O.
+    private final java.util.concurrent.ConcurrentLinkedQueue<String> napTvWebLogFileQueue =
+            new java.util.concurrent.ConcurrentLinkedQueue<>();
+    private volatile File napTvWebLogFile;
+    private volatile boolean napTvWebLogFileWriterStarted = false;
+    private volatile boolean napTvWebLogFileCapWarned = false;
+    // BUILD2SK82: bezpecnostni strop velikosti log souboru na disku (30MB).
+    // Rucni test trva minuty, ne dny - v praxi se nikdy nepriblizi. Je to jen
+    // pojistka proti tomu, aby appka pri neceka nekonecne bezici relaci
+    // nezaplnila uloziste. Po dosazeni stropu se DALSI zapisy jednoduse
+    // prestanou pridavat (soubor zustane platny a citelny az do stropu,
+    // misto rizikoveho prepisovani/orezavani zacatku za behu) a zapise se
+    // JEDNA viditelna hlaska, misto ticheho zahazovani.
+    private static final long napTvWebLogFileCapBytes = 30L * 1024 * 1024;
     private volatile boolean nativeCoreAudioRun = false;
     private volatile int nativeAudioGeneration = 0; // BUILD2RV: kills stale AudioTrack threads after every ROM change; prevents cumulative slowdown.
     private Thread nativeCoreAudioThread;
@@ -2465,21 +2556,59 @@ public class MainActivity extends Activity {
         // zvetsi (bilinearni filtr, ne nejblizsi soused) NA 3-nasobek, a az POTOM
         // se komprimuje - JPEG enkoder tak dostane skutecne vic pixelu k praci,
         // coz vypada vyrazne ostreji nez pozdejsi CSS roztazeni maleho JPEGu.
+        // BUILD2SK85: DVE veci najednou zjisteny (2026-07-18, Rene): (1) tohle je
+        // ZASADNI strop kvality/plynulosti PS1 obrazu (~12fps, JPEG komprimovany
+        // JESTE PRED tim, nez cokoli z toho vidi TV-cast H264 pipeline - zadna
+        // uroven kvality/bitrate v TV-castu tohle nemuze opravit, protoze uz
+        // dostava jen 12x/s aktualizovany, uz jednou zkomprimovany obraz), (2)
+        // driv se pri KAZDEM volani (80x/s) alokovaly DVE cerstve bitmapy
+        // (320x240 + 960x720 = ~2.8MB) - presne stejna GC-tlak chyba, jakou
+        // SK65-66 uz resily u H264 YUV bufferu. Oprava: opakovane pouzivane
+        // bitmapy (realokace jen pri zmene rozliseni jadra) - diky tomu je ted
+        // BEZPECNE zkratit interval v JS na 40ms (viz emu_ps1/index.html).
+        // JPEG komprese samotna zustava (viz komentar vyse - je NUTNA pro prenos
+        // pres WebView bridge, poradne odstraneni by znamenalo postavit
+        // TextureView cestu jako u Segy - VETSI zmena, zatim NEUDELANA, viz
+        // predavaci poznamka).
         private int[] ps1PrevBuf = new int[1024 * 512];
+        private Bitmap ps1PreviewSrcBmp;
+        private Bitmap ps1PreviewScaledBmp;
+        private Canvas ps1PreviewScaledCanvas;
+        private final Paint ps1PreviewScalePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        private long ps1PreviewDiagSumMs = 0;
+        private int ps1PreviewDiagCount = 0;
         @JavascriptInterface
         public String ps1FramePreviewB64() {
             try {
+                long t0 = System.currentTimeMillis();
                 int wh = NativePs1CoreBridge.grabFrameSafe(ps1PrevBuf);
                 if (wh < 0) { int need = ((-wh) >> 16) * ((-wh) & 0xFFFF); ps1PrevBuf = new int[need + 1024]; wh = NativePs1CoreBridge.grabFrameSafe(ps1PrevBuf); }
                 if (wh <= 0) return "";
                 int w = wh >> 16, h = wh & 0xFFFF;
-                android.graphics.Bitmap bm = android.graphics.Bitmap.createBitmap(ps1PrevBuf, w, h, android.graphics.Bitmap.Config.ARGB_8888);
-                android.graphics.Bitmap scaled = android.graphics.Bitmap.createScaledBitmap(bm, w * 3, h * 3, true);
-                bm.recycle();
+                if (ps1PreviewSrcBmp == null || ps1PreviewSrcBmp.getWidth() != w || ps1PreviewSrcBmp.getHeight() != h) {
+                    if (ps1PreviewSrcBmp != null) { try { ps1PreviewSrcBmp.recycle(); } catch (Throwable ignored) {} }
+                    ps1PreviewSrcBmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+                }
+                ps1PreviewSrcBmp.setPixels(ps1PrevBuf, 0, w, 0, 0, w, h);
+                int sw = w * 3, sh = h * 3;
+                if (ps1PreviewScaledBmp == null || ps1PreviewScaledBmp.getWidth() != sw || ps1PreviewScaledBmp.getHeight() != sh) {
+                    if (ps1PreviewScaledBmp != null) { try { ps1PreviewScaledBmp.recycle(); } catch (Throwable ignored) {} }
+                    ps1PreviewScaledBmp = android.graphics.Bitmap.createBitmap(sw, sh, android.graphics.Bitmap.Config.ARGB_8888);
+                    ps1PreviewScaledCanvas = new Canvas(ps1PreviewScaledBmp);
+                }
+                ps1PreviewScaledCanvas.drawBitmap(ps1PreviewSrcBmp, null, new Rect(0, 0, sw, sh), ps1PreviewScalePaint);
                 java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
-                scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, bo);
-                scaled.recycle();
-                return Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
+                ps1PreviewScaledBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, bo);
+                String outB64 = Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
+                long tookMs = System.currentTimeMillis() - t0;
+                ps1PreviewDiagSumMs += tookMs; ps1PreviewDiagCount++;
+                if (ps1PreviewDiagCount >= 50) {
+                    appendNativeLog("BUILD2SK85 PS1_PREVIEW_AVG n=" + ps1PreviewDiagCount
+                            + " avgMs=" + (ps1PreviewDiagSumMs / ps1PreviewDiagCount)
+                            + " srcW=" + w + " srcH=" + h + " outBytes=" + outB64.length());
+                    ps1PreviewDiagCount = 0; ps1PreviewDiagSumMs = 0;
+                }
+                return outB64;
             } catch (Throwable t) { return ""; }
         }
         @JavascriptInterface
@@ -2777,11 +2906,93 @@ public class MainActivity extends Activity {
     }
 
     private void appendNativeLog(String line) {
+        String stamped = nowStamp() + "  " + (line == null ? "" : line) + "\n";
         synchronized (nativeLog) {
-            nativeLog.append(nowStamp()).append("  ").append(line == null ? "" : line).append("\n");
+            nativeLog.append(stamped);
             // BUILD2RW: bigger ring (~100 KB) so the 10s PASSIVE_AUDIT_RW rows survive a long S8
             // degradation test. Memory cost is trivial; the point is to SEE what grows over time.
             if (nativeLog.length() > 100000) nativeLog.delete(0, nativeLog.length() - 100000);
+        }
+        // BUILD2SK82: jen zarad do fronty (O(1), zadne disk I/O na TOMHLE vlakne -
+        // muze to byt UI tick, audio vlakno, HTTP handler...) - samotny zapis dela
+        // napTvWebLogFileWriterLoop na svem vlastnim vlakne (viz napTvWebLogFileInit).
+        try { napTvWebLogFileQueue.offer(stamped); } catch (Throwable ignored) {}
+    }
+
+    // BUILD2SK82: vola se jednou z onCreate. Vytvori/zkrati cerstvy log soubor pro
+    // TUTO relaci appky (predchozi spusteni se nemicha dohromady se soucasnym) a
+    // nastartuje vlakno, ktere frontu prubezne vyprazdnuje na disk.
+    private void napTvWebLogFileInit() {
+        try {
+            napTvWebLogFile = new File(getFilesDir(), "nap_tv_session_log.txt");
+            try (FileOutputStream fos = new FileOutputStream(napTvWebLogFile, false)) { /* jen vytvor/zkrat na prazdno */ }
+        } catch (Throwable t) {
+            napTvWebLogFile = null; // /log endpoint pak spadne zpet na in-memory ring
+        }
+        if (!napTvWebLogFileWriterStarted) {
+            napTvWebLogFileWriterStarted = true;
+            Thread writer = new Thread(this::napTvWebLogFileWriterLoop, "napTvWebLogFileWriter");
+            writer.setDaemon(true);
+            writer.start();
+        }
+    }
+
+    private void napTvWebLogFileWriterLoop() {
+        while (true) {
+            try {
+                String line = napTvWebLogFileQueue.poll();
+                if (line == null) {
+                    Thread.sleep(50);
+                    continue;
+                }
+                File f = napTvWebLogFile;
+                if (f == null) continue; // init selhala, ring buffer je pojistka
+                if (f.length() >= napTvWebLogFileCapBytes) {
+                    if (!napTvWebLogFileCapWarned) {
+                        napTvWebLogFileCapWarned = true;
+                        try (FileOutputStream fos = new FileOutputStream(f, true)) {
+                            fos.write(("\n*** BUILD2SK82 LOG_FILE_CAP_REACHED " + napTvWebLogFileCapBytes
+                                    + "B - dalsi radky uz se na disk nezapisuji, soubor zustava platny do tohoto bodu ***\n")
+                                    .getBytes("UTF-8"));
+                        } catch (Throwable ignored) {}
+                    }
+                    continue; // strop dosazen - dal uz nerosteme, ale nic neorezavame
+                }
+                // BUILD2SK82: drobne davkovani - pokud fronta mezitim narostla (napr.
+                // appka byla chvili na pozadi), vyprazdni vice radku najednou pres
+                // jeden otevreny stream, misto open/close pro kazdy jednotlivy radek.
+                StringBuilder batch = new StringBuilder(line);
+                String more;
+                int batched = 1;
+                while (batched < 200 && (more = napTvWebLogFileQueue.poll()) != null) {
+                    batch.append(more);
+                    batched++;
+                }
+                try (FileOutputStream fos = new FileOutputStream(f, true)) {
+                    fos.write(batch.toString().getBytes("UTF-8"));
+                }
+            } catch (Throwable ignored) {
+                try { Thread.sleep(200); } catch (InterruptedException ie) { /* ignore */ }
+            }
+        }
+    }
+
+    // BUILD2SK82: pouzito jen pro /log HTTP odpoved - precte cely soubor jako byty
+    // (manualni smycka misto java.nio.file.Files, ktere potrebuje API 26+; appka
+    // ma minSdk 24). 25MB citaci strop je jen pojistka pro tenhle jeden HTTP
+    // prenos, nezavisly na napTvWebLogFileCapBytes (zapisovy strop souboru).
+    private byte[] napTvWebReadFileBytes(File f) throws IOException {
+        long len = f.length();
+        if (len <= 0) return new byte[0];
+        int cap = (int) Math.min(len, 25_000_000L);
+        byte[] buf = new byte[cap];
+        try (FileInputStream fis = new FileInputStream(f)) {
+            int off = 0, r;
+            while (off < cap && (r = fis.read(buf, off, cap - off)) > 0) off += r;
+            if (off == cap) return buf;
+            byte[] trimmed = new byte[off];
+            System.arraycopy(buf, 0, trimmed, 0, off);
+            return trimmed;
         }
     }
 
@@ -3715,6 +3926,21 @@ public class MainActivity extends Activity {
             return line == null ? "na" : line.trim();
         } catch (Throwable t) { return "na"; }
     }
+    // BUILD2SK84: citelne jmeno pro PowerManager.getCurrentThermalStatus() (API 29+,
+    // volajici uz hlida SDK_INT). Konstanty samotne jsou dostupne na compileSdk bez
+    // ohledu na minSdk - jen samotne VOLANI getCurrentThermalStatus() potrebuje strazit.
+    private String napTvWebThermalName(int status) {
+        switch (status) {
+            case android.os.PowerManager.THERMAL_STATUS_NONE: return "NONE";
+            case android.os.PowerManager.THERMAL_STATUS_LIGHT: return "LIGHT";
+            case android.os.PowerManager.THERMAL_STATUS_MODERATE: return "MODERATE";
+            case android.os.PowerManager.THERMAL_STATUS_SEVERE: return "SEVERE";
+            case android.os.PowerManager.THERMAL_STATUS_CRITICAL: return "CRITICAL";
+            case android.os.PowerManager.THERMAL_STATUS_EMERGENCY: return "EMERGENCY";
+            case android.os.PowerManager.THERMAL_STATUS_SHUTDOWN: return "SHUTDOWN";
+            default: return "UNKNOWN(" + status + ")";
+        }
+    }
     private String pickField(String flat, String key) {
         try {
             int i = flat.indexOf(key);
@@ -4199,6 +4425,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // BUILD2SK82: prvni vec ze vseho - zalozit cerstvy log soubor pro TUHLE
+        // relaci a nastartovat vlakno, co ho prubezne plni (viz appendNativeLog).
+        // Musi byt PRED vsim ostatnim, aby /log opravdu zachytil "od zacatku".
+        napTvWebLogFileInit();
         // BUILD2SK18: obnov ulozenou volbu kvality TV mirroru z minula (drive se
         // pri kazdem znovuotevreni appky vracela na LOW - ted si to appka pamatuje).
         try { napTvWebQualityTier = getSharedPreferences("nap_tv_prefs", MODE_PRIVATE).getInt("quality_tier", 0); } catch (Throwable ignored) {}

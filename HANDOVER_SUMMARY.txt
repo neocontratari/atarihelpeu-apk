@@ -1,0 +1,371 @@
+N&P VISION PRO - PREDAVACI BALICEK PRO DALSI CHAT
+================================================================================
+Datum: 2026-07-18
+Stav: BUILD2SK80 (H264 univerzalni pro vsechny obrazovky)
+Uzivatel: Rene Frank (RenatusHonda), aplikace eu.atarihelp.emu10
+
+TENTO BALICEK OBSAHUJE VSECHNY ZMENENE SOUBORY (poucen z drivejsi
+chyby, kdy jsem pri "build 49" milestone zapomnel DJ pult)
+- app/src/main/java/eu/atarihelp/emu10/MainActivity.java (SK80)
+- app/src/main/assets/dj/index.html (SK58)
+- app/src/main/assets/emu_ps1/index.html (SK79 - 16:9 aspect ratio fix)
+- app/src/main/assets/index.html (domovska obrazovka, nezmeneno od
+  drivejska)
+- app/build.gradle
+
+================================================================================
+CELKOVY KONTEXT PROJEKTU
+================================================================================
+Android app pro emulaci retro konzoli (Atari, Sega, PS1) + DJ mixer
+pult + MP3 prehravac, s moznosti TV-cast (streamovani obrazovky
+telefonu na PC/TV pres web prohlizec na lokalni siti, port 8765).
+Build konvence: BUILD2SKx cislovani, ZIP overlay balicky aplikovane
+uzivatelem na jeho vlastni GitHub repo, GitHub Actions builduje APK.
+
+================================================================================
+HLAVNI PRIBEH TETO ETAPY (SK57-SK80): MJPEG -> UNIVERZALNI H264
+================================================================================
+
+PROC (puvodni problem)
+TV-cast pouzival MJPEG (kazdy snimek = samostatny JPEG, poslany pres
+HTTP multipart stream). Fungovalo to, ale FPS byly nizke (13-20fps) a
+Rene chtel vyrazne vic (cile: LOW ~50fps, MEDIUM 40-45fps, HIGH
+minimalne 35fps na PS1, pak rozsireno na VSECHNY obrazovky).
+
+KLICOVE KROKY A NALEZENE CHYBY (v poradi, jak se staly)
+1) SK57: Prvni H264 pokus - MediaCodec ByteBuffer input rezim s
+   rucni RGB->YUV420 konverzi v Java smycce. JMuxer.js na klientovi
+   (MSE prehravani v <video> elementu) - zvoleno MISTO Media3
+   FragmentedMp4Muxer, protoze Media3 ma zname chyby a nemel jsem
+   zpusob si to sam overit kompilaci.
+2) SK59-SK61: H264 se vubec nespoustelo. Pricina: web.getUrl() se
+   volalo z HTTP klientskeho vlakna (napTvWebHandleClient), ne z UI
+   vlakna - WebView metody vyzaduji UI vlakno, tise to selhavalo.
+   Reseni: cachovat URL do volatile pole (napTvWebCurrentUrl) z UI
+   vlakna (hlavni tick smycka), cist jen tuhle cache jinde.
+3) SK62: STEJNA chyba, DRUHE misto (H264 feed gate mel take primy
+   web.getUrl() misto cache).
+4) SK63: Zmena rozliseni (napr. otoceni telefonu) behem H264 streamu
+   zpusobovala "rozsypani" - novy enkoder = nove SPS/PPS parametry
+   poslane doprostred jiz beziciho spojeni, prohlizec to tise odmitl.
+   Reseni: generacni pocitadlo (napTvWebH264Generation) - pri zmene
+   generace server AKTIVNE ukonci spojeni, klient (opraveno soucasne)
+   se spravne resetuje a pripoji znovu cerstve.
+5) SK64: Vykon - rucni YUV konverze byla synchronni v hlavni
+   zachytavaci smycce, blokovala dalsi zachytavani. Presunuto na
+   samostatne pracovni vlakno (producer/consumer pattern - hlavni
+   smycka jen rychle zkopiruje bitmapu, pracovni vlakno dela YUV+
+   enkodovani nezavisle).
+6) SK65-SK66: GC tlak - YUV buffery se alokovaly znovu KAZDY snimek
+   (~5MB odpadu/snimek u landscape). Opraveno na opakovane pouzivane
+   buffery (realokace jen pri zmene rozliseni). Pridana podrobna
+   casova diagnostika kazde faze (getPixels, YUV prevod, dequeue,
+   drain) pro cileni dalsich oprav daty, ne odhadem.
+7) SK68-SK71: Zavazne zjisteni - PixelCopy latence i po vsem
+   vylepseni zustavala konstantni ~20-30ms na VSECH urovnich kvality
+   (LOW stejne pomale jako HIGH), coz nedavalo smysl pokud by hlavni
+   naklad byl umerny rozliseni. Pricina: puvodni frameDelayMs
+   (50/40/33ms) byl navrzeny DRIVE, kdyz cilem bylo FPS OMEZIT na
+   stabilni hodnotu - ted byl cil opacny (maximalizovat). Reseni:
+   pro H264-aktivni obsah pouzit mnohem mensi strop (5ms) - PixelCopy
+   vlastni tempo (uz existujici pojistka napTvWebPixelCopyPending) se
+   stalo skutecnym limitujicim faktorem.
+8) SK72-SK73: PTS (casove znacky) chyba - OBE strany (server i
+   klient) predpokladaly pevnych 30fps bez ohledu na skutecnou
+   rychlost dorucovani snimku (ted 40-50+fps po SK71). Server:
+   opraveno na skutecny uplynuly cas (System.nanoTime() od startu
+   enkoderove generace). Klient: JMuxer.js pouziva "fps" parametr JEN
+   kdyz neni poskytnuta "duration" - opraveno na primo mereny skutecny
+   cas mezi prijatymi kousky dat.
+9) SK74: Maly klientsky vyrovnavaci buffer (flushingTime:120ms) proti
+   prirozene promenlivosti Android kompozitoru (16-71ms rozptyl mezi
+   snimky, neni to logicka chyba, je to vlastnost systemu).
+10) SK75: VELKY architektonicky zasah - Surface-based H264 vstup
+    MISTO rucni YUV konverze. MediaCodec.createInputSurface() +
+    Surface.lockHardwareCanvas() + Canvas.drawBitmap() +
+    unlockCanvasAndPost() - GPU dela RGB->YUV prevod sam, interne,
+    ZADNA Java smycka po pixelech. PTS uz take enkoder resi sam
+    (soucast standardniho grafickeho pipeline). Motivace: Rene mel
+    podezreni ("berlicky"), ze rucni YUV konverze soutezi o CPU s
+    PS1 emulaci samotnou po SK71 (bezi 4x castej nez predtim).
+11) SK76-SK77: Kvalita obrazu - zvysena podlaha bitrate (700k ->
+    1.8M), pak nasobitel (4 -> 6), profil enkoderu Baseline -> Main
+    (CABAC, lepsi komprese pri stejnem bitrate). RIZIKO: Main profil
+    umoznuje B-snimky, ktere mohou delat problemy JMuxer.js/MSE - byl
+    pridan pokus o low-latency rezim (KEY_LATENCY, jen API 30+) jako
+    pojistka. Rene potvrdil ZADNE chyby po tomto kroku.
+12) SK78: Landscape melo NIZSI cilove rozliseni nez portret VE VSECH
+    urovnich (HIGH portret 1920 vs landscape 1680, atd.) - historicky
+    z duvodu vykonu. Srovnano na stejnou uroven jako portret.
+13) SK79: DULEZITY VIZUALNI NALEZ - v landscape rezimu PS1 stranky
+    (emu_ps1/index.html) se herni obraz (4:3 nativne) roztahoval na
+    CELOU sirku telefonu (~2:1 na testovanem zarizeni), ne na 16:9.
+    Opraveno CSS omezenim #psMonitor na presny pomer 16:9,
+    vycentrovano (pillarboxing po stranach). Potvrzeno Renem jako
+    vyrazne zlepseni ("na mobilu je to krasny cisty").
+14) SK80: UNIFIKACE - Rene se rozhodl obejit neexistujici kvalitni
+    hacky uvnitr uzavrenych nativnich jader (Sega/PS1 native bridge -
+    zadna quality/performance metoda tam neni, a jsou to zkompilovane
+    knihovny bez zdrojoveho kodu, ktere nemuzu upravit) tim, ze se
+    UNIVERZALNE nasadila jiz overena H264 cesta na VSECHNY obrazovky
+    (drive jen PS1). Tri mista byla PS1-specificky omezena a ted jsou
+    univerzalni: (a) hlavni H264 gate v napTvWebPublishBitmap, (b)
+    rychly 5ms tick cyklus, (c) klientsky pollFps spousteci trigger.
+    Diagnosticke funkce TICK_AVG a DUPCHECK take rozsireny z PS1-only
+    na univerzalni (DUPCHECK ted uvadi i "url=" v logu).
+
+================================================================================
+AKTUALNI ARCHITEKTURA H264 PIPELINE (SK80 stav)
+================================================================================
+1. napTvWebFrameTick (hlavni Runnable, UI vlakno): pro H264-aktivni
+   obsah pouziva 5ms strop misto tier-based zpozdeni (efektivne "bez
+   umeleho brzdeni").
+2. PixelCopy zachyti Bitmap (nezmeneno, spolehlive od SK46-49).
+3. napTvWebPublishBitmap: pokud je H264 klient pripojeny (JAKAKOLI
+   obrazovka), JPEG komprese se PRESKOCI uplne (zadna zbytecna prace).
+4. napTvWebH264FeedFrame: rychle zkopiruje bitmapu (bm.copy), preda
+   pracovnimu vlaknu (napTvWebH264EnsureWorker), NEBLOKUJE hlavni
+   smycku.
+5. Pracovni vlakno (napTvWebH264FeedFrameInternal): vykresli bitmapu
+   PRIMO na Surface enkoderu (lockHardwareCanvas + drawBitmap +
+   unlockCanvasAndPost) - GPU dela YUV prevod, zadna Java smycka.
+6. Enkoder (MediaCodec, Surface input, Main profil, KEY_BIT_RATE =
+   max(1.8M, w*h*6), KEY_FRAME_RATE=60, I_FRAME_INTERVAL=1): produkuje
+   surovy H264 Annex-B stream.
+7. Vystup se posila kazdemu pripojenemu klientovi (fronta per klient,
+   LinkedBlockingQueue<byte[]>(300)) pres HTTP chunked prenos na
+   /stream.h264.
+8. Klient (JS): pollFps() kazdou sekundu kontroluje /status, pokud
+   H264 jeste nebezi, spousti startH264() - NAHRAJE JMuxer.js z CDN
+   (jsdelivr, fallback unpkg), vytvori JMuxer instanci
+   (flushingTime:120), fetch('/stream.h264') s ReadableStream
+   readerem, pro kazdy kousek dat meri SKUTECNY cas od posledniho
+   (h264LastFeedMs) a posila jako "duration" do jm.feed().
+9. Pri zmene rozliseni (jina obrazovka, jina orientace, jina uroven
+   kvality): enkoder se restartuje, generace se zvysi
+   (napTvWebH264Generation), server AKTIVNE ukonci stary stream
+   (misto tichy poslat nekompatibilni data), klient to rozezna jako
+   "stream ended", resetuje se (h264Active=false) a pri dalsim
+   pollFps cyklu se pripoji znovu cerstve.
+
+================================================================================
+OTEVRENE / NEDORESENE POLOZKY (co dal)
+================================================================================
+
+1) DJ PULT MA VYRAZNE NIZSI FPS (paradox - neni to ani emulator)
+   Rene nahlasil: DJ pult zacatek pod 20fps, vsechno ostatni ~40-45fps
+   po SK80 (univerzalni H264). NEMAM diagnostická data (log jeste
+   neposlal - viz nize, potrebuje predavaci balicek prave TEDY).
+   HYPOTEZA (nepotvrzeno): DJ pult ma velmi bohaty CSS (SVG vinylova
+   deska s 55 drazkami, LED tecovany prsten s animaci, zlaty chassis s
+   texturami, mnoho box-shadow/gradientu) - PixelCopy zachytavani
+   samotne muze byt pomalejsi kvuli slozitosti kompozitovani teto
+   stranky (podobny problem byl zmineny UZ DRIVE v projektu: "DJ pult
+   (23) a Atari/emu_vbxe (36) maji nejvic CSS animation/transform
+   hitu" - z DUVODU settle-logic problemu pred SK43). DALSI KROK: az
+   Rene posle log z tohoto testu (viz nize), zkontrolovat konkretne
+   TICK_AVG a PIXELCOPY_AVG pro DJ pult segment - potvrdi/vyvrati
+   jestli je PixelCopy samo pomalejsi na teto konkretni obrazovce.
+
+2) "GRAFIKA SE MOC NEZLEPSILA" - ALE JEN NA HERNICH POZADICH
+   Rene: vizualni zlepseni (SK76-78: vyssi bitrate, Main profil) je
+   VIDET na D-padu (virtualni ovladac) a DJ pultu (jina ostrost), ale
+   NENI moc videt na hernich pozadich/grafice emulatoru. HYPOTEZA
+   (nepotvrzeno): jednodussi UI prvky (ploche barvy, čisté hrany)
+   kompresi lepe reaguji na vyssi bitrate nez detailne/sumove herni
+   sprity a textury (ktere potrebuji proporcionalne vic bitu pro
+   stejne viditelne zlepseni). Mozny dalsi krok: jeste vic zvysit
+   bitrate nasobitel SPECIFICKY testovat na hernim obsahu, nebo
+   zvazit jiny pristup (napr. vyssi rozliseni radeji nez vyssi
+   bitrate pro detailni sceny).
+
+3) ZVUK/VIDEO SYNCHRONIZACE (zminovano, odlozeno na "az bude grafika
+   hotova")
+   Video a audio bezi jako DVE NEZAVISLE cesty (video pres H264/
+   Surface/JMuxer s ~120ms+ vyrovnavacim bufferem, zvuk pres syrovy
+   PCM stream + Web Audio API s vlastnim ~100ms scheduling bufferem).
+   NIC je aktivne nesynchronizuje - zadny sdileny casovy zaklad mezi
+   nimi. Rene nahlasil "zvuk je trosku opozdeny" po nekterych zmenach.
+   TOHLE JESTE NEBYLO RESENO - cekalo se na dokonceni grafickeho
+   ladeni prvne. Dalsi krok by byl: zmerit skutecnou latenci OBOU
+   cest nezavisle, pak navrhnout bud (a) sdileny casovy zaklad, nebo
+   (b) manualni offset kompenzaci na jedne strane.
+
+4) PUVODNI NAPAD "MOBILNI LOW/MEDIUM/HIGH PRO KAZDY EMULATOR"
+   Rene puvodne chtel LOW/MEDIUM/HIGH prepinac v nastaveni (ozubene
+   kolecko na home obrazovce) SPECIFICKY pro kvalitu/vykon PRIMO NA
+   TELEFONU (ne jen TV-cast) - dnesni HIGH by se stalo novym LOW/
+   zakladem pro slabsi telefony (S8, A12), MEDIUM pro stredni,
+   HIGH pro nejnovejsi telefony. ZJISTENO: zadny existujici hacek pro
+   tohle u PS1 (native jadro bez zdrojoveho kodu) ani smysluplne
+   rozsiritelny hacek u Sega/Atari (NativeSegaCoreBridge.
+   setPerformanceMode() existuje, ale je BINARNI - jen LOW/HIGH, a
+   nevim, co presne "MEDIUM" by v nativnim kodu znamenalo, protoze do
+   nej nevidim). Rene se ROZHODL obejit tohle unifikaci H264 (SK80)
+   MISTO reseni per-emulator quality tieru - takze TOHLE JE PRAVDEPO-
+   DOBNE VYRESENO/NAHRAZENO timhle pristupem, ale nebylo to vyslovne
+   potvrzeno jako "uz to neresime".
+
+5) BEZPROSTREDNI DALSI KROK PRI PREVZETI TOHOTO CHATU
+   Rene prave dokoncil test BUILD2SK80 (viz "Testovaci postup
+   SK80.txt" pro presny postup, co testoval) a ma pripraveny CELY
+   /log soubor z teto relace, ktery POSLE V DALSIM CHATU (nemohl ho
+   poslat v tomhle, proto tenhle predavaci balicek). AZ PRIJDE TEN
+   LOG: zkontroluj hlavne TICK_AVG a PIXELCOPY_AVG pro DJ pult segment
+   (bod 1 vyse), a obecne over, ze H264 spravne nabehlo pro VSECHNY
+   testovane obrazovky (Sega, Atari, DJ pult, domu, PS1) a ze
+   prechody mezi obrazovkami probihaly cistě (zadne GEN_CHANGE
+   problemy, zadne FEED_ERR/ENCODER_FAIL).
+
+================================================================================
+OVERENA METODOLOGIE (dodrzuj i v dalsim chatu)
+================================================================================
+- KAZDA zmena v MainActivity.java: overit { }/[ ] zavorky pred
+  odeslanim (python3 pocitani, ne jen vizualni kontrola).
+- KAZDA zmena JS retezcu v Java stringu: extrahovat pres regex
+  (POZOR na komentare s uvozovkami matouci naivni extrakci - pouzivat
+  radek-po-radku metodu, ne jeden velky regex pres cely soubor) a
+  overit `node --check`.
+- KAZDA zmena HTML/CSS souboru: overit CSS { }/{ } zavorky.
+- Pred zmenou existujiciho JS-DOM propojeni (data-* atributy, ID):
+  sestavit kompletni checklist VSECH atributu/ID PRED zmenou, overit
+  PO zmene ze nic nechybi.
+- NIKDY nevolat web.getUrl() (nebo jine WebView metody) mimo UI
+  vlakno - vzdy cist z napTvWebCurrentUrl cache.
+- Pri kazdem vetsim/rizikovem kroku: nabidnout/vytvorit zalozni
+  balicek PRED zmenou (viz KILL-SWITCH v testplanech).
+- Testplan ke KAZDEMU buildu: co se zmenilo, PROC (poctive - vcetne
+  hypotez ktere se nepotvrdily), rizika, jak otestovat, kill-switch.
+- Build cislovani pokracuje sekvencne (BUILD2SKx) - dalsi bude SK81.
+
+================================================================================
+UZIVATELUV STYL A PREFERENCE (dulezite pro tón komunikace)
+================================================================================
+- Osloveni "Partaku" (buddy), casto pise anglicko-cesky mix, emotikony
+  :-) casty.
+- Oceni POCTIVE priznani chyb/hypotez nez falesnou jistotu.
+- Nema rad, kdyz Claude "utece" z rozdelane prace bez dokonceni -
+  VZDY dokoncit ulohu (zabalit, poslat) v RAMCI JEDNE odpovedi, ne
+  jen naznacit dalsi krok.
+- Oceni konkretni, cislovane testovaci postupy pri vetsich zasazich.
+- Chce STOPROCENTNI kvalitu ("chci to mit stoprocentni"), tlaci na
+  dalsi zlepsovani i po uspechu - to je JEHO STYL, ne nespokojenost.
+- Je programator-laik ("nejsem programator"), ale technicky zvedavy a
+  klade dobre, konkretni otazky (napr. 4:3 vs 16:9 postreh byl presny
+  a vedl k realnemu nalezu).
+- DULEZITE (2026-07-18, druhy predavaci balicek): Rene sam rekl VYSLOVNE
+  "Nejsem programator jen tester - programator jsi ty" - nema psat/navrhovat
+  kod sam, ocekava hotova reseni nebo jasny navrh dalsiho postupu od Clauda.
+
+================================================================================
+DODATEK 2026-07-18 (18:xx) - BUILD2SK81 az SK84
+================================================================================
+STAV: Rene poslal DRUHY predavaci balicek + log.txt, ktery byl VYSLEDNE
+byte-presne stejny jako log z PRVNIHO balicku (stejne casy na ms) - tedy
+buď omylem poslal stary soubor znovu, nebo je log skutecne "mazany po
+ceste" (jeho vlastni podezreni - a POTVRDILO se to jako realny bug, viz
+SK82 nize). Rene take upresnil zadani:
+- DJ pult FPS (puvodni bod 1) uz ho NEZAJIMA - "dj pult je psany zvlast".
+- Hlavni zajem: LOW/MEDIUM/HIGH uroven grafiky V APLIKACI (napTvWebQuality
+  Tier, tlacitka na TV-cast obrazovce) - pri prepnuti na vyssi uroven neni
+  na TV videt razantni zlepseni. Renova HYPOTEZA: telefon "nejede na plno"
+  (nejspis mysli vykonove omezeni/hrdlo, ne doslovne).
+- Pozadavek: log at se zapisuje sam prubezne od zacatku do konce, at
+  "nenastanou komplikace ze neco nevidis".
+
+CO SE UDELALO:
+1) SK81 (znovu, tenhle balicek jej jeste nemel): oprava TICK_AVG logu,
+   viz drivejsi zaznam v teto historii.
+2) SK82: NALEZENA SKUTECNA PRICINA "log ztraci starsi casti" - nativeLog
+   ring buffer tvrde omezeny na 100KB (BUILD2RW éra, navrzeno pro kratky
+   10s test, ne pro dlouhy vicero-obrazovkovy rucni test). Oprava: kazdy
+   radek se navic prubezne zapisuje na disk (fronta+vlakno, stejny vzor
+   jako H264 feed), /log endpoint cte PRIMARNE odtud misto z ringu.
+   Bezpecnostni strop 30MB na soubor.
+3) SK83: "tier=" (a u ENCODER_START i "bitrate=") pridano do VSECH
+   periodickych diagnostickych radku (TICK_AVG, PIXELCOPY_AVG,
+   H264_FRAME_AVG/SLOW), aby se LOW/MEDIUM/HIGH dalo primo cist z dat bez
+   parovani casu mezi ruznymi typy logu.
+4) SK84: rozsireni JIZ DRIVE EXISTUJICI (jina, starsi vetev vysetrovani -
+   BUILD2RX, puvodne cilena na Sega/Atari nativni jadro na S8) sady
+   readBatteryTempC()/readCpuFreqKHz() i na TV-cast H264 cestu (predtim
+   tam vubec nebyla) - ted v TV_WEB_PERIODIC kazde 2s, + PowerManager.
+   isPowerSaveMode() a (API 29+) getCurrentThermalStatus(). Navic appka
+   pri TV-cast pozada o setSustainedPerformanceMode(true) (jen hint OS,
+   NENI to obchazeni tepelneho hrdla - to je hardwarova pojistka a
+   appka ji schvalne nezkousi obejit).
+
+VYSLEDEK: Renova puvodni hypoteza "log se maze po ceste" byla SPRAVNA a
+ted opravena (SK82). Hypoteza "nejede to na plno" jeste NENI potvrzena
+ani vyvracena - SK84 pripravuje DATA, aby se to priste dalo rozhodnout
+z cisel (thermal=/battTempC=/cpu*KHz=), ne z dohadu. Cekame na dalsi
+kompletni log (uz by mel obsahovat VSECHNY obrazovky/urovne z jedne
+relace, bez ohledu na to, kdy se /log otevre).
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: az prijde dalsi log, zkontrolovat
+predevsim (a) je opravdu kompletni (vsechny testovane obrazovky pritomny,
+ne jen posledni), (b) thermal=/battTempC=/cpu*KHz= trend behem testu -
+roste teplota/klesa takt smerem k HIGH urovni nebo pozdejsim obrazovkam,
+(c) primym srovnanim tier=0/1/2 radku, jestli se avgDrawMs/avgLatencyMs
+skutecne lisi mezi urovnemi tak, jak by rozdily v rozliseni/bitrate
+napovidaly, nebo jsou podezrele podobne.
+
+================================================================================
+DODATEK 2026-07-18 (pozdeji) - BUILD2SK85 - SKUTECNA PRICINA "LOW/MED/HIGH
+NEVYPADA JINAK"
+================================================================================
+Rene opravil predchozi smer (teplota/CPU uz overena od Segy, NENI to ono)
+a zeptal se na matouci "qJpeg" v logu. To vedlo k dukladne kontrole CELE
+cesty obrazu od jadra po TV - a nasla se SKUTECNA pricina, presne sedici
+na Renovu vlastni teorii ("pokud appka neposila kvalitnejsi obraz, TV
+mirror nic nevylepsi"):
+
+- PS1 (emu_ps1): herni obraz NENI zachytavan primo pres nativni Surface/
+  TextureView. Bezi pres AHPS1.ps1FramePreviewB64() - jadro renderuje na
+  320x240, JS stranka to POLLOVALA kazdych 80ms (~12fps), KAZDY snimek se
+  JESTE PRED predanim do WebView komprimoval do JPEG kvalita 90. Tohle je
+  STROP kvality/plynulosti, ktery zadna uroven TV-cast H264 (SK57-84)
+  nemuze obejit - dostava uz jen 12x/s aktualizovany, uz jednou
+  komprimovany obraz. (Vysvetluje take starou nevyresenou zahadu z SK67
+  DUPCHECK diagnostiky - vysoke "sameFrames" ciselo na PS1 neni chyba
+  H264 pipeline, je to prirozeny dusledek 12fps zdroje.)
+- Sega/Atari/VBXE (NativeInPlaceView + sdileny NativeSegaCoreBridge):
+  herni obraz renderuje NATIVNE na PEVNYCH 320x224 pixelech, TextureView
+  to roztahne na cely displej BEZ vyhlazeni (nejblizsi soused - schvalny
+  "pixel-art" vzhled). Zadne zvyseni TV-cast rozliseni/bitrate nemuze
+  pridat detail, ktery tam neni.
+- DJ pult, domu: cisty WebView/CSS v plnem rozliseni telefonu - ani jeden
+  z techto dvou stropu se jich netyka - PRESNE proto bylo drive videt
+  zlepseni na DJ pultu/D-padu, ale ne na hernich pozadich (puvodni
+  hypoteza "detailni textury potrebuji vic bitu" byla vedle - skutecny
+  duvod je nizsi zdrojove rozliseni/fps herniho obrazu, uplne mimo
+  TV-cast).
+- V kodu u PS1 preview byl uz DRIV komentar "Neni to finalni render (ten
+  pojede pres TextureView v SA2C)" - stavba PS1 TextureView (jako ma Sega)
+  byla uz DRIV planovana, jen nikdy dokoncena.
+
+CO SE UDELALO (SK85, bezpecna cast):
+- ps1FramePreviewB64(): opakovane pouzivane bitmapy misto ~2.8MB fresh
+  alokace pri KAZDEM volani (stejna licence jako SK65-66) - diky tomu
+  bezpecne zkracen JS poll interval 80ms -> 40ms (~12fps -> cil ~25fps).
+  Pridana diagnostika PS1_PREVIEW_AVG pro overeni skutecne dosazene
+  rychlosti v pristim logu.
+- Odstraneno matouci "qJpeg=" z TV_WEB_PERIODIC (napTvWebJpegQuality je
+  nazev z MJPEG éry, pri aktivnim H264 klientovi ma NULOVY vliv).
+
+CO SE NABIDLO, ALE NEUDELALO (ceka na Renovo rozhodnuti):
+1) Postavit skutecny TextureView pro PS1 (presne jako Sega) MISTO JPEG
+   pollingu - odstranilo by JPEG kompresi UPLNE, umoznilo fps nad ramec
+   40ms JS intervalu. VETSI zasah do funkcniho kodu (PS1 hlavni zobrazeni),
+   proto se nedelalo bez potvrzeni - ale je to jasne definovany dalsi krok,
+   znovupouziti uz overenych vzoru (NativeInPlaceView + tvRenderLoop).
+2) Sega/Atari/VBXE: prepnout nejblizsi-soused na bilinearni vyhlazeni pri
+   roztazeni 320x224 na cely displej - VKUSOVA volba (ostry pixel-art vs
+   hladsi obraz), ne oprava, proto se nemenilo bez zeptani.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: pockat na Renovo rozhodnuti ohledne
+bodu 1/2 vyse. Az prijde dalsi log: zkontrolovat PS1_PREVIEW_AVG (avgMs -
+stiha se 40ms interval, nebo je prirozene pomalejsi?) a subjektivni dojem
+z PS1 plynulosti na TV.
+
+

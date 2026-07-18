@@ -480,9 +480,9 @@ function ensurePs1ScreenAndPoll(){
       mon.appendChild(im);window.__napPs1Screen=im;
       window.__napPs1FramePoll=setInterval(function(){
         try{var b64=window.AHPS1.ps1FramePreviewB64();
-          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_SCREEN_PREVIEW_ON realne snimky z jadra, ~12fps JPEG95 audio-stable preview');}}
+          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_SCREEN_PREVIEW_ON realne snimky z jadra, cilene ~25fps JPEG90 (BUILD2SK85) - skutecna dosazena rychlost viz PS1_PREVIEW_AVG v /log');}}
         }catch(fe){}
-      },80);
+      },40);
     }
   }
   if(!window.__napPs1Poll){window.__napPs1Poll=setInterval(function(){
