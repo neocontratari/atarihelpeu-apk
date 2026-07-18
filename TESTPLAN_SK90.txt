@@ -1,0 +1,60 @@
+BUILD2SK90 - SKUTECNA PRICINA "CERNA OBRAZOVKA" (CSS pozadi, ne alfa)
+================================================================================
+CO LOG ZE SK89 UKAZAL
+"codeVersion=SK89_FORCED_ALPHA" byl v logu - SK89 skutecne bezel. A
+diagnostika PS1_NATIVE_RAW_PIXEL_SAMPLE ukazala:
+  p0=0xFFB5B2B5 pMid=0xFFAD7100
+Alfa bajt (prvni dva znaky) = 0xFF u OBOU vzorku - PLNE NEPRUHLEDNE.
+Barvy vypadaji rozumne (ne nuly, ne smetí).
+
+ZAVER: alfa NIKDY nebyla problem. Cela hypoteza ze SK88/89 byla vedle -
+poctive priznano, ne schovavano.
+
+SKUTECNA PRICINA (tentokrat overena primo v CSS zdroji, ne dohad)
+emu_ps1/index.html ma dve vrstvy s NAPEVNO tmavym pozadim (#02060b):
+  html,body{...background:#02060b;...}   (radek 9, zakladni pravidlo)
+  .stage{...background:#02060b;...}       (radek 11, zakladni pravidlo)
+V landscape rezimu .stage roste na CELOU obrazovku (width:100vw;
+height:100vh) - ale landscape @media pravidlo tohle pozadi NIKDY
+neprepisovalo, protoze to NIKDY nebylo potreba: stary <img id="ps1Screen">
+(JPEG preview) vzdy lezel navrch a cele to prekryl.
+
+SK87 zmenilo JS tak, ze se v landscape ten stary obrazek VUBEC nezobrazuje
+(schova se, aby renderoval jen novy nativni TextureView). Tim se ale poprve
+odhalilo, co bylo POD nim celou dobu: pevne tmave pozadi .stage/body,
+ktere zabranilo nativni vrstve (i kdyz spravne kreslila, presne jak
+diagnostika potvrdila) probleskovat skrz. Vysledek presne odpovida
+screenshotu: D-pad/tlacitka (maji VLASTNI viditelne pozadi/okraje v CSS)
+byly videt normalne, ale herni plocha (zadne vlastni pozadi, spoleha na
+pruhlednost) ukazovala jen tmave pozadi .stage/body.
+
+CO SE ZMENILO
+V @media (orientation:landscape) bloku (JEDINE tam - portret netknuty):
+  html,body{...} -> pridano background:transparent;
+  .stage{...}    -> pridano background:transparent;
+Zadna jina zmena. Zadny dotek Javy.
+
+CO ZUSTAVA ZE SK88/89 (nebyla to chyba delat tyhle kroky)
+Vynucena alfa (argb[i] |= 0xFF000000) a diagnostika PS1_NATIVE_RAW_PIXEL_
+SAMPLE zustavaji v kodu - jsou neskodne (alfa uz byla 0xFF, takze
+"vynuceni" na stejnou hodnotu nic nemeni) a diagnostika byla presne to,
+co konecne ukazalo spravnou stopu. Nebyly to zbytecne kroky - vyloucily
+jednu hypotezu tak, aby se dalo jit k te skutecne.
+
+RIZIKO
+Minimalni - dva CSS radky, jen v landscape @media bloku, jen background
+vlastnost pridana (nic jineho se nemeni, nic se neodebira). Portret
+(dekorativni skin) beze zmeny, protoze landscape media query se tam
+neaplikuje.
+Overeno: {} v emu_ps1/index.html sedi (310/310), JS overen node --check.
+Java nedotcena (0 zmen).
+
+JAK OTESTOVAT
+1) PS1 v landscapu - je KONECNE videt herni obraz (ne cerna plocha)?
+2) Sedi obraz presne na dotykova tlacitka (D-pad, akcni tlacitka)?
+3) Portret - beze zmeny, melo by vypadat/chovat se stejne jako vzdy
+   (dekorativni skin, JPEG preview).
+
+KILL-SWITCH
+SK86 zustava poslednim jiste funkcnim zakladem, kdyby tohle take
+neresilo problem.

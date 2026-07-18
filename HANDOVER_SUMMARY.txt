@@ -510,6 +510,39 @@ ne v kodu. Pokud ANO a obraz je porad cerny, hypoteza o alfe byla spatne
 a je potreba se podivat jinam (napr. zpet na Z-poradi vrstev, nebo na to,
 jestli WebView vubec ma na tehle obrazovce transparentni pozadi).
 
+================================================================================
+DODATEK 2026-07-18 (pozde v noci) - BUILD2SK90 - SKUTECNA PRICINA NALEZENA
+================================================================================
+SK89 log potvrdil: codeVersion=SK89_FORCED_ALPHA byl pritomen (spravny
+build bezel), a PS1_NATIVE_RAW_PIXEL_SAMPLE ukazal alfa=0xFF u obou
+vzorku - alfa NIKDY nebyla problem, cela SK88/89 hypoteza byla vedle
+(poctive priznano Renovi).
+
+SKUTECNA PRICINA (tentokrat overena primo v CSS zdroji): emu_ps1/
+index.html ma html/body/.stage s napevno tmavym pozadim (#02060b) v
+zakladnim (portretnim) pravidle. V landscape .stage roste na CELOU
+obrazovku, ale landscape @media BLOK tohle pozadi nikdy neprepsal -
+nebylo to nikdy potreba, protoze stary JPEG <img> vzdy lezel navrch a
+prekryl to. SK87 poprve schovalo ten stary obrazek v landscape (aby
+renderoval novy nativni TextureView) - a tim se poprve odhalilo pevne
+tmave pozadi, ktere delalo z nativni vrstvy (spravne kreslici, potvrzeno
+diagnostikou) neviditelnou vrstvu POD neprubledym pozadim.
+
+OPRAVA (SK90): html,body a .stage dostaly background:transparent VYHRADNE
+uvnitr landscape @media bloku - portret (dekorativni skin) zcela
+netknuty. Zadna zmena v Jave.
+
+PONAUCENI: kdyz nativni Android vrstva ma prosvitat skrz WebView, NESTACI
+transparentni pozadi na Android WebView urovni (web.setBackgroundColor
+(TRANSPARENT)) - MUSI byt transparentni i VSECHNY HTML/CSS elementy uvnitr
+stranky, ktere by jinak malovaly pres tu oblast. Tohle je jiny druh
+"pruhlednosti" nez alfa kanal bitmapy - je to vrstva navic, na kterou
+jsem prvne nemyslel.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na vysledek SK90 testu -
+tentokrat by PS1 obraz v landscape KONECNE mel byt videt.
+
+
 
 
 
