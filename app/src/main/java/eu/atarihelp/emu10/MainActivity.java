@@ -837,11 +837,33 @@ public class MainActivity extends Activity {
                 // odstraneni umeleho stropu (SK71), a soutezila o CPU s
                 // emulatorem samotnym.
                 fmt.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
-                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(700000, w * h * 4));
+                // BUILD2SK77: podlaha 700000 -> 1800000 (SK76, cileno na LOW) ->
+                // nasobitel taky zvysen 4 -> 6 - Rene potvrdil, ze na telefonu
+                // samotnem (nekomprimovany zdroj) grafika vypada skvele, takze
+                // rozdil, ktery vidi, je nejspis ztrata VERNOSTI pri kompresi/
+                // prenosu, ne problem se zdrojem. Vic datoveho toku = mene
+                // kompresnich artefaktu pri stejnem rozliseni.
+                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(1800000, w * h * 6));
                 fmt.setInteger(MediaFormat.KEY_FRAME_RATE, 60);
                 fmt.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
+                // BUILD2SK77: Baseline -> Main profil. Baseline byl zvolen driv
+                // kvuli "nejsirsi kompatibilite", ale bez konkretniho duvodu, proc
+                // by ji appka potrebovala - Chrome (a prakticky kazdy moderni
+                // prohlizec) zvladne Main bez problemu. Main pouziva CABAC
+                // (pokrocilejsi entropiove kodovani) - citelne lepsi kvalita pri
+                // STEJNEM datovem toku, presne cileno na "obraz na telefonu je
+                // super, ale po ceste se neco ztrati".
+                // POZOR/RIZIKO: Main profil UMOZNUJE B-snimky, o kterych vim (z
+                // drivejsiho vyzkumu pri navrhu architektury), ze delaji problemy
+                // JMuxer.js/MSE muxovani na klientovi. Zkousim pozadat o
+                // nizko-latencni rezim (kde by hardware enkoder typicky B-snimky
+                // sam preskocil kvuli jejich vlastni latenci), pokud to API
+                // urovne dovoli - neni to zaruka, jen dalsi pojistka.
                 if (Build.VERSION.SDK_INT >= 23) {
-                    try { fmt.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline); } catch (Throwable ignored) {}
+                    try { fmt.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileMain); } catch (Throwable ignored) {}
+                }
+                if (Build.VERSION.SDK_INT >= 30) {
+                    try { fmt.setInteger(MediaFormat.KEY_LATENCY, 0); } catch (Throwable ignored) {}
                 }
                 MediaCodec enc = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
                 enc.configure(fmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);

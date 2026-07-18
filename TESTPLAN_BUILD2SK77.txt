@@ -1,0 +1,54 @@
+BUILD2SK77 - KVALITA OBRAZU: LEPSI PROFIL + VIC DATOVEHO TOKU
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+Zaklad: BUILD2SK76
+
+ZADANI
+Rekl jsi, ze obraz PRIMO na telefonu (nekomprimovany zdroj) vypada
+skvele - takze rozdil, ktery vidis na TV/PC strane, je ztrata pri
+KOMPRESI/PRENOSU, ne problem se zdrojovym obrazem. To zuzuje hledani
+na dve konkretni mista v enkoderu.
+
+CO SE ZMENILO
+
+1) PROFIL ENKODERU: Baseline -> Main
+Baseline je NEJJEDNODUSSI H.264 profil - zvolil jsem ho drive kvuli
+"nejsirsi kompatibilite", ale bez konkretniho duvodu, proc by ho appka
+POTREBOVALA. Main profil pouziva CABAC (pokrocilejsi entropiove
+kodovani dat) - citelne lepsi kvalita PRI STEJNEM datovem toku.
+Chrome (co pouzivas) ho bez problemu zvladne.
+
+POZOR - RIZIKO: Main profil UMOZNUJE pouziti B-snimku (snimky, ktere
+se odkazuji na BUDOUCI i minule snimky, ne jen minule) - z drivejsiho
+vyzkumu vim, ze B-snimky umeji delat problemy JMuxer.js/MSE muxovani
+na klientovi (nespravne poradi/casovani). Pozadal jsem enkoder o
+nizko-latencni rezim (kde by typicky sam B-snimky preskocil kvuli
+jejich vlastni latenci), ale funguje to jen na API 30+ a NENI to
+zaruka na vsech zarizenich/enkoderech.
+POKUD PO TOMHLE BUILDU VIDIS: zamrzly obraz, poskozeny/rozsypany
+snimky, nebo znacne ZHORSENI (ne jen "stejne") - je to pravdepodobne
+tohle, a musime B-snimky resit jinak nebo se vratit k Baseline.
+
+2) DATOVY TOK: nasobitel 4 -> 6 (podlaha 1.8Mbps zustava ze SK76)
+Vic prostoru pro detaily pri stejnem rozliseni - mene kompresnich
+artefaktu (blokovost, rozmazani pri rychlem pohybu).
+
+MERENI (pred odeslanim)
+- { } 1747/1747, [ ] 298/298 - vyvazene.
+- AVCProfileMain a KEY_LATENCY: kazde presne jednou, spravne
+  podminene verzi API.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, HIGH (nebo MEDIUM), landscape.
+3) NEJDRIV zkontroluj, ze obraz vubec funguje normalne (zadne
+   zamrzani/poskozeni) - to by potvrdilo, ze B-snimky nejsou problem.
+4) Pak porovnej KVALITU s predchozim buildem - je detail/ostrost
+   citelne lepsi?
+5) Pokud neco POKAZENE (ne jen "stejne", ale hure): posli mi presny
+   popis (zamrzava? sype se obraz? barvy spatne?) - budu vedet, ze je
+   to nejspis B-snimky a vratime se na Baseline profil.
+
+KILL-SWITCH: NP_VISION_BASELINE_SK73_FULL.zip (kompletni navrat pred
+Surface praci) nebo BUILD2SK76 (pred timhle konkretnim krokem).
