@@ -74,6 +74,18 @@ emu_ps1/index.html overen pres `node --check` (OK), {} v HTML sedi (309/309).
 ================================================================================
 JAK OTESTOVAT
 ================================================================================
+OPRAVA PRED TIM (2026-07-18, pozdeji): prvni verze SK85 mela CHYBU
+KOMPILACE - "cannot find symbol: class FileInputStream" na radku
+napTvWebReadFileBytes(). FileInputStream neni v tomhle souboru NIKDE
+importovana (zbytek souboru ji vzdy pouziva jako plne kvalifikovanou
+java.io.FileInputStream) - na jednom miste jsem to napsal zkraceně a
+uniklo mi to, protoze pocitani zavorek {}/[ ] tenhle druh chyby (chybejici
+import) vubec nezachyti - je potreba skutecny prekladac nebo rucni kontrola
+kazdeho pouziteho jmena tridy. Opraveno na stejny zpusob, jaky uz zbytek
+souboru pouziva (java.io.FileInputStream), a navic jsem tentokrat projel
+CELY diff a zkontroloval kazde jmeno tridy, co jsem pridal, proti seznamu
+importu - ostatni jsou v poradku.
+
 1) Spust PS1 hru, hraj chvili normalne.
 2) V /log najdi "BUILD2SK85 PS1_PREVIEW_AVG" - podivej se na avgMs (kolik
    ve skutecnosti trva jeden snimek pripravit) - melo by byt dost pod 40,

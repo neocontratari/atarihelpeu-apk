@@ -2986,7 +2986,7 @@ public class MainActivity extends Activity {
         if (len <= 0) return new byte[0];
         int cap = (int) Math.min(len, 25_000_000L);
         byte[] buf = new byte[cap];
-        try (FileInputStream fis = new FileInputStream(f)) {
+        try (java.io.FileInputStream fis = new java.io.FileInputStream(f)) {
             int off = 0, r;
             while (off < cap && (r = fis.read(buf, off, cap - off)) > 0) off += r;
             if (off == cap) return buf;
