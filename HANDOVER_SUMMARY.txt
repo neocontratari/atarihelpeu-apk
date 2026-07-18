@@ -442,6 +442,40 @@ tlacitkum, portret beze zmeny). Podle vysledku bud ladit tuhle cestu dal,
 nebo pokracovat na Segu/Atari ci settings obrazovku (viz TESTPLAN_SK87.txt
 "DALSI KROKY" pro navrzene poradi).
 
+================================================================================
+DODATEK 2026-07-18 (pozde vecer, pokracovani) - BUILD2SK88 - OPRAVA
+"ZADNE ZOBRAZENI, JEN ZVUK"
+================================================================================
+SK87 test: Rene nahlasil UPLNE prazdnou obrazovku v landscape (jen zvuk).
+Rene: "davam ti asi posledni moznost" - vazna situace, pristupovano s
+maximalni pozornosti.
+
+Log analyza: render smycka BEZELA SPRAVNE (2400+ snimku, zadna vyjimka,
+spravna pozice dst boxu, spravne zachycena zmena rozliseni jadra
+640x480->320x240). Zadny pad, zadna chyba - ale vysledek nebyl videt.
+
+HYPOTEZA: grabFrameSafe() nikdy driv neprosla cestou pouzivajici alfa
+kanal - stara JPEG preview cesta alfu vzdy zahazuje (JPEG format ji
+nema). Nova primo-canvas cesta (SK87) alfu RESPEKTUJE - pokud jadro
+vraci neco jineho nez 0xFF (plne neprubledne), snimek se smisi jako
+NEVIDITELNY s cernym pozadim (canvas.drawColor(BLACK), vzdy kresleny
+prvni) = presne nahlasena "cerna/zadna obrazovka".
+
+OPRAVA: bitmap.setHasAlpha(false) (obchazi problem bez nutnosti znat
+presnou hodnotu) + vyslovne setZ(-1f) jako dalsi pojistka poradi vrstev.
+
+POCTIVE: tohle je nejpravdepodobnejsi vysvetleni podlozene logikou a
+daty z logu, NE potvrzeno na zivem zarizeni (nemam pristup ke skutecne
+hodnote, kterou grabFrameSafe() vraci). Pokud nepomuze, dalsi krok je
+pridat primou diagnostiku hodnoty alfa bajtu (viz TESTPLAN_SK88.txt).
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na vysledek SK88 testu. Pokud
+STALE nic videt neni, pridat diagnostiku primo vypisujici prvnich par
+pixelu z grabFrameSafe() (RGB i alfa slozku zvlast v hex) - misto dalsiho
+hadani. Pripadne zvazit navrat k Sega-stylu overeneho zdroje (Sega jadro
+je jina knihovna, moznost, ze NEMA stejny alfa problem).
+
+
 
 
 

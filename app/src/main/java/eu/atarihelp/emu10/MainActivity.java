@@ -3584,9 +3584,12 @@ public class MainActivity extends Activity {
                 ps1NativeView.setFocusableInTouchMode(false);
                 try { ps1NativeView.setLayerType(View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
                 // BUILD2SK87: index 0 = na SAMOTNE DNO rootFrame - WebView (uz
-                // pridana drive v onCreate) tak VZDY kresli NAD timhle, zadne
-                // rucni setZ() zaskoky potreba (Sega to resi jinak, protoze
-                // resi i portret - my zatim jen landscape, viz trida vyse).
+                // pridana drive v onCreate) tak VZDY kresli NAD timhle.
+                // BUILD2SK88: + vyslovne setZ(-1f) navrch - pojistka, kdyby index
+                // sam o sobe nestacil (web ma LAYER_TYPE_HARDWARE, TextureView
+                // taky pouziva hardware Surface - radeji explicitni poradi, stejna
+                // technika jako Sega uz pouziva jinde, jen v jednodussi forme).
+                try { ps1NativeView.setZ(-1f); } catch (Throwable ignored) {}
                 rootFrame.addView(ps1NativeView, 0, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
                 ps1NativeView.start();
                 appendNativeLog("BUILD2SK87 PS1_NATIVE_VIEW_CREATED");
@@ -4383,6 +4386,19 @@ public class MainActivity extends Activity {
                 if (srcW <= 0 || srcH <= 0) { canvas.drawColor(Color.BLACK); return; }
                 if (bitmap == null || curSrcW != srcW || curSrcH != srcH) {
                     bitmap = Bitmap.createBitmap(srcW, srcH, Bitmap.Config.ARGB_8888);
+                    // BUILD2SK88: KRITICKA OPRAVA - grabFrameSafe() nikdy driv neprosla
+                    // cestou, ktera by alfa kanal skutecne pouzila. Stara preview cesta
+                    // (ps1FramePreviewB64) konci JPEG kompresi, ktera alfu VZDY zahazuje
+                    // (JPEG alfu nema) - takze i kdyby jadro vracelo alfa=0 (pruhledne),
+                    // nikdy by to nebylo videt. Tahle nova cesta kresli bitmapu PRIMO pres
+                    // Canvas, ktery alfu RESPEKTUJE - pokud jadro vraci cokoli jineho nez
+                    // plne neprubledne (0xFF), snimek se smisi jako NEVIDITELNY s tim, co
+                    // je pod nim (= canvas.drawColor(BLACK) o par radku niz) - presne
+                    // "cerna obrazovka, jen zvuk", co Rene nahlasil. setHasAlpha(false) tomu
+                    // rika: povazuj kazdy pixel za plne neprubledny, bez ohledu na to, co je
+                    // skutecne v alfa bajtu - obchazi problem, aniz by bylo nutne znat presne,
+                    // jakou hodnotu jadro doopravdy vraci.
+                    bitmap.setHasAlpha(false);
                     curSrcW = srcW; curSrcH = srcH;
                 }
                 bitmap.setPixels(argb, 0, srcW, 0, 0, srcW, srcH);

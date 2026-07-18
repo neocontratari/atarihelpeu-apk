@@ -1,0 +1,74 @@
+BUILD2SK88 - OPRAVA "ZADNE ZOBRAZENI, JEN ZVUK"
+================================================================================
+CO SE STALO
+Po SK87 (nativni TextureView pro PS1): Rene nahlasil UPLNE PRAZDNOU
+obrazovku v landscape - ani na telefonu, ani (predpoklad) na TV - jen
+zvuk hral normalne.
+
+CO LOG UKAZAL (fakta, ne dohad)
+- Render smycka NESPADLA - bezela od 21:05:04 do konce relace (21:07:29),
+  vykreslila pres 2400 snimku, zadna vyjimka (FRAME_ERROR/RENDER_ERROR
+  ani jednou).
+- Pozice (dst box) sedela presne podle matematiky - dst=[95,0][1290,672]
+  pro view=1384x672 presne odpovida rucne spocitane 16:9 stred-fit hodnote.
+- Rozliseni zdroje se behem hry menilo (640x480 -> 320x240) a bylo to
+  spravne zachyceno.
+- PS1_AUDIO_WRITE bezelo normalne (77x v logu) - zvuk potvrzen aktivni,
+  presne jak Rene rekl.
+- ZADNA vyjimka nikde v cele relaci.
+
+ZAVER: kod BEZEL SPRAVNE na urovni logiky (zadny pad, spravne pozice,
+spravna data) - ale VYSLEDEK NEBYL VIDET. To ukazuje na problem v
+KOMPOZITOVANI/PRUHLEDNOSTI, ne v logice.
+
+HYPOTEZA (nejpravdepodobnejsi vysvetleni, ne jistota bez zivého zarizeni)
+NativePs1CoreBridge.grabFrameSafe() nikdy DRIV neprosla cestou, ktera by
+alfa kanal (pruhlednost) skutecne pouzila:
+- Stara preview cesta (ps1FramePreviewB64) konci Bitmap.compress(JPEG,...)
+  - JPEG format ALFU NEMA, kompresor ji proste zahodi. I kdyby jadro
+    vracelo alfa=0 (pruhledne), nikdy by to nebylo videt touhle cestou.
+- Nova cesta (SK87) kresli bitmapu PRIMO pres Canvas.drawBitmap(), ktery
+  alfu RESPEKTUJE. Pokud jadro vraci cokoli jineho nez plne neprubledne
+  (0xFF), snimek se smisi jako NEVIDITELNY s tim, co je pod nim - a pod
+  nim je vzdy canvas.drawColor(BLACK) (prvni radek kresleni, bezpecnostni
+  pozadi). Vysledek: cerna obrazovka, presne to, co Rene videl.
+
+CO SE ZMENILO
+1) bitmap.setHasAlpha(false) hned po vytvoreni bitmapy - rika Androidu
+   "povazuj kazdy pixel za plne neprubledny, bez ohledu na to, co je
+   skutecne v alfa bajtu". Obchazi problem, aniz by bylo nutne znat
+   presnou hodnotu, kterou jadro vraci.
+2) Vyslovne ps1NativeView.setZ(-1f) - pojistka navic, kdyby index-0
+   vlozeni samo o sobe nestacilo zarucit poradi vrstev (stejna technika,
+   jakou uz Sega pouziva jinde v tomto souboru, jen jednodussi forma -
+   jen jedna hodnota, ne dynamicke prepinani).
+
+POCTIVE PRIZNANI
+Tohle je NEJPRAVDEPODOBNEJSI vysvetleni podlozene logikou (JPEG zahazuje
+alfu -> stary kod by problem nikdy neodhalil) a datu z logu (zadna chyba,
+spravna pozice, jen neviditelny vysledek presne odpovidajici "cerne pres
+neviditelne"). NENI to potvrzeno na zivem zarizeni - nemam zpusob, jak
+overit presnou hodnotu, kterou grabFrameSafe() skutecne vraci, bez
+skutecneho telefonu. Kdyby tohle nepomohlo, dalsi krok by bylo pridat
+diagnostiku, ktera by primo vypsala hodnotu alfa bajtu z prvnich par
+pixelu (napr. "argb[0]=" v hex) - abychom uz priste nemuseli hadat.
+
+RIZIKO
+setHasAlpha(false): nulove - standardni Android API presne pro tenhle
+scenar (RGB data bez smysluplne alfy), nemeni zadnou jinou logiku.
+setZ(-1f): nulove - stejna technika jako uz Sega pouziva, jen staticka
+hodnota misto dynamickeho prepinani.
+Overeno: {}/[] v MainActivity.java sedi (1871/1871, 308/308). Zadna zmena
+v emu_ps1/index.html ani jinde - jen tyhle dva radky v Jave.
+
+JAK OTESTOVAT
+1) PS1 v landscapu - je ted VIDET obraz hry (ne jen cerna/zadna
+   obrazovka)?
+2) Sedi obraz na dotykova tlacitka jako predtim?
+3) Kdyby STALE nic nebylo videt: posli log znovu - dalsi krok bude
+   pridat presnou diagnostiku hodnoty alfa bajtu, abychom to uz nemuseli
+   odhadovat.
+
+KILL-SWITCH (kdyby tohle take neslo)
+Vrat se na SK86 (posledni znama funkcni verze - PS1 pomalejsi kvuli
+JPEG, ale VIDITELNE a spolehlive, v obou orientacich).
