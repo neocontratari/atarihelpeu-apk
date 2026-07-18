@@ -883,7 +883,7 @@ public class MainActivity extends Activity {
                 napTvWebH264W = w; napTvWebH264H = h;
                 napTvWebH264FrameIndex = 0;
                 napTvWebH264Generation++;
-                appendNativeLog("BUILD2SK75 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation + " mode=SURFACE");
+                appendNativeLog("BUILD2SK78 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation + " mode=SURFACE");
             } catch (Throwable t) {
                 appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_FAIL " + safeMsg(t));
                 napTvWebH264Encoder = null;
