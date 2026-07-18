@@ -789,6 +789,20 @@ public class MainActivity extends Activity {
         napTvWebH264WorkerThread.start();
     }
 
+    // BUILD2SK65: opakovane pouzivane buffery MISTO nove alokace pri
+    // KAZDEM snimku. Puvodni kod delal "new int[w*h]" a "new byte[...]"
+    // pri kazdem volani - u landscape rozliseni (~900 000 pixelu) to je
+    // pres 5 MB odpadu PER SNIMEK. I pri "jen" 20fps je to >100 MB/s
+    // odpadu, coz nutne vede k narustajicimu tlaku na garbage collector
+    // cim dal hur, jak stream bezi dele - presne to, co jsi popsal jako
+    // "casem dochazi k drops FPS". Tyhle buffery pouziva VYHRADNE
+    // pracovni H264 vlakno (zadna dalsi synchronizace potreba), a
+    // preallokuji se znovu jen kdyz se skutecne zmeni rozmery (coz je
+    // vzacne, ne kazdy snimek).
+    private int[] napTvWebH264PxBuf = null;
+    private byte[] napTvWebH264YuvBuf = null;
+    private int napTvWebH264BufW = 0, napTvWebH264BufH = 0;
+
     private void napTvWebH264FeedFrameInternal(Bitmap bm) {
         int w = bm.getWidth() - (bm.getWidth() % 2);
         int h = bm.getHeight() - (bm.getHeight() % 2);
@@ -798,9 +812,15 @@ public class MainActivity extends Activity {
         synchronized (napTvWebH264Lock) { enc = napTvWebH264Encoder; }
         if (enc == null) return;
         try {
-            int[] px = new int[w * h];
+            if (napTvWebH264PxBuf == null || napTvWebH264BufW != w || napTvWebH264BufH != h) {
+                napTvWebH264PxBuf = new int[w * h];
+                napTvWebH264YuvBuf = new byte[w * h * 3 / 2];
+                napTvWebH264BufW = w; napTvWebH264BufH = h;
+            }
+            int[] px = napTvWebH264PxBuf;
+            byte[] yuv = napTvWebH264YuvBuf;
             bm.getPixels(px, 0, w, 0, 0, w, h);
-            byte[] yuv = napTvWebH264RgbToYuv420(px, w, h);
+            napTvWebH264RgbToYuv420(px, yuv, w, h);
             int inIdx = enc.dequeueInputBuffer(4000);
             if (inIdx >= 0) {
                 ByteBuffer inBuf = enc.getInputBuffer(inIdx);
@@ -819,9 +839,9 @@ public class MainActivity extends Activity {
     // BT.601 studio-range RGB->YUV420 Planar (I420: cely Y, pak cele U, pak
     // cele V). Celociselna aritmetika (bez plovouci carky) kvuli rychlosti -
     // bezi kazdy snimek, u vetsich rozliseni by float verze mohla byt znatelne
-    // pomalejsi.
-    private byte[] napTvWebH264RgbToYuv420(int[] argb, int w, int h) {
-        byte[] out = new byte[w * h * 3 / 2];
+    // pomalejsi. BUILD2SK65: ted zapisuje do JIZ EXISTUJICIHO bufferu
+    // (predaneho jako parametr) misto aby si sam alokoval novy.
+    private void napTvWebH264RgbToYuv420(int[] argb, byte[] out, int w, int h) {
         int uOff = w * h, vOff = w * h + (w * h) / 4;
         for (int j = 0; j < h; j++) {
             int rowBase = j * w;
@@ -839,7 +859,6 @@ public class MainActivity extends Activity {
                 }
             }
         }
-        return out;
     }
 
     private void napTvWebH264DrainEncoder(MediaCodec enc) {
@@ -1654,6 +1673,7 @@ public class MainActivity extends Activity {
                         + " audioSeq=" + napTvWebAudioSeq
                         + " audioSource=" + napTvWebAudioSource
                         + " audioRate=" + napTvWebAudioRate
+                        + " h264Seq=" + napTvWebH264Seq
                         + " url=" + curUrl3 + "\n").getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, false);
                 out.write(body);
@@ -1741,7 +1761,7 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var isPs1=t.indexOf('/emu_ps1/')>=0;if(isPs1&&!h264Active&&!h264Loading){clog('pollFps detected PS1, calling startH264');startH264();}else if(!isPs1&&h264Active){stopH264();}if(m){var sq=parseInt(m[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);var isPs1=t.indexOf('/emu_ps1/')>=0;if(isPs1&&!h264Active&&!h264Loading){clog('pollFps detected PS1, calling startH264');startH264();}else if(!isPs1&&h264Active){stopH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 + "setInterval(pollFps,1000);})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
         napTvWebHeader(out, "200 OK", "text/html; charset=utf-8", b.length, false);

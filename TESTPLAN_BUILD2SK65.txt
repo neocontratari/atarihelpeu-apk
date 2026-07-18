@@ -1,0 +1,51 @@
+BUILD2SK65 - MENE ODPADU PRO GC (drops v case) + PRESNE H264 FPS
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+TVUJ CIL (LOW ~50fps, MEDIUM 40-45fps, HIGH aspon 35fps) - POCTIVE
+Tohle jsou ambiciozni, ale rozumne cile pro H.264 na mobilnim
+hardwaru. Timhle buildem resim konkretne "drops v case" - dalsi kolo
+pak uvidime, jak blizko k cilovym cislum jsme se dostali a jestli
+je potreba jeste zrychlit samotnou konverzi.
+
+CO ZPUSOBOVALO ZHORSOVANI V CASE
+Moje YUV konverze delala "new int[...]" a "new byte[...]" PRI KAZDEM
+JEDNOM SNIMKU. U landscape rozliseni (~900 000 pixelu) to je pres 5 MB
+odpadu PER SNIMEK. I "jen" pri 20fps je to >100 MB za sekundu odpadu,
+ktery musi garbage collector uklizet - a cim vic se toho nahromadi,
+tim castejsi a delsi jsou GC pauzy, coz presne odpovida tomu, co jsi
+popsal jako "casem dochazi k drops FPS".
+
+OPRAVA
+Buffery (pole pro pixely a pro YUV vystup) se ted alokuji JEN JEDNOU
+a pak se OPAKOVANE POUZIVAJI pro kazdy dalsi snimek - novou alokaci
+zpusobi jen skutecna zmena rozliseni (coz je vzacne, ne kazdy snimek).
+Tohle by melo vyrazne snizit tlak na GC a udrzet FPS stabilnejsi delsi
+dobu.
+
+PRESNE H264 FPS MERENI
+Doted FPS pocitadlo na strance ukazovalo rychlost ZACHYTAVANI
+(PixelCopy), ne rychlost SKUTECNE ODESLANYCH H264 snimku - a protoze
+jsem v SK64 oddelil zachytavani od H264 zpracovani (bezi na
+samostatnem vlakne), tyhle dve cisla uz nemusi byt stejna! Pridal jsem
+presne pocitadlo skutecne odeslanych H264 snimku (h264Seq) a FPS
+pocitadlo na strance ho ted POUZIVA MISTO zachytavaci rychlosti, kdyz
+jsi v H264 rezimu - takze cislo, co vidis, ted presne odpovida tomu,
+co se skutecne prehrava, ne jen tomu, jak rychle appka zachytava.
+
+MERENI (pred odeslanim)
+- { } 1721/1721, [ ] 302/302 - vyvazene.
+- Klientsky JS overen Node.js syntax checkerem: STAVI SE SPRAVNE.
+- napTvWebH264PxBuf/YuvBuf: opakovane pouzivane buffery, spravne
+  propojene s realokaci jen pri zmene rozmeru.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, kazda uroven (LOW/MEDIUM/HIGH), landscape.
+3) Sleduj FPS pocitadlo DELSI DOBU (aspon minutu na kazde urovni) -
+   drzi se ted stabilnejsi, nebo porad klesa v case?
+4) Zapis si aktualni cisla pro kazdou uroven - budeme vedet, jak
+   blizko jsme tvym cilum (50/40-45/35) a kolik dalsi prace zbyva.
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56 (pred celou H264 praci).
