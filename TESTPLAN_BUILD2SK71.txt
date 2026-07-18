@@ -1,0 +1,49 @@
+BUILD2SK71 - NALEZENO: NEBYLA TO SKRYTA REZIE, BYL TO MUJ VLASTNI STROP
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+CO TICK_AVG UKAZAL
+avgTickGapMs=59-64, targetDelayMs=50. To znamena: skutecny cyklus
+(~60ms) temer PRESNE odpovida "moje nastavene zpozdeni (50ms) +
+PixelCopy latence navrch (~10-20ms)". Zadna skryta, nezmerena rezie
+- appka delala presne to, o co jsem ji drive pozadal.
+
+PROC TO JE PROBLEM
+Tohle zpozdeni (50/40/33ms pro LOW/MEDIUM/HIGH) jsem nastavil v SK56,
+kdyz jsi chtel FPS OMEZIT na stabilni hodnotu (kvuli tehdejsim jinym
+problemum). Ted je cil OPACNY - MAXIMALIZOVAT FPS. Tenhle strop, ktery
+kdysi davalo smysl mit, ted brzdi presne to, co ma byt rychlejsi.
+
+PixelCopy sama o sobe zvladne snimek za ~10-25ms, H264 zpracovani za
+~5ms - teoreticky by appka bez umeleho stropu mohla bezet mnohem
+rychleji nez 50/40/33ms cyklus, ktery jsem ji predtim nakazal.
+
+OPRAVA
+Pro PS1 s aktivne pripojenym H264 klientem se ted pouziva mnohem
+mensi strop (5ms) misto tier-based zpozdeni. PixelCopyho VLASTNI
+tempo (uz existujici pojistka napTvWebPixelCopyPending, ktera
+zabranuje prekryvajicim se pozadavkum) se tak stane skutecnym
+limitujicim faktorem - appka pozada o dalsi snimek TAK RYCHLE, jak jen
+PixelCopy sam dovoli, misto aby cekala navic muj drivejsi umely strop.
+
+Pro VSECHNY OSTATNI obrazovky (Atari/Sega/DJ pult/MP3/domovska
+stranka, i PS1 bez H264 klienta) zustava puvodni tier-based zpozdeni
+BEZE ZMENY - tahle zmena je cilena vyhradne na PS1+H264 scenar.
+
+MERENI (pred odeslanim)
+- { } 1741/1741, [ ] 302/302 - vyvazene.
+- effectiveDelay: 3 vyskyty (deklarace+vypocet, podminka pro PS1+H264
+  override, pouziti v postDelayed) - spravne propojeno.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, LOW, landscape - sleduj FPS pocitadlo. Melo by to konecne byt
+   citelne vyssi nez predchozich ~13-16fps.
+3) Zkus i MEDIUM a HIGH pro srovnani.
+4) Pokud FPS vyrazne vzroste - skvele, blizime se tvym cilum
+   (50/40-45/35). Pokud porad ne, posli mi znova TICK_AVG - uvidime,
+   jestli uz je novy strop (5ms) skutecne aktivni a co PixelCopy dela
+   bez umeleho zpozdeni navic.
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56 (pred celou H264 praci).

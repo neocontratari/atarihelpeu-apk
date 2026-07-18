@@ -662,7 +662,24 @@ public class MainActivity extends Activity {
             // zpet, takze by test nebyl platny - skutecna dosazitelna rychlost je
             // stejne omezena tim, jak dlouho trva zachytit+zkomprimovat snimek,
             // tenhle floor jen urcuje jak agresivne se appka o to snazi.
-            if (napTvWebRunning) ui.postDelayed(this, Math.max(10, napTvWebFrameDelayMs) + extraDelay);
+            // BUILD2SK71: puvodni frameDelayMs (50/40/33ms pro LOW/MEDIUM/HIGH)
+            // byl navrzen driv, kdyz cilem bylo FPS OMEZIT na stabilni hodnotu.
+            // Data z TICK_AVG diagnostiky (SK70) ukazala, ze skutecny cyklus
+            // (~60ms) temer presne odpovida "target delay (50ms) + PixelCopy
+            // latence navrch (~10-20ms)" - zadna skryta rezie, appka jen delala
+            // presne to, co ji rekl predchozi pozadavek. Ted je cil OPACNY
+            // (maximalizovat FPS), takze tohle umele zpozdeni ted brzdi presne
+            // to, co ma byt rychlejsi. Pro PS1 s aktivnim H264 klientem: pouzit
+            // mnohem mensi strop (5ms) - PixelCopyho vlastni tempo (~20-30ms)
+            // se tak stane skutecnym limitujicim faktorem, misto umeleho stropu
+            // navrch.
+            long effectiveDelay = Math.max(10, napTvWebFrameDelayMs);
+            try {
+                if (napTvWebCurrentUrl != null && napTvWebCurrentUrl.contains("/emu_ps1/") && !napTvWebH264ClientQueues.isEmpty()) {
+                    effectiveDelay = 5;
+                }
+            } catch (Throwable ignored) {}
+            if (napTvWebRunning) ui.postDelayed(this, effectiveDelay + extraDelay);
         }
     };
 
