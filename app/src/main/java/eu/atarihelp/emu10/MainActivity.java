@@ -251,6 +251,7 @@ public class MainActivity extends Activity {
     // JMuxer.js na klientovi (zadne MP4 balenu na Android strane, zadny
     // rizikovy externi muxer s neoverenym API).
     private MediaCodec napTvWebH264Encoder;
+    private android.view.Surface napTvWebH264InputSurface;
     private final Object napTvWebH264Lock = new Object();
     private volatile int napTvWebH264W = 0;
     private volatile int napTvWebH264H = 0;
@@ -826,20 +827,17 @@ public class MainActivity extends Activity {
             napTvWebH264ReleaseEncoderLocked();
             try {
                 MediaFormat fmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, w, h);
-                // COLOR_FormatYUV420Planar - nejsirsi historicka podpora napric
-                // vyrobci/API urovnemi. RIZIKO: nektere novejsi zarizeni mohou
-                // preferovat/vyzadovat jiny format (Flexible/NV12) - pokud
-                // encoder.configure() selze na konkretnim telefonu, tohle je
-                // prvni misto na zmenu (zjistit skutecne podporovane formaty
-                // pres getCodecInfo().getCapabilitiesForType() a vybrat za behu).
-                fmt.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar);
+                // BUILD2SK75: COLOR_FormatSurface misto YUV420Planar - rikame
+                // enkoderu, ze vstup prijde jako Surface (GPU), ne jako rucne
+                // pripravene bajty. Enkoder pak RGB->YUV prevod dela SAM,
+                // interne, hardwarove - zadna Java smycka po pixelech, zadne
+                // soutezeni o CPU s PS1 emulaci. Tohle je presne ta "berlicka",
+                // o ktere Rene mel podezreni - puvodni rucni YUV konverze (i
+                // kdyz sama o sobe rychla, ~3-5ms) bezela 4x castej po
+                // odstraneni umeleho stropu (SK71), a soutezila o CPU s
+                // emulatorem samotnym.
+                fmt.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
                 fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(700000, w * h * 4));
-                // BUILD2SK72: bylo 30 - po SK71 (odstraneni umeleho stropu) appka
-                // bezi realne na 38-50+ fps podle urovne. Nesoulad mezi timhle
-                // deklarovanym cislem a SKUTECNOU rychlosti dorucovani snimku
-                // mohl matlit enkoderovo vnitrni rizeni datoveho toku (kolik bitu
-                // na snimek alokovat) - 60 je bezpecny horni odhad pro vsechny
-                // urovne kvality.
                 fmt.setInteger(MediaFormat.KEY_FRAME_RATE, 60);
                 fmt.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
                 if (Build.VERSION.SDK_INT >= 23) {
@@ -847,13 +845,16 @@ public class MainActivity extends Activity {
                 }
                 MediaCodec enc = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
                 enc.configure(fmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+                // POZOR NA PORADI: createInputSurface() MUSI byt zavolano PO
+                // configure() a PRED start() - takhle to vyzaduje Android API.
+                android.view.Surface inputSurface = enc.createInputSurface();
                 enc.start();
                 napTvWebH264Encoder = enc;
+                napTvWebH264InputSurface = inputSurface;
                 napTvWebH264W = w; napTvWebH264H = h;
                 napTvWebH264FrameIndex = 0;
-                napTvWebH264StartNanos = System.nanoTime();
                 napTvWebH264Generation++;
-                appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation);
+                appendNativeLog("BUILD2SK75 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation + " mode=SURFACE");
             } catch (Throwable t) {
                 appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_FAIL " + safeMsg(t));
                 napTvWebH264Encoder = null;
@@ -866,6 +867,10 @@ public class MainActivity extends Activity {
             try { napTvWebH264Encoder.stop(); } catch (Throwable ignored) {}
             try { napTvWebH264Encoder.release(); } catch (Throwable ignored) {}
             napTvWebH264Encoder = null;
+        }
+        if (napTvWebH264InputSurface != null) {
+            try { napTvWebH264InputSurface.release(); } catch (Throwable ignored) {}
+            napTvWebH264InputSurface = null;
         }
         napTvWebH264W = 0; napTvWebH264H = 0;
     }
@@ -945,68 +950,38 @@ public class MainActivity extends Activity {
         if (w <= 0 || h <= 0) return;
         napTvWebH264EnsureEncoder(w, h);
         MediaCodec enc;
-        synchronized (napTvWebH264Lock) { enc = napTvWebH264Encoder; }
-        if (enc == null) return;
+        android.view.Surface inputSurface;
+        synchronized (napTvWebH264Lock) { enc = napTvWebH264Encoder; inputSurface = napTvWebH264InputSurface; }
+        if (enc == null || inputSurface == null) return;
         try {
-            if (napTvWebH264PxBuf == null || napTvWebH264BufW != w || napTvWebH264BufH != h) {
-                napTvWebH264PxBuf = new int[w * h];
-                napTvWebH264YuvBuf = new byte[w * h * 3 / 2];
-                napTvWebH264BufW = w; napTvWebH264BufH = h;
-            }
-            int[] px = napTvWebH264PxBuf;
-            byte[] yuv = napTvWebH264YuvBuf;
-            // BUILD2SK66: podrobne casovani kazde faze - HIGH bezelo
-            // rychleji nez LOW, coz nedava smysl, pokud by hlavni naklad
-            // byl umerny poctu pixelu (YUV prevod, getPixels). To ukazuje
-            // na FIXNI naklad nezavisly na rozliseni (nejspis samotny
-            // enkoder - dequeueInputBuffer) - tohle mereni to bud potvrdi,
-            // nebo ukaze neco jineho.
+            // BUILD2SK75: BYVALO getPixels() + rucni YUV smycka (~3-5ms Java
+            // kodu na kazdy snimek, ktery ted po SK71 bezi 4x castej nez
+            // predtim - primo souteziv o CPU s PS1 emulaci). TED: bitmapa se
+            // vykresli PRIMO na Surface enkoderu pres hardwarove
+            // akcelerovany Canvas - GPU dela RGB->YUV prevod sam, interne.
+            // Zadna Java smycka po pixelech vubec.
             long t0 = System.nanoTime();
-            bm.getPixels(px, 0, w, 0, 0, w, h);
-            long t1 = System.nanoTime();
-            napTvWebH264RgbToYuv420(px, yuv, w, h);
-            long t2 = System.nanoTime();
-            int inIdx = enc.dequeueInputBuffer(4000);
-            long t3 = System.nanoTime();
-            if (inIdx >= 0) {
-                ByteBuffer inBuf = enc.getInputBuffer(inIdx);
-                inBuf.clear();
-                inBuf.put(yuv);
-                // BUILD2SK72: PUVODNI vypocet predpokladal PEVNYCH 30 snimku za
-                // sekundu bez ohledu na SKUTECNOU rychlost dorucovani snimku.
-                // Po SK71 (odstraneni umeleho stropu) appka ted bezi na 50+ fps -
-                // ale PTS se porad pocitaly, jako by kazdy snimek byl 33ms od
-                // predchoziho (30fps tempo). Tenhle nesoulad (dekl. 30fps vs
-                // skutecnych 50+fps) zpusoboval, ze PTS casem zaostavaly za
-                // realnym casem - prehravac pak myslel, ze snimky prichazeji
-                // "predcasne" a cekal/bufferoval, coz vytvarelo presne to
-                // sekani/trhani, co Rene popsal (ne signal, ne prenos - cisty
-                // nesoulad casovych znacek). Ted: PTS = SKUTECNY uplynuly cas od
-                // prvniho snimku teto enkoderove generace, ne pevny predpoklad.
-                long ptsUs = (System.nanoTime() - napTvWebH264StartNanos) / 1000L;
-                enc.queueInputBuffer(inIdx, 0, yuv.length, ptsUs, 0);
-                napTvWebH264FrameIndex++;
+            android.graphics.Canvas canvas = inputSurface.lockHardwareCanvas();
+            try {
+                canvas.drawBitmap(bm, 0, 0, null);
+            } finally {
+                inputSurface.unlockCanvasAndPost(canvas);
             }
+            long t1 = System.nanoTime();
             napTvWebH264DrainEncoder(enc);
-            long t4 = System.nanoTime();
-            napTvWebH264DiagPixelsMs += (t1 - t0) / 1000000;
-            napTvWebH264DiagYuvMs += (t2 - t1) / 1000000;
-            napTvWebH264DiagDequeueMs += (t3 - t2) / 1000000;
-            napTvWebH264DiagDrainMs += (t4 - t3) / 1000000;
+            long t2 = System.nanoTime();
+            napTvWebH264DiagPixelsMs += (t1 - t0) / 1000000; // ted: cas kresleni na Surface (byvale "pixels+yuv")
+            napTvWebH264DiagDrainMs += (t2 - t1) / 1000000;
             napTvWebH264DiagFrameCount++;
-            long totalMs = (t4 - t0) / 1000000;
+            long totalMs = (t2 - t0) / 1000000;
             if (totalMs > 80) {
-                appendNativeLog("BUILD2SK66 TV_WEB_H264_FRAME_SLOW totalMs=" + totalMs
-                        + " pixelsMs=" + ((t1 - t0) / 1000000) + " yuvMs=" + ((t2 - t1) / 1000000)
-                        + " dequeueMs=" + ((t3 - t2) / 1000000) + " drainMs=" + ((t4 - t3) / 1000000)
+                appendNativeLog("BUILD2SK75 TV_WEB_H264_FRAME_SLOW totalMs=" + totalMs
+                        + " drawMs=" + ((t1 - t0) / 1000000) + " drainMs=" + ((t2 - t1) / 1000000)
                         + " w=" + w + " h=" + h);
             }
             if (napTvWebH264DiagFrameCount >= 30) {
-                appendNativeLog("BUILD2SK66 TV_WEB_H264_FRAME_AVG n=" + napTvWebH264DiagFrameCount
-                        + " avgCopyMs=" + (napTvWebH264DiagCopyMs / napTvWebH264DiagFrameCount)
-                        + " avgPixelsMs=" + (napTvWebH264DiagPixelsMs / napTvWebH264DiagFrameCount)
-                        + " avgYuvMs=" + (napTvWebH264DiagYuvMs / napTvWebH264DiagFrameCount)
-                        + " avgDequeueMs=" + (napTvWebH264DiagDequeueMs / napTvWebH264DiagFrameCount)
+                appendNativeLog("BUILD2SK75 TV_WEB_H264_FRAME_AVG n=" + napTvWebH264DiagFrameCount
+                        + " avgDrawMs=" + (napTvWebH264DiagPixelsMs / napTvWebH264DiagFrameCount)
                         + " avgDrainMs=" + (napTvWebH264DiagDrainMs / napTvWebH264DiagFrameCount)
                         + " w=" + w + " h=" + h);
                 napTvWebH264DiagFrameCount = 0;

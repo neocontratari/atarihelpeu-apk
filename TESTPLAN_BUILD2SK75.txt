@@ -1,0 +1,83 @@
+BUILD2SK75 - SURFACE-BASED H264 (odstraneni te "berlicky", ktere jsi
+tusil)
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+Zaklad: BUILD2SK73 presne (viz NP_VISION_BASELINE_SK73_FULL.zip -
+predchozi zprava)
+DJ pult: nedotcen, prilozen pro uplnost (stejny jako v zaklade)
+
+TVUJ USUDEK BYL SPRAVNY
+Rekl jsi mi presne, kde hledat: rucni YUV konverze v Javě byla
+skutecna "berlicka" - fungovala, ale soutezila o CPU s PS1 emulaci,
+protoze po SK71 (odstraneni umeleho stropu) bezela 4x castej nez
+predtim.
+
+CO SE ZMENILO (velky architektonicky zasah)
+Misto:
+  zachyceny snimek -> precist vsechny pixely do pole (Java) ->
+  rucne prepocitat kazdy pixel na YUV (Java smycka) -> poslat
+  bajty enkoderu
+Ted:
+  zachyceny snimek -> vykreslit primo na Surface enkoderu
+  (hardwarove akcelerovany Canvas) -> enkoder si RGB->YUV prevod
+  dela SAM, interne, na GPU
+Zadna Java smycka po pixelech UZ VUBEC NEBEZI. PixelCopy zachytavani
+(uz proverene spravne pro PS1) zustava BEZE ZMENY - meni se jen to,
+co se deje s vysledkem POTOM.
+
+VEDLEJSI VYHODA: PTS (casove znacky) uz nemusim rucne pocitat vubec -
+Android Surface->encoder mechanismus si spravny cas hlida sam
+automaticky (soucast standardniho grafickeho pipeline). Odpada tim i
+rucne SK72 reseni (bylo spravne, ale ted uz je zbytecne - Surface
+rezim to resi sam a spolehliveji).
+
+POCTIVE - RIZIKO TETO ZMENY
+Tohle je vetsi architektonicky zasah nez dosavadni postupne opravy, a
+NEMOHL jsem si ho sam zkompilovat/otestovat (stejne jako u vsech
+predchozich H264 kroku). Konkretni mista, kde by neco MOHLO selhat
+poprve na skutecnem zarizeni:
+- lockHardwareCanvas() se vola z POZADIOVEHO vlakna (ne UI vlakno) -
+  API to obecne dovoluje (bezny vzor pro capture->encoder pipeline),
+  ale nemam 100% jistotu bez testu na tomhle konkretnim telefonu/API
+  urovni.
+- COLOR_FormatSurface misto YUV420Planar - jina cesta v MediaCodec,
+  teoreticky SIRSI hardwarova podpora (Surface rezim je "normalni"
+  zpusob, jak vetsina Android capture->encode aplikaci funguje), ale
+  opet prvni skutecny test.
+Pokud tohle SELZE (enkoder se nespusti, cerna obrazovka apod.), v
+/log bude "TV_WEB_H264_ENCODER_FAIL" nebo "TV_WEB_H264_FEED_ERR" s
+konkretni chybovou zpravou - posli mi ji, budu vedet presne kde.
+
+CO OCEKAVAT PRI USPECHU
+- Vyrazne mensi CPU zatez z H264 pipeline (zadna Java YUV smycka).
+- Mel by se zmirnit i pocit "soutezeni o CPU s emulatorem", protoze
+  tahle konkretni prace uz na CPU vubec nebezi.
+- FPS by melo zustat stejne vysoke (nebo lepsi) jako v SK71-74.
+- Plynulost by se mohla jeste zlepsit (mene CPU kontence = mensi
+  pravdepodobnost, ze PS1 emulace sama trha kvuli nedostatku CPU).
+
+MERENI (pred odeslanim)
+- { } 1744/1744, [ ] 298/298 - vyvazene.
+- napTvWebH264InputSurface: 6 vyskytu, vsechny spravne propojene.
+- Overeno, ze dalsi 2 vyskyty "unlockCanvasAndPost" v souboru jsou
+  PREDEXISTUJICI, nesouvisejici kod jinde v teto velke tride (ne
+  kolize s mou zmenou).
+- Stara YUV konverzni funkce (napTvWebH264RgbToYuv420) zustava v
+  souboru jako nepouzivany kod (bezpecne, zadny compile problem) -
+  uz ji nic nevola.
+
+JAK OTESTOVAT
+1) Nahrad MainActivity.java, commit, Action, novy APK, cast vypnout/
+   zapnout, nova navigace na TV stranku.
+2) PS1, kazda uroven, landscape.
+3) Pokud VIDIS OBRAZ - skvele, sleduj FPS (mely by zustat vysoke) a
+   plynulost (mela by byt stejna nebo lepsi).
+4) Pokud NEVIDIS OBRAZ (cerna obrazovka) - otevri /log, hledej
+   "TV_WEB_H264_ENCODER_FAIL" nebo "TV_WEB_H264_FEED_ERR" - posli mi
+   presnou chybovou zpravu.
+5) Zkus i, jestli se PS1 emulace SAMA (ovladani, plynulost hry mimo
+   web-cast) citi plynulejsi nez predtim - to by potvrdilo teorii o
+   CPU souteni.
+
+KILL-SWITCH: cely balicek NP_VISION_BASELINE_SK73_FULL.zip z
+predchozi zpravy - kompletni, overeny navrat.
