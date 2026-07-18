@@ -1,0 +1,41 @@
+BUILD2SK80 - H264 UNIVERZALNI + DIAGNOSTIKA ROZSIRENA NA VSECHNY OBRAZOVKY
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+ODPOVED NA TVOU OTAZKU O LOGACH
+Vsechny logy uz DAVNO tekou do jednoho spolecneho mista - appendNativeLog
+je jedina, sdilena funkce pro celou appku, a /log endpoint (192.168.0.34:
+8765/log) je servituje VSECHNY, at uz jde o PS1, Segu, Atari, DJ pult,
+cokoli. Nic jsem nemusel presmerovavat - takhle uz to bylo postavene.
+
+CO JSEM ALE PRI TVE OTAZCE NASEL A OPRAVIL
+Dve moje diagnosticke pomucky (TICK_AVG - meri cely cyklus zachytavani,
+DUPCHECK - meri jestli zdroj produkuje nove snimky dost rychle) jsem
+postavil behem PS1 ladeni a nechal jsem je OMEZENE jen na PS1 obrazovku.
+Pro tvuj chystany test Segy/Atari by mi tahle data chybela. Rozsiril
+jsem obe na VSECHNY obrazovky - ted uvidim stejnou hloubku dat i pro
+Segu/Atari, ne jen pro PS1.
+
+DUPCHECK navic ted v logu uvadi, na jake URL se meril (uzitecne, kdyz uz
+neni omezeny na jednu konkretni obrazovku).
+
+PRIPOMINKA - ZBYTEK OBSAHU JE STEJNY JAKO PREDCHOZI ODESLANI SK80
+- H264 (misto MJPEG) se ted pouziva pro VSECHEN obsah, ne jen PS1.
+- Rychly 5ms tick cyklus (misto 50/40/33ms) plati univerzalne.
+- Klient (JS) zkousi H264 vzdy, ne jen na PS1.
+
+MERENI (pred odeslanim)
+- { } 1746/1746, [ ] 298/298 - vyvazene.
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) Sega, Atari, DJ pult - kazda by mela po chvili prepnout na "H264" a
+   ukazat vyssi FPS.
+3) Vsechny logy (vcetne TICK_AVG a DUPCHECK, ted uz univerzalni) budou
+   ve stejnem /log jako doteď - staci mi poslat cely soubor jako
+   obvykle.
+4) Pokud neco nefunguje na konkretni obrazovce, dej vedet ktera.
+
+KILL-SWITCH: NP_VISION_BASELINE_SK73_FULL.zip (kompletni navrat) nebo
+BUILD2SK79 (PS1-only H264, pred touto unifikaci).

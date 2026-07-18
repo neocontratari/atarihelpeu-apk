@@ -375,7 +375,7 @@ public class MainActivity extends Activity {
             if (napTvWebTickLastStartMs > 0) {
                 long tickGap = tickNow - napTvWebTickLastStartMs;
                 try {
-                    if (napTvWebCurrentUrl != null && napTvWebCurrentUrl.contains("/emu_ps1/") && !napTvWebH264ClientQueues.isEmpty()) {
+                    if (!napTvWebH264ClientQueues.isEmpty()) {
                         napTvWebTickDiagSumMs += tickGap;
                         napTvWebTickDiagCount++;
                         if (napTvWebTickDiagCount >= 30) {
@@ -682,9 +682,13 @@ public class MainActivity extends Activity {
             // mnohem mensi strop (5ms) - PixelCopyho vlastni tempo (~20-30ms)
             // se tak stane skutecnym limitujicim faktorem, misto umeleho stropu
             // navrch.
+            // BUILD2SK80: BYVALO omezeno jen na PS1. Ted univerzalni - vsechen
+            // obsah s aktivnim H264 klientem dostava stejny rychly cyklus, ne
+            // jen PS1. Bez tohohle by ostatni obrazovky sice ziskaly H264
+            // enkodovani, ale porad by byly brzdene starym umelym zpozdenim.
             long effectiveDelay = Math.max(10, napTvWebFrameDelayMs);
             try {
-                if (napTvWebCurrentUrl != null && napTvWebCurrentUrl.contains("/emu_ps1/") && !napTvWebH264ClientQueues.isEmpty()) {
+                if (!napTvWebH264ClientQueues.isEmpty()) {
                     effectiveDelay = 5;
                 }
             } catch (Throwable ignored) {}
@@ -739,9 +743,16 @@ public class MainActivity extends Activity {
             // komprese se preskoci UPLNE (napTvWebJpeg proste zustane
             // nezmeneny - stary snimek - dokud se nekdo neodpoji od H264,
             // pak se MJPEG cesta zase prirozene obnovi).
-            String curUrlNow = napTvWebCurrentUrl;
-            boolean isPs1Now = curUrlNow != null && curUrlNow.contains("/emu_ps1/");
-            boolean h264Handling = isPs1Now && !napTvWebH264ClientQueues.isEmpty();
+            // BUILD2SK80: BYVALO omezeno jen na PS1 ("isPs1Now &&"). Rene se
+            // rozhodl obejit problem neexistujicich kvalitnich hacku uvnitr
+            // uzavrenych nativnich jader (Sega/PS1 bridge) tim, ze se
+            // UNIFIKUJE cely vystup pres uz overenou H264 cestu - misto
+            // MJPEG pro vsechno KROME PS1, ted H264 pro VSECHNO, kde je
+            // pripojeny klient. hqLiteScreen je uz univerzalni (SK49), takze
+            // tohle prirozene pokryva PS1, Segu, Atari, DJ pult, MP3,
+            // domovskou stranku - cokoli, co se prave zachytava.
+            String curUrlNow = napTvWebCurrentUrl; // BUILD2SK80: uz se nepouziva pro rozhodnuti (H264 je univerzalni), zustava pro pripadnou budouci diagnostiku
+            boolean h264Handling = !napTvWebH264ClientQueues.isEmpty();
 
             long prevPublishMs = napTvWebLastFrameMs;
             if (!h264Handling) {
@@ -800,7 +811,7 @@ public class MainActivity extends Activity {
             // snimkem. Beží nezavisle na H264 - i pro MJPEG chceme vedet,
             // jestli zachytavame duplicity.
             try {
-                if (napTvWebCurrentUrl != null && napTvWebCurrentUrl.contains("/emu_ps1/")) {
+                {
                     int bw = bm.getWidth(), bh = bm.getHeight();
                     if (bw > 8 && bh > 8) {
                         long sample = 0;
@@ -813,7 +824,7 @@ public class MainActivity extends Activity {
                         napTvWebLastSampleHash = sample;
                         if (napTvWebDupCheckCount >= 60) {
                             appendNativeLog("BUILD2SK67 TV_WEB_PS1_DUPCHECK sameFrames=" + napTvWebDupCheckSame
-                                    + "/" + napTvWebDupCheckCount + " (pokud je toto cislo vysoke, PS1 nevykresluje"
+                                    + "/" + napTvWebDupCheckCount + " url=" + napTvWebCurrentUrl + " (pokud je toto cislo vysoke, zdroj nevykresluje"
                                     + " novy obsah tak rychle, jak ho zachytavame)");
                             napTvWebDupCheckCount = 0; napTvWebDupCheckSame = 0;
                         }
@@ -1946,7 +1957,7 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);var isPs1=t.indexOf('/emu_ps1/')>=0;if(isPs1&&!h264Active&&!h264Loading){clog('pollFps detected PS1, calling startH264');startH264();}else if(!isPs1&&h264Active){stopH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 + "setInterval(pollFps,1000);})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
         napTvWebHeader(out, "200 OK", "text/html; charset=utf-8", b.length, false);
