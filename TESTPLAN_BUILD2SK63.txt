@@ -1,0 +1,60 @@
+BUILD2SK63 - OPRAVA ZMEN ROZLISENI (landscape + LOW se "rozsypaly")
+================================================================================
+Zmeneny soubor: app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+SKVELA ZPRAVA NEJDRIV
+Na vysku uz to funguje - zvuk/obraz synchronizace lepsi. To potvrzuje,
+ze SK61+SK62 opravy (spatne vlakno pro web.getUrl) byly spravne.
+
+CO ZPUSOBOVALO "ROZSYPANI" NA SIRKU A NA LOW
+V logu jsem videl presne to: opakovane "ENCODER_START" se STRIDAJICIMI
+se rozmery (720x1336 portret, 1384x672 landscape) - kazda zmena
+orientace/kvality zpusobi, ze se enkoder MUSI restartovat (jine
+rozliseni = novy enkoder). ALE po prvnim uspesnem pripojeni se klient
+uz NIKDY znovu nepripojil, i kdyz enkoder restartoval 6x za sebou.
+
+Pricina: kazdy NOVY enkoder produkuje NOVE SPS/PPS (parametry kodeku
+H.264 - v podstate "hlavicka" popisujici format streamu). Kdyz tohle
+dorazi klientovi UPROSTRED jiz beziciho spojeni/JMuxer instance,
+prohlizec to TISE odmitne - zadna chyba, zadny pad, proste se prestane
+neco dit. Server prit tom vesele posilal dal data na to same (uz
+nefunkcni) spojeni, protoze nemel zpusob, jak poznat, ze se neco
+zmenilo tak zasadne, ze klient potrebuje ZACIT ZNOVU.
+
+OPRAVA (dve casti, obe nutne)
+1) SERVER: generacni pocitadlo - kazdy enkoder ma cislo generace.
+   Klient, kdyz se pripoji, se "prihlasi" k AKTUALNI generaci pri
+   prvnich datech. Pokud se generace behem spojeni zmeni (enkoder
+   restartoval), server AKTIVNE UKONCI spojeni misto tichy posilat
+   nekompatibilni data dal.
+2) KLIENT: kdyz JS detekuje konec streamu (server ho ukoncil), ted se
+   SPRAVNE resetuje (h264Active=false) - predtim to zustavalo tise
+   "zaseknute" navzdy a dalsi pokus o pripojeni uz nikdy nenastal. Ted
+   se pri dalsim kontrolnim cyklu (kazdou sekundu) pripoji ZNOVU s
+   cerstvym JMuxerem, ktery spravne prijme novou SPS/PPS od noveho
+   enkoderu.
+
+CO OCEKAVAT PO TETO OPRAVE
+Pri zmene orientace nebo kvalitni urovne behem prehravani H264 na PS1
+uvidis kratke, ale ZNATELNE PRERUSENI (cerna obrazovka na necelou
+sekundu), zatimco se stream znovu naviguje s novym enkoderem - to je
+OCEKAVANE a v poradku, dulezite je, ze uz by se to melo SAMO OPRAVIT,
+misto aby zustalo trvale rozbite.
+
+MERENI (pred odeslanim)
+- { } 1701/1701, [ ] 299/299 - vyvazene.
+- Klientsky JS overen Node.js syntax checkerem: STAVI SE SPRAVNE.
+- napTvWebH264Generation: 4 vyskyty (deklarace, inkrementace pri
+  vytvoreni enkoderu, cteni+porovnani v streamovaci smycce).
+
+JAK OTESTOVAT
+1) Nahrad, commit, Action, novy APK, cast vypnout/zapnout, nova
+   navigace na TV stranku.
+2) PS1, HIGH, na vysku - potvrd ze porad funguje jako predtim.
+3) Preved na sirku (landscape) BEHEM prehravani - meli bys videt
+   kratke preruseni, pak by se obraz mel VRATIT (ne zustat cerny
+   navzdy jako predtim).
+4) Zkus prepnout na LOW behem prehravani - stejne, kratke preruseni,
+   pak by se melo obnovit.
+
+KILL-SWITCH: MainActivity.java z BUILD2SK56 (pred celou H264 praci).

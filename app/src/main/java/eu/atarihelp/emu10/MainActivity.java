@@ -269,6 +269,19 @@ public class MainActivity extends Activity {
     // periodicky log), a /status jen cte tuhle cache - zadne dalsi
     // volani web.getUrl() mimo UI vlakno.
     private volatile String napTvWebCurrentUrl = "";
+    // BUILD2SK63: kdyz se enkoder restartuje kvuli zmene rozliseni (napr.
+    // portret<->landscape, zmena kvalitni urovne), NOVY enkoder produkuje
+    // NOVE SPS/PPS (parametry kodeku). Pokud tohle dorazi klientovi
+    // UPROSTRED existujiciho spojeni/JMuxer instance, prohlizec to tise
+    // odmitne (zadna chyba, jen se prestane neco dit) - presne to bylo
+    // videt v logu: opakovane restarty enkoderu, ale klient se po prvnim
+    // uspesnem spojeni uz nikdy znovu nepripojil. Reseni: generacni
+    // pocitadlo - kazde pripojeni klienta si zapamatuje generaci PRI
+    // pripojeni, a pokud se PRUBEZNE zmeni (enkoder restartoval), server
+    // spojeni AKTIVNE UKONCI - klientuv fetch() dostane "stream done"
+    // prirozene, a jeho JS (SK63 oprava) se kvuli tomu spravne resetuje
+    // a pri dalsim pollFps cyklu se pripoji ZNOVU s cerstvym JMuxerem.
+    private volatile long napTvWebH264Generation = 0;
     // kazdy pripojeny /stream.h264 klient ma vlastni frontu - na rozdil od
     // MJPEG (kde stačí poslat jen NEJNOVEJSI snimek) tady KAZDA jednotka
     // (NAL) musi dorazit VSEM klientum V PORADI, jinak dekoder dostane
@@ -702,7 +715,8 @@ public class MainActivity extends Activity {
                 napTvWebH264Encoder = enc;
                 napTvWebH264W = w; napTvWebH264H = h;
                 napTvWebH264FrameIndex = 0;
-                appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h);
+                napTvWebH264Generation++;
+                appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation);
             } catch (Throwable t) {
                 appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_FAIL " + safeMsg(t));
                 napTvWebH264Encoder = null;
@@ -810,11 +824,24 @@ public class MainActivity extends Activity {
         napTvWebH264ClientQueues.add(myQueue);
         appendNativeLog("BUILD2SK57 TV_WEB_H264_CLIENT_CONNECT clients=" + napTvWebH264ClientQueues.size());
         try {
+            long myGen = -1;
             while (napTvWebRunning && !sock.isClosed()) {
                 byte[] chunk;
                 try { chunk = myQueue.poll(2000, java.util.concurrent.TimeUnit.MILLISECONDS); }
                 catch (InterruptedException ie) { break; }
                 if (chunk == null) continue;
+                long curGen = napTvWebH264Generation;
+                if (myGen == -1) {
+                    myGen = curGen; // prvni prijata data - navazat se na aktualni generaci enkoderu
+                } else if (curGen != myGen) {
+                    // BUILD2SK63: enkoder mezitim restartoval (jina generace =
+                    // jine SPS/PPS) - AKTIVNE ukoncit spojeni misto tichy
+                    // posilat klientovi nekompatibilni data uprostred streamu.
+                    // Klient (SK63 oprava) tohle spravne rozpozna jako konec
+                    // streamu a pripoji se znovu s cerstvym JMuxerem.
+                    appendNativeLog("BUILD2SK63 TV_WEB_H264_GEN_CHANGE old=" + myGen + " new=" + curGen);
+                    break;
+                }
                 out.write(chunk);
                 out.flush();
             }
@@ -1641,7 +1668,7 @@ public class MainActivity extends Activity {
                 + "catch(e){clog('JMuxer ctor threw '+e);h264Active=false;v.style.display='';h264v.style.display='none';return;}"
                 + "clog('fetching stream.h264');"
                 + "fetch('/stream.h264?'+Date.now()).then(function(r){clog('fetch status '+r.status);h264Reader=r.body.getReader();var first=true;"
-                + "function pump(){if(!h264Active)return;h264Reader.read().then(function(res){if(res.done||!h264Active){clog('stream ended');return;}"
+                + "function pump(){if(!h264Active)return;h264Reader.read().then(function(res){if(res.done||!h264Active){clog('stream ended, resetting');h264Active=false;h264Reader=null;h264v.style.display='none';v.style.display='';return;}"
                 + "if(first){first=false;clog('first chunk bytes='+res.value.length);}try{jm.feed({video:res.value});}catch(e){clog('feed err '+e);}pump();"
                 + "}).catch(function(e){clog('read err '+e);});}pump();"
                 + "}).catch(function(e){clog('fetch FAILED '+e);h264Active=false;v.style.display='';h264v.style.display='none';});}" // BUILD2SK57+SK59: syrovy H.264 (Annex-B) ze serveru -> JMuxer.js remuxuje na fMP4 primo v prohlizeci -> MSE -> <video>
