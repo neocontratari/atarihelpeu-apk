@@ -364,8 +364,13 @@ static bool nap_gles_egl_init() {
   // SetOGLDisplaySettings(1) sami, rovnou tady, aby se scissor/viewport
   // spravne nastavily uz od prvniho snimku, bez ohledu na to, kterou
   // update-funkci pak volame kazdy tick.
-  bDisplayNotSet = TRUE;
-  bSetClip = TRUE;
+  // BUILD2SK107: build FIX - TRUE/FALSE jsou #define v gpu-gles vlastnim
+  // gpuExternals.h (C hlavicka), ktera se sem, do C++ souboru, nezahrnuje -
+  // GitHub Actions to spravne odchytil jako "undeclared identifier" driv,
+  // nez se cokoli dostalo na telefon. 1 je presne to, na co TRUE stejne
+  // expanduje (overeno: #define TRUE 1) - zadna nova makra, zadne riziko.
+  bDisplayNotSet = 1;
+  bSetClip = 1;
   CSTEXTURE = CSVERTEX = CSCOLOR = 0;
 
   // BUILD2SK102: SKUTECNA PRICINA PADU (potvrzeno realnym adb crash logem -

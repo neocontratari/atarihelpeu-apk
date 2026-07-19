@@ -1216,3 +1216,29 @@ se prehlednou, protoze nevypadaji tak dulezite jako volani funkci.
 DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK106 vysledek - hledat
 GLES_SCISSOR_CHECK cisla (rozumne = pokrok, 0x0 = jeste neco chybi) a
 hlavne vizualni potvrzeni, jestli se KONECNE objevila skutecna grafika.
+
+================================================================================
+DODATEK - BUILD2SK107 - OPRAVA BUILD CHYBY (TRUE/FALSE neznamy identifikator)
+================================================================================
+SK106 selhalo primo v GitHub Actions (nedostalo se na telefon vubec -
+bezpecny druh chyby): "error: use of undeclared identifier 'TRUE'" na
+radcich bDisplayNotSet=TRUE / bSetClip=TRUE. Pricina: TRUE/FALSE jsou
+#define v gpu-gles vlastnim gpuExternals.h (C hlavicka), ktera se do
+nap_ps1_native.cpp (C++ soubor) nezahrnuje - muj vlastni "brace/paren
+counting" overovaci postup tohle nemohl zachytit (jde o chybejici
+SYMBOL/MAKRO, ne o nevyvazenou zavorku).
+
+OPRAVENO: TRUE/FALSE nahrazeny primo hodnotou 1 (presne to, na co TRUE
+stejne expanduje) - zadna nova makra, zadne riziko. Prohledan cely soubor
+pro DALSI mozne stejne problemy (zadne dalsi nenalezeny - vsechny ostatni
+ALL-CAPS identifikatory jsou bud standardni EGL/GLES konstanty pres
+radne zahrnute hlavicky, nebo vlastni makra v tomto souboru).
+
+PONAUCENI: brace/paren counting NEDOKAZE zachytit chybejici symboly/makra
+- jen strukturalni nevyvazenost. U kodu spolehajiciho na externi C
+hlavicky (jako TRUE/FALSE tady) je potreba bud (a) explicitne
+extern-deklarovat i makra jako konstanty, nebo (b) pouzivat rovnou
+literalni hodnoty misto spoleham na to, ze makro bude "nejak" dostupne.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK107 vysledek - tohle by
+konecne melo umoznit spravny build + test scissor opravy ze SK106.
