@@ -339,16 +339,29 @@ public class MainActivity extends Activity {
         // landscape rozliseni ted odpovida portretu ve vsech trech urovnich.
         // BUILD2SK92: CELA STUPNICE POSUNUTA NAHORU na Reneho vyslovny
         // pozadavek - "to, co ted bylo HIGH (overene, funguje), ma byt nova
-        // LOW". Nova LOW = presne stare HIGH cislo (nulove riziko, uz
-        // otestovano). Nova MEDIUM/HIGH jsou NOVA, NEOTESTOVANA cisla nad tim -
-        // schvalne umerena (ne rovnou natoceno na natvni rozliseni telefonu),
-        // protoze bitrate roste s w*h (viz vzorec Math.max(1.8M, w*h*6)) -
-        // novy HIGH ma zhruba 2x bitrate stareho HIGH, coz je realny skok,
-        // ktery jeste nikdo netestoval. LOW zustava bezpecny fallback.
-        if (!landscape)         table = new int[][]{{1920,94,33},{2300,94,28},{2700,94,25}};
-        else if (djScreen)      table = new int[][]{{1920,94,33},{2300,94,28},{2700,94,25}};
-        else if (hqLiteScreen)  table = new int[][]{{1920,90,33},{2300,93,28},{2700,94,25}};
-        else                    table = new int[][]{{1920,86,33},{2300,90,28},{2700,94,25}};
+        // LOW". POKUS SELHAL - viz SK94 nize.
+        // BUILD2SK94: SK92 CISLA BYLA CHYBA, POTVRZENO PRIMO Z LOGU - vsechny
+        // tri nova cisla (1920/2300/2700) PRESAHOVALA skutecnou zmerenou
+        // velikost zachytavane plochy na tomhle zarizeni (~1384x672 landscape -
+        // opakovane potvrzeno napric desitkami logu v teto relaci). Vzorec
+        // "scale = min(1.0, cil/skutecna_velikost)" se tak VZDY sepnul na
+        // strop 1.0 pro VSECHNY TRI urovne - LOW i HIGH tak vyprodukovaly
+        // BYTOVE STEJNE rozliseni i bitrate (overeno v ENCODER_START logu:
+        // w=1384 h=672 bitrate=5580288 pro OBA tier=0 I tier=2). Presne to,
+        // co Rene nahlasil - "nechapu princip", protoze mezi urovnemi
+        // OPRAVDU nebyl zadny rozdil.
+        // OPRAVA: LOW/MEDIUM jsou ted cisla, ktera na BEZNYCH telefonech
+        // (vcetne tohohle S8) skutecne zpusobi rozliseni POD nativnim
+        // stropem - realny, viditelny rozdil. HIGH = zamerne velmi vysoke
+        // cislo (9999) - na KAZDEM telefonu se strop stejne uplatni pres
+        // min(1.0,...), takze HIGH VZDY znamena "cele nativni rozliseni
+        // teto konkretni obrazovky", at uz je to S8 nebo vykonnejsi telefon
+        // za rok - presne Reneho puvodni myslenka (HIGH = strop pro DANY
+        // telefon), jen bez nutnosti hadat konkretni cislo predem.
+        if (!landscape)         table = new int[][]{{900,94,33},{1150,94,28},{9999,94,25}};
+        else if (djScreen)      table = new int[][]{{900,94,33},{1150,94,28},{9999,94,25}};
+        else if (hqLiteScreen)  table = new int[][]{{900,90,33},{1150,93,28},{9999,94,25}};
+        else                    table = new int[][]{{900,86,33},{1150,90,28},{9999,94,25}};
         return table[t];
     }
     private volatile String napTvWebVideoProfile = "AUTO";
@@ -2616,6 +2629,7 @@ public class MainActivity extends Activity {
         private Bitmap ps1PreviewScaledBmp;
         private Canvas ps1PreviewScaledCanvas;
         private final Paint ps1PreviewScalePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        private final Rect ps1PreviewDstRect = new Rect(); // BUILD2SK95: opakovane pouzivany, viz stejny duvod u NativePs1InPlaceView
         private long ps1PreviewDiagSumMs = 0;
         private int ps1PreviewDiagCount = 0;
         @JavascriptInterface
@@ -2637,7 +2651,8 @@ public class MainActivity extends Activity {
                     ps1PreviewScaledBmp = android.graphics.Bitmap.createBitmap(sw, sh, android.graphics.Bitmap.Config.ARGB_8888);
                     ps1PreviewScaledCanvas = new Canvas(ps1PreviewScaledBmp);
                 }
-                ps1PreviewScaledCanvas.drawBitmap(ps1PreviewSrcBmp, null, new Rect(0, 0, sw, sh), ps1PreviewScalePaint);
+                ps1PreviewDstRect.set(0, 0, sw, sh);
+                ps1PreviewScaledCanvas.drawBitmap(ps1PreviewSrcBmp, null, ps1PreviewDstRect, ps1PreviewScalePaint);
                 java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
                 ps1PreviewScaledBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, bo);
                 String outB64 = Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
@@ -2946,6 +2961,23 @@ public class MainActivity extends Activity {
         catch (Throwable t) { return String.valueOf(System.currentTimeMillis()); }
     }
 
+    private final java.util.concurrent.atomic.AtomicInteger napTvWebLogFileQueueSize = new java.util.concurrent.atomic.AtomicInteger(0);
+    // BUILD2SK95: obranny strop na frontu logu - Rene si vzpomel na starsi
+    // problem u Segy, kdy se nekde hromadila pamet a postupne to zpomalilo
+    // nejdriv zvuk, pak i obraz (presne popsany vzorec "zhorsuje se to v
+    // case"). Sega mela uz drivejsi ochranu proti hromadeni STARYCH VLAKEN
+    // (BUILD2RV, nativeAudioGeneration) - to jsem neopakoval spatne (PS1
+    // audio uz ma stejnou ochranu, ps1AudioGen, BUILD2SA3B, nezavisle na
+    // mne). Ale nasel jsem JINE, VLASTNI riziko: fronta na zapis logu
+    // (napTvWebLogFileQueue, SK82) nemela ZADNY strop - kdyby zapisovaci
+    // vlakno kdykoli zaostalo za tempem generovani (a me nove
+    // PS1_NATIVE_TEXTURE_SLOW logy - viz nize - generovaly AZ 900+ radku
+    // za par minut, bez omezeni), fronta mohla teoreticky rust bez konce.
+    // Ted: pevny strop (4000 radku, ~pár desitek KB textu) - pri prekroceni
+    // se novy radek zahodi (a zapocita), misto aby fronta rostla dal.
+    private static final int napTvWebLogFileQueueMax = 4000;
+    private final java.util.concurrent.atomic.AtomicLong napTvWebLogFileDropped = new java.util.concurrent.atomic.AtomicLong(0);
+
     private void appendNativeLog(String line) {
         String stamped = nowStamp() + "  " + (line == null ? "" : line) + "\n";
         synchronized (nativeLog) {
@@ -2957,7 +2989,15 @@ public class MainActivity extends Activity {
         // BUILD2SK82: jen zarad do fronty (O(1), zadne disk I/O na TOMHLE vlakne -
         // muze to byt UI tick, audio vlakno, HTTP handler...) - samotny zapis dela
         // napTvWebLogFileWriterLoop na svem vlastnim vlakne (viz napTvWebLogFileInit).
-        try { napTvWebLogFileQueue.offer(stamped); } catch (Throwable ignored) {}
+        // BUILD2SK95: jen pokud jsme pod stropem - viz komentar u konstanty vyse.
+        try {
+            if (napTvWebLogFileQueueSize.get() < napTvWebLogFileQueueMax) {
+                napTvWebLogFileQueue.offer(stamped);
+                napTvWebLogFileQueueSize.incrementAndGet();
+            } else {
+                napTvWebLogFileDropped.incrementAndGet();
+            }
+        } catch (Throwable ignored) {}
     }
 
     // BUILD2SK82: vola se jednou z onCreate. Vytvori/zkrati cerstvy log soubor pro
@@ -2986,6 +3026,7 @@ public class MainActivity extends Activity {
                     Thread.sleep(50);
                     continue;
                 }
+                napTvWebLogFileQueueSize.decrementAndGet();
                 File f = napTvWebLogFile;
                 if (f == null) continue; // init selhala, ring buffer je pojistka
                 if (f.length() >= napTvWebLogFileCapBytes) {
@@ -3002,15 +3043,26 @@ public class MainActivity extends Activity {
                 // BUILD2SK82: drobne davkovani - pokud fronta mezitim narostla (napr.
                 // appka byla chvili na pozadi), vyprazdni vice radku najednou pres
                 // jeden otevreny stream, misto open/close pro kazdy jednotlivy radek.
+                // BUILD2SK95: strop zvysen z 200 na 500 - rychlejsi zotaveni fronty,
+                // kdyby se kdy zpozdila (viz napTvWebLogFileQueueMax vyse).
                 StringBuilder batch = new StringBuilder(line);
                 String more;
                 int batched = 1;
-                while (batched < 200 && (more = napTvWebLogFileQueue.poll()) != null) {
+                while (batched < 500 && (more = napTvWebLogFileQueue.poll()) != null) {
+                    napTvWebLogFileQueueSize.decrementAndGet();
                     batch.append(more);
                     batched++;
                 }
                 try (FileOutputStream fos = new FileOutputStream(f, true)) {
                     fos.write(batch.toString().getBytes("UTF-8"));
+                }
+                // BUILD2SK95: viditelnost - pokud jsme nekdy neco zahodili (fronta plna),
+                // at je to videt v logu misto tiche ztraty dat, zhruba kazdych 500 zahozenych.
+                long dropped = napTvWebLogFileDropped.get();
+                if (dropped > 0 && dropped % 500 < batched) {
+                    try (FileOutputStream fos2 = new FileOutputStream(f, true)) {
+                        fos2.write(("BUILD2SK95 TV_WEB_LOG_QUEUE_DROPPED total=" + dropped + "\n").getBytes("UTF-8"));
+                    } catch (Throwable ignored) {}
                 }
             } catch (Throwable ignored) {
                 try { Thread.sleep(200); } catch (InterruptedException ie) { /* ignore */ }
@@ -4324,6 +4376,14 @@ public class MainActivity extends Activity {
         private volatile boolean running = false;
         private Thread renderThread;
         private long frameCount = 0;
+        private int slowCount = 0;
+        private double slowCostSumMs = 0;
+        // BUILD2SK95: opakovane pouzivane Rect objekty - drive se 2 nove Rect
+        // alokovaly PRI KAZDEM snimku (az ~30x/s) - male, ale zbytecne, stejna
+        // licence jako SK65-66/SK85 (opakovane pouzivat misto porad znovu
+        // alokovat). Souradnice se prepisuji pres set(), objekt sam zustava.
+        private final Rect reuseDst = new Rect();
+        private final Rect reuseSrc = new Rect();
 
         NativePs1InPlaceView(Activity a) {
             super(a);
@@ -4394,7 +4454,19 @@ public class MainActivity extends Activity {
                     try { Thread.yield(); } catch (Throwable ignored) {}
                 }
                 if (cost > 30000000L) {
-                    appendNativeLog("BUILD2SK87 PS1_NATIVE_TEXTURE_SLOW costMs=" + (cost / 1000000.0));
+                    slowCount++;
+                    slowCostSumMs += cost / 1000000.0;
+                    // BUILD2SK95: driv se tohle logovalo NA KAZDY pomaly snimek - v realnych
+                    // testech to bylo 866-914 radku za par minut, zbytecna zatez pro
+                    // zapisovaci frontu (viz napTvWebLogFileQueueMax vyse - tohle byl
+                    // hlavni zdroj objemu, co ji mohl zaplnit). Ted stejny vzor jako
+                    // TICK_AVG/PIXELCOPY_AVG jinde v souboru - agregovano, hlaseno
+                    // kazdych 30 vyskytu misto kazdeho jednoho.
+                    if (slowCount >= 30) {
+                        appendNativeLog("BUILD2SK95 PS1_NATIVE_TEXTURE_SLOW_AVG n=" + slowCount
+                                + " avgCostMs=" + (slowCostSumMs / slowCount));
+                        slowCount = 0; slowCostSumMs = 0;
+                    }
                 }
             }
             appendNativeLog("BUILD2SK87 PS1_NATIVE_TEXTURE_THREAD_STOP reason=" + reason + " frames=" + frameCount);
@@ -4436,6 +4508,14 @@ public class MainActivity extends Activity {
                     argb[i] |= 0xFF000000;
                 }
                 if (bitmap == null || curSrcW != srcW || curSrcH != srcH) {
+                    // BUILD2SK95: OPRAVENA CHYBA - tenhle recycle() tu chybel od SK87.
+                    // PS1 rozliseni se meni BEZNE behem hry (v logu videno 256x240 /
+                    // 320x240 / 640x480 podle sceny) - kazda zmena driv tise ZAHODILA
+                    // starou bitmapu bez uvolneni jeji nativni pameti (na rozdil od
+                    // ps1FramePreviewB64, ktera tohle uz spravne dela od SK85). Presne
+                    // typ chyby, co Rene popsal u stareho Segy problemu - pomale
+                    // hromadeni pameti pri zmenach rozliseni/sceny.
+                    if (bitmap != null) { try { bitmap.recycle(); } catch (Throwable ignored) {} }
                     bitmap = Bitmap.createBitmap(srcW, srcH, Bitmap.Config.ARGB_8888);
                     bitmap.setHasAlpha(false); // BUILD2SK88: ponechano jako dalsi (neskodna) pojistka navrch.
                     curSrcW = srcW; curSrcH = srcH;
@@ -4454,12 +4534,12 @@ public class MainActivity extends Activity {
                 else { boxW = w; boxH = w / targetAspect; }
                 int left = Math.round((w - boxW) / 2f);
                 int top = Math.round((h - boxH) / 2f);
-                Rect dst = new Rect(left, top, left + Math.round(boxW), top + Math.round(boxH));
-                Rect src = new Rect(0, 0, srcW, srcH);
-                canvas.drawBitmap(bitmap, src, dst, paint);
+                reuseDst.set(left, top, left + Math.round(boxW), top + Math.round(boxH));
+                reuseSrc.set(0, 0, srcW, srcH);
+                canvas.drawBitmap(bitmap, reuseSrc, reuseDst, paint);
                 frameCount++;
                 if (frameCount <= 4 || frameCount % 300 == 0) {
-                    appendNativeLog("BUILD2SK87 PS1_NATIVE_TEXTURE_FRAME count=" + frameCount + " view=" + w + "x" + h + " src=" + srcW + "x" + srcH + " dst=" + dst.toShortString());
+                    appendNativeLog("BUILD2SK87 PS1_NATIVE_TEXTURE_FRAME count=" + frameCount + " view=" + w + "x" + h + " src=" + srcW + "x" + srcH + " dst=" + reuseDst.toShortString());
                 }
             } catch (Throwable t) {
                 try { canvas.drawColor(Color.rgb(20, 0, 0)); } catch (Throwable ignored) {}

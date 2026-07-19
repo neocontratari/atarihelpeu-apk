@@ -1,0 +1,57 @@
+BUILD2SK95 - SKUTECNY UNIK PAMETI NALEZEN A OPRAVEN (+ omezeni log objemu)
+================================================================================
+KONTEXT
+Rene si vzpomel na stary problem u Segy - hromadila se pamet, nejdriv se
+zaseklo zvuk, pak i obraz - a upozornil, ze zvuk se ted kousal I NA
+SAMOTNEM TELEFONU, ne jen v prenosu na TV. To je dulezity signal - ukazuje
+na obecny problem, ne jen na TV-cast pipeline.
+
+CO JSEM ZKONTROLOVAL A NEBYLO TO ONO
+Stary Sega problem byl (podle kodu, BUILD2RV) o hromadeni STARYCH AUDIO
+VLAKEN mezi restarty hry - uz davno opraveno pres "generation" pocitadlo
+(nativeAudioGeneration). PS1 audio ma STEJNOU ochranu (ps1AudioGen,
+BUILD2SA3B) - byla tam uz pred mymi zmenami, nezavisle na mne. Tohle
+NEBYLO zopakovani stare chyby.
+
+CO SKUTECNE BYLO - DVA VLASTNI NEDOSTATKY V MEM NOVEM KODU
+
+1) SKUTECNY UNIK PAMETI (nejdulezitejsi nalez): NativePs1InPlaceView
+(SK87) VUBEC nevolala bitmap.recycle() pri zmene rozliseni PS1 hry.
+PS1 rozliseni se BEZNE meni behem hraní (v logu videno 256x240 / 320x240
+/ 640x480 podle sceny) - KAZDA takova zmena driv tise zahodila starou
+bitmapu BEZ uvolneni jeji nativni pameti. Presne typ chyby, jakou Rene
+popsal - postupne hromadeni pameti pri zmenach sceny/rozliseni, ktere by
+se casem projevilo presne timhle vzorcem (nejdriv zvuk, pak i obraz,
+zhorsuje se to v case). OPRAVENO - recycle() pred kazdou realokaci, stejny
+vzor, jaky uz spravne pouzivala ps1FramePreviewB64 (SK85) - jen jsem ho
+zapomel prenest do noveho kodu v SK87. Opraveno i druhe drobne misto
+(portretni preview - zbytecna Rect alokace kazde volani).
+
+2) NADMERNY OBJEM LOGU: PS1_NATIVE_TEXTURE_SLOW logovala TAKMER KAZDY
+snimek bez omezeni (v realnych testech 866-914 radku za par minut) -
+zbytecna zatez pro zapisovaci frontu logu. Pridal jsem k tomu i OBRANNY
+STROP na tuhle frontu (max 4000 cekajicich radku) - i kdyby zapisovaci
+vlakno NEKDY zaostalo (pomaly disk, GC pauza), fronta uz nemuze rust bez
+konce - misto toho se novy radek zahodi (a zapocita, viditelne v logu).
+
+DOPLNEK: opraveno i cislo LOW/MEDIUM/HIGH ze SK94 (viz TESTPLAN_SK94.txt
+pro puvodni popis te chyby - nezavisly problem, opraveny uz minule,
+zustava soucasti tohodle balicku).
+
+RIZIKO
+Nizke - vsechny zmeny jsou bud (a) pridani chybejiciho recycle() volani
+(cistí bugfix, presny existujici vzor jinde v souboru), (b) obranny strop
+na frontu (nova, ale jednoducha O(1) logika), nebo (c) snizeni frekvence
+logovani (jen min radku, zadna zmena chovani).
+Overeno: {} v MainActivity.java sedi (1885/1885), vsechny pouzite
+tridy/metody proti importum zkontrolovany.
+
+JAK OTESTOVAT
+1) Delsi PS1 relace (10+ minut, idealne s prechody mezi scenami/urovnemi
+   ruzneho rozliseni, jako Crash Bandicoot).
+2) Poslouchej zvuk PRIMO NA TELEFONU (ne jen na TV) po celou dobu - kouse
+   se to jeste, nebo uz ne?
+3) V /log zkontroluj "TV_WEB_LOG_QUEUE_DROPPED" - pokud se tam NEOBJEVI,
+   fronta logu nikdy nepretekla (dobre znameni). Pokud SE objevi, bude
+   to aspon VIDITELNE misto tiche ztraty.
+4) LOW/MEDIUM/HIGH - zkontroluj (jako v SK94), ze ted davaji RUZNA cisla.

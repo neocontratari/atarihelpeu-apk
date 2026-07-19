@@ -643,6 +643,90 @@ hlasky kvuli vykonu). Pokud OK, zvazit podobny pruzkum PS1 dalsich
 libretro voleb (napr. texturovy filtering, frameskip) - ale AZ PO
 potvrzeni, ze tahle prvni zmena je bezpecna.
 
+================================================================================
+DODATEK 2026-07-19 - BUILD2SK94 - DVA NALEZY Z TESTU: TIER BUG + AUDIO
+================================================================================
+Rene otestoval SK93 (app LOW/MED/HIGH + PS1 Enhanced Resolution) a nahlasil:
+(a) "nechapu princip low medium high... dam to nefunguje" a chtel UI
+odstranit z appky, (b) rostouci kouseni zvuku pri HIGH.
+
+Misto slepeho mazani UI jsem sel do logu:
+
+(a) POTVRZENO: SK92 cisla (1920/2300/2700) VSECHNA presahovala skutecnou
+zmerenou velikost zachytavane plochy na Reneho telefonu (~1384x672,
+opakovane potvrzeno napric CELOU touto konverzaci v desitkach logu).
+scale=min(1.0, cil/skutecna) se tak vzdy sepnul na strop - ENCODER_START
+log ukazal BYTOVE STEJNE w/h/bitrate pro tier=0 I tier=2. Appka predavala
+volbu spravne (17 uspesnych TV_WEB_QUALITY_TIER_SET udalosti v logu presne
+odpovidajicich klikum) - problem byl vyhradne ve zvolenych cislech.
+OPRAVA: LOW=900, MEDIUM=1150 (realne pod nativnim stropem na beznych
+telefonech), HIGH=9999 (zamerne obrovske cislo - VZDY znamena "cele
+nativni rozliseni teto konkretni obrazovky", funguje spravne na jakemkoli
+telefonu bez nutnosti hadat presne cislo dopredu - elegantnejsi reseni
+nez SK92uv pristup pevnych cisel).
+
+(b) Audio underrun pomer rostl behem relace 0.00->0.36, casove se
+prekryvajici s aktivnim Enhanced Resolution (SK93) a narocnejsi 3D hrou
+(Crash Bandicoot). Ne 100% jista pricina (underruny castecne uz i pred
+timhle bootem), ale dost silna shoda na revert. Enhanced Resolution
+vraceno na "disabled" (radek zakomentovan, ne smazan - snadny navrat
+pozdeji pro izolovanejsi test).
+
+PONAUCENI: kdyz uzivatel rekne "nefunguje" / "nechapu princip", nejdriv
+zkontrolovat v LOGU, jestli mechanismus VUBEC dela to, co ma (tady: fakt
+posilal ruzna cisla ven), nez se sahne po drasticke akci (smazani cele
+funkce). Byla to spravna cisla-kalibrace chyba, ne architekturalni
+problem - smazani UI by vyhodilo funkcni infrastrukturu kvuli spatne
+zvolenym konstantam.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK94 vysledek - hlavne
+overit, ze LOW/MEDIUM/HIGH ted DAVAJI RUZNA cisla v ENCODER_START logu,
+a ze zvuk uz nekousne ani pri delsim PS1 testu. Pokud OK, zvazit navrat
+k Enhanced Resolution jako SAMOSTATNY, izolovany test (bez soucasne
+zmeny tier cisel, aby bylo jasne pripsat pripadny problem spravne
+zmene).
+
+================================================================================
+DODATEK 2026-07-19 - BUILD2SK95 - SKUTECNY UNIK PAMETI (pred testem SK94)
+================================================================================
+Rene si PRED testovanim SK94 vzpomel na stary problem u Segy (hromadila
+se pamet, zvuk pak i obraz se zpomalily) a upozornil, ze zvuk se u
+posledniho testu kousal I NA TELEFONU, ne jen na TV. Pozadal o kontrolu,
+jestli jsem neudelal stejnou chybu.
+
+Sega mela stary problem s hromadenim STARYCH AUDIO VLAKEN (BUILD2RV,
+davno opraveno pres generation-pocitadlo) - PS1 audio ma STEJNOU ochranu
+uz od drivejska (ps1AudioGen, BUILD2SA3B), nezavisle na mne - tohle
+NEBYLO zopakovani te konkretni stare chyby.
+
+ALE nasel jsem VLASTNI, JINY skutecny problem: NativePs1InPlaceView
+(SK87) NIKDY nevolala bitmap.recycle() pri zmene PS1 rozliseni (ktera se
+meni BEZNE behem hry - 256x240/320x240/640x480 podle sceny, potvrzeno v
+logu). Kazda zmena rozliseni driv tise leakovala starou bitmapu. Presne
+odpovida vzorci, co Rene popsal - postupne, v case se zhorsujici
+hromadeni pameti. OPRAVENO - recycle() pridano, stejny vzor jaky uz
+spravne pouzivala ps1FramePreviewB64 (SK85) - proste jsem to zapomel
+prenest pri psani noveho SK87 kodu.
+
+Navic opraveno: PS1_NATIVE_TEXTURE_SLOW log (nadmerny objem, 866-914
+radku za par minut bez omezeni) + pridan obranny strop na frontu zapisu
+logu (max 4000 cekajicich radku, aby fronta nemohla rust bez konce, i
+kdyby zapisovaci vlakno nekdy zaostalo).
+
+PONAUCENI: kdyz uzivatel popise vzorec "zhorsuje se to v case, nejdriv
+X pak Y" - tohle je SIGNATURA uniku zdroju (pamet/vlakna/fronta), ne
+jen "vyssi konstantni naklad". Aktivne hledat MISTA, kde se neco alokuje
+OPAKOVANE (bitmapy, buffery) a zkontrolovat, ze STARA verze se VZDY
+uvolni pred vytvorenim nove - ne jen predpokladat, ze GC to casem
+uklidi samo.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK95 vysledek - hlavne
+DELSI relace (10+ min) s kontrolou zvuku PRIMO NA TELEFONU po celou dobu,
+ne jen na zacatku. Take zkontrolovat TV_WEB_LOG_QUEUE_DROPPED v logu
+(nemelo by se tam vubec objevit, pokud fronta nikdy nepretekla).
+
+
+
 
 
 

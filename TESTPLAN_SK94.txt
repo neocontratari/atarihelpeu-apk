@@ -1,0 +1,63 @@
+BUILD2SK94 - OPRAVA: LOW/MEDIUM/HIGH NEDELALO NIC + REVERT ENHANCED RES
+================================================================================
+DVA NEZAVISLE NALEZY Z RENEHO LOGU
+
+1) LOW/MEDIUM/HIGH SKUTECNE NEDELALO NIC (potvrzeno, ne dojem)
+V logu: TV_WEB_H264_ENCODER_START pro tier=0 (LOW) i tier=2 (HIGH) VYDALY
+BYTOVE STEJNE cislo:
+  w=1384 h=672 bitrate=5580288 tier=0
+  w=1384 h=672 bitrate=5580288 tier=2
+PRICINA: SK92 posunulo vsechny tri urovne na 1920/2300/2700px. Ale skutecna
+zmerena velikost zachytavane plochy na Reneho telefonu je ~1384x672
+(potvrzeno OPAKOVANE napric desitkami logu z teto cele relace/session).
+Vzorec "scale = min(1.0, cil/skutecna_velikost)" se tak VZDY sepnul na
+strop 1.0 - protoze VSECHNY TRI cisla (1920/2300/2700) uz presahovala
+realnou velikost obrazovky. LOW a HIGH tak vyprodukovaly identicky
+vysledek - presne to, co Rene popsal jako "nechapu princip" a "nefunguje".
+
+OPRAVA: LOW=900, MEDIUM=1150 (obe POD nativnim stropem - realny,
+viditelny rozdil), HIGH=9999 (zamerne velmi vysoke cislo - na KAZDEM
+telefonu, i budoucim vykonnejsim, se strop uplatni pres min(1.0,...), takze
+HIGH VZDY znamena "cele nativni rozliseni teto obrazovky", bez nutnosti
+hadat konkretni cislo pro kazdy telefon zvlast).
+
+Aplikace v telefonu (ozubene kolecko) ZUSTAVA - mechanismus samotny FUNGOVAL
+spravne po celou dobu (v logu 17 uspesnych TV_WEB_QUALITY_TIER_SET udalosti,
+presne odpovidajicich kliknutim). Problem byl vyhradne ve zvolenych
+cislech, ne v tom, ze by appka nastaveni nepredavala spravne - proto
+mazani cele funkce nebylo potreba, staci oprava cisel.
+
+2) AUDIO UNDERRUNY ROSTOU BEHEM RELACE - REVERT SK93 (Enhanced Resolution)
+Podil underruns/underrunLoops rostl behem relace z 0.00 na 0.36 - realny,
+zhorsujici se trend, ne nahodny sum. Casove se to prekryva s aktivnim
+Enhanced Resolution (potvrzeno v logu zdvojenym src= rozlisenim -
+320x240->640x480 atd.) a s narocnejsi 3D hrou (Crash Bandicoot). NENI to
+100% jista pricinna souvislost (underruny se objevovaly castecne uz i
+pred timhle konkretnim bootem), ale dost silna shoda na to, aby stalo za
+to tenhle nejnovejsi, nejmene overeny zapnuty prvek vratit a poradne
+izolovat pred dalsim pokusem.
+
+OPRAVA: radek zapinajici Enhanced Resolution v nap_ps1_native.cpp
+zakomentovan - jadro se vraci na svuj vlastni vychozi "disabled" stav
+(presne jako pred SK93). Puvodni radek zustava v kodu jako komentar pro
+snadny navrat, az bude cas na dalsi, izolovanejsi test.
+
+RIZIKO
+Oboje nizke - bod 1 je jen zmena cisel v existujici tabulce (stejny vzor,
+jen jine hodnoty), bod 2 je navrat presne na predchozi, uz overeny stav
+(zakomentovani jednoho radku).
+Overeno: {} v MainActivity.java (1876/1876) i nap_ps1_native.cpp (78/78)
+sedi.
+
+JAK OTESTOVAT
+1) Ozubene kolecko -> zkusit LOW/MEDIUM/HIGH - v /log by ted TV_WEB_H264_
+   ENCODER_START melo ukazovat RUZNA cisla pro kazdou uroven (LOW nejmensi,
+   HIGH nejvetsi - a HIGH by melo odpovidat tomu, co bylo puvodne "stare
+   HIGH" pred SK92, protoze telefon uz na tom stropu byl).
+2) PS1 (Crash Bandicoot nebo cokoli 3D) - poslouchej zvuk delsi dobu (5+
+   minut), sleduj, jestli se kousani neobjevuje. V /log zkontroluj
+   underrunLoops/underruns pomer - nemel by uz rust jako predtim.
+3) Vizualne 3D hrany budou zase o neco "hranatejsi" nez v SK93 testu - to
+   je ocekavane, Enhanced Resolution je vypnute, dokud se poradne
+   neizoluje a neotestuje samo o sobe (bez soucasne zmeny LOW/MED/HIGH,
+   aby bylo jasne, co presne pripadny problem zpusobuje).
