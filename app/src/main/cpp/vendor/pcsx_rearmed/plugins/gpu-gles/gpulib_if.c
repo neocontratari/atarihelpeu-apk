@@ -56,6 +56,22 @@ static void nap_gles_readback_and_push(void)
  }
  if (nap_gles_rb_buf == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
  glReadPixels(0, 0, rb_w, rb_h, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, nap_gles_rb_buf);
+ // BUILD2SK104: obsah pixelu, ne jen rozmery - podezrele mala JPEG velikost
+ // (5780B pro 320x240 hru) naznacuje, ze buffer muze byt skoro cerny/
+ // prazdny i kdyz rozmery uz sedi. Levny soucet (staci vedet "je tam vubec
+ // neco jineho nez 0") + par konkretnich vzorku pro presnejsi obraz. Stejne
+ // omezeni jako heartbeat vyse (kazdy 30. snimek), aby to nezaplavilo log.
+ if (nap_gles_frame_count % 30 == 1) {
+  GLenum glerr = glGetError();
+  unsigned long long sum = 0;
+  int n = rb_w * rb_h;
+  for (int i = 0; i < n; i++) sum += nap_gles_rb_buf[i];
+  uint16_t pTL = nap_gles_rb_buf[0];
+  uint16_t pCenter = nap_gles_rb_buf[n / 2];
+  uint16_t pBR = nap_gles_rb_buf[n - 1];
+  nap_diag_log("BUILD2SK104 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%04x pCenter=0x%04x pBR=0x%04x",
+    (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR);
+ }
  nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 2);
 }
 

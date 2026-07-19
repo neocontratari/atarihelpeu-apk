@@ -1112,3 +1112,36 @@ funkci PRIMO, misto snahy "opravit" cely retezec podminek nad ni.
 DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK103 vysledek - ocekavam
 KONECNE plne funkcni PS1 (bez padu, se skutecnym obrazem). Kontrolovat
 GLES_FRAME_HEARTBEAT v /log - mel by se konecne objevovat pravidelne.
+
+================================================================================
+DODATEK 2026-07-19 (pozdni noc) - BUILD2SK104 - DATA JIZ TECOU (SK103
+funguje!), ale obsah pixelu podezrele - kontrola bez potreby adb
+================================================================================
+Rene poslal jiny typ logu (AtariHelp_PS1_LOG_....txt - "Save Log"
+tlacitko primo v PS1 strance appky, ne obecny /log endpoint) - ODMITL
+znovu pouzit PowerShell/adb (unaven z toho, rozumitelne). DULEZITE:
+tenhle log ukazal "res=320x240" (driv VZDY 0x0!) a rostouci pocet
+snimku (dupes stale 54, frames roste) - g_fw/g_fh (overeno ve zdrojaku -
+presne ta sama promenna, kterou cte i ps1GrabFrame) jsou KONECNE
+nenulove. SK103 (primy call na updateFrontDisplay) tedy FUNGUJE - data
+tecou z jadra do appky.
+
+ALE: JPEG nahled mel jen outBytes=5780 pro cely 320x240 obraz hry -
+podezrele malo (typicky detailni herni obraz = desitky tisic bajtu;
+5780 spis odpovida temer cernemu/prazdnemu obrazku). Podezirim: rozmery
+uz jsou spravne, ale SAMOTNY OBSAH pixelu je porad cerny/prazdny -
+nekde MEZI uspesnym glReadPixels a zobrazenim se ztraci barva.
+
+PRIDANO (SK104): primy vypis obsahu pixelu (soucet + 3 vzorky) po
+kazdem 30. snimku - VYUZIVA STEJNY /log mechanismus jako vzdy, ZADNY
+adb/PowerShell potreba. Cil: potvrdit/vyvratit, jestli je buffer
+skutecne cerny (pak by problem byl v GL vykreslovani/readbacku samotnem)
+nebo ma barvu (pak by problem byl nekde POZDEJI - JPEG enkodovani,
+CSS/HTML zobrazeni a pod. - podobne jako uz jednou re resena SK90 CSS
+transparency chyba).
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK104 vysledek - hledat
+"GLES_PIXEL_SAMPLE" v logu. sumAvg blizko 0 = potvrzeny cerny buffer
+(dalsi krok: hledat proc GL draw prikazy nevykresluji viditelny obsah,
+i kdyz "uspeji"). sumAvg vyrazne nad 0 = data maji barvu, problem je
+jinde po ceste (JPEG enkodovani nebo zobrazeni).

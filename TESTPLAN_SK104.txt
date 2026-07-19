@@ -1,0 +1,33 @@
+BUILD2SK104 - KONTROLA OBSAHU PIXELU (ne PowerShell, jen normalni log)
+================================================================================
+DOBRA ZPRAVA Z TVEHO POSLEDNIHO LOGU
+Ten "AtariHelp_PS1_LOG..." soubor (dekuji za nej, presne takovy je uzitecny)
+ukazal neco duleziteho: "res=320x240" a rostouci pocet snimku (ne porad
+stejne cislo) - to znamena, ze SK103 SKUTECNE zprovoznila tok dat z jadra
+do appky. Predtim bylo VZDY 0x0 - ted uz je tam realne cislo. To je
+overitelny pokrok, i kdyz obraz jeste neni videt.
+
+CO MI PRIJDE PODEZRELE
+JPEG nahled mel jen 5780 bajtu pro cely 320x240 obrazek hry - to je
+hodne malo (detailni obraz hry normalne dela desitky tisic bajtu).
+Podezirim, ze rozmery uz jsou spravne, ale samotny OBSAH (barvy pixelu)
+muze byt porad skoro cerny/prazdny.
+
+CO SE PRIDALO
+Kontrola PRIMO obsahu pixelu (ne jen rozmeru) po kazdem 30. snimku -
+soucet vsech pixelu (rychle poznat "je tam vubec neco jineho nez cerna")
++ 3 konkretni vzorky (levy horni roh, stred, pravy dolni roh obrazu).
+Ukaze se v UPLNE STEJNEM logu jako vzdycky - zadny PowerShell, zadny
+adb, jen otevrit /log jako dosud.
+
+RIZIKO
+Minimalni - jen cteni jiz nactenych dat, zadna zmena ve skutecnem
+vykreslovani.
+Overeno: {} v gpulib_if.c sedi (90/90).
+
+JAK OTESTOVAT
+Presne jako predtim - naboot PS1 hru, chvili pockej, posli /log (ten
+normalni, z prohlizece - ZADNY PowerShell tentokrat neni potreba).
+V logu hledej "GLES_PIXEL_SAMPLE" - "sumAvg=0" (nebo hodnota blizko 0)
+by potvrdilo, ze je to skutecne cerne. Vyssi cislo by znamenalo, ze tam
+NEJAKA barva je, jen se nekde po ceste ztraci nez to dojde na obrazovku.
