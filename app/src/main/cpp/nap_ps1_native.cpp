@@ -234,6 +234,8 @@ extern "C" {
   extern int iResY;
   extern NapGlesRectShape rRatioRect;
   int GLinitialize(void *ext_gles_display, void *ext_gles_surface);
+  void InitializeTextureStore(); // BUILD2SK102: viz gpuTexture.c - alokuje texture-cache buffery
+  void MakeDisplayLists(); // BUILD2SK102: viz hud.c - font/HUD display listy
 }
 
 static bool g_gles_ready = false;
@@ -339,10 +341,27 @@ static bool nap_gles_egl_init() {
   iResY = 240;
   rRatioRect.left = 0; rRatioRect.top = 0; rRatioRect.right = 320; rRatioRect.bottom = 240;
 
+  // BUILD2SK102: SKUTECNA PRICINA PADU (potvrzeno realnym adb crash logem -
+  // Rene ho ziskal, dik!). Fatal SIGSEGV v CheckTextureInSubSCache (volano
+  // pres SelectSubTextureS<-SetRenderMode<-primPolyFT4 - prvni TEXTUROVANY
+  // polygon, co se hra pokusi nakreslit). Pricina: gpu-gles ma VLASTNI,
+  // kompletni inicializacni vstupni bod (GPUopen v gpulib_if.c), ktery VZDY
+  // vola InitializeTextureStore() PRED GLinitialize() a MakeDisplayLists()
+  // PO nem - alokuje pscSubtexStore a dalsi texture-cache buffery, ktere
+  // CheckTextureInSubSCache bez kontroly rovnou cte. My ale GPUopen() nikdy
+  // nevolame (misto toho volame GLinitialize primo sami) - a jediny init
+  // hook, ktery nas libretro tok SKUTECNE vola (renderer_init() v tomhle
+  // souboru) NIC z tohohle nedela, jen nastavi par PSXDisplay poli. Presne
+  // proto pscSubtexStore zustal na NULL (vychozi C inicializace globalniho
+  // pole) az do prvniho pokusu o kresleni. Oprava: zavolat oboji rucne, ve
+  // STEJNEM poradi, jake uz proverene pouziva GPUopen().
+  InitializeTextureStore();
+
   if (GLinitialize((void *)display, (void *)surface) != 0) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=GLinitialize");
     return false;
   }
+  MakeDisplayLists(); // BUILD2SK102: stejne poradi jako GPUopen() - font/HUD display listy
 
   NAPDIAG("BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240");
   return true;
@@ -454,6 +473,11 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Status(JNIEnv *env, jclass) {
 // BUILD2SA2B: vyzvednuti snimku pro nahled (a pozdeji TextureView). Vraci (w<<16)|h, 0 = nic.
 extern "C" JNIEXPORT jint JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1GrabFrame(JNIEnv *env, jclass, jintArray out) {
+  static int nap_grabframe_calls = 0; // BUILD2SK101: durable tep - viz komentar vyse
+  nap_grabframe_calls++;
+  if (nap_grabframe_calls % 30 == 1) {
+    nap_diag_log("BUILD2SK101 PS1_GRABFRAME_HEARTBEAT n=%d gfw=%d gfh=%d", nap_grabframe_calls, g_fw.load(), g_fh.load());
+  }
   std::lock_guard<std::mutex> lock(g_frame_mutex);
   const int w = g_fw.load(), h = g_fh.load();
   if (w <= 0 || h <= 0 || g_frame_argb.size() < (size_t)w * h || !out) return 0;

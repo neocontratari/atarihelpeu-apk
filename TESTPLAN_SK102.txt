@@ -1,0 +1,57 @@
+BUILD2SK102 - SKUTECNA PRICINA PADU NALEZENA A OPRAVENA (diky adb logu!)
+================================================================================
+Renuv adb crash log (diky za nej - presne tohle jsem potreboval) ukazal
+NAPROSTO PRESNY, opakovany pad:
+
+Fatal signal 11 (SIGSEGV) ... fault addr 0x3004
+#00 CheckTextureInSubSCache
+#01 SelectSubTextureS
+#02 SetRenderMode
+#03 primPolyFT4          <- prvni TEXTUROVANY polygon, co hra kresli
+#04 (GPU command dispatch)
+#05 GPUdmaChain
+#06 psxDma2               <- normalni PS1 DMA prenos, nic nestandardniho
+
+STEJNY presny pad, dvakrat po sobe, na stejnem miste.
+
+SKUTECNA PRICINA (nalezeno primo ve zdrojaku)
+gpu-gles ma svuj VLASTNI, kompletni inicializacni vstupni bod - funkci
+GPUopen() v gpulib_if.c. Ta VZDY dela TOHLE poradi:
+  1) InitializeTextureStore()  - alokuje texture-cache pamet
+  2) GLinitialize(display, surface) - nastavi GL kontext
+  3) MakeDisplayLists() - font/HUD display listy
+
+My jsme volali JEN krok 2 (GLinitialize) sami rucne - kroky 1 a 3 se
+nikdy nezavolaly. A jediny init hook, ktery nas libretro tok SKUTECNE
+automaticky vola (renderer_init(), soucast standardniho behu), dela jen
+par PSXDisplay nastaveni - vubec nesahne na texture-cache pamet.
+
+Vysledek: pole pscSubtexStore (kde se ukladaji vsechny nactene textury)
+zustalo na NULL od zacatku (vychozi C chovani pro globalni pole) - a
+prvni radek kodu, ktery se HRA POKUSI NAKRESLIT NECO S TEXTUROU, spadl
+na NULL ukazatel. Presne proto appka prezila boot, znelku i par vterin
+gameplay (nic z toho nepotrebovalo texturovany polygon) a spadla presne
+v okamziku prvniho skutecneho pouziti textury - coz vysvetluje i tu
+promenlivou dobu do padu (zavisi na tom, kdy presne hra poprve nakresli
+neco texturovaneho, ne na case samotnem ani na otoceni telefonu).
+
+CO SE ZMENILO
+Pridana dve chybejici volani (InitializeTextureStore(), MakeDisplayLists())
+do nap_gles_egl_init(), ve stejnem poradi, jake uz proverene pouziva
+GPUopen(). Plus dve extern deklarace pro tyhle funkce.
+
+RIZIKO
+Nizke - pridavaji se dve VOLANI JIZ EXISTUJICICH, gpu-gles vlastnich
+funkci (zadny novy kod v nich), presne v poradi, jake uz projekt
+proveril jako funkcni (GPUopen pouziva presne tohle poradi jinde v
+kodu, jen jsme ho sami nevolali). Overeno: {} v nap_ps1_native.cpp sedi
+(99/99).
+
+JAK OTESTOVAT
+Presne jako predtim - naboot PS1 hru (Star Wars). Tentokrat by NEMELO
+dojit k padu vubec, a hratelna 3D cast by mela byt viditelne ostrejsi
+(diky Enhanced texturovemu filtrovani, ktere byl puvodni cil celeho
+gpu-gles prechodu). Pokud NEJAKY pad prece jen nastane, znovu adb log
+(uz vime jak) - ale tentokrat mam realnou duveru, ze tohle byla TA
+pricina, protoze presne sedi se vsemi pozorovanymi symptomy (promenliva
+doba, nezavislost na orientaci, konzistence napric vsemi testy).

@@ -1,0 +1,52 @@
+BUILD2SK101 - DALSI CILENY TEP (ps1GrabFrame) + POCTIVE ZHODNOCENI
+================================================================================
+CO SE ZJISTILO ZE SK100 LOGU
+Appka bezela PRES MINUTU v portretu (zvuk i TV-cast normalne) - ale muj
+"GLES_FRAME_HEARTBEAT" (uvnitr gpu-gles vlastni vykreslovaci smycky) se
+NEOBJEVIL ANI JEDNOU za tu celou dobu. Pad presne KORELOVAL s otocenim
+telefonu na sirku (v logu presne v okamziku TV_WEB_H264_ENCODER_START
+w=1384 h=672).
+
+CO TO ZNAMENA: otoceni na sirku je prvni okamzik, kdy Java strana
+(NativePs1InPlaceView) prestane "spat" (byla v portretu zamerne necinna,
+viz SK87) a poprve skutecne zavola o obrazek. Pad tedy nejspis souvisi
+S TIMHLE konkretnim prechodem, ne s dlouhodobym behem gpu-gles.
+
+CO SE PRIDALO
+Dalsi durabilni "tep" primo v ps1GrabFrame - JNI funkci, kterou Java vola
+KAZDY snimek, jakmile se probudi z portretniho spanku. Kazdych 30 volani
+zapise pocet + aktualni rozliseni.
+
+CO TO PRISTE UKAZE
+- Pokud se "PS1_GRABFRAME_HEARTBEAT" VUBEC neobjevi pred padem: appka
+  padne jeste PRED tim, nez se Java strana vubec dostane k volani teto
+  funkce - problem by pak byl spis v Android vlastni Surface/View
+  rekreaci pri otoceni, nesouvisejici primo s mym PS1 kodem.
+- Pokud SE objevi (jednou nebo vickrat): mame presnejsi misto, kam se
+  divat dal (nekde MEZI touhle funkci a dalsim krokem).
+
+POCTIVE ZHODNOCENI (dulezite precist)
+Tohle je TRETI pokus/pad na tehle ceste (gpu-gles). Bez skutecneho
+debuggeru nebo crash reportu (coz by chtelo adb - vyvojarsky nastroj)
+postupuji metodou "pridej diagnostiku, zkus znovu, zuz to o kousek" - je
+to pomale, kazdy pokus da jen cast obrazu. Funguje to (uz vime vic nez
+na zacatku), ale je fer rict: muze to trvat jeste par kol, nez se trefime
+presne.
+
+DVE MOZNOSTI, KDYZ CHCES (na tobe, zadny tlak):
+1) Pokracovat stejnym zpusobem - dalsi kolo diagnostiky, dalsi zuzeni.
+2) Zkusit ziskat SKUTECNY crash report z telefonu (Android si ho casto
+   sam ulozi) - to by bylo mnohem rychlejsi nez dalsi kola hadani, ale
+   vyzadovalo by to alespon zakladni pouziti jednoho vyvojarskeho
+   nastroje (adb) - rekni, jestli by to bylo OK, a provedu te tím krok
+   za krokem.
+3) Vratit se natrvalo na SK97 (bezpecna zaloha, funguje, mirne doostreni)
+   a zkusit jiny, mensi/bezpecnejsi zpusob zlepseni grafiky misto celeho
+   prechodu na gpu-gles.
+
+RIZIKO TETO ZMENY (SK101 samotne)
+Nizke - jen dalsi throttled diagnostika, zadna zmena ve skutecnem kodu.
+Overeno: {} v nap_ps1_native.cpp sedi (99/99).
+
+JAK OTESTOVAT
+Stejne jako predtim.

@@ -962,3 +962,92 @@ a znovu bez dalsiho pokroku v diagnostice, zvazit s Renem, jestli
 pokracovat v tomhle smeru (gpu-gles) dava jeste smysl, nebo je cas
 vratit se na SK97 (bezpecna, funkcni zaloha s mirnym doostrenim) natrvalo
 a hledat jiny zpusob zlepseni grafiky.
+
+================================================================================
+DODATEK 2026-07-19 (noc) - BUILD2SK101 - TRETI PAD, SILNA KORELACE S
+OTOCENIM NA SIRKU
+================================================================================
+SK100 log: appka bezela PRES MINUTU v portretu (zvuk normalne, TV-cast
+normalne) - ale "GLES_FRAME_HEARTBEAT" (SK100, uvnitr gpu-gles vlastni
+updateDisplay smycky) se NEOBJEVIL ANI JEDNOU za celou tu dobu! Pak presne
+v okamziku OTOCENI NA SIRKU (TV_WEB_H264_ENCODER_START w=1384 h=672)
+nasledovaly masivni zpomaleni (PIXELCOPY_SLOW 393ms, H264_FRAME_SLOW
+317ms), klient disconnect/reconnect, dve encoder regenerace - a pak log
+skoncil (pad).
+
+DULEZITY POSUN V POROZUMENI: pad KORELUJE s otocenim na landscape (=
+prvni okamzik, kdy Java NativePs1InPlaceView prestane spat a poprve
+skutecne zavola grabFrameSafe/ps1GrabFrame), NE s dobou behu gpu-gles
+vykreslovani samotneho. A fakt, ze SK100 heartbeat (uvnitr gpu-gles
+updateDisplay) se NIKDY neobjevil i pres minutu behu, naznacuje, ze
+gpu-gles mozna vubec aktivne nekresli/nevola svou vlastni update cestu
+behem portretu vubec (nebo krachuje jeste driv, nez by se tam dostalo,
+coz je ale v rozporu s tim, ze zvuk/gameplay bezel normalne).
+
+PRIDANO (SK101): dalsi durabilni heartbeat primo v ps1GrabFrame (JNI
+funkce, kterou Java vola KAZDY snimek z NativePs1InPlaceView) - pokud se
+PRISTE tenhle heartbeat vubec neobjevi pred padem, znamena to, ze appka
+padne jeste PRED tim, nez se Java strana vubec dostane k volani teto
+funkce (mozna primo v Android vlastni Surface/View rekreaci pri otoceni,
+nesouvisejici s mym PS1 kodem primo) - coz by byla DALSI dulezita stopa.
+
+POCTIVE ZHODNOCENI SITUACE: tohle je TRETI pad. Bez skutecneho debuggeru/
+crash-reportu (coz by vyzadovalo adb, coz Rene nechce/nema) postupuji
+metodou "pridej diagnostiku, zkus znovu" - funguje, ale pomalu, kazdy
+pokus prinasi jen castecny obraz. Rene zatim chce pokracovat ("nevzdavej
+to"), ale je fer mu pripomenout, ze SK97 (bezpecna, funkcni zaloha s
+mirnym doostrenim) zustava k dispozici, kdyby chtel v tomhle bode
+prestat riskovat dalsi pady.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK101 vysledek - hledat,
+jestli se "PS1_GRABFRAME_HEARTBEAT" objevi pred pripadnym padem (a
+kolikrat). Pokud se STALE nic nove nedozvime i po tomhle kroku, vazne
+zvazit s Renem bud (a) pokus o ziskani skutecneho crash reportu/tombstone
+(i kdyby to znamenalo male seznameni s zakladnim adb prikazem), nebo (b)
+navrat k SK97 natrvalo a hledani jineho, bezpecnejsiho zpusobu zlepseni
+PS1 grafiky (napr. zkusit MENSI zmenu nez cely gpu-gles prechod).
+
+================================================================================
+DODATEK 2026-07-19 (pozde v noci) - PRUELOM: BUILD2SK102 - SKUTECNA
+PRICINA PADU NALEZENA (diky Reneho adb crash logu!)
+================================================================================
+Rene se rozhodl zkusit ziskat realny crash log pres adb (provazeno krok
+za krokem - zapnout USB debugging, stahnout platform-tools z oficialniho
+https://dl.google.com/android/repository/platform-tools-latest-windows.zip,
+adb logcat *:E > pad.txt). POVEDLO SE - ziskal presny, opakovany (2x
+identicky) SIGSEGV backtrace.
+
+Backtrace: CheckTextureInSubSCache <- SelectSubTextureS <- SetRenderMode
+<- primPolyFT4 <- GPUdmaChain <- psxDma2. Fault addr 0x3004 (typicky
+vzorec pro NULL pointer + maly offset).
+
+ROOT CAUSE (nalezeno primo ve zdrojaku): gpu-gles ma svuj vlastni,
+kompletni init vstupni bod GPUopen() (gpulib_if.c), ktery VZDY vola
+InitializeTextureStore() PRED GLinitialize() a MakeDisplayLists() PO
+nem. My jsme (SK98) volali jen GLinitialize() sami rucne - InitializeTextureStore()
+se NIKDY nezavolalo, takze pole pscSubtexStore (textury cache) zustalo
+NULL. Prvni radek hry, ktery se pokusil nakreslit TEXTUROVANY polygon
+(primPolyFT4), spadl na NULL pointer v CheckTextureInSubSCache. Tohle
+presne vysvetluje VSECHNY pozorovane symptomy z predchozich 3 padu:
+- Promenliva doba do padu (zavisi na tom, kdy hra poprve kresli texturu,
+  ne na case samotnem)
+- Nezavislost na orientaci telefonu (nesouviselo s Java stranou vubec)
+- Proc zvuk/boot vzdy fungovaly (nepotrebuji texturovany polygon)
+- Proc GLES_FRAME_HEARTBEAT nikdy nenaskocil (crash byl PRED touhle
+  fazi, uvnitr samotneho kresleni prvniho snimku)
+
+OPRAVENO (SK102): pridana 2 chybejici volani (InitializeTextureStore(),
+MakeDisplayLists()) do nap_gles_egl_init(), presne ve stejnem poradi
+jake uz GPUopen() overene pouziva.
+
+PONAUCENI: kdyz 3rd-party knihovna ma VICE MOZNYCH vstupnich bodu (tady:
+minimalisticky renderer_init() pro libretro flow VS kompletni GPUopen()
+pro puvodni non-libretro frontend), je potreba zkontrolovat VSECHNY
+vstupni body a jejich ZAVISLOSTI, ne jen ten, co se povrchne hodi
+nejvic. A: realny crash log (adb) je nekolikanasobne rychlejsi a
+presnejsi nez postupne pridavani "printf" diagnostiky - stoji za tu
+malou pocatecni prekazku (zapnuti USB debug, stazeni nastroje).
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK102 vysledek - ocekavam
+KONECNE funkcni, nespadajici PS1 s ostrymi texturami. Pokud presto pad
+nastane, pouzit STEJNY adb postup znovu (uz osvedceny, funguje).
