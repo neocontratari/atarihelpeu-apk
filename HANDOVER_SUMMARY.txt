@@ -876,6 +876,49 @@ Pokud appka zije ale GLES_INIT_FAIL: presny "step=" rekne, kde presne to
 selhalo - dalsi diagnosticky krok podle toho. Pokud GLES_INIT_OK: overit
 vizualne (textury ostrejsi?) a zvukove (nic se nerozbilo?).
 
+================================================================================
+DODATEK 2026-07-19 (vecer, pokracovani) - SK98 SPADLO + BUILD2SK99 -
+OPRAVA DIAGNOSTIKY (kriticka, metodologicka)
+================================================================================
+SK98 test: appka po bootu PS1 hry prehrala uvodni znelku, ale BEZ OBRAZU,
+a pak SPADLA (cely proces). Presne jeden z rizikovych scenaru, co jsem
+predem oznacil.
+
+PROBLEM: moje GLES_INIT_OK/FAIL diagnostika (SK98) se v poslanem logu
+VUBEC neobjevila. DUVOD (moje metodologicka chyba): NAPLOG makro v tomto
+souboru pise do Android SYSTEMOVEHO LOGCATU (__android_log_print) - k
+tomu Rene nema pristup (potreboval by adb). Skutecny /log soubor plni jen
+Java strana. Pozadal jsem Rene o NativePs1CoreBridge.java (chybel mi -
+zadny predchozi balicek ho neobsahoval, potreboval jsem ho pro pridani
+noveho JNI mostu bez hadani/rizika). Rene poslal (+ NativeSegaCoreBridge.
+java + NativeSegaProofActivity.java pro pripad potreby, + cerstvou kopii
+MainActivity.java - BYTE-IDENTICKA s mou pracovni verzi, potvrzeno diff,
+zadny drift).
+
+OPRAVENO (SK99): novy JNI most ps1SetDiagLogPath(String) - Java (onCreate,
+hned po zalozeni log souboru) rekne nativnimu kodu PRESNOU cestu k /log
+souboru. Nova funkce nap_diag_log() pak pise PRIMO A SYNCHRONNE (open-
+write-close, zadna fronta/buffer) do TOHO SAMEHO souboru - i pri crashi
+o zlomek vteriny pozdeji uz je radek na disku. Vsech 10 puvodnich SK98
+GLES hlasek prepnuto na tohle (pres nove NAPDIAG makro - dela oboje,
+logcat i durable soubor). Pridany 2 nove "kanarci" jeste PRED prvnim EGL
+volanim (PS1_WORKER_THREAD_ALIVE, GLES_INIT_ENTER), aby bylo videt, jak
+DALEKO se appka pri pristim padu vubec dostala.
+
+PONAUCENI (dulezite pro budoucnost): kdyz pridavam NOVOU diagnostiku,
+VZDY overit, KAM presne pise a jestli se ta cesta skutecne dostane k
+uzivateli - ne jen pouzit prvni "uz existujici log makro", ktere najdu v
+souboru. V tomhle projektu existuji DVA oddelene logovaci systemy (Java
+appendNativeLog -> /log HTTP, vs C++ NAPLOG -> Android logcat) a je
+potreba vedet, KTERY je skutecne viditelny pro Rene.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK99 vysledek. Pokud appka
+opet spadne: tentokrat by log MEL ukazat presne, kam az se dostalo (nebo
+ze se nedostalo ani k PS1_WORKER_THREAD_ALIVE, coz by znamenalo problem
+UPLNE JINDE, ne v GLES kodu). Podle toho dalsi konkretni krok - uz ne
+hadani, ale diagnoza z realnych dat.
+
+
 
 
 

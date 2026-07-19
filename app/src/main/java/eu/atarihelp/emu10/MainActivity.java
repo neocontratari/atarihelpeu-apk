@@ -4831,6 +4831,12 @@ public class MainActivity extends Activity {
         // relaci a nastartovat vlakno, co ho prubezne plni (viz appendNativeLog).
         // Musi byt PRED vsim ostatnim, aby /log opravdu zachytil "od zacatku".
         napTvWebLogFileInit();
+        // BUILD2SK99: rekni PS1 nativnimu kodu, kam ma zapisovat pohotovostni
+        // diagnostiku (napr. gpu-gles/EGL inicializace) - primo do STEJNEHO
+        // souboru, co uz napTvWebLogFileInit prave zalozil. Musi byt AZ PO
+        // napTvWebLogFileInit (soubor uz musi existovat) a PRED jakymkoli PS1
+        // bootem (coz v praxi vzdy je, boot je uzivatelska akce o dost pozdeji).
+        try { if (napTvWebLogFile != null) NativePs1CoreBridge.setDiagLogPathSafe(napTvWebLogFile.getAbsolutePath()); } catch (Throwable ignored) {}
         // BUILD2SK18: obnov ulozenou volbu kvality TV mirroru z minula (drive se
         // pri kazdem znovuotevreni appky vracela na LOW - ted si to appka pamatuje).
         try { napTvWebQualityTier = getSharedPreferences("nap_tv_prefs", MODE_PRIVATE).getInt("quality_tier", 0); } catch (Throwable ignored) {}

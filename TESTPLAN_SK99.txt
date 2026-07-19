@@ -1,0 +1,69 @@
+BUILD2SK99 - OPRAVA DIAGNOSTIKY (aby priste bylo VIDET, kde presne SK98 pada)
+================================================================================
+CO SE STALO
+SK98 test: appka po naboootovani PS1 hry prehrala uvodni znelku (zvuk),
+ale bez obrazu, a pak spadla. Moje nova GLES diagnostika (GLES_INIT_OK/
+FAIL) se v logu VUBEC neobjevila - ale NE proto, ze appka spadla driv,
+nez se stihla zapsat. Sla do SPATNEHO mista: __android_log_print pise do
+Android systemoveho logcatu, ktery Rene nema jak precist (potreboval by
+adb, vyvojarsky nastroj, ktery nepouziva). Skutecny /log soubor, co
+appka servíruje a co Rene posila, plni JEN Java strana (appendNativeLog).
+
+Tohle byla METODOLOGICKA CHYBA z me strany - pouzil jsem zavedene NAPLOG
+makro (uz existujici v tomto souboru pro jine ucely), aniz bych si overil,
+KAM presne pise a jestli se to k Renovi vubec dostane.
+
+CO SE ZMENILO
+1) NativePs1CoreBridge.java (Rene poslal, ted mam) - novy native most
+   ps1SetDiagLogPath(String) + bezpecny wrapper setDiagLogPathSafe().
+2) MainActivity.java - jeden radek v onCreate (hned po zalozeni log
+   souboru), ktery nativnimu kodu rekne PRESNOU cestu k nemu.
+3) nap_ps1_native.cpp - nova funkce nap_diag_log() - pise PRIMO A HNED
+   (otevri soubor, zapise radek, hned zavre) do TOHO SAMEHO souboru, co
+   uz Java pouziva. Zadna fronta, zadne bufferovani - i kdyby appka
+   spadla o zlomek vteriny pozdeji, radek uz je na disku. Vsech 10
+   puvodnich GLES_INIT hlasek ze SK98 ted pisou SEM (pres nove NAPDIAG
+   makro, ktere dela oboje - logcat i tenhle durable zapis).
+4) Pridany DVA nove "kanarci" (jeste driv v poradi nez cokoli GLES):
+   - PS1_WORKER_THREAD_ALIVE - potvrzuje, ze PS1 pracovni vlakno vubec
+     zacalo bezet (uplne prvni vec, co se zaloguje).
+   - GLES_INIT_ENTER - potvrzuje, ze se vubec zacalo s GLES inicializaci,
+     pred prvnim EGL volanim.
+   Pokud priste appka spadne DRIV, nez uvidime treba i jen
+   PS1_WORKER_THREAD_ALIVE, znamena to, ze problem je jeste driv (mimo
+   muj novy kod uplne) - a i tohle je uzitecna informace.
+
+CO TEN PRISTI LOG UKAZE (podle toho, kde presne se zastavi)
+- Zadny "PS1_WORKER_THREAD_ALIVE" vubec: problem je pred/mimo muj GLES
+  kod - jinde v bootovaci ceste.
+- "PS1_WORKER_THREAD_ALIVE" ale zadny "GLES_INIT_ENTER": crash mezi
+  timhle a volanim GLES inicializace (nepravdepodobne, je to jen par
+  radku kodu mezi nimi).
+- "GLES_INIT_ENTER" ale zadny dalsi GLES_INIT radek: crash primo v
+  eglGetDisplay() nebo hned na zacatku.
+- "GLES_INIT_FAIL step=X": presne vime, ktery EGL/GL krok selhal (ale
+  NESPADL - to uz by byla jina kategorie, appka by zila dal bez obrazu).
+- "GLES_INIT_OK": cela inicializace probehla, problem je nekde POZDEJI
+  (uvnitr GLinitialize samotneho, nebo prvniho skutecneho vykreslovaciho
+  volani - to uz bysme resili jako DALSI krok, s touhle informaci uz
+  vime, kam se divat).
+
+RIZIKO TETO ZMENY (SK99 samotne)
+Nizke - cisty pridavek diagnostiky, ZADNA zmena v GLES/EGL kodu ze SK98
+samotneho (ten zustava presne stejny, jen nyni s funkcni diagnostikou
+kolem). Kdyby SK98 padalo, SK99 bude padat uplne stejne - jen tentokrat
+UVIDIME kde.
+Overeno: {} sedi ve vsech peti zmenenych souborech (MainActivity.java
+1890/1890, NativePs1CoreBridge.java 34/34, nap_ps1_native.cpp 98/98,
+libretro.c 475/475, gpulib_if.c 88/88 - posledni dva nedotcene tímto
+konkretnim krokem, jen pro uplnost overeny znovu).
+
+JAK OTESTOVAT
+Presne jako u SK98 - naboot PS1 hru, sleduj jestli appka zije. Ale
+tentokrat, at uz appka zije nebo spadne, POSLI MI LOG (i kdyby appka
+spadla - soubor uz bude na disku diky tomuhle synchronnimu zapisu,
+zbytek appky nemusi ani bezet, abys ho dostal - /log endpoint ale
+potrebuje bezici appku, takze pokud appka spadla, bude potreba appku
+znovu otevrit, aby /log server zase bezel, a pak teprve otevrit /log v
+prohlizeci - soubor samotny na disku zustava, jen server pro jeho
+vydani potrebuje bezici appku).

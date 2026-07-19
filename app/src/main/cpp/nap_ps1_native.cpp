@@ -237,6 +237,41 @@ extern "C" {
 }
 
 static bool g_gles_ready = false;
+static std::mutex g_diag_log_mutex;
+static std::string g_diag_log_path;
+
+// BUILD2SK99: primy, OKAMZITY zapis na disk - zadna fronta, zadne bufferovani.
+// Kazde volani otevre soubor, zapise radek, hned zavre (fclose implicitne
+// flushuje) - i kdyby appka spadla o zlomek vteriny pozdeji, tenhle radek uz
+// je na disku. Pise do STEJNEHO souboru jako Java appendNativeLog (cesta
+// dorazi pres ps1SetDiagLogPath, volano z onCreate) - Rene ho tak uvidi v
+// tom samem /log, na ktery je zvykly, zadny novy soubor/mechanismus pro nej.
+static void nap_diag_log(const char *fmt, ...) {
+  std::string path;
+  { std::lock_guard<std::mutex> lock(g_diag_log_mutex); path = g_diag_log_path; }
+  if (path.empty()) { return; } // cesta jeste nedorazila z Javy - nic bezpecneho k zapisu
+  char msg[512];
+  va_list ap; va_start(ap, fmt); vsnprintf(msg, sizeof(msg), fmt, ap); va_end(ap);
+  FILE *f = fopen(path.c_str(), "a");
+  if (!f) return;
+  fprintf(f, "%s\n", msg);
+  fclose(f); // BUILD2SK99: fclose flushuje - zadny extra fflush/fsync potreba
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetDiagLogPath(JNIEnv *env, jclass, jstring jpath) {
+  const char *p = env->GetStringUTFChars(jpath, nullptr);
+  {
+    std::lock_guard<std::mutex> lock(g_diag_log_mutex);
+    g_diag_log_path = p ? p : "";
+  }
+  env->ReleaseStringUTFChars(jpath, p);
+}
+// BUILD2SK99: obojí najednou - logcat (kdyby nekdy byl adb pristup) i durable
+// soubor (co Rene skutecne vidi). Jen pro GLES diagnostiku, proto lokalni
+// makro tady a ne nahore v souboru (tam by nap_diag_log jeste nebyla znama).
+#define NAPDIAG(...) do { NAPLOG(__VA_ARGS__); nap_diag_log(__VA_ARGS__); } while(0)
+
 
 // BUILD2SK98: cistě offscreen (pbuffer) EGL kontext - ZADNY Android Surface/
 // Window potreba vubec, takze zadny konflikt s existujici NativePs1InPlaceView
@@ -247,15 +282,16 @@ static bool g_gles_ready = false;
 // se cistě vrati false (zadny dalsi GL kod se nespusti), PS1 by zustala
 // bez obrazu (cerna/zadna), ale appka by NEMELA spadnout.
 static bool nap_gles_egl_init() {
+  NAPDIAG("BUILD2SK99 GLES_INIT_ENTER"); // BUILD2SK99: kanarek - pokud tohle v logu je, ale nic dal, vime, ze crash je HNED za timhle radkem
   EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-  if (display == EGL_NO_DISPLAY) { NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglGetDisplay"); return false; }
+  if (display == EGL_NO_DISPLAY) { NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglGetDisplay"); return false; }
 
   EGLint majorV = 0, minorV = 0;
   if (!eglInitialize(display, &majorV, &minorV)) {
-    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglInitialize err=0x%x", eglGetError());
+    NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglInitialize err=0x%x", eglGetError());
     return false;
   }
-  NAPLOG("BUILD2SK98 GLES_INIT egl version=%d.%d", (int)majorV, (int)minorV);
+  NAPDIAG("BUILD2SK98 GLES_INIT egl version=%d.%d", (int)majorV, (int)minorV);
 
   const EGLint configAttribs[] = {
     EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
@@ -267,7 +303,7 @@ static bool nap_gles_egl_init() {
   EGLConfig config;
   EGLint numConfigs = 0;
   if (!eglChooseConfig(display, configAttribs, &config, 1, &numConfigs) || numConfigs < 1) {
-    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglChooseConfig err=0x%x", eglGetError());
+    NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglChooseConfig err=0x%x", eglGetError());
     return false;
   }
 
@@ -280,19 +316,19 @@ static bool nap_gles_egl_init() {
   const EGLint pbufferAttribs[] = { EGL_WIDTH, 1024, EGL_HEIGHT, 768, EGL_NONE };
   EGLSurface surface = eglCreatePbufferSurface(display, config, pbufferAttribs);
   if (surface == EGL_NO_SURFACE) {
-    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglCreatePbufferSurface err=0x%x", eglGetError());
+    NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglCreatePbufferSurface err=0x%x", eglGetError());
     return false;
   }
 
   const EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 1, EGL_NONE }; // GLES1
   EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
   if (context == EGL_NO_CONTEXT) {
-    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglCreateContext err=0x%x", eglGetError());
+    NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglCreateContext err=0x%x", eglGetError());
     return false;
   }
 
   if (!eglMakeCurrent(display, surface, surface, context)) {
-    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglMakeCurrent err=0x%x", eglGetError());
+    NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglMakeCurrent err=0x%x", eglGetError());
     return false;
   }
 
@@ -304,22 +340,23 @@ static bool nap_gles_egl_init() {
   rRatioRect.left = 0; rRatioRect.top = 0; rRatioRect.right = 320; rRatioRect.bottom = 240;
 
   if (GLinitialize((void *)display, (void *)surface) != 0) {
-    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=GLinitialize");
+    NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=GLinitialize");
     return false;
   }
 
-  NAPLOG("BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240");
+  NAPDIAG("BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240");
   return true;
 }
 
 static void nap_worker(int gen) {
   NAPLOG("BUILD2SA2 PS1 worker start gen=%d fps=%.2f", gen, g_fps);
+  NAPDIAG("BUILD2SK99 PS1_WORKER_THREAD_ALIVE gen=%d", gen); // BUILD2SK99: durable kanarek - vlakno samo bezi
   // BUILD2SK98: EGL kontext MUSI se nastavit na TOMHLE vlakne (jedine vlakno,
   // ktere kdy vola retro_run(), tedy jedine vlakno, na kterem gpu-gles vubec
   // kresli) - GL kontexty jsou vazane na vlakno, ktere je aktivovalo.
   g_gles_ready = nap_gles_egl_init();
   if (!g_gles_ready) {
-    NAPLOG("BUILD2SK98 PS1 worker pokracuje BEZ funkcniho GL kontextu - video pravdepodobne cerne, zvuk/vstup nedotcene");
+    NAPDIAG("BUILD2SK98 PS1 worker pokracuje BEZ funkcniho GL kontextu - video pravdepodobne cerne, zvuk/vstup nedotcene");
   }
   const auto period = std::chrono::nanoseconds((long long)(1e9 / (g_fps > 1 ? g_fps : 60.0)));
   auto next = std::chrono::steady_clock::now();

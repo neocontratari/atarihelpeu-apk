@@ -16,6 +16,17 @@ public final class NativePs1CoreBridge {
     private static native void ps1SetInput(int id, boolean down);
     private static native String ps1SaveState(String path);
     private static native String ps1LoadState(String path);
+    // BUILD2SK99: rekne nativnimu kodu, kam prubezne (synchronne, hned) zapisovat
+    // pohotovostni diagnostiku (napr. GLES/EGL inicializace u gpu-gles, SK98) -
+    // primo do STEJNEHO souboru, ktery uz appka servíruje pres /log. Driv
+    // nativni diagnostika (__android_log_print) mizela v Android logcatu, kam
+    // Rene nema pristup - tohle to opravuje. Volat JEDNOU brzy (napr. onCreate),
+    // pred jakymkoli PS1 bootem.
+    private static native void ps1SetDiagLogPath(String path);
+    public static void setDiagLogPathSafe(String path) {
+        if (!loaded) return;
+        try { ps1SetDiagLogPath(path); } catch (Throwable ignored) {}
+    }
     public static int pullAudioSafe(short[] out, int frames) {
         if (!loaded) return 0;
         try { return ps1PullAudio(out, frames); } catch (Throwable t) { return 0; }
