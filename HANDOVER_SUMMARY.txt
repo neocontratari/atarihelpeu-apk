@@ -1145,3 +1145,33 @@ DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK104 vysledek - hledat
 (dalsi krok: hledat proc GL draw prikazy nevykresluji viditelny obsah,
 i kdyz "uspeji"). sumAvg vyrazne nad 0 = data maji barvu, problem je
 jinde po ceste (JPEG enkodovani nebo zobrazeni).
+
+================================================================================
+DODATEK 2026-07-19 (velmi pozdni noc) - BUILD2SK105 - SKUTECNA PRICINA
+CERNE OBRAZOVKY (diky SK104 diagnostice presne v /log, ZADNY adb potreba)
+================================================================================
+SK104 diagnostika ukazala presne to, co bylo potreba: "glErr=0x502
+sumAvg=0" - GL_INVALID_OPERATION pri glReadPixels(GL_RGB, GL_UNSIGNED_
+SHORT_5_6_5). Tahle kombinace NENI GLES specifikaci zarucena - jedina
+VZDY funkcni kombinace je GL_RGBA+GL_UNSIGNED_BYTE. Na tomhle zarizeni/
+ovladaci primo-565 cteni proste nefungovalo, proto byl buffer vzdy presne
+nulovy (cerna) i pote, co SK103 opravila samotny tok dat (spravne rozmery
+uz od SK103, ale obsah byl porad prazdny az do teto opravy).
+
+OPRAVENO (SK105): cteme bezpecnou RGBA8 kombinaci, prevadime sami dolu
+na RGB565 (jednoduchy bitovy posun), zbytek cesty (nap_gles_push_frame,
+Java-strana nap_video) nezmenen.
+
+PONAUCENI: kdyz GLES/OpenGL operace "tise selze" (vraci nulova/prazdna
+data bez padu), VZDY zkontrolovat glGetError() hned po volani - v tomhle
+pripade to okamzite ukazalo presnou pricinu (0x502), misto dalsiho
+hadani. Take: nikdy nepredpokladat, ze "pohodlna" kombinace formatu bude
+fungovat na kazdem zarizeni - drzet se toho, co specifikace VYSLOVNE
+garantuje.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK105 vysledek - tohle by
+KONECNE melo znamenat plne funkcni PS1 pres gpu-gles (bez padu SK102,
+se skutecnym tokem dat SK103, se skutecnym obsahem pixelu SK105). Pokud
+KONECNE funguje: dalsi krok je zhodnotit vizualni kvalitu (ostrejsi
+textury?) a vykon (zadne nove zpomaleni?). Pokud jeste ne, dalsi
+GLES_PIXEL_SAMPLE cislo (glErr a sumAvg) da presny dalsi smer.

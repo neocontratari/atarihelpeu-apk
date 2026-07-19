@@ -31,6 +31,7 @@
 extern void nap_gles_push_frame(void *pixels, int w, int h, int pitch);
 extern void nap_diag_log(const char *fmt, ...); // BUILD2SK100: viz nap_ps1_native.cpp
 static uint16_t *nap_gles_rb_buf = NULL;
+static uint8_t *nap_gles_rb_rgba = NULL; // BUILD2SK105: docasny RGBA8 buffer pro bezpecny readback
 static int nap_gles_rb_w = 0, nap_gles_rb_h = 0;
 static int nap_gles_frame_count = 0; // BUILD2SK100: tep - kolik snimku uspesne prosel readback
 
@@ -50,12 +51,32 @@ static void nap_gles_readback_and_push(void)
  if (rb_w <= 0 || rb_h <= 0 || rb_w > 2048 || rb_h > 2048) return; // rozumne meze, zadny divoky alloc
  if (nap_gles_rb_buf == NULL || nap_gles_rb_w != rb_w || nap_gles_rb_h != rb_h) {
   if (nap_gles_rb_buf != NULL) free(nap_gles_rb_buf);
+  if (nap_gles_rb_rgba != NULL) free(nap_gles_rb_rgba);
   nap_gles_rb_buf = (uint16_t *)malloc((size_t)rb_w * (size_t)rb_h * 2);
+  nap_gles_rb_rgba = (uint8_t *)malloc((size_t)rb_w * (size_t)rb_h * 4); // BUILD2SK105
   nap_gles_rb_w = rb_w;
   nap_gles_rb_h = rb_h;
  }
- if (nap_gles_rb_buf == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
- glReadPixels(0, 0, rb_w, rb_h, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, nap_gles_rb_buf);
+ if (nap_gles_rb_buf == NULL || nap_gles_rb_rgba == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
+ // BUILD2SK105: SKUTECNA PRICINA CERNE OBRAZOVKY (potvrzeno SK104
+ // diagnostikou - glErr=0x502 GL_INVALID_OPERATION, sumAvg=0). Cteni primo
+ // jako GL_RGB+GL_UNSIGNED_SHORT_5_6_5 NENI zarucena kombinace pro
+ // glReadPixels - GLES specifikace garantuje POUZE GL_RGBA+GL_UNSIGNED_BYTE
+ // (nebo implementaci-specificky format, ktery bysme museli dotazovat
+ // zvlast). Na tomhle zarizeni/ovladaci ta primo-565 kombinace proste
+ // neprosla. Oprava: cist bezpecnou, vzdy funkcni RGBA8 kombinaci, pak si
+ // sami prevest dolu na RGB565 - zbytek cesty (nap_gles_push_frame,
+ // nap_video() na Java strane) zustava presne stejny, nic dal se nemeni.
+ glReadPixels(0, 0, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_rb_rgba);
+ {
+  int n = rb_w * rb_h;
+  for (int i = 0; i < n; i++) {
+   uint8_t r = nap_gles_rb_rgba[i * 4 + 0];
+   uint8_t g = nap_gles_rb_rgba[i * 4 + 1];
+   uint8_t b = nap_gles_rb_rgba[i * 4 + 2];
+   nap_gles_rb_buf[i] = (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+  }
+ }
  // BUILD2SK104: obsah pixelu, ne jen rozmery - podezrele mala JPEG velikost
  // (5780B pro 320x240 hru) naznacuje, ze buffer muze byt skoro cerny/
  // prazdny i kdyz rozmery uz sedi. Levny soucet (staci vedet "je tam vubec
@@ -69,7 +90,7 @@ static void nap_gles_readback_and_push(void)
   uint16_t pTL = nap_gles_rb_buf[0];
   uint16_t pCenter = nap_gles_rb_buf[n / 2];
   uint16_t pBR = nap_gles_rb_buf[n - 1];
-  nap_diag_log("BUILD2SK104 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%04x pCenter=0x%04x pBR=0x%04x",
+  nap_diag_log("BUILD2SK105 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%04x pCenter=0x%04x pBR=0x%04x",
     (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR);
  }
  nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 2);

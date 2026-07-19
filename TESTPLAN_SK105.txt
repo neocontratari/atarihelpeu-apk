@@ -1,0 +1,35 @@
+BUILD2SK105 - SKUTECNA PRICINA CERNE OBRAZOVKY NALEZENA A OPRAVENA
+================================================================================
+CO SK104 DIAGNOSTIKA UKAZALA (presne to, co jsem potreboval)
+"glErr=0x502 sumAvg=0 pTL=0x0000 pCenter=0x0000 pBR=0x0000" - 0x502 je
+skutecny OpenGL chybovy kod GL_INVALID_OPERATION. Nase cteni obrazu
+primo ve formatu RGB565 (glReadPixels s GL_RGB + GL_UNSIGNED_SHORT_5_6_5)
+na tomhle konkretnim zarizeni/ovladaci proste SELHAVALO - proto byl
+buffer vzdy presne 0 (cerna), i kdyz rozmery uz byly spravne (diky SK103).
+
+PRICINA: GLES specifikace zarucuje, ze glReadPixels VZDY funguje jen pro
+JEDNU konkretni kombinaci - GL_RGBA + GL_UNSIGNED_BYTE (plus jednu
+implementaci-specifickou, kterou bychom museli zvlast zjistovat). Nase
+"rovnou RGB565" volba byla pohodlna (odpovidala formatu, co uz zbytek
+kodu cekal), ale neni to neco, co GLES musi podporovat - a na tomhle
+zarizeni/ovladaci to proste nepodporuje.
+
+CO SE ZMENILO
+Cteme ted bezpecnou, vzdy funkcni kombinaci (RGBA8, 4 bajty na pixel) a
+sami si to v jednoduche smycce prevadime dolu na RGB565 (posun bitu,
+zadne deleni). Vysledek se pak posila UPLNE STEJNE jako predtim -
+nap_gles_push_frame, nap_video() na Java strane - nic z tehle casti se
+nemeni, jen zdroj dat je ted skutecne spolehlivy.
+
+RIZIKO
+Nizke - pouzivame jedinou GLES kombinaci, ktera je ZARUCENA specifikaci
+fungovat vzdy, na jakemkoli zarizeni. Prevod dolu na 565 je jednoduchy,
+levny bitovy posun (~76 800 pixelu pro 320x240, trivialni vykonovy
+naklad).
+Overeno: {} v gpulib_if.c sedi (92/92).
+
+JAK OTESTOVAT
+Presne jako predtim - naboot PS1 hru. V /log zkontroluj "GLES_PIXEL_SAMPLE"
+(ted BUILD2SK105 tag) - "glErr=0x0" (misto 0x502) a "sumAvg=" VYRAZNE
+nad 0 by potvrdilo, ze pixely uz maji skutecnou barvu. A hlavne - konecne
+by melo byt VIDET na obrazovce, ne jen slyset.
