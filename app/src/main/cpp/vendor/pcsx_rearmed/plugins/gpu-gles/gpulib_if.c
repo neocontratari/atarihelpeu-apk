@@ -22,6 +22,32 @@
 #include "gpuPrim.c"
 #include "hud.c"
 
+// BUILD2SK98: most do libretro.c (viz tam - nap_gles_push_frame) - gpu-gles
+// renderuje primo pres EGL/GL (eglSwapBuffers v updateDisplay nize), na
+// rozdil od gpu_neon nikdy sam nepredaval hotovy snimek zpet do CPU pametu.
+// Tenhle extern + volani glReadPixels o par radku niz je JEDINA zmena
+// oproti puvodnimu chovani tohoto souboru - vsechno ostatni (samotne
+// kresleni) zustava presne tak, jak to venovil puvodce pluginu.
+extern void nap_gles_push_frame(void *pixels, int w, int h, int pitch);
+static uint16_t *nap_gles_rb_buf = NULL;
+static int nap_gles_rb_w = 0, nap_gles_rb_h = 0;
+
+static void nap_gles_readback_and_push(void)
+{
+ int rb_w = PSXDisplay.DisplayMode.x;
+ int rb_h = PSXDisplay.DisplayMode.y;
+ if (rb_w <= 0 || rb_h <= 0 || rb_w > 2048 || rb_h > 2048) return; // rozumne meze, zadny divoky alloc
+ if (nap_gles_rb_buf == NULL || nap_gles_rb_w != rb_w || nap_gles_rb_h != rb_h) {
+  if (nap_gles_rb_buf != NULL) free(nap_gles_rb_buf);
+  nap_gles_rb_buf = (uint16_t *)malloc((size_t)rb_w * (size_t)rb_h * 2);
+  nap_gles_rb_w = rb_w;
+  nap_gles_rb_h = rb_h;
+ }
+ if (nap_gles_rb_buf == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
+ glReadPixels(0, 0, rb_w, rb_h, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, nap_gles_rb_buf);
+ nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 2);
+}
+
 static int is_opened;
 
 static const short dispWidths[8] = {256,320,512,640,368,384,512,640};
@@ -129,6 +155,7 @@ void updateDisplay(void)
  {
   fps_update();
   eglSwapBuffers(display, surface);
+  nap_gles_readback_and_push(); // BUILD2SK98
   iDrawnSomething=0;
  }
 
@@ -192,8 +219,10 @@ void updateFrontDisplay(void)
  bFakeFrontBuffer=FALSE;
  bRenderFrontBuffer=FALSE;
 
- if(iDrawnSomething)                                  // linux:
+ if(iDrawnSomething) {                                 // linux:
   eglSwapBuffers(display, surface);
+  nap_gles_readback_and_push(); // BUILD2SK98
+ }
 }
 
 static void ChangeDispOffsetsX(void)                  // CENTER X

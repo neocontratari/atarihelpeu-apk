@@ -115,6 +115,23 @@ static int vout_width = 256, vout_height = 240, vout_pitch_b = 256*2;
 static int vout_fb_dirty;
 static int psx_w, psx_h;
 static bool vout_can_dupe;
+
+// BUILD2SK98: most pro gpu-gles (skutecny OpenGL ES vykreslovac s
+// texturovym filtrovanim, na rozdil od gpu_neon renderuje primo pres
+// EGL/GL, ne do CPU bufferu jako gpu_neon). gpu-gles po kazdem snimku
+// (v gpulib_if.c, updateDisplay()) precte svuj vykresleny obraz zpet
+// pres glReadPixels a zavola tuhle funkci - ktera ho jen ulozi do PRESNE
+// tech samych sdilenych promennych, ktere uz retro_run() o par radku niz
+// pouziva pro sve normalni video_cb() volani. Zadna zmena v retro_run()
+// samotnem - jen novy zdroj dat pro uz existujici cestu.
+void nap_gles_push_frame(void *pixels, int w, int h, int pitch)
+{
+   vout_buf_ptr = pixels;
+   vout_width = w;
+   vout_height = h;
+   vout_pitch_b = pitch;
+   vout_fb_dirty = 1;
+}
 static int display_internal_fps;
 static bool libretro_supports_bitmasks = false;
 static bool libretro_supports_option_categories = false;

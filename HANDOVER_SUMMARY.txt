@@ -821,6 +821,62 @@ doostreni videt/dostatecne, nebo chce Rene silnejsi/slabsi? Pripadne
 znovu otevrit otazku gpu-gles jako SAMOSTATNY projekt, pokud Rene chce
 jit dal a je ochoten na to venovat vic casu s prubeznym testovanim.
 
+================================================================================
+DODATEK 2026-07-19 (vecer) - BUILD2SK98 - SKUTECNA GPU CESTA (gpu-gles)
+- NEJVETSI ZMENA V PROJEKTU
+================================================================================
+Rene: doostreni (SK97) nebylo videt na screenshotech, odmitl to jako
+dostatecne reseni. Explicitne rekl "mame build 90 a 96 [pozdeji i 97],
+je k cemu se vracet - JDI DO TOHO" a pozdeji jeste jednou potvrdil po
+me druhem, jeste opatrnejsim vysvetleni rizika.
+
+POSTAVENO (4 soubory, detaily viz TESTPLAN_SK98.txt):
+1) CMakeLists.txt - napps1core ted stavi gpu-gles (skutecny OpenGL ES
+   renderer s GL_LINEAR texturovym filtrovanim) MISTO gpu_neon.
+   DULEZITE ODHALENI BEHEM STAVBY: gpu-gles/gpulib_if.c interne #includuje
+   gpuDraw.c, gpuTexture.c, gpuPrim.c, hud.c A TAKE ../gpulib/gpu.c primo
+   jako zdrojak (ne header) - tyhle NESMI byt v CMakeLists listovane jeste
+   jednou zvlast (duplicate symbol pri linkovani). gpu-gles take definuje
+   VLASTNI vout_init/update/blank/etc, takze gpulib/vout_pl.c (gpu_neon
+   specificky) musel byt take odebran. Rucne prokrizovano - zadna kolize.
+2) nap_ps1_native.cpp - vlastni OFFSCREEN (pbuffer, 1024x768) EGL/GLES1
+   kontext, zadny Android Surface/Window potreba - ZADNY konflikt s
+   existujici NativePs1InPlaceView (ta zustava beze zmeny, kresli Canvas
+   jako driv). Kontext se aktivuje na PS1 worker vlakne (jedine vlakno,
+   co kdy vola retro_run()) PRED zacatkem herni smycky. gpu-gles prijima
+   EXTERNE dodany display/surface pres GLinitialize(display, surface) -
+   presne k tomuhle je urceny, obchazi jeho vlastni X11-specifickou
+   initEGL() uplne.
+3) frontend/libretro.c - pridana funkce nap_gles_push_frame(pixels,w,h,
+   pitch) - jen ulozi data do stejnych sdilenych (driv static, presna
+   promenna jmena zjistena) vout_buf_ptr/vout_width/vout_height/
+   vout_pitch_b/vout_fb_dirty promennych, ktere retro_run() UZ pouziva
+   pro video_cb() volani - ZADNA zmena v retro_run() samotnem.
+4) gpu-gles/gpulib_if.c - po eglSwapBuffers (v OBOU updateDisplay a
+   updateFrontDisplay) se zavola glReadPixels (GL_RGB, GL_UNSIGNED_
+   SHORT_5_6_5 - RGB565, odpovida ocekavanemu formatu v nap_video())
+   a vysledek posle pres nap_gles_push_frame.
+
+ZNAME MEZE PRVNIHO POKUSU (poctive priznano v testplanu):
+- Projekce/rozliseni GL kontextu se nastavuje JEDNOU pri startu (320x240)
+  - dynamicke zmeny PS1 rozliseni za behu (256x240 az 640x480, jak uz
+    videno v logu) se NEPROJEVI spravne bez dalsiho kroku.
+- Realny native crash risk pri spatne zvladnute GPU inicializaci na
+  konkretnim zarizeni - zmirneno (kazdy EGL/GL krok kontroluje navratovou
+  hodnotu, cisté selhani misto pokracovani), ale ne 100% vyloucene bez
+  zivého testu.
+- Textury FMV cutscen se NEZLEPSI (jiny, trvaly strop - predtocene video).
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK98 vysledek - PRVNI
+OTAZKA je, jestli appka VUBEC prezije spusteni PS1 (kontrola v logu:
+"BUILD2SK98 GLES_INIT_OK" vs "GLES_INIT_FAIL step=..." vs appka spadla
+uplne). Pokud appka spadne: vratit se na SK97 (bezpecna zaloha), analyzovat
+jakykoli castecny log/pad hlaseni, zkusit dalsi iteraci EGL configu.
+Pokud appka zije ale GLES_INIT_FAIL: presny "step=" rekne, kde presne to
+selhalo - dalsi diagnosticky krok podle toho. Pokud GLES_INIT_OK: overit
+vizualne (textury ostrejsi?) a zvukove (nic se nerozbilo?).
+
+
 
 
 

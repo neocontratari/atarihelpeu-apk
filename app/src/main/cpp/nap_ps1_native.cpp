@@ -17,6 +17,8 @@
 #include <cstdint>
 #include <fstream>
 #include <iterator>
+#include <EGL/egl.h>   // BUILD2SK98: pro gpu-gles (skutecny GL vykreslovac s texturovym filtrovanim)
+#include <GLES/gl.h>   // GLES1 - presne to, co gpu-gles pouziva (fixed-function pipeline)
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, "NAP_PS1", __VA_ARGS__)
 
 extern "C" {
@@ -222,8 +224,103 @@ static int16_t nap_input_state(unsigned port, unsigned device, unsigned, unsigne
   return (g_input_bits.load(std::memory_order_relaxed) & (1u << id)) ? 1 : 0;
 }
 
+// BUILD2SK98: gpu-gles potrebuje EXTERNE dodany EGL display/surface (jinak by
+// zkousel svou vlastni X11-specifickou cestu, ktera na Androidu nikdy nemuze
+// fungovat) - GLinitialize(display, surface) tohle prijima primo. Viz
+// vendor/pcsx_rearmed/plugins/gpu-gles/gpuDraw.c GLinitialize().
+extern "C" {
+  typedef struct { int left, top, right, bottom; } NapGlesRectShape; // ABI-kompatibilni s vendor RECT
+  extern int iResX;
+  extern int iResY;
+  extern NapGlesRectShape rRatioRect;
+  int GLinitialize(void *ext_gles_display, void *ext_gles_surface);
+}
+
+static bool g_gles_ready = false;
+
+// BUILD2SK98: cistě offscreen (pbuffer) EGL kontext - ZADNY Android Surface/
+// Window potreba vubec, takze zadny konflikt s existujici NativePs1InPlaceView
+// TextureView (ktera pořad kresli pres Canvas jako driv - nedotcena). gpu-gles
+// renderuje SEM, my si to pak precteme zpet (viz gpulib_if.c
+// nap_gles_readback_and_push) a posleme presne tou samou cestou, jakou uz
+// pouzival gpu_neon. Kazdy krok kontroluje navratovou hodnotu - pri selhani
+// se cistě vrati false (zadny dalsi GL kod se nespusti), PS1 by zustala
+// bez obrazu (cerna/zadna), ale appka by NEMELA spadnout.
+static bool nap_gles_egl_init() {
+  EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+  if (display == EGL_NO_DISPLAY) { NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglGetDisplay"); return false; }
+
+  EGLint majorV = 0, minorV = 0;
+  if (!eglInitialize(display, &majorV, &minorV)) {
+    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglInitialize err=0x%x", eglGetError());
+    return false;
+  }
+  NAPLOG("BUILD2SK98 GLES_INIT egl version=%d.%d", (int)majorV, (int)minorV);
+
+  const EGLint configAttribs[] = {
+    EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES_BIT, // GLES1
+    EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8,
+    EGL_DEPTH_SIZE, 16,
+    EGL_NONE
+  };
+  EGLConfig config;
+  EGLint numConfigs = 0;
+  if (!eglChooseConfig(display, configAttribs, &config, 1, &numConfigs) || numConfigs < 1) {
+    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglChooseConfig err=0x%x", eglGetError());
+    return false;
+  }
+
+  // BUILD2SK98: velkorysa velikost, at se vejde jakekoli PS1 rozliseni videne
+  // v logu (256x240 az 640x480). ZNAMY LIMIT prvniho pokusu: promitaci
+  // matice (glOrtho v GLinitialize) se nastavi JEDNOU pri startu podle
+  // tehdejsiho PSXDisplay.DisplayMode - pokud hra pozdeji za behu prepne na
+  // jine rozliseni, projekce se sama znovu nenastavi (dalsi krok pro
+  // budoucnost, ne tenhle prvni pokus).
+  const EGLint pbufferAttribs[] = { EGL_WIDTH, 1024, EGL_HEIGHT, 768, EGL_NONE };
+  EGLSurface surface = eglCreatePbufferSurface(display, config, pbufferAttribs);
+  if (surface == EGL_NO_SURFACE) {
+    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglCreatePbufferSurface err=0x%x", eglGetError());
+    return false;
+  }
+
+  const EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 1, EGL_NONE }; // GLES1
+  EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
+  if (context == EGL_NO_CONTEXT) {
+    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglCreateContext err=0x%x", eglGetError());
+    return false;
+  }
+
+  if (!eglMakeCurrent(display, surface, surface, context)) {
+    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=eglMakeCurrent err=0x%x", eglGetError());
+    return false;
+  }
+
+  // BUILD2SK98: gpu-gles cte tyhle tri promenne PRED tim, nez se GLinitialize
+  // vubec pusti do glViewport/glOrtho - musi byt nastavene driv. 320x240
+  // odpovida vychozimu PSXDisplay.DisplayMode nastavenemu v renderer_init().
+  iResX = 320;
+  iResY = 240;
+  rRatioRect.left = 0; rRatioRect.top = 0; rRatioRect.right = 320; rRatioRect.bottom = 240;
+
+  if (GLinitialize((void *)display, (void *)surface) != 0) {
+    NAPLOG("BUILD2SK98 GLES_INIT_FAIL step=GLinitialize");
+    return false;
+  }
+
+  NAPLOG("BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240");
+  return true;
+}
+
 static void nap_worker(int gen) {
   NAPLOG("BUILD2SA2 PS1 worker start gen=%d fps=%.2f", gen, g_fps);
+  // BUILD2SK98: EGL kontext MUSI se nastavit na TOMHLE vlakne (jedine vlakno,
+  // ktere kdy vola retro_run(), tedy jedine vlakno, na kterem gpu-gles vubec
+  // kresli) - GL kontexty jsou vazane na vlakno, ktere je aktivovalo.
+  g_gles_ready = nap_gles_egl_init();
+  if (!g_gles_ready) {
+    NAPLOG("BUILD2SK98 PS1 worker pokracuje BEZ funkcniho GL kontextu - video pravdepodobne cerne, zvuk/vstup nedotcene");
+  }
   const auto period = std::chrono::nanoseconds((long long)(1e9 / (g_fps > 1 ? g_fps : 60.0)));
   auto next = std::chrono::steady_clock::now();
   uint64_t srmTick = 0;

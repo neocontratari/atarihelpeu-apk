@@ -1,0 +1,73 @@
+BUILD2SK98 - PS1 PRES SKUTECNE GPU (gpu-gles, texturove filtrovani)
+================================================================================
+TOHLE JE NEJVETSI A NEJRIZIKOVEJSI ZMENA V CELEM PROJEKTU DOSUD.
+Cti to cele pred testem, prosim.
+
+CO SE ZMENILO (4 soubory)
+1) app/src/main/cpp/CMakeLists.txt - PS1 jadro ted stavi gpu-gles (skutecny
+   OpenGL ES vykreslovac) MISTO gpu_neon (softwarovy rasterizer bez
+   texturoveho filtrovani). Pridany EGL/GLESv1_CM systemove knihovny.
+2) app/src/main/cpp/nap_ps1_native.cpp - postaven vlastni, neviditelny
+   (offscreen) OpenGL kontext - zadny Android Surface/Window potreba,
+   zadny konflikt s existujici obrazovkou.
+3) app/src/main/cpp/vendor/pcsx_rearmed/frontend/libretro.c - pridana
+   jedna mala funkce (most), aby GL-vykresleny snimek dosel do appky
+   stejnou cestou jako driv.
+4) app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c -
+   po kazdem snimku se pixely precte zpet z GPU a posle tim mostem.
+
+CO TO PRINASI (pokud to zabere)
+Skutecne bilinearni filtrovani textur na 3D modelech - presne to
+kostkovani na postavach/stenach, co Enhanced Resolution neresilo (ta
+resila jen hrany geometrie), by melo zmizet. FMV cutsceny se STALE
+NEZLEPSI (to je jiny, trvaly strop - predtocene video).
+
+POCTIVE O RIZIKU (nezlehcuji to)
+- Tohle NENI overeny prepinac jako Enhanced Resolution. Je to nova
+  vykreslovaci cesta, nikdy netestovana na zivem zarizeni.
+- NEJHORSI realny scenar: spatne zvladnuta GPU inicializace na
+  konkretnim telefonu/ovladaci muze appku SHODIT (ne jen ukazat cernou
+  PS1 obrazovku, ale ukoncit celou appku). Snazil jsem se tohle
+  minimalizovat (kazdy krok inicializace kontroluje navratovou hodnotu a
+  cistě se vzda pri selhani, misto pokracovani do neceho nedefinovaneho),
+  ale 100% jistotu bez zivého testu dat nemuzu.
+- ZNAMY LIMIT (i kdyby vse ostatni fungovalo): rozliseni PS1 obrazu se
+  nastavuje JEDNOU pri startu (320x240) - pokud hra pozdeji za behu
+  prepne na jine rozliseni (jak uz jsme videli v logu - 256x240 az
+  640x480 podle sceny), obraz muze vypadat spatne umisteny/oriznuty do
+  doby, nez se to v dalsim kroku dodela poradne (dynamicke prepocitani).
+- BIOS/nektere hry mohou mit s timhle plnohodnotnym GL rendererem jine
+  problemy s kompatibilitou nez s gpu_neon (je to jiny kod s jinou
+  historii pouzivani) - moznost graficke chyby specificke pro urcitou
+  hru.
+
+CO DELAT, KDYBY SE NECO POKAZILO
+1) Appka spadne pri spusteni PS1 / na cerne obrazovce / vubec nenaboot:
+   VRAT SE NA SK97 (posledni jiste funkcni verze - bezpecne doostreni,
+   zadne GPU riziko). Posli mi, co presne se stalo (screenshot, kdyz to
+   pujde, log kdyz appka neco stihla zapsat) - v logu hledej
+   "BUILD2SK98 GLES_INIT_FAIL step=..." - presne rekne, KTERY konkretni
+   inicializacni krok selhal, coz mi da presnou stopu, co dal zkusit.
+2) PS1 nabootuje, ale obraz je cerny/prazdny (appka NESPADLA): v logu
+   hledej "BUILD2SK98 GLES_INIT_OK" (uspesna inicializace, ale snad neco
+   dal po ceste) nebo "GLES_INIT_FAIL" (presne kde to zaseklo).
+3) PS1 funguje a vypada lip: super, to je cil.
+4) PS1 funguje, ale vypada rozbite/divne (barvy, pozice, artefakty):
+   posli screenshot - da se dolaďovat.
+
+JAK OTESTOVAT (opatrne, postupne)
+1) Zkus NEJDRIV kratky test - jen naboot PS1 hru, par sekund pockej,
+   zkontroluj, ze appka vubec zustava bezet (nespadla).
+2) Pokud appka zije: zkontroluj /log, najdi "BUILD2SK98 GLES_INIT_OK"
+   nebo "GLES_INIT_FAIL step=...".
+3) Pokud GLES_INIT_OK: podivej se na obraz - PS1 na telefonu i na TV.
+4) Zvuk poslouchej taky - i kdyby obraz selhal, zvuk/ovladani by mely
+   fungovat dal (jsou to nezavisle casti).
+
+Overeno (v ramci moznosti bez skutecneho prekladace):
+{} v nap_ps1_native.cpp (92/92), libretro.c (475/475), gpulib_if.c
+(88/88) sedi. Zadne duplicitni definice symbolu (rucne prokontrolovano -
+gpu.c a vout_pl.c driv byly v seznamu DVAKRAT, jednou primo a jednou
+pres #include retez gpu-gles - opraveno, jinak by build spadl na
+"duplicate symbol" chybu). Nemam zde Android NDK, takze skutecny preklad
+nejde spustit - tohle je nejdal, kam se da overit bez neho.

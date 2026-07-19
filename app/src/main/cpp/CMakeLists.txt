@@ -178,9 +178,7 @@ add_library(napps1core SHARED
     ${PS1_DIR}/plugins/dfsound/spu.c
     ${PS1_DIR}/plugins/dfsound/out.c
     ${PS1_DIR}/plugins/dfsound/nullsnd.c
-    ${PS1_DIR}/plugins/gpulib/gpu.c
     ${PS1_DIR}/plugins/gpulib/prim.c
-    ${PS1_DIR}/plugins/gpulib/vout_pl.c
     ${PS1_DIR}/plugins/gpulib/gpu_async.c
     ${PS1_DIR}/plugins/cdrcimg/cdrcimg.c
     ${PS1_DIR}/frontend/main.c
@@ -224,8 +222,8 @@ add_library(napps1core SHARED
     ${PS1_DIR}/libpcsxcore/gte_arm64.S
     ${PS1_DIR}/libpcsxcore/gte_nf_arm64.S
     ${PS1_DIR}/libpcsxcore/new_dynarec/linkage_arm64.S
-    ${PS1_DIR}/plugins/gpu_neon/psx_gpu/psx_gpu_simd.c
-    ${PS1_DIR}/plugins/gpu_neon/psx_gpu_if.c
+    ${PS1_DIR}/plugins/gpu-gles/gpulib_if.c
+    ${PS1_DIR}/plugins/gpu-gles/gpuFps.c
     ${PS1_DIR}/frontend/pcsxr-threads.c
     ${PS1_DIR}/deps/libretro-common/features/features_cpu.c
 )
@@ -233,14 +231,18 @@ target_include_directories(napps1core PRIVATE
     ${PS1_DIR}/include ${PS1_DIR} ${PS1_DIR}/libpcsxcore ${PS1_DIR}/frontend
     ${PS1_DIR}/deps/crypto
     ${PS1_DIR}/deps/libchdr/include ${PS1_DIR}/deps/libchdr/deps/lzma-24.05/include
-    ${PS1_DIR}/deps/libchdr/deps/zstd-1.5.6/lib ${PS1_DIR}/deps/libretro-common/include)
+    ${PS1_DIR}/deps/libchdr/deps/zstd-1.5.6/lib ${PS1_DIR}/deps/libretro-common/include
+    ${PS1_DIR}/plugins/gpu-gles)
 target_compile_definitions(napps1core PRIVATE
     HAVE_CHD Z7_ST ZSTD_DISABLE_ASM HAVE_LIBRETRO NO_FRONTEND REARMED
     P_HAVE_MMAP=1 P_HAVE_PTHREAD=1 P_HAVE_POSIX_MEMALIGN=1 USE_LIBRETRO_VFS
     NDRC_THREAD LIGHTREC_CUSTOM_MAP=0 LIGHTREC_ENABLE_THREADED_COMPILER=0
     LIGHTREC_ENABLE_DISASSEMBLER=0 LIGHTREC_NO_DEBUG=1
-    NEON_BUILD TEXTURE_CACHE_4BPP TEXTURE_CACHE_8BPP GPU_NEON SIMD_BUILD
     USE_ASYNC_CDROM USE_ASYNC_GPU USE_ASYNC_SPU HAVE_RTHREADS NDEBUG)
+    # BUILD2SK98: GPU_NEON/NEON_BUILD/SIMD_BUILD/TEXTURE_CACHE_* zamerne
+    # ODEBRANY - patrily gpu_neon (uz nekompilovanem). GPU_NEON v sdilenem
+    # prim.c jen menil jeden interni presnostni prepinac (#define STRICT),
+    # nic vic - bezpecne vypnout.
 if(ANDROID)
     target_compile_definitions(napps1core PRIVATE ANDROID)
 endif()
@@ -249,6 +251,8 @@ find_package(Threads REQUIRED)
 # BUILD2SA1-FIX2: Android.mk ma LOCAL_LDLIBS := -lz -llog. Bez systemove zlib
 # (libchdr ji potrebuje) spadl NDK link - presne chyba z Actions #853.
 # --no-undefined = stejna prisnost jako NDK, chybejici symbol shodi uz muj test.
-target_link_libraries(napps1core ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS})
+# BUILD2SK98: + EGL/GLESv1_CM - standardni, VZDY pritomne Android system
+# knihovny (soucast kazdeho Android NDK) - potrebne pro gpu-gles.
+target_link_libraries(napps1core ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS} EGL GLESv1_CM)
 target_link_options(napps1core PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif() # NAP_ENABLE_PS1
