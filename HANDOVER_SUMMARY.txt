@@ -932,3 +932,33 @@ hadani, ale diagnoza z realnych dat.
 
 
 
+
+================================================================================
+DODATEK 2026-07-19 (pozde vecer) - BUILD2SK100 - TEP VE SMYCCE + WORKFLOW
+POZNAMKA
+================================================================================
+SK99 log: "GLES_INIT_OK" potvrzeno - GPU inicializace USPESNA. Appka pak
+bezela 7+ vterin normalne (zvuk, TV-cast, vse v PORTRETU - takze
+NativePs1InPlaceView/Java strana spala, ale gpu-gles na pozadi porad
+kreslilo, protoze nap_worker() bezi nezavisle na orientaci). Log pak
+proste skoncil bez chybove hlasky - pad je nekde BEHEM bezneho
+vykreslovani, ne v inicializaci.
+
+Rene take upozornil na dulezity workflow problem: restart appky po padu
+(co jsem drive navrhoval jako zpusob, jak znovu zprovoznit /log server)
+SMAZE prave zapsanou diagnostiku (napTvWebLogFileInit v onCreate soubor
+truncate/pretvori). Uznano jako opravdovy problem, zapsano jako znama
+mez soucasneho reseni (viz TESTPLAN_SK100.txt).
+
+OPRAVENO/PRIDANO (SK100): tep (heartbeat) primo ve vykreslovaci smycce
+gpu-gles - kazdych 30 snimku zapise pocet uspesne zpracovanych snimku.
+Pri pristim padu uvidime, KOLIK snimku prosle pred padem. nap_diag_log
+musel prestat byt "static" (potreba i pro gpu-gles, C soubor, jiny
+prekladovy celek).
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK100 vysledek - hledat
+posledni GLES_FRAME_HEARTBEAT pred koncem logu. Pokud appka spadne znovu
+a znovu bez dalsiho pokroku v diagnostice, zvazit s Renem, jestli
+pokracovat v tomhle smeru (gpu-gles) dava jeste smysl, nebo je cas
+vratit se na SK97 (bezpecna, funkcni zaloha s mirnym doostrenim) natrvalo
+a hledat jiny zpusob zlepseni grafiky.

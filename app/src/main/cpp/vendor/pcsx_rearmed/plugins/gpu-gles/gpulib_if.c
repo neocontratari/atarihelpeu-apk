@@ -29,13 +29,24 @@
 // oproti puvodnimu chovani tohoto souboru - vsechno ostatni (samotne
 // kresleni) zustava presne tak, jak to venovil puvodce pluginu.
 extern void nap_gles_push_frame(void *pixels, int w, int h, int pitch);
+extern void nap_diag_log(const char *fmt, ...); // BUILD2SK100: viz nap_ps1_native.cpp
 static uint16_t *nap_gles_rb_buf = NULL;
 static int nap_gles_rb_w = 0, nap_gles_rb_h = 0;
+static int nap_gles_frame_count = 0; // BUILD2SK100: tep - kolik snimku uspesne prosel readback
 
 static void nap_gles_readback_and_push(void)
 {
  int rb_w = PSXDisplay.DisplayMode.x;
  int rb_h = PSXDisplay.DisplayMode.y;
+ // BUILD2SK100: tep KAZDYCH 30 snimku (stejny vzor jako jinde v projektu) -
+ // pokud priste appka spadne, posledni zapsany tep rekne, kolik snimku se
+ // stihlo VYKRESLIT (eglSwapBuffers UZ probehl - tenhle radek je AZ PO nem),
+ // nez k padu doslo - a jestli se rozliseni mezitim nezmenilo na neco
+ // podezreleho.
+ nap_gles_frame_count++;
+ if (nap_gles_frame_count % 30 == 1) {
+  nap_diag_log("BUILD2SK100 GLES_FRAME_HEARTBEAT n=%d dispW=%d dispH=%d", nap_gles_frame_count, rb_w, rb_h);
+ }
  if (rb_w <= 0 || rb_h <= 0 || rb_w > 2048 || rb_h > 2048) return; // rozumne meze, zadny divoky alloc
  if (nap_gles_rb_buf == NULL || nap_gles_rb_w != rb_w || nap_gles_rb_h != rb_h) {
   if (nap_gles_rb_buf != NULL) free(nap_gles_rb_buf);

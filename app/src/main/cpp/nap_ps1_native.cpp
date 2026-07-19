@@ -246,7 +246,7 @@ static std::string g_diag_log_path;
 // je na disku. Pise do STEJNEHO souboru jako Java appendNativeLog (cesta
 // dorazi pres ps1SetDiagLogPath, volano z onCreate) - Rene ho tak uvidi v
 // tom samem /log, na ktery je zvykly, zadny novy soubor/mechanismus pro nej.
-static void nap_diag_log(const char *fmt, ...) {
+extern "C" void nap_diag_log(const char *fmt, ...) {
   std::string path;
   { std::lock_guard<std::mutex> lock(g_diag_log_mutex); path = g_diag_log_path; }
   if (path.empty()) { return; } // cesta jeste nedorazila z Javy - nic bezpecneho k zapisu

@@ -1,0 +1,56 @@
+BUILD2SK100 - TEP VE VYKRESLOVACI SMYCCE (najit presneji, kde to pada)
+================================================================================
+CO LOG ZE SK99 UKAZAL (dulezity pokrok)
+"BUILD2SK98 GLES_INIT_OK" bylo v logu - cela inicializace GPU kontextu
+USPESNE DOBEHLA. Appka pak beze zjevneho problemu bezela dalsich 7+
+vterin (zvuk normalne hral, TV-cast normalne fungoval, vse v portretu) -
+a pak log proste SKONCIL, bez jakekoli chybove hlasky. To znamena: pad
+NENI v GPU inicializaci (ta je v poradku) - je nekde v BEZICIM
+vykreslovani, ktere jsem jeste nemel nijak vysledovane.
+
+CO SE ZMENILO
+Pridan "tep" (heartbeat) primo do vykreslovaci smycky gpu-gles (po kazdem
+eglSwapBuffers) - kazdych 30 snimku zapise pocet uz uspesne zpracovanych
+snimku + aktualni rozliseni. Pri pristim padu tak uvidime, KOLIK snimku
+se stihlo pred padem (nebo jestli se nestihl ani prvni), a jestli se
+rozliseni zrovna nemenilo na neco podezreleho.
+
+Technicka poznamka: nap_diag_log (durabilni zapis ze SK99) uz neni
+"static" - musela se zpristupnit i pro gpu-gles (C soubor, jiny
+prekladovy celek nez nap_ps1_native.cpp) - beze zmeny chovani, jen
+viditelnosti.
+
+POCTIVE
+Tohle je porad experiment. Uz dvakrat appka pri PS1 s gpu-gles spadla -
+poprve bez jakekoli diagnostiky (ted uz vime proc - spatne misto logu),
+podruhe s castecnou diagnostikou (vime, ze GPU inicializace probehla OK,
+ale ne kde presne to pak spadlo). Bez skutecneho debuggeru/stack trace
+(coz by chtelo adb, vyvojarsky nastroj) je tohle nejlepsi zpusob, jak se
+postupne priblizit - kazdy pokus nam da trochu vic informace, i kdyz to
+zase spadne.
+
+RIZIKO
+Nizke - jen pridana diagnostika (throttled, stejny vzor jako jinde v
+projektu), zadna zmena ve skutecnem vykreslovacim kodu ze SK98/99.
+Overeno: {} v nap_ps1_native.cpp (98/98) a gpulib_if.c (89/89) sedi.
+
+JAK OTESTOVAT
+Stejne jako predtim - naboot PS1 hru. At uz appka zije nebo spadne,
+posli log. V logu hledej posledni "BUILD2SK100 GLES_FRAME_HEARTBEAT n=..."
+radek pred koncem - to cislo rekne, kolik snimku uspesne prosla, nez
+(pripadne) doslo k padu.
+
+PRIPOMINKA K TVEMU POSTREHU O WORKFLOW: mas pravdu, ze restart appky po
+padu smaze prave zapsanou diagnostiku (napTvWebLogFileInit v onCreate
+soubor truncate). Diky SK99 uz je diagnostika PRED timhle restartem NA
+DISKU (synchronni zapis) - takze pokud STIHNES otevrit /log HNED po
+padu, pred tim, nez appku znovu otevres, mel bys videt spravny obsah.
+Pokud uz jsi appku mezitim restartoval (jako tentokrat - a presto log
+obsahoval spravna data až do pádu, super), znamena to, že se ti to
+povedlo stihnout, nebo ze k dalsimu psani do souboru po restartu jeste
+nedoslo v okamziku, kdys log otevrel. Kdyby se to nekdy nepovedlo,
+nejjistejsi postup je: hned po padu (pred znovuotevrenim appky) zkusit
+/log - pokud appka fakt spadla cela, server bohuzel nebezi a bude nutne
+appku znovu otevrit (a riskovat, ze se log mezitim prepise) - tohle je
+znama mez soucasneho reseni, ne neco, co bych ted dokazal bezpecne
+obejit bez vetsiho zásahu do logovaci architektury.
