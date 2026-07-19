@@ -1242,3 +1242,21 @@ literalni hodnoty misto spoleham na to, ze makro bude "nejak" dostupne.
 
 DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK107 vysledek - tohle by
 konecne melo umoznit spravny build + test scissor opravy ze SK106.
+
+================================================================================
+DODATEK - BUILD2SK108 - SCISSOR CASOVANI OPRAVENO (1x1 nalezeno diagnostikou)
+================================================================================
+SK106/107 log potvrdil presne to, co diagnostika mela ukazat:
+"GLES_SCISSOR_CHECK w=1 h=1" - scissor byl doslova jeden pixel! Pricina:
+volal jsem SetOGLDisplaySettings(1) PRED tim, nez hra poslala prvni GPU
+prikaz - PSXDisplay.DrawArea byly porad nulove, vypocet z nul dal 1x1.
+A tohle volani navic "spotrebovalo" bSetClip, takze se to nikdy samo
+neopravilo.
+
+OPRAVENO (SK108): presunuto z jednorazove inicializace do pravidelne
+smycky (kazdy tick, po retro_run() - tedy uz s realnymi herni daty).
+Pridana throttled kontrola vysledku primo v logu.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK108 vysledek - hledat,
+jestli GLES_SCISSOR_CHECK ukazuje spravnou hodnotu (ne uz 1x1) a hlavne
+jestli KONECNE vidime skutecnou grafiku na obrazovce.

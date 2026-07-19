@@ -394,12 +394,16 @@ static bool nap_gles_egl_init() {
     return false;
   }
   MakeDisplayLists(); // BUILD2SK102: stejne poradi jako GPUopen() - font/HUD display listy
-  SetOGLDisplaySettings(1); // BUILD2SK106: viz vysvetleni vyse - nastavi scissor/viewport hned
-  {
-    GLint scissorBox[4] = {0,0,0,0};
-    glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
-    NAPDIAG("BUILD2SK106 GLES_SCISSOR_CHECK x=%d y=%d w=%d h=%d", scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
-  }
+  // BUILD2SK108: SetOGLDisplaySettings(1) tady v initu byla CHYBA - potvrzeno
+  // logem (GLES_SCISSOR_CHECK w=1 h=1). V tomhle okamziku jeste hra vubec
+  // neposlala zadny GPU prikaz, takze PSXDisplay.DrawArea.* jsou porad na
+  // vychozich/nulovych hodnotach - vypocet scissor z nich dal nesmyslny
+  // 1x1 obdelnik. A HORE - tohle volani "spotrebovalo" bSetClip (nastavi
+  // se zpatky na FALSE uvnitr funkce), takze se to uz nikdy samo neopravilo.
+  // Presunuto do worker smycky (kazdy tick, viz nize) - tam uz hra bude mit
+  // realne DrawArea hodnoty nastavene, a funkce sama premapuje scissor na
+  // spravnou hodnotu pri kazde zmene (ma vlastni "zmenilo se to?" kontrolu,
+  // takze opakovane volani je levne, jakmile se stav ustali).
 
   NAPDIAG("BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240");
   return true;
@@ -422,6 +426,27 @@ static void nap_worker(int gen) {
     {
       std::lock_guard<std::mutex> core(g_core_mutex);
       retro_run();
+      // BUILD2SK108: presunuto sem z jednorazove inicializace (viz
+      // nap_gles_egl_init) - volane driv, PRED tim, nez hra vubec poslala
+      // prvni GPU prikaz, to spocitalo nesmyslny 1x1 scissor obdelnik
+      // (potvrzeno GLES_SCISSOR_CHECK v logu) a "spotrebovalo" bSetClip,
+      // takze se to uz nikdy samo neopravilo. Tady, KAZDY tick, uz retro_run()
+      // vyse zpracovala realne GPU prikazy hry - PSXDisplay.DrawArea ma
+      // skutecne hodnoty. Funkce ma vlastni "zmenilo se neco?" kontrolu
+      // (EqualRect porovnani), takze opakovane volani kazdy tick je levne,
+      // jakmile se stav ustali - prepocita jen kdyz je to skutecne potreba.
+      if (g_gles_ready) { SetOGLDisplaySettings(1); }
+      // BUILD2SK108: throttled kontrola vysledku (kazdych ~90 tick = ~1.5s
+      // pri 60fps) - overime v logu, jestli se scissor po prvnich par
+      // snimcich (kdy uz hra poslala realne DrawArea prikazy) opravil na
+      // neco rozumneho, misto puvodniho degenerovaneho 1x1.
+      static int nap_scissor_check_tick = 0;
+      if (g_gles_ready && (++nap_scissor_check_tick % 90 == 1)) {
+        GLint scissorBox[4] = {0,0,0,0};
+        glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
+        NAPDIAG("BUILD2SK108 GLES_SCISSOR_CHECK tick=%d x=%d y=%d w=%d h=%d",
+          nap_scissor_check_tick, scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
+      }
       // BUILD2SK103: gpu-gles normalne ceka na vout_update() (z gpu.c), ktera
       // ale sama vola updateDisplay/updateFrontDisplay JEN kdyz je bud
       // PSXDisplay.Interlaced=true (spravne neni - normalni progresivni PS1

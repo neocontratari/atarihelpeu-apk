@@ -1,0 +1,39 @@
+BUILD2SK108 - OPRAVA SCISSOR CASOVANI (1x1 -> spravna hodnota)
+================================================================================
+CO SK106/107 LOG UKAZAL (presne to, co jsem potreboval)
+"GLES_SCISSOR_CHECK x=0 y=239 w=1 h=1" - scissor (orezavaci) obdelnik byl
+doslova 1x1 PIXEL! To presne vysvetluje "pozadi ano, grafika ne" - skoro
+vsechno kresleni se orizlo pryc, prosel jen jeden jediny pixel.
+
+PRICINA (presne dohledano)
+Volal jsem SetOGLDisplaySettings(1) PRILIS BRZY - hned pri inicializaci,
+jeste PRED tim, nez hra vubec poslala svuj prvni GPU prikaz. V tom
+okamziku PSXDisplay.DrawArea.* (odkud se scissor pocita) byly porad na
+vychozich/nulovych hodnotach - vypocet z nul dal nesmyslny 1x1 obdelnik.
+A HORE: tohle volani "spotrebovalo" bSetClip priznak (nastavi se zpatky
+na FALSE uvnitr funkce) - takze se to uz nikdy samo neopravilo, i kdyz
+hra pozdeji poslala spravna data.
+
+CO SE ZMENILO
+SetOGLDisplaySettings(1) presunuto z jednorazove inicializace do
+PRAVIDELNE smycky - vola se ted KAZDY tick, hned po retro_run() (takze
+uz PO zpracovani realnych herních GPU prikazu). Funkce ma vlastni "zmenilo
+se neco?" kontrolu, takze opakovane volani je levne, jakmile se stav
+ustali - prepocita jen kdyz je to skutecne potreba.
+
+Pridana i throttled kontrola (kazdych ~90 tick, cca 1.5s) primo vysledku
+- v dalsim logu uvidime, jestli se cislo opravdu zmenilo z 1x1 na neco
+rozumneho (blizko 320x240).
+
+RIZIKO
+Nizke - stejna, jiz existujici funkce, jen volana z jineho (spravnejsiho)
+mista a castejsi. Zadny novy kod uvnitr funkce samotne.
+Overeno: {} v nap_ps1_native.cpp sedi (103/103), zadne TRUE/FALSE chyby
+(explicitne prekontrolovano po minule build chybe), zakladni syntax check
+bez novych problemu.
+
+JAK OTESTOVAT
+Presne jako predtim. V /log hledej "GLES_SCISSOR_CHECK" (ted BUILD2SK108,
+vice vyskytu v case) - sleduj, jestli se w/h zmeni z 1x1 na neco vetsiho
+po prvnich par sekundach. A hlavne - koukni, jestli KONECNE vidis
+skutecnou grafiku.
