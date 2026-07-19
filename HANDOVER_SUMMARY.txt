@@ -1175,3 +1175,44 @@ se skutecnym tokem dat SK103, se skutecnym obsahem pixelu SK105). Pokud
 KONECNE funguje: dalsi krok je zhodnotit vizualni kvalitu (ostrejsi
 textury?) a vykon (zadne nove zpomaleni?). Pokud jeste ne, dalsi
 GLES_PIXEL_SAMPLE cislo (glErr a sumAvg) da presny dalsi smer.
+
+================================================================================
+DODATEK 2026-07-19 (nejpozdejsi noc) - BUILD2SK106 - SCISSOR OBDELNIK
+(dalsi kus GPUopen(), nalezeno na Reneho vyslovnou zadost o self-review)
+================================================================================
+Rene (opravnene nastvany z opakovaneho zadani o dalsi logy) rekl "ty si
+udelej kontrolu co jsi do kodu napsal" a odmitl navrat na SK97 ("na to
+uz jsme prilis daleko"). Take dulezity postreh: nenulove GLES_PIXEL_SAMPLE
+hodnoty jsou JEN vykresleni tmave/cerne barvy pozadi, ne skutecna grafika
+- video se nezobrazuje ani na telefonu, ani na TV.
+
+Znovu-kontrola GPUopen() (radek po radku) nasla DALSI tri chybejici radky:
+bDisplayNotSet=TRUE, bSetClip=TRUE, CSTEXTURE=CSVERTEX=CSCOLOR=0.
+bSetClip je klicovy - spousti SetOGLDisplaySettings(), ktera nastavuje GL
+scissor (orezavaci) obdelnik. Bez nej mohl scissor zustat na necem
+neurcitem - presne vysvetluje "pozadi ano, geometrie ne" pozorovani.
+
+KOMPLIKACE: GPUopen() spoleha na to, ze updateDisplay() (interlaced
+vetev) pak SetOGLDisplaySettings() sama zavola diky bDisplayNotSet flagu
+- ale my volame updateFrontDisplay() (SK103), ktera tohle vubec neresi.
+Reseni: explicitni jednorazove volani SetOGLDisplaySettings(1) primo v
+nasi inicializaci.
+
+VLASTNI CHYBA ZACHYCENA BEHEM PRACE (pred odeslanim): BOOL je v tomhle
+projektu #define unsigned short, ne int - puvodni "extern int
+bDisplayNotSet" by byla DALSI, NOVA chyba (spatna velikost promenne).
+Overeno primo v gpuExternals.h a opraveno na "unsigned short" pred
+dokoncenim.
+
+PRIDANO: diagnostika GLES_SCISSOR_CHECK - primo vypise vysledny scissor
+obdelnik, abychom pristi log mohli overit cislem, ne dohadem.
+
+PONAUCENI: kdyz portujeme inicializaci z jedne vstupni funkce (GPUopen)
+do vlastniho kodu, je NUTNE projit ji radek po radku, ne jen "hlavni"
+volani (InitializeTextureStore/GLinitialize/MakeDisplayLists) - i
+"vedlejsi" stavove promenne (jako bSetClip) mohou byt kriticke a snadno
+se prehlednou, protoze nevypadaji tak dulezite jako volani funkci.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK106 vysledek - hledat
+GLES_SCISSOR_CHECK cisla (rozumne = pokrok, 0x0 = jeste neco chybi) a
+hlavne vizualni potvrzeni, jestli se KONECNE objevila skutecna grafika.

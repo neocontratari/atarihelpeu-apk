@@ -237,6 +237,13 @@ extern "C" {
   void InitializeTextureStore(); // BUILD2SK102: viz gpuTexture.c - alokuje texture-cache buffery
   void MakeDisplayLists(); // BUILD2SK102: viz hud.c - font/HUD display listy
   void updateFrontDisplay(void); // BUILD2SK103: viz gpulib_if.c - skutecne swapne+odesle snimek
+  void SetOGLDisplaySettings(int DisplaySet); // BUILD2SK106: nastavi GL scissor/clip - viz gpuDraw.c
+  // BUILD2SK106: POZOR presne typy - BOOL je v tomhle projektu #define BOOL
+  // unsigned short (NE int - to by byla skutecna chyba, cteni/zapis 4 bajtu
+  // pres 2-bajtovou promennou). Overeno primo v gpuExternals.h pred pouzitim.
+  extern unsigned short bDisplayNotSet; // BUILD2SK106
+  extern unsigned short bSetClip; // BUILD2SK106
+  extern unsigned int CSTEXTURE, CSVERTEX, CSCOLOR; // BUILD2SK106
 }
 
 static bool g_gles_ready = false;
@@ -342,6 +349,25 @@ static bool nap_gles_egl_init() {
   iResY = 240;
   rRatioRect.left = 0; rRatioRect.top = 0; rRatioRect.right = 320; rRatioRect.bottom = 240;
 
+  // BUILD2SK106: DALSI CHYBEJICI KUS z GPUopen() - vsimnul jsem si az pri
+  // znovu-kontrole na Reneho vyslovnou zadost. GPUopen() krome
+  // InitializeTextureStore/GLinitialize/MakeDisplayLists TAKE nastavuje
+  // tyhle tri stavove promenne. bSetClip=TRUE je obzvlast dulezite - je to
+  // spoustec pro SetOGLDisplaySettings(), ktera nastavuje OpenGL scissor
+  // (orezavaci) obdelnik pres glScissor(). Bez tohohle zustava scissor na
+  // cemkoli, na cem GL kontext zrovna byl - coz muze v praxi znamenat, ze
+  // se VYCISTENI pozadi jeste nejak projevi, ale SAMOTNA GEOMETRIE hry se
+  // ořeže pryc (proto jsme videli jednolitou barvu, zadnou skutecnou
+  // grafiku - presne Reneho postreh). GPUopen() spoleha na to, ze
+  // bDisplayNotSet pak zachyti updateDisplay() (nas "interlaced" vetev,
+  // kterou nepouzivame - viz SK103) - takze navic explicitne volame
+  // SetOGLDisplaySettings(1) sami, rovnou tady, aby se scissor/viewport
+  // spravne nastavily uz od prvniho snimku, bez ohledu na to, kterou
+  // update-funkci pak volame kazdy tick.
+  bDisplayNotSet = TRUE;
+  bSetClip = TRUE;
+  CSTEXTURE = CSVERTEX = CSCOLOR = 0;
+
   // BUILD2SK102: SKUTECNA PRICINA PADU (potvrzeno realnym adb crash logem -
   // Rene ho ziskal, dik!). Fatal SIGSEGV v CheckTextureInSubSCache (volano
   // pres SelectSubTextureS<-SetRenderMode<-primPolyFT4 - prvni TEXTUROVANY
@@ -363,6 +389,12 @@ static bool nap_gles_egl_init() {
     return false;
   }
   MakeDisplayLists(); // BUILD2SK102: stejne poradi jako GPUopen() - font/HUD display listy
+  SetOGLDisplaySettings(1); // BUILD2SK106: viz vysvetleni vyse - nastavi scissor/viewport hned
+  {
+    GLint scissorBox[4] = {0,0,0,0};
+    glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
+    NAPDIAG("BUILD2SK106 GLES_SCISSOR_CHECK x=%d y=%d w=%d h=%d", scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
+  }
 
   NAPDIAG("BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240");
   return true;

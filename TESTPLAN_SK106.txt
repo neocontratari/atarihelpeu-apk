@@ -1,0 +1,53 @@
+BUILD2SK106 - DALSI CHYBEJICI KUS Z GPUopen() (scissor/orezavaci obdelnik)
+================================================================================
+Na Reneho vyslovnou zadost ("udelej kontrolu co jsi do kodu napsal") jsem
+znovu procheckoval GPUopen() cely, radek po radku - a nasel jsem dalsi tri
+chybejici radky, co jsem drive prehledl:
+
+  bDisplayNotSet = TRUE;
+  bSetClip = TRUE;
+  CSTEXTURE = CSVERTEX = CSCOLOR = 0;
+
+NEJDULEZITEJSI je bSetClip - je to spoustec pro SetOGLDisplaySettings(),
+funkci, ktera nastavuje OpenGL "scissor" (orezavaci) obdelnik pres
+glScissor(). Bez tohohle zustal scissor na necem neurcitem - coz presne
+odpovida tomu, co jsi popsal: pozadi/cerna barva se vykresli (cisteni
+obrazovky se muze projevit i mimo/pres scissor), ale SAMOTNA GEOMETRIE
+hry (postavy, lode, textury) se orizne pryc, protoze spada mimo (nebo do
+prilis maleho) scissor obdelnik.
+
+DALSI KOMPLIKACE: GPUopen() normalne spoleha na to, ze bDisplayNotSet
+pak zachyti updateDisplay() (ve "interlaced" vetvi) a zavola
+SetOGLDisplaySettings() sama. Ale my nepouzivame updateDisplay() - pouzivame
+primo updateFrontDisplay() (SK103 oprava), ktera tohle vubec neresi! Takze
+i kdybych jen pridal bDisplayNotSet=TRUE, nikdy by se nespotrebovalo.
+Reseni: zavolat SetOGLDisplaySettings(1) SAMI, primo v inicializaci,
+jednou, hned na zacatku - nezavisle na tom, kterou update-funkci pak
+volame kazdy tick.
+
+DULEZITA OPRAVA VLASTNI CHYBY BEHEM PRACE: BOOL je v tomhle projektu
+#define BOOL unsigned short (NE normalni int) - kdybych pouzil "extern int"
+pro bDisplayNotSet/bSetClip, byla by to SAMA O SOBE dalsi chyba (cteni/
+zapis 4 bajtu pres 2-bajtovou promennou). Overil jsem presny typ primo v
+gpuExternals.h pred pouzitim a opravil na "unsigned short".
+
+CO SE PRIDALO
+1) Tri chybejici stavove promenne (presne jako GPUopen())
+2) Explicitni volani SetOGLDisplaySettings(1) hned po GLinitialize+
+   MakeDisplayLists
+3) Diagnostika - primo vypis vysledneho scissor obdelniku
+   (GLES_SCISSOR_CHECK) - uvidime cislem, jestli je ted rozumny (cca
+   0,0,320,240) nebo porad neco divneho (napr. 0,0,0,0).
+
+RIZIKO
+Nizke-stredni - vsechny pridane radky presne kopiruji jiz proverene
+chovani GPUopen(), jen volane z jineho mista. Jedine skutecne nove riziko
+by bylo spatne nacasovani (volani SetOGLDisplaySettings pred tim, nez
+jsou PSXDisplay pole spravne nastavena) - i to by se ale melo projevit
+jako spatne cislo v GLES_SCISSOR_CHECK, ne jako pad.
+Overeno: {} v nap_ps1_native.cpp sedi (102/102).
+
+JAK OTESTOVAT
+Presne jako predtim. V /log zkontroluj "GLES_SCISSOR_CHECK" - hodnoty
+w/h by mely byt rozumne (blizko 320x240, ne 0x0). A hlavne - podivej se,
+jestli se KONECNE objevi skutecna grafika, ne jen jednolita barva.
