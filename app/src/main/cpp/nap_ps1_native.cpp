@@ -236,6 +236,7 @@ extern "C" {
   int GLinitialize(void *ext_gles_display, void *ext_gles_surface);
   void InitializeTextureStore(); // BUILD2SK102: viz gpuTexture.c - alokuje texture-cache buffery
   void MakeDisplayLists(); // BUILD2SK102: viz hud.c - font/HUD display listy
+  void updateFrontDisplay(void); // BUILD2SK103: viz gpulib_if.c - skutecne swapne+odesle snimek
 }
 
 static bool g_gles_ready = false;
@@ -384,6 +385,19 @@ static void nap_worker(int gen) {
     {
       std::lock_guard<std::mutex> core(g_core_mutex);
       retro_run();
+      // BUILD2SK103: gpu-gles normalne ceka na vout_update() (z gpu.c), ktera
+      // ale sama vola updateDisplay/updateFrontDisplay JEN kdyz je bud
+      // PSXDisplay.Interlaced=true (spravne neni - normalni progresivni PS1
+      // stav), NEBO bRenderFrontBuffer=true (strukturalne blokovano -
+      // podminene iOffscreenDrawing==4, a to je v GPUopen() natvrdo 0,
+      // konfiguracni volba z puvodniho ne-libretro frontendu, kterou jsme
+      // nikdy nezapojili). Bez tohohle appka jela bez padu, ale NIKDY
+      // nedoslo ke skutecnemu swap+odeslani snimku - proto jen zvuk, zadny
+      // obraz. Reseni: zavolat primo, obchazi vout_update() uplne. Vlastni
+      // iDrawnSomething kontrola uvnitr updateFrontDisplay() porad spravne
+      // presskoci swap, kdyz se nic noveho nenakreslilo - zadna zbytecna
+      // prace navic.
+      if (g_gles_ready) { updateFrontDisplay(); }
       if (++srmTick % 300 == 0) nap_srm_save_if_dirty("periodic");
     }
     next += period;

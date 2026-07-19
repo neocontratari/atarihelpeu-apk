@@ -1051,3 +1051,64 @@ malou pocatecni prekazku (zapnuti USB debug, stazeni nastroje).
 DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK102 vysledek - ocekavam
 KONECNE funkcni, nespadajici PS1 s ostrymi texturami. Pokud presto pad
 nastane, pouzit STEJNY adb postup znovu (uz osvedceny, funguje).
+
+================================================================================
+DULEZITA POZNAMKA PRO BUDOUCNOST - Rene MA adb NASTROJ K DISPOZICI
+================================================================================
+Rene si (2026-07-19, s navedenim krok za krokem) uspesne nainstaloval
+Android SDK Platform-Tools (adb) na svuj PC a ziskal s nim realny crash
+log (viz SK102 - presne timhle se naslo skutecne pricina padu). Toto je
+VYZNAMNA schopnost pro budoucnost - realny crash backtrace je nekolika-
+nasobne rychlejsi a presnejsi cesta k diagnoze nez postupne pridavani
+"printf" diagnostiky do logu appky.
+
+DULEZITE: Rene NENI programator - nastroj MA nainstalovany, ale
+POTREBUJE navest KAZDY JEDNOTLIVY KROK znovu (prikazy si nepamatuje a
+nemel by se je muset ucit nazpamet). Pri jakemkoli budoucim nejasnem
+padu/chybe, kde by pomohl realny stack trace, aktivne navrhnout tento
+postup (ne cekat, az se sam zepta) a provest ho stejne trpelive jako
+poprve:
+1) (uz ma) Rozbaleny platform-tools s adb.exe
+2) USB debugging na telefonu (uz zapnuto)
+3) `.\adb devices` pro overeni pripojeni (POZOR: v PowerShellu nutne
+   ".\" pred prikazem, jinak chyba "not recognized")
+4) `.\adb logcat -c` pak `.\adb logcat *:E > NAZEV.txt` (zachyti jen
+   chyby/pady, ne vsechen system sum)
+5) reprodukovat problem na telefonu
+6) Ctrl+C v PowerShellu, poslat vysledny .txt soubor
+
+Tohle je ted trvala, cenna soucast diagnostickeho arzenalu pro tenhle
+projekt - zminovat/nabidnout aktivne, kdyz se hodi.
+
+================================================================================
+DODATEK 2026-07-19 (jeste pozdejsi noc) - BUILD2SK103 - OPRAVA "JEN ZVUK,
+ZADNY OBRAZ"
+================================================================================
+SK102 test: appka NESPADLA (crash fix funguje!) - ale "GLES_FRAME_HEARTBEAT"
+se za celou dobu behu neobjevil ani jednou, presto ze grabFrame se volalo
+stovky krat (vzdy gfw=0 gfh=0). Rene poslal i pad.txt, ale byl to stary
+zaznam z minula (adb logcat -c se pred druhym zachytavanim nespustilo) -
+nevadi, tentokrat problem nebyl v crashi/erroru, takze by ho *:E filtr
+stejne nezachytil.
+
+Nalezena presna pricina primo ve zdrojaku (bez dalsiho crash logu, cistou
+analyzou): vout_update() (co sdileny gpu.c vola pri kazde aktualizaci
+obrazovky) sama vola skutecny swap+odeslani JEN pri PSXDisplay.Interlaced
+(spravne false - normalni progresivni PS1 stav) NEBO bRenderFrontBuffer
+(strukturalne nedosazitelne - vyzaduje iOffscreenDrawing==4, natvrdo 0 v
+GPUopen(), stara konfiguracni volba z puvodniho non-libretro frontendu).
+
+OPRAVENO (SK103): voláme updateFrontDisplay() (skutecnou swap+odeslani
+funkci) PRIMO, sami, po kazdem behu jadra - obchazi vout_update() a jeho
+gate uplne. Vlastni iDrawnSomething kontrola uvnitr zustava funkcni -
+zadna zbytecna prace navic.
+
+PONAUCENI: kdyz 3rd-party plugin ma VICE VRSTEV podmineneho volani
+(tady: gpu.c->vout_update()->updateDisplay/FrontDisplay), kazda vrstva
+muze mit VLASTNI gating logiku navrzenou pro JINY frontend/konfiguraci
+nez tu nasi - nekdy je nejcistsi reseni zavolat tu SKUTECNOU pracovni
+funkci PRIMO, misto snahy "opravit" cely retezec podminek nad ni.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK103 vysledek - ocekavam
+KONECNE plne funkcni PS1 (bez padu, se skutecnym obrazem). Kontrolovat
+GLES_FRAME_HEARTBEAT v /log - mel by se konecne objevovat pravidelne.

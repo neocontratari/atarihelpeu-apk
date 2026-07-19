@@ -1,0 +1,41 @@
+BUILD2SK103 - OPRAVA "JEN ZVUK, ZADNY OBRAZ" (skutecne odeslani snimku)
+================================================================================
+CO SE ZJISTILO
+Log ukazal: zadny pad (SK102 funguje), ale take ZADNY "GLES_FRAME_HEARTBEAT"
+- ani jednou, presto ze appka bezela a grabFrame se volalo stovky krat
+(vzdy vsak s gfw=0 gfh=0 - zadna data nikdy nedorazila).
+
+Nasel jsem presnou pricinu primo ve zdrojaku: funkce vout_update() (tu
+vola sdileny gpu.c pri kazde aktualizaci obrazovky) sama vola skutecne
+"swapni a odesli snimek" JEN za dvou podminek:
+ 1) PSXDisplay.Interlaced=true (spravne NENI - normalni PS1 hra bezi v
+    progresivnim rezimu, tohle by bylo SPATNE vynucovat)
+ 2) bRenderFrontBuffer=true (strukturalne NEDOSAZITELNE - podminene
+    iOffscreenDrawing==4, a to zustava natvrdo 0 z GPUopen() - stara
+    konfiguracni volba puvodniho, ne-libretro frontendu, kterou nikdo
+    nikdy nenastavuje jinak)
+
+Vysledek: appka bezela, jadro poctive zpracovavalo hru (zvuk fungoval),
+ale ZADNY z tehle dvou podminek nikdy neplatila - takze se nikdy
+nedoslo ke skutecnemu odeslani obrazu, presto ze se uvnitr korektne
+KRESLILO (iDrawnSomething se spravne nastavovalo).
+
+CO SE ZMENILO
+Zavolavame updateFrontDisplay() (funkci, co dela skutecny swap+odeslani)
+PRIMO, sami, jednou po kazdem behu jadra - obchazi vout_update() a jeho
+zbytecnou branu uplne. Vlastni kontrola uvnitr updateFrontDisplay() (jestli
+se vubec neco noveho nakreslilo) zustava funkcni - takze se nedela
+zadna zbytecna prace navic, jen se odstranuje umela prekazka.
+
+RIZIKO
+Nizke-stredni - volame jiz existujici, gpu-gles vlastni funkci (zadny
+novy kresici kod), jen ji volame z jineho mista/casteji nez puvodne
+zamysleno. Mozne vedlejsi efekty: o neco vyssi vykonovy naklad (swap
+kazdy tick misto jen kdyz "neco" rozhodne, ze je treba) - ale
+iDrawnSomething kontrola by tohle mela z velke casti eliminovat.
+Overeno: {} v nap_ps1_native.cpp sedi (100/100).
+
+JAK OTESTOVAT
+Presne jako predtim - naboot PS1 hru. Tentokrat by KONECNE mel byt
+videt obraz, nejen zvuk. V /log zkontroluj "GLES_FRAME_HEARTBEAT" -
+mel by se konecne objevit (drive 0x, ted by mel pribyvat pravidelne).
