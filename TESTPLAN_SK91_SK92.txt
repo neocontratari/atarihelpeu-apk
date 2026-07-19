@@ -1,0 +1,74 @@
+BUILD2SK91 - LOW/MEDIUM/HIGH PRIMO NA UVODNI OBRAZOVCE
+================================================================================
+CO SE ZMENILO
+Uvodni obrazovka uz mela ozubene kolecko (SETTINGS) a panel s jednim
+tlacitkem (SPUSTIT WEB TV) - jen jsem do NEJ pridal 3 dalsi tlacitka
+(LOW/MED/HIGH), stejnym vizualnim stylem. Zadna nova obrazovka, zadny
+novy panel - jen rozsireni toho, co uz bylo.
+
+Na Java strane: pridany 2 metody do AHTVWEB mostu (setQualityTier,
+getQualityTier), ktere funguji IHNED, i kdyz TV-cast HTTP server jeste
+vubec nebezi (na rozdil od stareho /quality HTTP pristupu, ktery
+pouzivaji LOW/MED/HIGH tlacitka na strance v prohlizeci - ta funguji jen
+kdyz uz cast bezi). Obe cesty (stara HTTP i nova primo-Java) ted sdileji
+JEDNU spolecnou logiku (napTvWebSetQualityTier) - nemuzou se rozjet od
+sebe.
+
+Volba se uklada do stejnych SharedPreferences jako driv - kdyz zmenis
+kvalitu na uvodni obrazovce PRED spustenim TV-cast, projevi se to, az
+cast zacne (presne jako driv, kdyz jsi to menil primo v prohlizeci a pak
+znovu spustil cast).
+
+CO TO NEMENI (dulezite, at je jasne, co se NESTALO)
+- Cisla za LOW/MEDIUM/HIGH (rozliseni, bitrate) jsou STEJNA jako driv -
+  tahle zmena jen zpristupnuje JIZ EXISTUJICI 3 urovne z uvodni
+  obrazovky, nepridava novou/vyssi uroven a nemeni, co ktera uroven
+  znamena.
+- Rene zminil myslenku "dnesni HIGH by se mela stat novou LOW" (tedy
+  posunout vsechny urovne vyssi pro vykonnejsi telefony) - TOHLE JE
+  SAMOSTATNA ZMENA (jina cisla v napTvWebQualityFor()), ktera se v
+  tomhle balicku NEDELALA schvalne - chce vlastni rozhodnuti/test, ne
+  tise proklouznout spolu s UI zmenou.
+
+RIZIKO
+Nizke - cisty pridavek (nove tlacitko, nova Java metoda), zadna
+existujici logika se nemeni krome extrakce sdilene funkce (ktera dela
+presne totez, co puvodni kod delal primo v HTTP handleru - overeno,
+zadny rozdil v chovani).
+Overeno: {} v index.html (85/85) i MainActivity.java (1876/1876) sedi,
+JS overen node --check, vsechny pouzite Java tridy/metody proti importum
+zkontrolovany.
+
+JAK OTESTOVAT
+1) Uvodni obrazovka -> ozubene kolecko -> mel by se objevit radek
+   "KVALITA OBRAZU" se 3 tlacitky pod "SPUSTIT WEB TV".
+2) Klik na LOW/MED/HIGH - mela by se zvyraznit vybrana uroven a objevit
+   toast "Kvalita: LOW/MEDIUM/HIGH".
+3) Spustit TV-cast, otevrit na PC/TV - mela by odpovidat urovni vybrane
+   na telefonu (a jit menit i primo tam, jako driv - obe cesty jsou
+   ted propojene).
+4) Zavrit appku a znovu otevrit - vybrana uroven by mela zustat
+   zapamatovana (SharedPreferences).
+
+================================================================================
+DODATEK (SK92) - POSUNUTA STUPNICE LOW/MEDIUM/HIGH
+================================================================================
+Na Reneho vyslovny pozadavek pred testem SK91 ("to co bylo HIGH ma byt
+LOW") - CELA stupnice posunuta nahoru:
+- LOW = presne stare cislo HIGH (1920px) - NULOVE RIZIKO, uz overeno v
+  SK90 testu, funguje.
+- MEDIUM = 2300px (novy, NEOTESTOVANY) - odhadovany bitrate ~15.4Mbps
+  (byvaly HIGH mel ~10.8Mbps) - o cca 43% vic dat k zakodovani.
+- HIGH = 2700px (novy, NEOTESTOVANY) - odhadovany bitrate ~21.3Mbps -
+  temer DVOJNASOBEK byvaleho HIGH.
+Schvalne NEjde rovnou na nativni rozliseni telefonu (2960px na S8) -
+umerny skok, ne extremni.
+
+DALSI TESTOVACI KROK (navic k bodum 1-4 vyse): po overeni, ze prepinac
+funguje, zkusit i novy MEDIUM a HIGH - hlavne u PS1 (kde uz mame cerstva
+cisla z LOW=byvaly HIGH pro srovnani). Ocekavane: LOW bude fungovat
+STEJNE jako predchozi HIGH test (proverene). MEDIUM/HIGH jsou skutecny
+test - moznost, ze na S8 zpomali (vic bitrate = vic prace pro H264
+enkoder i PixelCopy). Kdyby MEDIUM/HIGH zlobily, LOW zustava bezpecnym
+zakladem.
+

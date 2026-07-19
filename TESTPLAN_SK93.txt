@@ -1,0 +1,80 @@
+BUILD2SK93 - PS1 "ENHANCED RESOLUTION" ZAPNUTO (skutecny native lever)
+================================================================================
+CO SE NASLO
+Rene poslal cpp.zip (cely nativni zdrojak). V nem: PCSX-ReARMed (PS1 jadro)
+ma VESTAVENOU, oficialni funkci "Enhanced Resolution" (2x interni
+rozliseni pro 3D geometrii) - potvrzeno primo v jeho vlastnim souboru
+vendor/pcsx_rearmed/frontend/libretro_core_options.h:
+
+  "Render games that do not already run in high resolution video modes
+  (480i, 512i) at twice the native internal resolution. Improves the
+  fidelity of 3D models at the expense of increased performance
+  requirements. 2D elements are generally unaffected by this setting."
+
+Byla v jadru CELOU DOBU (kompiluje se, je funkcni), ale nas vlastni
+minimalni libretro "host" (nap_ps1_native.cpp) tenhle konkretni klic
+(pcsx_rearmed_neon_enhancement_enable) nikdy neresil - jadro tak padalo
+na svuj VLASTNI vychozi "disabled".
+
+OVERENO CELY RETEZEC (ne jen nalezeno, ale i sledovano az do konce):
+1) libretro_core_options.h: vychozi "disabled", pokud frontend nerekne jinak
+2) nap_ps1_native.cpp: nap_core_option_value() tenhle klic nemel - PRIDANO
+3) psx_gpu_if.c / vout_pl.c: kdyz enhancement_enable=1 A hra jeste nebezi
+   ve vysokem rozliseni (w<=512 && h<=256), aktivuje se 2x interni render
+4) libretro.c: vout_set_mode dostane UZ ZDVOJENE w/h, uklada do
+   vout_width/vout_height
+5) retro_run(): video_cb(..., vout_width, vout_height, ...) - tohle uz
+   nas kod (nap_video) prijima primo
+=> nas grabFrameSafe() tak dostane zdvojene rozliseni AUTOMATICKY, beze
+   zmeny na Java strane - NativePs1InPlaceView uz umi dynamickou zmenu
+   rozliseni za behu (postaveno v SK87 kvuli tomu, ze se rozliseni her uz
+   tak jako tak meni scenu od sceny).
+
+CO SE ZMENILO
+JEDEN radek v cpp/nap_ps1_native.cpp (nap_core_option_value):
+  if (strcmp(key, "pcsx_rearmed_neon_enhancement_enable") == 0) return "enabled";
+Zadna zmena v Jave, zadna zmena v HTML/CSS. Cisty native pridavek.
+
+DULEZITE MEZE (poctive, primo z oficialniho popisu)
+- Tyka se JEN 3D geometrie (modely, hrany polygonu) - 2D prvky (sprity,
+  textury, UI, 2D hry) timhle NEZOSTRI. Textury samotne jsou porad
+  puvodni nizke rozliseni z disku hry - to tohle neresi (to by chtelo
+  AI upscaling, uplne jiny, mnohem vetsi ukol).
+- "at the expense of increased performance requirements" - realny
+  vykonovy naklad, ne zadarmo. Netestovano na zivem zarizeni.
+- Netyka se her, ktere UZ bezi ve vysokem rozliseni rezimu (480i/512i) -
+  tam se nic nemeni (uz jsou nad prahem).
+
+RIZIKO
+Nizke-stredni. Zmena je v ciste konfiguracni funkci (jedna if-vetev,
+stejny vzor jako 4 uz existujici radky vedle), ne v jadru samotnem -
+kdyby to jadro nemelo rado, nejhorsi realny scenar je vykonovy pokles
+(ne pad), a je to JEDNODUSE reverzibilni (smazat jeden radek). Overeno:
+{} v nap_ps1_native.cpp sedi (78/78), zbytek souboru nedotcen (diff jen
+tyhle pridane radky).
+NEMUZU to overit kompilaci (nemam zde Android NDK/JNI hlavicky) - rucne
+overeny vzorec presne odpovida 4 uz funkcnim sousednim radkum.
+
+KAM SOUBOR PATRI VE TVEM PROJEKTU
+app/src/main/cpp/nap_ps1_native.cpp (prepsat cely soubor - nahrazuje
+tvou puvodni verzi, jen s tou jednou pridanou vetvi).
+Vsechno ostatni z tveho cpp.zip (vendor/, CMakeLists.txt) zustava presne
+takove, jake jsi poslal - nedotcene, netreba menit.
+
+JAK OTESTOVAT
+1) PS1 hra s vic 3D (nejlepsi test - Crash Bandicoot nebo podobne 3D
+   platformovky, ne 2D/FMV tituly).
+2) V /log sleduj "PS1_NATIVE_TEXTURE_FRAME" radky - "src=" by melo byt
+   VETSI nez driv (napr. driv 320x240, ted ocekavatelne 640x480, pokud
+   hra predtim bezela v nizkem rezimu).
+3) Vizualne - hrany 3D modelu/pozadi by mely vypadat hladsi/mene
+   "kostkovane", NE ostrejsi textury (to je ocekavane a spravne - viz
+   meze vyse).
+4) FPS/plynulost - sleduj, jestli SLOW hlasky (PS1_NATIVE_TEXTURE_SLOW)
+   nezacnou byt castejsi/horsi nez driv - to by znamenalo, ze vykonovy
+   naklad je moc vysoky na S8.
+
+KILL-SWITCH
+Kdyby to zpomalilo/zlobilo: smazat ten jeden pridany radek (vratit
+"return nullptr;" jako posledni vetev) - jadro spadne zpet na svuj
+vlastni "disabled" vychozi, presne stav pred touto zmenou.

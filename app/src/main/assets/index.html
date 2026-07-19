@@ -34,6 +34,10 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #settingsPanel.open{display:block;}
 #settingsPanel .stlabel{color:#ffe49a;font:900 12px "Courier New",monospace;margin-bottom:8px;letter-spacing:.05em;}
 #settingsPanel button{display:block;width:100%;padding:12px;border:0;border-radius:10px;background:#d8a947;color:#070402;font:900 13px "Courier New",monospace;}
+#settingsPanel .stlabel2{color:#ffe49a;font:900 12px "Courier New",monospace;margin:12px 0 8px;letter-spacing:.05em;}
+#settingsPanel .qrow{display:flex;gap:6px;}
+#settingsPanel .qrow button{flex:1;padding:10px 4px;font-size:12px;background:#5a4420;color:#ffe49a;border:1px solid rgba(255,195,64,.35);}
+#settingsPanel .qrow button.active{background:#d8a947;color:#070402;box-shadow:0 0 14px rgba(255,180,40,.5);}
 @media (orientation:landscape) and (max-height:760px){
  .stage{height:100vh;width:auto;max-width:none;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;}
@@ -48,6 +52,12 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <div id="settingsPanel" aria-hidden="true">
     <div class="stlabel">OPTIONS</div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
+    <div class="stlabel2">KVALITA OBRAZU (TV-CAST)</div>
+    <div class="qrow">
+      <button id="stQLow" type="button" data-tier="0">LOW</button>
+      <button id="stQMed" type="button" data-tier="1">MED</button>
+      <button id="stQHigh" type="button" data-tier="2">HIGH</button>
+    </div>
   </div>
   <a id="btnAtari" class="hit" href="emu_vbxe/index.html">ATARI 130XE EMULATOR</a>
   <a id="btnSega" class="hit" href="emu_sega/index.html">SEGA MEGA DRIVE</a>
@@ -89,7 +99,16 @@ function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttr
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 ['btnMenu','btnHelp'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
 var sp=$('settingsPanel');
-function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');}
+function napQualityRefresh(){
+  try{
+    var cur=(window.AHTVWEB&&typeof window.AHTVWEB.getQualityTier==='function')?window.AHTVWEB.getQualityTier():0;
+    [['stQLow',0],['stQMed',1],['stQHigh',2]].forEach(function(pair){
+      var el=$(pair[0]); if(!el)return;
+      if(pair[1]===cur)el.classList.add('active'); else el.classList.remove('active');
+    });
+  }catch(e){log('QUALITY_REFRESH_ERR '+e);}
+}
+function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');napQualityRefresh();}
 function closeSettings(){if(!sp)return;sp.classList.remove('open');sp.setAttribute('aria-hidden','true');}
 function toggleSettings(){if(!sp)return;if(sp.classList.contains('open'))closeSettings();else openSettings();}
 var bs=$('btnSettings');
@@ -101,6 +120,27 @@ document.addEventListener('click',function(e){
   if(e.target===sp||sp.contains(e.target)||e.target===bs)return;
   closeSettings();
 },true);
+// BUILD2SK91: LOW/MEDIUM/HIGH primo z uvodni obrazovky - Rene chtel moznost
+// zmenit kvalitu, aniz by musel jit na TV-cast stranku v prohlizeci.
+// setQualityTier funguje pres AHTVWEB most i kdyz TV-cast jeste vubec
+// nebezi (na rozdil od stareho /quality HTTP pristupu) - ulozi se do
+// stejnych SharedPreferences, takze se pouzije, az cast zacne.
+var qLabels={0:'LOW',1:'MEDIUM',2:'HIGH'};
+[['stQLow',0],['stQMed',1],['stQHigh',2]].forEach(function(pair){
+  var el=$(pair[0]); if(!el)return;
+  el.addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    try{
+      var r=(window.AHTVWEB&&typeof window.AHTVWEB.setQualityTier==='function')?window.AHTVWEB.setQualityTier(pair[1]):null;
+      log('SETTINGS_QUALITY_SET tier='+pair[1]+' result='+r);
+      toast('Kvalita: '+qLabels[pair[1]],1800);
+      napQualityRefresh();
+    }catch(err){
+      log('SETTINGS_QUALITY_SET_ERR '+err);
+      toast('Kvalita: chyba pri nastaveni',2200);
+    }
+  },true);
+});
 var stTv=$('stStartTv');
 if(stTv)stTv.addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();

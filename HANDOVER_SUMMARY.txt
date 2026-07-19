@@ -542,6 +542,109 @@ jsem prvne nemyslel.
 DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na vysledek SK90 testu -
 tentokrat by PS1 obraz v landscape KONECNE mel byt videt.
 
+================================================================================
+DODATEK 2026-07-18 (pozde v noci, pokracovani) - BUILD2SK91 - LOW/MEDIUM/
+HIGH PRIMO NA UVODNI OBRAZOVCE + SK90 POTVRZEN FUNKCNI
+================================================================================
+SK90 TEST: USPECH. Rene potvrdil - obraz konecne videt, plynulejsi na
+telefonu i TV. Omluvil se za predchozi ostry tón (rekl, ze ma za sebou
+2500+ testu a vi, ze nic nefunguje napoprve - jen byl netrpelivy).
+Cisla z logu: PS1 landscape LOW ~42.7fps (PixelCopy 14.2ms - LEPSI nez
+puvodni SK80 zaklad 18.6ms), MEDIUM/HIGH ~34fps. Vlastni render-loop
+diagnostika (PS1_NATIVE_TEXTURE_SLOW) ukazuje 30-40ms na snimek - vic,
+nez bych cekal, ale nezpusobuje to systemove problemy (Rene: "fps sla
+krapet dolu" - vedomy si toho, ale celkove hodnoceni "je to lepsi").
+Prostor pro budouci doladeni, ne akutni problem.
+
+DALSI POZADAVEK (Rene, opakovane z drivejska): chce LOW/MEDIUM/HIGH
+volbu PRIMO V APLIKACI (ne jen na TV-cast strance v prohlizeci) -
+"Volbu bych dal do zakladni obrazovky na setings/ozubene kolecko".
+Take zminil myslenku, ze soucasny stav (co ted mame) by mel byt novy
+LOW zaklad, s MEDIUM/HIGH jako jeste vyssimi urovnemi pro vykonnejsi
+telefony - TOHLE SE V SK91 NEDELALO SCHVALNE (viz TESTPLAN_SK91.txt),
+je to samostatne rozhodnuti o konkretnich cislech, ne UI zmena.
+
+ZJISTENO: uvodni obrazovka (index.html) UZ MELA ozubene kolecko + settings
+panel (jen s "SPUSTIT WEB TV" tlacitkem) - stacilo do NEJ pridat 3 nova
+tlacitka, zadna nova obrazovka.
+
+POSTAVENO (SK91):
+- Java: napTvWebSetQualityTier(long) - sdilena logika vytazena z /quality
+  HTTP endpointu (ktery ted jen deleguje), + 2 nove AHTVWEB bridge metody
+  (setQualityTier/getQualityTier) - funguji i PRED spustenim TV-cast
+  serveru (na rozdil od HTTP cesty).
+- index.html: LOW/MED/HIGH tlacitka v settings panelu, zvyraznuji
+  aktualne vybranou uroven, uklada se do stejnych SharedPreferences jako
+  driv (quality_tier), takze se projevi, jakmile TV-cast zacne.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na potvrzeni SK91 (funguje
+tlacitko, zvyrazneni, perzistence). Pak se zeptat/rozhodnout o "posunuti
+urovni" myslence (nova cisla pro LOW/MEDIUM/HIGH) jako SAMOSTATNY dalsi
+krok - a zvazit, jestli podobnym zpusobem resit i Sega/Atari 320x224
+strop (viz TESTPLAN_SK87.txt "DALSI KROKY" bod 2, porad nevyreseno).
+
+================================================================================
+DODATEK 2026-07-18/19 (pozde v noci) - ZDROJOVY KOD ZISKAN + BUILD2SK93 -
+SKUTECNY PS1 "VETSI ROZLISENI" LEVER NALEZEN A ZAPNUT
+================================================================================
+Rene je VYHRADNI vlastnik appky - poskytl cely nativni (C/C++) zdrojovy
+kod (cpp.zip, ~8.5MB, 2081 souboru) po me zadosti. Tohle OTEVIRA CELOU
+NOVOU KATEGORII moznych oprav, ktere driv nebyly dostupne (native
+core chovani, ne jen Java/HTML wrapper).
+
+ZJISTENO (dulezite pro budouci session):
+- cpp/CMakeLists.txt staví DVE nativni knihovny:
+  * napsega_native_proof (Sega/Genesis) - linkuje REALNE ClownMDEmu jadro
+    (vendor/clownmdemu-core, kompletni zdrojak: VDP, FM, PSG, 68000/Z80
+    interpretery). NAP_SEGA_VENDOR_CORE_PRESENT=1 je zapnuto, build ma
+    FATAL_ERROR guard, kdyby jadro chybelo - tedy appka VZDY bezela s
+    realnym jadrem, nikdy s fake patternem (i kdyz soubor jmenem
+    "renderPattern" a stara "README_DROP_REAL_NATIVE_SEGA_CORE_HERE.txt"
+    poznamka ve vendor/ pusobi jinak - je to jen zastarala poznamka z
+    drivejsi faze BUILD2PW, pred BUILD2QB kdy se jadro doopravdy vlozilo).
+  * napps1core (PS1) - linkuje REALNE PCSX-ReARMed (vendor/pcsx_rearmed,
+    2004 souboru, plny dynarec+GPU+SPU+CD). Take potvrzeno realne (libretro
+    retro_run(), ne fake).
+
+- SEGA ROZLISENI: potvrzeno jako SKUTECNY HARDWAROVY STROP, ne softwarove
+  omezeni. Realny Mega Drive VDP nikdy neumel vic nez 320x224 (nebo 256
+  v H32 rezimu) - nap_real_render_to_argb() prebira data z
+  g_real.display_argb, ktera pochazeji primo z VDP emulace. Zadny "pozadej
+  o vetsi buffer" trik by nepridal zadny skutecny detail - jen by
+  preskaloval uz existujici 320x224 o krok driv. TOHLE JE UZAVRENA
+  OTAZKA - neni co dal zkoumat na teto ceste. Jedina zbyvajici paka je
+  styl skalovani (ostre pixely vs. vyhlazeni) - vkusova volba, ne oprava.
+
+- PS1 ROZLISENI: NA ROZDIL od Segy, TADY BYLA SKUTECNA REZERVA. PCSX-
+  ReARMed ma vestavenou oficialni libretro volbu "Enhanced Resolution"
+  (pcsx_rearmed_neon_enhancement_enable) - vykresli 3D geometrii na 2x
+  interni rozliseni. Byla V JADRU CELOU DOBU, ale nas vlastni minimalni
+  libretro host (nap_ps1_native.cpp) tenhle klic nikdy neresil, takze
+  jadro padalo na svuj vlastni vychozi "disabled". OPRAVENO (SK93) -
+  jeden radek, cely retezec propagace overen az do nap_video() callbacku
+  (viz TESTPLAN_SK93.txt pro presny popis). NASE existujici
+  NativePs1InPlaceView (SK87) uz zvlada dynamickou zmenu rozliseni za
+  behu, takze zadna zmena v Jave nebyla potreba.
+  MEZE: tyka se JEN 3D geometrie, ne textur/2D/UI. Realny vykonovy naklad
+  (viz oficialni popis "at the expense of increased performance
+  requirements") - NEOTESTOVANO na zivem zarizeni.
+
+CO SOUBOR/SLOZKA cpp/ VE SKUTECNOSTI ZNAMENA V RENEHO PROJEKTU:
+app/src/main/cpp/ (potvrzeno z build.gradle: cmake.path
+"src/main/cpp/CMakeLists.txt"). SK93 balicek obsahuje JEN zmeneny
+nap_ps1_native.cpp na teto ceste - vendor/ zustava nedotceny (Rene ho
+nemusi znovu posilat pro tenhle konkretni fix, ale MOHL by byt potreba
+pro budouci zmeny v nem samotnem, napr. clownmdemu.c/vdp.c pro Segu,
+kdyby se nekdy chtela zkusit jina cesta nez jen skalovaci styl).
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na vysledek SK93 testu (PS1
+Enhanced Resolution - vetsi src= v logu, hladsi 3D hrany, sledovat SLOW
+hlasky kvuli vykonu). Pokud OK, zvazit podobny pruzkum PS1 dalsich
+libretro voleb (napr. texturovy filtering, frameskip) - ale AZ PO
+potvrzeni, ze tahle prvni zmena je bezpecna.
+
+
+
 
 
 

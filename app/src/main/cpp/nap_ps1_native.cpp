@@ -131,6 +131,18 @@ static const char *nap_core_option_value(const char *key) {
   if (strcmp(key, "pcsx_rearmed_region") == 0) return "auto";
   if (strcmp(key, "pcsx_rearmed_drc") == 0) return "enabled";
   if (strcmp(key, "pcsx_rearmed_async_cd") == 0) return "async";
+  // BUILD2SK93: "Enhanced Resolution" - REALNA, oficialni PCSX-ReARMed
+  // libretro volba (viz vendor/pcsx_rearmed/frontend/libretro_core_options.h,
+  // "pcsx_rearmed_neon_enhancement_enable") - vykresli 3D geometrii na 2x
+  // interni rozliseni pro hry, ktere jeste nebezi ve vysokem rozlisenim
+  // rezimu. Byla v jadru CELOU DOBU, jen se nikdy nezapnula - nas minimalni
+  // libretro host tenhle konkretni klic driv vubec neresil (viz return
+  // nullptr nize), takze jadro padalo na svuj VLASTNI vychozi "disabled".
+  // POZOR: oficialni popis rovnou rika "at the expense of increased
+  // performance requirements" - realny kompromis, ne zadarmo. Tyka se JEN
+  // 3D geometrie (modely, hrany) - 2D prvky (sprity, textury, UI) se timhle
+  // nezostri, to je limit puvodnich dat hry, ne renderu.
+  if (strcmp(key, "pcsx_rearmed_neon_enhancement_enable") == 0) return "enabled";
   return nullptr;
 }
 static bool nap_env(unsigned cmd, void *data) {

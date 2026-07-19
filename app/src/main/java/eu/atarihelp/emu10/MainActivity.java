@@ -337,10 +337,18 @@ public class MainActivity extends Activity {
         // Tohle nejspis vzniklo driv kvuli vykonu - po Surface prepracovani
         // (SK75, zadna Java YUV smycka) uz je vykonova rezerva vetsi, takze
         // landscape rozliseni ted odpovida portretu ve vsech trech urovnich.
-        if (!landscape)         table = new int[][]{{1120,72,50},{1360,84,40},{1920,94,33}};
-        else if (djScreen)      table = new int[][]{{1120,72,50},{1360,84,40},{1920,94,33}};
-        else if (hqLiteScreen)  table = new int[][]{{1120,62,50},{1360,76,40},{1920,90,33}};
-        else                    table = new int[][]{{1120,54,50},{1360,70,40},{1920,86,33}};
+        // BUILD2SK92: CELA STUPNICE POSUNUTA NAHORU na Reneho vyslovny
+        // pozadavek - "to, co ted bylo HIGH (overene, funguje), ma byt nova
+        // LOW". Nova LOW = presne stare HIGH cislo (nulove riziko, uz
+        // otestovano). Nova MEDIUM/HIGH jsou NOVA, NEOTESTOVANA cisla nad tim -
+        // schvalne umerena (ne rovnou natoceno na natvni rozliseni telefonu),
+        // protoze bitrate roste s w*h (viz vzorec Math.max(1.8M, w*h*6)) -
+        // novy HIGH ma zhruba 2x bitrate stareho HIGH, coz je realny skok,
+        // ktery jeste nikdo netestoval. LOW zustava bezpecny fallback.
+        if (!landscape)         table = new int[][]{{1920,94,33},{2300,94,28},{2700,94,25}};
+        else if (djScreen)      table = new int[][]{{1920,94,33},{2300,94,28},{2700,94,25}};
+        else if (hqLiteScreen)  table = new int[][]{{1920,90,33},{2300,93,28},{2700,94,25}};
+        else                    table = new int[][]{{1920,86,33},{2300,90,28},{2700,94,25}};
         return table[t];
     }
     private volatile String napTvWebVideoProfile = "AUTO";
@@ -1858,6 +1866,22 @@ public class MainActivity extends Activity {
         }
     }
 
+    // BUILD2SK91: sdilena logika pro nastaveni kvality - drive existovala jen
+    // uvnitr /quality HTTP endpointu (volalo se z LOW/MED/HIGH tlacitek na
+    // TV-cast strance v prohlizeci). Rene chtel stejnou volbu primo v appce
+    // (ozubene kolecko na uvodni obrazovce) - misto kopirovani teto logiky
+    // podruhe ji vytahuji sem, aby HTTP endpoint i novy JS most (AHTvWeb.
+    // setQualityTier) volaly PRESNE totez, zadna sance na rozjeti.
+    private String napTvWebSetQualityTier(long t) {
+        napTvWebQualityTier = (int) Math.max(0, Math.min(2, t));
+        try { getSharedPreferences("nap_tv_prefs", MODE_PRIVATE).edit().putInt("quality_tier", napTvWebQualityTier).apply(); } catch (Throwable ignored) {}
+        appendNativeLog("BUILD2SK91 TV_WEB_QUALITY_TIER_SET tier=" + napTvWebQualityTier);
+        // BUILD2SK18: pokud uz system mirror bezi, prekonfiguruj VirtualDisplay
+        // na nove rozliseni HNED - zadny "vypni a zapni cast" jiz neni potreba.
+        if (napTvWebSystemMirrorActive) { ui.post(this::napTvWebResizeSystemMirror); }
+        return String.valueOf(napTvWebQualityTier);
+    }
+
     private void napTvWebHandleClient(Socket s) {
         try {
             s.setTcpNoDelay(true);
@@ -1897,14 +1921,7 @@ public class MainActivity extends Activity {
                 napTvWebWriteAudioRaw(out, napTvWebQueryLong(fullPath, "after", -1));
             } else if ("/quality".equals(path)) {
                 long t = napTvWebQueryLong(fullPath, "tier", napTvWebQualityTier);
-                napTvWebQualityTier = (int) Math.max(0, Math.min(2, t));
-                try { getSharedPreferences("nap_tv_prefs", MODE_PRIVATE).edit().putInt("quality_tier", napTvWebQualityTier).apply(); } catch (Throwable ignored) {}
-                appendNativeLog("BUILD2SK18 TV_WEB_QUALITY_TIER_SET tier=" + napTvWebQualityTier);
-                // BUILD2SK18: pokud uz system mirror bezi, prekonfiguruj VirtualDisplay
-                // na nove rozliseni HNED - zadny "vypni a zapni cast" jiz neni potreba
-                // (ukazalo se, ze appka nema pro uzivatele cistou cestu jak to udelat).
-                if (napTvWebSystemMirrorActive) { ui.post(this::napTvWebResizeSystemMirror); }
-                byte[] body = ("tier=" + napTvWebQualityTier).getBytes("UTF-8");
+                byte[] body = ("tier=" + napTvWebSetQualityTier(t)).getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, true);
                 out.write(body);
             } else if ("/status".equals(path)) {
@@ -2201,6 +2218,17 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public String stop() { return napTvWebStop("js"); }
         @JavascriptInterface public String status() { return napTvWebUrl(); }
+        // BUILD2SK91: pro nove nastaveni na uvodni obrazovce (ozubene kolecko) -
+        // funguje i kdyz TV-cast HTTP server jeste vubec nebezi (na rozdil od
+        // /quality HTTP cesty, kterou pouziva jen LOW/MED/HIGH na strance
+        // prohlizece, kdyz uz je cast aktivni) - jde primo do Javy pres JS most,
+        // ktery je dostupny na KAZDE strance nacitane v tomhle WebView.
+        @JavascriptInterface public String setQualityTier(int tier) {
+            return "tier=" + napTvWebSetQualityTier(tier);
+        }
+        @JavascriptInterface public int getQualityTier() {
+            return napTvWebQualityTier;
+        }
         @JavascriptInterface public String pushAtariPcm16(String b64, int sampleRate, int frames) {
             try {
                 if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
