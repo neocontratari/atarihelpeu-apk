@@ -725,6 +725,55 @@ DELSI relace (10+ min) s kontrolou zvuku PRIMO NA TELEFONU po celou dobu,
 ne jen na zacatku. Take zkontrolovat TV_WEB_LOG_QUEUE_DROPPED v logu
 (nemelo by se tam vubec objevit, pokud fronta nikdy nepretekla).
 
+================================================================================
+DODATEK 2026-07-19 (odpoledne) - SK95 POTVRZENO FUNKCNI + BUILD2SK96 -
+ENHANCED RESOLUTION ZNOVU + DIAGNOZA "ROZMAZANE GRAFIKY"
+================================================================================
+SK95 test: USPECH. Zvuk v poradku na telefonu i v prenosu (potvrzeno
+Renem primo, + log: konec relace jen 1 underrun z 3176 smycek). Rene
+bude od ted testovat na Star Wars Rebel Assault II (konzistentni referencni
+obsah, uz ho zna nazpamet).
+
+NOVY TEST (jeste Crash Bandicoot): Rene nahlasil "obraz je rozmazany" +
+poslal DVA screenshoty (FMV cutscena - tvar postavy, + hratelna 3D cast -
+lod/asteroid/UI). OBA screenshoty casove presne odpovidaly src=320x240 v
+logu - potvrzeno, ze CELA relace od ~11:23:38 jela na 320x240 (nativni
+strop teto hry/obsahu), natazenych na 1384x672 (~4.3x). To je skutecny
+zdroj "rozmazanosti" - analogie k drivejsimu Sega hardwarovemu nalezu,
+jen tady je limit specificky pro tenhle obsah/hru, ne pro cele PS1.
+
+VYZNAMNE: tohle OTVIRA znovu otazku Enhanced Resolution (SK93/94) - SK95
+nasel a opravil SKUTECNOU pricinu audio problemu (unik pameti, chybejici
+recycle()), takze SK94uv puvodni revert Enhanced Resolution (podezreni z
+casove shody s audio problemem) uz nejspis neplati - byla to nejspis jen
+nahodna souvislost se skutecnym soubezne bezicim unikem. ZNOVU ZAPNUTO
+(SK96), izolovane (zadna jina soucasna zmena), aby bylo jasne, jestli (a)
+to zvuk znovu nerozbije (potvrdi/vyvrati SK94uv puvodni podezreni s
+jistotou) a (b) jestli skutecne zostri hratelnou 3D cast (FMV cutsceny
+NE - to je trvaly, jiny strop, 2D predtocene video).
+
+DALSI DVE TEMATA OD RENEHO, ZATIM BEZ ZMENY KODU (chybi dostatek udaju):
+- "Plynulost mozna horsi nez SK90" - Rene sam nejisty ("mozna jen pocit").
+  Data teto relace (TICK ~34fps, PixelCopy ~16ms, render cost ~32-35ms)
+  jsou STABILNI, zadna regrese vidyet v cislech - ale nechano otevrene,
+  ne uzavrene, protoze subjektivni dojem muze zachytit neco, co tahle
+  konkretni metrika nevidi.
+- "Synchron zvuku neni dokonaly" - audio (nativni vlakno->AudioTrack) a
+  video (PixelCopy->H264->prohlizec) jsou DVE nezavisle potrubi bez
+  vyslovne casove synchronizace mezi sebou. Realna, mozna VZDY pritomna
+  architekturalni vlastnost, ne nutne novy bug. Chce samostatne
+  vysetreni, NEBYLO resenov v SK96 (zamerne, aby test Enhanced Resolution
+  zustal cisty/izolovany).
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK96 vysledek (zvuk +
+ostrost 3D casti). Pokud zvuk OK: Enhanced Resolution muze zustat trvale
+zapnute, SK94uv podezreni bylo vyvracene. Pokud zvuk SELZE znovu: SK94uv
+podezreni bylo spravne po vsem, vratit se a hledat JINY zpusob, jak
+Enhanced Resolution pouzit bezpecne (napr. jen pro urcite hry, nebo s
+nejakym vykonovym throttlingem). Pak se venovat audio-sync tematu jako
+samostatnemu ukolu.
+
+
 
 
 

@@ -1,0 +1,57 @@
+BUILD2SK96 - ENHANCED RESOLUTION ZNOVU ZAPNUTO (izolovany test)
+================================================================================
+KONTEXT Z RENEHO SCREENSHOTU
+Dva screenshoty (FMV cutscena + hratelna 3D cast) OBA ukazaly presne v
+danem case src=320x240 v logu - potvrzeno, ze cela relace od ~11:23:38
+jela na 320x240. Tohle je skutecny strop teto konkretni hry/obsahu -
+natahovani na 1384x672 (~4.3x na sirku) zpusobuje tu "rozmazanost", co
+Rene videl. Neni to chyba v prenosu, je to limit zdroje.
+
+CO SE ZMENILO
+Znovu zapnuto Enhanced Resolution v nap_ps1_native.cpp (jeden radek,
+odkomentovan zpet - presne opak SK94 revertu). Duvod: SK95 nasel a
+opravil SKUTECNOU pricinu audio problemu (unik pameti - chybejici
+bitmap.recycle() pri zmene PS1 rozliseni) - Rene potvrdil zvuk v poradku
+(na telefonu i v prenosu). SK94uv puvodni podezreni na Enhanced Resolution
+tak nejspis bylo jen nahodna casova shoda se skutecnym unikem, ktery bezel
+soubezne behem stejneho testu.
+
+CO OD TOHO CEKAT (poctive, ne prehnane sliby)
+- Hratelna 3D cast (jako screenshot 2 - lod, asteroid, UI) BY SE MELA
+  zostrit - Enhanced Resolution zdvojnasobi 3D geometrii z 320x240 na
+  640x480 pro obsah, ktery jeste nebezi ve vysokem rozliseni.
+- FMV cutsceny (jako screenshot 1 - tvar postavy) SE NEZLEPSI - to je
+  predtocene 2D video, oficialni popis rovnou rika "2D elements are
+  generally unaffected". Tohle je TRVALY strop teto hry, ne neco, co
+  jakekoli nastaveni opravi.
+- V /log zkontroluj src= v PS1_NATIVE_TEXTURE_FRAME behem HRATELNE casti -
+  melo by ted ukazovat 640x480 (misto 320x240) tam, kde predtim bylo
+  320x240. Behem FMV cutsceny zustane 320x240 (ocekavane, spravne).
+
+RIZIKO
+Stredni - stejne jako driv (realny vykonovy naklad, tentokrat ale
+testovano IZOLOVANE, zadna jina zmena soucasne, aby bylo jasne pripsat
+pripadny problem spravne veci).
+
+JAK OTESTOVAT
+1) Hraj hratelnou 3D cast (ne jen cutsceny) - vypada ostreji nez driv?
+2) Poslouchej zvuk delsi dobu (5+ min) PRIMO NA TELEFONU - kouse se
+   jeste, nebo ne? (Tohle je hlavni test, jestli SK94uv podezreni bylo
+   spravne nebo vedle.)
+3) V /log zkontroluj src= hodnoty behem hratelne casti (mely by ukazovat
+   640x480) a underrunLoops/underruns pomer (nemel by rust).
+
+DALSI TEMATA Z RENEHO ZPRAVY (zatim BEZE ZMENY V KODU, potrebuji dalsi
+udaje nez neco navrhnu)
+- "Plynulost mozna horsi nez SK90" - zkontrolovano v datech teto relace:
+  TICK_AVG ~34fps, PixelCopy ~16ms, render cost ~32-35ms - VSECHNY cisla
+  jsou STABILNI po celou relaci (zadny narust, zadny pokles v case) a
+  odpovidaji tomu, co bylo videt v predchozich uspesnych testech. Data
+  neukazuji regresi - ale Rene sam rekl "nejsem si jisty", takze to
+  nechavam otevrene, ne uzavrene.
+- "Synchron zvuku neni dokonaly" - audio a video jedou pres DVA nezavisle
+  potrubi (nativni audio vlakno pise primo do AudioTrack, video jde pres
+  PixelCopy->H264->prohlizec) - nejsou mezi sebou vyslovne synchronizovane
+  casovymi znackami. Tohle by chtelo vlastni, samostatne vysetreni (neni
+  to rychla oprava, chce to pochopit, KDE presne k rozjeti dochazi) -
+  nechci to resit napul soucasne s timhle testem Enhanced Resolution.

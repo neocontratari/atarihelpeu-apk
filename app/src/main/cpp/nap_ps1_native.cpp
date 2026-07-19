@@ -131,15 +131,19 @@ static const char *nap_core_option_value(const char *key) {
   if (strcmp(key, "pcsx_rearmed_region") == 0) return "auto";
   if (strcmp(key, "pcsx_rearmed_drc") == 0) return "enabled";
   if (strcmp(key, "pcsx_rearmed_async_cd") == 0) return "async";
-  // BUILD2SK94: REVERT - log z Reneho testu (Crash Bandicoot, 3D hra) ukazal
-  // rostouci pomer audio underrunu behem teto relace (0.00 na zacatku ->
-  // 0.36 na konci), casove se prekryvajici s aktivnim Enhanced Resolution
-  // (potvrzeno v logu zdvojenym src= rozlisenim). Nejde o jistotu (underruny
-  // se objevovaly uz i pred timhle konkretnim bootem), ale dost silna shoda
-  // na to, aby stalo za to tohle nejnovejsi, nejmene overene zapnuti vratit
-  // a poradne to izolovat, nez se zkusi znovu. Puvodni radek zustava pro
-  // referenci - staci ho odkomentovat, az bude cas na dalsi pokus.
-  // if (strcmp(key, "pcsx_rearmed_neon_enhancement_enable") == 0) return "enabled";
+  // BUILD2SK94: REVERT (puvodni pokus) - podezreni na souvislost s rostoucimi
+  // audio underruny. Nikdy to nebylo jiste - jen casova shoda.
+  // BUILD2SK96: ZNOVU ZAPNUTO, izolovane. SK95 nasel a opravil SKUTECNOU
+  // pricinu audio problemu (unik pameti v NativePs1InPlaceView - chybejici
+  // bitmap.recycle() pri zmene PS1 rozliseni) - Rene potvrdil zvuk uz v
+  // poradku, na telefonu i v prenosu. SK94uv podezreni na Enhanced
+  // Resolution tedy nejspis bylo vedle - jen nahodna casova shoda se
+  // skutecnym unikem pameti, ktery bezel soubezne. Rene poslal screenshoty
+  // potvrzujici src=320x240 (nativni rozliseni teto konkretni hry/obsahu) -
+  // presne scenar, pro ktery je Enhanced Resolution urcene (zdvojnasobi 3D
+  // geometrii, ne 2D/FMV - cutsceny se timhle NEZLEPSI, to je jiny, trvaly
+  // strop, viz PS1 rozliseni diskuze).
+  if (strcmp(key, "pcsx_rearmed_neon_enhancement_enable") == 0) return "enabled";
   return nullptr;
 }
 static bool nap_env(unsigned cmd, void *data) {
