@@ -106,6 +106,18 @@ static void nap_gles_readback_and_push(void)
     nap_diag_log("BUILD2SK109 GLES_ALPHA_TEST_CHECK enabled=%d func=0x%x ref=%f",
       (int)alphaTestOn, (unsigned)alphaFunc, (double)alphaRef);
   }
+  // BUILD2SK110: posledni neoverena cast zakladniho GL stavu - viewport.
+  // Scissor uz jsme overili a opravili (SK106/108), alpha test overen a
+  // vyloucen jako pricina (SK109, je permisivni). Viewport je JEDINE, co
+  // jeste primo neurcuje, KAM se geometrie na obrazovce vlastne premapuje -
+  // pokud je i tohle degenerovane (podobne jako byl scissor pred opravou),
+  // je to dalsi mozne vysvetleni.
+  {
+    GLint viewport[4] = {0,0,0,0};
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    nap_diag_log("BUILD2SK110 GLES_VIEWPORT_CHECK x=%d y=%d w=%d h=%d",
+      viewport[0], viewport[1], viewport[2], viewport[3]);
+  }
  }
  nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 2);
 }
@@ -216,7 +228,16 @@ void updateDisplay(void)
  if(iDrawnSomething)
  {
   fps_update();
-  eglSwapBuffers(display, surface);
+  EGLBoolean swapOk = eglSwapBuffers(display, surface);
+  // BUILD2SK111: DRIV nikdy nekontrolovano - eglGetError() je JINA vec nez
+  // glGetError() (co uz kontrolujeme jinde). Kontroluje chyby na urovni
+  // EGL/systemu/ovladace (napr. "tenhle povrch neni platny pro prezentaci"),
+  // ne uvnitr samotneho GL vykreslovani. Rene se ptal, jestli neco na
+  // urovni telefonu tohle nemuze blokovat - tohle presne overuje.
+  if (nap_gles_frame_count % 30 == 1) {
+    EGLint eglErr = eglGetError();
+    nap_diag_log("BUILD2SK111 GLES_SWAP_CHECK path=updateDisplay ok=%d eglErr=0x%x", (int)swapOk, (unsigned)eglErr);
+  }
   nap_gles_readback_and_push(); // BUILD2SK98
   iDrawnSomething=0;
  }
@@ -282,7 +303,14 @@ void updateFrontDisplay(void)
  bRenderFrontBuffer=FALSE;
 
  if(iDrawnSomething) {                                 // linux:
-  eglSwapBuffers(display, surface);
+  EGLBoolean swapOk = eglSwapBuffers(display, surface);
+  // BUILD2SK111: viz stejny komentar u updateDisplay() vyse - tohle je ale
+  // ta DULEZITA cesta, protoze updateFrontDisplay() je funkce, kterou
+  // SKUTECNE volame kazdy tick (SK103).
+  if (nap_gles_frame_count % 30 == 1) {
+    EGLint eglErr = eglGetError();
+    nap_diag_log("BUILD2SK111 GLES_SWAP_CHECK path=updateFrontDisplay ok=%d eglErr=0x%x", (int)swapOk, (unsigned)eglErr);
+  }
   nap_gles_readback_and_push(); // BUILD2SK98
  }
 }

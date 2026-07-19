@@ -1283,3 +1283,32 @@ DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK109 vysledek - hledat
 GLES_ALPHA_TEST_CHECK v logu. enabled=1 s func odpovidajicim GL_EQUAL a
 ref=0.0 by potvrdilo teorii - pak dalsi krok je najit/opravit texture
 upload cestu tak, aby produkovala spravnou alfa hodnotu.
+
+================================================================================
+DODATEK - BUILD2SK111 - RENEHO OTAZKA ODHALILA SKUTECNOU MEZERU
+(eglGetError nikdy nekontrolovano)
+================================================================================
+Rene (neprogramator, ale s Atari zkusenosti s pameti) se zeptal, jestli
+neco na urovni telefonu/systemu nemuze blokovat vykreslovani, podobne
+jako spatna adresa v pameti u Atari - a jestli nepotrebuji telefonu
+"explicitne rict, ze appka tady potrebuje kreslit".
+
+Tahle otazka odhalila SKUTECNOU MEZERU: celou dobu jsem kontroloval jen
+glGetError() (GL-urovnove chyby), NIKDY eglGetError() (EGL/system/
+ovladac-urovnove chyby) kolem SKUTECNEHO per-frame eglSwapBuffers()
+volani. A navratova hodnota eglSwapBuffers() (jestli se "poslani" snimku
+vubec povedlo) se take nikdy nekontrolovala.
+
+Souvisejici: nas pristup pouziva "off-screen" pbuffer (ne skutecne
+Android okno) - mene bezna cesta nez normalni Android graficke API,
+teoreticky vic naklonena k device-specific quirks, presne v duchu
+Reneho intuice.
+
+PRIDANO (SK111): primy dotaz na eglGetError() + navratovou hodnotu
+eglSwapBuffers() na OBOU mistech, kde k volani dochazi.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK111 vysledek - hledat
+GLES_SWAP_CHECK. Pokud ok=0 nebo eglErr!=0x0: Reneho intuice byla
+spravna, dalsi krok je pravdepodobne prechod z pbufferu na skutecny
+Android povrch (vetsi, ale presne cilena zmena). Pokud ok=1 eglErr=0x0:
+tahle konkretni teorie vyvracena, pokracovat jinam.

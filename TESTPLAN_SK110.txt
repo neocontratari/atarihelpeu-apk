@@ -1,0 +1,52 @@
+BUILD2SK110 - KONTROLA VIEWPORTU (posledni neoverena zakladni GL hodnota)
++ POCTIVE ZHODNOCENI SITUACE
+================================================================================
+CO SK109 UKAZAL
+Alpha test JE zapnuty, ale s "func=0x205" = GL_NOTEQUAL, ref=0.0 - to
+znamena "projdi vsechno KROME presne pruhledneho (alfa=0)". To je
+permisivni nastaveni, NE blokujici - moje teorie byla vyvracena cistymi
+daty. Dobra zprava v tom je, ze tohle NENI pricina - spatna zprava je,
+ze poslední kandidat padl a jeste porad nevime presne proc geometrie
+neni videt.
+
+CO SE PRIDALO
+Kontrola VIEWPORTU (posledni zakladni GL hodnota, kterou jsme jeste
+primo neoverili) - stejnym zpusobem jako uz overeny scissor a alpha
+test.
+
+POCTIVE ZHODNOCENI (dulezite precist)
+Za posledních nekolik kol jsem nasel a opravil CTYRI SKUTECNE, OVERENE
+chyby:
+1) Chybejici InitializeTextureStore() - zpusobovalo pad (SK102)
+2) Spatny format pri cteni obrazu z GPU - zpusobovalo cistou cernou
+   (SK105)
+3) Chybejici bDisplayNotSet/bSetClip inicializace - zpusobovalo
+   degenerovany 1x1 scissor (SK106)
+4) Spatne casovani teto inicializace - opraveno na periodicke volani,
+   scissor se ted sam opravuje (SK108)
+
+Kazda z techto oprav byla RESTNA, potvrzena daty, ne dohad. Ale porad
+jsme nedosli k cili - geometrie porad neni videt. Tohle uz je hluboko
+v teritoriu, kde ctenim zdrojoveho kodu bez skutecneho GPU debuggeru
+zacinam narazet na limity toho, co jde spolehlivě najit.
+
+Pokud tenhle krok (viewport) taky nic neodhali, chci s tebou na rovinu
+probrat, jestli:
+(a) zkusit jeste hlubsi diagnostiku (napr. pocitadlo primitiv primo
+    uvnitr kreslicich funkci - vetsi zasah, vetsi riziko)
+(b) najit zpusob, jak ziskat silnejsi diagnosticky nastroj (napr. GPU
+    debugger, pokud vubec na Androidu s tímto telefonem existuje
+    dostupna varianta)
+(c) uznat, ze tahle konkretni cesta (gpu-gles) je momentalne za hranici
+    toho, co dokazu bezpecne dotahnout do konce, a presunout energii
+    jinam
+
+Neresim se ptat na tohle znovu - jen chci, abys mel realny obraz, ne
+falesnou nadeji na "jeste jeden radek a bude to".
+
+RIZIKO
+Minimalni - jen dalsi cteni existujiciho GL stavu.
+Overeno: {} v gpulib_if.c sedi (95/95).
+
+JAK OTESTOVAT
+Presne jako predtim. V /log hledej "GLES_VIEWPORT_CHECK".

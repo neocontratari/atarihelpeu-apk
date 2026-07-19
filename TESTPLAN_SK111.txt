@@ -1,0 +1,45 @@
+BUILD2SK111 - KONTROLA "SYSTEMOVE" CHYBY (na Reneho vyslovny podnet)
+================================================================================
+CO SE STALO
+Rene se zeptal (jako neprogramator, ale s dobrym instinktem z Atari
+zkusenosti): neni tohle podobne spatne adrese v pameti? Neblokuje to
+nekde samotny telefon? Nemusim rict telefonu explicitne "tady je appka,
+tady potrebuju kreslit"?
+
+Tahle otazka byla PRESNA - a odhalila SKUTECNOU MEZERU v me diagnostice.
+Celou dobu jsem kontroloval jen glGetError() (chyby UVNITR samotneho
+kresleni). Nikdy jsem nezkontroloval eglGetError() - JINY druh chyby,
+na urovni EGL/systemu/ovladace (napr. "tenhle povrch neni platny pro
+zobrazeni"). A eglSwapBuffers() (funkce, co "posle" hotovy snimek) jsem
+volal, ale NIKDY nekontroloval, jestli se to vubec POVEDLO.
+
+DALSI SOUVISEJICI BOD (Reneho postreh o "explicitnim rekni telefonu")
+Muj pristup vytvari GPU spojeni "off-screen" (pomoci tzv. pbufferu) -
+NEPOUZIVA normalni Android zpusob (skutecne okno/plochu, jako ma treba
+uz existujici PS1 obrazovka v appce). Tohle JE mene bezna cesta - vetsina
+appek jde pres "normalni" okno. Neni vyloucene, ze prave tohle je mensi
+"cesta", kterou ovladac na tomhle telefonu netestuje tak dukladne jako tu
+bezne pouzivanou - presne v duchu toho, co Rene navrhoval.
+
+CO SE PRIDALO
+Primy dotaz, jestli "poslani snimku" (eglSwapBuffers) SKUTECNE uspelo, a
+pokud ne, jakou chybu EGL/system hlasi - primo v okamziku, kdy se to
+deje, na OBOU mistech, kde k tomu muze dojit.
+
+CO TO PRISTE UKAZE
+- "ok=1 eglErr=0x0": poslani snimku uspesne na EGL urovni - Reneho teorie
+  o "blokovani telefonem" (aspon v teto konkretni podobe) by byla
+  vyvracena, hledal bych dal jinde.
+- "ok=0" nebo "eglErr=" neco jineho nez 0x0: PRESNE potvrzuje Reneho
+  intuici - system/ovladac skutecne odmita "poslani" snimku, presna
+  chyba by rekla proc a dala jasny dalsi krok (velmi pravdepodobne by
+  to znamenalo prechod z "off-screen" pbufferu na skutecny Android
+  povrch - vetsi zmena, ale presne cilena).
+
+RIZIKO
+Minimalni - jen kontrola navratove hodnoty jiz volane funkce, zadna
+zmena chovani.
+Overeno: {} v gpulib_if.c sedi (97/97).
+
+JAK OTESTOVAT
+Presne jako predtim. V /log hledej "GLES_SWAP_CHECK".
