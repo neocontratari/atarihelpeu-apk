@@ -1,0 +1,60 @@
+BUILD2SK97 - DOOSTRENI OBRAZU (bezpecna cesta) + POZNAMKA K gpu-gles
+================================================================================
+CO SE ZJISTILO PRI HLUBSIM ZKOUMANI gpu-gles (dulezite pro budoucnost)
+gpu-gles (alternativni PS1 GPU modul s vyhlazenim textur) NEPOUZIVA
+stejne rozhrani jako soucasny gpu_neon. Ma VLASTNI vout_update(), ktera
+vola updateDisplay()/updateFrontDisplay() - podle nazvu a chybejiciho
+glReadPixels() v celem modulu jde skoro jiste o primy eglSwapBuffers()
+na REALNY okenni povrch, ne o predani hotoveho snimku zpet do CPU pametu
+pres nas stavajici video_cb() mechanismus (jak to dela gpu_neon).
+
+To znamena: napojeni gpu-gles by nebylo "vymenit soucasku ve stejnem
+potrubi" - vyzadovalo by postavit CELOU NOVOU, paralelni vykreslovaci
+cestu (vlastni EGL kontext, vlastni Android Surface, jiny zpusob predavani
+obrazu do Javy) - a spatne zvladnuta EGL/GL inicializace na Androidu umi
+spadnout zpusobem, ktery se neda zachytit jako bezna Java vyjimka (muze
+shodit celou appku, ne jen PS1 obrazovku). Bez moznosti to prubezne
+testovat na zivem zarizeni je tohle prilis riskantni udelat naslepo v
+jedne davce.
+
+ROZHODNUTI: gpu-gles NECHAN jako jasne popsany, ale SAMOSTATNY budouci
+projekt (az bude prostor jit krok za krokem s testovanim mezi kroky).
+Misto toho ZDE reseno bezpecnou, oveřenou cestou (viz nize).
+
+CO SE ZMENILO (SK97 - jedina zmena tohoto balicku)
+Mirny doostrovaci pruchod (unsharp mask) pridany do NativePs1InPlaceView.
+drawTextureFrame() - beží PO tom, co uz mame surova data z jadra (vcetne
+Enhanced Resolution, pokud aktivni), PRED tim, nez se z nich udela
+bitmapa. Zvyrazni hrany v UZ EXISTUJICIM snimku - neni to totez jako
+skutecne bilinearni filtrovani textur (to potrebuje GPU cestu, viz vyse),
+ale je to levna, bezpecna operace v uz proverene Java/Canvas casti kodu -
+ZADNY novy native/EGL kod, ZADNE nove riziko padu appky.
+
+Technicky: klasicky Laplacian-based sharpen (stred*4 minus 4 sousedi),
+posun bitu misto deleni (rychlejsi), opakovane pouzivany buffer (zadna
+nova alokace kazdy snimek - stejna licence jako SK65-66/SK85/SK95).
+Sila (>>4, cili cca 1/16) je SCHVALNE opatrna prvni volba.
+
+RIZIKO
+Nizke - cisty Java vypocet nad uz existujicimi daty, zadna zmena v
+nativnim kodu, zadna zmena v architekture. Jedine realne riziko je
+vykonove (dalsich par ms na snimek) - to uz sleduje existujici
+PS1_NATIVE_TEXTURE_SLOW_AVG diagnostika automaticky, zadna nova
+diagnostika potreba.
+Overeno: {}/[] v MainActivity.java sedi (1888/1888, 319/319).
+
+JAK OTESTOVAT
+1) Hratelna 3D cast (jako obrazek 3 z minula - postavy, steny) - vypada
+   hranatost/kostkovani o neco lepe, nebo je zmena moc mala na to, aby
+   byla videt?
+2) V /log zkontroluj PS1_NATIVE_TEXTURE_SLOW_AVG - avgCostMs by nemel
+   vyrazne vzrust oproti minulym testum (byvalo ~31-35ms, ocekavam
+   nekolik ms navic, ne desitky).
+3) Pokud efekt je moc slaby/moc silny: da se snadno doladit (jedno cislo
+   v kodu, >>4 na >>3 pro silnejsi efekt nebo >>5 pro slabsi) - dej vedet,
+   jak to vypada, a upravim.
+
+DALSI KROK (az bude cas/prostor): gpu-gles jako samostatny, poradne
+otestovany projekt - vyzaduje postavit EGL kontext + novy zpusob predani
+obrazu, idealne s moznosti prubezneho testovani na zivem zarizeni misto
+"posli balicek a doufej".

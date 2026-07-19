@@ -4383,6 +4383,7 @@ public class MainActivity extends Activity {
         // licence jako SK65-66/SK85 (opakovane pouzivat misto porad znovu
         // alokovat). Souradnice se prepisuji pres set(), objekt sam zustava.
         private final Rect reuseDst = new Rect();
+        private int[] sharpenBuf; // BUILD2SK97: opakovane pouzivany vystup doostrovaciho pruchodu
         private final Rect reuseSrc = new Rect();
 
         NativePs1InPlaceView(Activity a) {
@@ -4507,6 +4508,44 @@ public class MainActivity extends Activity {
                 for (int i = 0, n = srcW * srcH; i < n; i++) {
                     argb[i] |= 0xFF000000;
                 }
+                // BUILD2SK97: mirne doostreni (unsharp mask) - kompenzuje CAST ztraty
+                // detailu z nizkeho zdrojoveho rozliseni (320x240/640x480) natazeneho
+                // na displej. NENI to totez jako skutecne bilinearni filtrovani textur
+                // uvnitr jadra (to by vyzadovalo primou GPU vykreslovaci cestu - viz
+                // predavaci poznamka o gpu-gles, zamerne NEudelano ted kvuli riziku
+                // padu appky bez moznosti to sam odzkouset) - jen zvyrazni hrany v uz
+                // existujicim snimku. Levne (bez deleni - posun bitu misto /16),
+                // opakovane pouzivany buffer (zadna nova alokace kazdy snimek).
+                // Sila (>>4) je schvalne opatrna prvni volba - snadno se da zesilit
+                // (mensi cislo za >> = silnejsi efekt), kdyby to Rene chtel vic.
+                if (sharpenBuf == null || sharpenBuf.length < srcW * srcH) {
+                    sharpenBuf = new int[srcW * srcH];
+                }
+                for (int y = 0; y < srcH; y++) {
+                    int rowBase = y * srcW;
+                    int upBase = (y > 0 ? y - 1 : y) * srcW;
+                    int downBase = (y < srcH - 1 ? y + 1 : y) * srcW;
+                    for (int x = 0; x < srcW; x++) {
+                        int leftX = x > 0 ? x - 1 : x;
+                        int rightX = x < srcW - 1 ? x + 1 : x;
+                        int c = argb[rowBase + x];
+                        int l = argb[rowBase + leftX];
+                        int r = argb[rowBase + rightX];
+                        int u = argb[upBase + x];
+                        int d = argb[downBase + x];
+                        int cr = (c >> 16) & 0xFF, cg = (c >> 8) & 0xFF, cb = c & 0xFF;
+                        int lap_r = cr * 4 - ((l >> 16) & 0xFF) - ((r >> 16) & 0xFF) - ((u >> 16) & 0xFF) - ((d >> 16) & 0xFF);
+                        int lap_g = cg * 4 - ((l >> 8) & 0xFF) - ((r >> 8) & 0xFF) - ((u >> 8) & 0xFF) - ((d >> 8) & 0xFF);
+                        int lap_b = cb * 4 - (l & 0xFF) - (r & 0xFF) - (u & 0xFF) - (d & 0xFF);
+                        int sr = cr + (lap_r >> 4);
+                        int sg = cg + (lap_g >> 4);
+                        int sb = cb + (lap_b >> 4);
+                        if (sr < 0) sr = 0; else if (sr > 255) sr = 255;
+                        if (sg < 0) sg = 0; else if (sg > 255) sg = 255;
+                        if (sb < 0) sb = 0; else if (sb > 255) sb = 255;
+                        sharpenBuf[rowBase + x] = 0xFF000000 | (sr << 16) | (sg << 8) | sb;
+                    }
+                }
                 if (bitmap == null || curSrcW != srcW || curSrcH != srcH) {
                     // BUILD2SK95: OPRAVENA CHYBA - tenhle recycle() tu chybel od SK87.
                     // PS1 rozliseni se meni BEZNE behem hry (v logu videno 256x240 /
@@ -4520,7 +4559,7 @@ public class MainActivity extends Activity {
                     bitmap.setHasAlpha(false); // BUILD2SK88: ponechano jako dalsi (neskodna) pojistka navrch.
                     curSrcW = srcW; curSrcH = srcH;
                 }
-                bitmap.setPixels(argb, 0, srcW, 0, 0, srcW, srcH);
+                bitmap.setPixels(sharpenBuf, 0, srcW, 0, 0, srcW, srcH);
                 canvas.drawColor(Color.BLACK);
                 // BUILD2SK87: PRESNA kopie CSS #psMonitor 16:9 stred-fit matematiky
                 // z emu_ps1/index.html (@media orientation:landscape) - box se

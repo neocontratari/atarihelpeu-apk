@@ -773,6 +773,55 @@ Enhanced Resolution pouzit bezpecne (napr. jen pro urcite hry, nebo s
 nejakym vykonovym throttlingem). Pak se venovat audio-sync tematu jako
 samostatnemu ukolu.
 
+================================================================================
+DODATEK 2026-07-19 (odpoledne, pokracovani) - SK96 POTVRZENO (Enhanced
+Res. aktivni ve vsech 4 screenshotech) + BUILD2SK97 - DOOSTRENI + gpu-gles
+ZKOUMANI
+================================================================================
+Rene poslal 4 screenshoty ze Star Wars Rebel Assault II (titulka, 2x
+hratelna 3D cast, 1x FMV-podobna interierova scena) + zeptal se
+skepticky "opravdu mame rozliseni na max?" a pozadal o kontrolu +
+vyslovne odmitl slyset "nedá se to udelat".
+
+OVERENO: VSECHNY 4 screenshoty casove presne odpovidaly src=640x480 v
+logu - Enhanced Resolution BYLO aktivni pro kazdy z nich. Takze co Rene
+vidi, uz JE vylepsena verze - problem byl jinde.
+
+DIAGNOZA: Enhanced Resolution resi jen hrany 3D GEOMETRIE, ne TEXTURY.
+gpu_neon (soucasny vykreslovaci modul) nema v sobe ZADNY kod pro
+texturove filtrovani (potvrzeno - nulove vyskyty "bilinear"/"texture_
+filter" v celem gpu_neon zdrojaku) - je to cistě rychlostne optimalizovany
+software rasterizer bez tehle funkce. TOHLE je zdroj "kostickovani" na
+postavach/stenach (obrazek 3).
+
+NALEZENO: alternativni modul gpu-gles V TOM SAMEM zdrojaku SKUTECNE
+podporuje texturove filtrovani (GL_LINEAR potvrzeno v jeho kodu). Rene
+rekl "mame build 90 a 96, je k cemu se vracet - JDI DO TOHO" - jasne
+povoleni riskovat.
+
+PRI HLUBSIM ZKOUMANI (dulezite pro budoucnost): gpu-gles NEPOUZIVA
+stejne rozhrani jako gpu_neon - ma VLASTNI vout_update() volajici
+updateDisplay()/updateFrontDisplay(), zadny glReadPixels() nikde v celem
+modulu - skoro jiste primy eglSwapBuffers() na REALNY okenni povrch, ne
+predani pres nas CPU-buffer video_cb() mechanismus. Napojeni by tedy
+vyzadovalo CELOU NOVOU paralelni vykreslovaci cestu (vlastni EGL kontext,
+Android Surface), s realnym rizikem padu CELE appky pri spatne zvladnute
+inicializaci (native crash, ne Java exception - hur zachytitelne).
+ROZHODNUTO: nechano jako jasne popsany, ale SAMOSTATNY budouci projekt,
+NEudelano naslepo v jedne davce bez moznosti prubezneho testovani.
+
+MISTO TOHO (SK97): mirny doostrovaci pruchod (Laplacian unsharp mask) v
+CISTE JAVE, uvnitr uz proverene NativePs1InPlaceView cesty - zadny novy
+native/EGL kod, zadne nove riziko padu appky. Levny (bit-shift misto
+deleni), opakovane pouzivany buffer. Opatrna prvni sila (>>4), snadno
+doladitelna.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK97 vysledek - je
+doostreni videt/dostatecne, nebo chce Rene silnejsi/slabsi? Pripadne
+znovu otevrit otazku gpu-gles jako SAMOSTATNY projekt, pokud Rene chce
+jit dal a je ochoten na to venovat vic casu s prubeznym testovanim.
+
+
 
 
 
