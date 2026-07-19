@@ -1260,3 +1260,26 @@ Pridana throttled kontrola vysledku primo v logu.
 DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK108 vysledek - hledat,
 jestli GLES_SCISSOR_CHECK ukazuje spravnou hodnotu (ne uz 1x1) a hlavne
 jestli KONECNE vidime skutecnou grafiku na obrazovce.
+
+================================================================================
+DODATEK - BUILD2SK109 - SCISSOR OPRAVA POTVRZENA FUNKCNI, ALE NENI CELY
+PRIBEH - KONTROLA ALPHA TESTU
+================================================================================
+SK108 log potvrdil: scissor SE SAMA OPRAVILA (320x240/238 podle sceny
+hry, presne jak navrzeno) - to je overena, funkcni oprava. ALE i behem
+spravnych scissor oken je videt jen jednolita barva/skoro nula - zadna
+skutecna grafika. Scissor tedy NEBYLA jedina pricina.
+
+Novy kandidat nalezen primo ve zdrojaku: gpuPrim.c makro DEFOPAQUEON
+pouziva glAlphaFunc(GL_EQUAL, 0.0f) pro "opaque" kresleni - pokud nase
+texture-upload cesta nenastavuje presne alfa=0.0 (bezna PS1 semi-
+transparency konvence), KAZDY fragment by se tise zahodil pred zapisem -
+presne vysvetluje pozorovany vzorec (cisteni ano, geometrie ne).
+
+PRIDANO (SK109): primy dotaz na aktualni alpha test stav (zapnuto/funkce/
+referencni hodnota) primo v okamziku cteni obrazu.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK109 vysledek - hledat
+GLES_ALPHA_TEST_CHECK v logu. enabled=1 s func odpovidajicim GL_EQUAL a
+ref=0.0 by potvrdilo teorii - pak dalsi krok je najit/opravit texture
+upload cestu tak, aby produkovala spravnou alfa hodnotu.

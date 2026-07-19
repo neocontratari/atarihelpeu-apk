@@ -92,6 +92,20 @@ static void nap_gles_readback_and_push(void)
   uint16_t pBR = nap_gles_rb_buf[n - 1];
   nap_diag_log("BUILD2SK105 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%04x pCenter=0x%04x pBR=0x%04x",
     (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR);
+  // BUILD2SK109: gpuPrim.c ma makro DEFOPAQUEON - glAlphaFunc(GL_EQUAL,0.0f) -
+  // "opaque" kresleni PROJDE jen kdyz je alfa PRESNE 0.0 (bezny PS1 zpusob
+  // znaceni pruhlednosti masky). Pokud nahravani textur nenastavuje presne
+  // tuhle hodnotu, KAZDY fragment by se tise zahodil - vysvetlilo by to
+  // presne to, co vidime (cisteni funguje, geometrie ne, bez ohledu na
+  // scissor/hloubku). Primy dotaz na aktualni stav, misto dalsiho hadani.
+  {
+    GLboolean alphaTestOn = glIsEnabled(GL_ALPHA_TEST);
+    GLint alphaFunc = 0; GLfloat alphaRef = -1.0f;
+    glGetIntegerv(GL_ALPHA_TEST_FUNC, &alphaFunc);
+    glGetFloatv(GL_ALPHA_TEST_REF, &alphaRef);
+    nap_diag_log("BUILD2SK109 GLES_ALPHA_TEST_CHECK enabled=%d func=0x%x ref=%f",
+      (int)alphaTestOn, (unsigned)alphaFunc, (double)alphaRef);
+  }
  }
  nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 2);
 }

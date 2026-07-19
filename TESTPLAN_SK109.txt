@@ -1,0 +1,32 @@
+BUILD2SK109 - KONTROLA ALPHA TESTU (dalsi kandidat na "geometrie neviditelna")
+================================================================================
+CO SK108 LOG UKAZAL
+Scissor SE SKUTECNE OPRAVIL - samo se prepocitava spravne (320x240,
+320x238 podle sceny hry), presne jak jsem cekal. Ale i behem TECHTO
+spravnych oken porad vidime jen jednolitou barvu nebo skoro nulu -
+zadnou skutecnou grafiku. Takze scissor NEBYLA (jedina) pricina - byla
+to skutecna, opravena chyba, ale neni to cely pribeh.
+
+DALSI KANDIDAT (nalezeno primo ve zdrojaku)
+gpuPrim.c ma makro DEFOPAQUEON: glAlphaFunc(GL_EQUAL, 0.0f) - "opaque"
+kresleni (bezna cesta pro vetsinu PS1 grafiky) PROJDE jen kdyz je alfa
+textury PRESNE 0.0. Tohle je bezny PS1 zpusob znaceni pruhlednosti
+(semi-transparency maska) - ale pokud nase nahravani textur do GL
+nenastavuje presne tuhle hodnotu (0.0), KAZDY fragment by se tise
+zahodil driv, nez by se vubec zapsal do obrazu - presne by to vysvetlilo
+"cisteni funguje, geometrie ne", bez ohledu na scissor ci hloubkovy test
+(oboje uz overeno v poradku).
+
+CO SE PRIDALO
+Primy dotaz na aktualni stav alpha testu (zapnuto? jaka funkce? jaka
+referencni hodnota?) v okamziku, kdy ctame obraz - misto dalsiho hadani,
+uvidime presne cislo.
+
+RIZIKO
+Minimalni - jen cteni existujiciho GL stavu, zadna zmena chovani.
+Overeno: {} v gpulib_if.c sedi (93/93).
+
+JAK OTESTOVAT
+Presne jako predtim. V /log hledej "GLES_ALPHA_TEST_CHECK" - "enabled=1
+func=0x202 ref=0.000000" (0x202 = GL_EQUAL) by potvrdilo presne tuhle
+teorii. Jina hodnota by ukazala jinym smerem.
