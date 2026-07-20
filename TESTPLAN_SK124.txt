@@ -1,0 +1,44 @@
+BUILD2SK124 - SPRAVNA KOMBINACE: SK122 PROJEKCE + JEDNODUCHE CTENI
+================================================================================
+CO SK123 TEST PRESNE UKAZAL
+"scissor=[0,0,1024,512]" - scissor NEDAVAL ZADNE UZITECNE OMEZENI (kryl
+UPLNE CELOU VRAM, ne jen viditelnou cast)! SK123 pak cetlo skoro celou
+VRAM - z toho jen leva cast (~320 sloupcu) mela SKUTECNY obraz, zbytek
+byla nesouvisejici/neinicializovana pamet - presne ten barevny sum na
+prave polovine obrazovky, co jsi videl.
+
+SPRAVNE POCHOPENI (z celeho prubehu SK121-124)
+- SK122 PROJEKCE (nastaveni "sveta" na 1024x512, skutecnou velikost VRAM
+  cipu PS1) BYLA spravna a potrebna - RAW_VS_FINAL testy to potvrdily
+  (sede hodnoty presne sedely).
+- Chyba byla, ze jsem ZAROVEN zbytecne zkomplikoval i SAMOTNE CTENI -
+  SK122 zkousel DisplayPosition, SK123 zkousel scissor - obojí bylo
+  zbytecne a v pripade scissoru dokonce skodlive (cetlo prilis mnoho).
+- Spravna kombinace: NECHAT opravenou projekci (SK122), ale VRATIT
+  cteni zpet na jednoduchy, primy pristup - cist presne DisplayMode
+  velikost (320x240) OD ZACATKU (0,0). DisplayPosition byla VE VSECH
+  dosavadnich datech VZDY (0,0), takze tohle je spravne zjednoduseni,
+  ne krok zpet.
+
+CO SE ZMENILO
+Cteni vraceno na jednoduchy zpusob (glReadPixels primo DisplayMode
+velikost od (0,0)) - ale TEDka uz s opravenou (SK122) projekci pod tim,
+takze geometrie je uz spravne namapovana driv, nez se vubec cte. Vsechny
+navazujici vypocty (diagnostika, ASCII dump, odeslani do Javy) opraveny
+zpet na konzistentni pouzivani DisplayMode rozmeru.
+
+RIZIKO
+Nizke - jde o ZJEDNODUSENI (odstraneni zbytecne slozitosti z SK122/123),
+ne o dalsi novou komplikaci. Zakladem zustava jiz proverena SK122
+projekce.
+Overeno: {} 104/104, () 387/387 (spravnou metodou, s odstranenim
+komentaru). Zadne zbyle odkazy na scissor/sx/sy/sw/sh promenne.
+
+CO OD TOHOTO CEKAT
+Leva polovina obrazovky uz vypadala spravne v poslednim testu (SK123) -
+ocekavam, ze TEDKA bude spravne CELA obrazovka, protoze uz nebudeme
+cist zadnou "extra" oblast navic.
+
+JAK OTESTOVAT
+Presne jako predtim - naboot hru, projdi ruzne casti (intro, menu,
+gameplay), delsi test (5+ min).

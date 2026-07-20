@@ -1637,3 +1637,29 @@ DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK123 vysledek. Novy
 GLES_PIXEL_SAMPLE radek ma "scissor=[...]" vedle "expectedDM=..." pro
 primé srovnani. Pokud STALE nesedi, tohle srovnani prime rekne, jestli
 se scissor od DisplayMode genuinne lisi (a v cem presne).
+
+================================================================================
+DODATEK - BUILD2SK124 - SPRAVNA KOMBINACE (SK122 projekce + jednoduche
+SK118-styl cteni) - POSLEDNI POKUS
+================================================================================
+SK123 test: scissor=[0,0,1024,512] - ZADNE uzitecne omezeni (cela VRAM)!
+Cetlo se skoro cele VRAM, jen leva ~320-sloupcova cast mela realny obraz
+(potvrzeno Reneho screenshotem - leva polovina spravne, prava cisty sum).
+
+SPRAVNE POCHOPENI: SK122 projekce (1024x512 VRAM-scale) BYLA spravna a
+potrebna (RAW_VS_FINAL sede hodnoty presne sedely). Chyba byla v
+SOUBEZNE zkomplikovanem CTENI (SK122 DisplayPosition, SK123 scissor -
+oboji zbytecne/skodlive).
+
+OPRAVENO (SK124): cteni vraceno na jednoduchy pristup (DisplayMode
+velikost od 0,0 - DisplayPosition byla VE VSECH datech vzdy 0,0), ale
+S OPRAVENOU SK122 projekci pod tim. Kombinace "spravna projekce +
+jednoduche cteni" - ne dalsi komplikace.
+
+KONTEXT: Rene explicitne oznacil tohle jako POSLEDNI POKUS pred
+ukoncenim spoluprace. Leva polovina obrazovky jiz vypadala spravne v
+predchozim testu - tohle by melo opravit i pravou polovinu.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK124 vysledek - klicova
+otazka je, jestli je TEDka CELA obrazovka spravne (ne uz jen leva
+polovina).

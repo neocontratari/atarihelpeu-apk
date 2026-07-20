@@ -105,43 +105,40 @@ static void nap_gles_readback_and_push(void)
   nap_diag_log("BUILD2SK100 GLES_FRAME_HEARTBEAT n=%d dispW=%d dispH=%d", nap_gles_frame_count, rb_w, rb_h);
  }
  if (rb_w <= 0 || rb_h <= 0 || rb_w > NAP_PSX_VRAM_W || rb_h > NAP_PSX_VRAM_H) return; // BUILD2SK122: mez presne podle skutecne VRAM velikosti
- // BUILD2SK123: SK122 pouzival PSXDisplay.DisplayPosition pro vyriznuti -
- // ale Rene nahlasil jeste vetsi problemy (a diagnostika ukazala nesedici
- // vzorek). Misto dalsiho hadani vlastnim vzorcem POUZIJEME PRIMO uz
- // OVERENY, funkcni vypocet - GL_SCISSOR_BOX, ktery SetOGLDisplaySettings
- // (volana kazdy tick pred timhle) uz spravne spocitala ze VSECH
- // relevantnich PSXDisplay poli (DrawArea, DisplayPosition, Range...) -
- // presne tenhle vypocet uz drive potvrdily nase vlastni diagnostiky
- // (SK106/108) jako spravny. Zadne vlastni hadani navic - jen precist,
- // co uz appka sama spravne spocitala, a pouzit to primo.
- GLint scissorBox[4] = {0,0,0,0};
- glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
- int sx = scissorBox[0], sy = scissorBox[1], sw = scissorBox[2], sh = scissorBox[3];
- if (sw <= 0 || sh <= 0 || sw > NAP_PSX_VRAM_W || sh > NAP_PSX_VRAM_H) return; // scissor jeste neni smysluplny (napr. hned na zacatku)
- if (nap_gles_rb_buf == NULL || nap_gles_rb_w != sw || nap_gles_rb_h != sh) {
+ // BUILD2SK124: KLICOVA OPRAVA - konkretni data ze SK123 testu ukazala
+ // "scissor=[0,0,1024,512]" - scissor ZADNE UZITECNE OMEZENI NEDAVA (kryje
+ // UPLNE CELOU VRAM)! SK123 pak cetlo skoro celou VRAM, z niz jen leva
+ // cast (~320 sloupcu) obsahovala SKUTECNY obraz - zbytek byla nesouvisejici/
+ // neinicializovana pamet, presne ten "sum" na prave polovine, co Rene
+ // videl. SK122's PROJEKCE (1024x512 VRAM-scale) byla spravna a potrebna
+ // (potvrzeno RAW_VS_FINAL shodou u sedych hodnot) - chyba byla, ze jsem
+ // ZAROVEN zbytecne zkomplikoval i SAMOTNE CTENI (SK122 pres DisplayPosition,
+ // SK123 pres scissor). Reseni: vratit cteni zpet na jednoduchy, primy
+ // pristup - cist presne DisplayMode velikost OD ZACATKU (0,0), protoze
+ // DisplayPosition byla ve VSECH dosavadnich datech VZDY (0,0) - jen TEDka
+ // uz s opravenou (SK122) projekci pod tim, takze geometrie uz je spravne
+ // namapovana driv, nez se vubec cte.
+ if (nap_gles_rb_buf == NULL || nap_gles_rb_w != rb_w || nap_gles_rb_h != rb_h) {
   if (nap_gles_rb_buf != NULL) free(nap_gles_rb_buf);
-  nap_gles_rb_buf = (uint32_t *)malloc((size_t)sw * (size_t)sh * 4); // BUILD2SK123: velikost ted podle SCISSORU, ne DisplayMode
-  nap_gles_rb_w = sw;
-  nap_gles_rb_h = sh;
+  nap_gles_rb_buf = (uint32_t *)malloc((size_t)rb_w * (size_t)rb_h * 4);
+  nap_gles_rb_w = rb_w;
+  nap_gles_rb_h = rb_h;
  }
  if (nap_gles_vram_rgba == NULL) {
-  nap_gles_vram_rgba = (uint8_t *)malloc((size_t)NAP_PSX_VRAM_W * (size_t)NAP_PSX_VRAM_H * 4); // pojistka na max velikost, i kdyz uz cteme jen sw*sh
+  nap_gles_vram_rgba = (uint8_t *)malloc((size_t)NAP_PSX_VRAM_W * (size_t)NAP_PSX_VRAM_H * 4); // pojistka na max mozny pripad
  }
  if (nap_gles_rb_buf == NULL || nap_gles_vram_rgba == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
  // BUILD2SK105: primo GL_RGBA+GL_UNSIGNED_BYTE - jedina kombinace, kterou
  // GLES specifikace zarucuje pro glReadPixels na jakemkoli zarizeni.
- // BUILD2SK123: cteme UZ JEN scissorem vymezenou oblast (ne uz celou VRAM
- // jako SK122 - to bylo zbytecne drahe A pouzivalo nase vlastni, nespravne
- // vyriznuti pozice).
- glReadPixels(sx, sy, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
- // BUILD2SK123: flip v ramci UZ PRECTENE (spravne vyriznute) oblasti -
- // jednodussi nez SK122 (zadny offset do vetsi VRAM uz netreba pocitat,
- // scissor uz vyriznul presne to spravne).
+ // BUILD2SK124: cteme PRESNE DisplayMode velikost, primo od (0,0) - zadne
+ // dalsi vyriznuti/offset navic potreba (DisplayPosition uz overene vzdy
+ // (0,0) - viz SK121 data).
+ glReadPixels(0, 0, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
  {
-  for (int y = 0; y < sh; y++) {
-   const uint8_t *srcRow = nap_gles_vram_rgba + (size_t)y * sw * 4;
-   uint32_t *dstRow = nap_gles_rb_buf + (size_t)(sh - 1 - y) * sw;
-   for (int x = 0; x < sw; x++) {
+  for (int y = 0; y < rb_h; y++) {
+   const uint8_t *srcRow = nap_gles_vram_rgba + (size_t)y * rb_w * 4;
+   uint32_t *dstRow = nap_gles_rb_buf + (size_t)(rb_h - 1 - y) * rb_w; // BUILD2SK118 styl flip - posledni GL radek na prvni Android radek
+   for (int x = 0; x < rb_w; x++) {
     uint8_t r = srcRow[x * 4 + 0];
     uint8_t g = srcRow[x * 4 + 1];
     uint8_t b = srcRow[x * 4 + 2];
@@ -157,7 +154,7 @@ static void nap_gles_readback_and_push(void)
  if (nap_gles_frame_count % 30 == 1) {
   GLenum glerr = glGetError();
   unsigned long long sum = 0;
-  int n = sw * sh; // BUILD2SK123: skutecna velikost bufferu (scissor), ne DisplayMode
+  int n = rb_w * rb_h; // BUILD2SK123: skutecna velikost bufferu (scissor), ne DisplayMode
   // BUILD2SK118: soucet jasu (ne uz syrovych packed hodnot - ARGB8888 ma
   // konstantni 0xFF v alfa bajtu, ktery by jinak zkresloval soucet).
   for (int i = 0; i < n; i++) {
@@ -167,9 +164,9 @@ static void nap_gles_readback_and_push(void)
   uint32_t pTL = nap_gles_rb_buf[0];
   uint32_t pCenter = nap_gles_rb_buf[n / 2];
   uint32_t pBR = nap_gles_rb_buf[n - 1];
-  nap_diag_log("BUILD2SK123 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%08x pCenter=0x%08x pBR=0x%08x scissor=[%d,%d,%d,%d] expectedDM=%dx%d",
+  nap_diag_log("BUILD2SK124 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%08x pCenter=0x%08x pBR=0x%08x dispW=%d dispH=%d",
     (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR,
-    sx, sy, sw, sh, rb_w, rb_h);
+    rb_w, rb_h);
   // BUILD2SK113: misto dalsich cisel - SKUTECNY (i kdyz hrubý, textovy)
   // obrazek toho, co se doopravdy zachytilo. Cisla (soucet, 3 vzorky) uz
   // nestaci rozlisit "jednolita barva" od "slozity obrazek s malym
@@ -180,16 +177,16 @@ static void nap_gles_readback_and_push(void)
     nap_ascii_dump_count++;
     const char *shades = " .:-=+*#%@";
     const int cols = 48, rows = 20;
-    nap_diag_log("BUILD2SK113 GLES_ASCII_DUMP_START #%d src=%dx%d", nap_ascii_dump_count, sw, sh);
+    nap_diag_log("BUILD2SK113 GLES_ASCII_DUMP_START #%d src=%dx%d", nap_ascii_dump_count, rb_w, rb_h);
     for (int ry = 0; ry < rows; ry++) {
       char line[64];
       int lp = 0;
       for (int rx = 0; rx < cols; rx++) {
-        int px_x = (rx * sw) / cols;
-        int px_y = (ry * sh) / rows;
-        if (px_x >= sw) px_x = sw - 1;
-        if (px_y >= sh) px_y = sh - 1;
-        uint32_t px = nap_gles_rb_buf[px_y * sw + px_x]; // BUILD2SK118: ted ARGB8888
+        int px_x = (rx * rb_w) / cols;
+        int px_y = (ry * rb_h) / rows;
+        if (px_x >= rb_w) px_x = rb_w - 1;
+        if (px_y >= rb_h) px_y = rb_h - 1;
+        uint32_t px = nap_gles_rb_buf[px_y * rb_w + px_x]; // BUILD2SK118: ted ARGB8888
         int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
         int bright = (r + g + b) / 3;
         int idx = (bright * 9) / 255;
@@ -230,19 +227,18 @@ static void nap_gles_readback_and_push(void)
   nap_diag_log("BUILD2SK121 PREVPSXDISPLAY_STATE DispPos=[%d,%d] Range=[%d,%d,%d,%d]",
     PreviousPSXDisplay.DisplayPosition.x, PreviousPSXDisplay.DisplayPosition.y,
     (int)PreviousPSXDisplay.Range.x0, (int)PreviousPSXDisplay.Range.y0, (int)PreviousPSXDisplay.Range.x1, (int)PreviousPSXDisplay.Range.y1);
-  // BUILD2SK123: RAW (primo z GPU, jen precatana - jeste PRED flipem -
-  // scissor oblast) vs FINALNI (PO flipu) vzorek - TED uz porovnavaji
-  // STEJNE misto (na rozdil od SK122, kde RAW byl stred CELE VRAM a
-  // FINAL stred jen vyriznute casti - ruzna mista, matouci srovnani).
+  // BUILD2SK124: RAW (primo z GPU, jen precatana - jeste PRED flipem) vs
+  // FINALNI (PO flipu) vzorek ze STEJNEHO mista - pokud RAW vypada dobre
+  // ale FINALNI spatne, chyba je v nasem prevodu/flipu, ne v GPU kresleni.
   {
-    int rawIdx = (sh/2) * sw * 4 + (sw/2) * 4;
-    int finIdx = (sh/2) * sw;
+    int rawIdx = (rb_h/2) * rb_w * 4 + (rb_w/2) * 4;
+    int finIdx = (rb_h/2) * rb_w;
     nap_diag_log("BUILD2SK123 RAW_VS_FINAL rawRGBA=[%d,%d,%d,%d] finalARGB=0x%08x",
       (int)nap_gles_vram_rgba[rawIdx+0], (int)nap_gles_vram_rgba[rawIdx+1], (int)nap_gles_vram_rgba[rawIdx+2], (int)nap_gles_vram_rgba[rawIdx+3],
       (unsigned)nap_gles_rb_buf[finIdx]);
   }
  }
- nap_gles_push_frame(nap_gles_rb_buf, sw, sh, sw * 4); // BUILD2SK123: KRITICKE - skutecne rozmery bufferu (scissor), ne DisplayMode
+ nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 4); // BUILD2SK124: DisplayMode rozmery (jednoduchy, spravny pristup)
 }
 
 static int is_opened;
