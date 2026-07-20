@@ -1484,3 +1484,34 @@ DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK118 vysledek - je
 obraz spravne otoceny? Je plynulejsi? Zvuk lepsi/horsi/stejny? Podle
 odpovedi dalsi konkretni krok (bud dolaseni vykonu, nebo reseni aspect
 ratio, nebo obojí).
+
+================================================================================
+DODATEK - BUILD2SK119 - OPRAVA ZOOM/CROP (iResX/iResY nesynchronizovane
+s DisplayMode)
+================================================================================
+Rene poslal 4 screenshoty (SK118 test) - obraz KONECNE spravne otoceny
+(SK118 fix fungoval!), ale "3.5x moc velky", text usekunty ("CRAS
+BANDIC" misto "CRASH BANDICOOT"), Sony logo problikava pod hrou. Zvuk
+se porad seka i po odstraneni glFinish().
+
+PRICINA: iResX/iResY se nastavily JEDNOU pri startu (320x240) a uz
+nikdy neaktualizovaly - ale PSXDisplay.DisplayMode se BEZNE meni (FMV
+sekvence casto 640x480). SetOGLDisplaySettings pak pocitala z
+nesouladu (stary 320x240 predpoklad vs. realny obsah) - presne
+vysvetluje zoom/crop artefakt.
+
+OPRAVENO (SK119): nova bezpecna pomocna funkce v gpulib_if.c (bezpecny
+pristup k PSXDisplay bez rizikoveho extern struct pristupu z .cpp
+souboru) - KAZDY tick obnovi iResX/iResY/rRatioRect na SOUCASNY stav
+pred vypoctem, stejny princip jako uz funkcni scissor oprava (SK108).
+
+OTEVRENE: zvuk se porad seka - mozne vysvetleni je, ze pri vyssich
+rozlisenich (640x480 = 4x vic pixelu nez 320x240) je cele zpracovani
+primerene narocnejsi. Nevyreseno v tomhle kroku, jen pojmenovano k
+dalsimu zkoumani.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK119 vysledek - je
+obraz spravne velky? Zmizelo problikavani? Zvuk? Pokud zvuk porad
+zle, dalsi krok je pravdepodobne skalovani/optimalizace vykonu pro
+vyssi rozliseni (napr. omezit Enhanced-like chovani, nebo zjistit,
+jestli se da pixel-processing zrychlit).

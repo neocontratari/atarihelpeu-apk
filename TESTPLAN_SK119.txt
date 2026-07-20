@@ -1,0 +1,49 @@
+BUILD2SK119 - OPRAVA "OBRAZ JE 3-4X MOC VELKY, TEXT USEKNUTY"
+================================================================================
+CO SE ZJISTILO Z RENEHO SCREENSHOTU
+"CRAS BANDIC" misto "CRASH BANDICOOT" - text usekunty na okraji, obraz
+podle Reneho odhadu cca 3.5x moc velky. Podobne artefakty i u dalsich
+scen (Sony logo problikavajici pod hrou).
+
+PRICINA
+iResX/iResY (rozmery, ze kterych SetOGLDisplaySettings pocita
+projekci/zarovnani) se nastavily JEDNOU pri startu (natvrdo 320x240) a
+uz nikdy potom neaktualizovaly. Ale PSXDisplay.DisplayMode (skutecne
+rozliseni, ve kterem hra PRAVE bezi) se BEZNE meni behem hry - napriklad
+FMV (filmove) sekvence casto bezi ve vyssim rezimu jako 640x480. Kdyz
+hra prepnula na vyssi rezim, ale nase vypocty porad predpokladaly puvodni
+320x240, vyslednych "souradnice/meritko" nesedely - presne to zpusobilo
+zvetseny, useknuty obraz.
+
+CO SE ZMENILO
+Nova, bezpecna pomocna funkce (v gpulib_if.c, kde uz mame spravny
+pristup k datum o hre) KAZDY tick obnovi iResX/iResY na SOUCASNE
+PSXDisplay.DisplayMode driv, nez se cokoli pocita - presne stejny
+princip, jaky uz osvedcene funguje pro scissor (SK108).
+
+MOZNY VEDLEJSI EFEKT: "Sony logo problikavajici pod hrou" mohlo byt
+zpusobene stejnym nesouladem (BIOS logo a hra bezi v jinych rezimech) -
+mozna se timhle taky vyresi, ale nejsem si 100% jisty, uvidime z
+dalsiho testu.
+
+CO ZUSTAVA OTEVRENE
+Zvuk se porad seka i po odstraneni glFinish() (SK117). Mozne
+vysvetleni: pri vyssich rozlisenich (640x480 misto 320x240 = 4x vic
+pixelu) je cele zpracovani (cteni z GPU, prevod barev, doostreni)
+primerene narocnejsi - to by mohlo prispivat k vykonovemu tlaku. Tohle
+NENI v tomhle kroku resene, jen pojmenovane jako mozna souvislost k
+dalsimu zkoumani.
+
+RIZIKO
+Stredni - zasahuje do casti kodu, ktera primo ovlivnuje, JAK se obraz
+zarovnava/skaluje. Postaveno na stejnem, uz overenem principu jako
+funkcni scissor oprava (SK108).
+Overeno: {} sedi v obou zmenenych souborech (gpulib_if.c 103/103,
+nap_ps1_native.cpp 105/105), zadne nove nedeklarovane symboly (vlastni
+kontrolni skript).
+
+JAK OTESTOVAT
+Presne jako predtim - naboot hru v landscape. Hlavni otazky:
+1) Je obraz spravne velky (ne uz zoomovany/useknuty)?
+2) Zmizelo problikavani Sony loga?
+3) Zvuk - lepsi, stejny, nebo horsi?

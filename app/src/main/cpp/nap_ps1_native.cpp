@@ -307,6 +307,7 @@ extern "C" {
   void MakeDisplayLists(); // BUILD2SK102: viz hud.c - font/HUD display listy
   void updateFrontDisplay(void); // BUILD2SK103: viz gpulib_if.c - skutecne swapne+odesle snimek
   void SetOGLDisplaySettings(int DisplaySet); // BUILD2SK106: nastavi GL scissor/clip - viz gpuDraw.c
+  void nap_gles_sync_display_settings(void); // BUILD2SK119: viz gpulib_if.c - bezpecne obnovi iResX/iResY/rRatioRect pred volanim SetOGLDisplaySettings
   // BUILD2SK106: POZOR presne typy - BOOL je v tomhle projektu #define BOOL
   // unsigned short (NE int - to by byla skutecna chyba, cteni/zapis 4 bajtu
   // pres 2-bajtovou promennou). Overeno primo v gpuExternals.h pred pouzitim.
@@ -468,7 +469,7 @@ static void nap_worker(int gen) {
       // skutecne hodnoty. Funkce ma vlastni "zmenilo se neco?" kontrolu
       // (EqualRect porovnani), takze opakovane volani kazdy tick je levne,
       // jakmile se stav ustali - prepocita jen kdyz je to skutecne potreba.
-      if (g_gles_ready) { SetOGLDisplaySettings(1); }
+      if (g_gles_ready) { nap_gles_sync_display_settings(); } // BUILD2SK119: viz gpulib_if.c - drive primo SetOGLDisplaySettings(1), ted pres bezpecny wrapper co nejdriv obnovi iResX/iResY/rRatioRect
       // BUILD2SK108: throttled kontrola vysledku (kazdych ~90 tick = ~1.5s
       // pri 60fps) - overime v logu, jestli se scissor po prvnich par
       // snimcich (kdy uz hra poslala realne DrawArea prikazy) opravil na

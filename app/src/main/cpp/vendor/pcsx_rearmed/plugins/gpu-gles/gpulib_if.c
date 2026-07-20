@@ -30,6 +30,27 @@
 // kresleni) zustava presne tak, jak to venovil puvodce pluginu.
 extern void nap_gles_push_frame(void *pixels, int w, int h, int pitch);
 extern void nap_diag_log(const char *fmt, ...); // BUILD2SK100: viz nap_ps1_native.cpp
+
+// BUILD2SK119: iResX/iResY (a z nich odvozeny rRatioRect) se nastavily
+// JEDNOU pri startu (viz nap_gles_egl_init, natvrdo 320x240) a uz nikdy
+// potom - ale PSXDisplay.DisplayMode se BEZNE meni behem hry (napr. FMV
+// sekvence casto bezi ve vyssim rezimu jako 640x480). SetOGLDisplaySettings
+// pak pocita projekci/scissor z NESOULADU (stary pevny iResX/iResY vs.
+// aktualni realny obsah) - presne to vysvetluje "obraz je 3-4x moc velky,
+// text useknuty na okraji", co Rene popsal na screenshotech. Tahle funkce
+// se voláva KAZDY tick z nap_ps1_native.cpp (bezpecne, bez nutnosti
+// pristupovat ke strukture PSXDisplay primo odjinud - jeji presne
+// rozlozeni v pameti tam neznáme) - aktualizuje oboje na SOUCASNY stav
+// PRED tim, nez SetOGLDisplaySettings cokoli pocita.
+void nap_gles_sync_display_settings(void)
+{
+  iResX = PSXDisplay.DisplayMode.x;
+  iResY = PSXDisplay.DisplayMode.y;
+  if (iResX <= 0 || iResY <= 0) return; // jeste nenastaveno smysluplne - neresetuj na nulu
+  rRatioRect.left = 0; rRatioRect.top = 0;
+  rRatioRect.right = iResX; rRatioRect.bottom = iResY;
+  SetOGLDisplaySettings(1);
+}
 static uint32_t *nap_gles_rb_buf = NULL; // BUILD2SK118: ted ARGB8888 primo (drive uint16_t RGB565)
 static uint8_t *nap_gles_rb_rgba = NULL; // BUILD2SK105: docasny RGBA8 buffer pro bezpecny readback
 static int nap_gles_rb_w = 0, nap_gles_rb_h = 0;
