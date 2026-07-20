@@ -214,6 +214,33 @@ static void nap_gles_readback_and_push(void)
     nap_diag_log("BUILD2SK110 GLES_VIEWPORT_CHECK x=%d y=%d w=%d h=%d",
       viewport[0], viewport[1], viewport[2], viewport[3]);
   }
+  // BUILD2SK121: DIAGNOSTIKA, ZADNA ZMENA CHOVANI (na Reneho vyslovny
+  // pozadavek). SK120 ukazalo, ze VYSLEDNY scissor/viewport/rozliseni jsou
+  // spravne a konzistentni - presto obraz porad vypada spatne (zoom,
+  // problikavani). To znamena, ze pricina je NEKDE JINDE - primo v datech,
+  // ktere do scissor-vypoctu VSTUPUJI (nikdy jsem je primo nezkontroloval,
+  // jen VYSLEDEK), nebo v samotnem obsahu, co GPU vykresli, driv nez to
+  // stihnu jakkoli zpracovat. Tenhle blok vypisuje OBOJI najednou.
+  nap_diag_log("BUILD2SK121 PSXDISPLAY_STATE DrawArea=[%d,%d,%d,%d] DispPos=[%d,%d] Range=[%d,%d,%d,%d] DrawOffset=[%d,%d] Interlaced=%d Disabled=%d RGB24=%d",
+    (int)PSXDisplay.DrawArea.x0, (int)PSXDisplay.DrawArea.y0, (int)PSXDisplay.DrawArea.x1, (int)PSXDisplay.DrawArea.y1,
+    PSXDisplay.DisplayPosition.x, PSXDisplay.DisplayPosition.y,
+    (int)PSXDisplay.Range.x0, (int)PSXDisplay.Range.y0, (int)PSXDisplay.Range.x1, (int)PSXDisplay.Range.y1,
+    (int)PSXDisplay.DrawOffset.x, (int)PSXDisplay.DrawOffset.y,
+    PSXDisplay.Interlaced, PSXDisplay.Disabled, PSXDisplay.RGB24);
+  nap_diag_log("BUILD2SK121 PREVPSXDISPLAY_STATE DispPos=[%d,%d] Range=[%d,%d,%d,%d]",
+    PreviousPSXDisplay.DisplayPosition.x, PreviousPSXDisplay.DisplayPosition.y,
+    (int)PreviousPSXDisplay.Range.x0, (int)PreviousPSXDisplay.Range.y0, (int)PreviousPSXDisplay.Range.x1, (int)PreviousPSXDisplay.Range.y1);
+  // BUILD2SK121: RAW (primo z GPU, PRED nasim flip+prevodem) vs FINALNI
+  // (PO nasem zpracovani) vzorek - pokud uz RAW vypada spatne, problem je
+  // v samotnem GPU vykreslovani (mimo nas kod uplne). Pokud RAW vypada
+  // dobre ale FINALNI spatne, chyba je v nasem prevodu.
+  {
+    int rawIdx = (rb_h/2) * rb_w * 4 + (rb_w/2) * 4; // stredovy pixel, RAW RGBA8 buffer
+    int finIdx = (rb_h/2) * rb_w; // stredovy pixel, FINALNI ARGB8888 buffer (uz otoceny)
+    nap_diag_log("BUILD2SK121 RAW_VS_FINAL rawRGBA=[%d,%d,%d,%d] finalARGB=0x%08x",
+      (int)nap_gles_rb_rgba[rawIdx+0], (int)nap_gles_rb_rgba[rawIdx+1], (int)nap_gles_rb_rgba[rawIdx+2], (int)nap_gles_rb_rgba[rawIdx+3],
+      (unsigned)nap_gles_rb_buf[finIdx]);
+  }
  }
  nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 4); // BUILD2SK118: *4 pro ARGB8888 (drive *2 pro RGB565)
 }

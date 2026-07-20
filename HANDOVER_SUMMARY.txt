@@ -1544,3 +1544,39 @@ DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK120 vysledek - Rene
 byl pozadan o DELSI test (5+ min, ruzne casti hry). Pokud tohle
 STALE nestaci, zvazit vazneji strukturalni zmenu (napr. mensi vnitrni
 render rozliseni, nebo useknout dalsi zbytecne kroky v pipeline).
+
+================================================================================
+DODATEK - BUILD2SK121 - CISTA DIAGNOSTIKA (na Reneho vyslovny prikaz
+"nic nezkousej, priprav diagnostiku")
+================================================================================
+Rene (opravnene velmi nastvany) explicitne odmitl navrh na navrat k
+SK97 (hrozba ukoncenim spoluprace, ma vlastni zalohu, muze si to udelat
+sam) a explicitne zakazal dalsi "zkouseni" - pozadoval CISTOU
+diagnostiku bez zmeny chovani, aby PRISTI log dal definitivni odpoved.
+
+DULEZITE ZJISTENI ze SK120 logu: vysledne hodnoty (rozliseni, scissor,
+viewport) jsou VSECHNY spravne a konzistentni (jen JEDNA resolution-
+resync udalost za celou relaci, 320x240, zadna zmena po celou dobu).
+Takze SK119/120 oprava byla REALNA a SPRAVNA, ale NENI pricinou
+pretrvavajiciho zoomu/problikavani - honil jsem spravnou dilci chybu,
+ne hlavni.
+
+PRIDANO (SK121, VYHRADNE diagnostika): kompletni PSXDisplay/
+PreviousPSXDisplay stav (DrawArea, DisplayPosition, Range, DrawOffset,
+Interlaced, Disabled, RGB24) - VSTUPNI hodnoty pro scissor vypocet,
+driv nezname. RAW (primo z GPU) vs FINALNI (po nasem zpracovani) pixel
+vzorek - rozlisi, jestli problem vznika v GPU vykreslovani samotnem
+nebo v nasem nasledujicim zpracovani.
+
+METODOLOGICKA POZNAMKA: behem prace naivni pocitani zavorek ukazalo
+falesny poplach (parens 460 vs 464) - spravna kontrola s odstranenim
+komentaru/retezcu potvrdila VSE v poradku (392/392). Tohle je dulezite
+pamatovat pro budouci overovani - naivni pocitani muze klamat kvuli
+zavorkam v ceskych komentarich, spravny zpusob je vzdy nejdriv
+odstranit komentare/retezce.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK121 log - precist
+PSXDISPLAY_STATE a RAW_VS_FINAL radky pozorne, najit KONKRETNI
+nesrovnalost, pripravit CILENOU opravu (ne dalsi hadani). Rene explicitne
+odmita dalsi kolo "zkus a uvidime" - dalsi build MUSI byt zalozeny na
+konkretnich datech z tohohle logu.

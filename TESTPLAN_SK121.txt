@@ -1,0 +1,40 @@
+BUILD2SK121 - JEN DIAGNOSTIKA, ZADNA ZMENA CHOVANI
+================================================================================
+DULEZITE: TENHLE BUILD NEMENI VUBEC NIC NA TOM, JAK APPKA VYPADA NEBO
+SE CHOVA. Pridava jen zapisy do logu, aby bylo z PRISTIHO testu videt
+presne to, co je potreba - misto dalsiho hadani.
+
+CO SK120 UKAZALO (poctive)
+Vysledne hodnoty (rozliseni 320x240, scissor 0,0,320,240, viewport
+0,0,320,240) jsou VSECHNY spravne a konzistentni po celou dobu testu.
+Takze moje predchozi oprava (viewport/projekce) byla realna a spravna,
+ale NENI pricinou toho, co porad vidis (zoom, problikavani). Honil jsem
+spravnou dilci chybu, ne tu hlavni.
+
+CO SE PRIDALO (jen cteni, zadny novy vypocet ani zmena)
+1) Kompletni vypis PSXDisplay stavu (DrawArea, DisplayPosition, Range,
+   DrawOffset, Interlaced, Disabled, RGB24) - VSTUPNI hodnoty, ze kterych
+   se scissor pocita. Driv jsem videl jen VYSLEDEK vypoctu, ne co do nej
+   vstupuje.
+2) Stejne pro PreviousPSXDisplay (druha sada stavovych hodnot, kterou
+   scissor-vypocet take pouziva).
+3) Primy vzorek RAW pixelu (rovnou z GPU, PRED jakymkoli mym zpracovanim)
+   vedle FINALNIHO pixelu (po prevodu) - abychom poznali, jestli se
+   problem deje UZ v samotnem GPU vykresleni (mimo muj kod), nebo az v
+   mem zpracovani po nem.
+
+Vsechno tohle se zapisuje kazdych 30 snimku, do stejneho logu jako
+vzdy - zadny novy soubor, zadny novy postup na tvoji strane.
+
+RIZIKO
+Zadne - cisty pridavek diagnostiky, zadna zmena vypoctu ani kresleni.
+Overeno POCTIVE (ne jen naivni pocitani zavorek, ktere davalo falesny
+poplach kvuli zavorkam v ceskych komentarich) - se spravnym odstranenim
+komentaru/retezcu pred kontrolou: {} 105/105, () 392/392 - obojí
+presne sedi.
+
+JAK OTESTOVAT
+Presne jako predtim - naboot hru, projdi ruzne casti (intro, menu,
+gameplay). Posli mi cely log. Ja z nej precti presne, kde se realita
+rozchazi od ocekavani, a pripravim CILENOU opravu pro pristi kolo -
+zadne dalsi hadani.
