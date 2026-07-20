@@ -1377,3 +1377,28 @@ DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK114 vysledek - tohle
 by MOHLO konecne prinest skutecny obraz. Pokud ano, hlavni cast prace
 hotova (zbyva uz jen ladeni kvality/vykonu). Pokud ne, PS1_PIXFMT_CHECK
 v logu rekne, jaky format se driv opravdu pouzival - dalsi stopa.
+
+================================================================================
+DODATEK - BUILD2SK115 - DRUHY BUILD FAIL (NAPDIAG pred deklaraci) -
+STRUKTURALNI OPRAVA
+================================================================================
+SK114 build selhal: "error: use of undeclared identifier 'NAPDIAG'" na
+radku, kde jsem pridal PS1_PIXFMT_CHECK diagnostiku (radek 197) - makro
+NAPDIAG bylo definovano az na radku 307, tedy POZDEJI v souboru. Stejna
+trida chyby jako minuly TRUE/FALSE fail (pouziti pred deklaraci), tentokrat
+u makra misto promenne.
+
+OPRAVA (SK115) - TENTOKRAT STRUKTURALNI, ne jen zalatani jednoho radku:
+cela diagnosticka infrastruktura (g_diag_log_mutex, g_diag_log_path,
+nap_diag_log funkce, jeji JNI setter, NAPDIAG makro) presunuta HNED ZA
+NAPLOG na uplny zacatek souboru - takze od tohoto bodu DAL v CELEM
+souboru je vse dostupne, bez ohledu na to, kde presne se pouzije.
+
+DALSI KROK: napsan vlastni Python kontrolni skript, ktery projde VSECH
+48 vlastnich symbolu v souboru a overi, ze se nikde v KODU (ne komentarich)
+nepouzivaji pred svou definici - vysledek: cisto. Tohle bude uzitecne
+pouzit znovu pri jakekoli budouci uprave tohoto souboru.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK115 vysledek - tohle by
+KONECNE melo prejit buildem A prinest funkcni pixel format opravu ze
+SK114.

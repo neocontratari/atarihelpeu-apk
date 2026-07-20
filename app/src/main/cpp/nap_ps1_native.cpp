@@ -21,6 +21,47 @@
 #include <GLES/gl.h>   // GLES1 - presne to, co gpu-gles pouziva (fixed-function pipeline)
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, "NAP_PS1", __VA_ARGS__)
 
+// BUILD2SK115: presunuto sem (drive bylo hluboko v souboru, radek 274+) -
+// DRUHY vyskyt stejne tridy chyby (pouziti pred deklaraci - poprve
+// g_gles_ready, ted NAPDIAG makro) presvedcil, ze spravna oprava neni
+// zalatat jeden konkretni radek, ale presunout CELOU tuhle infrastrukturu
+// na zacatek souboru - takze uz ODSUD DAL v celem souboru je NAPDIAG/
+// nap_diag_log vzdy k dispozici, bez ohledu na to, kde presne v souboru se
+// pouzije.
+static std::mutex g_diag_log_mutex;
+static std::string g_diag_log_path;
+
+// BUILD2SK99: primy, OKAMZITY zapis na disk - zadna fronta, zadne bufferovani.
+// Kazde volani otevre soubor, zapise radek, hned zavre (fclose implicitne
+// flushuje) - i kdyby appka spadla o zlomek vteriny pozdeji, tenhle radek uz
+// je na disku. Pise do STEJNEHO souboru jako Java appendNativeLog (cesta
+// dorazi pres ps1SetDiagLogPath, volano z onCreate) - Rene ho tak uvidi v
+// tom samem /log, na ktery je zvykly, zadny novy soubor/mechanismus pro nej.
+extern "C" void nap_diag_log(const char *fmt, ...) {
+  std::string path;
+  { std::lock_guard<std::mutex> lock(g_diag_log_mutex); path = g_diag_log_path; }
+  if (path.empty()) { return; } // cesta jeste nedorazila z Javy - nic bezpecneho k zapisu
+  char msg[512];
+  va_list ap; va_start(ap, fmt); vsnprintf(msg, sizeof(msg), fmt, ap); va_end(ap);
+  FILE *f = fopen(path.c_str(), "a");
+  if (!f) return;
+  fprintf(f, "%s\n", msg);
+  fclose(f); // BUILD2SK99: fclose flushuje - zadny extra fflush/fsync potreba
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetDiagLogPath(JNIEnv *env, jclass, jstring jpath) {
+  const char *p = env->GetStringUTFChars(jpath, nullptr);
+  {
+    std::lock_guard<std::mutex> lock(g_diag_log_mutex);
+    g_diag_log_path = p ? p : "";
+  }
+  env->ReleaseStringUTFChars(jpath, p);
+}
+// BUILD2SK99: obojí najednou - logcat (kdyby nekdy byl adb pristup) i durable
+// soubor (co Rene skutecne vidi).
+#define NAPDIAG(...) do { NAPLOG(__VA_ARGS__); nap_diag_log(__VA_ARGS__); } while(0)
+
 extern "C" {
   // minimalni libretro API (shodne s libretro.h ABI)
   struct retro_system_info { const char *library_name, *library_version, *valid_extensions; unsigned char need_fullpath, block_extract; };
@@ -270,41 +311,6 @@ extern "C" {
   extern unsigned short bSetClip; // BUILD2SK106
   extern unsigned int CSTEXTURE, CSVERTEX, CSCOLOR; // BUILD2SK106
 }
-
-static std::mutex g_diag_log_mutex;
-static std::string g_diag_log_path;
-
-// BUILD2SK99: primy, OKAMZITY zapis na disk - zadna fronta, zadne bufferovani.
-// Kazde volani otevre soubor, zapise radek, hned zavre (fclose implicitne
-// flushuje) - i kdyby appka spadla o zlomek vteriny pozdeji, tenhle radek uz
-// je na disku. Pise do STEJNEHO souboru jako Java appendNativeLog (cesta
-// dorazi pres ps1SetDiagLogPath, volano z onCreate) - Rene ho tak uvidi v
-// tom samem /log, na ktery je zvykly, zadny novy soubor/mechanismus pro nej.
-extern "C" void nap_diag_log(const char *fmt, ...) {
-  std::string path;
-  { std::lock_guard<std::mutex> lock(g_diag_log_mutex); path = g_diag_log_path; }
-  if (path.empty()) { return; } // cesta jeste nedorazila z Javy - nic bezpecneho k zapisu
-  char msg[512];
-  va_list ap; va_start(ap, fmt); vsnprintf(msg, sizeof(msg), fmt, ap); va_end(ap);
-  FILE *f = fopen(path.c_str(), "a");
-  if (!f) return;
-  fprintf(f, "%s\n", msg);
-  fclose(f); // BUILD2SK99: fclose flushuje - zadny extra fflush/fsync potreba
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetDiagLogPath(JNIEnv *env, jclass, jstring jpath) {
-  const char *p = env->GetStringUTFChars(jpath, nullptr);
-  {
-    std::lock_guard<std::mutex> lock(g_diag_log_mutex);
-    g_diag_log_path = p ? p : "";
-  }
-  env->ReleaseStringUTFChars(jpath, p);
-}
-// BUILD2SK99: obojí najednou - logcat (kdyby nekdy byl adb pristup) i durable
-// soubor (co Rene skutecne vidi). Jen pro GLES diagnostiku, proto lokalni
-// makro tady a ne nahore v souboru (tam by nap_diag_log jeste nebyla znama).
-#define NAPDIAG(...) do { NAPLOG(__VA_ARGS__); nap_diag_log(__VA_ARGS__); } while(0)
 
 
 // BUILD2SK98: cistě offscreen (pbuffer) EGL kontext - ZADNY Android Surface/
