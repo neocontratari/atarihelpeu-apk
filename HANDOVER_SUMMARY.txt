@@ -1515,3 +1515,32 @@ obraz spravne velky? Zmizelo problikavani? Zvuk? Pokud zvuk porad
 zle, dalsi krok je pravdepodobne skalovani/optimalizace vykonu pro
 vyssi rozliseni (napr. omezit Enhanced-like chovani, nebo zjistit,
 jestli se da pixel-processing zrychlit).
+
+================================================================================
+DODATEK - BUILD2SK120 - KOMPLETNI OPRAVA (na Reneho vyslovnou zadost
+precist CELOU funkci, ne po castech)
+================================================================================
+Rene (opravnene velmi nastvany z opakovaneho testovani drobnych zaplat)
+pozadal, at PRESTANU testovat "porad dokola" a poradne to opravim.
+Reagoval jsem tak, ze jsem precetl CELOU SetOGLDisplaySettings funkci
+(130+ radku) najednou, misto dalsiho useku po useku.
+
+SKUTECNA, KOMPLETNI PRICINA nalezena: SetOGLDisplaySettings vola
+VYHRADNE glScissor() - NIKDY glViewport() ani glOrtho() (promitaci
+matice). Tyhle DVE se nastavuji JEDNOU v GLinitialize (natvrdo 320x240
+pri startu) a NIKDE JINDE v celem projektu znovu. SK119 opravilo jen
+polovinu (scissor) - viewport/projekce zustavaly zamrzle, coz vysvetluje
+VSECHNY artefakty najednou (zoom, oriznuti, barevne prekryvani/
+"cervena rozmazanina").
+
+OPRAVENO (SK120): nap_gles_sync_display_settings ted TAKE re-aplikuje
+viewport+projekci (presna kopie GLinitialize kodu) pri kazde SKUTECNE
+zmene rozliseni. Navic: doostrovaci filtr (SK97) se preskakuje pro
+snimky vetsi nez 320x240 (jeho cena roste s poctem pixelu, 640x480 = 4x
+vic prace) - konkretni, vycislitelny krok proti sekajícimu zvuku,
+misto dalsiho "zkus a uvidime".
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK120 vysledek - Rene
+byl pozadan o DELSI test (5+ min, ruzne casti hry). Pokud tohle
+STALE nestaci, zvazit vazneji strukturalni zmenu (napr. mensi vnitrni
+render rozliseni, nebo useknout dalsi zbytecne kroky v pipeline).

@@ -4522,6 +4522,16 @@ public class MainActivity extends Activity {
                 if (sharpenBuf == null || sharpenBuf.length < srcW * srcH) {
                     sharpenBuf = new int[srcW * srcH];
                 }
+                // BUILD2SK120: doostreni ma cenu, ktera roste s poctem pixelu (5 cteni +
+                // pocty NA KAZDY pixel) - navrzeno a odladeno v dobe, kdy snimek byl
+                // spolehlive 320x240. Rozliseni ted genuinne kolisa (FMV sekvence bezne
+                // 640x480 = 4x vic pixelu) - na vetsich snimcich tenhle vypocet zabira
+                // primerene vic casu, coz muze prispivat k vykonovemu tlaku (Rene
+                // opakovane hlasi sekajici zvuk). Nad urcitou velikosti proste
+                // preskocime na rychle hromadne zkopirovani (uz s vynucenou alfou) -
+                // zbytek cesty nize (bitmapa, SK116 diagnostika) zustava nezmeneny.
+                final int SHARPEN_MAX_PIXELS = 320 * 240 + 1000; // s malou rezervou
+                if (srcW * srcH <= SHARPEN_MAX_PIXELS) {
                 for (int y = 0; y < srcH; y++) {
                     int rowBase = y * srcW;
                     int upBase = (y > 0 ? y - 1 : y) * srcW;
@@ -4546,6 +4556,9 @@ public class MainActivity extends Activity {
                         if (sb < 0) sb = 0; else if (sb > 255) sb = 255;
                         sharpenBuf[rowBase + x] = 0xFF000000 | (sr << 16) | (sg << 8) | sb;
                     }
+                }
+                } else {
+                    System.arraycopy(argb, 0, sharpenBuf, 0, srcW * srcH); // BUILD2SK120: velky snimek - preskoc doostreni, jen rychle zkopiruj
                 }
                 if (bitmap == null || curSrcW != srcW || curSrcH != srcH) {
                     // BUILD2SK95: OPRAVENA CHYBA - tenhle recycle() tu chybel od SK87.

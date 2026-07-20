@@ -34,23 +34,47 @@ extern void nap_diag_log(const char *fmt, ...); // BUILD2SK100: viz nap_ps1_nati
 // BUILD2SK119: iResX/iResY (a z nich odvozeny rRatioRect) se nastavily
 // JEDNOU pri startu (viz nap_gles_egl_init, natvrdo 320x240) a uz nikdy
 // potom - ale PSXDisplay.DisplayMode se BEZNE meni behem hry (napr. FMV
-// sekvence casto bezi ve vyssim rezimu jako 640x480). SetOGLDisplaySettings
-// pak pocita projekci/scissor z NESOULADU (stary pevny iResX/iResY vs.
-// aktualni realny obsah) - presne to vysvetluje "obraz je 3-4x moc velky,
-// text useknuty na okraji", co Rene popsal na screenshotech. Tahle funkce
-// se voláva KAZDY tick z nap_ps1_native.cpp (bezpecne, bez nutnosti
-// pristupovat ke strukture PSXDisplay primo odjinud - jeji presne
-// rozlozeni v pameti tam neznáme) - aktualizuje oboje na SOUCASNY stav
-// PRED tim, nez SetOGLDisplaySettings cokoli pocita.
+// sekvence casto bezi ve vyssim rezimu jako 640x480).
+// BUILD2SK120: SK119 NESTACILO - opravilo jen vstup do SetOGLDisplaySettings,
+// ale ta funkce (precteno CELA, radek po radku, na Reneho vyslovnou zadost
+// "prestan testovat porad dokola, poradne to oprav") vola VYHRADNE
+// glScissor(). NIKDY se v ni ani nikde jinde v celem gpu-gles nevola
+// glViewport() ani glOrtho() (promitaci matice) - obe se nastavuji JEDNOU,
+// uvnitr GLinitialize, natvrdo podle tehdejsiho PSXDisplay.DisplayMode
+// (320x240 pri nasem startu) a uz NIKDY POTOM. Presne tohle vysvetluje
+// VSECHNY pozorovane artefakty najednou: kdyz hra zustala na 320x240,
+// vypadalo to spravne (viewport/projekce sedely) - jakmile prepnula na
+// jine rozliseni (bezne u FMV), viewport/projekce zustaly stare, scissor
+// (diky SK119) uz spravny - vysledek: geometrie se mapuje pres SPATNOU
+// projekci do SPRAVNE OREZANE oblasti = zoom, oriznuti, prekryvajici se
+// artefakty ("cervena rozmazanina" pod NAUGHTY logem).
+// Tahle verze replikuje PRESNE to, co GLinitialize dela pro viewport a
+// projekci, ale znovupustitelne - spusti se JEN kdyz se rozliseni SKUTECNE
+// zmenilo (ne kazdy jednotlivy snimek zbytecne).
 void nap_gles_sync_display_settings(void)
 {
-  iResX = PSXDisplay.DisplayMode.x;
-  iResY = PSXDisplay.DisplayMode.y;
-  if (iResX <= 0 || iResY <= 0) return; // jeste nenastaveno smysluplne - neresetuj na nulu
+  static int lastResX = -1, lastResY = -1;
+  int curX = PSXDisplay.DisplayMode.x;
+  int curY = PSXDisplay.DisplayMode.y;
+  if (curX <= 0 || curY <= 0) return; // jeste nenastaveno smysluplne
+  iResX = curX;
+  iResY = curY;
   rRatioRect.left = 0; rRatioRect.top = 0;
   rRatioRect.right = iResX; rRatioRect.bottom = iResY;
+  if (curX != lastResX || curY != lastResY) {
+    // BUILD2SK120: presna kopie viewport+projekce casti z GLinitialize,
+    // jen s AKTUALNIMI hodnotami misto tech z doby startu appky.
+    glViewport(rRatioRect.left, iResY - (rRatioRect.top + rRatioRect.bottom), rRatioRect.right, rRatioRect.bottom);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, PSXDisplay.DisplayMode.x, PSXDisplay.DisplayMode.y, 0, -1, 1);
+    nap_diag_log("BUILD2SK120 GLES_RESOLUTION_RESYNC oldX=%d oldY=%d newX=%d newY=%d", lastResX, lastResY, curX, curY);
+    lastResX = curX;
+    lastResY = curY;
+  }
   SetOGLDisplaySettings(1);
 }
+
 static uint32_t *nap_gles_rb_buf = NULL; // BUILD2SK118: ted ARGB8888 primo (drive uint16_t RGB565)
 static uint8_t *nap_gles_rb_rgba = NULL; // BUILD2SK105: docasny RGBA8 buffer pro bezpecny readback
 static int nap_gles_rb_w = 0, nap_gles_rb_h = 0;

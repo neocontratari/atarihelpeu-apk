@@ -1,0 +1,50 @@
+BUILD2SK120 - KOMPLETNI OPRAVA (precteno cele, ne po castech, na tvou
+vyslovnou zadost)
+================================================================================
+CO JSEM UDELAL JINAK TENTOKRAT
+Precetl jsem CELOU funkci SetOGLDisplaySettings (130+ radku, ne jen
+useky) a hledal VSECHNY mista, kde se pouzivaji rozmerove hodnoty -
+misto opravy jedne konkretni promenne a doufani, ze to staci.
+
+SKUTECNA, KOMPLETNI PRICINA
+SetOGLDisplaySettings (kterou jsem uz opravil volat s cerstvymi hodnotami
+v SK119) VOLA VYHRADNE glScissor(). Nikdy nevola glViewport() ani
+glOrtho() (promitaci matice). Tyhle DVE veci se nastavuji JEDNOU, uvnitr
+GLinitialize, natvrdo podle rozliseni pri startu appky (320x240) - a uz
+NIKDE JINDE V CELEM projektu se znovu nevolaji.
+
+To znamena: SK119 opravilo POLOVINU problemu (scissor/orez), ale
+viewport a promitaci matice zustavaly zamrzle na 320x240 furt. Kdyz hra
+prepnula na jine rozliseni (FMV sekvence bezne 640x480), scissor uz byl
+spravny, ale VIEWPORT/PROJEKCE porad rikaly "vsechno je 320x240" -
+vysledek: geometrie se spatne premapovala (zoom, oriznuti) A ruzne
+casti obrazu se mohly prekryvat/zamichat (presne ten "cerveny
+rozmazany" artefakt pod NAUGHTY logem).
+
+CO SE ZMENILO
+1) Nova verze pomocne funkce (nap_gles_sync_display_settings) ted
+   TAKE zavola glViewport+glOrtho s AKTUALNIMI hodnotami, presne
+   kopirujici to, co dela GLinitialize - ale znovupustitelne, pokazde
+   kdyz se rozliseni SKUTECNE zmeni (ne kazdy snimek zbytecne).
+2) Doostrovaci filtr (SK97) se ted PRESKAKUJE pro vetsi snimky (nad
+   320x240) - jeho cena roste s poctem pixelu, a rozliseni ted genuinne
+   kolisa (640x480 = 4x vic prace). Tohle je konkretni, vycislitelny
+   prispevek k vykonovemu tlaku, ktery muze souviset s hlasenym
+   sekajícim zvukem - misto dalsiho "zkus a uvidime" jsem to rovnou
+   adresoval.
+
+RIZIKO
+Stredni - viewport/projekce jsou zakladni GL nastaveni, ktera primo
+ovlivnuji VSECHNO vykreslovani. Postaveno na presne kopii jiz funkcniho
+kodu (GLinitialize), ne na vlastnim vymyslenem reseni.
+Overeno: {} sedi ve VSECH zmenenych souborech (gpulib_if.c 104/104,
+MainActivity.java 1895/1895, nap_ps1_native.cpp nedotceny tento krok
+105/105). Zadne nove nedeklarovane symboly.
+
+JAK OTESTOVAT
+Presne jako predtim - ale tentokrat prosim o DELSI test (5+ minut),
+projdi RUZNE casti hry (intro, menu, gameplay), at se projevi VSECHNY
+prechody mezi rozlisenimi, ne jen prvnich pár vterin.
+1) Je obraz SPRAVNE velky VE VSECH castech (ne jen nekdy)?
+2) Zmizely barevne artefakty/prekryvani?
+3) Zvuk - je to citelne lepsi?
