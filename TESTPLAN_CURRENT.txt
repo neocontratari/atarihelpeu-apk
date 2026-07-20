@@ -1,0 +1,34 @@
+BUILD2SK126 - ODFILTROVANI "PRACOVNI" POLOVINY VRAM (hlubsi zasah, na
+Reneho vyslovne svoleni)
+================================================================================
+CO SE NASLO
+V prikazu, ktery nastavuje DisplayPosition, je logika: "pokud hra zada
+o STEJNOU pozici, jakou uz ma, nic se nezmeni". DisplayPosition zustava
+(0,0) po celou dobu proto, ze hra o JINOU pozici proste NIKDY nezada -
+jeji dvojity buffering resi vyhradne pres DrawArea/DrawOffset, ne pres
+DisplayPosition. Z toho plyne: (0,0) je pravdepodobne SKUTECNA, myslena
+zobrazovaci oblast - polovina na x=512 je nejspis jen pracovni plocha,
+kterou bysme vubec nemeli ukazovat.
+
+CO SE ZMENILO
+Misto risika ukazat spatnou (pracovni) polovinu appka ted PRESKOCI
+odeslani snimku, kdyz hra prave pracuje v x=512 polovine VRAM - pošle
+dal jen snimky z x=0 poloviny (ta, kterou DisplayPosition oznacuje jako
+"tohle se ma zobrazit"). Java strana v mezicase jednoduse ukazuje
+posledni takovy spravny snimek.
+
+CO OD TOHOTO OCEKAVAT
+- Pokud je moje analyza spravna: obraz by mel byt STABILNEJSI (mene
+  blikani/sumu), i kdyz mozna s mirne nizsi snimkovou frekvenci (nez
+  kazdy tick ma platny obsah).
+- Pokud analyza NENI spravna (napr. hra genuinne POTREBUJE zobrazovat
+  obsah z obou polovin postupne): obraz by mohl byt castecne useknuty
+  nebo zamrzly na castech sceny.
+
+RIZIKO
+Stredni-vysoke - jde o heuristiku (ne jistotu) zalozenou na pozorovanem
+chovani teto konkretni hry, ne na univerzalne overenem PS1 standardu.
+Overeno: {} 108/108, () 404/404 (spravnou metodou).
+
+JAK OTESTOVAT
+Presne jako predtim - naboot hru, delsi test (5+ min), ruzne casti hry.

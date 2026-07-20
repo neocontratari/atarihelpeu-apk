@@ -127,13 +127,54 @@ static void nap_gles_readback_and_push(void)
  if (nap_gles_vram_rgba == NULL) {
   nap_gles_vram_rgba = (uint8_t *)malloc((size_t)NAP_PSX_VRAM_W * (size_t)NAP_PSX_VRAM_H * 4); // pojistka na max mozny pripad
  }
+ // BUILD2SK126: DULEZITY NALEZ - v GP1(0x05) prikazu (nastavuje
+ // DisplayPosition) je logika, ktera se TICHO VRATI (nic nezmeni), pokud
+ // hra zada o STEJNOU pozici, jakou uz ma. DisplayPosition zustava (0,0)
+ // po celou dobu proto, ze hra o jinou pozici proste NIKDY nezada - jeji
+ // dvojity buffering resi VYHRADNE pres DrawArea/DrawOffset, ne pres
+ // DisplayPosition. To znamena: (0,0) je pravdepodobne SKUTECNA, myslena
+ // zobrazovaci oblast - polovina na x=512 je nejspis JEN pracovni/
+ // pripravna plocha, kterou bysme vubec nemeli posilat na obrazovku.
+ // Misto risika ukazat spatnou polovinu (blikani/sum) proste PRESKOCIME
+ // odeslani snimku, kdyz hra prave pracuje v x=512 polovine - Java strana
+ // pak jednoduse dal ukazuje posledni sebejisty spravny snimek.
+ if ((int)PSXDisplay.DrawArea.x0 != 0) {
+  if (nap_gles_frame_count % 30 == 1) {
+   nap_diag_log("BUILD2SK126 GLES_SKIP_OFFSCREEN_HALF drawX0=%d", (int)PSXDisplay.DrawArea.x0);
+  }
+  return;
+ }
  if (nap_gles_rb_buf == NULL || nap_gles_vram_rgba == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
  // BUILD2SK105: primo GL_RGBA+GL_UNSIGNED_BYTE - jedina kombinace, kterou
  // GLES specifikace zarucuje pro glReadPixels na jakemkoli zarizeni.
- // BUILD2SK124: cteme PRESNE DisplayMode velikost, primo od (0,0) - zadne
- // dalsi vyriznuti/offset navic potreba (DisplayPosition uz overene vzdy
- // (0,0) - viz SK121 data).
- glReadPixels(0, 0, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
+ // BUILD2SK125: SK124 cetlo VZDY od pevneho (0,0) - ale konkretni data ze
+ // skutecne HRATELNE casti (ne uvodni obrazovky) ukazala DrawArea BEZNE na
+ // y0=12 (ne 0) a stridajici se x0 mezi 0 a 512 (PS1 dvojity buffering) -
+ // nase pevne (0,0) cteni tam proste nikdy nedosahlo, presto ze uvodni
+ // obrazovky (jednodussi DrawArea blizko puvodu) vypadaly spravne. Oprava:
+ // cist primo z AKTUALNI pozice, kterou hra PRAVE hlasi (DrawArea.x0/y0),
+ // misto pevneho predpokladu.
+ {
+  int drawX0 = (int)PSXDisplay.DrawArea.x0;
+  int drawY0 = (int)PSXDisplay.DrawArea.y0;
+  if (drawX0 < 0) drawX0 = 0;
+  if (drawY0 < 0) drawY0 = 0;
+  if (drawX0 + rb_w > NAP_PSX_VRAM_W) drawX0 = NAP_PSX_VRAM_W - rb_w;
+  if (drawX0 < 0) drawX0 = 0;
+  // BUILD2SK125: Y-souradnice pro glReadPixels potrebuje prevod - PS1 Y=0
+  // je "nahore", ale glReadPixels bere Y=0 jako "dole" (stejny flip-princip
+  // jako uz drive u glOrtho). PS1 radek Y odpovida GL radku (VRAM_H-1-Y) -
+  // takze SPODEK cteneho useku (glReadPixels bere y jako DOLNI okraj) je
+  // (VRAM_H - (drawY0 + rb_h)).
+  int glY = NAP_PSX_VRAM_H - (drawY0 + rb_h);
+  if (glY < 0) glY = 0;
+  if (glY + rb_h > NAP_PSX_VRAM_H) glY = NAP_PSX_VRAM_H - rb_h;
+  if (glY < 0) glY = 0;
+  glReadPixels(drawX0, glY, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
+  if (nap_gles_frame_count % 30 == 1) {
+   nap_diag_log("BUILD2SK125 GLES_READ_ANCHOR drawX0=%d drawY0=%d glX=%d glY=%d rb_w=%d rb_h=%d", drawX0, drawY0, drawX0, glY, rb_w, rb_h);
+  }
+ }
  {
   for (int y = 0; y < rb_h; y++) {
    const uint8_t *srcRow = nap_gles_vram_rgba + (size_t)y * rb_w * 4;

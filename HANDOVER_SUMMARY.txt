@@ -1663,3 +1663,47 @@ predchozim testu - tohle by melo opravit i pravou polovinu.
 DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK124 vysledek - klicova
 otazka je, jestli je TEDka CELA obrazovka spravne (ne uz jen leva
 polovina).
+
+================================================================================
+DODATEK - BUILD2SK125 - CTENI Z AKTUALNI HERNI POZICE (DrawArea.x0/y0)
+================================================================================
+SK124 test: sumAvg=61 IDENTICKY pres tisice snimku (n=7201+) - trvaly
+cerny vystup BEHEM SKUTECNE HRY (uvodni obrazovky vypadaly spravne).
+PSXDISPLAY_STATE zaroven ukazal skutecnou hru kreslici do DrawArea s
+y0=12 (ne 0) a stridajicim se x0 mezi 0/512 (PS1 dvojity buffering) -
+nase pevne (0,0) cteni tam nikdy nedosahlo.
+
+OPRAVENO (SK125): cteme primo z AKTUALNI pozice hlasene hrou
+(DrawArea.x0/y0, s prevodem pro GL Y-osu) - misto pevneho (0,0)
+predpokladu. Throttled diagnostika (GLES_READ_ANCHOR) uvidime primo
+pouzitou pozici.
+
+DULEZITA ZMENA V PROCESU: od tohoto buildu se pripojuje JEN JEDEN
+aktualni testplan (TESTPLAN_CURRENT.txt), ne cely archiv vsech
+predchozich - Rene explicitne pozadal o zastaveni hromadeni souboru.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK125 vysledek - klicova
+otazka je, jestli uz VIDET SKUTECNOU HRU (ne jen uvodni obrazovky).
+
+================================================================================
+DODATEK - BUILD2SK126 - ODFILTROVANI PRACOVNI POLOVINY (hlubsi zasah,
+na Reneho vyslovne svoleni "klidne zasahni tvrdeji")
+================================================================================
+Nalezeno v GP1(0x05) handleru: "pokud hra zada o STEJNOU DisplayPosition,
+jakou uz ma, nic se nemeni" - vysvetluje, proc DisplayPosition zustava
+(0,0) po celou dobu (hra o jinou pozici proste nikdy nezada, dvojity
+buffering resi jinak - pres DrawArea/DrawOffset).
+
+OPRAVENO (SK126): appka ted PRESKAKUJE odeslani snimku, kdyz hra pracuje
+v x=512 polovine VRAM (pravdepodobne jen pracovni plocha) - posila jen
+snimky z x=0 poloviny (ktera odpovida DisplayPosition=(0,0)).
+
+DULEZITY KONTEXT: Rene byl velmi kriticky k opakovanemu "hazeni stejnych
+kodu" a pozadoval presny, faktovy popis zmen pred kazdym buildem (ne
+dohady) - a explicitne povolil hlubsi zasahy do kodu. Slibil jsem si
+vest presnou tabulku historie pred kazdym dalsim buildem.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK126 vysledek. PRED
+odpovedi Renemu, VZDY nejdriv zkontrolovat fakticky, co presne kod
+DELA (ne co si pamatuji ze jsem zamyslel) - viz Reneho pozadavek na
+presnost.
