@@ -99,6 +99,36 @@ static void nap_gles_readback_and_push(void)
   uint16_t pBR = nap_gles_rb_buf[n - 1];
   nap_diag_log("BUILD2SK105 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%04x pCenter=0x%04x pBR=0x%04x",
     (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR);
+  // BUILD2SK113: misto dalsich cisel - SKUTECNY (i kdyz hrubý, textovy)
+  // obrazek toho, co se doopravdy zachytilo. Cisla (soucet, 3 vzorky) uz
+  // nestaci rozlisit "jednolita barva" od "slozity obrazek s malym
+  // kontrastem" - tohle to ukaze primo. Omezeno na malo opakovani CELKEM
+  // (ne kazdych 30 snimku porad dokola), aby se log nezaplavil.
+  static int nap_ascii_dump_count = 0;
+  if (nap_ascii_dump_count < 8) {
+    nap_ascii_dump_count++;
+    const char *shades = " .:-=+*#%@";
+    const int cols = 48, rows = 20;
+    nap_diag_log("BUILD2SK113 GLES_ASCII_DUMP_START #%d src=%dx%d", nap_ascii_dump_count, rb_w, rb_h);
+    for (int ry = 0; ry < rows; ry++) {
+      char line[64];
+      int lp = 0;
+      for (int rx = 0; rx < cols; rx++) {
+        int sx = (rx * rb_w) / cols;
+        int sy = (ry * rb_h) / rows;
+        if (sx >= rb_w) sx = rb_w - 1;
+        if (sy >= rb_h) sy = rb_h - 1;
+        uint16_t px = nap_gles_rb_buf[sy * rb_w + sx];
+        int r5 = (px >> 11) & 0x1F, g6 = (px >> 5) & 0x3F, b5 = px & 0x1F;
+        int bright = (r5 * 8 + g6 * 4 + b5 * 8) / 3; // hruby jas 0..~255
+        int idx = (bright * 9) / 255;
+        if (idx < 0) idx = 0; if (idx > 9) idx = 9;
+        line[lp++] = shades[idx];
+      }
+      line[lp] = '\0';
+      nap_diag_log("BUILD2SK113 |%s|", line);
+    }
+  }
   // BUILD2SK109: gpuPrim.c ma makro DEFOPAQUEON - glAlphaFunc(GL_EQUAL,0.0f) -
   // "opaque" kresleni PROJDE jen kdyz je alfa PRESNE 0.0 (bezny PS1 zpusob
   // znaceni pruhlednosti masky). Pokud nahravani textur nenastavuje presne

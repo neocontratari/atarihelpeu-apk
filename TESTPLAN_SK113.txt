@@ -1,0 +1,28 @@
+BUILD2SK113 - TEXTOVY "OBRAZEK" PRIMO V LOGU (misto dalsich cisel)
+================================================================================
+CO SK112 UKAZAL
+Uplne stejny vzorec jako predtim (postupne rozjasnujici se jednolita
+barva pri bootu - vypada jako "fade in" efekt - pak zpet na cernou).
+glFinish() nic nezmenil. Docházejí mi rozumne hypotezy overitelne jen
+pres cisla/statistiky.
+
+CO SE ZMENILO
+Misto dalsich souhrnnych cisel (soucet, 3 vzorky) ted appka vypise
+HRUBY TEXTOVY OBRAZEK toho, co se skutecne zachytilo - kazdy snimek
+rozdeleny na malou mrizku (48x20 policek), kazde policko prevedeno na
+znak podle jasu (mezera=cerna, @ =nejjasnejsi). Tohle uvidim primo v
+logu a budu moct POROVNAT se skutecnym obsahem hry - jestli je tam
+nejaky tvar (postava, UI, cokoli), nebo je to opravdu jen jednolita
+plocha.
+
+Omezeno na 8 vypisu CELKEM za relaci (ne porad dokola), aby log zustal
+citelny.
+
+RIZIKO
+Minimalni - jen cteni jiz existujicich dat, zadna zmena chovani.
+Overeno: {} v gpulib_if.c sedi (100/100).
+
+JAK OTESTOVAT
+Presne jako predtim - naboot hru, chvili nech bezet, posli /log. V logu
+hledej "GLES_ASCII_DUMP_START" - pod nim uvidis 20 radku s "obrazkem".
+Poslu si to precist sam - nemusis nic rozlusovat, jen posli cely log.

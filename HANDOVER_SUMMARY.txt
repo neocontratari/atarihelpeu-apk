@@ -1330,3 +1330,22 @@ STALE nic: zvazit vazne, jestli offscreen pbuffer pristup ma na tomto
 zarizeni nejaky fundamentalni limit, a jestli prejit na skutecny Android
 Surface (vetsi zmena, ale primo cilena na tohle podezreni) je dalsi
 logicky krok.
+
+================================================================================
+DODATEK - BUILD2SK113 - TEXTOVY OBRAZEK MISTO DALSICH CISEL
+================================================================================
+SK112 (glFinish): zadna zmena, presne stejny vzorec (fade-in efekt,
+uniformni po cele plose, pak zpet na cernou). Dochazeji rozumne
+hypotezy overitelne jen cisly/statistikami.
+
+PRIDANO (SK113): hruby textovy "obrazek" (48x20 znaku, jas->znak) primo
+v logu - misto souctu/vzorku ted uvidim PRIMO tvar toho, co se
+zachytilo. Omezeno na 8 vypisu za relaci.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK113 vysledek - precist
+GLES_ASCII_DUMP bloky primo, porovnat se skutecnym obsahem hry v danem
+case. Pokud je videt SKUTECNY TVAR (i hrubý) odpovidajici hre: znamena
+to, ze se DOOPRAVDY neco kresli, jen se nekde POZDEJI (mimo tento bod v
+kodu) ztraci pri prenosu do Javy/zobrazeni. Pokud je videt jen uniformni
+plocha i tady: potvrzuje to, ze problem je PRED timto bodem (uvnitr
+samotneho GL kresleni), ne po nem.
