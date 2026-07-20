@@ -120,10 +120,20 @@ static bool vout_can_dupe;
 // texturovym filtrovanim, na rozdil od gpu_neon renderuje primo pres
 // EGL/GL, ne do CPU bufferu jako gpu_neon). gpu-gles po kazdem snimku
 // (v gpulib_if.c, updateDisplay()) precte svuj vykresleny obraz zpet
-// pres glReadPixels a zavola tuhle funkci - ktera ho jen ulozi do PRESNE
-// tech samych sdilenych promennych, ktere uz retro_run() o par radku niz
-// pouziva pro sve normalni video_cb() volani. Zadna zmena v retro_run()
-// samotnem - jen novy zdroj dat pro uz existujici cestu.
+// pres glReadPixels a zavola tuhle funkci.
+// BUILD2SK117: SKUTECNA PRICINA "na Java strane porad cerna" (potvrzeno
+// primym srovnanim - SK113 nativni ASCII dump MEL obsah, SK116 Java ASCII
+// dump byl PRAZDNY, ve STEJNE relaci). Puvodne jsme jen nastavili vout_buf_
+// ptr/vout_fb_dirty a spolehli se, ze si je retro_run() SAM VYZVEDNE pres
+// svoje vlastni interni video_cb() volani na konci funkce. Ale mezi tim,
+// nez k tomu dojde, uz mohl nas OPAKOVANE POUZIVANY readback buffer
+// (nap_gles_rb_buf) byt PREPSAN DALSIM snimkem (glReadPixels kazdy tick) -
+// a/nebo dirty-flag/dupe-check logika uvnitr retro_run() mohla poslat
+// video_cb(NULL,...) misto skutecnych dat, pokud fb_dirty zrovna nebyl
+// nastaveny presne v tom spravnem okamziku. Oprava: zavolat video_cb()
+// PRIMO A HNED, s cerstvymi daty, driv nez je cokoli stihne prepsat -
+// zadna zavislost na tom, KDY presne retro_run() svou vlastni internal
+// logiku spusti.
 void nap_gles_push_frame(void *pixels, int w, int h, int pitch)
 {
    vout_buf_ptr = pixels;
@@ -131,6 +141,7 @@ void nap_gles_push_frame(void *pixels, int w, int h, int pitch)
    vout_height = h;
    vout_pitch_b = pitch;
    vout_fb_dirty = 1;
+   if (video_cb) { video_cb(pixels, (unsigned)w, (unsigned)h, (size_t)pitch); }
 }
 static int display_internal_fps;
 static bool libretro_supports_bitmasks = false;

@@ -1,0 +1,49 @@
+BUILD2SK117 - DVE OPRAVY NAJEDNOU: SKUTECNA PRICINA "CERNE NA JAVA STRANE"
++ ODSTRANENI PRAVDEPODOBNE PRICINY ZHORSUJICIHO SE ZVUKU
+================================================================================
+CO SK116 DEFINITIVNE DOKAZAL
+Ve STEJNE relaci: nativni ASCII dump (SK113) MEL skutecny obsah (4 z 8
+vzorku), Java ASCII dump (SK116) byl PRAZDNY VE VSECH 8 VZORCICH. Tohle
+je definitivni dukaz, ze se data ztraci PRESNE mezi nativnim ctenim a
+Java stranou - ne driv (nativni ma obsah), ne pozdeji (kdyby Java mela
+obsah a porad by byla cerna, hledali bychom v kresleni/kompozici).
+
+PRICINA (nalezeno)
+Puvodne jsme jen nastavili sdilene promenne (vout_buf_ptr, vout_fb_dirty)
+a spolehli se, ze si je retro_run() SAM VYZVEDNE pres svoje vlastni
+interni video_cb() volani na SVEM konci. Ale mezi tim, nez k tomu dojde,
+mohl byt nas OPAKOVANE POUZIVANY readback buffer uz PREPSAN DALSIM
+snimkem - a/nebo dirty-flag/dupe-check logika mohla poslat prazdna data
+(NULL) misto skutecnych, pokud fb_dirty nebyl nastaveny presne v tom
+spravnem okamziku vzhledem k tomu, jak retro_run() vnitrne funguje.
+
+OPRAVA 1 - PRIMY PRENOS DAT
+Misto spolehani na nejistou nepřímou cestu (nastav flag, doufej ze si to
+nekdo vyzvedne ve spravny cas) ted voláme cilovou funkci (video_cb)
+PRIMO A OKAMZITE, s cerstvymi daty, hned jak jsou k dispozici - zadna
+zavislost na tom, KDY presne retro_run() svou vlastni logiku spusti.
+
+OPRAVA 2 - ODSTRANENI glFinish()
+Rene nahlasil NOVY, postupne se zhorsujici problem se zvukem (u Crash
+Bandicoot) presne od doby, co jsme pridali glFinish() (SK112, test
+hypotezy "GPU jeste nedokoncilo kresleni" - NEPOMOHLO video obnovit).
+glFinish() kazdy jednotlivy snimek nutí plne zastaveni CPU/GPU, coz
+blokuje STEJNE vlakno, ktere generuje i zvuk (pres retro_run()) - presne
+typ zmeny, co by zpusobil postupne horsici audio podle vytizeni.
+ODSTRANENO - a neni to ani potreba, protoze glReadPixels() je v OpenGL
+ES uz sam o sobe definovany jako blokujici/synchronni (musi vratit
+spravna, finalni data) - glFinish() pred nim nepridaval zadnou dalsi
+jistotu, jen zbytecnou rezii.
+
+RIZIKO
+Nizke - Oprava 1 je primociarejsi, ne slozitejsi nez puvodni kod (mene
+zavislosti na nejistem casovani). Oprava 2 je jen ODSTRANENI neceho, co
+neprokazatelne pomahalo a pravdepodobne skodilo.
+Overeno: {} sedi ve vsech trech zmenenych/kontrolovanych souborech
+(libretro.c 476/476, gpulib_if.c 100/100, nap_ps1_native.cpp 105/105).
+
+JAK OTESTOVAT
+Presne jako predtim - naboot hru v landscape. Sleduj DVE veci:
+1) Je KONECNE videt obraz?
+2) Zvuk - poslouchej delsi dobu (5+ min), zejmena u Crash Bandicoot -
+   uz by se nemel postupne zhorsovat.

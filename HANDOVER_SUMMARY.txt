@@ -1425,3 +1425,32 @@ DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK116 vysledek - PRIMO
 porovnat JAVA_ASCII_DUMP vs GLES_ASCII_DUMP v tom samem logu. Podle
 vysledku dalsi konkretni krok (bud oprava handoff cesty, nebo oprava
 kresleni/kompozice).
+
+================================================================================
+DODATEK - BUILD2SK117 - DEFINITIVNI PRICINA "CERNA NA JAVA STRANE" NALEZENA
++ ODSTRANEN PRAVDEPODOBNY ZDROJ ZHORSUJICIHO SE ZVUKU
+================================================================================
+SK116 log: PRIME srovnani ve STEJNE relaci - nativni ASCII dump MEL
+obsah, Java ASCII dump byl PRAZDNY ve VSECH 8 vzorcich. Definitivni
+dukaz, ze data se ztraci PRESNE mezi nativnim ctenim a Java stranou.
+
+Rene take nahlasil NOVY problem: u Crash Bandicoot se zvuk postupne
+(ne konstantne) zhorsuje - presny vzorec unikajiciho zdroje, podobny
+tomu, co jsme resili v SK95, ale tentokrat jinou pricinou.
+
+PRICINA OBOJIHO NALEZENA:
+1) "Cerna na Java strane": spolehali jsme na to, ze retro_run() SAM
+   VYZVEDNE data pres svuj vlastni interni video_cb() na konci funkce -
+   ale nas OPAKOVANE POUZIVANY readback buffer mohl byt mezitim uz
+   PREPSAN dalsim snimkem, nebo dirty-flag logika mohla poslat NULL.
+   OPRAVENO: voláme video_cb() PRIMO A OKAMZITE, zadna zavislost na
+   nejistem casovani.
+2) Zhorsujici se zvuk: pravdepodobne zpusobeno glFinish() (SK112),
+   kterou jsme pridali jako test hypotezy (NEPOMOHLO video obnovit), ale
+   kazdy snimek nutí plne CPU/GPU zastaveni, blokujici STEJNE vlakno, co
+   generuje zvuk. ODSTRANENO - a neni ani potreba, glReadPixels() je uz
+   sam o sobe synchronni/blokujici v OpenGL ES.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK117 vysledek - tohle by
+KONECNE melo prinest videt obraz A zaroven vratit zvuk do stabilniho
+stavu (bez postupneho zhorsovani).
