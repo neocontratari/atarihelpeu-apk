@@ -30,7 +30,7 @@
 // kresleni) zustava presne tak, jak to venovil puvodce pluginu.
 extern void nap_gles_push_frame(void *pixels, int w, int h, int pitch);
 extern void nap_diag_log(const char *fmt, ...); // BUILD2SK100: viz nap_ps1_native.cpp
-static uint16_t *nap_gles_rb_buf = NULL;
+static uint32_t *nap_gles_rb_buf = NULL; // BUILD2SK118: ted ARGB8888 primo (drive uint16_t RGB565)
 static uint8_t *nap_gles_rb_rgba = NULL; // BUILD2SK105: docasny RGBA8 buffer pro bezpecny readback
 static int nap_gles_rb_w = 0, nap_gles_rb_h = 0;
 static int nap_gles_frame_count = 0; // BUILD2SK100: tep - kolik snimku uspesne prosel readback
@@ -63,29 +63,34 @@ static void nap_gles_readback_and_push(void)
  if (nap_gles_rb_buf == NULL || nap_gles_rb_w != rb_w || nap_gles_rb_h != rb_h) {
   if (nap_gles_rb_buf != NULL) free(nap_gles_rb_buf);
   if (nap_gles_rb_rgba != NULL) free(nap_gles_rb_rgba);
-  nap_gles_rb_buf = (uint16_t *)malloc((size_t)rb_w * (size_t)rb_h * 2);
+  nap_gles_rb_buf = (uint32_t *)malloc((size_t)rb_w * (size_t)rb_h * 4); // BUILD2SK118: ted ARGB8888 primo, ne RGB565
   nap_gles_rb_rgba = (uint8_t *)malloc((size_t)rb_w * (size_t)rb_h * 4); // BUILD2SK105
   nap_gles_rb_w = rb_w;
   nap_gles_rb_h = rb_h;
  }
  if (nap_gles_rb_buf == NULL || nap_gles_rb_rgba == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
- // BUILD2SK105: SKUTECNA PRICINA CERNE OBRAZOVKY (potvrzeno SK104
- // diagnostikou - glErr=0x502 GL_INVALID_OPERATION, sumAvg=0). Cteni primo
- // jako GL_RGB+GL_UNSIGNED_SHORT_5_6_5 NENI zarucena kombinace pro
- // glReadPixels - GLES specifikace garantuje POUZE GL_RGBA+GL_UNSIGNED_BYTE
- // (nebo implementaci-specificky format, ktery bysme museli dotazovat
- // zvlast). Na tomhle zarizeni/ovladaci ta primo-565 kombinace proste
- // neprosla. Oprava: cist bezpecnou, vzdy funkcni RGBA8 kombinaci, pak si
- // sami prevest dolu na RGB565 - zbytek cesty (nap_gles_push_frame,
- // nap_video() na Java strane) zustava presne stejny, nic dal se nemeni.
+ // BUILD2SK105: primo GL_RGBA+GL_UNSIGNED_BYTE - jedina kombinace, kterou
+ // GLES specifikace zarucuje pro glReadPixels na jakemkoli zarizeni.
  glReadPixels(0, 0, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_rb_rgba);
+ // BUILD2SK118: DVE VECI NAJEDNOU v jednom pruchodu:
+ // 1) Uz NEPREVADIME dolu na RGB565 a pak zpet nahoru na ARGB v nap_video()
+ //    (dva plne pruchody delajici a zase odedelavajici stejnou praci, navic
+ //    ztraci barevnou presnost pri 565 zaokrouhlovani) - rovnou balime jako
+ //    ARGB8888, presne format, ktery Android/Java uz stejne pozaduje.
+ // 2) OTACIME RADKY (Y-flip) - glReadPixels vraci radek 0 jako SPODEK
+ //    obrazu (OpenGL ma osu Y nahoru), zatimco Android Bitmap/Canvas ceka
+ //    radek 0 jako VRCH (Y dolu) - presne tohle zpusobilo obraz vzhuru
+ //    nohama, co Rene videl na screenshotu.
  {
-  int n = rb_w * rb_h;
-  for (int i = 0; i < n; i++) {
-   uint8_t r = nap_gles_rb_rgba[i * 4 + 0];
-   uint8_t g = nap_gles_rb_rgba[i * 4 + 1];
-   uint8_t b = nap_gles_rb_rgba[i * 4 + 2];
-   nap_gles_rb_buf[i] = (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+  for (int y = 0; y < rb_h; y++) {
+   const uint8_t *srcRow = nap_gles_rb_rgba + (size_t)y * rb_w * 4;
+   uint32_t *dstRow = nap_gles_rb_buf + (size_t)(rb_h - 1 - y) * rb_w; // BUILD2SK118: flip - posledni GL radek jde na prvni Android radek
+   for (int x = 0; x < rb_w; x++) {
+    uint8_t r = srcRow[x * 4 + 0];
+    uint8_t g = srcRow[x * 4 + 1];
+    uint8_t b = srcRow[x * 4 + 2];
+    dstRow[x] = 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+   }
   }
  }
  // BUILD2SK104: obsah pixelu, ne jen rozmery - podezrele mala JPEG velikost
@@ -97,11 +102,16 @@ static void nap_gles_readback_and_push(void)
   GLenum glerr = glGetError();
   unsigned long long sum = 0;
   int n = rb_w * rb_h;
-  for (int i = 0; i < n; i++) sum += nap_gles_rb_buf[i];
-  uint16_t pTL = nap_gles_rb_buf[0];
-  uint16_t pCenter = nap_gles_rb_buf[n / 2];
-  uint16_t pBR = nap_gles_rb_buf[n - 1];
-  nap_diag_log("BUILD2SK105 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%04x pCenter=0x%04x pBR=0x%04x",
+  // BUILD2SK118: soucet jasu (ne uz syrovych packed hodnot - ARGB8888 ma
+  // konstantni 0xFF v alfa bajtu, ktery by jinak zkresloval soucet).
+  for (int i = 0; i < n; i++) {
+    uint32_t px = nap_gles_rb_buf[i];
+    sum += ((px >> 16) & 0xFF) + ((px >> 8) & 0xFF) + (px & 0xFF);
+  }
+  uint32_t pTL = nap_gles_rb_buf[0];
+  uint32_t pCenter = nap_gles_rb_buf[n / 2];
+  uint32_t pBR = nap_gles_rb_buf[n - 1];
+  nap_diag_log("BUILD2SK118 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%08x pCenter=0x%08x pBR=0x%08x",
     (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR);
   // BUILD2SK113: misto dalsich cisel - SKUTECNY (i kdyz hrubý, textovy)
   // obrazek toho, co se doopravdy zachytilo. Cisla (soucet, 3 vzorky) uz
@@ -122,9 +132,9 @@ static void nap_gles_readback_and_push(void)
         int sy = (ry * rb_h) / rows;
         if (sx >= rb_w) sx = rb_w - 1;
         if (sy >= rb_h) sy = rb_h - 1;
-        uint16_t px = nap_gles_rb_buf[sy * rb_w + sx];
-        int r5 = (px >> 11) & 0x1F, g6 = (px >> 5) & 0x3F, b5 = px & 0x1F;
-        int bright = (r5 * 8 + g6 * 4 + b5 * 8) / 3; // hruby jas 0..~255
+        uint32_t px = nap_gles_rb_buf[sy * rb_w + sx]; // BUILD2SK118: ted ARGB8888
+        int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
+        int bright = (r + g + b) / 3;
         int idx = (bright * 9) / 255;
         if (idx < 0) idx = 0; if (idx > 9) idx = 9;
         line[lp++] = shades[idx];
@@ -160,7 +170,7 @@ static void nap_gles_readback_and_push(void)
       viewport[0], viewport[1], viewport[2], viewport[3]);
   }
  }
- nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 2);
+ nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 4); // BUILD2SK118: *4 pro ARGB8888 (drive *2 pro RGB565)
 }
 
 static int is_opened;

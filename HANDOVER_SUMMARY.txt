@@ -1454,3 +1454,33 @@ PRICINA OBOJIHO NALEZENA:
 DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK117 vysledek - tohle by
 KONECNE melo prinest videt obraz A zaroven vratit zvuk do stabilniho
 stavu (bez postupneho zhorsovani).
+
+================================================================================
+DODATEK - PRUELOM: SK117 FUNGOVAL! + BUILD2SK118 - OTOCENI + VYKON
+================================================================================
+Rene poslal SCREENSHOT s KONECNE VIDITELNYM obsahem hry - Crash Bandicoot
+titulka/menu, rozpoznatelne! SK117 (primy video_cb prenos) fungoval -
+JAVA_ASCII_DUMP potvrdil obsah v 5/8 vzorcich (drive VZDY 0/8).
+
+DVA ZBYVAJICI PROBLEMY: (1) obraz vzhuru nohama - klasicky OpenGL(Y-up)
+vs Android(Y-down) rozdil, (2) "skube se, zvuk se zpomaluje" - vykonovy
+problem, davajici smysl protoze TEPRVE TED cela cesta opravdu bezi
+kazdy snimek (drive se data ztracela = zbytecna prace).
+
+OPRAVENO (SK118):
+1) Otoceni - radky se pri prevodu zapisuji v obracenem poradi.
+2) Vykon - odstranen zbytecny dvojity prevod barev (RGBA->RGB565->ARGB,
+   dva plne pruchody delajici a hned predelavajici stejnou praci) -
+   ted primo jeden prevod na ARGB8888, poloviční pocet pruchodu + lepsi
+   barevna kvalita (zadna 565 ztrata presnosti).
+
+OTEVRENE, VEDOME NEVYRESENE: "velikostne nesedi" - zdroj (4:3) se
+ZAMERNE natahuje do 16:9 ramecku (stare, umyslne chovani z SK87,
+ted poprve VIDITELNE v akci). Nechano bez zmeny - dalsi krok az po
+potvrzeni, ze zaklad je stabilni. Bude potreba se zeptat Rene, jestli
+chce natahovani (cely ramecek) nebo cerne pruhy (spravny tvar).
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK118 vysledek - je
+obraz spravne otoceny? Je plynulejsi? Zvuk lepsi/horsi/stejny? Podle
+odpovedi dalsi konkretni krok (bud dolaseni vykonu, nebo reseni aspect
+ratio, nebo obojí).

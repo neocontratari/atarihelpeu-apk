@@ -1,0 +1,51 @@
+BUILD2SK118 - OBRAZ KONECNE VIDET! OPRAVA OTOCENI + ZRYCHLENI
+================================================================================
+SKVELA ZPRAVA: screenshot od Rene ukazal SKUTECNY, rozpoznatelny obsah
+hry (Crash Bandicoot titulka/menu)! SK117 (primy prenos dat) fungoval -
+cela cesta od GPU az na obrazovku KONECNE doruci realna data.
+
+DVA ZBYVAJICI PROBLEMY Z RENEHO POPISU
+1) "Vzhuru nohama" - klasicky, dobre znamy jev: OpenGL cte obraz zdola
+   nahoru (osa Y smerem nahoru), zatimco Android Bitmap/Canvas ceka
+   obraz shora dolu. Presne tohle zpusobilo prevraceny obraz.
+2) "Skube se, seka se, zvuk se zpomaluje" - vykonovy problem. Dava
+   smysl: az TEPRVE TEDKA (diky SK117) cela zpracovavaci cesta
+   OPRAVDU bezi na kazdem snimku (drive se data ztracela, takze tahle
+   prace byla z velke casti zbytecna/nevyuzita).
+
+CO SE ZMENILO
+1) OTOCENI OPRAVENO - pri prevodu dat (v gpulib_if.c) se ted radky
+   zapisuji v obracenem poradi, presne kompenzuje OpenGL/Android rozdil.
+2) VYKON - odstranen ZBYTECNY DVOJITY PREVOD barev. Drive: GPU data ->
+   prevod DOLU na RGB565 (native) -> prevod ZPET NAHORU na ARGB (native,
+   ale v JINE funkci) - dva plne pruchody pres 76 800 pixelu, delajici a
+   hned zase predelavajici stejnou praci, navic se ztratou barevne
+   presnosti pri zaokrouhleni na 565. Ted: primo jeden prevod na ARGB8888
+   (format, ktery Android/Java uz stejne potrebuje) - polovicni pocet
+   pruchodu, plus lepsi barevna kvalita jako vedlejsi bonus.
+
+CO JESTE ZUSTAVA (poctive, nezakryvam to)
+- "Velikostne nesedi" - zdroj (320x240, pomer 4:3) se ZAMERNE natahuje
+  do 16:9 ramecku (stejne chovani jako uz drive u stareho JPEG nahledu -
+  #ps1Screen{object-fit:fill}). Tohle NENI nova chyba z teto session -
+  je to starsi, umyslne rozhodnuti, ktere ted poprve doopravdy VIDIME v
+  akci. Necham to zatim beze zmeny - jakmile potvrdime, ze zaklad
+  (otoceni, vykon) funguje spolehlive, muzeme se bavit, jestli chces
+  natahovat (cely ramecek vyplneny) nebo cerne pruhy po stranach
+  (zachovany spravny tvar).
+- Vykon/zvuk - odstraneni zbytecneho dvojiteho prevodu by melo pomoct,
+  ale nemusi to byt cele reseni - budeme muset zkontrolovat dalsim
+  testem.
+
+RIZIKO
+Stredni - genuinne zmena v tom, jak se data balí (novy format, otoceni),
+ale postavena na uz overenem zaklade (SK117 uz funguje, ted se jen
+opravuje smer a zrychluje prevod).
+Overeno: {} sedi ve vsech zmenenych souborech (gpulib_if.c 102/102,
+nap_ps1_native.cpp 105/105).
+
+JAK OTESTOVAT
+Presne jako predtim - naboot hru v landscape. Hlavni otazky:
+1) Je obraz KONECNE spravne otoceny (ne vzhuru nohama)?
+2) Je to plynulejsi, nebo porad "skube se"?
+3) Zvuk - lepsi, stejny, nebo horsi?

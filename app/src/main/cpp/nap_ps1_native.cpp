@@ -221,7 +221,10 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
   // si jadro samo nastavilo pres SET_PIXEL_FORMAT (mohlo by byt jine,
   // zpusobilo by to zkreslene barvy), radeji to tady natvrdo vynutime na
   // hodnotu, o ktere s jistotou vime, ze odpovida datum, co posilame.
-  if (g_gles_ready) { g_pixfmt.store(PIXFMT_RGB565); }
+  // BUILD2SK118: gpu-gles readback ted produkuje ARGB8888 primo (uz ne
+  // RGB565 - viz gpulib_if.c, zbytecny dvojity prevod odstranen), takze
+  // format tady musi odpovidat.
+  if (g_gles_ready) { g_pixfmt.store(PIXFMT_XRGB8888); }
   const int fmt = g_pixfmt.load();
   // BUILD2SK114: KRITICKA kontrola - nas gpu-gles readback VZDY balí data
   // jako RGB565 (PIXFMT_RGB565=2), ale tenhle kod si o tom, jak data cist,
@@ -235,7 +238,7 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
   static int nap_pixfmt_log_count = 0;
   if (nap_pixfmt_log_count < 20) {
     nap_pixfmt_log_count++;
-    NAPDIAG("BUILD2SK114 PS1_PIXFMT_CHECK fmt=%d (0=0RGB1555 1=XRGB8888 2=RGB565_ocekavano)", fmt);
+    NAPDIAG("BUILD2SK118 PS1_PIXFMT_CHECK fmt=%d (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)", fmt);
   }
   for (unsigned y = 0; y < h; ++y) {
     const uint8_t *row = (const uint8_t*)data + y * pitch;
