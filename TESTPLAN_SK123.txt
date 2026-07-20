@@ -1,0 +1,45 @@
+BUILD2SK123 - CTENI PRESNE PODLE UZ OVERENEHO SCISSORU (misto vlastniho
+vypoctu pozice)
+================================================================================
+CO SK122 UKAZAL
+GLES_VRAM_PROJECTION_SET potvrdil, ze nova 1024x512 zakladna se spravne
+nastavila. Ale RAW_VS_FINAL ukazal nesrovnalost v prvnim vzorku (barevny
+raw pixel, ale cerny final vysledek) - a Rene nahlasil jeste vetsi
+problikavani. Dva mozne duvody: (1) muj vlastni vypocet pozice
+(DisplayPosition) nemusel byt spravny zpusob, jak urcit viditelnou cast,
+(2) cteni CELE VRAM (1024x512) kazdy snimek je 4x drazsi nez drivejsi
+pristup, coz mohlo zhorsit vykon/problikavani.
+
+REONO OBOJI NAJEDNOU
+Misto dalsiho hadani vlastnim vzorcem pro pozici POUZIVAME PRIMO uz
+OVERENY, funkcni vypocet - GL_SCISSOR_BOX. SetOGLDisplaySettings (volana
+kazdy tick) uz spravne pocita scissor ze VSECH relevantnich PSXDisplay
+poli (DrawArea, DisplayPosition, Range...) - presne tenhle vypocet uz
+drive potvrdily nase vlastni diagnostiky (SK106/108) jako spravny a
+konzistentni. Zadne dalsi vlastni hadani - jen precist, co uz appka sama
+spravne spocitala, a pouzit to primo pro cteni.
+
+CO SE ZMENILO
+1) glReadPixels ted cte PRESNE tu oblast, kterou udava GL_SCISSOR_BOX -
+   ne uz celou VRAM (1024x512, drahe) ani muj vlastni odhad pozice
+   (nespolehlive).
+2) Vsechny navazujici vypocty (soucet jasu, ASCII obrazek, RAW_VS_FINAL
+   diagnostika, a KRITICKY - samotne odeslani snimku do Javy) ted
+   konzistentne pouzivaji skutecnou velikost bufferu (podle scissoru),
+   ne uz puvodni DisplayMode hodnotu, ktera se muze lisit.
+3) RAW_VS_FINAL diagnostika opravena - drive porovnavala stred CELE VRAM
+   (RAW) se stredem jen VYRIZNUTE casti (FINAL) - dve RUZNA mista, matouci
+   srovnani. Ted oboje odpovida STEJNE pozici.
+
+RIZIKO
+Stredni - dalsi uprava zakladu vykreslovaci cesty, ale postavena na uz
+OVERENEM (ne novem) vypoctu scissoru, a mela by byt LEVNEJSI (cte jen
+potrebnou oblast, ne celou VRAM) nez SK122.
+Overeno: {} 105/105, () 389/389 (spravnou metodou). Zadne zbyle odkazy
+na stare nazvy promennych.
+
+JAK OTESTOVAT
+Presne jako predtim. V logu (kdyby porad nesedelo) hledej novy
+BUILD2SK123 GLES_PIXEL_SAMPLE radek - ted obsahuje i "scissor=[...]" a
+"expectedDM=..." vedle sebe, takze uvidime primo, jestli se scissor
+velikost shoduje s tim, co appka OCEKAVA (DisplayMode), nebo se lisi.

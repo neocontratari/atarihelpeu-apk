@@ -1614,3 +1614,26 @@ STALE nesedi, hledat v logu GLES_VRAM_PROJECTION_SET a novy RAW_VS_FINAL
 (BUILD2SK122 verze) pro dalsi upresneni - ale zaklad (VRAM-scale pristup
 misto honeni DisplayMode) by mel byt spravnym smerem, i kdyby detaily
 (napr. presny vypocet Y-flipu) potrebovaly jeste doladit.
+
+================================================================================
+DODATEK - BUILD2SK123 - CTENI PODLE UZ OVERENEHO SCISSORU (misto
+vlastniho vypoctu DisplayPosition)
+================================================================================
+SK122 log: GLES_VRAM_PROJECTION_SET potvrdil aktivaci, ale RAW_VS_FINAL
+ukazal nesrovnalost a Rene nahlasil jeste VETSI problikavani (ctení cele
+1024x512 VRAM kazdy snimek bylo 4x drazsi + muj vlastni DisplayPosition-
+based vypocet pozice mohl byt nespravny zpusob).
+
+OPRAVENO (SK123): misto vlastniho vypoctu pozice POUZIVAME PRIMO
+GL_SCISSOR_BOX - uz OVERENY, funkcni vypocet, ktery SetOGLDisplaySettings
+spravne pocita ze VSECH PSXDisplay poli (potvrzeno spravnym uz drive
+diagnostikami SK106/108). glReadPixels ted cte PRESNE tuhle oblast (ne
+uz celou VRAM - levnejsi, ne uz muj vlastni odhad - spolehlivejsi).
+Vsechny navazujici vypocty (soucet, ASCII dump, RAW_VS_FINAL, a KRITICKY
+samotne odeslani do Javy) opraveny na konzistentni pouzivani skutecne
+velikosti bufferu (scissor), ne puvodni DisplayMode hodnoty.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK123 vysledek. Novy
+GLES_PIXEL_SAMPLE radek ma "scissor=[...]" vedle "expectedDM=..." pro
+primé srovnani. Pokud STALE nesedi, tohle srovnani prime rekne, jestli
+se scissor od DisplayMode genuinne lisi (a v cem presne).

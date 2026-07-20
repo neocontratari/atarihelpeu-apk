@@ -104,48 +104,44 @@ static void nap_gles_readback_and_push(void)
  if (nap_gles_frame_count % 30 == 1) {
   nap_diag_log("BUILD2SK100 GLES_FRAME_HEARTBEAT n=%d dispW=%d dispH=%d", nap_gles_frame_count, rb_w, rb_h);
  }
- if (rb_w <= 0 || rb_h <= 0 || rb_w > NAP_PSX_VRAM_W || rb_h > NAP_PSX_VRAM_H) return; // BUILD2SK122: mez ted presne podle skutecne VRAM velikosti, ne odhadem
- if (nap_gles_rb_buf == NULL || nap_gles_rb_w != rb_w || nap_gles_rb_h != rb_h) {
+ if (rb_w <= 0 || rb_h <= 0 || rb_w > NAP_PSX_VRAM_W || rb_h > NAP_PSX_VRAM_H) return; // BUILD2SK122: mez presne podle skutecne VRAM velikosti
+ // BUILD2SK123: SK122 pouzival PSXDisplay.DisplayPosition pro vyriznuti -
+ // ale Rene nahlasil jeste vetsi problemy (a diagnostika ukazala nesedici
+ // vzorek). Misto dalsiho hadani vlastnim vzorcem POUZIJEME PRIMO uz
+ // OVERENY, funkcni vypocet - GL_SCISSOR_BOX, ktery SetOGLDisplaySettings
+ // (volana kazdy tick pred timhle) uz spravne spocitala ze VSECH
+ // relevantnich PSXDisplay poli (DrawArea, DisplayPosition, Range...) -
+ // presne tenhle vypocet uz drive potvrdily nase vlastni diagnostiky
+ // (SK106/108) jako spravny. Zadne vlastni hadani navic - jen precist,
+ // co uz appka sama spravne spocitala, a pouzit to primo.
+ GLint scissorBox[4] = {0,0,0,0};
+ glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
+ int sx = scissorBox[0], sy = scissorBox[1], sw = scissorBox[2], sh = scissorBox[3];
+ if (sw <= 0 || sh <= 0 || sw > NAP_PSX_VRAM_W || sh > NAP_PSX_VRAM_H) return; // scissor jeste neni smysluplny (napr. hned na zacatku)
+ if (nap_gles_rb_buf == NULL || nap_gles_rb_w != sw || nap_gles_rb_h != sh) {
   if (nap_gles_rb_buf != NULL) free(nap_gles_rb_buf);
-  nap_gles_rb_buf = (uint32_t *)malloc((size_t)rb_w * (size_t)rb_h * 4); // BUILD2SK118: ARGB8888, jen VYSTUPNI (viditelna) velikost
-  nap_gles_rb_w = rb_w;
-  nap_gles_rb_h = rb_h;
+  nap_gles_rb_buf = (uint32_t *)malloc((size_t)sw * (size_t)sh * 4); // BUILD2SK123: velikost ted podle SCISSORU, ne DisplayMode
+  nap_gles_rb_w = sw;
+  nap_gles_rb_h = sh;
  }
  if (nap_gles_vram_rgba == NULL) {
-  nap_gles_vram_rgba = (uint8_t *)malloc((size_t)NAP_PSX_VRAM_W * (size_t)NAP_PSX_VRAM_H * 4); // BUILD2SK122: cela VRAM, jen jednou
+  nap_gles_vram_rgba = (uint8_t *)malloc((size_t)NAP_PSX_VRAM_W * (size_t)NAP_PSX_VRAM_H * 4); // pojistka na max velikost, i kdyz uz cteme jen sw*sh
  }
  if (nap_gles_rb_buf == NULL || nap_gles_vram_rgba == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
  // BUILD2SK105: primo GL_RGBA+GL_UNSIGNED_BYTE - jedina kombinace, kterou
  // GLES specifikace zarucuje pro glReadPixels na jakemkoli zarizeni.
- // BUILD2SK122: cteme VZDY CELOU VRAM (1024x512), ne uz jen zdanlivou
- // "viditelnou" cast - presne to byla chyba (viz SK121 data - DrawArea
- // bezne presahuje DisplayMode, i posunuty o cely VRAM-pulku).
- glReadPixels(0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
- // BUILD2SK122: az TEDka vyrizneme presne tu VIDITELNOU cast (velikost
- // DisplayMode, pozice DisplayPosition) z cele precatane VRAM - jednoduchym,
- // primym indexovanim pole (zadna zavislost na GL/EGL vlastnim chovani).
- // Zaroven se tim (stejny pruchod, zadna rezie navic) resi i Y-flip (SK118):
- // PS1 souradnice Y=0 (logicky "nahore") odpovida - diky glOrtho flip-triku
- // pouzitemu ve viewport/projekci - RADKU (VRAM_H-1) v surovem GL bufferu
- // (GL cte odspoda nahoru), takze mapovani "PS1 radek Y" -> "surovy radek
- // (VRAM_H-1-Y)" davá SPRAVNE otoceny vystup primo, bez dalsiho kroku.
+ // BUILD2SK123: cteme UZ JEN scissorem vymezenou oblast (ne uz celou VRAM
+ // jako SK122 - to bylo zbytecne drahe A pouzivalo nase vlastni, nespravne
+ // vyriznuti pozice).
+ glReadPixels(sx, sy, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
+ // BUILD2SK123: flip v ramci UZ PRECTENE (spravne vyriznute) oblasti -
+ // jednodussi nez SK122 (zadny offset do vetsi VRAM uz netreba pocitat,
+ // scissor uz vyriznul presne to spravne).
  {
-  int dispPosX = PSXDisplay.DisplayPosition.x;
-  int dispPosY = PSXDisplay.DisplayPosition.y;
-  if (dispPosX < 0) dispPosX = 0;
-  if (dispPosY < 0) dispPosY = 0;
-  // BUILD2SK122: obranna pojistka - kdyby DisplayPosition+DisplayMode
-  // presahlo VRAM hranice, radeji posunout zpet, nez cist mimo buffer.
-  if (dispPosX + rb_w > NAP_PSX_VRAM_W) dispPosX = NAP_PSX_VRAM_W - rb_w;
-  if (dispPosX < 0) dispPosX = 0;
-  if (dispPosY + rb_h > NAP_PSX_VRAM_H) dispPosY = NAP_PSX_VRAM_H - rb_h;
-  if (dispPosY < 0) dispPosY = 0;
-  for (int y = 0; y < rb_h; y++) {
-   int rawRow = (NAP_PSX_VRAM_H - 1) - (dispPosY + y);
-   if (rawRow < 0) rawRow = 0; else if (rawRow >= NAP_PSX_VRAM_H) rawRow = NAP_PSX_VRAM_H - 1;
-   const uint8_t *srcRow = nap_gles_vram_rgba + (size_t)rawRow * NAP_PSX_VRAM_W * 4 + (size_t)dispPosX * 4;
-   uint32_t *dstRow = nap_gles_rb_buf + (size_t)y * rb_w;
-   for (int x = 0; x < rb_w; x++) {
+  for (int y = 0; y < sh; y++) {
+   const uint8_t *srcRow = nap_gles_vram_rgba + (size_t)y * sw * 4;
+   uint32_t *dstRow = nap_gles_rb_buf + (size_t)(sh - 1 - y) * sw;
+   for (int x = 0; x < sw; x++) {
     uint8_t r = srcRow[x * 4 + 0];
     uint8_t g = srcRow[x * 4 + 1];
     uint8_t b = srcRow[x * 4 + 2];
@@ -161,7 +157,7 @@ static void nap_gles_readback_and_push(void)
  if (nap_gles_frame_count % 30 == 1) {
   GLenum glerr = glGetError();
   unsigned long long sum = 0;
-  int n = rb_w * rb_h;
+  int n = sw * sh; // BUILD2SK123: skutecna velikost bufferu (scissor), ne DisplayMode
   // BUILD2SK118: soucet jasu (ne uz syrovych packed hodnot - ARGB8888 ma
   // konstantni 0xFF v alfa bajtu, ktery by jinak zkresloval soucet).
   for (int i = 0; i < n; i++) {
@@ -171,8 +167,9 @@ static void nap_gles_readback_and_push(void)
   uint32_t pTL = nap_gles_rb_buf[0];
   uint32_t pCenter = nap_gles_rb_buf[n / 2];
   uint32_t pBR = nap_gles_rb_buf[n - 1];
-  nap_diag_log("BUILD2SK118 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%08x pCenter=0x%08x pBR=0x%08x",
-    (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR);
+  nap_diag_log("BUILD2SK123 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%08x pCenter=0x%08x pBR=0x%08x scissor=[%d,%d,%d,%d] expectedDM=%dx%d",
+    (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR,
+    sx, sy, sw, sh, rb_w, rb_h);
   // BUILD2SK113: misto dalsich cisel - SKUTECNY (i kdyz hrubý, textovy)
   // obrazek toho, co se doopravdy zachytilo. Cisla (soucet, 3 vzorky) uz
   // nestaci rozlisit "jednolita barva" od "slozity obrazek s malym
@@ -183,16 +180,16 @@ static void nap_gles_readback_and_push(void)
     nap_ascii_dump_count++;
     const char *shades = " .:-=+*#%@";
     const int cols = 48, rows = 20;
-    nap_diag_log("BUILD2SK113 GLES_ASCII_DUMP_START #%d src=%dx%d", nap_ascii_dump_count, rb_w, rb_h);
+    nap_diag_log("BUILD2SK113 GLES_ASCII_DUMP_START #%d src=%dx%d", nap_ascii_dump_count, sw, sh);
     for (int ry = 0; ry < rows; ry++) {
       char line[64];
       int lp = 0;
       for (int rx = 0; rx < cols; rx++) {
-        int sx = (rx * rb_w) / cols;
-        int sy = (ry * rb_h) / rows;
-        if (sx >= rb_w) sx = rb_w - 1;
-        if (sy >= rb_h) sy = rb_h - 1;
-        uint32_t px = nap_gles_rb_buf[sy * rb_w + sx]; // BUILD2SK118: ted ARGB8888
+        int px_x = (rx * sw) / cols;
+        int px_y = (ry * sh) / rows;
+        if (px_x >= sw) px_x = sw - 1;
+        if (px_y >= sh) px_y = sh - 1;
+        uint32_t px = nap_gles_rb_buf[px_y * sw + px_x]; // BUILD2SK118: ted ARGB8888
         int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
         int bright = (r + g + b) / 3;
         int idx = (bright * 9) / 255;
@@ -217,18 +214,6 @@ static void nap_gles_readback_and_push(void)
     nap_diag_log("BUILD2SK109 GLES_ALPHA_TEST_CHECK enabled=%d func=0x%x ref=%f",
       (int)alphaTestOn, (unsigned)alphaFunc, (double)alphaRef);
   }
-  // BUILD2SK110: posledni neoverena cast zakladniho GL stavu - viewport.
-  // Scissor uz jsme overili a opravili (SK106/108), alpha test overen a
-  // vyloucen jako pricina (SK109, je permisivni). Viewport je JEDINE, co
-  // jeste primo neurcuje, KAM se geometrie na obrazovce vlastne premapuje -
-  // pokud je i tohle degenerovane (podobne jako byl scissor pred opravou),
-  // je to dalsi mozne vysvetleni.
-  {
-    GLint viewport[4] = {0,0,0,0};
-    glGetIntegerv(GL_VIEWPORT, viewport);
-    nap_diag_log("BUILD2SK110 GLES_VIEWPORT_CHECK x=%d y=%d w=%d h=%d",
-      viewport[0], viewport[1], viewport[2], viewport[3]);
-  }
   // BUILD2SK121: DIAGNOSTIKA, ZADNA ZMENA CHOVANI (na Reneho vyslovny
   // pozadavek). SK120 ukazalo, ze VYSLEDNY scissor/viewport/rozliseni jsou
   // spravne a konzistentni - presto obraz porad vypada spatne (zoom,
@@ -245,20 +230,19 @@ static void nap_gles_readback_and_push(void)
   nap_diag_log("BUILD2SK121 PREVPSXDISPLAY_STATE DispPos=[%d,%d] Range=[%d,%d,%d,%d]",
     PreviousPSXDisplay.DisplayPosition.x, PreviousPSXDisplay.DisplayPosition.y,
     (int)PreviousPSXDisplay.Range.x0, (int)PreviousPSXDisplay.Range.y0, (int)PreviousPSXDisplay.Range.x1, (int)PreviousPSXDisplay.Range.y1);
-  // BUILD2SK121/122: RAW (primo z GPU, cela VRAM, PRED nasim vyriznutim a
-  // prevodem) vs FINALNI (PO nasem zpracovani) vzorek - pokud uz RAW
-  // vypada spatne, problem je v samotnem GPU vykreslovani (mimo nas kod
-  // uplne). Pokud RAW vypada dobre ale FINALNI spatne, chyba je v nasem
-  // vyriznuti/prevodu.
+  // BUILD2SK123: RAW (primo z GPU, jen precatana - jeste PRED flipem -
+  // scissor oblast) vs FINALNI (PO flipu) vzorek - TED uz porovnavaji
+  // STEJNE misto (na rozdil od SK122, kde RAW byl stred CELE VRAM a
+  // FINAL stred jen vyriznute casti - ruzna mista, matouci srovnani).
   {
-    int rawIdx = (NAP_PSX_VRAM_H/2) * NAP_PSX_VRAM_W * 4 + (NAP_PSX_VRAM_W/2) * 4; // stred CELE VRAM
-    int finIdx = (rb_h/2) * rb_w; // stredovy pixel, FINALNI ARGB8888 (uz vyriznuty a otoceny)
-    nap_diag_log("BUILD2SK122 RAW_VS_FINAL rawRGBA=[%d,%d,%d,%d] finalARGB=0x%08x",
+    int rawIdx = (sh/2) * sw * 4 + (sw/2) * 4;
+    int finIdx = (sh/2) * sw;
+    nap_diag_log("BUILD2SK123 RAW_VS_FINAL rawRGBA=[%d,%d,%d,%d] finalARGB=0x%08x",
       (int)nap_gles_vram_rgba[rawIdx+0], (int)nap_gles_vram_rgba[rawIdx+1], (int)nap_gles_vram_rgba[rawIdx+2], (int)nap_gles_vram_rgba[rawIdx+3],
       (unsigned)nap_gles_rb_buf[finIdx]);
   }
  }
- nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 4); // BUILD2SK118: *4 pro ARGB8888 (drive *2 pro RGB565)
+ nap_gles_push_frame(nap_gles_rb_buf, sw, sh, sw * 4); // BUILD2SK123: KRITICKE - skutecne rozmery bufferu (scissor), ne DisplayMode
 }
 
 static int is_opened;
