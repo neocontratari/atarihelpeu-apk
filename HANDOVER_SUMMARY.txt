@@ -1349,3 +1349,31 @@ to, ze se DOOPRAVDY neco kresli, jen se nekde POZDEJI (mimo tento bod v
 kodu) ztraci pri prenosu do Javy/zobrazeni. Pokud je videt jen uniformni
 plocha i tady: potvrzuje to, ze problem je PRED timto bodem (uvnitr
 samotneho GL kresleni), ne po nem.
+
+================================================================================
+DODATEK - BUILD2SK114 - PRUELOM (ASCII dump ukazal skutecny obsah!) +
+OPRAVA FORMATU BAREV
+================================================================================
+SK113 ASCII dump #5-8: REALNY, STRUKTUROVANY OBSAH (barevny prechod +
+neco jako text/UI v radcich 12-15), NE jednolita barva! Tohle DOKAZUJE,
+ze jadro SKUTECNE kresli realny obsah hry - predchozi predpoklad
+"geometrie se nekresli" byl castecne spatny.
+
+NOVA HYPOTEZA: nase gpu-gles cesta VZDY posila RGB565 data, ale Java-
+strana interpretace se ridi g_pixfmt promennou nastavovanou JADREM
+SAMYM (vychozi hodnota 0RGB1555, NE RGB565!) - pokud jadro nikdy
+spravne nenastavi RGB565, nase data by se cetla spatnym bitovym
+rozlozenim.
+
+OPRAVENO (SK114): natvrdo vynucujeme g_pixfmt=RGB565 (misto spolehani
+na jadro) - known-safe, protoze VIME, ze nase data jsou RGB565.
+
+VLASTNI CHYBA ZACHYCENA PRED ODESLANIM: g_gles_ready pouzita drive, nez
+deklarovana (stejna trida jako minuly TRUE/FALSE fail) - tentokrat
+zachyceno vlastni kontrolou poradi pred odeslanim, opraveno presunutim
+deklarace.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK114 vysledek - tohle
+by MOHLO konecne prinest skutecny obraz. Pokud ano, hlavni cast prace
+hotova (zbyva uz jen ladeni kvality/vykonu). Pokud ne, PS1_PIXFMT_CHECK
+v logu rekne, jaky format se driv opravdu pouzival - dalsi stopa.

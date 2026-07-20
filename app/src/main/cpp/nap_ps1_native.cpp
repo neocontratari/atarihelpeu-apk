@@ -66,6 +66,11 @@ extern "C" {
 #define PIXFMT_0RGB1555 0
 #define PIXFMT_XRGB8888 1
 #define PIXFMT_RGB565 2
+// BUILD2SK114: presunuto sem (bylo puvodne u zbytku GLES kodu, radek 269) -
+// nap_video() ji potrebuje driv, nez se tam GLES kod vubec deklaruje.
+// Zachyceno PRED odeslanim explicitni kontrolou poradi deklaraci - stejna
+// trida chyby jako minuly TRUE/FALSE build fail, tentokrat vcas.
+static bool g_gles_ready = false;
 
 static std::string g_sysdir, g_savedir, g_boot_error;
 static std::atomic<int> g_pixfmt{PIXFMT_0RGB1555};
@@ -170,7 +175,27 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
   if (!data) { g_dupe_frames.fetch_add(1); g_frames.fetch_add(1); return; }
   std::lock_guard<std::mutex> lock(g_frame_mutex);
   g_frame_argb.resize((size_t)w * h);
+  // BUILD2SK114: nase gpu-gles cesta VZDY balí data jako RGB565 (viz
+  // nap_gles_readback_and_push v gpulib_if.c) - misto spolehani na to, co
+  // si jadro samo nastavilo pres SET_PIXEL_FORMAT (mohlo by byt jine,
+  // zpusobilo by to zkreslene barvy), radeji to tady natvrdo vynutime na
+  // hodnotu, o ktere s jistotou vime, ze odpovida datum, co posilame.
+  if (g_gles_ready) { g_pixfmt.store(PIXFMT_RGB565); }
   const int fmt = g_pixfmt.load();
+  // BUILD2SK114: KRITICKA kontrola - nas gpu-gles readback VZDY balí data
+  // jako RGB565 (PIXFMT_RGB565=2), ale tenhle kod si o tom, jak data cist,
+  // rozhoduje podle g_pixfmt - promenne, kterou NASTAVUJE JADRO SAMO (ne
+  // my), s vychozi hodnotou PIXFMT_0RGB1555=0. Pokud jadro nikdy nezavola
+  // SET_PIXEL_FORMAT s RGB565 (nebo to zavola s necim jinym), nase RGB565
+  // data by se cetla SPATNYM bitovym rozlozenim - barvy by vysly zkreslene/
+  // spatne, presne takovy druh chyby, ktery by vysvetlil "nativne se
+  // opravdu neco kresli (ASCII dump ukazal skutecny obsah), ale po
+  // prevodu na Java stranu je to spatne". Throttled log, ne kazdy snimek.
+  static int nap_pixfmt_log_count = 0;
+  if (nap_pixfmt_log_count < 20) {
+    nap_pixfmt_log_count++;
+    NAPDIAG("BUILD2SK114 PS1_PIXFMT_CHECK fmt=%d (0=0RGB1555 1=XRGB8888 2=RGB565_ocekavano)", fmt);
+  }
   for (unsigned y = 0; y < h; ++y) {
     const uint8_t *row = (const uint8_t*)data + y * pitch;
     uint32_t *dst = g_frame_argb.data() + (size_t)y * w;
@@ -246,7 +271,6 @@ extern "C" {
   extern unsigned int CSTEXTURE, CSVERTEX, CSCOLOR; // BUILD2SK106
 }
 
-static bool g_gles_ready = false;
 static std::mutex g_diag_log_mutex;
 static std::string g_diag_log_path;
 

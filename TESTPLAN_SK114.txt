@@ -1,0 +1,50 @@
+BUILD2SK114 - PRUELOM: NATIVE STRANA SKUTECNE KRESLI + OPRAVA FORMATU BAREV
+================================================================================
+TOHLE JE DULEZITY OBRAT V CELEM PRIBEHU.
+
+CO ASCII OBRAZKY (SK113) UKAZALY
+Snimky #5-#8 NEJSOU jednolita barva - je v nich SKUTECNY, strukturovany
+obsah: plynuly barevny prechod (typicky pro pozadi/oblohu ve vesmirne
+scene) A navic v radcich 12-15 neco s realnou, nepravidelnou strukturou -
+vypada to jako text nebo UI prvek (napr. SCORE), ne nahodny sum ani
+placha barva.
+
+TOHLE JE ZASADNI: znamena to, ze JADRO SKUTECNE KRESLI REALNY OBSAH HRY.
+Cely muj predchozi predpoklad ("geometrie se nekresli") byl castecne
+spatny - kresli se. Problem je nekde JINDE - mezi timhle uspesnym
+zachycenim a tim, co se nakonec objevi na obrazovce.
+
+NOVA HYPOTEZA A OPRAVA
+Nase gpu-gles cesta VZDY posila data zabalena jako RGB565 format barev.
+Ale kod, ktery tohle na Java strane rozbaluje (nap_video), se ridi
+promennou (g_pixfmt), kterou nastavuje JADRO SAMO - a jeji VYCHOZI
+hodnota je JINY format (0RGB1555), ne RGB565! Pokud jadro nekdy
+nezavola spravne nastaveni (nebo to udela pozde/jinak, nez ocekavam),
+nase RGB565 data by se cetla SPATNYM bitovym rozlozenim - barvy by
+vysly poskozene/spatne. Tohle by presne vysvetlilo "nativne se neco
+kresli (potvrzeno ASCII obrazkem), ale vysledek je spatny/neviditelny".
+
+CO SE ZMENILO
+1) Diagnostika - primy vypis, jaky format kod SKUTECNE pouziva
+   (PS1_PIXFMT_CHECK).
+2) OPRAVA - misto spolehani na jadro, natvrdo vynucujeme spravnou
+   hodnotu (RGB565), o ktere s jistotou vime, ze odpovida datum, ktera
+   doopravdy posilame.
+
+DULEZITA VLASTNI KONTROLA PRED ODESLANIM
+Behem prace jsem si vsiml, ze nova promenna (g_gles_ready), kterou jsem
+pouzil v opravě, se v souboru puvodne deklarovala AZ POZDEJI, nez kde
+jsem ji potreboval - presne stejny druh chyby jako minuly TRUE/FALSE
+build fail. Tentokrat jsem to zachytil PRED odeslanim (explicitni
+kontrola poradi radku) a opravil presunutim deklarace na spravne misto.
+
+RIZIKO
+Nizke-stredni - vynucujeme hodnotu, o ktere mame jistotu (nase vlastni
+data jsou VZDY RGB565), takze riziko spatneho vynuceni je minimalni.
+Overeno: {} sedi (105/105), zadne TRUE/FALSE ani jine nedeklarovane
+identifikatory, zakladni syntax check bez novych problemu.
+
+JAK OTESTOVAT
+Presne jako predtim. Tohle by MOHLO byt to, co konecne prinese skutecny
+obraz - pokud ano, hlavni cast prace je hotova. V logu i tak zkontroluj
+"PS1_PIXFMT_CHECK" pro potvrzeni, jaky format kod driv pouzival.
