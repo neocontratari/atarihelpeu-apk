@@ -1,0 +1,36 @@
+BUILD2SK116 - PRIME SROVNANI: STEJNY OBRAZEK, ALE Z JAVA STRANY
+================================================================================
+CO SE ZJISTILO
+Format barev je potvrzeny spravny (fmt=2=RGB565). Nativni strana STALE
+zachytava skutecny obsah (potvrzeno ASCII dumpem - stejny gradient +
+strukturovany obsah jako minule). Presto Rene stale vidi cernou
+obrazovku - na telefonu i na TV.
+
+Rene se zeptal chytrou otazkou: nepremalovava neco cerny ctverec pres
+skutecny obraz? Presne tenhle typ problemu uz jednou nastal (CSS
+pruhlednost, davno vyresene pro jinou situaci) - overil jsem, ze ta
+puvodni oprava je porad na miste, a JS logika pro schovavani stareho
+JPEG nahledu v landscape taky vypada spravne.
+
+CO SE PRIDALO
+STEJNY textovy "obrazek" jako uz mame na nativni strane (SK113), ale
+TEDY na JAVA STRANE, TESNE PRED tim, nez se z dat stane bitmapa pro
+kresleni. Tohle umozni PRIME srovnani:
+- Pokud JAVA vypis UKAZE stejny skutecny obsah jako nativni: predani
+  dat je v poradku, problem je jeste POZDEJI (samotne kresleni na
+  obrazovku/kompozice s WebView).
+- Pokud je JAVA vypis PRAZDNY/cerny, i kdyz nativni ma obsah: neco se
+  ztraci PRESNE MEZI predanim z nativniho kodu do Javy - dalsi presne
+  misto k hledani.
+
+RIZIKO
+Minimalni - jen cteni jiz existujicich dat pred kreslenim, zadna zmena
+chovani. Pouziva uz overeny appendNativeLog mechanismus.
+Overeno: {} v MainActivity.java sedi (1893/1893), zadne nove
+nedeklarovane symboly.
+
+JAK OTESTOVAT
+Presne jako predtim - naboot hru v LANDSCAPE (na sirku), chvili nech
+bezet, posli /log. V logu hledej "JAVA_ASCII_DUMP_START" a porovnej se
+"GLES_ASCII_DUMP_START" (nativni, driv v logu) - jsou stejne, nebo se
+lisi?

@@ -1402,3 +1402,26 @@ pouzit znovu pri jakekoli budouci uprave tohoto souboru.
 DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK115 vysledek - tohle by
 KONECNE melo prejit buildem A prinest funkcni pixel format opravu ze
 SK114.
+
+================================================================================
+DODATEK - BUILD2SK116 - JAVA-STRANA ASCII DUMP (prime srovnani s nativni)
+================================================================================
+SK115 uspesne prosla buildem. Log potvrdil: fmt=2 (RGB565, spravne),
+nativni ASCII dump STALE ukazuje skutecny obsah (gradient + struktura).
+Presto Rene stale hlasi cernou obrazovku (telefon i TV).
+
+Rene se zeptal, jestli neco nepremalovava cerny ctverec pres skutecny
+obraz (podobne jako stary CSS bug). Overeno: SK90 CSS fix je porad na
+miste, JS logika pro schovavani stareho JPEG nahledu v landscape
+vypada spravne.
+
+PRIDANO (SK116): stejny ASCII dump mechanismus, ale na JAVA strane,
+TESNE PRED kreslenim bitmapy - primo srovnatelne s nativnimi vypisy.
+Tohle rozhodne, jestli se problem deje PRED predanim do Javy (nativni
+OK, Java prazdna) nebo PO nem (oba OK, problem je v samotnem kresleni/
+kompozici).
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK116 vysledek - PRIMO
+porovnat JAVA_ASCII_DUMP vs GLES_ASCII_DUMP v tom samem logu. Podle
+vysledku dalsi konkretni krok (bud oprava handoff cesty, nebo oprava
+kresleni/kompozice).

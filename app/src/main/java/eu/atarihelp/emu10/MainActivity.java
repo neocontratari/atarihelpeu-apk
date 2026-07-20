@@ -4384,6 +4384,7 @@ public class MainActivity extends Activity {
         // alokovat). Souradnice se prepisuji pres set(), objekt sam zustava.
         private final Rect reuseDst = new Rect();
         private int[] sharpenBuf; // BUILD2SK97: opakovane pouzivany vystup doostrovaciho pruchodu
+        private int ps1JavaAsciiDumpCount = 0; // BUILD2SK116: omezeni poctu textovych vypisu
         private final Rect reuseSrc = new Rect();
 
         NativePs1InPlaceView(Activity a) {
@@ -4560,6 +4561,35 @@ public class MainActivity extends Activity {
                     curSrcW = srcW; curSrcH = srcH;
                 }
                 bitmap.setPixels(sharpenBuf, 0, srcW, 0, 0, srcW, srcH);
+                // BUILD2SK116: STEJNY textovy "obrazek" jako uz mame na nativni
+                // strane (SK113) - ale TADY, na Java strane, TESNE pred tim, nez
+                // se z dat stane bitmapa. Primo srovnatelne s nativnimi vypisy -
+                // pokud tenhle vypis UKAZE skutecny obsah (stejny jako nativni),
+                // znamena to, ze predani dat je v poradku a problem je jeste dal
+                // (samotne kresleni/zobrazeni). Pokud je tenhle vypis PRAZDNY/
+                // cerny, i kdyz nativni ma obsah, znamena to, ze se neco ztrati
+                // presne MEZI predanim z nativniho kodu do Javy. Omezeno na par
+                // vypisu celkem, aby log zustal citelny.
+                if (ps1JavaAsciiDumpCount < 8) {
+                    ps1JavaAsciiDumpCount++;
+                    StringBuilder dumpMsg = new StringBuilder("BUILD2SK116 JAVA_ASCII_DUMP_START #" + ps1JavaAsciiDumpCount + " src=" + srcW + "x" + srcH);
+                    appendNativeLog(dumpMsg.toString());
+                    String shades = " .:-=+*#%@";
+                    int cols = 48, rows = 20;
+                    for (int ry = 0; ry < rows; ry++) {
+                        StringBuilder line = new StringBuilder();
+                        for (int rx = 0; rx < cols; rx++) {
+                            int sx = Math.min(srcW - 1, (rx * srcW) / cols);
+                            int sy = Math.min(srcH - 1, (ry * srcH) / rows);
+                            int px = sharpenBuf[sy * srcW + sx];
+                            int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
+                            int bright = (r + g + b) / 3;
+                            int idx = Math.max(0, Math.min(9, (bright * 9) / 255));
+                            line.append(shades.charAt(idx));
+                        }
+                        appendNativeLog("BUILD2SK116 |" + line + "|");
+                    }
+                }
                 canvas.drawColor(Color.BLACK);
                 // BUILD2SK87: PRESNA kopie CSS #psMonitor 16:9 stred-fit matematiky
                 // z emu_ps1/index.html (@media orientation:landscape) - box se
