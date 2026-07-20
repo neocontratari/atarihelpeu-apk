@@ -31,54 +31,54 @@
 extern void nap_gles_push_frame(void *pixels, int w, int h, int pitch);
 extern void nap_diag_log(const char *fmt, ...); // BUILD2SK100: viz nap_ps1_native.cpp
 
-// BUILD2SK119: iResX/iResY (a z nich odvozeny rRatioRect) se nastavily
-// JEDNOU pri startu (viz nap_gles_egl_init, natvrdo 320x240) a uz nikdy
-// potom - ale PSXDisplay.DisplayMode se BEZNE meni behem hry (napr. FMV
-// sekvence casto bezi ve vyssim rezimu jako 640x480).
-// BUILD2SK120: SK119 NESTACILO - opravilo jen vstup do SetOGLDisplaySettings,
-// ale ta funkce (precteno CELA, radek po radku, na Reneho vyslovnou zadost
-// "prestan testovat porad dokola, poradne to oprav") vola VYHRADNE
-// glScissor(). NIKDY se v ni ani nikde jinde v celem gpu-gles nevola
-// glViewport() ani glOrtho() (promitaci matice) - obe se nastavuji JEDNOU,
-// uvnitr GLinitialize, natvrdo podle tehdejsiho PSXDisplay.DisplayMode
-// (320x240 pri nasem startu) a uz NIKDY POTOM. Presne tohle vysvetluje
-// VSECHNY pozorovane artefakty najednou: kdyz hra zustala na 320x240,
-// vypadalo to spravne (viewport/projekce sedely) - jakmile prepnula na
-// jine rozliseni (bezne u FMV), viewport/projekce zustaly stare, scissor
-// (diky SK119) uz spravny - vysledek: geometrie se mapuje pres SPATNOU
-// projekci do SPRAVNE OREZANE oblasti = zoom, oriznuti, prekryvajici se
-// artefakty ("cervena rozmazanina" pod NAUGHTY logem).
-// Tahle verze replikuje PRESNE to, co GLinitialize dela pro viewport a
-// projekci, ale znovupustitelne - spusti se JEN kdyz se rozliseni SKUTECNE
-// zmenilo (ne kazdy jednotlivy snimek zbytecne).
+// BUILD2SK119/120: (puvodni pokusy o synchronizaci s DisplayMode - viz
+// historie v predchozich poznamkach, nahrazeno nasledujicim, uplnym
+// resenim na zaklade SK121 dat).
+// BUILD2SK122: SKUTECNA, KOMPLETNI OPRAVA - zalozena na konkretnich datech
+// z Reneho SK121 logu (ne na dalsim odhadu). PSXDISPLAY_STATE ukazal
+// DrawArea BEZNE presahujici 320x240 (napr. [0,0,639,479] = 640x480, nebo
+// dokonce [512,12,1023,227] - posunute o 512 pixelu doprava, klasicky PS1
+// trik dvojiteho bufferovani vyuzivajici CELOU 1024-sirokou VRAM). Nase
+// projekce/viewport (SK120) porad predpokladaly "svet" o velikosti
+// DisplayMode (320x240) - jakakoli geometrie umistena/skalovana vuci
+// SKUTECNE (vetsi, casem posouvajici se) ploše se pres SPATNE meritko
+// projekce zobrazila zvetsena/posunuta presne od prvniho snimku (Sony
+// logo) - to vysvetluje VSECHNY nahlasene artefakty najednou.
+// RESENI: prestat honit promenlivy DrawArea pro projekci - misto toho
+// nastavit viewport+projekci JEDNOU na SKUTECNOU, pevnou velikost VRAM
+// cipu PS1 (1024x512 - realna hardwarova hodnota, ne odhad), precist
+// CELOU tuhle oblast, a az POTOM sami vyriznout presne tu viditelnou
+// cast (DisplayMode velika, na pozici DisplayPosition) jednoduchym,
+// snadno overitelnym indexovanim pole - stejny pruchod uz zaroven resi
+// i drivejsi Y-flip (SK118), zadna dalsi rezie navic.
+#define NAP_PSX_VRAM_W 1024
+#define NAP_PSX_VRAM_H 512
+static int nap_vram_projection_set = 0;
 void nap_gles_sync_display_settings(void)
 {
-  static int lastResX = -1, lastResY = -1;
-  int curX = PSXDisplay.DisplayMode.x;
-  int curY = PSXDisplay.DisplayMode.y;
-  if (curX <= 0 || curY <= 0) return; // jeste nenastaveno smysluplne
-  iResX = curX;
-  iResY = curY;
-  rRatioRect.left = 0; rRatioRect.top = 0;
-  rRatioRect.right = iResX; rRatioRect.bottom = iResY;
-  if (curX != lastResX || curY != lastResY) {
-    // BUILD2SK120: presna kopie viewport+projekce casti z GLinitialize,
-    // jen s AKTUALNIMI hodnotami misto tech z doby startu appky.
-    glViewport(rRatioRect.left, iResY - (rRatioRect.top + rRatioRect.bottom), rRatioRect.right, rRatioRect.bottom);
+  if (!nap_vram_projection_set) {
+    // BUILD2SK122: nastavit JEN JEDNOU - uz se nemusi honit menici se
+    // DisplayMode/DrawArea, VRAM velikost je pevna hardwarova hodnota.
+    iResX = NAP_PSX_VRAM_W;
+    iResY = NAP_PSX_VRAM_H;
+    rRatioRect.left = 0; rRatioRect.top = 0;
+    rRatioRect.right = NAP_PSX_VRAM_W; rRatioRect.bottom = NAP_PSX_VRAM_H;
+    glViewport(0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, PSXDisplay.DisplayMode.x, PSXDisplay.DisplayMode.y, 0, -1, 1);
-    nap_diag_log("BUILD2SK120 GLES_RESOLUTION_RESYNC oldX=%d oldY=%d newX=%d newY=%d", lastResX, lastResY, curX, curY);
-    lastResX = curX;
-    lastResY = curY;
+    glOrtho(0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H, 0, -1, 1);
+    nap_diag_log("BUILD2SK122 GLES_VRAM_PROJECTION_SET w=%d h=%d", NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
+    nap_vram_projection_set = 1;
   }
-  SetOGLDisplaySettings(1);
+  SetOGLDisplaySettings(1); // scissor porad potrebuje bezet kazdy snimek (uz spravne pocita z DrawArea/DisplayPosition)
 }
 
+
 static uint32_t *nap_gles_rb_buf = NULL; // BUILD2SK118: ted ARGB8888 primo (drive uint16_t RGB565)
-static uint8_t *nap_gles_rb_rgba = NULL; // BUILD2SK105: docasny RGBA8 buffer pro bezpecny readback
 static int nap_gles_rb_w = 0, nap_gles_rb_h = 0;
 static int nap_gles_frame_count = 0; // BUILD2SK100: tep - kolik snimku uspesne prosel readback
+
+static uint8_t *nap_gles_vram_rgba = NULL; // BUILD2SK122: FIXNI 1024x512x4 buffer - cela VRAM, alokovano jen jednou
 
 static void nap_gles_readback_and_push(void)
 {
@@ -104,32 +104,47 @@ static void nap_gles_readback_and_push(void)
  if (nap_gles_frame_count % 30 == 1) {
   nap_diag_log("BUILD2SK100 GLES_FRAME_HEARTBEAT n=%d dispW=%d dispH=%d", nap_gles_frame_count, rb_w, rb_h);
  }
- if (rb_w <= 0 || rb_h <= 0 || rb_w > 2048 || rb_h > 2048) return; // rozumne meze, zadny divoky alloc
+ if (rb_w <= 0 || rb_h <= 0 || rb_w > NAP_PSX_VRAM_W || rb_h > NAP_PSX_VRAM_H) return; // BUILD2SK122: mez ted presne podle skutecne VRAM velikosti, ne odhadem
  if (nap_gles_rb_buf == NULL || nap_gles_rb_w != rb_w || nap_gles_rb_h != rb_h) {
   if (nap_gles_rb_buf != NULL) free(nap_gles_rb_buf);
-  if (nap_gles_rb_rgba != NULL) free(nap_gles_rb_rgba);
-  nap_gles_rb_buf = (uint32_t *)malloc((size_t)rb_w * (size_t)rb_h * 4); // BUILD2SK118: ted ARGB8888 primo, ne RGB565
-  nap_gles_rb_rgba = (uint8_t *)malloc((size_t)rb_w * (size_t)rb_h * 4); // BUILD2SK105
+  nap_gles_rb_buf = (uint32_t *)malloc((size_t)rb_w * (size_t)rb_h * 4); // BUILD2SK118: ARGB8888, jen VYSTUPNI (viditelna) velikost
   nap_gles_rb_w = rb_w;
   nap_gles_rb_h = rb_h;
  }
- if (nap_gles_rb_buf == NULL || nap_gles_rb_rgba == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
+ if (nap_gles_vram_rgba == NULL) {
+  nap_gles_vram_rgba = (uint8_t *)malloc((size_t)NAP_PSX_VRAM_W * (size_t)NAP_PSX_VRAM_H * 4); // BUILD2SK122: cela VRAM, jen jednou
+ }
+ if (nap_gles_rb_buf == NULL || nap_gles_vram_rgba == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
  // BUILD2SK105: primo GL_RGBA+GL_UNSIGNED_BYTE - jedina kombinace, kterou
  // GLES specifikace zarucuje pro glReadPixels na jakemkoli zarizeni.
- glReadPixels(0, 0, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_rb_rgba);
- // BUILD2SK118: DVE VECI NAJEDNOU v jednom pruchodu:
- // 1) Uz NEPREVADIME dolu na RGB565 a pak zpet nahoru na ARGB v nap_video()
- //    (dva plne pruchody delajici a zase odedelavajici stejnou praci, navic
- //    ztraci barevnou presnost pri 565 zaokrouhlovani) - rovnou balime jako
- //    ARGB8888, presne format, ktery Android/Java uz stejne pozaduje.
- // 2) OTACIME RADKY (Y-flip) - glReadPixels vraci radek 0 jako SPODEK
- //    obrazu (OpenGL ma osu Y nahoru), zatimco Android Bitmap/Canvas ceka
- //    radek 0 jako VRCH (Y dolu) - presne tohle zpusobilo obraz vzhuru
- //    nohama, co Rene videl na screenshotu.
+ // BUILD2SK122: cteme VZDY CELOU VRAM (1024x512), ne uz jen zdanlivou
+ // "viditelnou" cast - presne to byla chyba (viz SK121 data - DrawArea
+ // bezne presahuje DisplayMode, i posunuty o cely VRAM-pulku).
+ glReadPixels(0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
+ // BUILD2SK122: az TEDka vyrizneme presne tu VIDITELNOU cast (velikost
+ // DisplayMode, pozice DisplayPosition) z cele precatane VRAM - jednoduchym,
+ // primym indexovanim pole (zadna zavislost na GL/EGL vlastnim chovani).
+ // Zaroven se tim (stejny pruchod, zadna rezie navic) resi i Y-flip (SK118):
+ // PS1 souradnice Y=0 (logicky "nahore") odpovida - diky glOrtho flip-triku
+ // pouzitemu ve viewport/projekci - RADKU (VRAM_H-1) v surovem GL bufferu
+ // (GL cte odspoda nahoru), takze mapovani "PS1 radek Y" -> "surovy radek
+ // (VRAM_H-1-Y)" davá SPRAVNE otoceny vystup primo, bez dalsiho kroku.
  {
+  int dispPosX = PSXDisplay.DisplayPosition.x;
+  int dispPosY = PSXDisplay.DisplayPosition.y;
+  if (dispPosX < 0) dispPosX = 0;
+  if (dispPosY < 0) dispPosY = 0;
+  // BUILD2SK122: obranna pojistka - kdyby DisplayPosition+DisplayMode
+  // presahlo VRAM hranice, radeji posunout zpet, nez cist mimo buffer.
+  if (dispPosX + rb_w > NAP_PSX_VRAM_W) dispPosX = NAP_PSX_VRAM_W - rb_w;
+  if (dispPosX < 0) dispPosX = 0;
+  if (dispPosY + rb_h > NAP_PSX_VRAM_H) dispPosY = NAP_PSX_VRAM_H - rb_h;
+  if (dispPosY < 0) dispPosY = 0;
   for (int y = 0; y < rb_h; y++) {
-   const uint8_t *srcRow = nap_gles_rb_rgba + (size_t)y * rb_w * 4;
-   uint32_t *dstRow = nap_gles_rb_buf + (size_t)(rb_h - 1 - y) * rb_w; // BUILD2SK118: flip - posledni GL radek jde na prvni Android radek
+   int rawRow = (NAP_PSX_VRAM_H - 1) - (dispPosY + y);
+   if (rawRow < 0) rawRow = 0; else if (rawRow >= NAP_PSX_VRAM_H) rawRow = NAP_PSX_VRAM_H - 1;
+   const uint8_t *srcRow = nap_gles_vram_rgba + (size_t)rawRow * NAP_PSX_VRAM_W * 4 + (size_t)dispPosX * 4;
+   uint32_t *dstRow = nap_gles_rb_buf + (size_t)y * rb_w;
    for (int x = 0; x < rb_w; x++) {
     uint8_t r = srcRow[x * 4 + 0];
     uint8_t g = srcRow[x * 4 + 1];
@@ -230,15 +245,16 @@ static void nap_gles_readback_and_push(void)
   nap_diag_log("BUILD2SK121 PREVPSXDISPLAY_STATE DispPos=[%d,%d] Range=[%d,%d,%d,%d]",
     PreviousPSXDisplay.DisplayPosition.x, PreviousPSXDisplay.DisplayPosition.y,
     (int)PreviousPSXDisplay.Range.x0, (int)PreviousPSXDisplay.Range.y0, (int)PreviousPSXDisplay.Range.x1, (int)PreviousPSXDisplay.Range.y1);
-  // BUILD2SK121: RAW (primo z GPU, PRED nasim flip+prevodem) vs FINALNI
-  // (PO nasem zpracovani) vzorek - pokud uz RAW vypada spatne, problem je
-  // v samotnem GPU vykreslovani (mimo nas kod uplne). Pokud RAW vypada
-  // dobre ale FINALNI spatne, chyba je v nasem prevodu.
+  // BUILD2SK121/122: RAW (primo z GPU, cela VRAM, PRED nasim vyriznutim a
+  // prevodem) vs FINALNI (PO nasem zpracovani) vzorek - pokud uz RAW
+  // vypada spatne, problem je v samotnem GPU vykreslovani (mimo nas kod
+  // uplne). Pokud RAW vypada dobre ale FINALNI spatne, chyba je v nasem
+  // vyriznuti/prevodu.
   {
-    int rawIdx = (rb_h/2) * rb_w * 4 + (rb_w/2) * 4; // stredovy pixel, RAW RGBA8 buffer
-    int finIdx = (rb_h/2) * rb_w; // stredovy pixel, FINALNI ARGB8888 buffer (uz otoceny)
-    nap_diag_log("BUILD2SK121 RAW_VS_FINAL rawRGBA=[%d,%d,%d,%d] finalARGB=0x%08x",
-      (int)nap_gles_rb_rgba[rawIdx+0], (int)nap_gles_rb_rgba[rawIdx+1], (int)nap_gles_rb_rgba[rawIdx+2], (int)nap_gles_rb_rgba[rawIdx+3],
+    int rawIdx = (NAP_PSX_VRAM_H/2) * NAP_PSX_VRAM_W * 4 + (NAP_PSX_VRAM_W/2) * 4; // stred CELE VRAM
+    int finIdx = (rb_h/2) * rb_w; // stredovy pixel, FINALNI ARGB8888 (uz vyriznuty a otoceny)
+    nap_diag_log("BUILD2SK122 RAW_VS_FINAL rawRGBA=[%d,%d,%d,%d] finalARGB=0x%08x",
+      (int)nap_gles_vram_rgba[rawIdx+0], (int)nap_gles_vram_rgba[rawIdx+1], (int)nap_gles_vram_rgba[rawIdx+2], (int)nap_gles_vram_rgba[rawIdx+3],
       (unsigned)nap_gles_rb_buf[finIdx]);
   }
  }

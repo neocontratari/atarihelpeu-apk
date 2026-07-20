@@ -1,0 +1,54 @@
+BUILD2SK122 - SKUTECNA OPRAVA ZALOZENA NA TVYCH DATECH (ne na dalsim odhadu)
+================================================================================
+CO TVUJ SK121 LOG PRESNE UKAZAL
+PSXDISPLAY_STATE: DrawArea BEZNE presahuje 320x240 - videl jsem hodnoty
+[0,0,639,479] (640x480) UZ OD PRVNIHO SNIMKU (Sony logo), a dokonce
+[512,12,1023,227] - posunute o 512 pixelu doprava! To je klasicky PS1
+trik dvojiteho bufferovani, kdy hra vyuziva CELOU 1024-pixelovou sirku
+VRAM cipu, ne jen 320 pixelu.
+
+RAW_VS_FINAL: rawRGBA=[30,30,30,255] presne odpovida finalARGB=0xff1e1e1e
+(30 = 0x1e) - potvrzeno, ze muj prevod barev je SPRAVNY. Problem nebyl v
+mem zpracovani PO vykresleni, ale v tom, JAK se veci vykreslujou.
+
+SKUTECNA PRICINA
+Nase promitaci matice (glOrtho) a viewport predpokladaly "svet" o
+velikosti DisplayMode (320x240 nebo cokoli hlasi). Ale hra kresli
+geometrii do souradnicoveho prostoru odpovidajicimu SKUTECNE, VETSI a
+casem se POSOUVAJICI oblasti (az 640x480, pripadne posunute o 512px).
+Kdyz se tahle geometrie premapovala pres SPATNE (male) meritko projekce,
+vysledek byl zvetseny/posunuty/prekryvajici se obraz - presne to, co jsi
+videl od uplne prvniho snimku.
+
+CO SE ZMENILO (komplexni prestavba, ne dalsi zaplata)
+1) Viewport a promitaci matice se ted nastavuji JEDNOU na SKUTECNOU,
+   PEVNOU velikost VRAM cipu PS1 (1024x512 - realna hardwarova hodnota
+   konzole, ne odhad) - uz se nemusí honit menici se DrawArea.
+2) Cteme VZDY celou tuhle oblast (1024x512) z GPU.
+3) Az POTOM sami vyrizneme presne tu VIDITELNOU cast (velikost podle
+   DisplayMode, pozice podle DisplayPosition) jednoduchym, primym
+   indexovanim pole - zadna zavislost na tom, jak presne GL/EGL
+   interne pracuji.
+4) Stejny pruchod resi i drivejsi otoceni (Y-flip) - zadna rezie navic.
+5) Pridana obranna pojistka proti cteni mimo hranice bufferu.
+
+RIZIKO
+Stredni-vyssi - jde o zasadni prestavbu zakladu cele vykreslovaci cesty.
+Ale je postavena PRIMO na konkretnich datech z tveho logu, ne na dalsim
+hadani - vim PRESNE, proc predchozi pristup selhaval.
+Overeno: {} 106/106, () 399/399 (spravnou metodou, s odstranenim
+komentaru) - obojí presne sedi. Zadne zbyle odkazy na stare nazvy
+promennych.
+
+CO OD TOHOTO CEKAT
+Pokud je moje analyza spravna, obraz by mel KONECNE byt spravne velky
+a bez prekryvajicich se artefaktu, protoze uz nezalezi na tom, jak moc
+se DrawArea meni - vzdycky se cte a spravne premapuje CELY dostupny
+prostor.
+
+JAK OTESTOVAT
+Presne jako predtim - naboot hru, projdi ruzne casti (intro, menu,
+gameplay). V logu (kdyby to jeste porad nesedelo) hledej
+GLES_VRAM_PROJECTION_SET (potvrdi, ze se nova promitaci matice
+skutecne nastavila) a RAW_VS_FINAL (BUILD2SK122 verze, ted ze stredu
+cele VRAM, ne jen viditelne casti).

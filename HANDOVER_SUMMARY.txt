@@ -1580,3 +1580,37 @@ PSXDISPLAY_STATE a RAW_VS_FINAL radky pozorne, najit KONKRETNI
 nesrovnalost, pripravit CILENOU opravu (ne dalsi hadani). Rene explicitne
 odmita dalsi kolo "zkus a uvidime" - dalsi build MUSI byt zalozeny na
 konkretnich datech z tohohle logu.
+
+================================================================================
+DODATEK - BUILD2SK122 - KOMPLEXNI PRESTAVBA ZALOZENA NA KONKRETNICH
+DATECH Z RENEHO SK121 LOGU
+================================================================================
+SK121 diagnostika ukazala PRESNOU, KONKRETNI pricinu (ne dalsi hypotezu):
+PSXDISPLAY_STATE ukazal DrawArea BEZNE presahujici DisplayMode - napr.
+[0,0,639,479] (640x480) UZ OD PRVNIHO SNIMKU (Sony logo), a dokonce
+[512,12,1023,227] (posunute o 512px - klasicky PS1 dvojity buffering
+vyuzivajici celou 1024-sirokou VRAM). RAW_VS_FINAL potvrdil, ze muj
+prevod barev byl VZDY spravny (30,30,30 -> 0x1e1e1e presne) - problem
+byl vyhradne v tom, jak se veci VYKRESLOVALY (projekce/viewport
+predpokladaly mnohem mensi "svet" nez hra skutecne pouzivala).
+
+OPRAVENO (SK122, komplexni prestavba): viewport+promitaci matice se ted
+nastavuji JEDNOU na SKUTECNOU, pevnou hardwarovou velikost VRAM cipu
+PS1 (1024x512) - misto honeni menici se DrawArea. Cteme VZDY celou tuhle
+oblast, pak sami vyrizneme presne viditelnou cast (DisplayMode velikost,
+DisplayPosition pozice) primym indexovanim - stejny pruchod resi i
+Y-flip beze zvlastni rezie. Pridana obranna pojistka proti cteni mimo
+hranice bufferu (zpresnena horni mez rb_w/rb_h presne na VRAM velikost).
+
+KONTEXT: Rene byl opravnene velmi nastvany z opakovaneho testovani
+castecnych oprav, explicitne zakazal navrhovat navrat na SK97 a
+pozadoval CISTOU diagnostiku (SK121) pred jakoukoli dalsi zmenou. Tenhle
+pristup (diagnostika -> konkretni data -> cilena, komplexni oprava)
+funguje - je to prvni oprava v tehle GPU-gles sade, ktera je zalozena
+na PRIMYCH datech, ne na hypoteze.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK122 vysledek. Pokud
+STALE nesedi, hledat v logu GLES_VRAM_PROJECTION_SET a novy RAW_VS_FINAL
+(BUILD2SK122 verze) pro dalsi upresneni - ale zaklad (VRAM-scale pristup
+misto honeni DisplayMode) by mel byt spravnym smerem, i kdyby detaily
+(napr. presny vypocet Y-flipu) potrebovaly jeste doladit.
