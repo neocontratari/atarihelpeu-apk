@@ -1,0 +1,27 @@
+BUILD2SK112 - VYNUCENE DOKONCENI GPU PRED CTENIM (glFinish)
+================================================================================
+CO SK111 UKAZAL
+"ok=1 eglErr=0x3000" - 0x3000 je EGL_SUCCESS (ZADNA chyba, ne chybovy
+kod). Odeslani snimku na EGL/systemove urovni je tedy CISTE - Reneho
+konkretni teorie (systemove blokovani na urovni "poslani obrazu") je
+timhle vyvracena, i kdyz otazka byla spravna a odhalila skutecnou mezeru
+v diagnostice (driv se tohle vubec nekontrolovalo).
+
+DALSI KROK
+Pbuffer (nas "off-screen" zpusob GPU pripojeni) nema stejne jasne
+definovane chovani jako skutecne okno - eglSwapBuffers muze "uspet" i
+kdyz GPU jeste FYZICKY nedokoncilo vsechny cekajici kreslici prikazy
+(GPU prace bezi asynchronne, "uspech" jen znamena "prikaz byl prijat",
+ne nutne "uz je hotovo"). Pridano: glFinish() - explicitne CEKA, dokud
+GPU opravdu nedokonci VSECHNO, pred tim, nez cteme obraz.
+
+RIZIKO
+Nizke - glFinish() je standardni, bezpecny zpusob synchronizace, casto
+pouzivany prave pri cteni z bufferu. Jedinou cenou je mala vykonova
+prodleva (cekani na GPU) - vzhledem k tomu, ze uz ted cteme jen kazdych
+30 snimku pro diagnostiku, ale VZDY pro skutecny obraz, tohle by melo
+byt zvladnutelne.
+Overeno: {} v gpulib_if.c sedi (97/97).
+
+JAK OTESTOVAT
+Presne jako predtim. Hlavne - je KONECNE videt obraz?

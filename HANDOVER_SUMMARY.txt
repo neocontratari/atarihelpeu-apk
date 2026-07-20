@@ -1312,3 +1312,21 @@ GLES_SWAP_CHECK. Pokud ok=0 nebo eglErr!=0x0: Reneho intuice byla
 spravna, dalsi krok je pravdepodobne prechod z pbufferu na skutecny
 Android povrch (vetsi, ale presne cilena zmena). Pokud ok=1 eglErr=0x0:
 tahle konkretni teorie vyvracena, pokracovat jinam.
+
+================================================================================
+DODATEK - BUILD2SK112 - glFinish() PRED CTENIM (GPU synchronizace)
+================================================================================
+SK111: "ok=1 eglErr=0x3000" = EGL_SUCCESS, zadna chyba. Reneho konkretni
+teorie (systemove blokovani) vyvracena cistymi daty, ale otazka byla
+spravna a odhalila skutecnou mezeru (driv se tohle vubec necheckovalo).
+
+Dalsi krok: pbuffer nema jasne definovane front/back chovani jako
+skutecne okno - eglSwapBuffers "uspech" nemusi znamenat, ze GPU uz
+FYZICKY dokoncilo kresleni (asynchronni GPU prace). Pridano glFinish()
+pred ctenim - explicitne ceka na skutecne dokonceni.
+
+DALSI KROK PRI PREVZETI TOHOTO CHATU: cekat na SK112 vysledek. Pokud
+STALE nic: zvazit vazne, jestli offscreen pbuffer pristup ma na tomto
+zarizeni nejaky fundamentalni limit, a jestli prejit na skutecny Android
+Surface (vetsi zmena, ale primo cilena na tohle podezreni) je dalsi
+logicky krok.

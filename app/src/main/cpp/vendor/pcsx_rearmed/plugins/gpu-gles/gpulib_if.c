@@ -39,6 +39,13 @@ static void nap_gles_readback_and_push(void)
 {
  int rb_w = PSXDisplay.DisplayMode.x;
  int rb_h = PSXDisplay.DisplayMode.y;
+ // BUILD2SK112: pbuffer povrchy nemaji stejne jasne definovane "predni/
+ // zadni" prezentacni chovani jako skutecne okno - eglSwapBuffers uspesny
+ // navrat (overeno SK111 - ok=1, eglErr=EGL_SUCCESS) NEZARUCUJE, ze GPU uz
+ // SKUTECNE dokoncilo vsechny cekajici kreslici prikazy. glFinish() ceka,
+ // dokud GPU opravdu nedokonci - odstranuje jakoukoli nejistotu ohledne
+ // casovani/dokonceni pred samotnym ctenim.
+ glFinish();
  // BUILD2SK100: tep KAZDYCH 30 snimku (stejny vzor jako jinde v projektu) -
  // pokud priste appka spadne, posledni zapsany tep rekne, kolik snimku se
  // stihlo VYKRESLIT (eglSwapBuffers UZ probehl - tenhle radek je AZ PO nem),
