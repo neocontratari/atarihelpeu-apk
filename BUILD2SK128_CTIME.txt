@@ -1,0 +1,34 @@
+================================================================================
+BUILD2SK128 - navod (2026-07-20)
+================================================================================
+
+CO JE V TOMTO ZIPU:
+Jediny zmeneny soubor (vcetne cele cesty slozek):
+
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+
+POSTUP:
+1. Rozbal tento ZIP.
+2. Slozku "app" nakopiruj do slozky projektu (do stejneho mista, kde uz
+   slozka "app" je) - Windows se zepta na prepsani souboru -> ANO.
+   Prepise se tim JEN gpulib_if.c, nic jineho.
+3. GitHub Desktop -> commit (napr. "BUILD2SK128") -> Push origin.
+4. Na www strankach spustit Action jako obvykle.
+
+CO BUILD2SK128 OPRAVUJE (kratce):
+Z posledniho logu se ukazalo, ze cast emulatoru, ze ktere jsme brali
+"kde a jak velky je obraz", byla po celou dobu ZAMRZLA na startovnich
+hodnotach (320x240, pozice 0,0) - hra pritom bezela v 512 rezimu.
+Proto byl obraz "vyzoomovany" a blikal. Ted se tyto udaje berou primo
+z jadra emulatoru, ktere je ma vzdy spravne.
+
+TEST (prosim minimalne 10 minut aktivniho hrani Crashe):
+- Je obraz cely (ne oriznuty/zoomly)?
+- Blika porad?
+- Zvuk (vedomě NEMENENO v tomto buildu - jen poznamenat, jak se chova)
+- POZNAMKA: intro video (FMV) muze byt porad cerne - to je zname
+  omezeni teto vetve, resi se az po stabilni grafice ve hre.
+- Pak prosim poslat novy log z /8765/log - hledam v nem radky
+  BUILD2SK128 VOUT_SRC_CHANGE (poprve ukazou skutecne prepinani
+  obrazovych bufferu hry).
+================================================================================

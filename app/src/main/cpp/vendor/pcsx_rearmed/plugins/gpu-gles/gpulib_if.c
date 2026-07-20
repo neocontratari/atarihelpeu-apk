@@ -53,24 +53,56 @@ extern void nap_diag_log(const char *fmt, ...); // BUILD2SK100: viz nap_ps1_nati
 // i drivejsi Y-flip (SK118), zadna dalsi rezie navic.
 #define NAP_PSX_VRAM_W 1024
 #define NAP_PSX_VRAM_H 512
-static int nap_vram_projection_set = 0;
+// BUILD2SK128: KLICOVY NALEZ Z RENEHO LOGU (2026-07-20): PSXDISPLAY_STATE
+// ukazal Range=[0,0,0,0], DispPos=[0,0] a DisplayMode=320x240 PO CELOU DOBU,
+// i kdyz hra prokazatelne bezela v 512/640 rezimu (DrawArea az [0,0,639,479]
+// a [512,12,1023,227]). Range nastavuje uplne KAZDA hra (GP1 0x06/0x07) -
+// same nuly = do peops casti se NIKDY nedostane ZADNY GP1 prikaz
+// (GPUwriteStatus_ext se efektivne nevola). Cely "display" stav peops je
+// zamrzly na hodnotach z renderer_init(). DUSLEDKY, ktere presne odpovidaji
+// pozorovanym symptomum:
+//   1) rb_w/rb_h = DisplayMode = porad 320x240 -> cetli jsme 320x240 vyrez
+//      z obrazu, ktery je ve skutecnosti 512 siroky -> "vyzoomovany" obraz.
+//   2) DisplayPosition (0,0) nebyl fakt o hre, ale mrtva promenna - SK126
+//      heuristika stavela na datech, ktera se nikdy neaktualizuji.
+//   3) updateDisplay() na GP1(0x05) se nikdy nespusti -> cteme v nahodne
+//      fazi vuci dvojitemu bufferingu hry -> blikani.
+// OPRAVA: prestat se spolehat na peops GP1 stav a cist AUTORITATIVNI stav
+// primo z gpulib jadra (gpu.screen.src_x/src_y/hres/vres - plni ho gpu.c,
+// ktery je includovany primo do tohoto souboru, viz nap_gpulib_display_info
+// definovana AZ ZA tim includem). ZAROVEN: zamrzle DisplayMode=320x240
+// v SetOGLDisplaySettings() vytvarelo scale faktor XS=1024/320=3.2 pro
+// scissor - DrawArea x0=512 se tim prepocital na x=1638, tj. MIMO povrch,
+// takze kresleni do prave poloviny VRAM mohl scissor cely zahodit. Proto
+// tady DisplayMode natvrdo drzime na VRAM velikosti (1024x512) -> XS=YS=1
+// -> scissor = DrawArea 1:1 ve VRAM souradnicich, spravne pro obe poloviny.
+// (DisplayMode uz od SK128 NIKDE nepouzivame jako velikost cteni - viz
+// nap_gles_readback_and_push.)
+static int nap_gpulib_display_info(int *sx, int *sy, int *w, int *h); // definice az za #include gpu.c nize
 void nap_gles_sync_display_settings(void)
 {
-  if (!nap_vram_projection_set) {
-    // BUILD2SK122: nastavit JEN JEDNOU - uz se nemusi honit menici se
-    // DisplayMode/DrawArea, VRAM velikost je pevna hardwarova hodnota.
-    iResX = NAP_PSX_VRAM_W;
-    iResY = NAP_PSX_VRAM_H;
-    rRatioRect.left = 0; rRatioRect.top = 0;
-    rRatioRect.right = NAP_PSX_VRAM_W; rRatioRect.bottom = NAP_PSX_VRAM_H;
-    glViewport(0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H, 0, -1, 1);
-    nap_diag_log("BUILD2SK122 GLES_VRAM_PROJECTION_SET w=%d h=%d", NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
-    nap_vram_projection_set = 1;
+  // BUILD2SK128: nastavovat KAZDY tick (drive jen jednou pres flag) - je to
+  // par levnych GL volani a je to pojistka proti cemukoli, co by projekci/
+  // viewport mezitim prenastavilo (updateDisplayIfChanged/SetAspectRatio
+  // maji vlastni glOrtho/glViewport - dnes jsou to mrtve cesty, ale nechceme
+  // na tom stavet).
+  iResX = NAP_PSX_VRAM_W;
+  iResY = NAP_PSX_VRAM_H;
+  rRatioRect.left = 0; rRatioRect.top = 0;
+  rRatioRect.right = NAP_PSX_VRAM_W; rRatioRect.bottom = NAP_PSX_VRAM_H;
+  PSXDisplay.DisplayMode.x = NAP_PSX_VRAM_W;  // BUILD2SK128: viz komentar vyse - kvuli XS=YS=1 ve scissor vypoctu
+  PSXDisplay.DisplayMode.y = NAP_PSX_VRAM_H;
+  glViewport(0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H, 0, -1, 1);
+  glMatrixMode(GL_MODELVIEW); // BUILD2SK128: vratit rezim matice tak, jak ho necha GLinitialize (SK122 nechaval PROJECTION aktivni)
+  static int nap_proj_logged = 0;
+  if (!nap_proj_logged) {
+    nap_proj_logged = 1;
+    nap_diag_log("BUILD2SK128 GLES_VRAM_PROJECTION_EVERY_TICK w=%d h=%d", NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
   }
-  SetOGLDisplaySettings(1); // scissor porad potrebuje bezet kazdy snimek (uz spravne pocita z DrawArea/DisplayPosition)
+  SetOGLDisplaySettings(1); // scissor kazdy snimek - od SK128 pocita 1:1 ve VRAM souradnicich (viz vyse)
 }
 
 
@@ -82,8 +114,13 @@ static uint8_t *nap_gles_vram_rgba = NULL; // BUILD2SK122: FIXNI 1024x512x4 buff
 
 static void nap_gles_readback_and_push(void)
 {
- int rb_w = PSXDisplay.DisplayMode.x;
- int rb_h = PSXDisplay.DisplayMode.y;
+ // BUILD2SK128: velikost i pozice cteni uz JEN z autoritativniho gpulib
+ // stavu (gpu.screen - plneno primo z GP1 prikazu v gpu.c), ne ze zamrzleho
+ // peops DisplayMode (viz velky komentar u nap_gles_sync_display_settings).
+ int rb_w = 0, rb_h = 0, src_x = 0, src_y = 0;
+ nap_gpulib_display_info(&src_x, &src_y, &rb_w, &rb_h);
+ if (rb_w <= 0) rb_w = 320; // pojistka pro uplne prvni snimky pred prvnim GP1(0x08)
+ if (rb_h <= 0) rb_h = 240;
  // BUILD2SK112: pridano glFinish() tady - hypoteza "GPU jeste nedokoncilo
  // kresleni" - NEPOMOHLO (video porad cerne, SK112 test) a Rene ohlasil
  // NOVY, postupne se zhorsujici problem se zvukem presne od tehdle zmeny.
@@ -127,52 +164,35 @@ static void nap_gles_readback_and_push(void)
  if (nap_gles_vram_rgba == NULL) {
   nap_gles_vram_rgba = (uint8_t *)malloc((size_t)NAP_PSX_VRAM_W * (size_t)NAP_PSX_VRAM_H * 4); // pojistka na max mozny pripad
  }
- // BUILD2SK126: DULEZITY NALEZ - v GP1(0x05) prikazu (nastavuje
- // DisplayPosition) je logika, ktera se TICHO VRATI (nic nezmeni), pokud
- // hra zada o STEJNOU pozici, jakou uz ma. DisplayPosition zustava (0,0)
- // po celou dobu proto, ze hra o jinou pozici proste NIKDY nezada - jeji
- // dvojity buffering resi VYHRADNE pres DrawArea/DrawOffset, ne pres
- // DisplayPosition. To znamena: (0,0) je pravdepodobne SKUTECNA, myslena
- // zobrazovaci oblast - polovina na x=512 je nejspis JEN pracovni/
- // pripravna plocha, kterou bysme vubec nemeli posilat na obrazovku.
- // Misto risika ukazat spatnou polovinu (blikani/sum) proste PRESKOCIME
- // odeslani snimku, kdyz hra prave pracuje v x=512 polovine - Java strana
- // pak jednoduse dal ukazuje posledni sebejisty spravny snimek.
- if ((int)PSXDisplay.DrawArea.x0 != 0) {
-  if (nap_gles_frame_count % 30 == 1) {
-   nap_diag_log("BUILD2SK126 GLES_SKIP_OFFSCREEN_HALF drawX0=%d", (int)PSXDisplay.DrawArea.x0);
-  }
-  return;
- }
+ // BUILD2SK128: SK126 heuristika (preskakovat snimky podle DrawArea.x0)
+ // ODSTRANENA - stavela na zamrzlem peops stavu (viz velky komentar u
+ // nap_gles_sync_display_settings). "Kterou cast VRAM prave zobrazit" nam
+ // rika primo gpulib: gpu.screen.src_x/src_y je SKUTECNA zobrazovaci pozice
+ // z GP1(0x05) - presne ten "display-swap protokol", ktery se v SK98-SK127
+ // hledal. Hra po dokonceni snimku prepne src_x mezi 0 a 512 (dvojity
+ // buffering) a my proste cteme VZDY z prave zobrazovane pozice - stejne,
+ // jako by to delal skutecny televizor pripojeny k PS1. Zadna heuristika,
+ // zadne preskakovani snimku.
  if (nap_gles_rb_buf == NULL || nap_gles_vram_rgba == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
  // BUILD2SK105: primo GL_RGBA+GL_UNSIGNED_BYTE - jedina kombinace, kterou
  // GLES specifikace zarucuje pro glReadPixels na jakemkoli zarizeni.
- // BUILD2SK125: SK124 cetlo VZDY od pevneho (0,0) - ale konkretni data ze
- // skutecne HRATELNE casti (ne uvodni obrazovky) ukazala DrawArea BEZNE na
- // y0=12 (ne 0) a stridajici se x0 mezi 0 a 512 (PS1 dvojity buffering) -
- // nase pevne (0,0) cteni tam proste nikdy nedosahlo, presto ze uvodni
- // obrazovky (jednodussi DrawArea blizko puvodu) vypadaly spravne. Oprava:
- // cist primo z AKTUALNI pozice, kterou hra PRAVE hlasi (DrawArea.x0/y0),
- // misto pevneho predpokladu.
  {
-  int drawX0 = (int)PSXDisplay.DrawArea.x0;
-  int drawY0 = (int)PSXDisplay.DrawArea.y0;
-  if (drawX0 < 0) drawX0 = 0;
-  if (drawY0 < 0) drawY0 = 0;
-  if (drawX0 + rb_w > NAP_PSX_VRAM_W) drawX0 = NAP_PSX_VRAM_W - rb_w;
-  if (drawX0 < 0) drawX0 = 0;
-  // BUILD2SK125: Y-souradnice pro glReadPixels potrebuje prevod - PS1 Y=0
-  // je "nahore", ale glReadPixels bere Y=0 jako "dole" (stejny flip-princip
-  // jako uz drive u glOrtho). PS1 radek Y odpovida GL radku (VRAM_H-1-Y) -
-  // takze SPODEK cteneho useku (glReadPixels bere y jako DOLNI okraj) je
-  // (VRAM_H - (drawY0 + rb_h)).
-  int glY = NAP_PSX_VRAM_H - (drawY0 + rb_h);
+  if (src_x < 0) src_x = 0;
+  if (src_y < 0) src_y = 0;
+  if (src_x + rb_w > NAP_PSX_VRAM_W) src_x = NAP_PSX_VRAM_W - rb_w;
+  if (src_x < 0) src_x = 0;
+  // BUILD2SK125 (princip zustava): Y-souradnice pro glReadPixels potrebuje
+  // prevod - PS1 Y=0 je "nahore", ale glReadPixels bere Y=0 jako "dole"
+  // (stejny flip-princip jako u glOrtho). PS1 radek Y odpovida GL radku
+  // (VRAM_H-1-Y) - takze SPODEK cteneho useku (glReadPixels bere y jako
+  // DOLNI okraj) je (VRAM_H - (src_y + rb_h)).
+  int glY = NAP_PSX_VRAM_H - (src_y + rb_h);
   if (glY < 0) glY = 0;
   if (glY + rb_h > NAP_PSX_VRAM_H) glY = NAP_PSX_VRAM_H - rb_h;
   if (glY < 0) glY = 0;
-  glReadPixels(drawX0, glY, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
+  glReadPixels(src_x, glY, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
   if (nap_gles_frame_count % 30 == 1) {
-   nap_diag_log("BUILD2SK125 GLES_READ_ANCHOR drawX0=%d drawY0=%d glX=%d glY=%d rb_w=%d rb_h=%d", drawX0, drawY0, drawX0, glY, rb_w, rb_h);
+   nap_diag_log("BUILD2SK128 GLES_READ_ANCHOR srcX=%d srcY=%d glY=%d rb_w=%d rb_h=%d", src_x, src_y, glY, rb_w, rb_h);
   }
  }
  {
@@ -762,6 +782,22 @@ switch((gdata>>24)&0xff)
 
 #include "../gpulib/gpu.c"
 
+// BUILD2SK128: pristup k autoritativnimu display stavu gpulib jadra.
+// Definovano AZ TADY (za includem gpu.c), protoze globalni promenna `gpu`
+// vznika teprve v gpu.c - vyse v souboru je jen forward deklarace teto
+// funkce. gpu.screen.src_x/src_y plni primo GP1(0x05) handler v gpu.c,
+// hres/vres plni GP1(0x06/0x07/0x08) - tohle je JEDINY spolehlivy zdroj
+// "co se prave zobrazuje" v teto kodove zakladne (peops kopie stejnych
+// hodnot je zamrzla, viz komentar u nap_gles_sync_display_settings).
+static int nap_gpulib_display_info(int *sx, int *sy, int *w, int *h)
+{
+  *sx = (int)gpu.screen.src_x;
+  *sy = (int)gpu.screen.src_y;
+  *w  = (int)gpu.screen.hres;
+  *h  = (int)gpu.screen.vres;
+  return 0;
+}
+
 static void set_vram(void *vram)
 {
  psxVub=vram;
@@ -963,6 +999,30 @@ int vout_finish(void)
 
 int vout_update(struct psx_gpu *gpu, int src_x, int src_y)
 {
+ // BUILD2SK128: DIAGNOSTIKA - poprve v cele SK98-SK128 serii zaznamename
+ // SKUTECNOU zobrazovaci pozici z gpulib jadra (src_x/src_y prichazi primo
+ // z GP1(0x05) handleru v gpu.c). Ocekavani pro Crash Bandicoot: src_x se
+ // bude behem hrani stridat mezi 0 a 512 (dvojity buffering). Log kazdou
+ // ZMENU (omezeno poctem, at nezaplavi vystup) + obcasny periodicky tep.
+ {
+  static int nap_vu_count = 0;
+  static int nap_vu_last_sx = -12345, nap_vu_last_sy = -12345;
+  static int nap_vu_change_logs = 0;
+  nap_vu_count++;
+  if (src_x != nap_vu_last_sx || src_y != nap_vu_last_sy) {
+   if (nap_vu_change_logs < 80) {
+    nap_vu_change_logs++;
+    nap_diag_log("BUILD2SK128 VOUT_SRC_CHANGE n=%d src=[%d,%d] prev=[%d,%d] hres=%d vres=%d",
+      nap_vu_count, src_x, src_y, nap_vu_last_sx, nap_vu_last_sy,
+      (int)gpu->screen.hres, (int)gpu->screen.vres);
+   }
+   nap_vu_last_sx = src_x;
+   nap_vu_last_sy = src_y;
+  } else if (nap_vu_count % 600 == 1) {
+   nap_diag_log("BUILD2SK128 VOUT_SRC_PERIODIC n=%d src=[%d,%d] hres=%d vres=%d",
+     nap_vu_count, src_x, src_y, (int)gpu->screen.hres, (int)gpu->screen.vres);
+  }
+ }
  if(PSXDisplay.Interlaced)                            // interlaced mode?
  {
   if(PSXDisplay.DisplayMode.x>0 && PSXDisplay.DisplayMode.y>0)
