@@ -111,11 +111,29 @@ static int nap_gpulib_display_info(int *sx, int *sy, int *w, int *h); // definic
 // (GL_GLEXT_PROTOTYPES uz je definovano uplne nahore v souboru, pred vsemi
 // #include - viz komentar tam. glext.h uz je tim padem take davno
 // vlozeny (transitivne pres gpuExternals.h) s deklaracemi viditelnymi.)
-static GLuint nap_fbo_tex[2] = {0, 0};
-static GLuint nap_fbo[2] = {0, 0};
+// BUILD2SK144: KORENOVA PRICINA nalezena PRIMO V DATECH, co uz Rene poslal
+// (zadny novy test) - GLES_PIXEL_SAMPLE ukazal PRESNE stridajici se
+// sumAvg=0 (100% cerna) / sumAvg~180 (normalni obsah), 71x za sebou - ne
+// nahodile, ale SYSTEMATICKY. Pricina: SK133-140 nechavaly HRU kreslit
+// STRIDAVE do DVOU RUZNYCH fyzickych textur (pro zrychleni cteni) - ale
+// hra MA SVOJI VLASTNI dvojitou bufferaci (src_x strida 0/512 VNITR
+// JEDNE 1024-sirokou VRAM plochy, viz gpu.c). Tyhle DVE NEZAVISLE
+// stridajici se veci se mohly dostat do faze, kdy JEDNA fyzicka textura
+// dostavala VZDY jen levou (0-511) polovinu hry a DRUHA vzdy jen pravou
+// (512-1023) - a protoze cteme podle AKTUALNIHO src_x (ktere se stridá
+// take), casto jsme se ptali na polovinu, do ktere ZROVNA TAHLE textura
+// nikdy nedostala nic nakreslit -> cetli jsme cerny (nikdy neprepsany)
+// okraj. OPRAVA (zakladni prepracovani): hra ted VZDY kresli do JEDINE,
+// STALE textury (nap_canvas_*) - presne jako pred SK133, jeji vlastni
+// src_x/512 strida funguje spravne, protoze cil kresleni uz se sam
+// nemeni. Cteci vlakno pro zrychleni cteni ted dostava LEVNOU GPU->GPU
+// kopii teto canvas do jedne ze 2 "snapshot" textur (nap_fbo_tex[]) -
+// PO kazdem snimku, NIKDY tim ale nezasahujeme do toho, kam hra kresli.
+static GLuint nap_canvas_tex = 0, nap_canvas_fbo = 0; // JEDINY cil kresleni pro hru - VYTVOREN JEDNOU, NIKDY znovu-nabindovan jinam
+static GLuint nap_fbo_tex[2] = {0, 0}; // "snapshot" textury - jen cil GPU->GPU kopie a zdroj pro ctecí vlakno, hra do nich NIKDY nekresli primo
 static int nap_fbo_ready = 0;      // BUILD2SK134: 1 = FBO cesta funguje; 0 = video se VUBEC neposila (zadny tichy navrat ke starem zpusobu - viz nap_fbo_init_once)
-static int nap_fbo_write_idx = 0;  // ktery index se PRAVE pouziva jako cil kresleni
-static int nap_fbo_meta_sx[2], nap_fbo_meta_sy[2], nap_fbo_meta_w[2] = {320,320}, nap_fbo_meta_h[2] = {240,240}; // BUILD2SK133: co PLATILO v okamziku, kdy se do teto FBO naposledy zacalo kreslit - NE aktualni gpu.screen (to uz muze byt o snimek dal)
+static int nap_snapshot_idx = 0;  // BUILD2SK144: ktery snapshot index byl NAPOSLED cilem kopie (uz NENI "kam hra kresli" - jen "kam jsme naposled kopirovali")
+static int nap_fbo_meta_sx[2], nap_fbo_meta_sy[2], nap_fbo_meta_w[2] = {320,320}, nap_fbo_meta_h[2] = {240,240}; // BUILD2SK133: co PLATILO v okamziku, kdy se do tenhle SNAPSHOT naposledy zkopirovalo - NE aktualni gpu.screen (to uz muze byt o snimek dal)
 
 // BUILD2SK140: RENE VYSLOVNE PRIJAL RIZIKO (ma zalohu Build 96, chce
 // hardwarove reseni misto dalsiho osekavani) - presouvame samotne cteni
@@ -155,34 +173,64 @@ static void nap_fbo_init_once(void)
   static int tried = 0;
   if (tried) return;
   tried = 1;
-  glGenTextures(2, nap_fbo_tex);
-  glGenFramebuffersOES(2, nap_fbo);
-  int ok = (nap_fbo_tex[0] && nap_fbo_tex[1] && nap_fbo[0] && nap_fbo[1]);
-  for (int i = 0; ok && i < 2; i++) {
-    glBindTexture(GL_TEXTURE_2D, nap_fbo_tex[i]);
+  // BUILD2SK144: NEJDRIV canvas - JEDINY cil, kam bude hra VZDY kreslit.
+  // Zadne stridani, zadne "kam se prave kresli" - presne jako pred SK133,
+  // jen offscreen misto primo do pbufferu.
+  glGenTextures(1, &nap_canvas_tex);
+  glGenFramebuffersOES(1, &nap_canvas_fbo);
+  int ok = (nap_canvas_tex && nap_canvas_fbo);
+  if (ok) {
+    glBindTexture(GL_TEXTURE_2D, nap_canvas_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_fbo[i]);
-    glFramebufferTexture2DOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_TEXTURE_2D, nap_fbo_tex[i], 0);
+    glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_canvas_fbo);
+    glFramebufferTexture2DOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_TEXTURE_2D, nap_canvas_tex, 0);
     if (glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES) != GL_FRAMEBUFFER_COMPLETE_OES) {
       ok = 0;
-      nap_diag_log("BUILD2SK134 GLES_FBO_INCOMPLETE_FATAL i=%d status=0x%x - VIDEO SE NEBUDE POSILAT", i, (unsigned)glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
-      break;
+      nap_diag_log("BUILD2SK144 GLES_CANVAS_INCOMPLETE_FATAL status=0x%x - VIDEO SE NEBUDE POSILAT", (unsigned)glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
+    } else {
+      glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT);
     }
-    // BUILD2SK133: cerne HNED pri vytvoreni - nahrazuje SK130 "vycisti prvni
-    // 4 volani" heuristiku (ta hadala pocet fyzickych bufferu; ted jich
-    // mame presne 2, vime to jiste, takze kazdou cistime presne jednou).
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+  }
+  // BUILD2SK144: 2 "snapshot" textury - JEN cil GPU->GPU kopie z canvasu a
+  // zdroj pro ctecí vlakno. Hra do nich nikdy NEKRESLI - proto uz nepotrebuji
+  // pro ne zadne FBO na strane g_workeru (jen glBindTexture pro kopii).
+  if (ok) {
+    glGenTextures(2, nap_fbo_tex);
+    ok = (nap_fbo_tex[0] && nap_fbo_tex[1]);
+    for (int i = 0; ok && i < 2; i++) {
+      glBindTexture(GL_TEXTURE_2D, nap_fbo_tex[i]);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      // BUILD2SK144: rovnou naplnit cernou - musime docasne pripojit k FBO,
+      // abychom na ni mohli zavolat glClear (textura sama o sobe neni cil
+      // vykreslovacich prikazu) - pouzijeme K TOMU canvas_fbo kontejner
+      // (docasne prepneme jeho attachment, pak vratime zpet na canvas_tex).
+      glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_canvas_fbo);
+      glFramebufferTexture2DOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_TEXTURE_2D, nap_fbo_tex[i], 0);
+      if (glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES) == GL_FRAMEBUFFER_COMPLETE_OES) {
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+      }
+    }
+    // BUILD2SK144: vratit canvas_fbo zpet na SVOJI VLASTNI (jedinou spravnou)
+    // texturu - je KRITICKE, aby tenhle radek probehl, driv nez hra zacne
+    // cokoliv kreslit.
+    glFramebufferTexture2DOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_TEXTURE_2D, nap_canvas_tex, 0);
   }
   if (ok) {
     nap_fbo_ready = 1;
-    nap_fbo_write_idx = 0;
-    glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_fbo[0]);
-    nap_diag_log("BUILD2SK133 GLES_FBO_READY tex=[%u,%u] fbo=[%u,%u]", nap_fbo_tex[0], nap_fbo_tex[1], nap_fbo[0], nap_fbo[1]);
+    nap_snapshot_idx = 0;
+    // canvas_fbo uz je bindnuty (predchozi blok) - a TAKHLE UZ ZUSTANE, po
+    // celou dobu behu appky. Hra do nej muze zacit kreslit uplne normalne.
+    nap_diag_log("BUILD2SK144 GLES_CANVAS_READY canvasTex=%u canvasFbo=%u snapshotTex=[%u,%u]", nap_canvas_tex, nap_canvas_fbo, nap_fbo_tex[0], nap_fbo_tex[1]);
     // BUILD2SK140: druhy (sdileny) EGL kontext + pthread pro cteci vlakno.
     // eglGetCurrentDisplay/Context vraci to, co uz g_worker (tohle vlakno)
     // nastavilo v nap_gles_egl_init (v nap_ps1_native.cpp) - zadne dalsi
@@ -514,27 +562,18 @@ static void nap_gles_readback_and_push(void)
  }
  if (fresh_w <= 0 || fresh_h <= 0 || fresh_w > NAP_PSX_VRAM_W || fresh_h > NAP_PSX_VRAM_H) return;
  if (!nap_fbo_ready) return;
- // BUILD2SK140: g_worker uz TADY NEDELA ZADNE cteni z GPU - jen si
- // domluvi s ctecim vlaknem, ktery buffer prave dokreslil, a hned se
- // vraci do emulace/generovani zvuku. Samotne glReadPixels (i pripadny
- // glClear po nem) uz bezi VYHRADNE na nap_reader_thread_main, na jeho
- // vlastnim (sdilejicim) kontextu.
- int other_idx = 1 - nap_fbo_write_idx;
+ // BUILD2SK144: g_worker uz TADY NEDELA ZADNE cteni z GPU (stejne jako
+ // SK140) - ale uz TAKY NEPREHAZUJE, kam hra kresli (to byla ta chyba,
+ // viz velky komentar u globalnich promennych). Hra porad kresli do
+ // JEDINEHO canvasu (uz bindnuty, nikdy se nemeni). Tady jen: (1) levna
+ // GPU->GPU kopie aktualniho obsahu canvasu do jednoho ze 2 "snapshot"
+ // policek, (2) domluva s ctecim vlaknem, at tenhle snapshot zpracuje.
+ int other_idx = 1 - nap_snapshot_idx;
  pthread_mutex_lock(&nap_reader_mtx);
- // BUILD2SK140: pockat, az ctecí vlakno DOKONCI SVOJI GPU cast (cteni +
- // pripadne cisteni) predchoziho pozadavku na TENTO SAMY buffer - teprve
- // pak je bezpecne do nej znovu kreslit. V beznem pripadu uz je to davno
- // hotove (ctecí vlakno beze na to melo celou minulou periodu), takze
- // tohle cekani je skoro vzdy okamzite - ne ten puvodni 4-21ms GPU stall,
- // jen kratka kontrola "uz jsi hotovy?".
- // BUILD2SK140: DVE podminky, ne jedna - jen jeden "slot" na pozadavek
- // (nap_reader_req) znamena, ze kdyby ctecí vlakno jeste nestihlo vyzvednout
- // PREDCHOZI pozadavek a my bychom rovnou zapsali NOVY, ten stary by se
- // tise prepsal - a jeho buffer by uz NIKDY nebyl oznacen jako volny =
- // trvale zaseknuti (g_worker by na nej cekal navzdy o 2 kola pozdeji).
- // Proto NEJDRIV pockat, az si ctecí vlakno vyzvedne cokoliv PREDCHOZIho
- // (rychle - jen dokud nezacne svoji GPU praci), a TEPRVE POTOM na to,
- // jestli je konkretni buffer volny.
+ // BUILD2SK140 (princip beze zmeny): pockat, az ctecí vlakno DOKONCI svoji
+ // GPU cast (cteni + pripadne cisteni) predchoziho pozadavku na TENTO SAMY
+ // snapshot - teprve pak je bezpecne do nej znovu kopirovat. V beznem
+ // pripade uz je to davno hotove.
  while (nap_reader_has_req) pthread_cond_wait(&nap_reader_cv, &nap_reader_mtx);
  while (!nap_reader_idx_free[other_idx]) pthread_cond_wait(&nap_reader_cv, &nap_reader_mtx);
  nap_reader_idx_free[other_idx] = 0; // zabirame ho pro NOVY pozadavek
@@ -544,18 +583,35 @@ static void nap_gles_readback_and_push(void)
  nap_reader_req.src_x = nap_fbo_meta_sx[other_idx];
  nap_reader_req.src_y = nap_fbo_meta_sy[other_idx];
  nap_reader_req.do_clear = (fresh_w != nap_fbo_meta_w[other_idx] || fresh_h != nap_fbo_meta_h[other_idx]);
- nap_reader_has_req = 1;
- pthread_cond_broadcast(&nap_reader_cv);
- pthread_mutex_unlock(&nap_reader_mtx);
- // BUILD2SK133/140: tenhle buffer se STAVA novym cilem kresleni - ulozit
- // aktualni (fresh) rozmery/pozici, at az na nej priste dojde rada cteni,
- // vime, co do nej MEZITIM skutecne prislo.
+ pthread_mutex_unlock(&nap_reader_mtx); // BUILD2SK144: odemknout PRED GL praci nize - mutex je jen pro sdilena data, ne pro GL volani
+ // BUILD2SK144: LEVNA GPU->GPU kopie - canvas_fbo je porad bindnuty (jako
+ // vzdy), takze glCopyTexSubImage2D cte primo z NEJ do snapshot textury.
+ // Zadny CPU prenos, zadne cekani na "je GPU hotove" - jen GPU->GPU
+ // presun, typicky < 1ms, a hlavne: NEDOTYKA se toho, kam hra kresli.
+ glBindTexture(GL_TEXTURE_2D, nap_fbo_tex[other_idx]);
+ glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
+ // BUILD2SK144: SK139 princip, aplikovany na CANVAS misto na jednotlive
+ // snapshoty (canvas je ted ten JEDINY, trvaly povrch, kam hra kresli -
+ // takze presne tady, ne na snapshotu, muze stara scena "viset" do nove).
+ // Canvas_fbo je porad bindnuty (nikdy jsme ho neopustili), takze glClear
+ // tady cisti PRAVE jeho - AZ PO kopii vyse, takze posledni platny snimek
+ // stare sceny se jeste stihl zachytit do snapshotu, driv nez zmizi.
+ if (nap_reader_req.do_clear) {
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+ }
+ // BUILD2SK133/144: tenhle snapshot dostal cerstva data - ulozit aktualni
+ // (fresh) rozmery/pozici, at az na nej priste dojde rada cteni, vime, co
+ // do nej PRAVE prislo.
  nap_fbo_meta_sx[other_idx] = fresh_sx;
  nap_fbo_meta_sy[other_idx] = fresh_sy;
  nap_fbo_meta_w[other_idx] = fresh_w;
  nap_fbo_meta_h[other_idx] = fresh_h;
- nap_fbo_write_idx = other_idx;
- glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_fbo[other_idx]); // g_worker nabinduje SVUJ kontejner k TEZE (sdilene) texture pro nasledujici kresleni
+ nap_snapshot_idx = other_idx;
+ pthread_mutex_lock(&nap_reader_mtx);
+ nap_reader_has_req = 1;
+ pthread_cond_broadcast(&nap_reader_cv);
+ pthread_mutex_unlock(&nap_reader_mtx);
 }
 
 

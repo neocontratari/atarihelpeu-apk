@@ -1,0 +1,41 @@
+================================================================================
+BUILD2SK144 - navod (2026-07-21)
+================================================================================
+
+VSECHNY 3 SOUBORY NAJEDNOU (potvrzeno, ze jsou v tomto zipu vsechny):
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c   (PREPRACOVANO)
+  app/src/main/cpp/nap_ps1_native.cpp                                  (beze zmeny od minula)
+  app/src/main/java/eu/atarihelp/emu10/MainActivity.java               (beze zmeny od minula)
+
+NEJDE O DALSI TEST - JE TO OPRAVA, KTEROU JSEM NASEL V DATECH, CO UZ MAM:
+V logu, co uz jsi poslal (bez noveho testovani), jsem nasel PRESNY dukaz:
+kazdy druhy zmereny snimek byl DOSLOVA 100% cerny (soucet jasu = 0), pak
+normalni, pak zase 100% cerny - 71x po sobe, ne nahodne.
+
+PRICINA: Od minule (rychlejsi cteni pres samostatne vlakno) hra kreslila
+STRIDAVE do DVOU ruznych fyzickych ploch. Ale hra MA SVOJI VLASTNI
+dvojitou bufferaci (taky se stridá). Tyhle dve nezavisle stridani se
+casem dostala do faze, kdy jedna z mych dvou ploch dostavala VZDY jen
+levou polovinu obrazu hry a druha VZDY jen pravou - a kdyz jsme cetli
+podle toho, co hra hlasi jako "prave zobrazovane", casto jsme se trefili
+do poloviny, kam ta konkretni plocha NIKDY nic nedostala - cerna.
+
+OPRAVA (skutecne prepracovani, ne zaplatovani): Hra ted VZDY kresli do
+JEDINE, STALE plochy (presne jako pred vsemi temito zmenami) - jeji
+vlastni stridani funguje spravne, protoze cil kresleni uz se sam nemeni.
+Pro rychle cteni se pak jednou za snimek udela LEVNA kopie (primo na
+GPU, ne pres CPU) do jedne ze dvou "kopii pro cteni".
+
+CO OCEKAVAT:
+- Blikani by melo zmizet (byl to hlavni, prokazany zdroj).
+- Rychlost cteni z GPU zustava stejna jako predtim (~2ms) - kopie na GPU
+  je jeste levnejsi.
+- Grafika (enhanced rozliseni) beze zmeny - porad ZAPNUTO.
+
+CO POSLAT PRISTE:
+- V logu "BUILD2SK144 GLES_CANVAS_READY" - potvrdi start.
+- GLES_PIXEL_SAMPLE - uz by nemelo stridat sumAvg=0 / normal. Tohle je
+  hlavni test, jestli oprava fakt zasahla to spravne misto.
+- A porad "PS1_TICK_TIMING" a "TV_WEB_DARK_FRAME_SPIKE" z minula, at
+  vime, jak moc (pokud vubec) casti tehle druhe vrstvy jeste hraji roli.
+================================================================================

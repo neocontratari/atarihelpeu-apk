@@ -877,13 +877,34 @@ public class MainActivity extends Activity {
                     int bw = bm.getWidth(), bh = bm.getHeight();
                     if (bw > 8 && bh > 8) {
                         long sample = 0;
+                        int brightSum = 0; // BUILD2SK143: viz komentar nize
                         for (int si = 0; si < 8; si++) {
                             int sx = (bw * si) / 8, sy = (bh * si) / 8;
-                            sample = sample * 31 + bm.getPixel(sx, sy);
+                            int px = bm.getPixel(sx, sy);
+                            sample = sample * 31 + px;
+                            // BUILD2SK143: Rene poslal video s KVANTIFIKOVANYM dukazem -
+                            // jednotlive snimky pravidelne (mnohokrat za 14s) propadaji na
+                            // ~30% normalniho jasu a hned se vraci - presny "problikavajici
+                            // cerny snimek" vzorec. Nevime, jestli se to deje uz TADY (v
+                            // bitmape, kterou PixelCopy zachytil) nebo az pozdeji v H264
+                            // enkodovani (napTvWebH264FeedFrame). Tohle je NEJDRIVEJSI
+                            // misto, kde muzeme jas zmerit - pokud uz TADY vychazi nizko,
+                            // problem je v zachytavani (PixelCopy/WebView), ne v enkoderu.
+                            int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
+                            brightSum += (r + g + b) / 3;
                         }
+                        int brightAvg = brightSum / 8; // 0-255
                         napTvWebDupCheckCount++;
                         if (sample == napTvWebLastSampleHash) napTvWebDupCheckSame++;
                         napTvWebLastSampleHash = sample;
+                        // BUILD2SK143: OKAMZITY log (ne prumerovany) kdyzkoliv je vzorek
+                        // podezrele tmavy vuci normalu (~60-90 podle predchozich logu) -
+                        // schvalne nizky prah (30), abychom nezachytili jen legitimne
+                        // tmava herni sceny, jen ty opravdu vypadajici na "temer cerny
+                        // snimek".
+                        if (brightAvg < 20) {
+                            appendNativeLog("BUILD2SK143 TV_WEB_DARK_FRAME_SPIKE brightAvg=" + brightAvg + " mode=" + mode + " w=" + bw + " h=" + bh);
+                        }
                         if (napTvWebDupCheckCount >= 60) {
                             appendNativeLog("BUILD2SK67 TV_WEB_PS1_DUPCHECK sameFrames=" + napTvWebDupCheckSame
                                     + "/" + napTvWebDupCheckCount + " url=" + napTvWebCurrentUrl + " (pokud je toto cislo vysoke, zdroj nevykresluje"
