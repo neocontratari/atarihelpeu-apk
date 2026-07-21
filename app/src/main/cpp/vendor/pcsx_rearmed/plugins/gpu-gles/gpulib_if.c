@@ -21,6 +21,7 @@
 #include "gpuTexture.c"
 #include "gpuPrim.c"
 #include "hud.c"
+#include <time.h> // BUILD2SK131: presne mereni casu (clock_gettime) - viz nap_now_ms nize
 
 // BUILD2SK98: most do libretro.c (viz tam - nap_gles_push_frame) - gpu-gles
 // renderuje primo pres EGL/GL (eglSwapBuffers v updateDisplay nize), na
@@ -152,6 +153,23 @@ static int nap_gles_frame_count = 0; // BUILD2SK100: tep - kolik snimku uspesne 
 
 static uint8_t *nap_gles_vram_rgba = NULL; // BUILD2SK122: FIXNI 1024x512x4 buffer - cela VRAM, alokovano jen jednou
 
+// BUILD2SK131: presny cas v ms (monotonic - nezavisi na systemovych hodinach).
+// Duvod pridani: SK112/SK117 historie v teto funkci (viz komentar nize u
+// glReadPixels) uz JEDNOU empiricky potvrdila, ze blokujici GPU volani na
+// TOMHLE vlakne postupne zhorsuje zvuk (g_worker vlakno v nap_ps1_native.cpp
+// generuje zvuk PRIMO behem emulace - viz retro_set_audio_sample_batch - a
+// je to STEJNE vlakno, co tady cte pixely). glReadPixels je uz ze sve
+// podstaty blokujici, takze i bez glFinish() navic muze byt hlavnim
+// zdrojem prave zmerenych audio underrunu (~34-59% smycek). Misto dalsiho
+// hadani: presne zmerit, kolik ms tohle volani a nasledujici prevod
+// SKUTECNE stoji, na TOMTO konkretnim telefonu.
+static double nap_now_ms(void)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
+}
+
 static void nap_gles_readback_and_push(void)
 {
  // BUILD2SK128: velikost i pozice cteni uz JEN z autoritativniho gpulib
@@ -216,6 +234,7 @@ static void nap_gles_readback_and_push(void)
  if (nap_gles_rb_buf == NULL || nap_gles_vram_rgba == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
  // BUILD2SK105: primo GL_RGBA+GL_UNSIGNED_BYTE - jedina kombinace, kterou
  // GLES specifikace zarucuje pro glReadPixels na jakemkoli zarizeni.
+ double nap_t0 = 0.0, nap_t1 = 0.0, nap_t2 = 0.0; // BUILD2SK131: v tomhle (funkcnim) rozsahu, aby byly viditelne az do mereni na konci
  {
   if (src_x < 0) src_x = 0;
   if (src_y < 0) src_y = 0;
@@ -230,7 +249,9 @@ static void nap_gles_readback_and_push(void)
   if (glY < 0) glY = 0;
   if (glY + rb_h > NAP_PSX_VRAM_H) glY = NAP_PSX_VRAM_H - rb_h;
   if (glY < 0) glY = 0;
+  nap_t0 = nap_now_ms(); // BUILD2SK131
   glReadPixels(src_x, glY, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
+  nap_t1 = nap_now_ms(); // BUILD2SK131
   if (nap_gles_frame_count % 30 == 1) {
    nap_diag_log("BUILD2SK128 GLES_READ_ANCHOR srcX=%d srcY=%d glY=%d rb_w=%d rb_h=%d", src_x, src_y, glY, rb_w, rb_h);
   }
@@ -245,6 +266,25 @@ static void nap_gles_readback_and_push(void)
     uint8_t b = srcRow[x * 4 + 2];
     dstRow[x] = 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
    }
+  }
+ }
+ nap_t2 = nap_now_ms(); // BUILD2SK131
+ // BUILD2SK131: prumer za poslednich 30 volani - readMs = cas STRAVENY V
+ // glReadPixels SAMOTNEM (= jak dlouho je g_worker/audio-generujici vlakno
+ // blokovane cekanim na GPU), flipMs = nas vlastni CPU prevod PO nem.
+ // Obe se scitaji do celkoveho zpozdeni, ktere tenhle snimek pridava PRED
+ // tim, nez se vubec vrati zpatky do emulace/generovani zvuku.
+ {
+  static double nap_read_ms_sum = 0.0, nap_flip_ms_sum = 0.0;
+  static int nap_timing_n = 0;
+  nap_read_ms_sum += (nap_t1 - nap_t0);
+  nap_flip_ms_sum += (nap_t2 - nap_t1);
+  nap_timing_n++;
+  if (nap_timing_n >= 30) {
+   nap_diag_log("BUILD2SK131 GLES_READBACK_TIMING avgReadMs=%.2f avgFlipMs=%.2f avgTotalMs=%.2f n=%d rb_w=%d rb_h=%d",
+     nap_read_ms_sum / nap_timing_n, nap_flip_ms_sum / nap_timing_n,
+     (nap_read_ms_sum + nap_flip_ms_sum) / nap_timing_n, nap_timing_n, rb_w, rb_h);
+   nap_read_ms_sum = 0.0; nap_flip_ms_sum = 0.0; nap_timing_n = 0;
   }
  }
  // BUILD2SK104: obsah pixelu, ne jen rozmery - podezrele mala JPEG velikost

@@ -1,0 +1,36 @@
+================================================================================
+BUILD2SK131 - navod (2026-07-21)
+================================================================================
+
+Tenhle build NEMENI ŽÁDNÉ CHOVÁNÍ HRY. Je to ČISTĚ MĚŘENÍ - nemůže nic
+zhoršit, jen mi příště přinese přesná čísla misto dalšího hádání.
+
+Meni se jen: app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+(Java se teto zmeny netyka, zustava na puvodni verzi z minula.)
+
+Postup stejny: rozbal, "app" nakopiruj (prepsat ANO), commit, push, Action.
+
+PROC TOHLE A NE DALSI OPRAVA:
+Tri buildy za sebou dopadly spatne - to neni normalni a neni to nahoda, ze
+bych to melnil poslepu dal. V logu je totiz vec, kterou jsem si az ted
+vsiml poradne: v soucasnem kodu je STARY komentar (BUILD2SK112/SK117) od
+minulé session, kde uz JEDNOU presne tohle vyzkouseli - pridali blokujici
+GPU volani na vlakno, ktere zaroven generuje zvuk, a zvuk se postupne
+zhorsoval. Presne to popisujes ted ("zvuk silene spatny"). Cteni obrazovky
+(glReadPixels) je ze sve podstaty blokujici stejnym zpusobem - jen jsem to
+zatim nikdy presne nezmeril NA TOMHLE telefonu. Misto dalsi domnenky chci
+mit cisla.
+
+CO HLEDAM V DALSIM LOGU:
+"BUILD2SK131 GLES_READBACK_TIMING avgReadMs=... avgFlipMs=... avgTotalMs=..."
+
+- avgReadMs = jak dlouho (v milisekundach) je vlakno, co generuje ZVUK,
+  blokovane cekanim na GPU pri kazdem snimku.
+- Pokud je totalMs v radu 10-20+ ms a deje se to desitkykrat za sekundu,
+  je to vysvetleni pro "underruns" cislo, co uz vime, ze je vazne.
+
+NEZAPOMENUTO, jen zamerne NEREŠENO v tomhle kroku (chci nejdriv cisla, ne
+dalsi hadanou opravu):
+- Blikani/cerne useky obrazu (nearBlackPct z minula)
+- Samotna audio-blokujici pricina, i kdyz uz mam silny podezreni
+================================================================================
