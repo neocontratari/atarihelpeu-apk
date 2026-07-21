@@ -117,6 +117,39 @@ static int nap_fbo_ready = 0;      // BUILD2SK134: 1 = FBO cesta funguje; 0 = vi
 static int nap_fbo_write_idx = 0;  // ktery index se PRAVE pouziva jako cil kresleni
 static int nap_fbo_meta_sx[2], nap_fbo_meta_sy[2], nap_fbo_meta_w[2] = {320,320}, nap_fbo_meta_h[2] = {240,240}; // BUILD2SK133: co PLATILO v okamziku, kdy se do teto FBO naposledy zacalo kreslit - NE aktualni gpu.screen (to uz muze byt o snimek dal)
 
+// BUILD2SK140: RENE VYSLOVNE PRIJAL RIZIKO (ma zalohu Build 96, chce
+// hardwarove reseni misto dalsiho osekavani) - presouvame samotne cteni
+// z GPU (glReadPixels) na SAMOSTATNE VLAKNO, aby na nej g_worker (vlakno,
+// co pocita zvuk - viz retro_set_audio_sample_batch v nap_ps1_native.cpp)
+// uz vubec nemuselo cekat. Pouziva se pthread (soubor je cisty C, ne
+// C++, kompilator to potvrdil - proto pthread, ne std::thread) a DRUHY
+// EGL kontext, ktery SDILI OBJEKTY (textury) s tim hlavnim - zadana,
+// standardni technika (eglCreateContext se share_context parametrem).
+// DULEZITE: samotne FBO KONTEJNERY (nap_fbo[] vyse) NEJSOU sdilene mezi
+// kontexty, i kdyz kontexty sdili objekty - jen TEXTURY (nap_fbo_tex[])
+// jsou sdilene. Ctecí vlakno si proto MUSI vytvorit VLASTNI FBO
+// kontejnery (nap_reader_fbo[] nize), navazane na TYTEZ (sdilene)
+// textury - odtud cte, kontejner hlavniho vlakna (nap_fbo[]) pouziva jen
+// pro KRESLENI (write).
+#include <pthread.h>
+typedef struct {
+  int idx;                 // ktery buffer (0/1) se ma cist
+  int rb_w, rb_h, src_x, src_y; // co PLATILO, kdyz se do nej naposledy zacalo kreslit (SK133 metadata)
+  int do_clear;             // SK139 logika - rozliseni se od minula zmenilo, vycistit po precteni
+} nap_reader_req_t;
+static pthread_t nap_reader_tid;
+static pthread_mutex_t nap_reader_mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t nap_reader_cv = PTHREAD_COND_INITIALIZER;
+static int nap_reader_thread_launched = 0;
+static volatile int nap_reader_has_req = 0;      // g_worker: "tady je novy pozadavek na precteni"
+static nap_reader_req_t nap_reader_req;
+static volatile int nap_reader_idx_free[2] = {1, 1}; // je tenhle buffer BEZPECNY pro g_worker znovu-nabindovat jako cil kresleni? (ctecí vlakno ho prave nepouziva)
+static EGLDisplay nap_reader_disp = EGL_NO_DISPLAY;
+static EGLContext nap_reader_ctx = EGL_NO_CONTEXT;
+static EGLSurface nap_reader_surf = EGL_NO_SURFACE;
+static GLuint nap_reader_fbo[2] = {0, 0}; // BUILD2SK140: VLASTNI FBO kontejnery ctecího vlakna (navazane na SDILENE textury nap_fbo_tex[])
+static void *nap_reader_thread_main(void *arg); // definice az za nap_fbo_init_once - forward deklarace, aby ji sla spustit odsud
+
 static void nap_fbo_init_once(void)
 {
   static int tried = 0;
@@ -150,6 +183,45 @@ static void nap_fbo_init_once(void)
     nap_fbo_write_idx = 0;
     glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_fbo[0]);
     nap_diag_log("BUILD2SK133 GLES_FBO_READY tex=[%u,%u] fbo=[%u,%u]", nap_fbo_tex[0], nap_fbo_tex[1], nap_fbo[0], nap_fbo[1]);
+    // BUILD2SK140: druhy (sdileny) EGL kontext + pthread pro cteci vlakno.
+    // eglGetCurrentDisplay/Context vraci to, co uz g_worker (tohle vlakno)
+    // nastavilo v nap_gles_egl_init (v nap_ps1_native.cpp) - zadne dalsi
+    // propojeni mezi soubory netreba, jen se ptame EGL na to, co uz je
+    // "current" prave TADY.
+    EGLDisplay disp = eglGetCurrentDisplay();
+    EGLContext mainCtx = eglGetCurrentContext();
+    EGLint cfgAttribs[] = { EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_RENDERABLE_TYPE, EGL_OPENGL_ES_BIT, EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8, EGL_NONE };
+    EGLConfig cfg; EGLint numCfg = 0;
+    int readerSetupOk = eglChooseConfig(disp, cfgAttribs, &cfg, 1, &numCfg) && numCfg >= 1;
+    if (!readerSetupOk) nap_diag_log("BUILD2SK140 GLES_READER_CHOOSECONFIG_FAIL err=0x%x", eglGetError());
+    if (readerSetupOk) {
+      EGLint pbufAttribs[] = { EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE };
+      nap_reader_surf = eglCreatePbufferSurface(disp, cfg, pbufAttribs);
+      if (nap_reader_surf == EGL_NO_SURFACE) { readerSetupOk = 0; nap_diag_log("BUILD2SK140 GLES_READER_PBUFFER_FAIL err=0x%x", eglGetError()); }
+    }
+    if (readerSetupOk) {
+      EGLint ctxAttribs[] = { EGL_NONE }; // GLES1 - zadna EGL_CONTEXT_CLIENT_VERSION potreba (to je jen pro GLES2/3)
+      nap_reader_ctx = eglCreateContext(disp, cfg, mainCtx, ctxAttribs); // BUILD2SK140: mainCtx jako share_context - TOHLE sdili textury
+      if (nap_reader_ctx == EGL_NO_CONTEXT) { readerSetupOk = 0; nap_diag_log("BUILD2SK140 GLES_READER_CREATECONTEXT_FAIL err=0x%x", eglGetError()); }
+    }
+    if (readerSetupOk) {
+      nap_reader_disp = disp;
+      if (pthread_create(&nap_reader_tid, NULL, nap_reader_thread_main, NULL) != 0) {
+        readerSetupOk = 0;
+        nap_diag_log("BUILD2SK140 GLES_READER_PTHREAD_CREATE_FAIL_FATAL");
+      } else {
+        nap_reader_thread_launched = 1;
+      }
+    }
+    if (!readerSetupOk) {
+      // BUILD2SK140: STEJNA hlasita filozofie jako SK134 - kdyz se
+      // ctecí vlakno nepodari rozjet, VIDEO SE VUBEC NEPOSILA (misto
+      // tichého navratu k puvodnimu primemu cteni na g_worker, ktere by
+      // zase blokovalo zvuk). nap_fbo_ready se vraci na 0 - readback_and_push
+      // uz o par radku vyse pak vzdy skonci hned na zacatku.
+      nap_fbo_ready = 0;
+      nap_diag_log("BUILD2SK140 GLES_READER_SETUP_FAILED_FATAL - video se NEBUDE posilat");
+    }
   } else {
     // BUILD2SK134: ZADNY tichy navrat - nap_fbo_ready zustava 0 a
     // nap_gles_readback_and_push se ted na tenhle stav primo pta a
@@ -236,312 +308,256 @@ static double nap_now_ms(void)
   return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
 }
 
+static void *nap_reader_thread_main(void *arg)
+{
+ (void)arg;
+ // BUILD2SK140: PRVNI VEC na tomhle vlakne - navazat NAS VLASTNI kontext
+ // (sdili textury s hlavnim, ale je to jiny kontext - proto ho musime
+ // sami udelat "current" tady, presne jak to hlavni vlakno delalo se
+ // svym kontextem v nap_gles_egl_init).
+ if (!eglMakeCurrent(nap_reader_disp, nap_reader_surf, nap_reader_surf, nap_reader_ctx)) {
+  nap_diag_log("BUILD2SK140 GLES_READER_MAKECURRENT_FAIL_FATAL err=0x%x - ctecí vlakno se nespustilo, video se nebude posilat", eglGetError());
+  return NULL;
+ }
+ // BUILD2SK140: FBO KONTEJNERY nejsou mezi kontexty sdilene (i kdyz
+ // kontext sdili objekty) - jen SAMOTNE TEXTURY jsou. Proto si tady
+ // vytvarime VLASTNI 2 FBO, navazane na TYTEZ (sdilene) textury
+ // nap_fbo_tex[] - hlavni vlakno kresli pres SVE fbo kontejnery
+ // (nap_fbo[]), tenhle kontejner tady je JEN pro cteni ze stejne
+ // podkladove textury.
+ glGenFramebuffersOES(2, nap_reader_fbo);
+ int reader_ok = (nap_reader_fbo[0] && nap_reader_fbo[1]);
+ for (int i = 0; reader_ok && i < 2; i++) {
+  glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_reader_fbo[i]);
+  glFramebufferTexture2DOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_TEXTURE_2D, nap_fbo_tex[i], 0);
+  if (glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES) != GL_FRAMEBUFFER_COMPLETE_OES) {
+   reader_ok = 0;
+   nap_diag_log("BUILD2SK140 GLES_READER_FBO_INCOMPLETE_FATAL i=%d status=0x%x", i, (unsigned)glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
+  }
+ }
+ if (!reader_ok) {
+  nap_diag_log("BUILD2SK140 GLES_READER_INIT_FAILED_FATAL - video se nebude posilat");
+  return NULL;
+ }
+ nap_diag_log("BUILD2SK140 GLES_READER_THREAD_READY fbo=[%u,%u]", nap_reader_fbo[0], nap_reader_fbo[1]);
+ for (;;) {
+  nap_reader_req_t req;
+  pthread_mutex_lock(&nap_reader_mtx);
+  while (!nap_reader_has_req) pthread_cond_wait(&nap_reader_cv, &nap_reader_mtx);
+  req = nap_reader_req;
+  nap_reader_has_req = 0;
+  pthread_mutex_unlock(&nap_reader_mtx);
+
+  int rb_w = req.rb_w, rb_h = req.rb_h, src_x = req.src_x, src_y = req.src_y;
+  // BUILD2SK118: FIXNI 1024x512x4 buffer - cela VRAM, alokovano jen jednou.
+  // BUILD2SK140: alokace (rb_buf/vram_rgba) ted zije JEN na tomhle vlakne -
+  // uz do ni nikdy nesahne g_worker, takze zadne zamykani netreba.
+  if (nap_gles_rb_buf == NULL || nap_gles_rb_w != rb_w || nap_gles_rb_h != rb_h) {
+   if (nap_gles_rb_buf != NULL) free(nap_gles_rb_buf);
+   nap_gles_rb_buf = (uint32_t *)malloc((size_t)rb_w * (size_t)rb_h * 4);
+   nap_gles_rb_w = rb_w;
+   nap_gles_rb_h = rb_h;
+  }
+  if (nap_gles_vram_rgba == NULL) {
+   nap_gles_vram_rgba = (uint8_t *)malloc((size_t)NAP_PSX_VRAM_W * (size_t)NAP_PSX_VRAM_H * 4);
+  }
+  if (nap_gles_rb_buf == NULL || nap_gles_vram_rgba == NULL) {
+   // alokace selhala - tenhle pozadavek preskoc, uvolni buffer pro g_worker at neuvizne v cekani
+   pthread_mutex_lock(&nap_reader_mtx);
+   nap_reader_idx_free[req.idx] = 1;
+   pthread_cond_broadcast(&nap_reader_cv);
+   pthread_mutex_unlock(&nap_reader_mtx);
+   continue;
+  }
+  double nap_t0 = 0.0, nap_t1 = 0.0, nap_t2 = 0.0;
+  {
+   if (src_x < 0) src_x = 0;
+   if (src_y < 0) src_y = 0;
+   if (src_x + rb_w > NAP_PSX_VRAM_W) src_x = NAP_PSX_VRAM_W - rb_w;
+   if (src_x < 0) src_x = 0;
+   int glY = NAP_PSX_VRAM_H - (src_y + rb_h);
+   if (glY < 0) glY = 0;
+   if (glY + rb_h > NAP_PSX_VRAM_H) glY = NAP_PSX_VRAM_H - rb_h;
+   if (glY < 0) glY = 0;
+   glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_reader_fbo[req.idx]); // BUILD2SK140: NAS VLASTNI kontejner, stejna sdilena textura jako g_worker prave zapisuje do TE DRUHE
+   nap_t0 = nap_now_ms();
+   glReadPixels(src_x, glY, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
+   nap_t1 = nap_now_ms();
+   if (req.do_clear) {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    nap_diag_log("BUILD2SK140 GLES_SCENE_CHANGE_CLEAR idx=%d", req.idx);
+   }
+   if (nap_gles_frame_count % 31 == 1) {
+    nap_diag_log("BUILD2SK140 GLES_READ_ANCHOR srcX=%d srcY=%d glY=%d rb_w=%d rb_h=%d readIdx=%d", src_x, src_y, glY, rb_w, rb_h, req.idx);
+   }
+  }
+  // BUILD2SK140: precteno - buffer uz je BEZPECNY pro g_worker znovu
+  // pouzit jako cil kresleni (VSECHNY GPU operace nad nim - cteni i
+  // pripadne cisteni - uz jsou hotove, glReadPixels/glClear jsou
+  // synchronni). Signalizujeme HNED, driv nez CPU-only zpracovani nize
+  // (flip/diagnostika/push) - g_worker tim nemusi cekat na CPU cast,
+  // jen na tu GPU cast, ktera uz je hotova.
+  pthread_mutex_lock(&nap_reader_mtx);
+  nap_reader_idx_free[req.idx] = 1;
+  pthread_cond_broadcast(&nap_reader_cv);
+  pthread_mutex_unlock(&nap_reader_mtx);
+
+  {
+   for (int y = 0; y < rb_h; y++) {
+    const uint8_t *srcRow = nap_gles_vram_rgba + (size_t)y * rb_w * 4;
+    uint32_t *dstRow = nap_gles_rb_buf + (size_t)(rb_h - 1 - y) * rb_w;
+    for (int x = 0; x < rb_w; x++) {
+     uint8_t r = srcRow[x * 4 + 0];
+     uint8_t g = srcRow[x * 4 + 1];
+     uint8_t b = srcRow[x * 4 + 2];
+     dstRow[x] = 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+    }
+   }
+  }
+  nap_t2 = nap_now_ms();
+  {
+   static double nap_read_ms_sum = 0.0, nap_flip_ms_sum = 0.0;
+   static int nap_timing_n = 0;
+   nap_read_ms_sum += (nap_t1 - nap_t0);
+   nap_flip_ms_sum += (nap_t2 - nap_t1);
+   nap_timing_n++;
+   if (nap_timing_n >= 30) {
+    nap_diag_log("BUILD2SK140 GLES_READBACK_TIMING avgReadMs=%.2f avgFlipMs=%.2f avgTotalMs=%.2f n=%d rb_w=%d rb_h=%d (uz MIMO g_worker/audio vlakno)",
+      nap_read_ms_sum / nap_timing_n, nap_flip_ms_sum / nap_timing_n,
+      (nap_read_ms_sum + nap_flip_ms_sum) / nap_timing_n, nap_timing_n, rb_w, rb_h);
+    nap_read_ms_sum = 0.0; nap_flip_ms_sum = 0.0; nap_timing_n = 0;
+   }
+  }
+  if (nap_gles_frame_count % 31 == 1) {
+   GLenum glerr = glGetError();
+   unsigned long long sum = 0;
+   int n = rb_w * rb_h;
+   int nearBlack = 0;
+   for (int i = 0; i < n; i++) {
+     uint32_t px = nap_gles_rb_buf[i];
+     int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
+     sum += (unsigned)(r + g + b);
+     if (r + g + b < 6) nearBlack++;
+   }
+   uint32_t pTL = nap_gles_rb_buf[0];
+   uint32_t pCenter = nap_gles_rb_buf[n / 2];
+   uint32_t pBR = nap_gles_rb_buf[n - 1];
+   nap_diag_log("BUILD2SK130 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu nearBlackPct=%d pTL=0x%08x pCenter=0x%08x pBR=0x%08x dispW=%d dispH=%d",
+     (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (n > 0 ? (nearBlack * 100 / n) : -1), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR,
+     rb_w, rb_h);
+   static int nap_ascii_dump_count = 0;
+   if (nap_ascii_dump_count < 8) {
+     nap_ascii_dump_count++;
+     const char *shades = " .:-=+*#%@";
+     const int cols = 48, rows = 20;
+     nap_diag_log("BUILD2SK113 GLES_ASCII_DUMP_START #%d src=%dx%d", nap_ascii_dump_count, rb_w, rb_h);
+     for (int ry = 0; ry < rows; ry++) {
+       char line[64];
+       int lp = 0;
+       for (int rx = 0; rx < cols; rx++) {
+         int px_x = (rx * rb_w) / cols;
+         int px_y = (ry * rb_h) / rows;
+         if (px_x >= rb_w) px_x = rb_w - 1;
+         if (px_y >= rb_h) px_y = rb_h - 1;
+         uint32_t px = nap_gles_rb_buf[px_y * rb_w + px_x];
+         int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
+         int bright = (r + g + b) / 3;
+         int idx = (bright * 9) / 255;
+         if (idx < 0) idx = 0; if (idx > 9) idx = 9;
+         line[lp++] = shades[idx];
+       }
+       line[lp] = '\0';
+       nap_diag_log("BUILD2SK113 |%s|", line);
+     }
+   }
+   // BUILD2SK140: GLES_ALPHA_TEST_CHECK ZDE VYNECHANO - je to dotaz na GL
+   // STAV (glIsEnabled/glGetIntegerv), ktery je PER-KONTEXT, ne sdileny.
+   // Na tomhle (ctecim) kontextu by vracelo jen jeho VLASTNI (nepouzivany,
+   // vychozi) stav, ne stav hlavniho kresliciho kontextu - zavadejici
+   // cislo, radsi zadne nez spatne.
+   nap_diag_log("BUILD2SK121 PSXDISPLAY_STATE DrawArea=[%d,%d,%d,%d] DispPos=[%d,%d] Range=[%d,%d,%d,%d] DrawOffset=[%d,%d] Interlaced=%d Disabled=%d RGB24=%d",
+     (int)PSXDisplay.DrawArea.x0, (int)PSXDisplay.DrawArea.y0, (int)PSXDisplay.DrawArea.x1, (int)PSXDisplay.DrawArea.y1,
+     PSXDisplay.DisplayPosition.x, PSXDisplay.DisplayPosition.y,
+     (int)PSXDisplay.Range.x0, (int)PSXDisplay.Range.y0, (int)PSXDisplay.Range.x1, (int)PSXDisplay.Range.y1,
+     (int)PSXDisplay.DrawOffset.x, (int)PSXDisplay.DrawOffset.y,
+     PSXDisplay.Interlaced, PSXDisplay.Disabled, PSXDisplay.RGB24);
+   nap_diag_log("BUILD2SK121 PREVPSXDISPLAY_STATE DispPos=[%d,%d] Range=[%d,%d,%d,%d]",
+     PreviousPSXDisplay.DisplayPosition.x, PreviousPSXDisplay.DisplayPosition.y,
+     (int)PreviousPSXDisplay.Range.x0, (int)PreviousPSXDisplay.Range.y0, (int)PreviousPSXDisplay.Range.x1, (int)PreviousPSXDisplay.Range.y1);
+   {
+     int ry = rb_h / 2, cx = rb_w / 2;
+     int rawIdx = (ry * rb_w + cx) * 4;
+     int finIdx = (rb_h - 1 - ry) * rb_w + cx;
+     nap_diag_log("BUILD2SK130 RAW_VS_FINAL rawRGBA=[%d,%d,%d,%d] finalARGB=0x%08x",
+       (int)nap_gles_vram_rgba[rawIdx+0], (int)nap_gles_vram_rgba[rawIdx+1], (int)nap_gles_vram_rgba[rawIdx+2], (int)nap_gles_vram_rgba[rawIdx+3],
+       (unsigned)nap_gles_rb_buf[finIdx]);
+   }
+  }
+  nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 4);
+ }
+ return NULL;
+}
+
 static void nap_gles_readback_and_push(void)
 {
  // BUILD2SK128: velikost i pozice cteni uz JEN z autoritativniho gpulib
  // stavu (gpu.screen - plneno primo z GP1 prikazu v gpu.c), ne ze zamrzleho
- // peops DisplayMode (viz velky komentar u nap_gles_sync_display_settings).
- // BUILD2SK133: "fresh" = CO PRAVE TEDKA hlasi gpu.screen - plati pro
- // kresleni, ktere se od tehod okamziku bude teprve dit (jde do FBO, co
- // se prave stava write-cilem). NENI to nutne totez jako to, co za chvili
- // skutecne PRECTEME timhle volanim (viz rb_w/rb_h/src_x/src_y nize) -
- // to je metadata ULOZENA u bufferu z JEHO VLASTNIHO posledniho zapisu,
- // ktera muze byt o snimek starsi, pokud hra mezitim zmenila rozliseni.
+ // peops DisplayMode.
  int fresh_w = 0, fresh_h = 0, fresh_sx = 0, fresh_sy = 0;
  nap_gpulib_display_info(&fresh_sx, &fresh_sy, &fresh_w, &fresh_h);
- if (fresh_w <= 0) fresh_w = 320; // pojistka pro uplne prvni snimky pred prvnim GP1(0x08)
+ if (fresh_w <= 0) fresh_w = 320;
  if (fresh_h <= 0) fresh_h = 240;
- // BUILD2SK139: DrawArea zkousena v SK138 jako DALSI signal "zmena sceny"
- // - ODSTRANENO. Log dokazal, ze hra bezne meni DrawArea VICEKRAT za
- // JEDEN snimek (ruzne vrstvy kresleni) - jako signal "scena skoncila"
- // je nepouzitelna, jen zpusobovala spoustu falesnych poplachu.
- // BUILD2SK112: pridano glFinish() tady - hypoteza "GPU jeste nedokoncilo
- // kresleni" - NEPOMOHLO (video porad cerne, SK112 test) a Rene ohlasil
- // NOVY, postupne se zhorsujici problem se zvukem presne od tehdle zmeny.
- // BUILD2SK117: ODSTRANENO - glFinish() kazdy jednotlivy snimek nutí plne
- // zastaveni CPU/GPU, blokuje STEJNE vlakno, ktere pres retro_run() generuje
- // i zvuk - presne typ zmeny, co by zpusobil postupne se horsici audio
- // podle vytizeni. A neni to ani potreba: glReadPixels() je v OpenGL ES uz
- // sam o sobe definovany jako blokujici/synchronni - MUSI vratit spravna,
- // finalni data, takze uz sam pockat na dokonceni predchoziho kresleni,
- // ktere se tech pixelu tyka. glFinish() navic pred nim nepridaval zadnou
- // dalsi jistotu, jen zbytecnou rezii.
- // BUILD2SK100: tep KAZDYCH 30 snimku (stejny vzor jako jinde v projektu) -
- // pokud priste appka spadne, posledni zapsany tep rekne, kolik snimku se
- // stihlo VYKRESLIT (eglSwapBuffers UZ probehl - tenhle radek je AZ PO nem),
- // nez k padu doslo - a jestli se rozliseni mezitim nezmenilo na neco
- // podezreleho.
  nap_gles_frame_count++;
- // BUILD2SK136: %30 ZMENENO na %31 na VSECH diagnostikach v teto funkci -
- // 30 je sude a nap_fbo_write_idx/other_idx se preklapi KAZDE volani
- // (period 2) - vzorkovani presne kazdych 30 vzdy padlo na STEJNOU
- // paritu, takze log poprve VYPADAL, jako by se ctl porad jen jeden
- // buffer (readIdx=1 porad dokola), i kdyz se ve skutecnosti mohlo
- // spravne strida - jen jsme to nikdy nevideli. 31 je liche, takze
- // vzorkovani postupne projde OBEMA paritami.
  if (nap_gles_frame_count % 31 == 1) {
   nap_diag_log("BUILD2SK100 GLES_FRAME_HEARTBEAT n=%d dispW=%d dispH=%d", nap_gles_frame_count, fresh_w, fresh_h);
  }
- if (fresh_w <= 0 || fresh_h <= 0 || fresh_w > NAP_PSX_VRAM_W || fresh_h > NAP_PSX_VRAM_H) return; // BUILD2SK122: mez presne podle skutecne VRAM velikosti
- // BUILD2SK134: Rene nechce tichy navrat ke starem primem cteni, kdyz FBO
- // selze - viz velky komentar u nap_fbo_init_once. Misto "jinak cti
- // primo" tu ted je proste NIC - zadny snimek se neposle, dokud FBO
- // neni pripravene. Hlasita, jednoznacna chyba (cerny/zamrzly obraz +
- // hlaska v logu), ne tise fungujici pomalejsi nahrada.
+ if (fresh_w <= 0 || fresh_h <= 0 || fresh_w > NAP_PSX_VRAM_W || fresh_h > NAP_PSX_VRAM_H) return;
  if (!nap_fbo_ready) return;
- // BUILD2SK133: az TEDKA rozhodujeme, CO SE SKUTECNE BUDE CIST timhle
- // volanim - NENI to fresh_*, ale ulozena metadata druheho (jiz hotoveho)
- // bufferu. rb_w/rb_h/src_x/src_y odsud dal jsou "co se cte TEDKA" -
- // stejne jmeno jako drive, aby zbytek funkce (alokace, flip smycka,
- // diagnostika, push) zustal beze zmeny.
+ // BUILD2SK140: g_worker uz TADY NEDELA ZADNE cteni z GPU - jen si
+ // domluvi s ctecim vlaknem, ktery buffer prave dokreslil, a hned se
+ // vraci do emulace/generovani zvuku. Samotne glReadPixels (i pripadny
+ // glClear po nem) uz bezi VYHRADNE na nap_reader_thread_main, na jeho
+ // vlastnim (sdilejicim) kontextu.
  int other_idx = 1 - nap_fbo_write_idx;
- int rb_w = nap_fbo_meta_w[other_idx], rb_h = nap_fbo_meta_h[other_idx];
- int src_x = nap_fbo_meta_sx[other_idx], src_y = nap_fbo_meta_sy[other_idx];
- // BUILD2SK133: SK132 "cti jen kazdy druhy snimek" ODSTRANENO na Reneho
- // opravnenou pripominku - byla to berlicka (mene casteho blokovani), ne
- // skutecna oprava, a snizovala kvalitu/plynulost bez duvodu. Skutecna
- // oprava je nize - viz nap_fbo_init_once a strida-a-cti-tu-druhou logika
- // v teto funkci. Plne rozliseni, plny framerate, zadny preskoceny snimek.
- // BUILD2SK124: KLICOVA OPRAVA - konkretni data ze SK123 testu ukazala
- // "scissor=[0,0,1024,512]" - scissor ZADNE UZITECNE OMEZENI NEDAVA (kryje
- // UPLNE CELOU VRAM)! SK123 pak cetlo skoro celou VRAM, z niz jen leva
- // cast (~320 sloupcu) obsahovala SKUTECNY obraz - zbytek byla nesouvisejici/
- // neinicializovana pamet, presne ten "sum" na prave polovine, co Rene
- // videl. SK122's PROJEKCE (1024x512 VRAM-scale) byla spravna a potrebna
- // (potvrzeno RAW_VS_FINAL shodou u sedych hodnot) - chyba byla, ze jsem
- // ZAROVEN zbytecne zkomplikoval i SAMOTNE CTENI (SK122 pres DisplayPosition,
- // SK123 pres scissor). Reseni: vratit cteni zpet na jednoduchy, primy
- // pristup - cist presne DisplayMode velikost OD ZACATKU (0,0), protoze
- // DisplayPosition byla ve VSECH dosavadnich datech VZDY (0,0) - jen TEDka
- // uz s opravenou (SK122) projekci pod tim, takze geometrie uz je spravne
- // namapovana driv, nez se vubec cte.
- if (nap_gles_rb_buf == NULL || nap_gles_rb_w != rb_w || nap_gles_rb_h != rb_h) {
-  if (nap_gles_rb_buf != NULL) free(nap_gles_rb_buf);
-  nap_gles_rb_buf = (uint32_t *)malloc((size_t)rb_w * (size_t)rb_h * 4);
-  nap_gles_rb_w = rb_w;
-  nap_gles_rb_h = rb_h;
- }
- if (nap_gles_vram_rgba == NULL) {
-  nap_gles_vram_rgba = (uint8_t *)malloc((size_t)NAP_PSX_VRAM_W * (size_t)NAP_PSX_VRAM_H * 4); // pojistka na max mozny pripad
- }
- // BUILD2SK128: SK126 heuristika (preskakovat snimky podle DrawArea.x0)
- // ODSTRANENA - stavela na zamrzlem peops stavu (viz velky komentar u
- // nap_gles_sync_display_settings). "Kterou cast VRAM prave zobrazit" nam
- // rika primo gpulib: gpu.screen.src_x/src_y je SKUTECNA zobrazovaci pozice
- // z GP1(0x05) - presne ten "display-swap protokol", ktery se v SK98-SK127
- // hledal. Hra po dokonceni snimku prepne src_x mezi 0 a 512 (dvojity
- // buffering) a my proste cteme VZDY z prave zobrazovane pozice - stejne,
- // jako by to delal skutecny televizor pripojeny k PS1. Zadna heuristika,
- // zadne preskakovani snimku.
- if (nap_gles_rb_buf == NULL || nap_gles_vram_rgba == NULL) return; // alokace selhala - proste tenhle snimek preskoc, nic nespadne
- // BUILD2SK105: primo GL_RGBA+GL_UNSIGNED_BYTE - jedina kombinace, kterou
- // GLES specifikace zarucuje pro glReadPixels na jakemkoli zarizeni.
- double nap_t0 = 0.0, nap_t1 = 0.0, nap_t2 = 0.0; // BUILD2SK131: v tomhle (funkcnim) rozsahu, aby byly viditelne az do mereni na konci
- {
-  if (src_x < 0) src_x = 0;
-  if (src_y < 0) src_y = 0;
-  if (src_x + rb_w > NAP_PSX_VRAM_W) src_x = NAP_PSX_VRAM_W - rb_w;
-  if (src_x < 0) src_x = 0;
-  // BUILD2SK125 (princip zustava): Y-souradnice pro glReadPixels potrebuje
-  // prevod - PS1 Y=0 je "nahore", ale glReadPixels bere Y=0 jako "dole"
-  // (stejny flip-princip jako u glOrtho). PS1 radek Y odpovida GL radku
-  // (VRAM_H-1-Y) - takze SPODEK cteneho useku (glReadPixels bere y jako
-  // DOLNI okraj) je (VRAM_H - (src_y + rb_h)).
-  int glY = NAP_PSX_VRAM_H - (src_y + rb_h);
-  if (glY < 0) glY = 0;
-  if (glY + rb_h > NAP_PSX_VRAM_H) glY = NAP_PSX_VRAM_H - rb_h;
-  if (glY < 0) glY = 0;
-  // BUILD2SK134: uz vime (return vyse), ze nap_fbo_ready==1, takze zadna
-  // dalsi podminka tady neni potreba - primo navazat na tu DRUHOU FBO
-  // (other_idx). Do te se NEKRESLILO behem CELE minule periody (kreslilo
-  // se do nap_fbo_write_idx), takze GPU uz ji davno v pozadi dokoncilo -
-  // tohle cteni by nemelo cekat.
-  glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_fbo[other_idx]);
-  nap_t0 = nap_now_ms(); // BUILD2SK131
-  glReadPixels(src_x, glY, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
-  nap_t1 = nap_now_ms(); // BUILD2SK131
-  // BUILD2SK139: SK137/138 MELO SKUTECNOU CHYBU - Rene poslal log, kde se
-  // "GLES_SCENE_CHANGE_CLEAR" spustilo 4749x, z toho 4740x na naprosto
-  // BEZNEM strideni src_x mezi 0 a 512 (PS1 dvojity buffering - PRESNE
-  // to, co ma normalne delat KAZDY snimek behem hrani). src_x/src_y a
-  // DrawArea se totiz MENI i BEHEM JEDNE A TE SAME sceny - dvojity
-  // buffering pravidelne prehazuje src_x, a hra bezne pouziva VIC
-  // ruznych DrawArea v ramci jednoho snimku (pozadi, pak UI vrstva,
-  // atd.) - ani jedno z toho neznamena "predchozi scena skoncila".
-  // Vysledek: cistilo se to znovu PRAKTICKY KAZDY SNIMEK behem hrani -
-  // stejny problem jako SK136, jen schovany za jinou podminku. Presne
-  // to vysvetluje "chybi kus grafiky" i pokracujici blikani.
-  // OPRAVA: jediny SPOLEHLIVY signal "tohle uz je jina scena" je
-  // ROZLISENI (hres/vres) - to je (potvrzeno v logu) stabilni po celou
-  // dobu jedne sceny (640x480 nemenne 1179 snimku v kuse) a meni se JEN
-  // na skutecnem prechodu. src_x/src_y/DrawArea uz do teto kontroly
-  // NEPATRI - byla to muj omyl je tam pridat.
-  if (fresh_w != rb_w || fresh_h != rb_h) {
-   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-   glClear(GL_COLOR_BUFFER_BIT);
-   nap_diag_log("BUILD2SK139 GLES_SCENE_CHANGE_CLEAR oldW=%d oldH=%d newW=%d newH=%d", rb_w, rb_h, fresh_w, fresh_h);
-  }
-  if (nap_gles_frame_count % 31 == 1) {
-   nap_diag_log("BUILD2SK134 GLES_READ_ANCHOR srcX=%d srcY=%d glY=%d rb_w=%d rb_h=%d readIdx=%d", src_x, src_y, glY, rb_w, rb_h, other_idx);
-  }
- }
- // BUILD2SK134: buffer other_idx uz jsme precetli (vyse) - ted do nej
- // ulozime AKTUALNI (fresh) rozmery/pozici, protoze prave TATO FBO se
- // stava novym cilem kresleni (uz je na ni navazany binding z bloku
- // vyse) - az na ni priste dojde rada cteni, tahle metadata budou platit
- // pro to, co se do ni MEZITIM skutecne nakreslilo. Binding uz je
- // spravne (nastaveno pred glReadPixels vyse) - staci prehodit index.
+ pthread_mutex_lock(&nap_reader_mtx);
+ // BUILD2SK140: pockat, az ctecí vlakno DOKONCI SVOJI GPU cast (cteni +
+ // pripadne cisteni) predchoziho pozadavku na TENTO SAMY buffer - teprve
+ // pak je bezpecne do nej znovu kreslit. V beznem pripadu uz je to davno
+ // hotove (ctecí vlakno beze na to melo celou minulou periodu), takze
+ // tohle cekani je skoro vzdy okamzite - ne ten puvodni 4-21ms GPU stall,
+ // jen kratka kontrola "uz jsi hotovy?".
+ // BUILD2SK140: DVE podminky, ne jedna - jen jeden "slot" na pozadavek
+ // (nap_reader_req) znamena, ze kdyby ctecí vlakno jeste nestihlo vyzvednout
+ // PREDCHOZI pozadavek a my bychom rovnou zapsali NOVY, ten stary by se
+ // tise prepsal - a jeho buffer by uz NIKDY nebyl oznacen jako volny =
+ // trvale zaseknuti (g_worker by na nej cekal navzdy o 2 kola pozdeji).
+ // Proto NEJDRIV pockat, az si ctecí vlakno vyzvedne cokoliv PREDCHOZIho
+ // (rychle - jen dokud nezacne svoji GPU praci), a TEPRVE POTOM na to,
+ // jestli je konkretni buffer volny.
+ while (nap_reader_has_req) pthread_cond_wait(&nap_reader_cv, &nap_reader_mtx);
+ while (!nap_reader_idx_free[other_idx]) pthread_cond_wait(&nap_reader_cv, &nap_reader_mtx);
+ nap_reader_idx_free[other_idx] = 0; // zabirame ho pro NOVY pozadavek
+ nap_reader_req.idx = other_idx;
+ nap_reader_req.rb_w = nap_fbo_meta_w[other_idx];
+ nap_reader_req.rb_h = nap_fbo_meta_h[other_idx];
+ nap_reader_req.src_x = nap_fbo_meta_sx[other_idx];
+ nap_reader_req.src_y = nap_fbo_meta_sy[other_idx];
+ nap_reader_req.do_clear = (fresh_w != nap_fbo_meta_w[other_idx] || fresh_h != nap_fbo_meta_h[other_idx]);
+ nap_reader_has_req = 1;
+ pthread_cond_broadcast(&nap_reader_cv);
+ pthread_mutex_unlock(&nap_reader_mtx);
+ // BUILD2SK133/140: tenhle buffer se STAVA novym cilem kresleni - ulozit
+ // aktualni (fresh) rozmery/pozici, at az na nej priste dojde rada cteni,
+ // vime, co do nej MEZITIM skutecne prislo.
  nap_fbo_meta_sx[other_idx] = fresh_sx;
  nap_fbo_meta_sy[other_idx] = fresh_sy;
  nap_fbo_meta_w[other_idx] = fresh_w;
  nap_fbo_meta_h[other_idx] = fresh_h;
  nap_fbo_write_idx = other_idx;
- {
-  for (int y = 0; y < rb_h; y++) {
-   const uint8_t *srcRow = nap_gles_vram_rgba + (size_t)y * rb_w * 4;
-   uint32_t *dstRow = nap_gles_rb_buf + (size_t)(rb_h - 1 - y) * rb_w; // BUILD2SK118 styl flip - posledni GL radek na prvni Android radek
-   for (int x = 0; x < rb_w; x++) {
-    uint8_t r = srcRow[x * 4 + 0];
-    uint8_t g = srcRow[x * 4 + 1];
-    uint8_t b = srcRow[x * 4 + 2];
-    dstRow[x] = 0xFF000000u | ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
-   }
-  }
- }
- nap_t2 = nap_now_ms(); // BUILD2SK131
- // BUILD2SK131: prumer za poslednich 30 volani - readMs = cas STRAVENY V
- // glReadPixels SAMOTNEM (= jak dlouho je g_worker/audio-generujici vlakno
- // blokovane cekanim na GPU), flipMs = nas vlastni CPU prevod PO nem.
- // Obe se scitaji do celkoveho zpozdeni, ktere tenhle snimek pridava PRED
- // tim, nez se vubec vrati zpatky do emulace/generovani zvuku.
- {
-  static double nap_read_ms_sum = 0.0, nap_flip_ms_sum = 0.0;
-  static int nap_timing_n = 0;
-  nap_read_ms_sum += (nap_t1 - nap_t0);
-  nap_flip_ms_sum += (nap_t2 - nap_t1);
-  nap_timing_n++;
-  if (nap_timing_n >= 30) {
-   nap_diag_log("BUILD2SK131 GLES_READBACK_TIMING avgReadMs=%.2f avgFlipMs=%.2f avgTotalMs=%.2f n=%d rb_w=%d rb_h=%d",
-     nap_read_ms_sum / nap_timing_n, nap_flip_ms_sum / nap_timing_n,
-     (nap_read_ms_sum + nap_flip_ms_sum) / nap_timing_n, nap_timing_n, rb_w, rb_h);
-   nap_read_ms_sum = 0.0; nap_flip_ms_sum = 0.0; nap_timing_n = 0;
-  }
- }
- // BUILD2SK104: obsah pixelu, ne jen rozmery - podezrele mala JPEG velikost
- // (5780B pro 320x240 hru) naznacuje, ze buffer muze byt skoro cerny/
- // prazdny i kdyz rozmery uz sedi. Levny soucet (staci vedet "je tam vubec
- // neco jineho nez 0") + par konkretnich vzorku pro presnejsi obraz. Stejne
- // omezeni jako heartbeat vyse (kazdy 30. snimek), aby to nezaplavilo log.
- if (nap_gles_frame_count % 31 == 1) {
-  GLenum glerr = glGetError();
-  unsigned long long sum = 0;
-  int n = rb_w * rb_h; // BUILD2SK123: skutecna velikost bufferu (scissor), ne DisplayMode
-  int nearBlack = 0; // BUILD2SK130: viz komentar u vypisu nize
-  // BUILD2SK118: soucet jasu (ne uz syrovych packed hodnot - ARGB8888 ma
-  // konstantni 0xFF v alfa bajtu, ktery by jinak zkresloval soucet).
-  for (int i = 0; i < n; i++) {
-    uint32_t px = nap_gles_rb_buf[i];
-    int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
-    sum += (unsigned)(r + g + b);
-    if (r + g + b < 6) nearBlack++; // BUILD2SK130: "temer cerny" pixel (soucet kanalu < 6)
-  }
-  uint32_t pTL = nap_gles_rb_buf[0];
-  uint32_t pCenter = nap_gles_rb_buf[n / 2];
-  uint32_t pBR = nap_gles_rb_buf[n - 1];
-  // BUILD2SK130: ZATIM JEN MERENI, ZADNA ZMENA CHOVANI. Duvod: GLES_ALPHA_TEST_CHECK
-  // nize ukazuje GL_NOTEQUAL/ref=0 - kazdy fragment s alfa==0 se vubec nevykresli
-  // (zustane tam, co uz v bufferu bylo - od SK130 uz spolehlive cerna, viz vyse).
-  // Pokud "black%" tady vyjde vysoko (desitky procent) BEHEM HRATELNE casti (ne
-  // jen loga/prechodu), je to silny dukaz, ze hodne geometrie neprojde alfa
-  // testem a proste se nevykresli - to by vysvetlovalo "hrozny obraz" mnohem
-  // primeji nez cokoliv predchoziho. Schvalne nic nemenim, dokud tohle cislo
-  // neuvidim - hadat dalsi opravu bez nej by bylo presne to, co uz se nemelo
-  // opakovat.
-  nap_diag_log("BUILD2SK130 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu nearBlackPct=%d pTL=0x%08x pCenter=0x%08x pBR=0x%08x dispW=%d dispH=%d",
-    (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (n > 0 ? (nearBlack * 100 / n) : -1), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR,
-    rb_w, rb_h);
-  // BUILD2SK113: misto dalsich cisel - SKUTECNY (i kdyz hrubý, textovy)
-  // obrazek toho, co se doopravdy zachytilo. Cisla (soucet, 3 vzorky) uz
-  // nestaci rozlisit "jednolita barva" od "slozity obrazek s malym
-  // kontrastem" - tohle to ukaze primo. Omezeno na malo opakovani CELKEM
-  // (ne kazdych 30 snimku porad dokola), aby se log nezaplavil.
-  static int nap_ascii_dump_count = 0;
-  if (nap_ascii_dump_count < 8) {
-    nap_ascii_dump_count++;
-    const char *shades = " .:-=+*#%@";
-    const int cols = 48, rows = 20;
-    nap_diag_log("BUILD2SK113 GLES_ASCII_DUMP_START #%d src=%dx%d", nap_ascii_dump_count, rb_w, rb_h);
-    for (int ry = 0; ry < rows; ry++) {
-      char line[64];
-      int lp = 0;
-      for (int rx = 0; rx < cols; rx++) {
-        int px_x = (rx * rb_w) / cols;
-        int px_y = (ry * rb_h) / rows;
-        if (px_x >= rb_w) px_x = rb_w - 1;
-        if (px_y >= rb_h) px_y = rb_h - 1;
-        uint32_t px = nap_gles_rb_buf[px_y * rb_w + px_x]; // BUILD2SK118: ted ARGB8888
-        int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
-        int bright = (r + g + b) / 3;
-        int idx = (bright * 9) / 255;
-        if (idx < 0) idx = 0; if (idx > 9) idx = 9;
-        line[lp++] = shades[idx];
-      }
-      line[lp] = '\0';
-      nap_diag_log("BUILD2SK113 |%s|", line);
-    }
-  }
-  // BUILD2SK109: gpuPrim.c ma makro DEFOPAQUEON - glAlphaFunc(GL_EQUAL,0.0f) -
-  // "opaque" kresleni PROJDE jen kdyz je alfa PRESNE 0.0 (bezny PS1 zpusob
-  // znaceni pruhlednosti masky). Pokud nahravani textur nenastavuje presne
-  // tuhle hodnotu, KAZDY fragment by se tise zahodil - vysvetlilo by to
-  // presne to, co vidime (cisteni funguje, geometrie ne, bez ohledu na
-  // scissor/hloubku). Primy dotaz na aktualni stav, misto dalsiho hadani.
-  {
-    GLboolean alphaTestOn = glIsEnabled(GL_ALPHA_TEST);
-    GLint alphaFunc = 0; GLfloat alphaRef = -1.0f;
-    glGetIntegerv(GL_ALPHA_TEST_FUNC, &alphaFunc);
-    glGetFloatv(GL_ALPHA_TEST_REF, &alphaRef);
-    nap_diag_log("BUILD2SK109 GLES_ALPHA_TEST_CHECK enabled=%d func=0x%x ref=%f",
-      (int)alphaTestOn, (unsigned)alphaFunc, (double)alphaRef);
-  }
-  // BUILD2SK121: DIAGNOSTIKA, ZADNA ZMENA CHOVANI (na Reneho vyslovny
-  // pozadavek). SK120 ukazalo, ze VYSLEDNY scissor/viewport/rozliseni jsou
-  // spravne a konzistentni - presto obraz porad vypada spatne (zoom,
-  // problikavani). To znamena, ze pricina je NEKDE JINDE - primo v datech,
-  // ktere do scissor-vypoctu VSTUPUJI (nikdy jsem je primo nezkontroloval,
-  // jen VYSLEDEK), nebo v samotnem obsahu, co GPU vykresli, driv nez to
-  // stihnu jakkoli zpracovat. Tenhle blok vypisuje OBOJI najednou.
-  nap_diag_log("BUILD2SK121 PSXDISPLAY_STATE DrawArea=[%d,%d,%d,%d] DispPos=[%d,%d] Range=[%d,%d,%d,%d] DrawOffset=[%d,%d] Interlaced=%d Disabled=%d RGB24=%d",
-    (int)PSXDisplay.DrawArea.x0, (int)PSXDisplay.DrawArea.y0, (int)PSXDisplay.DrawArea.x1, (int)PSXDisplay.DrawArea.y1,
-    PSXDisplay.DisplayPosition.x, PSXDisplay.DisplayPosition.y,
-    (int)PSXDisplay.Range.x0, (int)PSXDisplay.Range.y0, (int)PSXDisplay.Range.x1, (int)PSXDisplay.Range.y1,
-    (int)PSXDisplay.DrawOffset.x, (int)PSXDisplay.DrawOffset.y,
-    PSXDisplay.Interlaced, PSXDisplay.Disabled, PSXDisplay.RGB24);
-  nap_diag_log("BUILD2SK121 PREVPSXDISPLAY_STATE DispPos=[%d,%d] Range=[%d,%d,%d,%d]",
-    PreviousPSXDisplay.DisplayPosition.x, PreviousPSXDisplay.DisplayPosition.y,
-    (int)PreviousPSXDisplay.Range.x0, (int)PreviousPSXDisplay.Range.y0, (int)PreviousPSXDisplay.Range.x1, (int)PreviousPSXDisplay.Range.y1);
-  // BUILD2SK124: RAW (primo z GPU, jen precatana - jeste PRED flipem) vs
-  // FINALNI (PO flipu) vzorek ze STEJNEHO mista - pokud RAW vypada dobre
-  // ale FINALNI spatne, chyba je v nasem prevodu/flipu, ne v GPU kresleni.
-  // BUILD2SK130: TENHLE POROVNAVAK MEL CHYBU - finIdx chybel sloupcovy
-  // posun (vzdy cetl sloupec 0, ne stred) A radek nebyl prepocitany pres
-  // flip (viz dstRow = (rb_h-1-y) o par radku vyse) - ve skutecnosti se
-  // tak porovnavaly DVA RUZNE PIXELY, ne "stejne misto pred/po prevodem",
-  // jak komentar slibuje. To znamena, ze predchozi RAW_VS_FINAL vysledky
-  // (raw barevne, final cerne) NEJSOU spolehlivym dukazem chyby v prevodu -
-  // klidne to mohly byt proste dva ruzne, oba spravne, pixely. Opraveno na
-  // presne stejne (row,col) na obou stranach flipu.
-  {
-    int ry = rb_h / 2, cx = rb_w / 2;
-    int rawIdx = (ry * rb_w + cx) * 4;
-    int finIdx = (rb_h - 1 - ry) * rb_w + cx;
-    nap_diag_log("BUILD2SK130 RAW_VS_FINAL rawRGBA=[%d,%d,%d,%d] finalARGB=0x%08x",
-      (int)nap_gles_vram_rgba[rawIdx+0], (int)nap_gles_vram_rgba[rawIdx+1], (int)nap_gles_vram_rgba[rawIdx+2], (int)nap_gles_vram_rgba[rawIdx+3],
-      (unsigned)nap_gles_rb_buf[finIdx]);
-  }
- }
- nap_gles_push_frame(nap_gles_rb_buf, rb_w, rb_h, rb_w * 4); // BUILD2SK124: DisplayMode rozmery (jednoduchy, spravny pristup)
+ glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_fbo[other_idx]); // g_worker nabinduje SVUJ kontejner k TEZE (sdilene) texture pro nasledujici kresleni
 }
+
 
 static int is_opened;
 

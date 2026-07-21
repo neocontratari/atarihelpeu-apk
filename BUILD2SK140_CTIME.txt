@@ -1,0 +1,35 @@
+================================================================================
+BUILD2SK140 - navod (2026-07-21)
+================================================================================
+
+Meni se jen: app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+Postup stejny: rozbal, "app" nakopiruj (prepsat ANO), commit, push, Action.
+
+CO JE TOHLE ZA ZMENU (na rovinu):
+Cteni z GPU (glReadPixels) uz nebezi na tom samem vlakne, co pocita zvuk -
+bezi na uplne SAMOSTATNEM vlakne, se svym vlastnim OpenGL kontextem,
+ktery sdili textury s tim hlavnim (standardni technika, ne experiment).
+Vlakno se zvukem uz na cteni z GPU vubec neceka - jen si s tim druhym
+vlaknem rychle domluvi "tenhle buffer je hotovy" a jde rovnou dal.
+
+TOHLE JE JINA KATEGORIE ZMENY nez predtim - vicevlaknove programovani s
+GPU se neda over overit stejne spolehlive jako obycejnou logiku (preklad
+prosel cisty, viz nize, ale skutecne souhry vlaken uz overit nemuzu bez
+telefonu v ruce). Behem psani jsem sam nasel a opravil jednu skutecnou
+moznost trvaleho zaseknuti (kdyby cteci vlakno nestihlo vyzvednout
+predchozi pozadavek driv, nez prijde dalsi) - beru to vazne, ale
+nemuzu slibit, ze je to jedina takova vec. Beres riziko na sebe (mas
+zalohu Build 96) - respektuju to a jdu do toho naplno, jak jsi rekl.
+
+CO POSLAT PRISTE (tohle rozhodne, jestli to funguje):
+- Nastartovalo to vubec? Hleda se v logu "BUILD2SK140 GLES_READER_THREAD_READY".
+  Pokud tam NENI a misto toho je "_FATAL" hlaska - cteci vlakno se
+  nerozjelo, video pujde cerne (nespadne, ale neuvidis nic - hlasi se to
+  primo, ne tise).
+- Zamrzla/spadla appka behem hrani? (Tohle je hlavni riziko teto zmeny -
+  kdyby ano, potrebuju vedet PRESNE kdy/za jakych okolnosti.)
+- "BUILD2SK140 GLES_READBACK_TIMING" - ma tam byt navic poznamka
+  "(uz MIMO g_worker/audio vlakno)" - potvrzuje, ze cteni fakt bezi jinde.
+- underruns= cislo - tohle je hlavni cil teto zmeny.
+- Blika to min?
+================================================================================
