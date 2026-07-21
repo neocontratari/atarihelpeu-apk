@@ -116,6 +116,7 @@ static GLuint nap_fbo[2] = {0, 0};
 static int nap_fbo_ready = 0;      // BUILD2SK134: 1 = FBO cesta funguje; 0 = video se VUBEC neposila (zadny tichy navrat ke starem zpusobu - viz nap_fbo_init_once)
 static int nap_fbo_write_idx = 0;  // ktery index se PRAVE pouziva jako cil kresleni
 static int nap_fbo_meta_sx[2], nap_fbo_meta_sy[2], nap_fbo_meta_w[2] = {320,320}, nap_fbo_meta_h[2] = {240,240}; // BUILD2SK133: co PLATILO v okamziku, kdy se do teto FBO naposledy zacalo kreslit - NE aktualni gpu.screen (to uz muze byt o snimek dal)
+static int nap_fbo_meta_dx0[2], nap_fbo_meta_dy0[2], nap_fbo_meta_dx1[2], nap_fbo_meta_dy1[2]; // BUILD2SK138: totez pro DrawArea - viz komentar u fresh_dx0 v nap_gles_readback_and_push
 
 static void nap_fbo_init_once(void)
 {
@@ -251,6 +252,17 @@ static void nap_gles_readback_and_push(void)
  nap_gpulib_display_info(&fresh_sx, &fresh_sy, &fresh_w, &fresh_h);
  if (fresh_w <= 0) fresh_w = 320; // pojistka pro uplne prvni snimky pred prvnim GP1(0x08)
  if (fresh_h <= 0) fresh_h = 240;
+ // BUILD2SK138: Rene hlasi "chybi kus grafiky v intru a v menu" - to jsou
+ // pravdepodobne DVE RUZNE OBRAZOVKY hry samotne (ne bootovaci loga),
+ // ktere se ale klidne mohou zobrazovat V TOMTEZ rozliseni (SK137 kontrola
+ // vyse - fresh_w/h/sx/sy - by tak jejich prechod VUBEC NEZACHYTILA a
+ // stara scena by mohla zustat viset presne jako pred SK136). DrawArea
+ // (GP0 oriznuti kresleni, nezavisle na GP1 rozliseni) se ALE mezi
+ // ruznymi obrazovkami hry casto meni, i kdyz rozliseni zustava stejne -
+ // pridavame ho tedy do stejne kontroly nize jako DALSI signal "tohle uz
+ // je jina scena".
+ int fresh_dx0 = (int)PSXDisplay.DrawArea.x0, fresh_dy0 = (int)PSXDisplay.DrawArea.y0;
+ int fresh_dx1 = (int)PSXDisplay.DrawArea.x1, fresh_dy1 = (int)PSXDisplay.DrawArea.y1;
  // BUILD2SK112: pridano glFinish() tady - hypoteza "GPU jeste nedokoncilo
  // kresleni" - NEPOMOHLO (video porad cerne, SK112 test) a Rene ohlasil
  // NOVY, postupne se zhorsujici problem se zvukem presne od tehdle zmeny.
@@ -356,21 +368,32 @@ static void nap_gles_readback_and_push(void)
   nap_t0 = nap_now_ms(); // BUILD2SK131
   glReadPixels(src_x, glY, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
   nap_t1 = nap_now_ms(); // BUILD2SK131
-  // BUILD2SK136: RENE HLASI "uvodni intro se roztahne vpravo dole a visi
-  // tam cele" - klasicky pribuzny problem puvodnimu border-bleed bugu
-  // (SK129/130), ale v NOVE forme: tenhle buffer se cisti JEN JEDNOU, pri
-  // svem vytvoreni (viz nap_fbo_init_once) - ne mezi jednotlivymi
-  // "scenami". Kdyz PS logo/Naughty Dog intro (640x480, velky pudorys)
-  // presla na dalsi obsah s MENSIM pudorysem (512x240), cast VRAM, kam uz
-  // nikdo nekresli, zustala navzdy s pixely ze STARE sceny - presne to,
-  // co Rene popisuje. Oprava: hned PO precteni (mame uz data, co
-  // potrebujeme) tenhle buffer vycistit na cernou - dostane tim CISTY
-  // start pro pristi zapis, misto aby si nesl pozustatky ze sceny, ktera
-  // uz davno skoncila. (Bezpecne i pro bezne dvoji-bufferovani her - PS1
-  // hry standardne kresli KOMPLETNI snimek pri kazdem flipu, nespolehaji
-  // se na to, ze cast obrazu prezije z pred-pred-minuleho snimku.)
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
+  // BUILD2SK137: RENE HLASI NOVY PRIZNAK PO SK136 - "logo Sony uz se
+  // neukazuje" a "chybi vykresleni". Prilis siroky lek: SK136 cistilo
+  // TENHLE buffer UPLNE PRI KAZDEM cyklu, i uprostred jedne a te same
+  // sceny. Sonyho boot animace (a mozna i cast Naughty Dog loga) nejspis
+  // NEPREKRESLUJE uplne vsechno v kazdem snimku (jednodussi kod nez plna
+  // hra, muze si nechavat cast obrazu z minula) - SK136 tohle smazalo
+  // driv, nez to vubec bylo videt. DUKAZ z logu: VOUT_SRC_CHANGE ukazuje
+  // hres/vres NEMENNE 640x480 po celych 1179 snimku (cela Sony+Naughty
+  // Dog faze) - teprve pak preskoci na 512x240. Cistit tedy JEN kdyz se
+  // rozliseni/pozice SKUTECNE zmenily (fresh_* se lisi od toho, co jsme
+  // prave precetli - coz je tenhle SAMY buffer, jak vypadal pred 2
+  // cykly) - to znamena "predchozi scena skoncila, tohle uz je neco
+  // jineho". Kdyz se nic nezmenilo (fresh_w==rb_w atd.), sceny pokracuje
+  // a nic se necisti - presne to, co puvodne (pred SK136) fungovalo pro
+  // Sonyho logo, ale zaroven porad cisti pri SK136-hlavnim pripadu
+  // (640x480 -> 512x240 prechod, kde tyhle hodnoty SKUTECNE nesedi).
+  if (fresh_w != rb_w || fresh_h != rb_h || fresh_sx != src_x || fresh_sy != src_y
+      || fresh_dx0 != nap_fbo_meta_dx0[other_idx] || fresh_dy0 != nap_fbo_meta_dy0[other_idx]
+      || fresh_dx1 != nap_fbo_meta_dx1[other_idx] || fresh_dy1 != nap_fbo_meta_dy1[other_idx]) {
+   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+   glClear(GL_COLOR_BUFFER_BIT);
+   nap_diag_log("BUILD2SK138 GLES_SCENE_CHANGE_CLEAR oldW=%d oldH=%d oldSx=%d oldSy=%d newW=%d newH=%d newSx=%d newSy=%d oldDA=[%d,%d,%d,%d] newDA=[%d,%d,%d,%d]",
+     rb_w, rb_h, src_x, src_y, fresh_w, fresh_h, fresh_sx, fresh_sy,
+     nap_fbo_meta_dx0[other_idx], nap_fbo_meta_dy0[other_idx], nap_fbo_meta_dx1[other_idx], nap_fbo_meta_dy1[other_idx],
+     fresh_dx0, fresh_dy0, fresh_dx1, fresh_dy1);
+  }
   if (nap_gles_frame_count % 31 == 1) {
    nap_diag_log("BUILD2SK134 GLES_READ_ANCHOR srcX=%d srcY=%d glY=%d rb_w=%d rb_h=%d readIdx=%d", src_x, src_y, glY, rb_w, rb_h, other_idx);
   }
@@ -385,6 +408,8 @@ static void nap_gles_readback_and_push(void)
  nap_fbo_meta_sy[other_idx] = fresh_sy;
  nap_fbo_meta_w[other_idx] = fresh_w;
  nap_fbo_meta_h[other_idx] = fresh_h;
+ nap_fbo_meta_dx0[other_idx] = fresh_dx0; nap_fbo_meta_dy0[other_idx] = fresh_dy0; // BUILD2SK138
+ nap_fbo_meta_dx1[other_idx] = fresh_dx1; nap_fbo_meta_dy1[other_idx] = fresh_dy1;
  nap_fbo_write_idx = other_idx;
  {
   for (int y = 0; y < rb_h; y++) {

@@ -1,0 +1,30 @@
+================================================================================
+BUILD2SK138 - navod (2026-07-21)
+================================================================================
+
+Meni se jen: app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+Postup stejny: rozbal, "app" nakopiruj (prepsat ANO), commit, push, Action.
+
+DIKY ZA UPRESNENI - spatne jsem si vylozil tvoji predchozi zpravu. Sony
+logo + intro na zacatku uz s SK136 fungovalo dobre (i zvuk, i zadne
+"visici" zbytky) - to je potvrzeni, ze SK129-136 oprava obrazu funguje
+spravne. Omlouvam se za zmatek, ale je dobre to mit jasne potvrzene.
+
+"Chybi kus grafiky v intru a v menu" (myslim tim herni intro/menu, ne
+bootovaci loga) - tohle uz je JINA obrazovka, mozna ve STEJNEM rozliseni
+jako predchozi - takze SK137 kontrola (jen rozliseni+pozice) by tenhle
+prechod mohla prehlednout. Pridal jsem tedy DALSI signal - GP0 oriznuti
+kresleni (DrawArea), ktere se mezi ruznymi obrazovkami hry casto meni, i
+kdyz rozliseni zustava stejne. Cisti se ted, kdyz se zmeni BUD rozliseni/
+pozice, NEBO tohle oriznuti - mel by tak zachytit prechody, co predtim
+unikaly.
+
+Zvuk "ve hre se seka a zpomaluje" - tohle jeste nemam cim zmerit (novy
+log z tohohle konkretniho useku jsem jeste nevidel) - dej vedet, jestli
+se to timhle buildem zmenilo, a poslu log analyzovat detailne.
+
+CO POSLAT PRISTE:
+- Porad chybi kus grafiky v intru/menu, nebo uz ne?
+- Novy log - budu hledat "BUILD2SK138 GLES_SCENE_CHANGE_CLEAR" a hlavne
+  se podivam na zvuk konkretne v casti, kde hlasis sekani/zpomalovani.
+================================================================================
