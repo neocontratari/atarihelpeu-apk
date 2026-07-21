@@ -1,0 +1,32 @@
+================================================================================
+BUILD2SK139 - navod (2026-07-21)
+================================================================================
+
+Meni se jen: app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+Postup stejny: rozbal, "app" nakopiruj (prepsat ANO), commit, push, Action.
+
+DUKAZ, CO SE POKAZILO (z tveho logu, cislo, ne dohad):
+"GLES_SCENE_CHANGE_CLEAR" (moje SK137/138 oprava) se spustilo 4749x.
+4740x z toho na naprosto BEZNEM strideni 0<->512 (PS1 dvojity buffering
+behem hrani - to se deje kazdy snimek, je to normalni a spravne). Moje
+kontrola to spatne cetla jako "zmena sceny" a mazala plochu skoro pri
+kazdem snimku - presny navrat k SK136 problemu, jen schovany jinde.
+
+OPRAVA: cisti se ted VYHRADNE kdyz se zmeni ROZLISENI (jedina hodnota,
+co je v logu prokazatelne stabilni po celou dobu jedne sceny a meni se
+jen na skutecnem prechodu). Pozice (0/512) a GP0 orez kresleni z
+kontroly UPLNE mizi - obe se meni normalne i uprostred jedne scény.
+
+Navic jsem odstranil kod, co sledoval GP0 orez (uz neni potreba, jen
+zbytecna zataz).
+
+CO POSLAT PRISTE:
+- Blika to konecne min?
+- Je NAUGHTY DOG text cely (ne uriznuty)?
+- V logu chci videt "BUILD2SK139 GLES_SCENE_CHANGE_CLEAR" - melo by jich
+  byt jen HRSTKA (na skutecnych prechodech), ne tisice.
+- Zvuk "se seka a zpomaluje ve hre" - na tohle se podivam zvlast v
+  dalsim logu, jakmile bude jasne, ze blikani je pryc. Extra mazani
+  kazdy snimek mohlo trochu pridavat i tam, ale hlavni prekazka je porad
+  cekani na GPU (uz zmensene, ale ne na nulu).
+================================================================================
