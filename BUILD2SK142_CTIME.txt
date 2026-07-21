@@ -1,0 +1,27 @@
+================================================================================
+BUILD2SK142 - navod (2026-07-21)
+================================================================================
+
+Meni se jen: app/src/main/cpp/nap_ps1_native.cpp
+Postup: rozbal, "app" nakopiruj (prepsat ANO), commit, push, Action.
+
+SK141 JE VRACENO ZPET - enhanced 3D rozliseni zustava ZAPNUTO, natrvalo.
+Byla to chyba to vubec navrhnout, uz se nebude opakovat.
+
+TENHLE BUILD NEMENI VUBEC NIC NA GRAFICE ANI CHOVANI - jen presne meri,
+kolik casu na tom vlakne, co pocita zvuk, zabira KAZDY ze tri hlavnich
+kroku kazdy snimek:
+  - cela PS1 emulace + zpracovani vsech grafickych prikazu hry (retro_run)
+  - nastaveni viewportu/oriznuti (sync_display_settings)
+  - predani snimku dal (updateFrontDisplay - po minulem buildu uz jen
+    rychle predani ctecimu vlaknu)
+Tohle mi da PRESNA cisla, kde se ten zbyly cas na zvuk skutecne ztraci -
+misto dalsiho hadani a zkousení, co vypnout.
+
+CO POSLAT PRISTE:
+- V logu chci "BUILD2SK142 PS1_TICK_TIMING avgRetroRunMs=... avgSyncMs=...
+  avgDispMs=... avgTotalMs=..." - hlavne avgTotalMs vuci cili 16.6ms
+  (60fps) a to, ktery z tri kroku bere nejvic.
+- Grafika i zvuk by mely byt STEJNE jako v BUILD2SK140 (zadna zmena) -
+  tohle je cisty pomocny krok pred dalsim skutecnym zasahem.
+================================================================================

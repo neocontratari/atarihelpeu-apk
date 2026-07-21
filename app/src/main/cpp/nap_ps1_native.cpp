@@ -191,6 +191,12 @@ static const char *nap_core_option_value(const char *key) {
   // presne scenar, pro ktery je Enhanced Resolution urcene (zdvojnasobi 3D
   // geometrii, ne 2D/FMV - cutsceny se timhle NEZLEPSI, to je jiny, trvaly
   // strop, viz PS1 rozliseni diskuze).
+  // BUILD2SK142: SK141 VRACENO ZPET - enhanced rozliseni je presne DUVOD,
+  // proc Rene presel ze softwaroveho (hranateho) vykreslovani na gpu-gles
+  // vubec - vypnuti tim padem nebylo prijatelny kompromis k otestovani,
+  // bylo to zruseni cele smysluplnosti teto vetve. Zustava ZAPNUTO,
+  // nedotknutelne. Zbytek zvukoveho problemu se musi resit jinak - viz
+  // nova cista diagnostika v nap_worker (mereni bez zmeny chovani).
   if (strcmp(key, "pcsx_rearmed_neon_enhancement_enable") == 0) return "enabled";
   return nullptr;
 }
@@ -457,9 +463,21 @@ static void nap_worker(int gen) {
   auto next = std::chrono::steady_clock::now();
   uint64_t srmTick = 0;
   while (g_running.load() && gen == g_generation.load()) {
+    // BUILD2SK142: RENE ODMITL SK141 (zdvojnasobene 3D rozliseni je presny
+    // duvod, proc presel na gpu-gles - nedotknutelne). Misto dalsiho
+    // hadani, co jineho na g_worker (vlakne se zvukem) stoji cas, presne
+    // ZMERIT vsechny tri hlavni kroky KAZDEHO ticku - retro_run() (cela
+    // PS1 emulace VCETNE zpracovani vsech GP0/GP1 prikazu skrz gpuPrim.c/
+    // gpuDraw.c), sync_display_settings (viewport/scissor) a
+    // updateFrontDisplay (predani snimku - po SK140 uz jen rychle
+    // predani ctecimu vlaknu, nemelo by trvat dlouho). ZADNA zmena
+    // chovani/kvality - jen cislo navic v logu.
+    double nap_t_run0 = 0, nap_t_run1 = 0, nap_t_sync1 = 0, nap_t_disp1 = 0;
     {
       std::lock_guard<std::mutex> core(g_core_mutex);
+      nap_t_run0 = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
       retro_run();
+      nap_t_run1 = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
       // BUILD2SK108: presunuto sem z jednorazove inicializace (viz
       // nap_gles_egl_init) - volane driv, PRED tim, nez hra vubec poslala
       // prvni GPU prikaz, to spocitalo nesmyslny 1x1 scissor obdelnik
@@ -470,6 +488,7 @@ static void nap_worker(int gen) {
       // (EqualRect porovnani), takze opakovane volani kazdy tick je levne,
       // jakmile se stav ustali - prepocita jen kdyz je to skutecne potreba.
       if (g_gles_ready) { nap_gles_sync_display_settings(); } // BUILD2SK119: viz gpulib_if.c - drive primo SetOGLDisplaySettings(1), ted pres bezpecny wrapper co nejdriv obnovi iResX/iResY/rRatioRect
+      nap_t_sync1 = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
       // BUILD2SK108: throttled kontrola vysledku (kazdych ~90 tick = ~1.5s
       // pri 60fps) - overime v logu, jestli se scissor po prvnich par
       // snimcich (kdy uz hra poslala realne DrawArea prikazy) opravil na
@@ -494,7 +513,22 @@ static void nap_worker(int gen) {
       // presskoci swap, kdyz se nic noveho nenakreslilo - zadna zbytecna
       // prace navic.
       if (g_gles_ready) { updateFrontDisplay(); }
+      nap_t_disp1 = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
       if (++srmTick % 300 == 0) nap_srm_save_if_dirty("periodic");
+    }
+    {
+      static double nap_sum_run = 0, nap_sum_sync = 0, nap_sum_disp = 0;
+      static int nap_tick_n = 0;
+      nap_sum_run += (nap_t_run1 - nap_t_run0);
+      nap_sum_sync += (nap_t_sync1 - nap_t_run1);
+      nap_sum_disp += (nap_t_disp1 - nap_t_sync1);
+      nap_tick_n++;
+      if (nap_tick_n >= 60) {
+        NAPDIAG("BUILD2SK142 PS1_TICK_TIMING avgRetroRunMs=%.2f avgSyncMs=%.2f avgDispMs=%.2f avgTotalMs=%.2f n=%d",
+          nap_sum_run / nap_tick_n, nap_sum_sync / nap_tick_n, nap_sum_disp / nap_tick_n,
+          (nap_sum_run + nap_sum_sync + nap_sum_disp) / nap_tick_n, nap_tick_n);
+        nap_sum_run = 0; nap_sum_sync = 0; nap_sum_disp = 0; nap_tick_n = 0;
+      }
     }
     next += period;
     auto now = std::chrono::steady_clock::now();
