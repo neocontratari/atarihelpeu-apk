@@ -524,9 +524,24 @@ static void nap_worker(int gen) {
       nap_sum_disp += (nap_t_disp1 - nap_t_sync1);
       nap_tick_n++;
       if (nap_tick_n >= 60) {
-        NAPDIAG("BUILD2SK142 PS1_TICK_TIMING avgRetroRunMs=%.2f avgSyncMs=%.2f avgDispMs=%.2f avgTotalMs=%.2f n=%d",
+        // BUILD2SK145: Rene poslal log, kde avgRetroRunMs ROSTE od ~3ms na
+        // ~47ms behem jedne session (ne od zacatku vysoke - postupne).
+        // Dve hlavni podezreni: (a) tepelne omezovani telefonu (CPU/GPU se
+        // pod delsi zatezi sam zpomali - hardwarovy jev, ne chyba v kodu),
+        // (b) neco na strane emulatoru roste (napr. texture cache -
+        // BUILD2SA13 pad z 19.7. byl prave v CheckTextureInSubSCache) a
+        // hledani v ni casem zpomaluje kazdy dalsi snimek. Precteni
+        // aktualni CPU frekvence (bezne cist bez specialnich prav) tohle
+        // rozliší: kdyby FREKVENCE KLESALA soubezne s tim, jak
+        // avgRetroRunMs roste, je to tepelne omezovani (hardware, ne muj
+        // kod). Kdyby frekvence zustavala STEJNA a presto se zpomaluje, je
+        // to neco v samotnem kodu.
+        long cpuFreqKhz = -1;
+        FILE *f = fopen("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", "r");
+        if (f) { if (fscanf(f, "%ld", &cpuFreqKhz) != 1) cpuFreqKhz = -1; fclose(f); }
+        NAPDIAG("BUILD2SK142 PS1_TICK_TIMING avgRetroRunMs=%.2f avgSyncMs=%.2f avgDispMs=%.2f avgTotalMs=%.2f n=%d cpuFreqKhz=%ld",
           nap_sum_run / nap_tick_n, nap_sum_sync / nap_tick_n, nap_sum_disp / nap_tick_n,
-          (nap_sum_run + nap_sum_sync + nap_sum_disp) / nap_tick_n, nap_tick_n);
+          (nap_sum_run + nap_sum_sync + nap_sum_disp) / nap_tick_n, nap_tick_n, cpuFreqKhz);
         nap_sum_run = 0; nap_sum_sync = 0; nap_sum_disp = 0; nap_tick_n = 0;
       }
     }

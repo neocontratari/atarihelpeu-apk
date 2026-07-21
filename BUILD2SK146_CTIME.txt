@@ -1,0 +1,31 @@
+================================================================================
+BUILD2SK146 - navod (2026-07-21)
+================================================================================
+
+VSECHNY 4 AKTUALNI SOUBORY (gpuPrim.c je NOVY, ostatni 3 beze zmeny od
+minule):
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpuPrim.c   <- NOVY, oprava cerveneho sumu
+  app/src/main/cpp/nap_ps1_native.cpp
+  app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+CO SE OPRAVILO (potvrzeno primo na tvem souboru, cos poslal):
+PS1 ma 4 zpusoby poloprusvitnosti. Jeden z nich je "odecitani" (pozadi
+minus popredi) - k tomu OpenGL potrebuje specialni prikaz
+(glBlendEquation), ne jen obycejny "blend func". V kodu byl tenhle
+spravny prikaz VYPNUTY (zakomentovany) - pouzival se jen ten obycejny,
+ktery ale pro tenhle jeden konkretni rezim pocita uplne jinou (spatnou)
+matematiku. Prave tenhle rezim se typicky pouziva pro barevne
+stinovani/prekryvy textu - presne to, co vypadalo jako cerveny sum na
+Naughty Dog logu.
+
+Zapojil jsem spravny prikaz (glBlendEquationOES) - je to bezne dostupne
+na Androidu, overeno stejne jako uz drive u FBO.
+
+CO POSLAT PRISTE:
+- Je ten cerveny sum na textu/postave pryc?
+- Vypada zbytek grafiky (barvy, presvity) porad v poradku, nebo neco
+  jineho ted vypada jinak, nez melo? (Tahle zmena ovlivnuje VSECHNY
+  mista ve hre, co pouzivaji tenhle konkretni rezim pruhlednosti, ne jen
+  logo.)
+================================================================================

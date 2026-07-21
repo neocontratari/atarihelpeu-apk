@@ -709,28 +709,31 @@ void SetSemiTrans(void)
  if(TransSets[GlobalTextABR].srcFac!=obm1 || 
     TransSets[GlobalTextABR].dstFac!=obm2)
   {
-   //if(glBlendEquationEXTEx==NULL)
+   // BUILD2SK146: NALEZENY SKUTECNY BUG (potvrzeno primo v Reneho repozitari,
+   // ne na odhadu) - PS1 rezim "1.0xB - 1.0xF" (odecitani, index 2 v TransSets,
+   // rozpoznatelny podle dstFac==GL_ONE_MINUS_SRC_COLOR) driv jen volal
+   // glBlendFunc se STEJNOU (scitaci, GL_FUNC_ADD) rovnici jako vsechny ostatni
+   // rezimy - to ale pro tento konkretni rezim pocita UPLNE JINOU matematiku
+   // (background*(1-foreground) misto background-foreground). Puvodni autor
+   // uz spravnou opravu napsal (viz odstranemy komentar nize v historii kodu),
+   // ale zavisela na glBlendEquationEXTEx, ktera nikdy nebyla propojena (zustala
+   // NULL) - proto vypnuta. glBlendEquationOES (GL_OES_blend_subtract) je ale
+   // bezne dostupna primo (potvrzeno - stejne GLES1 rozsireni jako to uz pouzite
+   // pro FBO) - zadna dalsi zavislost netreba.
+   if(TransSets[GlobalTextABR].dstFac==GL_ONE_MINUS_SRC_COLOR)
     {
+     glBlendEquationOES(GL_FUNC_REVERSE_SUBTRACT_OES); glError(); // BUILD2SK146: spravna rovnice pro "B-F" misto vychozi "B+F"
+     obm1=TransSets[GlobalTextABR].srcFac;
+     obm2=TransSets[GlobalTextABR].dstFac;
+     glBlendFunc(GL_ONE,GL_ONE); glError();             // BUILD2SK146: s REVERSE_SUBTRACT rovnici dava GL_ONE,GL_ONE presne "1.0xB - 1.0xF"
+    }
+   else
+    {
+     glBlendEquationOES(GL_FUNC_ADD_OES); glError();     // BUILD2SK146: vratit na normalni scitani pro vsechny OSTATNI rezimy (kdyby predtim byl aktivni odecitaci)
      obm1=TransSets[GlobalTextABR].srcFac;
      obm2=TransSets[GlobalTextABR].dstFac;
      glBlendFunc(obm1,obm2); glError();                // set blend func
     }
-   /*else
-   if(TransSets[GlobalTextABR].dstFac !=GL_ONE_MINUS_SRC_COLOR)
-    {
-     if(obm2==GL_ONE_MINUS_SRC_COLOR)
-      glBlendEquationEXTEx(FUNC_ADD_EXT);
-     obm1=TransSets[GlobalTextABR].srcFac;
-     obm2=TransSets[GlobalTextABR].dstFac;
-     glBlendFunc(obm1,obm2);                           // set blend func
-    }
-   else
-    {
-     glBlendEquationEXTEx(FUNC_REVERSESUBTRACT_EXT);
-     obm1=TransSets[GlobalTextABR].srcFac;
-     obm2=TransSets[GlobalTextABR].dstFac;
-     glBlendFunc(GL_ONE,GL_ONE);                       // set blend func
-    }*/
   }
 }
 
