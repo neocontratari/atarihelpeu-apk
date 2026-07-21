@@ -1,0 +1,30 @@
+================================================================================
+BUILD2SK135 - navod (2026-07-21)
+================================================================================
+
+Meni se jen: app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+Postup stejny: rozbal, "app" nakopiruj (prepsat ANO), commit, push, Action.
+
+CO BYLO JINAK TENTOKRAT:
+Nainstaloval jsem si skutecne OpenGL ES/EGL hlavicky (stejne, jake pouziva
+i Android) a soubor jsem SKUTECNE zkusil prelozit lokalne, misto abych ho
+jen znovu cetl. Tak jsem nasel:
+
+1) Poradi: pouzival jsem promenne (nap_fbo_tex a dalsi) v jedne funkci,
+   ktera byla v souboru DRIV, nez jsem tyhle promenne vubec deklaroval o
+   100+ radku niz. V C to musi byt shora dolu - preklad to spravne odmitl.
+   Presunuto na spravne misto.
+
+2) glext.h (viz minuly build) se ve skutecnosti nacita jeste driv, pres
+   jiny soubor (gpuExternals.h) - muj #define GL_GLEXT_PROTOTYPES proto
+   musel byt uplne na zacatku souboru, ne jen pred mym vlastnim #include.
+
+Lokalni preklad (se skutecnymi hlavickami, ne dohadem) teto verze prosel
+BEZ CHYBY - jen 2 neskodna stylisticka varovani ve STAREM kodu, ktereho
+jsem se vubec nedotkl.
+
+CO POSLAT PRISTE:
+- Hlavne: zelena fajfka na GitHub Actions?
+- Pak stejne jako minule - "GLES_FBO_READY" v logu, "underruns=" cislo,
+  a jak to vypada/zni.
+================================================================================

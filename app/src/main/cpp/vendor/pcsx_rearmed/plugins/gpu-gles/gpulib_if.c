@@ -16,6 +16,13 @@
  *                                                                         *
  ***************************************************************************/
 
+// BUILD2SK134-fix2: MUSI byt PRED "gpuDraw.c" nize - gpuExternals.h (ktere
+// gpuDraw.c/gpuTexture.c/gpuPrim.c samy includuji) uz sam includuje
+// <GLES/glext.h> - kdyby GL_GLEXT_PROTOTYPES nebylo definovane driv nez
+// TOTO prvni vlozeni, include-guard v glext.h by zablokoval jakekoli
+// pozdejsi #include <GLES/glext.h> (i to me, dal v souboru) jako no-op a
+// deklarace by se nikdy neobjevily - presne tohle shodilo build podruhe.
+#define GL_GLEXT_PROTOTYPES
 #include "gpuStdafx.h"
 #include "gpuDraw.c"
 #include "gpuTexture.c"
@@ -92,6 +99,24 @@ static int nap_gpulib_display_info(int *sx, int *sy, int *w, int *h); // definic
 // PRESTANE POSILAT (cerna/zamrzla obrazovka, nic tise "nejak funguje") a
 // v logu zustane hlasita, jednoznacna stopa proc. Zadne tise degradovane
 // "funguje to, jen pomaleji".
+// BUILD2SK133: SKUTECNA oprava mista SK132 berlicky (skip-kazdy-druhy) -
+// viz velky komentar u nap_fbo_init_once nize. Misto kresleni primo do
+// vychoziho pbufferu (kde kazdy nas glReadPixels MUSI pockat, az GPU
+// dokonci VSECHNY cekajici prikazy - tak funguji vsechny mobilni GPU,
+// vcetne S8, nezavisle na jejich vykonu) kreslime do dvou vlastnich
+// textur/FBO strida se. Cteme vzdy tu DRUHOU (tu, do ktere se kreslilo
+// MINULE) - do te doby uz ji GPU davno dokoncilo na pozadi, takze cteni
+// je rychle. Plna kvalita, plne rozliseni, zadny preskoceny snimek -
+// jen o jeden snimek (~16-33ms, na castovani nepostrehnutelne) zpozdene.
+// (GL_GLEXT_PROTOTYPES uz je definovano uplne nahore v souboru, pred vsemi
+// #include - viz komentar tam. glext.h uz je tim padem take davno
+// vlozeny (transitivne pres gpuExternals.h) s deklaracemi viditelnymi.)
+static GLuint nap_fbo_tex[2] = {0, 0};
+static GLuint nap_fbo[2] = {0, 0};
+static int nap_fbo_ready = 0;      // BUILD2SK134: 1 = FBO cesta funguje; 0 = video se VUBEC neposila (zadny tichy navrat ke starem zpusobu - viz nap_fbo_init_once)
+static int nap_fbo_write_idx = 0;  // ktery index se PRAVE pouziva jako cil kresleni
+static int nap_fbo_meta_sx[2], nap_fbo_meta_sy[2], nap_fbo_meta_w[2] = {320,320}, nap_fbo_meta_h[2] = {240,240}; // BUILD2SK133: co PLATILO v okamziku, kdy se do teto FBO naposledy zacalo kreslit - NE aktualni gpu.screen (to uz muze byt o snimek dal)
+
 static void nap_fbo_init_once(void)
 {
   static int tried = 0;
@@ -193,23 +218,6 @@ static int nap_gles_rb_w = 0, nap_gles_rb_h = 0;
 static int nap_gles_frame_count = 0; // BUILD2SK100: tep - kolik snimku uspesne prosel readback
 
 static uint8_t *nap_gles_vram_rgba = NULL; // BUILD2SK122: FIXNI 1024x512x4 buffer - cela VRAM, alokovano jen jednou
-
-// BUILD2SK133: SKUTECNA oprava mista SK132 berlicky (skip-kazdy-druhy) -
-// viz velky komentar u nap_fbo_init_once nize. Misto kresleni primo do
-// vychoziho pbufferu (kde kazdy nas glReadPixels MUSI pockat, az GPU
-// dokonci VSECHNY cekajici prikazy - tak funguji vsechny mobilni GPU,
-// vcetne S8, nezavisle na jejich vykonu) kreslime do dvou vlastnich
-// textur/FBO strida se. Cteme vzdy tu DRUHOU (tu, do ktere se kreslilo
-// MINULE) - do te doby uz ji GPU davno dokoncilo na pozadi, takze cteni
-// je rychle. Plna kvalita, plne rozliseni, zadny preskoceny snimek -
-// jen o jeden snimek (~16-33ms, na castovani nepostrehnutelne) zpozdene.
-#define GL_GLEXT_PROTOTYPES // BUILD2SK134: BEZ TOHOTO glext.h nedeklaruje glGenFramebuffersOES a spol. vubec - a novejsi Clang (tenhle NDK) bere volani nedeklarovane funkce jako TVRDOU CHYBU, ne varovani. Tohle presne shodilo GitHub Actions build.
-#include <GLES/glext.h> // BUILD2SK133: glBindFramebufferOES a spol. (GL_OES_framebuffer_object - bezne na kazdem Android GLES1 ovladaci, vc. Adreno na S8)
-static GLuint nap_fbo_tex[2] = {0, 0};
-static GLuint nap_fbo[2] = {0, 0};
-static int nap_fbo_ready = 0;      // BUILD2SK134: 1 = FBO cesta funguje; 0 = video se VUBEC neposila (zadny tichy navrat ke starem zpusobu - viz nap_fbo_init_once)
-static int nap_fbo_write_idx = 0;  // ktery index se PRAVE pouziva jako cil kresleni
-static int nap_fbo_meta_sx[2], nap_fbo_meta_sy[2], nap_fbo_meta_w[2] = {320,320}, nap_fbo_meta_h[2] = {240,240}; // BUILD2SK133: co PLATILO v okamziku, kdy se do teto FBO naposledy zacalo kreslit - NE aktualni gpu.screen (to uz muze byt o snimek dal)
 
 // BUILD2SK131: presny cas v ms (monotonic - nezavisi na systemovych hodinach).
 // Duvod pridani: SK112/SK117 historie v teto funkci (viz komentar nize u
