@@ -268,7 +268,14 @@ static void nap_gles_readback_and_push(void)
  // nez k padu doslo - a jestli se rozliseni mezitim nezmenilo na neco
  // podezreleho.
  nap_gles_frame_count++;
- if (nap_gles_frame_count % 30 == 1) {
+ // BUILD2SK136: %30 ZMENENO na %31 na VSECH diagnostikach v teto funkci -
+ // 30 je sude a nap_fbo_write_idx/other_idx se preklapi KAZDE volani
+ // (period 2) - vzorkovani presne kazdych 30 vzdy padlo na STEJNOU
+ // paritu, takze log poprve VYPADAL, jako by se ctl porad jen jeden
+ // buffer (readIdx=1 porad dokola), i kdyz se ve skutecnosti mohlo
+ // spravne strida - jen jsme to nikdy nevideli. 31 je liche, takze
+ // vzorkovani postupne projde OBEMA paritami.
+ if (nap_gles_frame_count % 31 == 1) {
   nap_diag_log("BUILD2SK100 GLES_FRAME_HEARTBEAT n=%d dispW=%d dispH=%d", nap_gles_frame_count, fresh_w, fresh_h);
  }
  if (fresh_w <= 0 || fresh_h <= 0 || fresh_w > NAP_PSX_VRAM_W || fresh_h > NAP_PSX_VRAM_H) return; // BUILD2SK122: mez presne podle skutecne VRAM velikosti
@@ -349,7 +356,22 @@ static void nap_gles_readback_and_push(void)
   nap_t0 = nap_now_ms(); // BUILD2SK131
   glReadPixels(src_x, glY, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
   nap_t1 = nap_now_ms(); // BUILD2SK131
-  if (nap_gles_frame_count % 30 == 1) {
+  // BUILD2SK136: RENE HLASI "uvodni intro se roztahne vpravo dole a visi
+  // tam cele" - klasicky pribuzny problem puvodnimu border-bleed bugu
+  // (SK129/130), ale v NOVE forme: tenhle buffer se cisti JEN JEDNOU, pri
+  // svem vytvoreni (viz nap_fbo_init_once) - ne mezi jednotlivymi
+  // "scenami". Kdyz PS logo/Naughty Dog intro (640x480, velky pudorys)
+  // presla na dalsi obsah s MENSIM pudorysem (512x240), cast VRAM, kam uz
+  // nikdo nekresli, zustala navzdy s pixely ze STARE sceny - presne to,
+  // co Rene popisuje. Oprava: hned PO precteni (mame uz data, co
+  // potrebujeme) tenhle buffer vycistit na cernou - dostane tim CISTY
+  // start pro pristi zapis, misto aby si nesl pozustatky ze sceny, ktera
+  // uz davno skoncila. (Bezpecne i pro bezne dvoji-bufferovani her - PS1
+  // hry standardne kresli KOMPLETNI snimek pri kazdem flipu, nespolehaji
+  // se na to, ze cast obrazu prezije z pred-pred-minuleho snimku.)
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+  if (nap_gles_frame_count % 31 == 1) {
    nap_diag_log("BUILD2SK134 GLES_READ_ANCHOR srcX=%d srcY=%d glY=%d rb_w=%d rb_h=%d readIdx=%d", src_x, src_y, glY, rb_w, rb_h, other_idx);
   }
  }
@@ -400,7 +422,7 @@ static void nap_gles_readback_and_push(void)
  // prazdny i kdyz rozmery uz sedi. Levny soucet (staci vedet "je tam vubec
  // neco jineho nez 0") + par konkretnich vzorku pro presnejsi obraz. Stejne
  // omezeni jako heartbeat vyse (kazdy 30. snimek), aby to nezaplavilo log.
- if (nap_gles_frame_count % 30 == 1) {
+ if (nap_gles_frame_count % 31 == 1) {
   GLenum glerr = glGetError();
   unsigned long long sum = 0;
   int n = rb_w * rb_h; // BUILD2SK123: skutecna velikost bufferu (scissor), ne DisplayMode
@@ -623,7 +645,7 @@ void updateDisplay(void)
   // EGL/systemu/ovladace (napr. "tenhle povrch neni platny pro prezentaci"),
   // ne uvnitr samotneho GL vykreslovani. Rene se ptal, jestli neco na
   // urovni telefonu tohle nemuze blokovat - tohle presne overuje.
-  if (nap_gles_frame_count % 30 == 1) {
+  if (nap_gles_frame_count % 31 == 1) {
     EGLint eglErr = eglGetError();
     nap_diag_log("BUILD2SK111 GLES_SWAP_CHECK path=updateDisplay ok=%d eglErr=0x%x", (int)swapOk, (unsigned)eglErr);
   }
@@ -696,7 +718,7 @@ void updateFrontDisplay(void)
   // BUILD2SK111: viz stejny komentar u updateDisplay() vyse - tohle je ale
   // ta DULEZITA cesta, protoze updateFrontDisplay() je funkce, kterou
   // SKUTECNE volame kazdy tick (SK103).
-  if (nap_gles_frame_count % 30 == 1) {
+  if (nap_gles_frame_count % 31 == 1) {
     EGLint eglErr = eglGetError();
     nap_diag_log("BUILD2SK111 GLES_SWAP_CHECK path=updateFrontDisplay ok=%d eglErr=0x%x", (int)swapOk, (unsigned)eglErr);
   }

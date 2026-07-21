@@ -1,0 +1,33 @@
+================================================================================
+BUILD2SK136 - navod (2026-07-21)
+================================================================================
+
+Meni se jen: app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+Postup stejny: rozbal, "app" nakopiruj (prepsat ANO), commit, push, Action.
+
+NEJDRIV DOBRA ZPRAVA Z MINULEHO LOGU:
+- Build se prelozil (zadna chyba).
+- FBO se nastartovalo (GLES_FBO_READY).
+- Cas cekani na GPU klesl z 6-10ms na 2-4ms - funguje to, jak melo.
+- Zvuk (underruns) se mirne zlepsil - presne sedi na "trochu lepsi",
+  co jsi napsal.
+
+TEN "INTRO SE ROZTAHNE VPRAVO DOLE A VISI TAM" BUG:
+Nasel jsem ho. Moje dve plochy (viz minuly build) se cistí JEN JEDNOU,
+pri svem vytvoreni - ne mezi jednotlivymi "scenami". Kdyz uvodni PS/
+Naughty Dog logo (velky, 640x480) prejde na dalsi obsah s MENSIM
+pudorysem, cast plochy, kam uz nikdo nekresli, si navzdy drzi pixely ze
+STARE sceny - presne to "visi tam porad". Oprava: hned po precteni (kdyz
+uz mam data, co potrebuju) se ten buffer vycisti na cernou, takze
+dostane cisty start pro pristi pouziti.
+
+Navic jsem si vsiml, ze me VLASTNI diagnostika mela chybu (vzorkovala
+vzdy jen jednu ze dvou stridajicich se ploch, takze to v logu vypadalo
+hur, nez to asi bylo) - taky opraveno, at priste vidim spravna data.
+
+CO POSLAT PRISTE:
+- Porad prosviva/visi tam neco ze stareho obrazu, nebo uz ne?
+- To cervenkave "sumeni" na textu Naughty Dog loga - tim se zacnu zabyvat
+  hned, jak potvrdis, ze tohle uz je v poradku.
+- underruns= cislo (ocekavam podobne jako minule, tohle nemeni zvuk).
+================================================================================
