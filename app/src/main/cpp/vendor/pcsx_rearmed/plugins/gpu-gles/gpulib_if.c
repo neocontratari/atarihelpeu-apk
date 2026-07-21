@@ -81,6 +81,34 @@ extern void nap_diag_log(const char *fmt, ...); // BUILD2SK100: viz nap_ps1_nati
 static int nap_gpulib_display_info(int *sx, int *sy, int *w, int *h); // definice az za #include gpu.c nize
 void nap_gles_sync_display_settings(void)
 {
+  // BUILD2SK129: NALEZ Z RENEHO LOGU (SK128 test, Crash Bandicoot) -
+  // BUILD2SK108 GLES_SCISSOR_CHECK hlasi napr. "y=284 w=512 h=216" (= PS1
+  // radky ~12-227), zatimco BUILD2SK128 GLES_READ_ANCHOR ve STEJNEM okamziku
+  // cte "rb_h=240" (= PS1 radky 0-239). Hra (jeji GP0 DrawArea) fyzicky
+  // NIKDY nekresli do radku 0-11 a 228-239 - to je LEGITIMNI (asi
+  // overscan okraj), scissor to spravne respektuje. My ale ten okraj
+  // PRESTO cteme, protoze cteme cely gpu.screen.vres. Cokoliv tam ve VRAM
+  // zbylo od BIOS/boot loga (GL surface neni na zacatku zarucene cerny -
+  // driver muze vratit libovolna "smetiste" data) se tak dostane do
+  // kazdeho snimku - a protoze oba pultove buffery (x=0 i x=512) maji
+  // STEJNE uzky DrawArea (log to potvrzuje pro obe poloviny), zustava tam
+  // navzdy. To presne odpovida hlaseni "dole prosvita PS1 intro" a prispiva
+  // k blikani (pokud se ten smetiskovy obsah mezi snimky/pulkami lisi).
+  // OPRAVA: JEDNORAZOVE (ne kazdy snimek - zbytecne drahe a nase VRAM-
+  // -space plocha se mimo tenhle okraj stejne pak porad prepisuje hrou)
+  // vycistit CELOU VRAM-space plochu na cernou HNED PRI PRVNIM volani teto
+  // funkce - tedy driv, nez cokoliv vubec nakreslilo prvni snimek. Scissor
+  // musime na chvili vypnout, jinak by glClear() vycistil jen aktualni
+  // (uzsi) vyrez, ne celou plochu.
+  static int nap_vram_precleared = 0;
+  if (!nap_vram_precleared) {
+    nap_vram_precleared = 1;
+    glViewport(0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    nap_diag_log("BUILD2SK129 GLES_VRAM_PRECLEAR_DONE w=%d h=%d", NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
+  }
   // BUILD2SK128: nastavovat KAZDY tick (drive jen jednou pres flag) - je to
   // par levnych GL volani a je to pojistka proti cemukoli, co by projekci/
   // viewport mezitim prenastavilo (updateDisplayIfChanged/SetAspectRatio

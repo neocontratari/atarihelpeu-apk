@@ -1,0 +1,53 @@
+================================================================================
+BUILD2SK129 - navod (2026-07-20)
+================================================================================
+
+CO JE V TOMTO ZIPU (2 zmenene soubory, cesty vcetne slozek):
+
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+  app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+POSTUP: stejny jako minule - rozbal, slozku "app" nakopiruj do projektu
+(prepsat "ANO" na dotaz), GitHub Desktop -> commit -> Push origin -> Action.
+
+CO SE OPRAVILO (kratce):
+
+1) "Dole prosviva PS1 intro" + blikani (C++, gpulib_if.c):
+   Ve tvem poslednim logu jsem nasel, ze hra kresli jen do stredni casti
+   obrazu (radky 12 az 227 z 240), ale my jsme cetli VZDY celych 240 radku.
+   Okraje (nahore/dole), kam hra nikdy nekresli, tak ukazovaly cokoliv,
+   co tam ve VRAM zbylo zapomenute - klidne kousky BIOS loga. Ted se
+   cela plocha na zacatku jednou vycisti na cernou, takze uz tam neni
+   co by "prosvitalo".
+
+2) TVUJ POSTREH byl spravny a uzitecny - v logu opravdu je
+   PS1_NATIVE_TEXTURE_SLOW_AVG kolem 33-43ms/snimek, coz je vic nez
+   dvojnasobek rozpoctu pro 60fps. Neni to ale v C++ ani v OpenGL/
+   MediaCodecu - je to v Jave (MainActivity.java), v casti, ktera kresli
+   NAHLED PRIMO NA TELEFONU (na obrazovce mobilu v landscape rezimu).
+   Nejdrazsi cast tam byl efekt doostreni obrazu (pocita se pro kazdy
+   pixel zvlast) - ten jsem vypnul. Tenhle vypocet uz drivejsi komentar
+   v kodu sam podezirat ze zpusobuje "sekajici zvuk" - takze pokud se po
+   tomhle audio zlepsi, mame potvrzeno.
+   Cast, kterou jsi navrhoval (primy hardwarovy pripoj textury do
+   MediaCodecu pres EGLImage) jsem NEudelal - je to velky a rizikovy zasah
+   a zatim nemam dukaz, ze by resil zrovna tenhle zmereny problem o nic
+   lip nez tahle mnohem mensi zmena. Kdyby tahle mala zmena nestacila,
+   je to dalsi krok v zasobe.
+
+CO JESTE NEBYLO RESENO (vim o tom, jen zatim ne v tomto buildu):
+   - FMV video (uvodni animace) bude porad vypadat "mekce/rozmazane" -
+     to je z velke casti opravdu tak, jak PS1 video vypadalo, plus
+     kompresi pridava i samotny prenos pres web. Tohle neni chyba
+     k opravě, jen realita puvodniho formatu.
+   - Prepnuti kvality na LOW a padnuti FPS na 0 - tohle jsem jeste
+     vubec nezkoumal (jina cast systemu - streamovani/cast, ne tohle,
+     co ted opravuju). Napis, jestli mam koukas i na tohle.
+
+TEST:
+   - Blika to porad? Prosviva porad neco dole?
+   - Zvuk - sekaji porad?
+   - Novy log z /8765/log - hledam BUILD2SK129 GLES_VRAM_PRECLEAR_DONE
+     (potvrdi, ze cisteni probehlo) a nove hodnoty
+     PS1_NATIVE_TEXTURE_SLOW_AVG (ocekavam, ze bud zmizi, nebo hodne klesnou).
+================================================================================

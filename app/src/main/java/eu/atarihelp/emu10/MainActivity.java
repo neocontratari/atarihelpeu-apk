@@ -4530,7 +4530,27 @@ public class MainActivity extends Activity {
                 // opakovane hlasi sekajici zvuk). Nad urcitou velikosti proste
                 // preskocime na rychle hromadne zkopirovani (uz s vynucenou alfou) -
                 // zbytek cesty nize (bitmapa, SK116 diagnostika) zustava nezmeneny.
-                final int SHARPEN_MAX_PIXELS = 320 * 240 + 1000; // s malou rezervou
+                // BUILD2SK129: Rene poslal log z BUILD2SK128 testu - obsahuje
+                // "BUILD2SK95 PS1_NATIVE_TEXTURE_SLOW_AVG avgCostMs=32-43", tedy
+                // TATO funkce (grab+alpha+doostreni+bitmapa+draw dohromady) bezne
+                // stoji vic nez DVOJNASOBEK celeho 60fps snimkoveho rozpoctu
+                // (16.6ms). Z casti nize je doostrovaci smycka jasne nejdrazsi
+                // polozka (5 cteni + rada nasobeni/posunu NA KAZDY pixel, 3x
+                // kanal, az 76800x za snimek pri 320x240) - SK120 uz stejnou
+                // logiku pouzil pro velke FMV snimky ("nad urcitou velikosti
+                // preskocime"), tady jen tu stejnou hranici stahujeme na 0, aby
+                // se rychla cesta (proste zkopirovat) pouzila VZDY, ne jen pro
+                // velke snimky. NEni to trvale zahozena funkce - staci cislo
+                // vratit, kdyby ostrost chybela a vykon dovolil.
+                // SK120uv komentar u teze konstanty uz predem spojoval prave
+                // tenhle vypocet s "Rene opakovane hlasi sekajici zvuk" - pokud
+                // se po tomhle audio zlepsi, je to potvrzeny hlavni viník.
+                // NEDOTCENO: smycka o radek vyse (vynucena alfa, SK89) - ta je o
+                // rad levnejsi (jeden OR na pixel) a byla to zamerna oprava
+                // konkretniho pozorovaneho problemu (viz jeji vlastni komentar) -
+                // nechci ji rusit ve stejnem buildu jako neco jineho, radeji
+                // jedna overitelna zmena najednou.
+                final int SHARPEN_MAX_PIXELS = 0; // BUILD2SK129: bylo 320*240+1000 - viz komentar vyse
                 if (srcW * srcH <= SHARPEN_MAX_PIXELS) {
                 for (int y = 0; y < srcH; y++) {
                     int rowBase = y * srcW;
