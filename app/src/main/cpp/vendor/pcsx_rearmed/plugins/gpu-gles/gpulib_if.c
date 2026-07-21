@@ -100,14 +100,26 @@ void nap_gles_sync_display_settings(void)
   // funkce - tedy driv, nez cokoliv vubec nakreslilo prvni snimek. Scissor
   // musime na chvili vypnout, jinak by glClear() vycistil jen aktualni
   // (uzsi) vyrez, ne celou plochu.
-  static int nap_vram_precleared = 0;
-  if (!nap_vram_precleared) {
-    nap_vram_precleared = 1;
+  // BUILD2SK130: Rene hlasi SK129 jako HORSI nez SK128 - vic a nepravidelneji
+  // blika. V logu je "BUILD2SK111 GLES_SWAP_CHECK path=updateFrontDisplay" -
+  // dukaz, ze tu OPRAVDU existuje eglSwapBuffers-styl prohazovani (front/back,
+  // mozna i 3 buffery - typicke Android EGL chovani). Muj SK129 jednorazovy
+  // clear vycistil JEN JEDEN z techto fyzickych bufferu - zbyle 1-2 zustaly
+  // se svym puvodnim "smetiskem" navzdy (flag uz rikal "hotovo"). Vysledek:
+  // misto stabilne spinaveho okraje (SK128) ted okraj STRIDAVE cisty/spinavy
+  // podle toho, ktery fyzicky buffer se prave zobrazuje - to je vic
+  // nepravidelne blikani, presne co Rene popsal. OPRAVA: cistit prvnich
+  // NEKOLIK volani (ne navzdy - to by mazalo statické pozadi, na jehož
+  // perzistenci se hra muze spolehat), s dostatecnou rezervou na pokryti
+  // jakehokoli poctu fyzickych bufferu.
+  static int nap_vram_preclear_count = 0;
+  if (nap_vram_preclear_count < 4) {
+    nap_vram_preclear_count++;
     glViewport(0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
     glDisable(GL_SCISSOR_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    nap_diag_log("BUILD2SK129 GLES_VRAM_PRECLEAR_DONE w=%d h=%d", NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
+    nap_diag_log("BUILD2SK130 GLES_VRAM_PRECLEAR_DONE call=%d/4 w=%d h=%d", nap_vram_preclear_count, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
   }
   // BUILD2SK128: nastavovat KAZDY tick (drive jen jednou pres flag) - je to
   // par levnych GL volani a je to pojistka proti cemukoli, co by projekci/
@@ -244,17 +256,29 @@ static void nap_gles_readback_and_push(void)
   GLenum glerr = glGetError();
   unsigned long long sum = 0;
   int n = rb_w * rb_h; // BUILD2SK123: skutecna velikost bufferu (scissor), ne DisplayMode
+  int nearBlack = 0; // BUILD2SK130: viz komentar u vypisu nize
   // BUILD2SK118: soucet jasu (ne uz syrovych packed hodnot - ARGB8888 ma
   // konstantni 0xFF v alfa bajtu, ktery by jinak zkresloval soucet).
   for (int i = 0; i < n; i++) {
     uint32_t px = nap_gles_rb_buf[i];
-    sum += ((px >> 16) & 0xFF) + ((px >> 8) & 0xFF) + (px & 0xFF);
+    int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
+    sum += (unsigned)(r + g + b);
+    if (r + g + b < 6) nearBlack++; // BUILD2SK130: "temer cerny" pixel (soucet kanalu < 6)
   }
   uint32_t pTL = nap_gles_rb_buf[0];
   uint32_t pCenter = nap_gles_rb_buf[n / 2];
   uint32_t pBR = nap_gles_rb_buf[n - 1];
-  nap_diag_log("BUILD2SK124 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu pTL=0x%08x pCenter=0x%08x pBR=0x%08x dispW=%d dispH=%d",
-    (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR,
+  // BUILD2SK130: ZATIM JEN MERENI, ZADNA ZMENA CHOVANI. Duvod: GLES_ALPHA_TEST_CHECK
+  // nize ukazuje GL_NOTEQUAL/ref=0 - kazdy fragment s alfa==0 se vubec nevykresli
+  // (zustane tam, co uz v bufferu bylo - od SK130 uz spolehlive cerna, viz vyse).
+  // Pokud "black%" tady vyjde vysoko (desitky procent) BEHEM HRATELNE casti (ne
+  // jen loga/prechodu), je to silny dukaz, ze hodne geometrie neprojde alfa
+  // testem a proste se nevykresli - to by vysvetlovalo "hrozny obraz" mnohem
+  // primeji nez cokoliv predchoziho. Schvalne nic nemenim, dokud tohle cislo
+  // neuvidim - hadat dalsi opravu bez nej by bylo presne to, co uz se nemelo
+  // opakovat.
+  nap_diag_log("BUILD2SK130 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu nearBlackPct=%d pTL=0x%08x pCenter=0x%08x pBR=0x%08x dispW=%d dispH=%d",
+    (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (n > 0 ? (nearBlack * 100 / n) : -1), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR,
     rb_w, rb_h);
   // BUILD2SK113: misto dalsich cisel - SKUTECNY (i kdyz hrubý, textovy)
   // obrazek toho, co se doopravdy zachytilo. Cisla (soucet, 3 vzorky) uz
@@ -319,10 +343,19 @@ static void nap_gles_readback_and_push(void)
   // BUILD2SK124: RAW (primo z GPU, jen precatana - jeste PRED flipem) vs
   // FINALNI (PO flipu) vzorek ze STEJNEHO mista - pokud RAW vypada dobre
   // ale FINALNI spatne, chyba je v nasem prevodu/flipu, ne v GPU kresleni.
+  // BUILD2SK130: TENHLE POROVNAVAK MEL CHYBU - finIdx chybel sloupcovy
+  // posun (vzdy cetl sloupec 0, ne stred) A radek nebyl prepocitany pres
+  // flip (viz dstRow = (rb_h-1-y) o par radku vyse) - ve skutecnosti se
+  // tak porovnavaly DVA RUZNE PIXELY, ne "stejne misto pred/po prevodem",
+  // jak komentar slibuje. To znamena, ze predchozi RAW_VS_FINAL vysledky
+  // (raw barevne, final cerne) NEJSOU spolehlivym dukazem chyby v prevodu -
+  // klidne to mohly byt proste dva ruzne, oba spravne, pixely. Opraveno na
+  // presne stejne (row,col) na obou stranach flipu.
   {
-    int rawIdx = (rb_h/2) * rb_w * 4 + (rb_w/2) * 4;
-    int finIdx = (rb_h/2) * rb_w;
-    nap_diag_log("BUILD2SK123 RAW_VS_FINAL rawRGBA=[%d,%d,%d,%d] finalARGB=0x%08x",
+    int ry = rb_h / 2, cx = rb_w / 2;
+    int rawIdx = (ry * rb_w + cx) * 4;
+    int finIdx = (rb_h - 1 - ry) * rb_w + cx;
+    nap_diag_log("BUILD2SK130 RAW_VS_FINAL rawRGBA=[%d,%d,%d,%d] finalARGB=0x%08x",
       (int)nap_gles_vram_rgba[rawIdx+0], (int)nap_gles_vram_rgba[rawIdx+1], (int)nap_gles_vram_rgba[rawIdx+2], (int)nap_gles_vram_rgba[rawIdx+3],
       (unsigned)nap_gles_rb_buf[finIdx]);
   }

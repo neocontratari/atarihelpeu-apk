@@ -1,0 +1,58 @@
+================================================================================
+BUILD2SK130 - navod (2026-07-21)
+================================================================================
+
+DULEZITE: Tenhle ZIP obsahuje 2 soubory - i kdyz Javu obsahove VRACIM na
+puvodni stav (viz "co se stalo" nize), MUSI byt v zipu take, jinak by ti
+v repozitari zustala minule (SK129) verze, protoze GitHub Desktop prepise
+jen soubory, ktere mu fyzicky das:
+
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c   (zmeneno)
+  app/src/main/java/eu/atarihelp/emu10/MainActivity.java              (vraceno na puvodni)
+
+Postup stejny jako vzdy: rozbal, slozku "app" nakopiruj do projektu
+(prepsat ANO), GitHub Desktop -> commit -> Push origin -> Action.
+
+CO SE STALO (upřímně, bez omáček):
+Udelal jsem v SK129 dve zmeny najednou - to byla chyba, ted se hur hleda,
+co presne zpusobilo zhorseni. Rozebral jsem to:
+
+1) Javovou zmenu (vypnute doostreni) jsem ÚPLNĚ VRÁTIL zpět na originál.
+   Duvod: v tvem poslednim logu se cislo, ktere mela zlepsit
+   (PS1_NATIVE_TEXTURE_SLOW_AVG), VUBEC nezlepsilo (porad 31-55ms) - moje
+   domnenka o tom, co je tam pomale, byla spatne. A protoze rychlejsi
+   smycka volala nativni "grabni snimek" mnohem castej, mohla tim rust
+   soutez o CPU se zvukovym vlaknem - to sedi na "horsi zvuk". Nechci na
+   tohle dal hadat, tak jsem to proste vratil na jistotu.
+
+2) C++ cast (cerne vycisteni VRAM plochy) jsem NEVRATIL, ale opravil.
+   V logu je dukaz ("GLES_SWAP_CHECK"), ze aplikace prohazuje VIC nez
+   jeden fyzicky obrazovy buffer (typicke pro Android). Moje puvodni
+   "vycisti jen JEDNOU" vycistilo jen JEDEN z nich - zbyle zustaly
+   spinave porad. Vysledek: misto stale spinaveho okraje (SK128) se ted
+   okraj STRIDAVE cisti/spini podle toho, ktery buffer se zrovna zobrazuje
+   - vic, nepravidelnejsi blikani presne jak popisujes. Ted se cisti
+   prvni 4 snimky (rezerva na jakykoli pocet bufferu), ne jen 1.
+
+3) Navic jsem nasel a opravil chybu v JEDNE DIAGNOSTICE (RAW_VS_FINAL) -
+   porovnavala dva RUZNE pixely, ne stejne misto pred/po zpracovani, takze
+   ukazovala zavadejici cisla. Tohle NEMENI zadne chovani hry, jen dela
+   dalsi log pravdivejsim.
+
+4) V logu je i BUILD2SA5P PS1_AUDIO_WRITE s cislem "underruns=4029" -
+   to potvrzuje, ze zvukovy problem je realny a vazny. NENI to ale neco,
+   co jsem zpusobil ja - je to presne ten "synchronni glReadPixels +
+   prevod pixel po pixelu na stejnem vlakne" problem, co byl v puvodnim
+   predavacim balicku oznacen jako podezrely uz driv a jeste jsem se
+   k nemu nedostal. Je dalsi na rade, az bude obraz stabilni.
+
+TEST:
+   - Blika to me nez SK129 (idealne min nez SK128)?
+   - V logu hledam "BUILD2SK130 GLES_VRAM_PRECLEAR_DONE call=1/4" az "4/4"
+     (potvrdi, ze cisteni probehlo 4x, ne jen 1x).
+   - Take se podivam na nove "nearBlackPct=" cislo v GLES_PIXEL_SAMPLE -
+     to mi rekne, jestli je za "spatny obraz" zodpovedny alfa test
+     (hodne geometrie se vubec nevykresli). Tohle JEN MERIM, nic
+     nemenim, dokud to cislo neuvidim - dalsi krok bude zalozeny na nem,
+     ne na dalsim hadani.
+================================================================================
