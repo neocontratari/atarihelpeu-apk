@@ -81,21 +81,22 @@ extern void nap_diag_log(const char *fmt, ...); // BUILD2SK100: viz nap_ps1_nati
 // nap_gles_readback_and_push.)
 static int nap_gpulib_display_info(int *sx, int *sy, int *w, int *h); // definice az za #include gpu.c nize
 
-// BUILD2SK133: vytvori (jednou, lenivě pri prvnim volani) dve RGBA textury
-// 1024x512 + dve FBO na ne navazane. Pri uspechu se od ted kresli do FBO
-// mist primo do vychoziho pbufferu - viz nap_gles_readback_and_push, kde
-// se strida, do ktere se prave kresli a ktera se cte. Pri jakemkoli
-// selhani (nemelo by na Android/GLESv1_CM nastat - GL_OES_framebuffer_object
-// je tam prakticky vzdy, ale nechceme na tom bezpodminecne stavet appku)
-// se nap_fbo_ready necha na 0 a cely zbytek kodu pak pouziva puvodni,
-// primy zpusob (o nic horsi nez SK131 build, jen bez zrychleni).
+// BUILD2SK134: Rene NECHCE tichy navrat ke starem pomalem zpusobu, kdyby
+// FBO selhalo ("chci to bez berlicek a ciste... at aplikace klidne
+// spadne, ne at tise jede v pomalem modu"). Souhlas s principem - tichy
+// fallback by mohl vypadat jako "oprava funguje", kdyz ve skutecnosti
+// vubec nenaskocila. Nejde ale o tvrdy pad cele appky (o zvuk, o
+// pripadny druhy bezici emulator, o cely TV-cast) kvuli jedne veci, ktera
+// realne nikdy neselze (GL_OES_framebuffer_object je na Android GLES1
+// standardni pres 15 let) - misto toho: pokud FBO selze, VIDEO se proste
+// PRESTANE POSILAT (cerna/zamrzla obrazovka, nic tise "nejak funguje") a
+// v logu zustane hlasita, jednoznacna stopa proc. Zadne tise degradovane
+// "funguje to, jen pomaleji".
 static void nap_fbo_init_once(void)
 {
   static int tried = 0;
   if (tried) return;
   tried = 1;
-  GLint prevFbo = 0; // BUILD2SK133: pojistka - kdyby se cokoliv nepovedlo, vratime puvodni binding
-  glGetIntegerv(GL_FRAMEBUFFER_BINDING_OES, &prevFbo);
   glGenTextures(2, nap_fbo_tex);
   glGenFramebuffersOES(2, nap_fbo);
   int ok = (nap_fbo_tex[0] && nap_fbo_tex[1] && nap_fbo[0] && nap_fbo[1]);
@@ -110,7 +111,7 @@ static void nap_fbo_init_once(void)
     glFramebufferTexture2DOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_TEXTURE_2D, nap_fbo_tex[i], 0);
     if (glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES) != GL_FRAMEBUFFER_COMPLETE_OES) {
       ok = 0;
-      nap_diag_log("BUILD2SK133 GLES_FBO_INCOMPLETE i=%d status=0x%x", i, (unsigned)glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
+      nap_diag_log("BUILD2SK134 GLES_FBO_INCOMPLETE_FATAL i=%d status=0x%x - VIDEO SE NEBUDE POSILAT", i, (unsigned)glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
       break;
     }
     // BUILD2SK133: cerne HNED pri vytvoreni - nahrazuje SK130 "vycisti prvni
@@ -125,8 +126,12 @@ static void nap_fbo_init_once(void)
     glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_fbo[0]);
     nap_diag_log("BUILD2SK133 GLES_FBO_READY tex=[%u,%u] fbo=[%u,%u]", nap_fbo_tex[0], nap_fbo_tex[1], nap_fbo[0], nap_fbo[1]);
   } else {
-    glBindFramebufferOES(GL_FRAMEBUFFER_OES, (GLuint)prevFbo);
-    nap_diag_log("BUILD2SK133 GLES_FBO_FALLBACK_TO_DIRECT - pouzivam puvodni primy zpusob cteni (jako SK131)");
+    // BUILD2SK134: ZADNY tichy navrat - nap_fbo_ready zustava 0 a
+    // nap_gles_readback_and_push se ted na tenhle stav primo pta a
+    // NEPOSLE zadny snimek (viz tam). Hlasite, jednoznacne, videt na
+    // prvni pohled (obraz proste zustane cerny/zamrzly), ne skryte za
+    // tise fungujicim pomalym rezimem.
+    nap_diag_log("BUILD2SK134 GLES_FBO_INIT_FAILED_FATAL - video se NEBUDE posilat, dokud se tohle nevyresi");
   }
 }
 
@@ -152,23 +157,12 @@ void nap_gles_sync_display_settings(void)
   // funkce - tedy driv, nez cokoliv vubec nakreslilo prvni snimek. Scissor
   // musime na chvili vypnout, jinak by glClear() vycistil jen aktualni
   // (uzsi) vyrez, ne celou plochu.
-  // BUILD2SK133: tenhle blok (SK130 "vycisti prvnich par volani" heuristika
-  // pro neznamy pocet fyzickych bufferu) uz neni potreba, KDYZ FBO cesta
-  // funguje - tam se kazda ze 2 textur cisti presne jednou, hned pri
-  // vytvoreni (viz nap_fbo_init_once). Necham ho jen jako POJISTKU pro
-  // fallback pripad (nap_fbo_ready==0), kde porad kreslime primo do
-  // pbufferu a stara logika je porad relevantni.
-  if (!nap_fbo_ready) {
-    static int nap_vram_preclear_count = 0;
-    if (nap_vram_preclear_count < 4) {
-      nap_vram_preclear_count++;
-      glViewport(0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
-      glDisable(GL_SCISSOR_TEST);
-      glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-      glClear(GL_COLOR_BUFFER_BIT);
-      nap_diag_log("BUILD2SK130 GLES_VRAM_PRECLEAR_DONE call=%d/4 w=%d h=%d", nap_vram_preclear_count, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
-    }
-  }
+  // BUILD2SK134: SK130 "vycisti prvnich par volani do vychoziho pbufferu"
+  // heuristika CELA ODSTRANENA (ne jen zakomentovana pro fallback pripad,
+  // jak byla v SK133) - Rene nechce zadnou tichou zachrannou cestu pres
+  // puvodni pbuffer. Kdyz FBO selze, nic se do pbufferu stejne nikdy
+  // nebude cist (viz nap_gles_readback_and_push - hlasi FATAL a vraci se
+  // hned na zacatku), takze cistit ho by bylo cisté plytvani.
   // BUILD2SK128: nastavovat KAZDY tick (drive jen jednou pres flag) - je to
   // par levnych GL volani a je to pojistka proti cemukoli, co by projekci/
   // viewport mezitim prenastavilo (updateDisplayIfChanged/SetAspectRatio
@@ -209,10 +203,11 @@ static uint8_t *nap_gles_vram_rgba = NULL; // BUILD2SK122: FIXNI 1024x512x4 buff
 // MINULE) - do te doby uz ji GPU davno dokoncilo na pozadi, takze cteni
 // je rychle. Plna kvalita, plne rozliseni, zadny preskoceny snimek -
 // jen o jeden snimek (~16-33ms, na castovani nepostrehnutelne) zpozdene.
+#define GL_GLEXT_PROTOTYPES // BUILD2SK134: BEZ TOHOTO glext.h nedeklaruje glGenFramebuffersOES a spol. vubec - a novejsi Clang (tenhle NDK) bere volani nedeklarovane funkce jako TVRDOU CHYBU, ne varovani. Tohle presne shodilo GitHub Actions build.
 #include <GLES/glext.h> // BUILD2SK133: glBindFramebufferOES a spol. (GL_OES_framebuffer_object - bezne na kazdem Android GLES1 ovladaci, vc. Adreno na S8)
 static GLuint nap_fbo_tex[2] = {0, 0};
 static GLuint nap_fbo[2] = {0, 0};
-static int nap_fbo_ready = 0;      // 1 = FBO cesta funguje; 0 = bezpecny navrat ke starem primem chovani (SK131 styl)
+static int nap_fbo_ready = 0;      // BUILD2SK134: 1 = FBO cesta funguje; 0 = video se VUBEC neposila (zadny tichy navrat ke starem zpusobu - viz nap_fbo_init_once)
 static int nap_fbo_write_idx = 0;  // ktery index se PRAVE pouziva jako cil kresleni
 static int nap_fbo_meta_sx[2], nap_fbo_meta_sy[2], nap_fbo_meta_w[2] = {320,320}, nap_fbo_meta_h[2] = {240,240}; // BUILD2SK133: co PLATILO v okamziku, kdy se do teto FBO naposledy zacalo kreslit - NE aktualni gpu.screen (to uz muze byt o snimek dal)
 
@@ -269,19 +264,20 @@ static void nap_gles_readback_and_push(void)
   nap_diag_log("BUILD2SK100 GLES_FRAME_HEARTBEAT n=%d dispW=%d dispH=%d", nap_gles_frame_count, fresh_w, fresh_h);
  }
  if (fresh_w <= 0 || fresh_h <= 0 || fresh_w > NAP_PSX_VRAM_W || fresh_h > NAP_PSX_VRAM_H) return; // BUILD2SK122: mez presne podle skutecne VRAM velikosti
+ // BUILD2SK134: Rene nechce tichy navrat ke starem primem cteni, kdyz FBO
+ // selze - viz velky komentar u nap_fbo_init_once. Misto "jinak cti
+ // primo" tu ted je proste NIC - zadny snimek se neposle, dokud FBO
+ // neni pripravene. Hlasita, jednoznacna chyba (cerny/zamrzly obraz +
+ // hlaska v logu), ne tise fungujici pomalejsi nahrada.
+ if (!nap_fbo_ready) return;
  // BUILD2SK133: az TEDKA rozhodujeme, CO SE SKUTECNE BUDE CIST timhle
- // volanim - v FBO rezimu to NENI fresh_*, ale ulozena metadata druheho
- // (jiz hotoveho) bufferu. rb_w/rb_h/src_x/src_y odsud dal jsou "co se
- // cte TEDKA" - stejne jmeno jako drive, aby zbytek funkce (alokace,
- // flip smycka, diagnostika, push) zustal beze zmeny.
+ // volanim - NENI to fresh_*, ale ulozena metadata druheho (jiz hotoveho)
+ // bufferu. rb_w/rb_h/src_x/src_y odsud dal jsou "co se cte TEDKA" -
+ // stejne jmeno jako drive, aby zbytek funkce (alokace, flip smycka,
+ // diagnostika, push) zustal beze zmeny.
  int other_idx = 1 - nap_fbo_write_idx;
- int rb_w, rb_h, src_x, src_y;
- if (nap_fbo_ready) {
-  rb_w = nap_fbo_meta_w[other_idx]; rb_h = nap_fbo_meta_h[other_idx];
-  src_x = nap_fbo_meta_sx[other_idx]; src_y = nap_fbo_meta_sy[other_idx];
- } else {
-  rb_w = fresh_w; rb_h = fresh_h; src_x = fresh_sx; src_y = fresh_sy;
- }
+ int rb_w = nap_fbo_meta_w[other_idx], rb_h = nap_fbo_meta_h[other_idx];
+ int src_x = nap_fbo_meta_sx[other_idx], src_y = nap_fbo_meta_sy[other_idx];
  // BUILD2SK133: SK132 "cti jen kazdy druhy snimek" ODSTRANENO na Reneho
  // opravnenou pripominku - byla to berlicka (mene casteho blokovani), ne
  // skutecna oprava, a snizovala kvalitu/plynulost bez duvodu. Skutecna
@@ -336,32 +332,30 @@ static void nap_gles_readback_and_push(void)
   if (glY < 0) glY = 0;
   if (glY + rb_h > NAP_PSX_VRAM_H) glY = NAP_PSX_VRAM_H - rb_h;
   if (glY < 0) glY = 0;
-  // BUILD2SK133: precti tu DRUHOU FBO (other_idx) - do te se NEKRESLILO
-  // behem CELE minule periody (kreslilo se do nap_fbo_write_idx), takze
-  // GPU uz ji davno v pozadi dokoncilo - toto cteni by nemelo cekat.
-  if (nap_fbo_ready) {
-   glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_fbo[other_idx]);
-  }
+  // BUILD2SK134: uz vime (return vyse), ze nap_fbo_ready==1, takze zadna
+  // dalsi podminka tady neni potreba - primo navazat na tu DRUHOU FBO
+  // (other_idx). Do te se NEKRESLILO behem CELE minule periody (kreslilo
+  // se do nap_fbo_write_idx), takze GPU uz ji davno v pozadi dokoncilo -
+  // tohle cteni by nemelo cekat.
+  glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_fbo[other_idx]);
   nap_t0 = nap_now_ms(); // BUILD2SK131
   glReadPixels(src_x, glY, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
   nap_t1 = nap_now_ms(); // BUILD2SK131
   if (nap_gles_frame_count % 30 == 1) {
-   nap_diag_log("BUILD2SK133 GLES_READ_ANCHOR srcX=%d srcY=%d glY=%d rb_w=%d rb_h=%d fboReady=%d readIdx=%d", src_x, src_y, glY, rb_w, rb_h, nap_fbo_ready, other_idx);
+   nap_diag_log("BUILD2SK134 GLES_READ_ANCHOR srcX=%d srcY=%d glY=%d rb_w=%d rb_h=%d readIdx=%d", src_x, src_y, glY, rb_w, rb_h, other_idx);
   }
  }
- if (nap_fbo_ready) {
-  // BUILD2SK133: buffer other_idx uz jsme precetli (vyse) - ted do nej
-  // ulozime AKTUALNI (fresh) rozmery/pozici, protoze prave TATO FBO se
-  // stava novym cilem kresleni (uz je na ni navazany binding z bloku
-  // vyse) - az na ni priste dojde rada cteni, tahle metadata budou platit
-  // pro to, co se do ni MEZITIM skutecne nakreslilo. Binding uz je
-  // spravne (nastaveno pred glReadPixels vyse) - staci prehodit index.
-  nap_fbo_meta_sx[other_idx] = fresh_sx;
-  nap_fbo_meta_sy[other_idx] = fresh_sy;
-  nap_fbo_meta_w[other_idx] = fresh_w;
-  nap_fbo_meta_h[other_idx] = fresh_h;
-  nap_fbo_write_idx = other_idx;
- }
+ // BUILD2SK134: buffer other_idx uz jsme precetli (vyse) - ted do nej
+ // ulozime AKTUALNI (fresh) rozmery/pozici, protoze prave TATO FBO se
+ // stava novym cilem kresleni (uz je na ni navazany binding z bloku
+ // vyse) - az na ni priste dojde rada cteni, tahle metadata budou platit
+ // pro to, co se do ni MEZITIM skutecne nakreslilo. Binding uz je
+ // spravne (nastaveno pred glReadPixels vyse) - staci prehodit index.
+ nap_fbo_meta_sx[other_idx] = fresh_sx;
+ nap_fbo_meta_sy[other_idx] = fresh_sy;
+ nap_fbo_meta_w[other_idx] = fresh_w;
+ nap_fbo_meta_h[other_idx] = fresh_h;
+ nap_fbo_write_idx = other_idx;
  {
   for (int y = 0; y < rb_h; y++) {
    const uint8_t *srcRow = nap_gles_vram_rgba + (size_t)y * rb_w * 4;

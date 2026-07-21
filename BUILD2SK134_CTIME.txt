@@ -1,0 +1,36 @@
+================================================================================
+BUILD2SK134 - navod (2026-07-21)
+================================================================================
+
+Meni se jen: app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+Postup stejny: rozbal, "app" nakopiruj (prepsat ANO), commit, push, Action.
+
+DVE VECI OPRAVENY:
+
+1) SKUTECNA CHYBA, CO SHODILA BUILD:
+   Pouzival jsem funkce glGenFramebuffersOES a spol. (OES = rozsireni
+   OpenGL ES), ale nedal jsem prekladaci najevo, ze jejich "hlavicky" ma
+   skutecne pouzit - bez toho je novy prekladac (Clang v tomhle NDK) bere
+   jako CHYBU, ne jen varovani. Chybel jeden radek
+   (#define GL_GLEXT_PROTOTYPES pred #include <GLES/glext.h>) - ted je tam.
+   Mel jsi pravdu, ze tam byla chyba - tohle byla ona.
+
+2) ZADNY TICHY NAVRAT KE STAREMU ZPUSOBU:
+   Presne podle tveho pozadavku - pokud by se ty dve plochy (FBO) z
+   nejakeho duvodu nepovedlo vytvorit, appka UZ SE NEVRATI k puvodnimu
+   pomalemu cteni. Misto toho se video proste PRESTANE POSILAT (cerny/
+   zamrzly obraz) a v logu zustane jasna hlaska proc
+   (GLES_FBO_INIT_FAILED_FATAL nebo GLES_FBO_INCOMPLETE_FATAL). Zadne
+   tise "funguje to, jen pomaleji" - bud to jede naplno, nebo je to
+   okamzite a jasne videt, ze ne.
+   (Realne by se tenhle stav nemel objevit vubec - GL_OES_framebuffer_object
+   je na Androidu standard pres 15 let, vc. S8 - ale kdyby, bude to okamzite
+   jasne, ne skryte.)
+
+CO POSLAT PRISTE:
+- Hlavne: povedlo se to vubec ZKOMPILOVAT? (Zelena fajfka na GitHub
+  Actions, ne cerveny krizek.)
+- Pokud ano, v logu z telefonu chci "BUILD2SK133 GLES_FBO_READY".
+- "underruns=" u PS1_AUDIO_WRITE - hlavni cislo pro zvuk.
+- Jak to vypada/zni.
+================================================================================
