@@ -1,0 +1,33 @@
+================================================================================
+BUILD2SK133 - navod (2026-07-21)
+================================================================================
+
+Meni se jen: app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+Postup stejny: rozbal, "app" nakopiruj (prepsat ANO), commit, push, Action.
+
+TOHLE UZ NENI BERLICKA - je to skutecna oprava toho, proc cteni obrazu
+blokovalo zvuk, beze zmeny rozliseni/kvality/poctu snimku.
+
+CO SE ZMENILO (technicky, pro uplnost):
+Driv se kreslilo primo do jedine plochy a kazde cteni MUSELO pockat, az
+grafika dokonci VSECHNO cekajici kresleni (takhle fungujou vsechny mobilni
+GPU, S8 nevyjimaje - neni to o vykonu). Ted appka kresli strida do DVOU
+vlastnich ploch (textur) - kdyz se cte jedna, druha uz je z minuleho kola
+davno hotova na pozadi, takze cteni na ni nemusi cekat. Video je tim o
+jeden snimek (par milisekund) zpozdene - na obrazovce to nepoznas, ale
+vlakno, co pocita zvuk, uz nemusi tak casto cekat na grafiku.
+
+Pokud by se FBO (ta dvojice ploch) z nejakeho duvodu nepovedla vytvorit
+(nemelo by, je to bezna vec na kazdem Android telefonu), appka se sama
+bezpecne vrati k puvodnimu zpusobu - nespadne, jen neziska zrychleni. To
+pozname v logu podle hlasky GLES_FBO_READY (fungovalo) nebo
+GLES_FBO_FALLBACK_TO_DIRECT (nefungovalo, vratilo se zpet).
+
+CO POSLAT PRISTE:
+- V logu chci videt "BUILD2SK133 GLES_FBO_READY" (potvrzuje, ze cesta
+  nastartovala) - kdyby tam bylo misto toho GLES_FBO_INCOMPLETE nebo
+  FALLBACK_TO_DIRECT, budu to muset resit jinak.
+- "BUILD2SA5P PS1_AUDIO_WRITE underruns=" na konci - hlavni cislo, jestli
+  tohle skutecne pomohlo (srovnam s ~55-60% z minula).
+- Jak to vypada a zni po tvem vlastnim dojmu - blika to min? sekas to min?
+================================================================================
