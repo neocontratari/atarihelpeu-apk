@@ -1,0 +1,31 @@
+================================================================================
+BUILD2SK149 - navod (2026-07-21)
+================================================================================
+
+VSECHNY 4 AKTUALNI SOUBORY (gpulib_if.c ma NOVOU opravu, ostatni 3 beze
+zmeny od minule):
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c  <- NOVA OPRAVA
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpuPrim.c
+  app/src/main/cpp/nap_ps1_native.cpp
+  app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+
+CO SE NASLO A OPRAVILO (primo v kodu, potvrzeno, ne dohad):
+Dve funkce (CheckVRamRead, CheckVRamReadEx) byly UPLNE PRAZDNE - doslovny
+komentar u nich rikal "don't do GL vram read". Hra je vola pred VLASTNIMI
+kopiemi casti obrazu (napr. MoveImageWrapped - PS1 efekty presouvajici
+cast VRAM jinam) - a tyhle kopie pak pracuji s CPU kopii VRAM (psxVuw),
+ze ktere se MIMOCHODEM stavi i VSECHNY textury pro OpenGL. Kdyz sync
+nikdy neprobehl, hra pri takove kopii pracovala se STARYMI/PRAZDNYMI daty
+misto skutecne vykresleneho obsahu - coz muze vypadat presne jako
+blikani nebo chybejici casti obrazu.
+
+Implementoval jsem obe funkce - pri konkretni, cilene operaci precte
+prislusnou cast z GPU a prevede ji zpatky do PS1 16-bit formatu primo do
+psxVuw. Volá se jen pri specifickych prikazech hry (ne kazdy snimek),
+takze to nema stejny dopad na zvuk jako puvodni hlavni cteni.
+
+CO POSLAT PRISTE:
+- Blika to min, hlavne pri prechodech/efektech (ne jen na zacatku)?
+- Zvuk/pamet/teplota - porad chci videt PS1_TICK_TIMING s maxTempMilliC
+  a vmRssKb, at rozhodneme i tenhle bod.
+================================================================================

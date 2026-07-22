@@ -655,13 +655,63 @@ BOOL            bDisplayNotSet;
 BOOL            bNeedWriteUpload;
 int             iLastRGB24;
 
+// BUILD2SK149: PUVODNE prazdne no-op funkce ("don't do GL vram read").
+// Nalezeno primo v kodu (ne dohadem): kdyz hra dela VRAM->VRAM kopii
+// (napr. MoveImageWrapped v gpuPrim.c - PS1 efekty, presuny obrazu),
+// kopiruje se z CPU strany pole psxVuw (16-bit "stinova" kopie VRAM,
+// ze ktere se taky stavi vsechny GL textury - viz gpuTexture.c). Tyhle
+// dve prazdne funkce mely PRED takovou kopii zajistit, ze psxVuw
+// SKUTECNE obsahuje to, co uz je vykresleno pres OpenGL - bez toho
+// kopie pracuje se starymi/nulovymi daty mist se skutecnym obsahem,
+// coz muze vypadat presne jako blikani/chybejici casti obrazu.
+// OPRAVA: precist danou oblast z (porad bindnuteho) canvasu a prevest
+// na PS1 nativni 16-bit format primo do psxVuw. Volá se jen pri
+// konkretnich, cilenych operacich (ne kazdy snimek jako hlavni cteni),
+// takze synchronni glReadPixels tady NEMA stejny dopad na zvuk, jaky
+// mela puvodni kazde-snimkova verze.
+static uint8_t *nap_vramread_tmp = NULL;
+static size_t nap_vramread_tmp_cap = 0;
+static void nap_vram_read_sync(int x, int y, int dx, int dy)
+{
+  if (!nap_fbo_ready) return;
+  int w = dx - x, h = dy - y;
+  if (x < 0) { w += x; x = 0; }
+  if (y < 0) { h += y; y = 0; }
+  if (x + w > NAP_PSX_VRAM_W) w = NAP_PSX_VRAM_W - x;
+  if (y + h > NAP_PSX_VRAM_H) h = NAP_PSX_VRAM_H - y;
+  if (w <= 0 || h <= 0) return;
+  size_t need = (size_t)w * (size_t)h * 4;
+  if (need > nap_vramread_tmp_cap) {
+    uint8_t *nb = (uint8_t *)realloc(nap_vramread_tmp, need);
+    if (!nb) return; // alokace selhala - preskocit, nespadnout
+    nap_vramread_tmp = nb;
+    nap_vramread_tmp_cap = need;
+  }
+  int glY = NAP_PSX_VRAM_H - (y + h); // BUILD2SK125 styl - stejny prevod jako hlavni cteni
+  if (glY < 0) glY = 0;
+  glReadPixels(x, glY, w, h, GL_RGBA, GL_UNSIGNED_BYTE, nap_vramread_tmp);
+  for (int row = 0; row < h; row++) {
+    const uint8_t *srcRow = nap_vramread_tmp + (size_t)(h - 1 - row) * w * 4; // stejny flip princip jako hlavni cteni
+    unsigned short *dstRow = psxVuw + (size_t)1024 * (y + row) + x;
+    for (int col = 0; col < w; col++) {
+      uint8_t r = srcRow[col*4+0], g = srcRow[col*4+1], b = srcRow[col*4+2], a = srcRow[col*4+3];
+      // BUILD2SK149: PS1 VRAM 16-bit format - 1 bit STP + 5+5+5 bitu BGR (viz
+      // existujici prevodni makra v gpuPrim.c pouzivajici stejne posuny).
+      dstRow[col] = (unsigned short)(((r >> 3) & 0x1F) | (((g >> 3) & 0x1F) << 5) | (((b >> 3) & 0x1F) << 10) | ((a >= 128) ? 0x8000 : 0));
+    }
+  }
+}
+
 // don't do GL vram read
 void CheckVRamRead(int x, int y, int dx, int dy, bool bFront)
 {
+  (void)bFront; // BUILD2SK149: nasa architektura ma jen JEDEN trvaly canvas (viz SK144) - zadny samostatny "front" k rozlisovani
+  nap_vram_read_sync(x, y, dx, dy);
 }
 
 void CheckVRamReadEx(int x, int y, int dx, int dy)
 {
+  nap_vram_read_sync(x, y, dx, dy);
 }
 
 void SetFixes(void)

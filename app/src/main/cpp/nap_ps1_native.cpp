@@ -536,12 +536,53 @@ static void nap_worker(int gen) {
         // avgRetroRunMs roste, je to tepelne omezovani (hardware, ne muj
         // kod). Kdyby frekvence zustavala STEJNA a presto se zpomaluje, je
         // to neco v samotnem kodu.
-        long cpuFreqKhz = -1;
-        FILE *f = fopen("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", "r");
-        if (f) { if (fscanf(f, "%ld", &cpuFreqKhz) != 1) cpuFreqKhz = -1; fclose(f); }
-        NAPDIAG("BUILD2SK142 PS1_TICK_TIMING avgRetroRunMs=%.2f avgSyncMs=%.2f avgDispMs=%.2f avgTotalMs=%.2f n=%d cpuFreqKhz=%ld",
+        // BUILD2SK148: RENE MEL PRAVDU SI NA TO DUPNOUT - cpuFreqKhz cetlo
+        // JEN cpu0. Telefon ma vic jader s NEZAVISLYMI frekvencemi (big.LITTLE
+        // architektura) a sam operacni system frekvenci beznemenne meni podle
+        // AKTUALNI ZATEZE (ne jen kvuli teplote) - takze "frekvence klesla"
+        // vubec nemusi znamenat "prehrivani", a navic jsem mozna cetl uplne
+        // JINE jadro, nez na kterem zrovna bezela emulace. Misto DOHADU z
+        // frekvence: cist PRIMO teplotu (kazda Android appka to muze, zadna
+        // zvlastni prava) ze VSECH dostupnych tepelnych senzoru a vzit
+        // nejvyssi namerenou hodnotu - to je nezpochybnitelne, primo to,
+        // "jestli telefon o nejake teplote vi", misto neprimeho odhadu.
+        // Navic max frekvence pres VSECHNA jadra (ne jen cpu0).
+        long maxTempMilliC = -1;
+        for (int tz = 0; tz < 20; tz++) {
+          char path[96];
+          snprintf(path, sizeof(path), "/sys/class/thermal/thermal_zone%d/temp", tz);
+          FILE *tf = fopen(path, "r");
+          if (!tf) continue;
+          long t = -1;
+          if (fscanf(tf, "%ld", &t) == 1 && t > maxTempMilliC) maxTempMilliC = t;
+          fclose(tf);
+        }
+        long maxCpuFreqKhz = -1;
+        for (int cpu = 0; cpu < 8; cpu++) {
+          char path[96];
+          snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", cpu);
+          FILE *cf = fopen(path, "r");
+          if (!cf) continue;
+          long fr = -1;
+          if (fscanf(cf, "%ld", &fr) == 1 && fr > maxCpuFreqKhz) maxCpuFreqKhz = fr;
+          fclose(cf);
+        }
+        // BUILD2SK147: Rene trva na tom, ze je to pamet ("plni se pamet
+        // presne jak u Segy") - tohle mereni (VmRSS) zustava, je to primy,
+        // spravny zpusob, jak to overit, a beru to jako hlavni podezreni,
+        // dokud cisla neukazou jinak.
+        long vmRssKb = -1;
+        FILE *sf = fopen("/proc/self/status", "r");
+        if (sf) {
+          char line[256];
+          while (fgets(line, sizeof(line), sf)) {
+            if (strncmp(line, "VmRSS:", 6) == 0) { sscanf(line + 6, "%ld", &vmRssKb); break; }
+          }
+          fclose(sf);
+        }
+        NAPDIAG("BUILD2SK148 PS1_TICK_TIMING avgRetroRunMs=%.2f avgSyncMs=%.2f avgDispMs=%.2f avgTotalMs=%.2f n=%d maxCpuFreqKhz=%ld maxTempMilliC=%ld vmRssKb=%ld",
           nap_sum_run / nap_tick_n, nap_sum_sync / nap_tick_n, nap_sum_disp / nap_tick_n,
-          (nap_sum_run + nap_sum_sync + nap_sum_disp) / nap_tick_n, nap_tick_n, cpuFreqKhz);
+          (nap_sum_run + nap_sum_sync + nap_sum_disp) / nap_tick_n, nap_tick_n, maxCpuFreqKhz, maxTempMilliC, vmRssKb);
         nap_sum_run = 0; nap_sum_sync = 0; nap_sum_disp = 0; nap_tick_n = 0;
       }
     }
