@@ -11,8 +11,8 @@ android {
         applicationId 'eu.atarihelp.eglrender'
         minSdk 24            // stejne jako AtariHelp.eu (emu10)
         targetSdk 34
-        versionCode 2
-        versionName '1.1-TEXTURA-QUAD'
+        versionCode 3
+        versionName '1.2-MERENI-CASU'
 
         ndk {
             // stejna sada architektur jako ma libnapsega_native_proof.so

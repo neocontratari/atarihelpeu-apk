@@ -45,6 +45,11 @@ znovu **každý snímek** – přesně stejnou cestou, kterou později poteče
 obraz z jádra emulátoru. Linky musí jet naprosto plynule, bez blikání
 a trhání, na mobilu i v zrcadlení.
 
+Verze 1.2 vypadá na obrazovce úplně stejně – navíc jen rozepisuje do
+logu čas snímku na kroky: pozadí + vzor + nahrání + kreslení + swap.
+(„swap" je čekání na rytmus displeje – to není ztracený výkon, ale
+volná rezerva.)
+
 ## 5) Logy (stejný postup, jaký znáš z emu10)
 
 - V prohlížeči na PC (stejná wifi jako telefon): `http://IP-TELEFONU:8765/log`

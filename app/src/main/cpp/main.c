@@ -49,7 +49,8 @@ typedef struct {
     bool       animating;   // smi se prave ted kreslit?
     long       frames;      // pocitadlo snimku (pro FPS log)
     double     fps_t0;
-    double     work_ms_sum; // soucet casu prace na snimcich (pro mereni)
+    // rozpad casu snimku na jednotlive kroky (soucty pres 300 snimku)
+    double     sum_bg, sum_fill, sum_up, sum_draw, sum_swap;
     GLuint     program;     // shader program pro quad s texturou
     GLuint     texture;     // textura 320x224 = budouci obraz jadra
     GLint      loc_pos;
@@ -306,9 +307,9 @@ static bool egl_init(Engine* e, ANativeWindow* window) {
         return false;
     }
 
-    e->frames      = 0;
-    e->fps_t0      = now_sec();
-    e->work_ms_sum = 0.0;
+    e->frames = 0;
+    e->fps_t0 = now_sec();
+    e->sum_bg = e->sum_fill = e->sum_up = e->sum_draw = e->sum_swap = 0.0;
     return true;
 }
 
@@ -334,13 +335,20 @@ static void draw_frame(Engine* e) {
                  1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    double t1 = now_sec();  // po pozadi
+
     // 2) Novy obsah snimku -> textura. PRESNE TUDY pozdeji potece obraz
     //    z jadra emulatoru: misto fill_test_pattern() se sem stejnym
     //    volanim glTexSubImage2D nahraje jeho framebuffer.
     fill_test_pattern(e->frames);
+
+    double t2 = now_sec();  // po vyrobe vzoru (cista prace procesoru)
+
     glBindTexture(GL_TEXTURE_2D, e->texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, TEX_W, TEX_H,
                     GL_RGBA, GL_UNSIGNED_BYTE, s_pixels);
+
+    double t3 = now_sec();  // po nahrani textury do grafiky
 
     // 3) Letterbox: roztahnout co nejvic pri zachovani pomeru stran
     int vw = w;
@@ -365,8 +373,7 @@ static void draw_frame(Engine* e) {
     glEnableVertexAttribArray((GLuint)e->loc_tex);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-    // Cas prace na snimku (bez cekani na vsync ve swapu)
-    double work_ms = (now_sec() - t0) * 1000.0;
+    double t4 = now_sec();  // po zadani kresleni
 
     // 5) Preklopeni zadniho bufferu na obrazovku. Diky vsync presne
     //    v rytmu displeje -> zadne blikani.
@@ -386,17 +393,28 @@ static void draw_frame(Engine* e) {
         return;
     }
 
-    // Kazdych 300 snimku vypis FPS + prumerna prace na snimek
+    double t5 = now_sec();  // po preklopeni (obsahuje cekani na rytmus displeje)
+
+    // Kazdych 300 snimku: FPS + presny rozpad casu snimku na kroky.
+    // "swap" = cekani na vsync, to NENI ztraceny vykon, ale volna rezerva.
     e->frames++;
-    e->work_ms_sum += work_ms;
+    e->sum_bg   += (t1 - t0) * 1000.0;
+    e->sum_fill += (t2 - t1) * 1000.0;
+    e->sum_up   += (t3 - t2) * 1000.0;
+    e->sum_draw += (t4 - t3) * 1000.0;
+    e->sum_swap += (t5 - t4) * 1000.0;
     if (e->frames % 300 == 0) {
         double dt = t0 - e->fps_t0;
         if (dt > 0.0) {
-            LOGI("Bezi: %ld snimku, ~%.1f FPS, prace ~%.2f ms/snimek, %dx%d",
-                 e->frames, 300.0 / dt, e->work_ms_sum / 300.0, w, h);
+            double n = 300.0;
+            LOGI("Bezi: %ld snimku, ~%.1f FPS, %dx%d | ms/snimek: pozadi %.2f + vzor %.2f + nahrani %.2f + kresleni %.2f + swap %.2f = %.2f",
+                 e->frames, n / dt, w, h,
+                 e->sum_bg / n, e->sum_fill / n, e->sum_up / n,
+                 e->sum_draw / n, e->sum_swap / n,
+                 (e->sum_bg + e->sum_fill + e->sum_up + e->sum_draw + e->sum_swap) / n);
         }
-        e->fps_t0      = t0;
-        e->work_ms_sum = 0.0;
+        e->fps_t0 = t0;
+        e->sum_bg = e->sum_fill = e->sum_up = e->sum_draw = e->sum_swap = 0.0;
     }
 }
 
