@@ -1,3 +1,5 @@
+// EMU-10 BUILD1 FIX1: pluginManagement s google() - bez nej Gradle
+// nenajde com.android.application a spadne v konfiguraci (~30 s).
 pluginManagement {
     repositories {
         google()
@@ -6,11 +8,11 @@ pluginManagement {
     }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
         mavenCentral()
     }
 }
-rootProject.name = "EGLRender"
-include ":app"
+rootProject.name = "EMU09CleanR0"
+include ':app'

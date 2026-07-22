@@ -1,29 +1,35 @@
 plugins {
     id 'com.android.application'
 }
-
 android {
-    namespace 'eu.atarihelp.eglrender'
+    namespace 'eu.atarihelp.emu10'
     compileSdk 34
-    ndkVersion '26.3.11579264'
-
+    ndkVersion '26.3.11579264'  // PRIDANO: kvuli stavbe PS1/Sega jader
     defaultConfig {
-        applicationId 'eu.atarihelp.eglrender'
-        minSdk 24            // stejne jako AtariHelp.eu (emu10)
+        applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
+        minSdk 24
         targetSdk 34
-        versionCode 6
-        versionName '1.5-HRA-PRES-WIFI'
+        versionCode 10
+        versionName "EMU10-BASE-A-OBNOVA"  // ZMENENO: jasny nazev teto baseline
 
         ndk {
-            // PS1 jadro (libnapps1core.so) existuje jen pro arm64 -
-            // tvuj telefon je arm64 (jadro na nem v emu10 prokazatelne bezi)
-            abiFilters 'arm64-v8a'
+            abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
+        }
+
+        externalNativeBuild {
+            cmake {
+                // BUILD2RY: debug APK stavel jadro emulatoru (.c soubory) s -O0.
+                // cFlags tu drive uplne chybely; cppFlags mely jen -O2 pro frontend.
+                // Optimalizace je vynucena i v CMakeLists per-target, tohle je pojistka.
+                cppFlags "-std=c++17 -O3"
+                cFlags "-O3"
+            }
         }
     }
-
-    // Stale stejny podpisovy klic (debug.keystore je soucasti repozitare).
-    // Diky tomu jde kazda dalsi verze nainstalovat PRES tu predchozi
-    // bez odinstalace - podpis se mezi buildy nemeni.
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -33,7 +39,6 @@ android {
             keyPassword 'android'
         }
     }
-
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
@@ -42,8 +47,7 @@ android {
 
     externalNativeBuild {
         cmake {
-            path 'src/main/cpp/CMakeLists.txt'
-            version '3.22.1'
+            path "src/main/cpp/CMakeLists.txt"
         }
     }
 }
