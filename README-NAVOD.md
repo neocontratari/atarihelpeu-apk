@@ -62,7 +62,27 @@ procesor). V logu ke každému skoku přibude řádek
 Actions → klikni na červený běh → krok **Sestaveni APK** → zkopíruj
 posledních ~50 řádků a pošli mi je. Z nich přesně poznám, co opravit.
 
-## 7) Kam se napojí skutečné jádro (Sega / PS1)
+## 7a) PS1 režim (od verze 1.4)
+
+V balíčku je přibalené tvoje skutečné PS1 jádro (`libnapps1core.so`
+z emu10) a renderer s ním mluví standardním libretro protokolem,
+který jádro samo nabízí. Postup po instalaci:
+
+1. **Povol úložiště:** Nastavení → Aplikace → AH EGL Render →
+   Oprávnění → Úložiště/Soubory → Povolit. Pak apku úplně zavři
+   (vymáchnout z posledních aplikací) a spusť znovu.
+2. Apka si sama najde hru ve složce `Download/AtariHelp/PS1`
+   (tam ji ukládá emu10 – Crash Bandicoot tam už je). Bere první
+   `.cue`, případně `.chd`/`.bin`.
+3. BIOS není nutný (jede vestavěný náhradní). Když chceš originální,
+   nakopíruj soubory BIOSu do `Download/AtariHelp/PS1/bios`.
+4. V této verzi jede **jen obraz** – zvuk a ovládání jsou další
+   samostatné kroky.
+5. Když PS1 nenaběhne (chybí povolení, není hra…), apka dál ukazuje
+   demo pruhy a v logu 8765/log je přesný důvod – řádky začínají
+   „PS1:". Hlášky samotného jádra začínají „PS1c:".
+
+## 7b) Kam se napojí Sega
 
 Rozhraní je v `app/src/main/cpp/core_api.h` („zásuvka"): jádro dodává
 jen ukazatel na svůj framebuffer + šířku + výšku + formát. Renderer si

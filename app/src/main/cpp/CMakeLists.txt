@@ -11,7 +11,8 @@ target_include_directories(native_app_glue PUBLIC
 add_library(eglrender SHARED
     main.c
     logserver.c
-    core_demo.c)
+    core_demo.c
+    core_ps1.c)
 
 target_link_libraries(eglrender
     native_app_glue
@@ -19,6 +20,7 @@ target_link_libraries(eglrender
     log
     EGL
     GLESv2
+    dl
     m)
 
 # KRITICKY RADEK: bez nej linker vyhodi vstupni bod ANativeActivity_onCreate

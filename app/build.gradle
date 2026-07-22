@@ -11,12 +11,13 @@ android {
         applicationId 'eu.atarihelp.eglrender'
         minSdk 24            // stejne jako AtariHelp.eu (emu10)
         targetSdk 34
-        versionCode 4
-        versionName '1.3-ZASUVKA-JADRA'
+        versionCode 5
+        versionName '1.4-PS1-NABEH'
 
         ndk {
-            // stejna sada architektur jako ma libnapsega_native_proof.so
-            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
+            // PS1 jadro (libnapps1core.so) existuje jen pro arm64 -
+            // tvuj telefon je arm64 (jadro na nem v emu10 prokazatelne bezi)
+            abiFilters 'arm64-v8a'
         }
     }
 

@@ -25,16 +25,26 @@ typedef enum {
 } CoreFormat;
 
 typedef struct {
-    const void* pixels;  // framebuffer jadra, radky tesne za sebou
+    const void* pixels;  // framebuffer jadra
     int         width;   // aktualni sirka hry
     int         height;  // aktualni vyska hry
+    int         pitch;   // bajtu na radek (0 = radky tesne za sebou)
     CoreFormat  format;
 } CoreFrame;
 
+// Jednorazova priprava jadra pri startu aplikace.
+// java_vm a interni slozka aplikace (pro pametove karty / save stavy).
+void core_init(void* java_vm, const char* internal_data_path);
+
 // Krok jadra o jeden snimek (vola se 60x za vterinu).
-// U dema posouva vzor; u skutecneho jadra sem prijde realCoreStep().
 void core_step(void);
 
 // Vrati aktualni snimek jadra. false = jadro jeste nema obraz
 // (renderer nakresli jen pozadi a zkusi to dalsi snimek).
 bool core_get_frame(CoreFrame* out);
+
+// ------------------------------------------------------------------
+// Interni: zalozni demo vzor (bezi, dokud nenabehne skutecne jadro)
+// ------------------------------------------------------------------
+void demo_step(void);
+bool demo_get_frame(CoreFrame* out);

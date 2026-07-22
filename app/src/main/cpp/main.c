@@ -354,12 +354,24 @@ static void draw_frame(Engine* e) {
     if (have_frame) {
         ensure_texture(e, fr.width, fr.height, fr.format);
         glBindTexture(GL_TEXTURE_2D, e->texture);
-        if (fr.format == CORE_FMT_RGB565) {
+        int    bppx  = (fr.format == CORE_FMT_RGB565) ? 2 : 4;
+        int    tight = fr.width * bppx;
+        int    pitch = (fr.pitch > 0) ? fr.pitch : tight;
+        GLenum gfmt  = (fr.format == CORE_FMT_RGB565) ? GL_RGB : GL_RGBA;
+        GLenum gtyp  = (fr.format == CORE_FMT_RGB565) ? GL_UNSIGNED_SHORT_5_6_5
+                                                      : GL_UNSIGNED_BYTE;
+        if (pitch == tight) {
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, fr.width, fr.height,
-                            GL_RGB, GL_UNSIGNED_SHORT_5_6_5, fr.pixels);
+                            gfmt, gtyp, fr.pixels);
         } else {
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, fr.width, fr.height,
-                            GL_RGBA, GL_UNSIGNED_BYTE, fr.pixels);
+            // Jadro ma radky dal od sebe (pitch) -> nahrat po radcich.
+            // Porad zadny prepocet na CPU, jen vic malych nahrani.
+            const unsigned char* src = (const unsigned char*)fr.pixels;
+            for (int y = 0; y < fr.height; y++) {
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, fr.width, 1,
+                                gfmt, gtyp, src);
+                src += pitch;
+            }
         }
     }
 
@@ -491,6 +503,7 @@ void android_main(struct android_app* app) {
 
     logserver_start(8765);
     LOGI("=== AH EGL Render start ===");
+    core_init(app->activity->vm, app->activity->internalDataPath);
 
     for (;;) {
         // Zpracovani vsech cekajicich udalosti od systemu.

@@ -86,7 +86,7 @@ static void stage_init(int stage) {
     s_prev_ly = 0;
 }
 
-void core_step(void) {
+void demo_step(void) {
     int stage = (int)((s_frame / 420) % 4);   // ~7 vterin na kazde rozliseni
     if (stage != s_stage) stage_init(stage);
 
@@ -98,11 +98,12 @@ void core_step(void) {
     s_frame++;
 }
 
-bool core_get_frame(CoreFrame* out) {
+bool demo_get_frame(CoreFrame* out) {
     if (s_stage < 0) return false;
     out->pixels = s_fb;
     out->width  = s_w;
     out->height = s_h;
+    out->pitch  = s_w * bpp(s_fmt);  // radky tesne za sebou
     out->format = s_fmt;
     return true;
 }

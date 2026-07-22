@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- INTERNET je potreba jen kvuli log serveru na portu 8765 -->
+    <!-- INTERNET kvuli log serveru na portu 8765;
+         READ_EXTERNAL_STORAGE kvuli hram v Download/AtariHelp/PS1
+         (na telefonu se povoluje rucne: Nastaveni -> Aplikace ->
+          AH EGL Render -> Opravneni -> Uloziste -> Povolit) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
         android:label="AH EGL Render"
         android:hasCode="false"
         android:allowBackup="false"
+        android:requestLegacyExternalStorage="true"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
 
         <!-- Zadna Java. System spusti primo nativni knihovnu libeglrender.so.
