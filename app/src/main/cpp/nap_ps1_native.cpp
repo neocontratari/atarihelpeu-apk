@@ -312,7 +312,8 @@ extern "C" {
   int GLinitialize(void *ext_gles_display, void *ext_gles_surface);
   void InitializeTextureStore(); // BUILD2SK102: viz gpuTexture.c - alokuje texture-cache buffery
   void MakeDisplayLists(); // BUILD2SK102: viz hud.c - font/HUD display listy
-  void updateFrontDisplay(void); // BUILD2SK103: viz gpulib_if.c - skutecne swapne+odesle snimek
+  void updateFrontDisplay(void); // BUILD2SK103: (SK153: uz NEprezentuje - jen uklid priznaku, viz gpulib_if.c)
+  void nap_gles_present_frame(void); // BUILD2SK153: JEDINE misto prezentace snimku - presne 1x za tick, po retro_run (= po VBlanku emulovaneho PS1), s cerstvym gpu.screen (respektuje GP1(05h) flip)
   void SetOGLDisplaySettings(int DisplaySet); // BUILD2SK106: nastavi GL scissor/clip - viz gpuDraw.c
   void nap_gles_sync_display_settings(void); // BUILD2SK119: viz gpulib_if.c - bezpecne obnovi iResX/iResY/rRatioRect pred volanim SetOGLDisplaySettings
   // BUILD2SK106: POZOR presne typy - BOOL je v tomhle projektu #define BOOL
@@ -453,7 +454,7 @@ static bool nap_gles_egl_init() {
 static void nap_worker(int gen) {
   NAPLOG("BUILD2SA2 PS1 worker start gen=%d fps=%.2f", gen, g_fps);
   NAPDIAG("BUILD2SK99 PS1_WORKER_THREAD_ALIVE gen=%d", gen); // BUILD2SK99: durable kanarek - vlakno samo bezi
-  NAPDIAG("BUILD2SK150 NATIVE_VERSION_CONFIRM file=nap_ps1_native.cpp"); // BUILD2SK150: pri kazdem startu jednoznacne potvrdi, KTERA verze tohohle souboru skutecne bezi - uz zadna nejistota jako predtim
+  NAPDIAG("BUILD2SK153 NATIVE_VERSION_CONFIRM file=nap_ps1_native.cpp"); // BUILD2SK153: pri kazdem startu jednoznacne potvrdi, KTERA verze tohohle souboru skutecne bezi - uz zadna nejistota jako predtim
   // BUILD2SK98: EGL kontext MUSI se nastavit na TOMHLE vlakne (jedine vlakno,
   // ktere kdy vola retro_run(), tedy jedine vlakno, na kterem gpu-gles vubec
   // kresli) - GL kontexty jsou vazane na vlakno, ktere je aktivovalo.
@@ -514,7 +515,14 @@ static void nap_worker(int gen) {
       // iDrawnSomething kontrola uvnitr updateFrontDisplay() porad spravne
       // presskoci swap, kdyz se nic noveho nenakreslilo - zadna zbytecna
       // prace navic.
-      if (g_gles_ready) { updateFrontDisplay(); }
+      // BUILD2SK153: updateFrontDisplay() -> nap_gles_present_frame().
+      // Prezentace je ted VYHRADNE tady: presne jednou za tick, az kdyz je
+      // cely snimek doemulovany (VBlank). Pokud hra behem snimku flipla
+      // zobrazovaci buffer (GP1(05h)), gpu.screen uz nese nove src_x/src_y
+      // a cte se prave dokoncena polovina VRAM - zadne cteni rozkresleneho
+      // back-bufferu (to byla, spolu s 2-snimky-starymi metadaty v
+      // gpulib_if.c, pricina stroboskopu u 30fps her).
+      if (g_gles_ready) { nap_gles_present_frame(); }
       nap_t_disp1 = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
       if (++srmTick % 300 == 0) nap_srm_save_if_dirty("periodic");
     }

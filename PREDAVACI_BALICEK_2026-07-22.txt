@@ -1,0 +1,249 @@
+================================================================================
+PREDAVACI BALICEK - PS1 GPU/OpenGL prace (gpu-gles plugin)
+Datum: 2026-07-22
+Predchozi balicek: PREDAVACI_BALICEK_2026-07-20.txt (Sega/Atari kolega)
+================================================================================
+
+CIL PROJEKTU
+------------
+Android appka (eu.atarihelp.emu10) - vice emulatoru (Atari, Sega, PS1).
+U PS1 se prechazelo ze softwaroveho vykreslovace (gpu_neon, cistě CPU/
+NEON, potvrzene funkcni referencni build "96" - viz nize) na GPU/OpenGL
+ES vykreslovac (gpu-gles), aby graficky vypadal lip nez hranaty puvodni
+render, PRI ZACHOVANI plynulosti a bez zatezovani telefonu (Samsung
+Galaxy S8, Android 9/sdk28) vic, nez musi.
+
+Rene (majitel/vyvojar appky, neni programator, pracuje pres GitHub
+Desktop + GitHub Actions build) chce: 100% GPU/OpenGL cestu (zadny
+navrat k softwarovemu NEON vykreslovaci), stabilni obraz bez blikani,
+plynuly zvuk (underruns->0).
+
+STAV PRI PREVZETI TETO SESSION
+-------------------------------
+Predchozi session (Atari/Sega kolega, viz stary predavaci balicek)
+predal PS1 cast s hlaseniami "spatne vykresleni" a "kouse se zvuk".
+
+STAV NA KONCI TETO SESSION
+----------------------------
+Rene je vycerpany a frustrovany dlouhou serii buildu (SK128 az SK152,
+~25 iteraci), kdy kazda oprava odhalila dalsi vrstvu problemu. Rekl, ze
+uz nechce pokracovat a chce audit + predani. TOTO JE TEN AUDIT.
+
+Obraz porad blika a je "neuplny" dle Reneho posledniho hlaseni. Zvuk se
+porad seka. NIC Z TOHOTO NENI PLNE VYRESENO. Nize je presny seznam, co
+JE overene opravene (s dukazem) a co JESTE NENI.
+
+================================================================================
+SOUBORY - CO SE MENILO A KDE JE NAJDETE V TOMTO BALICKU
+================================================================================
+
+app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c
+  - Nejvic zmeneny soubor. Puvodne cetl primo z pbufferu synchronne na
+    hlavnim (zvuk generujicim) vlakne. Ted: samostatne cteci vlakno se
+    sdilenym EGL kontextem, hra kresli do JEDNE trvale "canvas" plochy,
+    kopiruje se levne (GPU->GPU) do 2 "snapshot" textur pro cteci vlakno.
+  - Diagnostika: GLES_PIXEL_SAMPLE, GLES_ASCII_DUMP (textovy obrazek),
+    GLES_READBACK_TIMING, GLES_SCENE_CHANGE_CLEAR, GLES_CANVAS_READY,
+    GLES_READER_THREAD_READY.
+
+app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpuPrim.c
+  - JEDNA zmena: SetSemiTrans() - opravena chybejici glBlendEquationOES
+    pro odecitaci rezim poloprusvitnosti (viz "OPRAVENO #4" nize).
+  - POZOR: tohle je soubor primo z vendor/upstream PCSX-ReARMed. Rene
+    poslal svoji REALNOU kopii (gpu-gles.zip) - overeno bajt-po-bajtu
+    shodna s verejnym upstream v dobe kontroly. Pokud se necha aktualizovat
+    upstream, bude potreba tenhle diff znovu aplikovat rucne.
+
+app/src/main/cpp/nap_ps1_native.cpp
+  - Diagnostika v hlavni smycce (nap_worker): cas straveny v retro_run()
+    / sync / display kazdy tick, CPU frekvence (VSECH jader, ne jen
+    cpu0), pokus o teplotu (NEFUNGUJE - viz nize), pamet (VmRSS +
+    mallinfo heap). Unikatni "BUILD2SK150 NATIVE_VERSION_CONFIRM" radek
+    hned na startu - VZDY zkontrolovat, ze se objevi v logu, jinak
+    testujete stary build.
+
+app/src/main/java/eu/atarihelp/emu10/MainActivity.java
+  - Jedna mala pridana diagnostika (BUILD2SK143) v napTvWebPublishBitmap -
+    meri jas snimku v okamziku, kdy jde do H264 enkoderu pro TV cast.
+    (Nikdy nebyla poradne vyuzita/vyhodnocena - viz "NEDOKONCENO" nize.)
+
+================================================================================
+CO JE OVERENE OPRAVENO (s dukazem z Reneho logu, ne jen tvrzeni)
+================================================================================
+
+1) BORDER-BLEED (SK129/130): Cast VRAM mimo aktualni DrawArea (napr.
+   horni/dolni okraj obrazu) se nikdy neprekreslovala, ale cetla se -
+   ukazovala nahodny "smetiskovy" obsah. OPRAVENO cistenim pri zmene
+   sceny. POTVRZENO nepřímo (navazujici opravy na tom stavely).
+
+2) GPU READBACK BLOKOVAL ZVUKOVE VLAKNO (SK133-140): glReadPixels bezel
+   synchronne na tom samem vlakne jako emulace+zvuk, 6-21ms/snimek =
+   citelna cast 16.6ms rozpoctu pro 60fps. OPRAVENO presunutim na
+   samostatne vlakno se sdilenym EGL kontextem. POTVRZENO merenim v logu:
+   cas klesl na ~1.5-2ms A bezi mimo hlavni vlakno (viz
+   "GLES_READBACK_TIMING ... (uz MIMO g_worker/audio vlakno)").
+
+3) STRIDAVY CERNY SNIMEK - "ZAKLADNI" BUG (SK144): Puvodni reseni #2
+   nechavalo hru stridave kreslit do DVOU fyzickych textur pro
+   zrychleni cteni. Hra ale MA VLASTNI dvojity buffering (VRAM
+   src_x 0/512). Tyhle dve nezavisla stridani se casem sesynchronizovala
+   spatne - jedna z mych textur dostavala TRVALE jen levou polovinu
+   obrazu, druha jen pravou -> pri cteni "spatne" poloviny 100% cerna.
+   DUKAZ: GLES_PIXEL_SAMPLE ukazal presne stridajici se sumAvg=0 (cerna)
+   / sumAvg~180 (normalni), 71x po sobe v jednom logu.
+   OPRAVA: Hra ted VZDY kresli do JEDINE trvale "canvas" plochy (presne
+   jako pred vsim tímto zásahem) - jeji vlastni src_x adresovani tak
+   funguje spravne. Cteci vlakno dostava kopie (GPU->GPU
+   glCopyTexSubImage2D) do 2 samostatnych "snapshot" textur.
+   POTVRZENO: v NASLEDUJICICH logach uz se ten alternujici vzorec (sumAvg=0
+   pravidelne stridajici se s normalni hodnotou) VUBEC neobjevil.
+
+4) CHYBNY BLEND REZIM PRO POLOPRUSVITNOST (SK146) - moznap pricina
+   "cerveneho sumu" na Naughty Dog logu: PS1 ma 4 rezimy poloprusvitnosti,
+   jeden je "odecitani" (B-F). To vyzaduje glBlendEquation(REVERSE_SUBTRACT),
+   ne jen glBlendFunc. Spravny kod byl v gpuPrim.c NAPSANY, ale
+   ZAKOMENTOVANY (zavisel na nikdy-nezapojene glBlendEquationEXTEx).
+   Aktivni kod pro tenhle jeden rezim pocital JINOU matematiku
+   (B*(1-F) misto B-F).
+   OPRAVA: zapojena skutecna GLES funkce glBlendEquationOES
+   (GL_OES_blend_subtract - bezne dostupne rozsireni, overeno ze
+   je v hlavickach a linkuje se).
+   STAV: NEPOTVRZENO Renem - nikdy nedal jasnou zpetnou vazbu specificky
+   na tuhle opravu (mezitim se resily jine veci).
+
+5) PRAZDNE VRAM-READ SYNC FUNKCE (SK149): CheckVRamRead/CheckVRamReadEx
+   v gpulib_if.c byly UPLNE PRAZDNE (komentar "don't do GL vram read").
+   Hra je vola pred vlastnimi VRAM->VRAM kopiemi (napr.
+   MoveImageWrapped v gpuPrim.c) - tyhle kopie pracuji s CPU polem
+   psxVuw, ktere BEZ teto synchronizace nikdy neodrazelo, co uz je
+   skutecne vykresleno pres OpenGL.
+   OPRAVA: implementovano - cte prislusnou oblast z GPU (canvas je porad
+   bindnuty) a preklada do PS1 16bit formatu primo do psxVuw.
+   STAV: NEPOTVRZENO Renem - build s touhle opravou (SK149+) uz
+   netestoval, rekl ze konci.
+
+================================================================================
+CO BYLO VYSETRENO A VYVRACENO / VYJASNENO
+================================================================================
+
+- "Prime napojeni PS1 GLES framebufferu do MediaCodec Surface" (Rene
+  nekolikrat posilal tenhle navrh, zjevne z externi konzultace/jineho
+  AI nastroje): VYVRACENO primo z Reneho vlastniho souboru
+  nap_ps1_native.cpp - PS1 jadro pouziva VYHRADNE offscreen EGL Pbuffer,
+  zadna zminka o MediaCodec/EGL Window Surface v celem souboru. Cast
+  obrazovky pro TV cast jde přes UPLNE JINY, oddeleny mechanismus
+  (PixelCopy zachytavani cele App obrazovky v MainActivity.java,
+  "TV_WEB_PIXELCOPY_AVG" v logu) - nesouvisi s PS1 jadrem primo.
+
+- Pad ze 19.7. (SIGSEGV v CheckTextureInSubSCache, z logcat/pad.txt):
+  Potvrzeno, ze je ze DVOU DNI PRED zacatkem teto session - nesouvisi s
+  zadnou zmenou odsud.
+
+- "Prehrivani telefonu" (moje puvodni hypoteza z CPU frekvence cpu0):
+  METODOLOGICKY SLABE - cetlo se jen JEDNO jadro, telefon ma vic jader s
+  nezavislymi frekvencemi menenymi podle zateze (ne jen teploty). Pokus
+  o PRIME mereni teploty (/sys/class/thermal/thermal_zoneN/temp, vsech
+  20 zon) VZDY vraci -1 (nedostupne) - pravdepodobne Android/Samsung
+  blokuje appkam bez zvlastnich prav. NEVYRESENO - teplotu se nepodarilo
+  zmerit primo.
+
+- "Pametovy unik presne jako u Segy" (Reneho hypoteza): SMISENE DUKAZY.
+  V jednom logu vmRssKb rostlo hladce 351MB->607MB. V DALSIM (pozdejsim)
+  logu (po pridani mallinfo() rozpadu) heapActiveKb (CPU malloc pamet)
+  ZUSTAVA STABILNI (~68-85MB), zatimco vmRssKb KOLISA (ne hladce roste)
+  o stovky MB nahoru dolu. To NEVYPADA jako klasicky malloc unik v
+  auditovanem kodu (hlavni GL textury v gpuTexture.c se vytvareji jen
+  JEDNOU, znovupouzivaji - overeno pocitanim glGenTextures vs
+  glDeleteTextures volani). Muze byt Java strana (Bitmapy pro
+  PixelCopy/cast), GPU ovladac, nebo normalni OS chovani. NEVYRESENO.
+
+- avgRetroRunMs (cas straveny primo v CPU emulaci + zpracovani vsech
+  grafickych prikazu hry) POSTUPNE ROSTE behem JEDNE session (typicky
+  2-7ms na zacatku -> 24-49ms pozdeji, tj. az 3x pres 16.6ms rozpocet
+  pro 60fps). Koreluje s KLESAJICI max. CPU frekvenci napric jadry, ale
+  PRICINA POKLESU FREKVENCE NENI JISTA (teplota se nepodarila zmerit,
+  Rene tvrdi ze telefon se ani nezahreje). PRAVDEPODOBNE HLAVNI ZDROJ
+  zbyvajiciho zadrhavani zvuku (underrunLoops~55-64% pozorovano
+  opakovane), ale KONKRETNI PRICINA RUSTU NENI NALEZENA.
+
+================================================================================
+NEDOKONCENO / OTEVRENE OTAZKY PRI PREDANI
+================================================================================
+
+1. Posledni hlaseni Reneho (build 150-152): "Sony logo neuplne",
+   "nehorazne blikani", zvuk a obraz "se hadaji". Prvnich ~50 snimku
+   intra je zmereno jako 100% cerna (muze byt normalni cerna pred
+   startem loga NEBO problem - nejiste). Nasledujici snimky (52-110+)
+   ukazuji jas rovnomerne rostouci, ale ve 2 vzorkovanych bodech
+   (top-left, center) PLNE PLOSNE - zadna struktura tvaru loga v nich
+   videt neni. Podrobne textove vypisy celeho obrazku (BUILD2SK113,
+   48x20 mrizka) ale DOSLY (vycerpal se pocet) JESTE v cerne fazi,
+   pred touto zajimavou casti. POSLEDNI BUILD (SK152) rozsiril okno i
+   pocet vypisu, aby SAHALY az za snimek ~150 - NIKDY NEOTESTOVANO.
+
+2) Blend fix (#4) a VRAM sync fix (#5) vyse - nikdy nedostaly cistou
+   zpetnou vazbu, jestli pomohly s "cervenym sumem"/"neuplnou grafikou".
+
+3) Cervenkavy "sum" na Naughty Dog logu (puvodne nahlaseno pred mnoha
+   buildy) - domneleprakticky vysvetleno #4, ale nikdy vizualne
+   nepotvrzeno po opravě.
+
+4) MainActivity.java BUILD2SK143 diagnostika (jas snimku pri publikovani
+   do H264 enkoderu) - pridana, ale VYSLEDKY NIKDY NEVYHODNOCENY (Rene
+   mezitim presel na jine temata). Muze byt relevantni pro puvodni
+   "problikavajici snimek ve videu" pozorovani (viz analyza videa nize).
+
+5) ANALYZA VIDEA (Rene poslal 2 kratka videa behem session): kvantitativni
+   rozbor jasu snimek-po-snimku ukazal PRAVIDELNE, KRATKE (1 snimek)
+   propady jasu na ~30% normalu, casto (desitky za par desitek vterin).
+   Nikdy se nedoslo k jistemu zaveru, jestli tohle vznika v PS1 jadru,
+   nebo v PixelCopy/cast vrstve (obe byly podezrivany v ruznych fazich,
+   dukazy byly smisene).
+
+================================================================================
+DULEZITE POZNAMKY / PONAUCENI PRO DALSI SESSION
+================================================================================
+
+- gpu-gles je ZAMERNE cistě offscreen (EGL Pbuffer, zadne EGL Window
+  Surface) - to je zdokumentovano primo v Renem uploadovanem
+  nap_ps1_native.cpp. Jakykoli navrh pocitajici s tradicnim
+  eglSwapBuffers/window-surface architekturou NA TOHLE NESEDI.
+
+- Rene NENI programator - vzdy potrebuje kompletni ZIP se SPRAVNOU
+  slozkovou strukturou (app/src/main/cpp/... presne), ktery proste
+  nakopiruje pres existujici projekt (Windows se zepta na prepsani).
+  NIKDY neposilat jen "diff" nebo popis zmeny bez souboru.
+
+- KDYZ SE MENI VIC NEZ 1 SOUBOR: vzdy poslat VSECHNY aktualni soubory
+  najednou v jednom ZIPu, i kdyz se nektere nemenily - jinak muze
+  vzniknout nesoulad (uz se stalo nekolikrat - napr. nap_ps1_native.cpp
+  nebyl aktualizovan pri testu, kde chybely ocekavane logy).
+
+- VZDY pridat nepodmineny "potvrzuji ze bezi VERZE X" log radek hned na
+  startu - jinak neni jiste, ktery build se skutecne testuje.
+
+- BUNDLOVANI VIC ZMEN NAJEDNOU ZTIZUJE IZOLACI REGRESI - stalo se
+  minimalne 2x (SK129, SK137/138), kdy kombinace zmen zpusobila novy,
+  hure diagnostikovatelny problem. Drzet se pokud mozno jedne zmeny
+  najednou, zvlast po tom, co uz neco funguje.
+
+- Rene ma zalohu "Build 96" (cistě softwarovy NEON vykreslovac,
+  potvrzeno analyzou APK - zadna GLES/EGL zavislost v binarce vubec).
+  Rekl VYSLOVNE, ze navrat k NEON vykreslovaci NENI prijatelna cesta -
+  chce vyresit GPU/OpenGL cestu, ne ji obejit.
+
+- V lib/ slozce APK (Build 96) byly znacky jen BUILD2SA2/BUILD2SA11 -
+  o dost starsi nez soucasny BUILD2SK9x-15x rad. Potvrzuje, ze jde o
+  vyrazne drivejsi stav kodu.
+
+================================================================================
+DOPORUCENY DALSI KROK (pro zaznam, ne jako tlak na pokracovani)
+================================================================================
+Otestovat BUILD2SK152 (posledni v tomto balicku) - konkretne se podivat
+na BUILD2SK113 textove vypisy ze snimku ~50-150 intra, at se KONECNE
+zjisti, jestli se logo v tehle fazi kresli spravne (jen se stridave
+snimky spatne vzorkovaly) nebo je tam skutecny problem s vykreslovanim
+samotneho tvaru.
+================================================================================
+KONEC PREDAVACIHO BALICKU
+================================================================================

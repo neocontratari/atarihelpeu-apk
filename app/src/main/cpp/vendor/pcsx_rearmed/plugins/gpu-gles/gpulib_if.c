@@ -133,7 +133,60 @@ static GLuint nap_canvas_tex = 0, nap_canvas_fbo = 0; // JEDINY cil kresleni pro
 static GLuint nap_fbo_tex[2] = {0, 0}; // "snapshot" textury - jen cil GPU->GPU kopie a zdroj pro ctecí vlakno, hra do nich NIKDY nekresli primo
 static int nap_fbo_ready = 0;      // BUILD2SK134: 1 = FBO cesta funguje; 0 = video se VUBEC neposila (zadny tichy navrat ke starem zpusobu - viz nap_fbo_init_once)
 static int nap_snapshot_idx = 0;  // BUILD2SK144: ktery snapshot index byl NAPOSLED cilem kopie (uz NENI "kam hra kresli" - jen "kam jsme naposled kopirovali")
-static int nap_fbo_meta_sx[2], nap_fbo_meta_sy[2], nap_fbo_meta_w[2] = {320,320}, nap_fbo_meta_h[2] = {240,240}; // BUILD2SK133: co PLATILO v okamziku, kdy se do tenhle SNAPSHOT naposledy zkopirovalo - NE aktualni gpu.screen (to uz muze byt o snimek dal)
+// BUILD2SK153: nap_fbo_meta_* ODSTRANENO - byla to KORENOVA PRICINA
+// stroboskopickeho blikani. Request pro cteci vlakno se plnil z metadat
+// ulozenych pri PREDCHOZI kopii do tehoz snapshotu (= 2 snimky stare),
+// zatimco glCopyTexSubImage2D do snapshotu prave vlozila AKTUALNI snimek.
+// U 60fps her s pravidelnym stridanim src_x 0/512 se to nahodou trefovalo
+// (perioda 2 == perioda 2), ale u 30fps her (Crash!) jde src_x po ticich
+// 0,0,512,512,... - hodnota stara 2 ticky je PRESNE OPACNA polovina nez
+// ta aktualni -> KAZDY DRUHY snimek se cetl z poloviny, do ktere hra
+// ZROVNA TED kresli (rozpracovany back buffer) -> stridani dobry/rozbity
+// snimek = stroboskop. SK151 "useknuty snimek #6 (horni pulka obsah,
+// spodni prazdna)" je presne zachyceny rozpracovany buffer. OPRAVA:
+// request VZDY nese CERSTVA metadata (fresh_*) - presne to, co prave
+// prislo do snapshotu kopii. Zadna pamet per-snapshot uz neni potreba.
+static int nap_last_push_w = 0, nap_last_push_h = 0; // BUILD2SK153: rozmery NAPOSLED odeslaneho snimku - jediny spravny zaklad pro "zmenilo se rozliseni?" (viz do_clear nize)
+
+// BUILD2SK153: zachyt GP1 registru JESTE PRED is_opened kontrolou v
+// GPUwriteStatus_ext. GPUopen() se v nasem libretro toku NIKDY nevola
+// (viz BUILD2SK102/106 v nap_ps1_native.cpp - inicializace se dela rucne),
+// takze is_opened zustava 0 NAVZDY a CELY peops GP1 svet (RGB24 pro FMV
+// videa, Disabled, Interlaced) je zamrzly na vychozich hodnotach - to je
+// PRESNE duvod SK128 nalezu "Range=[0,0,0,0] po celou dobu". Tady si ty
+// bity ulozime sami, bez ozivovani zbytku mrtvych handleru (zadne
+// updateDisplay/ChangeDispOffsets kaskady - jen holy stav).
+static int nap_disp_rgb24 = 0;      // GP1(08h) bit 4 - 24bit TrueColor (MDEC/FMV videa)
+static int nap_disp_interlace = 0;  // GP1(08h) bit 5 - prokladany rezim (jen diagnostika; kreslime vzdy progresivne v plne vysce)
+static int nap_disp_disabled = 0;   // GP1(03h) bit 0 - displej vypnuty (behem vypnuti NEPOSILAME snimky - drzime posledni, zadne cerne zablesky)
+static int nap_gp1_ext_seen = 0;    // jednorazova diagnostika - potvrdi, ze gpu.c skutecne vola GPUwriteStatus_ext (viz handover: bez toho FMV/RGB24 zustane nefunkcni a je treba hledat jinou cestu)
+
+// BUILD2SK153: obdelnikova obalka (bbox) vseho, co GPU od startu SKUTECNE
+// vykreslilo do canvasu (polygony, sprity, fill). Ucel: canvas je
+// autoritativni JEN tam, kde GPU neco nakreslilo - VSUDE JINDE (texturove
+// stranky, CLUTy!) je autoritativni CPU pole psxVuw. Puvodni SK149
+// nap_vram_read_sync cetla canvas BEZ tohoto omezeni - kdyby se nekdy
+// spustila (dnes byla mrtva, iFrameReadType=0), prepsala by CPU-nahrana
+// texturova data cernou (nikdy nekreslenou) plochou canvasu. Sync se ted
+// VZDY orizne na tuhle obalku.
+static int nap_render_bbox_x0 = 0, nap_render_bbox_y0 = 0, nap_render_bbox_x1 = 0, nap_render_bbox_y1 = 0; // x1/y1 exkluzivni; prazdne kdyz x0>=x1
+static void nap_render_bbox_union(int x0, int y0, int x1, int y1)
+{
+  if (x0 < 0) x0 = 0;
+  if (y0 < 0) y0 = 0;
+  if (x1 > NAP_PSX_VRAM_W) x1 = NAP_PSX_VRAM_W;
+  if (y1 > NAP_PSX_VRAM_H) y1 = NAP_PSX_VRAM_H;
+  if (x0 >= x1 || y0 >= y1) return;
+  if (nap_render_bbox_x0 >= nap_render_bbox_x1) { // prazdna -> prvni zapis
+    nap_render_bbox_x0 = x0; nap_render_bbox_y0 = y0;
+    nap_render_bbox_x1 = x1; nap_render_bbox_y1 = y1;
+    return;
+  }
+  if (x0 < nap_render_bbox_x0) nap_render_bbox_x0 = x0;
+  if (y0 < nap_render_bbox_y0) nap_render_bbox_y0 = y0;
+  if (x1 > nap_render_bbox_x1) nap_render_bbox_x1 = x1;
+  if (y1 > nap_render_bbox_y1) nap_render_bbox_y1 = y1;
+}
 
 // BUILD2SK140: RENE VYSLOVNE PRIJAL RIZIKO (ma zalohu Build 96, chce
 // hardwarove reseni misto dalsiho osekavani) - presouvame samotne cteni
@@ -324,6 +377,7 @@ void nap_gles_sync_display_settings(void)
   glLoadIdentity();
   glOrtho(0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H, 0, -1, 1);
   glMatrixMode(GL_MODELVIEW); // BUILD2SK128: vratit rezim matice tak, jak ho necha GLinitialize (SK122 nechaval PROJECTION aktivni)
+  glLoadIdentity(); // BUILD2SK153: MODELVIEW pripnout na identitu kazdy tick - pojistka proti cemukoli, co by ji poskodilo (napr. drivejsi glOrtho-do-modelview chyba v updateDisplayIfChanged); vsechna geometrie pluginu identitu predpoklada
   static int nap_proj_logged = 0;
   if (!nap_proj_logged) {
     nap_proj_logged = 1;
@@ -431,11 +485,15 @@ static void *nap_reader_thread_main(void *arg)
    nap_t0 = nap_now_ms();
    glReadPixels(src_x, glY, rb_w, rb_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_gles_vram_rgba);
    nap_t1 = nap_now_ms();
-   if (req.do_clear) {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    nap_diag_log("BUILD2SK140 GLES_SCENE_CHANGE_CLEAR idx=%d", req.idx);
-   }
+   // BUILD2SK153: cisteni SNAPSHOTU tady ODSTRANENO - snapshot se pri
+   // KAZDEM snimku kompletne prepisuje glCopyTexSubImage2D pres CELOU
+   // plochu 1024x512 (viz nap_gles_readback_and_push), takze v nem nikdy
+   // nemuze "viset" stary obsah. Cisteni CANVASU pri zmene rozliseni
+   // (SK129 border-bleed ochrana) zustava - ale dela se na hlavnim vlakne,
+   // JEDNOU na zmenu (viz tamtez), ne 2x jako drive (per-snapshot
+   // porovnani vystrelilo pro oba snapshoty po sobe a druhy glClear uz
+   // smazal cerstve nakresleny snimek nove sceny -> cerny zablesk pri
+   // kazdem prepnuti menu<->hra).
    if (nap_gles_frame_count % 31 == 1) {
     nap_diag_log("BUILD2SK140 GLES_READ_ANCHOR srcX=%d srcY=%d glY=%d rb_w=%d rb_h=%d readIdx=%d", src_x, src_y, glY, rb_w, rb_h, req.idx);
    }
@@ -483,7 +541,7 @@ static void *nap_reader_thread_main(void *arg)
   // to, aby bylo videt, jak casto/pravidelne se to deje. Behem PRVNICH
   // 200 snimku (pokryje cely intro) vzorkujeme KAZDY tick - cistě
   // mereni, zadna zmena chovani.
-  if (nap_gles_frame_count < 200 || nap_gles_frame_count % 31 == 1) {
+  if (nap_gles_frame_count < 400 || nap_gles_frame_count % 31 == 1) { // BUILD2SK152: 200->400, aby to sahalo za tu cernou/rampovaci fazi az do casti, kde uz je videt (nebo neni) skutecny tvar loga
    GLenum glerr = glGetError();
    unsigned long long sum = 0;
    int n = rb_w * rb_h;
@@ -501,7 +559,7 @@ static void *nap_reader_thread_main(void *arg)
      (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (n > 0 ? (nearBlack * 100 / n) : -1), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR,
      rb_w, rb_h, nap_gles_frame_count);
    static int nap_ascii_dump_count = 0;
-   if (nap_ascii_dump_count < 30) { // BUILD2SK151: 8 -> 30, at zachytime vic prilezitosti behem husteho useku
+   if (nap_ascii_dump_count < 150) { // BUILD2SK152: 30 -> 150 - minule se vycerpalo jeste v cerne/rampovaci fazi (snimky 1-30), potrebujeme sahat az za snimek ~110, kde uz jas znatelne roste
      nap_ascii_dump_count++;
      const char *shades = " .:-=+*#%@";
      const int cols = 48, rows = 20;
@@ -575,20 +633,27 @@ static void nap_gles_readback_and_push(void)
  // GPU->GPU kopie aktualniho obsahu canvasu do jednoho ze 2 "snapshot"
  // policek, (2) domluva s ctecim vlaknem, at tenhle snapshot zpracuje.
  int other_idx = 1 - nap_snapshot_idx;
+ int dims_changed = (nap_last_push_w != 0 && (fresh_w != nap_last_push_w || fresh_h != nap_last_push_h)); // BUILD2SK153: proti NAPOSLED ODESLANEMU snimku (globalne), ne proti 2 snimky staremu stavu jednoho snapshotu
  pthread_mutex_lock(&nap_reader_mtx);
  // BUILD2SK140 (princip beze zmeny): pockat, az ctecí vlakno DOKONCI svoji
- // GPU cast (cteni + pripadne cisteni) predchoziho pozadavku na TENTO SAMY
- // snapshot - teprve pak je bezpecne do nej znovu kopirovat. V beznem
- // pripade uz je to davno hotove.
+ // GPU cast predchoziho pozadavku na TENTO SAMY snapshot - teprve pak je
+ // bezpecne do nej znovu kopirovat. V beznem pripade uz je to davno hotove.
  while (nap_reader_has_req) pthread_cond_wait(&nap_reader_cv, &nap_reader_mtx);
  while (!nap_reader_idx_free[other_idx]) pthread_cond_wait(&nap_reader_cv, &nap_reader_mtx);
  nap_reader_idx_free[other_idx] = 0; // zabirame ho pro NOVY pozadavek
+ // BUILD2SK153: KLICOVA OPRAVA STROBOSKOPU - request nese VZDY CERSTVA
+ // metadata (co prave TED plati v gpu.screen a co za okamzik prijde do
+ // snapshotu kopii nize). Drive se tady kopirovala metadata z minule kopie
+ // do tehoz snapshotu (2 snimky stara) - u 30fps her (src_x po ticich
+ // 0,0,512,512,...) to znamenalo cist KAZDY DRUHY snimek z opacne,
+ // prave rozkreslene poloviny VRAM. Viz velky komentar u byvalych
+ // nap_fbo_meta_* poli.
  nap_reader_req.idx = other_idx;
- nap_reader_req.rb_w = nap_fbo_meta_w[other_idx];
- nap_reader_req.rb_h = nap_fbo_meta_h[other_idx];
- nap_reader_req.src_x = nap_fbo_meta_sx[other_idx];
- nap_reader_req.src_y = nap_fbo_meta_sy[other_idx];
- nap_reader_req.do_clear = (fresh_w != nap_fbo_meta_w[other_idx] || fresh_h != nap_fbo_meta_h[other_idx]);
+ nap_reader_req.rb_w = fresh_w;
+ nap_reader_req.rb_h = fresh_h;
+ nap_reader_req.src_x = fresh_sx;
+ nap_reader_req.src_y = fresh_sy;
+ nap_reader_req.do_clear = 0; // BUILD2SK153: cisteni snapshotu na ctecim vlakne zruseno (plna kopie ho prepisuje cely) - pole zustava jen kvuli stabilite struktury
  pthread_mutex_unlock(&nap_reader_mtx); // BUILD2SK144: odemknout PRED GL praci nize - mutex je jen pro sdilena data, ne pro GL volani
  // BUILD2SK144: LEVNA GPU->GPU kopie - canvas_fbo je porad bindnuty (jako
  // vzdy), takze glCopyTexSubImage2D cte primo z NEJ do snapshot textury.
@@ -596,23 +661,32 @@ static void nap_gles_readback_and_push(void)
  // presun, typicky < 1ms, a hlavne: NEDOTYKA se toho, kam hra kresli.
  glBindTexture(GL_TEXTURE_2D, nap_fbo_tex[other_idx]);
  glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
- // BUILD2SK144: SK139 princip, aplikovany na CANVAS misto na jednotlive
- // snapshoty (canvas je ted ten JEDINY, trvaly povrch, kam hra kresli -
- // takze presne tady, ne na snapshotu, muze stara scena "viset" do nove).
- // Canvas_fbo je porad bindnuty (nikdy jsme ho neopustili), takze glClear
- // tady cisti PRAVE jeho - AZ PO kopii vyse, takze posledni platny snimek
- // stare sceny se jeste stihl zachytit do snapshotu, driv nez zmizi.
- if (nap_reader_req.do_clear) {
+ // BUILD2SK153: glFlush zarucuje, ze kopie vyse bude viditelna i z DRUHEHO
+ // (cteciho) EGL kontextu, ktery sdili textury s timhle. Drive tuhle roli
+ // "nahodou" plnil eglSwapBuffers v updateFrontDisplay - ktery je ale na
+ // pbufferu podle EGL specifikace no-op, takze se spolehalo na stesti
+ // ovladace. glFlush NENI glFinish - NECEKA na dokonceni (zadny navrat
+ // SK112/117 problemu s blokovanim zvukoveho vlakna), jen odesle frontu.
+ glFlush();
+ // BUILD2SK144/153: SK129/139 border-bleed ochrana - pri zmene rozliseni
+ // vycistit CANVAS (jediny trvaly povrch, kde stara scena muze "viset" do
+ // nove). AZ PO kopii vyse, takze posledni platny snimek stare sceny se
+ // jeste stihl zachytit. NOVE (SK153): porovnava se proti naposled
+ // ODESLANEMU snimku -> vystreli PRESNE JEDNOU na kazdou zmenu rozliseni.
+ // Drive per-snapshot porovnani vystrelilo 2x po sobe a druhy glClear uz
+ // mazal cerstve nakresleny snimek NOVE sceny -> cerny zablesk pri kazdem
+ // prepnuti menu<->hra (Reneho hlaseni k bodu "zmena rozliseni").
+ if (dims_changed) {
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
+  // canvas je po vycisteni cely cerny -> nic z drivejsiho GPU kresleni uz
+  // neexistuje -> obalka vykreslene plochy se musi vynulovat, jinak by
+  // nap_vram_read_sync mohla cist cernou plochu jako "platny" obsah.
+  nap_render_bbox_x0 = nap_render_bbox_y0 = nap_render_bbox_x1 = nap_render_bbox_y1 = 0;
+  nap_diag_log("BUILD2SK153 GLES_RES_CHANGE_CANVAS_CLEAR old=%dx%d new=%dx%d", nap_last_push_w, nap_last_push_h, fresh_w, fresh_h);
  }
- // BUILD2SK133/144: tenhle snapshot dostal cerstva data - ulozit aktualni
- // (fresh) rozmery/pozici, at az na nej priste dojde rada cteni, vime, co
- // do nej PRAVE prislo.
- nap_fbo_meta_sx[other_idx] = fresh_sx;
- nap_fbo_meta_sy[other_idx] = fresh_sy;
- nap_fbo_meta_w[other_idx] = fresh_w;
- nap_fbo_meta_h[other_idx] = fresh_h;
+ nap_last_push_w = fresh_w;
+ nap_last_push_h = fresh_h;
  nap_snapshot_idx = other_idx;
  pthread_mutex_lock(&nap_reader_mtx);
  nap_reader_has_req = 1;
@@ -680,6 +754,18 @@ static size_t nap_vramread_tmp_cap = 0;
 static void nap_vram_read_sync(int x, int y, int dx, int dy)
 {
   if (!nap_fbo_ready) return;
+  // BUILD2SK153: KRITICKE OMEZENI - synchronizovat z canvasu do psxVuw se
+  // smi JEN uvnitr obalky skutecne GPU-vykreslene plochy (nap_render_bbox).
+  // Canvas je autoritativni pouze tam, kde GPU neco nakreslilo; vsude jinde
+  // (texturove stranky, CLUTy - typicky prava/spodni cast VRAM) je
+  // autoritativni CPU pole psxVuw a canvas tam ma jen cernou (nikdy
+  // neprepsanou) vypln. Puvodni SK149 verze tohle nerozlisovala - kdyby se
+  // spustila na texturovou oblast, prepsala by hre textury cernou.
+  if (nap_render_bbox_x0 >= nap_render_bbox_x1) return; // GPU zatim nic nenakreslilo - psxVuw je autoritativni cely
+  if (x  < nap_render_bbox_x0) x  = nap_render_bbox_x0;
+  if (y  < nap_render_bbox_y0) y  = nap_render_bbox_y0;
+  if (dx > nap_render_bbox_x1) dx = nap_render_bbox_x1;
+  if (dy > nap_render_bbox_y1) dy = nap_render_bbox_y1;
   int w = dx - x, h = dy - y;
   if (x < 0) { w += x; x = 0; }
   if (y < 0) { h += y; y = 0; }
@@ -718,6 +804,71 @@ void CheckVRamRead(int x, int y, int dx, int dy, bool bFront)
 void CheckVRamReadEx(int x, int y, int dx, int dy)
 {
   nap_vram_read_sync(x, y, dx, dy);
+}
+
+// BUILD2SK153: OPACNY smer nez nap_vram_read_sync - dostat CPU->VRAM zapisy
+// (GP0 A0 image load: FMV snimky, loading obrazovky, stmivaci prechody,
+// 2D pozadi; a cile GP0 80 VRAM->VRAM kopii) do CANVASU, aby je readback
+// videl. TOHLE JE HLAVNI DUVOD "neuplne grafiky": puvodni cesta
+// (CheckWriteUpdate -> CheckAgainstScreen -> UploadScreen) je cela zavisla
+// na peops PSXDisplay.DisplayPosition/DisplayEnd - a ty jsou kvuli
+// is_opened=0 zamrzle na NULACH -> CheckAgainstScreen vzdy FALSE ->
+// UploadScreen se NIKDY nezavolal -> zadny CPU zapis se do canvasu nikdy
+// nedostal. Tady delame rozhodnuti sami, proti AUTORITATIVNIMU stavu
+// (gpu.screen pres nap_gpulib_display_info) a pouzivame UploadScreen(-1):
+// varianta -1 ("upload after") klade vrcholy v HOLYCH VRAM souradnicich
+// (zadne odecitani DisplayPosition jako varianty 0/1) - presne spravne pod
+// SK128 VRAM-space projekci (glOrtho 0..1024 x 0..512).
+static void nap_upload_vram_rect(int x, int y, int w, int h)
+{
+  if (!nap_fbo_ready) return;
+  if (w <= 0 || h <= 0) return;
+  int dsx = 0, dsy = 0, dw = 0, dh = 0;
+  nap_gpulib_display_info(&dsx, &dsy, &dw, &dh);
+  if (dw <= 0) dw = 320;
+  if (dh <= 0) dh = 240;
+  // 24bit rezim: VRAMWrite/kopie chodí v 16bit jednotkach (halfword), ale
+  // LoadDirectMovieFast + zobrazovaci sirka pracuji v PIXELECH (3 bajty).
+  // Stejny prepocet *2/3 jako vendor PrepareRGB24Upload.
+  int px = x, pw = w, pdsx = dsx;
+  if (nap_disp_rgb24) {
+    px = (x * 2) / 3;
+    pw = (w * 2) / 3;
+    pdsx = (dsx * 2) / 3;
+    (void)pdsx; // sirkovy prekryv v RGB24 neresime po sloupcich - viz radkove pasmo nize
+  }
+  // Radkove pasmo displeje: nahravame, pokud se zapis RADKOVE prekryva s
+  // [src_y, src_y+vres) - tim pokryjeme JAK prave zobrazovanou, TAK druhou
+  // (back-buffer, src_x 0/512) polovinu VRAM ve stejnych radcich (hry
+  // bezne zapisuji HUD/pozadi do back-bufferu tesne pred flipem - podle
+  // sloupcu by se to nedalo spolehlive poznat). Texturove stranky lezici v
+  // JINYCH radcich (bezne y>=256 u 240p her) se tim automaticky vynechaji
+  // (setri GPU quady); kdyz radky sdili, nahraje se to taky - nevadi,
+  // obsah canvasu == psxVuw, jen o par quadu vic. RGB24 (FMV) nahravame
+  // VZDY - snimek filmu se proste musi objevit.
+  int yy0 = y, yy1 = y + h;
+  if (yy1 > NAP_PSX_VRAM_H) yy1 = NAP_PSX_VRAM_H;
+  if (!nap_disp_rgb24) {
+    int band0 = dsy, band1 = dsy + dh;
+    if (band1 > NAP_PSX_VRAM_H) band1 = NAP_PSX_VRAM_H;
+    if (yy1 <= band0 || yy0 >= band1) return; // cely zapis mimo radky displeje (typicky texturova data) - canvas ho nepotrebuje
+  }
+  if (px < 0) px = 0;
+  if (yy0 < 0) yy0 = 0;
+  if (px + pw > NAP_PSX_VRAM_W) pw = NAP_PSX_VRAM_W - px;
+  if (pw <= 0 || yy1 <= yy0) return;
+  xrUploadArea.x0 = (short)px;
+  xrUploadArea.x1 = (short)(px + pw);
+  xrUploadArea.y0 = (short)yy0;
+  xrUploadArea.y1 = (short)yy1;
+  UploadScreen(-1); // vendor cesta: 256x256 dlazdice, LoadDirectMovieFast (umi 15bit i 24bit podle PSXDisplay.RGB24), spravny state-dance, iDrawnSomething=2
+  {
+    static int nap_upload_logs = 0;
+    if (nap_upload_logs < 40) {
+      nap_upload_logs++;
+      nap_diag_log("BUILD2SK153 GLES_VRAM_WRITE_UPLOAD rect=[%d,%d %dx%d] rgb24=%d disp=[%d,%d %dx%d]", px, yy0, pw, yy1 - yy0, nap_disp_rgb24, dsx, dsy, dw, dh);
+    }
+  }
 }
 
 void SetFixes(void)
@@ -774,22 +925,14 @@ void updateDisplay(void)
   bDisplayNotSet = TRUE;
  }
 
- if(iDrawnSomething)
- {
-  fps_update();
-  EGLBoolean swapOk = eglSwapBuffers(display, surface);
-  // BUILD2SK111: DRIV nikdy nekontrolovano - eglGetError() je JINA vec nez
-  // glGetError() (co uz kontrolujeme jinde). Kontroluje chyby na urovni
-  // EGL/systemu/ovladace (napr. "tenhle povrch neni platny pro prezentaci"),
-  // ne uvnitr samotneho GL vykreslovani. Rene se ptal, jestli neco na
-  // urovni telefonu tohle nemuze blokovat - tohle presne overuje.
-  if (nap_gles_frame_count % 31 == 1) {
-    EGLint eglErr = eglGetError();
-    nap_diag_log("BUILD2SK111 GLES_SWAP_CHECK path=updateDisplay ok=%d eglErr=0x%x", (int)swapOk, (unsigned)eglErr);
-  }
-  nap_gles_readback_and_push(); // BUILD2SK98
-  iDrawnSomething=0;
- }
+ // BUILD2SK153: eglSwapBuffers + readback ODSUD ODSTRANENY. Prezentace
+ // snimku se ted deje na JEDINEM miste - nap_gles_present_frame(), presne
+ // JEDNOU za tick, po dokonceni cele emulace snimku (= po VBlanku
+ // emulovaneho PS1). updateDisplay() se muze (kdyby nekdy ozil GP1 tok)
+ // zavolat i UPROSTRED zpracovani prikazu snimku - prezentovat v tu chvili
+ // by znamenalo cist rozkresleny obraz. (eglSwapBuffers je na pbufferu
+ // podle EGL spec no-op, takze jeho odstranenim se nic neztraci.)
+ // iDrawnSomething se tady uz NEnuluje - vlastni ho present().
 
  if(lClearOnSwap)                                     // clear buffer after swap?
  {
@@ -851,16 +994,43 @@ void updateFrontDisplay(void)
  bFakeFrontBuffer=FALSE;
  bRenderFrontBuffer=FALSE;
 
- if(iDrawnSomething) {                                 // linux:
-  EGLBoolean swapOk = eglSwapBuffers(display, surface);
-  // BUILD2SK111: viz stejny komentar u updateDisplay() vyse - tohle je ale
-  // ta DULEZITA cesta, protoze updateFrontDisplay() je funkce, kterou
-  // SKUTECNE volame kazdy tick (SK103).
-  if (nap_gles_frame_count % 31 == 1) {
-    EGLint eglErr = eglGetError();
-    nap_diag_log("BUILD2SK111 GLES_SWAP_CHECK path=updateFrontDisplay ok=%d eglErr=0x%x", (int)swapOk, (unsigned)eglErr);
+ // BUILD2SK153: swap+readback ODSUD ODSTRANENY (viz updateDisplay vyse) -
+ // jedine misto prezentace je nap_gles_present_frame() nize. Tahle funkce
+ // se tim stava jen "uklidem priznaku" pro pripadne vendor cesty.
+}
+
+// BUILD2SK153: JEDINE misto, kde se snimek predava dal (kopie do snapshotu
+// + probuzeni cteciho vlakna). Vola se z nap_worker (nap_ps1_native.cpp)
+// PRESNE JEDNOU za tick, AZ PO navratu retro_run() - tj. po VBlanku
+// emulovaneho PS1, kdy je cely prikazovy seznam snimku zpracovany a
+// zobrazovana polovina VRAM je zarucene dokreslena. Cte se s CERSTVYM
+// gpu.screen stavem - pokud hra behem snimku flipla buffer zapisem
+// GP1(05h), gpu.c uz ma nove src_x/src_y a my ctneme presne novou,
+// prave dokoncenou polovinu. Tim je splnena zasada "prezentovat jednou
+// za snimek, ve VBlanku, s respektem ke GP1(05h) flipu" - bez ozivovani
+// mrtvych peops handleru a bez prezentaci uprostred kresleni.
+void nap_gles_present_frame(void)
+{
+ static int nap_present_logged = 0;
+ if (!nap_present_logged) {
+  nap_present_logged = 1;
+  nap_diag_log("BUILD2SK153 GLES_VERSION_CONFIRM file=gpulib_if.c single-present-per-tick aktivni");
+ }
+ if (!nap_fbo_ready) return;
+ if (nap_disp_disabled) {
+  // GP1(03h): displej vypnuty - NEposilat nic (prijimac drzi posledni
+  // snimek). Hry to bezne pulznou pri prepinani rezimu; posilat tady
+  // cernou by byl presne ten "zablesk pri zmene rozliseni" navic.
+  static int nap_disabled_logs = 0;
+  if (nap_disabled_logs < 10) {
+   nap_disabled_logs++;
+   nap_diag_log("BUILD2SK153 GLES_PRESENT_SKIP_DISABLED");
   }
-  nap_gles_readback_and_push(); // BUILD2SK98
+  return;
+ }
+ if (iDrawnSomething) {
+  nap_gles_readback_and_push(); // BUILD2SK98 mechanika, SK153 cadence
+  iDrawnSomething = 0;
  }
 }
 
@@ -948,10 +1118,15 @@ if ((PSXDisplay.DisplayMode.y == PSXDisplay.DisplayModeNew.y) &&
  }
 else                                                  // some res change?
  {
-  glLoadIdentity(); glError();
-  glOrtho(0,PSXDisplay.DisplayModeNew.x,              // -> new psx resolution
-            PSXDisplay.DisplayModeNew.y, 0, -1, 1); glError();
-  if(bKeepRatio) SetAspectRatio();
+  // BUILD2SK153: puvodni blok tady delal glLoadIdentity+glOrtho na PRAVE
+  // AKTIVNI matici (po nasem sync je aktivni MODELVIEW! - glOrtho v
+  // modelview = trvale rozbita transformace vsech nasledujicich vrcholu)
+  // a SetAspectRatio() prepinal viewport na rozmery obrazovky - presne to
+  // "divoke meneni viewportu pri zmene rozliseni". Pod SK128 architekturou
+  // je projekce/viewport VYHRADNE ve spravě nap_gles_sync_display_settings
+  // (pevne 1024x512 VRAM-space, kazdy tick) - zmena PS1 rezimu na tom NIC
+  // nemeni, meni se jen vyrez pri cteni (gpu.screen hres/vres). Blok
+  // ODSTRANEN; bookkeeping stavu nize zustava.
  }
 
 bDisplayNotSet = TRUE;                                // re-calc offsets/display area
@@ -985,6 +1160,47 @@ if(bUp) updateDisplay();                              // yeah, real update (swap
 #define GPUwriteStatus_ext GPUwriteStatus_ext // for gpulib to see this
 void GPUwriteStatus_ext(unsigned int gdata)
 {
+ // BUILD2SK153: zachyt dulezitych GP1 bitu JESTE PRED is_opened kontrolou.
+ // GPUopen() se v nasem toku nikdy nevola -> is_opened je 0 navzdy -> vsechno
+ // POD touto kontrolou je mrtvy kod (presne pricina SK128 nalezu "peops GP1
+ // stav zamrzly"). Vedome NEOZIVUJEME cele handlery (updateDisplay kaskady
+ // s eglSwapBuffers uprostred snimku, ChangeDispOffsets matematika - nikdy
+ // tady netestovane) - bereme si jen 3 holé bity stavu, ktere realne
+ // potrebujeme, a aplikujeme je HNED (bezime na g_worker vlakne uvnitr
+ // retro_run, takze LoadDirectMovieFast/UploadScreen je uvidi jeste v tomtez
+ // ticku, ve kterem hra registr zapsala):
+ //   GP1(08h) bit4 = 24bit TrueColor (FMV/MDEC) - bez nej se FMV data ve
+ //     VRAM interpretuji jako 15bit -> barevny sum ("cerveny sum" na
+ //     Naughty Dog logu) nebo nic.
+ //   GP1(08h) bit5 = interlace (jen evidence/diagnostika - kreslime vzdy
+ //     progresivne plnou vysku, cadence snimku na tom uz NEZAVISI, viz
+ //     nap_gles_present_frame).
+ //   GP1(03h) bit0 = displej vypnuty - behem vypnuti nedavame snimky
+ //     (drzime posledni misto cernych zablesku pri prepinani rezimu).
+ {
+  unsigned int nap_cmd = (gdata >> 24) & 0xff;
+  if (nap_cmd == 0x08) {
+   int new_rgb24 = (gdata & 0x10) ? 1 : 0;
+   nap_disp_interlace = (gdata & 0x20) ? 1 : 0;
+   if (new_rgb24 != nap_disp_rgb24) {
+    nap_disp_rgb24 = new_rgb24;
+    // stejny minimalni prechod, jaky delal updateDisplayIfChanged pri zmene
+    // RGB24 (uklid texturove cache - 15bit a 24bit interpretace tehoz mista
+    // ve VRAM nesmi zustat pomichane v cache):
+    PSXDisplay.RGB24New = new_rgb24 ? TRUE : FALSE;
+    PSXDisplay.RGB24    = new_rgb24 ? TRUE : FALSE; // primo - updateDisplayIfChanged tudy nikdy nepobezi (is_opened=0)
+    PreviousPSXDisplay.RGB24 = 0;
+    ResetTextureArea(FALSE);
+    nap_diag_log("BUILD2SK153 GLES_GP1_RGB24_CHANGE rgb24=%d interlace=%d", nap_disp_rgb24, nap_disp_interlace);
+   }
+  } else if (nap_cmd == 0x03) {
+   nap_disp_disabled = (gdata & 1) ? 1 : 0;
+  }
+  if (!nap_gp1_ext_seen) {
+   nap_gp1_ext_seen = 1;
+   nap_diag_log("BUILD2SK153 GLES_GP1_EXT_ALIVE firstCmd=0x%02x - gpu.c skutecne vola GPUwriteStatus_ext (RGB24/Disabled zachyt funguje)", nap_cmd);
+  }
+ }
  if (!is_opened)
   return;
 
@@ -1250,12 +1466,78 @@ int renderer_do_cmd_list(uint32_t *list, int list_len, uint32_t *ex_regs,
 
 #ifndef TEST
     if (cmd == 0xa0 || cmd == 0xc0)
+    {
+      // BUILD2SK153: GP0(C0h) = VRAM -> CPU cteni. Zpracovava ho gpulib
+      // jadro (gpu.c) primo z gpu.vram (== psxVuw) - NAS plugin uz se k tomu
+      // nedostane. psxVuw ale NEOBSAHUJE nic z toho, co GPU vykreslilo pres
+      // OpenGL -> hra by si precetla stara/prazdna data (screenshoty, save
+      // nahledy, efekty s pouzitim vlastniho snimku - presne "nestahne
+      // obraz z GPU zpet" z Reneho bodu 2). Tady, TESNE PRED predanim
+      // jadru, si prislusny obdelnik stahneme z canvasu do psxVuw
+      // (nap_vram_read_sync - orizne se sam na skutecne vykreslenou
+      // plochu, texturovych oblasti se nedotkne). Hlavicka C0 (3 slova) je
+      // diky bounds-checku vyse zarucene cela v bufferu.
+      if (cmd == 0xc0) {
+        int rx = (int)(list[1] & 0x3ff);
+        int ry = (int)((list[1] >> 16) & 0x1ff);
+        int rw = (int)(((list[2] & 0xffff) - 1) & 0x3ff) + 1;
+        int rh = (int)((((list[2] >> 16) & 0xffff) - 1) & 0x1ff) + 1;
+        nap_vram_read_sync(rx, ry, rx + rw, ry + rh);
+      }
       break; // image i/o, forward to upper layer
+    }
     else if ((cmd & 0xf8) == 0xe0)
       ex_regs[cmd & 7] = list[0];
 #endif
 
+    // BUILD2SK153: GP0(80h) = VRAM -> VRAM kopie ("framebuffer-to-
+    // framebuffer" z Reneho bodu 2 - stmivani, pruhledy, kopie snimku).
+    // primMoveImage (o par radku niz) kopiruje v CPU poli psxVuw - ale
+    // pokud je ZDROJEM neco, co vykreslilo GPU, musi se to NEJDRIV stahnout
+    // z canvasu, jinak se kopiruje stary/prazdny obsah. (CheckVRamRead
+    // uvnitr primMoveImage je podmineny iFrameReadType&2, coz je u nas 0 -
+    // SK149 oprava tam byla fakticky mrtvy kod. Delame to tady, na jednom
+    // miste, bez ohledu na konfiguracni prepinace.)
+    if (cmd == 0x80) {
+      int sx0 = (int)(list[1] & 0x3ff);
+      int sy0 = (int)((list[1] >> 16) & 0x1ff);
+      int mw  = (int)(((list[3] & 0xffff) - 1) & 0x3ff) + 1;
+      int mh  = (int)((((list[3] >> 16) & 0xffff) - 1) & 0x1ff) + 1;
+      nap_vram_read_sync(sx0, sy0, sx0 + mw, sy0 + mh);
+    }
+
     primTableJ[cmd]((void *)list);
+
+    // BUILD2SK153: evidence skutecne GPU-vykreslene plochy (viz
+    // nap_render_bbox_union) + dokonceni VRAM->VRAM kopie smerem do canvasu.
+    if (cmd == 0x02) {
+      // FillRect - ignoruje DrawArea, kresli presne dany obdelnik (sirka
+      // zaokrouhlena na 16 jako v primBlkFill).
+      short *nap_s = (short *)list;
+      int fx = (int)(nap_s[2] & 0x3ff);
+      int fy = (int)(nap_s[3] & 0x1ff);
+      int fw = (int)(nap_s[4] & 0x3ff);
+      int fh = (int)(nap_s[5] & 0x1ff);
+      fw = (fw + 15) & ~15;
+      if (fh == 0x1ff) fh = 512;
+      nap_render_bbox_union(fx, fy, fx + fw, fy + fh);
+    }
+    else if (cmd >= 0x20 && cmd <= 0x7f) {
+      // vsechny polygony/cary/sprity - orezavaji se na aktualni DrawArea,
+      // takze DrawArea je bezpecna (mirne nadhodnocena) obalka.
+      nap_render_bbox_union((int)PSXDisplay.DrawArea.x0, (int)PSXDisplay.DrawArea.y0,
+                            (int)PSXDisplay.DrawArea.x1 + 1, (int)PSXDisplay.DrawArea.y1 + 1);
+    }
+    else if (cmd == 0x80) {
+      // cil kopie: psxVuw uz je zkopirovane (primMoveImage vyse) - kdyz cil
+      // lezi v radcich displeje, nahrat ho do canvasu, aby ho videl readback
+      // (vendor cesta pres CheckAgainstScreen je s nulovym DisplayEnd mrtva).
+      int dx0 = (int)(list[2] & 0x3ff);
+      int dy0 = (int)((list[2] >> 16) & 0x1ff);
+      int mw  = (int)(((list[3] & 0xffff) - 1) & 0x3ff) + 1;
+      int mh  = (int)((((list[3] >> 16) & 0xffff) - 1) & 0x1ff) + 1;
+      nap_upload_vram_rect(dx0, dy0, mw, mh);
+    }
 
     switch(cmd)
     {
@@ -1344,8 +1626,17 @@ void renderer_update_caches(int x, int y, int w, int h, int state_changed)
  VRAMWrite.y = y;
  VRAMWrite.Width = w;
  VRAMWrite.Height = h;
- if(is_opened)
-  CheckWriteUpdate();
+ // BUILD2SK153: puvodni "if(is_opened)" gate ODSTRANEN - is_opened je v
+ // nasem toku 0 NAVZDY (GPUopen se nevola), takze se CheckWriteUpdate
+ // NIKDY nespustil -> InvalidateTextureArea se na CPU zapisy NIKDY
+ // nevolala -> hry, ktere si textury za behu prepisuji (animovane textury,
+ // streamovane pozadi - presne "hry ukladaji textury za behu" z Reneho
+ // popisu), kreslili ze STARE cache. CheckWriteUpdate je ted volany vzdy;
+ // jeho VLASTNI upload vetve zustavaji necinne (CheckAgainstScreen je s
+ // nulovym DisplayEnd porad FALSE - vedome, viz nap_upload_vram_rect,
+ // ktery to rozhodnuti dela sam proti autoritativnimu gpu.screen stavu).
+ CheckWriteUpdate();
+ nap_upload_vram_rect(x, y, w, h);
 }
 
 void renderer_flush_queues(void)

@@ -1,0 +1,162 @@
+================================================================================
+PREDAVACI BALICEK - DOPLNEK SK153 (opravy blikani / VRAM sync / rozliseni)
+Datum: 2026-07-22 (navazuje na PREDAVACI_BALICEK_2026-07-22.txt v tomto ZIPu)
+================================================================================
+
+CO JE V TOMHLE ZIPU
+-------------------
+Kompletni sada VSECH 4 souboru (podle pravidla "vzdy vsechno najednou"):
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpulib_if.c   ZMENEN (hlavni opravy)
+  app/src/main/cpp/nap_ps1_native.cpp                                 ZMENEN (3 male zmeny)
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpuPrim.c     BEZE ZMENY (bajt po bajtu shodny s upstream + SK146 blend fix)
+  app/src/main/java/eu/atarihelp/emu10/MainActivity.java              BEZE ZMENY
+Postup: cely ZIP nakopirovat pres projekt (Windows se zepta na prepsani -> Ano vsem).
+
+KONTROLA SPRAVNEHO BUILDU (prvni vec v logu!)
+---------------------------------------------
+  BUILD2SK153 NATIVE_VERSION_CONFIRM file=nap_ps1_native.cpp
+  BUILD2SK153 GLES_VERSION_CONFIRM file=gpulib_if.c single-present-per-tick aktivni
+Pokud tam tyhle dva radky nejsou, bezi stary build - netestovat dal.
+
+================================================================================
+NALEZENE KORENOVE PRICINY (vsechny dolozene primo v kodu, ne dohady)
+================================================================================
+
+1) STROBOSKOP (kazdy druhy snimek rozbity u 30fps her, napr. Crash):
+   nap_gles_readback_and_push plnila pozadavek pro cteci vlakno metadaty
+   (src_x/src_y/w/h) ulozenymi pri PREDCHOZI kopii do tehoz snapshotu -
+   tedy 2 SNIMKY STARYMI - zatimco glCopyTexSubImage2D do snapshotu prave
+   vlozila AKTUALNI snimek. U 60fps her (src_x stridani 0,512,0,512 - perioda
+   2) se to nahodou trefovalo. U 30fps her jde src_x po ticich 0,0,512,512 -
+   hodnota stara 2 ticky je PRESNE OPACNA polovina -> KAZDY DRUHY snimek se
+   cetl z poloviny, do ktere hra ZROVNA kreslila (rozpracovany back buffer).
+   SK151 "useknuty snimek #6 (horni pulka obsah, spodni prazdna)" je presne
+   zachyceny rozpracovany buffer. Sedí i na analyzu videa (pravidelne
+   1-snimkove propady jasu na ~30 %).
+
+2) NEUPLNA GRAFIKA / FMV nefunguje:
+   GPUopen() se v libretro toku NIKDY nevola -> is_opened zustava 0 NAVZDY ->
+   GPUwriteStatus_ext konci hned na prvnim radku -> CELY peops display stav
+   (DisplayPosition/DisplayEnd/RGB24/Interlaced) je zamrzly na nulach (presne
+   SK128 nalez "Range=[0,0,0,0]"). Dusledky:
+     a) CheckAgainstScreen je s DisplayEnd=(0,0) VZDY FALSE -> CheckWriteUpdate
+        NIKDY nespustil UploadScreen -> zadny CPU->VRAM zapis (FMV snimky,
+        loading obrazovky, 2D pozadi, stmivani) se NIKDY nedostal do canvasu.
+     b) renderer_update_caches mel "if(is_opened) CheckWriteUpdate()" -> ani
+        InvalidateTextureArea se nevolala -> hry prepisujici textury za behu
+        kreslily ze STARE cache.
+     c) PSXDisplay.RGB24 nikdy TRUE -> 24bit FMV data by se i pri uploadu
+        interpretovala jako 15bit (barevny sum - kandidat na "cerveny sum"
+        na Naughty Dog logu).
+     d) iFrameReadType=0 -> CheckVRamRead se NIKDY nevolal -> SK149 oprava
+        byla fakticky mrtvy kod; VRAM->VRAM kopie (GP0 80h) kopirovaly
+        stary/prazdny psxVuw obsah; GP0 C0h (VRAM->CPU) vracel stara data.
+
+3) BLIKANI PRI ZMENE ROZLISENI (menu <-> hra):
+   a) do_clear se pocital proti 2 snimky starym rozmerum per-snapshot ->
+      po kazde zmene rezimu vystrelil DVAKRAT; druhy glClear uz smazal
+      cerstve nakresleny snimek NOVE sceny -> cerny zablesk.
+   b) updateDisplayIfChanged delal glLoadIdentity+glOrtho na PRAVE AKTIVNI
+      matici (po nasem synci je aktivni MODELVIEW -> trvale rozbita
+      transformace geometrie) + SetAspectRatio prepinal viewport - presne
+      "divoke meneni viewportu". (Dnes mrtva cesta, ale nastrazena mina.)
+
+================================================================================
+PROVEDENE OPRAVY (BUILD2SK153)
+================================================================================
+
+gpulib_if.c:
+  A) Pozadavek pro cteci vlakno nese VZDY CERSTVA metadata (fresh gpu.screen
+     stav = presne to, co prave prislo do snapshotu). nap_fbo_meta_* pole
+     odstranena. -> konec stroboskopu z bodu 1.
+  B) Prezentace snimku ma JEDINE misto: nova nap_gles_present_frame(),
+     volana z nap_worker presne 1x za tick, AZ PO retro_run() (= po VBlanku
+     emulovaneho PS1, cely prikazovy seznam snimku zpracovan). Pokud hra
+     behem snimku flipla buffer zapisem GP1(05h), gpu.screen uz nese nove
+     src_x/src_y a cte se prave dokoncena polovina. eglSwapBuffers + readback
+     ODSTRANENY z updateDisplay/updateFrontDisplay (na pbufferu byl swap
+     stejne no-op; cross-context viditelnost kopie ted zajistuje glFlush -
+     NENI glFinish, nic neblokuje zvukove vlakno).
+  C) Cisteni canvasu pri zmene rozliseni se porovnava proti NAPOSLED
+     ODESLANEMU snimku -> vystreli presne JEDNOU (log
+     GLES_RES_CHANGE_CANVAS_CLEAR). Cisteni snapshotu na ctecim vlakne
+     zruseno (plna 1024x512 kopie ho stejne cely prepisuje).
+  D) GP1 zachyt PRED is_opened kontrolou v GPUwriteStatus_ext: RGB24
+     (GP1 08h bit4, vcetne uklidu texture cache pri zmene), interlace bit
+     (evidence), Disabled (GP1 03h). Mrtve peops handlery se vedome
+     NEOZIVUJI. Behem Disabled se snimky NEPOSILAJI (drzi se posledni -
+     zadne cerne zablesky pri prepinani rezimu).
+  E) Nova nap_upload_vram_rect(): CPU->VRAM zapisy se nahravaji do canvasu
+     pres vendor UploadScreen(-1) (varianta -1 = hole VRAM souradnice,
+     spravne pod SK128 projekci; LoadDirectMovieFast umi 15bit i 24bit podle
+     PSXDisplay.RGB24). Rozhodnuti "je to videt?" se dela proti
+     AUTORITATIVNIMU gpu.screen (radkove pasmo displeje - pokryva obe
+     poloviny 0/512, tj. i zapisy do back-bufferu; texturove stranky v
+     jinych radcich se preskakuji; RGB24/FMV se nahrava vzdy).
+     Volano z renderer_update_caches (kde je ted CheckWriteUpdate vzdy -
+     kvuli InvalidateTextureArea) a pro cil GP0(80h) kopie.
+  F) renderer_do_cmd_list:
+       - GP0(C0h): tesne pred predanim jadru se prislusny obdelnik stahne
+         z canvasu do psxVuw -> hra cte skutecne vykreslena data.
+       - GP0(80h): pred kopii se stahne ZDROJ (framebuffer-to-framebuffer
+         efekty), po kopii se CIL nahraje do canvasu.
+       - Evidence obalky skutecne GPU-vykreslene plochy (nap_render_bbox):
+         polygony/sprity = DrawArea, FillRect = presny obdelnik.
+  G) nap_vram_read_sync se VZDY orizne na nap_render_bbox - canvas je
+     autoritativni jen tam, kde GPU kreslilo; texturove stranky/CLUTy
+     (CPU data v psxVuw) se uz NIKDY neprepisi cernou plochou canvasu.
+     (Puvodni SK149 verze by pri spusteni presne tohle udelala.)
+  H) updateDisplayIfChanged: glOrtho/SetAspectRatio blok odstranen;
+     nap_gles_sync_display_settings navic kazdy tick pripne MODELVIEW na
+     identitu (pojistka).
+
+nap_ps1_native.cpp (3 zmeny):
+  - extern deklarace nap_gles_present_frame
+  - volani nap_gles_present_frame() misto updateFrontDisplay()
+  - verze: BUILD2SK153 NATIVE_VERSION_CONFIRM
+
+================================================================================
+CO SLEDOVAT V PRVNIM LOGU (v poradi dulezitosti)
+================================================================================
+1) Oba VERSION_CONFIRM radky (viz vyse).
+2) "BUILD2SK153 GLES_GP1_EXT_ALIVE firstCmd=..." - MUSI se objevit brzy po
+   startu. Kdyz ANO: zachyt RGB24/Disabled funguje, FMV by melo jit.
+   Kdyz NE: jejich verze gpu.c nevola GPUwriteStatus_ext - FMV zustane
+   rozbite (vse ostatni opravene plati dal) a je treba pridat zachyt jinam
+   (napr. renderer_notify_screen_change) - viz OTEVRENE BODY.
+3) "BUILD2SK153 GLES_VRAM_WRITE_UPLOAD rect=..." - prvnich ~40 uploadu.
+   Rect by mel sedet na to, co hra dela (FMV: typicky [0,0 320x240] kazdy
+   snimek). Kdyz se obraz z uploadu objevi POSUNUTY, je spatny predpoklad
+   o offsetScreenUpload(-1) souradnicich - viz OTEVRENE BODY.
+4) GLES_PIXEL_SAMPLE: sumAvg by uz NEMEL pravidelne padat na ~0/30 % -
+   zadne stridani dobry/cerny.
+5) BUILD2SK113 ASCII dumpy (snimky ~50-150 intra): konecne by mel byt
+   videt TVAR loga, ne plocha.
+6) GLES_RES_CHANGE_CANVAS_CLEAR: presne 1x na kazde prepnuti menu<->hra.
+
+================================================================================
+OTEVRENE BODY / RIZIKA (poctive)
+================================================================================
+- offsetScreenUpload(-1): predpoklad "hole VRAM souradnice" vychazi z
+  upstream peops zdroje; gpuDraw.c neni v balicku, takze NEOVERENO proti
+  jejich kopii. Overi to bod 3 vyse (GLES_VRAM_WRITE_UPLOAD + vizual).
+  Kdyby byl posun, reseni je male: vlastni kresleni quadu misto
+  UploadScreen(-1).
+- GP0(80h) a verze gpulib jadra: novejsi gpu.c kopiruje VRAM->VRAM samo
+  JESTE PRED predanim rendereru. U PREKRYVAJICICH se obdelniku by dvoji
+  kopie (jadro + primMoveImage) mohla dat jiny vysledek nez jedna. Bez
+  jejich gpu.c nejde rozhodnout - kdyby se objevily artefakty PRESNE u
+  scroll efektu, je tohle prvni podezrely (reseni: preskocit psxVuw kopii
+  v primMoveImage, nechat ji jadru).
+- avgRetroRunMs postupny rust behem session (2-7ms -> 24-49ms) a s nim
+  spojene audio underruny NEJSOU predmetem tohoto buildu - viz puvodni
+  balicek. Opravy vyse ale odstranuji vsechna PRAVIDELNA blokujici GL
+  volani ze zvukoveho vlakna krome cilenych C0/80h synchronizaci (ty jsou
+  jen kdyz je hra skutecne pouzije a jsou orezane na minimum).
+- Interlace: kreslime a cteme vzdy progresivne v plne vysce (gpu.screen
+  vres uz 480 u 480i her) - kadence snimku na peops Interlaced flagu uz
+  NEZAVISI. Skutecne pulsnimkove prokladani se neemuluje (ani drive ne);
+  pro stabilni obraz je to spravna volba.
+================================================================================
+KONEC DOPLNKU SK153
+================================================================================
