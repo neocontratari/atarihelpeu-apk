@@ -4224,6 +4224,32 @@ public class MainActivity extends Activity {
         }, delay);
     }
 
+    // ============================================================
+    //  KROK C1: novy most pro spusteni plynuleho PS1 obrazu pres
+    //  OpenGL (Ps1GlActivity). Volatelny z menu:  AHRENDER.openPs1()
+    //  Bezi VEDLE stavajici cesty - nic nemeni. Otevre novou
+    //  celoobrazovkovou aktivitu, ktera bere obraz z beziciho jadra.
+    // ============================================================
+    public class AHRENDER {
+        @JavascriptInterface
+        public String openPs1() {
+            try {
+                ui.post(() -> {
+                    try {
+                        android.content.Intent it = new android.content.Intent(
+                                MainActivity.this, Ps1GlActivity.class);
+                        startActivity(it);
+                    } catch (Throwable t) {
+                        appendNativeLog("AHRENDER_OPEN_ERROR " + safeMsg(t));
+                    }
+                });
+                return "AHRENDER_OPEN_OK";
+            } catch (Throwable t) {
+                return "AHRENDER_OPEN_FAIL " + t.getMessage();
+            }
+        }
+    }
+
     private class NativeInPlaceView extends TextureView implements TextureView.SurfaceTextureListener {
         private final Paint paint = new Paint();
         private int frame = 0;
@@ -4929,6 +4955,7 @@ public class MainActivity extends Activity {
         tvSetupDisplayListener(); // BUILD2SB1: TV vystup pro celou appku
         web.addJavascriptInterface(new AHNet(), "AHNET");
         web.addJavascriptInterface(new AHNative(), "AHNATIVE");
+        web.addJavascriptInterface(new AHRENDER(), "AHRENDER"); // KROK C1: plynuly PS1 obraz pres OpenGL
         web.addJavascriptInterface(new AHTvWeb(), "AHTVWEB"); // BUILD2SA13C: browser-based TV cast fallback
         web.setWebChromeClient(new WebChromeClient() {
             // BUILD2SH2: zachyt JS console (jen nase SH2 stream diagnostika) do
@@ -5076,6 +5103,37 @@ public class MainActivity extends Activity {
         } catch (Throwable t) { appendNativeLog("BUILD2SA13 TV_INIT_ERR " + safeMsg(t)); }
         try { rootFrame.setBackgroundColor(Color.BLACK); } catch (Throwable ignored) {}
         rootFrame.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // ============================================================
+        //  KROK C1: plovouci testovaci tlacitko "PS1 GL" v rohu.
+        //  Spusti plynuly PS1 obraz pres OpenGL (Ps1GlActivity).
+        //  Nezasahuje do webu - jen lezi navrch. Az obraz overime,
+        //  v kroku C2 tohle nahradi starou zobrazovaci cestu a tlacitko
+        //  zmizi.  POZOR: nejdriv spust PS1 hru v menu, pak dej PS1 GL.
+        // ============================================================
+        try {
+            android.widget.Button glBtn = new android.widget.Button(this);
+            glBtn.setText("PS1 GL");
+            glBtn.setAllCaps(false);
+            glBtn.setTextColor(Color.WHITE);
+            glBtn.setBackgroundColor(0xCC2244AA);
+            android.widget.FrameLayout.LayoutParams blp =
+                    new android.widget.FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+            blp.gravity = android.view.Gravity.TOP | android.view.Gravity.END;
+            blp.topMargin = 24; blp.rightMargin = 24;
+            glBtn.setLayoutParams(blp);
+            glBtn.setOnClickListener(v -> {
+                try {
+                    startActivity(new android.content.Intent(MainActivity.this, Ps1GlActivity.class));
+                } catch (Throwable t) {
+                    appendNativeLog("PS1_GL_BTN_ERROR " + safeMsg(t));
+                }
+            });
+            rootFrame.addView(glBtn);
+        } catch (Throwable ignored) {}
+
         setContentView(rootFrame);
         applyWebViewVisualMode("file:///android_asset/index.html", "startup");
         web.loadUrl("file:///android_asset/index.html");

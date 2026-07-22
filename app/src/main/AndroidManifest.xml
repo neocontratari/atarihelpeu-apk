@@ -23,5 +23,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- KROK C1: celoobrazovkovy PS1 obraz pres OpenGL (spousti se z menu) -->
+        <activity
+            android:name="eu.atarihelp.emu10.Ps1GlActivity"
+            android:exported="false"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout" />
+
     </application>
 </manifest>
