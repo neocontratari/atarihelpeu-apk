@@ -256,3 +256,10 @@ find_package(Threads REQUIRED)
 target_link_libraries(napps1core ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS} EGL GLESv1_CM)
 target_link_options(napps1core PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif() # NAP_ENABLE_PS1
+
+# ============================================================
+#  KROK B (pridano): nas EGL renderer jako druha .so vedle jader.
+#  Zatim se JEN STAVI (overeni sneseni dvou nativnich svetu),
+#  jeste se z Javy nespousti. Napojeni na PS1 obraz prijde v C.
+# ============================================================
+include(${CMAKE_CURRENT_LIST_DIR}/eglrender/eglrender.cmake)
