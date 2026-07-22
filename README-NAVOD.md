@@ -36,19 +36,17 @@ nic ti nepřepíše.
 
 ## 4) Co máš vidět
 
-Verze 1.1: ostrý „retro" testovací obraz v rozlišení **320×224** (stejné,
-jaké používá Sega Mega Drive) – barevné pruhy jako z televizního testu,
-malá šachovnice v levém horním rohu a **dvě bílé linky**, které plynule
-jedou obrazem (svislá doprava, vodorovná dolů). Kolem je tmavý, jemně
-dýchající rámeček (letterbox). Obsah obrazu se přitom nahrává do grafiky
-znovu **každý snímek** – přesně stejnou cestou, kterou později poteče
-obraz z jádra emulátoru. Linky musí jet naprosto plynule, bez blikání
-a trhání, na mobilu i v zrcadlení.
+Verze 1.3: stejný ostrý „retro" obraz (pruhy, šachovnice, dvě jedoucí
+bílé linky), ale nově se **každých ~7 vteřin samo přepne rozlišení
+a formát obrazu**, přesně jako to dělají skutečné hry:
 
-Verze 1.2 vypadá na obrazovce úplně stejně – navíc jen rozepisuje do
-logu čas snímku na kroky: pozadí + vzor + nahrání + kreslení + swap.
-(„swap" je čekání na rytmus displeje – to není ztracený výkon, ale
-volná rezerva.)
+256×224 (Sega NTSC) → 320×240 (Sega/PS1) → 512×240 (PS1 hi-res,
+16bit barvy) → 640×480 (PS1 menu/BIOS, formát XRGB) → a dokola.
+
+Rámeček (letterbox) se při každém skoku sám přizpůsobí a barvy musí
+zůstat správné i u XRGB (prohození kanálů dělá grafický čip, ne
+procesor). V logu ke každému skoku přibude řádek
+„Jadro zmenilo rozliseni: …".
 
 ## 5) Logy (stejný postup, jaký znáš z emu10)
 
@@ -64,13 +62,20 @@ volná rezerva.)
 Actions → klikni na červený běh → krok **Sestaveni APK** → zkopíruj
 posledních ~50 řádků a pošli mi je. Z nich přesně poznám, co opravit.
 
-## 7) Kam se později napojí jádro emulátoru
+## 7) Kam se napojí skutečné jádro (Sega / PS1)
 
-Soubor `app/src/main/cpp/main.c`, funkce `draw_frame()`, krok 2 –
-místo `fill_test_pattern()` se stejným voláním `glTexSubImage2D`
-nahraje framebuffer jádra (PS1/Sega). Všechno ostatní (EGL, smyčka,
-swap, vsync, letterbox, přežití otočení a zamknutí) je už hotové
-a ověřené.
+Rozhraní je v `app/src/main/cpp/core_api.h` („zásuvka"): jádro dodává
+jen ukazatel na svůj framebuffer + šířku + výšku + formát. Renderer si
+sám přestaví texturu při změně rozlišení, sám řeší letterbox i barvy –
+vše na GPU, procesor se pixelů nedotýká.
+
+Napojení = nahradit soubor `core_demo.c` napojením na skutečné jádro:
+`core_step()` zavolá krok emulace (u PS1 `realCoreStep`), a
+`core_get_frame()` vrátí buffer jádra – u PS1 je to obraz, který plní
+gpulib (formát „fmt=1" z tvých logů = `CORE_FMT_XRGB8888`, rozměry
+dispW×dispH), u Segy výstup mostu (320×240 / 256×224). Tohle je ta
+jediná zbývající operace a proběhne při přesazení rendereru do velké
+aplikace, kde jádra žijí.
 
 ## 8) Další změny
 

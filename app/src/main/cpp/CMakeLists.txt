@@ -10,7 +10,8 @@ target_include_directories(native_app_glue PUBLIC
 # Nase knihovna - jmeno "eglrender" MUSI sedet s android.app.lib_name v manifestu
 add_library(eglrender SHARED
     main.c
-    logserver.c)
+    logserver.c
+    core_demo.c)
 
 target_link_libraries(eglrender
     native_app_glue
