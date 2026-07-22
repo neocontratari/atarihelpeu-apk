@@ -501,8 +501,9 @@ void android_main(struct android_app* app) {
     app->userData = &engine;
     app->onAppCmd = handle_cmd;
 
+    logserver_set_upload_dir(app->activity->internalDataPath);
     logserver_start(8765);
-    LOGI("=== AH EGL Render start ===");
+    LOGI("=== AH EGL Render start (verze 1.4-PS1-NABEH) ===");
     core_init(app->activity->vm, app->activity->internalDataPath);
 
     for (;;) {

@@ -68,14 +68,17 @@ V balíčku je přibalené tvoje skutečné PS1 jádro (`libnapps1core.so`
 z emu10) a renderer s ním mluví standardním libretro protokolem,
 který jádro samo nabízí. Postup po instalaci:
 
-1. **Povol úložiště:** Nastavení → Aplikace → AH EGL Render →
-   Oprávnění → Úložiště/Soubory → Povolit. Pak apku úplně zavři
-   (vymáchnout z posledních aplikací) a spusť znovu.
-2. Apka si sama najde hru ve složce `Download/AtariHelp/PS1`
-   (tam ji ukládá emu10 – Crash Bandicoot tam už je). Bere první
-   `.cue`, případně `.chd`/`.bin`.
+1. **Nahraj hru přes wifi (žádné oprávnění není potřeba):**
+   spusť apku, na PC ve stejné wifi otevři `http://IP-TELEFONU:8765/`
+   a na stránce „Nahrát hru" vyber `.cue` + `.bin` spolu (nebo jeden
+   `.chd`) – klidně stažené z atarihelp.eu nebo Google Drive do PC.
+   Soubory se uloží přímo do aplikace.
+2. Po nahrání apku úplně zavři (vymáchnout z posledních aplikací)
+   a spusť znovu – hru si sama najde a nabootuje.
 3. BIOS není nutný (jede vestavěný náhradní). Když chceš originální,
-   nakopíruj soubory BIOSu do `Download/AtariHelp/PS1/bios`.
+   nahraj ho na stejné stránce v sekci „BIOS".
+   (Záložně apka zkouší i starou složku `Download/AtariHelp/PS1`,
+   ale na novějším Androidu k ní systém aplikace nepouští.)
 4. V této verzi jede **jen obraz** – zvuk a ovládání jsou další
    samostatné kroky.
 5. Když PS1 nenaběhne (chybí povolení, není hra…), apka dál ukazuje

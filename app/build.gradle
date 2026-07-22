@@ -11,8 +11,8 @@ android {
         applicationId 'eu.atarihelp.eglrender'
         minSdk 24            // stejne jako AtariHelp.eu (emu10)
         targetSdk 34
-        versionCode 5
-        versionName '1.4-PS1-NABEH'
+        versionCode 6
+        versionName '1.5-HRA-PRES-WIFI'
 
         ndk {
             // PS1 jadro (libnapps1core.so) existuje jen pro arm64 -

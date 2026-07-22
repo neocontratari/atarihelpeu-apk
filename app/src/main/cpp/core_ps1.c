@@ -16,6 +16,7 @@
 #include <android/log.h>
 #include <dirent.h>
 #include <dlfcn.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -78,8 +79,9 @@ static void     (*p_get_av_info)(struct retro_system_av_info*);
 static unsigned (*p_api_version)(void);
 
 static bool s_ps1_running = false;   // jadro bezi a dodava obraz
-static char s_system_dir[256] = "/storage/emulated/0/Download/AtariHelp/PS1/bios";
-static char s_save_dir[256]   = "/data/data/eu.atarihelp.eglrender/files";
+static char s_ps1_dir[300]    = "";  // <interni slozka>/ps1 (hry z wifi stranky)
+static char s_system_dir[340] = "";  // <interni slozka>/ps1/bios
+static char s_save_dir[256]   = "/data/local/tmp";
 static char s_game[512];
 
 // posledni snimek od jadra (jadro vlastni pamet, my si ji jen pujcujeme)
@@ -172,24 +174,24 @@ static bool pick_in_dir(const char* dir, const char* ext, char* out, size_t outs
 }
 
 static bool find_game(char* out, size_t outsz) {
-    static const char* ROOT   = "/storage/emulated/0/Download/AtariHelp/PS1";
     static const char* EXTS[] = { ".cue", ".chd", ".m3u", ".bin" };
 
-    DIR* d = opendir(ROOT);
-    if (!d) {
-        if (errno == EACCES || errno == EPERM) {
-            P1LOG("PS1: CHYBI POVOLENI ULOZISTE. Nastaveni -> Aplikace -> AH EGL Render -> Opravneni -> Uloziste/Soubory -> Povolit. Pak apku uplne zavri a spust znovu.");
-        } else {
-            P1LOG("PS1: slozka %s nejde otevrit (errno=%d)", ROOT, errno);
-        }
-        return false;
+    // 1) HLAVNI CESTA: hry nahrane pres wifi stranku http://IP:8765/
+    //    (interni slozka aplikace - zadne opravneni neni potreba)
+    for (size_t i = 0; i < sizeof EXTS / sizeof *EXTS; i++) {
+        if (pick_in_dir(s_ps1_dir, EXTS[i], out, outsz)) return true;
     }
+    P1LOG("PS1: ve slozce aplikace zatim zadna hra. Na PC otevri http://IP-TELEFONU:8765/ a nahraj .cue + .bin (nebo .chd).");
 
-    // 1) hry primo v korenu
+    // 2) ZALOZNI CESTA: stara slozka emu10 v Download
+    //    (na novejsim Androidu ji system aplikacim nedava - pak tise selze)
+    static const char* ROOT = "/storage/emulated/0/Download/AtariHelp/PS1";
+    DIR* d = opendir(ROOT);
+    if (!d) return false;
+
     for (size_t i = 0; i < sizeof EXTS / sizeof *EXTS; i++) {
         if (pick_in_dir(ROOT, EXTS[i], out, outsz)) { closedir(d); return true; }
     }
-    // 2) hry v podslozkach (napr. gdrive_...)
     struct dirent* e;
     while ((e = readdir(d)) != NULL) {
         if (e->d_name[0] == '.') continue;
@@ -203,7 +205,6 @@ static bool find_game(char* out, size_t outsz) {
         }
     }
     closedir(d);
-    P1LOG("PS1: v %s jsem nenasel zadnou hru (.cue/.chd/.bin)", ROOT);
     return false;
 }
 
@@ -216,6 +217,10 @@ void core_init(void* java_vm, const char* internal_data_path) {
     if (internal_data_path && *internal_data_path) {
         snprintf(s_save_dir, sizeof s_save_dir, "%s", internal_data_path);
     }
+    snprintf(s_ps1_dir, sizeof s_ps1_dir, "%s/ps1", s_save_dir);
+    mkdir(s_ps1_dir, 0700);
+    snprintf(s_system_dir, sizeof s_system_dir, "%s/bios", s_ps1_dir);
+    mkdir(s_system_dir, 0700);
 
     P1LOG("PS1: nacitam jadro libnapps1core.so ...");
     void* h = dlopen("libnapps1core.so", RTLD_NOW | RTLD_LOCAL);
