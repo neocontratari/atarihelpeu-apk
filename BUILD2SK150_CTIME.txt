@@ -1,0 +1,37 @@
+================================================================================
+BUILD2SK150 - AUDIT - navod (2026-07-22)
+================================================================================
+
+POCTIVY STAV PO AUDITU:
+
+1) CHYBEJICI ZNACKY - MOJE CHYBA: v minulem logu chybely BUILD2SK149 a
+   BUILD2SK146 znacky. Bud se posledni 2 opravy vubec neotestovaly, nebo
+   (pravdepodobnejsi) jsem k nim nepridal zadny zpusob, jak je v logu
+   poznat. OPRAVENO: ted se HNED na startu vypise
+   "BUILD2SK150 NATIVE_VERSION_CONFIRM" - jednoznacne, vzdy, bez ohledu
+   na to, jestli hra neco dela.
+
+2) MELS PRAVDU - PAMET SKUTECNE ROSTE: v poslednim logu vmRssKb rostlo
+   nepretrzite (351MB -> 607MB behem jedne session, zadne plato). To je
+   realny, zmereny unik, presne jak popisujes.
+   Prosel jsem gpuTexture.c (kde byl i puvodni pad z 19.7.) - hlavni GL
+   textury se vytvareji jen JEDNOU a znovupouzivaji, takze primy unik GL
+   objektu na prvni pohled neni. Abychom zjistili, jestli je unik v
+   bezne (malloc) CPU pameti, nebo jinde (GPU/ovladac strana), pridal
+   jsem mallinfo() rozpad hned vedle VmRSS - to zuzi, kde presne hledat.
+
+3) MOJE TEPLOTNI MERENI JE ROZBITE: maxTempMilliC=-1 po celou dobu -
+   cteni ze VSECH 20 senzoru selhalo. Nejspis Android/Samsung tohle
+   apkam bez zvlastnich prav uz nedovoluje cist primo (bezne omezeni na
+   novejsich verzich). Nechavam to zapnute (nemelo by skodit), ale
+   nebudu na tomhle cisle nic stavet, dokud nezjistim spravny zpusob.
+
+VSECHNY 4 SOUBORY V BALICKU (gpulib_if.c a nap_ps1_native.cpp maji
+zmeny, gpuPrim.c a MainActivity.java beze zmeny od minule).
+
+CO POSLAT PRISTE:
+- Uvidim hned "BUILD2SK150 NATIVE_VERSION_CONFIRM" - potvrdi spravnou verzi.
+- heapActiveKb vedle vmRssKb - roste STEJNYM tempem jako vmRssKb (= je to
+  malloc unik, hledam dal v CPU kodu), nebo vmRssKb roste a heapActiveKb
+  ne (= je to nekde jinde, GPU/ovladac strana).
+================================================================================

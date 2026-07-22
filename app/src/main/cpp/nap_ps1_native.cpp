@@ -16,6 +16,7 @@
 #include <cctype> // BUILD2SA6: BIOS audit
 #include <cstdint>
 #include <fstream>
+#include <malloc.h> // BUILD2SK150: mallinfo() - rozpad CPU heap pameti vedle VmRSS
 #include <iterator>
 #include <EGL/egl.h>   // BUILD2SK98: pro gpu-gles (skutecny GL vykreslovac s texturovym filtrovanim)
 #include <GLES/gl.h>   // GLES1 - presne to, co gpu-gles pouziva (fixed-function pipeline)
@@ -452,6 +453,7 @@ static bool nap_gles_egl_init() {
 static void nap_worker(int gen) {
   NAPLOG("BUILD2SA2 PS1 worker start gen=%d fps=%.2f", gen, g_fps);
   NAPDIAG("BUILD2SK99 PS1_WORKER_THREAD_ALIVE gen=%d", gen); // BUILD2SK99: durable kanarek - vlakno samo bezi
+  NAPDIAG("BUILD2SK150 NATIVE_VERSION_CONFIRM file=nap_ps1_native.cpp"); // BUILD2SK150: pri kazdem startu jednoznacne potvrdi, KTERA verze tohohle souboru skutecne bezi - uz zadna nejistota jako predtim
   // BUILD2SK98: EGL kontext MUSI se nastavit na TOMHLE vlakne (jedine vlakno,
   // ktere kdy vola retro_run(), tedy jedine vlakno, na kterem gpu-gles vubec
   // kresli) - GL kontexty jsou vazane na vlakno, ktere je aktivovalo.
@@ -580,9 +582,21 @@ static void nap_worker(int gen) {
           }
           fclose(sf);
         }
-        NAPDIAG("BUILD2SK148 PS1_TICK_TIMING avgRetroRunMs=%.2f avgSyncMs=%.2f avgDispMs=%.2f avgTotalMs=%.2f n=%d maxCpuFreqKhz=%ld maxTempMilliC=%ld vmRssKb=%ld",
+        // BUILD2SK150: RENE MEL PRAVDU - vmRssKb roste ROVNOMERNE a
+        // NEPRETRZITE (potvrzeno v poslednim logu, 351MB -> 607MB behem
+        // jedne session). Prosel jsem gpuTexture.c (kde byl i puvodni pad
+        // z 19.7.) - hlavni GL textura-atlas objekty (gTexName a spol.)
+        // se vytvareji JEN JEDNOU (hlidano "if(!gTexName)") a znovupouzivaji
+        // pres glTexSubImage2D, ne pres opakovane glGenTextures - takze
+        // primy GL-objekt-na-objekt unik tam na prvni pohled neni. Aby bylo
+        // jasne, jestli je unik v BEZNE (malloc) CPU pameti (a tedy
+        // hledatelny), nebo nekde jinde (GPU/ovladac strana, mimo dosah
+        // mallinfo) - pridavame mallinfo() rozpad hned vedle VmRSS.
+        struct mallinfo mi = mallinfo();
+        long heapActiveKb = (long)(mi.uordblks / 1024);
+        NAPDIAG("BUILD2SK150 PS1_TICK_TIMING avgRetroRunMs=%.2f avgSyncMs=%.2f avgDispMs=%.2f avgTotalMs=%.2f n=%d maxCpuFreqKhz=%ld maxTempMilliC=%ld vmRssKb=%ld heapActiveKb=%ld",
           nap_sum_run / nap_tick_n, nap_sum_sync / nap_tick_n, nap_sum_disp / nap_tick_n,
-          (nap_sum_run + nap_sum_sync + nap_sum_disp) / nap_tick_n, nap_tick_n, maxCpuFreqKhz, maxTempMilliC, vmRssKb);
+          (nap_sum_run + nap_sum_sync + nap_sum_disp) / nap_tick_n, nap_tick_n, maxCpuFreqKhz, maxTempMilliC, vmRssKb, heapActiveKb);
         nap_sum_run = 0; nap_sum_sync = 0; nap_sum_disp = 0; nap_tick_n = 0;
       }
     }
