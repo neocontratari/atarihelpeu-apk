@@ -67,3 +67,13 @@ a zamknutí telefonu) je už hotové a ošetřené.
 Stačí upravit soubor, v GitHub Desktopu dole vyplnit popisek →
 **Commit to main** → **Push origin**. Nové APK se postaví samo
 a najdeš ho zase v Actions → Artifacts.
+
+## 9) Pojistka: v Actions vždy jen jeden balíček
+
+Build má v sobě úklidový krok „Pojistka“. Při každém spuštění se podívá,
+jestli v repozitáři neleží ještě nějaký jiný recept na build, a pokud ano,
+sám ho přepne na vypnuto. Nic se nemaže a v protokolu běhu je vypsané,
+co pojistka našla a co vypnula. Výsledek: **jeden push = jeden běh =
+jeden balíček `app-debug`.** Jediná výjimka je úplně první push této
+verze – starý recept se stihne rozběhnout ještě naposledy, než ho
+pojistka zhasne.

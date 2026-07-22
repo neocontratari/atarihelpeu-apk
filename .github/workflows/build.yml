@@ -4,12 +4,37 @@ on:
   push:
   workflow_dispatch:
 
+# Opravneni pro pojistku nize (vypinani ostatnich receptu na build)
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Stazeni kodu
         uses: actions/checkout@v4
+
+      - name: Pojistka - jediny povoleny build je tento (jeden push = jeden balicek)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Recepty na build nalezene v repozitari:"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows" --paginate \
+            --jq '.workflows[] | "  [\(.state)] \(.path)  (\(.name))"' || true
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows" --paginate \
+            --jq '.workflows[] | [.id, .state, .path] | @tsv' > /tmp/wf.tsv || true
+          while IFS=$'\t' read -r id state path; do
+            if [ "$path" != ".github/workflows/build.yml" ] && [ "$state" = "active" ]; then
+              echo "Vypinam cizi recept: $path"
+              gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/${id}/disable" \
+                && echo "  -> vypnuto (nic se nemaze, da se kdykoli zapnout zpet)" \
+                || echo "  -> vypnuti se nepovedlo, build bezi dal"
+            fi
+          done < /tmp/wf.tsv
+          echo "Hotovo. Od pristiho pushe pobezi vzdy jen Build APK."
 
       - name: Java 17
         uses: actions/setup-java@v4
