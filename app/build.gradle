@@ -45,6 +45,16 @@ android {
         }
     }
 
+    // OPRAVA duplicity: PS1/Sega jadra stavi CMake a Gradle je pak nachazel
+    // 2x (merged_jni_libs + cxx cesta) -> "DuplicateRelativeFileException".
+    // pickFirst rekne: kdyz je knihovna na vic mistech, vezmi prvni. Standardni
+    // a bezpecne reseni pro .so stavene pres externalNativeBuild.
+    packagingOptions {
+        jniLibs {
+            pickFirsts += ['**/libnapps1core.so', '**/libnapsega_native_proof.so', '**/*.so']
+        }
+    }
+
     externalNativeBuild {
         cmake {
             path "src/main/cpp/CMakeLists.txt"
