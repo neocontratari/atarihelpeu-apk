@@ -1,0 +1,24 @@
+================================================================================
+BUILD2SK151 - navod (2026-07-22)
+================================================================================
+
+Jen gpulib_if.c ma zmenu (hustsi mereni), ostatni 3 beze zmeny.
+
+CO JSEM NASEL v logu, cos uz poslal (bez noveho testu):
+Ne "logo se vubec nekresli" (to byl muj prvni, prilis ukvapeny zavěr) -
+presneji: logo SE kresli spravne (potvrzeno na vetsine vzorku), ale
+JEDEN konkretni zachyceny snimek byl useknuty - horni polovina obsah,
+spodni prazdna. To sedi na "neuplna grafika".
+
+Nechci hadat opravu ctvrte za sebou bez jistoty. Tenhle build NEMENI
+zadne chovani - jen vzorkuje snimky mnohem hustsi behem prvnich ~200
+tiku (cely intro), misto jednou za 31. To ukaze, jak casto/pravidelne
+se useknuti deje - a podle toho pak najdu presnou pricinu, ne dalsi
+odhad.
+
+CO POSLAT PRISTE:
+- Novy log - hledam "BUILD2SK151 GLES_PIXEL_SAMPLE" a
+  "BUILD2SK113 GLES_ASCII_DUMP" - tentokrat by jich melo byt desitky,
+  ne 8, a uvidim presne, ktere konkretni snimky (podle n=) jsou
+  useknute.
+================================================================================

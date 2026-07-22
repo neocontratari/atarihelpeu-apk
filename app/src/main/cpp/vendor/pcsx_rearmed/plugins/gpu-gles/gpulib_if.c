@@ -477,7 +477,13 @@ static void *nap_reader_thread_main(void *arg)
     nap_read_ms_sum = 0.0; nap_flip_ms_sum = 0.0; nap_timing_n = 0;
    }
   }
-  if (nap_gles_frame_count % 31 == 1) {
+  // BUILD2SK151: RENE ZACHYTIL KONKRETNI USEKNUTY SNIMEK (#6 z 8 - horni
+  // polovina obsah, spodni prazdna) - ale vzorkovani kazdych 31 snimku
+  // nam z toho da jen 8 vzorku CELKEM za celou session, prilis rídké na
+  // to, aby bylo videt, jak casto/pravidelne se to deje. Behem PRVNICH
+  // 200 snimku (pokryje cely intro) vzorkujeme KAZDY tick - cistě
+  // mereni, zadna zmena chovani.
+  if (nap_gles_frame_count < 200 || nap_gles_frame_count % 31 == 1) {
    GLenum glerr = glGetError();
    unsigned long long sum = 0;
    int n = rb_w * rb_h;
@@ -491,11 +497,11 @@ static void *nap_reader_thread_main(void *arg)
    uint32_t pTL = nap_gles_rb_buf[0];
    uint32_t pCenter = nap_gles_rb_buf[n / 2];
    uint32_t pBR = nap_gles_rb_buf[n - 1];
-   nap_diag_log("BUILD2SK130 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu nearBlackPct=%d pTL=0x%08x pCenter=0x%08x pBR=0x%08x dispW=%d dispH=%d",
+   nap_diag_log("BUILD2SK151 GLES_PIXEL_SAMPLE glErr=0x%x sumAvg=%llu nearBlackPct=%d pTL=0x%08x pCenter=0x%08x pBR=0x%08x dispW=%d dispH=%d n=%d",
      (unsigned)glerr, (unsigned long long)(sum / (n > 0 ? n : 1)), (n > 0 ? (nearBlack * 100 / n) : -1), (unsigned)pTL, (unsigned)pCenter, (unsigned)pBR,
-     rb_w, rb_h);
+     rb_w, rb_h, nap_gles_frame_count);
    static int nap_ascii_dump_count = 0;
-   if (nap_ascii_dump_count < 8) {
+   if (nap_ascii_dump_count < 30) { // BUILD2SK151: 8 -> 30, at zachytime vic prilezitosti behem husteho useku
      nap_ascii_dump_count++;
      const char *shades = " .:-=+*#%@";
      const int cols = 48, rows = 20;
