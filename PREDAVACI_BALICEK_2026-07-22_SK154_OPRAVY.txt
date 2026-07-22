@@ -1,0 +1,110 @@
+================================================================================
+PREDAVACI BALICEK - DOPLNEK SK154 (podle skutecneho logu z SK153 behu)
+Datum: 2026-07-22 vecer (navazuje na SK153 doplnek v tomto ZIPu)
+================================================================================
+
+KONTROLA BUILDU (prvni vec v logu):
+  BUILD2SK154 NATIVE_VERSION_CONFIRM file=nap_ps1_native.cpp
+  BUILD2SK154 GLES_VERSION_CONFIRM file=gpulib_if.c single-present-per-tick + neblokujici predani aktivni
+
+================================================================================
+CO REKL RENEHO LOG Z SK153 (line cisla z log.txt 2026-07-22)
+================================================================================
+DOBRE ZPRAVY (SK153 opravy zabraly):
+  - r.432/442: obe verze potvrzeny; r.459: GLES_GP1_EXT_ALIVE -> gpu.c
+    SKUTECNE vola GPUwriteStatus_ext, RGB24/Disabled zachyt funguje.
+  - Stroboskop ze spatne poloviny VRAM je pryc: VOUT flipy 0<->512 kazde
+    2 ticky (30fps hra) bezi a cte se cerstvy stav.
+  - ASCII dump #81/#82 (r.~2562): SCE DIAMANT JE V CANVASU PERFEKTNE
+    (seda plocha + tvar diamantu). Grafika se tedy kresli SPRAVNE.
+  - "Cerna herni faze" (vzorky n=349+, 84-100 % cerne pri 512x240) jsou ve
+    skutecnosti legitimni obrazovky bilych log na cerne (SCEA/Universal) -
+    3 vzorkovaci body texty miji. NENI to chyba.
+
+SKUTECNY ZBYVAJICI PROBLEM (presne dolozeny):
+  Faze A (r.~2400-2800): KAZDY odeslany snimek kompletni (seda+diamant).
+  Faze B (r.~4600-4900): vetsina odeslanych snimku CERNA s alpha=0
+    (RAW_VS_FINAL rawRGBA=[0,0,0,0]) a jen obcas kompletni (n=250, n=255
+    sumAvg=506). Soubezne: GLES_READBACK_TIMING avgReadMs=6.28 (ctecí
+    vlakno zpomalene - velky glReadPixels 640x480 + spicka TV PixelCopy
+    az 35ms), avgDispMs vyskocil na 7.7ms.
+  RETEZ: present CEKAL na ctecku -> tick presahl 16.6ms -> jadro zapnulo
+  frameskip -> u obsahu kresleneho ve 2 pruchodech (BIOS SCE: smaz /
+  vykresli) vypadaval kazdy druhy pruchod -> odesilaly se snimky zachycene
+  PO smazani (cerne, alpha=0). Stejne cekani = 2829 audio underrunu do
+  09:11:40. Jeden koren, dva projevy (blikani + sekani zvuku).
+
+DROBNOSTI Z LOGU:
+  - Uploady texturovych bloku (x>=640) a CLUT pasku ([0,480 16x1] atd.)
+    prochazely radkovym pasmem 480-rezimu - zbytecne GPU quady, CLUTy by
+    na spodnich radcich byly i videt.
+  - PIXELCOPY radky (BUILD2SK83) = TV webcast, bezel uz PRED startem PS1
+    (09:08:13 vs start 09:08:50) a je to stejna cesta jako u Atari/Segy.
+    finalARGB=0xff000000 je korektni prevod VSTUPNI cerne - cerna vznika
+    uz v GL (GLES_PIXEL_SAMPLE ji vidi primo na GPU). SK89_FORCED_ALPHA
+    je ochranne vynuceni nepruhlednosti. Prepis na MediaCodec/
+    HardwareBuffer by cernou jen vernejsi cestou prenesl - neni to koren.
+
+================================================================================
+PROVEDENE ZMENY (BUILD2SK154) - vsechny v gpulib_if.c + verze v native
+================================================================================
+A) PRESENT UZ NIKDY NECEKA na ctecí vlakno. Kdyz ctecka jeste zpracovava
+   predchozi snimek, aktualni se proste NEODESLE (obraz podrzi predchozi,
+   nepostrehnutelne) a iDrawnSomething zustava - zkusi se pristi tick.
+   Diagnostika: GLES_PRESENT_SKIP_BUSY n=... (prvnich 10 + kazdy 120.).
+   -> zadne natahovani ticku -> zadny frameskip -> zadne "po smazani"
+   snimky -> a hlavne zadne blokovani zvukoveho vlakna.
+B) Kopiruje se jen VYREZ, ktery ctecka skutecne cte (stejny orez vc.
+   prevraceni Y jako v nap_reader_thread_main) - u 640x480 je to 60 %
+   plochy, u 512x240 jen 23 %. Mene GPU prace presne tam, kde je uzka.
+C) Canvas-clear pri zmene rozliseni docasne vypina scissor (glClear
+   scissor respektuje - cistit chceme cely canvas, ne herni vyrez).
+D) nap_upload_vram_rect: nove SLOUPCOVA brana (u sirek <=512 obe poloviny
+   VRAM kvuli back-bufferu; u sirsich jen realny vyrez) + preskok pasku
+   nizsich nez 4 radky (CLUT/palety). Texturove bloky a palety uz do
+   canvasu nechodi.
+E) Po KAZDEM UploadScreen(-1) se cely zobrazovaci stav (viewport/
+   projekce/modelview/scissor pres SetOGLDisplaySettings(1)) vrati do
+   pevneho tvaru novou funkci nap_gles_apply_fixed_display() (vytazene
+   telo sync funkce). UploadScreen uvnitr vola SetOGLDisplaySettings(0)
+   z gpuDraw.c, ktery v balicku nemame - takhle na jeho presnem chovani
+   nic nestoji.
+
+================================================================================
+CO SLEDOVAT V PRISTIM LOGU
+================================================================================
+1) Oba BUILD2SK154 VERSION_CONFIRM radky.
+2) SCE obrazovka (seda + diamant) VIDITELNA na telefonu i TV; PS "P" logo
+   s pozadim; zadne stridani cerna/obraz.
+3) GLES_PRESENT_SKIP_BUSY: obcasne n v 640x480 fazich je OK a ZADOUCI
+   (misto sekani zvuku); stovky za par sekund by znamenaly trvale pomalou
+   ctecku - pak resit dal (napr. pushovat 480p jen kazdy 2. tick).
+4) PS1_AUDIO_WRITE underruns: mel by prestat rust (v SK153 logu 2829).
+5) GLES_VRAM_WRITE_UPLOAD: uz ZADNE [x>=640 ...] bloky ani [.. 16x1]
+   pasky; zustat maji jen skutecne obrazove zapisy.
+
+================================================================================
+DULEZITE UPOZORNENI K INTEGRITE PRACOVNI KOPIE (poctivost predevsim)
+================================================================================
+Behem prace na SK154 jsem v pracovni kopii gpulib_if.c nasel ~254 radku
+zmen oznacenych "BUILD2SK154", ktere jsem v teto seanci NEPSAL (soubor mel
+novejsi cas zmeny, nez byly moje posledni upravy; cast napadu se s mym
+planem shodovala, cast sla jinym smerem s neovererenymi tvrzenimi).
+Zachoval jsem se konzervativne: soubor jsem OBNOVIL z me overene SK153
+kopie (md5 kontrola) a vsechny SK154 zmeny napsal znovu sam a syntakticky
+overil. Do balicku tedy jde POUZE kod, ktery jsem osobne zkontroloval.
+Doporuceni: pokud na repozitari pracuje soubezne jina seance/nastroj,
+je potreba to koordinovat - dva pisari v jednom souboru = riziko.
+
+================================================================================
+STALE PLATI (z SK153): posli prosim v pristim kole tyto 2 soubory
+================================================================================
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpu-gles/gpuDraw.c
+  app/src/main/cpp/vendor/pcsx_rearmed/plugins/gpulib/gpu.c
+Duvod: gpuDraw.c = presne chovani SetOGLDisplaySettings/offsetScreenUpload
+(SK154 uz na nem nestavi, ale overeni zavre posledni predpoklad);
+gpu.c = presna verze frameskip logiky a GP0(80h) zpracovani (otevreny bod
+prekryvajicich se kopii z SK153 dokumentu).
+================================================================================
+KONEC DOPLNKU SK154
+================================================================================

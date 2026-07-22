@@ -454,7 +454,7 @@ static bool nap_gles_egl_init() {
 static void nap_worker(int gen) {
   NAPLOG("BUILD2SA2 PS1 worker start gen=%d fps=%.2f", gen, g_fps);
   NAPDIAG("BUILD2SK99 PS1_WORKER_THREAD_ALIVE gen=%d", gen); // BUILD2SK99: durable kanarek - vlakno samo bezi
-  NAPDIAG("BUILD2SK153 NATIVE_VERSION_CONFIRM file=nap_ps1_native.cpp"); // BUILD2SK153: pri kazdem startu jednoznacne potvrdi, KTERA verze tohohle souboru skutecne bezi - uz zadna nejistota jako predtim
+  NAPDIAG("BUILD2SK154 NATIVE_VERSION_CONFIRM file=nap_ps1_native.cpp"); // BUILD2SK154: pri kazdem startu jednoznacne potvrdi, KTERA verze tohohle souboru skutecne bezi
   // BUILD2SK98: EGL kontext MUSI se nastavit na TOMHLE vlakne (jedine vlakno,
   // ktere kdy vola retro_run(), tedy jedine vlakno, na kterem gpu-gles vubec
   // kresli) - GL kontexty jsou vazane na vlakno, ktere je aktivovalo.

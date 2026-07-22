@@ -333,6 +333,34 @@ static void nap_fbo_init_once(void)
   }
 }
 
+// BUILD2SK154: pevna VRAM-space projekce/viewport/scissor na JEDNOM miste.
+// Vola se (a) kazdy tick ze sync_display_settings, (b) HNED po kazdem
+// nap_upload_vram_rect - vendor UploadScreen totiz uvnitr vola
+// SetOGLDisplaySettings(0) a dalsi stav z gpuDraw.c (soubor nemame v
+// balicku), takze po nem stav radeji VZDY vratime do znameho tvaru, aby
+// vsechno kreslene POTOM ve stejnem ticku melo zarucene spravnou projekci.
+static void nap_gles_apply_fixed_display(void)
+{
+  iResX = NAP_PSX_VRAM_W;
+  iResY = NAP_PSX_VRAM_H;
+  rRatioRect.left = 0; rRatioRect.top = 0;
+  rRatioRect.right = NAP_PSX_VRAM_W; rRatioRect.bottom = NAP_PSX_VRAM_H;
+  PSXDisplay.DisplayMode.x = NAP_PSX_VRAM_W;  // BUILD2SK128: kvuli XS=YS=1 ve scissor vypoctu
+  PSXDisplay.DisplayMode.y = NAP_PSX_VRAM_H;
+  glViewport(0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H, 0, -1, 1);
+  glMatrixMode(GL_MODELVIEW); // BUILD2SK128: vratit rezim matice tak, jak ho necha GLinitialize
+  glLoadIdentity(); // BUILD2SK153: MODELVIEW identita kazdy tick - pojistka
+  static int nap_proj_logged = 0;
+  if (!nap_proj_logged) {
+    nap_proj_logged = 1;
+    nap_diag_log("BUILD2SK128 GLES_VRAM_PROJECTION_EVERY_TICK w=%d h=%d", NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
+  }
+  SetOGLDisplaySettings(1); // scissor - od SK128 pocita 1:1 ve VRAM souradnicich
+}
+
 void nap_gles_sync_display_settings(void)
 {
  nap_fbo_init_once(); // BUILD2SK133: jen jednou, levne po zbytek behu
@@ -366,24 +394,7 @@ void nap_gles_sync_display_settings(void)
   // viewport mezitim prenastavilo (updateDisplayIfChanged/SetAspectRatio
   // maji vlastni glOrtho/glViewport - dnes jsou to mrtve cesty, ale nechceme
   // na tom stavet).
-  iResX = NAP_PSX_VRAM_W;
-  iResY = NAP_PSX_VRAM_H;
-  rRatioRect.left = 0; rRatioRect.top = 0;
-  rRatioRect.right = NAP_PSX_VRAM_W; rRatioRect.bottom = NAP_PSX_VRAM_H;
-  PSXDisplay.DisplayMode.x = NAP_PSX_VRAM_W;  // BUILD2SK128: viz komentar vyse - kvuli XS=YS=1 ve scissor vypoctu
-  PSXDisplay.DisplayMode.y = NAP_PSX_VRAM_H;
-  glViewport(0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glOrtho(0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H, 0, -1, 1);
-  glMatrixMode(GL_MODELVIEW); // BUILD2SK128: vratit rezim matice tak, jak ho necha GLinitialize (SK122 nechaval PROJECTION aktivni)
-  glLoadIdentity(); // BUILD2SK153: MODELVIEW pripnout na identitu kazdy tick - pojistka proti cemukoli, co by ji poskodilo (napr. drivejsi glOrtho-do-modelview chyba v updateDisplayIfChanged); vsechna geometrie pluginu identitu predpoklada
-  static int nap_proj_logged = 0;
-  if (!nap_proj_logged) {
-    nap_proj_logged = 1;
-    nap_diag_log("BUILD2SK128 GLES_VRAM_PROJECTION_EVERY_TICK w=%d h=%d", NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
-  }
-  SetOGLDisplaySettings(1); // scissor kazdy snimek - od SK128 pocita 1:1 ve VRAM souradnicich (viz vyse)
+  nap_gles_apply_fixed_display(); // BUILD2SK154: telo presunuto do pomocne funkce - stejnou obnovu potrebujeme i po kazdem nap_upload_vram_rect (viz nize)
 }
 
 
@@ -611,7 +622,7 @@ static void *nap_reader_thread_main(void *arg)
  return NULL;
 }
 
-static void nap_gles_readback_and_push(void)
+static int nap_gles_readback_and_push(void) // BUILD2SK154: vraci 1=snimek predan ctecce, 0=preskoceno/nepripraveno - volajici pak NEnuluje iDrawnSomething a zkusi to znovu pristi tick
 {
  // BUILD2SK128: velikost i pozice cteni uz JEN z autoritativniho gpulib
  // stavu (gpu.screen - plneno primo z GP1 prikazu v gpu.c), ne ze zamrzleho
@@ -624,8 +635,8 @@ static void nap_gles_readback_and_push(void)
  if (nap_gles_frame_count % 31 == 1) {
   nap_diag_log("BUILD2SK100 GLES_FRAME_HEARTBEAT n=%d dispW=%d dispH=%d", nap_gles_frame_count, fresh_w, fresh_h);
  }
- if (fresh_w <= 0 || fresh_h <= 0 || fresh_w > NAP_PSX_VRAM_W || fresh_h > NAP_PSX_VRAM_H) return;
- if (!nap_fbo_ready) return;
+ if (fresh_w <= 0 || fresh_h <= 0 || fresh_w > NAP_PSX_VRAM_W || fresh_h > NAP_PSX_VRAM_H) return 0;
+ if (!nap_fbo_ready) return 0;
  // BUILD2SK144: g_worker uz TADY NEDELA ZADNE cteni z GPU (stejne jako
  // SK140) - ale uz TAKY NEPREHAZUJE, kam hra kresli (to byla ta chyba,
  // viz velky komentar u globalnich promennych). Hra porad kresli do
@@ -635,11 +646,29 @@ static void nap_gles_readback_and_push(void)
  int other_idx = 1 - nap_snapshot_idx;
  int dims_changed = (nap_last_push_w != 0 && (fresh_w != nap_last_push_w || fresh_h != nap_last_push_h)); // BUILD2SK153: proti NAPOSLED ODESLANEMU snimku (globalne), ne proti 2 snimky staremu stavu jednoho snapshotu
  pthread_mutex_lock(&nap_reader_mtx);
- // BUILD2SK140 (princip beze zmeny): pockat, az ctecí vlakno DOKONCI svoji
- // GPU cast predchoziho pozadavku na TENTO SAMY snapshot - teprve pak je
- // bezpecne do nej znovu kopirovat. V beznem pripade uz je to davno hotove.
- while (nap_reader_has_req) pthread_cond_wait(&nap_reader_cv, &nap_reader_mtx);
- while (!nap_reader_idx_free[other_idx]) pthread_cond_wait(&nap_reader_cv, &nap_reader_mtx);
+ // BUILD2SK154: NIKDY NEBLOKOVAT g_worker (vlakno se zvukem!). SK153 a vse
+ // pred nim tady CEKALO, az ctecí vlakno dokonci predchozi pozadavek.
+ // Reneho log 2026-07-22 ale ukazal presny retez selhani: u 640x480 trva
+ // glReadPixels na ctecim vlakne ~6.3ms (GLES_READBACK_TIMING avgReadMs=6.28,
+ // soubezne s TV PixelCopy spickou) -> cekani tady nafouklo avgDispMs az na
+ // 7.7ms -> tick prekrocil 16.6ms rozpocet -> jadro zapnulo frameskip ->
+ // u obsahu kresleneho ve 2 pruchodech (BIOS: smaz/vykresli) vypadaval kazdy
+ // druhy pruchod -> odesilaly se snimky zachycene PO smazani (cerne,
+ // alpha=0) s obcasnym kompletnim pri preskoku parity - presne "blikajici"
+ // SCE obrazovka + 2829 audio underrunu. OPRAVA: kdyz ctecka jeste pracuje,
+ // tenhle snimek proste NEODESLEME (return 0) - obraz na TV/telefonu podrzi
+ // predchozi snimek (nepostrehnutelne), emulace a zvuk bezi dal bez cekani.
+ if (nap_reader_has_req || !nap_reader_idx_free[other_idx]) {
+  pthread_mutex_unlock(&nap_reader_mtx);
+  {
+   static int nap_skip_count = 0;
+   nap_skip_count++;
+   if (nap_skip_count <= 10 || (nap_skip_count % 120 == 0)) {
+    nap_diag_log("BUILD2SK154 GLES_PRESENT_SKIP_BUSY n=%d (ctecka jeste cte predchozi snimek - tenhle vynechavame, zadne cekani)", nap_skip_count);
+   }
+  }
+  return 0;
+ }
  nap_reader_idx_free[other_idx] = 0; // zabirame ho pro NOVY pozadavek
  // BUILD2SK153: KLICOVA OPRAVA STROBOSKOPU - request nese VZDY CERSTVA
  // metadata (co prave TED plati v gpu.screen a co za okamzik prijde do
@@ -660,7 +689,23 @@ static void nap_gles_readback_and_push(void)
  // Zadny CPU prenos, zadne cekani na "je GPU hotove" - jen GPU->GPU
  // presun, typicky < 1ms, a hlavne: NEDOTYKA se toho, kam hra kresli.
  glBindTexture(GL_TEXTURE_2D, nap_fbo_tex[other_idx]);
- glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, NAP_PSX_VRAM_W, NAP_PSX_VRAM_H);
+ // BUILD2SK154: kopirovat jen VYREZ, ktery ctecka skutecne precte (stejna
+ // matematika orezu jako v nap_reader_thread_main, vcetne prevraceni Y) -
+ // u 640x480 je to 60 % plochy, u 512x240 jen 23 % -> mene prace pro GPU
+ // presne ve chvilich, kdy je ho potreba setrit. Snapshot mimo tento vyrez
+ // muze byt stary - ctecka ho ale NIKDY necte (cte presne tyhle souradnice).
+ {
+  int cp_x = fresh_sx, cp_y = fresh_sy, cp_w = fresh_w, cp_h = fresh_h;
+  if (cp_x < 0) cp_x = 0;
+  if (cp_y < 0) cp_y = 0;
+  if (cp_x + cp_w > NAP_PSX_VRAM_W) cp_x = NAP_PSX_VRAM_W - cp_w;
+  if (cp_x < 0) cp_x = 0;
+  int cp_glY = NAP_PSX_VRAM_H - (cp_y + cp_h);
+  if (cp_glY < 0) cp_glY = 0;
+  if (cp_glY + cp_h > NAP_PSX_VRAM_H) cp_glY = NAP_PSX_VRAM_H - cp_h;
+  if (cp_glY < 0) cp_glY = 0;
+  glCopyTexSubImage2D(GL_TEXTURE_2D, 0, cp_x, cp_glY, cp_x, cp_glY, cp_w, cp_h);
+ }
  // BUILD2SK153: glFlush zarucuje, ze kopie vyse bude viditelna i z DRUHEHO
  // (cteciho) EGL kontextu, ktery sdili textury s timhle. Drive tuhle roli
  // "nahodou" plnil eglSwapBuffers v updateFrontDisplay - ktery je ale na
@@ -677,8 +722,10 @@ static void nap_gles_readback_and_push(void)
  // mazal cerstve nakresleny snimek NOVE sceny -> cerny zablesk pri kazdem
  // prepnuti menu<->hra (Reneho hlaseni k bodu "zmena rozliseni").
  if (dims_changed) {
+  glDisable(GL_SCISSOR_TEST); // BUILD2SK154: glClear respektuje scissor - v tenhle okamzik je na hernim vyrezu, cistit chceme CELY canvas
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
+  glEnable(GL_SCISSOR_TEST);
   // canvas je po vycisteni cely cerny -> nic z drivejsiho GPU kresleni uz
   // neexistuje -> obalka vykreslene plochy se musi vynulovat, jinak by
   // nap_vram_read_sync mohla cist cernou plochu jako "platny" obsah.
@@ -692,6 +739,7 @@ static void nap_gles_readback_and_push(void)
  nap_reader_has_req = 1;
  pthread_cond_broadcast(&nap_reader_cv);
  pthread_mutex_unlock(&nap_reader_mtx);
+ return 1; // BUILD2SK154: snimek skutecne predan ctecce
 }
 
 
@@ -852,6 +900,28 @@ static void nap_upload_vram_rect(int x, int y, int w, int h)
     int band0 = dsy, band1 = dsy + dh;
     if (band1 > NAP_PSX_VRAM_H) band1 = NAP_PSX_VRAM_H;
     if (yy1 <= band0 || yy0 >= band1) return; // cely zapis mimo radky displeje (typicky texturova data) - canvas ho nepotrebuje
+    // BUILD2SK154: CLUT/paletove pasky (16x1, 256x1...) do canvasu nepatri -
+    // v Reneho logu se nahravaly porad dokola ([0,480 16x1] apod.), na
+    // spodnich radcich 480-rezimu by byly i VIDET jako barevne smeti, a
+    // kazdy takovy upload zbytecne tahal vendor UploadScreen uprostred
+    // snimku. Skutecny obrazovy zapis ma vzdy vic nez par radku.
+    if (h < 4) return;
+    // BUILD2SK154: SLOUPCOVA brana - radkove pasmo nestaci (Reneho log:
+    // texturove bloky na x>=640 pri 640x480 displeji prochazely). Zapis musi
+    // sloupcove protinat zobrazovanou oblast; u sirek <=512 bereme OBE
+    // poloviny VRAM (0/512 double-buffering - zapisy do back-bufferu pred
+    // flipem musi projit), u sirsich rezimu jen skutecny vyrez.
+    {
+      int ok = 0;
+      if (dw <= 512) {
+        int hb = dsx & 511;
+        if (!(x + w <= hb       || x >= hb + dw))       ok = 1; /* leva polovina  */
+        if (!(x + w <= hb + 512 || x >= hb + 512 + dw)) ok = 1; /* prava polovina */
+      } else {
+        if (!(x + w <= dsx || x >= dsx + dw)) ok = 1;
+      }
+      if (!ok) return; /* typicky texturove stranky vpravo od displeje */
+    }
   }
   if (px < 0) px = 0;
   if (yy0 < 0) yy0 = 0;
@@ -862,6 +932,14 @@ static void nap_upload_vram_rect(int x, int y, int w, int h)
   xrUploadArea.y0 = (short)yy0;
   xrUploadArea.y1 = (short)yy1;
   UploadScreen(-1); // vendor cesta: 256x256 dlazdice, LoadDirectMovieFast (umi 15bit i 24bit podle PSXDisplay.RGB24), spravny state-dance, iDrawnSomething=2
+  // BUILD2SK154: UploadScreen uvnitr vola SetOGLDisplaySettings(0) a dalsi
+  // stav z gpuDraw.c (soubor NEMAME v balicku - nemuzeme doverovat, co
+  // presne s projekci/viewportem/scissorem udela). Proto HNED po navratu
+  // vratime cely zobrazovaci stav do naseho pevneho tvaru - vsechno, co se
+  // kresli PO tomhle uploadu ve stejnem ticku, ma zarucene spravnou
+  // projekci. Levne (par GL volani) a odstranuje to jedinou zbylou
+  // neznamou zavislost na gpuDraw.c.
+  nap_gles_apply_fixed_display();
   {
     static int nap_upload_logs = 0;
     if (nap_upload_logs < 40) {
@@ -1014,7 +1092,7 @@ void nap_gles_present_frame(void)
  static int nap_present_logged = 0;
  if (!nap_present_logged) {
   nap_present_logged = 1;
-  nap_diag_log("BUILD2SK153 GLES_VERSION_CONFIRM file=gpulib_if.c single-present-per-tick aktivni");
+  nap_diag_log("BUILD2SK154 GLES_VERSION_CONFIRM file=gpulib_if.c single-present-per-tick + neblokujici predani aktivni");
  }
  if (!nap_fbo_ready) return;
  if (nap_disp_disabled) {
@@ -1029,8 +1107,8 @@ void nap_gles_present_frame(void)
   return;
  }
  if (iDrawnSomething) {
-  nap_gles_readback_and_push(); // BUILD2SK98 mechanika, SK153 cadence
-  iDrawnSomething = 0;
+  if (nap_gles_readback_and_push()) // BUILD2SK98 mechanika, SK153 cadence, SK154 bez cekani
+   iDrawnSomething = 0; // vynulovat JEN kdyz snimek skutecne odesel - pri preskoku (ctecka pracuje) to zkusime znovu pristi tick se stejnym (ci novejsim) obsahem
  }
 }
 
