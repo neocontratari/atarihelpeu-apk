@@ -36,10 +36,14 @@ nic ti nepřepíše.
 
 ## 4) Co máš vidět
 
-Celoobrazovková, **pomalu se přelévající tmavá barva** – naprosto plynule,
-bez blikání a bez trhání. To je důkaz, že double buffering + vsync +
-`eglSwapBuffers` fungují správně. Zrcadlení na TV spusť jako obvykle –
-obraz musí být klidný i tam.
+Verze 1.1: ostrý „retro" testovací obraz v rozlišení **320×224** (stejné,
+jaké používá Sega Mega Drive) – barevné pruhy jako z televizního testu,
+malá šachovnice v levém horním rohu a **dvě bílé linky**, které plynule
+jedou obrazem (svislá doprava, vodorovná dolů). Kolem je tmavý, jemně
+dýchající rámeček (letterbox). Obsah obrazu se přitom nahrává do grafiky
+znovu **každý snímek** – přesně stejnou cestou, kterou později poteče
+obraz z jádra emulátoru. Linky musí jet naprosto plynule, bez blikání
+a trhání, na mobilu i v zrcadlení.
 
 ## 5) Logy (stejný postup, jaký znáš z emu10)
 
@@ -55,12 +59,13 @@ obraz musí být klidný i tam.
 Actions → klikni na červený běh → krok **Sestaveni APK** → zkopíruj
 posledních ~50 řádků a pošli mi je. Z nich přesně poznám, co opravit.
 
-## 7) Kam se později píše grafika
+## 7) Kam se později napojí jádro emulátoru
 
-Soubor `app/src/main/cpp/main.c`, funkce `draw_frame()` – je tam
-vyznačené místo `>>> SEM POZDEJI PRIJDOU POLYGONY <<<`.
-Všechno okolo (EGL, smyčka, swap, vsync, přežití otočení displeje
-a zamknutí telefonu) je už hotové a ošetřené.
+Soubor `app/src/main/cpp/main.c`, funkce `draw_frame()`, krok 2 –
+místo `fill_test_pattern()` se stejným voláním `glTexSubImage2D`
+nahraje framebuffer jádra (PS1/Sega). Všechno ostatní (EGL, smyčka,
+swap, vsync, letterbox, přežití otočení a zamknutí) je už hotové
+a ověřené.
 
 ## 8) Další změny
 

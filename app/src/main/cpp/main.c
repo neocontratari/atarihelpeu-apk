@@ -49,6 +49,11 @@ typedef struct {
     bool       animating;   // smi se prave ted kreslit?
     long       frames;      // pocitadlo snimku (pro FPS log)
     double     fps_t0;
+    double     work_ms_sum; // soucet casu prace na snimcich (pro mereni)
+    GLuint     program;     // shader program pro quad s texturou
+    GLuint     texture;     // textura 320x224 = budouci obraz jadra
+    GLint      loc_pos;
+    GLint      loc_tex;
 } Engine;
 
 static double now_sec(void) {
@@ -76,6 +81,110 @@ static const char* egl_err_str(EGLint e) {
 }
 
 // ------------------------------------------------------------------
+// Testovaci obraz 320x224 (rozliseni Sega Mega Drive; PS1 ma podobne).
+// KLICOVE: obsah se nahrava do grafiky znovu KAZDY snimek pres
+// glTexSubImage2D - presne stejnou cestou pozdeji potece obraz
+// z jadra emulatoru. Tenhle krok tedy zkousi a meri prave tu trasu.
+// ------------------------------------------------------------------
+#define TEX_W 320
+#define TEX_H 224
+
+static unsigned char s_pixels[TEX_W * TEX_H * 4];  // RGBA
+
+static void fill_test_pattern(long frame) {
+    // 8 svislych barevnych pruhu jako z televizniho testu
+    static const unsigned char bars[8][3] = {
+        {235,235,235}, {235,235, 16}, { 16,235,235}, { 16,235, 16},
+        {235, 16,235}, {235, 16, 16}, { 16, 16,235}, { 16, 16, 16},
+    };
+    int line_x = (int)( frame      % TEX_W);  // svisla bila linka (jede doprava)
+    int line_y = (int)((frame * 2) % TEX_H);  // vodorovna bila linka (jede dolu)
+
+    unsigned char* p = s_pixels;
+    for (int y = 0; y < TEX_H; y++) {
+        for (int x = 0; x < TEX_W; x++) {
+            const unsigned char* c = bars[(x * 8) / TEX_W];
+            unsigned char r = c[0], g = c[1], b = c[2];
+            if (x == line_x || y == line_y) { r = 255; g = 255; b = 255; }
+            // sachovnice v levem hornim rohu = kontrola ostrosti pixelu
+            if (x < 32 && y < 32 && (((x >> 2) + (y >> 2)) & 1)) { r = 0; g = 0; b = 0; }
+            *p++ = r; *p++ = g; *p++ = b; *p++ = 255;
+        }
+    }
+}
+
+static GLuint compile_shader(GLenum type, const char* src) {
+    GLuint sh = glCreateShader(type);
+    glShaderSource(sh, 1, &src, NULL);
+    glCompileShader(sh);
+    GLint ok = 0;
+    glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
+    if (!ok) {
+        char log[512];
+        log[0] = 0;
+        glGetShaderInfoLog(sh, sizeof log, NULL, log);
+        LOGE("GL: shader se neprelozil: %s", log);
+        glDeleteShader(sh);
+        return 0;
+    }
+    return sh;
+}
+
+// Priprava quadu a textury (vola se na konci egl_init)
+static bool gl_setup(Engine* e) {
+    const char* vs_src =
+        "attribute vec2 aPos;\n"
+        "attribute vec2 aTex;\n"
+        "varying vec2 vTex;\n"
+        "void main() { vTex = aTex; gl_Position = vec4(aPos, 0.0, 1.0); }\n";
+    const char* fs_src =
+        "precision mediump float;\n"
+        "varying vec2 vTex;\n"
+        "uniform sampler2D uTex;\n"
+        "void main() { gl_FragColor = texture2D(uTex, vTex); }\n";
+
+    GLuint vs = compile_shader(GL_VERTEX_SHADER, vs_src);
+    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, fs_src);
+    if (!vs || !fs) return false;
+
+    e->program = glCreateProgram();
+    glAttachShader(e->program, vs);
+    glAttachShader(e->program, fs);
+    glLinkProgram(e->program);
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    GLint ok = 0;
+    glGetProgramiv(e->program, GL_LINK_STATUS, &ok);
+    if (!ok) {
+        LOGE("GL: program se neslinkoval");
+        return false;
+    }
+
+    e->loc_pos = glGetAttribLocation(e->program, "aPos");
+    e->loc_tex = glGetAttribLocation(e->program, "aTex");
+    if (e->loc_pos < 0 || e->loc_tex < 0) {
+        LOGE("GL: atributy shaderu se nenasly");
+        return false;
+    }
+    glUseProgram(e->program);
+    glUniform1i(glGetUniformLocation(e->program, "uTex"), 0);
+
+    glGenTextures(1, &e->texture);
+    glBindTexture(GL_TEXTURE_2D, e->texture);
+    // NEAREST = ostre "retro" pixely bez rozmazani
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TEX_W, TEX_H, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+    LOGI("GL: quad + textura %dx%d pripraveny (NEAREST, RGBA)", TEX_W, TEX_H);
+    return true;
+}
+
+// ------------------------------------------------------------------
 // Kompletni uklid EGL (bezpecne i kdyz je inicializovano jen napul)
 // ------------------------------------------------------------------
 static void egl_term(Engine* e) {
@@ -89,6 +198,8 @@ static void egl_term(Engine* e) {
     e->display   = EGL_NO_DISPLAY;
     e->surface   = EGL_NO_SURFACE;
     e->context   = EGL_NO_CONTEXT;
+    e->program   = 0;   // GL objekty zanikly spolu s kontextem
+    e->texture   = 0;
     e->animating = false;
 }
 
@@ -189,8 +300,15 @@ static bool egl_init(Engine* e, ANativeWindow* window) {
          (const char*)glGetString(GL_RENDERER),
          (const char*)glGetString(GL_VERSION));
 
-    e->frames = 0;
-    e->fps_t0 = now_sec();
+    // Priprava quadu a textury pro obraz
+    if (!gl_setup(e)) {
+        LOGE("GL: priprava quadu/textury selhala");
+        return false;
+    }
+
+    e->frames      = 0;
+    e->fps_t0      = now_sec();
+    e->work_ms_sum = 0.0;
     return true;
 }
 
@@ -200,30 +318,58 @@ static bool egl_init(Engine* e, ANativeWindow* window) {
 static void draw_frame(Engine* e) {
     if (e->display == EGL_NO_DISPLAY || e->surface == EGL_NO_SURFACE) return;
 
+    double t0 = now_sec();
+
     // Velikost zjistujeme kazdy snimek - otoceni displeje tim padem
-    // nikdy nerozbije viewport.
+    // nikdy nerozbije obraz.
     EGLint w = 0, h = 0;
     eglQuerySurface(e->display, e->surface, EGL_WIDTH,  &w);
     eglQuerySurface(e->display, e->surface, EGL_HEIGHT, &h);
-    glViewport(0, 0, w, h);
 
-    // Testovaci obraz: pomalu se prelevajici tmava barva.
-    // Kdyz je swap spatne, je to videt okamzite (blikani/skoky).
-    // Kdyz je vse dobre, barva tece naprosto plynule - i v zrcadleni na TV.
-    double t = now_sec();
-    float rr = 0.10f + 0.08f * (float)sin(t * 0.9);
-    float gg = 0.16f + 0.10f * (float)sin(t * 0.6 + 2.0);
-    float bb = 0.28f + 0.15f * (float)sin(t * 0.4 + 4.0);
-    glClearColor(rr, gg, bb, 1.0f);
+    // 1) Pozadi pres celou obrazovku (jemne dychajici tmavy ramecek)
+    glViewport(0, 0, w, h);
+    glClearColor(0.06f + 0.03f * (float)sin(t0 * 0.5),
+                 0.07f + 0.03f * (float)sin(t0 * 0.4 + 2.0),
+                 0.10f + 0.04f * (float)sin(t0 * 0.3 + 4.0),
+                 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // ==============================================================
-    //  >>> SEM POZDEJI PRIJDOU POLYGONY / TEXTURA S OBRAZEM JADRA <<<
-    //  (vsechno kolem - EGL, smycka, swap, vsync - uz je hotove)
-    // ==============================================================
+    // 2) Novy obsah snimku -> textura. PRESNE TUDY pozdeji potece obraz
+    //    z jadra emulatoru: misto fill_test_pattern() se sem stejnym
+    //    volanim glTexSubImage2D nahraje jeho framebuffer.
+    fill_test_pattern(e->frames);
+    glBindTexture(GL_TEXTURE_2D, e->texture);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, TEX_W, TEX_H,
+                    GL_RGBA, GL_UNSIGNED_BYTE, s_pixels);
 
-    // Preklopeni zadniho bufferu na obrazovku. Diky vsync presne
-    // v rytmu displeje -> zadne blikani.
+    // 3) Letterbox: roztahnout co nejvic pri zachovani pomeru stran
+    int vw = w;
+    int vh = (w * TEX_H) / TEX_W;
+    if (vh > h) { vh = h; vw = (h * TEX_W) / TEX_H; }
+    glViewport((w - vw) / 2, (h - vh) / 2, vw, vh);
+
+    // 4) Vykresleni quadu s texturou
+    static const GLfloat quad[] = {
+        // x,     y,      u,    v   (v je obracene: radek 0 textury nahore)
+        -1.0f, -1.0f,   0.0f, 1.0f,
+         1.0f, -1.0f,   1.0f, 1.0f,
+        -1.0f,  1.0f,   0.0f, 0.0f,
+         1.0f,  1.0f,   1.0f, 0.0f,
+    };
+    glUseProgram(e->program);
+    glVertexAttribPointer((GLuint)e->loc_pos, 2, GL_FLOAT, GL_FALSE,
+                          4 * sizeof(GLfloat), quad);
+    glVertexAttribPointer((GLuint)e->loc_tex, 2, GL_FLOAT, GL_FALSE,
+                          4 * sizeof(GLfloat), quad + 2);
+    glEnableVertexAttribArray((GLuint)e->loc_pos);
+    glEnableVertexAttribArray((GLuint)e->loc_tex);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    // Cas prace na snimku (bez cekani na vsync ve swapu)
+    double work_ms = (now_sec() - t0) * 1000.0;
+
+    // 5) Preklopeni zadniho bufferu na obrazovku. Diky vsync presne
+    //    v rytmu displeje -> zadne blikani.
     if (!eglSwapBuffers(e->display, e->surface)) {
         EGLint err = eglGetError();
         LOGE("eglSwapBuffers selhal: %s", egl_err_str(err));
@@ -240,12 +386,17 @@ static void draw_frame(Engine* e) {
         return;
     }
 
-    // Kazdych 300 snimku vypis FPS - dukaz zivota v 8765/log
+    // Kazdych 300 snimku vypis FPS + prumerna prace na snimek
     e->frames++;
+    e->work_ms_sum += work_ms;
     if (e->frames % 300 == 0) {
-        double dt = t - e->fps_t0;
-        if (dt > 0.0) LOGI("Bezi: %ld snimku, ~%.1f FPS, %dx%d", e->frames, 300.0 / dt, w, h);
-        e->fps_t0 = t;
+        double dt = t0 - e->fps_t0;
+        if (dt > 0.0) {
+            LOGI("Bezi: %ld snimku, ~%.1f FPS, prace ~%.2f ms/snimek, %dx%d",
+                 e->frames, 300.0 / dt, e->work_ms_sum / 300.0, w, h);
+        }
+        e->fps_t0      = t0;
+        e->work_ms_sum = 0.0;
     }
 }
 
