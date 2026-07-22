@@ -1,37 +1,48 @@
 plugins {
     id 'com.android.application'
 }
-android {
-    namespace 'eu.atarihelp.emu10'
-    compileSdk 34
-    defaultConfig {
-        applicationId "eu.atarihelp.emu10"
-        minSdk 24
-        targetSdk 34
-        versionCode 10
-        versionName "EMU10-BUILD2RY-SEGA-CORE-O3-VDP-LEFTBLANK"
 
-        externalNativeBuild {
-            cmake {
-                // BUILD2RY: debug APK stavel jadro emulatoru (.c soubory) s -O0.
-                // cFlags tu drive uplne chybely; cppFlags mely jen -O2 pro frontend.
-                // Optimalizace je vynucena i v CMakeLists per-target, tohle je pojistka.
-                cppFlags "-std=c++17 -O3"
-                cFlags "-O3"
-            }
+android {
+    namespace 'eu.atarihelp.eglrender'
+    compileSdk 34
+    ndkVersion '26.3.11579264'
+
+    defaultConfig {
+        applicationId 'eu.atarihelp.eglrender'
+        minSdk 24            // stejne jako AtariHelp.eu (emu10)
+        targetSdk 34
+        versionCode 1
+        versionName '1.0-EGL-SKELETON'
+
+        ndk {
+            // stejna sada architektur jako ma libnapsega_native_proof.so
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
         }
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+
+    // Stale stejny podpisovy klic (debug.keystore je soucasti repozitare).
+    // Diky tomu jde kazda dalsi verze nainstalovat PRES tu predchozi
+    // bez odinstalace - podpis se mezi buildy nemeni.
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storeType 'pkcs12'
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
     }
+
     buildTypes {
-        debug { }
+        debug {
+            signingConfig signingConfigs.debug
+        }
     }
 
     externalNativeBuild {
         cmake {
-            path "src/main/cpp/CMakeLists.txt"
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
         }
     }
 }

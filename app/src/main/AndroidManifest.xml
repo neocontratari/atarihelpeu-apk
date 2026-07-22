@@ -1,23 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- INTERNET je potreba jen kvuli log serveru na portu 8765 -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
     <application
-        android:label="AtariHelp.eu"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true"
-        android:theme="@android:style/Theme.NoTitleBar">
+        android:label="AH EGL Render"
+        android:hasCode="false"
+        android:allowBackup="false"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
 
+        <!-- Zadna Java. System spusti primo nativni knihovnu libeglrender.so.
+             KRITICKE: hodnota android.app.lib_name se musi shodovat se jmenem
+             knihovny v CMakeLists.txt (eglrender -> libeglrender.so). -->
         <activity
-            android:name="eu.atarihelp.emu10.MainActivity"
+            android:name="android.app.NativeActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout">
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density">
+            <meta-data android:name="android.app.lib_name" android:value="eglrender" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
