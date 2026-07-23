@@ -773,6 +773,7 @@ public class MainActivity extends Activity {
     // a bez ovladacich prvku). Vraci true, kdyz se to povedlo.
     private int[] tvCoreArgb = new int[1024 * 512];
     private Bitmap tvCoreSrcBmp;
+    private boolean tvCoreHadFrame = false;
 
     private boolean napTvWebCaptureFromCore(int bw, int bh) {
         try {
@@ -783,16 +784,25 @@ public class MainActivity extends Activity {
                 tvCoreArgb = new int[need + 1024];
                 wh = NativePs1CoreBridge.grabFrameSafe(tvCoreArgb);
             }
-            if (wh <= 0) return false;
+            if (wh <= 0 || (wh >> 16) <= 0 || (wh & 0xFFFF) <= 0) {
+                // Jadro zrovna nema snimek (typicky pri nacitani hry).
+                // Misto propadnuti na fotografovani obrazovky (= cerno a 0 FPS)
+                // radeji znovu odevzdame POSLEDNI dobry snimek.
+                if (tvCoreHadFrame && napTvWebBitmapDraw != null && !napTvWebBitmapDraw.isRecycled()) {
+                    napTvWebPublishBitmap(napTvWebBitmapDraw, "CORE_HOLD");
+                    return true;
+                }
+                return false;
+            }
             int sw = wh >> 16, sh = wh & 0xFFFF;
-            if (sw <= 0 || sh <= 0) return false;
 
-            int n = sw * sh;
-            for (int i = 0; i < n; i++) tvCoreArgb[i] |= 0xFF000000;   // vynutit alfu
-
+            // ZRYCHLENI: driv se tu projizdelo vsech ~307 000 pixelu kazdy snimek
+            // jen kvuli vynuceni pruhlednosti. Ted to same zaridi jeden prikaz
+            // setHasAlpha(false) - bitmapa pruhlednost proste ignoruje.
             if (tvCoreSrcBmp == null || tvCoreSrcBmp.getWidth() != sw || tvCoreSrcBmp.getHeight() != sh) {
                 if (tvCoreSrcBmp != null) { try { tvCoreSrcBmp.recycle(); } catch (Throwable ignored) {} }
                 tvCoreSrcBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
+                try { tvCoreSrcBmp.setHasAlpha(false); } catch (Throwable ignored) {}
             }
             tvCoreSrcBmp.setPixels(tvCoreArgb, 0, sw, 0, 0, sw, sh);
 
@@ -803,14 +813,15 @@ public class MainActivity extends Activity {
             }
             Canvas cv = new Canvas(napTvWebBitmapDraw);
             cv.drawColor(Color.BLACK);
-            Paint pp = new Paint(Paint.FILTER_BITMAP_FLAG);
-            pp.setAntiAlias(true);
+            Paint pp = new Paint(Paint.FILTER_BITMAP_FLAG);   // hladke zvetseni
+            pp.setDither(false);
             // roztazeni JEDNIM krokem na cely cil = cisty 16:9 bez pruhu
             cv.drawBitmap(tvCoreSrcBmp, null, new Rect(0, 0, bw, bh), pp);
 
             // CHYBELO: bitmapu je potreba jeste ODEVZDAT do prenosu.
             // Bez tohohle radku se obraz naplnil, ale TV o nem nevedela
             // a cekala na starou prazdnou bitmapu -> cerna a 0 FPS.
+            tvCoreHadFrame = true;
             napTvWebPublishBitmap(napTvWebBitmapDraw, "CORE");
             return true;
         } catch (Throwable t) {
