@@ -106,8 +106,10 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
     private IntBuffer pixels;
     private long frames = 0;
     private boolean loggedFirst = false;
-    private int lastSig = 0;          // otisk posledniho snimku (detekce zmeny)
     private long lastDrawNs = 0;      // kdy jsme naposledy kreslili
+    private volatile boolean wide169 = false;  // false = 4:3 (spravne pro PS1), true = 16:9
+
+    public void setWide169(boolean w) { wide169 = w; }
 
     private boolean eglSetup(SurfaceTexture st) {
         eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
@@ -196,8 +198,8 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
         GLES20.glGenTextures(1, t, 0);
         texId = t[0];
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
         return true;
@@ -232,23 +234,6 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
                 int srcW = (wh > 0) ? (wh >> 16) : 0;
                 int srcH = (wh > 0) ? (wh & 0xFFFF) : 0;
 
-                // BRZDA: kdyz jadro jeste nema novy snimek, nekreslime znovu.
-                // Bez toho smycka jela 140-190 FPS a zbytecne zrala vykon
-                // (bralo to silu jadru i castu na TV).
-                boolean newFrame = true;
-                if (srcW > 0 && srcH > 0) {
-                    int n = srcW * srcH;
-                    int sig = n;
-                    int stepPx = Math.max(1, n / 64);          // otisk z ~64 bodu
-                    for (int i = 0; i < n; i += stepPx) sig = sig * 31 + argb[i];
-                    newFrame = (sig != lastSig);
-                    lastSig = sig;
-                }
-                if (!newFrame) {
-                    try { Thread.sleep(2); } catch (Throwable ignored) {}
-                    continue;
-                }
-
                 if (srcW > 0 && srcH > 0) {
                     if (!loggedFirst) {
                         loggedFirst = true;
@@ -268,9 +253,14 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
                     GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, srcW, srcH,
                             GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, pixels);
 
-                    // letterbox pri zachovani pomeru stran (roztazeni dela GPU)
-                    int vw = viewW, vh = (viewW * srcH) / srcW;
-                    if (vh > viewH) { vh = viewH; vw = (viewH * srcW) / srcH; }
+                    // POMER STRAN: PS1 nema ctvercove pixely! Hra prepina mezi
+                    // 320x240, 512x480, 640x480 - ale na obrazovce ma vzdy
+                    // vypadat jako 4:3. Kdybychom pocitali z rozmeru, 512x480
+                    // se zuzi (to bylo to "roztazene intro").
+                    float wantAspect = wide169 ? (16f / 9f) : (4f / 3f);
+                    int vw = viewW;
+                    int vh = (int) (viewW / wantAspect);
+                    if (vh > viewH) { vh = viewH; vw = (int) (viewH * wantAspect); }
                     GLES20.glViewport((viewW - vw) / 2, (viewH - vh) / 2, vw, vh);
 
                     GLES20.glUseProgram(program);

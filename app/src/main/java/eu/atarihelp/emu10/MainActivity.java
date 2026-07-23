@@ -4285,9 +4285,18 @@ public class MainActivity extends Activity {
         }
     }
 
-    // Tlacitko na logu NaP zustava jako rucni prepinac (pro test).
+    // Tlacitko na logu NaP: kdyz obraz bezi, prepina POMER STRAN
+    // 4:3 <-> 16:9 (pro televizi). Kdyz nebezi, zapne ho.
+    private boolean ps1Wide = false;
     private void togglePs1Gl() {
-        if (ps1GlView != null) ps1GlDisable(); else ps1GlEnable();
+        if (ps1GlView == null) { ps1GlEnable(); return; }
+        ps1Wide = !ps1Wide;
+        try { ps1GlView.setWide169(ps1Wide); } catch (Throwable ignored) {}
+        appendNativeLog("E pomer stran: " + (ps1Wide ? "16:9 (siroky)" : "4:3 (puvodni PS1)"));
+        try {
+            android.widget.Toast.makeText(MainActivity.this,
+                ps1Wide ? "16:9" : "4:3", android.widget.Toast.LENGTH_SHORT).show();
+        } catch (Throwable ignored) {}
     }
 
     // Most pro pripadne spousteni z menu:  AHRENDER.togglePs1()
