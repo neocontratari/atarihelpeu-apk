@@ -10,7 +10,7 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 10
-        versionName "EMU10-C1-PS1-GL-OBRAZ"  // krok C1: plynuly PS1 obraz pres OpenGL (tlacitko PS1 GL)
+        versionName "EMU10-C1b-PS1-GL-INLINE"  // C1b: obraz primo v obrazovce + tlacitko na logu
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

@@ -4225,27 +4225,149 @@ public class MainActivity extends Activity {
     }
 
     // ============================================================
-    //  KROK C1: novy most pro spusteni plynuleho PS1 obrazu pres
-    //  OpenGL (Ps1GlActivity). Volatelny z menu:  AHRENDER.openPs1()
-    //  Bezi VEDLE stavajici cesty - nic nemeni. Otevre novou
-    //  celoobrazovkovou aktivitu, ktera bere obraz z beziciho jadra.
+    //  KROK C1 (v2): plynuly PS1 obraz PRIMO v teto obrazovce.
+    //
+    //  PROC ZMENA: prvni pokus otviral nove okno -> hlavni obrazovka
+    //  sla do pozadi -> onPause zavolal stopPs1SessionHard() a natvrdo
+    //  zastavil hru -> obraz se zasekl. Ted kreslime GLSurfaceView
+    //  PRES web ve stejnem okne, takze hra bezi dal.
+    //
+    //  Prepinac: prvni klik (na logo NaP) zapne, druhy vypne.
     // ============================================================
+    private android.opengl.GLSurfaceView ps1GlView = null;
+
+    private void togglePs1Gl() {
+        try {
+            if (ps1GlView != null) {
+                try { ps1GlView.onPause(); } catch (Throwable ignored) {}
+                try { rootFrame.removeView(ps1GlView); } catch (Throwable ignored) {}
+                ps1GlView = null;
+                appendNativeLog("C1 PS1_GL_OFF");
+                return;
+            }
+            android.opengl.GLSurfaceView gv = new android.opengl.GLSurfaceView(this);
+            gv.setEGLContextClientVersion(2);
+            gv.setEGLConfigChooser(8, 8, 8, 8, 0, 0);
+            gv.setRenderer(new Ps1GlInlineRenderer());
+            gv.setRenderMode(android.opengl.GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+            rootFrame.addView(gv, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            ps1GlView = gv;
+            appendNativeLog("C1 PS1_GL_ON");
+        } catch (Throwable t) {
+            appendNativeLog("C1 PS1_GL_TOGGLE_ERROR " + safeMsg(t));
+        }
+    }
+
+    // Renderer inline obrazu: bere snimek z beziciho jadra (grabFrameSafe)
+    // a kresli ho pres GL texturu na celoobrazovkovy quad (vsync = plynule).
+    private final class Ps1GlInlineRenderer implements android.opengl.GLSurfaceView.Renderer {
+        private int program, texId, aPos, aTex, uTex;
+        private int texW = 0, texH = 0;
+        private int[] argb = new int[1024 * 512];
+        private java.nio.IntBuffer pixels;
+        private int viewW = 1, viewH = 1;
+        private long frames = 0;
+        private boolean loggedFirst = false;
+
+        private java.nio.FloatBuffer fbuf(float[] d) {
+            java.nio.FloatBuffer fb = java.nio.ByteBuffer.allocateDirect(d.length * 4)
+                    .order(java.nio.ByteOrder.nativeOrder()).asFloatBuffer();
+            fb.put(d).position(0);
+            return fb;
+        }
+        private int compile(int type, String src) {
+            int sh = android.opengl.GLES20.glCreateShader(type);
+            android.opengl.GLES20.glShaderSource(sh, src);
+            android.opengl.GLES20.glCompileShader(sh);
+            return sh;
+        }
+        @Override public void onSurfaceCreated(javax.microedition.khronos.opengles.GL10 gl,
+                                               javax.microedition.khronos.egl.EGLConfig cfg) {
+            String vs = "attribute vec2 aPos; attribute vec2 aTex; varying vec2 vTex;" +
+                        "void main(){ vTex=aTex; gl_Position=vec4(aPos,0.0,1.0); }";
+            String fs = "precision mediump float; varying vec2 vTex; uniform sampler2D uTex;" +
+                        "void main(){ vec4 c=texture2D(uTex,vTex); gl_FragColor=vec4(c.b,c.g,c.r,1.0); }";
+            program = android.opengl.GLES20.glCreateProgram();
+            android.opengl.GLES20.glAttachShader(program, compile(android.opengl.GLES20.GL_VERTEX_SHADER, vs));
+            android.opengl.GLES20.glAttachShader(program, compile(android.opengl.GLES20.GL_FRAGMENT_SHADER, fs));
+            android.opengl.GLES20.glLinkProgram(program);
+            aPos = android.opengl.GLES20.glGetAttribLocation(program, "aPos");
+            aTex = android.opengl.GLES20.glGetAttribLocation(program, "aTex");
+            uTex = android.opengl.GLES20.glGetUniformLocation(program, "uTex");
+            int[] t = new int[1];
+            android.opengl.GLES20.glGenTextures(1, t, 0);
+            texId = t[0];
+            android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, texId);
+            android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_MIN_FILTER, android.opengl.GLES20.GL_NEAREST);
+            android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_MAG_FILTER, android.opengl.GLES20.GL_NEAREST);
+            android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_WRAP_S, android.opengl.GLES20.GL_CLAMP_TO_EDGE);
+            android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_WRAP_T, android.opengl.GLES20.GL_CLAMP_TO_EDGE);
+        }
+        @Override public void onSurfaceChanged(javax.microedition.khronos.opengles.GL10 gl, int w, int h) {
+            viewW = Math.max(1, w); viewH = Math.max(1, h);
+        }
+        private void ensureTex(int w, int h) {
+            if (w == texW && h == texH) return;
+            android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, texId);
+            android.opengl.GLES20.glTexImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, android.opengl.GLES20.GL_RGBA, w, h, 0,
+                    android.opengl.GLES20.GL_RGBA, android.opengl.GLES20.GL_UNSIGNED_BYTE, null);
+            texW = w; texH = h;
+        }
+        @Override public void onDrawFrame(javax.microedition.khronos.opengles.GL10 gl) {
+            android.opengl.GLES20.glClearColor(0.05f, 0.06f, 0.09f, 1f);
+            android.opengl.GLES20.glClear(android.opengl.GLES20.GL_COLOR_BUFFER_BIT);
+            int wh = NativePs1CoreBridge.grabFrameSafe(argb);
+            if (wh < 0) {
+                int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
+                argb = new int[need + 1024];
+                wh = NativePs1CoreBridge.grabFrameSafe(argb);
+            }
+            if (wh <= 0) { frames++; return; }
+            int srcW = wh >> 16, srcH = wh & 0xFFFF;
+            if (srcW <= 0 || srcH <= 0) { frames++; return; }
+            if (!loggedFirst) {
+                loggedFirst = true;
+                appendNativeLog("C1 PS1 prvni snimek inline: " + srcW + "x" + srcH +
+                        " p0=0x" + Integer.toHexString(argb[0]));
+            }
+            ensureTex(srcW, srcH);
+            if (pixels == null || pixels.capacity() < srcW * srcH) {
+                pixels = java.nio.ByteBuffer.allocateDirect(srcW * srcH * 4)
+                        .order(java.nio.ByteOrder.nativeOrder()).asIntBuffer();
+            }
+            pixels.clear(); pixels.put(argb, 0, srcW * srcH); pixels.position(0);
+            android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, texId);
+            android.opengl.GLES20.glTexSubImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, 0, 0, srcW, srcH,
+                    android.opengl.GLES20.GL_RGBA, android.opengl.GLES20.GL_UNSIGNED_BYTE, pixels);
+            int vw = viewW, vh = (viewW * srcH) / srcW;
+            if (vh > viewH) { vh = viewH; vw = (viewH * srcW) / srcH; }
+            android.opengl.GLES20.glViewport((viewW - vw) / 2, (viewH - vh) / 2, vw, vh);
+            java.nio.FloatBuffer pos = fbuf(new float[]{ -1,-1, 1,-1, -1,1, 1,1 });
+            java.nio.FloatBuffer tex = fbuf(new float[]{ 0,1, 1,1, 0,0, 1,0 });
+            android.opengl.GLES20.glUseProgram(program);
+            android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0);
+            android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, texId);
+            android.opengl.GLES20.glUniform1i(uTex, 0);
+            android.opengl.GLES20.glVertexAttribPointer(aPos, 2, android.opengl.GLES20.GL_FLOAT, false, 0, pos);
+            android.opengl.GLES20.glVertexAttribPointer(aTex, 2, android.opengl.GLES20.GL_FLOAT, false, 0, tex);
+            android.opengl.GLES20.glEnableVertexAttribArray(aPos);
+            android.opengl.GLES20.glEnableVertexAttribArray(aTex);
+            android.opengl.GLES20.glDrawArrays(android.opengl.GLES20.GL_TRIANGLE_STRIP, 0, 4);
+            frames++;
+            if (frames % 300 == 0) appendNativeLog("C1 inline bezi: " + frames + " snimku, " + srcW + "x" + srcH);
+        }
+    }
+
+    // Most pro pripadne spousteni z menu:  AHRENDER.togglePs1()
     public class AHRENDER {
         @JavascriptInterface
-        public String openPs1() {
+        public String togglePs1() {
             try {
-                ui.post(() -> {
-                    try {
-                        android.content.Intent it = new android.content.Intent(
-                                MainActivity.this, Ps1GlActivity.class);
-                        startActivity(it);
-                    } catch (Throwable t) {
-                        appendNativeLog("AHRENDER_OPEN_ERROR " + safeMsg(t));
-                    }
-                });
-                return "AHRENDER_OPEN_OK";
+                ui.post(() -> togglePs1Gl());
+                return "AHRENDER_TOGGLE_OK";
             } catch (Throwable t) {
-                return "AHRENDER_OPEN_FAIL " + t.getMessage();
+                return "AHRENDER_TOGGLE_FAIL " + t.getMessage();
             }
         }
     }
@@ -5105,32 +5227,22 @@ public class MainActivity extends Activity {
         rootFrame.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         // ============================================================
-        //  KROK C1: plovouci testovaci tlacitko "PS1 GL" v rohu.
-        //  Spusti plynuly PS1 obraz pres OpenGL (Ps1GlActivity).
-        //  Nezasahuje do webu - jen lezi navrch. Az obraz overime,
-        //  v kroku C2 tohle nahradi starou zobrazovaci cestu a tlacitko
-        //  zmizi.  POZOR: nejdriv spust PS1 hru v menu, pak dej PS1 GL.
+        //  KROK C1 (v2): PRUHLEDNE testovaci tlacitko pres logo NaP
+        //  (vlevo nahore). Bez napisu - jen neviditelna klikaci plocha
+        //  pres logo, at neprekryva TV Viewer ani options. Spusti
+        //  plynuly PS1 obraz PRIMO v teto obrazovce (viz nize) - hru
+        //  tim nechame bezet, neprejde do pozadi.
         // ============================================================
         try {
             android.widget.Button glBtn = new android.widget.Button(this);
-            glBtn.setText("PS1 GL");
-            glBtn.setAllCaps(false);
-            glBtn.setTextColor(Color.WHITE);
-            glBtn.setBackgroundColor(0xCC2244AA);
+            glBtn.setText("");                             // bez napisu
+            glBtn.setBackgroundColor(0x00000000);          // pruhledne
             android.widget.FrameLayout.LayoutParams blp =
-                    new android.widget.FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.WRAP_CONTENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT);
-            blp.gravity = android.view.Gravity.TOP | android.view.Gravity.END;
-            blp.topMargin = 24; blp.rightMargin = 24;
+                    new android.widget.FrameLayout.LayoutParams(220, 220);  // plocha pres logo
+            blp.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
+            blp.topMargin = 8; blp.leftMargin = 8;
             glBtn.setLayoutParams(blp);
-            glBtn.setOnClickListener(v -> {
-                try {
-                    startActivity(new android.content.Intent(MainActivity.this, Ps1GlActivity.class));
-                } catch (Throwable t) {
-                    appendNativeLog("PS1_GL_BTN_ERROR " + safeMsg(t));
-                }
-            });
+            glBtn.setOnClickListener(v -> togglePs1Gl());
             rootFrame.addView(glBtn);
         } catch (Throwable ignored) {}
 
