@@ -4225,137 +4225,50 @@ public class MainActivity extends Activity {
     }
 
     // ============================================================
-    //  KROK C1 (v2): plynuly PS1 obraz PRIMO v teto obrazovce.
+    //  KROK C2: plynuly PS1 obraz pres TextureView + vlastni OpenGL.
     //
-    //  PROC ZMENA: prvni pokus otviral nove okno -> hlavni obrazovka
-    //  sla do pozadi -> onPause zavolal stopPs1SessionHard() a natvrdo
-    //  zastavil hru -> obraz se zasekl. Ted kreslime GLSurfaceView
-    //  PRES web ve stejnem okne, takze hra bezi dal.
+    //  Dve opravy oproti C1b:
+    //   1) VYPNE starou zobrazovaci cestu (ps1DeactivateNativeView),
+    //      ktera bezela neviditelne pod nami a zrala procesor
+    //      (v logu PS1_NATIVE_TEXTURE_SLOW_AVG avgCostMs=31-57).
+    //      Tim se uvolni vykon a obraz je plne plynuly.
+    //   2) TextureView misto GLSurfaceView -> TV cast obraz ZASE VIDI
+    //      (GLSurfaceView je samostatna vrstva, PixelCopy ji nezachyti
+    //      a posilal na TV cernou plochu, brightAvg=0).
     //
-    //  Prepinac: prvni klik (na logo NaP) zapne, druhy vypne.
+    //  Prepinac: klik na logo NaP zapne, dalsi klik vypne.
     // ============================================================
-    private android.opengl.GLSurfaceView ps1GlView = null;
+    private Ps1GlTextureView ps1GlView = null;
 
     private void togglePs1Gl() {
         try {
             if (ps1GlView != null) {
-                try { ps1GlView.onPause(); } catch (Throwable ignored) {}
-                try { rootFrame.removeView(ps1GlView); } catch (Throwable ignored) {}
+                // VYPNOUT nas obraz a vratit puvodni cestu
+                final Ps1GlTextureView old = ps1GlView;
                 ps1GlView = null;
-                appendNativeLog("C1 PS1_GL_OFF");
+                try { old.stopRender(); } catch (Throwable ignored) {}
+                try { rootFrame.removeView(old); } catch (Throwable ignored) {}
+                appendNativeLog("C2 PS1_GL_OFF - vracim puvodni zobrazeni");
+                try { ps1ActivateNativeView(); } catch (Throwable ignored) {}
                 return;
             }
-            android.opengl.GLSurfaceView gv = new android.opengl.GLSurfaceView(this);
-            gv.setEGLContextClientVersion(2);
-            gv.setEGLConfigChooser(8, 8, 8, 8, 0, 0);
-            gv.setRenderer(new Ps1GlInlineRenderer());
-            gv.setRenderMode(android.opengl.GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+
+            // ZAPNOUT: nejdriv vypnout starou cestu, at se nervou o vykon
+            try {
+                ps1DeactivateNativeView();
+                appendNativeLog("C2 stara zobrazovaci cesta vypnuta (uvolnen vykon)");
+            } catch (Throwable t) {
+                appendNativeLog("C2 vypnuti stare cesty selhalo: " + safeMsg(t));
+            }
+
+            Ps1GlTextureView gv = new Ps1GlTextureView(MainActivity.this,
+                    msg -> appendNativeLog(msg));
             rootFrame.addView(gv, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             ps1GlView = gv;
-            appendNativeLog("C1 PS1_GL_ON");
+            appendNativeLog("C2 PS1_GL_ON - novy plynuly obraz");
         } catch (Throwable t) {
-            appendNativeLog("C1 PS1_GL_TOGGLE_ERROR " + safeMsg(t));
-        }
-    }
-
-    // Renderer inline obrazu: bere snimek z beziciho jadra (grabFrameSafe)
-    // a kresli ho pres GL texturu na celoobrazovkovy quad (vsync = plynule).
-    private final class Ps1GlInlineRenderer implements android.opengl.GLSurfaceView.Renderer {
-        private int program, texId, aPos, aTex, uTex;
-        private int texW = 0, texH = 0;
-        private int[] argb = new int[1024 * 512];
-        private java.nio.IntBuffer pixels;
-        private int viewW = 1, viewH = 1;
-        private long frames = 0;
-        private boolean loggedFirst = false;
-
-        private java.nio.FloatBuffer fbuf(float[] d) {
-            java.nio.FloatBuffer fb = java.nio.ByteBuffer.allocateDirect(d.length * 4)
-                    .order(java.nio.ByteOrder.nativeOrder()).asFloatBuffer();
-            fb.put(d).position(0);
-            return fb;
-        }
-        private int compile(int type, String src) {
-            int sh = android.opengl.GLES20.glCreateShader(type);
-            android.opengl.GLES20.glShaderSource(sh, src);
-            android.opengl.GLES20.glCompileShader(sh);
-            return sh;
-        }
-        @Override public void onSurfaceCreated(javax.microedition.khronos.opengles.GL10 gl,
-                                               javax.microedition.khronos.egl.EGLConfig cfg) {
-            String vs = "attribute vec2 aPos; attribute vec2 aTex; varying vec2 vTex;" +
-                        "void main(){ vTex=aTex; gl_Position=vec4(aPos,0.0,1.0); }";
-            String fs = "precision mediump float; varying vec2 vTex; uniform sampler2D uTex;" +
-                        "void main(){ vec4 c=texture2D(uTex,vTex); gl_FragColor=vec4(c.b,c.g,c.r,1.0); }";
-            program = android.opengl.GLES20.glCreateProgram();
-            android.opengl.GLES20.glAttachShader(program, compile(android.opengl.GLES20.GL_VERTEX_SHADER, vs));
-            android.opengl.GLES20.glAttachShader(program, compile(android.opengl.GLES20.GL_FRAGMENT_SHADER, fs));
-            android.opengl.GLES20.glLinkProgram(program);
-            aPos = android.opengl.GLES20.glGetAttribLocation(program, "aPos");
-            aTex = android.opengl.GLES20.glGetAttribLocation(program, "aTex");
-            uTex = android.opengl.GLES20.glGetUniformLocation(program, "uTex");
-            int[] t = new int[1];
-            android.opengl.GLES20.glGenTextures(1, t, 0);
-            texId = t[0];
-            android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, texId);
-            android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_MIN_FILTER, android.opengl.GLES20.GL_NEAREST);
-            android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_MAG_FILTER, android.opengl.GLES20.GL_NEAREST);
-            android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_WRAP_S, android.opengl.GLES20.GL_CLAMP_TO_EDGE);
-            android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_WRAP_T, android.opengl.GLES20.GL_CLAMP_TO_EDGE);
-        }
-        @Override public void onSurfaceChanged(javax.microedition.khronos.opengles.GL10 gl, int w, int h) {
-            viewW = Math.max(1, w); viewH = Math.max(1, h);
-        }
-        private void ensureTex(int w, int h) {
-            if (w == texW && h == texH) return;
-            android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, texId);
-            android.opengl.GLES20.glTexImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, android.opengl.GLES20.GL_RGBA, w, h, 0,
-                    android.opengl.GLES20.GL_RGBA, android.opengl.GLES20.GL_UNSIGNED_BYTE, null);
-            texW = w; texH = h;
-        }
-        @Override public void onDrawFrame(javax.microedition.khronos.opengles.GL10 gl) {
-            android.opengl.GLES20.glClearColor(0.05f, 0.06f, 0.09f, 1f);
-            android.opengl.GLES20.glClear(android.opengl.GLES20.GL_COLOR_BUFFER_BIT);
-            int wh = NativePs1CoreBridge.grabFrameSafe(argb);
-            if (wh < 0) {
-                int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
-                argb = new int[need + 1024];
-                wh = NativePs1CoreBridge.grabFrameSafe(argb);
-            }
-            if (wh <= 0) { frames++; return; }
-            int srcW = wh >> 16, srcH = wh & 0xFFFF;
-            if (srcW <= 0 || srcH <= 0) { frames++; return; }
-            if (!loggedFirst) {
-                loggedFirst = true;
-                appendNativeLog("C1 PS1 prvni snimek inline: " + srcW + "x" + srcH +
-                        " p0=0x" + Integer.toHexString(argb[0]));
-            }
-            ensureTex(srcW, srcH);
-            if (pixels == null || pixels.capacity() < srcW * srcH) {
-                pixels = java.nio.ByteBuffer.allocateDirect(srcW * srcH * 4)
-                        .order(java.nio.ByteOrder.nativeOrder()).asIntBuffer();
-            }
-            pixels.clear(); pixels.put(argb, 0, srcW * srcH); pixels.position(0);
-            android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, texId);
-            android.opengl.GLES20.glTexSubImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, 0, 0, srcW, srcH,
-                    android.opengl.GLES20.GL_RGBA, android.opengl.GLES20.GL_UNSIGNED_BYTE, pixels);
-            int vw = viewW, vh = (viewW * srcH) / srcW;
-            if (vh > viewH) { vh = viewH; vw = (viewH * srcW) / srcH; }
-            android.opengl.GLES20.glViewport((viewW - vw) / 2, (viewH - vh) / 2, vw, vh);
-            java.nio.FloatBuffer pos = fbuf(new float[]{ -1,-1, 1,-1, -1,1, 1,1 });
-            java.nio.FloatBuffer tex = fbuf(new float[]{ 0,1, 1,1, 0,0, 1,0 });
-            android.opengl.GLES20.glUseProgram(program);
-            android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0);
-            android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, texId);
-            android.opengl.GLES20.glUniform1i(uTex, 0);
-            android.opengl.GLES20.glVertexAttribPointer(aPos, 2, android.opengl.GLES20.GL_FLOAT, false, 0, pos);
-            android.opengl.GLES20.glVertexAttribPointer(aTex, 2, android.opengl.GLES20.GL_FLOAT, false, 0, tex);
-            android.opengl.GLES20.glEnableVertexAttribArray(aPos);
-            android.opengl.GLES20.glEnableVertexAttribArray(aTex);
-            android.opengl.GLES20.glDrawArrays(android.opengl.GLES20.GL_TRIANGLE_STRIP, 0, 4);
-            frames++;
-            if (frames % 300 == 0) appendNativeLog("C1 inline bezi: " + frames + " snimku, " + srcW + "x" + srcH);
+            appendNativeLog("C2 PS1_GL_TOGGLE_ERROR " + safeMsg(t));
         }
     }
 
