@@ -782,11 +782,23 @@ public class MainActivity extends Activity {
     private boolean napTvWebCaptureFromCore(int bw, int bh) {
         try {
             if (bw <= 0 || bh <= 0) return false;
-            int wh = NativePs1CoreBridge.grabFrameSafe(tvCoreArgb);
+            // Nejdriv si PUJCIME snimek, ktery uz vytahla obrazovka telefonu.
+            // Setri to jadru praci (drive sahali do jadra dva zajemci zvlast
+            // a jadro pak nestihalo delat zvuk - 47 % pokusu naslo prazdno).
+            int wh = Ps1GlTextureView.borrowFrame(tvCoreArgb);
             if (wh < 0) {
                 int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
                 tvCoreArgb = new int[need + 1024];
-                wh = NativePs1CoreBridge.grabFrameSafe(tvCoreArgb);
+                wh = Ps1GlTextureView.borrowFrame(tvCoreArgb);
+            }
+            if (wh == 0) {
+                // Nic k pujceni (obrazovka zrovna nekresli) - podrzime posledni
+                // dobry snimek misto sahani do jadra navic.
+                if (tvCoreHadFrame && napTvWebBitmapDraw != null && !napTvWebBitmapDraw.isRecycled()) {
+                    napTvWebPublishBitmap(napTvWebBitmapDraw, "CORE_HOLD");
+                    return true;
+                }
+                return false;
             }
             if (wh <= 0 || (wh >> 16) <= 0 || (wh & 0xFFFF) <= 0) {
                 // Jadro zrovna nema snimek (typicky pri nacitani hry).
@@ -839,7 +851,7 @@ public class MainActivity extends Activity {
                             - ((tvCoreArgb[rowBase + rightX] >> 8) & 0xFF)
                             - ((tvCoreArgb[upBase + x] >> 8) & 0xFF)
                             - ((tvCoreArgb[downBase + x] >> 8) & 0xFF);
-                    int d = lap >> 3;                      // sila doostreni
+                    int d = lap >> 2;   // sila doostreni (>>3 slabsi, >>2 silnejsi - cena stejna)
                     if (d != 0) {
                         int r = ((c >> 16) & 0xFF) + d;
                         int g = cg + d;
@@ -2174,7 +2186,7 @@ public class MainActivity extends Activity {
                 + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s' style='display:none'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
-                + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs'>\u26f6 FULL</button></div>"
+                + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST [SK60] '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"
@@ -2202,7 +2214,7 @@ public class MainActivity extends Activity {
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+0.15;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+0.36;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
                 + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||(!isNaN(st)&&expected>0&&st!==expected)||next<now+0.04)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+0.10;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
-                + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);document.addEventListener('touchstart',startAudio,true);setTimeout(function(){try{startAudio();}catch(e){}},250);"
+                + "a.onclick=startAudio;function toggleFs(){var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
                 + "(function(){var qs=document.querySelectorAll('#q button');function mark(t){for(var i=0;i<qs.length;i++)qs[i].classList.toggle('on',qs[i].getAttribute('data-t')===(''+t));}"
                 + "fetch('/quality').then(function(r){return r.text();}).then(function(t){var m=/tier=(\\d)/.exec(t);mark(m?m[1]:'0');}).catch(function(){});"
                 + "for(var i=0;i<qs.length;i++){qs[i].onclick=function(e){var t=e.target.getAttribute('data-t');fetch('/quality?tier='+t).then(function(){mark(t);}).catch(function(){});};}})();"

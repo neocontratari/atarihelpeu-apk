@@ -32,6 +32,29 @@ import java.nio.IntBuffer;
 
 public class Ps1GlTextureView extends TextureView implements TextureView.SurfaceTextureListener {
 
+    // ===== SDILENY SNIMEK =====
+    // Driv si pro obraz sahali DVA zajemci zvlast: tahle obrazovka a prenos
+    // na TV. Kazde sahnuti do jadra stoji praci a jadro pak nestiha delat
+    // zvuk (v logu 47 % pokusu o zvuk naslo prazdno). Ted vytahneme snimek
+    // JEDNOU a prenos si ho jen pujci - zadna ztrata kvality, jen mensi driny.
+    private static final Object SHARE_LOCK = new Object();
+    private static int[] shareBuf;
+    private static int shareW, shareH;
+    private static boolean shareFresh = false;
+
+    /** Prenos na TV: pujci si posledni snimek. Vraci sirku/vysku, nebo 0. */
+    public static int borrowFrame(int[] dst) {
+        synchronized (SHARE_LOCK) {
+            if (!shareFresh || shareBuf == null || shareW <= 0 || shareH <= 0) return 0;
+            int n = shareW * shareH;
+            if (dst == null || dst.length < n) return -((shareW << 16) | shareH);
+            System.arraycopy(shareBuf, 0, dst, 0, n);
+            shareFresh = false;
+            return (shareW << 16) | shareH;
+        }
+    }
+
+
     public interface LogSink { void log(String msg); }
 
     private volatile boolean running = false;
@@ -235,6 +258,13 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
                 int srcH = (wh > 0) ? (wh & 0xFFFF) : 0;
 
                 if (srcW > 0 && srcH > 0) {
+                    // ulozit ke sdileni pro prenos na TV (aby uz nesahal do jadra sam)
+                    synchronized (SHARE_LOCK) {
+                        int n = srcW * srcH;
+                        if (shareBuf == null || shareBuf.length < n) shareBuf = new int[n + 1024];
+                        System.arraycopy(argb, 0, shareBuf, 0, n);
+                        shareW = srcW; shareH = srcH; shareFresh = true;
+                    }
                     if (!loggedFirst) {
                         loggedFirst = true;
                         say("C2 prvni snimek: " + srcW + "x" + srcH);
