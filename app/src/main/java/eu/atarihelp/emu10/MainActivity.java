@@ -774,6 +774,9 @@ public class MainActivity extends Activity {
     private int[] tvCoreArgb = new int[1024 * 512];
     private Bitmap tvCoreSrcBmp;
     private boolean tvCoreHadFrame = false;
+    private int[] tvSharpBuf;
+    private double tvSharpSumMs = 0;
+    private long tvSharpFrames = 0;
 
     private boolean napTvWebCaptureFromCore(int bw, int bh) {
         try {
@@ -804,7 +807,51 @@ public class MainActivity extends Activity {
                 tvCoreSrcBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
                 try { tvCoreSrcBmp.setHasAlpha(false); } catch (Throwable ignored) {}
             }
-            tvCoreSrcBmp.setPixels(tvCoreArgb, 0, sw, 0, 0, sw, sh);
+            // ===== DOOSTRENI (Laplace) pred zvetsenim =====
+            // Delame ho na MALEM originalu (320x240 / 640x480), ne na velkem
+            // 1280x720 - je to tim mnohonasobne levnejsi. Uspora navic: rozdil
+            // pocitame jen ze zelene slozky (nejlepsi zastupce jasu) a stejny
+            // rozdil pak pridame vsem trem barvam. Vysledek oku stejny,
+            // prace zhruba tretinova. Cena se meri a vypisuje do logu.
+            int nPix = sw * sh;
+            if (tvSharpBuf == null || tvSharpBuf.length < nPix) tvSharpBuf = new int[nPix + 1024];
+            long shStart = System.nanoTime();
+            for (int y = 0; y < sh; y++) {
+                int rowBase = y * sw;
+                int upBase = (y > 0 ? y - 1 : y) * sw;
+                int downBase = (y < sh - 1 ? y + 1 : y) * sw;
+                for (int x = 0; x < sw; x++) {
+                    int i = rowBase + x;
+                    int leftX = x > 0 ? x - 1 : x;
+                    int rightX = x < sw - 1 ? x + 1 : x;
+                    int c = tvCoreArgb[i];
+                    int cg = (c >> 8) & 0xFF;
+                    int lap = cg * 4
+                            - ((tvCoreArgb[rowBase + leftX] >> 8) & 0xFF)
+                            - ((tvCoreArgb[rowBase + rightX] >> 8) & 0xFF)
+                            - ((tvCoreArgb[upBase + x] >> 8) & 0xFF)
+                            - ((tvCoreArgb[downBase + x] >> 8) & 0xFF);
+                    int d = lap >> 3;                      // sila doostreni
+                    if (d != 0) {
+                        int r = ((c >> 16) & 0xFF) + d;
+                        int g = cg + d;
+                        int b = (c & 0xFF) + d;
+                        if (r < 0) r = 0; else if (r > 255) r = 255;
+                        if (g < 0) g = 0; else if (g > 255) g = 255;
+                        if (b < 0) b = 0; else if (b > 255) b = 255;
+                        tvSharpBuf[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
+                    } else {
+                        tvSharpBuf[i] = c | 0xFF000000;
+                    }
+                }
+            }
+            tvSharpSumMs += (System.nanoTime() - shStart) / 1e6;
+            if (++tvSharpFrames % 300 == 0) {
+                appendNativeLog("G doostreni: " + String.format("%.2f", tvSharpSumMs / 300.0)
+                        + " ms/snimek pri " + sw + "x" + sh);
+                tvSharpSumMs = 0;
+            }
+            tvCoreSrcBmp.setPixels(tvSharpBuf, 0, sw, 0, 0, sw, sh);
 
             // ===== PEVNYCH 1280x720 = SKUTECNE 16:9 =====
             // Driv se velikost brala z displeje telefonu (1384x672), coz je
@@ -2114,7 +2161,7 @@ public class MainActivity extends Activity {
                 + "#q{position:fixed;right:10px;bottom:48px;display:flex;gap:4px}"
                 + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
-                + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button'>AUDIO OK</button>"
+                + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
                 + "<div id='q'><button type='button' data-t='0'>LOW</button><button type='button' data-t='1'>MED</button><button type='button' data-t='2'>HIGH</button><button type='button' id='fs'>⛶ FULL</button></div>"
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
@@ -2143,7 +2190,7 @@ public class MainActivity extends Activity {
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+0.15;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+0.36;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
                 + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||(!isNaN(st)&&expected>0&&st!==expected)||next<now+0.04)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+0.10;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
-                + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);"
+                + "a.onclick=startAudio;document.addEventListener('click',startAudio,true);document.addEventListener('keydown',startAudio,true);document.addEventListener('touchstart',startAudio,true);setTimeout(function(){try{startAudio();}catch(e){}},250);"
                 + "(function(){var qs=document.querySelectorAll('#q button');function mark(t){for(var i=0;i<qs.length;i++)qs[i].classList.toggle('on',qs[i].getAttribute('data-t')===(''+t));}"
                 + "fetch('/quality').then(function(r){return r.text();}).then(function(t){var m=/tier=(\\d)/.exec(t);mark(m?m[1]:'0');}).catch(function(){});"
                 + "for(var i=0;i<qs.length;i++){qs[i].onclick=function(e){var t=e.target.getAttribute('data-t');fetch('/quality?tier='+t).then(function(){mark(t);}).catch(function(){});};}})();"
