@@ -3664,6 +3664,14 @@ public class MainActivity extends Activity {
     // UI vlakno) - volajici muze byt na libovolnem vlakne (boot bezi na
     // pozadi), proto ui.post().
     private void ps1ActivateNativeView() {
+        // ====== KROK D: STARA ZOBRAZOVACI CESTA ZRUSENA ======
+        // Misto puvodniho NativePs1InPlaceView (lockCanvas, 31-57 ms/snimek)
+        // se ted zapina nas plynuly OpenGL obraz. Puvodni kod nize uz se
+        // nespousti - necham ho v souboru jen jako zaloha, kdyby bylo
+        // potreba se k nemu vratit.
+        ui.post(() -> ps1GlEnable());
+        if (true) return;
+
         ui.post(() -> {
             try {
                 if (rootFrame == null) return;
@@ -3701,6 +3709,7 @@ public class MainActivity extends Activity {
     }
 
     private void ps1DeactivateNativeView() {
+        ps1GlDisable();   // KROK D: vypnout i nas OpenGL obraz
         final NativePs1InPlaceView old = ps1NativeView;
         ps1NativeView = null;
         Runnable r = () -> {
@@ -4240,36 +4249,45 @@ public class MainActivity extends Activity {
     // ============================================================
     private Ps1GlTextureView ps1GlView = null;
 
-    private void togglePs1Gl() {
+    // Zapnout nas plynuly OpenGL obraz (hlavni zobrazovaci cesta pro PS1).
+    private void ps1GlEnable() {
         try {
-            if (ps1GlView != null) {
-                // VYPNOUT nas obraz a vratit puvodni cestu
-                final Ps1GlTextureView old = ps1GlView;
-                ps1GlView = null;
-                try { old.stopRender(); } catch (Throwable ignored) {}
-                try { rootFrame.removeView(old); } catch (Throwable ignored) {}
-                appendNativeLog("C2 PS1_GL_OFF - vracim puvodni zobrazeni");
-                try { ps1ActivateNativeView(); } catch (Throwable ignored) {}
-                return;
-            }
-
-            // ZAPNOUT: nejdriv vypnout starou cestu, at se nervou o vykon
-            try {
-                ps1DeactivateNativeView();
-                appendNativeLog("C2 stara zobrazovaci cesta vypnuta (uvolnen vykon)");
-            } catch (Throwable t) {
-                appendNativeLog("C2 vypnuti stare cesty selhalo: " + safeMsg(t));
-            }
-
+            if (ps1GlView != null) return;              // uz bezi
+            if (rootFrame == null) return;
             Ps1GlTextureView gv = new Ps1GlTextureView(MainActivity.this,
                     msg -> appendNativeLog(msg));
-            rootFrame.addView(gv, new FrameLayout.LayoutParams(
+            // index 0 = na dno rootFrame, web kresli nad tim (stejne jako
+            // to mela puvodni cesta)
+            rootFrame.addView(gv, 0, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            try { gv.setZ(-1f); } catch (Throwable ignored) {}
             ps1GlView = gv;
-            appendNativeLog("C2 PS1_GL_ON - novy plynuly obraz");
+            appendNativeLog("D PS1_GL_ON - plynuly obraz je hlavni cesta");
         } catch (Throwable t) {
-            appendNativeLog("C2 PS1_GL_TOGGLE_ERROR " + safeMsg(t));
+            appendNativeLog("D PS1_GL_ENABLE_ERROR " + safeMsg(t));
         }
+    }
+
+    // Vypnout nas obraz (pri ukonceni hry / odchodu z aplikace).
+    private void ps1GlDisable() {
+        try {
+            final Ps1GlTextureView old = ps1GlView;
+            ps1GlView = null;
+            if (old == null) return;
+            try { old.stopRender(); } catch (Throwable ignored) {}
+            ui.post(() -> {
+                try { if (old.getParent() instanceof ViewGroup) ((ViewGroup) old.getParent()).removeView(old); }
+                catch (Throwable ignored) {}
+            });
+            appendNativeLog("D PS1_GL_OFF");
+        } catch (Throwable t) {
+            appendNativeLog("D PS1_GL_DISABLE_ERROR " + safeMsg(t));
+        }
+    }
+
+    // Tlacitko na logu NaP zustava jako rucni prepinac (pro test).
+    private void togglePs1Gl() {
+        if (ps1GlView != null) ps1GlDisable(); else ps1GlEnable();
     }
 
     // Most pro pripadne spousteni z menu:  AHRENDER.togglePs1()

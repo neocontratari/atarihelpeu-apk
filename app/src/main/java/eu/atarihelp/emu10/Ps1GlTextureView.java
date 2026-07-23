@@ -106,6 +106,8 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
     private IntBuffer pixels;
     private long frames = 0;
     private boolean loggedFirst = false;
+    private int lastSig = 0;          // otisk posledniho snimku (detekce zmeny)
+    private long lastDrawNs = 0;      // kdy jsme naposledy kreslili
 
     private boolean eglSetup(SurfaceTexture st) {
         eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
@@ -230,6 +232,23 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
                 int srcW = (wh > 0) ? (wh >> 16) : 0;
                 int srcH = (wh > 0) ? (wh & 0xFFFF) : 0;
 
+                // BRZDA: kdyz jadro jeste nema novy snimek, nekreslime znovu.
+                // Bez toho smycka jela 140-190 FPS a zbytecne zrala vykon
+                // (bralo to silu jadru i castu na TV).
+                boolean newFrame = true;
+                if (srcW > 0 && srcH > 0) {
+                    int n = srcW * srcH;
+                    int sig = n;
+                    int stepPx = Math.max(1, n / 64);          // otisk z ~64 bodu
+                    for (int i = 0; i < n; i += stepPx) sig = sig * 31 + argb[i];
+                    newFrame = (sig != lastSig);
+                    lastSig = sig;
+                }
+                if (!newFrame) {
+                    try { Thread.sleep(2); } catch (Throwable ignored) {}
+                    continue;
+                }
+
                 if (srcW > 0 && srcH > 0) {
                     if (!loggedFirst) {
                         loggedFirst = true;
@@ -273,6 +292,15 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
 
                 frames++;
                 if (frames % 300 == 0) say("C2 bezi: " + frames + " snimku, " + srcW + "x" + srcH);
+
+                // strop ~60 FPS - vic nema smysl, displej stejne vic nezobrazi
+                long now = System.nanoTime();
+                long dt = now - lastDrawNs;
+                long period = 16_666_667L;
+                if (lastDrawNs != 0 && dt < period) {
+                    try { Thread.sleep((period - dt) / 1_000_000L); } catch (Throwable ignored) {}
+                }
+                lastDrawNs = System.nanoTime();
             } catch (Throwable t) {
                 say("C2 chyba ve smycce: " + t);
                 break;
