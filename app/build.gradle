@@ -10,7 +10,7 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 10
-        versionName "EMU10-D-STARA-GRAFIKA-ZRUSENA"  // D: brzda smycky + stara cesta zrusena
+        versionName "EMU10-D2-STARA-GRAFIKA-ZRUSENA"  // D2: stejne jako D, jen nova verze pro jisty commit
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

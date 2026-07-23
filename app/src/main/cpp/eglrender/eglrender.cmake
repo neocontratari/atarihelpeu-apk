@@ -32,3 +32,4 @@ target_link_libraries(eglrender
     m)
 
 target_link_options(eglrender PRIVATE "-Wl,-u,ANativeActivity_onCreate")
+// D2 build marker - 20260723-0750
