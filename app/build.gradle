@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 29
-        versionName "EMU10-N-PANEL-AUTO-MANUAL"  // N: prestaveny panel nastaveni
+        versionCode 30
+        versionName "EMU10-N2-PANEL-HEZKY"  // N2: graficky prepracovany panel
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

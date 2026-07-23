@@ -30,15 +30,15 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
 .panel b{color:#8ee7ff;}
 .panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d8a947;color:#070402;font:900 15px "Courier New",monospace;}
-#settingsPanel{display:none;position:absolute;right:2%;top:10.5%;z-index:50;min-width:54%;background:linear-gradient(180deg,#100904,#060403);border:1px solid rgba(255,195,64,.50);border-radius:14px;padding:12px;box-shadow:0 0 30px rgba(0,0,0,.85);}
+#settingsPanel{display:none;position:absolute;right:2%;top:10.5%;z-index:50;min-width:58%;background:radial-gradient(120% 100% at 50% 0%,#241503 0%,#120a03 45%,#080503 100%);border:1px solid rgba(255,195,64,.55);border-radius:18px;padding:16px 14px 18px;box-shadow:0 0 40px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,214,130,.18),0 0 22px rgba(255,170,40,.12);}#settingsPanel:before{content:"";display:block;height:2px;margin:-6px -4px 12px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(255,196,80,.85),transparent);}
 #settingsPanel.open{display:block;}
-#settingsPanel .stlabel{color:#ffe49a;font:900 12px "Courier New",monospace;margin-bottom:8px;letter-spacing:.05em;}
-#settingsPanel button{display:block;width:100%;padding:12px;border:0;border-radius:10px;background:#d8a947;color:#070402;font:900 13px "Courier New",monospace;}
-#settingsPanel .stlabel2{color:#ffe49a;font:900 12px "Courier New",monospace;margin:12px 0 8px;letter-spacing:.05em;}
+#settingsPanel .stlabel{color:#ffd479;font:900 14px "Courier New",monospace;margin:0 0 12px;letter-spacing:.22em;text-align:center;text-shadow:0 0 12px rgba(255,170,40,.55);}
+#settingsPanel button{display:block;width:100%;padding:13px;border:0;border-radius:12px;background:linear-gradient(180deg,#f0c463,#c8952f);color:#160c02;font:900 13px "Courier New",monospace;letter-spacing:.08em;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.45);transition:.15s;}#settingsPanel button:active{transform:translateY(1px);box-shadow:0 1px 0 rgba(0,0,0,.5);}
+#settingsPanel .stlabel2{color:#d9b878;font:900 10px "Courier New",monospace;margin:16px 0 7px;letter-spacing:.16em;display:flex;align-items:center;gap:8px;}#settingsPanel .stlabel2:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,195,64,.35),transparent);}
     .sthint{color:#ffe49a;font:900 12px "Courier New",monospace;margin:12px 0 8px;letter-spacing:.05em;;font-size:11px;opacity:.75;margin-top:6px}
-#settingsPanel .qrow{display:flex;gap:6px;}
-#settingsPanel .qrow button{flex:1;padding:10px 4px;font-size:12px;background:#5a4420;color:#ffe49a;border:1px solid rgba(255,195,64,.35);}
-#settingsPanel .qrow button.active{background:#d8a947;color:#070402;box-shadow:0 0 14px rgba(255,180,40,.5);}
+#settingsPanel .qrow{display:flex;gap:7px;}
+#settingsPanel .qrow button{flex:1;padding:11px 4px;font-size:11px;letter-spacing:.06em;background:linear-gradient(180deg,#3b2a10,#241806);color:#e8c98d;border:1px solid rgba(255,195,64,.28);box-shadow:inset 0 1px 0 rgba(255,214,130,.10);}
+#settingsPanel .qrow button.active{background:linear-gradient(180deg,#ffd479,#d8a947);color:#1a0f02;border-color:rgba(255,225,150,.9);box-shadow:0 0 18px rgba(255,180,40,.65),inset 0 1px 0 rgba(255,255,255,.5);}
 @media (orientation:landscape) and (max-height:760px){
  .stage{height:100vh;width:auto;max-width:none;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;}
@@ -61,7 +61,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     </div>
     <div class="sthint" id="stModeHint">Aplikace nastavi vse sama podle telefonu</div>
 
-    <div id="stManual" style="display:none">
+    <div id="stManual" style="display:none;margin-top:4px;padding-top:6px;border-top:1px solid rgba(255,195,64,.18)">
       <div class="stlabel2">KVALITA OBRAZU (TV-CAST)</div>
       <div class="qrow">
         <button id="stQLow" type="button" data-tier="0">LOW</button>
