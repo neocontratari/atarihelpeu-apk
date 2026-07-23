@@ -32,4 +32,4 @@ target_link_libraries(eglrender
     m)
 
 target_link_options(eglrender PRIVATE "-Wl,-u,ANativeActivity_onCreate")
-// D2 build marker - 20260723-0750
+# D3 build marker - opravena znacka (CMake pouziva # ne //)
