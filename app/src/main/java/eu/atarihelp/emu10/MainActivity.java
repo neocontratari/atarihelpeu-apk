@@ -851,7 +851,9 @@ public class MainActivity extends Activity {
                             - ((tvCoreArgb[rowBase + rightX] >> 8) & 0xFF)
                             - ((tvCoreArgb[upBase + x] >> 8) & 0xFF)
                             - ((tvCoreArgb[downBase + x] >> 8) & 0xFF);
-                    int d = lap >> 2;   // sila doostreni (>>3 slabsi, >>2 silnejsi - cena stejna)
+                    int d = lap >> 3;   // puvodni overena sila. >>2 bylo prehnane:
+                                        // prilis ostry obraz se hur stlacuje do videa
+                                        // a na TV pak pusobi rozmazaneji, ne ostreji.
                     if (d != 0) {
                         int r = ((c >> 16) & 0xFF) + d;
                         int g = cg + d;
@@ -2187,7 +2189,7 @@ public class MainActivity extends Activity {
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s' style='display:none'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
                 + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
-                + "<script>(function(){var AVDELAY=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);return m?parseFloat(m[1]):0.75;}catch(e){return 0.75;}})();var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
+                + "<script>(function(){var AVDELAY=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);return m?parseFloat(m[1]):0.15;}catch(e){return 0.75;}})();var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST [SK60] '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function clog(m){try{fetch('/clientlog?m='+encodeURIComponent(m));}catch(e){}}" // BUILD2SK59: diagnostika z prohlizece zpet do /log - bez tohohle zadna viditelnost, kdyz H264 cesta selze drive, nez se server vubec dozvi
