@@ -4256,6 +4256,13 @@ public class MainActivity extends Activity {
             if (rootFrame == null) return;
             Ps1GlTextureView gv = new Ps1GlTextureView(MainActivity.this,
                     msg -> appendNativeLog(msg));
+            // DULEZITE: vrstva nesmi zrat dotyky, jinak nejde kliknout na
+            // menu nad ni (proto drive neslo vyskocit z PS1 zpatky do apky).
+            // Puvodni cesta to mela nastavene taky - ja to zapomnel.
+            gv.setClickable(false);
+            gv.setEnabled(false);
+            gv.setFocusable(false);
+            gv.setFocusableInTouchMode(false);
             // index 0 = na dno rootFrame, web kresli nad tim (stejne jako
             // to mela puvodni cesta)
             rootFrame.addView(gv, 0, new FrameLayout.LayoutParams(

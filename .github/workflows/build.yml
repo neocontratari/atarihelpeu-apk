@@ -1,5 +1,4 @@
 name: Build APK
-run-name: ${{ github.event.head_commit.message }}
 
 on:
   push:
@@ -63,3 +62,4 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 3   # setri misto na artefakty (kazdy build ma ~39 MB)
