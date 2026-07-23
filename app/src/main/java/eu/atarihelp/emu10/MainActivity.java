@@ -627,7 +627,15 @@ public class MainActivity extends Activity {
                         napTvWebVideoProfile = "PLAYER_PIXELCOPY_BAL";
                         napTvWebFrameDelayMs = Math.max(napTvWebFrameDelayMs, landscape ? 90 : 70);
                     }
-                    if (!didTimeoutFallback && pixelCopyAllowed) {
+                    // ===== KROK F: obraz pro TV PRIMO Z JADRA =====
+                    // Kdyz bezi nas PS1 obraz, nefotime obrazovku telefonu
+                    // (dvoji zvetseni + cerne pruhy + ovladaci prvky), ale
+                    // vezmeme framebuffer primo z jadra a JEDNIM krokem ho
+                    // roztahneme na cistych 16:9. Ostrejsi a rychlejsi.
+                    boolean gotFromCore = (ps1GlView != null) && napTvWebCaptureFromCore(bw, bh);
+                    if (gotFromCore) {
+                        napTvWebPixelCopyPending = false;
+                    } else if (!didTimeoutFallback && pixelCopyAllowed) {
                         int[] loc = new int[2];
                         rootFrame.getLocationInWindow(loc);
                         Rect src = new Rect(loc[0], loc[1], loc[0] + sw, loc[1] + sh);
@@ -759,6 +767,52 @@ public class MainActivity extends Activity {
     };
 
     private volatile Bitmap napTvWebBitmapDraw;
+    // ===== KROK F: snimek pro TV primo z PS1 jadra =====
+    // Misto fotografovani obrazovky telefonu vezme framebuffer jadra
+    // a jednim krokem ho roztahne na cely cil (cisty 16:9 bez pruhu
+    // a bez ovladacich prvku). Vraci true, kdyz se to povedlo.
+    private int[] tvCoreArgb = new int[1024 * 512];
+    private Bitmap tvCoreSrcBmp;
+
+    private boolean napTvWebCaptureFromCore(int bw, int bh) {
+        try {
+            if (bw <= 0 || bh <= 0) return false;
+            int wh = NativePs1CoreBridge.grabFrameSafe(tvCoreArgb);
+            if (wh < 0) {
+                int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
+                tvCoreArgb = new int[need + 1024];
+                wh = NativePs1CoreBridge.grabFrameSafe(tvCoreArgb);
+            }
+            if (wh <= 0) return false;
+            int sw = wh >> 16, sh = wh & 0xFFFF;
+            if (sw <= 0 || sh <= 0) return false;
+
+            int n = sw * sh;
+            for (int i = 0; i < n; i++) tvCoreArgb[i] |= 0xFF000000;   // vynutit alfu
+
+            if (tvCoreSrcBmp == null || tvCoreSrcBmp.getWidth() != sw || tvCoreSrcBmp.getHeight() != sh) {
+                if (tvCoreSrcBmp != null) { try { tvCoreSrcBmp.recycle(); } catch (Throwable ignored) {} }
+                tvCoreSrcBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
+            }
+            tvCoreSrcBmp.setPixels(tvCoreArgb, 0, sw, 0, 0, sw, sh);
+
+            if (napTvWebBitmapDraw == null || napTvWebBitmapDraw.getWidth() != bw
+                    || napTvWebBitmapDraw.getHeight() != bh) {
+                if (napTvWebBitmapDraw != null) { try { napTvWebBitmapDraw.recycle(); } catch (Throwable ignored) {} }
+                napTvWebBitmapDraw = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+            }
+            Canvas cv = new Canvas(napTvWebBitmapDraw);
+            cv.drawColor(Color.BLACK);
+            Paint pp = new Paint(Paint.FILTER_BITMAP_FLAG);
+            pp.setAntiAlias(true);
+            // roztazeni JEDNIM krokem na cely cil = cisty 16:9 bez pruhu
+            cv.drawBitmap(tvCoreSrcBmp, null, new Rect(0, 0, bw, bh), pp);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     private void napTvWebCaptureByDraw(int bw, int bh, float scale) {
         try {
             // BUILD2SK48: tahle funkce ted pouziva SVOJI VLASTNI bitmapu
@@ -5173,25 +5227,8 @@ public class MainActivity extends Activity {
         try { rootFrame.setBackgroundColor(Color.BLACK); } catch (Throwable ignored) {}
         rootFrame.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // ============================================================
-        //  KROK C1 (v2): PRUHLEDNE testovaci tlacitko pres logo NaP
-        //  (vlevo nahore). Bez napisu - jen neviditelna klikaci plocha
-        //  pres logo, at neprekryva TV Viewer ani options. Spusti
-        //  plynuly PS1 obraz PRIMO v teto obrazovce (viz nize) - hru
-        //  tim nechame bezet, neprejde do pozadi.
-        // ============================================================
-        try {
-            android.widget.Button glBtn = new android.widget.Button(this);
-            glBtn.setText("");                             // bez napisu
-            glBtn.setBackgroundColor(0x00000000);          // pruhledne
-            android.widget.FrameLayout.LayoutParams blp =
-                    new android.widget.FrameLayout.LayoutParams(220, 220);  // plocha pres logo
-            blp.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
-            blp.topMargin = 8; blp.leftMargin = 8;
-            glBtn.setLayoutParams(blp);
-            glBtn.setOnClickListener(v -> togglePs1Gl());
-            rootFrame.addView(glBtn);
-        } catch (Throwable ignored) {}
+        // KROK F: testovaci tlacitko na logu ZRUSENO - prekryvalo tlacitko
+        // pro vyskoceni z PS1. Pomer stran se ted prepina sam podle otoceni.
 
         setContentView(rootFrame);
         applyWebViewVisualMode("file:///android_asset/index.html", "startup");

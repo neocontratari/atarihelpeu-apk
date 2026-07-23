@@ -257,7 +257,9 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
                     // 320x240, 512x480, 640x480 - ale na obrazovce ma vzdy
                     // vypadat jako 4:3. Kdybychom pocitali z rozmeru, 512x480
                     // se zuzi (to bylo to "roztazene intro").
-                    float wantAspect = wide169 ? (16f / 9f) : (4f / 3f);
+                    // AUTOMATICKY podle otoceni telefonu (prani uzivatele):
+                    // na vysku 4:3 (puvodni PS1), na sirku 16:9 (na televizi).
+                    float wantAspect = (viewW > viewH) ? (16f / 9f) : (4f / 3f);
                     int vw = viewW;
                     int vh = (int) (viewW / wantAspect);
                     if (vh > viewH) { vh = viewH; vw = (int) (viewH * wantAspect); }
