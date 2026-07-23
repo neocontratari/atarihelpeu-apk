@@ -3316,9 +3316,9 @@ public class MainActivity extends Activity {
             try {
                 int min = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
                 // BUILD2RV: S8 RR recovery profile gets a real reservoir; Nox keeps the clean RQ-sized path.
-                int wantedFrames = s8NoStarve ? 8192 : 3072;
+                int wantedFrames = s8NoStarve ? 4096 : 3072;   // zpozdeni zvuku na polovinu
                 int wantedBytes = wantedFrames * 2 * 2;
-                int bufferBytes = Math.max(min > 0 ? (s8NoStarve ? min * 3 : min * 2) : 0, wantedBytes);
+                int bufferBytes = Math.max(min > 0 ? min * 2 : 0, wantedBytes);
                 AudioTrack.Builder builder = null;
                 if (Build.VERSION.SDK_INT >= 21) {
                     builder = new AudioTrack.Builder()
@@ -6630,8 +6630,12 @@ public class MainActivity extends Activity {
                 final boolean s8NoStarve = (Build.VERSION.SDK_INT <= 28) || ((Build.MODEL == null ? "" : Build.MODEL).toUpperCase(Locale.US).contains("SM-G950"));
                 final int chunkFrames = 384;
                 int min = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
-                int wantedFrames = s8NoStarve ? 8192 : Math.max(4096, chunkFrames * 8);
-                int bufBytes = Math.max(min > 0 ? (s8NoStarve ? min * 3 : min * 2) : 0, wantedFrames * 2 * 2);
+                // ZPOZDENI ZVUKU: driv 8192 vzorku = ~186 ms zvuku dopredu (proto to
+                // "ujizdeni", ktere Rene slysi i na mobilu). Zmenseno na polovinu.
+                // Kdyby zvuk zacal praskat, vratime zpet - je to vymena
+                // "zpozdeni" za "vypadky".
+                int wantedFrames = s8NoStarve ? 4096 : Math.max(4096, chunkFrames * 8);
+                int bufBytes = Math.max(min > 0 ? min * 2 : 0, wantedFrames * 2 * 2);
                 if (Build.VERSION.SDK_INT >= 21) {
                     at = new AudioTrack.Builder()
                             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
@@ -6646,6 +6650,11 @@ public class MainActivity extends Activity {
                 if (Build.VERSION.SDK_INT >= 23) {
                     try { setFrames = at.setBufferSizeInFrames(wantedFrames); } catch (Throwable ignored) {}
                 }
+                try {
+                    int fr = (setFrames > 0 ? setFrames : wantedFrames);
+                    appendNativeLog("L zvuk PS1: zasobnik " + fr + " vzorku = "
+                            + (fr * 1000 / sampleRate) + " ms zpozdeni");
+                } catch (Throwable ignored) {}
                 ps1CurrentAudioTrack = at;
                 short[] buf = new short[chunkFrames * 2];
                 int prefillFrames = 0;
