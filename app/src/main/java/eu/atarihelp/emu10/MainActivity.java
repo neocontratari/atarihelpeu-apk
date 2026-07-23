@@ -807,6 +807,11 @@ public class MainActivity extends Activity {
             pp.setAntiAlias(true);
             // roztazeni JEDNIM krokem na cely cil = cisty 16:9 bez pruhu
             cv.drawBitmap(tvCoreSrcBmp, null, new Rect(0, 0, bw, bh), pp);
+
+            // CHYBELO: bitmapu je potreba jeste ODEVZDAT do prenosu.
+            // Bez tohohle radku se obraz naplnil, ale TV o nem nevedela
+            // a cekala na starou prazdnou bitmapu -> cerna a 0 FPS.
+            napTvWebPublishBitmap(napTvWebBitmapDraw, "CORE");
             return true;
         } catch (Throwable t) {
             return false;

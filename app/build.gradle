@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 14
-        versionName "EMU10-F-TV-PRIMO-Z-JADRA"  // F: cast bere obraz z jadra, auto 4:3/16:9
+        versionCode 15
+        versionName "EMU10-F2-TV-PRIMO-Z-JADRA"  // F2: doplneno odevzdani bitmapy do prenosu
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
