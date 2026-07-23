@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 24
-        versionName "EMU10-J2-OBRAZ-ZPET"  // J2: doostreni zpet na overenou silu
+        versionCode 25
+        versionName "EMU10-K-ZVUK-OD-ZAKLADU"  // K: prestavene casovani zvuku + ladeni sipkami
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
