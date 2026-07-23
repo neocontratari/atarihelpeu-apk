@@ -806,17 +806,24 @@ public class MainActivity extends Activity {
             }
             tvCoreSrcBmp.setPixels(tvCoreArgb, 0, sw, 0, 0, sw, sh);
 
-            if (napTvWebBitmapDraw == null || napTvWebBitmapDraw.getWidth() != bw
-                    || napTvWebBitmapDraw.getHeight() != bh) {
+            // ===== PEVNYCH 1280x720 = SKUTECNE 16:9 =====
+            // Driv se velikost brala z displeje telefonu (1384x672), coz je
+            // ale pomer 2,06:1 - ne 16:9! Obraz na TV byl proto roztazeny o
+            // ~16 % do sirky (obliceje sirsi) a televize k tomu jeste pridavala
+            // pruhy nahore a dole. Ted posilame vzdycky cistych 1280x720:
+            // spravny pomer, bez pruhu, nezavisle na otoceni telefonu.
+            final int TVW = 1280, TVH = 720;
+            if (napTvWebBitmapDraw == null || napTvWebBitmapDraw.getWidth() != TVW
+                    || napTvWebBitmapDraw.getHeight() != TVH) {
                 if (napTvWebBitmapDraw != null) { try { napTvWebBitmapDraw.recycle(); } catch (Throwable ignored) {} }
-                napTvWebBitmapDraw = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+                napTvWebBitmapDraw = Bitmap.createBitmap(TVW, TVH, Bitmap.Config.ARGB_8888);
+                appendNativeLog("G TV prenos prepnut na pevnych " + TVW + "x" + TVH + " (skutecne 16:9)");
             }
             Canvas cv = new Canvas(napTvWebBitmapDraw);
             cv.drawColor(Color.BLACK);
             Paint pp = new Paint(Paint.FILTER_BITMAP_FLAG);   // hladke zvetseni
             pp.setDither(false);
-            // roztazeni JEDNIM krokem na cely cil = cisty 16:9 bez pruhu
-            cv.drawBitmap(tvCoreSrcBmp, null, new Rect(0, 0, bw, bh), pp);
+            cv.drawBitmap(tvCoreSrcBmp, null, new Rect(0, 0, TVW, TVH), pp);
 
             // CHYBELO: bitmapu je potreba jeste ODEVZDAT do prenosu.
             // Bez tohohle radku se obraz naplnil, ale TV o nem nevedela
