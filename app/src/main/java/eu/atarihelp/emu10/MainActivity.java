@@ -3316,7 +3316,7 @@ public class MainActivity extends Activity {
             try {
                 int min = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
                 // BUILD2RV: S8 RR recovery profile gets a real reservoir; Nox keeps the clean RQ-sized path.
-                int wantedFrames = s8NoStarve ? 4096 : 3072;   // zpozdeni zvuku na polovinu
+                int wantedFrames = audioFramesForTier();
                 int wantedBytes = wantedFrames * 2 * 2;
                 int bufferBytes = Math.max(min > 0 ? min * 2 : 0, wantedBytes);
                 AudioTrack.Builder builder = null;
@@ -3813,6 +3813,63 @@ public class MainActivity extends Activity {
     // removeNativeViewOnUi. Vzdy bezi na UI vlakne (rootFrame.addView vyzaduje
     // UI vlakno) - volajici muze byt na libovolnem vlakne (boot bezi na
     // pozadi), proto ui.post().
+
+    // ================= VYKONNOSTNI TRIDA ZARIZENI =================
+    //  0 = LOW    (stara/slabsi zarizeni, napr. S8 s Androidem 9)
+    //  1 = MEDIUM (stredni rada)
+    //  2 = HIGH   (moderni telefony, rok az dva stare)
+    //
+    //  Driv bylo v kodu natvrdo "kdyz je to S8, udelej tohle" - coz je
+    //  spatne, aplikace ma bezet i na jinych telefonech. Ted se trida
+    //  urci sama podle vykonu, a da se prepsat rucne z menu.
+    // ==============================================================
+    private int napPerfTier = -1;
+
+    private int perfTier() {
+        if (napPerfTier >= 0) return napPerfTier;
+        try {
+            android.content.SharedPreferences sp = getSharedPreferences("nap_perf", MODE_PRIVATE);
+            int saved = sp.getInt("tier", -1);
+            if (saved >= 0 && saved <= 2) { napPerfTier = saved; return napPerfTier; }
+        } catch (Throwable ignored) {}
+        int tier = 1;
+        try {
+            int cores = Runtime.getRuntime().availableProcessors();
+            long ramMb = 0;
+            try {
+                android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+                android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
+                am.getMemoryInfo(mi);
+                ramMb = mi.totalMem / (1024 * 1024);
+            } catch (Throwable ignored) {}
+            int sdk = Build.VERSION.SDK_INT;
+            if (sdk <= 28 || cores <= 4 || (ramMb > 0 && ramMb < 3500)) tier = 0;
+            else if (sdk >= 31 && cores >= 8 && ramMb >= 5500) tier = 2;
+            else tier = 1;
+            appendNativeLog("L vykonnostni trida: " + (tier == 0 ? "LOW" : tier == 1 ? "MEDIUM" : "HIGH")
+                    + " (Android " + sdk + ", " + cores + " jader, " + ramMb + " MB RAM)");
+        } catch (Throwable ignored) {}
+        napPerfTier = tier;
+        return tier;
+    }
+
+    /** Rucni prepnuti tridy z menu: 0=LOW, 1=MEDIUM, 2=HIGH. Projevi se po restartu hry. */
+    public void setPerfTier(int t) {
+        if (t < 0 || t > 2) return;
+        napPerfTier = t;
+        try { getSharedPreferences("nap_perf", MODE_PRIVATE).edit().putInt("tier", t).apply(); } catch (Throwable ignored) {}
+        appendNativeLog("L vykonnostni trida rucne nastavena: " + (t == 0 ? "LOW" : t == 1 ? "MEDIUM" : "HIGH"));
+    }
+
+    /** Kolik vzorku zvuku drzet dopredu. Min = mensi zpozdeni, ale vetsi riziko praskani. */
+    private int audioFramesForTier() {
+        switch (perfTier()) {
+            case 2:  return 1024;   // HIGH   ~23 ms
+            case 1:  return 2048;   // MEDIUM ~46 ms
+            default: return 4096;   // LOW    ~93 ms
+        }
+    }
+
     private void ps1ActivateNativeView() {
         // ====== KROK D: STARA ZOBRAZOVACI CESTA ZRUSENA ======
         // Misto puvodniho NativePs1InPlaceView (lockCanvas, 31-57 ms/snimek)
@@ -4458,6 +4515,31 @@ public class MainActivity extends Activity {
 
     // Most pro pripadne spousteni z menu:  AHRENDER.togglePs1()
     public class AHRENDER {
+        /** Vykonnostni trida: 0=LOW (stara zarizeni), 1=MEDIUM, 2=HIGH (moderni).
+         *  Volat z menu:  AHRENDER.setPerf(1)   Projevi se pri dalsim spusteni hry. */
+        @JavascriptInterface
+        public String setPerf(int t) {
+            try { setPerfTier(t); return "PERF_OK " + t; }
+            catch (Throwable e) { return "PERF_FAIL " + e.getMessage(); }
+        }
+
+        /** Zpet na automaticke urceni tridy. Volat z menu: AHRENDER.clearPerf() */
+        @JavascriptInterface
+        public String clearPerf() {
+            try {
+                napPerfTier = -1;
+                getSharedPreferences("nap_perf", MODE_PRIVATE).edit().remove("tier").apply();
+                appendNativeLog("L vykonnostni trida: zpet na AUTO");
+                return "PERF_AUTO";
+            } catch (Throwable e) { return "PERF_FAIL " + e.getMessage(); }
+        }
+
+        /** Vrati aktualni tridu (0/1/2). Volat z menu:  AHRENDER.getPerf() */
+        @JavascriptInterface
+        public int getPerf() {
+            try { return perfTier(); } catch (Throwable e) { return 0; }
+        }
+
         @JavascriptInterface
         public String togglePs1() {
             try {
@@ -6634,7 +6716,7 @@ public class MainActivity extends Activity {
                 // "ujizdeni", ktere Rene slysi i na mobilu). Zmenseno na polovinu.
                 // Kdyby zvuk zacal praskat, vratime zpet - je to vymena
                 // "zpozdeni" za "vypadky".
-                int wantedFrames = s8NoStarve ? 4096 : Math.max(4096, chunkFrames * 8);
+                int wantedFrames = audioFramesForTier();
                 int bufBytes = Math.max(min > 0 ? min * 2 : 0, wantedFrames * 2 * 2);
                 if (Build.VERSION.SDK_INT >= 21) {
                     at = new AudioTrack.Builder()

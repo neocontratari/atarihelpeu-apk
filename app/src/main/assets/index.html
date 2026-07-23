@@ -35,6 +35,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #settingsPanel .stlabel{color:#ffe49a;font:900 12px "Courier New",monospace;margin-bottom:8px;letter-spacing:.05em;}
 #settingsPanel button{display:block;width:100%;padding:12px;border:0;border-radius:10px;background:#d8a947;color:#070402;font:900 13px "Courier New",monospace;}
 #settingsPanel .stlabel2{color:#ffe49a;font:900 12px "Courier New",monospace;margin:12px 0 8px;letter-spacing:.05em;}
+    .sthint{color:#ffe49a;font:900 12px "Courier New",monospace;margin:12px 0 8px;letter-spacing:.05em;;font-size:11px;opacity:.75;margin-top:6px}
 #settingsPanel .qrow{display:flex;gap:6px;}
 #settingsPanel .qrow button{flex:1;padding:10px 4px;font-size:12px;background:#5a4420;color:#ffe49a;border:1px solid rgba(255,195,64,.35);}
 #settingsPanel .qrow button.active{background:#d8a947;color:#070402;box-shadow:0 0 14px rgba(255,180,40,.5);}
@@ -52,13 +53,32 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <div id="settingsPanel" aria-hidden="true">
     <div class="stlabel">OPTIONS</div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
-    <div class="stlabel2">KVALITA OBRAZU (TV-CAST)</div>
+
+    <div class="stlabel2">NASTAVENI</div>
     <div class="qrow">
-      <button id="stQLow" type="button" data-tier="0">LOW</button>
-      <button id="stQMed" type="button" data-tier="1">MED</button>
-      <button id="stQHigh" type="button" data-tier="2">HIGH</button>
+      <button id="stModeAuto" type="button" class="active">AUTOMATICKY</button>
+      <button id="stModeMan" type="button">MANUALNE</button>
+    </div>
+    <div class="sthint" id="stModeHint">Aplikace nastavi vse sama podle telefonu</div>
+
+    <div id="stManual" style="display:none">
+      <div class="stlabel2">KVALITA OBRAZU (TV-CAST)</div>
+      <div class="qrow">
+        <button id="stQLow" type="button" data-tier="0">LOW</button>
+        <button id="stQMed" type="button" data-tier="1">MED</button>
+        <button id="stQHigh" type="button" data-tier="2">HIGH</button>
+      </div>
+
+      <div class="stlabel2">ZVUK (ZPOZDENI)</div>
+      <div class="qrow">
+        <button id="stPLow" type="button" data-perf="0">LOW</button>
+        <button id="stPMed" type="button" data-perf="1">MED</button>
+        <button id="stPHigh" type="button" data-perf="2">HIGH</button>
+      </div>
+      <div class="sthint" id="stPerfHint">LOW = nejjistejsi, HIGH = nejmensi zpozdeni</div>
     </div>
   </div>
+
   <a id="btnAtari" class="hit" href="emu_vbxe/index.html">ATARI 130XE EMULATOR</a>
   <a id="btnSega" class="hit" href="emu_sega/index.html">SEGA MEGA DRIVE</a>
   <a id="btnPlayer" class="hit" href="player/index.html">PLAYER MP3 WAV</a>
@@ -161,6 +181,56 @@ $('btnSega')&&$('btnSega').addEventListener('click',function(){toast('SEGA MEGA 
 $('btnPlayer')&&$('btnPlayer').addEventListener('click',function(){toast('PLAYER MP3 / WAV',900);},true);
 $('btnPs1')&&$('btnPs1').addEventListener('click',function(){toast('PS1 PLAYSTATION',900);},true);
 log('BUILD2NZ ready: intro screen buttons Atari/Sega/Player/PS1/Web/Help/Rene Facebook wired.');
+})();
+</script>
+
+
+
+<script>
+(function(){
+  function $(id){return document.getElementById(id);}
+  var AUTO_IMG=2, AUTO_SND=-1;
+  var man=$('stManual'), mh=$('stModeHint'), ph=$('stPerfHint');
+  var sndNames={'0':'LOW - nejjistejsi, nejvetsi zpozdeni','1':'MEDIUM - stredni cesta','2':'HIGH - nejmensi zpozdeni, muze praskat'};
+
+  function markRow(ids,attr,val){
+    ids.forEach(function(id){var b=$(id); if(b) b.classList.toggle('active', b.getAttribute(attr)===String(val));});
+  }
+  function setSound(v){
+    try{ if(v<0){ if(window.AHRENDER&&AHRENDER.clearPerf)AHRENDER.clearPerf(); }
+         else if(window.AHRENDER&&AHRENDER.setPerf)AHRENDER.setPerf(v); }catch(e){}
+    try{localStorage.setItem('napSnd',v);}catch(e){}
+    markRow(['stPLow','stPMed','stPHigh'],'data-perf',v);
+    if(ph)ph.textContent=(sndNames[String(v)]||'AUTO - podle telefonu')+' (projevi se pri dalsim spusteni hry)';
+  }
+  function setImage(v){
+    var b=$(v===0?'stQLow':v===1?'stQMed':'stQHigh');
+    if(b) b.click();
+    markRow(['stQLow','stQMed','stQHigh'],'data-tier',v);
+  }
+  function setMode(auto){
+    $('stModeAuto').classList.toggle('active',auto);
+    $('stModeMan').classList.toggle('active',!auto);
+    man.style.display=auto?'none':'block';
+    if(mh)mh.textContent=auto?'Aplikace nastavi vse sama podle telefonu'
+                             :'Nastavujes rucne - volby nize';
+    try{localStorage.setItem('napMode',auto?'a':'m');}catch(e){}
+    if(auto){ setImage(AUTO_IMG); setSound(AUTO_SND); }
+  }
+  $('stModeAuto').addEventListener('click',function(){setMode(true);});
+  $('stModeMan').addEventListener('click',function(){setMode(false);});
+  ['stPLow','stPMed','stPHigh'].forEach(function(id){
+    var b=$(id); if(b) b.addEventListener('click',function(){setSound(parseInt(b.getAttribute('data-perf'),10));});
+  });
+  ['stQLow','stQMed','stQHigh'].forEach(function(id){
+    var b=$(id); if(b) b.addEventListener('click',function(){markRow(['stQLow','stQMed','stQHigh'],'data-tier',parseInt(b.getAttribute('data-tier'),10));});
+  });
+
+  var mode='a', snd=AUTO_SND;
+  try{ mode=localStorage.getItem('napMode')||'a';
+       var q=localStorage.getItem('napSnd'); if(q!==null)snd=parseInt(q,10); }catch(e){}
+  if(mode==='m'){ setMode(false); setSound(snd); }
+  else { setMode(true); }
 })();
 </script>
 </body>
