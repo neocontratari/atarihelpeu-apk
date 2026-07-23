@@ -3861,6 +3861,104 @@ public class MainActivity extends Activity {
         appendNativeLog("L vykonnostni trida rucne nastavena: " + (t == 0 ? "LOW" : t == 1 ? "MEDIUM" : "HIGH"));
     }
 
+    // ==============================================================
+    //  EMU10-O1: MERENI. Nic neopravuje, nic nemeni - jen zapisuje
+    //  cisla, ktera do ted nikdo nevidel.
+    //
+    //  Hlavni cislo je ODSTUP: o kolik ms je zvuk, ktery prave hraje
+    //  z reproduktoru, POZADU za snimkem, ktery je prave na obrazovce.
+    //
+    //  Spocita se poctive, bez odhadu:
+    //    vyrobeno  = kolik zvukovych snimku jadro celkem vydalo
+    //    zahozeno  = kolik jich orez ve fronte vyhodil
+    //    prehrano  = getPlaybackHeadPosition() z AudioTracku
+    //    odstup    = (vyrobeno - zahozeno - prehrano) / 44100
+    //
+    //  Kdyz odstup roste plynule, prica je v rychlosti odberu.
+    //  Kdyz odstup SKOCI dolu, prave se vyhodil kus zvuku (orez) -
+    //  a presne to je slyset jako "ujelo to".
+    // ==============================================================
+    private volatile boolean napMeasureOn = false;
+    private long napMeasureLastResyncs = -1;
+    private long napMeasureTick = 0;
+
+    private long napMeasureParse(String s, String key) {
+        try {
+            int i = s.indexOf(key);
+            if (i < 0) return -1;
+            int j = i + key.length();
+            int k = j;
+            while (k < s.length() && (Character.isDigit(s.charAt(k)))) k++;
+            if (k == j) return -1;
+            return Long.parseLong(s.substring(j, k));
+        } catch (Throwable t) { return -1; }
+    }
+
+    private void napMeasureStart() {
+        if (napMeasureOn) return;
+        napMeasureOn = true;
+        napMeasureLastResyncs = -1;
+        napMeasureTick = 0;
+        appendNativeLog("O1 MERENI zapnuto (kazdych 5 s, jen zapis, zadna zmena chovani)");
+        ui.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (!napMeasureOn) return;
+                try { napMeasureOnce(); } catch (Throwable t) {
+                    appendNativeLog("O1 MERENI chyba: " + safeMsg(t));
+                }
+                if (napMeasureOn) ui.postDelayed(this, 5000);
+            }
+        }, 5000);
+    }
+
+    private void napMeasureStop() {
+        if (!napMeasureOn) return;
+        napMeasureOn = false;
+        appendNativeLog("O1 MERENI vypnuto po " + napMeasureTick + " vzorcich");
+    }
+
+    private void napMeasureOnce() {
+        napMeasureTick++;
+        String st = NativePs1CoreBridge.statusSafe();
+
+        long vyrobeno = napMeasureParse(st, "audioTotal=");
+        long zahozeno = napMeasureParse(st, "audioDropped=");
+        long resyncs  = napMeasureParse(st, "audioResyncs=");
+        long fifo     = napMeasureParse(st, "audioFifoFrames=");
+        long snimky   = napMeasureParse(st, "frames=");
+
+        long prehrano = -1;
+        AudioTrack at = ps1CurrentAudioTrack;
+        if (at != null) {
+            try { prehrano = ((long) at.getPlaybackHeadPosition()) & 0xFFFFFFFFL; } catch (Throwable ignored) {}
+        }
+
+        String odstupTxt = "?";
+        if (vyrobeno >= 0 && zahozeno >= 0 && prehrano >= 0) {
+            long vzorku = vyrobeno - zahozeno - prehrano;
+            odstupTxt = (vzorku * 1000L / 44100L) + " ms";
+        }
+
+        // Skocil orez od minula? To je ta slysitelna vada.
+        String skok = "";
+        if (napMeasureLastResyncs >= 0 && resyncs > napMeasureLastResyncs) {
+            skok = "  <<< OREZ ZVUKU x" + (resyncs - napMeasureLastResyncs) + " (zvuk skocil dopredu)";
+        }
+        if (resyncs >= 0) napMeasureLastResyncs = resyncs;
+
+        int underruns = -1;
+        if (at != null && Build.VERSION.SDK_INT >= 24) {
+            try { underruns = at.getUnderrunCount(); } catch (Throwable ignored) {}
+        }
+
+        appendNativeLog("O1 ODSTUP zvuk-za-obrazem=" + odstupTxt
+                + " | vyrobeno=" + vyrobeno + " zahozeno=" + zahozeno
+                + " prehrano=" + prehrano + " fronta=" + fifo
+                + " orezu=" + resyncs + " vypadku=" + underruns
+                + " snimku=" + snimky + skok);
+        appendNativeLog("O1 STAV " + st);
+    }
+
     /** Kolik vzorku zvuku drzet dopredu. Min = mensi zpozdeni, ale vetsi riziko praskani. */
     private int audioFramesForTier() {
         switch (perfTier()) {
@@ -4549,6 +4647,17 @@ public class MainActivity extends Activity {
                 return "AHRENDER_TOGGLE_FAIL " + t.getMessage();
             }
         }
+
+        /** EMU10-O1: verze bezici v telefonu. Do ted ji slo zjistit jen z build.gradle
+         *  na pocitaci - z appky samotne nijak, i kdyz to pravidlo 7 protokolu zada. */
+        @JavascriptInterface
+        public String appVersion() {
+            try {
+                android.content.pm.PackageInfo pi =
+                        getPackageManager().getPackageInfo(getPackageName(), 0);
+                return pi.versionName + " (" + pi.versionCode + ")";
+            } catch (Throwable t) { return "?"; }
+        }
     }
 
     private class NativeInPlaceView extends TextureView implements TextureView.SurfaceTextureListener {
@@ -5228,6 +5337,11 @@ public class MainActivity extends Activity {
         // napTvWebLogFileInit (soubor uz musi existovat) a PRED jakymkoli PS1
         // bootem (coz v praxi vzdy je, boot je uzivatelska akce o dost pozdeji).
         try { if (napTvWebLogFile != null) NativePs1CoreBridge.setDiagLogPathSafe(napTvWebLogFile.getAbsolutePath()); } catch (Throwable ignored) {}
+        // EMU10-O1: uplne prvni radek logu = ktera verze tenhle log vyrobila.
+        try {
+            android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+            appendNativeLog("=== VERZE V TELEFONU: " + pi.versionName + " (code " + pi.versionCode + ") ===");
+        } catch (Throwable ignored) {}
         // BUILD2SK18: obnov ulozenou volbu kvality TV mirroru z minula (drive se
         // pri kazdem znovuotevreni appky vracela na LOW - ted si to appka pamatuje).
         try { napTvWebQualityTier = getSharedPreferences("nap_tv_prefs", MODE_PRIVATE).getInt("quality_tier", 0); } catch (Throwable ignored) {}
@@ -6809,6 +6923,7 @@ public class MainActivity extends Activity {
             }
         }, "nap-ps1-audio");
         ps1AudioThread.start();
+        ui.post(() -> napMeasureStart()); // EMU10-O1: mereni bezi soubezne se zvukem
     }
     private synchronized void stopPs1Audio() {
         final int gen = ++ps1AudioGen;
@@ -6826,6 +6941,7 @@ public class MainActivity extends Activity {
             try { t.join(250); } catch (Throwable ignored) {}
         }
         if (ps1AudioThread == t) ps1AudioThread = null;
+        ui.post(() -> napMeasureStop()); // EMU10-O1
         appendNativeLog("BUILD2SA5P PS1_AUDIO_STOP_REQUEST gen=" + gen + " hadTrack=" + (at != null));
     }
     private int writePs1AudioTrack(AudioTrack at, short[] pcm, int shorts, int gen) {

@@ -119,6 +119,11 @@ static std::atomic<int> g_pixfmt{PIXFMT_0RGB1555};
 static std::atomic<bool> g_running{false};
 static std::atomic<int> g_generation{0};
 static std::atomic<uint64_t> g_frames{0}, g_dupe_frames{0}, g_audio_samples_dropped{0}, g_audio_resyncs{0};
+// EMU10-O1: kolik zvukovych snimku jadro CELKEM vyrobilo od startu hry.
+// Bez tohohle cisla nejde spocitat, jak daleko je zvuk za obrazem - znali
+// jsme jen velikost fronty (okamzity stav), ne celkovy tok. Jen se pricita,
+// nic se podle nej neridi.
+static std::atomic<uint64_t> g_audio_frames_total{0};
 static std::atomic<int> g_fw{0}, g_fh{0};
 static std::atomic<uint32_t> g_input_bits{0}; // BUILD2SA4: libretro joypad bits
 static std::mutex g_frame_mutex;
@@ -288,6 +293,7 @@ static void nap_audio_clear(void) {
 static void nap_audio_push(const int16_t *data, size_t frames) {
   if (!data || !frames) return;
   std::lock_guard<std::mutex> lock(g_amutex);
+  g_audio_frames_total.fetch_add(frames); // EMU10-O1: jen pocitadlo, chovani beze zmeny
   g_afifo.insert(g_afifo.end(), data, data + frames * 2);
   if (g_afifo.size() / 2 > NAP_PS1_AFIFO_MAX_FRAMES) nap_audio_trim_locked(NAP_PS1_AFIFO_TARGET_FRAMES);
 }
@@ -639,6 +645,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
   nap_audio_clear();
   g_input_bits.store(0);
   g_frames.store(0); g_dupe_frames.store(0); g_audio_samples_dropped.store(0); g_audio_resyncs.store(0); g_fw.store(0); g_fh.store(0);
+  g_audio_frames_total.store(0); // EMU10-O1: nulovat spolu s ostatnimi, ať mereni sedi na jednu hru
   g_boot_error.clear();
   retro_set_environment(nap_env);
   retro_set_video_refresh(nap_video);
@@ -686,9 +693,11 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Status(JNIEnv *env, jclass) {
   char out[768];
-  snprintf(out,sizeof(out),"PS1_RUN running=%s frames=%llu dupes=%llu res=%dx%d pixfmt=%d audioFifoFrames=%zu audioDropped=%llu audioResyncs=%llu fps=%.2f err=%s",
+  snprintf(out,sizeof(out),"PS1_RUN running=%s frames=%llu dupes=%llu res=%dx%d pixfmt=%d audioFifoFrames=%zu audioTotal=%llu audioDropped=%llu audioResyncs=%llu fps=%.2f err=%s",
     g_running.load()?"YES":"NO",(unsigned long long)g_frames.load(),(unsigned long long)g_dupe_frames.load(),
-    g_fw.load(),g_fh.load(),g_pixfmt.load(),({std::lock_guard<std::mutex> al(g_amutex); g_afifo.size()/2;}),(unsigned long long)g_audio_samples_dropped.load(),(unsigned long long)g_audio_resyncs.load(),g_fps,
+    g_fw.load(),g_fh.load(),g_pixfmt.load(),({std::lock_guard<std::mutex> al(g_amutex); g_afifo.size()/2;}),
+    (unsigned long long)g_audio_frames_total.load(),
+    (unsigned long long)g_audio_samples_dropped.load(),(unsigned long long)g_audio_resyncs.load(),g_fps,
     g_boot_error.empty()?"none":g_boot_error.c_str());
   return env->NewStringUTF(out);
 }
