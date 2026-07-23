@@ -777,6 +777,7 @@ public class MainActivity extends Activity {
     private int[] tvSharpBuf;
     private double tvSharpSumMs = 0;
     private long tvSharpFrames = 0;
+    private long tvFpsT0 = 0;
 
     private boolean napTvWebCaptureFromCore(int bw, int bh) {
         try {
@@ -816,6 +817,13 @@ public class MainActivity extends Activity {
             int nPix = sw * sh;
             if (tvSharpBuf == null || tvSharpBuf.length < nPix) tvSharpBuf = new int[nPix + 1024];
             long shStart = System.nanoTime();
+            // Doostreni stoji 1,6-4,2 ms u hernich scen, ale 7,5 ms u filmovych
+            // (640x480). Zvuk uz hladovi (underruns), takze u velkych snimku
+            // doostreni preskocime - film je stejne mekky od prirody.
+            boolean doSharp = (nPix <= 400 * 300);
+            if (!doSharp) {
+                System.arraycopy(tvCoreArgb, 0, tvSharpBuf, 0, nPix);
+            } else
             for (int y = 0; y < sh; y++) {
                 int rowBase = y * sw;
                 int upBase = (y > 0 ? y - 1 : y) * sw;
@@ -847,8 +855,12 @@ public class MainActivity extends Activity {
             }
             tvSharpSumMs += (System.nanoTime() - shStart) / 1e6;
             if (++tvSharpFrames % 300 == 0) {
-                appendNativeLog("G doostreni: " + String.format("%.2f", tvSharpSumMs / 300.0)
-                        + " ms/snimek pri " + sw + "x" + sh);
+                long nowMs = System.currentTimeMillis();
+                double fps = (tvFpsT0 > 0) ? (300.0 * 1000.0 / (nowMs - tvFpsT0)) : 0;
+                tvFpsT0 = nowMs;
+                appendNativeLog("G TV: " + String.format("%.1f", fps) + " FPS, doostreni "
+                        + String.format("%.2f", tvSharpSumMs / 300.0) + " ms/snimek, zdroj " + sw + "x" + sh
+                        + (doSharp ? " (doostreno)" : " (bez doostreni)"));
                 tvSharpSumMs = 0;
             }
             tvCoreSrcBmp.setPixels(tvSharpBuf, 0, sw, 0, 0, sw, sh);
@@ -2161,8 +2173,8 @@ public class MainActivity extends Activity {
                 + "#q{position:fixed;right:10px;bottom:48px;display:flex;gap:4px}"
                 + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
-                + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
-                + "<div id='q'><button type='button' data-t='0'>LOW</button><button type='button' data-t='1'>MED</button><button type='button' data-t='2'>HIGH</button><button type='button' id='fs'>⛶ FULL</button></div>"
+                + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s' style='display:none'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
+                + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs'>\u26f6 FULL</button></div>"
                 + "<script>(function(){var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST [SK60] '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"
