@@ -53,7 +53,6 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <div id="settingsPanel" aria-hidden="true">
     <div class="stlabel">OPTIONS</div>
     <div id="stVersion" style="font:11px/1.5 monospace;color:#f2c464;opacity:.85;margin:0 0 8px;text-align:center;letter-spacing:.5px">verze: ...</div>
-    <div id="stCore" style="font:11px/1.5 monospace;color:#f2c464;opacity:.85;margin:0 0 8px;text-align:center;letter-spacing:.5px"></div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
 
     <div class="stlabel2">NASTAVENI</div>
@@ -130,18 +129,12 @@ function napQualityRefresh(){
     });
   }catch(e){log('QUALITY_REFRESH_ERR '+e);}
 }
-// EMU10-O1: verze bezici v telefonu primo v panelu. Do ted ji z appky
-// neslo zjistit vubec - jen z build.gradle na pocitaci.
+// EMU10-O1: verze bezici v telefonu primo v panelu.
 function napVersionRefresh(){
   try{
     var el=document.getElementById('stVersion'); if(!el)return;
     var v=(window.AHRENDER&&typeof window.AHRENDER.appVersion==='function')?window.AHRENDER.appVersion():null;
     el.textContent='verze: '+(v||'neznama');
-    // EMU10-O2: Java a jadro se stavi zvlast. Tohle ukaze, jestli je NOVE i jadro.
-    var c=document.getElementById('stCore'); if(!c)return;
-    var s=(window.AHRENDER&&typeof window.AHRENDER.coreStamp==='function')?window.AHRENDER.coreStamp():null;
-    var g=(window.AHRENDER&&typeof window.AHRENDER.glesStatus==='function')?window.AHRENDER.glesStatus():null;
-    c.textContent=(s||'jadro: neznamo')+(g?('  |  '+g):'');
   }catch(e){}
 }
 function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');napQualityRefresh();napVersionRefresh();}
@@ -183,12 +176,7 @@ if(stTv)stTv.addEventListener('click',function(e){
   try{
     var r=(window.AHTVWEB&&typeof window.AHTVWEB.start==='function')?window.AHTVWEB.start():null;
     log('SETTINGS_TV_START result='+r);
-    // EMU10-O1: adresa uz NENI napsana napevno. Java ji zjisti ze sitovych
-    // rozhrani (napTvWebLocalIp) a vrati ji tady v 'r' ve tvaru
-    // "TV_WEB_CAST_OK http://x.x.x.x:port/ APP". Driv tu stalo natvrdo
-    // 192.168.0.34:8765 - na jine siti (nebo kdyz byl port 8765 obsazeny a
-    // server spadl na nahodny volny) appka ukazovala adresu, ktera nikam
-    // nevedla, i kdyz tu spravnou v tu chvili sama znala.
+    // EMU10-O1: adresa uz NENI napsana napevno - bere se ta, kterou vratil server.
     var url=null;
     try{ var m=String(r||'').match(/https?:\/\/[^\s]+/); if(m) url=m[0]; }catch(e){}
     toast(url ? ('WEB TV zapnuto — '+url) : 'WEB TV: adresu se nepodarilo zjistit', 4000);

@@ -13,8 +13,6 @@
 #include <cstdio>
 #include <cstdarg>
 #include <dirent.h>
-#include <unistd.h>   // EMU10-O5: usleep
-#include <pthread.h>  // EMU10-O5: zobrazovaci vlakno
 #include <cctype> // BUILD2SA6: BIOS audit
 #include <cstdint>
 #include <fstream>
@@ -22,8 +20,6 @@
 #include <iterator>
 #include <EGL/egl.h>   // BUILD2SK98: pro gpu-gles (skutecny GL vykreslovac s texturovym filtrovanim)
 #include <GLES/gl.h>   // GLES1 - presne to, co gpu-gles pouziva (fixed-function pipeline)
-#include <android/native_window.h>      // EMU10-O5: prime kresleni do plochy TextureView
-#include <android/native_window_jni.h>  // EMU10-O5: ANativeWindow_fromSurface
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, "NAP_PS1", __VA_ARGS__)
 
 // BUILD2SK115: presunuto sem (drive bylo hluboko v souboru, radek 274+) -
@@ -117,14 +113,6 @@ extern "C" {
 // Zachyceno PRED odeslanim explicitni kontrolou poradi deklaraci - stejna
 // trida chyby jako minuly TRUE/FALSE build fail, tentokrat vcas.
 static bool g_gles_ready = false;
-// EMU10-O2: kde presne GL kontext selhal. Do ted to slo jen do nativniho
-// logu, ktery se v Reneho logu neobjevil ani jednou - takze o duvodu
-// selhani nebylo v ruce nic.
-static char g_gles_fail_step[64] = "nezkouseno";
-// EMU10-O5: displej a kontext, ve kterem kresli gpu-gles. Zobrazovaci
-// vlakno se s nimi spoji do sdilene skupiny a smi pak cist tytez textury.
-static EGLDisplay g_gles_display = EGL_NO_DISPLAY;
-static EGLContext g_gles_context = EGL_NO_CONTEXT;
 
 static std::string g_sysdir, g_savedir, g_boot_error;
 static std::atomic<int> g_pixfmt{PIXFMT_0RGB1555};
@@ -132,9 +120,7 @@ static std::atomic<bool> g_running{false};
 static std::atomic<int> g_generation{0};
 static std::atomic<uint64_t> g_frames{0}, g_dupe_frames{0}, g_audio_samples_dropped{0}, g_audio_resyncs{0};
 // EMU10-O1: kolik zvukovych snimku jadro CELKEM vyrobilo od startu hry.
-// Bez tohohle cisla nejde spocitat, jak daleko je zvuk za obrazem - znali
-// jsme jen velikost fronty (okamzity stav), ne celkovy tok. Jen se pricita,
-// nic se podle nej neridi.
+// Jen se pricita, nic se podle nej neridi.
 static std::atomic<uint64_t> g_audio_frames_total{0};
 static std::atomic<int> g_fw{0}, g_fh{0};
 static std::atomic<uint32_t> g_input_bits{0}; // BUILD2SA4: libretro joypad bits
@@ -305,7 +291,7 @@ static void nap_audio_clear(void) {
 static void nap_audio_push(const int16_t *data, size_t frames) {
   if (!data || !frames) return;
   std::lock_guard<std::mutex> lock(g_amutex);
-  g_audio_frames_total.fetch_add(frames); // EMU10-O1: jen pocitadlo, chovani beze zmeny
+  g_audio_frames_total.fetch_add(frames); // EMU10-O1: jen pocitadlo
   g_afifo.insert(g_afifo.end(), data, data + frames * 2);
   if (g_afifo.size() / 2 > NAP_PS1_AFIFO_MAX_FRAMES) nap_audio_trim_locked(NAP_PS1_AFIFO_TARGET_FRAMES);
 }
@@ -354,16 +340,11 @@ extern "C" {
 static bool nap_gles_egl_init() {
   NAPDIAG("BUILD2SK99 GLES_INIT_ENTER"); // BUILD2SK99: kanarek - pokud tohle v logu je, ale nic dal, vime, ze crash je HNED za timhle radkem
   EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-  if (display == EGL_NO_DISPLAY) {
-    NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglGetDisplay");
-    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglGetDisplay"); // EMU10-O2
-    return false;
-  }
+  if (display == EGL_NO_DISPLAY) { NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglGetDisplay"); return false; }
 
   EGLint majorV = 0, minorV = 0;
   if (!eglInitialize(display, &majorV, &minorV)) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglInitialize err=0x%x", eglGetError());
-    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglInitialize"); // EMU10-O2
     return false;
   }
   NAPDIAG("BUILD2SK98 GLES_INIT egl version=%d.%d", (int)majorV, (int)minorV);
@@ -379,7 +360,6 @@ static bool nap_gles_egl_init() {
   EGLint numConfigs = 0;
   if (!eglChooseConfig(display, configAttribs, &config, 1, &numConfigs) || numConfigs < 1) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglChooseConfig err=0x%x", eglGetError());
-    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglChooseConfig"); // EMU10-O2
     return false;
   }
 
@@ -393,7 +373,6 @@ static bool nap_gles_egl_init() {
   EGLSurface surface = eglCreatePbufferSurface(display, config, pbufferAttribs);
   if (surface == EGL_NO_SURFACE) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglCreatePbufferSurface err=0x%x", eglGetError());
-    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglCreatePbufferSurface"); // EMU10-O2
     return false;
   }
 
@@ -401,22 +380,13 @@ static bool nap_gles_egl_init() {
   EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
   if (context == EGL_NO_CONTEXT) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglCreateContext err=0x%x", eglGetError());
-    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglCreateContext"); // EMU10-O2
     return false;
   }
 
   if (!eglMakeCurrent(display, surface, surface, context)) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglMakeCurrent err=0x%x", eglGetError());
-    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglMakeCurrent"); // EMU10-O2
     return false;
   }
-
-  // EMU10-O5: zapamatovat si displej a kontext. Doted byly jen lokalni -
-  // zobrazovaci vlakno se s nimi ale musi umet spojit do sdilene skupiny,
-  // aby smelo cist tytez textury (eglGetCurrentContext() by mu nepomohlo,
-  // to vraci kontext AKTUALNIHO vlakna, a to je tohle, ne to zobrazovaci).
-  g_gles_display = display;
-  g_gles_context = context;
 
   // BUILD2SK98: gpu-gles cte tyhle tri promenne PRED tim, nez se GLinitialize
   // vubec pusti do glViewport/glOrtho - musi byt nastavene driv. 320x240
@@ -467,7 +437,6 @@ static bool nap_gles_egl_init() {
 
   if (GLinitialize((void *)display, (void *)surface) != 0) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=GLinitialize");
-    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","GLinitialize"); // EMU10-O2
     return false;
   }
   MakeDisplayLists(); // BUILD2SK102: stejne poradi jako GPUopen() - font/HUD display listy
@@ -650,210 +619,6 @@ static void nap_worker(int gen) {
   NAPLOG("BUILD2SA2 PS1 worker stop gen=%d frames=%llu", gen, (unsigned long long)g_frames.load());
 }
 
-// EMU10-O2: RAZITKO. `__DATE__`/`__TIME__` dosadi prekladac v okamziku, kdy
-// tenhle soubor SKUTECNE prelozi. Kdyz se jadro neprelozi znovu a v telefonu
-// zustane stara knihovna, razitko zustane stare - a je to videt na prvni
-// pohled, bez verable komukoli na slovo.
-// ================================================================
-//  EMU10-O5: PRIME ZOBRAZENI - obraz jde z grafiky rovnou na obrazovku.
-//
-//  Doted: jadro nakreslilo snimek na grafice, ten se stahl do procesoru
-//  (glReadPixels), dvakrat prepocital po pixelech, protahl pres JNI do
-//  Javy, zkopiroval do bufferu a nahral ZPATKY na grafiku, aby se ukazal.
-//  Sedm sahnuti po kazdem pixelu za necim, co uz v grafice hotove bylo.
-//
-//  Ted: zobrazovaci vlakno ma vlastni EGL kontext SDILENY s tim, ve kterem
-//  kresli gpu-gles (uplne stejne, jako to uz delá ctecí vlakno - tam je to
-//  overene, ze to na tomhle telefonu funguje). Vezme snapshot texturu a
-//  nakresli ji na plochu. Zadny prenos do procesoru.
-//
-//  Kdyz cokoli z toho selze, ps1DisplayAttach vrati chybu a Java zustane
-//  u puvodni cesty - nejhorsi pripad je dnesni stav, ne cerna obrazovka.
-// ================================================================
-extern "C" {
-  extern volatile int nap_pub_tex, nap_pub_x, nap_pub_y, nap_pub_w, nap_pub_h;
-  extern volatile unsigned nap_pub_seq;
-}
-
-static ANativeWindow  *g_disp_win  = nullptr;
-static EGLDisplay      g_disp_dpy  = EGL_NO_DISPLAY;
-static EGLSurface      g_disp_surf = EGL_NO_SURFACE;
-static EGLContext      g_disp_ctx  = EGL_NO_CONTEXT;
-static std::atomic<bool> g_disp_run{false};
-static pthread_t       g_disp_tid;
-static std::atomic<int>  g_disp_vw{0}, g_disp_vh{0};
-static std::atomic<long> g_disp_frames{0};
-
-static void *nap_display_thread_main(void *) {
-  if (!eglMakeCurrent(g_disp_dpy, g_disp_surf, g_disp_surf, g_disp_ctx)) {
-    NAPDIAG("O5 DISP_MAKECURRENT_FAIL err=0x%x", eglGetError());
-    return nullptr;
-  }
-  eglSwapInterval(g_disp_dpy, 1); // kreslit v rytmu displeje
-
-  glDisable(GL_DEPTH_TEST);
-  glDisable(GL_CULL_FACE);
-  glDisable(GL_LIGHTING);
-  glDisable(GL_BLEND);
-  glEnable(GL_TEXTURE_2D);
-  glEnableClientState(GL_VERTEX_ARRAY);
-  glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-  glMatrixMode(GL_PROJECTION); glLoadIdentity();
-  glMatrixMode(GL_MODELVIEW);  glLoadIdentity();
-
-  NAPDIAG("O5 DISP_THREAD_READY");
-
-  unsigned lastSeq = 0xFFFFFFFFu;
-  while (g_disp_run.load()) {
-    unsigned seq = nap_pub_seq;
-    int tex = nap_pub_tex;
-    if (tex == 0 || seq == lastSeq) {
-      usleep(2000); // nic noveho - nezatezovat procesor
-      continue;
-    }
-    lastSeq = seq;
-
-    int sx = nap_pub_x, sy = nap_pub_y, sw = nap_pub_w, sh = nap_pub_h;
-    if (sw <= 0 || sh <= 0) { usleep(2000); continue; }
-
-    int vw = g_disp_vw.load(), vh = g_disp_vh.load();
-    if (vw <= 0 || vh <= 0) { usleep(2000); continue; }
-
-    // Pomer stran: na sirku 16:9, na vysku 4:3 - stejne jako to delala Java
-    float want = (vw > vh) ? (16.0f / 9.0f) : (4.0f / 3.0f);
-    float have = (float)vw / (float)vh;
-    int dw = vw, dh = vh, dx = 0, dy = 0;
-    if (have > want) { dw = (int)(vh * want); dx = (vw - dw) / 2; }
-    else             { dh = (int)(vw / want); dy = (vh - dh) / 2; }
-
-    glViewport(0, 0, vw, vh);
-    glClearColor(0.f, 0.f, 0.f, 1.f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    glBindTexture(GL_TEXTURE_2D, (GLuint)tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    // Vyrez ve VRAM texture (1024x512). Y je v GL zdola, snapshot ma obraz
-    // ulozeny stejne jako ho cte ctecí vlakno - proto stejny prepocet.
-    const float TW = 1024.0f, TH = 512.0f;
-    float u0 = sx / TW,        u1 = (sx + sw) / TW;
-    float glY = TH - (float)(sy + sh);
-    float v0 = (glY + sh) / TH, v1 = glY / TH; // prevraceno: obraz kreslime shora dolu
-
-    // Cilovy obdelnik v normalizovanych souradnicich (-1..1)
-    float x0 = (2.0f * dx) / vw - 1.0f;
-    float x1 = (2.0f * (dx + dw)) / vw - 1.0f;
-    float y0 = 1.0f - (2.0f * (dy + dh)) / vh;
-    float y1 = 1.0f - (2.0f * dy) / vh;
-
-    const GLfloat verts[] = { x0,y0,  x1,y0,  x0,y1,  x1,y1 };
-    const GLfloat uvs[]   = { u0,v0,  u1,v0,  u0,v1,  u1,v1 };
-    glVertexPointer(2, GL_FLOAT, 0, verts);
-    glTexCoordPointer(2, GL_FLOAT, 0, uvs);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    eglSwapBuffers(g_disp_dpy, g_disp_surf);
-    long n = g_disp_frames.fetch_add(1) + 1;
-    if (n == 1 || (n % 600) == 0) {
-      NAPDIAG("O5 DISP_FRAMES n=%ld tex=%d vyrez=[%d,%d %dx%d] plocha=%dx%d", n, tex, sx, sy, sw, sh, vw, vh);
-    }
-  }
-  eglMakeCurrent(g_disp_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-  NAPDIAG("O5 DISP_THREAD_END frames=%ld", g_disp_frames.load());
-  return nullptr;
-}
-
-extern "C" JNIEXPORT jstring JNICALL
-Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1DisplayAttach(JNIEnv *env, jclass, jobject surface, jint vw, jint vh) {
-  char msg[256];
-  if (g_disp_run.load()) return env->NewStringUTF("O5_UZ_BEZI");
-  if (!g_gles_ready) return env->NewStringUTF("O5_FAIL gpu-gles jeste nebezi");
-  if (!surface)      return env->NewStringUTF("O5_FAIL zadna plocha");
-
-  g_disp_vw.store(vw); g_disp_vh.store(vh);
-  g_disp_win = ANativeWindow_fromSurface(env, surface);
-  if (!g_disp_win) return env->NewStringUTF("O5_FAIL ANativeWindow_fromSurface");
-
-  // Kontext, ve kterem kresli gpu-gles. Sdilime s nim - stejne jako ctecí vlakno.
-  EGLDisplay dpy = g_gles_display;
-  EGLContext share = g_gles_context;
-  if (dpy == EGL_NO_DISPLAY || share == EGL_NO_CONTEXT) {
-    ANativeWindow_release(g_disp_win); g_disp_win = nullptr;
-    return env->NewStringUTF("O5_FAIL nemam kontext gpu-gles");
-  }
-
-  EGLint cfgAttribs[] = {
-    EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES_BIT,   // GLES1 - stejne jako gpu-gles
-    EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8,
-    EGL_NONE
-  };
-  EGLConfig cfg; EGLint numCfg = 0;
-  if (!eglChooseConfig(dpy, cfgAttribs, &cfg, 1, &numCfg) || numCfg < 1) {
-    snprintf(msg, sizeof(msg), "O5_FAIL eglChooseConfig err=0x%x", eglGetError());
-    ANativeWindow_release(g_disp_win); g_disp_win = nullptr;
-    return env->NewStringUTF(msg);
-  }
-  g_disp_surf = eglCreateWindowSurface(dpy, cfg, (EGLNativeWindowType)g_disp_win, nullptr);
-  if (g_disp_surf == EGL_NO_SURFACE) {
-    snprintf(msg, sizeof(msg), "O5_FAIL eglCreateWindowSurface err=0x%x", eglGetError());
-    ANativeWindow_release(g_disp_win); g_disp_win = nullptr;
-    return env->NewStringUTF(msg);
-  }
-  EGLint ctxAttribs[] = { EGL_NONE }; // GLES1
-  g_disp_ctx = eglCreateContext(dpy, cfg, share, ctxAttribs); // share = TOHLE sdili textury
-  if (g_disp_ctx == EGL_NO_CONTEXT) {
-    snprintf(msg, sizeof(msg), "O5_FAIL eglCreateContext(sdileny) err=0x%x", eglGetError());
-    eglDestroySurface(dpy, g_disp_surf); g_disp_surf = EGL_NO_SURFACE;
-    ANativeWindow_release(g_disp_win); g_disp_win = nullptr;
-    return env->NewStringUTF(msg);
-  }
-  g_disp_dpy = dpy;
-  g_disp_run.store(true);
-  if (pthread_create(&g_disp_tid, nullptr, nap_display_thread_main, nullptr) != 0) {
-    g_disp_run.store(false);
-    eglDestroyContext(dpy, g_disp_ctx); g_disp_ctx = EGL_NO_CONTEXT;
-    eglDestroySurface(dpy, g_disp_surf); g_disp_surf = EGL_NO_SURFACE;
-    ANativeWindow_release(g_disp_win); g_disp_win = nullptr;
-    return env->NewStringUTF("O5_FAIL vlakno se nespustilo");
-  }
-  NAPDIAG("O5 DISP_ATTACH_OK plocha=%dx%d", vw, vh);
-  return env->NewStringUTF("O5_OK prime zobrazeni bezi");
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1DisplayDetach(JNIEnv *, jclass) {
-  if (!g_disp_run.load()) return;
-  g_disp_run.store(false);
-  pthread_join(g_disp_tid, nullptr);
-  if (g_disp_dpy != EGL_NO_DISPLAY) {
-    if (g_disp_ctx  != EGL_NO_CONTEXT) eglDestroyContext(g_disp_dpy, g_disp_ctx);
-    if (g_disp_surf != EGL_NO_SURFACE) eglDestroySurface(g_disp_dpy, g_disp_surf);
-  }
-  g_disp_ctx = EGL_NO_CONTEXT; g_disp_surf = EGL_NO_SURFACE; g_disp_dpy = EGL_NO_DISPLAY;
-  if (g_disp_win) { ANativeWindow_release(g_disp_win); g_disp_win = nullptr; }
-  NAPDIAG("O5 DISP_DETACH");
-}
-
-extern "C" JNIEXPORT jstring JNICALL
-Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BuildStamp(JNIEnv *env, jclass) {
-  char buf[256];
-  snprintf(buf,sizeof(buf),"O2 jadro prelozeno %s %s", __DATE__, __TIME__);
-  return env->NewStringUTF(buf);
-}
-
-// EMU10-O2: bezi gpu-gles, nebo ne? A kdyz ne, na cem to spadlo.
-extern "C" JNIEXPORT jstring JNICALL
-Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1GlesStatus(JNIEnv *env, jclass) {
-  char buf[256];
-  snprintf(buf,sizeof(buf),"gpuGles=%s krok=%s pixfmt=%d",
-    g_gles_ready ? "BEZI" : "NEBEZI", g_gles_fail_step, g_pixfmt.load());
-  return env->NewStringUTF(buf);
-}
-
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1CoreInfo(JNIEnv *env, jclass) {
   char buf[512]; retro_system_info si; memset(&si,0,sizeof(si)); retro_get_system_info(&si);
@@ -878,7 +643,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
   nap_audio_clear();
   g_input_bits.store(0);
   g_frames.store(0); g_dupe_frames.store(0); g_audio_samples_dropped.store(0); g_audio_resyncs.store(0); g_fw.store(0); g_fh.store(0);
-  g_audio_frames_total.store(0); // EMU10-O1: nulovat spolu s ostatnimi, ať mereni sedi na jednu hru
+  g_audio_frames_total.store(0); // EMU10-O1
   g_boot_error.clear();
   retro_set_environment(nap_env);
   retro_set_video_refresh(nap_video);

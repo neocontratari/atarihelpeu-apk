@@ -131,7 +131,7 @@ target_link_libraries(napsega_native_proof PRIVATE
         clownmdemu-core)
 # ============ BUILD2SA1-FIX: PCSX-ReARMed presne dle jni/Android.mk (arm64, interpreter) ============
 # KILL-SWITCH: kdyz by PS1 blok zlobil, staci OFF a workflow je zeleny bez PS1.
-option(NAP_ENABLE_PS1 "Build PS1 core (napps1core3)" ON)
+option(NAP_ENABLE_PS1 "Build PS1 core (napps1core)" ON)
 enable_language(ASM) # BUILD2SA6: dynarec ma arm64 assembly (.S)
 # BUILD2SA1-FIX3: Gradle stavi APK pro VSECHNY architektury (arm64, armeabi-v7a,
 # x86, x86_64). PS1 konfigurace je zamerena na arm64 (S8 a moderni telefony) -
@@ -144,7 +144,7 @@ if(ANDROID AND NOT (ANDROID_ABI STREQUAL "arm64-v8a"))
 endif()
 if(NAP_ENABLE_PS1)
 set(PS1_DIR ${CMAKE_CURRENT_LIST_DIR}/vendor/pcsx_rearmed)
-add_library(napps1core3 SHARED
+add_library(napps1core SHARED
     ${CMAKE_CURRENT_LIST_DIR}/nap_ps1_native.cpp
     ${PS1_DIR}/libpcsxcore/cdriso.c
     ${PS1_DIR}/libpcsxcore/cdrom.c
@@ -227,13 +227,13 @@ add_library(napps1core3 SHARED
     ${PS1_DIR}/frontend/pcsxr-threads.c
     ${PS1_DIR}/deps/libretro-common/features/features_cpu.c
 )
-target_include_directories(napps1core3 PRIVATE
+target_include_directories(napps1core PRIVATE
     ${PS1_DIR}/include ${PS1_DIR} ${PS1_DIR}/libpcsxcore ${PS1_DIR}/frontend
     ${PS1_DIR}/deps/crypto
     ${PS1_DIR}/deps/libchdr/include ${PS1_DIR}/deps/libchdr/deps/lzma-24.05/include
     ${PS1_DIR}/deps/libchdr/deps/zstd-1.5.6/lib ${PS1_DIR}/deps/libretro-common/include
     ${PS1_DIR}/plugins/gpu-gles)
-target_compile_definitions(napps1core3 PRIVATE
+target_compile_definitions(napps1core PRIVATE
     HAVE_CHD Z7_ST ZSTD_DISABLE_ASM HAVE_LIBRETRO NO_FRONTEND REARMED
     P_HAVE_MMAP=1 P_HAVE_PTHREAD=1 P_HAVE_POSIX_MEMALIGN=1 USE_LIBRETRO_VFS
     NDRC_THREAD LIGHTREC_CUSTOM_MAP=0 LIGHTREC_ENABLE_THREADED_COMPILER=0
@@ -244,17 +244,17 @@ target_compile_definitions(napps1core3 PRIVATE
     # prim.c jen menil jeden interni presnostni prepinac (#define STRICT),
     # nic vic - bezpecne vypnout.
 if(ANDROID)
-    target_compile_definitions(napps1core3 PRIVATE ANDROID)
+    target_compile_definitions(napps1core PRIVATE ANDROID)
 endif()
-target_compile_options(napps1core3 PRIVATE ${NAP_CORE_OPT_FLAGS} -ffast-math -fno-strict-aliasing -Wno-unused -Wno-unused-function)
+target_compile_options(napps1core PRIVATE ${NAP_CORE_OPT_FLAGS} -ffast-math -fno-strict-aliasing -Wno-unused -Wno-unused-function)
 find_package(Threads REQUIRED)
 # BUILD2SA1-FIX2: Android.mk ma LOCAL_LDLIBS := -lz -llog. Bez systemove zlib
 # (libchdr ji potrebuje) spadl NDK link - presne chyba z Actions #853.
 # --no-undefined = stejna prisnost jako NDK, chybejici symbol shodi uz muj test.
 # BUILD2SK98: + EGL/GLESv1_CM - standardni, VZDY pritomne Android system
 # knihovny (soucast kazdeho Android NDK) - potrebne pro gpu-gles.
-target_link_libraries(napps1core3 ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS} EGL GLESv1_CM android) # EMU10-O5: +android kvuli ANativeWindow
-target_link_options(napps1core3 PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
+target_link_libraries(napps1core ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS} EGL GLESv1_CM)
+target_link_options(napps1core PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif() # NAP_ENABLE_PS1
 
 # ============================================================

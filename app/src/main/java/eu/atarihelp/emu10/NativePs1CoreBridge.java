@@ -4,30 +4,12 @@ public final class NativePs1CoreBridge {
     private static boolean loaded = false;
     private static String loadError = "";
     static {
-        try { System.loadLibrary("napps1core3"); loaded = true; }
+        try { System.loadLibrary("napps1core"); loaded = true; }
         catch (Throwable t) { loadError = String.valueOf(t.getMessage()); }
     }
     private static native String ps1CoreInfo();
     private static native String ps1Boot(String systemDir, String saveDir, String gamePath);
     private static native String ps1Status();
-    private static native String ps1BuildStamp();   // EMU10-O2
-    private static native String ps1GlesStatus();   // EMU10-O2
-    private static native String ps1DisplayAttach(android.view.Surface s, int w, int h); // EMU10-O5
-    private static native void   ps1DisplayDetach();  // EMU10-O5
-
-    /** EMU10-O5: zkusi prime zobrazeni z grafiky. Kdyz to nejde, vrati duvod
-     *  a volajici zustane u puvodni cesty pres procesor - horsi obraz, ale
-     *  zadna cerna obrazovka. */
-    public static String displayAttachSafe(android.view.Surface s, int w, int h) {
-        if (!loaded) return "O5_FAIL jadro se nenacetlo";
-        try { return ps1DisplayAttach(s, w, h); }
-        catch (UnsatisfiedLinkError e) { return "O5_FAIL stare jadro bez primeho zobrazeni"; }
-        catch (Throwable t) { return "O5_FAIL " + t.getMessage(); }
-    }
-    public static void displayDetachSafe() {
-        if (!loaded) return;
-        try { ps1DisplayDetach(); } catch (Throwable ignored) {}
-    }
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
     private static native int ps1PullAudio(short[] out, int frames);
@@ -80,24 +62,5 @@ public final class NativePs1CoreBridge {
     public static String stopSafe() {
         if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;
         try { return ps1Stop(); } catch (Throwable t) { return "PS1_STOP_CALL_FAIL " + t.getMessage(); }
-    }
-
-    // EMU10-O2: kdyz tyhle dve funkce v knihovne NEJSOU, je knihovna stara.
-    // UnsatisfiedLinkError je tady informace, ne chyba - proto se nechytá tise.
-    public static String buildStampSafe() {
-        // EMU10-O3: knihovna se prejmenovala na napps1core3. Stara kopie
-        // libnapps1core.so uz tenhle nazev nemuze obslouzit - takze kdyz se
-        // tohle nacte, je to NUTNE cerstve prelozene jadro. A kdyz se
-        // nenacte, CMake nic nevyrobil a je to videt.
-        if (!loaded) return "JADRO SE VUBEC NENACETLO -> CMake nic neprelozil (" + loadError + ")";
-        try { return ps1BuildStamp(); }
-        catch (UnsatisfiedLinkError e) { return "STARE JADRO (razitko v knihovne chybi)"; }
-        catch (Throwable t) { return "RAZITKO_FAIL " + t.getMessage(); }
-    }
-    public static String glesStatusSafe() {
-        if (!loaded) return "JADRO SE VUBEC NENACETLO";
-        try { return ps1GlesStatus(); }
-        catch (UnsatisfiedLinkError e) { return "STARE JADRO (hlaseni gpu-gles v knihovne chybi)"; }
-        catch (Throwable t) { return "GLES_STAV_FAIL " + t.getMessage(); }
     }
 }

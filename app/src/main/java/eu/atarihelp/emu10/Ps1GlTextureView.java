@@ -238,54 +238,6 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
     }
 
     private void renderLoop(SurfaceTexture st) {
-        // ============================================================
-        //  EMU10-O5: nejdriv zkusit PRIME zobrazeni z grafiky.
-        //  Snimek je uz hotovy v grafické pameti - nativni vlakno ho
-        //  nakresli primo, bez stahovani do procesoru, bez prepoctu
-        //  po pixelech a bez cesty pres Javu.
-        //  Kdyz to z jakehokoli duvodu nejde, pokracuje se puvodni
-        //  cestou - horsi obraz, ale nikdy cerna obrazovka.
-        // ============================================================
-        android.view.Surface o5surf = null;
-        try {
-            o5surf = new android.view.Surface(st);
-            String r = NativePs1CoreBridge.displayAttachSafe(o5surf, viewW, viewH);
-            say("O5 " + r);
-            if (r != null && r.startsWith("O5_OK")) {
-                // Obraz kresli nativni vlakno. Java uz jen udrzuje kopii
-                // pro prenos na TV (ten potrebuje pixely v procesoru,
-                // protoze se posila jako JPEG po siti).
-                while (running) {
-                    try {
-                        int wh = NativePs1CoreBridge.grabFrameSafe(argb);
-                        if (wh < 0) {
-                            int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
-                            argb = new int[need + 1024];
-                            wh = NativePs1CoreBridge.grabFrameSafe(argb);
-                        }
-                        int sw = (wh > 0) ? (wh >> 16) : 0;
-                        int sh = (wh > 0) ? (wh & 0xFFFF) : 0;
-                        if (sw > 0 && sh > 0) {
-                            synchronized (SHARE_LOCK) {
-                                int n = sw * sh;
-                                if (shareBuf == null || shareBuf.length < n) shareBuf = new int[n + 1024];
-                                System.arraycopy(argb, 0, shareBuf, 0, n);
-                                shareW = sw; shareH = sh; shareFresh = true;
-                            }
-                            if (!loggedFirst) { loggedFirst = true; say("C2 prvni snimek: " + sw + "x" + sh); }
-                        }
-                    } catch (Throwable ignored) {}
-                    try { Thread.sleep(16); } catch (InterruptedException ie) { break; }
-                }
-                NativePs1CoreBridge.displayDetachSafe();
-                try { o5surf.release(); } catch (Throwable ignored) {}
-                return;
-            }
-        } catch (Throwable t) {
-            say("O5 vyjimka: " + t.getMessage() + " - pokracuji puvodni cestou");
-        }
-        if (o5surf != null) { try { o5surf.release(); } catch (Throwable ignored) {} }
-
         if (!eglSetup(st) || !glSetup()) { eglRelease(); return; }
 
         FloatBuffer pos = fbuf(new float[]{ -1,-1,  1,-1,  -1,1,  1,1 });

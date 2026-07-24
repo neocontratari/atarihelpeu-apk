@@ -217,22 +217,6 @@ static nap_reader_req_t nap_reader_req;
 static volatile int nap_reader_idx_free[2] = {1, 1}; // je tenhle buffer BEZPECNY pro g_worker znovu-nabindovat jako cil kresleni? (ctecí vlakno ho prave nepouziva)
 static EGLDisplay nap_reader_disp = EGL_NO_DISPLAY;
 static EGLContext nap_reader_ctx = EGL_NO_CONTEXT;
-
-// ================================================================
-//  EMU10-O5: PRIME ZOBRAZENI.
-//
-//  Snimek je uz hotovy v grafické pameti (snapshot textura). Doted se
-//  stahoval do procesoru, dvakrat prepocital, protahl Javou a nahral
-//  zpatky na grafiku - jen aby se ukazal. Tenhle blok publikuje, KTERA
-//  textura je prave ke kresleni a jaky vyrez z ni platí, aby si ji
-//  zobrazovaci vlakno mohlo vzit primo.
-//
-//  Zapisuje se pod nap_reader_mtx hned po glFlush(), takze co je tady
-//  videt, uz je v grafice hotové.
-// ================================================================
-volatile int nap_pub_tex = 0;   // GL id snapshot textury ke kresleni (0 = zatim nic)
-volatile int nap_pub_x = 0, nap_pub_y = 0, nap_pub_w = 0, nap_pub_h = 0;
-volatile unsigned nap_pub_seq = 0; // roste s kazdym novym snimkem
 static EGLSurface nap_reader_surf = EGL_NO_SURFACE;
 static GLuint nap_reader_fbo[2] = {0, 0}; // BUILD2SK140: VLASTNI FBO kontejnery ctecího vlakna (navazane na SDILENE textury nap_fbo_tex[])
 static void *nap_reader_thread_main(void *arg); // definice az za nap_fbo_init_once - forward deklarace, aby ji sla spustit odsud
@@ -499,29 +483,11 @@ static void *nap_reader_thread_main(void *arg)
    continue;
   }
   double nap_t0 = 0.0, nap_t1 = 0.0, nap_t2 = 0.0;
-  // EMU10-O4: NEPLATNOU KOTVU NEOHYBAT, ale zahodit.
-  // Reneho log: kotva obcas prijde jako srcX=480 pri sirce 640. To se do
-  // VRAM (1024) nevejde, a radek nize to POTICHU utnul na 384 - takze se
-  // precetla oblast 384..1023, kde lezi texturove stranky. Odtud ty znakove
-  // sady na obrazovce a blikani po par snimcich (v logu: 2x srcX=480, pak
-  // 4-13x srcX=0, dokola). Takova kotva neni obraz, ale prechodovy stav pri
-  // prehozeni bufferu - novy snimek proste neposleme a na obrazovce zustane
-  // predchozi. Pri dvou snimcich z patnacti to oko nepozna.
-  if (src_x < 0) src_x = 0;
-  if (src_y < 0) src_y = 0;
-  if (src_x + rb_w > NAP_PSX_VRAM_W || src_y + rb_h > NAP_PSX_VRAM_H) {
-   static long nap_bad_anchor = 0;
-   if ((++nap_bad_anchor % 20) == 1) {
-    nap_diag_log("O4 KOTVA_MIMO srcX=%d srcY=%d rb=%dx%d - snimek zahozen (celkem %ld)",
-                 src_x, src_y, rb_w, rb_h, nap_bad_anchor);
-   }
-   pthread_mutex_lock(&nap_reader_mtx);
-   nap_reader_idx_free[req.idx] = 1;
-   pthread_cond_broadcast(&nap_reader_cv);
-   pthread_mutex_unlock(&nap_reader_mtx);
-   continue;
-  }
   {
+   if (src_x < 0) src_x = 0;
+   if (src_y < 0) src_y = 0;
+   if (src_x + rb_w > NAP_PSX_VRAM_W) src_x = NAP_PSX_VRAM_W - rb_w;
+   if (src_x < 0) src_x = 0;
    int glY = NAP_PSX_VRAM_H - (src_y + rb_h);
    if (glY < 0) glY = 0;
    if (glY + rb_h > NAP_PSX_VRAM_H) glY = NAP_PSX_VRAM_H - rb_h;
@@ -747,13 +713,6 @@ static int nap_gles_readback_and_push(void) // BUILD2SK154: vraci 1=snimek preda
  // ovladace. glFlush NENI glFinish - NECEKA na dokonceni (zadny navrat
  // SK112/117 problemu s blokovanim zvukoveho vlakna), jen odesle frontu.
  glFlush();
- // EMU10-O5: snimek je ted viditelny i z ostatnich sdilenych kontextu -
- // zverejnit ho pro zobrazovaci vlakno. Az ZA glFlush, jinak by mohlo
- // kreslit z textury, ktera jeste neni hotova.
- nap_pub_tex = (int)nap_fbo_tex[other_idx];
- nap_pub_x = fresh_sx; nap_pub_y = fresh_sy;
- nap_pub_w = fresh_w;  nap_pub_h = fresh_h;
- nap_pub_seq++;
  // BUILD2SK144/153: SK129/139 border-bleed ochrana - pri zmene rozliseni
  // vycistit CANVAS (jediny trvaly povrch, kde stara scena muze "viset" do
  // nove). AZ PO kopii vyse, takze posledni platny snimek stare sceny se
@@ -937,43 +896,31 @@ static void nap_upload_vram_rect(int x, int y, int w, int h)
   // VZDY - snimek filmu se proste musi objevit.
   int yy0 = y, yy1 = y + h;
   if (yy1 > NAP_PSX_VRAM_H) yy1 = NAP_PSX_VRAM_H;
-  // ================================================================
-  //  EMU10-O4: BRANY ZRUSENY.
-  //
-  //  Do teto verze tu byly tri podminky (radkove pasmo, h<4, sloupcova
-  //  brana), ktere zapis POTICHU zahodily. Mely setrit praci tim, ze
-  //  hadaly, co je obraz a co texturova data. Hadaly spatne - a co
-  //  zahodily, uz se do platna nikdy nedostalo, takze na tom miste
-  //  zustal lezet stary obsah. To je Reneho "grafika neni cela".
-  //
-  //  Log to nemohl ukazat: zapisovalo se AZ ZA branami, takze obsahoval
-  //  vyhradne to, co proslo. Proto porad vychazel "v poradku".
-  //
-  //  Ted projde vsechno a platno je presna kopie pameti. Misto zahazovani
-  //  jen POCITAME, co by stare brany byvaly vyhodily - at je videt, o
-  //  kolik obrazu jsme prichazeli a co to nahravani navic stoji.
-  // ================================================================
-  {
-    static long nap_up_total = 0, nap_up_band = 0, nap_up_thin = 0, nap_up_col = 0;
-    nap_up_total++;
-    if (!nap_disp_rgb24) {
-      int band0 = dsy, band1 = dsy + dh;
-      if (band1 > NAP_PSX_VRAM_H) band1 = NAP_PSX_VRAM_H;
-      if (yy1 <= band0 || yy0 >= band1) nap_up_band++;
-      if (h < 4) nap_up_thin++;
+  if (!nap_disp_rgb24) {
+    int band0 = dsy, band1 = dsy + dh;
+    if (band1 > NAP_PSX_VRAM_H) band1 = NAP_PSX_VRAM_H;
+    if (yy1 <= band0 || yy0 >= band1) return; // cely zapis mimo radky displeje (typicky texturova data) - canvas ho nepotrebuje
+    // BUILD2SK154: CLUT/paletove pasky (16x1, 256x1...) do canvasu nepatri -
+    // v Reneho logu se nahravaly porad dokola ([0,480 16x1] apod.), na
+    // spodnich radcich 480-rezimu by byly i VIDET jako barevne smeti, a
+    // kazdy takovy upload zbytecne tahal vendor UploadScreen uprostred
+    // snimku. Skutecny obrazovy zapis ma vzdy vic nez par radku.
+    if (h < 4) return;
+    // BUILD2SK154: SLOUPCOVA brana - radkove pasmo nestaci (Reneho log:
+    // texturove bloky na x>=640 pri 640x480 displeji prochazely). Zapis musi
+    // sloupcove protinat zobrazovanou oblast; u sirek <=512 bereme OBE
+    // poloviny VRAM (0/512 double-buffering - zapisy do back-bufferu pred
+    // flipem musi projit), u sirsich rezimu jen skutecny vyrez.
+    {
       int ok = 0;
       if (dw <= 512) {
         int hb = dsx & 511;
-        if (!(x + w <= hb       || x >= hb + dw))       ok = 1;
-        if (!(x + w <= hb + 512 || x >= hb + 512 + dw)) ok = 1;
+        if (!(x + w <= hb       || x >= hb + dw))       ok = 1; /* leva polovina  */
+        if (!(x + w <= hb + 512 || x >= hb + 512 + dw)) ok = 1; /* prava polovina */
       } else {
         if (!(x + w <= dsx || x >= dsx + dw)) ok = 1;
       }
-      if (!ok) nap_up_col++;
-    }
-    if ((nap_up_total % 500) == 0) {
-      nap_diag_log("O4 BRANY celkem=%ld drive_zahozeno: radky=%ld tenke=%ld sloupce=%ld",
-                   nap_up_total, nap_up_band, nap_up_thin, nap_up_col);
+      if (!ok) return; /* typicky texturove stranky vpravo od displeje */
     }
   }
   if (px < 0) px = 0;

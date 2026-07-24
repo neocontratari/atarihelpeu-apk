@@ -3933,37 +3933,6 @@ public class MainActivity extends Activity {
             try { prehrano = ((long) at.getPlaybackHeadPosition()) & 0xFFFFFFFFL; } catch (Throwable ignored) {}
         }
 
-        // EMU10-O2: v O1 tady stalo jen "?" a nikdo se nedozvedel PROC.
-        // Ted se rovnou rekne, ktery udaj chybi - to je rozdil mezi
-        // "nemerim" a "nevim, proc nemerim".
-        String odstupTxt;
-        if (vyrobeno < 0)      odstupTxt = "NELZE (jadro nehlasi audioTotal - stara knihovna?)";
-        else if (prehrano < 0) odstupTxt = "NELZE (AudioTrack nehlasi pozici)";
-        else                   odstupTxt = ((vyrobeno - zahozeno - prehrano) * 1000L / 44100L) + " ms";
-
-        String skok = "";
-        if (napMeasureLastResyncs >= 0 && resyncs > napMeasureLastResyncs) {
-            skok = "  <<< OREZ ZVUKU x" + (resyncs - napMeasureLastResyncs) + " (zvuk skocil dopredu)";
-        }
-        if (resyncs >= 0) napMeasureLastResyncs = resyncs;
-
-        int underruns = -1;
-        if (at != null && Build.VERSION.SDK_INT >= 24) {
-            try { underruns = at.getUnderrunCount(); } catch (Throwable ignored) {}
-        }
-
-        appendNativeLog("O1 ODSTUP zvuk-za-obrazem=" + odstupTxt
-                + " | vyrobeno=" + vyrobeno + " zahozeno=" + zahozeno
-                + " prehrano=" + prehrano + " fronta=" + fifo
-                + " orezu=" + resyncs + " vypadku=" + underruns
-                + " snimku=" + snimky + skok);
-        appendNativeLog("O1 STAV " + st);
-
-        // EMU10-O2: hlavni otazka tohohle kola - bezi gpu-gles, nebo ne?
-        // Staci jednou za minutu, nemeni se to.
-        if (napMeasureTick == 1 || napMeasureTick % 12 == 0) {
-            appendNativeLog("O2 GRAFIKA " + NativePs1CoreBridge.glesStatusSafe());
-        }
     }
 
     /** Kolik vzorku zvuku drzet dopredu. Min = mensi zpozdeni, ale vetsi riziko praskani. */
@@ -4655,8 +4624,7 @@ public class MainActivity extends Activity {
             }
         }
 
-        /** EMU10-O1: verze bezici v telefonu. Do ted ji slo zjistit jen z build.gradle
-         *  na pocitaci - z appky samotne nijak, i kdyz to pravidlo 7 protokolu zada. */
+        /** EMU10-O1: verze bezici v telefonu. */
         @JavascriptInterface
         public String appVersion() {
             try {
@@ -4664,16 +4632,6 @@ public class MainActivity extends Activity {
                         getPackageManager().getPackageInfo(getPackageName(), 0);
                 return pi.versionName + " (" + pi.versionCode + ")";
             } catch (Throwable t) { return "?"; }
-        }
-
-        /** EMU10-O2: razitko jadra + jestli bezi gpu-gles. Do panelu, ne jen do logu. */
-        @JavascriptInterface
-        public String coreStamp() {
-            try { return NativePs1CoreBridge.buildStampSafe(); } catch (Throwable t) { return "?"; }
-        }
-        @JavascriptInterface
-        public String glesStatus() {
-            try { return NativePs1CoreBridge.glesStatusSafe(); } catch (Throwable t) { return "?"; }
         }
     }
 
@@ -5359,10 +5317,6 @@ public class MainActivity extends Activity {
             android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
             appendNativeLog("=== VERZE V TELEFONU: " + pi.versionName + " (code " + pi.versionCode + ") ===");
         } catch (Throwable ignored) {}
-        // EMU10-O2: a hned pod tim, jestli je NOVE i jadro. Java a jadro se
-        // stavi zvlast - v O1 se ukazalo, ze muze prijit nova Java se starym
-        // jadrem, a nikdo si toho tri mesice nevsimne.
-        try { appendNativeLog("=== " + NativePs1CoreBridge.buildStampSafe() + " ==="); } catch (Throwable ignored) {}
         // BUILD2SK18: obnov ulozenou volbu kvality TV mirroru z minula (drive se
         // pri kazdem znovuotevreni appky vracela na LOW - ted si to appka pamatuje).
         try { napTvWebQualityTier = getSharedPreferences("nap_tv_prefs", MODE_PRIVATE).getInt("quality_tier", 0); } catch (Throwable ignored) {}
@@ -6944,7 +6898,7 @@ public class MainActivity extends Activity {
             }
         }, "nap-ps1-audio");
         ps1AudioThread.start();
-        ui.post(() -> napMeasureStart()); // EMU10-O1: mereni bezi soubezne se zvukem
+        ui.post(() -> napMeasureStart()); // EMU10-O1
     }
     private synchronized void stopPs1Audio() {
         final int gen = ++ps1AudioGen;
