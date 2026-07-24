@@ -52,6 +52,12 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
+          # EMU10-O2: vypnuta pamet buildu. Duvod: v O1 prisla do telefonu
+          # nova Java se STARYM jadrem (stav z jadra nemel pole, ktere v
+          # zdrojaku je). Tahle pamet umi vratit hotove vysledky z minula
+          # vcetne prelozeneho jadra. Build bude o par minut pomalejsi,
+          # zato je jisté, ze se prelozi to, co je ve zdrojaku.
+          cache-disabled: true
 
       - name: Sestaveni APK
         run: gradle assembleDebug --no-daemon --stacktrace

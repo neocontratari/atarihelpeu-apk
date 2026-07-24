@@ -113,6 +113,10 @@ extern "C" {
 // Zachyceno PRED odeslanim explicitni kontrolou poradi deklaraci - stejna
 // trida chyby jako minuly TRUE/FALSE build fail, tentokrat vcas.
 static bool g_gles_ready = false;
+// EMU10-O2: kde presne GL kontext selhal. Do ted to slo jen do nativniho
+// logu, ktery se v Reneho logu neobjevil ani jednou - takze o duvodu
+// selhani nebylo v ruce nic.
+static char g_gles_fail_step[64] = "nezkouseno";
 
 static std::string g_sysdir, g_savedir, g_boot_error;
 static std::atomic<int> g_pixfmt{PIXFMT_0RGB1555};
@@ -342,11 +346,16 @@ extern "C" {
 static bool nap_gles_egl_init() {
   NAPDIAG("BUILD2SK99 GLES_INIT_ENTER"); // BUILD2SK99: kanarek - pokud tohle v logu je, ale nic dal, vime, ze crash je HNED za timhle radkem
   EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-  if (display == EGL_NO_DISPLAY) { NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglGetDisplay"); return false; }
+  if (display == EGL_NO_DISPLAY) {
+    NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglGetDisplay");
+    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglGetDisplay"); // EMU10-O2
+    return false;
+  }
 
   EGLint majorV = 0, minorV = 0;
   if (!eglInitialize(display, &majorV, &minorV)) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglInitialize err=0x%x", eglGetError());
+    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglInitialize"); // EMU10-O2
     return false;
   }
   NAPDIAG("BUILD2SK98 GLES_INIT egl version=%d.%d", (int)majorV, (int)minorV);
@@ -362,6 +371,7 @@ static bool nap_gles_egl_init() {
   EGLint numConfigs = 0;
   if (!eglChooseConfig(display, configAttribs, &config, 1, &numConfigs) || numConfigs < 1) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglChooseConfig err=0x%x", eglGetError());
+    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglChooseConfig"); // EMU10-O2
     return false;
   }
 
@@ -375,6 +385,7 @@ static bool nap_gles_egl_init() {
   EGLSurface surface = eglCreatePbufferSurface(display, config, pbufferAttribs);
   if (surface == EGL_NO_SURFACE) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglCreatePbufferSurface err=0x%x", eglGetError());
+    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglCreatePbufferSurface"); // EMU10-O2
     return false;
   }
 
@@ -382,11 +393,13 @@ static bool nap_gles_egl_init() {
   EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
   if (context == EGL_NO_CONTEXT) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglCreateContext err=0x%x", eglGetError());
+    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglCreateContext"); // EMU10-O2
     return false;
   }
 
   if (!eglMakeCurrent(display, surface, surface, context)) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglMakeCurrent err=0x%x", eglGetError());
+    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","eglMakeCurrent"); // EMU10-O2
     return false;
   }
 
@@ -439,6 +452,7 @@ static bool nap_gles_egl_init() {
 
   if (GLinitialize((void *)display, (void *)surface) != 0) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=GLinitialize");
+    snprintf(g_gles_fail_step,sizeof(g_gles_fail_step),"%s","GLinitialize"); // EMU10-O2
     return false;
   }
   MakeDisplayLists(); // BUILD2SK102: stejne poradi jako GPUopen() - font/HUD display listy
@@ -619,6 +633,26 @@ static void nap_worker(int gen) {
     if (next > now) std::this_thread::sleep_for(next - now); else next = now;
   }
   NAPLOG("BUILD2SA2 PS1 worker stop gen=%d frames=%llu", gen, (unsigned long long)g_frames.load());
+}
+
+// EMU10-O2: RAZITKO. `__DATE__`/`__TIME__` dosadi prekladac v okamziku, kdy
+// tenhle soubor SKUTECNE prelozi. Kdyz se jadro neprelozi znovu a v telefonu
+// zustane stara knihovna, razitko zustane stare - a je to videt na prvni
+// pohled, bez verable komukoli na slovo.
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BuildStamp(JNIEnv *env, jclass) {
+  char buf[256];
+  snprintf(buf,sizeof(buf),"O2 jadro prelozeno %s %s", __DATE__, __TIME__);
+  return env->NewStringUTF(buf);
+}
+
+// EMU10-O2: bezi gpu-gles, nebo ne? A kdyz ne, na cem to spadlo.
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1GlesStatus(JNIEnv *env, jclass) {
+  char buf[256];
+  snprintf(buf,sizeof(buf),"gpuGles=%s krok=%s pixfmt=%d",
+    g_gles_ready ? "BEZI" : "NEBEZI", g_gles_fail_step, g_pixfmt.load());
+  return env->NewStringUTF(buf);
 }
 
 extern "C" JNIEXPORT jstring JNICALL

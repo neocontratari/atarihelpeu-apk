@@ -53,6 +53,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <div id="settingsPanel" aria-hidden="true">
     <div class="stlabel">OPTIONS</div>
     <div id="stVersion" style="font:11px/1.5 monospace;color:#f2c464;opacity:.85;margin:0 0 8px;text-align:center;letter-spacing:.5px">verze: ...</div>
+    <div id="stCore" style="font:11px/1.5 monospace;color:#f2c464;opacity:.85;margin:0 0 8px;text-align:center;letter-spacing:.5px"></div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
 
     <div class="stlabel2">NASTAVENI</div>
@@ -136,6 +137,11 @@ function napVersionRefresh(){
     var el=document.getElementById('stVersion'); if(!el)return;
     var v=(window.AHRENDER&&typeof window.AHRENDER.appVersion==='function')?window.AHRENDER.appVersion():null;
     el.textContent='verze: '+(v||'neznama');
+    // EMU10-O2: Java a jadro se stavi zvlast. Tohle ukaze, jestli je NOVE i jadro.
+    var c=document.getElementById('stCore'); if(!c)return;
+    var s=(window.AHRENDER&&typeof window.AHRENDER.coreStamp==='function')?window.AHRENDER.coreStamp():null;
+    var g=(window.AHRENDER&&typeof window.AHRENDER.glesStatus==='function')?window.AHRENDER.glesStatus():null;
+    c.textContent=(s||'jadro: neznamo')+(g?('  |  '+g):'');
   }catch(e){}
 }
 function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');napQualityRefresh();napVersionRefresh();}

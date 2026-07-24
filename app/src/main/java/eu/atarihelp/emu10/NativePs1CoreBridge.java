@@ -10,6 +10,8 @@ public final class NativePs1CoreBridge {
     private static native String ps1CoreInfo();
     private static native String ps1Boot(String systemDir, String saveDir, String gamePath);
     private static native String ps1Status();
+    private static native String ps1BuildStamp();   // EMU10-O2
+    private static native String ps1GlesStatus();   // EMU10-O2
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
     private static native int ps1PullAudio(short[] out, int frames);
@@ -62,5 +64,20 @@ public final class NativePs1CoreBridge {
     public static String stopSafe() {
         if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;
         try { return ps1Stop(); } catch (Throwable t) { return "PS1_STOP_CALL_FAIL " + t.getMessage(); }
+    }
+
+    // EMU10-O2: kdyz tyhle dve funkce v knihovne NEJSOU, je knihovna stara.
+    // UnsatisfiedLinkError je tady informace, ne chyba - proto se nechytá tise.
+    public static String buildStampSafe() {
+        if (!loaded) return "JADRO SE NENACETLO: " + loadError;
+        try { return ps1BuildStamp(); }
+        catch (UnsatisfiedLinkError e) { return "STARE JADRO (razitko v knihovne chybi)"; }
+        catch (Throwable t) { return "RAZITKO_FAIL " + t.getMessage(); }
+    }
+    public static String glesStatusSafe() {
+        if (!loaded) return "JADRO SE NENACETLO: " + loadError;
+        try { return ps1GlesStatus(); }
+        catch (UnsatisfiedLinkError e) { return "STARE JADRO (hlaseni gpu-gles v knihovne chybi)"; }
+        catch (Throwable t) { return "GLES_STAV_FAIL " + t.getMessage(); }
     }
 }
