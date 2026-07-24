@@ -253,7 +253,7 @@ find_package(Threads REQUIRED)
 # --no-undefined = stejna prisnost jako NDK, chybejici symbol shodi uz muj test.
 # BUILD2SK98: + EGL/GLESv1_CM - standardni, VZDY pritomne Android system
 # knihovny (soucast kazdeho Android NDK) - potrebne pro gpu-gles.
-target_link_libraries(napps1core3 ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS} EGL GLESv1_CM)
+target_link_libraries(napps1core3 ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS} EGL GLESv1_CM android) # EMU10-O5: +android kvuli ANativeWindow
 target_link_options(napps1core3 PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif() # NAP_ENABLE_PS1
 

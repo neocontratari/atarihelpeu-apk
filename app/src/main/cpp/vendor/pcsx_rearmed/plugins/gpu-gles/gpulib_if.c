@@ -217,6 +217,22 @@ static nap_reader_req_t nap_reader_req;
 static volatile int nap_reader_idx_free[2] = {1, 1}; // je tenhle buffer BEZPECNY pro g_worker znovu-nabindovat jako cil kresleni? (ctecí vlakno ho prave nepouziva)
 static EGLDisplay nap_reader_disp = EGL_NO_DISPLAY;
 static EGLContext nap_reader_ctx = EGL_NO_CONTEXT;
+
+// ================================================================
+//  EMU10-O5: PRIME ZOBRAZENI.
+//
+//  Snimek je uz hotovy v grafické pameti (snapshot textura). Doted se
+//  stahoval do procesoru, dvakrat prepocital, protahl Javou a nahral
+//  zpatky na grafiku - jen aby se ukazal. Tenhle blok publikuje, KTERA
+//  textura je prave ke kresleni a jaky vyrez z ni platí, aby si ji
+//  zobrazovaci vlakno mohlo vzit primo.
+//
+//  Zapisuje se pod nap_reader_mtx hned po glFlush(), takze co je tady
+//  videt, uz je v grafice hotové.
+// ================================================================
+volatile int nap_pub_tex = 0;   // GL id snapshot textury ke kresleni (0 = zatim nic)
+volatile int nap_pub_x = 0, nap_pub_y = 0, nap_pub_w = 0, nap_pub_h = 0;
+volatile unsigned nap_pub_seq = 0; // roste s kazdym novym snimkem
 static EGLSurface nap_reader_surf = EGL_NO_SURFACE;
 static GLuint nap_reader_fbo[2] = {0, 0}; // BUILD2SK140: VLASTNI FBO kontejnery ctecího vlakna (navazane na SDILENE textury nap_fbo_tex[])
 static void *nap_reader_thread_main(void *arg); // definice az za nap_fbo_init_once - forward deklarace, aby ji sla spustit odsud
@@ -731,6 +747,13 @@ static int nap_gles_readback_and_push(void) // BUILD2SK154: vraci 1=snimek preda
  // ovladace. glFlush NENI glFinish - NECEKA na dokonceni (zadny navrat
  // SK112/117 problemu s blokovanim zvukoveho vlakna), jen odesle frontu.
  glFlush();
+ // EMU10-O5: snimek je ted viditelny i z ostatnich sdilenych kontextu -
+ // zverejnit ho pro zobrazovaci vlakno. Az ZA glFlush, jinak by mohlo
+ // kreslit z textury, ktera jeste neni hotova.
+ nap_pub_tex = (int)nap_fbo_tex[other_idx];
+ nap_pub_x = fresh_sx; nap_pub_y = fresh_sy;
+ nap_pub_w = fresh_w;  nap_pub_h = fresh_h;
+ nap_pub_seq++;
  // BUILD2SK144/153: SK129/139 border-bleed ochrana - pri zmene rozliseni
  // vycistit CANVAS (jediny trvaly povrch, kde stara scena muze "viset" do
  // nove). AZ PO kopii vyse, takze posledni platny snimek stare sceny se

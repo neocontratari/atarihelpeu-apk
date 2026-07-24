@@ -12,6 +12,22 @@ public final class NativePs1CoreBridge {
     private static native String ps1Status();
     private static native String ps1BuildStamp();   // EMU10-O2
     private static native String ps1GlesStatus();   // EMU10-O2
+    private static native String ps1DisplayAttach(android.view.Surface s, int w, int h); // EMU10-O5
+    private static native void   ps1DisplayDetach();  // EMU10-O5
+
+    /** EMU10-O5: zkusi prime zobrazeni z grafiky. Kdyz to nejde, vrati duvod
+     *  a volajici zustane u puvodni cesty pres procesor - horsi obraz, ale
+     *  zadna cerna obrazovka. */
+    public static String displayAttachSafe(android.view.Surface s, int w, int h) {
+        if (!loaded) return "O5_FAIL jadro se nenacetlo";
+        try { return ps1DisplayAttach(s, w, h); }
+        catch (UnsatisfiedLinkError e) { return "O5_FAIL stare jadro bez primeho zobrazeni"; }
+        catch (Throwable t) { return "O5_FAIL " + t.getMessage(); }
+    }
+    public static void displayDetachSafe() {
+        if (!loaded) return;
+        try { ps1DisplayDetach(); } catch (Throwable ignored) {}
+    }
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
     private static native int ps1PullAudio(short[] out, int frames);
