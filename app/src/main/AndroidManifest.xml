@@ -24,5 +24,18 @@
             </intent-filter>
         </activity>
 
+        <!-- KROK C: renderer PS1 jako samostatna nativni aktivita.
+             Obraz jde z jadra rovnou na displej (eglrender + core_ps1,
+             zadna Java v obrazove ceste). Po vyskoceni se vrati menu. -->
+        <activity
+            android:name="android.app.NativeActivity"
+            android:label="PS1"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|keyboard"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+            <meta-data android:name="android.app.lib_name" android:value="eglrender" />
+        </activity>
+
     </application>
 </manifest>

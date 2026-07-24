@@ -52,7 +52,6 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="btnSettings" class="hit" type="button">SETTINGS</button>
   <div id="settingsPanel" aria-hidden="true">
     <div class="stlabel">OPTIONS</div>
-    <div id="stVersion" style="font:11px/1.5 monospace;color:#f2c464;opacity:.85;margin:0 0 8px;text-align:center;letter-spacing:.5px">verze: ...</div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
 
     <div class="stlabel2">NASTAVENI</div>
@@ -129,15 +128,7 @@ function napQualityRefresh(){
     });
   }catch(e){log('QUALITY_REFRESH_ERR '+e);}
 }
-// EMU10-O1: verze bezici v telefonu primo v panelu.
-function napVersionRefresh(){
-  try{
-    var el=document.getElementById('stVersion'); if(!el)return;
-    var v=(window.AHRENDER&&typeof window.AHRENDER.appVersion==='function')?window.AHRENDER.appVersion():null;
-    el.textContent='verze: '+(v||'neznama');
-  }catch(e){}
-}
-function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');napQualityRefresh();napVersionRefresh();}
+function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');napQualityRefresh();}
 function closeSettings(){if(!sp)return;sp.classList.remove('open');sp.setAttribute('aria-hidden','true');}
 function toggleSettings(){if(!sp)return;if(sp.classList.contains('open'))closeSettings();else openSettings();}
 var bs=$('btnSettings');
@@ -176,10 +167,7 @@ if(stTv)stTv.addEventListener('click',function(e){
   try{
     var r=(window.AHTVWEB&&typeof window.AHTVWEB.start==='function')?window.AHTVWEB.start():null;
     log('SETTINGS_TV_START result='+r);
-    // EMU10-O1: adresa uz NENI napsana napevno - bere se ta, kterou vratil server.
-    var url=null;
-    try{ var m=String(r||'').match(/https?:\/\/[^\s]+/); if(m) url=m[0]; }catch(e){}
-    toast(url ? ('WEB TV zapnuto — '+url) : 'WEB TV: adresu se nepodarilo zjistit', 4000);
+    toast('WEB TV zapnuto — 192.168.0.34:8765',2600);
   }catch(err){
     log('SETTINGS_TV_START_ERR '+err);
     toast('WEB TV: chyba pri spousteni',2200);

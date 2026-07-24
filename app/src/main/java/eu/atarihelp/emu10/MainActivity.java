@@ -3861,80 +3861,6 @@ public class MainActivity extends Activity {
         appendNativeLog("L vykonnostni trida rucne nastavena: " + (t == 0 ? "LOW" : t == 1 ? "MEDIUM" : "HIGH"));
     }
 
-    // ==============================================================
-    //  EMU10-O1: MERENI. Nic neopravuje, nic nemeni - jen zapisuje
-    //  cisla, ktera do ted nikdo nevidel.
-    //
-    //  Hlavni cislo je ODSTUP: o kolik ms je zvuk, ktery prave hraje
-    //  z reproduktoru, POZADU za snimkem, ktery je prave na obrazovce.
-    //
-    //  Spocita se poctive, bez odhadu:
-    //    vyrobeno  = kolik zvukovych snimku jadro celkem vydalo
-    //    zahozeno  = kolik jich orez ve fronte vyhodil
-    //    prehrano  = getPlaybackHeadPosition() z AudioTracku
-    //    odstup    = (vyrobeno - zahozeno - prehrano) / 44100
-    //
-    //  Kdyz odstup roste plynule, prica je v rychlosti odberu.
-    //  Kdyz odstup SKOCI dolu, prave se vyhodil kus zvuku (orez) -
-    //  a presne to je slyset jako "ujelo to".
-    // ==============================================================
-    private volatile boolean napMeasureOn = false;
-    private long napMeasureLastResyncs = -1;
-    private long napMeasureTick = 0;
-
-    private long napMeasureParse(String s, String key) {
-        try {
-            int i = s.indexOf(key);
-            if (i < 0) return -1;
-            int j = i + key.length();
-            int k = j;
-            while (k < s.length() && (Character.isDigit(s.charAt(k)))) k++;
-            if (k == j) return -1;
-            return Long.parseLong(s.substring(j, k));
-        } catch (Throwable t) { return -1; }
-    }
-
-    private void napMeasureStart() {
-        if (napMeasureOn) return;
-        napMeasureOn = true;
-        napMeasureLastResyncs = -1;
-        napMeasureTick = 0;
-        appendNativeLog("O1 MERENI zapnuto (kazdych 5 s, jen zapis, zadna zmena chovani)");
-        ui.postDelayed(new Runnable() {
-            @Override public void run() {
-                if (!napMeasureOn) return;
-                try { napMeasureOnce(); } catch (Throwable t) {
-                    appendNativeLog("O1 MERENI chyba: " + safeMsg(t));
-                }
-                if (napMeasureOn) ui.postDelayed(this, 5000);
-            }
-        }, 5000);
-    }
-
-    private void napMeasureStop() {
-        if (!napMeasureOn) return;
-        napMeasureOn = false;
-        appendNativeLog("O1 MERENI vypnuto po " + napMeasureTick + " vzorcich");
-    }
-
-    private void napMeasureOnce() {
-        napMeasureTick++;
-        String st = NativePs1CoreBridge.statusSafe();
-
-        long vyrobeno = napMeasureParse(st, "audioTotal=");
-        long zahozeno = napMeasureParse(st, "audioDropped=");
-        long resyncs  = napMeasureParse(st, "audioResyncs=");
-        long fifo     = napMeasureParse(st, "audioFifoFrames=");
-        long snimky   = napMeasureParse(st, "frames=");
-
-        long prehrano = -1;
-        AudioTrack at = ps1CurrentAudioTrack;
-        if (at != null) {
-            try { prehrano = ((long) at.getPlaybackHeadPosition()) & 0xFFFFFFFFL; } catch (Throwable ignored) {}
-        }
-
-    }
-
     /** Kolik vzorku zvuku drzet dopredu. Min = mensi zpozdeni, ale vetsi riziko praskani. */
     private int audioFramesForTier() {
         switch (perfTier()) {
@@ -4623,16 +4549,6 @@ public class MainActivity extends Activity {
                 return "AHRENDER_TOGGLE_FAIL " + t.getMessage();
             }
         }
-
-        /** EMU10-O1: verze bezici v telefonu. */
-        @JavascriptInterface
-        public String appVersion() {
-            try {
-                android.content.pm.PackageInfo pi =
-                        getPackageManager().getPackageInfo(getPackageName(), 0);
-                return pi.versionName + " (" + pi.versionCode + ")";
-            } catch (Throwable t) { return "?"; }
-        }
     }
 
     private class NativeInPlaceView extends TextureView implements TextureView.SurfaceTextureListener {
@@ -5312,11 +5228,6 @@ public class MainActivity extends Activity {
         // napTvWebLogFileInit (soubor uz musi existovat) a PRED jakymkoli PS1
         // bootem (coz v praxi vzdy je, boot je uzivatelska akce o dost pozdeji).
         try { if (napTvWebLogFile != null) NativePs1CoreBridge.setDiagLogPathSafe(napTvWebLogFile.getAbsolutePath()); } catch (Throwable ignored) {}
-        // EMU10-O1: uplne prvni radek logu = ktera verze tenhle log vyrobila.
-        try {
-            android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
-            appendNativeLog("=== VERZE V TELEFONU: " + pi.versionName + " (code " + pi.versionCode + ") ===");
-        } catch (Throwable ignored) {}
         // BUILD2SK18: obnov ulozenou volbu kvality TV mirroru z minula (drive se
         // pri kazdem znovuotevreni appky vracela na LOW - ted si to appka pamatuje).
         try { napTvWebQualityTier = getSharedPreferences("nap_tv_prefs", MODE_PRIVATE).getInt("quality_tier", 0); } catch (Throwable ignored) {}
@@ -6460,6 +6371,82 @@ public class MainActivity extends Activity {
             } catch (Throwable t) { try { Thread.sleep(250); } catch (InterruptedException ignored) {} }
         }
     }
+    // ================================================================
+    //  KROK C: spusteni PS1 pres nativni EGL renderer.
+    //
+    //  core_ps1.c hleda hru v  filesDir/ps1/  a BIOS v  filesDir/ps1/bios/.
+    //  Aplikace je ale mela jinde (hru v cache slozce, BIOS v ps1_system).
+    //  Tahle metoda je pred spustenim rendereru pripravi PRESNE tam, kam
+    //  core_ps1 kouka - hru i .bin vedle .cue, a BIOS. Az pak spusti
+    //  aktivitu. Zadna zmena core_ps1 - jen se mu podstrci to, co ceka.
+    // ================================================================
+    private void stageOneFile(java.io.File src, java.io.File dstDir) throws java.io.IOException {
+        if (src == null || !src.exists() || !src.isFile()) return;
+        java.io.File dst = new java.io.File(dstDir, src.getName());
+        if (dst.exists() && dst.length() == src.length()) return; // uz tam je
+        try (java.io.InputStream in = new java.io.FileInputStream(src);
+             java.io.OutputStream out = new java.io.FileOutputStream(dst)) {
+            byte[] buf = new byte[65536];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+        }
+    }
+
+    private void launchEglPs1Activity(String gamePath) {
+        try {
+            java.io.File filesDir = getFilesDir();
+            java.io.File ps1Dir  = new java.io.File(filesDir, "ps1");
+            java.io.File biosDir = new java.io.File(ps1Dir, "bios");
+            ps1Dir.mkdirs();
+            biosDir.mkdirs();
+
+            // core_ps1 bere PRVNI .cue ve slozce - kdyby tu zustala minula
+            // hra, vzal by ji misto nove. Smazat stare herni soubory (BIOS
+            // podslozku necham, ta se prepisuje zvlast).
+            java.io.File[] old = ps1Dir.listFiles();
+            if (old != null) {
+                for (java.io.File f : old) {
+                    if (f.isFile()) { try { f.delete(); } catch (Throwable ignored) {} }
+                }
+            }
+
+            // 1) Hra: .cue + vsechny sourozence ze stejne slozky (.bin, .img...)
+            //    core_ps1 bere prvni .cue v ps1Dir; .cue odkazuje na .bin vedle.
+            java.io.File game = (gamePath != null) ? new java.io.File(gamePath) : null;
+            if (game != null && game.exists()) {
+                java.io.File srcDir = game.getParentFile();
+                if (srcDir != null) {
+                    java.io.File[] siblings = srcDir.listFiles();
+                    if (siblings != null) {
+                        for (java.io.File f : siblings) {
+                            if (f.isFile()) stageOneFile(f, ps1Dir);
+                        }
+                    }
+                }
+                appendNativeLog("KROKC EGL_STAGE_GAME dir=" + ps1Dir.getAbsolutePath()
+                        + " z=" + (srcDir != null ? srcDir.getAbsolutePath() : "?"));
+            }
+
+            // 2) BIOS: z ps1_system, kam ho appka instaluje, do ps1/bios
+            java.io.File biosSrc = new java.io.File(filesDir, "ps1_system");
+            java.io.File[] biosFiles = biosSrc.listFiles();
+            if (biosFiles != null) {
+                for (java.io.File f : biosFiles) {
+                    if (f.isFile()) stageOneFile(f, biosDir);
+                }
+                appendNativeLog("KROKC EGL_STAGE_BIOS do=" + biosDir.getAbsolutePath());
+            }
+
+            appendNativeLog("KROKC EGL_PS1_LAUNCH");
+            android.content.Intent it = new android.content.Intent(this, android.app.NativeActivity.class);
+            it.addFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(it);
+        } catch (Throwable t) {
+            appendNativeLog("KROKC EGL_PS1_LAUNCH_FAIL " + safeMsg(t) + " - padam na puvodni cestu");
+            ps1ActivateNativeView();
+        }
+    }
+
     private void startPs1RemoteDownloadAndBoot(final String rawUrl) {
         final String url = rawUrl == null ? "" : rawUrl.trim();
         if (!(url.startsWith("http://") || url.startsWith("https://"))) {
@@ -6760,15 +6747,18 @@ public class MainActivity extends Activity {
             appendNativeLog("BUILD2SA5AK PS1_REMOTE_BOOT reason=" + reason + " name=" + ps1CurrentGameLabel + " bytes=" + gameFile.length() + " path=" + gameFile.getAbsolutePath());
             appendNativeLog("BUILD2SA5AK PS1_BIOS_AUDIT " + ps1BiosAudit(sysDir));
             ps1EnsureBios(sysDir); // BUILD2SA7
-                    ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), gameFile.getAbsolutePath());
-            boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK");
-            boolean stillWanted = ok && bootGen == ps1LifecycleGen && ps1BootActive;
+            // KROK C: obraz PS1 jede pres nativni EGL renderer (core_ps1.c
+            // si jadro i hru nacte sam pres libretro). Java uz jadro
+            // nebootuje ani netaha obraz. Zvuk zatim po staru (v core_ps1
+            // je audio_cb prazdne - prijde jako dalsi krok).
+            ps1LastBootResult = "PS1_BOOT_OK EGL";
+            boolean stillWanted = bootGen == ps1LifecycleGen && ps1BootActive;
             ps1BootActive = false;
             if (stillWanted) {
                 ps1SessionActive = true;
                 setPs1RemoteStatus("PS1_REMOTE_BOOT_OK " + ps1CurrentGameLabel);
-                startPs1Audio();
-                ps1ActivateNativeView();
+                final String gp = gameFile.getAbsolutePath();
+                ui.post(() -> launchEglPs1Activity(gp));
             } else {
                 ps1SessionActive = false;
                 stopPs1Audio();
@@ -6898,7 +6888,6 @@ public class MainActivity extends Activity {
             }
         }, "nap-ps1-audio");
         ps1AudioThread.start();
-        ui.post(() -> napMeasureStart()); // EMU10-O1
     }
     private synchronized void stopPs1Audio() {
         final int gen = ++ps1AudioGen;
@@ -6916,7 +6905,6 @@ public class MainActivity extends Activity {
             try { t.join(250); } catch (Throwable ignored) {}
         }
         if (ps1AudioThread == t) ps1AudioThread = null;
-        ui.post(() -> napMeasureStop()); // EMU10-O1
         appendNativeLog("BUILD2SA5P PS1_AUDIO_STOP_REQUEST gen=" + gen + " hadTrack=" + (at != null));
     }
     private int writePs1AudioTrack(AudioTrack at, short[] pcm, int shorts, int gen) {

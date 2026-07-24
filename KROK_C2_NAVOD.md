@@ -1,49 +1,56 @@
-# KROK C2 — opraveno podle tvého logu
+# KROK C — PS1 PŘES NATIVNÍ EGL RENDERER (opraveno)
 
-Parťáku, log byl zlatý. Našel jsem v něm přesnou příčinu obou věcí,
-co jsi hlásil. Obojí je opravené.
+Verze: **EMU10-C2-EGL-PS1** (versionCode 37)
 
-## 1) FPS — náš obraz byl v pohodě, vinu měl někdo jiný
+Napojení tvých hotových dílů + oprava tří chyb, které jsem v prvním
+napojení sám měl a našel je v kódu, ne po tvém buildu.
 
-V logu: přesně 300 snímků každých 5,0 vteřiny = **60,0 FPS**. Náš obraz
-tedy jel naplno. Ale zároveň tam bylo `PS1_NATIVE_TEXTURE_SLOW_AVG
-avgCostMs=31–57` — **stará zobrazovací cesta běžela dál pod naším
-obrazem**, neviditelně, a na jeden snímek si brala 31 až 57 ms
-(rozpočet je 16,6). Rvala se s námi o procesor a o jádro.
+## Co dělá
 
-Oprava: když zapneš náš obraz, stará cesta se teď vypne (použil jsem
-tvoji vlastní funkci `ps1DeactivateNativeView`). Když ho vypneš, zase
-se zapne. Uvolní se tím výkon.
+Tlačítko PS1 spustí nativní aktivitu eglrender. Ta si přes `core_ps1.c`
+načte jádro (libretro), najde hru, nabootuje a kreslí obraz z jádra
+rovnou na displej. **Žádná Java v obrazové cestě.**
 
-## 2) TV cast — a tady jsi to ty měl původně správně
+## Tři chyby, co jsem opravil (byly moje, ne tvého kódu)
 
-V logu bylo po zapnutí našeho obrazu 8282× `TV_WEB_DARK_FRAME_SPIKE
-brightAvg=0` — na TV šla úplná čerň. Důvod: použil jsem `GLSurfaceView`,
-což je samostatná hardwarová vrstva, kterou snímání obrazovky
-(PixelCopy) neumí zachytit — vidí tam díru.
+1. **Cesta ke hře.** `core_ps1.c` hledá hru v `ps1/`, ale appka ji měla
+   v cache slozce. Ted appka pred spustenim zkopíruje hru (.cue i .bin)
+   presne tam, kam renderer kouka.
 
-**Tvoje původní volba `TextureView` byla pro cast správná.** Ten se
-kreslí do okna aplikace, takže ho cast zachytí. Tak jsem to udělal po
-tvém: obraz teď jede přes TextureView, ale s naším vlastním EGL/OpenGL
-kontextem — takže si držíme double buffering, vsync a roztažení na GPU,
-a cast to zase uvidí.
+2. **BIOS.** `core_ps1.c` hledá BIOS v `ps1/bios/`, appka ho měla
+   v `ps1_system/`. Ted se pred spustenim zkopíruje na spravne misto -
+   takze jede tvuj BIOS, ne náhradní.
 
-## 3) Zvuk
+3. **Mrtvé předání cesty.** V prvním pokusu jsem cestu ke hře posílal
+   intentem, který nikdo nečte. Zahozeno - hra se dava na spravne misto
+   primo.
 
-Podle tvého pokynu neřeším. Až řekneš, podíváme se na to.
+A jednu jsem našel navíc: renderer bere první `.cue` ve složce, takže
+se stará hra pred spustenim smaze, aby se nevzala místo nové.
 
-## Jak to vyzkoušet
+## Co JEŠTĚ nejede (poctivě)
 
-1. Rozbal ZIP → zkopíruj CELÝ obsah přes repozitář → **Nahradit vše**.
-   Commit „krok C2" → Push → zelená → APK do mobilu.
-2. Verze: **EMU10-C2-TEXTUREVIEW-GL**
-3. Spusť PS1 hru → klepni na logo NaP vlevo nahoře → obraz se přepne.
-   Dalším klepnutím zpět.
-4. **Zkus i cast na TV** — teď by měl obraz vidět.
+Tvůj `core_ps1.c` je "pouze obraz" - `audio_cb` a `input_state_cb`
+jsou v nem prazdne. Takze v teto aktivite:
+- **obraz** jede pres novou cistou cestu
+- **zvuk** zatim nehraje
+- **ovladani** zatim nereaguje
 
-## Co mi pošli
+Az obraz potvrdis, doplnim do core_ps1 zvuk a ovladani.
 
-- Byl build zelený?
-- Jede obraz plynuleji než minule (bez toho půlkování)?
-- Vidí TV cast náš obraz?
-- Log z 8765/log — hledám řádky „C2".
+## Pojistka
+
+Kdyby aktivita nesla spustit, appka spadne na starou cestu a napise
+proc (`KROKC EGL_PS1_LAUNCH_FAIL`).
+
+## Postup
+
+1. Rozbal → zkopiruj cely obsah pres repozitar → Nahradit vse
+2. GitHub Desktop → "krok C2 egl ps1" → Commit → Push
+3. Zelena → Artifacts → app-debug → telefon
+4. Spust PS1 a hru
+
+## Co uvidis v logu
+
+`KROKC EGL_STAGE_GAME` a `EGL_STAGE_BIOS` - ze se soubory pripravily.
+`PS1:` radky z core_ps1 - ze jadro naslo hru a nabootovalo.

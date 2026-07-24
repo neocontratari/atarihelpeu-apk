@@ -18,7 +18,7 @@ add_library(eglrender SHARED
     ${CMAKE_CURRENT_LIST_DIR}/egl_main.c
     ${CMAKE_CURRENT_LIST_DIR}/egl_logserver.c
     ${CMAKE_CURRENT_LIST_DIR}/egl_core_demo.c
-    ${CMAKE_CURRENT_LIST_DIR}/egl_core_demo_glue.c)
+    ${CMAKE_CURRENT_LIST_DIR}/core_ps1.c)
 
 target_include_directories(eglrender PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 
