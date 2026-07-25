@@ -176,6 +176,9 @@ static int      (*p_egl_vram_w)(void) = NULL;
 static int      (*p_egl_vram_h)(void) = NULL;
 static int      s_use_texture = 0; // 1 = gpu-gles cesta bezi
 static int      s_booted_egl = 0;  // 1 = boot probehl pres cestu A
+static int      s_egl_boot_pending = 0; // 1 = boot ceka na prvni step (az bude EGL kontext)
+static int      (*s_egl_boot_fn)(const char*,const char*) = NULL;
+static char     s_egl_sysdir[340] = "";
 static void   (*s_egl_tick)(void) = NULL; // tick funkce jadra (retro_run+sync)
 
 bool     core_use_texture(void) { return s_use_texture != 0; }
@@ -185,6 +188,13 @@ unsigned core_get_texture(int* x, int* y, int* w, int* h) {
 }
 int core_vram_w(void) { return p_egl_vram_w ? p_egl_vram_w() : 1024; }
 int core_vram_h(void) { return p_egl_vram_h ? p_egl_vram_h() : 512; }
+
+// CESTA A: prepnuti kontextu pres jadro (dlsym). Render vlakno je vola
+// kolem kresleni - drzi zvuk mimo (retro_run se nezdrzuje).
+static void (*p_bind_core)(void) = NULL;
+static void (*p_bind_render)(void) = NULL;
+void core_bind_for_step(void)    { if (p_bind_core) p_bind_core(); }
+void core_bind_for_display(void) { if (p_bind_render) p_bind_render(); }
 
 static void   input_poll_cb(void) {}
 static int16_t input_state_cb(unsigned port, unsigned device, unsigned index, unsigned id) {
@@ -298,33 +308,27 @@ void core_init(void* java_vm, const char* internal_data_path) {
     *(void**)&p_egl_grab   = dlsym(h, "nap_ps1_egl_grab");
     *(void**)&p_egl_vram_w = dlsym(h, "nap_ps1_egl_vram_w");
     *(void**)&p_egl_vram_h = dlsym(h, "nap_ps1_egl_vram_h");
+    *(void**)&p_bind_core   = dlsym(h, "nap_ps1_egl_bind_core");
+    *(void**)&p_bind_render = dlsym(h, "nap_ps1_egl_bind_render");
 
     if (p_egl_boot && p_egl_tick && p_egl_grab) {
-        // Jadro umi cestu A - gpu-gles obraz. Boot jde pres nej (udela
-        // gpu-gles init + retro_init + load_game na TOMHLE vlakne).
-        P1LOG("PS1: jadro umi gpu-gles cestu A - ostry obraz bez procesoru");
-        // audio a vstup callbacky nastavi boot uvnitr jadra; ale nase
-        // audio_batch_cb a input_state_cb jsou v nap_ps1_native (nap_audio_*),
-        // ne tady - CESTA A pouziva jadro vlastni callbacky (nap_audio_*),
-        // v tomhle rezimu nebezi (zvuk resi jadro pres svuj audio batch).
-        // Proto zvuk necháme na ceste A: viz nap_ps1_native audio.
-        // ktere posilaji zvuk do OpenSL ES v jadre. Zvuk tedy resi jadro.
-        char sysdir[340];
-        snprintf(sysdir, sizeof sysdir, "%s", s_system_dir);
+        // Jadro umi cestu A - gpu-gles obraz. ALE boot NESMI probehnout
+        // tady: core_init se vola PRED tim, nez eglrender vytvori svuj EGL
+        // kontext (ten vznika az v APP_CMD_INIT_WINDOW). Kdyby gpu-gles
+        // bootoval tady, eglGetCurrentContext() vrati EGL_NO_CONTEXT a
+        // sdileni textury selze - presne to log ukazal.
+        // Proto boot ODLOZIME na prvni core_step, kdy uz eglrender kontext
+        // existuje a je current (draw_frame ho ma nastaveny).
+        P1LOG("PS1: jadro umi gpu-gles cestu A - boot az bude EGL kontext hotovy");
+        snprintf(s_egl_sysdir, sizeof s_egl_sysdir, "%s", s_system_dir);
         if (!find_game(s_game, sizeof s_game)) {
             P1LOG("PS1: bez hry -> bezi demo vzor");
             return;
         }
-        int r = p_egl_boot(sysdir, s_game);
-        if (r >= 0) {
-            s_use_texture = (r == 1) ? 1 : 0;
-            s_egl_tick = p_egl_tick;
-            s_booted_egl = 1;
-            P1LOG("PS1: CESTA A boot OK (textura=%s)", s_use_texture ? "ANO ostry gpu-gles" : "ne - jen software");
-            return;
-        }
-        P1LOG("PS1: CESTA A boot selhal (%d) -> zkousim softwarovou cestu", r);
-        // propad do stare softwarove cesty nize
+        s_egl_boot_fn = p_egl_boot;
+        s_egl_tick = p_egl_tick;
+        s_egl_boot_pending = 1;   // core_step provede boot pri prvnim volani
+        return;
     }
 
     if (!p_set_environment || !p_set_video || !p_set_audio || !p_set_audio_batch ||
@@ -378,6 +382,23 @@ void core_init(void* java_vm, const char* internal_data_path) {
 }
 
 void core_step(void) {
+    // CESTA A: odlozeny boot - provede se pri PRVNIM volani core_step, kdy
+    // uz eglrender vytvoril a nastavil svuj EGL kontext (draw_frame ho ma
+    // current). Ted eglGetCurrentContext() v jadre vrati platny kontext a
+    // sdileni gpu-gles textury bude fungovat.
+    if (s_egl_boot_pending) {
+        s_egl_boot_pending = 0;
+        int r = s_egl_boot_fn ? s_egl_boot_fn(s_egl_sysdir, s_game) : -1;
+        if (r >= 0) {
+            s_use_texture = (r == 1) ? 1 : 0;
+            s_booted_egl = 1;
+            P1LOG("PS1: CESTA A boot OK (textura=%s) - kontext uz existoval",
+                  s_use_texture ? "ANO ostry gpu-gles" : "ne - jen software");
+        } else {
+            P1LOG("PS1: CESTA A boot selhal (%d) -> bezi demo vzor", r);
+        }
+        return; // tenhle snimek jen bootoval
+    }
     if (s_booted_egl) {
         if (s_egl_tick) s_egl_tick(); // CESTA A: retro_run + gpu-gles sync v jadre
     } else if (s_ps1_running) {

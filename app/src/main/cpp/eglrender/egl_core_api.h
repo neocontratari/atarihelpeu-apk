@@ -53,6 +53,9 @@ bool     core_use_texture(void);   // true = jede gpu-gles cesta A
 unsigned core_get_texture(int* x, int* y, int* w, int* h); // 0 = zatim nic
 int      core_vram_w(void);
 int      core_vram_h(void);
+// CESTA A: prepnuti GL kontextu, ktere vola render vlakno kolem kresleni.
+void     core_bind_for_step(void);   // pred core_step (gpu-gles kresli)
+void     core_bind_for_display(void); // pred kreslenim textury na okno
 
 // ------------------------------------------------------------------
 // Interni: zalozni demo vzor (bezi, dokud nenabehne skutecne jadro)

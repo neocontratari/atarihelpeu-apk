@@ -955,12 +955,20 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglStop(JNIEnv*, jclass) {
 // eglrender si timhle vezme id hotove gpu-gles textury + vyrez (pres dvirka).
 extern "C" unsigned nap_ps1_egl_grab(int* x, int* y, int* w, int* h) {
     if (!g_gles_ready) return 0;
-    unsigned tex = nap_gles_grab_texture(x, y, w, h);
-    // CESTA A: kopie hotova (v gpu-gles kontextu). Prepnout ZPET na
-    // eglrender, aby mohl tuhle (sdilenou) texturu nakreslit na okno.
+    return nap_gles_grab_texture(x, y, w, h);
+}
+
+// CESTA A: prepnuti kontextu, ktere vola RENDER vlakno (egl_main) - NE tick.
+// Diky tomu se retro_run (co plni zvukovou frontu) nezdrzuje a zvuk neskrece.
+// bind_core: pred retro_run+kreslenim gpu-gles do canvasu.
+// bind_render: pred kreslenim vysledne textury na okno eglrenderu.
+extern "C" void nap_ps1_egl_bind_core(void) {
+    if (g_gles_ready && g_gles_display_A != EGL_NO_DISPLAY)
+        eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
+}
+extern "C" void nap_ps1_egl_bind_render(void) {
     if (g_egl_render_ctx != EGL_NO_CONTEXT && g_gles_display_A != EGL_NO_DISPLAY)
         eglMakeCurrent(g_gles_display_A, g_egl_render_surf, g_egl_render_surf, g_egl_render_ctx);
-    return tex;
 }
 extern "C" int nap_ps1_egl_vram_w(void) { return nap_gles_vram_w(); }
 extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
@@ -1000,11 +1008,6 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
 }
 extern "C" void nap_ps1_egl_tick_c(void) {
     if (!g_loaded.load()) return;
-    // CESTA A: prepnout na gpu-gles kontext, aby hra kreslila do canvasu
-    // (ne do okna eglrenderu). eglrender kontext byl current z minuleho
-    // kresleni; ted docasne na gpu-gles.
-    if (g_gles_ready && g_gles_display_A != EGL_NO_DISPLAY)
-        eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
     retro_run();
     if (g_gles_ready) nap_gles_sync_display_settings();
 }

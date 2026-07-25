@@ -428,9 +428,13 @@ static void draw_frame(Engine* e) {
     double t1 = now_sec();  // po pozadi
 
     // 2) Krok jadra + prevzeti jeho framebufferu.
-    //    CPU se pixelu nedotyka - bere se primo ukazatel jadra
-    //    a roztazeni i barvy resi cele GPU.
+    //    CESTA A: pred krokem prepnout na gpu-gles kontext (hra kresli do
+    //    canvasu), po kroku zpet na eglrender (kresli na okno). Prepinani
+    //    dela RENDER vlakno tady - ne tick - takze retro_run se nezdrzuje
+    //    a zvuk neskrece.
+    core_bind_for_step();
     core_step();
+    core_bind_for_display();
 
     double t2 = now_sec();  // po kroku jadra
 
