@@ -139,12 +139,96 @@ static void video_cb(const void* data, unsigned w, unsigned h, size_t pitch) {
     // data == NULL znamena "stejny snimek jako minule" - nechame posledni
 }
 
-static void   audio_cb(int16_t l, int16_t r) { (void)l; (void)r; }  // zvuk = dalsi krok
-static size_t audio_batch_cb(const int16_t* d, size_t frames) { (void)d; return frames; }
+// ==================================================================
+//  ZVUK — v C, ne v Jave. Doted byl audio_batch_cb prazdny a zvuk
+//  resila Java (startPs1Audio, ps1AudioThread, druhe vlakno = to
+//  hadani obraz/zvuk). Ted jadro vola audio_batch_cb primo a ten
+//  strka vzorky do AAudio streamu. Jeden zdroj, jedno vlakno, zadny
+//  prenos pres Javu, zadne dve nezavisle fronty co se rozjizdi.
+// ==================================================================
+#include <aaudio/AAudio.h>
+
+static AAudioStream* s_aud = NULL;
+
+static void audio_open(void) {
+    if (s_aud) return;
+    AAudioStreamBuilder* b = NULL;
+    if (AAudio_createStreamBuilder(&b) != AAUDIO_OK || !b) return;
+    AAudioStreamBuilder_setDirection(b, AAUDIO_DIRECTION_OUTPUT);
+    AAudioStreamBuilder_setSampleRate(b, 44100);
+    AAudioStreamBuilder_setChannelCount(b, 2);
+    AAudioStreamBuilder_setFormat(b, AAUDIO_FORMAT_PCM_I16);
+    AAudioStreamBuilder_setPerformanceMode(b, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
+    aaudio_result_t r = AAudioStreamBuilder_openStream(b, &s_aud);
+    AAudioStreamBuilder_delete(b);
+    if (r != AAUDIO_OK || !s_aud) { s_aud = NULL; return; }
+    AAudioStream_requestStart(s_aud);
+    P1LOG("PS1: zvuk AAudio otevren (44100/2/i16, low latency)");
+}
+
+static void audio_close(void) {
+    if (!s_aud) return;
+    AAudioStream_requestStop(s_aud);
+    AAudioStream_close(s_aud);
+    s_aud = NULL;
+}
+
+static void   audio_cb(int16_t l, int16_t r) {
+    if (!s_aud) return;
+    int16_t f[2] = { l, r };
+    AAudioStream_write(s_aud, f, 1, 0); // nulovy timeout - nikdy neblokuj jadro
+}
+static size_t audio_batch_cb(const int16_t* d, size_t frames) {
+    // MUJ LOG: kolik zvuku doopravdy tece do reproduktoru. Kdyz appka
+    // rekne "zvuk zapnuty" ale tady je nula, vim, ze jadro zvuk nedava.
+    static long dbg_aud_frames = 0, dbg_aud_calls = 0;
+    dbg_aud_calls++;
+    dbg_aud_frames += (long)frames;
+    if (dbg_aud_calls % 300 == 0) {
+        P1LOG("MUJLOG zvuk: %ld davek, %ld vzorku celkem (kdyz roste, zvuk tece)",
+              dbg_aud_calls, dbg_aud_frames);
+    }
+    if (s_aud && d && frames) {
+        AAudioStream_write(s_aud, d, (int32_t)frames, 0);
+    }
+    return frames;
+}
+
+// ==================================================================
+//  OVLADANI — v C. NativeActivity chyta dotyk (AInputEvent), prevede
+//  na stav PS1 tlacitek do g_pad_state, a input_state_cb ho vraci
+//  jadru. Doted vracel nulu ("ovladani = dalsi krok") a rozlozeni
+//  tlacitek delala Java pres WebView overlay. Ted je to tady.
+// ==================================================================
+#include <stdatomic.h>
+static atomic_uint g_pad_state = 0; // bitmapa RETRO_DEVICE_ID_JOYPAD_*
+
+// egl_main.c (obsluha dotyku) sem strka stav tlacitek.
+void core_set_pad(unsigned state) { atomic_store(&g_pad_state, state); }
+
+// CESTA A: ukazatele na dvirka jadra (gpu-gles textura bez procesoru).
+static unsigned (*p_egl_grab)(int*,int*,int*,int*) = NULL;
+static int      (*p_egl_vram_w)(void) = NULL;
+static int      (*p_egl_vram_h)(void) = NULL;
+static int      s_use_texture = 0; // 1 = gpu-gles cesta bezi
+static int      s_booted_egl = 0;  // 1 = boot probehl pres cestu A
+static void   (*s_egl_tick)(void) = NULL; // tick funkce jadra (retro_run+sync)
+
+bool     core_use_texture(void) { return s_use_texture != 0; }
+unsigned core_get_texture(int* x, int* y, int* w, int* h) {
+    if (!s_use_texture || !p_egl_grab) return 0;
+    return p_egl_grab(x, y, w, h);
+}
+int core_vram_w(void) { return p_egl_vram_w ? p_egl_vram_w() : 1024; }
+int core_vram_h(void) { return p_egl_vram_h ? p_egl_vram_h() : 512; }
+
 static void   input_poll_cb(void) {}
-static int16_t input_state_cb(unsigned a, unsigned b, unsigned c, unsigned d) {
-    (void)a; (void)b; (void)c; (void)d;
-    return 0;                                                        // ovladani = dalsi krok
+static int16_t input_state_cb(unsigned port, unsigned device, unsigned index, unsigned id) {
+    (void)index;
+    if (port != 0) return 0;
+    if (device != 1 /*RETRO_DEVICE_JOYPAD*/) return 0;
+    unsigned st = atomic_load(&g_pad_state);
+    return (st >> id) & 1u;
 }
 
 // ------------------------------------------------------------------
@@ -242,6 +326,43 @@ void core_init(void* java_vm, const char* internal_data_path) {
     *(void**)&p_get_av_info     = dlsym(h, "retro_get_system_av_info");
     *(void**)&p_api_version     = dlsym(h, "retro_api_version");
 
+    // CESTA A: dvirka pro gpu-gles obraz bez procesoru.
+    static int (*p_egl_boot)(const char*,const char*) = NULL;
+    static void (*p_egl_tick)(void) = NULL;
+    *(void**)&p_egl_boot   = dlsym(h, "nap_ps1_egl_boot_c");
+    *(void**)&p_egl_tick   = dlsym(h, "nap_ps1_egl_tick_c");
+    *(void**)&p_egl_grab   = dlsym(h, "nap_ps1_egl_grab");
+    *(void**)&p_egl_vram_w = dlsym(h, "nap_ps1_egl_vram_w");
+    *(void**)&p_egl_vram_h = dlsym(h, "nap_ps1_egl_vram_h");
+
+    if (p_egl_boot && p_egl_tick && p_egl_grab) {
+        // Jadro umi cestu A - gpu-gles obraz. Boot jde pres nej (udela
+        // gpu-gles init + retro_init + load_game na TOMHLE vlakne).
+        P1LOG("PS1: jadro umi gpu-gles cestu A - ostry obraz bez procesoru");
+        // audio a vstup callbacky nastavi boot uvnitr jadra; ale nase
+        // audio_batch_cb a input_state_cb jsou v nap_ps1_native (nap_audio_*),
+        // ne tady - CESTA A pouziva jadro vlastni callbacky. Nas AAudio
+        // v tomhle rezimu nebezi (zvuk resi jadro pres svuj audio batch).
+        // Proto zvuk necháme na ceste A: viz nap_ps1_native audio.
+        // -> ZVUK: v ceste A jde pres jadro; AAudio v core_ps1 se nepouzije.
+        char sysdir[340];
+        snprintf(sysdir, sizeof sysdir, "%s", s_system_dir);
+        if (!find_game(s_game, sizeof s_game)) {
+            P1LOG("PS1: bez hry -> bezi demo vzor");
+            return;
+        }
+        int r = p_egl_boot(sysdir, s_game);
+        if (r >= 0) {
+            s_use_texture = (r == 1) ? 1 : 0;
+            s_egl_tick = p_egl_tick;
+            s_booted_egl = 1;
+            P1LOG("PS1: CESTA A boot OK (textura=%s)", s_use_texture ? "ANO ostry gpu-gles" : "ne - jen software");
+            return;
+        }
+        P1LOG("PS1: CESTA A boot selhal (%d) -> zkousim softwarovou cestu", r);
+        // propad do stare softwarove cesty nize
+    }
+
     if (!p_set_environment || !p_set_video || !p_set_audio || !p_set_audio_batch ||
         !p_set_input_poll || !p_set_input_state || !p_init || !p_load_game ||
         !p_run || !p_get_system_info || !p_get_av_info) {
@@ -284,7 +405,8 @@ void core_init(void* java_vm, const char* internal_data_path) {
     struct retro_system_av_info av;
     memset(&av, 0, sizeof av);
     p_get_av_info(&av);
-    P1LOG("PS1: hra nabootovala. Zaklad %ux%u, %.2f snimku/s, zvuk %.0f Hz (zvuk zatim vypnuty)",
+    audio_open(); // ZVUK: otevrit AAudio az kdyz hra nabootovala
+    P1LOG("PS1: hra nabootovala. Zaklad %ux%u, %.2f snimku/s, zvuk %.0f Hz (ZVUK ZAPNUTY v C)",
           av.geometry.base_width, av.geometry.base_height,
           av.timing.fps, av.timing.sample_rate);
 
@@ -292,8 +414,10 @@ void core_init(void* java_vm, const char* internal_data_path) {
 }
 
 void core_step(void) {
-    if (s_ps1_running) {
-        p_run();          // jeden snimek emulace
+    if (s_booted_egl) {
+        if (s_egl_tick) s_egl_tick(); // CESTA A: retro_run + gpu-gles sync v jadre
+    } else if (s_ps1_running) {
+        p_run();          // jeden snimek emulace (softwarova cesta)
     } else {
         demo_step();
     }

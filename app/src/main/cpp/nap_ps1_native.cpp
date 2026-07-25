@@ -316,6 +316,11 @@ extern "C" {
   void nap_gles_present_frame(void); // BUILD2SK153: JEDINE misto prezentace snimku - presne 1x za tick, po retro_run (= po VBlanku emulovaneho PS1), s cerstvym gpu.screen (respektuje GP1(05h) flip)
   void SetOGLDisplaySettings(int DisplaySet); // BUILD2SK106: nastavi GL scissor/clip - viz gpuDraw.c
   void nap_gles_sync_display_settings(void); // BUILD2SK119: viz gpulib_if.c - bezpecne obnovi iResX/iResY/rRatioRect pred volanim SetOGLDisplaySettings
+  // CESTA A: dvirka z gpulib_if.c - kopie canvasu do snapshot textury BEZ
+  // ctecky a vraceni jejiho id + vyrezu, pro prime kresleni v eglrender.
+  unsigned nap_gles_grab_texture(int* out_x, int* out_y, int* out_w, int* out_h);
+  int nap_gles_vram_w(void);
+  int nap_gles_vram_h(void);
   // BUILD2SK106: POZOR presne typy - BOOL je v tomhle projektu #define BOOL
   // unsigned short (NE int - to by byla skutecna chyba, cteni/zapis 4 bajtu
   // pres 2-bajtovou promennou). Overeno primo v gpuExternals.h pred pouzitim.
@@ -781,6 +786,120 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1LoadState(JNIEnv *env, jclass, js
   snprintf(msg, sizeof(msg), "PS1_STATE_LOAD_OK bytes=%zu path=%s", data.size(), path.c_str());
   return env->NewStringUTF(msg);
 }
+// ==================================================================
+//  CESTA A — eglrender rizeni gpu-gles PRIMO (bez Javy, bez workeru).
+//  Varianta 1: eglrender prebira cely boot a vola tyto funkce ZE SVEHO
+//  vlakna (kde ma okno a GL kontext sdileny s gpu-gles). Stary worker
+//  se pro tuhle cestu nespousti - jedno vlakno vola retro_run, zadna
+//  kolize globalniho stavu gpu-gles.
+// ==================================================================
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglBoot(JNIEnv* env, jclass,
+        jstring jsys, jstring jgame) {
+    const char* csys  = env->GetStringUTFChars(jsys, nullptr);
+    const char* cgame = env->GetStringUTFChars(jgame, nullptr);
+    std::string sys = csys ? csys : "";
+    std::string game = cgame ? cgame : "";
+    if (csys)  env->ReleaseStringUTFChars(jsys, csys);
+    if (cgame) env->ReleaseStringUTFChars(jgame, cgame);
+
+    if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+    g_sysdir = sys;
+    g_input_bits.store(0);
+    g_boot_error.clear();
+
+    // gpu-gles EGL kontext MUSI vzniknout na TOMHLE (eglrender) vlakne
+    g_gles_ready = nap_gles_egl_init();
+    if (!g_gles_ready) NAPDIAG("CESTA_A GLES_INIT_FAIL v eglrender vlakne");
+
+    retro_set_environment(nap_env);
+    retro_set_video_refresh(nap_video); // jadro chce callback; obraz z nej zahodime
+    retro_set_audio_sample(nap_audio_sample);
+    retro_set_audio_sample_batch(nap_audio_batch);
+    retro_set_input_poll(nap_input_poll);
+    retro_set_input_state(nap_input_state);
+    retro_init();
+
+    retro_game_info gi; memset(&gi, 0, sizeof(gi));
+    gi.path = game.c_str();
+    if (!retro_load_game(&gi)) {
+        NAPDIAG("CESTA_A retro_load_game FAILED path=%s", game.c_str());
+        retro_deinit();
+        return -1;
+    }
+    g_loaded.store(true);
+    nap_srm_set_path(game);
+    nap_srm_load();
+
+    retro_system_av_info av; memset(&av, 0, sizeof(av));
+    retro_get_system_av_info(&av);
+    g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
+
+    NAPDIAG("CESTA_A BOOT_OK gpuGles=%s fps=%.2f", g_gles_ready ? "ANO" : "NE", g_fps);
+    return g_gles_ready ? 1 : 0;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglTick(JNIEnv*, jclass) {
+    if (!g_loaded.load()) return;
+    retro_run();
+    if (g_gles_ready) nap_gles_sync_display_settings();
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglStop(JNIEnv*, jclass) {
+    if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("egl_stop"); retro_unload_game(); retro_deinit(); }
+    nap_audio_clear();
+    g_input_bits.store(0);
+    NAPDIAG("CESTA_A EGL_STOP");
+}
+
+// eglrender si timhle vezme id hotove gpu-gles textury + vyrez (pres dvirka).
+extern "C" unsigned nap_ps1_egl_grab(int* x, int* y, int* w, int* h) {
+    if (!g_gles_ready) return 0;
+    return nap_gles_grab_texture(x, y, w, h);
+}
+extern "C" int nap_ps1_egl_vram_w(void) { return nap_gles_vram_w(); }
+extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
+
+// Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
+// bez JNIEnv. Delaji totez co JNI verze vyse.
+extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
+    if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+    g_sysdir = sys ? sys : "";
+    g_input_bits.store(0);
+    g_boot_error.clear();
+    g_gles_ready = nap_gles_egl_init();
+    if (!g_gles_ready) NAPDIAG("CESTA_A GLES_INIT_FAIL v eglrender vlakne");
+    retro_set_environment(nap_env);
+    retro_set_video_refresh(nap_video);
+    retro_set_audio_sample(nap_audio_sample);
+    retro_set_audio_sample_batch(nap_audio_batch);
+    retro_set_input_poll(nap_input_poll);
+    retro_set_input_state(nap_input_state);
+    retro_init();
+    retro_game_info gi; memset(&gi, 0, sizeof(gi));
+    gi.path = game ? game : "";
+    if (!retro_load_game(&gi)) {
+        NAPDIAG("CESTA_A retro_load_game FAILED path=%s", game ? game : "?");
+        retro_deinit();
+        return -1;
+    }
+    g_loaded.store(true);
+    nap_srm_set_path(game ? game : "");
+    nap_srm_load();
+    retro_system_av_info av; memset(&av, 0, sizeof(av));
+    retro_get_system_av_info(&av);
+    g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
+    NAPDIAG("CESTA_A BOOT_OK gpuGles=%s fps=%.2f", g_gles_ready ? "ANO" : "NE", g_fps);
+    return g_gles_ready ? 1 : 0;
+}
+extern "C" void nap_ps1_egl_tick_c(void) {
+    if (!g_loaded.load()) return;
+    retro_run();
+    if (g_gles_ready) nap_gles_sync_display_settings();
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   std::lock_guard<std::mutex> life(g_life_mutex);

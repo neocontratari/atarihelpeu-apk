@@ -67,6 +67,91 @@ static double now_sec(void) {
     return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
 }
 
+// ==================================================================
+//  OVLADANI — dotyk na obrazovce v C (bez Java overlay).
+//  Rozlozeni tlacitek podle rozmeru okna: vlevo dole D-pad,
+//  vpravo dole ctyri akcni tlacitka, uprostred dole START/SELECT.
+//  Kazdy prst se otestuje proti obdelnikum a slozi se bitmapa
+//  RETRO_DEVICE_ID_JOYPAD_*, kterou core_ps1 vraci jadru.
+// ==================================================================
+#include <android/input.h>
+
+extern void core_set_pad(unsigned state);
+
+// RETRO_DEVICE_ID_JOYPAD_*
+enum { JB_B=0, JJB_Y=1, JB_SELECT=2, JB_START=3, JB_UP=4, JB_DOWN=5,
+       JB_LEFT=6, JB_RIGHT=7, JB_A=8, JB_X=9, JB_L=10, JB_R=11 };
+
+static int pt_in(float px, float py, float x, float y, float w, float h) {
+    return px >= x && px <= x + w && py >= y && py <= y + h;
+}
+
+static int32_t handle_input(struct android_app* app, AInputEvent* ev) {
+    (void)app;
+    if (AInputEvent_getType(ev) != AINPUT_EVENT_TYPE_MOTION) return 0;
+
+    ANativeWindow* win = app->window;
+    float W = win ? (float)ANativeWindow_getWidth(win)  : 1920.0f;
+    float H = win ? (float)ANativeWindow_getHeight(win) : 1080.0f;
+
+    // Geometrie ovladacu (odvozeno od vysky, at sedi na ruzne displeje)
+    float u = H * 0.12f;              // zakladni velikost tlacitka
+    float m = H * 0.06f;              // okraj
+    // D-pad vlevo dole (kriz)
+    float dcx = m + u*1.5f, dcy = H - m - u*1.5f;
+    // Akcni tlacitka vpravo dole
+    float acx = W - m - u*1.5f, acy = H - m - u*1.5f;
+    // START/SELECT uprostred dole
+    float scy = H - m - u*0.6f;
+
+    unsigned st = 0;
+    int pc = AMotionEvent_getPointerCount(ev);
+    int act = AMotionEvent_getAction(ev) & AMOTION_EVENT_ACTION_MASK;
+    // Pri UP prstu ho nezapocitavat
+    int upIdx = -1;
+    if (act == AMOTION_EVENT_ACTION_POINTER_UP || act == AMOTION_EVENT_ACTION_UP)
+        upIdx = (AMotionEvent_getAction(ev) & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK)
+                >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
+
+    for (int i = 0; i < pc; i++) {
+        if (i == upIdx) continue;
+        float x = AMotionEvent_getX(ev, i);
+        float y = AMotionEvent_getY(ev, i);
+
+        // D-pad: ctyri smery kolem stredu
+        if (pt_in(x,y, dcx-u*0.5f, dcy-u*1.5f, u, u))       st |= (1u<<JB_UP);
+        if (pt_in(x,y, dcx-u*0.5f, dcy+u*0.5f, u, u))       st |= (1u<<JB_DOWN);
+        if (pt_in(x,y, dcx-u*1.5f, dcy-u*0.5f, u, u))       st |= (1u<<JB_LEFT);
+        if (pt_in(x,y, dcx+u*0.5f, dcy-u*0.5f, u, u))       st |= (1u<<JB_RIGHT);
+
+        // Akcni: trojuhelnik(nahore) X(dole) ctverec(vlevo) kolecko(vpravo)
+        if (pt_in(x,y, acx-u*0.5f, acy-u*1.5f, u, u))       st |= (1u<<JB_X);   // trojuhelnik
+        if (pt_in(x,y, acx-u*0.5f, acy+u*0.5f, u, u))       st |= (1u<<JB_B);   // X (potvrdit)
+        if (pt_in(x,y, acx-u*1.5f, acy-u*0.5f, u, u))       st |= (1u<<JJB_Y);  // ctverec
+        if (pt_in(x,y, acx+u*0.5f, acy-u*0.5f, u, u))       st |= (1u<<JB_A);   // kolecko
+
+        // START / SELECT uprostred
+        if (pt_in(x,y, W*0.5f - u,      scy, u*0.8f, u*0.7f)) st |= (1u<<JB_SELECT);
+        if (pt_in(x,y, W*0.5f + u*0.2f, scy, u*0.8f, u*0.7f)) st |= (1u<<JB_START);
+
+        // L / R nahore v rozich
+        if (pt_in(x,y, m, m, u*1.4f, u*0.8f))               st |= (1u<<JB_L);
+        if (pt_in(x,y, W-m-u*1.4f, m, u*1.4f, u*0.8f))      st |= (1u<<JB_R);
+    }
+
+    core_set_pad(st);
+    // MUJ LOG: kdyz se stav tlacitek zmeni, zapsat ho. Vidim tak, jestli
+    // dotyk vubec dopada na tlacitka - kdyz mackas a tady je porad 0,
+    // vim, ze rozlozeni tlacitek nesedi na to, kam prsty dopadaji.
+    static unsigned dbg_last_pad = 0;
+    if (st != dbg_last_pad) {
+        dbg_last_pad = st;
+        __android_log_print(ANDROID_LOG_INFO, TAG, "MUJLOG ovladani: stav tlacitek = 0x%03x", st);
+        ls_log("MUJLOG ovladani: stav tlacitek = 0x%03x", st);
+    }
+    return 1;
+}
+
 static const char* egl_err_str(EGLint e) {
     switch (e) {
         case EGL_SUCCESS:           return "EGL_SUCCESS";
@@ -349,8 +434,100 @@ static void draw_frame(Engine* e) {
 
     double t2 = now_sec();  // po kroku jadra
 
+    // ==============================================================
+    //  CESTA A — kdyz jede gpu-gles, kreslime jeho HOTOVOU texturu.
+    //  Zadny core_get_frame, zadne nahravani pixelu - jen si vezmeme
+    //  id textury z jadra a nakreslime ji. Ostry obraz, nula procesoru.
+    // ==============================================================
+    if (core_use_texture()) {
+        int sx=0, sy=0, sw=0, sh=0;
+        unsigned tex = core_get_texture(&sx, &sy, &sw, &sh);
+        static long dbgA_total=0, dbgA_empty=0;
+        dbgA_total++;
+        if (tex == 0 || sw <= 0 || sh <= 0) {
+            dbgA_empty++;
+            if (dbgA_total % 180 == 0)
+                LOGI("MUJLOG cestaA: vydano=%ld prazdno=%ld (gpu-gles textura)", dbgA_total-dbgA_empty, dbgA_empty);
+            // nic noveho - necháme na obrazovce predchozi snimek
+            eglSwapBuffers(e->display, e->surface);
+            return;
+        }
+        int VW = core_vram_w(), VH = core_vram_h();
+
+        // letterbox podle vyrezu hry
+        int vw = w, vh = (w * sh) / sw;
+        if (vh > h) { vh = h; vw = (h * sw) / sh; }
+        glViewport((w - vw)/2, (h - vh)/2, vw, vh);
+        glClearColor(0.f,0.f,0.f,1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // UV vyrez ve VRAM texture (Y v GL zdola -> prevraceni)
+        float u0 = (float)sx / VW,        u1 = (float)(sx+sw) / VW;
+        float glY = (float)(VH - (sy+sh));
+        float v0 = (glY + sh) / VH,       v1 = glY / VH;
+
+        const GLfloat quad[] = {
+            -1.f,-1.f, u0,v0,   1.f,-1.f, u1,v0,
+            -1.f, 1.f, u0,v1,   1.f, 1.f, u1,v1,
+        };
+        glUseProgram(e->program);
+        glUniform1f(e->loc_mode, 1.0f); // gpu-gles textura je XRGB-like
+        glBindTexture(GL_TEXTURE_2D, (GLuint)tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glVertexAttribPointer((GLuint)e->loc_pos, 2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad);
+        glVertexAttribPointer((GLuint)e->loc_tex, 2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad+2);
+        glEnableVertexAttribArray((GLuint)e->loc_pos);
+        glEnableVertexAttribArray((GLuint)e->loc_tex);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        if (dbgA_total % 180 == 0)
+            LOGI("MUJLOG cestaA: vydano=%ld prazdno=%ld vyrez=%dx%d (ostry gpu-gles)", dbgA_total-dbgA_empty, dbgA_empty, sw, sh);
+
+        if (!eglSwapBuffers(e->display, e->surface)) {
+            EGLint err = eglGetError();
+            LOGE("eglSwapBuffers (cestaA) selhal: %s", egl_err_str(err));
+            ANativeWindow* win = e->app->window;
+            egl_term(e);
+            if (win && (err==EGL_BAD_SURFACE||err==EGL_CONTEXT_LOST||err==EGL_BAD_NATIVE_WINDOW||err==EGL_BAD_DISPLAY)) {
+                if (egl_init(e, win)) e->animating = true;
+            }
+        }
+        return; // CESTA A hotova - dal nepokracujeme na softwarovou cestu
+    }
+
     CoreFrame fr;
     bool have_frame = core_get_frame(&fr);
+
+    // ==============================================================
+    //  MUJ LOG — abych videl to, co Rene vidi na obrazovce, v cislech.
+    //  Cizi log meri jen rozpad casu. Tenhle meri to podstatne:
+    //    vydalo  = kolikrat jadro vydalo snimek (core_get_frame == true)
+    //    prazdno = kolikrat NEvydalo nic (have_frame == false) - to je
+    //              presne to, co na obrazovce vidis jako zamrznuti/blik
+    //    posledni rozliseni + format - at vidim, kdyz se hra prepne
+    //              (film 320x240 vs 3D, RGB565 vs XRGB)
+    //  Kdyz "prazdno" roste, obraz na obrazovce stoji - a ja to konecne
+    //  vidim v logu, ne az z tveho screenshotu.
+    // ==============================================================
+    static long dbg_total = 0, dbg_empty = 0;
+    static int  dbg_last_w = 0, dbg_last_h = 0, dbg_last_fmt = -1;
+    dbg_total++;
+    if (!have_frame) dbg_empty++;
+    else if (fr.width != dbg_last_w || fr.height != dbg_last_h || (int)fr.format != dbg_last_fmt) {
+        dbg_last_w = fr.width; dbg_last_h = fr.height; dbg_last_fmt = (int)fr.format;
+        LOGI("MUJLOG zmena obrazu: %dx%d format=%s",
+             fr.width, fr.height,
+             fr.format == CORE_FMT_RGB565 ? "RGB565(film/2D)" :
+             fr.format == CORE_FMT_XRGB8888 ? "XRGB8888(3D)" : "jiny");
+    }
+    if (dbg_total % 180 == 0) {
+        LOGI("MUJLOG snimky: vydano=%ld prazdno=%ld (%.1f%% ztraceno) posledni=%dx%d",
+             dbg_total - dbg_empty, dbg_empty,
+             dbg_total ? (100.0 * dbg_empty / dbg_total) : 0.0,
+             dbg_last_w, dbg_last_h);
+    }
+
     if (have_frame) {
         ensure_texture(e, fr.width, fr.height, fr.format);
         glBindTexture(GL_TEXTURE_2D, e->texture);
@@ -500,6 +677,7 @@ void android_main(struct android_app* app) {
 
     app->userData = &engine;
     app->onAppCmd = handle_cmd;
+    app->onInputEvent = handle_input; // OVLADANI: dotyk -> PS1 tlacitka (v C)
 
     logserver_set_upload_dir(app->activity->internalDataPath);
     logserver_start(8765);

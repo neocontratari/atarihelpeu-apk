@@ -43,6 +43,17 @@ void core_step(void);
 // (renderer nakresli jen pozadi a zkusi to dalsi snimek).
 bool core_get_frame(CoreFrame* out);
 
+// ==================================================================
+//  CESTA A — gpu-gles textura primo (ostry obraz, bez procesoru).
+//  Kdyz core_use_texture() vrati true, renderer NEbere pixely
+//  (core_get_frame), ale hotovou GL texturu z gpu-gles: id + vyrez
+//  ve VRAM texture. Kresli ji rovnou. Zadny prenos do procesoru.
+// ==================================================================
+bool     core_use_texture(void);   // true = jede gpu-gles cesta A
+unsigned core_get_texture(int* x, int* y, int* w, int* h); // 0 = zatim nic
+int      core_vram_w(void);
+int      core_vram_h(void);
+
 // ------------------------------------------------------------------
 // Interni: zalozni demo vzor (bezi, dokud nenabehne skutecne jadro)
 // ------------------------------------------------------------------

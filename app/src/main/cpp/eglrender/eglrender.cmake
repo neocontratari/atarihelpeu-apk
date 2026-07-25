@@ -28,6 +28,7 @@ target_link_libraries(eglrender
     log
     EGL
     GLESv2
+    aaudio
     dl
     m)
 

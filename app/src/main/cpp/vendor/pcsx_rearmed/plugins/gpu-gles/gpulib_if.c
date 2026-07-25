@@ -1892,3 +1892,58 @@ static void fps_update(void)
   DisplayText(buf, 1);
  }
 }
+
+// ==================================================================
+//  CESTA A — dvirka pro eglrender (ostry gpu-gles obraz bez Javy).
+//
+//  Doted gpu-gles obraz kreslil, ale predaval ho pres ctecí vlakno
+//  (glReadPixels -> procesor -> Java -> obrazovka) = ta berlicka.
+//  Ostra textura ale existuje UZ PRED tim ctenim: nap_fbo_tex, hned
+//  po GPU->GPU kopii z canvasu. Tahle funkce udela presne tu kopii
+//  (jako present_frame, ale BEZ ctecky) a vrati eglrenderu id textury
+//  + vyrez. eglrender si ji nakresli primo. Zadny procesor, zadna Java.
+//
+//  Vola se z eglrender vlakna po kazdem retro_run, pod stejnym GL
+//  kontextem sdilenym s gpu-gles.
+// ==================================================================
+unsigned nap_gles_grab_texture(int* out_x, int* out_y, int* out_w, int* out_h)
+{
+    if (!nap_fbo_ready) return 0;
+
+    int fresh_w = 0, fresh_h = 0, fresh_sx = 0, fresh_sy = 0;
+    nap_gpulib_display_info(&fresh_sx, &fresh_sy, &fresh_w, &fresh_h);
+    if (fresh_w <= 0) fresh_w = 320;
+    if (fresh_h <= 0) fresh_h = 240;
+    if (fresh_w > NAP_PSX_VRAM_W || fresh_h > NAP_PSX_VRAM_H) return 0;
+
+    int other_idx = 1 - nap_snapshot_idx;
+
+    // Levna GPU->GPU kopie aktualniho canvasu do snapshot textury -
+    // presne jako v readback_and_push, ale bez predani ctecce.
+    glBindTexture(GL_TEXTURE_2D, nap_fbo_tex[other_idx]);
+    {
+        int cp_x = fresh_sx, cp_y = fresh_sy, cp_w = fresh_w, cp_h = fresh_h;
+        if (cp_x < 0) cp_x = 0;
+        if (cp_y < 0) cp_y = 0;
+        if (cp_x + cp_w > NAP_PSX_VRAM_W) cp_x = NAP_PSX_VRAM_W - cp_w;
+        if (cp_x < 0) cp_x = 0;
+        int cp_glY = NAP_PSX_VRAM_H - (cp_y + cp_h);
+        if (cp_glY < 0) cp_glY = 0;
+        if (cp_glY + cp_h > NAP_PSX_VRAM_H) cp_glY = NAP_PSX_VRAM_H - cp_h;
+        if (cp_glY < 0) cp_glY = 0;
+        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, cp_x, cp_glY, cp_x, cp_glY, cp_w, cp_h);
+    }
+    glFlush(); // kopie viditelna i z eglrender kontextu (sdili textury)
+
+    nap_snapshot_idx = other_idx;
+
+    if (out_x) *out_x = fresh_sx;
+    if (out_y) *out_y = fresh_sy;
+    if (out_w) *out_w = fresh_w;
+    if (out_h) *out_h = fresh_h;
+    return (unsigned)nap_fbo_tex[other_idx];
+}
+
+// Rozmery VRAM textury (eglrender potrebuje pro prepocet UV souradnic).
+int nap_gles_vram_w(void) { return NAP_PSX_VRAM_W; }
+int nap_gles_vram_h(void) { return NAP_PSX_VRAM_H; }
