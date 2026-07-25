@@ -6762,12 +6762,14 @@ public class MainActivity extends Activity {
             } else {
                 ps1SessionActive = false;
                 stopPs1Audio();
-                if (ok) {
-                    try { NativePs1CoreBridge.stopSafe(); } catch (Throwable ignored) {}
-                    ps1ClearJsPreview();
-                    ps1LastBootResult = "PS1_BOOT_CANCELLED_AFTER_LEAVE";
-                    setPs1RemoteStatus(ps1LastBootResult);
-                }
+                // CESTA A: sem se dostaneme, kdyz uz o boot neni zajem
+                // (bootGen se zmenil nebo ps1BootActive vypnuto). Uklid
+                // probehne vzdy - drive tu byla podminka if(ok), ale
+                // promenna ok patrila stare bootSafe ceste, ktera uz tu neni.
+                try { NativePs1CoreBridge.stopSafe(); } catch (Throwable ignored) {}
+                ps1ClearJsPreview();
+                ps1LastBootResult = "PS1_BOOT_CANCELLED_AFTER_LEAVE";
+                setPs1RemoteStatus(ps1LastBootResult);
             }
         } catch (Throwable t) {
             ps1BootActive = false;
