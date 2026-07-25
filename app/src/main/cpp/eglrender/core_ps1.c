@@ -140,57 +140,21 @@ static void video_cb(const void* data, unsigned w, unsigned h, size_t pitch) {
 }
 
 // ==================================================================
-//  ZVUK — v C, ne v Jave. Doted byl audio_batch_cb prazdny a zvuk
-//  resila Java (startPs1Audio, ps1AudioThread, druhe vlakno = to
-//  hadani obraz/zvuk). Ted jadro vola audio_batch_cb primo a ten
-//  strka vzorky do AAudio streamu. Jeden zdroj, jedno vlakno, zadny
-//  prenos pres Javu, zadne dve nezavisle fronty co se rozjizdi.
+//  ZVUK — v ceste A resi zvuk JADRO (nap_ps1_native pres OpenSL ES),
+//  protoze jadro vola svoje vlastni audio callbacky (nap_audio_batch),
+//  nastavene v nap_ps1_egl_boot_c. Tyhle core_ps1 callbacky se v ceste
+//  A NEPOUZIJI - jsou tu jen pro pripad softwarove zalozni cesty, a to
+//  bez vlastniho vystupu (jen spocitaji, kolik zvuku by teklo).
 // ==================================================================
-#include <aaudio/AAudio.h>
-
-static AAudioStream* s_aud = NULL;
-
-static void audio_open(void) {
-    if (s_aud) return;
-    AAudioStreamBuilder* b = NULL;
-    if (AAudio_createStreamBuilder(&b) != AAUDIO_OK || !b) return;
-    AAudioStreamBuilder_setDirection(b, AAUDIO_DIRECTION_OUTPUT);
-    AAudioStreamBuilder_setSampleRate(b, 44100);
-    AAudioStreamBuilder_setChannelCount(b, 2);
-    AAudioStreamBuilder_setFormat(b, AAUDIO_FORMAT_PCM_I16);
-    AAudioStreamBuilder_setPerformanceMode(b, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
-    aaudio_result_t r = AAudioStreamBuilder_openStream(b, &s_aud);
-    AAudioStreamBuilder_delete(b);
-    if (r != AAUDIO_OK || !s_aud) { s_aud = NULL; return; }
-    AAudioStream_requestStart(s_aud);
-    P1LOG("PS1: zvuk AAudio otevren (44100/2/i16, low latency)");
-}
-
-static void audio_close(void) {
-    if (!s_aud) return;
-    AAudioStream_requestStop(s_aud);
-    AAudioStream_close(s_aud);
-    s_aud = NULL;
-}
-
-static void   audio_cb(int16_t l, int16_t r) {
-    if (!s_aud) return;
-    int16_t f[2] = { l, r };
-    AAudioStream_write(s_aud, f, 1, 0); // nulovy timeout - nikdy neblokuj jadro
-}
+static void   audio_cb(int16_t l, int16_t r) { (void)l; (void)r; }
 static size_t audio_batch_cb(const int16_t* d, size_t frames) {
-    // MUJ LOG: kolik zvuku doopravdy tece do reproduktoru. Kdyz appka
-    // rekne "zvuk zapnuty" ale tady je nula, vim, ze jadro zvuk nedava.
+    (void)d;
+    // MUJ LOG: kdyby se tahle (softwarova zalozni) cesta pouzila.
     static long dbg_aud_frames = 0, dbg_aud_calls = 0;
     dbg_aud_calls++;
     dbg_aud_frames += (long)frames;
-    if (dbg_aud_calls % 300 == 0) {
-        P1LOG("MUJLOG zvuk: %ld davek, %ld vzorku celkem (kdyz roste, zvuk tece)",
-              dbg_aud_calls, dbg_aud_frames);
-    }
-    if (s_aud && d && frames) {
-        AAudioStream_write(s_aud, d, (int32_t)frames, 0);
-    }
+    if (dbg_aud_calls % 300 == 0)
+        P1LOG("MUJLOG zvuk(zaloha): %ld davek, %ld vzorku", dbg_aud_calls, dbg_aud_frames);
     return frames;
 }
 
@@ -341,10 +305,10 @@ void core_init(void* java_vm, const char* internal_data_path) {
         P1LOG("PS1: jadro umi gpu-gles cestu A - ostry obraz bez procesoru");
         // audio a vstup callbacky nastavi boot uvnitr jadra; ale nase
         // audio_batch_cb a input_state_cb jsou v nap_ps1_native (nap_audio_*),
-        // ne tady - CESTA A pouziva jadro vlastni callbacky. Nas AAudio
+        // ne tady - CESTA A pouziva jadro vlastni callbacky (nap_audio_*),
         // v tomhle rezimu nebezi (zvuk resi jadro pres svuj audio batch).
         // Proto zvuk necháme na ceste A: viz nap_ps1_native audio.
-        // -> ZVUK: v ceste A jde pres jadro; AAudio v core_ps1 se nepouzije.
+        // ktere posilaji zvuk do OpenSL ES v jadre. Zvuk tedy resi jadro.
         char sysdir[340];
         snprintf(sysdir, sizeof sysdir, "%s", s_system_dir);
         if (!find_game(s_game, sizeof s_game)) {
@@ -405,10 +369,10 @@ void core_init(void* java_vm, const char* internal_data_path) {
     struct retro_system_av_info av;
     memset(&av, 0, sizeof av);
     p_get_av_info(&av);
-    audio_open(); // ZVUK: otevrit AAudio az kdyz hra nabootovala
-    P1LOG("PS1: hra nabootovala. Zaklad %ux%u, %.2f snimku/s, zvuk %.0f Hz (ZVUK ZAPNUTY v C)",
-          av.geometry.base_width, av.geometry.base_height,
-          av.timing.fps, av.timing.sample_rate);
+    // Softwarova zaloha nema vlastni zvukovy vystup (zvuk resi cesta A
+    // pres jadro). Tady jen log, ze hra nabehla.
+    P1LOG("PS1: hra nabootovala (softwarova zaloha). Zaklad %ux%u, %.2f snimku/s",
+          av.geometry.base_width, av.geometry.base_height, av.timing.fps);
 
     s_ps1_running = true;
 }

@@ -20,6 +20,8 @@
 #include <iterator>
 #include <EGL/egl.h>   // BUILD2SK98: pro gpu-gles (skutecny GL vykreslovac s texturovym filtrovanim)
 #include <GLES/gl.h>   // GLES1 - presne to, co gpu-gles pouziva (fixed-function pipeline)
+#include <SLES/OpenSLES.h>          // CESTA A: zvuk bez Javy (od API 9)
+#include <SLES/OpenSLES_Android.h>
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, "NAP_PS1", __VA_ARGS__)
 
 // BUILD2SK115: presunuto sem (drive bylo hluboko v souboru, radek 274+) -
@@ -290,6 +292,75 @@ static void nap_audio_push(const int16_t *data, size_t frames) {
   std::lock_guard<std::mutex> lock(g_amutex);
   g_afifo.insert(g_afifo.end(), data, data + frames * 2);
   if (g_afifo.size() / 2 > NAP_PS1_AFIFO_MAX_FRAMES) nap_audio_trim_locked(NAP_PS1_AFIFO_TARGET_FRAMES);
+}
+
+// ==================================================================
+//  CESTA A ZVUK — OpenSL ES primo v jadre (bez Javy).
+//  V ceste A stary ps1AudioThread (Java) nebezi, takze g_afifo by
+//  nikdo nevybiral. Tenhle OpenSL player si bere vzorky z TE SAME
+//  fronty g_afifo pres svuj callback - zadna Java, jedno vlakno.
+//  OpenSL ES funguje od API 9 (na rozdil od AAudio od API 26), takze
+//  jede i na minSdk 24.
+// ==================================================================
+static SLObjectItf s_sl_engine_obj = nullptr;
+static SLEngineItf s_sl_engine = nullptr;
+static SLObjectItf s_sl_mix_obj = nullptr;
+static SLObjectItf s_sl_player_obj = nullptr;
+static SLPlayItf   s_sl_play = nullptr;
+static SLAndroidSimpleBufferQueueItf s_sl_queue = nullptr;
+static bool s_sl_ready = false;
+
+#define NAP_SL_BLOCK_FRAMES 1024
+static int16_t s_sl_block[NAP_SL_BLOCK_FRAMES * 2];
+
+// OpenSL si rekne o dalsi blok - naplnime ho z g_afifo (nebo tichem).
+static void nap_sl_callback(SLAndroidSimpleBufferQueueItf bq, void*) {
+  size_t need = NAP_SL_BLOCK_FRAMES * 2; // shorts
+  {
+    std::lock_guard<std::mutex> lock(g_amutex);
+    size_t have = g_afifo.size();
+    size_t take = have < need ? have : need;
+    if (take) { memcpy(s_sl_block, g_afifo.data(), take * sizeof(int16_t)); g_afifo.erase(g_afifo.begin(), g_afifo.begin() + take); }
+    if (take < need) memset(s_sl_block + take, 0, (need - take) * sizeof(int16_t)); // doplnit tichem
+  }
+  (*bq)->Enqueue(bq, s_sl_block, need * sizeof(int16_t));
+}
+
+static void nap_sl_open(void) {
+  if (s_sl_ready) return;
+  if (slCreateEngine(&s_sl_engine_obj, 0, nullptr, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) return;
+  if ((*s_sl_engine_obj)->Realize(s_sl_engine_obj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return;
+  if ((*s_sl_engine_obj)->GetInterface(s_sl_engine_obj, SL_IID_ENGINE, &s_sl_engine) != SL_RESULT_SUCCESS) return;
+  if ((*s_sl_engine)->CreateOutputMix(s_sl_engine, &s_sl_mix_obj, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) return;
+  if ((*s_sl_mix_obj)->Realize(s_sl_mix_obj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return;
+  SLDataLocator_AndroidSimpleBufferQueue locBufq = { SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2 };
+  SLDataFormat_PCM fmt = { SL_DATAFORMAT_PCM, 2, SL_SAMPLINGRATE_44_1,
+    SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
+    SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT, SL_BYTEORDER_LITTLEENDIAN };
+  SLDataSource src = { &locBufq, &fmt };
+  SLDataLocator_OutputMix locMix = { SL_DATALOCATOR_OUTPUTMIX, s_sl_mix_obj };
+  SLDataSink sink = { &locMix, nullptr };
+  const SLInterfaceID ids[1] = { SL_IID_ANDROIDSIMPLEBUFFERQUEUE };
+  const SLboolean req[1] = { SL_BOOLEAN_TRUE };
+  if ((*s_sl_engine)->CreateAudioPlayer(s_sl_engine, &s_sl_player_obj, &src, &sink, 1, ids, req) != SL_RESULT_SUCCESS) return;
+  if ((*s_sl_player_obj)->Realize(s_sl_player_obj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return;
+  if ((*s_sl_player_obj)->GetInterface(s_sl_player_obj, SL_IID_PLAY, &s_sl_play) != SL_RESULT_SUCCESS) return;
+  if ((*s_sl_player_obj)->GetInterface(s_sl_player_obj, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &s_sl_queue) != SL_RESULT_SUCCESS) return;
+  (*s_sl_queue)->RegisterCallback(s_sl_queue, nap_sl_callback, nullptr);
+  (*s_sl_play)->SetPlayState(s_sl_play, SL_PLAYSTATE_PLAYING);
+  // nakopnout - prvni dva bloky tichem, callback pak jede sam
+  memset(s_sl_block, 0, sizeof(s_sl_block));
+  (*s_sl_queue)->Enqueue(s_sl_queue, s_sl_block, sizeof(s_sl_block));
+  (*s_sl_queue)->Enqueue(s_sl_queue, s_sl_block, sizeof(s_sl_block));
+  s_sl_ready = true;
+  NAPDIAG("CESTA_A ZVUK OpenSL ES otevren (44100/2/i16, z g_afifo, bez Javy, funguje od API 9)");
+}
+
+static void nap_sl_close(void) {
+  if (s_sl_player_obj) { (*s_sl_player_obj)->Destroy(s_sl_player_obj); s_sl_player_obj = nullptr; }
+  if (s_sl_mix_obj)    { (*s_sl_mix_obj)->Destroy(s_sl_mix_obj);       s_sl_mix_obj = nullptr; }
+  if (s_sl_engine_obj) { (*s_sl_engine_obj)->Destroy(s_sl_engine_obj); s_sl_engine_obj = nullptr; }
+  s_sl_engine = nullptr; s_sl_play = nullptr; s_sl_queue = nullptr; s_sl_ready = false;
 }
 static void nap_audio_sample(int16_t l, int16_t r) { int16_t s[2] = { l, r }; nap_audio_push(s, 1); }
 static size_t nap_audio_batch(const int16_t *data, size_t frames) { nap_audio_push(data, frames); return frames; }
@@ -891,6 +962,7 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
     retro_system_av_info av; memset(&av, 0, sizeof(av));
     retro_get_system_av_info(&av);
     g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
+    nap_sl_open(); // CESTA A: spustit OpenSL zvuk (bere z g_afifo, bez Javy)
     NAPDIAG("CESTA_A BOOT_OK gpuGles=%s fps=%.2f", g_gles_ready ? "ANO" : "NE", g_fps);
     return g_gles_ready ? 1 : 0;
 }
