@@ -1908,13 +1908,23 @@ static void fps_update(void)
 // ==================================================================
 unsigned nap_gles_grab_texture(int* out_x, int* out_y, int* out_w, int* out_h)
 {
-    if (!nap_fbo_ready) return 0;
+    static long dbg_grab_calls = 0, dbg_grab_notready = 0, dbg_grab_toobig = 0, dbg_grab_ok = 0;
+    dbg_grab_calls++;
+    if (!nap_fbo_ready) {
+        dbg_grab_notready++;
+        if (dbg_grab_calls % 120 == 1)
+            nap_diag_log("CESTA_A GRAB: nap_fbo_ready=0 (FBO jeste nehotovo) calls=%ld", dbg_grab_calls);
+        return 0;
+    }
 
     int fresh_w = 0, fresh_h = 0, fresh_sx = 0, fresh_sy = 0;
     nap_gpulib_display_info(&fresh_sx, &fresh_sy, &fresh_w, &fresh_h);
+    if (dbg_grab_calls % 120 == 1)
+        nap_diag_log("CESTA_A GRAB: display_info sx=%d sy=%d w=%d h=%d canvasTex=%u snapTex=[%u,%u]",
+                     fresh_sx, fresh_sy, fresh_w, fresh_h, nap_canvas_tex, nap_fbo_tex[0], nap_fbo_tex[1]);
     if (fresh_w <= 0) fresh_w = 320;
     if (fresh_h <= 0) fresh_h = 240;
-    if (fresh_w > NAP_PSX_VRAM_W || fresh_h > NAP_PSX_VRAM_H) return 0;
+    if (fresh_w > NAP_PSX_VRAM_W || fresh_h > NAP_PSX_VRAM_H) { dbg_grab_toobig++; return 0; }
 
     int other_idx = 1 - nap_snapshot_idx;
 

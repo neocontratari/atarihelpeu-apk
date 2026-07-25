@@ -10,7 +10,7 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 37
-        versionName "EMU10-A3-GPUGLES-OPENSL"  // cesta A + zvuk OpenSL ES (API 24), oprava AAudio i if(ok)
+        versionName "EMU10-A4-SDILENY-KONTEXT"  // cesta A: sdileni kontextu gpu-gles+eglrender, prepinani na tick
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

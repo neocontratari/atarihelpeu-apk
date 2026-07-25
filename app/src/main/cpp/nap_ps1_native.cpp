@@ -115,6 +115,14 @@ extern "C" {
 // Zachyceno PRED odeslanim explicitni kontrolou poradi deklaraci - stejna
 // trida chyby jako minuly TRUE/FALSE build fail, tentokrat vcas.
 static bool g_gles_ready = false;
+// CESTA A: surface+kontext gpu-gles (pbuffer) a ulozeny kontext eglrenderu,
+// aby tick mohl prepnout na gpu-gles pro retro_run a po grabu zpet na
+// eglrender pro kresleni na displej. GLES1 a GLES2 nemohou byt oba current.
+static EGLSurface g_gles_surface_A = EGL_NO_SURFACE;
+static EGLDisplay g_gles_display_A = EGL_NO_DISPLAY;
+static EGLContext g_gles_context_A = EGL_NO_CONTEXT;
+static EGLContext g_egl_render_ctx = EGL_NO_CONTEXT;   // kontext eglrenderu
+static EGLSurface g_egl_render_surf = EGL_NO_SURFACE;  // okno eglrenderu
 
 static std::string g_sysdir, g_savedir, g_boot_error;
 static std::atomic<int> g_pixfmt{PIXFMT_0RGB1555};
@@ -449,12 +457,31 @@ static bool nap_gles_egl_init() {
   }
 
   const EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 1, EGL_NONE }; // GLES1
-  EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
+  // CESTA A: sdilet s kontextem eglrenderu (ten je current, kdyz nas boot
+  // vola). Bez sdileni by textura, do ktere gpu-gles kresli, nebyla v
+  // kontextu eglrenderu VIDET - grab by vracel id, ale obrazovka prazdno.
+  // Presne to log ukazal: vydano=0 prazdno=vse. Sdilena skupina to spravi.
+  EGLContext shareCtx = eglGetCurrentContext();
+  // CESTA A: zapamatovat si kontext+okno eglrenderu, at se na nej tick vraci.
+  g_egl_render_ctx  = shareCtx;
+  g_egl_render_surf = eglGetCurrentSurface(EGL_DRAW);
+  if (shareCtx != EGL_NO_CONTEXT)
+    NAPDIAG("CESTA_A GLES sdili kontext s eglrenderem (share=%p)", (void*)shareCtx);
+  else
+    NAPDIAG("CESTA_A GLES POZOR: eglrender kontext neni current, sdileni nefunguje");
+  EGLContext context = eglCreateContext(display, config, shareCtx, contextAttribs);
   if (context == EGL_NO_CONTEXT) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglCreateContext err=0x%x", eglGetError());
     return false;
   }
 
+  // CESTA A: NEDELAT makecurrent tady natvrdo. eglrender a gpu-gles maji
+  // kazdy svuj kontext (sdilene textury). Prepinani resi tick: pred
+  // retro_run se udela current gpu-gles, po nem zpet eglrender. Ulozime
+  // si nas surface+context, at je tick ma cim prepnout.
+  g_gles_surface_A = surface;
+  g_gles_display_A = display;
+  g_gles_context_A = context;
   if (!eglMakeCurrent(display, surface, surface, context)) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglMakeCurrent err=0x%x", eglGetError());
     return false;
@@ -928,7 +955,12 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglStop(JNIEnv*, jclass) {
 // eglrender si timhle vezme id hotove gpu-gles textury + vyrez (pres dvirka).
 extern "C" unsigned nap_ps1_egl_grab(int* x, int* y, int* w, int* h) {
     if (!g_gles_ready) return 0;
-    return nap_gles_grab_texture(x, y, w, h);
+    unsigned tex = nap_gles_grab_texture(x, y, w, h);
+    // CESTA A: kopie hotova (v gpu-gles kontextu). Prepnout ZPET na
+    // eglrender, aby mohl tuhle (sdilenou) texturu nakreslit na okno.
+    if (g_egl_render_ctx != EGL_NO_CONTEXT && g_gles_display_A != EGL_NO_DISPLAY)
+        eglMakeCurrent(g_gles_display_A, g_egl_render_surf, g_egl_render_surf, g_egl_render_ctx);
+    return tex;
 }
 extern "C" int nap_ps1_egl_vram_w(void) { return nap_gles_vram_w(); }
 extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
@@ -968,6 +1000,11 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
 }
 extern "C" void nap_ps1_egl_tick_c(void) {
     if (!g_loaded.load()) return;
+    // CESTA A: prepnout na gpu-gles kontext, aby hra kreslila do canvasu
+    // (ne do okna eglrenderu). eglrender kontext byl current z minuleho
+    // kresleni; ted docasne na gpu-gles.
+    if (g_gles_ready && g_gles_display_A != EGL_NO_DISPLAY)
+        eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
     retro_run();
     if (g_gles_ready) nap_gles_sync_display_settings();
 }
