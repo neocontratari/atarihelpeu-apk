@@ -51,6 +51,7 @@ bool core_get_frame(CoreFrame* out);
 // ==================================================================
 bool     core_use_texture(void);   // true = jede gpu-gles cesta A
 unsigned core_get_texture(int* x, int* y, int* w, int* h); // 0 = zatim nic
+const void* core_get_pixels(int* w, int* h); // BOD 2: RGBA pixely z gpu-gles
 int      core_vram_w(void);
 int      core_vram_h(void);
 // CESTA A: prepnuti GL kontextu, ktere vola render vlakno kolem kresleni.

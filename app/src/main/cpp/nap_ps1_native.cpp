@@ -398,6 +398,7 @@ extern "C" {
   // CESTA A: dvirka z gpulib_if.c - kopie canvasu do snapshot textury BEZ
   // ctecky a vraceni jejiho id + vyrezu, pro prime kresleni v eglrender.
   unsigned nap_gles_grab_texture(int* out_x, int* out_y, int* out_w, int* out_h);
+  const void* nap_gles_grab_pixels(int* out_w, int* out_h); // BOD 2: pres procesor
   int nap_gles_vram_w(void);
   int nap_gles_vram_h(void);
   // BUILD2SK106: POZOR presne typy - BOOL je v tomhle projektu #define BOOL
@@ -457,19 +458,13 @@ static bool nap_gles_egl_init() {
   }
 
   const EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 1, EGL_NONE }; // GLES1
-  // CESTA A: sdilet s kontextem eglrenderu (ten je current, kdyz nas boot
-  // vola). Bez sdileni by textura, do ktere gpu-gles kresli, nebyla v
-  // kontextu eglrenderu VIDET - grab by vracel id, ale obrazovka prazdno.
-  // Presne to log ukazal: vydano=0 prazdno=vse. Sdilena skupina to spravi.
-  EGLContext shareCtx = eglGetCurrentContext();
-  // CESTA A: zapamatovat si kontext+okno eglrenderu, at se na nej tick vraci.
-  g_egl_render_ctx  = shareCtx;
+  // BOD 2: NEsdilime s eglrenderem. Sdileni GLES1<->GLES2 Mali odmita
+  // (eglCreateContext selze, viz log A5). Obraz predame pres pixely
+  // (glReadPixels), ktere kontext neresi. Takze vlastni kontext, share
+  // = EGL_NO_CONTEXT. Ulozime si eglrender kontext jen pro prepnuti.
+  g_egl_render_ctx  = eglGetCurrentContext();
   g_egl_render_surf = eglGetCurrentSurface(EGL_DRAW);
-  if (shareCtx != EGL_NO_CONTEXT)
-    NAPDIAG("CESTA_A GLES sdili kontext s eglrenderem (share=%p)", (void*)shareCtx);
-  else
-    NAPDIAG("CESTA_A GLES POZOR: eglrender kontext neni current, sdileni nefunguje");
-  EGLContext context = eglCreateContext(display, config, shareCtx, contextAttribs);
+  EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
   if (context == EGL_NO_CONTEXT) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglCreateContext err=0x%x", eglGetError());
     return false;
@@ -958,6 +953,21 @@ extern "C" unsigned nap_ps1_egl_grab(int* x, int* y, int* w, int* h) {
     return nap_gles_grab_texture(x, y, w, h);
 }
 
+// BOD 2: obraz pres pixely (funguje napric kontexty, sdileni netreba).
+// Prepne na gpu-gles kontext, precte pixely z canvasu, vrati je a
+// prepne zpet na eglrender - vse v render vlakne (zvuk se nezdrzuje).
+extern "C" const void* nap_ps1_egl_grab_pixels(int* w, int* h) {
+    if (!g_gles_ready) return NULL;
+    // prepnout na gpu-gles kontext (canvas je v nem)
+    if (g_gles_display_A != EGL_NO_DISPLAY)
+        eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
+    const void* px = nap_gles_grab_pixels(w, h);
+    // zpet na eglrender, aby mohl kreslit na okno
+    if (g_egl_render_ctx != EGL_NO_CONTEXT && g_gles_display_A != EGL_NO_DISPLAY)
+        eglMakeCurrent(g_gles_display_A, g_egl_render_surf, g_egl_render_surf, g_egl_render_ctx);
+    return px;
+}
+
 // CESTA A: prepnuti kontextu, ktere vola RENDER vlakno (egl_main) - NE tick.
 // Diky tomu se retro_run (co plni zvukovou frontu) nezdrzuje a zvuk neskrece.
 // bind_core: pred retro_run+kreslenim gpu-gles do canvasu.
@@ -1008,6 +1018,12 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
 }
 extern "C" void nap_ps1_egl_tick_c(void) {
     if (!g_loaded.load()) return;
+    // BOD 2: hra musi kreslit do gpu-gles canvasu - prepnout na jeho
+    // kontext pred retro_run. Je to v render vlakne (ne oddelene), takze
+    // levne. Po retro_run zustane gpu-gles current; grab_pixels si pak
+    // precte a prepne zpet na eglrender.
+    if (g_gles_ready && g_gles_display_A != EGL_NO_DISPLAY)
+        eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
     retro_run();
     if (g_gles_ready) nap_gles_sync_display_settings();
 }

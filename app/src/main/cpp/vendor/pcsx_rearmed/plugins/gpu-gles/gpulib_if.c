@@ -29,6 +29,7 @@
 #include "gpuPrim.c"
 #include "hud.c"
 #include <time.h> // BUILD2SK131: presne mereni casu (clock_gettime) - viz nap_now_ms nize
+#include <stdlib.h> // BOD 2: realloc/free pro pixel grab buffer
 
 // BUILD2SK98: most do libretro.c (viz tam - nap_gles_push_frame) - gpu-gles
 // renderuje primo pres EGL/GL (eglSwapBuffers v updateDisplay nize), na
@@ -1957,3 +1958,55 @@ unsigned nap_gles_grab_texture(int* out_x, int* out_y, int* out_w, int* out_h)
 // Rozmery VRAM textury (eglrender potrebuje pro prepocet UV souradnic).
 int nap_gles_vram_w(void) { return NAP_PSX_VRAM_W; }
 int nap_gles_vram_h(void) { return NAP_PSX_VRAM_H; }
+
+// ==================================================================
+//  CESTA A - BOD 2: obraz pres glReadPixels (funguje napric kontexty).
+//
+//  Sdileni GLES1<->GLES2 kontextu Mali odmita (eglCreateContext selze).
+//  Proto misto sdilene textury precteme z gpu-gles canvasu pixely do
+//  bufferu v procesoru a ten predame eglrenderu. Pixely nejsou vazane
+//  na GL kontext, takze projdou. Je to jeden krok navic (GPU->procesor
+//  ->GPU), ale obraz je ostry gpu-gles, bez Javy. Berlicka jen v tom,
+//  ze to jde skrz procesor - ne pres Javu.
+//
+//  Vola se z gpu-gles kontextu (po retro_run). Vraci ukazatel na
+//  interni buffer + rozmery vyrezu.
+// ==================================================================
+static unsigned char* nap_grab_buf = NULL;
+static int nap_grab_buf_cap = 0;
+
+const void* nap_gles_grab_pixels(int* out_w, int* out_h)
+{
+    if (!nap_fbo_ready) return NULL;
+
+    int fresh_w = 0, fresh_h = 0, fresh_sx = 0, fresh_sy = 0;
+    nap_gpulib_display_info(&fresh_sx, &fresh_sy, &fresh_w, &fresh_h);
+    if (fresh_w <= 0) fresh_w = 320;
+    if (fresh_h <= 0) fresh_h = 240;
+    if (fresh_w > NAP_PSX_VRAM_W)  fresh_w = NAP_PSX_VRAM_W;
+    if (fresh_h > NAP_PSX_VRAM_H)  fresh_h = NAP_PSX_VRAM_H;
+
+    int need = fresh_w * fresh_h * 4; // RGBA8
+    if (need > nap_grab_buf_cap) {
+        unsigned char* nb = (unsigned char*)realloc(nap_grab_buf, need);
+        if (!nb) return NULL;
+        nap_grab_buf = nb;
+        nap_grab_buf_cap = need;
+    }
+
+    // Cist z canvas_fbo (kam hra kreslila). Y v GL je zdola - eglrender
+    // to prevrati pri kresleni (nastavi UV podle toho).
+    glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_canvas_fbo);
+    int glY = NAP_PSX_VRAM_H - (fresh_sy + fresh_h);
+    if (glY < 0) glY = 0;
+    glReadPixels(fresh_sx, glY, fresh_w, fresh_h, GL_RGBA, GL_UNSIGNED_BYTE, nap_grab_buf);
+
+    static long dbg_px = 0;
+    if (++dbg_px % 120 == 1)
+        nap_diag_log("CESTA_A PIXELS: cteno %dx%d z canvasFbo=%u (bod 2, pres procesor)",
+                     fresh_w, fresh_h, nap_canvas_fbo);
+
+    if (out_w) *out_w = fresh_w;
+    if (out_h) *out_h = fresh_h;
+    return nap_grab_buf;
+}

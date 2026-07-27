@@ -170,8 +170,9 @@ static atomic_uint g_pad_state = 0; // bitmapa RETRO_DEVICE_ID_JOYPAD_*
 // egl_main.c (obsluha dotyku) sem strka stav tlacitek.
 void core_set_pad(unsigned state) { atomic_store(&g_pad_state, state); }
 
-// CESTA A: ukazatele na dvirka jadra (gpu-gles textura bez procesoru).
+// CESTA A: ukazatele na dvirka jadra.
 static unsigned (*p_egl_grab)(int*,int*,int*,int*) = NULL;
+static const void* (*p_egl_grab_pixels)(int*,int*) = NULL; // BOD 2: pres procesor
 static int      (*p_egl_vram_w)(void) = NULL;
 static int      (*p_egl_vram_h)(void) = NULL;
 static int      s_use_texture = 0; // 1 = gpu-gles cesta bezi
@@ -185,6 +186,11 @@ bool     core_use_texture(void) { return s_use_texture != 0; }
 unsigned core_get_texture(int* x, int* y, int* w, int* h) {
     if (!s_use_texture || !p_egl_grab) return 0;
     return p_egl_grab(x, y, w, h);
+}
+// BOD 2: pixely z gpu-gles (napric kontexty, sdileni netreba)
+const void* core_get_pixels(int* w, int* h) {
+    if (!s_use_texture || !p_egl_grab_pixels) return NULL;
+    return p_egl_grab_pixels(w, h);
 }
 int core_vram_w(void) { return p_egl_vram_w ? p_egl_vram_w() : 1024; }
 int core_vram_h(void) { return p_egl_vram_h ? p_egl_vram_h() : 512; }
@@ -306,6 +312,7 @@ void core_init(void* java_vm, const char* internal_data_path) {
     *(void**)&p_egl_boot   = dlsym(h, "nap_ps1_egl_boot_c");
     *(void**)&p_egl_tick   = dlsym(h, "nap_ps1_egl_tick_c");
     *(void**)&p_egl_grab   = dlsym(h, "nap_ps1_egl_grab");
+    *(void**)&p_egl_grab_pixels = dlsym(h, "nap_ps1_egl_grab_pixels"); // BOD 2
     *(void**)&p_egl_vram_w = dlsym(h, "nap_ps1_egl_vram_w");
     *(void**)&p_egl_vram_h = dlsym(h, "nap_ps1_egl_vram_h");
     *(void**)&p_bind_core   = dlsym(h, "nap_ps1_egl_bind_core");

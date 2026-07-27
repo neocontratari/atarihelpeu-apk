@@ -10,7 +10,7 @@ android {
         minSdk 24
         targetSdk 34
         versionCode 37
-        versionName "EMU10-A5-ODLOZENY-BOOT"  // cesta A: boot az po vzniku EGL kontextu + prepinani mimo zvuk
+        versionName "EMU10-A6-PIXEL-CESTA"  // cesta A bod 2: gpu-gles obraz pres glReadPixels (napric kontexty)
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

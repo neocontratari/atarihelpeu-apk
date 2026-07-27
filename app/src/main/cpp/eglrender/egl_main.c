@@ -427,14 +427,10 @@ static void draw_frame(Engine* e) {
 
     double t1 = now_sec();  // po pozadi
 
-    // 2) Krok jadra + prevzeti jeho framebufferu.
-    //    CESTA A: pred krokem prepnout na gpu-gles kontext (hra kresli do
-    //    canvasu), po kroku zpet na eglrender (kresli na okno). Prepinani
-    //    dela RENDER vlakno tady - ne tick - takze retro_run se nezdrzuje
-    //    a zvuk neskrece.
-    core_bind_for_step();
+    // 2) Krok jadra. BOD 2: tick prepne na gpu-gles kontext, hra kresli
+    //    do canvasu. Pak core_get_pixels precte pixely a prepne zpet na
+    //    eglrender - vse uvnitr, v render vlakne (zvuk se nezdrzuje).
     core_step();
-    core_bind_for_display();
 
     double t2 = now_sec();  // po kroku jadra
 
@@ -444,41 +440,41 @@ static void draw_frame(Engine* e) {
     //  id textury z jadra a nakreslime ji. Ostry obraz, nula procesoru.
     // ==============================================================
     if (core_use_texture()) {
-        int sx=0, sy=0, sw=0, sh=0;
-        unsigned tex = core_get_texture(&sx, &sy, &sw, &sh);
+        int sw=0, sh=0;
+        const void* px = core_get_pixels(&sw, &sh);  // BOD 2: RGBA pixely
         static long dbgA_total=0, dbgA_empty=0;
         dbgA_total++;
-        if (tex == 0 || sw <= 0 || sh <= 0) {
+        if (!px || sw <= 0 || sh <= 0) {
             dbgA_empty++;
             if (dbgA_total % 180 == 0)
-                LOGI("MUJLOG cestaA: vydano=%ld prazdno=%ld (gpu-gles textura)", dbgA_total-dbgA_empty, dbgA_empty);
-            // nic noveho - necháme na obrazovce predchozi snimek
+                LOGI("MUJLOG cestaA: vydano=%ld prazdno=%ld (gpu-gles pixely)", dbgA_total-dbgA_empty, dbgA_empty);
             eglSwapBuffers(e->display, e->surface);
             return;
         }
-        int VW = core_vram_w(), VH = core_vram_h();
 
-        // letterbox podle vyrezu hry
+        // Nahrat pixely do textury eglrenderu a nakreslit ji.
+        glViewport(0, 0, w, h);
         int vw = w, vh = (w * sh) / sw;
         if (vh > h) { vh = h; vw = (h * sw) / sh; }
         glViewport((w - vw)/2, (h - vh)/2, vw, vh);
         glClearColor(0.f,0.f,0.f,1.f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // UV vyrez ve VRAM texture (Y v GL zdola -> prevraceni)
-        float u0 = (float)sx / VW,        u1 = (float)(sx+sw) / VW;
-        float glY = (float)(VH - (sy+sh));
-        float v0 = (glY + sh) / VH,       v1 = glY / VH;
-
-        const GLfloat quad[] = {
-            -1.f,-1.f, u0,v0,   1.f,-1.f, u1,v0,
-            -1.f, 1.f, u0,v1,   1.f, 1.f, u1,v1,
-        };
-        glUseProgram(e->program);
-        glUniform1f(e->loc_mode, 1.0f); // gpu-gles textura je XRGB-like
-        glBindTexture(GL_TEXTURE_2D, (GLuint)tex);
+        glBindTexture(GL_TEXTURE_2D, e->texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        // Y v GL je zdola - pixely z glReadPixels jsou taky zdola, takze
+        // se to srovna. Standardni quad s UV 0..1.
+        const GLfloat quad[] = {
+            -1.f,-1.f, 0.f,0.f,   1.f,-1.f, 1.f,0.f,
+            -1.f, 1.f, 0.f,1.f,   1.f, 1.f, 1.f,1.f,
+        };
+        glUseProgram(e->program);
+        glUniform1f(e->loc_mode, 0.0f); // RGBA rovnou (ne XRGB)
         glVertexAttribPointer((GLuint)e->loc_pos, 2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad);
         glVertexAttribPointer((GLuint)e->loc_tex, 2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad+2);
         glEnableVertexAttribArray((GLuint)e->loc_pos);
@@ -486,7 +482,7 @@ static void draw_frame(Engine* e) {
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         if (dbgA_total % 180 == 0)
-            LOGI("MUJLOG cestaA: vydano=%ld prazdno=%ld vyrez=%dx%d (ostry gpu-gles)", dbgA_total-dbgA_empty, dbgA_empty, sw, sh);
+            LOGI("MUJLOG cestaA: vydano=%ld prazdno=%ld vyrez=%dx%d (ostry gpu-gles pres pixely)", dbgA_total-dbgA_empty, dbgA_empty, sw, sh);
 
         if (!eglSwapBuffers(e->display, e->surface)) {
             EGLint err = eglGetError();
@@ -497,7 +493,7 @@ static void draw_frame(Engine* e) {
                 if (egl_init(e, win)) e->animating = true;
             }
         }
-        return; // CESTA A hotova - dal nepokracujeme na softwarovou cestu
+        return;
     }
 
     CoreFrame fr;
