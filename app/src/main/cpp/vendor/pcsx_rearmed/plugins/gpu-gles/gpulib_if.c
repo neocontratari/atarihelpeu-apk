@@ -1994,8 +1994,47 @@ const void* nap_gles_grab_pixels(int* out_w, int* out_h)
         nap_grab_buf_cap = need;
     }
 
-    // Cist z canvas_fbo (kam hra kreslila). Y v GL je zdola - eglrender
-    // to prevrati pri kresleni (nastavi UV podle toho).
+    // ==============================================================
+    //  RGB24 (FMV) — snimek cteme PRIMO Z VRAM, ne z canvasu.
+    //  Proc: canvas cesta pro RGB24 (UploadScreen/LoadDirectMovieFast +
+    //  prepocet *2/3 + state-dance) je krehka a delala artefakty. Snimek
+    //  filmu ale UZ LEZI v PS1 VRAM jako 24bit (MDEC ho tam zapsal). Precteme
+    //  ho tedy stejnym dekodem jako vendor LoadDirectMovieFast: 3 bajty na
+    //  pixel R,G,B (radek VRAM = NAP_PSX_VRAM_W halfwordu = 2048 bajtu),
+    //  s Y-flipem, aby to sedelo s orientaci zdola-nahoru, kterou eglrender
+    //  ceka od glReadPixels. 16bit rezim (intro, 2D i 3D) zustava BEZE ZMENY
+    //  na overene canvas ceste nize.
+    if (nap_disp_rgb24) {
+        const unsigned short* v16 = (const unsigned short*)gpu.vram;
+        if (!v16) return NULL;
+        // Neprecist za pravy okraj radku VRAM (2048 B). Beznou FMV (src_x=0)
+        // to neomezi, je to jen pojistka proti OOB pri velkem src_x.
+        int max_px = (NAP_PSX_VRAM_W * 2 - fresh_sx * 2) / 3;
+        if (max_px < 0) max_px = 0;
+        if (fresh_w > max_px) fresh_w = max_px;
+        for (int r = 0; r < fresh_h; r++) {
+            int vram_row = fresh_sy + (fresh_h - 1 - r);      // Y-flip (zdola nahoru)
+            if (vram_row < 0) vram_row = 0;
+            if (vram_row >= NAP_PSX_VRAM_H) vram_row = NAP_PSX_VRAM_H - 1;
+            const unsigned char* pD =
+                (const unsigned char*)&v16[vram_row * NAP_PSX_VRAM_W + fresh_sx];
+            unsigned char* dst = nap_grab_buf + r * fresh_w * 4;
+            for (int c = 0; c < fresh_w; c++) {
+                dst[0] = pD[0]; dst[1] = pD[1]; dst[2] = pD[2]; dst[3] = 0xFF; // R,G,B,A
+                dst += 4; pD += 3;
+            }
+        }
+        static long dbg_r24 = 0;
+        if (++dbg_r24 % 120 == 1)
+            nap_diag_log("CESTA_A PIXELS24: dekodovano %dx%d primo z VRAM src=[%d,%d] (RGB24/FMV, mimo canvas)",
+                         fresh_w, fresh_h, fresh_sx, fresh_sy);
+        if (out_w) *out_w = fresh_w;
+        if (out_h) *out_h = fresh_h;
+        return nap_grab_buf;
+    }
+
+    // 16bit: puvodni OVERENA cesta - cist z canvas_fbo (kam hra kreslila). Y v
+    // GL je zdola - eglrender to prevrati pri kresleni (nastavi UV podle toho).
     glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_canvas_fbo);
     int glY = NAP_PSX_VRAM_H - (fresh_sy + fresh_h);
     if (glY < 0) glY = 0;

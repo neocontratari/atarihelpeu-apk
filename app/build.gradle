@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 38
-        versionName "EMU10-A7-VIDET-KRESLENI-LOG"  // JEN diagnostika, ne zlepseni: MUJLOG z egl_main.c (faze kresleni) ted taky do /8765/log
+        versionCode 39
+        versionName "EMU10-A8-FMV-Z-VRAM"  // pokus o obraz hry: RGB24/FMV se cte primo z VRAM (mimo krehkou canvas cestu); 16bit beze zmeny
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
