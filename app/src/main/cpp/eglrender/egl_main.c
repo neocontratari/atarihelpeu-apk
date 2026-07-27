@@ -30,13 +30,56 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
+#include <stdio.h>    // vsnprintf - kanal MUJLOG do souboru, ktery Java servíruje na /8765/log
+#include <stdarg.h>   // va_list - forwarding formatu do nap_diag_log
+#include <dlfcn.h>    // dlopen/dlsym: nap_diag_log z uz nactene libnapps1core.so
 
 #include "egl_core_api.h"
 #include "egl_logserver.h"
 
 #define TAG "EGLRender"
-#define LOGI(...) do { __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__); ls_log(__VA_ARGS__); } while (0)
-#define LOGE(...) do { __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__); ls_log(__VA_ARGS__); } while (0)
+
+// ---------------------------------------------------------------------
+//  KANAL MUJLOG -> /8765/log  (aby bylo videt i fazi kresleni)
+//  egl_main.c bezi v libeglrender.so a loguje pres ls_log() do vlastniho
+//  HTTP serveru (egl_logserver.c), taky na portu 8765. Jenze ten port uz
+//  drzi emu10 (Java /log), ls server se tedy nenaveze ("bezi dal bez nej")
+//  a jeho radky se NIKAM neservíruji - v /8765/log nejsou videt. Radky,
+//  ktere v /8765/log videt JSOU (CESTA_A ...), pise nap_diag_log() z
+//  libnapps1core.so primo do souboru, ktery Java servíruje. Proto pripojime
+//  egl_main.c na TENTYZ soubor: symbol nap_diag_log vytahneme pres dlsym
+//  z uz nactene knihovny - stejnou cestou, jakou core_ps1.c bere
+//  nap_ps1_egl_*. Kdyz se symbol nenajde (jadro jeste neni v procesu),
+//  radek jen spadne zpet na ls_log + logcat, bez padu, a pri pristim logu
+//  to zkusime znovu.
+#ifndef RTLD_NOLOAD
+#define RTLD_NOLOAD 0   // kdyby prisny rezim prekladace priznak skryl (fallback)
+#endif
+static void (*g_nap_diag_log)(const char*, ...) = NULL;
+static void egl_file_log(const char* fmt, ...) {
+    if (!g_nap_diag_log) {
+        // RTLD_NOLOAD = jen najit uz nactenou knihovnu, nikdy nenacitat
+        // (zadny vedlejsi efekt z log cesty). Pred bootem jadra jeste
+        // v procesu byt nemusi - pak nechame g_nap_diag_log NULL a pri
+        // pristim logu to zkusime znovu.
+        void* h = dlopen("libnapps1core.so", RTLD_NOW | RTLD_NOLOAD);
+        if (h) *(void**)&g_nap_diag_log = dlsym(h, "nap_diag_log");
+        if (!g_nap_diag_log) return;
+    }
+    char buf[512];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    g_nap_diag_log("%s", buf);   // do STEJNEHO souboru jako radky CESTA_A
+}
+
+// LOGI/LOGE nechavaji oba puvodni kanaly (logcat + ls_log) a PRIDAVAJI
+// treti: soubor, ktery Java servíruje na /8765/log. Zadne volani se
+// nemeni - vsechna existujici hlaseni (vcetne MUJLOG cestaA vydano/prazdno)
+// tim konecne dorazi tam, kam se divas.
+#define LOGI(...) do { __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__); ls_log(__VA_ARGS__); egl_file_log(__VA_ARGS__); } while (0)
+#define LOGE(...) do { __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__); ls_log(__VA_ARGS__); egl_file_log(__VA_ARGS__); } while (0)
 
 // ------------------------------------------------------------------
 // Stav rendereru
@@ -146,8 +189,7 @@ static int32_t handle_input(struct android_app* app, AInputEvent* ev) {
     static unsigned dbg_last_pad = 0;
     if (st != dbg_last_pad) {
         dbg_last_pad = st;
-        __android_log_print(ANDROID_LOG_INFO, TAG, "MUJLOG ovladani: stav tlacitek = 0x%03x", st);
-        ls_log("MUJLOG ovladani: stav tlacitek = 0x%03x", st);
+        LOGI("MUJLOG ovladani: stav tlacitek = 0x%03x", st);  // ted i do /8765/log (drive jen logcat)
     }
     return 1;
 }
@@ -446,7 +488,7 @@ static void draw_frame(Engine* e) {
         dbgA_total++;
         if (!px || sw <= 0 || sh <= 0) {
             dbgA_empty++;
-            if (dbgA_total % 180 == 0)
+            if (dbgA_total <= 3 || dbgA_total % 180 == 0)   // prvni 3 snimky hned, at kratky test neco ukaze; pak stejny takt jako drive
                 LOGI("MUJLOG cestaA: vydano=%ld prazdno=%ld (gpu-gles pixely)", dbgA_total-dbgA_empty, dbgA_empty);
             eglSwapBuffers(e->display, e->surface);
             return;
@@ -481,7 +523,7 @@ static void draw_frame(Engine* e) {
         glEnableVertexAttribArray((GLuint)e->loc_tex);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-        if (dbgA_total % 180 == 0)
+        if (dbgA_total <= 3 || dbgA_total % 180 == 0)   // prvni 3 snimky hned, at kratky test neco ukaze; pak stejny takt jako drive
             LOGI("MUJLOG cestaA: vydano=%ld prazdno=%ld vyrez=%dx%d (ostry gpu-gles pres pixely)", dbgA_total-dbgA_empty, dbgA_empty, sw, sh);
 
         if (!eglSwapBuffers(e->display, e->surface)) {
