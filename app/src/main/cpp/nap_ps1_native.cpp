@@ -1087,6 +1087,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
+    nap_diag_log("=== NEOCONTR A16 28-07-2026 === (opravy: 12x nedefinovane chovani v texturach + 4x cteni za koncem dat ve filmu)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
