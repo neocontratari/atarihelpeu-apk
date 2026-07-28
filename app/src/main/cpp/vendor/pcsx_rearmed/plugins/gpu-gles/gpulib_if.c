@@ -1975,6 +1975,7 @@ int nap_gles_vram_h(void) { return NAP_PSX_VRAM_H; }
 static unsigned char* nap_grab_buf = NULL;
 static int nap_grab_buf_cap = 0;
 
+extern volatile const char* g_crash_stage; // A10: drobecek pro zachytavac padu (definice v nap_ps1_native.cpp)
 const void* nap_gles_grab_pixels(int* out_w, int* out_h)
 {
     if (!nap_fbo_ready) return NULL;
@@ -2005,6 +2006,7 @@ const void* nap_gles_grab_pixels(int* out_w, int* out_h)
     //  ceka od glReadPixels. 16bit rezim (intro, 2D i 3D) zustava BEZE ZMENY
     //  na overene canvas ceste nize.
     if (nap_disp_rgb24) {
+        g_crash_stage = "grab_rgb24"; // A10
         const unsigned short* v16 = (const unsigned short*)gpu.vram;
         if (!v16) return NULL;
         // POJISTKA PROTI PADU (A8): src z gpu.screen muze byt behem prepnuti
@@ -2040,11 +2042,13 @@ const void* nap_gles_grab_pixels(int* out_w, int* out_h)
                          fresh_w, fresh_h, fresh_sx, fresh_sy);
         if (out_w) *out_w = fresh_w;
         if (out_h) *out_h = fresh_h;
+        g_crash_stage = "egl_present(after grab_rgb24)"; // A10: grab hotovo, ted kresli eglrender
         return nap_grab_buf;
     }
 
     // 16bit: puvodni OVERENA cesta - cist z canvas_fbo (kam hra kreslila). Y v
     // GL je zdola - eglrender to prevrati pri kresleni (nastavi UV podle toho).
+    g_crash_stage = "grab_16bit"; // A10
     glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_canvas_fbo);
     int glY = NAP_PSX_VRAM_H - (fresh_sy + fresh_h);
     if (glY < 0) glY = 0;
@@ -2057,5 +2061,6 @@ const void* nap_gles_grab_pixels(int* out_w, int* out_h)
 
     if (out_w) *out_w = fresh_w;
     if (out_h) *out_h = fresh_h;
+    g_crash_stage = "egl_present(after grab_16bit)"; // A10
     return nap_grab_buf;
 }

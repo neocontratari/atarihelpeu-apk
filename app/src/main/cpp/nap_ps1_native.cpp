@@ -22,6 +22,9 @@
 #include <GLES/gl.h>   // GLES1 - presne to, co gpu-gles pouziva (fixed-function pipeline)
 #include <SLES/OpenSLES.h>          // CESTA A: zvuk bez Javy (od API 9)
 #include <SLES/OpenSLES_Android.h>
+#include <signal.h>   // A10: zachytavac padu (sigaction)
+#include <fcntl.h>    // A10: open() - zapis padu do log souboru (async-signal-safe)
+#include <unistd.h>   // A10: write()/close()
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, "NAP_PS1", __VA_ARGS__)
 
 // BUILD2SK115: presunuto sem (drive bylo hluboko v souboru, radek 274+) -
@@ -33,6 +36,63 @@
 // pouzije.
 static std::mutex g_diag_log_mutex;
 static std::string g_diag_log_path;
+
+// =====================================================================
+//  A10: ZACHYTAVAC PADU -> /8765/log
+//  Nativni pad (SIGSEGV/…) se do logu sam nezapise (jde do tombstone/logcatu,
+//  kam bez adb nevidime) - proto jsme u FMV padu byli slepi. Tady chytime
+//  signal a zapiseme KAM to spadlo (drobecek g_crash_stage: jadro / muj grab
+//  / eglrender) do STEJNEHO souboru, ktery Rene vidi na /8765/log.
+//  Vse v handleru je async-signal-safe: jen open/write/close + zasobnik,
+//  ZADNY malloc/std::string/snprintf (ty by v handleru mohly zatuhnout).
+static char g_crash_log_path[512]  = {0};         // signal-safe kopie cesty k hlavnimu logu
+static char g_crash_last_path[512] = {0};         // A11: SAMOSTATNY soubor pro posledni pad - PREZIJE pad procesu i smazani hlavniho logu pri restartu
+extern "C" { volatile const char* g_crash_stage = "init"; } // kde jsme byli, kdyz to spadlo
+
+static void nap_wr(int fd, const char* s) { size_t n = 0; while (s[n]) n++; while (n) { ssize_t w = write(fd, s, n); if (w <= 0) break; s += w; n -= (size_t)w; } }
+static void nap_wr_dec(int fd, long v) {
+    char b[24]; int i = sizeof(b); int neg = v < 0; unsigned long u = neg ? (unsigned long)(-(v + 1)) + 1UL : (unsigned long)v;
+    if (u == 0) b[--i] = '0';
+    while (u) { b[--i] = (char)('0' + (u % 10)); u /= 10; }
+    if (neg) b[--i] = '-';
+    while (i < (int)sizeof(b)) { char c = b[i++]; ssize_t w = write(fd, &c, 1); if (w <= 0) break; }
+}
+static void nap_wr_hex(int fd, unsigned long u) {
+    static const char* H = "0123456789abcdef"; char b[2 + sizeof(void*) * 2]; int i = sizeof(b);
+    if (u == 0) b[--i] = '0';
+    while (u) { b[--i] = H[u & 0xf]; u >>= 4; }
+    b[--i] = 'x'; b[--i] = '0';
+    while (i < (int)sizeof(b)) { char c = b[i++]; ssize_t w = write(fd, &c, 1); if (w <= 0) break; }
+}
+static void nap_write_crash_to(const char* path, int sig, void* addr) {
+    if (!path || !path[0]) return;
+    int fd = open(path, O_WRONLY | O_APPEND | O_CREAT, 0644);
+    if (fd < 0) return;
+    const char* st = (const char*)g_crash_stage;
+    nap_wr(fd, "\nNAP_CRASH sig=");   nap_wr_dec(fd, sig);
+    nap_wr(fd, " addr=");              nap_wr_hex(fd, (unsigned long)addr);
+    nap_wr(fd, " stage=");             nap_wr(fd, st ? st : "?");
+    nap_wr(fd, " -- TADY to spadlo (A11)\n");
+    close(fd);
+}
+static void nap_crash_handler(int sig, siginfo_t* si, void* uc) {
+    (void)uc;
+    void* addr = si ? si->si_addr : (void*)0;
+    // 1) SAMOSTATNY soubor - prezije smazani hlavniho logu pri restartu; odtud
+    //    to pri pristim spusteni PS1 vytahneme do /8765/log (viz boot nize).
+    nap_write_crash_to(g_crash_last_path, sig, addr);
+    // 2) i do hlavniho logu - kdyby appka prece jen prezila a server bezel dal.
+    nap_write_crash_to(g_crash_log_path, sig, addr);
+    signal(sig, SIG_DFL); // pak necháme normalni pad (tombstone), at se nic nezmizi
+    raise(sig);
+}
+static void nap_install_crash_handler(void) {
+    static int done = 0; if (done) return; done = 1;
+    struct sigaction sa; memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = nap_crash_handler; sa.sa_flags = SA_SIGINFO; sigemptyset(&sa.sa_mask);
+    sigaction(SIGSEGV, &sa, NULL); sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGBUS,  &sa, NULL); sigaction(SIGILL,  &sa, NULL); sigaction(SIGFPE, &sa, NULL);
+}
 
 // BUILD2SK99: primy, OKAMZITY zapis na disk - zadna fronta, zadne bufferovani.
 // Kazde volani otevre soubor, zapise radek, hned zavre (fclose implicitne
@@ -59,6 +119,13 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetDiagLogPath(JNIEnv *env, jclas
     std::lock_guard<std::mutex> lock(g_diag_log_mutex);
     g_diag_log_path = p ? p : "";
   }
+  // A10: signal-safe kopie (handler nesmi sahat na std::string)
+  { const char* pp = p ? p : ""; size_t i = 0; for (; pp[i] && i < sizeof(g_crash_log_path) - 1; i++) g_crash_log_path[i] = pp[i]; g_crash_log_path[i] = '\0'; }
+  // A11: dedikovana cesta pro posledni pad = hlavni log + ".lastcrash". Hlavni
+  //      log se pri startu appky maze, tenhle sourozenec NE - proto pad prezije.
+  { size_t i = 0; for (; g_crash_log_path[i] && i < sizeof(g_crash_last_path) - 11; i++) g_crash_last_path[i] = g_crash_log_path[i];
+    const char* suf = ".lastcrash"; for (size_t j = 0; suf[j] && i < sizeof(g_crash_last_path) - 1; j++, i++) g_crash_last_path[i] = suf[j];
+    g_crash_last_path[i] = '\0'; }
   env->ReleaseStringUTFChars(jpath, p);
 }
 // BUILD2SK99: obojí najednou - logcat (kdyby nekdy byl adb pristup) i durable
@@ -986,6 +1053,18 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
+    nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
+    // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
+    // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
+    // VYTAHNEME do cerstveho /8765/log, at ho Rene po restartu + spusteni PS1 uvidi.
+    if (g_crash_last_path[0]) {
+        int cfd = open(g_crash_last_path, O_RDONLY);
+        if (cfd >= 0) {
+            char cb[512]; ssize_t rd = read(cfd, cb, sizeof(cb) - 1); close(cfd);
+            if (rd > 0) { cb[(size_t)rd] = '\0'; nap_diag_log("=== PREDCHOZI PAD (z minuleho behu; server ho zive nestihl ukazat):%s===", cb); }
+            unlink(g_crash_last_path);
+        }
+    }
     if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
     g_sysdir = sys ? sys : "";
     g_input_bits.store(0);
@@ -1022,10 +1101,14 @@ extern "C" void nap_ps1_egl_tick_c(void) {
     // kontext pred retro_run. Je to v render vlakne (ne oddelene), takze
     // levne. Po retro_run zustane gpu-gles current; grab_pixels si pak
     // precte a prepne zpet na eglrender.
+    g_crash_stage = "egl_makecurrent";
     if (g_gles_ready && g_gles_display_A != EGL_NO_DISPLAY)
         eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
+    g_crash_stage = "retro_run";           // A10: jadro + gpu-gles vykresleni (vc. UploadScreen pro FMV)
     retro_run();
+    g_crash_stage = "sync_display";
     if (g_gles_ready) nap_gles_sync_display_settings();
+    g_crash_stage = "tick_done(cekam na eglrender grab/present)";
 }
 
 extern "C" JNIEXPORT jstring JNICALL
