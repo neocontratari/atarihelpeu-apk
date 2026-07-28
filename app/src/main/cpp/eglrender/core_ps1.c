@@ -27,7 +27,10 @@
 #include <strings.h>
 
 #define TAG "EGLRender"
-#define P1LOG(...) do { __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__); ls_log(__VA_ARGS__); } while (0)
+// A12: ls_log SMAZAN (jeho server na 8765 uz nebezi - port drzi Java). Radky
+// jdou do logcatu + do SPOLECNEHO souboru, ktery Java servíruje na /8765/log.
+void egl_file_log(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+#define P1LOG(...) do { __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__); egl_file_log(__VA_ARGS__); } while (0)
 
 // ------------------------------------------------------------------
 // Minimalni vytazek z libretro.h (verejny standard, stabilni ABI)

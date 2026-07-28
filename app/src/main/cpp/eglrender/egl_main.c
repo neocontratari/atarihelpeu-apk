@@ -56,7 +56,7 @@
 #define RTLD_NOLOAD 0   // kdyby prisny rezim prekladace priznak skryl (fallback)
 #endif
 static void (*g_nap_diag_log)(const char*, ...) = NULL;
-static void egl_file_log(const char* fmt, ...) {
+void egl_file_log(const char* fmt, ...) {   // A12: nestatic - pouziva i core_ps1.c (spolecny log)
     if (!g_nap_diag_log) {
         // RTLD_NOLOAD = jen najit uz nactenou knihovnu, nikdy nenacitat
         // (zadny vedlejsi efekt z log cesty). Pred bootem jadra jeste
@@ -74,12 +74,11 @@ static void egl_file_log(const char* fmt, ...) {
     g_nap_diag_log("%s", buf);   // do STEJNEHO souboru jako radky CESTA_A
 }
 
-// LOGI/LOGE nechavaji oba puvodni kanaly (logcat + ls_log) a PRIDAVAJI
-// treti: soubor, ktery Java servíruje na /8765/log. Zadne volani se
-// nemeni - vsechna existujici hlaseni (vcetne MUJLOG cestaA vydano/prazdno)
-// tim konecne dorazi tam, kam se divas.
-#define LOGI(...) do { __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__); ls_log(__VA_ARGS__); egl_file_log(__VA_ARGS__); } while (0)
-#define LOGE(...) do { __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__); ls_log(__VA_ARGS__); egl_file_log(__VA_ARGS__); } while (0)
+// A12: ls_log SMAZAN z obou maker - jeho server (egl_logserver na 8765) uz
+// nebezi, takze to byl jen zapis do nikam. Zustava logcat + JEDEN spolecny
+// soubor, ktery Java servíruje na /8765/log. Vsechna hlaseni na jednom miste.
+#define LOGI(...) do { __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__); egl_file_log(__VA_ARGS__); } while (0)
+#define LOGE(...) do { __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__); egl_file_log(__VA_ARGS__); } while (0)
 
 // ------------------------------------------------------------------
 // Stav rendereru
@@ -483,7 +482,7 @@ static void draw_frame(Engine* e) {
     // ==============================================================
     if (core_use_texture()) {
         int sw=0, sh=0;
-        const void* px = core_get_pixels(&sw, &sh);  // BOD 2: RGBA pixely
+        const void* px = core_get_pixels(&sw, &sh);  // grab si kontext prepne tam i zpet sam
         static long dbgA_total=0, dbgA_empty=0;
         dbgA_total++;
         if (!px || sw <= 0 || sh <= 0) {
@@ -722,7 +721,15 @@ void android_main(struct android_app* app) {
     app->onInputEvent = handle_input; // OVLADANI: dotyk -> PS1 tlacitka (v C)
 
     logserver_set_upload_dir(app->activity->internalDataPath);
-    logserver_start(8765);
+    // A12: PRESTEHOVANO z 8765 na 8766. Eglrender mel vlastni server na TOMTEZ
+    // portu jako Java (MainActivity: new ServerSocket(8765)) - kdo se navazal
+    // driv, ten vyhral, a Rene proto videl pokazde JINY log (jednou radky
+    // eglrenderu s casem, jindy Javy s datem). Odtud "hlaseni zmizela".
+    // Nemazeme ho ale uplne: nese nahravani her a BIOSu pres wifi (/put,
+    // /putbios, /list), ktere Java nema. Takze: LOGY = jen 8765 (Java, jeden
+    // zdroj pravdy, chodi tam i vsechny radky eglrenderu pres nap_diag_log),
+    // NAHRAVANI HER = 8766.
+    logserver_start(8766);
     LOGI("=== AH EGL Render start (verze 1.4-PS1-NABEH) ===");
     core_init(app->activity->vm, app->activity->internalDataPath);
 

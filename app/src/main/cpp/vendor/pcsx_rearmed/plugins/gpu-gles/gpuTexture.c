@@ -971,7 +971,7 @@ void LoadStretchPackedWndTexturePage(int pageid, int mode, short cx, short cy)
         if(ldy) 
          {ldy--;
           for(TXU=g_x1;TXU<=g_x2;TXU++)
-           *ta++=*(ta-(g_x2-g_x1));
+           { unsigned int nap_v = *(ta-(g_x2-g_x1)); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-N) = nedefinovane chovani */
          }
        }
 
@@ -1048,7 +1048,7 @@ void LoadStretchPackedWndTexturePage(int pageid, int mode, short cx, short cy)
         if(ldy) 
          {ldy--;
           for(TXU=g_x1;TXU<=g_x2;TXU++)
-           *ta++=*(ta-(g_x2-g_x1));
+           { unsigned int nap_v = *(ta-(g_x2-g_x1)); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-N) = nedefinovane chovani */
          }
 
        }
@@ -1173,7 +1173,7 @@ void LoadStretchWndTexturePage(int pageid, int mode, short cx, short cy)
         if(ldy) 
          {ldy--;
           for(TXU=g_x1;TXU<=g_x2;TXU++)
-           *ta++=*(ta-(g_x2-g_x1));
+           { unsigned int nap_v = *(ta-(g_x2-g_x1)); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-N) = nedefinovane chovani */
          }
        }
 
@@ -1257,7 +1257,7 @@ void LoadStretchWndTexturePage(int pageid, int mode, short cx, short cy)
         if(ldy) 
          {ldy--;
           for(TXU=g_x1;TXU<=g_x2;TXU++)
-           *ta++=*(ta-(g_x2-g_x1));
+           { unsigned int nap_v = *(ta-(g_x2-g_x1)); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-N) = nedefinovane chovani */
          }
 
        }
@@ -2027,7 +2027,7 @@ unsigned char * LoadDirectMovieFast(void)
      pD=(unsigned char *)&psxVuw[startxy];
      for(row=xrMovieArea.x0;row<xrMovieArea.x1;row++)
       {
-       *ta++=*((unsigned int *)pD)|0xff000000;
+       *ta++=0xff000000u|((unsigned int)pD[2]<<16)|((unsigned int)pD[1]<<8)|(unsigned int)pD[0]; /* NAP: bylo cteni 4B z 3B kroku (cetlo za konec) */
        pD+=3;
       }
     }
@@ -2072,7 +2072,7 @@ GLuint LoadTextureMovieFast(void)
        pD=(unsigned char *)&psxVuw[startxy];
        for(row=xrMovieArea.x0;row<xrMovieArea.x1;row++)
         {
-         *ta++=*((unsigned int *)pD)|0xff000000;
+         *ta++=0xff000000u|((unsigned int)pD[2]<<16)|((unsigned int)pD[1]<<8)|(unsigned int)pD[0]; /* NAP: bylo cteni 4B z 3B kroku (cetlo za konec) */
          pD+=3;
         }
       }
@@ -2128,17 +2128,17 @@ GLuint LoadTextureMovie(void)
          pD=(unsigned char *)&psxVuw[startxy];
          for(row=xrMovieArea.x0;row<xrMovieArea.x1;row++)
           {
-           *ta++=*((unsigned int *)pD)|0xff000000;
+           *ta++=0xff000000u|((unsigned int)pD[2]<<16)|((unsigned int)pD[1]<<8)|(unsigned int)pD[0]; /* NAP: bylo cteni 4B z 3B kroku (cetlo za konec) */
            pD+=3;
           }
-         *ta++=*(ta-1);
+         { unsigned int nap_v = *(ta-1); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-1) = nedefinovane chovani */
         }
        if(b_Y)
         {
          dx=xrMovieArea.x1-xrMovieArea.x0+1;
          for(row=xrMovieArea.x0;row<xrMovieArea.x1;row++)
-          *ta++=*(ta-dx);
-         *ta++=*(ta-1);
+          { unsigned int nap_v = *(ta-dx); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-dx) = nedefinovane chovani */
+         { unsigned int nap_v = *(ta-1); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-1) = nedefinovane chovani */
         }
       }
      else
@@ -2149,7 +2149,7 @@ GLuint LoadTextureMovie(void)
          pD=(unsigned char *)&psxVuw[startxy];
          for(row=xrMovieArea.x0;row<xrMovieArea.x1;row++)
           {
-           *ta++=*((unsigned int *)pD)|0xff000000;
+           *ta++=0xff000000u|((unsigned int)pD[2]<<16)|((unsigned int)pD[1]<<8)|(unsigned int)pD[0]; /* NAP: bylo cteni 4B z 3B kroku (cetlo za konec) */
            pD+=3;
           }
         }
@@ -2157,7 +2157,7 @@ GLuint LoadTextureMovie(void)
         {
          dx=xrMovieArea.x1-xrMovieArea.x0;
          for(row=xrMovieArea.x0;row<xrMovieArea.x1;row++)
-          *ta++=*(ta-dx);
+          { unsigned int nap_v = *(ta-dx); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-dx) = nedefinovane chovani */
         }
       }
     }
@@ -2178,15 +2178,15 @@ GLuint LoadTextureMovie(void)
          startxy=((1024)*column)+xrMovieArea.x0;
          for(row=xrMovieArea.x0;row<xrMovieArea.x1;row++)
           *ta++=LTCOL(psxVuw[startxy++]|0x8000);
-         *ta++=*(ta-1);
+         { unsigned int nap_v = *(ta-1); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-1) = nedefinovane chovani */
         }
 
        if(b_Y)
         {
          dx=xrMovieArea.x1-xrMovieArea.x0+1;
          for(row=xrMovieArea.x0;row<xrMovieArea.x1;row++)
-          *ta++=*(ta-dx);
-         *ta++=*(ta-1);
+          { unsigned int nap_v = *(ta-dx); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-dx) = nedefinovane chovani */
+         { unsigned int nap_v = *(ta-1); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-1) = nedefinovane chovani */
         }
       }
      else
@@ -2202,7 +2202,7 @@ GLuint LoadTextureMovie(void)
         {
          dx=xrMovieArea.x1-xrMovieArea.x0;
          for(row=xrMovieArea.x0;row<xrMovieArea.x1;row++)
-          *ta++=*(ta-dx);
+          { unsigned int nap_v = *(ta-dx); *ta = nap_v; ta++; } /* NAP: bylo *ta++=*(ta-dx) = nedefinovane chovani */
         }
       }
     }

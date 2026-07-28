@@ -1530,7 +1530,7 @@ extern const unsigned char cmd_lengths[256];
 int renderer_do_cmd_list(uint32_t *list, int list_len, uint32_t *ex_regs,
  int *cycles_sum_out, int *cycles_last, int *last_cmd)
 {
-  unsigned int cmd, len;
+  unsigned int cmd = -1, len = 0;  // NAP: bylo neinicializovane - pri prazdnem seznamu se do *last_cmd zapsalo smeti
   unsigned int *list_start = list;
   unsigned int *list_end = list + list_len;
 
@@ -2003,7 +2003,7 @@ const void* nap_gles_grab_pixels(int* out_w, int* out_h)
     //  ho tedy stejnym dekodem jako vendor LoadDirectMovieFast: 3 bajty na
     //  pixel R,G,B (radek VRAM = NAP_PSX_VRAM_W halfwordu = 2048 bajtu),
     //  s Y-flipem, aby to sedelo s orientaci zdola-nahoru, kterou eglrender
-    //  ceka od glReadPixels. 16bit rezim (intro, 2D i 3D) zustava BEZE ZMENY
+    //  ceka od glReadPixels. BEZNY OBRAZ (intro, 2D i 3D) zustava BEZE ZMENY
     //  na overene canvas ceste nize.
     if (nap_disp_rgb24) {
         g_crash_stage = "grab_rgb24"; // A10
@@ -2046,9 +2046,9 @@ const void* nap_gles_grab_pixels(int* out_w, int* out_h)
         return nap_grab_buf;
     }
 
-    // 16bit: puvodni OVERENA cesta - cist z canvas_fbo (kam hra kreslila). Y v
+    // BEZNY OBRAZ (ne-film): puvodni OVERENA cesta - cist z canvas_fbo. Y v
     // GL je zdola - eglrender to prevrati pri kresleni (nastavi UV podle toho).
-    g_crash_stage = "grab_16bit"; // A10
+    g_crash_stage = "grab_bezny_obraz"; // A10
     glBindFramebufferOES(GL_FRAMEBUFFER_OES, nap_canvas_fbo);
     int glY = NAP_PSX_VRAM_H - (fresh_sy + fresh_h);
     if (glY < 0) glY = 0;
@@ -2061,6 +2061,6 @@ const void* nap_gles_grab_pixels(int* out_w, int* out_h)
 
     if (out_w) *out_w = fresh_w;
     if (out_h) *out_h = fresh_h;
-    g_crash_stage = "egl_present(after grab_16bit)"; // A10
+    g_crash_stage = "egl_present(after grab_bezny_obraz)"; // A10
     return nap_grab_buf;
 }

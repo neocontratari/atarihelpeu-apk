@@ -1023,6 +1023,33 @@ extern "C" unsigned nap_ps1_egl_grab(int* x, int* y, int* w, int* h) {
 // BOD 2: obraz pres pixely (funguje napric kontexty, sdileni netreba).
 // Prepne na gpu-gles kontext, precte pixely z canvasu, vrati je a
 // prepne zpet na eglrender - vse v render vlakne (zvuk se nezdrzuje).
+// =====================================================================
+//  A14: NAPOJENI EMULATORU NA APPKU (jeden zdroj obrazu)
+//  Appka si bere obraz pres ps1GrabFrame, ktery cte g_frame_argb/g_fw/g_fh.
+//  Ty ale plni JEN nap_video - softwarovy libretro callback, ktery v ceste A
+//  (obraz jde pres GPU) zadna data nedostane. Proto appce chodilo gfw=0 gfh=0,
+//  tedy NIC - a TV wiever pak neme co ukazat. Tady dame appce PRESNE TENTYZ
+//  snimek, ktery jde na displej. Jeden zdroj, zadna druha cesta.
+//  Prevod: pixely z cesty A jsou RGBA a zdola nahoru (GL), appka chce ARGB
+//  shora dolu - proto otoceni radku a prohozeni R/B.
+static void nap_publish_frame_for_app(const uint8_t* rgba, int w, int h) {
+    if (!rgba || w <= 0 || h <= 0) return;
+    std::lock_guard<std::mutex> lock(g_frame_mutex);
+    g_frame_argb.resize((size_t)w * (size_t)h);
+    for (int y = 0; y < h; y++) {
+        const uint8_t* src = rgba + (size_t)(h - 1 - y) * (size_t)w * 4;  // otoceni radku
+        uint32_t* dst = g_frame_argb.data() + (size_t)y * (size_t)w;
+        for (int x = 0; x < w; x++) {
+            dst[x] = 0xFF000000u | ((uint32_t)src[0] << 16)   // R
+                                 | ((uint32_t)src[1] << 8)    // G
+                                 |  (uint32_t)src[2];         // B
+            src += 4;
+        }
+    }
+    g_fw.store(w); g_fh.store(h);
+    g_frames.fetch_add(1);
+}
+
 extern "C" const void* nap_ps1_egl_grab_pixels(int* w, int* h) {
     if (!g_gles_ready) return NULL;
     // prepnout na gpu-gles kontext (canvas je v nem)
@@ -1032,6 +1059,13 @@ extern "C" const void* nap_ps1_egl_grab_pixels(int* w, int* h) {
     // zpet na eglrender, aby mohl kreslit na okno
     if (g_egl_render_ctx != EGL_NO_CONTEXT && g_gles_display_A != EGL_NO_DISPLAY)
         eglMakeCurrent(g_gles_display_A, g_egl_render_surf, g_egl_render_surf, g_egl_render_ctx);
+    // A14: tentyz snimek dame i appce (kazdy druhy - appce/TV staci, procesor setrime)
+    if (px && w && h) {
+        static long nap_pub_n = 0;
+        if ((nap_pub_n++ & 1) == 0) nap_publish_frame_for_app((const uint8_t*)px, *w, *h);
+        static int nap_pub_once = 0;
+        if (!nap_pub_once) { nap_pub_once = 1; nap_diag_log("CESTA_A NAPOJENI: appka dostava obraz emulatoru %dx%d (drive gfw=0 gfh=0, tedy nic)", *w, *h); }
+    }
     return px;
 }
 
