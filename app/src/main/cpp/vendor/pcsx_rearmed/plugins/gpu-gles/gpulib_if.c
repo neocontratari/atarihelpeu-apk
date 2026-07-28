@@ -2007,8 +2007,18 @@ const void* nap_gles_grab_pixels(int* out_w, int* out_h)
     if (nap_disp_rgb24) {
         const unsigned short* v16 = (const unsigned short*)gpu.vram;
         if (!v16) return NULL;
+        // POJISTKA PROTI PADU (A8): src z gpu.screen muze byt behem prepnuti
+        // rezimu na okamzik MIMO rozsah VRAM (klidne i zaporny) - a takovy
+        // snimek se v logu ani neobjevi (PIXELS24 je throttlovany po 120).
+        // Orizneme src na platne meze, aby ukazatel do VRAM NIKDY neutekl mimo
+        // buffer. Bez tohohle cetl A8 obcas pred/za VRAM => SIGSEGV => vyskok
+        // z appky na home (presne to, co se stalo).
+        if (fresh_sx < 0) fresh_sx = 0;
+        if (fresh_sy < 0) fresh_sy = 0;
+        if (fresh_sx > NAP_PSX_VRAM_W - 1) fresh_sx = NAP_PSX_VRAM_W - 1;
+        if (fresh_sy > NAP_PSX_VRAM_H - 1) fresh_sy = NAP_PSX_VRAM_H - 1;
         // Neprecist za pravy okraj radku VRAM (2048 B). Beznou FMV (src_x=0)
-        // to neomezi, je to jen pojistka proti OOB pri velkem src_x.
+        // to neomezi, je to jen pojistka pri velkem src_x.
         int max_px = (NAP_PSX_VRAM_W * 2 - fresh_sx * 2) / 3;
         if (max_px < 0) max_px = 0;
         if (fresh_w > max_px) fresh_w = max_px;
