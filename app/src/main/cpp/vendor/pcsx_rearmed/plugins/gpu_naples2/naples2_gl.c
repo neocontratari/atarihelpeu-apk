@@ -72,11 +72,11 @@ static const char *FS =
 "    float raw;\n"
 "    if (vMode < 1.5) {\n"                    /* 4 bity na pixel */
 "      raw = raw16(vec2(vPage.x + floor(u / 4.0), vPage.y + v));\n"
-"      float idx = mod(floor(raw / pow(2.0, mod(u, 4.0) * 4.0)), 16.0);\n"
+"      float idx = mod(floor(raw / exp2(mod(u, 4.0) * 4.0)), 16.0);\n"
 "      raw = raw16(vec2(vClut.x + idx, vClut.y));\n"
 "    } else if (vMode < 2.5) {\n"              /* 8 bitu na pixel */
 "      raw = raw16(vec2(vPage.x + floor(u / 2.0), vPage.y + v));\n"
-"      float idx = mod(floor(raw / pow(2.0, mod(u, 2.0) * 8.0)), 256.0);\n"
+"      float idx = mod(floor(raw / exp2(mod(u, 2.0) * 8.0)), 256.0);\n"
 "      raw = raw16(vec2(vClut.x + idx, vClut.y));\n"
 "    } else {\n"                               /* 16 bitu primo */
 "      raw = raw16(vec2(vPage.x + u, vPage.y + v));\n"

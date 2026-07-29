@@ -386,19 +386,38 @@ static SLAndroidSimpleBufferQueueItf s_sl_queue = nullptr;
 static bool s_sl_ready = false;
 
 #define NAP_SL_BLOCK_FRAMES 1024
-static int16_t s_sl_block[NAP_SL_BLOCK_FRAMES * 2];
+// OPRAVA ZVUKU: drive existoval JEDINY blok pameti, ktery se do fronty
+// zaradil dvakrat - prehravalo se tedy z pameti, kterou callback zaroven
+// prepisoval, a rezerva byla prakticky nulova. Jakmile se snimek o chlup
+// zdrzel, fronta dobehla a doplnila se TICHEM = kousani.
+// Ted je bloku vic a stridaji se, takze je v ceste rezerva ~185 ms.
+#define NAP_SL_BLOCKS 8
+static int16_t s_sl_blocks[NAP_SL_BLOCKS][NAP_SL_BLOCK_FRAMES * 2];
+static int     s_sl_next = 0;
 
 // OpenSL si rekne o dalsi blok - naplnime ho z g_afifo (nebo tichem).
 static void nap_sl_callback(SLAndroidSimpleBufferQueueItf bq, void*) {
   size_t need = NAP_SL_BLOCK_FRAMES * 2; // shorts
+  int16_t *blk = s_sl_blocks[s_sl_next];
+  s_sl_next = (s_sl_next + 1) % NAP_SL_BLOCKS;   // dalsi blok - nikdy neprepisujeme ten, co se prave hraje
   {
     std::lock_guard<std::mutex> lock(g_amutex);
     size_t have = g_afifo.size();
     size_t take = have < need ? have : need;
-    if (take) { memcpy(s_sl_block, g_afifo.data(), take * sizeof(int16_t)); g_afifo.erase(g_afifo.begin(), g_afifo.begin() + take); }
-    if (take < need) memset(s_sl_block + take, 0, (need - take) * sizeof(int16_t)); // doplnit tichem
+    if (take) { memcpy(blk, g_afifo.data(), take * sizeof(int16_t)); g_afifo.erase(g_afifo.begin(), g_afifo.begin() + take); }
+    if (take < need) {
+      // Misto tvrdeho ticha (lupanec) dozniva posledni vzorek - pri kratkem
+      // vypadku je to slyset mnohem min.
+      int16_t lastL = take >= 2 ? blk[take - 2] : 0;
+      int16_t lastR = take >= 1 ? blk[take - 1] : 0;
+      for (size_t i = take; i + 1 < need; i += 2) {
+        lastL = (int16_t)(lastL * 7 / 8);
+        lastR = (int16_t)(lastR * 7 / 8);
+        blk[i] = lastL; blk[i + 1] = lastR;
+      }
+    }
   }
-  (*bq)->Enqueue(bq, s_sl_block, need * sizeof(int16_t));
+  (*bq)->Enqueue(bq, blk, need * sizeof(int16_t));
 }
 
 static void nap_sl_open(void) {
@@ -408,7 +427,7 @@ static void nap_sl_open(void) {
   if ((*s_sl_engine_obj)->GetInterface(s_sl_engine_obj, SL_IID_ENGINE, &s_sl_engine) != SL_RESULT_SUCCESS) return;
   if ((*s_sl_engine)->CreateOutputMix(s_sl_engine, &s_sl_mix_obj, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) return;
   if ((*s_sl_mix_obj)->Realize(s_sl_mix_obj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return;
-  SLDataLocator_AndroidSimpleBufferQueue locBufq = { SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2 };
+  SLDataLocator_AndroidSimpleBufferQueue locBufq = { SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, NAP_SL_BLOCKS };
   SLDataFormat_PCM fmt = { SL_DATAFORMAT_PCM, 2, SL_SAMPLINGRATE_44_1,
     SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
     SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT, SL_BYTEORDER_LITTLEENDIAN };
@@ -423,10 +442,11 @@ static void nap_sl_open(void) {
   if ((*s_sl_player_obj)->GetInterface(s_sl_player_obj, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &s_sl_queue) != SL_RESULT_SUCCESS) return;
   (*s_sl_queue)->RegisterCallback(s_sl_queue, nap_sl_callback, nullptr);
   (*s_sl_play)->SetPlayState(s_sl_play, SL_PLAYSTATE_PLAYING);
-  // nakopnout - prvni dva bloky tichem, callback pak jede sam
-  memset(s_sl_block, 0, sizeof(s_sl_block));
-  (*s_sl_queue)->Enqueue(s_sl_queue, s_sl_block, sizeof(s_sl_block));
-  (*s_sl_queue)->Enqueue(s_sl_queue, s_sl_block, sizeof(s_sl_block));
+  // nakopnout - naplnit CELOU frontu tichem, kazdy blok vlastni pameti
+  memset(s_sl_blocks, 0, sizeof(s_sl_blocks));
+  for (int i = 0; i < NAP_SL_BLOCKS; i++)
+    (*s_sl_queue)->Enqueue(s_sl_queue, s_sl_blocks[i], sizeof(s_sl_blocks[i]));
+  s_sl_next = 0;
   s_sl_ready = true;
   NAPDIAG("CESTA_A ZVUK OpenSL ES otevren (44100/2/i16, z g_afifo, bez Javy, funguje od API 9)");
 }
@@ -1095,7 +1115,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B7 ZPET NA OVERENOU CESTU 29-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
+    nap_diag_log("=== NEOCONTR B8 ZVUK 29-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
