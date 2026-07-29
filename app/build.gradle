@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 60
-        versionName "EMU10-B12-SUROVA-TEXTURA"  // vynechane pravidlo PS1: bit surove textury - textura se nesmi nasobit barvou vrcholu
+        versionCode 61
+        versionName "EMU10-B13-NAVRAT-DO-B8"  // renderer vracen presne do stavu B8 (tam obraz fungoval), ponechana jen oprava zvuku
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
