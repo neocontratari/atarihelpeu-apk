@@ -482,15 +482,19 @@ static void draw_frame(Engine* e) {
     // ==============================================================
     if (core_use_texture()) {
         // =========================================================
-        //  PRIMA CESTA (bez kopirovani): kontext GLES2 se sdili, takze
-        //  texturu VRAM z jadra muzeme nakreslit rovnou. Drive se snimek
-        //  tahal pres glReadPixels do pameti a zase zpatky na GPU - to je
-        //  tvrda zarazka, ktera ceka na dokresleni a KOUSE ZVUK I OBRAZ.
-        //  Kdyz sdileni z nejakeho duvodu nefunguje, grab vrati 0 a spadneme
-        //  na puvodni cestu pres pixely (nize) - funguje, jen je pomalejsi.
+        //  POZOR: PRIMA CESTA (sdilena textura) je VYPNUTA.
+        //  Duvod: v B2 (cesta pres pixely) byl obraz VIDET. Od B3, kdy jsem
+        //  prepnul na sdilenou texturu, je obraz cerny nebo roztrhany -
+        //  u obou her i u intra. Rozdil mezi temi buildy je presne tahle
+        //  cesta, takze je rozbita ona, ne obsah obrazu.
+        //  Kod zustava (staci prepnout na 1), ale vychozi je overena cesta
+        //  pres pixely. Vsechny ostatni opravy (dekod filmu, slucovani
+        //  zapisu do VRAM, dokresleni snimku) zustavaji v platnosti, takze
+        //  by to melo byt plynulejsi nez B2.
         // =========================================================
+        static const int POUZIT_PRIMOU_TEXTURU = 0;
         int tx = 0, ty = 0, tw = 0, th = 0;
-        unsigned vram_tex = core_get_texture(&tx, &ty, &tw, &th);
+        unsigned vram_tex = POUZIT_PRIMOU_TEXTURU ? core_get_texture(&tx, &ty, &tw, &th) : 0u;
         if (vram_tex != 0 && tw > 0 && th > 0) {
             static long dbgT = 0;
             // Zachovat pomer stran obrazu (4:3), jinak je v na vysku otocenem

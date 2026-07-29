@@ -135,8 +135,15 @@ const void *nap_gles_grab_pixels(int *out_w, int *out_h)
     if (out_h) *out_h = h;
     {
         static long n = 0;
-        if (++n % 180 == 1)
-            nap_diag_log("NAPLES2 OBRAZ %dx%d z VRAM src=[%d,%d]", w, h, sx, sy);
+        if (++n % 180 == 1) {
+            /* Rozhodujici merení: barva pixelu ze STREDU obrazu. Kdyz je tu
+               neco jineho nez cerna, obraz se vykreslil a problem je az pri
+               zobrazeni. Kdyz je cerna, nevykreslil se vubec. */
+            const unsigned char *p = (const unsigned char *)px;
+            size_t mid = ((size_t)(h / 2) * (size_t)w + (size_t)(w / 2)) * 4;
+            nap_diag_log("NAPLES2 OBRAZ %dx%d z VRAM src=[%d,%d] stred=R%u G%u B%u",
+                         w, h, sx, sy, p[mid], p[mid + 1], p[mid + 2]);
+        }
     }
     return px;
 }
