@@ -455,6 +455,24 @@ static void n2_blit_scratch(int x, int y, int w, int h)
     }
 }
 
+/* Nahraje CELOU videopamet do texturovaci textury.
+   PROC: renderer se dosud spolehal, ze mu jadro kazdy zapis do videopameti
+   ohlasi (renderer_update_caches). Log ale ukazal "zapisyVRAM=0" - u her,
+   ktere nahravaji textury pres DMA, hlaseni nechodi vubec. Textury pak byly
+   PRAZDNE, kazdy texturovany pixel se zahodil a na obrazovce zbyly jen
+   jednobarevne plochy. Tohle na hlaseni nezavisi. */
+void n2_upload_all_vram(void)
+{
+    const unsigned short *src = n2_host_vram();
+    if (!n2.ready || !src) return;
+    glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    /* 16bit slova videopameti = presne 2 bajty na texel (LUMINANCE_ALPHA),
+       takze zadny prevod - primy prenos pameti. */
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, N2_VRAM_W, N2_VRAM_H,
+                    GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, src);
+}
+
 /* Prekresli najednou vsechny cekajici zapisy do VRAM. */
 static void n2_flush_pending_vram(void)
 {

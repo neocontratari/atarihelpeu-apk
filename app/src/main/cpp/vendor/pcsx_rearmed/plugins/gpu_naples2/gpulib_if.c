@@ -154,6 +154,9 @@ const void *nap_gles_grab_pixels(int *out_w, int *out_h)
    zvlast - jinak z toho jsou rozsypane barvy pri spravne geometrii. */
 void nap_gles_present_frame(void)
 {
+    /* Videopamet do texturovaci textury - kazdy snimek, at nezalezi na tom,
+       jestli nam jadro zapisy ohlasi (u her pres DMA nechodi vubec). */
+    n2_upload_all_vram();
     n2_flush();
     if (gpu.status & PSX_GPU_STATUS_RGB24) {
         int w = gpu.screen.hres > 0 ? gpu.screen.hres : 320;

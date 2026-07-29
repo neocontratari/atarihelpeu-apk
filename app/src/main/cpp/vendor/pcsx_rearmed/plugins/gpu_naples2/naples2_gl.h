@@ -41,6 +41,10 @@ void n2_vram_written(int x, int y, int w, int h);
    pixel, ne jako 15bit. Musi se dekodovat zvlast, jinak z toho jsou
    rozsypane barvy pri spravne geometrii. */
 void n2_present_rgb24(int sx, int sy, int w, int h);
+/* Nahraje CELOU videopamet do textury, ze ktere se texturuje. Nezavisi na
+   tom, jestli nas jadro o zapisech uvedomi - gpu.vram je vzdy platna.
+   Je to primy prenos 1 MB bez prevodu, takze levny. */
+void n2_upload_all_vram(void);
 /* GPU neco nakreslil a procesor si to chce precist - dostat to zpet do gpu.vram */
 void n2_vram_sync_to_cpu(int x, int y, int w, int h);
 
