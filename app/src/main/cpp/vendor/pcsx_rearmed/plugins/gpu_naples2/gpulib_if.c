@@ -176,6 +176,7 @@ void nap_gles_present_frame(void)
 unsigned nap_gles_grab_texture(int *out_x, int *out_y, int *out_w, int *out_h)
 {
     n2_flush();
+    n2_sync_for_other_context();  /* bez tohohle vidi eglrender nehotovy obraz */
     if (out_x) *out_x = gpu.screen.src_x;
     if (out_y) *out_y = gpu.screen.src_y;
     if (out_w) *out_w = gpu.screen.hres > 0 ? gpu.screen.hres : 320;

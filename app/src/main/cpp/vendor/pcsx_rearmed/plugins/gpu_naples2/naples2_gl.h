@@ -54,6 +54,10 @@ unsigned n2_vram_texture(void);
 /* Diagnostika: kolik kreslicich volani / zapisu do VRAM / prekresleni
    probehlo od minuleho dotazu (a vynuluje pocitadla). */
 void n2_take_counters(long *draws, long *writes, long *blits);
+/* Dokonci a ohlasi praci tohoto kontextu, aby ji SDILENY druhy kontext
+   (eglrender) videl hotovou. Bez toho druhy kontext vidi nedokoncena nebo
+   stara data - projevi se to roztrhanym obrazem nebo cernou plochou. */
+void n2_sync_for_other_context(void);
 /* Zaloha pro nesdileny kontext: precte oblast displeje do RGBA bufferu. */
 const void* n2_read_display(int sx, int sy, int w, int h);
 

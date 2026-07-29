@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 53
-        versionName "EMU10-B5-DOKRESLENI-A-FILM"  // oprava: dokresleni snimku se v ceste A vubec nevolalo (film) + sloucene prekreslovani VRAM (trhani)
+        versionCode 54
+        versionName "EMU10-B6-SYNC-KONTEXTU"  // OPRAVA: chybelo dokonceni prace pred prepnutim kontextu - druhy kontext videl nehotovy obraz
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

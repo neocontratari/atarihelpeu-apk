@@ -546,6 +546,14 @@ void n2_vram_sync_to_cpu(int x, int y, int w, int h)
 
 unsigned n2_vram_texture(void) { return n2.ready ? n2.tex_out : 0; }
 
+void n2_sync_for_other_context(void)
+{
+    if (!n2.ready) return;
+    /* Podminka GL/EGL pro sdilene objekty: producent musi praci odeslat,
+       jinak si ji konzument nemusi precist hotovou. */
+    glFlush();
+}
+
 void n2_take_counters(long *draws, long *writes, long *blits)
 {
     if (draws)  *draws  = n2.n_draws;
