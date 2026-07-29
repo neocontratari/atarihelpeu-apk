@@ -28,16 +28,18 @@ static const char *VS =
 "attribute vec2 aPage;\n"       /* pocatek texturove stranky ve VRAM */
 "attribute vec2 aClut;\n"       /* pozice palety ve VRAM */
 "attribute float aMode;\n"      /* 0 = bez textury, 1 = 4bit, 2 = 8bit, 3 = 16bit */
+"attribute vec4 aTexWin;\n"     /* sizeX, sizeY, baseX, baseY - u vrcholu, aby se davka nemusela delit */
 "uniform vec2 uVram;\n"
 "varying vec3 vColor;\n"
 "varying vec2 vUV;\n"
 "varying vec2 vPage;\n"
 "varying vec2 vClut;\n"
 "varying float vMode;\n"
+"varying vec4 vTexWin;\n"
 "void main(){\n"
 "  vec2 p = (aPos / uVram) * 2.0 - 1.0;\n"
 "  gl_Position = vec4(p.x, -p.y, 0.0, 1.0);\n"  /* VRAM y=0 nahore */
-"  vColor = aColor; vUV = aUV; vPage = aPage; vClut = aClut; vMode = aMode;\n"
+"  vColor = aColor; vUV = aUV; vPage = aPage; vClut = aClut; vMode = aMode; vTexWin = aTexWin;\n"
 "}\n";
 
 static const char *FS =
@@ -47,9 +49,9 @@ static const char *FS =
 "varying vec2 vPage;\n"
 "varying vec2 vClut;\n"
 "varying float vMode;\n"
+"varying vec4 vTexWin;\n"
 "uniform sampler2D uVramTex;\n"   /* LUMINANCE_ALPHA = syrovych 16 bitu VRAM */
 "uniform vec2 uVram;\n"
-"uniform vec4 uTexWin;\n"         /* sizeX, sizeY, baseX, baseY */
 "uniform float uAlpha;\n"
 "float raw16(vec2 texel){\n"
 "  vec2 uv = (texel + 0.5) / uVram;\n"
@@ -67,8 +69,8 @@ static const char *FS =
 "  if (vMode < 0.5) {\n"
 "    c = vColor;\n"
 "  } else {\n"
-"    float u = mod(floor(vUV.x), uTexWin.x) + uTexWin.z;\n"
-"    float v = mod(floor(vUV.y), uTexWin.y) + uTexWin.w;\n"
+"    float u = mod(floor(vUV.x), vTexWin.x) + vTexWin.z;\n"
+"    float v = mod(floor(vUV.y), vTexWin.y) + vTexWin.w;\n"
 "    float raw;\n"
 "    if (vMode < 1.5) {\n"                    /* 4 bity na pixel */
 "      raw = raw16(vec2(vPage.x + floor(u / 4.0), vPage.y + v));\n"
@@ -114,6 +116,7 @@ typedef struct {
     float px, py;
     float cx, cy;
     float mode;
+    float wx, wy, wz, ww;   /* texturove okno u vrcholu */
 } N2Vert;
 
 #define N2_MAX_VERTS 24576
@@ -121,9 +124,13 @@ typedef struct {
 static struct {
     int      ready;
     GLuint   prog, prog_blit;
-    GLint    a_pos, a_col, a_uv, a_page, a_clut, a_mode;
-    GLint    u_vram, u_tex, u_texwin, u_alpha;
+    GLint    a_pos, a_col, a_uv, a_page, a_clut, a_mode, a_win;
+    GLint    u_vram, u_tex, u_alpha;
     GLint    b_pos, b_uv, b_vram, b_src;
+    GLuint   vbo;               /* vrcholy na GPU - bez nej se pri KAZDEM
+                                   kreslicim volani kopirovala data z pameti,
+                                   a tech volani je u her pres 250 na snimek */
+    int      attribs_set;
     GLuint   fbo, tex_out;      /* cil kresleni: cela VRAM jako RGBA */
     GLuint   tex_vram;          /* syrova VRAM (LUMINANCE_ALPHA) pro texturovani */
     GLuint   tex_blit;          /* docasna textura pro prenosy */
@@ -213,9 +220,9 @@ int n2_init(void)
     n2.a_page = glGetAttribLocation(n2.prog, "aPage");
     n2.a_clut = glGetAttribLocation(n2.prog, "aClut");
     n2.a_mode = glGetAttribLocation(n2.prog, "aMode");
+    n2.a_win  = glGetAttribLocation(n2.prog, "aTexWin");
     n2.u_vram   = glGetUniformLocation(n2.prog, "uVram");
     n2.u_tex    = glGetUniformLocation(n2.prog, "uVramTex");
-    n2.u_texwin = glGetUniformLocation(n2.prog, "uTexWin");
     n2.u_alpha  = glGetUniformLocation(n2.prog, "uAlpha");
 
     n2.b_pos  = glGetAttribLocation(n2.prog_blit, "aPos");
@@ -256,6 +263,13 @@ int n2_init(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glGenTextures(1, &n2.tex_blit);
+
+    /* Vertex buffer na GPU. Data se do nej nahraji jednim volanim za davku
+       a kreslici volani uz jen ukaze rozsah - zadne kopirovani z pameti
+       pri kazdem volani. Na mobilnim GPU je to zasadni rozdil. */
+    glGenBuffers(1, &n2.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, n2.vbo);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(N2Vert) * N2_MAX_VERTS), NULL, GL_STREAM_DRAW);
 
     n2.scratch = (unsigned char *)malloc((size_t)N2_VRAM_W * N2_VRAM_H * 4);
     if (!n2.scratch) return -1;
@@ -340,8 +354,6 @@ void n2_flush(void)
 
     glUseProgram(n2.prog);
     glUniform2f(n2.u_vram, (float)N2_VRAM_W, (float)N2_VRAM_H);
-    glUniform4f(n2.u_texwin, (float)n2.win_mx, (float)n2.win_my,
-                             (float)n2.win_ox, (float)n2.win_oy);
     glUniform1f(n2.u_alpha, (n2.blend == 0) ? 0.5f : ((n2.blend == 3) ? 0.25f : 1.0f));
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
@@ -349,20 +361,29 @@ void n2_flush(void)
     n2_apply_blend();
 
     {
-        const char *base = (const char *)n2.verts;
         GLsizei st = (GLsizei)sizeof(N2Vert);
-        glVertexAttribPointer((GLuint)n2.a_pos,  2, GL_FLOAT, GL_FALSE, st, base + 0);
-        glVertexAttribPointer((GLuint)n2.a_col,  3, GL_FLOAT, GL_FALSE, st, base + 8);
-        glVertexAttribPointer((GLuint)n2.a_uv,   2, GL_FLOAT, GL_FALSE, st, base + 20);
-        glVertexAttribPointer((GLuint)n2.a_page, 2, GL_FLOAT, GL_FALSE, st, base + 28);
-        glVertexAttribPointer((GLuint)n2.a_clut, 2, GL_FLOAT, GL_FALSE, st, base + 36);
-        glVertexAttribPointer((GLuint)n2.a_mode, 1, GL_FLOAT, GL_FALSE, st, base + 44);
-        glEnableVertexAttribArray((GLuint)n2.a_pos);
-        glEnableVertexAttribArray((GLuint)n2.a_col);
-        glEnableVertexAttribArray((GLuint)n2.a_uv);
-        glEnableVertexAttribArray((GLuint)n2.a_page);
-        glEnableVertexAttribArray((GLuint)n2.a_clut);
-        glEnableVertexAttribArray((GLuint)n2.a_mode);
+        glBindBuffer(GL_ARRAY_BUFFER, n2.vbo);
+        /* "osirotit" buffer - rekne ovladaci, ze na stara data uz nikdo neceka,
+           takze nahrani novych nemusi cekat na dokresleni predchoziho */
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(N2Vert) * N2_MAX_VERTS), NULL, GL_STREAM_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)(sizeof(N2Vert) * n2.nverts), n2.verts);
+        if (!n2.attribs_set) {   /* ukazatele staci nastavit jednou */
+            n2.attribs_set = 1;
+            glVertexAttribPointer((GLuint)n2.a_pos,  2, GL_FLOAT, GL_FALSE, st, (const void*)0);
+            glVertexAttribPointer((GLuint)n2.a_col,  3, GL_FLOAT, GL_FALSE, st, (const void*)8);
+            glVertexAttribPointer((GLuint)n2.a_uv,   2, GL_FLOAT, GL_FALSE, st, (const void*)20);
+            glVertexAttribPointer((GLuint)n2.a_page, 2, GL_FLOAT, GL_FALSE, st, (const void*)28);
+            glVertexAttribPointer((GLuint)n2.a_clut, 2, GL_FLOAT, GL_FALSE, st, (const void*)36);
+            glVertexAttribPointer((GLuint)n2.a_mode, 1, GL_FLOAT, GL_FALSE, st, (const void*)44);
+            glVertexAttribPointer((GLuint)n2.a_win,  4, GL_FLOAT, GL_FALSE, st, (const void*)48);
+            glEnableVertexAttribArray((GLuint)n2.a_pos);
+            glEnableVertexAttribArray((GLuint)n2.a_col);
+            glEnableVertexAttribArray((GLuint)n2.a_uv);
+            glEnableVertexAttribArray((GLuint)n2.a_page);
+            glEnableVertexAttribArray((GLuint)n2.a_clut);
+            glEnableVertexAttribArray((GLuint)n2.a_mode);
+            glEnableVertexAttribArray((GLuint)n2.a_win);
+        }
         glDrawArrays(GL_TRIANGLES, 0, n2.nverts);
     }
     glDisable(GL_SCISSOR_TEST);
@@ -383,6 +404,8 @@ static void n2_vert(int x, int y, unsigned rgb, int u, int v, int mode)
     o->px = (float)n2.page_x; o->py = (float)n2.page_y;
     o->cx = (float)n2.clut_x; o->cy = (float)n2.clut_y;
     o->mode = (float)mode;
+    o->wx = (float)n2.win_mx; o->wy = (float)n2.win_my;
+    o->wz = (float)n2.win_ox; o->ww = (float)n2.win_oy;
 }
 
 static void n2_set_blend(int b)
@@ -415,6 +438,7 @@ static void n2_blit_scratch(int x, int y, int w, int h)
         float x0 = (float)x, y0 = (float)y, x1 = (float)(x + w), y1 = (float)(y + h);
         const float pos[12] = { x0,y0,  x1,y0,  x0,y1,   x1,y0,  x1,y1,  x0,y1 };
         const float uv [12] = { 0,0,    1,0,    0,1,     1,0,    1,1,    0,1  };
+        glBindBuffer(GL_ARRAY_BUFFER, 0);   /* quad je z pameti, ne z VBO */
         glVertexAttribPointer((GLuint)n2.b_pos, 2, GL_FLOAT, GL_FALSE, 0, pos);
         glVertexAttribPointer((GLuint)n2.b_uv,  2, GL_FLOAT, GL_FALSE, 0, uv);
         glEnableVertexAttribArray((GLuint)n2.b_pos);
@@ -604,7 +628,7 @@ static void n2_texwin(unsigned v)
 {
     int mx = (int)(v & 0x1f), my = (int)((v >> 5) & 0x1f);
     int ox = (int)((v >> 10) & 0x1f), oy = (int)((v >> 15) & 0x1f);
-    n2_flush();
+    /* ZADNY n2_flush(): okno je nove u kazdeho vrcholu */
     n2.win_mx = 256 - mx * 8; if (n2.win_mx <= 0) n2.win_mx = 256;
     n2.win_my = 256 - my * 8; if (n2.win_my <= 0) n2.win_my = 256;
     n2.win_ox = (ox * 8) & (mx * 8);
