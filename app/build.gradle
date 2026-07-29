@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 50
-        versionName "EMU10-B2-NAPLES2-GLES2"  // novy GPU renderer v OpenGL ES 2 + oprava linkovani (vtazeni gpulib/gpu.c, GPUopen/GPUclose)
+        versionCode 51
+        versionName "EMU10-B3-PRIMA-CESTA"  // obraz jde primo jako sdilena GLES2 textura - konec kopirovani pres procesor (kouslo zvuk i obraz)
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

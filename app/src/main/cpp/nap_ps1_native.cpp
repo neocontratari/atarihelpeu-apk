@@ -1017,7 +1017,15 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglStop(JNIEnv*, jclass) {
 // eglrender si timhle vezme id hotove gpu-gles textury + vyrez (pres dvirka).
 extern "C" unsigned nap_ps1_egl_grab(int* x, int* y, int* w, int* h) {
     if (!g_gles_ready) return 0;
-    return nap_gles_grab_texture(x, y, w, h);
+    // Rámec (FBO) se mezi kontexty NESDILI, jen textury. Dokresleni davky
+    // proto musi probehnout v kontextu jadra; teprve pak se vratime na
+    // eglrender, ktery si sdilenou texturu nakresli sam - bez kopirovani.
+    if (g_gles_display_A != EGL_NO_DISPLAY)
+        eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
+    unsigned tex = nap_gles_grab_texture(x, y, w, h);
+    if (g_egl_render_ctx != EGL_NO_CONTEXT && g_gles_display_A != EGL_NO_DISPLAY)
+        eglMakeCurrent(g_gles_display_A, g_egl_render_surf, g_egl_render_surf, g_egl_render_ctx);
+    return tex;
 }
 
 // BOD 2: obraz pres pixely (funguje napric kontexty, sdileni netreba).
@@ -1087,7 +1095,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B2 NAPLES2 GLES2 29-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
+    nap_diag_log("=== NEOCONTR B3 PRIMA CESTA 29-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho

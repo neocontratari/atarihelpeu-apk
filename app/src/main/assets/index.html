@@ -167,7 +167,10 @@ if(stTv)stTv.addEventListener('click',function(e){
   try{
     var r=(window.AHTVWEB&&typeof window.AHTVWEB.start==='function')?window.AHTVWEB.start():null;
     log('SETTINGS_TV_START result='+r);
-    toast('WEB TV zapnuto — 192.168.0.34:8765',2600);
+    // Adresa se nesmi psat natvrdo - v jine siti (nebo po restartu routeru)
+    // je jina. AHTVWEB.start() ji vraci; kdyz ne, radeji ji neuvadime vubec.
+    var adr=(typeof r==='string'&&r.indexOf(':')>0)?r:null;
+    toast(adr?('WEB TV zapnuto — '+adr):'WEB TV zapnuto',2600);
   }catch(err){
     log('SETTINGS_TV_START_ERR '+err);
     toast('WEB TV: chyba pri spousteni',2200);

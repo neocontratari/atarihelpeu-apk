@@ -481,6 +481,60 @@ static void draw_frame(Engine* e) {
     //  id textury z jadra a nakreslime ji. Ostry obraz, nula procesoru.
     // ==============================================================
     if (core_use_texture()) {
+        // =========================================================
+        //  PRIMA CESTA (bez kopirovani): kontext GLES2 se sdili, takze
+        //  texturu VRAM z jadra muzeme nakreslit rovnou. Drive se snimek
+        //  tahal pres glReadPixels do pameti a zase zpatky na GPU - to je
+        //  tvrda zarazka, ktera ceka na dokresleni a KOUSE ZVUK I OBRAZ.
+        //  Kdyz sdileni z nejakeho duvodu nefunguje, grab vrati 0 a spadneme
+        //  na puvodni cestu pres pixely (nize) - funguje, jen je pomalejsi.
+        // =========================================================
+        int tx = 0, ty = 0, tw = 0, th = 0;
+        unsigned vram_tex = core_get_texture(&tx, &ty, &tw, &th);
+        if (vram_tex != 0 && tw > 0 && th > 0) {
+            static long dbgT = 0;
+            const int vw_ = w, vh_ = h;
+            glViewport(0, 0, vw_, vh_);
+            glClearColor(0.f, 0.f, 0.f, 1.f);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            glBindTexture(GL_TEXTURE_2D, (GLuint)vram_tex);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+            // Vyrez displeje z textury VRAM (1024x512). Radek 0 VRAM lezi
+            // v texture nahore, proto se svisle otaci.
+            {
+                const float VW = 1024.0f, VH = 512.0f;
+                float u0 = (float)tx / VW, u1 = (float)(tx + tw) / VW;
+                float v0 = 1.0f - (float)(ty + th) / VH;   // dolni okraj obrazu
+                float v1 = 1.0f - (float)ty / VH;          // horni okraj obrazu
+                const GLfloat quad[] = {
+                    -1.f,-1.f, u0,v0,   1.f,-1.f, u1,v0,
+                    -1.f, 1.f, u0,v1,   1.f, 1.f, u1,v1,
+                };
+                glUseProgram(e->program);
+                glUniform1f(e->loc_mode, 0.0f);
+                glVertexAttribPointer((GLuint)e->loc_pos, 2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad);
+                glVertexAttribPointer((GLuint)e->loc_tex, 2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad+2);
+                glEnableVertexAttribArray((GLuint)e->loc_pos);
+                glEnableVertexAttribArray((GLuint)e->loc_tex);
+                glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            }
+            if (dbgT++ % 300 == 0)
+                LOGI("MUJLOG PRIMO: textura VRAM=%u vyrez=%dx%d na [%d,%d] (bez kopirovani pres procesor)",
+                     vram_tex, tw, th, tx, ty);
+            EGLBoolean okp = eglSwapBuffers(e->display, e->surface);
+            if (okp != EGL_TRUE) {
+                EGLint err = eglGetError();
+                LOGE("eglSwapBuffers (prima cesta) selhal: %s", egl_err_str(err));
+            }
+            e->frames++;
+            return;
+        }
+
         int sw=0, sh=0;
         const void* px = core_get_pixels(&sw, &sh);  // grab si kontext prepne tam i zpet sam
         static long dbgA_total=0, dbgA_empty=0;
