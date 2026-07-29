@@ -222,8 +222,9 @@ add_library(napps1core SHARED
     ${PS1_DIR}/libpcsxcore/gte_arm64.S
     ${PS1_DIR}/libpcsxcore/gte_nf_arm64.S
     ${PS1_DIR}/libpcsxcore/new_dynarec/linkage_arm64.S
-    ${PS1_DIR}/plugins/gpu-gles/gpulib_if.c
-    ${PS1_DIR}/plugins/gpu-gles/gpuFps.c
+    # NAPLES2: novy GLES2 renderer misto gpu-gles (ten byl OpenGL ES 1)
+    ${PS1_DIR}/plugins/gpu_naples2/gpulib_if.c
+    ${PS1_DIR}/plugins/gpu_naples2/naples2_gl.c
     ${PS1_DIR}/frontend/pcsxr-threads.c
     ${PS1_DIR}/deps/libretro-common/features/features_cpu.c
 )
@@ -232,7 +233,7 @@ target_include_directories(napps1core PRIVATE
     ${PS1_DIR}/deps/crypto
     ${PS1_DIR}/deps/libchdr/include ${PS1_DIR}/deps/libchdr/deps/lzma-24.05/include
     ${PS1_DIR}/deps/libchdr/deps/zstd-1.5.6/lib ${PS1_DIR}/deps/libretro-common/include
-    ${PS1_DIR}/plugins/gpu-gles)
+    ${PS1_DIR}/plugins/gpu_naples2)
 target_compile_definitions(napps1core PRIVATE
     HAVE_CHD Z7_ST ZSTD_DISABLE_ASM HAVE_LIBRETRO NO_FRONTEND REARMED
     P_HAVE_MMAP=1 P_HAVE_PTHREAD=1 P_HAVE_POSIX_MEMALIGN=1 USE_LIBRETRO_VFS
@@ -252,8 +253,9 @@ find_package(Threads REQUIRED)
 # (libchdr ji potrebuje) spadl NDK link - presne chyba z Actions #853.
 # --no-undefined = stejna prisnost jako NDK, chybejici symbol shodi uz muj test.
 # BUILD2SK98: + EGL/GLESv1_CM - standardni, VZDY pritomne Android system
-# knihovny (soucast kazdeho Android NDK) - potrebne pro gpu-gles.
-target_link_libraries(napps1core ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS} EGL GLESv1_CM OpenSLES)
+# knihovny (soucast kazdeho Android NDK) - potrebne pro GLES2 renderer.
+# NAPLES2: renderer je GLES2 -> linkujeme GLESv2 (drive GLESv1_CM kvuli gpu-gles)
+target_link_libraries(napps1core ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS} EGL GLESv2 OpenSLES)
 target_link_options(napps1core PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif() # NAP_ENABLE_PS1
 

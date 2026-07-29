@@ -2053,10 +2053,15 @@ void cmdDrawOffset(unsigned char * baseAddr)
  PSXDisplay.DrawOffset.x=(short)(((int)PSXDisplay.DrawOffset.x<<21)>>21);
  PSXDisplay.DrawOffset.y=(short)(((int)PSXDisplay.DrawOffset.y<<21)>>21);
 
- PSXDisplay.CumulOffset.x =                            // new OGL prim offsets
-  PSXDisplay.DrawOffset.x - PSXDisplay.GDrawOffset.x + PreviousPSXDisplay.Range.x0;
- PSXDisplay.CumulOffset.y = 
-  PSXDisplay.DrawOffset.y - PSXDisplay.GDrawOffset.y + PreviousPSXDisplay.Range.y0;
+ // NAP OPRAVA (stejny koren jako u orezu): posun kreslenych vrcholu musi byt
+ // v souradnicich VRAM. Puvodne se odecitala GDrawOffset (= pozice
+ // zobrazovaneho bufferu) a pricitala Range - obojí patri do souradnic
+ // DISPLEJE. Ve VRAM prostoru to znamena, ze kdyz hra zobrazuje buffer na
+ // x=512 a kresli do bufferu na x=0, vysel posun -512 a CELA GEOMETRIE se
+ // nakreslila o 512 pixelu vedle, mimo cilovy buffer. Ve VRAM prostoru je
+ // spravny posun jen DrawOffset (GP0 E5), nic dalsiho.
+ PSXDisplay.CumulOffset.x = PSXDisplay.DrawOffset.x;
+ PSXDisplay.CumulOffset.y = PSXDisplay.DrawOffset.y;
 }
 
 ////////////////////////////////////////////////////////////////////////

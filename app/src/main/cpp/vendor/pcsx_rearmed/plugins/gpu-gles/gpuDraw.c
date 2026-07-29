@@ -1278,8 +1278,9 @@ void SetOGLDisplaySettings(BOOL DisplaySet)
    PSXDisplay.GDrawOffset.x=0;
    PSXDisplay.GDrawOffset.y=0;
 
-   PSXDisplay.CumulOffset.x = PSXDisplay.DrawOffset.x+PreviousPSXDisplay.Range.x0;
-   PSXDisplay.CumulOffset.y = PSXDisplay.DrawOffset.y+PreviousPSXDisplay.Range.y0;
+   /* NAP: ve VRAM prostoru je posun jen DrawOffset (bez Range - to je okraj displeje) */
+   PSXDisplay.CumulOffset.x = PSXDisplay.DrawOffset.x;
+   PSXDisplay.CumulOffset.y = PSXDisplay.DrawOffset.y;
 
    rprev.left=rprev.left+1;
 
@@ -1299,26 +1300,30 @@ void SetOGLDisplaySettings(BOOL DisplaySet)
 
  PSXDisplay.GDrawOffset.y = PreviousPSXDisplay.DisplayPosition.y;
  PSXDisplay.GDrawOffset.x = PreviousPSXDisplay.DisplayPosition.x;
- PSXDisplay.CumulOffset.x = PSXDisplay.DrawOffset.x - PSXDisplay.GDrawOffset.x+PreviousPSXDisplay.Range.x0;
- PSXDisplay.CumulOffset.y = PSXDisplay.DrawOffset.y - PSXDisplay.GDrawOffset.y+PreviousPSXDisplay.Range.y0;
+ /* NAP: ve VRAM prostoru je posun jen DrawOffset - zadne odecitani pozice
+    zobrazovaneho bufferu (to posouvalo celou geometrii o 512 px vedle) */
+ PSXDisplay.CumulOffset.x = PSXDisplay.DrawOffset.x;
+ PSXDisplay.CumulOffset.y = PSXDisplay.DrawOffset.y;
 
- r.top   =PSXDisplay.DrawArea.y0 - PreviousPSXDisplay.DisplayPosition.y;
- r.bottom=PSXDisplay.DrawArea.y1 - PreviousPSXDisplay.DisplayPosition.y;
-
- if(r.bottom<0 || r.top>=PSXDisplay.DisplayMode.y)
-  {
-   r.top   =PSXDisplay.DrawArea.y0 - PSXDisplay.DisplayPosition.y;
-   r.bottom=PSXDisplay.DrawArea.y1 - PSXDisplay.DisplayPosition.y;
-  }
-
- r.left  =PSXDisplay.DrawArea.x0 - PreviousPSXDisplay.DisplayPosition.x;
- r.right =PSXDisplay.DrawArea.x1 - PreviousPSXDisplay.DisplayPosition.x;
-
- if(r.right<0 || r.left>=PSXDisplay.DisplayMode.x)
-  {
-   r.left  =PSXDisplay.DrawArea.x0 - PSXDisplay.DisplayPosition.x;
-   r.right =PSXDisplay.DrawArea.x1 - PSXDisplay.DisplayPosition.x;
-  }
+ // ================================================================
+ //  NAP OPRAVA: OREZ (scissor) MUSI BYT V SOURADNICICH VRAM
+ //  Tenhle projekt kresli v souradnicich VRAM 1:1 (nap_gles_apply_fixed_display:
+ //  viewport i projekce = cela VRAM 1024x512, DisplayMode = VRAM). Puvodni
+ //  gpu-gles ale kreslil v souradnicich DISPLEJE, a proto od DrawArea odecital
+ //  DisplayPosition. V nasem rezimu je to CHYBA:
+ //    hra kresli do zadniho bufferu x=0, zobrazuje predni x=512
+ //    -> r.left = 0 - 512 = -512, r.right = 511 - 512 = -1
+ //    -> oboji se nize orizne na 0 -> sirka orezu = 0
+ //    -> VSECHNO kresleni toho snimku se zahodi.
+ //  Hry se dvema buffery vedle sebe (Crash Bandicoot prepina [0,0]<->[512,0])
+ //  tak prisly o kazdy druhy snimek a zobrazovaly cernou/rozsypanou obrazovku,
+ //  zatimco BIOS intro s jedinym bufferem na x=0 (odecet nuly) bylo videt.
+ //  Ve VRAM prostoru je DrawArea uz absolutni - nic se neodecita.
+ r.top    = PSXDisplay.DrawArea.y0;
+ r.bottom = PSXDisplay.DrawArea.y1;
+ r.left   = PSXDisplay.DrawArea.x0;
+ r.right  = PSXDisplay.DrawArea.x1;
+ // ================================================================
 
  if(!bSetClip && EqualRect(&r,&rprev) &&
     iOldX == PSXDisplay.DisplayMode.x &&
@@ -1332,28 +1337,14 @@ void SetOGLDisplaySettings(BOOL DisplaySet)
  XS=(float)rRatioRect.right/(float)PSXDisplay.DisplayMode.x;
  YS=(float)rRatioRect.bottom/(float)PSXDisplay.DisplayMode.y;
 
- if(PreviousPSXDisplay.Range.x0)
-  {
-   short s=PreviousPSXDisplay.Range.x0+PreviousPSXDisplay.Range.x1;
+ // NAP: posuny podle Range (okraj/overscan displeje) patri do souradnic
+ // DISPLEJE. Ve VRAM prostoru je DrawArea uz absolutni, takze by OREZ
+ // posunuly mimo skutecne kreslenou plochu. Vypnuto ze stejneho duvodu
+ // jako odecet DisplayPosition vyse.
+ (void)0;
 
-   r.left+=PreviousPSXDisplay.Range.x0+1;
-
-   r.right+=PreviousPSXDisplay.Range.x0;
-
-   if(r.left>s)  r.left=s;
-   if(r.right>s) r.right=s;
-  }
-
- if(PreviousPSXDisplay.Range.y0)
-  {
-   short s=PreviousPSXDisplay.Range.y0+PreviousPSXDisplay.Range.y1;
-
-   r.top+=PreviousPSXDisplay.Range.y0+1;
-   r.bottom+=PreviousPSXDisplay.Range.y0;
-
-   if(r.top>s)    r.top=s;
-   if(r.bottom>s) r.bottom=s;
-  }
+ // NAP: totez svisle - viz komentar vyse.
+ (void)0;
 
  // Set the ClipArea variables to reflect the new screen,
  // offset from zero (since it is a new display buffer)

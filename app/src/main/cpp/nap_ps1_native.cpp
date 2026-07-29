@@ -452,15 +452,11 @@ static int16_t nap_input_state(unsigned port, unsigned device, unsigned, unsigne
 // vendor/pcsx_rearmed/plugins/gpu-gles/gpuDraw.c GLinitialize().
 extern "C" {
   typedef struct { int left, top, right, bottom; } NapGlesRectShape; // ABI-kompatibilni s vendor RECT
-  extern int iResX;
-  extern int iResY;
-  extern NapGlesRectShape rRatioRect;
-  int GLinitialize(void *ext_gles_display, void *ext_gles_surface);
-  void InitializeTextureStore(); // BUILD2SK102: viz gpuTexture.c - alokuje texture-cache buffery
-  void MakeDisplayLists(); // BUILD2SK102: viz hud.c - font/HUD display listy
-  void updateFrontDisplay(void); // BUILD2SK103: (SK153: uz NEprezentuje - jen uklid priznaku, viz gpulib_if.c)
+  // NAPLES2: vnitrnosti stareho GLES1 pluginu (iResX/iResY/rRatioRect,
+  // GLinitialize, InitializeTextureStore, MakeDisplayLists, updateFrontDisplay,
+  // SetOGLDisplaySettings) uz neexistuji - novy GLES2 renderer je nema.
+  int n2_init(void);   // vytvori shadery, FBO a texturu VRAM
   void nap_gles_present_frame(void); // BUILD2SK153: JEDINE misto prezentace snimku - presne 1x za tick, po retro_run (= po VBlanku emulovaneho PS1), s cerstvym gpu.screen (respektuje GP1(05h) flip)
-  void SetOGLDisplaySettings(int DisplaySet); // BUILD2SK106: nastavi GL scissor/clip - viz gpuDraw.c
   void nap_gles_sync_display_settings(void); // BUILD2SK119: viz gpulib_if.c - bezpecne obnovi iResX/iResY/rRatioRect pred volanim SetOGLDisplaySettings
   // CESTA A: dvirka z gpulib_if.c - kopie canvasu do snapshot textury BEZ
   // ctecky a vraceni jejiho id + vyrezu, pro prime kresleni v eglrender.
@@ -499,7 +495,7 @@ static bool nap_gles_egl_init() {
 
   const EGLint configAttribs[] = {
     EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
-    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES_BIT, // GLES1
+    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, // NAPLES2: renderer je GLES2
     EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8,
     EGL_DEPTH_SIZE, 16,
     EGL_NONE
@@ -524,14 +520,21 @@ static bool nap_gles_egl_init() {
     return false;
   }
 
-  const EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 1, EGL_NONE }; // GLES1
-  // BOD 2: NEsdilime s eglrenderem. Sdileni GLES1<->GLES2 Mali odmita
-  // (eglCreateContext selze, viz log A5). Obraz predame pres pixely
-  // (glReadPixels), ktere kontext neresi. Takze vlastni kontext, share
-  // = EGL_NO_CONTEXT. Ulozime si eglrender kontext jen pro prepnuti.
+  const EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE }; // GLES2
+  // NAPLES2: renderer je nove cely v GLES2, takze kontext UZ SDILIME s
+  // eglrenderem. Driv to neslo: gpu-gles byl GLES1 a Mali sdileni GLES1<->GLES2
+  // odmitalo (eglCreateContext selhal, viz log A5) - proto se obraz musel tahat
+  // pres procesor pomoci glReadPixels. GLES2<->GLES2 sdileni projde, takze
+  // eglrender muze kreslit texturu VRAM primo, bez kopirovani.
   g_egl_render_ctx  = eglGetCurrentContext();
   g_egl_render_surf = eglGetCurrentSurface(EGL_DRAW);
-  EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
+  EGLContext context = eglCreateContext(display, config, g_egl_render_ctx, contextAttribs);
+  if (context == EGL_NO_CONTEXT) {
+    // Kdyby sdileni presto selhalo, zkusime vlastni kontext bez sdileni -
+    // obraz pak pujde zalozni cestou pres pixely (funguje, jen je pomalejsi).
+    NAPDIAG("NAPLES2 sdileni kontextu selhalo (err=0x%x), zkousim bez sdileni", eglGetError());
+    context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
+  }
   if (context == EGL_NO_CONTEXT) {
     NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=eglCreateContext err=0x%x", eglGetError());
     return false;
@@ -549,12 +552,9 @@ static bool nap_gles_egl_init() {
     return false;
   }
 
-  // BUILD2SK98: gpu-gles cte tyhle tri promenne PRED tim, nez se GLinitialize
-  // vubec pusti do glViewport/glOrtho - musi byt nastavene driv. 320x240
-  // odpovida vychozimu PSXDisplay.DisplayMode nastavenemu v renderer_init().
-  iResX = 320;
-  iResY = 240;
-  rRatioRect.left = 0; rRatioRect.top = 0; rRatioRect.right = 320; rRatioRect.bottom = 240;
+  // NAPLES2: stary gpu-gles potreboval pred GLinitialize nastavit globalni
+  // iResX/iResY/rRatioRect (kreslil v souradnicich displeje). Novy GLES2
+  // renderer kresli rovnou v souradnicich VRAM, takze nic takoveho nema.
 
   // BUILD2SK106: DALSI CHYBEJICI KUS z GPUopen() - vsimnul jsem si az pri
   // znovu-kontrole na Reneho vyslovnou zadost. GPUopen() krome
@@ -594,13 +594,16 @@ static bool nap_gles_egl_init() {
   // proto pscSubtexStore zustal na NULL (vychozi C inicializace globalniho
   // pole) az do prvniho pokusu o kresleni. Oprava: zavolat oboji rucne, ve
   // STEJNEM poradi, jake uz proverene pouziva GPUopen().
-  InitializeTextureStore();
-
-  if (GLinitialize((void *)display, (void *)surface) != 0) {
-    NAPDIAG("BUILD2SK98 GLES_INIT_FAIL step=GLinitialize");
-    return false;
+  // NAPLES2: novy GLES2 renderer se inicializuje sam v renderer_init()
+  // (shadery, FBO, textura VRAM). Zadny InitializeTextureStore /
+  // GLinitialize / MakeDisplayLists - to byly vnitrnosti GLES1 pluginu.
+  {
+    int rc = n2_init();
+    if (rc != 0) {
+      NAPDIAG("NAPLES2 GLES_INIT_FAIL step=n2_init kod=%d", rc);
+      return false;
+    }
   }
-  MakeDisplayLists(); // BUILD2SK102: stejne poradi jako GPUopen() - font/HUD display listy
   // BUILD2SK108: SetOGLDisplaySettings(1) tady v initu byla CHYBA - potvrzeno
   // logem (GLES_SCISSOR_CHECK w=1 h=1). V tomhle okamziku jeste hra vubec
   // neposlala zadny GPU prikaz, takze PSXDisplay.DrawArea.* jsou porad na
@@ -1087,7 +1090,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR A16 28-07-2026 === (opravy: 12x nedefinovane chovani v texturach + 4x cteni za koncem dat ve filmu)");
+    nap_diag_log("=== NEOCONTR B1 NAPLES2 GLES2 28-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
