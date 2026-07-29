@@ -363,12 +363,20 @@ void n2_flush(void)
     {
         GLsizei st = (GLsizei)sizeof(N2Vert);
         glBindBuffer(GL_ARRAY_BUFFER, n2.vbo);
-        /* "osirotit" buffer - rekne ovladaci, ze na stara data uz nikdo neceka,
-           takze nahrani novych nemusi cekat na dokresleni predchoziho */
-        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(N2Vert) * N2_MAX_VERTS), NULL, GL_STREAM_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)(sizeof(N2Vert) * n2.nverts), n2.verts);
+        /* Nahrat PRESNE tolik dat, kolik davka ma - jednim volanim.
+           (Drive tu bylo "osirotivani" celeho 1,5MB bufferu pri KAZDEM
+           kreslicim volani; pri stovkach volani za snimek to znamenalo
+           stovky megabajtu alokaci za snimek a rozsypanou grafiku.) */
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(N2Vert) * n2.nverts),
+                     n2.verts, GL_STREAM_DRAW);
         if (!n2.attribs_set) {   /* ukazatele staci nastavit jednou */
             n2.attribs_set = 1;
+            if (n2.a_pos < 0 || n2.a_col < 0 || n2.a_uv < 0 || n2.a_page < 0 ||
+                n2.a_clut < 0 || n2.a_mode < 0 || n2.a_win < 0) {
+                nap_diag_log("NAPLES2 CHYBA: shader nema nektery atribut (%d %d %d %d %d %d %d)",
+                             n2.a_pos, n2.a_col, n2.a_uv, n2.a_page, n2.a_clut, n2.a_mode, n2.a_win);
+                n2.nverts = 0; glDisable(GL_SCISSOR_TEST); return;
+            }
             glVertexAttribPointer((GLuint)n2.a_pos,  2, GL_FLOAT, GL_FALSE, st, (const void*)0);
             glVertexAttribPointer((GLuint)n2.a_col,  3, GL_FLOAT, GL_FALSE, st, (const void*)8);
             glVertexAttribPointer((GLuint)n2.a_uv,   2, GL_FLOAT, GL_FALSE, st, (const void*)20);
