@@ -37,6 +37,10 @@ void n2_flush(void);           /* vykresli vse, co ceka v davce */
 /* --- prenosy VRAM ------------------------------------------------------ */
 /* CPU zapsal do gpu.vram (logo BIOSu, snimek filmu, textury) - dostat to na GPU */
 void n2_vram_written(int x, int y, int w, int h);
+/* 24bitovy rezim (film/MDEC): oblast displeje lezi ve VRAM jako 3 bajty na
+   pixel, ne jako 15bit. Musi se dekodovat zvlast, jinak z toho jsou
+   rozsypane barvy pri spravne geometrii. */
+void n2_present_rgb24(int sx, int sy, int w, int h);
 /* GPU neco nakreslil a procesor si to chce precist - dostat to zpet do gpu.vram */
 void n2_vram_sync_to_cpu(int x, int y, int w, int h);
 

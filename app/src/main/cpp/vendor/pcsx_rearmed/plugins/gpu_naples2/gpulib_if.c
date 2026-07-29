@@ -142,10 +142,23 @@ const void *nap_gles_grab_pixels(int *out_w, int *out_h)
 }
 
 /* Volano presne 1x za tick po retro_run (po VBlanku emulovaneho PS1).
-   Staci dokreslit, co ceka v davce - obraz uz je v texture VRAM. */
+   Krome dokresleni davky tady resime 24bitovy rezim (film): v nem lezi
+   oblast displeje ve VRAM jako 3 bajty na pixel, takze se musi dekodovat
+   zvlast - jinak z toho jsou rozsypane barvy pri spravne geometrii. */
 void nap_gles_present_frame(void)
 {
     n2_flush();
+    if (gpu.status & PSX_GPU_STATUS_RGB24) {
+        int w = gpu.screen.hres > 0 ? gpu.screen.hres : 320;
+        int h = gpu.screen.vres > 0 ? gpu.screen.vres : 240;
+        n2_present_rgb24(gpu.screen.src_x, gpu.screen.src_y, w, h);
+        {
+            static long n = 0;
+            if (n++ % 300 == 0)
+                nap_diag_log("NAPLES2 FILM (24bit) %dx%d src=[%d,%d] - dekodovano zvlast",
+                             w, h, gpu.screen.src_x, gpu.screen.src_y);
+        }
+    }
 }
 
 /* Primá cesta: id textury s celou VRAM + vyrez displeje. Pri sdilenem

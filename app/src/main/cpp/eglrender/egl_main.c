@@ -493,8 +493,11 @@ static void draw_frame(Engine* e) {
         unsigned vram_tex = core_get_texture(&tx, &ty, &tw, &th);
         if (vram_tex != 0 && tw > 0 && th > 0) {
             static long dbgT = 0;
-            const int vw_ = w, vh_ = h;
-            glViewport(0, 0, vw_, vh_);
+            // Zachovat pomer stran obrazu (4:3), jinak je v na vysku otocenem
+            // telefonu roztazeny. Stejny vypocet jako u cesty pres pixely.
+            int vw = w, vh = (int)((float)w * 3.0f / 4.0f);
+            if (vh > h) { vh = h; vw = (int)((float)h * 4.0f / 3.0f); }
+            glViewport((w - vw)/2, (h - vh)/2, vw, vh);
             glClearColor(0.f, 0.f, 0.f, 1.f);
             glClear(GL_COLOR_BUFFER_BIT);
 

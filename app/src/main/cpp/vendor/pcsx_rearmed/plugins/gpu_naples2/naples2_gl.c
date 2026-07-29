@@ -379,6 +379,66 @@ static void n2_set_blend(int b)
 
 /* ------------------------------------------------------- prenosy do VRAM */
 
+/* Nakresli RGBA obdelnik ze 'scratch' do obrazu (FBO) na pozici x,y. */
+static void n2_blit_scratch(int x, int y, int w, int h)
+{
+    glBindTexture(GL_TEXTURE_2D, n2.tex_blit);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, n2.scratch);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo);
+    glViewport(0, 0, N2_VRAM_W, N2_VRAM_H);
+    glDisable(GL_BLEND);
+    glDisable(GL_SCISSOR_TEST);
+    glUseProgram(n2.prog_blit);
+    glUniform2f(n2.b_vram, (float)N2_VRAM_W, (float)N2_VRAM_H);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, n2.tex_blit);
+    glUniform1i(n2.b_src, 0);
+    {
+        float x0 = (float)x, y0 = (float)y, x1 = (float)(x + w), y1 = (float)(y + h);
+        const float pos[12] = { x0,y0,  x1,y0,  x0,y1,   x1,y0,  x1,y1,  x0,y1 };
+        const float uv [12] = { 0,0,    1,0,    0,1,     1,0,    1,1,    0,1  };
+        glVertexAttribPointer((GLuint)n2.b_pos, 2, GL_FLOAT, GL_FALSE, 0, pos);
+        glVertexAttribPointer((GLuint)n2.b_uv,  2, GL_FLOAT, GL_FALSE, 0, uv);
+        glEnableVertexAttribArray((GLuint)n2.b_pos);
+        glEnableVertexAttribArray((GLuint)n2.b_uv);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+}
+
+/* 24bitovy rezim (film): ve VRAM lezi 3 bajty na pixel (R,G,B), radek VRAM
+   ma N2_VRAM_W*2 bajtu. Cist to jako 15bit dava spravnou geometrii, ale
+   rozsypane barvy - proto zvlastni dekod. */
+void n2_present_rgb24(int sx, int sy, int w, int h)
+{
+    const unsigned short *src = n2_host_vram();
+    int i, j, max_px;
+    if (!n2.ready || !src || w <= 0 || h <= 0) return;
+    if (sx < 0) sx = 0;
+    if (sy < 0) sy = 0;
+    if (sx > N2_VRAM_W - 1) sx = N2_VRAM_W - 1;
+    if (sy > N2_VRAM_H - 1) sy = N2_VRAM_H - 1;
+    if (sy + h > N2_VRAM_H) h = N2_VRAM_H - sy;
+    max_px = (N2_VRAM_W * 2 - sx * 2) / 3;      /* neprecist za pravy okraj radku */
+    if (w > max_px) w = max_px;
+    if (w <= 0 || h <= 0) return;
+
+    n2_flush();
+    for (j = 0; j < h; j++) {
+        const unsigned char *s = (const unsigned char *)(src + (size_t)(sy + j) * N2_VRAM_W + sx);
+        unsigned char *d = n2.scratch + (size_t)j * w * 4;
+        for (i = 0; i < w; i++) {
+            d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = 255;
+            d += 4; s += 3;
+        }
+    }
+    n2_blit_scratch(sx, sy, w, h);
+}
+
 void n2_vram_written(int x, int y, int w, int h)
 {
     const unsigned short *src = n2_host_vram();
@@ -421,32 +481,7 @@ void n2_vram_written(int x, int y, int w, int h)
             d[i * 4 + 3] = 255;
         }
     }
-    glBindTexture(GL_TEXTURE_2D, n2.tex_blit);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, n2.scratch);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo);
-    glViewport(0, 0, N2_VRAM_W, N2_VRAM_H);
-    glDisable(GL_BLEND);
-    glDisable(GL_SCISSOR_TEST);
-    glUseProgram(n2.prog_blit);
-    glUniform2f(n2.b_vram, (float)N2_VRAM_W, (float)N2_VRAM_H);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, n2.tex_blit);
-    glUniform1i(n2.b_src, 0);
-    {
-        float x0 = (float)x, y0 = (float)y, x1 = (float)(x + w), y1 = (float)(y + h);
-        const float pos[12] = { x0,y0,  x1,y0,  x0,y1,   x1,y0,  x1,y1,  x0,y1 };
-        const float uv [12] = { 0,0,    1,0,    0,1,     1,0,    1,1,    0,1  };
-        glVertexAttribPointer((GLuint)n2.b_pos, 2, GL_FLOAT, GL_FALSE, 0, pos);
-        glVertexAttribPointer((GLuint)n2.b_uv,  2, GL_FLOAT, GL_FALSE, 0, uv);
-        glEnableVertexAttribArray((GLuint)n2.b_pos);
-        glEnableVertexAttribArray((GLuint)n2.b_uv);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-    }
+    n2_blit_scratch(x, y, w, h);
 }
 
 void n2_vram_sync_to_cpu(int x, int y, int w, int h)
@@ -508,7 +543,10 @@ const void* n2_read_display(int sx, int sy, int w, int h)
 
 static void n2_texpage(unsigned v)
 {
-    n2_flush();
+    /* ZADNY n2_flush(): stranka i paleta jsou ulozene u KAZDEHO vrcholu,
+       takze se davka delit nemusi. Hry meni stranku mnohokrat za snimek -
+       drivejsi dokreslovani z toho delalo stovky kreslicich volani za snimek
+       a to kouslo obraz i zvuk. */
     n2.page_x = (int)((v & 0x0f) * 64);
     n2.page_y = (int)(((v >> 4) & 1) * 256);
     n2.page_blend = (int)((v >> 5) & 3);
