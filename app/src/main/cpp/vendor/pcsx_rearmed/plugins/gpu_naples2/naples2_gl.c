@@ -136,12 +136,22 @@ static struct {
     int      win_mx, win_my, win_ox, win_oy;
     int      area_x0, area_y0, area_x1, area_y1;
     int      off_x, off_y;
+    /* Cekajici zapisy do VRAM. Drive se kazdy zapis hned prekresloval do
+       obrazu - her je takovych zapisu za snimek i stovky a na mobilnim GPU
+       to znamena stovky prepnuti stavu a kreslicich volani, tedy trhani.
+       Ted se slouci do jednoho obdelniku a prekresli se najednou, ale VZDY
+       jeste PRED dalsim kreslenim primitiv, aby se poradi zachovalo. */
+    int      dirty;
+    int      dx0, dy0, dx1, dy1;
+    long     n_writes, n_blits, n_draws;   /* pocitadla pro diagnostiku */
     unsigned char *scratch;     /* prevod 16bit -> RGBA pri prenosech */
     unsigned char *readbuf;     /* zaloha pro nesdileny kontext */
     int      readbuf_cap;
 } n2;
 
 /* ------------------------------------------------------------- pomocnici */
+
+static void n2_flush_pending_vram(void);   /* definice nize - vola se uz z n2_flush */
 
 static GLuint n2_shader(GLenum type, const char *src)
 {
@@ -305,7 +315,10 @@ static void n2_apply_blend(void)
 
 void n2_flush(void)
 {
-    if (!n2.ready || n2.nverts <= 0) return;
+    if (!n2.ready) return;
+    n2_flush_pending_vram();   /* zapisy do VRAM musi byt v obraze DRIV nez primitiva */
+    if (n2.nverts <= 0) return;
+    n2.n_draws++;
 
     glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo);
     glViewport(0, 0, N2_VRAM_W, N2_VRAM_H);
@@ -410,6 +423,30 @@ static void n2_blit_scratch(int x, int y, int w, int h)
     }
 }
 
+/* Prekresli najednou vsechny cekajici zapisy do VRAM. */
+static void n2_flush_pending_vram(void)
+{
+    const unsigned short *src = n2_host_vram();
+    int x, y, w, h, i, j;
+    if (!n2.ready || !n2.dirty || !src) return;
+    x = n2.dx0; y = n2.dy0; w = n2.dx1 - n2.dx0; h = n2.dy1 - n2.dy0;
+    n2.dirty = 0;
+    if (w <= 0 || h <= 0) return;
+    for (j = 0; j < h; j++) {
+        const unsigned short *s2 = src + (size_t)(y + j) * N2_VRAM_W + x;
+        unsigned char *d = n2.scratch + (size_t)j * w * 4;
+        for (i = 0; i < w; i++) {
+            unsigned p = s2[i];
+            d[i * 4 + 0] = (unsigned char)((p        & 31) * 255 / 31);
+            d[i * 4 + 1] = (unsigned char)(((p >> 5) & 31) * 255 / 31);
+            d[i * 4 + 2] = (unsigned char)(((p >> 10) & 31) * 255 / 31);
+            d[i * 4 + 3] = 255;
+        }
+    }
+    n2_blit_scratch(x, y, w, h);
+    n2.n_blits++;
+}
+
 /* 24bitovy rezim (film): ve VRAM lezi 3 bajty na pixel (R,G,B), radek VRAM
    ma N2_VRAM_W*2 bajtu. Cist to jako 15bit dava spravnou geometrii, ale
    rozsypane barvy - proto zvlastni dekod. */
@@ -428,6 +465,7 @@ void n2_present_rgb24(int sx, int sy, int w, int h)
     if (w <= 0 || h <= 0) return;
 
     n2_flush();
+    n2.dirty = 0;   /* film prepisuje celou plochu displeje - starsi zapisy netreba */
     for (j = 0; j < h; j++) {
         const unsigned char *s = (const unsigned char *)(src + (size_t)(sy + j) * N2_VRAM_W + sx);
         unsigned char *d = n2.scratch + (size_t)j * w * 4;
@@ -450,8 +488,6 @@ void n2_vram_written(int x, int y, int w, int h)
     if (y + h > N2_VRAM_H) h = N2_VRAM_H - y;
     if (w <= 0 || h <= 0) return;
 
-    n2_flush();
-
     /* 1) syrova data pro texturovani */
     for (j = 0; j < h; j++) {
         const unsigned short *s = src + (size_t)(y + j) * N2_VRAM_W + x;
@@ -466,22 +502,17 @@ void n2_vram_written(int x, int y, int w, int h)
     glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h,
                     GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, n2.scratch);
 
-    /* 2) tyz obdelnik i do obrazu (logo BIOSu, snimek filmu) */
-    for (j = 0; j < h; j++) {
-        const unsigned short *s = src + (size_t)(y + j) * N2_VRAM_W + x;
-        unsigned char *d = n2.scratch + (size_t)j * w * 4;
-        for (i = 0; i < w; i++) {
-            unsigned p = s[i];
-            unsigned r = (p        & 31) * 255 / 31;
-            unsigned g = ((p >> 5) & 31) * 255 / 31;
-            unsigned b = ((p >> 10) & 31) * 255 / 31;
-            d[i * 4 + 0] = (unsigned char)r;
-            d[i * 4 + 1] = (unsigned char)g;
-            d[i * 4 + 2] = (unsigned char)b;
-            d[i * 4 + 3] = 255;
-        }
+    /* 2) do obrazu se to prekresli az naraz (viz n2_flush_pending_vram) -
+          jen si oznacime oblast. Drive se kreslilo hned pri kazdem zapisu
+          a to trhalo obraz. */
+    if (!n2.dirty) { n2.dx0 = x; n2.dy0 = y; n2.dx1 = x + w; n2.dy1 = y + h; n2.dirty = 1; }
+    else {
+        if (x < n2.dx0) n2.dx0 = x;
+        if (y < n2.dy0) n2.dy0 = y;
+        if (x + w > n2.dx1) n2.dx1 = x + w;
+        if (y + h > n2.dy1) n2.dy1 = y + h;
     }
-    n2_blit_scratch(x, y, w, h);
+    n2.n_writes++;
 }
 
 void n2_vram_sync_to_cpu(int x, int y, int w, int h)
@@ -514,6 +545,14 @@ void n2_vram_sync_to_cpu(int x, int y, int w, int h)
 /* ---------------------------------------------------------------- vystup */
 
 unsigned n2_vram_texture(void) { return n2.ready ? n2.tex_out : 0; }
+
+void n2_take_counters(long *draws, long *writes, long *blits)
+{
+    if (draws)  *draws  = n2.n_draws;
+    if (writes) *writes = n2.n_writes;
+    if (blits)  *blits  = n2.n_blits;
+    n2.n_draws = n2.n_writes = n2.n_blits = 0;
+}
 
 const void* n2_read_display(int sx, int sy, int w, int h)
 {

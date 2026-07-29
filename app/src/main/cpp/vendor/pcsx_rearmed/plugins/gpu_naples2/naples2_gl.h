@@ -51,6 +51,9 @@ void n2_set_ecmds(uint32_t *ecmds);   /* E1..E6 najednou (obnova stavu) */
 /* Textura, ve ktere lezi cela VRAM (1024x512 RGBA). Eglrender ji pri sdilenem
    kontextu muze kreslit primo - zadne kopirovani. */
 unsigned n2_vram_texture(void);
+/* Diagnostika: kolik kreslicich volani / zapisu do VRAM / prekresleni
+   probehlo od minuleho dotazu (a vynuluje pocitadla). */
+void n2_take_counters(long *draws, long *writes, long *blits);
 /* Zaloha pro nesdileny kontext: precte oblast displeje do RGBA bufferu. */
 const void* n2_read_display(int sx, int sy, int w, int h);
 

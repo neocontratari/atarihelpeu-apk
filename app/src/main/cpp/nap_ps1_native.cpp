@@ -1095,7 +1095,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B4 FILM A PLYNULOST 29-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
+    nap_diag_log("=== NEOCONTR B5 DOKRESLENI A FILM 29-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
@@ -1151,6 +1151,11 @@ extern "C" void nap_ps1_egl_tick_c(void) {
     retro_run();
     g_crash_stage = "sync_display";
     if (g_gles_ready) nap_gles_sync_display_settings();
+    // OPRAVA: dokresleni snimku (a dekod 24bitoveho filmu) se volalo JEN ze
+    // stareho pracovniho vlakna nap_worker(). Cesta A jde pres tenhle tick,
+    // takze se to nikdy nespustilo - odtud cerna obrazovka u filmu.
+    g_crash_stage = "present_frame";
+    if (g_gles_ready) { void nap_gles_present_frame(void); nap_gles_present_frame(); }
     g_crash_stage = "tick_done(cekam na eglrender grab/present)";
 }
 

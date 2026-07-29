@@ -159,6 +159,16 @@ void nap_gles_present_frame(void)
                              w, h, gpu.screen.src_x, gpu.screen.src_y);
         }
     }
+    /* Kolik prace pripada na snimek - odtud pozname, jestli neco trha obraz. */
+    {
+        static long fr = 0;
+        if (++fr % 120 == 0) {
+            long d, wr, bl;
+            n2_take_counters(&d, &wr, &bl);
+            nap_diag_log("NAPLES2 ZATEZ za 120 snimku: kresleni=%ld zapisyVRAM=%ld prekresleni=%ld (na snimek: %.1f / %.1f / %.1f)",
+                         d, wr, bl, d/120.0, wr/120.0, bl/120.0);
+        }
+    }
 }
 
 /* Primá cesta: id textury s celou VRAM + vyrez displeje. Pri sdilenem
