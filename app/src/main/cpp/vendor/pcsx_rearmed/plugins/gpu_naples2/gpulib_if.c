@@ -18,6 +18,12 @@
 #include "../gpulib/gpu.h"
 #include "naples2_gl.h"
 
+/* PCSX-ReARMed konvence: plugin do sebe vtahuje jadro gpulib. Odtud pochazi
+   globalni 'gpu', tabulka 'cmd_lengths' i cele rozhrani GPUinit/GPUopen/...,
+   ktere pouziva frontend/plugin.c. Stary gpu-gles delal totez - kdyz to tu
+   chybelo, linker hlasil desitky nedefinovanych symbolu. */
+#include "../gpulib/gpu.c"
+
 extern void nap_diag_log(const char *fmt, ...);
 
 /* renderer si sahá na autoritativni VRAM v pameti */
@@ -83,6 +89,26 @@ int vout_update(struct psx_gpu *g, int src_x, int src_y)
 void vout_set_raw_vram(void *vram)
 {
     (void)vram;
+}
+
+/* GPUopen/GPUclose definuje plugin, ne gpulib. V nasem libretro toku se
+   nevolaji (kontext i renderer si zaridi nap_gles_egl_init -> n2_init), ale
+   frontend/plugin.c na ne odkazuje v tabulce funkci - musi tedy existovat. */
+static int n2_is_opened;
+
+long GPUopen(unsigned long *disp, char *cap, char *cfg)
+{
+    (void)disp; (void)cap; (void)cfg;
+    if (n2_is_opened) return -1;
+    n2_is_opened = 1;
+    return 0;
+}
+
+long GPUclose(void)
+{
+    if (!n2_is_opened) return 0;
+    n2_is_opened = 0;
+    return 0;
 }
 
 /* ------------------------------------- rozhrani, ktere ceka zbytek emu10 */

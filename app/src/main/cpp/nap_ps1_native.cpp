@@ -467,9 +467,6 @@ extern "C" {
   // BUILD2SK106: POZOR presne typy - BOOL je v tomhle projektu #define BOOL
   // unsigned short (NE int - to by byla skutecna chyba, cteni/zapis 4 bajtu
   // pres 2-bajtovou promennou). Overeno primo v gpuExternals.h pred pouzitim.
-  extern unsigned short bDisplayNotSet; // BUILD2SK106
-  extern unsigned short bSetClip; // BUILD2SK106
-  extern unsigned int CSTEXTURE, CSVERTEX, CSCOLOR; // BUILD2SK106
 }
 
 
@@ -576,9 +573,9 @@ static bool nap_gles_egl_init() {
   // GitHub Actions to spravne odchytil jako "undeclared identifier" driv,
   // nez se cokoli dostalo na telefon. 1 je presne to, na co TRUE stejne
   // expanduje (overeno: #define TRUE 1) - zadna nova makra, zadne riziko.
-  bDisplayNotSet = 1;
-  bSetClip = 1;
-  CSTEXTURE = CSVERTEX = CSCOLOR = 0;
+  // NAPLES2: bDisplayNotSet / bSetClip / CSTEXTURE / CSVERTEX / CSCOLOR byly
+  // globalni promenne stareho GLES1 pluginu (stav fixed-function pipeline).
+  // Novy GLES2 renderer zadny takovy globalni stav nema - vse si drzi sam.
 
   // BUILD2SK102: SKUTECNA PRICINA PADU (potvrzeno realnym adb crash logem -
   // Rene ho ziskal, dik!). Fatal SIGSEGV v CheckTextureInSubSCache (volano
@@ -1090,7 +1087,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B1 NAPLES2 GLES2 28-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
+    nap_diag_log("=== NEOCONTR B2 NAPLES2 GLES2 29-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
