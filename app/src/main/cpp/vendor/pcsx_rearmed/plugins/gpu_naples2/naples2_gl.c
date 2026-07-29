@@ -702,6 +702,10 @@ int n2_do_cmd_list(uint32_t *list, int list_len, uint32_t *ex_regs, int *last_cm
             int shaded = (cmd & 0x10) ? 1 : 0;
             int textur = (cmd & 4) ? 1 : 0;
             int trans  = (cmd & 2) ? 1 : 0;
+            /* bit 0 = SUROVA TEXTURA: pouzit texturu beze zmeny, bez nasobeni
+               barvou vrcholu. Kdyz se to ignoruje a hra posle tmavou barvu,
+               vyjde cerna - Crash tenhle rezim pouziva bezne. */
+            int syrova = (cmd & 1) ? 1 : 0;
             int nv     = quad ? 4 : 3;
             int i, k = 1;
             int px[4], py[4], pu[4], pv[4];
@@ -710,6 +714,7 @@ int n2_do_cmd_list(uint32_t *list, int list_len, uint32_t *ex_regs, int *last_cm
 
             for (i = 0; i < nv; i++) {
                 pc[i] = (i == 0 || !shaded) ? base : (list[k++] & 0xffffff);
+                if (textur && syrova) pc[i] = 0x808080;   /* neutralni = textura beze zmeny */
                 px[i] = n2_s11((unsigned)(list[k] & 0xffff));
                 py[i] = n2_s11((unsigned)((list[k] >> 16) & 0xffff));
                 k++;
@@ -741,6 +746,7 @@ int n2_do_cmd_list(uint32_t *list, int list_len, uint32_t *ex_regs, int *last_cm
             unsigned base = list[0] & 0xffffff;
             int textur = (cmd & 4) ? 1 : 0;
             int trans  = (cmd & 2) ? 1 : 0;
+            if (textur && (cmd & 1)) base = 0x808080;  /* surova textura - beze zmeny */
             int k = 1, w, h, u0 = 0, v0 = 0;
             int x = n2_s11((unsigned)(list[k] & 0xffff));
             int y = n2_s11((unsigned)((list[k] >> 16) & 0xffff));

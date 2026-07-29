@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 59
-        versionName "EMU10-B11-TEXTURY"  // log ukazal zapisyVRAM=0 - textury byly prazdne, proto jednobarevne plochy; videopamet se ted nahrava kazdy snimek
+        versionCode 60
+        versionName "EMU10-B12-SUROVA-TEXTURA"  // vynechane pravidlo PS1: bit surove textury - textura se nesmi nasobit barvou vrcholu
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
