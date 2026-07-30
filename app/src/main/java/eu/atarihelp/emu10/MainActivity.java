@@ -637,7 +637,12 @@ public class MainActivity extends Activity {
                     // ps1GlView neexistuje - a TV proto snimala okno appky, tedy
                     // jen ovladac bez hry ("Window doesn't have a backing surface").
                     // Snimky z jadra jsou k dispozici vzdy, kdyz bezi PS1 relace.
-                    boolean gotFromCore = ps1SessionActive && napTvWebCaptureFromCore(bw, bh);
+                    // Zadna podminka navic: proste zkusime vzit snimek z jadra.
+                    // Kdyz zadny neni, funkce vrati false a pouzije se zaloha.
+                    // (Drive to viselo na priznacich, ktere v ceste pres nativni
+                    // okno nemusely platit - a TV pak snimala okno appky, kde je
+                    // jen ovladac.)
+                    boolean gotFromCore = napTvWebCaptureFromCore(bw, bh);
                     if (gotFromCore) {
                         napTvWebPixelCopyPending = false;
                     } else if (!didTimeoutFallback && pixelCopyAllowed) {
@@ -5239,6 +5244,17 @@ public class MainActivity extends Activity {
         // relaci a nastartovat vlakno, co ho prubezne plni (viz appendNativeLog).
         // Musi byt PRED vsim ostatnim, aby /log opravdu zachytil "od zacatku".
         napTvWebLogFileInit();
+        // VERZE AUTOMATICKY Z BUILDU - nesmi se rozejit s tim, co je nainstalovane.
+        // (Drive jsem verzi psal do logu rucne v nativnim kodu a zapomnel ji
+        // prepsat, takze log hlasil starou verzi a hledala se chyba v necem,
+        // co uz davno bylo opravene. Tohle se rozejit nemuze.)
+        try {
+            android.content.pm.PackageInfo pi =
+                getPackageManager().getPackageInfo(getPackageName(), 0);
+            appendNativeLog("VERZE APKY = " + pi.versionName + " (code " + pi.versionCode + ")");
+        } catch (Throwable t) {
+            appendNativeLog("VERZE APKY = nezjistena: " + safeMsg(t));
+        }
         // BUILD2SK99: rekni PS1 nativnimu kodu, kam ma zapisovat pohotovostni
         // diagnostiku (napr. gpu-gles/EGL inicializace) - primo do STEJNEHO
         // souboru, co uz napTvWebLogFileInit prave zalozil. Musi byt AZ PO

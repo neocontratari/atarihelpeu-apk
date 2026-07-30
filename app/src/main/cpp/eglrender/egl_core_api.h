@@ -55,6 +55,7 @@ const void* core_get_pixels(int* w, int* h); // BOD 2: RGBA pixely z gpu-gles
 int      core_vram_w(void);
 int      core_vram_h(void);
 // CESTA A: prepnuti GL kontextu, ktere vola render vlakno kolem kresleni.
+void     core_shutdown(void);        // zastavi emulaci i zvuk (pri zavreni okna)
 void     core_bind_for_step(void);   // pred core_step (gpu-gles kresli)
 void     core_bind_for_display(void); // pred kreslenim textury na okno
 

@@ -176,6 +176,7 @@ void core_set_pad(unsigned state) { atomic_store(&g_pad_state, state); }
 // CESTA A: ukazatele na dvirka jadra.
 static unsigned (*p_egl_grab)(int*,int*,int*,int*) = NULL;
 static const void* (*p_egl_grab_pixels)(int*,int*) = NULL; // BOD 2: pres procesor
+static void (*p_egl_shutdown)(void) = NULL;   // vypnuti jadra pri zavreni okna
 static int      (*p_egl_vram_w)(void) = NULL;
 static int      (*p_egl_vram_h)(void) = NULL;
 static int      s_use_texture = 0; // 1 = gpu-gles cesta bezi
@@ -202,6 +203,10 @@ int core_vram_h(void) { return p_egl_vram_h ? p_egl_vram_h() : 512; }
 // kolem kresleni - drzi zvuk mimo (retro_run se nezdrzuje).
 static void (*p_bind_core)(void) = NULL;
 static void (*p_bind_render)(void) = NULL;
+// Vypnuti jadra: zastavi emulaci i zvuk. Bez tohohle bezelo jadro dal
+// i po zavreni okna hry (zvuk hral porad, hra zustala nactena).
+void core_shutdown(void) { if (p_egl_shutdown) p_egl_shutdown(); }
+
 void core_bind_for_step(void)    { if (p_bind_core) p_bind_core(); }
 void core_bind_for_display(void) { if (p_bind_render) p_bind_render(); }
 
@@ -316,6 +321,7 @@ void core_init(void* java_vm, const char* internal_data_path) {
     *(void**)&p_egl_tick   = dlsym(h, "nap_ps1_egl_tick_c");
     *(void**)&p_egl_grab   = dlsym(h, "nap_ps1_egl_grab");
     *(void**)&p_egl_grab_pixels = dlsym(h, "nap_ps1_egl_grab_pixels"); // BOD 2
+    *(void**)&p_egl_shutdown    = dlsym(h, "nap_ps1_egl_shutdown_c");
     *(void**)&p_egl_vram_w = dlsym(h, "nap_ps1_egl_vram_w");
     *(void**)&p_egl_vram_h = dlsym(h, "nap_ps1_egl_vram_h");
     *(void**)&p_bind_core   = dlsym(h, "nap_ps1_egl_bind_core");

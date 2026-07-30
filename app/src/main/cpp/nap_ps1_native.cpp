@@ -1214,7 +1214,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B20 VLASTNI VLAKNO 30-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
+    nap_diag_log("=== NEOCONTR B23 30-07-2026 (verzi hleda v radku VERZE APKY) ===");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
@@ -1303,6 +1303,31 @@ static void nap_core_thread_fn(void) {
     }
     if (g_gles_display_A != EGL_NO_DISPLAY)
         eglMakeCurrent(g_gles_display_A, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+}
+
+// ==================================================================
+//  VYPNUTI JADRA PRI ZAVRENI OKNA HRY
+//  Chybelo uplne. Kdyz se zavrelo nativni okno, eglrender uklidil jen sebe -
+//  ale jadro PS1 bezelo dal: vlakno emulace poracovalo, OpenSL prehravac
+//  hral, hra zustala nactena. Odtud "po vyskoceni z emulatoru hraje zvuk dal
+//  a PS1 se nevypne" a pri dalsim spusteni pribyval dalsi bezici zvuk.
+// ==================================================================
+extern "C" void nap_ps1_egl_shutdown_c(void) {
+    nap_diag_log("CESTA_A VYPINAM JADRO (zavreno okno hry)");
+    // 1) zastavit vlakno emulace a pockat, az dobehne
+    if (g_core_run.exchange(false) && g_core_thread.joinable()) g_core_thread.join();
+    // 2) zastavit zvuk a vyprazdnit frontu
+    nap_sl_close();
+    nap_audio_clear();
+    // 3) uvolnit hru a jadro
+    if (g_loaded.exchange(false)) {
+        nap_srm_save_if_dirty("vypnuti");
+        retro_unload_game();
+        retro_deinit();
+    }
+    g_gles_ready = false;
+    g_frame_ready.store(-1);
+    nap_diag_log("CESTA_A JADRO VYPNUTO (zvuk i emulace zastaveny)");
 }
 
 extern "C" void nap_ps1_egl_tick_c(void) {

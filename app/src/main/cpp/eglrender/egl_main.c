@@ -805,6 +805,7 @@ void android_main(struct android_app* app) {
             if (source) source->process(app, source);
             if (app->destroyRequested) {
                 LOGI("=== Konec aplikace ===");
+                core_shutdown();   // zastavit emulaci i zvuk, jinak bezi dal
                 egl_term(&engine);
                 return;
             }
@@ -812,6 +813,7 @@ void android_main(struct android_app* app) {
         }
         if (app->destroyRequested) {
             LOGI("=== Konec aplikace ===");
+            core_shutdown();   // zastavit emulaci i zvuk, jinak bezi dal
             egl_term(&engine);
             return;
         }
