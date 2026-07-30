@@ -6784,6 +6784,26 @@ public class MainActivity extends Activity {
     // retry misto okamziteho ticha, generation guard a hard release pri prepnuti.
     private synchronized void startPs1Audio() {
         stopPs1Audio(); // BUILD2SA3B: pred novou hrou zabit stare vlakno a uvolnit stary AudioTrack
+
+        // ==============================================================
+        //  DVA ZVUKOVE VYSTUPY NARAZ - tohle byla ta chyba.
+        //  V ceste A si zvuk PS1 obsluhuje nativni OpenSL prehravac primo
+        //  v jadre (nap_sl_open(), otevira se pri kazdem bootu PS1). Tenhle
+        //  Javovy AudioTrack byl PUVODNI cesta a nikdo ho nevypnul - takze
+        //  bezely oba a oba drzely otevreny zvukovy vystup. Javovy uz navic
+        //  nema odkud brat vzorky (jadro je posila do vlastni fronty), takze
+        //  jen dokola podteka a zabira zvukovy vystup.
+        //  Odtud kousani, ktere zavisi na zatezi - dve cesty se hadaji.
+        //  Zvuk PS1 obsluhuje JEDEN vystup: nativni.
+        // ==============================================================
+        appendNativeLog("PS1_AUDIO_JAVA_VYPNUTO duvod=zvuk obsluhuje nativni OpenSL (drive bezely oba naraz)");
+        ps1CurrentAudioTrack = null;
+        ps1AudioThread = null;
+    }
+
+    // PUVODNI Javova zvukova cesta - ponechana jen pro pripad navratu, NEVOLA SE.
+    @SuppressWarnings("unused")
+    private synchronized void startPs1AudioJavaStara_NEPOUZIVA_SE() {
         final int gen = ++ps1AudioGen;
         ps1AudioThread = new Thread(() -> {
             AudioTrack at = null;
