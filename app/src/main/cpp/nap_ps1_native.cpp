@@ -361,7 +361,15 @@ static std::vector<int16_t> g_afifo; // ponechano kvuli ps1PullAudio (Java cesta
 //  Ted maji kazdy svuj konec kruhu, hlidany atomickym citacem: zadny
 //  zamek, zadne kopirovani, zadna alokace. Zvuk uz na grafiku necekha.
 // ==================================================================
-#define NAP_ARING_SHORTS (1u << 17)          // 131072 shortu = ~1,4 s stereo
+#define NAP_ARING_SHORTS (1u << 17)          // kapacita kruhu (strop)
+// Cilova naplnenost fronty. Kdyz se nechala rust az ke stropu, latence
+// narostla na 1,4 s a pak se jednorazove zahodil velky kus - a to je slyset.
+// Drzime ji nizko a pripadny prebytek ubirame po kouskach (~1 ms), coz slysitelne
+// neni. 44100 Hz stereo => 88,2 shortu na milisekundu.
+#define NAP_ARING_MS(ms)   ((unsigned)((ms) * 882u / 10u))
+#define NAP_ARING_TARGET   NAP_ARING_MS(90)    // kolem 90 ms
+#define NAP_ARING_HIGH     NAP_ARING_MS(140)   // nad 140 ms zacneme ubirat
+#define NAP_ARING_TRIM     NAP_ARING_MS(1)     // ubirame po 1 ms
 static int16_t              g_aring[NAP_ARING_SHORTS];
 static std::atomic<unsigned> g_aring_w{0};   // pise emulace
 static std::atomic<unsigned> g_aring_r{0};   // cte zvukovy callback
@@ -378,7 +386,16 @@ static void nap_aring_write(const int16_t *src, unsigned n) {
     g_aring_r.store(r + drop, std::memory_order_release);
   }
   for (unsigned i = 0; i < n; i++) g_aring[(w + i) & (NAP_ARING_SHORTS - 1)] = src[i];
-  g_aring_w.store(w + n, std::memory_order_release);
+  w += n;
+  g_aring_w.store(w, std::memory_order_release);
+  /* Drzet frontu nizko: prebytek ubirame po 1 ms, ne velkym skokem. */
+  {
+    unsigned r2 = g_aring_r.load(std::memory_order_acquire);
+    if (w - r2 > NAP_ARING_HIGH) {
+      unsigned trim = NAP_ARING_TRIM & ~1u;          /* zachovat parovani L,R */
+      g_aring_r.store(r2 + trim, std::memory_order_release);
+    }
+  }
 }
 static unsigned nap_aring_read(int16_t *dst, unsigned n) {
   unsigned r = g_aring_r.load(std::memory_order_relaxed);
@@ -429,7 +446,7 @@ static bool s_sl_ready = false;
 // prepisoval, a rezerva byla prakticky nulova. Jakmile se snimek o chlup
 // zdrzel, fronta dobehla a doplnila se TICHEM = kousani.
 // Ted je bloku vic a stridaji se, takze je v ceste rezerva ~185 ms.
-#define NAP_SL_BLOCKS 8
+#define NAP_SL_BLOCKS 4   // 4 x 23 ms = ~93 ms rezervy; drive 8 = 186 ms, tedy zbytecne nafouknute
 static int16_t s_sl_blocks[NAP_SL_BLOCKS][NAP_SL_BLOCK_FRAMES * 2];
 static int     s_sl_next = 0;
 
@@ -1150,7 +1167,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B15 ZVUK BEZ ZAMKU 30-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
+    nap_diag_log("=== NEOCONTR B16 ZVUK NIZKA FRONTA 30-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
