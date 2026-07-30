@@ -649,6 +649,16 @@ public class MainActivity extends Activity {
                     // (Drive to viselo na priznacich, ktere v ceste pres nativni
                     // okno nemusely platit - a TV pak snimala okno appky, kde je
                     // jen ovladac.)
+                    // ZVUK PRO TV: vyzvedneme kopii toho, co se prave prehrava.
+                    // Driv se zvuk do TV posilal z Javove zvukove cesty, ta uz
+                    // ale nebezi (zvuk obsluhuje nativni OpenSL), takze TV byla
+                    // nema. Odbocka v jadre hlavni zvuk nijak nezdrzuje.
+                    try {
+                        if (tvPs1Pcm == null) tvPs1Pcm = new short[8192];
+                        int got = NativePs1CoreBridge.pullTvAudioSafe(tvPs1Pcm);
+                        if (got > 0) napTvWebAudioPush(tvPs1Pcm, 0, got, 44100, "PS1");
+                    } catch (Throwable ignored) {}
+
                     boolean gotFromCore = napTvWebCaptureFromCore(bw, bh);
                     if (gotFromCore) {
                         napTvWebPixelCopyPending = false;
@@ -791,6 +801,7 @@ public class MainActivity extends Activity {
     private int[] tvCoreArgb = new int[1024 * 512];
     private Bitmap tvCoreSrcBmp;
     private boolean tvCoreHadFrame = false;
+    private short[] tvPs1Pcm = null;   // odbocka zvuku pro TV
     private int[] tvSharpBuf;
     private double tvSharpSumMs = 0;
     private long tvSharpFrames = 0;

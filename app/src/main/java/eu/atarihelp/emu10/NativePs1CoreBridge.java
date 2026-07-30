@@ -13,6 +13,7 @@ public final class NativePs1CoreBridge {
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
     private static native int ps1PullAudio(short[] out, int frames);
+    private static native int ps1PullTvAudio(short[] out);   // zvuk pro TV (kopie prehravaneho)
     private static native void ps1SetInput(int id, boolean down);
     private static native String ps1SaveState(String path);
     private static native String ps1LoadState(String path);
@@ -30,6 +31,11 @@ public final class NativePs1CoreBridge {
     public static int pullAudioSafe(short[] out, int frames) {
         if (!loaded) return 0;
         try { return ps1PullAudio(out, frames); } catch (Throwable t) { return 0; }
+    }
+    // Vyzvedne zvuk pro TV (kopii toho, co se prave prehrava). Vraci pocet shortu.
+    public static int pullTvAudioSafe(short[] out) {
+        if (!loaded) return 0;
+        try { return ps1PullTvAudio(out); } catch (Throwable t) { return 0; }
     }
     public static int grabFrameSafe(int[] out) {
         if (!loaded) return 0;

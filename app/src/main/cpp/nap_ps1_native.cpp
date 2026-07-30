@@ -435,6 +435,27 @@ static int nap_audio_skip_step(void) {
   if (avail < NAP_ARING_TARGET) return 0;        // zvuku je malo - krokovat
   return 1;                                      // je ho dost - tento tick vynechat
 }
+// ==================================================================
+//  ODBOCKA ZVUKU PRO TV
+//  Zvuk pro TV se driv bral z Javove zvukove cesty (writePs1AudioTrack).
+//  Ta uz nebezi - zvuk obsluhuje nativni OpenSL - takze TV nemela odkud brat
+//  a byla nema. Tady si z prehravaneho zvuku poridime KOPII, ktera hlavni
+//  cestu nijak nezdrzuje: zapis je jen presun bajtu, bez zamku.
+//  Kdyz si TV kopii nevyzvedava (nikdo se nedivá), nejstarsi data se prepisuji.
+#define NAP_TVRING_SHORTS (1u << 16)          // ~0,7 s stereo
+static int16_t               g_tvring[NAP_TVRING_SHORTS];
+static std::atomic<unsigned> g_tvring_w{0};
+static std::atomic<unsigned> g_tvring_r{0};
+
+static void nap_tvring_write(const int16_t *src, unsigned n) {
+  unsigned w = g_tvring_w.load(std::memory_order_relaxed);
+  unsigned r = g_tvring_r.load(std::memory_order_acquire);
+  unsigned free_ = NAP_TVRING_SHORTS - (w - r);
+  if (n > free_) g_tvring_r.store(r + (n - free_), std::memory_order_release);
+  for (unsigned i = 0; i < n; i++) g_tvring[(w + i) & (NAP_TVRING_SHORTS - 1)] = src[i];
+  g_tvring_w.store(w + n, std::memory_order_release);
+}
+
 static unsigned nap_aring_read(int16_t *dst, unsigned n) {
   unsigned r = g_aring_r.load(std::memory_order_relaxed);
   unsigned have = g_aring_w.load(std::memory_order_acquire) - r;
@@ -507,6 +528,7 @@ static void nap_sl_callback(SLAndroidSimpleBufferQueueItf bq, void*) {
       }
     }
   }
+  nap_tvring_write(blk, (unsigned)need);   // kopie pro TV (hlavni cestu nezdrzuje)
   (*bq)->Enqueue(bq, blk, need * sizeof(int16_t));
 }
 
@@ -997,6 +1019,26 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1GrabFrame(JNIEnv *env, jclass, ji
   env->SetIntArrayRegion(out, 0, w * h, (const jint*)g_frame_argb.data());
   return (w << 16) | h;
 }
+// Zvuk pro TV: Java si vyzvedne, co se mezitim prehralo. Vraci pocet shortu.
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PullTvAudio(JNIEnv *env, jclass, jshortArray out) {
+  if (!out) return 0;
+  jsize cap = env->GetArrayLength(out);
+  if (cap <= 0) return 0;
+  unsigned r = g_tvring_r.load(std::memory_order_relaxed);
+  unsigned have = g_tvring_w.load(std::memory_order_acquire) - r;
+  unsigned take = have < (unsigned)cap ? have : (unsigned)cap;
+  if (take == 0) return 0;
+  take &= ~1u;                       // zachovat parovani L,R
+  if (take == 0) return 0;
+  static std::vector<int16_t> tmp;
+  if (tmp.size() < take) tmp.resize(take);
+  for (unsigned i = 0; i < take; i++) tmp[i] = g_tvring[(r + i) & (NAP_TVRING_SHORTS - 1)];
+  g_tvring_r.store(r + take, std::memory_order_release);
+  env->SetShortArrayRegion(out, 0, (jsize)take, tmp.data());
+  return (jint)take;
+}
+
 // BUILD2SA3: Java audio vlakno si tahne stereo framy; vraci pocet framu.
 extern "C" JNIEXPORT jint JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PullAudio(JNIEnv *env, jclass, jshortArray out, jint frames) {
@@ -1214,7 +1256,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B27 30-07-2026 (verzi hleda v radku VERZE APKY) ===");
+    nap_diag_log("=== NEOCONTR B28 30-07-2026 (verzi hleda v radku VERZE APKY) ===");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
