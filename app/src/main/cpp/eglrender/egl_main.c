@@ -781,8 +781,14 @@ void android_main(struct android_app* app) {
     app->onAppCmd = handle_cmd;
     app->onInputEvent = handle_input; // OVLADANI: dotyk -> PS1 tlacitka (v C)
 
-    // OKNO HRY NESMI ZHASNOUT (hraje se dotykem, systém by jinak displej uspal)
-    ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
+    // OKNO HRY NESMI ZHASNOUT (hraje se dotykem, system by jinak displej uspal).
+    // Konstanta AWINDOW_FLAG_KEEP_SCREEN_ON neni v teto verzi NDK deklarovana,
+    // takze pouzijeme primo hodnotu z Androidu:
+    // WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON = 0x00000080
+    #ifndef NAP_FLAG_KEEP_SCREEN_ON
+    #define NAP_FLAG_KEEP_SCREEN_ON 0x00000080u
+    #endif
+    ANativeActivity_setWindowFlags(app->activity, NAP_FLAG_KEEP_SCREEN_ON, 0);
 
     logserver_set_upload_dir(app->activity->internalDataPath);
     // A12: PRESTEHOVANO z 8765 na 8766. Eglrender mel vlastni server na TOMTEZ
