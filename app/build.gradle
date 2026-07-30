@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 67
-        versionName "EMU10-B19-TEMPO-BEZ-KMITANI"  // zpetny tlak uspanim se bil s vsyncem a rozkmital se; ted se vynechava krok emulace
+        versionCode 68
+        versionName "EMU10-B20-EMULACE-VLASTNI-VLAKNO"  // emulace uz nebezi na vlakne kresleni - kresleni ji nebrzdi a zvuk na ni neceka
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

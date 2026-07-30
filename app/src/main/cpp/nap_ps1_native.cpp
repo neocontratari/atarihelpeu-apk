@@ -403,7 +403,23 @@ static void nap_aring_write(const int16_t *src, unsigned n) {
 //  zvuku, zadny vzorek se nezahodi a vyska ani rychlost tonu se nemeni.
 //  Kdyz je fronta naopak nizka, nespime vubec, aby zvuk nikdy nevyschl.
 // ==================================================================
-// Vraci 1, kdyz se ma TENTO tick VYNECHAT krok emulace.
+// ==================================================================
+//  EMULACE MA VLASTNI VLAKNO (cesta A)
+//  Drive se krok emulace volal z draw_frame, tedy z vlakna, ktere kresli
+//  a ceka na vsync. Cokoli, co zdrzelo kresleni, zdrzelo i emulaci - a s ni
+//  vyrobu zvuku. Odtud kousani zavisle na zatezi grafiky. Ve stare (funkcni)
+//  ceste bezela emulace na vlastnim vlakne - presne na to Rene ukazoval.
+//  Ted je to zpatky: emulace bezi sama, kresleni si jen bere posledni hotovy
+//  snimek. Zadne z nich uz nebrzdi druhe.
+// ==================================================================
+static std::thread            g_core_thread;
+static std::atomic<bool>      g_core_run{false};
+static std::vector<unsigned char> g_frame_buf[2];   // dva snimky - jeden se plni, druhy se kresli
+static std::atomic<int>       g_frame_ready{-1};    // index hotoveho snimku
+static std::atomic<int>       g_frame_w{0}, g_frame_h{0};
+static std::mutex             g_frame_swap;
+
+// Vraci 1, kdyz se ma TENTO krok VYNECHAT.
 //
 // POZOR NA CHYBU, KTERA TU BYLA PREDTIM: zpetny tlak byl resen uspanim
 // (usleep) - ale na vlakne, ktere kresli a ceka na vsync. Uspani zpusobilo
@@ -706,6 +722,18 @@ static bool nap_gles_egl_init() {
   // spravnou hodnotu pri kazde zmene (ma vlastni "zmenilo se to?" kontrolu,
   // takze opakovane volani je levne, jakmile se stav ustali).
 
+  // KONTEXT JADRA MUSI ZUSTAT VOLNY.
+  // Inicializace si ho vzala, aby mohla vytvorit shadery, FBO a textury
+  // (patri tedy kontextu jadra - to je spravne). Ale zustal by "current"
+  // na vlakne kresleni, a jeden kontext nemuze byt current na dvou vlaknech.
+  // Vlakno emulace by si ho pak neprevzalo a nekreslilo by se nic.
+  // Vratime tedy vlaknu kresleni jeho vlastni kontext a jadru ten jeho
+  // uvolnime.
+  if (g_egl_render_ctx != EGL_NO_CONTEXT)
+    eglMakeCurrent(display, g_egl_render_surf, g_egl_render_surf, g_egl_render_ctx);
+  else
+    eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
   NAPDIAG("BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240");
   return true;
 }
@@ -893,6 +921,8 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring
   env->ReleaseStringUTFChars(jsys, sys); env->ReleaseStringUTFChars(jsave, sav); env->ReleaseStringUTFChars(jgame, game);
   // stop pripadneho predchoziho behu
   g_generation.fetch_add(1); g_running.store(false);
+  // ukoncit vlakno emulace (cesta A) driv, nez uvolnime jadro
+  if (g_core_run.exchange(false) && g_core_thread.joinable()) g_core_thread.join();
   if (g_worker.joinable()) g_worker.join();
   if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("stop"); retro_unload_game(); retro_deinit(); }
   nap_audio_clear();
@@ -1154,22 +1184,16 @@ static void nap_publish_frame_for_app(const uint8_t* rgba, int w, int h) {
 }
 
 extern "C" const void* nap_ps1_egl_grab_pixels(int* w, int* h) {
-    if (!g_gles_ready) return NULL;
-    // prepnout na gpu-gles kontext (canvas je v nem)
-    if (g_gles_display_A != EGL_NO_DISPLAY)
-        eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
-    const void* px = nap_gles_grab_pixels(w, h);
-    // zpet na eglrender, aby mohl kreslit na okno
-    if (g_egl_render_ctx != EGL_NO_CONTEXT && g_gles_display_A != EGL_NO_DISPLAY)
-        eglMakeCurrent(g_gles_display_A, g_egl_render_surf, g_egl_render_surf, g_egl_render_ctx);
-    // A14: tentyz snimek dame i appce (kazdy druhy - appce/TV staci, procesor setrime)
-    if (px && w && h) {
-        static long nap_pub_n = 0;
-        if ((nap_pub_n++ & 1) == 0) nap_publish_frame_for_app((const uint8_t*)px, *w, *h);
-        static int nap_pub_once = 0;
-        if (!nap_pub_once) { nap_pub_once = 1; nap_diag_log("CESTA_A NAPOJENI: appka dostava obraz emulatoru %dx%d (drive gfw=0 gfh=0, tedy nic)", *w, *h); }
-    }
-    return px;
+    // Zadne GL, zadne prepinani kontextu, zadne cekani na GPU. Jen si vezmeme
+    // posledni snimek, ktery vlakno emulace uz dokoncilo.
+    int idx = g_frame_ready.load(std::memory_order_acquire);
+    if (idx < 0) return NULL;
+    std::lock_guard<std::mutex> lk(g_frame_swap);
+    if (w) *w = g_frame_w.load();
+    if (h) *h = g_frame_h.load();
+    if (g_frame_buf[idx].empty()) return NULL;
+    return g_frame_buf[idx].data();
+
 }
 
 // CESTA A: prepnuti kontextu, ktere vola RENDER vlakno (egl_main) - NE tick.
@@ -1190,7 +1214,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B19 TEMPO BEZ KMITANI 30-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
+    nap_diag_log("=== NEOCONTR B20 VLASTNI VLAKNO 30-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
@@ -1242,41 +1266,63 @@ extern "C" int nap_audio_level_ms(void) {
   return (int)((n / 2) * 1000 / 44100);
 }
 
-extern "C" void nap_ps1_egl_tick_c(void) {
-    if (!g_loaded.load()) return;
-    // BOD 2: hra musi kreslit do gpu-gles canvasu - prepnout na jeho
-    // kontext pred retro_run. Je to v render vlakne (ne oddelene), takze
-    // levne. Po retro_run zustane gpu-gles current; grab_pixels si pak
-    // precte a prepne zpet na eglrender.
-    g_crash_stage = "egl_makecurrent";
-    if (g_gles_ready && g_gles_display_A != EGL_NO_DISPLAY)
+// Vlakno emulace: drzi si kontext jadra, krokuje, kresli a precte snimek.
+static void nap_core_thread_fn(void) {
+    if (g_gles_display_A != EGL_NO_DISPLAY)
         eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
-    g_crash_stage = "retro_run";           // jadro + vykresleni GPU
-    if (nap_audio_skip_step()) {
-        // Zvuku je dost - tento tick krok emulace vynechame, aby se tempo
-        // srovnalo. Obraz zustane na predchozim snimku (nepozorovatelne),
-        // zvuk zustane plynuly.
-        static long skipped = 0;
-        if (++skipped % 300 == 1)
-            nap_diag_log("NAPLES2 TEMPO: vynechan krok emulace (zvuku ve fronte %d ms) - srovnavani na tempo zvuku",
-                         nap_audio_level_ms());
-    } else {
+    nap_diag_log("CESTA_A EMULACE MA VLASTNI VLAKNO (kresleni ji uz nebrzdi)");
+    int slot = 0;
+    while (g_core_run.load(std::memory_order_relaxed)) {
+        if (!g_loaded.load()) { usleep(2000); continue; }
+
+        if (nap_audio_skip_step()) {      // zvuku dost - chvilku pockat
+            usleep(1500);                 // tady uspani NEVADI, nejsme na vlakne kresleni
+            continue;
+        }
+        g_crash_stage = "retro_run(vlakno emulace)";
         retro_run();
+        g_crash_stage = "present(vlakno emulace)";
+        if (g_gles_ready) { nap_gles_sync_display_settings(); nap_gles_present_frame(); }
+
+        // precist hotovy snimek do volneho slotu
+        g_crash_stage = "cteni snimku(vlakno emulace)";
+        {
+            int w = 0, h = 0;
+            const void *px = g_gles_ready ? nap_gles_grab_pixels(&w, &h) : NULL;
+            if (px && w > 0 && h > 0) {
+                size_t need = (size_t)w * (size_t)h * 4;
+                if (g_frame_buf[slot].size() < need) g_frame_buf[slot].resize(need);
+                memcpy(g_frame_buf[slot].data(), px, need);
+                { std::lock_guard<std::mutex> lk(g_frame_swap);
+                  g_frame_w.store(w); g_frame_h.store(h);
+                  g_frame_ready.store(slot, std::memory_order_release); }
+                slot ^= 1;
+                nap_publish_frame_for_app((const uint8_t*)g_frame_buf[slot ^ 1].data(), w, h);
+            }
+        }
     }
-    g_crash_stage = "sync_display";
-    if (g_gles_ready) nap_gles_sync_display_settings();
-    // OPRAVA: dokresleni snimku (a dekod 24bitoveho filmu) se volalo JEN ze
-    // stareho pracovniho vlakna nap_worker(). Cesta A jde pres tenhle tick,
-    // takze se to nikdy nespustilo - odtud cerna obrazovka u filmu.
-    g_crash_stage = "present_frame";
-    if (g_gles_ready) { void nap_gles_present_frame(void); nap_gles_present_frame(); }
-    g_crash_stage = "tick_done(cekam na eglrender grab/present)";
+    if (g_gles_display_A != EGL_NO_DISPLAY)
+        eglMakeCurrent(g_gles_display_A, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+}
+
+extern "C" void nap_ps1_egl_tick_c(void) {
+    // Emulace bezi na vlastnim vlakne (nap_core_thread_fn), takze tady uz
+    // nic nekrokujeme. Drive se tu volal retro_run() a tim byla emulace
+    // svazana s vsyncem kresleni.
+    if (!g_loaded.load()) return;
+    if (!g_core_run.load(std::memory_order_relaxed)) {
+        g_core_run.store(true);
+        g_core_thread = std::thread(nap_core_thread_fn);
+    }
+
 }
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   std::lock_guard<std::mutex> life(g_life_mutex);
   g_generation.fetch_add(1); g_running.store(false);
+  // ukoncit vlakno emulace (cesta A) driv, nez uvolnime jadro
+  if (g_core_run.exchange(false) && g_core_thread.joinable()) g_core_thread.join();
   if (g_worker.joinable()) g_worker.join();
   if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("stop"); retro_unload_game(); retro_deinit(); }
   nap_audio_clear();
