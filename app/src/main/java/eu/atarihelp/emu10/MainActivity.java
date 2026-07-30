@@ -120,6 +120,34 @@ public class MainActivity extends Activity {
     //   17:30:45.914  PS1_SESSION_STOP reason=activityPause
     // To jsou ty "dve verze v jednom emulatoru".
     private volatile boolean ps1GameWindowOwnsCore = false;
+    private volatile boolean ps1BiosStarting = false;
+    private volatile boolean ps1BiosRunning = false;
+
+    /** Spusti PS1 bez disku (menu BIOSu), kdyz nic jineho nebezi. */
+    private void ps1MaybeStartBios() {
+        if (ps1BiosRunning || ps1BiosStarting) return;
+        if (ps1GameWindowOwnsCore || ps1SessionActive || ps1BootActive) return;
+        ps1BiosStarting = true;
+        new Thread(() -> {
+            try {
+                java.io.File sysDir  = new java.io.File(getFilesDir(), "ps1_system");
+                java.io.File saveDir = new java.io.File(getFilesDir(), "ps1_saves");
+                if (!sysDir.exists())  sysDir.mkdirs();
+                if (!saveDir.exists()) saveDir.mkdirs();
+                ps1EnsureBios(sysDir);          // BIOS musi byt na miste
+                appendNativeLog("PS1_BIOS_START bez disku (jako zapnuti konzole)");
+                String r = NativePs1CoreBridge.bootBiosSafe(
+                        sysDir.getAbsolutePath(), saveDir.getAbsolutePath());
+                appendNativeLog("PS1_BIOS_START vysledek=" + r);
+                ps1BiosRunning = r != null && r.startsWith("PS1_BIOS_OK");
+                ps1LastBootResult = r;
+            } catch (Throwable t) {
+                appendNativeLog("PS1_BIOS_START_ERR " + safeMsg(t));
+            } finally {
+                ps1BiosStarting = false;
+            }
+        }, "ps1-bios-start").start();
+    }
     private NativePs1InPlaceView ps1NativeView; // BUILD2SK87: nahrazuje JPEG preview v landscape, viz trida nize
     private volatile boolean ps1RemoteDownloadActive = false;
     private volatile String ps1RemoteDownloadStatus = "idle";
@@ -2768,7 +2796,14 @@ public class MainActivity extends Activity {
             startPs1RemoteDownloadAndBoot(url);
         }
         @JavascriptInterface
-        public String ps1Status() { return NativePs1CoreBridge.statusSafe() + " | lastBoot=" + ps1LastBootResult + " | remote=" + ps1RemoteDownloadStatus; }
+        public String ps1Status() {
+            // Kdyz se otevre obrazovka PS1 a nic nebezi, nastartujeme konzoli
+            // BEZ disku - jako kdyz zapnes skutecnou PlayStation: nabehne BIOS
+            // a jeho menu (MEMORY CARD / CD PLAYER). Obraz jde do monitoru,
+            // protoze stranka si uz snimky sama tahá pres ps1FramePreviewB64().
+            ps1MaybeStartBios();
+            return NativePs1CoreBridge.statusSafe() + " | lastBoot=" + ps1LastBootResult + " | remote=" + ps1RemoteDownloadStatus;
+        }
         @JavascriptInterface
         public String ps1RemoteStatus() { return ps1RemoteDownloadStatus; }
         @JavascriptInterface
@@ -6533,6 +6568,7 @@ public class MainActivity extends Activity {
             }
 
             ps1GameWindowOwnsCore = true;   // od ted jadro patri oknu hry
+            ps1BiosRunning = false;         // BIOS uz nebezi, prebira ho hra
             appendNativeLog("KROKC EGL_PS1_LAUNCH (jadro prebira okno hry)");
             android.content.Intent it = new android.content.Intent(this, android.app.NativeActivity.class);
             it.addFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -7587,6 +7623,7 @@ public class MainActivity extends Activity {
             try { ps1ClearJsPreview(); } catch (Throwable ignored) {}
             try { ps1DeactivateNativeView(); } catch (Throwable ignored) {}
             tvCoreHadFrame = false;   // TV uz nema drzet posledni snimek hry
+            ps1BiosRunning = false;   // po navratu se BIOS nastartuje znovu
             ps1LastBootResult = "PS1_STOPPED navrat z okna hry";
         } else if (ps1SessionActive || ps1BootActive) {
             appendNativeLog("PS1_UKLID_PO_NAVRATU duvod=zbyla relace appky");

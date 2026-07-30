@@ -1256,7 +1256,17 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B31 30-07-2026 (verzi hleda v radku VERZE APKY) ===");
+    // Kdyz uz bezi BIOS (start bez disku), musime ho korektne zastavit DRIV,
+    // nez zacneme nacitat hru - jinak by vlakno emulace tocilo nad uvolnenym
+    // jadrem a spadlo by to.
+    if (g_core_run.exchange(false) && g_core_thread.joinable()) {
+        nap_diag_log("PS1: zastavuji bezici BIOS, nacitam hru");
+        g_core_thread.join();
+        nap_sl_close();
+        nap_audio_clear();
+        if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+    }
+    nap_diag_log("=== NEOCONTR B32 30-07-2026 (verzi hleda v radku VERZE APKY) ===");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
@@ -1354,6 +1364,65 @@ static void nap_core_thread_fn(void) {
 //  hral, hra zustala nactena. Odtud "po vyskoceni z emulatoru hraje zvuk dal
 //  a PS1 se nevypne" a pri dalsim spusteni pribyval dalsi bezici zvuk.
 // ==================================================================
+// ==================================================================
+//  START PS1 BEZ DISKU, BEZ CELOOBRAZOVKOVEHO OKNA
+//  Chova se jako skutecna PlayStation po zapnuti bez CD: nabehne BIOS
+//  a jeho menu (MEMORY CARD / CD PLAYER). Obraz jde do monitoru v appce.
+//  Grafika si vytvari VLASTNI displej i kreslici plochu (pbuffer), takze
+//  zadne okno hry k tomu neni potreba.
+// ==================================================================
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootBios(JNIEnv *env, jclass,
+                                                        jstring jSys, jstring jSave) {
+  const char *sys  = jSys  ? env->GetStringUTFChars(jSys,  nullptr) : nullptr;
+  const char *save = jSave ? env->GetStringUTFChars(jSave, nullptr) : nullptr;
+  std::string sysDir  = sys  ? sys  : "";
+  std::string saveDir = save ? save : "";
+  if (sys)  env->ReleaseStringUTFChars(jSys,  sys);
+  if (save) env->ReleaseStringUTFChars(jSave, save);
+
+  nap_diag_log("PS1 START BEZ DISKU: pripravuji BIOS (obraz pujde do monitoru)");
+
+  // uklidit pripadny predchozi beh
+  if (g_core_run.exchange(false) && g_core_thread.joinable()) g_core_thread.join();
+  if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+
+  g_sysdir  = sysDir;
+  g_savedir = saveDir;   /* BIOS pracuje s memory kartami */
+
+  if (!g_gles_ready) g_gles_ready = nap_gles_egl_init();   // vlastni kontext, bez okna
+  if (!g_gles_ready) {
+    nap_diag_log("PS1 START BEZ DISKU: grafiku se nepodarilo pripravit");
+    return env->NewStringUTF("PS1_BIOS_FAIL grafika");
+  }
+
+  retro_set_environment(nap_env);
+  retro_set_video_refresh(nap_video);
+  retro_set_audio_sample(nap_audio_sample);
+  retro_set_audio_sample_batch(nap_audio_batch);
+  retro_set_input_poll(nap_input_poll);
+  retro_set_input_state(nap_input_state);
+  retro_init();
+
+  if (!retro_load_game(nullptr)) {          // bez disku -> BIOS menu
+    retro_deinit();
+    nap_diag_log("PS1 START BEZ DISKU: jadro odmitlo start bez disku");
+    return env->NewStringUTF("PS1_BIOS_FAIL jadro");
+  }
+  g_loaded.store(true);
+
+  retro_system_av_info av; memset(&av, 0, sizeof(av));
+  retro_get_system_av_info(&av);
+  g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
+
+  nap_sl_open();                            // zvuk BIOSu
+  g_core_run.store(true);
+  g_core_thread = std::thread(nap_core_thread_fn);
+
+  nap_diag_log("PS1 START BEZ DISKU OK: bezi BIOS, fps=%.2f", g_fps);
+  return env->NewStringUTF("PS1_BIOS_OK");
+}
+
 extern "C" void nap_ps1_egl_shutdown_c(void) {
     nap_diag_log("CESTA_A VYPINAM JADRO (zavreno okno hry)");
     // 1) zastavit vlakno emulace a pockat, az dobehne

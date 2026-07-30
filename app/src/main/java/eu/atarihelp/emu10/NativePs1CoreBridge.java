@@ -9,6 +9,7 @@ public final class NativePs1CoreBridge {
     }
     private static native String ps1CoreInfo();
     private static native String ps1Boot(String systemDir, String saveDir, String gamePath);
+    private static native String ps1BootBios(String systemDir, String saveDir);   // start bez disku -> menu BIOSu
     private static native String ps1Status();
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
@@ -36,6 +37,12 @@ public final class NativePs1CoreBridge {
     public static int pullTvAudioSafe(short[] out) {
         if (!loaded) return 0;
         try { return ps1PullTvAudio(out); } catch (Throwable t) { return 0; }
+    }
+    // Spusti PS1 BEZ disku - jako skutecna konzole po zapnuti: nabehne BIOS
+    // a jeho menu (MEMORY CARD / CD PLAYER). Obraz jde do monitoru v appce.
+    public static String bootBiosSafe(String systemDir, String saveDir) {
+        if (!loaded) return "PS1_BIOS_FAIL knihovna";
+        try { return ps1BootBios(systemDir, saveDir); } catch (Throwable t) { return "PS1_BIOS_FAIL " + t; }
     }
     public static int grabFrameSafe(int[] out) {
         if (!loaded) return 0;

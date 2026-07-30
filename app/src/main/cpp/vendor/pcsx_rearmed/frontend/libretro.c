@@ -2026,6 +2026,38 @@ bool retro_load_game(const struct retro_game_info *info)
       LogErr("info->path required\n");
       return false;
    }
+   /* ===== BOOT BEZ DISKU (jako skutecna PS1 bez vlozeneho CD) =====
+      Kdyz neprijde zadny obsah, nespoustime nic z prace s diskem - jen
+      nastavime ovladace, nacteme memory karty a resetujeme systém. BIOS
+      pak nabehne do sveho menu (MEMORY CARD / CD PLAYER), presne jako
+      kdyz zapnes PlayStation bez disku.
+      Puvodni kod na tohle nebyl pripraveny: hned sahal na info->path,
+      takze prazdny obsah by ho shodil. */
+   if (info == NULL || info->path == NULL || info->path[0] == '\0')
+   {
+      for (i = 0; i < 8; ++i)
+         in_type[i] = PSE_PAD_TYPE_STANDARD;
+
+      update_variables(false);
+
+      if (plugins_opened)
+      {
+         ClosePlugins();
+         plugins_opened = 0;
+      }
+      disk_init();
+
+      Config.PsxRegion = PSX_REGION_EU;      /* bez disku rozhoduje BIOS */
+      load_memcards();
+      plugin_call_rearmed_cbs();
+      SysReset();                            /* BIOS nabehne do sveho menu */
+
+      set_retro_memmap();
+      retro_set_audio_buff_status_cb();
+      LogErr("PS1: start bez disku - nabehne menu BIOSu\n");
+      return true;
+   }
+
    is_m3u = (strcasestr(info->path, ".m3u") != NULL);
    is_exe = (strcasestr(info->path, ".exe") != NULL);
 
