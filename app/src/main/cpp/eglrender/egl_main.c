@@ -781,6 +781,9 @@ void android_main(struct android_app* app) {
     app->onAppCmd = handle_cmd;
     app->onInputEvent = handle_input; // OVLADANI: dotyk -> PS1 tlacitka (v C)
 
+    // OKNO HRY NESMI ZHASNOUT (hraje se dotykem, systém by jinak displej uspal)
+    ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
+
     logserver_set_upload_dir(app->activity->internalDataPath);
     // A12: PRESTEHOVANO z 8765 na 8766. Eglrender mel vlastni server na TOMTEZ
     // portu jako Java (MainActivity: new ServerSocket(8765)) - kdo se navazal

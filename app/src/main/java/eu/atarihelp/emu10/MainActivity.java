@@ -801,6 +801,23 @@ public class MainActivity extends Activity {
     private int[] tvCoreArgb = new int[1024 * 512];
     private Bitmap tvCoreSrcBmp;
     private boolean tvCoreHadFrame = false;
+    // Je cely radek/sloupec cerny? (vzorkujeme po nekolika bodech, staci to
+    // a je to levne - dela se to na malem originalu, ne na 1280x720)
+    private static boolean napTvRowIsBlack(int[] px, int w, int y, int prah) {
+        int base = y * w;
+        for (int x = 0; x < w; x += 4) {
+            int c = px[base + x];
+            if (((c >> 16) & 0xFF) > prah || ((c >> 8) & 0xFF) > prah || (c & 0xFF) > prah) return false;
+        }
+        return true;
+    }
+    private static boolean napTvColIsBlack(int[] px, int w, int h, int x, int prah) {
+        for (int y = 0; y < h; y += 4) {
+            int c = px[y * w + x];
+            if (((c >> 16) & 0xFF) > prah || ((c >> 8) & 0xFF) > prah || (c & 0xFF) > prah) return false;
+        }
+        return true;
+    }
     private short[] tvPs1Pcm = null;   // odbocka zvuku pro TV
     private int[] tvSharpBuf;
     private double tvSharpSumMs = 0;
@@ -932,7 +949,23 @@ public class MainActivity extends Activity {
             cv.drawColor(Color.BLACK);
             Paint pp = new Paint(Paint.FILTER_BITMAP_FLAG);   // hladke zvetseni
             pp.setDither(false);
-            cv.drawBitmap(tvCoreSrcBmp, null, new Rect(0, 0, TVW, TVH), pp);
+            // ===== OREZ CERNYCH OKRAJU =====
+            // Hry casto kresli obraz do MENSI plochy, nez je zobrazovaci okno
+            // PS1 (typicky 224 radku uvnitr 240) a zbytek nechaji cerny. Ty
+            // cerne pasy pak putovaly az na televizi. Najdeme skutecny obsah
+            // a roztahneme na celou plochu - odtud "full HD bez pruhu".
+            int cropTop = 0, cropBottom = sh - 1, cropLeft = 0, cropRight = sw - 1;
+            final int TMAVA = 12;   // co je temnejsi, bereme jako cernou
+            while (cropTop < cropBottom && napTvRowIsBlack(tvSharpBuf, sw, cropTop, TMAVA)) cropTop++;
+            while (cropBottom > cropTop && napTvRowIsBlack(tvSharpBuf, sw, cropBottom, TMAVA)) cropBottom--;
+            while (cropLeft < cropRight && napTvColIsBlack(tvSharpBuf, sw, sh, cropLeft, TMAVA)) cropLeft++;
+            while (cropRight > cropLeft && napTvColIsBlack(tvSharpBuf, sw, sh, cropRight, TMAVA)) cropRight--;
+            // Pojistka: kdyby byl obraz skoro cely cerny (tma ve hre), neorezavat.
+            if (cropBottom - cropTop < sh / 3 || cropRight - cropLeft < sw / 3) {
+                cropTop = 0; cropBottom = sh - 1; cropLeft = 0; cropRight = sw - 1;
+            }
+            Rect srcRect = new Rect(cropLeft, cropTop, cropRight + 1, cropBottom + 1);
+            cv.drawBitmap(tvCoreSrcBmp, srcRect, new Rect(0, 0, TVW, TVH), pp);
 
             // CHYBELO: bitmapu je potreba jeste ODEVZDAT do prenosu.
             // Bez tohohle radku se obraz naplnil, ale TV o nem nevedela
@@ -2052,7 +2085,7 @@ public class MainActivity extends Activity {
         napTvWebRunning = false;
         // BUILD2SK26: uvolni drzeni obrazovky vzhuru - mimo TV cast se telefon
         // ma chovat normalne (nezustavat zbytecne vzhuru a zrat baterku).
-        try { ui.post(() -> { try { getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
+        // (drzeni displeje vzhuru se uz NERUSI - appka nesmi usnout nikdy)
         try { ui.post(() -> { try { getWindow().setSustainedPerformanceMode(false); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
         napTvWebPixelCopyPending = false;
         napTvWebPixelCopyPendingAtMs = 0;
@@ -2217,13 +2250,13 @@ public class MainActivity extends Activity {
                 + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
                 + "<title>AtariHelp TV</title><style>"
                 + "html,body{margin:0;width:100%;height:100%;background:#000;color:#9fdcff;font:16px monospace;overflow:hidden}"
-                + "#v{position:fixed;inset:0;width:100%;height:100%;object-fit:fill;background:#000}"
+                + "#v{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000}"
                 + "#s{position:fixed;left:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.55);border-radius:4px}"
                 + "#a{position:fixed;right:10px;bottom:8px;padding:8px 10px;background:rgba(10,30,40,.78);border:1px solid #64dfff;border-radius:5px;color:#dfffff;font:700 15px monospace}"
                 + "#q{position:fixed;right:10px;bottom:48px;display:flex;gap:4px}"
                 + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
-                + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:fill;background:#000'></video><div id='s' style='display:none'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
+                + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s' style='display:none'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
                 + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
                 + "<script>(function(){var AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();function setAvd(x){AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
@@ -5269,6 +5302,9 @@ public class MainActivity extends Activity {
         // BUILD2SK82: prvni vec ze vseho - zalozit cerstvy log soubor pro TUHLE
         // relaci a nastartovat vlakno, co ho prubezne plni (viz appendNativeLog).
         // Musi byt PRED vsim ostatnim, aby /log opravdu zachytil "od zacatku".
+        // APPKA NIKDY NESMI USNOUT. Drive se displej drzel vzhuru jen po dobu
+        // TV castu; ted platí vzdycky - hrajes/koukas a telefon nesmi zhasnout.
+        try { getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Throwable ignored) {}
         napTvWebLogFileInit();
         // VERZE AUTOMATICKY Z BUILDU - nesmi se rozejit s tim, co je nainstalovane.
         // (Drive jsem verzi psal do logu rucne v nativnim kodu a zapomnel ji
