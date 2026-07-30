@@ -799,6 +799,14 @@ public class MainActivity extends Activity {
     private boolean napTvWebCaptureFromCore(int bw, int bh) {
         try {
             if (bw <= 0 || bh <= 0) return false;
+            // Podrzeni posledniho snimku ma smysl jen ZA BEHU hry (kratky
+            // vypadek pri nacitani). Kdyz uz hra nebezi, drzelo se to donekonecna
+            // a na TV zustalo viset posledni logo - dalsi obsah uz se nikdy
+            // neukazal. Ted se pri ukoncene hre vzdame a TV ukaze obrazovku appky.
+            if (!ps1SessionActive && !ps1GameWindowOwnsCore) {
+                tvCoreHadFrame = false;
+                return false;
+            }
             // Nejdriv si PUJCIME snimek, ktery uz vytahla obrazovka telefonu.
             // Setri to jadru praci (drive sahali do jadra dva zajemci zvlast
             // a jadro pak nestihalo delat zvuk - 47 % pokusu naslo prazdno).
@@ -7514,11 +7522,25 @@ public class MainActivity extends Activity {
         // zustala na ovladaci obrazovce a slo to spravit jen restartem appky.
         // Tady to uklidime - vratime se do vychoziho stavu PS1 obrazovky.
         if (ps1GameWindowOwnsCore) {
-            // Vratili jsme se z okna hry - to uz jadro vypnulo samo
-            // (core_shutdown). Uklidime jen stav na strane appky.
+            // ====== POZOR: NESAHAT NA JADRO ======
+            // Jadro si vypina okno hry samo (core_shutdown). Kdyz jsme sem
+            // volali stopPs1SessionHard(), zacala appka zastavovat TOTEZ
+            // vlakno emulace ve stejnou chvili jako okno hry - obe strany na
+            // sebe cekaly a appka ZTUHLA. V logu to bylo videt na poradi:
+            //   21:30:57.214  PS1_UKLID_PO_NAVRATU   (appka zastavuje)
+            //   21:30:57.222  PS1_SESSION_STOP
+            //                 CESTA_A VYPINAM JADRO  (a teprve ted okno hry)
+            // Uklidime tedy JEN stav na strane appky, jadra se nedotkneme.
             ps1GameWindowOwnsCore = false;
-            appendNativeLog("PS1_UKLID_PO_NAVRATU duvod=zavreno okno hry");
-            try { stopPs1SessionHard("navrat z okna hry"); } catch (Throwable ignored) {}
+            appendNativeLog("PS1_UKLID_PO_NAVRATU duvod=zavreno okno hry (jadro si vypina samo)");
+            ps1BootActive = false;
+            ps1SessionActive = false;
+            try { stopPs1Audio(); } catch (Throwable ignored) {}
+            try { closePs1GamePfdQuietly(); } catch (Throwable ignored) {}
+            try { ps1ClearJsPreview(); } catch (Throwable ignored) {}
+            try { ps1DeactivateNativeView(); } catch (Throwable ignored) {}
+            tvCoreHadFrame = false;   // TV uz nema drzet posledni snimek hry
+            ps1LastBootResult = "PS1_STOPPED navrat z okna hry";
         } else if (ps1SessionActive || ps1BootActive) {
             appendNativeLog("PS1_UKLID_PO_NAVRATU duvod=zbyla relace appky");
             try { stopPs1SessionHard("uklid pri navratu"); } catch (Throwable ignored) {}
