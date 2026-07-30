@@ -388,14 +388,32 @@ static void nap_aring_write(const int16_t *src, unsigned n) {
   for (unsigned i = 0; i < n; i++) g_aring[(w + i) & (NAP_ARING_SHORTS - 1)] = src[i];
   w += n;
   g_aring_w.store(w, std::memory_order_release);
-  /* Drzet frontu nizko: prebytek ubirame po 1 ms, ne velkym skokem. */
-  {
-    unsigned r2 = g_aring_r.load(std::memory_order_acquire);
-    if (w - r2 > NAP_ARING_HIGH) {
-      unsigned trim = NAP_ARING_TRIM & ~1u;          /* zachovat parovani L,R */
-      g_aring_r.store(r2 + trim, std::memory_order_release);
-    }
-  }
+}
+
+// ==================================================================
+//  ZVUK RIDI TEMPO EMULACE (zpetny tlak)
+//  Prevzato z naseho Sega emulatoru, kde je zvuk davno vyreseny stejnym
+//  zpusobem ("audio-clock backpressure").
+//  Problem byl v tom, ze jadro krokujeme jednou na kazdy snimek displeje
+//  (60 Hz), ale hra muze bezet na 50 Hz (PAL) nebo mit v nabidce jine tempo.
+//  Pak se vyrobi vic zvuku, nez se stihne odebrat. Drive jsem prebytek
+//  ZAHAZOVAL - a prave to znelo jako "zpomali se a pak zrychli", protoze
+//  se ze zvuku ubiraly kusy.
+//  Ted misto zahazovani KRATCE POCKAME. Emulace se tim srovna na tempo
+//  zvuku, zadny vzorek se nezahodi a vyska ani rychlost tonu se nemeni.
+//  Kdyz je fronta naopak nizka, nespime vubec, aby zvuk nikdy nevyschl.
+// ==================================================================
+static void nap_audio_governor(void) {
+  unsigned avail = nap_aring_avail();
+  if (avail < NAP_ARING_MS(30)) return;          // malo zvuku - nespat, doplnit
+  unsigned target = NAP_ARING_TARGET;
+  unsigned guard  = NAP_ARING_MS(20);
+  if (avail <= target + guard) return;           // v poradku, nic nedelat
+  unsigned extra = avail - target;               // prebytek v shortech
+  unsigned us = extra * 10000u / 882u;           // odpovidajici cas v us
+  if (us > 4000u) us = 4000u;                    // strop, at se nezasekneme
+  if (us < 300u)  us = 300u;
+  usleep(us);
 }
 static unsigned nap_aring_read(int16_t *dst, unsigned n) {
   unsigned r = g_aring_r.load(std::memory_order_relaxed);
@@ -1167,7 +1185,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B16 ZVUK NIZKA FRONTA 30-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
+    nap_diag_log("=== NEOCONTR B17 ZVUK RIDI TEMPO 30-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
@@ -1236,6 +1254,9 @@ extern "C" void nap_ps1_egl_tick_c(void) {
     // takze se to nikdy nespustilo - odtud cerna obrazovka u filmu.
     g_crash_stage = "present_frame";
     if (g_gles_ready) { void nap_gles_present_frame(void); nap_gles_present_frame(); }
+    // Zvuk urcuje tempo: kdyz se ho nakupilo moc, chvilku pockame.
+    g_crash_stage = "audio_governor";
+    nap_audio_governor();
     g_crash_stage = "tick_done(cekam na eglrender grab/present)";
 }
 
