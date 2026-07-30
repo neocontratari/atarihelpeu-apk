@@ -566,6 +566,8 @@ void n2_vram_sync_to_cpu(int x, int y, int w, int h)
 
 unsigned n2_vram_texture(void) { return n2.ready ? n2.tex_out : 0; }
 
+const void* n2_last_display(void) { return (n2.ready && n2.readbuf_cap > 0) ? n2.readbuf : NULL; }
+
 void n2_sync_for_other_context(void)
 {
     if (!n2.ready) return;

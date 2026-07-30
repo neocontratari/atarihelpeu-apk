@@ -346,8 +346,48 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
   g_frames.fetch_add(1);
 }
 // BUILD2SA3/SA5P: audio FIFO (44100 Hz stereo z jadra -> Java AudioTrack)
-static std::mutex g_amutex;
-static std::vector<int16_t> g_afifo; // interleaved L,R
+static std::mutex g_amutex;          // uz jen pro stara Java rozhrani
+static std::vector<int16_t> g_afifo; // ponechano kvuli ps1PullAudio (Java cesta)
+
+// ==================================================================
+//  ZVUKOVA FRONTA BEZ ZAMKU (kruhovy buffer)
+//  Drive byla zvukova fronta obycejny vektor pod SPOLECNYM zamkem:
+//  emulace (vlakno s grafikou) do nej vkladala - a pri zvetseni se cely
+//  REALOKOVAL a kopiroval - a zvukovy callback z nej mazal ZEPREDU, coz
+//  znamena posunout cely zbytek pameti. Oboji pod jednim zamkem.
+//  Kdyz byla grafika zatizena, zvukove vlakno na tom zamku cekalo a zvuk
+//  vypadl - i kdyz se snimky stihaly. Presne to Rene popsal: zvuk a
+//  grafika protlacene jednim mistem.
+//  Ted maji kazdy svuj konec kruhu, hlidany atomickym citacem: zadny
+//  zamek, zadne kopirovani, zadna alokace. Zvuk uz na grafiku necekha.
+// ==================================================================
+#define NAP_ARING_SHORTS (1u << 17)          // 131072 shortu = ~1,4 s stereo
+static int16_t              g_aring[NAP_ARING_SHORTS];
+static std::atomic<unsigned> g_aring_w{0};   // pise emulace
+static std::atomic<unsigned> g_aring_r{0};   // cte zvukovy callback
+
+static inline unsigned nap_aring_avail(void) {
+  return g_aring_w.load(std::memory_order_acquire) - g_aring_r.load(std::memory_order_relaxed);
+}
+static void nap_aring_write(const int16_t *src, unsigned n) {
+  unsigned w = g_aring_w.load(std::memory_order_relaxed);
+  unsigned r = g_aring_r.load(std::memory_order_acquire);
+  unsigned free_ = NAP_ARING_SHORTS - (w - r);
+  if (n > free_) {                 // fronta plna - zahodit nejstarsi
+    unsigned drop = n - free_;
+    g_aring_r.store(r + drop, std::memory_order_release);
+  }
+  for (unsigned i = 0; i < n; i++) g_aring[(w + i) & (NAP_ARING_SHORTS - 1)] = src[i];
+  g_aring_w.store(w + n, std::memory_order_release);
+}
+static unsigned nap_aring_read(int16_t *dst, unsigned n) {
+  unsigned r = g_aring_r.load(std::memory_order_relaxed);
+  unsigned have = g_aring_w.load(std::memory_order_acquire) - r;
+  unsigned take = have < n ? have : n;
+  for (unsigned i = 0; i < take; i++) dst[i] = g_aring[(r + i) & (NAP_ARING_SHORTS - 1)];
+  g_aring_r.store(r + take, std::memory_order_release);
+  return take;
+}
 static const size_t NAP_PS1_AFIFO_TARGET_FRAMES = 735 * 8;  // ~133 ms at 44.1 kHz
 static const size_t NAP_PS1_AFIFO_MAX_FRAMES = 735 * 24;    // ~400 ms, jen runaway resync
 static void nap_audio_trim_locked(size_t targetFrames) {
@@ -359,14 +399,12 @@ static void nap_audio_trim_locked(size_t targetFrames) {
   g_afifo.erase(g_afifo.begin(), g_afifo.begin() + dropShorts);
 }
 static void nap_audio_clear(void) {
-  std::lock_guard<std::mutex> lock(g_amutex);
-  g_afifo.clear();
+  { std::lock_guard<std::mutex> lock(g_amutex); g_afifo.clear(); }
+  g_aring_r.store(g_aring_w.load(std::memory_order_acquire), std::memory_order_release);
 }
 static void nap_audio_push(const int16_t *data, size_t frames) {
   if (!data || !frames) return;
-  std::lock_guard<std::mutex> lock(g_amutex);
-  g_afifo.insert(g_afifo.end(), data, data + frames * 2);
-  if (g_afifo.size() / 2 > NAP_PS1_AFIFO_MAX_FRAMES) nap_audio_trim_locked(NAP_PS1_AFIFO_TARGET_FRAMES);
+  nap_aring_write(data, (unsigned)(frames * 2));   // bez zamku
 }
 
 // ==================================================================
@@ -401,10 +439,7 @@ static void nap_sl_callback(SLAndroidSimpleBufferQueueItf bq, void*) {
   int16_t *blk = s_sl_blocks[s_sl_next];
   s_sl_next = (s_sl_next + 1) % NAP_SL_BLOCKS;   // dalsi blok - nikdy neprepisujeme ten, co se prave hraje
   {
-    std::lock_guard<std::mutex> lock(g_amutex);
-    size_t have = g_afifo.size();
-    size_t take = have < need ? have : need;
-    if (take) { memcpy(blk, g_afifo.data(), take * sizeof(int16_t)); g_afifo.erase(g_afifo.begin(), g_afifo.begin() + take); }
+    size_t take = nap_aring_read(blk, (unsigned)need);   // bez zamku
     if (take < need) {
       // Misto tvrdeho ticha (lupanec) dozniva posledni vzorek - pri kratkem
       // vypadku je to slyset mnohem min.
@@ -873,7 +908,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Status(JNIEnv *env, jclass) {
   char out[768];
   snprintf(out,sizeof(out),"PS1_RUN running=%s frames=%llu dupes=%llu res=%dx%d pixfmt=%d audioFifoFrames=%zu audioDropped=%llu audioResyncs=%llu fps=%.2f err=%s",
     g_running.load()?"YES":"NO",(unsigned long long)g_frames.load(),(unsigned long long)g_dupe_frames.load(),
-    g_fw.load(),g_fh.load(),g_pixfmt.load(),({std::lock_guard<std::mutex> al(g_amutex); g_afifo.size()/2;}),(unsigned long long)g_audio_samples_dropped.load(),(unsigned long long)g_audio_resyncs.load(),g_fps,
+    g_fw.load(),g_fh.load(),g_pixfmt.load(),(size_t)(nap_aring_avail()/2),(unsigned long long)g_audio_samples_dropped.load(),(unsigned long long)g_audio_resyncs.load(),g_fps,
     g_boot_error.empty()?"none":g_boot_error.c_str());
   return env->NewStringUTF(out);
 }
@@ -1115,7 +1150,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B13 NAVRAT DO B8 29-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
+    nap_diag_log("=== NEOCONTR B15 ZVUK BEZ ZAMKU 30-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
@@ -1158,6 +1193,14 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
     NAPDIAG("CESTA_A BOOT_OK gpuGles=%s fps=%.2f", g_gles_ready ? "ANO" : "NE", g_fps);
     return g_gles_ready ? 1 : 0;
 }
+// Kolik zvuku ceka ve fronte (v milisekundach). Pouziva to renderer:
+// kdyz zvuk dochazi, preskoci na jeden snimek drahe cteni obrazu z GPU
+// a necha jadro bezet naplno - lepsi je zadrhnout obraz nez zvuk.
+extern "C" int nap_audio_level_ms(void) {
+  unsigned n = nap_aring_avail();
+  return (int)((n / 2) * 1000 / 44100);
+}
+
 extern "C" void nap_ps1_egl_tick_c(void) {
     if (!g_loaded.load()) return;
     // BOD 2: hra musi kreslit do gpu-gles canvasu - prepnout na jeho

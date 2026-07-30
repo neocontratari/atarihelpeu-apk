@@ -64,5 +64,7 @@ void n2_take_counters(long *draws, long *writes, long *blits);
 void n2_sync_for_other_context(void);
 /* Zaloha pro nesdileny kontext: precte oblast displeje do RGBA bufferu. */
 const void* n2_read_display(int sx, int sy, int w, int h);
+/* Posledni uz precteny obraz (bez noveho cteni z GPU). */
+const void* n2_last_display(void);
 
 #endif /* NAPLES2_GL_H */

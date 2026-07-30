@@ -129,6 +129,7 @@ const void *nap_gles_grab_pixels(int *out_w, int *out_h)
     const void *px;
     if (w <= 0) w = 320;
     if (h <= 0) h = 240;
+
     px = n2_read_display(sx, sy, w, h);
     if (!px) return NULL;
     if (out_w) *out_w = w;
