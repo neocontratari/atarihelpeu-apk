@@ -403,17 +403,21 @@ static void nap_aring_write(const int16_t *src, unsigned n) {
 //  zvuku, zadny vzorek se nezahodi a vyska ani rychlost tonu se nemeni.
 //  Kdyz je fronta naopak nizka, nespime vubec, aby zvuk nikdy nevyschl.
 // ==================================================================
-static void nap_audio_governor(void) {
+// Vraci 1, kdyz se ma TENTO tick VYNECHAT krok emulace.
+//
+// POZOR NA CHYBU, KTERA TU BYLA PREDTIM: zpetny tlak byl resen uspanim
+// (usleep) - ale na vlakne, ktere kresli a ceka na vsync. Uspani zpusobilo
+// minuti vykresleni, snimek se protahl z 16 na 33 ms, jadro udelalo jen
+// polovinu kroku, zvuk spadl pod cil, spani se vypnulo, zvuk zase narostl -
+// a cele se to ROZKMITALO. Presne to znelo jako "zpomali se a pak zrychli".
+//
+// Spravne resenim je krok emulace VYNECHAT. Tim se vyrobi presne o jeden
+// snimek zvuku mine, timing displeje se vubec nedotkneme a hra na 50 Hz
+// na 60Hz displeji se srovna sama (vynecha se kazdy sesty krok).
+static int nap_audio_skip_step(void) {
   unsigned avail = nap_aring_avail();
-  if (avail < NAP_ARING_MS(30)) return;          // malo zvuku - nespat, doplnit
-  unsigned target = NAP_ARING_TARGET;
-  unsigned guard  = NAP_ARING_MS(20);
-  if (avail <= target + guard) return;           // v poradku, nic nedelat
-  unsigned extra = avail - target;               // prebytek v shortech
-  unsigned us = extra * 10000u / 882u;           // odpovidajici cas v us
-  if (us > 4000u) us = 4000u;                    // strop, at se nezasekneme
-  if (us < 300u)  us = 300u;
-  usleep(us);
+  if (avail < NAP_ARING_TARGET) return 0;        // zvuku je malo - krokovat
+  return 1;                                      // je ho dost - tento tick vynechat
 }
 static unsigned nap_aring_read(int16_t *dst, unsigned n) {
   unsigned r = g_aring_r.load(std::memory_order_relaxed);
@@ -1085,7 +1089,8 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglBoot(JNIEnv* env, jclass,
     retro_get_system_av_info(&av);
     g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
 
-    NAPDIAG("CESTA_A BOOT_OK gpuGles=%s fps=%.2f", g_gles_ready ? "ANO" : "NE", g_fps);
+    NAPDIAG("CESTA_A BOOT_OK gpuGles=%s fps=%.2f zvukJadra=%.0f Hz vystup=44100 Hz",
+            g_gles_ready ? "ANO" : "NE", g_fps, av.timing.sample_rate);
     return g_gles_ready ? 1 : 0;
 }
 
@@ -1185,7 +1190,7 @@ extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
-    nap_diag_log("=== NEOCONTR B18 JEDEN ZVUKOVY VYSTUP 30-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
+    nap_diag_log("=== NEOCONTR B19 TEMPO BEZ KMITANI 30-07-2026 === (novy GPU renderer v OpenGL ES 2 - gpu-gles GLES1 uz se nepouziva)");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
@@ -1225,7 +1230,8 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
     retro_get_system_av_info(&av);
     g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
     nap_sl_open(); // CESTA A: spustit OpenSL zvuk (bere z g_afifo, bez Javy)
-    NAPDIAG("CESTA_A BOOT_OK gpuGles=%s fps=%.2f", g_gles_ready ? "ANO" : "NE", g_fps);
+    NAPDIAG("CESTA_A BOOT_OK gpuGles=%s fps=%.2f zvukJadra=%.0f Hz vystup=44100 Hz",
+            g_gles_ready ? "ANO" : "NE", g_fps, av.timing.sample_rate);
     return g_gles_ready ? 1 : 0;
 }
 // Kolik zvuku ceka ve fronte (v milisekundach). Pouziva to renderer:
@@ -1245,8 +1251,18 @@ extern "C" void nap_ps1_egl_tick_c(void) {
     g_crash_stage = "egl_makecurrent";
     if (g_gles_ready && g_gles_display_A != EGL_NO_DISPLAY)
         eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
-    g_crash_stage = "retro_run";           // A10: jadro + gpu-gles vykresleni (vc. UploadScreen pro FMV)
-    retro_run();
+    g_crash_stage = "retro_run";           // jadro + vykresleni GPU
+    if (nap_audio_skip_step()) {
+        // Zvuku je dost - tento tick krok emulace vynechame, aby se tempo
+        // srovnalo. Obraz zustane na predchozim snimku (nepozorovatelne),
+        // zvuk zustane plynuly.
+        static long skipped = 0;
+        if (++skipped % 300 == 1)
+            nap_diag_log("NAPLES2 TEMPO: vynechan krok emulace (zvuku ve fronte %d ms) - srovnavani na tempo zvuku",
+                         nap_audio_level_ms());
+    } else {
+        retro_run();
+    }
     g_crash_stage = "sync_display";
     if (g_gles_ready) nap_gles_sync_display_settings();
     // OPRAVA: dokresleni snimku (a dekod 24bitoveho filmu) se volalo JEN ze
@@ -1254,9 +1270,6 @@ extern "C" void nap_ps1_egl_tick_c(void) {
     // takze se to nikdy nespustilo - odtud cerna obrazovka u filmu.
     g_crash_stage = "present_frame";
     if (g_gles_ready) { void nap_gles_present_frame(void); nap_gles_present_frame(); }
-    // Zvuk urcuje tempo: kdyz se ho nakupilo moc, chvilku pockame.
-    g_crash_stage = "audio_governor";
-    nap_audio_governor();
     g_crash_stage = "tick_done(cekam na eglrender grab/present)";
 }
 
