@@ -113,6 +113,13 @@ public class MainActivity extends Activity {
     private volatile int ps1LifecycleGen = 0; // BUILD2SA5I: cancels stale PS1 boots/audio after leaving PS1.
     private volatile boolean ps1BootActive = false;
     private volatile boolean ps1SessionActive = false;
+    // Kdyz se spusti okno hry (NativeActivity + eglrender), prebira si jadro
+    // ONO. Appka do nej od te chvile nesmi sahat - drive ho pri svem onPause
+    // tvrde zastavovala prave ve chvili, kdy se okno hry rozjizdelo:
+    //   17:30:45.754  KROKC EGL_PS1_LAUNCH
+    //   17:30:45.914  PS1_SESSION_STOP reason=activityPause
+    // To jsou ty "dve verze v jednom emulatoru".
+    private volatile boolean ps1GameWindowOwnsCore = false;
     private NativePs1InPlaceView ps1NativeView; // BUILD2SK87: nahrazuje JPEG preview v landscape, viz trida nize
     private volatile boolean ps1RemoteDownloadActive = false;
     private volatile String ps1RemoteDownloadStatus = "idle";
@@ -6470,7 +6477,8 @@ public class MainActivity extends Activity {
                 appendNativeLog("KROKC EGL_STAGE_BIOS do=" + biosDir.getAbsolutePath());
             }
 
-            appendNativeLog("KROKC EGL_PS1_LAUNCH");
+            ps1GameWindowOwnsCore = true;   // od ted jadro patri oknu hry
+            appendNativeLog("KROKC EGL_PS1_LAUNCH (jadro prebira okno hry)");
             android.content.Intent it = new android.content.Intent(this, android.app.NativeActivity.class);
             it.addFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
             startActivity(it);
@@ -7475,8 +7483,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-        stopNativeInPlaceHard("activityPause");
-        stopPs1SessionHard("activityPause");
+        if (ps1GameWindowOwnsCore) {
+            // Jadro si prevzalo okno hry - appka ho NESMI zastavovat.
+            appendNativeLog("PS1_PAUZA_APPKY jadro patri oknu hry, nesaham na nej");
+        } else {
+            stopNativeInPlaceHard("activityPause");
+            stopPs1SessionHard("activityPause");
+        }
         if (web != null) web.onPause();
     }
 
@@ -7491,5 +7504,32 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onResume() { super.onResume(); if (web != null) web.onResume(); }
+    protected void onResume() {
+        super.onResume();
+        if (web != null) web.onResume();
+        // ====== NÁVRAT Z OKNA HRY ======
+        // Kdyz se sem vracime a PS1 relace je jeste "zapnuta", znamena to, ze
+        // se okno hry zavrelo (jadro uz se vypnulo samo pres core_shutdown).
+        // Appka si ale dosud drzela stav dal: myslela si, ze PS1 porad bezi,
+        // zustala na ovladaci obrazovce a slo to spravit jen restartem appky.
+        // Tady to uklidime - vratime se do vychoziho stavu PS1 obrazovky.
+        if (ps1GameWindowOwnsCore) {
+            // Vratili jsme se z okna hry - to uz jadro vypnulo samo
+            // (core_shutdown). Uklidime jen stav na strane appky.
+            ps1GameWindowOwnsCore = false;
+            appendNativeLog("PS1_UKLID_PO_NAVRATU duvod=zavreno okno hry");
+            try { stopPs1SessionHard("navrat z okna hry"); } catch (Throwable ignored) {}
+        } else if (ps1SessionActive || ps1BootActive) {
+            appendNativeLog("PS1_UKLID_PO_NAVRATU duvod=zbyla relace appky");
+            try { stopPs1SessionHard("uklid pri navratu"); } catch (Throwable ignored) {}
+        }
+        // ====== ZPET DO PORTRETU (monitor PS1) ======
+        // V landscape ukazuje webova stranka jen ovladac - obraz tam driv
+        // kreslil nativni TextureView, ktery uz neexistuje. Proto po navratu
+        // z okna hry koncil uzivatel na cerne obrazovce s joystickem.
+        // Vracime se do portretu, kde je monitor PS1 i obraz z jadra.
+        try {
+            setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        } catch (Throwable ignored) {}
+    }
 }
