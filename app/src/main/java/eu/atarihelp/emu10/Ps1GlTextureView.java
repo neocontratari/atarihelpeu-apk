@@ -45,12 +45,24 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
     /** Prenos na TV: pujci si posledni snimek. Vraci sirku/vysku, nebo 0. */
     public static int borrowFrame(int[] dst) {
         synchronized (SHARE_LOCK) {
-            if (!shareFresh || shareBuf == null || shareW <= 0 || shareH <= 0) return 0;
-            int n = shareW * shareH;
-            if (dst == null || dst.length < n) return -((shareW << 16) | shareH);
-            System.arraycopy(shareBuf, 0, dst, 0, n);
-            shareFresh = false;
-            return (shareW << 16) | shareH;
+            if (shareFresh && shareBuf != null && shareW > 0 && shareH > 0) {
+                int n = shareW * shareH;
+                if (dst == null || dst.length < n) return -((shareW << 16) | shareH);
+                System.arraycopy(shareBuf, 0, dst, 0, n);
+                shareFresh = false;
+                return (shareW << 16) | shareH;
+            }
+        }
+        // ====== ZDROJ SNIMKU BEZ TOHOTO POHLEDU ======
+        // Tenhle pohled uz se nevytvari (hra bezi v samostatnem nativnim okne),
+        // takze tu zadny "pujceny" snimek neni. Vezmeme ho tedy PRIMO Z JADRA -
+        // vlakno emulace tam snimky publikuje. Bez toho by TV nemela co ukazat
+        // a spadla by na snimani okna appky, kde je jen ovladac.
+        if (dst == null) return 0;
+        try {
+            return NativePs1CoreBridge.grabFrameSafe(dst);
+        } catch (Throwable t) {
+            return 0;
         }
     }
 

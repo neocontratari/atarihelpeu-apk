@@ -632,7 +632,12 @@ public class MainActivity extends Activity {
                     // (dvoji zvetseni + cerne pruhy + ovladaci prvky), ale
                     // vezmeme framebuffer primo z jadra a JEDNIM krokem ho
                     // roztahneme na cistych 16:9. Ostrejsi a rychlejsi.
-                    boolean gotFromCore = (ps1GlView != null) && napTvWebCaptureFromCore(bw, bh);
+                    // OPRAVA: drive bylo podminene existenci ps1GlView (to druhe,
+                    // prazdne platno uvnitr appky). Kdyz hra bezi v nativnim okne,
+                    // ps1GlView neexistuje - a TV proto snimala okno appky, tedy
+                    // jen ovladac bez hry ("Window doesn't have a backing surface").
+                    // Snimky z jadra jsou k dispozici vzdy, kdyz bezi PS1 relace.
+                    boolean gotFromCore = ps1SessionActive && napTvWebCaptureFromCore(bw, bh);
                     if (gotFromCore) {
                         napTvWebPixelCopyPending = false;
                     } else if (!didTimeoutFallback && pixelCopyAllowed) {
@@ -4458,6 +4463,18 @@ public class MainActivity extends Activity {
 
     // Zapnout nas plynuly OpenGL obraz (hlavni zobrazovaci cesta pro PS1).
     private void ps1GlEnable() {
+        try {
+            // ====== DRUHE PLATNO ZRUSENO ======
+            // Hra bezi v samostatnem nativnim okne (NativeActivity + eglrender),
+            // ktere si kresli i vlastni ovladaci prvky. Tenhle GL pohled uvnitr
+            // hlavni aktivity je pozustatek stare cesty, kdy se hra kreslila
+            // primo v appce. Dnes uz nic neukazuje, jen si bere snimky a plete
+            // se (uzivatel videl dve obrazovky - jednu s hrou, druhou jen
+            // s ovladacem). TV si obraz bere primo z jadra, takze tenhle
+            // pohled k nicemu neni.
+            appendNativeLog("PS1_DRUHE_PLATNO_ZRUSENO duvod=hra bezi v nativnim okne");
+            if (true) return;
+        } catch (Throwable ignored) {}
         try {
             if (ps1GlView != null) return;              // uz bezi
             if (rootFrame == null) return;
