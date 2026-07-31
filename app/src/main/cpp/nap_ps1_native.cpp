@@ -1266,7 +1266,7 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
         nap_audio_clear();
         if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
     }
-    nap_diag_log("=== NEOCONTR B33 31-07-2026 (verzi hleda v radku VERZE APKY) ===");
+    nap_diag_log("=== NEOCONTR B34 31-07-2026 (verzi hleda v radku VERZE APKY) ===");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho

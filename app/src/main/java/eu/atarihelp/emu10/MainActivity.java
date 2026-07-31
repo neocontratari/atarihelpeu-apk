@@ -129,7 +129,19 @@ public class MainActivity extends Activity {
         if (ps1GameWindowOwnsCore || ps1SessionActive || ps1BootActive) return;
         ps1BiosStarting = true;
         new Thread(() -> {
+            java.io.File pokus = new java.io.File(getFilesDir(), "ps1_bios_pokus");
             try {
+                // ===== POJISTKA PROTI OPAKOVANEMU PADU =====
+                // Kdyz minuly pokus o start BIOSu skoncil padem, zustane tu
+                // znacka. Priste uz start nezkousime, aby se appka nezacyklila
+                // v padani a dala se normalne pouzivat.
+                if (pokus.exists()) {
+                    appendNativeLog("PS1_BIOS_PRESKOCENO minuly pokus skoncil padem - mazu znacku, priste to zkusim znovu");
+                    pokus.delete();
+                    ps1BiosStarting = false;
+                    return;
+                }
+                try { pokus.createNewFile(); } catch (Throwable ignored) {}
                 java.io.File sysDir  = new java.io.File(getFilesDir(), "ps1_system");
                 java.io.File saveDir = new java.io.File(getFilesDir(), "ps1_saves");
                 if (!sysDir.exists())  sysDir.mkdirs();
@@ -141,6 +153,7 @@ public class MainActivity extends Activity {
                 appendNativeLog("PS1_BIOS_START vysledek=" + r);
                 ps1BiosRunning = r != null && r.startsWith("PS1_BIOS_OK");
                 ps1LastBootResult = r;
+                pokus.delete();   // dobehlo bez padu - znacku uklidime
             } catch (Throwable t) {
                 appendNativeLog("PS1_BIOS_START_ERR " + safeMsg(t));
             } finally {

@@ -2047,6 +2047,24 @@ bool retro_load_game(const struct retro_game_info *info)
       disk_init();
 
       Config.PsxRegion = PSX_REGION_EU;      /* bez disku rozhoduje BIOS */
+
+      /* Pluginy (grafika, zvuk, CD) MUSI byt nactene a otevrene jeste PRED
+         resetem systemu. Bez nich by SysReset() sahal na prazdne ukazatele
+         a spadl by - presne to se stalo pri prvnim pokusu. Zadny disk
+         nenastavujeme, takze CD plugin jede naprazdno (jako prazdna mechanika). */
+      set_cd_image(NULL);
+      if (LoadPlugins() == -1)
+      {
+         LogErr("start bez disku: nepodarilo se nacist pluginy\n");
+         return false;
+      }
+      plugins_opened = 1;
+      if (OpenPlugins(0) == -1)
+      {
+         LogErr("start bez disku: nepodarilo se otevrit pluginy\n");
+         return false;
+      }
+
       load_memcards();
       plugin_call_rearmed_cbs();
       SysReset();                            /* BIOS nabehne do sveho menu */
