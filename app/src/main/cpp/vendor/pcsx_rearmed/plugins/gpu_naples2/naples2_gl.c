@@ -54,7 +54,11 @@ static const char *FS =
 "float raw16(vec2 texel){\n"
 "  vec2 uv = (texel + 0.5) / uVram;\n"
 "  vec4 t = texture2D(uVramTex, uv);\n"
-"  return floor(t.r * 255.0 + 0.5) + floor(t.a * 255.0 + 0.5) * 256.0;\n"
+"  float r = floor(t.r * 31.0 + 0.5);\n"      /* 5 bitu zpet z 8 - presne */
+"  float g = floor(t.g * 31.0 + 0.5);\n"
+"  float b = floor(t.b * 31.0 + 0.5);\n"
+"  float m = (t.a > 0.5) ? 1.0 : 0.0;\n"
+"  return r + g * 32.0 + b * 1024.0 + m * 32768.0;\n"
 "}\n"
 "float okno(float u, float M, float O){\n"      /* PS1: (u AND NOT M) OR (O AND M) */
 "  float res = 0.0, bit = 1.0;\n"
@@ -138,7 +142,13 @@ static struct {
     GLint    u_vram, u_tex, u_texwin, u_alpha;
     GLint    b_pos, b_uv, b_vram, b_src;
     GLuint   fbo, tex_out;      /* cil kresleni: cela VRAM jako RGBA */
-    GLuint   tex_vram;          /* syrova VRAM (LUMINANCE_ALPHA) pro texturovani */
+    GLuint   tex_vram;          /* KOPIE obrazu, ze ktere se texturuje.
+                                   Nelze cist z teze textury, do ktere se kresli,
+                                   proto kopie. Obsahuje i to, co GPU vyrobila
+                                   primo v pameti (BIOS to tak dela) - drive se
+                                   texturovalo jen z pameti jadra, kam se dostane
+                                   pouze to, co zapsal procesor. */
+    GLuint   fbo_vram;          /* ramec pro porizeni te kopie */
     GLuint   tex_blit;          /* docasna textura pro prenosy */
     N2Vert   verts[N2_MAX_VERTS];
     int      nverts;
@@ -268,12 +278,20 @@ int n2_init(void)
     /* syrova VRAM pro texturovani: 2 bajty na texel */
     glGenTextures(1, &n2.tex_vram);
     glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA, N2_VRAM_W, N2_VRAM_H, 0,
-                 GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, N2_VRAM_W, N2_VRAM_H, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glGenFramebuffers(1, &n2.fbo_vram);
+    glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo_vram);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, n2.tex_vram, 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        nap_diag_log("NAPLES2 FBO_VRAM_FAIL stav=0x%x", glCheckFramebufferStatus(GL_FRAMEBUFFER));
+        return -1;
+    }
 
     glGenTextures(1, &n2.tex_blit);
 
@@ -293,6 +311,7 @@ void n2_finish(void)
 {
     if (!n2.ready) return;
     glDeleteFramebuffers(1, &n2.fbo);
+    glDeleteFramebuffers(1, &n2.fbo_vram);
     glDeleteTextures(1, &n2.tex_out);
     glDeleteTextures(1, &n2.tex_vram);
     glDeleteTextures(1, &n2.tex_blit);
@@ -466,16 +485,40 @@ static void n2_blit_scratch(int x, int y, int w, int h)
    ktere nahravaji textury pres DMA, hlaseni nechodi vubec. Textury pak byly
    PRAZDNE, kazdy texturovany pixel se zahodil a na obrazovce zbyly jen
    jednobarevne plochy. Tohle na hlaseni nezavisi. */
+/* Porizeni kopie obrazu pro texturovani. Bez ni by se texturovalo jen z toho,
+   co zapsal procesor - a co si GPU vyrobi sama (BIOS to tak dela) by chybelo. */
+void n2_refresh_texture_source(void)
+{
+    if (!n2.ready) return;
+    glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo_vram);
+    glViewport(0, 0, N2_VRAM_W, N2_VRAM_H);
+    glDisable(GL_BLEND);
+    glDisable(GL_SCISSOR_TEST);
+    glUseProgram(n2.prog_blit);
+    glUniform2f(n2.b_vram, (float)N2_VRAM_W, (float)N2_VRAM_H);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, n2.tex_out);
+    glUniform1i(n2.b_src, 0);
+    {
+        const float pos[12] = { 0,0, (float)N2_VRAM_W,0, 0,(float)N2_VRAM_H,
+                                (float)N2_VRAM_W,0, (float)N2_VRAM_W,(float)N2_VRAM_H, 0,(float)N2_VRAM_H };
+        const float uv [12] = { 0,0, 1,0, 0,1,   1,0, 1,1, 0,1 };
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glVertexAttribPointer((GLuint)n2.b_pos, 2, GL_FLOAT, GL_FALSE, 0, pos);
+        glVertexAttribPointer((GLuint)n2.b_uv,  2, GL_FLOAT, GL_FALSE, 0, uv);
+        glEnableVertexAttribArray((GLuint)n2.b_pos);
+        glEnableVertexAttribArray((GLuint)n2.b_uv);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo);
+}
+
 void n2_upload_all_vram(void)
 {
-    const unsigned short *src = n2_host_vram();
-    if (!n2.ready || !src) return;
-    glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    /* 16bit slova videopameti = presne 2 bajty na texel (LUMINANCE_ALPHA),
-       takze zadny prevod - primy prenos pameti. */
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, N2_VRAM_W, N2_VRAM_H,
-                    GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, src);
+    /* Uz se nepouziva: textura pro texturovani vznika jako KOPIE OBRAZU
+       (n2_refresh_texture_source), takze obsahuje i to, co si GPU vyrobila
+       sama. Nahravat sem pamet jadra by tu kopii jen prepsalo. */
+
 }
 
 /* Prekresli najednou vsechny cekajici zapisy do VRAM. */
@@ -499,7 +542,7 @@ static void n2_flush_pending_vram(void)
                 d[i * 4 + 0] = (unsigned char)((p        & 31) * 255 / 31);
                 d[i * 4 + 1] = (unsigned char)(((p >> 5) & 31) * 255 / 31);
                 d[i * 4 + 2] = (unsigned char)(((p >> 10) & 31) * 255 / 31);
-                d[i * 4 + 3] = 255;
+                d[i * 4 + 3] = (unsigned char)((p & 0x8000) ? 255 : 0);   /* bit masky */
             }
         }
         n2_blit_scratch(x, y, w, h);
@@ -540,7 +583,6 @@ void n2_present_rgb24(int sx, int sy, int w, int h)
 void n2_vram_written(int x, int y, int w, int h)
 {
     const unsigned short *src = n2_host_vram();
-    int i, j;
     if (!n2.ready || !src || w <= 0 || h <= 0) return;
     if (x < 0) x = 0;
     if (y < 0) y = 0;
@@ -548,20 +590,9 @@ void n2_vram_written(int x, int y, int w, int h)
     if (y + h > N2_VRAM_H) h = N2_VRAM_H - y;
     if (w <= 0 || h <= 0) return;
 
-    /* 1) syrova data pro texturovani */
-    for (j = 0; j < h; j++) {
-        const unsigned short *s = src + (size_t)(y + j) * N2_VRAM_W + x;
-        unsigned char *d = n2.scratch + (size_t)j * w * 2;
-        for (i = 0; i < w; i++) {
-            d[i * 2 + 0] = (unsigned char)( s[i]       & 0xff); /* nizsi bajt -> r */
-            d[i * 2 + 1] = (unsigned char)((s[i] >> 8) & 0xff); /* vyssi bajt -> a */
-        }
-    }
-    glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h,
-                    GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, n2.scratch);
-
+    /* Do textury pro texturovani se uz nenahrava - vznika jako kopie obrazu.
+       Zapis procesoru se prekresli do obrazu (nize) a do kopie se dostane
+       automaticky pri jejim porizeni. */
     /* 2) do obrazu se to prekresli az naraz (viz n2_flush_pending_vram) -
           jen si oznacime oblast. Drive se kreslilo hned pri kazdem zapisu
           a to trhalo obraz. */

@@ -155,6 +155,12 @@ const void *nap_gles_grab_pixels(int *out_w, int *out_h)
    zvlast - jinak z toho jsou rozsypane barvy pri spravne geometrii. */
 void nap_gles_present_frame(void)
 {
+    // Kopie obrazu pro texturovani. Musi vzniknout PO dokresleni snimku,
+    // aby v ni bylo i to, co si GPU vyrobila sama v pameti (tak si BIOS
+    // dela svoje bubliny a pozadi). Bez toho se texturovalo jen z toho,
+    // co zapsal procesor - a tam poradl lezelo stare logo z bootu.
+    n2_flush();
+    n2_refresh_texture_source();
     // (Celou videopamet uz kazdy snimek nenahravame - stalo to vykon
     //  a v B31 to fungovalo bez toho. Textury chodi pres hlaseni o
     //  zapisech do videopameti.)
