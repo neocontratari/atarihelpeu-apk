@@ -54,11 +54,7 @@ static const char *FS =
 "float raw16(vec2 texel){\n"
 "  vec2 uv = (texel + 0.5) / uVram;\n"
 "  vec4 t = texture2D(uVramTex, uv);\n"
-"  float r = floor(t.r * 31.0 + 0.5);\n"      /* 5 bitu zpet z 8 - presne */
-"  float g = floor(t.g * 31.0 + 0.5);\n"
-"  float b = floor(t.b * 31.0 + 0.5);\n"
-"  float m = (t.a > 0.5) ? 1.0 : 0.0;\n"
-"  return r + g * 32.0 + b * 1024.0 + m * 32768.0;\n"
+"  return floor(t.r * 255.0 + 0.5) + floor(t.a * 255.0 + 0.5) * 256.0;\n"
 "}\n"
 "float okno(float u, float M, float O){\n"      /* PS1: (u AND NOT M) OR (O AND M) */
 "  float res = 0.0, bit = 1.0;\n"
@@ -278,8 +274,8 @@ int n2_init(void)
     /* syrova VRAM pro texturovani: 2 bajty na texel */
     glGenTextures(1, &n2.tex_vram);
     glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, N2_VRAM_W, N2_VRAM_H, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA, N2_VRAM_W, N2_VRAM_H, 0,
+                 GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -515,11 +511,20 @@ void n2_refresh_texture_source(void)
 
 void n2_upload_all_vram(void)
 {
-    /* Uz se nepouziva: textura pro texturovani vznika jako KOPIE OBRAZU
-       (n2_refresh_texture_source), takze obsahuje i to, co si GPU vyrobila
-       sama. Nahravat sem pamet jadra by tu kopii jen prepsalo. */
-
+    /* Textura, ze ktere se texturuje = SYROVA PAMET JADRA.
+       Jsou v ni PALETY (u BIOSu na 640-768, 384) i nahrane fonty. Kdyz jsem
+       v B43 zdroj prepnul na kopii obrazu, prisel jsem tim o palety - do
+       obrazu se totiz dostane jen to, co tam nekdo prekresli. Ctyrbitova
+       textura se pak prelozila na nesmyslne barvy: tvar zustal, ale barvy
+       zcernaly. Presne to bylo videt na pozadi BIOSu. */
+    const unsigned short *src = n2_host_vram();
+    if (!n2.ready || !src) return;
+    glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, N2_VRAM_W, N2_VRAM_H,
+                    GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, src);
 }
+
 
 /* Prekresli najednou vsechny cekajici zapisy do VRAM. */
 static void n2_flush_pending_vram(void)
