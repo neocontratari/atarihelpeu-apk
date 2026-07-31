@@ -7642,13 +7642,11 @@ public class MainActivity extends Activity {
             appendNativeLog("PS1_UKLID_PO_NAVRATU duvod=zbyla relace appky");
             try { stopPs1SessionHard("uklid pri navratu"); } catch (Throwable ignored) {}
         }
-        // ====== ZPET DO PORTRETU (monitor PS1) ======
-        // V landscape ukazuje webova stranka jen ovladac - obraz tam driv
-        // kreslil nativni TextureView, ktery uz neexistuje. Proto po navratu
-        // z okna hry koncil uzivatel na cerne obrazovce s joystickem.
-        // Vracime se do portretu, kde je monitor PS1 i obraz z jadra.
-        try {
-            setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        } catch (Throwable ignored) {}
+        // ====== OTACENI SE NESMI ZAMYKAT ======
+        // Drive jsem tady vynucoval portret (aby se po navratu z hry PS1
+        // neskoncilo na ovladaci obrazovce). Jenze orientace se nastavuje
+        // pro CELOU aplikaci - a tim se zamklo i Atari, Sega a DJ pult,
+        // ktere se pak nedaly pretocit na sirku. Moje chyba.
+        // Necháváme orientaci volnou; telefon si rozhoduje sam.
     }
 }
