@@ -162,6 +162,8 @@ static struct {
     int      dirty;                 /* kolik jich ceka */
     int      dr[64][4];             /* x0,y0,x1,y1 */
     long     n_writes, n_blits, n_draws, n_verts, n_trans;  /* pocitadla pro diagnostiku */
+    int      seen[8][5];      /* stranka x,y, rezim, paleta x,y - co se opravdu pouziva */
+    int      n_seen;
     unsigned char *scratch;     /* prevod 16bit -> RGBA pri prenosech */
     unsigned char *readbuf;     /* zaloha pro nesdileny kontext */
     int      readbuf_cap;
@@ -405,6 +407,19 @@ static void n2_vert(int x, int y, unsigned rgb, int u, int v, int mode)
     o->px = (float)n2.page_x; o->py = (float)n2.page_y;
     o->cx = (float)n2.clut_x; o->cy = (float)n2.clut_y;
     o->mode = (float)mode;
+    if (mode != 0) {          /* zaznamenat pouzitou texturu (diagnostika) */
+        int q, nasel = 0;
+        for (q = 0; q < n2.n_seen; q++)
+            if (n2.seen[q][0] == n2.page_x && n2.seen[q][1] == n2.page_y &&
+                n2.seen[q][2] == mode && n2.seen[q][3] == n2.clut_x &&
+                n2.seen[q][4] == n2.clut_y) { nasel = 1; break; }
+        if (!nasel && n2.n_seen < 8) {
+            n2.seen[n2.n_seen][0] = n2.page_x; n2.seen[n2.n_seen][1] = n2.page_y;
+            n2.seen[n2.n_seen][2] = mode;
+            n2.seen[n2.n_seen][3] = n2.clut_x; n2.seen[n2.n_seen][4] = n2.clut_y;
+            n2.n_seen++;
+        }
+    }
 }
 
 static void n2_set_blend(int b)
@@ -633,6 +648,20 @@ void n2_take_counters(long *draws, long *writes, long *blits)
     if (writes) *writes = n2.n_writes;
     if (blits)  *blits  = n2.n_blits;
     n2.n_draws = n2.n_writes = n2.n_blits = 0;
+}
+
+/* Vypise, jake texturove stranky a palety se pouzivaji, a vynuluje seznam. */
+void n2_dump_textures(char *out, int cap)
+{
+    int q, n = 0;
+    if (!out || cap < 8) return;
+    out[0] = 0;
+    for (q = 0; q < n2.n_seen && n < cap - 40; q++) {
+        const char *rez = (n2.seen[q][2] == 1) ? "4bit" : (n2.seen[q][2] == 2) ? "8bit" : "16bit";
+        n += snprintf(out + n, (size_t)(cap - n), "[str %d,%d %s pal %d,%d] ",
+                      n2.seen[q][0], n2.seen[q][1], rez, n2.seen[q][3], n2.seen[q][4]);
+    }
+    n2.n_seen = 0;
 }
 
 void n2_take_vert_counters(long *verts, long *trans)

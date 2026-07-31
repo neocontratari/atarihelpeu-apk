@@ -197,8 +197,11 @@ void nap_gles_present_frame(void)
             {
                 long vt = 0, tr = 0;
                 n2_take_vert_counters(&vt, &tr);
-                nap_diag_log("NAPLES2 ZATEZ za 120 snimku: kresleni=%ld vrcholy=%ld ztoho_pruhlednych=%ld zapisyVRAM=%ld (na snimek: %.1f kresleni / %.0f vrcholu)",
-                             d, vt, tr, wr, d/120.0, vt/120.0);
+                char tx[256];
+                n2_dump_textures(tx, (int)sizeof(tx));
+                nap_diag_log("NAPLES2 ZATEZ za 120 snimku: kresleni=%ld vrcholy=%ld ztoho_pruhlednych=%ld (na snimek: %.0f vrcholu)",
+                             d, vt, tr, vt/120.0);
+                nap_diag_log("NAPLES2 TEXTURY: %s", tx[0] ? tx : "(zadne texturovane utvary)");
             }
         }
     }
