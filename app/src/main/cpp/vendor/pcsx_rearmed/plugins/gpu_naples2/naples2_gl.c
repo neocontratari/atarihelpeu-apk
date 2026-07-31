@@ -161,7 +161,7 @@ static struct {
        zmet pres text). Ted se kazdy zapis prekresli zvlast. */
     int      dirty;                 /* kolik jich ceka */
     int      dr[64][4];             /* x0,y0,x1,y1 */
-    long     n_writes, n_blits, n_draws;   /* pocitadla pro diagnostiku */
+    long     n_writes, n_blits, n_draws, n_verts, n_trans;  /* pocitadla pro diagnostiku */
     unsigned char *scratch;     /* prevod 16bit -> RGBA pri prenosech */
     unsigned char *readbuf;     /* zaloha pro nesdileny kontext */
     int      readbuf_cap;
@@ -338,6 +338,8 @@ void n2_flush(void)
     n2_flush_pending_vram();   /* zapisy do VRAM musi byt v obraze DRIV nez primitiva */
     if (n2.nverts <= 0) return;
     n2.n_draws++;
+    n2.n_verts += n2.nverts;
+    if (n2.blend >= 0) n2.n_trans += n2.nverts;
 
     glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo);
     glViewport(0, 0, N2_VRAM_W, N2_VRAM_H);
@@ -631,6 +633,13 @@ void n2_take_counters(long *draws, long *writes, long *blits)
     if (writes) *writes = n2.n_writes;
     if (blits)  *blits  = n2.n_blits;
     n2.n_draws = n2.n_writes = n2.n_blits = 0;
+}
+
+void n2_take_vert_counters(long *verts, long *trans)
+{
+    if (verts) *verts = n2.n_verts;
+    if (trans) *trans = n2.n_trans;
+    n2.n_verts = n2.n_trans = 0;
 }
 
 const void* n2_read_display(int sx, int sy, int w, int h)

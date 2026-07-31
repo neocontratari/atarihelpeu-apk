@@ -194,8 +194,12 @@ void nap_gles_present_frame(void)
         if (++fr % 120 == 0) {
             long d, wr, bl;
             n2_take_counters(&d, &wr, &bl);
-            nap_diag_log("NAPLES2 ZATEZ za 120 snimku: kresleni=%ld zapisyVRAM=%ld prekresleni=%ld (na snimek: %.1f / %.1f / %.1f)",
-                         d, wr, bl, d/120.0, wr/120.0, bl/120.0);
+            {
+                long vt = 0, tr = 0;
+                n2_take_vert_counters(&vt, &tr);
+                nap_diag_log("NAPLES2 ZATEZ za 120 snimku: kresleni=%ld vrcholy=%ld ztoho_pruhlednych=%ld zapisyVRAM=%ld (na snimek: %.1f kresleni / %.0f vrcholu)",
+                             d, vt, tr, wr, d/120.0, vt/120.0);
+            }
         }
     }
 }

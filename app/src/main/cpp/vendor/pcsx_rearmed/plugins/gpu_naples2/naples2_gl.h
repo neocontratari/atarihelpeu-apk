@@ -58,6 +58,8 @@ unsigned n2_vram_texture(void);
 /* Diagnostika: kolik kreslicich volani / zapisu do VRAM / prekresleni
    probehlo od minuleho dotazu (a vynuluje pocitadla). */
 void n2_take_counters(long *draws, long *writes, long *blits);
+/* Kolik vrcholu celkem a kolik z nich bylo pruhlednych (diagnostika). */
+void n2_take_vert_counters(long *verts, long *trans);
 /* Aktualni oblast kresleni (pro diagnostiku). */
 int n2_area_x0(void); int n2_area_y0(void); int n2_area_x1(void); int n2_area_y1(void);
 /* Precte JEDEN pixel z obrazu na dane souradnici VRAM (diagnostika). */
