@@ -2021,11 +2021,10 @@ bool retro_load_game(const struct retro_game_info *info)
    SysPrintf("Using PIXEL_FORMAT %d\n", current_fmt);
    set_bgr_to_fb_func(0);
 
-   if (info == NULL || info->path == NULL)
-   {
-      LogErr("info->path required\n");
-      return false;
-   }
+   /* Puvodni kod tady prazdny obsah rovnou ODMITAL ("info->path required").
+      Tim se ale nikdy nedostalo ke slovu spusteni bez disku nize - proto
+      start konzole bez CD hlasil chybu. Odmitnuti odstraneno, prazdny obsah
+      resi vetev hned nize. */
    /* ===== BOOT BEZ DISKU (jako skutecna PS1 bez vlozeneho CD) =====
       Kdyz neprijde zadny obsah, nespoustime nic z prace s diskem - jen
       nastavime ovladace, nacteme memory karty a resetujeme systém. BIOS

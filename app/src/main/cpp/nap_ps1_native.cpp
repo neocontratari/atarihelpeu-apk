@@ -1266,7 +1266,7 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
         nap_audio_clear();
         if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
     }
-    nap_diag_log("=== NEOCONTR B32 30-07-2026 (verzi hleda v radku VERZE APKY) ===");
+    nap_diag_log("=== NEOCONTR B33 31-07-2026 (verzi hleda v radku VERZE APKY) ===");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
@@ -1322,6 +1322,12 @@ extern "C" int nap_audio_level_ms(void) {
 static void nap_core_thread_fn(void) {
     if (g_gles_display_A != EGL_NO_DISPLAY)
         eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
+    // Renderer musi byt pripraveny. Kdyz se jadro mezitim odinicializovalo
+    // (napr. neuspesny start), zrusil se s nim i renderer - a bez tehle
+    // pojistky by se uz nikdy nevytvoril a kreslilo by se do niceho
+    // (na obrazovce z toho byly svisle zelene cary).
+    // n2_init() si sam hlida, jestli uz hotovo je, takze je to levne.
+    { int rc = n2_init(); if (rc != 0) nap_diag_log("NAPLES2: renderer se nepodarilo pripravit (kod %d)", rc); }
     nap_diag_log("CESTA_A EMULACE MA VLASTNI VLAKNO (kresleni ji uz nebrzdi)");
     int slot = 0;
     while (g_core_run.load(std::memory_order_relaxed)) {
