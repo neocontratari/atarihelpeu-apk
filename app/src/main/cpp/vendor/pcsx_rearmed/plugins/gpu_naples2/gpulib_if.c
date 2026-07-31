@@ -155,6 +155,15 @@ const void *nap_gles_grab_pixels(int *out_w, int *out_h)
    zvlast - jinak z toho jsou rozsypane barvy pri spravne geometrii. */
 void nap_gles_present_frame(void)
 {
+    // ===== VIDEOPAMET DO TEXTUROVACI TEXTURY, KAZDY SNIMEK =====
+    // Renderer se spolehal, ze mu jadro kazdy zapis do videopameti ohlasi
+    // (renderer_update_caches). Log ale ukazal "zapisyVRAM=0" pri 264
+    // kreslicich volanich na snimek - hlaseni tedy nechodi vubec (u DMA
+    // prenosu a u BIOSu). Textury pak byly prazdne nebo zastarale, coz je
+    // ta zelena zmet pres text menu a chybejici grafika ve hre.
+    // Tohle na hlaseni nezavisi: gpu.vram je vzdy platna. Prenos je primy
+    // (16bit slova sedi 1:1 na format textury), takze levny.
+    n2_upload_all_vram();
     n2_flush();
     if (gpu.status & PSX_GPU_STATUS_RGB24) {
         int w = gpu.screen.hres > 0 ? gpu.screen.hres : 320;

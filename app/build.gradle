@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 82
-        versionName "EMU10-B34-BIOS-PLUGINY"  // pad: start bez disku preskakoval nacteni pluginu a SysReset sahal na prazdne ukazatele; + pojistka proti opakovanemu padu
+        versionCode 83
+        versionName "EMU10-B35-TEXTURY-Z-VRAM"  // log: 264 kresleni na snimek ale zapisyVRAM=0 - textury byly prazdne; videopamet se ted nahrava kazdy snimek
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
