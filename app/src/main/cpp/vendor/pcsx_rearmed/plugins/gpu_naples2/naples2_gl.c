@@ -576,6 +576,26 @@ void n2_sync_for_other_context(void)
     glFlush();
 }
 
+unsigned n2_peek_pixel(int x, int y)
+{
+    unsigned char px[4] = {0,0,0,0};
+    if (!n2.ready) return 0;
+    if (x < 0) x = 0;
+    if (x > N2_VRAM_W - 1) x = N2_VRAM_W - 1;
+    if (y < 0) y = 0;
+    if (y > N2_VRAM_H - 1) y = N2_VRAM_H - 1;
+    glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    /* radek 0 videopameti lezi v obrazu nahore, proto prevraceni */
+    glReadPixels(x, N2_VRAM_H - 1 - y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    return ((unsigned)px[0] << 16) | ((unsigned)px[1] << 8) | (unsigned)px[2];
+}
+
+int n2_area_x0(void) { return n2.area_x0; }
+int n2_area_y0(void) { return n2.area_y0; }
+int n2_area_x1(void) { return n2.area_x1; }
+int n2_area_y1(void) { return n2.area_y1; }
+
 void n2_take_counters(long *draws, long *writes, long *blits)
 {
     if (draws)  *draws  = n2.n_draws;

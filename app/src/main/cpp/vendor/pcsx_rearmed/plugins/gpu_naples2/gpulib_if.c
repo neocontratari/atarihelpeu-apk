@@ -165,6 +165,32 @@ void nap_gles_present_frame(void)
     // (16bit slova sedi 1:1 na format textury), takze levny.
     n2_upload_all_vram();
     n2_flush();
+    // ===== ROZHODUJICI MERENI =====
+    // Zjistime, jestli je vubec CO kreslit: kolik nenulovych slov ma
+    // videopamet, jaka je oblast kresleni a jaky vyrez displeje.
+    // - videopamet prazdna  -> obraz nevyrabi jadro (problem pred rendererem)
+    // - videopamet plna, ale obraz cerny -> chyba je v mem kresleni
+    {
+        static long dg = 0;
+        if (dg++ % 180 == 0) {
+            const unsigned short *v = (const unsigned short *)gpu.vram;
+            long nz = 0;
+            if (v) for (int i = 0; i < 1024 * 512; i += 97) if (v[i]) nz++;
+            nap_diag_log("NAPLES2 KONTROLA: nenulovych ve videopameti=%ld/5406, vyrez=%dx%d src=[%d,%d], oblast kresleni=%d,%d..%d,%d, rgb24=%d",
+                         nz, gpu.screen.hres, gpu.screen.vres,
+                         gpu.screen.src_x, gpu.screen.src_y,
+                         n2_area_x0(), n2_area_y0(), n2_area_x1(), n2_area_y1(),
+                         (gpu.status & PSX_GPU_STATUS_RGB24) ? 1 : 0);
+            // pixel primo ze STREDU oblasti, kam hra kresli
+            {
+                int mx = (n2_area_x0() + n2_area_x1()) / 2;
+                int my = (n2_area_y0() + n2_area_y1()) / 2;
+                unsigned c = n2_peek_pixel(mx, my);
+                nap_diag_log("NAPLES2 KONTROLA2: pixel ze stredu kreslene oblasti [%d,%d] = 0x%06X %s",
+                             mx, my, c, c ? "(neco tam je)" : "(cerno)");
+            }
+        }
+    }
     if (gpu.status & PSX_GPU_STATUS_RGB24) {
         int w = gpu.screen.hres > 0 ? gpu.screen.hres : 320;
         int h = gpu.screen.vres > 0 ? gpu.screen.vres : 240;

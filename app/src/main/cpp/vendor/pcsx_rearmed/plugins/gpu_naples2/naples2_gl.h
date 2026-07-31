@@ -58,6 +58,10 @@ unsigned n2_vram_texture(void);
 /* Diagnostika: kolik kreslicich volani / zapisu do VRAM / prekresleni
    probehlo od minuleho dotazu (a vynuluje pocitadla). */
 void n2_take_counters(long *draws, long *writes, long *blits);
+/* Aktualni oblast kresleni (pro diagnostiku). */
+int n2_area_x0(void); int n2_area_y0(void); int n2_area_x1(void); int n2_area_y1(void);
+/* Precte JEDEN pixel z obrazu na dane souradnici VRAM (diagnostika). */
+unsigned n2_peek_pixel(int x, int y);
 /* Dokonci a ohlasi praci tohoto kontextu, aby ji SDILENY druhy kontext
    (eglrender) videl hotovou. Bez toho druhy kontext vidi nedokoncena nebo
    stara data - projevi se to roztrhanym obrazem nebo cernou plochou. */

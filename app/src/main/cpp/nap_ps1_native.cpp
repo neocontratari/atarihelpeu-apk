@@ -1266,7 +1266,28 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
         nap_audio_clear();
         if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
     }
-    nap_diag_log("=== NEOCONTR B35 31-07-2026 (verzi hleda v radku VERZE APKY) ===");
+    // ===== UKLIDIT GRAFIKU PO BIOSU =====
+    // BIOS bezel s VLASTNIM (headless) grafickym kontextem. Kdyz se ted
+    // rozjizdi hra, vytvori se kontext novy - ale renderer si porad mysli,
+    // ze je hotovy, protoze jeho ramec a textury patri tomu STAREMU kontextu.
+    // Kreslilo se pak do neceho, co v novem kontextu neexistuje => cerna
+    // obrazovka. Proto stary kontext i renderer poradne zrusime a hra si
+    // grafiku postavi od zacatku - presne jako kdyz zadny BIOS nebezel.
+    if (g_gles_ready) {
+        void n2_finish(void);
+        if (g_gles_display_A != EGL_NO_DISPLAY) {
+            eglMakeCurrent(g_gles_display_A, g_gles_surface_A, g_gles_surface_A, g_gles_context_A);
+            n2_finish();
+            eglMakeCurrent(g_gles_display_A, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            if (g_gles_surface_A != EGL_NO_SURFACE) eglDestroySurface(g_gles_display_A, g_gles_surface_A);
+            if (g_gles_context_A != EGL_NO_CONTEXT) eglDestroyContext(g_gles_display_A, g_gles_context_A);
+        }
+        g_gles_surface_A = EGL_NO_SURFACE;
+        g_gles_context_A = EGL_NO_CONTEXT;
+        g_gles_ready = false;
+        nap_diag_log("PS1: grafika po BIOSu uklizena, hra si ji postavi znovu");
+    }
+    nap_diag_log("=== NEOCONTR B37 31-07-2026 (verzi hleda v radku VERZE APKY) ===");
     nap_install_crash_handler(); // od tohohle bodu zachytime pripadny pad
     // A11: minuly pad server nestihl ukazat (umrel s procesem) a hlavni log se
     // pri restartu smazal - ale ulozili jsme ho do samostatneho souboru. Tady ho
