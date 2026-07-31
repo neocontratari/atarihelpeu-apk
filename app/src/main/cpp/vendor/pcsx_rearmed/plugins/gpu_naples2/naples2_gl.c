@@ -141,8 +141,13 @@ static struct {
        to znamena stovky prepnuti stavu a kreslicich volani, tedy trhani.
        Ted se slouci do jednoho obdelniku a prekresli se najednou, ale VZDY
        jeste PRED dalsim kreslenim primitiv, aby se poradi zachovalo. */
-    int      dirty;
-    int      dx0, dy0, dx1, dy1;
+    /* Seznam cekajicich zapisu. Drive se slucovaly do JEDNOHO obdelniku -
+       jenze kdyz hra zapise na dve vzdalena mista, takovy obdelnik pokryje
+       i vsechno mezi nimi a prekresli se surovym obsahem pameti. Tim se
+       smaze to, co GPU spravne nakreslila (u menu BIOSu z toho byla zelena
+       zmet pres text). Ted se kazdy zapis prekresli zvlast. */
+    int      dirty;                 /* kolik jich ceka */
+    int      dr[64][4];             /* x0,y0,x1,y1 */
     long     n_writes, n_blits, n_draws;   /* pocitadla pro diagnostiku */
     unsigned char *scratch;     /* prevod 16bit -> RGBA pri prenosech */
     unsigned char *readbuf;     /* zaloha pro nesdileny kontext */
@@ -447,24 +452,29 @@ void n2_upload_all_vram(void)
 static void n2_flush_pending_vram(void)
 {
     const unsigned short *src = n2_host_vram();
-    int x, y, w, h, i, j;
+    int k, n;
     if (!n2.ready || !n2.dirty || !src) return;
-    x = n2.dx0; y = n2.dy0; w = n2.dx1 - n2.dx0; h = n2.dy1 - n2.dy0;
+    n = n2.dirty;
     n2.dirty = 0;
-    if (w <= 0 || h <= 0) return;
-    for (j = 0; j < h; j++) {
-        const unsigned short *s2 = src + (size_t)(y + j) * N2_VRAM_W + x;
-        unsigned char *d = n2.scratch + (size_t)j * w * 4;
-        for (i = 0; i < w; i++) {
-            unsigned p = s2[i];
-            d[i * 4 + 0] = (unsigned char)((p        & 31) * 255 / 31);
-            d[i * 4 + 1] = (unsigned char)(((p >> 5) & 31) * 255 / 31);
-            d[i * 4 + 2] = (unsigned char)(((p >> 10) & 31) * 255 / 31);
-            d[i * 4 + 3] = 255;
+    for (k = 0; k < n; k++) {
+        int x = n2.dr[k][0], y = n2.dr[k][1];
+        int w = n2.dr[k][2] - x, h = n2.dr[k][3] - y;
+        int i, j;
+        if (w <= 0 || h <= 0) continue;
+        for (j = 0; j < h; j++) {
+            const unsigned short *s2 = src + (size_t)(y + j) * N2_VRAM_W + x;
+            unsigned char *d = n2.scratch + (size_t)j * w * 4;
+            for (i = 0; i < w; i++) {
+                unsigned p = s2[i];
+                d[i * 4 + 0] = (unsigned char)((p        & 31) * 255 / 31);
+                d[i * 4 + 1] = (unsigned char)(((p >> 5) & 31) * 255 / 31);
+                d[i * 4 + 2] = (unsigned char)(((p >> 10) & 31) * 255 / 31);
+                d[i * 4 + 3] = 255;
+            }
         }
+        n2_blit_scratch(x, y, w, h);
+        n2.n_blits++;
     }
-    n2_blit_scratch(x, y, w, h);
-    n2.n_blits++;
 }
 
 /* 24bitovy rezim (film): ve VRAM lezi 3 bajty na pixel (R,G,B), radek VRAM
@@ -525,12 +535,18 @@ void n2_vram_written(int x, int y, int w, int h)
     /* 2) do obrazu se to prekresli az naraz (viz n2_flush_pending_vram) -
           jen si oznacime oblast. Drive se kreslilo hned pri kazdem zapisu
           a to trhalo obraz. */
-    if (!n2.dirty) { n2.dx0 = x; n2.dy0 = y; n2.dx1 = x + w; n2.dy1 = y + h; n2.dirty = 1; }
-    else {
-        if (x < n2.dx0) n2.dx0 = x;
-        if (y < n2.dy0) n2.dy0 = y;
-        if (x + w > n2.dx1) n2.dx1 = x + w;
-        if (y + h > n2.dy1) n2.dy1 = y + h;
+    if (n2.dirty < 64) {
+        n2.dr[n2.dirty][0] = x; n2.dr[n2.dirty][1] = y;
+        n2.dr[n2.dirty][2] = x + w; n2.dr[n2.dirty][3] = y + h;
+        n2.dirty++;
+    } else {
+        /* Kdyby jich bylo opravdu hodne, posledni rozsirime - poradi se tim
+           nezmeni a nehrozi, ze bychom zapis ztratili. */
+        int *r = n2.dr[63];
+        if (x < r[0]) r[0] = x;
+        if (y < r[1]) r[1] = y;
+        if (x + w > r[2]) r[2] = x + w;
+        if (y + h > r[3]) r[3] = y + h;
     }
     n2.n_writes++;
 }

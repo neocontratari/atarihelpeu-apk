@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 85
-        versionName "EMU10-B37-HRA-ZPET-JAKO-B31"  // BIOS bezel s vlastnim grafickym kontextem a hra pak kreslila do neexistujiciho ramce; kontext se pred hrou uklidi
+        versionCode 86
+        versionName "EMU10-B38-BIOS-GRAFIKA"  // zapisy do videopameti se slucovaly do jednoho velkeho obdelniku a prepisovaly nakreslene; ted kazdy zvlast
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
