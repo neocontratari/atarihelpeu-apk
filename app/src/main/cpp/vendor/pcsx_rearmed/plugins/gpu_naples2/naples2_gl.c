@@ -56,6 +56,17 @@ static const char *FS =
 "  vec4 t = texture2D(uVramTex, uv);\n"
 "  return floor(t.r * 255.0 + 0.5) + floor(t.a * 255.0 + 0.5) * 256.0;\n"
 "}\n"
+"float okno(float u, float M, float O){\n"      /* PS1: (u AND NOT M) OR (O AND M) */
+"  float res = 0.0, bit = 1.0;\n"
+"  for (int i = 0; i < 8; i++) {\n"
+"    float ub = mod(floor(u / bit), 2.0);\n"
+"    float mb = mod(floor(M / bit), 2.0);\n"
+"    float ob = mod(floor(O / bit), 2.0);\n"
+"    res += ((mb > 0.5) ? ob : ub) * bit;\n"
+"    bit *= 2.0;\n"
+"  }\n"
+"  return res;\n"
+"}\n"
 "vec4 from16(float v){\n"
 "  float r = mod(v, 32.0);\n"
 "  float g = mod(floor(v / 32.0), 32.0);\n"
@@ -67,8 +78,8 @@ static const char *FS =
 "  if (vMode < 0.5) {\n"
 "    c = vColor;\n"
 "  } else {\n"
-"    float u = mod(floor(vUV.x), uTexWin.x) + uTexWin.z;\n"
-"    float v = mod(floor(vUV.y), uTexWin.y) + uTexWin.w;\n"
+"    float u = okno(floor(vUV.x), uTexWin.x, uTexWin.z);\n"
+"    float v = okno(floor(vUV.y), uTexWin.y, uTexWin.w);\n"
 "    float raw;\n"
 "    if (vMode < 1.5) {\n"                    /* 4 bity na pixel */
 "      raw = raw16(vec2(vPage.x + floor(u / 4.0), vPage.y + v));\n"
@@ -267,7 +278,7 @@ int n2_init(void)
     if (!n2.scratch) return -1;
 
     n2.blend    = -1;
-    n2.win_mx   = 256; n2.win_my = 256; n2.win_ox = 0; n2.win_oy = 0;
+    n2.win_mx   = 0; n2.win_my = 0; n2.win_ox = 0; n2.win_oy = 0;   /* 0 = bez maskovani */
     n2.area_x1  = N2_VRAM_W; n2.area_y1 = N2_VRAM_H;
     n2.ready    = 1;
     nap_diag_log("NAPLES2 PRIPRAVEN (GLES2, VRAM %dx%d, textura=%u)", N2_VRAM_W, N2_VRAM_H, n2.tex_out);
@@ -663,10 +674,15 @@ static void n2_texwin(unsigned v)
     int mx = (int)(v & 0x1f), my = (int)((v >> 5) & 0x1f);
     int ox = (int)((v >> 10) & 0x1f), oy = (int)((v >> 15) & 0x1f);
     n2_flush();
-    n2.win_mx = 256 - mx * 8; if (n2.win_mx <= 0) n2.win_mx = 256;
-    n2.win_my = 256 - my * 8; if (n2.win_my <= 0) n2.win_my = 256;
-    n2.win_ox = (ox * 8) & (mx * 8);
-    n2.win_oy = (oy * 8) & (my * 8);
+    /* Posilame primo MASKU a OFFSET v pixelech - shader si udela presne
+       to, co dela PS1: (u AND NOT maska) OR (offset AND maska).
+       Drive se tu pocitala "velikost okna" a v shaderu se delal zbytek po
+       deleni; to sedi jen pro nektere masky a u ostatnich se textura cetla
+       posunuta a opakovala se v malych dlazdicich. */
+    n2.win_mx = mx * 8;
+    n2.win_my = my * 8;
+    n2.win_ox = ox * 8;
+    n2.win_oy = oy * 8;
 }
 
 void n2_set_ecmds(uint32_t *e)
