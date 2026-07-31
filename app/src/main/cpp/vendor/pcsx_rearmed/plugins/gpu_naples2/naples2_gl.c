@@ -78,8 +78,10 @@ static const char *FS =
 "  if (vMode < 0.5) {\n"
 "    c = vColor;\n"
 "  } else {\n"
-"    float u = okno(floor(vUV.x), uTexWin.x, uTexWin.z);\n"
-"    float v = okno(floor(vUV.y), uTexWin.y, uTexWin.w);\n"
+"    float u = floor(vUV.x);\n"
+"    float v = floor(vUV.y);\n"
+"    if (uTexWin.x > 0.5) u = okno(u, uTexWin.x, uTexWin.z);\n"   /* jen kdyz je maska */
+"    if (uTexWin.y > 0.5) v = okno(v, uTexWin.y, uTexWin.w);\n"
 "    float raw;\n"
 "    if (vMode < 1.5) {\n"                    /* 4 bity na pixel */
 "      raw = raw16(vec2(vPage.x + floor(u / 4.0), vPage.y + v));\n"

@@ -155,15 +155,9 @@ const void *nap_gles_grab_pixels(int *out_w, int *out_h)
    zvlast - jinak z toho jsou rozsypane barvy pri spravne geometrii. */
 void nap_gles_present_frame(void)
 {
-    // ===== VIDEOPAMET DO TEXTUROVACI TEXTURY, KAZDY SNIMEK =====
-    // Renderer se spolehal, ze mu jadro kazdy zapis do videopameti ohlasi
-    // (renderer_update_caches). Log ale ukazal "zapisyVRAM=0" pri 264
-    // kreslicich volanich na snimek - hlaseni tedy nechodi vubec (u DMA
-    // prenosu a u BIOSu). Textury pak byly prazdne nebo zastarale, coz je
-    // ta zelena zmet pres text menu a chybejici grafika ve hre.
-    // Tohle na hlaseni nezavisi: gpu.vram je vzdy platna. Prenos je primy
-    // (16bit slova sedi 1:1 na format textury), takze levny.
-    n2_upload_all_vram();
+    // (Celou videopamet uz kazdy snimek nenahravame - stalo to vykon
+    //  a v B31 to fungovalo bez toho. Textury chodi pres hlaseni o
+    //  zapisech do videopameti.)
     n2_flush();
     // ===== ROZHODUJICI MERENI =====
     // Zjistime, jestli je vubec CO kreslit: kolik nenulovych slov ma
@@ -181,14 +175,6 @@ void nap_gles_present_frame(void)
                          gpu.screen.src_x, gpu.screen.src_y,
                          n2_area_x0(), n2_area_y0(), n2_area_x1(), n2_area_y1(),
                          (gpu.status & PSX_GPU_STATUS_RGB24) ? 1 : 0);
-            // pixel primo ze STREDU oblasti, kam hra kresli
-            {
-                int mx = (n2_area_x0() + n2_area_x1()) / 2;
-                int my = (n2_area_y0() + n2_area_y1()) / 2;
-                unsigned c = n2_peek_pixel(mx, my);
-                nap_diag_log("NAPLES2 KONTROLA2: pixel ze stredu kreslene oblasti [%d,%d] = 0x%06X %s",
-                             mx, my, c, c ? "(neco tam je)" : "(cerno)");
-            }
         }
     }
     if (gpu.status & PSX_GPU_STATUS_RGB24) {
