@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 91
-        versionName "EMU10-B43-TEXTURY-Z-OBRAZU"  // BIOS si textury vyrabi GPU primo v pameti; texturuje se ted z kopie obrazu, ne z pameti jadra
+        versionCode 92
+        versionName "EMU10-B44-KOPIE-V-PAMETI"  // jadro rendereru NEHLASI kopie uvnitr videopameti - BIOS si tak sklada obrazovku; doplneno
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

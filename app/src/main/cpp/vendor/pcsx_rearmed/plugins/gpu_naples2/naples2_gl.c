@@ -912,6 +912,29 @@ int n2_do_cmd_list(uint32_t *list, int list_len, uint32_t *ex_regs, int *last_cm
             n2.off_x = sx; n2.off_y = sy;
             break;
         }
+        case 0x80: case 0x81: case 0x82: case 0x83:
+        case 0x84: case 0x85: case 0x86: case 0x87:
+        case 0x88: case 0x89: case 0x8a: case 0x8b:
+        case 0x8c: case 0x8d: case 0x8e: case 0x8f:
+        case 0x90: case 0x91: case 0x92: case 0x93:
+        case 0x94: case 0x95: case 0x96: case 0x97:
+        case 0x98: case 0x99: case 0x9a: case 0x9b:
+        case 0x9c: case 0x9d: case 0x9e: case 0x9f: {
+            /* KOPIE UVNITR VIDEOPAMETI.
+               Jadro ji provede ve sve pameti, ale rendereru to NEHLASI -
+               v gpulib za do_vram_copy() zadne oznameni neni. Nas obraz o ni
+               tedy nevedel a zustaval na nem stary obsah. BIOS si takhle
+               sklada obrazovku (pozadi, bubliny, panely), takze z toho byly
+               ty zelene bloky se starym logem.
+               Oznacime cilovou oblast jako zmenenou - prekresli se z pameti
+               jadra pri nejblizsim dokresleni, kdy uz je kopie hotova. */
+            int dx = (int)( list[2]        & 0x3ff);
+            int dy = (int)((list[2] >> 16) & 0x1ff);
+            int cw = (int)(((list[3]        & 0x3ff) - 1) & 0x3ff) + 1;
+            int ch = (int)((((list[3] >> 16) & 0x1ff) - 1) & 0x1ff) + 1;
+            n2_vram_written(dx, dy, cw, ch);
+            break;
+        }
         case 0xe1: n2_texpage(list[0] & 0xffffff); break;
         case 0xe2: n2_texwin (list[0] & 0xffffff); break;        case 0xe3: n2_flush();
                    n2.area_x0 = (int)( list[0]        & 0x3ff);
