@@ -159,9 +159,8 @@ void nap_gles_present_frame(void)
     // aby v ni bylo i to, co si GPU vyrobila sama v pameti (tak si BIOS
     // dela svoje bubliny a pozadi). Bez toho se texturovalo jen z toho,
     // co zapsal procesor - a tam poradl lezelo stare logo z bootu.
-    // Textura pro texturovani = syrova pamet jadra. Jsou v ni PALETY,
-    // bez kterych ctyrbitove textury vyjdou v nesmyslnych barvach.
-    n2_upload_all_vram();
+    // (Texturu nahrava n2_flush() tesne pred kreslenim davky - tam uz jsou
+    //  zapisy jadra hotove. Nahravat ji tady bylo o snimek pozde.)
     n2_flush();
     // ===== ROZHODUJICI MERENI =====
     // Zjistime, jestli je vubec CO kreslit: kolik nenulovych slov ma

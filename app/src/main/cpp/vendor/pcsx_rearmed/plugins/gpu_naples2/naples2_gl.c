@@ -354,6 +354,11 @@ void n2_flush(void)
     if (!n2.ready) return;
     n2_flush_pending_vram();   /* zapisy do VRAM musi byt v obraze DRIV nez primitiva */
     if (n2.nverts <= 0) return;
+    /* Texturu nahravame TESNE PRED kreslenim davky. Drive se nahravala jednou
+       za snimek JESTE PRED tim, nez jadro stihlo zapsat data pro ten snimek -
+       kreslilo se tedy z textury o snimek POZADU a na zacatku z uplne prazdne.
+       Odtud prazdne/stare textury: bubliny jako plne bloky. */
+    n2_upload_all_vram();
     n2.n_draws++;
     n2.n_verts += n2.nverts;
     if (n2.blend >= 0) n2.n_trans += n2.nverts;

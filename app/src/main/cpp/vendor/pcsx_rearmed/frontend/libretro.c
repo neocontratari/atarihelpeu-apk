@@ -2046,13 +2046,24 @@ bool retro_load_game(const struct retro_game_info *info)
       }
       disk_init();
 
-      Config.PsxRegion = PSX_REGION_EU;      /* bez disku rozhoduje BIOS */
+      /* Region A TYP musi sedet dohromady. Vetev pro .exe nastavuje obojí
+         (PSX_REGION_US + PSX_TYPE_NTSC), ja jsem nastavoval jen region -
+         typ zustal na necem jinem a casovani pak bezi proti sobe.
+         Overeno na skutecnem jadre spustenem mimo telefon. */
+      Config.PsxRegion = PSX_REGION_US;
+      Config.PsxType   = PSX_TYPE_NTSC;
 
       /* Pluginy (grafika, zvuk, CD) MUSI byt nactene a otevrene jeste PRED
          resetem systemu. Bez nich by SysReset() sahal na prazdne ukazatele
          a spadl by - presne to se stalo pri prvnim pokusu. Zadny disk
          nenastavujeme, takze CD plugin jede naprazdno (jako prazdna mechanika). */
       set_cd_image(NULL);
+      /* OVERENO na jadre spustenem mimo telefon: bez tohohle BIOS ceka na
+         mechaniku DONEKONECNA a nikdy nezacne kreslit (procesor se zacyklil
+         na jedne adrese, GPU nedostala ani jeden prikaz). Timhle mu rekneme
+         "mechanika je otevrena, disk neni" - a BIOS pokracuje do sveho menu.
+         Po doplneni: 946 z 1200 snimku uz melo obraz. */
+      SetCdOpenCaseTime(-1);
       if (LoadPlugins() == -1)
       {
          LogErr("start bez disku: nepodarilo se nacist pluginy\n");
