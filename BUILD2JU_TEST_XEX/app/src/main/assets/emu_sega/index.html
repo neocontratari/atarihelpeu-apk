@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>SEGA Mega Drive FINAL USER UI — N&P Vision</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:#02050a;color:#8fd8ff;font-family:"Courier New",monospace;overflow:hidden;}
+body{display:flex;justify-content:center;align-items:flex-start;}
+.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#02050a;overflow:hidden;box-shadow:0 0 48px rgba(0,0,0,.95);}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
+.hit{position:absolute;z-index:60;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:none;}
+.hit:active{background:rgba(0,118,255,.18);box-shadow:0 0 32px rgba(0,118,255,.28) inset;border-radius:18px;}
+#btnConsole{display:none;pointer-events:none;}
+#btnJoystick{display:none;pointer-events:none;}
+#btnCollection{left:2.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnSaves{left:18.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnGames{left:34.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnManuals{left:50.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnWeb{left:66.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnMenu{left:82.4%;top:89.5%;width:14.5%;height:8.8%;}
+#btnEuBranch{display:none;pointer-events:none;}
+#btnNativeCpp{display:none!important;pointer-events:none!important;}
+#cartSlot{left:68.0%;top:76.4%;width:29.0%;height:10.9%;}
+#cartCenter{left:68.0%;top:76.4%;width:29.0%;height:10.9%;}
+#btnReset{display:none;pointer-events:none;}
+#btnStart{left:44.15%;top:63.40%;width:10.0%;height:3.3%;border-radius:24px;}
+#btnA{left:56.7%;top:62.0%;width:7.4%;height:4.4%;border-radius:50%;}
+#btnB{left:64.08%;top:59.75%;width:7.4%;height:4.4%;border-radius:50%;}
+#btnC{left:71.05%;top:58.25%;width:7.4%;height:4.4%;border-radius:50%;}
+#dpad{left:22.3%;top:57.6%;width:14.8%;height:8.8%;border-radius:50%;}
+#monitorBlank{position:absolute;left:6.42%;top:17.16%;width:87.28%;height:29.60%;z-index:5;border-radius:18px;overflow:hidden;background:#000;border:1px solid rgba(80,170,255,.30);box-shadow:0 0 34px rgba(0,102,255,.25) inset;}
+#mdVideo{position:absolute;left:6.42%;top:17.16%;width:87.28%;height:29.60%;z-index:6;border-radius:18px;background:#000;image-rendering:pixelated;display:block;pointer-events:none;}
+#clownFrameWrap{position:absolute;left:6.42%;top:17.16%;width:87.28%;height:29.60%;z-index:7;border-radius:18px;overflow:hidden;background:#000;border:1px solid rgba(80,170,255,.25);display:none;pointer-events:auto;}
+#clownFrame{position:absolute;left:0;top:0;width:100%;height:100%;border:0;background:#000;display:block;}
+#clownFrameWrap.menuMode #clownFrame{left:0;top:0;width:100%;height:100%;}
+#clownFrameWrap.playMode #clownFrame{left:-10.8%;top:-8.8%;width:121.6%;height:111.0%;}
+#clownFrameWrap.booting::after{content:"LOCAL CLOWNMD BOOT...";position:absolute;left:0;right:0;bottom:6px;text-align:center;color:#ffe17a;font:900 clamp(9px,2.2vw,15px) "Courier New",monospace;text-shadow:0 0 10px #000;background:rgba(0,0,0,.50);padding:4px 2px;pointer-events:none;}
+#monitorOverlay{position:absolute;left:6.42%;top:17.16%;width:87.28%;height:29.60%;z-index:9;display:none;align-items:center;justify-content:center;border-radius:18px;overflow:hidden;background:rgba(0,0,0,.88);border:1px solid rgba(80,170,255,.38);box-shadow:0 0 28px rgba(0,102,255,.25) inset;pointer-events:none;}
+#monitorOverlay.show{display:flex;}
+#monitorText{white-space:pre-wrap;text-align:left;width:88%;max-height:84%;overflow:hidden;color:#d9ecff;text-shadow:0 0 8px rgba(0,120,255,.7);font:900 clamp(9px,2.3vw,16px)/1.34 "Courier New",monospace;}
+.toast{display:none!important;position:absolute;left:5%;right:5%;bottom:11%;z-index:70;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.84);border:1px solid rgba(75,155,255,.55);color:#d9ecff;font:900 13px/1.35 "Courier New",monospace;text-align:center;}
+.toast.show{display:none!important;}
+#logBadge{display:none;pointer-events:none;}
+#romInput{display:none;}
+#perfMenu{position:absolute;left:6%;right:6%;top:31%;z-index:150;display:none;padding:14px;border-radius:18px;background:rgba(0,0,0,.88);border:1px solid rgba(80,170,255,.55);box-shadow:0 0 28px rgba(0,130,255,.30);color:#d9ecff;text-align:center;font:900 14px/1.35 "Courier New",monospace;}
+#perfMenu.show{display:block;}
+
+#perfMenu .pmTitle{font-size:15px;color:#ffe17a;margin-bottom:10px;text-shadow:0 0 8px #000;}
+#perfMenu button{display:block;width:100%;margin:8px 0;padding:12px;border-radius:14px;border:1px solid rgba(120,210,255,.60);background:rgba(8,32,58,.92);color:#e8f8ff;font:900 15px/1.15 "Courier New",monospace;box-shadow:inset 0 0 16px rgba(0,120,255,.28),0 0 18px rgba(0,130,255,.20);}
+#perfMenu button:active{background:rgba(0,95,170,.92);}
+#perfMenu .pmNote{font-size:11px;color:#9ccfed;margin-top:8px;}
+
+/* BUILD2RV: real Android WebView button fix. Buttons must not only flash; they must fire from pointer/touch. */
+.hit{pointer-events:auto!important;-webkit-user-select:none;user-select:none;}
+#btnCollection,#btnGames,#cartSlot,#cartCenter,#btnSaves,#btnManuals,#btnWeb,#btnMenu{pointer-events:auto!important;}
+#btnNativeCpp{display:none!important;pointer-events:none!important;}
+#monitorBlank,#mdVideo,#clownFrameWrap,#monitorOverlay{touch-action:none;}
+
+/* BUILD2RV CLEAN UI: no fake black cover over old C++ CORE artwork. DOM button is gone; real skin cleanup must be done in source artwork, not with a black rectangle. */
+/* BUILD2RV AUDIT: old WebView emulator layers stay dead in Sega C++ path. */
+#clownFrameWrap,#clownFrame{display:none!important;pointer-events:none!important;opacity:0!important;}
+#mdVideo,#monitorBlank{display:none!important;pointer-events:none!important;opacity:0!important;}
+
+@media (orientation:landscape) and (max-height:820px){
+ html,body{width:100%;height:100%;height:100dvh;overflow:hidden;background:transparent!important;}body{display:block;}
+ .stage{width:100vw;height:100vh;height:100dvh;max-width:none;aspect-ratio:auto;background:transparent!important;box-shadow:none;contain:layout paint size;}
+ .skin{display:none!important;}
+ /* BUILD2RV: in real phone landscape WebView is controls-only. Hide monitor/canvas/wrapper so they cannot black-cover native C++ video. */
+ #monitorBlank,#mdVideo,#clownFrameWrap,#monitorOverlay{display:none!important;left:0;top:0;width:100vw;height:100vh;height:100dvh;border-radius:0;border:0;box-shadow:none;background:transparent!important;pointer-events:none!important;}
+ #clownFrame{display:none!important;opacity:0!important;pointer-events:none!important;}
+ .hit{z-index:120;color:rgba(255,255,255,.46);font:900 2.05vh/1 Arial,sans-serif;text-align:center;text-shadow:0 0 7px #000,0 0 10px rgba(0,150,255,.65);}
+ #dpad{left:1.8vw;top:auto;bottom:2.0vh;width:43vh;height:43vh;border-radius:50%;font-size:0!important;background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.07),rgba(10,30,60,.30) 62%,rgba(0,0,0,.22) 100%);border:2px solid rgba(150,215,255,.34);box-shadow:0 0 22px rgba(0,140,255,.28),inset 0 0 30px rgba(0,0,0,.42);opacity:.55;}
+ /* BUILD2RZ v3: zadny kriz - thumbstick puntik, ktery klouze pod palcem */
+ #dpad:before{content:none!important;}
+ #dpad:after{content:none!important;}
+ #dpadNub{display:block!important;position:absolute;left:50%;top:50%;width:34%;height:34%;margin-left:-17%;margin-top:-17%;border-radius:50%;background:radial-gradient(circle at 36% 30%,rgba(255,255,255,.55),rgba(120,200,255,.34) 40%,rgba(20,70,130,.55) 100%);border:2px solid rgba(200,240,255,.55);box-shadow:0 0 16px rgba(60,180,255,.55),inset 0 0 10px rgba(255,255,255,.18);transition:transform .05s linear;pointer-events:none;}
+ #dpad.on{border-color:rgba(200,245,255,.75);box-shadow:0 0 30px rgba(0,170,255,.55),inset 0 0 30px rgba(0,0,0,.42);opacity:.8;}
+ #btnA,#btnB,#btnC{width:17.5vh;height:17.5vh;border-radius:50%;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.30),rgba(50,150,235,.18) 38%,rgba(4,16,34,.40) 78%);border:2px solid rgba(165,225,255,.40);box-shadow:0 0 16px rgba(0,140,255,.30),inset 0 0 16px rgba(0,0,0,.36);display:flex;align-items:center;justify-content:center;opacity:.60;}
+ #btnA{left:auto;right:2.2vw;top:auto;bottom:40.6vh;}
+ #btnB{left:auto;right:2.2vw;top:auto;bottom:21.2vh;}
+ #btnC{left:auto;right:2.2vw;top:auto;bottom:1.8vh;}
+ #btnA:before{content:"A";}#btnB:before{content:"B";}#btnC:before{content:"C";}#btnA:before,#btnB:before,#btnC:before{font:900 4.1vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 7px #000,0 0 12px rgba(0,180,255,.6);}
+ #btnA.on,#btnB.on,#btnC.on{opacity:1;border-color:rgba(255,240,180,.85);background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.45),rgba(230,170,60,.30) 40%,rgba(60,30,4,.45) 80%);box-shadow:0 0 24px rgba(255,190,60,.55),inset 0 0 14px rgba(0,0,0,.30);}
+ #btnStart{display:none!important;pointer-events:none!important;}
+ #btnStart:before{content:"";}
+ /* BUILD2RV: no top labels over mobile game. Invisible hit zones only; C++ CORE removed. */
+ #btnCollection{left:1.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
+ #btnSaves{left:12.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
+ #btnGames{left:23.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
+ #btnManuals{left:34.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
+ #btnWeb{left:45.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
+ #btnMenu{left:56.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
+ #cartSlot,#cartCenter{left:67.0vw;top:1.2vh;width:12.0vw;height:7.0vh;}
+ #btnNativeCpp{display:none!important;pointer-events:none!important;}
+ #cartCenter,#cartSlot{display:block!important;pointer-events:auto!important;font-size:0!important;}
+ #cartSlot:before{content:""!important;}
+ #btnCollection,#btnSaves,#btnGames,#btnManuals,#btnWeb,#btnMenu,#cartSlot,#cartCenter{opacity:0!important;color:transparent!important;background:transparent!important;border:0!important;box-shadow:none!important;text-shadow:none!important;pointer-events:auto!important;}
+ #btnConsole,#btnJoystick,#btnEuBranch,#btnReset{display:none;pointer-events:none;}
+ .hit:active{background:rgba(0,118,255,.22)!important;box-shadow:0 0 22px rgba(0,140,255,.48),inset 0 0 18px rgba(255,255,255,.12);}
+ #perfMenu{left:22vw;right:22vw;top:18vh;}
+ #logBadge{display:none;}.toast{display:none!important;}
+}
+
+</style>
+</head>
+<body>
+<main id="stage" class="stage" aria-label="SEGA Mega Drive module">
+  <img class="skin" src="sega_megadrive_screen.png" alt="SEGA Mega Drive">
+  <div id="monitorBlank" aria-hidden="true"></div>
+  <canvas id="mdVideo" width="320" height="224" aria-label="SEGA Mega Drive status canvas"></canvas>
+  <!-- BUILD2RV: old Java/WebView Sega iframe removed from DOM; Sega runtime is C++ native only. -->
+  <div id="monitorOverlay"><pre id="monitorText"></pre></div>
+  <div id="logBadge" aria-hidden="true">LOG</div>
+  <input id="romInput" type="file" accept=".gen,.bin,.md,.smd,.zip,application/zip,application/octet-stream">
+  <button id="btnConsole" class="hit" type="button">KONZOLE</button>
+  <button id="btnJoystick" class="hit" type="button">JOYSTICK</button>
+  <button id="btnCollection" class="hit" type="button">SBIRKA</button>
+  <button id="btnSaves" class="hit" type="button">ULOZENE</button>
+  <button id="btnGames" class="hit" type="button">HRY</button>
+  <button id="btnManuals" class="hit" type="button">NAVODY</button>
+  <button id="btnWeb" class="hit" type="button">WEB</button>
+  <a id="btnMenu" class="hit" href="../index.html">MENU</a>
+  <button id="btnEuBranch" class="hit" type="button">AUTO COMPAT INFO</button>
+  <!-- BUILD2RV: C++ CORE button removed from DOM. Sega is native C++ only via SBIRKA/CARTRIDGE. -->
+  <button id="cartSlot" class="hit" type="button">CARTRIDGE SLOT</button>
+  <button id="cartCenter" class="hit" type="button">CARTRIDGE</button>
+  <button id="btnReset" class="hit" type="button">RESET</button>
+  <button id="btnStart" class="hit" type="button">START</button>
+  <button id="btnA" class="hit" type="button">A</button>
+  <button id="btnB" class="hit" type="button">B</button>
+  <button id="btnC" class="hit" type="button">C</button>
+  <button id="dpad" class="hit" type="button">DPAD<span id="dpadNub" aria-hidden="true" style="display:none;"></span></button>
+  <div id="toast" class="toast"></div>
+  <div id="perfMenu" aria-hidden="true">
+    <div class="pmTitle">SEGA VYKON</div>
+    <button id="perfHigh" type="button">HIGH QUALITY</button>
+    <button id="perfLow" type="button">LOW PERFORMANCE</button>
+    <div class="pmNote">SBIRKA = vyber vykonu, CARTRIDGE = vyber ROM</div>
+  </div>
+</main>
+<script>
+(function(){'use strict';
+var BUILD='BUILD2SA2_SEGA_WEB_ROM_ROUTING_STAGE144';
+var logLines=[], __lastSaveLogTap=0, frameLoaded=false, selectedRomName='zadna', selectedRomSize=0, selectedRomBuffer=null, lastBootStatus='NO_ROM', lastKeyStatus='NO_KEY', activeDpadDir=null, inputLogShieldCount=0;
+var nativeCppMode=true,nativeCppLastStatus='NATIVE_ARMED_CPP_ONLY',nativeCppInputCount=0;
+var FORCE_NATIVE_CPP_ONLY=true;
+var performanceMode=(function(){try{return localStorage.getItem('napSegaPerfMode')||'HIGH';}catch(_){return 'HIGH';}})();
+var imageTuneStatus='REAL_SCREEN_MASKED_USER_PP portraitFrom2OT + LANDSCAPE_MULTITOUCH_PAD remoteCore lifecycleStopNoOverlay + nativeCppOnlyCleanTextureMobile + LOW_HIGH_PERF_SWITCH';
+var audioTuneStatus='MOBILE_VIEWPORT_PERF_GOVERNOR_NO_INPUT_CHANGE nativeAudioThreadPriority hardTrackStop QPcleanBuffer precise60Hz lifecycleStop noJavaWrapper + nativeCppOnlyQtAudioKeepCleanTexture';
+var regionModeSetting='MAIN_EU_COMPAT', lastRegionStatus='MAIN AUTO COMPAT -> FORCE EUROPE / PAL / International';
+var lastEuPatchStatus='NO_PATCH_YET';
+var bootAutoloadStarted=false;
+var DB_NAME='nap_sega_main_eucompat_hardboot_v1', DB_STORE='pending';
+var padButtons={A:false,B:false,C:false,START:false,UP:false,DOWN:false,LEFT:false,RIGHT:false};
+function $(id){return document.getElementById(id);}
+function pushLog(t){var line=new Date().toLocaleTimeString()+' '+t;logLines.push(line);if(logLines.length>220)logLines.shift();try{console.log('[NAP SEGA OE] '+t);}catch(e){}return line;}
+function logDevicePerfInfo(){try{pushLog('BUILD2RV DEVICE_INFO ua='+navigator.userAgent+' hc='+(navigator.hardwareConcurrency||'na')+' mem='+(navigator.deviceMemory||'na')+' dpr='+(window.devicePixelRatio||1)+' screen='+screen.width+'x'+screen.height+' inner='+innerWidth+'x'+innerHeight+' viewportPerfGovernor=YES noInputChange=YES');}catch(e){pushLog('BUILD2RV DEVICE_INFO_FAIL '+(e.message||e));}}
+function startParentPerfMonitor(reason){try{var start=performance.now(),last=start,maxGap=0,sumGap=0,count=0,slow=0;function step(now){var gap=now-last;last=now;if(count>0){sumGap+=gap;if(gap>maxGap)maxGap=gap;if(gap>45)slow++;}count++;if(now-start<10000){requestAnimationFrame(step);}else{var avg=count>1?(sumGap/(count-1)):0;pushLog('BUILD2RV PARENT_PERF_MONITOR reason='+(reason||'')+' frames='+count+' avgGapMs='+avg.toFixed(1)+' maxGapMs='+maxGap.toFixed(1)+' slow45ms='+slow+' viewportPerfGovernor=YES noInputChange=YES');}}requestAnimationFrame(step);}catch(e){pushLog('BUILD2RV PARENT_PERF_MONITOR_FAIL '+(e.message||e));}}
+function toast(t,ms){try{if(t)pushLog('UI_NOTE '+String(t));}catch(e){}}
+function showMonitor(t){var ov=$('monitorOverlay'),tx=$('monitorText');if(tx)tx.textContent=t;if(ov)ov.classList.add('show');}
+function hideMonitor(){var ov=$('monitorOverlay');if(ov)ov.classList.remove('show');}
+
+function openPerformanceMenu(){
+  try{
+    var m=$('perfMenu');
+    if(m){m.classList.add('show');m.setAttribute('aria-hidden','false');}
+    pushLog('BUILD2RV PERF_MENU_OPEN current='+performanceMode+' SBIRKA selector');
+  }catch(e){pushLog('BUILD2RV PERF_MENU_FAIL '+(e.message||e));}
+}
+function closePerformanceMenu(){try{var m=$('perfMenu');if(m){m.classList.remove('show');m.setAttribute('aria-hidden','true');}}catch(_){} }
+function applyPerformanceMode(mode,reason){
+  mode=(String(mode||'HIGH').toUpperCase().indexOf('LOW')>=0)?'LOW':'HIGH';
+  performanceMode=mode;
+  try{localStorage.setItem('napSegaPerfMode',mode);}catch(_){ }
+  try{if(window.AHNATIVE&&AHNATIVE.setPerformanceMode){pushLog('BUILD2RV PERF_NATIVE '+AHNATIVE.setPerformanceMode(mode));}}catch(e){pushLog('BUILD2RV PERF_NATIVE_FAIL '+(e.message||e));}
+  imageTuneStatus='SEGA_NATIVE_RENDER_'+mode+'_LOW_HIGH_PERF_SWITCH noCropLandscape';
+  pushLog('BUILD2RV PERF_MODE_SET mode='+mode+' reason='+(reason||'user'));
+  closePerformanceMenu();
+  toast('SEGA vykon: '+mode,1500);
+  setTimeout(updateNativeCppRect,60);
+}
+
+function detectRegionForRom(name){
+  lastRegionStatus='MOBILE SAFE -> FORCE USA / NTSC / International after in-memory EU compat patch';
+  return 'NTSC_US';
+}
+function drawStatus(title,sub){try{var c=$('mdVideo'),ctx=c.getContext('2d',{alpha:false})||c.getContext('2d');ctx.fillStyle='#000';ctx.fillRect(0,0,320,224);for(var y=0;y<224;y+=8){ctx.fillStyle='rgba(0,54,92,.22)';ctx.fillRect(14,y,292,1);}ctx.strokeStyle='rgba(0,95,170,.55)';ctx.lineWidth=2;ctx.strokeRect(18,16,284,192);}catch(e){}}
+
+function dbOpen(){return new Promise(function(resolve,reject){try{var req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=function(){try{req.result.createObjectStore(DB_STORE);}catch(_){}};req.onsuccess=function(){resolve(req.result);};req.onerror=function(){reject(req.error||new Error('indexedDB open fail'));};}catch(e){reject(e);}});}
+function dbPut(key,val){return dbOpen().then(function(db){return new Promise(function(resolve,reject){try{var tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put(val,key);tx.oncomplete=function(){try{db.close();}catch(_){} resolve();};tx.onerror=function(){try{db.close();}catch(_){} reject(tx.error||new Error('indexedDB put fail'));};}catch(e){try{db.close();}catch(_){} reject(e);}});});}
+function dbGet(key){return dbOpen().then(function(db){return new Promise(function(resolve,reject){try{var tx=db.transaction(DB_STORE,'readonly');var req=tx.objectStore(DB_STORE).get(key);req.onsuccess=function(){resolve(req.result||null);};req.onerror=function(){reject(req.error||new Error('indexedDB get fail'));};tx.oncomplete=function(){try{db.close();}catch(_){}};}catch(e){try{db.close();}catch(_){} reject(e);}});});}
+function dbDel(key){return dbOpen().then(function(db){return new Promise(function(resolve,reject){try{var tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).delete(key);tx.oncomplete=function(){try{db.close();}catch(_){} resolve();};tx.onerror=function(){try{db.close();}catch(_){} reject(tx.error||new Error('indexedDB del fail'));};}catch(e){try{db.close();}catch(_){} reject(e);}});});}
+function arrayBufferToBase64(buf){var bytes=new Uint8Array(buf),chunk=0x8000,parts=[];for(var i=0;i<bytes.length;i+=chunk){parts.push(String.fromCharCode.apply(null,bytes.subarray(i,i+chunk)));}return btoa(parts.join(''));}
+function base64ToArrayBuffer(b64){var bin=atob(b64),len=bin.length,bytes=new Uint8Array(len);for(var i=0;i<len;i++)bytes[i]=bin.charCodeAt(i);return bytes.buffer;}
+function storeHardBootRom(name,buf,reason){var rec={name:name||'cartridge.gen',size:buf.byteLength||0,time:Date.now(),reason:reason||'unknown',buffer:buf};return dbPut('rom',rec).then(function(){pushLog('BUILD2RV HARDBOOT_STORE indexedDB OK name='+rec.name+' bytes='+rec.size+' reason='+rec.reason);return 'indexedDB';}).catch(function(e){pushLog('BUILD2RV HARDBOOT_STORE indexedDB FAILED '+(e.message||e)+' - zkousim sessionStorage');try{sessionStorage.setItem('napSegaHardBootRom',JSON.stringify({name:rec.name,size:rec.size,time:rec.time,reason:rec.reason,b64:arrayBufferToBase64(buf)}));pushLog('BUILD2RV HARDBOOT_STORE sessionStorage OK name='+rec.name+' bytes='+rec.size);return 'sessionStorage';}catch(e2){pushLog('BUILD2RV HARDBOOT_STORE FAILED '+(e2.message||e2));throw e2;}});}
+function loadHardBootRom(){return dbGet('rom').then(function(rec){if(rec&&rec.buffer){pushLog('BUILD2RV HARDBOOT_LOAD indexedDB OK name='+rec.name+' bytes='+rec.size+' reason='+rec.reason);return dbDel('rom').then(function(){return rec;}).catch(function(){return rec;});}try{var txt=sessionStorage.getItem('napSegaHardBootRom');if(txt){sessionStorage.removeItem('napSegaHardBootRom');var r=JSON.parse(txt);r.buffer=base64ToArrayBuffer(r.b64);delete r.b64;pushLog('BUILD2RV HARDBOOT_LOAD sessionStorage OK name='+r.name+' bytes='+r.size);return r;}}catch(e){pushLog('BUILD2RV HARDBOOT_LOAD sessionStorage FAIL '+(e.message||e));}return null;}).catch(function(e){pushLog('BUILD2RV HARDBOOT_LOAD FAIL '+(e.message||e));return null;});}
+function purgeLegacyJavaPendingRom(){
+  try{sessionStorage.removeItem('napSegaHardBootRom');}catch(_){ }
+  try{dbDel('rom').then(function(){pushLog('BUILD2RV LEGACY_JAVA_HARDBOOT_PURGED key=rom');}).catch(function(e){pushLog('BUILD2RV LEGACY_JAVA_HARDBOOT_PURGE_FAIL '+(e.message||e));});}catch(e){pushLog('BUILD2RV LEGACY_JAVA_HARDBOOT_PURGE_THROW '+(e.message||e));}
+}
+function storeNativeLastRom(name,buf,reason){
+  if(!buf) return Promise.reject(new Error('native ROM buffer missing'));
+  var rec={name:name||'cartridge.gen',size:buf.byteLength||0,time:Date.now(),reason:reason||'native',buffer:buf};
+  return dbPut('nativeRom',rec).then(function(){pushLog('BUILD2RV NATIVE_LAST_ROM_STORE OK name='+rec.name+' bytes='+rec.size+' reason='+rec.reason);return rec;});
+}
+function loadNativeLastRom(){
+  return dbGet('nativeRom').then(function(rec){
+    if(rec&&rec.buffer){pushLog('BUILD2RV NATIVE_LAST_ROM_LOAD OK name='+rec.name+' bytes='+rec.size+' reason='+(rec.reason||''));return rec;}
+    try{var txt=localStorage.getItem('napSegaNativeLastRom');if(txt){var r=JSON.parse(txt);r.buffer=base64ToArrayBuffer(r.b64);delete r.b64;pushLog('BUILD2RV NATIVE_LAST_ROM_LOAD localStorage OK name='+r.name+' bytes='+r.size);return r;}}catch(e){pushLog('BUILD2RV NATIVE_LAST_ROM_LOAD localStorage FAIL '+(e.message||e));}
+    return null;
+  }).catch(function(e){pushLog('BUILD2RV NATIVE_LAST_ROM_LOAD FAIL '+(e.message||e));return null;});
+}
+
+function powerOffWrapperBeforeNavigation(reason){
+  var fr=$('clownFrame'), w=$('clownFrameWrap');
+  pushLog('BUILD2OU POWER_OFF_WRAPPER_BEGIN reason='+reason+' deferredKill=YES');
+  try{Object.keys(padButtons).forEach(function(k){padButtons[k]=false;});postPad();}catch(_){}
+  try{if(fr&&fr.contentWindow){fr.contentWindow.postMessage({type:'nap-poweroff',reason:reason},'*');pushLog('BUILD2OU POWER_OFF_POST_SENT waitForAudioClose=900ms');}}catch(e){pushLog('BUILD2OU POWER_OFF_POST_FAIL '+(e.message||e));}
+  setTimeout(function(){
+    try{if(fr&&fr.contentWindow&&typeof fr.contentWindow.stop==='function'){fr.contentWindow.stop();pushLog('BUILD2OU POWER_OFF_FRAME_WINDOW_STOP deferred OK');}}catch(e2){pushLog('BUILD2OU POWER_OFF_FRAME_STOP_FAIL '+(e2.message||e2));}
+    try{if(fr){fr.onload=null;fr.src='about:blank';pushLog('BUILD2OU POWER_OFF_ABOUTBLANK deferred OK');}}catch(e3){pushLog('BUILD2OU POWER_OFF_ABOUTBLANK_FAIL '+(e3.message||e3));}
+    try{if(w){w.classList.remove('booting','menuMode','playMode');w.style.display='none';}}catch(_){}
+  },900);
+  frameLoaded=false;
+  lastBootStatus='TWO_PHASE_POWER_OFF_DEFERRED '+reason;
+}
+function pagePowerReload(reason){
+  pushLog('BUILD2OU TWO_PHASE_POWER_NAV reason='+reason);
+  powerOffWrapperBeforeNavigation(reason);
+  var url='sega_poweroff.html?return=index.html&stamp='+Date.now()+'&reason='+encodeURIComponent(reason||'unknown');
+  setTimeout(function(){try{location.replace(url);}catch(_){location.href=url;}},1850);
+}
+function hardPowerBootBuffer(name,buf,reason){
+  // BUILD2RV: no Java hard power boot. Every ROM goes directly to native C++.
+  selectedRomName=name||selectedRomName||'cartridge.gen';
+  selectedRomSize=(buf&&buf.byteLength)||selectedRomSize||0;
+  selectedRomBuffer=buf||selectedRomBuffer;
+  lastBootStatus='CPP_ONLY_NATIVE_BOOT '+(reason||'romSelected');
+  drawStatus();
+  pushLog('BUILD2RV HARD_POWER_BOOT_BYPASSED_CPP_ONLY name='+selectedRomName+' bytes='+selectedRomSize+' reason='+(reason||''));
+  storeNativeLastRom(selectedRomName,selectedRomBuffer,reason||'hardPowerBypass').then(function(){
+    loadRomToNativeCpp(selectedRomName,selectedRomBuffer);
+  }).catch(function(e){
+    pushLog('BUILD2RV STORE_NATIVE_LAST_ROM_FAIL_CONTINUE '+(e.message||e));
+    loadRomToNativeCpp(selectedRomName,selectedRomBuffer);
+  });
+}
+function tryAutoBootAfterPowerCycle(){
+  // BUILD2RV: C++ only startup WITHOUT native ROM autoload.
+  // User report from QQ: after return from 130XE the app autoloaded last native ROM, sound ran, but picture was black.
+  // QS therefore purges old Java pending ROM and only ARMS the C++ screen. A fresh SBIRKA/CARTRIDGE select starts C++ cleanly.
+  if(bootAutoloadStarted)return;
+  bootAutoloadStarted=true;
+  purgeLegacyJavaPendingRom();
+  try{dbDel('nativeRom').then(function(){pushLog('BUILD2RV NATIVE_LAST_ROM_PURGED_NO_AUTOBOOT key=nativeRom');}).catch(function(e){pushLog('BUILD2RV NATIVE_LAST_ROM_PURGE_FAIL '+(e.message||e));});}catch(e){pushLog('BUILD2RV NATIVE_LAST_ROM_PURGE_THROW '+(e.message||e));}
+  selectedRomBuffer=null; selectedRomName='zadna'; selectedRomSize=0;
+  pushLog('BUILD2RV CPP_ONLY_START_NO_AUTOBOOT armed waiting for fresh cartridge');
+  armNativeCppForRom('startup-no-autoboot');
+}
+function setFrameMode(mode,reason){var w=$('clownFrameWrap');if(!w)return;w.classList.remove('menuMode','playMode','booting');w.classList.add(mode==='menu'?'menuMode':'playMode');pushLog('BUILD2RV FRAME MODE '+mode+' reason='+reason);}
+function focusFrame(){try{var fr=$('clownFrame');fr&&fr.focus();fr&&fr.contentWindow&&fr.contentWindow.focus();}catch(e){}}
+var __romPickerOpen=false;
+function requestRom(reason){
+  __romPickerOpen=true; setTimeout(function(){__romPickerOpen=false;},6500);
+  pushLog('BUILD2RV REQUEST ROM PICKER reason='+reason+(selectedRomBuffer?' oldRom='+selectedRomName:''));
+  var inp=$('romInput');
+  if(inp){
+    try{inp.disabled=false;inp.removeAttribute('disabled');inp.value='';}catch(_){}
+    function doClick(tag){try{inp.click();pushLog('BUILD2RV ROM_INPUT_CLICK '+tag+' OK');}catch(e){pushLog('BUILD2RV ROM_INPUT_CLICK '+tag+' FAIL '+(e.message||e));}}
+    doClick('direct');
+    toast('SEGA C++ ONLY: vyber ROM',1800);
+  }else toast('ROM picker nenalezen',2500);
+}
+function replaceFrame(reason){var w=$('clownFrameWrap'),old=$('clownFrame');if(!w)return null;try{if(old){old.onload=null;old.src='about:blank';old.remove();}}catch(_){}var fr=document.createElement('iframe');fr.id='clownFrame';fr.title='ClownMDEmu local wrapper';fr.allow='autoplay; fullscreen; gamepad';fr.tabIndex=0;w.appendChild(fr);pushLog('BUILD2RV FRAME_REPLACED reason='+reason);return fr;}
+function openLocalWrapper(reason,mode){
+  // BUILD2RV: Java/WebView ClownMDEmu fallback is intentionally disabled for Sega page.
+  // User report: old Java wrapper autoloaded first, made noise, then C++ reload could end in black screen.
+  pushLog('BUILD2RV WRAPPER_DISABLED_CPP_ONLY reason='+reason+' mode='+(mode||'')+' noJavaAudio=YES');
+  frameLoaded=false;
+  stopWrapper('wrapperDisabledCppOnly:'+reason);
+  if(selectedRomBuffer&&selectedRomBuffer.byteLength){
+    setTimeout(function(){loadRomToNativeCpp(selectedRomName||'last-rom.gen',selectedRomBuffer);},80);
+  }else{
+    armNativeCppForRom('wrapperDisabledNoRom:'+reason);
+  }
+}
+function readAsciiFromRom(u8,off,len){var s='';try{for(var i=0;i<len&&off+i<u8.length;i++){var c=u8[off+i];s+=c>=32&&c<127?String.fromCharCode(c):' ';}}catch(_){}return s;}
+function writeAsciiToRom(u8,off,str,len){try{for(var i=0;i<len&&off+i<u8.length;i++){u8[off+i]=i<str.length?str.charCodeAt(i)&255:32;}}catch(e){pushLog('BUILD2RV EU_COMPAT writeAscii fail '+(e.message||e));}}
+function findBytes(u8,pat){outer:for(var i=0;i<=u8.length-pat.length;i++){for(var j=0;j<pat.length;j++){if(u8[i+j]!==pat[j])continue outer;}return i;}return -1;}
+function updateGenesisChecksum(u8){try{if(u8.length<0x202)return -1;var sum=0;for(var i=0x200;i+1<u8.length;i+=2){sum=(sum+((u8[i]<<8)|u8[i+1]))&0xffff;}u8[0x18e]=(sum>>8)&255;u8[0x18f]=sum&255;return sum;}catch(e){pushLog('BUILD2RV EU_COMPAT checksum fail '+(e.message||e));return -1;}}
+function applyEuCompatibilityPatches(name,buf){
+  // BUILD2RV AUDIT: native C++ core must respect the cartridge header region.
+  // Previous builds changed many Europe/PAL ROMs to U/NTSC in memory. That made some tests pass,
+  // but breaks other normal Europe games (example: Samurai Shodown Europe region guard).
+  // This is not per-game patching: it is the general rule for C++ native path.
+  try{
+    var u8=new Uint8Array(buf);
+    var title=(readAsciiFromRom(u8,0x120,48)+' '+readAsciiFromRom(u8,0x150,48)).trim();
+    var region=readAsciiFromRom(u8,0x1f0,16).trim().toUpperCase();
+    lastEuPatchStatus='NO_PATCH_RESPECT_ROM_HEADER region='+(region||'EMPTY');
+    pushLog('BUILD2RV REGION_AUDIT_NO_PATCH name='+name+' headerRegion='+(region||'EMPTY')+' title='+title);
+    return {buffer:buf,patched:false,summary:lastEuPatchStatus};
+  }catch(e){lastEuPatchStatus='NO_PATCH_REGION_AUDIT_ERROR '+(e.message||e);pushLog('BUILD2RV REGION_AUDIT_ERROR '+lastEuPatchStatus);return {buffer:buf,patched:false,summary:lastEuPatchStatus};}
+}
+function postRomToWrapper(){var fr=$('clownFrame');if(!fr||!fr.contentWindow||!selectedRomBuffer){pushLog('BUILD2RV POST_ROM skipped frame/buffer missing');return;}try{var copy=selectedRomBuffer.slice(0);var patch=applyEuCompatibilityPatches(selectedRomName,copy);copy=patch.buffer;var region=detectRegionForRom(selectedRomName);fr.contentWindow.postMessage({type:'nap-rom',build:BUILD,name:selectedRomName,buffer:copy,regionMode:region,euPatch:patch.summary},'*',[copy]);lastBootStatus='ROM_POSTED_TO_LOCAL_WRAPPER '+selectedRomName+' bytes='+selectedRomSize+' region='+lastRegionStatus+' euPatch='+lastEuPatchStatus;pushLog('BUILD2RV ROM_POST_TO_LOCAL_WRAPPER name='+selectedRomName+' size='+selectedRomSize+' region='+lastRegionStatus+' mode='+region+' euPatch='+lastEuPatchStatus);toast('ROM poslana s AUTO compatibility patchem',2600);}catch(e){lastBootStatus='ROM_POST_FAILED '+(e.message||String(e));pushLog('BUILD2RV ROM_POST FAILED '+lastBootStatus);showMonitor('ROM POST FAILED\n'+lastBootStatus);}}
+function stopWrapper(reason){var w=$('clownFrameWrap'),fr=$('clownFrame');pushLog('BUILD2RV STOP_WRAPPER local cleanup reason='+reason);try{if(fr){fr.onload=null;fr.src='about:blank';fr.remove();}}catch(_){} if(w){w.style.display='none';w.classList.remove('booting','menuMode','playMode');}frameLoaded=false;lastBootStatus='WRAPPER_STOPPED_LOCAL '+reason;drawStatus();}
+function resetCurrent(reason){if(!selectedRomBuffer){pushLog('BUILD2RV HARD RESET ignored no ROM reason='+reason);toast('RESET: neni vlozena ROM',2200);return;}pushLog('BUILD2RV HARD POWER RESET current ROM '+selectedRomName+' reason='+reason);hardPowerBootBuffer(selectedRomName,selectedRomBuffer,'reset:'+reason);}
+function ejectCurrent(reason){selectedRomBuffer=null;selectedRomName='zadna';selectedRomSize=0;lastKeyStatus='NO_KEY';stopWrapper('eject:'+reason);toast('CARTRIDGE vytazena',2200);}
+
+
+function viewportRaw(){var vv=window.visualViewport;var vw=(vv&&vv.width)||window.innerWidth||document.documentElement.clientWidth||0;var vh=(vv&&vv.height)||window.innerHeight||document.documentElement.clientHeight||0;return {w:Math.round(vw),h:Math.round(vh)};}
+function isLandscapeLayoutReady(){var v=viewportRaw();return isLandscapeNow() && v.w>v.h*1.12 && v.w>=520 && v.h>=240;}
+function nativeViewportSize(){var v=viewportRaw();if(isLandscapeLayoutReady()){return {w:Math.max(v.w,v.h),h:Math.min(v.w,v.h)};}return v;}
+var __lastNativeRectLog=0;
+/* BUILD2RX LEFT-STRIP FIX (Nox "odskok vlevo"):
+   #monitorBlank ma v C++ only skinu display:none => getBoundingClientRect() vraci 0x0,
+   takze KAZDA session padala do fallbackPortraitMonitorRect(), ktery prepocitava geometrii
+   stage z velikosti okna. Realny .stage ma ale width:min(100vw,941px) + aspect-ratio a klidne
+   PRETEKA viewport na vysku - fallback pak stage umele zmensil a vycentroval, cimz posunul
+   video o ~6 CSS px doprava a vlevo zustal videt pruh pozadi monitoru (Nox: fallback left=35,
+   realny stage left=29). RW C++ audit dokazal, ze framebuffer je OK (leftBoundary=0,
+   levy sloupec je herni obsah), takze chyba byla ciste v umisteni TextureView.
+   Fix: merit REALNY #stage element a aplikovat na nej stejna procenta jako CSS #monitorBlank
+   (left 6.42%, top 17.16%, w 87.28%, h 29.60%). Stary fallback zustava jen pro pripad,
+   ze by stage nesel zmerit. */
+function portraitMonitorRectFromStage(){
+  try{
+    var st=$('stage')||document.querySelector('.stage');
+    if(!st)return null;
+    var r=st.getBoundingClientRect();
+    if(!r||r.width<160||r.height<240)return null;
+    return {left:r.left+r.width*0.0642, top:r.top+r.height*0.1716, width:r.width*0.8728, height:r.height*0.2960, source:'stagePercent'};
+  }catch(e){return null;}
+}
+function fallbackPortraitMonitorRect(){
+  var vp=nativeViewportSize();
+  var sw=Math.max(320,vp.w||window.innerWidth||360);
+  var sh=Math.max(480,vp.h||window.innerHeight||640);
+  var stageW=Math.min(sw,941);
+  var stageH=stageW*1672/941;
+  if(stageH>sh&&sh>480){stageH=sh;stageW=stageH*941/1672;}
+  var left=(sw-stageW)/2, top=0;
+  return {left:left+stageW*0.0642, top:top+stageH*0.1716, width:stageW*0.8728, height:stageH*0.2960, fallback:true};
+}
+function updateNativeCppRect(){try{
+  if(!nativeCppMode)return;
+  var land=isLandscapeLayoutReady();
+  var el=land?$('stage'):($('monitorBlank')||$('stage'));
+  var r=el?el.getBoundingClientRect():null;
+  var dpr=Math.max(1,window.devicePixelRatio||1);
+  var cssLeft=r?r.left:0,cssTop=r?r.top:0,cssW=r?r.width:0,cssH=r?r.height:0;
+  if(land){
+    var vp=nativeViewportSize();
+    cssLeft=0;cssTop=0;
+    cssW=Math.max(vp.w,320);
+    cssH=Math.max(vp.h,180);
+  } else if(cssW<120||cssH<80){
+    var sp=portraitMonitorRectFromStage();
+    if(sp){
+      cssLeft=sp.left;cssTop=sp.top;cssW=sp.width;cssH=sp.height;
+      var nowS=Date.now();
+      if(nowS-__lastNativeRectLog>900){__lastNativeRectLog=nowS;pushLog('BUILD2RX NATIVE_RECT_STAGE_PERCENT css='+Math.round(cssLeft)+','+Math.round(cssTop)+','+Math.round(cssW)+'x'+Math.round(cssH)+' leftStripFix=YES');}
+    } else {
+      var fb=fallbackPortraitMonitorRect();
+      cssLeft=fb.left;cssTop=fb.top;cssW=fb.width;cssH=fb.height;
+      var now=Date.now();
+      if(now-__lastNativeRectLog>900){__lastNativeRectLog=now;pushLog('BUILD2RV NATIVE_RECT_FALLBACK_MONITOR css='+Math.round(cssLeft)+','+Math.round(cssTop)+','+Math.round(cssW)+'x'+Math.round(cssH));}
+    }
+  }
+  if(cssW<120||cssH<80){var now2=Date.now();if(now2-__lastNativeRectLog>900){__lastNativeRectLog=now2;pushLog('BUILD2RV NATIVE_RECT_SKIP_ZERO_OR_SMALL css='+Math.round(cssLeft)+','+Math.round(cssTop)+','+Math.round(cssW)+'x'+Math.round(cssH)+' land='+land);}setTimeout(updateNativeCppRect,280);return;}
+  var x=Math.round(cssLeft*dpr), y=Math.round(cssTop*dpr), ww=Math.round(cssW*dpr), hh=Math.round(cssH*dpr);
+  if(window.AHNATIVE&&AHNATIVE.setNativeRect){var res=AHNATIVE.setNativeRect(x,y,ww,hh);pushLog('BUILD2RV NATIVE_RECT_DPR css='+Math.round(cssLeft)+','+Math.round(cssTop)+','+Math.round(cssW)+'x'+Math.round(cssH)+' dpr='+dpr+' native='+x+','+y+','+ww+'x'+hh+' landscapeFullVideo='+(land?'YES':'NO')+' result='+res);}
+}catch(e){pushLog('BUILD2RV NATIVE_RECT_FAIL '+(e.message||e));}}
+function armNativeCppForRom(reason){nativeCppMode=true;nativeCppInputCount=0;stopWrapper('nativeCppArm:'+reason);drawStatus();showMonitor('SEGA C++ ONLY READY\nSBIRKA=vykon LOW/HIGH, ROM pres CARTRIDGE.\nBez ROM uz nespoustim cernou native vrstvu.');nativeCppLastStatus='NATIVE_ARMED_WAITING_FOR_ROM';pushLog('BUILD2RV NATIVE_ARMED_WAITING_FOR_ROM reason='+reason+' noBlackNativeView=YES');toast('SEGA C++ ONLY pripraven - SBIRKA=vykon, CARTRIDGE=ROM',2600);}
+function startNativeCppInPlace(reason){nativeCppMode=true;nativeCppInputCount=0;stopWrapper('nativeCppInPlace:'+reason);var w=$('clownFrameWrap');if(w){w.style.display='none';w.classList.remove('booting','menuMode','playMode');}drawStatus();hideMonitor();try{if(window.AHNATIVE&&AHNATIVE.enableInPlace){AHNATIVE.enableInPlace();nativeCppLastStatus='NATIVE_IN_PLACE_ENABLED';}}catch(e){nativeCppLastStatus='NATIVE_ENABLE_ERROR '+(e.message||e);showMonitor('C++ CORE ERROR\n'+nativeCppLastStatus);}[60,260,700].forEach(function(ms){setTimeout(updateNativeCppRect,ms);});pushLog('BUILD2RV NATIVE_IN_PLACE_START reason='+reason+' normalSegaUI=YES noSeparateWindow=YES noRecreateOnRotate=YES');toast('SEGA C++ ONLY: normalni Sega obrazovka, vyber ROM pres CARTRIDGE',2600);}
+function loadRomToNativeCpp(name,buf){
+  try{
+    startNativeCppInPlace('romSelected');
+    var nativeBuf=buf;
+    try{
+      var copy=buf&&buf.slice?buf.slice(0):buf;
+      var patch=applyEuCompatibilityPatches(name,copy);
+      nativeBuf=patch&&patch.buffer?patch.buffer:buf;
+      pushLog('BUILD2RV NATIVE_EU_COMPAT_FOR_CPP '+(patch&&patch.summary?patch.summary:'NO_PATCH_INFO'));
+    }catch(pe){
+      nativeBuf=buf;
+      pushLog('BUILD2RV NATIVE_EU_COMPAT_FOR_CPP_FAIL '+(pe.message||pe));
+    }
+    var b64=arrayBufferToBase64(nativeBuf);
+    var res=(window.AHNATIVE&&AHNATIVE.loadRomBase64)?AHNATIVE.loadRomBase64(name,b64):'AHNATIVE.loadRomBase64 missing';
+    nativeCppLastStatus=res;
+    lastBootStatus='NATIVE_CPP_ROM_LOADED '+name;
+    pushLog('BUILD2RV NATIVE_ROM_TO_CPP result='+String(res).replace(/\n/g,' | ').slice(0,900));
+    toast('ROM poslana do C++ core bridge: '+name,2600);
+    setTimeout(updateNativeCppRect,60);
+    setTimeout(updateNativeCppRect,320);
+    setTimeout(updateNativeCppRect,850);
+  }catch(e){
+    nativeCppLastStatus='NATIVE_ROM_ERROR '+(e.message||e);
+    lastBootStatus=nativeCppLastStatus;
+    pushLog('BUILD2RV NATIVE_ROM_ERROR '+nativeCppLastStatus);
+    showMonitor('C++ ROM ERROR\n'+nativeCppLastStatus);
+  }
+}
+function nativeCppAudioTest(){try{if(!nativeCppMode)startNativeCppInPlace('audioButton');var res=(window.AHNATIVE&&AHNATIVE.audioTest)?AHNATIVE.audioTest():'AHNATIVE.audioTest missing';pushLog('BUILD2RV NATIVE_AUDIO_TEST '+res);toast('C++ AUDIO TEST: '+res,2600);return res;}catch(e){var msg='NATIVE_AUDIO_ERROR '+(e.message||e);pushLog('BUILD2RV '+msg);toast(msg,3000);return msg;}}
+function nativeCppCoreStep(){try{if(!nativeCppMode)startNativeCppInPlace('stepButton');var res=(window.AHNATIVE&&AHNATIVE.coreStep)?AHNATIVE.coreStep():'AHNATIVE.coreStep missing';nativeCppLastStatus=res;pushLog('BUILD2RV NATIVE_CORE_STEP '+String(res).replace(/\n/g,' | ').slice(0,900));toast('C++ STEP: '+String(res).split('\n')[0],3200);return res;}catch(e){var msg='NATIVE_CORE_STEP_ERROR '+(e.message||e);nativeCppLastStatus=msg;pushLog('BUILD2RV '+msg);toast(msg,3500);return msg;}}
+
+function stopNativeCppInPlace(reason){try{if(!nativeCppMode&&!(window.AHNATIVE&&AHNATIVE.disableInPlace))return 'NATIVE_ALREADY_OFF';nativeCppMode=false;nativeCppLastStatus='NATIVE_STOPPING '+(reason||'js');try{setDpadDir(null);['A','B','C','START','UP','DOWN','LEFT','RIGHT'].forEach(function(k){try{sendToWrapper(k,false);}catch(_){}});}catch(_){ }var res=(window.AHNATIVE&&AHNATIVE.disableInPlace)?AHNATIVE.disableInPlace(reason||'js'):'AHNATIVE.disableInPlace missing';nativeCppLastStatus=res;pushLog('BUILD2RV NATIVE_CPP_STOP '+String(res).replace(/\n/g,' | ').slice(0,900));return res;}catch(e){var msg='NATIVE_CPP_STOP_ERROR '+(e.message||e);pushLog('BUILD2RV '+msg);nativeCppLastStatus=msg;return msg;}}
+window.addEventListener('pagehide',function(){stopNativeCppInPlace('pagehide');},true);
+window.addEventListener('beforeunload',function(){stopNativeCppInPlace('beforeunload');},true);
+function recoverNativeViewAfterMobileLayout(reason){try{if(!selectedRomBuffer||!selectedRomBuffer.byteLength){pushLog('BUILD2RV MOBILE_RECOVER_SKIP_NO_ROM reason='+reason);return;}nativeCppMode=true;hideMonitor();var w=$('clownFrameWrap');if(w){w.style.display='none';w.classList.remove('booting','menuMode','playMode');}pushLog('BUILD2RV MOBILE_NATIVE_RECT_RECOVER_ONLY reason='+reason+' noEnableInPlace=YES');[40,160,420].forEach(function(ms){setTimeout(updateNativeCppRect,ms);});}catch(e){pushLog('BUILD2RV MOBILE_RECOVER_FAIL '+reason+' '+(e.message||e));}}
+window.addEventListener('visibilitychange',function(){if(document.hidden){if(__romPickerOpen){pushLog('BUILD2RV VISIBILITY_HIDDEN_IGNORED_ROM_PICKER');return;}/* BUILD2RV: Android/Samsung fires visibilityHidden during rotation and picker return. Do NOT kill Sega here; Activity pause/pagehide still stop real exits. */pushLog('BUILD2RV VISIBILITY_HIDDEN_IGNORED_MOBILE_NATIVE nativeCppMode='+nativeCppMode+' landscape='+isLandscapeNow());return;}recoverNativeViewAfterMobileLayout('visibility-visible');},true);
+
+function onRomSelected(f){
+  __romPickerOpen=false;
+  if(!f){pushLog('BUILD2RV ROM SELECT cancelled');return;}
+  selectedRomName=f.name||'unknown.rom';
+  selectedRomSize=f.size||0;
+  nativeCppMode=true;
+  lastBootStatus='READING_ROM_FOR_NATIVE_CPP_ONLY';
+  pushLog('BUILD2RV ROM SELECTED name='+selectedRomName+' size='+selectedRomSize+' type='+(f.type||'')+' nativeCppOnly=YES');
+  toast('ROM vybrana: '+selectedRomName+' - posilam primo do C++',1800);
+  var r=new FileReader();
+  r.onerror=function(){lastBootStatus='FILE_READ_ERROR';pushLog('BUILD2RV FILE_READ_ERROR '+selectedRomName);showMonitor('FILE READ ERROR\n'+selectedRomName);};
+  r.onload=function(){
+    selectedRomBuffer=r.result;
+    selectedRomSize=selectedRomBuffer.byteLength||selectedRomSize;
+    pushLog('BUILD2RV ROM READ OK name='+selectedRomName+' bytes='+selectedRomSize+' nativeCppOnly=YES');
+    storeNativeLastRom(selectedRomName,selectedRomBuffer,'romSelected').then(function(){
+      loadRomToNativeCpp(selectedRomName,selectedRomBuffer);
+    }).catch(function(e){
+      pushLog('BUILD2RV STORE_NATIVE_LAST_ROM_FAIL_CONTINUE '+(e.message||e));
+      loadRomToNativeCpp(selectedRomName,selectedRomBuffer);
+    });
+  };
+  r.readAsArrayBuffer(f);
+}
+function keyDefs(btn){return {UP:[['ArrowUp','ArrowUp',38]],DOWN:[['ArrowDown','ArrowDown',40]],LEFT:[['ArrowLeft','ArrowLeft',37]],RIGHT:[['ArrowRight','ArrowRight',39]],A:[['z','KeyZ',90],['Z','KeyZ',90]],B:[['x','KeyX',88],['X','KeyX',88]],C:[['c','KeyC',67],['C','KeyC',67]],START:[['Enter','Enter',13]]}[btn]||null;}
+function postPad(){var fr=$('clownFrame');try{fr&&fr.contentWindow&&fr.contentWindow.postMessage({type:'nap-input-state',buttons:JSON.parse(JSON.stringify(padButtons))},'*');}catch(e){}}
+function sendToWrapper(btn,down){
+  padButtons[btn]=!!down;
+  // BUILD2RV: no Java wrapper input path. All Sega controls go to native C++ bridge.
+  nativeCppMode=true;
+  try{
+    var res=(window.AHNATIVE&&AHNATIVE.input)?AHNATIVE.input(String(btn),!!down):'AHNATIVE.input missing';
+    lastKeyStatus='POST_TO_NATIVE_CPP '+btn+' '+(down?'DOWN':'UP');
+    nativeCppInputCount++;
+    if(nativeCppInputCount<=16||nativeCppInputCount%20===0){pushLog('BUILD2RV INPUT '+lastKeyStatus+' result='+res+' nativeCppOnly=YES count='+nativeCppInputCount);}
+    return true;
+  }catch(ne){
+    lastKeyStatus='NATIVE_INPUT_FAIL '+(ne.message||ne);
+    pushLog('BUILD2RV INPUT FAIL '+lastKeyStatus);
+    return false;
+  }
+}
+var holdTimers={};function isLandscapeNow(){try{var t=(screen.orientation&&screen.orientation.type)||'';if(String(t).indexOf('landscape')>=0)return true;}catch(_){}try{if(window.matchMedia&&window.matchMedia('(orientation: landscape)').matches)return true;}catch(_){}return (window.innerWidth||0)>(window.innerHeight||0);}function releaseButtonDelayed(btn,delay){clearTimeout(holdTimers[btn]);holdTimers[btn]=setTimeout(function(){sendToWrapper(btn,false);},delay||80);}
+function isInsideRoundButton(el,e){var r=el.getBoundingClientRect();var x=(e.clientX-r.left)/Math.max(1,r.width)-.5;var y=(e.clientY-r.top)/Math.max(1,r.height)-.5;return ((x*x)/0.30/0.30+(y*y)/0.42/0.42)<=1;}
+function bindKeyButton(id,btn){var el=$(id);if(!el)return;el.addEventListener('pointerdown',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();if((btn==='A'||btn==='B'||btn==='C')&&!isInsideRoundButton(el,e)){return;}try{el.setPointerCapture(e.pointerId);}catch(_){}focusFrame();clearTimeout(holdTimers[btn]);sendToWrapper(btn,true);},true);el.addEventListener('pointerup',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();releaseButtonDelayed(btn,(btn==='A'||btn==='B'||btn==='C')?(isLandscapeNow()?0:90):65);},true);el.addEventListener('pointercancel',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();releaseButtonDelayed(btn,60);},true);el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
+function dpadDirectionFromEvent(e){var b=$('dpad');if(!b)return null;var r=b.getBoundingClientRect();var x=(e.clientX-r.left)/Math.max(1,r.width)-.5;var y=(e.clientY-r.top)/Math.max(1,r.height)-.5;var dist=Math.sqrt(x*x+y*y);if(dist<.16)return null;return Math.abs(x)>Math.abs(y)?(x<0?'LEFT':'RIGHT'):(y<0?'UP':'DOWN');}
+function setDpadDir(dir){if(activeDpadDir===dir)return;if(activeDpadDir)sendToWrapper(activeDpadDir,false);activeDpadDir=dir;if(activeDpadDir)sendToWrapper(activeDpadDir,true);}
+function buildLogText(){return 'SEGA LOG / BUILD2RV\nAtariHelp.eu EMU-10 '+BUILD+'\n\nSTAV:\n- BUILD2RV: Sega stranka je C++ only; Java/WebView ClownMDEmu wrapper je vypnuty, aby nestartovala stara Java hra pred C++.\n- BUILD2RV: QW Nox oprava zustava; mobile visibility/orientation uz nesmi vypnout native video a top landscape popisky jsou schovane.\n- Tlacitko C++ CORE je odstranene; Sega stranka je C++ only a vstup do hry je pres SBIRKA/CARTRIDGE.\n- Normalni CARTRIDGE/SBIRKA picker v native modu posila ROM do C++ analyzy.\n- Stejny DPAD/A/B/C/START posila vstup do C++.\n- WebView ClownMDEmu cesta je na teto Sega strance zamerne vypnuta; zadny Java wrapper audio sum, zadny Java fallback.\n- Tohle je real-core render; zadne fake kostky; kdyz core spadne, appka ma zustat nazivu a log to prizna.\n- ROM neni v APK.\n- vybrana ROM: '+selectedRomName+' size='+selectedRomSize+'\n- frameLoaded: '+frameLoaded+'\n- boot status: '+lastBootStatus+'\n- key status: '+lastKeyStatus+'\n- nativeCppMode: '+nativeCppMode+'\n- nativeCpp status: '+String(nativeCppLastStatus).slice(0,1000)+'\n- image tune: '+imageTuneStatus+'\n- audio tune: '+audioTuneStatus+'\n- EU compat patch: '+lastEuPatchStatus+'\n- performance mode: '+performanceMode+'\n\nPOSLEDNI UDALOSTI:\n'+(logLines.length?logLines.slice(-180).join('\n'):'zadne');}
+function pad2(n){return ('0'+n).slice(-2);}function logFileName(){var d=new Date();return 'AtariHelp_SEGA_LOG_'+d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate())+'_'+pad2(d.getHours())+pad2(d.getMinutes())+pad2(d.getSeconds())+'.txt';}
+function saveLog(){var now=Date.now();if(now-__lastSaveLogTap<2400){pushLog('BUILD2RV LOG_SAVE_DEDUP ignored deltaMs='+(now-__lastSaveLogTap));return;}__lastSaveLogTap=now;var txt=buildLogText(),fn=logFileName(),ok=false;try{if(nativeCppMode&&window.AHNATIVE&&AHNATIVE.saveLog){var nr=AHNATIVE.saveLog();pushLog('BUILD2RV NATIVE_CPP_LOG_SAVE '+nr);}}catch(ne){pushLog('BUILD2RV NATIVE_CPP_LOG_SAVE_FAIL '+(ne.message||ne));}try{if(window.AHSAVE&&typeof window.AHSAVE.save==='function'){window.AHSAVE.save(fn,txt);ok=true;}}catch(e){pushLog('AHSAVE.save failed '+e.message);}if(!ok){try{var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1200);ok=true;}catch(e2){showMonitor(txt);}}pushLog('BUILD2RV LOG SAVE '+(ok?'OK ':'FAILED ')+fn);toast(ok?'LOG ulozen: '+fn+(nativeCppMode?' + C++ log':''):'LOG zobrazen v monitoru',3200);}
+window.addEventListener('message',function(ev){var d=ev.data||{};if(!d||!d.type)return;if(d.type==='nap-wrapper-log'){pushLog('WRAPPER '+d.msg);if(/BOOT_FAIL|RUNTIME_ERROR|SCRIPT_ERROR|WASM|FETCH/.test(d.msg||'')){lastBootStatus='WRAPPER_'+d.msg;}if(/MAIN_STARTED|MODULE_POSTRUN|CANVAS_READY|BOOTING_ROM/.test(d.msg||'')){lastBootStatus=d.msg;}}},false);
+
+var euBranch=$('btnEuBranch');if(euBranch)euBranch.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();pushLog('BUILD2OU AUTO_COMPAT_INFO panel=16BIT');toast('SEGA AUTO COMPAT: jedna hlavni vetev',1800);showMonitor(['BUILD2OU SEGA AUTO COMPAT','','Tahle hlavni Sega vetev pouziva stabilni EU compatibility kod z BUILD2OL.','','USA/World ROM: bez patchu.','EU problemove ROM: patch jen v pameti.','Original ROM soubor se nemeni.','Zvuk: playback 48 kHz + hard reset.','','PANEL 16-BIT je ted jen info, ne prepinas vetve.'].join("\\n"));},true);
+
+function setupLandscapeMultiTouch(){
+  if(window.__napLandscapeMultiTouchInstalled)return;
+  window.__napLandscapeMultiTouchInstalled=true;
+  window.__napMobileTouchEngineActive=true;
+  /* BUILD2RZ LANDSCAPE PAD V3:
+     - ZADNY druhy pad: pouziva se JEDEN puvodni skin ovladac (#dpad + #btnA/B/C sloupec vpravo).
+     - Dpad je thumbstick: puntik (#dpadNub) klouze pod palcem, zadny kriz.
+     - Citlivost: mala mrtva zona (7% polomeru), smerove bity s prekryvem = diagonaly.
+     - Mapovani 1:1: btnA -> Genesis A, btnB -> B, btnC -> C (sloupec vpravo nad sebou).
+     - Stisknute prvky se rozsviti (trida .on). Portrait ovladani beze zmeny. */
+  var last={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,C:false};
+  function rectOf(id){var el=$(id);if(!el)return null;var r=el.getBoundingClientRect();if(!r||r.width<10)return null;return{el:el,cx:r.left+r.width/2,cy:r.top+r.height/2,r:Math.min(r.width,r.height)/2};}
+  function inCircle(c,x,y,slop){if(!c)return false;var dx=x-c.cx,dy=y-c.cy,rr=c.r*(slop||1.22);return dx*dx+dy*dy<=rr*rr;}
+  function applyKey(k,on){if(last[k]===on)return;last[k]=on;sendToWrapper(k,on);}
+  function setNub(dp,dx,dy){
+    var nub=$('dpadNub');if(!nub)return;
+    if(dp===null){nub.style.transform='translate(0px,0px)';return;}
+    var maxOff=dp.r*0.62;
+    var d=Math.sqrt(dx*dx+dy*dy)||1;
+    var k=Math.min(1,maxOff/d);
+    nub.style.transform='translate('+(dx*k)+'px,'+(dy*k)+'px)';
+  }
+  function markVis(dOn){
+    var dp=$('dpad');if(dp)dp.classList.toggle('on',!!dOn);
+    ['A','B','C'].forEach(function(k){var el=$('btn'+k);if(el)el.classList.toggle('on',!!last[k]);});
+  }
+  function update(ev){
+    if(!isLandscapeNow())return;
+    var t0=(ev.touches&&ev.touches[0])||ev;
+    try{
+      var target=t0&&document.elementFromPoint(t0.clientX,t0.clientY);
+      if(target && target.closest && target.closest('#btnCollection,#btnGames,#cartSlot,#cartCenter,#btnSaves,#btnManuals,#btnWeb,#btnMenu')){return;}
+    }catch(_){ }
+    var dp=rectOf('dpad'),cA=rectOf('btnA'),cB=rectOf('btnB'),cC=rectOf('btnC');
+    var touches=ev.touches||[];
+    var want={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,C:false};
+    var touchedControl=false,nubDx=null,nubDy=null;
+    for(var i=0;i<touches.length;i++){
+      var x=touches[i].clientX,y=touches[i].clientY;
+      if(dp&&inCircle(dp,x,y,1.35)){
+        var dx=x-dp.cx,dy=y-dp.cy,d=Math.sqrt(dx*dx+dy*dy);
+        touchedControl=true;
+        if(nubDx===null){nubDx=dx;nubDy=dy;}
+        if(d>=dp.r*0.07){
+          var rx=dx/d,ry=dy/d;
+          if(rx<-0.38)want.LEFT=true; if(rx>0.38)want.RIGHT=true;
+          if(ry<-0.38)want.UP=true;   if(ry>0.38)want.DOWN=true;
+        }
+        continue;
+      }
+      if(inCircle(cA,x,y)){want.A=true;touchedControl=true;continue;}
+      if(inCircle(cB,x,y)){want.B=true;touchedControl=true;continue;}
+      if(inCircle(cC,x,y)){want.C=true;touchedControl=true;continue;}
+    }
+    var anyLast=last.UP||last.DOWN||last.LEFT||last.RIGHT||last.A||last.B||last.C;
+    if(!touchedControl && !anyLast)return;
+    try{ev.preventDefault();ev.stopPropagation();}catch(_){ }
+    ['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,want[k]);});
+    setNub(nubDx===null?null:dp,nubDx||0,nubDy||0);
+    markVis(want.UP||want.DOWN||want.LEFT||want.RIGHT);
+  }
+  function releaseAll(ev){
+    if(!isLandscapeNow())return;
+    update(ev);
+    if((ev.touches||[]).length===0){
+      ['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,false);});
+      setNub(null,0,0);markVis(false);
+    }
+  }
+  var st=$('stage')||document.body;
+  ['touchstart','touchmove'].forEach(function(type){st.addEventListener(type,update,{capture:true,passive:false});});
+  ['touchend','touchcancel'].forEach(function(type){st.addEventListener(type,releaseAll,{capture:true,passive:false});});
+  window.addEventListener('orientationchange',function(){setTimeout(function(){['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,false);});setNub(null,0,0);markVis(false);},80);},true);
+  pushLog('BUILD2RZ LANDSCAPE_PAD_V3_READY singlePad=YES thumbstickNub=YES abcColumn=RIGHT diagonals=YES mapping=A/B/C-1:1');
+}
+setupLandscapeMultiTouch();
+
+
+// BUILD2RV: Android WebView sometimes shows :active blink but suppresses the later click
+// after capture listeners / hidden native view changes. Fire critical UI actions on pointerup/touchend too.
+var __qtActionLock={};
+function qtOnce(key,fn){
+  var now=Date.now();
+  var guard=(key==='saveLog')?2400:900;
+  if(__qtActionLock[key] && now-__qtActionLock[key]<guard) return;
+  __qtActionLock[key]=now;
+  try{fn();}catch(e){pushLog('BUILD2RV UI_ACTION_FAIL key='+key+' '+(e.message||e));}
+}
+function bindUiAction(id,key,fn){
+  var el=$(id); if(!el) return;
+  function fire(e){
+    try{e.preventDefault();e.stopPropagation();}catch(_){ }
+    qtOnce(key,fn);
+    return false;
+  }
+  ['pointerup','touchend','mouseup','click'].forEach(function(type){
+    try{el.addEventListener(type,fire,{capture:true,passive:false});}catch(_){try{el.addEventListener(type,fire,true);}catch(__){}}
+  });
+  try{el.style.pointerEvents='auto';el.disabled=false;}catch(_){ }
+  pushLog('BUILD2RV BUTTON_BIND_OK id='+id+' key='+key);
+}
+
+function bindPerfButtons(){
+  var hi=$('perfHigh'),lo=$('perfLow');
+  if(hi)bindUiAction('perfHigh','perfHigh',function(){applyPerformanceMode('HIGH','menu');});
+  if(lo)bindUiAction('perfLow','perfLow',function(){applyPerformanceMode('LOW','menu');});
+}
+bindPerfButtons();
+/* BUILD2RZ: SBIRKA = odkaz na herni kolekci (kratky tap). Perf menu zustava na dlouhem stisku,
+   samostatna tlacitka perfHigh/perfLow funguji dal beze zmeny. */
+(function(){
+  var el=$('btnCollection'); if(!el) return;
+  var COLLECTION_URL='https://atarihelp.eu/?page_id=207';
+  var lpTimer=null,lpFired=false;
+  el.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();lpFired=false;clearTimeout(lpTimer);
+    lpTimer=setTimeout(function(){lpFired=true;pushLog('BUILD2RZ COLLECTION_LONGPRESS perfMenu');openPerformanceMenu();},700);},true);
+  function endPress(e,fire){e.preventDefault();e.stopPropagation();clearTimeout(lpTimer);
+    if(fire&&!lpFired){pushLog('BUILD2RZ COLLECTION_CLICK url='+COLLECTION_URL);
+      try{stopNativeCppInPlace('collectionButton');}catch(_){ }
+      try{location.href=COLLECTION_URL;}catch(_){ }}}
+  el.addEventListener('pointerup',function(e){endPress(e,true);},true);
+  el.addEventListener('pointercancel',function(e){endPress(e,false);},true);
+  el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);
+})();
+bindUiAction('btnGames','romPicker',function(){requestRom('btnGames');});
+bindUiAction('cartSlot','romPicker',function(){requestRom('cartSlot');});
+bindUiAction('cartCenter','romPicker',function(){requestRom('cartCenter');});
+var resetBtn=$('btnReset');if(resetBtn)resetBtn.disabled=true;
+/* BUILD2SA2: vstup pro hry ze SBIRKY (web) - Java posle base64, tady se z nej
+   udela File a jede stejnou cestou jako rucni vyber ROM. */
+window.napInjectRomBase64=function(name,b64){
+  try{
+    var bin=atob(b64),len=bin.length,bytes=new Uint8Array(len);
+    for(var i=0;i<len;i++)bytes[i]=bin.charCodeAt(i);
+    var f=new File([bytes],name||'web.gen',{type:'application/octet-stream'});
+    pushLog('BUILD2SA2 WEB_ROM_INJECT name='+(name||'?')+' bytes='+len);
+    onRomSelected(f);
+  }catch(e){pushLog('BUILD2SA2 WEB_ROM_INJECT_FAIL '+(e.message||e));}
+};
+var romInput=$('romInput');if(romInput)romInput.addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];onRomSelected(f);},true);
+var con=$('btnConsole');if(con)con.disabled=true;
+var joy=$('btnJoystick');if(joy)joy.disabled=true;
+bindKeyButton('btnA','A');bindKeyButton('btnB','B');bindKeyButton('btnC','C');bindKeyButton('btnStart','START');
+var dpad=$('dpad'),dpadPointerId=null,dpadActive=false;if(dpad){dpad.addEventListener('pointerdown',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();dpadPointerId=e.pointerId;dpadActive=true;try{dpad.setPointerCapture(e.pointerId);}catch(_){}setDpadDir(dpadDirectionFromEvent(e));},true);dpad.addEventListener('pointermove',function(e){if(dpadActive&&(dpadPointerId===null||e.pointerId===dpadPointerId)){e.preventDefault();e.stopPropagation();setDpadDir(dpadDirectionFromEvent(e));}},true);function endDpad(e){e.preventDefault();e.stopPropagation();dpadActive=false;dpadPointerId=null;setDpadDir(null);}dpad.addEventListener('pointerup',endDpad,true);dpad.addEventListener('pointercancel',endDpad,true);dpad.addEventListener('pointerleave',function(e){if(dpadActive&&isLandscapeNow()){e.preventDefault();e.stopPropagation();}},true);dpad.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
+bindUiAction('btnSaves','saveLog',function(){pushLog('BUILD2RV LOG_ON_DISKETA requested');saveLog();});
+bindUiAction('btnManuals','manuals',function(){showMonitor('BUILD2RV SEGA CLEAN UI + AUDIO MASTER NOSTARVE\n\nSBIRKA:\n- vyber vykonu HIGH / LOW\n\nCARTRIDGE / CART:\n- vyber ROM v nasi appce\n- ROM jde primo do C++ bridge\n- Java/WebView wrapper je vypnuty\n- C++ CORE DOM cesta je odstranena; zadny cerny prekryv pres skin\n\nREGION:\n- C++ uz neprepisuje Europe/PAL ROM na U/NTSC\n- core respektuje header ROM\n\nMOBIL:\n- landscape cisti stare WebView vrstvy\n- portrait navrat ignoruje nulovy rect\n\nZVUK:\n- FM/PSG audio ma zeroed buffery a RR recovery safe-audit governor; S8 ma no-starve profil; LOW/HIGH nemeni barvu zvuku.');});
+bindUiAction('btnMenu','menu',function(){pushLog('BUILD2RV MENU_CLICK stop native and leave sega');try{stopNativeCppInPlace('menuButton');}catch(_){}try{location.href='../index.html';}catch(_){}});
+bindUiAction('btnWeb','web',function(){pushLog('BUILD2RV WEB_CLICK');try{location.href='https://atarihelp.eu/';}catch(_){}});
+
+var nativeCpp=$('btnNativeCpp');
+if(nativeCpp){try{nativeCpp.style.display='none';nativeCpp.disabled=true;nativeCpp.setAttribute('aria-hidden','true');}catch(_){}}
+pushLog('BUILD2RV NATIVE_CPP_BUTTON_REMOVED normal Sega is C++ only; ROM picker is the entry point.');
+window.addEventListener('orientationchange',function(){pushLog('BUILD2RV ORIENTATION CHANGE '+(screen.orientation&&screen.orientation.type||'unknown')+' viewportPerfGovernor=YES nativeCppMode='+nativeCppMode+' layout='+innerWidth+'x'+innerHeight);recoverNativeViewAfterMobileLayout('orientationchange');if(frameLoaded){setFrameMode('play','orientationchange');startParentPerfMonitor('orientationchange');}},true);
+window.addEventListener('resize',function(){if(nativeCppMode){recoverNativeViewAfterMobileLayout('resize');}},true);
+applyPerformanceMode(performanceMode,'startup');logDevicePerfInfo();drawStatus();pushLog('AtariHelp.eu EMU-10 '+BUILD+' pripraven - SEGA NATIVE C++ RR: Java wrapper vypnuty; cerny C++ CORE prekryv odstranen; video pres TextureView; FM/PSG zeroed RR recovery safe-audit governor; zadny sample-pick bass/gong; SBIRKA=LOW/HIGH; CARTRIDGE=ROM; landscape bez orezu HUD/zivotu.');tryAutoBootAfterPowerCycle();
+})();
+</script>
+</body>
+</html>
