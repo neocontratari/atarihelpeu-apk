@@ -955,6 +955,35 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglStop(JNIEnv*, jclass) {
 }
 
 // eglrender si timhle vezme id hotove gpu-gles textury + vyrez (pres dvirka).
+extern "C" unsigned nap_ps1_egl_grab(int* x, int* y, int* w, int* h);   /* deklarace, telo nize */
+
+/* PRIMA CESTA PRO ZOBRAZOVACI PLOCHU V APPCE.
+   Vola se z vlakna, kde uz je aktivni kontext zobrazovaci plochy. Jadro si
+   pri sve inicializaci vezme prave tenhle kontext jako sdileny
+   (nap_gles_egl_init: eglGetCurrentContext + eglCreateContext se sdilenim),
+   takze plocha pak vidi jeho texturu PRIMO - bez tahani pres procesor. */
+extern "C" JNIEXPORT jboolean JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1AttachDisplayContext(JNIEnv*, jclass) {
+  if (g_gles_ready) return JNI_TRUE;
+  g_gles_ready = nap_gles_egl_init();
+  nap_diag_log("PS1_OBRAZ_PRIMA_CESTA priprava=%s sdileno=%s",
+               g_gles_ready ? "OK" : "SELHALO",
+               (g_egl_render_ctx != EGL_NO_CONTEXT) ? "ANO" : "NE");
+  return g_gles_ready ? JNI_TRUE : JNI_FALSE;
+}
+
+/* Vrati CISLO SDILENE TEXTURY s obrazem + vyrez [x,y,w,h]. Nula = neni. */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1GrabTexture(JNIEnv* env, jclass, jintArray jcrop) {
+  int x=0, y=0, w=0, h=0;
+  unsigned tex = nap_ps1_egl_grab(&x, &y, &w, &h);
+  if (jcrop && env->GetArrayLength(jcrop) >= 4) {
+    jint c[4] = { x, y, w, h };
+    env->SetIntArrayRegion(jcrop, 0, 4, c);
+  }
+  return (jint)tex;
+}
+
 extern "C" unsigned nap_ps1_egl_grab(int* x, int* y, int* w, int* h) {
     if (!g_gles_ready) return 0;
     // Rámec (FBO) se mezi kontexty NESDILI, jen textury. Dokresleni davky

@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 107
-        versionName "EMU10-B59-STARE-SOFTOVE-JADRO-PRYC"  // smazano stare vlakno nap_worker + ps1Boot: bezelo retro_run bez odberu obrazu z GPU (proto gfw=0 gfh=0 a cerna). Zustava jedina cesta pres OpenGL ES.
+        versionCode 109
+        versionName "EMU10-B61-PRIMA-CESTA-BEZ-JPEG"  // plocha kresli SDILENOU texturu jadra (GPU->OpenGL ES->obrazovka, nula kopirovani); cesta pres JPEG do stranky SMAZANA
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

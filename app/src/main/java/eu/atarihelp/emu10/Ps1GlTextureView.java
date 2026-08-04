@@ -72,6 +72,8 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
     private volatile boolean running = false;
     private Thread thread;
     private LogSink sink;
+    private volatile Runnable onContextReady;   // spusti se, az je nas kontext hotovy
+    public void setOnContextReady(Runnable r) { onContextReady = r; }
 
     public Ps1GlTextureView(Context ctx, LogSink logSink) {
         super(ctx);
@@ -255,10 +257,54 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
         FloatBuffer pos = fbuf(new float[]{ -1,-1,  1,-1,  -1,1,  1,1 });
         FloatBuffer tex = fbuf(new float[]{  0, 1,  1, 1,   0,0,  1,0 });
 
+        // ====== PRIMA CESTA ======
+        // Nas EGL kontext uz je aktivni na tomhle vlakne. Rekneme jadru, at se
+        // pripravi PRAVE TED - vezme si nas kontext jako sdileny a od te chvile
+        // vidime jeho texturu primo. Zadny obraz uz nepoleze pres procesor.
+        boolean primaCesta = NativePs1CoreBridge.attachDisplayContextSafe();
+        say(primaCesta ? "PS1_OBRAZ_PRIMA_CESTA plocha kresli sdilenou texturu jadra"
+                       : "PS1_OBRAZ_ZALOZNI_CESTA sdileni nevyslo, obraz jde pres pixely");
+        { Runnable r = onContextReady; onContextReady = null;
+          if (r != null) { try { r.run(); } catch (Throwable ignored) {} } }
+        final int[] crop = new int[4];
+        FloatBuffer texDirect = fbuf(new float[]{ 0,1, 1,1, 0,0, 1,0 });
+
         while (running) {
             try {
                 GLES20.glClearColor(0.05f, 0.06f, 0.09f, 1f);
                 GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+                int sdilena = primaCesta ? NativePs1CoreBridge.grabTextureSafe(crop) : 0;
+                if (sdilena > 0 && crop[2] > 0 && crop[3] > 0) {
+                    // OBRAZ PRIMO Z GPU - jen nastavime vyrez a nakreslime.
+                    int vramW = 1024, vramH = 512;
+                    float u0 = (float) crop[0] / vramW;
+                    float u1 = (float) (crop[0] + crop[2]) / vramW;
+                    float v0 = (float) crop[1] / vramH;
+                    float v1 = (float) (crop[1] + crop[3]) / vramH;
+                    texDirect.clear();
+                    texDirect.put(new float[]{ u0,v1, u1,v1, u0,v0, u1,v0 });
+                    texDirect.position(0);
+
+                    float wantAspect = (viewW > viewH) ? (16f / 9f) : (4f / 3f);
+                    int vw = viewW, vh = (int) (viewW / wantAspect);
+                    if (vh > viewH) { vh = viewH; vw = (int) (viewH * wantAspect); }
+                    GLES20.glViewport((viewW - vw) / 2, (viewH - vh) / 2, vw, vh);
+
+                    GLES20.glUseProgram(program);
+                    GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+                    GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, sdilena);
+                    GLES20.glUniform1i(uTex, 0);
+                    GLES20.glVertexAttribPointer(aPos, 2, GLES20.GL_FLOAT, false, 0, pos);
+                    GLES20.glVertexAttribPointer(aTex, 2, GLES20.GL_FLOAT, false, 0, texDirect);
+                    GLES20.glEnableVertexAttribArray(aPos);
+                    GLES20.glEnableVertexAttribArray(aTex);
+                    GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+                    EGL14.eglSwapBuffers(eglDisplay, eglSurface);
+                    frames++;
+                    if (!loggedFirst) { loggedFirst = true; say("prvni snimek PRIMOU cestou " + crop[2] + "x" + crop[3]); }
+                    continue;
+                }
 
                 int wh = NativePs1CoreBridge.grabFrameSafe(argb);
                 if (wh < 0) {

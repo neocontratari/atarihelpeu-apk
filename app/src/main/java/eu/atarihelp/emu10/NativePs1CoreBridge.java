@@ -14,6 +14,10 @@ public final class NativePs1CoreBridge {
     private static native String ps1Status();
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
+    // PRIMA CESTA: plocha si necha jadro napojit na SVUJ kontext a pak uz
+    // jen kresli jeho texturu. Zadne tahani obrazu pres procesor.
+    private static native boolean ps1AttachDisplayContext();
+    private static native int ps1GrabTexture(int[] crop);
     private static native int ps1PullAudio(short[] out, int frames);
     private static native int ps1PullTvAudio(short[] out);   // zvuk pro TV (kopie prehravaneho)
     private static native void ps1SetInput(int id, boolean down);
@@ -52,6 +56,14 @@ public final class NativePs1CoreBridge {
         if (gamePath == null || gamePath.isEmpty()) return "PS1_HRA_FAIL prazdna cesta";
         try { return ps1BootDoMonitoru(systemDir, saveDir, gamePath); }
         catch (Throwable t) { return "PS1_HRA_FAIL " + t; }
+    }
+    public static boolean attachDisplayContextSafe() {
+        if (!loaded) return false;
+        try { return ps1AttachDisplayContext(); } catch (Throwable t) { return false; }
+    }
+    public static int grabTextureSafe(int[] crop) {
+        if (!loaded) return 0;
+        try { return ps1GrabTexture(crop); } catch (Throwable t) { return 0; }
     }
     public static int grabFrameSafe(int[] out) {
         if (!loaded) return 0;
