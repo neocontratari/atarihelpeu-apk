@@ -72,6 +72,11 @@ unsigned n2_peek_pixel(int x, int y);
 void n2_sync_for_other_context(void);
 /* Zaloha pro nesdileny kontext: precte oblast displeje do RGBA bufferu. */
 const void* n2_read_display(int sx, int sy, int w, int h);
+
+/* Oznami rendereru zacatek noveho snimku (textura se nahraje znovu). */
+void n2_novy_snimek(void);
+/* Kolikrat se nahrala cela videopamet - pro radek ZATEZ. */
+long n2_take_upload_counter(void);
 /* Posledni uz precteny obraz (bez noveho cteni z GPU). */
 const void* n2_last_display(void);
 

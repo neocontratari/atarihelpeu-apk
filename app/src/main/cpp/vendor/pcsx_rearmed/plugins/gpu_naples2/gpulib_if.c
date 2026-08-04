@@ -191,6 +191,9 @@ void nap_gles_present_frame(void)
                              w, h, gpu.screen.src_x, gpu.screen.src_y);
         }
     }
+    /* Snimek je hotovy - pri prvnim kresleni dalsiho se textura nahraje znovu. */
+    n2_novy_snimek();
+
     /* Kolik prace pripada na snimek - odtud pozname, jestli neco trha obraz. */
     {
         static long fr = 0;
@@ -198,12 +201,12 @@ void nap_gles_present_frame(void)
             long d, wr, bl;
             n2_take_counters(&d, &wr, &bl);
             {
-                long vt = 0, tr = 0;
+                long vt = 0, tr = 0, nah = n2_take_upload_counter();
                 n2_take_vert_counters(&vt, &tr);
                 char tx[256];
                 n2_dump_textures(tx, (int)sizeof(tx));
-                nap_diag_log("NAPLES2 ZATEZ za 120 snimku: kresleni=%ld vrcholy=%ld ztoho_pruhlednych=%ld (na snimek: %.0f vrcholu)",
-                             d, vt, tr, vt/120.0);
+                nap_diag_log("NAPLES2 ZATEZ za 120 snimku: kresleni=%ld nahraniVRAM=%ld vrcholy=%ld ztoho_pruhlednych=%ld (na snimek: %.0f vrcholu, %.1f nahrani po 1 MB)",
+                             d, nah, vt, tr, vt/120.0, nah/120.0);
                 nap_diag_log("NAPLES2 TEXTURY: %s", tx[0] ? tx : "(zadne texturovane utvary)");
             }
         }

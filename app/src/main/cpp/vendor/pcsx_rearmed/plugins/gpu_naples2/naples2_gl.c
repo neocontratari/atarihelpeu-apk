@@ -169,7 +169,8 @@ static struct {
        zmet pres text). Ted se kazdy zapis prekresli zvlast. */
     int      dirty;                 /* kolik jich ceka */
     int      dr[64][4];             /* x0,y0,x1,y1 */
-    long     n_writes, n_blits, n_draws, n_verts, n_trans;  /* pocitadla pro diagnostiku */
+    int      tex_zastarala;         /* 1 = od posledniho nahrani se VRAM zmenila */
+    long     n_writes, n_blits, n_draws, n_verts, n_trans, n_nahrani;  /* pocitadla pro diagnostiku */
     int      seen[8][5];      /* stranka x,y, rezim, paleta x,y - co se opravdu pouziva */
     int      n_seen;
     unsigned char *scratch;     /* prevod 16bit -> RGBA pri prenosech */
@@ -358,11 +359,22 @@ void n2_flush(void)
     if (!n2.ready) return;
     n2_flush_pending_vram();   /* zapisy do VRAM musi byt v obraze DRIV nez primitiva */
     if (n2.nverts <= 0) return;
-    /* Texturu nahravame TESNE PRED kreslenim davky. Drive se nahravala jednou
-       za snimek JESTE PRED tim, nez jadro stihlo zapsat data pro ten snimek -
-       kreslilo se tedy z textury o snimek POZADU a na zacatku z uplne prazdne.
-       Odtud prazdne/stare textury: bubliny jako plne bloky. */
-    n2_upload_all_vram();
+    /* Texturu nahravame TESNE PRED kreslenim davky - ne jednou za snimek
+       dopredu, protoze pak byla o snimek pozadu a na zacatku prazdna.
+       ALE NE PRI KAZDEM KRESLENI. Cely prenos je 1 MB a v HRE je 97 kresleni
+       na snimek (zmereno z logu: kresleni=11647 za 120 snimku) - to je ~97 MB
+       na snimek a kouse to obraz i zvuk. V BIOSu je kresleni jen ~1 na snimek,
+       proto se to tam neprojevilo a proklouzlo to.
+       Nahravame tedy jen kdyz se videopamet od posledniho nahrani opravdu
+       zmenila. Priznak nastavuje n2_vram_written() a zacatek kazdeho snimku
+       (n2_read_display / n2_present_rgb24) - ten druhy proto, ze u her, ktere
+       nahravaji textury pres DMA, jadro zapisy vubec nehlasi. Tim je zaruceno
+       aspon jedno nahrani za snimek, ale uz ne 97. */
+    if (n2.tex_zastarala) {
+        n2_upload_all_vram();
+        n2.tex_zastarala = 0;
+        n2.n_nahrani++;
+    }
     n2.n_draws++;
     n2.n_verts += n2.nverts;
     if (n2.blend >= 0) n2.n_trans += n2.nverts;
@@ -570,6 +582,7 @@ void n2_vram_written(int x, int y, int w, int h)
 {
     const unsigned short *src = n2_host_vram();
     if (!n2.ready || !src || w <= 0 || h <= 0) return;
+    n2.tex_zastarala = 1;   /* pri dalsim kresleni se textura musi nahrat znovu */
     if (x < 0) x = 0;
     if (y < 0) y = 0;
     if (x + w > N2_VRAM_W) w = N2_VRAM_W - x;
@@ -665,6 +678,23 @@ void n2_take_counters(long *draws, long *writes, long *blits)
     if (writes) *writes = n2.n_writes;
     if (blits)  *blits  = n2.n_blits;
     n2.n_draws = n2.n_writes = n2.n_blits = 0;
+}
+
+/* Kolikrat se za sledovane obdobi nahrala cela videopamet do textury.
+   Kdyz tohle cislo poleze k poctu kresleni, jsme zpatky v B49. */
+long n2_take_upload_counter(void)
+{
+    long n = n2.n_nahrani;
+    n2.n_nahrani = 0;
+    return n;
+}
+
+/* Zacatek noveho snimku: textura se musi aspon jednou nahrat znovu.
+   Nutne proto, ze hry nahravaji textury pres DMA a jadro takove zapisy
+   vubec nehlasi - bez tohohle by textura zamrzla na prvnim snimku. */
+void n2_novy_snimek(void)
+{
+    n2.tex_zastarala = 1;
 }
 
 /* Vypise, jake texturove stranky a palety se pouzivaji, a vynuluje seznam. */
