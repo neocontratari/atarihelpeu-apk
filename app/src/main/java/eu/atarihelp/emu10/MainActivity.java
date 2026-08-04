@@ -161,7 +161,6 @@ public class MainActivity extends Activity {
             }
         }, "ps1-bios-start").start();
     }
-    private NativePs1InPlaceView ps1NativeView; // BUILD2SK87: nahrazuje JPEG preview v landscape, viz trida nize
     private volatile boolean ps1RemoteDownloadActive = false;
     private volatile String ps1RemoteDownloadStatus = "idle";
     private volatile long atariHelpLastRequestAtMs = 0L; // BUILD2SA5M
@@ -2917,7 +2916,7 @@ public class MainActivity extends Activity {
         private Bitmap ps1PreviewScaledBmp;
         private Canvas ps1PreviewScaledCanvas;
         private final Paint ps1PreviewScalePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
-        private final Rect ps1PreviewDstRect = new Rect(); // BUILD2SK95: opakovane pouzivany, viz stejny duvod u NativePs1InPlaceView
+        private final Rect ps1PreviewDstRect = new Rect(); // BUILD2SK95: opakovane pouzivany, aby se nealokoval kazdy snimek
         private long ps1PreviewDiagSumMs = 0;
         private int ps1PreviewDiagCount = 0;
         @JavascriptInterface
@@ -3925,7 +3924,7 @@ public class MainActivity extends Activity {
         return r;
     }
 
-    // BUILD2SK87: aktivace/deaktivace ps1NativeView (viz NativePs1InPlaceView
+    // aktivace/deaktivace obrazu PS1 (OpenGL cesta, ps1GlEnable/ps1GlDisable)
     // trida) - stejny idempotentni vzor jako Sega AHNative.enableInPlace /
     // removeNativeViewOnUi. Vzdy bezi na UI vlakne (rootFrame.addView vyzaduje
     // UI vlakno) - volajici muze byt na libovolnem vlakne (boot bezi na
@@ -3988,67 +3987,16 @@ public class MainActivity extends Activity {
     }
 
     private void ps1ActivateNativeView() {
-        // ====== KROK D: STARA ZOBRAZOVACI CESTA ZRUSENA ======
-        // Misto puvodniho NativePs1InPlaceView (lockCanvas, 31-57 ms/snimek)
-        // se ted zapina nas plynuly OpenGL obraz. Puvodni kod nize uz se
-        // nespousti - necham ho v souboru jen jako zaloha, kdyby bylo
-        // potreba se k nemu vratit.
+        // Obraz PS1 kresli OpenGL (ps1GlEnable). Stara cesta pres lockCanvas
+        // (trida NativePs1InPlaceView) byla pomala, 31-57 ms na snimek, a od
+        // KROKU D se nespoustela - stala tu jen jako mrtvy kod za "if (true)
+        // return;". Smazana i s tridou, aby uz nikdo nehledal, ktera plocha
+        // vlastne kresli.
         ui.post(() -> ps1GlEnable());
-        if (true) return;
-
-        ui.post(() -> {
-            try {
-                if (rootFrame == null) return;
-                if (ps1NativeView != null && ps1NativeView.getParent() == rootFrame) {
-                    ps1NativeView.start();
-                    ps1NativeView.forceRedrawOnce();
-                    appendNativeLog("BUILD2SK87 PS1_NATIVE_VIEW_REUSE");
-                    return;
-                }
-                if (ps1NativeView != null) {
-                    try { ps1NativeView.stop(); } catch (Throwable ignored) {}
-                    try { if (ps1NativeView.getParent() != null) ((ViewGroup) ps1NativeView.getParent()).removeView(ps1NativeView); } catch (Throwable ignored) {}
-                    ps1NativeView = null;
-                }
-                ps1NativeView = new NativePs1InPlaceView(MainActivity.this);
-                ps1NativeView.setClickable(false);
-                ps1NativeView.setEnabled(false);
-                ps1NativeView.setFocusable(false);
-                ps1NativeView.setFocusableInTouchMode(false);
-                try { ps1NativeView.setLayerType(View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignored) {}
-                // BUILD2SK87: index 0 = na SAMOTNE DNO rootFrame - WebView (uz
-                // pridana drive v onCreate) tak VZDY kresli NAD timhle.
-                // BUILD2SK88: + vyslovne setZ(-1f) navrch - pojistka, kdyby index
-                // sam o sobe nestacil (web ma LAYER_TYPE_HARDWARE, TextureView
-                // taky pouziva hardware Surface - radeji explicitni poradi, stejna
-                // technika jako Sega uz pouziva jinde, jen v jednodussi forme).
-                try { ps1NativeView.setZ(-1f); } catch (Throwable ignored) {}
-                rootFrame.addView(ps1NativeView, 0, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                ps1NativeView.start();
-                appendNativeLog("BUILD2SK87 PS1_NATIVE_VIEW_CREATED");
-            } catch (Throwable t) {
-                appendNativeLog("BUILD2SK87 PS1_NATIVE_VIEW_ACTIVATE_ERROR " + safeMsg(t));
-            }
-        });
     }
 
     private void ps1DeactivateNativeView() {
-        ps1GlDisable();   // KROK D: vypnout i nas OpenGL obraz
-        final NativePs1InPlaceView old = ps1NativeView;
-        ps1NativeView = null;
-        Runnable r = () -> {
-            try {
-                if (old != null) {
-                    try { old.stop(); } catch (Throwable ignored) {}
-                    try { old.setVisibility(View.GONE); } catch (Throwable ignored) {}
-                    try { if (old.getParent() instanceof ViewGroup) ((ViewGroup) old.getParent()).removeView(old); } catch (Throwable t) { appendNativeLog("BUILD2SK87 PS1_NATIVE_VIEW_REMOVE_ERROR " + safeMsg(t)); }
-                }
-                appendNativeLog("BUILD2SK87 PS1_NATIVE_VIEW_REMOVED");
-            } catch (Throwable t) {
-                appendNativeLog("BUILD2SK87 PS1_NATIVE_VIEW_DEACTIVATE_ERROR " + safeMsg(t));
-            }
-        };
-        if (isUiThread()) r.run(); else ui.post(r);
+        ps1GlDisable();
     }
 
     private void closePs1GamePfdQuietly() {
@@ -4844,273 +4792,6 @@ public class MainActivity extends Activity {
     // video tak sedi presne tam, kde je dotykove tlacitko. Portret zustava na
     // puvodnim JPEG preview (viz orientation guard v emu_ps1/index.html),
     // beze zmeny chovani/rizika.
-    private class NativePs1InPlaceView extends TextureView implements TextureView.SurfaceTextureListener {
-        private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
-        private int[] argb = new int[1024 * 512];
-        private Bitmap bitmap;
-        private int curSrcW = 0, curSrcH = 0;
-        private boolean ps1AlphaDiagLogged = false; // BUILD2SK89: jednorazova diagnostika syroveho pixelu
-        private volatile boolean running = false;
-        private Thread renderThread;
-        private long frameCount = 0;
-        private int slowCount = 0;
-        private double slowCostSumMs = 0;
-        // BUILD2SK95: opakovane pouzivane Rect objekty - drive se 2 nove Rect
-        // alokovaly PRI KAZDEM snimku (az ~30x/s) - male, ale zbytecne, stejna
-        // licence jako SK65-66/SK85 (opakovane pouzivat misto porad znovu
-        // alokovat). Souradnice se prepisuji pres set(), objekt sam zustava.
-        private final Rect reuseDst = new Rect();
-        private int[] sharpenBuf; // BUILD2SK97: opakovane pouzivany vystup doostrovaciho pruchodu
-        private int ps1JavaAsciiDumpCount = 0; // BUILD2SK116: omezeni poctu textovych vypisu
-        private final Rect reuseSrc = new Rect();
-
-        NativePs1InPlaceView(Activity a) {
-            super(a);
-            try { setOpaque(true); } catch (Throwable ignored) {} // BUILD2SK87: stejne jako Sega - skryvani resime viditelnosti, ne pruhledností (ta tu jeste neni overena).
-            setSurfaceTextureListener(this);
-        }
-
-        void start() { running = true; startRenderThreadIfReady("start"); }
-        void stop() {
-            running = false;
-            Thread t = renderThread;
-            renderThread = null;
-            if (t != null && t.isAlive() && Thread.currentThread() != t) {
-                try { t.interrupt(); } catch (Throwable ignored) {}
-                try { t.join(220); } catch (Throwable ignored) {}
-            }
-        }
-        void forceRedrawOnce() {
-            if (!running) running = true;
-            startRenderThreadIfReady("force");
-        }
-
-        private void startRenderThreadIfReady(String reason) {
-            if (!isAvailable()) return;
-            Thread t = renderThread;
-            if (t != null && t.isAlive()) return;
-            renderThread = new Thread(() -> renderLoop(reason), "AtariHelpPs1TextureRG");
-            renderThread.setDaemon(true);
-            renderThread.start();
-            appendNativeLog("BUILD2SK89 PS1_NATIVE_TEXTURE_THREAD_START reason=" + reason + " view=" + getWidth() + "x" + getHeight() + " codeVersion=SK89_FORCED_ALPHA");
-        }
-
-        private void renderLoop(String reason) {
-            long next = System.nanoTime();
-            int noSurfaceLoops = 0;
-            while (running) {
-                if (!isAvailable()) {
-                    if (++noSurfaceLoops > 20) break;
-                    try { Thread.sleep(8); } catch (Throwable ignored) {}
-                    continue;
-                }
-                noSurfaceLoops = 0;
-                // BUILD2SK87: portret NENI touto cestou pokryty (viz komentar u
-                // tridy) - v portretu jen cekej, NEVOLEJ grabFrameSafe vubec
-                // (zadna zbytecna nativni prace ani kresleni zastaraleho snimku).
-                if (getWidth() <= getHeight()) {
-                    try { Thread.sleep(150); } catch (Throwable ignored) {}
-                    continue;
-                }
-                long startNs = System.nanoTime();
-                Canvas c = null;
-                try {
-                    c = lockCanvas();
-                    if (c != null) drawTextureFrame(c);
-                } catch (Throwable t) {
-                    appendNativeLog("BUILD2SK87 PS1_NATIVE_TEXTURE_RENDER_ERROR " + safeMsg(t));
-                } finally {
-                    try { if (c != null) unlockCanvasAndPost(c); } catch (Throwable t) { appendNativeLog("BUILD2SK87 PS1_NATIVE_TEXTURE_UNLOCK_ERROR " + safeMsg(t)); }
-                }
-                long cost = System.nanoTime() - startNs;
-                long period = 16666667L; // ~60fps strop - zadna JPEG prace, levne (viz Sega H264 draw ~6-7ms jako referencni cena podobne operace)
-                next += period;
-                long wait = next - System.nanoTime();
-                if (wait > 1000000L) {
-                    try { Thread.sleep(wait / 1000000L, (int) (wait % 1000000L)); } catch (Throwable ignored) {}
-                } else if (wait < -period) {
-                    next = System.nanoTime();
-                    try { Thread.yield(); } catch (Throwable ignored) {}
-                }
-                if (cost > 30000000L) {
-                    slowCount++;
-                    slowCostSumMs += cost / 1000000.0;
-                    // BUILD2SK95: driv se tohle logovalo NA KAZDY pomaly snimek - v realnych
-                    // testech to bylo 866-914 radku za par minut, zbytecna zatez pro
-                    // zapisovaci frontu (viz napTvWebLogFileQueueMax vyse - tohle byl
-                    // hlavni zdroj objemu, co ji mohl zaplnit). Ted stejny vzor jako
-                    // TICK_AVG/PIXELCOPY_AVG jinde v souboru - agregovano, hlaseno
-                    // kazdych 30 vyskytu misto kazdeho jednoho.
-                    if (slowCount >= 30) {
-                        appendNativeLog("BUILD2SK95 PS1_NATIVE_TEXTURE_SLOW_AVG n=" + slowCount
-                                + " avgCostMs=" + (slowCostSumMs / slowCount));
-                        slowCount = 0; slowCostSumMs = 0;
-                    }
-                }
-            }
-            appendNativeLog("BUILD2SK87 PS1_NATIVE_TEXTURE_THREAD_STOP reason=" + reason + " frames=" + frameCount);
-        }
-
-        private void drawTextureFrame(Canvas canvas) {
-            int w = Math.max(16, getWidth());
-            int h = Math.max(16, getHeight());
-            try {
-                int wh = NativePs1CoreBridge.grabFrameSafe(argb);
-                if (wh < 0) {
-                    int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
-                    argb = new int[need + 1024];
-                    wh = NativePs1CoreBridge.grabFrameSafe(argb);
-                }
-                if (wh <= 0) { canvas.drawColor(Color.BLACK); return; }
-                int srcW = wh >> 16, srcH = wh & 0xFFFF;
-                if (srcW <= 0 || srcH <= 0) { canvas.drawColor(Color.BLACK); return; }
-                // BUILD2SK89: DIAGNOSTIKA PRED jakoukoli upravou - syrova hodnota
-                // prvniho a stredoveho pixelu tak, jak je opravdu vraci
-                // grabFrameSafe(), v hexu. Jednou za aktivaci (ne kazdy snimek).
-                // Konecne UVIDIME cislo, misto dalsiho hadani.
-                if (!ps1AlphaDiagLogged && srcW > 0 && srcH > 0) {
-                    ps1AlphaDiagLogged = true;
-                    int p0 = argb[0];
-                    int pMid = argb[(srcH / 2) * srcW + (srcW / 2)];
-                    appendNativeLog(String.format(Locale.US,
-                            "BUILD2SK89 PS1_NATIVE_RAW_PIXEL_SAMPLE p0=0x%08X pMid=0x%08X srcW=%d srcH=%d (format ocekavany ARGB: 0xAARRGGBB - AA=alfa)",
-                            p0, pMid, srcW, srcH));
-                }
-                // BUILD2SK89: KRITICKA OPRAVA (posiluje SK88) - misto spolehani na
-                // Bitmap.setHasAlpha() (neni jiste, jestli tohle vubec ovlivnuje
-                // Canvas render/composite cestu na kazde API urovni, nebo je to
-                // hlavne ulozny/serializacni hint) VYNUTIME alfu PRIMO V DATECH -
-                // kazdy int v poli dostane horni bajt 0xFF bez ohledu na to, co
-                // tam skutecne bylo. Tohle je zarucene spravne, protoze meni
-                // samotna data, ne spoleha na chovani nejakeho API.
-                for (int i = 0, n = srcW * srcH; i < n; i++) {
-                    argb[i] |= 0xFF000000;
-                }
-                // BUILD2SK97: mirne doostreni (unsharp mask) - kompenzuje CAST ztraty
-                // detailu z nizkeho zdrojoveho rozliseni (320x240/640x480) natazeneho
-                // na displej. NENI to totez jako skutecne bilinearni filtrovani textur
-                // uvnitr jadra (to by vyzadovalo primou GPU vykreslovaci cestu - viz
-                // predavaci poznamka o gpu-gles, zamerne NEudelano ted kvuli riziku
-                // padu appky bez moznosti to sam odzkouset) - jen zvyrazni hrany v uz
-                // existujicim snimku. Levne (bez deleni - posun bitu misto /16),
-                // opakovane pouzivany buffer (zadna nova alokace kazdy snimek).
-                // Sila (>>4) je schvalne opatrna prvni volba - snadno se da zesilit
-                // (mensi cislo za >> = silnejsi efekt), kdyby to Rene chtel vic.
-                if (sharpenBuf == null || sharpenBuf.length < srcW * srcH) {
-                    sharpenBuf = new int[srcW * srcH];
-                }
-                // BUILD2SK120: doostreni ma cenu, ktera roste s poctem pixelu (5 cteni +
-                // pocty NA KAZDY pixel) - navrzeno a odladeno v dobe, kdy snimek byl
-                // spolehlive 320x240. Rozliseni ted genuinne kolisa (FMV sekvence bezne
-                // 640x480 = 4x vic pixelu) - na vetsich snimcich tenhle vypocet zabira
-                // primerene vic casu, coz muze prispivat k vykonovemu tlaku (Rene
-                // opakovane hlasi sekajici zvuk). Nad urcitou velikosti proste
-                // preskocime na rychle hromadne zkopirovani (uz s vynucenou alfou) -
-                // zbytek cesty nize (bitmapa, SK116 diagnostika) zustava nezmeneny.
-                final int SHARPEN_MAX_PIXELS = 320 * 240 + 1000; // s malou rezervou
-                if (srcW * srcH <= SHARPEN_MAX_PIXELS) {
-                for (int y = 0; y < srcH; y++) {
-                    int rowBase = y * srcW;
-                    int upBase = (y > 0 ? y - 1 : y) * srcW;
-                    int downBase = (y < srcH - 1 ? y + 1 : y) * srcW;
-                    for (int x = 0; x < srcW; x++) {
-                        int leftX = x > 0 ? x - 1 : x;
-                        int rightX = x < srcW - 1 ? x + 1 : x;
-                        int c = argb[rowBase + x];
-                        int l = argb[rowBase + leftX];
-                        int r = argb[rowBase + rightX];
-                        int u = argb[upBase + x];
-                        int d = argb[downBase + x];
-                        int cr = (c >> 16) & 0xFF, cg = (c >> 8) & 0xFF, cb = c & 0xFF;
-                        int lap_r = cr * 4 - ((l >> 16) & 0xFF) - ((r >> 16) & 0xFF) - ((u >> 16) & 0xFF) - ((d >> 16) & 0xFF);
-                        int lap_g = cg * 4 - ((l >> 8) & 0xFF) - ((r >> 8) & 0xFF) - ((u >> 8) & 0xFF) - ((d >> 8) & 0xFF);
-                        int lap_b = cb * 4 - (l & 0xFF) - (r & 0xFF) - (u & 0xFF) - (d & 0xFF);
-                        int sr = cr + (lap_r >> 4);
-                        int sg = cg + (lap_g >> 4);
-                        int sb = cb + (lap_b >> 4);
-                        if (sr < 0) sr = 0; else if (sr > 255) sr = 255;
-                        if (sg < 0) sg = 0; else if (sg > 255) sg = 255;
-                        if (sb < 0) sb = 0; else if (sb > 255) sb = 255;
-                        sharpenBuf[rowBase + x] = 0xFF000000 | (sr << 16) | (sg << 8) | sb;
-                    }
-                }
-                } else {
-                    System.arraycopy(argb, 0, sharpenBuf, 0, srcW * srcH); // BUILD2SK120: velky snimek - preskoc doostreni, jen rychle zkopiruj
-                }
-                if (bitmap == null || curSrcW != srcW || curSrcH != srcH) {
-                    // BUILD2SK95: OPRAVENA CHYBA - tenhle recycle() tu chybel od SK87.
-                    // PS1 rozliseni se meni BEZNE behem hry (v logu videno 256x240 /
-                    // 320x240 / 640x480 podle sceny) - kazda zmena driv tise ZAHODILA
-                    // starou bitmapu bez uvolneni jeji nativni pameti (na rozdil od
-                    // ps1FramePreviewB64, ktera tohle uz spravne dela od SK85). Presne
-                    // typ chyby, co Rene popsal u stareho Segy problemu - pomale
-                    // hromadeni pameti pri zmenach rozliseni/sceny.
-                    if (bitmap != null) { try { bitmap.recycle(); } catch (Throwable ignored) {} }
-                    bitmap = Bitmap.createBitmap(srcW, srcH, Bitmap.Config.ARGB_8888);
-                    bitmap.setHasAlpha(false); // BUILD2SK88: ponechano jako dalsi (neskodna) pojistka navrch.
-                    curSrcW = srcW; curSrcH = srcH;
-                }
-                bitmap.setPixels(sharpenBuf, 0, srcW, 0, 0, srcW, srcH);
-                // BUILD2SK116: STEJNY textovy "obrazek" jako uz mame na nativni
-                // strane (SK113) - ale TADY, na Java strane, TESNE pred tim, nez
-                // se z dat stane bitmapa. Primo srovnatelne s nativnimi vypisy -
-                // pokud tenhle vypis UKAZE skutecny obsah (stejny jako nativni),
-                // znamena to, ze predani dat je v poradku a problem je jeste dal
-                // (samotne kresleni/zobrazeni). Pokud je tenhle vypis PRAZDNY/
-                // cerny, i kdyz nativni ma obsah, znamena to, ze se neco ztrati
-                // presne MEZI predanim z nativniho kodu do Javy. Omezeno na par
-                // vypisu celkem, aby log zustal citelny.
-                if (ps1JavaAsciiDumpCount < 8) {
-                    ps1JavaAsciiDumpCount++;
-                    StringBuilder dumpMsg = new StringBuilder("BUILD2SK116 JAVA_ASCII_DUMP_START #" + ps1JavaAsciiDumpCount + " src=" + srcW + "x" + srcH);
-                    appendNativeLog(dumpMsg.toString());
-                    String shades = " .:-=+*#%@";
-                    int cols = 48, rows = 20;
-                    for (int ry = 0; ry < rows; ry++) {
-                        StringBuilder line = new StringBuilder();
-                        for (int rx = 0; rx < cols; rx++) {
-                            int sx = Math.min(srcW - 1, (rx * srcW) / cols);
-                            int sy = Math.min(srcH - 1, (ry * srcH) / rows);
-                            int px = sharpenBuf[sy * srcW + sx];
-                            int r = (px >> 16) & 0xFF, g = (px >> 8) & 0xFF, b = px & 0xFF;
-                            int bright = (r + g + b) / 3;
-                            int idx = Math.max(0, Math.min(9, (bright * 9) / 255));
-                            line.append(shades.charAt(idx));
-                        }
-                        appendNativeLog("BUILD2SK116 |" + line + "|");
-                    }
-                }
-                canvas.drawColor(Color.BLACK);
-                // BUILD2SK87: PRESNA kopie CSS #psMonitor 16:9 stred-fit matematiky
-                // z emu_ps1/index.html (@media orientation:landscape) - box se
-                // pocita STEJNE jako CSS calc(100vh*16/9)/calc(100vw*9/16), aby
-                // video sedelo presne tam, kde je dotykove tlacitko #psMonitor.
-                // Zdroj se ROZTAHUJE do boxu (ne aspect-preserved) - stejne jako
-                // puvodni #ps1Screen{object-fit:fill}.
-                float targetAspect = 16f / 9f;
-                float boxW, boxH;
-                if ((float) w / (float) h > targetAspect) { boxH = h; boxW = h * targetAspect; }
-                else { boxW = w; boxH = w / targetAspect; }
-                int left = Math.round((w - boxW) / 2f);
-                int top = Math.round((h - boxH) / 2f);
-                reuseDst.set(left, top, left + Math.round(boxW), top + Math.round(boxH));
-                reuseSrc.set(0, 0, srcW, srcH);
-                canvas.drawBitmap(bitmap, reuseSrc, reuseDst, paint);
-                frameCount++;
-                if (frameCount <= 4 || frameCount % 300 == 0) {
-                    appendNativeLog("BUILD2SK87 PS1_NATIVE_TEXTURE_FRAME count=" + frameCount + " view=" + w + "x" + h + " src=" + srcW + "x" + srcH + " dst=" + reuseDst.toShortString());
-                }
-            } catch (Throwable t) {
-                try { canvas.drawColor(Color.rgb(20, 0, 0)); } catch (Throwable ignored) {}
-                appendNativeLog("BUILD2SK87 PS1_NATIVE_TEXTURE_FRAME_ERROR " + safeMsg(t));
-            }
-        }
-
-        @Override public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) { startRenderThreadIfReady("surfaceAvailable"); }
-        @Override public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) { forceRedrawOnce(); }
-        @Override public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) { stop(); return true; }
-        @Override public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
-    }
 
     public class AHNet {
         @JavascriptInterface

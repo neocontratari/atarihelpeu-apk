@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 103
-        versionName "EMU10-B55-TECKY-A-KOUSANI-PRYC"  // opravena moje chyba z B54: pruhlednost se zapisovala do bitu masky (tecky) a kopie ve videopameti delala 168 kresleni a 170 MB na snimek (kousani)
+        versionCode 104
+        versionName "EMU10-B56-ZPET-NA-B53-A-UKLID"  // renderer vracen presne na B53 (bez tecek a kousani) + smazana mrtva duplicitni zobrazovaci cesta
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
