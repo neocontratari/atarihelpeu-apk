@@ -2021,6 +2021,19 @@ bool retro_load_game(const struct retro_game_info *info)
    SysPrintf("Using PIXEL_FORMAT %d\n", current_fmt);
    set_bgr_to_fb_func(0);
 
+   /* ===== ZAVRIT MECHANIKU PRED KAZDYM NACTENIM =====
+      cdOpenCaseTime (libpcsxcore/plugins.c) je staticka promenna ZIVA PO CELOU
+      DOBU BEHU PROCESU. Vetev "start bez disku" nize ji nastavuje na -1
+      ("viko je otevrene, disk zadny") a NIKDO ji uz nikdy nevraci zpatky -
+      neresetuje ji retro_deinit(), retro_init() ani SysReset().
+      Dusledek: kdyz appka pri startu nabootuje BIOS bez disku a uzivatel PAK
+      spusti hru, jadro sice disk nacte, ale emulovana mechanika porad hlasi
+      "viko otevrene" (CDR__getStatus vraci 0x10) -> BIOS disk nikdy neuvidi
+      a skonci ve svem menu MISTO HRY. Presne to se delo od B49.
+      Proto tady na zacatku mechaniku vzdy zavreme; vetev bez disku si ji
+      hned nize zase otevre. */
+   SetCdOpenCaseTime(0);
+
    /* Puvodni kod tady prazdny obsah rovnou ODMITAL ("info->path required").
       Tim se ale nikdy nedostalo ke slovu spusteni bez disku nize - proto
       start konzole bez CD hlasil chybu. Odmitnuti odstraneno, prazdny obsah

@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 99
-        versionName "EMU10-B51-RAMEC-PRYC-A-EU-BIOS"  // 1) odstranen vadny ramec u LUMINANCE_ALPHA textury (init koncil chybou 0x8cd6), 2) region zpet na EU/PAL - US byl neovereny a menil, ktery BIOS bootuje
+        versionCode 100
+        versionName "EMU10-B52-ZAVRIT-MECHANIKU"  // hlavni: viko mechaniky zustavalo po BIOSu bez disku natrvalo otevrene, takze po spusteni hry BIOS disk nevidel a skocil do sveho menu MISTO HRY
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
