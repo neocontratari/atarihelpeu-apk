@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 109
-        versionName "EMU10-B61-PRIMA-CESTA-BEZ-JPEG"  // plocha kresli SDILENOU texturu jadra (GPU->OpenGL ES->obrazovka, nula kopirovani); cesta pres JPEG do stranky SMAZANA
+        versionCode 110
+        versionName "EMU10-B62-OBRAZ-NA-OBRAZOVCE"  // opraveno: jadro pri priprave prepnulo kontext na svuj pbuffer a plocha kreslila do nej misto na displej
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

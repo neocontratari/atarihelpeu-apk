@@ -2912,6 +2912,15 @@ public class MainActivity extends Activity {
         // TV-castu by vyzadovalo odstranit JPEG kompresi uplne (TextureView
         // pristup jako u Segy) - viz predavaci poznamka, ceka na potvrzeni.
         @JavascriptInterface
+        /** Stranka nam rekne, KDE presne ma byt obraz (v pixelech) a jestli
+         *  je na sirku. Na vysku lezi obraz v okenku konzole a plocha musi byt
+         *  NAD strankou (grafika konzole je neprusvitna). Na sirku je stranka
+         *  pruhledna, takze plocha muze byt pod ni a ovladac zustane videt. */
+        @JavascriptInterface
+        public void ps1SetScreenRect(int l, int t, int w, int h, boolean naSirku) {
+            ui.post(() -> ps1PlaceGlView(l, t, w, h, naSirku));
+        }
+
         public String ps1FramePreviewB64() {
             // ====== SMAZANO ======
             // Tahle metoda kazdy snimek zvetsila obraz trikrat, zabalila ho do
@@ -4495,6 +4504,34 @@ public class MainActivity extends Activity {
     // Zadny dalsi GL pohled uvnitr aktivity uz neexistuje - drive tu byl
     // Ps1GlTextureView, ktery se od KROKU D nespoustel (stalo za nim
     // "if (true) return;") a jen mátl. Smazano.
+    private int glRectL = -1, glRectT = -1, glRectW = -1, glRectH = -1;
+    private boolean glNaSirku = false;
+
+    /** Postavi zobrazovaci plochu presne tam, kde ji stranka chce. */
+    private void ps1PlaceGlView(int l, int t, int w, int h, boolean naSirku) {
+        glRectL = l; glRectT = t; glRectW = w; glRectH = h; glNaSirku = naSirku;
+        Ps1GlTextureView gv = ps1GlView;
+        if (gv == null || rootFrame == null || w <= 0 || h <= 0) return;
+        try {
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, h);
+            lp.leftMargin = l; lp.topMargin = t;
+            gv.setLayoutParams(lp);
+            // na sirku POD stranku (je pruhledna, ovladac zustane nahore),
+            // na vysku NAD ni (grafika konzole je neprusvitna)
+            int chtenyIndex = naSirku ? 0 : rootFrame.getChildCount() - 1;
+            int ted = rootFrame.indexOfChild(gv);
+            if (ted != chtenyIndex) {
+                rootFrame.removeView(gv);
+                rootFrame.addView(gv, Math.max(0, Math.min(chtenyIndex, rootFrame.getChildCount())), lp);
+            }
+            gv.setZ(naSirku ? -1f : 1f);
+            appendNativeLog("PS1_OBRAZ_UMISTEN " + l + "," + t + " " + w + "x" + h
+                    + (naSirku ? " (na sirku, pod strankou)" : " (na vysku, nad strankou)"));
+        } catch (Throwable e) {
+            appendNativeLog("PS1_OBRAZ_UMISTEN_CHYBA " + safeMsg(e));
+        }
+    }
+
     private void ps1GlEnable() { ps1GlEnable(null); }
 
     // Zapne jedinou zobrazovaci plochu. 'poHotovem' se spusti, az ma plocha
@@ -4521,6 +4558,7 @@ public class MainActivity extends Activity {
             if (poHotovem != null) gv.setOnContextReady(poHotovem);
             ps1GlView = gv;
             appendNativeLog("PS1_OBRAZ_GL_ZAPNUT - plocha si vezme obraz primo z GPU");
+            if (glRectW > 0) ps1PlaceGlView(glRectL, glRectT, glRectW, glRectH, glNaSirku);
         } catch (Throwable t) {
             appendNativeLog("PS1_OBRAZ_GL_CHYBA " + safeMsg(t));
         }

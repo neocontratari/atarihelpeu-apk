@@ -262,6 +262,10 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
         // pripravi PRAVE TED - vezme si nas kontext jako sdileny a od te chvile
         // vidime jeho texturu primo. Zadny obraz uz nepoleze pres procesor.
         boolean primaCesta = NativePs1CoreBridge.attachDisplayContextSafe();
+        // DULEZITE: jadro si pri sve priprave prepne kontext na SVUJ (neviditelny
+        // pbuffer). Kdybychom to nevratili, kreslili bychom do nej a na obrazovce
+        // by bylo cerno. Vracime si tedy svuj kontext a svuj povrch.
+        EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext);
         say(primaCesta ? "PS1_OBRAZ_PRIMA_CESTA plocha kresli sdilenou texturu jadra"
                        : "PS1_OBRAZ_ZALOZNI_CESTA sdileni nevyslo, obraz jde pres pixely");
         { Runnable r = onContextReady; onContextReady = null;
