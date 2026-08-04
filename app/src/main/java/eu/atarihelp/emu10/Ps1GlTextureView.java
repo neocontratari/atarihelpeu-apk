@@ -72,6 +72,14 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
     private volatile boolean running = false;
     private Thread thread;
     private LogSink sink;
+    // ===== STAV PRO SOUHRNNY RADEK V LOGU =====
+    public static volatile String statCesta = "?";      // PRIMA / ZALOZNI
+    public static volatile int statSnimkuZaVterinu = 0;
+    public static volatile float statKresleniMs = 0, statSwapMs = 0;
+    public static volatile int statZdrojW = 0, statZdrojH = 0;
+    public static volatile int statJas = -1;            // 0-255, -1 = nezmereno
+    public static volatile int statChybGl = 0;
+
     private volatile Runnable onContextReady;   // spusti se, az je nas kontext hotovy
     public void setOnContextReady(Runnable r) { onContextReady = r; }
 
@@ -271,12 +279,34 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
         { Runnable r = onContextReady; onContextReady = null;
           if (r != null) { try { r.run(); } catch (Throwable ignored) {} } }
         final int[] crop = new int[4];
+        long posledniKontrolaGl = 0;
+        int hlasenoChybGl = 0;
+        long oknoOd = System.currentTimeMillis();
+        int oknoSnimku = 0;
+        long oknoKresleniNs = 0, oknoSwapNs = 0;
+        java.nio.ByteBuffer vzorek = java.nio.ByteBuffer.allocateDirect(16 * 16 * 4)
+                .order(ByteOrder.nativeOrder());
         FloatBuffer texDirect = fbuf(new float[]{ 0,1, 1,1, 0,0, 1,0 });
 
         while (running) {
             try {
                 GLES20.glClearColor(0.05f, 0.06f, 0.09f, 1f);
                 GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+                // Tichá chyba OpenGL se jinak nikde neprojevi - obraz jen zustane
+                // cerny. Kontrolujeme jednou za vterinu a hlasime prvnich pet.
+                long ted = System.currentTimeMillis();
+                if (ted - posledniKontrolaGl > 1000 && hlasenoChybGl < 5) {
+                    posledniKontrolaGl = ted;
+                    int e = GLES20.glGetError();
+                    if (e != GLES20.GL_NO_ERROR) {
+                        hlasenoChybGl++;
+                        say("CHYBA_OPENGL 0x" + Integer.toHexString(e)
+                                + (e == GLES20.GL_INVALID_OPERATION ? " (neplatna operace)"
+                                 : e == GLES20.GL_INVALID_VALUE ? " (neplatna hodnota)"
+                                 : e == GLES20.GL_INVALID_ENUM ? " (neplatny parametr)" : ""));
+                    }
+                }
 
                 int sdilena = primaCesta ? NativePs1CoreBridge.grabTextureSafe(crop) : 0;
                 if (sdilena > 0 && crop[2] > 0 && crop[3] > 0) {
@@ -303,10 +333,39 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
                     GLES20.glVertexAttribPointer(aTex, 2, GLES20.GL_FLOAT, false, 0, texDirect);
                     GLES20.glEnableVertexAttribArray(aPos);
                     GLES20.glEnableVertexAttribArray(aTex);
+                    long tK = System.nanoTime();
                     GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+                    GLES20.glFinish();
+                    long tS = System.nanoTime();
                     EGL14.eglSwapBuffers(eglDisplay, eglSurface);
+                    oknoKresleniNs += (tS - tK);
+                    oknoSwapNs += (System.nanoTime() - tS);
+                    oknoSnimku++;
                     frames++;
+                    statCesta = "PRIMA"; statZdrojW = crop[2]; statZdrojH = crop[3];
                     if (!loggedFirst) { loggedFirst = true; say("prvni snimek PRIMOU cestou " + crop[2] + "x" + crop[3]); }
+
+                    long nyni = System.currentTimeMillis();
+                    if (nyni - oknoOd >= 1000) {
+                        // JAS: precteme malinky ctverec uprostred obrazu. Odtud
+                        // poznam, jestli plocha kresli OBRAZ nebo cernou plochu -
+                        // to je rozdil mezi "obraz je schovany" a "obraz neni".
+                        try {
+                            vzorek.position(0);
+                            GLES20.glReadPixels(Math.max(0, viewW / 2 - 8), Math.max(0, viewH / 2 - 8),
+                                    16, 16, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, vzorek);
+                            long soucet = 0;
+                            for (int i = 0; i < 16 * 16 * 4; i += 4) {
+                                soucet += (vzorek.get(i) & 255) + (vzorek.get(i + 1) & 255) + (vzorek.get(i + 2) & 255);
+                            }
+                            statJas = (int) (soucet / (16 * 16 * 3));
+                        } catch (Throwable ignored) { statJas = -1; }
+                        statSnimkuZaVterinu = oknoSnimku;
+                        statKresleniMs = oknoSnimku > 0 ? (oknoKresleniNs / 1e6f / oknoSnimku) : 0;
+                        statSwapMs = oknoSnimku > 0 ? (oknoSwapNs / 1e6f / oknoSnimku) : 0;
+                        statChybGl = hlasenoChybGl;
+                        oknoOd = nyni; oknoSnimku = 0; oknoKresleniNs = 0; oknoSwapNs = 0;
+                    }
                     continue;
                 }
 

@@ -1162,7 +1162,15 @@ public class MainActivity extends Activity {
                         // tmava herni sceny, jen ty opravdu vypadajici na "temer cerny
                         // snimek".
                         if (brightAvg < 20) {
-                            appendNativeLog("BUILD2SK143 TV_WEB_DARK_FRAME_SPIKE brightAvg=" + brightAvg + " mode=" + mode + " w=" + bw + " h=" + bh);
+                            // UTLUMENO: tenhle radek byl v logu 595x a prekryl vsechno
+                            // podstatne. Staci jednou za 5 vterin.
+                            long nyniDark = System.currentTimeMillis();
+                            if (nyniDark - napDarkFrameLastLog > 5000) {
+                                napDarkFrameLastLog = nyniDark;
+                                appendNativeLog("BUILD2SK143 TV_WEB_DARK_FRAME_SPIKE brightAvg=" + brightAvg
+                                        + " mode=" + mode + " w=" + bw + " h=" + bh
+                                        + " (utlumeno na 1x za 5s)");
+                            }
                         }
                         if (napTvWebDupCheckCount >= 60) {
                             appendNativeLog("BUILD2SK67 TV_WEB_PS1_DUPCHECK sameFrames=" + napTvWebDupCheckSame
@@ -2911,7 +2919,6 @@ public class MainActivity extends Activity {
         // aby byl 40ms bezpecny. Skutecne zrychleni PS1 preview beze skody na
         // TV-castu by vyzadovalo odstranit JPEG kompresi uplne (TextureView
         // pristup jako u Segy) - viz predavaci poznamka, ceka na potvrzeni.
-        @JavascriptInterface
         /** Stranka nam rekne, KDE presne ma byt obraz (v pixelech) a jestli
          *  je na sirku. Na vysku lezi obraz v okenku konzole a plocha musi byt
          *  NAD strankou (grafika konzole je neprusvitna). Na sirku je stranka
@@ -2921,17 +2928,6 @@ public class MainActivity extends Activity {
             ui.post(() -> ps1PlaceGlView(l, t, w, h, naSirku));
         }
 
-        public String ps1FramePreviewB64() {
-            // ====== SMAZANO ======
-            // Tahle metoda kazdy snimek zvetsila obraz trikrat, zabalila ho do
-            // JPEGu a poslala do webove stranky jako text. V logu to bylo
-            // "PS1_PREVIEW_AVG avgMs=90 outBytes=236396" - devadesat milisekund
-            // a ctvrt megabajtu NA SNIMEK. Kouzalo se kvuli tomu i zvuk, protoze
-            // procesor nestihal krokovat emulaci.
-            // Obraz kresli Ps1GlTextureView primo ze SDILENE TEXTURY jadra:
-            // GPU -> OpenGL ES -> obrazovka, bez jedineho kopirovani.
-            return "";
-        }
         @JavascriptInterface
         public String ps1Stop() {
             return stopPs1SessionHard("jsPs1Stop"); // BUILD2SA5I: one path stops audio + core + fd.
@@ -3281,6 +3277,19 @@ public class MainActivity extends Activity {
             writer.setDaemon(true);
             writer.start();
         }
+    }
+
+    /** Zapise text rovnou do log souboru, bez fronty. Pro pady - tam uz
+     *  na zapisovaci vlakno neni cas. */
+    private void napZapisPadPrimo(String text) {
+        try {
+            File f = napTvWebLogFile;
+            if (f == null) return;
+            try (FileOutputStream fos = new FileOutputStream(f, true)) {
+                fos.write(("\n*** " + text + "\n").getBytes("UTF-8"));
+                fos.flush();
+            }
+        } catch (Throwable ignored) {}
     }
 
     private void napTvWebLogFileWriterLoop() {
@@ -4518,18 +4527,95 @@ public class MainActivity extends Activity {
             gv.setLayoutParams(lp);
             // na sirku POD stranku (je pruhledna, ovladac zustane nahore),
             // na vysku NAD ni (grafika konzole je neprusvitna)
-            int chtenyIndex = naSirku ? 0 : rootFrame.getChildCount() - 1;
-            int ted = rootFrame.indexOfChild(gv);
-            if (ted != chtenyIndex) {
-                rootFrame.removeView(gv);
-                rootFrame.addView(gv, Math.max(0, Math.min(chtenyIndex, rootFrame.getChildCount())), lp);
-            }
+            rootFrame.removeView(gv);
+            int index = naSirku ? 0 : rootFrame.getChildCount();   // az PO odebrani
+            rootFrame.addView(gv, index, lp);
             gv.setZ(naSirku ? -1f : 1f);
             appendNativeLog("PS1_OBRAZ_UMISTEN " + l + "," + t + " " + w + "x" + h
                     + (naSirku ? " (na sirku, pod strankou)" : " (na vysku, nad strankou)"));
         } catch (Throwable e) {
             appendNativeLog("PS1_OBRAZ_UMISTEN_CHYBA " + safeMsg(e));
         }
+    }
+
+    private long napDarkFrameLastLog = 0;
+    private java.util.Timer ps1StavTimer;
+
+    /** JEDNA RADKA ZA VTERINU, KTERA MI REKNE VSECHNO.
+     *  Je napsana pro cteni beze zraku: co dela jadro, co dela obraz, kde
+     *  plocha lezi, co je nad ni, a jestli kresli obraz nebo cernou.
+     *  Diky tomu nemusim po uzivateli chtit, aby neco poznaval. */
+    private void ps1StavStart() {
+        if (ps1StavTimer != null) return;
+        ps1StavTimer = new java.util.Timer("ps1-stav", true);
+        ps1StavTimer.schedule(new java.util.TimerTask() {
+            @Override public void run() {
+                try { ui.post(() -> ps1StavZapis()); } catch (Throwable ignored) {}
+            }
+        }, 1000, 1000);
+    }
+
+    private void ps1StavStop() {
+        try { if (ps1StavTimer != null) ps1StavTimer.cancel(); } catch (Throwable ignored) {}
+        ps1StavTimer = null;
+    }
+
+    private void ps1StavZapis() {
+        try {
+            String jadro = "?";
+            try { jadro = NativePs1CoreBridge.statusSafe(); } catch (Throwable ignored) {}
+            // z dlouheho hlaseni vytahnu jen to, co potrebuju
+            String fps = najdiHodnotu(jadro, "fps="), res = najdiHodnotu(jadro, "res=");
+            String fifo = najdiHodnotu(jadro, "audioFifoFrames=");
+            String zahoz = najdiHodnotu(jadro, "audioDropped="), resync = najdiHodnotu(jadro, "audioResyncs=");
+
+            StringBuilder sb = new StringBuilder("PS1_STAV");
+            sb.append(" | jadro: fps=").append(fps).append(" res=").append(res);
+            sb.append(" | zvuk: fronta=").append(fifo).append(" zahozeno=").append(zahoz)
+              .append(" doskoku=").append(resync);
+            sb.append(" | obraz: cesta=").append(Ps1GlTextureView.statCesta)
+              .append(" snimku/s=").append(Ps1GlTextureView.statSnimkuZaVterinu)
+              .append(" kresleni=").append(String.format(java.util.Locale.US, "%.1f", Ps1GlTextureView.statKresleniMs)).append("ms")
+              .append(" swap=").append(String.format(java.util.Locale.US, "%.1f", Ps1GlTextureView.statSwapMs)).append("ms")
+              .append(" zdroj=").append(Ps1GlTextureView.statZdrojW).append("x").append(Ps1GlTextureView.statZdrojH)
+              .append(" jas=").append(Ps1GlTextureView.statJas)
+              .append(" GLchyb=").append(Ps1GlTextureView.statChybGl);
+
+            Ps1GlTextureView gv = ps1GlView;
+            if (gv == null || rootFrame == null) {
+                sb.append(" | plocha: NENI");
+            } else {
+                int idx = rootFrame.indexOfChild(gv), poc = rootFrame.getChildCount();
+                sb.append(" | plocha: ").append(gv.getLeft()).append(",").append(gv.getTop())
+                  .append(" ").append(gv.getWidth()).append("x").append(gv.getHeight())
+                  .append(" poradi=").append(idx).append("z").append(poc)
+                  .append(" videt=").append(gv.getVisibility() == View.VISIBLE ? "ANO" : "NE")
+                  .append(" pruhlednost=").append(String.format(java.util.Locale.US, "%.2f", gv.getAlpha()));
+                // CO LEZI NAD PLOCHOU - presne tohle mi minule chybelo
+                StringBuilder nad = new StringBuilder();
+                for (int i = idx + 1; i < poc; i++) {
+                    View v = rootFrame.getChildAt(i);
+                    if (v == null || v.getVisibility() != View.VISIBLE) continue;
+                    if (nad.length() > 0) nad.append("+");
+                    nad.append(v.getClass().getSimpleName())
+                       .append("(").append(v.getWidth()).append("x").append(v.getHeight()).append(")");
+                }
+                sb.append(" | nad plochou: ").append(nad.length() > 0 ? nad : "nic");
+            }
+            appendNativeLog(sb.toString());
+        } catch (Throwable t) {
+            appendNativeLog("PS1_STAV_CHYBA " + safeMsg(t));
+        }
+    }
+
+    private static String najdiHodnotu(String text, String klic) {
+        try {
+            int i = text.indexOf(klic);
+            if (i < 0) return "?";
+            int j = i + klic.length(), k = j;
+            while (k < text.length() && text.charAt(k) != ' ') k++;
+            return text.substring(j, k);
+        } catch (Throwable t) { return "?"; }
     }
 
     private void ps1GlEnable() { ps1GlEnable(null); }
@@ -4559,6 +4645,7 @@ public class MainActivity extends Activity {
             ps1GlView = gv;
             appendNativeLog("PS1_OBRAZ_GL_ZAPNUT - plocha si vezme obraz primo z GPU");
             if (glRectW > 0) ps1PlaceGlView(glRectL, glRectT, glRectW, glRectH, glNaSirku);
+            ps1StavStart();
         } catch (Throwable t) {
             appendNativeLog("PS1_OBRAZ_GL_CHYBA " + safeMsg(t));
         }
@@ -4574,6 +4661,7 @@ public class MainActivity extends Activity {
                     if (old.getParent() instanceof ViewGroup)
                         ((ViewGroup) old.getParent()).removeView(old);
                 }
+                ps1StavStop();
                 appendNativeLog("PS1_OBRAZ_GL_VYPNUT");
             } catch (Throwable t) {
                 appendNativeLog("PS1_OBRAZ_GL_VYPNUT_CHYBA " + safeMsg(t));
@@ -5041,6 +5129,29 @@ public class MainActivity extends Activity {
         // TV castu; ted platí vzdycky - hrajes/koukas a telefon nesmi zhasnout.
         try { getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Throwable ignored) {}
         napTvWebLogFileInit();
+
+        // ====== ODCHYTAVAC PADU ======
+        // Kdyz nekde spadne java kod, aplikace dosud umrela POTICHU a v logu
+        // z portu 8765 nebylo nic - nedalo se poznat proc. Ted se cely vypis
+        // chyby zapise do toho sameho logu, ktery se posila.
+        try {
+            final Thread.UncaughtExceptionHandler puvodni =
+                    Thread.getDefaultUncaughtExceptionHandler();
+            Thread.setDefaultUncaughtExceptionHandler((vlakno, chyba) -> {
+                try {
+                    java.io.StringWriter sw = new java.io.StringWriter();
+                    chyba.printStackTrace(new java.io.PrintWriter(sw));
+                    // Zapisujeme PRIMO do souboru - zapisovaci vlakno uz nemusi
+                    // stihnout doběhnout, nez proces umre.
+                    napZapisPadPrimo("PAD_APLIKACE vlakno=" + vlakno.getName()
+                            + " chyba=" + chyba + "\n" + sw.toString());
+                } catch (Throwable ignored) {}
+                if (puvodni != null) puvodni.uncaughtException(vlakno, chyba);
+            });
+            appendNativeLog("ODCHYTAVAC_PADU zapnut - pady se zapisou do tohohle logu");
+        } catch (Throwable t) {
+            appendNativeLog("ODCHYTAVAC_PADU nelze zapnout: " + safeMsg(t));
+        }
         // VERZE AUTOMATICKY Z BUILDU - nesmi se rozejit s tim, co je nainstalovane.
         // (Drive jsem verzi psal do logu rucne v nativnim kodu a zapomnel ji
         // prepsat, takze log hlasil starou verzi a hledala se chyba v necem,
