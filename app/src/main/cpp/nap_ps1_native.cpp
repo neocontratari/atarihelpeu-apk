@@ -200,7 +200,6 @@ static std::atomic<int> g_fw{0}, g_fh{0};
 static std::atomic<uint32_t> g_input_bits{0}; // BUILD2SA4: libretro joypad bits
 static std::mutex g_frame_mutex;
 static std::vector<uint32_t> g_frame_argb; // SA2b si tenhle buffer vyzvedne pro TextureView
-static std::thread g_worker;
 static std::mutex g_life_mutex;
 static std::mutex g_core_mutex; // BUILD2SA5: save/load state nesmi bezet soucasne s retro_run
 static double g_fps = 60.0;
@@ -274,7 +273,7 @@ static const char *nap_core_option_value(const char *key) {
   // vubec - vypnuti tim padem nebylo prijatelny kompromis k otestovani,
   // bylo to zruseni cele smysluplnosti teto vetve. Zustava ZAPNUTO,
   // nedotknutelne. Zbytek zvukoveho problemu se musi resit jinak - viz
-  // nova cista diagnostika v nap_worker (mereni bez zmeny chovani).
+  // nova cista diagnostika ve vlakne emulace (mereni bez zmeny chovani).
   if (strcmp(key, "pcsx_rearmed_neon_enhancement_enable") == 0) return "enabled";
   return nullptr;
 }
@@ -760,169 +759,6 @@ static bool nap_gles_egl_init() {
   return true;
 }
 
-static void nap_worker(int gen) {
-  NAPLOG("BUILD2SA2 PS1 worker start gen=%d fps=%.2f", gen, g_fps);
-  NAPDIAG("BUILD2SK99 PS1_WORKER_THREAD_ALIVE gen=%d", gen); // BUILD2SK99: durable kanarek - vlakno samo bezi
-  NAPDIAG("BUILD2SK154 NATIVE_VERSION_CONFIRM file=nap_ps1_native.cpp"); // BUILD2SK154: pri kazdem startu jednoznacne potvrdi, KTERA verze tohohle souboru skutecne bezi
-  // BUILD2SK98: EGL kontext MUSI se nastavit na TOMHLE vlakne (jedine vlakno,
-  // ktere kdy vola retro_run(), tedy jedine vlakno, na kterem gpu-gles vubec
-  // kresli) - GL kontexty jsou vazane na vlakno, ktere je aktivovalo.
-  g_gles_ready = nap_gles_egl_init();
-  if (!g_gles_ready) {
-    NAPDIAG("BUILD2SK98 PS1 worker pokracuje BEZ funkcniho GL kontextu - video pravdepodobne cerne, zvuk/vstup nedotcene");
-  }
-  const auto period = std::chrono::nanoseconds((long long)(1e9 / (g_fps > 1 ? g_fps : 60.0)));
-  auto next = std::chrono::steady_clock::now();
-  uint64_t srmTick = 0;
-  while (g_running.load() && gen == g_generation.load()) {
-    // BUILD2SK142: RENE ODMITL SK141 (zdvojnasobene 3D rozliseni je presny
-    // duvod, proc presel na gpu-gles - nedotknutelne). Misto dalsiho
-    // hadani, co jineho na g_worker (vlakne se zvukem) stoji cas, presne
-    // ZMERIT vsechny tri hlavni kroky KAZDEHO ticku - retro_run() (cela
-    // PS1 emulace VCETNE zpracovani vsech GP0/GP1 prikazu skrz gpuPrim.c/
-    // gpuDraw.c), sync_display_settings (viewport/scissor) a
-    // updateFrontDisplay (predani snimku - po SK140 uz jen rychle
-    // predani ctecimu vlaknu, nemelo by trvat dlouho). ZADNA zmena
-    // chovani/kvality - jen cislo navic v logu.
-    double nap_t_run0 = 0, nap_t_run1 = 0, nap_t_sync1 = 0, nap_t_disp1 = 0;
-    {
-      std::lock_guard<std::mutex> core(g_core_mutex);
-      nap_t_run0 = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
-      retro_run();
-      nap_t_run1 = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
-      // BUILD2SK108: presunuto sem z jednorazove inicializace (viz
-      // nap_gles_egl_init) - volane driv, PRED tim, nez hra vubec poslala
-      // prvni GPU prikaz, to spocitalo nesmyslny 1x1 scissor obdelnik
-      // (potvrzeno GLES_SCISSOR_CHECK v logu) a "spotrebovalo" bSetClip,
-      // takze se to uz nikdy samo neopravilo. Tady, KAZDY tick, uz retro_run()
-      // vyse zpracovala realne GPU prikazy hry - PSXDisplay.DrawArea ma
-      // skutecne hodnoty. Funkce ma vlastni "zmenilo se neco?" kontrolu
-      // (EqualRect porovnani), takze opakovane volani kazdy tick je levne,
-      // jakmile se stav ustali - prepocita jen kdyz je to skutecne potreba.
-      if (g_gles_ready) { nap_gles_sync_display_settings(); } // BUILD2SK119: viz gpulib_if.c - drive primo SetOGLDisplaySettings(1), ted pres bezpecny wrapper co nejdriv obnovi iResX/iResY/rRatioRect
-      nap_t_sync1 = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
-      // BUILD2SK108: throttled kontrola vysledku (kazdych ~90 tick = ~1.5s
-      // pri 60fps) - overime v logu, jestli se scissor po prvnich par
-      // snimcich (kdy uz hra poslala realne DrawArea prikazy) opravil na
-      // neco rozumneho, misto puvodniho degenerovaneho 1x1.
-      static int nap_scissor_check_tick = 0;
-      if (g_gles_ready && (++nap_scissor_check_tick % 90 == 1)) {
-        GLint scissorBox[4] = {0,0,0,0};
-        glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
-        NAPDIAG("BUILD2SK108 GLES_SCISSOR_CHECK tick=%d x=%d y=%d w=%d h=%d",
-          nap_scissor_check_tick, scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
-      }
-      // BUILD2SK103: gpu-gles normalne ceka na vout_update() (z gpu.c), ktera
-      // ale sama vola updateDisplay/updateFrontDisplay JEN kdyz je bud
-      // PSXDisplay.Interlaced=true (spravne neni - normalni progresivni PS1
-      // stav), NEBO bRenderFrontBuffer=true (strukturalne blokovano -
-      // podminene iOffscreenDrawing==4, a to je v GPUopen() natvrdo 0,
-      // konfiguracni volba z puvodniho ne-libretro frontendu, kterou jsme
-      // nikdy nezapojili). Bez tohohle appka jela bez padu, ale NIKDY
-      // nedoslo ke skutecnemu swap+odeslani snimku - proto jen zvuk, zadny
-      // obraz. Reseni: zavolat primo, obchazi vout_update() uplne. Vlastni
-      // iDrawnSomething kontrola uvnitr updateFrontDisplay() porad spravne
-      // presskoci swap, kdyz se nic noveho nenakreslilo - zadna zbytecna
-      // prace navic.
-      // BUILD2SK153: updateFrontDisplay() -> nap_gles_present_frame().
-      // Prezentace je ted VYHRADNE tady: presne jednou za tick, az kdyz je
-      // cely snimek doemulovany (VBlank). Pokud hra behem snimku flipla
-      // zobrazovaci buffer (GP1(05h)), gpu.screen uz nese nove src_x/src_y
-      // a cte se prave dokoncena polovina VRAM - zadne cteni rozkresleneho
-      // back-bufferu (to byla, spolu s 2-snimky-starymi metadaty v
-      // gpulib_if.c, pricina stroboskopu u 30fps her).
-      if (g_gles_ready) { nap_gles_present_frame(); }
-      nap_t_disp1 = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
-      if (++srmTick % 300 == 0) nap_srm_save_if_dirty("periodic");
-    }
-    {
-      static double nap_sum_run = 0, nap_sum_sync = 0, nap_sum_disp = 0;
-      static int nap_tick_n = 0;
-      nap_sum_run += (nap_t_run1 - nap_t_run0);
-      nap_sum_sync += (nap_t_sync1 - nap_t_run1);
-      nap_sum_disp += (nap_t_disp1 - nap_t_sync1);
-      nap_tick_n++;
-      if (nap_tick_n >= 60) {
-        // BUILD2SK145: Rene poslal log, kde avgRetroRunMs ROSTE od ~3ms na
-        // ~47ms behem jedne session (ne od zacatku vysoke - postupne).
-        // Dve hlavni podezreni: (a) tepelne omezovani telefonu (CPU/GPU se
-        // pod delsi zatezi sam zpomali - hardwarovy jev, ne chyba v kodu),
-        // (b) neco na strane emulatoru roste (napr. texture cache -
-        // BUILD2SA13 pad z 19.7. byl prave v CheckTextureInSubSCache) a
-        // hledani v ni casem zpomaluje kazdy dalsi snimek. Precteni
-        // aktualni CPU frekvence (bezne cist bez specialnich prav) tohle
-        // rozliší: kdyby FREKVENCE KLESALA soubezne s tim, jak
-        // avgRetroRunMs roste, je to tepelne omezovani (hardware, ne muj
-        // kod). Kdyby frekvence zustavala STEJNA a presto se zpomaluje, je
-        // to neco v samotnem kodu.
-        // BUILD2SK148: RENE MEL PRAVDU SI NA TO DUPNOUT - cpuFreqKhz cetlo
-        // JEN cpu0. Telefon ma vic jader s NEZAVISLYMI frekvencemi (big.LITTLE
-        // architektura) a sam operacni system frekvenci beznemenne meni podle
-        // AKTUALNI ZATEZE (ne jen kvuli teplote) - takze "frekvence klesla"
-        // vubec nemusi znamenat "prehrivani", a navic jsem mozna cetl uplne
-        // JINE jadro, nez na kterem zrovna bezela emulace. Misto DOHADU z
-        // frekvence: cist PRIMO teplotu (kazda Android appka to muze, zadna
-        // zvlastni prava) ze VSECH dostupnych tepelnych senzoru a vzit
-        // nejvyssi namerenou hodnotu - to je nezpochybnitelne, primo to,
-        // "jestli telefon o nejake teplote vi", misto neprimeho odhadu.
-        // Navic max frekvence pres VSECHNA jadra (ne jen cpu0).
-        long maxTempMilliC = -1;
-        for (int tz = 0; tz < 20; tz++) {
-          char path[96];
-          snprintf(path, sizeof(path), "/sys/class/thermal/thermal_zone%d/temp", tz);
-          FILE *tf = fopen(path, "r");
-          if (!tf) continue;
-          long t = -1;
-          if (fscanf(tf, "%ld", &t) == 1 && t > maxTempMilliC) maxTempMilliC = t;
-          fclose(tf);
-        }
-        long maxCpuFreqKhz = -1;
-        for (int cpu = 0; cpu < 8; cpu++) {
-          char path[96];
-          snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", cpu);
-          FILE *cf = fopen(path, "r");
-          if (!cf) continue;
-          long fr = -1;
-          if (fscanf(cf, "%ld", &fr) == 1 && fr > maxCpuFreqKhz) maxCpuFreqKhz = fr;
-          fclose(cf);
-        }
-        // BUILD2SK147: Rene trva na tom, ze je to pamet ("plni se pamet
-        // presne jak u Segy") - tohle mereni (VmRSS) zustava, je to primy,
-        // spravny zpusob, jak to overit, a beru to jako hlavni podezreni,
-        // dokud cisla neukazou jinak.
-        long vmRssKb = -1;
-        FILE *sf = fopen("/proc/self/status", "r");
-        if (sf) {
-          char line[256];
-          while (fgets(line, sizeof(line), sf)) {
-            if (strncmp(line, "VmRSS:", 6) == 0) { sscanf(line + 6, "%ld", &vmRssKb); break; }
-          }
-          fclose(sf);
-        }
-        // BUILD2SK150: RENE MEL PRAVDU - vmRssKb roste ROVNOMERNE a
-        // NEPRETRZITE (potvrzeno v poslednim logu, 351MB -> 607MB behem
-        // jedne session). Prosel jsem gpuTexture.c (kde byl i puvodni pad
-        // z 19.7.) - hlavni GL textura-atlas objekty (gTexName a spol.)
-        // se vytvareji JEN JEDNOU (hlidano "if(!gTexName)") a znovupouzivaji
-        // pres glTexSubImage2D, ne pres opakovane glGenTextures - takze
-        // primy GL-objekt-na-objekt unik tam na prvni pohled neni. Aby bylo
-        // jasne, jestli je unik v BEZNE (malloc) CPU pameti (a tedy
-        // hledatelny), nebo nekde jinde (GPU/ovladac strana, mimo dosah
-        // mallinfo) - pridavame mallinfo() rozpad hned vedle VmRSS.
-        struct mallinfo mi = mallinfo();
-        long heapActiveKb = (long)(mi.uordblks / 1024);
-        NAPDIAG("BUILD2SK150 PS1_TICK_TIMING avgRetroRunMs=%.2f avgSyncMs=%.2f avgDispMs=%.2f avgTotalMs=%.2f n=%d maxCpuFreqKhz=%ld maxTempMilliC=%ld vmRssKb=%ld heapActiveKb=%ld",
-          nap_sum_run / nap_tick_n, nap_sum_sync / nap_tick_n, nap_sum_disp / nap_tick_n,
-          (nap_sum_run + nap_sum_sync + nap_sum_disp) / nap_tick_n, nap_tick_n, maxCpuFreqKhz, maxTempMilliC, vmRssKb, heapActiveKb);
-        nap_sum_run = 0; nap_sum_sync = 0; nap_sum_disp = 0; nap_tick_n = 0;
-      }
-    }
-    next += period;
-    auto now = std::chrono::steady_clock::now();
-    if (next > now) std::this_thread::sleep_for(next - now); else next = now;
-  }
-  NAPLOG("BUILD2SA2 PS1 worker stop gen=%d frames=%llu", gen, (unsigned long long)g_frames.load());
-}
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1CoreInfo(JNIEnv *env, jclass) {
@@ -930,69 +766,6 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1CoreInfo(JNIEnv *env, jclass) {
   snprintf(buf,sizeof(buf),"PS1_CORE_COMPILED name=%s version=%s api=%u ext=%s dynarec=INTERPRETER boot=SA2_READY",
     si.library_name?si.library_name:"?", si.library_version?si.library_version:"?", retro_api_version(), si.valid_extensions?si.valid_extensions:"?");
   return env->NewStringUTF(buf);
-}
-extern "C" JNIEXPORT jstring JNICALL
-Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Boot(JNIEnv *env, jclass, jstring jsys, jstring jsave, jstring jgame) {
-  std::lock_guard<std::mutex> life(g_life_mutex);
-  char out[768];
-  const char *sys = env->GetStringUTFChars(jsys, nullptr);
-  const char *sav = env->GetStringUTFChars(jsave, nullptr);
-  const char *game = env->GetStringUTFChars(jgame, nullptr);
-  std::string gamePath = game ? game : "";
-  g_sysdir = sys ? sys : ""; g_savedir = sav ? sav : "";
-  env->ReleaseStringUTFChars(jsys, sys); env->ReleaseStringUTFChars(jsave, sav); env->ReleaseStringUTFChars(jgame, game);
-  // stop pripadneho predchoziho behu
-  g_generation.fetch_add(1); g_running.store(false);
-  // ukoncit vlakno emulace (cesta A) driv, nez uvolnime jadro
-  if (g_core_run.exchange(false) && g_core_thread.joinable()) g_core_thread.join();
-  if (g_worker.joinable()) g_worker.join();
-  if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("stop"); retro_unload_game(); retro_deinit(); }
-  nap_audio_clear();
-  g_input_bits.store(0);
-  g_frames.store(0); g_dupe_frames.store(0); g_audio_samples_dropped.store(0); g_audio_resyncs.store(0); g_fw.store(0); g_fh.store(0);
-  g_boot_error.clear();
-  retro_set_environment(nap_env);
-  retro_set_video_refresh(nap_video);
-  retro_set_audio_sample(nap_audio_sample);
-  retro_set_audio_sample_batch(nap_audio_batch);
-  retro_set_input_poll(nap_input_poll);
-  retro_set_input_state(nap_input_state);
-  retro_init();
-  retro_game_info gi; memset(&gi,0,sizeof(gi));
-  gi.path = gamePath.c_str();
-  bool ok = retro_load_game(&gi);
-  if (!ok) {
-    g_boot_error = "retro_load_game FAILED path=" + gamePath;
-    retro_deinit();
-    snprintf(out,sizeof(out),"PS1_BOOT_FAIL %s (zkontroluj BIOS v systemove slozce a cestu ke hre)", g_boot_error.c_str());
-    NAPLOG("%s", out);
-    return env->NewStringUTF(out);
-  }
-  g_loaded.store(true);
-  nap_srm_set_path(gamePath); // BUILD2SA11
-  nap_srm_load();
-  retro_system_av_info av; memset(&av,0,sizeof(av));
-  retro_get_system_av_info(&av);
-  g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
-  const int gen = g_generation.load();
-  g_running.store(true);
-  g_worker = std::thread(nap_worker, gen);
-  char biosList[256] = "prazdna";
-  { // BUILD2SA6: BIOS AUDIT - vypis, co jadro REALNE vidi v system slozce.
-    // Kdyz tu nebude scph1001.bin, mame pricinu chybejici SONY znelky (HLE BIOS).
-    DIR *d = opendir(g_sysdir.c_str());
-    if (d) { size_t off = 0; biosList[0] = 0; struct dirent *e;
-      while ((e = readdir(d)) && off < sizeof(biosList) - 40) {
-        if (e->d_name[0] == '.') continue;
-        off += snprintf(biosList + off, sizeof(biosList) - off, "%s%s", off ? "," : "", e->d_name);
-      }
-      closedir(d); if (!biosList[0]) snprintf(biosList, sizeof(biosList), "prazdna");
-    }
-  }
-  snprintf(out,sizeof(out),"PS1_BOOT_OK sysdirFiles=[%s] path=%s fps=%.2f baseRes=%ux%u sampleRate=%.0f sysdir=%s",
-    biosList, gamePath.c_str(), av.timing.fps, av.geometry.base_width, av.geometry.base_height, av.timing.sample_rate, g_sysdir.c_str());
-  NAPLOG("%s", out);
-  return env->NewStringUTF(out);
 }
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Status(JNIEnv *env, jclass) {
@@ -1498,7 +1271,6 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   g_generation.fetch_add(1); g_running.store(false);
   // ukoncit vlakno emulace (cesta A) driv, nez uvolnime jadro
   if (g_core_run.exchange(false) && g_core_thread.joinable()) g_core_thread.join();
-  if (g_worker.joinable()) g_worker.join();
   if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("stop"); retro_unload_game(); retro_deinit(); }
   nap_audio_clear();
   g_input_bits.store(0);

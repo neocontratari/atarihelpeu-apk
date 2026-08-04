@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 105
-        versionName "EMU10-B57-HRA-DO-MONITORU"  // hra se spousti do TEHOZ monitoru jako BIOS; samostatne okno na sirku (kreslilo do pbufferu, gfw=0 gfh=0) zruseno; smazana i druha mrtva plocha
+        versionCode 107
+        versionName "EMU10-B59-STARE-SOFTOVE-JADRO-PRYC"  // smazano stare vlakno nap_worker + ps1Boot: bezelo retro_run bez odberu obrazu z GPU (proto gfw=0 gfh=0 a cerna). Zustava jedina cesta pres OpenGL ES.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

@@ -8,7 +8,6 @@ public final class NativePs1CoreBridge {
         catch (Throwable t) { loadError = String.valueOf(t.getMessage()); }
     }
     private static native String ps1CoreInfo();
-    private static native String ps1Boot(String systemDir, String saveDir, String gamePath);
     // Jedina cesta pro obraz PS1: jadro kresli pres OpenGL ES a snimek jde do
     // monitoru. Prazdna cesta ke hre = start bez disku (menu BIOSu).
     private static native String ps1BootDoMonitoru(String systemDir, String saveDir, String gamePath);
@@ -73,10 +72,6 @@ public final class NativePs1CoreBridge {
     public static String coreInfoSafe() {
         if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;
         try { return ps1CoreInfo(); } catch (Throwable t) { return "PS1_CORE_CALL_FAIL " + t.getMessage(); }
-    }
-    public static String bootSafe(String sys, String save, String game) {
-        if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;
-        try { return ps1Boot(sys, save, game); } catch (Throwable t) { return "PS1_BOOT_CALL_FAIL " + t.getMessage(); }
     }
     public static String statusSafe() {
         if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;

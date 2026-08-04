@@ -7167,8 +7167,16 @@ public class MainActivity extends Activity {
                     ps1LastBootResult = "PS1_BOOTING...";
                     appendNativeLog("BUILD2SA5P PS1_BIOS_AUDIT " + ps1BiosAudit(sysDir));
                     ps1EnsureBios(sysDir); // BUILD2SA7
-                    ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);
-                    boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK");
+                    // JEDNA CESTA: stejna funkce jako start bez disku, jen s cestou
+                    // ke hre. Drive se tu volalo bootSafe(), ktere hru sice nahralo,
+                    // ale NEPRIPRAVILO grafiku, zvuk ani vlakno emulace - obraz pak
+                    // skoncil v neviditelne plose (v logu pbuffer + gfw=0 gfh=0)
+                    // a zustala cerna obrazovka jen s ovladacem a zvukem.
+                    ps1LastBootResult = NativePs1CoreBridge.bootGameSafe(
+                            sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);
+                    appendNativeLog("PS1_HRA_DO_MONITORU cesta=" + fdPath
+                            + " vysledek=" + ps1LastBootResult);
+                    boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_HRA_OK");
                     boolean stillWanted = ok && bootGen == ps1LifecycleGen && ps1BootActive;
                     ps1BootActive = false;
                     if (stillWanted) {
