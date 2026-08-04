@@ -269,7 +269,7 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
         // Nas EGL kontext uz je aktivni na tomhle vlakne. Rekneme jadru, at se
         // pripravi PRAVE TED - vezme si nas kontext jako sdileny a od te chvile
         // vidime jeho texturu primo. Zadny obraz uz nepoleze pres procesor.
-        boolean primaCesta = NativePs1CoreBridge.attachDisplayContextSafe();
+        boolean primaCesta = NativePs1CoreBridge.attachDisplayContextSafe();  // muze se za behu vypnout
         // DULEZITE: jadro si pri sve priprave prepne kontext na SVUJ (neviditelny
         // pbuffer). Kdybychom to nevratili, kreslili bychom do nej a na obrazovce
         // by bylo cerno. Vracime si tedy svuj kontext a svuj povrch.
@@ -281,6 +281,7 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
         final int[] crop = new int[4];
         long posledniKontrolaGl = 0;
         int hlasenoChybGl = 0;
+        int cernychVterin = 0;
         long oknoOd = System.currentTimeMillis();
         int oknoSnimku = 0;
         long oknoKresleniNs = 0, oknoSwapNs = 0;
@@ -288,8 +289,58 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
                 .order(ByteOrder.nativeOrder());
         FloatBuffer texDirect = fbuf(new float[]{ 0,1, 1,1, 0,0, 1,0 });
 
+        final long RAMEC_NS = 1000000000L / 62;   // strop cca 62 snimku za vterinu
+        long dalsiRamec = System.nanoTime();
+
         while (running) {
             try {
+                // TEMPO. Bez tohohle smycka bezela naprazdno - v logu bylo
+                // "snimku/s=899". Sezralo to procesor i GPU a kouzal se kvuli
+                // tomu obraz i zvuk. Vic nez ~60 snimku stejne nema smysl,
+                // PlayStation jich vic nevyrobi.
+                long ted2 = System.nanoTime();
+                if (ted2 < dalsiRamec) {
+                    long spat = (dalsiRamec - ted2) / 1000000L;
+                    if (spat > 0) Thread.sleep(Math.min(spat, 20));
+                }
+                dalsiRamec = Math.max(System.nanoTime(), dalsiRamec + RAMEC_NS);
+
+                // ===== MERENI PRO LOG (plati pro obe cesty) =====
+                long nyni = System.currentTimeMillis();
+                if (nyni - oknoOd >= 1000) {
+                    try {
+                        vzorek.position(0);
+                        GLES20.glReadPixels(Math.max(0, viewW / 2 - 8), Math.max(0, viewH / 2 - 8),
+                                16, 16, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, vzorek);
+                        long soucet = 0;
+                        for (int i = 0; i < 16 * 16 * 4; i += 4) {
+                            soucet += (vzorek.get(i) & 255) + (vzorek.get(i + 1) & 255) + (vzorek.get(i + 2) & 255);
+                        }
+                        statJas = (int) (soucet / (16 * 16 * 3));
+                    } catch (Throwable ignored) { statJas = -1; }
+                    statSnimkuZaVterinu = oknoSnimku;
+                    statKresleniMs = oknoSnimku > 0 ? (oknoKresleniNs / 1e6f / oknoSnimku) : 0;
+                    statSwapMs = oknoSnimku > 0 ? (oknoSwapNs / 1e6f / oknoSnimku) : 0;
+                    statChybGl = hlasenoChybGl;
+
+                    // POJISTKA: kdyz prima cesta kresli tri vteriny cernou (typicky
+                    // po otoceni telefonu, kdy uz sdilena textura v novem kontextu
+                    // neplati), prepneme na zalozni cestu pres pixely. Radeji obraz
+                    // o kousek drazsi nez cerna obrazovka.
+                    if (primaCesta && oknoSnimku > 0 && statJas == 0) {
+                        if (++cernychVterin >= 3) {
+                            primaCesta = false;
+                            statCesta = "ZALOZNI(po cerne)";
+                            say("PRIMA_CESTA_KRESLI_CERNOU - prepinam na zalozni pres pixely");
+                        }
+                    } else if (statJas > 0) {
+                        cernychVterin = 0;
+                    }
+
+                    oknoOd = nyni; oknoSnimku = 0; oknoKresleniNs = 0; oknoSwapNs = 0;
+                }
+
+
                 GLES20.glClearColor(0.05f, 0.06f, 0.09f, 1f);
                 GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
@@ -309,13 +360,25 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
                 }
 
                 int sdilena = primaCesta ? NativePs1CoreBridge.grabTextureSafe(crop) : 0;
+                if (sdilena > 0) {
+                    // Jadro si pri odebirani prepina kontext na svuj a zpatky na
+                    // ten, ktery si zapamatovalo pri startu. Po otoceni telefonu
+                    // ale mame UZ JINY POVRCH - jadro by nas vratilo na ten stary
+                    // a kreslili bychom do prazdna (v logu to bylo "jas=0").
+                    // Proto si svuj kontext i povrch pokazde poctive nastavime.
+                    EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext);
+                }
                 if (sdilena > 0 && crop[2] > 0 && crop[3] > 0) {
                     // OBRAZ PRIMO Z GPU - jen nastavime vyrez a nakreslime.
                     int vramW = 1024, vramH = 512;
                     float u0 = (float) crop[0] / vramW;
                     float u1 = (float) (crop[0] + crop[2]) / vramW;
-                    float v0 = (float) crop[1] / vramH;
-                    float v1 = (float) (crop[1] + crop[3]) / vramH;
+                    // Renderer kresli do pameti VZHURU NOHAMA (jeho vertex
+                    // shader ma gl_Position = vec4(p.x, -p.y, ...)). Kdyz se
+                    // to necetlo otocene, sahalo se do uplne jine casti pameti -
+                    // odtud ten prolinajici se napis SONY z intra.
+                    float v0 = 1f - (float) crop[1] / vramH;
+                    float v1 = 1f - (float) (crop[1] + crop[3]) / vramH;
                     texDirect.clear();
                     texDirect.put(new float[]{ u0,v1, u1,v1, u0,v0, u1,v0 });
                     texDirect.position(0);
@@ -345,27 +408,6 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
                     statCesta = "PRIMA"; statZdrojW = crop[2]; statZdrojH = crop[3];
                     if (!loggedFirst) { loggedFirst = true; say("prvni snimek PRIMOU cestou " + crop[2] + "x" + crop[3]); }
 
-                    long nyni = System.currentTimeMillis();
-                    if (nyni - oknoOd >= 1000) {
-                        // JAS: precteme malinky ctverec uprostred obrazu. Odtud
-                        // poznam, jestli plocha kresli OBRAZ nebo cernou plochu -
-                        // to je rozdil mezi "obraz je schovany" a "obraz neni".
-                        try {
-                            vzorek.position(0);
-                            GLES20.glReadPixels(Math.max(0, viewW / 2 - 8), Math.max(0, viewH / 2 - 8),
-                                    16, 16, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, vzorek);
-                            long soucet = 0;
-                            for (int i = 0; i < 16 * 16 * 4; i += 4) {
-                                soucet += (vzorek.get(i) & 255) + (vzorek.get(i + 1) & 255) + (vzorek.get(i + 2) & 255);
-                            }
-                            statJas = (int) (soucet / (16 * 16 * 3));
-                        } catch (Throwable ignored) { statJas = -1; }
-                        statSnimkuZaVterinu = oknoSnimku;
-                        statKresleniMs = oknoSnimku > 0 ? (oknoKresleniNs / 1e6f / oknoSnimku) : 0;
-                        statSwapMs = oknoSnimku > 0 ? (oknoSwapNs / 1e6f / oknoSnimku) : 0;
-                        statChybGl = hlasenoChybGl;
-                        oknoOd = nyni; oknoSnimku = 0; oknoKresleniNs = 0; oknoSwapNs = 0;
-                    }
                     continue;
                 }
 
@@ -403,6 +445,8 @@ public class Ps1GlTextureView extends TextureView implements TextureView.Surface
                     GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId);
                     GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, srcW, srcH,
                             GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, pixels);
+                    statCesta = "ZALOZNI"; statZdrojW = srcW; statZdrojH = srcH;
+                    oknoSnimku++;
 
                     // POMER STRAN: PS1 nema ctvercove pixely! Hra prepina mezi
                     // 320x240, 512x480, 640x480 - ale na obrazovce ma vzdy

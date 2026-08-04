@@ -148,6 +148,16 @@ public class MainActivity extends Activity {
                 if (!saveDir.exists()) saveDir.mkdirs();
                 ps1EnsureBios(sysDir);          // BIOS musi byt na miste
                 appendNativeLog("PS1_BIOS_START bez disku (jako zapnuti konzole)");
+                // ZOBRAZOVACI PLOCHA MUSI BYT I PRO BIOS. Drive se zapinala jen
+                // pri spusteni hry a BIOS kreslil do stranky pres JPEG - ten uz
+                // je smazany, takze BIOS nemel CIM kreslit a byl cerny.
+                // A musi vzniknout DRIV nez jadro, aby si jadro mohlo vzit jeji
+                // graficky kontext jako sdileny (prima cesta bez kopirovani).
+                final java.util.concurrent.CountDownLatch plochaHotova =
+                        new java.util.concurrent.CountDownLatch(1);
+                ui.post(() -> ps1GlEnable(() -> plochaHotova.countDown()));
+                try { plochaHotova.await(4, java.util.concurrent.TimeUnit.SECONDS); }
+                catch (Throwable ignored) {}
                 String r = NativePs1CoreBridge.bootBiosSafe(
                         sysDir.getAbsolutePath(), saveDir.getAbsolutePath());
                 appendNativeLog("PS1_BIOS_START vysledek=" + r);
@@ -4527,9 +4537,12 @@ public class MainActivity extends Activity {
             gv.setLayoutParams(lp);
             // na sirku POD stranku (je pruhledna, ovladac zustane nahore),
             // na vysku NAD ni (grafika konzole je neprusvitna)
-            rootFrame.removeView(gv);
-            int index = naSirku ? 0 : rootFrame.getChildCount();   // az PO odebrani
-            rootFrame.addView(gv, index, lp);
+            // POZOR: NEODEBIRAT a nepridavat znovu! Odebranim pohledu se zrusi
+            // jeho kreslici povrch, jadro by melo sdileni navazane na neplatny
+            // kontext a obraz by zcernal. Poradi resime jen vyskou (setZ),
+            // rozmery jen zmenou rozvrzeni - povrch tim zustane zivy.
+            gv.setLayoutParams(lp);
+            gv.requestLayout();
             gv.setZ(naSirku ? -1f : 1f);
             appendNativeLog("PS1_OBRAZ_UMISTEN " + l + "," + t + " " + w + "x" + h
                     + (naSirku ? " (na sirku, pod strankou)" : " (na vysku, nad strankou)"));
