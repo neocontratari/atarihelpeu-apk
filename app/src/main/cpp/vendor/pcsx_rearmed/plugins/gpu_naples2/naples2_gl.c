@@ -102,7 +102,10 @@ static const char *FS =
 "    if (raw < 0.5) discard;\n"                /* nulovy texel = pruhledny */
 "    c = from16(raw).rgb * vColor * 2.0;\n"    /* PS1 modulace: 128 = neutral */
 "  }\n"
-"  gl_FragColor = vec4(clamp(c, 0.0, 1.0), uAlpha);\n"
+"  // POZOR: alfa se v obraze uklada jako BIT MASKY (nejvyssi bit hodnoty).\n"
+"  // Kdyz sem dame pruhlednost, rozbije to cteni palet a po obraze jsou\n"
+"  // barevne tecky. Pruhlednost resi michani pres pevnou barvu (glBlendColor).\n"
+"  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 0.0);\n"
 "}\n";
 
 /* prenos obdelniku z pameti do VRAM (logo BIOSu, snimek filmu, textury) */
@@ -348,7 +351,7 @@ static void n2_apply_blend(void)
     case 0: /* pul pozadi + pul popredi */
         glEnable(GL_BLEND);
         glBlendEquation(GL_FUNC_ADD);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
         break;
     case 1: /* pozadi + popredi */
         glEnable(GL_BLEND);
@@ -363,7 +366,7 @@ static void n2_apply_blend(void)
     case 3: /* pozadi + ctvrtina popredi */
         glEnable(GL_BLEND);
         glBlendEquation(GL_FUNC_ADD);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE);
         break;
     default:
         glDisable(GL_BLEND);
@@ -428,7 +431,11 @@ void n2_flush(void)
     glUniform2f(n2.u_vram, (float)N2_VRAM_W, (float)N2_VRAM_H);
     glUniform4f(n2.u_texwin, (float)n2.win_mx, (float)n2.win_my,
                              (float)n2.win_ox, (float)n2.win_oy);
-    glUniform1f(n2.u_alpha, (n2.blend == 0) ? 0.5f : ((n2.blend == 3) ? 0.25f : 1.0f));
+    {   /* mira pruhlednosti jde do michani, ne do pixelu */
+        float a = (n2.blend == 0) ? 0.5f : ((n2.blend == 3) ? 0.25f : 1.0f);
+        glUniform1f(n2.u_alpha, a);
+        glBlendColor(0.f, 0.f, 0.f, a);
+    }
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
     glUniform1i(n2.u_tex, 0);
@@ -560,45 +567,6 @@ void n2_upload_all_vram(void)
                     GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, n2.prekod);
 }
 
-
-/* KOPIE UVNITR VIDEOPAMETI PROVEDENA NA GRAFICE.
-   Nesmi se brat z pameti jadra - to, co nakreslila grafika, tam neni, a BIOS
-   si timhle prikazem posouva prave grafikou nakreslene kusy. Kdyz se zdroj
-   vzal z pameti procesoru, prilepil se misto nich stary napis SONY. */
-static void n2_kopie_v_obraze(int sx, int sy, int dx, int dy, int w, int h)
-{
-    float u0, v0, u1, v1;
-    if (!n2.ready || w <= 0 || h <= 0) return;
-
-    /* zdroj musi byt aktualni -> obnovit texturovaci texturu z obrazu */
-    glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo);
-    glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
-    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, N2_VRAM_W, N2_VRAM_H);
-
-    u0 = (float)sx / N2_VRAM_W;        u1 = (float)(sx + w) / N2_VRAM_W;
-    v0 = 1.f - (float)sy / N2_VRAM_H;  v1 = 1.f - (float)(sy + h) / N2_VRAM_H;
-
-    glViewport(0, 0, N2_VRAM_W, N2_VRAM_H);
-    glDisable(GL_BLEND);
-    glDisable(GL_SCISSOR_TEST);
-    glUseProgram(n2.prog_blit);
-    glUniform2f(n2.b_vram, (float)N2_VRAM_W, (float)N2_VRAM_H);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
-    glUniform1i(n2.b_src, 0);
-    {
-        float x0 = (float)dx, y0 = (float)dy;
-        float x1 = (float)(dx + w), y1 = (float)(dy + h);
-        const float pos[12] = { x0,y0, x1,y0, x0,y1,  x1,y0, x1,y1, x0,y1 };
-        const float uv [12] = { u0,v0, u1,v0, u0,v1,  u1,v0, u1,v1, u0,v1 };
-        glVertexAttribPointer((GLuint)n2.b_pos, 2, GL_FLOAT, GL_FALSE, 0, pos);
-        glVertexAttribPointer((GLuint)n2.b_uv,  2, GL_FLOAT, GL_FALSE, 0, uv);
-        glEnableVertexAttribArray((GLuint)n2.b_pos);
-        glEnableVertexAttribArray((GLuint)n2.b_uv);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-    }
-    n2.tex_zastarala = 1;
-}
 
 /* Prekresli najednou vsechny cekajici zapisy do VRAM. */
 static void n2_flush_pending_vram(void)
@@ -1031,8 +999,8 @@ int n2_do_cmd_list(uint32_t *list, int list_len, uint32_t *ex_regs, int *last_cm
             int dy = (int)((list[2] >> 16) & 0x1ff);
             int cw = (int)(((list[3]        & 0x3ff) - 1) & 0x3ff) + 1;
             int ch = (int)((((list[3] >> 16) & 0x1ff) - 1) & 0x1ff) + 1;
-            n2_flush();                    /* dokreslit, at je zdroj hotovy */
-            n2_kopie_v_obraze(csx, csy, dx, dy, cw, ch);
+            (void)csx; (void)csy;
+            n2_vram_written(dx, dy, cw, ch);
             break;
         }
         case 0xe1: n2_texpage(list[0] & 0xffffff); break;
