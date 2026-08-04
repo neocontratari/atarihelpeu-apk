@@ -48,13 +48,18 @@ static const char *FS =
 "varying vec2 vClut;\n"
 "varying float vMode;\n"
 "uniform sampler2D uVramTex;\n"
-"uniform vec4 uTexWin;\n"   /* LUMINANCE_ALPHA = syrovych 16 bitu VRAM */
+"uniform vec4 uTexWin;\n"   /* textura je 5551 = syrovych 16 bitu VRAM */
 "uniform vec2 uVram;\n"
 "uniform float uAlpha;\n"
 "float raw16(vec2 texel){\n"
-"  vec2 uv = (texel + 0.5) / uVram;\n"
+"  // obraz je v pameti ulozeny vzhuru nohama (kreslici stinovac otaci Y),\n"
+"  // takze pri cteni ho musime otocit zpatky\n"
+"  vec2 uv = vec2((texel.x + 0.5) / uVram.x, 1.0 - (texel.y + 0.5) / uVram.y);\n"
 "  vec4 t = texture2D(uVramTex, uv);\n"
-"  return floor(t.r * 255.0 + 0.5) + floor(t.a * 255.0 + 0.5) * 256.0;\n"
+"  return floor(t.r * 31.0 + 0.5)\n"
+"       + floor(t.g * 31.0 + 0.5) * 32.0\n"
+"       + floor(t.b * 31.0 + 0.5) * 1024.0\n"
+"       + floor(t.a + 0.5) * 32768.0;\n"
 "}\n"
 "float okno(float u, float M, float O){\n"      /* PS1: (u AND NOT M) OR (O AND M) */
 "  float res = 0.0, bit = 1.0;\n"
@@ -174,6 +179,7 @@ static struct {
     int      seen[8][5];      /* stranka x,y, rezim, paleta x,y - co se opravdu pouziva */
     int      n_seen;
     unsigned char *scratch;     /* prevod 16bit -> RGBA pri prenosech */
+    unsigned short *prekod;     /* prekodovana videopamet pro prvni naplneni */
     unsigned char *readbuf;     /* zaloha pro nesdileny kontext */
     int      readbuf_cap;
 } n2;
@@ -252,11 +258,15 @@ int n2_init(void)
     n2.b_vram = glGetUniformLocation(n2.prog_blit, "uVram");
     n2.b_src  = glGetUniformLocation(n2.prog_blit, "uSrc");
 
-    /* cil kresleni = cela VRAM jako RGBA textura */
+    /* Cil kresleni = cela VRAM. POZOR NA FORMAT: musi to byt 5551, tedy
+       presne to, co ma PlayStation ve videopameti (5 bitu na barvu + bit
+       masky). Drive to bylo RGBA po 8 bitech - obraz vypadal stejne, ale
+       hodnota uz nesla precist zpatky jako cislo, takze se z te textury
+       nedaly brat PALETY. Presne na tom ztroskotal B43. */
     glGenTextures(1, &n2.tex_out);
     glBindTexture(GL_TEXTURE_2D, n2.tex_out);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, N2_VRAM_W, N2_VRAM_H, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+                 GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -277,8 +287,8 @@ int n2_init(void)
     /* syrova VRAM pro texturovani: 2 bajty na texel */
     glGenTextures(1, &n2.tex_vram);
     glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA, N2_VRAM_W, N2_VRAM_H, 0,
-                 GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, N2_VRAM_W, N2_VRAM_H, 0,
+                 GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -305,6 +315,12 @@ int n2_init(void)
     n2.win_mx   = 0; n2.win_my = 0; n2.win_ox = 0; n2.win_oy = 0;   /* 0 = bez maskovani */
     n2.area_x1  = N2_VRAM_W; n2.area_y1 = N2_VRAM_H;
     n2.ready    = 1;
+    n2_upload_all_vram();          /* prvni naplneni z pameti jadra */
+    n2.dr[0][0] = 0; n2.dr[0][1] = 0;
+    n2.dr[0][2] = N2_VRAM_W; n2.dr[0][3] = N2_VRAM_H;
+    n2.dirty = 1;                  /* a totez prekreslit do obrazu */
+    n2.tex_zastarala = 1;
+
     nap_diag_log("NAPLES2 PRIPRAVEN (GLES2, VRAM %dx%d, textura=%u)", N2_VRAM_W, N2_VRAM_H, n2.tex_out);
     return 0;
 }
@@ -312,6 +328,7 @@ int n2_init(void)
 void n2_finish(void)
 {
     if (!n2.ready) return;
+    free(n2.prekod); n2.prekod = NULL;
     glDeleteFramebuffers(1, &n2.fbo);
     glDeleteTextures(1, &n2.tex_out);
     glDeleteTextures(1, &n2.tex_vram);
@@ -371,7 +388,17 @@ void n2_flush(void)
        nahravaji textury pres DMA, jadro zapisy vubec nehlasi. Tim je zaruceno
        aspon jedno nahrani za snimek, ale uz ne 97. */
     if (n2.tex_zastarala) {
-        n2_upload_all_vram();
+        /* TOHLE JE TA OPRAVA. Texturovaci textura se ted bere z OBRAZU, ne
+           z pameti procesoru. V obraze je uz VSECHNO: zapisy procesoru se do
+           nej blituji (n2_flush_pending_vram vyse) a to, co nakreslila
+           grafika, tam vznika primo. Z pameti procesoru se naopak nikdy
+           nedozvime, co grafika nakreslila - a BIOS si tam kresli pres
+           polovinu svych textur a tri ctvrtiny palet. Odtud byla ta zelena
+           zmet a starý napis SONY pres MEMORY CARD.
+           Kopie je presna, protoze oba obrazy jsou 5551. */
+        glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo);
+        glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
+        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, N2_VRAM_W, N2_VRAM_H);
         n2.tex_zastarala = 0;
         n2.n_nahrani++;
     }
@@ -511,13 +538,67 @@ void n2_upload_all_vram(void)
        textura se pak prelozila na nesmyslne barvy: tvar zustal, ale barvy
        zcernaly. Presne to bylo videt na pozadi BIOSu. */
     const unsigned short *src = n2_host_vram();
+    size_t i, celkem = (size_t)N2_VRAM_W * N2_VRAM_H;
     if (!n2.ready || !src) return;
+    if (!n2.prekod) {
+        n2.prekod = (unsigned short *)malloc(celkem * 2);
+        if (!n2.prekod) return;
+    }
+    /* PlayStation: bit15=maska, 14-10=modra, 9-5=zelena, 4-0=cervena.
+       GL 5551:     15-11=cervena, 10-6=zelena, 5-1=modra, 0=alfa.
+       Poradi je opacne, musi se prehodit. */
+    for (i = 0; i < celkem; i++) {
+        unsigned v = src[i];
+        n2.prekod[i] = (unsigned short)(((v & 31) << 11)
+                                      | (((v >> 5) & 31) << 6)
+                                      | (((v >> 10) & 31) << 1)
+                                      | ((v >> 15) & 1));
+    }
     glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, N2_VRAM_W, N2_VRAM_H,
-                    GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, src);
+                    GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, n2.prekod);
 }
 
+
+/* KOPIE UVNITR VIDEOPAMETI PROVEDENA NA GRAFICE.
+   Nesmi se brat z pameti jadra - to, co nakreslila grafika, tam neni, a BIOS
+   si timhle prikazem posouva prave grafikou nakreslene kusy. Kdyz se zdroj
+   vzal z pameti procesoru, prilepil se misto nich stary napis SONY. */
+static void n2_kopie_v_obraze(int sx, int sy, int dx, int dy, int w, int h)
+{
+    float u0, v0, u1, v1;
+    if (!n2.ready || w <= 0 || h <= 0) return;
+
+    /* zdroj musi byt aktualni -> obnovit texturovaci texturu z obrazu */
+    glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo);
+    glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, N2_VRAM_W, N2_VRAM_H);
+
+    u0 = (float)sx / N2_VRAM_W;        u1 = (float)(sx + w) / N2_VRAM_W;
+    v0 = 1.f - (float)sy / N2_VRAM_H;  v1 = 1.f - (float)(sy + h) / N2_VRAM_H;
+
+    glViewport(0, 0, N2_VRAM_W, N2_VRAM_H);
+    glDisable(GL_BLEND);
+    glDisable(GL_SCISSOR_TEST);
+    glUseProgram(n2.prog_blit);
+    glUniform2f(n2.b_vram, (float)N2_VRAM_W, (float)N2_VRAM_H);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, n2.tex_vram);
+    glUniform1i(n2.b_src, 0);
+    {
+        float x0 = (float)dx, y0 = (float)dy;
+        float x1 = (float)(dx + w), y1 = (float)(dy + h);
+        const float pos[12] = { x0,y0, x1,y0, x0,y1,  x1,y0, x1,y1, x0,y1 };
+        const float uv [12] = { u0,v0, u1,v0, u0,v1,  u1,v0, u1,v1, u0,v1 };
+        glVertexAttribPointer((GLuint)n2.b_pos, 2, GL_FLOAT, GL_FALSE, 0, pos);
+        glVertexAttribPointer((GLuint)n2.b_uv,  2, GL_FLOAT, GL_FALSE, 0, uv);
+        glEnableVertexAttribArray((GLuint)n2.b_pos);
+        glEnableVertexAttribArray((GLuint)n2.b_uv);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+    n2.tex_zastarala = 1;
+}
 
 /* Prekresli najednou vsechny cekajici zapisy do VRAM. */
 static void n2_flush_pending_vram(void)
@@ -944,11 +1025,14 @@ int n2_do_cmd_list(uint32_t *list, int list_len, uint32_t *ex_regs, int *last_cm
                ty zelene bloky se starym logem.
                Oznacime cilovou oblast jako zmenenou - prekresli se z pameti
                jadra pri nejblizsim dokresleni, kdy uz je kopie hotova. */
+            int csx = (int)( list[1]        & 0x3ff);
+            int csy = (int)((list[1] >> 16) & 0x1ff);
             int dx = (int)( list[2]        & 0x3ff);
             int dy = (int)((list[2] >> 16) & 0x1ff);
             int cw = (int)(((list[3]        & 0x3ff) - 1) & 0x3ff) + 1;
             int ch = (int)((((list[3] >> 16) & 0x1ff) - 1) & 0x1ff) + 1;
-            n2_vram_written(dx, dy, cw, ch);
+            n2_flush();                    /* dokreslit, at je zdroj hotovy */
+            n2_kopie_v_obraze(csx, csy, dx, dy, cw, ch);
             break;
         }
         case 0xe1: n2_texpage(list[0] & 0xffffff); break;
