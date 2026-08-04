@@ -1399,16 +1399,22 @@ static void nap_core_thread_fn(void) {
 //  zadne okno hry k tomu neni potreba.
 // ==================================================================
 extern "C" JNIEXPORT jstring JNICALL
-Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootBios(JNIEnv *env, jclass,
-                                                        jstring jSys, jstring jSave) {
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootDoMonitoru(JNIEnv *env, jclass,
+                                                        jstring jSys, jstring jSave,
+                                                        jstring jGame) {
   const char *sys  = jSys  ? env->GetStringUTFChars(jSys,  nullptr) : nullptr;
   const char *save = jSave ? env->GetStringUTFChars(jSave, nullptr) : nullptr;
+  const char *game = jGame ? env->GetStringUTFChars(jGame, nullptr) : nullptr;
   std::string sysDir  = sys  ? sys  : "";
   std::string saveDir = save ? save : "";
+  std::string gamePath = game ? game : "";
   if (sys)  env->ReleaseStringUTFChars(jSys,  sys);
   if (save) env->ReleaseStringUTFChars(jSave, save);
+  if (game) env->ReleaseStringUTFChars(jGame, game);
 
-  nap_diag_log("PS1 START BEZ DISKU: pripravuji BIOS (obraz pujde do monitoru)");
+  const bool jeHra = !gamePath.empty();
+  nap_diag_log("PS1 START DO MONITORU: %s (obraz pujde do monitoru)",
+               jeHra ? gamePath.c_str() : "bez disku, nabehne BIOS");
 
   // uklidit pripadny predchozi beh
   if (g_core_run.exchange(false) && g_core_thread.joinable()) g_core_thread.join();
@@ -1419,7 +1425,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootBios(JNIEnv *env, jclass,
 
   if (!g_gles_ready) g_gles_ready = nap_gles_egl_init();   // vlastni kontext, bez okna
   if (!g_gles_ready) {
-    nap_diag_log("PS1 START BEZ DISKU: grafiku se nepodarilo pripravit");
+    nap_diag_log("PS1 START DO MONITORU: grafiku se nepodarilo pripravit");
     return env->NewStringUTF("PS1_BIOS_FAIL grafika");
   }
 
@@ -1431,10 +1437,15 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootBios(JNIEnv *env, jclass,
   retro_set_input_state(nap_input_state);
   retro_init();
 
-  if (!retro_load_game(nullptr)) {          // bez disku -> BIOS menu
-    retro_deinit();
-    nap_diag_log("PS1 START BEZ DISKU: jadro odmitlo start bez disku");
-    return env->NewStringUTF("PS1_BIOS_FAIL jadro");
+  {
+    retro_game_info gi; memset(&gi, 0, sizeof(gi));
+    gi.path = jeHra ? gamePath.c_str() : "";
+    if (!retro_load_game(jeHra ? &gi : nullptr)) {
+      retro_deinit();
+      nap_diag_log("PS1 START DO MONITORU: jadro odmitlo %s",
+                   jeHra ? "hru" : "start bez disku");
+      return env->NewStringUTF(jeHra ? "PS1_HRA_FAIL jadro" : "PS1_BIOS_FAIL jadro");
+    }
   }
   g_loaded.store(true);
 
@@ -1446,8 +1457,9 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootBios(JNIEnv *env, jclass,
   g_core_run.store(true);
   g_core_thread = std::thread(nap_core_thread_fn);
 
-  nap_diag_log("PS1 START BEZ DISKU OK: bezi BIOS, fps=%.2f", g_fps);
-  return env->NewStringUTF("PS1_BIOS_OK");
+  nap_diag_log("PS1 START DO MONITORU OK: bezi %s, fps=%.2f",
+               jeHra ? "HRA" : "BIOS", g_fps);
+  return env->NewStringUTF(jeHra ? "PS1_HRA_OK" : "PS1_BIOS_OK");
 }
 
 extern "C" void nap_ps1_egl_shutdown_c(void) {

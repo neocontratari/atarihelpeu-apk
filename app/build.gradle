@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 104
-        versionName "EMU10-B56-ZPET-NA-B53-A-UKLID"  // renderer vracen presne na B53 (bez tecek a kousani) + smazana mrtva duplicitni zobrazovaci cesta
+        versionCode 105
+        versionName "EMU10-B57-HRA-DO-MONITORU"  // hra se spousti do TEHOZ monitoru jako BIOS; samostatne okno na sirku (kreslilo do pbufferu, gfw=0 gfh=0) zruseno; smazana i druha mrtva plocha
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

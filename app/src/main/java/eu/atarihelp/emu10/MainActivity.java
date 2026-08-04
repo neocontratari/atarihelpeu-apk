@@ -4522,59 +4522,13 @@ public class MainActivity extends Activity {
     private Ps1GlTextureView ps1GlView = null;
 
     // Zapnout nas plynuly OpenGL obraz (hlavni zobrazovaci cesta pro PS1).
-    private void ps1GlEnable() {
-        try {
-            // ====== DRUHE PLATNO ZRUSENO ======
-            // Hra bezi v samostatnem nativnim okne (NativeActivity + eglrender),
-            // ktere si kresli i vlastni ovladaci prvky. Tenhle GL pohled uvnitr
-            // hlavni aktivity je pozustatek stare cesty, kdy se hra kreslila
-            // primo v appce. Dnes uz nic neukazuje, jen si bere snimky a plete
-            // se (uzivatel videl dve obrazovky - jednu s hrou, druhou jen
-            // s ovladacem). TV si obraz bere primo z jadra, takze tenhle
-            // pohled k nicemu neni.
-            appendNativeLog("PS1_DRUHE_PLATNO_ZRUSENO duvod=hra bezi v nativnim okne");
-            if (true) return;
-        } catch (Throwable ignored) {}
-        try {
-            if (ps1GlView != null) return;              // uz bezi
-            if (rootFrame == null) return;
-            Ps1GlTextureView gv = new Ps1GlTextureView(MainActivity.this,
-                    msg -> appendNativeLog(msg));
-            // DULEZITE: vrstva nesmi zrat dotyky, jinak nejde kliknout na
-            // menu nad ni (proto drive neslo vyskocit z PS1 zpatky do apky).
-            // Puvodni cesta to mela nastavene taky - ja to zapomnel.
-            gv.setClickable(false);
-            gv.setEnabled(false);
-            gv.setFocusable(false);
-            gv.setFocusableInTouchMode(false);
-            // index 0 = na dno rootFrame, web kresli nad tim (stejne jako
-            // to mela puvodni cesta)
-            rootFrame.addView(gv, 0, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            try { gv.setZ(-1f); } catch (Throwable ignored) {}
-            ps1GlView = gv;
-            appendNativeLog("D PS1_GL_ON - plynuly obraz je hlavni cesta");
-        } catch (Throwable t) {
-            appendNativeLog("D PS1_GL_ENABLE_ERROR " + safeMsg(t));
-        }
-    }
+    // Obraz PS1 chodi do monitoru pres odber snimku z jadra (grabFrame).
+    // Zadny dalsi GL pohled uvnitr aktivity uz neexistuje - drive tu byl
+    // Ps1GlTextureView, ktery se od KROKU D nespoustel (stalo za nim
+    // "if (true) return;") a jen mátl. Smazano.
+    private void ps1GlEnable() { }
 
-    // Vypnout nas obraz (pri ukonceni hry / odchodu z aplikace).
-    private void ps1GlDisable() {
-        try {
-            final Ps1GlTextureView old = ps1GlView;
-            ps1GlView = null;
-            if (old == null) return;
-            try { old.stopRender(); } catch (Throwable ignored) {}
-            ui.post(() -> {
-                try { if (old.getParent() instanceof ViewGroup) ((ViewGroup) old.getParent()).removeView(old); }
-                catch (Throwable ignored) {}
-            });
-            appendNativeLog("D PS1_GL_OFF");
-        } catch (Throwable t) {
-            appendNativeLog("D PS1_GL_DISABLE_ERROR " + safeMsg(t));
-        }
-    }
+    private void ps1GlDisable() { }
 
     // Tlacitko na logu NaP: kdyz obraz bezi, prepina POMER STRAN
     // 4:3 <-> 16:9 (pro televizi). Kdyz nebezi, zapne ho.
@@ -6261,12 +6215,41 @@ public class MainActivity extends Activity {
                 appendNativeLog("KROKC EGL_STAGE_BIOS do=" + biosDir.getAbsolutePath());
             }
 
-            ps1GameWindowOwnsCore = true;   // od ted jadro patri oknu hry
-            ps1BiosRunning = false;         // BIOS uz nebezi, prebira ho hra
-            appendNativeLog("KROKC EGL_PS1_LAUNCH (jadro prebira okno hry)");
-            android.content.Intent it = new android.content.Intent(this, android.app.NativeActivity.class);
-            it.addFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(it);
+            // ====== JEDNA ZOBRAZOVACI CESTA PRO BIOS I HRU ======
+            // Drive se tady otviralo SAMOSTATNE OKNO (NativeActivity) na sirku.
+            // Jadro v nem kreslilo do neviditelne plochy - v logu bylo
+            // "GLES_INIT_OK pbuffer=1024x768" a hned za tim
+            // "PS1_GRABFRAME_HEARTBEAT gfw=0 gfh=0", tedy odebrany obraz mel
+            // NULOVOU velikost. Proto tam byla cerna obrazovka jen s ovladacem
+            // a zvukem, a pritom v portretu porad visel BIOS. To bylo to
+            // druhe platno.
+            // Ted se hra spousti do TEHOZ monitoru jako BIOS - stejny OpenGL
+            // ES renderer, stejny odber snimku, jedna cesta.
+            String cestaKeHre = "";
+            java.io.File[] nalezene = ps1Dir.listFiles();
+            if (nalezene != null) {
+                for (java.io.File f : nalezene) {
+                    if (!f.isFile()) continue;
+                    String n = f.getName().toLowerCase(java.util.Locale.US);
+                    if (n.endsWith(".cue")) { cestaKeHre = f.getAbsolutePath(); break; }
+                    if (cestaKeHre.isEmpty() && (n.endsWith(".chd") || n.endsWith(".pbp")
+                            || n.endsWith(".iso") || n.endsWith(".img"))) {
+                        cestaKeHre = f.getAbsolutePath();
+                    }
+                }
+            }
+            ps1GameWindowOwnsCore = false;  // jadro zustava tady, u monitoru
+            ps1BiosRunning = false;         // uz nebezi BIOS, ale hra
+            java.io.File sysDirH  = new java.io.File(getFilesDir(), "ps1_system");
+            java.io.File saveDirH = new java.io.File(getFilesDir(), "ps1_saves");
+            if (!sysDirH.exists())  sysDirH.mkdirs();
+            if (!saveDirH.exists()) saveDirH.mkdirs();
+            ps1EnsureBios(sysDirH);
+            String vysledek = NativePs1CoreBridge.bootGameSafe(
+                    sysDirH.getAbsolutePath(), saveDirH.getAbsolutePath(), cestaKeHre);
+            ps1LastBootResult = vysledek;
+            appendNativeLog("PS1_HRA_DO_MONITORU cesta=" + cestaKeHre
+                    + " vysledek=" + vysledek);
         } catch (Throwable t) {
             appendNativeLog("KROKC EGL_PS1_LAUNCH_FAIL " + safeMsg(t) + " - padam na puvodni cestu");
             ps1ActivateNativeView();

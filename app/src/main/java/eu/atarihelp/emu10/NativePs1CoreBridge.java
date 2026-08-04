@@ -9,7 +9,9 @@ public final class NativePs1CoreBridge {
     }
     private static native String ps1CoreInfo();
     private static native String ps1Boot(String systemDir, String saveDir, String gamePath);
-    private static native String ps1BootBios(String systemDir, String saveDir);   // start bez disku -> menu BIOSu
+    // Jedina cesta pro obraz PS1: jadro kresli pres OpenGL ES a snimek jde do
+    // monitoru. Prazdna cesta ke hre = start bez disku (menu BIOSu).
+    private static native String ps1BootDoMonitoru(String systemDir, String saveDir, String gamePath);
     private static native String ps1Status();
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
@@ -42,7 +44,15 @@ public final class NativePs1CoreBridge {
     // a jeho menu (MEMORY CARD / CD PLAYER). Obraz jde do monitoru v appce.
     public static String bootBiosSafe(String systemDir, String saveDir) {
         if (!loaded) return "PS1_BIOS_FAIL knihovna";
-        try { return ps1BootBios(systemDir, saveDir); } catch (Throwable t) { return "PS1_BIOS_FAIL " + t; }
+        try { return ps1BootDoMonitoru(systemDir, saveDir, ""); } catch (Throwable t) { return "PS1_BIOS_FAIL " + t; }
+    }
+    // Spusti HRU do TEHOZ monitoru jako BIOS. Zadne druhe platno, zadne
+    // samostatne okno na sirku - jedna zobrazovaci cesta pro obojí.
+    public static String bootGameSafe(String systemDir, String saveDir, String gamePath) {
+        if (!loaded) return "PS1_HRA_FAIL knihovna";
+        if (gamePath == null || gamePath.isEmpty()) return "PS1_HRA_FAIL prazdna cesta";
+        try { return ps1BootDoMonitoru(systemDir, saveDir, gamePath); }
+        catch (Throwable t) { return "PS1_HRA_FAIL " + t; }
     }
     public static int grabFrameSafe(int[] out) {
         if (!loaded) return 0;

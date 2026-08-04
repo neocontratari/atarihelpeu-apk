@@ -1,13 +1,13 @@
 # PŘEDÁVACÍ BALÍČEK — emu10 / PS1 (cesta A, GLES2 renderer)
 
 Datum: 3. 8. 2026 (aktualizováno po opravě B50)
-Poslední verze v repu: **EMU10-B56-ZPET-NA-B53-A-UKLID (versionCode 104)**
+Poslední verze v repu: **EMU10-B57-HRA-DO-MONITORU (versionCode 105)**
 
 ---
 
 ## 0. TOHLE UŽ JE OPRAVENÉ (B51, versionCode 99) — čeká na test
 
-Podrobnosti a naměřená čísla jsou v `CO_JE_V_B56.md`. Kromě rámce se v B51
+Podrobnosti a naměřená čísla jsou v `CO_JE_V_B57.md`. Kromě rámce se v B51
 vrátil region u startu bez disku na EU/PAL — v B49 byl přehozen na US, což
 měnilo, který soubor BIOSu se vůbec nahraje.
 
