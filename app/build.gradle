@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 116
-        versionName "EMU10-B68-CISTA-CESTA"  // BIOS ma zobrazovaci plochu; obraz jde jadro -> sdilena textura GPU -> OpenGL ES -> displej; ve strance nezustal ani mrtvy obrazek
+        versionCode 118
+        versionName "EMU10-B70-LOMENE-CARY"  // opravena promenna delka lomenych car - renderer je preskakoval o pevny pocet slov a ztracel krok v seznamu prikazu
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

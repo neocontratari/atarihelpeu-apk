@@ -148,16 +148,6 @@ public class MainActivity extends Activity {
                 if (!saveDir.exists()) saveDir.mkdirs();
                 ps1EnsureBios(sysDir);          // BIOS musi byt na miste
                 appendNativeLog("PS1_BIOS_START bez disku (jako zapnuti konzole)");
-                // ZOBRAZOVACI PLOCHA MUSI BYT I PRO BIOS. Drive se zapinala jen
-                // pri spusteni hry a BIOS kreslil do stranky pres JPEG - ten uz
-                // je smazany, takze BIOS nemel CIM kreslit a byl cerny.
-                // A musi vzniknout DRIV nez jadro, aby si jadro mohlo vzit jeji
-                // graficky kontext jako sdileny (prima cesta bez kopirovani).
-                final java.util.concurrent.CountDownLatch plochaHotova =
-                        new java.util.concurrent.CountDownLatch(1);
-                ui.post(() -> ps1GlEnable(() -> plochaHotova.countDown()));
-                try { plochaHotova.await(4, java.util.concurrent.TimeUnit.SECONDS); }
-                catch (Throwable ignored) {}
                 String r = NativePs1CoreBridge.bootBiosSafe(
                         sysDir.getAbsolutePath(), saveDir.getAbsolutePath());
                 appendNativeLog("PS1_BIOS_START vysledek=" + r);
@@ -1172,15 +1162,7 @@ public class MainActivity extends Activity {
                         // tmava herni sceny, jen ty opravdu vypadajici na "temer cerny
                         // snimek".
                         if (brightAvg < 20) {
-                            // UTLUMENO: tenhle radek byl v logu 595x a prekryl vsechno
-                            // podstatne. Staci jednou za 5 vterin.
-                            long nyniDark = System.currentTimeMillis();
-                            if (nyniDark - napDarkFrameLastLog > 5000) {
-                                napDarkFrameLastLog = nyniDark;
-                                appendNativeLog("BUILD2SK143 TV_WEB_DARK_FRAME_SPIKE brightAvg=" + brightAvg
-                                        + " mode=" + mode + " w=" + bw + " h=" + bh
-                                        + " (utlumeno na 1x za 5s)");
-                            }
+                            appendNativeLog("BUILD2SK143 TV_WEB_DARK_FRAME_SPIKE brightAvg=" + brightAvg + " mode=" + mode + " w=" + bw + " h=" + bh);
                         }
                         if (napTvWebDupCheckCount >= 60) {
                             appendNativeLog("BUILD2SK67 TV_WEB_PS1_DUPCHECK sameFrames=" + napTvWebDupCheckSame
@@ -2929,15 +2911,49 @@ public class MainActivity extends Activity {
         // aby byl 40ms bezpecny. Skutecne zrychleni PS1 preview beze skody na
         // TV-castu by vyzadovalo odstranit JPEG kompresi uplne (TextureView
         // pristup jako u Segy) - viz predavaci poznamka, ceka na potvrzeni.
-        /** Stranka nam rekne, KDE presne ma byt obraz (v pixelech) a jestli
-         *  je na sirku. Na vysku lezi obraz v okenku konzole a plocha musi byt
-         *  NAD strankou (grafika konzole je neprusvitna). Na sirku je stranka
-         *  pruhledna, takze plocha muze byt pod ni a ovladac zustane videt. */
+        private int[] ps1PrevBuf = new int[1024 * 512];
+        private Bitmap ps1PreviewSrcBmp;
+        private Bitmap ps1PreviewScaledBmp;
+        private Canvas ps1PreviewScaledCanvas;
+        private final Paint ps1PreviewScalePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        private final Rect ps1PreviewDstRect = new Rect(); // BUILD2SK95: opakovane pouzivany, aby se nealokoval kazdy snimek
+        private long ps1PreviewDiagSumMs = 0;
+        private int ps1PreviewDiagCount = 0;
         @JavascriptInterface
-        public void ps1SetScreenRect(int l, int t, int w, int h, boolean naSirku) {
-            ui.post(() -> ps1PlaceGlView(l, t, w, h, naSirku));
+        public String ps1FramePreviewB64() {
+            try {
+                long t0 = System.currentTimeMillis();
+                int wh = NativePs1CoreBridge.grabFrameSafe(ps1PrevBuf);
+                if (wh < 0) { int need = ((-wh) >> 16) * ((-wh) & 0xFFFF); ps1PrevBuf = new int[need + 1024]; wh = NativePs1CoreBridge.grabFrameSafe(ps1PrevBuf); }
+                if (wh <= 0) return "";
+                int w = wh >> 16, h = wh & 0xFFFF;
+                if (ps1PreviewSrcBmp == null || ps1PreviewSrcBmp.getWidth() != w || ps1PreviewSrcBmp.getHeight() != h) {
+                    if (ps1PreviewSrcBmp != null) { try { ps1PreviewSrcBmp.recycle(); } catch (Throwable ignored) {} }
+                    ps1PreviewSrcBmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+                }
+                ps1PreviewSrcBmp.setPixels(ps1PrevBuf, 0, w, 0, 0, w, h);
+                int sw = w * 3, sh = h * 3;
+                if (ps1PreviewScaledBmp == null || ps1PreviewScaledBmp.getWidth() != sw || ps1PreviewScaledBmp.getHeight() != sh) {
+                    if (ps1PreviewScaledBmp != null) { try { ps1PreviewScaledBmp.recycle(); } catch (Throwable ignored) {} }
+                    ps1PreviewScaledBmp = android.graphics.Bitmap.createBitmap(sw, sh, android.graphics.Bitmap.Config.ARGB_8888);
+                    ps1PreviewScaledCanvas = new Canvas(ps1PreviewScaledBmp);
+                }
+                ps1PreviewDstRect.set(0, 0, sw, sh);
+                ps1PreviewScaledCanvas.drawBitmap(ps1PreviewSrcBmp, null, ps1PreviewDstRect, ps1PreviewScalePaint);
+                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                ps1PreviewScaledBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, bo);
+                String outB64 = Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
+                long tookMs = System.currentTimeMillis() - t0;
+                ps1PreviewDiagSumMs += tookMs; ps1PreviewDiagCount++;
+                if (ps1PreviewDiagCount >= 50) {
+                    appendNativeLog("BUILD2SK85 PS1_PREVIEW_AVG n=" + ps1PreviewDiagCount
+                            + " avgMs=" + (ps1PreviewDiagSumMs / ps1PreviewDiagCount)
+                            + " srcW=" + w + " srcH=" + h + " outBytes=" + outB64.length());
+                    ps1PreviewDiagCount = 0; ps1PreviewDiagSumMs = 0;
+                }
+                return outB64;
+            } catch (Throwable t) { return ""; }
         }
-
         @JavascriptInterface
         public String ps1Stop() {
             return stopPs1SessionHard("jsPs1Stop"); // BUILD2SA5I: one path stops audio + core + fd.
@@ -3287,19 +3303,6 @@ public class MainActivity extends Activity {
             writer.setDaemon(true);
             writer.start();
         }
-    }
-
-    /** Zapise text rovnou do log souboru, bez fronty. Pro pady - tam uz
-     *  na zapisovaci vlakno neni cas. */
-    private void napZapisPadPrimo(String text) {
-        try {
-            File f = napTvWebLogFile;
-            if (f == null) return;
-            try (FileOutputStream fos = new FileOutputStream(f, true)) {
-                fos.write(("\n*** " + text + "\n").getBytes("UTF-8"));
-                fos.flush();
-            }
-        } catch (Throwable ignored) {}
     }
 
     private void napTvWebLogFileWriterLoop() {
@@ -4519,168 +4522,58 @@ public class MainActivity extends Activity {
     private Ps1GlTextureView ps1GlView = null;
 
     // Zapnout nas plynuly OpenGL obraz (hlavni zobrazovaci cesta pro PS1).
-    // Obraz PS1 chodi do monitoru pres odber snimku z jadra (grabFrame).
-    // Zadny dalsi GL pohled uvnitr aktivity uz neexistuje - drive tu byl
-    // Ps1GlTextureView, ktery se od KROKU D nespoustel (stalo za nim
-    // "if (true) return;") a jen mátl. Smazano.
-    private int glRectL = -1, glRectT = -1, glRectW = -1, glRectH = -1;
-    private boolean glNaSirku = false;
-
-    /** Postavi zobrazovaci plochu presne tam, kde ji stranka chce. */
-    private void ps1PlaceGlView(int l, int t, int w, int h, boolean naSirku) {
-        glRectL = l; glRectT = t; glRectW = w; glRectH = h; glNaSirku = naSirku;
-        Ps1GlTextureView gv = ps1GlView;
-        if (gv == null || rootFrame == null || w <= 0 || h <= 0) return;
+    private void ps1GlEnable() {
         try {
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, h);
-            lp.leftMargin = l; lp.topMargin = t;
-            gv.setLayoutParams(lp);
-            // na sirku POD stranku (je pruhledna, ovladac zustane nahore),
-            // na vysku NAD ni (grafika konzole je neprusvitna)
-            // POZOR: NEODEBIRAT a nepridavat znovu! Odebranim pohledu se zrusi
-            // jeho kreslici povrch, jadro by melo sdileni navazane na neplatny
-            // kontext a obraz by zcernal. Poradi resime jen vyskou (setZ),
-            // rozmery jen zmenou rozvrzeni - povrch tim zustane zivy.
-            gv.setLayoutParams(lp);
-            gv.requestLayout();
-            gv.setZ(naSirku ? -1f : 1f);
-            appendNativeLog("PS1_OBRAZ_UMISTEN " + l + "," + t + " " + w + "x" + h
-                    + (naSirku ? " (na sirku, pod strankou)" : " (na vysku, nad strankou)"));
-        } catch (Throwable e) {
-            appendNativeLog("PS1_OBRAZ_UMISTEN_CHYBA " + safeMsg(e));
-        }
-    }
-
-    private long napDarkFrameLastLog = 0;
-    private java.util.Timer ps1StavTimer;
-
-    /** JEDNA RADKA ZA VTERINU, KTERA MI REKNE VSECHNO.
-     *  Je napsana pro cteni beze zraku: co dela jadro, co dela obraz, kde
-     *  plocha lezi, co je nad ni, a jestli kresli obraz nebo cernou.
-     *  Diky tomu nemusim po uzivateli chtit, aby neco poznaval. */
-    private void ps1StavStart() {
-        if (ps1StavTimer != null) return;
-        ps1StavTimer = new java.util.Timer("ps1-stav", true);
-        ps1StavTimer.schedule(new java.util.TimerTask() {
-            @Override public void run() {
-                try { ui.post(() -> ps1StavZapis()); } catch (Throwable ignored) {}
-            }
-        }, 1000, 1000);
-    }
-
-    private void ps1StavStop() {
-        try { if (ps1StavTimer != null) ps1StavTimer.cancel(); } catch (Throwable ignored) {}
-        ps1StavTimer = null;
-    }
-
-    private void ps1StavZapis() {
+            // ====== DRUHE PLATNO ZRUSENO ======
+            // Hra bezi v samostatnem nativnim okne (NativeActivity + eglrender),
+            // ktere si kresli i vlastni ovladaci prvky. Tenhle GL pohled uvnitr
+            // hlavni aktivity je pozustatek stare cesty, kdy se hra kreslila
+            // primo v appce. Dnes uz nic neukazuje, jen si bere snimky a plete
+            // se (uzivatel videl dve obrazovky - jednu s hrou, druhou jen
+            // s ovladacem). TV si obraz bere primo z jadra, takze tenhle
+            // pohled k nicemu neni.
+            appendNativeLog("PS1_DRUHE_PLATNO_ZRUSENO duvod=hra bezi v nativnim okne");
+            if (true) return;
+        } catch (Throwable ignored) {}
         try {
-            String jadro = "?";
-            try { jadro = NativePs1CoreBridge.statusSafe(); } catch (Throwable ignored) {}
-            // z dlouheho hlaseni vytahnu jen to, co potrebuju
-            String fps = najdiHodnotu(jadro, "fps="), res = najdiHodnotu(jadro, "res=");
-            String fifo = najdiHodnotu(jadro, "audioFifoFrames=");
-            String zahoz = najdiHodnotu(jadro, "audioDropped="), resync = najdiHodnotu(jadro, "audioResyncs=");
-
-            StringBuilder sb = new StringBuilder("PS1_STAV");
-            sb.append(" | jadro: fps=").append(fps).append(" res=").append(res);
-            sb.append(" | zvuk: fronta=").append(fifo).append(" zahozeno=").append(zahoz)
-              .append(" doskoku=").append(resync);
-            sb.append(" | obraz: cesta=").append(Ps1GlTextureView.statCesta)
-              .append(" snimku/s=").append(Ps1GlTextureView.statSnimkuZaVterinu)
-              .append(" kresleni=").append(String.format(java.util.Locale.US, "%.1f", Ps1GlTextureView.statKresleniMs)).append("ms")
-              .append(" swap=").append(String.format(java.util.Locale.US, "%.1f", Ps1GlTextureView.statSwapMs)).append("ms")
-              .append(" zdroj=").append(Ps1GlTextureView.statZdrojW).append("x").append(Ps1GlTextureView.statZdrojH)
-              .append(" jas=").append(Ps1GlTextureView.statJas)
-              .append(" GLchyb=").append(Ps1GlTextureView.statChybGl);
-
-            Ps1GlTextureView gv = ps1GlView;
-            if (gv == null || rootFrame == null) {
-                sb.append(" | plocha: NENI");
-            } else {
-                int idx = rootFrame.indexOfChild(gv), poc = rootFrame.getChildCount();
-                sb.append(" | plocha: ").append(gv.getLeft()).append(",").append(gv.getTop())
-                  .append(" ").append(gv.getWidth()).append("x").append(gv.getHeight())
-                  .append(" poradi=").append(idx).append("z").append(poc)
-                  .append(" videt=").append(gv.getVisibility() == View.VISIBLE ? "ANO" : "NE")
-                  .append(" pruhlednost=").append(String.format(java.util.Locale.US, "%.2f", gv.getAlpha()));
-                // CO LEZI NAD PLOCHOU - presne tohle mi minule chybelo
-                StringBuilder nad = new StringBuilder();
-                for (int i = idx + 1; i < poc; i++) {
-                    View v = rootFrame.getChildAt(i);
-                    if (v == null || v.getVisibility() != View.VISIBLE) continue;
-                    if (nad.length() > 0) nad.append("+");
-                    nad.append(v.getClass().getSimpleName())
-                       .append("(").append(v.getWidth()).append("x").append(v.getHeight()).append(")");
-                }
-                sb.append(" | nad plochou: ").append(nad.length() > 0 ? nad : "nic");
-            }
-            appendNativeLog(sb.toString());
-        } catch (Throwable t) {
-            appendNativeLog("PS1_STAV_CHYBA " + safeMsg(t));
-        }
-    }
-
-    private static String najdiHodnotu(String text, String klic) {
-        try {
-            int i = text.indexOf(klic);
-            if (i < 0) return "?";
-            int j = i + klic.length(), k = j;
-            while (k < text.length() && text.charAt(k) != ' ') k++;
-            return text.substring(j, k);
-        } catch (Throwable t) { return "?"; }
-    }
-
-    private void ps1GlEnable() { ps1GlEnable(null); }
-
-    // Zapne jedinou zobrazovaci plochu. 'poHotovem' se spusti, az ma plocha
-    // hotovy GL kontext - teprve POTOM se smi startovat jadro, aby si nas
-    // kontext mohlo vzit jako sdileny (to je ta prima cesta bez kopirovani).
-    private void ps1GlEnable(Runnable poHotovem) {
-        try {
-            if (ps1GlView != null) {
-                if (poHotovem != null) poHotovem.run();
-                return;                                  // uz bezi
-            }
+            if (ps1GlView != null) return;              // uz bezi
             if (rootFrame == null) return;
             Ps1GlTextureView gv = new Ps1GlTextureView(MainActivity.this,
                     msg -> appendNativeLog(msg));
-            // Vrstva nesmi brat dotyky, jinak nejde kliknout na ovladac nad ni.
+            // DULEZITE: vrstva nesmi zrat dotyky, jinak nejde kliknout na
+            // menu nad ni (proto drive neslo vyskocit z PS1 zpatky do apky).
+            // Puvodni cesta to mela nastavene taky - ja to zapomnel.
             gv.setClickable(false);
             gv.setEnabled(false);
             gv.setFocusable(false);
             gv.setFocusableInTouchMode(false);
-            // index 0 = na dno; webova stranka s ovladacem kresli NAD tim.
+            // index 0 = na dno rootFrame, web kresli nad tim (stejne jako
+            // to mela puvodni cesta)
             rootFrame.addView(gv, 0, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             try { gv.setZ(-1f); } catch (Throwable ignored) {}
-            if (poHotovem != null) gv.setOnContextReady(poHotovem);
             ps1GlView = gv;
-            appendNativeLog("PS1_OBRAZ_GL_ZAPNUT - plocha si vezme obraz primo z GPU");
-            if (glRectW > 0) ps1PlaceGlView(glRectL, glRectT, glRectW, glRectH, glNaSirku);
-            ps1StavStart();
+            appendNativeLog("D PS1_GL_ON - plynuly obraz je hlavni cesta");
         } catch (Throwable t) {
-            appendNativeLog("PS1_OBRAZ_GL_CHYBA " + safeMsg(t));
+            appendNativeLog("D PS1_GL_ENABLE_ERROR " + safeMsg(t));
         }
     }
 
+    // Vypnout nas obraz (pri ukonceni hry / odchodu z aplikace).
     private void ps1GlDisable() {
-        final Ps1GlTextureView old = ps1GlView;
-        ps1GlView = null;
-        Runnable r = () -> {
-            try {
-                if (old != null) {
-                    try { old.stopRender(); } catch (Throwable ignored) {}
-                    if (old.getParent() instanceof ViewGroup)
-                        ((ViewGroup) old.getParent()).removeView(old);
-                }
-                ps1StavStop();
-                appendNativeLog("PS1_OBRAZ_GL_VYPNUT");
-            } catch (Throwable t) {
-                appendNativeLog("PS1_OBRAZ_GL_VYPNUT_CHYBA " + safeMsg(t));
-            }
-        };
-        if (isUiThread()) r.run(); else ui.post(r);
+        try {
+            final Ps1GlTextureView old = ps1GlView;
+            ps1GlView = null;
+            if (old == null) return;
+            try { old.stopRender(); } catch (Throwable ignored) {}
+            ui.post(() -> {
+                try { if (old.getParent() instanceof ViewGroup) ((ViewGroup) old.getParent()).removeView(old); }
+                catch (Throwable ignored) {}
+            });
+            appendNativeLog("D PS1_GL_OFF");
+        } catch (Throwable t) {
+            appendNativeLog("D PS1_GL_DISABLE_ERROR " + safeMsg(t));
+        }
     }
 
     // Tlacitko na logu NaP: kdyz obraz bezi, prepina POMER STRAN
@@ -5142,29 +5035,6 @@ public class MainActivity extends Activity {
         // TV castu; ted platí vzdycky - hrajes/koukas a telefon nesmi zhasnout.
         try { getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Throwable ignored) {}
         napTvWebLogFileInit();
-
-        // ====== ODCHYTAVAC PADU ======
-        // Kdyz nekde spadne java kod, aplikace dosud umrela POTICHU a v logu
-        // z portu 8765 nebylo nic - nedalo se poznat proc. Ted se cely vypis
-        // chyby zapise do toho sameho logu, ktery se posila.
-        try {
-            final Thread.UncaughtExceptionHandler puvodni =
-                    Thread.getDefaultUncaughtExceptionHandler();
-            Thread.setDefaultUncaughtExceptionHandler((vlakno, chyba) -> {
-                try {
-                    java.io.StringWriter sw = new java.io.StringWriter();
-                    chyba.printStackTrace(new java.io.PrintWriter(sw));
-                    // Zapisujeme PRIMO do souboru - zapisovaci vlakno uz nemusi
-                    // stihnout doběhnout, nez proces umre.
-                    napZapisPadPrimo("PAD_APLIKACE vlakno=" + vlakno.getName()
-                            + " chyba=" + chyba + "\n" + sw.toString());
-                } catch (Throwable ignored) {}
-                if (puvodni != null) puvodni.uncaughtException(vlakno, chyba);
-            });
-            appendNativeLog("ODCHYTAVAC_PADU zapnut - pady se zapisou do tohohle logu");
-        } catch (Throwable t) {
-            appendNativeLog("ODCHYTAVAC_PADU nelze zapnout: " + safeMsg(t));
-        }
         // VERZE AUTOMATICKY Z BUILDU - nesmi se rozejit s tim, co je nainstalovane.
         // (Drive jsem verzi psal do logu rucne v nativnim kodu a zapomnel ji
         // prepsat, takze log hlasil starou verzi a hledala se chyba v necem,
@@ -6391,46 +6261,12 @@ public class MainActivity extends Activity {
                 appendNativeLog("KROKC EGL_STAGE_BIOS do=" + biosDir.getAbsolutePath());
             }
 
-            // ====== JEDNA ZOBRAZOVACI CESTA PRO BIOS I HRU ======
-            // Drive se tady otviralo SAMOSTATNE OKNO (NativeActivity) na sirku.
-            // Jadro v nem kreslilo do neviditelne plochy - v logu bylo
-            // "GLES_INIT_OK pbuffer=1024x768" a hned za tim
-            // "PS1_GRABFRAME_HEARTBEAT gfw=0 gfh=0", tedy odebrany obraz mel
-            // NULOVOU velikost. Proto tam byla cerna obrazovka jen s ovladacem
-            // a zvukem, a pritom v portretu porad visel BIOS. To bylo to
-            // druhe platno.
-            // Ted se hra spousti do TEHOZ monitoru jako BIOS - stejny OpenGL
-            // ES renderer, stejny odber snimku, jedna cesta.
-            String cestaKeHre = "";
-            java.io.File[] nalezene = ps1Dir.listFiles();
-            if (nalezene != null) {
-                for (java.io.File f : nalezene) {
-                    if (!f.isFile()) continue;
-                    String n = f.getName().toLowerCase(java.util.Locale.US);
-                    if (n.endsWith(".cue")) { cestaKeHre = f.getAbsolutePath(); break; }
-                    if (cestaKeHre.isEmpty() && (n.endsWith(".chd") || n.endsWith(".pbp")
-                            || n.endsWith(".iso") || n.endsWith(".img"))) {
-                        cestaKeHre = f.getAbsolutePath();
-                    }
-                }
-            }
-            ps1GameWindowOwnsCore = false;  // jadro zustava tady, u monitoru
-            ps1BiosRunning = false;         // uz nebezi BIOS, ale hra
-            java.io.File sysDirH  = new java.io.File(getFilesDir(), "ps1_system");
-            java.io.File saveDirH = new java.io.File(getFilesDir(), "ps1_saves");
-            if (!sysDirH.exists())  sysDirH.mkdirs();
-            if (!saveDirH.exists()) saveDirH.mkdirs();
-            ps1EnsureBios(sysDirH);
-            final String hra = cestaKeHre;
-            final String sysA = sysDirH.getAbsolutePath(), saveA = saveDirH.getAbsolutePath();
-            // POradi je dulezite: nejdriv plocha (a jeji GL kontext), teprve
-            // potom jadro - jinak si jadro nema co vzit jako sdileny kontext
-            // a obraz by se musel tahat pres procesor.
-            ui.post(() -> ps1GlEnable(() -> {
-                String v = NativePs1CoreBridge.bootGameSafe(sysA, saveA, hra);
-                ps1LastBootResult = v;
-                appendNativeLog("PS1_HRA_DO_MONITORU cesta=" + hra + " vysledek=" + v);
-            }));
+            ps1GameWindowOwnsCore = true;   // od ted jadro patri oknu hry
+            ps1BiosRunning = false;         // BIOS uz nebezi, prebira ho hra
+            appendNativeLog("KROKC EGL_PS1_LAUNCH (jadro prebira okno hry)");
+            android.content.Intent it = new android.content.Intent(this, android.app.NativeActivity.class);
+            it.addFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(it);
         } catch (Throwable t) {
             appendNativeLog("KROKC EGL_PS1_LAUNCH_FAIL " + safeMsg(t) + " - padam na puvodni cestu");
             ps1ActivateNativeView();
@@ -7348,21 +7184,8 @@ public class MainActivity extends Activity {
                     ps1LastBootResult = "PS1_BOOTING...";
                     appendNativeLog("BUILD2SA5P PS1_BIOS_AUDIT " + ps1BiosAudit(sysDir));
                     ps1EnsureBios(sysDir); // BUILD2SA7
-                    // JEDNA CESTA: stejna funkce jako start bez disku, jen s cestou
-                    // ke hre. Drive se tu volalo bootSafe(), ktere hru sice nahralo,
-                    // ale NEPRIPRAVILO grafiku, zvuk ani vlakno emulace - obraz pak
-                    // skoncil v neviditelne plose (v logu pbuffer + gfw=0 gfh=0)
-                    // a zustala cerna obrazovka jen s ovladacem a zvukem.
-                    // Nejdriv plocha s GL kontextem, teprve potom jadro - jinak
-                    // nevznikne sdileni a obraz by musel pres procesor.
-                    final String sysP = sysDir.getAbsolutePath(), saveP = saveDir.getAbsolutePath();
-                    final java.util.concurrent.CountDownLatch hotovo = new java.util.concurrent.CountDownLatch(1);
-                    ui.post(() -> ps1GlEnable(() -> hotovo.countDown()));
-                    try { hotovo.await(4, java.util.concurrent.TimeUnit.SECONDS); } catch (Throwable ignored) {}
-                    ps1LastBootResult = NativePs1CoreBridge.bootGameSafe(sysP, saveP, fdPath);
-                    appendNativeLog("PS1_HRA_DO_MONITORU cesta=" + fdPath
-                            + " vysledek=" + ps1LastBootResult);
-                    boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_HRA_OK");
+                    ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);
+                    boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK");
                     boolean stillWanted = ok && bootGen == ps1LifecycleGen && ps1BootActive;
                     ps1BootActive = false;
                     if (stillWanted) {

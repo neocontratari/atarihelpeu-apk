@@ -37,6 +37,8 @@ void n2_flush(void);           /* vykresli vse, co ceka v davce */
 /* --- prenosy VRAM ------------------------------------------------------ */
 /* CPU zapsal do gpu.vram (logo BIOSu, snimek filmu, textury) - dostat to na GPU */
 void n2_vram_written(int x, int y, int w, int h);
+/* Vrati oblast obrazu z GPU zpatky do pameti jadra (pred kopii ve VRAM). */
+void n2_readback_to_vram(int x, int y, int w, int h);
 /* 24bitovy rezim (film/MDEC): oblast displeje lezi ve VRAM jako 3 bajty na
    pixel, ne jako 15bit. Musi se dekodovat zvlast, jinak z toho jsou
    rozsypane barvy pri spravne geometrii. */

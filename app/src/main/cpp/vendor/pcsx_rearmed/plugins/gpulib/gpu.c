@@ -873,6 +873,19 @@ static noinline int do_cmd_buffer(struct psx_gpu *gpu, uint32_t *data, int count
         break;
       *cycles_sum += *cycles_last;
       *cycles_last = 0;
+#ifdef NAPLES2_READBACK
+      /* Zdroj kopie muze byt neco, co nakreslila GPU - v teto pameti to
+         neni. Vratime si tu oblast z obrazu, jinak se zkopiruje nesmysl
+         a pak se z nej texturuje (zelena kase v menu BIOSu). */
+      {
+        const uint32_t *pp = data + pos;
+        int sx = (int)(LE32TOH(pp[1]) & 0x3ff);
+        int sy = (int)((LE32TOH(pp[1]) >> 16) & 0x1ff);
+        int cw = (int)((((LE32TOH(pp[3])      ) - 1) & 0x3ff) + 1);
+        int ch = (int)((((LE32TOH(pp[3]) >> 16) - 1) & 0x1ff) + 1);
+        n2_readback_to_vram(sx, sy, cw, ch);
+      }
+#endif
       if (do_vram_copy_pre(gpu, data + pos, cycles_last))
         do_vram_copy(gpu->vram, gpu->ex_regs, data + pos);
       pos += 4;

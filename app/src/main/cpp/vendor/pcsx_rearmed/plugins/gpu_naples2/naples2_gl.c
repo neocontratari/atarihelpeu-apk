@@ -519,6 +519,58 @@ void n2_upload_all_vram(void)
 }
 
 
+/* VRACENI OBRAZU Z GPU ZPATKY DO PAMETI JADRA.
+   BIOS si nekterou grafiku slozi KRESLENIM (tedy v GPU) a pak ji prikazem
+   0x80 zkopiruje jinam ve videopameti. Tu kopii ale dela jadro nad svou
+   pameti (gpulib/gpu.c: do_vram_copy(gpu->vram,...)), kam se to, co
+   nakreslila GPU, nikdy nedostane - zkopiruje tedy nesmysl a z toho
+   nesmyslu se pak texturuje. Odtud ta zelena kase pres MEMORY CARD.
+   Tady proto pred kopii precteme zdrojovou oblast z obrazu v GPU
+   a zapiseme ji do pameti jadra, aby mela kopie z ceho brat. */
+void n2_readback_to_vram(int x, int y, int w, int h)
+{
+    unsigned short *vram = n2_host_vram();
+    unsigned char *buf;
+    int r, c, fy;
+    size_t need;
+
+    if (!n2.ready || !vram || w <= 0 || h <= 0) return;
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (x + w > N2_VRAM_W) w = N2_VRAM_W - x;
+    if (y + h > N2_VRAM_H) h = N2_VRAM_H - y;
+    if (w <= 0 || h <= 0) return;
+
+    n2_flush();                       /* dokreslit, at ctem hotovy obraz */
+
+    need = (size_t)w * h * 4;
+    if (n2.readbuf_cap < need) {
+        unsigned char *n = (unsigned char *)realloc(n2.readbuf, need);
+        if (!n) return;
+        n2.readbuf = n; n2.readbuf_cap = need;
+    }
+    buf = n2.readbuf;
+
+    /* Obraz je v pameti otoceny (kreslici stinovac obraci Y), takze radek
+       videopameti y lezi v ramci na radku N2_VRAM_H-1-y. */
+    fy = N2_VRAM_H - y - h;
+    glBindFramebuffer(GL_FRAMEBUFFER, n2.fbo);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(x, fy, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+
+    for (r = 0; r < h; r++) {
+        const unsigned char *src = buf + (size_t)r * w * 4;
+        unsigned short *dst = vram + (size_t)(y + (h - 1 - r)) * N2_VRAM_W + x;
+        for (c = 0; c < w; c++) {
+            unsigned R = (src[c*4+0] * 31 + 127) / 255;
+            unsigned G = (src[c*4+1] * 31 + 127) / 255;
+            unsigned B = (src[c*4+2] * 31 + 127) / 255;
+            unsigned M = (src[c*4+3] >= 128) ? 1u : 0u;
+            dst[c] = (unsigned short)(R | (G << 5) | (B << 10) | (M << 15));
+        }
+    }
+}
+
 /* Prekresli najednou vsechny cekajici zapisy do VRAM. */
 static void n2_flush_pending_vram(void)
 {
@@ -886,26 +938,63 @@ int n2_do_cmd_list(uint32_t *list, int list_len, uint32_t *ex_regs, int *last_cm
             continue;
         }
 
-        if (cmd >= 0x40 && cmd <= 0x5f) {          /* cary - kreslime jako tenke obdelniky */
+        if (cmd >= 0x40 && cmd <= 0x5f) {          /* cary a LOMENE cary */
+            /* ===== TADY BYLA TA CHYBA =====
+               Lomena cara (bit 3 v prikazu) ma PROMENNOU delku - konci az
+               ukoncovacim slovem 0x55555555. Drive se preskakovala o pevny
+               pocet slov podle tabulky, cimz renderer ZTRATIL KROK v seznamu
+               prikazu a od te chvile cetl souradnice vrcholu jako prikazy.
+               V logu to vypadalo jako "stranka 704, 16 bitu na pixel", coz
+               byla ve skutecnosti souradnice 267. Z toho vznikaly ty zelene
+               bloky s napisem SONY pres MEMORY CARD a CD PLAYER: ctyrbitova
+               data se kreslila jako prime barvy.
+               BIOS prave lomenou carou kresli preliv za polozkami menu. */
             unsigned base = list[0] & 0xffffff;
-            int shaded = (cmd & 0x10) ? 1 : 0;
+            int shaded   = (cmd & 0x10) ? 1 : 0;
+            int lomena   = (cmd & 8) ? 1 : 0;
+            int trans    = (cmd & 2) ? 1 : 0;
             int k = 1;
-            int x0 = n2_s11((unsigned)(list[k] & 0xffff));
-            int y0 = n2_s11((unsigned)((list[k] >> 16) & 0xffff));
-            unsigned c1 = base;
-            int x1, y1;
+            unsigned cp;
+            int xp, yp;
+
+            if (list + k >= end) break;
+            cp = base;
+            xp = n2_s11((unsigned)(list[k] & 0xffff));
+            yp = n2_s11((unsigned)((list[k] >> 16) & 0xffff));
             k++;
-            if (shaded) { c1 = list[k] & 0xffffff; k++; }
-            x1 = n2_s11((unsigned)(list[k] & 0xffff));
-            y1 = n2_s11((unsigned)((list[k] >> 16) & 0xffff));
-            n2_set_blend((cmd & 2) ? n2.page_blend : -1);
-            n2_vert(x0, y0, base, 0, 0, 0);
-            n2_vert(x1, y1, c1,   0, 0, 0);
-            n2_vert(x0, y0 + 1, base, 0, 0, 0);
-            n2_vert(x1, y1, c1,   0, 0, 0);
-            n2_vert(x1, y1 + 1, c1, 0, 0, 0);
-            n2_vert(x0, y0 + 1, base, 0, 0, 0);
-            list += 1 + len;
+
+            n2_set_blend(trans ? n2.page_blend : -1);
+
+            for (;;) {
+                unsigned cn = base;
+                int xn, yn;
+
+                if (list + k >= end) break;
+                /* ukoncovaci slovo lomene cary */
+                if (lomena && (list[k] & 0xf000f000) == 0x50005000) { k++; break; }
+
+                if (shaded) {
+                    cn = list[k] & 0xffffff; k++;
+                    if (list + k >= end) break;
+                    if (lomena && (list[k] & 0xf000f000) == 0x50005000) { k++; break; }
+                }
+                xn = n2_s11((unsigned)(list[k] & 0xffff));
+                yn = n2_s11((unsigned)((list[k] >> 16) & 0xffff));
+                k++;
+
+                /* usecku kreslime jako tenky obdelnik */
+                n2_vert(xp,     yp,     cp, 0, 0, 0);
+                n2_vert(xn,     yn,     cn, 0, 0, 0);
+                n2_vert(xp,     yp + 1, cp, 0, 0, 0);
+                n2_vert(xn,     yn,     cn, 0, 0, 0);
+                n2_vert(xn,     yn + 1, cn, 0, 0, 0);
+                n2_vert(xp,     yp + 1, cp, 0, 0, 0);
+
+                cp = cn; xp = xn; yp = yn;
+                if (!lomena) break;
+            }
+
+            list += lomena ? k : (int)(1 + len);
             continue;
         }
 

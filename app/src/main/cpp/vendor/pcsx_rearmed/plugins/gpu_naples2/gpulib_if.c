@@ -22,6 +22,7 @@
    globalni 'gpu', tabulka 'cmd_lengths' i cele rozhrani GPUinit/GPUopen/...,
    ktere pouziva frontend/plugin.c. Stary gpu-gles delal totez - kdyz to tu
    chybelo, linker hlasil desitky nedefinovanych symbolu. */
+#define NAPLES2_READBACK 1
 #include "../gpulib/gpu.c"
 
 extern void nap_diag_log(const char *fmt, ...);
