@@ -312,6 +312,16 @@ public class MainActivity extends Activity {
     private volatile long napTvWebH264LastFrameMs = 0;
     private volatile long napTvWebH264FrameIndex = 0;
     private volatile long napTvWebH264StartNanos = 0;
+    // ===== ZAHAZOVANI SNIMKU, KDYZ ENKODER NESTIHA =====
+    // lockHardwareCanvas() na vstupu enkoderu CEKA, dokud enkoder neuvolni
+    // buffer. Pri 1280x720 to telefon nestiha - v logu bylo 1149 snimku
+    // s "H264_FRAME_SLOW", median 90 ms a maximum 586 ms. Cele vlakno tim
+    // stalo a kousal se obraz i zvuk, na mobilu i na TV.
+    // Reseni: kdyz predchozi snimek trval dlouho, TENHLE VYNECHAME. Radeji
+    // mene snimku na TV nez zadrhavajici emulace.
+    private volatile long napTvWebH264PosledniMs = 0;
+    private volatile int  napTvWebH264Vynechano = 0;
+    private static final long NAP_TV_H264_STROP_MS = 40;
     // BUILD2SK61: KRITICKA OPRAVA - /status endpoint bezi na SAMOSTATNEM
     // vlakne per-klient (napTvWebHandleClient), NE na UI vlakne. Volani
     // web.getUrl() PRIMO z tohoto vlakna je nebezpecne (WebView metody
@@ -1345,6 +1355,17 @@ public class MainActivity extends Activity {
             // vykresli PRIMO na Surface enkoderu pres hardwarove
             // akcelerovany Canvas - GPU dela RGB->YUV prevod sam, interne.
             // Zadna Java smycka po pixelech vubec.
+            // Kdyz minuly snimek trval pres strop, tenhle vynechame - enkoder
+            // je zahlceny a cekani na nej by zdrzelo celou aplikaci.
+            if (napTvWebH264PosledniMs > NAP_TV_H264_STROP_MS) {
+                napTvWebH264PosledniMs = 0;          // pristi snimek zase zkusime
+                napTvWebH264Vynechano++;
+                if ((napTvWebH264Vynechano % 120) == 1) {
+                    appendNativeLog("TV_H264_VYNECHAVAM snimky, enkoder nestiha (celkem "
+                            + napTvWebH264Vynechano + ")");
+                }
+                return;
+            }
             long t0 = System.nanoTime();
             android.graphics.Canvas canvas = inputSurface.lockHardwareCanvas();
             try {
@@ -1355,6 +1376,7 @@ public class MainActivity extends Activity {
             long t1 = System.nanoTime();
             napTvWebH264DrainEncoder(enc);
             long t2 = System.nanoTime();
+            napTvWebH264PosledniMs = (t1 - t0) / 1000000;
             napTvWebH264DiagPixelsMs += (t1 - t0) / 1000000; // ted: cas kresleni na Surface (byvale "pixels+yuv")
             napTvWebH264DiagDrainMs += (t2 - t1) / 1000000;
             napTvWebH264DiagFrameCount++;

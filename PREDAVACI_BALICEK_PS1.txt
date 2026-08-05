@@ -1,7 +1,15 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B73-OBRAZ-NA-SIRKU-A-BEZ-KOUSANI (versionCode 121)
+ Verze: EMU10-B74-TV-NEZDRZUJE (versionCode 122)
  Datum: 5. 8. 2026
+===============================================================================
+
+ !!! POZOR: TENTO KOD JE PREDPOKLAD. CEKA SE NA TEST NA TELEFONU A NA LOG. !!!
+
+ Overeno je jen to, co jde overit bez telefonu (preklad Javy proti
+ android.jar, preklad C++ pres clang pro aarch64, preklad a SPUSTENI
+ rendereru proti skutecnemu OpenGL ES). Chovani na telefonu a na Mali
+ NENI overene, dokud Rene neposle test a log.
 ===============================================================================
 
 Tenhle soubor je v KAZDEM balicku. Popisuje presne, kudy tece obraz a kudy
@@ -45,6 +53,13 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       Vrstvy: obraz z-index 2, ovladac 12 a 16 -> ovladac je NAD obrazem.
 
   [4b] CESTA NA TV (prohlizec na PC)
+      POZOR NA ZAHLCENI ENKODERU: vstupem enkoderu je Surface a
+      lockHardwareCanvas() na nem CEKA, dokud enkoder neuvolni buffer.
+      Pri 1280x720 to S8 nestiha - v logu B73 bylo 1149 snimku
+      "H264_FRAME_SLOW", median 90 ms, maximum 586 ms, a cele vlakno tim
+      stalo (kousal se obraz i zvuk na mobilu i na TV).
+      Od B74 se snimek RADEJI VYNECHA, kdyz minuly trval pres 40 ms.
+      V logu se to hlasi jako "TV_H264_VYNECHAVAM".
       MainActivity.java radek ~1121: napTvWebH264FeedFrame(bm)
         - MediaCodec, H.264 Annex-B, klient dekoduje pres JMuxer.js
         - komentar v kodu: "H.264 STREAM PRO PS1 (misto MJPEG)"
