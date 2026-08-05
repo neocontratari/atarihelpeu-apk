@@ -2953,6 +2953,11 @@ public class MainActivity extends Activity {
         private long ps1PreviewDiagSumMs = 0;
         private int ps1PreviewDiagCount = 0;
         @JavascriptInterface
+        public void ps1SetScreenRect(int l, int t, int w, int h, boolean naSirku) {
+            ui.post(() -> ps1PlochaUmisti(l, t, w, h, naSirku));
+        }
+
+        @JavascriptInterface
         public String ps1FramePreviewB64() {
             // Kdyz kresli PLOCHA primo (bez JPEG), stranka obraz nepotrebuje.
             if (ps1Plocha != null) return "";
@@ -4567,6 +4572,35 @@ public class MainActivity extends Activity {
 
     // Zapnout nas plynuly OpenGL obraz (hlavni zobrazovaci cesta pro PS1).
     private android.view.SurfaceView ps1Plocha = null;
+    private int plochaL = -1, plochaT = -1, plochaW = -1, plochaH = -1;
+    private boolean plochaNaSirku = false, plochaZOrderNahore = false;
+
+    /** Stranka rekne, kde ma obraz byt. Na VYSKU musi plocha lezet NAD
+     *  strankou (grafika konzole je neprusvitna a jinak obraz zakryje),
+     *  na SIRKU pod ni (stranka je pruhledna a ovladac ma byt nad obrazem).
+     *  Vysku vrstvy nelze menit za behu - proto se plocha postavi znovu. */
+    private void ps1PlochaUmisti(int l, int t, int w, int hh, boolean naSirku) {
+        if (rootFrame == null || w <= 0 || hh <= 0) return;
+        boolean chceNahore = !naSirku;
+        boolean prestavet = (ps1Plocha == null) || (chceNahore != plochaZOrderNahore);
+        plochaL = l; plochaT = t; plochaW = w; plochaH = hh; plochaNaSirku = naSirku;
+        try {
+            if (prestavet) {
+                plochaZOrderNahore = chceNahore;
+                ps1GlDisable();
+                ps1GlEnable();
+                return;                       // rozmery se nastavi po vytvoreni
+            }
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, hh);
+            lp.leftMargin = l; lp.topMargin = t;
+            ps1Plocha.setLayoutParams(lp);
+            ps1Plocha.requestLayout();
+            appendNativeLog("PLOCHA_UMISTENA " + l + "," + t + " " + w + "x" + hh
+                    + (naSirku ? " (na sirku, pod strankou)" : " (na vysku, nad strankou)"));
+        } catch (Throwable e) {
+            appendNativeLog("PLOCHA_UMISTENA_CHYBA " + safeMsg(e));
+        }
+    }
 
     /** PLOCHA, NA KTEROU JADRO KRESLI PRIMO - bez JPEG, bez base64.
      *  Prevzato z overene cesty v eglrender (jadro -> pixely -> GL textura ->
@@ -4581,6 +4615,9 @@ public class MainActivity extends Activity {
             sv.setClickable(false);
             sv.setEnabled(false);
             sv.setFocusable(false);
+            // Na vysku musi byt plocha NAD strankou, jinak ji zakryje
+            // neprusvitna grafika konzole. Nastavuje se PRED vytvorenim.
+            sv.setZOrderOnTop(plochaZOrderNahore);
             sv.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
                 @Override public void surfaceCreated(android.view.SurfaceHolder h) {
                     appendNativeLog("PLOCHA_VYTVORENA - predavam ji jadru");
@@ -4595,8 +4632,15 @@ public class MainActivity extends Activity {
                     NativePs1CoreBridge.setDisplaySurfaceSafe(null);
                 }
             });
-            rootFrame.addView(sv, 0, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            FrameLayout.LayoutParams lp;
+            if (plochaW > 0) {
+                lp = new FrameLayout.LayoutParams(plochaW, plochaH);
+                lp.leftMargin = plochaL; lp.topMargin = plochaT;
+            } else {
+                lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                                                 ViewGroup.LayoutParams.MATCH_PARENT);
+            }
+            rootFrame.addView(sv, 0, lp);
             ps1Plocha = sv;
             appendNativeLog("PS1_OBRAZ_PRIMO_ZAPNUT (bez JPEG)");
         } catch (Throwable t) {

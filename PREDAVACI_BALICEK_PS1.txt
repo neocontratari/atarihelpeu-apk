@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B76-PRIMO-NA-PLOCHU (versionCode 124)
+ Verze: EMU10-B77-OTOCENI-A-OKENKO (versionCode 125)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -57,6 +57,22 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       v eglrender je to vypnute s poznamkou "obraz cerny nebo roztrhany"
       a ja se na tom sam rozbil dvanactkrat (chyba OpenGL 0x506).
       Sdilenou texturu uz nezkouset, dokud nebude jasne proc padala.
+
+      DVE VECI, KTERE SE MUSI HLIDAT:
+      (1) OTOCENI. Quad musi byt presne takhle (prevzato z eglrender):
+            -1,-1, 0,0    1,-1, 1,0
+            -1, 1, 0,1    1, 1, 1,1
+          Y v GL je zdola a pixely snimku jsou taky zdola, takze se to
+          srovna samo. Kdyz se UV prohodi, obraz je VZHURU NOHAMA.
+      (2) KAM PLOCHU POSTAVIT. Grafika konzole ps1_final_screen.png je
+          UPLNE NEPRUSVITNA (zmereno: pruhlednost 255 i v okenku).
+          -> NA VYSKU musi byt plocha NAD strankou (setZOrderOnTop(true))
+             a presne v okenku konzole, jinak neni obraz videt vubec.
+          -> NA SIRKU pod strankou (setZOrderOnTop(false)), protoze tam je
+             stranka pruhledna a ovladac ma byt NAD obrazem.
+          Obdelnik hlasi stranka pres AHPS1.ps1SetScreenRect().
+          Vysku vrstvy nelze menit za behu - pri otoceni se plocha
+          postavi znovu.
 
       Stary JPEG preview (ps1FramePreviewB64) je odpojeny - vraci prazdny
       retezec, kdyz plocha bezi. Stal 77 ms na snimek, po zlevneni 16 ms.
@@ -160,7 +176,10 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
    - zvuk nativne pres OpenSL ES, bez kmitani
 
   NENI HOTOVO:
-   - prima cesta obrazu (viz bod 1[5]) - obraz jde pres procesor
+   - ISO CD predava hru jako /proc/self/fd/N (popisovac souboru), zatimco
+     LOAD GAME predava skutecny soubor. U ISO CD se kouse zvuk a jeden
+     pokus skoncil PS1_HRA_FAIL. Podezreni: cteni disku pres popisovac
+     je pomale nebo se neda spolehlive posouvat. Dalsi krok.
    - overeni na telefonu delam jen ja skrz Reneho testy
 
 
@@ -187,5 +206,11 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
    - Jedna zmena na build. Kdyz jich musi byt vic, rict to a rict proc.
    - Nikdy neposilat build, u ktereho nejde rict, co presne bylo overeno.
    - Vzdy posilat CELY balicek, ne jednotlivé soubory.
+   - V KAZDEM buildu musi byt - a to jak v balicku, tak ve zprave v chatu:
+       * CO TESTOVAT - cislovane kroky, co presne zmacknout
+       * CO OCEKAVAT - u KAZDEHO kroku jak vypada SPRAVNY vysledek
+                       a jak vypada SPATNY, at Rene nemusi hadat
+       * CO POSLAT ZPET - ktere radky z logu potrebuju
+     Bez toho vznika chaos a Rene testuje naslepo.
    - Nikdy nepsat "kdyz bude X, tak Y" a nechat poznavani na nem.
      Overit si to sam.

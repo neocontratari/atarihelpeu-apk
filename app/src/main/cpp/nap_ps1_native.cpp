@@ -1110,8 +1110,11 @@ static void nap_disp_thread_fn(ANativeWindow *win) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         {
-            const GLfloat quad[] = { -1.f,-1.f, 0.f,1.f,   1.f,-1.f, 1.f,1.f,
-                                     -1.f, 1.f, 0.f,0.f,   1.f, 1.f, 1.f,0.f };
+            /* Y v GL je zdola a pixely ze snimku jsou taky zdola, takze se to
+               srovna samo. Prevzato DOSLOVA z overene cesty v eglrender -
+               moje puvodni verze mela UV obracene a obraz byl vzhuru nohama. */
+            const GLfloat quad[] = { -1.f,-1.f, 0.f,0.f,   1.f,-1.f, 1.f,0.f,
+                                     -1.f, 1.f, 0.f,1.f,   1.f, 1.f, 1.f,1.f };
             glUseProgram(prog);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, tex);
