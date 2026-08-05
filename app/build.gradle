@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 126
-        versionName "EMU10-B78-PLOCHA-KLIDNA"  // pri otoceni se kreslici vlakna prekotne stridala a po otoceni nekreslilo nic; a obraz PS1 prosvital do cele aplikace
+        versionCode 130
+        versionName "EMU10-B82-TV-A-VRSTVA-OD-ZACATKU"  // TV se prepinala na 5 ms a brala procesor emulaci (kousani zvuku jen s TV); plocha navic zacinala pod strankou a na vysku byla chvili cerna
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

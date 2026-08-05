@@ -296,7 +296,16 @@ public class MainActivity extends Activity {
     // "5" napsane natvrdo jen v gate, zatimco TICK_AVG log porad vypisoval
     // stary tier-based napTvWebFrameDelayMs - log tak lhal, i kdyz appka
     // fungovala spravne). Ted jedno misto pravdy pro obe strany.
-    private static final int napTvWebH264FastTickMs = 5;
+    // ===== TADY SE KOUSAL ZVUK PO ZAPNUTI TV =====
+    // Kdyz se pripoji TV, smycka snimani se prepne z 10 ms na tuhle hodnotu.
+    // Bylo tu 5 ms = DVE STE pruchodu za vterinu, prestoze jadro vyrobi
+    // nejvys 60 snimku. Kazdy pruchod snima, orezava cerne okraje a krmi
+    // enkoder - devet z deseti uplne zbytecne. Sebralo to procesor emulaci
+    // a zvuk zacal podtekat. V logu: TV_WEB_TICK_AVG avgTickGapMs=35
+    // pri targetDelayMs=5.
+    // 16 ms = cca 60 za vterinu, coz je presne tolik, kolik ma smysl.
+    // POZOR: nesnizovat. Vic snimku na TV se stejne nevejde a zvuk to zabije.
+    private static final int napTvWebH264FastTickMs = 16;
     // === BUILD2SK57: H.264 STREAM PRO PS1 (misto MJPEG) ===
     // Pouzivame MediaCodec v ByteBuffer rezimu (ne Surface) - vstupem je
     // rucne prevedeny YUV420 obraz z JIZ existujici PixelCopy Bitmapy
@@ -2962,14 +2971,6 @@ public class MainActivity extends Activity {
         // aby byl 40ms bezpecny. Skutecne zrychleni PS1 preview beze skody na
         // TV-castu by vyzadovalo odstranit JPEG kompresi uplne (TextureView
         // pristup jako u Segy) - viz predavaci poznamka, ceka na potvrzeni.
-        private int[] ps1PrevBuf = new int[1024 * 512];
-        private Bitmap ps1PreviewSrcBmp;
-        private Bitmap ps1PreviewScaledBmp;
-        private Canvas ps1PreviewScaledCanvas;
-        private final Paint ps1PreviewScalePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
-        private final Rect ps1PreviewDstRect = new Rect(); // BUILD2SK95: opakovane pouzivany, aby se nealokoval kazdy snimek
-        private long ps1PreviewDiagSumMs = 0;
-        private int ps1PreviewDiagCount = 0;
         @JavascriptInterface
         public void ps1SetScreenRect(int l, int t, int w, int h, boolean naSirku) {
             ui.post(() -> ps1PlochaUmisti(l, t, w, h, naSirku));
@@ -2977,47 +2978,11 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String ps1FramePreviewB64() {
-            // Kdyz kresli PLOCHA primo (bez JPEG), stranka obraz nepotrebuje.
-            if (ps1Plocha != null) return "";
-            try {
-                long t0 = System.currentTimeMillis();
-                int wh = NativePs1CoreBridge.grabFrameSafe(ps1PrevBuf);
-                if (wh < 0) { int need = ((-wh) >> 16) * ((-wh) & 0xFFFF); ps1PrevBuf = new int[need + 1024]; wh = NativePs1CoreBridge.grabFrameSafe(ps1PrevBuf); }
-                if (wh <= 0) return "";
-                int w = wh >> 16, h = wh & 0xFFFF;
-                if (ps1PreviewSrcBmp == null || ps1PreviewSrcBmp.getWidth() != w || ps1PreviewSrcBmp.getHeight() != h) {
-                    if (ps1PreviewSrcBmp != null) { try { ps1PreviewSrcBmp.recycle(); } catch (Throwable ignored) {} }
-                    ps1PreviewSrcBmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
-                }
-                ps1PreviewSrcBmp.setPixels(ps1PrevBuf, 0, w, 0, 0, w, h);
-                // ===== TADY BYLO TO KOUSANI =====
-                // Obraz se tu zvetsoval TRIKRAT (512x240 -> 1536x720) a pak
-                // balil do JPEGu v kvalite 90. V logu to bylo
-                // "PS1_PREVIEW_AVG avgMs=77" - sedmdesat sedm milisekund NA
-                // SNIMEK. Kvuli tomu se kousal obraz i zvuk.
-                // Zvetsovat nema smysl: stranka si obraz roztahne sama pres
-                // CSS. Posilame ho v puvodni velikosti.
-                int sw = w, sh = h;
-                if (ps1PreviewScaledBmp == null || ps1PreviewScaledBmp.getWidth() != sw || ps1PreviewScaledBmp.getHeight() != sh) {
-                    if (ps1PreviewScaledBmp != null) { try { ps1PreviewScaledBmp.recycle(); } catch (Throwable ignored) {} }
-                    ps1PreviewScaledBmp = android.graphics.Bitmap.createBitmap(sw, sh, android.graphics.Bitmap.Config.ARGB_8888);
-                    ps1PreviewScaledCanvas = new Canvas(ps1PreviewScaledBmp);
-                }
-                ps1PreviewDstRect.set(0, 0, sw, sh);
-                ps1PreviewScaledCanvas.drawBitmap(ps1PreviewSrcBmp, null, ps1PreviewDstRect, ps1PreviewScalePaint);
-                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
-                ps1PreviewScaledBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, bo);
-                String outB64 = Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
-                long tookMs = System.currentTimeMillis() - t0;
-                ps1PreviewDiagSumMs += tookMs; ps1PreviewDiagCount++;
-                if (ps1PreviewDiagCount >= 50) {
-                    appendNativeLog("BUILD2SK85 PS1_PREVIEW_AVG n=" + ps1PreviewDiagCount
-                            + " avgMs=" + (ps1PreviewDiagSumMs / ps1PreviewDiagCount)
-                            + " srcW=" + w + " srcH=" + h + " outBytes=" + outB64.length());
-                    ps1PreviewDiagCount = 0; ps1PreviewDiagSumMs = 0;
-                }
-                return outB64;
-            } catch (Throwable t) { return ""; }
+            // ===== DRUHA VETEV ZRUSENA =====
+            // Obraz kresli NATIVNI PLOCHA primo z jadra. Tahle cesta (JPEG do
+            // stranky) bezela vedle ni - v logu "PS1_PREVIEW_AVG" 51x - a brala
+            // procesor, ktery pak chybel zvuku, jakmile se pridala TV.
+            return "";
         }
         @JavascriptInterface
         public String ps1Stop() {
@@ -4590,22 +4555,62 @@ public class MainActivity extends Activity {
 
     // Zapnout nas plynuly OpenGL obraz (hlavni zobrazovaci cesta pro PS1).
     private android.view.SurfaceView ps1Plocha = null;
+    // Vychozi obdelnik okenka konzole na vysku. Stranka ho hned upresni
+    // (PLOCHA_MISTO_ZE_STRANKY), ale nez to udela, at uz je obraz videt.
     private int plochaL = -1, plochaT = -1, plochaW = -1, plochaH = -1;
-    private boolean plochaNaSirku = false, plochaZOrderNahore = false;
+    // NA VYSKU MUSI BYT PLOCHA NAHORE UZ OD PRVNI CHVILE.
+    // Kdyz zacinala dole, na vysku ji zakryla neprusvitna grafika konzole
+    // a obraz naskocil az potom, co stranka nahlasila obdelnik - to je az
+    // 400 ms cerna. PS1 se spousti na vysku, takze vychozi stav je "nahore"
+    // a prestavba se udela jen pri otoceni na sirku.
+    private boolean plochaNaSirku = false, plochaZOrderNahore = true;
 
     /** Stranka rekne, kde ma obraz byt. Na VYSKU musi plocha lezet NAD
      *  strankou (grafika konzole je neprusvitna a jinak obraz zakryje),
      *  na SIRKU pod ni (stranka je pruhledna a ovladac ma byt nad obrazem).
      *  Vysku vrstvy nelze menit za behu - proto se plocha postavi znovu. */
+    /** Postavi plochu tam, kam ji stranka hlasi.
+     *  NA VYSKU: obraz lezi v okenku konzole a grafika konzole je
+     *    NEPRUSVITNA - plocha proto musi byt NAD strankou. Je mala
+     *    (642x533) a mimo obrazovku PS1 se schovava, takze uz nikam
+     *    neprosvita.
+     *  NA SIRKU: stranka je pruhledna, plocha je POD ni pres cely vyrez
+     *    a ovladac zustava nad obrazem.
+     *  Vysku vrstvy nelze menit za behu, proto se plocha pri ZMENE OTOCENI
+     *  postavi znovu - ale jen tehdy, kdyz se otoceni opravdu zmenilo. */
     private void ps1PlochaUmisti(int l, int t, int w, int hh, boolean naSirku) {
-        // Umisteni podle stranky se NEPOUZIVA. Plocha lezi pres celou
-        // obrazovku pod strankou a v obou otocenich to funguje (test 1 a 2).
-        // Prestavovani plochy pri otoceni delalo melu vlaken:
-        //   ZRUSENA -> PRIPRAVENA -> UKONCENA -> PRIPRAVENA -> VYTVORENA
-        // a po otoceni uz nekreslilo nic. Proto jen zaznam do logu.
+        if (rootFrame == null || w <= 0 || hh <= 0) return;
+        boolean stejne = (ps1Plocha != null) && (plochaW == w) && (plochaH == hh)
+                && (plochaL == l) && (plochaT == t) && (plochaNaSirku == naSirku);
+        if (stejne) return;
+
+        // POZOR: rozhodovat podle VRSTVY, ne podle zmeny otoceni. Plocha
+        // vznikne s vrstvou "dole"; kdyz pak prijde prvni hlaseni na vysku,
+        // otoceni se NEZMENILO (obojí false) a vrstva by zustala dole -
+        // obraz by na vysku zustal schovany pod neprusvitnou grafikou konzole.
+        boolean chceNahore = !naSirku;
+        boolean prestavet  = (ps1Plocha == null) || (plochaZOrderNahore != chceNahore);
         plochaL = l; plochaT = t; plochaW = w; plochaH = hh; plochaNaSirku = naSirku;
-        appendNativeLog("PLOCHA_MISTO_ZE_STRANKY " + l + "," + t + " " + w + "x" + hh
-                + (naSirku ? " (na sirku)" : " (na vysku)") + " - plocha zustava pres celou obrazovku");
+
+        try {
+            if (prestavet) {
+                plochaZOrderNahore = chceNahore;
+                if (ps1Plocha != null) ps1GlDisable();
+                ps1GlEnable();                      // rozmery si vezme z plochaL..H
+                if (ps1Plocha != null) ps1Plocha.setVisibility(View.VISIBLE);
+                appendNativeLog("PLOCHA_POSTAVENA_ZNOVU " + l + "," + t + " " + w + "x" + hh
+                        + (naSirku ? " (na sirku, pod strankou)" : " (na vysku, nad strankou)"));
+                return;
+            }
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, hh);
+            lp.leftMargin = l; lp.topMargin = t;
+            ps1Plocha.setLayoutParams(lp);
+            ps1Plocha.requestLayout();
+            if (ps1Plocha.getVisibility() != View.VISIBLE) ps1Plocha.setVisibility(View.VISIBLE);
+            appendNativeLog("PLOCHA_UMISTENA " + l + "," + t + " " + w + "x" + hh);
+        } catch (Throwable e) {
+            appendNativeLog("PLOCHA_UMISTENA_CHYBA " + safeMsg(e));
+        }
     }
 
     /** PLOCHA, NA KTEROU JADRO KRESLI PRIMO - bez JPEG, bez base64.
@@ -4623,11 +4628,17 @@ public class MainActivity extends Activity {
             sv.setFocusable(false);
             // Na vysku musi byt plocha NAD strankou, jinak ji zakryje
             // neprusvitna grafika konzole. Nastavuje se PRED vytvorenim.
-            // Plocha lezi POD strankou. Nahoru ji davat nelze - prosvitala by
-            // pres celou aplikaci i mimo obrazovku PS1.
-            sv.setZOrderOnTop(false);
+            // Na VYSKU musi byt plocha NAD strankou (grafika konzole je
+            // neprusvitna), na SIRKU pod ni (ovladac ma byt nad obrazem).
+            // Prosakovani do zbytku aplikace resi schovavani nize.
+            sv.setZOrderOnTop(plochaZOrderNahore);
+            // Dokud nevime, KAM plocha patri, at ji neni videt - jinak by
+            // pres celou obrazovku prekryla skrin konzole.
+            if (plochaW <= 0) sv.setVisibility(View.INVISIBLE);
+            final android.view.SurfaceView tato = sv;
             sv.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
                 @Override public void surfaceCreated(android.view.SurfaceHolder h) {
+                    if (ps1Plocha != tato) return;      // hlaseni od stare plochy
                     appendNativeLog("PLOCHA_VYTVORENA - predavam ji jadru");
                     NativePs1CoreBridge.setDisplaySurfaceSafe(h.getSurface());
                 }
@@ -4638,12 +4649,25 @@ public class MainActivity extends Activity {
                     appendNativeLog("PLOCHA_ZMENENA " + w + "x" + hh + " (kresli dal)");
                 }
                 @Override public void surfaceDestroyed(android.view.SurfaceHolder h) {
+                    // Kdyz se plocha prestavuje, prijde tohle hlaseni od STARE
+                    // plochy az POTOM, co uz bezi nova - a odpojilo by ji.
+                    if (ps1Plocha != null && ps1Plocha != tato) {
+                        appendNativeLog("PLOCHA_ZRUSENA (stara, nova uz bezi - neodpojuji)");
+                        return;
+                    }
                     appendNativeLog("PLOCHA_ZRUSENA");
                     NativePs1CoreBridge.setDisplaySurfaceSafe(null);
                 }
             });
-            rootFrame.addView(sv, 0, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            FrameLayout.LayoutParams lp;
+            if (plochaW > 0) {
+                lp = new FrameLayout.LayoutParams(plochaW, plochaH);
+                lp.leftMargin = plochaL; lp.topMargin = plochaT;
+            } else {
+                lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                                                 ViewGroup.LayoutParams.MATCH_PARENT);
+            }
+            rootFrame.addView(sv, 0, lp);
             ps1Plocha = sv;
             appendNativeLog("PS1_OBRAZ_PRIMO_ZAPNUT (bez JPEG)");
         } catch (Throwable t) {

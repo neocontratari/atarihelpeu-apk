@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B78-PLOCHA-KLIDNA (versionCode 126)
+ Verze: EMU10-B82-TV-A-VRSTVA-OD-ZACATKU (versionCode 130)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -59,12 +59,33 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       Sdilenou texturu uz nezkouset, dokud nebude jasne proc padala.
 
       TRI VECI, KTERE SE MUSI HLIDAT:
-      (0) PLOCHA LEZI PRES CELOU OBRAZOVKU, POD STRANKOU, a nesmi se
-          prestavovat. Overeno testem: v obou otocenich to takhle funguje.
-          - setZOrderOnTop(true) NEPOUZIVAT: obraz PS1 pak prosvita pres
-            celou aplikaci i na jinych obrazovkach (bootovaci Sony).
-          - Misto toho se plocha SCHOVA (View.GONE), kdyz adresa stranky
-            neobsahuje "emu_ps1".
+      (0) KAM PLOCHU POSTAVIT. Stranka hlasi obdelnik pres
+          AHPS1.ps1SetScreenRect() a v logu je to jako
+          PLOCHA_MISTO_ZE_STRANKY:
+             na vysku   39,182  642x533
+             na sirku   95,0    1195x672
+          - NA VYSKU musi byt plocha NAD strankou (setZOrderOnTop(true)),
+            protoze grafika konzole ps1_final_screen.png je UPLNE
+            NEPRUSVITNA (zmereno: pruhlednost 255 i v okenku). Plocha je
+            mala a mimo obrazovku PS1 se schovava, takze neprosakuje.
+          - NA SIRKU pod strankou (setZOrderOnTop(false)) - stranka je tam
+            pruhledna a ovladac ma byt NAD obrazem.
+          - Vysku vrstvy NELZE menit za behu -> plocha se postavi znovu.
+            ROZHODOVAT PODLE VRSTVY, NE PODLE ZMENY OTOCENI. Plocha vznikne
+            s vrstvou "dole"; kdyz prijde prvni hlaseni na vysku, otoceni se
+            NEZMENILO (obojí false) a vrstva by zustala dole - obraz by na
+            vysku zustal schovany pod neprusvitnou grafikou konzole.
+            Spravne:  prestavet = (plocha == null) || (vrstva != chcena)
+          - VYCHOZI VRSTVA JE "NAHORE" (plochaZOrderNahore = true), protoze
+            PS1 se spousti na vysku. Kdyz zacinala dole, byla na vysku
+            chvili cerna, nez stranka nahlasila obdelnik.
+          - Plocha se vytvori NEVIDITELNA a ukaze se az pri prvnim umisteni.
+            Jinak by pres celou obrazovku prekryla skrin konzole.
+          - Pri prestavbe prijde hlaseni "surfaceDestroyed" od STARE plochy
+            az POTOM, co uz bezi nova - a odpojilo by ji. Kazde hlaseni si
+            proto musi overit, ze patri PRAVE TE plose, ktera je aktualni.
+          - Mimo obrazovku PS1 se plocha SCHOVA (View.GONE), jinak obraz
+            prosvita pres celou aplikaci (bootovaci Sony).
           - surfaceChanged NESMI plochu znovu pripojovat. Pri otoceni prisly
             surfaceCreated i surfaceChanged tesne po sobe, kreslici vlakna
             se prekotne stridala (v logu ZRUSENA -> PRIPRAVENA -> UKONCENA
@@ -86,8 +107,10 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
           Vysku vrstvy nelze menit za behu - pri otoceni se plocha
           postavi znovu.
 
-      Stary JPEG preview (ps1FramePreviewB64) je odpojeny - vraci prazdny
-      retezec, kdyz plocha bezi. Stal 77 ms na snimek, po zlevneni 16 ms.
+      JPEG preview (ps1FramePreviewB64) je od B79 UPLNE SMAZANY - vraci jen
+      prazdny retezec a jeho bitmapy jsou pryc. Bezel VEDLE nativni plochy
+      (v logu B78 "PS1_PREVIEW_AVG" 51x) a bral procesor, ktery pak chybel
+      zvuku, jakmile se pridala TV. Uz ho sem nikdy nevracet.
 
   [4b] CESTA NA TV (prohlizec na PC)
       TV MA DVA MOZNE ZDROJE SNIMKU a je dulezite vedet ktery:
@@ -157,6 +180,18 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       nap_sl_callback()  (radek 512)   - dopl^nuje bloky pres Enqueue()
       Java zvukova cesta (AudioTrack) UZ NEBEZI - v logu je
       "PS1_AUDIO_JAVA_VYPNUTO". Driv bezely obe naraz a rvaly si do toho.
+
+  [4c] POZOR: PRIPOJENA TV SMI BRAT JEN MALO PROCESORU
+      MainActivity.java, konec smycky snimani:
+        long effectiveDelay = Math.max(10, napTvWebFrameDelayMs);
+        if (!napTvWebH264ClientQueues.isEmpty())
+            effectiveDelay = napTvWebH264FastTickMs;
+      Kdyz je pripojena TV, smycka se prepne na napTvWebH264FastTickMs.
+      DO B80 tam bylo 5 ms = 200 pruchodu za vterinu, prestoze jadro
+      vyrobi nejvys 60 snimku. Kazdy pruchod snima, orezava a krmi enkoder.
+      Sebralo to procesor emulaci a ZVUK SE KOUSAL - ale JEN kdyz bezela TV.
+      Bez TV byl zvuk cisty. To je presne priznak, ktery hlasil Rene.
+      Od B81 je tam 16 ms (~60 za vterinu). NESNIZOVAT.
 
   [5] Zvuk pro TV
       Odbocuje se z teze fronty (nap_ps1_native.cpp, sekce "ODBOCKA ZVUKU
