@@ -517,6 +517,19 @@ static int do_vram_io(struct psx_gpu *gpu, uint32_t *data, int count, int is_rea
   int o = gpu->dma.offset;
   int l, async_queued = 0;
 
+#ifdef NAPLES2_READBACK
+  /* ===== TADY BYLA TA CHYBA =====
+     Kdyz jadro CTE z videopameti, cte z teto pameti procesoru. Jenze obraz
+     kresli grafika (GPU) a sem se nikdy nevrati. BIOS si tak precte prazdno.
+     A prave tim si BIOS bere hotovou bublinu z obrazovky a uklada si ji
+     stranou (na stranku 704), aby ji pak pouzil jako texturu. Kdyz mu misto
+     ni prijde prazdno, zustane tam to, co tam leželo predtim - logo SONY.
+     Odtud ta zelena kase pres MEMORY CARD a CD PLAYER.
+     Pred ctenim proto tu oblast vratime z obrazu v GPU. */
+  if (is_read)
+    n2_readback_to_vram(x, y, w, h);
+#endif
+
   if (gpu_async_enabled(gpu) && !is_read && o == 0 &&
       count <= AGPU_DMA_MAX && w * h == count * 2)
     async_queued = gpu_async_try_dma(gpu, data, count);
@@ -873,19 +886,6 @@ static noinline int do_cmd_buffer(struct psx_gpu *gpu, uint32_t *data, int count
         break;
       *cycles_sum += *cycles_last;
       *cycles_last = 0;
-#ifdef NAPLES2_READBACK
-      /* Zdroj kopie muze byt neco, co nakreslila GPU - v teto pameti to
-         neni. Vratime si tu oblast z obrazu, jinak se zkopiruje nesmysl
-         a pak se z nej texturuje (zelena kase v menu BIOSu). */
-      {
-        const uint32_t *pp = data + pos;
-        int sx = (int)(LE32TOH(pp[1]) & 0x3ff);
-        int sy = (int)((LE32TOH(pp[1]) >> 16) & 0x1ff);
-        int cw = (int)((((LE32TOH(pp[3])      ) - 1) & 0x3ff) + 1);
-        int ch = (int)((((LE32TOH(pp[3]) >> 16) - 1) & 0x1ff) + 1);
-        n2_readback_to_vram(sx, sy, cw, ch);
-      }
-#endif
       if (do_vram_copy_pre(gpu, data + pos, cycles_last))
         do_vram_copy(gpu->vram, gpu->ex_regs, data + pos);
       pos += 4;

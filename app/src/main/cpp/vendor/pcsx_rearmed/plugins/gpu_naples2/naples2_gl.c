@@ -565,8 +565,12 @@ void n2_readback_to_vram(int x, int y, int w, int h)
             unsigned R = (src[c*4+0] * 31 + 127) / 255;
             unsigned G = (src[c*4+1] * 31 + 127) / 255;
             unsigned B = (src[c*4+2] * 31 + 127) / 255;
-            unsigned M = (src[c*4+3] >= 128) ? 1u : 0u;
-            dst[c] = (unsigned short)(R | (G << 5) | (B << 10) | (M << 15));
+            /* BIT MASKY MUSI ZUSTAT NULA. V obraze je v pruhlednosti ulozena
+               mira pruhlednosti kresleni, ne bit masky PlayStation. Kdyz se
+               sem zapsala jednicka, prestal byt cerny bod nulovy - a cerne
+               okoli bubliny se pak kreslilo jako cerny ctverec misto toho,
+               aby bylo pruhledne (nulovy texel = pruhledny). */
+            dst[c] = (unsigned short)(R | (G << 5) | (B << 10));
         }
     }
 }

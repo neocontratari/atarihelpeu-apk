@@ -6261,12 +6261,38 @@ public class MainActivity extends Activity {
                 appendNativeLog("KROKC EGL_STAGE_BIOS do=" + biosDir.getAbsolutePath());
             }
 
-            ps1GameWindowOwnsCore = true;   // od ted jadro patri oknu hry
-            ps1BiosRunning = false;         // BIOS uz nebezi, prebira ho hra
-            appendNativeLog("KROKC EGL_PS1_LAUNCH (jadro prebira okno hry)");
-            android.content.Intent it = new android.content.Intent(this, android.app.NativeActivity.class);
-            it.addFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(it);
+            // ===== JEDNA CESTA PRO BIOS I HRU =====
+            // Drive se tady otviralo SAMOSTATNE OKNO (NativeActivity) na sirku.
+            // To bylo to druhe platno: hra se v nem kreslila mimo monitor,
+            // v portretu mezitim zustal viset BIOS a ovladac tam nebyl.
+            // Ted se hra spousti do TEHOZ monitoru jako BIOS - stejne jadro,
+            // stejny odber snimku, stejna obrazovka.
+            String cestaKeHre = "";
+            java.io.File[] nalezene = ps1Dir.listFiles();
+            if (nalezene != null) {
+                for (java.io.File f : nalezene) {
+                    if (!f.isFile()) continue;
+                    String n = f.getName().toLowerCase(java.util.Locale.US);
+                    if (n.endsWith(".cue")) { cestaKeHre = f.getAbsolutePath(); break; }
+                    if (cestaKeHre.isEmpty() && (n.endsWith(".chd") || n.endsWith(".pbp")
+                            || n.endsWith(".iso") || n.endsWith(".img") || n.endsWith(".bin"))) {
+                        cestaKeHre = f.getAbsolutePath();
+                    }
+                }
+            }
+            ps1GameWindowOwnsCore = false;  // jadro zustava tady, u monitoru
+            ps1BiosRunning = false;
+            java.io.File sysDirH  = new java.io.File(getFilesDir(), "ps1_system");
+            java.io.File saveDirH = new java.io.File(getFilesDir(), "ps1_saves");
+            if (!sysDirH.exists())  sysDirH.mkdirs();
+            if (!saveDirH.exists()) saveDirH.mkdirs();
+            ps1EnsureBios(sysDirH);
+            ps1LastBootResult = NativePs1CoreBridge.bootGameSafe(
+                    sysDirH.getAbsolutePath(), saveDirH.getAbsolutePath(), cestaKeHre);
+            ps1SessionActive = ps1LastBootResult != null
+                    && ps1LastBootResult.startsWith("PS1_HRA_OK");
+            appendNativeLog("PS1_HRA_DO_MONITORU cesta=" + cestaKeHre
+                    + " vysledek=" + ps1LastBootResult);
         } catch (Throwable t) {
             appendNativeLog("KROKC EGL_PS1_LAUNCH_FAIL " + safeMsg(t) + " - padam na puvodni cestu");
             ps1ActivateNativeView();
@@ -7184,8 +7210,15 @@ public class MainActivity extends Activity {
                     ps1LastBootResult = "PS1_BOOTING...";
                     appendNativeLog("BUILD2SA5P PS1_BIOS_AUDIT " + ps1BiosAudit(sysDir));
                     ps1EnsureBios(sysDir); // BUILD2SA7
-                    ps1LastBootResult = NativePs1CoreBridge.bootSafe(sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);
-                    boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_BOOT_OK");
+                    // Drive se tu volalo bootSafe(), ktere hru sice nahralo, ale
+                    // NEPRIPRAVILO grafiku, zvuk ani vlakno emulace - proto po
+                    // stisku ISO CD zustala na obrazovce viset predchozi vec
+                    // (menu BIOSu). Ted jde hra tou samou cestou jako BIOS.
+                    ps1LastBootResult = NativePs1CoreBridge.bootGameSafe(
+                            sysDir.getAbsolutePath(), saveDir.getAbsolutePath(), fdPath);
+                    appendNativeLog("PS1_HRA_DO_MONITORU cesta=" + fdPath
+                            + " vysledek=" + ps1LastBootResult);
+                    boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_HRA_OK");
                     boolean stillWanted = ok && bootGen == ps1LifecycleGen && ps1BootActive;
                     ps1BootActive = false;
                     if (stillWanted) {
