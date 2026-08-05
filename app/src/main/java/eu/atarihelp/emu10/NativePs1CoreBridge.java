@@ -14,6 +14,9 @@ public final class NativePs1CoreBridge {
     private static native String ps1Status();
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
+    // PRIME KRESLENI: predame jadru plochu z aplikace, ono na ni kresli samo.
+    // null = odpojit.
+    private static native void ps1SetDisplaySurface(android.view.Surface surface);
     private static native int ps1PullAudio(short[] out, int frames);
     private static native int ps1PullTvAudio(short[] out);   // zvuk pro TV (kopie prehravaneho)
     private static native void ps1SetInput(int id, boolean down);
@@ -51,6 +54,11 @@ public final class NativePs1CoreBridge {
         if (gamePath == null || gamePath.isEmpty()) return "PS1_HRA_FAIL prazdna cesta";
         try { return ps1BootDoMonitoru(systemDir, saveDir, gamePath); }
         catch (Throwable t) { return "PS1_HRA_FAIL " + t; }
+    }
+
+    public static void setDisplaySurfaceSafe(android.view.Surface s) {
+        if (!loaded) return;
+        try { ps1SetDisplaySurface(s); } catch (Throwable ignored) {}
     }
 
     public static int grabFrameSafe(int[] out) {

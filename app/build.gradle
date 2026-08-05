@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 122
-        versionName "EMU10-B74-TV-NEZDRZUJE"  // enkoder pro TV pri 1280x720 nestihal a lockHardwareCanvas na nej cekal 90 ms na snimek; ted se snimek radeji vynecha
+        versionCode 124
+        versionName "EMU10-B76-PRIMO-NA-PLOCHU"  // jadro kresli obraz PRIMO na plochu v aplikaci pres SurfaceView; JPEG do stranky odpojen; prevzato z overene cesty v eglrender
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

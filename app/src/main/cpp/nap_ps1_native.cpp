@@ -20,7 +20,11 @@
 #include <iterator>
 #include <EGL/egl.h>   // BUILD2SK98: pro gpu-gles (skutecny GL vykreslovac s texturovym filtrovanim)
 #include <GLES/gl.h>   // GLES1 - presne to, co gpu-gles pouziva (fixed-function pipeline)
-#include <SLES/OpenSLES.h>          // CESTA A: zvuk bez Javy (od API 9)
+#include <GLES2/gl2.h>  // pro prime kresleni obrazu na plochu v aplikaci (shadery)
+#include <SLES/OpenSLES.h>
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
+#include <unistd.h>          // CESTA A: zvuk bez Javy (od API 9)
 #include <SLES/OpenSLES_Android.h>
 #include <signal.h>   // A10: zachytavac padu (sigaction)
 #include <fcntl.h>    // A10: open() - zapis padu do log souboru (async-signal-safe)
@@ -996,6 +1000,154 @@ static void nap_publish_frame_for_app(const uint8_t* rgba, int w, int h) {
     }
     g_fw.store(w); g_fh.store(h);
     g_frames.fetch_add(1);
+}
+
+// ===================================================================
+//  PRIME KRESLENI NA PLOCHU V APLIKACI  (zadny JPEG, zadny base64)
+//
+//  Prevzato z eglrender/egl_main.c - z cesty, ktera byla OVERENA a
+//  fungovala. Jediny rozdil: drive brala plochu ze samostatneho okna
+//  (NativeActivity), ted ji dostane ze SurfaceView primo v aplikaci.
+//
+//  Cesta obrazu:  jadro -> nap_ps1_egl_grab_pixels() -> GL textura
+//                 -> nakresleni na plochu -> eglSwapBuffers
+//  Procesor obraz NEBALI ani nekoduje.
+//
+//  POZOR: tahle plocha ma VLASTNI EGL kontext a se sdilenim s jadrem
+//  nema nic spolecneho. Prave sdileni bylo to, co v eglrender nikdy
+//  nefungovalo ("PRIMA CESTA je VYPNUTA ... obraz cerny nebo roztrhany")
+//  a na cem jsem se sam dvanactkrat rozbil. Tady se nesdili nic.
+// ===================================================================
+extern "C" const void* nap_ps1_egl_grab_pixels(int* w, int* h);
+
+static ANativeWindow      *g_disp_win  = nullptr;
+static std::thread         g_disp_thread;
+static std::atomic<bool>   g_disp_run{false};
+
+static const char *DISP_VS =
+    "attribute vec2 aPos;\n attribute vec2 aUV;\n varying vec2 vUV;\n"
+    "void main(){ vUV = aUV; gl_Position = vec4(aPos, 0.0, 1.0); }\n";
+static const char *DISP_FS =
+    "precision mediump float;\n varying vec2 vUV;\n uniform sampler2D uTex;\n"
+    "void main(){ gl_FragColor = texture2D(uTex, vUV); }\n";
+
+static GLuint nap_disp_shader(GLenum typ, const char *src) {
+    GLuint s = glCreateShader(typ);
+    glShaderSource(s, 1, &src, nullptr);
+    glCompileShader(s);
+    GLint ok = 0; glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
+    if (!ok) { char log[512]; GLsizei n = 0; glGetShaderInfoLog(s, sizeof log, &n, log);
+               nap_diag_log("PLOCHA: shader nesel prelozit: %s", log); glDeleteShader(s); return 0; }
+    return s;
+}
+
+static void nap_disp_thread_fn(ANativeWindow *win) {
+    EGLDisplay dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    EGLint ma = 0, mi = 0;
+    if (dpy == EGL_NO_DISPLAY || !eglInitialize(dpy, &ma, &mi)) {
+        nap_diag_log("PLOCHA: EGL se nepodarilo otevrit"); ANativeWindow_release(win); return;
+    }
+    const EGLint cfga[] = { EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+                            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+                            EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8,
+                            EGL_NONE };
+    EGLConfig cfg; EGLint n = 0;
+    if (!eglChooseConfig(dpy, cfga, &cfg, 1, &n) || n < 1) {
+        nap_diag_log("PLOCHA: zadna vhodna konfigurace"); ANativeWindow_release(win); return;
+    }
+    EGLint fmt = 0; eglGetConfigAttrib(dpy, cfg, EGL_NATIVE_VISUAL_ID, &fmt);
+    ANativeWindow_setBuffersGeometry(win, 0, 0, fmt);
+
+    EGLSurface surf = eglCreateWindowSurface(dpy, cfg, (EGLNativeWindowType)win, nullptr);
+    const EGLint ctxa[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
+    EGLContext ctx = eglCreateContext(dpy, cfg, EGL_NO_CONTEXT, ctxa);
+    if (surf == EGL_NO_SURFACE || ctx == EGL_NO_CONTEXT ||
+        !eglMakeCurrent(dpy, surf, surf, ctx)) {
+        nap_diag_log("PLOCHA: kontext se nepodarilo pripravit (0x%x)", eglGetError());
+        ANativeWindow_release(win); return;
+    }
+
+    GLuint vs = nap_disp_shader(GL_VERTEX_SHADER, DISP_VS);
+    GLuint fs = nap_disp_shader(GL_FRAGMENT_SHADER, DISP_FS);
+    GLuint prog = glCreateProgram();
+    glAttachShader(prog, vs); glAttachShader(prog, fs); glLinkProgram(prog);
+    GLint aPos = glGetAttribLocation(prog, "aPos");
+    GLint aUV  = glGetAttribLocation(prog, "aUV");
+    GLint uTex = glGetUniformLocation(prog, "uTex");
+
+    GLuint tex = 0; glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    nap_diag_log("PLOCHA PRIPRAVENA: obraz jde z jadra rovnou na obrazovku, bez JPEG");
+
+    int lastW = 0, lastH = 0; long snimku = 0, prazdnych = 0;
+    while (g_disp_run.load()) {
+        int sw = 0, sh = 0;
+        const void *px = nap_ps1_egl_grab_pixels(&sw, &sh);
+        if (!px || sw <= 0 || sh <= 0) { prazdnych++; usleep(8000); continue; }
+
+        int w = ANativeWindow_getWidth(win), h = ANativeWindow_getHeight(win);
+        if (w <= 0 || h <= 0) { usleep(8000); continue; }
+
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        if (sw != lastW || sh != lastH) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
+            lastW = sw; lastH = sh;
+        } else {
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, px);
+        }
+
+        /* zachovat pomer stran - stejny vypocet jako v overene ceste */
+        int vw = w, vh = (int)((long)w * sh / sw);
+        if (vh > h) { vh = h; vw = (int)((long)h * sw / sh); }
+        glViewport((w - vw) / 2, (h - vh) / 2, vw, vh);
+        glClearColor(0.f, 0.f, 0.f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        {
+            const GLfloat quad[] = { -1.f,-1.f, 0.f,1.f,   1.f,-1.f, 1.f,1.f,
+                                     -1.f, 1.f, 0.f,0.f,   1.f, 1.f, 1.f,0.f };
+            glUseProgram(prog);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, tex);
+            glUniform1i(uTex, 0);
+            glVertexAttribPointer((GLuint)aPos, 2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad);
+            glVertexAttribPointer((GLuint)aUV,  2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad+2);
+            glEnableVertexAttribArray((GLuint)aPos);
+            glEnableVertexAttribArray((GLuint)aUV);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        }
+        eglSwapBuffers(dpy, surf);
+
+        if (++snimku % 300 == 1)
+            nap_diag_log("PLOCHA: snimku=%ld prazdnych=%ld zdroj=%dx%d okno=%dx%d",
+                         snimku, prazdnych, sw, sh, w, h);
+        usleep(2000);
+    }
+
+    eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(dpy, ctx);
+    eglDestroySurface(dpy, surf);
+    ANativeWindow_release(win);
+    nap_diag_log("PLOCHA UKONCENA");
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetDisplaySurface(JNIEnv *env, jclass, jobject jsurf) {
+    if (g_disp_run.exchange(false) && g_disp_thread.joinable()) g_disp_thread.join();
+    g_disp_win = nullptr;
+    if (jsurf == nullptr) { nap_diag_log("PLOCHA: odpojena"); return; }
+    ANativeWindow *win = ANativeWindow_fromSurface(env, jsurf);
+    if (!win) { nap_diag_log("PLOCHA: okno se nepodarilo ziskat"); return; }
+    g_disp_win = win;
+    g_disp_run.store(true);
+    g_disp_thread = std::thread(nap_disp_thread_fn, win);
+    nap_diag_log("PLOCHA: pripojena, spoustim kresleni");
 }
 
 extern "C" const void* nap_ps1_egl_grab_pixels(int* w, int* h) {

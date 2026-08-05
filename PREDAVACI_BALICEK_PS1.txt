@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B74-TV-NEZDRZUJE (versionCode 122)
+ Verze: EMU10-B76-PRIMO-NA-PLOCHU (versionCode 124)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -39,20 +39,40 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       nap_ps1_native.cpp: nap_video()  ->  ulozi do g_frame_argb, nastavi g_fw/g_fh
       -> TADY OBRAZ OPOUSTI GPU.
 
-  [4a] CESTA NA DISPLEJ TELEFONU  (tohle je ta "softova" cast)
-      MainActivity.java: ps1FramePreviewB64()  (kolem radku 2930)
-        - vezme g_frame_argb pres NativePs1CoreBridge.grabFrameSafe()
-        - zabali do JPEG kvalita 80  (do B73 to bylo JPEG 90 a jeste
-          zvetsene 3x, coz stalo 77 ms na snimek - odtud kousani)
-        - zakoduje do base64
-        - posle do webove stranky
-      assets/emu_ps1/index.html: obrazek <img id="ps1Screen"> uvnitr #psMonitor
-        - poll kazdych 80 ms
-        - od B73 bezi na VYSKU I NA SIRKU (drive se na sirku neposilal
-          vubec, protoze se cekalo na TextureView, ktery byl mrtvy)
-      Vrstvy: obraz z-index 2, ovladac 12 a 16 -> ovladac je NAD obrazem.
+  [4a] CESTA NA DISPLEJ TELEFONU  (od B76 PRIMA, bez JPEG)
+      MainActivity.java: ps1GlEnable()  -> vytvori SurfaceView (lezi POD
+        webovou strankou, takze ovladac zustava nad obrazem)
+      SurfaceHolder.Callback -> NativePs1CoreBridge.setDisplaySurfaceSafe()
+      nap_ps1_native.cpp: Java_..._ps1SetDisplaySurface()
+        -> ANativeWindow_fromSurface() -> vlastni vlakno nap_disp_thread_fn()
+      Kreslici smycka (prevzata z eglrender/egl_main.c, cesta pres pixely,
+      ktera tam byla OVERENA a fungovala):
+        nap_ps1_egl_grab_pixels()   - vezme posledni hotovy snimek, ZADNE GL
+        glTexSubImage2D()           - nahraje ho jako texturu
+        glDrawArrays() + eglSwapBuffers()
+      Procesor obraz NEBALI ani nekoduje. Zadny JPEG, zadny base64.
+
+      POZOR: tahle plocha ma VLASTNI EGL kontext a s jadrem NIC NESDILI.
+      Sdileni kontextu je to, co v tomhle projektu nikdy nefungovalo -
+      v eglrender je to vypnute s poznamkou "obraz cerny nebo roztrhany"
+      a ja se na tom sam rozbil dvanactkrat (chyba OpenGL 0x506).
+      Sdilenou texturu uz nezkouset, dokud nebude jasne proc padala.
+
+      Stary JPEG preview (ps1FramePreviewB64) je odpojeny - vraci prazdny
+      retezec, kdyz plocha bezi. Stal 77 ms na snimek, po zlevneni 16 ms.
 
   [4b] CESTA NA TV (prohlizec na PC)
+      TV MA DVA MOZNE ZDROJE SNIMKU a je dulezite vedet ktery:
+        (a) napTvWebCaptureFromCore()  - snimek PRIMO Z JADRA, orizne cerne
+            okraje a roztahne na 1280x720. Ovladac se do nej NEDOSTANE.
+        (b) PixelCopy celeho okna aplikace - fallback. Ovladac JE videt
+            a obraz neni roztazeny. Snimani okna 1080x2220 je navic drahe.
+      Podminka pro (a) je na radku ~892 v MainActivity.java:
+        if (!ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning)
+            return false;
+      Do B74 tam chybelo ps1BiosRunning -> pri BIOSu se jelo (b), odtud
+      ovladac na TV. V logu se to pozna tak, ze chybi radky o snimku
+      z jadra a je tam jen mirror=APP appCapture=true.
       POZOR NA ZAHLCENI ENKODERU: vstupem enkoderu je Surface a
       lockHardwareCanvas() na nem CEKA, dokud enkoder neuvolni buffer.
       Pri 1280x720 to S8 nestiha - v logu B73 bylo 1149 snimku

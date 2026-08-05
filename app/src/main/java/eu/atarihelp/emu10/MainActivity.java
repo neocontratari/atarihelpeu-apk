@@ -148,6 +148,9 @@ public class MainActivity extends Activity {
                 if (!saveDir.exists()) saveDir.mkdirs();
                 ps1EnsureBios(sysDir);          // BIOS musi byt na miste
                 appendNativeLog("PS1_BIOS_START bez disku (jako zapnuti konzole)");
+                // Plocha, na kterou jadro kresli PRIMO. Musi byt i pro BIOS -
+                // drive se zapinala jen pro hru a BIOS kreslil pres JPEG.
+                ui.post(() -> ps1GlEnable());
                 String r = NativePs1CoreBridge.bootBiosSafe(
                         sysDir.getAbsolutePath(), saveDir.getAbsolutePath());
                 appendNativeLog("PS1_BIOS_START vysledek=" + r);
@@ -881,7 +884,15 @@ public class MainActivity extends Activity {
             // vypadek pri nacitani). Kdyz uz hra nebezi, drzelo se to donekonecna
             // a na TV zustalo viset posledni logo - dalsi obsah uz se nikdy
             // neukazal. Ted se pri ukoncene hre vzdame a TV ukaze obrazovku appky.
-            if (!ps1SessionActive && !ps1GameWindowOwnsCore) {
+            // ===== TADY BYL TEN OVLADAC NA TV =====
+            // Chybelo tu ps1BiosRunning. Pri startu BIOSu bez disku neni
+            // ps1SessionActive ani ps1GameWindowOwnsCore, takze se snimek
+            // z jadra VUBEC NEVZAL a TV spadla na snimani CELEHO OKNA
+            // aplikace - a v tom okne je ovladac. U hry to fungovalo, proto
+            // tam ovladac videt nebyl.
+            // Navic: snimani okna 1080x2220 kazdy snimek je drahe. Kdyz se
+            // bere snimek z jadra (512x240), odpadne to uplne.
+            if (!ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning) {
                 tvCoreHadFrame = false;
                 return false;
             }
@@ -2943,6 +2954,8 @@ public class MainActivity extends Activity {
         private int ps1PreviewDiagCount = 0;
         @JavascriptInterface
         public String ps1FramePreviewB64() {
+            // Kdyz kresli PLOCHA primo (bez JPEG), stranka obraz nepotrebuje.
+            if (ps1Plocha != null) return "";
             try {
                 long t0 = System.currentTimeMillis();
                 int wh = NativePs1CoreBridge.grabFrameSafe(ps1PrevBuf);
@@ -4548,70 +4561,73 @@ public class MainActivity extends Activity {
     //
     //  Prepinac: klik na logo NaP zapne, dalsi klik vypne.
     // ============================================================
-    private Ps1GlTextureView ps1GlView = null;
+    // Ps1GlTextureView uz se pro obraz nepouziva - kresli nativni plocha.
+    // Trida zustava kvuli borrowFrame(), ktery pouziva TV.
+
 
     // Zapnout nas plynuly OpenGL obraz (hlavni zobrazovaci cesta pro PS1).
+    private android.view.SurfaceView ps1Plocha = null;
+
+    /** PLOCHA, NA KTEROU JADRO KRESLI PRIMO - bez JPEG, bez base64.
+     *  Prevzato z overene cesty v eglrender (jadro -> pixely -> GL textura ->
+     *  obrazovka). Jediny rozdil: plochu dostane z aplikace, ne ze
+     *  samostatneho okna. Lezi POD webovou strankou, takze ovladac zustava
+     *  nad obrazem. Ma vlastni EGL kontext - nic se s jadrem nesdili, prave
+     *  sdileni bylo to, co nikdy nefungovalo. */
     private void ps1GlEnable() {
         try {
-            // ====== DRUHE PLATNO ZRUSENO ======
-            // Hra bezi v samostatnem nativnim okne (NativeActivity + eglrender),
-            // ktere si kresli i vlastni ovladaci prvky. Tenhle GL pohled uvnitr
-            // hlavni aktivity je pozustatek stare cesty, kdy se hra kreslila
-            // primo v appce. Dnes uz nic neukazuje, jen si bere snimky a plete
-            // se (uzivatel videl dve obrazovky - jednu s hrou, druhou jen
-            // s ovladacem). TV si obraz bere primo z jadra, takze tenhle
-            // pohled k nicemu neni.
-            appendNativeLog("PS1_DRUHE_PLATNO_ZRUSENO duvod=hra bezi v nativnim okne");
-            if (true) return;
-        } catch (Throwable ignored) {}
-        try {
-            if (ps1GlView != null) return;              // uz bezi
-            if (rootFrame == null) return;
-            Ps1GlTextureView gv = new Ps1GlTextureView(MainActivity.this,
-                    msg -> appendNativeLog(msg));
-            // DULEZITE: vrstva nesmi zrat dotyky, jinak nejde kliknout na
-            // menu nad ni (proto drive neslo vyskocit z PS1 zpatky do apky).
-            // Puvodni cesta to mela nastavene taky - ja to zapomnel.
-            gv.setClickable(false);
-            gv.setEnabled(false);
-            gv.setFocusable(false);
-            gv.setFocusableInTouchMode(false);
-            // index 0 = na dno rootFrame, web kresli nad tim (stejne jako
-            // to mela puvodni cesta)
-            rootFrame.addView(gv, 0, new FrameLayout.LayoutParams(
+            if (ps1Plocha != null || rootFrame == null) return;
+            android.view.SurfaceView sv = new android.view.SurfaceView(MainActivity.this);
+            sv.setClickable(false);
+            sv.setEnabled(false);
+            sv.setFocusable(false);
+            sv.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
+                @Override public void surfaceCreated(android.view.SurfaceHolder h) {
+                    appendNativeLog("PLOCHA_VYTVORENA - predavam ji jadru");
+                    NativePs1CoreBridge.setDisplaySurfaceSafe(h.getSurface());
+                }
+                @Override public void surfaceChanged(android.view.SurfaceHolder h, int f, int w, int hh) {
+                    appendNativeLog("PLOCHA_ZMENENA " + w + "x" + hh);
+                    NativePs1CoreBridge.setDisplaySurfaceSafe(h.getSurface());
+                }
+                @Override public void surfaceDestroyed(android.view.SurfaceHolder h) {
+                    appendNativeLog("PLOCHA_ZRUSENA");
+                    NativePs1CoreBridge.setDisplaySurfaceSafe(null);
+                }
+            });
+            rootFrame.addView(sv, 0, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            try { gv.setZ(-1f); } catch (Throwable ignored) {}
-            ps1GlView = gv;
-            appendNativeLog("D PS1_GL_ON - plynuly obraz je hlavni cesta");
+            ps1Plocha = sv;
+            appendNativeLog("PS1_OBRAZ_PRIMO_ZAPNUT (bez JPEG)");
         } catch (Throwable t) {
-            appendNativeLog("D PS1_GL_ENABLE_ERROR " + safeMsg(t));
+            appendNativeLog("PS1_OBRAZ_PRIMO_CHYBA " + safeMsg(t));
         }
     }
 
     // Vypnout nas obraz (pri ukonceni hry / odchodu z aplikace).
     private void ps1GlDisable() {
-        try {
-            final Ps1GlTextureView old = ps1GlView;
-            ps1GlView = null;
-            if (old == null) return;
-            try { old.stopRender(); } catch (Throwable ignored) {}
-            ui.post(() -> {
-                try { if (old.getParent() instanceof ViewGroup) ((ViewGroup) old.getParent()).removeView(old); }
-                catch (Throwable ignored) {}
-            });
-            appendNativeLog("D PS1_GL_OFF");
-        } catch (Throwable t) {
-            appendNativeLog("D PS1_GL_DISABLE_ERROR " + safeMsg(t));
-        }
+        final android.view.SurfaceView old = ps1Plocha;
+        ps1Plocha = null;
+        Runnable r = () -> {
+            try {
+                NativePs1CoreBridge.setDisplaySurfaceSafe(null);
+                if (old != null && old.getParent() instanceof ViewGroup)
+                    ((ViewGroup) old.getParent()).removeView(old);
+                appendNativeLog("PS1_OBRAZ_PRIMO_VYPNUT");
+            } catch (Throwable ignored) {}
+        };
+        if (isUiThread()) r.run(); else ui.post(r);
     }
 
     // Tlacitko na logu NaP: kdyz obraz bezi, prepina POMER STRAN
     // 4:3 <-> 16:9 (pro televizi). Kdyz nebezi, zapne ho.
     private boolean ps1Wide = false;
     private void togglePs1Gl() {
-        if (ps1GlView == null) { ps1GlEnable(); return; }
+        if (ps1Plocha == null) { ps1GlEnable(); return; }
         ps1Wide = !ps1Wide;
-        try { ps1GlView.setWide169(ps1Wide); } catch (Throwable ignored) {}
+        // Pomer stran resi nativni plocha sama podle rozmeru snimku.
+        // Prepinac zustava, at je co ohlasit; realny ucinek prijde spolu
+        // s dalsim krokem (vyrez 16:9 primo v kreslici smycce).
         appendNativeLog("E pomer stran: " + (ps1Wide ? "16:9 (siroky)" : "4:3 (puvodni PS1)"));
         try {
             android.widget.Toast.makeText(MainActivity.this,

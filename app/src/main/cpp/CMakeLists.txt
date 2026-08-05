@@ -255,7 +255,7 @@ find_package(Threads REQUIRED)
 # BUILD2SK98: + EGL/GLESv1_CM - standardni, VZDY pritomne Android system
 # knihovny (soucast kazdeho Android NDK) - potrebne pro GLES2 renderer.
 # NAPLES2: renderer je GLES2 -> linkujeme GLESv2 (drive GLESv1_CM kvuli gpu-gles)
-target_link_libraries(napps1core ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS} EGL GLESv2 OpenSLES)
+target_link_libraries(napps1core ${log-lib} Threads::Threads m z ${CMAKE_DL_LIBS} EGL GLESv2 OpenSLES android)
 target_link_options(napps1core PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif() # NAP_ENABLE_PS1
 
