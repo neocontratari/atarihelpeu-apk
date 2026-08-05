@@ -2932,7 +2932,14 @@ public class MainActivity extends Activity {
                     ps1PreviewSrcBmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
                 }
                 ps1PreviewSrcBmp.setPixels(ps1PrevBuf, 0, w, 0, 0, w, h);
-                int sw = w * 3, sh = h * 3;
+                // ===== TADY BYLO TO KOUSANI =====
+                // Obraz se tu zvetsoval TRIKRAT (512x240 -> 1536x720) a pak
+                // balil do JPEGu v kvalite 90. V logu to bylo
+                // "PS1_PREVIEW_AVG avgMs=77" - sedmdesat sedm milisekund NA
+                // SNIMEK. Kvuli tomu se kousal obraz i zvuk.
+                // Zvetsovat nema smysl: stranka si obraz roztahne sama pres
+                // CSS. Posilame ho v puvodni velikosti.
+                int sw = w, sh = h;
                 if (ps1PreviewScaledBmp == null || ps1PreviewScaledBmp.getWidth() != sw || ps1PreviewScaledBmp.getHeight() != sh) {
                     if (ps1PreviewScaledBmp != null) { try { ps1PreviewScaledBmp.recycle(); } catch (Throwable ignored) {} }
                     ps1PreviewScaledBmp = android.graphics.Bitmap.createBitmap(sw, sh, android.graphics.Bitmap.Config.ARGB_8888);
@@ -2941,7 +2948,7 @@ public class MainActivity extends Activity {
                 ps1PreviewDstRect.set(0, 0, sw, sh);
                 ps1PreviewScaledCanvas.drawBitmap(ps1PreviewSrcBmp, null, ps1PreviewDstRect, ps1PreviewScalePaint);
                 java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
-                ps1PreviewScaledBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, bo);
+                ps1PreviewScaledBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, bo);
                 String outB64 = Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
                 long tookMs = System.currentTimeMillis() - t0;
                 ps1PreviewDiagSumMs += tookMs; ps1PreviewDiagCount++;

@@ -480,17 +480,15 @@ function ensurePs1ScreenAndPoll(){
       mon.appendChild(im);window.__napPs1Screen=im;
       window.__napPs1FramePoll=setInterval(function(){
         try{
-          // BUILD2SK87: v landscape uz kresli primo nativni TextureView (viz
-          // NativePs1InPlaceView v Jave) - ZADNY JPEG, ZADNY base64. Tenhle
-          // (drazsi, ~50ms/volani) JS preview se tedy v landscape VUBEC
-          // nespousti - jen schova stary obrazek, kdyby jeste svitil. Portret
-          // beze zmeny - stale tenhle JPEG preview, presne jako driv.
-          if(window.innerWidth>window.innerHeight){
-            if(im.style.display!=='none')im.style.display='none';
-            return;
-          }
+          // ===== TADY BYLA TA CERNA OBRAZOVKA NA SIRKU =====
+          // Puvodne se tu obraz na sirku VUBEC neposilal s tim, ze ho pry
+          // kresli nativni TextureView (NativePs1InPlaceView). Ta trida ale
+          // byla mrtva (lezela za "if (true) return;") a nakonec smazana,
+          // takze na sirku nekreslil NIKDO - odtud cerna obrazovka jen
+          // s ovladacem. Obraz se ted posila v obou otocenich.
+          // Ovladac zustava nad obrazem: obraz ma z-index 2, tlacitka 12 a 16.
           var b64=window.AHPS1.ps1FramePreviewB64();
-          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_SCREEN_PREVIEW_ON realne snimky z jadra, JPEG90 preview - POUZE PORTRET (BUILD2SK87: landscape ted kresli nativni TextureView bez JPEG)');}}
+          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_OBRAZ_ZAPNUT snimky z jadra, na vysku i na sirku');}}
         }catch(fe){}
       },80);
     }

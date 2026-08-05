@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 120
-        versionName "EMU10-B72-BIOS-GRAFIKA-OPRAVENA"  // cteni videopameti vraci obraz z GPU - BIOS si tim bere bublinu z obrazovky; bubliny i preliv za menu jsou spravne
+        versionCode 121
+        versionName "EMU10-B73-OBRAZ-NA-SIRKU-A-BEZ-KOUSANI"  // obraz se zvetsoval 3x a bal do JPEG90 = 77 ms na snimek; a na sirku se neposilal vubec
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

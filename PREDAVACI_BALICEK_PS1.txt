@@ -1,0 +1,156 @@
+===============================================================================
+ PREDAVACI BALICEK - EMU PS1
+ Verze: EMU10-B73-OBRAZ-NA-SIRKU-A-BEZ-KOUSANI (versionCode 121)
+ Datum: 5. 8. 2026
+===============================================================================
+
+Tenhle soubor je v KAZDEM balicku. Popisuje presne, kudy tece obraz a kudy
+zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
+
+
+===============================================================================
+ 1. CESTA OBRAZU - kompletne, krok za krokem
+===============================================================================
+
+  ZDROJ: jadro PS1 (pcsx_rearmed) + renderer naples2
+
+  [1] Jadro posila prikazy GP0 do rendereru
+      plugins/gpulib/gpu.c  ->  renderer_do_cmd_list()
+      plugins/gpu_naples2/naples2_gl.c  ->  n2_do_cmd_list()
+
+  [2] Renderer kresli PRES OpenGL ES 2.0 do vlastniho ramce (FBO)
+      naples2_gl.c: n2_flush()  ->  glDrawArrays()
+      Cil kresleni: textura n2.tex_out, 1024x512, cela videopamet PS1.
+      Prekladá se JEN gpu_naples2. gpu_neon ani gpu_unai se neprekladaji.
+      Linkuje se proti EGL a GLESv2 (CMakeLists.txt radek 258).
+      -> AZ SEM JE VSECHNO NA GPU.
+
+  [3] Snimek se stahne z GPU do pameti procesoru
+      naples2_gl.c: n2_read_display()  ->  glReadPixels()
+      gpulib_if.c:  nap_gles_grab_pixels()
+      nap_ps1_native.cpp: nap_video()  ->  ulozi do g_frame_argb, nastavi g_fw/g_fh
+      -> TADY OBRAZ OPOUSTI GPU.
+
+  [4a] CESTA NA DISPLEJ TELEFONU  (tohle je ta "softova" cast)
+      MainActivity.java: ps1FramePreviewB64()  (kolem radku 2930)
+        - vezme g_frame_argb pres NativePs1CoreBridge.grabFrameSafe()
+        - zabali do JPEG kvalita 80  (do B73 to bylo JPEG 90 a jeste
+          zvetsene 3x, coz stalo 77 ms na snimek - odtud kousani)
+        - zakoduje do base64
+        - posle do webove stranky
+      assets/emu_ps1/index.html: obrazek <img id="ps1Screen"> uvnitr #psMonitor
+        - poll kazdych 80 ms
+        - od B73 bezi na VYSKU I NA SIRKU (drive se na sirku neposilal
+          vubec, protoze se cekalo na TextureView, ktery byl mrtvy)
+      Vrstvy: obraz z-index 2, ovladac 12 a 16 -> ovladac je NAD obrazem.
+
+  [4b] CESTA NA TV (prohlizec na PC)
+      MainActivity.java radek ~1121: napTvWebH264FeedFrame(bm)
+        - MediaCodec, H.264 Annex-B, klient dekoduje pres JMuxer.js
+        - komentar v kodu: "H.264 STREAM PRO PS1 (misto MJPEG)"
+      JPEG (napTvWebJpeg) tu zustava uz jen jako zaloha, kdyz H.264 nejede.
+      TV bere snimek PRIMO Z JADRA, ne z obrazovky telefonu
+        -> proto na TV NENI videt ovladac. To je zamer a ma to tak zustat.
+
+  [5] CO JESTE NENI HOTOVE - prima cesta
+      V jadre je pripravena, ale nepouziva se:
+        gpulib_if.c: nap_gles_grab_texture()   vraci PRIMO cislo GL textury
+        nap_ps1_native.cpp: nap_ps1_egl_grab() prepne kontext a vrati texturu
+      Cil: jadro -> sdilena textura v GPU -> obrazovka. Nula kopirovani.
+      Proc zatim ne: dvanact pokusu (B57-B68) skoncilo cernou obrazovkou.
+      Pricina je znama z logu: CHYBA_OPENGL 0x506 = kresleni do neplatneho
+      cile. Jadro si pri vydavani textury prepne kontext a vrati se na
+      povrch, ktery si zapamatovalo pri startu - po otoceni telefonu je
+      ten povrch mrtvy.
+      Dalsi plan: SurfaceView misto TextureView (ma stabilni povrch,
+      pri otoceni se nerusi).
+
+
+===============================================================================
+ 2. CESTA ZVUKU - kompletne
+===============================================================================
+
+  [1] Jadro vydava vzorky
+      nap_ps1_native.cpp radek 571-572:
+        nap_audio_sample(l, r)      - jeden vzorek
+        nap_audio_batch(data, n)    - davka
+      Registrace: retro_set_audio_sample / _batch  (radek 916-917)
+
+  [2] Vzorky jdou do kruhove fronty v pameti
+      nap_aring_write()  (radek 379)
+      Format: 16 bitu se znamenkem, 2 kanaly, 44100 Hz
+
+  [3] Zpetny tlak - aby fronta nepretekla ani nevyschla
+      nap_audio_skip_step()  (radek 432)
+      Kdyz je zvuku dost, VYNECHA SE JEDEN KROK EMULACE.
+      POZOR: driv se to resilo uspanim (usleep) na vlakne, ktere ceka na
+      vykresleni. Tim se snimek protahl z 16 na 33 ms, jadro udelalo jen
+      pulku kroku a cele se to rozkmitalo - znelo to jako "zpomali a
+      zase zrychli". NIKDY se k uspani nevracet.
+
+  [4] Vystup do reproduktoru
+      OpenSL ES, nativne, bez Javy
+      nap_sl_open()      (radek 534)   - 2 kanaly, 44100 Hz, 16 bitu
+      nap_sl_callback()  (radek 512)   - dopl^nuje bloky pres Enqueue()
+      Java zvukova cesta (AudioTrack) UZ NEBEZI - v logu je
+      "PS1_AUDIO_JAVA_VYPNUTO". Driv bezely obe naraz a rvaly si do toho.
+
+  [5] Zvuk pro TV
+      Odbocuje se z teze fronty (nap_ps1_native.cpp, sekce "ODBOCKA ZVUKU
+      PRO TV"), protoze Javova cesta uz neexistuje.
+
+
+===============================================================================
+ 3. JAK SE TO OVERUJE BEZ TELEFONU
+===============================================================================
+
+  Java:      javac proti android.jar API 34  (stejna verze jako GitHub Actions)
+  C++:       clang --target=aarch64-linux-gnu
+  Jadro PS1: aarch64-linux-gnu vcetne assembleru gte_arm64.S
+  Renderer:  PRELOZI SE A SPUSTI proti skutecnemu OpenGL ES
+             (Mesa llvmpipe, EGL_PLATFORM=surfaceless)
+             -> da se videt, co renderer nakresli, bez telefonu
+
+  Neoveritelne: NDK preklad pro Android a chovani Mali na telefonu.
+
+
+===============================================================================
+ 4. CO JE HOTOVE A CO NE
+===============================================================================
+
+  HOTOVO:
+   - grafika menu BIOSu bez CD (bubliny, prelivy, MEMORY CARD, CD PLAYER)
+   - hra se spousti do TEHOZ monitoru jako BIOS (ISO CD i LOAD GAME)
+   - obraz na displeji telefonu na vysku i na sirku
+   - zvuk nativne pres OpenSL ES, bez kmitani
+
+  NENI HOTOVO:
+   - prima cesta obrazu (viz bod 1[5]) - obraz jde pres procesor
+   - overeni na telefonu delam jen ja skrz Reneho testy
+
+
+===============================================================================
+ 5. SLEPE ULICKY - UZ NEZKOUSET
+===============================================================================
+
+  Vsechno nize bylo VYZKOUSENO A ZMERENO, ne odhadnuto:
+
+   - texturove okno v shaderu: vypnuto, obraz bajt po bajtu stejny -> neni to
+   - kopie uvnitr videopameti (prikaz 0x80): BIOS ani jednu nedela -> neni to
+   - vraceni celeho obrazu z GPU kazdy snimek: zmena 0,03 z 255 -> neni to
+   - RGBA 8888 jako format obrazu (B43, B54): rozbije palety
+   - JPEG preview zvetseny 3x: 77 ms na snimek, kouse obraz i zvuk
+   - usleep jako zpetny tlak zvuku: rozkmita to
+
+
+===============================================================================
+ 6. JAK PRACOVAT S RENEM
+===============================================================================
+
+   - Rene je designer, ne programator. Neposilat ho do prikazoveho radku.
+   - ON VIDI A SLYSI. Log musi byt napsany tak, aby z nej videl TEN DRUHY.
+   - Jedna zmena na build. Kdyz jich musi byt vic, rict to a rict proc.
+   - Nikdy neposilat build, u ktereho nejde rict, co presne bylo overeno.
+   - Vzdy posilat CELY balicek, ne jednotlivé soubory.
+   - Nikdy nepsat "kdyz bude X, tak Y" a nechat poznavani na nem.
+     Overit si to sam.
