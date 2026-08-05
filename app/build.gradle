@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 125
-        versionName "EMU10-B77-OTOCENI-A-OKENKO"  // obraz byl vzhuru nohama (UV quadu) a na vysku lezel pod neprusvitnou grafikou konzole
+        versionCode 126
+        versionName "EMU10-B78-PLOCHA-KLIDNA"  // pri otoceni se kreslici vlakna prekotne stridala a po otoceni nekreslilo nic; a obraz PS1 prosvital do cele aplikace
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

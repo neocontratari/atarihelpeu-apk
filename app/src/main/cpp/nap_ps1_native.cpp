@@ -1125,6 +1125,7 @@ static void nap_disp_thread_fn(ANativeWindow *win) {
             glEnableVertexAttribArray((GLuint)aUV);
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         }
+        if (!g_disp_run.load()) break;      /* odpojeno - hned ven, nez se swapne */
         eglSwapBuffers(dpy, surf);
 
         if (++snimku % 300 == 1)

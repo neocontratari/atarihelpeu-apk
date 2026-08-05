@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B77-OTOCENI-A-OKENKO (versionCode 125)
+ Verze: EMU10-B78-PLOCHA-KLIDNA (versionCode 126)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -58,7 +58,19 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       a ja se na tom sam rozbil dvanactkrat (chyba OpenGL 0x506).
       Sdilenou texturu uz nezkouset, dokud nebude jasne proc padala.
 
-      DVE VECI, KTERE SE MUSI HLIDAT:
+      TRI VECI, KTERE SE MUSI HLIDAT:
+      (0) PLOCHA LEZI PRES CELOU OBRAZOVKU, POD STRANKOU, a nesmi se
+          prestavovat. Overeno testem: v obou otocenich to takhle funguje.
+          - setZOrderOnTop(true) NEPOUZIVAT: obraz PS1 pak prosvita pres
+            celou aplikaci i na jinych obrazovkach (bootovaci Sony).
+          - Misto toho se plocha SCHOVA (View.GONE), kdyz adresa stranky
+            neobsahuje "emu_ps1".
+          - surfaceChanged NESMI plochu znovu pripojovat. Pri otoceni prisly
+            surfaceCreated i surfaceChanged tesne po sobe, kreslici vlakna
+            se prekotne stridala (v logu ZRUSENA -> PRIPRAVENA -> UKONCENA
+            -> PRIPRAVENA -> VYTVORENA) a po otoceni uz nekreslilo NIC.
+
+      DALSI DVE VECI:
       (1) OTOCENI. Quad musi byt presne takhle (prevzato z eglrender):
             -1,-1, 0,0    1,-1, 1,0
             -1, 1, 0,1    1, 1, 1,1

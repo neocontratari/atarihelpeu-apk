@@ -535,6 +535,24 @@ public class MainActivity extends Activity {
                         String curUrl = "?";
                         try { curUrl = web == null ? "null" : web.getUrl(); } catch (Throwable ignored) {}
                         napTvWebCurrentUrl = curUrl; // BUILD2SK61: cache pro /status - viz vysvetleni u deklarace pole
+                        // ===== ABY OBRAZ PS1 NELEZL DO CELE APLIKACE =====
+                        // Plocha lezi pres celou obrazovku. Kdyz uzivatel odejde
+                        // z obrazovky PS1, musi se schovat, jinak pod ostatnimi
+                        // strankami prosvita obraz z PS1 (napr. bootovaci Sony).
+                        try {
+                            boolean jePs1 = curUrl != null && curUrl.contains("emu_ps1");
+                            final android.view.SurfaceView pl = ps1Plocha;
+                            if (pl != null) {
+                                final int chci = jePs1 ? View.VISIBLE : View.GONE;
+                                if (pl.getVisibility() != chci) {
+                                    ui.post(() -> {
+                                        try { pl.setVisibility(chci); } catch (Throwable ignored) {}
+                                        appendNativeLog("PLOCHA_" + (chci == View.VISIBLE ? "ZOBRAZENA" : "SCHOVANA")
+                                                + " (obrazovka " + (jePs1 ? "PS1" : "jina") + ")");
+                                    });
+                                }
+                            }
+                        } catch (Throwable ignored) {}
                         // BUILD2SK84: battery/CPU/thermal kontext PRIMO v periodickem logu.
                         // readBatteryTempC()/readCpuFreqKHz() uz existovaly (BUILD2RX) a
                         // uz drive proverovaly tepelne hrdlo Segy na S8 - ale JEN dokud
@@ -4580,26 +4598,14 @@ public class MainActivity extends Activity {
      *  na SIRKU pod ni (stranka je pruhledna a ovladac ma byt nad obrazem).
      *  Vysku vrstvy nelze menit za behu - proto se plocha postavi znovu. */
     private void ps1PlochaUmisti(int l, int t, int w, int hh, boolean naSirku) {
-        if (rootFrame == null || w <= 0 || hh <= 0) return;
-        boolean chceNahore = !naSirku;
-        boolean prestavet = (ps1Plocha == null) || (chceNahore != plochaZOrderNahore);
+        // Umisteni podle stranky se NEPOUZIVA. Plocha lezi pres celou
+        // obrazovku pod strankou a v obou otocenich to funguje (test 1 a 2).
+        // Prestavovani plochy pri otoceni delalo melu vlaken:
+        //   ZRUSENA -> PRIPRAVENA -> UKONCENA -> PRIPRAVENA -> VYTVORENA
+        // a po otoceni uz nekreslilo nic. Proto jen zaznam do logu.
         plochaL = l; plochaT = t; plochaW = w; plochaH = hh; plochaNaSirku = naSirku;
-        try {
-            if (prestavet) {
-                plochaZOrderNahore = chceNahore;
-                ps1GlDisable();
-                ps1GlEnable();
-                return;                       // rozmery se nastavi po vytvoreni
-            }
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, hh);
-            lp.leftMargin = l; lp.topMargin = t;
-            ps1Plocha.setLayoutParams(lp);
-            ps1Plocha.requestLayout();
-            appendNativeLog("PLOCHA_UMISTENA " + l + "," + t + " " + w + "x" + hh
-                    + (naSirku ? " (na sirku, pod strankou)" : " (na vysku, nad strankou)"));
-        } catch (Throwable e) {
-            appendNativeLog("PLOCHA_UMISTENA_CHYBA " + safeMsg(e));
-        }
+        appendNativeLog("PLOCHA_MISTO_ZE_STRANKY " + l + "," + t + " " + w + "x" + hh
+                + (naSirku ? " (na sirku)" : " (na vysku)") + " - plocha zustava pres celou obrazovku");
     }
 
     /** PLOCHA, NA KTEROU JADRO KRESLI PRIMO - bez JPEG, bez base64.
@@ -4617,30 +4623,27 @@ public class MainActivity extends Activity {
             sv.setFocusable(false);
             // Na vysku musi byt plocha NAD strankou, jinak ji zakryje
             // neprusvitna grafika konzole. Nastavuje se PRED vytvorenim.
-            sv.setZOrderOnTop(plochaZOrderNahore);
+            // Plocha lezi POD strankou. Nahoru ji davat nelze - prosvitala by
+            // pres celou aplikaci i mimo obrazovku PS1.
+            sv.setZOrderOnTop(false);
             sv.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
                 @Override public void surfaceCreated(android.view.SurfaceHolder h) {
                     appendNativeLog("PLOCHA_VYTVORENA - predavam ji jadru");
                     NativePs1CoreBridge.setDisplaySurfaceSafe(h.getSurface());
                 }
                 @Override public void surfaceChanged(android.view.SurfaceHolder h, int f, int w, int hh) {
-                    appendNativeLog("PLOCHA_ZMENENA " + w + "x" + hh);
-                    NativePs1CoreBridge.setDisplaySurfaceSafe(h.getSurface());
+                    // Znovu NEPRIPOJOVAT. Pri otoceni prisly surfaceCreated
+                    // i surfaceChanged tesne po sobe, kreslici vlakna se
+                    // prekotne stridala a po otoceni uz nekreslilo nic.
+                    appendNativeLog("PLOCHA_ZMENENA " + w + "x" + hh + " (kresli dal)");
                 }
                 @Override public void surfaceDestroyed(android.view.SurfaceHolder h) {
                     appendNativeLog("PLOCHA_ZRUSENA");
                     NativePs1CoreBridge.setDisplaySurfaceSafe(null);
                 }
             });
-            FrameLayout.LayoutParams lp;
-            if (plochaW > 0) {
-                lp = new FrameLayout.LayoutParams(plochaW, plochaH);
-                lp.leftMargin = plochaL; lp.topMargin = plochaT;
-            } else {
-                lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                                                 ViewGroup.LayoutParams.MATCH_PARENT);
-            }
-            rootFrame.addView(sv, 0, lp);
+            rootFrame.addView(sv, 0, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             ps1Plocha = sv;
             appendNativeLog("PS1_OBRAZ_PRIMO_ZAPNUT (bez JPEG)");
         } catch (Throwable t) {
