@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B83-CISTE-JADRO-GPU-NEON (versionCode 131)
+ Verze: EMU10-B84-CISTE-JADRO-SLINKOVANE (versionCode 132)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -275,6 +275,13 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
    - C++:    clang --target=aarch64-linux-gnu, proti SKUTECNEMU jni.h
              z /usr/lib/jvm/java-17-openjdk-amd64/include
    - jadro PS1 pro ARM64: aarch64-linux-gnu vcetne assembleru gte_arm64.S
+   - LINKOVANI (POVINNE, jinak se to pozna az v GitHub Actions):
+       clang++ -c --target=aarch64-linux-gnu ... nap_ps1_native.cpp -o /tmp/nap.o
+       aarch64-linux-gnu-nm -u /tmp/nap.o        <- co appka POTREBUJE
+       aarch64-linux-gnu-nm --defined-only <jadro>.so   <- co jadro DAVA
+       a porovnat. Samotny preklad (-fsyntax-only) chybejici symbol
+       NENAJDE. Prave na tom spadl B83: appka vola n2_init a n2_finish
+       primo a mustek je nemel.
    - renderer: PRELOZIT A SPUSTIT proti skutecnemu OpenGL ES
                (apt: libegl1-mesa-dev libgles2-mesa-dev, EGL_PLATFORM=surfaceless)
                -> jde VIDET, co renderer nakresli, bez telefonu

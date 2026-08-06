@@ -34,6 +34,23 @@
 
 extern void nap_diag_log(const char *fmt, ...);
 
+/* ---------------------------------------------------------------
+   n2_init() a n2_finish() patrily rucne psanemu vykreslovaci a
+   aplikace je vola PRIMO (nap_ps1_native.cpp radky 733, 1209, 1280).
+   Provereny vykreslovac zadnou takovou pripravu nepotrebuje - kresli
+   do videopameti, ne do vlastniho GL ramce.
+   Bez techhle dvou se cela knihovna NESLINKUJE:
+     ld.lld: error: undefined symbol: n2_init
+   --------------------------------------------------------------- */
+int n2_init(void)
+{
+    return 0;          /* 0 = v poradku, stejne jako drive */
+}
+
+void n2_finish(void)
+{
+}
+
 /* Priprava grafiky. Provereny vykreslovac zadny vlastni GL kontext
    nepotrebuje - obraz kresli do videopameti a na obrazovku ho dostane
    nativni plocha. Vracime uspech, aby se start jadra nezastavil. */
