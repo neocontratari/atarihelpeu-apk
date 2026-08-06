@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B82-TV-A-VRSTVA-OD-ZACATKU (versionCode 130)
+ Verze: EMU10-B83-CISTE-JADRO-GPU-NEON (versionCode 131)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -26,12 +26,25 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       plugins/gpulib/gpu.c  ->  renderer_do_cmd_list()
       plugins/gpu_naples2/naples2_gl.c  ->  n2_do_cmd_list()
 
-  [2] Renderer kresli PRES OpenGL ES 2.0 do vlastniho ramce (FBO)
-      naples2_gl.c: n2_flush()  ->  glDrawArrays()
-      Cil kresleni: textura n2.tex_out, 1024x512, cela videopamet PS1.
-      Prekladá se JEN gpu_naples2. gpu_neon ani gpu_unai se neprekladaji.
-      Linkuje se proti EGL a GLESv2 (CMakeLists.txt radek 258).
-      -> AZ SEM JE VSECHNO NA GPU.
+  [2] VYKRESLOVAC: od B83 se preklada gpu_neon
+      plugins/gpu_neon/psx_gpu_if.c + psx_gpu/psx_gpu_simd.c
+      + plugins/gpulib/{gpu.c, vout_pl.c, prim.c}
+      + plugins/gpu_neon/nap_most.c  (mustek pro 8 funkci, ktere volala appka)
+
+      PROC: do B82 se prekladal RUCNE PSANY gpu_naples2 (1291 radku),
+      zatimco 19 377 radku hotoveho a provereneho gpu_neon lezelo v
+      projektu NEPOUZITYCH. Rucne psany neumel vsechno, co PlayStation
+      dela -> kostickovana grafika (Formule), artefakty (Star Wars),
+      blikajici dema. gpu_neon je soucast jadra PCSX-ReARMed a je to
+      tentyz vykreslovac, ktery kreslil referencni obraz BIOSu.
+
+      DULEZITE: gpu_naples2 zustava v repozitari, jen se NEPREKLADA.
+      Nevracet se k nemu. Kdyz neco chybi, opravit to v gpu_neon nebo
+      v mustku, ne psat vlastni vykreslovac znovu.
+
+      Definice pro ARM64: GPU_NEON NEON_BUILD SIMD_BUILD
+                          TEXTURE_CACHE_4BPP TEXTURE_CACHE_8BPP
+      (na 64 bitech se pouziva SIMD varianta, ne 32bitovy assembler)
 
   [3] Snimek se stahne z GPU do pameti procesoru
       naples2_gl.c: n2_read_display()  ->  glReadPixels()
@@ -245,7 +258,56 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
 
 
 ===============================================================================
- 6. JAK PRACOVAT S RENEM
+ 6. KDO NA TOM DELA A CO KDO UMI  (cti jako prvni)
+===============================================================================
+
+ Na tomhle projektu jsou DVA. Nikdo jiny.
+
+ RENE - autor a majitel projektu. Padesatilety navrhar, ne programator.
+   Kod je CELY JEHO. On zadava, on testuje, on vidi a slysi.
+   Ma repozitar na GitHubu: neocontratari/atarihelpeu-apk
+
+ AI (ty) - jediny, kdo pise kod. Nemas kolegy, na ktere by slo cokoli svest.
+
+ CO SI AI UMI OVERIT SAMA - a proto se na to NIKDY nema ptat Reneho:
+   - kod: stahni si ho z GitHubu (git clone --filter=blob:none), je verejny
+   - Java:   javac proti android.jar API 34
+   - C++:    clang --target=aarch64-linux-gnu, proti SKUTECNEMU jni.h
+             z /usr/lib/jvm/java-17-openjdk-amd64/include
+   - jadro PS1 pro ARM64: aarch64-linux-gnu vcetne assembleru gte_arm64.S
+   - renderer: PRELOZIT A SPUSTIT proti skutecnemu OpenGL ES
+               (apt: libegl1-mesa-dev libgles2-mesa-dev, EGL_PLATFORM=surfaceless)
+               -> jde VIDET, co renderer nakresli, bez telefonu
+   - BIOSy PS1 ma AI k dispozici, muze nabootovat menu BIOSu offline
+
+ CO AI NEUMI:
+   - spustit Android (systemove obrazy jsou u Googlu, ten je blokovany)
+   - overit chovani SurfaceView, vrstev a otaceni
+   - overit chovani Mali na telefonu
+   Tohle je jedina oblast, kde je Rene nutny. Nezneuzivat ji na veci,
+   ktere jdou overit vyse.
+
+ CO SI OD RENEHO OBCAS VYZADAT (a jen to):
+   - vysledek testu: kratce spravne/spatne podle tabulky v protokolu
+   - par radku z logu, KTERE SI AI PREDEM POJMENUJE
+   - obcas log z GitHub Actions ze ZELENEHO buildu (varovani od NDK, ktera
+     AI u sebe neuvidi)
+   Nikdy ho neposilat do prikazoveho radku. Nikdy po nem nechtit soubory,
+   ktere si AI muze stahnout sama.
+
+ CO SE UZ STALO SPATNE - aby se to neopakovalo:
+   - dvanact buildu (B57-B68) se spalilo na prestavbe zobrazovaci vrstvy,
+     kterou AI nedokaze overit. V eglrender pritom UZ BYLO NAPSANE, ze
+     sdilena textura nefunguje ("obraz cerny nebo roztrhany"). Kdyby se
+     AI podivala do existujiciho kodu drive, neslo se to stat.
+     -> NEZ NECO PREPISES, PODIVEJ SE, JESTLI TO UZ NEKDO NEZKOUSEL.
+   - AI opakovane posilala build se slovy "kdyz bude X, pozna se Y" a
+     nechavala poznavani na Renem. To je prace AI, ne jeho.
+   - AI tvrdila "na to nemam", aniz to zkusila do konce. Rene mel pravdu:
+     skutecne hlavicky Androidu i jni.h v systemu byly, jen se nehledaly.
+
+===============================================================================
+ 7. JAK PRACOVAT S RENEM
 ===============================================================================
 
    - Rene je designer, ne programator. Neposilat ho do prikazoveho radku.

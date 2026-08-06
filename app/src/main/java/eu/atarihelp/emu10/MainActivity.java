@@ -544,24 +544,7 @@ public class MainActivity extends Activity {
                         String curUrl = "?";
                         try { curUrl = web == null ? "null" : web.getUrl(); } catch (Throwable ignored) {}
                         napTvWebCurrentUrl = curUrl; // BUILD2SK61: cache pro /status - viz vysvetleni u deklarace pole
-                        // ===== ABY OBRAZ PS1 NELEZL DO CELE APLIKACE =====
-                        // Plocha lezi pres celou obrazovku. Kdyz uzivatel odejde
-                        // z obrazovky PS1, musi se schovat, jinak pod ostatnimi
-                        // strankami prosvita obraz z PS1 (napr. bootovaci Sony).
-                        try {
-                            boolean jePs1 = curUrl != null && curUrl.contains("emu_ps1");
-                            final android.view.SurfaceView pl = ps1Plocha;
-                            if (pl != null) {
-                                final int chci = jePs1 ? View.VISIBLE : View.GONE;
-                                if (pl.getVisibility() != chci) {
-                                    ui.post(() -> {
-                                        try { pl.setVisibility(chci); } catch (Throwable ignored) {}
-                                        appendNativeLog("PLOCHA_" + (chci == View.VISIBLE ? "ZOBRAZENA" : "SCHOVANA")
-                                                + " (obrazovka " + (jePs1 ? "PS1" : "jina") + ")");
-                                    });
-                                }
-                            }
-                        } catch (Throwable ignored) {}
+
                         // BUILD2SK84: battery/CPU/thermal kontext PRIMO v periodickem logu.
                         // readBatteryTempC()/readCpuFreqKHz() uz existovaly (BUILD2RX) a
                         // uz drive proverovaly tepelne hrdlo Segy na S8 - ale JEN dokud
@@ -4555,6 +4538,45 @@ public class MainActivity extends Activity {
 
     // Zapnout nas plynuly OpenGL obraz (hlavni zobrazovaci cesta pro PS1).
     private android.view.SurfaceView ps1Plocha = null;
+    private java.util.Timer plochaHlidac = null;
+
+    /** HLIDAC, ABY OBRAZ PS1 NELEZL DO CELE APLIKACE.
+     *  Plocha lezi NAD strankou (jinak by ji na vysku zakryla neprusvitna
+     *  grafika konzole), takze mimo obrazovku PS1 by prosvitala vsude -
+     *  presne to je ten "duch BIOSu v cele apce".
+     *  Drive tohle sledovani viselo uvnitr smycky pro TV, takze BEZ ZAPNUTE
+     *  TV se vubec nespoustelo. Ted bezi samostatne, vzdycky. */
+    private void plochaHlidacStart() {
+        if (plochaHlidac != null) return;
+        plochaHlidac = new java.util.Timer("ps1-plocha-hlidac", true);
+        plochaHlidac.schedule(new java.util.TimerTask() {
+            @Override public void run() {
+                try { ui.post(() -> plochaZkontroluj()); } catch (Throwable ignored) {}
+            }
+        }, 300, 300);
+    }
+
+    private void plochaHlidacStop() {
+        try { if (plochaHlidac != null) plochaHlidac.cancel(); } catch (Throwable ignored) {}
+        plochaHlidac = null;
+    }
+
+    private void plochaZkontroluj() {
+        try {
+            android.view.SurfaceView pl = ps1Plocha;
+            if (pl == null) return;
+            String u = null;
+            try { if (web != null) u = web.getUrl(); } catch (Throwable ignored) {}
+            boolean jePs1 = (u != null) && u.contains("emu_ps1");
+            int chci = jePs1 ? View.VISIBLE : View.INVISIBLE;
+            if (pl.getVisibility() != chci && (jePs1 || plochaW > 0)) {
+                pl.setVisibility(chci);
+                appendNativeLog("PLOCHA_" + (jePs1 ? "ZOBRAZENA" : "SCHOVANA")
+                        + " (obrazovka " + (jePs1 ? "PS1" : String.valueOf(u)) + ")");
+            }
+        } catch (Throwable ignored) {}
+    }
+
     // Vychozi obdelnik okenka konzole na vysku. Stranka ho hned upresni
     // (PLOCHA_MISTO_ZE_STRANKY), ale nez to udela, at uz je obraz videt.
     private int plochaL = -1, plochaT = -1, plochaW = -1, plochaH = -1;
@@ -4669,6 +4691,7 @@ public class MainActivity extends Activity {
             }
             rootFrame.addView(sv, 0, lp);
             ps1Plocha = sv;
+            plochaHlidacStart();
             appendNativeLog("PS1_OBRAZ_PRIMO_ZAPNUT (bez JPEG)");
         } catch (Throwable t) {
             appendNativeLog("PS1_OBRAZ_PRIMO_CHYBA " + safeMsg(t));
@@ -4684,6 +4707,7 @@ public class MainActivity extends Activity {
                 NativePs1CoreBridge.setDisplaySurfaceSafe(null);
                 if (old != null && old.getParent() instanceof ViewGroup)
                     ((ViewGroup) old.getParent()).removeView(old);
+                plochaHlidacStop();
                 appendNativeLog("PS1_OBRAZ_PRIMO_VYPNUT");
             } catch (Throwable ignored) {}
         };

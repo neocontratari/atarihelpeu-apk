@@ -222,9 +222,19 @@ add_library(napps1core SHARED
     ${PS1_DIR}/libpcsxcore/gte_arm64.S
     ${PS1_DIR}/libpcsxcore/gte_nf_arm64.S
     ${PS1_DIR}/libpcsxcore/new_dynarec/linkage_arm64.S
-    # NAPLES2: novy GLES2 renderer misto gpu-gles (ten byl OpenGL ES 1)
-    ${PS1_DIR}/plugins/gpu_naples2/gpulib_if.c
-    ${PS1_DIR}/plugins/gpu_naples2/naples2_gl.c
+    # ===== PROVERENY VYKRESLOVAC gpu_neon =====
+    # Do B82 se tu prekladal rucne psany gpu_naples2 (1291 radku), zatimco
+    # 19 377 radku hotoveho a provereneho gpu_neon lezelo nepouzitych.
+    # Rucne psany neumel vsechno, co PlayStation dela - kostickovana
+    # grafika ve Formuli, artefakty ve Star Wars, blikajici dema.
+    # gpu_neon je soucast jadra PCSX-ReARMed a je to tentyz vykreslovac,
+    # ktery kreslil referencni obraz BIOSu (ten spravny).
+    ${PS1_DIR}/plugins/gpulib/gpu.c
+    ${PS1_DIR}/plugins/gpulib/vout_pl.c
+    ${PS1_DIR}/plugins/gpulib/prim.c
+    ${PS1_DIR}/plugins/gpu_neon/psx_gpu_if.c
+    ${PS1_DIR}/plugins/gpu_neon/psx_gpu/psx_gpu_simd.c
+    ${PS1_DIR}/plugins/gpu_neon/nap_most.c
     ${PS1_DIR}/frontend/pcsxr-threads.c
     ${PS1_DIR}/deps/libretro-common/features/features_cpu.c
 )
@@ -233,8 +243,10 @@ target_include_directories(napps1core PRIVATE
     ${PS1_DIR}/deps/crypto
     ${PS1_DIR}/deps/libchdr/include ${PS1_DIR}/deps/libchdr/deps/lzma-24.05/include
     ${PS1_DIR}/deps/libchdr/deps/zstd-1.5.6/lib ${PS1_DIR}/deps/libretro-common/include
-    ${PS1_DIR}/plugins/gpu_naples2)
+    ${PS1_DIR}/plugins/gpu_neon ${PS1_DIR}/plugins/gpu_neon/psx_gpu)
 target_compile_definitions(napps1core PRIVATE
+    # gpu_neon: na ARM64 se pouziva SIMD varianta (ne 32bitovy assembler)
+    GPU_NEON NEON_BUILD SIMD_BUILD TEXTURE_CACHE_4BPP TEXTURE_CACHE_8BPP
     HAVE_CHD Z7_ST ZSTD_DISABLE_ASM HAVE_LIBRETRO NO_FRONTEND REARMED
     P_HAVE_MMAP=1 P_HAVE_PTHREAD=1 P_HAVE_POSIX_MEMALIGN=1 USE_LIBRETRO_VFS
     NDRC_THREAD LIGHTREC_CUSTOM_MAP=0 LIGHTREC_ENABLE_THREADED_COMPILER=0
