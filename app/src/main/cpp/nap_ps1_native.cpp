@@ -303,15 +303,16 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
   if (!data) { g_dupe_frames.fetch_add(1); g_frames.fetch_add(1); return; }
   std::lock_guard<std::mutex> lock(g_frame_mutex);
   g_frame_argb.resize((size_t)w * h);
-  // BUILD2SK114: nase gpu-gles cesta VZDY balí data jako RGB565 (viz
-  // nap_gles_readback_and_push v gpulib_if.c) - misto spolehani na to, co
-  // si jadro samo nastavilo pres SET_PIXEL_FORMAT (mohlo by byt jine,
-  // zpusobilo by to zkreslene barvy), radeji to tady natvrdo vynutime na
-  // hodnotu, o ktere s jistotou vime, ze odpovida datum, co posilame.
-  // BUILD2SK118: gpu-gles readback ted produkuje ARGB8888 primo (uz ne
-  // RGB565 - viz gpulib_if.c, zbytecny dvojity prevod odstranen), takze
-  // format tady musi odpovidat.
-  if (g_gles_ready) { g_pixfmt.store(PIXFMT_XRGB8888); }
+  // ===== TADY BYL DVOJITY OBRAZ A ZELENOFIALOVE BARVY =====
+  // Drive tu stalo:  if (g_gles_ready) g_pixfmt.store(PIXFMT_XRGB8888);
+  // Melo to smysl, dokud kreslil rucne psany vykreslovac, ktery snimek
+  // opravdu dodaval po ctyrech bajtech na bod. Od B83 kresli provereny
+  // gpu_neon a ten dodava RGB565, tedy DVA bajty na bod. Prepsani formatu
+  // znamenalo, ze se cetly dva body misto ctyr:
+  //   -> obraz DVAKRAT VEDLE SEBE a rozhazene barvy (zelena/fialova)
+  // Format si hlasi jadro samo pres SET_PIXEL_FORMAT (radek 286) a tenhle
+  // kod uz vsechny tri varianty umi precist. Nic prepisovat netreba.
+  // NEVRACET SEM ZADNE VYNUCOVANI FORMATU.
   const int fmt = g_pixfmt.load();
   // BUILD2SK114: KRITICKA kontrola - nas gpu-gles readback VZDY balí data
   // jako RGB565 (PIXFMT_RGB565=2), ale tenhle kod si o tom, jak data cist,
@@ -1297,6 +1298,21 @@ static void nap_core_thread_fn(void) {
         {
             int w = 0, h = 0;
             const void *px = g_gles_ready ? nap_gles_grab_pixels(&w, &h) : NULL;
+            // ===== TADY NEBYL NA MOBILU OBRAZ =====
+            // Tohle brávalo snímek od rucne psaneho vykreslovace. Od B83
+            // kresli provereny gpu_neon a ten posila snimek pres
+            // retro_video_refresh -> nap_video() -> g_frame_argb.
+            // Bez tohohle doplneni zustal g_frame_buf prazdny, takze plocha
+            // na mobilu nemela co kreslit - zatimco TV brala g_frame_argb
+            // a obraz mela. Odtud "na TV je, na mobilu neni".
+            // Bezi to na TEMZE vlakne jako nap_video (hned po retro_run),
+            // takze se nic nemuze prekryt.
+            if (!px) {
+                int vw = g_fw.load(), vh = g_fh.load();
+                if (vw > 0 && vh > 0 && g_frame_argb.size() >= (size_t)vw * vh) {
+                    px = g_frame_argb.data(); w = vw; h = vh;
+                }
+            }
             if (px && w > 0 && h > 0) {
                 size_t need = (size_t)w * (size_t)h * 4;
                 if (g_frame_buf[slot].size() < need) g_frame_buf[slot].resize(need);

@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B84-CISTE-JADRO-SLINKOVANE (versionCode 132)
+ Verze: EMU10-B85-FORMAT-A-SNIMEK (versionCode 133)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -45,6 +45,24 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       Definice pro ARM64: GPU_NEON NEON_BUILD SIMD_BUILD
                           TEXTURE_CACHE_4BPP TEXTURE_CACHE_8BPP
       (na 64 bitech se pouziva SIMD varianta, ne 32bitovy assembler)
+
+  [2b] DVE VECI, KTERE SE PRI ZMENE VYKRESLOVACE ROZBILY (a jak)
+
+      (a) FORMAT BODU. gpu_neon dodava snimek jako RGB565 = DVA bajty na
+          bod. V nap_video() ale stalo:
+              if (g_gles_ready) g_pixfmt.store(PIXFMT_XRGB8888);
+          coz je CTYRI bajty na bod. Cetly se tedy dva body misto ctyr:
+            -> obraz DVAKRAT VEDLE SEBE a zelenofialove barvy
+          Format si hlasi jadro samo pres SET_PIXEL_FORMAT. Nic
+          nevynucovat. NEVRACET TAM ZADNE PREPISOVANI FORMATU.
+
+      (b) DVA RUZNE SNIMKY. Mobil a TV berou obraz odjinud:
+              nap_video()               -> g_frame_argb   -> TV
+              nap_ps1_egl_grab_pixels() -> g_frame_buf[]  -> MOBIL (plocha)
+          g_frame_buf plnilo vlakno emulace pres nap_gles_grab_pixels(),
+          coz patrilo rucne psanemu vykreslovaci. Po prechodu na gpu_neon
+          zustal g_frame_buf prazdny -> na TV obraz byl, na mobilu ne.
+          Vlakno emulace proto ted vezme g_frame_argb, kdyz jine neni.
 
   [3] Snimek se stahne z GPU do pameti procesoru
       naples2_gl.c: n2_read_display()  ->  glReadPixels()
