@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B85-FORMAT-A-SNIMEK (versionCode 133)
+ Verze: EMU10-B86-FORMAT-A-SNIMEK (versionCode 134)
  Datum: 5. 8. 2026
 ===============================================================================
 
