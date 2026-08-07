@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B89-MOBIL-SPRAVNE (versionCode 137)
+ Verze: EMU10-B90-TV-SE-VRACI (versionCode 138)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -169,6 +169,12 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
             okraje a roztahne na 1280x720. Ovladac se do nej NEDOSTANE.
         (b) PixelCopy celeho okna aplikace - fallback. Ovladac JE videt
             a obraz neni roztazeny. Snimani okna 1080x2220 je navic drahe.
+      POZOR: podminka se musi ptat i na to, jestli je na obrazovce PS1.
+      Jadro bezi dal i potom, co uzivatel odejde do Atari nebo Segy - kdyz
+      se podminka ptala jen na "bezi jadro", TV zustala viset na poslednim
+      snimku z PlayStation a uz se neprepnula. Kontroluje se proto
+      napTvWebCurrentUrl na "emu_ps1".
+
       Podminka pro (a) je na radku ~892 v MainActivity.java:
         if (!ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning)
             return false;

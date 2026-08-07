@@ -902,6 +902,22 @@ public class MainActivity extends Activity {
             // tam ovladac videt nebyl.
             // Navic: snimani okna 1080x2220 kazdy snimek je drahe. Kdyz se
             // bere snimek z jadra (512x240), odpadne to uplne.
+            // ===== ABY TV NEZUSTALA VISET NA POSLEDNIM SNIMKU Z PS1 =====
+            // Podminka nize se pta jen na to, jestli BEZI JADRO. Jenze jadro
+            // bezi dal i potom, co uzivatel z PS1 odejde do Atari nebo Segy -
+            // takze si TV porad brala jeho snimek a zustala viset na poslednim
+            // obrazku z PlayStation.
+            // Ptame se proto i na to, jestli je na obrazovce OPRAVDU PS1.
+            // Kdyz ne, TV se vrati ke snimani okna aplikace a ukaze, co ma.
+            {
+                String u = napTvWebCurrentUrl;
+                boolean naPs1 = (u != null) && u.contains("emu_ps1");
+                if (!naPs1) {
+                    if (tvCoreHadFrame) appendNativeLog("TV_ZPET_NA_OKNO (odchod z PS1)");
+                    tvCoreHadFrame = false;
+                    return false;
+                }
+            }
             if (!ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning) {
                 tvCoreHadFrame = false;
                 return false;
