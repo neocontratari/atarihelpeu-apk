@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 136
-        versionName "EMU10-B88-PROBLIKAVANI-PRYC"  // kazdy druhy snimek se zbytecne otacel o 180 stupnu a prohazoval R a B (stara funkce pro rucne psany vykreslovac)
+        versionCode 137
+        versionName "EMU10-B89-MOBIL-SPRAVNE"  // na mobilu byl obraz vzhuru nohama a s prohozenou cervenou a modrou: plocha cekala snimek zdola nahoru v RGBA, z jadra chodi shora dolu v ARGB
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

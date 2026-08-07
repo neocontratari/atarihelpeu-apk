@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B88-PROBLIKAVANI-PRYC (versionCode 136)
+ Verze: EMU10-B89-MOBIL-SPRAVNE (versionCode 137)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -55,6 +55,17 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
             -> obraz DVAKRAT VEDLE SEBE a zelenofialove barvy
           Format si hlasi jadro samo pres SET_PIXEL_FORMAT. Nic
           nevynucovat. NEVRACET TAM ZADNE PREPISOVANI FORMATU.
+
+      (d) KRESLENI NA MOBILU - OTOCENI A BARVY.
+          Plocha na mobilu (nap_disp_thread_fn) cekala snimek tak, jak ho
+          dodaval rucne psany vykreslovac: ZDOLA NAHORU a v poradi RGBA.
+          Z jadra pres nap_video() chodi SHORA DOLU a v poradi ARGB
+          (v pameti B,G,R,A). Vysledek: na mobilu obraz VZHURU NOHAMA
+          a CERVENY misto modreho, zatimco na TV byl spravne - ta jde
+          uplne jinou cestou (g_frame_argb primo).
+          Proto: quad ma V obracene (0,1 dole / 0,0 nahore) a stinovac
+          prohazuje R a B:  gl_FragColor = vec4(texture2D(...).bgr, 1.0);
+          KDYZ SE ZMENI ZDROJ SNIMKU, ZKONTROLOVAT OBOJI.
 
       (c) DVA ZAPISOVATELE TEHOZ SNIMKU (problikavani).
           nap_publish_frame_for_app() OTACI RADKY a PROHAZUJE R a B - bylo

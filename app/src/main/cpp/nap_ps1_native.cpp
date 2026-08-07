@@ -1030,7 +1030,10 @@ static const char *DISP_VS =
     "void main(){ vUV = aUV; gl_Position = vec4(aPos, 0.0, 1.0); }\n";
 static const char *DISP_FS =
     "precision mediump float;\n varying vec2 vUV;\n uniform sampler2D uTex;\n"
-    "void main(){ gl_FragColor = texture2D(uTex, vUV); }\n";
+    /* Snimek z jadra je ARGB, tedy v pameti B,G,R,A. GL ho nahral jako
+       RGBA, takze cervena a modra jsou prohozene - na mobilu bylo cervene
+       to, co ma byt modre. Prohazujeme je zpatky. */
+    "void main(){ gl_FragColor = vec4(texture2D(uTex, vUV).bgr, 1.0); }\n";
 
 static GLuint nap_disp_shader(GLenum typ, const char *src) {
     GLuint s = glCreateShader(typ);
@@ -1114,8 +1117,14 @@ static void nap_disp_thread_fn(ANativeWindow *win) {
             /* Y v GL je zdola a pixely ze snimku jsou taky zdola, takze se to
                srovna samo. Prevzato DOSLOVA z overene cesty v eglrender -
                moje puvodni verze mela UV obracene a obraz byl vzhuru nohama. */
-            const GLfloat quad[] = { -1.f,-1.f, 0.f,0.f,   1.f,-1.f, 1.f,0.f,
-                                     -1.f, 1.f, 0.f,1.f,   1.f, 1.f, 1.f,1.f };
+            /* POZOR NA OTOCENI - zalezi na tom, ODKUD snimek prichazi:
+                 - z glReadPixels (rucne psany vykreslovac) chodil ZDOLA NAHORU
+                 - z jadra pres nap_video() chodi SHORA DOLU
+               Od B83 kresli gpu_neon, takze plati to druhe a V musi byt
+               obracene. Kdyz to nesedi, je obraz NA MOBILU vzhuru nohama,
+               zatimco na TV je spravne - ta jde uplne jinou cestou. */
+            const GLfloat quad[] = { -1.f,-1.f, 0.f,1.f,   1.f,-1.f, 1.f,1.f,
+                                     -1.f, 1.f, 0.f,0.f,   1.f, 1.f, 1.f,0.f };
             glUseProgram(prog);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, tex);
