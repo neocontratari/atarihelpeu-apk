@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B87-FORMAT-A-SNIMEK (versionCode 135)
+ Verze: EMU10-B88-PROBLIKAVANI-PRYC (versionCode 136)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -55,6 +55,15 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
             -> obraz DVAKRAT VEDLE SEBE a zelenofialove barvy
           Format si hlasi jadro samo pres SET_PIXEL_FORMAT. Nic
           nevynucovat. NEVRACET TAM ZADNE PREPISOVANI FORMATU.
+
+      (c) DVA ZAPISOVATELE TEHOZ SNIMKU (problikavani).
+          nap_publish_frame_for_app() OTACI RADKY a PROHAZUJE R a B - bylo
+          to spravne, dokud snimek chodil od rucne psaneho vykreslovace
+          (zdola nahoru, jine poradi barev). Od gpu_neon chodi snimek uz
+          hotovy z nap_video(). Kdyz se zavolala i ta funkce, kazdy druhy
+          snimek byl OTOCENY O 180 STUPNU a CERVENY misto modreho -> rychle
+          problikavani spravneho a spatneho obrazu.
+          Vola se proto uz jen tehdy, kdyz snimek NEPRISEL z jadra.
 
       (b) DVA RUZNE SNIMKY. Mobil a TV berou obraz odjinud:
               nap_video()               -> g_frame_argb   -> TV

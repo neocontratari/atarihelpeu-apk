@@ -1307,10 +1307,11 @@ static void nap_core_thread_fn(void) {
             // a obraz mela. Odtud "na TV je, na mobilu neni".
             // Bezi to na TEMZE vlakne jako nap_video (hned po retro_run),
             // takze se nic nemuze prekryt.
+            bool zJadra = false;          /* snimek uz je hotovy z nap_video */
             if (!px) {
                 int vw = g_fw.load(), vh = g_fh.load();
                 if (vw > 0 && vh > 0 && g_frame_argb.size() >= (size_t)vw * vh) {
-                    px = g_frame_argb.data(); w = vw; h = vh;
+                    px = g_frame_argb.data(); w = vw; h = vh; zJadra = true;
                 }
             }
             if (px && w > 0 && h > 0) {
@@ -1321,7 +1322,17 @@ static void nap_core_thread_fn(void) {
                   g_frame_w.store(w); g_frame_h.store(h);
                   g_frame_ready.store(slot, std::memory_order_release); }
                 slot ^= 1;
-                nap_publish_frame_for_app((const uint8_t*)g_frame_buf[slot ^ 1].data(), w, h);
+                // ===== TADY BYLO TO PROBLIKAVANI =====
+                // nap_publish_frame_for_app() OTACI RADKY a PROHAZUJE R a B.
+                // Melo to smysl, dokud snimek chodil od rucne psaneho
+                // vykreslovace - ten ho dodaval zdola nahoru a v jinem poradi
+                // barev. Od gpu_neon chodi snimek uz hotovy z nap_video()
+                // (shora dolu, spravne barvy), takze tahle funkce ho jen
+                // znovu otoci a prohodi. Vysledek: kazdy druhy snimek byl
+                // otoceny o 180 stupnu a cerveny misto modreho.
+                // Kdyz snimek prisel z jadra, uz je hotovy - nesahat na nej.
+                if (!zJadra)
+                    nap_publish_frame_for_app((const uint8_t*)g_frame_buf[slot ^ 1].data(), w, h);
             }
         }
     }
