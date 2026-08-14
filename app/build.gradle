@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 140
-        versionName "EMU10-B92-TV-BEZ-BERLICKY"  // na TV se doostroval obraz v Jave BOD PO BODU (5 cteni na bod, 600 tisic operaci na snimek); vypnuto, kvalitu resi H.264
+        versionCode 142
+        versionName "EMU10-B94-TV-BEZ-JAVY"  // snimek pro TV jde z C PRIMO do enkoderu pres OpenGL ES; javova cesta (3 kopie snimku, 105 MB/s) se pri tom vubec nespousti
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

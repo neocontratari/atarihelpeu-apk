@@ -1162,6 +1162,127 @@ static void nap_disp_thread_fn(ANativeWindow *win) {
     nap_diag_log("PLOCHA UKONCENA");
 }
 
+/* ===================================================================
+ *  SNIMEK PRO TV PRIMO Z C DO ENKODERU  (Java na teto ceste UZ NENI)
+ *
+ *  Drive snimek putoval:
+ *    jadro -> Java pole -> druhe Java pole -> Bitmap -> Canvas -> enkoder
+ *  To byly TRI kopie snimku v Jave. U 640x480 pri 30 snimcich za vterinu
+ *  105 MB za vterinu jen na presypani, a procesor pritom sdili s emulaci.
+ *
+ *  Ted:
+ *    jadro -> GL textura -> enkoder
+ *  Vstupem enkoderu je Surface, a na Surface umime z C kreslit - je to
+ *  ta sama cesta, jakou jde obraz na displej telefonu.
+ *  Zadna kopie v Jave, zadny Bitmap, zadny Canvas.
+ * =================================================================== */
+static ANativeWindow    *g_tv_win = nullptr;
+static std::thread       g_tv_thread;
+static std::atomic<bool> g_tv_run{false};
+
+static void nap_tv_thread_fn(ANativeWindow *win) {
+    EGLDisplay dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    EGLint ma = 0, mi = 0;
+    if (dpy == EGL_NO_DISPLAY || !eglInitialize(dpy, &ma, &mi)) {
+        nap_diag_log("TV_PRIMO: EGL se nepodarilo otevrit"); ANativeWindow_release(win); return;
+    }
+    const EGLint cfga[] = { EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+                            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+                            EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8,
+                            EGL_NONE };
+    EGLConfig cfg; EGLint n = 0;
+    if (!eglChooseConfig(dpy, cfga, &cfg, 1, &n) || n < 1) {
+        nap_diag_log("TV_PRIMO: zadna vhodna konfigurace"); ANativeWindow_release(win); return;
+    }
+    EGLSurface surf = eglCreateWindowSurface(dpy, cfg, (EGLNativeWindowType)win, nullptr);
+    const EGLint ctxa[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
+    EGLContext ctx = eglCreateContext(dpy, cfg, EGL_NO_CONTEXT, ctxa);
+    if (surf == EGL_NO_SURFACE || ctx == EGL_NO_CONTEXT ||
+        !eglMakeCurrent(dpy, surf, surf, ctx)) {
+        nap_diag_log("TV_PRIMO: kontext se nepodarilo pripravit (0x%x)", eglGetError());
+        ANativeWindow_release(win); return;
+    }
+
+    GLuint vs = nap_disp_shader(GL_VERTEX_SHADER, DISP_VS);
+    GLuint fs = nap_disp_shader(GL_FRAGMENT_SHADER, DISP_FS);
+    GLuint prog = glCreateProgram();
+    glAttachShader(prog, vs); glAttachShader(prog, fs); glLinkProgram(prog);
+    GLint aPos = glGetAttribLocation(prog, "aPos");
+    GLint aUV  = glGetAttribLocation(prog, "aUV");
+    GLint uTex = glGetUniformLocation(prog, "uTex");
+
+    GLuint tex = 0; glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    nap_diag_log("TV_PRIMO PRIPRAVENO: snimek jde z jadra rovnou do enkoderu, bez Javy");
+
+    int lastW = 0, lastH = 0; long snimku = 0;
+    while (g_tv_run.load()) {
+        int sw = 0, sh = 0;
+        const void *px = nap_ps1_egl_grab_pixels(&sw, &sh);
+        if (!px || sw <= 0 || sh <= 0) { usleep(8000); continue; }
+
+        int w = ANativeWindow_getWidth(win), h = ANativeWindow_getHeight(win);
+        if (w <= 0 || h <= 0) { usleep(8000); continue; }
+
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        if (sw != lastW || sh != lastH) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
+            lastW = sw; lastH = sh;
+        } else {
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, px);
+        }
+
+        /* TV chce vyplnenou plochu 16:9 - stejne jako mobil na sirku */
+        glViewport(0, 0, w, h);
+        glClearColor(0.f, 0.f, 0.f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        {
+            const GLfloat quad[] = { -1.f,-1.f, 0.f,1.f,   1.f,-1.f, 1.f,1.f,
+                                     -1.f, 1.f, 0.f,0.f,   1.f, 1.f, 1.f,0.f };
+            glUseProgram(prog);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, tex);
+            glUniform1i(uTex, 0);
+            glVertexAttribPointer((GLuint)aPos, 2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad);
+            glVertexAttribPointer((GLuint)aUV,  2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad+2);
+            glEnableVertexAttribArray((GLuint)aPos);
+            glEnableVertexAttribArray((GLuint)aUV);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        }
+        if (!g_tv_run.load()) break;
+        eglSwapBuffers(dpy, surf);          /* tim se snimek predа enkoderu */
+
+        if (++snimku % 300 == 1)
+            nap_diag_log("TV_PRIMO: snimku=%ld zdroj=%dx%d cil=%dx%d", snimku, sw, sh, w, h);
+        usleep(16000);                      /* ~60 snimku za vterinu, nevic */
+    }
+
+    eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(dpy, ctx);
+    eglDestroySurface(dpy, surf);
+    ANativeWindow_release(win);
+    nap_diag_log("TV_PRIMO UKONCENO");
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetTvSurface(JNIEnv *env, jclass, jobject jsurf) {
+    if (g_tv_run.exchange(false) && g_tv_thread.joinable()) g_tv_thread.join();
+    g_tv_win = nullptr;
+    if (jsurf == nullptr) { nap_diag_log("TV_PRIMO: odpojeno"); return; }
+    ANativeWindow *win = ANativeWindow_fromSurface(env, jsurf);
+    if (!win) { nap_diag_log("TV_PRIMO: okno se nepodarilo ziskat"); return; }
+    g_tv_win = win;
+    g_tv_run.store(true);
+    g_tv_thread = std::thread(nap_tv_thread_fn, win);
+    nap_diag_log("TV_PRIMO: pripojeno, kreslim do enkoderu");
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetDisplaySurface(JNIEnv *env, jclass, jobject jsurf) {
     if (g_disp_run.exchange(false) && g_disp_thread.joinable()) g_disp_thread.join();

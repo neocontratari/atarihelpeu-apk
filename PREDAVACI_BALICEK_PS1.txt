@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B92-TV-BEZ-BERLICKY (versionCode 140)
+ Verze: EMU10-B94-TV-BEZ-JAVY (versionCode 142)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -171,7 +171,27 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       (v logu B78 "PS1_PREVIEW_AVG" 51x) a bral procesor, ktery pak chybel
       zvuku, jakmile se pridala TV. Uz ho sem nikdy nevracet.
 
-  [4b] CESTA NA TV (prohlizec na PC)
+  [4b] CESTA NA TV (prohlizec na PC) - od B94 BEZ JAVY
+
+      jadro -> nap_ps1_egl_grab_pixels() -> GL textura -> enkoder H.264
+      Nativni vlakno nap_tv_thread_fn() kresli PRIMO na Surface, ktery
+      je vstupem enkoderu (MediaCodec.createInputSurface). Je to ta sama
+      cesta jako obraz na displej telefonu, jen s jinym cilem.
+
+      Java na teto ceste UZ SNIMEK NEDRZI ANI NEKOPIRUJE. Priznak
+      tvPrimoBezi vypina napTvWebCaptureFromCore() uplne.
+
+      Co tim odpadlo (merene na 640x480 pri 30 snimcich za vterinu):
+        - kopie do tvCoreArgb, tvSharpBuf a Bitmap = 105 MB/s presypani
+        - doostrovani bod po bodu v Jave (uz vypnute v B92)
+        - Canvas.drawBitmap a orez cernych okraju
+      Procesor tim zbyva emulaci - a ta o nej driv prisla prave tady.
+
+      POJISTKA: kdyz enkoder skonci (klient spadne na JPEG zalohu),
+      napTvWebH264ReleaseEncoderLocked() odpoji nativni kresleni a vrati
+      javovou cestu, aby TV nezustala cerna.
+
+      STARA CESTA (zustava jako zaloha, kdyz nejede H.264):
       TV MA DVA MOZNE ZDROJE SNIMKU a je dulezite vedet ktery:
         (a) napTvWebCaptureFromCore()  - snimek PRIMO Z JADRA, orizne cerne
             okraje a roztahne na 1280x720. Ovladac se do nej NEDOSTANE.
@@ -255,6 +275,17 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       spravne a kvalitu na TV resi H.264 enkoder.
       KDYBY OBRAZ NA TV PUSOBIL MEKCE: zvysit datovy tok enkoderu, NE
       pocitat filtr na procesoru.
+
+      KOPIE SNIMKU NA TV CESTE (audit z B93):
+        snimek 640x480 = 307 200 bodu
+        pred B93:  3 kopie na snimek = 105 MB/s pri 30 snimcich
+        po  B93:   2 kopie na snimek =  70 MB/s
+        Vyhozeno: arraycopy do tvSharpBuf (kopie, se kterou se uz nic
+        nedelalo, protoze doostrovani je od B92 vypnute).
+        Zbyle dve kopie: odebrani snimku z jadra (nutne, jinak ho jadro
+        prepise) a setPixels do Bitmap (Bitmap si data kopiruje sam).
+        DALSI KROK, KDYBY BYLO POTREBA: vest snimek z C primo do enkoderu
+        a Javu na te ceste uplne vynechat. Vetsi zasah.
 
       Co na TV ceste ZUSTAVA a je v poradku:
         - orez cernych okraju (napTvColIsBlack) - jen sloupce, levne

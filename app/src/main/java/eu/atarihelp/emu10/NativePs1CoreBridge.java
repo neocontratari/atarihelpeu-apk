@@ -17,6 +17,8 @@ public final class NativePs1CoreBridge {
     // PRIME KRESLENI: predame jadru plochu z aplikace, ono na ni kresli samo.
     // null = odpojit.
     private static native void ps1SetDisplaySurface(android.view.Surface surface);
+    // TV: snimek jde z C PRIMO do enkoderu H.264, bez Javy.
+    private static native void ps1SetTvSurface(android.view.Surface surface);
     private static native int ps1PullAudio(short[] out, int frames);
     private static native int ps1PullTvAudio(short[] out);   // zvuk pro TV (kopie prehravaneho)
     private static native void ps1SetInput(int id, boolean down);
@@ -59,6 +61,11 @@ public final class NativePs1CoreBridge {
     public static void setDisplaySurfaceSafe(android.view.Surface s) {
         if (!loaded) return;
         try { ps1SetDisplaySurface(s); } catch (Throwable ignored) {}
+    }
+
+    public static void setTvSurfaceSafe(android.view.Surface s) {
+        if (!loaded) return;
+        try { ps1SetTvSurface(s); } catch (Throwable ignored) {}
     }
 
     public static int grabFrameSafe(int[] out) {

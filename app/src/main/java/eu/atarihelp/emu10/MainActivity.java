@@ -316,6 +316,10 @@ public class MainActivity extends Activity {
     // JMuxer.js na klientovi (zadne MP4 balenu na Android strane, zadny
     // rizikovy externi muxer s neoverenym API).
     private MediaCodec napTvWebH264Encoder;
+    // Kdyz je zapnuta prima cesta, snimky pro TV kresli nativni cast a
+    // javova cesta (snimani, orez, Bitmap, Canvas) se VUBEC nespousti.
+    // Jinak by do enkoderu kreslily dva zdroje naraz.
+    private volatile boolean tvPrimoBezi = false;
     private android.view.Surface napTvWebH264InputSurface;
     private final Object napTvWebH264Lock = new Object();
     private volatile int napTvWebH264W = 0;
@@ -882,13 +886,16 @@ public class MainActivity extends Activity {
         return true;
     }
     private short[] tvPs1Pcm = null;   // odbocka zvuku pro TV
-    private int[] tvSharpBuf;
     private double tvSharpSumMs = 0;
     private long tvSharpFrames = 0;
     private long tvFpsT0 = 0;
 
     private boolean napTvWebCaptureFromCore(int bw, int bh) {
         try {
+            // Prima cesta bezi -> javove snimani se VUBEC nedela.
+            // Tim odpadnou vsechny tri kopie snimku v Jave (105 MB/s pri
+            // 640x480 a 30 snimcich) a procesor zbude emulaci.
+            if (tvPrimoBezi) return false;
             if (bw <= 0 || bh <= 0) return false;
             // Podrzeni posledniho snimku ma smysl jen ZA BEHU hry (kratky
             // vypadek pri nacitani). Kdyz uz hra nebezi, drzelo se to donekonecna
@@ -967,67 +974,24 @@ public class MainActivity extends Activity {
             // rozdil pak pridame vsem trem barvam. Vysledek oku stejny,
             // prace zhruba tretinova. Cena se meri a vypisuje do logu.
             int nPix = sw * sh;
-            if (tvSharpBuf == null || tvSharpBuf.length < nPix) tvSharpBuf = new int[nPix + 1024];
             long shStart = System.nanoTime();
             // Doostreni stoji 1,6-4,2 ms u hernich scen, ale 7,5 ms u filmovych
             // (640x480). Zvuk uz hladovi (underruns), takze u velkych snimku
             // doostreni preskocime - film je stejne mekky od prirody.
-            // ===== BERLICKA VYPNUTA =====
-            // Nize je DOOSTROVANI OBRAZU pocitane v Jave BOD PO BODU: pro
-            // kazdy bod se sahne na ctyri sousedy, tedy pet cteni na bod.
-            // U 400x300 je to 600 tisic operaci NA SNIMEK a dela to procesor,
-            // ktery pak chybi emulaci.
-            // Obraz uz kresli gpu_neon spravne (ostry, PlayStation ma ostre
-            // pixely) a kvalitu na TV resi H.264 enkoder. Doostrovat navic
-            // neni potreba - a hlavne ne v Jave po jednotlivych bodech.
-            // Kdyby obraz na TV pusobil mekce, spravna cesta je zvysit
-            // datovy tok enkoderu, ne pocitat filtr na procesoru.
-            boolean doSharp = false;
-            if (!doSharp) {
-                System.arraycopy(tvCoreArgb, 0, tvSharpBuf, 0, nPix);
-            } else
-            for (int y = 0; y < sh; y++) {
-                int rowBase = y * sw;
-                int upBase = (y > 0 ? y - 1 : y) * sw;
-                int downBase = (y < sh - 1 ? y + 1 : y) * sw;
-                for (int x = 0; x < sw; x++) {
-                    int i = rowBase + x;
-                    int leftX = x > 0 ? x - 1 : x;
-                    int rightX = x < sw - 1 ? x + 1 : x;
-                    int c = tvCoreArgb[i];
-                    int cg = (c >> 8) & 0xFF;
-                    int lap = cg * 4
-                            - ((tvCoreArgb[rowBase + leftX] >> 8) & 0xFF)
-                            - ((tvCoreArgb[rowBase + rightX] >> 8) & 0xFF)
-                            - ((tvCoreArgb[upBase + x] >> 8) & 0xFF)
-                            - ((tvCoreArgb[downBase + x] >> 8) & 0xFF);
-                    int d = lap >> 3;   // puvodni overena sila. >>2 bylo prehnane:
-                                        // prilis ostry obraz se hur stlacuje do videa
-                                        // a na TV pak pusobi rozmazaneji, ne ostreji.
-                    if (d != 0) {
-                        int r = ((c >> 16) & 0xFF) + d;
-                        int g = cg + d;
-                        int b = (c & 0xFF) + d;
-                        if (r < 0) r = 0; else if (r > 255) r = 255;
-                        if (g < 0) g = 0; else if (g > 255) g = 255;
-                        if (b < 0) b = 0; else if (b > 255) b = 255;
-                        tvSharpBuf[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
-                    } else {
-                        tvSharpBuf[i] = c | 0xFF000000;
-                    }
-                }
-            }
-            tvSharpSumMs += (System.nanoTime() - shStart) / 1e6;
-            if (++tvSharpFrames % 300 == 0) {
-                long nowMs = System.currentTimeMillis();
-                double fps = (tvFpsT0 > 0) ? (300.0 * 1000.0 / (nowMs - tvFpsT0)) : 0;
-                tvFpsT0 = nowMs;
-                appendNativeLog("G TV: " + String.format("%.1f", fps) + " FPS, doostreni "
-                        + String.format("%.2f", tvSharpSumMs / 300.0) + " ms/snimek, zdroj " + sw + "x" + sh
-                        + (doSharp ? " (doostreno)" : " (bez doostreni)"));
-                tvSharpSumMs = 0;
-            }
-            tvCoreSrcBmp.setPixels(tvSharpBuf, 0, sw, 0, 0, sw, sh);
+            // ===== DVE ZBYTECNE KOPIE SNIMKU PRYC (B93) =====
+            // Drive se tu delalo:
+            //   1) arraycopy tvCoreArgb -> tvSharpBuf     (kopie 1)
+            //   2) doostrovani bod po bodu                (vypnuto v B92)
+            //   3) setPixels tvSharpBuf -> Bitmap         (kopie 2)
+            // Doostrovani je pryc, takze tvSharpBuf byla jen kopie originalu
+            // a k nicemu. U snimku 640x480 to bylo 307 tisic kopii bodu
+            // NAVIC na kazdy snimek, pri 30 snimcich za vterinu 35 MB/s
+            // presypani z jedne pameti do druhe.
+            // Ted se pracuje primo s tvCoreArgb.
+            //
+            // POZOR: KDYZ SE SEM BUDE NECO VRACET, MERIT TO. Cesta na TV
+            // sdili procesor s emulaci - co se ukousne tady, chybi zvuku.
+            tvCoreSrcBmp.setPixels(tvCoreArgb, 0, sw, 0, 0, sw, sh);
 
             // ===== PEVNYCH 1280x720 = SKUTECNE 16:9 =====
             // Driv se velikost brala z displeje telefonu (1384x672), coz je
@@ -1053,10 +1017,10 @@ public class MainActivity extends Activity {
             // a roztahneme na celou plochu - odtud "full HD bez pruhu".
             int cropTop = 0, cropBottom = sh - 1, cropLeft = 0, cropRight = sw - 1;
             final int TMAVA = 12;   // co je temnejsi, bereme jako cernou
-            while (cropTop < cropBottom && napTvRowIsBlack(tvSharpBuf, sw, cropTop, TMAVA)) cropTop++;
-            while (cropBottom > cropTop && napTvRowIsBlack(tvSharpBuf, sw, cropBottom, TMAVA)) cropBottom--;
-            while (cropLeft < cropRight && napTvColIsBlack(tvSharpBuf, sw, sh, cropLeft, TMAVA)) cropLeft++;
-            while (cropRight > cropLeft && napTvColIsBlack(tvSharpBuf, sw, sh, cropRight, TMAVA)) cropRight--;
+            while (cropTop < cropBottom && napTvRowIsBlack(tvCoreArgb, sw, cropTop, TMAVA)) cropTop++;
+            while (cropBottom > cropTop && napTvRowIsBlack(tvCoreArgb, sw, cropBottom, TMAVA)) cropBottom--;
+            while (cropLeft < cropRight && napTvColIsBlack(tvCoreArgb, sw, sh, cropLeft, TMAVA)) cropLeft++;
+            while (cropRight > cropLeft && napTvColIsBlack(tvCoreArgb, sw, sh, cropRight, TMAVA)) cropRight--;
             // Pojistka: kdyby byl obraz skoro cely cerny (tma ve hre), neorezavat.
             if (cropBottom - cropTop < sh / 3 || cropRight - cropLeft < sw / 3) {
                 cropTop = 0; cropBottom = sh - 1; cropLeft = 0; cropRight = sw - 1;
@@ -1290,6 +1254,15 @@ public class MainActivity extends Activity {
                 enc.start();
                 napTvWebH264Encoder = enc;
                 napTvWebH264InputSurface = inputSurface;
+                // ===== SNIMEK PRO TV JDE Z C PRIMO SEM =====
+                // Vstup enkoderu predame nativni casti. Ta na nej kresli
+                // pres OpenGL ES, stejne jako na displej telefonu.
+                // Java uz na teto ceste snimek nedrzi ani nekopiruje.
+                if (ps1Plocha != null || ps1BiosRunning || ps1SessionActive) {
+                    NativePs1CoreBridge.setTvSurfaceSafe(inputSurface);
+                    tvPrimoBezi = true;
+                    appendNativeLog("TV_PRIMO_ZAPNUTO - snimek z jadra rovnou do enkoderu");
+                }
                 napTvWebH264W = w; napTvWebH264H = h;
                 napTvWebH264FrameIndex = 0;
                 napTvWebH264Generation++;
@@ -1305,6 +1278,13 @@ public class MainActivity extends Activity {
     }
 
     private void napTvWebH264ReleaseEncoderLocked() {
+        // Enkoder konci (napr. klient spadl na JPEG zalohu). Odpojime
+        // nativni kresleni a vratime javovou cestu, at TV nezustane cerna.
+        if (tvPrimoBezi) {
+            tvPrimoBezi = false;
+            try { NativePs1CoreBridge.setTvSurfaceSafe(null); } catch (Throwable ignored) {}
+            appendNativeLog("TV_PRIMO_VYPNUTO - vracim javovou cestu");
+        }
         if (napTvWebH264Encoder != null) {
             try { napTvWebH264Encoder.stop(); } catch (Throwable ignored) {}
             try { napTvWebH264Encoder.release(); } catch (Throwable ignored) {}
