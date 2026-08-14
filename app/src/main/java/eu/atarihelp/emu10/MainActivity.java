@@ -2634,6 +2634,9 @@ public class MainActivity extends Activity {
     private final java.util.concurrent.ConcurrentLinkedQueue<String> napTvWebLogFileQueue =
             new java.util.concurrent.ConcurrentLinkedQueue<>();
     private volatile File napTvWebLogFile;
+    // Druha kopie logu v Downloads/AtariHelp/PS1_LOG.txt - prezije pad
+    // aplikace a jde k ni z telefonu bez pocitace.
+    private volatile File napTvWebLogFileDownloads;
     private volatile boolean napTvWebLogFileWriterStarted = false;
     private volatile boolean napTvWebLogFileCapWarned = false;
     // BUILD2SK82: bezpecnostni strop velikosti log souboru na disku (30MB).
@@ -3311,6 +3314,24 @@ public class MainActivity extends Activity {
     // nastartuje vlakno, ktere frontu prubezne vyprazdnuje na disk.
     private void napTvWebLogFileInit() {
         try {
+            // ===== LOG MUSI PREZIT PAD APLIKACE =====
+            // Log se posila z BEZICI aplikace pres /log. Kdyz spadne, neni
+            // odkud - proto se pise i do Downloads, kam se uzivatel dostane
+            // z telefonu bez pocitace, a predchozi relace se NEMAZE, ale
+            // preulozi jako "...predchozi.txt". Po padu je tedy k dispozici.
+            try {
+                File dl = new File(android.os.Environment.getExternalStoragePublicDirectory(
+                        android.os.Environment.DIRECTORY_DOWNLOADS), "AtariHelp");
+                if (!dl.exists()) dl.mkdirs();
+                File akt = new File(dl, "PS1_LOG.txt");
+                if (akt.exists()) {
+                    File pred = new File(dl, "PS1_LOG_predchozi.txt");
+                    if (pred.exists()) pred.delete();
+                    akt.renameTo(pred);      // po padu zustane tady
+                }
+                napTvWebLogFileDownloads = akt;
+            } catch (Throwable ignored) { napTvWebLogFileDownloads = null; }
+
             napTvWebLogFile = new File(getFilesDir(), "nap_tv_session_log.txt");
             try (FileOutputStream fos = new FileOutputStream(napTvWebLogFile, false)) { /* jen vytvor/zkrat na prazdno */ }
         } catch (Throwable t) {
@@ -3359,6 +3380,17 @@ public class MainActivity extends Activity {
                     batch.append(more);
                     batched++;
                 }
+                // Kopie do Downloads - odtud se log da vzit i po padu appky.
+                try {
+                    File dl = napTvWebLogFileDownloads;
+                    if (dl != null) {
+                        try (FileOutputStream fd = new FileOutputStream(dl, true)) {
+                            fd.write(batch.toString().getBytes("UTF-8"));
+                            fd.flush();
+                        }
+                    }
+                } catch (Throwable ignored) {}
+
                 try (FileOutputStream fos = new FileOutputStream(f, true)) {
                     fos.write(batch.toString().getBytes("UTF-8"));
                 }

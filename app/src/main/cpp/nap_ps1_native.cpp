@@ -1183,12 +1183,17 @@ static void nap_disp_thread_fn(ANativeWindow *win) {
 static ANativeWindow    *g_tv_win = nullptr;
 static std::thread       g_tv_thread;
 static std::atomic<bool> g_tv_run{false};
+/* Cislo generace: kdyz se TV odpoji a hned zase pripoji, muze stare vlakno
+   jeste dobihat. Kazde vlakno si pamatuje svoje cislo a jakmile prestane
+   byt aktualni, samo skonci. Bez toho by dve vlakna kreslila naraz. */
+static std::atomic<long> g_tv_gen{0};
 
-static void nap_tv_thread_fn(ANativeWindow *win) {
+static void nap_tv_thread_fn(ANativeWindow *win, long gen) {
+    g_crash_stage = "TV: start vlakna";
     EGLDisplay dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     EGLint ma = 0, mi = 0;
     if (dpy == EGL_NO_DISPLAY || !eglInitialize(dpy, &ma, &mi)) {
-        nap_diag_log("TV_PRIMO: EGL se nepodarilo otevrit"); ANativeWindow_release(win); return;
+        nap_diag_log("TV_PRIMO KROK1_EGL_SELHAL"); ANativeWindow_release(win); return;
     }
     const EGLint cfga[] = { EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
                             EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
@@ -1196,17 +1201,30 @@ static void nap_tv_thread_fn(ANativeWindow *win) {
                             EGL_NONE };
     EGLConfig cfg; EGLint n = 0;
     if (!eglChooseConfig(dpy, cfga, &cfg, 1, &n) || n < 1) {
-        nap_diag_log("TV_PRIMO: zadna vhodna konfigurace"); ANativeWindow_release(win); return;
+        nap_diag_log("TV_PRIMO KROK2_KONFIGURACE_SELHALA"); ANativeWindow_release(win); return;
     }
+    /* ===== TOHLE TU CHYBELO A APLIKACE PADALA =====
+       Vlakno pro displej si format okna nastavuje (setBuffersGeometry),
+       vlakno pro TV ne. Bez toho se eglCreateWindowSurface na Surface od
+       enkoderu chova nepredvidatelne a aplikace spadne hned pri zapnuti TV.
+       Format musi odpovidat vybrane EGL konfiguraci. */
+    {
+        EGLint fmt = 0;
+        eglGetConfigAttrib(dpy, cfg, EGL_NATIVE_VISUAL_ID, &fmt);
+        ANativeWindow_setBuffersGeometry(win, 0, 0, fmt);
+        nap_diag_log("TV_PRIMO KROK3_FORMAT_OKNA_OK fmt=%d", (int)fmt);
+    }
+
     EGLSurface surf = eglCreateWindowSurface(dpy, cfg, (EGLNativeWindowType)win, nullptr);
     const EGLint ctxa[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
     EGLContext ctx = eglCreateContext(dpy, cfg, EGL_NO_CONTEXT, ctxa);
     if (surf == EGL_NO_SURFACE || ctx == EGL_NO_CONTEXT ||
         !eglMakeCurrent(dpy, surf, surf, ctx)) {
-        nap_diag_log("TV_PRIMO: kontext se nepodarilo pripravit (0x%x)", eglGetError());
+        nap_diag_log("TV_PRIMO KROK4_KONTEXT_SELHAL (0x%x)", eglGetError());
         ANativeWindow_release(win); return;
     }
 
+    g_crash_stage = "TV: priprava shaderu";
     GLuint vs = nap_disp_shader(GL_VERTEX_SHADER, DISP_VS);
     GLuint fs = nap_disp_shader(GL_FRAGMENT_SHADER, DISP_FS);
     GLuint prog = glCreateProgram();
@@ -1222,11 +1240,15 @@ static void nap_tv_thread_fn(ANativeWindow *win) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    nap_diag_log("TV_PRIMO PRIPRAVENO: snimek jde z jadra rovnou do enkoderu, bez Javy");
+    {   /* Kdyz okno enkoderu jeste nema velikost, neni na co kreslit. */
+        int w0 = ANativeWindow_getWidth(win), h0 = ANativeWindow_getHeight(win);
+        nap_diag_log("TV_PRIMO PRIPRAVENO: okno %dx%d, snimek jde z jadra rovnou do enkoderu", w0, h0);
+    }
 
     int lastW = 0, lastH = 0; long snimku = 0;
     std::vector<unsigned char> muj;      /* vlastni kopie - viz nap_ps1_kopiruj_snimek */
-    while (g_tv_run.load()) {
+    g_crash_stage = "TV: kreslici smycka";
+    while (g_tv_run.load() && g_tv_gen.load() == gen) {
         int sw = 0, sh = 0;
         if (!nap_ps1_kopiruj_snimek(muj, &sw, &sh) || sw <= 0 || sh <= 0) {
             usleep(8000); continue;
@@ -1263,7 +1285,13 @@ static void nap_tv_thread_fn(ANativeWindow *win) {
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         }
         if (!g_tv_run.load()) break;
-        eglSwapBuffers(dpy, surf);          /* tim se snimek predа enkoderu */
+        /* Kdyz enkoder mezitim skoncil, swap selze. Nesnazit se dal -
+           dalsi pokusy by uz jen padaly. Radeji vlakno ukoncit; javova
+           cesta se vrati sama (napTvWebH264ReleaseEncoderLocked). */
+        if (!eglSwapBuffers(dpy, surf)) {
+            nap_diag_log("TV_PRIMO: enkoder uz neprijima (0x%x), koncim", eglGetError());
+            break;
+        }
 
         if (++snimku % 300 == 1)
             nap_diag_log("TV_PRIMO: snimku=%ld zdroj=%dx%d cil=%dx%d", snimku, sw, sh, w, h);
@@ -1279,15 +1307,27 @@ static void nap_tv_thread_fn(ANativeWindow *win) {
 
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetTvSurface(JNIEnv *env, jclass, jobject jsurf) {
-    if (g_tv_run.exchange(false) && g_tv_thread.joinable()) g_tv_thread.join();
+    /* POZOR NA ZASEKNUTI. Tuhle funkci vola Java z mista, kde uz drzi zamek
+       enkoderu (napTvWebH264ReleaseEncoderLocked). Nativni vlakno muze prave
+       v tu chvili kreslit do enkoderu a cekat na nej - a my bychom cekali na
+       nej. Obe strany by stály.
+       Proto vlakno POUZE POZADAME o ukonceni (g_tv_run = false) a NECEKAME
+       na nej. Vlakno se ukonci samo pri dalsim pruchodu smyckou; okno si
+       uvolni samo. Pripadne nove vlakno ma vlastni okno i kontext, takze si
+       nepreteknou. */
+    long moje = g_tv_gen.fetch_add(1) + 1;    /* stara vlakna tim zneplatnime */
+    bool bezelo = g_tv_run.exchange(false);
+    if (bezelo && g_tv_thread.joinable()) g_tv_thread.detach();
     g_tv_win = nullptr;
     if (jsurf == nullptr) { nap_diag_log("TV_PRIMO: odpojeno"); return; }
     ANativeWindow *win = ANativeWindow_fromSurface(env, jsurf);
     if (!win) { nap_diag_log("TV_PRIMO: okno se nepodarilo ziskat"); return; }
     g_tv_win = win;
     g_tv_run.store(true);
-    g_tv_thread = std::thread(nap_tv_thread_fn, win);
+    g_tv_thread = std::thread(nap_tv_thread_fn, win, moje);
     nap_diag_log("TV_PRIMO: pripojeno, kreslim do enkoderu");
+    /* Znacky do logu, at je po padu videt, KAM AZ se to dostalo.
+       Java odchytavac pad v nativnim kodu nezachyti. */
 }
 
 extern "C" JNIEXPORT void JNICALL

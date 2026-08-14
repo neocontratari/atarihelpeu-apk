@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B95-TV-BEZ-JAVY-BEZ-PADU (versionCode 143)
+ Verze: EMU10-B97-TV-OPRAVY-A-LOG-PO-PADU (versionCode 145)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -195,6 +195,19 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       Pouzivat proto nap_ps1_kopiruj_snimek(), ktera snimek POD ZAMKEM
       zkopiruje do pameti volajiciho. Jedna kopie navic, ale mezi vlakny
       to jinak sdilet nejde.
+
+      TRI PASTI PRI KRESLENI Z C DO ENKODERU (vsechny zpusobily pad):
+      1) CHYBEJICI setBuffersGeometry. Okno enkoderu musi dostat format
+         odpovidajici vybrane EGL konfiguraci (EGL_NATIVE_VISUAL_ID), jinak
+         se eglCreateWindowSurface chova nepredvidatelne. Vlakno pro displej
+         to melo, vlakno pro TV ne.
+      2) ZASEKNUTI NA ZAMKU. ps1SetTvSurface() vola Java z mista, kde uz
+         drzi zamek enkoderu. Kdyby nativni strana cekala na dobehnuti sveho
+         vlakna (join), a to vlakno prave kreslilo do enkoderu, stály by obe
+         strany. Proto se vlakno jen POZADA o ukonceni a NECEKA se (detach).
+      3) DVE VLAKNA NARAZ. S detachem muze stare vlakno jeste dobihat, kdyz
+         se TV hned zase zapne. Kazde vlakno ma proto CISLO GENERACE a jakmile
+         prestane byt aktualni, samo skonci.
 
       POJISTKA: kdyz enkoder skonci (klient spadne na JPEG zalohu),
       napTvWebH264ReleaseEncoderLocked() odpoji nativni kresleni a vrati
@@ -406,6 +419,12 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
    - par radku z logu, KTERE SI AI PREDEM POJMENUJE
    - obcas log z GitHub Actions ze ZELENEHO buildu (varovani od NDK, ktera
      AI u sebe neuvidi)
+   - PO PADU APLIKACE: log NENI na /log (ten se posila z bezici appky!),
+     ale v souboru:
+         Downloads / AtariHelp / PS1_LOG.txt            (aktualni relace)
+         Downloads / AtariHelp / PS1_LOG_predchozi.txt  (relace pred padem)
+     Rene se k nim dostane z telefonu bez pocitace. NIKDY po nem nechtit
+     /log, kdyz aplikace spadla.
    Nikdy ho neposilat do prikazoveho radku. Nikdy po nem nechtit soubory,
    ktere si AI muze stahnout sama.
 
