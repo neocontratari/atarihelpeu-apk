@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B94-TV-BEZ-JAVY (versionCode 142)
+ Verze: EMU10-B95-TV-BEZ-JAVY-BEZ-PADU (versionCode 143)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -186,6 +186,15 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
         - doostrovani bod po bodu v Jave (uz vypnute v B92)
         - Canvas.drawBitmap a orez cernych okraju
       Procesor tim zbyva emulaci - a ta o nej driv prisla prave tady.
+
+      POZOR - SNIMEK CTOU DVA (mobil i TV). nap_ps1_egl_grab_pixels()
+      vraci UKAZATEL do sdilene pameti a zamek pusti drive, nez ho volajici
+      pouzije. S jednim ctenarem to proslo, se dvema aplikace PADALA presne
+      pri zapnuti TV - vlakno emulace mezitim pamet zvetsilo (resize) a
+      stary ukazatel prestal platit.
+      Pouzivat proto nap_ps1_kopiruj_snimek(), ktera snimek POD ZAMKEM
+      zkopiruje do pameti volajiciho. Jedna kopie navic, ale mezi vlakny
+      to jinak sdilet nejde.
 
       POJISTKA: kdyz enkoder skonci (klient spadne na JPEG zalohu),
       napTvWebH264ReleaseEncoderLocked() odpoji nativni kresleni a vrati

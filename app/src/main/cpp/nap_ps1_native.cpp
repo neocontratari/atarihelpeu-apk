@@ -1020,6 +1020,7 @@ static void nap_publish_frame_for_app(const uint8_t* rgba, int w, int h) {
 //  a na cem jsem se sam dvanactkrat rozbil. Tady se nesdili nic.
 // ===================================================================
 extern "C" const void* nap_ps1_egl_grab_pixels(int* w, int* h);
+extern "C" int nap_ps1_kopiruj_snimek(std::vector<unsigned char> &kam, int *w, int *h);
 
 static ANativeWindow      *g_disp_win  = nullptr;
 static std::thread         g_disp_thread;
@@ -1089,10 +1090,13 @@ static void nap_disp_thread_fn(ANativeWindow *win) {
     nap_diag_log("PLOCHA PRIPRAVENA: obraz jde z jadra rovnou na obrazovku, bez JPEG");
 
     int lastW = 0, lastH = 0; long snimku = 0, prazdnych = 0;
+    std::vector<unsigned char> muj;      /* vlastni kopie - viz nap_ps1_kopiruj_snimek */
     while (g_disp_run.load()) {
         int sw = 0, sh = 0;
-        const void *px = nap_ps1_egl_grab_pixels(&sw, &sh);
-        if (!px || sw <= 0 || sh <= 0) { prazdnych++; usleep(8000); continue; }
+        if (!nap_ps1_kopiruj_snimek(muj, &sw, &sh) || sw <= 0 || sh <= 0) {
+            prazdnych++; usleep(8000); continue;
+        }
+        const void *px = muj.data();
 
         int w = ANativeWindow_getWidth(win), h = ANativeWindow_getHeight(win);
         if (w <= 0 || h <= 0) { usleep(8000); continue; }
@@ -1221,10 +1225,13 @@ static void nap_tv_thread_fn(ANativeWindow *win) {
     nap_diag_log("TV_PRIMO PRIPRAVENO: snimek jde z jadra rovnou do enkoderu, bez Javy");
 
     int lastW = 0, lastH = 0; long snimku = 0;
+    std::vector<unsigned char> muj;      /* vlastni kopie - viz nap_ps1_kopiruj_snimek */
     while (g_tv_run.load()) {
         int sw = 0, sh = 0;
-        const void *px = nap_ps1_egl_grab_pixels(&sw, &sh);
-        if (!px || sw <= 0 || sh <= 0) { usleep(8000); continue; }
+        if (!nap_ps1_kopiruj_snimek(muj, &sw, &sh) || sw <= 0 || sh <= 0) {
+            usleep(8000); continue;
+        }
+        const void *px = muj.data();
 
         int w = ANativeWindow_getWidth(win), h = ANativeWindow_getHeight(win);
         if (w <= 0 || h <= 0) { usleep(8000); continue; }
@@ -1294,6 +1301,31 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetDisplaySurface(JNIEnv *env, jc
     g_disp_run.store(true);
     g_disp_thread = std::thread(nap_disp_thread_fn, win);
     nap_diag_log("PLOCHA: pripojena, spoustim kresleni");
+}
+
+/* BEZPECNE PREVZETI SNIMKU.
+   nap_ps1_egl_grab_pixels() vraci UKAZATEL do sdilene pameti a zamek pusti
+   drive, nez ho volajici pouzije. Dokud cetl jen mobil, proslo to. Jakmile
+   se pridala TV, ctou DVA - a vlakno emulace mezitim tu pamet zvetsi
+   (resize), cimz se stary ukazatel stane neplatnym. Aplikace pak spadne
+   presne ve chvili zapnuti TV.
+   Tahle funkce snimek ZKOPIRUJE pod zamkem do pameti volajiciho, takze
+   kazde vlakno pracuje se svym. Jedna kopie navic - ale mezi vlakny se
+   jinak sdilet neda a pad je horsi nez kopie. */
+extern "C" int nap_ps1_kopiruj_snimek(std::vector<unsigned char> &kam, int *w, int *h) {
+    int idx = g_frame_ready.load(std::memory_order_acquire);
+    if (idx < 0) return 0;
+    std::lock_guard<std::mutex> lk(g_frame_swap);
+    if (idx < 0 || idx > 1 || g_frame_buf[idx].empty()) return 0;
+    int vw = g_frame_w.load(), vh = g_frame_h.load();
+    if (vw <= 0 || vh <= 0) return 0;
+    size_t need = (size_t)vw * vh * 4;
+    if (g_frame_buf[idx].size() < need) return 0;
+    if (kam.size() < need) kam.resize(need);
+    memcpy(kam.data(), g_frame_buf[idx].data(), need);
+    if (w) *w = vw;
+    if (h) *h = vh;
+    return 1;
 }
 
 extern "C" const void* nap_ps1_egl_grab_pixels(int* w, int* h) {
