@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B97-TV-OPRAVY-A-LOG-PO-PADU (versionCode 145)
+ Verze: EMU10-B98-PORADI-ENKODERU (versionCode 146)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -195,6 +195,16 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       Pouzivat proto nap_ps1_kopiruj_snimek(), ktera snimek POD ZAMKEM
       zkopiruje do pameti volajiciho. Jedna kopie navic, ale mezi vlakny
       to jinak sdilet nejde.
+
+      NULTA A NEJDULEZITEJSI PAST: PORADI.
+         Okno enkoderu se SMI predat nativni casti AZ POTOM, co enkoder
+         opravdu bezi (po enc.start()). Kdyz se predalo driv, nativni vlakno
+         zacalo kreslit do nespusteneho enkoderu a APLIKACE SPADLA.
+         V logu to bylo videt jako:
+             23:53:51.547  TV_PRIMO_ZAPNUTO
+             23:53:51.552  H264_ENCODER_START    <- az POTOM
+         Log koncil na TV_PRIMO_ZAPNUTO a zadny z kroku KROK1..KROK4 uz
+         nedosel - to je priznak, ze to spadlo JESTE PRED startem vlakna.
 
       TRI PASTI PRI KRESLENI Z C DO ENKODERU (vsechny zpusobily pad):
       1) CHYBEJICI setBuffersGeometry. Okno enkoderu musi dostat format
@@ -419,6 +429,8 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
    - par radku z logu, KTERE SI AI PREDEM POJMENUJE
    - obcas log z GitHub Actions ze ZELENEHO buildu (varovani od NDK, ktera
      AI u sebe neuvidi)
+   - PRUBEZNY ZAPIS LOGU DO DOWNLOADS JE VYPNUTY - brzdil system.
+     Do Downloads se zapisuje UZ JEN PRI PADU.
    - PO PADU APLIKACE: log NENI na /log (ten se posila z bezici appky!),
      ale v souboru:
          Downloads / AtariHelp / PS1_LOG.txt            (aktualni relace)

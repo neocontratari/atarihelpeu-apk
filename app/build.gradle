@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 145
-        versionName "EMU10-B97-TV-OPRAVY-A-LOG-PO-PADU"  // tri opravy padu pri zapnuti TV + log se pise i do Downloads a prezije pad
+        versionCode 146
+        versionName "EMU10-B98-PORADI-ENKODERU"  // okno enkoderu se predavalo do C DRIV, nez se enkoder spustil - kresleni do nespusteneho enkoderu shodilo appku
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

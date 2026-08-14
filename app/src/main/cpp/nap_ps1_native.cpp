@@ -1240,8 +1240,24 @@ static void nap_tv_thread_fn(ANativeWindow *win, long gen) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    {   /* Kdyz okno enkoderu jeste nema velikost, neni na co kreslit. */
-        int w0 = ANativeWindow_getWidth(win), h0 = ANativeWindow_getHeight(win);
+    {   /* POJISTKA: kdyz okno enkoderu jeste nema velikost, enkoder nemusi
+           byt pripraveny. Radeji chvili pockame, nez zacneme kreslit -
+           kresleni do nepripraveneho enkoderu shodi celou aplikaci. */
+        int w0 = 0, h0 = 0;
+        for (int pokus = 0; pokus < 50; pokus++) {
+            w0 = ANativeWindow_getWidth(win);
+            h0 = ANativeWindow_getHeight(win);
+            if (w0 > 0 && h0 > 0) break;
+            usleep(20000);
+        }
+        if (w0 <= 0 || h0 <= 0) {
+            nap_diag_log("TV_PRIMO KROK5_OKNO_BEZ_VELIKOSTI - koncim, nekreslim");
+            eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            eglDestroyContext(dpy, ctx);
+            eglDestroySurface(dpy, surf);
+            ANativeWindow_release(win);
+            return;
+        }
         nap_diag_log("TV_PRIMO PRIPRAVENO: okno %dx%d, snimek jde z jadra rovnou do enkoderu", w0, h0);
     }
 

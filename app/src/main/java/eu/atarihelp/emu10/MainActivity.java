@@ -1254,20 +1254,26 @@ public class MainActivity extends Activity {
                 enc.start();
                 napTvWebH264Encoder = enc;
                 napTvWebH264InputSurface = inputSurface;
-                // ===== SNIMEK PRO TV JDE Z C PRIMO SEM =====
-                // Vstup enkoderu predame nativni casti. Ta na nej kresli
-                // pres OpenGL ES, stejne jako na displej telefonu.
-                // Java uz na teto ceste snimek nedrzi ani nekopiruje.
-                if (ps1Plocha != null || ps1BiosRunning || ps1SessionActive) {
-                    NativePs1CoreBridge.setTvSurfaceSafe(inputSurface);
-                    tvPrimoBezi = true;
-                    appendNativeLog("TV_PRIMO_ZAPNUTO - snimek z jadra rovnou do enkoderu");
-                }
+                // Okno enkoderu se nativni casti preda AZ NA KONCI teto
+                // metody - viz nize. Tady enkoder jeste nemusi bezet.
                 napTvWebH264W = w; napTvWebH264H = h;
                 napTvWebH264FrameIndex = 0;
                 napTvWebH264Generation++;
                 // BUILD2SK83: + bitrate=/tier= - drive se muselo dopocitavat rucne z w*h,
                 // ted primo v logu (a rovnou i jestli to byla podlaha 1.8M nebo w*h*6).
+                // ===== TADY BYL TEN PAD =====
+                // Okno enkoderu jsem predaval do C JESTE PRED tim, nez byl
+                // enkoder nastartovany. V logu to bylo videt:
+                //     23:53:51.547  TV_PRIMO_ZAPNUTO
+                //     23:53:51.552  H264_ENCODER_START     <- az POTOM
+                // Nativni vlakno zacalo kreslit do enkoderu, ktery jeste
+                // nebezel -> pad. Ted se okno preda AZ TED, kdyz uz enkoder
+                // opravdu bezi (enc.start() probehlo vyse).
+                if (ps1Plocha != null || ps1BiosRunning || ps1SessionActive) {
+                    NativePs1CoreBridge.setTvSurfaceSafe(inputSurface);
+                    tvPrimoBezi = true;
+                    appendNativeLog("TV_PRIMO_ZAPNUTO - snimek z jadra rovnou do enkoderu (po startu enkoderu)");
+                }
                 appendNativeLog("BUILD2SK83 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation
                         + " mode=SURFACE bitrate=" + Math.max(1800000, w * h * 6) + " tier=" + napTvWebQualityTier);
             } catch (Throwable t) {
@@ -3380,17 +3386,11 @@ public class MainActivity extends Activity {
                     batch.append(more);
                     batched++;
                 }
-                // Kopie do Downloads - odtud se log da vzit i po padu appky.
-                try {
-                    File dl = napTvWebLogFileDownloads;
-                    if (dl != null) {
-                        try (FileOutputStream fd = new FileOutputStream(dl, true)) {
-                            fd.write(batch.toString().getBytes("UTF-8"));
-                            fd.flush();
-                        }
-                    }
-                } catch (Throwable ignored) {}
-
+                // ===== PRUBEZNY ZAPIS DO DOWNLOADS VYPNUT =====
+                // Zapisoval kazdou davku na sdilene uloziste a brzdil system.
+                // Do Downloads se zapisuje UZ JEN PRI PADU (napZapisPadPrimo)
+                // - to je jedine misto, kde je to opravdu potreba, protoze
+                // /log se posila z bezici aplikace a po padu neni odkud.
                 try (FileOutputStream fos = new FileOutputStream(f, true)) {
                     fos.write(batch.toString().getBytes("UTF-8"));
                 }
