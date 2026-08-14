@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B90-TV-SE-VRACI (versionCode 138)
+ Verze: EMU10-B92-TV-BEZ-BERLICKY (versionCode 140)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -96,6 +96,14 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       SurfaceHolder.Callback -> NativePs1CoreBridge.setDisplaySurfaceSafe()
       nap_ps1_native.cpp: Java_..._ps1SetDisplaySurface()
         -> ANativeWindow_fromSurface() -> vlastni vlakno nap_disp_thread_fn()
+      ROZTAZENI OBRAZU (nap_disp_thread_fn, glViewport):
+        na SIRKU  -> vyplnit CELOU plochu (vw=w, vh=h)
+        na VYSKU  -> zachovat pomer stran, at obraz sedi do okenka konzole
+      Proc na sirku vyplnit: PlayStation meni rozliseni behem hry
+      (320x240 intro, 512x240, 640x480 hra). Pri zachovani pomeru by obraz
+      pri kazde zmene skakal jinam a menil velikost. Vyplnenim plochy
+      zustane porad stejny.
+
       Kreslici smycka (prevzata z eglrender/egl_main.c, cesta pres pixely,
       ktera tam byla OVERENA a fungovala):
         nap_ps1_egl_grab_pixels()   - vezme posledni hotovy snimek, ZADNE GL
@@ -237,6 +245,21 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       nap_sl_callback()  (radek 512)   - dopl^nuje bloky pres Enqueue()
       Java zvukova cesta (AudioTrack) UZ NEBEZI - v logu je
       "PS1_AUDIO_JAVA_VYPNUTO". Driv bezely obe naraz a rvaly si do toho.
+
+  [4b2] CO SE NA TV CESTE NESMI DELAT V JAVE
+      Do B91 se tam obraz DOOSTROVAL v Jave BOD PO BODU:
+        for (y) for (x) { sahni na 4 sousedy, spocitej laplacian }
+      Pet cteni na bod, u 400x300 sest set tisic operaci NA SNIMEK - a dela
+      to procesor, ktery pak chybi emulaci.
+      Od B92 je to vypnute (doSharp = false). Obraz uz kresli gpu_neon
+      spravne a kvalitu na TV resi H.264 enkoder.
+      KDYBY OBRAZ NA TV PUSOBIL MEKCE: zvysit datovy tok enkoderu, NE
+      pocitat filtr na procesoru.
+
+      Co na TV ceste ZUSTAVA a je v poradku:
+        - orez cernych okraju (napTvColIsBlack) - jen sloupce, levne
+        - zvetseni na 1280x720 pres Canvas.drawBitmap - jde pres GPU
+        - H.264 enkoder (MediaCodec) - hardwarovy
 
   [4c] POZOR: PRIPOJENA TV SMI BRAT JEN MALO PROCESORU
       MainActivity.java, konec smycky snimani:

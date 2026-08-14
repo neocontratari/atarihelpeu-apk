@@ -972,7 +972,17 @@ public class MainActivity extends Activity {
             // Doostreni stoji 1,6-4,2 ms u hernich scen, ale 7,5 ms u filmovych
             // (640x480). Zvuk uz hladovi (underruns), takze u velkych snimku
             // doostreni preskocime - film je stejne mekky od prirody.
-            boolean doSharp = (nPix <= 400 * 300);
+            // ===== BERLICKA VYPNUTA =====
+            // Nize je DOOSTROVANI OBRAZU pocitane v Jave BOD PO BODU: pro
+            // kazdy bod se sahne na ctyri sousedy, tedy pet cteni na bod.
+            // U 400x300 je to 600 tisic operaci NA SNIMEK a dela to procesor,
+            // ktery pak chybi emulaci.
+            // Obraz uz kresli gpu_neon spravne (ostry, PlayStation ma ostre
+            // pixely) a kvalitu na TV resi H.264 enkoder. Doostrovat navic
+            // neni potreba - a hlavne ne v Jave po jednotlivych bodech.
+            // Kdyby obraz na TV pusobil mekce, spravna cesta je zvysit
+            // datovy tok enkoderu, ne pocitat filtr na procesoru.
+            boolean doSharp = false;
             if (!doSharp) {
                 System.arraycopy(tvCoreArgb, 0, tvSharpBuf, 0, nPix);
             } else

@@ -1106,9 +1106,20 @@ static void nap_disp_thread_fn(ANativeWindow *win) {
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, px);
         }
 
-        /* zachovat pomer stran - stejny vypocet jako v overene ceste */
-        int vw = w, vh = (int)((long)w * sh / sw);
-        if (vh > h) { vh = h; vw = (int)((long)h * sw / sh); }
+        /* NA SIRKU: vyplnit celou plochu (uzivatel chce plne rozliseni,
+           bez cernych pruhu). Zdrojove rozliseni se u PlayStation mezi
+           intrem a hrou meni (320x240, 512x240, 640x480...), takze pri
+           zachovani pomeru by obraz pokazde skakal jinam. Vyplnenim plochy
+           zustane obraz porad stejne velky.
+           NA VYSKU: zachovat pomer stran, aby obraz sedel do okenka konzole
+           a nebyl roztazeny. */
+        int vw, vh;
+        if (w > h) {                       /* na sirku */
+            vw = w; vh = h;
+        } else {                           /* na vysku */
+            vw = w; vh = (int)((long)w * sh / sw);
+            if (vh > h) { vh = h; vw = (int)((long)h * sw / sh); }
+        }
         glViewport((w - vw) / 2, (h - vh) / 2, vw, vh);
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
