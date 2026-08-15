@@ -999,7 +999,18 @@ public class MainActivity extends Activity {
             // ~16 % do sirky (obliceje sirsi) a televize k tomu jeste pridavala
             // pruhy nahore a dole. Ted posilame vzdycky cistych 1280x720:
             // spravny pomer, bez pruhu, nezavisle na otoceni telefonu.
-            final int TVW = 1280, TVH = 720;
+            // ===== ZVETSENI PRESNE NA DVOJNASOBEK =====
+            // Bylo 1280x720. Zdroj z her je typicky 640x480, takze:
+            //   vodorovne 640 -> 1280 = presne 2x  (kazdy bod na 2x2, ostre)
+            //   svisle    480 ->  720 = 1,5x       <- TADY se to kazilo
+            // Pri 1,5x pripadnou na kazde dva body tri: jeden se zdvoji,
+            // sousedni ne. Vznikne nepravidelny vzor, ktery H.264 spatne
+            // komprimuje - a v tmavych plochach z nej delaji kostky.
+            // 1280x960 je presne 2x v obou smerech. Kazdy bod PlayStation
+            // se zvetsi na ctverec 2x2 a obraz zustane cisty.
+            // Prohlizec si to dorovna na svuj pomer sam (CSS), takze se
+            // na obrazovce nic nezmeni.
+            final int TVW = 1280, TVH = 960;
             if (napTvWebBitmapDraw == null || napTvWebBitmapDraw.getWidth() != TVW
                     || napTvWebBitmapDraw.getHeight() != TVH) {
                 if (napTvWebBitmapDraw != null) { try { napTvWebBitmapDraw.recycle(); } catch (Throwable ignored) {} }
@@ -1262,7 +1273,10 @@ public class MainActivity extends Activity {
                 // 30 bitu na bod = 27 Mbit/s pri 1280x720. Enkoder ma rezervu
                 // (v logu avgDrawMs=3 az 4 pri strope 16 ms) a wifi 5 GHz to
                 // unese. Kdyby se to kouslo, snizit na w*h*20.
-                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(8000000, w * h * 30));
+                // 22 bitu na bod = 27 Mbit/s pri 1280x960. Pri presnem
+                // zdvojeni se obraz komprimuje LIP (pravidelne ctverce 2x2),
+                // takze na stejnou kvalitu staci mensi koeficient nez driv.
+                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(8000000, w * h * 22));
                 // Enkoder dostava snimky po ~16 ms (napTvWebH264FastTickMs),
                 // tedy 60 za vterinu. Sedi to.
                 fmt.setInteger(MediaFormat.KEY_FRAME_RATE, 60);
@@ -1353,7 +1367,7 @@ public class MainActivity extends Activity {
                     appendNativeLog("TV_PRIMO_ZAPNUTO");
                 }
                 appendNativeLog("BUILD2SK83 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation
-                        + " mode=SURFACE bitrate=" + Math.max(8000000, w * h * 30) + " tier=" + napTvWebQualityTier);   // musi souhlasit s KEY_BIT_RATE vyse!
+                        + " mode=SURFACE bitrate=" + Math.max(8000000, w * h * 22) + " tier=" + napTvWebQualityTier);   // musi souhlasit s KEY_BIT_RATE vyse!
             } catch (Throwable t) {
                 appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_FAIL " + safeMsg(t));
                 napTvWebH264Encoder = null;
@@ -2430,9 +2444,27 @@ public class MainActivity extends Activity {
                 + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s' style='display:none'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
+                // ===== RUCNI DOLADENI OBRAZU =====
+                // Rene chtel jas a kontrast nastavitelne primo v prohlizeci -
+                // ruzne hry maji ruzne tmavy obraz a nastavit to natvrdo v kodu
+                // by u jinych her uskodilo. Panel se schova sam po par vterinach
+                // a nastaveni se pamatuje mezi spustenimi.
+                + "<div id='pan' style='position:fixed;right:10px;bottom:10px;z-index:99;background:rgba(0,0,0,.72);color:#ddd;font:12px sans-serif;padding:8px 10px;border-radius:8px;opacity:0;transition:opacity .25s'>"
+                + "OBRAZ<br>jas <input id='sB' type='range' min='60' max='170' value='100'>"
+                + "<br>kontrast <input id='sC' type='range' min='60' max='170' value='100'>"
+                + "<br>sytost <input id='sS' type='range' min='60' max='170' value='100'>"
+                + "<br><button id='sR' type='button'>puvodni</button></div>"
                 + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
                 + "<script>(function(){var AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();function setAvd(x){AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
+                + "var pan=document.getElementById('pan'),sB=document.getElementById('sB'),sC=document.getElementById('sC'),sS=document.getElementById('sS'),sR=document.getElementById('sR'),panT=0;"
+                + "function napF(){var f='brightness('+(sB.value/100)+') contrast('+(sC.value/100)+') saturate('+(sS.value/100)+')';h264v.style.filter=f;v.style.filter=f;"
+                + "try{localStorage.setItem('napObraz',sB.value+','+sC.value+','+sS.value);}catch(e){}}"
+                + "try{var ul=localStorage.getItem('napObraz');if(ul){var pp=ul.split(',');sB.value=pp[0];sC.value=pp[1];sS.value=pp[2];napF();}}catch(e){}"
+                + "sB.oninput=sC.oninput=sS.oninput=napF;"
+                + "sR.onclick=function(){sB.value=100;sC.value=100;sS.value=100;napF();};"
+                + "function panUkaz(){pan.style.opacity='1';clearTimeout(panT);panT=setTimeout(function(){pan.style.opacity='0';},2600);}"
+                + "document.addEventListener('mousemove',panUkaz);document.addEventListener('touchstart',panUkaz);panUkaz();"
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST [SK60] '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function clog(m){try{fetch('/clientlog?m='+encodeURIComponent(m));}catch(e){}}" // BUILD2SK59: diagnostika z prohlizece zpet do /log - bez tohohle zadna viditelnost, kdyz H264 cesta selze drive, nez se server vubec dozvi
                 + "clog('PAGE LOADED build=SK60 ts='+Date.now());" // BUILD2SK60: OKAMZITY majak hned pri behu skriptu - pokud tohle v /log NENI, novy JS se vubec nespustil (stara zalozka/APK), a je zbytecne hledat chybu dal v H264 toku

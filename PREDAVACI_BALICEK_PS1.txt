@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B102-PLNY-ROZSAH (versionCode 150)
+ Verze: EMU10-B103-PRESNE-DVOJNASOBEK (versionCode 151)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -215,6 +215,16 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
            Nastavit KEY_COLOR_RANGE = COLOR_RANGE_FULL (od API 24).
            TOHLE BYLA HLAVNI PRICINA, NE DATOVY TOK.
         6) PROFIL. AVCProfileHigh misto Main - umi jemnejsi prechody.
+
+        7) ROZLISENI PRO ENKODER MUSI BYT PRESNY NASOBEK ZDROJE.
+           Bylo 1280x720. Zdroj z her je typicky 640x480:
+             vodorovne 640 -> 1280 = presne 2x  (kazdy bod na ctverec 2x2)
+             svisle    480 ->  720 = 1,5x       <- kazilo obraz
+           Pri 1,5x pripadnou na kazde dva body tri - jeden se zdvoji,
+           sousedni ne. Vznikne nepravidelny vzor, ktery H.264 spatne
+           komprimuje a v tmavych plochach z nej delaji kostky.
+           Ted 1280x960 = presne 2x v obou smerech. Prohlizec si pomer
+           dorovna sam pres CSS, takze se na obrazovce nic nezmeni.
 
         POZOR NA LOG: radek H264_ENCODER_START vypisuje bitrate ZVLAST
         pocitany. Musi souhlasit s KEY_BIT_RATE, jinak log lze - v B101
