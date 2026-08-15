@@ -1225,6 +1225,26 @@ public class MainActivity extends Activity {
                 // odstraneni umeleho stropu (SK71), a soutezila o CPU s
                 // emulatorem samotnym.
                 fmt.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
+
+                // ===== PLNY BAREVNY ROZSAH =====
+                // H.264 ma ve vychozim stavu "televizni" rozsah: jas jen
+                // 16 az 235 misto 0 az 255. Obraz z PlayStation ma plny
+                // rozsah, takze se stlacil do uzsiho - a v TMAVYCH PLOCHACH
+                // pak zbylo min urovni na jemne stinovani, coz se rozpadlo
+                // do kostek. Presne to bylo videt na intru NFS a na Dolby
+                // logu, zatimco ostre napisy (MEMORY CARD) byly v poradku -
+                // ty maji plny kontrast a rozsah jim nevadi.
+                // Tohle je ta hlavni pricina kostek, ne datovy tok.
+                if (android.os.Build.VERSION.SDK_INT >= 24) {
+                    try {
+                        fmt.setInteger(MediaFormat.KEY_COLOR_RANGE,
+                                MediaFormat.COLOR_RANGE_FULL);
+                        fmt.setInteger(MediaFormat.KEY_COLOR_STANDARD,
+                                MediaFormat.COLOR_STANDARD_BT709);
+                        fmt.setInteger(MediaFormat.KEY_COLOR_TRANSFER,
+                                MediaFormat.COLOR_TRANSFER_SDR_VIDEO);
+                    } catch (Throwable ignored) {}
+                }
                 // BUILD2SK77: podlaha 700000 -> 1800000 (SK76, cileno na LOW) ->
                 // nasobitel taky zvysen 4 -> 6 - Rene potvrdil, ze na telefonu
                 // samotnem (nekomprimovany zdroj) grafika vypada skvele, takze
@@ -1279,7 +1299,14 @@ public class MainActivity extends Activity {
                 // sam preskocil kvuli jejich vlastni latenci), pokud to API
                 // urovne dovoli - neni to zaruka, jen dalsi pojistka.
                 if (Build.VERSION.SDK_INT >= 23) {
-                    try { fmt.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileMain); } catch (Throwable ignored) {}
+                    // High profil umi jemnejsi prechody nez Main - pomaha
+                    // prave v tmavych plochach, kde vznikaly kostky.
+                    try { fmt.setInteger(MediaFormat.KEY_PROFILE,
+                            MediaCodecInfo.CodecProfileLevel.AVCProfileHigh); }
+                    catch (Throwable ig) {
+                        try { fmt.setInteger(MediaFormat.KEY_PROFILE,
+                                MediaCodecInfo.CodecProfileLevel.AVCProfileMain); } catch (Throwable ig2) {}
+                    }
                 }
                 if (Build.VERSION.SDK_INT >= 30) {
                     try { fmt.setInteger(MediaFormat.KEY_LATENCY, 0); } catch (Throwable ignored) {}
@@ -1326,7 +1353,7 @@ public class MainActivity extends Activity {
                     appendNativeLog("TV_PRIMO_ZAPNUTO");
                 }
                 appendNativeLog("BUILD2SK83 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation
-                        + " mode=SURFACE bitrate=" + Math.max(1800000, w * h * 6) + " tier=" + napTvWebQualityTier);
+                        + " mode=SURFACE bitrate=" + Math.max(8000000, w * h * 30) + " tier=" + napTvWebQualityTier);   // musi souhlasit s KEY_BIT_RATE vyse!
             } catch (Throwable t) {
                 appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_FAIL " + safeMsg(t));
                 napTvWebH264Encoder = null;

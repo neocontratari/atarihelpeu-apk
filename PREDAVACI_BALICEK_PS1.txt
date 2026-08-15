@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B101-TV-BEZ-KOSTEK (versionCode 149)
+ Verze: EMU10-B102-PLNY-ROZSAH (versionCode 150)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -205,6 +205,20 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
         4) REZIM TOKU. Vychozi je konstantni - do klidne sceny cpe bity
            zbytecne a na slozitou uz je nema. Ted VBR (promenny), takze
            bity jdou tam, kde jsou potreba.
+
+        5) BAREVNY ROZSAH - NEJDULEZITEJSI PRO KOSTKY V TMAVYCH PLOCHACH.
+           H.264 ma ve vychozim stavu "televizni" rozsah: jas 16 az 235
+           misto 0 az 255. Obraz z PlayStation ma PLNY rozsah, takze se
+           stlacil do uzsiho a v tmavych plochach zbylo malo urovni na
+           jemne stinovani -> KOSTKY. Ostre napisy pritom byly v poradku,
+           protoze maji plny kontrast.
+           Nastavit KEY_COLOR_RANGE = COLOR_RANGE_FULL (od API 24).
+           TOHLE BYLA HLAVNI PRICINA, NE DATOVY TOK.
+        6) PROFIL. AVCProfileHigh misto Main - umi jemnejsi prechody.
+
+        POZOR NA LOG: radek H264_ENCODER_START vypisuje bitrate ZVLAST
+        pocitany. Musi souhlasit s KEY_BIT_RATE, jinak log lze - v B101
+        hlasil 5,5 Mbit/s, i kdyz bezelo 27.
 
         KDYBY BYL OBRAZ NA TV MEKKY, hledat tady - ne pocitat filtry na
         procesoru (to uz bylo v B92 a brzdilo to emulaci).

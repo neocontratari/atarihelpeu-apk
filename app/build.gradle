@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 149
-        versionName "EMU10-B101-TV-BEZ-KOSTEK"  // klicovy snimek kazdou vterinu bral cely rozpocet a snimky kolem nej se rozpadaly do kostek; ted kazde 2 s, promenny tok a 27 Mbit/s
+        versionCode 150
+        versionName "EMU10-B102-PLNY-ROZSAH"  // enkoder stlacoval jas do televizniho rozsahu 16-235, takze v tmavych plochach zbylo malo urovni na stinovani - odtud kostky
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
