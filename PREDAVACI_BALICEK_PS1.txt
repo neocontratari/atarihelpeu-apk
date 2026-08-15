@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B100-TV-OSTRY-OBRAZ (versionCode 148)
+ Verze: EMU10-B101-TV-BEZ-KOSTEK (versionCode 149)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -197,6 +197,15 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
            prumeruje sousedni body. U fotky spravne, u obrazu s ostrymi
            pixely NE - rozmaze ho. Navic rozmazany obraz se hur komprimuje.
            Ted bez filtru: kazdy bod se jen zvetsi, jako na skutecne konzoli.
+        3) KLICOVY SNIMEK. Bylo KEY_I_FRAME_INTERVAL=1, tedy klicovy snimek
+           KAZDOU VTERINU. Klicovy snimek je asi 10x drazsi nez bezny a pri
+           pevnem toku si vezme velkou cast rozpoctu - na snimky kolem nej
+           nezbude a ROZPADNOU SE DO KOSTEK, nejvic v tmavych plochach.
+           Ted 2 vteriny.
+        4) REZIM TOKU. Vychozi je konstantni - do klidne sceny cpe bity
+           zbytecne a na slozitou uz je nema. Ted VBR (promenny), takze
+           bity jdou tam, kde jsou potreba.
+
         KDYBY BYL OBRAZ NA TV MEKKY, hledat tady - ne pocitat filtry na
         procesoru (to uz bylo v B92 a brzdilo to emulaci).
 

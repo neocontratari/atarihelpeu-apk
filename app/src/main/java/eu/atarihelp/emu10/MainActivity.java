@@ -1239,9 +1239,32 @@ public class MainActivity extends Activity {
                 // web viewer ma co dohanet.
                 // 20 bitu na bod = 18 Mbit/s pri 1280x720. Pres wifi 5 GHz
                 // to projde a enkoder to stiha (v logu avgDrawMs=2).
-                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(6000000, w * h * 20));
+                // 30 bitu na bod = 27 Mbit/s pri 1280x720. Enkoder ma rezervu
+                // (v logu avgDrawMs=3 az 4 pri strope 16 ms) a wifi 5 GHz to
+                // unese. Kdyby se to kouslo, snizit na w*h*20.
+                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(8000000, w * h * 30));
+                // Enkoder dostava snimky po ~16 ms (napTvWebH264FastTickMs),
+                // tedy 60 za vterinu. Sedi to.
                 fmt.setInteger(MediaFormat.KEY_FRAME_RATE, 60);
-                fmt.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
+
+                // ===== KLICOVY SNIMEK KAZDE 2 VTERINY, NE KAZDOU =====
+                // Bylo tu 1 = klicovy snimek KAZDOU VTERINU. Klicovy snimek
+                // je asi desetkrat drazsi nez bezny a pri pevnem datovem toku
+                // si vezme velkou cast rozpoctu - na snimky kolem nej pak
+                // nezbude a ROZPADNOU SE DO KOSTEK. Nejvic je to videt
+                // v tmavych plochach (silnice, pozadi), kde ma H.264 malo
+                // detailu na schovani chyby.
+                fmt.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
+
+                // ===== PROMENNY DATOVY TOK =====
+                // Ve vychozim stavu drzi enkoder tok konstantni - i kdyz je
+                // scena klidna, cpe do ni bity, a kdyz je slozita, uz je
+                // nema kde vzit. Promenny tok (VBR) da bity tam, kde jsou
+                // potreba: v pohybu a v detailech.
+                try {
+                    fmt.setInteger(MediaFormat.KEY_BITRATE_MODE,
+                        MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR);
+                } catch (Throwable ignored) {}
                 // BUILD2SK77: Baseline -> Main profil. Baseline byl zvolen driv
                 // kvuli "nejsirsi kompatibilite", ale bez konkretniho duvodu, proc
                 // by ji appka potrebovala - Chrome (a prakticky kazdy moderni
