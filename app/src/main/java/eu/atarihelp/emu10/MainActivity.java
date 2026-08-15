@@ -1150,8 +1150,16 @@ public class MainActivity extends Activity {
             // okno jako drive.
             boolean vyrez = false;
             try {
+                // POZOR: nestaci se ptat, jestli jsme na strance PS1 - ta je
+                // i uvodni obrazovka s konzolemi, kde zadna hra nebezi.
+                // Kdyz se orezalo i tam, sel na televizi nesmyslny vyrez
+                // prazdneho okenka misto cele uvodni obrazovky.
+                // Orezavame proto JEN kdyz jadro opravdu kresli (bezi BIOS
+                // nebo hra). Jinak jde na TV cele okno, at je videt Atari,
+                // Sega i uvodni obrazovka.
                 String cu2 = (web == null) ? null : web.getUrl();
-                if (cu2 != null && cu2.contains("emu_ps1")
+                boolean bezi = ps1BiosRunning || ps1SessionActive;
+                if (bezi && cu2 != null && cu2.contains("emu_ps1")
                         && plochaW > 0 && plochaH > 0 && rootFrame != null) {
                     float dpr = getResources().getDisplayMetrics().density;
                     float l0 = plochaL / dpr, t0 = plochaT / dpr;
@@ -2546,8 +2554,8 @@ public class MainActivity extends Activity {
                 // a nastaveni se pamatuje mezi spustenimi.
                 + "<div id='pan' style='position:fixed;right:10px;bottom:10px;z-index:99;background:rgba(0,0,0,.72);color:#ddd;font:12px sans-serif;padding:8px 10px;border-radius:8px;opacity:0;transition:opacity .25s'>"
                 + "OBRAZ<br>jas <input id='sB' type='range' min='60' max='170' value='100'>"
-                + "<br>kontrast <input id='sC' type='range' min='60' max='170' value='100'>"
-                + "<br>sytost <input id='sS' type='range' min='60' max='170' value='100'>"
+                + "<br>kontrast <input id='sC' type='range' min='60' max='170' value='112'>"   // vychozi mirne vyssi - vyhlazeni obraz zmekci a kontrast to srovna
+                + "<br>sytost <input id='sS' type='range' min='60' max='170' value='108'>"
                 + "<br><button id='sR' type='button' style='margin-top:4px;padding:3px 8px'>PUVODNI NASTAVENI</button>"
                 + "<br><button id='sF' type='button' style='margin-top:4px;padding:3px 8px'>CELA OBRAZOVKA: vyplnit</button>"
                 + "<br><button id='sV' type='button' style='margin-top:4px;padding:3px 8px'>VYLADENI OBRAZU: zapnuto</button></div>"
@@ -2557,9 +2565,12 @@ public class MainActivity extends Activity {
                 + "var pan=document.getElementById('pan'),sB=document.getElementById('sB'),sC=document.getElementById('sC'),sS=document.getElementById('sS'),sR=document.getElementById('sR'),sF=document.getElementById('sF'),panT=0;"
                 + "function napF(){var f='brightness('+(sB.value/100)+') contrast('+(sC.value/100)+') saturate('+(sS.value/100)+')';h264v.style.filter=f;v.style.filter=f;"
                 + "try{localStorage.setItem('napObraz',sB.value+','+sC.value+','+sS.value);}catch(e){}}"
-                + "try{var ul=localStorage.getItem('napObraz');if(ul){var pp=ul.split(',');sB.value=pp[0];sC.value=pp[1];sS.value=pp[2];napF();}}catch(e){}"
+                + "try{var ul=localStorage.getItem('napObraz');if(ul){var pp=ul.split(',');sB.value=pp[0];sC.value=pp[1];sS.value=pp[2];}}catch(e){}"
+                // Pouzit VZDYCKY, i pri prvnim spusteni - jinak by vychozi
+                // kontrast a sytost z posuvniku nikdy nezacaly platit.
+                + "napF();"
                 + "sB.oninput=sC.oninput=sS.oninput=napF;"
-                + "sR.onclick=function(){sB.value=100;sC.value=100;sS.value=100;napF();};"
+                + "sR.onclick=function(){sB.value=100;sC.value=112;sS.value=108;napF();};"
                 + "var napFill=0;function napSetFill(){if(!sF)return;var m=napFill?'cover':'contain';h264v.style.objectFit=m;v.style.objectFit=m;"
                 + "sF.textContent='CELA OBRAZOVKA: '+(napFill?'oriznout':'vyplnit');"
                 + "try{localStorage.setItem('napFill',napFill);}catch(e){}}"

@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B110-BEZ-TRHANI (versionCode 158)
+ Verze: EMU10-B111-VYREZ-JEN-PRI-HRE (versionCode 159)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -339,6 +339,13 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       javovou cestu, aby TV nezustala cerna.
 
       STARA CESTA (zustava jako zaloha, kdyz nejede H.264):
+      VYREZ OKENKA SE SMI DELAT JEN KDYZ JADRO OPRAVDU KRESLI!
+      Podminka musi obsahovat (ps1BiosRunning || ps1SessionActive), ne jen
+      kontrolu adresy stranky. Stranka "emu_ps1" je totiz i UVODNI
+      OBRAZOVKA s konzolemi, kde zadna hra nebezi - a tam se orezavalo
+      prazdne okenko, takze na televizi sel nesmyslny vyrez misto cele
+      uvodni obrazovky. Rene to hlasil ctyrikrat, nez jsem to nasel.
+
       NA VYSKU SE NA TV POSILA VYREZ OKENKA, NE CELE OKNO (od B109).
       Kdyz PS1 nema snimek (napr. uvodni obrazovka appky), TV snimala CELE
       okno vcetne skrine konzole, tlacitek a pozadi - na vysku z toho zbyl
