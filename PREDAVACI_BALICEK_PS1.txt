@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B105-DOLADENI-OBRAZU (versionCode 153)
+ Verze: EMU10-B106-DOLADENI-OPRAVENE (versionCode 154)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -484,6 +484,15 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
    - C++:    clang --target=aarch64-linux-gnu, proti SKUTECNEMU jni.h
              z /usr/lib/jvm/java-17-openjdk-amd64/include
    - jadro PS1 pro ARM64: aarch64-linux-gnu vcetne assembleru gte_arm64.S
+   - JAVASCRIPT V PROHLIZECOVE STRANCE (POVINNE, jinak spadne CELA APPKA):
+       Stranka pro TV se sklada z retezcu v MainActivity.java. Java se
+       prelozi bez chyby i kdyz je v tom JavaScriptu nesmysl - a chyba
+       shodi WebView a s nim celou aplikaci.
+       Postup: vytahnout retezce, slozit z nich JS a SPUSTIT ho v node
+       s napodobeninou prohlizece (document.getElementById atd.).
+       Presne tak se naslo, ze B105 sahal na prvky drive, nez byly
+       ziskane, a ze uplne chybelo ziskani tlacitka sF.
+
    - LINKOVANI (POVINNE, jinak se to pozna az v GitHub Actions):
        clang++ -c --target=aarch64-linux-gnu ... nap_ps1_native.cpp -o /tmp/nap.o
        aarch64-linux-gnu-nm -u /tmp/nap.o        <- co appka POTREBUJE
