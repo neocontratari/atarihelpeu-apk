@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B98-PORADI-ENKODERU (versionCode 146)
+ Verze: EMU10-B99-TV-ZPET-NA-FUNKCNI (versionCode 147)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -171,7 +171,24 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       (v logu B78 "PS1_PREVIEW_AVG" 51x) a bral procesor, ktery pak chybel
       zvuku, jakmile se pridala TV. Uz ho sem nikdy nevracet.
 
-  [4b] CESTA NA TV (prohlizec na PC) - od B94 BEZ JAVY
+  [4b] CESTA NA TV (prohlizec na PC)
+
+      !!! PRIMA CESTA (snimek z C primo do enkoderu) JE VYPNUTA !!!
+      Priznak POUZIT_PRIMOU_CESTU_NA_TV = false v MainActivity.java.
+
+      Bylo to zkouseno v B94 az B98 a POKAZDE TO SHODILO APLIKACI pri
+      zapnuti TV. Nasel a opravil jsem pritom ctyri skutecne chyby:
+        - okno enkoderu se predavalo DRIV, nez se enkoder spustil
+        - chybel setBuffersGeometry na okne enkoderu
+        - hrozilo zaseknuti na zamku enkoderu (join pod zamkem)
+        - stare vlakno mohlo kreslit soubezne s novym
+      Presto to padalo dal. Chovani MediaCodec se dvema vlakny se u sebe
+      overit neda a Rene uz na tom spalil ctyri testy.
+
+      NEZKOUSET ZNOVU BEZ TELEFONU PO RUCE. Nativni kod zustava v projektu
+      (nap_tv_thread_fn, ps1SetTvSurface), staci prepnout ten priznak.
+
+      TV proto jede JAVOVOU cestou, kde prokazatelne funguje (B92):
 
       jadro -> nap_ps1_egl_grab_pixels() -> GL textura -> enkoder H.264
       Nativni vlakno nap_tv_thread_fn() kresli PRIMO na Surface, ktery

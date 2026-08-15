@@ -1269,10 +1269,23 @@ public class MainActivity extends Activity {
                 // Nativni vlakno zacalo kreslit do enkoderu, ktery jeste
                 // nebezel -> pad. Ted se okno preda AZ TED, kdyz uz enkoder
                 // opravdu bezi (enc.start() probehlo vyse).
-                if (ps1Plocha != null || ps1BiosRunning || ps1SessionActive) {
+                // ===== PRIMA CESTA NA TV JE VYPNUTA =====
+                // Snimek z C primo do enkoderu (B94-B98) shazoval aplikaci
+                // pri zapnuti TV. Ctyri pokusy, ctyri pady. Priciny, ktere
+                // jsem nasel a opravil (poradi startu enkoderu, format okna,
+                // zamek, souběh vlaken) byly skutecne, ale zjevne tam je
+                // jeste neco dalsiho - a chovani dvou vlaken s MediaCodec
+                // si u sebe overit nedokazu.
+                // TV proto jede zase javovou cestou, kde PROKAZATELNE
+                // FUNGOVALA (B92). Nativni kod zustava v projektu, jen se
+                // nespousti - kdyby ho nekdo chtel dodelat, staci prepnout
+                // tenhle priznak a otestovat s telefonem po ruce.
+                final boolean POUZIT_PRIMOU_CESTU_NA_TV = false;
+                if (POUZIT_PRIMOU_CESTU_NA_TV
+                        && (ps1Plocha != null || ps1BiosRunning || ps1SessionActive)) {
                     NativePs1CoreBridge.setTvSurfaceSafe(inputSurface);
                     tvPrimoBezi = true;
-                    appendNativeLog("TV_PRIMO_ZAPNUTO - snimek z jadra rovnou do enkoderu (po startu enkoderu)");
+                    appendNativeLog("TV_PRIMO_ZAPNUTO");
                 }
                 appendNativeLog("BUILD2SK83 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation
                         + " mode=SURFACE bitrate=" + Math.max(1800000, w * h * 6) + " tier=" + napTvWebQualityTier);
