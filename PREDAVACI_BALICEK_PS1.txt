@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B108-VYLADENI-PRED-KOMPRESI (versionCode 156)
+ Verze: EMU10-B110-BEZ-TRHANI (versionCode 158)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -232,6 +232,18 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
            POZOR: rozliseni pro enkoder musi odpovidat POMERU OBRAZOVKY,
            ne nasobku zdroje. Jinak vzniknou pruhy.
 
+           POZOR: "new Canvas(bitmapa)" JE PLATNO V PAMETI, NE NA GRAFICE!
+           Vsechno, co se na nem dela, pocita PROCESOR. V B108 tam byl
+           ColorMatrixColorFilter (kontrast + sytost) a stalo to devet
+           nasobeni na kazdy bod - u 640x480 pres osm milionu operaci na
+           snimek. V logu: avgTickGapMs=96 misto 16, tedy devet snimku za
+           vterinu misto sedesati -> obraz se trhal, i kdyz enkoder stihal
+           (avgDrawMs=3).
+           BAREVNE UPRAVY PATRI DO PROHLIZECE (CSS filtr), tam je pocita
+           grafika PC a telefon to nestoji nic.
+           Na platne v pameti smi zustat nejvys setFilterBitmap (vyhlazeni),
+           a i to se meri - radek TV_KRESLENI v logu. Nad ~8 ms vypnout.
+
            VYLADENI OBRAZU: ZALEZI, JESTLI PRED NEBO PO KOMPRESI!
            PRED kompresi (B108, spravne): obraz z jadra je cisty original,
              filtr ma k dispozici vsechnu informaci. Dela se pri kresleni
@@ -327,6 +339,14 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       javovou cestu, aby TV nezustala cerna.
 
       STARA CESTA (zustava jako zaloha, kdyz nejede H.264):
+      NA VYSKU SE NA TV POSILA VYREZ OKENKA, NE CELE OKNO (od B109).
+      Kdyz PS1 nema snimek (napr. uvodni obrazovka appky), TV snimala CELE
+      okno vcetne skrine konzole, tlacitek a pozadi - na vysku z toho zbyl
+      na obraz uzky prouzek uprostred a zbytek byla grafika appky.
+      Stranka hlasi obdelnik okenka (PLOCHA_MISTO_ZE_STRANKY, promenne
+      plochaL/T/W/H), takze se z okna vyrizne jen on a roztahne na plochu
+      televize. Mimo obrazovku PS1 se snima cele okno jako driv.
+
       TV MA DVA MOZNE ZDROJE SNIMKU a je dulezite vedet ktery:
         (a) napTvWebCaptureFromCore()  - snimek PRIMO Z JADRA, orizne cerne
             okraje a roztahne na 1280x720. Ovladac se do nej NEDOSTANE.

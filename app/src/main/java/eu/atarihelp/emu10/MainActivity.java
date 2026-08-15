@@ -323,6 +323,8 @@ public class MainActivity extends Activity {
     // Vyladeni obrazu pro TV pred kompresi (viz napTvWebCaptureFromCore).
     // Da se prepnout z prohlizece, at jde porovnat s puvodnim stavem.
     private volatile boolean napTvVyhlazeni = true;
+    private long napTvKresDiagSum = 0;
+    private int napTvKresDiagPocet = 0;
     private android.view.Surface napTvWebH264InputSurface;
     private final Object napTvWebH264Lock = new Object();
     private volatile int napTvWebH264W = 0;
@@ -1058,18 +1060,20 @@ public class MainActivity extends Activity {
             Paint pp = new Paint();
             pp.setDither(false);
             if (napTvVyhlazeni) {
-                pp.setFilterBitmap(true);        // hladke zvetseni na GPU
-                pp.setAntiAlias(true);
-                android.graphics.ColorMatrix cm = new android.graphics.ColorMatrix();
-                cm.setSaturation(1.12f);         // mirne sytejsi barvy
-                android.graphics.ColorMatrix kon = new android.graphics.ColorMatrix(new float[]{
-                        1.10f, 0, 0, 0, -12f,
-                        0, 1.10f, 0, 0, -12f,
-                        0, 0, 1.10f, 0, -12f,
-                        0, 0, 0, 1, 0 });        // kontrast 1,10 se srovnanim cerne
-                cm.postConcat(kon);
-                pp.setColorFilter(new android.graphics.ColorMatrixColorFilter(cm));
+                // Jen vyhlazeni pri zvetseni - to umi Canvas levne, je to
+                // jedina operace pri kresleni.
+                pp.setFilterBitmap(true);
             }
+            // ===== BAREVNY FILTR ODSTRANEN - BYL TO TEN DUVOD TRHANI =====
+            // V B108 tu byl navic ColorMatrixColorFilter (kontrast a sytost).
+            // Vypadalo to lepe, ALE: tohle platno je "new Canvas(bitmapa)",
+            // tedy platno V PAMETI, ne na grafice. Barevny filtr se proto
+            // pocital PROCESOREM, bod po bodu, u 640x480 tristatisickrat na
+            // kazdy snimek. V logu se to projevilo jako avgTickGapMs=96 misto
+            // 16 - devet snimku za vterinu misto sedesati, odtud trhani.
+            // (Enkoder pritom stihal, avgDrawMs=3.)
+            // Kontrast a sytost si nastav v panelu v prohlizeci - tam to
+            // pocita grafika PC a telefon to nestoji nic.
             // ===== OREZ CERNYCH OKRAJU =====
             // Hry casto kresli obraz do MENSI plochy, nez je zobrazovaci okno
             // PS1 (typicky 224 radku uvnitr 240) a zbytek nechaji cerny. Ty
@@ -1086,7 +1090,18 @@ public class MainActivity extends Activity {
                 cropTop = 0; cropBottom = sh - 1; cropLeft = 0; cropRight = sw - 1;
             }
             Rect srcRect = new Rect(cropLeft, cropTop, cropRight + 1, cropBottom + 1);
+            long tKres = System.nanoTime();
             cv.drawBitmap(tvCoreSrcBmp, srcRect, new Rect(0, 0, TVW, TVH), pp);
+            // Kolik stoji samotne kresleni (vcetne vyhlazeni). Kdyz to poleze
+            // nad ~8 ms, vyhlazeni je prilis drahe a ma se vypnout.
+            {
+                napTvKresDiagSum += (System.nanoTime() - tKres) / 1000000;
+                if (++napTvKresDiagPocet >= 60) {
+                    appendNativeLog("TV_KRESLENI prumer=" + (napTvKresDiagSum / napTvKresDiagPocet)
+                            + " ms  vyhlazeni=" + (napTvVyhlazeni ? "ZAP" : "VYP"));
+                    napTvKresDiagSum = 0; napTvKresDiagPocet = 0;
+                }
+            }
 
             // CHYBELO: bitmapu je potreba jeste ODEVZDAT do prenosu.
             // Bez tohohle radku se obraz naplnil, ale TV o nem nevedela
@@ -1124,7 +1139,35 @@ public class MainActivity extends Activity {
             Canvas cv = new Canvas(napTvWebBitmapDraw);
             cv.drawColor(Color.BLACK);
             cv.save();
-            cv.scale(scale, scale);
+
+            // ===== NA TV JEN OKENKO KONZOLE, NE CELA APLIKACE =====
+            // Kdyz se snimalo cele okno, sla na televizi i skrin konzole,
+            // tlacitka a pozadi - a na vysku z toho zbyl na obraz uzky
+            // prouzek uprostred. Stranka nam hlasi, KDE presne to okenko je
+            // (PLOCHA_MISTO_ZE_STRANKY), takze si z okna vyrizneme jen jeho
+            // a roztahneme na celou plochu televize.
+            // Kdyz obdelnik jeste nemame nebo jsme mimo PS1, snimame cele
+            // okno jako drive.
+            boolean vyrez = false;
+            try {
+                String cu2 = (web == null) ? null : web.getUrl();
+                if (cu2 != null && cu2.contains("emu_ps1")
+                        && plochaW > 0 && plochaH > 0 && rootFrame != null) {
+                    float dpr = getResources().getDisplayMetrics().density;
+                    float l0 = plochaL / dpr, t0 = plochaT / dpr;
+                    float w0 = plochaW / dpr, h0 = plochaH / dpr;
+                    if (w0 > 8 && h0 > 8) {
+                        // roztahnout okenko na celou plochu snimku pro TV
+                        float sx = bw / w0, sy = bh / h0;
+                        float s2 = Math.min(sx, sy);          // zachovat pomer
+                        cv.translate((bw - w0 * s2) / 2f, (bh - h0 * s2) / 2f);
+                        cv.scale(s2, s2);
+                        cv.translate(-l0, -t0);
+                        vyrez = true;
+                    }
+                }
+            } catch (Throwable ignored) {}
+            if (!vyrez) cv.scale(scale, scale);
             // BUILD2SK44: invalidate() pred draw() - pokus vynutit cerstve
             // prekresleni misto zastarale hardwarove vrstvy.
             if (rootFrame != null) rootFrame.invalidate();
@@ -2506,7 +2549,8 @@ public class MainActivity extends Activity {
                 + "<br>kontrast <input id='sC' type='range' min='60' max='170' value='100'>"
                 + "<br>sytost <input id='sS' type='range' min='60' max='170' value='100'>"
                 + "<br><button id='sR' type='button' style='margin-top:4px;padding:3px 8px'>PUVODNI NASTAVENI</button>"
-                + "<br><button id='sF' type='button' style='margin-top:4px;padding:3px 8px'>CELA OBRAZOVKA: vyplnit</button></div>"
+                + "<br><button id='sF' type='button' style='margin-top:4px;padding:3px 8px'>CELA OBRAZOVKA: vyplnit</button>"
+                + "<br><button id='sV' type='button' style='margin-top:4px;padding:3px 8px'>VYLADENI OBRAZU: zapnuto</button></div>"
                 + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
                 + "<script>(function(){var AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();function setAvd(x){AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
