@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B112-SNIMANI-OKNA-ZPET (versionCode 160)
+ Verze: EMU10-B114-VYPLNIT-JAKO-VYCHOZI (versionCode 162)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -339,6 +339,25 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       javovou cestu, aby TV nezustala cerna.
 
       STARA CESTA (zustava jako zaloha, kdyz nejede H.264):
+      ZOBRAZENI V PROHLIZECI (object-fit) - JAK TO MA BYT:
+        VYCHOZI = "cover" (vyplnit obrazovku, okraje se orizmou).
+          Tohle chce Rene: obraz vyplni celou obrazovku bez cernych pruhu.
+        PREPINATELNE na "contain" (cely obraz, zachova pomer, pruhy).
+        Tlacitko: "OBRAZ: vyplnit obrazovku" / "OBRAZ: cely, bez orezu"
+        Popisky musi rikat, CO TLACITKO UDELA - drivejsi "CELA OBRAZOVKA:
+        vyplnit/oriznout" bylo matouci a vedlo k nedorozumeni.
+
+      POZOR NA ULOZENE HODNOTY V PROHLIZECI:
+      Na web chodi presne to, co je na mobilu: na vysku 720x1336, na
+      sirku 1280x720 (v logu H264_FRAME_AVG w= h=). Kdyz se v prohlizeci
+      pouzil rezim "cover" (vyplnit a co pretece oriznout), obraz na vysku
+      se v sirokem okne roztahl a vetsina se ukrojila.
+      Spravne je "contain" - vejdi se cely, zachovej pomer, po stranach
+      cerno. Vypada to jako na mobilu, jen vetsi.
+      POZOR: nastaveni se ukladalo do localStorage, takze v prohlizecich
+      zustalo "oriznout" i po oprave kodu. Pri zmene chovani se musi zmenit
+      i KLIC (napFill -> napFillV2), jinak se stara hodnota nacte znovu.
+
       DO SNIMANI OKNA (napTvWebCaptureByDraw) NESAHAT!
       V B109-B111 jsem tam pridal orez na okenko konzole. Rozbilo to
       VSECHNO OSTATNI: mobil na vysku posilal na web pohled na sirku a

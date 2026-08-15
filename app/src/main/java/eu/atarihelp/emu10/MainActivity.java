@@ -2531,7 +2531,7 @@ public class MainActivity extends Activity {
                 + "<br>kontrast <input id='sC' type='range' min='60' max='170' value='112'>"   // vychozi mirne vyssi - vyhlazeni obraz zmekci a kontrast to srovna
                 + "<br>sytost <input id='sS' type='range' min='60' max='170' value='108'>"
                 + "<br><button id='sR' type='button' style='margin-top:4px;padding:3px 8px'>PUVODNI NASTAVENI</button>"
-                + "<br><button id='sF' type='button' style='margin-top:4px;padding:3px 8px'>CELA OBRAZOVKA: vyplnit</button>"
+                + "<br><button id='sF' type='button' style='margin-top:4px;padding:3px 8px'>OBRAZ: vyplnit obrazovku</button>"
                 + "<br><button id='sV' type='button' style='margin-top:4px;padding:3px 8px'>VYLADENI OBRAZU: zapnuto</button></div>"
                 + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
                 + "<script>(function(){var AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();function setAvd(x){AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
@@ -2545,10 +2545,21 @@ public class MainActivity extends Activity {
                 + "napF();"
                 + "sB.oninput=sC.oninput=sS.oninput=napF;"
                 + "sR.onclick=function(){sB.value=100;sC.value=112;sS.value=108;napF();};"
-                + "var napFill=0;function napSetFill(){if(!sF)return;var m=napFill?'cover':'contain';h264v.style.objectFit=m;v.style.objectFit=m;"
-                + "sF.textContent='CELA OBRAZOVKA: '+(napFill?'oriznout':'vyplnit');"
-                + "try{localStorage.setItem('napFill',napFill);}catch(e){}}"
-                + "try{var uf=localStorage.getItem('napFill');if(uf!==null)napFill=parseInt(uf)||0;}catch(e){}"
+                // ===== OBRAZ SE NESMI OREZAVAT ANI ROZTAHOVAT =====
+                // Na web chodi presne to, co je na mobilu - na vysku
+                // 720x1336, na sirku 1280x720. Kdyz se pouzil rezim
+                // "cover" (vyplnit a co pretece oriznout), obraz na
+                // vysku se v sirokem okne prohlizece roztahl a vetsina
+                // se ukrojila - Rene to hlasil petkrat.
+                // "contain" znamena: vejdi se cely a zachovej pomer.
+                // To je jedine spravne - obraz na vysku bude na vysku,
+                // po stranach cerno, presne jako na mobilu.
+                // Ulozena hodnota z drivejska se ZAHAZUJE (napFillV3),
+                // protoze v prohlizecich zustalo "oriznout".
+                + "var napFill=1;function napSetFill(){if(!sF)return;var m=napFill?'cover':'contain';h264v.style.objectFit=m;v.style.objectFit=m;"
+                + "sF.textContent=napFill?'OBRAZ: vyplnit obrazovku':'OBRAZ: cely, bez orezu';"
+                + "try{localStorage.setItem('napFillV3',napFill);}catch(e){}}"
+                + "try{var uf=localStorage.getItem('napFillV3');if(uf!==null)napFill=parseInt(uf)||0;}catch(e){}"
                 + "napSetFill();if(sF)sF.onclick=function(){napFill=napFill?0:1;napSetFill();};"
                 + "var sV=document.getElementById('sV'),napV=1;"
                 + "if(sV)sV.onclick=function(){fetch('/vyhlazeni').then(function(r){return r.text();})"
