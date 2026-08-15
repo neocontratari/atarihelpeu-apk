@@ -320,6 +320,9 @@ public class MainActivity extends Activity {
     // javova cesta (snimani, orez, Bitmap, Canvas) se VUBEC nespousti.
     // Jinak by do enkoderu kreslily dva zdroje naraz.
     private volatile boolean tvPrimoBezi = false;
+    // Vyladeni obrazu pro TV pred kompresi (viz napTvWebCaptureFromCore).
+    // Da se prepnout z prohlizece, at jde porovnat s puvodnim stavem.
+    private volatile boolean napTvVyhlazeni = true;
     private android.view.Surface napTvWebH264InputSurface;
     private final Object napTvWebH264Lock = new Object();
     private volatile int napTvWebH264W = 0;
@@ -1032,8 +1035,41 @@ public class MainActivity extends Activity {
             // komprimuje, takze to ubira i datovy tok.
             // Bez filtru se kazdy bod jen zvetsi - presne jak to vypada
             // na skutecne konzoli.
+            // ===== VYLADENI PRED KOMPRESI =====
+            // Rene mel pravdu se srovnanim se starym videem prevedenym na HD:
+            // TAM SE TO DELA PRED KOMPRESI, na originalu, kde je jeste vsechna
+            // informace. Ja to v B105 zkusil AZ POTOM, na obraze, kteremu uz
+            // detaily chybely - proto to jen zvyraznilo chyby komprese.
+            //
+            // Tady je to spravne: obraz z jadra je CISTY ORIGINAL (zadny sum,
+            // zadna ztrata) a upravuje se JESTE PRED tim, nez ho enkoder
+            // zabali. Pocita to grafika telefonu pri kresleni na platno,
+            // takze to nestoji skoro nic - v logu ma telefon rezervu 10 ms
+            // ze 16.
+            //
+            // CO SE DELA:
+            //  1) mirne vyhlazeni pri zvetseni. Ostre schody se pri kompresi
+            //     rozpadaji na kostky (H.264 ma s ostrymi hranami problem),
+            //     zatimco mirne mekci obraz se komprimuje CISTEJI - a vysledek
+            //     na televizi je pak PARADOXNE ostrejsi.
+            //  2) lehke zvyseni kontrastu a sytosti, aby obraz nepusobil
+            //     vybledle po tom vyhlazeni.
+            // Vysledek: obraz "jako film", ne jako zvetsene pixely.
             Paint pp = new Paint();
             pp.setDither(false);
+            if (napTvVyhlazeni) {
+                pp.setFilterBitmap(true);        // hladke zvetseni na GPU
+                pp.setAntiAlias(true);
+                android.graphics.ColorMatrix cm = new android.graphics.ColorMatrix();
+                cm.setSaturation(1.12f);         // mirne sytejsi barvy
+                android.graphics.ColorMatrix kon = new android.graphics.ColorMatrix(new float[]{
+                        1.10f, 0, 0, 0, -12f,
+                        0, 1.10f, 0, 0, -12f,
+                        0, 0, 1.10f, 0, -12f,
+                        0, 0, 0, 1, 0 });        // kontrast 1,10 se srovnanim cerne
+                cm.postConcat(kon);
+                pp.setColorFilter(new android.graphics.ColorMatrixColorFilter(cm));
+            }
             // ===== OREZ CERNYCH OKRAJU =====
             // Hry casto kresli obraz do MENSI plochy, nez je zobrazovaci okno
             // PS1 (typicky 224 radku uvnitr 240) a zbytek nechaji cerny. Ty
@@ -2387,6 +2423,16 @@ public class MainActivity extends Activity {
                         + " url=" + curUrl3 + "\n").getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, false);
                 out.write(body);
+            } else if ("/vyhlazeni".equals(path)) {
+                // Prepinac vyladeni obrazu pred kompresi. Volá ho tlacitko
+                // v prohlizeci, at si Rene muze porovnat oba stavy.
+                napTvVyhlazeni = !napTvVyhlazeni;
+                appendNativeLog("TV_VYLADENI " + (napTvVyhlazeni ? "ZAPNUTO" : "VYPNUTO"));
+                byte[] odp = (napTvVyhlazeni ? "1" : "0").getBytes("UTF-8");
+                out.write(("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n"
+                        + "Access-Control-Allow-Origin: *\r\n"
+                        + "Content-Length: " + odp.length + "\r\n\r\n").getBytes("UTF-8"));
+                out.write(odp); out.flush();
             } else if ("/log".equals(path)) {
                 // BUILD2SK33: log byl driv videt jen zevnitr PS1 obrazovky (nedalo
                 // se poslat log z toho, co se deje na jinych obrazovkach - DJ pult,
@@ -2450,16 +2496,6 @@ public class MainActivity extends Activity {
                 + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s' style='display:none'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
-                // ===== DOLADENI OBRAZU GRAFIKOU PROHLIZECE =====
-                // Pocita to grafika PC, ne telefon - telefon uz nedela nic
-                // navic a emulace se tim nezpomali. Neni to zasah do jadra
-                // ani do emulace: je to uprava HOTOVEHO obrazu az na cili,
-                // presne jako kdyz si na televizi doladis ostrost.
-                + "<svg width='0' height='0' style='position:absolute'><defs>"
-                + "<filter id='fx'>"
-                + "<feGaussianBlur id='fxB' in='SourceGraphic' stdDeviation='0' result='rozmaz'/>"
-                + "<feComposite id='fxS' in='SourceGraphic' in2='rozmaz' operator='arithmetic' k1='0' k2='1' k3='0' k4='0'/>"
-                + "</filter></defs></svg>"
                 // ===== RUCNI DOLADENI OBRAZU =====
                 // Rene chtel jas a kontrast nastavitelne primo v prohlizeci -
                 // ruzne hry maji ruzne tmavy obraz a nastavit to natvrdo v kodu
@@ -2469,40 +2505,26 @@ public class MainActivity extends Activity {
                 + "OBRAZ<br>jas <input id='sB' type='range' min='60' max='170' value='100'>"
                 + "<br>kontrast <input id='sC' type='range' min='60' max='170' value='100'>"
                 + "<br>sytost <input id='sS' type='range' min='60' max='170' value='100'>"
-                + "<br>ostrost <input id='sK' type='range' min='0' max='100' value='0'>"
-                + "<br>vyhlazeni <input id='sM' type='range' min='0' max='100' value='0'>"
                 + "<br><button id='sR' type='button' style='margin-top:4px;padding:3px 8px'>PUVODNI NASTAVENI</button>"
                 + "<br><button id='sF' type='button' style='margin-top:4px;padding:3px 8px'>CELA OBRAZOVKA: vyplnit</button></div>"
                 + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
                 + "<script>(function(){var AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();function setAvd(x){AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
                 + "var pan=document.getElementById('pan'),sB=document.getElementById('sB'),sC=document.getElementById('sC'),sS=document.getElementById('sS'),sR=document.getElementById('sR'),sF=document.getElementById('sF'),panT=0;"
-                // ===== POZOR NA PORADI =====
-                // Drive se tu volalo napF() JESTE PRED tim, nez se ziskaly
-                // prvky sK a sM - stranka pak pri nacteni spadla a aplikace
-                // s ni. Vsechno se proto nejdriv ZISKA, pak DEFINUJE
-                // a teprve nakonec POUZIJE.
-                + "var sK=document.getElementById('sK'),sM=document.getElementById('sM');"
-                + "var fxB=document.getElementById('fxB'),fxS=document.getElementById('fxS');"
-                + "function napZaklad(){return 'brightness('+(sB.value/100)+') contrast('+(sC.value/100)+') saturate('+(sS.value/100)+')';}"
-                + "function napPouzij(){try{"
-                + "var k=sK?sK.value/100:0,m=sM?sM.value/100:0,fx='';"
-                + "if(fxB&&fxS&&(k>0||m>0)){fxB.setAttribute('stdDeviation',(m*1.2+(k>0?0.8:0)).toFixed(2));"
-                + "fxS.setAttribute('k2',(1+k*1.6).toFixed(2));fxS.setAttribute('k3',(-k*1.6).toFixed(2));fx=' url(#fx)';}"
-                + "var f=napZaklad()+fx;h264v.style.filter=f;v.style.filter=f;"
-                + "localStorage.setItem('napObraz',sB.value+','+sC.value+','+sS.value);"
-                + "if(sK&&sM)localStorage.setItem('napFx',sK.value+','+sM.value);"
-                + "}catch(e){clog('obraz: '+e);}}"
-                + "try{var ul=localStorage.getItem('napObraz');if(ul){var pp=ul.split(',');sB.value=pp[0];sC.value=pp[1];sS.value=pp[2];}"
-                + "var uf2=localStorage.getItem('napFx');if(uf2&&sK&&sM){var q=uf2.split(',');sK.value=q[0];sM.value=q[1];}}catch(e){}"
-                + "sB.oninput=sC.oninput=sS.oninput=napPouzij;if(sK)sK.oninput=napPouzij;if(sM)sM.oninput=napPouzij;"
-                + "napPouzij();"
-                + "sR.onclick=function(){sB.value=100;sC.value=100;sS.value=100;if(sK)sK.value=0;if(sM)sM.value=0;napPouzij();};"
+                + "function napF(){var f='brightness('+(sB.value/100)+') contrast('+(sC.value/100)+') saturate('+(sS.value/100)+')';h264v.style.filter=f;v.style.filter=f;"
+                + "try{localStorage.setItem('napObraz',sB.value+','+sC.value+','+sS.value);}catch(e){}}"
+                + "try{var ul=localStorage.getItem('napObraz');if(ul){var pp=ul.split(',');sB.value=pp[0];sC.value=pp[1];sS.value=pp[2];napF();}}catch(e){}"
+                + "sB.oninput=sC.oninput=sS.oninput=napF;"
+                + "sR.onclick=function(){sB.value=100;sC.value=100;sS.value=100;napF();};"
                 + "var napFill=0;function napSetFill(){if(!sF)return;var m=napFill?'cover':'contain';h264v.style.objectFit=m;v.style.objectFit=m;"
                 + "sF.textContent='CELA OBRAZOVKA: '+(napFill?'oriznout':'vyplnit');"
                 + "try{localStorage.setItem('napFill',napFill);}catch(e){}}"
                 + "try{var uf=localStorage.getItem('napFill');if(uf!==null)napFill=parseInt(uf)||0;}catch(e){}"
                 + "napSetFill();if(sF)sF.onclick=function(){napFill=napFill?0:1;napSetFill();};"
+                + "var sV=document.getElementById('sV'),napV=1;"
+                + "if(sV)sV.onclick=function(){fetch('/vyhlazeni').then(function(r){return r.text();})"
+                + ".then(function(t){napV=(t.trim()==='1');sV.textContent='VYLADENI OBRAZU: '+(napV?'zapnuto':'vypnuto');})"
+                + ".catch(function(e){clog('vyladeni: '+e);});};"
                 + "function panUkaz(){pan.style.opacity='1';clearTimeout(panT);panT=setTimeout(function(){pan.style.opacity='0';},2600);}"
                 + "document.addEventListener('mousemove',panUkaz);document.addEventListener('touchstart',panUkaz);panUkaz();"
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST [SK60] '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"

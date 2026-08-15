@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B106-DOLADENI-OPRAVENE (versionCode 154)
+ Verze: EMU10-B108-VYLADENI-PRED-KOMPRESI (versionCode 156)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -232,7 +232,31 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
            POZOR: rozliseni pro enkoder musi odpovidat POMERU OBRAZOVKY,
            ne nasobku zdroje. Jinak vzniknou pruhy.
 
-           DOLADENI OBRAZU V PROHLIZECI (B105):
+           VYLADENI OBRAZU: ZALEZI, JESTLI PRED NEBO PO KOMPRESI!
+           PRED kompresi (B108, spravne): obraz z jadra je cisty original,
+             filtr ma k dispozici vsechnu informaci. Dela se pri kresleni
+             na platno (Paint.setFilterBitmap + ColorMatrix), pocita to
+             GPU telefonu a stoji to skoro nic (rezerva byla 10 ms ze 16).
+             Mirne vyhlazeni + kontrast 1,10 + sytost 1,12.
+             Vedlejsi ucinek: mirne mekci obraz se komprimuje CISTEJI,
+             protoze H.264 ma s ostrymi schody problem - vysledek na TV
+             pak pusobi paradoxne ostreji.
+             Prepina se z prohlizece pres /vyhlazeni.
+
+           PO kompresi (B105, NEFUNGOVALO):
+           V B105/B106 byly v panelu posuvniky OSTROST a VYHLAZENI
+           (SVG filtr pocitany grafikou prohlizece). Vysledek:
+             - kostky se jen zmensily, obraz se necisti
+             - ostrost pusobila HORE nez bez filtru
+             - filtr se hadal s meritkem obrazu (vyska/sirka)
+           Duvod je principialni: informace, ktera se pri kompresi ztratila,
+           uz v obraze NENI. Doostrovani jen zvyrazni chyby komprese misto
+           detailu. Cistou cestou je davat enkoderu lepsi vstup (rozliseni,
+           datovy tok, plny barevny rozsah, zadne filtrovani pri zvetseni) -
+           tedy to, co uz je hotove v B100 az B104.
+           NEZKOUSET ZNOVU. Panel ma jen jas, kontrast, sytost.
+
+           (puvodni popis z B105, uz neplatny:)
            Panel vpravo dole ma jas, kontrast, sytost, OSTROST a VYHLAZENI.
            Ostrost a vyhlazeni pocita SVG filtr, tedy GRAFIKA PC v prohlizeci.
            Telefon o tom nevi a nic navic nedela - emulace se tim nezpomali.
