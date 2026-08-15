@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B99-TV-ZPET-NA-FUNKCNI (versionCode 147)
+ Verze: EMU10-B100-TV-OSTRY-OBRAZ (versionCode 148)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -188,7 +188,19 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       NEZKOUSET ZNOVU BEZ TELEFONU PO RUCE. Nativni kod zustava v projektu
       (nap_tv_thread_fn, ps1SetTvSurface), staci prepnout ten priznak.
 
-      TV proto jede JAVOVOU cestou, kde prokazatelne funguje (B92):
+      KVALITA OBRAZU NA TV (B100) - dve veci, ktere ji kazily:
+        1) DATOVY TOK. Bylo w*h*6 = 5,5 Mbit/s pri 1280x720. Na obraz
+           PlayStation je to malo - ma ostre pixely a v pohybu detailni
+           textury, H.264 to pri nizkem toku rozmaze. Ted w*h*20 = 18 Mbit/s.
+           Pres wifi 5 GHz to projde, enkoder stiha (avgDrawMs=2).
+        2) FILTROVANI PRI ZVETSENI. Paint mel FILTER_BITMAP_FLAG, coz
+           prumeruje sousedni body. U fotky spravne, u obrazu s ostrymi
+           pixely NE - rozmaze ho. Navic rozmazany obraz se hur komprimuje.
+           Ted bez filtru: kazdy bod se jen zvetsi, jako na skutecne konzoli.
+        KDYBY BYL OBRAZ NA TV MEKKY, hledat tady - ne pocitat filtry na
+        procesoru (to uz bylo v B92 a brzdilo to emulaci).
+
+      TV jede JAVOVOU cestou, kde prokazatelne funguje (B92):
 
       jadro -> nap_ps1_egl_grab_pixels() -> GL textura -> enkoder H.264
       Nativni vlakno nap_tv_thread_fn() kresli PRIMO na Surface, ktery

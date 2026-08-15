@@ -1008,7 +1008,14 @@ public class MainActivity extends Activity {
             }
             Canvas cv = new Canvas(napTvWebBitmapDraw);
             cv.drawColor(Color.BLACK);
-            Paint pp = new Paint(Paint.FILTER_BITMAP_FLAG);   // hladke zvetseni
+            // ===== ZVETSENI BEZ ROZMAZANI =====
+            // FILTER_BITMAP_FLAG prumeruje sousedni body. U fotky je to
+            // spravne, u obrazu z PlayStation ne - ten ma ostre pixely a
+            // prumerovanim se rozmaze. Navic rozmazany obraz se hur
+            // komprimuje, takze to ubira i datovy tok.
+            // Bez filtru se kazdy bod jen zvetsi - presne jak to vypada
+            // na skutecne konzoli.
+            Paint pp = new Paint();
             pp.setDither(false);
             // ===== OREZ CERNYCH OKRAJU =====
             // Hry casto kresli obraz do MENSI plochy, nez je zobrazovaci okno
@@ -1224,7 +1231,15 @@ public class MainActivity extends Activity {
                 // rozdil, ktery vidi, je nejspis ztrata VERNOSTI pri kompresi/
                 // prenosu, ne problem se zdrojem. Vic datoveho toku = mene
                 // kompresnich artefaktu pri stejnem rozliseni.
-                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(1800000, w * h * 6));
+                // ===== DATOVY TOK PRO OSTRY OBRAZ =====
+                // Bylo tu w*h*6, coz u 1280x720 dela 5,5 Mbit/s. To je malo
+                // pro obraz PlayStation: ma ostre pixely a v pohybu (napr.
+                // NFS) detailni textury - H.264 to pri nizkem toku rozmaze.
+                // Rene srovnaval s originalni PS1 na CRT a mel pravdu, ze
+                // web viewer ma co dohanet.
+                // 20 bitu na bod = 18 Mbit/s pri 1280x720. Pres wifi 5 GHz
+                // to projde a enkoder to stiha (v logu avgDrawMs=2).
+                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(6000000, w * h * 20));
                 fmt.setInteger(MediaFormat.KEY_FRAME_RATE, 60);
                 fmt.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
                 // BUILD2SK77: Baseline -> Main profil. Baseline byl zvolen driv
