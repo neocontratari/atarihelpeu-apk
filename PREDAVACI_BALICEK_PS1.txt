@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B111-VYREZ-JEN-PRI-HRE (versionCode 159)
+ Verze: EMU10-B112-SNIMANI-OKNA-ZPET (versionCode 160)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -339,7 +339,16 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
       javovou cestu, aby TV nezustala cerna.
 
       STARA CESTA (zustava jako zaloha, kdyz nejede H.264):
-      VYREZ OKENKA SE SMI DELAT JEN KDYZ JADRO OPRAVDU KRESLI!
+      DO SNIMANI OKNA (napTvWebCaptureByDraw) NESAHAT!
+      V B109-B111 jsem tam pridal orez na okenko konzole. Rozbilo to
+      VSECHNO OSTATNI: mobil na vysku posilal na web pohled na sirku a
+      naopak, Atari i Sega se orezavaly spatne. Ta funkce ma vlastni
+      logiku pro otoceni a meritko (promenna scale) a orez do ni zasahoval.
+      Od B112 je snimani okna presne jako v B104 - overeno porovnanim.
+      Obraz PS1 jde na TV UPLNE JINOU cestou (napTvWebCaptureFromCore),
+      ktera bere snimek primo z jadra a okno appky vubec neresi.
+
+      (uz neplatne, ponechano jako varovani:)
       Podminka musi obsahovat (ps1BiosRunning || ps1SessionActive), ne jen
       kontrolu adresy stranky. Stranka "emu_ps1" je totiz i UVODNI
       OBRAZOVKA s konzolemi, kde zadna hra nebezi - a tam se orezavalo

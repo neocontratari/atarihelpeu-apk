@@ -1140,42 +1140,16 @@ public class MainActivity extends Activity {
             cv.drawColor(Color.BLACK);
             cv.save();
 
-            // ===== NA TV JEN OKENKO KONZOLE, NE CELA APLIKACE =====
-            // Kdyz se snimalo cele okno, sla na televizi i skrin konzole,
-            // tlacitka a pozadi - a na vysku z toho zbyl na obraz uzky
-            // prouzek uprostred. Stranka nam hlasi, KDE presne to okenko je
-            // (PLOCHA_MISTO_ZE_STRANKY), takze si z okna vyrizneme jen jeho
-            // a roztahneme na celou plochu televize.
-            // Kdyz obdelnik jeste nemame nebo jsme mimo PS1, snimame cele
-            // okno jako drive.
-            boolean vyrez = false;
-            try {
-                // POZOR: nestaci se ptat, jestli jsme na strance PS1 - ta je
-                // i uvodni obrazovka s konzolemi, kde zadna hra nebezi.
-                // Kdyz se orezalo i tam, sel na televizi nesmyslny vyrez
-                // prazdneho okenka misto cele uvodni obrazovky.
-                // Orezavame proto JEN kdyz jadro opravdu kresli (bezi BIOS
-                // nebo hra). Jinak jde na TV cele okno, at je videt Atari,
-                // Sega i uvodni obrazovka.
-                String cu2 = (web == null) ? null : web.getUrl();
-                boolean bezi = ps1BiosRunning || ps1SessionActive;
-                if (bezi && cu2 != null && cu2.contains("emu_ps1")
-                        && plochaW > 0 && plochaH > 0 && rootFrame != null) {
-                    float dpr = getResources().getDisplayMetrics().density;
-                    float l0 = plochaL / dpr, t0 = plochaT / dpr;
-                    float w0 = plochaW / dpr, h0 = plochaH / dpr;
-                    if (w0 > 8 && h0 > 8) {
-                        // roztahnout okenko na celou plochu snimku pro TV
-                        float sx = bw / w0, sy = bh / h0;
-                        float s2 = Math.min(sx, sy);          // zachovat pomer
-                        cv.translate((bw - w0 * s2) / 2f, (bh - h0 * s2) / 2f);
-                        cv.scale(s2, s2);
-                        cv.translate(-l0, -t0);
-                        vyrez = true;
-                    }
-                }
-            } catch (Throwable ignored) {}
-            if (!vyrez) cv.scale(scale, scale);
+            // ===== OREZ NA OKENKO ZRUSEN (bylo v B109-B111) =====
+            // Zkousel jsem posilat na TV jen vyrez okenka konzole. Rozbilo to
+            // vsechno ostatní: mobil na vysku posilal na web pohled na sirku
+            // a naopak, Atari i Sega se orezavaly spatne. Snimani okna ma
+            // vlastni logiku pro otoceni a merítko (promenna scale nize),
+            // do ktere ten vyrez zasahoval.
+            // V B104 to fungovalo spravne - vracim to.
+            // Obraz PS1 se na TV posila JINOU cestou (napTvWebCaptureFromCore),
+            // ktera bere snimek primo z jadra a okno appky vubec neresi.
+            cv.scale(scale, scale);
             // BUILD2SK44: invalidate() pred draw() - pokus vynutit cerstve
             // prekresleni misto zastarale hardwarove vrstvy.
             if (rootFrame != null) rootFrame.invalidate();

@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 159
-        versionName "EMU10-B111-VYREZ-JEN-PRI-HRE"  // vyrez okenka se delal i na uvodni obrazovce, kde nic nebezi; ted jen kdyz jadro kresli + vychozi kontrast srovnava zmekceni
+        versionCode 160
+        versionName "EMU10-B112-SNIMANI-OKNA-ZPET"  // orez okenka rozbil otoceni snimani okna (vyska posilala sirku, Atari i Sega spatne); snimani okna presne jako v B104
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
