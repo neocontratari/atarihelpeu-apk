@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 151
-        versionName "EMU10-B103-PRESNE-DVOJNASOBEK"  // obraz se svisle zvetsoval 1,5x (nepravidelny vzor = kostky); ted 1280x960 = presne 2x v obou smerech + rucni jas a kontrast v prohlizeci
+        versionCode 152
+        versionName "EMU10-B104-CELA-OBRAZOVKA"  // zpet na 16:9 (1280x960 bylo 4:3 a delalo pruhy) + prepinac vyplnit/oriznout a tlacitko puvodni nastaveni
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

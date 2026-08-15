@@ -1010,7 +1010,13 @@ public class MainActivity extends Activity {
             // se zvetsi na ctverec 2x2 a obraz zustane cisty.
             // Prohlizec si to dorovna na svuj pomer sam (CSS), takze se
             // na obrazovce nic nezmeni.
-            final int TVW = 1280, TVH = 960;
+            // POMER STRAN: 1280x720 je 16:9, tedy presne to, co ma dnesni
+            // televize i monitor - obraz vyplni obrazovku bez pruhu.
+            // (V B103 tu bylo 1280x960 kvuli presnemu zdvojeni 640x480, ale
+            //  to je 4:3 a na siroke obrazovce zbyly cerne pruhy po stranach.
+            //  Ostrost resi jinak: zdroj se roztahne na sirku bez filtrovani,
+            //  takze pixely zustanou ostre i pri jinem pomeru.)
+            final int TVW = 1280, TVH = 720;
             if (napTvWebBitmapDraw == null || napTvWebBitmapDraw.getWidth() != TVW
                     || napTvWebBitmapDraw.getHeight() != TVH) {
                 if (napTvWebBitmapDraw != null) { try { napTvWebBitmapDraw.recycle(); } catch (Throwable ignored) {} }
@@ -1276,7 +1282,7 @@ public class MainActivity extends Activity {
                 // 22 bitu na bod = 27 Mbit/s pri 1280x960. Pri presnem
                 // zdvojeni se obraz komprimuje LIP (pravidelne ctverce 2x2),
                 // takze na stejnou kvalitu staci mensi koeficient nez driv.
-                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(8000000, w * h * 22));
+                fmt.setInteger(MediaFormat.KEY_BIT_RATE, Math.max(8000000, w * h * 30));
                 // Enkoder dostava snimky po ~16 ms (napTvWebH264FastTickMs),
                 // tedy 60 za vterinu. Sedi to.
                 fmt.setInteger(MediaFormat.KEY_FRAME_RATE, 60);
@@ -1367,7 +1373,7 @@ public class MainActivity extends Activity {
                     appendNativeLog("TV_PRIMO_ZAPNUTO");
                 }
                 appendNativeLog("BUILD2SK83 TV_WEB_H264_ENCODER_START w=" + w + " h=" + h + " gen=" + napTvWebH264Generation
-                        + " mode=SURFACE bitrate=" + Math.max(8000000, w * h * 22) + " tier=" + napTvWebQualityTier);   // musi souhlasit s KEY_BIT_RATE vyse!
+                        + " mode=SURFACE bitrate=" + Math.max(8000000, w * h * 30) + " tier=" + napTvWebQualityTier);   // musi souhlasit s KEY_BIT_RATE vyse!
             } catch (Throwable t) {
                 appendNativeLog("BUILD2SK57 TV_WEB_H264_ENCODER_FAIL " + safeMsg(t));
                 napTvWebH264Encoder = null;
@@ -2453,7 +2459,8 @@ public class MainActivity extends Activity {
                 + "OBRAZ<br>jas <input id='sB' type='range' min='60' max='170' value='100'>"
                 + "<br>kontrast <input id='sC' type='range' min='60' max='170' value='100'>"
                 + "<br>sytost <input id='sS' type='range' min='60' max='170' value='100'>"
-                + "<br><button id='sR' type='button'>puvodni</button></div>"
+                + "<br><button id='sR' type='button' style='margin-top:4px;padding:3px 8px'>PUVODNI NASTAVENI</button>"
+                + "<br><button id='sF' type='button' style='margin-top:4px;padding:3px 8px'>CELA OBRAZOVKA: vyplnit</button></div>"
                 + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
                 + "<script>(function(){var AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();function setAvd(x){AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
@@ -2463,6 +2470,11 @@ public class MainActivity extends Activity {
                 + "try{var ul=localStorage.getItem('napObraz');if(ul){var pp=ul.split(',');sB.value=pp[0];sC.value=pp[1];sS.value=pp[2];napF();}}catch(e){}"
                 + "sB.oninput=sC.oninput=sS.oninput=napF;"
                 + "sR.onclick=function(){sB.value=100;sC.value=100;sS.value=100;napF();};"
+                + "var napFill=0;function napSetFill(){var m=napFill?'cover':'contain';h264v.style.objectFit=m;v.style.objectFit=m;"
+                + "sF.textContent='CELA OBRAZOVKA: '+(napFill?'oriznout':'vyplnit');"
+                + "try{localStorage.setItem('napFill',napFill);}catch(e){}}"
+                + "try{var uf=localStorage.getItem('napFill');if(uf!==null)napFill=parseInt(uf)||0;}catch(e){}"
+                + "napSetFill();sF.onclick=function(){napFill=napFill?0:1;napSetFill();};"
                 + "function panUkaz(){pan.style.opacity='1';clearTimeout(panT);panT=setTimeout(function(){pan.style.opacity='0';},2600);}"
                 + "document.addEventListener('mousemove',panUkaz);document.addEventListener('touchstart',panUkaz);panUkaz();"
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST [SK60] '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"

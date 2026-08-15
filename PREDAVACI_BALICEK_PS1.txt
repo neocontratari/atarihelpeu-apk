@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B103-PRESNE-DVOJNASOBEK (versionCode 151)
+ Verze: EMU10-B104-CELA-OBRAZOVKA (versionCode 152)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -223,8 +223,17 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
            Pri 1,5x pripadnou na kazde dva body tri - jeden se zdvoji,
            sousedni ne. Vznikne nepravidelny vzor, ktery H.264 spatne
            komprimuje a v tmavych plochach z nej delaji kostky.
-           Ted 1280x960 = presne 2x v obou smerech. Prohlizec si pomer
-           dorovna sam pres CSS, takze se na obrazovce nic nezmeni.
+           V B103 jsem to zkusil resit rozlisenim 1280x960 (presne 2x).
+           NEFUNGOVALO TO DOBRE: 1280x960 je pomer 4:3, ale televize i
+           monitor jsou 16:9 - na obrazovce zbyly cerne pruhy po stranach.
+           OD B104 je zpatky 1280x720 (16:9), takze obraz vyplni obrazovku.
+           Ostrost drzi to, ze se pri zvetseni NEFILTRUJE (Paint bez
+           FILTER_BITMAP_FLAG) - pixely zustanou ostre i pri jinem pomeru.
+           POZOR: rozliseni pro enkoder musi odpovidat POMERU OBRAZOVKY,
+           ne nasobku zdroje. Jinak vzniknou pruhy.
+
+           V prohlizeci je navic prepinac "CELA OBRAZOVKA: vyplnit/oriznout"
+           (object-fit contain/cover), kdyby si to nekdo chtel nastavit jinak.
 
         POZOR NA LOG: radek H264_ENCODER_START vypisuje bitrate ZVLAST
         pocitany. Musi souhlasit s KEY_BIT_RATE, jinak log lze - v B101
