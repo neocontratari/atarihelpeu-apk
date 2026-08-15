@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B104-CELA-OBRAZOVKA (versionCode 152)
+ Verze: EMU10-B105-DOLADENI-OBRAZU (versionCode 153)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -231,6 +231,14 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
            FILTER_BITMAP_FLAG) - pixely zustanou ostre i pri jinem pomeru.
            POZOR: rozliseni pro enkoder musi odpovidat POMERU OBRAZOVKY,
            ne nasobku zdroje. Jinak vzniknou pruhy.
+
+           DOLADENI OBRAZU V PROHLIZECI (B105):
+           Panel vpravo dole ma jas, kontrast, sytost, OSTROST a VYHLAZENI.
+           Ostrost a vyhlazeni pocita SVG filtr, tedy GRAFIKA PC v prohlizeci.
+           Telefon o tom nevi a nic navic nedela - emulace se tim nezpomali.
+           Neni to zasah do jadra ani do emulace: uprava se dela az na CILI,
+           na hotovem obrazu, presne jako kdyz si doladis televizi.
+           Nastaveni se pamatuje (localStorage). NA MOBILU SE NIC NEMENI.
 
            V prohlizeci je navic prepinac "CELA OBRAZOVKA: vyplnit/oriznout"
            (object-fit contain/cover), kdyby si to nekdo chtel nastavit jinak.

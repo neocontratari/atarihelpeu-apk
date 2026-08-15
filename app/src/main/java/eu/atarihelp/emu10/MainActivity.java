@@ -2450,6 +2450,16 @@ public class MainActivity extends Activity {
                 + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s' style='display:none'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
+                // ===== DOLADENI OBRAZU GRAFIKOU PROHLIZECE =====
+                // Pocita to grafika PC, ne telefon - telefon uz nedela nic
+                // navic a emulace se tim nezpomali. Neni to zasah do jadra
+                // ani do emulace: je to uprava HOTOVEHO obrazu az na cili,
+                // presne jako kdyz si na televizi doladis ostrost.
+                + "<svg width='0' height='0' style='position:absolute'><defs>"
+                + "<filter id='fx'>"
+                + "<feGaussianBlur id='fxB' in='SourceGraphic' stdDeviation='0' result='rozmaz'/>"
+                + "<feComposite id='fxS' in='SourceGraphic' in2='rozmaz' operator='arithmetic' k1='0' k2='1' k3='0' k4='0'/>"
+                + "</filter></defs></svg>"
                 // ===== RUCNI DOLADENI OBRAZU =====
                 // Rene chtel jas a kontrast nastavitelne primo v prohlizeci -
                 // ruzne hry maji ruzne tmavy obraz a nastavit to natvrdo v kodu
@@ -2459,17 +2469,30 @@ public class MainActivity extends Activity {
                 + "OBRAZ<br>jas <input id='sB' type='range' min='60' max='170' value='100'>"
                 + "<br>kontrast <input id='sC' type='range' min='60' max='170' value='100'>"
                 + "<br>sytost <input id='sS' type='range' min='60' max='170' value='100'>"
+                + "<br>ostrost <input id='sK' type='range' min='0' max='100' value='0'>"
+                + "<br>vyhlazeni <input id='sM' type='range' min='0' max='100' value='0'>"
                 + "<br><button id='sR' type='button' style='margin-top:4px;padding:3px 8px'>PUVODNI NASTAVENI</button>"
                 + "<br><button id='sF' type='button' style='margin-top:4px;padding:3px 8px'>CELA OBRAZOVKA: vyplnit</button></div>"
                 + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
                 + "<script>(function(){var AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();function setAvd(x){AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
                 + "var pan=document.getElementById('pan'),sB=document.getElementById('sB'),sC=document.getElementById('sC'),sS=document.getElementById('sS'),sR=document.getElementById('sR'),panT=0;"
-                + "function napF(){var f='brightness('+(sB.value/100)+') contrast('+(sC.value/100)+') saturate('+(sS.value/100)+')';h264v.style.filter=f;v.style.filter=f;"
+                + "function napZaklad(){return 'brightness('+(sB.value/100)+') contrast('+(sC.value/100)+') saturate('+(sS.value/100)+')';}"
+                + "function napF(){napFx();"
                 + "try{localStorage.setItem('napObraz',sB.value+','+sC.value+','+sS.value);}catch(e){}}"
                 + "try{var ul=localStorage.getItem('napObraz');if(ul){var pp=ul.split(',');sB.value=pp[0];sC.value=pp[1];sS.value=pp[2];napF();}}catch(e){}"
+                + "var sK=document.getElementById('sK'),sM=document.getElementById('sM');"
+                + "var fxB=document.getElementById('fxB'),fxS=document.getElementById('fxS');"
+                + "function napFx(){var k=sK.value/100,m=sM.value/100;"
+                + "fxB.setAttribute('stdDeviation',(m*1.2+(k>0?0.8:0)).toFixed(2));"
+                + "fxS.setAttribute('k2',(1+k*1.6).toFixed(2));fxS.setAttribute('k3',(-k*1.6).toFixed(2));"
+                + "var pouzit=(k>0||m>0)?'url(#fx)':'';h264v.style.webkitFilter='';"
+                + "h264v.style.filter=napZaklad()+(pouzit?' '+pouzit:'');v.style.filter=h264v.style.filter;"
+                + "try{localStorage.setItem('napFx',sK.value+','+sM.value);}catch(e){}}"
+                + "try{var uf2=localStorage.getItem('napFx');if(uf2){var q=uf2.split(',');sK.value=q[0];sM.value=q[1];}}catch(e){}"
+                + "sK.oninput=sM.oninput=napFx;"
                 + "sB.oninput=sC.oninput=sS.oninput=napF;"
-                + "sR.onclick=function(){sB.value=100;sC.value=100;sS.value=100;napF();};"
+                + "sR.onclick=function(){sB.value=100;sC.value=100;sS.value=100;sK.value=0;sM.value=0;napF();};"
                 + "var napFill=0;function napSetFill(){var m=napFill?'cover':'contain';h264v.style.objectFit=m;v.style.objectFit=m;"
                 + "sF.textContent='CELA OBRAZOVKA: '+(napFill?'oriznout':'vyplnit');"
                 + "try{localStorage.setItem('napFill',napFill);}catch(e){}}"

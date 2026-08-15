@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 152
-        versionName "EMU10-B104-CELA-OBRAZOVKA"  // zpet na 16:9 (1280x960 bylo 4:3 a delalo pruhy) + prepinac vyplnit/oriznout a tlacitko puvodni nastaveni
+        versionCode 153
+        versionName "EMU10-B105-DOLADENI-OBRAZU"  // ostrost a vyhlazeni pocitana GRAFIKOU PROHLIZECE, telefon o tom nevi; jadro ani mobil netknute
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
