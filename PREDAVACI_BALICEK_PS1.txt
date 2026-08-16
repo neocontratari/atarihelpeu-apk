@@ -1,722 +1,315 @@
 ===============================================================================
- PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B120-ZPET-NA-B118 (versionCode 168)
- Datum: 5. 8. 2026
+ PREDAVACI BALICEK - EMU10 (Atari / Sega / PS1)
+ Verze: EMU10-B121-ZVUK-SEGY-NA-TV (versionCode 169)
+ Datum: 16. 8. 2026
+ Autor projektu: Rene Frank, atarihelp.eu
 ===============================================================================
 
- !!! POZOR: TENTO KOD JE PREDPOKLAD. CEKA SE NA TEST NA TELEFONU A NA LOG. !!!
-
- Overeno je jen to, co jde overit bez telefonu (preklad Javy proti
- android.jar, preklad C++ pres clang pro aarch64, preklad a SPUSTENI
- rendereru proti skutecnemu OpenGL ES). Chovani na telefonu a na Mali
- NENI overene, dokud Rene neposle test a log.
-===============================================================================
-
-Tenhle soubor je v KAZDEM balicku. Popisuje presne, kudy tece obraz a kudy
-zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
-
+ !!! TENTO KOD JE PREDPOKLAD. CEKA SE NA TEST NA TELEFONU A NA LOG. !!!
 
 ===============================================================================
- 1. CESTA OBRAZU - kompletne, krok za krokem
+ 0. CTI TOHLE JAKO PRVNI
 ===============================================================================
 
-  ZDROJ: jadro PS1 (pcsx_rearmed) + renderer naples2
-
-  [1] Jadro posila prikazy GP0 do rendereru
-      plugins/gpulib/gpu.c  ->  renderer_do_cmd_list()
-      plugins/gpu_naples2/naples2_gl.c  ->  n2_do_cmd_list()
-
-  [2] VYKRESLOVAC: od B83 se preklada gpu_neon
-      plugins/gpu_neon/psx_gpu_if.c + psx_gpu/psx_gpu_simd.c
-      + plugins/gpulib/{gpu.c, vout_pl.c, prim.c}
-      + plugins/gpu_neon/nap_most.c  (mustek pro 8 funkci, ktere volala appka)
-
-      PROC: do B82 se prekladal RUCNE PSANY gpu_naples2 (1291 radku),
-      zatimco 19 377 radku hotoveho a provereneho gpu_neon lezelo v
-      projektu NEPOUZITYCH. Rucne psany neumel vsechno, co PlayStation
-      dela -> kostickovana grafika (Formule), artefakty (Star Wars),
-      blikajici dema. gpu_neon je soucast jadra PCSX-ReARMed a je to
-      tentyz vykreslovac, ktery kreslil referencni obraz BIOSu.
-
-      DULEZITE: gpu_naples2 zustava v repozitari, jen se NEPREKLADA.
-      Nevracet se k nemu. Kdyz neco chybi, opravit to v gpu_neon nebo
-      v mustku, ne psat vlastni vykreslovac znovu.
-
-      Definice pro ARM64: GPU_NEON NEON_BUILD SIMD_BUILD
-                          TEXTURE_CACHE_4BPP TEXTURE_CACHE_8BPP
-      (na 64 bitech se pouziva SIMD varianta, ne 32bitovy assembler)
-
-  [2b] DVE VECI, KTERE SE PRI ZMENE VYKRESLOVACE ROZBILY (a jak)
-
-      (a) FORMAT BODU. gpu_neon dodava snimek jako RGB565 = DVA bajty na
-          bod. V nap_video() ale stalo:
-              if (g_gles_ready) g_pixfmt.store(PIXFMT_XRGB8888);
-          coz je CTYRI bajty na bod. Cetly se tedy dva body misto ctyr:
-            -> obraz DVAKRAT VEDLE SEBE a zelenofialove barvy
-          Format si hlasi jadro samo pres SET_PIXEL_FORMAT. Nic
-          nevynucovat. NEVRACET TAM ZADNE PREPISOVANI FORMATU.
-
-      (d) KRESLENI NA MOBILU - OTOCENI A BARVY.
-          Plocha na mobilu (nap_disp_thread_fn) cekala snimek tak, jak ho
-          dodaval rucne psany vykreslovac: ZDOLA NAHORU a v poradi RGBA.
-          Z jadra pres nap_video() chodi SHORA DOLU a v poradi ARGB
-          (v pameti B,G,R,A). Vysledek: na mobilu obraz VZHURU NOHAMA
-          a CERVENY misto modreho, zatimco na TV byl spravne - ta jde
-          uplne jinou cestou (g_frame_argb primo).
-          Proto: quad ma V obracene (0,1 dole / 0,0 nahore) a stinovac
-          prohazuje R a B:  gl_FragColor = vec4(texture2D(...).bgr, 1.0);
-          KDYZ SE ZMENI ZDROJ SNIMKU, ZKONTROLOVAT OBOJI.
-
-      (c) DVA ZAPISOVATELE TEHOZ SNIMKU (problikavani).
-          nap_publish_frame_for_app() OTACI RADKY a PROHAZUJE R a B - bylo
-          to spravne, dokud snimek chodil od rucne psaneho vykreslovace
-          (zdola nahoru, jine poradi barev). Od gpu_neon chodi snimek uz
-          hotovy z nap_video(). Kdyz se zavolala i ta funkce, kazdy druhy
-          snimek byl OTOCENY O 180 STUPNU a CERVENY misto modreho -> rychle
-          problikavani spravneho a spatneho obrazu.
-          Vola se proto uz jen tehdy, kdyz snimek NEPRISEL z jadra.
-
-      (b) DVA RUZNE SNIMKY. Mobil a TV berou obraz odjinud:
-              nap_video()               -> g_frame_argb   -> TV
-              nap_ps1_egl_grab_pixels() -> g_frame_buf[]  -> MOBIL (plocha)
-          g_frame_buf plnilo vlakno emulace pres nap_gles_grab_pixels(),
-          coz patrilo rucne psanemu vykreslovaci. Po prechodu na gpu_neon
-          zustal g_frame_buf prazdny -> na TV obraz byl, na mobilu ne.
-          Vlakno emulace proto ted vezme g_frame_argb, kdyz jine neni.
-
-  [3] Snimek se stahne z GPU do pameti procesoru
-      naples2_gl.c: n2_read_display()  ->  glReadPixels()
-      gpulib_if.c:  nap_gles_grab_pixels()
-      nap_ps1_native.cpp: nap_video()  ->  ulozi do g_frame_argb, nastavi g_fw/g_fh
-      -> TADY OBRAZ OPOUSTI GPU.
-
-  [4a] CESTA NA DISPLEJ TELEFONU  (od B76 PRIMA, bez JPEG)
-      MainActivity.java: ps1GlEnable()  -> vytvori SurfaceView (lezi POD
-        webovou strankou, takze ovladac zustava nad obrazem)
-      SurfaceHolder.Callback -> NativePs1CoreBridge.setDisplaySurfaceSafe()
-      nap_ps1_native.cpp: Java_..._ps1SetDisplaySurface()
-        -> ANativeWindow_fromSurface() -> vlastni vlakno nap_disp_thread_fn()
-      ROZTAZENI OBRAZU (nap_disp_thread_fn, glViewport):
-        na SIRKU  -> vyplnit CELOU plochu (vw=w, vh=h)
-        na VYSKU  -> zachovat pomer stran, at obraz sedi do okenka konzole
-      Proc na sirku vyplnit: PlayStation meni rozliseni behem hry
-      (320x240 intro, 512x240, 640x480 hra). Pri zachovani pomeru by obraz
-      pri kazde zmene skakal jinam a menil velikost. Vyplnenim plochy
-      zustane porad stejny.
-
-      Kreslici smycka (prevzata z eglrender/egl_main.c, cesta pres pixely,
-      ktera tam byla OVERENA a fungovala):
-        nap_ps1_egl_grab_pixels()   - vezme posledni hotovy snimek, ZADNE GL
-        glTexSubImage2D()           - nahraje ho jako texturu
-        glDrawArrays() + eglSwapBuffers()
-      Procesor obraz NEBALI ani nekoduje. Zadny JPEG, zadny base64.
-
-      POZOR: tahle plocha ma VLASTNI EGL kontext a s jadrem NIC NESDILI.
-      Sdileni kontextu je to, co v tomhle projektu nikdy nefungovalo -
-      v eglrender je to vypnute s poznamkou "obraz cerny nebo roztrhany"
-      a ja se na tom sam rozbil dvanactkrat (chyba OpenGL 0x506).
-      Sdilenou texturu uz nezkouset, dokud nebude jasne proc padala.
-
-      TRI VECI, KTERE SE MUSI HLIDAT:
-      (0) KAM PLOCHU POSTAVIT. Stranka hlasi obdelnik pres
-          AHPS1.ps1SetScreenRect() a v logu je to jako
-          PLOCHA_MISTO_ZE_STRANKY:
-             na vysku   39,182  642x533
-             na sirku   95,0    1195x672
-          - NA VYSKU musi byt plocha NAD strankou (setZOrderOnTop(true)),
-            protoze grafika konzole ps1_final_screen.png je UPLNE
-            NEPRUSVITNA (zmereno: pruhlednost 255 i v okenku). Plocha je
-            mala a mimo obrazovku PS1 se schovava, takze neprosakuje.
-          - NA SIRKU pod strankou (setZOrderOnTop(false)) - stranka je tam
-            pruhledna a ovladac ma byt NAD obrazem.
-          - Vysku vrstvy NELZE menit za behu -> plocha se postavi znovu.
-            ROZHODOVAT PODLE VRSTVY, NE PODLE ZMENY OTOCENI. Plocha vznikne
-            s vrstvou "dole"; kdyz prijde prvni hlaseni na vysku, otoceni se
-            NEZMENILO (obojí false) a vrstva by zustala dole - obraz by na
-            vysku zustal schovany pod neprusvitnou grafikou konzole.
-            Spravne:  prestavet = (plocha == null) || (vrstva != chcena)
-          - VYCHOZI VRSTVA JE "NAHORE" (plochaZOrderNahore = true), protoze
-            PS1 se spousti na vysku. Kdyz zacinala dole, byla na vysku
-            chvili cerna, nez stranka nahlasila obdelnik.
-          - Plocha se vytvori NEVIDITELNA a ukaze se az pri prvnim umisteni.
-            Jinak by pres celou obrazovku prekryla skrin konzole.
-          - Pri prestavbe prijde hlaseni "surfaceDestroyed" od STARE plochy
-            az POTOM, co uz bezi nova - a odpojilo by ji. Kazde hlaseni si
-            proto musi overit, ze patri PRAVE TE plose, ktera je aktualni.
-          - Mimo obrazovku PS1 se plocha SCHOVA (View.GONE), jinak obraz
-            prosvita pres celou aplikaci (bootovaci Sony).
-          - surfaceChanged NESMI plochu znovu pripojovat. Pri otoceni prisly
-            surfaceCreated i surfaceChanged tesne po sobe, kreslici vlakna
-            se prekotne stridala (v logu ZRUSENA -> PRIPRAVENA -> UKONCENA
-            -> PRIPRAVENA -> VYTVORENA) a po otoceni uz nekreslilo NIC.
-
-      DALSI DVE VECI:
-      (1) OTOCENI. Quad musi byt presne takhle (prevzato z eglrender):
-            -1,-1, 0,0    1,-1, 1,0
-            -1, 1, 0,1    1, 1, 1,1
-          Y v GL je zdola a pixely snimku jsou taky zdola, takze se to
-          srovna samo. Kdyz se UV prohodi, obraz je VZHURU NOHAMA.
-      (2) KAM PLOCHU POSTAVIT. Grafika konzole ps1_final_screen.png je
-          UPLNE NEPRUSVITNA (zmereno: pruhlednost 255 i v okenku).
-          -> NA VYSKU musi byt plocha NAD strankou (setZOrderOnTop(true))
-             a presne v okenku konzole, jinak neni obraz videt vubec.
-          -> NA SIRKU pod strankou (setZOrderOnTop(false)), protoze tam je
-             stranka pruhledna a ovladac ma byt NAD obrazem.
-          Obdelnik hlasi stranka pres AHPS1.ps1SetScreenRect().
-          Vysku vrstvy nelze menit za behu - pri otoceni se plocha
-          postavi znovu.
-
-      JPEG preview (ps1FramePreviewB64) je od B79 UPLNE SMAZANY - vraci jen
-      prazdny retezec a jeho bitmapy jsou pryc. Bezel VEDLE nativni plochy
-      (v logu B78 "PS1_PREVIEW_AVG" 51x) a bral procesor, ktery pak chybel
-      zvuku, jakmile se pridala TV. Uz ho sem nikdy nevracet.
-
-  [4b] CESTA NA TV (prohlizec na PC)
-
-      !!! PRIMA CESTA (snimek z C primo do enkoderu) JE VYPNUTA !!!
-      Priznak POUZIT_PRIMOU_CESTU_NA_TV = false v MainActivity.java.
-
-      Bylo to zkouseno v B94 az B98 a POKAZDE TO SHODILO APLIKACI pri
-      zapnuti TV. Nasel a opravil jsem pritom ctyri skutecne chyby:
-        - okno enkoderu se predavalo DRIV, nez se enkoder spustil
-        - chybel setBuffersGeometry na okne enkoderu
-        - hrozilo zaseknuti na zamku enkoderu (join pod zamkem)
-        - stare vlakno mohlo kreslit soubezne s novym
-      Presto to padalo dal. Chovani MediaCodec se dvema vlakny se u sebe
-      overit neda a Rene uz na tom spalil ctyri testy.
-
-      NEZKOUSET ZNOVU BEZ TELEFONU PO RUCE. Nativni kod zustava v projektu
-      (nap_tv_thread_fn, ps1SetTvSurface), staci prepnout ten priznak.
-
-      KVALITA OBRAZU NA TV (B100) - dve veci, ktere ji kazily:
-        1) DATOVY TOK. Bylo w*h*6 = 5,5 Mbit/s pri 1280x720. Na obraz
-           PlayStation je to malo - ma ostre pixely a v pohybu detailni
-           textury, H.264 to pri nizkem toku rozmaze. Ted w*h*20 = 18 Mbit/s.
-           Pres wifi 5 GHz to projde, enkoder stiha (avgDrawMs=2).
-        2) FILTROVANI PRI ZVETSENI. Paint mel FILTER_BITMAP_FLAG, coz
-           prumeruje sousedni body. U fotky spravne, u obrazu s ostrymi
-           pixely NE - rozmaze ho. Navic rozmazany obraz se hur komprimuje.
-           Ted bez filtru: kazdy bod se jen zvetsi, jako na skutecne konzoli.
-        3) KLICOVY SNIMEK. Bylo KEY_I_FRAME_INTERVAL=1, tedy klicovy snimek
-           KAZDOU VTERINU. Klicovy snimek je asi 10x drazsi nez bezny a pri
-           pevnem toku si vezme velkou cast rozpoctu - na snimky kolem nej
-           nezbude a ROZPADNOU SE DO KOSTEK, nejvic v tmavych plochach.
-           Ted 2 vteriny.
-        4) REZIM TOKU. Vychozi je konstantni - do klidne sceny cpe bity
-           zbytecne a na slozitou uz je nema. Ted VBR (promenny), takze
-           bity jdou tam, kde jsou potreba.
-
-        5) BAREVNY ROZSAH - NEJDULEZITEJSI PRO KOSTKY V TMAVYCH PLOCHACH.
-           H.264 ma ve vychozim stavu "televizni" rozsah: jas 16 az 235
-           misto 0 az 255. Obraz z PlayStation ma PLNY rozsah, takze se
-           stlacil do uzsiho a v tmavych plochach zbylo malo urovni na
-           jemne stinovani -> KOSTKY. Ostre napisy pritom byly v poradku,
-           protoze maji plny kontrast.
-           Nastavit KEY_COLOR_RANGE = COLOR_RANGE_FULL (od API 24).
-           TOHLE BYLA HLAVNI PRICINA, NE DATOVY TOK.
-        6) PROFIL. AVCProfileHigh misto Main - umi jemnejsi prechody.
-
-        7) ROZLISENI PRO ENKODER MUSI BYT PRESNY NASOBEK ZDROJE.
-           Bylo 1280x720. Zdroj z her je typicky 640x480:
-             vodorovne 640 -> 1280 = presne 2x  (kazdy bod na ctverec 2x2)
-             svisle    480 ->  720 = 1,5x       <- kazilo obraz
-           Pri 1,5x pripadnou na kazde dva body tri - jeden se zdvoji,
-           sousedni ne. Vznikne nepravidelny vzor, ktery H.264 spatne
-           komprimuje a v tmavych plochach z nej delaji kostky.
-           V B103 jsem to zkusil resit rozlisenim 1280x960 (presne 2x).
-           NEFUNGOVALO TO DOBRE: 1280x960 je pomer 4:3, ale televize i
-           monitor jsou 16:9 - na obrazovce zbyly cerne pruhy po stranach.
-           OD B104 je zpatky 1280x720 (16:9), takze obraz vyplni obrazovku.
-           Ostrost drzi to, ze se pri zvetseni NEFILTRUJE (Paint bez
-           FILTER_BITMAP_FLAG) - pixely zustanou ostre i pri jinem pomeru.
-           POZOR: rozliseni pro enkoder musi odpovidat POMERU OBRAZOVKY,
-           ne nasobku zdroje. Jinak vzniknou pruhy.
-
-           POZOR: "new Canvas(bitmapa)" JE PLATNO V PAMETI, NE NA GRAFICE!
-           Vsechno, co se na nem dela, pocita PROCESOR. V B108 tam byl
-           ColorMatrixColorFilter (kontrast + sytost) a stalo to devet
-           nasobeni na kazdy bod - u 640x480 pres osm milionu operaci na
-           snimek. V logu: avgTickGapMs=96 misto 16, tedy devet snimku za
-           vterinu misto sedesati -> obraz se trhal, i kdyz enkoder stihal
-           (avgDrawMs=3).
-           BAREVNE UPRAVY PATRI DO PROHLIZECE (CSS filtr), tam je pocita
-           grafika PC a telefon to nestoji nic.
-           Na platne v pameti smi zustat nejvys setFilterBitmap (vyhlazeni),
-           a i to se meri - radek TV_KRESLENI v logu. Nad ~8 ms vypnout.
-
-           VYLADENI OBRAZU: ZALEZI, JESTLI PRED NEBO PO KOMPRESI!
-           PRED kompresi (B108, spravne): obraz z jadra je cisty original,
-             filtr ma k dispozici vsechnu informaci. Dela se pri kresleni
-             na platno (Paint.setFilterBitmap + ColorMatrix), pocita to
-             GPU telefonu a stoji to skoro nic (rezerva byla 10 ms ze 16).
-             Mirne vyhlazeni + kontrast 1,10 + sytost 1,12.
-             Vedlejsi ucinek: mirne mekci obraz se komprimuje CISTEJI,
-             protoze H.264 ma s ostrymi schody problem - vysledek na TV
-             pak pusobi paradoxne ostreji.
-             Prepina se z prohlizece pres /vyhlazeni.
-
-           PO kompresi (B105, NEFUNGOVALO):
-           V B105/B106 byly v panelu posuvniky OSTROST a VYHLAZENI
-           (SVG filtr pocitany grafikou prohlizece). Vysledek:
-             - kostky se jen zmensily, obraz se necisti
-             - ostrost pusobila HORE nez bez filtru
-             - filtr se hadal s meritkem obrazu (vyska/sirka)
-           Duvod je principialni: informace, ktera se pri kompresi ztratila,
-           uz v obraze NENI. Doostrovani jen zvyrazni chyby komprese misto
-           detailu. Cistou cestou je davat enkoderu lepsi vstup (rozliseni,
-           datovy tok, plny barevny rozsah, zadne filtrovani pri zvetseni) -
-           tedy to, co uz je hotove v B100 az B104.
-           NEZKOUSET ZNOVU. Panel ma jen jas, kontrast, sytost.
-
-           (puvodni popis z B105, uz neplatny:)
-           Panel vpravo dole ma jas, kontrast, sytost, OSTROST a VYHLAZENI.
-           Ostrost a vyhlazeni pocita SVG filtr, tedy GRAFIKA PC v prohlizeci.
-           Telefon o tom nevi a nic navic nedela - emulace se tim nezpomali.
-           Neni to zasah do jadra ani do emulace: uprava se dela az na CILI,
-           na hotovem obrazu, presne jako kdyz si doladis televizi.
-           Nastaveni se pamatuje (localStorage). NA MOBILU SE NIC NEMENI.
-
-           V prohlizeci je navic prepinac "CELA OBRAZOVKA: vyplnit/oriznout"
-           (object-fit contain/cover), kdyby si to nekdo chtel nastavit jinak.
-
-        POZOR NA LOG: radek H264_ENCODER_START vypisuje bitrate ZVLAST
-        pocitany. Musi souhlasit s KEY_BIT_RATE, jinak log lze - v B101
-        hlasil 5,5 Mbit/s, i kdyz bezelo 27.
-
-        KDYBY BYL OBRAZ NA TV MEKKY, hledat tady - ne pocitat filtry na
-        procesoru (to uz bylo v B92 a brzdilo to emulaci).
-
-      TV jede JAVOVOU cestou, kde prokazatelne funguje (B92):
-
-      jadro -> nap_ps1_egl_grab_pixels() -> GL textura -> enkoder H.264
-      Nativni vlakno nap_tv_thread_fn() kresli PRIMO na Surface, ktery
-      je vstupem enkoderu (MediaCodec.createInputSurface). Je to ta sama
-      cesta jako obraz na displej telefonu, jen s jinym cilem.
-
-      Java na teto ceste UZ SNIMEK NEDRZI ANI NEKOPIRUJE. Priznak
-      tvPrimoBezi vypina napTvWebCaptureFromCore() uplne.
-
-      Co tim odpadlo (merene na 640x480 pri 30 snimcich za vterinu):
-        - kopie do tvCoreArgb, tvSharpBuf a Bitmap = 105 MB/s presypani
-        - doostrovani bod po bodu v Jave (uz vypnute v B92)
-        - Canvas.drawBitmap a orez cernych okraju
-      Procesor tim zbyva emulaci - a ta o nej driv prisla prave tady.
-
-      POZOR - SNIMEK CTOU DVA (mobil i TV). nap_ps1_egl_grab_pixels()
-      vraci UKAZATEL do sdilene pameti a zamek pusti drive, nez ho volajici
-      pouzije. S jednim ctenarem to proslo, se dvema aplikace PADALA presne
-      pri zapnuti TV - vlakno emulace mezitim pamet zvetsilo (resize) a
-      stary ukazatel prestal platit.
-      Pouzivat proto nap_ps1_kopiruj_snimek(), ktera snimek POD ZAMKEM
-      zkopiruje do pameti volajiciho. Jedna kopie navic, ale mezi vlakny
-      to jinak sdilet nejde.
-
-      NULTA A NEJDULEZITEJSI PAST: PORADI.
-         Okno enkoderu se SMI predat nativni casti AZ POTOM, co enkoder
-         opravdu bezi (po enc.start()). Kdyz se predalo driv, nativni vlakno
-         zacalo kreslit do nespusteneho enkoderu a APLIKACE SPADLA.
-         V logu to bylo videt jako:
-             23:53:51.547  TV_PRIMO_ZAPNUTO
-             23:53:51.552  H264_ENCODER_START    <- az POTOM
-         Log koncil na TV_PRIMO_ZAPNUTO a zadny z kroku KROK1..KROK4 uz
-         nedosel - to je priznak, ze to spadlo JESTE PRED startem vlakna.
-
-      TRI PASTI PRI KRESLENI Z C DO ENKODERU (vsechny zpusobily pad):
-      1) CHYBEJICI setBuffersGeometry. Okno enkoderu musi dostat format
-         odpovidajici vybrane EGL konfiguraci (EGL_NATIVE_VISUAL_ID), jinak
-         se eglCreateWindowSurface chova nepredvidatelne. Vlakno pro displej
-         to melo, vlakno pro TV ne.
-      2) ZASEKNUTI NA ZAMKU. ps1SetTvSurface() vola Java z mista, kde uz
-         drzi zamek enkoderu. Kdyby nativni strana cekala na dobehnuti sveho
-         vlakna (join), a to vlakno prave kreslilo do enkoderu, stály by obe
-         strany. Proto se vlakno jen POZADA o ukonceni a NECEKA se (detach).
-      3) DVE VLAKNA NARAZ. S detachem muze stare vlakno jeste dobihat, kdyz
-         se TV hned zase zapne. Kazde vlakno ma proto CISLO GENERACE a jakmile
-         prestane byt aktualni, samo skonci.
-
-      POJISTKA: kdyz enkoder skonci (klient spadne na JPEG zalohu),
-      napTvWebH264ReleaseEncoderLocked() odpoji nativni kresleni a vrati
-      javovou cestu, aby TV nezustala cerna.
-
-      STARA CESTA (zustava jako zaloha, kdyz nejede H.264):
-      ZOBRAZENI V PROHLIZECI (object-fit) - JAK TO MA BYT:
-        VYCHOZI = "cover" (vyplnit obrazovku, okraje se orizmou).
-          Tohle chce Rene: obraz vyplni celou obrazovku bez cernych pruhu.
-        PREPINATELNE na "contain" (cely obraz, zachova pomer, pruhy).
-        Tlacitko: "OBRAZ: vyplnit obrazovku" / "OBRAZ: cely, bez orezu"
-        Popisky musi rikat, CO TLACITKO UDELA - drivejsi "CELA OBRAZOVKA:
-        vyplnit/oriznout" bylo matouci a vedlo k nedorozumeni.
-
-      POZOR NA ULOZENE HODNOTY V PROHLIZECI:
-      Na web chodi presne to, co je na mobilu: na vysku 720x1336, na
-      sirku 1280x720 (v logu H264_FRAME_AVG w= h=). Kdyz se v prohlizeci
-      pouzil rezim "cover" (vyplnit a co pretece oriznout), obraz na vysku
-      se v sirokem okne roztahl a vetsina se ukrojila.
-      Spravne je "contain" - vejdi se cely, zachovej pomer, po stranach
-      cerno. Vypada to jako na mobilu, jen vetsi.
-      POZOR: nastaveni se ukladalo do localStorage, takze v prohlizecich
-      zustalo "oriznout" i po oprave kodu. Pri zmene chovani se musi zmenit
-      i KLIC (napFill -> napFillV2), jinak se stara hodnota nacte znovu.
-
-      DO SNIMANI OKNA (napTvWebCaptureByDraw) NESAHAT!
-      V B109-B111 jsem tam pridal orez na okenko konzole. Rozbilo to
-      VSECHNO OSTATNI: mobil na vysku posilal na web pohled na sirku a
-      naopak, Atari i Sega se orezavaly spatne. Ta funkce ma vlastni
-      logiku pro otoceni a meritko (promenna scale) a orez do ni zasahoval.
-      Od B112 je snimani okna presne jako v B104 - overeno porovnanim.
-      Obraz PS1 jde na TV UPLNE JINOU cestou (napTvWebCaptureFromCore),
-      ktera bere snimek primo z jadra a okno appky vubec neresi.
-
-      (uz neplatne, ponechano jako varovani:)
-      Podminka musi obsahovat (ps1BiosRunning || ps1SessionActive), ne jen
-      kontrolu adresy stranky. Stranka "emu_ps1" je totiz i UVODNI
-      OBRAZOVKA s konzolemi, kde zadna hra nebezi - a tam se orezavalo
-      prazdne okenko, takze na televizi sel nesmyslny vyrez misto cele
-      uvodni obrazovky. Rene to hlasil ctyrikrat, nez jsem to nasel.
-
-      NA VYSKU SE NA TV POSILA VYREZ OKENKA, NE CELE OKNO (od B109).
-      Kdyz PS1 nema snimek (napr. uvodni obrazovka appky), TV snimala CELE
-      okno vcetne skrine konzole, tlacitek a pozadi - na vysku z toho zbyl
-      na obraz uzky prouzek uprostred a zbytek byla grafika appky.
-      Stranka hlasi obdelnik okenka (PLOCHA_MISTO_ZE_STRANKY, promenne
-      plochaL/T/W/H), takze se z okna vyrizne jen on a roztahne na plochu
-      televize. Mimo obrazovku PS1 se snima cele okno jako driv.
-
-      TV MA DVA MOZNE ZDROJE SNIMKU a je dulezite vedet ktery:
-        (a) napTvWebCaptureFromCore()  - snimek PRIMO Z JADRA, orizne cerne
-            okraje a roztahne na 1280x720. Ovladac se do nej NEDOSTANE.
-        (b) PixelCopy celeho okna aplikace - fallback. Ovladac JE videt
-            a obraz neni roztazeny. Snimani okna 1080x2220 je navic drahe.
-      POZOR: podminka se musi ptat i na to, jestli je na obrazovce PS1.
-      Jadro bezi dal i potom, co uzivatel odejde do Atari nebo Segy - kdyz
-      se podminka ptala jen na "bezi jadro", TV zustala viset na poslednim
-      snimku z PlayStation a uz se neprepnula. Kontroluje se proto
-      napTvWebCurrentUrl na "emu_ps1".
-
-      Podminka pro (a) je na radku ~892 v MainActivity.java:
-        if (!ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning)
-            return false;
-      Do B74 tam chybelo ps1BiosRunning -> pri BIOSu se jelo (b), odtud
-      ovladac na TV. V logu se to pozna tak, ze chybi radky o snimku
-      z jadra a je tam jen mirror=APP appCapture=true.
-      POZOR NA ZAHLCENI ENKODERU: vstupem enkoderu je Surface a
-      lockHardwareCanvas() na nem CEKA, dokud enkoder neuvolni buffer.
-      Pri 1280x720 to S8 nestiha - v logu B73 bylo 1149 snimku
-      "H264_FRAME_SLOW", median 90 ms, maximum 586 ms, a cele vlakno tim
-      stalo (kousal se obraz i zvuk na mobilu i na TV).
-      Od B74 se snimek RADEJI VYNECHA, kdyz minuly trval pres 40 ms.
-      V logu se to hlasi jako "TV_H264_VYNECHAVAM".
-      MainActivity.java radek ~1121: napTvWebH264FeedFrame(bm)
-        - MediaCodec, H.264 Annex-B, klient dekoduje pres JMuxer.js
-        - komentar v kodu: "H.264 STREAM PRO PS1 (misto MJPEG)"
-      JPEG (napTvWebJpeg) tu zustava uz jen jako zaloha, kdyz H.264 nejede.
-      TV bere snimek PRIMO Z JADRA, ne z obrazovky telefonu
-        -> proto na TV NENI videt ovladac. To je zamer a ma to tak zustat.
-
-  [5] CO JESTE NENI HOTOVE - prima cesta
-      V jadre je pripravena, ale nepouziva se:
-        gpulib_if.c: nap_gles_grab_texture()   vraci PRIMO cislo GL textury
-        nap_ps1_native.cpp: nap_ps1_egl_grab() prepne kontext a vrati texturu
-      Cil: jadro -> sdilena textura v GPU -> obrazovka. Nula kopirovani.
-      Proc zatim ne: dvanact pokusu (B57-B68) skoncilo cernou obrazovkou.
-      Pricina je znama z logu: CHYBA_OPENGL 0x506 = kresleni do neplatneho
-      cile. Jadro si pri vydavani textury prepne kontext a vrati se na
-      povrch, ktery si zapamatovalo pri startu - po otoceni telefonu je
-      ten povrch mrtvy.
-      Dalsi plan: SurfaceView misto TextureView (ma stabilni povrch,
-      pri otoceni se nerusi).
-
-
-===============================================================================
- 1b. CESTA OVLADANI  (od B115)
-===============================================================================
-
-  DOTYK NA DISPLEJI (pomalejsi, ale nutny pro ovladac na obrazovce):
-    prst -> touchstart ve strance (index.html, funkce setPs1)
-         -> AHPS1.ps1Input()        prechod JavaScript -> Java
-         -> setInputSafe()          prechod Java -> C
-         -> g_input_bits            bit pro jadro
-    Zdrzeni vznika ve WebView, ne v Jave ani v C (obojí je par radku
-    a niceho neceka).
-    DULEZITE: tlacitka musi mit v CSS "touch-action:none". Pri hodnote
-    "manipulation" prohlizec CEKA, jestli z dotyku nebude gesto (posun,
-    zoom, dvojklik) - to jsou desitky milisekund na KAZDY stisk.
-
-  KLAVESNICE A JOYSTICK (nejrychlejsi cesta):
-    stisk -> MainActivity.onKeyDown / onGenericMotionEvent
-          -> NativePs1CoreBridge.setButtonSafe / setStickSafe
-          -> ps1SetButton / ps1SetStick  (nap_ps1_native.cpp)
-          -> g_input_bits
-    Jde to PRIMO do aplikace, WebView se vubec neucastni.
-
-  CISLA TLACITEK jsou RetroPad a plati pro obe cesty:
-    0=kriz 1=kolecko 2=ctverec 3=trojuhelnik
-    4=nahoru 5=dolu 6=vlevo 7=vpravo
-    8=SELECT 9=START 10=L1 11=R1 12=L2 13=R2
-
-  XBOX MAPOVANI: A->kriz, B->kolecko, X->ctverec, Y->trojuhelnik.
-  Analogova packa se prevadi na smerova tlacitka s mrtvou zonou 40 %,
-  aby nedriftovala. Smerovy krizek joysticku chodi jako HAT osa.
-
-===============================================================================
- 2. CESTA ZVUKU - kompletne
-===============================================================================
-
-  ZVUK SEGY (jina cesta nez PS1!):
-    jadro clownmdemu -> NativeSegaCoreBridge.pullAudioStereo()
-                     -> AudioTrack v Jave (48 kHz, stereo, 16 bitu)
-    ZASOBNIK: audioFramesForTier() = 1024 / 2048 / 4096 a bufferBytes
-    bere min*2 od systemu.
-    !!! NESAHAT NA TO !!! V B119 jsem to snizil na polovinu, abych zkratil
-    zpozdeni zvuku. VYSLEDEK: ZVUK SEGY PRESTAL CHODIT NA TV. Mensi
-    zasobnik znamena kratsi davky a jina casovani, na kterych zavisi
-    odbocka zvuku pro televizi (napTvWebAudioPush).
-    Zpozdeni zvuku se musi resit jinde, ne velikosti zasobniku.
-
-  SMYCKA SNIMANI PRO TV BEZI NA HLAVNIM VLAKNE (ui.postDelayed).
-  Rekne si o 12 ms a dostane ~42, protoze ceka na dokresleni obrazovky.
-  CO UZ BYLO VYZKOUSENO A NEFUNGOVALO:
-    - prehodit ji na vlastni vlakno: NELZE, saha na rootFrame a
-      web.getUrl(), coz jsou pohledy aplikace (spadlo by to)
-    - prednostni zarazeni (postAtFrontOfQueue) v B119: tempo se
-      nezlepsilo a obraz na TV se dokonce zhorsil
-
-
-  [1] Jadro vydava vzorky
-      nap_ps1_native.cpp radek 571-572:
-        nap_audio_sample(l, r)      - jeden vzorek
-        nap_audio_batch(data, n)    - davka
-      Registrace: retro_set_audio_sample / _batch  (radek 916-917)
-
-  [2] Vzorky jdou do kruhove fronty v pameti
-      nap_aring_write()  (radek 379)
-      Format: 16 bitu se znamenkem, 2 kanaly, 44100 Hz
-
-  [3] Zpetny tlak - aby fronta nepretekla ani nevyschla
-      nap_audio_skip_step()  (radek 432)
-      Kdyz je zvuku dost, VYNECHA SE JEDEN KROK EMULACE.
-      POZOR: driv se to resilo uspanim (usleep) na vlakne, ktere ceka na
-      vykresleni. Tim se snimek protahl z 16 na 33 ms, jadro udelalo jen
-      pulku kroku a cele se to rozkmitalo - znelo to jako "zpomali a
-      zase zrychli". NIKDY se k uspani nevracet.
-
-  [4] Vystup do reproduktoru
-      OpenSL ES, nativne, bez Javy
-      nap_sl_open()      (radek 534)   - 2 kanaly, 44100 Hz, 16 bitu
-      nap_sl_callback()  (radek 512)   - dopl^nuje bloky pres Enqueue()
-      Java zvukova cesta (AudioTrack) UZ NEBEZI - v logu je
-      "PS1_AUDIO_JAVA_VYPNUTO". Driv bezely obe naraz a rvaly si do toho.
-
-  [4b2] CO SE NA TV CESTE NESMI DELAT V JAVE
-      Do B91 se tam obraz DOOSTROVAL v Jave BOD PO BODU:
-        for (y) for (x) { sahni na 4 sousedy, spocitej laplacian }
-      Pet cteni na bod, u 400x300 sest set tisic operaci NA SNIMEK - a dela
-      to procesor, ktery pak chybi emulaci.
-      Od B92 je to vypnute (doSharp = false). Obraz uz kresli gpu_neon
-      spravne a kvalitu na TV resi H.264 enkoder.
-      KDYBY OBRAZ NA TV PUSOBIL MEKCE: zvysit datovy tok enkoderu, NE
-      pocitat filtr na procesoru.
-
-      KOPIE SNIMKU NA TV CESTE (audit z B93):
-        snimek 640x480 = 307 200 bodu
-        pred B93:  3 kopie na snimek = 105 MB/s pri 30 snimcich
-        po  B93:   2 kopie na snimek =  70 MB/s
-        Vyhozeno: arraycopy do tvSharpBuf (kopie, se kterou se uz nic
-        nedelalo, protoze doostrovani je od B92 vypnute).
-        Zbyle dve kopie: odebrani snimku z jadra (nutne, jinak ho jadro
-        prepise) a setPixels do Bitmap (Bitmap si data kopiruje sam).
-        DALSI KROK, KDYBY BYLO POTREBA: vest snimek z C primo do enkoderu
-        a Javu na te ceste uplne vynechat. Vetsi zasah.
-
-      Co na TV ceste ZUSTAVA a je v poradku:
-        - orez cernych okraju (napTvColIsBlack) - jen sloupce, levne
-        - zvetseni na 1280x720 pres Canvas.drawBitmap - jde pres GPU
-        - H.264 enkoder (MediaCodec) - hardwarovy
-
-  [4d] POZOR: PS1 A SEGA/ATARI POTREBUJI JINE TEMPO SNIMANI!
-      PS1 bere snimek PRIMO Z JADRA (napTvWebCaptureFromCore) - snimek uz
-      je hotovy, staci ho predat enkoderu, takze staci 16 ms.
-      SEGA A ATARI zadnou takovou cestu nemaji - jejich obraz se SNIMA
-      Z OKNA aplikace, coz je pomalejsi a musi se to delat CASTEJI.
-      V B82 jsem tempo nastavil pevne na 16 ms pro vsechno a tim jsem
-      Segu zpomalil - mela viditelne zpozdeni proti mobilu.
-      Od B116 se pevny strop pouzije JEN kdyz snimek jde z jadra PS1;
-      jinak plati napTvWebFrameDelayMs/2.
-      KDYZ SE MENI TEMPO SNIMANI, VZDYCKY OVERIT I SEGU A ATARI.
-
-  [4c] POZOR: PRIPOJENA TV SMI BRAT JEN MALO PROCESORU
-      MainActivity.java, konec smycky snimani:
-        long effectiveDelay = Math.max(10, napTvWebFrameDelayMs);
-        if (!napTvWebH264ClientQueues.isEmpty())
-            effectiveDelay = napTvWebH264FastTickMs;
-      Kdyz je pripojena TV, smycka se prepne na napTvWebH264FastTickMs.
-      DO B80 tam bylo 5 ms = 200 pruchodu za vterinu, prestoze jadro
-      vyrobi nejvys 60 snimku. Kazdy pruchod snima, orezava a krmi enkoder.
-      Sebralo to procesor emulaci a ZVUK SE KOUSAL - ale JEN kdyz bezela TV.
-      Bez TV byl zvuk cisty. To je presne priznak, ktery hlasil Rene.
-      Od B81 je tam 16 ms (~60 za vterinu). NESNIZOVAT.
-
-  [5] Zvuk pro TV
-      Odbocuje se z teze fronty (nap_ps1_native.cpp, sekce "ODBOCKA ZVUKU
-      PRO TV"), protoze Javova cesta uz neexistuje.
-
-
-===============================================================================
- 3. JAK SE TO OVERUJE BEZ TELEFONU
-===============================================================================
-
-  Java:      javac proti android.jar API 34  (stejna verze jako GitHub Actions)
-  C++:       clang --target=aarch64-linux-gnu
-  Jadro PS1: aarch64-linux-gnu vcetne assembleru gte_arm64.S
-  Renderer:  PRELOZI SE A SPUSTI proti skutecnemu OpenGL ES
-             (Mesa llvmpipe, EGL_PLATFORM=surfaceless)
-             -> da se videt, co renderer nakresli, bez telefonu
-
-  Neoveritelne: NDK preklad pro Android a chovani Mali na telefonu.
-
-
-===============================================================================
- 4. CO JE HOTOVE A CO NE
-===============================================================================
-
-  HOTOVO:
-   - grafika menu BIOSu bez CD (bubliny, prelivy, MEMORY CARD, CD PLAYER)
-   - hra se spousti do TEHOZ monitoru jako BIOS (ISO CD i LOAD GAME)
-   - obraz na displeji telefonu na vysku i na sirku
-   - zvuk nativne pres OpenSL ES, bez kmitani
-
-  NENI HOTOVO:
-   - ISO CD predava hru jako /proc/self/fd/N (popisovac souboru), zatimco
-     LOAD GAME predava skutecny soubor. U ISO CD se kouse zvuk a jeden
-     pokus skoncil PS1_HRA_FAIL. Podezreni: cteni disku pres popisovac
-     je pomale nebo se neda spolehlive posouvat. Dalsi krok.
-   - overeni na telefonu delam jen ja skrz Reneho testy
-
-
-===============================================================================
- 5. SLEPE ULICKY - UZ NEZKOUSET
-===============================================================================
-
-  Vsechno nize bylo VYZKOUSENO A ZMERENO, ne odhadnuto:
-
-   - texturove okno v shaderu: vypnuto, obraz bajt po bajtu stejny -> neni to
-   - kopie uvnitr videopameti (prikaz 0x80): BIOS ani jednu nedela -> neni to
-   - vraceni celeho obrazu z GPU kazdy snimek: zmena 0,03 z 255 -> neni to
-   - RGBA 8888 jako format obrazu (B43, B54): rozbije palety
-   - JPEG preview zvetseny 3x: 77 ms na snimek, kouse obraz i zvuk
-   - usleep jako zpetny tlak zvuku: rozkmita to
-
-
-===============================================================================
- 5b. CO JE HOTOVE A CO JE PLAN  (stav k 15. 8. 2026)
-===============================================================================
-
- PS1 - HOTOVO, Rene to uzavrel jako graficky i zvukove hotove.
-   Otestovano na platne 3,8 x 2,4 m, dvanact her, vse bezi.
-   Jadro PCSX-ReARMed + provereny vykreslovac gpu_neon, obraz na mobil
-   pres OpenGL ES, na TV pres H.264.
-
- SEGA - od B117 ma STEJNOU CESTU JAKO PS1:
-     jadro clownmdemu (C) -> g_real.frame_argb -> GL textura -> obrazovka
-   Soubor: nap_sega_native_proof.cpp, funkce nap_sega_thread_fn().
-   Vlastni EGL kontext, vlastni vlakno, kopie snimku pod zamkem.
-   Na TV jde snimek PRIMO Z JADRA pres grabFrame() - okno aplikace uz
-   se kvuli Sege nesnima, a prave to zpusobovalo zpozdeni.
-   Plocha lezi POD strankou (ovladac zustava nad) a mimo obrazovku Segy
-   se schovava.
-
- ATARI - zatim NESAHAT. Je to Reneho pilotni a srdcovy projekt.
-   Pozdeji stejna predelavka jako Sega, ale az po dohode.
+ Na projektu jsou DVA. Nikdo jiny.
+
+ RENE - autor a majitel. Padesatilety navrhar, NE programator.
+   Kod je cely jeho. On zadava, on testuje, on vidi a slysi.
+   Repozitar: github.com/neocontratari/atarihelpeu-apk (verejny)
+   Testuje na Samsungu S8 (Mali-G71, Android 9) a na platne 3,8 x 2,4 m.
+   Odpovidat mu CESKY.
+
+ AI - jediny, kdo pise kod. Nemas kolegy, na ktere by slo cokoli svest.
 
  TERMIN: 27. srpna 2026 je sraz, kde Rene vydava prvni beta test.
 
-===============================================================================
- 6. KDO NA TOM DELA A CO KDO UMI  (cti jako prvni)
-===============================================================================
-
- Na tomhle projektu jsou DVA. Nikdo jiny.
-
- RENE - autor a majitel projektu. Padesatilety navrhar, ne programator.
-   Kod je CELY JEHO. On zadava, on testuje, on vidi a slysi.
-   Ma repozitar na GitHubu: neocontratari/atarihelpeu-apk
-
- AI (ty) - jediny, kdo pise kod. Nemas kolegy, na ktere by slo cokoli svest.
-
  CO SI AI UMI OVERIT SAMA - a proto se na to NIKDY nema ptat Reneho:
-   - kod: stahni si ho z GitHubu (git clone --filter=blob:none), je verejny
-   - Java:   javac proti android.jar API 34
-   - C++:    clang --target=aarch64-linux-gnu, proti SKUTECNEMU jni.h
-             z /usr/lib/jvm/java-17-openjdk-amd64/include
+   - kod: stahnout z GitHubu (git clone --filter=blob:none), je verejny
+   - Java:  javac proti android.jar API 34
+   - C++:   clang --target=aarch64-linux-gnu, proti SKUTECNEMU jni.h
+            z /usr/lib/jvm/java-17-openjdk-amd64/include
    - jadro PS1 pro ARM64: aarch64-linux-gnu vcetne assembleru gte_arm64.S
-   - JAVASCRIPT V PROHLIZECOVE STRANCE (POVINNE, jinak spadne CELA APPKA):
-       Stranka pro TV se sklada z retezcu v MainActivity.java. Java se
-       prelozi bez chyby i kdyz je v tom JavaScriptu nesmysl - a chyba
-       shodi WebView a s nim celou aplikaci.
-       Postup: vytahnout retezce, slozit z nich JS a SPUSTIT ho v node
-       s napodobeninou prohlizece (document.getElementById atd.).
-       Presne tak se naslo, ze B105 sahal na prvky drive, nez byly
-       ziskane, a ze uplne chybelo ziskani tlacitka sF.
-
-   - LINKOVANI (POVINNE, jinak se to pozna az v GitHub Actions):
-       clang++ -c --target=aarch64-linux-gnu ... nap_ps1_native.cpp -o /tmp/nap.o
-       aarch64-linux-gnu-nm -u /tmp/nap.o        <- co appka POTREBUJE
-       aarch64-linux-gnu-nm --defined-only <jadro>.so   <- co jadro DAVA
-       a porovnat. Samotny preklad (-fsyntax-only) chybejici symbol
-       NENAJDE. Prave na tom spadl B83: appka vola n2_init a n2_finish
-       primo a mustek je nemel.
-   - renderer: PRELOZIT A SPUSTIT proti skutecnemu OpenGL ES
-               (apt: libegl1-mesa-dev libgles2-mesa-dev, EGL_PLATFORM=surfaceless)
-               -> jde VIDET, co renderer nakresli, bez telefonu
-   - BIOSy PS1 ma AI k dispozici, muze nabootovat menu BIOSu offline
+   - renderer PS1: PRELOZIT A SPUSTIT proti skutecnemu OpenGL ES
+            (apt: libegl1-mesa-dev libgles2-mesa-dev, EGL_PLATFORM=surfaceless)
+            -> jde VIDET, co renderer nakresli, bez telefonu
+   - JavaScript ve strance: vytahnout retezce z Javy, slozit a SPUSTIT
+     v node s napodobeninou prohlizece (viz bod 3)
+   - LINKOVANI: nm -u proti nm --defined-only (viz bod 3)
 
  CO AI NEUMI:
    - spustit Android (systemove obrazy jsou u Googlu, ten je blokovany)
-   - overit chovani SurfaceView, vrstev a otaceni
-   - overit chovani Mali na telefonu
-   Tohle je jedina oblast, kde je Rene nutny. Nezneuzivat ji na veci,
-   ktere jdou overit vyse.
+   - overit chovani SurfaceView, vrstev, otaceni a MediaCodec
+   - overit chovani Mali
+   Tohle je jedina oblast, kde je Rene nutny.
 
- CO SI OD RENEHO OBCAS VYZADAT (a jen to):
+ CO SI OD RENEHO VYZADAT (a jen to):
    - vysledek testu: kratce spravne/spatne podle tabulky v protokolu
    - par radku z logu, KTERE SI AI PREDEM POJMENUJE
-   - obcas log z GitHub Actions ze ZELENEHO buildu (varovani od NDK, ktera
-     AI u sebe neuvidi)
-   - PRUBEZNY ZAPIS LOGU DO DOWNLOADS JE VYPNUTY - brzdil system.
-     Do Downloads se zapisuje UZ JEN PRI PADU.
-   - PO PADU APLIKACE: log NENI na /log (ten se posila z bezici appky!),
-     ale v souboru:
-         Downloads / AtariHelp / PS1_LOG.txt            (aktualni relace)
-         Downloads / AtariHelp / PS1_LOG_predchozi.txt  (relace pred padem)
-     Rene se k nim dostane z telefonu bez pocitace. NIKDY po nem nechtit
-     /log, kdyz aplikace spadla.
+   - obcas log z GitHub Actions ze ZELENEHO buildu (varovani od NDK)
    Nikdy ho neposilat do prikazoveho radku. Nikdy po nem nechtit soubory,
    ktere si AI muze stahnout sama.
+
+ KAZDY BUILD MUSI OBSAHOVAT (v balicku i ve zprave):
+   * CO TESTOVAT - cislovane kroky, co presne zmacknout
+   * CO OCEKAVAT - u KAZDEHO kroku jak vypada SPRAVNY a SPATNY vysledek
+   * CO POSLAT ZPET - ktere radky z logu
+   Bez toho Rene testuje naslepo.
+
+ DALSI PRAVIDLA:
+   - Jedna zmena na build. Kdyz jich musi byt vic, rict to a rict proc.
+   - Vzdy posilat CELY ZIP balicek, ne jednotlive soubory.
+   - Nikdy nepsat "kdyz bude X, pozna se Y" a nechat poznavani na Renem.
+   - Rene ma barvoslepost: ptat se na TVARY, ne na barvy.
+   - Nesahat na HTML/CSS v assets - to je Reneho design.
+   - Log z telefonu: http://IP:8765/log  (POZOR: jde z BEZICI aplikace!
+     Kdyz appka spadne, log je v Downloads/AtariHelp/PS1_LOG_predchozi.txt)
 
  CO SE UZ STALO SPATNE - aby se to neopakovalo:
    - dvanact buildu (B57-B68) se spalilo na prestavbe zobrazovaci vrstvy,
      kterou AI nedokaze overit. V eglrender pritom UZ BYLO NAPSANE, ze
-     sdilena textura nefunguje ("obraz cerny nebo roztrhany"). Kdyby se
-     AI podivala do existujiciho kodu drive, neslo se to stat.
+     sdilena textura nefunguje.
      -> NEZ NECO PREPISES, PODIVEJ SE, JESTLI TO UZ NEKDO NEZKOUSEL.
-   - AI opakovane posilala build se slovy "kdyz bude X, pozna se Y" a
-     nechavala poznavani na Renem. To je prace AI, ne jeho.
-   - AI tvrdila "na to nemam", aniz to zkusila do konce. Rene mel pravdu:
-     skutecne hlavicky Androidu i jni.h v systemu byly, jen se nehledaly.
+   - AI opakovane posilala build se slovy "kdyz bude X, pozna se Y".
+     To je prace AI, ne Reneho.
+   - AI tvrdila "na to nemam", aniz to zkusila do konce. Skutecne
+     hlavicky Androidu i jni.h v systemu byly, jen se nehledaly.
 
 ===============================================================================
- 7. JAK PRACOVAT S RENEM
+ 1. STAV PROJEKTU
 ===============================================================================
 
-   - Rene je designer, ne programator. Neposilat ho do prikazoveho radku.
-   - ON VIDI A SLYSI. Log musi byt napsany tak, aby z nej videl TEN DRUHY.
-   - Jedna zmena na build. Kdyz jich musi byt vic, rict to a rict proc.
-   - Nikdy neposilat build, u ktereho nejde rict, co presne bylo overeno.
-   - Vzdy posilat CELY balicek, ne jednotlivé soubory.
-   - V KAZDEM buildu musi byt - a to jak v balicku, tak ve zprave v chatu:
-       * CO TESTOVAT - cislovane kroky, co presne zmacknout
-       * CO OCEKAVAT - u KAZDEHO kroku jak vypada SPRAVNY vysledek
-                       a jak vypada SPATNY, at Rene nemusi hadat
-       * CO POSLAT ZPET - ktere radky z logu potrebuju
-     Bez toho vznika chaos a Rene testuje naslepo.
-   - Nikdy nepsat "kdyz bude X, tak Y" a nechat poznavani na nem.
-     Overit si to sam.
+ PS1 - HOTOVO. Rene to uzavrel jako graficky i zvukove hotove.
+   Otestovano na platne 3,8 x 2,4 m, dvanact her, vse bezi.
+   Jadro PCSX-ReARMed + provereny vykreslovac gpu_neon.
+
+ SEGA - od B117 stejna cesta jako PS1 (jadro v C -> OpenGL ES).
+   Obraz na mobilu i na TV funguje, zpozdeni skoro pryc.
+   OTEVRENE: zvuk Segy na TV (B121 to zkousi opravit, NEOTESTOVANO).
+
+ ATARI - NESAHAT. Je to Reneho pilotni a srdcovy projekt.
+   Pozdeji stejna predelavka jako Sega, ale az po dohode.
+
+ OVLADAC - B116 pridal rychlejsi dotyk, klavesnici a joystick.
+   NEOTESTOVANO (Rene mezitim resil Segu).
+
+===============================================================================
+ 2. CESTY OBRAZU A ZVUKU
+===============================================================================
+
+ --- PS1: OBRAZ ---
+   jadro PCSX-ReARMed
+     -> gpu_neon kresli do videopameti          (plugins/gpu_neon)
+     -> gpulib preda snimek pres retro_video_refresh
+     -> nap_video() v nap_ps1_native.cpp -> g_frame_argb
+     -> nap_disp_thread_fn(): GL textura -> obrazovka  (SurfaceView)
+   Na TV: Ps1GlTextureView.borrowFrame() -> H.264
+
+ --- SEGA: OBRAZ (od B117) ---
+   jadro clownmdemu (C)
+     -> g_real.frame_argb                       (kresli po radcich)
+     -> nap_sega_thread_fn(): GL textura -> obrazovka  (SurfaceView)
+   Na TV: NativeSegaCoreBridge.grabFrame() -> H.264
+   Soubor: app/src/main/cpp/nap_sega_native_proof.cpp
+
+ --- PS1: ZVUK ---
+   jadro -> nap_audio_batch() -> kruhova fronta nap_aring_write()
+         -> OpenSL ES nativne (nap_sl_open, 44100/2/16bit)
+   Java zvuk (AudioTrack) je VYPNUTY - drive bezely oba naraz.
+   Zpetny tlak: nap_audio_skip_step() vynecha KROK EMULACE.
+   !!! NIKDY neresit zpetny tlak uspanim (usleep) - rozkmita to !!!
+
+ --- SEGA: ZVUK ---
+   jadro -> NativeSegaCoreBridge.pullAudioStereo()
+         -> AudioTrack v Jave (48 kHz, stereo, 16 bitu)
+   Na TV: napTvWebAudioPush(pcm, ..., "SEGA")
+   !!! POZOR: track.write(WRITE_BLOCKING) CEKA, az se zvuk prehraje.
+       Push na TV proto MUSI byt PRED nim (od B121), jinak prijde zvuk
+       na televizi pozde a zahodi se - v telefonu pritom hraje normalne.
+
+ --- OVLADANI ---
+   DOTYK:      prst -> touchstart (index.html, setPs1)
+                    -> AHPS1.ps1Input()  JS -> Java
+                    -> setInputSafe()    Java -> C
+                    -> g_input_bits
+     Zdrzeni je ve WebView. Tlacitka MUSI mit touch-action:none
+     (pri "manipulation" prohlizec ceka na gesto = desitky ms).
+
+   KLAVESNICE A JOYSTICK (nejrychlejsi):
+     MainActivity.onKeyDown / onGenericMotionEvent
+       -> ps1SetButton / ps1SetStick -> g_input_bits
+     Xbox: A->kriz B->kolecko X->ctverec Y->trojuhelnik
+     Packa -> smery, mrtva zona 40 %.
+
+   CISLA (RetroPad, plati pro obe cesty):
+     0=kriz 1=kolecko 2=ctverec 3=trojuhelnik
+     4=nahoru 5=dolu 6=vlevo 7=vpravo
+     8=SELECT 9=START 10=L1 11=R1 12=L2 13=R2
+
+ --- TV (H.264) ---
+   snimek -> Canvas.drawBitmap na 1280x720 (GPU) -> MediaCodec H.264
+   Nastaveni enkoderu, ktere se osvedcilo:
+     KEY_BIT_RATE          w*h*30  (~28 Mbit/s pri 1280x720)
+     KEY_I_FRAME_INTERVAL  2       (pri 1 vznikaly kostky)
+     KEY_BITRATE_MODE      VBR
+     KEY_COLOR_RANGE       FULL    (bez toho kostky v tmavych plochach!)
+     KEY_PROFILE           High
+     Paint BEZ FILTER_BITMAP_FLAG  (filtrovani rozmazava ostre pixely)
+   Rozliseni 1280x720 = 16:9 podle OBRAZOVKY, ne podle nasobku zdroje.
+   V prohlizeci: panel jas/kontrast/sytost + prepinac vyplnit/oriznout.
+   Vychozi je "vyplnit obrazovku" (cover).
+
+===============================================================================
+ 3. JAK SE TO OVERUJE BEZ TELEFONU  (POVINNE PRED KAZDYM BUILDEM)
+===============================================================================
+
+ (a) JAVA
+     javac -nowarn -encoding UTF-8 -classpath android.jar -d /tmp/out \
+           app/src/main/java/eu/atarihelp/emu10/*.java
+
+ (b) C++ pro ARM64, proti SKUTECNEMU jni.h
+     clang++ -c --target=aarch64-linux-gnu -std=c++17 \
+       -I/usr/lib/jvm/java-17-openjdk-amd64/include \
+       -I/usr/lib/jvm/java-17-openjdk-amd64/include/linux \
+       -I/tmp/stub -Iapp/src/main/cpp ... nap_ps1_native.cpp -o /tmp/a.o
+     Sega potrebuje navic: -DNAP_SEGA_VENDOR_CORE_PRESENT=1
+       a -Ivendor/clownmdemu-core/source
+
+ (c) LINKOVANI - jinak se chyba pozna az v GitHub Actions!
+     aarch64-linux-gnu-nm -u /tmp/a.o               <- co appka POTREBUJE
+     aarch64-linux-gnu-nm --defined-only jadro.so   <- co jadro DAVA
+     a porovnat. Samotny preklad chybejici symbol NENAJDE.
+     Na tomhle spadl B83 (chybely n2_init a n2_finish).
+
+ (d) JAVASCRIPT VE STRANCE - jinak spadne CELA APLIKACE
+     Stranka pro TV se sklada z retezcu v MainActivity.java. Java se
+     prelozi i s nesmyslem v tom JS a chyba shodi WebView i appku.
+     Postup: vytahnout retezce regexem, slozit JS, SPUSTIT v node
+     s mock objekty (document.getElementById, localStorage, ...).
+     Takhle se naslo, ze B105 sahal na prvky drive, nez byly ziskane,
+     a ze uplne chybelo ziskani tlacitka sF.
+
+ (e) RENDERER PS1 se da PRELOZIT A SPUSTIT proti Mesa GLES2
+     a podivat se na vysledny obrazek. Takhle se opravila grafika BIOSu.
+
+===============================================================================
+ 4. SLEPE ULICKY - VYZKOUSENO, NEZKOUSET ZNOVU
+===============================================================================
+
+ GRAFIKA PS1:
+  - texturove okno v shaderu: vypnuto, obraz bajt po bajtu stejny
+  - kopie uvnitr videopameti (0x80): BIOS ani jednu nedela
+  - vraceni celeho obrazu z GPU kazdy snimek: zmena 0,03 z 255
+  - RGBA 8888 jako format obrazu: rozbije palety
+  - PSANI VLASTNIHO VYKRESLOVACE (gpu_naples2, 1291 radku): neumel
+    vsechno, co PlayStation dela -> kosticky, artefakty, blikani.
+    Pouzit provereny gpu_neon (19 377 radku, soucast jadra).
+
+ ZOBRAZENI:
+  - SDILENA GL TEXTURA mezi jadrem a plochou: NIKDY NEFUNGOVALA.
+    V eglrender je o tom poznamka "obraz cerny nebo roztrhany" a AI
+    se na tom sama rozbila dvanactkrat (B57-B68, chyba OpenGL 0x506).
+    Snimek se musi ZKOPIROVAT pod zamkem.
+  - JPEG do stranky (ps1FramePreviewB64): 77 ms na snimek, smazano
+
+ TV:
+  - doostrovani obrazu v Jave bod po bodu: 600 tisic operaci na snimek
+  - "new Canvas(bitmapa)" je platno V PAMETI - vsechno na nem pocita
+    PROCESOR. Barevny filtr tam stal 8 milionu operaci na snimek
+    (avgTickGapMs 96 misto 16). Barevne upravy patri do prohlizece.
+  - doostrovani filtrem AZ PO KOMPRESI (SVG filter v prohlizeci):
+    informace, ktera se pri kompresi ztratila, uz v obraze NENI -
+    filtr jen zvyrazni chyby komprese
+  - orez na okenko konzole ve snimani okna: rozbije otoceni pro Segu
+    i Atari (mobil na vysku posilal na web sirku)
+  - PRIMA CESTA snimku z C do H.264 enkoderu (B94-B98): ctyri pokusy,
+    ctyri pady pri zapnuti TV. Nasel jsem a opravil ctyri skutecne
+    chyby (poradi startu enkoderu, format okna, zamek, soubeh vlaken)
+    a PRESTO to padalo. Priznak POUZIT_PRIMOU_CESTU_NA_TV = false.
+    NEZKOUSET BEZ TELEFONU PO RUCE.
+
+ ZVUK:
+  - usleep jako zpetny tlak: rozkmita zvuk i obraz
+  - ZMENSENI ZVUKOVEHO ZASOBNIKU SEGY (B119): zvuk prestal chodit na TV,
+    i kdyz v telefonu hral. audioFramesForTier musi zustat 1024/2048/4096
+    a bufferBytes bere min*2.
+
+ TEMPO SNIMANI PRO TV:
+  - 5 ms (B82): 200 pruchodu za vterinu, bere procesor emulaci -> kouse
+    se zvuk. Minimum je 12 ms.
+  - prehodit smycku na vlastni vlakno: NELZE, saha na rootFrame
+    a web.getUrl() (pohledy aplikace)
+  - prednostni zarazeni postAtFrontOfQueue (B119): nepomohlo,
+    avgTickGapMs zustalo 42, a obraz na TV se zhorsil
+  - do RYCHLE vetve patri vsechno, co dava snimek PRIMO Z JADRA
+    (PS1 i Sega). Do pomale jen to, co se snima z okna (Atari).
+
+===============================================================================
+ 5. PASTI, KTERE UZ NECO STALY
+===============================================================================
+
+ - ULOZENE HODNOTY V PROHLIZECI (localStorage): kdyz se zmeni chovani,
+   MUSI se zmenit i KLIC, jinak se stara hodnota nacte znovu a oprava
+   vypada, ze nefunguje. Stalo to dve kola.
+
+ - POZOR NA PORADI pri praci s MediaCodec: okno enkoderu se smi predat
+   AZ POTOM, co enkoder bezi (po enc.start()).
+
+ - FORMAT OKNA: pred eglCreateWindowSurface musi byt
+   ANativeWindow_setBuffersGeometry s EGL_NATIVE_VISUAL_ID.
+
+ - GENERACE VLAKEN: kdyz se plocha odpoji a hned zase pripoji, muze
+   stare vlakno jeste dobihat. Kazde vlakno si pamatuje cislo generace.
+
+ - surfaceChanged NESMI plochu znovu pripojovat - pri otoceni prijde
+   spolu se surfaceCreated a vznikne mela vlaken.
+
+ - OTOCENI A BARVY: kdyz se zmeni ZDROJ snimku, zkontrolovat OBOJI.
+     z glReadPixels chodi snimek ZDOLA NAHORU
+     z jadra pres nap_video() chodi SHORA DOLU
+     snimek je ARGB (v pameti B,G,R,A) -> shader musi prohodit .bgr
+
+ - FORMAT BODU: nikdy nevynucovat. Jadro si ho hlasi samo pres
+   SET_PIXEL_FORMAT. Vynuceni XRGB8888 pri RGB565 = dvojity obraz
+   a zelenofialove barvy.
+
+ - LOG UMI LHAT: radek H264_ENCODER_START vypisoval bitrate spocitany
+   zvlast a nesouhlasil se skutecnym nastavenim. Kdyz cislo v logu
+   neodpovida kodu, overit obe strany.
+
+===============================================================================
+ 6. CO DAL - NAVRHY, NE PRIKAZY
+===============================================================================
+
+ 1) ZVUK SEGY NA TV - B121 posila davku na TV PRED blokujicim zapisem
+    do AudioTracku. NEOTESTOVANO. Kdyby to nestacilo, podivat se, jestli
+    napTvWebAudioPush neprepisuje kruhovy zasobnik rychleji, nez si ho
+    prohlizec stiha brat, a jestli klient v prohlizeci ocekava 44100 Hz
+    (Sega posila 48000).
+
+ 2) OVLADAC - B116 je hotovy, ale NEOTESTOVANY. Rene chce:
+    - minimalni odezvu d-padu (hotovo: touch-action:none)
+    - bluetooth klavesnici (hotovo, u Atari bude klicova)
+    - joystick, hlavne Xbox (hotovo, mapovani i mrtva zona)
+
+ 3) ATARI - stejna predelavka jako Sega, ale AZ PO DOHODE s Renem.
+
+ 4) ZPOZDENI OBRAZU NA TV - zbyva ~42 ms, protoze snimaci smycka bezi
+    na hlavnim vlakne. Reseni by bylo posilat snimek do enkoderu primo
+    z C - ale to ctyrikrat shodilo aplikaci. Chce to telefon po ruce.
+
+===============================================================================
+ 7. KLICOVE SOUBORY
+===============================================================================
+
+ app/src/main/cpp/nap_ps1_native.cpp          PS1: JNI, vlakna, zvuk, obraz
+ app/src/main/cpp/nap_sega_native_proof.cpp   SEGA: totez
+ app/src/main/cpp/vendor/pcsx_rearmed/        jadro PS1
+ app/src/main/cpp/vendor/clownmdemu-core/     jadro Segy
+ app/src/main/cpp/CMakeLists.txt              co se preklada
+ app/src/main/java/.../MainActivity.java      ~7500 radku, shell + TV
+ app/src/main/java/.../NativePs1CoreBridge.java
+ app/src/main/java/.../NativeSegaCoreBridge.java
+ app/src/main/assets/emu_ps1/index.html       Reneho UI - NESAHAT na CSS
+ app/build.gradle                             versionCode / versionName
+
+ NDK 26.3.11579264, jen arm64-v8a, C++17 -O3, Java 17, API 34.

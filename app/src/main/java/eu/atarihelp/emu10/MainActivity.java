@@ -3892,6 +3892,15 @@ public class MainActivity extends Activity {
                     }
                     // BUILD2RV: feed AudioTrack one small full clock chunk. Native produces real samples or true silence only; RR uses balanced FIFO governor, not RP tiny buffer drops or RO huge delay.
                     int framesToWrite = pcm.length;
+                    // ===== ZVUK NA TV MUSI JIT DRIV, NEZ SE PREHRAJE =====
+                    // track.write(...WRITE_BLOCKING) CEKA, az se zvuk v telefonu
+                    // prehraje - trva to tak dlouho, jak je davka dlouha. Kdyz
+                    // se na TV posilalo az POTOM, prisel zvuk pozde a televize
+                    // ho zahodila. V telefonu pritom hral normalne, takze to
+                    // vypadalo, ze zvuk funguje - jen na webu ne.
+                    // Davku posilame na TV HNED, jeste pred prehranim.
+                    if (framesToWrite > 0) napTvWebAudioPush(pcm, 0, framesToWrite, sampleRate, "SEGA");
+
                     int off = 0;
                     while (off < framesToWrite && nativeCoreAudioRun && audioGen == nativeAudioGeneration) {
                         int wr;
@@ -3900,7 +3909,6 @@ public class MainActivity extends Activity {
                         if (wr <= 0) break;
                         off += wr;
                     }
-                    if (off > 0) napTvWebAudioPush(pcm, 0, off, sampleRate, "SEGA");
                     loops++;
                 }
             } catch (Throwable t) {
