@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B118-SEGA-BEZ-ZPOZDENI (versionCode 166)
+ Verze: EMU10-B119-ZVUK-A-TEMPO (versionCode 167)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -461,6 +461,24 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
 ===============================================================================
  2. CESTA ZVUKU - kompletne
 ===============================================================================
+
+  ZVUK SEGY (jina cesta nez PS1!):
+    jadro clownmdemu -> NativeSegaCoreBridge.pullAudioStereo()
+                     -> AudioTrack v Jave (48 kHz, stereo, 16 bitu)
+    ZPOZDENI URCUJE VELIKOST ZASOBNIKU (audioFramesForTier):
+      512 snimku = 11 ms, 1024 = 21 ms, 2048 = 43 ms
+    Od B119 je to o stupen mensi (512/1024/2048 misto 1024/2048/4096).
+    POZOR: prilis maly zasobnik = PRASKANI, kdyz appka nestiha doplnovat.
+    Kdyby praskal, vratit puvodni hodnoty.
+    Take se nesmi brat min*2 od systemu - na nekterych telefonech to dava
+    mnohonasobne vetsi zasobnik, nez chceme.
+
+  SMYCKA SNIMANI PRO TV BEZI NA HLAVNIM VLAKNE a NELZE ji prehodit jinam -
+  saha na rootFrame a web.getUrl(), coz jsou pohledy aplikace. Kdyz snimek
+  prichazi primo z jadra, zarazuje se dalsi pruchod PREDNOSTNE
+  (postAtFrontOfQueue), aby se nemusel cekat na dokresleni obrazovky.
+  V logu bylo avgTickGapMs=42 pri targetDelayMs=12 - odtud rozdil.
+
 
   [1] Jadro vydava vzorky
       nap_ps1_native.cpp radek 571-572:
