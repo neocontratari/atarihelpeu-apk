@@ -365,7 +365,12 @@ public class MainActivity extends Activity {
     // pri targetDelayMs=5.
     // 16 ms = cca 60 za vterinu, coz je presne tolik, kolik ma smysl.
     // POZOR: nesnizovat. Vic snimku na TV se stejne nevejde a zvuk to zabije.
-    private static final int napTvWebH264FastTickMs = 16;
+    // 12 ms misto 16: enkoder ma podle logu rezervu (avgDrawMs=3 pri
+    // stropu 16), a Sega i PS1 jedou 60 snimku za vterinu. Kratsi krok
+    // znamena, ze se snimek dostane na TV drive - mensi zpozdeni.
+    // NESNIZOVAT POD 12. Pri 5 ms se v B82 kousal zvuk, protoze smycka
+    // brala procesor emulaci.
+    private static final int napTvWebH264FastTickMs = 12;
     // === BUILD2SK57: H.264 STREAM PRO PS1 (misto MJPEG) ===
     // Pouzivame MediaCodec v ByteBuffer rezimu (ne Surface) - vstupem je
     // rucne prevedeny YUV420 obraz z JIZ existujici PixelCopy Bitmapy
@@ -929,11 +934,17 @@ public class MainActivity extends Activity {
                     // V B82 jsem tempo nastavil pevne na 16 ms pro vsechno a
                     // tim jsem Segu zpomalil. Ted se pevny strop pouzije JEN
                     // kdyz snimek jde z jadra PS1.
+                    // Od B117 bere snimek primo z jadra i SEGA, takze patri
+                    // do rychle vetve stejne jako PS1. Do B117 spadala do
+                    // pomale (46 ms = 22 snimku za vterinu, i kdyz enkoder
+                    // stihal na 3 ms) - odtud zbyle zpozdeni.
                     boolean ps1PrimoZJadra = false;
                     try {
                         String cu0 = (web == null) ? null : web.getUrl();
-                        ps1PrimoZJadra = (cu0 != null && cu0.contains("emu_ps1"))
+                        boolean naSegeT = (cu0 != null) && cu0.contains("emu_sega");
+                        boolean naPs1T  = (cu0 != null) && cu0.contains("emu_ps1")
                                 && (ps1BiosRunning || ps1SessionActive);
+                        ps1PrimoZJadra = naPs1T || naSegeT;
                     } catch (Throwable ignored2) {}
                     effectiveDelay = ps1PrimoZJadra
                             ? napTvWebH264FastTickMs               // PS1: 16 ms staci

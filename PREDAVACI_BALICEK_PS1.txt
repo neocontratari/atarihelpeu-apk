@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B117-SEGA-PRES-GPU (versionCode 165)
+ Verze: EMU10-B118-SEGA-BEZ-ZPOZDENI (versionCode 166)
  Datum: 5. 8. 2026
 ===============================================================================
 
