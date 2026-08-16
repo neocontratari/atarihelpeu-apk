@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B119-ZVUK-A-TEMPO (versionCode 167)
+ Verze: EMU10-B120-ZPET-NA-B118 (versionCode 168)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -465,19 +465,21 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
   ZVUK SEGY (jina cesta nez PS1!):
     jadro clownmdemu -> NativeSegaCoreBridge.pullAudioStereo()
                      -> AudioTrack v Jave (48 kHz, stereo, 16 bitu)
-    ZPOZDENI URCUJE VELIKOST ZASOBNIKU (audioFramesForTier):
-      512 snimku = 11 ms, 1024 = 21 ms, 2048 = 43 ms
-    Od B119 je to o stupen mensi (512/1024/2048 misto 1024/2048/4096).
-    POZOR: prilis maly zasobnik = PRASKANI, kdyz appka nestiha doplnovat.
-    Kdyby praskal, vratit puvodni hodnoty.
-    Take se nesmi brat min*2 od systemu - na nekterych telefonech to dava
-    mnohonasobne vetsi zasobnik, nez chceme.
+    ZASOBNIK: audioFramesForTier() = 1024 / 2048 / 4096 a bufferBytes
+    bere min*2 od systemu.
+    !!! NESAHAT NA TO !!! V B119 jsem to snizil na polovinu, abych zkratil
+    zpozdeni zvuku. VYSLEDEK: ZVUK SEGY PRESTAL CHODIT NA TV. Mensi
+    zasobnik znamena kratsi davky a jina casovani, na kterych zavisi
+    odbocka zvuku pro televizi (napTvWebAudioPush).
+    Zpozdeni zvuku se musi resit jinde, ne velikosti zasobniku.
 
-  SMYCKA SNIMANI PRO TV BEZI NA HLAVNIM VLAKNE a NELZE ji prehodit jinam -
-  saha na rootFrame a web.getUrl(), coz jsou pohledy aplikace. Kdyz snimek
-  prichazi primo z jadra, zarazuje se dalsi pruchod PREDNOSTNE
-  (postAtFrontOfQueue), aby se nemusel cekat na dokresleni obrazovky.
-  V logu bylo avgTickGapMs=42 pri targetDelayMs=12 - odtud rozdil.
+  SMYCKA SNIMANI PRO TV BEZI NA HLAVNIM VLAKNE (ui.postDelayed).
+  Rekne si o 12 ms a dostane ~42, protoze ceka na dokresleni obrazovky.
+  CO UZ BYLO VYZKOUSENO A NEFUNGOVALO:
+    - prehodit ji na vlastni vlakno: NELZE, saha na rootFrame a
+      web.getUrl(), coz jsou pohledy aplikace (spadlo by to)
+    - prednostni zarazeni (postAtFrontOfQueue) v B119: tempo se
+      nezlepsilo a obraz na TV se dokonce zhorsil
 
 
   [1] Jadro vydava vzorky

@@ -951,38 +951,14 @@ public class MainActivity extends Activity {
                             : Math.max(8, napTvWebFrameDelayMs / 2); // Sega/Atari: rychleji
                 }
             } catch (Throwable ignored) {}
-            // ===== PROC SMYCKA NESTIHA =====
-            // Bezi pres ui.postDelayed, tedy na HLAVNIM VLAKNE, ktere zaroven
-            // kresli obrazovku a obsluhuje dotyky. I kdyz si rekne o 12 ms,
-            // dostane se ke slovu az potom - v logu avgTickGapMs=42 pri
-            // targetDelayMs=12.
-            //
-            // Prehodit ji celou na vlastni vlakno NELZE: saha na rootFrame
-            // a web.getUrl(), coz jsou pohledy aplikace a z jineho vlakna
-            // se na ne sahat nesmi (spadlo by to).
-            //
-            // Reseni: kdyz snimek prichazi PRIMO Z JADRA, rekneme si o
-            // dalsi pruchod s NEJVYSSI PRIORITOU (postAtFrontOfQueue), takze
-            // se hlavni vlakno dostane k nam hned, jak dokresli snimek.
-            // Neni to tak rychle jako vlastni vlakno, ale je to bezpecne.
-            if (napTvWebRunning) {
-                boolean zJadra = false;
-                try {
-                    String cuT = napTvWebCurrentUrl;
-                    zJadra = (cuT != null) && (cuT.contains("emu_sega")
-                            || (cuT.contains("emu_ps1") && (ps1BiosRunning || ps1SessionActive)));
-                } catch (Throwable ignored) {}
-
-                if (zJadra && extraDelay == 0) {
-                    final Runnable ten = this;
-                    ui.postDelayed(() -> {
-                        try { ui.postAtFrontOfQueue(ten); }
-                        catch (Throwable t) { ui.post(ten); }
-                    }, Math.max(4, effectiveDelay));
-                } else {
-                    ui.postDelayed(this, effectiveDelay + extraDelay);
-                }
-            }
+            // POZNAMKA K TEMPU: smycka bezi na hlavnim vlakne pres
+            // ui.postDelayed, takze si rekne o 12 ms a dostane ~42 - ceka
+            // na dokresleni obrazovky. Zkousel jsem to resit prednostnim
+            // zarazenim (postAtFrontOfQueue) v B119: NEPOMOHLO, tempo
+            // zustalo stejne a obraz na TV se dokonce zhorsil.
+            // Prehodit smycku na vlastni vlakno NELZE - saha na rootFrame
+            // a web.getUrl(), coz jsou pohledy aplikace.
+            if (napTvWebRunning) ui.postDelayed(this, effectiveDelay + extraDelay);
         }
     };
 
@@ -3841,11 +3817,10 @@ public class MainActivity extends Activity {
                 // BUILD2RV: S8 RR recovery profile gets a real reservoir; Nox keeps the clean RQ-sized path.
                 int wantedFrames = audioFramesForTier();
                 int wantedBytes = wantedFrames * 2 * 2;
-                // min*2 byla velka rezerva - na nekterych telefonech to
-                // znamenalo mnohonasobne vetsi zasobnik, nez jsme chteli,
-                // a tedy vetsi zpozdeni. Minimum od systemu staci, jen se
-                // nesmi jit pod nej.
-                int bufferBytes = Math.max(min > 0 ? min : 0, wantedBytes);
+                // POZOR: min*2 vypada jako zbytecna rezerva, ale zkusil jsem
+                // to v B119 snizit na min a zvuk Segy prestal chodit na TV.
+                // Nechat tak, jak to je.
+                int bufferBytes = Math.max(min > 0 ? min * 2 : 0, wantedBytes);
                 AudioTrack.Builder builder = null;
                 if (Build.VERSION.SDK_INT >= 21) {
                     builder = new AudioTrack.Builder()
@@ -4390,16 +4365,17 @@ public class MainActivity extends Activity {
 
     /** Kolik vzorku zvuku drzet dopredu. Min = mensi zpozdeni, ale vetsi riziko praskani. */
     private int audioFramesForTier() {
-        // ===== ZPOZDENI ZVUKU =====
-        // Velikost zasobniku primo urcuje, o kolik zvuk zaostava za obrazem.
-        // Pri 48 kHz stereo: 512 snimku = 11 ms, 1024 = 23 ms, 2048 = 46 ms.
-        // Rene hlasil mirne zpozdeni zvuku - snizeno o jeden stupen.
-        // POZOR: prilis maly zasobnik znamena, ze zvuk zacne PRASKAT, kdyz
-        // ho appka nestihne dopl^novat. Kdyby praskal, vratit puvodni hodnoty.
+        // ===== VELIKOST ZASOBNIKU ZVUKU - NESAHAT =====
+        // V B119 jsem to zkusil snizit na polovinu (11 misto 21 ms), abych
+        // zkratil zpozdeni zvuku. VYSLEDEK: zvuk Segy prestal chodit na TV.
+        // Duvod: mensi zasobnik znamena kratsi davky a jina casovani, na
+        // kterych zavisi odbocka zvuku pro televizi.
+        // VRACENO NA PUVODNI HODNOTY. Zpozdeni zvuku se musi resit jinde,
+        // ne velikosti zasobniku.
         switch (perfTier()) {
-            case 2:  return 512;    // HIGH   ~11 ms  (bylo 1024)
-            case 1:  return 1024;   // MEDIUM ~23 ms  (bylo 2048)
-            default: return 2048;   // LOW    ~46 ms  (bylo 4096)
+            case 2:  return 1024;   // HIGH   ~21 ms
+            case 1:  return 2048;   // MEDIUM ~43 ms
+            default: return 4096;   // LOW    ~85 ms
         }
     }
 
