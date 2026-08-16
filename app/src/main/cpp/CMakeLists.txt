@@ -128,6 +128,10 @@ find_library(android-lib android)
 target_link_libraries(napsega_native_proof PRIVATE
         ${android-lib}
         ${log-lib}
+        # Sega kresli obraz PRES OpenGL ES stejne jako PS1 (od B117),
+        # takze potrebuje EGL i GLESv2.
+        EGL
+        GLESv2
         clownmdemu-core)
 # ============ BUILD2SA1-FIX: PCSX-ReARMed presne dle jni/Android.mk (arm64, interpreter) ============
 # KILL-SWITCH: kdyz by PS1 blok zlobil, staci OFF a workflow je zeleny bez PS1.

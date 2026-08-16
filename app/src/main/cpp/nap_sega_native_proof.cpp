@@ -10,6 +10,12 @@
 #include <cstring>
 #include <cctype>
 #include <mutex>
+#include <thread>
+#include <unistd.h>
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
 #include <android/log.h>
 #include <csignal>
 #include <csetjmp>
@@ -1105,6 +1111,180 @@ static uint32_t fnv1a32(const uint8_t* data, size_t size) {
         h *= 16777619u;
     }
     return h;
+}
+
+
+// ===================================================================
+//  SEGA: OBRAZ PRIMO NA PLOCHU  (stejna cesta jako PS1)
+//
+//  Jadro clownmdemu uz snimek vyrabi - kresli po radcich do
+//  g_real.frame_argb (ARGB, hotovy). Doted si ho ale nikdo nebral
+//  a obraz se na TV snimal z okna aplikace, coz je pomale.
+//
+//  Tady je stejna kostra jako u PS1:
+//    jadro -> frame_argb -> GL textura -> obrazovka
+//  Vlastni EGL kontext, vlastni vlakno, zadne sdileni s jadrem.
+//  Snimek se pod zamkem zkopiruje, aby ho vlakno emulace nemohlo
+//  prepsat uprostred kresleni (na tomhle spadla PS1 v B94).
+// ===================================================================
+static std::mutex          g_sega_frame_mutex;
+static ANativeWindow      *g_sega_win = nullptr;
+static std::thread         g_sega_thread;
+static std::atomic<bool>   g_sega_run{false};
+static std::atomic<long>   g_sega_gen{0};
+
+static const char *SEGA_VS =
+    "attribute vec2 aPos;\n attribute vec2 aUV;\n varying vec2 vUV;\n"
+    "void main(){ vUV = aUV; gl_Position = vec4(aPos, 0.0, 1.0); }\n";
+static const char *SEGA_FS =
+    "precision mediump float;\n varying vec2 vUV;\n uniform sampler2D uTex;\n"
+    /* snimek je ARGB (v pameti B,G,R,A), GL ho cte jako RGBA -> prohodit */
+    "void main(){ gl_FragColor = vec4(texture2D(uTex, vUV).bgr, 1.0); }\n";
+
+static GLuint nap_sega_shader(GLenum typ, const char *src) {
+    GLuint sh = glCreateShader(typ);
+    glShaderSource(sh, 1, &src, nullptr);
+    glCompileShader(sh);
+    GLint ok = 0; glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
+    if (!ok) { glDeleteShader(sh); return 0; }
+    return sh;
+}
+
+/* Bezpecne prevzeti snimku - kopie pod zamkem do pameti volajiciho. */
+static int nap_sega_kopiruj(std::vector<uint32_t> &kam, int *w, int *h) {
+    std::lock_guard<std::mutex> lk(g_sega_frame_mutex);
+    int vw = g_real.frame_w, vh = g_real.frame_h;
+    if (vw <= 0 || vh <= 0) return 0;
+    if (g_real.frame_argb.size() < (size_t)(vw * vh)) return 0;
+    if (kam.size() < (size_t)(vw * vh)) kam.resize((size_t)vw * vh);
+    memcpy(kam.data(), g_real.frame_argb.data(), (size_t)vw * vh * 4);
+    if (w) *w = vw;
+    if (h) *h = vh;
+    return 1;
+}
+
+static void nap_sega_thread_fn(ANativeWindow *win, long gen) {
+    EGLDisplay dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    EGLint ma = 0, mi = 0;
+    if (dpy == EGL_NO_DISPLAY || !eglInitialize(dpy, &ma, &mi)) {
+        ANativeWindow_release(win); return;
+    }
+    const EGLint cfga[] = { EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+                            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+                            EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8,
+                            EGL_NONE };
+    EGLConfig cfg; EGLint n = 0;
+    if (!eglChooseConfig(dpy, cfga, &cfg, 1, &n) || n < 1) {
+        ANativeWindow_release(win); return;
+    }
+    /* format okna musi odpovidat konfiguraci - bez toho to pada (viz PS1 B96) */
+    EGLint fmt = 0;
+    eglGetConfigAttrib(dpy, cfg, EGL_NATIVE_VISUAL_ID, &fmt);
+    ANativeWindow_setBuffersGeometry(win, 0, 0, fmt);
+
+    EGLSurface surf = eglCreateWindowSurface(dpy, cfg, (EGLNativeWindowType)win, nullptr);
+    const EGLint ctxa[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
+    EGLContext ctx = eglCreateContext(dpy, cfg, EGL_NO_CONTEXT, ctxa);
+    if (surf == EGL_NO_SURFACE || ctx == EGL_NO_CONTEXT ||
+        !eglMakeCurrent(dpy, surf, surf, ctx)) {
+        ANativeWindow_release(win); return;
+    }
+
+    GLuint vs = nap_sega_shader(GL_VERTEX_SHADER, SEGA_VS);
+    GLuint fs = nap_sega_shader(GL_FRAGMENT_SHADER, SEGA_FS);
+    GLuint prog = glCreateProgram();
+    glAttachShader(prog, vs); glAttachShader(prog, fs); glLinkProgram(prog);
+    GLint aPos = glGetAttribLocation(prog, "aPos");
+    GLint aUV  = glGetAttribLocation(prog, "aUV");
+    GLint uTex = glGetUniformLocation(prog, "uTex");
+
+    GLuint tex = 0; glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    std::vector<uint32_t> muj;
+    int lastW = 0, lastH = 0; long snimku = 0;
+    while (g_sega_run.load() && g_sega_gen.load() == gen) {
+        int sw = 0, sh = 0;
+        if (!nap_sega_kopiruj(muj, &sw, &sh)) { usleep(8000); continue; }
+
+        int w = ANativeWindow_getWidth(win), h = ANativeWindow_getHeight(win);
+        if (w <= 0 || h <= 0) { usleep(8000); continue; }
+
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        if (sw != lastW || sh != lastH) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh, 0, GL_RGBA, GL_UNSIGNED_BYTE, muj.data());
+            lastW = sw; lastH = sh;
+        } else {
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, muj.data());
+        }
+
+        /* na sirku vyplnit plochu, na vysku zachovat pomer (jako PS1) */
+        int vw, vh;
+        if (w > h) { vw = w; vh = h; }
+        else {
+            vw = w; vh = (int)((long)w * sh / sw);
+            if (vh > h) { vh = h; vw = (int)((long)h * sw / sh); }
+        }
+        glViewport((w - vw) / 2, (h - vh) / 2, vw, vh);
+        glClearColor(0.f, 0.f, 0.f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        {
+            /* snimek chodi shora dolu -> V obracene */
+            const GLfloat quad[] = { -1.f,-1.f, 0.f,1.f,   1.f,-1.f, 1.f,1.f,
+                                     -1.f, 1.f, 0.f,0.f,   1.f, 1.f, 1.f,0.f };
+            glUseProgram(prog);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, tex);
+            glUniform1i(uTex, 0);
+            glVertexAttribPointer((GLuint)aPos, 2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad);
+            glVertexAttribPointer((GLuint)aUV,  2, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), quad+2);
+            glEnableVertexAttribArray((GLuint)aPos);
+            glEnableVertexAttribArray((GLuint)aUV);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        }
+        if (!g_sega_run.load()) break;
+        if (!eglSwapBuffers(dpy, surf)) break;
+        snimku++;
+        usleep(2000);
+    }
+
+    eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(dpy, ctx);
+    eglDestroySurface(dpy, surf);
+    ANativeWindow_release(win);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_setDisplaySurface(JNIEnv *env, jclass, jobject jsurf) {
+    long moje = g_sega_gen.fetch_add(1) + 1;
+    bool bezelo = g_sega_run.exchange(false);
+    if (bezelo && g_sega_thread.joinable()) g_sega_thread.detach();
+    g_sega_win = nullptr;
+    if (jsurf == nullptr) return;
+    ANativeWindow *win = ANativeWindow_fromSurface(env, jsurf);
+    if (!win) return;
+    g_sega_win = win;
+    g_sega_run.store(true);
+    g_sega_thread = std::thread(nap_sega_thread_fn, win, moje);
+}
+
+/* Snimek pro TV - stejne rozhrani jako u PS1, aby ho mohl pouzit
+   existujici H.264 enkoder. Vraci sirku<<16|vyska, 0 = neni. */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_grabFrame(JNIEnv *env, jclass, jintArray out) {
+    std::lock_guard<std::mutex> lk(g_sega_frame_mutex);
+    int w = g_real.frame_w, h = g_real.frame_h;
+    if (w <= 0 || h <= 0) return 0;
+    size_t need = (size_t)w * h;
+    if (g_real.frame_argb.size() < need) return 0;
+    if (!out || (size_t)env->GetArrayLength(out) < need) return -((w << 16) | h);
+    env->SetIntArrayRegion(out, 0, (jsize)need, (const jint*)g_real.frame_argb.data());
+    return (w << 16) | h;
 }
 
 extern "C" JNIEXPORT jstring JNICALL

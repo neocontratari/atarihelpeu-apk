@@ -10,7 +10,14 @@ html,body{min-height:100%;background:#02060b;color:#dfeaff;font-family:"Courier 
 body{display:flex;justify-content:center;align-items:flex-start;}
 .stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#02060b;overflow:hidden;box-shadow:0 0 56px rgba(0,0,0,.95);}
 .skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
-.hit{position:absolute;z-index:8;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
+.hit{position:absolute;z-index:8;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;
+  /* touch-action:none misto manipulation - prohlizec pak nemusi cekat,
+     jestli z dotyku nebude gesto (posun, zoom, dvojklik). To cekani je
+     desitky milisekund na KAZDY stisk a je to hlavni zdroj odezvy padu. */
+  touch-action:none;
+  /* zadne zvyrazneni pri stisku a zadny vyber textu - obojí stoji cas */
+  -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;
+  -webkit-user-select:none;user-select:none;}
 .hit:active{background:rgba(110,190,255,.13);box-shadow:0 0 34px rgba(110,190,255,.25) inset;border-radius:18px;}
 #btnBack{left:3.8%;top:3.1%;width:10.5%;height:6.2%;}
 #btnSettings{left:85.1%;top:3.1%;width:10.5%;height:6.2%;}
@@ -355,6 +362,10 @@ function bindHold(el,btn){
   function mouseStart(ev){ev.preventDefault();mouseDown=true;setPs1(btn,true);}
   function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;setPs1(btn,false);}
   el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
+  /* POJISTKA: kdyz prst sjede mimo tlacitko, prohlizec posle touchend az
+     pozde nebo vubec - a stisk by zustal viset (auto by jelo dal rovne).
+     Reagujeme proto i na to, ze dotyk opusti tlacitko. */
+  el.addEventListener('touchleave',touchEnd,{passive:false});
   el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
 }
 function bindLockHold(el,btn){

@@ -23,6 +23,20 @@ public final class NativeSegaCoreBridge {
     public static native String realCoreStatus();
     public static native String realCoreLoadRom(byte[] romBytes);
     public static native String realCoreStep();
+
+    // ===== OBRAZ PRIMO NA PLOCHU (stejna cesta jako PS1, od B117) =====
+    // Jadro uz snimek vyrabi; tohle ho dostane na obrazovku pres OpenGL ES
+    // bez snimani okna aplikace.
+    private static native void setDisplaySurface(android.view.Surface surface);
+    // Snimek pro TV - vraci sirku<<16|vysku, 0 = neni, zaporne = male pole.
+    private static native int grabFrame(int[] out);
+
+    public static void setDisplaySurfaceSafe(android.view.Surface s) {
+        try { setDisplaySurface(s); } catch (Throwable ignored) {}
+    }
+    public static int grabFrameSafe(int[] out) {
+        try { return grabFrame(out); } catch (Throwable ignored) { return 0; }
+    }
     public static native int pullAudio(short[] pcmOut, int frames);
     public static native int pullAudioStereo(short[] pcmOut, int stereoFrames);
     public static native String setPerformanceMode(String mode);

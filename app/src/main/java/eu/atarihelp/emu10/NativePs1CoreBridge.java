@@ -17,6 +17,10 @@ public final class NativePs1CoreBridge {
     // PRIME KRESLENI: predame jadru plochu z aplikace, ono na ni kresli samo.
     // null = odpojit.
     private static native void ps1SetDisplaySurface(android.view.Surface surface);
+    // Prime stisky z klavesnice a joysticku - nejdou pres WebView, takze
+    // maji nejnizsi moznou odezvu.
+    private static native void ps1SetButton(int id, boolean down);
+    private static native void ps1SetStick(int x, int y);
     // TV: snimek jde z C PRIMO do enkoderu H.264, bez Javy.
     private static native void ps1SetTvSurface(android.view.Surface surface);
     private static native int ps1PullAudio(short[] out, int frames);
@@ -66,6 +70,15 @@ public final class NativePs1CoreBridge {
     public static void setTvSurfaceSafe(android.view.Surface s) {
         if (!loaded) return;
         try { ps1SetTvSurface(s); } catch (Throwable ignored) {}
+    }
+
+    public static void setButtonSafe(int id, boolean down) {
+        if (!loaded) return;
+        try { ps1SetButton(id, down); } catch (Throwable ignored) {}
+    }
+    public static void setStickSafe(int x, int y) {
+        if (!loaded) return;
+        try { ps1SetStick(x, y); } catch (Throwable ignored) {}
     }
 
     public static int grabFrameSafe(int[] out) {

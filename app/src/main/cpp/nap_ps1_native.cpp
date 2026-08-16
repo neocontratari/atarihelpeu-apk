@@ -576,6 +576,45 @@ static void nap_sl_close(void) {
 static void nap_audio_sample(int16_t l, int16_t r) { int16_t s[2] = { l, r }; nap_audio_push(s, 1); }
 static size_t nap_audio_batch(const int16_t *data, size_t frames) { nap_audio_push(data, frames); return frames; }
 static void nap_input_poll(void) {}
+
+/* ===================================================================
+ *  PRIME STISKY: KLAVESNICE A JOYSTICK
+ *
+ *  Dotyk na displeji jde pres WebView, ktery si udalosti drzi ve
+ *  vlastni fronte - odtud odezva. Klavesnice a joystick jdou naopak
+ *  primo do aplikace, takze staci predat bit do jadra a je hotovo.
+ *  Nejrychlejsi mozna cesta.
+ *
+ *  Bit odpovida RetroPad (id 0-15), stejne jako u dotyku - jadro tedy
+ *  nepozna rozdil a nic dalsiho se menit nemusi.
+ * =================================================================== */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetButton(JNIEnv*, jclass, jint id, jboolean down) {
+    if (id < 0 || id >= 16) return;
+    unsigned bit = 1u << (unsigned)id;
+    unsigned staré, nové;
+    do {
+        staré = g_input_bits.load(std::memory_order_relaxed);
+        nové  = down ? (staré | bit) : (staré & ~bit);
+    } while (!g_input_bits.compare_exchange_weak(staré, nové, std::memory_order_relaxed));
+}
+
+/* Analogova packa joysticku: hodnoty -32768 az 32767, jako ma RetroPad.
+   Prevadime na smerova tlacitka, protoze PS1 ovladac bez analogu je
+   digitalni. Mrtva zona 40 % zabranuje driftovani packy. */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetStick(JNIEnv*, jclass, jint x, jint y) {
+    const int PRAH = 13000;          /* ~40 % vychylky */
+    unsigned staré, nové;
+    do {
+        staré = g_input_bits.load(std::memory_order_relaxed);
+        nové = staré & ~((1u<<4) | (1u<<5) | (1u<<6) | (1u<<7));  /* nahoru/dolu/vlevo/vpravo */
+        if (y < -PRAH) nové |= (1u << 4);      /* RETRO_DEVICE_ID_JOYPAD_UP */
+        if (y >  PRAH) nové |= (1u << 5);      /* DOWN */
+        if (x < -PRAH) nové |= (1u << 6);      /* LEFT */
+        if (x >  PRAH) nové |= (1u << 7);      /* RIGHT */
+    } while (!g_input_bits.compare_exchange_weak(staré, nové, std::memory_order_relaxed));
+}
 static int16_t nap_input_state(unsigned port, unsigned device, unsigned, unsigned id) {
   // BUILD2SA4: RetroPad -> PS1 core. device 1 = RETRO_DEVICE_JOYPAD.
   if (port != 0 || device != 1 || id >= 16) return 0;

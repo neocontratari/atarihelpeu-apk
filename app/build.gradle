@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 162
-        versionName "EMU10-B114-VYPLNIT-JAKO-VYCHOZI"  // vychozi je vyplnit obrazovku (oriznout), prepnout na cely obraz jde tlacitkem; srozumitelnejsi popisky
+        versionCode 165
+        versionName "EMU10-B117-SEGA-PRES-GPU"  // Sega ma stejnou cestu jako PS1: jadro v C -> OpenGL ES -> obrazovka, na TV snimek primo z jadra misto snimani okna
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

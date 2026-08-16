@@ -40,6 +40,9 @@ import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.view.View;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
+import android.view.InputDevice;
 import android.view.TextureView;
 import android.graphics.SurfaceTexture;
 import android.view.ViewGroup;
@@ -102,6 +105,63 @@ public class MainActivity extends Activity {
     private static final long ATARI_NET_INJECT_SETTLE_MS = 900L;
     private static final long ATARI_NET_INJECT_FALLBACK_MS = 6200L;
     private static final long PS1_REMOTE_MAX_BYTES = 1800L * 1024L * 1024L; // BUILD2SA5AK: PS1 image from Reneho PC, streamovane na disk.
+
+    // ===================================================================
+    //  SEGA: PLOCHA PRO OBRAZ  (stejna kostra jako PS1)
+    //
+    //  Doted se obraz Segy snimal z okna aplikace - proto to zpozdeni
+    //  proti mobilu. Ted kresli nativni cast primo na plochu pres
+    //  OpenGL ES, uplne stejne jako PS1.
+    //  Plocha lezi POD strankou, aby ovladac zustal nad obrazem.
+    // ===================================================================
+    private android.view.SurfaceView segaPlocha = null;
+
+    private void segaPlochaZapni() {
+        try {
+            if (segaPlocha != null || rootFrame == null) return;
+            android.view.SurfaceView sv = new android.view.SurfaceView(MainActivity.this);
+            sv.setClickable(false);
+            sv.setEnabled(false);
+            sv.setFocusable(false);
+            final android.view.SurfaceView tato = sv;
+            sv.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
+                @Override public void surfaceCreated(android.view.SurfaceHolder h) {
+                    if (segaPlocha != tato) return;
+                    appendNativeLog("SEGA_PLOCHA_VYTVORENA - obraz jde z jadra pres OpenGL ES");
+                    NativeSegaCoreBridge.setDisplaySurfaceSafe(h.getSurface());
+                }
+                @Override public void surfaceChanged(android.view.SurfaceHolder h, int f, int w, int hh) {
+                    // znovu NEPRIPOJOVAT - u PS1 to delalo melu vlaken
+                    appendNativeLog("SEGA_PLOCHA_ZMENENA " + w + "x" + hh);
+                }
+                @Override public void surfaceDestroyed(android.view.SurfaceHolder h) {
+                    if (segaPlocha != null && segaPlocha != tato) return;
+                    NativeSegaCoreBridge.setDisplaySurfaceSafe(null);
+                }
+            });
+            rootFrame.addView(sv, 0, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            segaPlocha = sv;
+            appendNativeLog("SEGA_OBRAZ_PRIMO_ZAPNUT");
+        } catch (Throwable t) {
+            appendNativeLog("SEGA_OBRAZ_PRIMO_CHYBA " + safeMsg(t));
+        }
+    }
+
+    private void segaPlochaVypni() {
+        final android.view.SurfaceView old = segaPlocha;
+        segaPlocha = null;
+        Runnable r = () -> {
+            try {
+                NativeSegaCoreBridge.setDisplaySurfaceSafe(null);
+                if (old != null && old.getParent() instanceof ViewGroup)
+                    ((ViewGroup) old.getParent()).removeView(old);
+                appendNativeLog("SEGA_OBRAZ_PRIMO_VYPNUT");
+            } catch (Throwable ignored) {}
+        };
+        if (isUiThread()) r.run(); else ui.post(r);
+    }
+
     private static final String SEGA_URL = "file:///android_asset/emu_sega/index.html"; // BUILD2SA2
     private static final String PS1_URL = "file:///android_asset/emu_ps1/index.html"; // BUILD2SA5AM
     private static final String PS1_GOOGLE_GAMES_URL = "https://atarihelp.eu/?page_id=1048"; // BUILD2SA5AM
@@ -858,7 +918,26 @@ public class MainActivity extends Activity {
             long effectiveDelay = Math.max(10, napTvWebFrameDelayMs);
             try {
                 if (!napTvWebH264ClientQueues.isEmpty()) {
-                    effectiveDelay = napTvWebH264FastTickMs;
+                    // ===== POZOR: PS1 A SEGA POTREBUJI NECO JINEHO =====
+                    // PS1 bere snimek PRIMO Z JADRA (napTvWebCaptureFromCore),
+                    // takze mu staci 16 ms - snimek uz je hotovy a jen se
+                    // preda enkoderu.
+                    // SEGA (a Atari) zadnou takovou cestu nemaji - jejich obraz
+                    // se musi SNIMAT Z OKNA aplikace, coz je pomalejsi a musi
+                    // se to delat casteji, jinak vznika viditelne zpozdeni
+                    // mezi mobilem a televizi.
+                    // V B82 jsem tempo nastavil pevne na 16 ms pro vsechno a
+                    // tim jsem Segu zpomalil. Ted se pevny strop pouzije JEN
+                    // kdyz snimek jde z jadra PS1.
+                    boolean ps1PrimoZJadra = false;
+                    try {
+                        String cu0 = (web == null) ? null : web.getUrl();
+                        ps1PrimoZJadra = (cu0 != null && cu0.contains("emu_ps1"))
+                                && (ps1BiosRunning || ps1SessionActive);
+                    } catch (Throwable ignored2) {}
+                    effectiveDelay = ps1PrimoZJadra
+                            ? napTvWebH264FastTickMs               // PS1: 16 ms staci
+                            : Math.max(8, napTvWebFrameDelayMs / 2); // Sega/Atari: rychleji
                 }
             } catch (Throwable ignored) {}
             if (napTvWebRunning) ui.postDelayed(this, effectiveDelay + extraDelay);
@@ -923,25 +1002,47 @@ public class MainActivity extends Activity {
             // Kdyz ne, TV se vrati ke snimani okna aplikace a ukaze, co ma.
             {
                 String u = napTvWebCurrentUrl;
-                boolean naPs1 = (u != null) && u.contains("emu_ps1");
+                // Od B117 plati i pro Segu - ta uz taky dava snimek primo
+                // z jadra, takze ji sem musime pustit.
+                boolean naPs1 = (u != null) && (u.contains("emu_ps1") || u.contains("emu_sega"));
                 if (!naPs1) {
                     if (tvCoreHadFrame) appendNativeLog("TV_ZPET_NA_OKNO (odchod z PS1)");
                     tvCoreHadFrame = false;
                     return false;
                 }
             }
-            if (!ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning) {
+            // U Segy neplati priznaky PS1 - ta ma vlastni jadro. Kdyz jsme
+            // na jeji obrazovce, pustime ji dal a snimek si vezme nize.
+            boolean naSege = false;
+            try {
+                String u2 = (web == null) ? null : web.getUrl();
+                naSege = (u2 != null) && u2.contains("emu_sega");
+            } catch (Throwable ignored) {}
+            if (!naSege && !ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning) {
                 tvCoreHadFrame = false;
                 return false;
             }
             // Nejdriv si PUJCIME snimek, ktery uz vytahla obrazovka telefonu.
             // Setri to jadru praci (drive sahali do jadra dva zajemci zvlast
             // a jadro pak nestihalo delat zvuk - 47 % pokusu naslo prazdno).
-            int wh = Ps1GlTextureView.borrowFrame(tvCoreArgb);
+            // ===== SNIMEK PRO TV: PS1 NEBO SEGA =====
+            // Obe jadra ted davaji hotovy snimek stejnym zpusobem, takze
+            // dalsi zpracovani (orez, zvetseni, enkoder) je spolecne.
+            // Snimat kvuli Sege okno aplikace uz neni potreba - prave to
+            // zpusobovalo zpozdeni mezi mobilem a televizi.
+            boolean jeSegaTv = false;
+            try {
+                String uS = (web == null) ? null : web.getUrl();
+                jeSegaTv = (uS != null) && uS.contains("emu_sega");
+            } catch (Throwable ignored) {}
+
+            int wh = jeSegaTv ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
+                              : Ps1GlTextureView.borrowFrame(tvCoreArgb);
             if (wh < 0) {
                 int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
                 tvCoreArgb = new int[need + 1024];
-                wh = Ps1GlTextureView.borrowFrame(tvCoreArgb);
+                wh = jeSegaTv ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
+                              : Ps1GlTextureView.borrowFrame(tvCoreArgb);
             }
             if (wh == 0) {
                 // Nic k pujceni (obrazovka zrovna nekresli) - podrzime posledni
@@ -4442,6 +4543,10 @@ public class MainActivity extends Activity {
                 nativeViewDrawCounterAtRomLoad = nativeViewDrawCounter;
                 nativeRenderPerfWindowStartMs = 0; nativeRenderPerfWindowFrames = 0; nativeRenderPerfSlowFrames = 0;
                 String realCore = NativeSegaCoreBridge.realCoreLoadRom(data);
+                // Obraz Segy jde od B117 PRIMO na plochu pres OpenGL ES,
+                // stejne jako u PS1. Doted se snimal z okna aplikace, coz
+                // zpusobovalo viditelne zpozdeni proti mobilu.
+                ui.post(() -> segaPlochaZapni());
 
                 nativeLastRomInfo = "ROM: " + safeFileName(name) + "\n" + info + "\n\nREAL CORE SLOT:\n" + realCore;
                 nativeLastStatus = "ROM_REAL_CORE_LOAD_READY bytes=" + data.length + " decodeMs=" + decodeMs + " parserMs=" + dt;
@@ -4749,6 +4854,7 @@ public class MainActivity extends Activity {
                     try { NativeSegaCoreBridge.shutdown(); } catch (Throwable ignored) {}
                     nativeViewDrawCounterAtRomLoad = nativeViewDrawCounter;
                     String reload = NativeSegaCoreBridge.realCoreLoadRom(romData);
+                    ui.post(() -> segaPlochaZapni());
                     nativeLastStatus = "NATIVE_RENDER_WATCHDOG_RELOAD_RV " + (reload == null ? "null" : reload.replace('\n',' '));
                     appendNativeLog(nativeLastStatus.substring(0, Math.min(900, nativeLastStatus.length())));
                     forceNativeViewRedrawBurst("watchdogFreshReload_RV");
@@ -4812,6 +4918,22 @@ public class MainActivity extends Activity {
     }
 
     private void plochaZkontroluj() {
+        // Sega ma vlastni plochu - schovat ji, kdyz nejsme na jeji obrazovce,
+        // jinak by obraz prosvital do zbytku aplikace (stejny problem jako
+        // mela PS1).
+        try {
+            android.view.SurfaceView sp = segaPlocha;
+            if (sp != null) {
+                String us = null;
+                try { if (web != null) us = web.getUrl(); } catch (Throwable ignored) {}
+                boolean jeSega = (us != null) && us.contains("emu_sega");
+                int chciS = jeSega ? View.VISIBLE : View.INVISIBLE;
+                if (sp.getVisibility() != chciS) {
+                    sp.setVisibility(chciS);
+                    appendNativeLog("SEGA_PLOCHA_" + (jeSega ? "ZOBRAZENA" : "SCHOVANA"));
+                }
+            }
+        } catch (Throwable ignored) {}
         try {
             android.view.SurfaceView pl = ps1Plocha;
             if (pl == null) return;
@@ -5414,8 +5536,111 @@ public class MainActivity extends Activity {
                 || v.endsWith(".com") || v.endsWith(".exe");
     }
 
+
+    // ===================================================================
+    //  KLAVESNICE A JOYSTICK - NEJRYCHLEJSI CESTA STISKU
+    //
+    //  Dotyk na displeji jde pres WebView, ktery si udalosti drzi ve
+    //  vlastni fronte. Klavesnice a joystick jdou naopak PRIMO sem, takze
+    //  se bit preda do jadra hned - zadne mezikroky.
+    //
+    //  Cisla tlacitek jsou RetroPad, stejne jako u dotyku:
+    //    0=X(kriz)  1=O(kolecko)  2=ctverec  3=trojuhelnik
+    //    4=nahoru 5=dolu 6=vlevo 7=vpravo
+    //    8=SELECT 9=START  10=L1 11=R1  12=L2 13=R2
+    // ===================================================================
+    private static int napTlacitkoPodleKlavesy(int kod) {
+        switch (kod) {
+            // --- joystick / gamepad (Xbox, PS, 8BitDo a dalsi) ---
+            case KeyEvent.KEYCODE_BUTTON_A:      return 0;   // Xbox A -> kriz
+            case KeyEvent.KEYCODE_BUTTON_B:      return 1;   // Xbox B -> kolecko
+            case KeyEvent.KEYCODE_BUTTON_X:      return 2;   // Xbox X -> ctverec
+            case KeyEvent.KEYCODE_BUTTON_Y:      return 3;   // Xbox Y -> trojuhelnik
+            case KeyEvent.KEYCODE_DPAD_UP:       return 4;
+            case KeyEvent.KEYCODE_DPAD_DOWN:     return 5;
+            case KeyEvent.KEYCODE_DPAD_LEFT:     return 6;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:    return 7;
+            case KeyEvent.KEYCODE_BUTTON_SELECT: return 8;
+            case KeyEvent.KEYCODE_BUTTON_MODE:   return 8;   // nektere padi
+            case KeyEvent.KEYCODE_BUTTON_START:  return 9;
+            case KeyEvent.KEYCODE_BUTTON_L1:     return 10;
+            case KeyEvent.KEYCODE_BUTTON_R1:     return 11;
+            case KeyEvent.KEYCODE_BUTTON_L2:     return 12;
+            case KeyEvent.KEYCODE_BUTTON_R2:     return 13;
+
+            // --- klavesnice (i bluetooth) ---
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_SPACE:         return 0;   // kriz
+            case KeyEvent.KEYCODE_ENTER:         return 9;   // START
+            case KeyEvent.KEYCODE_SHIFT_RIGHT:   return 8;   // SELECT
+            case KeyEvent.KEYCODE_W:             return 4;
+            case KeyEvent.KEYCODE_S:             return 5;
+            case KeyEvent.KEYCODE_A:             return 6;
+            case KeyEvent.KEYCODE_D:             return 7;
+            case KeyEvent.KEYCODE_J:             return 0;   // kriz
+            case KeyEvent.KEYCODE_K:             return 1;   // kolecko
+            case KeyEvent.KEYCODE_H:             return 2;   // ctverec
+            case KeyEvent.KEYCODE_U:             return 3;   // trojuhelnik
+            case KeyEvent.KEYCODE_Q:             return 10;  // L1
+            case KeyEvent.KEYCODE_E:             return 11;  // R1
+            case KeyEvent.KEYCODE_1:             return 12;  // L2
+            case KeyEvent.KEYCODE_3:             return 13;  // R2
+            default: return -1;
+        }
+    }
+
+    private boolean napPs1Ovladani() {
+        return ps1BiosRunning || ps1SessionActive;
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (napPs1Ovladani() && event.getRepeatCount() == 0) {
+            int t = napTlacitkoPodleKlavesy(keyCode);
+            if (t >= 0) {
+                NativePs1CoreBridge.setButtonSafe(t, true);
+                return true;                 // spotrebovano, dal neposilat
+            }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (napPs1Ovladani()) {
+            int t = napTlacitkoPodleKlavesy(keyCode);
+            if (t >= 0) {
+                NativePs1CoreBridge.setButtonSafe(t, false);
+                return true;
+            }
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
+    /** Analogova packa a smerovy krizek joysticku. */
+    @Override
+    public boolean onGenericMotionEvent(MotionEvent event) {
+        try {
+            if (napPs1Ovladani()
+                    && (event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
+                    && event.getAction() == MotionEvent.ACTION_MOVE) {
+                float x = event.getAxisValue(MotionEvent.AXIS_X);
+                float y = event.getAxisValue(MotionEvent.AXIS_Y);
+                // Smerovy krizek na joysticku chodi jako HAT osa - pripocteme.
+                float hx = event.getAxisValue(MotionEvent.AXIS_HAT_X);
+                float hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
+                if (Math.abs(hx) > 0.5f) x = hx;
+                if (Math.abs(hy) > 0.5f) y = hy;
+                NativePs1CoreBridge.setStickSafe((int) (x * 32767), (int) (y * 32767));
+                return true;
+            }
+        } catch (Throwable ignored) {}
+        return super.onGenericMotionEvent(event);
+    }
+
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
+
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // BUILD2SK82: prvni vec ze vseho - zalozit cerstvy log soubor pro TUHLE

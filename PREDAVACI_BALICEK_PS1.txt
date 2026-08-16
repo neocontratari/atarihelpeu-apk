@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU PS1
- Verze: EMU10-B114-VYPLNIT-JAKO-VYCHOZI (versionCode 162)
+ Verze: EMU10-B117-SEGA-PRES-GPU (versionCode 165)
  Datum: 5. 8. 2026
 ===============================================================================
 
@@ -428,6 +428,37 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
 
 
 ===============================================================================
+ 1b. CESTA OVLADANI  (od B115)
+===============================================================================
+
+  DOTYK NA DISPLEJI (pomalejsi, ale nutny pro ovladac na obrazovce):
+    prst -> touchstart ve strance (index.html, funkce setPs1)
+         -> AHPS1.ps1Input()        prechod JavaScript -> Java
+         -> setInputSafe()          prechod Java -> C
+         -> g_input_bits            bit pro jadro
+    Zdrzeni vznika ve WebView, ne v Jave ani v C (obojí je par radku
+    a niceho neceka).
+    DULEZITE: tlacitka musi mit v CSS "touch-action:none". Pri hodnote
+    "manipulation" prohlizec CEKA, jestli z dotyku nebude gesto (posun,
+    zoom, dvojklik) - to jsou desitky milisekund na KAZDY stisk.
+
+  KLAVESNICE A JOYSTICK (nejrychlejsi cesta):
+    stisk -> MainActivity.onKeyDown / onGenericMotionEvent
+          -> NativePs1CoreBridge.setButtonSafe / setStickSafe
+          -> ps1SetButton / ps1SetStick  (nap_ps1_native.cpp)
+          -> g_input_bits
+    Jde to PRIMO do aplikace, WebView se vubec neucastni.
+
+  CISLA TLACITEK jsou RetroPad a plati pro obe cesty:
+    0=kriz 1=kolecko 2=ctverec 3=trojuhelnik
+    4=nahoru 5=dolu 6=vlevo 7=vpravo
+    8=SELECT 9=START 10=L1 11=R1 12=L2 13=R2
+
+  XBOX MAPOVANI: A->kriz, B->kolecko, X->ctverec, Y->trojuhelnik.
+  Analogova packa se prevadi na smerova tlacitka s mrtvou zonou 40 %,
+  aby nedriftovala. Smerovy krizek joysticku chodi jako HAT osa.
+
+===============================================================================
  2. CESTA ZVUKU - kompletne
 ===============================================================================
 
@@ -481,6 +512,17 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
         - orez cernych okraju (napTvColIsBlack) - jen sloupce, levne
         - zvetseni na 1280x720 pres Canvas.drawBitmap - jde pres GPU
         - H.264 enkoder (MediaCodec) - hardwarovy
+
+  [4d] POZOR: PS1 A SEGA/ATARI POTREBUJI JINE TEMPO SNIMANI!
+      PS1 bere snimek PRIMO Z JADRA (napTvWebCaptureFromCore) - snimek uz
+      je hotovy, staci ho predat enkoderu, takze staci 16 ms.
+      SEGA A ATARI zadnou takovou cestu nemaji - jejich obraz se SNIMA
+      Z OKNA aplikace, coz je pomalejsi a musi se to delat CASTEJI.
+      V B82 jsem tempo nastavil pevne na 16 ms pro vsechno a tim jsem
+      Segu zpomalil - mela viditelne zpozdeni proti mobilu.
+      Od B116 se pevny strop pouzije JEN kdyz snimek jde z jadra PS1;
+      jinak plati napTvWebFrameDelayMs/2.
+      KDYZ SE MENI TEMPO SNIMANI, VZDYCKY OVERIT I SEGU A ATARI.
 
   [4c] POZOR: PRIPOJENA TV SMI BRAT JEN MALO PROCESORU
       MainActivity.java, konec smycky snimani:
@@ -544,6 +586,29 @@ zvuk, s cisly radku v kodu. Kdyz ho dostane dalsi chat, nemusi nic hadat.
    - JPEG preview zvetseny 3x: 77 ms na snimek, kouse obraz i zvuk
    - usleep jako zpetny tlak zvuku: rozkmita to
 
+
+===============================================================================
+ 5b. CO JE HOTOVE A CO JE PLAN  (stav k 15. 8. 2026)
+===============================================================================
+
+ PS1 - HOTOVO, Rene to uzavrel jako graficky i zvukove hotove.
+   Otestovano na platne 3,8 x 2,4 m, dvanact her, vse bezi.
+   Jadro PCSX-ReARMed + provereny vykreslovac gpu_neon, obraz na mobil
+   pres OpenGL ES, na TV pres H.264.
+
+ SEGA - od B117 ma STEJNOU CESTU JAKO PS1:
+     jadro clownmdemu (C) -> g_real.frame_argb -> GL textura -> obrazovka
+   Soubor: nap_sega_native_proof.cpp, funkce nap_sega_thread_fn().
+   Vlastni EGL kontext, vlastni vlakno, kopie snimku pod zamkem.
+   Na TV jde snimek PRIMO Z JADRA pres grabFrame() - okno aplikace uz
+   se kvuli Sege nesnima, a prave to zpusobovalo zpozdeni.
+   Plocha lezi POD strankou (ovladac zustava nad) a mimo obrazovku Segy
+   se schovava.
+
+ ATARI - zatim NESAHAT. Je to Reneho pilotni a srdcovy projekt.
+   Pozdeji stejna predelavka jako Sega, ale az po dohode.
+
+ TERMIN: 27. srpna 2026 je sraz, kde Rene vydava prvni beta test.
 
 ===============================================================================
  6. KDO NA TOM DELA A CO KDO UMI  (cti jako prvni)
