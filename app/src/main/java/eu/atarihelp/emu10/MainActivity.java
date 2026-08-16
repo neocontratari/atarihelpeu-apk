@@ -790,10 +790,43 @@ public class MainActivity extends Activity {
                     // Driv se zvuk do TV posilal z Javove zvukove cesty, ta uz
                     // ale nebezi (zvuk obsluhuje nativni OpenSL), takze TV byla
                     // nema. Odbocka v jadre hlavni zvuk nijak nezdrzuje.
+                    // ===== B122: TAHLE ODBOCKA SE PTALA, JESTLI JE CO VZIT -
+                    //             ale uz ne, JESTLI SE TO MA VZIT =====
+                    // Jadro PS1 bezi dal i potom, co uzivatel z PS1 odejde na
+                    // Segu nebo Atari. Presne tahle past je uz popsana o par
+                    // set radku niz u OBRAZU (napTvWebCaptureFromCore,
+                    // "ABY TV NEZUSTALA VISET NA POSLEDNIM SNIMKU Z PS1") a
+                    // tam se resi otazkou, jestli je PS1 OPRAVDU NA OBRAZOVCE.
+                    // U ZVUKU ta otazka chybela: doslo se sem pri KAZDEM ticku
+                    // TV, tedy i kdyz hral Sonic nebo Atari, a poslalo se
+                    // 44100 Hz jako "PS1".
+                    // Dusledek: napTvWebAudioPush pri kazde zmene frekvence
+                    // nastavuje napTvWebAudioSeq = 0. Sega (48000) a PS1
+                    // (44100) se stridaly davku po davce, takze se sekvence
+                    // nulovala nekolikrat za vterinu a /audio.raw vracel
+                    // prohlizeci prazdnou odpoved (klient posle after=velke
+                    // cislo, server ma end=0, podminka after<=end neprojde).
+                    // Proto byla TV nema u Segy I u Atari, zatimco u samotne
+                    // PS1 - kde zadny druhy zdroj nepusobil - zvuk hral.
+                    // Ptame se ted stejne jako obraz. Kdyz PS1 na obrazovce
+                    // je, chova se to PRESNE jako dosud.
+                    boolean ps1JeNaObrazovce = false;
+                    try {
+                        String uZvuk = napTvWebCurrentUrl;
+                        ps1JeNaObrazovce = (uZvuk != null)
+                                && uZvuk.contains("emu_ps1")
+                                && (ps1SessionActive || ps1BiosRunning || ps1GameWindowOwnsCore);
+                    } catch (Throwable ignored) {}
                     try {
                         if (tvPs1Pcm == null) tvPs1Pcm = new short[8192];
                         int got = NativePs1CoreBridge.pullTvAudioSafe(tvPs1Pcm);
-                        if (got > 0) napTvWebAudioPush(tvPs1Pcm, 0, got, 44100, "PS1");
+                        // Vyzvednout se musi VZDY - jinak by odbocka v jadre
+                        // pretekala a po navratu do PS1 by na TV slo nekolik
+                        // vterin stareho zvuku. Na TV se ale posila jen tehdy,
+                        // kdyz PS1 opravdu hraje.
+                        if (got > 0 && ps1JeNaObrazovce) {
+                            napTvWebAudioPush(tvPs1Pcm, 0, got, 44100, "PS1");
+                        }
                     } catch (Throwable ignored) {}
 
                     boolean gotFromCore = napTvWebCaptureFromCore(bw, bh);

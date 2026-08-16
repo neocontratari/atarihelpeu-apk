@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU10 (Atari / Sega / PS1)
- Verze: EMU10-B121-ZVUK-SEGY-NA-TV (versionCode 169)
+ Verze: EMU10-B122-ZVUK-JEN-OD-TOHO-KDO-HRAJE (versionCode 170)
  Datum: 16. 8. 2026
  Autor projektu: Rene Frank, atarihelp.eu
 ===============================================================================
@@ -27,14 +27,16 @@
    - kod: stahnout z GitHubu (git clone --filter=blob:none), je verejny
    - Java:  javac proti android.jar API 34
    - C++:   clang --target=aarch64-linux-gnu, proti SKUTECNEMU jni.h
-            z /usr/lib/jvm/java-17-openjdk-amd64/include
+            z /usr/lib/jvm/java-*-openjdk-amd64/include
    - jadro PS1 pro ARM64: aarch64-linux-gnu vcetne assembleru gte_arm64.S
    - renderer PS1: PRELOZIT A SPUSTIT proti skutecnemu OpenGL ES
             (apt: libegl1-mesa-dev libgles2-mesa-dev, EGL_PLATFORM=surfaceless)
             -> jde VIDET, co renderer nakresli, bez telefonu
    - JavaScript ve strance: vytahnout retezce z Javy, slozit a SPUSTIT
-     v node s napodobeninou prohlizece (viz bod 3)
-   - LINKOVANI: nm -u proti nm --defined-only (viz bod 3)
+     v node s napodobeninou prohlizece (viz bod 3d)
+   - LINKOVANI: nm --defined-only proti seznamu native metod (viz bod 3c)
+   - CELOU ZVUKOVOU CESTU NA TV: server i klient se daji prepsat do node
+     a ZMERIT, kolik zvuku dotece. Takhle se nasla chyba v B122 (bod 3f).
 
  CO AI NEUMI:
    - spustit Android (systemove obrazy jsou u Googlu, ten je blokovany)
@@ -73,6 +75,10 @@
      To je prace AI, ne Reneho.
    - AI tvrdila "na to nemam", aniz to zkusila do konce. Skutecne
      hlavicky Androidu i jni.h v systemu byly, jen se nehledaly.
+   - B121 opravil SKUTECNOU chybu (poradi zapisu), ale ne tu, ktera zvuk
+     zabijela. Nikdo se pred tim nepodival, KDO VSECHNO do zvukove cesty
+     pro TV zapisuje. Odpoved byla v logu na prvni pohled: tri zdroje.
+     -> KDYZ NECO NEFUNGUJE, NEJDRIV SPOCITEJ, KOLIK VECI DO TOHO SAHA.
 
 ===============================================================================
  1. STAV PROJEKTU
@@ -84,10 +90,12 @@
 
  SEGA - od B117 stejna cesta jako PS1 (jadro v C -> OpenGL ES).
    Obraz na mobilu i na TV funguje, zpozdeni skoro pryc.
-   OTEVRENE: zvuk Segy na TV (B121 to zkousi opravit, NEOTESTOVANO).
+   ZVUK NA TV: B122 nasel a opravil pricinu (viz bod 2). NEOTESTOVANO.
 
  ATARI - NESAHAT. Je to Reneho pilotni a srdcovy projekt.
-   Pozdeji stejna predelavka jako Sega, ale az po dohode.
+   Bezi na ~85 %. Rene se mu bude venovat AZ PO 27. SRPNU.
+   POZOR: oprava v B122 se Atari NIJAK NEDOTYKA, ale mela by mu
+   spravit zvuk na TV taky - protoze to nikdy nebyla chyba Atari.
 
  OVLADAC - B116 pridal rychlejsi dotyk, klavesnici a joystick.
    NEOTESTOVANO (Rene mezitim resil Segu).
@@ -122,9 +130,24 @@
    jadro -> NativeSegaCoreBridge.pullAudioStereo()
          -> AudioTrack v Jave (48 kHz, stereo, 16 bitu)
    Na TV: napTvWebAudioPush(pcm, ..., "SEGA")
-   !!! POZOR: track.write(WRITE_BLOCKING) CEKA, az se zvuk prehraje.
-       Push na TV proto MUSI byt PRED nim (od B121), jinak prijde zvuk
-       na televizi pozde a zahodi se - v telefonu pritom hraje normalne.
+   POZOR: track.write(WRITE_BLOCKING) CEKA, az se zvuk prehraje.
+       Push na TV proto MUSI byt PRED nim (od B121).
+
+ --- ZVUKOVA CESTA NA TV: JEDEN ZASOBNIK, VIC ZAJEMCU (KLICOVE!) ---
+   VSECHNY zdroje (PS1, SEGA, ATARI, PLAYER, YOUTUBE) sypou do JEDNOHO
+   kruhoveho zasobniku napTvWebAudioRing (1 MB) se SPOLECNYM poctidlem
+   napTvWebAudioSeq. Prohlizec si data bere pres /audio.raw?after=<seq>.
+
+   !!! V napTvWebAudioPush plati: kdyz se ZMENI FREKVENCE, nastavi se
+       napTvWebAudioSeq = 0. To je spravne pro JEDEN zdroj, ktery se
+       prepne. Kdyz ale posilaji DVA zdroje s RUZNOU frekvenci naraz,
+       poctidlo se nuluje nekolikrat za VTERINU. Prohlizec posle
+       after=<velke cislo>, server ma end=0, podminka "after <= end"
+       neprojde -> vrati se PRAZDNA odpoved. Vysledek: TICHO NA TV,
+       zatimco v telefonu zvuk hraje normalne.
+
+   PROTO: do zvukove cesty pro TV smi v jeden okamzik posilat JEN TEN,
+   KDO OPRAVDU HRAJE. Zadny druhy zdroj nesmi "jen tak jet dal".
 
  --- OVLADANI ---
    DOTYK:      prst -> touchstart (index.html, setPs1)
@@ -164,32 +187,61 @@
 
  (a) JAVA
      javac -nowarn -encoding UTF-8 -classpath android.jar -d /tmp/out \
-           app/src/main/java/eu/atarihelp/emu10/*.java
+           app/src/main/java/eu/atarihelp/emu10/*.java \
+           app/src/main/java/eu/atarihelp/nap/*.java
+     android.jar API 34 se da stahnout z GitHubu (Google je blokovany):
+       raw.githubusercontent.com/Sable/android-platforms/master/android-34/android.jar
 
  (b) C++ pro ARM64, proti SKUTECNEMU jni.h
-     clang++ -c --target=aarch64-linux-gnu -std=c++17 \
-       -I/usr/lib/jvm/java-17-openjdk-amd64/include \
-       -I/usr/lib/jvm/java-17-openjdk-amd64/include/linux \
-       -I/tmp/stub -Iapp/src/main/cpp ... nap_ps1_native.cpp -o /tmp/a.o
+     apt: clang, g++-aarch64-linux-gnu, libc6-dev-arm64-cross,
+          libegl1-mesa-dev, libgles2-mesa-dev
+     HLAVICKY ANDROIDU (SLES/, android/native_window.h, GLES/gl.h) NEJSOU
+     v zadnem balicku apt. Google je blokovany. Daji se ale stahnout
+     z GitHubu - overeno v B122:
+       raw.githubusercontent.com/gubaojian/sysroot/master/usr/include/<cesta>
+     potreba: SLES/OpenSLES.h, SLES/OpenSLES_Android.h,
+              SLES/OpenSLES_Platform.h, SLES/OpenSLES_AndroidConfiguration.h,
+              SLES/OpenSLES_AndroidMetadata.h, android/native_window.h,
+              android/native_window_jni.h, android/log.h, android/rect.h,
+              android/hardware_buffer.h, GLES/gl.h
+     NEDELAT STUBY, kdyz jdou sehnat prave hlavicky - stub schova chybu.
+
+     clang++ -c --target=aarch64-linux-gnu -std=c++17 -O2 \
+       --sysroot=/usr/aarch64-linux-gnu \
+       -I/usr/aarch64-linux-gnu/include/c++/13 \
+       -I/usr/aarch64-linux-gnu/include/c++/13/aarch64-linux-gnu \
+       -I/usr/lib/jvm/java-21-openjdk-amd64/include \
+       -I/usr/lib/jvm/java-21-openjdk-amd64/include/linux \
+       -I/tmp/ndkinc -I/usr/include -I. nap_ps1_native.cpp -o /tmp/ps1.o
      Sega potrebuje navic: -DNAP_SEGA_VENDOR_CORE_PRESENT=1
-       a -Ivendor/clownmdemu-core/source
+       -Ivendor/clownmdemu-core/source
+       -Ivendor/clownmdemu-core/libraries/clowncommon
 
  (c) LINKOVANI - jinak se chyba pozna az v GitHub Actions!
-     aarch64-linux-gnu-nm -u /tmp/a.o               <- co appka POTREBUJE
-     aarch64-linux-gnu-nm --defined-only jadro.so   <- co jadro DAVA
-     a porovnat. Samotny preklad chybejici symbol NENAJDE.
-     Na tomhle spadl B83 (chybely n2_init a n2_finish).
+     aarch64-linux-gnu-nm --defined-only /tmp/*.o | grep -o "Java_[A-Za-z0-9_]*"
+     a porovnat se VSEMI "native" metodami v Jave (NativePs1CoreBridge,
+     NativeSegaCoreBridge, NativeSegaProofActivity). V B122 to bylo 37/37.
+     Samotny preklad chybejici symbol NENAJDE. Na tom spadl B83.
 
  (d) JAVASCRIPT VE STRANCE - jinak spadne CELA APLIKACE
-     Stranka pro TV se sklada z retezcu v MainActivity.java. Java se
-     prelozi i s nesmyslem v tom JS a chyba shodi WebView i appku.
-     Postup: vytahnout retezce regexem, slozit JS, SPUSTIT v node
-     s mock objekty (document.getElementById, localStorage, ...).
-     Takhle se naslo, ze B105 sahal na prvky drive, nez byly ziskane,
-     a ze uplne chybelo ziskani tlacitka sF.
+     Stranka pro TV se sklada z retezcu v napTvWebWriteHtml (MainActivity).
+     POZOR: pri vytahovani retezcu se MUSI NEJDRIV ODSTRANIT JAVA KOMENTARE.
+     V komentarich jsou taky uvozovky ("cover", "seq") a bez toho vznikne
+     nesmysl a falesna chyba. V B122 to poprve vypadalo jako rozbity JS,
+     pritom slo o chybu v extrakci, ne v kodu.
+     Potom: node --check slozeny.js
 
  (e) RENDERER PS1 se da PRELOZIT A SPUSTIT proti Mesa GLES2
      a podivat se na vysledny obrazek. Takhle se opravila grafika BIOSu.
+
+ (f) CELA ZVUKOVA CESTA NA TV SE DA ZMERIT (nove v B122)
+     napTvWebAudioPush + napTvWebWriteAudioRaw se prepisou do node
+     (je to par desitek radku) a SKUTECNY JS ze stranky se proti nim
+     spusti s napodobenim prohlizece (document, fetch, AudioContext,
+     setTimeout na virtualnim case). Pak se spocita, kolik bajtu zvuku
+     dojde do ac.createBuffer za X vterin.
+     Takhle se v B122 zmerilo: pred opravou 0,1 %, po oprave 99,9 %.
+     TOHLE JE NEJRYCHLEJSI ZPUSOB, JAK OVERIT ZVUK NA TV BEZ TELEFONU.
 
 ===============================================================================
  4. SLEPE ULICKY - VYZKOUSENO, NEZKOUSET ZNOVU
@@ -232,6 +284,15 @@
   - ZMENSENI ZVUKOVEHO ZASOBNIKU SEGY (B119): zvuk prestal chodit na TV,
     i kdyz v telefonu hral. audioFramesForTier musi zustat 1024/2048/4096
     a bufferBytes bere min*2.
+  - ZVETSOVANI KRUHOVEHO ZASOBNIKU PRO TV (napTvWebAudioRing): NEMA SMYSL.
+    1 MB je pri 48 kHz stereo pres 2,7 vteriny, prohlizec se pta po 20 ms.
+    Kdyz je ticho, neni to pretecenim zasobniku.
+  - PREPOCET FREKVENCE (48000 -> 44100) PRO PROHLIZEC: NENI POTREBA.
+    Klient si frekvenci cte z hlavicky X-NAP-AUDIO-RATE a strka ji rovnou
+    do ac.createBuffer(2, frames, rate). 48000 mu nevadi. Overeno v B122
+    spustenim skutecneho JS v node.
+  - POSILANI DAVKY NA TV AZ PO track.write(WRITE_BLOCKING) (do B120):
+    skutecna chyba, opravena v B121. ALE NEBYLA TO PRICINA TICHA.
 
  TEMPO SNIMANI PRO TV:
   - 5 ms (B82): 200 pruchodu za vterinu, bere procesor emulaci -> kouse
@@ -246,6 +307,15 @@
 ===============================================================================
  5. PASTI, KTERE UZ NECO STALY
 ===============================================================================
+
+ - JADRO PS1 BEZI DAL I POTOM, CO UZIVATEL Z PS1 ODEJDE.
+   Tohle uz jednou stalo build u OBRAZU (TV zustavala viset na poslednim
+   snimku z PlayStation) a je to popsane primo v napTvWebCaptureFromCore.
+   V B122 se ukazalo, ze UPLNE STEJNA past byla i u ZVUKU, o par set
+   radku vys - odbocka se ptala jen "je co vzit?", uz ne "ma se to vzit?".
+   -> KDYZ NECO SAHA DO JADRA PS1, VZDY SE PTAT, JESTLI JE PS1 NA OBRAZOVCE:
+      napTvWebCurrentUrl.contains("emu_ps1")
+      && (ps1SessionActive || ps1BiosRunning || ps1GameWindowOwnsCore)
 
  - ULOZENE HODNOTY V PROHLIZECI (localStorage): kdyz se zmeni chovani,
    MUSI se zmenit i KLIC, jinak se stara hodnota nacte znovu a oprava
@@ -276,24 +346,45 @@
    zvlast a nesouhlasil se skutecnym nastavenim. Kdyz cislo v logu
    neodpovida kodu, overit obe strany.
 
+ - LOG UMI I MLCET: radek TV_WEB_AUDIO_SOURCE se zapisuje JEN pri ZMENE
+   zdroje. Kdyz se v nem stridaji dva zdroje radek po radku, neznamena to
+   "obcas prijde jiny zdroj", ale "POSILAJI OBA NARAZ, PORAD".
+   Rychla kontrola:
+     grep 'TV_WEB_AUDIO_SOURCE' log | awk '{print $NF}' | uniq -c
+   Kdyz je u KAZDEHO radku pocet 1, stridaji se davku po davce.
+
 ===============================================================================
  6. CO DAL - NAVRHY, NE PRIKAZY
 ===============================================================================
 
- 1) ZVUK SEGY NA TV - B121 posila davku na TV PRED blokujicim zapisem
-    do AudioTracku. NEOTESTOVANO. Kdyby to nestacilo, podivat se, jestli
-    napTvWebAudioPush neprepisuje kruhovy zasobnik rychleji, nez si ho
-    prohlizec stiha brat, a jestli klient v prohlizeci ocekava 44100 Hz
-    (Sega posila 48000).
+ 1) NEDODELEK Z B122 - PROC JADRO PS1 BEZI DAL?
+    B122 zaridil, ze se zvuk z PS1 na TV NEPOSILA, kdyz PS1 neni na
+    obrazovce. To ticho na Sege a Atari resi. NERESI to ale otazku,
+    proc jadro PS1 jeste 4,5 minuty po radku
+      BUILD2SA5I PS1_SESSION_STOP core=PS1_STOPPED
+    porad vydava zvuk do odbocky pro TV (log z 16. 8., 17:36:04 -> 17:40:30).
+    Bud jadro opravdu bezi dal (pak bere procesor Atari - a Rene hlasi, ze
+    Atari hry jsou na mobilu pomalejsi!), nebo se v nap_ps1_native.cpp
+    nenuluji ukazatele g_tvring_r / g_tvring_w a cte se porad dokola stare.
+    Pozor, v ps1PullTvAudio je i mozny soubeh: ctenar si nacte r, pisar
+    mezitim r posune dopredu (drop-oldest), ctenar pak ulozi svoje starsi
+    r a tim ho vrati zpatky. Podivat se na vsechny tri moznosti.
+    TOHLE JE PRVNI VEC, CO VZIT PO B122.
 
- 2) OVLADAC - B116 je hotovy, ale NEOTESTOVANY. Rene chce:
+ 2) ZAMEK NA ZVUKOVOU CESTU PRO TV
+    Dnes muze do napTvWebAudioRing zapsat kdokoli. B122 to resi u PS1,
+    ale stejna past ceka u PLAYER a YOUTUBE. Zvazit, aby napTvWebAudioPush
+    sama hlidala, ze zapisovat smi jen jeden zdroj. Neni to nutne hned.
+
+ 3) OVLADAC - B116 je hotovy, ale NEOTESTOVANY. Rene chce:
     - minimalni odezvu d-padu (hotovo: touch-action:none)
     - bluetooth klavesnici (hotovo, u Atari bude klicova)
     - joystick, hlavne Xbox (hotovo, mapovani i mrtva zona)
 
- 3) ATARI - stejna predelavka jako Sega, ale AZ PO DOHODE s Renem.
+ 4) ATARI - stejna predelavka jako Sega, ale AZ PO 27. SRPNU
+    a AZ PO DOHODE s Renem.
 
- 4) ZPOZDENI OBRAZU NA TV - zbyva ~42 ms, protoze snimaci smycka bezi
+ 5) ZPOZDENI OBRAZU NA TV - zbyva ~42 ms, protoze snimaci smycka bezi
     na hlavnim vlakne. Reseni by bylo posilat snimek do enkoderu primo
     z C - ale to ctyrikrat shodilo aplikaci. Chce to telefon po ruce.
 
@@ -302,11 +393,18 @@
 ===============================================================================
 
  app/src/main/cpp/nap_ps1_native.cpp          PS1: JNI, vlakna, zvuk, obraz
+   ~ radek 449   g_tvring - odbocka zvuku pro TV (nedodelek, viz bod 6.1)
+   ~ radek 841   ps1PullTvAudio - vydava zvuk pro TV
  app/src/main/cpp/nap_sega_native_proof.cpp   SEGA: totez
  app/src/main/cpp/vendor/pcsx_rearmed/        jadro PS1
  app/src/main/cpp/vendor/clownmdemu-core/     jadro Segy
  app/src/main/cpp/CMakeLists.txt              co se preklada
- app/src/main/java/.../MainActivity.java      ~7500 radku, shell + TV
+ app/src/main/java/.../MainActivity.java      ~8050 radku, shell + TV
+   ~ radek 793-830 odbocka zvuku PS1 pro TV <- JEDINA ZMENA V B122
+   ~ radek 2280  napTvWebAudioPush          (nuluje seq pri zmene frekvence)
+   ~ radek 2781  napTvWebWriteAudioRaw      (server pro /audio.raw)
+   ~ radek 2747  pollAudio                  (klient v prohlizeci, v retezci)
+   ~ radek 1028  napTvWebCaptureFromCore    (stejna past, uz vyresena u obrazu)
  app/src/main/java/.../NativePs1CoreBridge.java
  app/src/main/java/.../NativeSegaCoreBridge.java
  app/src/main/assets/emu_ps1/index.html       Reneho UI - NESAHAT na CSS
