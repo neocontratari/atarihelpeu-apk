@@ -790,41 +790,50 @@ public class MainActivity extends Activity {
                     // Driv se zvuk do TV posilal z Javove zvukove cesty, ta uz
                     // ale nebezi (zvuk obsluhuje nativni OpenSL), takze TV byla
                     // nema. Odbocka v jadre hlavni zvuk nijak nezdrzuje.
-                    // ===== B122: TAHLE ODBOCKA SE PTALA, JESTLI JE CO VZIT -
-                    //             ale uz ne, JESTLI SE TO MA VZIT =====
-                    // Jadro PS1 bezi dal i potom, co uzivatel z PS1 odejde na
-                    // Segu nebo Atari. Presne tahle past je uz popsana o par
-                    // set radku niz u OBRAZU (napTvWebCaptureFromCore,
-                    // "ABY TV NEZUSTALA VISET NA POSLEDNIM SNIMKU Z PS1") a
-                    // tam se resi otazkou, jestli je PS1 OPRAVDU NA OBRAZOVCE.
-                    // U ZVUKU ta otazka chybela: doslo se sem pri KAZDEM ticku
-                    // TV, tedy i kdyz hral Sonic nebo Atari, a poslalo se
-                    // 44100 Hz jako "PS1".
-                    // Dusledek: napTvWebAudioPush pri kazde zmene frekvence
+                    // ===== B123: PS1 POSILA JAKO DOSUD. USTOUPI JEN TOMU,
+                    //             KDO PRAVE OPRAVDU HRAJE. =====
+                    // Problem NIKDY nebyl v PS1. Problem byl v tom, ze do
+                    // JEDNE zvukove cesty pro TV posilaly DVA zdroje naraz.
+                    // Jadro PS1 bezi dal i potom, co uzivatel odejde na Segu
+                    // nebo Atari (uz jednou to stalo build u OBRAZU, viz
+                    // "ABY TV NEZUSTALA VISET NA POSLEDNIM SNIMKU Z PS1"
+                    // v napTvWebCaptureFromCore). Tahle odbocka se proto
+                    // dostala ke slovu pri KAZDEM ticku TV a poslala 44100 Hz
+                    // jako "PS1", i kdyz hral Sonic.
+                    // napTvWebAudioPush pritom pri KAZDE zmene frekvence
                     // nastavuje napTvWebAudioSeq = 0. Sega (48000) a PS1
-                    // (44100) se stridaly davku po davce, takze se sekvence
-                    // nulovala nekolikrat za vterinu a /audio.raw vracel
-                    // prohlizeci prazdnou odpoved (klient posle after=velke
-                    // cislo, server ma end=0, podminka after<=end neprojde).
-                    // Proto byla TV nema u Segy I u Atari, zatimco u samotne
-                    // PS1 - kde zadny druhy zdroj nepusobil - zvuk hral.
-                    // Ptame se ted stejne jako obraz. Kdyz PS1 na obrazovce
-                    // je, chova se to PRESNE jako dosud.
-                    boolean ps1JeNaObrazovce = false;
+                    // (44100) se stridaly davku po davce -> sekvence se
+                    // nulovala nekolikrat za vterinu -> /audio.raw vracel
+                    // prohlizeci PRAZDNOU odpoved -> TICHO na Sege i Atari,
+                    // zatimco v telefonu zvuk hral.
+                    //
+                    // ZAMERNE TO NERESIM OTAZKOU "JE PS1 NA OBRAZOVCE?".
+                    // To by znamenalo zaviset na napTvWebCurrentUrl - a kdyby
+                    // se ta hodnota jen na chvili opozdila, PS1 by na TV
+                    // ztichlo. PS1 je hotove a nesmi se o nej opirat nic
+                    // noveho.
+                    // Misto toho: PS1 posila UPLNE STEJNE JAKO DOSUD a mlci
+                    // jen tehdy, kdyz do zvukove cesty pro TV PRAVE TED
+                    // posila NEKDO JINY (posledni cizi davka mladsi nez
+                    // 300 ms). Kdyz zadny jiny zdroj nehraje, tahle podminka
+                    // je vzdy nepravdiva a chovani je bit po bitu jako v B121.
+                    boolean jinyZdrojPravePosila = false;
                     try {
-                        String uZvuk = napTvWebCurrentUrl;
-                        ps1JeNaObrazovce = (uZvuk != null)
-                                && uZvuk.contains("emu_ps1")
-                                && (ps1SessionActive || ps1BiosRunning || ps1GameWindowOwnsCore);
+                        String zdroj = napTvWebAudioSource;
+                        long odPosledni = System.currentTimeMillis() - napTvWebAudioLastPushMs;
+                        jinyZdrojPravePosila = zdroj != null
+                                && !"PS1".equals(zdroj)
+                                && !"NONE".equals(zdroj)
+                                && napTvWebAudioLastPushMs > 0
+                                && odPosledni < 300L;
                     } catch (Throwable ignored) {}
                     try {
                         if (tvPs1Pcm == null) tvPs1Pcm = new short[8192];
                         int got = NativePs1CoreBridge.pullTvAudioSafe(tvPs1Pcm);
-                        // Vyzvednout se musi VZDY - jinak by odbocka v jadre
-                        // pretekala a po navratu do PS1 by na TV slo nekolik
-                        // vterin stareho zvuku. Na TV se ale posila jen tehdy,
-                        // kdyz PS1 opravdu hraje.
-                        if (got > 0 && ps1JeNaObrazovce) {
+                        // Vyzvedavat se musi VZDY, i kdyz se neposila - jinak
+                        // by odbocka v jadre pretekala a po navratu do PS1 by
+                        // na TV slo nekolik vterin stareho zvuku.
+                        if (got > 0 && !jinyZdrojPravePosila) {
                             napTvWebAudioPush(tvPs1Pcm, 0, got, 44100, "PS1");
                         }
                     } catch (Throwable ignored) {}
@@ -2900,6 +2909,124 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * BUILD2SA14: rozhrani pro obrazovku HELP, kde se testuje jadro Atari v C++.
+     * Puvodni Atari (emu_vbxe) zustava netknute a bezi dal jako dosud - tohle
+     * je oddelena vetev, aby se dalo vyvijet bez rizika pro beta verzi.
+     */
+    public class AHAtariCpp {
+        @JavascriptInterface public boolean jeNactene() {
+            boolean ok;
+            try { ok = NativeAtariCoreBridge.isLoaded(); } catch (Throwable t) { ok = false; }
+            String err = null;
+            try { err = NativeAtariCoreBridge.loadError(); } catch (Throwable ignored) {}
+            appendNativeLog("BUILD2SA14 ATARI_CPP_OTEVRENO knihovna="
+                    + (ok ? "NACTENA" : "CHYBI") + (err == null ? "" : " duvod=" + err));
+            return ok;
+        }
+        @JavascriptInterface public String samotest() {
+            try {
+                String r = NativeAtariCoreBridge.runSelfTestSafe();
+                // Jeden radek, ktery se da vygrepovat a obsahuje VSECHNO -
+                // vcetne ocekavanych hodnot, aby log stal sam o sobe.
+                String verdikt = "CHYBA";
+                try {
+                    boolean cpuOk = r.contains("\"cpuHash\":\"" + NativeAtariCoreBridge.OCEKAVANY_CPU_HASH + "\"")
+                            && r.contains("\"cpuInstr\":" + NativeAtariCoreBridge.OCEKAVANO_INSTRUKCI);
+                    boolean memOk = r.contains("\"memHash\":\"" + NativeAtariCoreBridge.OCEKAVANY_MEM_HASH + "\"")
+                            && r.contains("\"memReads\":" + NativeAtariCoreBridge.OCEKAVANO_CTENI);
+                    if (!r.contains("\"chyba\"")) verdikt = (cpuOk && memOk) ? "SEDI" : "NESEDI";
+                } catch (Throwable ignored) {}
+                appendNativeLog("BUILD2SA14 ATARI_CPP_SELFTEST vysledek=" + verdikt
+                        + " ocekavano cpuHash=" + NativeAtariCoreBridge.OCEKAVANY_CPU_HASH
+                        + " memHash=" + NativeAtariCoreBridge.OCEKAVANY_MEM_HASH
+                        + " cpuInstr=" + NativeAtariCoreBridge.OCEKAVANO_INSTRUKCI
+                        + " memReads=" + NativeAtariCoreBridge.OCEKAVANO_CTENI
+                        + " | namereno " + r);
+                return r;
+            } catch (Throwable t) {
+                String e = "{\"chyba\":\"" + String.valueOf(t.getMessage()).replace('"', '\'') + "\"}";
+                appendNativeLog("BUILD2SA14 ATARI_CPP_SELFTEST vysledek=VYJIMKA " + e);
+                return e;
+            }
+        }
+        @JavascriptInterface public String ocekavane() {
+            return "{\"cpuHash\":\"" + NativeAtariCoreBridge.OCEKAVANY_CPU_HASH
+                 + "\",\"memHash\":\"" + NativeAtariCoreBridge.OCEKAVANY_MEM_HASH
+                 + "\",\"cpuInstr\":" + NativeAtariCoreBridge.OCEKAVANO_INSTRUKCI
+                 + ",\"memReads\":" + NativeAtariCoreBridge.OCEKAVANO_CTENI + "}";
+        }
+
+        /** Cely log teto relace. Nepotrebuje web viewer ani sit. */
+        @JavascriptInterface public String log() {
+            try {
+                synchronized (nativeLog) { return nativeLog.toString(); }
+            } catch (Throwable t) { return "log se nepodarilo precist: " + t.getMessage(); }
+        }
+
+        /** Jen radky, ktere se tykaji Atari v C++ - kratke, na obrazovku. */
+        @JavascriptInterface public String logAtari() {
+            try {
+                String cely;
+                synchronized (nativeLog) { cely = nativeLog.toString(); }
+                StringBuilder sb = new StringBuilder();
+                for (String r : cely.split("\n")) {
+                    if (r.contains("BUILD2SA14") || r.contains("VERZE APKY")
+                            || r.contains("napatari") || r.contains("ATARI_CPP")) {
+                        sb.append(r).append('\n');
+                    }
+                }
+                return sb.length() == 0 ? "(zatim nic)" : sb.toString();
+            } catch (Throwable t) { return "chyba: " + t.getMessage(); }
+        }
+
+        /** Vysledek jednoho kroku testu. Rene klepne, ja to mam v logu. */
+        @JavascriptInterface public String zapisKrok(int cislo, String popis, boolean ok) {
+            try {
+                appendNativeLog("BUILD2SA14 TEST_KROK " + cislo
+                        + " vysledek=" + (ok ? "V_PORADKU" : "SPATNE")
+                        + " co=" + (popis == null ? "" : popis));
+                return "{\"ok\":true}";
+            } catch (Throwable t) { return "{\"ok\":false}"; }
+        }
+
+        /** Kde log lezi na disku - presne cesty, i ta pro pripad padu. */
+        @JavascriptInterface public String cestyKLogu() {
+            String akt = "(nevytvoren)", pred = "(zadny)", vel = "0";
+            try {
+                File f = napTvWebLogFileDownloads;
+                if (f != null) {
+                    akt = f.getAbsolutePath();
+                    vel = String.valueOf(f.length());
+                    File p = new File(f.getParentFile(), "PS1_LOG_predchozi.txt");
+                    if (p.exists()) pred = p.getAbsolutePath() + "  (" + p.length() + " B)";
+                }
+            } catch (Throwable ignored) {}
+            return "{\"aktualni\":\"" + akt.replace('\\', '/') + "\",\"bajtu\":" + vel
+                 + ",\"predchozi\":\"" + pred.replace('\\', '/') + "\"}";
+        }
+
+        /** Zkopiruje cely log do schranky - staci pak vlozit do zpravy. */
+        @JavascriptInterface public String doSchranky() {
+            try {
+                final String t;
+                synchronized (nativeLog) { t = nativeLog.toString(); }
+                final int[] n = new int[]{ t.length() };
+                runOnUiThread(new Runnable() { public void run() {
+                    try {
+                        android.content.ClipboardManager cm =
+                            (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("EMU10 log", t));
+                    } catch (Throwable ignored) {}
+                }});
+                appendNativeLog("BUILD2SA14 ATARI_CPP_LOG_DO_SCHRANKY znaku=" + n[0]);
+                return "{\"ok\":true,\"znaku\":" + n[0] + "}";
+            } catch (Throwable t) {
+                return "{\"ok\":false,\"chyba\":\"" + String.valueOf(t.getMessage()).replace('"','\'') + "\"}";
+            }
+        }
+    }
+
     public class AHTvWeb {
         @JavascriptInterface public String start() { return napTvWebStart(); }
         @JavascriptInterface public String startScreen() {
@@ -3701,7 +3828,16 @@ public class MainActivity extends Activity {
                     akt.renameTo(pred);      // po padu zustane tady
                 }
                 napTvWebLogFileDownloads = akt;
-            } catch (Throwable ignored) { napTvWebLogFileDownloads = null; }
+                // BUILD2SA14: hned na zacatku napsat PRESNOU cestu k souboru.
+                // Bez toho se log hleda po pameti telefonu naslepo.
+                appendNativeLog("BUILD2SA14 LOG_SOUBOR aktualni=" + akt.getAbsolutePath()
+                        + " predchozi=" + new File(dl, "PS1_LOG_predchozi.txt").getAbsolutePath()
+                        + " zapisovatelny=" + dl.canWrite());
+            } catch (Throwable t) {
+                napTvWebLogFileDownloads = null;
+                appendNativeLog("BUILD2SA14 LOG_SOUBOR SELHAL duvod=" + t.getMessage()
+                        + " (log pujde jen ze schranky, pad ho neprezije)");
+            }
 
             napTvWebLogFile = new File(getFilesDir(), "nap_tv_session_log.txt");
             try (FileOutputStream fos = new FileOutputStream(napTvWebLogFile, false)) { /* jen vytvor/zkrat na prazdno */ }
@@ -5767,6 +5903,7 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHNative(), "AHNATIVE");
         web.addJavascriptInterface(new AHRENDER(), "AHRENDER"); // KROK C1: plynuly PS1 obraz pres OpenGL
         web.addJavascriptInterface(new AHTvWeb(), "AHTVWEB"); // BUILD2SA13C: browser-based TV cast fallback
+        web.addJavascriptInterface(new AHAtariCpp(), "AHATARICPP"); // BUILD2SA14: jadro Atari v C++ (obrazovka HELP)
         web.setWebChromeClient(new WebChromeClient() {
             // BUILD2SH2: zachyt JS console (jen nase SH2 stream diagnostika) do
             // nativniho logu, aby slo poslat log pri ladeni zvuku na projektor.
@@ -5796,6 +5933,10 @@ public class MainActivity extends Activity {
             @Override
             public void onPageStarted(WebView v, String url, Bitmap favicon) {
                 super.onPageStarted(v, url, favicon);
+                // BUILD2SA14: bez tohohle radku neni v logu videt, KTERE
+                // obrazovky Rene pri testu prosel - a pak se nedaji jeho
+                // odpovedi opret o nic jineho nez o jeho slovo.
+                try { appendNativeLog("BUILD2SA14 OBRAZOVKA url=" + url); } catch (Throwable ignored) {}
                 applyWebViewVisualMode(url, "onPageStarted");
                 stopNativeIfLeavingSega(url, "onPageStarted");
                 stopPs1IfLeaving(url, "onPageStarted");

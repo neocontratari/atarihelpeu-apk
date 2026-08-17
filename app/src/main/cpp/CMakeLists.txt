@@ -281,3 +281,27 @@ endif() # NAP_ENABLE_PS1
 #  jeste se z Javy nespousti. Napojeni na PS1 obraz prijde v C.
 # ============================================================
 include(${CMAKE_CURRENT_LIST_DIR}/eglrender/eglrender.cmake)
+
+# ============================================================
+#  BUILD2SA14: jadro Atari v C++ - VRSTVY 1 a 2 (CPU 6502, pamet a banky).
+#  Zatim se JEN STAVI, z Javy se nevola a v APK nic nemeni. Stejny postup
+#  jako u eglrender vyse. Smysl: overit, ze se to prelozi pravym NDK pro
+#  arm64 driv, nez na tom bude viset obraz.
+#  KILL-SWITCH: kdyby to zlobilo, staci OFF a workflow je zeleny bez Atari.
+# ============================================================
+option(NAP_ENABLE_ATARI "Build Atari core (vrstvy 1-2)" ON)
+if(ANDROID AND NOT (ANDROID_ABI STREQUAL "arm64-v8a"))
+    set(NAP_ENABLE_ATARI OFF)
+    message(STATUS "BUILD2SA14: Atari core preskocen pro ABI '${ANDROID_ABI}'")
+endif()
+if(NAP_ENABLE_ATARI)
+    add_library(napatari SHARED
+            ${CMAKE_CURRENT_LIST_DIR}/atari/nap_atari_cpu.cpp
+            ${CMAKE_CURRENT_LIST_DIR}/atari/nap_atari_native.cpp)
+    target_compile_features(napatari PRIVATE cxx_std_17)
+    target_compile_options(napatari PRIVATE ${NAP_CORE_OPT_FLAGS})
+    target_include_directories(napatari PRIVATE ${CMAKE_CURRENT_LIST_DIR}/atari)
+    target_link_libraries(napatari ${log-lib})
+    # stejna prisnost jako NDK: chybejici symbol shodi build, ne az appku
+    target_link_options(napatari PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
+endif()

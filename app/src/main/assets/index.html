@@ -84,7 +84,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <a id="btnPlayer" class="hit" href="player/index.html">PLAYER MP3 WAV</a>
   <a id="btnPs1" class="hit" href="emu_ps1/index.html">PS1 PLAYSTATION</a>
   <a id="btnWeb" class="hit" href="https://atarihelp.eu/" data-external="1">ATARIHELP.EU</a>
-  <button id="btnHelp" class="hit" type="button">HELP</button>
+  <a id="btnHelp" class="hit" href="emu_atari_cpp/index.html">HELP</a>
   <a id="btnRene" class="hit" href="dj/index.html">Rene Frank DJ Pult</a>
   <div id="toast" class="toast">N&amp;P VISION BUILD2NZ</div>
 </main>
@@ -117,7 +117,7 @@ function openExternal(url){
 }
 function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}toast('HELP otevren',1500);}
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
-['btnMenu','btnHelp'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
+['btnMenu'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
 var sp=$('settingsPanel');
 function napQualityRefresh(){
   try{

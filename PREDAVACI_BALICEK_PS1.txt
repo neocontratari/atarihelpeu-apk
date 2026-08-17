@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU10 (Atari / Sega / PS1)
- Verze: EMU10-B122-ZVUK-JEN-OD-TOHO-KDO-HRAJE (versionCode 170)
+ Verze: EMU10-B125-ATARI-CPP-NA-TLACITKU-HELP (versionCode 173)
  Datum: 16. 8. 2026
  Autor projektu: Rene Frank, atarihelp.eu
 ===============================================================================
@@ -63,6 +63,9 @@
    - Nikdy nepsat "kdyz bude X, pozna se Y" a nechat poznavani na Renem.
    - Rene ma barvoslepost: ptat se na TVARY, ne na barvy.
    - Nesahat na HTML/CSS v assets - to je Reneho design.
+     (Vyjimka odsouhlasena v B125: tlacitko HELP v index.html vede na
+     emu_atari_cpp/index.html. Zmenilo se JEN chovani, dva radky;
+     CSS, pozice, velikost i popisek zustaly.)
    - Log z telefonu: http://IP:8765/log  (POZOR: jde z BEZICI aplikace!
      Kdyz appka spadne, log je v Downloads/AtariHelp/PS1_LOG_predchozi.txt)
 
@@ -79,6 +82,10 @@
      zabijela. Nikdo se pred tim nepodival, KDO VSECHNO do zvukove cesty
      pro TV zapisuje. Odpoved byla v logu na prvni pohled: tri zdroje.
      -> KDYZ NECO NEFUNGUJE, NEJDRIV SPOCITEJ, KOLIK VECI DO TOHO SAHA.
+   - B122 spravil tu pravou pricinu, ale udelal to tak, ze chovani PS1
+     zaviselo na napTvWebCurrentUrl. Rene to odmitl a mel pravdu.
+     -> OPRAVA VE SPOLECNE CASTI NESMI ZMENIT CHOVANI PS1. Kdyz to jde
+        udelat dvema zpusoby, vybrat ten, ktery se PS1 ani nedotkne.
 
 ===============================================================================
  1. STAV PROJEKTU
@@ -90,11 +97,19 @@
 
  SEGA - od B117 stejna cesta jako PS1 (jadro v C -> OpenGL ES).
    Obraz na mobilu i na TV funguje, zpozdeni skoro pryc.
-   ZVUK NA TV: B122 nasel a opravil pricinu (viz bod 2). NEOTESTOVANO.
+   ZVUK NA TV: B123 opravil pricinu (viz bod 2). NEOTESTOVANO.
 
- ATARI - NESAHAT. Je to Reneho pilotni a srdcovy projekt.
-   Bezi na ~85 %. Rene se mu bude venovat AZ PO 27. SRPNU.
-   POZOR: oprava v B122 se Atari NIJAK NEDOTYKA, ale mela by mu
+ ATARI - DVE VETVE, NEPLEST SI JE:
+   * PUVODNI (assets/emu_vbxe, JavaScript) - NESAHAT. Tohle pojede
+     v beta verzi 27. srpna. Bezi na ~85 %.
+   * NOVE (cpp/atari, C++) - na tlacitku HELP, oddelena vyvojova vetev.
+     Rozhodnuti Reneho z B125: puvodni zustava, nove se vyviji vedle,
+     a AZ bude hotove, stara vetev se smaze. Tim je termin odpojeny
+     od prepisu a neni kam spechat.
+   Stav prepisu: hotove vrstvy 1-2 (CPU 6502, pamet a banky), overene
+   proti puvodnimu JS - 1 024 000 instrukci a 16 252 928 cteni, 0 rozdilu.
+   Chybi vrstvy 3-6: ANTIC, GTIA, PMG, POKEY, VBXE, napojeni obrazu.
+   POZOR: oprava v B123 se Atari NIJAK NEDOTYKA, ale mela by mu
    spravit zvuk na TV taky - protoze to nikdy nebyla chyba Atari.
 
  OVLADAC - B116 pridal rychlejsi dotyk, klavesnici a joystick.
@@ -197,7 +212,7 @@
           libegl1-mesa-dev, libgles2-mesa-dev
      HLAVICKY ANDROIDU (SLES/, android/native_window.h, GLES/gl.h) NEJSOU
      v zadnem balicku apt. Google je blokovany. Daji se ale stahnout
-     z GitHubu - overeno v B122:
+     z GitHubu - overeno v B123:
        raw.githubusercontent.com/gubaojian/sysroot/master/usr/include/<cesta>
      potreba: SLES/OpenSLES.h, SLES/OpenSLES_Android.h,
               SLES/OpenSLES_Platform.h, SLES/OpenSLES_AndroidConfiguration.h,
@@ -220,14 +235,14 @@
  (c) LINKOVANI - jinak se chyba pozna az v GitHub Actions!
      aarch64-linux-gnu-nm --defined-only /tmp/*.o | grep -o "Java_[A-Za-z0-9_]*"
      a porovnat se VSEMI "native" metodami v Jave (NativePs1CoreBridge,
-     NativeSegaCoreBridge, NativeSegaProofActivity). V B122 to bylo 37/37.
+     NativeSegaCoreBridge, NativeSegaProofActivity). V B123 to bylo 37/37.
      Samotny preklad chybejici symbol NENAJDE. Na tom spadl B83.
 
  (d) JAVASCRIPT VE STRANCE - jinak spadne CELA APLIKACE
      Stranka pro TV se sklada z retezcu v napTvWebWriteHtml (MainActivity).
      POZOR: pri vytahovani retezcu se MUSI NEJDRIV ODSTRANIT JAVA KOMENTARE.
      V komentarich jsou taky uvozovky ("cover", "seq") a bez toho vznikne
-     nesmysl a falesna chyba. V B122 to poprve vypadalo jako rozbity JS,
+     nesmysl a falesna chyba. V B123 to poprve vypadalo jako rozbity JS,
      pritom slo o chybu v extrakci, ne v kodu.
      Potom: node --check slozeny.js
 
@@ -240,7 +255,9 @@
      spusti s napodobenim prohlizece (document, fetch, AudioContext,
      setTimeout na virtualnim case). Pak se spocita, kolik bajtu zvuku
      dojde do ac.createBuffer za X vterin.
-     Takhle se v B122 zmerilo: pred opravou 0,1 %, po oprave 99,9 %.
+     Takhle se v B123 zmerilo: pred opravou 0,1 %, po oprave 99,9 %.
+     A HLAVNE: da se tim overit, ze se PS1 NEZHORSILO - staci pocitat,
+     kolik davek PS1 odeslalo. V B121 i v B123 to bylo 1000 z 1000.
      TOHLE JE NEJRYCHLEJSI ZPUSOB, JAK OVERIT ZVUK NA TV BEZ TELEFONU.
 
 ===============================================================================
@@ -313,9 +330,24 @@
    snimku z PlayStation) a je to popsane primo v napTvWebCaptureFromCore.
    V B122 se ukazalo, ze UPLNE STEJNA past byla i u ZVUKU, o par set
    radku vys - odbocka se ptala jen "je co vzit?", uz ne "ma se to vzit?".
-   -> KDYZ NECO SAHA DO JADRA PS1, VZDY SE PTAT, JESTLI JE PS1 NA OBRAZOVCE:
-      napTvWebCurrentUrl.contains("emu_ps1")
-      && (ps1SessionActive || ps1BiosRunning || ps1GameWindowOwnsCore)
+   POZOR NA TO, JAK SE TO RESI. B122 to zkusil otazkou "je PS1 na
+   obrazovce?" pres napTvWebCurrentUrl. Rene to ODMITL, a mel pravdu:
+   PS1 je HOTOVE a nesmi se o nej opirat nic noveho. Kdyby se ta jedna
+   hodnota jen na chvili opozdila, PS1 by na TV ztichlo.
+   -> SPRAVNE RESENI (B123): PS1 posila JAKO DOSUD a ustoupi jen tehdy,
+      kdyz do zvukove cesty pro TV PRAVE POSILA NEKDO JINY:
+        zdroj != null && !"PS1".equals(zdroj) && !"NONE".equals(zdroj)
+        && napTvWebAudioLastPushMs > 0
+        && (System.currentTimeMillis() - napTvWebAudioLastPushMs) < 300
+      Kdyz nic jineho nehraje, podminka je VZDY nepravdiva -> chovani
+      bit po bitu jako pred opravou. Zadna zavislost na URL.
+
+ - PRAVIDLO PRO PS1 OBECNE: PS1 JE HOTOVE A ZAVRENE.
+   Kdyz se neco opravuje ve SPOLECNE casti (smycka pro TV, zvukova cesta
+   pro TV, enkoder), musi se to udelat tak, aby chovani PS1 zustalo
+   NEZMENENE, kdyz nic jineho nehraje. Ne "melo by to byt v poradku" -
+   musi to jit ZMERIT (viz bod 3f: pocet odeslanych davek pred a po
+   musi byt STEJNY).
 
  - ULOZENE HODNOTY V PROHLIZECI (localStorage): kdyz se zmeni chovani,
    MUSI se zmenit i KLIC, jinak se stara hodnota nacte znovu a oprava
@@ -357,9 +389,21 @@
  6. CO DAL - NAVRHY, NE PRIKAZY
 ===============================================================================
 
- 1) NEDODELEK Z B122 - PROC JADRO PS1 BEZI DAL?
-    B122 zaridil, ze se zvuk z PS1 na TV NEPOSILA, kdyz PS1 neni na
-    obrazovce. To ticho na Sege a Atari resi. NERESI to ale otazku,
+ 0) PREPIS ATARI DO C++ - kde to stoji
+    Hotovo: vrstva 1 (CPU 6502) a vrstva 2 (pamet a banky).
+    Overuje se DIFERENCNE proti puvodnimu JS: stejny generator bezi
+    v node proti Reneho CPU6502 i v C++, porovnava se kazdy registr,
+    priznak, pocet cyklu i zapis do pameti. Skripty jsou v repozitari.
+    POZOR NA ZPUSOB: vrstvy 1-2 se PREKLADALY (bylo to spravne, daly se
+    overit do posledniho bitu). Vrstva 3 se prekladat NESMI - v puvodnim
+    JS je chyba (rozejite atlety v Decathlonu, na Altire i na skutecnem
+    Atari je to v poradku). Kdyby se vrstva 3 opsala, chyba se opise s ni.
+    Vrstva 3 se pise podle chovani zeleza a rozdily proti JS se berou
+    obracene - jako SEZNAM MIST, KDE JE JS SPATNE.
+
+ 1) NEDODELEK Z B123 - PROC JADRO PS1 BEZI DAL?
+    B123 zaridil, ze PS1 na TV USTOUPI, kdyz posila nekdo jiny.
+    To ticho na Sege a Atari resi. NERESI to ale otazku,
     proc jadro PS1 jeste 4,5 minuty po radku
       BUILD2SA5I PS1_SESSION_STOP core=PS1_STOPPED
     porad vydava zvuk do odbocky pro TV (log z 16. 8., 17:36:04 -> 17:40:30).
@@ -369,10 +413,11 @@
     Pozor, v ps1PullTvAudio je i mozny soubeh: ctenar si nacte r, pisar
     mezitim r posune dopredu (drop-oldest), ctenar pak ulozi svoje starsi
     r a tim ho vrati zpatky. Podivat se na vsechny tri moznosti.
-    TOHLE JE PRVNI VEC, CO VZIT PO B122.
+    TOHLE JE PRVNI VEC, CO VZIT PO B123 - ALE AZ TO RENE POVOLI.
+    Je to zasah do PS1, ktere je hotove. NESAHAT NA TO SAM OD SEBE.
 
  2) ZAMEK NA ZVUKOVOU CESTU PRO TV
-    Dnes muze do napTvWebAudioRing zapsat kdokoli. B122 to resi u PS1,
+    Dnes muze do napTvWebAudioRing zapsat kdokoli. B123 to resi u PS1,
     ale stejna past ceka u PLAYER a YOUTUBE. Zvazit, aby napTvWebAudioPush
     sama hlidala, ze zapisovat smi jen jeden zdroj. Neni to nutne hned.
 
@@ -400,7 +445,7 @@
  app/src/main/cpp/vendor/clownmdemu-core/     jadro Segy
  app/src/main/cpp/CMakeLists.txt              co se preklada
  app/src/main/java/.../MainActivity.java      ~8050 radku, shell + TV
-   ~ radek 793-830 odbocka zvuku PS1 pro TV <- JEDINA ZMENA V B122
+   ~ radek 793-836 odbocka zvuku PS1 pro TV <- JEDINA ZMENA V B123
    ~ radek 2280  napTvWebAudioPush          (nuluje seq pri zmene frekvence)
    ~ radek 2781  napTvWebWriteAudioRaw      (server pro /audio.raw)
    ~ radek 2747  pollAudio                  (klient v prohlizeci, v retezci)
