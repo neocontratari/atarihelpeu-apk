@@ -38,6 +38,52 @@ public final class NativeAtariCoreBridge {
     public static String loadError() { return loadError; }
 
     private static native String runSelfTest();
+    private static native String bootNative(int snimku);
+    private static native void   keyNative(int kod, int snimku);
+    private static native void   consolNative(int maska, int snimku);
+    private static native void   runNative(int snimku);
+    private static native String screenNative();
+
+    /** KBCODE pro pismena a RETURN - potrebne, aby slo napsat BYE. */
+    public static int kbcode(char c) {
+        switch (Character.toUpperCase(c)) {
+            case 'A': return 0x3F; case 'B': return 0x15; case 'C': return 0x12;
+            case 'D': return 0x3A; case 'E': return 0x2A; case 'F': return 0x38;
+            case 'G': return 0x3D; case 'H': return 0x39; case 'I': return 0x0D;
+            case 'J': return 0x01; case 'K': return 0x05; case 'L': return 0x00;
+            case 'M': return 0x25; case 'N': return 0x23; case 'O': return 0x08;
+            case 'P': return 0x0A; case 'Q': return 0x2F; case 'R': return 0x28;
+            case 'S': return 0x3E; case 'T': return 0x2D; case 'U': return 0x0B;
+            case 'V': return 0x10; case 'W': return 0x2E; case 'X': return 0x16;
+            case 'Y': return 0x2B; case 'Z': return 0x17;
+            case '\n': return 0x0C;                  // RETURN
+            case ' ': return 0x21;
+            default: return -1;
+        }
+    }
+
+    public static String bootSafe(int snimku) {
+        if (!loaded) return "{\"chyba\":\"knihovna napatari se nenacetla\"}";
+        try { String r = bootNative(snimku); return r == null ? "{\"chyba\":\"nic\"}" : r; }
+        catch (Throwable t) { return "{\"chyba\":\"" + String.valueOf(t.getMessage()).replace('"','\'') + "\"}"; }
+    }
+    public static void keySafe(int kod, int snimku) {
+        if (!loaded || kod < 0) return;
+        try { keyNative(kod, snimku); } catch (Throwable ignored) {}
+    }
+    public static void consolSafe(int maska, int snimku) {
+        if (!loaded) return;
+        try { consolNative(maska, snimku); } catch (Throwable ignored) {}
+    }
+    public static void runSafe(int snimku) {
+        if (!loaded) return;
+        try { runNative(snimku); } catch (Throwable ignored) {}
+    }
+    public static String screenSafe() {
+        if (!loaded) return "{\"chyba\":\"knihovna napatari se nenacetla\"}";
+        try { String r = screenNative(); return r == null ? "{\"chyba\":\"nic\"}" : r; }
+        catch (Throwable t) { return "{\"chyba\":\"" + String.valueOf(t.getMessage()).replace('"','\'') + "\"}"; }
+    }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */
     public static String runSelfTestSafe() {

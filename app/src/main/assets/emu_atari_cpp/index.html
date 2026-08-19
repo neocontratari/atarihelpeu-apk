@@ -36,7 +36,22 @@ a{color:#6ea8ff}
 <h1>ATARI 130XE v C++</h1>
 <p class="pod">Vyvojova vetev. Puvodni Atari v nabidce bezi dal a tohle se ho nijak nedotyka.</p>
 
-<h2 style="font-size:16px;margin:0 0 4px">CO TESTOVAT</h2>
+<h2 style="font-size:16px;margin:0 0 4px">ATARI Z ROM</h2>
+<p class="pod" style="margin:0 0 10px">Nabootuje se OS z tve ROM, pocka se na READY,
+napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
+<canvas id="plat" width="384" height="240"
+        style="width:100%;image-rendering:pixelated;background:#000;
+               border:1px solid #262931;border-radius:8px;display:block"></canvas>
+<div id="stavAtari" class="hot" style="margin:6px 0 10px">Nespusteno</div>
+<button id="btnBoot" type="button">1. NABOOTOVAT OS</button>
+<button id="btnSt" type="button" style="background:#2a2d34">2. DO SELF-TESTU (BYE)</button>
+<div class="btny" style="margin-bottom:6px">
+  <button id="btnSel" style="background:#2a2d34">SELECT</button>
+  <button id="btnStart" style="background:#2a2d34">START</button>
+  <button id="btnRun" style="background:#2a2d34">+2 s</button>
+</div>
+
+<h2 style="font-size:16px;margin:22px 0 4px">CO TESTOVAT</h2>
 <p class="pod" style="margin:0 0 12px">U kazdeho kroku klepni V PORADKU nebo SPATNE.
 Zapise se to do logu, takze mi pak staci poslat log a nic nemusis psat.</p>
 <div id="kroky"></div>
@@ -68,8 +83,9 @@ Zapise se to do logu, takze mi pak staci poslat log a nic nemusis psat.</p>
   <div class="radek"><span class="k">Soubor teto relace</span><span class="v" id="cesta1" style="font-size:11px">-</span></div>
   <div class="radek"><span class="k">Velikost</span><span class="v" id="vel">-</span></div>
   <div class="radek"><span class="k">Soubor z minula (po padu)</span><span class="v" id="cesta2" style="font-size:11px">-</span></div>
+  <div class="radek"><span class="k">Naposledy ulozeno do</span><span class="v" id="cesta3" style="font-size:11px">(zatim nic)</span></div>
 </div>
-<button id="btnCopy" type="button">ZKOPIROVAT CELY LOG DO SCHRANKY</button>
+<button id="btnCopy" type="button">ULOZIT LOG A ODESLAT</button>
 <button id="btnRefresh" type="button" style="background:#2a2d34">OBNOVIT VYPIS NIZE</button>
 <pre id="logbox" style="background:#0f1013;border:1px solid #262931;border-radius:8px;
      padding:10px;font-size:11px;line-height:1.45;overflow-x:auto;white-space:pre-wrap;
@@ -78,14 +94,15 @@ Zapise se to do logu, takze mi pak staci poslat log a nic nemusis psat.</p>
 <div class="karta" style="border-color:#3a3f4a">
 <b style="color:#dfe3e8">Jak mi log poslat</b>
 <p class="pozn" style="margin-top:8px">
-<b>1. Kdyz appka NESPADLA</b> — zmackni <i>ZKOPIROVAT CELY LOG DO SCHRANKY</i>
-a vloz ho do zpravy. Nic vic. Nemusis pouzivat web viewer ani sit.<br><br>
-<b>2. Kdyz appka SPADLA</b> — log ze schranky uz nezmackne&scaron;. Otevri
-spravce souboru a najdi soubor, jehoz cesta je vypsana vys u polozky
-<i>Soubor z minula</i>. Je to <code>Download / AtariHelp / PS1_LOG_predchozi.txt</code>.
-Ten soubor mi posli jako prilohu.<br><br>
-<b>3. Kdyz appka spadne hned pri otevreni teto obrazovky</b> — pak se sem
-nedostane&scaron; vubec. V tom pripade pouzij bod 2, soubor tam bude.
+<b>1. Kdyz appka NESPADLA</b> &mdash; zmackni <i>ULOZIT LOG A ODESLAT</i>.
+Log se ulozi jako soubor do telefonu a hned se otevre nabidka, cim ho poslat
+(mail, Messenger, cokoli). Nemusis nic hledat ani nikam vkladat.
+Pro jistotu je zaroven i ve schrance.<br><br>
+<b>2. Kdyz appka SPADLA</b> &mdash; otevri spravce souboru a jdi na cestu,
+ktera je vypsana vys u polozky <i>Soubor z minula</i>. Ten soubor mi posli.<br><br>
+<b>3. Kdyz u <i>Soubor teto relace</i> svitilo 0 B</b> &mdash; pak se log na disk
+neuklada a bod 2 nefunguje. Poznas to i v logu podle radku
+<code>zapis_funguje=false</code>. V tom pripade pouzij bod 1, ten funguje vzdy.
 </p>
 </div>
 
@@ -167,6 +184,46 @@ function souhrn(){
   document.getElementById('souhrn').textContent=t;
 }
 
+var ctx=null;
+function kresli(j){
+  try{
+    if(!ctx) ctx=document.getElementById('plat').getContext('2d');
+    if(j.chyba){ $('stavAtari').textContent='Chyba: '+j.chyba; return; }
+    var bin=atob(j.rgb), img=ctx.createImageData(j.w,j.h), d=img.data;
+    for(var i=0,p=0,q=0;i<j.w*j.h;i++){
+      d[q++]=bin.charCodeAt(p++); d[q++]=bin.charCodeAt(p++);
+      d[q++]=bin.charCodeAt(p++); d[q++]=255;
+    }
+    ctx.putImageData(img,0,0);
+    $('stavAtari').textContent='PC=$'+j.pc.toString(16).toUpperCase()
+      +'  DLIST=$'+j.dlist.toString(16).toUpperCase()
+      +'  DMACTL=$'+j.dmactl.toString(16).toUpperCase()
+      +'  PORTB=$'+j.portb.toString(16).toUpperCase()
+      +'  snimku='+j.snimku+(j.jam?'  JADRO ZASEKNUTE':'');
+  }catch(e){ $('stavAtari').textContent='kresleni selhalo: '+e.message; }
+}
+function volej(f,arg){
+  try{ return JSON.parse(arg===undefined?AHATARICPP[f]():AHATARICPP[f](arg)); }
+  catch(e){ return {chyba:String(e.message||e)}; }
+}
+$('btnBoot').addEventListener('click',function(){
+  this.textContent='BOOTUJI...'; var b=this;
+  setTimeout(function(){
+    volej('atariBoot'); kresli(volej('atariObraz',0));
+    b.textContent='1. NABOOTOVAT OS'; obnovLog();
+  },50);
+});
+$('btnSt').addEventListener('click',function(){
+  this.textContent='PISI BYE...'; var b=this;
+  setTimeout(function(){
+    kresli(volej('atariDoSelfTestu'));
+    b.textContent='2. DO SELF-TESTU (BYE)'; obnovLog();
+  },50);
+});
+$('btnSel').addEventListener('click',function(){ kresli(volej('atariKonzole','select')); obnovLog(); });
+$('btnStart').addEventListener('click',function(){ kresli(volej('atariKonzole','start')); obnovLog(); });
+$('btnRun').addEventListener('click',function(){ kresli(volej('atariObraz',100)); });
+
 function nactiCesty(){
   try{
     var c=JSON.parse(AHATARICPP.cestyKLogu());
@@ -180,11 +237,17 @@ function obnovLog(){
   catch(e){ $('logbox').textContent='nelze precist: '+e.message; }
 }
 $('btnCopy').addEventListener('click',function(){
+  var b=this;
   try{
-    var r=JSON.parse(AHATARICPP.doSchranky());
-    this.textContent = r.ok ? ('ZKOPIROVANO ('+r.znaku+' znaku) — VLOZ DO ZPRAVY')
-                            : ('NEPOVEDLO SE: '+(r.chyba||'?'));
-  }catch(e){ this.textContent='NEPOVEDLO SE: '+e.message; }
+    var r=JSON.parse(AHATARICPP.ulozAOdesli());
+    if(r.ok){
+      b.textContent='ULOZENO ('+r.znaku+' znaku) — vyber, cim poslat';
+      $('cesta3').textContent=r.soubor;
+    } else {
+      b.textContent='NEPOVEDLO SE: '+(r.chyba||r.soubor||'?');
+    }
+  }catch(e){ b.textContent='NEPOVEDLO SE: '+e.message; }
+  setTimeout(function(){ nactiCesty(); obnovLog(); },300);
 });
 $('btnRefresh').addEventListener('click',function(){ obnovLog(); nactiCesty(); });
 vykresliKroky(); souhrn();

@@ -1,6 +1,6 @@
 ===============================================================================
  PREDAVACI BALICEK - EMU10 (Atari / Sega / PS1)
- Verze: EMU10-B125-ATARI-CPP-NA-TLACITKU-HELP (versionCode 173)
+ Verze: EMU10-B131-UVODNI-INTRO-KKT (versionCode 179)
  Datum: 16. 8. 2026
  Autor projektu: Rene Frank, atarihelp.eu
 ===============================================================================
@@ -106,13 +106,79 @@
      Rozhodnuti Reneho z B125: puvodni zustava, nove se vyviji vedle,
      a AZ bude hotove, stara vetev se smaze. Tim je termin odpojeny
      od prepisu a neni kam spechat.
-   Stav prepisu: hotove vrstvy 1-2 (CPU 6502, pamet a banky), overene
-   proti puvodnimu JS - 1 024 000 instrukci a 16 252 928 cteni, 0 rozdilu.
-   Chybi vrstvy 3-6: ANTIC, GTIA, PMG, POKEY, VBXE, napojeni obrazu.
-   POZOR: oprava v B123 se Atari NIJAK NEDOTYKA, ale mela by mu
-   spravit zvuk na TV taky - protoze to nikdy nebyla chyba Atari.
+   ============================================================
+   STAV PREPISU ATARI DO C++ - kde se skoncilo (B130, 18. 8.)
+   ============================================================
+   Prace je POZASTAVENA na Reneho pokyn - prednost ma uvodni intro
+   na sraz klanu. K prepisu se vracime potom.
 
- OVLADAC - B116 pridal rychlejsi dotyk, klavesnici a joystick.
+   CO BEZI (overeno, dolozitelne):
+     * CPU 6502            1 024 000 instrukci proti JS, 0 rozdilu
+     * pamet a banky       16 252 928 cteni proti JS, 0 rozdilu
+     * POKEY seriova cast  SIO korektne vyprsi, jako bez diskety
+     * WSYNC               zastavuje procesor do konce radky
+     * zavadec XEX         nap_atari_xex.h, umi RUNAD i INITAD
+     * display list        LMS, JMP, JVB, prazdne radky, DLI
+     * OS z ROM nabootuje, BASIC naskoci s READY
+     * prikaz BYE preda rizeni SELF-TESTU v ROM a ten se VYKRESLI
+       vcetne MEMORY TESTU a spodni radky SELECT, START OR RESET
+     * Decathlon se nahraje a bezi (registry sedi proti JS)
+
+   CO NEBEZI:
+     * Decathlon se vykresluje spatne - tabule a dav jsou kase,
+       atleti jsou modre utrzky. Rozlozeni display listu SEDI proti
+       JS bajt po bajtu, rozbite je plneni tech radku.
+     * kolize, zvuk POKEY, VBXE, GTIA rezimy 9/10/11 - nejsou vubec
+
+   !!! NEJDULEZITEJSI POUCENI Z CELEHO PREPISU !!!
+   Vrstvy 1 a 2 (procesor, pamet) jsem PREKLADAL z Reneho JavaScriptu
+   a vysly na prvni pokus, nula rozdilu z milionu instrukci.
+   Vrstvu 3 (ANTIC/GTIA) jsem zacal PSAT ZNOVU podle datasheetu,
+   protoze v JS je znama chyba u hracu (rozejite atlety v Decathlonu).
+   BYLO TO SPATNE ROZHODNUTI. Za jeden den z toho vzniklo OSM
+   vlastnich chyb, ktere v JS nejsou:
+     1. JVB brane jako obycejny skok (ma to byt KONEC SNIMKU)
+     2. u instrukce $01 JMP se necetla dvoubajtova adresa
+     3. WSYNC nezastavoval procesor
+     4. zapis do CONSOL mazal stisk START/SELECT/OPTION
+     5. hraci a strely schovani za podminkou display listu
+        (GTIA je kresli nezavisle na ANTICu!)
+     6. prohozene bity skrolovani (bit4 je SVISLE, bit5 VODOROVNE)
+     7. u rezimu 2 chybely PULTAKTY - bod je na PUL barvoveho taktu,
+        pri celych taktech vychazelo delenim 4/8 = 0 a nekreslilo se NIC
+     8. CHBASE/HSCROL ctene na konci snimku misto k okamziku radky
+   DALSI POSTUP: vrstvu 3 PRELOZIT z JS stejne jako vrstvy 1 a 2,
+   overit diferencne na NULU rozdilu, a AZ POTOM resit chybu s hraci -
+   v obou stranach naraz a s tim testem jako pojistkou.
+
+   NASTROJ, KTERY NA TO EXISTUJE (work/dump_js.js + /tmp/cmp.cpp):
+   vytahne ze stavajiciho JS emulatoru celou RAM, vsechny registry
+   a jeho framebuffer, nasadi to do C++ jadra a porovna obraz bod po
+   bodu. Tim se od sebe oddeli procesor a vykreslovac. POZOR: pro
+   porovnani se musi v C++ zapnout NAP_STARA_PALETA, jinak se lisi
+   kazdy bod jen kvuli barve.
+
+   ZNALOSTI Z DATASHEETU GTIA (Rene ho dodal, je to zasadni zdroj):
+     * list 7: ANTIC posila do GTIA tri bity AN0-AN2 na kazdy barvovy
+       takt - NEPOSILA BARVU. 000=pozadi, 100..111=playfield 0..3,
+       011=nastav 40znakovy rezim. Barvy, priority, hrace a kolize
+       resi az GTIA. Kdo to slije do jednoho, nema kam zavesit zmeny
+       registru uprostred radky.
+     * list 14: v hi-res rezimu je JEDEN BOD NA PUL BARVOVEHO TAKTU
+     * list 21: odstin je ZPOZDENI na zpozdovaci lince, ne cislo
+       v tabulce. Krok 21 ns pri V_DEL 7,0 V -> 27,06 stupne na odstin
+     * list 4: jmena vsech 15 odstinu + bit 0 jasu je NEPOUZITY
+     * pin 17 DEL (3,0 az 8,0 V) je serizeni barev NA DESCE, takze
+       jedna univerzalni spravna paleta NEEXISTUJE
+
+   PALETA - co je dolozene a co ne (nap_atari_video.h):
+     krok 27 st. na odstin      datasheet list 21 + publikovany vzorec
+     pocatek faze 190 st.       publikovany vzorec + prolozeni 15 jmen
+     jas jako primka            "resistor bank", rozbor kremiku
+     Ymax = 0,93                z Reneho screenshotu Altirry ($0C)
+     SYTOST 0,30                NEDOLOZENO - jedine cislo bez zdroje
+
+ OVLADAC - B116 OVLADAC - B116 pridal rychlejsi dotyk, klavesnici a joystick.
    NEOTESTOVANO (Rene mezitim resil Segu).
 
 ===============================================================================
@@ -388,6 +454,25 @@
 ===============================================================================
  6. CO DAL - NAVRHY, NE PRIKAZY
 ===============================================================================
+
+ 0a) CHYBY, KTERE ME PRI PREPISU STALY NEJVIC CASU - at je nikdo neopakuje
+    * VYKRESLOVAT AZ NA KONCI SNIMKU JE ZKRATKA A NEFUNGUJE.
+      ANTIC kresli radek po radku a program mu do toho behem snimku meni
+      barvy pres DLI. Kdyz se vykresli az na konci, dostane cela obrazovka
+      barvy posledniho DLI. Musi se to prokladat s procesorem:
+        pro kazdou scanline: vykresli -> odemuluj 114 cyklu -> pripadne DLI
+    * $01 (JMP) A $41 (JVB) NEJSOU TOTEZ.
+      Obe maji dvoubajtovou adresu, ale JVB znamena KONEC SNIMKU. Kdyz se
+      bere jako obycejny skok, display list se cte znovu od zacatku a horni
+      cast obrazu se prekresli pres spodni. Vypada to jako "smeti" v dolni
+      tretine obrazovky.
+    * POKEY MUSI HLASIT "DEJ DALSI BAJT" A "VYSILANI SKONCILO" ZVLAST.
+      Kdyz se nastavi obe naraz, SIO rutina OS si mysli, ze je hotovo hned
+      po prvnim bajtu, a zustane viset na $EA9E donekonecna. Bez toho
+      nikdy nevyprsi cekani na disketu a OS se nedostane do BASICu.
+    * BIT 6 U PRAZDNYCH RADKU NENI LMS.
+      U instrukce s modem 0 jsou bity 4-6 POCET prazdnych radku. Kdo si to
+      splete, cte adresu tam, kde zadna neni.
 
  0) PREPIS ATARI DO C++ - kde to stoji
     Hotovo: vrstva 1 (CPU 6502) a vrstva 2 (pamet a banky).

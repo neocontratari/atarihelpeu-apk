@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 176
-        versionName "EMU10-B128-TESTOVACI-PLAN-V-APCE"  // co testovat, co je spravne a co spatne primo na obrazovce HELP; klepnuti se zapisuje do logu
+        versionCode 179
+        versionName "EMU10-B131-INTRO-FILM-KKT"  // uvodni film pro sraz klanu: 6 scen, hvezdy, rastrove pruhy, rolujici text s vlnou a vlastni chiptune. 54,5 s, jde preskocit.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

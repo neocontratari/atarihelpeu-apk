@@ -22,6 +22,10 @@
 #include <string>
 #include "nap_atari_cpu.h"
 #include "nap_atari_mem.h"
+#include "nap_atari_video.h"
+#include "nap_atari_machine.h"
+#include "nap_atari_roms.h"
+#include <string>
 
 #define ALOG(...) __android_log_print(ANDROID_LOG_INFO, "NAPATARI", __VA_ARGS__)
 
@@ -189,4 +193,102 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runSelfTest(JNIEnv *env, jclass) {
   ALOG("BUILD2SA14 ATARI_SELFTEST cpu=%08X instr=%lld %.2fs | mem=%08X reads=%lld %.2fs | %.2f MIPS = %.1fx Atari",
        hCpu, instr, cpuSec, hMem, reads, memSec, mips, realtimeX);
   return env->NewStringUTF(buf);
+}
+
+
+
+// ---------------------------------------------------------------
+//  SKUTECNY STROJ: OS z ROM, BASIC, self-test
+// ---------------------------------------------------------------
+static Machine   *g_stroj = nullptr;
+static AnticView *g_view  = nullptr;
+
+static void zaloz() {
+  if (!g_stroj) g_stroj = new Machine();
+  if (!g_view)  g_view  = new AnticView();
+  g_stroj->mem.os  = NAP_OS_ROM;
+  g_stroj->mem.bas = NAP_BASIC_ROM;
+  g_stroj->view    = g_view;      // obraz vznika radek po radku behem emulace
+}
+
+/** Studeny start: reset a nechat OS nabehnout. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, jint snimku) {
+  zaloz();
+  std::memset(g_stroj->mem.ram, 0, sizeof(g_stroj->mem.ram));
+  g_stroj->reset();
+  g_stroj->consol = 7;
+  g_stroj->line = 0; g_stroj->frame = 0;
+  for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
+  char buf[256];
+  snprintf(buf, sizeof(buf),
+    "{\"pc\":%d,\"jam\":%s,\"dmactl\":%d,\"dlist\":%d,\"portb\":%d,\"snimku\":%lld}",
+    g_stroj->cpu.c.pc, g_stroj->cpu.c.jam ? "true" : "false",
+    g_stroj->dmactl, g_stroj->dlistAddr(), g_stroj->mem.portB(), g_stroj->frame);
+  ALOG("BUILD2SA18 ATARI_BOOT PC=$%04X DMACTL=$%02X DLIST=$%04X PORTB=$%02X snimku=%lld",
+       g_stroj->cpu.c.pc, g_stroj->dmactl, g_stroj->dlistAddr(),
+       g_stroj->mem.portB(), g_stroj->frame);
+  return env->NewStringUTF(buf);
+}
+
+/** Stisk klavesy (kod KBCODE) a nekolik snimku, aby ji OS prevzal. */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_keyNative(JNIEnv *, jclass, jint kod, jint snimku) {
+  if (!g_stroj) return;
+  g_stroj->klavesa(kod);
+  for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
+}
+
+/** Konzolove klavesy: bit0 START, bit1 SELECT, bit2 OPTION. 0 = stisknuto. */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_consolNative(JNIEnv *, jclass, jint maska, jint snimku) {
+  if (!g_stroj) return;
+  g_stroj->consol = maska & 7;
+  for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
+  g_stroj->consol = 7;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runNative(JNIEnv *, jclass, jint snimku) {
+  if (!g_stroj) return;
+  for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
+}
+
+static const char B64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/** Vykresli aktualni obraz a vrati ho jako base64 RGB. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_screenNative(JNIEnv *env, jclass) {
+  if (!g_stroj || !g_view) return env->NewStringUTF("{\"chyba\":\"stroj nebezi\"}");
+  // Obraz uz je hotovy - vznikl radek po radku behem emulace snimku,
+  // takze v nem sedi i zmeny barev z DLI. Tady se jen zabali.
+  const int kroku = g_stroj->dlKroku;
+  const int W = AnticView::W, H = AnticView::H, PX = W * H;
+  std::string raw; raw.reserve(PX * 3);
+  for (int i = 0; i < PX; i++) {
+    const uint32_t v = g_view->fb[i];
+    raw.push_back((char)(v & 0xFF));
+    raw.push_back((char)((v >> 8) & 0xFF));
+    raw.push_back((char)((v >> 16) & 0xFF));
+  }
+  std::string b64; b64.reserve((raw.size() + 2) / 3 * 4);
+  for (size_t i = 0; i < raw.size(); i += 3) {
+    const unsigned a0 = (unsigned char)raw[i];
+    const unsigned a1 = (i + 1 < raw.size()) ? (unsigned char)raw[i + 1] : 0;
+    const unsigned a2 = (i + 2 < raw.size()) ? (unsigned char)raw[i + 2] : 0;
+    const unsigned t = (a0 << 16) | (a1 << 8) | a2;
+    b64.push_back(B64[(t >> 18) & 63]); b64.push_back(B64[(t >> 12) & 63]);
+    b64.push_back((i + 1 < raw.size()) ? B64[(t >> 6) & 63] : '=');
+    b64.push_back((i + 2 < raw.size()) ? B64[t & 63] : '=');
+  }
+  std::string out = "{\"w\":" + std::to_string(W) + ",\"h\":" + std::to_string(H)
+    + ",\"dlKroku\":" + std::to_string(kroku)
+    + ",\"pc\":" + std::to_string(g_stroj->cpu.c.pc)
+    + ",\"dmactl\":" + std::to_string(g_stroj->dmactl)
+    + ",\"dlist\":" + std::to_string(g_stroj->dlistAddr())
+    + ",\"portb\":" + std::to_string(g_stroj->mem.portB())
+    + ",\"snimku\":" + std::to_string(g_stroj->frame)
+    + ",\"jam\":" + std::string(g_stroj->cpu.c.jam ? "true" : "false")
+    + ",\"rgb\":\"" + b64 + "\"}";
+  return env->NewStringUTF(out.c_str());
 }

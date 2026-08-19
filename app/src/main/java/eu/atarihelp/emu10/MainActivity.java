@@ -2914,6 +2914,14 @@ public class MainActivity extends Activity {
      * Puvodni Atari (emu_vbxe) zustava netknute a bezi dal jako dosud - tohle
      * je oddelena vetev, aby se dalo vyvijet bez rizika pro beta verzi.
      */
+    /** BUILD2SA21: rozhrani pro uvodni intro. */
+    public class AHIntro {
+        @JavascriptInterface public void hotovo() {
+            napIntroUkazano = true;
+            appendNativeLog("BUILD2SA21 INTRO_HOTOVO");
+        }
+    }
+
     public class AHAtariCpp {
         @JavascriptInterface public boolean jeNactene() {
             boolean ok;
@@ -2980,6 +2988,41 @@ public class MainActivity extends Activity {
             } catch (Throwable t) { return "chyba: " + t.getMessage(); }
         }
 
+        /**
+         * BUILD2SA18: SKUTECNY stroj - OS z ROM, BASIC, self-test.
+         * Nic se tu nevymysli: nabootuje se OS, pocka se na READY,
+         * napise se BYE a self-test prevezme stroj. Vse z Reneho ROM.
+         */
+        @JavascriptInterface public String atariBoot() {
+            String r = NativeAtariCoreBridge.bootSafe(600);
+            appendNativeLog("BUILD2SA18 ATARI_BOOT " + r);
+            return r;
+        }
+        @JavascriptInterface public String atariDoSelfTestu() {
+            // BYE + RETURN -> OS predа rizeni self-testu v ROM
+            for (char c : new char[]{'B','Y','E','\n'})
+                NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode(c), 8);
+            NativeAtariCoreBridge.runSafe(400);
+            String r = NativeAtariCoreBridge.screenSafe();
+            String hlava = r.length() > 200 ? r.substring(0, 200) : r;
+            appendNativeLog("BUILD2SA18 ATARI_SELFTEST_VSTUP " + hlava);
+            return r;
+        }
+        @JavascriptInterface public String atariObraz(int snimku) {
+            if (snimku > 0) NativeAtariCoreBridge.runSafe(snimku);
+            return NativeAtariCoreBridge.screenSafe();
+        }
+        @JavascriptInterface public String atariKonzole(String ktera) {
+            int maska = 7;
+            if ("start".equals(ktera))  maska = 6;   // bit0 dolu
+            if ("select".equals(ktera)) maska = 5;   // bit1 dolu
+            if ("option".equals(ktera)) maska = 3;   // bit2 dolu
+            NativeAtariCoreBridge.consolSafe(maska, 12);
+            NativeAtariCoreBridge.runSafe(30);
+            appendNativeLog("BUILD2SA18 ATARI_KONZOLE " + ktera);
+            return NativeAtariCoreBridge.screenSafe();
+        }
+
         /** Vysledek jednoho kroku testu. Rene klepne, ja to mam v logu. */
         @JavascriptInterface public String zapisKrok(int cislo, String popis, boolean ok) {
             try {
@@ -3006,21 +3049,78 @@ public class MainActivity extends Activity {
                  + ",\"predchozi\":\"" + pred.replace('\\', '/') + "\"}";
         }
 
-        /** Zkopiruje cely log do schranky - staci pak vlozit do zpravy. */
-        @JavascriptInterface public String doSchranky() {
+        /**
+         * BUILD2SA15: ULOZI log do souboru a rovnou otevre odeslani.
+         * Schranka sama o sobe nestaci - Rene by pak musel hledat poznamkovy
+         * blok, kam ji vlozit. Tady vznikne soubor a hned se nabidne, cim ho
+         * poslat. Do schranky se to da taky, jako pojistka.
+         */
+        @JavascriptInterface public String ulozAOdesli() {
             try {
                 final String t;
                 synchronized (nativeLog) { t = nativeLog.toString(); }
-                final int[] n = new int[]{ t.length() };
+
+                // 1) soubor - slozka appky na externim ulozisti jde VZDY
+                File cil = null; String chybaZapisu = null;
+                try {
+                    File dir = getExternalFilesDir(null);
+                    if (dir == null) dir = getFilesDir();
+                    if (!dir.exists()) dir.mkdirs();
+                    String jmeno = "EMU10_LOG_" + new java.text.SimpleDateFormat(
+                            "yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date()) + ".txt";
+                    File f = new File(dir, jmeno);
+                    try (FileOutputStream fos = new FileOutputStream(f, false)) {
+                        fos.write(t.getBytes("UTF-8"));
+                        fos.flush();
+                    }
+                    cil = f;
+                } catch (Throwable e) { chybaZapisu = String.valueOf(e.getMessage()); }
+
+                // 2) schranka jako pojistka
+                final String txt = t;
                 runOnUiThread(new Runnable() { public void run() {
                     try {
                         android.content.ClipboardManager cm =
                             (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                        cm.setPrimaryClip(android.content.ClipData.newPlainText("EMU10 log", t));
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("EMU10 log", txt));
                     } catch (Throwable ignored) {}
                 }});
-                appendNativeLog("BUILD2SA14 ATARI_CPP_LOG_DO_SCHRANKY znaku=" + n[0]);
-                return "{\"ok\":true,\"znaku\":" + n[0] + "}";
+
+                // 3) hned nabidnout odeslani
+                final File odeslat = cil;
+                if (odeslat != null) {
+                    runOnUiThread(new Runnable() { public void run() {
+                        try {
+                            // Projekt nema androidx, takze neni FileProvider.
+                            // Na Androidu 7+ by file:// hodilo FileUriExposedException,
+                            // proto se to hlidani vypne. Je to ustupek, ale funguje
+                            // a nepridava do buildu zavislost, ktera by ho mohla shodit.
+                            if (Build.VERSION.SDK_INT >= 24) {
+                                android.os.StrictMode.setVmPolicy(
+                                        new android.os.StrictMode.VmPolicy.Builder().build());
+                            }
+                            android.content.Intent i = new android.content.Intent(
+                                    android.content.Intent.ACTION_SEND);
+                            i.setType("text/plain");
+                            i.putExtra(android.content.Intent.EXTRA_SUBJECT,
+                                    "EMU10 log");
+                            i.putExtra(android.content.Intent.EXTRA_STREAM,
+                                    android.net.Uri.fromFile(odeslat));
+                            i.putExtra(android.content.Intent.EXTRA_TEXT,
+                                    "Log z EMU10, soubor: " + odeslat.getAbsolutePath());
+                            i.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            startActivity(android.content.Intent.createChooser(i, "Poslat log"));
+                        } catch (Throwable e) {
+                            appendNativeLog("BUILD2SA15 LOG_ODESLANI SELHALO duvod=" + e.getMessage());
+                        }
+                    }});
+                }
+
+                appendNativeLog("BUILD2SA15 ATARI_CPP_LOG_ULOZEN znaku=" + t.length()
+                        + " soubor=" + (odeslat == null ? ("SELHAL:" + chybaZapisu) : odeslat.getAbsolutePath()));
+                return "{\"ok\":" + (odeslat != null) + ",\"znaku\":" + t.length()
+                     + ",\"soubor\":\"" + (odeslat == null ? String.valueOf(chybaZapisu)
+                        : odeslat.getAbsolutePath()).replace('\\','/').replace('"','\'') + "\"}";
             } catch (Throwable t) {
                 return "{\"ok\":false,\"chyba\":\"" + String.valueOf(t.getMessage()).replace('"','\'') + "\"}";
             }
@@ -3135,6 +3235,9 @@ public class MainActivity extends Activity {
     // Druha kopie logu v Downloads/AtariHelp/PS1_LOG.txt - prezije pad
     // aplikace a jde k ni z telefonu bez pocitace.
     private volatile File napTvWebLogFileDownloads;
+    private volatile String napTvWebLogSlozka = "(neurceno)";
+    /** BUILD2SA21: intro se ukazuje jen jednou za spusteni aplikace. */
+    private static volatile boolean napIntroUkazano = false;
     private volatile boolean napTvWebLogFileWriterStarted = false;
     private volatile boolean napTvWebLogFileCapWarned = false;
     // BUILD2SK82: bezpecnostni strop velikosti log souboru na disku (30MB).
@@ -3821,22 +3924,49 @@ public class MainActivity extends Activity {
                 File dl = new File(android.os.Environment.getExternalStoragePublicDirectory(
                         android.os.Environment.DIRECTORY_DOWNLOADS), "AtariHelp");
                 if (!dl.exists()) dl.mkdirs();
+
+                // BUILD2SA15: Downloads NEMUSI byt zapisovatelne. Na S8 v B128
+                // vratilo canWrite() = false, soubor mel 0 B a cesta pro pad
+                // nefungovala - pritom se do nej dal psalo, jako by slo o nic.
+                // Slozka appky na externim ulozisti je zapisovatelna VZDY a
+                // bez jakehokoli opravneni. Bereme ji, kdyz Downloads nejdou.
+                boolean dlOk = dl.canWrite();
+                if (!dlOk) {
+                    try {
+                        File alt = getExternalFilesDir(null);
+                        if (alt == null) alt = getFilesDir();
+                        if (!alt.exists()) alt.mkdirs();
+                        dl = alt;
+                        dlOk = dl.canWrite();
+                    } catch (Throwable ignored) {}
+                }
+
                 File akt = new File(dl, "PS1_LOG.txt");
                 if (akt.exists()) {
                     File pred = new File(dl, "PS1_LOG_predchozi.txt");
                     if (pred.exists()) pred.delete();
                     akt.renameTo(pred);      // po padu zustane tady
                 }
-                napTvWebLogFileDownloads = akt;
-                // BUILD2SA14: hned na zacatku napsat PRESNOU cestu k souboru.
-                // Bez toho se log hleda po pameti telefonu naslepo.
-                appendNativeLog("BUILD2SA14 LOG_SOUBOR aktualni=" + akt.getAbsolutePath()
+                napTvWebLogFileDownloads = dlOk ? akt : null;
+
+                // Overit zapis SKUTECNYM zapisem, ne jen dotazem na opravneni.
+                boolean zapisFunguje = false;
+                if (dlOk) {
+                    try (FileOutputStream t0 = new FileOutputStream(akt, true)) {
+                        t0.write("".getBytes("UTF-8"));
+                        zapisFunguje = true;
+                    } catch (Throwable ignored) {}
+                }
+                napTvWebLogSlozka = dl.getAbsolutePath();
+                appendNativeLog("BUILD2SA15 LOG_SOUBOR aktualni=" + akt.getAbsolutePath()
                         + " predchozi=" + new File(dl, "PS1_LOG_predchozi.txt").getAbsolutePath()
-                        + " zapisovatelny=" + dl.canWrite());
+                        + " zapis_funguje=" + zapisFunguje
+                        + (zapisFunguje ? "" : "  <<< LOG SE NEUKLADA, PAD HO NEPREZIJE"));
+                if (!zapisFunguje) napTvWebLogFileDownloads = null;
             } catch (Throwable t) {
                 napTvWebLogFileDownloads = null;
-                appendNativeLog("BUILD2SA14 LOG_SOUBOR SELHAL duvod=" + t.getMessage()
-                        + " (log pujde jen ze schranky, pad ho neprezije)");
+                appendNativeLog("BUILD2SA15 LOG_SOUBOR SELHAL duvod=" + t.getMessage()
+                        + "  <<< LOG SE NEUKLADA, PAD HO NEPREZIJE");
             }
 
             napTvWebLogFile = new File(getFilesDir(), "nap_tv_session_log.txt");
@@ -5904,6 +6034,7 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHRENDER(), "AHRENDER"); // KROK C1: plynuly PS1 obraz pres OpenGL
         web.addJavascriptInterface(new AHTvWeb(), "AHTVWEB"); // BUILD2SA13C: browser-based TV cast fallback
         web.addJavascriptInterface(new AHAtariCpp(), "AHATARICPP"); // BUILD2SA14: jadro Atari v C++ (obrazovka HELP)
+        web.addJavascriptInterface(new AHIntro(), "AHINTRO");       // BUILD2SA21: uvodni intro
         web.setWebChromeClient(new WebChromeClient() {
             // BUILD2SH2: zachyt JS console (jen nase SH2 stream diagnostika) do
             // nativniho logu, aby slo poslat log pri ladeni zvuku na projektor.
@@ -6059,8 +6190,18 @@ public class MainActivity extends Activity {
         // pro vyskoceni z PS1. Pomer stran se ted prepina sam podle otoceni.
 
         setContentView(rootFrame);
-        applyWebViewVisualMode("file:///android_asset/index.html", "startup");
-        web.loadUrl("file:///android_asset/index.html");
+        // BUILD2SA21: uvodni intro pro sraz klanu KKT. Ukaze se jen jednou
+        // za spusteni aplikace - po nem uz se jde rovnou do rozcestniku,
+        // aby to pri navratu z her neotravovalo.
+        {
+            final String cil = napIntroUkazano
+                    ? "file:///android_asset/index.html"
+                    : "file:///android_asset/intro/index.html";
+            applyWebViewVisualMode(cil, "startup");
+            appendNativeLog("BUILD2SA21 START url=" + cil
+                    + " intro=" + (napIntroUkazano ? "PRESKOCENO" : "SPOUSTIM"));
+            web.loadUrl(cil);
+        }
     }
 
     private void openBridgePicker(String kind) {
