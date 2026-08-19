@@ -19,6 +19,43 @@
 
 Celkem **60,5 vteřiny**, pak samo do rozcestníku. **PŘESKOČIT** kdykoli.
 
+## Čtvrté kolo — podle tvých připomínek
+
+**Písmo je větší.** Na výšku z 17,5 na **28,4 bodu**. Velikost se počítá
+tak, aby se 40 sloupců a 24 řádků vždycky vešlo, s co nejužšími okraji.
+
+**Druhá obrazovka je teď taky monitor.** Listing se píše do rámečku,
+ne přes celý obraz. Roluje, když přeteče — jak jsi psal, že to nevadí.
+
+**Hudba se za celé intro ani jednou neopakuje.** Bylo to jedno osmitaktí
+dokola. Teď je to skladba z **osmi částí po osmi taktech** — každá má jiný
+sled akordů, jiný rytmus arpeggia a jinou melodii, a melodie hraje jen
+v druhé půlce každé části, aby to mělo vývoj. Celá skladba trvá 39,7 s,
+intro 60,5 s.
+
+**A ta orientace.** Na to jsi mě upozornil včas — sám bych na to přišel
+až od tebe. Rozložení se teď přehazuje:
+
+```
+na výšku:  logo nahoře, monitor pod ním
+na šířku:  logo vlevo, monitor vpravo
+```
+
+Na šířku by monitor pod logem neměl kam růst — zbyla by na něj pětina
+obrazovky. Takhle se to rozdělí vedle sebe a text zůstane čitelný.
+
+Ověřil jsem to **číselně na čtyřech tvarech obrazovky**, ne od oka:
+
+```
+                        monitor v obraze   text se vejde   logo nepřekrývá
+390x844  na výšku            ANO               ANO              ANO
+844x390  na šířku            ANO               ANO              ANO
+360x640  malý telefon        ANO               ANO              ANO
+1280x800 tablet na šířku     ANO               ANO              ANO
+```
+
+A pak jsem celý film pustil v obou orientacích od začátku do konce.
+
 ## Co jsem opravil podle tebe
 
 **Dvě loga jsou pryč.** Neopravoval jsem odraz — **smazal jsem ho**.

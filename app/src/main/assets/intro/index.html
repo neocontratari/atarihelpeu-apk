@@ -99,30 +99,55 @@ function ukniVnitrni(zn){
   sum(t, 0.010, 0.13);
   ton(t, 150+Math.random()*40, 0.016, 'square', 0.05);
 }
-// chiptune - jednoduchy beh, hraje se dopredu po taktech
-var NOTY=[0,3,7,10, 0,3,7,12, -2,2,5,9, -4,0,3,7];
+// CHIPTUNE se skladbou, ne jednou dokola opakovanou smyckou.
+// Ctyri casti po osmi taktech, kazda ma jiny sled akordu, jiny rytmus
+// arpeggia a jinou melodii. Cela skladba se opakuje az po 32 taktech,
+// coz je pres pul minuty - za dobu intra se nestihne omrzet.
+var CASTI=[
+  { akordy:[0,0,-4,-4, -2,-2,-5,-5],  arp:[0,3,7,10],  rytmus:4, lead:[12,10,7,10] },
+  { akordy:[-5,-5,-2,-2, 0,0,3,3],    arp:[0,4,7,11],  rytmus:3, lead:[7,12,15,12] },
+  { akordy:[-7,-7,-3,-3, -5,-5,0,0],  arp:[0,3,7,12],  rytmus:4, lead:[15,14,12,10] },
+  { akordy:[0,-2,-4,-5, -7,-5,-4,-2], arp:[0,5,9,12],  rytmus:6, lead:[19,17,15,12] },
+  { akordy:[-9,-9,-5,-5, -7,-7,-2,-2],arp:[0,3,8,12],  rytmus:8, lead:[10,12,15,17] },
+  { akordy:[-2,-4,-5,-7, -5,-4,-2,0], arp:[0,7,12,16], rytmus:4, lead:[24,22,19,17] },
+  { akordy:[-12,-12,-7,-7, -9,-9,-5,-5], arp:[0,3,7,10], rytmus:3, lead:[12,15,19,15] },
+  { akordy:[0,3,5,7, 5,3,0,-2],       arp:[0,4,9,12],  rytmus:6, lead:[16,19,21,24] }
+];
 function hz(p){ return 220*Math.pow(2,p/12); }
 var taktDo=0, takt=0;
-function hudba(){
-  try{ hudbaVnitrni(); }catch(e){}
-}
+function hudba(){ try{ hudbaVnitrni(); }catch(e){} }
 function hudbaVnitrni(){
   if(!AC) return;
   var t=AC.currentTime;
   if(t<taktDo) return;
-  var D=0.16;
+  var D=0.155;
   taktDo=t+D*4;
-  var zaklad=NOTY[(takt*4)%NOTY.length];
-  // basa
-  ton(t, hz(zaklad-24), D*3.6, 'triangle', 0.26);
-  // arpeggio
-  for(var i=0;i<4;i++){
-    var n=NOTY[((takt*4)+i)%NOTY.length];
-    ton(t+i*D, hz(n), D*0.85, 'square', 0.10);
+
+  var cast=CASTI[(takt>>3)%CASTI.length];
+  var akord=cast.akordy[takt%8];
+
+  // basa - na tezke dobe delsi, na lehke kratsi
+  ton(t, hz(akord-24), D*3.4, 'triangle', 0.26);
+  if(takt%2===1) ton(t+D*2, hz(akord-12), D*1.2, 'triangle', 0.13);
+
+  // arpeggio - pocet not se lisi podle casti
+  var n=cast.rytmus;
+  for(var i=0;i<n;i++){
+    var nota=akord + cast.arp[i%cast.arp.length] + (i>=4?12:0);
+    ton(t+i*(D*4/n), hz(nota), (D*4/n)*0.8, 'square', 0.095);
   }
-  // melodie kazdy druhy takt
-  if(takt%2===0) ton(t, hz(zaklad+12), D*1.8, 'sawtooth', 0.075);
-  if(takt%4===3) sum(t, 0.09, 0.05);
+
+  // melodie - hraje jen ve druhe pulce kazde casti, at ma skladba vyvoj
+  if((takt%8)>=4){
+    var l=cast.lead[(takt%4)];
+    ton(t, hz(akord+l), D*1.7, 'sawtooth', 0.075);
+    if(takt%2===0) ton(t+D*2, hz(akord+l-3), D*1.2, 'sawtooth', 0.055);
+  }
+
+  // bicí
+  sum(t, 0.05, 0.055);                       // kopak na kazdou dobu
+  if(takt%2===1) sum(t+D*2, 0.07, 0.045);    // virbl na druhou
+  if((takt%8)===7) sum(t+D*3, 0.13, 0.06);   // prechod na konci osmitakti
   takt++;
 }
 function zvukKonec(){
@@ -431,12 +456,72 @@ function listing(t,d){
     lstNapsano++;                          // POSUN DRIV nez zvuk
     obrPis(zn); ukni(zn);
   }
-  // GRAPHICS 0 po startu: modre pozadi, svetlejsi text
-  obrVykresli(t, '#3a49c8', '#c8d4ff', lstNapsano<LST_TEXT.length);
+  g.fillStyle='#05060f'; g.fillRect(0,0,W,H);
+  plazma(t, 0.16);
+  hvezdy(0.002, 0.35);
+
+  // monitor - na sirku sirsi a nizsi, na vysku naopak
+  var ow, oh, ox, oy;
+  if(naSirku()){ ow=W*0.86; oh=H*0.80; }
+  else         { ow=W*0.92; oh=H*0.62; }
+  ox=(W-ow)/2; oy=(H-oh)/2;
+  ramMonitoru(ox,oy,ow,oh);
+  g.save(); g.beginPath(); g.rect(ox,oy,ow,oh); g.clip();
+  g.fillStyle='#3a49c8'; g.fillRect(ox,oy,ow,oh);      // GRAPHICS 0 modra
+  obrDoOkna(t, ox,oy,ow,oh, '#d6e0ff', lstNapsano<LST_TEXT.length, false);
+  g.restore();
 }
 
 // program bezi - obrazovka se smaze a vypise se text v barvach SETCOLOR
 
+
+
+// ================= MONITOR =================
+// Ramecek jako monitor + vypis textove obrazovky 40x24 dovnitr.
+// Velikost pisma se pocita tak, aby se 40 sloupcu a 24 radku VZDY
+// veslo - proto to funguje na vysku i na sirku.
+function naSirku(){ return W > H*1.15; }
+
+function ramMonitoru(ox,oy,ow,oh){
+  g.save();
+  g.fillStyle='rgba(10,10,16,.94)';
+  g.beginPath();
+  var r=14*DPR;
+  if(g.roundRect) g.roundRect(ox-11*DPR, oy-11*DPR, ow+22*DPR, oh+22*DPR, r);
+  else g.rect(ox-11*DPR, oy-11*DPR, ow+22*DPR, oh+22*DPR);
+  g.fill();
+  g.strokeStyle='rgba(255,95,95,.55)'; g.lineWidth=2.2*DPR; g.stroke();
+  g.restore();
+}
+
+/** Vrati velikost pisma tak, aby se 40x24 veslo do daneho obdelniku. */
+function pismoDoOkna(ow,oh){
+  // 40 sloupcu na sirku, 24 radku na vysku - bere se to prisnejsi z obou.
+  // Okraje jsou uzke schvalne, at je pismo co nejvetsi.
+  var podleSirky = ow/(SL*0.601 + 1.2);
+  var podleVysky = oh/(RA*1.34 + 0.6);
+  return Math.max(6*DPR, Math.min(podleSirky, podleVysky));
+}
+
+/** Vypise textovy buffer do obdelniku. */
+function obrDoOkna(t, ox,oy,ow,oh, barvaPisma, kurzorVidet, stinovat){
+  var px=pismoDoOkna(ow,oh);
+  g.font='700 '+Math.round(px)+'px ui-monospace,Menlo,Consolas,monospace';
+  g.textAlign='left'; g.textBaseline='top';
+  var rv=px*1.34;
+  var x0=ox+(ow-SL*px*0.601)/2;
+  var y0=oy+(oh-RA*rv)/2;
+  for(var i=0;i<RA;i++){
+    if(!obr[i]) continue;
+    var yy=y0+i*rv;
+    if(stinovat){ g.fillStyle='rgba(0,0,0,.6)'; g.fillText(obr[i], x0+2*DPR, yy+2*DPR); }
+    g.fillStyle=barvaPisma; g.fillText(obr[i], x0, yy);
+  }
+  if(kurzorVidet && Math.floor(t/330)%2===0){
+    g.fillStyle=barvaPisma;
+    g.fillRect(x0+obrS*px*0.601, y0+obrR*rv+px*0.10, px*0.58, px*1.06);
+  }
+}
 
 // ================= ZAVERECNA SCENA =================
 // JEDNO logo nahore (zadny odraz, zadne druhe logo) a dole VSAZENA
@@ -452,21 +537,21 @@ function finale(t,d){
   bobiky(t, 12, Math.min(W,H)*0.075, 0.42);
   pruhy(t, 5, 0.26, 0.22);
 
-  // JEDNO logo, nahore
+  // ROZLOZENI PODLE ORIENTACE
+  //  na vysku: logo nahore, monitor pod nim
+  //  na sirku: logo vlevo, monitor vpravo (jinak by na monitor nezbyla vyska)
   var puls=1+0.075*Math.sin(t*0.0011);
-  var plav=Math.sin(t*0.0008)*(H*0.010);
-  vykresliLogo(W/2, H*0.215+plav, Math.min(W,H)*0.34*puls, 1, 0);
-
-  // ---- vsazena obrazovka dole ----
-  var ox=W*0.055, oy=H*0.435, ow=W*0.89, oh=H*0.50;
-  // ramecek monitoru
+  var plav=Math.sin(t*0.0008)*(Math.min(W,H)*0.014);
+  var ox,oy,ow,oh;
+  if(naSirku()){
+    vykresliLogo(W*0.20, H/2+plav, Math.min(W*0.34,H*0.72)*puls, 1, 0);
+    ow=W*0.56; oh=H*0.84; ox=W*0.41; oy=(H-oh)/2;
+  } else {
+    vykresliLogo(W/2, H*0.185+plav, Math.min(W,H)*0.30*puls, 1, 0);
+    ow=W*0.92; oh=H*0.60; ox=(W-ow)/2; oy=H*0.355;
+  }
+  ramMonitoru(ox,oy,ow,oh);
   g.save();
-  g.fillStyle='rgba(12,12,18,.92)';
-  g.beginPath();
-  if(g.roundRect) g.roundRect(ox-10*DPR, oy-10*DPR, ow+20*DPR, oh+20*DPR, 14*DPR);
-  else g.rect(ox-10*DPR, oy-10*DPR, ow+20*DPR, oh+20*DPR);
-  g.fill();
-  g.strokeStyle='rgba(255,90,90,.55)'; g.lineWidth=2*DPR; g.stroke();
   g.beginPath(); g.rect(ox,oy,ow,oh); g.clip();
 
   // DUHA - kazdy radek jina barva, posouva se (jako POKE 710 v DLI)
@@ -477,31 +562,12 @@ function finale(t,d){
     g.fillRect(ox, oy+y, ow, krok+1);
   }
 
-  // ---- vypis programu ----
-  if(!FIN_TEXT) FIN_TEXT=VYSTUP.join('\n');
+  // ---- vypis programu do vlastniho bufferu, at roluje jako Atari ----
+  if(!FIN_TEXT){ FIN_TEXT=VYSTUP.join('\n'); obrZaloz(); }
   var RYCH=52;
   var chce=Math.min(FIN_TEXT.length, Math.floor(t/RYCH));
-  while(finVys<chce){ var zn=FIN_TEXT[finVys]; finVys++; }
-  var vidi=FIN_TEXT.substring(0,finVys).split('\n');
-
-  var px=Math.floor(ow/32);
-  g.font='700 '+Math.round(px)+'px ui-monospace,Menlo,Consolas,monospace';
-  g.textAlign='left'; g.textBaseline='top';
-  var rv=px*1.32, x0=ox+px*0.5, y0=oy+px*0.6;
-  for(var i=0;i<vidi.length;i++){
-    var yy=y0+i*rv;
-    if(yy>oy+oh-rv) break;
-    g.fillStyle='rgba(0,0,0,.55)';              // stin, at je cist na duze
-    g.fillText(vidi[i], x0+2*DPR, yy+2*DPR);
-    g.fillStyle='#ffffff';
-    g.fillText(vidi[i], x0, yy);
-  }
-  // kurzor, dokud se pise
-  if(finVys<FIN_TEXT.length && Math.floor(t/300)%2===0){
-    var pr=vidi[vidi.length-1]||'';
-    g.fillStyle='#ffffff';
-    g.fillRect(x0+g.measureText(pr).width, y0+(vidi.length-1)*rv, px*0.55, px*1.05);
-  }
+  while(finVys<chce){ var zn=FIN_TEXT[finVys]; finVys++; obrPis(zn); }
+  obrDoOkna(t, ox,oy,ow,oh, '#ffffff', finVys<FIN_TEXT.length, true);
   g.restore();
 }
 
