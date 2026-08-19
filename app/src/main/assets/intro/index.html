@@ -207,20 +207,201 @@ function scroller(t, yStred, px, alfa){
   if(scrX>scrCelkem+W) scrX=0;
 }
 
+// Logo i se svetlou plochou se PREDKRESLI JEDNOU do maleho platna.
+// Predtim se kazdy snimek zmensoval obrazek 1200 bodu siroky a k tomu
+// se vyrabel gradient - 23 ms na snimek jen za tohle.
+var logoHotove=null, logoHR=0;
+function logoPriprav(){
+  if(!logoOk) return null;
+  var R=Math.round(Math.min(W,H)*0.60);          // s rezervou na pulsovani
+  if(logoHotove && logoHR===R) return logoHotove;
+  logoHR=R;
+  var c=document.createElement('canvas'); c.width=c.height=R;
+  var q=c.getContext('2d');
+  var w=R*0.80, h=w*logo.height/logo.width, cx=R/2, cy=R/2;
+  var gr=q.createRadialGradient(cx,cy-h*0.04,w*0.10,cx,cy,R*0.50);
+  gr.addColorStop(0,'rgba(255,255,255,.96)');
+  gr.addColorStop(0.55,'rgba(255,250,245,.90)');
+  gr.addColorStop(0.74,'rgba(255,225,215,.42)');
+  gr.addColorStop(0.88,'rgba(255,170,150,.12)');
+  gr.addColorStop(1,'rgba(255,140,120,0)');
+  q.fillStyle=gr; q.beginPath(); q.arc(cx,cy,R*0.50,0,6.2832); q.fill();
+  q.drawImage(logo, cx-w/2, cy-h/2, w, h);
+  logoHotove=c;
+  return c;
+}
 function vykresliLogo(cx,cy,velikost,alfa,zare){
-  if(!logoOk) return;
-  var w=velikost, h=w*logo.height/logo.width;
+  var c=logoPriprav(); if(!c) return;
+  var S=velikost*1.25;                            // platno je o kus vetsi nez logo
   g.save(); g.globalAlpha=alfa;
-  // svetla plocha pod logem - ma cerny napis, na tmave by zmizel
-  var gr=g.createRadialGradient(cx,cy-h*0.04,w*0.10,cx,cy,w*0.62);
-  gr.addColorStop(0,'rgba(255,255,255,.97)');
-  gr.addColorStop(0.62,'rgba(255,255,255,.92)');
-  gr.addColorStop(0.80,'rgba(255,255,255,.40)');
-  gr.addColorStop(1,'rgba(255,255,255,0)');
-  g.fillStyle=gr; g.beginPath(); g.arc(cx,cy,w*0.62,0,6.2832); g.fill();
-  if(zare>0){ g.shadowColor='rgba(255,50,50,'+zare+')'; g.shadowBlur=18*DPR; }
-  g.drawImage(logo, cx-w/2, cy-h/2, w, h);
+  g.drawImage(c, cx-S/2, cy-S/2, S, S);
   g.restore();
+}
+
+
+// ================= EFEKTY =================
+// Vsechno se pocita za behu. Plazma se kresli na MALE platno (64x112)
+// a teprve pak se roztahne - tak to delala osmibitova dema a je to
+// levne i na starsim telefonu.
+var SIN=new Float32Array(2048);
+for(var _i=0;_i<2048;_i++) SIN[_i]=Math.sin(_i*Math.PI*2/2048);
+function sn(x){ return SIN[((x*325.9493)|0)&2047]; }   // 2048/(2pi)
+
+// PW/PH je rozliseni, ve kterem se plazma pocita. Pak se roztahne
+// pres celou obrazovku. Vic bodu = hezci prechody, ale vic pocitani.
+var plaz=null, plazG=null, plazImg=null, PW=96, PH=168;
+// PLYNULE ROZTAHOVANI: na telefonu s GPU je zadarmo (jedna textura),
+// v softwaru stoji 30 ms. Kdyby se to na nekterem telefonu seklo,
+// staci tady prehodit na false - plazma bude kostickovana (coz osmibitovym
+// demum slusi) a je to 11x rychlejsi.
+var PLAZMA_PLYNULE = true;
+function plazma(t, sila){
+  if(!plaz){
+    plaz=document.createElement('canvas'); plaz.width=PW; plaz.height=PH;
+    plazG=plaz.getContext('2d');
+    // pole se vyrobi JEDNOU. Kdyby se delalo kazdy snimek, telefon by
+    // 60x za vterinu alokoval 28 kB a sberac pameti by to poznal.
+    plazImg=plazG.createImageData(PW,PH);
+  }
+  plazma.__n=(plazma.__n||0)+1;
+  var prepocitat = (plazma.__n & 1)===1;         // stridame snimky
+  var d=plazImg.data, i=0;
+  var a=t*0.00042, b=t*0.00031, c=t*0.00058;
+  if(prepocitat){
+  for(var y=0;y<PH;y++){
+    for(var x=0;x<PW;x++){
+      var v = sn(x*0.107+a) + sn(y*0.087-b)
+            + sn((x+y)*0.060+c) + sn(Math.sqrt((x-48)*(x-48)+(y-84)*(y-84))*0.133-a*1.7);
+      v=(v+4)/8;                                   // 0..1
+      d[i++]=(30+225*v*v)|0;                       // cervena vede
+      d[i++]=(10+70*v*v*v)|0;
+      d[i++]=(40+120*v*v*v*v)|0;
+      d[i++]=255;
+    }
+  }
+  plazG.putImageData(plazImg,0,0);
+  }
+  g.save(); g.globalAlpha=sila; g.imageSmoothingEnabled=PLAZMA_PLYNULE;
+  g.drawImage(plaz,0,0,PW,PH,0,0,W,H);
+  g.restore();
+}
+
+// perspektivni mrizka - podlaha, ktera se blizi
+var podlahaGrd=null, podlahaKlic='';
+function mrizkaPodlaha(t, horizont, sila){
+  var hy=H*horizont;
+  var klic=W+'x'+H+'x'+horizont;
+  if(podlahaKlic!==klic){                      // gradient jen pri zmene rozmeru
+    podlahaGrd=g.createLinearGradient(0,hy,0,H);
+    podlahaGrd.addColorStop(0,'rgba(10,0,20,0)');
+    podlahaGrd.addColorStop(1,'rgba(40,0,30,.85)');
+    podlahaKlic=klic;
+  }
+  g.save(); g.globalAlpha=sila;
+  g.fillStyle=podlahaGrd; g.fillRect(0,hy,W,H-hy);
+  g.strokeStyle='rgba(255,70,90,.55)'; g.lineWidth=1.4*DPR;
+  // vodorovne cary - zhustuji se k horizontu a "prijizdeji"
+  var pos=(t*0.00055)%1;
+  for(var i=0;i<16;i++){
+    var k=(i+pos)/16;
+    var y=hy+(H-hy)*(k*k);
+    g.globalAlpha=sila*(0.15+0.85*k);
+    g.beginPath(); g.moveTo(0,y); g.lineTo(W,y); g.stroke();
+  }
+  // svisle cary - sbihaji se do bodu na horizontu
+  g.globalAlpha=sila*0.6;
+  for(var j=-8;j<=8;j++){
+    g.beginPath(); g.moveTo(W/2+j*(W*0.06), hy);
+    g.lineTo(W/2+j*(W*0.62), H); g.stroke();
+  }
+  g.restore();
+}
+
+// Slunce nad horizontem s vodorovnymi prouzky.
+// Prouzky se VYREZAVAJI na vlastnim malem platne - kdyby se rezaly
+// primo do obrazu, prorizly by i plazmu a mrizku pod nim.
+var slun=null, slunG=null, slunR=0;
+function slunce(t, horizont, sila){
+  var r=Math.min(W,H)*0.17;
+  var S=Math.ceil(r*2)+4;
+  if(!slun || slunR!==S){
+    slun=document.createElement('canvas'); slun.width=S; slun.height=S;
+    slunG=slun.getContext('2d'); slunR=S;
+  }
+  slunce.__n=(slunce.__n||0)+1;
+  if(slunce.__n%4!==1 && slun.__hotovo){        // prouzky se vlni pomalu,
+    g.save(); g.globalAlpha=sila;               // staci prekreslit obcas
+    g.shadowColor='rgba(255,120,60,.75)'; g.shadowBlur=26*DPR;
+    g.drawImage(slun, W/2-S/2, H*horizont-S/2);
+    g.restore(); return;
+  }
+  slun.__hotovo=true;
+  slunG.clearRect(0,0,S,S);
+  var grd=slunG.createLinearGradient(0,S/2-r,0,S/2+r);
+  grd.addColorStop(0,'#ffe27a'); grd.addColorStop(0.45,'#ff8a3d');
+  grd.addColorStop(1,'#d21440');
+  slunG.fillStyle=grd; slunG.beginPath(); slunG.arc(S/2,S/2,r,0,6.2832); slunG.fill();
+  slunG.globalCompositeOperation='destination-out';
+  for(var i=0;i<7;i++){
+    var y=S/2+r*0.10+i*(r*0.15)+sn(t*0.0008+i)*1.5*DPR;
+    slunG.fillRect(0, y, S, r*(0.030+i*0.011));
+  }
+  // zar se zapece PRIMO do platna slunce - shadowBlur pri kresleni
+  // stal 8 ms na snimek
+  slunG.globalCompositeOperation='destination-over';
+  var zg=slunG.createRadialGradient(S/2,S/2,r*0.85,S/2,S/2,r*1.35);
+  zg.addColorStop(0,'rgba(255,120,60,.55)'); zg.addColorStop(1,'rgba(255,120,60,0)');
+  slunG.fillStyle=zg; slunG.fillRect(0,0,S,S);
+  slunG.globalCompositeOperation='source-over';
+  g.save(); g.globalAlpha=sila;
+  g.drawImage(slun, W/2-S/2, H*horizont-S/2);
+  g.restore();
+}
+
+// Bobiky - kulicky po Lissajousovych krivkach.
+// Kazda barva se nakresli JEDNOU do maleho obrazku a pak uz se jen
+// kopiruje. Vyrabet 14 gradientu na kazdy snimek je drahe i na GPU.
+var bobObr=null, bobR=0;
+function bobPriprav(velikost){
+  var R=Math.ceil(velikost); if(bobObr && bobR===R) return;
+  bobR=R; bobObr=[];
+  for(var i=0;i<7;i++){
+    var c=document.createElement('canvas'); c.width=c.height=R*2;
+    var q=c.getContext('2d');
+    var od=(i*51)%360;
+    var grd=q.createRadialGradient(R,R,0,R,R,R);
+    grd.addColorStop(0,'hsla('+od+',95%,70%,.95)');
+    grd.addColorStop(0.55,'hsla('+od+',95%,52%,.32)');
+    grd.addColorStop(1,'hsla('+od+',95%,45%,0)');
+    q.fillStyle=grd; q.fillRect(0,0,R*2,R*2);
+    bobObr.push(c);
+  }
+}
+function bobiky(t, pocet, velikost, sila){
+  bobPriprav(velikost);
+  g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=sila;
+  for(var i=0;i<pocet;i++){
+    var f=i/pocet;
+    var x=W/2 + sn(t*0.00075+f*6.283)*(W*0.36);
+    var y=H*0.5 + sn(t*0.00098+f*4.712)*(H*0.20);
+    var m=0.75+0.25*sn(t*0.0016+f*3.1);
+    var r=bobR*m;
+    g.drawImage(bobObr[i%7], x-r, y-r, r*2, r*2);
+  }
+  g.restore();
+}
+
+// odraz loga pod nim
+function odrazLoga(cx,cy,velikost,sila){
+  var c=logoPriprav(); if(!c) return;
+  var S=velikost*1.25, h=velikost*logo.height/logo.width;
+  g.save(); g.globalAlpha=sila; g.translate(cx, cy+h*0.52);
+  g.scale(1,-0.55);
+  g.drawImage(c, -S/2, -S/2, S, S);
+  g.restore();
+  var grd=g.createLinearGradient(0,cy+h*0.10,0,cy+h*0.62);
+  grd.addColorStop(0,'rgba(2,3,10,0)'); grd.addColorStop(1,'rgba(2,3,10,1)');
+  g.fillStyle=grd; g.fillRect(0,cy+h*0.10,W,h*0.55);
 }
 
 // ================= SCENY =================
@@ -292,7 +473,7 @@ function bootText(t,d){
 
 function warp(t,d){
   var p=t/d;
-  if(!warp.__zvuk && AC){ warp.__zvuk=true;
+  if(!warp.__zvukX && AC){ warp.__zvuk=true;
     var o=AC.createOscillator(), z=AC.createGain();
     o.type='sawtooth';
     o.frequency.setValueAtTime(90, AC.currentTime);
@@ -302,13 +483,34 @@ function warp(t,d){
     z.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime+d/1000);
     o.connect(z); z.connect(mistr); o.start(); o.stop(AC.currentTime+d/1000+0.1);
   }
-  g.fillStyle='rgba(2,3,6,.45)'; g.fillRect(0,0,W,H);
-  hvezdy(0.004+0.055*p*p, 1.0);
-  pruhy(t, 5, 0.30*p, 0.30*p);
-  if(p>0.75){
-    var q=(p-0.75)/0.25;
-    g.fillStyle='rgba(255,255,255,'+(q*q*0.75).toFixed(3)+')';
+  g.fillStyle='rgba(2,3,6,'+(0.42-0.22*p).toFixed(2)+')'; g.fillRect(0,0,W,H);
+  hvezdyProuzky(0.004+0.075*p*p, 1.0, p);
+  plazma(t, 0.10+0.22*p);
+  pruhy(t, 5, 0.30*p, 0.26*p);
+  if(p>0.72){
+    var q=(p-0.72)/0.28;
+    mrizkaPodlaha(t, 0.62, q*0.9);
+    g.fillStyle='rgba(255,255,255,'+(q*q*0.8).toFixed(3)+')';
     g.fillRect(0,0,W,H);
+  }
+}
+
+// hvezdy s prouzkem - cim rychleji, tim delsi ohon
+function hvezdyProuzky(rychlost, jas, p){
+  var cx=W/2, cy=H/2, m=Math.min(W,H);
+  g.lineCap='round';
+  for(var i=0;i<hv.length;i++){
+    var s=hv[i], z0=s.z;
+    s.z-=rychlost;
+    if(s.z<=0.02){ s.x=(Math.random()-0.5)*2; s.y=(Math.random()-0.5)*2; s.z=1; continue; }
+    var k=0.9/s.z, k0=0.9/z0;
+    var x=cx+s.x*k*m*0.5,  y=cy+s.y*k*m*0.5;
+    var x0=cx+s.x*k0*m*0.5, y0=cy+s.y*k0*m*0.5;
+    if(x<-50||x>W+50||y<-50||y>H+50) continue;
+    var v=1-s.z, a=Math.min(1,v*1.6)*jas;
+    g.strokeStyle='rgba(255,'+(190+Math.floor(65*v))+','+(210+Math.floor(45*v))+','+a.toFixed(3)+')';
+    g.lineWidth=Math.max(1, v*2.6*DPR);
+    g.beginPath(); g.moveTo(x0,y0); g.lineTo(x,y); g.stroke();
   }
 }
 
@@ -323,8 +525,11 @@ function logoPrilet(t,d){
   // loga hromadi pres snimky a po chvili z ni je siseda placka pres celou
   // obrazovku. Stopy za hvezdami maji smysl jen ve warpu.
   g.fillStyle='#02030a'; g.fillRect(0,0,W,H);
-  hvezdy(0.02*(1-p)+0.003, 0.9);
-  pruhy(t, 6, 0.30, 0.34);
+  plazma(t, 0.30);
+  hvezdy(0.02*(1-p)+0.003, 0.7);
+  slunce(t, 0.62, Math.min(1,p*1.6)*0.85);
+  mrizkaPodlaha(t, 0.62, 0.95);
+  pruhy(t, 6, 0.30, 0.30);
   var e=1-Math.pow(1-Math.min(1,p/0.72), 3);
   var cil=Math.min(W,H)*0.40;
   vykresliLogo(W/2, H*0.34, cil*(3.2-2.2*e), Math.min(1,p/0.30), 0.5*e);
@@ -338,12 +543,18 @@ function logoPrilet(t,d){
 function hlavni(t,d){
   hudba();
   g.fillStyle='#02030a'; g.fillRect(0,0,W,H);
-  hvezdy(0.0045, 0.85);
-  pruhy(t, 7, 0.32, 0.34);
+  plazma(t, 0.42);
+  hvezdy(0.0045, 0.65);
+  bobiky(t, 14, Math.min(W,H)*0.085, 0.55);
+  slunce(t, 0.615, 0.7);
+  mrizkaPodlaha(t, 0.615, 0.9);
+  pruhy(t, 7, 0.32, 0.28);
   var puls=1+0.105*Math.sin(t*0.00115) + 0.030*Math.sin(t*0.0037);
   var plavani=Math.sin(t*0.00085)*(H*0.016);
-  vykresliLogo(W/2, H*0.32+plavani, Math.min(W,H)*0.40*puls, 1, 0.40+0.15*Math.sin(t*0.003));
-  stred('GOLD BETA  -  JEN PRO KKT', H*0.60, Math.min(20, innerWidth/18),
+  var vel=Math.min(W,H)*0.40*puls;
+  odrazLoga(W/2, H*0.32+plavani, vel, 0.34);
+  vykresliLogo(W/2, H*0.32+plavani, vel, 1, 0.40+0.15*Math.sin(t*0.003));
+  stred('GOLD BETA  -  JEN PRO KKT', H*0.545, Math.min(20, innerWidth/18),
         'rgba(255,210,80,.92)', true);
   scroller(t, H*0.78, Math.min(26, innerWidth/13), 1);
 }

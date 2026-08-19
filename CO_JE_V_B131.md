@@ -19,6 +19,44 @@ Tlačítko **PŘESKOČIT** je vpravo dole a jde kdykoli.
 54,0 – 58,0 s  zatmívačka, KAMARADI KRTECKA TONDY
 ```
 
+## Grafika — druhé kolo
+
+Přidal jsem, cos chtěl:
+
+- **plazma** na pozadí — počítá se na malém plátně 96×168 a roztahuje se
+  přes obrazovku, přesně jak to dělala osmibitová dema
+- **perspektivní mřížka** — podlaha, která se blíží, s ubíhajícími čarami
+- **slunce nad horizontem** s vodorovnými prořezanými pruhy
+- **bobíky** — barevné koule po Lissajousových křivkách, sčítají se
+- **odraz loga** pod ním, zrcadlený a vytrácející se
+- **hvězdy s ohonem** ve warpu — čím rychleji, tím delší pruh
+
+### Výkon jsem měřil, ne odhadoval
+
+Profiloval jsem každý efekt zvlášť a našel dvě zbytečnosti:
+
+```
+                předtím    potom
+logo             23,0 ms    0,7 ms     předkresleno jednou
+odraz            18,1 ms    6,3 ms     totéž
+slunce            8,1 ms    6,6 ms     zář zapečená do plátna
+celá scéna         98 ms     60 ms
+```
+
+Logo se každý snímek zmenšovalo z obrázku 1200 bodů širokého a k tomu
+se vyráběl gradient. Teď se to nakreslí **jednou** do malého plátna a
+pak už se jen kopíruje — třicetkrát rychleji.
+
+Těch 60 ms je **softwarové** vykreslování v mém testu. Telefon má GPU,
+kde je roztažení plazmy prakticky zadarmo. Ale kdyby se to přesto seklo,
+je v `intro/index.html` přepínač:
+
+```js
+var PLAZMA_PLYNULE = true;   // na false = kostičkovaná plazma, 11x rychlejší
+```
+
+Řekni a přehodím ho.
+
 ## Co jsem opravil podle tvých připomínek
 
 **Ťukání teď sedí na písmena.** Dřív běželo na časovač a s textem to
