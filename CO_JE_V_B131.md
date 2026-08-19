@@ -1,103 +1,60 @@
 # B131 — ÚVODNÍ FILM PRO SRAZ KLANU (versionCode 179)
 
 > **Tento kód je předpoklad. Čeká se na test.**
-> Zatím jsi viděl jen moje obrázky — tohle je první build, kde si to pustíš.
 
-## Není to obrazovka, je to film
-
-Šest scén, celkem **58 vteřin**, pak samo skočí do rozcestníku.
-Tlačítko **PŘESKOČIT** je vpravo dole a jde kdykoli.
+## Tři okna, jak jsi je popsal
 
 ```
-0,0 –  2,5 s   televize se zapíná — čára se rozšíří a rozevře do plochy
-2,5 – 12,0 s   bootovací výpis, píše se po písmenkách, zelený fosfor
-               ATARI 130XE ... OK / SEGA MEGA DRIVE ... OK / PLAYSTATION ... OK
-               GOLD BETA — KKT ONLY / READY.  a kurzor spadne pod něj
-12,0 – 17,0 s  průlet hvězdami, zrychluje, na konci zášleh
-17,0 – 22,0 s  logo přilétá zdálky, dosedá, naskočí GOLD BETA
-22,0 – 54,0 s  logo plave, dole běží celý tvůj text jako vlnící se scroller
-54,0 – 58,0 s  zatmívačka, KAMARADI KRTECKA TONDY
+0,0 –  2,5 s   televize se zapíná
+2,5 – 12,0 s   1. OKNO: ATARI 130XE ... OK / SEGA MEGA DRIVE ... OK
+               PLAYSTATION ... OK / GOLD BETA - KKT ONLY / READY.
+               kurzor spadne pod READY
+12,0 – 30,0 s  2. OKNO: program v BASICu se píše řádek po řádku,
+               klávesy klapou, na konci RUN
+30,0 – 32,5 s  skok
+32,5 – 56,5 s  3. OKNO: JEDNO logo nahoře, dole vsazená obrazovka,
+               v ní běží program — duha a vypsaný text
+56,5 – 60,5 s  zatmívačka
 ```
 
-## Grafika — druhé kolo
+Celkem **60,5 vteřiny**, pak samo do rozcestníku. **PŘESKOČIT** kdykoli.
 
-Přidal jsem, cos chtěl:
+## Co jsem opravil podle tebe
 
-- **plazma** na pozadí — počítá se na malém plátně 96×168 a roztahuje se
-  přes obrazovku, přesně jak to dělala osmibitová dema
-- **perspektivní mřížka** — podlaha, která se blíží, s ubíhajícími čarami
-- **slunce nad horizontem** s vodorovnými prořezanými pruhy
-- **bobíky** — barevné koule po Lissajousových křivkách, sčítají se
-- **odraz loga** pod ním, zrcadlený a vytrácející se
-- **hvězdy s ohonem** ve warpu — čím rychleji, tím delší pruh
+**Dvě loga jsou pryč.** Neopravoval jsem odraz — **smazal jsem ho**.
+A s ním i celou starou scénu, ve které byl, ať se nemůže vrátit.
+Ověřeno: `odrazLoga(` se v souboru vyskytuje **nulakrát**.
 
-### Výkon jsem měřil, ne odhadoval
+**GOLD BETA - JEN PRO KKT** smazáno. Nulakrát.
 
-Profiloval jsem každý efekt zvlášť a našel dvě zbytečnosti:
+**Plovoucí text smazán.** Nulakrát.
 
-```
-                předtím    potom
-logo             23,0 ms    0,7 ms     předkresleno jednou
-odraz            18,1 ms    6,3 ms     totéž
-slunce            8,1 ms    6,6 ms     zář zapečená do plátna
-celá scéna         98 ms     60 ms
-```
+**Slunce smazáno.** Nulakrát.
 
-Logo se každý snímek zmenšovalo z obrázku 1200 bodů širokého a k tomu
-se vyráběl gradient. Teď se to nakreslí **jednou** do malého plátna a
-pak už se jen kopíruje — třicetkrát rychleji.
+Vyhodil jsem rovnou i všechny funkce, které se už nepouštěly —
+`hlavni`, `logoPrilet`, `beh`, `scroller`, `odrazLoga`, `slunce`.
+Mrtvý kód je past: za měsíc to někdo zapojí zpátky a diví se.
 
-Těch 60 ms je **softwarové** vykreslování v mém testu. Telefon má GPU,
-kde je roztažení plazmy prakticky zadarmo. Ale kdyby se to přesto seklo,
-je v `intro/index.html` přepínač:
+## Vsazená obrazovka s duhou
 
-```js
-var PLAZMA_PLYNULE = true;   // na false = kostičkovaná plazma, 11x rychlejší
-```
+Ve třetím okně je dole **rámeček jako monitor** a v něm běží program:
+duha přes celou plochu a přes ni vypsaný text. Duha se posouvá.
 
-Řekni a přehodím ho.
+Na Atari se to dělá tak, že se mění barva pozadí na každém řádku
+(`POKE 710` v přerušení display listu). Tady je to nakreslené —
+je to fake, jak jsi sám řekl — ale vypadá to stejně a chová se to
+stejně: text se dopisuje s kurzorem, jako by program běžel.
 
-## Co jsem opravil podle tvých připomínek
+## Klávesy klapou jako Atari
 
-**Ťukání teď sedí na písmena.** Dřív běželo na časovač a s textem to
-neladilo. Teď se ozve **právě tehdy, když přibude znak** — a konec řádku
-má svůj vlastní zvuk. Ověřeno: 127 znaků, 7 konců řádku, **135 tónů**.
+Předtím jsem tam měl **pípání** a to bylo špatně. Atari pro klávesu
+žádný tón nedělá — OS jen **klapne reproduktorem** (bit 3 registru
+CONSOL). Je to krátký cvak, ne pípnutí.
 
-**Psaní je pomalejší** — 48 ms na znak, celý výpis se píše 6,1 s a pak
-3,4 s bliká kurzor.
-
-**Kurzor spadne pod READY.** Dokud se píše, stojí za posledním znakem;
-jakmile je hotovo, přeskočí na další řádek — jak to dělá skutečné Atari.
-
-**Logo víc plave.** Zvětšuje a zmenšuje se třikrát víc než dřív a k tomu
-se jemně posouvá nahoru a dolů.
-
-Přes celou obrazovku je jemný rastr a zaoblení jako na CRT, aby to
-nevypadalo jako webová stránka.
-
-## Zvuk
-
-Všechno se vyrábí za běhu, žádný soubor navíc:
-
-- **zapnutí** — dunivý náběh a pisknutí obrazovky
-- **boot** — nahrávací pípání, jaké dělá POKEY při přenosu ze SIO
-- **warp** — stoupající sweep
-- **logo** — akord a zášleh
-- **hlavní scéna** — vlastní chiptune: basa, arpeggio, melodie
-
-**Co tam není a proč:** to zvolání „SEEEGAA" je nahrávka hlasu, kterou
-vlastní Sega, a startovní zvuk PS1 patří Sony. Nebudu je napodobovat.
-Atari pípání je jiná věc — to není nahrávka, ale funkční tón, který
-vyrábí čip, takže ten jsem udělal.
-
-Prohlížeč někdy nepustí zvuk bez dotyku. Zkouší se to hned po startu
-i po prvním doteku obrazovky.
+Předělal jsem to na velmi krátký šum s ostrým náběhem. RETURN klape
+jinak než písmeno.
 
 ## Ověřeno u mě
-
-Film jsem **spustil proti skutečnému plátnu** a vyrenderoval snímky ze
-všech scén. Doběhne za 58 s a přesměruje.
-Ťukání ověřeno na počet: 135 tónů na 127 znaků a 7 konců řádku.
 
 | část | výsledek |
 |---|---|
@@ -105,20 +62,16 @@ všech scén. Doběhne za 58 s a přesměruje.
 | C++ Atari, PS1, Sega (aarch64) | 4/4 |
 | linkování PS1+Sega | 31/31 |
 | JS rozcestníku, intra i HELP | 0 chyb |
-| film spuštěný v node | doběhne, přesměruje, zvuk běží |
+| film spuštěný proti skutečnému plátnu | doběhne za 60,5 s, přesměruje |
 | původní Atari | bajt po bajtu netknuté |
 
-### Tři chyby, které jsem si při tom sám našel
+**Výkon:** nejtěžší scéna 53 ms na snímek v **softwarovém** vykreslování
+mého testu. Telefon má GPU, kde je roztažení plazmy prakticky zadarmo.
+Kdyby se přesto sekalo, je v `intro/index.html`:
 
-Bez skutečného spuštění bych ti poslal rozbité intro:
-
-1. **Zář se hromadila** — mazal jsem pozadí poloprůhledně kvůli stopám
-   za hvězdami, takže bílá koule kolem loga se přes snímky nabalovala,
-   až z ní byla šedivá placka přes celou obrazovku.
-2. **Časová osa byla špatně** — psal jsem čísla jako konce scén, ale kód
-   je čte jako délky. Intro by trvalo **dvě a půl minuty**.
-3. **Polykal jsem výjimky** — `catch(e){}` bez ničeho. Když se scéna
-   rozbila, byla jen černá obrazovka a žádná stopa.
+```js
+var PLAZMA_PLYNULE = true;   // na false = kostičkovaná plazma, 11x rychlejší
+```
 
 ---
 
@@ -126,43 +79,39 @@ Bez skutečného spuštění bych ti poslal rozbité intro:
 
 **1)** Build v Actions.
 **2)** Spusť aplikaci a **nech film doběhnout celý**.
-**3)** Spusť znovu (ukončit a otevřít) — film má naskočit zas.
+**3)** Spusť znovu (ukončit a otevřít) — má naskočit zas.
 **4)** Během filmu zmáčkni **PŘESKOČIT**.
-**5)** Vrať se z hry do nabídky — film **nemá** naskočit znovu.
-**6)** **ATARI**, **PS1** a **SEGA** — musí běžet jako dosud.
+**5)** Vrať se z hry do nabídky — film **nemá** naskočit.
+**6)** **ATARI**, **PS1**, **SEGA** — jako dosud.
 
 ## CO OČEKÁVAT
 
 | # | SPRÁVNĚ | ŠPATNĚ |
 |---|---|---|
 | 1 | zelený build | červený → log z Actions |
-| 2 | šest scén za sebou, logo čitelné, text projede celý, hraje zvuk | scéna chybí, seká se, ticho, černo |
-| 3 | film naskočí znovu | nenaskočí |
+| 2 | tři okna za sebou, **jedno jediné logo**, dole běžící program s duhou | dvě loga, chybí okno, seká se, ticho |
+| 3 | naskočí znovu | nenaskočí |
 | 4 | okamžitě do nabídky | nic |
-| 5 | film nenaskočí | naskočí |
+| 5 | nenaskočí | naskočí |
 | 6 | jako dosud | jakákoli změna |
 
 ## CO MI ŘEKNI
 
-Na tohle se nedokážu podívat sám:
-
-1. **Neruší tě něco v tom ťukání?** Teď je vázané na písmena.
-2. **Neseká se to na S8?** Hvězdy a pruhy stojí výkon.
-3. **Je text ve scrolleru čitelný?**
-4. **Hraje zvuk?** A není moc hlasitý?
-5. **Sedí to pípání?** Dělal jsem ho po paměti podle SIO.
+1. **Je tam pořád někde druhé logo?** Mělo by být jedno.
+2. **Klapou klávesy jako Atari?** Dělal jsem to po paměti.
+3. **Neseká se to?**
+4. **Sedí ta duha?** Je to fake, ale má vypadat jako běžící program.
 
 ## CO POSLAT ZPĚT
 
 Log přes **ULOZIT LOG A ODESLAT** na obrazovce HELP.
-Hledej v něm `BUILD2SA21 START` a `BUILD2SA21 INTRO_HOTOVO`.
 
 ---
 
 ## Atari v C++ — kde se skončilo
 
-Práce **pozastavená** na tvůj pokyn. Celý stav je v
-`PREDAVACI_BALICEK_PS1.txt`, aby se k tomu dal vrátit kdokoli.
+Práce **pozastavená** na tvůj pokyn, celý stav je v
+`PREDAVACI_BALICEK_PS1.txt`.
 
 **Běží:** procesor (1 024 000 instrukcí, 0 rozdílů), paměť (16 252 928
 čtení, 0 rozdílů), WSYNC, zavaděč XEX, display list, DLI, OS nabootuje,
@@ -170,7 +119,7 @@ BASIC naskočí, **self-test z ROM se vykreslí celý**, Decathlon se nahraje.
 
 **Neběží:** vykreslení Decathlonu, kolize, zvuk, VBXE.
 
-**Poučení zapsané v protokolu:** vrstvy 1 a 2 jsem překládal z JavaScriptu
-a vyšly napoprvé. Vrstvu 3 jsem začal psát znovu a za den z toho bylo
-**osm vlastních chyb**, které v původním JS nejsou. Další krok je vrstvu 3
-**přeložit**, ne psát.
+**Poučení v protokolu:** vrstvy 1 a 2 jsem překládal z JavaScriptu a
+vyšly napoprvé. Vrstvu 3 jsem začal psát znovu a za den z toho bylo
+**osm vlastních chyb**, které v původním JS nejsou. Další krok je
+vrstvu 3 **přeložit**, ne psát.
