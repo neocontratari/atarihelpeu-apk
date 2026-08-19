@@ -5,19 +5,34 @@
 
 ## Není to obrazovka, je to film
 
-Šest scén, celkem **54,5 vteřiny**, pak samo skočí do rozcestníku.
+Šest scén, celkem **58 vteřin**, pak samo skočí do rozcestníku.
 Tlačítko **PŘESKOČIT** je vpravo dole a jde kdykoli.
 
 ```
-0,0 – 2,5 s    televize se zapíná — čára se rozšíří a rozevře do plochy
-2,5 – 8,5 s    bootovací výpis, zelený fosfor, blikající kurzor
+0,0 –  2,5 s   televize se zapíná — čára se rozšíří a rozevře do plochy
+2,5 – 12,0 s   bootovací výpis, píše se po písmenkách, zelený fosfor
                ATARI 130XE ... OK / SEGA MEGA DRIVE ... OK / PLAYSTATION ... OK
-               GOLD BETA — KKT ONLY
-8,5 – 13,5 s   průlet hvězdami, zrychluje, na konci zášleh
-13,5 – 18,5 s  logo přilétá zdálky, dosedá, naskočí GOLD BETA
-18,5 – 50,5 s  logo pulsuje, dole běží celý tvůj text jako vlnící se scroller
-50,5 – 54,5 s  zatmívačka, KAMARADI KRTECKA TONDY
+               GOLD BETA — KKT ONLY / READY.  a kurzor spadne pod něj
+12,0 – 17,0 s  průlet hvězdami, zrychluje, na konci zášleh
+17,0 – 22,0 s  logo přilétá zdálky, dosedá, naskočí GOLD BETA
+22,0 – 54,0 s  logo plave, dole běží celý tvůj text jako vlnící se scroller
+54,0 – 58,0 s  zatmívačka, KAMARADI KRTECKA TONDY
 ```
+
+## Co jsem opravil podle tvých připomínek
+
+**Ťukání teď sedí na písmena.** Dřív běželo na časovač a s textem to
+neladilo. Teď se ozve **právě tehdy, když přibude znak** — a konec řádku
+má svůj vlastní zvuk. Ověřeno: 127 znaků, 7 konců řádku, **135 tónů**.
+
+**Psaní je pomalejší** — 48 ms na znak, celý výpis se píše 6,1 s a pak
+3,4 s bliká kurzor.
+
+**Kurzor spadne pod READY.** Dokud se píše, stojí za posledním znakem;
+jakmile je hotovo, přeskočí na další řádek — jak to dělá skutečné Atari.
+
+**Logo víc plave.** Zvětšuje a zmenšuje se třikrát víc než dřív a k tomu
+se jemně posouvá nahoru a dolů.
 
 Přes celou obrazovku je jemný rastr a zaoblení jako na CRT, aby to
 nevypadalo jako webová stránka.
@@ -43,8 +58,8 @@ i po prvním doteku obrazovky.
 ## Ověřeno u mě
 
 Film jsem **spustil proti skutečnému plátnu** a vyrenderoval snímky ze
-všech scén. Doběhne za 54,5 s a přesměruje. Zvuk: 399 tónů a 15 šumů
-za celý běh.
+všech scén. Doběhne za 58 s a přesměruje.
+Ťukání ověřeno na počet: 135 tónů na 127 znaků a 7 konců řádku.
 
 | část | výsledek |
 |---|---|
@@ -93,7 +108,7 @@ Bez skutečného spuštění bych ti poslal rozbité intro:
 
 Na tohle se nedokážu podívat sám:
 
-1. **Sedí délka?** 54,5 s. Můžu zkrátit i prodloužit — řekni číslo.
+1. **Neruší tě něco v tom ťukání?** Teď je vázané na písmena.
 2. **Neseká se to na S8?** Hvězdy a pruhy stojí výkon.
 3. **Je text ve scrolleru čitelný?**
 4. **Hraje zvuk?** A není moc hlasitý?

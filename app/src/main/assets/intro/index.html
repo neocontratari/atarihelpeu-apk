@@ -70,15 +70,17 @@ function sum(kdy, delka, hlas){
   var z=AC.createGain(); z.gain.value=hlas;
   src.connect(z); z.connect(mistr); src.start(kdy);
 }
-// pipani jako pri nahravani z kazety/disketky
-var pipDo=0;
-function pipani(){
+// Ukani klavesnice. NENI na casovac - vola se prave tehdy, kdyz
+// pribude pismeno. Drive to tuklo porad dokola a nesedelo to s textem.
+function ukni(zn){
   if(!AC) return;
   var t=AC.currentTime;
-  if(t<pipDo) return;
-  pipDo=t+0.13;
-  ton(t, 1180, 0.055, 'square', 0.16);
-  ton(t+0.065, 780, 0.045, 'square', 0.12);
+  if(zn===' '){ ton(t, 620, 0.020, 'square', 0.05); return; }
+  if(zn==='\n'){ ton(t, 300, 0.070, 'square', 0.10);      // konec radku
+                 ton(t+0.05, 900, 0.040, 'square', 0.07); return; }
+  var v=1000+Math.random()*260;
+  ton(t, v, 0.028, 'square', 0.11);
+  sum(t, 0.018, 0.035);
 }
 // chiptune - jednoduchy beh, hraje se dopredu po taktech
 var NOTY=[0,3,7,10, 0,3,7,12, -2,2,5,9, -4,0,3,7];
@@ -253,26 +255,38 @@ function crtZapnuti(t,d){
 var BOOT=['ATARIHELP.EU  EMU-10','',
   'ATARI 130XE ......... OK','SEGA MEGA DRIVE ..... OK','PLAYSTATION ......... OK','',
   'GOLD BETA  -  KKT ONLY','READY.'];
+// cely bootovaci text v jednom kuse, at se da adresovat po znacich
+var BOOT_TEXT=BOOT.join('\n');
+var bootNapsano=0;
 function bootText(t,d){
   g.fillStyle='#04070a'; g.fillRect(0,0,W,H);
   hvezdy(0.0015, 0.35);
-  var znaku=Math.floor(t/26);
+
+  var RYCHLOST=48;                              // ms na jeden znak
+  var znaku=Math.min(BOOT_TEXT.length, Math.floor(t/RYCHLOST));
+  // ukni tolikrat, kolik pismen prave pribylo
+  while(bootNapsano<znaku){ ukni(BOOT_TEXT[bootNapsano]); bootNapsano++; }
+
   var px=Math.max(11, Math.min(19, innerWidth/22));
+  var rv=px*1.70*DPR;
   g.font=pismo(px,false); g.textAlign='left'; g.textBaseline='top';
-  var y=H*0.26, x=W*0.12, n=0;
-  for(var i=0;i<BOOT.length;i++){
-    var r=BOOT[i];
-    if(n>=znaku) break;
-    var kus=r.substring(0, Math.max(0, znaku-n));
-    g.fillStyle = (i===6) ? '#ffd24d' : (r.indexOf('OK')>=0 ? '#67e888' : '#9ef7b0');
-    g.fillText(kus, x, y);
-    n+=r.length+1;
-    y+=px*1.65*DPR;
+  var x=W*0.12, y0=H*0.24;
+
+  var radky=BOOT_TEXT.substring(0,znaku).split('\n');
+  for(var i=0;i<radky.length;i++){
+    g.fillStyle = (i===6) ? '#ffd24d' : (radky[i].indexOf('OK')>=0 ? '#67e888' : '#9ef7b0');
+    g.fillText(radky[i], x, y0+i*rv);
   }
-  pipani();                                    // nahravaci pipani
+
+  // Kurzor: dokud se pise, stoji za poslednim znakem. Az je hotovo,
+  // SPADNE NA DALSI RADEK pod READY - jak to dela skutecny Atari.
+  var hotovo = (znaku>=BOOT_TEXT.length);
+  var cy, cx;
+  if(hotovo){ cx=x; cy=y0+radky.length*rv; }
+  else{ cx=x+g.measureText(radky[radky.length-1]).width; cy=y0+(radky.length-1)*rv; }
   if(Math.floor(t/380)%2===0){
     g.fillStyle='#9ef7b0';
-    g.fillRect(x, y-px*1.65*DPR+2*DPR, px*0.62*DPR, px*1.15*DPR);
+    g.fillRect(cx, cy+2*DPR, px*0.62*DPR, px*1.15*DPR);
   }
 }
 
@@ -326,8 +340,9 @@ function hlavni(t,d){
   g.fillStyle='#02030a'; g.fillRect(0,0,W,H);
   hvezdy(0.0045, 0.85);
   pruhy(t, 7, 0.32, 0.34);
-  var puls=1+0.035*Math.sin(t*0.0021);
-  vykresliLogo(W/2, H*0.32, Math.min(W,H)*0.40*puls, 1, 0.40+0.15*Math.sin(t*0.003));
+  var puls=1+0.105*Math.sin(t*0.00115) + 0.030*Math.sin(t*0.0037);
+  var plavani=Math.sin(t*0.00085)*(H*0.016);
+  vykresliLogo(W/2, H*0.32+plavani, Math.min(W,H)*0.40*puls, 1, 0.40+0.15*Math.sin(t*0.003));
   stred('GOLD BETA  -  JEN PRO KKT', H*0.60, Math.min(20, innerWidth/18),
         'rgba(255,210,80,.92)', true);
   scroller(t, H*0.78, Math.min(26, innerWidth/13), 1);
@@ -350,12 +365,12 @@ function zaver(t,d){
 // intro pak trvalo dve a pul minuty misto necele.
 var SCENY=[
   {trvani: 2500, f:crtZapnuti},   // televize se zapina
-  {trvani: 6000, f:bootText},     // bootovaci vypis
+  {trvani: 9500, f:bootText},     // bootovaci vypis (psani po pismenkach)
   {trvani: 5000, f:warp},         // pruchod hvezdami
   {trvani: 5000, f:logoPrilet},   // logo prilétá
   {trvani:32000, f:hlavni},       // logo + rolujici text
   {trvani: 4000, f:zaver}         // zatmivacka
-];                                 // celkem 54,5 s
+];                                 // celkem 58 s
 
 var scenaOd=null, idx=0;
 function snimek(ts){
