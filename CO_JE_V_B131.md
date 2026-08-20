@@ -56,6 +56,59 @@ Ověřil jsem to **číselně na čtyřech tvarech obrazovky**, ne od oka:
 
 A pak jsem celý film pustil v obou orientacích od začátku do konce.
 
+## Osmé kolo — tlačítko INTRO v nabídce OPTIONS
+
+Vpravo nahoře v rozcestníku, v kolečku **OPTIONS**, přibylo pod
+`SPUSTIT WEB TV` tlačítko:
+
+```
+PUSTIT INTRO
+```
+
+Jde jím intro spustit kdykoli, a protože se přehrává ve stejném okně
+jako všechno ostatní, **jde i na WEB TV**.
+
+### Na TV to půjde samo — a je to doložené
+
+Prošel jsem cestu obrazu:
+
+```java
+PixelCopy.request(getWindow(), ...)
+```
+
+Snímá se **celé okno aplikace**, ne konkrétní stránka. Ta jediná podmínka
+na adresu (`emu_ps1`, `emu_sega`) tam je proto, že tyhle dva dávají snímek
+přímo z jádra a snímání okna obcházejí. Když se na nich není, TV se vrátí
+ke snímání okna — a intro je přesně takový případ.
+
+### Jedna past, kterou jsem ošetřil
+
+Intro si při doběhnutí hlásí do Javy „ukázáno", aby při návratu z her
+neotravovalo. Kdyby to udělalo i při ručním spuštění, hlásilo by to
+zbytečně podruhé.
+
+Intro proto pozná, že bylo puštěno ručně (`?znovu=1`), a v tom případě
+to nehlásí — do logu se zapíše `INTRO_NA_POZADANI`.
+
+Ověřeno spuštěním obou případů:
+
+```
+při STARTU aplikace       doběhl v 62,0 s, hlásí "ukázáno": ANO
+ručně z nabídky OPTIONS   doběhl v 62,0 s, hlásí "ukázáno": ne
+```
+
+### Pozor při testu s TV
+
+Snímání okna běží na hlavním vlákně — u Atari jsem naměřil asi 29 ms na
+`PixelCopy` plus 16 ms na kódování H.264. Intro k tomu přidá svoje
+kreslení. **Bez TV to nevadí, s TV to může být znát.**
+
+Kdyby ano, v `intro/index.html` je:
+
+```js
+var PLAZMA_PLYNULE = true;   // na false = 11x rychlejší
+```
+
 ## Sedmé kolo — READY před psaním
 
 Na Atari po startu BASICu nejdřív svítí **READY** a pod ním kurzor —

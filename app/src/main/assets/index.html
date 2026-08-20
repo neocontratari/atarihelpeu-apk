@@ -53,6 +53,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <div id="settingsPanel" aria-hidden="true">
     <div class="stlabel">OPTIONS</div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
+    <button id="stIntro" type="button">PUSTIT INTRO</button>
 
     <div class="stlabel2">NASTAVENI</div>
     <div class="qrow">
@@ -177,6 +178,17 @@ if(stTv)stTv.addEventListener('click',function(e){
   }
   closeSettings();
 },true);
+// BUILD2SA23: INTRO na pozadani. Da se pustit kdykoli, a protoze se
+// prehrava v tom samem okne jako vsechno ostatni, jde i na WEB TV.
+var stIn=$('stIntro');
+if(stIn)stIn.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  try{ if(window.AHINTRO&&AHINTRO.znovu) AHINTRO.znovu(); }catch(err){}
+  log('SETTINGS_INTRO_START');
+  closeSettings();
+  location.href='intro/index.html?znovu=1';
+},true);
+
 var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 Array.prototype.forEach.call(document.querySelectorAll('a[data-external="1"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openExternal(a.href);},true);});
 $('btnAtari')&&$('btnAtari').addEventListener('click',function(){toast('ATARI 130XE EMULATOR',900);},true);

@@ -2920,6 +2920,10 @@ public class MainActivity extends Activity {
             napIntroUkazano = true;
             appendNativeLog("BUILD2SA21 INTRO_HOTOVO");
         }
+        /** BUILD2SA23: intro pustene rucne z nabidky OPTIONS. */
+        @JavascriptInterface public void znovu() {
+            appendNativeLog("BUILD2SA23 INTRO_NA_POZADANI");
+        }
     }
 
     public class AHAtariCpp {

@@ -26,9 +26,13 @@ html,body{height:100%;overflow:hidden;background:#000}
 (function(){
 'use strict';
 var CIL='../index.html', hotovo=false;
+// Kdyz se intro pusti RUCNE z nabidky OPTIONS, ma po dobehnuti jen
+// skocit zpatky - nesmi znovu nahlasit "intro ukazano", protoze uz
+// nahlasene bylo pri startu.
+var naPozadani = (location.search||'').indexOf('znovu=1')>=0;
 function konec(){
   if(hotovo) return; hotovo=true;
-  try{ if(window.AHINTRO) AHINTRO.hotovo(); }catch(e){}
+  if(!naPozadani){ try{ if(window.AHINTRO) AHINTRO.hotovo(); }catch(e){} }
   location.replace(CIL);
 }
 document.getElementById('dal').addEventListener('click',konec);
