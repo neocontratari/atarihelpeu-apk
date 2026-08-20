@@ -44,16 +44,37 @@ document.getElementById('dal').addEventListener('click',konec);
 //  - vlastni chiptune: basa, arpeggio, melodie
 // Zvuk Segy ani Sony tu zamerne NENI - to jsou jejich nahravky.
 var AC=null, mistr=null, zvukJede=false;
+function zvukHlas(co){
+  try{ if(window.AHINTRO && AHINTRO.zvukLog) AHINTRO.zvukLog(co); }catch(e){}
+}
 function zvukStart(){
-  if(AC) { if(AC.state==='suspended') AC.resume(); return; }
+  if(AC) { if(AC.state!=='running') AC.resume(); return; }
   try{
     var K=window.AudioContext||window.webkitAudioContext;
-    if(!K) return;
+    if(!K){ zvukHlas('AudioContext v prohlizeci NENI'); return; }
     AC=new K();
     mistr=AC.createGain(); mistr.gain.value=0.0; mistr.connect(AC.destination);
     mistr.gain.setTargetAtTime(0.30, AC.currentTime, 0.6);
     zvukJede=true;
-  }catch(e){ AC=null; }
+    zvukHlas('vytvoren, stav='+AC.state);
+    if(AC.state!=='running'){
+      // Prohlizec ho casto vytvori USPANY a pusti az po dotyku. Zkousime
+      // to znovu v kazdem snimku - jinak by po celem intru bylo ticho
+      // a nikdo by nevedel proc.
+      try{ AC.resume().then(function(){ zvukHlas('probuzen, stav='+AC.state); },
+                            function(e){ zvukHlas('probuzeni selhalo: '+e); }); }catch(e){}
+    }
+  }catch(e){ AC=null; zvukHlas('vytvoreni selhalo: '+e.message); }
+}
+// Opakovane budime zvuk, dokud nebezi. Stoji to jedno porovnani na snimek.
+var zvukPokusy=0, zvukNahlasenoBezi=false;
+function zvukPohlidej(){
+  if(!AC){ if((zvukPokusy++ % 60)===0) zvukStart(); return; }
+  if(AC.state==='running'){
+    if(!zvukNahlasenoBezi){ zvukNahlasenoBezi=true; zvukHlas('BEZI'); }
+    return;
+  }
+  if((zvukPokusy++ % 30)===0){ try{ AC.resume(); }catch(e){} }
 }
 function ton(kdy, hz, delka, tvar, hlas, cil){
   if(!AC) return;
@@ -876,6 +897,7 @@ function snimek(ts){
     s=SCENY[idx]; t=0;
   }
   // vyjimku NEPOLYKAT - jen ji zapsat, at neni videt prazdna obrazovka
+  zvukPohlidej();
   try{ s.f(t, s.trvani); }
   catch(e){ if(!snimek.__hlaseno){ snimek.__hlaseno=true;
     try{ console.log('INTRO CHYBA: '+e.message); }catch(_){} } }

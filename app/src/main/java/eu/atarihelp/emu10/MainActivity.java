@@ -981,16 +981,41 @@ public class MainActivity extends Activity {
                     // pomale (46 ms = 22 snimku za vterinu, i kdyz enkoder
                     // stihal na 3 ms) - odtud zbyle zpozdeni.
                     boolean ps1PrimoZJadra = false;
+                    boolean naAtariJs = false;
                     try {
                         String cu0 = (web == null) ? null : web.getUrl();
                         boolean naSegeT = (cu0 != null) && cu0.contains("emu_sega");
                         boolean naPs1T  = (cu0 != null) && cu0.contains("emu_ps1")
                                 && (ps1BiosRunning || ps1SessionActive);
                         ps1PrimoZJadra = naPs1T || naSegeT;
+                        naAtariJs = (cu0 != null) && cu0.contains("emu_vbxe");
                     } catch (Throwable ignored2) {}
+                    // BUILD2SA24: ATARI MUSI DOSTAT POMALEJSI TEMPO, NE RYCHLEJSI.
+                    //
+                    // PS1 a Sega davaji snimek PRIMO Z JADRA - snimani nic nestoji,
+                    // takze rychla vetev je u nich spravne.
+                    //
+                    // Atari se ale emuluje v JavaScriptu na HLAVNIM VLAKNE a snimek
+                    // se z nej bere pres PixelCopy CELEHO OKNA - a ta smycka bezi
+                    // na tom SAMEM hlavnim vlakne. Kdyz si rekne o 27 ms, hlavni
+                    // vlakno je zahlcene a emulatoru nezbyde cas: kousal se obraz
+                    // i zvuk, na mobilu i na TV. V logu bylo videt 29 snimku za
+                    // vterinu, pricemz jeden snimek stoji ~29 ms PixelCopy plus
+                    // ~9 ms kresleni H264 - dohromady vic, nez ma hlavni vlakno
+                    // za vterinu k dispozici.
+                    //
+                    // Vetev "Sega/Atari: rychleji" byla psana v dobe, kdy se Sega
+                    // jeste snimala z okna. Od B117 Sega chodi z jadra a v te vetvi
+                    // zustalo jen Atari - tedy presne to, co tam patri nejmene.
+                    //
+                    // 66 ms = ~15 snimku za vterinu na TV. Je to mene plynula TV,
+                    // ale emulator bezi. Kdyby to bylo na TV moc trhane, staci
+                    // toto cislo snizit - je to jediny ukazatel toho kompromisu.
                     effectiveDelay = ps1PrimoZJadra
-                            ? napTvWebH264FastTickMs               // PS1: 16 ms staci
-                            : Math.max(8, napTvWebFrameDelayMs / 2); // Sega/Atari: rychleji
+                            ? napTvWebH264FastTickMs                 // PS1/Sega: z jadra, 16 ms staci
+                            : naAtariJs
+                                ? Math.max(napTvWebFrameDelayMs, 66) // Atari: hlavni vlakno musi dychat
+                                : Math.max(8, napTvWebFrameDelayMs / 2);
                 }
             } catch (Throwable ignored) {}
             // POZNAMKA K TEMPU: smycka bezi na hlavnim vlakne pres
@@ -2923,6 +2948,14 @@ public class MainActivity extends Activity {
         /** BUILD2SA23: intro pustene rucne z nabidky OPTIONS. */
         @JavascriptInterface public void znovu() {
             appendNativeLog("BUILD2SA23 INTRO_NA_POZADANI");
+        }
+        /**
+         * BUILD2SA24: stav zvuku v intru. Bez tohohle se pri "nejde zvuk"
+         * jen hada - ted je v logu videt, jestli se AudioContext vubec
+         * vyrobil a jestli bezi.
+         */
+        @JavascriptInterface public void zvukLog(String co) {
+            appendNativeLog("BUILD2SA24 INTRO_ZVUK " + co);
         }
     }
 
