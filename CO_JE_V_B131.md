@@ -56,6 +56,118 @@ Ověřil jsem to **číselně na čtyřech tvarech obrazovky**, ne od oka:
 
 A pak jsem celý film pustil v obou orientacích od začátku do konce.
 
+## Sedmé kolo — READY před psaním
+
+Na Atari po startu BASICu nejdřív svítí **READY** a pod ním kurzor —
+teprve pak píšeš. To jsem tam neměl a je to ta ikonická věc.
+
+Teď to jde takhle:
+
+```
+READY
+█            1,4 s jen bliká kurzor, žádné klapání
+10 GRAPHICS 0          pak se začne psát
+20 SETCOLOR 2,12,2:SETCOLOR 4,12,2
+...
+```
+
+`READY` se objeví **najednou a beze zvuku** — nepíše ho uživatel, vypisuje
+ho BASIC. Klapání kláves začne až u prvního řádku programu.
+
+Scéna je o tu pauzu delší, celý film má teď **62 vteřin**.
+
+## Šesté kolo — původní písmo z Atari
+
+**Nemusel jsem ho trefovat. Mám ho.** Znaková sada je v ROM, kterou jsi
+dodal: `$E000-$E3FF`, 1024 bajtů, 128 znaků po osmi bajtech.
+
+```
+index $21  ->  A          index $10  ->  0
+   ...##...                  ..####..
+   ..####..                  .##..##.
+   .##..##.                  .##.###.
+   .##..##.                  .###.##.
+   .######.                  .##..##.
+   .##..##.                  ..####..
+```
+
+Text v obou monitorech se teď kreslí **bod po bodu z té sady**, ne písmem
+z prohlížeče. Kurzor je plná buňka, jak to Atari dělá. Převod ASCII na
+vnitřní kód obrazovky je ten, co má Atari: `$20-$5F` mínus `$20`,
+malá písmena beze změny.
+
+Ověřeno v zabaleném souboru: **1024 bajtů, shoduje se s ROM bajt po bajtu**.
+
+### Jak to nestojí výkon
+
+Celá sada se jednou nakreslí do zásobního plátna (4 body na jeden bod
+Atari) a pak už se jen kopírují výřezy. Kreslit 64 bodů na každý znak
+každý snímek by bylo drahé.
+
+Nejtěžší scéna spadla z 51 na **37 ms na snímek** — kreslení znaků
+z hotového obrázku je levnější než sazba písma.
+
+### Dvě chyby, které jsem si u toho našel
+
+**1. Atlas jsem si držel jen jeden.** Text se kreslí dvakrát — jednou stín,
+jednou barva — takže se při každém znaku přepínalo mezi dvěma barvami
+a celá sada se překreslovala znovu. Render se kvůli tomu ani nedoběhl.
+Teď se drží atlas pro každou barvu zvlášť.
+
+**2. Zaokrouhlení bodu na celé číslo srazilo monitor na osminu.** Chtěl
+jsem, aby jeden bod Atari vyšel na celé obrazovkové body. Jenže na výšku
+vycházela buňka 15,3 bodu, tedy 1,9 bodu na jeden bod Atari — a
+zaokrouhlení dolů z toho udělalo 1, takže buňka spadla na 8 bodů
+a monitor se scvrkl. Teď se atlas staví v pevném rozlišení a při kreslení
+se zvětší na skutečnou buňku.
+
+## Páté kolo — podle tvých připomínek
+
+**Obrazovka Atari zmenšená.** Na šířku ze 49 % obrazu na 38 %, na výšku
+na 25 %. Kolem ní je vidět, co lítá — hvězdy jsem zesílil a zrychlil,
+bobíků je víc a logo jsem taky zmenšil, aby pozadí nezakrývalo.
+
+**Řádky mají rozestup.** Text se teď kreslí znak po znaku, každý do své
+buňky, takže mřížka je přesná a velikost písma se dá volit nezávisle na
+šířce buňky.
+
+**Kurzor sedí těsně za textem.**
+
+**SBÍRKA v Seze** vede rovnou na `https://atarihelp.eu/?page_id=1003`.
+Dlouhý stisk na tom tlačítku pořád otevírá nabídku výkonu — na to jsem nesáhl.
+
+### Dvě věci, které jsem u toho našel u sebe
+
+**1. Můj testovací nástroj lhal.** Text jsem vodorovně natahoval přes
+`ctx.scale(1.27, 1)`, aby znaková buňka měla poměr 0,8 jako na Atari.
+Ověřil jsem to samostatným pokusem:
+
+```
+text bez natažení      rozsah 11 – 128 bodů
+text se scale(2,1)     rozsah 12 – 139 bodů   ← má být dvojnásobek
+```
+
+**V mém testovacím plátně se `scale` na text neprojeví.** V prohlížeči ano.
+Znamenalo by to, že ti posílám obrázky, které neodpovídají tomu, co uvidíš
+na telefonu — a já bych to nikdy nezjistil.
+
+Zahodil jsem natahování úplně. Šířka buňky se odvodí ze **skutečně
+změřeného** písma a výška z poměru 0,8, takže obrazovka vyjde 4:3 sama.
+Co vidím já, uvidíš i ty.
+
+**2. Špatný poměr znakové buňky.** Měl jsem šířku znaku 0,601 a výšku
+řádku 1,34 — poměr 0,45, a monitor tím vycházel **na výšku**. Na šířkovém
+telefonu z toho byl vysoký úzký obdélník s písmem jako pod lupou.
+
+Atari GRAPHICS 0 má 40×24 buněk po 8×8 bodech, tedy 320×192, a na televizi
+4:3 je bod 0,8× tak široký jako vysoký — takže buňka má poměr 0,8 a celá
+obrazovka vyjde 32:24 = 4:3.
+
+### Výkon
+
+Text se kreslí do vlastního plátna a **jen když se změní**. Při 52 ms na
+znak je to nejvýš 20× za vteřinu místo 60×.
+
 ## Co jsem opravil podle tebe
 
 **Dvě loga jsou pryč.** Neopravoval jsem odraz — **smazal jsem ho**.

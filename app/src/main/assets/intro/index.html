@@ -446,35 +446,127 @@ function obrVykresli(t, pfBarva, pf1Barva, kurzorVidet){
 }
 
 var lstZnaku=0, lstNapsano=0, LST_TEXT=LISTING.join('\n')+'\n';
+var LST_PAUZA=1400;                    // jak dlouho jen sviti READY a kurzor
 function listing(t,d){
   hudba();
-  if(!obr) obrZaloz();
+  if(!obr){
+    obrZaloz();
+    // Na Atari po startu BASICu nejdriv sviti READY a pod nim kurzor.
+    // Tohle nepise uzivatel - vypise to BASIC - takze se to objevi
+    // najednou a bez klapani klaves.
+    obrPis('R'); obrPis('E'); obrPis('A'); obrPis('D'); obrPis('Y');
+    obrPis('\n');
+  }
   var RYCH=22;
-  var chce=Math.min(LST_TEXT.length, Math.floor(t/RYCH));
+  var chce=Math.min(LST_TEXT.length, Math.floor((t-LST_PAUZA)/RYCH));
+  if(chce<0) chce=0;
   while(lstNapsano<chce){
     var zn=LST_TEXT[lstNapsano];
     lstNapsano++;                          // POSUN DRIV nez zvuk
     obrPis(zn); ukni(zn);
   }
   g.fillStyle='#05060f'; g.fillRect(0,0,W,H);
-  plazma(t, 0.16);
-  hvezdy(0.002, 0.35);
+  plazma(t, 0.26);
+  hvezdy(0.0055, 0.95);            // hvezdy vyrazneji, at je kolem monitoru zivo
+  pruhy(t, 4, 0.34, 0.20);
 
-  // monitor - na sirku sirsi a nizsi, na vysku naopak
-  var ow, oh, ox, oy;
-  if(naSirku()){ ow=W*0.86; oh=H*0.80; }
-  else         { ow=W*0.92; oh=H*0.62; }
-  ox=(W-ow)/2; oy=(H-oh)/2;
-  ramMonitoru(ox,oy,ow,oh);
-  g.save(); g.beginPath(); g.rect(ox,oy,ow,oh); g.clip();
-  g.fillStyle='#3a49c8'; g.fillRect(ox,oy,ow,oh);      // GRAPHICS 0 modra
-  obrDoOkna(t, ox,oy,ow,oh, '#d6e0ff', lstNapsano<LST_TEXT.length, false);
+  // Monitor zamerne NEVYPLNUJE obraz - kolem nej musi byt videt letici
+  // hvezdy a plazma, jinak z toho je jen textova stranka.
+  var m=monitorNaText(W*0.09, H*0.13, W*0.82, H*0.74);
+  ramMonitoru(m.ox,m.oy,m.ow,m.oh);
+  g.save(); g.beginPath(); g.rect(m.ox,m.oy,m.ow,m.oh); g.clip();
+  g.fillStyle='#3a49c8'; g.fillRect(m.ox,m.oy,m.ow,m.oh);   // GRAPHICS 0 modra
+  obrDoOkna(t, m.ox,m.oy,m.ow,m.oh, m.px, '#d6e0ff', lstNapsano<LST_TEXT.length, false);
   g.restore();
 }
 
 // program bezi - obrazovka se smaze a vypise se text v barvach SETCOLOR
 
 
+
+
+// ================= PISMO Z ATARI =================
+// Tohle NENI napodobenina - je to SKUTECNA znakova sada z Reneho ROM
+// ($E000-$E3FF, 128 znaku po 8 bajtech). Kazdy znak je 8x8 bodu.
+//
+// Prevod ASCII -> vnitrni kod obrazovky (tak to ma Atari):
+//   $20-$5F (mezera az Z)  ->  kod - $20
+//   $60-$7F (mala pismena) ->  kod
+//   ostatni                ->  mezera
+var ATARI_FONT_B64=
+  'AAAAAAAAAAAAGBgYGAAYAABmZmYAAAAAAGb/Zmb/ZgAYPmA8BnwYAABmbBgwZkYAHDYcOG9mOwAAGBgYAAAAAAAOHBgYHA4A'+
+  'AHA4GBg4cAAAZjz/PGYAAAAYGH4YGAAAAAAAAAAYGDAAAAB+AAAAAAAAAAAAGBgAAAYMGDBgQAAAPGZudmY8AAAYOBgYGH4A'+
+  'ADxmDBgwfgAAfgwYDGY8AAAMHDxsfgwAAH5gfAZmPAAAPGB8ZmY8AAB+BgwYMDAAADxmPGZmPAAAPGY+Bgw4AAAAGBgAGBgA'+
+  'AAAYGAAYGDAGDBgwGAwGAAAAfgAAfgAAYDAYDBgwYAAAPGYMGAAYAAA8Zm5uYD4AABg8ZmZ+ZgAAfGZ8ZmZ8AAA8ZmBgZjwA'+
+  'AHhsZmZseAAAfmB8YGB+AAB+YHxgYGAAAD5gYG5mPgAAZmZ+ZmZmAAB+GBgYGH4AAAYGBgZmPAAAZmx4eGxmAABgYGBgYH4A'+
+  'AGN3f2tjYwAAZnZ+fm5mAAA8ZmZmZjwAAHxmZnxgYAAAPGZmZmw2AAB8ZmZ8bGYAADxgPAYGPAAAfhgYGBgYAABmZmZmZn4A'+
+  'AGZmZmY8GAAAY2Nrf3djAABmZjw8ZmYAAGZmPBgYGAAAfgwYMGB+AAAeGBgYGB4AAEBgMBgMBgAAeBgYGBh4AAAIHDZjAAAA'+
+  'AAAAAAAA/wAANn9/PhwIABgYGB8fGBgYAwMDAwMDAwMYGBj4+AAAABgYGPj4GBgYAAAA+PgYGBgDBw4cOHDgwMDgcDgcDgcD'+
+  'AQMHDx8/f/8AAAAADw8PD4DA4PD4/P7/Dw8PDwAAAADw8PDwAAAAAP//AAAAAAAAAAAAAAAA//8AAAAA8PDw8AAcHHd3CBwA'+
+  'AAAAHx8YGBgAAAD//wAAABgYGP//GBgYAAA8fn5+PAAAAAAA/////8DAwMDAwMDAAAAA//8YGBgYGBj//wAAAPDw8PDw8PDw'+
+  'GBgYHx8AAAB4YHhgfhgeAAAYPH4YGBgAABgYGH48GAAAGDB+MBgAAAAYDH4MGAAAABg8fn48GAAAADwGPmY+AABgYHxmZnwA'+
+  'AAA8YGBgPAAABgY+ZmY+AAAAPGZ+YDwAAA4YPhgYGAAAAD5mZj4GfABgYHxmZmYAABgAOBgYPAAABgAGBgYGPABgYGx4bGYA'+
+  'ADgYGBgYPAAAAGZ/f2tjAAAAfGZmZmYAAAA8ZmZmPAAAAHxmZnxgYAAAPmZmPgYGAAB8ZmBgYAAAAD5gPAZ8AAAYfhgYGA4A'+
+  'AABmZmZmPgAAAGZmZjwYAAAAY2t/PjYAAABmPBg8ZgAAAGZmZj4MeAAAfgwYMH4AABg8fn4YPAAYGBgYGBgYGAB+eHxuZgYA'+
+  'CBg4eDgYCAAQGBweHBgQAA==';
+
+var fontBajty=null;
+function fontData(){
+  if(fontBajty) return fontBajty;
+  try{
+    var bin=atob(ATARI_FONT_B64);
+    fontBajty=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) fontBajty[i]=bin.charCodeAt(i);
+  }catch(e){ fontBajty=new Uint8Array(1024); }
+  return fontBajty;
+}
+function vnitrniKod(zn){
+  var c=zn.charCodeAt(0);
+  if(c>=0x20 && c<=0x5F) return c-0x20;
+  if(c>=0x60 && c<=0x7F) return c;
+  return 0;
+}
+
+// Cela sada se JEDNOU nakresli do platna (16x8 znaku) v dane velikosti
+// a pak uz se jen kopiruji vyrezy. Kreslit 8x8 bodu na kazdy znak
+// kazdy snimek by bylo drahe.
+// Atlasu je potreba VIC - jeden na kazdou barvu. Kdyz se drzel jen
+// posledni, prepinalo se mezi barvou textu a barvou stinu u kazdeho
+// znaku a cela sada se prekreslovala znovu a znovu.
+// Atlas se stavi v PEVNEM rozliseni (4 body na jeden bod Atari) a pri
+// kresleni se zmensi/zvetsi na skutecnou bunku. Drive se stavel presne
+// na cilovou velikost a bod se zaokrouhloval na cele cislo - kdyz bunka
+// vysla mensi nez 16 bodu, spadl bod na 1 a monitor se scvrkl na osminu.
+var ATLAS_BOD = 4;
+var atlasy={};
+function fontAtlas(barva){
+  var klic=barva;
+  if(atlasy[klic]) return atlasy[klic];
+  var W8=ATLAS_BOD, H8=ATLAS_BOD, sw=W8*8, sh=H8*8;
+  var d=fontData();
+  var c=document.createElement('canvas');
+  c.width=sw*16; c.height=sh*8;
+  var q=c.getContext('2d');
+  q.fillStyle=barva;
+  for(var k=0;k<128;k++){
+    var gx=(k%16)*sw, gy=((k/16)|0)*sh;
+    for(var r=0;r<8;r++){
+      var b=d[k*8+r];
+      if(!b) continue;
+      for(var p=0;p<8;p++) if(b & (0x80>>p)) q.fillRect(gx+p*W8, gy+r*H8, W8, H8);
+    }
+  }
+  c.__sw=sw; c.__sh=sh;
+  atlasy[klic]=c;
+  return c;
+}
+function znakDo(ctx, zn, x, y, bw, bh, barva){
+  var a=fontAtlas(barva);
+  var k=vnitrniKod(zn); if(!k) return;
+  ctx.imageSmoothingEnabled=false;                 // body maji zustat ostre
+  ctx.drawImage(a, (k%16)*a.__sw, ((k/16)|0)*a.__sh, a.__sw, a.__sh,
+                   x, y, bw, bh);
+}
 
 // ================= MONITOR =================
 // Ramecek jako monitor + vypis textove obrazovky 40x24 dovnitr.
@@ -494,32 +586,91 @@ function ramMonitoru(ox,oy,ow,oh){
   g.restore();
 }
 
-/** Vrati velikost pisma tak, aby se 40x24 veslo do daneho obdelniku. */
-function pismoDoOkna(ow,oh){
-  // 40 sloupcu na sirku, 24 radku na vysku - bere se to prisnejsi z obou.
-  // Okraje jsou uzke schvalne, at je pismo co nejvetsi.
-  var podleSirky = ow/(SL*0.601 + 1.2);
-  var podleVysky = oh/(RA*1.34 + 0.6);
-  return Math.max(6*DPR, Math.min(podleSirky, podleVysky));
+/**
+ * Spocita monitor tak, aby OBEPNUL TEXT - ne aby se do nej text ztratil.
+ * Predtim jsem davali rozmer monitoru natvrdo a pismo do nej dopocital;
+ * na sirku pak byl monitor obrovsky a text uprostred jako pod lupou.
+ * Ted se nejdriv najde nejvetsi pismo, ktere se vejde do dostupne plochy,
+ * a monitor se udela presne na nej.
+ *
+ * @param mx,my,mw,mh  plocha, kterou ma monitor k dispozici
+ * @return {ox,oy,ow,oh,px}
+ */
+// Obrazovka Atari GRAPHICS 0: 40 znaku x 24 radku, bunka 8x8 bodu,
+// tedy 320x192 bodu. Na televizi 4:3 je bod 0,8x tak siroky jako vysoky,
+// takze BUNKA MA POMER 0,8 a cela obrazovka vyjde 32:24 = 4:3.
+//
+// Mel jsem sirku znaku 0,601 a vysku radku 1,34 - to dava pomer 0,45
+// a obrazovka pak vysla NA VYSKU. Na sirkovem telefonu z toho byl
+// uzky vysoky monitor s pismem jako pod lupou.
+var BUNKA_POMER = 0.8;                 // sirka : vyska bunky (Atari na 4:3)
+
+// ZADNE VODOROVNE NATAHOVANI. Puvodne jsem sirku bunky urcil natvrdo
+// a text roztahl pres ctx.scale(). Fungovalo by to v prohlizeci, ale
+// nesel by overit - v mem testovacim platne se scale na text neprojevi,
+// takze bych se dival na obrazky, ktere neodpovidaji skutecnosti.
+// Ted se to dela obracene: SIRKA BUNKY SE ODVODI Z PISMA a vyska z ni,
+// takze obrazovka vyjde 4:3 sama a zadna transformace neni potreba.
+var advPomer = 0;                      // sirka znaku v nasobcich velikosti pisma
+function zmerPismo(){
+  if(advPomer>0) return advPomer;
+  g.save();
+  g.font='700 100px ui-monospace,Menlo,Consolas,monospace';
+  var w=g.measureText('MMMMMMMMMM').width/10/100;
+  g.restore();
+  advPomer = (w>0.2 && w<1.2) ? w : 0.601;
+  return advPomer;
+}
+// Bunka je 8x8 bodu Atari. Na obrazovce ma pomer 0,8 (bod je uzsi nez
+// vyssi), takze 40x24 bunek vyjde 4:3. Velikost se voli tak, aby bod
+// vysel na CELE cislo - jinak by se mrizka rozmazala.
+function monitorNaText(mx,my,mw,mh){
+  var OKRAJ=0.9;
+  var bw = Math.min( mw/(SL + OKRAJ*2), (mh/(RA + OKRAJ*2))*BUNKA_POMER );
+  bw = Math.max(8, bw);
+  var bh = bw/BUNKA_POMER;
+  var ow = SL*bw + OKRAJ*2*bw;
+  var oh = RA*bh + OKRAJ*2*bh;
+  return { ox: mx+(mw-ow)/2, oy: my+(mh-oh)/2, ow: ow, oh: oh, px: bw };
 }
 
 /** Vypise textovy buffer do obdelniku. */
-function obrDoOkna(t, ox,oy,ow,oh, barvaPisma, kurzorVidet, stinovat){
-  var px=pismoDoOkna(ow,oh);
-  g.font='700 '+Math.round(px)+'px ui-monospace,Menlo,Consolas,monospace';
-  g.textAlign='left'; g.textBaseline='top';
-  var rv=px*1.34;
-  var x0=ox+(ow-SL*px*0.601)/2;
-  var y0=oy+(oh-RA*rv)/2;
-  for(var i=0;i<RA;i++){
-    if(!obr[i]) continue;
-    var yy=y0+i*rv;
-    if(stinovat){ g.fillStyle='rgba(0,0,0,.6)'; g.fillText(obr[i], x0+2*DPR, yy+2*DPR); }
-    g.fillStyle=barvaPisma; g.fillText(obr[i], x0, yy);
+// Text se kresli ZNAK PO ZNAKU, kazdy do sve bunky. Diky tomu je mrizka
+// presna a velikost pisma se da volit nezavisle na sirce bunky - jinak
+// by se radky dotykaly.
+// Aby to nestalo vykon, kresli se do vlastniho platna a jen KDYZ SE TEXT
+// ZMENI. Pri 52 ms na znak je to nejvys 20x za vterinu misto 60x.
+var txtPlat=null, txtG=null, txtKlic='';
+function obrDoOkna(t, ox,oy,ow,oh, bw, barvaPisma, kurzorVidet, stinovat){
+  var bh=bw/BUNKA_POMER;
+  var posun=Math.max(1, bw/8);                    // stin o jeden bod Atari
+  var x0=ox+(ow-SL*bw)/2;
+  var y0=oy+(oh-RA*bh)/2;
+  var pw=Math.ceil(SL*bw)+4, ph=Math.ceil(RA*bh)+4;
+
+  var klic=obr.join('\u0001')+'|'+Math.round(bw*10)+'|'+barvaPisma+'|'+(stinovat?1:0);
+  if(!txtPlat || txtPlat.width<pw || txtPlat.height<ph){
+    txtPlat=document.createElement('canvas');
+    txtPlat.width=pw; txtPlat.height=ph;
+    txtG=txtPlat.getContext('2d'); txtKlic='';
   }
+  if(klic!==txtKlic){
+    txtKlic=klic;
+    txtG.clearRect(0,0,txtPlat.width,txtPlat.height);
+    for(var i=0;i<RA;i++){
+      var r=obr[i]; if(!r) continue;
+      for(var j=0;j<r.length && j<SL;j++){
+        var zn=r.charAt(j); if(zn===' ') continue;
+        if(stinovat) znakDo(txtG, zn, j*bw+posun, i*bh+posun, bw, bh, 'rgba(0,0,0,.7)');
+        znakDo(txtG, zn, j*bw, i*bh, bw, bh, barvaPisma);
+      }
+    }
+  }
+  g.drawImage(txtPlat, x0, y0);
+
   if(kurzorVidet && Math.floor(t/330)%2===0){
-    g.fillStyle=barvaPisma;
-    g.fillRect(x0+obrS*px*0.601, y0+obrR*rv+px*0.10, px*0.58, px*1.06);
+    g.fillStyle=barvaPisma;                       // kurzor = plna bunka, jako na Atari
+    g.fillRect(x0+obrS*bw, y0+obrR*bh, bw, bh);
   }
 }
 
@@ -533,23 +684,26 @@ function finale(t,d){
   hudba();
   g.fillStyle='#02030a'; g.fillRect(0,0,W,H);
   plazma(t, 0.34);
-  hvezdy(0.0035, 0.6);
-  bobiky(t, 12, Math.min(W,H)*0.075, 0.42);
-  pruhy(t, 5, 0.26, 0.22);
+  hvezdy(0.0060, 1.0);             // rychlejsi a jasnejsi - musi byt videt
+  bobiky(t, 14, Math.min(W,H)*0.080, 0.50);
+  pruhy(t, 5, 0.28, 0.24);
 
   // ROZLOZENI PODLE ORIENTACE
   //  na vysku: logo nahore, monitor pod nim
   //  na sirku: logo vlevo, monitor vpravo (jinak by na monitor nezbyla vyska)
   var puls=1+0.075*Math.sin(t*0.0011);
   var plav=Math.sin(t*0.0008)*(Math.min(W,H)*0.014);
-  var ox,oy,ow,oh;
+  var m;
   if(naSirku()){
-    vykresliLogo(W*0.20, H/2+plav, Math.min(W*0.34,H*0.72)*puls, 1, 0);
-    ow=W*0.56; oh=H*0.84; ox=W*0.41; oy=(H-oh)/2;
+    m=monitorNaText(W*0.44, H*0.10, W*0.48, H*0.80);      // monitor vpravo
+    var zbytek=m.ox;                                       // co zbylo vlevo
+    vykresliLogo(zbytek/2, H/2+plav, Math.min(zbytek*0.66, H*0.58)*puls, 1, 0);
   } else {
-    vykresliLogo(W/2, H*0.185+plav, Math.min(W,H)*0.30*puls, 1, 0);
-    ow=W*0.92; oh=H*0.60; ox=(W-ow)/2; oy=H*0.355;
+    m=monitorNaText(W*0.08, H*0.38, W*0.84, H*0.56);       // monitor dole
+    var misto=m.oy;                                        // co zbylo nahore
+    vykresliLogo(W/2, misto/2+plav, Math.min(W*0.50, misto*0.68)*puls, 1, 0);
   }
+  var ox=m.ox, oy=m.oy, ow=m.ow, oh=m.oh;
   ramMonitoru(ox,oy,ow,oh);
   g.save();
   g.beginPath(); g.rect(ox,oy,ow,oh); g.clip();
@@ -567,7 +721,7 @@ function finale(t,d){
   var RYCH=52;
   var chce=Math.min(FIN_TEXT.length, Math.floor(t/RYCH));
   while(finVys<chce){ var zn=FIN_TEXT[finVys]; finVys++; obrPis(zn); }
-  obrDoOkna(t, ox,oy,ow,oh, '#ffffff', finVys<FIN_TEXT.length, true);
+  obrDoOkna(t, ox,oy,ow,oh, m.px, '#ffffff', finVys<FIN_TEXT.length, true);
   g.restore();
 }
 
@@ -701,11 +855,11 @@ function zaver(t,d){
 var SCENY=[
   {trvani: 2500, f:crtZapnuti},   // 1. okno - televize se zapina
   {trvani: 9500, f:bootText},     // 2. okno - ATARI...OK, SEGA...OK, READY
-  {trvani:18000, f:listing},      // program se pise po radcich, klavesy klapou
+  {trvani:19500, f:listing},      // READY, kurzor, pak psani programu
   {trvani: 2500, f:warp},         // skok
   {trvani:24000, f:finale},       // 3. okno - JEDNO logo a dole bezici program
   {trvani: 4000, f:zaver}         // zatmivacka
-];                                 // celkem 60,5 s
+];                                 // celkem 62 s
 
 var scenaOd=null, idx=0;
 function snimek(ts){

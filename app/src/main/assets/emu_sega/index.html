@@ -579,7 +579,9 @@ bindPerfButtons();
    samostatna tlacitka perfHigh/perfLow funguji dal beze zmeny. */
 (function(){
   var el=$('btnCollection'); if(!el) return;
-  var COLLECTION_URL='https://atarihelp.eu/?page_id=207';
+  // BUILD2SA22: SBIRKA vede rovnou na stranku, ze ktere se hra spousti.
+  // Drive to slo na page_id=207 (rozcestnik) a clovek musel jeste proklikat.
+  var COLLECTION_URL='https://atarihelp.eu/?page_id=1003';
   var lpTimer=null,lpFired=false;
   el.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();lpFired=false;clearTimeout(lpTimer);
     lpTimer=setTimeout(function(){lpFired=true;pushLog('BUILD2RZ COLLECTION_LONGPRESS perfMenu');openPerformanceMenu();},700);},true);
