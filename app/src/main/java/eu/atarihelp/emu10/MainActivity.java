@@ -685,6 +685,25 @@ public class MainActivity extends Activity {
                     napTvWebJpegQuality = qv[1];
                     napTvWebFrameDelayMs = qv[2];
                     napTvWebVideoProfile = (landscape ? (djScreen ? "LANDSCAPE_DJ" : (hqLiteScreen ? "LANDSCAPE_EMU" : "LANDSCAPE_FAST")) : "PORTRAIT") + "_T" + napTvWebQualityTier;
+                    // BUILD2SA25: ATARI SE SNIMA V POLOVICNIM ROZLISENI.
+                    //
+                    // B132 zpomalila tempo z 29 na 13 snimku za vterinu a POMOHLO
+                    // to jen castecne - Atari se poradu kousalo. Duvod: samotny
+                    // jeden snimek je moc drahy. Pri 720x1336 se cte zpatky pres
+                    // 960 000 bodu a jeste se cela bitmapa (3,8 MB) kopiruje na
+                    // HLAVNIM vlakne - na tom samem, kde bezi emulator.
+                    //
+                    // Polovicni strana = ctvrtina bodu = ctvrtinova cena. Na TV
+                    // je obraz mekci, ale emulator ma konecne cas pocitat.
+                    // Tyka se to JEN Atari (emu_vbxe) - PS1 a Sega davaji snimek
+                    // z jadra a snimani okna se jich netyka.
+                    boolean atariOkno = false;
+                    try {
+                        String cuA = (web == null) ? null : web.getUrl();
+                        atariOkno = (cuA != null) && cuA.contains("emu_vbxe");
+                    } catch (Throwable ignored9) {}
+                    if (atariOkno) maxSide = Math.max(320, maxSide / 2);
+
                     float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
                     // BUILD2SK48: KRITICKY NALEZ - napTvWebBitmap byla SDILENA mezi
@@ -1772,6 +1791,12 @@ public class MainActivity extends Activity {
                         + " avgDrainMs=" + (napTvWebH264DiagDrainMs / napTvWebH264DiagFrameCount)
                         + " w=" + w + " h=" + h + " tier=" + napTvWebQualityTier);
                 napTvWebH264DiagFrameCount = 0;
+                // BUILD2SA25: tohle se merilo uz driv, ale NIKDY se to nikam
+                // nepsalo - takze pri "kouse se to" nebylo z ceho vyjit.
+                appendNativeLog("BUILD2SA25 TV_CENA_HLAVNIHO_VLAKNA kopieBitmapy="
+                        + napTvWebH264DiagCopyMs + "ms pixely=" + napTvWebH264DiagPixelsMs
+                        + "ms yuv=" + napTvWebH264DiagYuvMs + "ms dequeue="
+                        + napTvWebH264DiagDequeueMs + "ms drain=" + napTvWebH264DiagDrainMs + "ms");
                 napTvWebH264DiagCopyMs = 0; napTvWebH264DiagPixelsMs = 0; napTvWebH264DiagYuvMs = 0; napTvWebH264DiagDequeueMs = 0; napTvWebH264DiagDrainMs = 0;
             }
         } catch (Throwable t) {

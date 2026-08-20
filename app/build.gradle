@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 180
-        versionName "EMU10-B132-ZVUK-INTRA-A-ATARI-S-TV"  // opraveno: Atari se kousalo pri pustene WEB TV (obracena vetev tempa snimani) a zvuk v intru se nebudil
+        versionCode 181
+        versionName "EMU10-B133-ZVUK-JAKO-ATARI-A-POLOVICNI-SNIMEK"  // zvuk v intru prepsan na ScriptProcessor (jako emulator Atari, o kterem vime ze hraje) a Atari se pri TV snima v polovicnim rozliseni
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

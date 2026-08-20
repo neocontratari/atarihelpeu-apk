@@ -40,94 +40,95 @@ document.getElementById('dal').addEventListener('click',konec);
 
 // ================= ZVUK =================
 // Vsechno se vyrabi za behu, zadny soubor navic.
-//  - nahravaci pipani jako z POKEY pri SIO prenosu (funkcni ton, ne nahravka)
-//  - vlastni chiptune: basa, arpeggio, melodie
+//
+// POZOR NA ZPUSOB: puvodne jsem pro kazdy ton vyrabel OscillatorNode
+// a zase ho rusil. AudioContext hlasil "running", ale z telefonu nic
+// neslo. Emulator Atari ve stejne aplikaci pritom hraje - a dela to
+// JINAK: ma jeden TRVALE PRIPOJENY ScriptProcessor, ktery si vzorky
+// pocita sam. Delam to ted stejne, protoze o tom zpusobu vim, ze
+// v tomhle WebView funguje.
+//
 // Zvuk Segy ani Sony tu zamerne NENI - to jsou jejich nahravky.
-var AC=null, mistr=null, zvukJede=false;
+var AC=null, sp=null, zvukJede=false;
+var MISTR=0.32;
+var HLASY=[];                 // znejici hlasy
+var tonuVyrobeno=0;
+
 function zvukHlas(co){
   try{ if(window.AHINTRO && AHINTRO.zvukLog) AHINTRO.zvukLog(co); }catch(e){}
 }
+
 function zvukStart(){
-  if(AC) { if(AC.state!=='running') AC.resume(); return; }
+  if(AC){ if(AC.state!=='running'){ try{ AC.resume(); }catch(e){} } return; }
   try{
     var K=window.AudioContext||window.webkitAudioContext;
     if(!K){ zvukHlas('AudioContext v prohlizeci NENI'); return; }
     AC=new K();
-    mistr=AC.createGain(); mistr.gain.value=0.0; mistr.connect(AC.destination);
-    mistr.gain.setTargetAtTime(0.30, AC.currentTime, 0.6);
+    try{ if(AC.state!=='running') AC.resume(); }catch(e){}
+    // 4096 vzorku - stejne jako v emulatoru Atari; pri 2048 WebView
+    // nestiha a zvuk chrasti
+    sp=AC.createScriptProcessor(4096,0,1);
+    sp.onaudioprocess=function(e){
+      var buf=e.outputBuffer.getChannelData(0);
+      var sr=AC.sampleRate, dt=1/sr;
+      for(var i=0;i<buf.length;i++){
+        var v=0;
+        for(var k=HLASY.length-1;k>=0;k--){
+          var h=HLASY[k];
+          if(h.t>=h.dl){ HLASY.splice(k,1); continue; }
+          var obal=1-(h.t/h.dl);           // doznivani
+          obal=obal*obal;
+          var vz;
+          if(h.typ==='noise'){ vz=Math.random()*2-1; }
+          else{
+            h.faze+=h.f*dt; if(h.faze>=1) h.faze-=1;
+            if(h.typ==='square')        vz = h.faze<0.5 ? 1 : -1;
+            else if(h.typ==='triangle') vz = 4*Math.abs(h.faze-0.5)-1;
+            else if(h.typ==='sawtooth') vz = 2*h.faze-1;
+            else                        vz = Math.sin(h.faze*6.283185);
+          }
+          v += vz*h.a*obal;
+          h.t += dt;
+        }
+        v*=MISTR;
+        buf[i] = v>1 ? 1 : (v<-1 ? -1 : v);
+      }
+    };
+    sp.connect(AC.destination);
     zvukJede=true;
-    zvukHlas('vytvoren, stav='+AC.state);
-    if(AC.state!=='running'){
-      // Prohlizec ho casto vytvori USPANY a pusti az po dotyku. Zkousime
-      // to znovu v kazdem snimku - jinak by po celem intru bylo ticho
-      // a nikdo by nevedel proc.
-      try{ AC.resume().then(function(){ zvukHlas('probuzen, stav='+AC.state); },
-                            function(e){ zvukHlas('probuzeni selhalo: '+e); }); }catch(e){}
-    }
+    zvukHlas('vytvoren, stav='+AC.state+' sampleRate='+AC.sampleRate);
   }catch(e){ AC=null; zvukHlas('vytvoreni selhalo: '+e.message); }
 }
-// Opakovane budime zvuk, dokud nebezi. Stoji to jedno porovnani na snimek.
-var zvukPokusy=0, zvukNahlasenoBezi=false;
-function zvukPohlidej(){
-  if(!AC){ if((zvukPokusy++ % 60)===0) zvukStart(); return; }
-  if(AC.state==='running'){
-    if(!zvukNahlasenoBezi){ zvukNahlasenoBezi=true; zvukHlas('BEZI'); }
-    return;
-  }
-  if((zvukPokusy++ % 30)===0){ try{ AC.resume(); }catch(e){} }
-}
+
+/** Prida hlas. Vsechny hlasy zaznivaji IHNED - pro intro to staci. */
 function ton(kdy, hz, delka, tvar, hlas, cil){
   if(!AC) return;
-  var o=AC.createOscillator(), z=AC.createGain();
-  o.type=tvar||'square'; o.frequency.setValueAtTime(hz, kdy);
-  z.gain.setValueAtTime(0, kdy);
-  z.gain.linearRampToValueAtTime(hlas, kdy+0.006);
-  z.gain.exponentialRampToValueAtTime(0.0001, kdy+delka);
-  o.connect(z); z.connect(cil||mistr);
-  o.start(kdy); o.stop(kdy+delka+0.02);
+  if(HLASY.length>24) return;              // pojistka proti zahlceni
+  tonuVyrobeno++;
+  HLASY.push({typ:tvar||'square', f:hz, a:hlas, t:0, dl:delka, faze:0});
 }
-// Sumovy vzorek se vyrobi JEDNOU. Predtim se delal pri kazdem stisku
-// klavesy - dvacetkrat za vterinu se alokoval novy buffer a zvuk se
-// o to kousal.
-var sumBuf=null;
 function sum(kdy, delka, hlas){
   if(!AC) return;
-  if(!sumBuf){
-    var n=Math.floor(AC.sampleRate*0.25);
-    sumBuf=AC.createBuffer(1,n,AC.sampleRate);
-    var d=sumBuf.getChannelData(0);
-    for(var i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
-  }
-  var src=AC.createBufferSource(); src.buffer=sumBuf;
-  src.playbackRate.value = 0.25/Math.max(0.02,delka);
-  var z=AC.createGain(); z.gain.value=hlas;
-  z.gain.setValueAtTime(hlas, kdy);
-  z.gain.exponentialRampToValueAtTime(0.0001, kdy+delka);
-  src.connect(z); z.connect(mistr); src.start(kdy); src.stop(kdy+delka+0.02);
+  if(HLASY.length>24) return;
+  HLASY.push({typ:'noise', f:0, a:hlas, t:0, dl:delka, faze:0});
 }
-// Ukani klavesnice. NENI na casovac - vola se prave tehdy, kdyz
-// pribude pismeno. Drive to tuklo porad dokola a nesedelo to s textem.
-function ukni(zn){
-  try{ ukniVnitrni(zn); }catch(e){}      // zvuk NIKDY nesmi zastavit obraz
-}
+function zvukKonec(){ MISTR=0; }
+
 // Atari nema pro klavesu ton - OS jen KLAPNE reproduktorem (bit 3
-// registru CONSOL). Je to kratky cvak, ne pipnuti. Delam ho jako
-// velmi kratky sum s ostrym nabehem.
+// registru CONSOL). Je to kratky cvak, ne pipnuti.
+var zvukChyba=false;
+function ukni(zn){
+  try{ ukniVnitrni(zn); }
+  catch(e){ if(!zvukChyba){ zvukChyba=true; zvukHlas('CHYBA v klapnuti: '+e.message); } }
+}
 function ukniVnitrni(zn){
   if(!AC) return;
-  var t=AC.currentTime;
-  if(zn==='\n'){                                   // RETURN klape jinak
-    sum(t, 0.012, 0.16);
-    ton(t, 210, 0.030, 'square', 0.07);
-    return;
-  }
-  sum(t, 0.010, 0.13);
-  ton(t, 150+Math.random()*40, 0.016, 'square', 0.05);
+  if(zn==='\n'){ sum(0,0.014,0.42); ton(0,210,0.032,'square',0.20); return; }
+  sum(0,0.012,0.36);
+  ton(0,150+Math.random()*40,0.018,'square',0.16);
 }
+
 // CHIPTUNE se skladbou, ne jednou dokola opakovanou smyckou.
-// Ctyri casti po osmi taktech, kazda ma jiny sled akordu, jiny rytmus
-// arpeggia a jinou melodii. Cela skladba se opakuje az po 32 taktech,
-// coz je pres pul minuty - za dobu intra se nestihne omrzet.
 var CASTI=[
   { akordy:[0,0,-4,-4, -2,-2,-5,-5],  arp:[0,3,7,10],  rytmus:4, lead:[12,10,7,10] },
   { akordy:[-5,-5,-2,-2, 0,0,3,3],    arp:[0,4,7,11],  rytmus:3, lead:[7,12,15,12] },
@@ -140,49 +141,53 @@ var CASTI=[
 ];
 function hz(p){ return 220*Math.pow(2,p/12); }
 var taktDo=0, takt=0;
-function hudba(){ try{ hudbaVnitrni(); }catch(e){} }
+function hudba(){
+  try{ hudbaVnitrni(); }
+  catch(e){ if(!zvukChyba){ zvukChyba=true; zvukHlas('CHYBA v hudbe: '+e.message); } }
+}
 function hudbaVnitrni(){
   if(!AC) return;
-  var t=AC.currentTime;
+  var t=Date.now();
   if(t<taktDo) return;
-  var D=0.155;
+  var D=155;                                  // ms na dobu
   taktDo=t+D*4;
-
   var cast=CASTI[(takt>>3)%CASTI.length];
   var akord=cast.akordy[takt%8];
-
-  // basa - na tezke dobe delsi, na lehke kratsi
-  ton(t, hz(akord-24), D*3.4, 'triangle', 0.26);
-  if(takt%2===1) ton(t+D*2, hz(akord-12), D*1.2, 'triangle', 0.13);
-
-  // arpeggio - pocet not se lisi podle casti
+  ton(0, hz(akord-24), D*3.4/1000, 'triangle', 0.30);
   var n=cast.rytmus;
   for(var i=0;i<n;i++){
     var nota=akord + cast.arp[i%cast.arp.length] + (i>=4?12:0);
-    ton(t+i*(D*4/n), hz(nota), (D*4/n)*0.8, 'square', 0.095);
+    ton(0, hz(nota), (D*4/n)*0.8/1000, 'square', 0.11);
   }
-
-  // melodie - hraje jen ve druhe pulce kazde casti, at ma skladba vyvoj
   if((takt%8)>=4){
     var l=cast.lead[(takt%4)];
-    ton(t, hz(akord+l), D*1.7, 'sawtooth', 0.075);
-    if(takt%2===0) ton(t+D*2, hz(akord+l-3), D*1.2, 'sawtooth', 0.055);
+    ton(0, hz(akord+l), D*1.7/1000, 'sawtooth', 0.085);
   }
-
-  // bicí
-  sum(t, 0.05, 0.055);                       // kopak na kazdou dobu
-  if(takt%2===1) sum(t+D*2, 0.07, 0.045);    // virbl na druhou
-  if((takt%8)===7) sum(t+D*3, 0.13, 0.06);   // prechod na konci osmitakti
+  sum(0, 0.05, 0.10);
+  if((takt%8)===7) sum(0, 0.13, 0.12);
   takt++;
 }
-function zvukKonec(){
-  if(!AC||!mistr) return;
-  try{ mistr.gain.setTargetAtTime(0.0001, AC.currentTime, 0.5); }catch(e){}
-}
-// prohlizec casto nepusti zvuk bez dotyku - zkusime hned i po dotyku
+
+// Prohlizec casto nepusti zvuk bez dotyku - zkousime hned i po dotyku
 document.addEventListener('touchstart', zvukStart, {once:true});
 document.addEventListener('click', zvukStart, {once:true});
 setTimeout(zvukStart, 60);
+
+var zvukPokusy=0, zvukNahlasenoBezi=false, zvukSouhrnDo=0;
+function zvukPohlidej(){
+  if(!AC){ if((zvukPokusy++ % 60)===0) zvukStart(); return; }
+  if(zvukSouhrnDo===0) zvukSouhrnDo=Date.now()+5000;
+  if(zvukSouhrnDo>0 && Date.now()>zvukSouhrnDo){
+    zvukSouhrnDo=-1;
+    zvukHlas('po 5 s: stav='+AC.state+' hlasitost='+MISTR+' tonu='+tonuVyrobeno
+             +' znejicich='+HLASY.length);
+  }
+  if(AC.state==='running'){
+    if(!zvukNahlasenoBezi){ zvukNahlasenoBezi=true; zvukHlas('BEZI'); }
+    return;
+  }
+  if((zvukPokusy++ % 30)===0){ try{ AC.resume(); }catch(e){} }
+}
 
 var plat=document.getElementById('plat'), g=plat.getContext('2d');
 var W=0,H=0,DPR=1;
@@ -773,9 +778,8 @@ function crtZapnuti(t,d){
   }
   if(Math.random()<0.10){ g.fillStyle='rgba(255,255,255,.05)'; g.fillRect(0,0,W,H); }
   if(!crtZapnuti.__zvuk && AC){ crtZapnuti.__zvuk=true;
-    var t0=AC.currentTime;
-    ton(t0, 55, 0.55, 'sine', 0.35);          // dunive nabehnuti
-    ton(t0+0.05, 15600, 0.9, 'sine', 0.030);  // pisknuti obrazovky
+    ton(0, 55, 0.55, 'sine', 0.45);           // dunive nabehnuti
+    ton(0, 15600, 0.9, 'sine', 0.05);         // pisknuti obrazovky
   }
 }
 
@@ -819,15 +823,11 @@ function bootText(t,d){
 
 function warp(t,d){
   var p=t/d;
-  if(!warp.__zvukX && AC){ warp.__zvuk=true;
-    var o=AC.createOscillator(), z=AC.createGain();
-    o.type='sawtooth';
-    o.frequency.setValueAtTime(90, AC.currentTime);
-    o.frequency.exponentialRampToValueAtTime(2400, AC.currentTime+d/1000*0.95);
-    z.gain.setValueAtTime(0.0001, AC.currentTime);
-    z.gain.linearRampToValueAtTime(0.09, AC.currentTime+0.4);
-    z.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime+d/1000);
-    o.connect(z); z.connect(mistr); o.start(); o.stop(AC.currentTime+d/1000+0.1);
+  // Stoupajici sweep. Vyrabi se po kouscich - hlasy se ted pocitaji
+  // ve ScriptProcessoru a nemaji vlastni prubeh frekvence.
+  if(AC && (warp.__do===undefined || t>warp.__do)){
+    warp.__do=(warp.__do===undefined?0:warp.__do)+90;
+    ton(0, 90*Math.pow(26, Math.min(1,p)), 0.12, 'sawtooth', 0.09*Math.min(1,p*2));
   }
   g.fillStyle='rgba(2,3,6,'+(0.42-0.22*p).toFixed(2)+')'; g.fillRect(0,0,W,H);
   hvezdyProuzky(0.004+0.075*p*p, 1.0, p);
