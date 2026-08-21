@@ -48,6 +48,10 @@ function konec(){
   location.replace(CIL);
 }
 document.getElementById('dal').addEventListener('click',konec);
+// BUILD2SA37: rict Jave, ze intro zacalo. Okno bude pruhledne po CELOU
+// dobu a nebude se prepinat u kazde sceny - WebView po zmene pozadi
+// casto prestane kreslit a zaverecna scena uz nenaskocila.
+try{ if(window.AHINTRO&&AHINTRO.zacatek) AHINTRO.zacatek(); }catch(e){}
 
 
 // ================= ZVUK =================
@@ -1004,12 +1008,29 @@ var SCENY=[
 ];                                 // celkem 62 s
 
 var scenaOd=null, idx=0;
+// CAS SI POCITAME SAMI, PO KROCICH - a KAZDY KROK OMEZIME.
+//
+// Puvodne se cas bral jako rozdil dvou razitek od prohlizece
+// (ts - scenaOd). Jenze kdyz nad strankou lezi plocha jadra, WebView
+// prestane byt videt a prohlizec KRESLENI USPI. Po probuzeni je razitko
+// o desitky vterin dal - a film se pak prehnal do konce behem par
+// snimku. V logu to bylo videt presne: cast s PS1 skoncila v 34:03,
+// INTRO_HOTOVO prislo v 34:12, prestoze mel jeste 26 s hrat.
+// Proto se kazdy krok omezi na 250 ms: kdyz prohlizec spal, film jen
+// pockal, misto aby preskocil.
+var casVeScene = 0, poslednizn = null;
 function snimek(ts){
-  if(scenaOd===null) scenaOd=ts;
+  if(poslednizn===null) poslednizn = ts;
+  var krok = ts - poslednizn;
+  poslednizn = ts;
+  if(!(krok >= 0)) krok = 16;
+  if(krok > 250) krok = 250;          // prohlizec spal - nepreskakujeme
+  casVeScene += krok;
+
   if(idx>=SCENY.length){ konec(); return; }
-  var s=SCENY[idx], t=ts-scenaOd;
+  var s=SCENY[idx], t=casVeScene;
   if(t>=s.trvani){
-    idx++; scenaOd=ts;
+    idx++; casVeScene = 0;
     if(idx>=SCENY.length){ konec(); return; }
     s=SCENY[idx]; t=0;
   }

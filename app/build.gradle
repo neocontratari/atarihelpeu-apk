@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 195
-        versionName "EMU10-B147-PS1-SE-OPRAVDU-ZASTAVI"  // stopPs1SessionHard() nekontroloval ps1BiosRunning, takze pri behu samotneho BIOSu se hned vratil a jadro NEZASTAVIL. Z toho plynulo Memory Card misto znelky, neviditelne Atari po PS1 i chybejici zvuk Atari na TV.
+        versionCode 197
+        versionName "EMU10-B149-CAS-FILMU"  // WebView pod plochou jadra usnul a po probuzeni bylo razitko o desitky vterin dal - film se prehnal do konce behem par snimku. Cas se ted pocita po krocich s omezenim 250 ms.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

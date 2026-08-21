@@ -202,13 +202,28 @@ public class MainActivity extends Activity {
      * pri hre to sedi, protoze skin ma pruhledny stred. V intru je nad ni
      * ale neprusvitne platno, takze nebylo videt nic.
      */
+    /**
+     * BUILD2SA37: pruhlednost okna se prepina JEN JEDNOU za intro.
+     *
+     * Predtim se prepinala u kazde zive casti tam a zpet. WebView na to
+     * reaguje spatne - po zmene setBackgroundColor s hardwarovou akceleraci
+     * casto prestane kreslit, dokud se znovu nepreskladá. Presne to Rene
+     * videl: po casti s PS1 uz zaverecna scena s krteckem nenaskocila.
+     *
+     * Ted je okno PRUHLEDNE PO CELOU DOBU INTRA. Sceny, ktere nemaji
+     * ukazovat jadro, si samy vyplni platno neprusvitnou barvou, takze
+     * se nic neztrati.
+     */
+    private boolean introOknoJePruhledne = false;
     private void introOknoPruhledne(boolean pruhledne) {
         try {
             if (web == null) return;
+            if (introOknoJePruhledne == pruhledne) return;   // zbytecne neprepinat
+            introOknoJePruhledne = pruhledne;
             web.setBackgroundColor(pruhledne ? 0x00000000 : 0xFF000000);
-            appendNativeLog("BUILD2SA31 INTRO_OKNO " + (pruhledne ? "pruhledne" : "zpet"));
+            appendNativeLog("BUILD2SA37 INTRO_OKNO " + (pruhledne ? "pruhledne" : "zpet"));
         } catch (Throwable t) {
-            appendNativeLog("BUILD2SA31 INTRO_OKNO_CHYBA " + safeMsg(t));
+            appendNativeLog("BUILD2SA37 INTRO_OKNO_CHYBA " + safeMsg(t));
         }
     }
 
@@ -217,7 +232,6 @@ public class MainActivity extends Activity {
             stopNativeCoreAudioStream();
             try { NativeSegaCoreBridge.shutdown(); } catch (Throwable ignored) {}
             segaPlochaVypni();
-            introOknoPruhledne(false);
             introZivaCast = false;
             appendNativeLog("BUILD2SA30 INTRO_SEGA konec");
         } catch (Throwable t) {
@@ -1204,6 +1218,21 @@ public class MainActivity extends Activity {
                 String uS = (web == null) ? null : web.getUrl();
                 jeSegaTv = (uS != null) && uS.contains("emu_sega");
             } catch (Throwable ignored) {}
+
+            // BUILD2SA37: BEHEM ZIVYCH CASTI INTRA BER SNIMEK Z JADRA.
+            //
+            // Plocha, na kterou jadro kresli, NENI soucasti okna - u PS1
+            // je to v kodu zadokumentovane slovy "GLSurfaceView je
+            // samostatna vrstva, PixelCopy ji nezachyti". Proto se u Segy
+            // i PS1 bere snimek pujckou z jadra.
+            //
+            // Intro ma vlastni adresu, takze ani jedna z tech vetvi
+            // nechytla a na TV byl u obou casti jen zvuk. Ted se pozna
+            // podle toho, ktere jadro prave bezi.
+            if (introZivaCast) {
+                if (segaPlocha != null) jeSegaTv = true;
+                // kdyz bezi PS1, spadne to do vetve s borrowFrame nize
+            }
 
             int wh = jeSegaTv ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
                               : Ps1GlTextureView.borrowFrame(tvCoreArgb);
@@ -3028,11 +3057,19 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void hotovo() {
             napIntroUkazano = true;
             introZivaCast = false;      // pojistka - hlidac zase hlida
+            ui.post(() -> introOknoPruhledne(false));   // az ted vratit okno
             appendNativeLog("BUILD2SA21 INTRO_HOTOVO");
         }
         /** BUILD2SA23: intro pustene rucne z nabidky OPTIONS. */
         @JavascriptInterface public void znovu() {
             appendNativeLog("BUILD2SA23 INTRO_NA_POZADANI");
+            ui.post(() -> introOknoPruhledne(true));
+        }
+
+        /** BUILD2SA37: intro zacalo - okno bude pruhledne po celou dobu. */
+        @JavascriptInterface public void zacatek() {
+            ui.post(() -> introOknoPruhledne(true));
+            appendNativeLog("BUILD2SA37 INTRO_ZACATEK");
         }
         /**
          * BUILD2SA30: SPUSTI SKUTECNE JADRO SEGY s ROM z telefonu.
@@ -3081,7 +3118,6 @@ public class MainActivity extends Activity {
                 try {
                     napTvWebAudioLastPushMs = 0;
                     introZivaCast = false;
-                    introOknoPruhledne(false);
 
                     // BUILD2SA35: PLOCHU SUNDAT ROVNOU, NECEKAT NA HLIDACE.
                     //
