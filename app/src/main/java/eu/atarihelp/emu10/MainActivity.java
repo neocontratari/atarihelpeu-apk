@@ -152,11 +152,60 @@ public class MainActivity extends Activity {
             appendNativeLog("BUILD2SA30 INTRO_SEGA rom nahrana: " + vysledek);
 
             segaPlochaZapni();
-            forceNativeViewRedrawBurst("introSega");
-            // zvuk az kdyz je obraz i plocha opravdu pripravena
-            scheduleNativeAudioAfterFrameAndViewDraw(romSoubor.getName(), data, loadGen, 1);
+            introOknoPruhledne(true);        // at je plocha pod WebView videt
+            // ZVUK: normalni cesta ceka na frameReady A viewReady. Jenze
+            // viewReady se pta na STARY pohled pres okno, ktery Sega od
+            // B117 nepouziva - v intru se nikdy nerozkresli a zvuk by
+            // necekal do skonani sveta. V logu to bylo videt presne:
+            //   hasFrame=true viewReady=false draw=0/0
+            // Proto tu cekame JEN na obraz z jadra. Normalni spousteni
+            // hry zustava nedotcene.
+            introCekejNaObrazAPustZvuk(romSoubor.getName(), data, loadGen, 1);
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA30 INTRO_SEGA_CHYBA " + safeMsg(t));
+        }
+    }
+
+    /**
+     * Ceka na obraz z JADRA (ne na stary pohled) a pak pusti zvuk.
+     * Zkousi to nejvys 20x po 150 ms, tedy tri vteriny.
+     */
+    private void introCekejNaObrazAPustZvuk(final String jmeno, final byte[] data,
+                                            final int gen, final int pokus) {
+        ui.postDelayed(() -> {
+            if (gen != nativeRomLoadGeneration) return;      // uz bezi neco jineho
+            boolean maObraz = false;
+            try {
+                String st = NativeSegaCoreBridge.realCoreStatus();
+                maObraz = st != null && st.indexOf("frameReady=YES") >= 0
+                                     && st.indexOf("frameCounter=0") < 0;
+            } catch (Throwable ignored) {}
+            if (maObraz) {
+                startNativeCoreAudioStream();
+                appendNativeLog("BUILD2SA31 INTRO_SEGA_ZVUK pusten po " + pokus + " pokusech");
+                return;
+            }
+            if (pokus < 20) {
+                introCekejNaObrazAPustZvuk(jmeno, data, gen, pokus + 1);
+            } else {
+                appendNativeLog("BUILD2SA31 INTRO_SEGA_ZVUK obraz nedosel ani po 3 s");
+            }
+        }, 150);
+    }
+
+    /**
+     * Pruhledne okno, aby byla videt plocha jadra pod nim.
+     * Plocha Segy i PS1 lezi POD WebView (rootFrame.addView(sv, 0, ...)) -
+     * pri hre to sedi, protoze skin ma pruhledny stred. V intru je nad ni
+     * ale neprusvitne platno, takze nebylo videt nic.
+     */
+    private void introOknoPruhledne(boolean pruhledne) {
+        try {
+            if (web == null) return;
+            web.setBackgroundColor(pruhledne ? 0x00000000 : 0xFF000000);
+            appendNativeLog("BUILD2SA31 INTRO_OKNO " + (pruhledne ? "pruhledne" : "zpet"));
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA31 INTRO_OKNO_CHYBA " + safeMsg(t));
         }
     }
 
@@ -165,6 +214,7 @@ public class MainActivity extends Activity {
             stopNativeCoreAudioStream();
             try { NativeSegaCoreBridge.shutdown(); } catch (Throwable ignored) {}
             segaPlochaVypni();
+            introOknoPruhledne(false);
             appendNativeLog("BUILD2SA30 INTRO_SEGA konec");
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA30 INTRO_SEGA_UKLID_CHYBA " + safeMsg(t));
@@ -3011,10 +3061,16 @@ public class MainActivity extends Activity {
             ui.post(() -> introZastavSegu());
         }
 
+        /** BUILD2SA31: vrati neprusvitne platno po zivych jadrech. */
+        @JavascriptInterface public void oknoZpet() {
+            ui.post(() -> introOknoPruhledne(false));
+        }
+
         /** BUILD2SA30: nabootuje BIOS PS1 - logo a zvuk Sony vzniknou vypoctem. */
         @JavascriptInterface public String spustPs1() {
             try {
                 ui.post(() -> {
+                    introOknoPruhledne(true);
                     ps1MaybeStartBios();
                     // plocha se postavi pres cely obraz; o umisteni se
                     // stara ps1PlochaUmisti, zadnou vlastni cestu nedelam

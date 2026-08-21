@@ -265,15 +265,42 @@ public final class NapStahovaniSeSouhlasem {
      * Stahne ZIP a rozbali z nej soubory s danymi priponami.
      * @return kratka zprava do logu
      */
+    /**
+     * Zkusi stahnout az TRIKRAT. Mobilni sit obcas prvni spojeni odmitne
+     * nebo vyprsi - Rene to videl na vlastni oci, kdy se jeden ze dvou
+     * souboru nestahl. Cekaci doby jsou proto delsi a mezi pokusy je
+     * pauza, at se sit stihne vzpamatovat.
+     */
     private static String jednoStazeni(final Activity a, String url, File kam,
                                        String popis, String pripony,
                                        final String hezkyNazev, final Prubeh prubeh) {
+        String posledni = "?";
+        for (int pokus = 1; pokus <= 3; pokus++) {
+            if (pokus > 1) {
+                if (prubeh != null) {
+                    final int p2 = pokus;
+                    a.runOnUiThread(() -> prubeh.krok(hezkyNazev + " - pokus " + p2 + " ze 3",
+                            0, 0, 0));
+                }
+                try { Thread.sleep(1500L * (pokus - 1)); } catch (Throwable ignored) {}
+            }
+            posledni = jedenPokus(a, url, kam, popis, pripony, hezkyNazev, prubeh);
+            if (posledni.contains("OK")) return posledni;
+        }
+        return posledni;
+    }
+
+    private static String jedenPokus(final Activity a, String url, File kam,
+                                     String popis, String pripony,
+                                     final String hezkyNazev, final Prubeh prubeh) {
         HttpURLConnection c = null;
         try {
             if (!kam.isDirectory() && !kam.mkdirs()) return popis + "=slozka-nejde";
             c = (HttpURLConnection) new URL(url).openConnection();
-            c.setConnectTimeout(12000);
-            c.setReadTimeout(20000);
+            // Delsi cekani - mobilni sit a WordPress si obcas daji na cas.
+            c.setConnectTimeout(30000);
+            c.setReadTimeout(60000);
+            c.setInstanceFollowRedirects(true);
             c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 9) AtariHelpEMU10");
             int kod = c.getResponseCode();
             if (kod != 200) return popis + "=HTTP" + kod;

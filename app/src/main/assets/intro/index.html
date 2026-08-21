@@ -746,14 +746,12 @@ function zivaSega(t,d){
     segaBezi = (v==='OK');
     segaChybi = !segaBezi;
   }
-  if(segaChybi){
-    // ROM na telefonu neni - misto zivé Segy zahrajeme vlastni znelku
-    if(!zivaSega.__nahrada){ zivaSega.__nahrada=true; }
-    nahradniZnelka(t,d,'MEGA DRIVE', 0.05,0.18,0.55);
-    return;
-  }
-  // jadro kresli samo - my jen drzime cerno pod nim
-  g.fillStyle='#000'; g.fillRect(0,0,W,H);
+  if(segaChybi){ nahradniZnelka(t,d,'MEGA DRIVE', 0.05,0.18,0.55); return; }
+  // Jadro kresli na VLASTNI PLOCHU POD timhle platnem. Musime tedy
+  // platno VYCISTIT DO PRUHLEDNA - kdyz se sem kreslilo cerno, prekrylo
+  // to obraz jadra a nebylo videt nic. Presne to se stalo v B140.
+  g.clearRect(0,0,W,H);
+  cekaciGrafika(t, 2600, 'MEGA DRIVE', 90, 160, 255);
   if(t > d-400 && segaBezi){
     segaBezi=false;
     try{ if(window.AHINTRO&&AHINTRO.zastavSegu) AHINTRO.zastavSegu(); }catch(e){}
@@ -769,7 +767,42 @@ function zivaPs1(t,d){
     ps1Chybi = !ps1Bezi;
   }
   if(ps1Chybi){ nahradniZnelka(t,d,'PLAYSTATION', 0.30,0.28,0.33); return; }
-  g.fillStyle='#000'; g.fillRect(0,0,W,H);
+  g.clearRect(0,0,W,H);
+  cekaciGrafika(t, 2600, 'PLAYSTATION', 210, 210, 225);
+  if(t > d-300){ try{ if(window.AHINTRO&&AHINTRO.oknoZpet) AHINTRO.oknoZpet(); }catch(e){} }
+}
+
+/**
+ * Nez jadro nabehne, je chvilku cerno. Misto prazdna tam dame nazev
+ * a pruh, ktery se plni - at je videt, ze se neco deje. Jakmile jadro
+ * zacne kreslit, tohle se samo vytrati.
+ */
+function cekaciGrafika(t, doKdy, nazev, r, gg, b){
+  if(t > doKdy) return;
+  var p = t/doKdy;
+  var mizi = (t > doKdy*0.72) ? 1-(t-doKdy*0.72)/(doKdy*0.28) : 1;
+  var a = mizi;
+  g.fillStyle='rgba(0,0,0,'+(0.92*a).toFixed(2)+')';
+  g.fillRect(0,0,W,H);
+  // nazev
+  var px=Math.min(30*DPR, W/(nazev.length*0.72));
+  g.font='700 '+Math.round(px)+'px ui-monospace,Menlo,Consolas,monospace';
+  g.textAlign='center'; g.textBaseline='middle';
+  g.fillStyle='rgba('+r+','+gg+','+b+','+a.toFixed(2)+')';
+  g.fillText(nazev, W/2, H*0.44);
+  // pruh, ktery se plni
+  var sirka=W*0.52, vyska=6*DPR, x0=(W-sirka)/2, y0=H*0.52;
+  g.fillStyle='rgba(255,255,255,'+(0.18*a).toFixed(2)+')';
+  g.fillRect(x0, y0, sirka, vyska);
+  g.fillStyle='rgba('+r+','+gg+','+b+','+(0.95*a).toFixed(2)+')';
+  g.fillRect(x0, y0, sirka*Math.min(1,p*1.25), vyska);
+  // tri tecky, ktere se stridaji
+  var teckyPx=Math.round(px*0.5);
+  g.font='700 '+teckyPx+'px ui-monospace,Menlo,Consolas,monospace';
+  var kolik=1+(Math.floor(t/380)%3);
+  var tecky=''; for(var i=0;i<kolik;i++) tecky+='.';
+  g.fillStyle='rgba(255,255,255,'+(0.55*a).toFixed(2)+')';
+  g.fillText('NABIHA'+tecky, W/2, H*0.60);
 }
 
 /** Kdyz soubor na telefonu neni - vlastni nazev a znelka. */
