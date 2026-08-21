@@ -70,11 +70,12 @@ public final class NapStahovaniSeSouhlasem {
     }
 
     public static boolean maBios(File korenSlozky) {
+        // stejne slozky, jake prohledava ps1EnsureBios()
         File[] kde = {
-            new File(new File(korenSlozky, "emu"), "ps1"),
             new File(korenSlozky, "PS1_BIOS"),
             new File(korenSlozky, "BIOS"),
-            korenSlozky
+            korenSlozky,
+            new File(new File(korenSlozky, "emu"), "ps1")   // stara cesta z B137
         };
         for (File d : kde) {
             if (d == null || !d.isDirectory()) continue;
@@ -247,7 +248,14 @@ public final class NapStahovaniSeSouhlasem {
             StringBuilder z = new StringBuilder();
             try {
                 File segaDir = new File(new File(korenSlozky, "emu"), "sega");
-                File ps1Dir  = new File(new File(korenSlozky, "emu"), "ps1");
+                // BIOS MUSI JIT TAM, KDE HO PS1 HLEDA.
+                // ps1EnsureBios() prohledava presne tyhle tri slozky:
+                //   Download/AtariHelp
+                //   Download/AtariHelp/BIOS
+                //   Download/AtariHelp/PS1_BIOS
+                // Do emu/ps1 se nikdy nepodiva - kdyz jsem ho tam ukladal,
+                // PS1 ho nenaslo a stahovalo si vlastni znovu ze site.
+                File ps1Dir  = new File(korenSlozky, "PS1_BIOS");
                 z.append(jednoStazeni(a, SONIC_URL, segaDir, "sonic",
                         ".gen,.bin,.md,.smd", "Sonic the Hedgehog", prubeh));
                 z.append(' ');

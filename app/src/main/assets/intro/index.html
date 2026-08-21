@@ -5,6 +5,14 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:#000}
+/* Kdyz bezi ZIVE JADRO Segy nebo PS1, kresli ono na vlastni plochu
+   POD touhle strankou. Cele telo i rastr CRT proto musi zprusvitnet -
+   jinak by pres obraz jadra lezelo cerne pozadi stranky.
+   Presne to se stalo v B141: okno bylo pruhledne, platno vycistene,
+   ale telo stranky poravd cerne. */
+html.zive, html.zive body{background:transparent!important}
+html.zive #crt{opacity:0}
+html.zive #plat{opacity:0}
 #plat{position:fixed;inset:0;width:100%;height:100%;display:block}
 /* rastr a zaobleni jako na CRT, at to nevypada jako webova stranka */
 #crt{position:fixed;inset:0;pointer-events:none;z-index:2;
@@ -34,6 +42,7 @@ function konec(){
   if(hotovo) return; hotovo=true;
   // pri preskoceni se MUSI vypnout i jadra, jinak by hrala dal
   try{ if(segaBezi && window.AHINTRO&&AHINTRO.zastavSegu) AHINTRO.zastavSegu(); }catch(e){}
+  uklidPs1();
   segaBezi=false;
   if(!naPozadani){ try{ if(window.AHINTRO) AHINTRO.hotovo(); }catch(e){} }
   location.replace(CIL);
@@ -738,6 +747,25 @@ function finale(t,d){
 // My jen rekneme Jave, kdy je zapnout a kdy vypnout.
 var segaBezi=false, ps1Bezi=false, segaChybi=false, ps1Chybi=false;
 
+// PS1 se ukliza jen JEDNOU, i kdyz na to vede vic cest (konec sceny,
+// zaverecna scena, PRESKOCIT). Vic volani sice neublizi, ale zbytecne
+// by se opakoval tvrdy stop jadra.
+var ps1Uklizeno=false;
+function uklidPs1(){
+  if(ps1Uklizeno) return;
+  ps1Uklizeno=true;
+  zivyRezim(false);
+  try{ if(window.AHINTRO&&AHINTRO.zastavPs1) AHINTRO.zastavPs1(); }catch(e){}
+}
+
+/** Zapne nebo vypne pruhlednost cele stranky. */
+function zivyRezim(zap){
+  try{
+    var h=document.documentElement;
+    if(zap) h.className='zive'; else h.className='';
+  }catch(e){}
+}
+
 function zivaSega(t,d){
   if(!zivaSega.__zac){
     zivaSega.__zac=true;
@@ -746,7 +774,9 @@ function zivaSega(t,d){
     segaBezi = (v==='OK');
     segaChybi = !segaBezi;
   }
-  if(segaChybi){ nahradniZnelka(t,d,'MEGA DRIVE', 0.05,0.18,0.55); return; }
+  if(segaChybi){ zivyRezim(false); nahradniZnelka(t,d,'MEGA DRIVE', 0.05,0.18,0.55); return; }
+  // cekaci grafika se kresli, dokud jadro nenabehne; pak uz uhneme uplne
+  if(t > 2600) zivyRezim(true); else zivyRezim(false);
   // Jadro kresli na VLASTNI PLOCHU POD timhle platnem. Musime tedy
   // platno VYCISTIT DO PRUHLEDNA - kdyz se sem kreslilo cerno, prekrylo
   // to obraz jadra a nebylo videt nic. Presne to se stalo v B140.
@@ -754,6 +784,7 @@ function zivaSega(t,d){
   cekaciGrafika(t, 2600, 'MEGA DRIVE', 90, 160, 255);
   if(t > d-400 && segaBezi){
     segaBezi=false;
+    zivyRezim(false);
     try{ if(window.AHINTRO&&AHINTRO.zastavSegu) AHINTRO.zastavSegu(); }catch(e){}
   }
 }
@@ -766,10 +797,14 @@ function zivaPs1(t,d){
     ps1Bezi = (v==='OK');
     ps1Chybi = !ps1Bezi;
   }
-  if(ps1Chybi){ nahradniZnelka(t,d,'PLAYSTATION', 0.30,0.28,0.33); return; }
+  if(ps1Chybi){ zivyRezim(false); nahradniZnelka(t,d,'PLAYSTATION', 0.30,0.28,0.33); return; }
+  if(t > 2600) zivyRezim(true); else zivyRezim(false);
   g.clearRect(0,0,W,H);
   cekaciGrafika(t, 2600, 'PLAYSTATION', 210, 210, 225);
-  if(t > d-300){ try{ if(window.AHINTRO&&AHINTRO.oknoZpet) AHINTRO.oknoZpet(); }catch(e){} }
+  if(t > d-300 && !zivaPs1.__zpet){
+    zivaPs1.__zpet=true;
+    uklidPs1();
+  }
 }
 
 /**
@@ -938,6 +973,7 @@ function hvezdyProuzky(rychlost, jas, p){
 
 
 function zaver(t,d){
+  uklidPs1();
   if(!zaver.__zvuk){ zaver.__zvuk=true; zvukKonec(); }
   finale(24000, 24000);
   var p=t/d;

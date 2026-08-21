@@ -3066,11 +3066,32 @@ public class MainActivity extends Activity {
             ui.post(() -> introOknoPruhledne(false));
         }
 
+        /**
+         * Konec casti s PS1. Na jadro se NESAHA - jen se vrati platno
+         * a uvolni se znacka zvukove cesty pro TV, aby PS1 nezustalo
+         * umlcene tim, ze pred nim hrala Sega.
+         */
+        @JavascriptInterface public void zastavPs1() {
+            ui.post(() -> {
+                try {
+                    napTvWebAudioLastPushMs = 0;
+                    introOknoPruhledne(false);
+                    appendNativeLog("BUILD2SA32 INTRO_PS1 konec casti - na jadro nesahano");
+                } catch (Throwable t) {
+                    appendNativeLog("BUILD2SA32 INTRO_PS1_UKLID_CHYBA " + safeMsg(t));
+                }
+            });
+        }
+
         /** BUILD2SA30: nabootuje BIOS PS1 - logo a zvuk Sony vzniknou vypoctem. */
         @JavascriptInterface public String spustPs1() {
             try {
                 ui.post(() -> {
                     introOknoPruhledne(true);
+                    // Na zivotni cyklus PS1 se NESAHA - Rene urcil, ze PS1
+                    // je zavrena, a ma pravdu. Intro jen pozada o start
+                    // BIOSu; kdyz uz bezi, ps1MaybeStartBios() sam nic
+                    // neudela a to je v poradku.
                     ps1MaybeStartBios();
                     // plocha se postavi pres cely obraz; o umisteni se
                     // stara ps1PlochaUmisti, zadnou vlastni cestu nedelam
