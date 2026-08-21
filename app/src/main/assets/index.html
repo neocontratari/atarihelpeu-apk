@@ -54,6 +54,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <div class="stlabel">OPTIONS</div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
     <button id="stIntro" type="button">PUSTIT INTRO</button>
+    <button id="stStahni" type="button">STAHNOUT HRY A BIOS</button>
 
     <div class="stlabel2">NASTAVENI</div>
     <div class="qrow">
@@ -187,6 +188,16 @@ if(stIn)stIn.addEventListener('click',function(e){
   log('SETTINGS_INTRO_START');
   closeSettings();
   location.href='intro/index.html?znovu=1';
+},true);
+
+// BUILD2SA27: stazeni Sonica a BIOSu PS1 na vyzadani. Aplikace se
+// vzdycky zepta a rekne, co a odkud - nikdy nestahuje potichu.
+var stSt=$('stStahni');
+if(stSt)stSt.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  try{ if(window.AHINTRO&&AHINTRO.stahniSoubory) AHINTRO.stahniSoubory(); }catch(err){}
+  log('SETTINGS_STAHNOUT');
+  closeSettings();
 },true);
 
 var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);

@@ -2924,6 +2924,18 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void znovu() {
             appendNativeLog("BUILD2SA23 INTRO_NA_POZADANI");
         }
+        /** BUILD2SA27: stazeni Sonica a BIOSu na vyzadani z nabidky OPTIONS. */
+        @JavascriptInterface public void stahniSoubory() {
+            ui.post(() -> {
+                try {
+                    NapStahovaniSeSouhlasem.zeptejSeAStahni(MainActivity.this,
+                            getPublicAtariHelpDownloadsDir(),
+                            zprava -> appendNativeLog("BUILD2SA27 STAZENI " + zprava));
+                } catch (Throwable t) {
+                    appendNativeLog("BUILD2SA27 STAZENI_CHYBA " + safeMsg(t));
+                }
+            });
+        }
     }
 
     public class AHAtariCpp {
@@ -6205,6 +6217,22 @@ public class MainActivity extends Activity {
             appendNativeLog("BUILD2SA21 START url=" + cil
                     + " intro=" + (napIntroUkazano ? "PRESKOCENO" : "SPOUSTIM"));
             web.loadUrl(cil);
+
+            // BUILD2SA27: pri PRVNIM spusteni se zeptame, jestli stahnout
+            // Sonica a BIOS PS1 z atarihelp.eu. Aplikace si NIC nestahuje
+            // sama od sebe - dialog rekne co, odkud a kolik, a stahuje az
+            // po odklepnuti. Kdo rekne "ted ne", ma to v nabidce OPTIONS.
+            if (!NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this)) {
+                ui.postDelayed(() -> {
+                    try {
+                        NapStahovaniSeSouhlasem.zeptejSeAStahni(MainActivity.this,
+                                getPublicAtariHelpDownloadsDir(),
+                                zprava -> appendNativeLog("BUILD2SA27 STAZENI " + zprava));
+                    } catch (Throwable t) {
+                        appendNativeLog("BUILD2SA27 STAZENI_CHYBA " + safeMsg(t));
+                    }
+                }, 1200);
+            }
         }
     }
 
