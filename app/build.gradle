@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 193
-        versionName "EMU10-B145-HLIDAC-PLOCHY"  // hlidac schovaval plochu Segy i PS1, protoze intro ma jinou adresu - jadro kreslilo do schovane plochy. Ted o intru vi.
+        versionCode 194
+        versionName "EMU10-B146-NAVRAT-Z-PS1"  // plocha PS1 lezela NAD strankou a prekryvala zbytek filmu; ted se sunda hned. A jadro bootuje pokazde nacisto, aby zaznela znelka a ne menu BIOSu.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

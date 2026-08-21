@@ -3080,9 +3080,38 @@ public class MainActivity extends Activity {
             ui.post(() -> {
                 try {
                     napTvWebAudioLastPushMs = 0;
-                    introOknoPruhledne(false);
                     introZivaCast = false;
-                    appendNativeLog("BUILD2SA32 INTRO_PS1 konec casti - na jadro nesahano");
+                    introOknoPruhledne(false);
+
+                    // BUILD2SA35: PLOCHU SUNDAT ROVNOU, NECEKAT NA HLIDACE.
+                    //
+                    // Plocha PS1 se na vysku stavi NAD strankou
+                    // (PLOCHA_POSTAVENA_ZNOVU ... "nad strankou"), takze
+                    // dokud tam je, prekryva cely film - Rene se uz nikdy
+                    // nedostal zpatky na zaverecnou cast s krteckem.
+                    // Hlidac by ji sice sundal, ale az pri svem dalsim
+                    // tiku. Sundame ji sami a hned.
+                    try {
+                        android.view.SurfaceView pl = ps1Plocha;
+                        if (pl != null) pl.setVisibility(View.INVISIBLE);
+                        appendNativeLog("BUILD2SA35 INTRO_PS1 plocha schovana");
+                    } catch (Throwable ignored) {}
+
+                    // Aby pri DALSIM spusteni intra zaznela znelka znovu
+                    // a ne az menu BIOSu s Memory Card / Play CD, musi
+                    // jadro nabootovat nacisto. Rene o to sam pozadal:
+                    // "vytahni si intro z ciseho jadra".
+                    try {
+                        if (ps1BiosRunning && !ps1SessionActive && !ps1BootActive
+                                && !ps1GameWindowOwnsCore) {
+                            stopPs1SessionHard("intro:konec, at priste nabootuje nacisto");
+                            ps1BiosRunning = false;
+                            appendNativeLog("BUILD2SA35 INTRO_PS1 jadro zastaveno - priste cisty boot");
+                        }
+                    } catch (Throwable t) {
+                        appendNativeLog("BUILD2SA35 INTRO_PS1_STOP_CHYBA " + safeMsg(t));
+                    }
+                    appendNativeLog("BUILD2SA32 INTRO_PS1 konec casti");
                 } catch (Throwable t) {
                     appendNativeLog("BUILD2SA32 INTRO_PS1_UKLID_CHYBA " + safeMsg(t));
                 }
@@ -3114,8 +3143,20 @@ public class MainActivity extends Activity {
                         appendNativeLog("BUILD2SA33 INTRO_PS1_PLOCHA_CHYBA " + safeMsg(t));
                     }
 
-                    // Na zivotni cyklus PS1 se NESAHA. Intro jen pozada
-                    // o start BIOSu; kdyz uz bezi, sam nic neudela.
+                    // BUILD2SA35: CISTY BOOT POKAZDE.
+                    //
+                    // ps1MaybeStartBios() se hned vrati, kdyz uz BIOS bezi -
+                    // a pak se misto znelky Sony ukaze menu s Memory Card
+                    // a Play CD, protoze BIOS uz je davno za logem.
+                    // Proto pred startem zajistime, ze jadro nebezi.
+                    try {
+                        if (ps1BiosRunning && !ps1SessionActive && !ps1BootActive
+                                && !ps1GameWindowOwnsCore) {
+                            stopPs1SessionHard("intro:cisty boot pred znelkou");
+                            ps1BiosRunning = false;
+                            appendNativeLog("BUILD2SA35 INTRO_PS1 stare jadro zastaveno");
+                        }
+                    } catch (Throwable ignored) {}
                     ps1MaybeStartBios();
 
                     // Kdyz uz BIOS bezel z drivejska, ps1MaybeStartBios()
