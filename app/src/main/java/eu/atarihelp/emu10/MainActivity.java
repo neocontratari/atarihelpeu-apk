@@ -4841,7 +4841,11 @@ public class MainActivity extends Activity {
     }
 
     private void stopPs1IfLeaving(String url, String source) {
-        if (!ps1RemoteDownloadActive && !ps1BootActive && !ps1SessionActive && ps1CurrentAudioTrack == null && ps1AudioThread == null) return;
+        // BUILD2SA36: i tady chybelo ps1BiosRunning - kdyz bezel jen BIOS,
+        // pri odchodu na jinou obrazovku se nezastavil a bezel dal.
+        if (!ps1RemoteDownloadActive && !ps1BootActive && !ps1SessionActive
+                && !ps1BiosRunning
+                && ps1CurrentAudioTrack == null && ps1AudioThread == null) return;
         if (isPs1OwnerUrl(url)) return;
         stopPs1SessionHard(source + ":" + compactUrl(url));
     }
@@ -4861,7 +4865,19 @@ public class MainActivity extends Activity {
         } catch (Throwable ignored) {}
     }
     private synchronized String stopPs1SessionHard(String reason) {
-        boolean hadSession = ps1BootActive || ps1SessionActive || ps1CurrentAudioTrack != null || ps1AudioThread != null;
+        // BUILD2SA36: CHYBELO TU ps1BiosRunning.
+        //
+        // Kdyz bezel POUZE BIOS (bez disku, jako zapnuti konzole), tahle
+        // podminka byla nepravdiva a funkce se hned vratila s
+        // "PS1_ALREADY_STOPPED" - JADRO SE NEZASTAVILO. Nasledny
+        // bootBiosSafe() pak bezel na porad bezicim jadre a nic
+        // nezresetoval, takze pri druhem spusteni intra naskocilo menu
+        // BIOSu s Memory Card a Play CD misto znelky Sony.
+        //
+        // V logu to bylo videt tak, ze tam NENI ani jedno
+        // "PS1_SESSION_STOP", i kdyz se stopPs1SessionHard() volal.
+        boolean hadSession = ps1BootActive || ps1SessionActive || ps1BiosRunning
+                || ps1CurrentAudioTrack != null || ps1AudioThread != null;
         boolean hadRemoteDownload = ps1RemoteDownloadActive;
         if (!hadSession && !hadRemoteDownload) return "PS1_ALREADY_STOPPED";
         ps1LifecycleGen++;
