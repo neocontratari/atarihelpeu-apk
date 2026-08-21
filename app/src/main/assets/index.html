@@ -183,10 +183,11 @@ if(stTv)stTv.addEventListener('click',function(e){
 var stIn=$('stIntro');
 if(stIn)stIn.addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
+  // BUILD2SA26: intro je ted NATIVNI - Java si ho spusti sama pres
+  // vlastni plochu. Stranka uz nikam neodchazi.
   try{ if(window.AHINTRO&&AHINTRO.znovu) AHINTRO.znovu(); }catch(err){}
   log('SETTINGS_INTRO_START');
   closeSettings();
-  location.href='intro/index.html?znovu=1';
 },true);
 
 var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);

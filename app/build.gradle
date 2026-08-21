@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 181
-        versionName "EMU10-B133-ZVUK-JAKO-ATARI-A-POLOVICNI-SNIMEK"  // zvuk v intru prepsan na ScriptProcessor (jako emulator Atari, o kterem vime ze hraje) a Atari se pri TV snima v polovicnim rozliseni
+        versionCode 183
+        versionName "EMU10-B135-NATIVNI-INTRO"  // uvodni intro prepsano do C++ a OpenGL ES, stejnou cestou jako PS1: vlastni plocha, vlastni vlakno, snimek pro TV se pujcuje z jadra a okno se nesnima
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
