@@ -46,6 +46,8 @@ public final class NapStahovaniSeSouhlasem {
     private static final String KLIC_ZEPTANO = "zeptano";
 
     public interface Hotovo { void hotovo(String zprava); }
+    /** Prubeh stahovani - aby uzivatel videl, co se deje. */
+    public interface Prubeh { void krok(String co, long staženo, long celkem, long bajtuZaSekundu); }
 
     /** Uz jsme se ptali? Ptame se jen jednou, at to neotravuje. */
     public static boolean uzZeptano(Context c) {
@@ -83,11 +85,15 @@ public final class NapStahovaniSeSouhlasem {
                 .setCancelable(true)
                 .setPositiveButton("STAHNOUT", (d, w) -> {
                     zapamatuj(a);
-                    stahniNaPozadi(a, korenSlozky, pak);
+                    stahniSPrubehem(a, korenSlozky, pak);
                 })
                 .setNegativeButton("TED NE", (d, w) -> {
                     zapamatuj(a);
                     if (pak != null) pak.hotovo("ODMITNUTO");
+                })
+                .setOnCancelListener(d -> {          // i kdyz dialog zrusi jinak
+                    zapamatuj(a);
+                    if (pak != null) pak.hotovo("ZRUSENO");
                 })
                 .show();
         } catch (Throwable t) {
@@ -95,17 +101,113 @@ public final class NapStahovaniSeSouhlasem {
         }
     }
 
+    /**
+     * Stahne a UKAZUJE, co se deje - nazev souboru, kolik uz je, jak
+     * rychle. Na konci rekne, co se stahlo, a teprve po odklepnuti
+     * pusti dal.
+     */
+    public static void stahniSPrubehem(final Activity a, final File korenSlozky,
+                                       final Hotovo pak) {
+        final android.widget.LinearLayout box = new android.widget.LinearLayout(a);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int p = (int) (16 * a.getResources().getDisplayMetrics().density);
+        box.setPadding(p * 2, p, p * 2, p);
+
+        final android.widget.TextView popisek = new android.widget.TextView(a);
+        popisek.setText("Pripojuji se k atarihelp.eu...");
+        popisek.setTextSize(15f);
+        box.addView(popisek);
+
+        final android.widget.ProgressBar pruh = new android.widget.ProgressBar(
+                a, null, android.R.attr.progressBarStyleHorizontal);
+        pruh.setMax(100);
+        pruh.setIndeterminate(true);
+        android.widget.LinearLayout.LayoutParams lp =
+                new android.widget.LinearLayout.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = p;
+        box.addView(pruh, lp);
+
+        final android.widget.TextView cisla = new android.widget.TextView(a);
+        cisla.setTextSize(13f);
+        cisla.setText(" ");
+        box.addView(cisla);
+
+        final AlertDialog dlg = new AlertDialog.Builder(a)
+                .setTitle("Stahuji")
+                .setView(box)
+                .setCancelable(false)
+                .create();
+        dlg.show();
+
+        stahniNaPozadi(a, korenSlozky, (co, kolik, celkem, rychlost) -> {
+            // prubeh - volano z UI vlakna
+            popisek.setText(co);
+            if (celkem > 0) {
+                pruh.setIndeterminate(false);
+                pruh.setProgress((int) (kolik * 100 / celkem));
+                cisla.setText(kb(kolik) + " z " + kb(celkem)
+                        + "   " + kb(rychlost) + "/s");
+            } else {
+                cisla.setText(kb(kolik) + "   " + kb(rychlost) + "/s");
+            }
+        }, zprava -> {
+            try { dlg.dismiss(); } catch (Throwable ignored) {}
+            String hezky = prelozVysledek(zprava);
+            new AlertDialog.Builder(a)
+                    .setTitle(zprava.contains("OK") ? "Stazeno" : "Nestazeno")
+                    .setMessage(hezky)
+                    .setCancelable(false)
+                    .setPositiveButton("POKRACOVAT", (d2, w2) -> {
+                        if (pak != null) pak.hotovo(zprava);
+                    })
+                    .show();
+        });
+    }
+
+    private static String kb(long b) {
+        if (b >= 1024 * 1024) return String.format(java.util.Locale.US, "%.1f MB", b / 1048576.0);
+        if (b >= 1024)        return String.format(java.util.Locale.US, "%.0f kB", b / 1024.0);
+        return b + " B";
+    }
+
+    /** Z technicke zpravy udela vetu, ktera dava smysl. */
+    private static String prelozVysledek(String z) {
+        StringBuilder v = new StringBuilder();
+        boolean sonicOk = z.contains("sonic=OK");
+        boolean biosOk  = z.contains("bios=OK");
+        v.append(sonicOk ? "\u2713 Sonic the Hedgehog - ulozen\n"
+                         : "\u2717 Sonic the Hedgehog - nestazen\n");
+        v.append(biosOk  ? "\u2713 BIOS pro PlayStation - ulozen\n"
+                         : "\u2717 BIOS pro PlayStation - nestazen\n");
+        v.append("\nSlozka: Download/AtariHelp/emu\n");
+        if (!sonicOk || !biosOk) {
+            v.append("\nCo se nestahlo, jde zkusit znovu v nabidce");
+            v.append(" OPTIONS -> STAHNOUT HRY A BIOS.");
+            v.append("\n\nPodrobnosti: ").append(z);
+        }
+        return v.toString();
+    }
+
     /** Stazeni bez ptani - pouziva se z nabidky OPTIONS, kde si o to rekl sam. */
     public static void stahniNaPozadi(final Activity a, final File korenSlozky,
                                       final Hotovo pak) {
+        stahniNaPozadi(a, korenSlozky, null, pak);
+    }
+
+    public static void stahniNaPozadi(final Activity a, final File korenSlozky,
+                                      final Prubeh prubeh, final Hotovo pak) {
         new Thread(() -> {
             StringBuilder z = new StringBuilder();
             try {
                 File segaDir = new File(new File(korenSlozky, "emu"), "sega");
                 File ps1Dir  = new File(new File(korenSlozky, "emu"), "ps1");
-                z.append(jednoStazeni(SONIC_URL, segaDir, "sonic", ".gen,.bin,.md,.smd"));
+                z.append(jednoStazeni(a, SONIC_URL, segaDir, "sonic",
+                        ".gen,.bin,.md,.smd", "Sonic the Hedgehog", prubeh));
                 z.append(' ');
-                z.append(jednoStazeni(BIOS_URL, ps1Dir, "bios", ".bin"));
+                z.append(jednoStazeni(a, BIOS_URL, ps1Dir, "bios",
+                        ".bin", "BIOS pro PlayStation", prubeh));
             } catch (Throwable t) {
                 z.append("CHYBA ").append(t.getClass().getSimpleName());
             }
@@ -118,7 +220,9 @@ public final class NapStahovaniSeSouhlasem {
      * Stahne ZIP a rozbali z nej soubory s danymi priponami.
      * @return kratka zprava do logu
      */
-    private static String jednoStazeni(String url, File kam, String popis, String pripony) {
+    private static String jednoStazeni(final Activity a, String url, File kam,
+                                       String popis, String pripony,
+                                       final String hezkyNazev, final Prubeh prubeh) {
         HttpURLConnection c = null;
         try {
             if (!kam.isDirectory() && !kam.mkdirs()) return popis + "=slozka-nejde";
@@ -129,15 +233,33 @@ public final class NapStahovaniSeSouhlasem {
             int kod = c.getResponseCode();
             if (kod != 200) return popis + "=HTTP" + kod;
 
+            final long celkem = c.getContentLength();
             InputStream in = c.getInputStream();
             ByteArrayOutputStream bo = new ByteArrayOutputStream();
             byte[] buf = new byte[32768];
             int n;
+            final long zacatek = System.currentTimeMillis();
+            long posledniHlaseni = 0;
             while ((n = in.read(buf)) > 0) {
                 bo.write(buf, 0, n);
                 if (bo.size() > 24 * 1024 * 1024) break;      // pojistka
+                long ted = System.currentTimeMillis();
+                if (prubeh != null && ted - posledniHlaseni > 120) {
+                    posledniHlaseni = ted;
+                    final long mam = bo.size();
+                    long ubehlo = Math.max(1, ted - zacatek);
+                    final long rychlost = mam * 1000 / ubehlo;
+                    a.runOnUiThread(() -> prubeh.krok(hezkyNazev, mam, celkem, rychlost));
+                }
             }
             in.close();
+            if (prubeh != null) {
+                final long mam = bo.size();
+                long ubehlo = Math.max(1, System.currentTimeMillis() - zacatek);
+                final long rychlost = mam * 1000 / ubehlo;
+                a.runOnUiThread(() -> prubeh.krok(hezkyNazev + " - rozbaluji",
+                        mam, celkem, rychlost));
+            }
             byte[] zip = bo.toByteArray();
             if (zip.length < 64) return popis + "=prazdne";
 

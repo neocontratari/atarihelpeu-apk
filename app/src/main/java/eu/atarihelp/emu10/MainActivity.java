@@ -6210,28 +6210,57 @@ public class MainActivity extends Activity {
         // za spusteni aplikace - po nem uz se jde rovnou do rozcestniku,
         // aby to pri navratu z her neotravovalo.
         {
-            final String cil = napIntroUkazano
-                    ? "file:///android_asset/index.html"
-                    : "file:///android_asset/intro/index.html";
-            applyWebViewVisualMode(cil, "startup");
-            appendNativeLog("BUILD2SA21 START url=" + cil
-                    + " intro=" + (napIntroUkazano ? "PRESKOCENO" : "SPOUSTIM"));
-            web.loadUrl(cil);
+            // BUILD2SA28: PORADI. Nejdriv otazka na stazeni, AZ POTOM intro.
+            //
+            // V B137 se otazka objevila PRES uz bezici intro - film hral
+            // pod dialogem, dobehl a skocil do menu, aniz uzivatel stihl
+            // cokoli odklepnout. Bylo to zmatecne a byla to moje chyba
+            // v poradi, ne v te otazce samotne.
+            final String menu  = "file:///android_asset/index.html";
+            final String intro = "file:///android_asset/intro/index.html";
 
-            // BUILD2SA27: pri PRVNIM spusteni se zeptame, jestli stahnout
-            // Sonica a BIOS PS1 z atarihelp.eu. Aplikace si NIC nestahuje
-            // sama od sebe - dialog rekne co, odkud a kolik, a stahuje az
-            // po odklepnuti. Kdo rekne "ted ne", ma to v nabidce OPTIONS.
-            if (!NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this)) {
+            // POJISTKA: intro se smi spustit jen jednou, ale MUSI se
+            // spustit vzdycky. Kdyby dialog z jakehokoli duvodu nenaskocil,
+            // zustala by prazdna obrazovka a uzivatel by se nikam nedostal.
+            final boolean[] uzJede = { false };
+            final Runnable spustIntro = () -> {
+                if (uzJede[0]) return;
+                uzJede[0] = true;
+                final String cil = napIntroUkazano ? menu : intro;
+                applyWebViewVisualMode(cil, "startup");
+                appendNativeLog("BUILD2SA28 START url=" + cil
+                        + " intro=" + (napIntroUkazano ? "PRESKOCENO" : "SPOUSTIM"));
+                web.loadUrl(cil);
+            };
+
+            if (NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this)) {
+                spustIntro.run();
+            } else {
+                // Nez se uzivatel rozhodne, drzime prazdnou obrazovku -
+                // at pod dialogem nic nebezi a nic mu neutika.
+                applyWebViewVisualMode(menu, "startup");
+                web.loadUrl("about:blank");
+                appendNativeLog("BUILD2SA28 START ptam-se-na-stazeni");
                 ui.postDelayed(() -> {
                     try {
                         NapStahovaniSeSouhlasem.zeptejSeAStahni(MainActivity.this,
                                 getPublicAtariHelpDownloadsDir(),
-                                zprava -> appendNativeLog("BUILD2SA27 STAZENI " + zprava));
+                                zprava -> {
+                                    appendNativeLog("BUILD2SA27 STAZENI " + zprava);
+                                    spustIntro.run();     // az ted jede film
+                                });
                     } catch (Throwable t) {
                         appendNativeLog("BUILD2SA27 STAZENI_CHYBA " + safeMsg(t));
+                        spustIntro.run();
                     }
-                }, 1200);
+                }, 400);
+                // kdyby se do dvou minut nic nestalo, jedeme dal sami
+                ui.postDelayed(() -> {
+                    if (!uzJede[0]) {
+                        appendNativeLog("BUILD2SA28 POJISTKA - dialog nedobehl, spoustim intro");
+                        spustIntro.run();
+                    }
+                }, 120000);
             }
         }
     }
