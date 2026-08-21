@@ -115,6 +115,8 @@ public class MainActivity extends Activity {
     //  Plocha lezi POD strankou, aby ovladac zustal nad obrazem.
     // ===================================================================
     private android.view.SurfaceView segaPlocha = null;
+    /** BUILD2SA34: bezi prave ziva cast intra (Sega nebo PS1)? */
+    private volatile boolean introZivaCast = false;
 
     // ==================================================================
     //  BUILD2SA30: SEGA V INTRU
@@ -151,6 +153,7 @@ public class MainActivity extends Activity {
             String vysledek = NativeSegaCoreBridge.realCoreLoadRom(data);
             appendNativeLog("BUILD2SA30 INTRO_SEGA rom nahrana: " + vysledek);
 
+            introZivaCast = true;            // hlidac plochu nesmi sundat
             segaPlochaZapni();
             introOknoPruhledne(true);        // at je plocha pod WebView videt
             // ZVUK: normalni cesta ceka na frameReady A viewReady. Jenze
@@ -215,6 +218,7 @@ public class MainActivity extends Activity {
             try { NativeSegaCoreBridge.shutdown(); } catch (Throwable ignored) {}
             segaPlochaVypni();
             introOknoPruhledne(false);
+            introZivaCast = false;
             appendNativeLog("BUILD2SA30 INTRO_SEGA konec");
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA30 INTRO_SEGA_UKLID_CHYBA " + safeMsg(t));
@@ -3023,6 +3027,7 @@ public class MainActivity extends Activity {
     public class AHIntro {
         @JavascriptInterface public void hotovo() {
             napIntroUkazano = true;
+            introZivaCast = false;      // pojistka - hlidac zase hlida
             appendNativeLog("BUILD2SA21 INTRO_HOTOVO");
         }
         /** BUILD2SA23: intro pustene rucne z nabidky OPTIONS. */
@@ -3076,6 +3081,7 @@ public class MainActivity extends Activity {
                 try {
                     napTvWebAudioLastPushMs = 0;
                     introOknoPruhledne(false);
+                    introZivaCast = false;
                     appendNativeLog("BUILD2SA32 INTRO_PS1 konec casti - na jadro nesahano");
                 } catch (Throwable t) {
                     appendNativeLog("BUILD2SA32 INTRO_PS1_UKLID_CHYBA " + safeMsg(t));
@@ -3087,6 +3093,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String spustPs1() {
             try {
                 ui.post(() -> {
+                    introZivaCast = true;        // hlidac plochu nesmi sundat
                     introOknoPruhledne(true);
 
                     // PORADI. Nejdriv PLOCHA, teprve potom boot.
@@ -5473,6 +5480,23 @@ public class MainActivity extends Activity {
     }
 
     private void plochaZkontroluj() {
+        // BUILD2SA34: INTRO JE TAKY MISTO, KDE PLOCHA ZUSTAT MA.
+        //
+        // Tenhle hlidac schovava plochu Segy i PS1, kdyz uzivatel neni na
+        // jejich obrazovce - to je spravne a chrani pred tim, aby obraz
+        // prosvital do zbytku aplikace.
+        //
+        // Jenze intro ma svou vlastni adresu, takze hlidac plochu sundal
+        // hned po jejim postaveni. V logu to bylo videt presne:
+        //   PLOCHA_VYTVORENA - predavam ji jadru
+        //   PS1_BIOS_OK
+        //   PLOCHA_SCHOVANA (obrazovka .../intro/index.html)
+        // Jadro tedy bezelo (proto byl slyset zvuk), ale kreslilo do
+        // schovane plochy - odtud cerna obrazovka a nic na TV.
+        //
+        // Hlidac se NEVYPINA. Jen se mu rekne, ze behem zivych casti
+        // intra ma plochu nechat byt.
+        final boolean jeIntro = introZivaCast;
         // Sega ma vlastni plochu - schovat ji, kdyz nejsme na jeji obrazovce,
         // jinak by obraz prosvital do zbytku aplikace (stejny problem jako
         // mela PS1).
@@ -5481,7 +5505,7 @@ public class MainActivity extends Activity {
             if (sp != null) {
                 String us = null;
                 try { if (web != null) us = web.getUrl(); } catch (Throwable ignored) {}
-                boolean jeSega = (us != null) && us.contains("emu_sega");
+                boolean jeSega = ((us != null) && us.contains("emu_sega")) || jeIntro;
                 int chciS = jeSega ? View.VISIBLE : View.INVISIBLE;
                 if (sp.getVisibility() != chciS) {
                     sp.setVisibility(chciS);
@@ -5494,7 +5518,7 @@ public class MainActivity extends Activity {
             if (pl == null) return;
             String u = null;
             try { if (web != null) u = web.getUrl(); } catch (Throwable ignored) {}
-            boolean jePs1 = (u != null) && u.contains("emu_ps1");
+            boolean jePs1 = ((u != null) && u.contains("emu_ps1")) || jeIntro;
             int chci = jePs1 ? View.VISIBLE : View.INVISIBLE;
             if (pl.getVisibility() != chci && (jePs1 || plochaW > 0)) {
                 pl.setVisibility(chci);
