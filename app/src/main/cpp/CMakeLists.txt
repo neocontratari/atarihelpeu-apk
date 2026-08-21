@@ -283,21 +283,6 @@ endif() # NAP_ENABLE_PS1
 include(${CMAKE_CURRENT_LIST_DIR}/eglrender/eglrender.cmake)
 
 # ============================================================
-#  BUILD2SA26: NATIVNI UVODNI INTRO
-#
-#  Kresli STEJNOU CESTOU JAKO PS1 - vlastni plocha, vlastni vlakno,
-#  OpenGL ES pres EGL. Puvodni intro bezelo ve WebView na hlavnim
-#  vlakne a TV si od nej musela obraz fotit pres PixelCopy celeho
-#  okna - pri zapnute WEB TV se pak kousalo uplne vsechno.
-#
-#  Samostatna knihovna, aby nemohla ovlivnit PS1 ani Segu.
-# ============================================================
-add_library(napintro SHARED
-    ${CMAKE_CURRENT_LIST_DIR}/intro/nap_intro_gl.cpp)
-target_include_directories(napintro PRIVATE ${CMAKE_CURRENT_LIST_DIR}/intro)
-target_link_libraries(napintro android log EGL GLESv2)
-
-# ============================================================
 #  BUILD2SA14: jadro Atari v C++ - VRSTVY 1 a 2 (CPU 6502, pamet a banky).
 #  Zatim se JEN STAVI, z Javy se nevola a v APK nic nemeni. Stejny postup
 #  jako u eglrender vyse. Smysl: overit, ze se to prelozi pravym NDK pro

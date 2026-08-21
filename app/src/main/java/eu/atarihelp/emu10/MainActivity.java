@@ -116,91 +116,6 @@ public class MainActivity extends Activity {
     // ===================================================================
     private android.view.SurfaceView segaPlocha = null;
 
-    // ==================================================================
-    //  BUILD2SA26: NATIVNI UVODNI INTRO
-    //
-    //  Vlastni plocha, vlastni vlakno, OpenGL ES - stejne jako PS1
-    //  a Sega. Puvodni intro bezelo ve WebView na hlavnim vlakne a TV
-    //  si ho musela fotit pres PixelCopy celeho okna; pri zapnute
-    //  WEB TV se pak kousalo vsechno.
-    //
-    //  Plocha lezi NAD strankou a po dobehnuti se sama uklidi.
-    // ==================================================================
-    private android.view.SurfaceView introPlocha = null;
-    private java.util.Timer introHlidac = null;
-
-    /** Spusti nativni intro. Po dobehnuti se samo vypne. */
-    private void introZapni() {
-        try {
-            if (introPlocha != null || rootFrame == null) return;
-            NativeIntroBridge.introStart();
-
-            // Znelka ze zarizeni, kdyz si ji uzivatel stahl. Hleda se
-            // uplne stejne jako BIOS pro PS1 - ve stazenych souborech.
-            try {
-                java.io.File root = getPublicAtariHelpDownloadsDir();
-                java.io.File[] kde = new java.io.File[] {
-                        root, new java.io.File(root, "ZVUKY"), getFilesDir() };
-                String v = NativeIntroBridge.nactiZnelkyZeZarizeni(kde);
-                appendNativeLog("BUILD2SA26 INTRO_ZNELKY " + v);
-            } catch (Throwable t) {
-                appendNativeLog("BUILD2SA26 INTRO_ZNELKY_CHYBA " + safeMsg(t));
-            }
-
-            android.view.SurfaceView sv = new android.view.SurfaceView(MainActivity.this);
-            sv.setClickable(false); sv.setEnabled(false); sv.setFocusable(false);
-            final android.view.SurfaceView tato = sv;
-            sv.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
-                @Override public void surfaceCreated(android.view.SurfaceHolder h) {
-                    if (introPlocha != tato) return;
-                    appendNativeLog("BUILD2SA26 INTRO_PLOCHA_VYTVORENA");
-                    NativeIntroBridge.introSetDisplaySurface(h.getSurface());
-                    NativeIntroBridge.zvukStart();
-                }
-                @Override public void surfaceChanged(android.view.SurfaceHolder h, int f, int w, int hh) {
-                    appendNativeLog("BUILD2SA26 INTRO_PLOCHA_ZMENENA " + w + "x" + hh);
-                }
-                @Override public void surfaceDestroyed(android.view.SurfaceHolder h) {
-                    if (introPlocha != null && introPlocha != tato) return;
-                    NativeIntroBridge.introSetDisplaySurface(null);
-                }
-            });
-            rootFrame.addView(sv, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            introPlocha = sv;
-            appendNativeLog("BUILD2SA26 INTRO_ZAPNUTO");
-
-            // hlidac: az intro dobehne, plochu sundame
-            introHlidac = new java.util.Timer("nap-intro-hlidac", true);
-            introHlidac.scheduleAtFixedRate(new java.util.TimerTask() {
-                @Override public void run() {
-                    try {
-                        if (NativeIntroBridge.introHotovo()) ui.post(() -> introVypni());
-                    } catch (Throwable ignored) {}
-                }
-            }, 500, 250);
-        } catch (Throwable t) {
-            appendNativeLog("BUILD2SA26 INTRO_CHYBA " + safeMsg(t));
-        }
-    }
-
-    private void introVypni() {
-        try {
-            if (introHlidac != null) { introHlidac.cancel(); introHlidac = null; }
-            NativeIntroBridge.zvukStop();
-            NativeIntroBridge.introSetDisplaySurface(null);
-            NativeIntroBridge.introSetTvSurface(null);
-            final android.view.SurfaceView old = introPlocha;
-            introPlocha = null;
-            if (old != null && rootFrame != null) rootFrame.removeView(old);
-            appendNativeLog("BUILD2SA26 INTRO_VYPNUTO snimku="
-                    + NativeIntroBridge.introSnimku()
-                    + " vzorku=" + NativeIntroBridge.introVzorku());
-        } catch (Throwable t) {
-            appendNativeLog("BUILD2SA26 INTRO_VYPNUTI_CHYBA " + safeMsg(t));
-        }
-    }
-
     private void segaPlochaZapni() {
         try {
             if (segaPlocha != null || rootFrame == null) return;
@@ -1071,8 +986,7 @@ public class MainActivity extends Activity {
                         boolean naSegeT = (cu0 != null) && cu0.contains("emu_sega");
                         boolean naPs1T  = (cu0 != null) && cu0.contains("emu_ps1")
                                 && (ps1BiosRunning || ps1SessionActive);
-                        // intro dava snimek take primo - okno se nesnima
-                        ps1PrimoZJadra = naPs1T || naSegeT || (introPlocha != null);
+                        ps1PrimoZJadra = naPs1T || naSegeT;
                     } catch (Throwable ignored2) {}
                     effectiveDelay = ps1PrimoZJadra
                             ? napTvWebH264FastTickMs               // PS1: 16 ms staci
@@ -1181,20 +1095,14 @@ public class MainActivity extends Activity {
                 String uS = (web == null) ? null : web.getUrl();
                 jeSegaTv = (uS != null) && uS.contains("emu_sega");
             } catch (Throwable ignored) {}
-            // BUILD2SA26: kdyz bezi nativni intro, snimek dava ONO -
-            // stejnou cestou jako Sega a PS1, tedy pujckou hotoveho
-            // pole bodu. Okno se nesnima.
-            final boolean jeIntroTv = (introPlocha != null);
 
-            int wh = jeIntroTv ? NativeIntroBridge.grabFrameSafe(tvCoreArgb)
-                   : jeSegaTv  ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
-                               : Ps1GlTextureView.borrowFrame(tvCoreArgb);
+            int wh = jeSegaTv ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
+                              : Ps1GlTextureView.borrowFrame(tvCoreArgb);
             if (wh < 0) {
                 int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
                 tvCoreArgb = new int[need + 1024];
-                wh = jeIntroTv ? NativeIntroBridge.grabFrameSafe(tvCoreArgb)
-                   : jeSegaTv  ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
-                               : Ps1GlTextureView.borrowFrame(tvCoreArgb);
+                wh = jeSegaTv ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
+                              : Ps1GlTextureView.borrowFrame(tvCoreArgb);
             }
             if (wh == 0) {
                 // Nic k pujceni (obrazovka zrovna nekresli) - podrzime posledni
@@ -3014,8 +2922,7 @@ public class MainActivity extends Activity {
         }
         /** BUILD2SA23: intro pustene rucne z nabidky OPTIONS. */
         @JavascriptInterface public void znovu() {
-            appendNativeLog("BUILD2SA26 INTRO_NA_POZADANI (nativni)");
-            ui.post(() -> introZapni());
+            appendNativeLog("BUILD2SA23 INTRO_NA_POZADANI");
         }
     }
 
@@ -6291,32 +6198,13 @@ public class MainActivity extends Activity {
         // za spusteni aplikace - po nem uz se jde rovnou do rozcestniku,
         // aby to pri navratu z her neotravovalo.
         {
-            // BUILD2SA26: UVODNI INTRO JE TED NATIVNI.
-            //
-            // Stranka se nacte rovnou (rozcestnik) a PRES NI se polozi
-            // nativni plocha intra. Az intro dobehne, plocha se sama
-            // sundá a pod ni uz je pripraveny rozcestnik.
-            //
-            // Stare HTML intro zustava v assets/intro jako zaloha -
-            // kdyby nativni na necem nesedlo, staci prehodit tenhle
-            // jediny prepinac zpatky na nej.
-            final boolean NATIVNI_INTRO = true;
-
-            final String cil = "file:///android_asset/index.html";
+            final String cil = napIntroUkazano
+                    ? "file:///android_asset/index.html"
+                    : "file:///android_asset/intro/index.html";
             applyWebViewVisualMode(cil, "startup");
-            appendNativeLog("BUILD2SA26 START url=" + cil
-                    + " intro=" + (napIntroUkazano ? "PRESKOCENO"
-                                   : (NATIVNI_INTRO ? "NATIVNI" : "HTML")));
+            appendNativeLog("BUILD2SA21 START url=" + cil
+                    + " intro=" + (napIntroUkazano ? "PRESKOCENO" : "SPOUSTIM"));
             web.loadUrl(cil);
-
-            if (!napIntroUkazano) {
-                napIntroUkazano = true;
-                if (NATIVNI_INTRO) {
-                    ui.postDelayed(() -> introZapni(), 350);   // at ma stranka cas
-                } else {
-                    web.loadUrl("file:///android_asset/intro/index.html");
-                }
-            }
         }
     }
 
