@@ -116,6 +116,61 @@ public class MainActivity extends Activity {
     // ===================================================================
     private android.view.SurfaceView segaPlocha = null;
 
+    // ==================================================================
+    //  BUILD2SA30: SEGA V INTRU
+    //
+    //  Nedelam zadnou vlastni cestu. Jdu TIM SAMYM RETEZEM, kterym se
+    //  hra spousti rucne - vcetne tvrdeho resetu jadra pred nahranim
+    //  a cekani na obraz PRED spustenim zvuku.
+    //
+    //  V kodu je u toho poznamka, proc ten poradek existuje:
+    //  "Tvrdy fresh start pred kazdou ROM brani stavu: Atari 130XE ->
+    //   Sega -> nova ROM -> cerna obrazovka + zvuk."
+    //  Kdybych si to zkratil po svem, vyrobil bych presne tenhle problem.
+    // ==================================================================
+    private void introSpustSegu(java.io.File romSoubor) {
+        try {
+            byte[] data = new byte[(int) romSoubor.length()];
+            java.io.FileInputStream in = new java.io.FileInputStream(romSoubor);
+            try {
+                int cti = 0;
+                while (cti < data.length) {
+                    int k = in.read(data, cti, data.length - cti);
+                    if (k < 0) break;
+                    cti += k;
+                }
+            } finally { in.close(); }
+
+            final int loadGen = ++nativeRomLoadGeneration;
+            appendNativeLog("BUILD2SA30 INTRO_SEGA start " + romSoubor.getName()
+                    + " (" + data.length + " B) gen=" + loadGen);
+
+            stopNativeCoreAudioStream();
+            try { NativeSegaCoreBridge.shutdown(); } catch (Throwable ignored) {}
+            nativeViewDrawCounterAtRomLoad = nativeViewDrawCounter;
+            String vysledek = NativeSegaCoreBridge.realCoreLoadRom(data);
+            appendNativeLog("BUILD2SA30 INTRO_SEGA rom nahrana: " + vysledek);
+
+            segaPlochaZapni();
+            forceNativeViewRedrawBurst("introSega");
+            // zvuk az kdyz je obraz i plocha opravdu pripravena
+            scheduleNativeAudioAfterFrameAndViewDraw(romSoubor.getName(), data, loadGen, 1);
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA30 INTRO_SEGA_CHYBA " + safeMsg(t));
+        }
+    }
+
+    private void introZastavSegu() {
+        try {
+            stopNativeCoreAudioStream();
+            try { NativeSegaCoreBridge.shutdown(); } catch (Throwable ignored) {}
+            segaPlochaVypni();
+            appendNativeLog("BUILD2SA30 INTRO_SEGA konec");
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA30 INTRO_SEGA_UKLID_CHYBA " + safeMsg(t));
+        }
+    }
+
     private void segaPlochaZapni() {
         try {
             if (segaPlocha != null || rootFrame == null) return;
@@ -2924,6 +2979,59 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void znovu() {
             appendNativeLog("BUILD2SA23 INTRO_NA_POZADANI");
         }
+        /**
+         * BUILD2SA30: SPUSTI SKUTECNE JADRO SEGY s ROM z telefonu.
+         *
+         * Intro na tom miste nic neprehrava - JADRO SI OBRAZ I ZVUK
+         * SPOCITA SAMO z uzivatelovy ROM, uplne stejne, jako kdyz si
+         * hru pusti rucne. Znelka i logo tedy vzniknou z YM2612 a PSG
+         * te konkretni hry, ne z nejake nahravky.
+         *
+         * @return kratka zprava pro JS: OK / CHYBI / CHYBA
+         */
+        @JavascriptInterface public String spustSegu() {
+            try {
+                java.io.File rom = NapStahovaniSeSouhlasem.najdiSegaRom(
+                        getPublicAtariHelpDownloadsDir());
+                if (rom == null) {
+                    appendNativeLog("BUILD2SA30 INTRO_SEGA CHYBI-ROM");
+                    return "CHYBI";
+                }
+                final java.io.File r = rom;
+                ui.post(() -> introSpustSegu(r));
+                return "OK";
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA30 INTRO_SEGA_CHYBA " + safeMsg(t));
+                return "CHYBA";
+            }
+        }
+
+        /** BUILD2SA30: ukonci Segu a ukliza po ni. */
+        @JavascriptInterface public void zastavSegu() {
+            ui.post(() -> introZastavSegu());
+        }
+
+        /** BUILD2SA30: nabootuje BIOS PS1 - logo a zvuk Sony vzniknou vypoctem. */
+        @JavascriptInterface public String spustPs1() {
+            try {
+                ui.post(() -> {
+                    ps1MaybeStartBios();
+                    // plocha se postavi pres cely obraz; o umisteni se
+                    // stara ps1PlochaUmisti, zadnou vlastni cestu nedelam
+                    try {
+                        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+                        ps1PlochaUmisti(0, 0, dm.widthPixels, dm.heightPixels,
+                                        dm.widthPixels > dm.heightPixels);
+                    } catch (Throwable ignored) {}
+                });
+                appendNativeLog("BUILD2SA30 INTRO_PS1 spoustim BIOS");
+                return "OK";
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA30 INTRO_PS1_CHYBA " + safeMsg(t));
+                return "CHYBA";
+            }
+        }
+
         /** BUILD2SA27: stazeni Sonica a BIOSu na vyzadani z nabidky OPTIONS. */
         @JavascriptInterface public void stahniSoubory() {
             ui.post(() -> {

@@ -32,6 +32,9 @@ var CIL='../index.html', hotovo=false;
 var naPozadani = (location.search||'').indexOf('znovu=1')>=0;
 function konec(){
   if(hotovo) return; hotovo=true;
+  // pri preskoceni se MUSI vypnout i jadra, jinak by hrala dal
+  try{ if(segaBezi && window.AHINTRO&&AHINTRO.zastavSegu) AHINTRO.zastavSegu(); }catch(e){}
+  segaBezi=false;
   if(!naPozadani){ try{ if(window.AHINTRO) AHINTRO.hotovo(); }catch(e){} }
   location.replace(CIL);
 }
@@ -729,6 +732,66 @@ function finale(t,d){
   g.restore();
 }
 
+// ================= ZIVA JADRA =================
+// Na techto dvou scenach nekreslime NIC - obraz i zvuk davaji jadra
+// Segy a PS1 na vlastnich plochach, ktere lezi nad timhle platnem.
+// My jen rekneme Jave, kdy je zapnout a kdy vypnout.
+var segaBezi=false, ps1Bezi=false, segaChybi=false, ps1Chybi=false;
+
+function zivaSega(t,d){
+  if(!zivaSega.__zac){
+    zivaSega.__zac=true;
+    var v='CHYBI';
+    try{ if(window.AHINTRO&&AHINTRO.spustSegu) v=AHINTRO.spustSegu(); }catch(e){}
+    segaBezi = (v==='OK');
+    segaChybi = !segaBezi;
+  }
+  if(segaChybi){
+    // ROM na telefonu neni - misto zivé Segy zahrajeme vlastni znelku
+    if(!zivaSega.__nahrada){ zivaSega.__nahrada=true; }
+    nahradniZnelka(t,d,'MEGA DRIVE', 0.05,0.18,0.55);
+    return;
+  }
+  // jadro kresli samo - my jen drzime cerno pod nim
+  g.fillStyle='#000'; g.fillRect(0,0,W,H);
+  if(t > d-400 && segaBezi){
+    segaBezi=false;
+    try{ if(window.AHINTRO&&AHINTRO.zastavSegu) AHINTRO.zastavSegu(); }catch(e){}
+  }
+}
+
+function zivaPs1(t,d){
+  if(!zivaPs1.__zac){
+    zivaPs1.__zac=true;
+    var v='CHYBI';
+    try{ if(window.AHINTRO&&AHINTRO.spustPs1) v=AHINTRO.spustPs1(); }catch(e){}
+    ps1Bezi = (v==='OK');
+    ps1Chybi = !ps1Bezi;
+  }
+  if(ps1Chybi){ nahradniZnelka(t,d,'PLAYSTATION', 0.30,0.28,0.33); return; }
+  g.fillStyle='#000'; g.fillRect(0,0,W,H);
+}
+
+/** Kdyz soubor na telefonu neni - vlastni nazev a znelka. */
+function nahradniZnelka(t,d,nazev,r,gg,b){
+  var p=t/d;
+  var sila=(p<0.20)?p/0.20:(p>0.80?(1-p)/0.20:1);
+  g.fillStyle='#000'; g.fillRect(0,0,W,H);
+  g.fillStyle='rgba('+Math.round(r*255*sila)+','+Math.round(gg*255*sila)+','
+              +Math.round(b*255*sila)+',1)';
+  g.fillRect(0, H*0.33, W, H*0.34);
+  var px=Math.min(30, W/(nazev.length*0.75));
+  g.font='700 '+Math.round(px)+'px ui-monospace,Menlo,Consolas,monospace';
+  g.textAlign='center'; g.textBaseline='middle';
+  g.fillStyle='rgba(255,255,255,'+sila.toFixed(2)+')';
+  g.fillText(nazev, W/2, H*0.50);
+  if(!nahradniZnelka.__zvuk){ nahradniZnelka.__zvuk={}; }
+  if(!nahradniZnelka.__zvuk[nazev]){
+    nahradniZnelka.__zvuk[nazev]=true;
+    zvukStart();
+  }
+}
+
 // ================= SCENY =================
 
 function crtZapnuti(t,d){
@@ -856,13 +919,19 @@ function zaver(t,d){
 // POZOR: cislo je DELKA sceny v milisekundach, ne cas jejiho konce.
 // Puvodne jsem to psal jako konce a smycka to cetla jako delky -
 // intro pak trvalo dve a pul minuty misto necele.
+// BUILD2SA30: mezi Atari a finale se pusti SKUTECNA JADRA.
+// Nic se neprehrava - jadro Segy i PS1 si obraz a zvuk SPOCITA
+// z uzivatelovy ROM a BIOSu, ktere ma na telefonu. Kdyz je nema,
+// obe casti se preskoci a film jede dal s vlastni znelkou.
 var SCENY=[
-  {trvani: 2500, f:crtZapnuti},   // 1. okno - televize se zapina
-  {trvani: 9500, f:bootText},     // 2. okno - ATARI...OK, SEGA...OK, READY
-  {trvani:19500, f:listing},      // READY, kurzor, pak psani programu
-  {trvani: 2500, f:warp},         // skok
-  {trvani:24000, f:finale},       // 3. okno - JEDNO logo a dole bezici program
-  {trvani: 4000, f:zaver}         // zatmivacka
+  {trvani: 2500, f:crtZapnuti},   // televize se zapina
+  {trvani: 9500, f:bootText},     // ATARI...OK, SEGA...OK, READY
+  {trvani:19500, f:listing},      // READY, kurzor, psani programu
+  {trvani: 6500, f:zivaSega},     // SKUTECNE jadro Segy s Sonicem
+  {trvani: 6500, f:zivaPs1},      // SKUTECNY BIOS PS1
+  {trvani: 2000, f:warp},         // skok zpatky
+  {trvani:20000, f:finale},       // logo a bezici program
+  {trvani: 4000, f:zaver}
 ];                                 // celkem 62 s
 
 var scenaOd=null, idx=0;
