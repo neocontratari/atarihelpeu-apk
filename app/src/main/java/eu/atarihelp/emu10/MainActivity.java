@@ -3088,18 +3088,36 @@ public class MainActivity extends Activity {
             try {
                 ui.post(() -> {
                     introOknoPruhledne(true);
-                    // Na zivotni cyklus PS1 se NESAHA - Rene urcil, ze PS1
-                    // je zavrena, a ma pravdu. Intro jen pozada o start
-                    // BIOSu; kdyz uz bezi, ps1MaybeStartBios() sam nic
-                    // neudela a to je v poradku.
-                    ps1MaybeStartBios();
-                    // plocha se postavi pres cely obraz; o umisteni se
-                    // stara ps1PlochaUmisti, zadnou vlastni cestu nedelam
+
+                    // PORADI. Nejdriv PLOCHA, teprve potom boot.
+                    //
+                    // ps1MaybeStartBios() si uvnitr sam vola ps1GlEnable(),
+                    // ktery bere rozmery z plochaL..H. Kdyz se plocha
+                    // postavi az POTOM, kresli jadro do niceho - obrazovka
+                    // zustane cerna a je slyset jen zvuk. Presne to Rene
+                    // videl. U Segy je poradi spravne (plocha, pak zvuk),
+                    // tady jsem ho mel obracene.
                     try {
                         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
                         ps1PlochaUmisti(0, 0, dm.widthPixels, dm.heightPixels,
                                         dm.widthPixels > dm.heightPixels);
-                    } catch (Throwable ignored) {}
+                        appendNativeLog("BUILD2SA33 INTRO_PS1 plocha "
+                                + dm.widthPixels + "x" + dm.heightPixels);
+                    } catch (Throwable t) {
+                        appendNativeLog("BUILD2SA33 INTRO_PS1_PLOCHA_CHYBA " + safeMsg(t));
+                    }
+
+                    // Na zivotni cyklus PS1 se NESAHA. Intro jen pozada
+                    // o start BIOSu; kdyz uz bezi, sam nic neudela.
+                    ps1MaybeStartBios();
+
+                    // Kdyz uz BIOS bezel z drivejska, ps1MaybeStartBios()
+                    // se hned vrati a ps1GlEnable() se tedy nezavola vubec.
+                    // Obraz by pak nenabehl. Zapneme ho proto i tady -
+                    // je to zapnuti KRESLENI, ne zasah do behu jadra.
+                    ui.postDelayed(() -> {
+                        try { ps1GlEnable(); } catch (Throwable ignored) {}
+                    }, 250);
                 });
                 appendNativeLog("BUILD2SA30 INTRO_PS1 spoustim BIOS");
                 return "OK";
