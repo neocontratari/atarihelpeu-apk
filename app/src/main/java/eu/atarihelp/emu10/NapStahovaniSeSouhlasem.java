@@ -49,12 +49,57 @@ public final class NapStahovaniSeSouhlasem {
     /** Prubeh stahovani - aby uzivatel videl, co se deje. */
     public interface Prubeh { void krok(String co, long staženo, long celkem, long bajtuZaSekundu); }
 
-    /** Uz jsme se ptali? Ptame se jen jednou, at to neotravuje. */
+    /** Uz jsme se ptali? */
     public static boolean uzZeptano(Context c) {
         try {
             SharedPreferences p = c.getSharedPreferences(PREF, Context.MODE_PRIVATE);
             return p.getBoolean(KLIC_ZEPTANO, false);
         } catch (Throwable t) { return true; }
+    }
+
+    /**
+     * MAME TO OPRAVDU NA DISKU?
+     *
+     * Ptat se jen na to, jestli uz jsem se ptal, NESTACI - uzivatel muze
+     * slozku Download/AtariHelp/emu kdykoli smazat a aplikace by pak
+     * tvrdohlave mlcela a intro by nemelo z ceho hrat.
+     * Rozhoduje SOUBOR NA DISKU, ne vzpominka v nastaveni.
+     */
+    public static boolean maSonica(File korenSlozky) {
+        return najdiSegaRom(korenSlozky) != null;
+    }
+
+    public static boolean maBios(File korenSlozky) {
+        File[] kde = {
+            new File(new File(korenSlozky, "emu"), "ps1"),
+            new File(korenSlozky, "PS1_BIOS"),
+            new File(korenSlozky, "BIOS"),
+            korenSlozky
+        };
+        for (File d : kde) {
+            if (d == null || !d.isDirectory()) continue;
+            File[] deti = d.listFiles();
+            if (deti == null) continue;
+            for (File f : deti) {
+                if (!f.isFile()) continue;
+                String m = f.getName().toLowerCase(java.util.Locale.US);
+                // BIOS PS1 ma 512 kB - podle velikosti se pozna spolehlive
+                if (m.endsWith(".bin") && f.length() == 524288) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Chybi neco? Pak se ma aplikace zeptat znovu, i kdyz uz se ptala. */
+    public static boolean neceMChybi(File korenSlozky) {
+        return !maSonica(korenSlozky) || !maBios(korenSlozky);
+    }
+
+    /** Kratky popis stavu do logu i pro uzivatele. */
+    public static String stav(File korenSlozky) {
+        File rom = najdiSegaRom(korenSlozky);
+        return "sonic=" + (rom != null ? rom.getName() + "(" + rom.length() + "B)" : "CHYBI")
+             + " bios=" + (maBios(korenSlozky) ? "je" : "CHYBI");
     }
 
     private static void zapamatuj(Context c) {

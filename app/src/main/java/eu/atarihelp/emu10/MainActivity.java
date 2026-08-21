@@ -6233,7 +6233,23 @@ public class MainActivity extends Activity {
                 web.loadUrl(cil);
             };
 
-            if (NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this)) {
+            // BUILD2SA29: ptame se, kdyz jsme se JESTE NEPTALI **nebo**
+            // kdyz soubory na disku UZ NEJSOU. Uzivatel muze slozku
+            // Download/AtariHelp/emu kdykoli smazat - a driv by aplikace
+            // mlcela, protoze si jen pamatovala, ze uz se jednou ptala.
+            boolean zeptatSe;
+            try {
+                java.io.File koren = getPublicAtariHelpDownloadsDir();
+                boolean chybi = NapStahovaniSeSouhlasem.neceMChybi(koren);
+                zeptatSe = !NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this) || chybi;
+                appendNativeLog("BUILD2SA29 SOUBORY " + NapStahovaniSeSouhlasem.stav(koren)
+                        + " -> " + (zeptatSe ? "PTAM SE" : "vse je, neptam se"));
+            } catch (Throwable t) {
+                zeptatSe = !NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this);
+                appendNativeLog("BUILD2SA29 SOUBORY_KONTROLA_CHYBA " + safeMsg(t));
+            }
+
+            if (!zeptatSe) {
                 spustIntro.run();
             } else {
                 // Nez se uzivatel rozhodne, drzime prazdnou obrazovku -
