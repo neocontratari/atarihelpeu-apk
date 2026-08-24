@@ -1,0 +1,858 @@
+<!DOCTYPE html><html lang="cs"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>KKT - ATARI - PISE SE PROGRAM</title>
+<style>
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#000}
+/* Kdyz bezi ZIVE JADRO Segy nebo PS1, kresli ono na vlastni plochu
+   POD touhle strankou. Cele telo i rastr CRT proto musi zprusvitnet -
+   jinak by pres obraz jadra lezelo cerne pozadi stranky.
+   Presne to se stalo v B141: okno bylo pruhledne, platno vycistene,
+   ale telo stranky poravd cerne. */
+html.zive, html.zive body{background:transparent!important}
+html.zive #crt{opacity:0}
+html.zive #plat{opacity:0}
+#plat{position:fixed;inset:0;width:100%;height:100%;display:block}
+/* rastr a zaobleni jako na CRT, at to nevypada jako webova stranka */
+#crt{position:fixed;inset:0;pointer-events:none;z-index:2;
+  background:repeating-linear-gradient(to bottom,
+     rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px,
+     rgba(0,0,0,.26) 3px, rgba(0,0,0,.26) 4px);
+  box-shadow:inset 0 0 140px rgba(0,0,0,.95), inset 0 0 40px rgba(0,0,0,.7)}
+#dal{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:3;
+  background:rgba(20,20,24,.72);color:#c9ced6;border:1px solid #3a3f48;border-radius:9px;
+  padding:11px 18px;font:600 14px/1 system-ui,sans-serif;letter-spacing:.05em}
+#dal:active{background:#c8102e;color:#fff}
+
+</style></head><body>
+<canvas id="plat"></canvas>
+<div id="crt"></div>
+<button id="dal" type="button">PŘESKOČIT</button>
+<script>
+(function(){
+'use strict';
+// ====================================================================
+//  ETAPA 2 - ATARI - PISE SE PROGRAM
+//
+//  Kazda etapa je VLASTNI STRANKA a zacina od nuly.
+//  Doted bezel jeden film pres celou dobu a jadra Segy a PS1 se
+//  poustela POD NIM. Kdyz nad WebView lezi plocha jadra, prohlizec
+//  kresleni USPI - a po probuzeni uz stara stranka nekreslila.
+//  Odtud "krtecek se po PS1 neukaze", at jsem casovani opravoval jakkoli.
+// ====================================================================
+var hotovo=false;
+function jdiNa(cislo){
+  if(hotovo) return; hotovo=true;
+  try{ if(window.AHINTRO&&AHINTRO.etapa) AHINTRO.etapa(cislo); }catch(e){}
+}
+function konec(){
+  if(hotovo) return; hotovo=true;
+  try{ if(window.AHINTRO&&AHINTRO.hotovo) AHINTRO.hotovo(); }catch(e){}
+  try{ if(window.AHINTRO&&AHINTRO.etapa) AHINTRO.etapa(0); }catch(e){}
+}
+document.getElementById('dal').addEventListener('click',konec);
+try{ if(window.AHINTRO&&AHINTRO.zacatek) AHINTRO.zacatek(); }catch(e){}
+
+var LISTING=[
+ "10 GRAPHICS 0",
+ "20 SETCOLOR 2,12,2:SETCOLOR 4,12,2",
+ "30 SETCOLOR 1,12,14:POKE 752,1",
+ "40 ? :? \"    VITA VAS NEJVYSSI KKT!\"",
+ "50 ? ",
+ "60 ? \"KDYZ MI NEKDO V DISKUSICH NA\"",
+ "70 ? \"NETU NADAVA DO KOKOTU, JEN SE\"",
+ "80 ? \"USMIVAM - PROTOZE VIM, ZE PRO\"",
+ "90 ? \"VAS, MOJE KLUKY Z KLANU\"",
+ "100 ? \"KAMARADI KRTECKA TONDY, JSEM\"",
+ "110 ? \"OPRAVDU TEN NEJVYSSI KOKOT.\"",
+ "120 ? ",
+ "130 ? \"TOHLE JE VASE EXKLUZIVNI BETA\"",
+ "140 ? \"VERZE. OSTATNI LAMY SI MUSI\"",
+ "150 ? \"POCKAT, AZ TO PUSTIM NA WEB.\"",
+ "160 ? ",
+ "170 ? \"TAK NAHOD JOYSTICK A UKAZ,\"",
+ "180 ? \"CO UMIS!\"",
+ "190 ? ",
+ "200 ? \"VRACIM VAS DO ERY, KDY HRY\"",
+ "210 ? \"MELY DUSI A OBTIZNOST,\"",
+ "220 ? \"U KTERE BUDETE BRECET.\"",
+ "230 ? ",
+ "240 ? \"   VENUJE VAS HERNI TATA RENE\"",
+ "250 ? \"      A JEHO AI PARTAK\"",
+ "260 END",
+ "RUN"
+];
+var lstZnaku=0, lstNapsano=0, LST_TEXT=LISTING.join('\n')+'\n';
+// ================= ZVUK =================
+// Vsechno se vyrabi za behu, zadny soubor navic.
+//  - nahravaci pipani jako z POKEY pri SIO prenosu (funkcni ton, ne nahravka)
+//  - vlastni chiptune: basa, arpeggio, melodie
+// Zvuk Segy ani Sony tu zamerne NENI - to jsou jejich nahravky.
+var AC=null, mistr=null, zvukJede=false;
+function zvukStart(){
+  if(AC) { if(AC.state==='suspended') AC.resume(); return; }
+  try{
+    var K=window.AudioContext||window.webkitAudioContext;
+    if(!K) return;
+    AC=new K();
+    mistr=AC.createGain(); mistr.gain.value=0.0; mistr.connect(AC.destination);
+    mistr.gain.setTargetAtTime(0.30, AC.currentTime, 0.6);
+    zvukJede=true;
+  }catch(e){ AC=null; }
+}
+function ton(kdy, hz, delka, tvar, hlas, cil){
+  if(!AC) return;
+  var o=AC.createOscillator(), z=AC.createGain();
+  o.type=tvar||'square'; o.frequency.setValueAtTime(hz, kdy);
+  z.gain.setValueAtTime(0, kdy);
+  z.gain.linearRampToValueAtTime(hlas, kdy+0.006);
+  z.gain.exponentialRampToValueAtTime(0.0001, kdy+delka);
+  o.connect(z); z.connect(cil||mistr);
+  o.start(kdy); o.stop(kdy+delka+0.02);
+}
+// Sumovy vzorek se vyrobi JEDNOU. Predtim se delal pri kazdem stisku
+// klavesy - dvacetkrat za vterinu se alokoval novy buffer a zvuk se
+// o to kousal.
+var sumBuf=null;
+function sum(kdy, delka, hlas){
+  if(!AC) return;
+  if(!sumBuf){
+    var n=Math.floor(AC.sampleRate*0.25);
+    sumBuf=AC.createBuffer(1,n,AC.sampleRate);
+    var d=sumBuf.getChannelData(0);
+    for(var i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+  }
+  var src=AC.createBufferSource(); src.buffer=sumBuf;
+  src.playbackRate.value = 0.25/Math.max(0.02,delka);
+  var z=AC.createGain(); z.gain.value=hlas;
+  z.gain.setValueAtTime(hlas, kdy);
+  z.gain.exponentialRampToValueAtTime(0.0001, kdy+delka);
+  src.connect(z); z.connect(mistr); src.start(kdy); src.stop(kdy+delka+0.02);
+}
+// Ukani klavesnice. NENI na casovac - vola se prave tehdy, kdyz
+// pribude pismeno. Drive to tuklo porad dokola a nesedelo to s textem.
+function ukni(zn){
+  try{ ukniVnitrni(zn); }catch(e){}      // zvuk NIKDY nesmi zastavit obraz
+}
+// Atari nema pro klavesu ton - OS jen KLAPNE reproduktorem (bit 3
+// registru CONSOL). Je to kratky cvak, ne pipnuti. Delam ho jako
+// velmi kratky sum s ostrym nabehem.
+function ukniVnitrni(zn){
+  if(!AC) return;
+  var t=AC.currentTime;
+  if(zn==='\n'){                                   // RETURN klape jinak
+    sum(t, 0.012, 0.16);
+    ton(t, 210, 0.030, 'square', 0.07);
+    return;
+  }
+  sum(t, 0.010, 0.13);
+  ton(t, 150+Math.random()*40, 0.016, 'square', 0.05);
+}
+// CHIPTUNE se skladbou, ne jednou dokola opakovanou smyckou.
+// Ctyri casti po osmi taktech, kazda ma jiny sled akordu, jiny rytmus
+// arpeggia a jinou melodii. Cela skladba se opakuje az po 32 taktech,
+// coz je pres pul minuty - za dobu intra se nestihne omrzet.
+var CASTI=[
+  { akordy:[0,0,-4,-4, -2,-2,-5,-5],  arp:[0,3,7,10],  rytmus:4, lead:[12,10,7,10] },
+  { akordy:[-5,-5,-2,-2, 0,0,3,3],    arp:[0,4,7,11],  rytmus:3, lead:[7,12,15,12] },
+  { akordy:[-7,-7,-3,-3, -5,-5,0,0],  arp:[0,3,7,12],  rytmus:4, lead:[15,14,12,10] },
+  { akordy:[0,-2,-4,-5, -7,-5,-4,-2], arp:[0,5,9,12],  rytmus:6, lead:[19,17,15,12] },
+  { akordy:[-9,-9,-5,-5, -7,-7,-2,-2],arp:[0,3,8,12],  rytmus:8, lead:[10,12,15,17] },
+  { akordy:[-2,-4,-5,-7, -5,-4,-2,0], arp:[0,7,12,16], rytmus:4, lead:[24,22,19,17] },
+  { akordy:[-12,-12,-7,-7, -9,-9,-5,-5], arp:[0,3,7,10], rytmus:3, lead:[12,15,19,15] },
+  { akordy:[0,3,5,7, 5,3,0,-2],       arp:[0,4,9,12],  rytmus:6, lead:[16,19,21,24] }
+];
+function hz(p){ return 220*Math.pow(2,p/12); }
+var taktDo=0, takt=0;
+function hudba(){ try{ hudbaVnitrni(); }catch(e){} }
+function hudbaVnitrni(){
+  if(!AC) return;
+  var t=AC.currentTime;
+  if(t<taktDo) return;
+  var D=0.155;
+  taktDo=t+D*4;
+
+  var cast=CASTI[(takt>>3)%CASTI.length];
+  var akord=cast.akordy[takt%8];
+
+  // basa - na tezke dobe delsi, na lehke kratsi
+  ton(t, hz(akord-24), D*3.4, 'triangle', 0.26);
+  if(takt%2===1) ton(t+D*2, hz(akord-12), D*1.2, 'triangle', 0.13);
+
+  // arpeggio - pocet not se lisi podle casti
+  var n=cast.rytmus;
+  for(var i=0;i<n;i++){
+    var nota=akord + cast.arp[i%cast.arp.length] + (i>=4?12:0);
+    ton(t+i*(D*4/n), hz(nota), (D*4/n)*0.8, 'square', 0.095);
+  }
+
+  // melodie - hraje jen ve druhe pulce kazde casti, at ma skladba vyvoj
+  if((takt%8)>=4){
+    var l=cast.lead[(takt%4)];
+    ton(t, hz(akord+l), D*1.7, 'sawtooth', 0.075);
+    if(takt%2===0) ton(t+D*2, hz(akord+l-3), D*1.2, 'sawtooth', 0.055);
+  }
+
+  // bicí
+  sum(t, 0.05, 0.055);                       // kopak na kazdou dobu
+  if(takt%2===1) sum(t+D*2, 0.07, 0.045);    // virbl na druhou
+  if((takt%8)===7) sum(t+D*3, 0.13, 0.06);   // prechod na konci osmitakti
+  takt++;
+}
+function zvukKonec(){
+  if(!AC||!mistr) return;
+  try{ mistr.gain.setTargetAtTime(0.0001, AC.currentTime, 0.5); }catch(e){}
+}
+// prohlizec casto nepusti zvuk bez dotyku - zkusime hned i po dotyku
+document.addEventListener('touchstart', zvukStart, {once:true});
+document.addEventListener('click', zvukStart, {once:true});
+setTimeout(zvukStart, 60);
+
+var plat=document.getElementById('plat'), g=plat.getContext('2d');
+var W=0,H=0,DPR=1;
+function rozmer(){
+  DPR=Math.min(window.devicePixelRatio||1, 2);
+  W=plat.width=Math.floor(innerWidth*DPR);
+  H=plat.height=Math.floor(innerHeight*DPR);
+  plat.style.width=innerWidth+'px'; plat.style.height=innerHeight+'px';
+}
+addEventListener('resize',rozmer); rozmer();
+
+var logo=new Image(), logoOk=false;
+logo.onload=function(){ logoOk=true; };
+logo.src='kkt.png';
+
+// ---- hvezdne pole ve 3D ----
+var hv=[];
+(function(){ for(var i=0;i<220;i++)
+  hv.push({x:(Math.random()-0.5)*2, y:(Math.random()-0.5)*2, z:Math.random()}); })();
+function hvezdy(rychlost, jas){
+  var cx=W/2, cy=H/2, m=Math.min(W,H);
+  for(var i=0;i<hv.length;i++){
+    var s=hv[i];
+    s.z-=rychlost;
+    if(s.z<=0.02){ s.x=(Math.random()-0.5)*2; s.y=(Math.random()-0.5)*2; s.z=1; }
+    var k=0.9/s.z;
+    var x=cx+s.x*k*m*0.5, y=cy+s.y*k*m*0.5;
+    if(x<0||x>=W||y<0||y>=H) continue;
+    var v=1-s.z;
+    var r=Math.max(1, v*3*DPR);
+    var a=Math.min(1, v*1.5)*jas;
+    g.fillStyle='rgba(255,'+(200+Math.floor(55*v))+','+(210+Math.floor(45*v))+','+a.toFixed(3)+')';
+    g.fillRect(x,y,r,r);
+  }
+}
+
+// ---- rastrove pruhy (copper bars) ----
+function pruhy(t, pocet, amp, alfa){
+  for(var k=0;k<pocet;k++){
+    var y=H*0.5+Math.sin(t*0.0011+k*0.62)*(H*amp);
+    var v=15*DPR;
+    var gr=g.createLinearGradient(0,y-v,0,y+v);
+    gr.addColorStop(0,'rgba(200,16,46,0)');
+    gr.addColorStop(0.5,'rgba(255,80,80,'+alfa+')');
+    gr.addColorStop(1,'rgba(200,16,46,0)');
+    g.fillStyle=gr; g.fillRect(0,y-v,W,v*2);
+  }
+}
+
+function pismo(px,tucne){
+  return (tucne?'700 ':'')+Math.round(px*DPR)+'px ui-monospace,Menlo,Consolas,monospace';
+}
+function stred(txt,y,px,barva,tucne){
+  g.font=pismo(px,tucne); g.textAlign='center'; g.textBaseline='middle';
+  g.fillStyle=barva; g.fillText(txt,W/2,y);
+}
+
+// ---- rolujici text s vlnou (klasicky demoscene scroller) ----
+
+// Logo i se svetlou plochou se PREDKRESLI JEDNOU do maleho platna.
+// Predtim se kazdy snimek zmensoval obrazek 1200 bodu siroky a k tomu
+// se vyrabel gradient - 23 ms na snimek jen za tohle.
+var logoHotove=null, logoHR=0;
+function logoPriprav(){
+  if(!logoOk) return null;
+  var R=Math.round(Math.min(W,H)*0.60);          // s rezervou na pulsovani
+  if(logoHotove && logoHR===R) return logoHotove;
+  logoHR=R;
+  var c=document.createElement('canvas'); c.width=c.height=R;
+  var q=c.getContext('2d');
+  var w=R*0.80, h=w*logo.height/logo.width, cx=R/2, cy=R/2;
+  var gr=q.createRadialGradient(cx,cy-h*0.04,w*0.10,cx,cy,R*0.50);
+  gr.addColorStop(0,'rgba(255,255,255,.96)');
+  gr.addColorStop(0.55,'rgba(255,250,245,.90)');
+  gr.addColorStop(0.74,'rgba(255,225,215,.42)');
+  gr.addColorStop(0.88,'rgba(255,170,150,.12)');
+  gr.addColorStop(1,'rgba(255,140,120,0)');
+  q.fillStyle=gr; q.beginPath(); q.arc(cx,cy,R*0.50,0,6.2832); q.fill();
+  q.drawImage(logo, cx-w/2, cy-h/2, w, h);
+  logoHotove=c;
+  return c;
+}
+function vykresliLogo(cx,cy,velikost,alfa,zare){
+  var c=logoPriprav(); if(!c) return;
+  var S=velikost*1.25;                            // platno je o kus vetsi nez logo
+  g.save(); g.globalAlpha=alfa;
+  g.drawImage(c, cx-S/2, cy-S/2, S, S);
+  g.restore();
+}
+
+
+// ================= EFEKTY =================
+// Vsechno se pocita za behu. Plazma se kresli na MALE platno (64x112)
+// a teprve pak se roztahne - tak to delala osmibitova dema a je to
+// levne i na starsim telefonu.
+var SIN=new Float32Array(2048);
+for(var _i=0;_i<2048;_i++) SIN[_i]=Math.sin(_i*Math.PI*2/2048);
+function sn(x){ return SIN[((x*325.9493)|0)&2047]; }   // 2048/(2pi)
+
+// PW/PH je rozliseni, ve kterem se plazma pocita. Pak se roztahne
+// pres celou obrazovku. Vic bodu = hezci prechody, ale vic pocitani.
+var plaz=null, plazG=null, plazImg=null, PW=96, PH=168;
+// PLYNULE ROZTAHOVANI: na telefonu s GPU je zadarmo (jedna textura),
+// v softwaru stoji 30 ms. Kdyby se to na nekterem telefonu seklo,
+// staci tady prehodit na false - plazma bude kostickovana (coz osmibitovym
+// demum slusi) a je to 11x rychlejsi.
+var PLAZMA_PLYNULE = true;
+function plazma(t, sila){
+  if(!plaz){
+    plaz=document.createElement('canvas'); plaz.width=PW; plaz.height=PH;
+    plazG=plaz.getContext('2d');
+    // pole se vyrobi JEDNOU. Kdyby se delalo kazdy snimek, telefon by
+    // 60x za vterinu alokoval 28 kB a sberac pameti by to poznal.
+    plazImg=plazG.createImageData(PW,PH);
+  }
+  plazma.__n=(plazma.__n||0)+1;
+  var prepocitat = (plazma.__n & 1)===1;         // stridame snimky
+  var d=plazImg.data, i=0;
+  var a=t*0.00042, b=t*0.00031, c=t*0.00058;
+  if(prepocitat){
+  for(var y=0;y<PH;y++){
+    for(var x=0;x<PW;x++){
+      var v = sn(x*0.107+a) + sn(y*0.087-b)
+            + sn((x+y)*0.060+c) + sn(Math.sqrt((x-48)*(x-48)+(y-84)*(y-84))*0.133-a*1.7);
+      v=(v+4)/8;                                   // 0..1
+      d[i++]=(30+225*v*v)|0;                       // cervena vede
+      d[i++]=(10+70*v*v*v)|0;
+      d[i++]=(40+120*v*v*v*v)|0;
+      d[i++]=255;
+    }
+  }
+  plazG.putImageData(plazImg,0,0);
+  }
+  g.save(); g.globalAlpha=sila; g.imageSmoothingEnabled=PLAZMA_PLYNULE;
+  g.drawImage(plaz,0,0,PW,PH,0,0,W,H);
+  g.restore();
+}
+
+// perspektivni mrizka - podlaha, ktera se blizi
+var podlahaGrd=null, podlahaKlic='';
+function mrizkaPodlaha(t, horizont, sila){
+  var hy=H*horizont;
+  var klic=W+'x'+H+'x'+horizont;
+  if(podlahaKlic!==klic){                      // gradient jen pri zmene rozmeru
+    podlahaGrd=g.createLinearGradient(0,hy,0,H);
+    podlahaGrd.addColorStop(0,'rgba(10,0,20,0)');
+    podlahaGrd.addColorStop(1,'rgba(40,0,30,.85)');
+    podlahaKlic=klic;
+  }
+  g.save(); g.globalAlpha=sila;
+  g.fillStyle=podlahaGrd; g.fillRect(0,hy,W,H-hy);
+  g.strokeStyle='rgba(255,70,90,.55)'; g.lineWidth=1.4*DPR;
+  // vodorovne cary - zhustuji se k horizontu a "prijizdeji"
+  var pos=(t*0.00055)%1;
+  for(var i=0;i<16;i++){
+    var k=(i+pos)/16;
+    var y=hy+(H-hy)*(k*k);
+    g.globalAlpha=sila*(0.15+0.85*k);
+    g.beginPath(); g.moveTo(0,y); g.lineTo(W,y); g.stroke();
+  }
+  // svisle cary - sbihaji se do bodu na horizontu
+  g.globalAlpha=sila*0.6;
+  for(var j=-8;j<=8;j++){
+    g.beginPath(); g.moveTo(W/2+j*(W*0.06), hy);
+    g.lineTo(W/2+j*(W*0.62), H); g.stroke();
+  }
+  g.restore();
+}
+
+// Slunce nad horizontem s vodorovnymi prouzky.
+// Prouzky se VYREZAVAJI na vlastnim malem platne - kdyby se rezaly
+// primo do obrazu, prorizly by i plazmu a mrizku pod nim.
+
+// Bobiky - kulicky po Lissajousovych krivkach.
+// Kazda barva se nakresli JEDNOU do maleho obrazku a pak uz se jen
+// kopiruje. Vyrabet 14 gradientu na kazdy snimek je drahe i na GPU.
+var bobObr=null, bobR=0;
+function bobPriprav(velikost){
+  var R=Math.ceil(velikost); if(bobObr && bobR===R) return;
+  bobR=R; bobObr=[];
+  for(var i=0;i<7;i++){
+    var c=document.createElement('canvas'); c.width=c.height=R*2;
+    var q=c.getContext('2d');
+    var od=(i*51)%360;
+    var grd=q.createRadialGradient(R,R,0,R,R,R);
+    grd.addColorStop(0,'hsla('+od+',95%,70%,.95)');
+    grd.addColorStop(0.55,'hsla('+od+',95%,52%,.32)');
+    grd.addColorStop(1,'hsla('+od+',95%,45%,0)');
+    q.fillStyle=grd; q.fillRect(0,0,R*2,R*2);
+    bobObr.push(c);
+  }
+}
+function bobiky(t, pocet, velikost, sila){
+  bobPriprav(velikost);
+  g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=sila;
+  for(var i=0;i<pocet;i++){
+    var f=i/pocet;
+    var x=W/2 + sn(t*0.00075+f*6.283)*(W*0.36);
+    var y=H*0.5 + sn(t*0.00098+f*4.712)*(H*0.20);
+    var m=0.75+0.25*sn(t*0.0016+f*3.1);
+    var r=bobR*m;
+    g.drawImage(bobObr[i%7], x-r, y-r, r*2, r*2);
+  }
+  g.restore();
+}
+
+// odraz loga pod nim
+// Odraz se zrcadli kolem SPODNI HRANY loga. Drive jsem to zrcadlil
+// kolem spatneho mista, takze to vypadalo jako druhe logo prekryvajici
+// prvni - presne to, ceho si Rene vsiml.
+
+
+// ================= OBRAZOVKA ATARI =================
+// Skutecny listing v BASICu. Napise se radek po radku s kurzorem,
+// pak se napise RUN a program se "spusti" - obrazovka zmeni barvy
+// podle SETCOLOR a vypise text. Presne jak to dela stroj.
+var LISTING=[
+ "10 GRAPHICS 0",
+ "20 SETCOLOR 2,12,2:SETCOLOR 4,12,2",
+ "30 SETCOLOR 1,12,14:POKE 752,1",
+ "40 ? :? \"    VITA VAS NEJVYSSI KKT!\"",
+ "50 ? ",
+ "60 ? \"KDYZ MI NEKDO V DISKUSICH NA\"",
+ "70 ? \"NETU NADAVA DO KOKOTU, JEN SE\"",
+ "80 ? \"USMIVAM - PROTOZE VIM, ZE PRO\"",
+ "90 ? \"VAS, MOJE KLUKY Z KLANU\"",
+ "100 ? \"KAMARADI KRTECKA TONDY, JSEM\"",
+ "110 ? \"OPRAVDU TEN NEJVYSSI KOKOT.\"",
+ "120 ? ",
+ "130 ? \"TOHLE JE VASE EXKLUZIVNI BETA\"",
+ "140 ? \"VERZE. OSTATNI LAMY SI MUSI\"",
+ "150 ? \"POCKAT, AZ TO PUSTIM NA WEB.\"",
+ "160 ? ",
+ "170 ? \"TAK NAHOD JOYSTICK A UKAZ,\"",
+ "180 ? \"CO UMIS!\"",
+ "190 ? ",
+ "200 ? \"VRACIM VAS DO ERY, KDY HRY\"",
+ "210 ? \"MELY DUSI A OBTIZNOST,\"",
+ "220 ? \"U KTERE BUDETE BRECET.\"",
+ "230 ? ",
+ "240 ? \"   VENUJE VAS HERNI TATA RENE\"",
+ "250 ? \"      A JEHO AI PARTAK\"",
+ "260 END",
+ "RUN"
+];
+// co program vypise, kdyz se spusti
+var VYSTUP=(function(){
+  var v=[];
+  for(var i=0;i<LISTING.length;i++){
+    var r=LISTING[i];
+    if(r==='RUN'||r.indexOf(' END')>0) continue;
+    if(r.indexOf('GRAPHICS')>0||r.indexOf('SETCOLOR')>0) continue;
+    var q=r.indexOf('"');
+    if(q<0){ v.push(''); continue; }
+    if(r.indexOf('40 ')===0) v.push('');
+    v.push(r.substring(q+1, r.lastIndexOf('"')));
+  }
+  return v;
+})();
+
+var SL=40, RA=24;                       // 40 sloupcu, 24 radku jako GRAPHICS 0
+var obr=null, obrR=0, obrS=0, kurzorR=0, kurzorS=0;
+function obrZaloz(){
+  obr=[]; for(var i=0;i<RA;i++) obr.push('');
+  obrR=0; obrS=0;
+}
+function obrPis(zn){
+  if(!obr) obrZaloz();
+  if(zn==='\n'){ obrR++; obrS=0; }
+  else { obr[obrR]=(obr[obrR]||'')+zn; obrS++; if(obrS>=SL){ obrR++; obrS=0; } }
+  while(obrR>=RA){ obr.shift(); obr.push(''); obrR--; }   // roluje jako Atari
+}
+function obrVykresli(t, pfBarva, pf1Barva, kurzorVidet){
+  // barvy jako skutecna obrazovka Atari
+  g.fillStyle=pfBarva; g.fillRect(0,0,W,H);
+  var px=Math.floor(W/(SL+1.5));
+  g.font=Math.round(px*1.02)+'px ui-monospace,Menlo,Consolas,monospace';
+  g.textAlign='left'; g.textBaseline='top';
+  var rv=px*1.42, x0=px*0.75, y0=(H-RA*rv)/2;
+  g.fillStyle=pf1Barva;
+  for(var i=0;i<RA;i++) if(obr[i]) g.fillText(obr[i], x0, y0+i*rv);
+  if(kurzorVidet && Math.floor(t/330)%2===0){
+    g.fillStyle=pf1Barva;
+    g.fillRect(x0+obrS*px*0.601, y0+obrR*rv+px*0.10, px*0.60, px*1.05);
+  }
+}
+
+var lstZnaku=0, lstNapsano=0, LST_TEXT=LISTING.join('\n')+'\n';
+var LST_PAUZA=1400;                    // jak dlouho jen sviti READY a kurzor
+function listing(t,d){
+  hudba();
+  if(!obr){
+    obrZaloz();
+    // Na Atari po startu BASICu nejdriv sviti READY a pod nim kurzor.
+    // Tohle nepise uzivatel - vypise to BASIC - takze se to objevi
+    // najednou a bez klapani klaves.
+    obrPis('R'); obrPis('E'); obrPis('A'); obrPis('D'); obrPis('Y');
+    obrPis('\n');
+  }
+  var RYCH=22;
+  var chce=Math.min(LST_TEXT.length, Math.floor((t-LST_PAUZA)/RYCH));
+  if(chce<0) chce=0;
+  while(lstNapsano<chce){
+    var zn=LST_TEXT[lstNapsano];
+    lstNapsano++;                          // POSUN DRIV nez zvuk
+    obrPis(zn); ukni(zn);
+  }
+  g.fillStyle='#05060f'; g.fillRect(0,0,W,H);
+  plazma(t, 0.26);
+  hvezdy(0.0055, 0.95);            // hvezdy vyrazneji, at je kolem monitoru zivo
+  pruhy(t, 4, 0.34, 0.20);
+
+  // Monitor zamerne NEVYPLNUJE obraz - kolem nej musi byt videt letici
+  // hvezdy a plazma, jinak z toho je jen textova stranka.
+  var m=monitorNaText(W*0.09, H*0.13, W*0.82, H*0.74);
+  ramMonitoru(m.ox,m.oy,m.ow,m.oh);
+  g.save(); g.beginPath(); g.rect(m.ox,m.oy,m.ow,m.oh); g.clip();
+  g.fillStyle='#3a49c8'; g.fillRect(m.ox,m.oy,m.ow,m.oh);   // GRAPHICS 0 modra
+  obrDoOkna(t, m.ox,m.oy,m.ow,m.oh, m.px, '#d6e0ff', lstNapsano<LST_TEXT.length, false);
+  g.restore();
+}
+
+// program bezi - obrazovka se smaze a vypise se text v barvach SETCOLOR
+
+
+
+
+// ================= PISMO Z ATARI =================
+// Tohle NENI napodobenina - je to SKUTECNA znakova sada z Reneho ROM
+// ($E000-$E3FF, 128 znaku po 8 bajtech). Kazdy znak je 8x8 bodu.
+//
+// Prevod ASCII -> vnitrni kod obrazovky (tak to ma Atari):
+//   $20-$5F (mezera az Z)  ->  kod - $20
+//   $60-$7F (mala pismena) ->  kod
+//   ostatni                ->  mezera
+var ATARI_FONT_B64=
+  'AAAAAAAAAAAAGBgYGAAYAABmZmYAAAAAAGb/Zmb/ZgAYPmA8BnwYAABmbBgwZkYAHDYcOG9mOwAAGBgYAAAAAAAOHBgYHA4A'+
+  'AHA4GBg4cAAAZjz/PGYAAAAYGH4YGAAAAAAAAAAYGDAAAAB+AAAAAAAAAAAAGBgAAAYMGDBgQAAAPGZudmY8AAAYOBgYGH4A'+
+  'ADxmDBgwfgAAfgwYDGY8AAAMHDxsfgwAAH5gfAZmPAAAPGB8ZmY8AAB+BgwYMDAAADxmPGZmPAAAPGY+Bgw4AAAAGBgAGBgA'+
+  'AAAYGAAYGDAGDBgwGAwGAAAAfgAAfgAAYDAYDBgwYAAAPGYMGAAYAAA8Zm5uYD4AABg8ZmZ+ZgAAfGZ8ZmZ8AAA8ZmBgZjwA'+
+  'AHhsZmZseAAAfmB8YGB+AAB+YHxgYGAAAD5gYG5mPgAAZmZ+ZmZmAAB+GBgYGH4AAAYGBgZmPAAAZmx4eGxmAABgYGBgYH4A'+
+  'AGN3f2tjYwAAZnZ+fm5mAAA8ZmZmZjwAAHxmZnxgYAAAPGZmZmw2AAB8ZmZ8bGYAADxgPAYGPAAAfhgYGBgYAABmZmZmZn4A'+
+  'AGZmZmY8GAAAY2Nrf3djAABmZjw8ZmYAAGZmPBgYGAAAfgwYMGB+AAAeGBgYGB4AAEBgMBgMBgAAeBgYGBh4AAAIHDZjAAAA'+
+  'AAAAAAAA/wAANn9/PhwIABgYGB8fGBgYAwMDAwMDAwMYGBj4+AAAABgYGPj4GBgYAAAA+PgYGBgDBw4cOHDgwMDgcDgcDgcD'+
+  'AQMHDx8/f/8AAAAADw8PD4DA4PD4/P7/Dw8PDwAAAADw8PDwAAAAAP//AAAAAAAAAAAAAAAA//8AAAAA8PDw8AAcHHd3CBwA'+
+  'AAAAHx8YGBgAAAD//wAAABgYGP//GBgYAAA8fn5+PAAAAAAA/////8DAwMDAwMDAAAAA//8YGBgYGBj//wAAAPDw8PDw8PDw'+
+  'GBgYHx8AAAB4YHhgfhgeAAAYPH4YGBgAABgYGH48GAAAGDB+MBgAAAAYDH4MGAAAABg8fn48GAAAADwGPmY+AABgYHxmZnwA'+
+  'AAA8YGBgPAAABgY+ZmY+AAAAPGZ+YDwAAA4YPhgYGAAAAD5mZj4GfABgYHxmZmYAABgAOBgYPAAABgAGBgYGPABgYGx4bGYA'+
+  'ADgYGBgYPAAAAGZ/f2tjAAAAfGZmZmYAAAA8ZmZmPAAAAHxmZnxgYAAAPmZmPgYGAAB8ZmBgYAAAAD5gPAZ8AAAYfhgYGA4A'+
+  'AABmZmZmPgAAAGZmZjwYAAAAY2t/PjYAAABmPBg8ZgAAAGZmZj4MeAAAfgwYMH4AABg8fn4YPAAYGBgYGBgYGAB+eHxuZgYA'+
+  'CBg4eDgYCAAQGBweHBgQAA==';
+
+var fontBajty=null;
+function fontData(){
+  if(fontBajty) return fontBajty;
+  try{
+    var bin=atob(ATARI_FONT_B64);
+    fontBajty=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) fontBajty[i]=bin.charCodeAt(i);
+  }catch(e){ fontBajty=new Uint8Array(1024); }
+  return fontBajty;
+}
+function vnitrniKod(zn){
+  var c=zn.charCodeAt(0);
+  if(c>=0x20 && c<=0x5F) return c-0x20;
+  if(c>=0x60 && c<=0x7F) return c;
+  return 0;
+}
+
+// Cela sada se JEDNOU nakresli do platna (16x8 znaku) v dane velikosti
+// a pak uz se jen kopiruji vyrezy. Kreslit 8x8 bodu na kazdy znak
+// kazdy snimek by bylo drahe.
+// Atlasu je potreba VIC - jeden na kazdou barvu. Kdyz se drzel jen
+// posledni, prepinalo se mezi barvou textu a barvou stinu u kazdeho
+// znaku a cela sada se prekreslovala znovu a znovu.
+// Atlas se stavi v PEVNEM rozliseni (4 body na jeden bod Atari) a pri
+// kresleni se zmensi/zvetsi na skutecnou bunku. Drive se stavel presne
+// na cilovou velikost a bod se zaokrouhloval na cele cislo - kdyz bunka
+// vysla mensi nez 16 bodu, spadl bod na 1 a monitor se scvrkl na osminu.
+var ATLAS_BOD = 4;
+var atlasy={};
+function fontAtlas(barva){
+  var klic=barva;
+  if(atlasy[klic]) return atlasy[klic];
+  var W8=ATLAS_BOD, H8=ATLAS_BOD, sw=W8*8, sh=H8*8;
+  var d=fontData();
+  var c=document.createElement('canvas');
+  c.width=sw*16; c.height=sh*8;
+  var q=c.getContext('2d');
+  q.fillStyle=barva;
+  for(var k=0;k<128;k++){
+    var gx=(k%16)*sw, gy=((k/16)|0)*sh;
+    for(var r=0;r<8;r++){
+      var b=d[k*8+r];
+      if(!b) continue;
+      for(var p=0;p<8;p++) if(b & (0x80>>p)) q.fillRect(gx+p*W8, gy+r*H8, W8, H8);
+    }
+  }
+  c.__sw=sw; c.__sh=sh;
+  atlasy[klic]=c;
+  return c;
+}
+function znakDo(ctx, zn, x, y, bw, bh, barva){
+  var a=fontAtlas(barva);
+  var k=vnitrniKod(zn); if(!k) return;
+  ctx.imageSmoothingEnabled=false;                 // body maji zustat ostre
+  ctx.drawImage(a, (k%16)*a.__sw, ((k/16)|0)*a.__sh, a.__sw, a.__sh,
+                   x, y, bw, bh);
+}
+
+// ================= MONITOR =================
+// Ramecek jako monitor + vypis textove obrazovky 40x24 dovnitr.
+// Velikost pisma se pocita tak, aby se 40 sloupcu a 24 radku VZDY
+// veslo - proto to funguje na vysku i na sirku.
+function naSirku(){ return W > H*1.15; }
+
+function ramMonitoru(ox,oy,ow,oh){
+  g.save();
+  g.fillStyle='rgba(10,10,16,.94)';
+  g.beginPath();
+  var r=14*DPR;
+  if(g.roundRect) g.roundRect(ox-11*DPR, oy-11*DPR, ow+22*DPR, oh+22*DPR, r);
+  else g.rect(ox-11*DPR, oy-11*DPR, ow+22*DPR, oh+22*DPR);
+  g.fill();
+  g.strokeStyle='rgba(255,95,95,.55)'; g.lineWidth=2.2*DPR; g.stroke();
+  g.restore();
+}
+
+/**
+ * Spocita monitor tak, aby OBEPNUL TEXT - ne aby se do nej text ztratil.
+ * Predtim jsem davali rozmer monitoru natvrdo a pismo do nej dopocital;
+ * na sirku pak byl monitor obrovsky a text uprostred jako pod lupou.
+ * Ted se nejdriv najde nejvetsi pismo, ktere se vejde do dostupne plochy,
+ * a monitor se udela presne na nej.
+ *
+ * @param mx,my,mw,mh  plocha, kterou ma monitor k dispozici
+ * @return {ox,oy,ow,oh,px}
+ */
+// Obrazovka Atari GRAPHICS 0: 40 znaku x 24 radku, bunka 8x8 bodu,
+// tedy 320x192 bodu. Na televizi 4:3 je bod 0,8x tak siroky jako vysoky,
+// takze BUNKA MA POMER 0,8 a cela obrazovka vyjde 32:24 = 4:3.
+//
+// Mel jsem sirku znaku 0,601 a vysku radku 1,34 - to dava pomer 0,45
+// a obrazovka pak vysla NA VYSKU. Na sirkovem telefonu z toho byl
+// uzky vysoky monitor s pismem jako pod lupou.
+var BUNKA_POMER = 0.8;                 // sirka : vyska bunky (Atari na 4:3)
+
+// ZADNE VODOROVNE NATAHOVANI. Puvodne jsem sirku bunky urcil natvrdo
+// a text roztahl pres ctx.scale(). Fungovalo by to v prohlizeci, ale
+// nesel by overit - v mem testovacim platne se scale na text neprojevi,
+// takze bych se dival na obrazky, ktere neodpovidaji skutecnosti.
+// Ted se to dela obracene: SIRKA BUNKY SE ODVODI Z PISMA a vyska z ni,
+// takze obrazovka vyjde 4:3 sama a zadna transformace neni potreba.
+var advPomer = 0;                      // sirka znaku v nasobcich velikosti pisma
+function zmerPismo(){
+  if(advPomer>0) return advPomer;
+  g.save();
+  g.font='700 100px ui-monospace,Menlo,Consolas,monospace';
+  var w=g.measureText('MMMMMMMMMM').width/10/100;
+  g.restore();
+  advPomer = (w>0.2 && w<1.2) ? w : 0.601;
+  return advPomer;
+}
+// Bunka je 8x8 bodu Atari. Na obrazovce ma pomer 0,8 (bod je uzsi nez
+// vyssi), takze 40x24 bunek vyjde 4:3. Velikost se voli tak, aby bod
+// vysel na CELE cislo - jinak by se mrizka rozmazala.
+function monitorNaText(mx,my,mw,mh){
+  var OKRAJ=0.9;
+  var bw = Math.min( mw/(SL + OKRAJ*2), (mh/(RA + OKRAJ*2))*BUNKA_POMER );
+  bw = Math.max(8, bw);
+  var bh = bw/BUNKA_POMER;
+  var ow = SL*bw + OKRAJ*2*bw;
+  var oh = RA*bh + OKRAJ*2*bh;
+  return { ox: mx+(mw-ow)/2, oy: my+(mh-oh)/2, ow: ow, oh: oh, px: bw };
+}
+
+/** Vypise textovy buffer do obdelniku. */
+// Text se kresli ZNAK PO ZNAKU, kazdy do sve bunky. Diky tomu je mrizka
+// presna a velikost pisma se da volit nezavisle na sirce bunky - jinak
+// by se radky dotykaly.
+// Aby to nestalo vykon, kresli se do vlastniho platna a jen KDYZ SE TEXT
+// ZMENI. Pri 52 ms na znak je to nejvys 20x za vterinu misto 60x.
+var txtPlat=null, txtG=null, txtKlic='';
+function obrDoOkna(t, ox,oy,ow,oh, bw, barvaPisma, kurzorVidet, stinovat){
+  var bh=bw/BUNKA_POMER;
+  var posun=Math.max(1, bw/8);                    // stin o jeden bod Atari
+  var x0=ox+(ow-SL*bw)/2;
+  var y0=oy+(oh-RA*bh)/2;
+  var pw=Math.ceil(SL*bw)+4, ph=Math.ceil(RA*bh)+4;
+
+  var klic=obr.join('\u0001')+'|'+Math.round(bw*10)+'|'+barvaPisma+'|'+(stinovat?1:0);
+  if(!txtPlat || txtPlat.width<pw || txtPlat.height<ph){
+    txtPlat=document.createElement('canvas');
+    txtPlat.width=pw; txtPlat.height=ph;
+    txtG=txtPlat.getContext('2d'); txtKlic='';
+  }
+  if(klic!==txtKlic){
+    txtKlic=klic;
+    txtG.clearRect(0,0,txtPlat.width,txtPlat.height);
+    for(var i=0;i<RA;i++){
+      var r=obr[i]; if(!r) continue;
+      for(var j=0;j<r.length && j<SL;j++){
+        var zn=r.charAt(j); if(zn===' ') continue;
+        if(stinovat) znakDo(txtG, zn, j*bw+posun, i*bh+posun, bw, bh, 'rgba(0,0,0,.7)');
+        znakDo(txtG, zn, j*bw, i*bh, bw, bh, barvaPisma);
+      }
+    }
+  }
+  g.drawImage(txtPlat, x0, y0);
+
+  if(kurzorVidet && Math.floor(t/330)%2===0){
+    g.fillStyle=barvaPisma;                       // kurzor = plna bunka, jako na Atari
+    g.fillRect(x0+obrS*bw, y0+obrR*bh, bw, bh);
+  }
+}
+
+
+function hvezdyProuzky(rychlost, jas, p){
+  var cx=W/2, cy=H/2, m=Math.min(W,H);
+  g.lineCap='round';
+  for(var i=0;i<hv.length;i++){
+    var s=hv[i], z0=s.z;
+    s.z-=rychlost;
+    if(s.z<=0.02){ s.x=(Math.random()-0.5)*2; s.y=(Math.random()-0.5)*2; s.z=1; continue; }
+    var k=0.9/s.z, k0=0.9/z0;
+    var x=cx+s.x*k*m*0.5,  y=cy+s.y*k*m*0.5;
+    var x0=cx+s.x*k0*m*0.5, y0=cy+s.y*k0*m*0.5;
+    if(x<-50||x>W+50||y<-50||y>H+50) continue;
+    var v=1-s.z, a=Math.min(1,v*1.6)*jas;
+    g.strokeStyle='rgba(255,'+(190+Math.floor(65*v))+','+(210+Math.floor(45*v))+','+a.toFixed(3)+')';
+    g.lineWidth=Math.max(1, v*2.6*DPR);
+    g.beginPath(); g.moveTo(x0,y0); g.lineTo(x,y); g.stroke();
+  }
+}
+function cekaciGrafika(t, doKdy, nazev, r, gg, b){
+  if(t > doKdy) return;
+  var p = t/doKdy;
+  var mizi = (t > doKdy*0.72) ? 1-(t-doKdy*0.72)/(doKdy*0.28) : 1;
+  var a = mizi;
+  g.fillStyle='rgba(0,0,0,'+(0.92*a).toFixed(2)+')';
+  g.fillRect(0,0,W,H);
+  // nazev
+  var px=Math.min(30*DPR, W/(nazev.length*0.72));
+  g.font='700 '+Math.round(px)+'px ui-monospace,Menlo,Consolas,monospace';
+  g.textAlign='center'; g.textBaseline='middle';
+  g.fillStyle='rgba('+r+','+gg+','+b+','+a.toFixed(2)+')';
+  g.fillText(nazev, W/2, H*0.44);
+  // pruh, ktery se plni
+  var sirka=W*0.52, vyska=6*DPR, x0=(W-sirka)/2, y0=H*0.52;
+  g.fillStyle='rgba(255,255,255,'+(0.18*a).toFixed(2)+')';
+  g.fillRect(x0, y0, sirka, vyska);
+  g.fillStyle='rgba('+r+','+gg+','+b+','+(0.95*a).toFixed(2)+')';
+  g.fillRect(x0, y0, sirka*Math.min(1,p*1.25), vyska);
+  // tri tecky, ktere se stridaji
+  var teckyPx=Math.round(px*0.5);
+  g.font='700 '+teckyPx+'px ui-monospace,Menlo,Consolas,monospace';
+  var kolik=1+(Math.floor(t/380)%3);
+  var tecky=''; for(var i=0;i<kolik;i++) tecky+='.';
+  g.fillStyle='rgba(255,255,255,'+(0.55*a).toFixed(2)+')';
+  g.fillText('NABIHA'+tecky, W/2, H*0.60);
+}
+function zivyRezim(zap){
+  try{
+    var h=document.documentElement;
+    if(zap) h.className='zive'; else h.className='';
+  }catch(e){}
+}
+var lstZnaku=0, lstNapsano=0, LST_TEXT=LISTING.join('\n')+'\n';
+var LST_PAUZA=1400;                    // jak dlouho jen sviti READY a kurzor
+function listing(t,d){
+  hudba();
+  if(!obr){
+    obrZaloz();
+    // Na Atari po startu BASICu nejdriv sviti READY a pod nim kurzor.
+    // Tohle nepise uzivatel - vypise to BASIC - takze se to objevi
+    // najednou a bez klapani klaves.
+    obrPis('R'); obrPis('E'); obrPis('A'); obrPis('D'); obrPis('Y');
+    obrPis('\n');
+  }
+  var RYCH=22;
+  var chce=Math.min(LST_TEXT.length, Math.floor((t-LST_PAUZA)/RYCH));
+  if(chce<0) chce=0;
+  while(lstNapsano<chce){
+    var zn=LST_TEXT[lstNapsano];
+    lstNapsano++;                          // POSUN DRIV nez zvuk
+    obrPis(zn); ukni(zn);
+  }
+  g.fillStyle='#05060f'; g.fillRect(0,0,W,H);
+  plazma(t, 0.26);
+  hvezdy(0.0055, 0.95);            // hvezdy vyrazneji, at je kolem monitoru zivo
+  pruhy(t, 4, 0.34, 0.20);
+
+  // Monitor zamerne NEVYPLNUJE obraz - kolem nej musi byt videt letici
+  // hvezdy a plazma, jinak z toho je jen textova stranka.
+  var m=monitorNaText(W*0.09, H*0.13, W*0.82, H*0.74);
+  ramMonitoru(m.ox,m.oy,m.ow,m.oh);
+  g.save(); g.beginPath(); g.rect(m.ox,m.oy,m.ow,m.oh); g.clip();
+  g.fillStyle='#3a49c8'; g.fillRect(m.ox,m.oy,m.ow,m.oh);   // GRAPHICS 0 modra
+  obrDoOkna(t, m.ox,m.oy,m.ow,m.oh, m.px, '#d6e0ff', lstNapsano<LST_TEXT.length, false);
+  g.restore();
+}
+/**
+ * ETAPY 3 a 4: ZIVA JADRA.
+ * Sega a PS1 kresli na VLASTNI PLOCHU. Tahle stranka jim jen uhne
+ * (trida "zive" zprusvitni telo i platno) a po jejich skonceni preda
+ * rizeni etape 5. NIC tu pod nimi nebezi - proto uz nema co usnout.
+ */
+function spustZivaJadra(){
+  if(hotovo) return; hotovo=true;
+  document.documentElement.className='zive';
+  var jeSega=false;
+  try{ jeSega=(window.AHINTRO&&AHINTRO.spustSegu&&AHINTRO.spustSegu()==='OK'); }catch(e){}
+  setTimeout(function(){
+    try{ if(window.AHINTRO&&AHINTRO.zastavSegu) AHINTRO.zastavSegu(); }catch(e){}
+    var jePs1=false;
+    try{ jePs1=(window.AHINTRO&&AHINTRO.spustPs1&&AHINTRO.spustPs1()==='OK'); }catch(e){}
+    setTimeout(function(){
+      try{ if(window.AHINTRO&&AHINTRO.zastavPs1) AHINTRO.zastavPs1(); }catch(e){}
+      document.documentElement.className='';
+      try{ if(window.AHINTRO&&AHINTRO.etapa) AHINTRO.etapa(5); }catch(e){}
+    }, jePs1 ? 7000 : 1200);
+  }, jeSega ? 7000 : 1200);
+}
+
+
+var SCENY=[{trvani:19500,f:listing}];
+var casVeScene=0, poslednizn=null, idx=0;
+function snimek(ts){
+  if(poslednizn===null) poslednizn=ts;
+  var krok=ts-poslednizn; poslednizn=ts;
+  if(!(krok>=0)) krok=16;
+  if(krok>250) krok=250;      // prohlizec spal - pockame, nepreskakujeme
+  casVeScene+=krok;
+  if(idx>=SCENY.length){ spustZivaJadra(); return; }
+  var s=SCENY[idx], t=casVeScene;
+  if(t>=s.trvani){
+    idx++; casVeScene=0;
+    if(idx>=SCENY.length){ spustZivaJadra(); return; }
+    s=SCENY[idx]; t=0;
+  }
+  try{ s.f(t,s.trvani); }catch(e){}
+  requestAnimationFrame(snimek);
+}
+requestAnimationFrame(snimek);
+})();
+</script>
+</body></html>

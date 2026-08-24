@@ -187,7 +187,8 @@ if(stIn)stIn.addEventListener('click',function(e){
   try{ if(window.AHINTRO&&AHINTRO.znovu) AHINTRO.znovu(); }catch(err){}
   log('SETTINGS_INTRO_START');
   closeSettings();
-  location.href='intro/index.html?znovu=1';
+  // BUILD2SA38: intro je rozdelene na etapy - Java nacte prvni z nich
+  // sama v AHINTRO.znovu(). Stranka uz nikam neodchazi.
 },true);
 
 // BUILD2SA27: stazeni Sonica a BIOSu PS1 na vyzadani. Aplikace se

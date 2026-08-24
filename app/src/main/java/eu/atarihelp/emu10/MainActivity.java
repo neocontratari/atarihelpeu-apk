@@ -3063,13 +3063,56 @@ public class MainActivity extends Activity {
         /** BUILD2SA23: intro pustene rucne z nabidky OPTIONS. */
         @JavascriptInterface public void znovu() {
             appendNativeLog("BUILD2SA23 INTRO_NA_POZADANI");
-            ui.post(() -> introOknoPruhledne(true));
+            ui.post(() -> {
+                introOknoPruhledne(true);
+                web.loadUrl("file:///android_asset/intro/etapa1.html");
+            });
         }
 
         /** BUILD2SA37: intro zacalo - okno bude pruhledne po celou dobu. */
         @JavascriptInterface public void zacatek() {
             ui.post(() -> introOknoPruhledne(true));
             appendNativeLog("BUILD2SA37 INTRO_ZACATEK");
+        }
+
+        /**
+         * BUILD2SA38: PET SAMOSTATNYCH ETAP.
+         *
+         * Doted bezel JEDEN film pres celou dobu a jadra Segy a PS1 se
+         * pouštěla POD NIM. Kdyz nad WebView lezela plocha jadra, prohlizec
+         * kresleni uspal - a po probuzeni uz stara stranka nekreslila.
+         * Odtud "krtecek se po PS1 neukaze", at jsem casovani opravoval
+         * jakkoli.
+         *
+         * Ted je kazda etapa VLASTNI STRANKA. Po jadrech se nacita
+         * NOVA stranka, ktera zacina od nuly - neni co uspat.
+         *
+         *   1  etapa1.html   ATARI ... OK, SEGA ... OK, PLAYSTATION ... OK
+         *   2  etapa2.html   Atari, READY, pise se program
+         *   3  (jadro Segy)
+         *   4  (jadro PS1)
+         *   5  etapa5.html   Atari, program bezi, krtecek, podekovani
+         *
+         * @param cislo ktera etapa se ma nacist (1,2,5) nebo 0 = konec
+         */
+        @JavascriptInterface public void etapa(int cislo) {
+            ui.post(() -> {
+                try {
+                    if (cislo <= 0) {
+                        napIntroUkazano = true;
+                        introZivaCast = false;
+                        introOknoPruhledne(false);
+                        appendNativeLog("BUILD2SA38 ETAPA konec -> rozcestnik");
+                        web.loadUrl("file:///android_asset/index.html");
+                        return;
+                    }
+                    String url = "file:///android_asset/intro/etapa" + cislo + ".html";
+                    appendNativeLog("BUILD2SA38 ETAPA " + cislo + " -> " + url);
+                    web.loadUrl(url);
+                } catch (Throwable t) {
+                    appendNativeLog("BUILD2SA38 ETAPA_CHYBA " + safeMsg(t));
+                }
+            });
         }
         /**
          * BUILD2SA30: SPUSTI SKUTECNE JADRO SEGY s ROM z telefonu.
@@ -6537,7 +6580,8 @@ public class MainActivity extends Activity {
             // cokoli odklepnout. Bylo to zmatecne a byla to moje chyba
             // v poradi, ne v te otazce samotne.
             final String menu  = "file:///android_asset/index.html";
-            final String intro = "file:///android_asset/intro/index.html";
+            // BUILD2SA38: intro zacina PRVNI ETAPOU, ne jednim velkym filmem
+            final String intro = "file:///android_asset/intro/etapa1.html";
 
             // POJISTKA: intro se smi spustit jen jednou, ale MUSI se
             // spustit vzdycky. Kdyby dialog z jakehokoli duvodu nenaskocil,
