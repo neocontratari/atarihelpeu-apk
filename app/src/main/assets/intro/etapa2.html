@@ -445,35 +445,10 @@ function bobiky(t, pocet, velikost, sila){
 // Skutecny listing v BASICu. Napise se radek po radku s kurzorem,
 // pak se napise RUN a program se "spusti" - obrazovka zmeni barvy
 // podle SETCOLOR a vypise text. Presne jak to dela stroj.
-var LISTING=[
- "10 GRAPHICS 0",
- "20 SETCOLOR 2,12,2:SETCOLOR 4,12,2",
- "30 SETCOLOR 1,12,14:POKE 752,1",
- "40 ? :? \"    VITA VAS NEJVYSSI KKT!\"",
- "50 ? ",
- "60 ? \"KDYZ MI NEKDO V DISKUSICH NA\"",
- "70 ? \"NETU NADAVA DO KOKOTU, JEN SE\"",
- "80 ? \"USMIVAM - PROTOZE VIM, ZE PRO\"",
- "90 ? \"VAS, MOJE KLUKY Z KLANU\"",
- "100 ? \"KAMARADI KRTECKA TONDY, JSEM\"",
- "110 ? \"OPRAVDU TEN NEJVYSSI KOKOT.\"",
- "120 ? ",
- "130 ? \"TOHLE JE VASE EXKLUZIVNI BETA\"",
- "140 ? \"VERZE. OSTATNI LAMY SI MUSI\"",
- "150 ? \"POCKAT, AZ TO PUSTIM NA WEB.\"",
- "160 ? ",
- "170 ? \"TAK NAHOD JOYSTICK A UKAZ,\"",
- "180 ? \"CO UMIS!\"",
- "190 ? ",
- "200 ? \"VRACIM VAS DO ERY, KDY HRY\"",
- "210 ? \"MELY DUSI A OBTIZNOST,\"",
- "220 ? \"U KTERE BUDETE BRECET.\"",
- "230 ? ",
- "240 ? \"   VENUJE VAS HERNI TATA RENE\"",
- "250 ? \"      A JEHO AI PARTAK\"",
- "260 END",
- "RUN"
-];
+// (stary listing ze spolecne casti odstranen - prepisoval
+//  ten spravny nahore a v aplikaci se pak psal puvodni kod
+//  misto polovicniho strojaku)
+
 // co program vypise, kdyz se spusti
 var VYSTUP=(function(){
   var v=[];
@@ -516,7 +491,7 @@ function obrVykresli(t, pfBarva, pf1Barva, kurzorVidet){
   }
 }
 
-var lstZnaku=0, lstNapsano=0, LST_TEXT=LISTING.join('\n')+'\n';
+
 var LST_PAUZA=1400;                    // jak dlouho jen sviti READY a kurzor
 function listing(t,d){
   hudba();
@@ -796,40 +771,9 @@ function zivyRezim(zap){
     if(zap) h.className='zive'; else h.className='';
   }catch(e){}
 }
-var lstZnaku=0, lstNapsano=0, LST_TEXT=LISTING.join('\n')+'\n';
-var LST_PAUZA=1400;                    // jak dlouho jen sviti READY a kurzor
-function listing(t,d){
-  hudba();
-  if(!obr){
-    obrZaloz();
-    // Na Atari po startu BASICu nejdriv sviti READY a pod nim kurzor.
-    // Tohle nepise uzivatel - vypise to BASIC - takze se to objevi
-    // najednou a bez klapani klaves.
-    obrPis('R'); obrPis('E'); obrPis('A'); obrPis('D'); obrPis('Y');
-    obrPis('\n');
-  }
-  var RYCH=22;
-  var chce=Math.min(LST_TEXT.length, Math.floor((t-LST_PAUZA)/RYCH));
-  if(chce<0) chce=0;
-  while(lstNapsano<chce){
-    var zn=LST_TEXT[lstNapsano];
-    lstNapsano++;                          // POSUN DRIV nez zvuk
-    obrPis(zn); ukni(zn);
-  }
-  g.fillStyle='#05060f'; g.fillRect(0,0,W,H);
-  plazma(t, 0.26);
-  hvezdy(0.0055, 0.95);            // hvezdy vyrazneji, at je kolem monitoru zivo
-  pruhy(t, 4, 0.34, 0.20);
 
-  // Monitor zamerne NEVYPLNUJE obraz - kolem nej musi byt videt letici
-  // hvezdy a plazma, jinak z toho je jen textova stranka.
-  var m=monitorNaText(W*0.09, H*0.13, W*0.82, H*0.74);
-  ramMonitoru(m.ox,m.oy,m.ow,m.oh);
-  g.save(); g.beginPath(); g.rect(m.ox,m.oy,m.ow,m.oh); g.clip();
-  g.fillStyle='#3a49c8'; g.fillRect(m.ox,m.oy,m.ow,m.oh);   // GRAPHICS 0 modra
-  obrDoOkna(t, m.ox,m.oy,m.ow,m.oh, m.px, '#d6e0ff', lstNapsano<LST_TEXT.length, false);
-  g.restore();
-}
+                    // jak dlouho jen sviti READY a kurzor
+
 /**
  * ETAPY 3 a 4: ZIVA JADRA.
  * Sega a PS1 kresli na VLASTNI PLOCHU. Tahle stranka jim jen uhne

@@ -463,49 +463,12 @@ function bobiky(t, pocet, velikost, sila){
 // Skutecny listing v BASICu. Napise se radek po radku s kurzorem,
 // pak se napise RUN a program se "spusti" - obrazovka zmeni barvy
 // podle SETCOLOR a vypise text. Presne jak to dela stroj.
-var LISTING=[
- "10 GRAPHICS 0",
- "20 SETCOLOR 2,12,2:SETCOLOR 4,12,2",
- "30 SETCOLOR 1,12,14:POKE 752,1",
- "40 ? :? \"    VITA VAS NEJVYSSI KKT!\"",
- "50 ? ",
- "60 ? \"KDYZ MI NEKDO V DISKUSICH NA\"",
- "70 ? \"NETU NADAVA DO KOKOTU, JEN SE\"",
- "80 ? \"USMIVAM - PROTOZE VIM, ZE PRO\"",
- "90 ? \"VAS, MOJE KLUKY Z KLANU\"",
- "100 ? \"KAMARADI KRTECKA TONDY, JSEM\"",
- "110 ? \"OPRAVDU TEN NEJVYSSI KOKOT.\"",
- "120 ? ",
- "130 ? \"TOHLE JE VASE EXKLUZIVNI BETA\"",
- "140 ? \"VERZE. OSTATNI LAMY SI MUSI\"",
- "150 ? \"POCKAT, AZ TO PUSTIM NA WEB.\"",
- "160 ? ",
- "170 ? \"TAK NAHOD JOYSTICK A UKAZ,\"",
- "180 ? \"CO UMIS!\"",
- "190 ? ",
- "200 ? \"VRACIM VAS DO ERY, KDY HRY\"",
- "210 ? \"MELY DUSI A OBTIZNOST,\"",
- "220 ? \"U KTERE BUDETE BRECET.\"",
- "230 ? ",
- "240 ? \"   VENUJE VAS HERNI TATA RENE\"",
- "250 ? \"      A JEHO AI PARTAK\"",
- "260 END",
- "RUN"
-];
+// (stary listing ze spolecne casti odstranen - prepisoval
+//  ten spravny nahore a v aplikaci se pak psal puvodni kod
+//  misto polovicniho strojaku)
+
 // co program vypise, kdyz se spusti
-var VYSTUP=(function(){
-  var v=[];
-  for(var i=0;i<LISTING.length;i++){
-    var r=LISTING[i];
-    if(r==='RUN'||r.indexOf(' END')>0) continue;
-    if(r.indexOf('GRAPHICS')>0||r.indexOf('SETCOLOR')>0) continue;
-    var q=r.indexOf('"');
-    if(q<0){ v.push(''); continue; }
-    if(r.indexOf('40 ')===0) v.push('');
-    v.push(r.substring(q+1, r.lastIndexOf('"')));
-  }
-  return v;
-})();
+
 
 var SL=40, RA=24;                       // 40 sloupcu, 24 radku jako GRAPHICS 0
 var obr=null, obrR=0, obrS=0, kurzorR=0, kurzorS=0;
@@ -831,7 +794,7 @@ function zivyRezim(zap){
     if(zap) h.className='zive'; else h.className='';
   }catch(e){}
 }
-var finVys=0, FIN_TEXT=null;
+
 function finale(t,d){
   hudba();
   g.fillStyle='#02030a'; g.fillRect(0,0,W,H);

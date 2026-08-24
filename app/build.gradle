@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 200
-        versionName "EMU10-B152-POLOVICNI-STROJAK"  // Turbo BASIC je ted polovicni strojak - 74 bajtu v DATA, BASIC uz jen nahraje a zavola pres USR. Obrazovka ve finale kresli duhu presne tou rutinou, paletou GTIA z datasheetu.
+        versionCode 201
+        versionName "EMU10-B153-STARY-LISTING-PRYC"  // ve spolecne casti zustal STARY listing, ktery ten novy prepisoval - v aplikaci se proto psal puvodni kod misto polovicniho strojaku. Odstraneno vcetne dalsich sesti duplicit.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
