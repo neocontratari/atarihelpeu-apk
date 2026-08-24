@@ -55,45 +55,69 @@ function konec(){
 document.getElementById('dal').addEventListener('click',konec);
 try{ if(window.AHINTRO&&AHINTRO.zacatek) AHINTRO.zacatek(); }catch(e){}
 
+// SKUTECNY PROGRAM V TURBO BASICU XL - OVERENY V ALTIRRE.
+// POLOVICNI STROJAK: BASIC uz jen nahraje rutinu z DATA a zavola ji
+// pres USR. Vsechnu praci dela strojovy kod v $600 - zapne preruseni
+// na radku v display listu, zavesi se na VDSLST, prihlasi odlozeny
+// VBI pres SETVBV a povoli NMI. BASIC uz nemusi nic hlidat.
+//
+//  $0600 INIT   nastavi vsechno, vola se pres USR
+//  $0631 DLI    na kazdem radku: VCOUNT + citac, AND #$F0, WSYNC, COLPF2
+//  $0643 VBI    jednou za snimek zvedne citac - tim se duha posouva
+//  $0649 POCET  citac snimku
+//
+// AND #$F0 je tam schvalne: meni se JEN ODSTIN a jas zustane nula,
+// takze pozadi je porad tmave a text citelny. Bez toho text na
+// nekterych radcich splynul s pozadim - videli jsme to v Altirre.
 var LISTING=[
- "10 GRAPHICS 0",
- "20 SETCOLOR 2,12,2:SETCOLOR 4,12,2",
- "30 SETCOLOR 1,12,14:POKE 752,1",
- "40 ? :? \"    VITA VAS NEJVYSSI KKT!\"",
- "50 ? ",
- "60 ? \"KDYZ MI NEKDO V DISKUSICH NA\"",
- "70 ? \"NETU NADAVA DO KOKOTU, JEN SE\"",
- "80 ? \"USMIVAM - PROTOZE VIM, ZE PRO\"",
- "90 ? \"VAS, MOJE KLUKY Z KLANU\"",
- "100 ? \"KAMARADI KRTECKA TONDY, JSEM\"",
- "110 ? \"OPRAVDU TEN NEJVYSSI KOKOT.\"",
- "120 ? ",
- "130 ? \"TOHLE JE VASE EXKLUZIVNI BETA\"",
- "140 ? \"VERZE. OSTATNI LAMY SI MUSI\"",
- "150 ? \"POCKAT, AZ TO PUSTIM NA WEB.\"",
- "160 ? ",
- "170 ? \"TAK NAHOD JOYSTICK A UKAZ,\"",
- "180 ? \"CO UMIS!\"",
- "190 ? ",
- "200 ? \"VRACIM VAS DO ERY, KDY HRY\"",
- "210 ? \"MELY DUSI A OBTIZNOST,\"",
- "220 ? \"U KTERE BUDETE BRECET.\"",
- "230 ? ",
- "240 ? \"   VENUJE VAS HERNI TATA RENE\"",
- "250 ? \"      A JEHO AI PARTAK\"",
- "260 END",
+ "10 GRAPHICS 0:POKE 752,1",
+ "20 FOR I=0 TO 73",
+ "30 READ A:POKE 1536+I,A:NEXT I",
+ "40 DATA 104,173,48,2,133,203,173,49,2",
+ "50 DATA 133,204,160,6,177,203,9,128",
+ "60 DATA 145,203,200,192,29,208,245,169",
+ "70 DATA 49,141,0,2,169,6,141,1,2,160",
+ "80 DATA 67,162,6,169,7,32,92,228,169",
+ "90 DATA 192,141,14,212,96,72,173,11",
+ "100 DATA 212,24,109,73,6,41,240,141,10",
+ "110 DATA 212,141,24,208,104,64,238,73,6",
+ "120 DATA 76,98,228,0",
+ "130 X=USR(1536)",
+ "140 ? :? \"    VITA VAS NEJVYSSI KKT!\"",
+ "150 ? ",
+ "160 ? \"KDYZ MI NEKDO V DISKUSICH NA\"",
+ "170 ? \"NETU NADAVA DO KOKOTU, JEN SE\"",
+ "180 ? \"USMIVAM - PROTOZE VIM, ZE PRO\"",
+ "190 ? \"VAS, MOJE KLUKY Z KLANU\"",
+ "200 ? \"KAMARADI KRTECKA TONDY, JSEM\"",
+ "210 ? \"OPRAVDU TEN NEJVYSSI KOKOT.\"",
+ "220 ? ",
+ "230 ? \"TOHLE JE VASE EXKLUZIVNI BETA\"",
+ "240 ? \"VERZE. OSTATNI LAMY SI MUSI\"",
+ "250 ? \"POCKAT, AZ TO PUSTIM NA WEB.\"",
+ "260 ? ",
+ "270 ? \"TAK NAHOD JOYSTICK A UKAZ,\"",
+ "280 ? \"CO UMIS!\"",
+ "290 ? ",
+ "300 ? \"   VENUJE VAS HERNI TATA RENE\"",
+ "310 ? \"      A JEHO AI PARTAK\"",
+ "320 GOTO 320",
  "RUN"
 ];
 // VYSTUP se odvozuje z LISTINGu - proto tu musi byt oboji
+// Co program VYPISE, kdyz se spusti. Bere se to primo z LISTINGu -
+// jen z radku, ktere opravdu tisknou (obsahuji ?), aby se do vystupu
+// nedostaly radky s POKE, DATA a FOR.
 var VYSTUP=(function(){
   var v=[];
   for(var i=0;i<LISTING.length;i++){
     var r=LISTING[i];
-    if(r==='RUN'||r.indexOf(' END')>0) continue;
-    if(r.indexOf('GRAPHICS')>0||r.indexOf('SETCOLOR')>0) continue;
+    if(r==='RUN') continue;
+    var otaznik=r.indexOf('?');
+    if(otaznik<0) continue;              // neni to PRINT - preskocit
     var q=r.indexOf('"');
-    if(q<0){ v.push(''); continue; }
-    if(r.indexOf('40 ')===0) v.push('');
+    if(q<0){ v.push(''); continue; }     // "? " = prazdny radek
+    if(r.indexOf('? :?')>0) v.push('');  // "? :?" = nejdriv prazdny radek
     v.push(r.substring(q+1, r.lastIndexOf('"')));
   }
   return v;
@@ -633,6 +657,23 @@ function znakDo(ctx, zn, x, y, bw, bh, barva){
                    x, y, bw, bh);
 }
 
+
+// ================= BARVY GTIA =================
+// Paleta odvozena z datasheetu C014805 (sheet 21) - odstin neni index
+// do tabulky, ale ZPOZDENI na zpozdovaci lince: krok 27 stupnu,
+// pocatek 190 stupnu. Jas je primka, sytost 0,30.
+// Kontrola: $0C vyjde (193,193,193), Reneho Atari dava (203,203,203).
+function gtiaBarva(bajt){
+  var h=(bajt>>4)&15, l=bajt&15;
+  var Y=0.06+0.058*l, I=0, Q=0;
+  if(h!==0){
+    var a=(190-27*h)*Math.PI/180, S=0.30;
+    I=S*Math.cos(a); Q=S*Math.sin(a);
+  }
+  var r=Y+0.956*I+0.621*Q, g=Y-0.272*I-0.647*Q, b=Y-1.106*I+1.703*Q;
+  function k(x){ x=Math.round(x*255); return x<0?0:(x>255?255:x); }
+  return 'rgb('+k(r)+','+k(g)+','+k(b)+')';
+}
 // ================= MONITOR =================
 // Ramecek jako monitor + vypis textove obrazovky 40x24 dovnitr.
 // Velikost pisma se pocita tak, aby se 40 sloupcu a 24 radku VZDY
@@ -819,20 +860,33 @@ function finale(t,d){
   g.save();
   g.beginPath(); g.rect(ox,oy,ow,oh); g.clip();
 
-  // DUHA - kazdy radek jina barva, posouva se (jako POKE 710 v DLI)
-  var krok=Math.max(2*DPR, oh/96);
-  for(var y=0;y<oh;y+=krok){
-    var f=((y/oh)*300 + t*0.055) % 360;
-    g.fillStyle='hsl('+f+',85%,'+(26+10*Math.sin((y/oh)*9)).toFixed(0)+'%)';
-    g.fillRect(ox, oy+y, ow, krok+1);
+  // DUHA PRESNE JAKO Z TOHO PROGRAMU.
+  // Rutina v $600 dela na kazdem radku:  COLPF2 = (VCOUNT + citac) AND $F0
+  // Citac zvedne VBI jednou za snimek - odtud posouvani.
+  // Barva se pocita paletou GTIA, ne odhadem - proto to sedi s Atari.
+  var radkuAtari=RA*8;                       // 192 obrazovych radku
+  var citac=Math.floor(t/16.6) & 255;        // snimky po 1/60 s
+  var krok=oh/radkuAtari;
+  for(var i=0;i<radkuAtari;i++){
+    var bajt=((i+citac) & 0xF0);             // AND $F0 - jen odstin, jas nula
+    g.fillStyle=gtiaBarva(bajt);
+    g.fillRect(ox, oy+i*krok, ow, krok+1);
   }
 
   // ---- vypis programu do vlastniho bufferu, at roluje jako Atari ----
   if(!FIN_TEXT){ FIN_TEXT=VYSTUP.join('\n'); obrZaloz(); }
+  // 451 znaku po 52 ms = 23,5 s. Scena ma 27 s, takze se text dopise
+  // a jeste chvili zustane stat, nez prijde zatmivacka. Drive mela
+  // scena 20 s a text se proto nedopsal.
   var RYCH=52;
   var chce=Math.min(FIN_TEXT.length, Math.floor(t/RYCH));
   while(finVys<chce){ var zn=FIN_TEXT[finVys]; finVys++; obrPis(zn); }
-  obrDoOkna(t, ox,oy,ow,oh, m.px, '#ffffff', finVys<FIN_TEXT.length, true);
+  // V rezimu 2 ma pismo JAS z COLPF1, ale ODSTIN Z COLPF2 - proto text
+  // splyne, kdyz se jasy potkaji. Presne tohle jsme videli v Altirre.
+  // Po startu je COLPF1 = $0A, takze jas 10 na odstinu pozadi.
+  var odstinTed=((Math.floor(oh/2/krok)+citac) & 0xF0)>>4;
+  obrDoOkna(t, ox,oy,ow,oh, m.px, gtiaBarva((odstinTed<<4)|10),
+            finVys<FIN_TEXT.length, false);
   g.restore();
 }
 function zaver(t,d){
@@ -848,7 +902,7 @@ function zaver(t,d){
   }
 }
 
-var SCENY=[{trvani:20000,f:finale},{trvani:4000,f:zaver}];
+var SCENY=[{trvani:27000,f:finale},{trvani:4000,f:zaver}];
 var casVeScene=0, poslednizn=null, idx=0;
 function snimek(ts){
   if(poslednizn===null) poslednizn=ts;

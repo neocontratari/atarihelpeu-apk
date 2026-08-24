@@ -55,33 +55,53 @@ function konec(){
 document.getElementById('dal').addEventListener('click',konec);
 try{ if(window.AHINTRO&&AHINTRO.zacatek) AHINTRO.zacatek(); }catch(e){}
 
+// SKUTECNY PROGRAM V TURBO BASICU XL - OVERENY V ALTIRRE.
+// POLOVICNI STROJAK: BASIC uz jen nahraje rutinu z DATA a zavola ji
+// pres USR. Vsechnu praci dela strojovy kod v $600 - zapne preruseni
+// na radku v display listu, zavesi se na VDSLST, prihlasi odlozeny
+// VBI pres SETVBV a povoli NMI. BASIC uz nemusi nic hlidat.
+//
+//  $0600 INIT   nastavi vsechno, vola se pres USR
+//  $0631 DLI    na kazdem radku: VCOUNT + citac, AND #$F0, WSYNC, COLPF2
+//  $0643 VBI    jednou za snimek zvedne citac - tim se duha posouva
+//  $0649 POCET  citac snimku
+//
+// AND #$F0 je tam schvalne: meni se JEN ODSTIN a jas zustane nula,
+// takze pozadi je porad tmave a text citelny. Bez toho text na
+// nekterych radcich splynul s pozadim - videli jsme to v Altirre.
 var LISTING=[
- "10 GRAPHICS 0",
- "20 SETCOLOR 2,12,2:SETCOLOR 4,12,2",
- "30 SETCOLOR 1,12,14:POKE 752,1",
- "40 ? :? \"    VITA VAS NEJVYSSI KKT!\"",
- "50 ? ",
- "60 ? \"KDYZ MI NEKDO V DISKUSICH NA\"",
- "70 ? \"NETU NADAVA DO KOKOTU, JEN SE\"",
- "80 ? \"USMIVAM - PROTOZE VIM, ZE PRO\"",
- "90 ? \"VAS, MOJE KLUKY Z KLANU\"",
- "100 ? \"KAMARADI KRTECKA TONDY, JSEM\"",
- "110 ? \"OPRAVDU TEN NEJVYSSI KOKOT.\"",
- "120 ? ",
- "130 ? \"TOHLE JE VASE EXKLUZIVNI BETA\"",
- "140 ? \"VERZE. OSTATNI LAMY SI MUSI\"",
- "150 ? \"POCKAT, AZ TO PUSTIM NA WEB.\"",
- "160 ? ",
- "170 ? \"TAK NAHOD JOYSTICK A UKAZ,\"",
- "180 ? \"CO UMIS!\"",
- "190 ? ",
- "200 ? \"VRACIM VAS DO ERY, KDY HRY\"",
- "210 ? \"MELY DUSI A OBTIZNOST,\"",
- "220 ? \"U KTERE BUDETE BRECET.\"",
- "230 ? ",
- "240 ? \"   VENUJE VAS HERNI TATA RENE\"",
- "250 ? \"      A JEHO AI PARTAK\"",
- "260 END",
+ "10 GRAPHICS 0:POKE 752,1",
+ "20 FOR I=0 TO 73",
+ "30 READ A:POKE 1536+I,A:NEXT I",
+ "40 DATA 104,173,48,2,133,203,173,49,2",
+ "50 DATA 133,204,160,6,177,203,9,128",
+ "60 DATA 145,203,200,192,29,208,245,169",
+ "70 DATA 49,141,0,2,169,6,141,1,2,160",
+ "80 DATA 67,162,6,169,7,32,92,228,169",
+ "90 DATA 192,141,14,212,96,72,173,11",
+ "100 DATA 212,24,109,73,6,41,240,141,10",
+ "110 DATA 212,141,24,208,104,64,238,73,6",
+ "120 DATA 76,98,228,0",
+ "130 X=USR(1536)",
+ "140 ? :? \"    VITA VAS NEJVYSSI KKT!\"",
+ "150 ? ",
+ "160 ? \"KDYZ MI NEKDO V DISKUSICH NA\"",
+ "170 ? \"NETU NADAVA DO KOKOTU, JEN SE\"",
+ "180 ? \"USMIVAM - PROTOZE VIM, ZE PRO\"",
+ "190 ? \"VAS, MOJE KLUKY Z KLANU\"",
+ "200 ? \"KAMARADI KRTECKA TONDY, JSEM\"",
+ "210 ? \"OPRAVDU TEN NEJVYSSI KOKOT.\"",
+ "220 ? ",
+ "230 ? \"TOHLE JE VASE EXKLUZIVNI BETA\"",
+ "240 ? \"VERZE. OSTATNI LAMY SI MUSI\"",
+ "250 ? \"POCKAT, AZ TO PUSTIM NA WEB.\"",
+ "260 ? ",
+ "270 ? \"TAK NAHOD JOYSTICK A UKAZ,\"",
+ "280 ? \"CO UMIS!\"",
+ "290 ? ",
+ "300 ? \"   VENUJE VAS HERNI TATA RENE\"",
+ "310 ? \"      A JEHO AI PARTAK\"",
+ "320 GOTO 320",
  "RUN"
 ];
 var lstZnaku=0, lstNapsano=0, LST_TEXT=LISTING.join('\n')+'\n';
@@ -834,7 +854,7 @@ function spustZivaJadra(){
 }
 
 
-var SCENY=[{trvani:19500,f:listing}];
+var SCENY=[{trvani:24000,f:listing}];
 var casVeScene=0, poslednizn=null, idx=0;
 function snimek(ts){
   if(poslednizn===null) poslednizn=ts;
