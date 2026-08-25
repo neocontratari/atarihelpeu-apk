@@ -3344,6 +3344,31 @@ public class MainActivity extends Activity {
             return co;
         }
 
+        /**
+         * BUILD2SA42: aktualizace ze site.
+         * APK se protece rovnou do instalace - na telefonu nezustane
+         * zadny soubor.
+         */
+        @JavascriptInterface public void aktualizuj() {
+            ui.post(() -> {
+                if (!NapAktualizace.smiInstalovat(MainActivity.this)) {
+                    try {
+                        new android.app.AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Povoleni instalace")
+                            .setMessage("Telefon zatim nedovoluje instalovat z teto aplikace."
+                                    + "\n\nOtevru nastaveni, kde se to zapina.")
+                            .setPositiveButton("OTEVRIT", (d,w) ->
+                                    NapAktualizace.otevriPovoleni(MainActivity.this))
+                            .setNegativeButton("TED NE", null).show();
+                    } catch (Throwable ignored) {}
+                    appendNativeLog("BUILD2SA42 AKTUALIZACE chybi povoleni");
+                    return;
+                }
+                NapAktualizace.spustRucne(MainActivity.this,
+                        z -> appendNativeLog("BUILD2SA42 " + z));
+            });
+        }
+
         /** RENEHO ZADNI VRATKA: vrati vse na zacatek. */
         @JavascriptInterface public void zamkniVse() {
             NapPostup.zamkniVse(MainActivity.this);
@@ -6714,6 +6739,15 @@ public class MainActivity extends Activity {
                 zeptatSe = !NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this);
                 appendNativeLog("BUILD2SA29 SOUBORY_KONTROLA_CHYBA " + safeMsg(t));
             }
+
+            // BUILD2SA42: tise se podivat, jestli je venku novejsi verze.
+            // Kdyz soubor s verzi na webu chybi nebo neni sit, MLCI.
+            ui.postDelayed(() -> {
+                try {
+                    NapAktualizace.zkontrolujTise(MainActivity.this,
+                            z -> appendNativeLog("BUILD2SA42 " + z));
+                } catch (Throwable ignored) {}
+            }, 6000);
 
             if (!zeptatSe) {
                 spustIntro.run();

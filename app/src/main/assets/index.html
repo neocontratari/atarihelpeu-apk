@@ -57,6 +57,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <button id="stStahni" type="button">STAHNOUT HRY A BIOS</button>
     <button id="stOdemkni" type="button">ODEMKNOUT DALSI</button>
     <button id="stZamkni" type="button">ZAMKNOUT VSE</button>
+    <button id="stAktual" type="button">AKTUALIZOVAT APLIKACI</button>
 
     <div class="stlabel2">NASTAVENI</div>
     <div class="qrow">
@@ -257,6 +258,16 @@ document.addEventListener('click', function(e){
   }
 }, true);
 setTimeout(zamkyObnov, 300);
+
+// BUILD2SA42: aktualizace ze site. APK se protece rovnou do instalace,
+// na telefonu nezustane zadny soubor.
+var stAk=$('stAktual');
+if(stAk)stAk.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  try{ if(window.AHINTRO&&AHINTRO.aktualizuj) AHINTRO.aktualizuj(); }catch(err){}
+  log('SETTINGS_AKTUALIZACE');
+  closeSettings();
+},true);
 
 var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 Array.prototype.forEach.call(document.querySelectorAll('a[data-external="1"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openExternal(a.href);},true);});
