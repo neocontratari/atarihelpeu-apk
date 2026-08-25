@@ -192,12 +192,23 @@ public final class NapIntroZvuk {
             short[] davka = new short[RAMCU * 2];
             while (bezi) {
                 int n = naplni(davka, RAMCU);
-                at.write(davka, 0, n * 2);
-                // TOTEZ na TV - proto to hraje i tam
+
+                // ===== NA TV NEJDRIV, AZ POTOM DO REPRODUKTORU =====
+                // Dve veci, ktere jsem mel spatne a ktere u Segy v kodu
+                // uz davno stoji napsane:
+                //
+                // 1) POSLAT SE MUSI POCET SHORTU, NE RAMCU. Pole je stereo,
+                //    takze na n ramcu pripada n*2 shortu. Posilal jsem n
+                //    a na TV sla POLOVINA vzorku - odtud to kousani.
+                //
+                // 2) POSLAT SE MUSI DRIV, NEZ SE PREHRAJE. at.write() ceka,
+                //    az reproduktor davku dohraje - kdyz se na TV posila
+                //    az potom, prijde zvuk pozde a televize ho zahodi.
                 NaTv t = naTv;
                 if (t != null) {
-                    try { t.vzorky(davka, n, SR); } catch (Throwable ignored) {}
+                    try { t.vzorky(davka, n * 2, SR); } catch (Throwable ignored) {}
                 }
+                at.write(davka, 0, n * 2);
             }
         } catch (Throwable ignored) {
         } finally {

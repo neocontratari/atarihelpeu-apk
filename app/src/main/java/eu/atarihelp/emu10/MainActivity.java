@@ -133,8 +133,10 @@ public class MainActivity extends Activity {
      *     vubec (TV ustoupi, kdyz jiny zdroj posila mladsi nez 300 ms)
      */
     private void introZvukPust() {
-        introZvuk.start((pcm, ramcu, sr) ->
-                napTvWebAudioPush(pcm, 0, ramcu, sr, "INTRO"));
+        // pozor: treti parametr je POCET SHORTU, ne ramcu - NapIntroZvuk
+        // uz posila spravne n*2
+        introZvuk.start((pcm, shortu, sr) ->
+                napTvWebAudioPush(pcm, 0, shortu, sr, "INTRO"));
     }
     private void introZvukStop(String proc) {
         if (!introZvuk.bezi()) return;
@@ -1261,7 +1263,19 @@ public class MainActivity extends Activity {
                 String u2 = (web == null) ? null : web.getUrl();
                 naSege = (u2 != null) && u2.contains("emu_sega");
             } catch (Throwable ignored) {}
-            if (!naSege && !ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning) {
+            // BUILD2SA44: TAHLE PODMINKA VYSKOCILA DRIV, NEZ SE DOSLO
+            // K PREPNUTI PRO INTRO.
+            //
+            // Behem zivych casti intra zustava adresa porad etapa2.html,
+            // takze naSege je false a ani jedna z ps1 podminek neplati -
+            // funkce se vratila a TV dal snimala okno. V logu to bylo
+            // videt tak, ze u vsech zaznamu je url=.../etapa2.html
+            // a obraz Segy ani PS1 se na TV nikdy neobjevil.
+            //
+            // Behem intra tedy pokracujeme dal a zdroj se pozna nize
+            // podle toho, ktere jadro prave bezi.
+            if (!introZivaCast
+                    && !naSege && !ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning) {
                 tvCoreHadFrame = false;
                 return false;
             }
