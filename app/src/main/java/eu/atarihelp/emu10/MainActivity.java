@@ -119,6 +119,7 @@ public class MainActivity extends Activity {
     private volatile boolean introZivaCast = false;
     /** BUILD2SA40: od kdy bezi Sega - pro pocitani odehraneho casu. */
     private volatile long segaHrajeOd = 0L;
+    private long introTvDiagMs = 0L;
     /** BUILD2SA41: zvuk intra - pocita se v Jave, at jde i na TV. */
     private final NapIntroZvuk introZvuk = new NapIntroZvuk();
 
@@ -1316,6 +1317,24 @@ public class MainActivity extends Activity {
                 wh = jeSegaTv ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
                               : Ps1GlTextureView.borrowFrame(tvCoreArgb);
             }
+
+            // BUILD2SA45: DIAGNOSTIKA, PROTOZE UZ NECHCI HADAT.
+            // Rekne jednou za vterinu, KTEROU CESTOU se slo a CO se pujcilo.
+            // Bez toho se z logu nepozna, jestli se vetev pro intro vubec
+            // spustila - radek TV_WEB_PERIODIC hlasi adresu vzdycky.
+            if (introZivaCast) {
+                long ted2 = System.currentTimeMillis();
+                if (ted2 - introTvDiagMs > 1000) {
+                    introTvDiagMs = ted2;
+                    appendNativeLog("BUILD2SA45 TV_INTRO zdroj="
+                            + (jeSegaTv ? "SEGA" : "PS1")
+                            + " segaPlocha=" + (segaPlocha != null)
+                            + " ps1Plocha=" + (ps1Plocha != null)
+                            + " biosBezi=" + ps1BiosRunning
+                            + " snimek=" + (wh > 0 ? ((wh >> 16) + "x" + (wh & 0xFFFF))
+                                                   : ("NIC(" + wh + ")")));
+                }
+            }
             if (wh == 0) {
                 // Nic k pujceni (obrazovka zrovna nekresli) - podrzime posledni
                 // dobry snimek misto sahani do jadra navic.
@@ -1323,6 +1342,11 @@ public class MainActivity extends Activity {
                     napTvWebPublishBitmap(napTvWebBitmapDraw, "CORE_HOLD");
                     return true;
                 }
+                // BUILD2SA45: BEHEM INTRA SE NESMI PROPADNOUT NA SNIMANI OKNA.
+                // Pod oknem lezi plocha jadra a okno je pruhledne - vyfotilo
+                // by se prazdno, a jeste by se tim stridalo tam a zpet.
+                // Prave to nejspis zpusobovalo, ze se prenos sem tam zasekl.
+                if (introZivaCast) return true;
                 return false;
             }
             if (wh <= 0 || (wh >> 16) <= 0 || (wh & 0xFFFF) <= 0) {
