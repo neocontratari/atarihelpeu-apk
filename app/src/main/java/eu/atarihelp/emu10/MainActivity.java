@@ -871,6 +871,23 @@ public class MainActivity extends Activity {
                     napTvWebJpegQuality = qv[1];
                     napTvWebFrameDelayMs = qv[2];
                     napTvWebVideoProfile = (landscape ? (djScreen ? "LANDSCAPE_DJ" : (hqLiteScreen ? "LANDSCAPE_EMU" : "LANDSCAPE_FAST")) : "PORTRAIT") + "_T" + napTvWebQualityTier;
+                    // BUILD2SA47: ATARI SE SNIMA V POLOVICNIM ROZLISENI.
+                    //
+                    // Samotne zpomaleni tempa nestacilo - jeden snimek je
+                    // proste moc drahy. Pri 720x1336 se cte zpatky pres
+                    // 960 000 bodu a jeste se cela bitmapa (3,7 MB) kopiruje
+                    // na HLAVNIM vlakne, tedy tam, kde bezi emulator.
+                    //
+                    // Polovicni strana = ctvrtina bodu = ctvrtinova cena.
+                    // Na TV je obraz mekci, ale emulator ma cas pocitat.
+                    // Tyka se to JEN Atari - ostatni davaji snimek z jadra.
+                    boolean atariOkno = false;
+                    try {
+                        String cuA = (web == null) ? null : web.getUrl();
+                        atariOkno = (cuA != null) && cuA.contains("emu_vbxe");
+                    } catch (Throwable ignored9) {}
+                    if (atariOkno) maxSide = Math.max(360, maxSide / 2);
+
                     float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
                     // BUILD2SK48: KRITICKY NALEZ - napTvWebBitmap byla SDILENA mezi
@@ -1167,16 +1184,37 @@ public class MainActivity extends Activity {
                     // pomale (46 ms = 22 snimku za vterinu, i kdyz enkoder
                     // stihal na 3 ms) - odtud zbyle zpozdeni.
                     boolean ps1PrimoZJadra = false;
+                    boolean naAtariJs = false;
                     try {
                         String cu0 = (web == null) ? null : web.getUrl();
                         boolean naSegeT = (cu0 != null) && cu0.contains("emu_sega");
                         boolean naPs1T  = (cu0 != null) && cu0.contains("emu_ps1")
                                 && (ps1BiosRunning || ps1SessionActive);
-                        ps1PrimoZJadra = naPs1T || naSegeT;
+                        ps1PrimoZJadra = naPs1T || naSegeT || introZivaCast;
+                        naAtariJs = (cu0 != null) && cu0.contains("emu_vbxe");
                     } catch (Throwable ignored2) {}
+
+                    // BUILD2SA47: ATARI MUSI DOSTAT POMALEJSI TEMPO, NE RYCHLEJSI.
+                    //
+                    // PS1, Sega i ziva jadra v intru davaji snimek PRIMO -
+                    // snimani okna se jich netyka a rychla vetev je u nich
+                    // spravne.
+                    //
+                    // Atari se ale emuluje V JAVASCRIPTU NA HLAVNIM VLAKNE
+                    // a snimek se z nej bere PixelCopy CELEHO OKNA - a ta
+                    // smycka bezi na tom SAMEM hlavnim vlakne. Kdyz si rekne
+                    // o rychlejsi tempo, vlakno je zahlcene a emulatoru
+                    // nezbude cas: kouse se obraz i zvuk, na mobilu i na TV.
+                    //
+                    // Vetev "Sega/Atari: rychleji" byla psana v dobe, kdy se
+                    // Sega jeste snimala z okna. Od B117 chodi z jadra a
+                    // v te vetvi zustalo jen Atari - tedy presne to, co tam
+                    // patri nejmene.
                     effectiveDelay = ps1PrimoZJadra
-                            ? napTvWebH264FastTickMs               // PS1: 16 ms staci
-                            : Math.max(8, napTvWebFrameDelayMs / 2); // Sega/Atari: rychleji
+                            ? napTvWebH264FastTickMs                 // z jadra: 16 ms staci
+                            : naAtariJs
+                                ? Math.max(napTvWebFrameDelayMs, 66) // Atari: vlakno musi dychat
+                                : Math.max(8, napTvWebFrameDelayMs / 2);
                 }
             } catch (Throwable ignored) {}
             // POZNAMKA K TEMPU: smycka bezi na hlavnim vlakne pres
@@ -1991,6 +2029,12 @@ public class MainActivity extends Activity {
                         + " avgDrainMs=" + (napTvWebH264DiagDrainMs / napTvWebH264DiagFrameCount)
                         + " w=" + w + " h=" + h + " tier=" + napTvWebQualityTier);
                 napTvWebH264DiagFrameCount = 0;
+                // BUILD2SA47: tohle se merilo uz davno, ale NIKDY se to nikam
+                // nepsalo - takze pri "kouse se to" nebylo z ceho vyjit.
+                appendNativeLog("BUILD2SA47 TV_CENA_HLAVNIHO_VLAKNA kopieBitmapy="
+                        + napTvWebH264DiagCopyMs + "ms pixely=" + napTvWebH264DiagPixelsMs
+                        + "ms yuv=" + napTvWebH264DiagYuvMs + "ms dequeue="
+                        + napTvWebH264DiagDequeueMs + "ms drain=" + napTvWebH264DiagDrainMs + "ms");
                 napTvWebH264DiagCopyMs = 0; napTvWebH264DiagPixelsMs = 0; napTvWebH264DiagYuvMs = 0; napTvWebH264DiagDequeueMs = 0; napTvWebH264DiagDrainMs = 0;
             }
         } catch (Throwable t) {
