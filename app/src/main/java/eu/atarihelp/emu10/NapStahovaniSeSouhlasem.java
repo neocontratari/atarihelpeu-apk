@@ -44,6 +44,28 @@ public final class NapStahovaniSeSouhlasem {
 
     private static final String PREF = "nap_stahovani";
     private static final String KLIC_ZEPTANO = "zeptano";
+    // BUILD2SA39: po stazeni si ZAPAMATUJEME PRESNE CESTY.
+    // Na novejsim Androidu muze listFiles() v Download/AtariHelp vratit
+    // prazdno, i kdyz tam soubory jsou - a aplikace se pak ptala porad
+    // dokola. Primy pristup na znamou cestu projde.
+    private static final String KLIC_SONIC = "cesta_sonic";
+    private static final String KLIC_BIOS  = "cesta_bios";
+
+    private static void zapamatujCestu(Context c, String klic, String cesta) {
+        try {
+            c.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+             .edit().putString(klic, cesta).apply();
+        } catch (Throwable ignored) {}
+    }
+    private static File zapamatovana(Context c, String klic) {
+        try {
+            String p = c.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+                        .getString(klic, null);
+            if (p == null) return null;
+            File f = new File(p);
+            return (f.isFile() && f.canRead() && f.length() > 1024) ? f : null;
+        } catch (Throwable t) { return null; }
+    }
 
     public interface Hotovo { void hotovo(String zprava); }
     /** Prubeh stahovani - aby uzivatel videl, co se deje. */
@@ -67,6 +89,49 @@ public final class NapStahovaniSeSouhlasem {
      */
     public static boolean maSonica(File korenSlozky) {
         return najdiSegaRom(korenSlozky) != null;
+    }
+
+    /** Kontrola i pres zapamatovanou cestu - nezavisi na vypisu adresare. */
+    public static boolean maSonica(Context c, File korenSlozky) {
+        if (zapamatovana(c, KLIC_SONIC) != null) return true;
+        return najdiSegaRom(korenSlozky) != null;
+    }
+    public static boolean maBios(Context c, File korenSlozky) {
+        if (zapamatovana(c, KLIC_BIOS) != null) return true;
+        return maBios(korenSlozky);
+    }
+    public static boolean neceMChybi(Context c, File korenSlozky) {
+        return !maSonica(c, korenSlozky) || !maBios(c, korenSlozky);
+    }
+    public static String stav(Context c, File korenSlozky) {
+        File rs = zapamatovana(c, KLIC_SONIC);
+        File rb = zapamatovana(c, KLIC_BIOS);
+        return "sonic=" + (maSonica(c, korenSlozky)
+                    ? (rs != null ? "zapamatovan" : "nalezen") : "CHYBI")
+             + " bios=" + (maBios(c, korenSlozky)
+                    ? (rb != null ? "zapamatovan" : "nalezen") : "CHYBI");
+    }
+
+    /** Po stazeni si ulozime, kam presne to slo. */
+    public static void zapisCesty(Context c, File korenSlozky) {
+        try {
+            File rom = najdiSegaRom(korenSlozky);
+            if (rom != null) zapamatujCestu(c, KLIC_SONIC, rom.getAbsolutePath());
+            File[] kde = { new File(korenSlozky, "PS1_BIOS"), new File(korenSlozky, "BIOS"),
+                           korenSlozky };
+            for (File d : kde) {
+                if (d == null || !d.isDirectory()) continue;
+                File[] deti = d.listFiles();
+                if (deti == null) continue;
+                for (File f : deti) {
+                    if (f.isFile() && f.getName().toLowerCase(java.util.Locale.US).endsWith(".bin")
+                            && f.length() == 524288) {
+                        zapamatujCestu(c, KLIC_BIOS, f.getAbsolutePath());
+                        return;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
     }
 
     public static boolean maBios(File korenSlozky) {
@@ -264,6 +329,7 @@ public final class NapStahovaniSeSouhlasem {
             } catch (Throwable t) {
                 z.append("CHYBA ").append(t.getClass().getSimpleName());
             }
+            zapisCesty(a, korenSlozky);
             final String zprava = z.toString();
             if (pak != null) a.runOnUiThread(() -> pak.hotovo(zprava));
         }, "nap-stahovani").start();

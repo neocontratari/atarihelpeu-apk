@@ -117,6 +117,8 @@ public class MainActivity extends Activity {
     private android.view.SurfaceView segaPlocha = null;
     /** BUILD2SA34: bezi prave ziva cast intra (Sega nebo PS1)? */
     private volatile boolean introZivaCast = false;
+    /** BUILD2SA40: od kdy bezi Sega - pro pocitani odehraneho casu. */
+    private volatile long segaHrajeOd = 0L;
 
     // ==================================================================
     //  BUILD2SA30: SEGA V INTRU
@@ -271,7 +273,30 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * BUILD2SA40: zacatek a konec mereni odehraneho casu na Seze.
+     * Cas se pocita JEN kdyz hra opravdu bezi - ne kdyz je aplikace
+     * na pozadi nebo v jinem emulatoru.
+     */
+    private void segaCasStart() {
+        if (segaHrajeOd == 0L) {
+            segaHrajeOd = System.currentTimeMillis();
+            appendNativeLog("BUILD2SA40 SEGA_CAS start");
+        }
+    }
+    private void segaCasStop() {
+        if (segaHrajeOd == 0L) return;
+        long ms = System.currentTimeMillis() - segaHrajeOd;
+        segaHrajeOd = 0L;
+        if (ms < 1000L || ms > 6L*60L*60L*1000L) return;   // pojistka
+        boolean otevreno = NapPostup.pripocitejSegu(MainActivity.this, ms);
+        appendNativeLog("BUILD2SA40 SEGA_CAS +" + (ms/1000) + "s -> "
+                + NapPostup.stav(MainActivity.this)
+                + (otevreno ? "  *** PS1 PRAVE OTEVRENA ***" : ""));
+    }
+
     private void segaPlochaVypni() {
+        segaCasStop();
         final android.view.SurfaceView old = segaPlocha;
         segaPlocha = null;
         Runnable r = () -> {
@@ -3254,6 +3279,46 @@ public class MainActivity extends Activity {
             }
         }
 
+        // ================= BUILD2SA40: POSTUP HRACE =================
+
+        /** Vrati stav postupu jako JSON, aby si stranka mohla zamknout tlacitka. */
+        @JavascriptInterface public String postupStav() {
+            try {
+                return "{\"sega\":" + NapPostup.segaOdemcena(MainActivity.this)
+                     + ",\"ps1\":" + NapPostup.ps1Odemcena(MainActivity.this)
+                     + ",\"zbyvaMinut\":" + NapPostup.zbyvaMinutSegy(MainActivity.this) + "}";
+            } catch (Throwable t) { return "{\"sega\":true,\"ps1\":true,\"zbyvaMinut\":0}"; }
+        }
+
+        /** Hrac napsal kod v Atari - overit a pripadne otevrit Segu. */
+        @JavascriptInterface public boolean overKod(String napsano) {
+            try {
+                boolean ok = NapPostup.kodSedi(napsano);
+                if (ok) {
+                    NapPostup.otevriSegu(MainActivity.this);
+                    appendNativeLog("BUILD2SA40 KOD SEDI - SEGA OTEVRENA");
+                } else {
+                    appendNativeLog("BUILD2SA40 KOD NESEDI (" 
+                        + (napsano == null ? 0 : napsano.length()) + " znaku)");
+                }
+                return ok;
+            } catch (Throwable t) { return false; }
+        }
+
+        /** RENEHO ZADNI VRATKA: odemkne dalsi uroven v poradi. */
+        @JavascriptInterface public String odemkniDalsi() {
+            String co = NapPostup.odemkniDalsi(MainActivity.this);
+            appendNativeLog("BUILD2SA40 ODEMKNUTO: " + co + " -> "
+                    + NapPostup.stav(MainActivity.this));
+            return co;
+        }
+
+        /** RENEHO ZADNI VRATKA: vrati vse na zacatek. */
+        @JavascriptInterface public void zamkniVse() {
+            NapPostup.zamkniVse(MainActivity.this);
+            appendNativeLog("BUILD2SA40 ZAMCENO VSE -> " + NapPostup.stav(MainActivity.this));
+        }
+
         /** BUILD2SA27: stazeni Sonica a BIOSu na vyzadani z nabidky OPTIONS. */
         @JavascriptInterface public void stahniSoubory() {
             ui.post(() -> {
@@ -5409,6 +5474,7 @@ public class MainActivity extends Activity {
                 appendNativeLog("NATIVE_AUDIO_WAIT_FRAME_VIEW_RV attempt=" + attempt + " gen=" + gen + " hasFrame=" + hasFrame + " viewReady=" + viewReady + " draw=" + nativeViewDrawCounter + "/" + nativeViewDrawCounterAtRomLoad + " " + (st == null ? "null" : st.replace('\n',' ').substring(0, Math.min(430, st.length()))));
                 if (hasFrame && viewReady) {
                     startNativeCoreAudioStream();
+                    if (!introZivaCast) segaCasStart();   // BUILD2SA40: hra opravdu bezi
                     appendNativeLog("NATIVE_AUDIO_START_AFTER_FRAME_VIEW_RV name=" + safeFileName(romName) + " gen=" + gen + " audioProfile=QT_RR_RECOVERY_SAFE_AUDIT");
                     return;
                 }
@@ -6604,9 +6670,14 @@ public class MainActivity extends Activity {
             boolean zeptatSe;
             try {
                 java.io.File koren = getPublicAtariHelpDownloadsDir();
-                boolean chybi = NapStahovaniSeSouhlasem.neceMChybi(koren);
+                // BUILD2SA39: kontrola i pres zapamatovane cesty - vypis
+                // adresare muze na novejsim Androidu vratit prazdno,
+                // i kdyz soubory na disku jsou.
+                NapStahovaniSeSouhlasem.zapisCesty(MainActivity.this, koren);
+                boolean chybi = NapStahovaniSeSouhlasem.neceMChybi(MainActivity.this, koren);
                 zeptatSe = !NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this) || chybi;
-                appendNativeLog("BUILD2SA29 SOUBORY " + NapStahovaniSeSouhlasem.stav(koren)
+                appendNativeLog("BUILD2SA29 SOUBORY "
+                        + NapStahovaniSeSouhlasem.stav(MainActivity.this, koren)
                         + " -> " + (zeptatSe ? "PTAM SE" : "vse je, neptam se"));
             } catch (Throwable t) {
                 zeptatSe = !NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this);

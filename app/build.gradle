@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 201
-        versionName "EMU10-B153-STARY-LISTING-PRYC"  // ve spolecne casti zustal STARY listing, ktery ten novy prepisoval - v aplikaci se proto psal puvodni kod misto polovicniho strojaku. Odstraneno vcetne dalsich sesti duplicit.
+        versionCode 202
+        versionName "EMU10-B154-POSTUP-HRACE"  // SEGA se otevre po napsani kodu v Atari, PS1 po 30 minutach Segy. Pro Reneho zadni vratka ODEMKNOUT DALSI a ZAMKNOUT VSE. Opraveno i opakovane stahovani.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

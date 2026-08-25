@@ -55,6 +55,8 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
     <button id="stIntro" type="button">PUSTIT INTRO</button>
     <button id="stStahni" type="button">STAHNOUT HRY A BIOS</button>
+    <button id="stOdemkni" type="button">ODEMKNOUT DALSI</button>
+    <button id="stZamkni" type="button">ZAMKNOUT VSE</button>
 
     <div class="stlabel2">NASTAVENI</div>
     <div class="qrow">
@@ -200,6 +202,61 @@ if(stSt)stSt.addEventListener('click',function(e){
   log('SETTINGS_STAHNOUT');
   closeSettings();
 },true);
+
+// BUILD2SA40: POSTUP HRACE.
+// SEGA se otevre, az hrac napise ten kod v Atari.
+// PS1 se otevre po 30 minutach hrani Segy.
+// Tahle dve tlacitka jsou ZADNI VRATKA pro Reneho, aby mohl testovat
+// bez odehrani cele cesty - odemyka se POSTUPNE, jedna uroven po druhe.
+var stOd=$('stOdemkni');
+if(stOd)stOd.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  var co='?';
+  try{ if(window.AHINTRO&&AHINTRO.odemkniDalsi) co=AHINTRO.odemkniDalsi(); }catch(err){}
+  log('SETTINGS_ODEMKNUTO '+co);
+  closeSettings();
+  zamkyObnov();
+},true);
+
+var stZam=$('stZamkni');
+if(stZam)stZam.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  try{ if(window.AHINTRO&&AHINTRO.zamkniVse) AHINTRO.zamkniVse(); }catch(err){}
+  log('SETTINGS_ZAMCENO_VSE');
+  closeSettings();
+  zamkyObnov();
+},true);
+
+/** Zamkne nebo odemkne tlacitka podle toho, kam se hrac dostal. */
+function zamkyObnov(){
+  var st={sega:true,ps1:true,zbyvaMinut:0};
+  try{ if(window.AHINTRO&&AHINTRO.postupStav) st=JSON.parse(AHINTRO.postupStav()); }catch(e){}
+  nastavZamek('btnSega', st.sega, 'NAPIS KOD V ATARI');
+  nastavZamek('btnPs1',  st.ps1,  st.sega ? ('JESTE '+st.zbyvaMinut+' MIN SEGY') : 'NEJDRIV SEGA');
+}
+function nastavZamek(id, otevreno, proc){
+  var b=$(id); if(!b) return;
+  if(otevreno){
+    b.style.opacity=''; b.style.pointerEvents='';
+    b.removeAttribute('data-zamek');
+  }else{
+    b.style.opacity='0.45'; b.style.pointerEvents='auto';
+    b.setAttribute('data-zamek', proc);
+  }
+}
+// zamceny emulator misto spusteni jen rekne, co je potreba
+document.addEventListener('click', function(e){
+  var t=e.target;
+  while(t && t!==document.body){
+    if(t.getAttribute && t.getAttribute('data-zamek')){
+      e.preventDefault(); e.stopPropagation();
+      try{ alert('ZAMCENO\n\n'+t.getAttribute('data-zamek')); }catch(_){}
+      return;
+    }
+    t=t.parentNode;
+  }
+}, true);
+setTimeout(zamkyObnov, 300);
 
 var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 Array.prototype.forEach.call(document.querySelectorAll('a[data-external="1"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openExternal(a.href);},true);});
