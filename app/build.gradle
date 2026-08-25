@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 207
-        versionName "EMU10-B159-DIAGNOSTIKA-TV"  // prestal jsem hadat: kod ted rekne, kterou cestou se pro TV slo a co se z jadra pujcilo. K tomu pojistka, aby se behem intra nepropadlo na snimani okna.
+        versionCode 208
+        versionName "EMU10-B160-PRAVA-ZAVORA"  // v ceste na TV byly DVE zavory na adresu, ne jedna. Opravil jsem tu druhou, prvni se vyskakovalo o 20 radku driv - proto mlcela i diagnostika.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

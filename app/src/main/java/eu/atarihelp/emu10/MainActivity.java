@@ -1251,7 +1251,15 @@ public class MainActivity extends Activity {
                 // Od B117 plati i pro Segu - ta uz taky dava snimek primo
                 // z jadra, takze ji sem musime pustit.
                 boolean naPs1 = (u != null) && (u.contains("emu_ps1") || u.contains("emu_sega"));
-                if (!naPs1) {
+                // BUILD2SA46: A TADY BYLA TA PRAVA ZAVORA.
+                //
+                // Behem intra je adresa porad etapa2.html, takze naPs1 vyslo
+                // false a funkce se vratila UZ TADY - o dvacet radku driv,
+                // nez moje oprava z B158. Proto se ani diagnostika z B159
+                // nespustila ANI JEDNOU, i kdyz TV prokazatelne bezela.
+                //
+                // Behem zivych casti intra jdeme dal.
+                if (!naPs1 && !introZivaCast) {
                     if (tvCoreHadFrame) appendNativeLog("TV_ZPET_NA_OKNO (odchod z PS1)");
                     tvCoreHadFrame = false;
                     return false;
