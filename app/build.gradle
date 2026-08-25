@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 204
-        versionName "EMU10-B156-AKTUALIZACE"  // aplikace se umi aktualizovat primo ze site - APK protece do instalace a na telefonu nezustane zadny soubor
+        versionCode 205
+        versionName "EMU10-B157-ZVUK-USTOUPI-JADRU"  // hudba intra se pustila v kazde etape a NIKDY se nezastavila - hrala pres Segu i PS1 a na TV jim blokovala zvukovou cestu. Ted pri jadrech mlci.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

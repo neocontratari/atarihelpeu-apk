@@ -122,6 +122,27 @@ public class MainActivity extends Activity {
     /** BUILD2SA41: zvuk intra - pocita se v Jave, at jde i na TV. */
     private final NapIntroZvuk introZvuk = new NapIntroZvuk();
 
+    /**
+     * BUILD2SA43: ZVUK INTRA SE MUSI VYPNOUT, KDYZ HRAJE JADRO.
+     *
+     * V B156 se pustil na zacatku kazde etapy a UZ NIKDY SE NEZASTAVIL.
+     * V logu to bylo videt tak, ze "INTRO_ZACATEK zvuk v Jave" je tam
+     * petkrat a "INTRO_ZVUK konec" ani jednou. Dusledek:
+     *   - na telefonu hrala hudba pres Segu i PS1
+     *   - na TV blokovala zvukovou cestu, takze Sega a PS1 nebyly slyset
+     *     vubec (TV ustoupi, kdyz jiny zdroj posila mladsi nez 300 ms)
+     */
+    private void introZvukPust() {
+        introZvuk.start((pcm, ramcu, sr) ->
+                napTvWebAudioPush(pcm, 0, ramcu, sr, "INTRO"));
+    }
+    private void introZvukStop(String proc) {
+        if (!introZvuk.bezi()) return;
+        introZvuk.stop();
+        napTvWebAudioLastPushMs = 0;      // uvolnit cestu pro jadro
+        appendNativeLog("BUILD2SA43 INTRO_ZVUK stop (" + proc + ")");
+    }
+
     // ==================================================================
     //  BUILD2SA30: SEGA V INTRU
     //
@@ -158,6 +179,7 @@ public class MainActivity extends Activity {
             appendNativeLog("BUILD2SA30 INTRO_SEGA rom nahrana: " + vysledek);
 
             introZivaCast = true;            // hlidac plochu nesmi sundat
+            introZvukStop("bezi Sega");      // at je slyset jadro, ne moje hudba
             segaPlochaZapni();
             introOknoPruhledne(true);        // at je plocha pod WebView videt
             // ZVUK: normalni cesta ceka na frameReady A viewReady. Jenze
@@ -229,6 +251,15 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA37 INTRO_OKNO_CHYBA " + safeMsg(t));
         }
+    }
+
+    /** BUILD2SA43: pojistka - kdyz uzivatel odejde, hudba nesmi hrat dal. */
+    private void introZvukPojistka(String url) {
+        try {
+            if (url == null) return;
+            if (url.contains("/intro/")) return;      // porad v intru
+            introZvukStop("odchod na " + compactUrl(url));
+        } catch (Throwable ignored) {}
     }
 
     private void introZastavSegu() {
@@ -769,6 +800,7 @@ public class MainActivity extends Activity {
                         String curUrl = "?";
                         try { curUrl = web == null ? "null" : web.getUrl(); } catch (Throwable ignored) {}
                         napTvWebCurrentUrl = curUrl; // BUILD2SK61: cache pro /status - viz vysvetleni u deklarace pole
+                        introZvukPojistka(curUrl);   // BUILD2SA43: hudba nesmi hrat mimo intro
 
                         // BUILD2SK84: battery/CPU/thermal kontext PRIMO v periodickem logu.
                         // readBatteryTempC()/readCpuFreqKHz() uz existovaly (BUILD2RX) a
@@ -3084,7 +3116,7 @@ public class MainActivity extends Activity {
     public class AHIntro {
         @JavascriptInterface public void hotovo() {
             napIntroUkazano = true;
-            introZvuk.stop();
+            introZvukStop("intro dobehlo");
             introZivaCast = false;      // pojistka - hlidac zase hlida
             ui.post(() -> introOknoPruhledne(false));   // az ted vratit okno
             appendNativeLog("BUILD2SA21 INTRO_HOTOVO");
@@ -3112,11 +3144,8 @@ public class MainActivity extends Activity {
          */
         @JavascriptInterface public void zacatek() {
             ui.post(() -> introOknoPruhledne(false));
-            // zvuk se pocita v Jave a posila se na obe strany zaroven
-            introZvuk.start((pcm, ramcu, sr) ->
-                    napTvWebAudioPush(pcm, 0, ramcu, sr, "INTRO"));
-            introZvuk.zapnutiTv();
-            appendNativeLog("BUILD2SA41 INTRO_ZACATEK zvuk v Jave");
+            introZvukPust();
+            appendNativeLog("BUILD2SA43 INTRO_ZACATEK zvuk v Jave");
         }
 
         /** Klapnuti klavesy pri psani kodu. */
@@ -3217,6 +3246,7 @@ public class MainActivity extends Activity {
                     napTvWebAudioLastPushMs = 0;
                     introZivaCast = false;
                     introOknoPruhledne(false);
+                    // hudba se vrati - etapa 5 ji zase potrebuje
 
                     // BUILD2SA35: PLOCHU SUNDAT ROVNOU, NECEKAT NA HLIDACE.
                     //
@@ -3258,6 +3288,7 @@ public class MainActivity extends Activity {
             try {
                 ui.post(() -> {
                     introZivaCast = true;        // hlidac plochu nesmi sundat
+                    introZvukStop("bezi PS1");
                     introOknoPruhledne(true);
 
                     // PORADI. Nejdriv PLOCHA, teprve potom boot.
