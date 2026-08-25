@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 202
-        versionName "EMU10-B154-POSTUP-HRACE"  // SEGA se otevre po napsani kodu v Atari, PS1 po 30 minutach Segy. Pro Reneho zadni vratka ODEMKNOUT DALSI a ZAMKNOUT VSE. Opraveno i opakovane stahovani.
+        versionCode 203
+        versionName "EMU10-B155-TV-INTRO"  // okno bylo pruhledne po celou dobu intra, takze TV z etap snimala prazdno. A zvuk delal prohlizec, kam TV nedosahne - ted ho pocita Java a posila na telefon i na TV.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

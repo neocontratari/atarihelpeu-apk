@@ -181,9 +181,8 @@ function zvukKonec(){
   try{ mistr.gain.setTargetAtTime(0.0001, AC.currentTime, 0.5); }catch(e){}
 }
 // prohlizec casto nepusti zvuk bez dotyku - zkusime hned i po dotyku
-document.addEventListener('touchstart', zvukStart, {once:true});
-document.addEventListener('click', zvukStart, {once:true});
-setTimeout(zvukStart, 60);
+// BUILD2SA41: zvuk uz nespousti prohlizec - dela ho Java, at jde i na TV.
+// Kdyby se pustil i tady, hral by dvakrat.
 
 var plat=document.getElementById('plat'), g=plat.getContext('2d');
 var W=0,H=0,DPR=1;
@@ -474,7 +473,7 @@ function obrVykresli(t, pfBarva, pf1Barva, kurzorVidet){
 var lstZnaku=0, lstNapsano=0, LST_TEXT=LISTING.join('\n')+'\n';
 var LST_PAUZA=1400;                    // jak dlouho jen sviti READY a kurzor
 function listing(t,d){
-  hudba();
+  // hudbu hraje Java (viz NapIntroZvuk) - at jde i na TV
   if(!obr){
     obrZaloz();
     // Na Atari po startu BASICu nejdriv sviti READY a pod nim kurzor.
@@ -489,7 +488,8 @@ function listing(t,d){
   while(lstNapsano<chce){
     var zn=LST_TEXT[lstNapsano];
     lstNapsano++;                          // POSUN DRIV nez zvuk
-    obrPis(zn); ukni(zn);
+    obrPis(zn);
+    try{ if(window.AHINTRO&&AHINTRO.zvukKlapnuti) AHINTRO.zvukKlapnuti(zn==='\n'); }catch(e){}
   }
   g.fillStyle='#05060f'; g.fillRect(0,0,W,H);
   plazma(t, 0.26);

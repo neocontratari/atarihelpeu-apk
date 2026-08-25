@@ -119,6 +119,8 @@ public class MainActivity extends Activity {
     private volatile boolean introZivaCast = false;
     /** BUILD2SA40: od kdy bezi Sega - pro pocitani odehraneho casu. */
     private volatile long segaHrajeOd = 0L;
+    /** BUILD2SA41: zvuk intra - pocita se v Jave, at jde i na TV. */
+    private final NapIntroZvuk introZvuk = new NapIntroZvuk();
 
     // ==================================================================
     //  BUILD2SA30: SEGA V INTRU
@@ -235,6 +237,7 @@ public class MainActivity extends Activity {
             try { NativeSegaCoreBridge.shutdown(); } catch (Throwable ignored) {}
             segaPlochaVypni();
             introZivaCast = false;
+            introOknoPruhledne(false);      // at TV zase vidi obraz z etapy
             appendNativeLog("BUILD2SA30 INTRO_SEGA konec");
         } catch (Throwable t) {
             appendNativeLog("BUILD2SA30 INTRO_SEGA_UKLID_CHYBA " + safeMsg(t));
@@ -3081,6 +3084,7 @@ public class MainActivity extends Activity {
     public class AHIntro {
         @JavascriptInterface public void hotovo() {
             napIntroUkazano = true;
+            introZvuk.stop();
             introZivaCast = false;      // pojistka - hlidac zase hlida
             ui.post(() -> introOknoPruhledne(false));   // az ted vratit okno
             appendNativeLog("BUILD2SA21 INTRO_HOTOVO");
@@ -3089,15 +3093,41 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void znovu() {
             appendNativeLog("BUILD2SA23 INTRO_NA_POZADANI");
             ui.post(() -> {
-                introOknoPruhledne(true);
+                introOknoPruhledne(false);
                 web.loadUrl("file:///android_asset/intro/etapa1.html");
             });
         }
 
-        /** BUILD2SA37: intro zacalo - okno bude pruhledne po celou dobu. */
+        /**
+         * BUILD2SA41: intro zacalo - okno zustava NEPRUSVITNE.
+         *
+         * Drive se delalo pruhledne na celou dobu intra, aby byla videt
+         * plocha jadra pod nim. Jenze TV snima okno pres PixelCopy -
+         * a z pruhledneho okna sejme prazdno. Proto na TV nebyl vidt
+         * obraz z etap 1 a 5.
+         *
+         * Ted jsou etapy samostatne stranky, takze pruhlednost staci
+         * zapnout JEN po dobu zivych jader (spustSegu / spustPs1)
+         * a hned po nich zase vratit.
+         */
         @JavascriptInterface public void zacatek() {
-            ui.post(() -> introOknoPruhledne(true));
-            appendNativeLog("BUILD2SA37 INTRO_ZACATEK");
+            ui.post(() -> introOknoPruhledne(false));
+            // zvuk se pocita v Jave a posila se na obe strany zaroven
+            introZvuk.start((pcm, ramcu, sr) ->
+                    napTvWebAudioPush(pcm, 0, ramcu, sr, "INTRO"));
+            introZvuk.zapnutiTv();
+            appendNativeLog("BUILD2SA41 INTRO_ZACATEK zvuk v Jave");
+        }
+
+        /** Klapnuti klavesy pri psani kodu. */
+        @JavascriptInterface public void zvukKlapnuti(boolean konecRadku) {
+            introZvuk.klapnuti(konecRadku);
+        }
+
+        /** Konec etapy - zvuk pokracuje, dokud nedobehne cele intro. */
+        @JavascriptInterface public void zvukKonec() {
+            introZvuk.stop();
+            appendNativeLog("BUILD2SA41 INTRO_ZVUK konec");
         }
 
         /**
@@ -3186,6 +3216,7 @@ public class MainActivity extends Activity {
                 try {
                     napTvWebAudioLastPushMs = 0;
                     introZivaCast = false;
+                    introOknoPruhledne(false);
 
                     // BUILD2SA35: PLOCHU SUNDAT ROVNOU, NECEKAT NA HLIDACE.
                     //
