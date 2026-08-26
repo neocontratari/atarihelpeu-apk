@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 209
-        versionName "EMU10-B161-ATARI-DYCHA"  // snimani okna spolykalo 141 % hlavniho vlakna, na kterem bezi emulator Atari. Ted 14 % - pomalejsi tempo a polovicni rozliseni.
+        versionCode 210
+        versionName "EMU10-B162-MOST-NECEKA"  // zvuk z Atari se protlacoval mostem synchronne a JS vlakno, kde bezi emulator, cekalo na zamek zvukove cesty. Ted se davka jen odlozi do fronty. Osekani obrazu na TV vraceno - merenim se ukazalo, ze snimani nebyla pricina.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

@@ -120,6 +120,67 @@ public class MainActivity extends Activity {
     /** BUILD2SA40: od kdy bezi Sega - pro pocitani odehraneho casu. */
     private volatile long segaHrajeOd = 0L;
     private long introTvDiagMs = 0L;
+
+    // ==================================================================
+    //  BUILD2SA48: FRONTA NA ZVUK Z ATARI
+    //
+    //  Atari posila zvuk z JavaScriptu jako base64 retezec. Drive se
+    //  rozkodovaval primo v mostu a JS vlakno - to same, na kterem bezi
+    //  emulator - na to cekalo. Ted se retezec jen odlozi a odpovi hned.
+    //
+    //  Fronta je zamerne KRATKA: kdyz se nestiha, zahodi se nejstarsi
+    //  davka. Lepsi kratky vypadek zvuku nez rostouci zpozdeni.
+    // ==================================================================
+    private final java.util.concurrent.ArrayBlockingQueue<Object[]> atariZvukFronta =
+            new java.util.concurrent.ArrayBlockingQueue<>(8);
+    private Thread atariZvukVlakno = null;
+    private volatile boolean atariZvukBezi = false;
+    private volatile long atariZvukZahozeno = 0L;
+    private long atariMostUs = 0, atariMostPocet = 0, atariMostLogMs = 0;
+
+    private void atariZvukDoFronty(String b64, int sampleRate) {
+        if (!atariZvukBezi) atariZvukStart();
+        if (!atariZvukFronta.offer(new Object[]{ b64, sampleRate })) {
+            atariZvukFronta.poll();                      // zahodit nejstarsi
+            atariZvukFronta.offer(new Object[]{ b64, sampleRate });
+            atariZvukZahozeno++;
+        }
+    }
+
+    private synchronized void atariZvukStart() {
+        if (atariZvukBezi) return;
+        atariZvukBezi = true;
+        atariZvukVlakno = new Thread(() -> {
+            long posledniHlaseni = 0;
+            while (atariZvukBezi) {
+                try {
+                    Object[] p = atariZvukFronta.poll(200,
+                            java.util.concurrent.TimeUnit.MILLISECONDS);
+                    if (p == null) continue;
+                    byte[] data = Base64.decode((String) p[0], Base64.DEFAULT);
+                    napTvWebAudioPushMonoPcm16Bytes(data, (Integer) p[1], "ATARI");
+                    long ted = System.currentTimeMillis();
+                    if (atariZvukZahozeno > 0 && ted - posledniHlaseni > 5000) {
+                        posledniHlaseni = ted;
+                        appendNativeLog("BUILD2SA48 ATARI_ZVUK zahozeno davek="
+                                + atariZvukZahozeno + " (fronta nestiha)");
+                        atariZvukZahozeno = 0;
+                    }
+                } catch (InterruptedException ie) {
+                    return;
+                } catch (Throwable ignored) {}
+            }
+        }, "nap-atari-zvuk");
+        atariZvukVlakno.setPriority(Thread.MAX_PRIORITY);
+        atariZvukVlakno.start();
+        appendNativeLog("BUILD2SA48 ATARI_ZVUK vlakno spusteno");
+    }
+
+    private void atariZvukStop() {
+        atariZvukBezi = false;
+        atariZvukFronta.clear();
+        if (atariZvukVlakno != null) { atariZvukVlakno.interrupt(); atariZvukVlakno = null; }
+    }
     /** BUILD2SA41: zvuk intra - pocita se v Jave, at jde i na TV. */
     private final NapIntroZvuk introZvuk = new NapIntroZvuk();
 
@@ -881,13 +942,11 @@ public class MainActivity extends Activity {
                     // Polovicni strana = ctvrtina bodu = ctvrtinova cena.
                     // Na TV je obraz mekci, ale emulator ma cas pocitat.
                     // Tyka se to JEN Atari - ostatni davaji snimek z jadra.
-                    boolean atariOkno = false;
-                    try {
-                        String cuA = (web == null) ? null : web.getUrl();
-                        atariOkno = (cuA != null) && cuA.contains("emu_vbxe");
-                    } catch (Throwable ignored9) {}
-                    if (atariOkno) maxSide = Math.max(360, maxSide / 2);
-
+                    // BUILD2SA48: polovicni rozliseni VRACENO.
+                    // Merenim se ukazalo, ze snimani stoji jen asi 19 %
+                    // hlavniho vlakna (kopieBitmapy 150 ms + pixely 242 ms
+                    // + drain 89 ms za 2,5 s). Osekavat obraz na TV tedy
+                    // nemelo smysl - pricina je jinde.
                     float scale = Math.min(1.0f, (float)maxSide / Math.max(sw, sh));
                     int bw = Math.max(2, (int)(sw * scale)), bh = Math.max(2, (int)(sh * scale));
                     // BUILD2SK48: KRITICKY NALEZ - napTvWebBitmap byla SDILENA mezi
@@ -1213,7 +1272,7 @@ public class MainActivity extends Activity {
                     effectiveDelay = ps1PrimoZJadra
                             ? napTvWebH264FastTickMs                 // z jadra: 16 ms staci
                             : naAtariJs
-                                ? Math.max(napTvWebFrameDelayMs, 66) // Atari: vlakno musi dychat
+                                ? Math.max(napTvWebFrameDelayMs, 40) // Atari: snima se okno
                                 : Math.max(8, napTvWebFrameDelayMs / 2);
                 }
             } catch (Throwable ignored) {}
@@ -3757,13 +3816,41 @@ public class MainActivity extends Activity {
         @JavascriptInterface public int getQualityTier() {
             return napTvWebQualityTier;
         }
+        /**
+         * BUILD2SA48: MOST UZ NECEKA.
+         *
+         * Tohle vola Atari z JavaScriptu pro KAZDOU davku zvuku. Drive se
+         * primo tady rozkodoval base64 a davka se protlacila do zvukove
+         * cesty - a JavaScriptove vlakno, NA KTEREM BEZI EMULATOR, na to
+         * cekalo. Odtud kousani obrazu i zvuku, a to i na mobilu, protoze
+         * se to deje jen pri zapnute TV.
+         *
+         * Ted se retezec jen odlozi do fronty a odpovi se hned. Rozkodovani
+         * i predani dela vlastni vlakno.
+         *
+         * (Prevod na text a btoa() na strane prohlizece zustava - to je
+         * uvnitr puvodniho Atari a na to bez Reneho svoleni nesaham.)
+         */
         @JavascriptInterface public String pushAtariPcm16(String b64, int sampleRate, int frames) {
             try {
                 if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
                 if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
-                byte[] data = Base64.decode(b64, Base64.DEFAULT);
-                napTvWebAudioPushMonoPcm16Bytes(data, sampleRate, "ATARI");
-                return "TV_WEB_AUDIO_ATARI_OK bytes=" + data.length + " frames=" + frames + " hz=" + sampleRate;
+                // BUILD2SA48: ZMERIT, JAK DLOUHO JS VLAKNO CEKA.
+                // Tohle je presne to misto, kde se emulator zastavi -
+                // priste uz to nebudu odhadovat.
+                long t0 = System.nanoTime();
+                atariZvukDoFronty(b64, sampleRate);
+                long us = (System.nanoTime() - t0) / 1000;
+                atariMostUs += us; atariMostPocet++;
+                long ted = System.currentTimeMillis();
+                if (ted - atariMostLogMs > 5000 && atariMostPocet > 0) {
+                    atariMostLogMs = ted;
+                    appendNativeLog("BUILD2SA48 ATARI_MOST prumer="
+                            + (atariMostUs / atariMostPocet) + "us davek=" + atariMostPocet
+                            + " fronta=" + atariZvukFronta.size());
+                    atariMostUs = 0; atariMostPocet = 0;
+                }
+                return "TV_WEB_AUDIO_ATARI_OK frames=" + frames + " hz=" + sampleRate;
             } catch (Throwable t) {
                 String e = "TV_WEB_AUDIO_ATARI_FAIL " + safeMsg(t);
                 appendNativeLog("BUILD2SA13C " + e);
