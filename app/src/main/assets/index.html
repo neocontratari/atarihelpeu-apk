@@ -276,8 +276,8 @@ var tvPokusStav=0;
 var stTv=$('stTvPokus');
 if(stTv)stTv.addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
-  tvPokusStav=(tvPokusStav+1)%3;
-  var jm=['OBOJI','JEN ZVUK','JEN OBRAZ'][tvPokusStav];
+  tvPokusStav=(tvPokusStav+1)%4;
+  var jm=['OBOJI','JEN ZVUK','JEN OBRAZ','KRESLENIM'][tvPokusStav];
   try{ if(window.AHINTRO&&AHINTRO.tvPokus) AHINTRO.tvPokus(tvPokusStav); }catch(err){}
   stTv.textContent='TV POKUS: '+jm;
   log('TV_POKUS '+jm);

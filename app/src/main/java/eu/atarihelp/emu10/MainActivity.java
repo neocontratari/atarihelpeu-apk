@@ -154,11 +154,30 @@ public class MainActivity extends Activity {
     //                   zvukovou cestou.
     //    "oboji"     -> normalni provoz.
     // ==================================================================
-    public static final int TV_OBOJI = 0, TV_JEN_ZVUK = 1, TV_JEN_OBRAZ = 2;
+    //  BUILD2SA50: A CTVRTA VOLBA - JINY ZPUSOB SNIMANI.
+    //
+    //  Rene na to prisel: "jinak posilas obraz a zvuk z atari nez ze segy
+    //  a ps1". Presne tak:
+    //     SEGA a PS1   snimek jde PRIMO Z JADRA, okno se nesnima vubec
+    //     ATARI        PixelCopy CELEHO OKNA
+    //
+    //  PixelCopy si vynuti CTENI ZPATKY Z GRAFICKE KARTY a tim zastavi
+    //  cely vykreslovaci retez - a v tom retezu kresli i platno, na
+    //  kterem bezi Atari. Odtud kousani hned po zapnuti TV, at tempo
+    //  osekam jakkoli.
+    //
+    //  V kodu uz je druha cesta: napTvWebCaptureByDraw() kresli
+    //  PROCESOREM a grafiku nezastavi. Atari ji ale nedostane, protoze
+    //  je v seznamu obrazovek, kde se jede pres PixelCopy.
+    //  TV_KRESLENIM ji zapne.
+    public static final int TV_OBOJI = 0, TV_JEN_ZVUK = 1, TV_JEN_OBRAZ = 2,
+                            TV_KRESLENIM = 3;
     private volatile int tvPokusRezim = TV_OBOJI;
 
     private boolean tvSmiObraz() { return tvPokusRezim != TV_JEN_ZVUK; }
     private boolean tvSmiZvuk()  { return tvPokusRezim != TV_JEN_OBRAZ; }
+    /** Ma se u Atari misto PixelCopy kreslit procesorem? */
+    private boolean tvKreslenim() { return tvPokusRezim == TV_KRESLENIM; }
 
     private void atariZvukDoFronty(String b64, int sampleRate) {
         if (!atariZvukBezi) atariZvukStart();
@@ -2561,7 +2580,10 @@ public class MainActivity extends Activity {
             Bitmap frame = (rowPixels == w) ? padded : Bitmap.createBitmap(padded, 0, 0, w, h);
             if (frame != padded) padded.recycle();
             boolean djScreenSys = false, hqLiteScreenSys = false;
-            try { String cu = web == null ? null : web.getUrl(); djScreenSys = cu != null && cu.contains("/dj/"); hqLiteScreenSys = cu != null && (cu.contains("/emu_ps1/") || cu.contains("/emu_sega/") || cu.contains("/emu/") || cu.contains("/emu_vbxe/") || cu.contains("/dj/") || cu.contains("/player/")); } catch (Throwable ignored) {}
+            try { String cu = web == null ? null : web.getUrl(); djScreenSys = cu != null && cu.contains("/dj/"); hqLiteScreenSys = cu != null && (cu.contains("/emu_ps1/") || cu.contains("/emu_sega/") || cu.contains("/emu/") || cu.contains("/emu_vbxe/") || cu.contains("/dj/") || cu.contains("/player/"));
+                 // BUILD2SA50: pri pokusu "kreslenim" vyradime Atari ze
+                 // seznamu, kde se snima pres PixelCopy - pujde kreslenim
+                 if (tvKreslenim() && cu != null && cu.contains("/emu_vbxe/")) hqLiteScreenSys = false; } catch (Throwable ignored) {}
             int[] qvSys = napTvWebQualityFor(djScreenSys, hqLiteScreenSys, w > h);
             napTvWebJpegQuality = qvSys[1];
             napTvWebFrameDelayMs = w > h ? 60 : 55;
@@ -3580,6 +3602,7 @@ public class MainActivity extends Activity {
             tvPokusRezim = (rezim < 0 || rezim > 2) ? TV_OBOJI : rezim;
             String jm = tvPokusRezim == TV_JEN_ZVUK ? "JEN ZVUK (obraz se nesnima)"
                       : tvPokusRezim == TV_JEN_OBRAZ ? "JEN OBRAZ (zvuk se neposila)"
+                      : tvPokusRezim == TV_KRESLENIM ? "KRESLENIM (Atari bez PixelCopy)"
                       : "OBOJI (normalni provoz)";
             appendNativeLog("BUILD2SA49 TV_POKUS -> " + jm);
             return jm;
