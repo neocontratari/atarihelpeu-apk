@@ -1157,6 +1157,15 @@ public class MainActivity extends Activity {
                         napTvWebPixelCopyPending = false;
                     } else if (!didTimeoutFallback && pixelCopyAllowed) {
                         int[] loc = new int[2];
+                        // BUILD2SA54: KDYZ SNIMKY DAVA SAMO ATARI, TADY UZ
+                        // SE NESNIMA. Pojistku jsem mel o 200 radku vys
+                        // v jine vetvi, takze PixelCopy bezel dal - v logu
+                        // 238x SOUCASNE s prijimanim snimku. Delalo se tedy
+                        // oboji a bylo to pomalejsi nez predtim.
+                        if (System.currentTimeMillis() - atariFbPosledniMs < 1500) {
+                            napTvWebPixelCopyPending = false;
+                            return;
+                        }
                         rootFrame.getLocationInWindow(loc);
                         Rect src = new Rect(loc[0], loc[1], loc[0] + sw, loc[1] + sh);
                         napTvWebPixelCopyPending = true;
@@ -2726,6 +2735,7 @@ public class MainActivity extends Activity {
      */
     private int[] atariFbArgb = null;
     private volatile long atariFbPocet = 0, atariFbLogMs = 0, atariFbPosledniMs = 0;
+    private long klavesPocet = 0, klavesLogMs = 0;
 
     /**
      * BUILD2SA53: preda klavesu z pocitace do Atari.
@@ -2752,6 +2762,15 @@ public class MainActivity extends Activity {
         }
         ui.post(() -> { try { if (web != null) web.evaluateJavascript(js, null); }
                         catch (Throwable ignored) {} });
+        // at je v logu videt, ze klavesa dorazila - kdyz se nic nedeje,
+        // pozna se, jestli chyba je pred timhle mistem, nebo za nim
+        klavesPocet++;
+        long ted = System.currentTimeMillis();
+        if (ted - klavesLogMs > 3000) {
+            klavesLogMs = ted;
+            appendNativeLog("BUILD2SA54 KLAVESA code=" + code + " znak=" + znak
+                    + " dolu=" + dolu + " celkem=" + klavesPocet);
+        }
         byte[] ok = "OK".getBytes("UTF-8");
         napTvWebHeader(out, "200 OK", "text/plain", ok.length, true);
         out.write(ok);
@@ -3355,34 +3374,36 @@ public class MainActivity extends Activity {
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
                 + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 + "setInterval(pollFps,1000);"
-                // ===== BUILD2SA53: KLAVESNICE Z POCITACE =====
-                // Co se zmackne tady v prohlizeci, posle se do aplikace
-                // a Atari to dostane stejne, jako kdyby se psalo primo
-                // na telefonu. Posila se e.code (KeyA, Digit1, Enter...)
-                // a k tomu znak, kdyby se kod nenasel.
-                + "var klavOn=true, klavPosl='';"
-                + "function klavPosli(code,znak,dolu,ctrl){"
-                + "  if(!klavOn) return;"
-                + "  try{ fetch('/klavesa?code='+encodeURIComponent(code)"
+                + "})();</script>"
+                // ===== BUILD2SA54: KLAVESNICE Z POCITACE =====
+                // VLASTNI SKRIPT, ne uvnitr toho velkeho.
+                // Drive byla vevnitr - kdyz cokoli nad ni selhalo, uz se
+                // nespustila. V logu nebyla ani jedna klavesa.
+                + "<script>(function(){"
+                + "function posli(code,znak,dolu,ctrl){"
+                + "  try{var u='/klavesa?code='+encodeURIComponent(code)"
                 + "    +'&znak='+encodeURIComponent(znak||'')"
-                + "    +'&dolu='+(dolu?1:0)+'&ctrl='+(ctrl?1:0)); }catch(e){}"
+                + "    +'&dolu='+(dolu?1:0)+'&ctrl='+(ctrl?1:0);"
+                + "    var x=new XMLHttpRequest(); x.open('GET',u,true); x.send();"
+                + "  }catch(e){}"
                 + "}"
-                + "window.addEventListener('keydown',function(e){"
-                + "  if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;"
-                + "  if(e.key==='F2'){ klavPosli('Break','',true,false); e.preventDefault(); return; }"
-                + "  klavPosli(e.code, e.key, true, e.ctrlKey);"
-                + "  klavPosl=e.code;"
-                + "  if(e.key!=='F5'&&e.key!=='F12') e.preventDefault();"
-                + "});"
-                + "window.addEventListener('keyup',function(e){"
-                + "  if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;"
-                + "  klavPosli(e.code, e.key, false, false);"
-                + "});"
-                // maly napis, at je videt, ze klavesnice jede
+                + "document.addEventListener('keydown',function(e){"
+                + "  var t=e.target;"
+                + "  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
+                + "  if(e.key==='F5'||e.key==='F12') return;"
+                + "  if(e.key==='F2'){ posli('Break','',true,false); e.preventDefault(); return; }"
+                + "  posli(e.code,e.key,true,e.ctrlKey);"
+                + "  e.preventDefault();"
+                + "},true);"
+                + "document.addEventListener('keyup',function(e){"
+                + "  var t=e.target;"
+                + "  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
+                + "  posli(e.code,e.key,false,false);"
+                + "},true);"
                 + "var kn=document.createElement('div');"
                 + "kn.style.cssText='position:fixed;right:10px;bottom:8px;padding:4px 7px;"
-                + "background:rgba(0,0,0,.55);border-radius:4px;font:13px monospace;color:#9fdcff';"
-                + "kn.textContent='KLAVESNICE ZAPNUTA (F2 = BREAK)';"
+                + "background:rgba(0,0,0,.6);border-radius:4px;font:13px monospace;color:#9fdcff;z-index:99999';"
+                + "kn.textContent='KLAVESNICE ZAPNUTA - F2 = BREAK';"
                 + "document.body.appendChild(kn);"
                 + "})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
