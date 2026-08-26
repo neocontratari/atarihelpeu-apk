@@ -5060,9 +5060,19 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         if(!M) return 'CHYBI_EMULATOR';
         if(!dolu){ M.keyUp(); return 'PUSTENO'; }
         if(code==='Break'){ M.breakKey(); return 'BREAK'; }
-        var sc=CODE[code];
-        if(sc===undefined && znak && znak.length===1) sc=charToScan(znak);
-        if(sc===undefined) return 'NEZNAMA:'+code;
+        // BUILD2SA57: NEJDRIV ZNAK, AZ POTOM FYZICKA KLAVESA.
+        //
+        // Drive se bral e.code, tedy MISTO na klavesnici. Jenze na ceske
+        // klavesnici je na tom miste jiny znak nez na anglicke - proto
+        // se pri psani uvozovek objevila petka.
+        //
+        // Znak (e.key) uz ma rozlozeni zapocitane, takze je spolehlivejsi.
+        // Fyzicka klavesa se pouzije jen u toho, co znak nema: Enter,
+        // sipky, Backspace, Tab.
+        var sc;
+        if(znak && znak.length===1) sc=charToScan(znak);
+        if(sc===undefined) sc=CODE[code];
+        if(sc===undefined) return 'NEZNAMA:'+code+(znak?'/'+znak:'');
         if(ctrl) sc|=0x80;
         M.keyDown(sc&0xFF);
         return 'OK:'+code+'=scan'+(sc&0xFF);

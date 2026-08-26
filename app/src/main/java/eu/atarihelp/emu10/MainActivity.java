@@ -9380,8 +9380,30 @@ public class MainActivity extends Activity {
         else super.onBackPressed();
     }
 
+    /**
+     * BUILD2SA57: ZAPSAT, KDYZ APLIKACE ODCHAZI DO POZADI.
+     *
+     * Rene hlasi, ze po necinosti aplikace vyskoci ven. Pricinu jsem
+     * v kodu nenasel - zadne finish(), zadny casovac. Proto se ted
+     * zapise KAZDY odchod i s tim, co v tu chvili bezelo, at je z ceho
+     * vyjit misto hadani.
+     */
+    private void zapisOdchod(String kdy) {
+        try {
+            appendNativeLog("BUILD2SA57 APLIKACE_" + kdy
+                    + " url=" + compactUrl(napTvWebCurrentUrl)
+                    + " tv=" + napTvWebRunning
+                    + " ps1bios=" + ps1BiosRunning
+                    + " ps1session=" + ps1SessionActive
+                    + " intro=" + introZivaCast
+                    + " pametVolna=" + (Runtime.getRuntime().freeMemory()/1048576) + "MB"
+                    + " pametMax=" + (Runtime.getRuntime().maxMemory()/1048576) + "MB");
+        } catch (Throwable ignored) {}
+    }
+
     @Override
     protected void onPause() {
+        zapisOdchod("PAUZA");
         super.onPause();
         if (ps1GameWindowOwnsCore) {
             // Jadro si prevzalo okno hry - appka ho NESMI zastavovat.
@@ -9395,6 +9417,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        zapisOdchod("ZRUSENA");
         try { napTvWebStop("activityDestroy"); } catch (Throwable ignored) {} // BUILD2SA13C
         try { if (napTvPresentation != null) napTvPresentation.dismiss(); } catch (Throwable ignored) {} // BUILD2SA13
         try { if (napDisplayManager != null) napDisplayManager.unregisterDisplayListener(napTvListener); } catch (Throwable ignored) {}
