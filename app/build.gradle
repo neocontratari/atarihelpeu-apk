@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 219
-        versionName "EMU10-B171-CESKA-KLAVESNICE"  // bral jsem fyzickou klavesu misto znaku - na ceske klavesnici je na tom miste neco jineho, proto pri uvozovkach vyskocila petka. Ted se bere znak.
+        versionCode 220
+        versionName "EMU10-B172-PADY-A-KLAVESNICE"  // aplikace padala v Atari, protoze jsem alokoval 360 kB na KAZDY snimek - 411 MB odpadu za minutu a pul. Shift psal S, protoze jsem retezec orezal na prvni pismeno.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

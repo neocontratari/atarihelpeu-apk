@@ -2730,6 +2730,7 @@ public class MainActivity extends Activity {
      */
     private int[] atariFbArgb = null;
     private volatile long atariFbPocet = 0, atariFbLogMs = 0, atariFbPosledniMs = 0;
+    private byte[] atariFbData = null;      // drzi se, nevyrabi se znovu
     private long klavesPocet = 0, klavesLogMs = 0;
 
     /**
@@ -2809,7 +2810,14 @@ public class MainActivity extends Activity {
      * retezec a pripsat vlastni kod.
      */
     private static String znakBezpecne(String s) {
-        if (s == null || s.isEmpty()) return "";
+        // BUILD2SA58: MUSI TO BYT PRESNE JEDEN ZNAK.
+        //
+        // Drive se bral PRVNI znak z retezce - takze z "Shift" vyslo "S"
+        // a pri zmacknuti Shiftu se do Atari napsalo pismeno S.
+        // Totez by delalo "Enter" -> "E", "Control" -> "C".
+        //
+        // Nazvy klaves maji vic znaku, skutecny psany znak prave jeden.
+        if (s == null || s.length() != 1) return "";
         char c = s.charAt(0);
         if (c == '\'' || c == '\\' || c == '/' || c < 32 || c > 126) return "";
         return String.valueOf(c);
@@ -2858,7 +2866,16 @@ public class MainActivity extends Activity {
             napTvWebHeader(out, "400 Bad Request", "text/plain", 0, true);
             return;
         }
-        byte[] data = new byte[delka];
+        // BUILD2SA58: POLE SE UZ NEVYRABI NA KAZDY SNIMEK.
+        //
+        // Drive tu bylo new byte[delka] pokazde - 360 kB na snimek,
+        // pri 16 snimcich za vterinu 5,6 MB/s a za minutu a pul pres
+        // 400 MB odpadu. Uklizec pameti to nestihal a aplikace spadla.
+        // Padalo to JEN v Atari, protoze jinde tahle cesta nebezi.
+        //
+        // Ted se pole drzi a jen se prepisuje.
+        if (atariFbData == null || atariFbData.length < delka) atariFbData = new byte[delka];
+        byte[] data = atariFbData;
         int cti = 0;
         // cast tela uz mohla prijit spolu s hlavickami
         if (telZacatek != null && telZacatek.length > 0) {
@@ -3399,6 +3416,22 @@ public class MainActivity extends Activity {
                 // Drive byla vevnitr - kdyz cokoli nad ni selhalo, uz se
                 // nespustila. V logu nebyla ani jedna klavesa.
                 + "<script>(function(){"
+                // BUILD2SA59: STRANKA SI MUSI DRZET ZAMERENI.
+                // Na projektoru nebo na druhe obrazovce ho okno snadno
+                // ztrati a prohlizec pak klavesy nikam neposila. Proto
+                // si ho bereme zpatky pri kazdem doteku i po prepnuti.
+                + "try{document.body.tabIndex=0;document.body.focus();}catch(e){}"
+                + "function chytZamereni(){try{window.focus();document.body.focus();}catch(e){}}"
+                + "window.addEventListener('focus',chytZamereni);"
+                + "document.addEventListener('mousedown',chytZamereni,true);"
+                + "document.addEventListener('touchstart',chytZamereni,true);"
+                + "setInterval(function(){ if(document.activeElement===document.body) return;"
+                + "  var t=document.activeElement;"
+                + "  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
+                + "  chytZamereni(); },2000);"
+                // prehazovace se NEPOSILAJI - samy o sobe nic nepisou
+                + "var PREHAZOVACE={Shift:1,Control:1,Alt:1,Meta:1,AltGraph:1,"
+                + "CapsLock:1,NumLock:1,ScrollLock:1,Dead:1};"
                 + "function posli(code,znak,dolu,ctrl){"
                 + "  try{var u='/klavesa?code='+encodeURIComponent(code)"
                 + "    +'&znak='+encodeURIComponent(znak||'')"
@@ -3411,18 +3444,24 @@ public class MainActivity extends Activity {
                 + "  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
                 + "  if(e.key==='F5'||e.key==='F12') return;"
                 + "  if(e.key==='F2'){ posli('Break','',true,false); e.preventDefault(); return; }"
+                + "  if(PREHAZOVACE[e.key]) return;"
                 + "  posli(e.code,e.key,true,e.ctrlKey);"
                 + "  e.preventDefault();"
                 + "},true);"
                 + "document.addEventListener('keyup',function(e){"
                 + "  var t=e.target;"
                 + "  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
+                + "  if(PREHAZOVACE[e.key]) return;"
                 + "  posli(e.code,e.key,false,false);"
                 + "},true);"
                 + "var kn=document.createElement('div');"
                 + "kn.style.cssText='position:fixed;right:10px;bottom:8px;padding:4px 7px;"
                 + "background:rgba(0,0,0,.6);border-radius:4px;font:13px monospace;color:#9fdcff;z-index:99999';"
                 + "kn.textContent='KLAVESNICE ZAPNUTA - F2 = BREAK';"
+                + "setInterval(function(){ var m=(document.hasFocus&&document.hasFocus());"
+                + "  kn.textContent=m?'KLAVESNICE ZAPNUTA - F2 = BREAK'"
+                + "    :'KLIKNI DO OBRAZU - okno nema zamereni';"
+                + "  kn.style.color=m?'#9fdcff':'#ffb0b0'; },1000);"
                 + "document.body.appendChild(kn);"
                 + "})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
