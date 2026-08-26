@@ -58,6 +58,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <button id="stOdemkni" type="button">ODEMKNOUT DALSI</button>
     <button id="stZamkni" type="button">ZAMKNOUT VSE</button>
     <button id="stAktual" type="button">AKTUALIZOVAT APLIKACI</button>
+    <button id="stTvPokus" type="button">TV POKUS: OBOJI</button>
 
     <div class="stlabel2">NASTAVENI</div>
     <div class="qrow">
@@ -267,6 +268,19 @@ if(stAk)stAk.addEventListener('click',function(e){
   try{ if(window.AHINTRO&&AHINTRO.aktualizuj) AHINTRO.aktualizuj(); }catch(err){}
   log('SETTINGS_AKTUALIZACE');
   closeSettings();
+},true);
+
+// BUILD2SA49: pokus, ktery ma rozhodnout, ktera pulka TV zpusobuje
+// kousani Atari. Prepina se dokola: oboji -> jen zvuk -> jen obraz.
+var tvPokusStav=0;
+var stTv=$('stTvPokus');
+if(stTv)stTv.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  tvPokusStav=(tvPokusStav+1)%3;
+  var jm=['OBOJI','JEN ZVUK','JEN OBRAZ'][tvPokusStav];
+  try{ if(window.AHINTRO&&AHINTRO.tvPokus) AHINTRO.tvPokus(tvPokusStav); }catch(err){}
+  stTv.textContent='TV POKUS: '+jm;
+  log('TV_POKUS '+jm);
 },true);
 
 var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);

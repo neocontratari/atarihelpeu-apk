@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 210
-        versionName "EMU10-B162-MOST-NECEKA"  // zvuk z Atari se protlacoval mostem synchronne a JS vlakno, kde bezi emulator, cekalo na zamek zvukove cesty. Ted se davka jen odlozi do fronty. Osekani obrazu na TV vraceno - merenim se ukazalo, ze snimani nebyla pricina.
+        versionCode 211
+        versionName "EMU10-B163-TV-POKUS"  // most drzi vlakno jen 0,5 ms a snimani stoji 19 % - ani jedno kousat nema. Prepinac rozdeli TV na obraz a zvuk, at se pozna, ktera pulka to dela.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

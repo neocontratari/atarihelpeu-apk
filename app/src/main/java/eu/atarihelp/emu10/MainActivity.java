@@ -138,6 +138,28 @@ public class MainActivity extends Activity {
     private volatile long atariZvukZahozeno = 0L;
     private long atariMostUs = 0, atariMostPocet = 0, atariMostLogMs = 0;
 
+    // ==================================================================
+    //  BUILD2SA49: POKUS, KTERY TO ROZHODNE
+    //
+    //  Zmerili jsme, ze most drzi JS vlakno jen 0,5 ms a fronta je
+    //  prazdna, a ze snimani stoji asi 19 % vlakna. Ani jedno by kousat
+    //  nemelo - a presto se to kouse, jakmile se TV zapne.
+    //
+    //  Prestavam hadat. TV ma dve pulky: OBRAZ a ZVUK. Timhle prepinacem
+    //  se da jedna z nich vypnout a hned se pozna, ktera to dela:
+    //
+    //    "jen zvuk"  -> obraz se nesnima. Kdyz Atari prestane kousat,
+    //                   je to snimanim obrazu.
+    //    "jen obraz" -> zvuk se neposila. Kdyz prestane kousat, je to
+    //                   zvukovou cestou.
+    //    "oboji"     -> normalni provoz.
+    // ==================================================================
+    public static final int TV_OBOJI = 0, TV_JEN_ZVUK = 1, TV_JEN_OBRAZ = 2;
+    private volatile int tvPokusRezim = TV_OBOJI;
+
+    private boolean tvSmiObraz() { return tvPokusRezim != TV_JEN_ZVUK; }
+    private boolean tvSmiZvuk()  { return tvPokusRezim != TV_JEN_OBRAZ; }
+
     private void atariZvukDoFronty(String b64, int sampleRate) {
         if (!atariZvukBezi) atariZvukStart();
         if (!atariZvukFronta.offer(new Object[]{ b64, sampleRate })) {
@@ -902,7 +924,8 @@ public class MainActivity extends Activity {
                                 + " url=" + curUrl);
                     }
                 }
-                if (napTvWebRunning && appCapture && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
+                if (napTvWebRunning && appCapture && tvSmiObraz()
+                        && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
                     int sw = rootFrame.getWidth(), sh = rootFrame.getHeight();
                     boolean landscape = sw > sh;
                     // BUILD2SK11: DJ obrazovka je staticka UI (jemny text, EQ tahla) - vyhody
@@ -3549,6 +3572,19 @@ public class MainActivity extends Activity {
             });
         }
 
+        /**
+         * BUILD2SA49: prepinani pokusu. 0 = oboji, 1 = jen zvuk, 2 = jen obraz.
+         * Slouzi k tomu, aby se poznalo, ktera pulka TV zpusobuje kousani.
+         */
+        @JavascriptInterface public String tvPokus(int rezim) {
+            tvPokusRezim = (rezim < 0 || rezim > 2) ? TV_OBOJI : rezim;
+            String jm = tvPokusRezim == TV_JEN_ZVUK ? "JEN ZVUK (obraz se nesnima)"
+                      : tvPokusRezim == TV_JEN_OBRAZ ? "JEN OBRAZ (zvuk se neposila)"
+                      : "OBOJI (normalni provoz)";
+            appendNativeLog("BUILD2SA49 TV_POKUS -> " + jm);
+            return jm;
+        }
+
         /** RENEHO ZADNI VRATKA: vrati vse na zacatek. */
         @JavascriptInterface public void zamkniVse() {
             NapPostup.zamkniVse(MainActivity.this);
@@ -3834,6 +3870,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String pushAtariPcm16(String b64, int sampleRate, int frames) {
             try {
                 if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
+                if (!tvSmiZvuk()) return "TV_WEB_AUDIO_VYPNUT_POKUSEM";
                 if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
                 // BUILD2SA48: ZMERIT, JAK DLOUHO JS VLAKNO CEKA.
                 // Tohle je presne to misto, kde se emulator zastavi -
@@ -3860,6 +3897,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String pushPlayerPcm16(String b64, int sampleRate, int frames, int channels) {
             try {
                 if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
+                if (!tvSmiZvuk()) return "TV_WEB_AUDIO_VYPNUT_POKUSEM";
                 if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
                 if (channels <= 1) napTvWebAudioPushMonoPcm16Bytes(data, sampleRate, "PLAYER");
@@ -3874,6 +3912,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String pushYoutubePcm16(String b64, int sampleRate, int frames, int channels) {
             try {
                 if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
+                if (!tvSmiZvuk()) return "TV_WEB_AUDIO_VYPNUT_POKUSEM";
                 if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
                 if (channels <= 1) napTvWebAudioPushMonoPcm16Bytes(data, sampleRate, "YOUTUBE");
