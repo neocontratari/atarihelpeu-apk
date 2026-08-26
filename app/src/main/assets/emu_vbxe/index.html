@@ -6875,6 +6875,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   //  cekani (fetch je asynchronni), zadne PixelCopy.
   // ==================================================================
   var tvFbPort=null, tvFbPosila=false, tvFbPreskoceno=0, tvFbPosledni=0;
+  var tvFbOk=0, tvFbChyb=0, tvFbChybaLog=0;
   function posliSnimekNaTv(u8, w, h){
     try{
       if(!window.AHTVWEB || !AHTVWEB.status) return;
@@ -6891,8 +6892,16 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       tvFbPosila=true;
       fetch('http://127.0.0.1:'+tvFbPort+'/atarifb?w='+w+'&h='+h+'&len='+u8.length,
             { method:'POST', body:u8.slice(0) })
-        .then(function(){ tvFbPosila=false; })
-        .catch(function(){ tvFbPosila=false; tvFbPort=null; });
+        .then(function(){ tvFbPosila=false; tvFbOk++; })
+        .catch(function(e){
+          tvFbPosila=false; tvFbPort=null; tvFbChyb++;
+          // rict to nahlas - kdyz to prohlizec zablokuje, at to vidime
+          var t=Date.now();
+          if(t-tvFbChybaLog>5000){
+            tvFbChybaLog=t;
+            try{ log('TV snimek neodeslan ('+tvFbChyb+'x): '+(e&&e.message||e)); }catch(_){}
+          }
+        });
     }catch(e){ tvFbPosila=false; }
   }
 

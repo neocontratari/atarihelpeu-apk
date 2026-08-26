@@ -2727,6 +2727,80 @@ public class MainActivity extends Activity {
     private int[] atariFbArgb = null;
     private volatile long atariFbPocet = 0, atariFbLogMs = 0, atariFbPosledniMs = 0;
 
+    /**
+     * BUILD2SA53: preda klavesu z pocitace do Atari.
+     * Ocekava /klavesa?code=KeyA&dolu=1  (code je to, co dava prohlizec
+     * v e.code - stejne, jako kdyz se pise primo v telefonu)
+     */
+    private void napTvWebKlavesa(String fullPath, java.io.OutputStream out) throws Exception {
+        String code = napTvWebQueryText(fullPath, "code", "");
+        String znak = napTvWebQueryText(fullPath, "znak", "");
+        boolean dolu = napTvWebQueryLong(fullPath, "dolu", 1) != 0;
+        boolean ctrl = napTvWebQueryLong(fullPath, "ctrl", 0) != 0;
+        final String js;
+        if (!dolu) {
+            js = "try{M&&M.keyUp&&M.keyUp();}catch(e){}";
+        } else if ("Break".equals(code)) {
+            js = "try{M&&M.breakKey&&M.breakKey();}catch(e){}";
+        } else {
+            // stejny prevod, jaky dela stranka pri psani na klavesnici
+            js = "try{var sc=CODE['" + jsBezpecne(code) + "'];"
+               + "if(sc===undefined&&'" + znakBezpecne(znak) + "'.length===1)"
+               + "sc=charToScan('" + znakBezpecne(znak) + "');"
+               + "if(sc!==undefined){" + (ctrl ? "sc|=0x80;" : "")
+               + "M.keyDown(sc&0xFF);}}catch(e){}";
+        }
+        ui.post(() -> { try { if (web != null) web.evaluateJavascript(js, null); }
+                        catch (Throwable ignored) {} });
+        byte[] ok = "OK".getBytes("UTF-8");
+        napTvWebHeader(out, "200 OK", "text/plain", ok.length, true);
+        out.write(ok);
+    }
+
+    /**
+     * Osetri retezec, ktery jde do JavaScriptu.
+     *
+     * PUVODNI VERZE PROPOUSTELA APOSTROF A LOMITKA a slo tim podvrhnout
+     * kod - vlastni test to nasel na retezci "'; alert(1); //".
+     * Ted projdou JEN pismena, cislice a podtrzitko, coz na nazvy klaves
+     * (KeyA, Digit1, Enter, ArrowUp) bohate staci.
+     */
+    private static String jsBezpecne(String s) {
+        if (s == null) return "";
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < s.length() && i < 24; i++) {
+            char c = s.charAt(i);
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+                    || (c >= '0' && c <= '9') || c == '_') b.append(c);
+        }
+        return b.toString();
+    }
+
+    /**
+     * Znak, ktery se ma napsat. Tady musi projit i interpunkce, ale
+     * apostrof, zpetne lomitko a lomitko NE - tim by se dal ukoncit
+     * retezec a pripsat vlastni kod.
+     */
+    private static String znakBezpecne(String s) {
+        if (s == null || s.isEmpty()) return "";
+        char c = s.charAt(0);
+        if (c == '\'' || c == '\\' || c == '/' || c < 32 || c > 126) return "";
+        return String.valueOf(c);
+    }
+
+    private String napTvWebQueryText(String fullPath, String key, String fallback) {
+        try {
+            int q = fullPath.indexOf('?');
+            if (q < 0) return fallback;
+            for (String par : fullPath.substring(q + 1).split("&")) {
+                int r = par.indexOf('=');
+                if (r > 0 && par.substring(0, r).equals(key))
+                    return java.net.URLDecoder.decode(par.substring(r + 1), "UTF-8");
+            }
+        } catch (Throwable ignored) {}
+        return fallback;
+    }
+
     /** Preda snimek Atari na TV stejnou cestou, jakou chodi Sega a PS1. */
     private void atariFbNaTv(int[] argb, int w, int h) {
         try {
@@ -2745,7 +2819,8 @@ public class MainActivity extends Activity {
     }
 
     private void napTvWebPrijmiAtariSnimek(java.io.InputStream in, String fullPath,
-                                           java.io.OutputStream out) throws Exception {
+                                           java.io.OutputStream out,
+                                           byte[] telZacatek) throws Exception {
         int w = (int) napTvWebQueryLong(fullPath, "w", 384);
         int h = (int) napTvWebQueryLong(fullPath, "h", 240);
         int delka = (int) napTvWebQueryLong(fullPath, "len", w * h * 4);
@@ -2755,6 +2830,12 @@ public class MainActivity extends Activity {
         }
         byte[] data = new byte[delka];
         int cti = 0;
+        // cast tela uz mohla prijit spolu s hlavickami
+        if (telZacatek != null && telZacatek.length > 0) {
+            int kolik = Math.min(telZacatek.length, delka);
+            System.arraycopy(telZacatek, 0, data, 0, kolik);
+            cti = kolik;
+        }
         while (cti < delka) {
             int k = in.read(data, cti, delka - cti);
             if (k < 0) break;
@@ -3030,6 +3111,17 @@ public class MainActivity extends Activity {
             String path = "/";
             int a = req.indexOf(' '), b = a < 0 ? -1 : req.indexOf(' ', a + 1);
             if (a >= 0 && b > a) path = req.substring(a + 1, b);
+            // BUILD2SA52: metoda se hodi na predbezny dotaz OPTIONS
+            String method = (a > 0) ? req.substring(0, a).trim() : "GET";
+            // U POSTu uz cast tela prisla v tomhle prvnim cteni - zjistime,
+            // kde v buferu telo zacina, at se o nej neprijde.
+            int hlavicky = req.indexOf("\r\n\r\n");
+            int telOd = (hlavicky >= 0) ? hlavicky + 4 : n;
+            byte[] telZacatek = null;
+            if (telOd < n) {
+                telZacatek = new byte[n - telOd];
+                System.arraycopy(buf, telOd, telZacatek, 0, n - telOd);
+            }
             String fullPath = path;
             int q = path.indexOf('?');
             if (q >= 0) path = path.substring(0, q);
@@ -3056,6 +3148,16 @@ public class MainActivity extends Activity {
                 out.write(ok);
             } else if ("/audio.raw".equals(path)) {
                 napTvWebWriteAudioRaw(out, napTvWebQueryLong(fullPath, "after", -1));
+            } else if ("/klavesa".equals(path)) {
+                // BUILD2SA53: KLAVESNICE Z POCITACE.
+                //
+                // Prohlizec na PC, ktery se diva na TV, posle stisk klavesy
+                // sem a Java ho preda strance Atari uplne stejne, jako kdyz
+                // se zmackne na dotykove klavesnici v telefonu.
+                napTvWebKlavesa(fullPath, out);
+            } else if ("/atarifb".equals(path) && "OPTIONS".equalsIgnoreCase(method)) {
+                // predbezny dotaz prohlizece pred POSTem
+                napTvWebHeader(out, "204 No Content", "text/plain", 0, true);
             } else if ("/atarifb".equals(path)) {
                 // BUILD2SA51: SNIMEK Z ATARI PRIMO, JAKO U SEGY A PS1.
                 //
@@ -3067,7 +3169,7 @@ public class MainActivity extends Activity {
                 // Sega a PS1 to delaji spravne: snimek dava JADRO. Atari ho
                 // ted dava taky - posle ho sem POST-em jako binarni data.
                 // Zadne PixelCopy, zadne cteni z graficke karty, zadny base64.
-                napTvWebPrijmiAtariSnimek(in, fullPath, out);
+                napTvWebPrijmiAtariSnimek(in, fullPath, out, telZacatek);
             } else if ("/quality".equals(path)) {
                 long t = napTvWebQueryLong(fullPath, "tier", napTvWebQualityTier);
                 byte[] body = ("tier=" + napTvWebSetQualityTier(t)).getBytes("UTF-8");
@@ -3146,6 +3248,14 @@ public class MainActivity extends Activity {
                 + "Content-Type: " + type + "\r\n"
                 + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
                 + "Pragma: no-cache\r\n"
+                // BUILD2SA52: BEZ TOHOTO PROHLIZEC POST ODMITNE.
+                // Stranka Atari bezi z file:// a posila snimky na
+                // http://127.0.0.1 - to je jiny puvod a prohlizec ho bez
+                // techto hlavicek zablokuje. V logu to bylo videt tak, ze
+                // ATARI_SNIMEK nebyl ANI JEDNOU, zatimco PIXELCOPY 788x.
+                + "Access-Control-Allow-Origin: *\r\n"
+                + "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+                + "Access-Control-Allow-Headers: Content-Type\r\n"
                 + (len >= 0 ? "Content-Length: " + len + "\r\n" : "")
                 + "Connection: " + (close ? "close" : "keep-alive") + "\r\n\r\n";
         out.write(h.getBytes("ISO-8859-1"));
@@ -3244,7 +3354,37 @@ public class MainActivity extends Activity {
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
                 + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
-                + "setInterval(pollFps,1000);})();</script></body></html>";
+                + "setInterval(pollFps,1000);"
+                // ===== BUILD2SA53: KLAVESNICE Z POCITACE =====
+                // Co se zmackne tady v prohlizeci, posle se do aplikace
+                // a Atari to dostane stejne, jako kdyby se psalo primo
+                // na telefonu. Posila se e.code (KeyA, Digit1, Enter...)
+                // a k tomu znak, kdyby se kod nenasel.
+                + "var klavOn=true, klavPosl='';"
+                + "function klavPosli(code,znak,dolu,ctrl){"
+                + "  if(!klavOn) return;"
+                + "  try{ fetch('/klavesa?code='+encodeURIComponent(code)"
+                + "    +'&znak='+encodeURIComponent(znak||'')"
+                + "    +'&dolu='+(dolu?1:0)+'&ctrl='+(ctrl?1:0)); }catch(e){}"
+                + "}"
+                + "window.addEventListener('keydown',function(e){"
+                + "  if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;"
+                + "  if(e.key==='F2'){ klavPosli('Break','',true,false); e.preventDefault(); return; }"
+                + "  klavPosli(e.code, e.key, true, e.ctrlKey);"
+                + "  klavPosl=e.code;"
+                + "  if(e.key!=='F5'&&e.key!=='F12') e.preventDefault();"
+                + "});"
+                + "window.addEventListener('keyup',function(e){"
+                + "  if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;"
+                + "  klavPosli(e.code, e.key, false, false);"
+                + "});"
+                // maly napis, at je videt, ze klavesnice jede
+                + "var kn=document.createElement('div');"
+                + "kn.style.cssText='position:fixed;right:10px;bottom:8px;padding:4px 7px;"
+                + "background:rgba(0,0,0,.55);border-radius:4px;font:13px monospace;color:#9fdcff';"
+                + "kn.textContent='KLAVESNICE ZAPNUTA (F2 = BREAK)';"
+                + "document.body.appendChild(kn);"
+                + "})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
         napTvWebHeader(out, "200 OK", "text/html; charset=utf-8", b.length, false);
         out.write(b);
