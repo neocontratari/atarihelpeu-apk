@@ -1146,7 +1146,8 @@ public class MainActivity extends Activity {
                         }
                     } catch (Throwable ignored) {}
 
-                    boolean gotFromCore = napTvWebCaptureFromCore(bw, bh);
+                    boolean gotFromCore = napTvWebCaptureAtari(bw, bh)
+                            || napTvWebCaptureFromCore(bw, bh);
                     if (gotFromCore) {
                         napTvWebPixelCopyPending = false;
                     } else if (!didTimeoutFallback && pixelCopyAllowed) {
@@ -1289,37 +1290,16 @@ public class MainActivity extends Activity {
                     // pomale (46 ms = 22 snimku za vterinu, i kdyz enkoder
                     // stihal na 3 ms) - odtud zbyle zpozdeni.
                     boolean ps1PrimoZJadra = false;
-                    boolean naAtariJs = false;
                     try {
                         String cu0 = (web == null) ? null : web.getUrl();
                         boolean naSegeT = (cu0 != null) && cu0.contains("emu_sega");
                         boolean naPs1T  = (cu0 != null) && cu0.contains("emu_ps1")
                                 && (ps1BiosRunning || ps1SessionActive);
-                        ps1PrimoZJadra = naPs1T || naSegeT || introZivaCast;
-                        naAtariJs = (cu0 != null) && cu0.contains("emu_vbxe");
+                        ps1PrimoZJadra = naPs1T || naSegeT || introZivaCast;  // BUILD2SA62: i ziva jadra v intru
                     } catch (Throwable ignored2) {}
-
-                    // BUILD2SA47: ATARI MUSI DOSTAT POMALEJSI TEMPO, NE RYCHLEJSI.
-                    //
-                    // PS1, Sega i ziva jadra v intru davaji snimek PRIMO -
-                    // snimani okna se jich netyka a rychla vetev je u nich
-                    // spravne.
-                    //
-                    // Atari se ale emuluje V JAVASCRIPTU NA HLAVNIM VLAKNE
-                    // a snimek se z nej bere PixelCopy CELEHO OKNA - a ta
-                    // smycka bezi na tom SAMEM hlavnim vlakne. Kdyz si rekne
-                    // o rychlejsi tempo, vlakno je zahlcene a emulatoru
-                    // nezbude cas: kouse se obraz i zvuk, na mobilu i na TV.
-                    //
-                    // Vetev "Sega/Atari: rychleji" byla psana v dobe, kdy se
-                    // Sega jeste snimala z okna. Od B117 chodi z jadra a
-                    // v te vetvi zustalo jen Atari - tedy presne to, co tam
-                    // patri nejmene.
                     effectiveDelay = ps1PrimoZJadra
-                            ? napTvWebH264FastTickMs                 // z jadra: 16 ms staci
-                            : naAtariJs
-                                ? Math.max(napTvWebFrameDelayMs, 40) // Atari: snima se okno
-                                : Math.max(8, napTvWebFrameDelayMs / 2);
+                            ? napTvWebH264FastTickMs               // PS1: 16 ms staci
+                            : Math.max(8, napTvWebFrameDelayMs / 2);
                 }
             } catch (Throwable ignored) {}
             // POZNAMKA K TEMPU: smycka bezi na hlavnim vlakne pres
@@ -1363,6 +1343,43 @@ public class MainActivity extends Activity {
     private long tvSharpFrames = 0;
     private long tvFpsT0 = 0;
 
+    /**
+     * BUILD2SA62: ATARI MA VLASTNI CESTU, VEDLE - NE UVNITR.
+     *
+     * Do napTvWebCaptureFromCore(), ktera slouzi PS1 a Seze, jsem pridal
+     * tri podminky navic a diagnostiku, ktera se pocitala u KAZDEHO
+     * snimku. Ta funkce narostla z 256 na 309 radku a bezela i pri hrani
+     * PS1. Na Chromu se to ztratilo, na projektoru ne.
+     *
+     * Funkce je vracena PRESNE do stavu B156, ktery Renemu na projektoru
+     * bezel. Atari se resi tady, mimo ni.
+     */
+    private boolean napTvWebCaptureAtari(int bw, int bh) {
+        try {
+            String u = napTvWebCurrentUrl;
+            if (u == null || !u.contains("emu_vbxe")) return false;
+            int wh = atariFbVyzvedni(tvCoreArgb);
+            if (wh < 0) {
+                int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
+                tvCoreArgb = new int[need + 1024];
+                wh = atariFbVyzvedni(tvCoreArgb);
+            }
+            if (wh <= 0) return false;         // nic noveho - okno se snima dal
+            int sw = wh >> 16, sh = wh & 0xFFFF;
+            if (atariBmp == null || atariBmp.getWidth() != sw || atariBmp.getHeight() != sh) {
+                if (atariBmp != null && !atariBmp.isRecycled()) atariBmp.recycle();
+                atariBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
+                try { atariBmp.setHasAlpha(false); } catch (Throwable ignored) {}
+            }
+            atariBmp.setPixels(tvCoreArgb, 0, sw, 0, 0, sw, sh);
+            napTvWebPublishBitmap(atariBmp, "ATARI_FB");
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+    private Bitmap atariBmp = null;       // vlastni, sdilenou nezabira
+
     private boolean napTvWebCaptureFromCore(int bw, int bh) {
         try {
             // Prima cesta bezi -> javove snimani se VUBEC nedela.
@@ -1393,17 +1410,8 @@ public class MainActivity extends Activity {
                 String u = napTvWebCurrentUrl;
                 // Od B117 plati i pro Segu - ta uz taky dava snimek primo
                 // z jadra, takze ji sem musime pustit.
-                boolean naPs1 = (u != null) && (u.contains("emu_ps1") || u.contains("emu_sega")
-                                             || u.contains("emu_vbxe"));   // BUILD2SA55: i Atari
-                // BUILD2SA46: A TADY BYLA TA PRAVA ZAVORA.
-                //
-                // Behem intra je adresa porad etapa2.html, takze naPs1 vyslo
-                // false a funkce se vratila UZ TADY - o dvacet radku driv,
-                // nez moje oprava z B158. Proto se ani diagnostika z B159
-                // nespustila ANI JEDNOU, i kdyz TV prokazatelne bezela.
-                //
-                // Behem zivych casti intra jdeme dal.
-                if (!naPs1 && !introZivaCast) {
+                boolean naPs1 = (u != null) && (u.contains("emu_ps1") || u.contains("emu_sega"));
+                if (!naPs1) {
                     if (tvCoreHadFrame) appendNativeLog("TV_ZPET_NA_OKNO (odchod z PS1)");
                     tvCoreHadFrame = false;
                     return false;
@@ -1416,19 +1424,7 @@ public class MainActivity extends Activity {
                 String u2 = (web == null) ? null : web.getUrl();
                 naSege = (u2 != null) && u2.contains("emu_sega");
             } catch (Throwable ignored) {}
-            // BUILD2SA44: TAHLE PODMINKA VYSKOCILA DRIV, NEZ SE DOSLO
-            // K PREPNUTI PRO INTRO.
-            //
-            // Behem zivych casti intra zustava adresa porad etapa2.html,
-            // takze naSege je false a ani jedna z ps1 podminek neplati -
-            // funkce se vratila a TV dal snimala okno. V logu to bylo
-            // videt tak, ze u vsech zaznamu je url=.../etapa2.html
-            // a obraz Segy ani PS1 se na TV nikdy neobjevil.
-            //
-            // Behem intra tedy pokracujeme dal a zdroj se pozna nize
-            // podle toho, ktere jadro prave bezi.
-            if (!introZivaCast
-                    && !naSege && !ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning) {
+            if (!naSege && !ps1SessionActive && !ps1GameWindowOwnsCore && !ps1BiosRunning) {
                 tvCoreHadFrame = false;
                 return false;
             }
@@ -1461,40 +1457,13 @@ public class MainActivity extends Activity {
                 // kdyz bezi PS1, spadne to do vetve s borrowFrame nize
             }
 
-            // BUILD2SA55: Atari se bere stejne jako Sega - vyzvednutim.
-            boolean jeAtariTv = false;
-            try {
-                String uA = napTvWebCurrentUrl;
-                jeAtariTv = (uA != null) && uA.contains("emu_vbxe");
-            } catch (Throwable ignored) {}
-
-            int wh = jeAtariTv ? atariFbVyzvedni(tvCoreArgb)
-                   : jeSegaTv  ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
-                               : Ps1GlTextureView.borrowFrame(tvCoreArgb);
+            int wh = jeSegaTv ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
+                              : Ps1GlTextureView.borrowFrame(tvCoreArgb);
             if (wh < 0) {
                 int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
                 tvCoreArgb = new int[need + 1024];
-                wh = jeAtariTv ? atariFbVyzvedni(tvCoreArgb)
-                   : jeSegaTv  ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
-                               : Ps1GlTextureView.borrowFrame(tvCoreArgb);
-            }
-
-            // BUILD2SA45: DIAGNOSTIKA, PROTOZE UZ NECHCI HADAT.
-            // Rekne jednou za vterinu, KTEROU CESTOU se slo a CO se pujcilo.
-            // Bez toho se z logu nepozna, jestli se vetev pro intro vubec
-            // spustila - radek TV_WEB_PERIODIC hlasi adresu vzdycky.
-            if (introZivaCast) {
-                long ted2 = System.currentTimeMillis();
-                if (ted2 - introTvDiagMs > 1000) {
-                    introTvDiagMs = ted2;
-                    appendNativeLog("BUILD2SA45 TV_INTRO zdroj="
-                            + (jeSegaTv ? "SEGA" : "PS1")
-                            + " segaPlocha=" + (segaPlocha != null)
-                            + " ps1Plocha=" + (ps1Plocha != null)
-                            + " biosBezi=" + ps1BiosRunning
-                            + " snimek=" + (wh > 0 ? ((wh >> 16) + "x" + (wh & 0xFFFF))
-                                                   : ("NIC(" + wh + ")")));
-                }
+                wh = jeSegaTv ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
+                              : Ps1GlTextureView.borrowFrame(tvCoreArgb);
             }
             if (wh == 0) {
                 // Nic k pujceni (obrazovka zrovna nekresli) - podrzime posledni
@@ -1503,11 +1472,6 @@ public class MainActivity extends Activity {
                     napTvWebPublishBitmap(napTvWebBitmapDraw, "CORE_HOLD");
                     return true;
                 }
-                // BUILD2SA45: BEHEM INTRA SE NESMI PROPADNOUT NA SNIMANI OKNA.
-                // Pod oknem lezi plocha jadra a okno je pruhledne - vyfotilo
-                // by se prazdno, a jeste by se tim stridalo tam a zpet.
-                // Prave to nejspis zpusobovalo, ze se prenos sem tam zasekl.
-                if (introZivaCast) return true;
                 return false;
             }
             if (wh <= 0 || (wh >> 16) <= 0 || (wh & 0xFFFF) <= 0) {
@@ -3232,7 +3196,12 @@ public class MainActivity extends Activity {
                 out.write(body);
             } else if ("/status".equals(path)) {
                 String curUrl3 = napTvWebCurrentUrl; // BUILD2SK61: bezpecna cache z UI vlakna, viz vysvetleni u deklarace pole
+                // BUILD2SA61: rovnou rekneme, jestli je uzivatel v Atari.
+                // Stranka se na /status pta kazdou vterinu uz ted, takze
+                // se na nic navic ptat nemusi a klavesnice se zapne SAMA.
+                boolean vAtari = (curUrl3 != null) && curUrl3.contains("emu_vbxe");
                 byte[] body = ("running=" + napTvWebRunning
+                        + " atari=" + (vAtari ? 1 : 0)
                         + " seq=" + napTvWebSeq
                         + " mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
                         + " profile=" + napTvWebVideoProfile
@@ -3416,23 +3385,28 @@ public class MainActivity extends Activity {
                 // Drive byla vevnitr - kdyz cokoli nad ni selhalo, uz se
                 // nespustila. V logu nebyla ani jedna klavesa.
                 + "<script>(function(){"
-                // BUILD2SA59: STRANKA SI MUSI DRZET ZAMERENI.
-                // Na projektoru nebo na druhe obrazovce ho okno snadno
-                // ztrati a prohlizec pak klavesy nikam neposila. Proto
-                // si ho bereme zpatky pri kazdem doteku i po prepnuti.
+                // ================================================================
+                //  BUILD2SA61: KLAVESNICE JEDE SAMA, KDYZ JSI V ATARI.
+                //
+                //  Zadny parametr, nic se nezapina. Aplikace v /status hlasi
+                //  atari=1 a stranka se na /status pta kazdou vterinu UZ TED -
+                //  takze zadny casovac navic nepribyl.
+                //
+                //  Predtim tu byly DVA casovace navic: kradeni zamereni kazde
+                //  2 s a prekreslovani napisu kazdou 1 s. Chrome to schroupal,
+                //  slaby prohlizec v projektoru se po nich zacal sekat.
+                //  Obojí je pryc.
+                // ================================================================
                 + "try{document.body.tabIndex=0;document.body.focus();}catch(e){}"
                 + "function chytZamereni(){try{window.focus();document.body.focus();}catch(e){}}"
-                + "window.addEventListener('focus',chytZamereni);"
                 + "document.addEventListener('mousedown',chytZamereni,true);"
                 + "document.addEventListener('touchstart',chytZamereni,true);"
-                + "setInterval(function(){ if(document.activeElement===document.body) return;"
-                + "  var t=document.activeElement;"
-                + "  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
-                + "  chytZamereni(); },2000);"
                 // prehazovace se NEPOSILAJI - samy o sobe nic nepisou
                 + "var PREHAZOVACE={Shift:1,Control:1,Alt:1,Meta:1,AltGraph:1,"
                 + "CapsLock:1,NumLock:1,ScrollLock:1,Dead:1};"
+                + "window.napVAtari=false;"
                 + "function posli(code,znak,dolu,ctrl){"
+                + "  if(!window.napVAtari) return;"
                 + "  try{var u='/klavesa?code='+encodeURIComponent(code)"
                 + "    +'&znak='+encodeURIComponent(znak||'')"
                 + "    +'&dolu='+(dolu?1:0)+'&ctrl='+(ctrl?1:0);"
@@ -3457,11 +3431,11 @@ public class MainActivity extends Activity {
                 + "var kn=document.createElement('div');"
                 + "kn.style.cssText='position:fixed;right:10px;bottom:8px;padding:4px 7px;"
                 + "background:rgba(0,0,0,.6);border-radius:4px;font:13px monospace;color:#9fdcff;z-index:99999';"
-                + "kn.textContent='KLAVESNICE ZAPNUTA - F2 = BREAK';"
-                + "setInterval(function(){ var m=(document.hasFocus&&document.hasFocus());"
-                + "  kn.textContent=m?'KLAVESNICE ZAPNUTA - F2 = BREAK'"
-                + "    :'KLIKNI DO OBRAZU - okno nema zamereni';"
-                + "  kn.style.color=m?'#9fdcff':'#ffb0b0'; },1000);"
+                + "kn.style.display='none';"
+                + "window.napKlavesnicePopis=function(zap){"
+                + "  if(kn.style.display===(zap?'':'none')) return;"   // jen pri zmene
+                + "  kn.style.display=zap?'':'none';"
+                + "  kn.textContent='KLAVESNICE ZAPNUTA - F2 = BREAK'; };"
                 + "document.body.appendChild(kn);"
                 + "})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
