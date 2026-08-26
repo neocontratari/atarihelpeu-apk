@@ -943,7 +943,17 @@ public class MainActivity extends Activity {
                                 + " url=" + curUrl);
                     }
                 }
-                if (napTvWebRunning && appCapture && tvSmiObraz()
+                // BUILD2SA51: KDYZ SNIMEK DAVA SAMO ATARI, OKNO SE NESNIMA.
+                // Jinak by bezelo oboji a PixelCopy by dal zastavovalo
+                // grafiku - presne to, co jsme se snazili odstranit.
+                boolean atariDavaSnimek = false;
+                try {
+                    String cuF = (web == null) ? null : web.getUrl();
+                    atariDavaSnimek = (cuF != null) && cuF.contains("emu_vbxe")
+                            && (System.currentTimeMillis() - atariFbPosledniMs < 1500);
+                } catch (Throwable ignored8) {}
+
+                if (napTvWebRunning && appCapture && tvSmiObraz() && !atariDavaSnimek
                         && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
                     int sw = rootFrame.getWidth(), sh = rootFrame.getHeight();
                     boolean landscape = sw > sh;
@@ -2710,6 +2720,72 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * BUILD2SA51: prijme snimek z Atari (384x240 RGBA) a preda ho na TV.
+     * Chodi POST-em na /atarifb?w=384&h=240, telo jsou hola binarni data.
+     */
+    private int[] atariFbArgb = null;
+    private volatile long atariFbPocet = 0, atariFbLogMs = 0, atariFbPosledniMs = 0;
+
+    /** Preda snimek Atari na TV stejnou cestou, jakou chodi Sega a PS1. */
+    private void atariFbNaTv(int[] argb, int w, int h) {
+        try {
+            if (tvCoreSrcBmp == null || tvCoreSrcBmp.getWidth() != w
+                    || tvCoreSrcBmp.getHeight() != h) {
+                if (tvCoreSrcBmp != null && !tvCoreSrcBmp.isRecycled()) tvCoreSrcBmp.recycle();
+                tvCoreSrcBmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            }
+            tvCoreSrcBmp.setPixels(argb, 0, w, 0, 0, w, h);
+            tvCoreHadFrame = true;
+            napTvWebPublishBitmap(tvCoreSrcBmp, "ATARI_FB");
+            atariFbPosledniMs = System.currentTimeMillis();
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SA51 ATARI_SNIMEK_CHYBA " + safeMsg(t));
+        }
+    }
+
+    private void napTvWebPrijmiAtariSnimek(java.io.InputStream in, String fullPath,
+                                           java.io.OutputStream out) throws Exception {
+        int w = (int) napTvWebQueryLong(fullPath, "w", 384);
+        int h = (int) napTvWebQueryLong(fullPath, "h", 240);
+        int delka = (int) napTvWebQueryLong(fullPath, "len", w * h * 4);
+        if (w <= 0 || h <= 0 || delka <= 0 || delka > 8 * 1024 * 1024) {
+            napTvWebHeader(out, "400 Bad Request", "text/plain", 0, true);
+            return;
+        }
+        byte[] data = new byte[delka];
+        int cti = 0;
+        while (cti < delka) {
+            int k = in.read(data, cti, delka - cti);
+            if (k < 0) break;
+            cti += k;
+        }
+        if (cti == delka) {
+            if (atariFbArgb == null || atariFbArgb.length < w * h) atariFbArgb = new int[w * h];
+            // RGBA (jak to ma platno) -> ARGB (jak to chce bitmapa)
+            for (int i = 0, j = 0; i < w * h; i++, j += 4) {
+                atariFbArgb[i] = 0xFF000000
+                        | ((data[j]     & 0xFF) << 16)
+                        | ((data[j + 1] & 0xFF) << 8)
+                        |  (data[j + 2] & 0xFF);
+            }
+            // Jde to TOU SAMOU cestou jako Sega a PS1 - jen misto jadra
+            // dodava snimek prohlizec.
+            atariFbNaTv(atariFbArgb, w, h);
+            atariFbPocet++;
+            long ted = System.currentTimeMillis();
+            if (ted - atariFbLogMs > 5000) {
+                atariFbLogMs = ted;
+                appendNativeLog("BUILD2SA51 ATARI_SNIMEK " + w + "x" + h
+                        + " prijato=" + atariFbPocet + " (bez PixelCopy)");
+                atariFbPocet = 0;
+            }
+        }
+        byte[] ok = "OK".getBytes("UTF-8");
+        napTvWebHeader(out, "200 OK", "text/plain", ok.length, true);
+        out.write(ok);
+    }
+
     private void napTvWebAudioPushMonoPcm16Bytes(byte[] pcm, int sampleRate, String source) {
         if (!napTvWebRunning || pcm == null || pcm.length < 2) return;
         try {
@@ -2980,6 +3056,18 @@ public class MainActivity extends Activity {
                 out.write(ok);
             } else if ("/audio.raw".equals(path)) {
                 napTvWebWriteAudioRaw(out, napTvWebQueryLong(fullPath, "after", -1));
+            } else if ("/atarifb".equals(path)) {
+                // BUILD2SA51: SNIMEK Z ATARI PRIMO, JAKO U SEGY A PS1.
+                //
+                // Doted se Atari snimalo pres PixelCopy CELEHO OKNA. To si
+                // vynuti cteni zpatky z graficke karty a zastavi vykreslovaci
+                // retez - a v tom retezu kresli i platno, na kterem emulator
+                // bezi. Odtud kousani hned po zapnuti TV.
+                //
+                // Sega a PS1 to delaji spravne: snimek dava JADRO. Atari ho
+                // ted dava taky - posle ho sem POST-em jako binarni data.
+                // Zadne PixelCopy, zadne cteni z graficke karty, zadny base64.
+                napTvWebPrijmiAtariSnimek(in, fullPath, out);
             } else if ("/quality".equals(path)) {
                 long t = napTvWebQueryLong(fullPath, "tier", napTvWebQualityTier);
                 byte[] body = ("tier=" + napTvWebSetQualityTier(t)).getBytes("UTF-8");

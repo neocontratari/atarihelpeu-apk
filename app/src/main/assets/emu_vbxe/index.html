@@ -6858,7 +6858,42 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       if(!img) img=ctx.createImageData(384,240);
       var u8=new Uint8ClampedArray(M.fb.buffer);
       img.data.set(u8); ctx.putImageData(img,0,0);
+      posliSnimekNaTv(u8, 384, 240);
     }
+  }
+
+  // ==================================================================
+  //  BUILD2SA51: SNIMEK NA TV PRIMO, JAKO U SEGY A PS1
+  //
+  //  Doted se Atari na TV snimalo pres PixelCopy CELEHO OKNA. To si
+  //  vynuti cteni zpatky z graficke karty a zastavi vykreslovaci retez -
+  //  a v tom retezu kresli i tohle platno. Odtud kousani hned po zapnuti
+  //  TV, a to i na mobilu.
+  //
+  //  Sega a PS1 to delaji spravne: snimek dava jadro. Ted ho dava i Atari.
+  //  Posila se BINARNE na vlastni server aplikace - zadny base64, zadne
+  //  cekani (fetch je asynchronni), zadne PixelCopy.
+  // ==================================================================
+  var tvFbPort=null, tvFbPosila=false, tvFbPreskoceno=0, tvFbPosledni=0;
+  function posliSnimekNaTv(u8, w, h){
+    try{
+      if(!window.AHTVWEB || !AHTVWEB.status) return;
+      if(tvFbPort===null){
+        var st=''; try{ st=AHTVWEB.status()||''; }catch(e){ return; }
+        var m=st.match(/:(\d+)/);
+        if(!m) return;
+        tvFbPort=m[1];
+      }
+      var ted=Date.now();
+      if(ted-tvFbPosledni < 60) return;        // nejvys asi 16 snimku za vterinu
+      if(tvFbPosila){ tvFbPreskoceno++; return; }  // predchozi jeste letí
+      tvFbPosledni=ted;
+      tvFbPosila=true;
+      fetch('http://127.0.0.1:'+tvFbPort+'/atarifb?w='+w+'&h='+h+'&len='+u8.length,
+            { method:'POST', body:u8.slice(0) })
+        .then(function(){ tvFbPosila=false; })
+        .catch(function(){ tvFbPosila=false; tvFbPort=null; });
+    }catch(e){ tvFbPosila=false; }
   }
 
   // ---------- start ----------

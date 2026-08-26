@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 212
-        versionName "EMU10-B164-BEZ-PIXELCOPY"  // Rene trefil pricinu: Sega a PS1 davaji snimek z jadra, Atari se snima PixelCopy celeho okna - a to si vynuti cteni z graficke karty a zastavi vykreslovaci retez, kde kresli i platno Atari. Nova volba TV POKUS: KRESLENIM to obchazi.
+        versionCode 213
+        versionName "EMU10-B165-ATARI-JAKO-SEGA"  // Atari ted dava snimek SAMO, presne jako Sega a PS1 - posila 384x240 binarne na vlastni server aplikace. Zadne PixelCopy, zadne cteni z graficke karty.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
