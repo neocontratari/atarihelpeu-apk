@@ -1367,7 +1367,23 @@ public class MainActivity extends Activity {
                 tvCoreArgb = new int[need + 1024];
                 wh = atariFbVyzvedni(tvCoreArgb);
             }
-            if (wh <= 0) return false;         // nic noveho - okno se snima dal
+            if (wh <= 0) {
+                // BUILD2SA64: NIKDY SE NEPROPADNOUT NA SNIMANI OKNA.
+                //
+                // Drive se tu vratilo false a snimek se vzal z okna -
+                // tedy 720x1336 misto 384x240. Stridalo se to 16x za
+                // vterinu a rozmer obrazu skakal sem a tam. Presne to
+                // problikavani vyska/sirka, ktere Rene videl, a enkoder
+                // to neustal - aplikace spadla.
+                //
+                // Kdyz jsme v Atari, drzime posledni snimek. Rozmer
+                // zustane stejny.
+                if (atariBmp != null && !atariBmp.isRecycled()) {
+                    napTvWebPublishBitmap(atariBmp, "ATARI_HOLD");
+                    return true;
+                }
+                return false;      // jeste nikdy nic neprislo - nechame okno
+            }
             int sw = wh >> 16, sh = wh & 0xFFFF;
             if (atariBmp == null || atariBmp.getWidth() != sw || atariBmp.getHeight() != sh) {
                 if (atariBmp != null && !atariBmp.isRecycled()) atariBmp.recycle();
@@ -1378,6 +1394,12 @@ public class MainActivity extends Activity {
             napTvWebPublishBitmap(atariBmp, "ATARI_FB");
             return true;
         } catch (Throwable t) {
+            // I pri chybe radeji podrzet posledni snimek nez pustit
+            // snimani okna - jinak by rozmer zase skocil.
+            if (atariBmp != null && !atariBmp.isRecycled()) {
+                try { napTvWebPublishBitmap(atariBmp, "ATARI_HOLD"); return true; }
+                catch (Throwable ignored) {}
+            }
             return false;
         }
     }
