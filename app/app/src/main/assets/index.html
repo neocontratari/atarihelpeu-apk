@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>N&amp;P VISION — Retro Universe</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:#050302;color:#f7d477;font-family:"Courier New",monospace;overflow-x:hidden;}
+body{display:flex;justify-content:center;align-items:flex-start;}
+.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050302;overflow:hidden;box-shadow:0 0 56px rgba(0,0,0,.95);}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
+.hit{position:absolute;z-index:8;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
+.hit:active{background:rgba(255,186,55,.12);box-shadow:0 0 34px rgba(255,186,55,.28) inset;border-radius:18px;}
+#btnMenu{left:4.1%;top:3.1%;width:10.5%;height:6.2%;}
+#btnSettings{left:85.1%;top:3.1%;width:10.5%;height:6.2%;}
+#btnAtari{left:3.0%;top:67.6%;width:45.9%;height:9.7%;}
+#btnSega{left:51.1%;top:67.6%;width:45.9%;height:9.7%;}
+#btnPlayer{left:3.0%;top:78.9%;width:45.9%;height:9.7%;}
+#btnPs1{left:51.1%;top:78.9%;width:45.9%;height:9.7%;}
+#btnWeb{left:3.0%;top:90.0%;width:45.9%;height:7.5%;}
+#btnHelp{left:51.1%;top:90.0%;width:45.9%;height:7.5%;}
+#btnRene{left:22.0%;top:96.1%;width:56.0%;height:3.5%;}
+.toast{position:absolute;left:5%;right:5%;bottom:4.6%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(255,200,80,.56);box-shadow:0 0 22px rgba(255,170,35,.18);color:#ffe6a0;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
+.toast.show{display:block;}
+.panel{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#f7d477;}
+.panel.open{display:block;}
+.panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#100904,#060403);border:1px solid rgba(255,195,64,.50);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(255,163,20,.18) inset;}
+.panel h2{font:900 23px "Courier New",monospace;margin-bottom:12px;color:#ffe49a;text-align:center;}
+.panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
+.panel b{color:#8ee7ff;}
+.panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d8a947;color:#070402;font:900 15px "Courier New",monospace;}
+#settingsPanel{display:none;position:absolute;right:2%;top:10.5%;z-index:50;min-width:58%;background:radial-gradient(120% 100% at 50% 0%,#241503 0%,#120a03 45%,#080503 100%);border:1px solid rgba(255,195,64,.55);border-radius:18px;padding:16px 14px 18px;box-shadow:0 0 40px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,214,130,.18),0 0 22px rgba(255,170,40,.12);}#settingsPanel:before{content:"";display:block;height:2px;margin:-6px -4px 12px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(255,196,80,.85),transparent);}
+#settingsPanel.open{display:block;}
+#settingsPanel .stlabel{color:#ffd479;font:900 14px "Courier New",monospace;margin:0 0 12px;letter-spacing:.22em;text-align:center;text-shadow:0 0 12px rgba(255,170,40,.55);}
+#settingsPanel button{display:block;width:100%;padding:13px;border:0;border-radius:12px;background:linear-gradient(180deg,#f0c463,#c8952f);color:#160c02;font:900 13px "Courier New",monospace;letter-spacing:.08em;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.45);transition:.15s;}#settingsPanel button:active{transform:translateY(1px);box-shadow:0 1px 0 rgba(0,0,0,.5);}
+#settingsPanel .stlabel2{color:#d9b878;font:900 10px "Courier New",monospace;margin:16px 0 7px;letter-spacing:.16em;display:flex;align-items:center;gap:8px;}#settingsPanel .stlabel2:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,195,64,.35),transparent);}
+    .sthint{color:#ffe49a;font:900 12px "Courier New",monospace;margin:12px 0 8px;letter-spacing:.05em;;font-size:11px;opacity:.75;margin-top:6px}
+#settingsPanel .qrow{display:flex;gap:7px;}
+#settingsPanel .qrow button{flex:1;padding:11px 4px;font-size:11px;letter-spacing:.06em;background:linear-gradient(180deg,#3b2a10,#241806);color:#e8c98d;border:1px solid rgba(255,195,64,.28);box-shadow:inset 0 1px 0 rgba(255,214,130,.10);}
+#settingsPanel .qrow button.active{background:linear-gradient(180deg,#ffd479,#d8a947);color:#1a0f02;border-color:rgba(255,225,150,.9);box-shadow:0 0 18px rgba(255,180,40,.65),inset 0 1px 0 rgba(255,255,255,.5);}
+@media (orientation:landscape) and (max-height:760px){
+ .stage{height:100vh;width:auto;max-width:none;}
+ .toast{bottom:2%;font-size:11px;padding:6px 8px;}
+}
+</style>
+</head>
+<body>
+<main class="stage" aria-label="N&P VISION Retro Universe">
+  <img class="skin" src="nap_ui/nap_vision_intro_screen1.png" alt="N&P VISION Retro Universe">
+  <button id="btnMenu" class="hit" type="button">MENU</button>
+  <button id="btnSettings" class="hit" type="button">SETTINGS</button>
+  <div id="settingsPanel" aria-hidden="true">
+    <div class="stlabel">OPTIONS</div>
+    <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
+    <button id="stIntro" type="button">PUSTIT INTRO</button>
+    <button id="stStahni" type="button">STAHNOUT HRY A BIOS</button>
+    <button id="stOdemkni" type="button">ODEMKNOUT DALSI</button>
+    <button id="stZamkni" type="button">ZAMKNOUT VSE</button>
+    <button id="stAktual" type="button">AKTUALIZOVAT APLIKACI</button>
+    <button id="stTvPokus" type="button">TV POKUS: OBOJI</button>
+
+    <div class="stlabel2">NASTAVENI</div>
+    <div class="qrow">
+      <button id="stModeAuto" type="button" class="active">AUTOMATICKY</button>
+      <button id="stModeMan" type="button">MANUALNE</button>
+    </div>
+    <div class="sthint" id="stModeHint">Aplikace nastavi vse sama podle telefonu</div>
+
+    <div id="stManual" style="display:none;margin-top:4px;padding-top:6px;border-top:1px solid rgba(255,195,64,.18)">
+      <div class="stlabel2">KVALITA OBRAZU (TV-CAST)</div>
+      <div class="qrow">
+        <button id="stQLow" type="button" data-tier="0">LOW</button>
+        <button id="stQMed" type="button" data-tier="1">MED</button>
+        <button id="stQHigh" type="button" data-tier="2">HIGH</button>
+      </div>
+
+      <div class="stlabel2">ZVUK (ZPOZDENI)</div>
+      <div class="qrow">
+        <button id="stPLow" type="button" data-perf="0">LOW</button>
+        <button id="stPMed" type="button" data-perf="1">MED</button>
+        <button id="stPHigh" type="button" data-perf="2">HIGH</button>
+      </div>
+      <div class="sthint" id="stPerfHint">LOW = nejjistejsi, HIGH = nejmensi zpozdeni</div>
+    </div>
+  </div>
+
+  <a id="btnAtari" class="hit" href="emu_vbxe/index.html">ATARI 130XE EMULATOR</a>
+  <a id="btnSega" class="hit" href="emu_sega/index.html">SEGA MEGA DRIVE</a>
+  <a id="btnPlayer" class="hit" href="player/index.html">PLAYER MP3 WAV</a>
+  <a id="btnPs1" class="hit" href="emu_ps1/index.html">PS1 PLAYSTATION</a>
+  <a id="btnWeb" class="hit" href="https://atarihelp.eu/" data-external="1">ATARIHELP.EU</a>
+  <a id="btnHelp" class="hit" href="emu_atari_cpp/index.html">HELP</a>
+  <a id="btnRene" class="hit" href="dj/index.html">Rene Frank DJ Pult</a>
+  <div id="toast" class="toast">N&amp;P VISION BUILD2NZ</div>
+</main>
+
+<div id="helpPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>N&amp;P VISION — HELP</h2>
+    <p><b>ATARI 130XE</b> otevre Atari emulator modul.</p>
+    <p><b>SEGA MEGA DRIVE</b> otevre funkcni Sega modul s ClownMDEmu wrapperem.</p>
+    <p><b>PLAYER</b> otevre MP3 / WAV prehravac.</p>
+    <p><b>PS1</b> otevre novou PlayStation obrazovku podle dodane grafiky.</p>
+    <p><b>ATARIHELP.EU</b> otevre oficialni web.</p>
+    <p><b>Podpis Rene Frank</b> vede na Facebook profil.</p>
+    <button id="helpClose" type="button">ZAVRIT HELP</button>
+  </div>
+</div>
+
+<script>
+(function(){'use strict';
+var BUILD='BUILD2NZ_INTRO_PS1_MENU_STAGE39';
+function $(id){return document.getElementById(id);}
+function log(t){try{console.log('[NAP INTRO '+BUILD+'] '+t);}catch(e){}}
+function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napIntroToast);window.__napIntroToast=setTimeout(function(){el.classList.remove('show');},ms||2200);}
+function openExternal(url){
+  log('OPEN_EXTERNAL '+url);
+  try{if(window.Android&&typeof window.Android.openExternal==='function'){window.Android.openExternal(url);return;}}catch(e){}
+  try{if(window.Android&&typeof window.Android.openUrl==='function'){window.Android.openUrl(url);return;}}catch(e){}
+  try{if(window.Android&&typeof window.Android.openExternalUrl==='function'){window.Android.openExternalUrl(url);return;}}catch(e){}
+  try{window.location.href=url;}catch(_){location.href=url;}
+}
+function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}toast('HELP otevren',1500);}
+function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+['btnMenu'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
+var sp=$('settingsPanel');
+function napQualityRefresh(){
+  try{
+    var cur=(window.AHTVWEB&&typeof window.AHTVWEB.getQualityTier==='function')?window.AHTVWEB.getQualityTier():0;
+    [['stQLow',0],['stQMed',1],['stQHigh',2]].forEach(function(pair){
+      var el=$(pair[0]); if(!el)return;
+      if(pair[1]===cur)el.classList.add('active'); else el.classList.remove('active');
+    });
+  }catch(e){log('QUALITY_REFRESH_ERR '+e);}
+}
+function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');napQualityRefresh();}
+function closeSettings(){if(!sp)return;sp.classList.remove('open');sp.setAttribute('aria-hidden','true');}
+function toggleSettings(){if(!sp)return;if(sp.classList.contains('open'))closeSettings();else openSettings();}
+var bs=$('btnSettings');
+if(bs)bs.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();toggleSettings();},true);
+// BUILD2SK39: pojistka - klik KAMKOLI mimo panel ho zavre, i kdyby se explicitni
+// zavreni po akci uvnitr nespustilo spolehlive.
+document.addEventListener('click',function(e){
+  if(!sp||!sp.classList.contains('open'))return;
+  if(e.target===sp||sp.contains(e.target)||e.target===bs)return;
+  closeSettings();
+},true);
+// BUILD2SK91: LOW/MEDIUM/HIGH primo z uvodni obrazovky - Rene chtel moznost
+// zmenit kvalitu, aniz by musel jit na TV-cast stranku v prohlizeci.
+// setQualityTier funguje pres AHTVWEB most i kdyz TV-cast jeste vubec
+// nebezi (na rozdil od stareho /quality HTTP pristupu) - ulozi se do
+// stejnych SharedPreferences, takze se pouzije, az cast zacne.
+var qLabels={0:'LOW',1:'MEDIUM',2:'HIGH'};
+[['stQLow',0],['stQMed',1],['stQHigh',2]].forEach(function(pair){
+  var el=$(pair[0]); if(!el)return;
+  el.addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    try{
+      var r=(window.AHTVWEB&&typeof window.AHTVWEB.setQualityTier==='function')?window.AHTVWEB.setQualityTier(pair[1]):null;
+      log('SETTINGS_QUALITY_SET tier='+pair[1]+' result='+r);
+      toast('Kvalita: '+qLabels[pair[1]],1800);
+      napQualityRefresh();
+    }catch(err){
+      log('SETTINGS_QUALITY_SET_ERR '+err);
+      toast('Kvalita: chyba pri nastaveni',2200);
+    }
+  },true);
+});
+var stTv=$('stStartTv');
+if(stTv)stTv.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  try{
+    var r=(window.AHTVWEB&&typeof window.AHTVWEB.start==='function')?window.AHTVWEB.start():null;
+    log('SETTINGS_TV_START result='+r);
+    // Adresa se nesmi psat natvrdo - v jine siti (nebo po restartu routeru)
+    // je jina. AHTVWEB.start() ji vraci; kdyz ne, radeji ji neuvadime vubec.
+    var adr=(typeof r==='string'&&r.indexOf(':')>0)?r:null;
+    toast(adr?('WEB TV zapnuto — '+adr):'WEB TV zapnuto',2600);
+  }catch(err){
+    log('SETTINGS_TV_START_ERR '+err);
+    toast('WEB TV: chyba pri spousteni',2200);
+  }
+  closeSettings();
+},true);
+// BUILD2SA23: INTRO na pozadani. Da se pustit kdykoli, a protoze se
+// prehrava v tom samem okne jako vsechno ostatni, jde i na WEB TV.
+var stIn=$('stIntro');
+if(stIn)stIn.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  try{ if(window.AHINTRO&&AHINTRO.znovu) AHINTRO.znovu(); }catch(err){}
+  log('SETTINGS_INTRO_START');
+  closeSettings();
+  // BUILD2SA38: intro je rozdelene na etapy - Java nacte prvni z nich
+  // sama v AHINTRO.znovu(). Stranka uz nikam neodchazi.
+},true);
+
+// BUILD2SA27: stazeni Sonica a BIOSu PS1 na vyzadani. Aplikace se
+// vzdycky zepta a rekne, co a odkud - nikdy nestahuje potichu.
+var stSt=$('stStahni');
+if(stSt)stSt.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  try{ if(window.AHINTRO&&AHINTRO.stahniSoubory) AHINTRO.stahniSoubory(); }catch(err){}
+  log('SETTINGS_STAHNOUT');
+  closeSettings();
+},true);
+
+// BUILD2SA40: POSTUP HRACE.
+// SEGA se otevre, az hrac napise ten kod v Atari.
+// PS1 se otevre po 30 minutach hrani Segy.
+// Tahle dve tlacitka jsou ZADNI VRATKA pro Reneho, aby mohl testovat
+// bez odehrani cele cesty - odemyka se POSTUPNE, jedna uroven po druhe.
+var stOd=$('stOdemkni');
+if(stOd)stOd.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  var co='?';
+  try{ if(window.AHINTRO&&AHINTRO.odemkniDalsi) co=AHINTRO.odemkniDalsi(); }catch(err){}
+  log('SETTINGS_ODEMKNUTO '+co);
+  closeSettings();
+  zamkyObnov();
+},true);
+
+var stZam=$('stZamkni');
+if(stZam)stZam.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  try{ if(window.AHINTRO&&AHINTRO.zamkniVse) AHINTRO.zamkniVse(); }catch(err){}
+  log('SETTINGS_ZAMCENO_VSE');
+  closeSettings();
+  zamkyObnov();
+},true);
+
+/** Zamkne nebo odemkne tlacitka podle toho, kam se hrac dostal. */
+function zamkyObnov(){
+  var st={sega:true,ps1:true,zbyvaMinut:0};
+  try{ if(window.AHINTRO&&AHINTRO.postupStav) st=JSON.parse(AHINTRO.postupStav()); }catch(e){}
+  nastavZamek('btnSega', st.sega, 'NAPIS JESTE '+(st.zbyvaRadku||0)+' RADKU KODU V ATARI');
+  nastavZamek('btnPs1',  st.ps1,  st.sega ? ('JESTE '+st.zbyvaMinut+' MIN SEGY') : 'NEJDRIV SEGA');
+}
+function nastavZamek(id, otevreno, proc){
+  var b=$(id); if(!b) return;
+  if(otevreno){
+    b.style.opacity=''; b.style.pointerEvents='';
+    b.removeAttribute('data-zamek');
+  }else{
+    b.style.opacity='0.45'; b.style.pointerEvents='auto';
+    b.setAttribute('data-zamek', proc);
+  }
+}
+// zamceny emulator misto spusteni jen rekne, co je potreba
+document.addEventListener('click', function(e){
+  var t=e.target;
+  while(t && t!==document.body){
+    if(t.getAttribute && t.getAttribute('data-zamek')){
+      e.preventDefault(); e.stopPropagation();
+      try{ alert('ZAMCENO\n\n'+t.getAttribute('data-zamek')); }catch(_){}
+      return;
+    }
+    t=t.parentNode;
+  }
+}, true);
+setTimeout(zamkyObnov, 300);
+
+// BUILD2SA42: aktualizace ze site. APK se protece rovnou do instalace,
+// na telefonu nezustane zadny soubor.
+var stAk=$('stAktual');
+if(stAk)stAk.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  try{ if(window.AHINTRO&&AHINTRO.aktualizuj) AHINTRO.aktualizuj(); }catch(err){}
+  log('SETTINGS_AKTUALIZACE');
+  closeSettings();
+},true);
+
+// BUILD2SA49: pokus, ktery ma rozhodnout, ktera pulka TV zpusobuje
+// kousani Atari. Prepina se dokola: oboji -> jen zvuk -> jen obraz.
+var tvPokusStav=0;
+var stTv=$('stTvPokus');
+if(stTv)stTv.addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  tvPokusStav=(tvPokusStav+1)%4;
+  var jm=['OBOJI','JEN ZVUK','JEN OBRAZ','KRESLENIM'][tvPokusStav];
+  try{ if(window.AHINTRO&&AHINTRO.tvPokus) AHINTRO.tvPokus(tvPokusStav); }catch(err){}
+  stTv.textContent='TV POKUS: '+jm;
+  log('TV_POKUS '+jm);
+},true);
+
+var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
+Array.prototype.forEach.call(document.querySelectorAll('a[data-external="1"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openExternal(a.href);},true);});
+$('btnAtari')&&$('btnAtari').addEventListener('click',function(){toast('ATARI 130XE EMULATOR',900);},true);
+$('btnSega')&&$('btnSega').addEventListener('click',function(){toast('SEGA MEGA DRIVE',900);},true);
+$('btnPlayer')&&$('btnPlayer').addEventListener('click',function(){toast('PLAYER MP3 / WAV',900);},true);
+$('btnPs1')&&$('btnPs1').addEventListener('click',function(){toast('PS1 PLAYSTATION',900);},true);
+log('BUILD2NZ ready: intro screen buttons Atari/Sega/Player/PS1/Web/Help/Rene Facebook wired.');
+})();
+</script>
+
+
+
+<script>
+(function(){
+  function $(id){return document.getElementById(id);}
+  var AUTO_IMG=2, AUTO_SND=-1;
+  var man=$('stManual'), mh=$('stModeHint'), ph=$('stPerfHint');
+  var sndNames={'0':'LOW - nejjistejsi, nejvetsi zpozdeni','1':'MEDIUM - stredni cesta','2':'HIGH - nejmensi zpozdeni, muze praskat'};
+
+  function markRow(ids,attr,val){
+    ids.forEach(function(id){var b=$(id); if(b) b.classList.toggle('active', b.getAttribute(attr)===String(val));});
+  }
+  function setSound(v){
+    try{ if(v<0){ if(window.AHRENDER&&AHRENDER.clearPerf)AHRENDER.clearPerf(); }
+         else if(window.AHRENDER&&AHRENDER.setPerf)AHRENDER.setPerf(v); }catch(e){}
+    try{localStorage.setItem('napSnd',v);}catch(e){}
+    markRow(['stPLow','stPMed','stPHigh'],'data-perf',v);
+    if(ph)ph.textContent=(sndNames[String(v)]||'AUTO - podle telefonu')+' (projevi se pri dalsim spusteni hry)';
+  }
+  function setImage(v){
+    var b=$(v===0?'stQLow':v===1?'stQMed':'stQHigh');
+    if(b) b.click();
+    markRow(['stQLow','stQMed','stQHigh'],'data-tier',v);
+  }
+  function setMode(auto){
+    $('stModeAuto').classList.toggle('active',auto);
+    $('stModeMan').classList.toggle('active',!auto);
+    man.style.display=auto?'none':'block';
+    if(mh)mh.textContent=auto?'Aplikace nastavi vse sama podle telefonu'
+                             :'Nastavujes rucne - volby nize';
+    try{localStorage.setItem('napMode',auto?'a':'m');}catch(e){}
+    if(auto){ setImage(AUTO_IMG); setSound(AUTO_SND); }
+  }
+  $('stModeAuto').addEventListener('click',function(){setMode(true);});
+  $('stModeMan').addEventListener('click',function(){setMode(false);});
+  ['stPLow','stPMed','stPHigh'].forEach(function(id){
+    var b=$(id); if(b) b.addEventListener('click',function(){setSound(parseInt(b.getAttribute('data-perf'),10));});
+  });
+  ['stQLow','stQMed','stQHigh'].forEach(function(id){
+    var b=$(id); if(b) b.addEventListener('click',function(){markRow(['stQLow','stQMed','stQHigh'],'data-tier',parseInt(b.getAttribute('data-tier'),10));});
+  });
+
+  var mode='a', snd=AUTO_SND;
+  try{ mode=localStorage.getItem('napMode')||'a';
+       var q=localStorage.getItem('napSnd'); if(q!==null)snd=parseInt(q,10); }catch(e){}
+  if(mode==='m'){ setMode(false); setSound(snd); }
+  else { setMode(true); }
+})();
+</script>
+</body>
+</html>

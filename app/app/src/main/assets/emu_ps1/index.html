@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>N&amp;P VISION — PS1 PlayStation</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:#02060b;color:#dfeaff;font-family:"Courier New",monospace;overflow-x:hidden;}
+body{display:flex;justify-content:center;align-items:flex-start;}
+.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#02060b;overflow:hidden;box-shadow:0 0 56px rgba(0,0,0,.95);}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
+.hit{position:absolute;z-index:8;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;
+  /* touch-action:none misto manipulation - prohlizec pak nemusi cekat,
+     jestli z dotyku nebude gesto (posun, zoom, dvojklik). To cekani je
+     desitky milisekund na KAZDY stisk a je to hlavni zdroj odezvy padu. */
+  touch-action:none;
+  /* zadne zvyrazneni pri stisku a zadny vyber textu - obojí stoji cas */
+  -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;
+  -webkit-user-select:none;user-select:none;}
+.hit:active{background:rgba(110,190,255,.13);box-shadow:0 0 34px rgba(110,190,255,.25) inset;border-radius:18px;}
+#btnBack{left:3.8%;top:3.1%;width:10.5%;height:6.2%;}
+#btnSettings{left:85.1%;top:3.1%;width:10.5%;height:6.2%;}
+#psMonitor{left:5.4%;top:14.2%;width:89.2%;height:41.7%;}
+#padLeft{left:21.5%;top:59.8%;width:18.5%;height:11.8%;}
+#padRight{left:62.6%;top:59.4%;width:18.8%;height:12.4%;}
+#padLeft,#padRight,#btnSelect,#btnStart{touch-action:none;}
+#btnSelect{left:41.4%;top:66.7%;width:10.2%;height:8.7%;}
+#btnStart{left:51.4%;top:66.7%;width:10.2%;height:8.7%;}
+#btnReset{left:3.2%;top:82.7%;width:17.0%;height:12.9%;}
+#btnMemory{left:22.0%;top:82.7%;width:17.0%;height:12.9%;}
+#btnCd{left:40.8%;top:82.7%;width:18.0%;height:12.9%;}
+#btnLoad{left:60.0%;top:82.7%;width:17.5%;height:12.9%;}
+#btnSave{left:79.1%;top:82.7%;width:17.5%;height:12.9%;}
+#fileInput{display:none;}
+#ps1Screen{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:auto;display:none;pointer-events:none;}
+.dpadVis,.psBtn{display:none;pointer-events:none;}
+#btnL1,#btnL2,#btnR1,#btnR2{display:none;}
+.dpadKnob{display:none;pointer-events:none;}
+.toast{position:absolute;left:5%;right:5%;bottom:3.8%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(120,200,255,.56);box-shadow:0 0 22px rgba(70,170,255,.18);color:#dff6ff;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
+.toast.show{display:block;}
+.remoteBanner{position:absolute;left:7%;right:7%;top:13.4%;z-index:42;display:none;pointer-events:none;padding:9px 11px;border-radius:12px;background:rgba(0,0,0,.88);border:1px solid rgba(113,207,255,.72);box-shadow:0 0 26px rgba(55,165,255,.24),0 0 18px rgba(255,210,96,.12) inset;color:#dff7ff;font:900 clamp(10px,2.5vw,14px)/1.25 "Courier New",monospace;text-shadow:0 1px 2px #000;}
+.remoteBanner.show{display:block;}
+.remoteBanner .remoteTitle{display:flex;justify-content:space-between;gap:8px;color:#ffe39a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.remoteBanner .remoteDetail{margin-top:4px;color:#dff7ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.remoteBanner .remotePath{margin-top:3px;color:#9cdfff;font-size:.82em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.remoteBanner .remoteBar{height:6px;margin-top:7px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;}
+.remoteBanner .remoteFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#54d8ff,#ffe08b);box-shadow:0 0 12px rgba(116,210,255,.55);}
+.panel{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#dfeaff;}
+.panel.open{display:block;}
+.panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#07101b,#02060b);border:1px solid rgba(125,200,255,.45);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(80,170,255,.16) inset;}
+.panel h2{font:900 23px "Courier New",monospace;margin-bottom:12px;color:#f1d78e;text-align:center;}
+.panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
+.panel b{color:#8ee7ff;}
+.panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d8b65a;color:#06070a;font:900 15px "Courier New",monospace;}
+@media (orientation:landscape) and (max-height:760px){
+ html,body{width:100%;height:100%;overflow:hidden;background:transparent;}
+ body{align-items:center;}
+ .stage{width:100vw;height:100vh;max-width:none;aspect-ratio:auto;background:transparent;}
+ .skin{display:none;}
+ #psMonitor{left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:100%;max-width:calc(100vh * 16 / 9);max-height:calc(100vw * 9 / 16);aspect-ratio:16/9;z-index:2;border-radius:0;}
+ #ps1Screen{object-fit:fill!important;}
+ .hit{z-index:12;color:transparent;font-size:0;background:transparent;border:0;text-shadow:none;border-radius:0;}
+ .hit:active{background:rgba(255,215,120,.08);box-shadow:0 0 18px rgba(255,220,120,.13) inset;border-radius:999px;}
+ #padLeft{left:0;top:24%;width:42%;height:74%;}
+ #padRight{left:65%;top:32%;width:35%;height:66%;}
+ #padLeft:active,#padRight:active{background:transparent;box-shadow:none;}
+ #padLeft .dpadVis{display:block;position:absolute;left:6%;bottom:4%;width:30vh;height:30vh;min-width:128px;min-height:128px;max-width:220px;max-height:220px;border-radius:50%;background:rgba(255,255,255,.045);border:1.5px solid rgba(255,255,255,.22);box-shadow:0 0 24px rgba(0,0,0,.35) inset;}
+ #padLeft .dpadVis:before,#padLeft .dpadVis:after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:13px;background:linear-gradient(180deg,rgba(255,242,190,.52),rgba(143,119,68,.40));border:1px solid rgba(255,234,170,.34);box-shadow:0 2px 12px rgba(0,0,0,.50),0 0 16px rgba(255,223,132,.08) inset;}
+ #padLeft .dpadVis:before{content:none!important;}
+ #padLeft .dpadVis:after{content:none!important;} /* BUILD2SA9: moderni thumbstick bez krize */
+ #padLeft .dpadKnob{display:block;position:absolute;left:50%;top:50%;width:32%;height:32%;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 36% 28%,rgba(255,255,255,.50),rgba(200,215,225,.28) 45%,rgba(40,50,58,.40));border:1.5px solid rgba(255,255,255,.38);box-shadow:0 5px 18px rgba(0,0,0,.64),0 0 18px rgba(255,218,118,.14) inset;transition:transform .06s linear,box-shadow .08s linear,border-color .08s linear;}
+ #padLeft .dpadVis.active .dpadKnob{border-color:rgba(255,239,180,.78);box-shadow:0 5px 20px rgba(0,0,0,.68),0 0 24px rgba(255,218,118,.28) inset,0 0 18px rgba(255,222,140,.22);}
+ #padLeft:active .dpadVis{border-color:rgba(255,229,145,.58);box-shadow:0 0 30px rgba(0,0,0,.62),0 0 24px rgba(255,214,112,.22) inset;}
+ #padRight .psBtn{display:flex;align-items:center;justify-content:center;position:absolute;width:8.2vh;height:8.2vh;min-width:42px;min-height:42px;max-width:60px;max-height:60px;border-radius:50%;border:1.5px solid rgba(255,255,255,.24);background:rgba(255,255,255,.05);box-shadow:0 0 14px rgba(0,0,0,.30) inset;color:rgba(255,255,255,.62);font:700 20px/1 Arial,sans-serif;text-shadow:0 2px 4px #000;}
+ #padRight .psTri{right:24%;bottom:37%;}
+ #padRight .psCircle{right:6%;bottom:22%;}
+ #padRight .psCross{right:24%;bottom:7%;}
+ #padRight .psSquare{right:42%;bottom:22%;}
+ #padRight:active .psBtn{border-color:rgba(255,229,145,.62);box-shadow:0 4px 18px rgba(0,0,0,.56),0 0 18px rgba(255,214,112,.18) inset;}
+ #btnSelect,#btnStart,#btnL1,#btnL2,#btnR1,#btnR2{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.92);font:900 12px/1 "Courier New",monospace;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.22);border-radius:999px;box-shadow:none;text-shadow:0 1px 2px #000;color:rgba(255,255,255,.60);z-index:16;}
+ #btnSelect{left:40%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
+ #btnStart{left:51.2%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
+ #btnL1{left:23.2%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
+ #btnL2{left:31.2%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
+ #btnR1{left:61.4%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
+ #btnR2{left:69.4%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
+ #btnL1.locked,#btnL2.locked,#btnR1.locked,#btnR2.locked{color:#081017;background:linear-gradient(180deg,rgba(255,235,157,.96),rgba(196,151,68,.88));border-color:rgba(255,244,194,.95);box-shadow:0 3px 18px rgba(0,0,0,.58),0 0 22px rgba(255,214,112,.36);}
+ #btnBack,#btnSettings,#btnCd,#btnReset,#btnLoad,#btnSave,#btnMemory{display:none;}
+ .toast{bottom:2%;font-size:11px;padding:6px 8px;z-index:40;}
+ .remoteBanner{left:3%;right:3%;top:3.5%;padding:8px 10px;font-size:12px;z-index:50;}
+}
+</style>
+</head>
+<body>
+<main class="stage" aria-label="PS1 PlayStation">
+  <img class="skin" src="ps1_final_screen.png" alt="PS1 PlayStation screen">
+  <a id="btnBack" class="hit" href="../index.html">BACK</a>
+  <button id="btnSettings" class="hit" type="button">SETTINGS</button>
+  <button id="psMonitor" class="hit" type="button">MONITOR</button>
+  <button id="padLeft" class="hit" type="button">DPAD</button>
+  <button id="padRight" class="hit" type="button">ACTIONS</button>
+  <button id="btnL1" class="hit" type="button">L1</button>
+  <button id="btnL2" class="hit" type="button">L2</button>
+  <button id="btnR1" class="hit" type="button">R1</button>
+  <button id="btnR2" class="hit" type="button">R2</button>
+  <button id="btnSelect" class="hit" type="button">SELECT</button>
+  <button id="btnStart" class="hit" type="button">START</button>
+  <button id="btnReset" class="hit" type="button">RESET</button>
+  <button id="btnMemory" class="hit" type="button">MEMORY CARD</button>
+  <button id="btnCd" class="hit" type="button">CD ISO</button>
+  <button id="btnLoad" class="hit" type="button">LOAD GAME</button>
+  <button id="btnSave" class="hit" type="button">SAVE GAME</button>
+  <input id="fileInput" type="file" accept=".bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream">
+  <div id="remoteBanner" class="remoteBanner" aria-live="polite">
+    <div class="remoteTitle"><span id="remoteTitle">PS1 DOWNLOAD</span><span id="remotePercent"></span></div>
+    <div id="remoteDetail" class="remoteDetail">Cekam...</div>
+    <div id="remotePath" class="remotePath"></div>
+    <div class="remoteBar"><div id="remoteFill" class="remoteFill"></div></div>
+  </div>
+  <div id="toast" class="toast">PS1 BUILD2RZ</div>
+</main>
+
+<div id="helpPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>PS1 — PlayStation 1</h2>
+    <p><b>CD / ISO</b> otevira lokalni PS1 soubor z telefonu.</p>
+    <p><b>LOAD GAME</b> otevre tvoji PS1 stranku na AtariHelp.eu s Google Drive odkazy.</p>
+    <p>Drive muze vracet .zip/.bin/.iso/.img/.pbp/.chd; .7z neni podporovane.</p>
+    <p>Prvni spusteni Drive hry stahne a rozbali ZIP do cache; dalsi spusteni bere hotovy lokalni soubor.</p>
+    <p><b>MEMORY CARD / SAVE GAME</b> zustavaji na LOAD/SAVE state.</p>
+    <p><b>STAV CORE:</b> <span id="coreState">PS1 core je napojen; log ukazuje boot, audio a remote download.</span></p>
+    <h2 style="margin-top:14px;">PS1 TEST LOG</h2>
+    <textarea id="ps1LogView" readonly style="width:100%;min-height:220px;background:#01050a;color:#bfe9ff;border:1px solid rgba(125,200,255,.45);border-radius:10px;font:700 11px/1.4 'Courier New',monospace;padding:8px;white-space:pre;"></textarea>
+    <button id="psGooglePage" type="button">PS1 GOOGLE DRIVE</button>
+    <button id="psRemoteUrl" type="button">PS1 PRIMA URL</button>
+    <button id="psCachePath" type="button">PS1 CACHE CESTA</button>
+    <button id="psCacheClear" type="button">SMAZAT PS1 CACHE</button>
+    <button id="tvWebCast" type="button">TV WEB CAST</button>
+    <button id="logSave" type="button">ULOZIT LOG (Downloads/AtariHelp)</button>
+    <button id="logCopy" type="button">KOPIROVAT LOG</button>
+    <button id="helpClose" type="button">ZAVRIT</button>
+  </div>
+</div>
+<script>
+(function(){'use strict';
+var BUILD='BUILD2SA5AQ_STAGE191_ROUTING_GUARD_NO_PS1_ZIP_HIJACK';
+var PS1_GOOGLE_PAGE='https://atarihelp.eu/?page_id=1048';
+function $(id){return document.getElementById(id);}
+/* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
+var LOG=[];
+function stamp(){var d=new Date();function p(n){return (n<10?'0':'')+n;}return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
+function log(t){
+  var line=stamp()+'  '+t;
+  LOG.push(line); if(LOG.length>400)LOG.splice(0,LOG.length-400);
+  try{console.log('[NAP PS1 '+BUILD+'] '+t);}catch(e){}
+  var v=$('ps1LogView'); if(v){v.value=LOG.join('\n');v.scrollTop=v.scrollHeight;}
+}
+function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napPs1Toast);window.__napPs1Toast=setTimeout(function(){el.classList.remove('show');},ms||2400);log(t);}
+function compactStatusText(t,max){
+  t=String(t||'').replace(/\s+/g,' ').trim();
+  max=max||96;
+  return t.length>max?t.slice(0,max-1)+'...':t;
+}
+function remoteProgressValue(st){
+  var m=String(st||'').match(/(\d+)%/);
+  if(m)return Math.max(0,Math.min(100,parseInt(m[1],10)||0));
+  if(/^PS1_REMOTE_CONNECT/.test(st))return 6;
+  if(/^PS1_REMOTE_DOWNLOAD/.test(st))return 18;
+  if(/^PS1_REMOTE_ZIP_READY/.test(st))return 62;
+  if(/^PS1_REMOTE_ZIP_(CUE|PRIMARY|EXTRACT)/.test(st))return 76;
+  if(/^PS1_REMOTE_READY/.test(st))return 92;
+  if(/^PS1_REMOTE_CACHE_HIT/.test(st))return 100;
+  if(/^PS1_REMOTE_BOOT_OK/.test(st))return 100;
+  if(/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st))return 100;
+  return 0;
+}
+function remoteTitleFor(st){
+  if(/^PS1_REMOTE_START/.test(st))return 'PS1: start';
+  if(/^PS1_REMOTE_CONNECT/.test(st))return 'PS1: pripojuji Drive';
+  if(/^PS1_REMOTE_DOWNLOAD/.test(st))return 'PS1: stahuji hru';
+  if(/^PS1_REMOTE_ZIP_READY/.test(st))return 'PS1: ZIP stazen';
+  if(/^PS1_REMOTE_ZIP_(CUE|PRIMARY|EXTRACT)/.test(st))return 'PS1: rozbaluji ZIP';
+  if(/^PS1_REMOTE_CACHE_HIT/.test(st))return 'PS1: nacteno z cache';
+  if(/^PS1_REMOTE_READY/.test(st))return 'PS1: pripraveno';
+  if(/^PS1_REMOTE_BOOT_OK/.test(st))return 'PS1: hra spustena';
+  if(/^PS1_REMOTE_BUSY/.test(st))return 'PS1: uz pracuje';
+  if(/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st))return 'PS1: chyba';
+  return 'PS1: stav';
+}
+function updateRemoteBanner(st){
+  st=String(st||'').trim();
+  var b=$('remoteBanner'); if(!b)return;
+  if(!st||st==='-'){
+    b.classList.remove('show');
+    return;
+  }
+  if(/^PS1_REMOTE_BOOT_OK/.test(st)){
+    b.classList.remove('show');
+    clearTimeout(window.__napRemoteHideTimer);
+    return;
+  }
+  var path='';
+  var p=st.indexOf(' path=');
+  if(p>=0){path=st.slice(p+6);st=st.slice(0,p);}
+  if(path)window.__napPs1RemoteLastPath=path;
+  else path=window.__napPs1RemoteLastPath||'';
+  var pct=remoteProgressValue(st);
+  var title=remoteTitleFor(st);
+  var active=/^PS1_REMOTE_(START|CONNECT|DOWNLOAD|ZIP|READY|CACHE_HIT|BUSY)/.test(st)||/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st);
+  if(!active){b.classList.remove('show');return;}
+  $('remoteTitle').textContent=title;
+  $('remotePercent').textContent=pct>0?(pct+'%'):'';
+  $('remoteDetail').textContent=compactStatusText(st,110);
+  $('remotePath').textContent=path?('cache: '+compactStatusText(path,92)):'';
+  $('remoteFill').style.width=Math.max(0,Math.min(100,pct))+'%';
+  b.classList.add('show');
+  clearTimeout(window.__napRemoteHideTimer);
+  if(/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st)){
+    window.__napRemoteHideTimer=setTimeout(function(){b.classList.remove('show');},9000);
+  }
+}
+function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v)v.value=LOG.join('\n');}
+function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+
+/* ===== BUILD2RZ ANALYZA SOUBORU (poctiva, zadny fake boot) =====
+   BIOS rozpoznani: velikost 524288 + retezec "System ROM Version" + region pismeno.
+   FNV otisky overene proti realnym souborum Reneho (scph1001/5500/5501/7502). */
+var KNOWN_BIOS={0x4B9CF0AF:'SCPH-1001 (USA, System ROM 2.2)',0x53C79B51:'SCPH-5500 (JAPAN, System ROM 3.0)',0xEB38BE02:'SCPH-5501 (USA, System ROM 3.0)',0xEBB5EFDF:'SCPH-7502 (EUROPE, System ROM 4.1)'};
+function fnv1a32(u8){var h=0x811C9DC5;for(var i=0;i<u8.length;i++){h^=u8[i];h=(h+((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)))>>>0;}return h>>>0;}
+function hex32(n){var s=(n>>>0).toString(16).toUpperCase();while(s.length<8)s='0'+s;return '0x'+s;}
+function findAscii(u8,needle,from,to){
+  var n=[],i,j;for(i=0;i<needle.length;i++)n.push(needle.charCodeAt(i));
+  from=from||0; to=Math.min(to||u8.length,u8.length);
+  for(i=from;i<=to-n.length;i++){var ok=true;for(j=0;j<n.length;j++){if(u8[i+j]!==n[j]){ok=false;break;}}if(ok)return i;}
+  return -1;
+}
+function readAscii(u8,off,len){var out='';for(var i=off;i<Math.min(off+len,u8.length);i++){var c=u8[i];if(c<32||c>126)break;out+=String.fromCharCode(c);}return out;}
+function bytesToB64(bytes){var chunk=0x8000,parts=[];for(var i=0;i<bytes.length;i+=chunk){parts.push(String.fromCharCode.apply(null,bytes.subarray(i,i+chunk)));}return btoa(parts.join(''));}
+function regionWord(ch){return ch==='A'?'USA/NTSC-U':ch==='J'?'JAPAN/NTSC-J':ch==='E'?'EUROPE/PAL':('? ('+ch+')');}
+function analyzeBios(u8,name){
+  var vOff=findAscii(u8,'System ROM Version',0x7F000,u8.length);
+  if(vOff<0)return null;
+  var ver=readAscii(u8,vOff,40);
+  var reg=ver.trim().slice(-1);
+  var f=fnv1a32(u8);
+  var known=KNOWN_BIOS[f];
+  log('BIOS_DETECT name='+name+' size='+u8.length+' fnv='+hex32(f)+' verze="'+ver+'" region='+regionWord(reg)+(known?(' MATCH='+known):' MATCH=neznamy dump (muze byt v poradku, jen neni v tabulce)'));
+  return 'BIOS: '+(known||ver)+' — '+regionWord(reg);
+}
+function analyzeDisc(u8,name,totalSize){
+  var out=[];
+  var raw2352=(u8.length>=16&&u8[0]===0x00&&u8[1]===0xFF&&u8[10]===0xFF&&u8[11]===0x00);
+  var i;for(i=1;i<10;i++){if(u8[i]!==0xFF){raw2352=false;break;}}
+  if(raw2352)out.push('RAW 2352B sektory (BIN/IMG z CD)');
+  var cd001=findAscii(u8,'CD001',0,Math.min(u8.length,300000));
+  if(cd001>=0)out.push('ISO9660 (CD001 @'+cd001+')');
+  var lic=findAscii(u8,'Sony Computer Entertainment',0,Math.min(u8.length,300000));
+  if(lic>=0){
+    var licStr=readAscii(u8,lic,50);
+    var reg=licStr.indexOf('Amer')>=0?'USA/NTSC-U':licStr.indexOf('Euro')>=0?'EUROPE/PAL':licStr.indexOf('Inc')>=0?'JAPAN/NTSC-J':'?';
+    out.push('PS1 licencni sektor ("'+licStr+'") region='+reg);
+  }
+  var pst=findAscii(u8,'PLAYSTATION',0,Math.min(u8.length,300000));
+  if(pst>=0)out.push('PLAYSTATION marker @'+pst);
+  var cnf=findAscii(u8,'SYSTEM.CNF',0,Math.min(u8.length,600000));
+  if(cnf>=0)out.push('SYSTEM.CNF nalezen');
+  var boot=findAscii(u8,'BOOT = cdrom',0,Math.min(u8.length,600000));
+  if(boot>=0)out.push('BOOT radek: "'+readAscii(u8,boot,60)+'"');
+  if(!out.length)return null;
+  log('DISC_DETECT name='+name+' totalSize='+totalSize+' | '+out.join(' | '));
+  return 'PS1 DISK: '+out[0]+(out.length>1?(' +'+(out.length-1)+' dalsich znaku (viz LOG)'):'');
+}
+function analyzeFile(f,reason){
+  log('FILE_SELECTED reason='+reason+' name='+f.name+' size='+f.size);
+  var lower=(f.name||'').toLowerCase();
+  if(lower.slice(-3)==='.7z'||lower.slice(-4)==='.zip'||lower.slice(-4)==='.rar'){
+    toast('ARCHIV ('+f.name+'): PS1 hru vyber rozbalenou jako .bin/.iso/.img',5200);
+    log('ARCHIVE_NOT_SUPPORTED name='+f.name+' - archiv nerozbaluju primo v appce');
+    return;
+  }
+  if(lower.slice(-4)==='.cue'||f.size<4096&&lower.slice(-4)!=='.bin'){
+    var tr=new FileReader();
+    tr.onload=function(){
+      var txt=String(tr.result||'');
+      var m=txt.match(/FILE\s+"([^"]+)"/i)||txt.match(/FILE\s+(\S+)/i);
+      if(m){toast('.CUE obsah disku: patri k nemu soubor "'+m[1]+'" - vyber TEN pro analyzu',5600);log('CUE_PARSED name='+f.name+' file="'+m[1]+'" | '+txt.split(/\r?\n/)[0]);}
+      else{toast('.CUE precten, ale FILE radek nenalezen - vyber primo .bin',4200);log('CUE_NO_FILE_LINE name='+f.name);}
+    };
+    tr.onerror=function(){toast('CHYBA cteni .cue',2600);};
+    tr.readAsText(f.slice(0,65536));
+    return;
+  }
+  var isBiosSize=(f.size===524288);
+  var slice=isBiosSize?f:f.slice(0,1024*1024);
+  var r=new FileReader();
+  r.onerror=function(){toast('CHYBA cteni souboru: '+f.name,3200);};
+  r.onload=function(){
+    try{
+      var u8=new Uint8Array(r.result);
+      var res=null;
+      if(isBiosSize){res=analyzeBios(u8,f.name);
+        if(res&&window.AHPS1&&window.AHPS1.ps1SaveBios){
+          try{var b64=bytesToB64(u8);
+            log('PS1_BIOS_SAVE '+window.AHPS1.ps1SaveBios(f.name,b64));
+          }catch(be){log('PS1_BIOS_SAVE_ERROR '+(be&&be.message));}
+        }}
+      if(!res)res=analyzeDisc(u8,f.name,f.size);
+      if(res){toast(res,5200);
+        if(res.indexOf('PS1 DISK')===0){try{localStorage.setItem('napPs1LastGame',f.name);}catch(_){ } log('GAME_REMEMBERED name='+f.name);}}
+      else{toast('Soubor nerozpoznan jako PS1 BIOS ani PS1 disk: '+f.name,4200);log('DETECT_NONE name='+f.name+' prvnich16B='+Array.prototype.slice.call(u8,0,16).map(function(b){return('0'+b.toString(16)).slice(-2);}).join(' '));}
+      log('POZN: analyza souboru bezi jen pro kontrolu; realny PS1 boot jde pres nativni core.');
+    }catch(err){toast('ANALYZA CHYBA: '+(err&&err.message),3600);}
+  };
+  r.readAsArrayBuffer(slice);
+}
+function openPicker(reason){
+  var lastGame='';try{lastGame=localStorage.getItem('napPs1LastGame')||'';}catch(_){ }
+  toast(reason+': vyber PS1 hru (.bin/.iso/.img, pripadne .cue obsah)'+(lastGame?(' | posledni: '+lastGame):''),2800);
+  var i=$('fileInput');if(i){try{i.value='';}catch(_){} i.__napReason=reason; i.click();}
+}
+var ps1Down={};
+var shoulderLocked={};
+var shoulderLockElems={};
+function setPs1(btn,down){
+  if(!btn)return;
+  down=!!down;
+  if(ps1Down[btn]===down)return;
+  ps1Down[btn]=down;
+  try{if(window.AHPS1&&window.AHPS1.ps1Input)window.AHPS1.ps1Input(btn,down);}catch(e){}
+}
+function setShoulderLocked(btn,el,on){
+  shoulderLocked[btn]=!!on;
+  if(el)shoulderLockElems[btn]=el;
+  var target=el||shoulderLockElems[btn];
+  if(target&&target.classList)target.classList.toggle('locked',!!on);
+  setPs1(btn,!!on);
+}
+function releaseButtons(list){
+  for(var i=0;i<list.length;i++){
+    if(shoulderLocked[list[i]])setShoulderLocked(list[i],null,false);
+    else setPs1(list[i],false);
+  }
+}
+function touchPoint(t){return {x:t&&t.clientX||0,y:t&&t.clientY||0};}
+function pointInside(p,r){return p.x>=r.left&&p.x<=r.right&&p.y>=r.top&&p.y<=r.bottom;}
+function touchById(list,id){
+  if(!list)return null;
+  for(var i=0;i<list.length;i++){if(list[i].identifier===id)return list[i];}
+  return null;
+}
+function pickChangedTouch(el,ev){
+  var list=ev.changedTouches,r=el.getBoundingClientRect();
+  if(!list||!list.length)return null;
+  for(var i=0;i<list.length;i++){if(pointInside(touchPoint(list[i]),r))return list[i];}
+  return list[0];
+}
+function bindHold(el,btn){
+  var activeId=null,mouseDown=false;
+  function touchStart(ev){var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();activeId=t.identifier;setPs1(btn,true);}
+  function touchEnd(ev){if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();activeId=null;setPs1(btn,false);}
+  function mouseStart(ev){ev.preventDefault();mouseDown=true;setPs1(btn,true);}
+  function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;setPs1(btn,false);}
+  el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
+  /* POJISTKA: kdyz prst sjede mimo tlacitko, prohlizec posle touchend az
+     pozde nebo vubec - a stisk by zustal viset (auto by jelo dal rovne).
+     Reagujeme proto i na to, ze dotyk opusti tlacitko. */
+  el.addEventListener('touchleave',touchEnd,{passive:false});
+  el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
+}
+function bindLockHold(el,btn){
+  var activeId=null,mouseDown=false,timer=null,longLock=false;
+  function clearTimer(){if(timer){clearTimeout(timer);timer=null;}}
+  function beginLockTimer(){
+    longLock=false;clearTimer();
+    timer=setTimeout(function(){longLock=true;setShoulderLocked(btn,el,true);},620);
+  }
+  function touchStart(ev){
+    var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();
+    if(shoulderLocked[btn]){setShoulderLocked(btn,el,false);return;}
+    activeId=t.identifier;setPs1(btn,true);beginLockTimer();
+  }
+  function touchEnd(ev){
+    if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();
+    activeId=null;clearTimer();if(!longLock&&!shoulderLocked[btn])setPs1(btn,false);
+  }
+  function mouseStart(ev){
+    ev.preventDefault();
+    if(shoulderLocked[btn]){setShoulderLocked(btn,el,false);return;}
+    mouseDown=true;setPs1(btn,true);beginLockTimer();
+  }
+  function mouseEnd(ev){
+    if(!mouseDown)return;ev.preventDefault();mouseDown=false;clearTimer();if(!longLock&&!shoulderLocked[btn])setPs1(btn,false);
+  }
+  el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
+  el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
+}
+function controlRect(el,selector){
+  var visual=selector&&el&&el.querySelector?el.querySelector(selector):null;
+  if(visual&&visual.offsetWidth>8&&visual.offsetHeight>8)return visual.getBoundingClientRect();
+  return el.getBoundingClientRect();
+}
+function bindDpad(el){
+  var keys=['UP','DOWN','LEFT','RIGHT'];
+  var activeId=null,mouseDown=false;
+  function moveKnob(nx,ny,active){
+    var vis=el.querySelector?el.querySelector('.dpadVis'):null;
+    var knob=el.querySelector?el.querySelector('.dpadKnob'):null;
+    if(!vis||!knob)return;
+    if(!active){vis.classList.remove('active');knob.style.transform='translate(-50%,-50%)';return;}
+    var len=Math.sqrt(nx*nx+ny*ny);
+    if(len>1){nx/=len;ny/=len;}
+    var r=vis.getBoundingClientRect();
+    var travel=Math.min(r.width,r.height)*0.28;
+    knob.style.transform='translate(-50%,-50%) translate('+Math.round(nx*travel)+'px,'+Math.round(ny*travel)+'px)';
+    vis.classList.add('active');
+  }
+  function movePoint(p){
+    var r=controlRect(el,'.dpadVis');
+    var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
+    var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
+    var deadX=.42,deadY=.32,diagX=.56;
+    var left=nx<-deadX,right=nx>deadX,up=ny<-deadY,down=ny>deadY;
+    if((up||down)&&Math.abs(nx)<diagX){left=false;right=false;}
+    moveKnob(nx,ny,true);
+    setPs1('LEFT',left);setPs1('RIGHT',right);setPs1('UP',up);setPs1('DOWN',down);
+  }
+  function touchStart(ev){var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();activeId=t.identifier;movePoint(touchPoint(t));}
+  function touchMove(ev){if(activeId===null)return;var t=touchById(ev.touches,activeId);if(!t)return;ev.preventDefault();movePoint(touchPoint(t));}
+  function touchEnd(ev){if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();activeId=null;moveKnob(0,0,false);releaseButtons(keys);}
+  function mouseStart(ev){ev.preventDefault();mouseDown=true;movePoint(touchPoint(ev));}
+  function mouseMove(ev){if(!mouseDown)return;ev.preventDefault();movePoint(touchPoint(ev));}
+  function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;moveKnob(0,0,false);releaseButtons(keys);}
+  el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchmove',touchMove,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
+  el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mousemove',mouseMove,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
+}
+function nearestAction(el,p){
+  var defs=[['TRIANGLE','.psTri'],['CIRCLE','.psCircle'],['CROSS','.psCross'],['SQUARE','.psSquare']];
+  var best=null,bestDist=1e20;
+  for(var i=0;i<defs.length;i++){
+    var n=el.querySelector?el.querySelector(defs[i][1]):null;
+    if(!n||n.offsetWidth<=8||n.offsetHeight<=8)continue;
+    var r=n.getBoundingClientRect();
+    var cx=r.left+r.width/2,cy=r.top+r.height/2;
+    var dx=p.x-cx,dy=p.y-cy,dist=dx*dx+dy*dy;
+    if(dist<bestDist){bestDist=dist;best=defs[i][0];}
+  }
+  return best;
+}
+function bindActions(el){
+  var keys=['CROSS','CIRCLE','SQUARE','TRIANGLE'];
+  var activeId=null,mouseDown=false;
+  function movePoint(p){
+    var r=el.getBoundingClientRect();
+    var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
+    var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
+    releaseButtons(keys);
+    var decorated=nearestAction(el,p);
+    if(decorated)setPs1(decorated,true);
+    else if(Math.abs(nx)>Math.abs(ny))setPs1(nx>0?'CIRCLE':'SQUARE',true);
+    else setPs1(ny>0?'CROSS':'TRIANGLE',true);
+  }
+  function touchStart(ev){var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();activeId=t.identifier;movePoint(touchPoint(t));}
+  function touchMove(ev){if(activeId===null)return;var t=touchById(ev.touches,activeId);if(!t)return;ev.preventDefault();movePoint(touchPoint(t));}
+  function touchEnd(ev){if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();activeId=null;releaseButtons(keys);}
+  function mouseStart(ev){ev.preventDefault();mouseDown=true;movePoint(touchPoint(ev));}
+  function mouseMove(ev){if(!mouseDown)return;ev.preventDefault();movePoint(touchPoint(ev));}
+  function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;releaseButtons(keys);}
+  el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchmove',touchMove,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
+  el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mousemove',mouseMove,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
+}
+function installPadDecor(){
+  var left=$('padLeft'),right=$('padRight');
+  if(left&&!left.__napDecor){
+    left.setAttribute('aria-label','D-pad');
+    left.innerHTML='<span class="dpadVis" aria-hidden="true"><span class="dpadKnob"></span></span>';
+    left.__napDecor=true;
+  }
+  if(right&&!right.__napDecor){
+    right.setAttribute('aria-label','PS1 action buttons');
+    right.innerHTML='<span class="psBtn psTri" aria-hidden="true">&#9651;</span><span class="psBtn psCircle" aria-hidden="true">&#9675;</span><span class="psBtn psCross" aria-hidden="true">&#10005;</span><span class="psBtn psSquare" aria-hidden="true">&#9633;</span>';
+    right.__napDecor=true;
+  }
+}
+function ensurePs1ScreenAndPoll(){
+  if(!window.__napPs1Screen){
+    var mon=$('psMonitor');
+    if(mon){var im=document.createElement('img');im.id='ps1Screen';
+      im.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:auto;display:none;pointer-events:none;';
+      try{var cs=getComputedStyle(mon);if(cs.position==='static')mon.style.position='relative';}catch(_){ }
+      mon.appendChild(im);window.__napPs1Screen=im;
+      // Hlasime aplikaci, KDE presne ma byt obraz. Na vysku lezi v okenku
+      // konzole a plocha musi byt NAD strankou (grafika konzole je
+      // neprusvitna). Na sirku je stranka pruhledna, takze plocha muze byt
+      // pod ni a ovladac zustane videt.
+      window.__napPs1RectPoll=setInterval(function(){
+        try{
+          var naSirku = window.innerWidth > window.innerHeight;
+          var r = mon.getBoundingClientRect();
+          var dpr = window.devicePixelRatio || 1;
+          var l = Math.round(r.left*dpr), t = Math.round(r.top*dpr);
+          var w = Math.round(r.width*dpr), h = Math.round(r.height*dpr);
+          var klic = l+','+t+','+w+','+h+','+naSirku;
+          if (klic !== window.__napPs1LastRect && w > 0 && h > 0) {
+            window.__napPs1LastRect = klic;
+            window.AHPS1.ps1SetScreenRect(l, t, w, h, naSirku);
+            log('PS1_OBRAZ_MISTO '+klic);
+          }
+        }catch(fe){}
+      },400);
+
+      window.__napPs1FramePoll=setInterval(function(){
+        try{
+          // ===== TADY BYLA TA CERNA OBRAZOVKA NA SIRKU =====
+          // Puvodne se tu obraz na sirku VUBEC neposilal s tim, ze ho pry
+          // kresli nativni TextureView (NativePs1InPlaceView). Ta trida ale
+          // byla mrtva (lezela za "if (true) return;") a nakonec smazana,
+          // takze na sirku nekreslil NIKDO - odtud cerna obrazovka jen
+          // s ovladacem. Obraz se ted posila v obou otocenich.
+          // Ovladac zustava nad obrazem: obraz ma z-index 2, tlacitka 12 a 16.
+          var b64=window.AHPS1.ps1FramePreviewB64();
+          if(b64&&b64.length>50){im.src='data:image/jpeg;base64,'+b64;if(im.style.display==='none'){im.style.display='block';log('PS1_OBRAZ_ZAPNUT snimky z jadra, na vysku i na sirku');}}
+        }catch(fe){}
+      },80);
+    }
+  }
+  if(!window.__napPs1Poll){window.__napPs1Poll=setInterval(function(){
+    try{
+      var st=window.AHPS1.ps1Status();
+      var cs=$('coreState'); if(cs)cs.textContent=compactStatusText(st,150);
+      if(st!==window.__napPs1LastSt){window.__napPs1LastSt=st;log(st);}
+    }catch(pe){}
+  },1000);}
+  if(!window.__napPs1RemotePoll){window.__napPs1RemotePoll=setInterval(function(){
+    try{
+      var rs=window.AHPS1.ps1RemoteStatus();
+      updateRemoteBanner(rs);
+      if(rs&&rs!==window.__napPs1LastRemoteSt){window.__napPs1LastRemoteSt=rs;log('REMOTE_STATUS '+rs);}
+    }catch(re){}
+  },450);}
+}
+function bootPs1Native(){
+  if(window.AHPS1&&window.AHPS1.ps1PickGame){
+    log('PS1_BOOT_REQUEST pres nativni picker (fd, bez kopirovani)');
+    toast('PS1 BOOT: vyber .bin/.iso hry',2600);
+    window.AHPS1.ps1PickGame();
+    ensurePs1ScreenAndPoll();
+  } else openPicker('LOAD GAME');
+}
+function ps1NormalizeRemoteUrl(u){
+  u=String(u||'').trim();
+  if(/^https?:\/\//i.test(u))return u;
+  return u;
+}
+function openPs1GooglePage(){
+  try{
+    log('PS1_GOOGLE_PAGE '+PS1_GOOGLE_PAGE);
+    toast('Oteviram PS1 Google Drive stranku',2600);
+    if(window.AHNET&&window.AHNET.openPs1Games)window.AHNET.openPs1Games();
+    else location.href=PS1_GOOGLE_PAGE;
+  }catch(e){
+    toast('PS1 Google stranka chyba: '+(e&&e.message),3200);
+  }
+}
+function bootPs1RemoteUrl(){
+  try{
+    if(!(window.AHPS1&&window.AHPS1.ps1DownloadAndBoot)){
+      toast('PS1 URL: AHPS1 most chybi',2600);
+      return;
+    }
+    var last='';try{last=localStorage.getItem('napPs1RemoteUrl')||'';}catch(_){}
+    var u=prompt('PS1 prima URL (.zip/.cue/.bin/.iso/.img/.pbp/.chd nebo Google Drive file link)',last||'https://');
+    if(!u)return;
+    u=ps1NormalizeRemoteUrl(u);
+    if(!/^https?:\/\//i.test(u)){toast('PS1 URL musi zacinat http:// nebo https://',3200);return;}
+    try{localStorage.setItem('napPs1RemoteUrl',u);}catch(_){}
+    log('PS1_REMOTE_REQUEST '+u);
+    toast('PS1: stahuju z Drive / netu, pockej na BOOT OK',3600);
+    window.AHPS1.ps1DownloadAndBoot(u);
+    ensurePs1ScreenAndPoll();
+  }catch(e){
+    toast('PS1 URL chyba: '+(e&&e.message),3600);
+    log('PS1_REMOTE_ERROR '+(e&&e.message));
+  }
+}
+function ps1ShowCachePath(){
+  try{
+    if(window.AHPS1&&window.AHPS1.ps1RemoteCachePath){
+      var r=String(window.AHPS1.ps1RemoteCachePath());
+      log('PS1_CACHE_PATH '+r);
+      toast('PS1 cache: '+r,7000);
+    }else toast('PS1 CACHE: AHPS1 most chybi',2600);
+  }catch(e){toast('PS1 CACHE cesta chyba: '+(e&&e.message),3600);}
+}
+function ps1ClearCache(){
+  try{
+    if(window.AHPS1&&window.AHPS1.ps1ClearRemoteCache){
+      if(!confirm('Smazat PS1 stazene hry/cache z telefonu?'))return;
+      var r=String(window.AHPS1.ps1ClearRemoteCache());
+      log('PS1_CACHE_CLEAR_RESULT '+r);
+      try{var sc=document.getElementById('ps1Screen');if(sc){sc.style.display='none';sc.removeAttribute('src');}}catch(_){ } // BUILD2SA5AS: po smazani nesmi zustat obraz hry
+      toast(r,7000);
+    }else toast('PS1 CACHE CLEAR: AHPS1 most chybi',2600);
+  }catch(e){toast('PS1 CACHE mazani chyba: '+(e&&e.message),4200);}
+}
+function tvWebCastStart(){
+  try{
+    if(window.AHTVWEB&&window.AHTVWEB.start){
+      var r=String(window.AHTVWEB.start());
+      var m=r.match(/https?:\/\/\S+/);
+      var url=m?m[0]:'';
+      log('TV_WEB_CAST '+r);
+      if(url){
+        try{prompt('Na TV otevri tuto adresu v prohlizeci / AirScreen browseru:',url);}catch(_){}
+        toast('TV WEB CAST: otevri na TV '+url,9000);
+      }else{
+        toast(r,7000);
+      }
+    }else toast('TV WEB CAST: AHTVWEB most chybi',3000);
+  }catch(e){
+    toast('TV WEB CAST chyba: '+(e&&e.message),5200);
+    log('TV_WEB_CAST_ERROR '+(e&&e.message));
+  }
+}
+function ps1QuickSave(){
+  try{
+    if(window.AHPS1&&window.AHPS1.ps1QuickSave){
+      var r=String(window.AHPS1.ps1QuickSave());
+      toast(r.indexOf('PS1_STATE_SAVE_OK')===0?'SAVE STATE ulozen':r,3600);
+      log(r);
+    } else toast('SAVE STATE: AHPS1 most chybi',2400);
+  }catch(e){toast('SAVE STATE chyba: '+(e&&e.message),3200);}
+}
+function ps1QuickLoad(){
+  try{
+    if(window.AHPS1&&window.AHPS1.ps1QuickLoad){
+      var r=String(window.AHPS1.ps1QuickLoad());
+      toast(r.indexOf('PS1_STATE_LOAD_OK')===0?'SAVE STATE nacten':r,3600);
+      log(r);
+    } else toast('LOAD STATE: AHPS1 most chybi',2400);
+  }catch(e){toast('LOAD STATE chyba: '+(e&&e.message),3200);}
+}
+window.addEventListener('blur',function(){releaseButtons(['UP','DOWN','LEFT','RIGHT','CROSS','CIRCLE','SQUARE','TRIANGLE','L1','L2','R1','R2','START','SELECT']);},true);
+window.addEventListener('orientationchange',function(){setTimeout(function(){releaseButtons(['UP','DOWN','LEFT','RIGHT','CROSS','CIRCLE','SQUARE','TRIANGLE','L1','L2','R1','R2','START','SELECT']);},80);},true);
+$('btnSettings').addEventListener('click',function(e){e.preventDefault();showHelp();},true);
+$('psMonitor').addEventListener('click',function(e){e.preventDefault();},true);
+$('btnReset').addEventListener('click',function(e){e.preventDefault();toast('PS1 RESET pripraven',1800);},true);
+$('btnMemory').addEventListener('click',function(e){e.preventDefault();ps1QuickLoad();},true);
+$('btnCd').addEventListener('click',function(e){e.preventDefault();
+  bootPs1Native();
+},true);
+$('btnLoad').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);
+$('btnSave').addEventListener('click',function(e){e.preventDefault();ps1QuickSave();},true);
+installPadDecor();
+bindDpad($('padLeft'));
+bindActions($('padRight'));
+bindLockHold($('btnL1'),'L1');
+bindLockHold($('btnL2'),'L2');
+bindLockHold($('btnR1'),'R1');
+bindLockHold($('btnR2'),'R2');
+bindHold($('btnSelect'),'SELECT');
+bindHold($('btnStart'),'START');
+$('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
+if($('psRemoteUrl'))$('psRemoteUrl').addEventListener('click',function(e){e.preventDefault();bootPs1RemoteUrl();},true);
+if($('psGooglePage'))$('psGooglePage').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);
+if($('psCachePath'))$('psCachePath').addEventListener('click',function(e){e.preventDefault();ps1ShowCachePath();},true);
+if($('psCacheClear'))$('psCacheClear').addEventListener('click',function(e){e.preventDefault();ps1ClearCache();},true);
+if($('tvWebCast'))$('tvWebCast').addEventListener('click',function(e){e.preventDefault();tvWebCastStart();},true);
+$('logSave').addEventListener('click',function(e){e.preventDefault();
+  var fn='AtariHelp_PS1_LOG_'+(function(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());})()+'.txt';
+  try{
+    if(window.AHSAVE&&window.AHSAVE.save){
+      var res=window.AHSAVE.save(fn,LOG.join('\n'));
+      log('LOG_SAVE '+res);
+      toast(String(res).indexOf('DOWNLOADS_OK')===0?('LOG ulozen: Downloads/AtariHelp/'+fn):('LOG ulozen (fallback): '+res),5200);
+    }else{
+      toast('AHSAVE most neni dostupny - pouzij KOPIROVAT LOG',3600);
+      log('LOG_SAVE_NO_BRIDGE window.AHSAVE chybi');
+    }
+  }catch(err){toast('ULOZENI LOGU CHYBA: '+(err&&err.message),3600);log('LOG_SAVE_ERROR '+(err&&err.message));}
+},true);
+$('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps1LogView');if(!v)return;try{v.focus();v.select();document.execCommand('copy');toast('LOG zkopirovan do schranky',1800);}catch(err){toast('Kopirovani selhalo - oznac text rucne',2400);}},true);
+$('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
+$('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
+log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
+ensurePs1ScreenAndPoll();
+log(BUILD+' ready: LOAD GAME otevre PS1 Google Drive stranku '+PS1_GOOGLE_PAGE+'; cache je v Downloads/AtariHelp/PS1, BOOT_OK banner se hned schova.');
+})();
+</script>
+</body>
+</html>

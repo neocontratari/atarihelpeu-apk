@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>N&P VISION — Retro Cassette Player</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100%;background:#050608;color:#f2c464;font-family:"Courier New",monospace;overflow-x:hidden;}
+body{display:flex;justify-content:center;align-items:flex-start;}
+.stage{position:relative;width:min(100vw,1024px);aspect-ratio:1024/1792;background:#050608;overflow:hidden;box-shadow:0 0 48px rgba(0,0,0,.95);}
+.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;}
+.hit{position:absolute;z-index:8;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
+.hit:active{background:rgba(255,202,92,.10);box-shadow:0 0 26px rgba(255,202,92,.20) inset;border-radius:16px;}
+#filePick{display:none;}
+
+/* Main buttons */
+#btnMenu{left:5.5%;top:3.7%;width:12.2%;height:5.7%;}
+#btnSettingsTop{left:78.5%;top:3.7%;width:12.2%;height:5.7%;}
+#btnRew{left:6.1%;top:72.0%;width:14.0%;height:6.1%;}
+#btnPlay{left:20.2%;top:72.0%;width:14.0%;height:6.1%;}
+#btnStop{left:34.4%;top:72.0%;width:14.0%;height:6.1%;}
+#btnPause{left:48.6%;top:72.0%;width:14.0%;height:6.1%;}
+#btnFwd{left:62.8%;top:72.0%;width:14.0%;height:6.1%;}
+#btnRec{left:77.0%;top:72.0%;width:14.7%;height:6.1%;}
+#btnMyPlaylists{left:5.8%;top:80.1%;width:31.2%;height:5.4%;}
+#btnYoutube{left:60.7%;top:80.1%;width:33.2%;height:5.4%;}
+#btnTrackStrip{left:6.0%;top:86.4%;width:88.0%;height:5.0%;}
+#navPlayer{left:0.0%;top:93.0%;width:20.0%;height:7.0%;}
+#navPlaylists{left:20.0%;top:93.0%;width:20.0%;height:7.0%;}
+#navLibrary{left:40.0%;top:93.0%;width:20.0%;height:7.0%;}
+#navFavorites{left:60.0%;top:93.0%;width:20.0%;height:7.0%;}
+#navSettings{left:80.0%;top:93.0%;width:20.0%;height:7.0%;}
+
+/* Sound controls - larger invisible interaction areas for finer drag */
+.eqZone{position:absolute;z-index:7;border:0;background:transparent;touch-action:none;}
+#eq60{left:8.3%;top:55.0%;width:7.1%;height:15.9%;}
+#eq250{left:15.6%;top:55.0%;width:7.1%;height:15.9%;}
+#eq1k{left:23.0%;top:55.0%;width:7.1%;height:15.9%;}
+#eq4k{left:30.3%;top:55.0%;width:7.1%;height:15.9%;}
+#eq16k{left:37.7%;top:55.0%;width:7.1%;height:15.9%;}
+.knobZone{position:absolute;z-index:7;border:0;background:transparent;touch-action:none;border-radius:50%;}
+#knBalance{left:54.7%;top:54.4%;width:12.2%;height:7.8%;}
+#knBass{left:74.0%;top:54.4%;width:12.2%;height:7.8%;}
+#knTreble{left:54.7%;top:64.5%;width:12.2%;height:7.8%;}
+#knVolume{left:73.0%;top:64.0%;width:16.0%;height:9.2%;}
+
+/* status */
+#status{
+  position:absolute;left:19.8%;top:86.95%;width:58%;height:2.8%;z-index:6;
+  display:flex;align-items:center;color:#f2c464;font:900 clamp(9px,1.8vw,17px)/1 "Courier New",monospace;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 0 7px rgba(242,196,100,.22);pointer-events:none;
+}
+
+/* reel animation, recentered */
+.reel{
+  position:absolute;z-index:4;width:16.8%;aspect-ratio:1;border-radius:50%;
+  pointer-events:none;display:none;mix-blend-mode:screen;
+  border:1px solid rgba(255,196,70,.16);
+  box-shadow:0 0 18px rgba(255,196,70,.09) inset;
+}
+#reelL{left:21.8%;top:29.9%;}
+#reelR{left:58.6%;top:29.9%;}
+.reel:before,.reel:after,.reel i,.reel b{
+  content:"";position:absolute;left:50%;top:50%;transform-origin:center center;
+  width:72%;height:4%;margin-left:-36%;margin-top:-2%;
+  background:linear-gradient(90deg,rgba(255,196,70,.05),rgba(255,196,70,.42),rgba(255,196,70,.05));
+  border-radius:6px;
+}
+.reel:after{transform:rotate(45deg);}
+.reel i{display:block;transform:rotate(90deg);}
+.reel b{display:block;transform:rotate(135deg);}
+.stage.playing .reel{display:block;animation:spin 1.35s linear infinite;}
+.stage.seeking .reel{display:block;animation:spin .26s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* visual EQ / knobs overlay */
+.eqTrack{
+  position:absolute;z-index:5;width:1.7%;height:12.1%;top:57.1%;
+  border-radius:10px;background:rgba(0,0,0,.10);pointer-events:none;
+}
+.eqTrack::before{
+  content:"";position:absolute;left:50%;top:0;bottom:0;width:3px;transform:translateX(-50%);
+  background:linear-gradient(180deg,rgba(255,196,70,.25),rgba(255,196,70,.06));
+  border-radius:4px;
+}
+.eqHandle{
+  position:absolute;left:-78%;width:256%;height:6.5%;border-radius:8px;
+  background:linear-gradient(180deg,rgba(255,223,145,.95),rgba(188,129,28,.98));
+  box-shadow:0 0 10px rgba(255,196,70,.30);
+}
+#track60{left:11.1%;} #track250{left:18.4%;} #track1k{left:25.7%;} #track4k{left:33.1%;} #track16k{left:40.5%;}
+
+.knobPointer{
+  position:absolute;z-index:5;pointer-events:none;
+  width:6.4%;height:6.4%;border-radius:50%;
+}
+#ptrBalance{left:57.6%;top:55.1%;}
+#ptrBass{left:76.9%;top:55.1%;}
+#ptrTreble{left:57.6%;top:65.2%;}
+#ptrVolume{left:76.6%;top:65.2%;width:8.4%;height:8.4%;}
+.knobPointer::before{
+  content:"";position:absolute;left:50%;top:50%;width:5px;height:42%;
+  background:linear-gradient(180deg,rgba(255,230,170,.98),rgba(222,149,34,.98));
+  border-radius:4px;transform-origin:50% 86%;
+  box-shadow:0 0 8px rgba(255,196,70,.35);
+}
+#ptrVolume::before{height:45%;}
+.valueLabel{
+  position:absolute;z-index:5;pointer-events:none;color:#8fd8ff;
+  font:900 clamp(8px,1.2vw,12px)/1 "Courier New",monospace;text-shadow:0 0 7px rgba(108,201,255,.25);
+}
+#lblBalance{left:56.8%;top:61.4%;width:8.5%;text-align:center;}
+#lblBass{left:76.0%;top:61.4%;width:8.5%;text-align:center;}
+#lblTreble{left:56.8%;top:71.4%;width:8.5%;text-align:center;}
+#lblVolume{left:75.2%;top:72.3%;width:10%;text-align:center;}
+
+/* panels */
+#playlistPanel,#settingsPanel{
+  display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.92);
+  padding:18px;overflow:auto;color:#f2c464;
+}
+#playlistPanel.open,#settingsPanel.open{display:block;}
+.box{
+  max-width:760px;margin:0 auto;background:#090d12;border:1px solid rgba(242,196,100,.44);
+  border-radius:16px;padding:18px;box-shadow:0 0 36px rgba(0,0,0,.8);
+}
+.box h2{font:900 24px "Courier New",monospace;margin-bottom:12px;color:#ffd879;}
+#playlistItems,#libraryItems{display:flex;flex-direction:column;gap:8px;margin:10px 0;}
+#playlistItems button,#libraryItems button{
+  width:100%;padding:11px;border:1px solid rgba(242,196,100,.38);border-radius:10px;
+  background:#121821;color:#f2c464;text-align:left;font:900 13px "Courier New",monospace;
+}
+#playlistItems button.active,#libraryItems button.active{border-color:#8fd8ff;color:#8fd8ff;}
+.libraryTitle{margin-top:12px;color:#8fd8ff;font:900 13px "Courier New",monospace;}
+.libraryInfo{color:#8fd8ff;padding:8px 0;font:900 13px "Courier New",monospace;}
+.panelBtn{
+  width:100%;padding:13px;margin-top:8px;border:0;border-radius:10px;
+  background:#d9b25c;color:#111;font:900 14px "Courier New",monospace;
+}
+.panelBtn.dark{background:#303740;color:#fff;}
+.box p,.box li{font:800 14px/1.45 "Courier New",monospace;color:#dfe6ef;margin:8px 0;}
+.box b{color:#8fd8ff;}
+
+/* BUILD2GD: zadne hnusne dodatecne posuvniky/pointery pres obrazek.
+   Ladeni zvuku zustava funkcni naslepo pres puvodni grafiku/hitzony. */
+.eqTrack,.eqHandle,.knobPointer,.valueLabel{display:none!important;visibility:hidden!important;opacity:0!important;}
+/* Cívky: nechávám původní obrázek čistý. Dodatečná reel overlay animace vypnutá, protože přelep přes skin je hnusný. */
+.reel{display:none!important;visibility:hidden!important;opacity:0!important;}
+.stage.playing .reel,.stage.seeking .reel{display:none!important;animation:none!important;}
+
+</style>
+</head>
+<body>
+<main class="stage" id="stage" aria-label="N&P Retro Cassette Player">
+  <img class="skin" src="../nap_ui/nap_player_cassette.png" alt="N&P Retro Cassette Player">
+  <div id="reelL" class="reel"><i></i><b></b></div>
+  <div id="reelR" class="reel"><i></i><b></b></div>
+
+  <div id="track60" class="eqTrack"><div class="eqHandle" id="handle60"></div></div>
+  <div id="track250" class="eqTrack"><div class="eqHandle" id="handle250"></div></div>
+  <div id="track1k" class="eqTrack"><div class="eqHandle" id="handle1k"></div></div>
+  <div id="track4k" class="eqTrack"><div class="eqHandle" id="handle4k"></div></div>
+  <div id="track16k" class="eqTrack"><div class="eqHandle" id="handle16k"></div></div>
+
+  <div id="ptrBalance" class="knobPointer"></div>
+  <div id="ptrBass" class="knobPointer"></div>
+  <div id="ptrTreble" class="knobPointer"></div>
+  <div id="ptrVolume" class="knobPointer"></div>
+  <div id="lblBalance" class="valueLabel">C</div>
+  <div id="lblBass" class="valueLabel">0</div>
+  <div id="lblTreble" class="valueLabel">0</div>
+  <div id="lblVolume" class="valueLabel">100%</div>
+
+  <div id="status">READY • MY PLAYLISTS</div>
+  <input id="filePick" type="file" accept=".mp3,.wav,audio/mpeg,audio/mp3,audio/wav,audio/x-wav" multiple>
+
+  <a id="btnMenu" class="hit" href="../index.html">MENU</a>
+  <button id="btnSettingsTop" class="hit" type="button">SETTINGS</button>
+  <button id="btnRew" class="hit" type="button">REWIND</button>
+  <button id="btnPlay" class="hit" type="button">PLAY</button>
+  <button id="btnStop" class="hit" type="button">STOP</button>
+  <button id="btnPause" class="hit" type="button">PAUSE</button>
+  <button id="btnFwd" class="hit" type="button">FAST FWD</button>
+  <button id="btnRec" class="hit" type="button">RECORD</button>
+  <button id="btnMyPlaylists" class="hit" type="button">MY PLAYLISTS</button>
+  <button id="btnYoutube" class="hit" type="button">YOUTUBE</button>
+  <button id="btnTrackStrip" class="hit" type="button">TRACK</button>
+
+  <button id="eq60" class="eqZone" type="button" aria-label="Equalizer 60Hz"></button>
+  <button id="eq250" class="eqZone" type="button" aria-label="Equalizer 250Hz"></button>
+  <button id="eq1k" class="eqZone" type="button" aria-label="Equalizer 1kHz"></button>
+  <button id="eq4k" class="eqZone" type="button" aria-label="Equalizer 4kHz"></button>
+  <button id="eq16k" class="eqZone" type="button" aria-label="Equalizer 16kHz"></button>
+  <button id="knBalance" class="knobZone" type="button" aria-label="Balance"></button>
+  <button id="knBass" class="knobZone" type="button" aria-label="Bass"></button>
+  <button id="knTreble" class="knobZone" type="button" aria-label="Treble"></button>
+  <button id="knVolume" class="knobZone" type="button" aria-label="Volume"></button>
+
+  <button id="navPlayer" class="hit" type="button">PLAYER</button>
+  <button id="navPlaylists" class="hit" type="button">PLAYLISTS</button>
+  <button id="navLibrary" class="hit" type="button">LIBRARY</button>
+  <button id="navFavorites" class="hit" type="button">FAVORITES</button>
+  <button id="navSettings" class="hit" type="button">SETTINGS</button>
+</main>
+
+<div id="playlistPanel" aria-hidden="true">
+  <div class="box">
+    <h2>MY PLAYLISTS — MP3 / WAV</h2>
+    <div id="playlistItems"></div>
+    <div class="libraryTitle">MOBIL - LOKALNI MP3 / WAV</div>
+    <div id="libraryItems"></div>
+    <button id="panelScan" class="panelBtn" type="button">OBNOVIT SEZNAM V MOBILU</button>
+    <button id="panelAdd" class="panelBtn dark" type="button">VYBRAT SYSTEMOVE</button>
+    <button id="panelClear" class="panelBtn dark" type="button">VYMAZAT PLAYLIST</button>
+    <button id="panelClose" class="panelBtn dark" type="button">ZAVRIT</button>
+  </div>
+</div>
+
+<div id="settingsPanel" aria-hidden="true">
+  <div class="box">
+    <h2>SOUND SETTINGS</h2>
+    <p><b>RESET ZVUKU</b> vrati EQ, BASS, TREBLE, BALANCE i VOLUME do puvodniho zakladniho stavu.</p>
+    <p>Jemnejsi ladeni:</p>
+    <ul>
+      <li><b>EQ 60/250/1K/4K/16K</b> – tahni prstem nebo mysi nahoru/dolu.</li>
+      <li><b>BALANCE</b> – tahni vlevo/vpravo.</li>
+      <li><b>BASS / TREBLE / VOLUME</b> – tahni nahoru/dolu.</li>
+    </ul>
+    <button id="panelResetSound" class="panelBtn" type="button">RESET ZVUKU NA ZAKLAD</button>
+    <button id="panelCloseSettings" class="panelBtn dark" type="button">ZAVRIT</button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var stage=document.getElementById('stage');
+var status=document.getElementById('status');
+var pick=document.getElementById('filePick');
+var playlistPanel=document.getElementById('playlistPanel');
+var settingsPanel=document.getElementById('settingsPanel');
+var items=document.getElementById('playlistItems');
+var libraryItems=document.getElementById('libraryItems');
+var audio=new Audio();
+audio.volume=1;
+var tracks=[], active=-1;
+
+var ctx=null, source=null, eqFilters=[], bassFilter=null, trebleFilter=null, panNode=null, gainNode=null;
+var tvTap=null, tvZero=null, tvAudioLastErr=0;
+var nativeMp3Added=0, nativeAudioName='', nativeAudioParts=[];
+var nativeAudioAutoplay=false;
+var eqFreq=[60,250,1000,4000,16000];
+var soundState={eq:[0,0,0,0,0], bass:0, treble:0, balance:0, volume:1};
+var tvSoundSyncTimer=0;
+var tvSoundLastJson='';
+
+function log(t){try{console.log('[NAP PLAYER] '+t);}catch(e){}}
+function setStatus(t){status.textContent=t;log(t);}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+function mimeForName(name){
+  var n=(name||'').toLowerCase();
+  if(/\.wav$/.test(n)) return 'audio/wav';
+  return 'audio/mpeg';
+}
+function addTrack(name,url,revoke){
+  if(!url) return;
+  tracks.push({name:name||('track_'+tracks.length),url:url,revoke:revoke!==false});
+  if(active<0) loadTrack(0,false);
+  renderPlaylist();
+}
+function formatSize(bytes){
+  bytes=Number(bytes||0);
+  if(bytes>1048576) return Math.round(bytes/104857.6)/10+' MB';
+  if(bytes>1024) return Math.round(bytes/1024)+' KB';
+  return '';
+}
+function hasLocalAudioLibrary(){
+  return !!(window.AHPICK && typeof window.AHPICK.listLocalAudio==='function');
+}
+function renderLocalLibrary(list){
+  if(!libraryItems) return;
+  libraryItems.innerHTML='';
+  if(!list || !list.length){
+    var empty=document.createElement('div');
+    empty.className='libraryInfo';
+    empty.textContent='ZADNE LOKALNI MP3/WAV NENALEZENO';
+    libraryItems.appendChild(empty);
+    return;
+  }
+  list.slice(0,120).forEach(function(t){
+    var b=document.createElement('button');
+    b.type='button';
+    b.textContent=t.name+(t.size?('  '+formatSize(t.size)):'');
+    b.onclick=function(){
+      if(window.AHPICK && typeof window.AHPICK.playLocalAudio==='function'){
+        nativeAudioAutoplay=true;
+        closePlaylistPanel();
+        setStatus('NACITAM Z MOBILU - '+t.name);
+        window.AHPICK.playLocalAudio(t.name,t.uri);
+        return;
+      }
+      var idx=tracks.length;
+      addTrack(t.name,t.uri,false);
+      closePlaylistPanel();
+      loadTrack(idx,true);
+    };
+    libraryItems.appendChild(b);
+  });
+}
+function refreshLocalLibrary(showStatus){
+  if(!libraryItems) return false;
+  if(!hasLocalAudioLibrary()){
+    renderLocalLibrary([]);
+    return false;
+  }
+  try{
+    if(showStatus) setStatus('HLEDAM MP3/WAV V MOBILU');
+    var raw=window.AHPICK.listLocalAudio();
+    var data=JSON.parse(raw||'{}');
+    if(data && data.ok){
+      renderLocalLibrary(data.items||[]);
+      if(showStatus) setStatus('NALEZENO MP3/WAV - '+((data.items&&data.items.length)||0));
+      return true;
+    }
+    if(data && data.needsPermission){
+      renderLocalLibrary([]);
+      if(window.AHPICK && typeof window.AHPICK.requestAudioPermission==='function') window.AHPICK.requestAudioPermission();
+      if(showStatus) setStatus('POVOL PRISTUP K HUDBE V MOBILU');
+      return false;
+    }
+    renderLocalLibrary([]);
+    if(showStatus) setStatus('KNIHOVNA CHYBA');
+  }catch(e){
+    renderLocalLibrary([]);
+    setStatus('KNIHOVNA CHYBA');
+    log(e.message);
+  }
+  return false;
+}
+window.AHREFRESH_LOCAL_LIBRARY=function(){return refreshLocalLibrary(true);};
+function openWeb(url){
+  setStatus('OPEN WEB - '+url);
+  var handed=false;
+  try{
+    if(window.AHPICK && typeof window.AHPICK.openExternalUrl==='function'){ window.AHPICK.openExternalUrl(url); handed=true; }
+    else if(window.Android && typeof window.Android.openExternal==='function'){ window.Android.openExternal(url); handed=true; }
+    else if(window.Android && typeof window.Android.openUrl==='function'){ window.Android.openUrl(url); handed=true; }
+    else if(window.Android && typeof window.Android.openExternalUrl==='function'){ window.Android.openExternalUrl(url); handed=true; }
+  }catch(e){ log('Android bridge failed: '+e.message); }
+  if(handed) return;
+  try{ setTimeout(function(){ window.location.assign(url); }, 10); }catch(e){ try{ location.href=url; }catch(_){} }
+}
+
+function pushTvWebPlayerAudio(ev){
+  try{
+    if(!window.AHTVWEB || typeof window.AHTVWEB.pushPlayerPcm16!=='function'){
+      if(!window.__napTapWarned){window.__napTapWarned=true;log('SH2 TAP: AHTVWEB.pushPlayerPcm16 NENI k dispozici');}
+      return;
+    }
+    var input=ev.inputBuffer, frames=input.length;
+    if(!frames) return;
+    var l=input.getChannelData(0), r=input.numberOfChannels>1?input.getChannelData(1):l;
+    var bytes=new Uint8Array(frames*4);
+    for(var i=0,j=0;i<frames;i++,j+=4){
+      var lv=clamp(l[i],-1,1), rv=clamp(r[i],-1,1);
+      var li=lv<0?Math.round(lv*32768):Math.round(lv*32767);
+      var ri=rv<0?Math.round(rv*32768):Math.round(rv*32767);
+      bytes[j]=li&255; bytes[j+1]=(li>>8)&255; bytes[j+2]=ri&255; bytes[j+3]=(ri>>8)&255;
+    }
+    var s='', step=4096;
+    for(var p=0;p<bytes.length;p+=step) s+=String.fromCharCode.apply(null, bytes.subarray(p,p+step));
+    var ret=window.AHTVWEB.pushPlayerPcm16(btoa(s), (ctx&&ctx.sampleRate)||44100, frames|0, 2);
+    // SH2: diagnostika - zaloguj prvni odpoved + kazdych ~5s vzorek
+    var now=Date.now();
+    if(!window.__napTapLogMs || now-window.__napTapLogMs>5000){
+      window.__napTapLogMs=now;
+      log('SH2 TAP->push ret='+ret);
+    }
+  }catch(e){
+    var now=Date.now();
+    if(now-tvAudioLastErr>5000){ tvAudioLastErr=now; log('TV WEB AUDIO PLAYER bridge chyba: '+(e&&e.message)); }
+  }
+}
+function setupTvWebAudioTap(node){
+  if(tvTap || !ctx || !node) return;
+  try{
+    tvTap=ctx.createScriptProcessor(4096,2,2);
+    tvZero=ctx.createGain();
+    tvZero.gain.value=0;
+    tvTap.onaudioprocess=pushTvWebPlayerAudio;
+    node.connect(tvTap);
+    tvTap.connect(tvZero);
+    tvZero.connect(ctx.destination);
+  }catch(e){ log('TV WEB AUDIO PLAYER tap nejde: '+e.message); }
+}
+
+
+function initAudioGraph(){
+  if(ctx) return;
+  log('AUDIO GRAF: stavim az ted (prvni pouziti zvukoveho ovladace) - do teto chvile hral original');
+  try{
+    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    source=ctx.createMediaElementSource(audio);
+    var node=source;
+    eqFilters=[];
+    eqFreq.forEach(function(f){
+      var biq=ctx.createBiquadFilter();
+      biq.type='peaking';
+      biq.frequency.value=f;
+      biq.Q.value=1.0;
+      biq.gain.value=0;
+      node.connect(biq);
+      node=biq;
+      eqFilters.push(biq);
+    });
+    bassFilter=ctx.createBiquadFilter(); bassFilter.type='lowshelf'; bassFilter.frequency.value=180; bassFilter.gain.value=0;
+    trebleFilter=ctx.createBiquadFilter(); trebleFilter.type='highshelf'; trebleFilter.frequency.value=3500; trebleFilter.gain.value=0;
+    node.connect(bassFilter); bassFilter.connect(trebleFilter);
+    panNode=ctx.createStereoPanner?ctx.createStereoPanner():null;
+    gainNode=ctx.createGain(); gainNode.gain.value=1;
+    if(panNode){ trebleFilter.connect(panNode); panNode.connect(gainNode); }
+    else { trebleFilter.connect(gainNode); }
+    gainNode.connect(ctx.destination);
+    setupTvWebAudioTap(gainNode);
+    applySoundState();
+  }catch(e){ log('WebAudio graph unavailable: '+e.message); ctx=null; source=null; }
+}
+function applySoundState(){
+  if(eqFilters.length){
+    soundState.eq.forEach(function(v,i){ if(eqFilters[i]) eqFilters[i].gain.value=v; });
+  }
+  if(bassFilter) bassFilter.gain.value=soundState.bass;
+  if(trebleFilter) trebleFilter.gain.value=soundState.treble;
+  if(panNode) panNode.pan.value=soundState.balance;
+  if(gainNode) gainNode.gain.value=soundState.volume;
+  audio.volume=soundState.volume;
+  updateVisuals();
+  syncTvWebSoundState(false);
+}
+function syncTvWebSoundState(force){
+  function send(){
+    try{
+      if(!window.AHTVWEB || typeof window.AHTVWEB.setSoundState!=='function') return;
+      var json=JSON.stringify(soundState);
+      if(json===tvSoundLastJson && !force) return;
+      tvSoundLastJson=json;
+      window.AHTVWEB.setSoundState(json);
+    }catch(e){ log('TV WEB SOUND sync chyba: '+(e&&e.message)); }
+  }
+  try{ if(tvSoundSyncTimer) clearTimeout(tvSoundSyncTimer); }catch(_e){}
+  if(force) send();
+  else tvSoundSyncTimer=setTimeout(send,90);
+}
+function resetSoundState(){
+  soundState={eq:[0,0,0,0,0], bass:0, treble:0, balance:0, volume:1};
+  applySoundState();
+  setStatus('RESET ZVUKU • ZAKLADNI STAV');
+}
+function renderPlaylist(){
+  items.innerHTML='';
+  if(!tracks.length){
+    var empty=document.createElement('div');
+    empty.textContent='Playlist je prazdny.';
+    empty.style.color='#8fd8ff'; empty.style.padding='8px 0';
+    items.appendChild(empty); return;
+  }
+  tracks.forEach(function(t,i){
+    var b=document.createElement('button');
+    b.type='button'; b.className=i===active?'active':'';
+    b.textContent=(i+1)+'. '+t.name;
+    b.onclick=function(){loadTrack(i,true); closePlaylistPanel();};
+    items.appendChild(b);
+  });
+}
+function loadTrack(i,autoplay){
+  if(i<0||i>=tracks.length)return;
+  active=i; audio.src=tracks[i].url; try{audio.currentTime=0;}catch(e){} renderPlaylist();
+  setStatus('NACITANO • '+tracks[i].name);
+  if(autoplay) play();
+}
+function play(){
+  /* BUILD2SA15: ORIGINAL FIRST - zadny audio graf pri prehravani.
+     MP3 hraje 100% nedotcene primo z <audio> elementu. Graf (EQ/basy/vysky/
+     balance/TV odboc) se postavi AZ kdyz sahnes na zvukovy ovladac.
+     BUILD2SH1: VYJIMKA - kdyz bezi TV WEB casting, graf (a audio tap) se
+     musi postavit HNED, jinak by zvuk neslo streamovat na projektor
+     (obraz jde, zvuk ne). Kdyz casting nebezi, chova se jako dosud. */
+  if(ctx && ctx.state==='suspended') ctx.resume();
+  if(!tracks.length){openPlaylistPanel(); pickFiles(); return;}
+  if(active<0) loadTrack(0,false);
+  try{ if(napTvWebIsCasting()){ log('SH2 PLAY: casting BEZI -> stavim audio graf pro stream'); initAudioGraph(); } else { log('SH2 PLAY: casting nebezi (status='+(window.AHTVWEB&&window.AHTVWEB.status?window.AHTVWEB.status():'AHTVWEB chybi')+')'); } }catch(e){ log('SH2 PLAY chyba: '+e.message); }
+  try{
+    var p=audio.play();
+    if(p&&p.catch)p.catch(function(e){setStatus('PLAY BLOKOVAN • KLIKNI ZNOVU');log(e.message);});
+    stage.classList.add('playing'); stage.classList.remove('seeking');
+    setStatus('PLAY • '+tracks[active].name);
+  }catch(e){setStatus('PLAY CHYBA');log(e.message);}
+}
+// BUILD2SH1: zjisti jestli bezi TV WEB casting (pak je potreba audio tap)
+function napTvWebIsCasting(){
+  try{
+    if(!window.AHTVWEB || typeof window.AHTVWEB.status!=='function') return false;
+    var st=window.AHTVWEB.status();
+    return !!(st && st.indexOf('http')===0);
+  }catch(e){ return false; }
+}
+function pause(){try{audio.pause();stage.classList.remove('playing','seeking');setStatus('PAUSE');}catch(e){log(e.message);}}
+function stop(){try{audio.pause();audio.currentTime=0;stage.classList.remove('playing','seeking');setStatus('STOP');}catch(e){log(e.message);}}
+function seek(delta){
+  if(!audio.src){setStatus('SEEK • NENI TRACK');return;}
+  audio.currentTime=Math.max(0, Math.min((audio.duration||0), audio.currentTime+delta));
+  stage.classList.add('seeking');
+  setTimeout(function(){stage.classList.remove('seeking'); if(!audio.paused)stage.classList.add('playing');},500);
+  setStatus(delta<0?'REWIND':'FAST FWD');
+}
+function clearAll(){
+  stop();
+  tracks.forEach(function(t){try{if(t.revoke!==false)URL.revokeObjectURL(t.url);}catch(e){}});
+  tracks=[]; active=-1; renderPlaylist(); setStatus('PLAYLIST VYMAZAN');
+}
+function openPlaylistPanel(){
+  renderPlaylist();
+  playlistPanel.classList.add('open');
+  playlistPanel.setAttribute('aria-hidden','false');
+  refreshLocalLibrary(false);
+}
+function closePlaylistPanel(){playlistPanel.classList.remove('open');playlistPanel.setAttribute('aria-hidden','true');}
+function openSettingsPanel(){settingsPanel.classList.add('open');settingsPanel.setAttribute('aria-hidden','false');}
+function closeSettingsPanel(){settingsPanel.classList.remove('open');settingsPanel.setAttribute('aria-hidden','true');}
+function systemPickFiles(){
+  try{
+    if(window.AHPICK && typeof window.AHPICK.pickMp3==='function'){
+      setStatus('SYSTEMOVY VYBER MP3/WAV');
+      window.AHPICK.pickMp3();
+      return;
+    }
+  }catch(e){ log('AHPICK MP3 chyba: '+e.message); }
+  pick.click();
+}
+function pickFiles(){
+  if(hasLocalAudioLibrary()){
+    refreshLocalLibrary(true);
+    return;
+  }
+  systemPickFiles();
+}
+pick.onchange=function(){
+  var files=Array.prototype.slice.call(pick.files||[]);
+  files.forEach(function(f){
+    if(!/\.(mp3|wav)$/i.test(f.name||'')){setStatus('PRESKOCENO • NE MP3/WAV');return;}
+    addTrack(f.name,URL.createObjectURL(f),true);
+  });
+  pick.value=''; renderPlaylist();
+  if(active<0 && tracks.length) loadTrack(0,false);
+  closePlaylistPanel(); setStatus('PLAYLIST READY • '+tracks.length+' TRACKU');
+};
+
+window.AHLOCAL_MP3_PLAYLIST_BEGIN=function(){
+  nativeMp3Added=0;
+  setStatus('ANDROID VYBER - PRIJIMAM MP3/WAV');
+};
+window.AHLOCAL_MP3_URI=function(name,uri){
+  addTrack(name||'audio',uri,false);
+  nativeMp3Added++;
+  setStatus('PRIDANO - '+(name||'audio'));
+};
+window.AHLOCAL_MP3_PLAYLIST_END=function(){
+  renderPlaylist();
+  if(active<0 && tracks.length) loadTrack(0,false);
+  closePlaylistPanel();
+  setStatus(nativeMp3Added>0 ? ('PLAYLIST READY - '+tracks.length+' TRACKU') : 'NIC NEVYBRANO');
+};
+window.AHLOCAL_AUDIO_BEGIN=function(name){
+  nativeAudioName=name||'audio';
+  nativeAudioParts=[];
+  setStatus('ANDROID AUDIO - NACITAM '+nativeAudioName);
+};
+window.AHLOCAL_AUDIO_PART=function(b64){nativeAudioParts.push(b64);};
+window.AHLOCAL_AUDIO_END=function(){
+  try{
+    var raw=atob(nativeAudioParts.join(''));
+    var bytes=new Uint8Array(raw.length);
+    for(var i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i)&255;
+    var blob=new Blob([bytes],{type:mimeForName(nativeAudioName)});
+    var idx=tracks.length;
+    addTrack(nativeAudioName,URL.createObjectURL(blob),true);
+    nativeMp3Added++;
+    nativeAudioParts=[];
+    if(nativeAudioAutoplay){
+      nativeAudioAutoplay=false;
+      loadTrack(idx,true);
+    }
+    setStatus('PRIDANO - '+nativeAudioName);
+  }catch(e){setStatus('AUDIO CHYBA');log(e.message);}
+};
+window.AHJAVA_ERROR=function(msg){setStatus('ANDROID CHYBA - '+(msg||''));};
+
+function updateVisuals(){ /* BUILD2GD: vizualni posuvniky vypnute, zvuk se ladi pres neviditelne hitzony. */ }
+
+function bindVertical(zoneEl, getCurrent, setter, min, max, statusPrefix){
+  function applyFromEvent(ev){
+    var r=zoneEl.getBoundingClientRect();
+    var y=ev.clientY - r.top;
+    var t=1 - clamp(y / r.height, 0, 1);
+    var val=min + t*(max-min);
+    setter(val);
+    setStatus(statusPrefix+' • '+(typeof val==='number' ? Math.round(val*10)/10 : val));
+  }
+  zoneEl.addEventListener('pointerdown', function(ev){
+    ev.preventDefault(); ev.stopPropagation();
+    zoneEl.setPointerCapture(ev.pointerId);
+    applyFromEvent(ev);
+  });
+  zoneEl.addEventListener('pointermove', function(ev){
+    if(ev.buttons===0) return;
+    applyFromEvent(ev);
+  });
+}
+function bindHorizontal(zoneEl, setter, min, max, statusPrefix){
+  function applyFromEvent(ev){
+    var r=zoneEl.getBoundingClientRect();
+    var x=ev.clientX - r.left;
+    var t=clamp(x / r.width, 0, 1);
+    var val=min + t*(max-min);
+    setter(val);
+    setStatus(statusPrefix+' • '+(val<-0.15?'L':val>0.15?'R':'CENTER'));
+  }
+  zoneEl.addEventListener('pointerdown', function(ev){
+    ev.preventDefault(); ev.stopPropagation();
+    zoneEl.setPointerCapture(ev.pointerId);
+    applyFromEvent(ev);
+  });
+  zoneEl.addEventListener('pointermove', function(ev){
+    if(ev.buttons===0) return;
+    applyFromEvent(ev);
+  });
+}
+
+eqFreq.forEach(function(freq, idx){
+  var el=document.getElementById(idx===0?'eq60':idx===1?'eq250':idx===2?'eq1k':idx===3?'eq4k':'eq16k');
+  bindVertical(el, function(){return soundState.eq[idx];}, function(v){
+    initAudioGraph(); soundState.eq[idx]=clamp(v,-12,12); applySoundState();
+  }, -12, 12, 'EQ '+freq+'Hz');
+});
+bindHorizontal(document.getElementById('knBalance'), function(v){
+  initAudioGraph(); soundState.balance=clamp(v,-1,1); applySoundState();
+}, -1, 1, 'BALANCE');
+bindVertical(document.getElementById('knBass'), function(){return soundState.bass;}, function(v){
+  initAudioGraph(); soundState.bass=clamp(v,-12,12); applySoundState();
+}, -12, 12, 'BASS');
+bindVertical(document.getElementById('knTreble'), function(){return soundState.treble;}, function(v){
+  initAudioGraph(); soundState.treble=clamp(v,-12,12); applySoundState();
+}, -12, 12, 'TREBLE');
+bindVertical(document.getElementById('knVolume'), function(){return soundState.volume;}, function(v){
+  initAudioGraph(); soundState.volume=clamp(v,0,1); applySoundState();
+}, 0, 1, 'VOLUME');
+
+document.getElementById('btnMyPlaylists').onclick=openPlaylistPanel;
+document.getElementById('navPlaylists').onclick=openPlaylistPanel;
+document.getElementById('navLibrary').onclick=openPlaylistPanel;
+document.getElementById('btnTrackStrip').onclick=openPlaylistPanel;
+document.getElementById('panelScan').onclick=pickFiles;
+document.getElementById('panelAdd').onclick=systemPickFiles;
+document.getElementById('panelClear').onclick=clearAll;
+document.getElementById('panelClose').onclick=closePlaylistPanel;
+document.getElementById('btnPlay').onclick=play;
+document.getElementById('btnPause').onclick=pause;
+document.getElementById('btnStop').onclick=stop;
+document.getElementById('btnRew').onclick=function(){seek(-10);};
+document.getElementById('btnFwd').onclick=function(){seek(10);};
+document.getElementById('btnRec').onclick=function(){setStatus('RECORD • PRIPRAVENO PRO BUDOUCI CAPTURE');};
+
+document.getElementById('btnYoutube').onclick=function(e){
+  e.preventDefault(); e.stopPropagation();
+  try{
+    syncTvWebSoundState(true);
+    if(window.AHTVWEB && typeof window.AHTVWEB.youtubeInApp==='function'){
+      setStatus('YOUTUBE - OTVIRAM V APCE');
+      window.AHTVWEB.youtubeInApp();
+      return false;
+    }
+    if(window.AHTVWEB && typeof window.AHTVWEB.youtube==='function'){
+      setStatus('YOUTUBE - OTVIRAM V APCE');
+      window.AHTVWEB.youtube();
+      return false;
+    }
+  }catch(_e){}
+  openWeb('https://m.youtube.com/');
+  return false;
+};
+
+document.getElementById('btnMenu').onclick=function(){location.href='../index.html';};
+document.getElementById('btnSettingsTop').onclick=openSettingsPanel;
+document.getElementById('navPlayer').onclick=function(){setStatus('PLAYER');};
+document.getElementById('navFavorites').onclick=function(){setStatus('FAVORITES');};
+document.getElementById('navSettings').onclick=openSettingsPanel;
+document.getElementById('panelResetSound').onclick=resetSoundState;
+document.getElementById('panelCloseSettings').onclick=closeSettingsPanel;
+
+audio.onended=function(){
+  if(active+1<tracks.length){loadTrack(active+1,true);}
+  else {stage.classList.remove('playing');setStatus('KONEC PLAYLISTU');}
+};
+
+updateVisuals();
+renderPlaylist();
+// BUILD2SH1: kdyz se casting zapne az behem prehravani, doplnit audio tap
+setInterval(function(){
+  try{ if(!ctx && !audio.paused && napTvWebIsCasting()){ initAudioGraph(); } }catch(e){}
+}, 1500);
+log('BUILD2SA13C18: RC10 YouTube live EQ panel + local audio MediaStore.Files scan.');
+})();
+</script>
+</body>
+</html>

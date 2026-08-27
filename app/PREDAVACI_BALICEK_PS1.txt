@@ -1,0 +1,543 @@
+===============================================================================
+ PREDAVACI BALICEK - EMU10 (Atari / Sega / PS1)
+ Verze: EMU10-B131-UVODNI-INTRO-KKT (versionCode 179)
+ Datum: 16. 8. 2026
+ Autor projektu: Rene Frank, atarihelp.eu
+===============================================================================
+
+ !!! TENTO KOD JE PREDPOKLAD. CEKA SE NA TEST NA TELEFONU A NA LOG. !!!
+
+===============================================================================
+ 0. CTI TOHLE JAKO PRVNI
+===============================================================================
+
+ Na projektu jsou DVA. Nikdo jiny.
+
+ RENE - autor a majitel. Padesatilety navrhar, NE programator.
+   Kod je cely jeho. On zadava, on testuje, on vidi a slysi.
+   Repozitar: github.com/neocontratari/atarihelpeu-apk (verejny)
+   Testuje na Samsungu S8 (Mali-G71, Android 9) a na platne 3,8 x 2,4 m.
+   Odpovidat mu CESKY.
+
+ AI - jediny, kdo pise kod. Nemas kolegy, na ktere by slo cokoli svest.
+
+ TERMIN: 27. srpna 2026 je sraz, kde Rene vydava prvni beta test.
+
+ CO SI AI UMI OVERIT SAMA - a proto se na to NIKDY nema ptat Reneho:
+   - kod: stahnout z GitHubu (git clone --filter=blob:none), je verejny
+   - Java:  javac proti android.jar API 34
+   - C++:   clang --target=aarch64-linux-gnu, proti SKUTECNEMU jni.h
+            z /usr/lib/jvm/java-*-openjdk-amd64/include
+   - jadro PS1 pro ARM64: aarch64-linux-gnu vcetne assembleru gte_arm64.S
+   - renderer PS1: PRELOZIT A SPUSTIT proti skutecnemu OpenGL ES
+            (apt: libegl1-mesa-dev libgles2-mesa-dev, EGL_PLATFORM=surfaceless)
+            -> jde VIDET, co renderer nakresli, bez telefonu
+   - JavaScript ve strance: vytahnout retezce z Javy, slozit a SPUSTIT
+     v node s napodobeninou prohlizece (viz bod 3d)
+   - LINKOVANI: nm --defined-only proti seznamu native metod (viz bod 3c)
+   - CELOU ZVUKOVOU CESTU NA TV: server i klient se daji prepsat do node
+     a ZMERIT, kolik zvuku dotece. Takhle se nasla chyba v B122 (bod 3f).
+
+ CO AI NEUMI:
+   - spustit Android (systemove obrazy jsou u Googlu, ten je blokovany)
+   - overit chovani SurfaceView, vrstev, otaceni a MediaCodec
+   - overit chovani Mali
+   Tohle je jedina oblast, kde je Rene nutny.
+
+ CO SI OD RENEHO VYZADAT (a jen to):
+   - vysledek testu: kratce spravne/spatne podle tabulky v protokolu
+   - par radku z logu, KTERE SI AI PREDEM POJMENUJE
+   - obcas log z GitHub Actions ze ZELENEHO buildu (varovani od NDK)
+   Nikdy ho neposilat do prikazoveho radku. Nikdy po nem nechtit soubory,
+   ktere si AI muze stahnout sama.
+
+ KAZDY BUILD MUSI OBSAHOVAT (v balicku i ve zprave):
+   * CO TESTOVAT - cislovane kroky, co presne zmacknout
+   * CO OCEKAVAT - u KAZDEHO kroku jak vypada SPRAVNY a SPATNY vysledek
+   * CO POSLAT ZPET - ktere radky z logu
+   Bez toho Rene testuje naslepo.
+
+ DALSI PRAVIDLA:
+   - Jedna zmena na build. Kdyz jich musi byt vic, rict to a rict proc.
+   - Vzdy posilat CELY ZIP balicek, ne jednotlive soubory.
+   - Nikdy nepsat "kdyz bude X, pozna se Y" a nechat poznavani na Renem.
+   - Rene ma barvoslepost: ptat se na TVARY, ne na barvy.
+   - Nesahat na HTML/CSS v assets - to je Reneho design.
+     (Vyjimka odsouhlasena v B125: tlacitko HELP v index.html vede na
+     emu_atari_cpp/index.html. Zmenilo se JEN chovani, dva radky;
+     CSS, pozice, velikost i popisek zustaly.)
+   - Log z telefonu: http://IP:8765/log  (POZOR: jde z BEZICI aplikace!
+     Kdyz appka spadne, log je v Downloads/AtariHelp/PS1_LOG_predchozi.txt)
+
+ CO SE UZ STALO SPATNE - aby se to neopakovalo:
+   - dvanact buildu (B57-B68) se spalilo na prestavbe zobrazovaci vrstvy,
+     kterou AI nedokaze overit. V eglrender pritom UZ BYLO NAPSANE, ze
+     sdilena textura nefunguje.
+     -> NEZ NECO PREPISES, PODIVEJ SE, JESTLI TO UZ NEKDO NEZKOUSEL.
+   - AI opakovane posilala build se slovy "kdyz bude X, pozna se Y".
+     To je prace AI, ne Reneho.
+   - AI tvrdila "na to nemam", aniz to zkusila do konce. Skutecne
+     hlavicky Androidu i jni.h v systemu byly, jen se nehledaly.
+   - B121 opravil SKUTECNOU chybu (poradi zapisu), ale ne tu, ktera zvuk
+     zabijela. Nikdo se pred tim nepodival, KDO VSECHNO do zvukove cesty
+     pro TV zapisuje. Odpoved byla v logu na prvni pohled: tri zdroje.
+     -> KDYZ NECO NEFUNGUJE, NEJDRIV SPOCITEJ, KOLIK VECI DO TOHO SAHA.
+   - B122 spravil tu pravou pricinu, ale udelal to tak, ze chovani PS1
+     zaviselo na napTvWebCurrentUrl. Rene to odmitl a mel pravdu.
+     -> OPRAVA VE SPOLECNE CASTI NESMI ZMENIT CHOVANI PS1. Kdyz to jde
+        udelat dvema zpusoby, vybrat ten, ktery se PS1 ani nedotkne.
+
+===============================================================================
+ 1. STAV PROJEKTU
+===============================================================================
+
+ PS1 - HOTOVO. Rene to uzavrel jako graficky i zvukove hotove.
+   Otestovano na platne 3,8 x 2,4 m, dvanact her, vse bezi.
+   Jadro PCSX-ReARMed + provereny vykreslovac gpu_neon.
+
+ SEGA - od B117 stejna cesta jako PS1 (jadro v C -> OpenGL ES).
+   Obraz na mobilu i na TV funguje, zpozdeni skoro pryc.
+   ZVUK NA TV: B123 opravil pricinu (viz bod 2). NEOTESTOVANO.
+
+ ATARI - DVE VETVE, NEPLEST SI JE:
+   * PUVODNI (assets/emu_vbxe, JavaScript) - NESAHAT. Tohle pojede
+     v beta verzi 27. srpna. Bezi na ~85 %.
+   * NOVE (cpp/atari, C++) - na tlacitku HELP, oddelena vyvojova vetev.
+     Rozhodnuti Reneho z B125: puvodni zustava, nove se vyviji vedle,
+     a AZ bude hotove, stara vetev se smaze. Tim je termin odpojeny
+     od prepisu a neni kam spechat.
+   ============================================================
+   STAV PREPISU ATARI DO C++ - kde se skoncilo (B130, 18. 8.)
+   ============================================================
+   Prace je POZASTAVENA na Reneho pokyn - prednost ma uvodni intro
+   na sraz klanu. K prepisu se vracime potom.
+
+   CO BEZI (overeno, dolozitelne):
+     * CPU 6502            1 024 000 instrukci proti JS, 0 rozdilu
+     * pamet a banky       16 252 928 cteni proti JS, 0 rozdilu
+     * POKEY seriova cast  SIO korektne vyprsi, jako bez diskety
+     * WSYNC               zastavuje procesor do konce radky
+     * zavadec XEX         nap_atari_xex.h, umi RUNAD i INITAD
+     * display list        LMS, JMP, JVB, prazdne radky, DLI
+     * OS z ROM nabootuje, BASIC naskoci s READY
+     * prikaz BYE preda rizeni SELF-TESTU v ROM a ten se VYKRESLI
+       vcetne MEMORY TESTU a spodni radky SELECT, START OR RESET
+     * Decathlon se nahraje a bezi (registry sedi proti JS)
+
+   CO NEBEZI:
+     * Decathlon se vykresluje spatne - tabule a dav jsou kase,
+       atleti jsou modre utrzky. Rozlozeni display listu SEDI proti
+       JS bajt po bajtu, rozbite je plneni tech radku.
+     * kolize, zvuk POKEY, VBXE, GTIA rezimy 9/10/11 - nejsou vubec
+
+   !!! NEJDULEZITEJSI POUCENI Z CELEHO PREPISU !!!
+   Vrstvy 1 a 2 (procesor, pamet) jsem PREKLADAL z Reneho JavaScriptu
+   a vysly na prvni pokus, nula rozdilu z milionu instrukci.
+   Vrstvu 3 (ANTIC/GTIA) jsem zacal PSAT ZNOVU podle datasheetu,
+   protoze v JS je znama chyba u hracu (rozejite atlety v Decathlonu).
+   BYLO TO SPATNE ROZHODNUTI. Za jeden den z toho vzniklo OSM
+   vlastnich chyb, ktere v JS nejsou:
+     1. JVB brane jako obycejny skok (ma to byt KONEC SNIMKU)
+     2. u instrukce $01 JMP se necetla dvoubajtova adresa
+     3. WSYNC nezastavoval procesor
+     4. zapis do CONSOL mazal stisk START/SELECT/OPTION
+     5. hraci a strely schovani za podminkou display listu
+        (GTIA je kresli nezavisle na ANTICu!)
+     6. prohozene bity skrolovani (bit4 je SVISLE, bit5 VODOROVNE)
+     7. u rezimu 2 chybely PULTAKTY - bod je na PUL barvoveho taktu,
+        pri celych taktech vychazelo delenim 4/8 = 0 a nekreslilo se NIC
+     8. CHBASE/HSCROL ctene na konci snimku misto k okamziku radky
+   DALSI POSTUP: vrstvu 3 PRELOZIT z JS stejne jako vrstvy 1 a 2,
+   overit diferencne na NULU rozdilu, a AZ POTOM resit chybu s hraci -
+   v obou stranach naraz a s tim testem jako pojistkou.
+
+   NASTROJ, KTERY NA TO EXISTUJE (work/dump_js.js + /tmp/cmp.cpp):
+   vytahne ze stavajiciho JS emulatoru celou RAM, vsechny registry
+   a jeho framebuffer, nasadi to do C++ jadra a porovna obraz bod po
+   bodu. Tim se od sebe oddeli procesor a vykreslovac. POZOR: pro
+   porovnani se musi v C++ zapnout NAP_STARA_PALETA, jinak se lisi
+   kazdy bod jen kvuli barve.
+
+   ZNALOSTI Z DATASHEETU GTIA (Rene ho dodal, je to zasadni zdroj):
+     * list 7: ANTIC posila do GTIA tri bity AN0-AN2 na kazdy barvovy
+       takt - NEPOSILA BARVU. 000=pozadi, 100..111=playfield 0..3,
+       011=nastav 40znakovy rezim. Barvy, priority, hrace a kolize
+       resi az GTIA. Kdo to slije do jednoho, nema kam zavesit zmeny
+       registru uprostred radky.
+     * list 14: v hi-res rezimu je JEDEN BOD NA PUL BARVOVEHO TAKTU
+     * list 21: odstin je ZPOZDENI na zpozdovaci lince, ne cislo
+       v tabulce. Krok 21 ns pri V_DEL 7,0 V -> 27,06 stupne na odstin
+     * list 4: jmena vsech 15 odstinu + bit 0 jasu je NEPOUZITY
+     * pin 17 DEL (3,0 az 8,0 V) je serizeni barev NA DESCE, takze
+       jedna univerzalni spravna paleta NEEXISTUJE
+
+   PALETA - co je dolozene a co ne (nap_atari_video.h):
+     krok 27 st. na odstin      datasheet list 21 + publikovany vzorec
+     pocatek faze 190 st.       publikovany vzorec + prolozeni 15 jmen
+     jas jako primka            "resistor bank", rozbor kremiku
+     Ymax = 0,93                z Reneho screenshotu Altirry ($0C)
+     SYTOST 0,30                NEDOLOZENO - jedine cislo bez zdroje
+
+ OVLADAC - B116 OVLADAC - B116 pridal rychlejsi dotyk, klavesnici a joystick.
+   NEOTESTOVANO (Rene mezitim resil Segu).
+
+===============================================================================
+ 2. CESTY OBRAZU A ZVUKU
+===============================================================================
+
+ --- PS1: OBRAZ ---
+   jadro PCSX-ReARMed
+     -> gpu_neon kresli do videopameti          (plugins/gpu_neon)
+     -> gpulib preda snimek pres retro_video_refresh
+     -> nap_video() v nap_ps1_native.cpp -> g_frame_argb
+     -> nap_disp_thread_fn(): GL textura -> obrazovka  (SurfaceView)
+   Na TV: Ps1GlTextureView.borrowFrame() -> H.264
+
+ --- SEGA: OBRAZ (od B117) ---
+   jadro clownmdemu (C)
+     -> g_real.frame_argb                       (kresli po radcich)
+     -> nap_sega_thread_fn(): GL textura -> obrazovka  (SurfaceView)
+   Na TV: NativeSegaCoreBridge.grabFrame() -> H.264
+   Soubor: app/src/main/cpp/nap_sega_native_proof.cpp
+
+ --- PS1: ZVUK ---
+   jadro -> nap_audio_batch() -> kruhova fronta nap_aring_write()
+         -> OpenSL ES nativne (nap_sl_open, 44100/2/16bit)
+   Java zvuk (AudioTrack) je VYPNUTY - drive bezely oba naraz.
+   Zpetny tlak: nap_audio_skip_step() vynecha KROK EMULACE.
+   !!! NIKDY neresit zpetny tlak uspanim (usleep) - rozkmita to !!!
+
+ --- SEGA: ZVUK ---
+   jadro -> NativeSegaCoreBridge.pullAudioStereo()
+         -> AudioTrack v Jave (48 kHz, stereo, 16 bitu)
+   Na TV: napTvWebAudioPush(pcm, ..., "SEGA")
+   POZOR: track.write(WRITE_BLOCKING) CEKA, az se zvuk prehraje.
+       Push na TV proto MUSI byt PRED nim (od B121).
+
+ --- ZVUKOVA CESTA NA TV: JEDEN ZASOBNIK, VIC ZAJEMCU (KLICOVE!) ---
+   VSECHNY zdroje (PS1, SEGA, ATARI, PLAYER, YOUTUBE) sypou do JEDNOHO
+   kruhoveho zasobniku napTvWebAudioRing (1 MB) se SPOLECNYM poctidlem
+   napTvWebAudioSeq. Prohlizec si data bere pres /audio.raw?after=<seq>.
+
+   !!! V napTvWebAudioPush plati: kdyz se ZMENI FREKVENCE, nastavi se
+       napTvWebAudioSeq = 0. To je spravne pro JEDEN zdroj, ktery se
+       prepne. Kdyz ale posilaji DVA zdroje s RUZNOU frekvenci naraz,
+       poctidlo se nuluje nekolikrat za VTERINU. Prohlizec posle
+       after=<velke cislo>, server ma end=0, podminka "after <= end"
+       neprojde -> vrati se PRAZDNA odpoved. Vysledek: TICHO NA TV,
+       zatimco v telefonu zvuk hraje normalne.
+
+   PROTO: do zvukove cesty pro TV smi v jeden okamzik posilat JEN TEN,
+   KDO OPRAVDU HRAJE. Zadny druhy zdroj nesmi "jen tak jet dal".
+
+ --- OVLADANI ---
+   DOTYK:      prst -> touchstart (index.html, setPs1)
+                    -> AHPS1.ps1Input()  JS -> Java
+                    -> setInputSafe()    Java -> C
+                    -> g_input_bits
+     Zdrzeni je ve WebView. Tlacitka MUSI mit touch-action:none
+     (pri "manipulation" prohlizec ceka na gesto = desitky ms).
+
+   KLAVESNICE A JOYSTICK (nejrychlejsi):
+     MainActivity.onKeyDown / onGenericMotionEvent
+       -> ps1SetButton / ps1SetStick -> g_input_bits
+     Xbox: A->kriz B->kolecko X->ctverec Y->trojuhelnik
+     Packa -> smery, mrtva zona 40 %.
+
+   CISLA (RetroPad, plati pro obe cesty):
+     0=kriz 1=kolecko 2=ctverec 3=trojuhelnik
+     4=nahoru 5=dolu 6=vlevo 7=vpravo
+     8=SELECT 9=START 10=L1 11=R1 12=L2 13=R2
+
+ --- TV (H.264) ---
+   snimek -> Canvas.drawBitmap na 1280x720 (GPU) -> MediaCodec H.264
+   Nastaveni enkoderu, ktere se osvedcilo:
+     KEY_BIT_RATE          w*h*30  (~28 Mbit/s pri 1280x720)
+     KEY_I_FRAME_INTERVAL  2       (pri 1 vznikaly kostky)
+     KEY_BITRATE_MODE      VBR
+     KEY_COLOR_RANGE       FULL    (bez toho kostky v tmavych plochach!)
+     KEY_PROFILE           High
+     Paint BEZ FILTER_BITMAP_FLAG  (filtrovani rozmazava ostre pixely)
+   Rozliseni 1280x720 = 16:9 podle OBRAZOVKY, ne podle nasobku zdroje.
+   V prohlizeci: panel jas/kontrast/sytost + prepinac vyplnit/oriznout.
+   Vychozi je "vyplnit obrazovku" (cover).
+
+===============================================================================
+ 3. JAK SE TO OVERUJE BEZ TELEFONU  (POVINNE PRED KAZDYM BUILDEM)
+===============================================================================
+
+ (a) JAVA
+     javac -nowarn -encoding UTF-8 -classpath android.jar -d /tmp/out \
+           app/src/main/java/eu/atarihelp/emu10/*.java \
+           app/src/main/java/eu/atarihelp/nap/*.java
+     android.jar API 34 se da stahnout z GitHubu (Google je blokovany):
+       raw.githubusercontent.com/Sable/android-platforms/master/android-34/android.jar
+
+ (b) C++ pro ARM64, proti SKUTECNEMU jni.h
+     apt: clang, g++-aarch64-linux-gnu, libc6-dev-arm64-cross,
+          libegl1-mesa-dev, libgles2-mesa-dev
+     HLAVICKY ANDROIDU (SLES/, android/native_window.h, GLES/gl.h) NEJSOU
+     v zadnem balicku apt. Google je blokovany. Daji se ale stahnout
+     z GitHubu - overeno v B123:
+       raw.githubusercontent.com/gubaojian/sysroot/master/usr/include/<cesta>
+     potreba: SLES/OpenSLES.h, SLES/OpenSLES_Android.h,
+              SLES/OpenSLES_Platform.h, SLES/OpenSLES_AndroidConfiguration.h,
+              SLES/OpenSLES_AndroidMetadata.h, android/native_window.h,
+              android/native_window_jni.h, android/log.h, android/rect.h,
+              android/hardware_buffer.h, GLES/gl.h
+     NEDELAT STUBY, kdyz jdou sehnat prave hlavicky - stub schova chybu.
+
+     clang++ -c --target=aarch64-linux-gnu -std=c++17 -O2 \
+       --sysroot=/usr/aarch64-linux-gnu \
+       -I/usr/aarch64-linux-gnu/include/c++/13 \
+       -I/usr/aarch64-linux-gnu/include/c++/13/aarch64-linux-gnu \
+       -I/usr/lib/jvm/java-21-openjdk-amd64/include \
+       -I/usr/lib/jvm/java-21-openjdk-amd64/include/linux \
+       -I/tmp/ndkinc -I/usr/include -I. nap_ps1_native.cpp -o /tmp/ps1.o
+     Sega potrebuje navic: -DNAP_SEGA_VENDOR_CORE_PRESENT=1
+       -Ivendor/clownmdemu-core/source
+       -Ivendor/clownmdemu-core/libraries/clowncommon
+
+ (c) LINKOVANI - jinak se chyba pozna az v GitHub Actions!
+     aarch64-linux-gnu-nm --defined-only /tmp/*.o | grep -o "Java_[A-Za-z0-9_]*"
+     a porovnat se VSEMI "native" metodami v Jave (NativePs1CoreBridge,
+     NativeSegaCoreBridge, NativeSegaProofActivity). V B123 to bylo 37/37.
+     Samotny preklad chybejici symbol NENAJDE. Na tom spadl B83.
+
+ (d) JAVASCRIPT VE STRANCE - jinak spadne CELA APLIKACE
+     Stranka pro TV se sklada z retezcu v napTvWebWriteHtml (MainActivity).
+     POZOR: pri vytahovani retezcu se MUSI NEJDRIV ODSTRANIT JAVA KOMENTARE.
+     V komentarich jsou taky uvozovky ("cover", "seq") a bez toho vznikne
+     nesmysl a falesna chyba. V B123 to poprve vypadalo jako rozbity JS,
+     pritom slo o chybu v extrakci, ne v kodu.
+     Potom: node --check slozeny.js
+
+ (e) RENDERER PS1 se da PRELOZIT A SPUSTIT proti Mesa GLES2
+     a podivat se na vysledny obrazek. Takhle se opravila grafika BIOSu.
+
+ (f) CELA ZVUKOVA CESTA NA TV SE DA ZMERIT (nove v B122)
+     napTvWebAudioPush + napTvWebWriteAudioRaw se prepisou do node
+     (je to par desitek radku) a SKUTECNY JS ze stranky se proti nim
+     spusti s napodobenim prohlizece (document, fetch, AudioContext,
+     setTimeout na virtualnim case). Pak se spocita, kolik bajtu zvuku
+     dojde do ac.createBuffer za X vterin.
+     Takhle se v B123 zmerilo: pred opravou 0,1 %, po oprave 99,9 %.
+     A HLAVNE: da se tim overit, ze se PS1 NEZHORSILO - staci pocitat,
+     kolik davek PS1 odeslalo. V B121 i v B123 to bylo 1000 z 1000.
+     TOHLE JE NEJRYCHLEJSI ZPUSOB, JAK OVERIT ZVUK NA TV BEZ TELEFONU.
+
+===============================================================================
+ 4. SLEPE ULICKY - VYZKOUSENO, NEZKOUSET ZNOVU
+===============================================================================
+
+ GRAFIKA PS1:
+  - texturove okno v shaderu: vypnuto, obraz bajt po bajtu stejny
+  - kopie uvnitr videopameti (0x80): BIOS ani jednu nedela
+  - vraceni celeho obrazu z GPU kazdy snimek: zmena 0,03 z 255
+  - RGBA 8888 jako format obrazu: rozbije palety
+  - PSANI VLASTNIHO VYKRESLOVACE (gpu_naples2, 1291 radku): neumel
+    vsechno, co PlayStation dela -> kosticky, artefakty, blikani.
+    Pouzit provereny gpu_neon (19 377 radku, soucast jadra).
+
+ ZOBRAZENI:
+  - SDILENA GL TEXTURA mezi jadrem a plochou: NIKDY NEFUNGOVALA.
+    V eglrender je o tom poznamka "obraz cerny nebo roztrhany" a AI
+    se na tom sama rozbila dvanactkrat (B57-B68, chyba OpenGL 0x506).
+    Snimek se musi ZKOPIROVAT pod zamkem.
+  - JPEG do stranky (ps1FramePreviewB64): 77 ms na snimek, smazano
+
+ TV:
+  - doostrovani obrazu v Jave bod po bodu: 600 tisic operaci na snimek
+  - "new Canvas(bitmapa)" je platno V PAMETI - vsechno na nem pocita
+    PROCESOR. Barevny filtr tam stal 8 milionu operaci na snimek
+    (avgTickGapMs 96 misto 16). Barevne upravy patri do prohlizece.
+  - doostrovani filtrem AZ PO KOMPRESI (SVG filter v prohlizeci):
+    informace, ktera se pri kompresi ztratila, uz v obraze NENI -
+    filtr jen zvyrazni chyby komprese
+  - orez na okenko konzole ve snimani okna: rozbije otoceni pro Segu
+    i Atari (mobil na vysku posilal na web sirku)
+  - PRIMA CESTA snimku z C do H.264 enkoderu (B94-B98): ctyri pokusy,
+    ctyri pady pri zapnuti TV. Nasel jsem a opravil ctyri skutecne
+    chyby (poradi startu enkoderu, format okna, zamek, soubeh vlaken)
+    a PRESTO to padalo. Priznak POUZIT_PRIMOU_CESTU_NA_TV = false.
+    NEZKOUSET BEZ TELEFONU PO RUCE.
+
+ ZVUK:
+  - usleep jako zpetny tlak: rozkmita zvuk i obraz
+  - ZMENSENI ZVUKOVEHO ZASOBNIKU SEGY (B119): zvuk prestal chodit na TV,
+    i kdyz v telefonu hral. audioFramesForTier musi zustat 1024/2048/4096
+    a bufferBytes bere min*2.
+  - ZVETSOVANI KRUHOVEHO ZASOBNIKU PRO TV (napTvWebAudioRing): NEMA SMYSL.
+    1 MB je pri 48 kHz stereo pres 2,7 vteriny, prohlizec se pta po 20 ms.
+    Kdyz je ticho, neni to pretecenim zasobniku.
+  - PREPOCET FREKVENCE (48000 -> 44100) PRO PROHLIZEC: NENI POTREBA.
+    Klient si frekvenci cte z hlavicky X-NAP-AUDIO-RATE a strka ji rovnou
+    do ac.createBuffer(2, frames, rate). 48000 mu nevadi. Overeno v B122
+    spustenim skutecneho JS v node.
+  - POSILANI DAVKY NA TV AZ PO track.write(WRITE_BLOCKING) (do B120):
+    skutecna chyba, opravena v B121. ALE NEBYLA TO PRICINA TICHA.
+
+ TEMPO SNIMANI PRO TV:
+  - 5 ms (B82): 200 pruchodu za vterinu, bere procesor emulaci -> kouse
+    se zvuk. Minimum je 12 ms.
+  - prehodit smycku na vlastni vlakno: NELZE, saha na rootFrame
+    a web.getUrl() (pohledy aplikace)
+  - prednostni zarazeni postAtFrontOfQueue (B119): nepomohlo,
+    avgTickGapMs zustalo 42, a obraz na TV se zhorsil
+  - do RYCHLE vetve patri vsechno, co dava snimek PRIMO Z JADRA
+    (PS1 i Sega). Do pomale jen to, co se snima z okna (Atari).
+
+===============================================================================
+ 5. PASTI, KTERE UZ NECO STALY
+===============================================================================
+
+ - JADRO PS1 BEZI DAL I POTOM, CO UZIVATEL Z PS1 ODEJDE.
+   Tohle uz jednou stalo build u OBRAZU (TV zustavala viset na poslednim
+   snimku z PlayStation) a je to popsane primo v napTvWebCaptureFromCore.
+   V B122 se ukazalo, ze UPLNE STEJNA past byla i u ZVUKU, o par set
+   radku vys - odbocka se ptala jen "je co vzit?", uz ne "ma se to vzit?".
+   POZOR NA TO, JAK SE TO RESI. B122 to zkusil otazkou "je PS1 na
+   obrazovce?" pres napTvWebCurrentUrl. Rene to ODMITL, a mel pravdu:
+   PS1 je HOTOVE a nesmi se o nej opirat nic noveho. Kdyby se ta jedna
+   hodnota jen na chvili opozdila, PS1 by na TV ztichlo.
+   -> SPRAVNE RESENI (B123): PS1 posila JAKO DOSUD a ustoupi jen tehdy,
+      kdyz do zvukove cesty pro TV PRAVE POSILA NEKDO JINY:
+        zdroj != null && !"PS1".equals(zdroj) && !"NONE".equals(zdroj)
+        && napTvWebAudioLastPushMs > 0
+        && (System.currentTimeMillis() - napTvWebAudioLastPushMs) < 300
+      Kdyz nic jineho nehraje, podminka je VZDY nepravdiva -> chovani
+      bit po bitu jako pred opravou. Zadna zavislost na URL.
+
+ - PRAVIDLO PRO PS1 OBECNE: PS1 JE HOTOVE A ZAVRENE.
+   Kdyz se neco opravuje ve SPOLECNE casti (smycka pro TV, zvukova cesta
+   pro TV, enkoder), musi se to udelat tak, aby chovani PS1 zustalo
+   NEZMENENE, kdyz nic jineho nehraje. Ne "melo by to byt v poradku" -
+   musi to jit ZMERIT (viz bod 3f: pocet odeslanych davek pred a po
+   musi byt STEJNY).
+
+ - ULOZENE HODNOTY V PROHLIZECI (localStorage): kdyz se zmeni chovani,
+   MUSI se zmenit i KLIC, jinak se stara hodnota nacte znovu a oprava
+   vypada, ze nefunguje. Stalo to dve kola.
+
+ - POZOR NA PORADI pri praci s MediaCodec: okno enkoderu se smi predat
+   AZ POTOM, co enkoder bezi (po enc.start()).
+
+ - FORMAT OKNA: pred eglCreateWindowSurface musi byt
+   ANativeWindow_setBuffersGeometry s EGL_NATIVE_VISUAL_ID.
+
+ - GENERACE VLAKEN: kdyz se plocha odpoji a hned zase pripoji, muze
+   stare vlakno jeste dobihat. Kazde vlakno si pamatuje cislo generace.
+
+ - surfaceChanged NESMI plochu znovu pripojovat - pri otoceni prijde
+   spolu se surfaceCreated a vznikne mela vlaken.
+
+ - OTOCENI A BARVY: kdyz se zmeni ZDROJ snimku, zkontrolovat OBOJI.
+     z glReadPixels chodi snimek ZDOLA NAHORU
+     z jadra pres nap_video() chodi SHORA DOLU
+     snimek je ARGB (v pameti B,G,R,A) -> shader musi prohodit .bgr
+
+ - FORMAT BODU: nikdy nevynucovat. Jadro si ho hlasi samo pres
+   SET_PIXEL_FORMAT. Vynuceni XRGB8888 pri RGB565 = dvojity obraz
+   a zelenofialove barvy.
+
+ - LOG UMI LHAT: radek H264_ENCODER_START vypisoval bitrate spocitany
+   zvlast a nesouhlasil se skutecnym nastavenim. Kdyz cislo v logu
+   neodpovida kodu, overit obe strany.
+
+ - LOG UMI I MLCET: radek TV_WEB_AUDIO_SOURCE se zapisuje JEN pri ZMENE
+   zdroje. Kdyz se v nem stridaji dva zdroje radek po radku, neznamena to
+   "obcas prijde jiny zdroj", ale "POSILAJI OBA NARAZ, PORAD".
+   Rychla kontrola:
+     grep 'TV_WEB_AUDIO_SOURCE' log | awk '{print $NF}' | uniq -c
+   Kdyz je u KAZDEHO radku pocet 1, stridaji se davku po davce.
+
+===============================================================================
+ 6. CO DAL - NAVRHY, NE PRIKAZY
+===============================================================================
+
+ 0a) CHYBY, KTERE ME PRI PREPISU STALY NEJVIC CASU - at je nikdo neopakuje
+    * VYKRESLOVAT AZ NA KONCI SNIMKU JE ZKRATKA A NEFUNGUJE.
+      ANTIC kresli radek po radku a program mu do toho behem snimku meni
+      barvy pres DLI. Kdyz se vykresli az na konci, dostane cela obrazovka
+      barvy posledniho DLI. Musi se to prokladat s procesorem:
+        pro kazdou scanline: vykresli -> odemuluj 114 cyklu -> pripadne DLI
+    * $01 (JMP) A $41 (JVB) NEJSOU TOTEZ.
+      Obe maji dvoubajtovou adresu, ale JVB znamena KONEC SNIMKU. Kdyz se
+      bere jako obycejny skok, display list se cte znovu od zacatku a horni
+      cast obrazu se prekresli pres spodni. Vypada to jako "smeti" v dolni
+      tretine obrazovky.
+    * POKEY MUSI HLASIT "DEJ DALSI BAJT" A "VYSILANI SKONCILO" ZVLAST.
+      Kdyz se nastavi obe naraz, SIO rutina OS si mysli, ze je hotovo hned
+      po prvnim bajtu, a zustane viset na $EA9E donekonecna. Bez toho
+      nikdy nevyprsi cekani na disketu a OS se nedostane do BASICu.
+    * BIT 6 U PRAZDNYCH RADKU NENI LMS.
+      U instrukce s modem 0 jsou bity 4-6 POCET prazdnych radku. Kdo si to
+      splete, cte adresu tam, kde zadna neni.
+
+ 0) PREPIS ATARI DO C++ - kde to stoji
+    Hotovo: vrstva 1 (CPU 6502) a vrstva 2 (pamet a banky).
+    Overuje se DIFERENCNE proti puvodnimu JS: stejny generator bezi
+    v node proti Reneho CPU6502 i v C++, porovnava se kazdy registr,
+    priznak, pocet cyklu i zapis do pameti. Skripty jsou v repozitari.
+    POZOR NA ZPUSOB: vrstvy 1-2 se PREKLADALY (bylo to spravne, daly se
+    overit do posledniho bitu). Vrstva 3 se prekladat NESMI - v puvodnim
+    JS je chyba (rozejite atlety v Decathlonu, na Altire i na skutecnem
+    Atari je to v poradku). Kdyby se vrstva 3 opsala, chyba se opise s ni.
+    Vrstva 3 se pise podle chovani zeleza a rozdily proti JS se berou
+    obracene - jako SEZNAM MIST, KDE JE JS SPATNE.
+
+ 1) NEDODELEK Z B123 - PROC JADRO PS1 BEZI DAL?
+    B123 zaridil, ze PS1 na TV USTOUPI, kdyz posila nekdo jiny.
+    To ticho na Sege a Atari resi. NERESI to ale otazku,
+    proc jadro PS1 jeste 4,5 minuty po radku
+      BUILD2SA5I PS1_SESSION_STOP core=PS1_STOPPED
+    porad vydava zvuk do odbocky pro TV (log z 16. 8., 17:36:04 -> 17:40:30).
+    Bud jadro opravdu bezi dal (pak bere procesor Atari - a Rene hlasi, ze
+    Atari hry jsou na mobilu pomalejsi!), nebo se v nap_ps1_native.cpp
+    nenuluji ukazatele g_tvring_r / g_tvring_w a cte se porad dokola stare.
+    Pozor, v ps1PullTvAudio je i mozny soubeh: ctenar si nacte r, pisar
+    mezitim r posune dopredu (drop-oldest), ctenar pak ulozi svoje starsi
+    r a tim ho vrati zpatky. Podivat se na vsechny tri moznosti.
+    TOHLE JE PRVNI VEC, CO VZIT PO B123 - ALE AZ TO RENE POVOLI.
+    Je to zasah do PS1, ktere je hotove. NESAHAT NA TO SAM OD SEBE.
+
+ 2) ZAMEK NA ZVUKOVOU CESTU PRO TV
+    Dnes muze do napTvWebAudioRing zapsat kdokoli. B123 to resi u PS1,
+    ale stejna past ceka u PLAYER a YOUTUBE. Zvazit, aby napTvWebAudioPush
+    sama hlidala, ze zapisovat smi jen jeden zdroj. Neni to nutne hned.
+
+ 3) OVLADAC - B116 je hotovy, ale NEOTESTOVANY. Rene chce:
+    - minimalni odezvu d-padu (hotovo: touch-action:none)
+    - bluetooth klavesnici (hotovo, u Atari bude klicova)
+    - joystick, hlavne Xbox (hotovo, mapovani i mrtva zona)
+
+ 4) ATARI - stejna predelavka jako Sega, ale AZ PO 27. SRPNU
+    a AZ PO DOHODE s Renem.
+
+ 5) ZPOZDENI OBRAZU NA TV - zbyva ~42 ms, protoze snimaci smycka bezi
+    na hlavnim vlakne. Reseni by bylo posilat snimek do enkoderu primo
+    z C - ale to ctyrikrat shodilo aplikaci. Chce to telefon po ruce.
+
+===============================================================================
+ 7. KLICOVE SOUBORY
+===============================================================================
+
+ app/src/main/cpp/nap_ps1_native.cpp          PS1: JNI, vlakna, zvuk, obraz
+   ~ radek 449   g_tvring - odbocka zvuku pro TV (nedodelek, viz bod 6.1)
+   ~ radek 841   ps1PullTvAudio - vydava zvuk pro TV
+ app/src/main/cpp/nap_sega_native_proof.cpp   SEGA: totez
+ app/src/main/cpp/vendor/pcsx_rearmed/        jadro PS1
+ app/src/main/cpp/vendor/clownmdemu-core/     jadro Segy
+ app/src/main/cpp/CMakeLists.txt              co se preklada
+ app/src/main/java/.../MainActivity.java      ~8050 radku, shell + TV
+   ~ radek 793-836 odbocka zvuku PS1 pro TV <- JEDINA ZMENA V B123
+   ~ radek 2280  napTvWebAudioPush          (nuluje seq pri zmene frekvence)
+   ~ radek 2781  napTvWebWriteAudioRaw      (server pro /audio.raw)
+   ~ radek 2747  pollAudio                  (klient v prohlizeci, v retezci)
+   ~ radek 1028  napTvWebCaptureFromCore    (stejna past, uz vyresena u obrazu)
+ app/src/main/java/.../NativePs1CoreBridge.java
+ app/src/main/java/.../NativeSegaCoreBridge.java
+ app/src/main/assets/emu_ps1/index.html       Reneho UI - NESAHAT na CSS
+ app/build.gradle                             versionCode / versionName
+
+ NDK 26.3.11579264, jen arm64-v8a, C++17 -O3, Java 17, API 34.

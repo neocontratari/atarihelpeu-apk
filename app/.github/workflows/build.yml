@@ -1,0 +1,65 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+# Opravneni pro pojistku nize (vypinani ostatnich receptu na build)
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stazeni kodu
+        uses: actions/checkout@v4
+
+      - name: Pojistka - jediny povoleny build je tento (jeden push = jeden balicek)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Recepty na build nalezene v repozitari:"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows" --paginate \
+            --jq '.workflows[] | "  [\(.state)] \(.path)  (\(.name))"' || true
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows" --paginate \
+            --jq '.workflows[] | [.id, .state, .path] | @tsv' > /tmp/wf.tsv || true
+          while IFS=$'\t' read -r id state path; do
+            if [ "$path" != ".github/workflows/build.yml" ] && [ "$state" = "active" ]; then
+              echo "Vypinam cizi recept: $path"
+              gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/${id}/disable" \
+                && echo "  -> vypnuto (nic se nemaze, da se kdykoli zapnout zpet)" \
+                || echo "  -> vypnuti se nepovedlo, build bezi dal"
+            fi
+          done < /tmp/wf.tsv
+          echo "Hotovo. Od pristiho pushe pobezi vzdy jen Build APK."
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalace SDK komponent (pripnute verze)
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.3.11579264" "cmake;3.22.1"
+
+      - name: Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Sestaveni APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Ulozeni APK ke stazeni
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 3   # setri misto na artefakty (kazdy build ma ~39 MB)
