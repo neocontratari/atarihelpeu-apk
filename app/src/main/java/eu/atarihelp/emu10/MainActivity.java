@@ -612,6 +612,17 @@ public class MainActivity extends Activity {
     // This fallback keeps everything inside the app: phone serves a low-latency
     // JPEG stream over local Wi-Fi and the Android TV opens the shown URL.
     private ServerSocket napTvWebServer;
+    /**
+     * BUILD2SA66: zasoba vlaken pro TV server.
+     * Dlouhe proudy (H264, MJPEG) drzi vlakno cely cas, kratke pozadavky
+     * (snimky z Atari, klavesy, /status) si ho pujci a vrati.
+     */
+    private final java.util.concurrent.ThreadPoolExecutor napTvWebVlakna =
+            new java.util.concurrent.ThreadPoolExecutor(
+                    4, 24, 30L, java.util.concurrent.TimeUnit.SECONDS,
+                    new java.util.concurrent.SynchronousQueue<>(),
+                    r -> { Thread t = new Thread(r, "nap-tv-web-client");
+                           t.setDaemon(true); return t; });
     private Thread napTvWebServerThread;
     private volatile boolean napTvWebRunning = false;
     private volatile int napTvWebPort = 0;
@@ -1298,7 +1309,11 @@ public class MainActivity extends Activity {
                         boolean naSegeT = (cu0 != null) && cu0.contains("emu_sega");
                         boolean naPs1T  = (cu0 != null) && cu0.contains("emu_ps1")
                                 && (ps1BiosRunning || ps1SessionActive);
-                        ps1PrimoZJadra = naPs1T || naSegeT || introZivaCast;  // BUILD2SA62: i ziva jadra v intru
+                        // BUILD2SA65: Atari sem taky patri - snimek dava samo
+                        // a okno se u nej nesnima. Bez toho by smycka bezela
+                        // po 12 ms a zpracovavala porad ten samy obraz.
+                        boolean naAtariT = (cu0 != null) && cu0.contains("emu_vbxe");
+                        ps1PrimoZJadra = naPs1T || naSegeT || introZivaCast || naAtariT;
                     } catch (Throwable ignored2) {}
                     effectiveDelay = ps1PrimoZJadra
                             ? napTvWebH264FastTickMs               // PS1: 16 ms staci
@@ -1368,6 +1383,23 @@ public class MainActivity extends Activity {
                 wh = atariFbVyzvedni(tvCoreArgb);
             }
             if (wh <= 0) {
+                // BUILD2SA65: STEJNY SNIMEK SE NEPOSILA ZNOVU.
+                //
+                // Drzeni jsem udelal tak, ze se stary snimek posilal
+                // porad dokola - a smycka bezi 83x za vterinu. V logu:
+                //   TV_WEB_PS1_DUPCHECK sameFrames=60/60
+                //   avgTickGapMs=13  avgDrawMs=6
+                // Enkoder tedy 83x za vterinu znovu zpracoval uplne
+                // stejny obraz. Odtud pad, a to az KDYZ SE OBRAZ USTALI -
+                // presne jak to Rene popsal.
+                //
+                // Ted se drzi TISE: vratime true (okno se nesnima, rozmer
+                // neskace), ale nic se neposila. Enkoder si posledni
+                // snimek drzi sam. Jen jednou za pul vteriny posleme
+                // znovu, aby divak, ktery se prave pripojil, nemel cerno.
+                long ted = System.currentTimeMillis();
+                if (ted - atariHoldMs < 500) return true;      // ticho
+                atariHoldMs = ted;
                 // BUILD2SA64: NIKDY SE NEPROPADNOUT NA SNIMANI OKNA.
                 //
                 // Drive se tu vratilo false a snimek se vzal z okna -
@@ -1404,6 +1436,7 @@ public class MainActivity extends Activity {
         }
     }
     private Bitmap atariBmp = null;       // vlastni, sdilenou nezabira
+    private long atariHoldMs = 0;         // aby se stejny snimek neposilal porad
 
     /**
      * BUILD2SA63: INTRO MA TAKY VLASTNI CESTU, VEDLE.
@@ -1416,6 +1449,7 @@ public class MainActivity extends Activity {
      * jsem rozbil PS1 na projektoru. Ted je vedle, uplne mimo ni.
      */
     private Bitmap introBmp = null;
+    private long introHoldMs = 0;
     private boolean napTvWebCaptureIntro(int bw, int bh) {
         try {
             if (!introZivaCast) return false;
@@ -1429,11 +1463,13 @@ public class MainActivity extends Activity {
                             : Ps1GlTextureView.borrowFrame(tvCoreArgb);
             }
             if (wh <= 0) {
-                // jadro zrovna nic nema - podrzime posledni, at se to
-                // nepropadne na snimani okna (to je behem intra pruhledne)
+                // stejne jako u Atari - drzime TISE, at enkoder nezpracovava
+                // porad ten samy obraz
+                long tedI = System.currentTimeMillis();
+                if (tedI - introHoldMs < 500) return true;
+                introHoldMs = tedI;
                 if (introBmp != null && !introBmp.isRecycled()) {
                     napTvWebPublishBitmap(introBmp, "INTRO_HOLD");
-                    return true;
                 }
                 return true;
             }
@@ -3166,7 +3202,23 @@ public class MainActivity extends Activity {
                 ServerSocket ss = napTvWebServer;
                 if (ss == null) break;
                 Socket s = ss.accept();
-                new Thread(() -> napTvWebHandleClient(s), "nap-tv-web-client").start();
+                // BUILD2SA66: VLAKNA SE PUJCUJI, NEVYRABEJI.
+                //
+                // Drive se na KAZDE spojeni vyrabelo nove vlakno. Dokud
+                // chodilo par pozadavku za vterinu, nevadilo to. Jenze
+                // snimky z Atari chodi 8-16x za vterinu - to je pres
+                // tisic vlaken za minutu a system to neustal. Odtud pad
+                // JEN s TV, JEN v Atari a PO MINUTE.
+                //
+                // Tuhle zatez jsem pridal ja, tak ji tady i resim:
+                // vlakna se berou ze zasoby a vraceji se do ni.
+                try {
+                    napTvWebVlakna.execute(() -> napTvWebHandleClient(s));
+                } catch (Throwable odmitnuto) {
+                    // zasoba je plna - spojeni radeji zavreme, nez abychom
+                    // vyrabeli dalsi vlakno
+                    try { s.close(); } catch (Throwable ignored) {}
+                }
             } catch (Throwable t) {
                 if (napTvWebRunning) appendNativeLog("BUILD2SA13C TV_WEB_ACCEPT_ERR " + safeMsg(t));
                 try { Thread.sleep(160); } catch (InterruptedException ignored) {}
@@ -3249,6 +3301,14 @@ public class MainActivity extends Activity {
                 // predbezny dotaz prohlizece pred POSTem
                 napTvWebHeader(out, "204 No Content", "text/plain", 0, true);
             } else if ("/atarifb".equals(path)) {
+                // BUILD2SA66: JEDNO SPOJENI NA VIC SNIMKU.
+                //
+                // Kazde spojeni si bere NOVE VLAKNO (viz accept nize).
+                // Atari posila 12 snimku za vterinu, tedy 720 vlaken za
+                // minutu - a to system neda. Proto to padalo JEN s TV,
+                // JEN v Atari a PO MINUTE. Tuhle cestu jsem pridal ja.
+                //
+                // Ted se spojeni drzi a snimky se ctou za sebou.
                 // BUILD2SA51: SNIMEK Z ATARI PRIMO, JAKO U SEGY A PS1.
                 //
                 // Doted se Atari snimalo pres PixelCopy CELEHO OKNA. To si

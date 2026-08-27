@@ -6926,8 +6926,17 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         tvFbPort=m[1];
       }
       var ted=Date.now();
-      if(ted-tvFbPosledni < 60) return;        // nejvys asi 16 snimku za vterinu
-      if(tvFbPosila){ tvFbPreskoceno++; return; }  // predchozi jeste letí
+      // BUILD2SA66: MENE SPOJENI.
+      //
+      // Kazdy odeslany snimek je jedno sitove spojeni a aplikace si na
+      // kazde bere NOVE VLAKNO. Pri 16 snimcich za vterinu to bylo skoro
+      // tisic vlaken za minutu - a po minute to spadlo. Presne to Rene
+      // popsal: jen s TV, jen v Atari, po minute.
+      //
+      // Osm snimku za vterinu na TV bohate staci a spojeni je o polovinu
+      // min. Vic uz stejne nema smysl - obraz Atari se tak casto nemeni.
+      if(ted-tvFbPosledni < 125) return;
+      if(tvFbPosila){ tvFbPreskoceno++; return; }  // predchozi jeste leti
       tvFbPosledni=ted;
       tvFbPosila=true;
       // prepsat drzenou kopii misto vyrabeni nove
