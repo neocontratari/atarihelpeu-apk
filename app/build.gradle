@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 237
-        versionName "EMU10-B189-KLAVESNICE-I-SEGA"  // Alt a Ctrl zahozeny - skok K, vystrel L. A klavesnice ted funguje i v Seze: WASD, K=A, L=B, O=C, P=START.
+        versionCode 238
+        versionName "EMU10-B190-SEGA-KLAVESY-JEDOU"  // server Segu hlasil, stranka ji posilala, ale nikde ji necetla - moje uprava se do toho dlouheho radku netrefila.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
