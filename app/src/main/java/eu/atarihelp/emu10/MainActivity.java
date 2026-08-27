@@ -3340,8 +3340,11 @@ public class MainActivity extends Activity {
                 // Stranka se na /status pta kazdou vterinu uz ted, takze
                 // se na nic navic ptat nemusi a klavesnice se zapne SAMA.
                 boolean vAtari = (curUrl3 != null) && curUrl3.contains("emu_vbxe");
+                // BUILD2SA76: klavesnice ted funguje i v Seze
+                boolean vSeze  = (curUrl3 != null) && curUrl3.contains("emu_sega");
                 byte[] body = ("running=" + napTvWebRunning
                         + " atari=" + (vAtari ? 1 : 0)
+                        + " sega=" + (vSeze ? 1 : 0)
                         + " seq=" + napTvWebSeq
                         + " mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
                         + " profile=" + napTvWebVideoProfile
@@ -3579,12 +3582,14 @@ public class MainActivity extends Activity {
                 + "  x.onload=function(){ try{"
                 + "    var v=x.responseText||'';"
                 + "    if(v==='HRANI'||v==='PSANI') window.napRezim=v;"
+                + "    if(v==='SKOK'||v==='VYSTREL'||v.indexOf('SMER:')===0"
+                + "       ||v.indexOf('NEZNAMA')===0) window.napPosledni=v;"
                 + "  }catch(_){} klavLeti=false; klavDalsi(); };"
                 + "  x.onerror=function(){ klavLeti=false; klavDalsi(); };"
                 + "  try{ x.send(); }catch(e){ klavLeti=false; }"
                 + "}"
                 + "function posli(code,znak,dolu,ctrl){"
-                + "  if(!window.napVAtari) return;"
+                + "  if(!window.napVAtari && !window.napVSeze) return;"
                 + "  try{"
                 + "    if(klavFronta.length>24) klavFronta.length=0;"   // pojistka
                 + "    klavFronta.push('/klavesa?code='+encodeURIComponent(code)"
@@ -3599,6 +3604,13 @@ public class MainActivity extends Activity {
                 + "  if(e.key==='F5'||e.key==='F12') return;"
                 // BUILD2SA69: F1-F4 a F9 patri Atari, ne prohlizeci
                 + "  if(/^F[1349]$/.test(e.key)) e.preventDefault();"
+                // BUILD2SA75: ALT A CTRL SI BERE PROHLIZEC.
+                //
+                // Alt otevira nabidku okna a Ctrl je zkratka - Chrome je
+                // proto nemusi predat dal. Musime mu je vzit HNED, jeste
+                // nez se rozhodne, co s nimi.
+                // BUILD2SA76: Alt a Ctrl uz neresime - prohlizec si je bral
+                // pro sebe a nestalo to za to. Skok je K, vystrel L.
                 + "  if(e.key==='F2'){ posli('Break','',true,false); e.preventDefault(); return; }"
                 + "  if(PREHAZOVACE[e.key]) return;"
                 + "  posli(e.code,e.key,true,e.ctrlKey);"
@@ -3618,12 +3630,15 @@ public class MainActivity extends Activity {
                 + "  if(kn.style.display===(zap?'':'none')) return;"   // jen pri zmene
                 + "  kn.style.display=zap?'':'none';"
                 + "  kn.textContent=(window.napRezim==='HRANI')"
-                + "    ? 'HRANI - WASD, Ctrl skok, Alt vystrel  (F9 = psani)'"
+                + "    ? 'HRANI - WASD pohyb, K skok, L vystrel   (F9 = psani)'"
                 + "    : 'PSANI - F9 hrani, F2 BREAK, F1/F3/F4 START/SELECT/OPTION'; };"
                 + "setInterval(function(){ if(kn.style.display==='none') return;"
-                + "  var t=(window.napRezim==='HRANI')"
-                + "    ? 'HRANI - WASD, Ctrl skok, Alt vystrel  (F9 = psani)'"
+                + "  var t=window.napVSeze"
+                + "    ? 'SEGA - WASD pohyb, K = A, L = B, O = C, P = START'"
+                + "    : (window.napRezim==='HRANI')"
+                + "    ? 'HRANI - WASD pohyb, K skok, L vystrel   (F9 = psani)'"
                 + "    : 'PSANI - F9 hrani, F2 BREAK, F1/F3/F4 START/SELECT/OPTION';"
+                + "  if(window.napPosledni) t+='   ['+window.napPosledni+']';"
                 + "  if(kn.textContent!==t) kn.textContent=t; },700);"
                 + "document.body.appendChild(kn);"
                 + "})();</script></body></html>";

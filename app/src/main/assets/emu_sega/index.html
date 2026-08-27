@@ -439,6 +439,30 @@ function onRomSelected(f){
 }
 function keyDefs(btn){return {UP:[['ArrowUp','ArrowUp',38]],DOWN:[['ArrowDown','ArrowDown',40]],LEFT:[['ArrowLeft','ArrowLeft',37]],RIGHT:[['ArrowRight','ArrowRight',39]],A:[['z','KeyZ',90],['Z','KeyZ',90]],B:[['x','KeyX',88],['X','KeyX',88]],C:[['c','KeyC',67],['C','KeyC',67]],START:[['Enter','Enter',13]]}[btn]||null;}
 function postPad(){var fr=$('clownFrame');try{fr&&fr.contentWindow&&fr.contentWindow.postMessage({type:'nap-input-state',buttons:JSON.parse(JSON.stringify(padButtons))},'*');}catch(e){}}
+// ==================================================================
+//  BUILD2SA76: KLAVESNICE Z POCITACE PRO SEGU
+//
+//  Sega uz vsechno umi - sendToWrapper() posle tlacitko do jadra
+//  a to zna UP, DOWN, LEFT, RIGHT, A, B, C a START.
+//  Chybelo jen okno ven, aby se na to dalo sahnout z klavesnice.
+//
+//  Rene chtel ovladani podobne jako u Atari:
+//     WASD  pohyb          K  skok (A)
+//     L     vystrel (B)    O  tlacitko C
+//     P     START
+// ==================================================================
+window.napKlavesa=function(code, znak, dolu, ctrl){
+  try{
+    var MAPA={ KeyW:'UP', KeyS:'DOWN', KeyA:'LEFT', KeyD:'RIGHT',
+               ArrowUp:'UP', ArrowDown:'DOWN', ArrowLeft:'LEFT', ArrowRight:'RIGHT',
+               KeyK:'A', Space:'A', KeyL:'B', KeyO:'C', KeyP:'START', Enter:'START' };
+    var btn=MAPA[code];
+    if(!btn) return 'NEZNAMA:'+code;
+    sendToWrapper(btn, !!dolu);
+    return (dolu?'':'PUSTEN:')+btn;
+  }catch(e){ return 'CHYBA:'+(e&&e.message||e); }
+};
+
 function sendToWrapper(btn,down){
   padButtons[btn]=!!down;
   // BUILD2RV: no Java wrapper input path. All Sega controls go to native C++ bridge.
