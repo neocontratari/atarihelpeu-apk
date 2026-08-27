@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 241
-        versionName "EMU10-B193-KONTROLA-JAK-VIDI-RENE"  // stranka pro TV se ted SPOUSTI v node s napodobeninou prohlizece, jak rika predavaci protokol bod 3d - ne jen kontroluje syntax. Overeno, ze by tu chybu z B190 chytila.
+        versionCode 243
+        versionName "EMU10-B195-ZPET-NA-B121"  // cesta obrazu na TV vracena na stav z B121, ktery Renemu na platne fungoval. Zahazovani snimku i posilani z Atari odstraneno, 5650 znaku mrtveho kodu pryc.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

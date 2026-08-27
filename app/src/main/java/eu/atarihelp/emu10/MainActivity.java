@@ -612,7 +612,7 @@ public class MainActivity extends Activity {
     // This fallback keeps everything inside the app: phone serves a low-latency
     // JPEG stream over local Wi-Fi and the Android TV opens the shown URL.
     private ServerSocket napTvWebServer;
-    private volatile long napTvWebZahozenoSnimku = 0;
+    private volatile long napTvWebZahozenoSnimku = 0, napTvWebZahozenoLogMs = 0;
     /**
      * BUILD2SA66: zasoba vlaken pro TV server.
      * Dlouhe proudy (H264, MJPEG) drzi vlakno cely cas, kratke pozadavky
@@ -1363,82 +1363,10 @@ public class MainActivity extends Activity {
     private long tvSharpFrames = 0;
     private long tvFpsT0 = 0;
 
-    /**
-     * BUILD2SA62: ATARI MA VLASTNI CESTU, VEDLE - NE UVNITR.
-     *
-     * Do napTvWebCaptureFromCore(), ktera slouzi PS1 a Seze, jsem pridal
-     * tri podminky navic a diagnostiku, ktera se pocitala u KAZDEHO
-     * snimku. Ta funkce narostla z 256 na 309 radku a bezela i pri hrani
-     * PS1. Na Chromu se to ztratilo, na projektoru ne.
-     *
-     * Funkce je vracena PRESNE do stavu B156, ktery Renemu na projektoru
-     * bezel. Atari se resi tady, mimo ni.
-     */
-    private boolean napTvWebCaptureAtari(int bw, int bh) {
-        try {
-            String u = napTvWebCurrentUrl;
-            if (u == null || !u.contains("emu_vbxe")) return false;
-            int wh = atariFbVyzvedni(tvCoreArgb);
-            if (wh < 0) {
-                int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
-                tvCoreArgb = new int[need + 1024];
-                wh = atariFbVyzvedni(tvCoreArgb);
-            }
-            if (wh <= 0) {
-                // BUILD2SA65: STEJNY SNIMEK SE NEPOSILA ZNOVU.
-                //
-                // Drzeni jsem udelal tak, ze se stary snimek posilal
-                // porad dokola - a smycka bezi 83x za vterinu. V logu:
-                //   TV_WEB_PS1_DUPCHECK sameFrames=60/60
-                //   avgTickGapMs=13  avgDrawMs=6
-                // Enkoder tedy 83x za vterinu znovu zpracoval uplne
-                // stejny obraz. Odtud pad, a to az KDYZ SE OBRAZ USTALI -
-                // presne jak to Rene popsal.
-                //
-                // Ted se drzi TISE: vratime true (okno se nesnima, rozmer
-                // neskace), ale nic se neposila. Enkoder si posledni
-                // snimek drzi sam. Jen jednou za pul vteriny posleme
-                // znovu, aby divak, ktery se prave pripojil, nemel cerno.
-                long ted = System.currentTimeMillis();
-                if (ted - atariHoldMs < 500) return true;      // ticho
-                atariHoldMs = ted;
-                // BUILD2SA64: NIKDY SE NEPROPADNOUT NA SNIMANI OKNA.
-                //
-                // Drive se tu vratilo false a snimek se vzal z okna -
-                // tedy 720x1336 misto 384x240. Stridalo se to 16x za
-                // vterinu a rozmer obrazu skakal sem a tam. Presne to
-                // problikavani vyska/sirka, ktere Rene videl, a enkoder
-                // to neustal - aplikace spadla.
-                //
-                // Kdyz jsme v Atari, drzime posledni snimek. Rozmer
-                // zustane stejny.
-                if (atariBmp != null && !atariBmp.isRecycled()) {
-                    napTvWebPublishBitmap(atariBmp, "ATARI_HOLD");
-                    return true;
-                }
-                return false;      // jeste nikdy nic neprislo - nechame okno
-            }
-            int sw = wh >> 16, sh = wh & 0xFFFF;
-            if (atariBmp == null || atariBmp.getWidth() != sw || atariBmp.getHeight() != sh) {
-                if (atariBmp != null && !atariBmp.isRecycled()) atariBmp.recycle();
-                atariBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
-                try { atariBmp.setHasAlpha(false); } catch (Throwable ignored) {}
-            }
-            atariBmp.setPixels(tvCoreArgb, 0, sw, 0, 0, sw, sh);
-            napTvWebPublishBitmap(atariBmp, "ATARI_FB");
-            return true;
-        } catch (Throwable t) {
-            // I pri chybe radeji podrzet posledni snimek nez pustit
-            // snimani okna - jinak by rozmer zase skocil.
-            if (atariBmp != null && !atariBmp.isRecycled()) {
-                try { napTvWebPublishBitmap(atariBmp, "ATARI_HOLD"); return true; }
-                catch (Throwable ignored) {}
-            }
-            return false;
-        }
-    }
-    private Bitmap atariBmp = null;       // vlastni, sdilenou nezabira
-    private long atariHoldMs = 0;         // aby se stejny snimek neposilal porad
+    // BUILD2SA79: cesta pro Atari odstranena.
+    // Posilani snimku z Atari jsem zrusil uz v B181 - Atari se snima
+    // z okna jako v B121. Tahle funkce uz nemela co delat.
+
 
     /**
      * BUILD2SA63: INTRO MA TAKY VLASTNI CESTU, VEDLE.
@@ -1987,7 +1915,13 @@ public class MainActivity extends Activity {
                 // nezbude a ROZPADNOU SE DO KOSTEK. Nejvic je to videt
                 // v tmavych plochach (silnice, pozadi), kde ma H.264 malo
                 // detailu na schovani chyby.
-                fmt.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
+                // BUILD2SA78: klicovy snimek jednou za VTERINU, ne za dve.
+                // Kdyz pomaly divak (projektor) o nejaky snimek prijde,
+                // srovna se az na dalsim klicovem - a dve vteriny rozsypaneho
+                // obrazu je presne to, kvuli cemu se Rene musel uchylovat
+                // k obnoveni stranky. Jedna vterina je polovicni cekani
+                // a datove to skoro nic nestoji.
+                fmt.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);   // BUILD2SA79: jako v B121
 
                 // ===== PROMENNY DATOVY TOK =====
                 // Ve vychozim stavu drzi enkoder tok konstantni - i kdyz je
@@ -2272,14 +2206,13 @@ public class MainActivity extends Activity {
                     outBuf.get(chunk);
                     napTvWebH264Seq++;
                     napTvWebH264LastFrameMs = System.currentTimeMillis();
+                    // BUILD2SA79: PRESNE JAKO V B121, KTERY NA PLATNE FUNGOVAL.
+                    //
+                    // V B192 jsem sem pridal zahazovani snimku pomalemu
+                    // divakovi a v B194 vyzadani klicoveho snimku. Oboji
+                    // je PRYC - v B121 tu bylo jen tohle jedno offer()
+                    // a obraz jel bez trhani. Rene mel pravdu.
                     for (java.util.concurrent.LinkedBlockingQueue<byte[]> q : napTvWebH264ClientQueues) {
-                        // BUILD2SA77: kdyz divak nestiha, ZAHODIT MU STARE
-                        // snimky misto aby fronta rostla. Jinak pomaly
-                        // divak zahlti sam sebe a nakonec i ostatni.
-                        while (q.remainingCapacity() == 0) {
-                            if (q.poll() == null) break;
-                            napTvWebZahozenoSnimku++;
-                        }
                         q.offer(chunk);
                     }
                 }
@@ -2311,7 +2244,7 @@ public class MainActivity extends Activity {
         // stejne k nicemu.
         //
         // 24 snimku staci na plynulost a je to max 1,5 vteriny zpozdeni.
-        java.util.concurrent.LinkedBlockingQueue<byte[]> myQueue = new java.util.concurrent.LinkedBlockingQueue<>(24);
+        java.util.concurrent.LinkedBlockingQueue<byte[]> myQueue = new java.util.concurrent.LinkedBlockingQueue<>(300);   // BUILD2SA79: jako v B121, kde obraz fungoval
         napTvWebH264ClientQueues.add(myQueue);
         appendNativeLog("BUILD2SK57 TV_WEB_H264_CLIENT_CONNECT clients=" + napTvWebH264ClientQueues.size());
         try {
@@ -2823,9 +2756,6 @@ public class MainActivity extends Activity {
      * BUILD2SA51: prijme snimek z Atari (384x240 RGBA) a preda ho na TV.
      * Chodi POST-em na /atarifb?w=384&h=240, telo jsou hola binarni data.
      */
-    private int[] atariFbArgb = null;
-    private volatile long atariFbPocet = 0, atariFbLogMs = 0, atariFbPosledniMs = 0;
-    private byte[] atariFbData = null;      // drzi se, nevyrabi se znovu
     private long klavesPocet = 0, klavesLogMs = 0;
     /** BUILD2SA69: sem Atari vrati, co s klavesou udelalo - jde to pak
      *  prohlizeci, aby vedel, jestli je v rezimu PSANI nebo HRANI. */
@@ -2939,91 +2869,6 @@ public class MainActivity extends Activity {
         return fallback;
     }
 
-    private final Object atariFbZamek = new Object();
-    private volatile int atariFbW = 0, atariFbH = 0;
-    private volatile boolean atariFbNovy = false;
-
-    /**
-     * BUILD2SA55: smycka TV si tu vyzvedne snimek Atari - PRESNE TAK,
-     * jako si u Segy vyzvedne NativeSegaCoreBridge.grabFrameSafe().
-     * Vraci (sirka<<16)|vyska, nebo 0 kdyz nic noveho neni.
-     */
-    private int atariFbVyzvedni(int[] ven) {
-        synchronized (atariFbZamek) {
-            if (!atariFbNovy || atariFbW <= 0 || atariFbH <= 0) return 0;
-            int potreba = atariFbW * atariFbH;
-            if (ven == null || ven.length < potreba) return -((atariFbW << 16) | atariFbH);
-            System.arraycopy(atariFbArgb, 0, ven, 0, potreba);
-            atariFbNovy = false;
-            return (atariFbW << 16) | atariFbH;
-        }
-    }
-
-    private void napTvWebPrijmiAtariSnimek(java.io.InputStream in, String fullPath,
-                                           java.io.OutputStream out,
-                                           byte[] telZacatek) throws Exception {
-        int w = (int) napTvWebQueryLong(fullPath, "w", 384);
-        int h = (int) napTvWebQueryLong(fullPath, "h", 240);
-        int delka = (int) napTvWebQueryLong(fullPath, "len", w * h * 4);
-        if (w <= 0 || h <= 0 || delka <= 0 || delka > 8 * 1024 * 1024) {
-            napTvWebHeader(out, "400 Bad Request", "text/plain", 0, true);
-            return;
-        }
-        // BUILD2SA58: POLE SE UZ NEVYRABI NA KAZDY SNIMEK.
-        //
-        // Drive tu bylo new byte[delka] pokazde - 360 kB na snimek,
-        // pri 16 snimcich za vterinu 5,6 MB/s a za minutu a pul pres
-        // 400 MB odpadu. Uklizec pameti to nestihal a aplikace spadla.
-        // Padalo to JEN v Atari, protoze jinde tahle cesta nebezi.
-        //
-        // Ted se pole drzi a jen se prepisuje.
-        if (atariFbData == null || atariFbData.length < delka) atariFbData = new byte[delka];
-        byte[] data = atariFbData;
-        int cti = 0;
-        // cast tela uz mohla prijit spolu s hlavickami
-        if (telZacatek != null && telZacatek.length > 0) {
-            int kolik = Math.min(telZacatek.length, delka);
-            System.arraycopy(telZacatek, 0, data, 0, kolik);
-            cti = kolik;
-        }
-        while (cti < delka) {
-            int k = in.read(data, cti, delka - cti);
-            if (k < 0) break;
-            cti += k;
-        }
-        if (cti == delka) {
-            if (atariFbArgb == null || atariFbArgb.length < w * h) atariFbArgb = new int[w * h];
-            // RGBA (jak to ma platno) -> ARGB (jak to chce bitmapa)
-            for (int i = 0, j = 0; i < w * h; i++, j += 4) {
-                atariFbArgb[i] = 0xFF000000
-                        | ((data[j]     & 0xFF) << 16)
-                        | ((data[j + 1] & 0xFF) << 8)
-                        |  (data[j + 2] & 0xFF);
-            }
-            // BUILD2SA55: TADY SE UZ NIC NEKRESLI.
-            //
-            // Sega a PS1 to delaji tak, ze si smycka TV snimek VYZVEDNE,
-            // kdyz ho chce. Ja ho cpal z HTTP vlakna, kdy se mi zachtelo -
-            // odtud zamrzly obraz, zpozdeni 5-7 s a to, ze po odchodu
-            // z Atari uz nenaskocila Sega ani PS1.
-            //
-            // Ted se snimek jen ULOZI a smycka si ho vezme sama.
-            synchronized (atariFbZamek) {
-                atariFbW = w; atariFbH = h; atariFbNovy = true;
-            }
-            atariFbPocet++;
-            long ted = System.currentTimeMillis();
-            if (ted - atariFbLogMs > 5000) {
-                atariFbLogMs = ted;
-                appendNativeLog("BUILD2SA51 ATARI_SNIMEK " + w + "x" + h
-                        + " prijato=" + atariFbPocet + " (bez PixelCopy)");
-                atariFbPocet = 0;
-            }
-        }
-        byte[] ok = "OK".getBytes("UTF-8");
-        napTvWebHeader(out, "200 OK", "text/plain", ok.length, true);
-        out.write(ok);
-    }
 
     private void napTvWebAudioPushMonoPcm16Bytes(byte[] pcm, int sampleRate, String source) {
         if (!napTvWebRunning || pcm == null || pcm.length < 2) return;
@@ -3329,29 +3174,6 @@ public class MainActivity extends Activity {
                 // sem a Java ho preda strance Atari uplne stejne, jako kdyz
                 // se zmackne na dotykove klavesnici v telefonu.
                 napTvWebKlavesa(fullPath, out);
-            } else if ("/atarifb".equals(path) && "OPTIONS".equalsIgnoreCase(method)) {
-                // predbezny dotaz prohlizece pred POSTem
-                napTvWebHeader(out, "204 No Content", "text/plain", 0, true);
-            } else if ("/atarifb".equals(path)) {
-                // BUILD2SA66: JEDNO SPOJENI NA VIC SNIMKU.
-                //
-                // Kazde spojeni si bere NOVE VLAKNO (viz accept nize).
-                // Atari posila 12 snimku za vterinu, tedy 720 vlaken za
-                // minutu - a to system neda. Proto to padalo JEN s TV,
-                // JEN v Atari a PO MINUTE. Tuhle cestu jsem pridal ja.
-                //
-                // Ted se spojeni drzi a snimky se ctou za sebou.
-                // BUILD2SA51: SNIMEK Z ATARI PRIMO, JAKO U SEGY A PS1.
-                //
-                // Doted se Atari snimalo pres PixelCopy CELEHO OKNA. To si
-                // vynuti cteni zpatky z graficke karty a zastavi vykreslovaci
-                // retez - a v tom retezu kresli i platno, na kterem emulator
-                // bezi. Odtud kousani hned po zapnuti TV.
-                //
-                // Sega a PS1 to delaji spravne: snimek dava JADRO. Atari ho
-                // ted dava taky - posle ho sem POST-em jako binarni data.
-                // Zadne PixelCopy, zadne cteni z graficke karty, zadny base64.
-                napTvWebPrijmiAtariSnimek(in, fullPath, out, telZacatek);
             } else if ("/quality".equals(path)) {
                 long t = napTvWebQueryLong(fullPath, "tier", napTvWebQualityTier);
                 byte[] body = ("tier=" + napTvWebSetQualityTier(t)).getBytes("UTF-8");
@@ -3561,7 +3383,7 @@ public class MainActivity extends Activity {
                 //  Predtim tu byly DVA casovace navic: kradeni zamereni kazde
                 //  2 s a prekreslovani napisu kazdou 1 s. Chrome to schroupal,
                 //  slaby prohlizec v projektoru se po nich zacal sekat.
-                //  Obojí je pryc.
+                //  Oboji je pryc.
                 // ================================================================
                 + "try{document.body.tabIndex=0;document.body.focus();}catch(e){}"
                 + "function chytZamereni(){try{window.focus();document.body.focus();}catch(e){}}"
