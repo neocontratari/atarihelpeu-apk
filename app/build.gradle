@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 232
-        versionName "EMU10-B184-STICK-I-PEEK"  // WASD jde do paky I do klavesnice, takze funguji hry psane na STICK(0) i na PEEK(764). Overeno: W=46, A=63, S=62, D=58.
+        versionCode 233
+        versionName "EMU10-B185-SKOK-A-VYSTREL"  // Control a Alt jsem blokoval uz v prohlizeci, takze skok ani vystrel nikdy nedosly do Atari. A pri ztrate zamereni nebo prepnuti F9 zustavala paka drzena.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

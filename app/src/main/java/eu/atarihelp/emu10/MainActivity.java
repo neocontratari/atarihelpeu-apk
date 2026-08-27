@@ -3541,8 +3541,23 @@ public class MainActivity extends Activity {
                 + "function chytZamereni(){try{window.focus();document.body.focus();}catch(e){}}"
                 + "document.addEventListener('mousedown',chytZamereni,true);"
                 + "document.addEventListener('touchstart',chytZamereni,true);"
+                // BUILD2SA71: kdyz okno ztrati zamereni nebo se prepne
+                // jinam, VSECHNO PUSTIT. Jinak zustane paka drzena
+                // a Mario jde porad doleva.
+                + "function pustVse(){ try{"
+                + "  ['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft',"
+                + "   'ArrowRight','ControlLeft','AltLeft','Space'].forEach(function(c){"
+                + "    posli(c,'',false,false); }); }catch(e){} }"
+                + "window.addEventListener('blur',pustVse);"
+                + "document.addEventListener('visibilitychange',function(){"
+                + "  if(document.hidden) pustVse(); });"
                 // prehazovace se NEPOSILAJI - samy o sobe nic nepisou
-                + "var PREHAZOVACE={Shift:1,Control:1,Alt:1,Meta:1,AltGraph:1,"
+                // BUILD2SA71: Control a Alt UZ NEBLOKUJEME.
+                // Pridal jsem je sem, aby Shift nepsal pismena - a tim
+                // jsem si zabil skok (Ctrl) a vystrel (Alt) v hrani.
+                // Atari si s nimi poradi samo: v psani nic nedelaji,
+                // v hrani jsou to tlacitka.
+                + "var PREHAZOVACE={Shift:1,Meta:1,AltGraph:1,"
                 + "CapsLock:1,NumLock:1,ScrollLock:1,Dead:1};"
                 + "window.napVAtari=false;"
                 + "function posli(code,znak,dolu,ctrl){"

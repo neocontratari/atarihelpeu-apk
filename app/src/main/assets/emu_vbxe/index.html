@@ -5106,8 +5106,13 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
           if(!dolu) return 'PUSTENO';
           window.napHraniZapnuto=!window.napHraniZapnuto;
           // pri odchodu ze hry paku pustit, at nezustane zaseknuta
-          if(!window.napHraniZapnuto && window.napHra){
-            window.napHra.smer(15,false); window.napHra.strelba(false);
+          // BUILD2SA71: pri prepnuti pustit VSECHNO - paku, strelbu
+          // i klavesu. Jinak zustane smer drzeny a postava jde porad
+          // jednim smerem.
+          if(window.napHra){
+            window.napHra.smer(15,false);
+            window.napHra.strelba(false);
+            try{ M.keyUp(); }catch(e){}
           }
           return window.napHraniZapnuto ? 'HRANI' : 'PSANI';
         }
