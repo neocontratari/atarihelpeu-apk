@@ -233,7 +233,7 @@ if(stZam)stZam.addEventListener('click',function(e){
 function zamkyObnov(){
   var st={sega:true,ps1:true,zbyvaMinut:0};
   try{ if(window.AHINTRO&&AHINTRO.postupStav) st=JSON.parse(AHINTRO.postupStav()); }catch(e){}
-  nastavZamek('btnSega', st.sega, 'NAPIS KOD V ATARI');
+  nastavZamek('btnSega', st.sega, 'NAPIS JESTE '+(st.zbyvaRadku||0)+' RADKU KODU V ATARI');
   nastavZamek('btnPs1',  st.ps1,  st.sega ? ('JESTE '+st.zbyvaMinut+' MIN SEGY') : 'NEJDRIV SEGA');
 }
 function nastavZamek(id, otevreno, proc){

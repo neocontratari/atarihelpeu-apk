@@ -30,6 +30,12 @@ public final class NapPostup {
     private static final String K_SEGA   = "sega_odemcena";
     private static final String K_PS1    = "ps1_odemcena";
     private static final String K_MINUTY = "sega_odehrano_ms";
+    private static final String K_RADKY  = "napsano_radku";
+
+    /** Kolik radku kodu otevre Segu. */
+    public static final int SEGA_POTREBA_RADKU = 50;
+    /** Kratsi program se nepocita - jinak by stacilo bouchat jeden radek. */
+    public static final int NEJMENE_RADKU = 5;
 
     /** Kolik hry na Seze otevře PlayStation. */
     public static final long PS1_POTREBA_MS = 30L * 60L * 1000L;
@@ -61,6 +67,35 @@ public final class NapPostup {
     // ------------------------------------------------------------------
     //  Odemykání
     // ------------------------------------------------------------------
+    public static int napsanoRadku(Context c) {
+        try { return p(c).getInt(K_RADKY, 0); } catch (Throwable t) { return 0; }
+    }
+    public static int zbyvaRadku(Context c) {
+        int z = SEGA_POTREBA_RADKU - napsanoRadku(c);
+        return z < 0 ? 0 : z;
+    }
+
+    /**
+     * Prictle davku napsanych radku. Vrací true, kdyz se prave otevrela Sega.
+     *
+     * Nemusi to byt jeden program - staci treba deset po peti radcich.
+     * Davka kratsi nez pet radku se ale NEPOCITA, aby nestacilo psat
+     * porad dokola jeden radek.
+     */
+    public static boolean pripocitejRadky(Context c, int kolik) {
+        try {
+            if (kolik < NEJMENE_RADKU) return false;
+            int bylo = napsanoRadku(c);
+            int ted = bylo + kolik;
+            p(c).edit().putInt(K_RADKY, ted).apply();
+            if (bylo < SEGA_POTREBA_RADKU && ted >= SEGA_POTREBA_RADKU) {
+                otevriSegu(c);
+                return true;
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
     /** Hráč zvládl kód v Atari. */
     public static void otevriSegu(Context c) {
         try { p(c).edit().putBoolean(K_SEGA, true).apply(); } catch (Throwable ignored) {}
@@ -89,7 +124,11 @@ public final class NapPostup {
      * Postupně, ne všechno naráz - ať se dá vyzkoušet každý krok zvlášť.
      */
     public static String odemkniDalsi(Context c) {
-        if (!segaOdemcena(c)) { otevriSegu(c); return "SEGA"; }
+        if (!segaOdemcena(c)) {
+            otevriSegu(c);
+            try { p(c).edit().putInt(K_RADKY, SEGA_POTREBA_RADKU).apply(); } catch (Throwable ignored) {}
+            return "SEGA";
+        }
         if (!ps1Odemcena(c)) {
             try {
                 p(c).edit().putBoolean(K_PS1, true)
@@ -105,6 +144,7 @@ public final class NapPostup {
         try {
             p(c).edit().putBoolean(K_SEGA, false)
                        .putBoolean(K_PS1, false)
+                       .putInt(K_RADKY, 0)
                        .putLong(K_MINUTY, 0L).apply();
         } catch (Throwable ignored) {}
     }
@@ -112,7 +152,8 @@ public final class NapPostup {
     /** Krátký popis stavu do logu i pro uživatele. */
     public static String stav(Context c) {
         long ms = segaOdehranoMs(c);
-        return "sega=" + (segaOdemcena(c) ? "otevrena" : "ZAMCENA")
+        return "radku=" + napsanoRadku(c) + "/" + SEGA_POTREBA_RADKU
+             + " sega=" + (segaOdemcena(c) ? "otevrena" : "ZAMCENA")
              + " ps1=" + (ps1Odemcena(c) ? "otevrena" : "ZAMCENA")
              + " odehrano=" + (ms / 60000L) + "min";
     }

@@ -5042,6 +5042,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       if(sc===undefined) return;
       if(e.ctrlKey) sc|=0x80;
       M.keyDown(sc&0xFF);
+      try{ napPocitejZnak(e.code==='Enter'||e.code==='NumpadEnter' ? '\n' : e.key); }catch(_e){}
       e.preventDefault();
     });
 
@@ -5055,6 +5056,39 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     //  Ted je tu jedno okno ven. Vraci retezec, aby Java videla,
     //  co se stalo - to je ta chybejici zpetna vazba.
     // ================================================================
+
+    // ================================================================
+    //  BUILD2SA68: POCITANI NAPSANYCH RADKU PROGRAMU
+    //
+    //  Rene chce, aby se Sega odemkla po 50 radcich napsaneho kodu -
+    //  a nemusi to byt jeden program. Staci treba deset programu po
+    //  peti radcich. Kratsi pokusy se ale nepocitaji, aby nestacilo
+    //  bouchat "10 PRINT A" dokola.
+    //
+    //  Radek se pocita, kdyz zacina CISLEM a neco za nim je - tedy
+    //  jako radek programu, ne jako prikaz RUN nebo LIST.
+    //  Davka se odesle pri RUN nebo LIST a Java ji priznà, jen kdyz
+    //  ma aspon pet radku.
+    // ================================================================
+    var napRadek='', napDavka=0;
+    function napPocitejZnak(zn){
+      try{
+        if(zn===String.fromCharCode(155) || zn==='\n' || zn==='\r'){
+          var r=napRadek.trim(); napRadek='';
+          if(/^\d+\s*\S/.test(r)){ napDavka++; return; }
+          if(/^(RUN|LIST)\b/i.test(r)) napOdesliDavku();
+          return;
+        }
+        if(zn && zn.length===1 && zn>=' ') napRadek+=zn;
+        if(napRadek.length>120) napRadek='';
+      }catch(e){}
+    }
+    function napOdesliDavku(){
+      if(napDavka<=0) return;
+      var kolik=napDavka; napDavka=0;
+      try{ if(window.AHINTRO&&AHINTRO.napsanoRadku) AHINTRO.napsanoRadku(kolik); }catch(e){}
+    }
+
     window.napKlavesa=function(code, znak, dolu, ctrl){
       try{
         if(!M) return 'CHYBI_EMULATOR';
@@ -5075,6 +5109,7 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
         if(sc===undefined) return 'NEZNAMA:'+code+(znak?'/'+znak:'');
         if(ctrl) sc|=0x80;
         M.keyDown(sc&0xFF);
+        napPocitejZnak(code==='Enter'||code==='NumpadEnter' ? '\n' : znak);
         return 'OK:'+code+'=scan'+(sc&0xFF);
       }catch(e){ return 'CHYBA:'+(e&&e.message||e); }
     };

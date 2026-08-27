@@ -3955,8 +3955,24 @@ public class MainActivity extends Activity {
             try {
                 return "{\"sega\":" + NapPostup.segaOdemcena(MainActivity.this)
                      + ",\"ps1\":" + NapPostup.ps1Odemcena(MainActivity.this)
-                     + ",\"zbyvaMinut\":" + NapPostup.zbyvaMinutSegy(MainActivity.this) + "}";
+                     + ",\"zbyvaMinut\":" + NapPostup.zbyvaMinutSegy(MainActivity.this)
+                     + ",\"zbyvaRadku\":" + NapPostup.zbyvaRadku(MainActivity.this) + "}";
             } catch (Throwable t) { return "{\"sega\":true,\"ps1\":true,\"zbyvaMinut\":0}"; }
+        }
+
+        /**
+         * BUILD2SA68: hrac napsal davku radku programu v Atari.
+         * Davka kratsi nez pet radku se nepocita.
+         */
+        @JavascriptInterface public void napsanoRadku(int kolik) {
+            try {
+                boolean otevreno = NapPostup.pripocitejRadky(MainActivity.this, kolik);
+                appendNativeLog("BUILD2SA68 ATARI_RADKY +" + kolik + " -> "
+                        + NapPostup.stav(MainActivity.this)
+                        + (otevreno ? "  *** SEGA PRAVE OTEVRENA ***" : ""));
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SA68 ATARI_RADKY_CHYBA " + safeMsg(t));
+            }
         }
 
         /** Hrac napsal kod v Atari - overit a pripadne otevrit Segu. */

@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 229
-        versionName "EMU10-B181-ATARI-ZPET-JAKO-B156"  // posilani snimku z Atari pres sit ZRUSENO - byl to muj napad a padalo to. Atari se snima z okna jako v B156. V Atari zbylo 16 radku a jsou to jen klavesy.
+        versionCode 230
+        versionName "EMU10-B182-POCITANI-RADKU"  // Sega se odemkne po 50 napsanych radcich kodu, nemusi to byt jeden program - staci deset po peti. Kratsi davka nez pet radku se nepocita.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
