@@ -612,6 +612,7 @@ public class MainActivity extends Activity {
     // This fallback keeps everything inside the app: phone serves a low-latency
     // JPEG stream over local Wi-Fi and the Android TV opens the shown URL.
     private ServerSocket napTvWebServer;
+    private volatile long napTvWebZahozenoSnimku = 0;
     /**
      * BUILD2SA66: zasoba vlaken pro TV server.
      * Dlouhe proudy (H264, MJPEG) drzi vlakno cely cas, kratke pozadavky
@@ -2272,6 +2273,13 @@ public class MainActivity extends Activity {
                     napTvWebH264Seq++;
                     napTvWebH264LastFrameMs = System.currentTimeMillis();
                     for (java.util.concurrent.LinkedBlockingQueue<byte[]> q : napTvWebH264ClientQueues) {
+                        // BUILD2SA77: kdyz divak nestiha, ZAHODIT MU STARE
+                        // snimky misto aby fronta rostla. Jinak pomaly
+                        // divak zahlti sam sebe a nakonec i ostatni.
+                        while (q.remainingCapacity() == 0) {
+                            if (q.poll() == null) break;
+                            napTvWebZahozenoSnimku++;
+                        }
                         q.offer(chunk);
                     }
                 }
@@ -2288,7 +2296,22 @@ public class MainActivity extends Activity {
                 + "Pragma: no-cache\r\n"
                 + "Connection: close\r\n\r\n";
         out.write(h.getBytes("ISO-8859-1"));
-        java.util.concurrent.LinkedBlockingQueue<byte[]> myQueue = new java.util.concurrent.LinkedBlockingQueue<>(300);
+        // BUILD2SA77: FRONTA PRO DIVAKA SE ZKRATILA A ZAHAZUJE STARE.
+        //
+        // Rene: "PC stiha ale projektor se po chvili zahlti a musim dat
+        // refresh." Presne to delalo 300 snimku ve fronte - pri 16
+        // snimcich za vterinu je to 19 vterin zpozdeni, nez to pomalejsi
+        // divak dozene. Rychly divak (PC) frontu prazdnou ma, pomaly
+        // (projektor) ji nechava rust, az se zahlti.
+        //
+        // Jadro Segy resi tenhle problem u zvuku takhle:
+        //     if (q.size() > max) { drop = q.size() - max;
+        //                           while (drop--) q.pop_front(); }
+        // Tedy ZAHODIT STARE, ne cekat. U ziveho obrazu je stara vterina
+        // stejne k nicemu.
+        //
+        // 24 snimku staci na plynulost a je to max 1,5 vteriny zpozdeni.
+        java.util.concurrent.LinkedBlockingQueue<byte[]> myQueue = new java.util.concurrent.LinkedBlockingQueue<>(24);
         napTvWebH264ClientQueues.add(myQueue);
         appendNativeLog("BUILD2SK57 TV_WEB_H264_CLIENT_CONNECT clients=" + napTvWebH264ClientQueues.size());
         try {
@@ -3520,7 +3543,7 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS);}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 + "setInterval(pollFps,1000);"
                 + "})();</script>"
                 // ===== BUILD2SA54: KLAVESNICE Z POCITACE =====
@@ -7511,14 +7534,14 @@ public class MainActivity extends Activity {
                 appendNativeLog("BUILD2SA29 SOUBORY_KONTROLA_CHYBA " + safeMsg(t));
             }
 
-            // BUILD2SA42: tise se podivat, jestli je venku novejsi verze.
-            // Kdyz soubor s verzi na webu chybi nebo neni sit, MLCI.
-            ui.postDelayed(() -> {
-                try {
-                    NapAktualizace.zkontrolujTise(MainActivity.this,
-                            z -> appendNativeLog("BUILD2SA42 " + z));
-                } catch (Throwable ignored) {}
-            }, 6000);
+            // BUILD2SA77: AUTOMATICKA KONTROLA VERZE PRI STARTU ZRUSENA.
+            //
+            // Rene: "prehlcujes mobil nesmyslama a pak to ma fungovat".
+            // Ma pravdu - sest vterin po startu se lezlo na internet
+            // a stahovalo se, i kdyz to nikdo nechtel. Aplikace ma pri
+            // startu delat jednu vec: nabehnout.
+            //
+            // Aktualizace zustava, ale POUZE na tlacitko v OPTIONS.
 
             if (!zeptatSe) {
                 spustIntro.run();
