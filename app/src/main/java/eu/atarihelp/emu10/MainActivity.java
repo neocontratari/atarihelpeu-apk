@@ -1146,7 +1146,10 @@ public class MainActivity extends Activity {
                         }
                     } catch (Throwable ignored) {}
 
-                    boolean gotFromCore = napTvWebCaptureAtari(bw, bh)
+                    // BUILD2SA63: nejdriv intro, pak Atari, a teprve pak
+                    // puvodni cesta pro PS1 a Segu - ta zustava netknuta.
+                    boolean gotFromCore = napTvWebCaptureIntro(bw, bh)
+                            || napTvWebCaptureAtari(bw, bh)
                             || napTvWebCaptureFromCore(bw, bh);
                     if (gotFromCore) {
                         napTvWebPixelCopyPending = false;
@@ -1379,6 +1382,52 @@ public class MainActivity extends Activity {
         }
     }
     private Bitmap atariBmp = null;       // vlastni, sdilenou nezabira
+
+    /**
+     * BUILD2SA63: INTRO MA TAKY VLASTNI CESTU, VEDLE.
+     *
+     * Behem zivych casti intra bezi jadro Segy nebo PS1, ale adresa je
+     * porad etapa2.html - puvodni cesta pro PS1 a Segu se proto vyskoci
+     * hned na zacatku a na TV nic neni.
+     *
+     * Drive jsem to resil tak, ze jsem tu puvodni cestu prepsal. Tim
+     * jsem rozbil PS1 na projektoru. Ted je vedle, uplne mimo ni.
+     */
+    private Bitmap introBmp = null;
+    private boolean napTvWebCaptureIntro(int bw, int bh) {
+        try {
+            if (!introZivaCast) return false;
+            boolean jeSega = (segaPlocha != null);
+            int wh = jeSega ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
+                            : Ps1GlTextureView.borrowFrame(tvCoreArgb);
+            if (wh < 0) {
+                int need = ((-wh) >> 16) * ((-wh) & 0xFFFF);
+                tvCoreArgb = new int[need + 1024];
+                wh = jeSega ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
+                            : Ps1GlTextureView.borrowFrame(tvCoreArgb);
+            }
+            if (wh <= 0) {
+                // jadro zrovna nic nema - podrzime posledni, at se to
+                // nepropadne na snimani okna (to je behem intra pruhledne)
+                if (introBmp != null && !introBmp.isRecycled()) {
+                    napTvWebPublishBitmap(introBmp, "INTRO_HOLD");
+                    return true;
+                }
+                return true;
+            }
+            int sw = wh >> 16, sh = wh & 0xFFFF;
+            if (introBmp == null || introBmp.getWidth() != sw || introBmp.getHeight() != sh) {
+                if (introBmp != null && !introBmp.isRecycled()) introBmp.recycle();
+                introBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
+                try { introBmp.setHasAlpha(false); } catch (Throwable ignored) {}
+            }
+            introBmp.setPixels(tvCoreArgb, 0, sw, 0, 0, sw, sh);
+            napTvWebPublishBitmap(introBmp, jeSega ? "INTRO_SEGA" : "INTRO_PS1");
+            return true;
+        } catch (Throwable t) {
+            return true;    // behem intra radeji drzet nez snimat okno
+        }
+    }
 
     private boolean napTvWebCaptureFromCore(int bw, int bh) {
         try {
@@ -3377,7 +3426,7 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t);if(ma){var vA=(ma[1]==='1');window.napVAtari=vA;if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA);}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 + "setInterval(pollFps,1000);"
                 + "})();</script>"
                 // ===== BUILD2SA54: KLAVESNICE Z POCITACE =====
