@@ -2455,9 +2455,9 @@ function Atari130XE(osRom, basicRom, CPUctor){
     if(page===0xD200){
       const p=a&0x0F;
       if(p<=0x07){ if(p&1) pokey.audc[p>>1]=v; else pokey.audf[p>>1]=v; pokey.dirty=true;
-        if(M.audioQ){ M.audioQ.push(cpu.cycles,p,v); napZvukOrez(); } return; }
+        if(M.audioQ){ M.audioQ.push(cpu.cycles,p,v); if(M.audioQ.length>48000)M.audioQ.splice(0,24000); } return; }
       if(p===0x08){ pokey.audctl=v; pokey.dirty=true;
-        if(M.audioQ){ M.audioQ.push(cpu.cycles,8,v); napZvukOrez(); } return; }
+        if(M.audioQ){ M.audioQ.push(cpu.cycles,8,v); if(M.audioQ.length>48000)M.audioQ.splice(0,24000); } return; }
       if(p===0x09){ timersReload(); return; } // STIMER: znovunabij citace
       if(p===0x0A){ pokey.serinAge=0; pokey.inShiftBusy=0; pokey.inShiftCassette=false; pokey.irqpend&=~0x38; pokeySync(); return; } // BUILD2BR: SKRES cisti serial IRQ/busy jako realny POKEY
       if(p===0x0D){ // SEROUT: byte opusti vystupni registr za ~10 radek, posuv dobehne za ~30
@@ -6049,35 +6049,20 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
     }
   }
 
-  // ==================================================================
-  //  BUILD2SA73: OREZAVANI ZVUKU JAKO U SEGY
+  // BUILD2SA74: MOJE OREZAVANI ZVUKU VRACENO.
   //
-  //  Rene si vzpomnel, ze u Segy se "mazalo neco, co uz nebylo potreba".
-  //  Je to pravda - jadro Segy ma v C++ tohle:
+  // Chtel jsem to udelat jako Sega, ktera si v C++ ubira zvuk prubezne
+  // po malem. Jenze Sega ma frontu, kde je odebrani zepredu ZADARMO.
+  // JavaScriptove pole ne - kazdy splice(0,n) posune cele pole.
   //
-  //     if (q.size() > max) { drop = q.size() - max;
-  //                           while (drop--) q.pop_front(); }
+  // Merenim se ukazalo, ze moje verze delala 24 000 malych zasahu
+  // misto tri velkych. To je DRAZSI, ne levnejsi. A snizeny strop
+  // navic ustrihaval zvuk, ktery jeste nezaznel - Atari delalo
+  // morzeovku.
   //
-  //  Tedy PRUBEZNE a PO MALEM, hned jak fronta prekroci strop.
-  //
-  //  Atari to delalo jinak: cekalo na 48 000 polozek a pak naraz
-  //  vyhodilo 24 000 pres splice(). To je skoro pul vteriny zvuku ve
-  //  fronte a ten splice je navic drahy - dela se na hlavnim vlakne,
-  //  kde bezi emulator. Odtud to chrasteni.
-  //
-  //  Ted je strop nizsi a odeziráva se prubezne, jako u Segy.
-  //  A pocita se, kolik se zahodilo - stejne jako g_audio_drop_count.
-  // ==================================================================
-  var napZvukStrop=12000, napZvukZahozeno=0;
-  function napZvukOrez(){
-    var q=M&&M.audioQ; if(!q) return;
-    if(q.length<=napZvukStrop) return;
-    var kolik=q.length-napZvukStrop;
-    kolik=kolik-(kolik%3);            // polozka jsou tri hodnoty
-    if(kolik<=0) return;
-    q.splice(0,kolik);
-    napZvukZahozeno+=kolik/3;
-  }
+  // Puvodni kod je zpatky presne tak, jak byl.
+
+
 
   function attachMachineHooks(){
     if(!M) return;
