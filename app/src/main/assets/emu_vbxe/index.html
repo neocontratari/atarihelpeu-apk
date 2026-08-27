@@ -5089,9 +5089,69 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       try{ if(window.AHINTRO&&AHINTRO.napsanoRadku) AHINTRO.napsanoRadku(kolik); }catch(e){}
     }
 
+    // BUILD2SA69: dve rozlozeni - psani a hrani. Prepina F9.
+    window.napHraniZapnuto=false;
+
+    // WASD + Ctrl skok + Alt vystrel.
+    // Cisla jsou bity paky: 1 nahoru, 2 dolu, 4 vlevo, 8 vpravo
+    var HRA_SMERY={ KeyW:1, KeyS:2, KeyA:4, KeyD:8,
+                    ArrowUp:1, ArrowDown:2, ArrowLeft:4, ArrowRight:8 };
+
     window.napKlavesa=function(code, znak, dolu, ctrl){
       try{
         if(!M) return 'CHYBI_EMULATOR';
+
+        // ---- prepinac psani / hrani ----
+        if(code==='F9'){
+          if(!dolu) return 'PUSTENO';
+          window.napHraniZapnuto=!window.napHraniZapnuto;
+          // pri odchodu ze hry paku pustit, at nezustane zaseknuta
+          if(!window.napHraniZapnuto && window.napHra){
+            window.napHra.smer(15,false); window.napHra.strelba(false);
+          }
+          return window.napHraniZapnuto ? 'HRANI' : 'PSANI';
+        }
+
+        // ---- START, SELECT, OPTION ----
+        if(code==='F1'||code==='F3'||code==='F4'){
+          if(window.napHra) window.napHra.konzole(
+              dolu&&code==='F1', dolu&&code==='F3', dolu&&code==='F4');
+          return dolu ? (code==='F1'?'START':code==='F3'?'SELECT':'OPTION') : 'PUSTENO';
+        }
+
+        // ---- herni ovladani ----
+        if(window.napHraniZapnuto && window.napHra){
+          // BUILD2SA70: SMER JDE DO PAKY I DO KLAVESNICE.
+          //
+          // V Atari se hry ovladaji dvema zpusoby:
+          //    STICK(0)     cte paku (joystick)
+          //    PEEK(764)    cte klavesu  -  W=46, A=63, S=62, D=58
+          //
+          // Kdybych klavesu jen odchytil a poslal do paky, hra napsana
+          // na PEEK(764) by prestala reagovat. Proto to jde do obojiho
+          // a funguji oba zpusoby zaroven.
+          var bit=HRA_SMERY[code];
+          if(bit!==undefined){
+            window.napHra.smer(bit,dolu);
+            if(dolu && znak && znak.length===1){
+              var scK=charToScan(znak);
+              if(scK!==undefined) M.keyDown(scK&0xFF);   // aby fungoval i PEEK(764)
+            } else if(!dolu) { M.keyUp(); }
+            return (dolu?'SMER:':'PUSTEN:')+code;
+          }
+          if(code==='ControlLeft'||code==='ControlRight'||code==='Space'){
+            window.napHra.smer(1,dolu);
+            if(dolu){ var scS=charToScan(' '); if(scS!==undefined) M.keyDown(scS&0xFF); }
+            else M.keyUp();
+            return dolu?'SKOK':'PUSTENO';
+          }
+          if(code==='AltLeft'||code==='AltRight'){
+            window.napHra.strelba(dolu);
+            return dolu?'VYSTREL':'PUSTENO';
+          }
+          // ostatni klavesy jdou do Atari normalne
+        }
+
         if(!dolu){ M.keyUp(); return 'PUSTENO'; }
         if(code==='Break'){ M.breakKey(); return 'BREAK'; }
         // BUILD2SA57: NEJDRIV ZNAK, AZ POTOM FYZICKA KLAVESA.
@@ -5240,6 +5300,25 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   var joyMode=false, joyMask=0, joyFire=false;
   function joyApply(){ if(M) M.setJoy(joyMask,joyFire); }
   function joySet(mask){ if(mask!==joyMask){ joyMask=mask; joyApply(); } }
+
+  // ================================================================
+  //  BUILD2SA69: HERNI OVLADANI Z KLAVESNICE POCITACE
+  //
+  //  Atari uz umi vsechno potrebne - M.setJoy() pro paku a M.consol()
+  //  pro START, SELECT a OPTION. Jen to z klavesnice nikdo nevolal.
+  //  Tady je jedno okno ven, aby se na to dalo sahnout z napKlavesa().
+  //
+  //  Smery jsou aktivni LOW a bity jsou:  1 nahoru, 2 dolu, 4 vlevo, 8 vpravo
+  // ================================================================
+  window.napHra = {
+    smer: function(bit, drzi){
+      if(drzi) joySet(joyMask | bit); else joySet(joyMask & ~bit);
+    },
+    strelba: function(drzi){ joyFire = !!drzi; joyApply(); },
+    konzole: function(start, select, option){
+      try{ if(M && M.consol) M.consol(!!start, !!select, !!option); }catch(e){}
+    }
+  };
   function releaseUiLocksBuild2BY(reason){
     // BUILD2BY AUDIT CLEAN: pouze UI/focus/scroll, CLOAD BR GOLDEN se nemeni.
     try{ document.activeElement && document.activeElement.blur && document.activeElement.blur(); }catch(_e){}

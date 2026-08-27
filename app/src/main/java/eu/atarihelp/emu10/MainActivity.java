@@ -2804,6 +2804,9 @@ public class MainActivity extends Activity {
     private volatile long atariFbPocet = 0, atariFbLogMs = 0, atariFbPosledniMs = 0;
     private byte[] atariFbData = null;      // drzi se, nevyrabi se znovu
     private long klavesPocet = 0, klavesLogMs = 0;
+    /** BUILD2SA69: sem Atari vrati, co s klavesou udelalo - jde to pak
+     *  prohlizeci, aby vedel, jestli je v rezimu PSANI nebo HRANI. */
+    private volatile java.util.concurrent.ArrayBlockingQueue<String> posledniOdpoved = null;
 
     /**
      * BUILD2SA53: preda klavesu z pocitace do Atari.
@@ -2836,6 +2839,11 @@ public class MainActivity extends Activity {
                 web.evaluateJavascript(js, hodnota -> {
                     // hodnota prijde v uvozovkach, sundame je
                     String v = (hodnota == null) ? "null" : hodnota.replace("\"", "");
+                    // preda se prohlizeci, at vi, v jakem je rezimu
+                    try {
+                        java.util.concurrent.ArrayBlockingQueue<String> f = posledniOdpoved;
+                        if (f != null) f.offer(v);
+                    } catch (Throwable ignored) {}
                     long ted2 = System.currentTimeMillis();
                     // prvni klavesu a kazdou chybu hlasime vzdycky,
                     // ostatni nejvys jednou za tri vteriny
@@ -3542,13 +3550,20 @@ public class MainActivity extends Activity {
                 + "  try{var u='/klavesa?code='+encodeURIComponent(code)"
                 + "    +'&znak='+encodeURIComponent(znak||'')"
                 + "    +'&dolu='+(dolu?1:0)+'&ctrl='+(ctrl?1:0);"
-                + "    var x=new XMLHttpRequest(); x.open('GET',u,true); x.send();"
+                + "    var x=new XMLHttpRequest(); x.open('GET',u,true);"
+                + "    x.onload=function(){ try{"
+                + "      var v=x.responseText||'';"
+                + "      if(v==='HRANI'||v==='PSANI') window.napRezim=v;"
+                + "    }catch(_){} };"
+                + "    x.send();"
                 + "  }catch(e){}"
                 + "}"
                 + "document.addEventListener('keydown',function(e){"
                 + "  var t=e.target;"
                 + "  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
                 + "  if(e.key==='F5'||e.key==='F12') return;"
+                // BUILD2SA69: F1-F4 a F9 patri Atari, ne prohlizeci
+                + "  if(/^F[1349]$/.test(e.key)) e.preventDefault();"
                 + "  if(e.key==='F2'){ posli('Break','',true,false); e.preventDefault(); return; }"
                 + "  if(PREHAZOVACE[e.key]) return;"
                 + "  posli(e.code,e.key,true,e.ctrlKey);"
@@ -3567,7 +3582,14 @@ public class MainActivity extends Activity {
                 + "window.napKlavesnicePopis=function(zap){"
                 + "  if(kn.style.display===(zap?'':'none')) return;"   // jen pri zmene
                 + "  kn.style.display=zap?'':'none';"
-                + "  kn.textContent='KLAVESNICE ZAPNUTA - F2 = BREAK'; };"
+                + "  kn.textContent=(window.napRezim==='HRANI')"
+                + "    ? 'HRANI - WASD, Ctrl skok, Alt vystrel  (F9 = psani)'"
+                + "    : 'PSANI - F9 hrani, F2 BREAK, F1/F3/F4 START/SELECT/OPTION'; };"
+                + "setInterval(function(){ if(kn.style.display==='none') return;"
+                + "  var t=(window.napRezim==='HRANI')"
+                + "    ? 'HRANI - WASD, Ctrl skok, Alt vystrel  (F9 = psani)'"
+                + "    : 'PSANI - F9 hrani, F2 BREAK, F1/F3/F4 START/SELECT/OPTION';"
+                + "  if(kn.textContent!==t) kn.textContent=t; },700);"
                 + "document.body.appendChild(kn);"
                 + "})();</script></body></html>";
         byte[] b = body.getBytes("UTF-8");
