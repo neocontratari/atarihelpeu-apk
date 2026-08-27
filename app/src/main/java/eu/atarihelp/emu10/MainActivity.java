@@ -1159,8 +1159,10 @@ public class MainActivity extends Activity {
 
                     // BUILD2SA63: nejdriv intro, pak Atari, a teprve pak
                     // puvodni cesta pro PS1 a Segu - ta zustava netknuta.
+                    // BUILD2SA67: Atari uz nema vlastni cestu - snima se
+                    // z okna jako v B156. Zustava jen intro, ktere bez ni
+                    // nema na TV obraz jader.
                     boolean gotFromCore = napTvWebCaptureIntro(bw, bh)
-                            || napTvWebCaptureAtari(bw, bh)
                             || napTvWebCaptureFromCore(bw, bh);
                     if (gotFromCore) {
                         napTvWebPixelCopyPending = false;
@@ -1312,8 +1314,7 @@ public class MainActivity extends Activity {
                         // BUILD2SA65: Atari sem taky patri - snimek dava samo
                         // a okno se u nej nesnima. Bez toho by smycka bezela
                         // po 12 ms a zpracovavala porad ten samy obraz.
-                        boolean naAtariT = (cu0 != null) && cu0.contains("emu_vbxe");
-                        ps1PrimoZJadra = naPs1T || naSegeT || introZivaCast || naAtariT;
+                        ps1PrimoZJadra = naPs1T || naSegeT || introZivaCast;
                     } catch (Throwable ignored2) {}
                     effectiveDelay = ps1PrimoZJadra
                             ? napTvWebH264FastTickMs               // PS1: 16 ms staci

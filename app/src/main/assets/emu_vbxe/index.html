@@ -6892,7 +6892,16 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
       if(!img) img=ctx.createImageData(384,240);
       var u8=new Uint8ClampedArray(M.fb.buffer);
       img.data.set(u8); ctx.putImageData(img,0,0);
-      posliSnimekNaTv(u8, 384, 240);
+      // BUILD2SA67: POSILANI SNIMKU ZRUSENO.
+      //
+      // Byl to muj napad, ne Reneho pozadavek. Sega a PS1 nic neposilaji -
+      // Java si u nich snimek VYZVEDNE z pameti jadra. Atari to udelat
+      // nemuze, protoze jeho obraz zije uvnitr prohlizece, a moje nahrada
+      // pres sit padala: aplikace se v Atari se zapnutou TV slozila
+      // po minute, at jsem posilal 16x nebo 8x za vterinu.
+      //
+      // Atari se tedy snima z okna, jako v B156, ktery Renemu bezel.
+      // Cela ta funkce je odstranena.
     }
   }
 
@@ -6908,54 +6917,8 @@ window.EMU10={ createMachine:function(){ return Atari130XE(b64u8(EMU10_OS_B64), 
   //  Posila se BINARNE na vlastni server aplikace - zadny base64, zadne
   //  cekani (fetch je asynchronni), zadne PixelCopy.
   // ==================================================================
-  var tvFbPort=null, tvFbPosila=false, tvFbPreskoceno=0, tvFbPosledni=0;
-  var tvFbOk=0, tvFbChyb=0, tvFbChybaLog=0;
-  // JEDNA jedina kopie, ktera se porad dokola prepisuje.
-  // Drive tu bylo u8.slice(0) - to delalo NOVOU kopii 360 kB pri KAZDEM
-  // snimku, tedy 5,6 MB za vterinu a pres 500 MB za minutu a pul.
-  // A protoze to bezi v prohlizeci na tom samem vlakne jako emulator,
-  // uklizec pameti to nestihal a aplikace spadla.
-  var tvFbKopie=null;
-  function posliSnimekNaTv(u8, w, h){
-    try{
-      if(!window.AHTVWEB || !AHTVWEB.status) return;
-      if(tvFbPort===null){
-        var st=''; try{ st=AHTVWEB.status()||''; }catch(e){ return; }
-        var m=st.match(/:(\d+)/);
-        if(!m) return;
-        tvFbPort=m[1];
-      }
-      var ted=Date.now();
-      // BUILD2SA66: MENE SPOJENI.
-      //
-      // Kazdy odeslany snimek je jedno sitove spojeni a aplikace si na
-      // kazde bere NOVE VLAKNO. Pri 16 snimcich za vterinu to bylo skoro
-      // tisic vlaken za minutu - a po minute to spadlo. Presne to Rene
-      // popsal: jen s TV, jen v Atari, po minute.
-      //
-      // Osm snimku za vterinu na TV bohate staci a spojeni je o polovinu
-      // min. Vic uz stejne nema smysl - obraz Atari se tak casto nemeni.
-      if(ted-tvFbPosledni < 125) return;
-      if(tvFbPosila){ tvFbPreskoceno++; return; }  // predchozi jeste leti
-      tvFbPosledni=ted;
-      tvFbPosila=true;
-      // prepsat drzenou kopii misto vyrabeni nove
-      if(!tvFbKopie || tvFbKopie.length!==u8.length) tvFbKopie=new Uint8Array(u8.length);
-      tvFbKopie.set(u8);
-      fetch('http://127.0.0.1:'+tvFbPort+'/atarifb?w='+w+'&h='+h+'&len='+tvFbKopie.length,
-            { method:'POST', body:tvFbKopie })
-        .then(function(){ tvFbPosila=false; tvFbOk++; })
-        .catch(function(e){
-          tvFbPosila=false; tvFbPort=null; tvFbChyb++;
-          // rict to nahlas - kdyz to prohlizec zablokuje, at to vidime
-          var t=Date.now();
-          if(t-tvFbChybaLog>5000){
-            tvFbChybaLog=t;
-            try{ log('TV snimek neodeslan ('+tvFbChyb+'x): '+(e&&e.message||e)); }catch(_){}
-          }
-        });
-    }catch(e){ tvFbPosila=false; }
-  }
+  // (funkce na posilani snimku odstranena - viz BUILD2SA67 vyse)
+
 
   // ---------- start ----------
   window.addEventListener('DOMContentLoaded',function(){

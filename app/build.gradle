@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 228
-        versionName "EMU10-B180-VLAKNA-SE-PUJCUJI"  // KAZDE spojeni si bralo NOVE vlakno. Snimky z Atari chodi 16x za vterinu = pres 900 vlaken za minutu. Odtud pad JEN s TV, JEN v Atari, PO MINUTE. Tuhle zatez jsem pridal ja.
+        versionCode 229
+        versionName "EMU10-B181-ATARI-ZPET-JAKO-B156"  // posilani snimku z Atari pres sit ZRUSENO - byl to muj napad a padalo to. Atari se snima z okna jako v B156. V Atari zbylo 16 radku a jsou to jen klavesy.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
