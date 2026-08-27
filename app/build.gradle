@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 243
-        versionName "EMU10-B195-ZPET-NA-B121"  // cesta obrazu na TV vracena na stav z B121, ktery Renemu na platne fungoval. Zahazovani snimku i posilani z Atari odstraneno, 5650 znaku mrtveho kodu pryc.
+        versionCode 245
+        versionName "EMU10-B197-CESTA-NA-TV-JAKO-B121"  // v ceste pro Segu a PS1 mi zustaly 3 radky pro intro, i kdyz jsem tvrdil ze intro ma vlastni cestu. A zpracovani tela POSTu bezelo pri KAZDEM pozadavku. Vse pryc, cesta je shodna s B121.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

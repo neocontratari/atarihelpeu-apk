@@ -362,13 +362,33 @@ public class MainActivity extends Activity {
     private void introZvukPojistka(String url) {
         try {
             if (url == null) return;
-            if (url.contains("/intro/")) return;      // porad v intru
-            introZvukStop("odchod na " + compactUrl(url));
+            if (!url.contains("/intro/")) introZvukStop("odchod na " + compactUrl(url));
+
+            // BUILD2SA80: VLAKNO PRO ZVUK ATARI SE MUSI ZASTAVIT.
+            //
+            // Napsal jsem atariZvukStop(), ale NIKDE JSEM HO NEZAVOLAL.
+            // Takze od chvile, co uzivatel jednou byl v Atari, to vlakno
+            // bezelo porad - i v Seze, i v PS1. Bralo si nejvyssi prioritu
+            // a pletlo se do zvukove cesty.
+            //
+            // Tohle je to druhe "jadro", ktere se podle Reneho hadalo.
+            if (!url.contains("emu_vbxe")) atariZvukStop();
         } catch (Throwable ignored) {}
     }
 
     private void introZastavSegu() {
         try {
+            // BUILD2SA80: ZRUSIT CEKANI NA ZVUK, KTERE JESTE BEZI.
+            //
+            // introCekejNaObrazAPustZvuk() zkousi 20x po 150 ms, tedy tri
+            // vteriny. Jeho pojistka se pta na cislo generace - jenze
+            // tady se to cislo NEMENILO. Takze kdyz se intro posunulo
+            // na PS1, ty pokusy bezely dal a mohly spustit ZVUK SEGY
+            // uprostred PS1 nebo pak v Atari.
+            //
+            // To je presne to, co Rene popisuje jako hadajici se jadra.
+            // Napsal jsem to ja.
+            nativeRomLoadGeneration++;
             stopNativeCoreAudioStream();
             try { NativeSegaCoreBridge.shutdown(); } catch (Throwable ignored) {}
             segaPlochaVypni();
@@ -1478,21 +1498,6 @@ public class MainActivity extends Activity {
                 String uS = (web == null) ? null : web.getUrl();
                 jeSegaTv = (uS != null) && uS.contains("emu_sega");
             } catch (Throwable ignored) {}
-
-            // BUILD2SA37: BEHEM ZIVYCH CASTI INTRA BER SNIMEK Z JADRA.
-            //
-            // Plocha, na kterou jadro kresli, NENI soucasti okna - u PS1
-            // je to v kodu zadokumentovane slovy "GLSurfaceView je
-            // samostatna vrstva, PixelCopy ji nezachyti". Proto se u Segy
-            // i PS1 bere snimek pujckou z jadra.
-            //
-            // Intro ma vlastni adresu, takze ani jedna z tech vetvi
-            // nechytla a na TV byl u obou casti jen zvuk. Ted se pozna
-            // podle toho, ktere jadro prave bezi.
-            if (introZivaCast) {
-                if (segaPlocha != null) jeSegaTv = true;
-                // kdyz bezi PS1, spadne to do vetve s borrowFrame nize
-            }
 
             int wh = jeSegaTv ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
                               : Ps1GlTextureView.borrowFrame(tvCoreArgb);
@@ -2752,10 +2757,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    /**
-     * BUILD2SA51: prijme snimek z Atari (384x240 RGBA) a preda ho na TV.
-     * Chodi POST-em na /atarifb?w=384&h=240, telo jsou hola binarni data.
-     */
     private long klavesPocet = 0, klavesLogMs = 0;
     /** BUILD2SA69: sem Atari vrati, co s klavesou udelalo - jde to pak
      *  prohlizeci, aby vedel, jestli je v rezimu PSANI nebo HRANI. */
@@ -3130,17 +3131,11 @@ public class MainActivity extends Activity {
             String path = "/";
             int a = req.indexOf(' '), b = a < 0 ? -1 : req.indexOf(' ', a + 1);
             if (a >= 0 && b > a) path = req.substring(a + 1, b);
-            // BUILD2SA52: metoda se hodi na predbezny dotaz OPTIONS
-            String method = (a > 0) ? req.substring(0, a).trim() : "GET";
-            // U POSTu uz cast tela prisla v tomhle prvnim cteni - zjistime,
-            // kde v buferu telo zacina, at se o nej neprijde.
-            int hlavicky = req.indexOf("\r\n\r\n");
-            int telOd = (hlavicky >= 0) ? hlavicky + 4 : n;
-            byte[] telZacatek = null;
-            if (telOd < n) {
-                telZacatek = new byte[n - telOd];
-                System.arraycopy(buf, telOd, telZacatek, 0, n - telOd);
-            }
+            // BUILD2SA81: zpracovani tela POSTu odstraneno.
+            // Bylo to kvuli posilani snimku z Atari, ktere jsem zrusil
+            // uz v B181 - ale tenhle kus tu zustal a alokoval pole pri
+            // KAZDEM pozadavku, tedy i u zvuku, na ktery se prohlizec
+            // pta kazdych 20 ms.
             String fullPath = path;
             int q = path.indexOf('?');
             if (q >= 0) path = path.substring(0, q);
@@ -3265,9 +3260,6 @@ public class MainActivity extends Activity {
                 // http://127.0.0.1 - to je jiny puvod a prohlizec ho bez
                 // techto hlavicek zablokuje. V logu to bylo videt tak, ze
                 // ATARI_SNIMEK nebyl ANI JEDNOU, zatimco PIXELCOPY 788x.
-                + "Access-Control-Allow-Origin: *\r\n"
-                + "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
-                + "Access-Control-Allow-Headers: Content-Type\r\n"
                 + (len >= 0 ? "Content-Length: " + len + "\r\n" : "")
                 + "Connection: " + (close ? "close" : "keep-alive") + "\r\n\r\n";
         out.write(h.getBytes("ISO-8859-1"));
