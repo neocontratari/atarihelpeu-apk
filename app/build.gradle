@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 245
-        versionName "EMU10-B197-CESTA-NA-TV-JAKO-B121"  // v ceste pro Segu a PS1 mi zustaly 3 radky pro intro, i kdyz jsem tvrdil ze intro ma vlastni cestu. A zpracovani tela POSTu bezelo pri KAZDEM pozadavku. Vse pryc, cesta je shodna s B121.
+        versionCode 247
+        versionName "EMU10-B201-PS1-ROZLOZENI-TLACITEK"  // emu_ps1/index.html: SETTINGS -> UPRAVIT ROZLOZENI TLACITEK. Vsechna tlacitka (vc. D-padu) jdou v editacnim rezimu presunout kamkoli po plose, pozice se uklada do localStorage zvlast pro portrait/landscape a natahne se pri dalsim spusteni. Behem tazeni se negeneruje zadny PS1 input (overeno testem). Zatim jen portrait, protoze SETTINGS je v landscape schovane - viz CO_JE_V_B201.md.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

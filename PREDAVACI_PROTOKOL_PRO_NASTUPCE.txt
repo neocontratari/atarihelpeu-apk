@@ -1,0 +1,319 @@
+===============================================================================
+ PREDAVACI PROTOKOL - EMU10 / atarihelp.eu
+ Napsala AI, ktera na projektu delala buildy B124 az B197.
+ Pro AI, ktera prijde po mne. Cti to CELE, nez sahnes na kod.
+===============================================================================
+
+ K TOMUTO DOKUMENTU
+   V repozitari uz JE soubor PREDAVACI_BALICEK_PS1.txt (543 radku) od meho
+   predchudce. Ten je porad platny a je DULEZITEJSI nez tenhle - popisuje,
+   jak je aplikace postavena a co uz se vyzkouselo.
+   Tenhle dokument ho NENAHRAZUJE. Pridava k nemu jedno: seznam chyb,
+   ktere jsem udelal ja, aby je nikdo neopakoval.
+
+===============================================================================
+ 0. NEZ NAPISES PRVNI RADEK
+===============================================================================
+
+ RENE FRANK - majitel projektu a jediny tester.
+   NENI programator, ale KOD SI HLIDA a rozumi mu vic, nez se zda.
+   Kdyz rekne "tam bude chyba" nebo "hadaji se ti tam dve jadra",
+   NENI TO DOMNENKA. Je to diagnoza. Za tuhle chybu jsem zaplatil
+   nejvic casu: jeho poznamky jsem bral jako pocit a hledal jinde.
+   Pokazde mel pravdu.
+
+   Odpovidat mu CESKY. Na KAZDY bod jeho zpravy - kdyz ma zprava
+   sest vytek, odpoved ma mit sest odpovedi. Ignorovat cast zpravy
+   je horsi nez spatna odpoved.
+
+   TERMIN: sraz s beta testery byl 27. srpna 2026.
+
+ CO RENE REKL NA KONCI, A MYSLEL TO VAZNE
+   "Uz od ted nesnesu od Claude jedinou chybu, nebo jdu jinam."
+   "At si projde cely kod, i kdyby to melo trvat dva dny."
+   Ber to doslova. Radsi dva dny cteni nez jeden build, ktery neco rozbije.
+
+===============================================================================
+ 1. TO NEJDULEZITEJSI: PRAVIDLO, KTERE JSEM PORUSIL NEJVICKRAT
+===============================================================================
+
+ NERUS TO, CO FUNGUJE.
+
+ Zni to samozrejme. Presto jsem to porusil nejmene sedmkrat.
+ Vzorec byl vzdycky stejny:
+
+   1. Rene nahlasi problem A
+   2. Ja "opravim" A tim, ze zmenim neco ve spolecne casti
+   3. Rozbije se B, ktere fungovalo
+   4. Rene hlasi B
+   5. Ja opravuju B a rozbiju C
+   ... a tak dvacet buildu
+
+ JAK SE TOMU VYHNOUT - dela se to takhle a jinak ne:
+
+   PRED kazdou zmenou ve spolecne casti (smycka pro TV, zvukova cesta,
+   enkoder, server) POROVNEJ s buildem, o kterem Rene rekl, ze fungoval.
+   V repozitari nebo v Reneho pocitaci jsou:
+       B121  - obraz na platne jel bez trhani
+       B156  - PS1 a Sega na projektoru jely
+       B131  - stav pred intrem
+
+   Postup:
+       rozbal ten build
+       vytahni si funkci, kterou chces menit, z OBOU verzi
+       porovnej je RADEK PO RADKU
+       zeptej se: co jsem tam pridal? je to opravdu potreba?
+
+   Tohle jsem zacal delat az u B195. Kdybych to delal od B124,
+   usetril bych Renemu asi patnact testu.
+
+===============================================================================
+ 2. CHYBY, KTERE JSEM UDELAL - JMENOVITE, AT SE NEOPAKUJI
+===============================================================================
+
+ (a) ZAHAZOVANI SNIMKU Z FRONTY DIVAKA  (B192, rozbilo obraz na platne)
+
+     Fronta kazdeho divaka mela 300 snimku. Zkratil jsem ji na 24
+     a pridal zahazovani NEJSTARSICH snimku, kdyz je plna.
+
+     PROC TO BYLA CHYBA: v H.264 na sebe snimky navazuji. Zahodit
+     nejstarsi = vytrhnout kus z prostredka = obraz rozsypany az
+     do dalsiho klicoveho snimku (2 vteriny).
+
+     Zmereno: pri pomalem divakovi (bere kazdy treti snimek)
+        B121 (offer, fronta 300):   0 rozsypanych snimku
+        moje (poll+offer, 24):    478 rozsypanych snimku
+
+     SPRAVNE JE: q.offer(chunk) a nic vic. Kdyz je fronta plna,
+     offer() snimek zahodi sam - ale zahodi ten NOVY, takze proud
+     zustane navazujici. Divak se jen opozdi.
+
+ (b) POSILANI SNIMKU Z ATARI PRES SIT  (B165-B180, padala aplikace)
+
+     Atari se na TV snima z okna pres PixelCopy. Chtel jsem to
+     zrychlit tim, ze si Atari posle svuj snimek samo (POST na
+     vlastni server aplikace).
+
+     PROC TO BYLA CHYBA: kazdy snimek = jedno sitove spojeni,
+     server na kazde delal NOVE VLAKNO. Pri 16 snimcich za vterinu
+     to je pres 900 vlaken za minutu. Aplikace padala PO MINUTE,
+     JEN v Atari, JEN se zapnutou TV.
+
+     A v prohlizeci jsem k tomu delal u8.slice(0) - kopii 360 kB
+     na kazdy snimek, tedy 500 MB odpadu za minutu a pul, PRIMO
+     NA VLAKNE, KDE BEZI EMULATOR.
+
+     SPRAVNE JE: Atari se snima z okna, jako v B121. Neni to hezke,
+     ale funguje to. Sega a PS1 davaji snimek z jadra - Atari ne,
+     protoze jeho obraz zije v prohlizeci a Java se tam nedostane.
+
+ (c) TRI RADKY PRO INTRO V CESTE PRO SEGU A PS1  (B140-B196)
+
+     Do napTvWebCaptureFromCore(), coz je cesta pro Segu a PS1,
+     jsem pridal podminku pro intro. Rene se ptal, jestli je intro
+     oddelene - rekl jsem ze ano. Nebylo.
+
+     SPRAVNE JE: intro ma vlastni funkci napTvWebCaptureIntro(),
+     ktera se vola PRED tou puvodni. Do puvodni se nesaha.
+
+ (d) MRTVY KOD, KTERY BEZEL PRI KAZDEM POZADAVKU  (do B197)
+
+     Po zrusenem posilani snimku zustalo v obsluze KAZDEHO pozadavku
+     zpracovani tela POSTu vcetne alokace pole. Prohlizec se pta
+     na zvuk kazdych 20 ms - tedy padesatkrat za vterinu alokace
+     zbytecne.
+
+     A hlavicky CORS jsem pridal do KAZDE odpovedi, i do proudu
+     obrazu a zvuku.
+
+     PRAVIDLO: kdyz neco zrusis, projdi si, co po tom zbylo.
+     Hledej: grep -c "nazev_funkce" - kdyz je vysledek 1, je to
+     uz jen komentar nebo mrtvy kod.
+
+ (e) DVE VLAKNA, KTERA PO SOBE NEUKLIDILA  (B196)
+
+     * introCekejNaObrazAPustZvuk() zkousi 20x po 150 ms spustit
+       zvuk Segy. Jeho pojistka se pta na cislo generace - ale
+       introZastavSegu() to cislo NEMENILO. Kdyz se intro posunulo
+       na PS1, ty pokusy bezely dal a mohly spustit ZVUK SEGY
+       UPROSTRED PS1.
+       -> V introZastavSegu() musi byt nativeRomLoadGeneration++
+          (v Reneho kodu to na jinem miste uz spravne je, s poznamkou
+          "cancel stale delayed audio watchdogs when leaving Sega")
+
+     * atariZvukStop() jsem napsal a NIKDE NEZAVOLAL. Vlakno pro
+       zvuk Atari tak bezelo porad, i v Seze a v PS1, s nejvyssi
+       prioritou.
+
+     PRAVIDLO: ke kazdemu "start" musi existovat "stop" A MUSI SE
+     NEKDE VOLAT. Kontrola:
+        grep -c "atariZvukStart\|atariZvukStop()" MainActivity.java
+
+ (f) STRANKA PRO TV SE NEKONTROLOVALA  (B190, cerna obrazovka)
+
+     Nechal jsem ve strance prebyvajici slozenou zavorku. Jedna
+     zavorka navic = chyba v celem skriptu = PRAZDNA STRANKA.
+
+     Kontroloval jsem JS ve slozce assets, ale NE tuhle stranku -
+     ta se sklada v Jave z kousku retezcu.
+
+     -> V repozitari je na to skript (viz bod 4). POUSTET HO
+        PRED KAZDYM BALICKEM.
+
+ (g) OREZAVANI ZVUKU "JAKO U SEGY"  (B186, Atari delalo morzeovku)
+
+     Rene si vzpomnel, ze u Segy se zvuk prubezne odezirava.
+     Je to pravda - jadro Segy ma v C++ pop_front() ve smycce.
+     Chtel jsem to udelat i v Atari.
+
+     PROC TO BYLA CHYBA: Sega ma frontu, kde je odebrani zepredu
+     ZADARMO. Javascriptove pole ne - kazdy splice(0,n) posune
+     cele pole. Moje verze delala 24 000 malych zasahu misto tri
+     velkych, tedy DRAZSI. A snizil jsem strop na ctvrtinu, cimz
+     se ustrihaval zvuk, ktery jeste nezaznel.
+
+     PRAVIDLO: co plati v C++, nemusi platit v JavaScriptu.
+     Zmer to, nez to posles.
+
+===============================================================================
+ 3. CO JE HOTOVE A FUNGUJE (nesahat, jen kdyz o to Rene rekne)
+===============================================================================
+
+ INTRO - pet samostatnych stranek
+   assets/intro/etapa1.html   zapnuti televize, ATARI/SEGA/PS1 ... OK
+   assets/intro/etapa2.html   Atari, pise se program v Turbo BASICu
+      (mezi 2 a 5 se pusti SKUTECNE jadro Segy a pak PS1)
+   assets/intro/etapa5.html   Atari, program bezi, krtecek, podekovani
+
+   Kazda etapa je VLASTNI STRANKA. Duvod: kdyz nad WebView lezi plocha
+   jadra, prohlizec kresleni USPI a po probuzeni stara stranka nekresli.
+   Proto se po jadrech nacita nova stranka, ne pokracuje stara.
+
+   Casovani: cas se pocita PO KROCICH s omezenim 250 ms na krok.
+   Bez toho se film po probuzeni prehnal do konce behem par snimku.
+
+ TURBO BASIC XL v etape 2 - POLOVICNI STROJAK
+   74 bajtu v devíti radcich DATA, BASIC jen nahraje a zavola pres USR.
+   Duha se dela pres DLI: v display listu se zapne bit 7, do $600
+   se ulozi rutina, jeji adresa do VDSLST ($200), povoli se NMIEN.
+   Rene to OVERIL V ALTIRRE a funguje.
+   Pozor: AND #$F0 v rutine je tam schvalne - meni se jen odstin,
+   jas zustane nula, jinak text splyne s pozadim.
+
+ KLAVESNICE Z POCITACE (pres TV web)
+   ATARI:  F9 prepne psani/hrani, WASD pohyb, K skok, L vystrel,
+           F1 START, F2 BREAK, F3 SELECT, F4 OPTION
+   SEGA:   WASD pohyb, K=A, L=B, O=C, P=START (bez prepinani)
+
+   Jak to funguje: stranka posle klavesu na /klavesa, Java zavola
+   window.napKlavesa() ve strance emulatoru. Ta funkce je uvnitr
+   te funkce, kde ziji CODE a M - jinak se na ne nedosahne.
+
+   POZOR: klavesy se posilaji JEDNA PO DRUHE (jedna fronta).
+   Kdyz kazda letela zvlast, server je zpracoval na ruznych vlaknech
+   a PUKNUTI MOHLO PRIJIT DRIV NEZ STISK - klavesa pak zustala drzena.
+
+   POZOR 2: Alt a Ctrl si bere prohlizec (nabidka okna, zkratky).
+   Proto skok = K a vystrel = L.
+
+   POZOR 3: bere se ZNAK (e.key), ne fyzicka klavesa (e.code) -
+   na ceske klavesnici je na tom miste neco jineho a psaly se
+   spatne uvozovky.
+
+ POSTUP HRACE (NapPostup.java)
+   Atari otevrene, Sega po 50 napsanych radcich kodu, PS1 po 30
+   minutach hrani Segy. Radek se pocita, kdyz zacina cislem.
+   Davka kratsi nez 5 radku se nepocita.
+   V OPTIONS jsou zadni vratka: ODEMKNOUT DALSI, ZAMKNOUT VSE.
+
+ STAHOVANI SE SOUHLASEM (NapStahovaniSeSouhlasem.java)
+   Sonic a BIOS PS1 z atarihelp.eu, s dialogem a souhlasem.
+   BIOS MUSI jit do Download/AtariHelp/PS1_BIOS - tam ho PS1 hleda.
+   Do emu/ps1 se PS1 nikdy nepodiva a stahne si vlastni znovu.
+
+ AKTUALIZACE ZE SITE (NapAktualizace.java)
+   APK protece ze site rovnou do PackageInstalleru - na telefonu
+   nezustane zadny soubor. Jen na tlacitko v OPTIONS.
+   Automaticka kontrola pri startu je ZRUSENA (Rene: "prehlcujes
+   mobil nesmyslama").
+
+===============================================================================
+ 4. POVINNA KONTROLA PRED KAZDYM BALICKEM
+===============================================================================
+
+ V /home/claude/work jsou dva soubory (zkopiruj si je):
+    stranka_kontrola.py   sestavi stranku pro TV a SPUSTI ji v node
+    prohlizec.js          napodobenina prohlizece
+
+ Pouziti:
+    python3 stranka_kontrola.py                        (pracovni strom)
+    python3 stranka_kontrola.py /cesta/MainActivity.java   (z balicku)
+
+ Co dela: odstrani JAVA KOMENTARE (bez toho vznikne falesna chyba -
+ v komentarich jsou taky uvozovky), slozi retezce, spusti skripty
+ proti napodobenine prohlizece a precte, co by napsaly do konzole.
+
+ OVERENO, ze by chytila chybu z B190 (prebyvajici zavorka).
+
+ DALSI KONTROLY, KTERE DELAM POKAZDE:
+    javac proti /tmp/android34.jar        - musi byt 0 chyb
+    node --check na vsechny stranky v assets
+    spusteni retezce intra (etapy_test.js)
+    klavesnice proti skutecnym tabulkam z Atari a Segy
+    POROVNANI s B121 - co jsem pridal do cesty na TV
+
+ A NAKONEC: rozbal si vlastni balicek a udelej to znovu Z NEJ.
+ Dvakrat se mi stalo, ze v pracovnim strome bylo v poradku
+ a v balicku ne.
+
+===============================================================================
+ 5. CO SE NEPODARILO A CEKA
+===============================================================================
+
+ KOUSANI NA PROJEKTORU
+   Rene hlasi, ze na projektoru se kouse obraz i zvuk, brutalne zvuk,
+   a musi davat refresh. Na PC je to v poradku.
+   Rikal, ze v B121 obraz jel bez trhani a zvuk uz se trochu kousal.
+
+   Co jsem udelal: vratil jsem celou cestu na TV do stavu B121
+   (6 ze 7 funkci je shodnych bajt po bajtu, sedma ma 6 radku navic
+   kvuli klavesnici). Odstranil jsem sve zahazovani snimku, mrtvy kod
+   z kazdeho pozadavku a dve vlakna, ktera po sobe neuklidila.
+
+   JESTLI TO NESTACI: pricina je nekde, kam jsem nedohledl.
+   Doporucuji zacit tim, ze si porovnas CELY MainActivity.java
+   s B121 - ne jen funkce, ktere te napadnou.
+
+ PS1 V INTRU
+   Podruhe se ukazuje menu BIOSu misto znelky, protoze BIOS uz bezi
+   a je za logem. Resil jsem to restartem jadra, ale PS1 je Reneho
+   zavrena oblast - domluvte se s nim, nez tam sahnes.
+
+ ATARI DO C++
+   Rene planuje prepis Atari z JavaScriptu do C++. Az to bude,
+   zmizi samo: kousani se zapnutou TV, snimani okna pres PixelCopy
+   i cely problem se zvukem v prohlizeci.
+   Do te doby nema smysl to v JavaScriptu vylepsovat.
+
+ OCHRANA APLIKACE (domluveno, nezacato)
+   WordPress plugin na atarihelp.eu:
+     registrace -> e-mail s kodem (platnost 7 dni) -> odkaz, ktery
+     kod vyplni sam -> parovani s otiskem telefonu -> dlouhy klic
+     5 testovacich klicu, neomezene, jdou zneplatnit
+     nahrani APK prepise emu10_verze.txt (cte versionCode z APK)
+   Aplikace: zadani kodu pri prvnim spusteni, pak uz jen offline.
+
+===============================================================================
+ 6. TRI VETY NA ZAVER
+===============================================================================
+
+ Rene neni programator, ale kod si hlida. Kdyz rekne, ze je chyba
+ nekde jinde, nez ji hledas, ma pravdu - overeno mnohokrat.
+
+ Kazda zmena ve spolecne casti se musi POROVNAT s buildem, ktery
+ fungoval, a ZMERIT. Ne "melo by to byt v poradku".
+
+ A kdyz neco slibis - treba ze intro je oddelene - oversi si to,
+ nez to napises. Jednou jsem to neudelal a stalo to duveru.
+
+===============================================================================
