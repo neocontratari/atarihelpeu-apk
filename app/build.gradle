@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 249
-        versionName "EMU10-B203-PS1-LAYOUT-LANDSCAPE"  // Uprava rozlozeni tlacitek presunuta tam, kde je skutecny D-pad - do landscape (portrait je jen uvodni obrazovka, tam UPRAVIT ROZLOZENI zmizelo). SETTINGS v landscape ted male, prusvitne kolecko vpravo nahore, misto schovane. Opravena i shoda JS/CSS podminky pro landscape (max-height:760px), jinak by na vetsich obrazovkach appka cetla spatny ulozeny layout.
+        versionCode 250
+        versionName "EMU10-B204-PS1-KAZDE-TLACITKO-ZVLAST"  // Zrusen model 'dva velke ctverce' (padLeft/padRight jako spolecne zony) - D-pad a akcni tlacitka jsou ted 8 samostatnych .hit tlacitek (dpadUp/Down/Left/Right, btnTriangle/Circle/Cross/Square), kazde se da presunout zvlast. Navic ted podporuji soucasny stisk dvema prsty (drivejsi jedna-zona model to neumel). Opravena i viditelnost SETTINGS v landscape (byla prakticky neviditelna, opacity .55 na 9% kolecku).
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

@@ -22,9 +22,21 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnBack{left:3.8%;top:3.1%;width:10.5%;height:6.2%;}
 #btnSettings{left:85.1%;top:3.1%;width:10.5%;height:6.2%;}
 #psMonitor{left:5.4%;top:14.2%;width:89.2%;height:41.7%;}
-#padLeft{left:21.5%;top:59.8%;width:18.5%;height:11.8%;}
-#padRight{left:62.6%;top:59.4%;width:18.8%;height:12.4%;}
-#padLeft,#padRight,#btnSelect,#btnStart{touch-action:none;}
+/* BUILD2SB4: puvodne tady bylo jen #padLeft a #padRight - DVA velke
+   ctverce, ktere v editaci tahaly celý D-pad/celou akcni sadu jako jeden
+   kus. Rene chtel kazde tlacitko zvlast, tak je tu jich 8 mistoosmi
+   samostatnych - a jsou malá, presne jako ostatní tlacitka, ne poloviny
+   obrazovky. */
+.padBtn{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.82);font:900 18px/1 Arial,sans-serif;background:rgba(255,255,255,.055);border:1.5px solid rgba(255,255,255,.24);border-radius:999px;box-shadow:0 0 14px rgba(0,0,0,.30) inset;text-shadow:0 2px 4px #000;}
+.padBtn:active{border-color:rgba(255,229,145,.68);box-shadow:0 4px 18px rgba(0,0,0,.5),0 0 18px rgba(255,214,112,.2) inset;}
+#dpadUp{left:27%;top:59.8%;width:7%;height:5.5%;}
+#dpadLeft{left:21.5%;top:65.5%;width:7%;height:5.5%;}
+#dpadRight{left:32.5%;top:65.5%;width:7%;height:5.5%;}
+#dpadDown{left:27%;top:71.2%;width:7%;height:5.5%;}
+#btnTriangle{left:68.6%;top:59.4%;width:7%;height:5.5%;}
+#btnSquare{left:62.6%;top:65.5%;width:7%;height:5.5%;}
+#btnCircle{left:74.6%;top:65.5%;width:7%;height:5.5%;}
+#btnCross{left:68.6%;top:71.6%;width:7%;height:5.5%;}
 #btnSelect{left:41.4%;top:66.7%;width:10.2%;height:8.7%;}
 #btnStart{left:51.4%;top:66.7%;width:10.2%;height:8.7%;}
 #btnReset{left:3.2%;top:82.7%;width:17.0%;height:12.9%;}
@@ -34,9 +46,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnSave{left:79.1%;top:82.7%;width:17.5%;height:12.9%;}
 #fileInput{display:none;}
 #ps1Screen{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:auto;display:none;pointer-events:none;}
-.dpadVis,.psBtn{display:none;pointer-events:none;}
 #btnL1,#btnL2,#btnR1,#btnR2{display:none;}
-.dpadKnob{display:none;pointer-events:none;}
 .toast{position:absolute;left:5%;right:5%;bottom:3.8%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(120,200,255,.56);box-shadow:0 0 22px rgba(70,170,255,.18);color:#dff6ff;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
 .remoteBanner{position:absolute;left:7%;right:7%;top:13.4%;z-index:42;display:none;pointer-events:none;padding:9px 11px;border-radius:12px;background:rgba(0,0,0,.88);border:1px solid rgba(113,207,255,.72);box-shadow:0 0 26px rgba(55,165,255,.24),0 0 18px rgba(255,210,96,.12) inset;color:#dff7ff;font:900 clamp(10px,2.5vw,14px)/1.25 "Courier New",monospace;text-shadow:0 1px 2px #000;}
@@ -76,22 +86,29 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #ps1Screen{object-fit:fill!important;}
  .hit{z-index:12;color:transparent;font-size:0;background:transparent;border:0;text-shadow:none;border-radius:0;}
  .hit:active{background:rgba(255,215,120,.08);box-shadow:0 0 18px rgba(255,220,120,.13) inset;border-radius:999px;}
- #padLeft{left:0;top:24%;width:42%;height:74%;}
- #padRight{left:65%;top:32%;width:35%;height:66%;}
- #padLeft:active,#padRight:active{background:transparent;box-shadow:none;}
- #padLeft .dpadVis{display:block;position:absolute;left:6%;bottom:4%;width:30vh;height:30vh;min-width:128px;min-height:128px;max-width:220px;max-height:220px;border-radius:50%;background:rgba(255,255,255,.045);border:1.5px solid rgba(255,255,255,.22);box-shadow:0 0 24px rgba(0,0,0,.35) inset;}
- #padLeft .dpadVis:before,#padLeft .dpadVis:after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:13px;background:linear-gradient(180deg,rgba(255,242,190,.52),rgba(143,119,68,.40));border:1px solid rgba(255,234,170,.34);box-shadow:0 2px 12px rgba(0,0,0,.50),0 0 16px rgba(255,223,132,.08) inset;}
- #padLeft .dpadVis:before{content:none!important;}
- #padLeft .dpadVis:after{content:none!important;} /* BUILD2SA9: moderni thumbstick bez krize */
- #padLeft .dpadKnob{display:block;position:absolute;left:50%;top:50%;width:32%;height:32%;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 36% 28%,rgba(255,255,255,.50),rgba(200,215,225,.28) 45%,rgba(40,50,58,.40));border:1.5px solid rgba(255,255,255,.38);box-shadow:0 5px 18px rgba(0,0,0,.64),0 0 18px rgba(255,218,118,.14) inset;transition:transform .06s linear,box-shadow .08s linear,border-color .08s linear;}
- #padLeft .dpadVis.active .dpadKnob{border-color:rgba(255,239,180,.78);box-shadow:0 5px 20px rgba(0,0,0,.68),0 0 24px rgba(255,218,118,.28) inset,0 0 18px rgba(255,222,140,.22);}
- #padLeft:active .dpadVis{border-color:rgba(255,229,145,.58);box-shadow:0 0 30px rgba(0,0,0,.62),0 0 24px rgba(255,214,112,.22) inset;}
- #padRight .psBtn{display:flex;align-items:center;justify-content:center;position:absolute;width:8.2vh;height:8.2vh;min-width:42px;min-height:42px;max-width:60px;max-height:60px;border-radius:50%;border:1.5px solid rgba(255,255,255,.24);background:rgba(255,255,255,.05);box-shadow:0 0 14px rgba(0,0,0,.30) inset;color:rgba(255,255,255,.62);font:700 20px/1 Arial,sans-serif;text-shadow:0 2px 4px #000;}
- #padRight .psTri{right:24%;bottom:37%;}
- #padRight .psCircle{right:6%;bottom:22%;}
- #padRight .psCross{right:24%;bottom:7%;}
- #padRight .psSquare{right:42%;bottom:22%;}
- #padRight:active .psBtn{border-color:rgba(255,229,145,.62);box-shadow:0 4px 18px rgba(0,0,0,.56),0 0 18px rgba(255,214,112,.18) inset;}
+ /* BUILD2SB4: puvodni #padLeft/#padRight byly obri neviditelne zony
+    (42% x 74% resp. 35% x 66% plochy) s malym viditelnym kolecim uvnitr -
+    "nesmyslne velky ctverec" presne na tohle Rene narazil v editaci.
+    Ted je tu 8 malych, samostatne umistitelnych tlacitek - stejne velka
+    jako L1/L2 dole, ne poloviny obrazovky. Vychozi rozestaveni: D-pad
+    vlevo dole (krizek), akce vpravo dole (kosoctverec Triangle/Circle/
+    Cross/Square presne jako na skutecnem PS1 padu). */
+ .padBtn{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.82);font:900 22px/1 Arial,sans-serif;background:rgba(255,255,255,.055);border:1.5px solid rgba(255,255,255,.24);border-radius:999px;box-shadow:0 0 14px rgba(0,0,0,.30) inset;text-shadow:0 2px 4px #000;z-index:12;}
+ .padBtn:active{border-color:rgba(255,229,145,.68);box-shadow:0 4px 18px rgba(0,0,0,.5),0 0 18px rgba(255,214,112,.2) inset;}
+ #dpadUp{left:10%;top:42%;width:9%;height:7.5%;}
+ #dpadLeft{left:1%;top:52%;width:9%;height:7.5%;}
+ #dpadRight{left:19%;top:52%;width:9%;height:7.5%;}
+ #dpadDown{left:10%;top:62%;width:9%;height:7.5%;}
+ #btnTriangle{left:76%;top:42%;width:9%;height:7.5%;}
+ #btnSquare{left:67%;top:52%;width:9%;height:7.5%;}
+ #btnCircle{left:85%;top:52%;width:9%;height:7.5%;}
+ #btnCross{left:76%;top:62%;width:9%;height:7.5%;}
+ /* BUILD2SB4: Rene musel v landscape hledat SETTINGS naslepo do rohu -
+    opacity:.55 na 9% siroke prusvitne kolecko bylo v podstate neviditelne
+    pres jasnou hru. Ted plna neprusvitnost, viditelny gear symbol,
+    kontrastni tmave pozadi - je videt na prvni pohled, ne jen nahmatane. */
+ #btnSettings{display:flex;align-items:center;justify-content:center;left:auto;right:1.5%;top:1.5%;width:11%;height:8.5%;opacity:1;color:rgba(255,255,255,.92);font:900 26px/1 Arial,sans-serif;background:rgba(10,14,20,.62);border:1.5px solid rgba(255,255,255,.4);border-radius:999px;text-shadow:0 2px 5px #000;z-index:20;}
+ #btnSettings:active{background:rgba(255,215,120,.22);border-color:rgba(255,229,145,.8);}
  #btnSelect,#btnStart,#btnL1,#btnL2,#btnR1,#btnR2{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.92);font:900 12px/1 "Courier New",monospace;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.22);border-radius:999px;box-shadow:none;text-shadow:0 1px 2px #000;color:rgba(255,255,255,.60);z-index:16;}
  #btnSelect{left:40%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
  #btnStart{left:51.2%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
@@ -101,12 +118,6 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #btnR2{left:69.4%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
  #btnL1.locked,#btnL2.locked,#btnR1.locked,#btnR2.locked{color:#081017;background:linear-gradient(180deg,rgba(255,235,157,.96),rgba(196,151,68,.88));border-color:rgba(255,244,194,.95);box-shadow:0 3px 18px rgba(0,0,0,.58),0 0 22px rgba(255,214,112,.36);}
  #btnBack,#btnCd,#btnReset,#btnLoad,#btnSave,#btnMemory{display:none;}
- /* BUILD2SB3: puvodne bylo btnSettings ve skryte skupine vyse - v landscape
-    (tam, kde se PS1 skutecne hraje) ale bez neho neslo zapnout editaci
-    rozlozeni, ktera ma smysl prave tady, ne na uvodni portrait obrazovce.
-    Male, nenapadne kolecko v rohu - nema kazit vyhled na hru. */
- #btnSettings{display:block;left:auto;right:2%;top:2%;width:9%;height:6%;opacity:.55;}
- #btnSettings:active{opacity:1;}
  #btnEditLayout{display:block;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;z-index:40;}
  .remoteBanner{left:3%;right:3%;top:3.5%;padding:8px 10px;font-size:12px;z-index:50;}
@@ -119,8 +130,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <a id="btnBack" class="hit" href="../index.html">BACK</a>
   <button id="btnSettings" class="hit" type="button">SETTINGS</button>
   <button id="psMonitor" class="hit" type="button">MONITOR</button>
-  <button id="padLeft" class="hit" type="button">DPAD</button>
-  <button id="padRight" class="hit" type="button">ACTIONS</button>
+  <button id="dpadUp" class="hit padBtn" type="button">&#9650;</button>
+  <button id="dpadLeft" class="hit padBtn" type="button">&#9664;</button>
+  <button id="dpadRight" class="hit padBtn" type="button">&#9654;</button>
+  <button id="dpadDown" class="hit padBtn" type="button">&#9660;</button>
+  <button id="btnTriangle" class="hit padBtn" type="button">&#9651;</button>
+  <button id="btnCircle" class="hit padBtn" type="button">&#9675;</button>
+  <button id="btnCross" class="hit padBtn" type="button">&#10005;</button>
+  <button id="btnSquare" class="hit padBtn" type="button">&#9633;</button>
   <button id="btnL1" class="hit" type="button">L1</button>
   <button id="btnL2" class="hit" type="button">L2</button>
   <button id="btnR1" class="hit" type="button">R1</button>
@@ -422,80 +439,12 @@ function bindLockHold(el,btn){
   el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
   el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
 }
-function controlRect(el,selector){
-  var visual=selector&&el&&el.querySelector?el.querySelector(selector):null;
-  if(visual&&visual.offsetWidth>8&&visual.offsetHeight>8)return visual.getBoundingClientRect();
-  return el.getBoundingClientRect();
-}
-function bindDpad(el){
-  var keys=['UP','DOWN','LEFT','RIGHT'];
-  var activeId=null,mouseDown=false;
-  function moveKnob(nx,ny,active){
-    var vis=el.querySelector?el.querySelector('.dpadVis'):null;
-    var knob=el.querySelector?el.querySelector('.dpadKnob'):null;
-    if(!vis||!knob)return;
-    if(!active){vis.classList.remove('active');knob.style.transform='translate(-50%,-50%)';return;}
-    var len=Math.sqrt(nx*nx+ny*ny);
-    if(len>1){nx/=len;ny/=len;}
-    var r=vis.getBoundingClientRect();
-    var travel=Math.min(r.width,r.height)*0.28;
-    knob.style.transform='translate(-50%,-50%) translate('+Math.round(nx*travel)+'px,'+Math.round(ny*travel)+'px)';
-    vis.classList.add('active');
-  }
-  function movePoint(p){
-    var r=controlRect(el,'.dpadVis');
-    var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
-    var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
-    var deadX=.42,deadY=.32,diagX=.56;
-    var left=nx<-deadX,right=nx>deadX,up=ny<-deadY,down=ny>deadY;
-    if((up||down)&&Math.abs(nx)<diagX){left=false;right=false;}
-    moveKnob(nx,ny,true);
-    setPs1('LEFT',left);setPs1('RIGHT',right);setPs1('UP',up);setPs1('DOWN',down);
-  }
-  function touchStart(ev){var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();activeId=t.identifier;movePoint(touchPoint(t));}
-  function touchMove(ev){if(activeId===null)return;var t=touchById(ev.touches,activeId);if(!t)return;ev.preventDefault();movePoint(touchPoint(t));}
-  function touchEnd(ev){if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();activeId=null;moveKnob(0,0,false);releaseButtons(keys);}
-  function mouseStart(ev){ev.preventDefault();mouseDown=true;movePoint(touchPoint(ev));}
-  function mouseMove(ev){if(!mouseDown)return;ev.preventDefault();movePoint(touchPoint(ev));}
-  function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;moveKnob(0,0,false);releaseButtons(keys);}
-  el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchmove',touchMove,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
-  el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mousemove',mouseMove,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
-}
-function nearestAction(el,p){
-  var defs=[['TRIANGLE','.psTri'],['CIRCLE','.psCircle'],['CROSS','.psCross'],['SQUARE','.psSquare']];
-  var best=null,bestDist=1e20;
-  for(var i=0;i<defs.length;i++){
-    var n=el.querySelector?el.querySelector(defs[i][1]):null;
-    if(!n||n.offsetWidth<=8||n.offsetHeight<=8)continue;
-    var r=n.getBoundingClientRect();
-    var cx=r.left+r.width/2,cy=r.top+r.height/2;
-    var dx=p.x-cx,dy=p.y-cy,dist=dx*dx+dy*dy;
-    if(dist<bestDist){bestDist=dist;best=defs[i][0];}
-  }
-  return best;
-}
-function bindActions(el){
-  var keys=['CROSS','CIRCLE','SQUARE','TRIANGLE'];
-  var activeId=null,mouseDown=false;
-  function movePoint(p){
-    var r=el.getBoundingClientRect();
-    var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
-    var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
-    releaseButtons(keys);
-    var decorated=nearestAction(el,p);
-    if(decorated)setPs1(decorated,true);
-    else if(Math.abs(nx)>Math.abs(ny))setPs1(nx>0?'CIRCLE':'SQUARE',true);
-    else setPs1(ny>0?'CROSS':'TRIANGLE',true);
-  }
-  function touchStart(ev){var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();activeId=t.identifier;movePoint(touchPoint(t));}
-  function touchMove(ev){if(activeId===null)return;var t=touchById(ev.touches,activeId);if(!t)return;ev.preventDefault();movePoint(touchPoint(t));}
-  function touchEnd(ev){if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();activeId=null;releaseButtons(keys);}
-  function mouseStart(ev){ev.preventDefault();mouseDown=true;movePoint(touchPoint(ev));}
-  function mouseMove(ev){if(!mouseDown)return;ev.preventDefault();movePoint(touchPoint(ev));}
-  function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;releaseButtons(keys);}
-  el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchmove',touchMove,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
-  el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mousemove',mouseMove,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
-}
+/* BUILD2SB4: controlRect/bindDpad/nearestAction/bindActions smazany -
+   D-pad a akcni tlacitka uz nejsou dve velke zony s vypoctem "nejblizsi
+   smer/tlacitko uvnitr", ale 8 samostatnych .hit tlacitek. Kazde se vaze
+   pres bindHold(), stejne jako L1/L2/SELECT/START uz drive - jednodussi
+   kod a navic PRIROZENA podpora dvou prstu najednou (drive slo jen jedno
+   aktivni dotykove ID na celou zonu). */
 /* ===== BUILD2SB2: JS log posilany i do /8765/log, ne jen do LOG[] tady ve
    strance (ten vidi jen uzivatel v PS1 TEST LOG panelu). Bez tohohle
    Rene v /8765/log nevidel VUBEC nic z toho, co strana s rozlozenim
@@ -509,7 +458,7 @@ function jsLog(t){
    rezimu chytit a presunout kamkoli na plochu. Pozice se ukladaji zvlast
    pro portrait a landscape (v obou je jiny vychozi layout), takze zmena
    otoceni telefonu si nesahne na tu druhou sadu. */
-var LAYOUT_IDS=['btnBack','btnSettings','padLeft','padRight','btnL1','btnL2','btnR1','btnR2','btnSelect','btnStart','btnReset','btnMemory','btnCd','btnLoad','btnSave'];
+var LAYOUT_IDS=['btnBack','btnSettings','dpadUp','dpadDown','dpadLeft','dpadRight','btnTriangle','btnCircle','btnCross','btnSquare','btnL1','btnL2','btnR1','btnR2','btnSelect','btnStart','btnReset','btnMemory','btnCd','btnLoad','btnSave'];
 var layoutEditActive=false;
 function layoutOrientation(){
   /* BUILD2SB3: musi presne sedet s media query v CSS
@@ -610,9 +559,10 @@ function bindLayoutDrag(el){
   function mouseStart(ev){if(!layoutEditActive)return;ev.preventDefault();ev.stopPropagation();mouseDown=true;beginDrag(ev.clientX,ev.clientY);}
   function mouseMove(ev){if(!layoutEditActive||!mouseDown)return;ev.preventDefault();ev.stopPropagation();moveDrag(ev.clientX,ev.clientY);}
   function mouseUp(ev){if(!layoutEditActive||!mouseDown)return;ev.preventDefault();ev.stopPropagation();mouseDown=false;endDrag();}
-  /* capture:true = tenhle listener dostane dotyk DRIV nez bindHold/bindDpad/
-     bindActions (ty jsou bez capture). Diky stopPropagation() se k nim v
-     editacnim rezimu vubec nedostane - takze se pri tahani nic nehraje. */
+  /* capture:true = tenhle listener dostane dotyk DRIV nez bindHold (ten je
+     bez capture, pouziva ho ted i D-pad a akcni tlacitka). Diky
+     stopPropagation() se k nim v editacnim rezimu vubec nedostane - takze
+     se pri tahani nic nehraje. */
   el.addEventListener('touchstart',touchStart,{passive:false,capture:true});
   el.addEventListener('touchmove',touchMove,{passive:false,capture:true});
   el.addEventListener('touchend',touchEnd,{passive:false,capture:true});
@@ -642,19 +592,6 @@ function layoutEditExit(save){
   var bar=$('layoutEditBar');if(bar){bar.classList.remove('show');bar.setAttribute('aria-hidden','true');}
   jsLog('LAYOUT_EDIT_EXIT save='+(!!save)+' orientace='+layoutOrientation());
   if(save){layoutSave();toast('Rozlozeni ulozeno ('+layoutOrientation()+')',2200);}
-}
-function installPadDecor(){
-  var left=$('padLeft'),right=$('padRight');
-  if(left&&!left.__napDecor){
-    left.setAttribute('aria-label','D-pad');
-    left.innerHTML='<span class="dpadVis" aria-hidden="true"><span class="dpadKnob"></span></span>';
-    left.__napDecor=true;
-  }
-  if(right&&!right.__napDecor){
-    right.setAttribute('aria-label','PS1 action buttons');
-    right.innerHTML='<span class="psBtn psTri" aria-hidden="true">&#9651;</span><span class="psBtn psCircle" aria-hidden="true">&#9675;</span><span class="psBtn psCross" aria-hidden="true">&#10005;</span><span class="psBtn psSquare" aria-hidden="true">&#9633;</span>';
-    right.__napDecor=true;
-  }
 }
 function ensurePs1ScreenAndPoll(){
   if(!window.__napPs1Screen){
@@ -833,9 +770,14 @@ $('btnCd').addEventListener('click',function(e){e.preventDefault();
 },true);
 $('btnLoad').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);
 $('btnSave').addEventListener('click',function(e){e.preventDefault();ps1QuickSave();},true);
-installPadDecor();
-bindDpad($('padLeft'));
-bindActions($('padRight'));
+bindHold($('dpadUp'),'UP');
+bindHold($('dpadDown'),'DOWN');
+bindHold($('dpadLeft'),'LEFT');
+bindHold($('dpadRight'),'RIGHT');
+bindHold($('btnTriangle'),'TRIANGLE');
+bindHold($('btnCircle'),'CIRCLE');
+bindHold($('btnCross'),'CROSS');
+bindHold($('btnSquare'),'SQUARE');
 bindLockHold($('btnL1'),'L1');
 bindLockHold($('btnL2'),'L2');
 bindLockHold($('btnR1'),'R1');
