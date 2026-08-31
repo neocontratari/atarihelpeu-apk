@@ -29,10 +29,11 @@ body{display:flex;justify-content:center;align-items:flex-start;}
    obrazovky. */
 .padBtn{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.82);font:900 18px/1 Arial,sans-serif;background:rgba(255,255,255,.055);border:1.5px solid rgba(255,255,255,.24);border-radius:999px;box-shadow:0 0 14px rgba(0,0,0,.30) inset;text-shadow:0 2px 4px #000;}
 .padBtn:active{border-color:rgba(255,229,145,.68);box-shadow:0 4px 18px rgba(0,0,0,.5),0 0 18px rgba(255,214,112,.2) inset;}
-#dpadUp{left:27%;top:59.8%;width:7%;height:5.5%;}
-#dpadLeft{left:21.5%;top:65.5%;width:7%;height:5.5%;}
-#dpadRight{left:32.5%;top:65.5%;width:7%;height:5.5%;}
-#dpadDown{left:27%;top:71.2%;width:7%;height:5.5%;}
+/* BUILD2SB5: D-pad je znovu JEDEN kulaty ovladac (presouva se jako celek),
+   akcni tlacitka (Triangle/Circle/Cross/Square) zustavaji ctyri
+   samostatna - presne to Rene chtel: skutecny pad je jeden fyzicky kus,
+   akcni tlacitka jsou 4 opravdu oddelena tlacitka. */
+#dpad{left:24.5%;top:59.4%;width:13%;height:12.4%;border-radius:50%;font-size:22px;}
 #btnTriangle{left:68.6%;top:59.4%;width:7%;height:5.5%;}
 #btnSquare{left:62.6%;top:65.5%;width:7%;height:5.5%;}
 #btnCircle{left:74.6%;top:65.5%;width:7%;height:5.5%;}
@@ -86,29 +87,30 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #ps1Screen{object-fit:fill!important;}
  .hit{z-index:12;color:transparent;font-size:0;background:transparent;border:0;text-shadow:none;border-radius:0;}
  .hit:active{background:rgba(255,215,120,.08);box-shadow:0 0 18px rgba(255,220,120,.13) inset;border-radius:999px;}
- /* BUILD2SB4: puvodni #padLeft/#padRight byly obri neviditelne zony
-    (42% x 74% resp. 35% x 66% plochy) s malym viditelnym kolecim uvnitr -
-    "nesmyslne velky ctverec" presne na tohle Rene narazil v editaci.
-    Ted je tu 8 malych, samostatne umistitelnych tlacitek - stejne velka
-    jako L1/L2 dole, ne poloviny obrazovky. Vychozi rozestaveni: D-pad
-    vlevo dole (krizek), akce vpravo dole (kosoctverec Triangle/Circle/
-    Cross/Square presne jako na skutecnem PS1 padu). */
+ /* BUILD2SB5: Rene: skutecny D-pad je JEDEN kus, ne 4 rozhazena tlacitka -
+    ovladac je zpatky kulaty a jeden, presouva se jako celek. Akcni
+    tlacitka (4 opravdu samostatne knoflíky na PS1 padu) zustavaji 4
+    oddelena tlacitka - to bylo spravne uz predtim. */
  .padBtn{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.82);font:900 22px/1 Arial,sans-serif;background:rgba(255,255,255,.055);border:1.5px solid rgba(255,255,255,.24);border-radius:999px;box-shadow:0 0 14px rgba(0,0,0,.30) inset;text-shadow:0 2px 4px #000;z-index:12;}
  .padBtn:active{border-color:rgba(255,229,145,.68);box-shadow:0 4px 18px rgba(0,0,0,.5),0 0 18px rgba(255,214,112,.2) inset;}
- #dpadUp{left:10%;top:42%;width:9%;height:7.5%;}
- #dpadLeft{left:1%;top:52%;width:9%;height:7.5%;}
- #dpadRight{left:19%;top:52%;width:9%;height:7.5%;}
- #dpadDown{left:10%;top:62%;width:9%;height:7.5%;}
+ #dpad{left:3%;top:36%;width:22vh;height:22vh;min-width:88px;min-height:88px;max-width:160px;max-height:160px;border-radius:50%;font-size:30px;}
  #btnTriangle{left:76%;top:42%;width:9%;height:7.5%;}
  #btnSquare{left:67%;top:52%;width:9%;height:7.5%;}
  #btnCircle{left:85%;top:52%;width:9%;height:7.5%;}
  #btnCross{left:76%;top:62%;width:9%;height:7.5%;}
- /* BUILD2SB4: Rene musel v landscape hledat SETTINGS naslepo do rohu -
-    opacity:.55 na 9% siroke prusvitne kolecko bylo v podstate neviditelne
-    pres jasnou hru. Ted plna neprusvitnost, viditelny gear symbol,
-    kontrastni tmave pozadi - je videt na prvni pohled, ne jen nahmatane. */
- #btnSettings{display:flex;align-items:center;justify-content:center;left:auto;right:1.5%;top:1.5%;width:11%;height:8.5%;opacity:1;color:rgba(255,255,255,.92);font:900 26px/1 Arial,sans-serif;background:rgba(10,14,20,.62);border:1.5px solid rgba(255,255,255,.4);border-radius:999px;text-shadow:0 2px 5px #000;z-index:20;}
+ /* BUILD2SB5: "SETTINGS" jako doslovny text pretekal z kolecka mimo hranice
+    (font 26px na 11% siroke tlacitko) - text tam nikdy nemel byt, mel tam
+    byt jen znak ozubeneho kola. Ted opravdu jen ikona, mensi, prusvitnejsi
+    (Rene: "pruhledny a bez napisu"). */
+ #btnSettings{display:flex;align-items:center;justify-content:center;left:auto;right:1.5%;top:1.5%;width:9%;height:7%;opacity:.9;color:rgba(255,255,255,.85);font:900 19px/1 Arial,sans-serif;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);border-radius:999px;text-shadow:0 2px 4px #000;z-index:20;}
  #btnSettings:active{background:rgba(255,215,120,.22);border-color:rgba(255,229,145,.8);}
+ /* BUILD2SB5: editacni lista dole ZAKRYVALA L1/L2/R1/R2/SELECT/START (ty
+    zijou v tenkem pruhu bottom:4%-11.6%, presne tam, kam sahala lista) -
+    v landscape ji proto presouvam nahoru, kde je misto jen s malym
+    ozubenym kolem. */
+ .layoutEditBar{bottom:auto;top:0;padding:6px 3%;}
+ .layoutEditBar .layoutEditHint{font-size:10px;}
+ .layoutEditBar button{padding:7px 11px;font-size:10px;}
  #btnSelect,#btnStart,#btnL1,#btnL2,#btnR1,#btnR2{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.92);font:900 12px/1 "Courier New",monospace;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.22);border-radius:999px;box-shadow:none;text-shadow:0 1px 2px #000;color:rgba(255,255,255,.60);z-index:16;}
  #btnSelect{left:40%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
  #btnStart{left:51.2%;top:auto;bottom:4%;width:8.8%;height:7.6%;}
@@ -128,12 +130,9 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 <main class="stage" aria-label="PS1 PlayStation">
   <img class="skin" src="ps1_final_screen.png" alt="PS1 PlayStation screen">
   <a id="btnBack" class="hit" href="../index.html">BACK</a>
-  <button id="btnSettings" class="hit" type="button">SETTINGS</button>
+  <button id="btnSettings" class="hit" type="button">&#9881;</button>
   <button id="psMonitor" class="hit" type="button">MONITOR</button>
-  <button id="dpadUp" class="hit padBtn" type="button">&#9650;</button>
-  <button id="dpadLeft" class="hit padBtn" type="button">&#9664;</button>
-  <button id="dpadRight" class="hit padBtn" type="button">&#9654;</button>
-  <button id="dpadDown" class="hit padBtn" type="button">&#9660;</button>
+  <button id="dpad" class="hit padBtn" type="button">&#10010;</button>
   <button id="btnTriangle" class="hit padBtn" type="button">&#9651;</button>
   <button id="btnCircle" class="hit padBtn" type="button">&#9675;</button>
   <button id="btnCross" class="hit padBtn" type="button">&#10005;</button>
@@ -439,12 +438,33 @@ function bindLockHold(el,btn){
   el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
   el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
 }
-/* BUILD2SB4: controlRect/bindDpad/nearestAction/bindActions smazany -
-   D-pad a akcni tlacitka uz nejsou dve velke zony s vypoctem "nejblizsi
-   smer/tlacitko uvnitr", ale 8 samostatnych .hit tlacitek. Kazde se vaze
-   pres bindHold(), stejne jako L1/L2/SELECT/START uz drive - jednodussi
-   kod a navic PRIROZENA podpora dvou prstu najednou (drive slo jen jedno
-   aktivni dotykove ID na celou zonu). */
+/* BUILD2SB5: D-pad zpatky jako JEDEN ovladac (Rene: skutecny pad je jeden
+   kus, kazda ze 4 akcnich tlacitek ale ma byt oddelena - to zustava).
+   Zjednodusene proti puvodni verzi z B197-B203: bez animovaneho knoflicku
+   (byla to jen kosmetika navic), ale se stejnou logikou nejblizsiho smeru
+   vcetne uhlopricek - jeden dotyk uvnitr kruhu urci UP/DOWN/LEFT/RIGHT
+   podle polohy, presne jak fungoval puvodni virtualni pad. */
+function bindDpad(el){
+  var keys=['UP','DOWN','LEFT','RIGHT'];
+  var activeId=null,mouseDown=false;
+  function movePoint(p){
+    var r=el.getBoundingClientRect();
+    var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
+    var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
+    var deadX=.42,deadY=.32,diagX=.56;
+    var left=nx<-deadX,right=nx>deadX,up=ny<-deadY,down=ny>deadY;
+    if((up||down)&&Math.abs(nx)<diagX){left=false;right=false;}
+    setPs1('LEFT',left);setPs1('RIGHT',right);setPs1('UP',up);setPs1('DOWN',down);
+  }
+  function touchStart(ev){var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();activeId=t.identifier;movePoint(touchPoint(t));}
+  function touchMove(ev){if(activeId===null)return;var t=touchById(ev.touches,activeId);if(!t)return;ev.preventDefault();movePoint(touchPoint(t));}
+  function touchEnd(ev){if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();activeId=null;releaseButtons(keys);}
+  function mouseStart(ev){ev.preventDefault();mouseDown=true;movePoint(touchPoint(ev));}
+  function mouseMove(ev){if(!mouseDown)return;ev.preventDefault();movePoint(touchPoint(ev));}
+  function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;releaseButtons(keys);}
+  el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchmove',touchMove,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
+  el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mousemove',mouseMove,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
+}
 /* ===== BUILD2SB2: JS log posilany i do /8765/log, ne jen do LOG[] tady ve
    strance (ten vidi jen uzivatel v PS1 TEST LOG panelu). Bez tohohle
    Rene v /8765/log nevidel VUBEC nic z toho, co strana s rozlozenim
@@ -458,7 +478,7 @@ function jsLog(t){
    rezimu chytit a presunout kamkoli na plochu. Pozice se ukladaji zvlast
    pro portrait a landscape (v obou je jiny vychozi layout), takze zmena
    otoceni telefonu si nesahne na tu druhou sadu. */
-var LAYOUT_IDS=['btnBack','btnSettings','dpadUp','dpadDown','dpadLeft','dpadRight','btnTriangle','btnCircle','btnCross','btnSquare','btnL1','btnL2','btnR1','btnR2','btnSelect','btnStart','btnReset','btnMemory','btnCd','btnLoad','btnSave'];
+var LAYOUT_IDS=['btnBack','btnSettings','dpad','btnTriangle','btnCircle','btnCross','btnSquare','btnL1','btnL2','btnR1','btnR2','btnSelect','btnStart','btnReset','btnMemory','btnCd','btnLoad','btnSave'];
 var layoutEditActive=false;
 function layoutOrientation(){
   /* BUILD2SB3: musi presne sedet s media query v CSS
@@ -770,10 +790,7 @@ $('btnCd').addEventListener('click',function(e){e.preventDefault();
 },true);
 $('btnLoad').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);
 $('btnSave').addEventListener('click',function(e){e.preventDefault();ps1QuickSave();},true);
-bindHold($('dpadUp'),'UP');
-bindHold($('dpadDown'),'DOWN');
-bindHold($('dpadLeft'),'LEFT');
-bindHold($('dpadRight'),'RIGHT');
+bindDpad($('dpad'));
 bindHold($('btnTriangle'),'TRIANGLE');
 bindHold($('btnCircle'),'CIRCLE');
 bindHold($('btnCross'),'CROSS');

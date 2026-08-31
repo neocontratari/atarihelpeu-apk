@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 250
-        versionName "EMU10-B204-PS1-KAZDE-TLACITKO-ZVLAST"  // Zrusen model 'dva velke ctverce' (padLeft/padRight jako spolecne zony) - D-pad a akcni tlacitka jsou ted 8 samostatnych .hit tlacitek (dpadUp/Down/Left/Right, btnTriangle/Circle/Cross/Square), kazde se da presunout zvlast. Navic ted podporuji soucasny stisk dvema prsty (drivejsi jedna-zona model to neumel). Opravena i viditelnost SETTINGS v landscape (byla prakticky neviditelna, opacity .55 na 9% kolecku).
+        versionCode 251
+        versionName "EMU10-B205-DPAD-JEDEN-KUS"  // Podle screenshotu z testu: D-pad je zpatky JEDEN kulaty ovladac (presouva se jako celek, s diagonalami jako drive) - akcni tlacitka Triangle/Circle/Cross/Square zustavaji 4 samostatna. Editacni lista v landscape presunuta nahoru, uz nekryje L1/L2/R1/R2/SELECT/START. SETTINGS uz neni doslovny pretekajici napis, jen male ozubene kolo bez textu, prusvitnejsi.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
