@@ -4504,6 +4504,16 @@ public class MainActivity extends Activity {
     public class AHPS1 {
         @JavascriptInterface
         public String ps1CoreInfo() { return NativePs1CoreBridge.coreInfoSafe(); }
+        // BUILD2SB2: Rene chce videt v /8765/log i to, co se deje ve strance
+        // (editace rozlozeni tlacitek atd.), ne jen to, co mu rekne AI. Bez
+        // tohohle mostu appendNativeLog() slysi jen Java, nikdy JS ze
+        // stranky - proto zatim v logu nebylo videt vubec nic z toho, co
+        // dela emu_ps1/index.html.
+        @JavascriptInterface
+        public String ps1Log(String line) {
+            appendNativeLog("PS1_JS " + (line == null ? "" : line));
+            return "OK";
+        }
         // BUILD2SA2/SA5P: ulozi BIOS .bin do systemove slozky jadra, pokud ho uzivatel sam vybere.
         @JavascriptInterface
         public String ps1SaveBios(String name, String b64) {

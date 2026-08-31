@@ -57,6 +57,11 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .layoutEditBar button{flex:0 0 auto;padding:10px 14px;border:0;border-radius:10px;font:900 12px "Courier New",monospace;cursor:pointer;}
 .layoutEditBar #layoutEditReset{background:rgba(255,255,255,.12);color:#dfeaff;border:1px solid rgba(255,255,255,.3);}
 .layoutEditBar #layoutEditDone{background:#d8b65a;color:#06070a;}
+/* BUILD2SB3: skutecny D-pad, ktery se hraje, je v landscape - portrait je
+   jen uvodni/vyberova obrazovka. Editace rozlozeni tam tedy nema smysl,
+   tlacitko v Settings panelu je proto ve vychozim (portrait) stavu schovane
+   a odkryje se jen v landscape media query nize. */
+#btnEditLayout{display:none;}
 .panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#07101b,#02060b);border:1px solid rgba(125,200,255,.45);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(80,170,255,.16) inset;}
 .panel h2{font:900 23px "Courier New",monospace;margin-bottom:12px;color:#f1d78e;text-align:center;}
 .panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
@@ -95,7 +100,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #btnR1{left:61.4%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
  #btnR2{left:69.4%;top:auto;bottom:4%;width:7.6%;height:7.6%;}
  #btnL1.locked,#btnL2.locked,#btnR1.locked,#btnR2.locked{color:#081017;background:linear-gradient(180deg,rgba(255,235,157,.96),rgba(196,151,68,.88));border-color:rgba(255,244,194,.95);box-shadow:0 3px 18px rgba(0,0,0,.58),0 0 22px rgba(255,214,112,.36);}
- #btnBack,#btnSettings,#btnCd,#btnReset,#btnLoad,#btnSave,#btnMemory{display:none;}
+ #btnBack,#btnCd,#btnReset,#btnLoad,#btnSave,#btnMemory{display:none;}
+ /* BUILD2SB3: puvodne bylo btnSettings ve skryte skupine vyse - v landscape
+    (tam, kde se PS1 skutecne hraje) ale bez neho neslo zapnout editaci
+    rozlozeni, ktera ma smysl prave tady, ne na uvodni portrait obrazovce.
+    Male, nenapadne kolecko v rohu - nema kazit vyhled na hru. */
+ #btnSettings{display:block;left:auto;right:2%;top:2%;width:9%;height:6%;opacity:.55;}
+ #btnSettings:active{opacity:1;}
+ #btnEditLayout{display:block;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;z-index:40;}
  .remoteBanner{left:3%;right:3%;top:3.5%;padding:8px 10px;font-size:12px;z-index:50;}
 }
@@ -484,6 +496,14 @@ function bindActions(el){
   el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchmove',touchMove,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
   el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mousemove',mouseMove,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
 }
+/* ===== BUILD2SB2: JS log posilany i do /8765/log, ne jen do LOG[] tady ve
+   strance (ten vidi jen uzivatel v PS1 TEST LOG panelu). Bez tohohle
+   Rene v /8765/log nevidel VUBEC nic z toho, co strana s rozlozenim
+   tlacitek dela - jen to, co Java sama zaloguje. ===== */
+function jsLog(t){
+  log(t);
+  try{if(window.AHPS1&&window.AHPS1.ps1Log)window.AHPS1.ps1Log(t);}catch(e){}
+}
 /* ===== BUILD2SB1: uzivatelske rozlozeni tlacitek (drag & drop) =====
    Kazde .hit tlacitko (vcetne D-padu a akcnich tlacitek) jde v editacnim
    rezimu chytit a presunout kamkoli na plochu. Pozice se ukladaji zvlast
@@ -491,7 +511,13 @@ function bindActions(el){
    otoceni telefonu si nesahne na tu druhou sadu. */
 var LAYOUT_IDS=['btnBack','btnSettings','padLeft','padRight','btnL1','btnL2','btnR1','btnR2','btnSelect','btnStart','btnReset','btnMemory','btnCd','btnLoad','btnSave'];
 var layoutEditActive=false;
-function layoutOrientation(){return (window.matchMedia&&matchMedia('(orientation: landscape)').matches)?'landscape':'portrait';}
+function layoutOrientation(){
+  /* BUILD2SB3: musi presne sedet s media query v CSS
+     (@media (orientation:landscape) and (max-height:760px)) - jinak by na
+     vetsich obrazovkach appka pouzivala portrait CSS pozice, ale JS by si
+     myslel, ze je v landscape, a cetl/zapisoval by spatny klic. */
+  return (window.matchMedia&&matchMedia('(orientation:landscape) and (max-height:760px)').matches)?'landscape':'portrait';
+}
 function layoutStorageKey(){return 'napPs1Layout_'+layoutOrientation();}
 function layoutReadSaved(){
   try{var raw=localStorage.getItem(layoutStorageKey());if(!raw)return null;return JSON.parse(raw);}catch(e){return null;}
@@ -507,7 +533,12 @@ function layoutApply(map){
     el.style.bottom='auto';
   }
 }
-function layoutLoad(){layoutApply(layoutReadSaved());}
+function layoutLoad(){
+  var map=layoutReadSaved();
+  if(map)jsLog('LAYOUT_LOAD nalezeno pro '+layoutOrientation()+': '+JSON.stringify(map));
+  else jsLog('LAYOUT_LOAD nic ulozeneho pro '+layoutOrientation()+', necham vychozi CSS');
+  layoutApply(map);
+}
 function layoutSave(){
   var map={};
   var stage=document.querySelector('.stage');
@@ -520,6 +551,7 @@ function layoutSave(){
     map[id]={left:((r.left-sr.left)/sr.width)*100,top:((r.top-sr.top)/sr.height)*100};
   }
   try{localStorage.setItem(layoutStorageKey(),JSON.stringify(map));}catch(e){}
+  jsLog('LAYOUT_SAVE '+layoutOrientation()+': '+JSON.stringify(map));
 }
 function layoutReset(){
   try{localStorage.removeItem(layoutStorageKey());}catch(e){}
@@ -527,6 +559,7 @@ function layoutReset(){
     var el=$(LAYOUT_IDS[i]);if(!el)continue;
     el.style.left='';el.style.top='';el.style.bottom='';
   }
+  jsLog('LAYOUT_RESET orientace='+layoutOrientation());
   toast('Rozlozeni vraceno na vychozi ('+layoutOrientation()+')',2200);
 }
 function layoutClamp(el,left,top){
@@ -546,6 +579,7 @@ function bindLayoutDrag(el){
     startLeftPct=((r.left-sr.left)/sr.width)*100;
     startTopPct=((r.top-sr.top)/sr.height)*100;
     el.classList.add('dragging');
+    jsLog('LAYOUT_DRAG_START id='+el.id+' od left='+startLeftPct.toFixed(1)+'% top='+startTopPct.toFixed(1)+'%');
   }
   function moveDrag(x,y){
     var sr=stageRect();
@@ -553,7 +587,10 @@ function bindLayoutDrag(el){
     var pos=layoutClamp(el,startLeftPct+dxPct,startTopPct+dyPct);
     el.style.left=pos.left+'%';el.style.top=pos.top+'%';el.style.bottom='auto';
   }
-  function endDrag(){el.classList.remove('dragging');}
+  function endDrag(){
+    el.classList.remove('dragging');
+    jsLog('LAYOUT_DRAG_END id='+el.id+' na left='+el.style.left+' top='+el.style.top);
+  }
   function touchStart(ev){
     if(!layoutEditActive)return;
     ev.preventDefault();ev.stopPropagation();
@@ -593,6 +630,7 @@ function layoutEditEnter(){
     bindLayoutDrag(el);el.classList.add('layoutEdit');
   }
   var bar=$('layoutEditBar');if(bar){bar.classList.add('show');bar.setAttribute('aria-hidden','false');}
+  jsLog('LAYOUT_EDIT_ENTER orientace='+layoutOrientation());
   toast('Uprava rozlozeni: '+layoutOrientation()+' - preusporadej a das HOTOVO',3200);
 }
 function layoutEditExit(save){
@@ -602,6 +640,7 @@ function layoutEditExit(save){
     el.classList.remove('layoutEdit');el.classList.remove('dragging');
   }
   var bar=$('layoutEditBar');if(bar){bar.classList.remove('show');bar.setAttribute('aria-hidden','true');}
+  jsLog('LAYOUT_EDIT_EXIT save='+(!!save)+' orientace='+layoutOrientation());
   if(save){layoutSave();toast('Rozlozeni ulozeno ('+layoutOrientation()+')',2200);}
 }
 function installPadDecor(){
