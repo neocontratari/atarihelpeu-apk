@@ -6,6 +6,15 @@
 <title>N&amp;P VISION — PS1 PlayStation</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  /* BUILD2SB6: profi ovladac - opacita a velikost tlacitek jsou parametry,
+     ne napevno zadrateovane. Vychozi 1 = presne to, co bylo predtim, takze
+     dokud uzivatel nesahne na OVLADANI v nastaveni, appka vypada uplne
+     stejne jako v B206. */
+  --napBtnOpacity:1;
+  --napBtnScale:1;
+}
+.ctrlAdjustable{opacity:var(--napBtnOpacity);transform:scale(var(--napBtnScale));}
 html,body{min-height:100%;background:#02060b;color:#dfeaff;font-family:"Courier New",monospace;overflow-x:hidden;}
 body{display:flex;justify-content:center;align-items:flex-start;}
 .stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#02060b;overflow:hidden;box-shadow:0 0 56px rgba(0,0,0,.95);}
@@ -68,16 +77,26 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .layoutEditBar button{flex:0 0 auto;padding:10px 14px;border:0;border-radius:10px;font:900 12px "Courier New",monospace;cursor:pointer;}
 .layoutEditBar #layoutEditReset{background:rgba(255,255,255,.12);color:#dfeaff;border:1px solid rgba(255,255,255,.3);}
 .layoutEditBar #layoutEditDone{background:#d8b65a;color:#06070a;}
+.layoutEditBar #layoutModeToggle{background:rgba(110,190,255,.18);color:#bfe6ff;border:1px solid rgba(110,190,255,.5);}
+.layoutEditBar #layoutModeToggle.active{background:rgba(110,190,255,.85);color:#04121c;border-color:rgba(200,235,255,.9);}
 /* BUILD2SB3: skutecny D-pad, ktery se hraje, je v landscape - portrait je
    jen uvodni/vyberova obrazovka. Editace rozlozeni tam tedy nema smysl,
    tlacitko v Settings panelu je proto ve vychozim (portrait) stavu schovane
    a odkryje se jen v landscape media query nize. */
 #btnEditLayout{display:none;}
+#btnCtrlSettings{display:none;}
+#btnMirror{display:none;}
 .panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#07101b,#02060b);border:1px solid rgba(125,200,255,.45);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(80,170,255,.16) inset;}
 .panel h2{font:900 23px "Courier New",monospace;margin-bottom:12px;color:#f1d78e;text-align:center;}
 .panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
 .panel b{color:#8ee7ff;}
 .panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d8b65a;color:#06070a;font:900 15px "Courier New",monospace;}
+/* BUILD2SB6: posuvniky a zaskrtavatko pro panel OVLADANI */
+.panel input[type=range]{width:100%;margin:6px 0 2px;accent-color:#8ee7ff;height:28px;}
+.panel .ctrlVal{text-align:center;color:#8ee7ff;font:800 13px "Courier New",monospace;margin:0 0 10px;}
+.panel .ctrlRow{display:flex;align-items:center;gap:10px;margin:14px 0;color:#e9eef7;font:800 14px "Courier New",monospace;}
+.panel .ctrlRow input[type=checkbox]{width:22px;height:22px;accent-color:#8ee7ff;}
+.panel button.secondary{background:rgba(255,255,255,.12);color:#dfeaff;border:1px solid rgba(255,255,255,.3);}
 @media (orientation:landscape) and (max-height:760px){
  html,body{width:100%;height:100%;overflow:hidden;background:transparent;}
  body{align-items:center;}
@@ -93,7 +112,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     oddelena tlacitka - to bylo spravne uz predtim. */
  .padBtn{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.82);font:900 22px/1 Arial,sans-serif;background:rgba(255,255,255,.055);border:1.5px solid rgba(255,255,255,.24);border-radius:999px;box-shadow:0 0 14px rgba(0,0,0,.30) inset;text-shadow:0 2px 4px #000;z-index:12;}
  .padBtn:active{border-color:rgba(255,229,145,.68);box-shadow:0 4px 18px rgba(0,0,0,.5),0 0 18px rgba(255,214,112,.2) inset;}
- #dpad{left:3%;top:36%;width:22vh;height:22vh;min-width:88px;min-height:88px;max-width:160px;max-height:160px;border-radius:50%;font-size:30px;}
+ #dpad{left:2%;top:32%;width:30vh;height:30vh;min-width:110px;min-height:110px;max-width:210px;max-height:210px;border-radius:50%;font-size:36px;}
  #btnTriangle{left:76%;top:42%;width:9%;height:7.5%;}
  #btnSquare{left:67%;top:52%;width:9%;height:7.5%;}
  #btnCircle{left:85%;top:52%;width:9%;height:7.5%;}
@@ -121,6 +140,8 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #btnL1.locked,#btnL2.locked,#btnR1.locked,#btnR2.locked{color:#081017;background:linear-gradient(180deg,rgba(255,235,157,.96),rgba(196,151,68,.88));border-color:rgba(255,244,194,.95);box-shadow:0 3px 18px rgba(0,0,0,.58),0 0 22px rgba(255,214,112,.36);}
  #btnBack,#btnCd,#btnReset,#btnLoad,#btnSave,#btnMemory{display:none;}
  #btnEditLayout{display:block;}
+ #btnCtrlSettings{display:block;}
+ #btnMirror{display:block;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;z-index:40;}
  .remoteBanner{left:3%;right:3%;top:3.5%;padding:8px 10px;font-size:12px;z-index:50;}
 }
@@ -132,17 +153,17 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <a id="btnBack" class="hit" href="../index.html">BACK</a>
   <button id="btnSettings" class="hit" type="button">&#9881;</button>
   <button id="psMonitor" class="hit" type="button">MONITOR</button>
-  <button id="dpad" class="hit padBtn" type="button">&#10010;</button>
-  <button id="btnTriangle" class="hit padBtn" type="button">&#9651;</button>
-  <button id="btnCircle" class="hit padBtn" type="button">&#9675;</button>
-  <button id="btnCross" class="hit padBtn" type="button">&#10005;</button>
-  <button id="btnSquare" class="hit padBtn" type="button">&#9633;</button>
-  <button id="btnL1" class="hit" type="button">L1</button>
-  <button id="btnL2" class="hit" type="button">L2</button>
-  <button id="btnR1" class="hit" type="button">R1</button>
-  <button id="btnR2" class="hit" type="button">R2</button>
-  <button id="btnSelect" class="hit" type="button">SELECT</button>
-  <button id="btnStart" class="hit" type="button">START</button>
+  <button id="dpad" class="hit padBtn ctrlAdjustable" type="button">&#10010;</button>
+  <button id="btnTriangle" class="hit padBtn ctrlAdjustable" type="button">&#9651;</button>
+  <button id="btnCircle" class="hit padBtn ctrlAdjustable" type="button">&#9675;</button>
+  <button id="btnCross" class="hit padBtn ctrlAdjustable" type="button">&#10005;</button>
+  <button id="btnSquare" class="hit padBtn ctrlAdjustable" type="button">&#9633;</button>
+  <button id="btnL1" class="hit ctrlAdjustable" type="button">L1</button>
+  <button id="btnL2" class="hit ctrlAdjustable" type="button">L2</button>
+  <button id="btnR1" class="hit ctrlAdjustable" type="button">R1</button>
+  <button id="btnR2" class="hit ctrlAdjustable" type="button">R2</button>
+  <button id="btnSelect" class="hit ctrlAdjustable" type="button">SELECT</button>
+  <button id="btnStart" class="hit ctrlAdjustable" type="button">START</button>
   <button id="btnReset" class="hit" type="button">RESET</button>
   <button id="btnMemory" class="hit" type="button">MEMORY CARD</button>
   <button id="btnCd" class="hit" type="button">CD ISO</button>
@@ -157,7 +178,8 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   </div>
   <div id="toast" class="toast">PS1 BUILD2RZ</div>
   <div id="layoutEditBar" class="layoutEditBar" aria-hidden="true">
-    <span class="layoutEditHint">Přetáhni tlačítko, kam chceš. Jde se vrátit i na výchozí.</span>
+    <span id="layoutEditHint" class="layoutEditHint">Přetáhni tlačítko, kam chceš.</span>
+    <button id="layoutModeToggle" type="button">PO SKUPINÁCH</button>
     <button id="layoutEditReset" type="button">VÝCHOZÍ</button>
     <button id="layoutEditDone" type="button">HOTOVO</button>
   </div>
@@ -180,9 +202,35 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <button id="psCacheClear" type="button">SMAZAT PS1 CACHE</button>
     <button id="tvWebCast" type="button">TV WEB CAST</button>
     <button id="btnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
+    <button id="btnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
+    <button id="btnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
     <button id="logSave" type="button">ULOZIT LOG (Downloads/AtariHelp)</button>
     <button id="logCopy" type="button">KOPIROVAT LOG</button>
     <button id="helpClose" type="button">ZAVRIT</button>
+  </div>
+</div>
+<div id="ctrlPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>OVLÁDÁNÍ — profi nastavení</h2>
+    <p><b>Citlivost D-padu</b> — jak daleko od středu musí prst dojet, než se směr sepne. Nižší = citlivější (sepne dřív), vyšší = musíš jet víc do kraje.</p>
+    <input id="ctrlSensitivity" type="range" min="20" max="70" step="1" value="42">
+    <p id="ctrlSensitivityVal" class="ctrlVal"></p>
+
+    <p><b>Průhlednost tlačítek</b> — jak moc vidíš skrz ovladač na hru pod ním.</p>
+    <input id="ctrlOpacity" type="range" min="25" max="100" step="5" value="100">
+    <p id="ctrlOpacityVal" class="ctrlVal"></p>
+
+    <p><b>Velikost tlačítek</b></p>
+    <input id="ctrlSize" type="range" min="70" max="150" step="5" value="100">
+    <p id="ctrlSizeVal" class="ctrlVal"></p>
+
+    <div class="ctrlRow">
+      <input id="ctrlHaptic" type="checkbox" checked>
+      <label for="ctrlHaptic">Vibrace při stisku tlačítka</label>
+    </div>
+
+    <button id="ctrlReset" type="button" class="secondary">VÝCHOZÍ NASTAVENÍ OVLÁDÁNÍ</button>
+    <button id="ctrlClose" type="button">ZAVŘÍT</button>
   </div>
 </div>
 <script>
@@ -265,6 +313,48 @@ function updateRemoteBanner(st){
 }
 function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v)v.value=LOG.join('\n');}
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+/* ===== BUILD2SB6: profi nastaveni ovladace - citlivost D-padu, vzhled
+   (pruhlednost/velikost tlacitek), hapticka odezva. Ulozeno zvlast od
+   pozic tlacitek (jina vec - "jak to vypada/citi" vs "kde to je"). ===== */
+var CTRL_KEY='napPs1CtrlSettings';
+var ctrlDefaults={sensitivity:42,opacity:100,size:100,haptic:true};
+var ctrlSettings={sensitivity:42,opacity:100,size:100,haptic:true};
+function ctrlApplyVisual(){
+  var root=document.documentElement;
+  root.style.setProperty('--napBtnOpacity',(ctrlSettings.opacity/100).toFixed(2));
+  root.style.setProperty('--napBtnScale',(ctrlSettings.size/100).toFixed(2));
+}
+function ctrlUpdateLabels(){
+  var a=$('ctrlSensitivityVal');if(a)a.textContent='Citlivost: '+ctrlSettings.sensitivity+' %';
+  var b=$('ctrlOpacityVal');if(b)b.textContent='Průhlednost: '+ctrlSettings.opacity+' %';
+  var c=$('ctrlSizeVal');if(c)c.textContent='Velikost: '+ctrlSettings.size+' %';
+}
+function ctrlSyncInputs(){
+  var s=$('ctrlSensitivity');if(s)s.value=ctrlSettings.sensitivity;
+  var o=$('ctrlOpacity');if(o)o.value=ctrlSettings.opacity;
+  var z=$('ctrlSize');if(z)z.value=ctrlSettings.size;
+  var h=$('ctrlHaptic');if(h)h.checked=!!ctrlSettings.haptic;
+  ctrlUpdateLabels();
+}
+function ctrlLoad(){
+  try{
+    var raw=localStorage.getItem(CTRL_KEY);
+    if(raw){var s=JSON.parse(raw);for(var k in ctrlDefaults)if(k in s)ctrlSettings[k]=s[k];}
+  }catch(e){}
+  ctrlApplyVisual();ctrlSyncInputs();
+  jsLog('CTRL_LOAD '+JSON.stringify(ctrlSettings));
+}
+function ctrlSave(){
+  try{localStorage.setItem(CTRL_KEY,JSON.stringify(ctrlSettings));}catch(e){}
+  jsLog('CTRL_SAVE '+JSON.stringify(ctrlSettings));
+}
+function ctrlReset(){
+  ctrlSettings={sensitivity:ctrlDefaults.sensitivity,opacity:ctrlDefaults.opacity,size:ctrlDefaults.size,haptic:ctrlDefaults.haptic};
+  ctrlApplyVisual();ctrlSyncInputs();ctrlSave();
+  toast('Ovládání vráceno na výchozí',2000);
+}
+function showCtrl(){var p=$('ctrlPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}ctrlSyncInputs();}
+function closeCtrl(){var p=$('ctrlPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 
 /* ===== BUILD2RZ ANALYZA SOUBORU (poctiva, zadny fake boot) =====
    BIOS rozpoznani: velikost 524288 + retezec "System ROM Version" + region pismeno.
@@ -370,6 +460,7 @@ function setPs1(btn,down){
   down=!!down;
   if(ps1Down[btn]===down)return;
   ps1Down[btn]=down;
+  if(down&&ctrlSettings.haptic){try{if(window.AHPS1&&window.AHPS1.ps1Vibrate)window.AHPS1.ps1Vibrate(14);}catch(e){}}
   try{if(window.AHPS1&&window.AHPS1.ps1Input)window.AHPS1.ps1Input(btn,down);}catch(e){}
 }
 function setShoulderLocked(btn,el,on){
@@ -451,7 +542,7 @@ function bindDpad(el){
     var r=el.getBoundingClientRect();
     var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
     var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
-    var deadX=.42,deadY=.32,diagX=.56;
+    var deadX=ctrlSettings.sensitivity/100,deadY=deadX*0.762,diagX=deadX*1.333;
     var left=nx<-deadX,right=nx>deadX,up=ny<-deadY,down=ny>deadY;
     if((up||down)&&Math.abs(nx)<diagX){left=false;right=false;}
     setPs1('LEFT',left);setPs1('RIGHT',right);setPs1('UP',up);setPs1('DOWN',down);
@@ -537,28 +628,109 @@ function layoutClamp(el,left,top){
   var wPct=(r.width/sr.width)*100,hPct=(r.height/sr.height)*100;
   return {left:Math.max(0,Math.min(100-wPct,left)),top:Math.max(0,Math.min(100-hPct,top))};
 }
+/* BUILD2SB8: "clovek neni jen pravak ale i levak - staci jen svisla osa?"
+   Rene se zeptal presne na spravnou vec. Puvodne jsem zrcadlil UPLNE
+   VSECHNO (i L1/L2/R1/R2, i spodni listu) - a to je logicky spatne:
+
+   - D-pad vs akcni tlacitka: TOHLE je skutecna volba stranou - kterym
+     palcem chces pohyb a kterym akce. Zrcadlit se ma.
+   - L1/L2/R1/R2: jsou pojmenovane podle HRANY telefonu, na ktere prst
+     lezi (leva hrana = L, prava hrana = R), kdyz appku drzis na sirku
+     obema rukama. To se s levactvim/pravactvim nemeni - leva ruka je
+     porad na leve hrane telefonu, at hraje kdokoli. Zrcadlit by je
+     bylo VECNE SPATNE, ne jen jina volba.
+   - SELECT/START a spodni menu lista (Reset/Memory/CD/Load/Save):
+     stredove/administrativni tlacitka, na ktera se sahá jen občas, ne
+     reflexivne behem hrani - s tim, kterou rukou hraješ, nesouvisí.
+
+   Zrcadli se tedy JEN D-pad + ctyri akcni tlacitka. */
+var MIRROR_IDS=['dpad','btnTriangle','btnCircle','btnCross','btnSquare'];
+function layoutMirrorHorizontal(){
+  var stage=document.querySelector('.stage');
+  if(!stage)return;
+  var sr=stage.getBoundingClientRect();
+  for(var i=0;i<MIRROR_IDS.length;i++){
+    var el=$(MIRROR_IDS[i]);if(!el)continue;
+    var r=el.getBoundingClientRect();
+    var leftPct=((r.left-sr.left)/sr.width)*100;
+    var topPct=((r.top-sr.top)/sr.height)*100;
+    var widthPct=(r.width/sr.width)*100;
+    var mirroredLeft=100-leftPct-widthPct;
+    var pos=layoutClamp(el,mirroredLeft,topPct);
+    el.style.left=pos.left+'%';el.style.top=pos.top+'%';el.style.bottom='auto';
+  }
+  layoutSave();
+  jsLog('LAYOUT_MIRROR orientace='+layoutOrientation()+' (jen D-pad + akce, ramena a lista zustavaji)');
+  toast('D-pad a akční tlačítka prohozeny (levák) - uloženo.',3600);
+}
+/* BUILD2SB6: Rene chce OBOJI - dal se posunout kazde tlacitko zvlast (uz
+   funguje), ale nekdy chce chytit a posunout CELOU skupinu najednou
+   (akcni ctverec, ramenni tlacitka, spodni listu), aniz by musel jet
+   tlacitko po tlacitku. Prepinac SKUPINY v listě dole rika, jestli tazeni
+   jednoho tlacitka hne jen jim, nebo celou jeho skupinou (relativni
+   rozestupy uvnitr skupiny se zachovaji - kazdy clen jede o stejnou
+   vzdalenost). Tlacitka bez skupiny (dpad, back, settings...) se tahaji
+   vzdycky sama, skupinovy rezim je nijak neovlivni. */
+var LAYOUT_GROUPS={
+  akce:['btnTriangle','btnCircle','btnCross','btnSquare'],
+  ramena:['btnL1','btnL2','btnR1','btnR2'],
+  menu:['btnSelect','btnStart'],
+  spodniLista:['btnReset','btnMemory','btnCd','btnLoad','btnSave']
+};
+function groupMembersOf(id){
+  for(var g in LAYOUT_GROUPS){if(LAYOUT_GROUPS[g].indexOf(id)!==-1)return LAYOUT_GROUPS[g];}
+  return null;
+}
+var layoutGroupMode=false;
+function layoutHintUpdate(){
+  var hint=$('layoutEditHint');
+  if(!hint)return;
+  hint.textContent=layoutGroupMode
+    ? 'Skupina: chyť libovolné tlačítko ve skupině (D-pad zvlášť, akce, ramena, spodní lišta) a jede celá.'
+    : 'Přetáhni tlačítko, kam chceš. Jde se vrátit i na výchozí.';
+}
+function toggleLayoutGroupMode(){
+  layoutGroupMode=!layoutGroupMode;
+  var btn=$('layoutModeToggle');
+  if(btn){btn.classList.toggle('active',layoutGroupMode);btn.textContent=layoutGroupMode?'PO JEDNOM':'PO SKUPINÁCH';}
+  layoutHintUpdate();
+  jsLog('LAYOUT_MODE skupinovy='+layoutGroupMode);
+}
 function bindLayoutDrag(el){
   if(!el||el.__napLayoutDrag)return;
   el.__napLayoutDrag=true;
-  var startX=0,startY=0,startLeftPct=0,startTopPct=0,dragId=null;
+  var startX=0,startY=0,members=[],dragId=null;
   function stageRect(){return document.querySelector('.stage').getBoundingClientRect();}
+  function elPct(m){
+    var sr=stageRect(),r=m.getBoundingClientRect();
+    return {left:((r.left-sr.left)/sr.width)*100,top:((r.top-sr.top)/sr.height)*100};
+  }
   function beginDrag(x,y){
-    var sr=stageRect(),r=el.getBoundingClientRect();
     startX=x;startY=y;
-    startLeftPct=((r.left-sr.left)/sr.width)*100;
-    startTopPct=((r.top-sr.top)/sr.height)*100;
-    el.classList.add('dragging');
-    jsLog('LAYOUT_DRAG_START id='+el.id+' od left='+startLeftPct.toFixed(1)+'% top='+startTopPct.toFixed(1)+'%');
+    var ids=(layoutGroupMode&&groupMembersOf(el.id))||[el.id];
+    members=[];
+    for(var i=0;i<ids.length;i++){
+      var m=$(ids[i]);if(!m)continue;
+      var pos=elPct(m);
+      members.push({el:m,startLeft:pos.left,startTop:pos.top});
+      m.classList.add('dragging');
+    }
+    jsLog('LAYOUT_DRAG_START id='+el.id+' skupina='+(members.length>1?members.length+'x':'ne'));
   }
   function moveDrag(x,y){
     var sr=stageRect();
     var dxPct=((x-startX)/sr.width)*100,dyPct=((y-startY)/sr.height)*100;
-    var pos=layoutClamp(el,startLeftPct+dxPct,startTopPct+dyPct);
-    el.style.left=pos.left+'%';el.style.top=pos.top+'%';el.style.bottom='auto';
+    for(var i=0;i<members.length;i++){
+      var m=members[i];
+      var pos=layoutClamp(m.el,m.startLeft+dxPct,m.startTop+dyPct);
+      m.el.style.left=pos.left+'%';m.el.style.top=pos.top+'%';m.el.style.bottom='auto';
+    }
   }
   function endDrag(){
-    el.classList.remove('dragging');
-    jsLog('LAYOUT_DRAG_END id='+el.id+' na left='+el.style.left+' top='+el.style.top);
+    var names=[];
+    for(var i=0;i<members.length;i++){members[i].el.classList.remove('dragging');names.push(members[i].el.id+'@'+members[i].el.style.left+','+members[i].el.style.top);}
+    jsLog('LAYOUT_DRAG_END '+names.join(' | '));
+    members=[];
   }
   function touchStart(ev){
     if(!layoutEditActive)return;
@@ -595,6 +767,9 @@ function bindLayoutDrag(el){
 function layoutEditEnter(){
   closeHelp();
   layoutEditActive=true;
+  layoutGroupMode=false;
+  var toggle=$('layoutModeToggle');if(toggle){toggle.classList.remove('active');toggle.textContent='PO SKUPINÁCH';}
+  layoutHintUpdate();
   for(var i=0;i<LAYOUT_IDS.length;i++){
     var el=$(LAYOUT_IDS[i]);if(!el)continue;
     bindLayoutDrag(el);el.classList.add('layoutEdit');
@@ -810,7 +985,28 @@ if($('tvWebCast'))$('tvWebCast').addEventListener('click',function(e){e.preventD
 $('btnEditLayout').addEventListener('click',function(e){e.preventDefault();layoutEditEnter();},true);
 $('layoutEditDone').addEventListener('click',function(e){e.preventDefault();layoutEditExit(true);},true);
 $('layoutEditReset').addEventListener('click',function(e){e.preventDefault();layoutReset();},true);
+$('layoutModeToggle').addEventListener('click',function(e){e.preventDefault();toggleLayoutGroupMode();},true);
 layoutLoad();
+$('btnCtrlSettings').addEventListener('click',function(e){e.preventDefault();closeHelp();showCtrl();},true);
+$('btnMirror').addEventListener('click',function(e){e.preventDefault();layoutMirrorHorizontal();},true);
+$('ctrlClose').addEventListener('click',function(e){e.preventDefault();closeCtrl();},true);
+$('ctrlReset').addEventListener('click',function(e){e.preventDefault();ctrlReset();},true);
+function ctrlOnSlide(key,parse){
+  return function(e){
+    ctrlSettings[key]=parse(e.target.value);
+    ctrlApplyVisual();ctrlUpdateLabels();
+  };
+}
+$('ctrlSensitivity').addEventListener('input',ctrlOnSlide('sensitivity',function(v){return parseInt(v,10);}),true);
+$('ctrlOpacity').addEventListener('input',ctrlOnSlide('opacity',function(v){return parseInt(v,10);}),true);
+$('ctrlSize').addEventListener('input',ctrlOnSlide('size',function(v){return parseInt(v,10);}),true);
+/* ulozime az po puštění posuvniku (change), ne po kazdem pixelu (input) -
+   at nezaplavime localStorage/log desitkami zapisu behem jednoho tazeni */
+$('ctrlSensitivity').addEventListener('change',function(){ctrlSave();},true);
+$('ctrlOpacity').addEventListener('change',function(){ctrlSave();},true);
+$('ctrlSize').addEventListener('change',function(){ctrlSave();},true);
+$('ctrlHaptic').addEventListener('change',function(e){ctrlSettings.haptic=!!e.target.checked;ctrlSave();},true);
+ctrlLoad();
 $('logSave').addEventListener('click',function(e){e.preventDefault();
   var fn='AtariHelp_PS1_LOG_'+(function(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());})()+'.txt';
   try{

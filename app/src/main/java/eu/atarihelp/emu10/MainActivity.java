@@ -15,6 +15,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Build;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.os.Debug; // BUILD2RW: passive heap/GC audit only
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -4513,6 +4516,38 @@ public class MainActivity extends Activity {
         public String ps1Log(String line) {
             appendNativeLog("PS1_JS " + (line == null ? "" : line));
             return "OK";
+        }
+        // BUILD2SB6: hapticka odezva pro profi ovladac - kratky, jemny tik
+        // pri stisku (ms omezeno na rozumny rozsah, at si JS strana
+        // neposle nesmysl a netelefonuje s telefonem donekonecna).
+        private Vibrator ps1VibratorCache = null;
+        private Vibrator ps1Vibrator() {
+            if (ps1VibratorCache != null) return ps1VibratorCache;
+            try {
+                if (Build.VERSION.SDK_INT >= 31) {
+                    VibratorManager vm = (VibratorManager) getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE);
+                    ps1VibratorCache = (vm != null) ? vm.getDefaultVibrator() : null;
+                } else {
+                    ps1VibratorCache = (Vibrator) getSystemService(android.content.Context.VIBRATOR_SERVICE);
+                }
+            } catch (Throwable ignored) { ps1VibratorCache = null; }
+            return ps1VibratorCache;
+        }
+        @JavascriptInterface
+        public String ps1Vibrate(int ms) {
+            try {
+                Vibrator v = ps1Vibrator();
+                if (v == null || !v.hasVibrator()) return "NO_VIBRATOR";
+                int clamped = Math.max(1, Math.min(60, ms));
+                if (Build.VERSION.SDK_INT >= 26) {
+                    v.vibrate(VibrationEffect.createOneShot(clamped, VibrationEffect.DEFAULT_AMPLITUDE));
+                } else {
+                    v.vibrate(clamped);
+                }
+                return "OK";
+            } catch (Throwable t) {
+                return "ERR " + t.getMessage();
+            }
         }
         // BUILD2SA2/SA5P: ulozi BIOS .bin do systemove slozky jadra, pokud ho uzivatel sam vybere.
         @JavascriptInterface

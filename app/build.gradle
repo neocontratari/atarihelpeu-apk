@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 251
-        versionName "EMU10-B205-DPAD-JEDEN-KUS"  // Podle screenshotu z testu: D-pad je zpatky JEDEN kulaty ovladac (presouva se jako celek, s diagonalami jako drive) - akcni tlacitka Triangle/Circle/Cross/Square zustavaji 4 samostatna. Editacni lista v landscape presunuta nahoru, uz nekryje L1/L2/R1/R2/SELECT/START. SETTINGS uz neni doslovny pretekajici napis, jen male ozubene kolo bez textu, prusvitnejsi.
+        versionCode 255
+        versionName "EMU10-B209-LEVAK-PRESNEJI"  // Oprava na Reneho otazku ('staci jen svisla osa?'): zrcadleni ted prohazuje JEN D-pad + 4 akcni tlacitka (skutecna volba palcem = handedness). L1/L2/R1/R2 uz se NEPROHAZUJI - jsou pojmenovane podle hrany telefonu (leva/prava ruka na ni je porad stejna, at hraje kdokoli), prohodit by je bylo vecne spatne, ne jina volba. SELECT/START a spodni menu lista taky zustavaji - nesouvisi s tim, kterou rukou hraje.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

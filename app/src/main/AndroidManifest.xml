@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- BUILD2SB6: hapticka odezva na stisk PS1 tlacitek (profi ovladac, ne jen viditelny ctverecek) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- BUILD2SA42: aktualizace primo ze site (PackageInstaller) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
