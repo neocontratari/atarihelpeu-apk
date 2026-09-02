@@ -13,8 +13,15 @@
      stejne jako v B206. */
   --napBtnOpacity:1;
   --napBtnScale:1;
+  --napDpadScale:1;
 }
 .ctrlAdjustable{opacity:var(--napBtnOpacity);transform:scale(var(--napBtnScale));}
+/* BUILD2SB11: Rene: "at se da nastavit i velikost jen samostatneho
+   kolecka ovladace. Ne vse naraz zvetsit." D-pad ma VLASTNI promennou
+   velikosti, nezavislou na akcnich/ramennich tlacitkach - #dpad.ctrlAdjustable
+   ma vyssi specificitu nez holé .ctrlAdjustable, takze mu vyhraje tohle
+   pravidlo misto sdileneho --napBtnScale. Pruhlednost zustava sdilena. */
+#dpad.ctrlAdjustable{transform:scale(var(--napDpadScale));}
 html,body{min-height:100%;background:#02060b;color:#dfeaff;font-family:"Courier New",monospace;overflow-x:hidden;}
 body{display:flex;justify-content:center;align-items:flex-start;}
 .stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#02060b;overflow:hidden;box-shadow:0 0 56px rgba(0,0,0,.95);}
@@ -36,8 +43,21 @@ body{display:flex;justify-content:center;align-items:flex-start;}
    kus. Rene chtel kazde tlacitko zvlast, tak je tu jich 8 mistoosmi
    samostatnych - a jsou malá, presne jako ostatní tlacitka, ne poloviny
    obrazovky. */
-.padBtn{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.82);font:900 18px/1 Arial,sans-serif;background:rgba(255,255,255,.055);border:1.5px solid rgba(255,255,255,.24);border-radius:999px;box-shadow:0 0 14px rgba(0,0,0,.30) inset;text-shadow:0 2px 4px #000;}
-.padBtn:active{border-color:rgba(255,229,145,.68);box-shadow:0 4px 18px rgba(0,0,0,.5),0 0 18px rgba(255,214,112,.2) inset;}
+/* BUILD2SB12: TOHLE byla ta skutecna chyba, na kterou Rene upozornil
+   screenshotem - .padBtn davala D-padu/akcnim tlacitkum VIDITELNY
+   border+glyph i v portrait, kde uz je pod nimi hotova fotografie
+   ovladace ve skinu. Vysledek: pres fotku se kreslily navic je poloprum
+   pruhledne kolecko a zlatave znaky trojuhelnik/kolecko/ctverec/krizek,
+   jinde a jinak velke nez skutecne ikonky na fotce - presne to "dalsi
+   tlacitka, ktera prekreslila original obrazek", o kterem psal.
+   Ovladac ve skinu ZUSTAVA a je funkcni (hitboxy pod nim porad
+   fungujou) - jen uz nejsou VIDET, presne jak to bylo mit byt od
+   zacatku. Viditelny zlato-stribrny styl .padBtn zustava JEN v
+   landscape (viz dale v souboru), kde zadna fotka ovladace neni. */
+.padBtn{display:flex;align-items:center;justify-content:center;color:transparent;font-size:0;background:transparent;border:0;box-shadow:none;text-shadow:none;}
+/* .padBtn:active v portrait uz nic nekresli - stejny duvod jako vyse,
+   .hit:active (obecne, uplne dole v CSS) dava tichy modry zablesk pri
+   klepnuti uplne stejne jako vsem ostatnim neviditelnym tlacitkum. */
 /* BUILD2SB5: D-pad je znovu JEDEN kulaty ovladac (presouva se jako celek),
    akcni tlacitka (Triangle/Circle/Cross/Square) zustavaji ctyri
    samostatna - presne to Rene chtel: skutecny pad je jeden fyzicky kus,
@@ -56,6 +76,12 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnSave{left:79.1%;top:82.7%;width:17.5%;height:12.9%;}
 #fileInput{display:none;}
 #ps1Screen{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;background:#000;image-rendering:auto;display:none;pointer-events:none;}
+/* BUILD2SB11: Rene - "Nastaveni a ovladani d-padu bude jen na mobilu na
+   sirku." Portrait uz neni pro hrani vubec, je to jen uvodni/vyberova
+   obrazovka (BACK, SETTINGS, MONITOR, RESET/MEMORY/CD/LOAD/SAVE) - cely
+   herni ovladac (D-pad, akcni tlacitka, ramena, Select/Start) v ni proto
+   nema co delat, at uz viditelne (obrazek ovladace - smazano ze skinu)
+   nebo funkcne (tyhle .hit zony). */
 #btnL1,#btnL2,#btnR1,#btnR2{display:none;}
 .toast{position:absolute;left:5%;right:5%;bottom:3.8%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(120,200,255,.56);box-shadow:0 0 22px rgba(70,170,255,.18);color:#dff6ff;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
@@ -110,9 +136,16 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     ovladac je zpatky kulaty a jeden, presouva se jako celek. Akcni
     tlacitka (4 opravdu samostatne knoflíky na PS1 padu) zustavaji 4
     oddelena tlacitka - to bylo spravne uz predtim. */
- .padBtn{display:flex;align-items:center;justify-content:center;color:rgba(255,236,176,.82);font:900 22px/1 Arial,sans-serif;background:rgba(255,255,255,.055);border:1.5px solid rgba(255,255,255,.24);border-radius:999px;box-shadow:0 0 14px rgba(0,0,0,.30) inset;text-shadow:0 2px 4px #000;z-index:12;}
- .padBtn:active{border-color:rgba(255,229,145,.68);box-shadow:0 4px 18px rgba(0,0,0,.5),0 0 18px rgba(255,214,112,.2) inset;}
- #dpad{left:2%;top:32%;width:30vh;height:30vh;min-width:110px;min-height:110px;max-width:210px;max-height:210px;border-radius:50%;font-size:36px;}
+ /* BUILD2SB11: Rene chtel ovladac graficky lepsi, hodny PS1, ve stylu
+    BIOS obrazovky - stejny zlato-stribrny prstenec, jaky ma RESET/
+    MEMORY CARD/CD ikony ve skinu (tmave stredove pozadi, bronzovy
+    prstenec, stribrny lem, jemny lesk). */
+ .padBtn{display:flex;align-items:center;justify-content:center;color:rgba(255,214,120,.94);font:900 22px/1 Arial,sans-serif;background:radial-gradient(circle at 34% 28%,rgba(70,78,90,.92),rgba(8,11,16,.96) 72%);border:2px solid rgba(198,165,89,.8);border-radius:999px;box-shadow:0 0 0 3px rgba(18,22,30,.92),0 0 0 5px rgba(198,165,89,.38),0 4px 14px rgba(0,0,0,.55),0 0 16px rgba(255,214,120,.10) inset;text-shadow:0 2px 4px #000;z-index:12;}
+ .padBtn:active{border-color:rgba(255,229,145,.98);box-shadow:0 0 0 3px rgba(18,22,30,.92),0 0 0 5px rgba(255,214,120,.65),0 4px 18px rgba(0,0,0,.6),0 0 22px rgba(255,214,120,.32) inset;}
+ /* D-pad: misto krizku maly plny knoflik uprostred (Rene: "nebude
+    krizek ale dalsi plne male kolecko") - font-size mensi nez u
+    akcnich tlacitek, at kolecko vypada jako stred, ne jako popisek. */
+ #dpad{left:2%;top:32%;width:30vh;height:30vh;min-width:110px;min-height:110px;max-width:210px;max-height:210px;border-radius:50%;font-size:15px;color:rgba(255,224,150,.85);}
  #btnTriangle{left:76%;top:42%;width:9%;height:7.5%;}
  #btnSquare{left:67%;top:52%;width:9%;height:7.5%;}
  #btnCircle{left:85%;top:52%;width:9%;height:7.5%;}
@@ -153,7 +186,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <a id="btnBack" class="hit" href="../index.html">BACK</a>
   <button id="btnSettings" class="hit" type="button">&#9881;</button>
   <button id="psMonitor" class="hit" type="button">MONITOR</button>
-  <button id="dpad" class="hit padBtn ctrlAdjustable" type="button">&#10010;</button>
+  <button id="dpad" class="hit padBtn ctrlAdjustable" type="button">&#9679;</button>
   <button id="btnTriangle" class="hit padBtn ctrlAdjustable" type="button">&#9651;</button>
   <button id="btnCircle" class="hit padBtn ctrlAdjustable" type="button">&#9675;</button>
   <button id="btnCross" class="hit padBtn ctrlAdjustable" type="button">&#10005;</button>
@@ -233,9 +266,13 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <input id="ctrlOpacity" type="range" min="25" max="100" step="5" value="100">
     <p id="ctrlOpacityVal" class="ctrlVal"></p>
 
-    <p><b>Velikost tlačítek</b></p>
+    <p><b>Velikost tlačítek</b> — Triangle/Circle/Cross/Square, ramena, Select/Start.</p>
     <input id="ctrlSize" type="range" min="70" max="150" step="5" value="100">
     <p id="ctrlSizeVal" class="ctrlVal"></p>
+
+    <p><b>Velikost D-padu</b> — jen kulatý ovladač, samostatně.</p>
+    <input id="ctrlDpadSize" type="range" min="70" max="150" step="5" value="100">
+    <p id="ctrlDpadSizeVal" class="ctrlVal"></p>
 
     <div class="ctrlRow">
       <input id="ctrlHaptic" type="checkbox" checked>
@@ -339,22 +376,25 @@ function openSettingsForOrientation(){
    (pruhlednost/velikost tlacitek), hapticka odezva. Ulozeno zvlast od
    pozic tlacitek (jina vec - "jak to vypada/citi" vs "kde to je"). ===== */
 var CTRL_KEY='napPs1CtrlSettings';
-var ctrlDefaults={sensitivity:42,opacity:100,size:100,haptic:true};
-var ctrlSettings={sensitivity:42,opacity:100,size:100,haptic:true};
+var ctrlDefaults={sensitivity:42,opacity:100,size:100,dpadSize:100,haptic:true};
+var ctrlSettings={sensitivity:42,opacity:100,size:100,dpadSize:100,haptic:true};
 function ctrlApplyVisual(){
   var root=document.documentElement;
   root.style.setProperty('--napBtnOpacity',(ctrlSettings.opacity/100).toFixed(2));
   root.style.setProperty('--napBtnScale',(ctrlSettings.size/100).toFixed(2));
+  root.style.setProperty('--napDpadScale',(ctrlSettings.dpadSize/100).toFixed(2));
 }
 function ctrlUpdateLabels(){
   var a=$('ctrlSensitivityVal');if(a)a.textContent='Citlivost: '+ctrlSettings.sensitivity+' %';
   var b=$('ctrlOpacityVal');if(b)b.textContent='Průhlednost: '+ctrlSettings.opacity+' %';
   var c=$('ctrlSizeVal');if(c)c.textContent='Velikost: '+ctrlSettings.size+' %';
+  var d=$('ctrlDpadSizeVal');if(d)d.textContent='Velikost D-padu: '+ctrlSettings.dpadSize+' %';
 }
 function ctrlSyncInputs(){
   var s=$('ctrlSensitivity');if(s)s.value=ctrlSettings.sensitivity;
   var o=$('ctrlOpacity');if(o)o.value=ctrlSettings.opacity;
   var z=$('ctrlSize');if(z)z.value=ctrlSettings.size;
+  var dz=$('ctrlDpadSize');if(dz)dz.value=ctrlSettings.dpadSize;
   var h=$('ctrlHaptic');if(h)h.checked=!!ctrlSettings.haptic;
   ctrlUpdateLabels();
 }
@@ -371,7 +411,7 @@ function ctrlSave(){
   jsLog('CTRL_SAVE '+JSON.stringify(ctrlSettings));
 }
 function ctrlReset(){
-  ctrlSettings={sensitivity:ctrlDefaults.sensitivity,opacity:ctrlDefaults.opacity,size:ctrlDefaults.size,haptic:ctrlDefaults.haptic};
+  ctrlSettings={sensitivity:ctrlDefaults.sensitivity,opacity:ctrlDefaults.opacity,size:ctrlDefaults.size,dpadSize:ctrlDefaults.dpadSize,haptic:ctrlDefaults.haptic};
   ctrlApplyVisual();ctrlSyncInputs();ctrlSave();
   toast('Ovládání vráceno na výchozí',2000);
 }
@@ -1045,11 +1085,13 @@ function ctrlOnSlide(key,parse){
 $('ctrlSensitivity').addEventListener('input',ctrlOnSlide('sensitivity',function(v){return parseInt(v,10);}),true);
 $('ctrlOpacity').addEventListener('input',ctrlOnSlide('opacity',function(v){return parseInt(v,10);}),true);
 $('ctrlSize').addEventListener('input',ctrlOnSlide('size',function(v){return parseInt(v,10);}),true);
+$('ctrlDpadSize').addEventListener('input',ctrlOnSlide('dpadSize',function(v){return parseInt(v,10);}),true);
 /* ulozime az po puštění posuvniku (change), ne po kazdem pixelu (input) -
    at nezaplavime localStorage/log desitkami zapisu behem jednoho tazeni */
 $('ctrlSensitivity').addEventListener('change',function(){ctrlSave();},true);
 $('ctrlOpacity').addEventListener('change',function(){ctrlSave();},true);
 $('ctrlSize').addEventListener('change',function(){ctrlSave();},true);
+$('ctrlDpadSize').addEventListener('change',function(){ctrlSave();},true);
 $('ctrlHaptic').addEventListener('change',function(e){ctrlSettings.haptic=!!e.target.checked;ctrlSave();},true);
 ctrlLoad();
 $('logSave').addEventListener('click',function(e){e.preventDefault();
