@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 255
-        versionName "EMU10-B209-LEVAK-PRESNEJI"  // Oprava na Reneho otazku ('staci jen svisla osa?'): zrcadleni ted prohazuje JEN D-pad + 4 akcni tlacitka (skutecna volba palcem = handedness). L1/L2/R1/R2 uz se NEPROHAZUJI - jsou pojmenovane podle hrany telefonu (leva/prava ruka na ni je porad stejna, at hraje kdokoli), prohodit by je bylo vecne spatne, ne jina volba. SELECT/START a spodni menu lista taky zustavaji - nesouvisi s tim, kterou rukou hraje.
+        versionCode 257
+        versionName "EMU10-B211-LEVAK-DIAGNOSTIKA"  // Rene: PROHODIT D-PAD A AKCE (LEVAK) bylo v B209 mrtve tlacitko. Kod, zapojeni i logika jsou stejne jako u UPRAVIT ROZLOZENI/OVLADANI (ty fungovaly), simulace projde cisto - pricinu jsem staticky nenasel. V Reneho vlastnim logu z B209 neni ANI JEDEN radek LAYOUT_MIRROR, takze klik ocividne vubec nedosel do JS. Pridal jsem jsLog('LAYOUT_MIRROR_TAP') hned na zacatek click handleru - pri dalsim testu z /8765/log poznam, jestli se to ted spusti vubec, nebo az uvnitr funkce. Tlacitko je navic ted v B210 v uplne novem, kratsim panelu (bez rolovani pres velky log textarea a spoustu jinych tlacitek predtim) - mozna se tim problem vyresil sam.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

@@ -201,12 +201,25 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <button id="psCachePath" type="button">PS1 CACHE CESTA</button>
     <button id="psCacheClear" type="button">SMAZAT PS1 CACHE</button>
     <button id="tvWebCast" type="button">TV WEB CAST</button>
-    <button id="btnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
-    <button id="btnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
-    <button id="btnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
+    <button id="btnDpadMenuFromHelp" type="button">D-PAD A OVLÁDÁNÍ</button>
     <button id="logSave" type="button">ULOZIT LOG (Downloads/AtariHelp)</button>
     <button id="logCopy" type="button">KOPIROVAT LOG</button>
     <button id="helpClose" type="button">ZAVRIT</button>
+  </div>
+</div>
+<!-- BUILD2SB9: Rene chtel ozubene kolecko cistě jen na D-pad - predtim
+     vedlo do helpPanel se vsim (BIOS, CD, memory card, log...) a
+     nastaveni D-padu tam bylo zahrabane mezi tim. Ted je to samostatny,
+     zaostreny panel jen pro ovladac - v landscape (kde se hraje) na nej
+     jde ozubene kolecko primo. -->
+<div id="dpadMenuPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>D-PAD A OVLÁDÁNÍ</h2>
+    <button id="btnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
+    <button id="btnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
+    <button id="btnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
+    <button id="dpadMenuMore" type="button" class="secondary">DALŠÍ (BIOS, CD, LOG...)</button>
+    <button id="dpadMenuClose" type="button">ZAVŘÍT</button>
   </div>
 </div>
 <div id="ctrlPanel" class="panel" aria-hidden="true">
@@ -313,6 +326,15 @@ function updateRemoteBanner(st){
 }
 function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v)v.value=LOG.join('\n');}
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function showDpadMenu(){var p=$('dpadMenuPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}}
+function closeDpadMenu(){var p=$('dpadMenuPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+/* BUILD2SB9: v landscape (skutecne hrani) vede ozubene kolecko primo na
+   zaostreny D-PAD A OVLADANI panel, ne na cely helpPanel se vsim ostatnim.
+   V portrait (uvodni/vyberova obrazovka) zustava puvodni chovani - tam
+   davaji BIOS/CD/log smysl rovnou, nejsou to tri kliknuti navic. */
+function openSettingsForOrientation(){
+  if(layoutOrientation()==='landscape')showDpadMenu();else showHelp();
+}
 /* ===== BUILD2SB6: profi nastaveni ovladace - citlivost D-padu, vzhled
    (pruhlednost/velikost tlacitek), hapticka odezva. Ulozeno zvlast od
    pozic tlacitek (jina vec - "jak to vypada/citi" vs "kde to je"). ===== */
@@ -720,10 +742,30 @@ function bindLayoutDrag(el){
   function moveDrag(x,y){
     var sr=stageRect();
     var dxPct=((x-startX)/sr.width)*100,dyPct=((y-startY)/sr.height)*100;
+    /* BUILD2SB10: nalezeno v Reneho skutecnem testovacim logu - orezavani
+       KAZDEHO clena skupiny zvlast (puvodni kod volal layoutClamp() pro
+       kazdy element samostatne) zpusobilo, ze se skupina u okraje
+       obrazovky "rozjela": kazde tlacitko se zastavilo jinde, protoze
+       kazde ma jinou sirku/pozici. V logu to bylo videt jako L1/L2/R1/R2
+       s naraz ruznymi top hodnotami, i kdyz zacinaly stejne.
+       OPRAVA: spocitat JEDEN spolecny povoleny rozsah posunu pres vsechny
+       cleny (pruniku vsech jejich jednotlivych limitu) a ten pak pouzit
+       na vsechny stejne - skupina se u okraje jen cele zastavi, ale
+       nerozpadne se. Pro jednotlivy presun (1 clen) vyjde naprosto stejny
+       vysledek jako predtim - zadna regrese. */
+    var minDx=-Infinity,maxDx=Infinity,minDy=-Infinity,maxDy=Infinity;
     for(var i=0;i<members.length;i++){
       var m=members[i];
-      var pos=layoutClamp(m.el,m.startLeft+dxPct,m.startTop+dyPct);
-      m.el.style.left=pos.left+'%';m.el.style.top=pos.top+'%';m.el.style.bottom='auto';
+      var r=m.el.getBoundingClientRect();
+      var wPct=(r.width/sr.width)*100,hPct=(r.height/sr.height)*100;
+      minDx=Math.max(minDx,-m.startLeft);maxDx=Math.min(maxDx,(100-wPct)-m.startLeft);
+      minDy=Math.max(minDy,-m.startTop);maxDy=Math.min(maxDy,(100-hPct)-m.startTop);
+    }
+    dxPct=Math.max(minDx,Math.min(maxDx,dxPct));
+    dyPct=Math.max(minDy,Math.min(maxDy,dyPct));
+    for(var j=0;j<members.length;j++){
+      var mm=members[j];
+      mm.el.style.left=(mm.startLeft+dxPct)+'%';mm.el.style.top=(mm.startTop+dyPct)+'%';mm.el.style.bottom='auto';
     }
   }
   function endDrag(){
@@ -765,7 +807,7 @@ function bindLayoutDrag(el){
   el.addEventListener('mouseleave',mouseUp,true);
 }
 function layoutEditEnter(){
-  closeHelp();
+  closeHelp();closeDpadMenu();
   layoutEditActive=true;
   layoutGroupMode=false;
   var toggle=$('layoutModeToggle');if(toggle){toggle.classList.remove('active');toggle.textContent='PO SKUPINÁCH';}
@@ -956,7 +998,7 @@ window.addEventListener('orientationchange',function(){setTimeout(function(){
   for(var i=0;i<LAYOUT_IDS.length;i++){var el=$(LAYOUT_IDS[i]);if(el){el.style.left='';el.style.top='';el.style.bottom='';}}
   layoutLoad();
 },80);},true);
-$('btnSettings').addEventListener('click',function(e){e.preventDefault();showHelp();},true);
+$('btnSettings').addEventListener('click',function(e){e.preventDefault();openSettingsForOrientation();},true);
 $('psMonitor').addEventListener('click',function(e){e.preventDefault();},true);
 $('btnReset').addEventListener('click',function(e){e.preventDefault();toast('PS1 RESET pripraven',1800);},true);
 $('btnMemory').addEventListener('click',function(e){e.preventDefault();ps1QuickLoad();},true);
@@ -977,6 +1019,9 @@ bindLockHold($('btnR2'),'R2');
 bindHold($('btnSelect'),'SELECT');
 bindHold($('btnStart'),'START');
 $('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
+$('dpadMenuClose').addEventListener('click',function(e){e.preventDefault();closeDpadMenu();},true);
+$('dpadMenuMore').addEventListener('click',function(e){e.preventDefault();closeDpadMenu();showHelp();},true);
+$('btnDpadMenuFromHelp').addEventListener('click',function(e){e.preventDefault();closeHelp();showDpadMenu();},true);
 if($('psRemoteUrl'))$('psRemoteUrl').addEventListener('click',function(e){e.preventDefault();bootPs1RemoteUrl();},true);
 if($('psGooglePage'))$('psGooglePage').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);
 if($('psCachePath'))$('psCachePath').addEventListener('click',function(e){e.preventDefault();ps1ShowCachePath();},true);
@@ -987,8 +1032,8 @@ $('layoutEditDone').addEventListener('click',function(e){e.preventDefault();layo
 $('layoutEditReset').addEventListener('click',function(e){e.preventDefault();layoutReset();},true);
 $('layoutModeToggle').addEventListener('click',function(e){e.preventDefault();toggleLayoutGroupMode();},true);
 layoutLoad();
-$('btnCtrlSettings').addEventListener('click',function(e){e.preventDefault();closeHelp();showCtrl();},true);
-$('btnMirror').addEventListener('click',function(e){e.preventDefault();layoutMirrorHorizontal();},true);
+$('btnCtrlSettings').addEventListener('click',function(e){e.preventDefault();closeHelp();closeDpadMenu();showCtrl();},true);
+$('btnMirror').addEventListener('click',function(e){e.preventDefault();jsLog('LAYOUT_MIRROR_TAP zaregistrovan klik');layoutMirrorHorizontal();},true);
 $('ctrlClose').addEventListener('click',function(e){e.preventDefault();closeCtrl();},true);
 $('ctrlReset').addEventListener('click',function(e){e.preventDefault();ctrlReset();},true);
 function ctrlOnSlide(key,parse){
