@@ -380,6 +380,12 @@
      EGL/vlakna renderovani/bootovani. Kazdy panel ted plochu schova
      pri otevreni a vrati pri zavreni. Hlaska "Spoustim hru" prodlouzena
      na 11s (skutecne booteni trva ~10s).
+   B222: B221 nebyla stoprocentni (SurfaceView setVisibility se umi
+     zpozdit) - pridano setAlpha(0/1) VEDLE setVisibility, spolehlivejsi
+     pro hardwarovou vrstvu, porad zadny zasah do EGL. Vsechny panely
+     predelany na zlato-modry PS1-BIOS styl (dvojity zlaty ram, modra
+     zare pozadi, hry jako CD sloty). Staticka hlaska pri SPUSTIT
+     nahrazena skutecnym tikajicim odpoctem (startBootCountdown, 10->0).
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

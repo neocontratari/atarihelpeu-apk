@@ -93,7 +93,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .remoteBanner .remotePath{margin-top:3px;color:#9cdfff;font-size:.82em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .remoteBanner .remoteBar{height:6px;margin-top:7px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;}
 .remoteBanner .remoteFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#54d8ff,#ffe08b);box-shadow:0 0 12px rgba(116,210,255,.55);}
-.panel{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#dfeaff;}
+.panel{display:none;position:fixed;inset:0;z-index:80;background:radial-gradient(circle at 50% 38%,rgba(40,60,140,.34),rgba(2,4,10,.97) 62%);padding:18px;overflow:auto;color:#dfeaff;}
 .panel.open{display:block;}
 /* BUILD2SB1: rezim upravy rozlozeni tlacitek - viz layoutEdit.js sekce dole */
 .hit.layoutEdit{outline:2px dashed rgba(255,214,80,.92);outline-offset:2px;border-radius:14px;background:rgba(255,214,80,.10);box-shadow:0 0 16px rgba(255,214,80,.28);z-index:70;}
@@ -113,26 +113,32 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnEditLayout{display:none;}
 #btnCtrlSettings{display:none;}
 #btnMirror{display:none;}
-.panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#07101b,#02060b);border:1px solid rgba(125,200,255,.45);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(80,170,255,.16) inset;}
-.panel h2{font:900 23px "Courier New",monospace;margin-bottom:12px;color:#f1d78e;text-align:center;}
+/* BUILD2SB22: Rene - "dej si zalezet na te grafice vyberu her, at to ma
+   nejaky styl, inspiruj se grafikou z bios ps1 bez cd." Dvojity
+   zlato-stribrny ram (jako RESET/MEMORY CARD ikony ve skinu), modra
+   zare pozadi jako "MAIN MENU" BIOS obrazovka. */
+.panel .box{position:relative;max-width:760px;margin:0 auto;background:linear-gradient(180deg,#0a1830,#03060d);border:2px solid rgba(216,182,90,.55);border-radius:20px;padding:20px;box-shadow:0 0 0 1px rgba(255,255,255,.06) inset,0 0 44px rgba(0,0,0,.85),0 0 30px rgba(80,150,255,.14) inset;}
+.panel .box:before{content:'';position:absolute;inset:6px;border:1px solid rgba(140,200,255,.22);border-radius:14px;pointer-events:none;}
+.panel h2{font:900 24px "Courier New",monospace;margin-bottom:12px;color:#f1d78e;text-align:center;letter-spacing:.06em;text-shadow:0 0 14px rgba(255,214,120,.4),0 2px 4px #000;}
 .panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
 .panel b{color:#8ee7ff;}
-.panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d8b65a;color:#06070a;font:900 15px "Courier New",monospace;}
+.panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:linear-gradient(180deg,#f0d99b,#c99f45);color:#06070a;font:900 15px "Courier New",monospace;box-shadow:0 2px 0 rgba(0,0,0,.3),0 0 14px rgba(216,182,90,.25);}
 /* BUILD2SB6: posuvniky a zaskrtavatko pro panel OVLADANI */
 .panel input[type=range]{width:100%;margin:6px 0 2px;accent-color:#8ee7ff;height:28px;}
 .panel .ctrlVal{text-align:center;color:#8ee7ff;font:800 13px "Courier New",monospace;margin:0 0 10px;}
 .panel .ctrlRow{display:flex;align-items:center;gap:10px;margin:14px 0;color:#e9eef7;font:800 14px "Courier New",monospace;}
 .panel .ctrlRow input[type=checkbox]{width:22px;height:22px;accent-color:#8ee7ff;}
-.panel button.secondary{background:rgba(255,255,255,.12);color:#dfeaff;border:1px solid rgba(255,255,255,.3);}
-/* BUILD2SB14: seznam her v PAMĚŤOVÉ KARTĚ */
-.libGame{display:flex;align-items:center;gap:10px;padding:10px;margin:8px 0;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.16);}
+.panel button.secondary{background:rgba(255,255,255,.12);color:#dfeaff;border:1px solid rgba(255,255,255,.3);box-shadow:none;}
+/* BUILD2SB22: hry jako CD sloty - tmavy stred, zlaty okraj, prosvetlene
+   kolecko PLAY (stejny jazyk jako .padBtn D-padu/akcnich tlacitek). */
+.libGame{position:relative;display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(216,182,90,.35);box-shadow:0 0 0 1px rgba(0,0,0,.4) inset;}
 .libGame .libInfo{flex:1;min-width:0;}
 .libGame .libName{font:900 13px "Courier New",monospace;color:#f1d78e;word-break:break-all;}
 .libGame .libMeta{font:800 11px "Courier New",monospace;color:#9fb3c8;margin-top:3px;}
 .libGame .libSaveTag{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:999px;font:800 10px "Courier New",monospace;background:rgba(110,190,255,.18);color:#bfe6ff;border:1px solid rgba(110,190,255,.4);}
-.libGame button{width:auto;margin:0;padding:10px 12px;font-size:18px;line-height:1;border-radius:10px;}
-.libGame .libPlay{background:#d8b65a;color:#06070a;}
-.libGame .libDel{background:rgba(255,90,90,.18);color:#ffb3b3;border:1px solid rgba(255,120,120,.4);}
+.libGame button{width:auto;margin:0;padding:0;font-size:19px;line-height:1;border-radius:999px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:none;}
+.libGame .libPlay{background:radial-gradient(circle at 35% 28%,#fff2c9,#d8b65a 60%,#96702a 100%);color:#2a1d05;box-shadow:0 0 12px rgba(216,182,90,.55),0 2px 3px rgba(0,0,0,.4);}
+.libGame .libDel{background:rgba(255,90,90,.16);color:#ffb3b3;border:1px solid rgba(255,120,120,.4);}
 .libEmpty{text-align:center;color:#9fb3c8;font:800 13px "Courier New",monospace;padding:20px 0;}
 @media (orientation:landscape) and (max-height:760px){
  html,body{width:100%;height:100%;overflow:hidden;background:transparent;}
@@ -354,6 +360,24 @@ function log(t){
   var v=$('ps1LogView'); if(v){v.value=LOG.join('\n');v.scrollTop=v.scrollHeight;}
 }
 function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napPs1Toast);window.__napPs1Toast=setTimeout(function(){el.classList.remove('show');},ms||2400);log(t);}
+/* BUILD2SB22: Rene - "zadny odpocet neni videt kdyz kliknu play v
+   cd/iso." Misto jedne staticke hlasky ("muze to trvat...") skutecny
+   tikajici odpocet, at je jasne videt, ze se neco deje, ne ze appka
+   zamrzla. Pouziva stejny #toast prvek, jen mu kazdou vterinu meni text. */
+function startBootCountdown(seconds){
+  var el=$('toast');if(!el)return;
+  clearTimeout(window.__napPs1Toast);
+  clearInterval(window.__napPs1Countdown);
+  var zbyva=seconds;
+  function tick(){
+    el.textContent='Spouštím hru… '+zbyva+' s (nic se nekazí, jen to chvíli trvá)';
+    el.classList.add('show');
+    if(zbyva<=0){clearInterval(window.__napPs1Countdown);window.__napPs1Toast=setTimeout(function(){el.classList.remove('show');},1500);return;}
+    zbyva--;
+  }
+  tick();
+  window.__napPs1Countdown=setInterval(tick,1000);
+}
 function compactStatusText(t,max){
   t=String(t||'').replace(/\s+/g,' ').trim();
   max=max||96;
@@ -498,7 +522,7 @@ function libraryRefresh(){
       row.querySelector('.libPlay').addEventListener('click',function(e){
         e.preventDefault();
         jsLog('LIBRARY_LAUNCH key='+key);
-        toast('Spouštím hru… může to trvat kolem 10 vteřin, nic se nekazí.',11000);
+        startBootCountdown(10);
         closeLibrary();
         try{if(window.AHPS1&&window.AHPS1.ps1LibraryLaunch)window.AHPS1.ps1LibraryLaunch(key);}catch(err){}
         ensurePs1ScreenAndPoll();

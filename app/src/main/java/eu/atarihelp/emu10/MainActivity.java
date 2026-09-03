@@ -4567,13 +4567,24 @@ public class MainActivity extends Activity {
         // (viz radky 6537/6546) - zadny zasah do EGL/vlakna renderovani,
         // zadne booteni/stop jadra. Panel v JS zavola pred otevrenim
         // (schovej) a po zavreni (ukaz zpet).
+        // BUILD2SB22: Rene - "mas to tam furt, ale jakakoli dalsi akce to
+        // okno vymaze, ale furt to neni stoprocentni." setVisibility() u
+        // SurfaceView (vlastni hardwarova vrstva, mimo normalni kresleni
+        // WebView) je znamy problem - zmena se nekdy neprojevi hned, az
+        // po dalsim prekresleni. setAlpha(0) pusobi primo na GPU vrstvu a
+        // je spolehlivejsi. Delame OBOJI - zadny novy risk (porad zadny
+        // zasah do EGL/vlakna/bootovani), jen silnejsi verze te same,
+        // uz bezpecne osvedcene veci z B221.
         @JavascriptInterface
         public void ps1PlochaVisible(final boolean show) {
             try {
                 runOnUiThread(new Runnable() {
                     public void run() {
                         try {
-                            if (ps1Plocha != null) ps1Plocha.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+                            if (ps1Plocha != null) {
+                                ps1Plocha.setAlpha(show ? 1f : 0f);
+                                ps1Plocha.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+                            }
                         } catch (Throwable ignored) {}
                     }
                 });
