@@ -1,0 +1,12 @@
+Jak znovu spustit tenhle test (na jakemkoli Linuxu s g++):
+
+  g++ -DPOUZIT_STAROU_VERZI -o test_stara test_memcard_wiring.cpp
+  g++ -o test_nova test_memcard_wiring.cpp
+  ./test_stara
+  ./test_nova
+
+Presny vystup z posledniho spusteni je v VYSTUP_TESTU.txt.
+
+Druhy test (B217, cely retezec):
+  g++ -std=c++14 -o test_e2e test_end_to_end.cpp
+  ./test_e2e

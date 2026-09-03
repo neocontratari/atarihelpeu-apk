@@ -210,6 +210,8 @@ static double g_fps = 60.0;
 static std::atomic<bool> g_loaded{false};
 // BUILD2SA11: MEMORY CARD per hra
 static std::string g_srm_path;
+static int g_srm_last_save_ok = -1; // -1 nikdy nezkouseno, 0 selhalo, 1 OK (BUILD2SB13, viz ps1MemCardInfo nize)
+static size_t g_srm_last_size = 0;
 static uint32_t g_srm_last_fnv = 0;
 static uint32_t nap_fnv32(const uint8_t *d, size_t n) {
   uint32_t h = 2166136261u;
@@ -217,12 +219,27 @@ static uint32_t nap_fnv32(const uint8_t *d, size_t n) {
   return h;
 }
 static void nap_srm_set_path(const std::string &gamePath) {
+  // BUILD2SB15: Rene si vsiml rizika - kdyz maji dve RUZNE hry stejny
+  // nazev souboru (bezne u PS1 dumpu - "game.bin", "disc1.bin"...), drive
+  // se pouzival JEN nazev souboru jako klic k ulozene pozici. Dve ruzne
+  // hry se stejnym nazvem by si tise prepsaly memory kartu navzajem,
+  // BEZ JAKEHOKOLI varovani. Kazda hra uz ale ma svou vlastni slozku
+  // (viz ps1RemoteCacheDir v Jave) - ta je VZDY jedinecna. Klic pro
+  // ulozenou pozici proto skladame ze slozky I nazvu souboru, ne jen
+  // z nazvu souboru samotneho.
   std::string leaf = gamePath;
   size_t sl = leaf.find_last_of('/');
-  if (sl != std::string::npos) leaf = leaf.substr(sl + 1);
-  if (leaf.empty() || gamePath.rfind("/proc/self/fd/", 0) == 0) leaf = "rucni_vyber";
+  std::string parentDir;
+  if (sl != std::string::npos) {
+    leaf = gamePath.substr(sl + 1);
+    std::string beforeLeaf = gamePath.substr(0, sl);
+    size_t sl2 = beforeLeaf.find_last_of('/');
+    parentDir = (sl2 != std::string::npos) ? beforeLeaf.substr(sl2 + 1) : beforeLeaf;
+  }
+  if (leaf.empty() || gamePath.rfind("/proc/self/fd/", 0) == 0) { leaf = "rucni_vyber"; parentDir.clear(); }
   size_t dot = leaf.find_last_of('.');
   if (dot != std::string::npos && dot > 0) leaf = leaf.substr(0, dot);
+  if (!parentDir.empty() && parentDir != "ps1_games" && parentDir != "PS1") leaf = parentDir + "__" + leaf;
   for (size_t i = 0; i < leaf.size(); ++i) { char c = leaf[i]; if (!isalnum((unsigned char)c) && c != '-' && c != '_') leaf[i] = '_'; }
   g_srm_path = g_savedir + "/" + leaf + ".srm";
 }
@@ -230,10 +247,20 @@ static void nap_srm_load() {
   void *mem = retro_get_memory_data(0);
   size_t sz = retro_get_memory_size(0);
   if (!mem || !sz) { NAPLOG("BUILD2SA11 MEMCARD_NONE core nedava SAVE_RAM"); return; }
+  // BUILD2SB17: NALEZENO VLASTNIM TESTEM (Rene: "2x mer, jednou rez") -
+  // kdyz .srm soubor JESTE NEEXISTUJE (prvni hrani teto hry), tenhle kod
+  // nechaval Mcd1Data tak, jak byl - tedy s OBSAHEM PREDCHOZI HRY, pokud
+  // uz appka v tehle session nejakou hru hrala! Karta je globalni buffer
+  // sdileny mezi vsemi hrami po celou dobu behu appky, ne neco, co jadro
+  // samo vynuluje pri kazdem prepnuti hry. Bez explicitniho vymazani by
+  // nova hra dostala cizi ulozenou pozici, i kdyz jeji VLASTNI .srm
+  // soubor na disku spravne neexistuje. Overeno testem se dvema hrami
+  // stejneho nazvu - viz test_overeni/test_end_to_end.cpp.
+  memset(mem, 0, sz);
   FILE *f = fopen(g_srm_path.c_str(), "rb");
   if (f) { size_t rd = fread(mem, 1, sz, f); fclose(f);
     NAPLOG("BUILD2SA11 MEMCARD_LOADED %s bytes=%zu/%zu", g_srm_path.c_str(), rd, sz);
-  } else NAPLOG("BUILD2SA11 MEMCARD_NEW %s size=%zu (prvni hrani teto hry)", g_srm_path.c_str(), sz);
+  } else NAPLOG("BUILD2SA11 MEMCARD_NEW %s size=%zu (prvni hrani teto hry, karta vynulovana)", g_srm_path.c_str(), sz);
   g_srm_last_fnv = nap_fnv32((const uint8_t*)mem, sz);
 }
 static void nap_srm_save_if_dirty(const char *why) {
@@ -243,9 +270,11 @@ static void nap_srm_save_if_dirty(const char *why) {
   uint32_t h = nap_fnv32((const uint8_t*)mem, sz);
   if (h == g_srm_last_fnv) return;
   FILE *f = fopen(g_srm_path.c_str(), "wb");
-  if (!f) { NAPLOG("BUILD2SA11 MEMCARD_SAVE_FAIL %s", g_srm_path.c_str()); return; }
+  if (!f) { NAPLOG("BUILD2SA11 MEMCARD_SAVE_FAIL %s", g_srm_path.c_str()); g_srm_last_save_ok = 0; return; }
   fwrite(mem, 1, sz, f); fclose(f);
   g_srm_last_fnv = h;
+  g_srm_last_save_ok = 1;
+  g_srm_last_size = sz;
   NAPLOG("BUILD2SA11 MEMCARD_SAVED %s bytes=%zu why=%s", g_srm_path.c_str(), sz, why);
 }
 
@@ -279,6 +308,28 @@ static const char *nap_core_option_value(const char *key) {
   // nedotknutelne. Zbytek zvukoveho problemu se musi resit jinak - viz
   // nova cista diagnostika ve vlakne emulace (mereni bez zmeny chovani).
   if (strcmp(key, "pcsx_rearmed_neon_enhancement_enable") == 0) return "enabled";
+  // BUILD2SB16: NALEZENA SKUTECNA PRICINA, PROC MEMORY CARD "NEFUNGOVALA".
+  // Rene: "chci primou emulaci a bez fake... memory card u ps1 je dulezita,
+  // bez toho to nema smysl." Mel pravdu, a bylo to hlouběji, nez jsem
+  // cekal - nebyl to jen problem s kolizi nazvu (B215), jadro melo
+  // memory kartu VYPNUTOU CELOU DOBU:
+  //
+  // PCSX ReARMed (load_memcards() v libretro.c) se pta na promennou
+  // "pcsx_rearmed_memcard1" - a kdyz ji frontend NEUMI odpovedet (jako
+  // dosud tady), jadro rovnou preskoci nastaveni karty a necha
+  // memcard_type[0] na vychozich 0 = MEMCARDTYPE_NONE. Bez tohohle
+  // retro_get_memory_data(RETRO_MEMORY_SAVE_RAM) VZDY vraci NULL a
+  // retro_get_memory_size VZDY 0 - presne to, co uz NAPLOG hlasil jako
+  // "MEMCARD_NONE core nedava SAVE_RAM", jen jsem to driv necetl jako
+  // "jadro ma kartu vypnutou", ale jako neskodny okrajovy pripad.
+  //
+  // Hodnota "libretro" prepne jadro na REZIM, kdy memory kartu drzi ono
+  // samo v pameti (Mcd1Data, 128 kB - presne velikost skutecne PS1
+  // karty) a frontend (my) si ji jen ctyri/zapisujeme pres SAVE_RAM
+  // API - presne mechanismus, ktery uz B215 opravil pro jedinecnost
+  // souboru na hru. Bez teto radky byl cely ten system pripojeny na nic.
+  if (strcmp(key, "pcsx_rearmed_memcard1") == 0) return "libretro";
+  if (strcmp(key, "pcsx_rearmed_memcard2") == 0) return "libretro";
   return nullptr;
 }
 static bool nap_env(unsigned cmd, void *data) {
@@ -820,7 +871,31 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Status(JNIEnv *env, jclass) {
     g_boot_error.empty()?"none":g_boot_error.c_str());
   return env->NewStringUTF(out);
 }
-// BUILD2SA2B: vyzvednuti snimku pro nahled (a pozdeji TextureView). Vraci (w<<16)|h, 0 = nic.
+// BUILD2SB13: Rene si stezoval, ze ulozeni hry (memory card) nefunguje,
+// ale diagnosticke NAPLOG("...MEMCARD...") hlasky jdou jen do logcatu,
+// ktery Rene nema jak precist - appka ma svuj vlastni /8765/log a tam
+// se nic z tohohle nikdy nedostalo. Tahle funkce vraci aktualni stav na
+// pozadani (stejny vzor jako ps1Status vyse), aby to JS mohlo poslat do
+// /8765/log pres uz existujici jsLog most - bez potreby slozite volat
+// z C++ zpatky do Javy (JNI callback), coz uz jednou zpusobilo pady
+// jinde v tomhle projektu.
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1MemCardInfo(JNIEnv *env, jclass) {
+  void *mem = retro_get_memory_data(0);
+  size_t sz = retro_get_memory_size(0);
+  FILE *f = g_srm_path.empty() ? nullptr : fopen(g_srm_path.c_str(), "rb");
+  long fileBytes = 0;
+  if (f) { fseek(f, 0, SEEK_END); fileBytes = ftell(f); fclose(f); }
+  char out[768];
+  snprintf(out,sizeof(out),
+    "PS1_MEMCARD path=%s core_da_sram=%s core_sram_bytes=%zu soubor_existuje=%s soubor_bytes=%ld posledni_ulozeni=%s",
+    g_srm_path.empty()?"(zadna hra jeste nenabootovala)":g_srm_path.c_str(),
+    (mem && sz)?"ANO":"NE", sz,
+    f?"ANO":"NE", fileBytes,
+    g_srm_last_save_ok<0?"jeste_nezkouseno":(g_srm_last_save_ok?"OK":"SELHALO"));
+  return env->NewStringUTF(out);
+}
+
 extern "C" JNIEXPORT jint JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1GrabFrame(JNIEnv *env, jclass, jintArray out) {
   static int nap_grabframe_calls = 0; // BUILD2SK101: durable tep - viz komentar vyse

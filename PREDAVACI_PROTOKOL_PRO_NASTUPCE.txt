@@ -317,3 +317,57 @@
  nez to napises. Jednou jsem to neudelal a stalo to duveru.
 
 ===============================================================================
+ 7. DODATEK OD B197 DAL (pise Claude, aktualizuje se u KAZDEHO buildu)
+===============================================================================
+
+ Rene: "txt predavaci protokol, ktery posilas v kazdem buildu - budes
+ pokazde aktualizovat. Kdyby se nahodou neco stalo, at mam stoprocentni
+ zalohu i v predavani dal." Tenhle oddil je presne na to - shrnuti
+ aktualniho stavu, ne nahrada bodu 1-6 vyse (ty porad plati).
+
+ Podrobny popis KAZDEHO buildu je v samostatnem souboru CO_JE_V_BXXX.md
+ v korenu balicku (jeden soubor na build, cisla navazuji). Tady jen
+ nejdulezitejsi shrnuti, at se da zacit i bez cteni desitek souboru:
+
+ CO SE STALO MEZI B197 A NEJNOVEJSIM BUILDEM (soupis, ne detaily):
+   B200: uklid mrtvych souboru (osirele Atari slozky, stara WASM vetev
+     Segy, mrtve Java tridy). Sega bezi cisle na C++ jadru
+     (clownmdemu, knihovna napsega_native_proof - matouci nazev, ale
+     je to zive jadro, NE mrtvy kod - nesahat na nap_sega_native_proof.cpp).
+   B201-B211: PS1 - editovatelne rozlozeni dotykovych tlacitek (D-pad
+     jako JEDEN kulaty ovladac s pohyblivym knoflikem sledujicim prst,
+     4 akcni tlacitka SAMOSTATNE, presun po jednom NEBO po skupinach -
+     prepinac v editacni liste), profi nastaveni (citlivost D-padu,
+     pruhlednost, velikost tlacitek ZVLAST pro D-pad a zvlast pro
+     ostatni, hapticka odezva - AHPS1.ps1Vibrate, nova VIBRATE permission),
+     zrcadleni pro leváky (jen D-pad+akce, NE ramena - viz B209/CO_JE_V_B209),
+     samostatny panel "D-PAD A OVLADANI" (gear ikona v landscape uz
+     nevede na cely BIOS/CD/log panel).
+   B213: DULEZITA OPRAVA - portrait obrazek ovladace (fotka ve skinu)
+     MUSI zustat, jen jeho .hit tlacitka museji byt VIZUALNE neviditelna
+     (predtim `.padBtn` kreslila navic zlate duchy pres fotku - viz
+     CO_JE_V_B213.md, kdyby se to nekdy vratilo).
+   B214: PAMETOVA KARTA je ted opravdova knihovna stazenych her (drive
+     to jen delalo quick-load save-statu, matouci). VELKA ZMENA:
+     appka uz PRED KAZDYM stazenim NEMAZE vsechny predchozi hry
+     (ps1PurgeOtherRemoteGames se uz nevola) - Rene chtel knihovnu
+     vice her, ne jednu aktivni. Diagnostika memory karty (SRAM/.srm)
+     jde ted i do /8765/log (drive jen do logcatu, ktery Rene nevidi).
+
+ CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
+   - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
+     patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most
+     do WebView, System.Vibrator) - a i tam co nejtensi, zadna logika.
+   - Vsechno, co appka dela (JS i nove C++ diagnosticke hlasky), MUSI
+     jit videt v /8765/log - Rene nema ADB, jen tenhle prohlizecovy log.
+     Kdyz pridas cokoli noveho, hned si polož otazku, jestli se to
+     do logu dostane.
+   - Pred smazanim/zmenou cehokoli sdileneho OVERIT, ze to fakt nikdo
+     nepouziva (viz B204 chyba: Ps1GlTextureView.borrowFrame() se
+     volalo staticky, `new Ps1GlTextureView(` grep to nenasel).
+   - Kdyz Rene posle screenshot nebo log, projit ho DUKLADNE, ne jen
+     zbezne - "prohledni si to poradne" byl teprve druhy pokus o
+     vysvetleni te same chyby (viz B212->B213).
+
+===============================================================================
+

@@ -12,6 +12,7 @@ public final class NativePs1CoreBridge {
     // monitoru. Prazdna cesta ke hre = start bez disku (menu BIOSu).
     private static native String ps1BootDoMonitoru(String systemDir, String saveDir, String gamePath);   // start bez disku -> menu BIOSu
     private static native String ps1Status();
+    private static native String ps1MemCardInfo();
     private static native String ps1Stop();
     private static native int ps1GrabFrame(int[] out);
     // PRIME KRESLENI: predame jadru plochu z aplikace, ono na ni kresli samo.
@@ -104,6 +105,10 @@ public final class NativePs1CoreBridge {
     public static String statusSafe() {
         if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;
         try { return ps1Status(); } catch (Throwable t) { return "PS1_STATUS_CALL_FAIL " + t.getMessage(); }
+    }
+    public static String memCardInfoSafe() {
+        if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;
+        try { return ps1MemCardInfo(); } catch (Throwable t) { return "PS1_MEMCARD_CALL_FAIL " + t.getMessage(); }
     }
     public static String stopSafe() {
         if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;

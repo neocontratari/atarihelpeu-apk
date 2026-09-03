@@ -55,6 +55,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
    zacatku. Viditelny zlato-stribrny styl .padBtn zustava JEN v
    landscape (viz dale v souboru), kde zadna fotka ovladace neni. */
 .padBtn{display:flex;align-items:center;justify-content:center;color:transparent;font-size:0;background:transparent;border:0;box-shadow:none;text-shadow:none;}
+.dpadKnob{display:none;}
 /* .padBtn:active v portrait uz nic nekresli - stejny duvod jako vyse,
    .hit:active (obecne, uplne dole v CSS) dava tichy modry zablesk pri
    klepnuti uplne stejne jako vsem ostatnim neviditelnym tlacitkum. */
@@ -123,6 +124,16 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .panel .ctrlRow{display:flex;align-items:center;gap:10px;margin:14px 0;color:#e9eef7;font:800 14px "Courier New",monospace;}
 .panel .ctrlRow input[type=checkbox]{width:22px;height:22px;accent-color:#8ee7ff;}
 .panel button.secondary{background:rgba(255,255,255,.12);color:#dfeaff;border:1px solid rgba(255,255,255,.3);}
+/* BUILD2SB14: seznam her v PAMĚŤOVÉ KARTĚ */
+.libGame{display:flex;align-items:center;gap:10px;padding:10px;margin:8px 0;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.16);}
+.libGame .libInfo{flex:1;min-width:0;}
+.libGame .libName{font:900 13px "Courier New",monospace;color:#f1d78e;word-break:break-all;}
+.libGame .libMeta{font:800 11px "Courier New",monospace;color:#9fb3c8;margin-top:3px;}
+.libGame .libSaveTag{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:999px;font:800 10px "Courier New",monospace;background:rgba(110,190,255,.18);color:#bfe6ff;border:1px solid rgba(110,190,255,.4);}
+.libGame button{width:auto;margin:0;padding:10px 12px;font-size:18px;line-height:1;border-radius:10px;}
+.libGame .libPlay{background:#d8b65a;color:#06070a;}
+.libGame .libDel{background:rgba(255,90,90,.18);color:#ffb3b3;border:1px solid rgba(255,120,120,.4);}
+.libEmpty{text-align:center;color:#9fb3c8;font:800 13px "Courier New",monospace;padding:20px 0;}
 @media (orientation:landscape) and (max-height:760px){
  html,body{width:100%;height:100%;overflow:hidden;background:transparent;}
  body{align-items:center;}
@@ -146,6 +157,10 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     krizek ale dalsi plne male kolecko") - font-size mensi nez u
     akcnich tlacitek, at kolecko vypada jako stred, ne jako popisek. */
  #dpad{left:2%;top:32%;width:30vh;height:30vh;min-width:110px;min-height:110px;max-width:210px;max-height:210px;border-radius:50%;font-size:15px;color:rgba(255,224,150,.85);}
+ /* Rene: "prostredni kolecko se musi pohybovat presne tak jak pohybuji
+    palcem" - viditelny jen v landscape (v portrait je cely #dpad
+    pruhledny, viz vyse), sleduje prst zivě pres JS (bindDpad/moveKnob). */
+ .dpadKnob{display:block;position:absolute;left:50%;top:50%;width:34%;height:34%;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 28%,rgba(255,236,195,.96),rgba(184,144,64,.7) 72%);border:1px solid rgba(255,238,200,.55);box-shadow:0 2px 8px rgba(0,0,0,.55),0 0 12px rgba(255,214,120,.30);transition:transform .05s linear;pointer-events:none;}
  #btnTriangle{left:76%;top:42%;width:9%;height:7.5%;}
  #btnSquare{left:67%;top:52%;width:9%;height:7.5%;}
  #btnCircle{left:85%;top:52%;width:9%;height:7.5%;}
@@ -186,7 +201,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <a id="btnBack" class="hit" href="../index.html">BACK</a>
   <button id="btnSettings" class="hit" type="button">&#9881;</button>
   <button id="psMonitor" class="hit" type="button">MONITOR</button>
-  <button id="dpad" class="hit padBtn ctrlAdjustable" type="button">&#9679;</button>
+  <button id="dpad" class="hit padBtn ctrlAdjustable" type="button"><span class="dpadKnob" aria-hidden="true"></span></button>
   <button id="btnTriangle" class="hit padBtn ctrlAdjustable" type="button">&#9651;</button>
   <button id="btnCircle" class="hit padBtn ctrlAdjustable" type="button">&#9675;</button>
   <button id="btnCross" class="hit padBtn ctrlAdjustable" type="button">&#10005;</button>
@@ -253,6 +268,33 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <button id="btnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
     <button id="dpadMenuMore" type="button" class="secondary">DALŠÍ (BIOS, CD, LOG...)</button>
     <button id="dpadMenuClose" type="button">ZAVŘÍT</button>
+  </div>
+</div>
+<!-- BUILD2SB14: Rene - "memory card musi fungovat presne tak jako jadro
+     PS1... v memory card musi byt ulozene hry... pres memory card musim
+     otevrit hru z kazde pozice a z kazde hry." Skutecna knihovna: co je
+     stazene na telefonu (kazda hra ma svou slozku), da se spustit
+     odsud primo, a smazat. -->
+<div id="libraryPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>PAMĚŤOVÁ KARTA</h2>
+    <p>Hry stažené do telefonu. Klepnutím na hru ji spustíš, koš hru smaže.</p>
+    <div id="libraryList"></div>
+    <button id="libraryRefresh" type="button" class="secondary">OBNOVIT SEZNAM</button>
+    <button id="libraryClose" type="button">ZAVŘÍT</button>
+  </div>
+</div>
+<!-- BUILD2SB15: Rene - "hlasku o tom jestli chci premazat celou hru a
+     nebo celou hru vcetne ulozenych save game." Obycejny confirm() umi
+     jen ANO/NE, tak je to vlastni maly dialog se tremi tlacitky. -->
+<div id="libraryDeleteConfirm" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>SMAZAT HRU</h2>
+    <p id="libraryDeleteName" style="color:#f1d78e;"></p>
+    <p>Co přesně chceš smazat?</p>
+    <button id="libraryDeleteGameOnly" type="button" class="secondary">JEN HRU (uložená pozice zůstane)</button>
+    <button id="libraryDeleteGameAndSave" type="button" style="background:rgba(255,90,90,.75);color:#2a0505;">HRU I ULOŽENOU POZICI</button>
+    <button id="libraryDeleteCancel" type="button" class="secondary">ZRUŠIT</button>
   </div>
 </div>
 <div id="ctrlPanel" class="panel" aria-hidden="true">
@@ -365,6 +407,84 @@ function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttr
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 function showDpadMenu(){var p=$('dpadMenuPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}}
 function closeDpadMenu(){var p=$('dpadMenuPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+/* ===== BUILD2SB14: PAMĚŤOVÁ KARTA - opravdová knihovna stažených her.
+   Rene: "v memory card musi byt ulozene hry... pres memory card musim
+   otevrit hru z kazde pozice a z kazde hry." ===== */
+function libFormatBytes(n){
+  n=Number(n)||0;
+  if(n>=1024*1024*1024)return (n/1024/1024/1024).toFixed(2)+' GB';
+  if(n>=1024*1024)return (n/1024/1024).toFixed(1)+' MB';
+  return Math.round(n/1024)+' KB';
+}
+function libEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function showLibrary(){
+  var p=$('libraryPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}
+  libraryRefresh();
+}
+function closeLibrary(){var p=$('libraryPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function libraryRefresh(){
+  var host=$('libraryList');if(!host)return;
+  host.innerHTML='<p class="libEmpty">Načítám…</p>';
+  var raw='[]';
+  try{if(window.AHPS1&&window.AHPS1.ps1LibraryList)raw=String(window.AHPS1.ps1LibraryList());}catch(e){}
+  jsLog('LIBRARY_LIST '+raw);
+  var list=[];
+  try{list=JSON.parse(raw);}catch(e){list=[];}
+  if(!list.length){host.innerHTML='<p class="libEmpty">Zatím žádná stažená hra. Stáhni hru přes LOAD GAME.</p>';return;}
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var g=list[i];
+    html+='<div class="libGame" data-key="'+libEsc(g.key)+'">'
+        +'<div class="libInfo"><div class="libName">'+libEsc(g.nazev)+'</div>'
+        +'<div class="libMeta">'+libFormatBytes(g.bytes)+'</div>'
+        +(g.ma_ulozenou_hru?'<span class="libSaveTag">uložená hra</span>':'')
+        +'</div>'
+        +'<button class="libPlay" type="button" aria-label="Spustit">&#9654;</button>'
+        +'<button class="libDel" type="button" aria-label="Smazat">&#128465;</button>'
+        +'</div>';
+  }
+  host.innerHTML=html;
+  var rows=host.querySelectorAll('.libGame');
+  for(var j=0;j<rows.length;j++){
+    (function(row){
+      var key=row.getAttribute('data-key');
+      row.querySelector('.libPlay').addEventListener('click',function(e){
+        e.preventDefault();
+        jsLog('LIBRARY_LAUNCH key='+key);
+        toast('Spouštím hru…',2400);
+        closeLibrary();
+        try{if(window.AHPS1&&window.AHPS1.ps1LibraryLaunch)window.AHPS1.ps1LibraryLaunch(key);}catch(err){}
+        ensurePs1ScreenAndPoll();
+      },true);
+      row.querySelector('.libDel').addEventListener('click',function(e){
+        e.preventDefault();
+        openLibraryDeleteConfirm(key,row.querySelector('.libName').textContent);
+      },true);
+    })(rows[j]);
+  }
+}
+/* BUILD2SB15: misto obycejneho confirm() (jen ANO/NE) - Rene chce vybrat
+   MEZI dvema ruznymi mazacimi akcemi, ne jen potvrdit jednu. */
+var libraryPendingDeleteKey=null;
+function openLibraryDeleteConfirm(key,name){
+  libraryPendingDeleteKey=key;
+  var p=$('libraryDeleteName');if(p)p.textContent=name||key;
+  var d=$('libraryDeleteConfirm');if(d){d.classList.add('open');d.setAttribute('aria-hidden','false');}
+}
+function closeLibraryDeleteConfirm(){
+  libraryPendingDeleteKey=null;
+  var d=$('libraryDeleteConfirm');if(d){d.classList.remove('open');d.setAttribute('aria-hidden','true');}
+}
+function libraryDoDelete(wipeSaveToo){
+  var key=libraryPendingDeleteKey;
+  closeLibraryDeleteConfirm();
+  if(!key)return;
+  var r='';
+  try{if(window.AHPS1&&window.AHPS1.ps1LibraryDelete)r=String(window.AHPS1.ps1LibraryDelete(key,!!wipeSaveToo));}catch(err){}
+  jsLog('LIBRARY_DELETE key='+key+' wipeSave='+(!!wipeSaveToo)+' -> '+r);
+  toast(r,3200);
+  libraryRefresh();
+}
 /* BUILD2SB9: v landscape (skutecne hrani) vede ozubene kolecko primo na
    zaostreny D-PAD A OVLADANI panel, ne na cely helpPanel se vsim ostatnim.
    V portrait (uvodni/vyberova obrazovka) zustava puvodni chovani - tam
@@ -600,10 +720,19 @@ function bindLockHold(el,btn){
 function bindDpad(el){
   var keys=['UP','DOWN','LEFT','RIGHT'];
   var activeId=null,mouseDown=false;
+  var knob=el.querySelector('.dpadKnob');
+  function moveKnob(nx,ny){
+    if(!knob)return;
+    var d=Math.sqrt(nx*nx+ny*ny),maxD=0.72;
+    if(d>maxD){nx=nx/d*maxD;ny=ny/d*maxD;}
+    knob.style.transform='translate(calc(-50% + '+(nx*50).toFixed(1)+'%), calc(-50% + '+(ny*50).toFixed(1)+'%))';
+  }
+  function resetKnob(){if(knob)knob.style.transform='translate(-50%,-50%)';}
   function movePoint(p){
     var r=el.getBoundingClientRect();
     var nx=((p.x-r.left)/Math.max(1,r.width))*2-1;
     var ny=((p.y-r.top)/Math.max(1,r.height))*2-1;
+    moveKnob(nx,ny);
     var deadX=ctrlSettings.sensitivity/100,deadY=deadX*0.762,diagX=deadX*1.333;
     var left=nx<-deadX,right=nx>deadX,up=ny<-deadY,down=ny>deadY;
     if((up||down)&&Math.abs(nx)<diagX){left=false;right=false;}
@@ -611,10 +740,10 @@ function bindDpad(el){
   }
   function touchStart(ev){var t=pickChangedTouch(el,ev);if(!t||activeId!==null)return;ev.preventDefault();activeId=t.identifier;movePoint(touchPoint(t));}
   function touchMove(ev){if(activeId===null)return;var t=touchById(ev.touches,activeId);if(!t)return;ev.preventDefault();movePoint(touchPoint(t));}
-  function touchEnd(ev){if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();activeId=null;releaseButtons(keys);}
+  function touchEnd(ev){if(activeId===null)return;var t=touchById(ev.changedTouches,activeId);if(!t)return;ev.preventDefault();activeId=null;releaseButtons(keys);resetKnob();}
   function mouseStart(ev){ev.preventDefault();mouseDown=true;movePoint(touchPoint(ev));}
   function mouseMove(ev){if(!mouseDown)return;ev.preventDefault();movePoint(touchPoint(ev));}
-  function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;releaseButtons(keys);}
+  function mouseEnd(ev){if(!mouseDown)return;ev.preventDefault();mouseDown=false;releaseButtons(keys);resetKnob();}
   el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchmove',touchMove,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
   el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mousemove',mouseMove,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
 }
@@ -1015,18 +1144,31 @@ function ps1QuickSave(){
     if(window.AHPS1&&window.AHPS1.ps1QuickSave){
       var r=String(window.AHPS1.ps1QuickSave());
       toast(r.indexOf('PS1_STATE_SAVE_OK')===0?'SAVE STATE ulozen':r,3600);
-      log(r);
+      jsLog(r);
     } else toast('SAVE STATE: AHPS1 most chybi',2400);
   }catch(e){toast('SAVE STATE chyba: '+(e&&e.message),3200);}
+  ps1MemCardCheck('po SAVE GAME tlacitku');
 }
 function ps1QuickLoad(){
   try{
     if(window.AHPS1&&window.AHPS1.ps1QuickLoad){
       var r=String(window.AHPS1.ps1QuickLoad());
       toast(r.indexOf('PS1_STATE_LOAD_OK')===0?'SAVE STATE nacten':r,3600);
-      log(r);
+      jsLog(r);
     } else toast('LOAD STATE: AHPS1 most chybi',2400);
   }catch(e){toast('LOAD STATE chyba: '+(e&&e.message),3200);}
+  ps1MemCardCheck('po MEMORY CARD tlacitku');
+}
+/* BUILD2SB13: MEMORY CARD (skutecna in-game ulozena hra, jina vec nez
+   SAVE STATE vyse) se dosud diagnostikovala jen do logcatu, ktery Rene
+   nevidi. Tohle posle aktualni stav (ma jadro SRAM? existuje soubor?
+   povedlo se posledni ulozeni?) primo do /8765/log. */
+function ps1MemCardCheck(reason){
+  try{
+    if(window.AHPS1&&window.AHPS1.ps1MemCardInfo){
+      jsLog('MEMCARD_CHECK ('+reason+') '+String(window.AHPS1.ps1MemCardInfo()));
+    }
+  }catch(e){}
 }
 window.addEventListener('blur',function(){releaseButtons(['UP','DOWN','LEFT','RIGHT','CROSS','CIRCLE','SQUARE','TRIANGLE','L1','L2','R1','R2','START','SELECT']);},true);
 window.addEventListener('orientationchange',function(){setTimeout(function(){
@@ -1041,7 +1183,12 @@ window.addEventListener('orientationchange',function(){setTimeout(function(){
 $('btnSettings').addEventListener('click',function(e){e.preventDefault();openSettingsForOrientation();},true);
 $('psMonitor').addEventListener('click',function(e){e.preventDefault();},true);
 $('btnReset').addEventListener('click',function(e){e.preventDefault();toast('PS1 RESET pripraven',1800);},true);
-$('btnMemory').addEventListener('click',function(e){e.preventDefault();ps1QuickLoad();},true);
+$('btnMemory').addEventListener('click',function(e){e.preventDefault();showLibrary();},true);
+$('libraryClose').addEventListener('click',function(e){e.preventDefault();closeLibrary();},true);
+$('libraryRefresh').addEventListener('click',function(e){e.preventDefault();libraryRefresh();},true);
+$('libraryDeleteGameOnly').addEventListener('click',function(e){e.preventDefault();libraryDoDelete(false);},true);
+$('libraryDeleteGameAndSave').addEventListener('click',function(e){e.preventDefault();libraryDoDelete(true);},true);
+$('libraryDeleteCancel').addEventListener('click',function(e){e.preventDefault();closeLibraryDeleteConfirm();},true);
 $('btnCd').addEventListener('click',function(e){e.preventDefault();
   bootPs1Native();
 },true);

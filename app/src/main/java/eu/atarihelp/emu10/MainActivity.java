@@ -4507,6 +4507,30 @@ public class MainActivity extends Activity {
     public class AHPS1 {
         @JavascriptInterface
         public String ps1CoreInfo() { return NativePs1CoreBridge.coreInfoSafe(); }
+        // BUILD2SB13: Rene se ptal, proc se ulozeni hry nezapisuje na memory
+        // kartu - diagnostika uz existovala (NAPLOG "MEMCARD_...") ale jen v
+        // logcatu, do /8765/log nikdy nedosla. Tohle je jen tenky most na
+        // uz hotovou nativni funkci ps1MemCardInfo(), zadna nova logika.
+        @JavascriptInterface
+        public String ps1MemCardInfo() { return NativePs1CoreBridge.memCardInfoSafe(); }
+        // BUILD2SB14: PAMĚŤOVÁ KARTA - seznam her, spuštění konkrétní hry z
+        // knihovny, smazání jedné hry. Tenké mosty na uz existující Java
+        // metody (soubor/adresář operace musí jít přes Javu - JS je na to
+        // z WebView sandboxu sám nedosáhne), žádná nová herní logika tu není.
+        @JavascriptInterface
+        public String ps1LibraryList() {
+            try { return ps1LibraryListJson(); }
+            catch (Throwable t) { return "[]"; }
+        }
+        @JavascriptInterface
+        public String ps1LibraryDelete(String key, boolean wipeSaveToo) {
+            try { return ps1LibraryDeleteByKey(key, wipeSaveToo); }
+            catch (Throwable t) { return "PS1_LIBRARY_DELETE_FAIL " + safeMsg(t); }
+        }
+        @JavascriptInterface
+        public void ps1LibraryLaunch(String key) {
+            try { ps1LibraryLaunchByKey(key); } catch (Throwable ignored) {}
+        }
         // BUILD2SB2: Rene chce videt v /8765/log i to, co se deje ve strance
         // (editace rozlozeni tlacitek atd.), ne jen to, co mu rekne AI. Bez
         // tohohle mostu appendNativeLog() slysi jen Java, nikdy JS ze
@@ -7961,6 +7985,129 @@ public class MainActivity extends Activity {
                 || n.endsWith(".pbp") || n.endsWith(".chd") || n.endsWith(".cue") || n.endsWith(".zip");
     }
 
+    // BUILD2SB14: PAMĚŤOVÁ KARTA jako opravdová knihovna her - Rene:
+    // "kazda hra podle stazeni musi mit vlastni adresar - s moznosti
+    // vymazani... pres memory card musim otevrit hru z kazde pozice a z
+    // kazde hry." Adresarova struktura uz existovala (ps1RemoteCacheDir
+    // na hru), jen se pred kazdym novym stazenim VSECHNO stare smazalo
+    // (viz ps1PurgeOtherRemoteGames - uz se nevola). Tyhle tri metody jen
+    // ctou/mazou to, co uz na disku je - zadna nova logika ukladani.
+    private File ps1LibrarySaveStateFor(String dirKey, String bootFileName) {
+        String base = safeFileName(bootFileName == null ? "ps1_game" : bootFileName);
+        if (base.endsWith(".bin") || base.endsWith(".iso") || base.endsWith(".img") || base.endsWith(".cue")) {
+            int dot = base.lastIndexOf('.');
+            if (dot > 0) base = base.substring(0, dot);
+        }
+        // BUILD2SB15: musi presne odpovidat klici, ktery pouziva
+        // bootPs1FileOnCurrentThread (parentName + "__" + jmeno) - jinak by
+        // knihovna ukazovala "neni ulozena hra" i kdyz ulozena je, jen pod
+        // jinym (novym, kolizim odolnym) klicem.
+        if (dirKey != null && !dirKey.equals("ps1_games") && !dirKey.equalsIgnoreCase("PS1")) {
+            base = safeFileName(dirKey) + "__" + base;
+        }
+        return new File(new File(getFilesDir(), "ps1_saves"), base + ".slot0.state");
+    }
+    private String ps1LibraryListJson() {
+        StringBuilder sb = new StringBuilder("[");
+        boolean first = true;
+        try {
+            File[] roots = new File[] { new File(getPublicAtariHelpDownloadsDir(), "PS1"), ps1PrivateRemoteGamesDir() };
+            java.util.HashSet<String> seenKeys = new java.util.HashSet<>();
+            for (File root : roots) {
+                if (root == null || !root.exists()) continue;
+                File[] kids = root.listFiles();
+                if (kids == null) continue;
+                for (File dir : kids) {
+                    if (dir == null || !dir.isDirectory()) continue;
+                    String key = dir.getName();
+                    if (!seenKeys.add(key)) continue; // stejna hra v public i private - jen jednou
+                    File boot = ps1ReadCachedBootFile(dir);
+                    if (boot == null) continue; // rozdelane/nekompletni stazeni - do knihovny nepatri
+                    File save = ps1LibrarySaveStateFor(key, boot.getName());
+                    if (!first) sb.append(",");
+                    first = false;
+                    sb.append("{\"key\":\"").append(jsonEsc(key)).append("\"")
+                      .append(",\"nazev\":\"").append(jsonEsc(boot.getName())).append("\"")
+                      .append(",\"bytes\":").append(boot.length())
+                      .append(",\"ma_ulozenou_hru\":").append(save.exists() ? "true" : "false")
+                      .append("}");
+                }
+            }
+        } catch (Throwable t) {
+            appendNativeLog("BUILD2SB14 PS1_LIBRARY_LIST_FAIL " + safeMsg(t));
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+    private String jsonEsc(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+    // Najde adresar podle klice (key = nazev slozky) v obou moznych rootech.
+    private File ps1LibraryDirByKey(String key) {
+        String safeKey = safeFileName(key); // BUILD2SB14: klic jde z JS - nesmi jit ven ze slozky (../..)
+        // BUILD2SB14 OPRAVA: safeFileName pusti tecky, takze klic presne
+        // ".." by proslo jako "platny" nazev - getParentFile() na to ale
+        // NESMI stacit, protoze pracuje jen s textem cesty, ne se
+        // skutecnym filesystemem (na rozdil od File.delete()/listFiles(),
+        // ktere ".." UMI rozresit az na urovni OS). Bez getCanonicalFile()
+        // by "smazat hru s klicem .." mohlo smazat rodicovsky adresar
+        // mista, kde appka drzi hry. Porovnava se proto skutecna
+        // (kanonicka) cesta, ne jen retezec.
+        File[] roots = new File[] { new File(getPublicAtariHelpDownloadsDir(), "PS1"), ps1PrivateRemoteGamesDir() };
+        for (File root : roots) {
+            if (root == null) continue;
+            try {
+                File rootCanon = root.getCanonicalFile();
+                File dir = new File(root, safeKey).getCanonicalFile();
+                if (dir.exists() && dir.isDirectory() && rootCanon.equals(dir.getParentFile())) {
+                    return dir;
+                }
+            } catch (Throwable ignored) {}
+        }
+        return null;
+    }
+    private String ps1LibraryDeleteByKey(String key, boolean wipeSaveToo) {
+        File dir = ps1LibraryDirByKey(key);
+        if (dir == null) return "PS1_LIBRARY_DELETE_NOT_FOUND key=" + key;
+        // BUILD2SB15: Rene - "hlasku o tom jestli chci premazat celou hru
+        // a nebo celou hru vcetne ulozenych save game na memory card."
+        // Precist boot soubor JESTE PRED smazanim slozky - jinak uz
+        // nepujde zjistit, jak se jmenoval save k tehle hre.
+        File boot = wipeSaveToo ? ps1ReadCachedBootFile(dir) : null;
+        long freed = dirSizeBytes(dir);
+        deleteTree(dir);
+        String saveMsg = "";
+        if (wipeSaveToo && boot != null) {
+            File save = ps1LibrarySaveStateFor(key, boot.getName());
+            if (save.exists()) {
+                long saveBytes = save.length();
+                if (save.delete()) { freed += saveBytes; saveMsg = " + ulozena hra smazana"; }
+                else saveMsg = " + smazani ulozene hry SELHALO";
+            } else saveMsg = " (zadna ulozena hra nebyla)";
+        }
+        appendNativeLog("BUILD2SB15 PS1_LIBRARY_DELETED key=" + key + " wipeSave=" + wipeSaveToo + " freed=" + formatMb(freed));
+        return "PS1_LIBRARY_DELETE_OK freed=" + formatMb(freed) + saveMsg;
+    }
+    private void ps1LibraryLaunchByKey(final String key) {
+        File dir = ps1LibraryDirByKey(key);
+        if (dir == null) { setPs1RemoteStatus("PS1_LIBRARY_LAUNCH_FAIL not_found key=" + key); return; }
+        final File boot = ps1ReadCachedBootFile(dir);
+        if (boot == null) { setPs1RemoteStatus("PS1_LIBRARY_LAUNCH_FAIL no_boot_file key=" + key); return; }
+        synchronized (this) {
+            if (ps1RemoteDownloadActive) { setPs1RemoteStatus("PS1_REMOTE_BUSY"); return; }
+            ps1RemoteDownloadActive = true;
+            ps1RemoteDownloadStatus = "PS1_LIBRARY_LAUNCH " + boot.getName();
+        }
+        new Thread(() -> {
+            try {
+                bootPs1FileOnCurrentThread(boot, boot.getName(), "library:" + key);
+            } finally {
+                synchronized (MainActivity.this) { ps1RemoteDownloadActive = false; }
+            }
+        }).start();
+    }
+
     private boolean isPs1CueName(String name) {
         return name != null && name.toLowerCase(Locale.US).endsWith(".cue");
     }
@@ -8532,7 +8679,15 @@ public class MainActivity extends Activity {
                     bootPs1FileOnCurrentThread(cached, cached.getName(), "remoteCache");
                     return;
                 }
-                ps1PurgeOtherRemoteGames(dir); // BUILD2SA5AR: pred stazenim uklidit VSECHNY stare hry
+                // BUILD2SB14: Rene - "kazda hra podle stazeni musi mit vlastni
+                // adresar - s moznosti vymazani." Drive se tu PRED KAZDYM
+                // stazenim smazaly VSECHNY predchozi hry (ps1PurgeOtherRemoteGames) -
+                // to je presny opak toho, co chce: knihovnu her, ne jednu
+                // aktivni hru, kterou pri dalsim stazeni ztratis. Misto
+                // automatickeho mazani vsech her jen zkontrolujeme, jestli je
+                // na tu novou dost mista - a pokud ne, appka to jasne rekne a
+                // uzivatel si sam smaze, co uz nechce (viz ps1LibraryDelete
+                // a novy panel PAMĚŤOVÁ KARTA v JS).
                 setPs1RemoteStatus("PS1_REMOTE_CONNECT " + compactUrl(url) + (googleDrive ? " via=google_drive" : "") + " path=" + dir.getAbsolutePath());
                 c = (HttpURLConnection) new URL(downloadUrl).openConnection();
                 c.setInstanceFollowRedirects(true);
@@ -8790,7 +8945,20 @@ public class MainActivity extends Activity {
             java.io.File saveDir = new java.io.File(getFilesDir(), "ps1_saves");
             if (!sysDir.exists()) sysDir.mkdirs();
             if (!saveDir.exists()) saveDir.mkdirs();
-            ps1CurrentGameLabel = safeFileName(label == null ? gameFile.getName() : label);
+            // BUILD2SB15: stejna oprava jako v C++ (nap_srm_set_path) - dve
+            // ruzne hry se stejnym nazvem souboru uz nesdileji jeden save
+            // klic. Slozka, ve ktere hra fyzicky lezi, uz je jedinecna
+            // (ps1RemoteCacheDir), takze ji pridame do labelu.
+            String parentName = null;
+            try {
+                java.io.File pf = gameFile.getParentFile();
+                if (pf != null) parentName = pf.getName();
+            } catch (Throwable ignored) {}
+            String rawLabel = label == null ? gameFile.getName() : label;
+            if (parentName != null && !parentName.equals("ps1_games") && !parentName.equalsIgnoreCase("PS1")) {
+                rawLabel = parentName + "__" + rawLabel;
+            }
+            ps1CurrentGameLabel = safeFileName(rawLabel);
             stopPs1Audio();
             ps1LastBootResult = "PS1_REMOTE_BOOTING " + ps1CurrentGameLabel;
             appendNativeLog("BUILD2SA5AK PS1_REMOTE_BOOT reason=" + reason + " name=" + ps1CurrentGameLabel + " bytes=" + gameFile.length() + " path=" + gameFile.getAbsolutePath());
