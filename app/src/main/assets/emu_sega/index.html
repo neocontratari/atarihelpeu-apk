@@ -6,12 +6,48 @@
 <title>SEGA Mega Drive FINAL USER UI — N&P Vision</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  /* BUILD2SB19: stejny princip jako v PS1 (viz CO_JE_V_B207/B212.md) -
+     vychozi 1 = presne puvodni chovani, dokud uzivatel nesahne na
+     posuvniky v OVLADANI. */
+  --napBtnOpacity:1;
+  --napBtnScale:1;
+  --napDpadScale:1;
+}
+.ctrlAdjustable{opacity:var(--napBtnOpacity);transform:scale(var(--napBtnScale));}
+#dpad.ctrlAdjustable{transform:scale(var(--napDpadScale));}
 html,body{min-height:100%;background:#02050a;color:#8fd8ff;font-family:"Courier New",monospace;overflow:hidden;}
 body{display:flex;justify-content:center;align-items:flex-start;}
 .stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#02050a;overflow:hidden;box-shadow:0 0 48px rgba(0,0,0,.95);}
 .skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
 .hit{position:absolute;z-index:60;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:none;}
 .hit:active{background:rgba(0,118,255,.18);box-shadow:0 0 32px rgba(0,118,255,.28) inset;border-radius:18px;}
+/* ===== BUILD2SB19: cely OVLADANI/D-PAD system - presne stejny princip
+   jako v emu_ps1 (viz CO_JE_V_B201 az B213.md), jen s modrym Sega
+   nadechem misto zlateho PS1. ===== */
+.panel{display:none;position:fixed;inset:0;z-index:180;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#dfeaff;}
+.panel.open{display:block;}
+.panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#040a14,#01050a);border:1px solid rgba(120,190,255,.4);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(60,150,255,.16) inset;}
+.panel h2{font:900 22px "Courier New",monospace;margin-bottom:12px;color:#8ee7ff;text-align:center;}
+.panel p{font:800 13px/1.4 "Courier New",monospace;margin:8px 0;color:#dfeaff;}
+.panel button{width:100%;margin-top:12px;padding:14px;border:0;border-radius:12px;background:#4faaff;color:#04070a;font:900 14px "Courier New",monospace;}
+.panel button.secondary{background:rgba(255,255,255,.12);color:#dfeaff;border:1px solid rgba(255,255,255,.3);}
+.panel input[type=range]{width:100%;margin:6px 0 2px;accent-color:#8ee7ff;height:28px;}
+.panel .ctrlVal{text-align:center;color:#8ee7ff;font:800 12px "Courier New",monospace;margin:0 0 10px;}
+.panel .ctrlRow{display:flex;align-items:center;gap:10px;margin:12px 0;color:#dfeaff;font:800 13px "Courier New",monospace;}
+.panel .ctrlRow input[type=checkbox]{width:22px;height:22px;accent-color:#8ee7ff;}
+.hit.layoutEdit{outline:2px dashed rgba(120,200,255,.92);outline-offset:2px;border-radius:14px;background:rgba(120,200,255,.10);box-shadow:0 0 16px rgba(120,200,255,.28);z-index:170;}
+.hit.layoutEdit.dragging{background:rgba(120,200,255,.22);box-shadow:0 0 22px rgba(120,200,255,.42);}
+.layoutEditBar{display:none;position:absolute;left:0;right:0;bottom:0;z-index:175;padding:10px 3%;gap:8px;align-items:center;justify-content:space-between;background:rgba(1,5,10,.92);border-top:1px solid rgba(120,200,255,.5);box-shadow:0 -4px 20px rgba(0,0,0,.5);}
+.layoutEditBar.show{display:flex;}
+.layoutEditBar .layoutEditHint{flex:1;min-width:0;color:#bfe6ff;font:800 clamp(10px,2.6vw,13px)/1.3 "Courier New",monospace;text-shadow:0 1px 2px #000;}
+.layoutEditBar button{flex:0 0 auto;padding:10px 14px;border:0;border-radius:10px;font:900 12px "Courier New",monospace;cursor:pointer;width:auto;margin:0;}
+.layoutEditBar #segaLayoutReset{background:rgba(255,255,255,.12);color:#dfeaff;border:1px solid rgba(255,255,255,.3);}
+.layoutEditBar #segaLayoutDone{background:#4faaff;color:#04070a;}
+.layoutEditBar #segaModeToggle{background:rgba(110,190,255,.18);color:#bfe6ff;border:1px solid rgba(110,190,255,.5);}
+.layoutEditBar #segaModeToggle.active{background:rgba(110,190,255,.85);color:#04121c;border-color:rgba(200,235,255,.9);}
+#btnSegaSettings{display:none;}
+#btnSegaDpadMenu{display:none;}
 #btnConsole{display:none;pointer-events:none;}
 #btnJoystick{display:none;pointer-events:none;}
 #btnCollection{left:2.4%;top:89.5%;width:14.5%;height:8.8%;}
@@ -71,6 +107,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #monitorBlank,#mdVideo,#clownFrameWrap,#monitorOverlay{display:none!important;left:0;top:0;width:100vw;height:100vh;height:100dvh;border-radius:0;border:0;box-shadow:none;background:transparent!important;pointer-events:none!important;}
  #clownFrame{display:none!important;opacity:0!important;pointer-events:none!important;}
  .hit{z-index:120;color:rgba(255,255,255,.46);font:900 2.05vh/1 Arial,sans-serif;text-align:center;text-shadow:0 0 7px #000,0 0 10px rgba(0,150,255,.65);}
+ /* BUILD2SB19: nova ozubena ikona - presne stejny ucel jako v PS1 (gear
+    vede primo na zaostreny D-PAD panel, ne na zbytek appky). Male,
+    prusvitne kolecko, at nekazi vyhled na hru. */
+ #btnSegaSettings{display:flex;align-items:center;justify-content:center;left:auto;right:1.5%;top:1.2vh;width:9%;height:6vh;opacity:.9;color:rgba(255,255,255,.85);font:900 19px/1 Arial,sans-serif;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);border-radius:999px;text-shadow:0 2px 4px #000;z-index:200;}
+ #btnSegaSettings:active{background:rgba(120,200,255,.28);border-color:rgba(180,225,255,.8);}
+ .layoutEditBar{bottom:auto;top:0;padding:6px 3%;}
+ .layoutEditBar .layoutEditHint{font-size:10px;}
+ .layoutEditBar button{padding:7px 11px;font-size:10px;}
  #dpad{left:1.8vw;top:auto;bottom:2.0vh;width:43vh;height:43vh;border-radius:50%;font-size:0!important;background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.07),rgba(10,30,60,.30) 62%,rgba(0,0,0,.22) 100%);border:2px solid rgba(150,215,255,.34);box-shadow:0 0 22px rgba(0,140,255,.28),inset 0 0 30px rgba(0,0,0,.42);opacity:.55;}
  /* BUILD2RZ v3: zadny kriz - thumbstick puntik, ktery klouze pod palcem */
  #dpad:before{content:none!important;}
@@ -83,8 +127,12 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #btnC{left:auto;right:2.2vw;top:auto;bottom:1.8vh;}
  #btnA:before{content:"A";}#btnB:before{content:"B";}#btnC:before{content:"C";}#btnA:before,#btnB:before,#btnC:before{font:900 4.1vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 7px #000,0 0 12px rgba(0,180,255,.6);}
  #btnA.on,#btnB.on,#btnC.on{opacity:1;border-color:rgba(255,240,180,.85);background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.45),rgba(230,170,60,.30) 40%,rgba(60,30,4,.45) 80%);box-shadow:0 0 24px rgba(255,190,60,.55),inset 0 0 14px rgba(0,0,0,.30);}
- #btnStart{display:none!important;pointer-events:none!important;}
- #btnStart:before{content:"";}
+ /* BUILD2SB19: Rene - "nezapomen pridat tlacitko start na sirku, to tam
+    nikdy nebylo." Presne tak - drive bylo v landscape uplne vypnute.
+    Male oblé tlačítko nad sloupcem A/B/C, stejný tvar jako v portrait. */
+ #btnStart{display:flex!important;align-items:center;justify-content:center;pointer-events:auto!important;left:auto;right:3.0vw;top:auto;bottom:56vh;width:13vw;height:5.2vh;border-radius:999px;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.28),rgba(50,150,235,.16) 40%,rgba(4,16,34,.38) 80%);border:2px solid rgba(165,225,255,.38);box-shadow:0 0 14px rgba(0,140,255,.26),inset 0 0 12px rgba(0,0,0,.32);opacity:.6;}
+ #btnStart:before{content:"START";font:900 1.55vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 6px #000,0 0 10px rgba(0,180,255,.55);letter-spacing:.05em;}
+ #btnStart.on{opacity:1;border-color:rgba(255,240,180,.85);background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.4),rgba(230,170,60,.28) 40%,rgba(60,30,4,.4) 80%);box-shadow:0 0 20px rgba(255,190,60,.5),inset 0 0 12px rgba(0,0,0,.28);}
  /* BUILD2RV: no top labels over mobile game. Invisible hit zones only; C++ CORE removed. */
  #btnCollection{left:1.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
  #btnSaves{left:12.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
@@ -127,11 +175,12 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <button id="cartSlot" class="hit" type="button">CARTRIDGE SLOT</button>
   <button id="cartCenter" class="hit" type="button">CARTRIDGE</button>
   <button id="btnReset" class="hit" type="button">RESET</button>
-  <button id="btnStart" class="hit" type="button">START</button>
-  <button id="btnA" class="hit" type="button">A</button>
-  <button id="btnB" class="hit" type="button">B</button>
-  <button id="btnC" class="hit" type="button">C</button>
-  <button id="dpad" class="hit" type="button">DPAD<span id="dpadNub" aria-hidden="true" style="display:none;"></span></button>
+  <button id="btnStart" class="hit ctrlAdjustable" type="button">START</button>
+  <button id="btnA" class="hit ctrlAdjustable" type="button">A</button>
+  <button id="btnB" class="hit ctrlAdjustable" type="button">B</button>
+  <button id="btnC" class="hit ctrlAdjustable" type="button">C</button>
+  <button id="dpad" class="hit ctrlAdjustable" type="button">DPAD<span id="dpadNub" aria-hidden="true" style="display:none;"></span></button>
+  <button id="btnSegaSettings" class="hit" type="button">&#9881;</button>
   <div id="toast" class="toast"></div>
   <div id="perfMenu" aria-hidden="true">
     <div class="pmTitle">SEGA VYKON</div>
@@ -139,7 +188,53 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <button id="perfLow" type="button">LOW PERFORMANCE</button>
     <div class="pmNote">SBIRKA = vyber vykonu, CARTRIDGE = vyber ROM</div>
   </div>
+  <div id="segaLayoutEditBar" class="layoutEditBar" aria-hidden="true">
+    <span id="segaLayoutHint" class="layoutEditHint">Přetáhni tlačítko, kam chceš.</span>
+    <button id="segaModeToggle" type="button">PO SKUPINÁCH</button>
+    <button id="segaLayoutReset" type="button">VÝCHOZÍ</button>
+    <button id="segaLayoutDone" type="button">HOTOVO</button>
+  </div>
 </main>
+<!-- BUILD2SB19: presne stejny princip jako PS1 (D-PAD A OVLADANI panel,
+     samostatny od zbytku appky) - v landscape na nej vede primo ozubene
+     kolecko. -->
+<div id="segaDpadMenuPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>D-PAD A OVLÁDÁNÍ</h2>
+    <button id="segaBtnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
+    <button id="segaBtnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
+    <button id="segaBtnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
+    <button id="segaDpadMenuClose" type="button" class="secondary">ZAVŘÍT</button>
+  </div>
+</div>
+<div id="segaCtrlPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>OVLÁDÁNÍ — profi nastavení</h2>
+    <p><b>Citlivost D-padu</b> — jak daleko od středu musí prst dojet, než se směr sepne.</p>
+    <input id="segaCtrlSensitivity" type="range" min="4" max="30" step="1" value="7">
+    <p id="segaCtrlSensitivityVal" class="ctrlVal"></p>
+
+    <p><b>Průhlednost tlačítek</b></p>
+    <input id="segaCtrlOpacity" type="range" min="25" max="100" step="5" value="100">
+    <p id="segaCtrlOpacityVal" class="ctrlVal"></p>
+
+    <p><b>Velikost tlačítek</b> — A/B/C, Start.</p>
+    <input id="segaCtrlSize" type="range" min="70" max="150" step="5" value="100">
+    <p id="segaCtrlSizeVal" class="ctrlVal"></p>
+
+    <p><b>Velikost D-padu</b> — jen kulatý ovladač, samostatně.</p>
+    <input id="segaCtrlDpadSize" type="range" min="70" max="150" step="5" value="100">
+    <p id="segaCtrlDpadSizeVal" class="ctrlVal"></p>
+
+    <div class="ctrlRow">
+      <input id="segaCtrlHaptic" type="checkbox" checked>
+      <label for="segaCtrlHaptic">Vibrace při stisku tlačítka</label>
+    </div>
+
+    <button id="segaCtrlReset" type="button" class="secondary">VÝCHOZÍ NASTAVENÍ OVLÁDÁNÍ</button>
+    <button id="segaCtrlClose" type="button">ZAVŘÍT</button>
+  </div>
+</div>
 <script>
 (function(){'use strict';
 var BUILD='BUILD2SA2_SEGA_WEB_ROM_ROUTING_STAGE144';
@@ -465,6 +560,7 @@ window.napKlavesa=function(code, znak, dolu, ctrl){
 
 function sendToWrapper(btn,down){
   padButtons[btn]=!!down;
+  if(down&&ctrlSettings.haptic){try{if(window.AHSega&&window.AHSega.segaVibrate)window.AHSega.segaVibrate(14);}catch(_){}}
   // BUILD2RV: no Java wrapper input path. All Sega controls go to native C++ bridge.
   nativeCppMode=true;
   try{
@@ -479,6 +575,202 @@ function sendToWrapper(btn,down){
     return false;
   }
 }
+/* ===== BUILD2SB19: OVLADANI/D-PAD system - presna kopie principu z
+   emu_ps1 (viz PREDAVACI_PROTOKOL bod 7 a CO_JE_V_B201 az B213.md),
+   adaptovana na Segu (D-pad + A/B/C + Start, zadna ramena/Select). ===== */
+function jsLog(t){
+  pushLog(t);
+  try{if(window.AHSega&&window.AHSega.segaLog)window.AHSega.segaLog(t);}catch(_){}
+}
+var LAYOUT_IDS=['dpad','btnA','btnB','btnC','btnStart'];
+var LAYOUT_GROUPS=[['btnA','btnB','btnC']]; // dpad ani Start nejsou v zadne skupine - presouvaji se vzdy samostatne
+function groupMembersOf(id){
+  for(var i=0;i<LAYOUT_GROUPS.length;i++){if(LAYOUT_GROUPS[i].indexOf(id)>=0)return LAYOUT_GROUPS[i];}
+  return [id];
+}
+var layoutEditActive=false,layoutGroupMode=false;
+function layoutOrientation(){return (window.matchMedia&&matchMedia('(orientation:landscape) and (max-height:820px)').matches)?'landscape':'portrait';}
+function layoutStorageKey(){return 'napSegaLayout_'+layoutOrientation();}
+function layoutReadSaved(){try{var raw=localStorage.getItem(layoutStorageKey());if(!raw)return null;return JSON.parse(raw);}catch(e){return null;}}
+function layoutApply(map){
+  if(!map)return;
+  for(var i=0;i<LAYOUT_IDS.length;i++){
+    var id=LAYOUT_IDS[i],el=$(id),pos=map[id];
+    if(!el||!pos)continue;
+    el.style.left=pos.left+'%';el.style.top=pos.top+'%';el.style.bottom='auto';
+  }
+}
+function layoutLoad(){
+  var map=layoutReadSaved();
+  jsLog(map?('LAYOUT_LOAD nalezeno pro '+layoutOrientation()+': '+JSON.stringify(map)):('LAYOUT_LOAD nic ulozeneho pro '+layoutOrientation()));
+  layoutApply(map);
+}
+function layoutSave(){
+  var map={};
+  var stage=$('stage');if(!stage)return;
+  var sr=stage.getBoundingClientRect();
+  for(var i=0;i<LAYOUT_IDS.length;i++){
+    var id=LAYOUT_IDS[i],el=$(id);if(!el)continue;
+    var r=el.getBoundingClientRect();
+    map[id]={left:((r.left-sr.left)/sr.width)*100,top:((r.top-sr.top)/sr.height)*100};
+  }
+  try{localStorage.setItem(layoutStorageKey(),JSON.stringify(map));}catch(e){}
+  jsLog('LAYOUT_SAVE '+layoutOrientation()+': '+JSON.stringify(map));
+}
+function layoutReset(){
+  try{localStorage.removeItem(layoutStorageKey());}catch(e){}
+  for(var i=0;i<LAYOUT_IDS.length;i++){var el=$(LAYOUT_IDS[i]);if(el){el.style.left='';el.style.top='';el.style.bottom='';}}
+  jsLog('LAYOUT_RESET orientace='+layoutOrientation());
+  toast('Rozložení vráceno na výchozí ('+layoutOrientation()+')');
+}
+function layoutClamp(el,left,top){
+  var stage=$('stage');
+  var sr=stage.getBoundingClientRect(),r=el.getBoundingClientRect();
+  var wPct=(r.width/sr.width)*100,hPct=(r.height/sr.height)*100;
+  return {left:Math.max(0,Math.min(100-wPct,left)),top:Math.max(0,Math.min(100-hPct,top))};
+}
+/* Sega nema samostatna "ramena" jako PS1 - jedina skutecna volba stranou
+   je D-pad vs. akcni tlacitka A/B/C, presne jako u PS1 D-pad vs. akce. */
+var MIRROR_IDS=['dpad','btnA','btnB','btnC'];
+function layoutMirrorHorizontal(){
+  var stage=$('stage');if(!stage)return;
+  var sr=stage.getBoundingClientRect();
+  for(var i=0;i<MIRROR_IDS.length;i++){
+    var el=$(MIRROR_IDS[i]);if(!el)continue;
+    var r=el.getBoundingClientRect();
+    var leftPct=((r.left-sr.left)/sr.width)*100,topPct=((r.top-sr.top)/sr.height)*100;
+    var widthPct=(r.width/sr.width)*100;
+    var pos=layoutClamp(el,100-leftPct-widthPct,topPct);
+    el.style.left=pos.left+'%';el.style.top=pos.top+'%';el.style.bottom='auto';
+  }
+  layoutSave();
+  jsLog('LAYOUT_MIRROR orientace='+layoutOrientation());
+  toast('D-pad a akční tlačítka prohozeny (levák) - uloženo.');
+}
+function bindLayoutDrag(el){
+  if(!el||el.__napLayoutDrag)return;
+  el.__napLayoutDrag=true;
+  var startX=0,startY=0,members=[],activeId=null;
+  function stageRect(){return $('stage').getBoundingClientRect();}
+  function beginDrag(x,y){
+    var groupIds=layoutGroupMode?groupMembersOf(el.id):[el.id];
+    var sr=stageRect();
+    members=[];
+    for(var i=0;i<groupIds.length;i++){
+      var m=$(groupIds[i]);if(!m)continue;
+      var r=m.getBoundingClientRect();
+      members.push({el:m,startLeft:((r.left-sr.left)/sr.width)*100,startTop:((r.top-sr.top)/sr.height)*100});
+      m.classList.add('dragging');
+    }
+    startX=x;startY=y;
+    jsLog('LAYOUT_DRAG_START id='+el.id+' skupina='+layoutGroupMode+' clenu='+members.length);
+  }
+  function moveDrag(x,y){
+    var sr=stageRect();
+    var dxPct=((x-startX)/sr.width)*100,dyPct=((y-startY)/sr.height)*100;
+    var minDx=-Infinity,maxDx=Infinity,minDy=-Infinity,maxDy=Infinity;
+    for(var i=0;i<members.length;i++){
+      var m=members[i],r=m.el.getBoundingClientRect();
+      var wPct=(r.width/sr.width)*100,hPct=(r.height/sr.height)*100;
+      minDx=Math.max(minDx,-m.startLeft);maxDx=Math.min(maxDx,(100-wPct)-m.startLeft);
+      minDy=Math.max(minDy,-m.startTop);maxDy=Math.min(maxDy,(100-hPct)-m.startTop);
+    }
+    dxPct=Math.max(minDx,Math.min(maxDx,dxPct));dyPct=Math.max(minDy,Math.min(maxDy,dyPct));
+    for(var j=0;j<members.length;j++){
+      var mm=members[j];
+      mm.el.style.left=(mm.startLeft+dxPct)+'%';mm.el.style.top=(mm.startTop+dyPct)+'%';mm.el.style.bottom='auto';
+    }
+  }
+  function endDrag(){
+    for(var i=0;i<members.length;i++)members[i].el.classList.remove('dragging');
+    jsLog('LAYOUT_DRAG_END id='+el.id+' na left='+el.style.left+' top='+el.style.top);
+    members=[];
+  }
+  function touchStart(ev){if(!layoutEditActive)return;ev.preventDefault();ev.stopPropagation();var t=ev.changedTouches&&ev.changedTouches[0];if(!t)return;activeId=t.identifier;beginDrag(t.clientX,t.clientY);}
+  function touchMove(ev){if(!layoutEditActive||activeId===null)return;var t=null;for(var i=0;i<ev.touches.length;i++){if(ev.touches[i].identifier===activeId){t=ev.touches[i];break;}}if(!t)return;ev.preventDefault();ev.stopPropagation();moveDrag(t.clientX,t.clientY);}
+  function touchEnd(ev){if(!layoutEditActive||activeId===null)return;ev.preventDefault();ev.stopPropagation();activeId=null;endDrag();}
+  var mouseDown=false;
+  function mouseStart(ev){if(!layoutEditActive)return;ev.preventDefault();ev.stopPropagation();mouseDown=true;beginDrag(ev.clientX,ev.clientY);}
+  function mouseMove(ev){if(!layoutEditActive||!mouseDown)return;ev.preventDefault();ev.stopPropagation();moveDrag(ev.clientX,ev.clientY);}
+  function mouseUp(ev){if(!layoutEditActive||!mouseDown)return;ev.preventDefault();ev.stopPropagation();mouseDown=false;endDrag();}
+  el.addEventListener('touchstart',touchStart,{passive:false,capture:true});
+  el.addEventListener('touchmove',touchMove,{passive:false,capture:true});
+  el.addEventListener('touchend',touchEnd,{passive:false,capture:true});
+  el.addEventListener('touchcancel',touchEnd,{passive:false,capture:true});
+  el.addEventListener('mousedown',mouseStart,true);
+  el.addEventListener('mousemove',mouseMove,true);
+  el.addEventListener('mouseup',mouseUp,true);
+  el.addEventListener('mouseleave',mouseUp,true);
+}
+function segaLayoutHintUpdate(){
+  var hint=$('segaLayoutHint');if(!hint)return;
+  hint.textContent=layoutGroupMode
+    ? 'Skupina: chyť libovolné tlačítko ve skupině (akce A/B/C) a jede celá. D-pad a Start vždy zvlášť.'
+    : 'Přetáhni tlačítko, kam chceš.';
+}
+function toggleLayoutGroupMode(){
+  layoutGroupMode=!layoutGroupMode;
+  var btn=$('segaModeToggle');
+  if(btn){btn.classList.toggle('active',layoutGroupMode);btn.textContent=layoutGroupMode?'PO JEDNOM':'PO SKUPINÁCH';}
+  segaLayoutHintUpdate();
+  jsLog('LAYOUT_MODE skupinovy='+layoutGroupMode);
+}
+function showSegaDpadMenu(){var p=$('segaDpadMenuPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}}
+function closeSegaDpadMenu(){var p=$('segaDpadMenuPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function layoutEditEnter(){
+  closeSegaDpadMenu();
+  layoutEditActive=true;layoutGroupMode=false;
+  var toggle=$('segaModeToggle');if(toggle){toggle.classList.remove('active');toggle.textContent='PO SKUPINÁCH';}
+  segaLayoutHintUpdate();
+  for(var i=0;i<LAYOUT_IDS.length;i++){var el=$(LAYOUT_IDS[i]);if(!el)continue;bindLayoutDrag(el);el.classList.add('layoutEdit');}
+  var bar=$('segaLayoutEditBar');if(bar){bar.classList.add('show');bar.setAttribute('aria-hidden','false');}
+  jsLog('LAYOUT_EDIT_ENTER orientace='+layoutOrientation());
+  toast('Úprava rozložení - přerovnej a dej HOTOVO');
+}
+function layoutEditExit(save){
+  layoutEditActive=false;
+  for(var i=0;i<LAYOUT_IDS.length;i++){var el=$(LAYOUT_IDS[i]);if(!el)continue;el.classList.remove('layoutEdit');el.classList.remove('dragging');}
+  var bar=$('segaLayoutEditBar');if(bar){bar.classList.remove('show');bar.setAttribute('aria-hidden','true');}
+  jsLog('LAYOUT_EDIT_EXIT save='+(!!save)+' orientace='+layoutOrientation());
+  if(save){layoutSave();toast('Rozložení uloženo ('+layoutOrientation()+')');}
+}
+/* ===== profi OVLADANI: citlivost/vzhled/haptika, presne jako PS1 ===== */
+var CTRL_KEY='napSegaCtrlSettings';
+var ctrlDefaults={sensitivity:7,opacity:100,size:100,dpadSize:100,haptic:true};
+var ctrlSettings={sensitivity:7,opacity:100,size:100,dpadSize:100,haptic:true};
+function ctrlApplyVisual(){
+  var root=document.documentElement;
+  root.style.setProperty('--napBtnOpacity',(ctrlSettings.opacity/100).toFixed(2));
+  root.style.setProperty('--napBtnScale',(ctrlSettings.size/100).toFixed(2));
+  root.style.setProperty('--napDpadScale',(ctrlSettings.dpadSize/100).toFixed(2));
+}
+function ctrlUpdateLabels(){
+  var a=$('segaCtrlSensitivityVal');if(a)a.textContent='Citlivost: '+ctrlSettings.sensitivity+' %';
+  var b=$('segaCtrlOpacityVal');if(b)b.textContent='Průhlednost: '+ctrlSettings.opacity+' %';
+  var c=$('segaCtrlSizeVal');if(c)c.textContent='Velikost: '+ctrlSettings.size+' %';
+  var d=$('segaCtrlDpadSizeVal');if(d)d.textContent='Velikost D-padu: '+ctrlSettings.dpadSize+' %';
+}
+function ctrlSyncInputs(){
+  var s=$('segaCtrlSensitivity');if(s)s.value=ctrlSettings.sensitivity;
+  var o=$('segaCtrlOpacity');if(o)o.value=ctrlSettings.opacity;
+  var z=$('segaCtrlSize');if(z)z.value=ctrlSettings.size;
+  var dz=$('segaCtrlDpadSize');if(dz)dz.value=ctrlSettings.dpadSize;
+  var h=$('segaCtrlHaptic');if(h)h.checked=!!ctrlSettings.haptic;
+  ctrlUpdateLabels();
+}
+function ctrlLoad(){
+  try{var raw=localStorage.getItem(CTRL_KEY);if(raw){var s=JSON.parse(raw);for(var k in ctrlDefaults)if(k in s)ctrlSettings[k]=s[k];}}catch(e){}
+  ctrlApplyVisual();ctrlSyncInputs();
+  jsLog('CTRL_LOAD '+JSON.stringify(ctrlSettings));
+}
+function ctrlSave(){try{localStorage.setItem(CTRL_KEY,JSON.stringify(ctrlSettings));}catch(e){}jsLog('CTRL_SAVE '+JSON.stringify(ctrlSettings));}
+function ctrlReset(){
+  ctrlSettings={sensitivity:ctrlDefaults.sensitivity,opacity:ctrlDefaults.opacity,size:ctrlDefaults.size,dpadSize:ctrlDefaults.dpadSize,haptic:ctrlDefaults.haptic};
+  ctrlApplyVisual();ctrlSyncInputs();ctrlSave();
+  toast('Ovládání vráceno na výchozí');
+}
+function showSegaCtrl(){var p=$('segaCtrlPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}ctrlSyncInputs();}
+function closeSegaCtrl(){var p=$('segaCtrlPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 var holdTimers={};function isLandscapeNow(){try{var t=(screen.orientation&&screen.orientation.type)||'';if(String(t).indexOf('landscape')>=0)return true;}catch(_){}try{if(window.matchMedia&&window.matchMedia('(orientation: landscape)').matches)return true;}catch(_){}return (window.innerWidth||0)>(window.innerHeight||0);}function releaseButtonDelayed(btn,delay){clearTimeout(holdTimers[btn]);holdTimers[btn]=setTimeout(function(){sendToWrapper(btn,false);},delay||80);}
 function isInsideRoundButton(el,e){var r=el.getBoundingClientRect();var x=(e.clientX-r.left)/Math.max(1,r.width)-.5;var y=(e.clientY-r.top)/Math.max(1,r.height)-.5;return ((x*x)/0.30/0.30+(y*y)/0.42/0.42)<=1;}
 function bindKeyButton(id,btn){var el=$(id);if(!el)return;el.addEventListener('pointerdown',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();if((btn==='A'||btn==='B'||btn==='C')&&!isInsideRoundButton(el,e)){return;}try{el.setPointerCapture(e.pointerId);}catch(_){}focusFrame();clearTimeout(holdTimers[btn]);sendToWrapper(btn,true);},true);el.addEventListener('pointerup',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();releaseButtonDelayed(btn,(btn==='A'||btn==='B'||btn==='C')?(isLandscapeNow()?0:90):65);},true);el.addEventListener('pointercancel',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();releaseButtonDelayed(btn,60);},true);el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
@@ -501,7 +793,7 @@ function setupLandscapeMultiTouch(){
      - Citlivost: mala mrtva zona (7% polomeru), smerove bity s prekryvem = diagonaly.
      - Mapovani 1:1: btnA -> Genesis A, btnB -> B, btnC -> C (sloupec vpravo nad sebou).
      - Stisknute prvky se rozsviti (trida .on). Portrait ovladani beze zmeny. */
-  var last={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,C:false};
+  var last={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,C:false,START:false};
   function rectOf(id){var el=$(id);if(!el)return null;var r=el.getBoundingClientRect();if(!r||r.width<10)return null;return{el:el,cx:r.left+r.width/2,cy:r.top+r.height/2,r:Math.min(r.width,r.height)/2};}
   function inCircle(c,x,y,slop){if(!c)return false;var dx=x-c.cx,dy=y-c.cy,rr=c.r*(slop||1.22);return dx*dx+dy*dy<=rr*rr;}
   function applyKey(k,on){if(last[k]===on)return;last[k]=on;sendToWrapper(k,on);}
@@ -515,18 +807,19 @@ function setupLandscapeMultiTouch(){
   }
   function markVis(dOn){
     var dp=$('dpad');if(dp)dp.classList.toggle('on',!!dOn);
-    ['A','B','C'].forEach(function(k){var el=$('btn'+k);if(el)el.classList.toggle('on',!!last[k]);});
+    ['A','B','C','Start'].forEach(function(k){var el=$('btn'+k);if(el)el.classList.toggle('on',!!last[k.toUpperCase()]);});
   }
   function update(ev){
     if(!isLandscapeNow())return;
+    if(layoutEditActive)return; // BUILD2SB19: v editacnim rezimu se nesmi hrat, presne jako v PS1
     var t0=(ev.touches&&ev.touches[0])||ev;
     try{
       var target=t0&&document.elementFromPoint(t0.clientX,t0.clientY);
       if(target && target.closest && target.closest('#btnCollection,#btnGames,#cartSlot,#cartCenter,#btnSaves,#btnManuals,#btnWeb,#btnMenu')){return;}
     }catch(_){ }
-    var dp=rectOf('dpad'),cA=rectOf('btnA'),cB=rectOf('btnB'),cC=rectOf('btnC');
+    var dp=rectOf('dpad'),cA=rectOf('btnA'),cB=rectOf('btnB'),cC=rectOf('btnC'),cS=rectOf('btnStart');
     var touches=ev.touches||[];
-    var want={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,C:false};
+    var want={UP:false,DOWN:false,LEFT:false,RIGHT:false,A:false,B:false,C:false,START:false};
     var touchedControl=false,nubDx=null,nubDy=null;
     for(var i=0;i<touches.length;i++){
       var x=touches[i].clientX,y=touches[i].clientY;
@@ -534,21 +827,22 @@ function setupLandscapeMultiTouch(){
         var dx=x-dp.cx,dy=y-dp.cy,d=Math.sqrt(dx*dx+dy*dy);
         touchedControl=true;
         if(nubDx===null){nubDx=dx;nubDy=dy;}
-        if(d>=dp.r*0.07){
-          var rx=dx/d,ry=dy/d;
-          if(rx<-0.38)want.LEFT=true; if(rx>0.38)want.RIGHT=true;
-          if(ry<-0.38)want.UP=true;   if(ry>0.38)want.DOWN=true;
+        if(d>=dp.r*(ctrlSettings.sensitivity/100)){
+          var rx=dx/d,ry=dy/d,diagT=0.38;
+          if(rx<-diagT)want.LEFT=true; if(rx>diagT)want.RIGHT=true;
+          if(ry<-diagT)want.UP=true;   if(ry>diagT)want.DOWN=true;
         }
         continue;
       }
       if(inCircle(cA,x,y)){want.A=true;touchedControl=true;continue;}
       if(inCircle(cB,x,y)){want.B=true;touchedControl=true;continue;}
       if(inCircle(cC,x,y)){want.C=true;touchedControl=true;continue;}
+      if(inCircle(cS,x,y)){want.START=true;touchedControl=true;continue;}
     }
-    var anyLast=last.UP||last.DOWN||last.LEFT||last.RIGHT||last.A||last.B||last.C;
+    var anyLast=last.UP||last.DOWN||last.LEFT||last.RIGHT||last.A||last.B||last.C||last.START;
     if(!touchedControl && !anyLast)return;
     try{ev.preventDefault();ev.stopPropagation();}catch(_){ }
-    ['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,want[k]);});
+    ['UP','DOWN','LEFT','RIGHT','A','B','C','START'].forEach(function(k){applyKey(k,want[k]);});
     setNub(nubDx===null?null:dp,nubDx||0,nubDy||0);
     markVis(want.UP||want.DOWN||want.LEFT||want.RIGHT);
   }
@@ -556,17 +850,48 @@ function setupLandscapeMultiTouch(){
     if(!isLandscapeNow())return;
     update(ev);
     if((ev.touches||[]).length===0){
-      ['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,false);});
+      ['UP','DOWN','LEFT','RIGHT','A','B','C','START'].forEach(function(k){applyKey(k,false);});
       setNub(null,0,0);markVis(false);
     }
   }
   var st=$('stage')||document.body;
   ['touchstart','touchmove'].forEach(function(type){st.addEventListener(type,update,{capture:true,passive:false});});
   ['touchend','touchcancel'].forEach(function(type){st.addEventListener(type,releaseAll,{capture:true,passive:false});});
-  window.addEventListener('orientationchange',function(){setTimeout(function(){['UP','DOWN','LEFT','RIGHT','A','B','C'].forEach(function(k){applyKey(k,false);});setNub(null,0,0);markVis(false);},80);},true);
+  window.addEventListener('orientationchange',function(){setTimeout(function(){
+    ['UP','DOWN','LEFT','RIGHT','A','B','C','START'].forEach(function(k){applyKey(k,false);});
+    setNub(null,0,0);markVis(false);
+    // BUILD2SB19: portrait a landscape maji jine vychozi pozice - po otoceni
+    // se nejdriv smazou predchozi inline pozice a nahraje se ulozene
+    // rozlozeni PRO TU NOVOU orientaci, presne jako v PS1.
+    for(var i=0;i<LAYOUT_IDS.length;i++){var el=$(LAYOUT_IDS[i]);if(el){el.style.left='';el.style.top='';el.style.bottom='';}}
+    layoutLoad();
+  },80);},true);
   pushLog('BUILD2RZ LANDSCAPE_PAD_V3_READY singlePad=YES thumbstickNub=YES abcColumn=RIGHT diagonals=YES mapping=A/B/C-1:1');
 }
 setupLandscapeMultiTouch();
+/* ===== BUILD2SB19: zapojeni novych tlacitek OVLADANI/D-PAD panelu ===== */
+$('btnSegaSettings').addEventListener('click',function(e){e.preventDefault();showSegaDpadMenu();},true);
+$('segaDpadMenuClose').addEventListener('click',function(e){e.preventDefault();closeSegaDpadMenu();},true);
+$('segaBtnEditLayout').addEventListener('click',function(e){e.preventDefault();layoutEditEnter();},true);
+$('segaBtnCtrlSettings').addEventListener('click',function(e){e.preventDefault();closeSegaDpadMenu();showSegaCtrl();},true);
+$('segaBtnMirror').addEventListener('click',function(e){e.preventDefault();layoutMirrorHorizontal();},true);
+$('segaModeToggle').addEventListener('click',function(e){e.preventDefault();toggleLayoutGroupMode();},true);
+$('segaLayoutReset').addEventListener('click',function(e){e.preventDefault();layoutReset();},true);
+$('segaLayoutDone').addEventListener('click',function(e){e.preventDefault();layoutEditExit(true);},true);
+$('segaCtrlClose').addEventListener('click',function(e){e.preventDefault();closeSegaCtrl();},true);
+$('segaCtrlReset').addEventListener('click',function(e){e.preventDefault();ctrlReset();},true);
+function segaCtrlOnSlide(key,parse){return function(e){ctrlSettings[key]=parse(e.target.value);ctrlApplyVisual();ctrlUpdateLabels();};}
+$('segaCtrlSensitivity').addEventListener('input',segaCtrlOnSlide('sensitivity',function(v){return parseInt(v,10);}),true);
+$('segaCtrlOpacity').addEventListener('input',segaCtrlOnSlide('opacity',function(v){return parseInt(v,10);}),true);
+$('segaCtrlSize').addEventListener('input',segaCtrlOnSlide('size',function(v){return parseInt(v,10);}),true);
+$('segaCtrlDpadSize').addEventListener('input',segaCtrlOnSlide('dpadSize',function(v){return parseInt(v,10);}),true);
+$('segaCtrlSensitivity').addEventListener('change',function(){ctrlSave();},true);
+$('segaCtrlOpacity').addEventListener('change',function(){ctrlSave();},true);
+$('segaCtrlSize').addEventListener('change',function(){ctrlSave();},true);
+$('segaCtrlDpadSize').addEventListener('change',function(){ctrlSave();},true);
+$('segaCtrlHaptic').addEventListener('change',function(e){ctrlSettings.haptic=!!e.target.checked;ctrlSave();},true);
+ctrlLoad();
+layoutLoad();
 
 
 // BUILD2RV: Android WebView sometimes shows :active blink but suppresses the later click

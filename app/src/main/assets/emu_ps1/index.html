@@ -277,10 +277,11 @@ body{display:flex;justify-content:center;align-items:flex-start;}
      odsud primo, a smazat. -->
 <div id="libraryPanel" class="panel" aria-hidden="true">
   <div class="box">
-    <h2>PAMĚŤOVÁ KARTA</h2>
-    <p>Hry stažené do telefonu. Klepnutím na hru ji spustíš, koš hru smaže.</p>
+    <h2>VYBRAT HRU (CD/ISO)</h2>
+    <p>Jako vložit disk do konzole. Hry stažené do telefonu - klepnutím na hru ji spustíš, koš hru smaže.</p>
     <div id="libraryList"></div>
     <button id="libraryRefresh" type="button" class="secondary">OBNOVIT SEZNAM</button>
+    <button id="libraryPickManual" type="button" class="secondary">VYBRAT SOUBOR RUČNĚ V TELEFONU</button>
     <button id="libraryClose" type="button">ZAVŘÍT</button>
   </div>
 </div>
@@ -295,6 +296,19 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <button id="libraryDeleteGameOnly" type="button" class="secondary">JEN HRU (uložená pozice zůstane)</button>
     <button id="libraryDeleteGameAndSave" type="button" style="background:rgba(255,90,90,.75);color:#2a0505;">HRU I ULOŽENOU POZICI</button>
     <button id="libraryDeleteCancel" type="button" class="secondary">ZRUŠIT</button>
+  </div>
+</div>
+<!-- BUILD2SB20: Rene - "CD/ISO by mela byt knihovna, ne slozite
+     prohledavani telefonu." PAMETOVA KARTA (fyzicka, porad zasunuta,
+     viz B218) na tohle misto nepatri - tenhle panel jen ukaze jeji
+     STAV, nic nespoustí ani nemaze (to uz dela jadro samo). -->
+<div id="memCardStatusPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>PAMĚŤOVÁ KARTA</h2>
+    <p>Skutečná PS1 karta - jedna, pořád zasunutá, sdílená všemi hrami i BIOSem (viz B218). O ukládání se stará jádro samo, tady jen vidíš stav.</p>
+    <p id="memCardStatusText" style="color:#f1d78e;font-size:12px;line-height:1.5;"></p>
+    <button id="memCardRefresh" type="button" class="secondary">OBNOVIT STAV</button>
+    <button id="memCardClose" type="button">ZAVŘÍT</button>
   </div>
 </div>
 <div id="ctrlPanel" class="panel" aria-hidden="true">
@@ -422,6 +436,31 @@ function showLibrary(){
   libraryRefresh();
 }
 function closeLibrary(){var p=$('libraryPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+/* BUILD2SB20: PAMETOVA KARTA uz neni knihovna her (to je ted CD/ISO) -
+   je to jen stav SKUTECNE, porad zasunute karty (viz B215-B218). Zadne
+   SPUSTIT/SMAZAT tady nedava smysl - o kartu se stara jadro samo. */
+function memCardFriendlyText(raw){
+  // "PS1_MEMCARD path=... core_da_sram=ANO core_sram_bytes=131072 soubor_existuje=ANO soubor_bytes=131072 posledni_ulozeni=OK"
+  var m={};
+  String(raw||'').replace(/(\w+)=(\S+)/g,function(_,k,v){m[k]=v;return '';});
+  var lines=[];
+  lines.push(m.core_da_sram==='ANO' ? '✓ Jádro dává skutečnou paměť karty (128 kB).' : '✗ Jádro zatím kartu nedává - zkus nejdřív nahrát/spustit hru.');
+  lines.push(m.soubor_existuje==='ANO' ? '✓ Karta je uložená na disku ('+m.soubor_bytes+' bajtů).' : 'Karta zatím nemá žádný soubor na disku - uloží se při prvním zápisu.');
+  if(m.posledni_ulozeni==='OK')lines.push('✓ Poslední zápis proběhl v pořádku.');
+  else if(m.posledni_ulozeni==='SELHALO')lines.push('✗ Poslední zápis SELHAL.');
+  else lines.push('Zápis zatím nebyl zkoušen v téhle relaci.');
+  return lines.join('<br>');
+}
+function memCardStatusRefresh(){
+  var host=$('memCardStatusText');if(!host)return;
+  host.innerHTML='Zjišťuji…';
+  var raw='';
+  try{if(window.AHPS1&&window.AHPS1.ps1MemCardInfo)raw=String(window.AHPS1.ps1MemCardInfo());}catch(e){}
+  jsLog('MEMCARD_STATUS_PANEL '+raw);
+  host.innerHTML=raw?memCardFriendlyText(raw):'Nejde zjistit - jádro ještě neběží.';
+}
+function showMemCardStatus(){var p=$('memCardStatusPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}memCardStatusRefresh();}
+function closeMemCardStatus(){var p=$('memCardStatusPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 function libraryRefresh(){
   var host=$('libraryList');if(!host)return;
   host.innerHTML='<p class="libEmpty">Načítám…</p>';
@@ -1183,15 +1222,16 @@ window.addEventListener('orientationchange',function(){setTimeout(function(){
 $('btnSettings').addEventListener('click',function(e){e.preventDefault();openSettingsForOrientation();},true);
 $('psMonitor').addEventListener('click',function(e){e.preventDefault();},true);
 $('btnReset').addEventListener('click',function(e){e.preventDefault();toast('PS1 RESET pripraven',1800);},true);
-$('btnMemory').addEventListener('click',function(e){e.preventDefault();showLibrary();},true);
+$('btnCd').addEventListener('click',function(e){e.preventDefault();showLibrary();},true);
 $('libraryClose').addEventListener('click',function(e){e.preventDefault();closeLibrary();},true);
 $('libraryRefresh').addEventListener('click',function(e){e.preventDefault();libraryRefresh();},true);
+$('libraryPickManual').addEventListener('click',function(e){e.preventDefault();closeLibrary();bootPs1Native();},true);
 $('libraryDeleteGameOnly').addEventListener('click',function(e){e.preventDefault();libraryDoDelete(false);},true);
 $('libraryDeleteGameAndSave').addEventListener('click',function(e){e.preventDefault();libraryDoDelete(true);},true);
 $('libraryDeleteCancel').addEventListener('click',function(e){e.preventDefault();closeLibraryDeleteConfirm();},true);
-$('btnCd').addEventListener('click',function(e){e.preventDefault();
-  bootPs1Native();
-},true);
+$('btnMemory').addEventListener('click',function(e){e.preventDefault();showMemCardStatus();},true);
+$('memCardClose').addEventListener('click',function(e){e.preventDefault();closeMemCardStatus();},true);
+$('memCardRefresh').addEventListener('click',function(e){e.preventDefault();memCardStatusRefresh();},true);
 $('btnLoad').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);
 $('btnSave').addEventListener('click',function(e){e.preventDefault();ps1QuickSave();},true);
 bindDpad($('dpad'));

@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 264
-        versionName "EMU10-B218-JEDNA-TRVALA-KARTA"  // ZASADNI OPRAVA ARCHITEKTURY: Rene - "memory card nepracuje jak na PS1... porad zasunuta v PS1." B215-B217 resily SPATNY problem (kazda hra vlastni kartu). Realna PS1 ma JEDNU fyzickou kartu sdilenou vsemi hrami i BIOSem - nap_srm_set_path uz nezavisi na tom, jaka hra bezi, vzdy je to g_savedir/memory_card_1.srm. Navic nalezena a opravena chybejici mezera: ps1BootDoMonitoru (funkce, co bootuje BIOS bez disku I hru) vubec nevolala nap_srm_set_path/nap_srm_load - karta se pri tomhle zpusobu bootu nikdy nenacetla. Overeno 5krokovym testem: BIOS pri prvnim zapnuti prazdna karta, hra ulozi pozici, simulovany restart appky, BIOS po restartu vidi ulozenou hru, jina hra nabootovana vidi tu samou kartu se stejnymi daty.
+        versionCode 266
+        versionName "EMU10-B220-CD-ISO-JE-KNIHOVNA"  // Rene: "CD/ISO by mela byt knihovna stazenych her, ne slozite prohledavani telefonu." Tlacitka PROHOZENA: CD/ISO ted otevira knihovnu (drive delala MEMORY CARD, presunuto sem - vic sedi "vloz disk" nez "pametova karta"), stary rucni SAF picker (ps1PickGame) zustava jako sekundarni tlacitko VYBRAT SOUBOR RUCNE uvnitr knihovny. MEMORY CARD ted ukazuje jednoduchy, srozumitelny stav SKUTECNE karty (pres uz existujici ps1MemCardInfo) - zadne SPUSTIT/SMAZAT, protoze o tu se stara jadro samo (B215-B218).
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

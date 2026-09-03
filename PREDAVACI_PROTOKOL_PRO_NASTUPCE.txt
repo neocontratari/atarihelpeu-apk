@@ -347,12 +347,31 @@
      MUSI zustat, jen jeho .hit tlacitka museji byt VIZUALNE neviditelna
      (predtim `.padBtn` kreslila navic zlate duchy pres fotku - viz
      CO_JE_V_B213.md, kdyby se to nekdy vratilo).
-   B214: PAMETOVA KARTA je ted opravdova knihovna stazenych her (drive
-     to jen delalo quick-load save-statu, matouci). VELKA ZMENA:
-     appka uz PRED KAZDYM stazenim NEMAZE vsechny predchozi hry
-     (ps1PurgeOtherRemoteGames se uz nevola) - Rene chtel knihovnu
-     vice her, ne jednu aktivni. Diagnostika memory karty (SRAM/.srm)
-     jde ted i do /8765/log (drive jen do logcatu, ktery Rene nevidi).
+   B214: PAMETOVA KARTA je knihovna stazenych her (drive jen quick-load
+     save-statu). Appka uz PRED KAZDYM stazenim nemaze vsechny predchozi
+     hry (ps1PurgeOtherRemoteGames zruseno).
+   B215-B218: MEMORY CARD - zasadni poucka. B215/B217 resily "kazda hra
+     vlastni kartu" (kolize/vynulovani) - SPATNY model. B216 zjistila,
+     ze jadro (PCSX ReARMed) melo kartu uplne vypnutou (chybel core
+     option pcsx_rearmed_memcard1/2 v odpovedi appky). B218 teprve
+     opravila SKUTECNY model: PS1 ma JEDNU trvalou kartu sdilenou VSEMI
+     hrami i BIOSem bez disku - g_srm_path uz nezavisi na tom, jaka hra
+     bezi. Kdyby nekdo v budoucnu chtel "kazda hra vlastni save" -
+     NENI TO SPRAVNE, Rene to vyslovne odmitl (viz CO_JE_V_B218.md).
+     VSECHNY tri C++ testy (memcard zapnuti, kolize, jedna karta) jsou
+     prilozene v app/../test_overeni/ v kazdem balicku od B216 dal -
+     spustitelne na jakemkoli Linuxu s g++, ne jen na telefonu.
+   B219: STEJNY D-pad/OVLADANI system portovan do emu_sega (D-pad+A/B/C
+     skupina+Start, Start bylo v landscape drive uplne vypnute - ted
+     funkcni). Sega ma JINOU vstupni architekturu nez PS1 (jeden globalni
+     multi-touch handler na #stage, ne per-element listenery) - drag
+     system musel handler GATOVAT (`if(layoutEditActive)return`), ne ho
+     prepsat.
+   B220: CD/ISO a MEMORY CARD tlacitka PROHOZENA vyznamem. CD/ISO ted
+     otevira knihovnu stazenych her (SPUSTIT/SMAZAT) - drive to delalo
+     MEMORY CARD (od B214), ale po B218 uz vime, ze "memory card" ma byt
+     jedna trvala karta, ne vyber her. MEMORY CARD ted jen ukazuje stav
+     te skutecne karty (pres ps1MemCardInfo), nic nespoustí ani nemaze.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

@@ -4504,6 +4504,51 @@ public class MainActivity extends Activity {
         return alias;
     }
 
+    // BUILD2SB19: hapticka odezva - drive jen uvnitr AHPS1 (ps1VibratorCache),
+    // presunuto na uroven MainActivity, aby si ji mohla pujcit i Sega (a
+    // pripadne Atari az bude na rade) - stejny hardwarovy vibrator, jen
+    // volany z vice mist. Zadna nova logika, jen sdileni uz existujici.
+    private Vibrator napVibratorCache = null;
+    private Vibrator napVibrator() {
+        if (napVibratorCache != null) return napVibratorCache;
+        try {
+            if (Build.VERSION.SDK_INT >= 31) {
+                VibratorManager vm = (VibratorManager) getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE);
+                napVibratorCache = (vm != null) ? vm.getDefaultVibrator() : null;
+            } else {
+                napVibratorCache = (Vibrator) getSystemService(android.content.Context.VIBRATOR_SERVICE);
+            }
+        } catch (Throwable ignored) { napVibratorCache = null; }
+        return napVibratorCache;
+    }
+    // BUILD2SB19: Rene - "v emu sega s d-padem uplne to same jako v emu ps1
+    // - samostatne nastaveni atd na uplne stejnem principu." Tenka trida,
+    // presne stejny vzor jako AHPS1.ps1Log/ps1Vibrate - zadna nova herni
+    // logika, jen most pro JS stranu (soubory/vibrace jinak z WebView
+    // sandboxu nejdou).
+    public class AHSega {
+        @JavascriptInterface
+        public String segaLog(String line) {
+            appendNativeLog("SEGA_JS " + (line == null ? "" : line));
+            return "OK";
+        }
+        @JavascriptInterface
+        public String segaVibrate(int ms) {
+            try {
+                Vibrator v = napVibrator();
+                if (v == null || !v.hasVibrator()) return "NO_VIBRATOR";
+                int clamped = Math.max(1, Math.min(60, ms));
+                if (Build.VERSION.SDK_INT >= 26) {
+                    v.vibrate(VibrationEffect.createOneShot(clamped, VibrationEffect.DEFAULT_AMPLITUDE));
+                } else {
+                    v.vibrate(clamped);
+                }
+                return "OK";
+            } catch (Throwable t) {
+                return "ERR " + t.getMessage();
+            }
+        }
+    }
     public class AHPS1 {
         @JavascriptInterface
         public String ps1CoreInfo() { return NativePs1CoreBridge.coreInfoSafe(); }
@@ -4541,26 +4586,10 @@ public class MainActivity extends Activity {
             appendNativeLog("PS1_JS " + (line == null ? "" : line));
             return "OK";
         }
-        // BUILD2SB6: hapticka odezva pro profi ovladac - kratky, jemny tik
-        // pri stisku (ms omezeno na rozumny rozsah, at si JS strana
-        // neposle nesmysl a netelefonuje s telefonem donekonecna).
-        private Vibrator ps1VibratorCache = null;
-        private Vibrator ps1Vibrator() {
-            if (ps1VibratorCache != null) return ps1VibratorCache;
-            try {
-                if (Build.VERSION.SDK_INT >= 31) {
-                    VibratorManager vm = (VibratorManager) getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE);
-                    ps1VibratorCache = (vm != null) ? vm.getDefaultVibrator() : null;
-                } else {
-                    ps1VibratorCache = (Vibrator) getSystemService(android.content.Context.VIBRATOR_SERVICE);
-                }
-            } catch (Throwable ignored) { ps1VibratorCache = null; }
-            return ps1VibratorCache;
-        }
         @JavascriptInterface
         public String ps1Vibrate(int ms) {
             try {
-                Vibrator v = ps1Vibrator();
+                Vibrator v = napVibrator();
                 if (v == null || !v.hasVibrator()) return "NO_VIBRATOR";
                 int clamped = Math.max(1, Math.min(60, ms));
                 if (Build.VERSION.SDK_INT >= 26) {
@@ -7206,6 +7235,7 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHSave(), "AHSAVE");
         web.addJavascriptInterface(new AHPick(), "AHPICK");
         web.addJavascriptInterface(new AHPS1(), "AHPS1"); // BUILD2SA1
+        web.addJavascriptInterface(new AHSega(), "AHSega"); // BUILD2SB19
         tvSetupDisplayListener(); // BUILD2SB1: TV vystup pro celou appku
         web.addJavascriptInterface(new AHNet(), "AHNET");
         web.addJavascriptInterface(new AHNative(), "AHNATIVE");
