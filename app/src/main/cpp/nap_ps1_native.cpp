@@ -219,29 +219,29 @@ static uint32_t nap_fnv32(const uint8_t *d, size_t n) {
   return h;
 }
 static void nap_srm_set_path(const std::string &gamePath) {
-  // BUILD2SB15: Rene si vsiml rizika - kdyz maji dve RUZNE hry stejny
-  // nazev souboru (bezne u PS1 dumpu - "game.bin", "disc1.bin"...), drive
-  // se pouzival JEN nazev souboru jako klic k ulozene pozici. Dve ruzne
-  // hry se stejnym nazvem by si tise prepsaly memory kartu navzajem,
-  // BEZ JAKEHOKOLI varovani. Kazda hra uz ale ma svou vlastni slozku
-  // (viz ps1RemoteCacheDir v Jave) - ta je VZDY jedinecna. Klic pro
-  // ulozenou pozici proto skladame ze slozky I nazvu souboru, ne jen
-  // z nazvu souboru samotneho.
-  std::string leaf = gamePath;
-  size_t sl = leaf.find_last_of('/');
-  std::string parentDir;
-  if (sl != std::string::npos) {
-    leaf = gamePath.substr(sl + 1);
-    std::string beforeLeaf = gamePath.substr(0, sl);
-    size_t sl2 = beforeLeaf.find_last_of('/');
-    parentDir = (sl2 != std::string::npos) ? beforeLeaf.substr(sl2 + 1) : beforeLeaf;
-  }
-  if (leaf.empty() || gamePath.rfind("/proc/self/fd/", 0) == 0) { leaf = "rucni_vyber"; parentDir.clear(); }
-  size_t dot = leaf.find_last_of('.');
-  if (dot != std::string::npos && dot > 0) leaf = leaf.substr(0, dot);
-  if (!parentDir.empty() && parentDir != "ps1_games" && parentDir != "PS1") leaf = parentDir + "__" + leaf;
-  for (size_t i = 0; i < leaf.size(); ++i) { char c = leaf[i]; if (!isalnum((unsigned char)c) && c != '-' && c != '_') leaf[i] = '_'; }
-  g_srm_path = g_savedir + "/" + leaf + ".srm";
+  // BUILD2SB18: OPRAVA ARCHITEKTURY - Rene: "memory card nepracuje jak
+  // na PS1... uz po vyjeti z emu si nepamatuje ulozenou pozici... presne
+  // tak, ze je porad memory card zasunuta v PS1." Mel pravdu a ja jsem
+  // predtim (B215-B217) resil SPATNY problem: myslel jsem si, ze kazda
+  // hra potrebuje SVOJI VLASTNI kartu (aby se navzajem "neprepsaly"),
+  // a delal jsem tomu podle nazvu slozky/souboru jedinecnou cestu.
+  //
+  // Skutecna PS1 to ale nedela takhle. Ma JEDNU fyzickou kartu (128kB),
+  // porad zasunutou, a RUZNE HRY NA NI PIRODZENE KOEXISTUJI - kazda hra
+  // si na karte zabere jen nekolik ze 15 "bloku", zbytek zustava pro
+  // ostatni hry i pro BIOS Memory Card Manager, kdyz nabootujes uplne
+  // bez disku. To, co blok patri ktere hre, resi FORMAT KARTY SAMOTNE
+  // (hlavicka + tabulka bloku), ne appka zvenku - presne to uz dela
+  // jadro (PCSX ReARMed) uvnitr Mcd1Data, jakmile mu dame SKUTECNOU,
+  // porad stejnou kartu.
+  //
+  // Cesta k .srm souboru proto uz vubec nezavisi na tom, jaka hra (nebo
+  // jestli vubec nejaka) prave bezi - je VZDY STEJNA, at nabootuje BIOS
+  // samotny (Memory Card Manager bez disku) nebo jakakoli hra. `gamePath`
+  // uz se nepouziva vubec (parametr zustava kvuli existujicim volanim
+  // na trech mistech v kodu, at se nemusi menit i tam).
+  (void)gamePath;
+  g_srm_path = g_savedir + "/memory_card_1.srm";
 }
 static void nap_srm_load() {
   void *mem = retro_get_memory_data(0);
@@ -1747,6 +1747,15 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootDoMonitoru(JNIEnv *env, jclas
     }
   }
   g_loaded.store(true);
+  // BUILD2SB18: NALEZENO PRI DUKLADNEJSI KONTROLE - tahle funkce (bootuje
+  // BIOS bez disku I hru, podle jeHra) vubec nevolala nap_srm_set_path/
+  // nap_srm_load. Karta se tak NIKDY nenacetla do Mcd1Data pri tomhle
+  // zpusobu bootu - presne to, co Rene popsal: BIOS pri startu bez
+  // disku nevidel na karte nic, i kdyby tam neco bylo ulozene z
+  // predchoziho behu. Musi byt volane VZDY (BIOS i hra), at appka
+  // funguje presne tak, jako by karta byla porad zasunuta.
+  nap_srm_set_path(gamePath);
+  nap_srm_load();
 
   retro_system_av_info av; memset(&av, 0, sizeof(av));
   retro_get_system_av_info(&av);

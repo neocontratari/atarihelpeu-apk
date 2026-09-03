@@ -10,3 +10,13 @@ Presny vystup z posledniho spusteni je v VYSTUP_TESTU.txt.
 Druhy test (B217, cely retezec):
   g++ -std=c++14 -o test_e2e test_end_to_end.cpp
   ./test_e2e
+
+Treti test (B218, jedna trvala karta - AKTUALNI, autoritativni test):
+  g++ -std=c++14 -o test_jedna_karta test_jedna_karta.cpp
+  ./test_jedna_karta
+
+POZOR: test_end_to_end.cpp (druhy test, z B217) je od B218 ZASTARALY -
+overoval architekturu "kazda hra ma svou kartu", o ktere se zjistilo,
+ze je spatne. Se soucasnym nap_srm_functions_REAL.cpp uz neprojde (a
+je to spravne - dokazuje presne tu zmenu). Necham ho jako zaznam
+predchozi uvahy, ne jako aktualni test.

@@ -1,15 +1,26 @@
 /* test_end_to_end.cpp
  *
- * "2x mer, jednou rez" - Rene chtel dalsi kontrolu pred tim, nez zacne
- * testovat sam. Tenhle test spoji VSECHNY tri opravy (B215 kolize +
- * B216 zapnuti karty) v JEDNOM behu, ne izolovane jako predtim, a navic
- * overi presne to riziko, ktere B215 resila: DVE RUZNE hry se STEJNYM
- * nazvem souboru (bezny pripad u PS1 dumpu) se svymi ulozenymi pozicemi
- * NESMI zkrizit.
+ * *** ZASTARALE OD B218 - NESPOUSTET SAMOSTATNE BEZ ROZMYSLU ***
+ * Tenhle test overoval architekturu "kazda hra ma svou vlastni kartu",
+ * o ktere se v B218 zjistilo, ze je SPATNE - realna PS1 ma jednu
+ * trvalou kartu sdilenou vsemi hrami (viz test_jedna_karta.cpp a
+ * CO_JE_V_B218.md). Kroky 2-4 tohohle testu (ocekavaji RUZNE cesty
+ * pro ruzne hry) uz se SKUTECNYM zdrojovym kodem od B218 NEPROJDOU -
+ * a je to spravne, dokazuji tim presne tu zmenu chovani. Necham ho tu
+ * jako zaznam, jak vypadala predchozi (chybna) uvaha, ne jako aktualni
+ * test spravnosti - tim je ted test_jedna_karta.cpp.
  *
- * Pouziva SKUTECNE funkce z jadra (load_memcards, retro_get_memory_*)
- * a SKUTECNE funkce z appky (nap_core_option_value, nap_srm_set_path/
- * load/save_if_dirty) - vsechny vytazene doslovne ze zdrojaku B216.
+ * CIL: overit, ze SKUTECNA funkce load_memcards() z PCSX ReARMed
+ * (vytazena verbatim z vendor/pcsx_rearmed/frontend/libretro.c) skutecne
+ * zapne memcard_type[0]=MEMCARDTYPE_LIBRETRO, kdyz se jako environ_cb
+ * pouzije appce SKUTECNA nap_env()/nap_core_option_value() (vytazena
+ * verbatim z nap_ps1_native.cpp) - a ze retro_get_memory_data/size
+ * (taky verbatim z jadra) v dusledku toho vrati platnou pamet.
+ *
+ * Spousti se DVAKRAT - jednou se STAROU (B215, chybi radky memcard1/2)
+ * verzi nap_core_option_value a jednou s NOVOU (B216, opravenou).
+ * Ocekavany vysledek: stara verze -> MEMCARDTYPE_NONE, NULL, 0.
+ *                      nova verze -> MEMCARDTYPE_LIBRETRO, ne-NULL, 128KB.
  */
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,0 +1,37 @@
+[NAPLOG] BUILD2SA11 MEMCARD_NEW /tmp/nap_jedna_karta_test/memory_card_1.srm size=131072 (prvni hrani teto hry, karta vynulovana)
+[NAPLOG] BUILD2SA11 MEMCARD_NEW /tmp/nap_jedna_karta_test/memory_card_1.srm size=131072 (prvni hrani teto hry, karta vynulovana)
+[NAPLOG] BUILD2SA11 MEMCARD_SAVED /tmp/nap_jedna_karta_test/memory_card_1.srm bytes=131072 why=hrac_ukoncil_hru_A
+[NAPLOG] BUILD2SA11 MEMCARD_LOADED /tmp/nap_jedna_karta_test/memory_card_1.srm bytes=131072/131072
+[NAPLOG] BUILD2SA11 MEMCARD_LOADED /tmp/nap_jedna_karta_test/memory_card_1.srm bytes=131072/131072
+=== KROK 1: BIOS bez disku (prvni zapnuti appky, nikdy nic nehrano) ===
+
+--- BOOT: BIOS bez disku ---
+  g_srm_path = /tmp/nap_jedna_karta_test/memory_card_1.srm
+  karta prazdna pri UPLNE prvnim zapnuti appky? ANO (spravne)
+
+=== KROK 2: hra A si ulozi pozici, appka se 'vypne' (ps1Stop by tu zavolal save_if_dirty) ===
+
+--- BOOT: hra A (Crash Bandicoot) ---
+  g_srm_path = /tmp/nap_jedna_karta_test/memory_card_1.srm
+
+=== KROK 3: cesta BIOSu a cesta hry A MUSI byt STEJNA (jedna karta, ne dve) ===
+  cesta BIOS:  /tmp/nap_jedna_karta_test/memory_card_1.srm
+  cesta hra A: /tmp/nap_jedna_karta_test/memory_card_1.srm
+  STEJNA cesta? ANO (spravne, kdyz ANO - realna PS1 ma jednu kartu)
+
+=== KROK 4: 'appka se restartuje' (novy proces - nova instance Mcd1Data v pameti) ===
+
+--- BOOT: BIOS bez disku, PO 'restartu appky' ---
+  g_srm_path = /tmp/nap_jedna_karta_test/memory_card_1.srm
+  Mcd1Data = "ULOZENA POZICE - Crash Bandicoot, level 5"
+  BIOS po restartu appky VIDI ulozenou hru z disku? ANO (musi byt ANO)
+
+=== KROK 5: hra B (jina hra) nabootovana - MUSI videt tu samou kartu, ne prazdnou novou ===
+
+--- BOOT: hra B (Tekken 3) ---
+  g_srm_path = /tmp/nap_jedna_karta_test/memory_card_1.srm
+  cesta hry B: /tmp/nap_jedna_karta_test/memory_card_1.srm
+  stejna cesta jako hra A/BIOS? ANO (spravne)
+  hra B pri nabootovani VIDI ulozenou pozici hry A na karte (koexistuji)? ANO (spravne, presne jako na realne PS1)
+
+CELKOVY VYSLEDEK: JEDNA TRVALA KARTA, SDILENA BIOSEM I VSEMI HRAMI - presne jako na realne PS1

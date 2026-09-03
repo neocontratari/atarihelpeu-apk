@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 263
-        versionName "EMU10-B217-KARTA-SE-VYNULUJE-MEZI-HRAMI"  // Rene: "2x mer, jednou rez" - druhy, hlubsi test (VSECHNY tri opravy pohromade, ne izolovane) nasel SKUTECNOU chybu: nap_srm_load() pri prvnim hrani NOVE hry (soubor jeste neexistuje) nechaval Mcd1Data (128kB globalni buffer karty) tak, jak byl - tedy s obsahem PREDCHOZI hrane hry v tehle session appky. Nova hra by tak dostala cizi ulozenou pozici, i kdyz jeji vlastni .srm soubor spravne neexistoval. Opraveno: memset(mem,0,sz) pred pokusem o nacteni souboru. Overeno testem se dvema hrami stejneho nazvu (test_overeni/test_end_to_end.cpp) - pred opravou KROK 3 padal, po oprave prochazi cele.
+        versionCode 264
+        versionName "EMU10-B218-JEDNA-TRVALA-KARTA"  // ZASADNI OPRAVA ARCHITEKTURY: Rene - "memory card nepracuje jak na PS1... porad zasunuta v PS1." B215-B217 resily SPATNY problem (kazda hra vlastni kartu). Realna PS1 ma JEDNU fyzickou kartu sdilenou vsemi hrami i BIOSem - nap_srm_set_path uz nezavisi na tom, jaka hra bezi, vzdy je to g_savedir/memory_card_1.srm. Navic nalezena a opravena chybejici mezera: ps1BootDoMonitoru (funkce, co bootuje BIOS bez disku I hru) vubec nevolala nap_srm_set_path/nap_srm_load - karta se pri tomhle zpusobu bootu nikdy nenacetla. Overeno 5krokovym testem: BIOS pri prvnim zapnuti prazdna karta, hra ulozi pozici, simulovany restart appky, BIOS po restartu vidi ulozenou hru, jina hra nabootovana vidi tu samou kartu se stejnymi daty.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
