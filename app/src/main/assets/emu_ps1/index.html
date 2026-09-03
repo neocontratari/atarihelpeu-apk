@@ -417,10 +417,17 @@ function updateRemoteBanner(st){
     window.__napRemoteHideTimer=setTimeout(function(){b.classList.remove('show');},9000);
   }
 }
-function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v)v.value=LOG.join('\n');}
-function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
-function showDpadMenu(){var p=$('dpadMenuPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}}
-function closeDpadMenu(){var p=$('dpadMenuPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+/* BUILD2SB21: Rene - screenshot ukazal obraz BIOSu "zamotany" do HTML
+   panelu, protoze nativni ps1Plocha je NAD WebView (zOrderOnTop) a
+   zadne CSS ji nemuze schovat. Kazdy panel proto pri otevreni schova
+   nativni plochu a pri zavreni ji vrati - bezpecny mechanismus, jen
+   View.setVisibility, nic v jadru/EGL se netyka. */
+function napPlochaHide(){try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(false);}catch(_){}}
+function napPlochaShow(){try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(true);}catch(_){}}
+function showHelp(){napPlochaHide();var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v)v.value=LOG.join('\n');}
+function closeHelp(){napPlochaShow();var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function showDpadMenu(){napPlochaHide();var p=$('dpadMenuPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}}
+function closeDpadMenu(){napPlochaShow();var p=$('dpadMenuPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 /* ===== BUILD2SB14: PAMĚŤOVÁ KARTA - opravdová knihovna stažených her.
    Rene: "v memory card musi byt ulozene hry... pres memory card musim
    otevrit hru z kazde pozice a z kazde hry." ===== */
@@ -432,10 +439,11 @@ function libFormatBytes(n){
 }
 function libEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function showLibrary(){
+  napPlochaHide();
   var p=$('libraryPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}
   libraryRefresh();
 }
-function closeLibrary(){var p=$('libraryPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function closeLibrary(){napPlochaShow();var p=$('libraryPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 /* BUILD2SB20: PAMETOVA KARTA uz neni knihovna her (to je ted CD/ISO) -
    je to jen stav SKUTECNE, porad zasunute karty (viz B215-B218). Zadne
    SPUSTIT/SMAZAT tady nedava smysl - o kartu se stara jadro samo. */
@@ -459,8 +467,8 @@ function memCardStatusRefresh(){
   jsLog('MEMCARD_STATUS_PANEL '+raw);
   host.innerHTML=raw?memCardFriendlyText(raw):'Nejde zjistit - jádro ještě neběží.';
 }
-function showMemCardStatus(){var p=$('memCardStatusPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}memCardStatusRefresh();}
-function closeMemCardStatus(){var p=$('memCardStatusPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function showMemCardStatus(){napPlochaHide();var p=$('memCardStatusPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}memCardStatusRefresh();}
+function closeMemCardStatus(){napPlochaShow();var p=$('memCardStatusPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 function libraryRefresh(){
   var host=$('libraryList');if(!host)return;
   host.innerHTML='<p class="libEmpty">Načítám…</p>';
@@ -490,7 +498,7 @@ function libraryRefresh(){
       row.querySelector('.libPlay').addEventListener('click',function(e){
         e.preventDefault();
         jsLog('LIBRARY_LAUNCH key='+key);
-        toast('Spouštím hru…',2400);
+        toast('Spouštím hru… může to trvat kolem 10 vteřin, nic se nekazí.',11000);
         closeLibrary();
         try{if(window.AHPS1&&window.AHPS1.ps1LibraryLaunch)window.AHPS1.ps1LibraryLaunch(key);}catch(err){}
         ensurePs1ScreenAndPoll();
@@ -574,8 +582,8 @@ function ctrlReset(){
   ctrlApplyVisual();ctrlSyncInputs();ctrlSave();
   toast('Ovládání vráceno na výchozí',2000);
 }
-function showCtrl(){var p=$('ctrlPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}ctrlSyncInputs();}
-function closeCtrl(){var p=$('ctrlPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function showCtrl(){napPlochaHide();var p=$('ctrlPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}ctrlSyncInputs();}
+function closeCtrl(){napPlochaShow();var p=$('ctrlPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 
 /* ===== BUILD2RZ ANALYZA SOUBORU (poctiva, zadny fake boot) =====
    BIOS rozpoznani: velikost 524288 + retezec "System ROM Version" + region pismeno.
@@ -1016,6 +1024,7 @@ function bindLayoutDrag(el){
 }
 function layoutEditEnter(){
   closeHelp();closeDpadMenu();
+  napPlochaHide(); // BUILD2SB21: closeDpadMenu() prave vratila plochu zpet - pro editaci ji chceme zase schovanou
   layoutEditActive=true;
   layoutGroupMode=false;
   var toggle=$('layoutModeToggle');if(toggle){toggle.classList.remove('active');toggle.textContent='PO SKUPINÁCH';}
@@ -1030,6 +1039,7 @@ function layoutEditEnter(){
 }
 function layoutEditExit(save){
   layoutEditActive=false;
+  napPlochaShow();
   for(var i=0;i<LAYOUT_IDS.length;i++){
     var el=$(LAYOUT_IDS[i]);if(!el)continue;
     el.classList.remove('layoutEdit');el.classList.remove('dragging');

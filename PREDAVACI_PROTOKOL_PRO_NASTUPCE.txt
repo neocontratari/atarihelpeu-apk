@@ -372,6 +372,14 @@
      MEMORY CARD (od B214), ale po B218 uz vime, ze "memory card" ma byt
      jedna trvala karta, ne vyber her. MEMORY CARD ted jen ukazuje stav
      te skutecne karty (pres ps1MemCardInfo), nic nespoustí ani nemaze.
+   B221: ps1Plocha (nativni SurfaceView, zOrderOnTop nad WebView) se
+     "zamotavala" do HTML panelu (knihovna/D-PAD/OVLADANI) - zadne CSS
+     ji nemuze schovat, je to jina vrstva nez HTML. Nova bezpecna metoda
+     AHPS1.ps1PlochaVisible(bool) - JEN View.setVisibility (stejny
+     mechanismus jako uz existujici prechody v intru), ZADNY zasah do
+     EGL/vlakna renderovani/bootovani. Kazdy panel ted plochu schova
+     pri otevreni a vrati pri zavreni. Hlaska "Spoustim hru" prodlouzena
+     na 11s (skutecne booteni trva ~10s).
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

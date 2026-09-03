@@ -4558,6 +4558,27 @@ public class MainActivity extends Activity {
         // uz hotovou nativni funkci ps1MemCardInfo(), zadna nova logika.
         @JavascriptInterface
         public String ps1MemCardInfo() { return NativePs1CoreBridge.memCardInfoSafe(); }
+        // BUILD2SB21: Rene - screenshot ukazal obraz BIOSu/hry "zamotany"
+        // do HTML panelu (knihovna, D-PAD nastaveni...) - protoze ps1Plocha
+        // je NATIVNI View nad WebView (zOrderOnTop kvuli hrani), zadne CSS
+        // v panelu ho nemuze schovat, i kdyz je panel "navrchu" v HTML.
+        // Tohle jen VIDITELNOST prepina (View.setVisibility) - STEJNY
+        // bezpecny mechanismus, jaky uz appka pouziva pro prechody v intru
+        // (viz radky 6537/6546) - zadny zasah do EGL/vlakna renderovani,
+        // zadne booteni/stop jadra. Panel v JS zavola pred otevrenim
+        // (schovej) a po zavreni (ukaz zpet).
+        @JavascriptInterface
+        public void ps1PlochaVisible(final boolean show) {
+            try {
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        try {
+                            if (ps1Plocha != null) ps1Plocha.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+                        } catch (Throwable ignored) {}
+                    }
+                });
+            } catch (Throwable ignored) {}
+        }
         // BUILD2SB14: PAMĚŤOVÁ KARTA - seznam her, spuštění konkrétní hry z
         // knihovny, smazání jedné hry. Tenké mosty na uz existující Java
         // metody (soubor/adresář operace musí jít přes Javu - JS je na to

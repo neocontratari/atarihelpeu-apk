@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 266
-        versionName "EMU10-B220-CD-ISO-JE-KNIHOVNA"  // Rene: "CD/ISO by mela byt knihovna stazenych her, ne slozite prohledavani telefonu." Tlacitka PROHOZENA: CD/ISO ted otevira knihovnu (drive delala MEMORY CARD, presunuto sem - vic sedi "vloz disk" nez "pametova karta"), stary rucni SAF picker (ps1PickGame) zustava jako sekundarni tlacitko VYBRAT SOUBOR RUCNE uvnitr knihovny. MEMORY CARD ted ukazuje jednoduchy, srozumitelny stav SKUTECNE karty (pres uz existujici ps1MemCardInfo) - zadne SPUSTIT/SMAZAT, protoze o tu se stara jadro samo (B215-B218).
+        versionCode 267
+        versionName "EMU10-B221-PLOCHA-SE-SCHOVA-V-PANELECH"  // Rene: screenshoty ukazaly obraz BIOSu "zamotany" do HTML panelu (knihovna/D-PAD nastaveni), minimalizace appky to spravila. Pricina: ps1Plocha je NATIVNI View nad WebView (zOrderOnTop kvuli hrani) - zadne CSS v panelu ji nemuze schovat. Oprava: nova tenka metoda AHPS1.ps1PlochaVisible(bool) - jen View.setVisibility, STEJNY bezpecny mechanismus jako uz existujici prechody v intru, ZADNY zasah do EGL/vlakna renderovani/bootovani jadra. Kazdy panel (knihovna, D-PAD, OVLADANI, MEMORY CARD status, editace rozlozeni) ted schova plochu pri otevreni a vrati pri zavreni. Navic: hlaska "Spoustim hru" pri SPUSTIT v knihovne prodlouzena z 2.4s na 11s (skutecne booteni trva ~10s, driv to vypadalo jako by se appka zaseknula).
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
