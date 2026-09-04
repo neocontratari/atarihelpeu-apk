@@ -485,6 +485,13 @@
      soubor MIMO appku (present_files), ne Visualizer (jeho "mockup"
      modul vynucuje plochy/tlumeny vzhled Claude.ai - presny opak toho,
      co retro/PS1 grafika potrebuje).
+   B231: Rene potvrdil cilove zarizeni je Samsung Galaxy S8 - "zvladne
+     vic". Planetky z jemneho kymaceni (10px) na skutecne "letove"
+     drahy (60-100px, 15-26s smycka) + 2 nove planetky + obcasny
+     meteor. Porad jen transform/opacity, jen vetsi rozsah - vykon
+     neni problem na tomhle HW. POUCKA: kdyz Rene rekne konkretni
+     cilove zarizeni, poznamenat si ho sem pro pristi rozhodovani o
+     tom, kolik animace/efektu si appka muze dovolit.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

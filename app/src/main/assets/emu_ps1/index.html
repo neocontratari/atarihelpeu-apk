@@ -121,14 +121,40 @@ body.panelNebulaOn #panelNebula{display:block;}
 @keyframes napDrift1{0%{transform:translate(0,0);}100%{transform:translate(-200px,-200px);}}
 @keyframes napDrift2{0%{transform:translate(0,0);}100%{transform:translate(220px,-220px);}}
 .panelPlaneta{position:absolute;border-radius:50%;}
-.panelPlaneta.a{width:64px;height:64px;top:6%;right:8%;background:radial-gradient(circle at 35% 30%,#ff9ec4,#c23a72 60%,#5a1030);box-shadow:0 0 26px rgba(255,80,150,.45);animation:napVznaset1 7s ease-in-out infinite;}
-.panelPlaneta.b{width:36px;height:36px;bottom:16%;left:6%;background:radial-gradient(circle at 35% 30%,#8ef0c8,#1f9068 60%,#0a3a28);box-shadow:0 0 18px rgba(60,220,160,.4);animation:napVznaset2 9s ease-in-out infinite;}
-.panelPlaneta.c{width:22px;height:22px;top:38%;left:12%;background:radial-gradient(circle at 35% 30%,#ffe08a,#c88a20 60%,#5a3a08);animation:napVznaset1 6s ease-in-out infinite reverse;}
-@keyframes napVznaset1{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
-@keyframes napVznaset2{0%,100%{transform:translateY(0);}50%{transform:translateY(8px);}}
+.panelPlaneta.a{width:64px;height:64px;top:10%;right:60%;background:radial-gradient(circle at 35% 30%,#ff9ec4,#c23a72 60%,#5a1030);box-shadow:0 0 26px rgba(255,80,150,.45);animation:napLetA 22s ease-in-out infinite;}
+.panelPlaneta.b{width:36px;height:36px;bottom:30%;left:70%;background:radial-gradient(circle at 35% 30%,#8ef0c8,#1f9068 60%,#0a3a28);box-shadow:0 0 18px rgba(60,220,160,.4);animation:napLetB 18s ease-in-out infinite;}
+.panelPlaneta.c{width:22px;height:22px;top:55%;left:20%;background:radial-gradient(circle at 35% 30%,#ffe08a,#c88a20 60%,#5a3a08);animation:napLetC 15s ease-in-out infinite;}
+.panelPlaneta.d{width:46px;height:46px;top:65%;right:15%;background:radial-gradient(circle at 35% 30%,#a8c8ff,#3a5aa8 60%,#152040);box-shadow:0 0 20px rgba(90,130,255,.4);animation:napLetB 26s ease-in-out infinite reverse;}
+.panelPlaneta.e{width:16px;height:16px;top:20%;left:35%;background:radial-gradient(circle at 35% 30%,#ffd0e8,#c25a8a 60%,#4a1530);animation:napLetC 12s ease-in-out infinite reverse;}
+/* BUILD2SB32: Rene - "S8 Samsung zvladne vic, klidne i ty velke balonky
+   at litaji." Misto jemneho poposedavani nahoru/dolu ted planetky
+   opravdu LETI napric velkou casti obrazovky a vraceji se (smycka), ne
+   jen 10px kymaceni. Porad transform (GPU vrstva), jen vetsi rozsah a
+   delsi, plynulejsi draha - S8 (Snapdragon 835/Exynos 8895) tohle
+   bez problemu utahne, je to jen par desitek malych vrstev. */
+@keyframes napLetA{
+  0%,100%{transform:translate(0,0) scale(1);}
+  25%{transform:translate(60px,40px) scale(1.08);}
+  50%{transform:translate(20px,90px) scale(.94);}
+  75%{transform:translate(-40px,30px) scale(1.03);}
+}
+@keyframes napLetB{
+  0%,100%{transform:translate(0,0) scale(1);}
+  30%{transform:translate(-70px,-50px) scale(1.1);}
+  60%{transform:translate(-30px,-100px) scale(.9);}
+  85%{transform:translate(40px,-40px) scale(1.05);}
+}
+@keyframes napLetC{
+  0%,100%{transform:translate(0,0);}
+  50%{transform:translate(50px,-60px);}
+}
 .panelPortal{position:absolute;top:-90px;left:50%;width:340px;height:340px;margin-left:-170px;border-radius:50%;border:1px solid rgba(180,150,255,.16);animation:napRotuj 40s linear infinite;}
 .panelPortal:before{content:'';position:absolute;inset:22px;border-radius:50%;border:1px solid rgba(120,200,255,.12);}
 @keyframes napRotuj{0%{transform:rotate(0);}100%{transform:rotate(360deg);}}
+/* BUILD2SB32: meteor - proleti obrazovkou obcas, drobny detail navic
+   ted, kdyz uz vime, ze vykon neni problem. */
+.panelMeteor{position:absolute;width:3px;height:3px;background:#fff;border-radius:50%;box-shadow:0 0 8px 2px #fff,-40px 8px 16px -4px rgba(255,255,255,.4);top:12%;left:-8%;animation:napPreletet 9s linear infinite;animation-delay:3s;}
+@keyframes napPreletet{0%{transform:translate(0,0) rotate(24deg);opacity:0;}4%{opacity:1;}18%{transform:translate(520px,240px) rotate(24deg);opacity:0;}100%{transform:translate(520px,240px) rotate(24deg);opacity:0;}}
 /* BUILD2SB1: rezim upravy rozlozeni tlacitek - viz layoutEdit.js sekce dole */
 .hit.layoutEdit{outline:2px dashed rgba(255,214,80,.92);outline-offset:2px;border-radius:14px;background:rgba(255,214,80,.10);box-shadow:0 0 16px rgba(255,214,80,.28);z-index:70;}
 .hit.layoutEdit.dragging{background:rgba(255,214,80,.22);box-shadow:0 0 22px rgba(255,214,80,.42);}
@@ -291,9 +317,12 @@ body.panelNebulaOn #panelNebula{display:block;}
   <div class="panelHvezdy male"></div>
   <div class="panelHvezdy stredni"></div>
   <div class="panelPortal"></div>
+  <div class="panelMeteor"></div>
   <div class="panelPlaneta a"></div>
   <div class="panelPlaneta b"></div>
   <div class="panelPlaneta c"></div>
+  <div class="panelPlaneta d"></div>
+  <div class="panelPlaneta e"></div>
 </div>
 <div id="helpPanel" class="panel" aria-hidden="true">
   <div class="box">

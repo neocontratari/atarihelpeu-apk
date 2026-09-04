@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 276
-        versionName "EMU10-B230-SCHVALENA-GRAFIKA-VESMIR"  // Rene schvalil "Koncept C" (navrhy poslane mimo appku jako HTML mockupy) a rozsiril o zive/RGB pozadi - implementovano do vsech panelu (knihovna/D-PAD/OVLADANI/MEMORY CARD stav). Sdilene animovane pozadi (#panelNebula - dychajici mlhovina, driftujici hvezdy, vznaseci se planety, rotujici prstenec) za VSEMI panely najednou, zapinane/vypinane recyklaci uz existujiciho napPlochaHide/Show volani (zadny novy trigger). Sklenene panely s modro-fialovym svetelnym okrajem misto plne barvy. Seznam her v knihovne ma jemny animovany RGB ramecek (jen tam, ne vsude) a barevne znacky podle SKUTECNYCH barev PS1 tlacitek (trojuhelnik/kolecko/krizek/ctverec), stridave po ctyrech - dava to smysl, neni to nahodna duha. VEDOME rozhodnuti: fonty z navrhu (Orbitron/Rajdhani) NEIMPORTOVANY z internetu - tucne Arial dava skoro stejny dojem bez rizika sitove zavislosti jen kvuli vzhledu.
+        versionCode 277
+        versionName "EMU10-B231-PLANETKY-LITAJI"  // Rene: "S8 Samsung zvladne vic, klidne i ty velke balonky at litaji, dej si zalezet." Planetky uz nejen jemne poposedavaji (10px kymaceni), ale opravdu LETI napric velkou casti obrazovky v plynule smycce (60-100px, 15-26s na cyklus). Pridany 2 nove planetky (5 celkem) a obcasny meteor (proleti jednou za 9s). Porad vyhradne transform/opacity (GPU vrstva) - vetsi rozsah pohybu, ne novy druh nakladu na vykon.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
