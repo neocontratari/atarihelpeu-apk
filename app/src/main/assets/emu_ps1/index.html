@@ -1297,6 +1297,12 @@ window.addEventListener('orientationchange',function(){setTimeout(function(){
 $('btnSettings').addEventListener('click',function(e){e.preventDefault();openSettingsForOrientation();},true);
 $('psMonitor').addEventListener('click',function(e){e.preventDefault();},true);
 $('btnReset').addEventListener('click',function(e){e.preventDefault();
+  // BUILD2SB29: Rene - "jediny bug je kdyz das reset na reset."
+  // Dodatecna pojistka i tady v JS - ne se spolehat jen na Javu.
+  // Tlacitko se na dobu resetu samo "vypne" (dalsi kliky ignoruje),
+  // at se dvojity/rychly stisk vubec nedostane az k appce.
+  if(window.__napPs1ResetBusy)return;
+  window.__napPs1ResetBusy=true;
   jsLog('PS1_RESET_TLACITKO');
   startBootCountdown(8,'Resetuji (BIOS bez CD)');
   showMonitorLoading(8,'RESETUJI (BIOS BEZ CD)…');
@@ -1304,6 +1310,7 @@ $('btnReset').addEventListener('click',function(e){e.preventDefault();
   try{if(window.AHPS1&&window.AHPS1.ps1Reset)r=String(window.AHPS1.ps1Reset());}catch(err){}
   jsLog('PS1_RESET_VYSLEDEK '+r);
   ensurePs1ScreenAndPoll();
+  setTimeout(function(){window.__napPs1ResetBusy=false;},8500);
 },true);
 $('btnCd').addEventListener('click',function(e){e.preventDefault();showLibrary();},true);
 $('libraryClose').addEventListener('click',function(e){e.preventDefault();closeLibrary();},true);

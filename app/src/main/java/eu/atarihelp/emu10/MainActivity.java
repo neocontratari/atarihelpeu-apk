@@ -4830,10 +4830,23 @@ public class MainActivity extends Activity {
         // (stejna cesta jako pri odchodu ze stranky/pauze appky), pak
         // necha appku znovu rozhodnout o startu BIOSu (ps1MaybeStartBios
         // uz sama hlida, ze nespusti nic, dokud neni jadro uplne dole).
+        // BUILD2SB29: Rene - "jediny bug je kdyz das reset na reset."
+        // Pri dvojitem/rychlem stisku RESETU druhe volani zavolalo
+        // stopPs1SessionHard() DOKUD JESTE BEZEL boot BIOSu z toho
+        // PRVNIHO resetu (na pozadi ve vlastnim vlakne - ps1BiosRunning
+        // jeste nebylo true, takze stopPs1SessionHard nevidela zadnou
+        // "aktivni" relaci a hned se vratila, ale mezitim uz zasahla do
+        // stavu, na kterem prvni boot pracoval). Ted RESET pri jiz
+        // bezicim startu BIOSu jen pockej/no-op, misto aby zasahoval do
+        // rozdelaneho startu.
         @JavascriptInterface
         public String ps1Reset() {
+            if (ps1BiosStarting) {
+                appendNativeLog("BUILD2SB29 PS1_RESET_IGNOROVAN - BIOS uz startuje z predchoziho resetu");
+                return "PS1_RESET_UZ_BEZI";
+            }
             String stopR = stopPs1SessionHard("jsPs1Reset");
-            appendNativeLog("BUILD2SB28 PS1_RESET stop=" + stopR);
+            appendNativeLog("BUILD2SB29 PS1_RESET stop=" + stopR);
             ps1MaybeStartBios();
             return "PS1_RESET_OK stop=" + stopR;
         }
@@ -5874,6 +5887,18 @@ public class MainActivity extends Activity {
         if (hadRemoteDownload) ps1RemoteDownloadStatus = "PS1_REMOTE_CANCELLED reason=" + reason;
         ps1BootActive = false;
         ps1SessionActive = false;
+        // BUILD2SB30: Rene - "nacteny bios bez cd, dalsi [reset] udelal
+        // chybu." NALEZENO: tahle funkce spravne VESLA dovnitr, kdyz
+        // bezel jen BIOS (diky BUILD2SA36 oprave vyse), spravne zastavila
+        // jadro (NativePs1CoreBridge.stopSafe()) - ale nikdy nevracela
+        // ps1BiosRunning zpet na false! Priste, kdyz nekdo (napr.
+        // ps1Reset) hned po zastaveni zavolal ps1MaybeStartBios(), jeji
+        // vlastni ochranna podminka "if (ps1BiosRunning || ...) return;"
+        // videla STARY, uz neplatny priznak "BIOS bezi" a novy start
+        // vubec nezacala - jadro bylo doopravdy zastavene (proto ten
+        // zvuk/blip pri zastaveni), ale nic noveho uz nenaskocilo.
+        ps1BiosRunning = false;
+        ps1GameWindowOwnsCore = false;
         stopPs1Audio();
         String r;
         try {

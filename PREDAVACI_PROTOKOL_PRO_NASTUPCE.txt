@@ -443,6 +443,34 @@
      OVLADANI panelu - obousmerne synchronizovany se stejnym
      ctrlSettings.opacity. GRAFIKA CD/ISO/nastaveni SE NEDOTYKAT -
      Rene si ji navrhne sam a posle jako predlohu.
+   B228: DULEZITA POUCKA - asynchronni "start na pozadi" funkce (jako
+     ps1MaybeStartBios, bezi ve vlastnim vlakne) potrebuji OCHRANU
+     PROTI OPAKOVANEMU VOLANI, dokud bezi. Rychly dvojity stisk RESET
+     zavolal stopPs1SessionHard() DOKUD JESTE BEZEL start z PRVNIHO
+     resetu (priznak "bezi" - ps1BiosRunning - se nastavi az PO
+     dobehnuti, ne na zacatku) - stopPs1SessionHard nevidela zadnou
+     "aktivni" relaci, hned se vratila, ale mezitim zasahla do stavu
+     bezicihho startu. OPRAVA VZOR PRO PRISTE: kontrolovat "UZ BEZI"
+     priznak (ps1BiosStarting, nastaveny NA ZACATKU, ne az po
+     dobehnuti) pred kazdou akci, co by mohla zasahnout do neceho na
+     pozadi bezicicho - a pridat i JS-stranou pojistku (docasne
+     "vypnuti" tlacitka), nespolehat jen na Javu.
+     OPRAVA DIAGNOZY V B229: tohle byl SPRAVNY, uzitecny fix, ale
+     NEBYLA to skutecna pricina puvodniho hlaseni - Rene upresnil, ze
+     neslo o dvojity stisk. Pojistka z B228 zustava (chrani pred jinym,
+     taky realnym scenarem), ale skutecnou chybu resi az B229.
+   B229: SKUTECNA pricina "reset na uz nacteny BIOS": stopPs1SessionHard()
+     (diky BUILD2SA36 oprave) spravne ZASTAVILA bezici BIOS, ale NIKDY
+     nenastavila ps1BiosRunning zpet na false. Nasledny
+     ps1MaybeStartBios() videl STARY priznak "bezi" a novy start vubec
+     nezacal - jadro zastavene, nic noveho nenaskocilo (jen zvuk pri
+     zastaveni, zadna grafika). DULEZITA POUCKA: kdyz nejaka funkce
+     "zastavi VSECHNO", MUSI vynulovat VSECHNY prislusne priznaky, ne
+     jen nektere - stopPs1SessionHard resetovala ps1BootActive/
+     ps1SessionActive, ale ps1BiosRunning (a ps1GameWindowOwnsCore)
+     na ni zapomnela. Kdyz pridavas podminku "funguj i kdyz bezi X"
+     (jako BUILD2SA36), VZDY zkontroluj, jestli se X pak i spravne
+     VYPINA na konci te same funkce.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

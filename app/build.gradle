@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 273
-        versionName "EMU10-B227-RESET-A-PRUHLEDNOST"  // Rene: RESET tlacitko musi fungovat jako vytazeni CD - hra se zastavi, nabehne BIOS bez disku. Nova ps1Reset() (JS-volatelna) spoji dve uz existujici bezpecne veci presne v poradi: stopPs1SessionHard (stejna cesta jako pri odchodu ze stranky) + ps1MaybeStartBios (uz sama hlida, ze nespusti nic dokud neni jadro uplne dole) - zadna nova nizkourovnova logika. RESET ted ukazuje stejny odpocet/indikator v monitoru jako spusteni hry z knihovny, jen s vlastnim popiskem "Resetuji". Dale: novy rychly prepinac "Pruhledny ovladac" v OVLADANI panelu vedle stavajiciho jemneho posuvniku pruhlednosti - zaskrtnuti/odskrtnuti nastavi 30%/100% a synchronizuje se s posuvnikem obema smery.
+        versionCode 275
+        versionName "EMU10-B229-RESET-VLAJKA-OPRAVENA"  // Rene upresnil: "tam nebyl dvojity stisk - pokud byl bios bez cd a ten se nacetl, tak DALSI [reset] udelal chybu." SKUTECNA PRICINA: stopPs1SessionHard() spravne zastavila bezici BIOS (NativePs1CoreBridge.stopSafe()), ale NIKDY nevracela ps1BiosRunning zpet na false! Nasledny ps1MaybeStartBios() (volany z ps1Reset) videl STARY priznak "BIOS bezi" a novy start vubec nezacal - jadro bylo doopravdy zastavene (odtud ten zvuk pri zastaveni), ale nic noveho uz nenaskocilo. Pridano ps1BiosRunning=false (a pro uplnost i ps1GameWindowOwnsCore=false) primo do stopPs1SessionHard() - stejne misto, co uz melo ps1BootActive/ps1SessionActive. B228 pojistka proti dvojitemu stisku zustava (jina, doplnujici vec, ne nahrada).
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
