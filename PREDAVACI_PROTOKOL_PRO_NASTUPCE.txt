@@ -420,6 +420,21 @@
      (.slot0.state, jen emulatorova pohodlnost, ne realny hardware)
      zustavaji zamerne privatni. Jednorazova migrace stare karty do
      nove cesty, at se pri testovani neztrati rozehrane save.
+   B226: DULEZITA POUCKA - setAlpha() (B224) NENI univerzalni nahrada
+     za setVisibility()! Funguje spolehlive jen kdyz je SurfaceView POD
+     strankou (zOrderOnTop=false, landscape). Kdyz je NAD strankou
+     (zOrderOnTop=true, portrait) - zvlastni hardwarova vrstva - alpha
+     casto vubec nepusobi, jen setVisibility funguje (i kdyz muze
+     znovu postavit Surface, viz B224). Nova plochaAplikujViditelnost()
+     voli spravny nastroj podle AKTUALNI vrstvy (plochaZOrderNahore),
+     ne jeden univerzalni pristup pro obe orientace. PRO BUDOUCNO (Sega/
+     Atari): kdykoli se resi viditelnost SurfaceView, VZDY overit
+     zOrderOnTop stav - "funguje to v jedne orientaci" neznamena
+     "funguje to v obou". Grafika CD/ISO panelu prepracovana na barvy
+     vzorkovane primo z Reneho screenshotu MAIN MENU obrazovky (#000120
+     vyplen, #4650b7 modry ram) - "MAIN MENU" obrazovka NENI soucast
+     statickeho skinu, je to zivy vystup BIOSu, nejde vzorkovat ze
+     souboru.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

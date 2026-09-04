@@ -4599,34 +4599,29 @@ public class MainActivity extends Activity {
         // (viz radky 6537/6546) - zadny zasah do EGL/vlakna renderovani,
         // zadne booteni/stop jadra. Panel v JS zavola pred otevrenim
         // (schovej) a po zavreni (ukaz zpet).
-        // BUILD2SB22: Rene - "mas to tam furt, ale jakakoli dalsi akce to
-        // okno vymaze, ale furt to neni stoprocentni." setVisibility() u
-        // SurfaceView (vlastni hardwarova vrstva, mimo normalni kresleni
-        // WebView) je znamy problem - zmena se nekdy neprojevi hned, az
-        // po dalsim prekresleni. setAlpha(0) pusobi primo na GPU vrstvu a
-        // je spolehlivejsi. Delame OBOJI - zadny novy risk (porad zadny
-        // zasah do EGL/vlakna/bootovani), jen silnejsi verze te same,
-        // uz bezpecne osvedcene veci z B221.
+        // BUILD2SB27: Rene - "na sirku hned, na vysku ne - i hra po
+        // nabootovani se na vysku neukaze, az po pretoceni." NALEZENO:
+        // setAlpha() spolehlive funguje jen kdyz je plocha POD strankou
+        // (landscape, zOrderOnTop=false) - normalni GPU vrstva. V
+        // portraitu je plocha NAD strankou (zOrderOnTop=true) - zvlastni
+        // hardwarova prekryvna vrstva, kde setAlpha() casto vubec
+        // nepusobi (znamy Android limit pro zOrderOnTop SurfaceView).
+        // Proto B224 spravilo landscape (alpha tam funguje), ale portrait
+        // se vratil do stavu "nic neschova" - presne to Rene popsal.
+        // Reseni: podle AKTUALNI vrstvy pouzit SPRAVNY nastroj -
+        // setAlpha() kdyz je plocha dole (funguje, zadny destroy/create),
+        // setVisibility() kdyz je nahore (jedine, co tam spolehlive
+        // funguje, i kdyz to na tomhle zarizeni znovu postavi Surface -
+        // lepsi jednou znovu postavit nez aby to vubec nezmizelo).
         @JavascriptInterface
         public void ps1PlochaVisible(final boolean show) {
             plochaSchovanaKvuliPanelu = !show;
-            appendNativeLog("BUILD2SB25 PLOCHA_JS_POZADAVEK show=" + show);
+            appendNativeLog("BUILD2SB27 PLOCHA_JS_POZADAVEK show=" + show);
             try {
                 runOnUiThread(new Runnable() {
                     public void run() {
                         try {
-                            // BUILD2SB25: NALEZENO V LOGU - setVisibility(INVISIBLE)
-                            // u SurfaceView na tomhle zarizeni SKUTECNE nicilo a
-                            // znovu stavelo cely Surface (v logu PLOCHA_ZRUSENA
-                            // hned po kazdem show=false, PLOCHA_VYTVORENA znovu
-                            // pri show=true) - misto lehkeho prepnuti viditelnosti
-                            // to bylo tezke znicit/postavit znovu, POKAZDE kdyz se
-                            // otevrel/zavrel panel. To vysvetluje zbyvajici
-                            // nespolehlivost (a mozna i cerny obdelnik v landscape -
-                            // znovupostaveny povrch chvilku nema od jadra prvni
-                            // snimek). setAlpha() SAMOTNE povrch nenici, jen ho
-                            // udela pruhledny - zadny destroy/create cyklus.
-                            if (ps1Plocha != null) ps1Plocha.setAlpha(show ? 1f : 0f);
+                            plochaAplikujViditelnost(show);
                         } catch (Throwable ignored) {}
                     }
                 });
@@ -6569,10 +6564,16 @@ public class MainActivity extends Activity {
             // protoze porad jsme na strance emu_ps1 (otevreny HTML panel
             // stranku neopousti, jen preklada DOM navrch). Ted panel vyhrava.
             boolean chciSchovanouKvuliPanelu = plochaSchovanaKvuliPanelu;
-            float chci = (jePs1 && !chciSchovanouKvuliPanelu) ? 1f : 0f;
-            if (pl.getAlpha() != chci && (jePs1 || plochaW > 0)) {
-                pl.setAlpha(chci);
-                appendNativeLog("PLOCHA_" + (chci == 1f ? "ZOBRAZENA" : "SCHOVANA")
+            boolean chciVidet = jePs1 && !chciSchovanouKvuliPanelu;
+            // BUILD2SB27: kontrola stavu podle SPRAVNEHO nastroje pro
+            // aktualni vrstvu (viz plochaAplikujViditelnost) - jinak by se
+            // hlidac kazdych 300ms zbytecne (nebo nespravne) prepisoval.
+            boolean akoJeVidet = plochaZOrderNahore
+                    ? (pl.getVisibility() == View.VISIBLE)
+                    : (pl.getAlpha() == 1f);
+            if (akoJeVidet != chciVidet && (jePs1 || plochaW > 0)) {
+                plochaAplikujViditelnost(chciVidet);
+                appendNativeLog("PLOCHA_" + (chciVidet ? "ZOBRAZENA" : "SCHOVANA")
                         + " (obrazovka " + (jePs1 ? "PS1" : String.valueOf(u)) + ")"
                         + " panelSchovej=" + chciSchovanouKvuliPanelu);
             }
@@ -6610,6 +6611,25 @@ public class MainActivity extends Activity {
     // Proto B221/B222 (schovat pri otevreni panelu) fungovaly jen chvili -
     // dalsi hlaseni polohy o par set milisekund pozdeji to zase odkrylo.
     private volatile boolean plochaSchovanaKvuliPanelu = false;
+    // BUILD2SB27: JEDNO misto, ktere rozhoduje JAK schovat/ukazat plochu -
+    // podle aktualni vrstvy (portrait=nad strankou / landscape=pod strankou).
+    // Vsechna tri mista (ps1PlochaVisible, ps1PlochaUmisti, plochaZkontroluj)
+    // volaji tohle, misto aby si kazde volilo nastroj samo.
+    private void plochaAplikujViditelnost(boolean show) {
+        if (ps1Plocha == null) return;
+        if (plochaZOrderNahore) {
+            // Portrait: plocha NAD strankou (zvlastni hardwarova prekryvna
+            // vrstva) - setAlpha() tam spolehlive nefunguje (znamy Android
+            // limit pro zOrderOnTop). setVisibility() jedine spolehlive
+            // funguje, i kdyz na nekterych zarizenich znovu postavi Surface.
+            ps1Plocha.setAlpha(1f); // pro pripad, ze zbyla stara alpha=0 z landscape
+            ps1Plocha.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+        } else {
+            // Landscape: plocha POD strankou, normalni GPU vrstva - setAlpha()
+            // funguje cistě, zadny destroy/create Surface.
+            ps1Plocha.setAlpha(show ? 1f : 0f);
+        }
+    }
     private void ps1PlochaUmisti(int l, int t, int w, int hh, boolean naSirku) {
         if (rootFrame == null || w <= 0 || hh <= 0) return;
         boolean stejne = (ps1Plocha != null) && (plochaW == w) && (plochaH == hh)
@@ -6629,10 +6649,10 @@ public class MainActivity extends Activity {
                 plochaZOrderNahore = chceNahore;
                 if (ps1Plocha != null) ps1GlDisable();
                 ps1GlEnable();                      // rozmery si vezme z plochaL..H
-                // BUILD2SB25: nova plocha vznika s alpha=1 (vychozi) - kdyz si
-                // panel preje schovanou, nastavit hned, ne cekat na dalsi tik
-                // hlidace (a zadne setVisibility - viz duvod u ps1PlochaVisible).
-                if (ps1Plocha != null) ps1Plocha.setAlpha(plochaSchovanaKvuliPanelu ? 0f : 1f);
+                // BUILD2SB27: nova plocha vznika s alpha=1/VISIBLE (vychozi) -
+                // kdyz si panel preje schovanou, nastavit hned spravnym
+                // nastrojem pro NOVOU vrstvu, ne cekat na dalsi tik hlidace.
+                plochaAplikujViditelnost(!plochaSchovanaKvuliPanelu);
                 appendNativeLog("PLOCHA_POSTAVENA_ZNOVU " + l + "," + t + " " + w + "x" + hh
                         + (naSirku ? " (na sirku, pod strankou)" : " (na vysku, nad strankou)"));
                 return;
@@ -6641,7 +6661,7 @@ public class MainActivity extends Activity {
             lp.leftMargin = l; lp.topMargin = t;
             ps1Plocha.setLayoutParams(lp);
             ps1Plocha.requestLayout();
-            if (!plochaSchovanaKvuliPanelu && ps1Plocha.getAlpha() != 1f) ps1Plocha.setAlpha(1f);
+            if (!plochaSchovanaKvuliPanelu) plochaAplikujViditelnost(true);
             appendNativeLog("PLOCHA_UMISTENA " + l + "," + t + " " + w + "x" + hh);
         } catch (Throwable e) {
             appendNativeLog("PLOCHA_UMISTENA_CHYBA " + safeMsg(e));

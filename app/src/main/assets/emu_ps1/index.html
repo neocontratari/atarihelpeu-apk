@@ -93,7 +93,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .remoteBanner .remotePath{margin-top:3px;color:#9cdfff;font-size:.82em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .remoteBanner .remoteBar{height:6px;margin-top:7px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;}
 .remoteBanner .remoteFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#54d8ff,#ffe08b);box-shadow:0 0 12px rgba(116,210,255,.55);}
-.panel{display:none;position:fixed;inset:0;z-index:80;background:#03060c;padding:18px;overflow:auto;color:#dfeaff;}
+.panel{display:none;position:fixed;inset:0;z-index:80;background:radial-gradient(circle at 62% 30%,rgba(72,71,165,.55),rgba(0,1,32,1) 62%);padding:18px;overflow:auto;color:#dfeaff;}
 .panel.open{display:block;}
 /* BUILD2SB1: rezim upravy rozlozeni tlacitek - viz layoutEdit.js sekce dole */
 .hit.layoutEdit{outline:2px dashed rgba(255,214,80,.92);outline-offset:2px;border-radius:14px;background:rgba(255,214,80,.10);box-shadow:0 0 16px rgba(255,214,80,.28);z-index:70;}
@@ -113,32 +113,31 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnEditLayout{display:none;}
 #btnCtrlSettings{display:none;}
 #btnMirror{display:none;}
-/* BUILD2SB25: Rene - "fadni nehezke, vem grafiku podle 3d a jadra ps1."
-   Presne zopakovany recept .padBtn (D-pad/akcni tlacitka nize v tomhle
-   souboru, uz driv schvaleny vzhled) - tmavy radialni gradient, zlaty
-   dvojity prstenec, plne kulate rohy (pill tvar) - misto plochych
-   barev z B223. Barvy prstence porad ze skutecneho skinu (#d9a84e). */
-.panel .box{max-width:760px;margin:0 auto;background:radial-gradient(circle at 50% 8%,rgba(60,68,80,.55),rgba(4,6,11,.98) 55%);border:2px solid rgba(198,165,89,.65);border-radius:22px;padding:20px;box-shadow:0 0 0 3px rgba(10,13,18,.9),0 4px 20px rgba(0,0,0,.6);}
-.panel h2{font:900 22px "Courier New",monospace;margin-bottom:12px;color:#d9a84e;text-align:center;text-shadow:0 2px 3px #000;}
+/* BUILD2SB27: Rene - "opravdu chci grafiku jako kdyz se nacte PS1 bez
+   CD! krasnou PS1 grafiku, ale prehlednou." Barvy TEĎ vzorkovane
+   primo z Reneho vlastniho screenshotu te obrazovky (MAIN MENU tlacitko
+   a modra zare pozadi), ne odhadnute - tmave navy vyplni (#000120),
+   modry ram tlacitek (#4650b7), presne jak vypada MAIN MENU. */
+.panel .box{max-width:760px;margin:0 auto;background:rgba(0,1,32,.55);border:2px solid #4650b7;border-radius:14px;padding:20px;box-shadow:0 0 24px rgba(70,90,220,.25),0 4px 20px rgba(0,0,0,.6);}
+.panel h2{font:900 22px "Courier New",monospace;margin-bottom:12px;color:#f1f2ff;text-align:center;letter-spacing:.04em;text-shadow:0 2px 3px #000;}
 .panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#c7d0dc;}
 .panel b{color:#8ee7ff;}
-.panel button{width:100%;margin-top:14px;padding:14px;display:flex;align-items:center;justify-content:center;color:rgba(255,214,120,.96);font:900 15px "Courier New",monospace;background:radial-gradient(circle at 34% 24%,rgba(70,78,90,.92),rgba(8,11,16,.96) 72%);border:2px solid rgba(198,165,89,.8);border-radius:999px;box-shadow:0 0 0 3px rgba(18,22,30,.92),0 0 0 5px rgba(198,165,89,.30),0 4px 12px rgba(0,0,0,.5);text-shadow:0 2px 3px #000;}
+.panel button{width:100%;margin-top:14px;padding:14px;display:flex;align-items:center;justify-content:center;color:#f1f2ff;font:900 15px "Courier New",monospace;background:rgba(0,1,32,.9);border:2px solid #4650b7;border-radius:8px;box-shadow:0 0 14px rgba(70,90,220,.3),0 3px 8px rgba(0,0,0,.5);}
 /* BUILD2SB6: posuvniky a zaskrtavatko pro panel OVLADANI */
 .panel input[type=range]{width:100%;margin:6px 0 2px;accent-color:#8ee7ff;height:28px;}
 .panel .ctrlVal{text-align:center;color:#8ee7ff;font:800 13px "Courier New",monospace;margin:0 0 10px;}
 .panel .ctrlRow{display:flex;align-items:center;gap:10px;margin:14px 0;color:#c7d0dc;font:800 14px "Courier New",monospace;}
 .panel .ctrlRow input[type=checkbox]{width:22px;height:22px;accent-color:#8ee7ff;}
-.panel button.secondary{color:rgba(220,232,245,.9);background:radial-gradient(circle at 34% 24%,rgba(45,52,62,.85),rgba(6,8,12,.96) 72%);border:2px solid rgba(120,132,148,.55);box-shadow:0 0 0 3px rgba(18,22,30,.92),0 0 0 5px rgba(120,132,148,.16),0 4px 12px rgba(0,0,0,.5);}
-/* BUILD2SB25: radek hry - stejny jazyk jako herni tlacitka, jen
-   protahly pill misto kruhu (mensi zaobleni na kartu, plny kruh na
-   PLAY/SMAZAT ikonky). */
-.libGame{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:16px;background:radial-gradient(circle at 30% 15%,rgba(55,62,74,.5),rgba(6,9,15,.95) 65%);border:1px solid rgba(198,165,89,.4);box-shadow:0 0 0 2px rgba(10,13,18,.8);}
+.panel button.secondary{color:rgba(220,232,245,.85);background:rgba(0,1,32,.7);border:2px solid rgba(120,132,180,.5);box-shadow:none;}
+/* BUILD2SB27: radek hry - stejny tmave-navy/modry ram jazyk jako MAIN
+   MENU tlacitko, jen s malymi kulatymi PLAY/SMAZAT ikonkami vedle. */
+.libGame{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:10px;background:rgba(0,1,32,.55);border:1px solid rgba(70,90,183,.55);}
 .libGame .libInfo{flex:1;min-width:0;}
-.libGame .libName{font:900 13px "Courier New",monospace;color:#d9a84e;word-break:break-all;}
+.libGame .libName{font:900 13px "Courier New",monospace;color:#f1f2ff;word-break:break-all;}
 .libGame .libMeta{font:800 11px "Courier New",monospace;color:#8794a3;margin-top:3px;}
 .libGame .libSaveTag{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:999px;font:800 10px "Courier New",monospace;background:rgba(110,190,255,.15);color:#8ee7ff;border:1px solid rgba(110,190,255,.4);}
-.libGame button{width:44px;height:44px;margin:0;padding:0;font-size:19px;line-height:1;border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px rgba(10,13,18,.9),0 3px 8px rgba(0,0,0,.5);}
-.libGame .libPlay{background:radial-gradient(circle at 34% 26%,rgba(255,225,150,.95),rgba(198,165,89,.9) 70%);color:#241a06;border:2px solid rgba(255,235,190,.6);}
+.libGame button{width:44px;height:44px;margin:0;padding:0;font-size:19px;line-height:1;border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(70,90,220,.3);}
+.libGame .libPlay{background:rgba(0,1,32,.9);color:#8ee7ff;border:2px solid #4650b7;}
 .libGame .libDel{background:radial-gradient(circle at 34% 26%,rgba(90,45,45,.9),rgba(20,8,8,.95) 72%);color:#e08a8a;border:2px solid rgba(160,70,70,.6);}
 .libEmpty{text-align:center;color:#8794a3;font:800 13px "Courier New",monospace;padding:20px 0;}
 @media (orientation:landscape) and (max-height:760px){
@@ -361,6 +360,35 @@ function log(t){
   var v=$('ps1LogView'); if(v){v.value=LOG.join('\n');v.scrollTop=v.scrollHeight;}
 }
 function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napPs1Toast);window.__napPs1Toast=setTimeout(function(){el.classList.remove('show');},ms||2400);log(t);}
+/* BUILD2SB27: Rene - "musi byt v tom okne cd/iso neco jako ze se hra
+   nahrava... a pak to automaticky musi po nahrani skocit." Predtim
+   toast (mala bublina) - ted navic i primo v MONITORU (presne tam,
+   kde se hra objevi), viditelny i po zavreni panelu, dokud hra
+   doopravdy nenabehne. */
+function showMonitorLoading(seconds){
+  var mon=$('psMonitor');if(!mon)return;
+  var ov=$('psMonitorLoading');
+  if(!ov){
+    ov=document.createElement('div');ov.id='psMonitorLoading';
+    ov.style.cssText='position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(0,1,20,.72);color:#dfeaff;font:900 clamp(13px,3.4vw,18px) "Courier New",monospace;text-align:center;pointer-events:none;';
+    try{var cs=getComputedStyle(mon);if(cs.position==='static')mon.style.position='relative';}catch(_){ }
+    mon.appendChild(ov);
+  }
+  ov.style.display='flex';
+  clearInterval(window.__napPs1MonitorCountdown);
+  var zbyva=seconds;
+  function tick(){
+    ov.innerHTML='<div>NAHRÁVÁM HRU…</div><div style="font-size:1.6em;">'+Math.max(0,zbyva)+' s</div>';
+    if(zbyva<=0){clearInterval(window.__napPs1MonitorCountdown);setTimeout(hideMonitorLoading,600);return;}
+    zbyva--;
+  }
+  tick();
+  window.__napPs1MonitorCountdown=setInterval(tick,1000);
+}
+function hideMonitorLoading(){
+  clearInterval(window.__napPs1MonitorCountdown);
+  var ov=$('psMonitorLoading');if(ov)ov.style.display='none';
+}
 /* BUILD2SB22: Rene - "zadny odpocet neni videt kdyz kliknu play v
    cd/iso." Misto jedne staticke hlasky ("muze to trvat...") skutecny
    tikajici odpocet, at je jasne videt, ze se neco deje, ne ze appka
@@ -524,6 +552,7 @@ function libraryRefresh(){
         e.preventDefault();
         jsLog('LIBRARY_LAUNCH key='+key);
         startBootCountdown(10);
+        showMonitorLoading(10);
         closeLibrary();
         try{if(window.AHPS1&&window.AHPS1.ps1LibraryLaunch)window.AHPS1.ps1LibraryLaunch(key);}catch(err){}
         ensurePs1ScreenAndPoll();

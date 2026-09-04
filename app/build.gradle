@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 271
-        versionName "EMU10-B225-KARTA-VEREJNE-ULOZISTE"  // Rene: "kdyz apku vymazu a znova nainstaluji, cd/iso si hry pamatuje, ale memory card je prazdna." Pricina: saveDir (=g_savedir v jadru, tam vznika memory_card_1.srm) sel pres getFilesDir() = appce-privatni uloziste, ktere Android PRI ODINSTALACI SMAZE. Hry v knihovne prezily, protoze uz davno lezi ve verejnem Downloads/AtariHelp. Nova getPublicMemoryCardDir() (Downloads/AtariHelp/PS1_pametova_karta) pouzita na vsech trech mistech, kde appka bootuje BIOS/hru - presne jako realna PS1 karta, fyzicky oddelena od konzole, prezije i vymazani appky. Jednorazova migrace existujici karty ze stare privatni cesty, at Rene neprijde o rozehrane testovani.
+        versionCode 272
+        versionName "EMU10-B226-VRSTVA-CITLIVE-SCHOVANI-A-GRAFIKA"  // Rene: "na sirku hned, na vysku ne - i hra po nabootovani se na vysku neukaze." Pricina: setAlpha() (B224) spolehlive funguje jen kdyz je plocha POD strankou (landscape, zOrderOnTop=false) - v portraitu (NAD strankou, zOrderOnTop=true) je to zvlastni hardwarova vrstva, kde alpha casto vubec nepusobi. Nova plochaAplikujViditelnost() voli SPRAVNY nastroj podle aktualni vrstvy - setAlpha pro landscape (cisty, bez destroy/create), setVisibility pro portrait (jedine co tam spolehlive funguje). Navic pridan viditelny indikator "NAHRAVAM HRU... Xs" primo v monitoru (ne jen bublina), a grafika panelu prepracovana na SKUTECNE vzorkovane barvy z Reneho vlastniho screenshotu MAIN MENU obrazovky (tmava navy #000120 + modry ram #4650b7), ne dalsi vymysl.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
