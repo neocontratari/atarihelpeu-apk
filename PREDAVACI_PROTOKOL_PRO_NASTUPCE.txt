@@ -386,6 +386,16 @@
      predelany na zlato-modry PS1-BIOS styl (dvojity zlaty ram, modra
      zare pozadi, hry jako CD sloty). Staticka hlaska pri SPUSTIT
      nahrazena skutecnym tikajicim odpoctem (startBootCountdown, 10->0).
+   B223: SKUTECNA pricina B221/B222 problemu - plochaHlidac (Java Timer,
+     bezi KAZDYCH 300ms po celou dobu behu appky) vubec nevedel o
+     panelovem priznaku a nasilne vracel plochu na VISIBLE, protoze
+     "jsme na strance emu_ps1" bylo porad true (otevreny panel stranku
+     neopousti). DULEZITA POUCKA PRO PRISTE: kdyz neco "porad neni
+     stoprocentni" po opravene JEDNE cesty, hledej DALSI, nezavislou
+     cestu, co o te oprave nevi - nekontroluj jen tu, kterou jsi uz
+     opravil. Grafika vsech panelu VRACENA na skutecne vzorkovane barvy
+     ze skinu (#03060c/#d9a84e) - zadne vymyslene gradienty/zare, Rene
+     to vyslovne odmitl (viz CO_JE_V_B223.md).
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

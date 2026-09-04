@@ -93,7 +93,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .remoteBanner .remotePath{margin-top:3px;color:#9cdfff;font-size:.82em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .remoteBanner .remoteBar{height:6px;margin-top:7px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;}
 .remoteBanner .remoteFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#54d8ff,#ffe08b);box-shadow:0 0 12px rgba(116,210,255,.55);}
-.panel{display:none;position:fixed;inset:0;z-index:80;background:radial-gradient(circle at 50% 38%,rgba(40,60,140,.34),rgba(2,4,10,.97) 62%);padding:18px;overflow:auto;color:#dfeaff;}
+.panel{display:none;position:fixed;inset:0;z-index:80;background:#03060c;padding:18px;overflow:auto;color:#dfeaff;}
 .panel.open{display:block;}
 /* BUILD2SB1: rezim upravy rozlozeni tlacitek - viz layoutEdit.js sekce dole */
 .hit.layoutEdit{outline:2px dashed rgba(255,214,80,.92);outline-offset:2px;border-radius:14px;background:rgba(255,214,80,.10);box-shadow:0 0 16px rgba(255,214,80,.28);z-index:70;}
@@ -113,33 +113,33 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnEditLayout{display:none;}
 #btnCtrlSettings{display:none;}
 #btnMirror{display:none;}
-/* BUILD2SB22: Rene - "dej si zalezet na te grafice vyberu her, at to ma
-   nejaky styl, inspiruj se grafikou z bios ps1 bez cd." Dvojity
-   zlato-stribrny ram (jako RESET/MEMORY CARD ikony ve skinu), modra
-   zare pozadi jako "MAIN MENU" BIOS obrazovka. */
-.panel .box{position:relative;max-width:760px;margin:0 auto;background:linear-gradient(180deg,#0a1830,#03060d);border:2px solid rgba(216,182,90,.55);border-radius:20px;padding:20px;box-shadow:0 0 0 1px rgba(255,255,255,.06) inset,0 0 44px rgba(0,0,0,.85),0 0 30px rgba(80,150,255,.14) inset;}
-.panel .box:before{content:'';position:absolute;inset:6px;border:1px solid rgba(140,200,255,.22);border-radius:14px;pointer-events:none;}
-.panel h2{font:900 24px "Courier New",monospace;margin-bottom:12px;color:#f1d78e;text-align:center;letter-spacing:.06em;text-shadow:0 0 14px rgba(255,214,120,.4),0 2px 4px #000;}
-.panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
+/* BUILD2SB23: Rene odmitl predchozi vymyslenou grafiku (zare/gradienty) -
+   "vem grafiku z ps1, ne tvuj vymysl". Barvy tady jsou OPRAVDU vzorkovane
+   ze skutecneho skinu (ps1_final_screen.png): tmave pozadi #03060c,
+   text #d9a84e (RESET/MEMORY CARD popisky), tenky stribrny/kovovy okraj
+   misto zlateho zarivciho ramu. Zadne vymyslene gradienty ani glow. */
+.panel .box{max-width:760px;margin:0 auto;background:#070d17;border:1px solid #6b7686;border-radius:10px;padding:20px;}
+.panel h2{font:900 22px "Courier New",monospace;margin-bottom:12px;color:#d9a84e;text-align:center;}
+.panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#c7d0dc;}
 .panel b{color:#8ee7ff;}
-.panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:linear-gradient(180deg,#f0d99b,#c99f45);color:#06070a;font:900 15px "Courier New",monospace;box-shadow:0 2px 0 rgba(0,0,0,.3),0 0 14px rgba(216,182,90,.25);}
+.panel button{width:100%;margin-top:14px;padding:14px;border:1px solid #8a7238;border-radius:8px;background:#d9a84e;color:#06070a;font:900 15px "Courier New",monospace;}
 /* BUILD2SB6: posuvniky a zaskrtavatko pro panel OVLADANI */
 .panel input[type=range]{width:100%;margin:6px 0 2px;accent-color:#8ee7ff;height:28px;}
 .panel .ctrlVal{text-align:center;color:#8ee7ff;font:800 13px "Courier New",monospace;margin:0 0 10px;}
-.panel .ctrlRow{display:flex;align-items:center;gap:10px;margin:14px 0;color:#e9eef7;font:800 14px "Courier New",monospace;}
+.panel .ctrlRow{display:flex;align-items:center;gap:10px;margin:14px 0;color:#c7d0dc;font:800 14px "Courier New",monospace;}
 .panel .ctrlRow input[type=checkbox]{width:22px;height:22px;accent-color:#8ee7ff;}
-.panel button.secondary{background:rgba(255,255,255,.12);color:#dfeaff;border:1px solid rgba(255,255,255,.3);box-shadow:none;}
-/* BUILD2SB22: hry jako CD sloty - tmavy stred, zlaty okraj, prosvetlene
-   kolecko PLAY (stejny jazyk jako .padBtn D-padu/akcnich tlacitek). */
-.libGame{position:relative;display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(216,182,90,.35);box-shadow:0 0 0 1px rgba(0,0,0,.4) inset;}
+.panel button.secondary{background:#11161f;color:#c7d0dc;border:1px solid #4a5361;}
+/* BUILD2SB23: radek hry - plocha tmava karta, tenky kovovy okraj, ploche
+   zlate tlacitko PLAY (bez zare/gradientu). */
+.libGame{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:8px;background:#0a1019;border:1px solid #4a5361;}
 .libGame .libInfo{flex:1;min-width:0;}
-.libGame .libName{font:900 13px "Courier New",monospace;color:#f1d78e;word-break:break-all;}
-.libGame .libMeta{font:800 11px "Courier New",monospace;color:#9fb3c8;margin-top:3px;}
-.libGame .libSaveTag{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:999px;font:800 10px "Courier New",monospace;background:rgba(110,190,255,.18);color:#bfe6ff;border:1px solid rgba(110,190,255,.4);}
-.libGame button{width:auto;margin:0;padding:0;font-size:19px;line-height:1;border-radius:999px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:none;}
-.libGame .libPlay{background:radial-gradient(circle at 35% 28%,#fff2c9,#d8b65a 60%,#96702a 100%);color:#2a1d05;box-shadow:0 0 12px rgba(216,182,90,.55),0 2px 3px rgba(0,0,0,.4);}
-.libGame .libDel{background:rgba(255,90,90,.16);color:#ffb3b3;border:1px solid rgba(255,120,120,.4);}
-.libEmpty{text-align:center;color:#9fb3c8;font:800 13px "Courier New",monospace;padding:20px 0;}
+.libGame .libName{font:900 13px "Courier New",monospace;color:#d9a84e;word-break:break-all;}
+.libGame .libMeta{font:800 11px "Courier New",monospace;color:#8794a3;margin-top:3px;}
+.libGame .libSaveTag{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:4px;font:800 10px "Courier New",monospace;background:#0d1f2e;color:#8ee7ff;border:1px solid #2c5872;}
+.libGame button{width:auto;margin:0;padding:0;font-size:18px;line-height:1;border-radius:6px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;}
+.libGame .libPlay{background:#d9a84e;color:#06070a;border:1px solid #8a7238;}
+.libGame .libDel{background:#1f0f0f;color:#e08a8a;border:1px solid #6b3a3a;}
+.libEmpty{text-align:center;color:#8794a3;font:800 13px "Courier New",monospace;padding:20px 0;}
 @media (orientation:landscape) and (max-height:760px){
  html,body{width:100%;height:100%;overflow:hidden;background:transparent;}
  body{align-items:center;}

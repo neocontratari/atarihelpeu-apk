@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 268
-        versionName "EMU10-B222-ODPOCET-A-GRAFIKA-BIOS"  // Rene: "furt to neni stoprocentni" (obraz v panelech) + "dej si zalezet na grafice vyberu her" + "zadny odpocet neni videt". 1) ps1PlochaVisible() posilena o setAlpha(0/1) vedle setVisibility - SurfaceView ma vlastni hardwarovou vrstvu, setVisibility samo umi zpozdit; oboje spolu je spolehlivejsi, porad zadny zasah do EGL/vlakna. 2) Vsechny panely (.panel/.box/.libGame) predelany na zlato-modry PS1-BIOS styl - dvojity zlaty ram, modra zare pozadi jako MAIN MENU obrazovka, hry jako CD sloty s prosvetlenym kolem PLAY. 3) Staticka hlaska pri SPUSTIT nahrazena skutecnym tikajicim odpoctem (10->0).
+        versionCode 269
+        versionName "EMU10-B223-SKUTECNA-PRICINA-HLIDAC"  // Rene: "musim minimalizovat nebo pretocit, abych to probudil." NALEZENA SKUTECNA PRICINA (ne dalsi hadanka): plochaHlidac - samostatny watchdog bezici KAZDYCH 300ms - vubec nevedel o plochaSchovanaKvuliPanelu (B223 pridalo priznak jen do ps1PlochaUmisti, ne sem) a NASILNE vracel plochu na VISIBLE, protoze jsme porad na strance emu_ps1 (otevreny panel stranku neopousti). Kazde schovani od JS tak hlidac do 300ms zase zrusil. Opraveno - hlidac ted respektuje stejny priznak. Grafika vsech panelu prepracovana na skutecne vzorkovane barvy ze skinu (#03060c pozadi, #d9a84e text - zadne vymyslene gradienty/zare).
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

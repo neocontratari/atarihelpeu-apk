@@ -4577,6 +4577,8 @@ public class MainActivity extends Activity {
         // uz bezpecne osvedcene veci z B221.
         @JavascriptInterface
         public void ps1PlochaVisible(final boolean show) {
+            plochaSchovanaKvuliPanelu = !show;
+            appendNativeLog("BUILD2SB24 PLOCHA_JS_POZADAVEK show=" + show);
             try {
                 runOnUiThread(new Runnable() {
                     public void run() {
@@ -6515,11 +6517,21 @@ public class MainActivity extends Activity {
             String u = null;
             try { if (web != null) u = web.getUrl(); } catch (Throwable ignored) {}
             boolean jePs1 = ((u != null) && u.contains("emu_ps1")) || jeIntro;
-            int chci = jePs1 ? View.VISIBLE : View.INVISIBLE;
+            // BUILD2SB24: TOHLE byla ta skutecna, driv prehlednuta pricina
+            // "obraz se porad vraci". Tenhle hlidac bezi KAZDYCH 300ms a
+            // NEVEDEL NIC o plochaSchovanaKvuliPanelu (B223 pridal ten
+            // priznak jen do ps1PlochaUmisti, ne sem) - takze i kdyz JS
+            // spravne rekl "schovej", hlidac to do 300ms zase vratil zpet,
+            // protoze porad jsme na strance emu_ps1 (otevreny HTML panel
+            // stranku neopousti, jen preklada DOM navrch). Ted panel vyhrava.
+            boolean chciSchovanouKvuliPanelu = plochaSchovanaKvuliPanelu;
+            int chci = (jePs1 && !chciSchovanouKvuliPanelu) ? View.VISIBLE : View.INVISIBLE;
             if (pl.getVisibility() != chci && (jePs1 || plochaW > 0)) {
+                pl.setAlpha(chci == View.VISIBLE ? 1f : 0f);
                 pl.setVisibility(chci);
-                appendNativeLog("PLOCHA_" + (jePs1 ? "ZOBRAZENA" : "SCHOVANA")
-                        + " (obrazovka " + (jePs1 ? "PS1" : String.valueOf(u)) + ")");
+                appendNativeLog("PLOCHA_" + (chci == View.VISIBLE ? "ZOBRAZENA" : "SCHOVANA")
+                        + " (obrazovka " + (jePs1 ? "PS1" : String.valueOf(u)) + ")"
+                        + " panelSchovej=" + chciSchovanouKvuliPanelu);
             }
         } catch (Throwable ignored) {}
     }
@@ -6547,6 +6559,14 @@ public class MainActivity extends Activity {
      *    a ovladac zustava nad obrazem.
      *  Vysku vrstvy nelze menit za behu, proto se plocha pri ZMENE OTOCENI
      *  postavi znovu - ale jen tehdy, kdyz se otoceni opravdu zmenilo. */
+    // BUILD2SB23: SKUTECNA PRICINA "obraz se porad vraci do panelu", ne
+    // jen nedostatecne skryvani - ps1SetScreenRect() se vola z JS KAZDYCH
+    // 400ms (viz ensurePs1ScreenAndPoll) a tahle funkce pri KAZDE zmene
+    // pozice/velikosti NASILNE nastavovala plochu zpet na VIDITELNOU,
+    // uplne bez ohledu na to, co si prave preje otevreny HTML panel.
+    // Proto B221/B222 (schovat pri otevreni panelu) fungovaly jen chvili -
+    // dalsi hlaseni polohy o par set milisekund pozdeji to zase odkrylo.
+    private volatile boolean plochaSchovanaKvuliPanelu = false;
     private void ps1PlochaUmisti(int l, int t, int w, int hh, boolean naSirku) {
         if (rootFrame == null || w <= 0 || hh <= 0) return;
         boolean stejne = (ps1Plocha != null) && (plochaW == w) && (plochaH == hh)
@@ -6566,7 +6586,7 @@ public class MainActivity extends Activity {
                 plochaZOrderNahore = chceNahore;
                 if (ps1Plocha != null) ps1GlDisable();
                 ps1GlEnable();                      // rozmery si vezme z plochaL..H
-                if (ps1Plocha != null) ps1Plocha.setVisibility(View.VISIBLE);
+                if (ps1Plocha != null && !plochaSchovanaKvuliPanelu) ps1Plocha.setVisibility(View.VISIBLE);
                 appendNativeLog("PLOCHA_POSTAVENA_ZNOVU " + l + "," + t + " " + w + "x" + hh
                         + (naSirku ? " (na sirku, pod strankou)" : " (na vysku, nad strankou)"));
                 return;
@@ -6575,7 +6595,7 @@ public class MainActivity extends Activity {
             lp.leftMargin = l; lp.topMargin = t;
             ps1Plocha.setLayoutParams(lp);
             ps1Plocha.requestLayout();
-            if (ps1Plocha.getVisibility() != View.VISIBLE) ps1Plocha.setVisibility(View.VISIBLE);
+            if (!plochaSchovanaKvuliPanelu && ps1Plocha.getVisibility() != View.VISIBLE) ps1Plocha.setVisibility(View.VISIBLE);
             appendNativeLog("PLOCHA_UMISTENA " + l + "," + t + " " + w + "x" + hh);
         } catch (Throwable e) {
             appendNativeLog("PLOCHA_UMISTENA_CHYBA " + safeMsg(e));
