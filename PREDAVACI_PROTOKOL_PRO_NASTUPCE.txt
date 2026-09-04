@@ -492,6 +492,21 @@
      neni problem na tomhle HW. POUCKA: kdyz Rene rekne konkretni
      cilove zarizeni, poznamenat si ho sem pro pristi rozhodovani o
      tom, kolik animace/efektu si appka muze dovolit.
+   B232: Dalsich 5 planetek (10 celkem), kazda jiny odstin (viz
+     CO_JE_V_B232.md) - jen recyklace existujicich animacnich drah,
+     zadny novy vykonovy naklad.
+   B233: "Pozadi mame, ted popredi - u pisma men barvu, obdelniky
+     taky muzou hrat barvama PS1." Nadpisy panelu + tlacitka podle
+     role (potvrdit=zelena/zpet=modra-nova trida .zavrit/vedlejsi=
+     fialova/nebezpecne=cervena) + popisky v OVLADANI - vse podle
+     skutecnych 4 barev PS1 tlacitek. VLASTNI CHYBA CHYCENA HNED:
+     pri vkladani novych .panel button pravidel vznikly docasne
+     DUPLICITNI selektory (nove vlozene PRED stare, misto nahrazeni) -
+     CSS by pouzilo pozdejsi (stare, bez barev) a nic by tise
+     nefungovalo. Zachyceno standardni kontrolou poctu vyskytu po
+     kazde CSS zmene - VZOR PRO PRISTE: po KAZDE uprave CSS pravidla
+     vzdy zkontrolovat, ze selektor existuje prave JEDNOU, ne jen ze
+     syntaxe prosla.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

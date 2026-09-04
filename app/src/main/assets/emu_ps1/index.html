@@ -188,16 +188,30 @@ body.panelNebulaOn #panelNebula{display:block;}
    misto plne barvy. Zdroj: Koncept C, schvalene navrhy. */
 .panel .box{position:relative;z-index:2;max-width:760px;margin:0 auto;background:linear-gradient(160deg,rgba(60,50,110,.30),rgba(10,8,25,.60));border:1px solid rgba(170,150,255,.38);border-radius:14px;padding:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 8px 24px rgba(0,0,0,.55);}
 .panel h2{font:900 22px Arial,sans-serif;margin-bottom:12px;color:#fff;text-align:center;letter-spacing:.03em;text-shadow:0 0 14px rgba(160,120,255,.65),0 2px 4px #000;}
+/* BUILD2SB34: Rene - "u pisma men barvu, obdelniky taky muzou hrat
+   barvama PS1, neboj se toho." Kazdy panel dostava nadpis v jedne ze
+   4 skutecnych barev PS1 tlacitek, at je na prvni pohled poznat, kde
+   jsi (misto porad stejneho bileho nadpisu). */
+#dpadMenuPanel h2{color:#5ef0b0;text-shadow:0 0 16px rgba(55,214,156,.7),0 2px 4px #000;}
+#ctrlPanel h2{color:#5ef0b0;text-shadow:0 0 16px rgba(55,214,156,.7),0 2px 4px #000;}
+#libraryPanel h2{color:#7cc8ff;text-shadow:0 0 16px rgba(92,184,255,.7),0 2px 4px #000;}
+#libraryDeleteConfirm h2{color:#ff8fa3;text-shadow:0 0 16px rgba(255,92,122,.7),0 2px 4px #000;}
+#memCardStatusPanel h2{color:#d8aaff;text-shadow:0 0 16px rgba(196,140,255,.7),0 2px 4px #000;}
+/* BUILD2SB34: tlacitka podle role, ne uz jen jedna barva pro vsechno -
+   potvrdit/pokracovat=zelena(trojuhelnik), zpet/zavrit=modra(krizek),
+   vedlejsi=fialova(ctverec), nebezpecne=cervena(kolecko, uz existuje
+   pro SMAZAT). Presne 4 skutecne PS1 barvy, zadna vymyslena navic. */
+.panel button{width:100%;margin-top:14px;padding:14px;display:flex;align-items:center;justify-content:center;color:#eafff5;font:900 15px Arial,sans-serif;letter-spacing:.02em;background:rgba(20,60,45,.5);border:1px solid rgba(55,214,156,.55);border-radius:10px;text-transform:uppercase;box-shadow:0 0 12px rgba(55,214,156,.18);}
+.panel button.secondary{color:#f1e6ff;background:rgba(45,25,65,.55);border:1px solid rgba(196,140,255,.5);box-shadow:0 0 12px rgba(196,140,255,.16);}
+.panel button.zavrit{color:#e4f4ff;background:rgba(15,40,65,.55);border:1px solid rgba(92,184,255,.55);box-shadow:0 0 12px rgba(92,184,255,.18);}
 .panel p{font:700 14px/1.45 Arial,sans-serif;margin:9px 0;color:#c9c2e8;}
 .panel b{color:#8ee7ff;}
-.panel button{width:100%;margin-top:14px;padding:14px;display:flex;align-items:center;justify-content:center;color:#e6ddff;font:900 15px Arial,sans-serif;letter-spacing:.02em;background:rgba(40,32,70,.6);border:1px solid rgba(170,150,255,.42);border-radius:10px;text-transform:uppercase;}
 /* BUILD2SB6: posuvniky a zaskrtavatko pro panel OVLADANI */
 .panel input[type=range]{-webkit-appearance:none;width:100%;margin:6px 0 2px;height:6px;border-radius:3px;background:linear-gradient(90deg,#ff3b6b,#ffd23c,#3cff8f,#3cc7ff);}
 .panel input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d8c8ff);box-shadow:0 0 12px rgba(200,170,255,.8),0 0 0 2px rgba(255,255,255,.5);}
 .panel .ctrlVal{text-align:center;color:#8ee7ff;font:800 13px Arial,sans-serif;margin:0 0 10px;}
 .panel .ctrlRow{display:flex;align-items:center;gap:10px;margin:14px 0;color:#c9c2e8;font:700 14px Arial,sans-serif;}
 .panel .ctrlRow input[type=checkbox]{width:22px;height:22px;accent-color:#8ee7ff;}
-.panel button.secondary{color:rgba(220,232,245,.85);background:rgba(30,25,55,.55);border:1px solid rgba(140,132,180,.4);box-shadow:none;}
 /* BUILD2SB31: hlavni seznam her dostane jemny animovany RGB ramecek -
    POUZE tady, ne na vsem, at to nebliká jako vanocni stromek. */
 .rgbRam{position:relative;z-index:2;border-radius:14px;padding:2px;background:linear-gradient(90deg,#ff3b6b,#ffd23c,#3cff8f,#3cc7ff,#a13cff,#ff3b6b);background-size:300% 300%;animation:napRgbPosun 6s linear infinite;}
@@ -359,7 +373,7 @@ body.panelNebulaOn #panelNebula{display:block;}
     <button id="btnDpadMenuFromHelp" type="button">D-PAD A OVLÁDÁNÍ</button>
     <button id="logSave" type="button">ULOZIT LOG (Downloads/AtariHelp)</button>
     <button id="logCopy" type="button">KOPIROVAT LOG</button>
-    <button id="helpClose" type="button">ZAVRIT</button>
+    <button id="helpClose" type="button" class="zavrit">ZAVRIT</button>
   </div>
 </div>
 <!-- BUILD2SB9: Rene chtel ozubene kolecko cistě jen na D-pad - predtim
@@ -374,7 +388,7 @@ body.panelNebulaOn #panelNebula{display:block;}
     <button id="btnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
     <button id="btnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
     <button id="dpadMenuMore" type="button" class="secondary">DALŠÍ (BIOS, CD, LOG...)</button>
-    <button id="dpadMenuClose" type="button">ZAVŘÍT</button>
+    <button id="dpadMenuClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
 <!-- BUILD2SB14: Rene - "memory card musi fungovat presne tak jako jadro
@@ -389,7 +403,7 @@ body.panelNebulaOn #panelNebula{display:block;}
     <div id="libraryList" class="rgbRam"></div>
     <button id="libraryRefresh" type="button" class="secondary">OBNOVIT SEZNAM</button>
     <button id="libraryPickManual" type="button" class="secondary">VYBRAT SOUBOR RUČNĚ V TELEFONU</button>
-    <button id="libraryClose" type="button">ZAVŘÍT</button>
+    <button id="libraryClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
 <!-- BUILD2SB15: Rene - "hlasku o tom jestli chci premazat celou hru a
@@ -415,17 +429,17 @@ body.panelNebulaOn #panelNebula{display:block;}
     <p>Skutečná PS1 karta - jedna, pořád zasunutá, sdílená všemi hrami i BIOSem (viz B218). O ukládání se stará jádro samo, tady jen vidíš stav.</p>
     <p id="memCardStatusText" style="color:#f1d78e;font-size:12px;line-height:1.5;"></p>
     <button id="memCardRefresh" type="button" class="secondary">OBNOVIT STAV</button>
-    <button id="memCardClose" type="button">ZAVŘÍT</button>
+    <button id="memCardClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
 <div id="ctrlPanel" class="panel" aria-hidden="true">
   <div class="box">
     <h2>OVLÁDÁNÍ — profi nastavení</h2>
-    <p><b>Citlivost D-padu</b> — jak daleko od středu musí prst dojet, než se směr sepne. Nižší = citlivější (sepne dřív), vyšší = musíš jet víc do kraje.</p>
+    <p><b style="color:#5ef0b0;">Citlivost D-padu</b> — jak daleko od středu musí prst dojet, než se směr sepne. Nižší = citlivější (sepne dřív), vyšší = musíš jet víc do kraje.</p>
     <input id="ctrlSensitivity" type="range" min="20" max="70" step="1" value="42">
     <p id="ctrlSensitivityVal" class="ctrlVal"></p>
 
-    <p><b>Průhlednost tlačítek</b> — jak moc vidíš skrz ovladač na hru pod ním.</p>
+    <p><b style="color:#7cc8ff;">Průhlednost tlačítek</b> — jak moc vidíš skrz ovladač na hru pod ním.</p>
     <input id="ctrlOpacity" type="range" min="25" max="100" step="5" value="100">
     <p id="ctrlOpacityVal" class="ctrlVal"></p>
     <div class="ctrlRow">
@@ -433,11 +447,11 @@ body.panelNebulaOn #panelNebula{display:block;}
       <label for="ctrlTransparentToggle">Průhledný ovladač (rychlá volba - někdo chce vidět skrz, někdo ne)</label>
     </div>
 
-    <p><b>Velikost tlačítek</b> — Triangle/Circle/Cross/Square, ramena, Select/Start.</p>
+    <p><b style="color:#d8aaff;">Velikost tlačítek</b> — Triangle/Circle/Cross/Square, ramena, Select/Start.</p>
     <input id="ctrlSize" type="range" min="70" max="150" step="5" value="100">
     <p id="ctrlSizeVal" class="ctrlVal"></p>
 
-    <p><b>Velikost D-padu</b> — jen kulatý ovladač, samostatně.</p>
+    <p><b style="color:#ff8fa3;">Velikost D-padu</b> — jen kulatý ovladač, samostatně.</p>
     <input id="ctrlDpadSize" type="range" min="70" max="150" step="5" value="100">
     <p id="ctrlDpadSizeVal" class="ctrlVal"></p>
 
@@ -447,7 +461,7 @@ body.panelNebulaOn #panelNebula{display:block;}
     </div>
 
     <button id="ctrlReset" type="button" class="secondary">VÝCHOZÍ NASTAVENÍ OVLÁDÁNÍ</button>
-    <button id="ctrlClose" type="button">ZAVŘÍT</button>
+    <button id="ctrlClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
 <script>

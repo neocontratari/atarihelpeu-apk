@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 278
-        versionName "EMU10-B232-VICE-PLANET-VICE-BAREV"  // Rene: "pridej planety a barvy, super." Pet dalsich planetek (10 celkem), kazda odlisny odstin (cervena/oranzova, azurova, fialova, ledova bila, jantarova) - zadne dve stejne barvy. Jedna (j) dostala Saturn-styl prstenec. Porad jen transform/opacity animace na existujicich napLetA/B/C drahach (zadne nove keyframy, jen recyklace) - vykon beze zmeny.
+        versionCode 279
+        versionName "EMU10-B233-POPREDI-BARVY-PS1"  // Rene: "pozadi mame, ted si pohraj s popredim - u pisma men barvu, obdelniky taky muzou hrat barvama PS1, neboj se toho." Nadpisy panelu ted kazdy jina skutecna barva PS1 tlacitka (D-PAD/OVLADANI=zelena trojuhelnik, CD/ISO=modra krizek, SMAZAT HRU=cervena kolecko, MEMORY CARD=fialova ctverec) - na prvni pohled poznat, kde jsi. Tlacitka podle role: potvrdit/pokracovat=zelena, zpet/zavrit (nova trida .zavrit)=modra, vedlejsi=fialova, nebezpecne=cervena (uz existovalo). Popisky ve OVLADANI (Citlivost/Pruhlednost/Velikost tlacitek/Velikost D-padu) kazdy jina barva misto jednotne azurove. DULEZITE: pri vkladani novych .panel button pravidel vznikly docasne DUPLICITNI CSS selektory (stare rezimy jeste v souboru) - hned zachyceno kontrolou a smazano, cisty vysledek.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
