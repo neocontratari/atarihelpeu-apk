@@ -126,6 +126,17 @@ body.panelNebulaOn #panelNebula{display:block;}
 .panelPlaneta.c{width:22px;height:22px;top:55%;left:20%;background:radial-gradient(circle at 35% 30%,#ffe08a,#c88a20 60%,#5a3a08);animation:napLetC 15s ease-in-out infinite;}
 .panelPlaneta.d{width:46px;height:46px;top:65%;right:15%;background:radial-gradient(circle at 35% 30%,#a8c8ff,#3a5aa8 60%,#152040);box-shadow:0 0 20px rgba(90,130,255,.4);animation:napLetB 26s ease-in-out infinite reverse;}
 .panelPlaneta.e{width:16px;height:16px;top:20%;left:35%;background:radial-gradient(circle at 35% 30%,#ffd0e8,#c25a8a 60%,#4a1530);animation:napLetC 12s ease-in-out infinite reverse;}
+/* BUILD2SB33: Rene - "pridej planety a barvy, super." Dalsich pet, at
+   je scena bohatsi - kazda odlisny odstin, at zadne dve nejsou stejne
+   barvy, jedna dostala prstenec (Saturn-styl - samostatny protahly
+   ovál pod uhlem, ne skutecna 3D geometrie, ale na plochem pozadi
+   funguje dobre). */
+.panelPlaneta.f{width:30px;height:30px;top:78%;left:45%;background:radial-gradient(circle at 35% 30%,#ff8a6a,#a8321a 60%,#3a1006);box-shadow:0 0 18px rgba(255,110,60,.4);animation:napLetA 19s ease-in-out infinite reverse;}
+.panelPlaneta.g{width:52px;height:52px;top:2%;left:8%;background:radial-gradient(circle at 35% 30%,#8ff0f0,#1a8a90 60%,#052a30);box-shadow:0 0 22px rgba(60,220,220,.4);animation:napLetC 24s ease-in-out infinite;}
+.panelPlaneta.h{width:18px;height:18px;bottom:8%;right:35%;background:radial-gradient(circle at 35% 30%,#d8b8ff,#6a3aa8 60%,#25104a);box-shadow:0 0 14px rgba(160,90,255,.4);animation:napLetB 14s ease-in-out infinite;}
+.panelPlaneta.i{width:12px;height:12px;top:45%;right:8%;background:radial-gradient(circle at 35% 30%,#fff,#b8d8ff 60%,#5a86c8);box-shadow:0 0 10px rgba(200,225,255,.5);animation:napLetA 10s ease-in-out infinite;}
+.panelPlaneta.j{width:40px;height:40px;bottom:48%;left:4%;background:radial-gradient(circle at 35% 30%,#ffe8a0,#c8942a 60%,#4a3208);box-shadow:0 0 20px rgba(255,205,90,.4);animation:napLetB 30s ease-in-out infinite;position:absolute;}
+.panelPlaneta.j:after{content:'';position:absolute;left:-10px;right:-10px;top:46%;height:8px;border-radius:50%;border:2px solid rgba(255,225,150,.55);transform:rotate(-18deg);}
 /* BUILD2SB32: Rene - "S8 Samsung zvladne vic, klidne i ty velke balonky
    at litaji." Misto jemneho poposedavani nahoru/dolu ted planetky
    opravdu LETI napric velkou casti obrazovky a vraceji se (smycka), ne
@@ -323,6 +334,11 @@ body.panelNebulaOn #panelNebula{display:block;}
   <div class="panelPlaneta c"></div>
   <div class="panelPlaneta d"></div>
   <div class="panelPlaneta e"></div>
+  <div class="panelPlaneta f"></div>
+  <div class="panelPlaneta g"></div>
+  <div class="panelPlaneta h"></div>
+  <div class="panelPlaneta i"></div>
+  <div class="panelPlaneta j"></div>
 </div>
 <div id="helpPanel" class="panel" aria-hidden="true">
   <div class="box">
