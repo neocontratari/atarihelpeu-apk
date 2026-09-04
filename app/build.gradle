@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 269
-        versionName "EMU10-B223-SKUTECNA-PRICINA-HLIDAC"  // Rene: "musim minimalizovat nebo pretocit, abych to probudil." NALEZENA SKUTECNA PRICINA (ne dalsi hadanka): plochaHlidac - samostatny watchdog bezici KAZDYCH 300ms - vubec nevedel o plochaSchovanaKvuliPanelu (B223 pridalo priznak jen do ps1PlochaUmisti, ne sem) a NASILNE vracel plochu na VISIBLE, protoze jsme porad na strance emu_ps1 (otevreny panel stranku neopousti). Kazde schovani od JS tak hlidac do 300ms zase zrusil. Opraveno - hlidac ted respektuje stejny priznak. Grafika vsech panelu prepracovana na skutecne vzorkovane barvy ze skinu (#03060c pozadi, #d9a84e text - zadne vymyslene gradienty/zare).
+        versionCode 271
+        versionName "EMU10-B225-KARTA-VEREJNE-ULOZISTE"  // Rene: "kdyz apku vymazu a znova nainstaluji, cd/iso si hry pamatuje, ale memory card je prazdna." Pricina: saveDir (=g_savedir v jadru, tam vznika memory_card_1.srm) sel pres getFilesDir() = appce-privatni uloziste, ktere Android PRI ODINSTALACI SMAZE. Hry v knihovne prezily, protoze uz davno lezi ve verejnem Downloads/AtariHelp. Nova getPublicMemoryCardDir() (Downloads/AtariHelp/PS1_pametova_karta) pouzita na vsech trech mistech, kde appka bootuje BIOS/hru - presne jako realna PS1 karta, fyzicky oddelena od konzole, prezije i vymazani appky. Jednorazova migrace existujici karty ze stare privatni cesty, at Rene neprijde o rozehrane testovani.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

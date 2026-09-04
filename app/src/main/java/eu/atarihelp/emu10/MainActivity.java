@@ -513,9 +513,8 @@ public class MainActivity extends Activity {
                 }
                 try { pokus.createNewFile(); } catch (Throwable ignored) {}
                 java.io.File sysDir  = new java.io.File(getFilesDir(), "ps1_system");
-                java.io.File saveDir = new java.io.File(getFilesDir(), "ps1_saves");
+                java.io.File saveDir = getPublicMemoryCardDir();
                 if (!sysDir.exists())  sysDir.mkdirs();
-                if (!saveDir.exists()) saveDir.mkdirs();
                 ps1EnsureBios(sysDir);          // BIOS musi byt na miste
                 appendNativeLog("PS1_BIOS_START bez disku (jako zapnuti konzole)");
                 // Plocha, na kterou jadro kresli PRIMO. Musi byt i pro BIOS -
@@ -4364,6 +4363,39 @@ public class MainActivity extends Activity {
         return dir;
     }
 
+    // BUILD2SB26: Rene - "kdyz apku vymazu a znova nainstaluji, cd/iso
+    // si hry pamatuje, ale memory card je prazdna." Presne tak - drive
+    // sel saveDir (=g_savedir v jadru, tam se stavi memory_card_1.srm)
+    // pres getFilesDir() = appce-privatni uloziste, ktere Android PRI
+    // ODINSTALACI SMAZE. Hry v knihovne prezily, protoze uz davno leze
+    // v getPublicAtariHelpDownloadsDir() (verejne Downloads/AtariHelp).
+    // Skutecna PS1 karta je FYZICKY ODDELENA od konzole - kdybys
+    // konzoli vyhodil a koupil novou, karta porad ma tva data. Presne
+    // tak se ma karta chovat i tady: verejne uloziste, prezije i
+    // odinstalaci appky, stejne jako hry.
+    private File getPublicMemoryCardDir() {
+        File dir = new File(getPublicAtariHelpDownloadsDir(), "PS1_pametova_karta");
+        if (!dir.exists()) dir.mkdirs();
+        // Jednorazove presunuti: pokud uz z drivejsiho testovani (B215-B224)
+        // existuje karta ve stare, appce-privatni ceste a v nove verejne
+        // jeste zadna neni, zkopirovat ji sem - at Rene neprijde o
+        // rozehrane testovaci ulozene pozice kvuli tehle zmene.
+        try {
+            File stara = new File(new File(getFilesDir(), "ps1_saves"), "memory_card_1.srm");
+            File nova = new File(dir, "memory_card_1.srm");
+            if (stara.exists() && !nova.exists()) {
+                byte[] buf = new byte[8192];
+                try (java.io.InputStream in = new java.io.FileInputStream(stara);
+                     java.io.OutputStream out = new java.io.FileOutputStream(nova)) {
+                    int n;
+                    while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                }
+                appendNativeLog("BUILD2SB26 PAMETOVA_KARTA_PRESUNUTA_DO_VEREJNEHO_ULOZISTE " + nova.getAbsolutePath());
+            }
+        } catch (Throwable ignored) {}
+        return dir;
+    }
+
     private String mimeForName(String name) {
         String lower = name == null ? "" : name.toLowerCase();
         if (lower.endsWith(".cas")) return "application/octet-stream";
@@ -4578,15 +4610,23 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void ps1PlochaVisible(final boolean show) {
             plochaSchovanaKvuliPanelu = !show;
-            appendNativeLog("BUILD2SB24 PLOCHA_JS_POZADAVEK show=" + show);
+            appendNativeLog("BUILD2SB25 PLOCHA_JS_POZADAVEK show=" + show);
             try {
                 runOnUiThread(new Runnable() {
                     public void run() {
                         try {
-                            if (ps1Plocha != null) {
-                                ps1Plocha.setAlpha(show ? 1f : 0f);
-                                ps1Plocha.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
-                            }
+                            // BUILD2SB25: NALEZENO V LOGU - setVisibility(INVISIBLE)
+                            // u SurfaceView na tomhle zarizeni SKUTECNE nicilo a
+                            // znovu stavelo cely Surface (v logu PLOCHA_ZRUSENA
+                            // hned po kazdem show=false, PLOCHA_VYTVORENA znovu
+                            // pri show=true) - misto lehkeho prepnuti viditelnosti
+                            // to bylo tezke znicit/postavit znovu, POKAZDE kdyz se
+                            // otevrel/zavrel panel. To vysvetluje zbyvajici
+                            // nespolehlivost (a mozna i cerny obdelnik v landscape -
+                            // znovupostaveny povrch chvilku nema od jadra prvni
+                            // snimek). setAlpha() SAMOTNE povrch nenici, jen ho
+                            // udela pruhledny - zadny destroy/create cyklus.
+                            if (ps1Plocha != null) ps1Plocha.setAlpha(show ? 1f : 0f);
                         } catch (Throwable ignored) {}
                     }
                 });
@@ -6498,15 +6538,19 @@ public class MainActivity extends Activity {
         // Sega ma vlastni plochu - schovat ji, kdyz nejsme na jeji obrazovce,
         // jinak by obraz prosvital do zbytku aplikace (stejny problem jako
         // mela PS1).
+        // BUILD2SB25: Sega I PS1 vetev prepnuty z setVisibility() na
+        // setAlpha() - viz duvod u ps1PlochaVisible() vyse (setVisibility
+        // u SurfaceView nici a znovu stavi cely Surface, coz je zbytecne
+        // tezke pro neco, co se ma delat kazdych 300ms).
         try {
             android.view.SurfaceView sp = segaPlocha;
             if (sp != null) {
                 String us = null;
                 try { if (web != null) us = web.getUrl(); } catch (Throwable ignored) {}
                 boolean jeSega = ((us != null) && us.contains("emu_sega")) || jeIntro;
-                int chciS = jeSega ? View.VISIBLE : View.INVISIBLE;
-                if (sp.getVisibility() != chciS) {
-                    sp.setVisibility(chciS);
+                float chciS = jeSega ? 1f : 0f;
+                if (sp.getAlpha() != chciS) {
+                    sp.setAlpha(chciS);
                     appendNativeLog("SEGA_PLOCHA_" + (jeSega ? "ZOBRAZENA" : "SCHOVANA"));
                 }
             }
@@ -6525,11 +6569,10 @@ public class MainActivity extends Activity {
             // protoze porad jsme na strance emu_ps1 (otevreny HTML panel
             // stranku neopousti, jen preklada DOM navrch). Ted panel vyhrava.
             boolean chciSchovanouKvuliPanelu = plochaSchovanaKvuliPanelu;
-            int chci = (jePs1 && !chciSchovanouKvuliPanelu) ? View.VISIBLE : View.INVISIBLE;
-            if (pl.getVisibility() != chci && (jePs1 || plochaW > 0)) {
-                pl.setAlpha(chci == View.VISIBLE ? 1f : 0f);
-                pl.setVisibility(chci);
-                appendNativeLog("PLOCHA_" + (chci == View.VISIBLE ? "ZOBRAZENA" : "SCHOVANA")
+            float chci = (jePs1 && !chciSchovanouKvuliPanelu) ? 1f : 0f;
+            if (pl.getAlpha() != chci && (jePs1 || plochaW > 0)) {
+                pl.setAlpha(chci);
+                appendNativeLog("PLOCHA_" + (chci == 1f ? "ZOBRAZENA" : "SCHOVANA")
                         + " (obrazovka " + (jePs1 ? "PS1" : String.valueOf(u)) + ")"
                         + " panelSchovej=" + chciSchovanouKvuliPanelu);
             }
@@ -6586,7 +6629,10 @@ public class MainActivity extends Activity {
                 plochaZOrderNahore = chceNahore;
                 if (ps1Plocha != null) ps1GlDisable();
                 ps1GlEnable();                      // rozmery si vezme z plochaL..H
-                if (ps1Plocha != null && !plochaSchovanaKvuliPanelu) ps1Plocha.setVisibility(View.VISIBLE);
+                // BUILD2SB25: nova plocha vznika s alpha=1 (vychozi) - kdyz si
+                // panel preje schovanou, nastavit hned, ne cekat na dalsi tik
+                // hlidace (a zadne setVisibility - viz duvod u ps1PlochaVisible).
+                if (ps1Plocha != null) ps1Plocha.setAlpha(plochaSchovanaKvuliPanelu ? 0f : 1f);
                 appendNativeLog("PLOCHA_POSTAVENA_ZNOVU " + l + "," + t + " " + w + "x" + hh
                         + (naSirku ? " (na sirku, pod strankou)" : " (na vysku, nad strankou)"));
                 return;
@@ -6595,7 +6641,7 @@ public class MainActivity extends Activity {
             lp.leftMargin = l; lp.topMargin = t;
             ps1Plocha.setLayoutParams(lp);
             ps1Plocha.requestLayout();
-            if (!plochaSchovanaKvuliPanelu && ps1Plocha.getVisibility() != View.VISIBLE) ps1Plocha.setVisibility(View.VISIBLE);
+            if (!plochaSchovanaKvuliPanelu && ps1Plocha.getAlpha() != 1f) ps1Plocha.setAlpha(1f);
             appendNativeLog("PLOCHA_UMISTENA " + l + "," + t + " " + w + "x" + hh);
         } catch (Throwable e) {
             appendNativeLog("PLOCHA_UMISTENA_CHYBA " + safeMsg(e));
@@ -8709,9 +8755,8 @@ public class MainActivity extends Activity {
             ps1GameWindowOwnsCore = false;  // jadro zustava tady, u monitoru
             ps1BiosRunning = false;
             java.io.File sysDirH  = new java.io.File(getFilesDir(), "ps1_system");
-            java.io.File saveDirH = new java.io.File(getFilesDir(), "ps1_saves");
+            java.io.File saveDirH = getPublicMemoryCardDir();
             if (!sysDirH.exists())  sysDirH.mkdirs();
-            if (!saveDirH.exists()) saveDirH.mkdirs();
             ps1EnsureBios(sysDirH);
             ps1LastBootResult = NativePs1CoreBridge.bootGameSafe(
                     sysDirH.getAbsolutePath(), saveDirH.getAbsolutePath(), cestaKeHre);
@@ -9649,9 +9694,8 @@ public class MainActivity extends Activity {
                     }
                     String fdPath = "/proc/self/fd/" + pfd.getFd();
                     java.io.File sysDir = new java.io.File(getFilesDir(), "ps1_system");
-                    java.io.File saveDir = new java.io.File(getFilesDir(), "ps1_saves");
+                    java.io.File saveDir = getPublicMemoryCardDir();
                     if (!sysDir.exists()) sysDir.mkdirs();
-                    if (!saveDir.exists()) saveDir.mkdirs();
                     ps1CurrentGameLabel = pickedName;
                     stopPs1Audio(); // BUILD2SA3B: cisty audio restart pri prepnuti PS1 hry
                     ps1LastBootResult = "PS1_BOOTING...";

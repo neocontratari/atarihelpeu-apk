@@ -113,32 +113,33 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnEditLayout{display:none;}
 #btnCtrlSettings{display:none;}
 #btnMirror{display:none;}
-/* BUILD2SB23: Rene odmitl predchozi vymyslenou grafiku (zare/gradienty) -
-   "vem grafiku z ps1, ne tvuj vymysl". Barvy tady jsou OPRAVDU vzorkovane
-   ze skutecneho skinu (ps1_final_screen.png): tmave pozadi #03060c,
-   text #d9a84e (RESET/MEMORY CARD popisky), tenky stribrny/kovovy okraj
-   misto zlateho zarivciho ramu. Zadne vymyslene gradienty ani glow. */
-.panel .box{max-width:760px;margin:0 auto;background:#070d17;border:1px solid #6b7686;border-radius:10px;padding:20px;}
-.panel h2{font:900 22px "Courier New",monospace;margin-bottom:12px;color:#d9a84e;text-align:center;}
+/* BUILD2SB25: Rene - "fadni nehezke, vem grafiku podle 3d a jadra ps1."
+   Presne zopakovany recept .padBtn (D-pad/akcni tlacitka nize v tomhle
+   souboru, uz driv schvaleny vzhled) - tmavy radialni gradient, zlaty
+   dvojity prstenec, plne kulate rohy (pill tvar) - misto plochych
+   barev z B223. Barvy prstence porad ze skutecneho skinu (#d9a84e). */
+.panel .box{max-width:760px;margin:0 auto;background:radial-gradient(circle at 50% 8%,rgba(60,68,80,.55),rgba(4,6,11,.98) 55%);border:2px solid rgba(198,165,89,.65);border-radius:22px;padding:20px;box-shadow:0 0 0 3px rgba(10,13,18,.9),0 4px 20px rgba(0,0,0,.6);}
+.panel h2{font:900 22px "Courier New",monospace;margin-bottom:12px;color:#d9a84e;text-align:center;text-shadow:0 2px 3px #000;}
 .panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#c7d0dc;}
 .panel b{color:#8ee7ff;}
-.panel button{width:100%;margin-top:14px;padding:14px;border:1px solid #8a7238;border-radius:8px;background:#d9a84e;color:#06070a;font:900 15px "Courier New",monospace;}
+.panel button{width:100%;margin-top:14px;padding:14px;display:flex;align-items:center;justify-content:center;color:rgba(255,214,120,.96);font:900 15px "Courier New",monospace;background:radial-gradient(circle at 34% 24%,rgba(70,78,90,.92),rgba(8,11,16,.96) 72%);border:2px solid rgba(198,165,89,.8);border-radius:999px;box-shadow:0 0 0 3px rgba(18,22,30,.92),0 0 0 5px rgba(198,165,89,.30),0 4px 12px rgba(0,0,0,.5);text-shadow:0 2px 3px #000;}
 /* BUILD2SB6: posuvniky a zaskrtavatko pro panel OVLADANI */
 .panel input[type=range]{width:100%;margin:6px 0 2px;accent-color:#8ee7ff;height:28px;}
 .panel .ctrlVal{text-align:center;color:#8ee7ff;font:800 13px "Courier New",monospace;margin:0 0 10px;}
 .panel .ctrlRow{display:flex;align-items:center;gap:10px;margin:14px 0;color:#c7d0dc;font:800 14px "Courier New",monospace;}
 .panel .ctrlRow input[type=checkbox]{width:22px;height:22px;accent-color:#8ee7ff;}
-.panel button.secondary{background:#11161f;color:#c7d0dc;border:1px solid #4a5361;}
-/* BUILD2SB23: radek hry - plocha tmava karta, tenky kovovy okraj, ploche
-   zlate tlacitko PLAY (bez zare/gradientu). */
-.libGame{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:8px;background:#0a1019;border:1px solid #4a5361;}
+.panel button.secondary{color:rgba(220,232,245,.9);background:radial-gradient(circle at 34% 24%,rgba(45,52,62,.85),rgba(6,8,12,.96) 72%);border:2px solid rgba(120,132,148,.55);box-shadow:0 0 0 3px rgba(18,22,30,.92),0 0 0 5px rgba(120,132,148,.16),0 4px 12px rgba(0,0,0,.5);}
+/* BUILD2SB25: radek hry - stejny jazyk jako herni tlacitka, jen
+   protahly pill misto kruhu (mensi zaobleni na kartu, plny kruh na
+   PLAY/SMAZAT ikonky). */
+.libGame{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:16px;background:radial-gradient(circle at 30% 15%,rgba(55,62,74,.5),rgba(6,9,15,.95) 65%);border:1px solid rgba(198,165,89,.4);box-shadow:0 0 0 2px rgba(10,13,18,.8);}
 .libGame .libInfo{flex:1;min-width:0;}
 .libGame .libName{font:900 13px "Courier New",monospace;color:#d9a84e;word-break:break-all;}
 .libGame .libMeta{font:800 11px "Courier New",monospace;color:#8794a3;margin-top:3px;}
-.libGame .libSaveTag{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:4px;font:800 10px "Courier New",monospace;background:#0d1f2e;color:#8ee7ff;border:1px solid #2c5872;}
-.libGame button{width:auto;margin:0;padding:0;font-size:18px;line-height:1;border-radius:6px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;}
-.libGame .libPlay{background:#d9a84e;color:#06070a;border:1px solid #8a7238;}
-.libGame .libDel{background:#1f0f0f;color:#e08a8a;border:1px solid #6b3a3a;}
+.libGame .libSaveTag{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:999px;font:800 10px "Courier New",monospace;background:rgba(110,190,255,.15);color:#8ee7ff;border:1px solid rgba(110,190,255,.4);}
+.libGame button{width:44px;height:44px;margin:0;padding:0;font-size:19px;line-height:1;border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px rgba(10,13,18,.9),0 3px 8px rgba(0,0,0,.5);}
+.libGame .libPlay{background:radial-gradient(circle at 34% 26%,rgba(255,225,150,.95),rgba(198,165,89,.9) 70%);color:#241a06;border:2px solid rgba(255,235,190,.6);}
+.libGame .libDel{background:radial-gradient(circle at 34% 26%,rgba(90,45,45,.9),rgba(20,8,8,.95) 72%);color:#e08a8a;border:2px solid rgba(160,70,70,.6);}
 .libEmpty{text-align:center;color:#8794a3;font:800 13px "Courier New",monospace;padding:20px 0;}
 @media (orientation:landscape) and (max-height:760px){
  html,body{width:100%;height:100%;overflow:hidden;background:transparent;}

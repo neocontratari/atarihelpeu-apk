@@ -396,6 +396,30 @@
      opravil. Grafika vsech panelu VRACENA na skutecne vzorkovane barvy
      ze skinu (#03060c/#d9a84e) - zadne vymyslene gradienty/zare, Rene
      to vyslovne odmitl (viz CO_JE_V_B223.md).
+   B224: DALSI POUCKA - z realneho /8765/log (ps1.txt) vyplynulo, ze
+     setVisibility(INVISIBLE) u SurfaceView na Reneho zarizeni SKUTECNE
+     nici a znovu stavi cely Surface (PLOCHA_ZRUSENA/PLOCHA_VYTVORENA
+     u KAZDEHO otevreni/zavreni panelu) - ne lehke prepnuti, jak jsem
+     cekal. VSECHNA mista rizici viditelnost plochy kvuli panelu
+     (ps1PlochaVisible, ps1PlochaUmisti, plochaZkontroluj hlidac)
+     prepnuta na CISTE setAlpha() - Surface zustava zivy, jen se
+     nakresli pruhledne. setVisibility zustava JEN pro jednorazovy
+     stav pri prvnim vytvoreni plochy (pozice jeste neznama), ne pro
+     casty prepinac. Grafika panelu prepracovana na doslovny .padBtn
+     recept (tmavy gradient + zlaty prsten + pill tvar) - Rene chtel
+     "3D jako jadro PS1", ne ploche karty z B223.
+   B225: Memory karta (g_savedir/memory_card_1.srm) sla pres
+     getFilesDir() (appce-privatni), ktere Android SMAZE pri
+     odinstalaci - hry v knihovne to prezily, protoze uz davno lezi ve
+     verejnem Downloads/AtariHelp. Nova getPublicMemoryCardDir()
+     (Downloads/AtariHelp/PS1_pametova_karta) pouzita na vsech trech
+     mistech, kde appka bootuje BIOS/hru. DULEZITE PRO BUDOUCNO: cokoli,
+     co ma pusobit jako "trvala soucast konzole nezavisla na appce
+     samotne" (memory karta u PS1, pravdepodobne podobne u Segy/Atari),
+     patri do VEREJNEHO uloziste, ne getFilesDir(). Quick-save-states
+     (.slot0.state, jen emulatorova pohodlnost, ne realny hardware)
+     zustavaji zamerne privatni. Jednorazova migrace stare karty do
+     nove cesty, at se pri testovani neztrati rozehrane save.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
