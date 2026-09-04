@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 275
-        versionName "EMU10-B229-RESET-VLAJKA-OPRAVENA"  // Rene upresnil: "tam nebyl dvojity stisk - pokud byl bios bez cd a ten se nacetl, tak DALSI [reset] udelal chybu." SKUTECNA PRICINA: stopPs1SessionHard() spravne zastavila bezici BIOS (NativePs1CoreBridge.stopSafe()), ale NIKDY nevracela ps1BiosRunning zpet na false! Nasledny ps1MaybeStartBios() (volany z ps1Reset) videl STARY priznak "BIOS bezi" a novy start vubec nezacal - jadro bylo doopravdy zastavene (odtud ten zvuk pri zastaveni), ale nic noveho uz nenaskocilo. Pridano ps1BiosRunning=false (a pro uplnost i ps1GameWindowOwnsCore=false) primo do stopPs1SessionHard() - stejne misto, co uz melo ps1BootActive/ps1SessionActive. B228 pojistka proti dvojitemu stisku zustava (jina, doplnujici vec, ne nahrada).
+        versionCode 276
+        versionName "EMU10-B230-SCHVALENA-GRAFIKA-VESMIR"  // Rene schvalil "Koncept C" (navrhy poslane mimo appku jako HTML mockupy) a rozsiril o zive/RGB pozadi - implementovano do vsech panelu (knihovna/D-PAD/OVLADANI/MEMORY CARD stav). Sdilene animovane pozadi (#panelNebula - dychajici mlhovina, driftujici hvezdy, vznaseci se planety, rotujici prstenec) za VSEMI panely najednou, zapinane/vypinane recyklaci uz existujiciho napPlochaHide/Show volani (zadny novy trigger). Sklenene panely s modro-fialovym svetelnym okrajem misto plne barvy. Seznam her v knihovne ma jemny animovany RGB ramecek (jen tam, ne vsude) a barevne znacky podle SKUTECNYCH barev PS1 tlacitek (trojuhelnik/kolecko/krizek/ctverec), stridave po ctyrech - dava to smysl, neni to nahodna duha. VEDOME rozhodnuti: fonty z navrhu (Orbitron/Rajdhani) NEIMPORTOVANY z internetu - tucne Arial dava skoro stejny dojem bez rizika sitove zavislosti jen kvuli vzhledu.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

@@ -471,6 +471,20 @@
      na ni zapomnela. Kdyz pridavas podminku "funguj i kdyz bezi X"
      (jako BUILD2SA36), VZDY zkontroluj, jestli se X pak i spravne
      VYPINA na konci te same funkce.
+   B230: Rene schvalil graficky navrh (poslany JAKO SAMOSTATNE HTML
+     MOCKUPY MIMO APPKU, ne jako kod) - "Koncept C": hluboky vesmir
+     (dychajici mlhovina, driftujici hvezdy) za sklenenymi panely,
+     RGB ramecek na jednom miste, barevne znacky her podle skutecnych
+     barev PS1 tlacitek. Implementovano jako JEDNO sdilene #panelNebula
+     pozadi za vsemi panely (ne kopie v kazdem), zapinane/vypinane
+     recyklaci uz existujiciho napPlochaHide/Show. VEDOME rozhodnuti:
+     fonty z navrhu (Orbitron/Rajdhani z Google Fonts) se do appky
+     NEIMPORTOVALY - appka dosud nezavisi na sitovem fontu jen kvuli
+     vzhledu, tucne Arial dava skoro stejny dojem bez rizika. VZOR PRO
+     PRISTE: kdyz Rene chce "videt navrhy pred kodem", pouzit HTML
+     soubor MIMO appku (present_files), ne Visualizer (jeho "mockup"
+     modul vynucuje plochy/tlumeny vzhled Claude.ai - presny opak toho,
+     co retro/PS1 grafika potrebuje).
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
