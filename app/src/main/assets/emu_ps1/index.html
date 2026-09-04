@@ -1211,6 +1211,15 @@ function bindLayoutDrag(el){
 function layoutEditEnter(){
   closeHelp();closeDpadMenu();
   napPlochaHide(); // BUILD2SB21: closeDpadMenu() prave vratila plochu zpet - pro editaci ji chceme zase schovanou
+  // BUILD2SB35: Rene - "kdyz das rozlozeni tlacitek, zmizi d-pad."
+  // napPlochaHide() od B230 navic zapina #panelNebula (z-index 79) -
+  // to je vyssi nez D-pad/akcni tlacitka (z-index 12) i nez editacni
+  // ramecek/lista (70/75), takze pri editaci rozlozeni vesmir schoval
+  // presne to, co se ma tahat. Vesmir patri za PANELY (ktere maji
+  // z-index 80), ne pres zive tlacitka hry - v editacnim rezimu ho
+  // proto hned zase vypneme, plochu to nevrati (ta zustava schovana
+  // pres AHPS1.ps1PlochaVisible, coz je nezavisle na tehle CSS tride).
+  document.body.classList.remove('panelNebulaOn');
   layoutEditActive=true;
   layoutGroupMode=false;
   var toggle=$('layoutModeToggle');if(toggle){toggle.classList.remove('active');toggle.textContent='PO SKUPINÁCH';}

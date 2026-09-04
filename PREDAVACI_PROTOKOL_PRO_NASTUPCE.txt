@@ -507,6 +507,18 @@
      kazde CSS zmene - VZOR PRO PRISTE: po KAZDE uprave CSS pravidla
      vzdy zkontrolovat, ze selektor existuje prave JEDNOU, ne jen ze
      syntaxe prosla.
+   B234: SKUTECNA REGRESE ZPUSOBENA B230 - #panelNebula (z-index 79)
+     zapinany uvnitr napPlochaHide() prekryl D-pad/akcni tlacitka
+     (z-index 12) i editacni ramecek/listu (70/75) BEHEM EDITACE
+     ROZLOZENI, protoze layoutEditEnter() taky vola napPlochaHide()
+     (kvuli schovani zive hry, ne kvuli vesmiru). DULEZITA POUCKA:
+     kdyz jedna funkce (napPlochaHide) zacne delat DVE VECI najednou
+     (schovat plochu + zapnout vesmir) a NEKTERY volajici chce jen tu
+     PRVNI vec, musi tu druhou po zavolani sam zase vypnout - jinak se
+     vedlejsi ucinek propoje tam, kam nepatri. Pri pridavani noveho
+     "vedlejsiho efektu" do uz existujici, casto volane funkce vzdy
+     projit VSECHNA mista, ktera tu funkci volaji, a zeptat se "chteji
+     opravdu i tenhle novy efekt, nebo jen puvodni chovani?".
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

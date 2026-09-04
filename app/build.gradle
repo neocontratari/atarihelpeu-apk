@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 279
-        versionName "EMU10-B233-POPREDI-BARVY-PS1"  // Rene: "pozadi mame, ted si pohraj s popredim - u pisma men barvu, obdelniky taky muzou hrat barvama PS1, neboj se toho." Nadpisy panelu ted kazdy jina skutecna barva PS1 tlacitka (D-PAD/OVLADANI=zelena trojuhelnik, CD/ISO=modra krizek, SMAZAT HRU=cervena kolecko, MEMORY CARD=fialova ctverec) - na prvni pohled poznat, kde jsi. Tlacitka podle role: potvrdit/pokracovat=zelena, zpet/zavrit (nova trida .zavrit)=modra, vedlejsi=fialova, nebezpecne=cervena (uz existovalo). Popisky ve OVLADANI (Citlivost/Pruhlednost/Velikost tlacitek/Velikost D-padu) kazdy jina barva misto jednotne azurove. DULEZITE: pri vkladani novych .panel button pravidel vznikly docasne DUPLICITNI CSS selektory (stare rezimy jeste v souboru) - hned zachyceno kontrolou a smazano, cisty vysledek.
+        versionCode 280
+        versionName "EMU10-B234-EDITACE-BEZ-VESMIRU"  // Rene: "kdyz das rozlozeni tlacitek, zmizi d-pad." Pricina: napPlochaHide() od B230 navic zapina #panelNebula (z-index 79) - vyssi nez D-pad/akcni tlacitka (z-index 12) i editacni ramecek/lista (70/75). V editacnim rezimu vesmir schoval presne to, co se ma tahat. Vesmir patri za PANELY (z-index 80), ne pres ziva tlacitka hry pri editaci. layoutEditEnter() ted po napPlochaHide() vesmir hned zase vypne - plocha zustava schovana (to je nezavisle, native volani), jen se pres D-pad uz nekresli nic navic.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
