@@ -327,6 +327,10 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     <p><b>Průhlednost tlačítek</b> — jak moc vidíš skrz ovladač na hru pod ním.</p>
     <input id="ctrlOpacity" type="range" min="25" max="100" step="5" value="100">
     <p id="ctrlOpacityVal" class="ctrlVal"></p>
+    <div class="ctrlRow">
+      <input id="ctrlTransparentToggle" type="checkbox">
+      <label for="ctrlTransparentToggle">Průhledný ovladač (rychlá volba - někdo chce vidět skrz, někdo ne)</label>
+    </div>
 
     <p><b>Velikost tlačítek</b> — Triangle/Circle/Cross/Square, ramena, Select/Start.</p>
     <input id="ctrlSize" type="range" min="70" max="150" step="5" value="100">
@@ -365,8 +369,9 @@ function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classLi
    toast (mala bublina) - ted navic i primo v MONITORU (presne tam,
    kde se hra objevi), viditelny i po zavreni panelu, dokud hra
    doopravdy nenabehne. */
-function showMonitorLoading(seconds){
+function showMonitorLoading(seconds,popis){
   var mon=$('psMonitor');if(!mon)return;
+  popis=popis||'NAHRÁVÁM HRU…';
   var ov=$('psMonitorLoading');
   if(!ov){
     ov=document.createElement('div');ov.id='psMonitorLoading';
@@ -378,7 +383,7 @@ function showMonitorLoading(seconds){
   clearInterval(window.__napPs1MonitorCountdown);
   var zbyva=seconds;
   function tick(){
-    ov.innerHTML='<div>NAHRÁVÁM HRU…</div><div style="font-size:1.6em;">'+Math.max(0,zbyva)+' s</div>';
+    ov.innerHTML='<div>'+popis+'</div><div style="font-size:1.6em;">'+Math.max(0,zbyva)+' s</div>';
     if(zbyva<=0){clearInterval(window.__napPs1MonitorCountdown);setTimeout(hideMonitorLoading,600);return;}
     zbyva--;
   }
@@ -393,13 +398,14 @@ function hideMonitorLoading(){
    cd/iso." Misto jedne staticke hlasky ("muze to trvat...") skutecny
    tikajici odpocet, at je jasne videt, ze se neco deje, ne ze appka
    zamrzla. Pouziva stejny #toast prvek, jen mu kazdou vterinu meni text. */
-function startBootCountdown(seconds){
+function startBootCountdown(seconds,popis){
   var el=$('toast');if(!el)return;
+  popis=popis||'Spouštím hru';
   clearTimeout(window.__napPs1Toast);
   clearInterval(window.__napPs1Countdown);
   var zbyva=seconds;
   function tick(){
-    el.textContent='Spouštím hru… '+zbyva+' s (nic se nekazí, jen to chvíli trvá)';
+    el.textContent=popis+'… '+zbyva+' s (nic se nekazí, jen to chvíli trvá)';
     el.classList.add('show');
     if(zbyva<=0){clearInterval(window.__napPs1Countdown);window.__napPs1Toast=setTimeout(function(){el.classList.remove('show');},1500);return;}
     zbyva--;
@@ -617,6 +623,11 @@ function ctrlSyncInputs(){
   var z=$('ctrlSize');if(z)z.value=ctrlSettings.size;
   var dz=$('ctrlDpadSize');if(dz)dz.value=ctrlSettings.dpadSize;
   var h=$('ctrlHaptic');if(h)h.checked=!!ctrlSettings.haptic;
+  // BUILD2SB28: Rene - "at je bud ovladac pruhledny a nebo nepruhledny -
+  // jsou hraci co chteji pruhledny, ja chci nepruhledny." Rychly
+  // prepinac vedle jemneho posuvniku - zaskrtnuto = ctrlSettings.opacity
+  // je uz na "pruhlednem" konci (<=40%), odskrtnuto = neni.
+  var t=$('ctrlTransparentToggle');if(t)t.checked=ctrlSettings.opacity<=40;
   ctrlUpdateLabels();
 }
 function ctrlLoad(){
@@ -1285,7 +1296,15 @@ window.addEventListener('orientationchange',function(){setTimeout(function(){
 },80);},true);
 $('btnSettings').addEventListener('click',function(e){e.preventDefault();openSettingsForOrientation();},true);
 $('psMonitor').addEventListener('click',function(e){e.preventDefault();},true);
-$('btnReset').addEventListener('click',function(e){e.preventDefault();toast('PS1 RESET pripraven',1800);},true);
+$('btnReset').addEventListener('click',function(e){e.preventDefault();
+  jsLog('PS1_RESET_TLACITKO');
+  startBootCountdown(8,'Resetuji (BIOS bez CD)');
+  showMonitorLoading(8,'RESETUJI (BIOS BEZ CD)…');
+  var r='';
+  try{if(window.AHPS1&&window.AHPS1.ps1Reset)r=String(window.AHPS1.ps1Reset());}catch(err){}
+  jsLog('PS1_RESET_VYSLEDEK '+r);
+  ensurePs1ScreenAndPoll();
+},true);
 $('btnCd').addEventListener('click',function(e){e.preventDefault();showLibrary();},true);
 $('libraryClose').addEventListener('click',function(e){e.preventDefault();closeLibrary();},true);
 $('libraryRefresh').addEventListener('click',function(e){e.preventDefault();libraryRefresh();},true);
@@ -1335,6 +1354,7 @@ function ctrlOnSlide(key,parse){
 }
 $('ctrlSensitivity').addEventListener('input',ctrlOnSlide('sensitivity',function(v){return parseInt(v,10);}),true);
 $('ctrlOpacity').addEventListener('input',ctrlOnSlide('opacity',function(v){return parseInt(v,10);}),true);
+$('ctrlOpacity').addEventListener('input',function(){var t=$('ctrlTransparentToggle');if(t)t.checked=ctrlSettings.opacity<=40;},true);
 $('ctrlSize').addEventListener('input',ctrlOnSlide('size',function(v){return parseInt(v,10);}),true);
 $('ctrlDpadSize').addEventListener('input',ctrlOnSlide('dpadSize',function(v){return parseInt(v,10);}),true);
 /* ulozime az po puštění posuvniku (change), ne po kazdem pixelu (input) -
@@ -1344,6 +1364,10 @@ $('ctrlOpacity').addEventListener('change',function(){ctrlSave();},true);
 $('ctrlSize').addEventListener('change',function(){ctrlSave();},true);
 $('ctrlDpadSize').addEventListener('change',function(){ctrlSave();},true);
 $('ctrlHaptic').addEventListener('change',function(e){ctrlSettings.haptic=!!e.target.checked;ctrlSave();},true);
+$('ctrlTransparentToggle').addEventListener('change',function(e){
+  ctrlSettings.opacity=e.target.checked?30:100;
+  ctrlApplyVisual();ctrlSyncInputs();ctrlSave();
+},true);
 ctrlLoad();
 $('logSave').addEventListener('click',function(e){e.preventDefault();
   var fn='AtariHelp_PS1_LOG_'+(function(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());})()+'.txt';

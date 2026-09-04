@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 272
-        versionName "EMU10-B226-VRSTVA-CITLIVE-SCHOVANI-A-GRAFIKA"  // Rene: "na sirku hned, na vysku ne - i hra po nabootovani se na vysku neukaze." Pricina: setAlpha() (B224) spolehlive funguje jen kdyz je plocha POD strankou (landscape, zOrderOnTop=false) - v portraitu (NAD strankou, zOrderOnTop=true) je to zvlastni hardwarova vrstva, kde alpha casto vubec nepusobi. Nova plochaAplikujViditelnost() voli SPRAVNY nastroj podle aktualni vrstvy - setAlpha pro landscape (cisty, bez destroy/create), setVisibility pro portrait (jedine co tam spolehlive funguje). Navic pridan viditelny indikator "NAHRAVAM HRU... Xs" primo v monitoru (ne jen bublina), a grafika panelu prepracovana na SKUTECNE vzorkovane barvy z Reneho vlastniho screenshotu MAIN MENU obrazovky (tmava navy #000120 + modry ram #4650b7), ne dalsi vymysl.
+        versionCode 273
+        versionName "EMU10-B227-RESET-A-PRUHLEDNOST"  // Rene: RESET tlacitko musi fungovat jako vytazeni CD - hra se zastavi, nabehne BIOS bez disku. Nova ps1Reset() (JS-volatelna) spoji dve uz existujici bezpecne veci presne v poradi: stopPs1SessionHard (stejna cesta jako pri odchodu ze stranky) + ps1MaybeStartBios (uz sama hlida, ze nespusti nic dokud neni jadro uplne dole) - zadna nova nizkourovnova logika. RESET ted ukazuje stejny odpocet/indikator v monitoru jako spusteni hry z knihovny, jen s vlastnim popiskem "Resetuji". Dale: novy rychly prepinac "Pruhledny ovladac" v OVLADANI panelu vedle stavajiciho jemneho posuvniku pruhlednosti - zaskrtnuti/odskrtnuti nastavi 30%/100% a synchronizuje se s posuvnikem obema smery.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

@@ -435,6 +435,14 @@
      vyplen, #4650b7 modry ram) - "MAIN MENU" obrazovka NENI soucast
      statickeho skinu, je to zivy vystup BIOSu, nejde vzorkovat ze
      souboru.
+   B227: RESET tlacitko = vytazeni CD + BIOS bez disku. Nova
+     ps1Reset() jen SPOJUJE dve uz existujici bezpecne funkce
+     (stopPs1SessionHard + ps1MaybeStartBios) presne v tomhle poradi -
+     zadna nova nizkourovnova logika. Pridan rychly prepinac "Pruhledny
+     ovladac" (checkbox) vedle jemneho posuvniku prumhlednosti v
+     OVLADANI panelu - obousmerne synchronizovany se stejnym
+     ctrlSettings.opacity. GRAFIKA CD/ISO/nastaveni SE NEDOTYKAT -
+     Rene si ji navrhne sam a posle jako predlohu.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

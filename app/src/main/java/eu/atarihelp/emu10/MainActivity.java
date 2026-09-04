@@ -4823,6 +4823,20 @@ public class MainActivity extends Activity {
         public String ps1Stop() {
             return stopPs1SessionHard("jsPs1Stop"); // BUILD2SA5I: one path stops audio + core + fd.
         }
+        // BUILD2SB28: Rene - "tlacitko RESET musi fungovat tak, ze se
+        // vyresetuje hra (jakoby bych vytahnul CD) a nabehne BIOS bez
+        // CD." Zadna nova logika - jen spoji dve uz existujici, bezpecne
+        // veci presne v tomhle poradi: napred poradne zastavit, co bezi
+        // (stejna cesta jako pri odchodu ze stranky/pauze appky), pak
+        // necha appku znovu rozhodnout o startu BIOSu (ps1MaybeStartBios
+        // uz sama hlida, ze nespusti nic, dokud neni jadro uplne dole).
+        @JavascriptInterface
+        public String ps1Reset() {
+            String stopR = stopPs1SessionHard("jsPs1Reset");
+            appendNativeLog("BUILD2SB28 PS1_RESET stop=" + stopR);
+            ps1MaybeStartBios();
+            return "PS1_RESET_OK stop=" + stopR;
+        }
     }
     private int ps1ButtonId(String button) {
         if (button == null) return -1;
