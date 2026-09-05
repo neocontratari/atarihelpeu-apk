@@ -519,6 +519,18 @@
      "vedlejsiho efektu" do uz existujici, casto volane funkce vzdy
      projit VSECHNA mista, ktera tu funkci volaji, a zeptat se "chteji
      opravdu i tenhle novy efekt, nebo jen puvodni chovani?".
+   B235: SEGA dostala stejne osetreni jako PS1 (schovavani plochy,
+     sdilene animovane pozadi, barvy podle role) - tematicky "Green
+     Hill Zone/Sonic" misto vesmiru PS1. DULEZITY ROZDIL OD PS1: Sega
+     plocha NIKDY nepouziva setZOrderOnTop, vzdy je POD strankou - staci
+     ciste setAlpha(), NENI potreba plochaAplikujViditelnost() slozitost
+     (ta je specificka jen pro PS1 kvuli dvema ruznym vrstvam
+     portrait/landscape). Poucka z B234 (vesmir vypnout behem editace
+     rozlozeni) zabudovana ROVNOU, ne az po nahlasene chybe. START
+     presunut z prava-nahore na stred-dole na Reneho vyslovnou zadost -
+     poznamka pro Atari: pri prvnim navrhu pozic VZDY zkontrolovat, ze
+     zadne dve tlacitka nesedi na stejnem miste/nekolidujici oblasti,
+     ne az kdyz si toho Rene vsimne.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

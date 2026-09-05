@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 280
-        versionName "EMU10-B234-EDITACE-BEZ-VESMIRU"  // Rene: "kdyz das rozlozeni tlacitek, zmizi d-pad." Pricina: napPlochaHide() od B230 navic zapina #panelNebula (z-index 79) - vyssi nez D-pad/akcni tlacitka (z-index 12) i editacni ramecek/lista (70/75). V editacnim rezimu vesmir schoval presne to, co se ma tahat. Vesmir patri za PANELY (z-index 80), ne pres ziva tlacitka hry pri editaci. layoutEditEnter() ted po napPlochaHide() vesmir hned zase vypne - plocha zustava schovana (to je nezavisle, native volani), jen se pres D-pad uz nekresli nic navic.
+        versionCode 281
+        versionName "EMU10-B235-SEGA-GREEN-HILL-ZONE"  // Rene: "PS1 uzavrena, ted Sega - totez, ale barevne jinak, at ladi se Sonicem. Pozor na START - dolu doprostred, at se neprekryvaji pozice." Stejny princip jako u PS1 (B221-B234): nova AHSega.segaPlochaVisible() (sega nema zOrderOnTop, staci ciste setAlpha, zadna slozitost navic), sdilene #segaNebula pozadi (modra obloha/zelene kopce/zlate Sonicovy prsteny misto planet/rychly pruh misto meteoru), sklenene panely, nadpisy+tlacitka podle Sonicovy palety (zelena=potvrdit,modra=zavrit,zlata=vedlejsi). START presunut z prava-nahore na stred-dole (left:50%;transform:translateX(-50%);bottom:1.8vh), zarovnan se stejnou spodni hranou jako D-pad/sloupec A/B/C - uprostred mezi nimi, nic neprekryva. Rovnou zabudovana poucka z PS1 B234 - layoutEditEnter() hned vypina segaNebulaOn, aby vesmir nezakryl D-pad behem editace.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

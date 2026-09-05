@@ -22,17 +22,53 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
 .hit{position:absolute;z-index:60;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:none;}
 .hit:active{background:rgba(0,118,255,.18);box-shadow:0 0 32px rgba(0,118,255,.28) inset;border-radius:18px;}
-/* ===== BUILD2SB19: cely OVLADANI/D-PAD system - presne stejny princip
-   jako v emu_ps1 (viz CO_JE_V_B201 az B213.md), jen s modrym Sega
-   nadechem misto zlateho PS1. ===== */
-.panel{display:none;position:fixed;inset:0;z-index:180;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#dfeaff;}
+/* ===== BUILD2SB36: Rene - "sega, totez, ale barevne jinak, at to ladi
+   se Sonicem." Presny stejny princip jako u PS1 (jedno sdilene pozadi
+   za vsemi panely, sklenene panely, barvy podle role), jen misto
+   hlubokeho vesmiru "Green Hill Zone" - modra obloha, zelene kopce,
+   zlate krouzky (Sonicovy prsteny) místo planet. ===== */
+.panel{display:none;position:fixed;inset:0;z-index:180;background:transparent;padding:18px;overflow:auto;color:#dfeaff;}
 .panel.open{display:block;}
-.panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#040a14,#01050a);border:1px solid rgba(120,190,255,.4);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(60,150,255,.16) inset;}
-.panel h2{font:900 22px "Courier New",monospace;margin-bottom:12px;color:#8ee7ff;text-align:center;}
+#segaNebula{display:none;position:fixed;inset:0;z-index:179;overflow:hidden;background:linear-gradient(180deg,#0a3a7a 0%,#1f6fc4 45%,#4fa8e8 75%,#8fd0f0 100%);}
+body.segaNebulaOn #segaNebula{display:block;}
+.segaKopce{position:absolute;left:-10%;right:-10%;border-radius:50%;background:#2fa84a;}
+.segaKopce.k1{bottom:-18%;height:60%;background:#238a3a;animation:segaKopecPluj1 26s ease-in-out infinite;}
+.segaKopce.k2{bottom:-26%;height:55%;background:#2fa84a;animation:segaKopecPluj2 20s ease-in-out infinite;}
+@keyframes segaKopecPluj1{0%,100%{transform:translateX(0);}50%{transform:translateX(3%);}}
+@keyframes segaKopecPluj2{0%,100%{transform:translateX(0);}50%{transform:translateX(-4%);}}
+.segaMracek{position:absolute;background:rgba(255,255,255,.85);border-radius:50%;box-shadow:30px 6px 0 -4px rgba(255,255,255,.85),-28px 4px 0 -6px rgba(255,255,255,.75),8px -10px 0 -8px rgba(255,255,255,.7);}
+.segaMracek.m1{width:70px;height:26px;top:10%;left:15%;animation:segaMrakLet1 34s linear infinite;}
+.segaMracek.m2{width:50px;height:20px;top:22%;left:-20%;animation:segaMrakLet2 26s linear infinite;}
+.segaMracek.m3{width:40px;height:16px;top:6%;left:60%;animation:segaMrakLet1 40s linear infinite reverse;}
+@keyframes segaMrakLet1{0%{transform:translateX(0);}100%{transform:translateX(420px);}}
+@keyframes segaMrakLet2{0%{transform:translateX(0);}100%{transform:translateX(480px);}}
+/* BUILD2SB36: Sonicovy zlate prsteny lítaji misto planet z PS1 -
+   prstenec = kruh s pruhlednym stredem (border + pruhledna vypln). */
+.segaPrsten{position:absolute;border-radius:50%;border:6px solid;background:transparent;}
+.segaPrsten.p1{width:46px;height:46px;border-color:#ffd60a;top:14%;right:55%;box-shadow:0 0 14px rgba(255,214,10,.5);animation:segaLetA 20s ease-in-out infinite;}
+.segaPrsten.p2{width:28px;height:28px;border-color:#ffd60a;bottom:34%;left:65%;box-shadow:0 0 10px rgba(255,214,10,.5);animation:segaLetB 16s ease-in-out infinite;}
+.segaPrsten.p3{width:60px;height:60px;border-width:8px;border-color:#ffe14d;top:55%;left:18%;box-shadow:0 0 18px rgba(255,214,10,.45);animation:segaLetC 24s ease-in-out infinite;}
+.segaPrsten.p4{width:20px;height:20px;border-width:4px;border-color:#ffd60a;top:30%;right:12%;animation:segaLetB 13s ease-in-out infinite reverse;}
+@keyframes segaLetA{0%,100%{transform:translate(0,0) rotate(0);}50%{transform:translate(50px,60px) rotate(180deg);}}
+@keyframes segaLetB{0%,100%{transform:translate(0,0) rotate(0);}50%{transform:translate(-60px,-40px) rotate(-180deg);}}
+@keyframes segaLetC{0%,100%{transform:translate(0,0) rotate(0);}50%{transform:translate(40px,-70px) rotate(120deg);}}
+/* rychly pruh - misto meteoru z PS1, sedi lip k Sonicovi (rychlost) */
+.segaRychlyPruh{position:absolute;width:120px;height:3px;background:linear-gradient(90deg,transparent,#fff,transparent);top:40%;left:-15%;animation:segaZoom 6s linear infinite;animation-delay:2s;opacity:0;}
+@keyframes segaZoom{0%{transform:translateX(0);opacity:0;}5%{opacity:.9;}20%{transform:translateX(900px);opacity:0;}100%{transform:translateX(900px);opacity:0;}}
+.panel .box{position:relative;z-index:2;max-width:760px;margin:0 auto;background:linear-gradient(160deg,rgba(20,70,140,.35),rgba(6,20,45,.62));border:1px solid rgba(140,200,255,.42);border-radius:16px;padding:18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 8px 24px rgba(0,0,0,.5);}
+/* BUILD2SB36: nadpisy podle Sonicovy palety - kazdy panel jina barva,
+   presne jako u PS1 (D-PAD=modra/zelena, CD/ISO obdoba=zlata, atd.) */
+.panel h2{font:900 22px "Courier New",monospace;margin-bottom:12px;color:#fff;text-align:center;text-shadow:0 0 12px rgba(30,110,220,.7),0 2px 4px #000;}
+#segaDpadMenuPanel h2{color:#7ee0ff;text-shadow:0 0 14px rgba(30,160,255,.8),0 2px 4px #000;}
+#segaCtrlPanel h2{color:#8ef07a;text-shadow:0 0 14px rgba(60,190,70,.8),0 2px 4px #000;}
 .panel p{font:800 13px/1.4 "Courier New",monospace;margin:8px 0;color:#dfeaff;}
-.panel button{width:100%;margin-top:12px;padding:14px;border:0;border-radius:12px;background:#4faaff;color:#04070a;font:900 14px "Courier New",monospace;}
-.panel button.secondary{background:rgba(255,255,255,.12);color:#dfeaff;border:1px solid rgba(255,255,255,.3);}
-.panel input[type=range]{width:100%;margin:6px 0 2px;accent-color:#8ee7ff;height:28px;}
+/* BUILD2SB36: tlacitka podle role, Sonicova paleta - potvrdit=zelena
+   (travnate kopce), zavrit=modra (obloha), vedlejsi=zlata (prsteny). */
+.panel button{width:100%;margin-top:12px;padding:14px;border:1px solid rgba(60,190,70,.6);border-radius:12px;background:rgba(20,80,35,.5);color:#eaffef;font:900 14px "Courier New",monospace;box-shadow:0 0 10px rgba(60,190,70,.2);}
+.panel button.secondary{background:rgba(120,90,10,.4);color:#fff6d8;border:1px solid rgba(255,214,10,.55);box-shadow:0 0 10px rgba(255,214,10,.18);}
+.panel button.zavrit{background:rgba(15,55,110,.5);color:#e4f4ff;border:1px solid rgba(90,180,255,.55);box-shadow:0 0 10px rgba(90,180,255,.2);}
+.panel input[type=range]{-webkit-appearance:none;width:100%;margin:6px 0 2px;height:6px;border-radius:3px;background:linear-gradient(90deg,#3cb043,#ffd60a,#1e88e5,#e8342a);}
+.panel input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#bfe6ff);box-shadow:0 0 10px rgba(90,180,255,.7),0 0 0 2px rgba(255,255,255,.5);}
 .panel .ctrlVal{text-align:center;color:#8ee7ff;font:800 12px "Courier New",monospace;margin:0 0 10px;}
 .panel .ctrlRow{display:flex;align-items:center;gap:10px;margin:12px 0;color:#dfeaff;font:800 13px "Courier New",monospace;}
 .panel .ctrlRow input[type=checkbox]{width:22px;height:22px;accent-color:#8ee7ff;}
@@ -127,10 +163,12 @@ body{display:flex;justify-content:center;align-items:flex-start;}
  #btnC{left:auto;right:2.2vw;top:auto;bottom:1.8vh;}
  #btnA:before{content:"A";}#btnB:before{content:"B";}#btnC:before{content:"C";}#btnA:before,#btnB:before,#btnC:before{font:900 4.1vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 7px #000,0 0 12px rgba(0,180,255,.6);}
  #btnA.on,#btnB.on,#btnC.on{opacity:1;border-color:rgba(255,240,180,.85);background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.45),rgba(230,170,60,.30) 40%,rgba(60,30,4,.45) 80%);box-shadow:0 0 24px rgba(255,190,60,.55),inset 0 0 14px rgba(0,0,0,.30);}
- /* BUILD2SB19: Rene - "nezapomen pridat tlacitko start na sirku, to tam
-    nikdy nebylo." Presne tak - drive bylo v landscape uplne vypnute.
-    Male oblé tlačítko nad sloupcem A/B/C, stejný tvar jako v portrait. */
- #btnStart{display:flex!important;align-items:center;justify-content:center;pointer-events:auto!important;left:auto;right:3.0vw;top:auto;bottom:56vh;width:13vw;height:5.2vh;border-radius:999px;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.28),rgba(50,150,235,.16) 40%,rgba(4,16,34,.38) 80%);border:2px solid rgba(165,225,255,.38);box-shadow:0 0 14px rgba(0,140,255,.26),inset 0 0 12px rgba(0,0,0,.32);opacity:.6;}
+ /* BUILD2SB36: Rene - "dej START dolu doprostred, at se neprekryvaji
+    pozice." Drive bylo START vpravo nahore nad sloupcem A/B/C (bottom:
+    56vh) - ted uprostred dole, mezi D-padem (vlevo) a sloupcem A/B/C
+    (vpravo), zarovnane na stejnou spodni hranu (bottom:1.8vh) jako
+    ony - viditelne mezi nimi, nic neprekryva. */
+ #btnStart{display:flex!important;align-items:center;justify-content:center;pointer-events:auto!important;left:50%;right:auto;top:auto;bottom:1.8vh;transform:translateX(-50%);width:11vw;height:5vh;border-radius:999px;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.28),rgba(50,150,235,.16) 40%,rgba(4,16,34,.38) 80%);border:2px solid rgba(165,225,255,.38);box-shadow:0 0 14px rgba(0,140,255,.26),inset 0 0 12px rgba(0,0,0,.32);opacity:.6;}
  #btnStart:before{content:"START";font:900 1.55vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 6px #000,0 0 10px rgba(0,180,255,.55);letter-spacing:.05em;}
  #btnStart.on{opacity:1;border-color:rgba(255,240,180,.85);background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.4),rgba(230,170,60,.28) 40%,rgba(60,30,4,.4) 80%);box-shadow:0 0 20px rgba(255,190,60,.5),inset 0 0 12px rgba(0,0,0,.28);}
  /* BUILD2RV: no top labels over mobile game. Invisible hit zones only; C++ CORE removed. */
@@ -198,13 +236,27 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 <!-- BUILD2SB19: presne stejny princip jako PS1 (D-PAD A OVLADANI panel,
      samostatny od zbytku appky) - v landscape na nej vede primo ozubene
      kolecko. -->
+<!-- BUILD2SB36: sdilene animovane pozadi za vsemi panely - "Green Hill
+     Zone" misto hlubokeho vesmiru z PS1 -->
+<div id="segaNebula" aria-hidden="true">
+  <div class="segaMracek m1"></div>
+  <div class="segaMracek m2"></div>
+  <div class="segaMracek m3"></div>
+  <div class="segaPrsten p1"></div>
+  <div class="segaPrsten p2"></div>
+  <div class="segaPrsten p3"></div>
+  <div class="segaPrsten p4"></div>
+  <div class="segaRychlyPruh"></div>
+  <div class="segaKopce k1"></div>
+  <div class="segaKopce k2"></div>
+</div>
 <div id="segaDpadMenuPanel" class="panel" aria-hidden="true">
   <div class="box">
     <h2>D-PAD A OVLÁDÁNÍ</h2>
     <button id="segaBtnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
     <button id="segaBtnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
     <button id="segaBtnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
-    <button id="segaDpadMenuClose" type="button" class="secondary">ZAVŘÍT</button>
+    <button id="segaDpadMenuClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
 <div id="segaCtrlPanel" class="panel" aria-hidden="true">
@@ -232,7 +284,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     </div>
 
     <button id="segaCtrlReset" type="button" class="secondary">VÝCHOZÍ NASTAVENÍ OVLÁDÁNÍ</button>
-    <button id="segaCtrlClose" type="button">ZAVŘÍT</button>
+    <button id="segaCtrlClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
 <script>
@@ -582,6 +634,15 @@ function jsLog(t){
   pushLog(t);
   try{if(window.AHSega&&window.AHSega.segaLog)window.AHSega.segaLog(t);}catch(_){}
 }
+/* BUILD2SB36: presne stejny mechanismus jako u PS1 (viz CO_JE_V_B221 az
+   B226/B234.md) - segaPlocha je nativni SurfaceView, zadne CSS v panelu
+   ji nemuze schovat. Na rozdil od PS1 vsak Sega nema zOrderOnTop rezim -
+   je porad POD strankou, takze staci ciste setAlpha(), zadna slozitost
+   navic. Tridu segaNebulaOn pro sdilene pozadi panelu (viz CSS) NASTAVI
+   uvnitr tehle dvou funkci, presne jako u PS1 - a layoutEditEnter() ji
+   hned po vstupu do editace zase vypne (viz B234 pro duvod). */
+function napSegaPlochaHide(){try{if(window.AHSega&&window.AHSega.segaPlochaVisible)window.AHSega.segaPlochaVisible(false);}catch(_){}try{document.body.classList.add('segaNebulaOn');}catch(_){}}
+function napSegaPlochaShow(){try{if(window.AHSega&&window.AHSega.segaPlochaVisible)window.AHSega.segaPlochaVisible(true);}catch(_){}try{document.body.classList.remove('segaNebulaOn');}catch(_){}}
 var LAYOUT_IDS=['dpad','btnA','btnB','btnC','btnStart'];
 var LAYOUT_GROUPS=[['btnA','btnB','btnC']]; // dpad ani Start nejsou v zadne skupine - presouvaji se vzdy samostatne
 function groupMembersOf(id){
@@ -715,10 +776,14 @@ function toggleLayoutGroupMode(){
   segaLayoutHintUpdate();
   jsLog('LAYOUT_MODE skupinovy='+layoutGroupMode);
 }
-function showSegaDpadMenu(){var p=$('segaDpadMenuPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}}
-function closeSegaDpadMenu(){var p=$('segaDpadMenuPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function showSegaDpadMenu(){napSegaPlochaHide();var p=$('segaDpadMenuPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}}
+function closeSegaDpadMenu(){napSegaPlochaShow();var p=$('segaDpadMenuPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 function layoutEditEnter(){
   closeSegaDpadMenu();
+  napSegaPlochaHide();
+  // BUILD2SB36: rovnou poucka z PS1 (B234) - vesmirne pozadi patri za
+  // panely, ne pres D-pad/tlacitka, se kterymi se pri editaci tahá.
+  document.body.classList.remove('segaNebulaOn');
   layoutEditActive=true;layoutGroupMode=false;
   var toggle=$('segaModeToggle');if(toggle){toggle.classList.remove('active');toggle.textContent='PO SKUPINÁCH';}
   segaLayoutHintUpdate();
@@ -729,6 +794,7 @@ function layoutEditEnter(){
 }
 function layoutEditExit(save){
   layoutEditActive=false;
+  napSegaPlochaShow();
   for(var i=0;i<LAYOUT_IDS.length;i++){var el=$(LAYOUT_IDS[i]);if(!el)continue;el.classList.remove('layoutEdit');el.classList.remove('dragging');}
   var bar=$('segaLayoutEditBar');if(bar){bar.classList.remove('show');bar.setAttribute('aria-hidden','true');}
   jsLog('LAYOUT_EDIT_EXIT save='+(!!save)+' orientace='+layoutOrientation());
@@ -769,8 +835,8 @@ function ctrlReset(){
   ctrlApplyVisual();ctrlSyncInputs();ctrlSave();
   toast('Ovládání vráceno na výchozí');
 }
-function showSegaCtrl(){var p=$('segaCtrlPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}ctrlSyncInputs();}
-function closeSegaCtrl(){var p=$('segaCtrlPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function showSegaCtrl(){napSegaPlochaHide();var p=$('segaCtrlPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}ctrlSyncInputs();}
+function closeSegaCtrl(){napSegaPlochaShow();var p=$('segaCtrlPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 var holdTimers={};function isLandscapeNow(){try{var t=(screen.orientation&&screen.orientation.type)||'';if(String(t).indexOf('landscape')>=0)return true;}catch(_){}try{if(window.matchMedia&&window.matchMedia('(orientation: landscape)').matches)return true;}catch(_){}return (window.innerWidth||0)>(window.innerHeight||0);}function releaseButtonDelayed(btn,delay){clearTimeout(holdTimers[btn]);holdTimers[btn]=setTimeout(function(){sendToWrapper(btn,false);},delay||80);}
 function isInsideRoundButton(el,e){var r=el.getBoundingClientRect();var x=(e.clientX-r.left)/Math.max(1,r.width)-.5;var y=(e.clientY-r.top)/Math.max(1,r.height)-.5;return ((x*x)/0.30/0.30+(y*y)/0.42/0.42)<=1;}
 function bindKeyButton(id,btn){var el=$(id);if(!el)return;el.addEventListener('pointerdown',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();if((btn==='A'||btn==='B'||btn==='C')&&!isInsideRoundButton(el,e)){return;}try{el.setPointerCapture(e.pointerId);}catch(_){}focusFrame();clearTimeout(holdTimers[btn]);sendToWrapper(btn,true);},true);el.addEventListener('pointerup',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();releaseButtonDelayed(btn,(btn==='A'||btn==='B'||btn==='C')?(isLandscapeNow()?0:90):65);},true);el.addEventListener('pointercancel',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();releaseButtonDelayed(btn,60);},true);el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}

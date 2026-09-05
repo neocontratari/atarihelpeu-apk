@@ -4580,6 +4580,25 @@ public class MainActivity extends Activity {
                 return "ERR " + t.getMessage();
             }
         }
+        // BUILD2SB36: presne stejny duvod jako u PS1 (viz ps1PlochaVisible/
+        // CO_JE_V_B221-B226.md) - segaPlocha je SurfaceView nad/pod WebView
+        // podle rootFrame.addView poradi, a HTML panel ji sam neschova.
+        // NA ROZDIL od PS1 vsak segaPlocha NIKDY nepouziva setZOrderOnTop -
+        // vzdy je POD strankou (jako PS1 landscape), takze tady staci
+        // ciste setAlpha() vzdy, zadna orientation-aware slozitost
+        // (plochaAplikujViditelnost) neni potreba.
+        @JavascriptInterface
+        public void segaPlochaVisible(final boolean show) {
+            segaPlochaSchovanaKvuliPanelu = !show;
+            appendNativeLog("BUILD2SB36 SEGA_PLOCHA_JS_POZADAVEK show=" + show);
+            try {
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        try { if (segaPlocha != null) segaPlocha.setAlpha(show ? 1f : 0f); } catch (Throwable ignored) {}
+                    }
+                });
+            } catch (Throwable ignored) {}
+        }
     }
     public class AHPS1 {
         @JavascriptInterface
@@ -6582,10 +6601,14 @@ public class MainActivity extends Activity {
                 String us = null;
                 try { if (web != null) us = web.getUrl(); } catch (Throwable ignored) {}
                 boolean jeSega = ((us != null) && us.contains("emu_sega")) || jeIntro;
-                float chciS = jeSega ? 1f : 0f;
+                // BUILD2SB36: stejny duvod jako u PS1 (B223/B224) - panel v
+                // JS rekne "schovej", ale tenhle hlidac bezi kazdych 300ms a
+                // bez tohohle prizanku by to za par set milisekund zase vratil.
+                boolean segaChciSchovanou = segaPlochaSchovanaKvuliPanelu;
+                float chciS = (jeSega && !segaChciSchovanou) ? 1f : 0f;
                 if (sp.getAlpha() != chciS) {
                     sp.setAlpha(chciS);
-                    appendNativeLog("SEGA_PLOCHA_" + (jeSega ? "ZOBRAZENA" : "SCHOVANA"));
+                    appendNativeLog("SEGA_PLOCHA_" + (chciS == 1f ? "ZOBRAZENA" : "SCHOVANA") + " panelSchovej=" + segaChciSchovanou);
                 }
             }
         } catch (Throwable ignored) {}
@@ -6650,6 +6673,7 @@ public class MainActivity extends Activity {
     // Proto B221/B222 (schovat pri otevreni panelu) fungovaly jen chvili -
     // dalsi hlaseni polohy o par set milisekund pozdeji to zase odkrylo.
     private volatile boolean plochaSchovanaKvuliPanelu = false;
+    private volatile boolean segaPlochaSchovanaKvuliPanelu = false;
     // BUILD2SB27: JEDNO misto, ktere rozhoduje JAK schovat/ukazat plochu -
     // podle aktualni vrstvy (portrait=nad strankou / landscape=pod strankou).
     // Vsechna tri mista (ps1PlochaVisible, ps1PlochaUmisti, plochaZkontroluj)
