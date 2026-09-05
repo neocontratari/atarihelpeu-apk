@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstring>
 #include <cctype>
+#include <cstdio>
 #include <mutex>
 #include <thread>
 #include <unistd.h>
@@ -1618,6 +1619,79 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_shutdown(JNIEnv* env, jclass) {
 #else
     for (int i = 0; i < 8; ++i) g_input[i] = false;
     return env->NewStringUTF("NATIVE_SHUTDOWN_OK_RV_QT_CPP_ONLY noVendor input=RELEASED");
+#endif
+}
+
+// BUILD2SB37: Rene - "dalo by se vymyslet ukladani her, jako treba
+// Sonic - ulozit pozici a pak z ni pokracovat?" ANO - ClownMDEmu jadro
+// uz ma vestavenou ClownMDEmu_SaveState/LoadState (viz clownmdemu.h),
+// jen ji appka dosud vubec nepouzivala. Neni to totez jako oficialni
+// baterii-zalohovana SRAM ulozena pozice (tu ma jen par her jako
+// Sonic 3, a jen na mistech, kde to hra sama dovoli) - je to univerzalni
+// "snimek celeho stavu jadra" (CPU, VDP, zvukove cipy...), funguje na
+// KTERYKOLI hre, KDEKOLI ve hre, presne jako "save state" u emulatoru.
+//
+// KRITICKE PRO BEZPECNOST: ClownMDEmu_StateBackup je STEJNE VELKY jako
+// hlavni ClownMDEmu struktura (>1 MB - viz komentar u NapRealCoreState
+// vyse: "can overflow Android/WebView thread stack"). Proto je tenhle
+// buffer STATICKY/GLOBALNI, NIKDY ne lokalni promenna uvnitr funkce -
+// presne stejna opatrnost, jakou uz tenhle soubor ma pro g_real samotne.
+static ClownMDEmu_StateBackup g_sega_state_backup;
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_saveState(JNIEnv* env, jclass, jstring jpath) {
+#if NAP_SEGA_VENDOR_CORE_PRESENT
+    if (!jpath) return env->NewStringUTF("SEGA_STATE_SAVE_FAIL path=null");
+    const char *pathChars = env->GetStringUTFChars(jpath, nullptr);
+    std::string path(pathChars ? pathChars : "");
+    if (pathChars) env->ReleaseStringUTFChars(jpath, pathChars);
+
+    std::lock_guard<std::mutex> lock(g_real_mutex);
+    if (!g_real.loaded) return env->NewStringUTF("SEGA_STATE_SAVE_FAIL zadna_hra_nebezi");
+
+    ClownMDEmu_SaveState(&g_real.emu, &g_sega_state_backup);
+
+    FILE *f = fopen(path.c_str(), "wb");
+    if (!f) return env->NewStringUTF(("SEGA_STATE_SAVE_FAIL nejde_otevrit_soubor " + path).c_str());
+    size_t wrote = fwrite(&g_sega_state_backup, 1, sizeof(g_sega_state_backup), f);
+    fclose(f);
+    if (wrote != sizeof(g_sega_state_backup)) {
+        return env->NewStringUTF("SEGA_STATE_SAVE_FAIL nekompletni_zapis");
+    }
+    char out[256];
+    snprintf(out, sizeof(out), "SEGA_STATE_SAVE_OK bytes=%zu path=%s", wrote, path.c_str());
+    return env->NewStringUTF(out);
+#else
+    return env->NewStringUTF("SEGA_STATE_SAVE_FAIL zadne_jadro_v_tomhle_buildu");
+#endif
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_loadState(JNIEnv* env, jclass, jstring jpath) {
+#if NAP_SEGA_VENDOR_CORE_PRESENT
+    if (!jpath) return env->NewStringUTF("SEGA_STATE_LOAD_FAIL path=null");
+    const char *pathChars = env->GetStringUTFChars(jpath, nullptr);
+    std::string path(pathChars ? pathChars : "");
+    if (pathChars) env->ReleaseStringUTFChars(jpath, pathChars);
+
+    std::lock_guard<std::mutex> lock(g_real_mutex);
+    if (!g_real.loaded) return env->NewStringUTF("SEGA_STATE_LOAD_FAIL zadna_hra_nebezi");
+
+    FILE *f = fopen(path.c_str(), "rb");
+    if (!f) return env->NewStringUTF(("SEGA_STATE_LOAD_FAIL soubor_neexistuje " + path).c_str());
+    size_t got = fread(&g_sega_state_backup, 1, sizeof(g_sega_state_backup), f);
+    fclose(f);
+    if (got != sizeof(g_sega_state_backup)) {
+        return env->NewStringUTF("SEGA_STATE_LOAD_FAIL nekompletni_cteni_spatny_soubor");
+    }
+
+    ClownMDEmu_LoadState(&g_real.emu, &g_sega_state_backup);
+
+    char out[256];
+    snprintf(out, sizeof(out), "SEGA_STATE_LOAD_OK bytes=%zu path=%s", got, path.c_str());
+    return env->NewStringUTF(out);
+#else
+    return env->NewStringUTF("SEGA_STATE_LOAD_FAIL zadne_jadro_v_tomhle_buildu");
 #endif
 }
 

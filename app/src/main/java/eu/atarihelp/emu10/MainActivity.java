@@ -4599,6 +4599,41 @@ public class MainActivity extends Activity {
                 });
             } catch (Throwable ignored) {}
         }
+        // BUILD2SB37: Rene - "dalo by se vymyslet ukladani her, jako
+        // treba Sonic?" ANO - jadro uz umi ulozit/nacist cely svuj stav
+        // (ClownMDEmu_SaveState/LoadState), jen se to dosud nikde
+        // nepouzivalo. Neni to oficialni SRAM ulozena pozice (tu ma jen
+        // par her jako Sonic 3) - je to univerzalni "snimek" jako save
+        // state u emulatoru, funguje na kteroukoli hru kdekoli. Zatim
+        // JEDEN spolecny slot (appka nema pro Segu zadnou knihovnu her
+        // jako PS1 od B214 - kdyby ji chtel, je to prirozene dalsi krok).
+        private File segaSaveStateFile() {
+            File dir = new File(getFilesDir(), "sega_saves");
+            if (!dir.exists()) dir.mkdirs();
+            return new File(dir, "sega_quicksave.state");
+        }
+        @JavascriptInterface
+        public String segaSaveState() {
+            try {
+                String r = NativeSegaCoreBridge.saveState(segaSaveStateFile().getAbsolutePath());
+                appendNativeLog("BUILD2SB37 SEGA_SAVE " + r);
+                return r;
+            } catch (Throwable t) {
+                return "SEGA_STATE_SAVE_FAIL " + t.getMessage();
+            }
+        }
+        @JavascriptInterface
+        public String segaLoadState() {
+            try {
+                File f = segaSaveStateFile();
+                if (!f.exists()) return "SEGA_STATE_LOAD_FAIL soubor_jeste_neexistuje";
+                String r = NativeSegaCoreBridge.loadState(f.getAbsolutePath());
+                appendNativeLog("BUILD2SB37 SEGA_LOAD " + r);
+                return r;
+            } catch (Throwable t) {
+                return "SEGA_STATE_LOAD_FAIL " + t.getMessage();
+            }
+        }
     }
     public class AHPS1 {
         @JavascriptInterface

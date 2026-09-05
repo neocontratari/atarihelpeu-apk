@@ -531,6 +531,23 @@
      poznamka pro Atari: pri prvnim navrhu pozic VZDY zkontrolovat, ze
      zadne dve tlacitka nesedi na stejnem miste/nekolidujici oblasti,
      ne az kdyz si toho Rene vsimne.
+   B236: Rene se ptal, jestli by slo udelat ukladani pozice ve hre pro
+     Segu (jako Sonic) - myslel si, ze asi ne. ANO JDE - jadro
+     ClownMDEmu uz melo vestavenou ClownMDEmu_SaveState/LoadState
+     (kompletni snimek stavu), appka ji jen nikdy nepouzila. DULEZITA
+     POUCKA PRO PRISTE (a pro Atari): kdyz se resi "da se X", VZDY
+     nejdriv zkontrolovat, jestli uz to jadro/knihovna samo neumi - u
+     emulatoru jader je tohle prekvapive casty pripad (napsana funkce,
+     nikdy nezapojena). OVERENI: zkopirovana REALNA hlavicka + vsech 24
+     zdrojovych souboru jadra + oba CPU interpretery MIMO appku,
+     zkompilovano, slinkovano A SPUSTENO - ne jen "melo by fungovat".
+     KRITICKE: ClownMDEmu_StateBackup je >1MB (presne 1132728 bajtu) -
+     stejne jako uz existujici varovani u g_real/ClownMDEmu ("can
+     overflow Android/WebView thread stack"), novy buffer MUSI byt
+     staticky/globalni, nikdy lokalni promenna. Zatim jeden spolecny
+     appce-privatni slot (sega_saves/sega_quicksave.state) - Sega nema
+     zadnou knihovnu her jako PS1, takze na-hru-zvlast ulozeni je
+     prirozeny DALSI krok, ne soucast tehle zmeny.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

@@ -23,6 +23,12 @@ public final class NativeSegaCoreBridge {
     public static native String realCoreStatus();
     public static native String realCoreLoadRom(byte[] romBytes);
     public static native String realCoreStep();
+    // BUILD2SB37: ulozeni/nacteni CELEHO stavu jadra (CPU, VDP, zvuk...) -
+    // ne oficialni SRAM ulozena pozice (tu ma jen par her), ale univerzalni
+    // "snimek", funguje na kteroukoli hru kdekoli. Overeno skutecnou
+    // kompilaci+behem proti realne hlavicce jadra (test_sega_state_types.cpp).
+    public static native String saveState(String path);
+    public static native String loadState(String path);
 
     // ===== OBRAZ PRIMO NA PLOCHU (stejna cesta jako PS1, od B117) =====
     // Jadro uz snimek vyrabi; tohle ho dostane na obrazovku pres OpenGL ES

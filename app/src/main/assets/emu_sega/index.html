@@ -256,6 +256,12 @@ body.segaNebulaOn #segaNebula{display:block;}
     <button id="segaBtnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
     <button id="segaBtnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
     <button id="segaBtnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
+    <!-- BUILD2SB37: Rene - "dalo by se vymyslet ukladani her jako
+         Sonic?" Zatim sem, at je funkce videt a da se otestovat -
+         kdyby chtel samostatny panel jako PS1 knihovnu, je to
+         prirozeny dalsi krok, az potvrdi, ze tohle funguje. -->
+    <button id="segaBtnSaveState" type="button" class="secondary">ULOŽIT POZICI VE HŘE</button>
+    <button id="segaBtnLoadState" type="button" class="secondary">NAČÍST ULOŽENOU POZICI</button>
     <button id="segaDpadMenuClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
@@ -941,6 +947,25 @@ $('segaDpadMenuClose').addEventListener('click',function(e){e.preventDefault();c
 $('segaBtnEditLayout').addEventListener('click',function(e){e.preventDefault();layoutEditEnter();},true);
 $('segaBtnCtrlSettings').addEventListener('click',function(e){e.preventDefault();closeSegaDpadMenu();showSegaCtrl();},true);
 $('segaBtnMirror').addEventListener('click',function(e){e.preventDefault();layoutMirrorHorizontal();},true);
+/* BUILD2SB37: Rene - "dalo by se vymyslet ukladani her jako Sonic?"
+   Ano - jadro (ClownMDEmu) uz umi ulozit/nacist cely svuj stav, jen se
+   to nikde nepouzivalo. Neni to oficialni SRAM ulozena pozice (tu ma
+   jen par her jako Sonic 3) - je to univerzalni "snimek", funguje na
+   kteroukoli hru kdekoli, presne jako save state u emulatoru. */
+$('segaBtnSaveState').addEventListener('click',function(e){
+  e.preventDefault();
+  var r='';
+  try{if(window.AHSega&&window.AHSega.segaSaveState)r=String(window.AHSega.segaSaveState());}catch(err){}
+  jsLog('SEGA_SAVE_STATE_TLACITKO -> '+r);
+  toast(r.indexOf('SEGA_STATE_SAVE_OK')===0?'Pozice uložena':r,3200);
+},true);
+$('segaBtnLoadState').addEventListener('click',function(e){
+  e.preventDefault();
+  var r='';
+  try{if(window.AHSega&&window.AHSega.segaLoadState)r=String(window.AHSega.segaLoadState());}catch(err){}
+  jsLog('SEGA_LOAD_STATE_TLACITKO -> '+r);
+  toast(r.indexOf('SEGA_STATE_LOAD_OK')===0?'Pozice načtena':r,3200);
+},true);
 $('segaModeToggle').addEventListener('click',function(e){e.preventDefault();toggleLayoutGroupMode();},true);
 $('segaLayoutReset').addEventListener('click',function(e){e.preventDefault();layoutReset();},true);
 $('segaLayoutDone').addEventListener('click',function(e){e.preventDefault();layoutEditExit(true);},true);
