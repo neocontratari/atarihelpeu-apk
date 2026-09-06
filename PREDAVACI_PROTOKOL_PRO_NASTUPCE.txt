@@ -581,6 +581,27 @@
      VZOR PRO ATARI: kdyz appka ma "vsechno na plose je herni vstup
      krome vyjimek" architekturu, KAZDE nove neherni tlacitko v tehle
      vrstve MUSI jit do vyjimkove listy.
+   B239: Rene: "hra se po loadu kousne, canvas do vsech vyberu."
+     NALEZENO BEZ LOGU - dukladnou rucni kontrolou existujiciho kodu
+     (presne to, co Rene chtel - "udelej si poradnou kontrolu"):
+     stopNativeInPlaceHard() (vola se pri KAZDEM odchodu ze Segy) se
+     nikdy nedotkla SKUTECNE plochy (segaPlocha) - jen stare/mrtve
+     cesty (nativeInPlaceView). segaPlocha zustavala pripojena k
+     rootFrame s alpha=1 a ukazovala zamrzly posledni snimek UPLNE
+     NEZAVISLE na tom, kam appka dal navigovala - presne "canvas do
+     vsech vyberu". DALSI MEZERA: plochaHlidac (300ms bezpecnostni
+     sit, postavena kvuli podobnym chybam u PS1 v B223) startoval JEN
+     z PS1 kodu - pri hrani jen Segy vubec nebezel. OBOJI OPRAVENO -
+     stopNativeInPlaceHard() ted segaPlochu schova+odpoji (stejny
+     vzor jako ps1GlDisable), plochaHlidacStart() startuje i ze
+     segaPlochaZapni(). DULEZITA POUCKA PRO ATARI: kdyz appka ma DVE
+     ruzne "cesty" pro totez (stara/mrtva vs. nova/skutecna, jako tady
+     nativeInPlaceView vs. segaPlocha), kontrola/cistici funkce
+     napsana pro tu STAROU cestu MUSI byt aktualizovana, kdyz appka
+     prejde na novou - jinak novou cestu nikdo neuklizi. Pri auditu
+     "proc se X neuklizi spravne" vzdy zkontrolovat VSECHNY existujici
+     cesty/mechanismy pro dany subsystem, ne jen tu, kterou si clovek
+     pamatuje jako "tu aktualni".
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

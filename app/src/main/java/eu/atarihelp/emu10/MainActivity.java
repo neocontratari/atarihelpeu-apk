@@ -429,6 +429,12 @@ public class MainActivity extends Activity {
             rootFrame.addView(sv, 0, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             segaPlocha = sv;
+            // BUILD2SB40: hlidac (plochaHlidacStart/Stop) drive startoval
+            // JEN z PS1 kodu (ps1GlEnable/Disable) - pri hrani JEN Segy
+            // (bez dotknuti PS1 v tehle relaci) tak vubec nebezel a
+            // segaPlocha nemela ZADNOU periodickou pojistku, jen
+            // jednorazove volani pri otevreni/zavreni panelu.
+            plochaHlidacStart();
             appendNativeLog("SEGA_OBRAZ_PRIMO_ZAPNUT");
         } catch (Throwable t) {
             appendNativeLog("SEGA_OBRAZ_PRIMO_CHYBA " + safeMsg(t));
@@ -6280,12 +6286,23 @@ public class MainActivity extends Activity {
     }
 
     private synchronized String stopNativeInPlaceHard(String reason) {
-        if (!nativeInPlaceEnabled && !nativeCoreAudioRun && nativeInPlaceView == null) {
+        // BUILD2SB40: Rene - "hra se po loadu kousne, mas prekryvani
+        // canvasu do vsech vyberu." NALEZENO: tahle funkce (volana pri
+        // KAZDEM odchodu ze Segy - navrat do hlavni nabidky, prechod na
+        // PS1...) zastavila jadro a uklidila STAROU/mrtvou cestu
+        // (nativeInPlaceView), ale segaPlocha (SKUTECNA plocha, na
+        // kterou jadro kresli od B117) se NIKDY nedotkla! Zustavala
+        // pripojena k rootFrame, alpha=1, a ukazovala POSLEDNI ZAMRZLY
+        // SNIMEK ze Segy - klidne i na hlavni nabidce nebo v PS1 panelu,
+        // uplne nezavisle na tom, co appka zrovna dela. Presne "canvas
+        // do vsech vyberu".
+        boolean melaSegaPlochu = (segaPlocha != null);
+        if (!nativeInPlaceEnabled && !nativeCoreAudioRun && nativeInPlaceView == null && !melaSegaPlochu) {
             nativeLastStatus = "NATIVE_ALREADY_OFF " + reason;
             return nativeLastStatus;
         }
         StringBuilder res = new StringBuilder();
-        try { appendNativeLog("NATIVE_LIFECYCLE_STOP_BEGIN reason=" + reason); } catch (Throwable ignored) {}
+        try { appendNativeLog("NATIVE_LIFECYCLE_STOP_BEGIN reason=" + reason + " melaSegaPlochu=" + melaSegaPlochu); } catch (Throwable ignored) {}
         nativeRomLoadGeneration++; // BUILD2RV: cancel stale delayed audio/render watchdogs when leaving Sega/Atari/VBXE.
         nativeInPlaceEnabled = false;
         try { stopNativeCoreAudioStream(); nativeCurrentAudioTrack = null; res.append("audioStop=OK "); } catch (Throwable t) { res.append("audioStop=ERR:").append(safeMsg(t)).append(' '); }
@@ -6298,8 +6315,32 @@ public class MainActivity extends Activity {
         } catch (Throwable t) { res.append("nativeStop=ERR:").append(safeMsg(t)).append(' '); }
         try {
             removeNativeViewOnUi(reason);
-            res.append("viewRemovePostedUI=YES");
-        } catch (Throwable t) { res.append("viewRemovePostedUI=ERR:").append(safeMsg(t)); }
+            res.append("viewRemovePostedUI=YES ");
+        } catch (Throwable t) { res.append("viewRemovePostedUI=ERR:").append(safeMsg(t)).append(' '); }
+        // BUILD2SB40: skutecna oprava - schovat A odpojit segaPlochu,
+        // stejny vzor jako ps1GlDisable() ma pro PS1 uz od zacatku.
+        try {
+            final android.view.SurfaceView old = segaPlocha;
+            segaPlocha = null;
+            segaPlochaSchovanaKvuliPanelu = false; // cisty stav pro pristi start
+            if (old != null) {
+                ui.post(() -> {
+                    try {
+                        old.setAlpha(0f);
+                        if (old.getParent() instanceof ViewGroup) ((ViewGroup) old.getParent()).removeView(old);
+                        appendNativeLog("BUILD2SB40 SEGA_PLOCHA_ODPOJENA_PRI_ODCHODU reason=" + reason);
+                        // BUILD2SB40: hlidac je sdileny mezi PS1 a Segou -
+                        // zastavit ho jen kdyz UZ ANI JEDNA plocha neexistuje,
+                        // at nezastavime pojistku, kterou by PS1 jeste
+                        // potreboval (i kdyz by k tomu za normalnich
+                        // okolnosti nemelo dojit - PS1 a Sega bezi
+                        // vzajemne vylucne).
+                        if (ps1Plocha == null) plochaHlidacStop();
+                    } catch (Throwable ignored) {}
+                });
+            }
+            res.append("segaPlochaOdpojena=").append(melaSegaPlochu);
+        } catch (Throwable t) { res.append("segaPlochaOdpojena=ERR:").append(safeMsg(t)); }
         nativeLastStatus = "NATIVE_OFF_LIFECYCLE_STOP " + reason + " " + res;
         appendNativeLog(nativeLastStatus);
         return nativeLastStatus;
@@ -6844,7 +6885,7 @@ public class MainActivity extends Activity {
                 float chciS = (jeSega && !segaChciSchovanou) ? 1f : 0f;
                 if (sp.getAlpha() != chciS) {
                     sp.setAlpha(chciS);
-                    appendNativeLog("SEGA_PLOCHA_" + (chciS == 1f ? "ZOBRAZENA" : "SCHOVANA") + " panelSchovej=" + segaChciSchovanou);
+                    appendNativeLog("SEGA_PLOCHA_" + (chciS == 1f ? "ZOBRAZENA" : "SCHOVANA") + " panelSchovej=" + segaChciSchovanou + " stranka=" + compactUrl(us));
                 }
             }
         } catch (Throwable ignored) {}
