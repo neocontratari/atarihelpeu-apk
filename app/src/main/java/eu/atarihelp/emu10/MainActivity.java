@@ -5982,6 +5982,42 @@ public class MainActivity extends Activity {
                 try { if (c != null) c.disconnect(); } catch (Throwable ignored) {}
             }
         }
+        // BUILD2SB42: Rene - "nejde se dostat na www stranky, ani z ps1
+        // a atari, trva to strasne dlouho - a stranky mi funguji." Log
+        // ukazal presnou pricinu: VSECHNY TRI verejne CORS proxy sluzby
+        // (proxy.cors.sh, api.allorigins.win, corsproxy.io) selhavaly -
+        // DNS nejde rozresit, HTTP 522 (timeout), HTTP 401 (vyzaduje
+        // ted asi API klic). Appka ale nikdy nezkusila PRIME pripojeni
+        // jako posledni zachranou - a presne to primo (mimo appku)
+        // funguje bez problemu (overeno). Tenhle relay mechanismus byl
+        // postaveny kvuli drivejsimu blokovani ze strany WEDOS/provider
+        // (viz komentare "Provider blokuje nebo zavira spojeni") - ale
+        // kdyz uz VSECHNY tri proxy sluzby selhaly, zkusit primo je
+        // jedina rozumna posledni sance, ne se rovnou vzdat.
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+            try {
+                c.setInstanceFollowRedirects(true);
+                configureGameHttpConnection(c, url);
+                c.connect();
+                int code = c.getResponseCode();
+                if (code < 200 || code >= 400) throw new IOException("direct HTTP " + code);
+                FetchResult out = new FetchResult();
+                out.data = readStreamLimited(c.getInputStream(), maxBytes);
+                out.contentType = c.getContentType();
+                out.contentDisposition = c.getHeaderField("Content-Disposition");
+                out.via = url;
+                out.relayMode = -1;
+                if (out.data == null || out.data.length == 0) throw new IOException("direct empty");
+                appendNativeLog("BUILD2SB42 PROVIDER_DIRECT_FALLBACK_OK reason=" + reason + " bytes=" + out.data.length + " target=" + compactUrl(url));
+                return out;
+            } finally {
+                try { c.disconnect(); } catch (Throwable ignored) {}
+            }
+        } catch (IOException ex2) {
+            appendNativeLog("BUILD2SB42 PROVIDER_DIRECT_FALLBACK_FAIL reason=" + reason + " err=" + safeMsg(ex2) + " target=" + compactUrl(url));
+            last = ex2;
+        }
         throw last == null ? new IOException("relay failed") : last;
     }
 

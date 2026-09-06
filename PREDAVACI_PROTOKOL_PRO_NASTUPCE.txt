@@ -619,6 +619,24 @@
      (Downloads/AtariHelp/Sega_ulozene_pozice) s migraci, at prezijou
      odinstalaci presne jako PS1 memory karta (B225) - Rene si tohle
      VYSLOVNE vyzadal, ne vec meho rozhodovani jako u PS1 quick-save.
+   B241: DVE ZASADNI POUCKY Z TEHOZ LOGU. (1) SBIRKA - appka VZDY sla
+     pres 3 verejne CORS proxy sluzby (kvuli drivejsimu WEDOS
+     blokovani), NIKDY nezkusila primo, kdyz vsechny 3 selzaly. Verejne
+     CORS proxy sluzby jsou ZE SVE PODSTATY nespolehlive (mohou kdykoli
+     zaniknout/zpoplatnit se) - kod, co se na ne SPOLEHA BEZ FALLBACKU
+     na primy pokus, je casovana bomba. Pridan direct-connection
+     fallback. (2) PROLINANI OBRAZU - KONECNE VYRESENO, po 3 predchozich
+     nedostatecnych pokusech (B235 zaklad, B239 nesouvisejici ale
+     dulezita oprava, B240 90ms zpozdeni nestacilo). SKUTECNA pricina:
+     MOJE VLASTNI "sklo" grafika (35-62% kryti) v kombinaci s tim, ze
+     plocha lezi POD strankou - i kratky casovy okamzik driv, nez
+     nativni schovani dorazi, byl skrz pruhledne sklo VIDET. DULEZITA
+     POUCKA PRO ATARI: kdyz nativni plocha lezi POD WebView (ne
+     zOrderOnTop), spolehani na CASOVANI nativniho schovani (JS->Java
+     most) NIKDY nebude 100%, bez ohledu na to, kolik ms pridas -
+     spravne reseni je udelat HTML panel SAM O SOBE nepruhledny (95%+),
+     at WebViewovo VLASTNI, OKAMZITE vykreslovani funguje jako
+     spolehliva pojistka nezavisla na mostu.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

@@ -61,7 +61,7 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
 /* rychly pruh - misto meteoru z PS1, sedi lip k Sonicovi (rychlost) */
 .segaRychlyPruh{position:absolute;width:120px;height:3px;background:linear-gradient(90deg,transparent,#fff,transparent);top:40%;left:-15%;animation:segaZoom 6s linear infinite;animation-delay:2s;opacity:0;}
 @keyframes segaZoom{0%{transform:translateX(0);opacity:0;}5%{opacity:.9;}20%{transform:translateX(900px);opacity:0;}100%{transform:translateX(900px);opacity:0;}}
-.panel .box{position:relative;z-index:2;max-width:760px;margin:0 auto;background:linear-gradient(160deg,rgba(20,70,140,.35),rgba(6,20,45,.62));border:1px solid rgba(140,200,255,.42);border-radius:16px;padding:18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 8px 24px rgba(0,0,0,.5);}
+.panel .box{position:relative;z-index:2;max-width:760px;margin:0 auto;background:linear-gradient(160deg,rgba(20,45,85,.96),rgba(4,14,32,.98));border:1px solid rgba(140,200,255,.42);border-radius:16px;padding:18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 8px 24px rgba(0,0,0,.5);}
 /* BUILD2SB36: nadpisy podle Sonicovy palety - kazdy panel jina barva,
    presne jako u PS1 (D-PAD=modra/zelena, CD/ISO obdoba=zlata, atd.) */
 .panel h2{font:900 22px "Courier New",monospace;margin-bottom:12px;color:#fff;text-align:center;text-shadow:0 0 12px rgba(30,110,220,.7),0 2px 4px #000;}
@@ -75,7 +75,18 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
 .panel button.zavrit{background:rgba(15,55,110,.5);color:#e4f4ff;border:1px solid rgba(90,180,255,.55);box-shadow:0 0 10px rgba(90,180,255,.2);}
 /* BUILD2SB39: radky knihovny her a ulozenych pozic - stejny jazyk jako
    zbytek panelu (sklo + Sonicova paleta), ne PS1 barvy. */
-.libGame{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:10px;background:rgba(10,40,20,.4);border:1px solid rgba(60,190,70,.4);}
+/* BUILD2SB42: Rene - screenshot ukazal Sonic titulku prosvitajici
+   PRAVE v miste seznamu her. NALEZENO - .libGame mela jen 40% kryti
+   (rgba(...,.4)) - i kdyz appka spravne pozada o schovani nativni
+   plochy, DOKUD se ten pozadavek nestihne projevit (a to muze trvat
+   dele nez muj 90ms odhad z B240), pruhledne "sklo" pozadi UKAZUJE
+   COKOLI POD SEBOU - vcetne aktivni hry, ktera lezi POD strankou.
+   Reseni neni dalsi cekani/zpozdeni (to uz nestacilo), ale udelat
+   panel SAM O SOBE prakticky nepruhledny - WebView vykresluje svuj
+   vlastni obsah spolehlive a bez zpozdeni na rozdil od mezivrstevneho
+   JS->Java mostu, takze nepruhledny panel schova cokoli pod sebou
+   VZDY, bez ohledu na to, jak dlouho nativni schovani trva. */
+.libGame{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:10px;background:rgba(8,32,16,.96);border:1px solid rgba(60,190,70,.4);}
 .libGame .libInfo{flex:1;min-width:0;}
 .libGame .libName{font:900 13px "Courier New",monospace;color:#eaffef;word-break:break-all;}
 .libGame .libMeta{font:700 11px "Courier New",monospace;color:#9fcf9f;margin-top:3px;}
