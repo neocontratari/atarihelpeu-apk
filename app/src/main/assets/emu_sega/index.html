@@ -73,6 +73,17 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
 .panel button{width:100%;margin-top:12px;padding:14px;border:1px solid rgba(60,190,70,.6);border-radius:12px;background:rgba(20,80,35,.5);color:#eaffef;font:900 14px "Courier New",monospace;box-shadow:0 0 10px rgba(60,190,70,.2);}
 .panel button.secondary{background:rgba(120,90,10,.4);color:#fff6d8;border:1px solid rgba(255,214,10,.55);box-shadow:0 0 10px rgba(255,214,10,.18);}
 .panel button.zavrit{background:rgba(15,55,110,.5);color:#e4f4ff;border:1px solid rgba(90,180,255,.55);box-shadow:0 0 10px rgba(90,180,255,.2);}
+/* BUILD2SB39: radky knihovny her a ulozenych pozic - stejny jazyk jako
+   zbytek panelu (sklo + Sonicova paleta), ne PS1 barvy. */
+.libGame{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:10px;background:rgba(10,40,20,.4);border:1px solid rgba(60,190,70,.4);}
+.libGame .libInfo{flex:1;min-width:0;}
+.libGame .libName{font:900 13px "Courier New",monospace;color:#eaffef;word-break:break-all;}
+.libGame .libMeta{font:700 11px "Courier New",monospace;color:#9fcf9f;margin-top:3px;}
+.libGame .libSaveTag{display:inline-block;margin-top:4px;padding:2px 7px;border-radius:999px;font:800 10px "Courier New",monospace;background:rgba(255,214,10,.15);color:#ffe14d;border:1px solid rgba(255,214,10,.4);}
+.libGame button{width:40px;height:40px;margin:0;padding:0;font-size:17px;line-height:1;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.libGame .libPlay{background:linear-gradient(160deg,#8ef07a,#3cb043);color:#0a2a08;border:1px solid rgba(140,240,120,.6);}
+.libGame .libDel{background:rgba(90,20,20,.6);color:#ffb3b3;border:1px solid rgba(200,80,80,.55);}
+.libEmpty{text-align:center;color:#9fcf9f;font:700 12px "Courier New",monospace;padding:16px 0;}
 .panel input[type=range]{-webkit-appearance:none;width:100%;margin:6px 0 2px;height:6px;border-radius:3px;background:linear-gradient(90deg,#3cb043,#ffd60a,#1e88e5,#e8342a);}
 .panel input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#bfe6ff);box-shadow:0 0 10px rgba(90,180,255,.7),0 0 0 2px rgba(255,255,255,.5);}
 .panel .ctrlVal{text-align:center;color:#8ee7ff;font:800 12px "Courier New",monospace;margin:0 0 10px;}
@@ -89,6 +100,7 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
 .layoutEditBar #segaModeToggle{background:rgba(110,190,255,.18);color:#bfe6ff;border:1px solid rgba(110,190,255,.5);}
 .layoutEditBar #segaModeToggle.active{background:rgba(110,190,255,.85);color:#04121c;border-color:rgba(200,235,255,.9);}
 #btnSegaSettings{display:none;}
+#segaBottomSave,#segaBottomLoad{display:none;}
 #btnSegaDpadMenu{display:none;}
 #btnConsole{display:none;pointer-events:none;}
 #btnJoystick{display:none;pointer-events:none;}
@@ -177,6 +189,19 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
  #btnStart{display:flex!important;align-items:center;justify-content:center;pointer-events:auto!important;left:50%;right:auto;top:auto;bottom:1.8vh;transform:translateX(-50%);width:11vw;height:5vh;border-radius:999px;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.28),rgba(50,150,235,.16) 40%,rgba(4,16,34,.38) 80%);border:2px solid rgba(165,225,255,.38);box-shadow:0 0 14px rgba(0,140,255,.26),inset 0 0 12px rgba(0,0,0,.32);opacity:.6;}
  #btnStart:before{content:"START";font:900 1.55vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 6px #000,0 0 10px rgba(0,180,255,.55);letter-spacing:.05em;}
  #btnStart.on{opacity:1;border-color:rgba(255,240,180,.85);background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.4),rgba(230,170,60,.28) 40%,rgba(60,30,4,.4) 80%);box-shadow:0 0 20px rgba(255,190,60,.5),inset 0 0 12px rgba(0,0,0,.28);}
+ /* BUILD2SB39: Rene - "to ukladani bych dal viditelne jako tlacitka
+    d-padu dole uprostred - start vlevo save vpravo load game."
+    (chapano jako: START uprostred, SAVE vlevo od nej, LOAD GAME
+    vpravo - presne tak uz START je od B236, tady se jen pridavaji ty
+    dve dalsi po stranach). Bezpecna mezera spocitana od stredu -
+    zadny prekryv s D-padem (konci kolem 1.8vw+43vh) ani sloupcem
+    A/B/C (zacina kolem 2.2vw+17.5vh od prava). */
+ #segaBottomSave,#segaBottomLoad{display:flex!important;align-items:center;justify-content:center;pointer-events:auto!important;top:auto;bottom:2.3vh;width:9vw;height:4.2vh;border-radius:999px;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.22),rgba(50,150,235,.14) 40%,rgba(4,16,34,.34) 80%);border:1.5px solid rgba(165,225,255,.32);box-shadow:0 0 10px rgba(0,140,255,.2),inset 0 0 10px rgba(0,0,0,.28);opacity:.55;}
+ #segaBottomSave{left:calc(50% - 16vw);right:auto;}
+ #segaBottomLoad{left:calc(50% + 7vw);right:auto;}
+ #segaBottomSave:before{content:"SAVE";font:900 1.35vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 6px #000,0 0 9px rgba(0,180,255,.5);letter-spacing:.04em;}
+ #segaBottomLoad:before{content:"LOAD GAME";font:900 1.15vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 6px #000,0 0 9px rgba(0,180,255,.5);letter-spacing:.02em;}
+ #segaBottomSave:active,#segaBottomLoad:active{opacity:1;border-color:rgba(255,240,180,.85);}
  /* BUILD2RV: no top labels over mobile game. Invisible hit zones only; C++ CORE removed. */
  #btnCollection{left:1.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
  #btnSaves{left:12.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
@@ -220,6 +245,11 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
   <button id="cartCenter" class="hit" type="button">CARTRIDGE</button>
   <button id="btnReset" class="hit" type="button">RESET</button>
   <button id="btnStart" class="hit ctrlAdjustable" type="button">START</button>
+  <!-- BUILD2SB39: Rene - "ukladani viditelne jako tlacitka dole -
+       start uprostred, save vlevo, load game vpravo." Primy pristup
+       k ulozeni/nacteni behem hrani, ne az pres D-PAD panel. -->
+  <button id="segaBottomSave" class="hit" type="button">SAVE</button>
+  <button id="segaBottomLoad" class="hit" type="button">LOAD GAME</button>
   <button id="btnA" class="hit ctrlAdjustable" type="button">A</button>
   <button id="btnB" class="hit ctrlAdjustable" type="button">B</button>
   <button id="btnC" class="hit ctrlAdjustable" type="button">C</button>
@@ -262,12 +292,13 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
     <button id="segaBtnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
     <button id="segaBtnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
     <button id="segaBtnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
-    <!-- BUILD2SB37: Rene - "dalo by se vymyslet ukladani her jako
-         Sonic?" Zatim sem, at je funkce videt a da se otestovat -
-         kdyby chtel samostatny panel jako PS1 knihovnu, je to
-         prirozeny dalsi krok, az potvrdi, ze tohle funguje. -->
+    <!-- BUILD2SB39: ulozeni/nacteni je ted PER HRU (viz Java
+         segaSaveStateFileFor) - tahle dve tlacitka zustavaji jako
+         cesta dostupna i na vysku (bottom-row SAVE/LOAD v landscape
+         je jen pro hrani, tohle funguje odevsad). -->
     <button id="segaBtnSaveState" type="button" class="secondary">ULOŽIT POZICI VE HŘE</button>
     <button id="segaBtnLoadState" type="button" class="secondary">NAČÍST ULOŽENOU POZICI</button>
+    <button id="segaBtnExportLog" type="button" class="secondary">EXPORTOVAT LOG (DIAGNOSTIKA)</button>
     <button id="segaDpadMenuClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
@@ -297,6 +328,39 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
 
     <button id="segaCtrlReset" type="button" class="secondary">VÝCHOZÍ NASTAVENÍ OVLÁDÁNÍ</button>
     <button id="segaCtrlClose" type="button" class="zavrit">ZAVŘÍT</button>
+  </div>
+</div>
+<!-- BUILD2SB39: Rene - "tlacitko Hry - tam se ukladaly hry do
+     playlistu jako u ps1." Stejny vzor jako PS1 knihovna. -->
+<div id="segaLibraryPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>MOJE HRY</h2>
+    <p>Hry stažené do telefonu. Klepnutím na hru ji spustíš, koš hru smaže.</p>
+    <div id="segaLibraryList"></div>
+    <button id="segaLibraryRefresh" type="button" class="secondary">OBNOVIT SEZNAM</button>
+    <button id="segaLibraryPickManual" type="button" class="secondary">VYBRAT SOUBOR RUČNĚ V TELEFONU</button>
+    <button id="segaLibraryClose" type="button" class="zavrit">ZAVŘÍT</button>
+  </div>
+</div>
+<div id="segaLibraryDeleteConfirm" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>SMAZAT HRU</h2>
+    <p id="segaLibraryDeleteName" style="color:#ffe14d;"></p>
+    <p>Co přesně chceš smazat?</p>
+    <button id="segaLibraryDeleteGameOnly" type="button" class="secondary">JEN HRU (uložená pozice zůstane)</button>
+    <button id="segaLibraryDeleteGameAndSave" type="button" style="background:rgba(255,90,90,.75);color:#2a0505;">HRU I ULOŽENOU POZICI</button>
+    <button id="segaLibraryDeleteCancel" type="button" class="secondary">ZRUŠIT</button>
+  </div>
+</div>
+<!-- BUILD2SB39: Rene - "tlacitko ULOZENE - tam by se daly vytahovat
+     pozice her." -->
+<div id="segaSavedPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>ULOŽENÉ POZICE</h2>
+    <p>Pozice uložené ve hrách (ne export logu - to najdeš v OVLÁDÁNÍ → NÁVODY). Klepnutím na hru pozici načteš.</p>
+    <div id="segaSavedList"></div>
+    <button id="segaSavedRefresh" type="button" class="secondary">OBNOVIT SEZNAM</button>
+    <button id="segaSavedClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
 <script>
@@ -556,6 +620,13 @@ function loadRomToNativeCpp(name,buf){
     setTimeout(updateNativeCppRect,60);
     setTimeout(updateNativeCppRect,320);
     setTimeout(updateNativeCppRect,850);
+    // BUILD2SB39: Rene - "sbirka - rozcestnik hrat primo nebo ulozit do
+    // mobilu." Hra uz hraje (nic se neblokovalo) - tohle jen nabidne
+    // ulozeni JAKO DALSI KROK, zmizi samo za 8s, kdyz si toho vsimne.
+    if(window.__napSegaFromCollection){
+      window.__napSegaFromCollection=false;
+      setTimeout(function(){segaNabidniUlozeni(name);},900);
+    }
   }catch(e){
     nativeCppLastStatus='NATIVE_ROM_ERROR '+(e.message||e);
     lastBootStatus=nativeCppLastStatus;
@@ -860,6 +931,132 @@ function ctrlReset(){
 }
 function showSegaCtrl(){napSegaPlochaHide();var p=$('segaCtrlPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}ctrlSyncInputs();}
 function closeSegaCtrl(){napSegaPlochaShow();var p=$('segaCtrlPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+/* BUILD2SB39: Rene - "tlacitko Hry - knihovna jako u PS1" + "tlacitko
+   ULOZENE - vytahovat pozice her." Stejny vzor jako PS1 (B213-B225),
+   jen barvy/nazvy Sonic tema. */
+function segaLibEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function segaLibFormatBytes(n){
+  n=Number(n)||0;
+  if(n>=1024*1024*1024)return (n/1024/1024/1024).toFixed(2)+' GB';
+  if(n>=1024*1024)return (n/1024/1024).toFixed(1)+' MB';
+  return Math.round(n/1024)+' KB';
+}
+/* BUILD2SB39: nabidka "ulozit do telefonu" po nacteni hry ze SBIRKY.
+   Jednoduchy prvek primo v DOM (ne panel - hra pod tim porad bezi a
+   hraje se, tohle je jen maly plovouci pruh, ktery zmizi sam). */
+function segaNabidniUlozeni(name){
+  var existujici=document.getElementById('segaUlozitNabidka');
+  if(existujici)existujici.parentNode.removeChild(existujici);
+  var el=document.createElement('div');
+  el.id='segaUlozitNabidka';
+  el.style.cssText='position:fixed;left:50%;bottom:8vh;transform:translateX(-50%);z-index:150;display:flex;gap:8px;align-items:center;background:rgba(10,40,20,.92);border:1px solid rgba(60,190,70,.6);border-radius:12px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.5);font:700 12px "Courier New",monospace;color:#eaffef;';
+  el.innerHTML='<span>Uložit „'+segaLibEsc(name)+'“ do telefonu?</span>'
+      +'<button id="segaUlozitAno" type="button" style="padding:8px 12px;border:0;border-radius:8px;background:linear-gradient(160deg,#8ef07a,#3cb043);color:#0a2a08;font:900 12px \'Courier New\',monospace;">ULOŽIT</button>'
+      +'<button id="segaUlozitNe" type="button" style="padding:8px 10px;border:0;border-radius:8px;background:rgba(255,255,255,.15);color:#eaffef;font:700 12px \'Courier New\',monospace;">NE DÍKY</button>';
+  document.body.appendChild(el);
+  var zmiz=function(){try{el.parentNode.removeChild(el);}catch(_){}};
+  document.getElementById('segaUlozitAno').addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    var r='';
+    try{if(window.AHSega&&window.AHSega.segaSaveCurrentToLibrary)r=String(window.AHSega.segaSaveCurrentToLibrary());}catch(err){}
+    jsLog('SEGA_SAVE_TO_LIBRARY -> '+r);
+    toast(r.indexOf('SEGA_SAVE_TO_LIBRARY_OK')===0?'Uloženo do MOJE HRY':r,2600);
+    zmiz();
+  },true);
+  document.getElementById('segaUlozitNe').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();zmiz();},true);
+  setTimeout(zmiz,8000);
+}
+function showSegaLibrary(){napSegaPlochaHide();var p=$('segaLibraryPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}segaLibraryRefresh();}
+function closeSegaLibrary(){napSegaPlochaShow();var p=$('segaLibraryPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function segaLibraryRefresh(){
+  var host=$('segaLibraryList');if(!host)return;
+  host.innerHTML='<p class="libEmpty">Načítám…</p>';
+  var raw='[]';
+  try{if(window.AHSega&&window.AHSega.segaLibraryList)raw=String(window.AHSega.segaLibraryList());}catch(e){}
+  jsLog('SEGA_LIBRARY_LIST '+raw);
+  var list=[];
+  try{list=JSON.parse(raw);}catch(e){list=[];}
+  if(!list.length){host.innerHTML='<p class="libEmpty">Zatím žádná stažená hra. Vyber ji ručně nebo přes SBÍRKU.</p>';return;}
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var g=list[i];
+    html+='<div class="libGame" data-key="'+segaLibEsc(g.key)+'">'
+        +'<div class="libInfo"><div class="libName">'+segaLibEsc(g.nazev)+'</div>'
+        +'<div class="libMeta">'+segaLibFormatBytes(g.bytes)+'</div>'
+        +(g.ma_ulozenou_hru?'<span class="libSaveTag">uložená pozice</span>':'')
+        +'</div>'
+        +'<button class="libPlay" type="button" aria-label="Spustit">&#9654;</button>'
+        +'<button class="libDel" type="button" aria-label="Smazat">&#128465;</button>'
+        +'</div>';
+  }
+  host.innerHTML=html;
+  var rows=host.querySelectorAll('.libGame');
+  for(var j=0;j<rows.length;j++){
+    (function(row){
+      var key=row.getAttribute('data-key');
+      row.querySelector('.libPlay').addEventListener('click',function(e){
+        e.preventDefault();
+        jsLog('SEGA_LIBRARY_LAUNCH key='+key);
+        closeSegaLibrary();
+        try{if(window.AHSega&&window.AHSega.segaLibraryLaunch)window.AHSega.segaLibraryLaunch(key);}catch(err){}
+      },true);
+      row.querySelector('.libDel').addEventListener('click',function(e){
+        e.preventDefault();
+        segaLibraryPendingDeleteKey=key;
+        var nm=$('segaLibraryDeleteName');if(nm)nm.textContent=key;
+        var p=$('segaLibraryDeleteConfirm');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}
+      },true);
+    })(rows[j]);
+  }
+}
+var segaLibraryPendingDeleteKey=null;
+function closeSegaLibraryDeleteConfirm(){var p=$('segaLibraryDeleteConfirm');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}segaLibraryPendingDeleteKey=null;}
+function segaLibraryDoDelete(wipeSaveToo){
+  if(!segaLibraryPendingDeleteKey)return;
+  var r='';
+  try{if(window.AHSega&&window.AHSega.segaLibraryDelete)r=String(window.AHSega.segaLibraryDelete(segaLibraryPendingDeleteKey,!!wipeSaveToo));}catch(e){}
+  jsLog('SEGA_LIBRARY_DELETE key='+segaLibraryPendingDeleteKey+' wipeSave='+wipeSaveToo+' -> '+r);
+  closeSegaLibraryDeleteConfirm();
+  segaLibraryRefresh();
+}
+/* ULOZENE POZICE */
+function showSegaSaved(){napSegaPlochaHide();var p=$('segaSavedPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}segaSavedRefresh();}
+function closeSegaSaved(){napSegaPlochaShow();var p=$('segaSavedPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+function segaSavedRefresh(){
+  var host=$('segaSavedList');if(!host)return;
+  host.innerHTML='<p class="libEmpty">Načítám…</p>';
+  var raw='[]';
+  try{if(window.AHSega&&window.AHSega.segaSavedPositionsList)raw=String(window.AHSega.segaSavedPositionsList());}catch(e){}
+  jsLog('SEGA_SAVED_LIST '+raw);
+  var list=[];
+  try{list=JSON.parse(raw);}catch(e){list=[];}
+  if(!list.length){host.innerHTML='<p class="libEmpty">Zatím žádná uložená pozice. Za hraní stiskni ULOŽIT POZICI.</p>';return;}
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var g=list[i];
+    html+='<div class="libGame" data-key="'+segaLibEsc(g.key)+'">'
+        +'<div class="libInfo"><div class="libName">'+segaLibEsc(g.nazev)+'</div>'
+        +'<div class="libMeta">'+segaLibFormatBytes(g.bytes)+'</div></div>'
+        +'<button class="libPlay" type="button" aria-label="Načíst">&#9654;</button>'
+        +'</div>';
+  }
+  host.innerHTML=html;
+  var rows=host.querySelectorAll('.libGame');
+  for(var j=0;j<rows.length;j++){
+    (function(row){
+      var key=row.getAttribute('data-key');
+      row.querySelector('.libPlay').addEventListener('click',function(e){
+        e.preventDefault();
+        jsLog('SEGA_LOAD_SAVED_POSITION key='+key);
+        closeSegaSaved();
+        var r='';
+        try{if(window.AHSega&&window.AHSega.segaLoadSavedPosition)r=String(window.AHSega.segaLoadSavedPosition(key));}catch(err){}
+        jsLog('SEGA_LOAD_SAVED_POSITION_RESULT '+r);
+        toast(r.indexOf('SEGA_STATE_LOAD_OK')===0?'Pozice načtena':r);
+      },true);
+    })(rows[j]);
+  }
+}
 var holdTimers={};function isLandscapeNow(){try{var t=(screen.orientation&&screen.orientation.type)||'';if(String(t).indexOf('landscape')>=0)return true;}catch(_){}try{if(window.matchMedia&&window.matchMedia('(orientation: landscape)').matches)return true;}catch(_){}return (window.innerWidth||0)>(window.innerHeight||0);}function releaseButtonDelayed(btn,delay){clearTimeout(holdTimers[btn]);holdTimers[btn]=setTimeout(function(){sendToWrapper(btn,false);},delay||80);}
 function isInsideRoundButton(el,e){var r=el.getBoundingClientRect();var x=(e.clientX-r.left)/Math.max(1,r.width)-.5;var y=(e.clientY-r.top)/Math.max(1,r.height)-.5;return ((x*x)/0.30/0.30+(y*y)/0.42/0.42)<=1;}
 function bindKeyButton(id,btn){var el=$(id);if(!el)return;el.addEventListener('pointerdown',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();if((btn==='A'||btn==='B'||btn==='C')&&!isInsideRoundButton(el,e)){return;}try{el.setPointerCapture(e.pointerId);}catch(_){}focusFrame();clearTimeout(holdTimers[btn]);sendToWrapper(btn,true);},true);el.addEventListener('pointerup',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();releaseButtonDelayed(btn,(btn==='A'||btn==='B'||btn==='C')?(isLandscapeNow()?0:90):65);},true);el.addEventListener('pointercancel',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();releaseButtonDelayed(btn,60);},true);el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
@@ -904,7 +1101,7 @@ function setupLandscapeMultiTouch(){
     var t0=(ev.touches&&ev.touches[0])||ev;
     try{
       var target=t0&&document.elementFromPoint(t0.clientX,t0.clientY);
-      if(target && target.closest && target.closest('#btnCollection,#btnGames,#cartSlot,#cartCenter,#btnSaves,#btnManuals,#btnWeb,#btnMenu')){return;}
+      if(target && target.closest && target.closest('#btnCollection,#btnGames,#cartSlot,#cartCenter,#btnSaves,#btnManuals,#btnWeb,#btnMenu,#segaBottomSave,#segaBottomLoad')){return;}
     }catch(_){ }
     var dp=rectOf('dpad'),cA=rectOf('btnA'),cB=rectOf('btnB'),cC=rectOf('btnC'),cS=rectOf('btnStart');
     var touches=ev.touches||[];
@@ -983,6 +1180,35 @@ $('segaBtnLoadState').addEventListener('click',function(e){
   jsLog('SEGA_LOAD_STATE_TLACITKO -> '+r);
   toast(r.indexOf('SEGA_STATE_LOAD_OK')===0?'Pozice načtena':r,3200);
 },true);
+/* BUILD2SB39: knihovna her */
+$('segaLibraryClose').addEventListener('click',function(e){e.preventDefault();closeSegaLibrary();},true);
+$('segaLibraryRefresh').addEventListener('click',function(e){e.preventDefault();segaLibraryRefresh();},true);
+$('segaLibraryPickManual').addEventListener('click',function(e){e.preventDefault();closeSegaLibrary();requestRom('segaLibraryPickManual');},true);
+$('segaLibraryDeleteGameOnly').addEventListener('click',function(e){e.preventDefault();segaLibraryDoDelete(false);},true);
+$('segaLibraryDeleteGameAndSave').addEventListener('click',function(e){e.preventDefault();segaLibraryDoDelete(true);},true);
+$('segaLibraryDeleteCancel').addEventListener('click',function(e){e.preventDefault();closeSegaLibraryDeleteConfirm();},true);
+/* BUILD2SB39: ulozene pozice */
+$('segaSavedClose').addEventListener('click',function(e){e.preventDefault();closeSegaSaved();},true);
+$('segaSavedRefresh').addEventListener('click',function(e){e.preventDefault();segaSavedRefresh();},true);
+$('segaBtnExportLog').addEventListener('click',function(e){e.preventDefault();pushLog('BUILD2RV LOG_ON_DISKETA requested');saveLog();},true);
+/* BUILD2SB39: bottom-row SAVE/LOAD - stejna logika jako segaBtnSaveState/
+   segaBtnLoadState v D-PAD panelu, jen primo dostupna behem hrani. */
+$('segaBottomSave').addEventListener('pointerup',function(e){
+  e.preventDefault();e.stopPropagation();
+  var r='';
+  try{if(window.AHSega&&window.AHSega.segaSaveState)r=String(window.AHSega.segaSaveState());}catch(err){}
+  jsLog('SEGA_BOTTOM_SAVE -> '+r);
+  toast(r.indexOf('SEGA_STATE_SAVE_OK')===0?'Pozice uložena':r,2600);
+},true);
+$('segaBottomLoad').addEventListener('pointerup',function(e){
+  e.preventDefault();e.stopPropagation();
+  var r='';
+  try{if(window.AHSega&&window.AHSega.segaLoadState)r=String(window.AHSega.segaLoadState());}catch(err){}
+  jsLog('SEGA_BOTTOM_LOAD -> '+r);
+  toast(r.indexOf('SEGA_STATE_LOAD_OK')===0?'Pozice načtena':r,2600);
+},true);
+$('segaBottomSave').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);
+$('segaBottomLoad').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);
 $('segaModeToggle').addEventListener('click',function(e){e.preventDefault();toggleLayoutGroupMode();},true);
 $('segaLayoutReset').addEventListener('click',function(e){e.preventDefault();layoutReset();},true);
 $('segaLayoutDone').addEventListener('click',function(e){e.preventDefault();layoutEditExit(true);},true);
@@ -1050,7 +1276,7 @@ bindPerfButtons();
   el.addEventListener('pointercancel',function(e){endPress(e,false);},true);
   el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);
 })();
-bindUiAction('btnGames','romPicker',function(){requestRom('btnGames');});
+bindUiAction('btnGames','library',function(){showSegaLibrary();});
 bindUiAction('cartSlot','romPicker',function(){requestRom('cartSlot');});
 bindUiAction('cartCenter','romPicker',function(){requestRom('cartCenter');});
 var resetBtn=$('btnReset');if(resetBtn)resetBtn.disabled=true;
@@ -1062,6 +1288,11 @@ window.napInjectRomBase64=function(name,b64){
     for(var i=0;i<len;i++)bytes[i]=bin.charCodeAt(i);
     var f=new File([bytes],name||'web.gen',{type:'application/octet-stream'});
     pushLog('BUILD2SA2 WEB_ROM_INJECT name='+(name||'?')+' bytes='+len);
+    // BUILD2SB39: Rene - "u sbirky bych prihodil rozcestnik - hrat
+    // primo (jako doposud) nebo ulozit do mobilu." Hra ze SBIRKY se
+    // porad prehraje HNED, presne jako drive - tenhle priznak jen rekne
+    // "az to nabehne, nabidni i moznost ulozit", at hrani nic nebrzdi.
+    window.__napSegaFromCollection=true;
     onRomSelected(f);
   }catch(e){pushLog('BUILD2SA2 WEB_ROM_INJECT_FAIL '+(e.message||e));}
 };
@@ -1070,7 +1301,7 @@ var con=$('btnConsole');if(con)con.disabled=true;
 var joy=$('btnJoystick');if(joy)joy.disabled=true;
 bindKeyButton('btnA','A');bindKeyButton('btnB','B');bindKeyButton('btnC','C');bindKeyButton('btnStart','START');
 var dpad=$('dpad'),dpadPointerId=null,dpadActive=false;if(dpad){dpad.addEventListener('pointerdown',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();dpadPointerId=e.pointerId;dpadActive=true;try{dpad.setPointerCapture(e.pointerId);}catch(_){}setDpadDir(dpadDirectionFromEvent(e));},true);dpad.addEventListener('pointermove',function(e){if(dpadActive&&(dpadPointerId===null||e.pointerId===dpadPointerId)){e.preventDefault();e.stopPropagation();setDpadDir(dpadDirectionFromEvent(e));}},true);function endDpad(e){e.preventDefault();e.stopPropagation();dpadActive=false;dpadPointerId=null;setDpadDir(null);}dpad.addEventListener('pointerup',endDpad,true);dpad.addEventListener('pointercancel',endDpad,true);dpad.addEventListener('pointerleave',function(e){if(dpadActive&&isLandscapeNow()){e.preventDefault();e.stopPropagation();}},true);dpad.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
-bindUiAction('btnSaves','saveLog',function(){pushLog('BUILD2RV LOG_ON_DISKETA requested');saveLog();});
+bindUiAction('btnSaves','savedPositions',function(){showSegaSaved();});
 bindUiAction('btnManuals','manuals',function(){showMonitor('BUILD2RV SEGA CLEAN UI + AUDIO MASTER NOSTARVE\n\nSBIRKA:\n- vyber vykonu HIGH / LOW\n\nCARTRIDGE / CART:\n- vyber ROM v nasi appce\n- ROM jde primo do C++ bridge\n- Java/WebView wrapper je vypnuty\n- C++ CORE DOM cesta je odstranena; zadny cerny prekryv pres skin\n\nREGION:\n- C++ uz neprepisuje Europe/PAL ROM na U/NTSC\n- core respektuje header ROM\n\nMOBIL:\n- landscape cisti stare WebView vrstvy\n- portrait navrat ignoruje nulovy rect\n\nZVUK:\n- FM/PSG audio ma zeroed buffery a RR recovery safe-audit governor; S8 ma no-starve profil; LOW/HIGH nemeni barvu zvuku.');});
 bindUiAction('btnMenu','menu',function(){pushLog('BUILD2RV MENU_CLICK stop native and leave sega');try{stopNativeCppInPlace('menuButton');}catch(_){}try{location.href='../index.html';}catch(_){}});
 bindUiAction('btnWeb','web',function(){pushLog('BUILD2RV WEB_CLICK');try{location.href='https://atarihelp.eu/';}catch(_){}});

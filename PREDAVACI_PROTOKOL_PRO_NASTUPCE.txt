@@ -565,6 +565,22 @@
      POUCKA: kdyz uzivatel rekne "tezko ti poslu log, na tohle ho
      nemas nastaveny", je to signal navrhnout/pridat spravnou
      diagnostiku HNED, ne jen cekat na dalsi kolo dohadovani.
+   B238: DOKONCENA prace pro Segu, kterou jsem si predtim SLIBIL, ale
+     nedokoncil (odbocil jsem k TV cast vysetrovani a vratil se az po
+     upozorneni "tu Segu sis nedelal?"). POUCKA: kdyz slibim vicebodovy
+     ukol a odbocim kvuli neceme urgentnimu, po navratu VZDY explicitne
+     zkontrolovat rozdelanou praci, ne jen pokracovat dal v novych
+     pozadavcich. HRY = knihovna (verejne uloziste OD ZACATKU, ne az po
+     migraci jako PS1 memory karta v B225 - poucka z minula uz
+     aplikovana rovnou). ULOZENE = seznam pozic PER HRU (ne sdileny
+     slot z B236). SBIRKA = hraje hned jako drive + nabidne ulozeni po
+     nabehnuti (nezdrzuje hrani). Bottom-row SAVE/START/LOAD GAME -
+     nova tlacitka v herni vrstve MUSELA byt pridana do existujici
+     exclusion listy v update() (jinak by je globalni dotykovy
+     obsluhovac mohl spatne vyhodnotit jako herni vstup) - DULEZITY
+     VZOR PRO ATARI: kdyz appka ma "vsechno na plose je herni vstup
+     krome vyjimek" architekturu, KAZDE nove neherni tlacitko v tehle
+     vrstve MUSI jit do vyjimkove listy.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

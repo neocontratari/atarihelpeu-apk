@@ -4607,18 +4607,190 @@ public class MainActivity extends Activity {
                 });
             } catch (Throwable ignored) {}
         }
-        // BUILD2SB37: Rene - "dalo by se vymyslet ukladani her, jako
-        // treba Sonic?" ANO - jadro uz umi ulozit/nacist cely svuj stav
-        // (ClownMDEmu_SaveState/LoadState), jen se to dosud nikde
-        // nepouzivalo. Neni to oficialni SRAM ulozena pozice (tu ma jen
-        // par her jako Sonic 3) - je to univerzalni "snimek" jako save
-        // state u emulatoru, funguje na kteroukoli hru kdekoli. Zatim
-        // JEDEN spolecny slot (appka nema pro Segu zadnou knihovnu her
-        // jako PS1 od B214 - kdyby ji chtel, je to prirozene dalsi krok).
-        private File segaSaveStateFile() {
+        // BUILD2SB39: Rene - "vedle je tlacitko Hry - tam se ukladaly hry
+        // do playlistu jako u ps1." Presne stejny princip jako PS1 knihovna
+        // (B214-B225) - verejne uloziste, at hry prezijou i odinstalaci
+        // appky (Rene uz na tohle narazil u PS1 memory karty v B225,
+        // ted rovnou spravne od zacatku).
+        private byte[] readFileBytes(File f) {
+            try (java.io.FileInputStream fis = new java.io.FileInputStream(f)) {
+                long len = f.length();
+                if (len <= 0 || len > Integer.MAX_VALUE) return null;
+                byte[] buf = new byte[(int) len];
+                int off = 0;
+                while (off < buf.length) {
+                    int n = fis.read(buf, off, buf.length - off);
+                    if (n < 0) break;
+                    off += n;
+                }
+                return off == buf.length ? buf : java.util.Arrays.copyOf(buf, off);
+            } catch (Throwable t) {
+                return null;
+            }
+        }
+        private File segaGamesDir() {
+            File dir = new File(getPublicAtariHelpDownloadsDir(), "Sega_hry");
+            if (!dir.exists()) dir.mkdirs();
+            return dir;
+        }
+        @JavascriptInterface
+        public String segaLibraryList() {
+            StringBuilder sb = new StringBuilder("[");
+            boolean first = true;
+            try {
+                File[] kids = segaGamesDir().listFiles();
+                if (kids != null) {
+                    for (File f : kids) {
+                        if (f == null || !f.isFile()) continue;
+                        if (f.getName().endsWith(".state")) continue; // ulozene pozice sem nepatri do vypisu her
+                        File save = segaSaveStateFileFor(f.getName());
+                        if (!first) sb.append(",");
+                        first = false;
+                        sb.append("{\"key\":\"").append(jsonEsc(f.getName())).append("\"")
+                          .append(",\"nazev\":\"").append(jsonEsc(f.getName())).append("\"")
+                          .append(",\"bytes\":").append(f.length())
+                          .append(",\"ma_ulozenou_hru\":").append(save.exists() ? "true" : "false")
+                          .append("}");
+                    }
+                }
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SB39 SEGA_LIBRARY_LIST_FAIL " + safeMsg(t));
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+        @JavascriptInterface
+        public String segaLibraryLaunch(String key) {
+            try {
+                String safeKey = safeFileName(key);
+                File f = new File(segaGamesDir(), safeKey).getCanonicalFile();
+                if (!f.getParentFile().equals(segaGamesDir().getCanonicalFile()) || !f.exists()) {
+                    return "SEGA_LIBRARY_LAUNCH_FAIL not_found key=" + key;
+                }
+                byte[] data = readFileBytes(f);
+                if (data == null) return "SEGA_LIBRARY_LAUNCH_FAIL cant_read key=" + key;
+                String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
+                final String js = "try{napInjectRomBase64(" + jsQuote(f.getName()) + "," + jsQuote(b64) + ");}catch(e){}";
+                ui.post(() -> { try { web.evaluateJavascript(js, null); } catch (Throwable ignored) {} });
+                appendNativeLog("BUILD2SB39 SEGA_LIBRARY_LAUNCH key=" + key + " bytes=" + data.length);
+                return "SEGA_LIBRARY_LAUNCH_OK";
+            } catch (Throwable t) {
+                return "SEGA_LIBRARY_LAUNCH_FAIL " + safeMsg(t);
+            }
+        }
+        @JavascriptInterface
+        public String segaLibraryDelete(String key, boolean wipeSaveToo) {
+            try {
+                String safeKey = safeFileName(key);
+                File f = new File(segaGamesDir(), safeKey).getCanonicalFile();
+                if (!f.getParentFile().equals(segaGamesDir().getCanonicalFile())) {
+                    return "SEGA_LIBRARY_DELETE_FAIL bad_key key=" + key;
+                }
+                long freed = f.exists() ? f.length() : 0;
+                boolean ok = !f.exists() || f.delete();
+                String saveMsg = "";
+                if (wipeSaveToo) {
+                    File save = segaSaveStateFileFor(safeKey);
+                    if (save.exists()) {
+                        long sb2 = save.length();
+                        if (save.delete()) { freed += sb2; saveMsg = " + uložená pozice smazána"; }
+                        else saveMsg = " + smazání uložené pozice SELHALO";
+                    }
+                }
+                appendNativeLog("BUILD2SB39 SEGA_LIBRARY_DELETED key=" + key + " ok=" + ok + " wipeSave=" + wipeSaveToo);
+                return ok ? ("SEGA_LIBRARY_DELETE_OK freed=" + formatMb(freed) + saveMsg) : "SEGA_LIBRARY_DELETE_FAIL delete_failed";
+            } catch (Throwable t) {
+                return "SEGA_LIBRARY_DELETE_FAIL " + safeMsg(t);
+            }
+        }
+        // BUILD2SB39: Rene - "u sbirky bych prihodil rozcestnik - hrat
+        // primo, nebo ulozit do mobilu." SBIRKA uz hru rovnou prehraje
+        // (beze zmeny - "otevre jako doposud"), tohle jen navic ulozi
+        // uz nactene bajty (segaCurrentGameBytes, zapamatovane primo v
+        // loadRomBase64) do knihovny, aby se pak objevila pod HRY.
+        @JavascriptInterface
+        public String segaSaveCurrentToLibrary() {
+            try {
+                byte[] data = segaCurrentGameBytes;
+                String name = segaCurrentGameName;
+                if (data == null || name == null) return "SEGA_SAVE_TO_LIBRARY_FAIL zadna_hra_nenactena";
+                String safeName = safeFileName(name);
+                if (safeName == null || safeName.isEmpty()) safeName = "sega_hra.bin";
+                File out = new File(segaGamesDir(), safeName);
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(out)) { fos.write(data); }
+                appendNativeLog("BUILD2SB39 SEGA_SAVE_TO_LIBRARY_OK name=" + safeName + " bytes=" + data.length);
+                return "SEGA_SAVE_TO_LIBRARY_OK name=" + safeName;
+            } catch (Throwable t) {
+                return "SEGA_SAVE_TO_LIBRARY_FAIL " + safeMsg(t);
+            }
+        }
+        // BUILD2SB39: Rene - "tlacitko ULOZENE - tam by se daly vytahovat
+        // pozice her." Ulozena pozice ted patri KE KONKRETNI hre (podle
+        // nazvu souboru), ne jeden spolecny slot jako v B236 - jinak by
+        // "nacist pozici" u jine hry nedavalo smysl. Vypis vsech her, co
+        // MAJI ulozenou pozici.
+        @JavascriptInterface
+        public String segaSavedPositionsList() {
+            StringBuilder sb = new StringBuilder("[");
+            boolean first = true;
+            try {
+                File dir = new File(getFilesDir(), "sega_saves");
+                File[] kids = dir.exists() ? dir.listFiles() : null;
+                if (kids != null) {
+                    for (File f : kids) {
+                        if (f == null || !f.isFile() || !f.getName().endsWith(".state")) continue;
+                        String gameName = f.getName().substring(0, f.getName().length() - ".state".length());
+                        if (!first) sb.append(",");
+                        first = false;
+                        sb.append("{\"key\":\"").append(jsonEsc(gameName)).append("\"")
+                          .append(",\"nazev\":\"").append(jsonEsc(gameName)).append("\"")
+                          .append(",\"bytes\":").append(f.length())
+                          .append("}");
+                    }
+                }
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SB39 SEGA_SAVED_POSITIONS_LIST_FAIL " + safeMsg(t));
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+        // BUILD2SB39: nacist ulozenou pozici KONKRETNI hry - pokud ta hra
+        // prave nebezi (jina hra nactena / nic nenacteno), nejdriv ji
+        // najde v knihovne a nahraje, pak teprve aplikuje ulozenou pozici.
+        @JavascriptInterface
+        public String segaLoadSavedPosition(String gameKey) {
+            try {
+                if (!gameKey.equals(segaCurrentGameName)) {
+                    File rom = new File(segaGamesDir(), safeFileName(gameKey));
+                    if (!rom.exists()) return "SEGA_STATE_LOAD_FAIL hra_neni_v_knihovne key=" + gameKey;
+                    String r = segaLibraryLaunch(gameKey);
+                    if (!r.startsWith("SEGA_LIBRARY_LAUNCH_OK")) return "SEGA_STATE_LOAD_FAIL nepovedlo_se_nacist_hru";
+                    // BUILD2SB39: hra se nacita asynchronne (post na UI vlakno
+                    // + JS boot) - pockat kratce, at je co nacitat, nez
+                    // zkusime aplikovat stav. Neni to elegantni, ale je to
+                    // bezpecne - loadState() sama kontroluje g_real.loaded.
+                    try { Thread.sleep(1200); } catch (InterruptedException ignored) {}
+                }
+                File f = segaSaveStateFileFor(gameKey);
+                if (!f.exists()) return "SEGA_STATE_LOAD_FAIL soubor_jeste_neexistuje";
+                String r = NativeSegaCoreBridge.loadState(f.getAbsolutePath());
+                appendNativeLog("BUILD2SB39 SEGA_LOAD_SAVED_POSITION key=" + gameKey + " " + r);
+                return r;
+            } catch (Throwable t) {
+                return "SEGA_STATE_LOAD_FAIL " + t.getMessage();
+            }
+        }
+        private File segaSaveStateFileFor(String gameName) {
             File dir = new File(getFilesDir(), "sega_saves");
             if (!dir.exists()) dir.mkdirs();
-            return new File(dir, "sega_quicksave.state");
+            return new File(dir, safeFileName(gameName) + ".state");
+        }
+        private File segaSaveStateFile() {
+            // BUILD2SB39: ted per-hru - viz segaSaveStateFileFor(). Kdyz
+            // zadna hra nebezi (segaCurrentGameName==null), pouzit stary
+            // spolecny slot jako bezpecny fallback (nikdy null cesta).
+            String name = segaCurrentGameName;
+            return name != null ? segaSaveStateFileFor(name) : segaSaveStateFileFor("_bez_nazvu");
         }
         @JavascriptInterface
         public String segaSaveState() {
@@ -6235,6 +6407,11 @@ public class MainActivity extends Activity {
                 long decodeStart = System.currentTimeMillis();
                 byte[] data = Base64.decode(clean, Base64.DEFAULT);
                 long decodeMs = System.currentTimeMillis() - decodeStart;
+                // BUILD2SB39: zapamatovat si JMENO a BAJTY prave nahravane
+                // hry - pouziva se pro per-hru ulozene pozice (ULOZENE) a
+                // pro "ulozit do telefonu" (SBIRKA/knihovna).
+                segaCurrentGameName = name;
+                segaCurrentGameBytes = data;
                 long t0 = System.currentTimeMillis();
                 String info = NativeSegaCoreBridge.romInfo(data);
                 long dt = System.currentTimeMillis() - t0;
@@ -6733,6 +6910,14 @@ public class MainActivity extends Activity {
     // dalsi hlaseni polohy o par set milisekund pozdeji to zase odkrylo.
     private volatile boolean plochaSchovanaKvuliPanelu = false;
     private volatile boolean segaPlochaSchovanaKvuliPanelu = false;
+    // BUILD2SB39: Rene chtel knihovnu her (HRY), ulozene pozice per-hru
+    // (ULOZENE) a moznost ulozit hru ze SBIRKY do telefonu - vsechny tri
+    // veci potrebuji vedet, JAKA hra prave bezi. loadRomBase64() je
+    // JEDINE misto, kudy prochazi VSECHNY zpusoby nahrani hry (rucni
+    // vyber, knihovna, injekce ze SBIRKY) - proto se sleduje tady, ne
+    // duplikovane na kazdem miste zvlast.
+    private volatile String segaCurrentGameName = null;
+    private volatile byte[] segaCurrentGameBytes = null;
     // BUILD2SB27: JEDNO misto, ktere rozhoduje JAK schovat/ukazat plochu -
     // podle aktualni vrstvy (portrait=nad strankou / landscape=pod strankou).
     // Vsechna tri mista (ps1PlochaVisible, ps1PlochaUmisti, plochaZkontroluj)
