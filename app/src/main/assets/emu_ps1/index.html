@@ -107,6 +107,14 @@ body{display:flex;justify-content:center;align-items:flex-start;}
    glyfy) dava skoro stejny "chunky" dojem bez rizika. */
 #panelNebula{display:none;position:fixed;inset:0;z-index:79;overflow:hidden;background:linear-gradient(180deg,#040308 0%,#08061a 50%,#03020a 100%);}
 body.panelNebulaOn #panelNebula{display:block;}
+/* BUILD2SB38: kdyz bezi TV cast, VSECHNY animace v panelech (mlhovina,
+   hvezdy, planety, prstenec, RGB ramecek) se pozastavi - obraz zustane
+   viditelny (jen "zamrzne" na miste), zadny vykon navic pro GPU. */
+body.tvCastActive .mlhaVrstva,
+body.tvCastActive .panelHvezdy,
+body.tvCastActive .panelPlaneta,
+body.tvCastActive .panelPortal,
+body.tvCastActive .rgbRam{animation-play-state:paused!important;}
 .mlhaVrstva{position:absolute;inset:-15%;}
 .mlhaVrstva.m1{background:radial-gradient(ellipse 480px 380px at 78% 12%, rgba(120,60,180,.55), transparent 60%);animation:napDychat1 9s ease-in-out infinite;}
 .mlhaVrstva.m2{background:radial-gradient(ellipse 420px 340px at 8% 22%, rgba(200,50,90,.42), transparent 62%);animation:napDychat2 11s ease-in-out infinite;}
@@ -597,6 +605,24 @@ function updateRemoteBanner(st){
    nativni plochu a pri zavreni ji vrati - bezpecny mechanismus, jen
    View.setVisibility, nic v jadru/EGL se netyka. */
 function napPlochaHide(){try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(false);}catch(_){}try{document.body.classList.add('panelNebulaOn');}catch(_){}}
+/* BUILD2SB38: Rene - "po super settings grafice se zacal sekat prenos
+   na TV." TV cast bere obraz PRIMO Z JADRA (obchazi WebView), ale
+   WebView porad musi neustale prekreslovat animovane pozadi v panelech
+   (10 letajicich planet, mlhovina...) - to je realna prace pro GPU,
+   o kterou soutezi s H.264 enkoderem. Kdyz TV cast bezi, animace se
+   pozastavi (ne smazou - jen "play-state:paused") - kvalita PRENOSU
+   je dulezitejsi nez plynulost dekorativniho pozadi v menu, ktere
+   navic clovek na TV vubec nevidi (bere se snimek z jadra, ne z panelu).
+   Kontrola kazdou 1s - dost casto na rychlou reakci, dost zridka, aby
+   sama o sobe nebyla zatez. */
+function napTvCastKontrola(){
+  try{
+    var bezi=!!(window.AHPS1&&window.AHPS1.tvCastActive&&window.AHPS1.tvCastActive());
+    document.body.classList.toggle('tvCastActive',bezi);
+  }catch(_){}
+}
+setInterval(napTvCastKontrola,1000);
+napTvCastKontrola();
 function napPlochaShow(){try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(true);}catch(_){}try{document.body.classList.remove('panelNebulaOn');}catch(_){}}
 function showHelp(){napPlochaHide();var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v)v.value=LOG.join('\n');}
 function closeHelp(){napPlochaShow();var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}

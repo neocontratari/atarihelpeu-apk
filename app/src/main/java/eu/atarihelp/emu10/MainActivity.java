@@ -2147,16 +2147,24 @@ public class MainActivity extends Activity {
             napTvWebH264DiagFrameCount++;
             long totalMs = (t2 - t0) / 1000000;
             if (totalMs > 80) {
+                String napTvDiagUrlSlow = "?";
+                try { if (web != null) napTvDiagUrlSlow = compactUrl(web.getUrl()); } catch (Throwable ignored) {}
                 appendNativeLog("BUILD2SK75 TV_WEB_H264_FRAME_SLOW totalMs=" + totalMs
                         + " drawMs=" + ((t1 - t0) / 1000000) + " drainMs=" + ((t2 - t1) / 1000000)
-                        + " w=" + w + " h=" + h + " tier=" + napTvWebQualityTier);
+                        + " w=" + w + " h=" + h + " tier=" + napTvWebQualityTier + " stranka=" + napTvDiagUrlSlow);
             }
             if (napTvWebH264DiagFrameCount >= 30) {
                 // BUILD2SK83: + tier= (w/h uz tu byly, tier chybel).
+                // BUILD2SB38: + stranka= - Rene: "po super settings grafice
+                // se zacal sekat prenos." Bez tohohle nejde v logu poznat,
+                // jestli se to kouslo zrovna na emu_ps1/emu_sega (kde jsou
+                // nove animovane panely) nebo jinde v appce.
+                String napTvDiagUrl = "?";
+                try { if (web != null) napTvDiagUrl = compactUrl(web.getUrl()); } catch (Throwable ignored) {}
                 appendNativeLog("BUILD2SK83 TV_WEB_H264_FRAME_AVG n=" + napTvWebH264DiagFrameCount
                         + " avgDrawMs=" + (napTvWebH264DiagPixelsMs / napTvWebH264DiagFrameCount)
                         + " avgDrainMs=" + (napTvWebH264DiagDrainMs / napTvWebH264DiagFrameCount)
-                        + " w=" + w + " h=" + h + " tier=" + napTvWebQualityTier);
+                        + " w=" + w + " h=" + h + " tier=" + napTvWebQualityTier + " stranka=" + napTvDiagUrl);
                 napTvWebH264DiagFrameCount = 0;
                 // BUILD2SA47: tohle se merilo uz davno, ale NIKDY se to nikam
                 // nepsalo - takze pri "kouse se to" nebylo z ceho vyjit.
@@ -4634,6 +4642,10 @@ public class MainActivity extends Activity {
                 return "SEGA_STATE_LOAD_FAIL " + t.getMessage();
             }
         }
+        // BUILD2SB38: stejny duvod jako u AHPS1.tvCastActive() - JS se muze
+        // zeptat, jestli TV cast bezi, a pozastavit animace v panelech.
+        @JavascriptInterface
+        public boolean tvCastActive() { return napTvWebRunning; }
     }
     public class AHPS1 {
         @JavascriptInterface
@@ -4644,6 +4656,18 @@ public class MainActivity extends Activity {
         // uz hotovou nativni funkci ps1MemCardInfo(), zadna nova logika.
         @JavascriptInterface
         public String ps1MemCardInfo() { return NativePs1CoreBridge.memCardInfoSafe(); }
+        // BUILD2SB38: Rene - "po super settings grafice se zacal sekat
+        // prenos [na TV]." Hypoteza: appka ted ma v panelech spoustu
+        // soucasne bezicich CSS animaci (10 letajicich planet, mlhovina,
+        // hvezdy...) - i kdyz TV bere obraz PRIMO Z JADRA (obchazi
+        // WebView), WebView porad musi ty animace neustale prekreslovat,
+        // a to je REALNA prace pro GPU, o kterou soutezi s H.264
+        // enkoderem (sdileny hardware). Tahle metoda umoznuje JS
+        // zeptat se, jestli TV cast prave bezi, a podle toho animace
+        // pozastavit - kvalita PRENOSU je dulezitejsi nez plynulost
+        // dekorativniho pozadi v menu.
+        @JavascriptInterface
+        public boolean tvCastActive() { return napTvWebRunning; }
         // BUILD2SB21: Rene - screenshot ukazal obraz BIOSu/hry "zamotany"
         // do HTML panelu (knihovna, D-PAD nastaveni...) - protoze ps1Plocha
         // je NATIVNI View nad WebView (zOrderOnTop kvuli hrani), zadne CSS

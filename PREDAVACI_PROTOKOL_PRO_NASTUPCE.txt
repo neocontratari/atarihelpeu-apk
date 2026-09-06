@@ -548,6 +548,23 @@
      appce-privatni slot (sega_saves/sega_quicksave.state) - Sega nema
      zadnou knihovnu her jako PS1, takze na-hru-zvlast ulozeni je
      prirozeny DALSI krok, ne soucast tehle zmeny.
+   B237: Rene: "po super settings grafice se zacal sekat prenos na TV."
+     DULEZITA POUCKA - kdyz nekdo hlasi regresi, VZDY se zeptat na
+     PORADI UDALOSTI ("stalo se to PO cem?"), ne jen na symptom - tohle
+     rozhodlo, ze jsem hledal spravnym smerem (GPU zatez z nove
+     grafiky), misto abych dal hadal na PS1/Sega soucasny beh (to jsem
+     zkontroloval jako prvni a bylo to v poradku - slepa ulicka).
+     TV cast bere obraz PRIMO Z JADRA (obchazi WebView), ale WebView
+     porad MUSI prekreslovat animovane pozadi v panelech - to je realna
+     GPU prace, soutezici s H.264 enkoderem o sdileny hardware. Nova
+     AHPS1/AHSega.tvCastActive() (cte uz existujici napTvWebRunning) +
+     CSS animation-play-state:paused na vsech panelovych animacich,
+     kdyz TV cast bezi. DIAGNOSTIKA PRO PRISTE: appka uz mela docela
+     slusne TV_WEB_H264_FRAME_AVG/SLOW logovani, jen bez informace NA
+     JAKE STRANCE se to stalo - pridano "stranka=" do obou hlasek.
+     POUCKA: kdyz uzivatel rekne "tezko ti poslu log, na tohle ho
+     nemas nastaveny", je to signal navrhnout/pridat spravnou
+     diagnostiku HNED, ne jen cekat na dalsi kolo dohadovani.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

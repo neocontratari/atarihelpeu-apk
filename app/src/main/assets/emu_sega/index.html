@@ -31,6 +31,12 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .panel.open{display:block;}
 #segaNebula{display:none;position:fixed;inset:0;z-index:179;overflow:hidden;background:linear-gradient(180deg,#0a3a7a 0%,#1f6fc4 45%,#4fa8e8 75%,#8fd0f0 100%);}
 body.segaNebulaOn #segaNebula{display:block;}
+/* BUILD2SB38: kdyz bezi TV cast, vsechny animace v panelech se
+   pozastavi - stejny duvod jako u PS1. */
+body.tvCastActive .segaKopce,
+body.tvCastActive .segaMracek,
+body.tvCastActive .segaPrsten,
+body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
 .segaKopce{position:absolute;left:-10%;right:-10%;border-radius:50%;background:#2fa84a;}
 .segaKopce.k1{bottom:-18%;height:60%;background:#238a3a;animation:segaKopecPluj1 26s ease-in-out infinite;}
 .segaKopce.k2{bottom:-26%;height:55%;background:#2fa84a;animation:segaKopecPluj2 20s ease-in-out infinite;}
@@ -648,6 +654,17 @@ function jsLog(t){
    uvnitr tehle dvou funkci, presne jako u PS1 - a layoutEditEnter() ji
    hned po vstupu do editace zase vypne (viz B234 pro duvod). */
 function napSegaPlochaHide(){try{if(window.AHSega&&window.AHSega.segaPlochaVisible)window.AHSega.segaPlochaVisible(false);}catch(_){}try{document.body.classList.add('segaNebulaOn');}catch(_){}}
+/* BUILD2SB38: stejny duvod jako u PS1 (viz emu_ps1/index.html) -
+   pozastavit animovane pozadi v panelech, kdyz bezi TV cast, at
+   WebView nesoutezi s H.264 enkoderem o GPU. */
+function napTvCastKontrola(){
+  try{
+    var bezi=!!(window.AHSega&&window.AHSega.tvCastActive&&window.AHSega.tvCastActive());
+    document.body.classList.toggle('tvCastActive',bezi);
+  }catch(_){}
+}
+setInterval(napTvCastKontrola,1000);
+napTvCastKontrola();
 function napSegaPlochaShow(){try{if(window.AHSega&&window.AHSega.segaPlochaVisible)window.AHSega.segaPlochaVisible(true);}catch(_){}try{document.body.classList.remove('segaNebulaOn');}catch(_){}}
 var LAYOUT_IDS=['dpad','btnA','btnB','btnC','btnStart'];
 var LAYOUT_GROUPS=[['btnA','btnB','btnC']]; // dpad ani Start nejsou v zadne skupine - presouvaji se vzdy samostatne
