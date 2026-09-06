@@ -870,7 +870,29 @@ function toggleLayoutGroupMode(){
   segaLayoutHintUpdate();
   jsLog('LAYOUT_MODE skupinovy='+layoutGroupMode);
 }
-function showSegaDpadMenu(){napSegaPlochaHide();var p=$('segaDpadMenuPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}}
+/* BUILD2SB41: Rene poslal log + screenskot - obraz z bezici hry porad
+   prosviti dovnitr panelu (videt "WELL DONE STREET RAT" z Aladdina za
+   ULOZENYMI POZICEMI). V logu NEBYLA zadna PLOCHA_ZRUSENA/VYTVORENA
+   kolem prepinacu viditelnosti (to by znamenalo znovu-stavbu povrchu
+   jako u PS1 v B224) - jen SEGA_PLOCHA_JS_POZADAVEK. Nejpravdepodobnejsi
+   vysvetleni: zavolani schovani (JS->Java pres bridge, pak
+   runOnUiThread) neni okamzite - kdyz se panel v HTML otevre HNED
+   synchronne hned na dalsim radku, muze byt na obrazovce drive, nez
+   nativni alpha=0 stihne dorazit. Reseni: pockat kratkou chvili (90ms -
+   sotva postrehnutelne pro cloveka, dost casu pro JS->Java->UI vlakno)
+   PRED tim, nez se panel opravdu zobrazi. */
+function napSegaOtevriSeZpozdenim(panel, doplnFn){
+  if(!panel)return;
+  panel.setAttribute('aria-hidden','false');
+  setTimeout(function(){
+    panel.classList.add('open');
+    if(doplnFn)doplnFn();
+  },90);
+}
+function showSegaDpadMenu(){napSegaPlochaHide();napSegaOtevriSeZpozdenim($('segaDpadMenuPanel'));}
+function showSegaCtrl(){napSegaPlochaHide();napSegaOtevriSeZpozdenim($('segaCtrlPanel'),ctrlSyncInputs);}
+function showSegaLibrary(){napSegaPlochaHide();napSegaOtevriSeZpozdenim($('segaLibraryPanel'),segaLibraryRefresh);}
+function showSegaSaved(){napSegaPlochaHide();napSegaOtevriSeZpozdenim($('segaSavedPanel'),segaSavedRefresh);}
 function closeSegaDpadMenu(){napSegaPlochaShow();var p=$('segaDpadMenuPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 function layoutEditEnter(){
   closeSegaDpadMenu();
@@ -929,7 +951,6 @@ function ctrlReset(){
   ctrlApplyVisual();ctrlSyncInputs();ctrlSave();
   toast('Ovládání vráceno na výchozí');
 }
-function showSegaCtrl(){napSegaPlochaHide();var p=$('segaCtrlPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}ctrlSyncInputs();}
 function closeSegaCtrl(){napSegaPlochaShow();var p=$('segaCtrlPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 /* BUILD2SB39: Rene - "tlacitko Hry - knihovna jako u PS1" + "tlacitko
    ULOZENE - vytahovat pozice her." Stejny vzor jako PS1 (B213-B225),
@@ -966,7 +987,6 @@ function segaNabidniUlozeni(name){
   document.getElementById('segaUlozitNe').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();zmiz();},true);
   setTimeout(zmiz,8000);
 }
-function showSegaLibrary(){napSegaPlochaHide();var p=$('segaLibraryPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}segaLibraryRefresh();}
 function closeSegaLibrary(){napSegaPlochaShow();var p=$('segaLibraryPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 function segaLibraryRefresh(){
   var host=$('segaLibraryList');if(!host)return;
@@ -1020,7 +1040,6 @@ function segaLibraryDoDelete(wipeSaveToo){
   segaLibraryRefresh();
 }
 /* ULOZENE POZICE */
-function showSegaSaved(){napSegaPlochaHide();var p=$('segaSavedPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}segaSavedRefresh();}
 function closeSegaSaved(){napSegaPlochaShow();var p=$('segaSavedPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 function segaSavedRefresh(){
   var host=$('segaSavedList');if(!host)return;
@@ -1282,17 +1301,20 @@ bindUiAction('cartCenter','romPicker',function(){requestRom('cartCenter');});
 var resetBtn=$('btnReset');if(resetBtn)resetBtn.disabled=true;
 /* BUILD2SA2: vstup pro hry ze SBIRKY (web) - Java posle base64, tady se z nej
    udela File a jede stejnou cestou jako rucni vyber ROM. */
-window.napInjectRomBase64=function(name,b64){
+window.napInjectRomBase64=function(name,b64,zeSbirky){
   try{
     var bin=atob(b64),len=bin.length,bytes=new Uint8Array(len);
     for(var i=0;i<len;i++)bytes[i]=bin.charCodeAt(i);
     var f=new File([bytes],name||'web.gen',{type:'application/octet-stream'});
     pushLog('BUILD2SA2 WEB_ROM_INJECT name='+(name||'?')+' bytes='+len);
-    // BUILD2SB39: Rene - "u sbirky bych prihodil rozcestnik - hrat
-    // primo (jako doposud) nebo ulozit do mobilu." Hra ze SBIRKY se
-    // porad prehraje HNED, presne jako drive - tenhle priznak jen rekne
-    // "az to nabehne, nabidni i moznost ulozit", at hrani nic nebrzdi.
-    window.__napSegaFromCollection=true;
+    // BUILD2SB41: Rene - "proc se me to porad pta jestli chci hru
+    // ulozit, kdyz ji nahraji z telefonu?" NALEZENO V LOGU - knihovna
+    // (segaLibraryLaunch) posila hru STEJNOU cestou jako SBIRKA, a ta
+    // drive VZDY nastavila "nabidni ulozeni" priznak, i kdyz hra uz v
+    // knihovne byla! Ted je to treti parametr - SBIRKA (web stranka) ho
+    // neposila vubec (=> undefined => true, puvodni chovani zustava),
+    // knihovna (Java) posila vyslovne false.
+    window.__napSegaFromCollection=(zeSbirky===false)?false:true;
     onRomSelected(f);
   }catch(e){pushLog('BUILD2SA2 WEB_ROM_INJECT_FAIL '+(e.message||e));}
 };

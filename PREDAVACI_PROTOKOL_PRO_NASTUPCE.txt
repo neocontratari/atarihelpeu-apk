@@ -602,6 +602,23 @@
      "proc se X neuklizi spravne" vzdy zkontrolovat VSECHNY existujici
      cesty/mechanismy pro dany subsystem, ne jen tu, kterou si clovek
      pamatuje jako "tu aktualni".
+   B240: B239 NESTACILA - Rene poslal skutecny log + screenshot,
+     "beze zmeny, chyby zustaly." Log ukazal, ze setAlpha() SAMA O
+     SOBE zjevne funguje (zadne PLOCHA_ZRUSENA/VYTVORENA jako u PS1
+     B224) - podezreni padlo na CASOVANI (JS->Java->UI vlakno neni
+     okamzite, panel se ale v HTML otevira synchronne hned). Vsechny
+     4 Sega panely ted pockaji 90ms pred zobrazenim
+     (napSegaOtevriSeZpozdenim). POCTIVE PRIZNANO: tohle je analyza
+     z dostupnych dat, ne jistota - kdyby nestacilo, log ma dost
+     detailu na presnou diagnozu priste. DALSI DVE OPRAVY ZE STEJNE
+     ZPRAVY: (a) log potvrdil, ze SEGA_LIBRARY_LAUNCH (spusteni JIZ
+     ULOZENE hry) slo stejnou cestou jako SBIRKA a VZDY nabidlo
+     "ulozit do telefonu" i pro hry uz v knihovne - opraveno tretim
+     parametrem u napInjectRomBase64 (knihovna=false, SBIRKA=puvodni
+     chovani). (b) ulozene pozice presunuty na verejne uloziste
+     (Downloads/AtariHelp/Sega_ulozene_pozice) s migraci, at prezijou
+     odinstalaci presne jako PS1 memory karta (B225) - Rene si tohle
+     VYSLOVNE vyzadal, ne vec meho rozhodovani jako u PS1 quick-save.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

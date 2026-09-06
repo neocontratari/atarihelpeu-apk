@@ -4676,7 +4676,7 @@ public class MainActivity extends Activity {
                 byte[] data = readFileBytes(f);
                 if (data == null) return "SEGA_LIBRARY_LAUNCH_FAIL cant_read key=" + key;
                 String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
-                final String js = "try{napInjectRomBase64(" + jsQuote(f.getName()) + "," + jsQuote(b64) + ");}catch(e){}";
+                final String js = "try{napInjectRomBase64(" + jsQuote(f.getName()) + "," + jsQuote(b64) + ",false);}catch(e){}";
                 ui.post(() -> { try { web.evaluateJavascript(js, null); } catch (Throwable ignored) {} });
                 appendNativeLog("BUILD2SB39 SEGA_LIBRARY_LAUNCH key=" + key + " bytes=" + data.length);
                 return "SEGA_LIBRARY_LAUNCH_OK";
@@ -4740,7 +4740,7 @@ public class MainActivity extends Activity {
             StringBuilder sb = new StringBuilder("[");
             boolean first = true;
             try {
-                File dir = new File(getFilesDir(), "sega_saves");
+                File dir = new File(getPublicAtariHelpDownloadsDir(), "Sega_ulozene_pozice");
                 File[] kids = dir.exists() ? dir.listFiles() : null;
                 if (kids != null) {
                     for (File f : kids) {
@@ -4786,10 +4786,29 @@ public class MainActivity extends Activity {
                 return "SEGA_STATE_LOAD_FAIL " + t.getMessage();
             }
         }
+        // BUILD2SB41: Rene - "dej pozor na ulozene hry pozice, musi
+        // zustat v telefonu i po odinstalaci apky, presne jako u ps1."
+        // Presne stejna poucka jako u PS1 memory karty (B225) - realna
+        // ulozena pozice je "fyzicky oddelena od konzole", verejne
+        // uloziste od zacatku, ne appce-privatni jako drive.
         private File segaSaveStateFileFor(String gameName) {
-            File dir = new File(getFilesDir(), "sega_saves");
+            File dir = new File(getPublicAtariHelpDownloadsDir(), "Sega_ulozene_pozice");
             if (!dir.exists()) dir.mkdirs();
-            return new File(dir, safeFileName(gameName) + ".state");
+            File out = new File(dir, safeFileName(gameName) + ".state");
+            // Jednorazova migrace ze stare appce-privatni cesty (B236-B239),
+            // at Rene neprijde o rozehrane testovani kvuli tehle zmene.
+            try {
+                File stara = new File(new File(getFilesDir(), "sega_saves"), safeFileName(gameName) + ".state");
+                if (stara.exists() && !out.exists()) {
+                    byte[] buf = new byte[8192];
+                    try (java.io.InputStream in = new java.io.FileInputStream(stara);
+                         java.io.OutputStream os = new java.io.FileOutputStream(out)) {
+                        int n; while ((n = in.read(buf)) > 0) os.write(buf, 0, n);
+                    }
+                    appendNativeLog("BUILD2SB41 SEGA_POZICE_PRESUNUTA_DO_VEREJNEHO_ULOZISTE " + out.getAbsolutePath());
+                }
+            } catch (Throwable ignored) {}
+            return out;
         }
         private File segaSaveStateFile() {
             // BUILD2SB39: ted per-hru - viz segaSaveStateFileFor(). Kdyz
