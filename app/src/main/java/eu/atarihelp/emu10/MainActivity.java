@@ -429,6 +429,11 @@ public class MainActivity extends Activity {
             rootFrame.addView(sv, 0, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             segaPlocha = sv;
+            // BUILD2SB43: nova plocha vznika VISIBLE (Android vychozi) - kdyz
+            // si panel v tu chvili preje schovanou, nastavit hned spravnym
+            // nastrojem (setVisibility, viz BUILD2SB43 vyse), ne cekat na
+            // dalsi tik hlidace.
+            if (segaPlochaSchovanaKvuliPanelu) sv.setVisibility(View.INVISIBLE);
             // BUILD2SB40: hlidac (plochaHlidacStart/Stop) drive startoval
             // JEN z PS1 kodu (ps1GlEnable/Disable) - pri hrani JEN Segy
             // (bez dotknuti PS1 v tehle relaci) tak vubec nebezel a
@@ -4594,21 +4599,34 @@ public class MainActivity extends Activity {
                 return "ERR " + t.getMessage();
             }
         }
-        // BUILD2SB36: presne stejny duvod jako u PS1 (viz ps1PlochaVisible/
-        // CO_JE_V_B221-B226.md) - segaPlocha je SurfaceView nad/pod WebView
-        // podle rootFrame.addView poradi, a HTML panel ji sam neschova.
-        // NA ROZDIL od PS1 vsak segaPlocha NIKDY nepouziva setZOrderOnTop -
-        // vzdy je POD strankou (jako PS1 landscape), takze tady staci
-        // ciste setAlpha() vzdy, zadna orientation-aware slozitost
-        // (plochaAplikujViditelnost) neni potreba.
+        // BUILD2SB43: Rene - "proc to neudelas stejne jak v ps1 - tam
+        // to bylo uz osetreny." Ma pravdu - moje puvodni uvaha
+        // (BUILD2SB36 komentar vyse), ze setAlpha() staci, protoze
+        // segaPlocha "nikdy nepouziva setZOrderOnTop", se ctyrikrat
+        // (B235/B239/B240/B241) ukazala jako nedostatecna - ani
+        // zpozdeni (B240), ani nepruhledne HTML panely (B241) to
+        // nevyresily. To silne naznacuje, ze se plocha CHOVA jako
+        // zOrderOnTop=true (renderuje NAD celym WebView, vlastni
+        // hardwarova vrstva) bez ohledu na to, ze se setZOrderOnTop
+        // v kodu nikde nevola - HTML pruhlednost proti tomu nema sanci,
+        // je to jina vrstva. VSECHNY Sega panely jsou VZDY na vysku
+        // (Sega nema zadnou landscape-panel scenu jako PS1), takze
+        // neni potreba orientation-aware vetveni jako
+        // plochaAplikujViditelnost() - proste VZDY setVisibility(),
+        // presne jako PS1 dela pro portrait.
         @JavascriptInterface
         public void segaPlochaVisible(final boolean show) {
             segaPlochaSchovanaKvuliPanelu = !show;
-            appendNativeLog("BUILD2SB36 SEGA_PLOCHA_JS_POZADAVEK show=" + show);
+            appendNativeLog("BUILD2SB43 SEGA_PLOCHA_JS_POZADAVEK show=" + show);
             try {
                 runOnUiThread(new Runnable() {
                     public void run() {
-                        try { if (segaPlocha != null) segaPlocha.setAlpha(show ? 1f : 0f); } catch (Throwable ignored) {}
+                        try {
+                            if (segaPlocha != null) {
+                                segaPlocha.setAlpha(1f); // pro pripad stare alpha=0 z drivejska
+                                segaPlocha.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+                            }
+                        } catch (Throwable ignored) {}
                     }
                 });
             } catch (Throwable ignored) {}
@@ -5950,6 +5968,40 @@ public class MainActivity extends Activity {
 
     private FetchResult fetchViaProviderRelay(String url, int maxBytes, String reason) throws IOException {
         IOException last = null;
+        // BUILD2SB44: Rene - "trva to dlouho nez se to otevre." Predtim
+        // appka VZDY zkousela 3 proxy sluzby JAKO PRVNI (kazda az 18s
+        // connect + 50s read timeout, i kdyz ve skutecnosti selhavaly
+        // rychleji), a teprve kdyz vsechny selhaly, zkusila primo (viz
+        // BUILD2SB42) - i kdyz uz vime, ze primo FUNGUJE SPOLEHLIVE A
+        // RYCHLE. Ted je poradi presne obracene - primo JAKO PRVNI (rychly,
+        // uspesny pripad je hned rychly), proxy jen jako zaloha pro
+        // scenar, kvuli kteremu vubec vznikly (WEDOS by mohl v budoucnu
+        // zase blokovat primy pristup - viz komentare "Provider blokuje
+        // nebo zavira spojeni").
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+            try {
+                c.setInstanceFollowRedirects(true);
+                configureGameHttpConnection(c, url);
+                c.connect();
+                int code = c.getResponseCode();
+                if (code < 200 || code >= 400) throw new IOException("direct HTTP " + code);
+                FetchResult out = new FetchResult();
+                out.data = readStreamLimited(c.getInputStream(), maxBytes);
+                out.contentType = c.getContentType();
+                out.contentDisposition = c.getHeaderField("Content-Disposition");
+                out.via = url;
+                out.relayMode = -1;
+                if (out.data == null || out.data.length == 0) throw new IOException("direct empty");
+                appendNativeLog("BUILD2SB44 PROVIDER_DIRECT_FIRST_OK reason=" + reason + " bytes=" + out.data.length + " target=" + compactUrl(url));
+                return out;
+            } finally {
+                try { c.disconnect(); } catch (Throwable ignored) {}
+            }
+        } catch (IOException ex0) {
+            last = ex0;
+            appendNativeLog("BUILD2SB44 PROVIDER_DIRECT_FIRST_FAIL reason=" + reason + " err=" + safeMsg(ex0) + " target=" + compactUrl(url));
+        }
         for (int i = 0; i < 3; i++) {
             String relay = providerRelayUrl(url, i);
             HttpURLConnection c = null;
@@ -5981,42 +6033,6 @@ public class MainActivity extends Activity {
             } finally {
                 try { if (c != null) c.disconnect(); } catch (Throwable ignored) {}
             }
-        }
-        // BUILD2SB42: Rene - "nejde se dostat na www stranky, ani z ps1
-        // a atari, trva to strasne dlouho - a stranky mi funguji." Log
-        // ukazal presnou pricinu: VSECHNY TRI verejne CORS proxy sluzby
-        // (proxy.cors.sh, api.allorigins.win, corsproxy.io) selhavaly -
-        // DNS nejde rozresit, HTTP 522 (timeout), HTTP 401 (vyzaduje
-        // ted asi API klic). Appka ale nikdy nezkusila PRIME pripojeni
-        // jako posledni zachranou - a presne to primo (mimo appku)
-        // funguje bez problemu (overeno). Tenhle relay mechanismus byl
-        // postaveny kvuli drivejsimu blokovani ze strany WEDOS/provider
-        // (viz komentare "Provider blokuje nebo zavira spojeni") - ale
-        // kdyz uz VSECHNY tri proxy sluzby selhaly, zkusit primo je
-        // jedina rozumna posledni sance, ne se rovnou vzdat.
-        try {
-            HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-            try {
-                c.setInstanceFollowRedirects(true);
-                configureGameHttpConnection(c, url);
-                c.connect();
-                int code = c.getResponseCode();
-                if (code < 200 || code >= 400) throw new IOException("direct HTTP " + code);
-                FetchResult out = new FetchResult();
-                out.data = readStreamLimited(c.getInputStream(), maxBytes);
-                out.contentType = c.getContentType();
-                out.contentDisposition = c.getHeaderField("Content-Disposition");
-                out.via = url;
-                out.relayMode = -1;
-                if (out.data == null || out.data.length == 0) throw new IOException("direct empty");
-                appendNativeLog("BUILD2SB42 PROVIDER_DIRECT_FALLBACK_OK reason=" + reason + " bytes=" + out.data.length + " target=" + compactUrl(url));
-                return out;
-            } finally {
-                try { c.disconnect(); } catch (Throwable ignored) {}
-            }
-        } catch (IOException ex2) {
-            appendNativeLog("BUILD2SB42 PROVIDER_DIRECT_FALLBACK_FAIL reason=" + reason + " err=" + safeMsg(ex2) + " target=" + compactUrl(url));
-            last = ex2;
         }
         throw last == null ? new IOException("relay failed") : last;
     }
@@ -6923,10 +6939,11 @@ public class MainActivity extends Activity {
         // Sega ma vlastni plochu - schovat ji, kdyz nejsme na jeji obrazovce,
         // jinak by obraz prosvital do zbytku aplikace (stejny problem jako
         // mela PS1).
-        // BUILD2SB25: Sega I PS1 vetev prepnuty z setVisibility() na
-        // setAlpha() - viz duvod u ps1PlochaVisible() vyse (setVisibility
-        // u SurfaceView nici a znovu stavi cely Surface, coz je zbytecne
-        // tezke pro neco, co se ma delat kazdych 300ms).
+        // BUILD2SB43: Rene - "proc to neudelas stejne jak v ps1." setAlpha()
+        // (B225/B240/B241) se ctyrikrat ukazala jako nespolehliva pro Segu -
+        // presunuto na setVisibility(), presne jako PS1 dela pro portrait
+        // (viz plochaAplikujViditelnost). Sega panely jsou vzdy na vysku,
+        // takze zadne orientation-vetveni neni potreba.
         try {
             android.view.SurfaceView sp = segaPlocha;
             if (sp != null) {
@@ -6937,10 +6954,12 @@ public class MainActivity extends Activity {
                 // JS rekne "schovej", ale tenhle hlidac bezi kazdych 300ms a
                 // bez tohohle prizanku by to za par set milisekund zase vratil.
                 boolean segaChciSchovanou = segaPlochaSchovanaKvuliPanelu;
-                float chciS = (jeSega && !segaChciSchovanou) ? 1f : 0f;
-                if (sp.getAlpha() != chciS) {
-                    sp.setAlpha(chciS);
-                    appendNativeLog("SEGA_PLOCHA_" + (chciS == 1f ? "ZOBRAZENA" : "SCHOVANA") + " panelSchovej=" + segaChciSchovanou + " stranka=" + compactUrl(us));
+                boolean chciVidetSega = jeSega && !segaChciSchovanou;
+                boolean akoJeVidetSega = sp.getVisibility() == View.VISIBLE;
+                if (akoJeVidetSega != chciVidetSega) {
+                    sp.setAlpha(1f);
+                    sp.setVisibility(chciVidetSega ? View.VISIBLE : View.INVISIBLE);
+                    appendNativeLog("SEGA_PLOCHA_" + (chciVidetSega ? "ZOBRAZENA" : "SCHOVANA") + " panelSchovej=" + segaChciSchovanou + " stranka=" + compactUrl(us));
                 }
             }
         } catch (Throwable ignored) {}
@@ -7951,6 +7970,23 @@ public class MainActivity extends Activity {
             // kdyz soubory na disku UZ NEJSOU. Uzivatel muze slozku
             // Download/AtariHelp/emu kdykoli smazat - a driv by aplikace
             // mlcela, protoze si jen pamatovala, ze uz se jednou ptala.
+            //
+            // BUILD2SB45: Rene - "nechapu proc se to furt stahuje po
+            // reinstalaci. At si nove nahrana appka udela kontrolu jestli
+            // tam ty soubory sou, a pokud ano, at nezada znovu stazeni."
+            // NALEZENA PRICINA: "uz jsem se ptal" priznak
+            // (NapStahovaniSeSouhlasem.uzZeptano) se uklada do appce-
+            // privatniho uloziste (SharedPreferences), ktere Android PRI
+            // ODINSTALACI SMAZE (stejna poucka jako u PS1 memory karty
+            // v B225 a Sega ulozenych pozic v B240 - appce-privatni
+            // uloziste NEPREZIJE odinstalaci appky, ale SOUBORY v
+            // getPublicAtariHelpDownloadsDir() ANO). Puvodni podminka
+            // "!uzZeptano() || chybi" tak po kazde reinstalaci vzdy
+            // vynutila otazku, i kdyz soubory byly porad na disku -
+            // ten OR delal presny opak toho, co mel. SKUTECNA otazka
+            // ("mam se zeptat?") ma jen JEDNU spravnou odpoved: chybi
+            // nekdo ze souboru, nebo ne? Priznak "uz jsem se ptal" tu
+            // nema co delat - soubory na disku jsou pravda, ne pamet appky.
             boolean zeptatSe;
             try {
                 java.io.File koren = getPublicAtariHelpDownloadsDir();
@@ -7959,10 +7995,10 @@ public class MainActivity extends Activity {
                 // i kdyz soubory na disku jsou.
                 NapStahovaniSeSouhlasem.zapisCesty(MainActivity.this, koren);
                 boolean chybi = NapStahovaniSeSouhlasem.neceMChybi(MainActivity.this, koren);
-                zeptatSe = !NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this) || chybi;
-                appendNativeLog("BUILD2SA29 SOUBORY "
+                zeptatSe = chybi;
+                appendNativeLog("BUILD2SB45 SOUBORY "
                         + NapStahovaniSeSouhlasem.stav(MainActivity.this, koren)
-                        + " -> " + (zeptatSe ? "PTAM SE" : "vse je, neptam se"));
+                        + " -> " + (zeptatSe ? "PTAM SE (soubory chybi)" : "vse je, neptam se"));
             } catch (Throwable t) {
                 zeptatSe = !NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this);
                 appendNativeLog("BUILD2SA29 SOUBORY_KONTROLA_CHYBA " + safeMsg(t));

@@ -637,6 +637,31 @@
      spravne reseni je udelat HTML panel SAM O SOBE nepruhledny (95%+),
      at WebViewovo VLASTNI, OKAMZITE vykreslovani funguje jako
      spolehliva pojistka nezavisla na mostu.
+     OPRAVA DIAGNOZY V B242: tahle teorie (plocha je POD strankou,
+     staci nepruhledne HTML) se ukazala byt NESPRAVNA - Rene potvrdil
+     "furt se to tam mota". Skutecna pricina byla jina, viz B242.
+   B242: Rene: "proc to neudelas stejne jak v ps1 - tam to bylo uz
+     osetreny." DULEZITA POUCKA - ctyri po sobe jdouci neuspesne pokusy
+     (B235/B239/B240/B241) jsou silny signal, ze CELA TEORIE (segaPlocha
+     je "pod strankou jako PS1 landscape") byla od zacatku SPATNA, ne
+     jen ze reseni potrebovalo doladit. Segu se ted BEZ DALSIHO
+     ZKOUMANI proc presunulo na DOSLOVNE STEJNY mechanismus jako PS1
+     portrait (setVisibility, ne setAlpha) na vsech trech mistech
+     (JS-volatelna metoda, 300ms hlidac, vytvoreni nove plochy). POUCKA
+     PRO ATARI: kdyz opakovane cilene opravy nezaberou a uzivatel rekne
+     "udelej to jako [jina cast appky, kde uz to funguje]", ber to
+     vazne a doslovne - nezkoumej dal VLASTNI teorii, zkopiruj presne
+     to, co uz empiricky funguje, i kdyz tvoje teoreticke zduvodneni
+     rika, ze by rozdilny pristup mel byt spravny. DALSI DVE OPRAVY ZE
+     STEJNE ZPRAVY: (1) SBIRKA - poradi obraceno, primo pripojeni JAKO
+     PRVNI (rychle, o cem uz vime ze funguje), proxy jen jako zaloha -
+     driv se vzdy plytvalo casem na 3 nefunkcni proxy pred tim, nez se
+     zkusilo to, co funguje. (2) "furt se to stahuje po reinstalaci" -
+     rozhodovani "zeptat se na stazeni?" zaviselo na SharedPreferences
+     prizanku, ktery Android pri odinstalaci smaze (stejna poucka jako
+     PS1 memory karta v B225) - i kdyz SOUBORY (verejne uloziste) porad
+     existovaly. Opraveno na vyhradni zavislost na skutecne pritomnosti
+     souboru.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
