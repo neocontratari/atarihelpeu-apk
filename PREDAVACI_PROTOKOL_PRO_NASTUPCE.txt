@@ -685,6 +685,30 @@
      zapamatuje HNED pri uspesnem zapsani souboru (100% jiste), ne az
      dodatecnym listFiles() prohledanim (appka sama uznava jako
      nespolehlive na Scoped Storage).
+     SEGA CONFIRMED FIXED - Rene: "sega uz funguje jako ps1, uz se
+     nemicha obraz, parada Partaku!!!" Prolinani obrazu, resene od
+     B235, je KONECNE hotove.
+     DRUHA OPRAVA (BUILD2SB47, zapamatovani cesty pri zapisu) SE
+     UKAZALA NEDOSTATECNA - viz B244, skutecny problem byl jinde.
+   B244: Rene si vsiml presneho postrehu - "intro najede presne jak
+     ma i core Segy a PS1, i kdyz sem dal NESTAHNOUT - jedna cast
+     appky (spustSegu(), az BEHEM intra) soubory najde, ale PRVNI
+     kontrola (v onCreate(), MNOHEM DRIV) ne." Screenshot souboroveho
+     spravce potvrdil soubory NA DISKU FYZICKY BYLY. DULEZITA POUCKA:
+     kdyz uzivatel rekne "tahle cast appky to najde, tamta ne", to je
+     PRESNY navod, kde hledat rozdil - porovnat OBE cesty (stejna
+     funkce, stejny adresar, ale ruzne CASOVANI). Skutecna pricina:
+     zname Android chovani - hned po studenem startu muze byt
+     verejne uloziste jeste "dobihajici", listFiles() chvili vraci
+     prazdno i kdyz soubory fyzicky existuji. OPRAVA: kdyz prvni
+     pokus rekne "chybi", NEVZDAT TO hned - kratce pockat (700ms,
+     1400ms, max 2 opakovani) a zkusit znovu, presne tak dlouho, aby
+     to melo stejnou sanci jako ta pozdejsi kontrola v intru.
+     POZOR PRI DALSI PRACI: pri restrukturalizaci kodu do samostatne
+     metody (napStartRozhodniACini) jsem si na prvni pokus spletl
+     pocet zavorek (jedna navic) - kontrola poctu { } po KAZDE vetsi
+     restrukturalizaci neni formalita, je to jediny zpusob, jak si
+     byt jisty, ze se metoda spravne uzavrela tam, kde ma.
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

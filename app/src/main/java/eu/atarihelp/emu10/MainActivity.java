@@ -8012,23 +8012,63 @@ public class MainActivity extends Activity {
             // ("mam se zeptat?") ma jen JEDNU spravnou odpoved: chybi
             // nekdo ze souboru, nebo ne? Priznak "uz jsem se ptal" tu
             // nema co delat - soubory na disku jsou pravda, ne pamet appky.
-            boolean zeptatSe;
-            try {
-                java.io.File koren = getPublicAtariHelpDownloadsDir();
-                // BUILD2SA39: kontrola i pres zapamatovane cesty - vypis
-                // adresare muze na novejsim Androidu vratit prazdno,
-                // i kdyz soubory na disku jsou.
-                NapStahovaniSeSouhlasem.zapisCesty(MainActivity.this, koren);
-                boolean chybi = NapStahovaniSeSouhlasem.neceMChybi(MainActivity.this, koren);
-                zeptatSe = chybi;
-                appendNativeLog("BUILD2SB45 SOUBORY "
-                        + NapStahovaniSeSouhlasem.stav(MainActivity.this, koren)
-                        + " -> " + (zeptatSe ? "PTAM SE (soubory chybi)" : "vse je, neptam se"));
-            } catch (Throwable t) {
-                zeptatSe = !NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this);
-                appendNativeLog("BUILD2SA29 SOUBORY_KONTROLA_CHYBA " + safeMsg(t));
-            }
+            // BUILD2SB48: Rene si vsiml presneho a velmi uzitecneho
+            // detailu - "intro najede presne jak ma, i core Segy a core
+            // PS1, i kdyz sem dal NESTAHNOUT - takze JEDNA cast appky
+            // (spustSegu()/ekvivalent pro PS1, spusti se AZ BEHEM intra)
+            // soubory najde bez problemu, ale TATO kontrola (bezici
+            // synchronne v onCreate(), tedy MNOHEM DRIV) je nenajde.
+            // OBE POUZIVAJI STEJNOU funkci (najdiSegaRom/maBios) na
+            // STEJNY korenovy adresar (getPublicAtariHelpDownloadsDir)
+            // - jediny rozdil je CASOVANI. To presne odpovida znamemu
+            // chovani Androidu: hned po studenem startu (obzvlast po
+            // cerstve instalaci) muze byt verejne uloziste jeste
+            // "dobihajici" a File.listFiles() chvilku vraci prazdno,
+            // i kdyz soubory na disku fyzicky jsou - do doby, kdy intro
+            // dobehne ke sve druhe/treti etape (o nekolik vterin
+            // pozdeji), uz to stihne byt v poradku. Reseni: kdyz prvni
+            // pokus najde "chybi", NEVZDAT TO hned - kratce pockat a
+            // zkusit znovu, presne tak dlouho, aby to melo stejnou
+            // sanci jako ta pozdejsi kontrola v intru.
+            final int[] pokusCislo = { 0 };
+            final Runnable[] zkontrolujACiniRef = new Runnable[1];
+            zkontrolujACiniRef[0] = () -> {
+                boolean zeptatSe2;
+                try {
+                    java.io.File koren = getPublicAtariHelpDownloadsDir();
+                    // BUILD2SA39: kontrola i pres zapamatovane cesty - vypis
+                    // adresare muze na novejsim Androidu vratit prazdno,
+                    // i kdyz soubory na disku jsou.
+                    NapStahovaniSeSouhlasem.zapisCesty(MainActivity.this, koren);
+                    boolean chybi = NapStahovaniSeSouhlasem.neceMChybi(MainActivity.this, koren);
+                    zeptatSe2 = chybi;
+                    appendNativeLog("BUILD2SB48 SOUBORY pokus=" + pokusCislo[0] + " "
+                            + NapStahovaniSeSouhlasem.stav(MainActivity.this, koren)
+                            + " -> " + (zeptatSe2 ? "PTAM SE (soubory chybi)" : "vse je, neptam se"));
+                } catch (Throwable t) {
+                    zeptatSe2 = !NapStahovaniSeSouhlasem.uzZeptano(MainActivity.this);
+                    appendNativeLog("BUILD2SA29 SOUBORY_KONTROLA_CHYBA " + safeMsg(t));
+                }
+                if (zeptatSe2 && pokusCislo[0] < 2) {
+                    pokusCislo[0]++;
+                    // BUILD2SB48: 700ms, 1400ms - dost casu na to, aby
+                    // verejne uloziste "dobehlo", ale porad rychlejsi
+                    // nez by si uzivatel vubec vsiml zpozdeni.
+                    ui.postDelayed(() -> zkontrolujACiniRef[0].run(), 700L * pokusCislo[0]);
+                    return;
+                }
+                napStartRozhodniACini(pokusCislo[0] > 0, zeptatSe2, menu, spustIntro, uzJede);
+            };
+            zkontrolujACiniRef[0].run();
+        }
+    }
 
+    private void napStartRozhodniACini(boolean bylOpakovan, boolean zeptatSe,
+            String menu, Runnable spustIntro, boolean[] uzJede) {
+        if (bylOpakovan) {
+            appendNativeLog("BUILD2SB48 SOUBORY_FINALNI_ROZHODNUTI zeptatSe=" + zeptatSe
+                    + " (po opakovane kontrole - prvni pokus soubory nenasel)");
+        }
             // BUILD2SA77: AUTOMATICKA KONTROLA VERZE PRI STARTU ZRUSENA.
             //
             // Rene: "prehlcujes mobil nesmyslama a pak to ma fungovat".
@@ -8067,7 +8107,6 @@ public class MainActivity extends Activity {
                     }
                 }, 120000);
             }
-        }
     }
 
     private void openBridgePicker(String kind) {
