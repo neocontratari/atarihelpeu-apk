@@ -373,7 +373,7 @@ body.tvCastActive .rgbRam{animation-play-state:paused!important;}
     <p><b>LOAD GAME</b> otevre tvoji PS1 stranku na AtariHelp.eu s Google Drive odkazy.</p>
     <p>Drive muze vracet .zip/.bin/.iso/.img/.pbp/.chd; .7z neni podporovane.</p>
     <p>Prvni spusteni Drive hry stahne a rozbali ZIP do cache; dalsi spusteni bere hotovy lokalni soubor.</p>
-    <p><b>MEMORY CARD / SAVE GAME</b> zustavaji na LOAD/SAVE state.</p>
+    <p><b>SAVE GAME</b> ulozi presnou pozici. <b>NACIST RYCHLOU POZICI</b> (v panelu D-PAD A OVLADANI) ji zase nahraje - presne tam, kde jsi skoncil.</p>
     <p><b>STAV CORE:</b> <span id="coreState">PS1 core je napojen; log ukazuje boot, audio a remote download.</span></p>
     <h2 style="margin-top:14px;">PS1 TEST LOG</h2>
     <textarea id="ps1LogView" readonly style="width:100%;min-height:220px;background:#01050a;color:#bfe9ff;border:1px solid rgba(125,200,255,.45);border-radius:10px;font:700 11px/1.4 'Courier New',monospace;padding:8px;white-space:pre;"></textarea>
@@ -399,6 +399,13 @@ body.tvCastActive .rgbRam{animation-play-state:paused!important;}
     <button id="btnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
     <button id="btnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
     <button id="btnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
+    <!-- BUILD2SB50: Rene - "kdyz by save game po nacteni nabehl presne
+         do toho mista, jak to ted dela Sega - bonus pro ty, co hraji
+         o pauze v praci." ps1QuickLoad() uz cely existoval (Java i JS,
+         vcetne toastu a logu) - jen na nej NIKDY nevedlo zadne tlacitko.
+         Pridano sem (D-PAD panel), ne do hlavniho radku peti tlacitek
+         dole - at se nic nemeni na tom, co uz funguje. -->
+    <button id="btnQuickLoad" type="button" class="secondary">NAČÍST RYCHLOU POZICI</button>
     <button id="dpadMenuMore" type="button" class="secondary">DALŠÍ (BIOS, CD, LOG...)</button>
     <button id="dpadMenuClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
@@ -1498,6 +1505,7 @@ bindHold($('btnStart'),'START');
 $('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 $('dpadMenuClose').addEventListener('click',function(e){e.preventDefault();closeDpadMenu();},true);
 $('dpadMenuMore').addEventListener('click',function(e){e.preventDefault();closeDpadMenu();showHelp();},true);
+$('btnQuickLoad').addEventListener('click',function(e){e.preventDefault();ps1QuickLoad();},true);
 $('btnDpadMenuFromHelp').addEventListener('click',function(e){e.preventDefault();closeHelp();showDpadMenu();},true);
 if($('psRemoteUrl'))$('psRemoteUrl').addEventListener('click',function(e){e.preventDefault();bootPs1RemoteUrl();},true);
 if($('psGooglePage'))$('psGooglePage').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);

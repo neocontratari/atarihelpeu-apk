@@ -765,6 +765,20 @@
      najit tmavou mezeru mezi ikonou a popiskem v datech pixelu,
      vyriznout jen ikonu, prohodit. Zadna zmena kodu.
 
+   B247: (VEDLEJSI, mimo hlavni Atari frontu) Rene pochopil ps1QuickSave
+     a navrhl doplnit ps1QuickLoad "jako to ted dela Sega", ale vyslovne
+     rekl "rozhodnuti nechavam na tobe, hlavne neporus funkcni PS1."
+     PRED zasahem jsem overil, ze ps1QuickLoad() JIZ CELY EXISTOVAL
+     (Java i JS, per-hra, s toastem i logem) - jen na nej nikdy
+     nevedlo tlacitko. DULEZITA POUCKA: kdyz uzivatel da explicitni
+     svobodu rozhodnuti ALE s podminkou "neporus co funguje", VZDY
+     nejdriv overit, jestli pozadovana funkcnost uz neni z vetsi casti
+     hotova - tady to snizilo riziko z "nova funkce" na "pripojeni
+     jednoho tlacitka k already-working kodu." Tlacitko pridano do JIZ
+     EXISTUJICIHO D-PAD A OVLADANI panelu, ne do hlavniho radku peti
+     fungujicich tlacitek na uvodni obrazovce - ten zustal zcela
+     nedotceny. Zadna zmena ukladaciho mechanismu/cesty/formatu.
+
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
      patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most
