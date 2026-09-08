@@ -4599,25 +4599,22 @@ public class MainActivity extends Activity {
                 return "ERR " + t.getMessage();
             }
         }
-        // BUILD2SB43: Rene - "proc to neudelas stejne jak v ps1 - tam
-        // to bylo uz osetreny." Ma pravdu - moje puvodni uvaha
-        // (BUILD2SB36 komentar vyse), ze setAlpha() staci, protoze
-        // segaPlocha "nikdy nepouziva setZOrderOnTop", se ctyrikrat
-        // (B235/B239/B240/B241) ukazala jako nedostatecna - ani
-        // zpozdeni (B240), ani nepruhledne HTML panely (B241) to
-        // nevyresily. To silne naznacuje, ze se plocha CHOVA jako
-        // zOrderOnTop=true (renderuje NAD celym WebView, vlastni
-        // hardwarova vrstva) bez ohledu na to, ze se setZOrderOnTop
-        // v kodu nikde nevola - HTML pruhlednost proti tomu nema sanci,
-        // je to jina vrstva. VSECHNY Sega panely jsou VZDY na vysku
-        // (Sega nema zadnou landscape-panel scenu jako PS1), takze
-        // neni potreba orientation-aware vetveni jako
-        // plochaAplikujViditelnost() - proste VZDY setVisibility(),
-        // presne jako PS1 dela pro portrait.
+        // BUILD2SB46: Rene poslal novy log a odhalil to skutecne - appka
+        // ma DVE soubezne vykreslovaci cesty pro Segu! Log ukazal
+        // SOUCASNE "SEGA_OBRAZ_PRIMO_ZAPNUT" (segaPlocha, SurfaceView -
+        // to je ta, kterou jsem resil B235-B242) A "ENABLE_IN_PLACE" /
+        // "NATIVE_TEXTURE_FRAME_RV" (nativeInPlaceView, TextureView) -
+        // volane primo z JS pri KAZDEM vyberu hry (startNativeCppInPlace
+        // -> AHNATIVE.enableInPlace()). TOHLE je ta SKUTECNA, primarni
+        // vykreslovaci plocha ("normalSegaUI=YES noSeparateWindow=YES")
+        // - segaPlocha je vedlejsi/starsi cesta. Cely tenhle cas jsem
+        // schovaval tu SPRAVNOU plochu, ale hra prosvitala pres tu
+        // DRUHOU, kterou appka vubec neschovavala - presne Reneho
+        // puvodni hypoteza "vsechny videa bezi vzadu, jen neco pousti".
         @JavascriptInterface
         public void segaPlochaVisible(final boolean show) {
             segaPlochaSchovanaKvuliPanelu = !show;
-            appendNativeLog("BUILD2SB43 SEGA_PLOCHA_JS_POZADAVEK show=" + show);
+            appendNativeLog("BUILD2SB46 SEGA_PLOCHA_JS_POZADAVEK show=" + show);
             try {
                 runOnUiThread(new Runnable() {
                     public void run() {
@@ -4625,6 +4622,17 @@ public class MainActivity extends Activity {
                             if (segaPlocha != null) {
                                 segaPlocha.setAlpha(1f); // pro pripad stare alpha=0 z drivejska
                                 segaPlocha.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+                            }
+                        } catch (Throwable ignored) {}
+                        try {
+                            // NativeInPlaceView je TextureView, normalni
+                            // soucast hierarchie (ne zvlastni hardwarova
+                            // vrstva jako SurfaceView) - setVisibility()
+                            // tu funguje spolehlive a bez rizika
+                            // znovu-postaveni povrchu.
+                            if (nativeInPlaceView != null) {
+                                nativeInPlaceView.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+                                appendNativeLog("BUILD2SB46 NATIVE_IN_PLACE_" + (show ? "ZOBRAZENA" : "SCHOVANA"));
                             }
                         } catch (Throwable ignored) {}
                     }
@@ -6960,6 +6968,23 @@ public class MainActivity extends Activity {
                     sp.setAlpha(1f);
                     sp.setVisibility(chciVidetSega ? View.VISIBLE : View.INVISIBLE);
                     appendNativeLog("SEGA_PLOCHA_" + (chciVidetSega ? "ZOBRAZENA" : "SCHOVANA") + " panelSchovej=" + segaChciSchovanou + " stranka=" + compactUrl(us));
+                }
+            }
+        } catch (Throwable ignored) {}
+        // BUILD2SB46: NativeInPlaceView je ta SKUTECNA, primarni Sega
+        // vykreslovaci plocha (viz segaPlochaVisible vyse) - hlidac ji
+        // drive vubec neresil, jen segaPlocha.
+        try {
+            NativeInPlaceView nip = nativeInPlaceView;
+            if (nip != null) {
+                String us2 = null;
+                try { if (web != null) us2 = web.getUrl(); } catch (Throwable ignored) {}
+                boolean jeSega2 = ((us2 != null) && us2.contains("emu_sega")) || jeIntro;
+                boolean chciVidetNip = jeSega2 && !segaPlochaSchovanaKvuliPanelu;
+                boolean akoJeVidetNip = nip.getVisibility() == View.VISIBLE;
+                if (akoJeVidetNip != chciVidetNip) {
+                    nip.setVisibility(chciVidetNip ? View.VISIBLE : View.INVISIBLE);
+                    appendNativeLog("BUILD2SB46 NATIVE_IN_PLACE_" + (chciVidetNip ? "ZOBRAZENA" : "SCHOVANA") + "_HLIDAC panelSchovej=" + segaPlochaSchovanaKvuliPanelu);
                 }
             }
         } catch (Throwable ignored) {}

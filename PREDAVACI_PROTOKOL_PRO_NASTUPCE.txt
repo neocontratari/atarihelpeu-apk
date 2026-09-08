@@ -662,6 +662,29 @@
      PS1 memory karta v B225) - i kdyz SOUBORY (verejne uloziste) porad
      existovaly. Opraveno na vyhradni zavislost na skutecne pritomnosti
      souboru.
+     OPRAVA DIAGNOZY V B243: setVisibility() SAMOTNE take nestacilo -
+     Rene: "sega zadna zmena." Skutecna pricina byla jina, viz B243.
+   B243: KONECNE SKUTECNA pricina prolinani obrazu, po ctyrech
+     predchozich neuspesnych pokusech (B235/B239/B240/B241/B242).
+     Appka ma DVE soubezne vykreslovaci cesty pro Segu - segaPlocha
+     (SurfaceView, ktere jsem resil B235-B242) A nativeInPlaceView
+     (TextureView, volana PRIMO Z JS pri kazdem vyberu hry pres
+     startNativeCppInPlace->AHNATIVE.enableInPlace()) - OBE BEZI
+     SOUCASNE. nativeInPlaceView je ta SKUTECNA primarni plocha
+     ("normalSegaUI=YES") - segaPlocha vedlejsi/starsi cesta. Presne
+     Reneho puvodni hypoteza z pred nekolika buildy ("vsechny videa
+     bezi vzadu, jen neco pousti") byla spravna od zacatku - jen jsem
+     bez logu nemel jak najit KTERA plocha je ta skutecna. DULEZITA
+     POUCKA: kdyz appka ma VICE mechanismu pro "totez" (stary/mrtvy
+     vs. novy/aktivni, jako uz jednou v B239 s nativeInPlaceEnabled
+     vs. segaPlocha - tam sel o CLEANUP, tady o VIDITELNOST), VZDY
+     zkontrolovat OBA/VSECHNY, ne se spolehnout na to, ktery clovek
+     "pamatuje" jako aktualni - `grep -rn "enableInPlace"` pres CELE
+     assets by tohle odhalilo uz v B235, kdyby to nekdo zkusil.
+     DRUHA OPRAVA ZE STEJNE ZPRAVY: cesta k BIOS/Sonic souborum se ted
+     zapamatuje HNED pri uspesnem zapsani souboru (100% jiste), ne az
+     dodatecnym listFiles() prohledanim (appka sama uznava jako
+     nespolehlive na Scoped Storage).
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

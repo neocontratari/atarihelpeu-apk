@@ -430,6 +430,21 @@ public final class NapStahovaniSeSouhlasem {
                         while ((m = zi.read(buf)) > 0) fo.write(buf, 0, m);
                     } finally { fo.close(); }
                     ulozeno++;
+                    // BUILD2SB47: Rene - "neustale stahuje dva soubory pri
+                    // spusteni apky i kdyz jsou v mobilu." Prislusna cesta
+                    // (kam presne) se DOSUD zapamatovavala az DODATECNYM
+                    // prohledanim adresare (zapisCesty->najdiSegaRom/
+                    // listFiles) - a appka uz sama v komentarich uznava,
+                    // ze listFiles() na novejsim Androidu (Scoped Storage)
+                    // umi vratit prazdno, i kdyz soubory na disku jsou.
+                    // Ted se cesta zapamatuje HNED, v okamziku, kdy jiste
+                    // VIME, ze soubor existuje (prave jsme ho zapsali) -
+                    // zadne pozdejsi hadani przez listFiles().
+                    if ("bios".equals(popis) && ven.length() == 524288) {
+                        zapamatujCestu(a, KLIC_BIOS, ven.getAbsolutePath());
+                    } else if ("sonic".equals(popis)) {
+                        zapamatujCestu(a, KLIC_SONIC, ven.getAbsolutePath());
+                    }
                 }
             } finally { try { zi.close(); } catch (Throwable ignored) {} }
 
