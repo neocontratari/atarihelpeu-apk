@@ -20,6 +20,13 @@ public final class NativeAtariCoreBridge {
     public static final long   OCEKAVANO_INSTRUKCI = 51200L;
     public static final long   OCEKAVANO_CTENI     = 16252928L;
 
+    // BUILD2SB49: KBCODE pro HELP - na 130XE je HELP klavesa klavesnicove
+    // matice (NE konzolovy prepinac jako START/SELECT/OPTION). Hodnota
+    // overena z Reneho JS reference (emu_vbxe/index.html): 'F1':17 /*HELP*/
+    // a skutecne tlacitko HELP tam vola M.keyDown(17) - stejne cislo na
+    // obou mistech, takze je spolehlive.
+    public static final int KBCODE_HELP = 17;
+
     private static volatile boolean loaded = false;
     private static volatile String loadError = null;
 

@@ -710,6 +710,61 @@
      restrukturalizaci neni formalita, je to jediny zpusob, jak si
      byt jisty, ze se metoda spravne uzavrela tam, kde ma.
 
+===============================================================================
+ VELKY OBRAT: ATARI C++ JE OD TETO CHVILE PRIORITA CISLO JEDNA
+===============================================================================
+ Rene doslova: "atari je to pro me nejdulezitejsi - tohle [PS1/Sega]
+ byla zatim sranda Partaku, v uvozovkach." VSECHNA prace na PS1/Sega
+ popsana vyse (B197-B244) byla realna a hotova, ale od tehodle bodu
+ dal je hlavni frontou PREPSANI CELEHO JAVA/JS ATARI 130XE+VBXE EMULATORU
+ (emu_vbxe/index.html, 7245 radku JS - CPU6502/ANTIC/GTIA/POKEY/VBXE,
+ vsechno v JAVASCRIPTU, ne skutecne v Jave) DO NATIVNIHO C++
+ (app/src/main/cpp/atari/), s CILEM javu/JS variantu UPLNE ODSTRANIT.
+
+   CIL od Reneho: "Atari musi bezet PRESNE jako moje skutecne Atari
+   130XE, co mam vedle sebe, az na par vyjimek, ktere postupne
+   ujasnim." ZADNE ODHADY, ZADNY FAKE.
+
+   B245: Zacatek prace - FAZE 0 z navrzeneho postupu (viz zprava pred
+     touto). Aktualni stav C++ jadra pri zacatku: CPU 6502 hotovo a
+     overeno, pamet/banky hotovo a overeno, ANTIC/GTIA CASTECNE (rezimy
+     2-15, DLI, hraci/strely - chybi kolize/skrolovani/GTIA 9-11),
+     POKEY (zvuk) NEEXISTUJE, VBXE NEEXISTUJE, joystick/kazeta/ATR
+     NEEXISTUJE. B245 pridala jen testovaci nastroje (OPTION tlacitko,
+     HELP klavesa KBCODE=17, prubezne vykreslovani, podrobne
+     logovani, volna poznamka) - ZADNE zmeny v samotnem jadru.
+     DVA "SELF TESTY" SE SNADNO PLETOU - poucka pro nastupce:
+     (a) nap_atari_native.cpp runSelfTest() = VYVOJARSKY OVEROVACI
+         test (kontrolni soucet CPU/pameti na ARM64 vs x86_64 kvuli
+         znamenkovosti char) - NENI to Atari diagnostika.
+     (b) nap_atari_machine.h = jadro cilene na rozbehnuti SKUTECNEHO
+         Atari self-testu z ROM na $5000-$57FF (Reneho vlastni ROM).
+     Navrzeny dalsi postup (Faze 1-5): POKEY zaklad (jen self-test) ->
+     zbytek ANTIC/GTIA (skrolovani, kolize, GTIA 9-11) -> VBXE ->
+     joystick/kazeta/ATR -> hra po hre proti JS referenci. Rene s tim
+     souhlasil.
+     DULEZITE PRO NASTUPCE: JS reference ma DLOUHOU historii jemneho
+     doladeni na konkretni hry (Popeye, Commando, Decathlon, W3D,
+     Night Driver, Postcard/DACTest...) - build komentare v
+     emu_vbxe/index.html jsou CENNY zdroj, kdyz se C++ dostane ke
+     hre-specifickym problemum. Nehadat, cist ty komentare prvni.
+     ROM pouzita v C++ (nap_atari_roms.h) je PRESNA KOPIE Reneho
+     vlastni ROM extrahovane z emu_vbxe/index.html (base64) - zadna
+     jina ROM se nepouziva ani nepouzije.
+
+   B246: (VEDLEJSI, mimo hlavni Atari frontu) Rene chtel 2 PDF navody
+     pro zacatecniky (PS1 + Sega) - viz CO_JE_V_B246.md. Pri psani
+     navodu vyplynula VIZUALNI chyba: SBIRKA a HRY mely v obrazku
+     pozadi (sega_megadrive_screen.png) PROHOZENE ikony (SBIRKA =
+     knihovna/policka, HRY = jedna kazeta - presny opak funkce).
+     Rene: "to je moje slepota, kterou sem nevidel." POUCKA: psani
+     dokumentace/navodu pro uzivatele je dobry zpusob, jak najit
+     UX nesrovnalosti, ktere se v samotnem kodu vubec neprojevi jako
+     bug - stoji za to nad tim premyslet i mimo bugfixing. Oprava sla
+     primo v obrazku (ikony jsou napecene v pozadi, ne CSS vrstva) -
+     najit tmavou mezeru mezi ikonou a popiskem v datech pixelu,
+     vyriznout jen ikonu, prohodit. Zadna zmena kodu.
+
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
      patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most

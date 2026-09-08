@@ -48,7 +48,20 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
 <div class="btny" style="margin-bottom:6px">
   <button id="btnSel" style="background:#2a2d34">SELECT</button>
   <button id="btnStart" style="background:#2a2d34">START</button>
-  <button id="btnRun" style="background:#2a2d34">+2 s</button>
+  <button id="btnOpt" style="background:#2a2d34">OPTION</button>
+</div>
+<div class="btny" style="margin-bottom:6px">
+  <button id="btnHelpKey" style="background:#2a2d34">HELP</button>
+  <button id="btnRun" style="background:#2a2d34">+2 s (jeden krok)</button>
+</div>
+<!-- BUILD2SB49: Rene - "nachystej si log primo v C++ Atari, at vidim
+     presne to, co ty." Prubezne vykreslovani (misto jen statickych
+     snimku po kliku) + volna poznamka do stejneho logu. -->
+<button id="btnZive" type="button" style="background:#1e5c33">▶ SPUSTIT ŽIVĚ (jako skutečné Atari)</button>
+<div class="btny" style="margin-bottom:6px">
+  <input id="poznamkaText" type="text" placeholder="Co teď testuješ? (např. OPTION -> SOUND TEST)"
+         style="flex:1;padding:11px;font-size:14px;border-radius:8px;border:1px solid #262931;background:#0f1013;color:#dfe3e8">
+  <button id="btnPoznamka" style="width:auto;padding:11px 16px;background:#2d6cdf">ZAPSAT</button>
 </div>
 
 <h2 style="font-size:16px;margin:22px 0 4px">CO TESTOVAT</h2>
@@ -107,8 +120,10 @@ neuklada a bod 2 nefunguje. Poznas to i v logu podle radku
 </div>
 
 <p class="pozn">
-Obraz ani zvuk tu zatim nejsou. Hotove jsou dve vrstvy ze sesti - procesor
-a pamet. Bez ANTICu, GTIA a POKEY se OS Atari nema o co oprit a nerozbehne se.<br><br>
+Zvuk tu zatim neni (POKEY jeste neni hotovy - jen tolik, aby ROM
+nezustala viset). Obraz uz je - ANTIC/GTIA po jednotlivych radkach,
+vcetne DLI, hracu a strel. Chybi jeste: kolize, skrolovani, GTIA
+rezimy 9/10/11, VBXE, joystick, kazeta.<br><br>
 Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
@@ -222,7 +237,38 @@ $('btnSt').addEventListener('click',function(){
 });
 $('btnSel').addEventListener('click',function(){ kresli(volej('atariKonzole','select')); obnovLog(); });
 $('btnStart').addEventListener('click',function(){ kresli(volej('atariKonzole','start')); obnovLog(); });
+$('btnOpt').addEventListener('click',function(){ kresli(volej('atariKonzole','option')); obnovLog(); });
+$('btnHelpKey').addEventListener('click',function(){ kresli(volej('atariHelp')); obnovLog(); });
 $('btnRun').addEventListener('click',function(){ kresli(volej('atariObraz',100)); });
+$('btnPoznamka').addEventListener('click',function(){
+  var t=$('poznamkaText'); if(!t||!t.value.trim())return;
+  try{ AHATARICPP.atariPoznamka(t.value.trim()); }catch(e){}
+  t.value=''; obnovLog();
+});
+/* BUILD2SB49: prubezne vykreslovani - misto jen statickych snimku po
+   kliku, jako skutecne Atari bezici pred Reneho ocima. Zamerne NEbezi
+   60x/s (kazde volani je JNI prechod + base64 obrazu) - par snimku
+   najednou kazdych ~90ms je pro diagnostiku dost plynule a min zatezi
+   telefon. Kdykoli jde zastavit a udelat rucni krok. */
+var zivaBezi=false, zivaTimer=null;
+function zivaKrok(){
+  if(!zivaBezi)return;
+  kresli(volej('atariObraz',3));
+  zivaTimer=setTimeout(zivaKrok,90);
+}
+$('btnZive').addEventListener('click',function(){
+  zivaBezi=!zivaBezi;
+  if(zivaBezi){
+    this.textContent='■ ZASTAVIT (teď běží živě)';
+    this.style.background='#5c1e1e';
+    zivaKrok();
+  } else {
+    this.textContent='▶ SPUSTIT ŽIVĚ (jako skutečné Atari)';
+    this.style.background='#1e5c33';
+    if(zivaTimer)clearTimeout(zivaTimer);
+    obnovLog();
+  }
+});
 
 function nactiCesty(){
   try{

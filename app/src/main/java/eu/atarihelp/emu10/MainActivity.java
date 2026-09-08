@@ -4044,7 +4044,7 @@ public class MainActivity extends Activity {
                 synchronized (nativeLog) { cely = nativeLog.toString(); }
                 StringBuilder sb = new StringBuilder();
                 for (String r : cely.split("\n")) {
-                    if (r.contains("BUILD2SA14") || r.contains("VERZE APKY")
+                    if (r.contains("BUILD2SA14") || r.contains("BUILD2SB49") || r.contains("VERZE APKY")
                             || r.contains("napatari") || r.contains("ATARI_CPP")) {
                         sb.append(r).append('\n');
                     }
@@ -4057,10 +4057,34 @@ public class MainActivity extends Activity {
          * BUILD2SA18: SKUTECNY stroj - OS z ROM, BASIC, self-test.
          * Nic se tu nevymysli: nabootuje se OS, pocka se na READY,
          * napise se BYE a self-test prevezme stroj. Vse z Reneho ROM.
+         *
+         * BUILD2SB49: Rene - "nachystej si log primo v C++ Atari, at
+         * vidim presne to, co ty, a testujeme." Kazda akce ted zapisuje
+         * PLNY stav registru (ne uriznuty JSON), a existuje volna
+         * poznamka (atariPoznamka), aby si Rene mohl do stejneho logu
+         * napsat "ted testuju SOUND TEST po OPTION" apod. - at je log
+         * citelny jako pribeh, ne jen suchy vypis cisel.
          */
+        private String napAtariRegShrnuti(String json) {
+            // Kratky, citelny radek z JSON odpovedi jadra - PC/DMACTL/
+            // DLIST/PORTB/snimku/JAM. Zadne hadani, primo z jadra.
+            try {
+                java.util.regex.Matcher m;
+                StringBuilder sb = new StringBuilder();
+                String[][] pole = {{"pc","PC"},{"dmactl","DMACTL"},{"dlist","DLIST"},
+                        {"portb","PORTB"},{"snimku","snimku"}};
+                for (String[] pp : pole) {
+                    m = java.util.regex.Pattern.compile("\"" + pp[0] + "\":(-?\\d+)").matcher(json);
+                    if (m.find()) sb.append(pp[1]).append('=').append(m.group(1)).append(' ');
+                }
+                m = java.util.regex.Pattern.compile("\"jam\":(true|false)").matcher(json);
+                if (m.find() && "true".equals(m.group(1))) sb.append("*** JAM/ZASEKNUTO *** ");
+                return sb.toString().trim();
+            } catch (Throwable t) { return "(nejde precist stav: " + t.getMessage() + ")"; }
+        }
         @JavascriptInterface public String atariBoot() {
             String r = NativeAtariCoreBridge.bootSafe(600);
-            appendNativeLog("BUILD2SA18 ATARI_BOOT " + r);
+            appendNativeLog("BUILD2SB49 ATARI_AKCE=BOOT " + napAtariRegShrnuti(r));
             return r;
         }
         @JavascriptInterface public String atariDoSelfTestu() {
@@ -4069,13 +4093,19 @@ public class MainActivity extends Activity {
                 NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode(c), 8);
             NativeAtariCoreBridge.runSafe(400);
             String r = NativeAtariCoreBridge.screenSafe();
-            String hlava = r.length() > 200 ? r.substring(0, 200) : r;
-            appendNativeLog("BUILD2SA18 ATARI_SELFTEST_VSTUP " + hlava);
+            appendNativeLog("BUILD2SB49 ATARI_AKCE=NAPSANO_BYE " + napAtariRegShrnuti(r));
             return r;
         }
         @JavascriptInterface public String atariObraz(int snimku) {
             if (snimku > 0) NativeAtariCoreBridge.runSafe(snimku);
-            return NativeAtariCoreBridge.screenSafe();
+            String r = NativeAtariCoreBridge.screenSafe();
+            // BUILD2SB49: obraz(N) se ted vola i z prubezne smycky (mnohokrat
+            // za vterinu) - logovat KAZDE volani by log zahltilo. Logujeme
+            // jen kdyz JADRO ZASEKLO (jam=true) - to je vzdy dulezite vedet.
+            if (r != null && r.contains("\"jam\":true")) {
+                appendNativeLog("BUILD2SB49 ATARI_AKCE=BEZI(zaseklo) " + napAtariRegShrnuti(r));
+            }
+            return r;
         }
         @JavascriptInterface public String atariKonzole(String ktera) {
             int maska = 7;
@@ -4084,8 +4114,23 @@ public class MainActivity extends Activity {
             if ("option".equals(ktera)) maska = 3;   // bit2 dolu
             NativeAtariCoreBridge.consolSafe(maska, 12);
             NativeAtariCoreBridge.runSafe(30);
-            appendNativeLog("BUILD2SA18 ATARI_KONZOLE " + ktera);
-            return NativeAtariCoreBridge.screenSafe();
+            String r = NativeAtariCoreBridge.screenSafe();
+            appendNativeLog("BUILD2SB49 ATARI_AKCE=KONZOLE:" + ktera + " " + napAtariRegShrnuti(r));
+            return r;
+        }
+        /** BUILD2SB49: HELP - na 130XE klavesnicova matice, ne konzole. */
+        @JavascriptInterface public String atariHelp() {
+            NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.KBCODE_HELP, 12);
+            NativeAtariCoreBridge.runSafe(30);
+            String r = NativeAtariCoreBridge.screenSafe();
+            appendNativeLog("BUILD2SB49 ATARI_AKCE=KLAVESA:HELP " + napAtariRegShrnuti(r));
+            return r;
+        }
+        /** BUILD2SB49: volna poznamka od Reneho primo do stejneho logu. */
+        @JavascriptInterface public void atariPoznamka(String text) {
+            String bezp = text == null ? "" : text.replace('\n', ' ').trim();
+            if (bezp.isEmpty()) return;
+            appendNativeLog("BUILD2SB49 ATARI_POZNAMKA_RENE: " + bezp);
         }
 
         /** Vysledek jednoho kroku testu. Rene klepne, ja to mam v logu. */
