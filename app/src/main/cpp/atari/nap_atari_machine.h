@@ -18,6 +18,7 @@
 #include "nap_atari_cpu.h"
 #include "nap_atari_mem.h"
 #include "nap_atari_video.h"
+#include "nap_atari_pokey.h"
 
 namespace nap {
 
@@ -49,6 +50,14 @@ struct Machine {
   int serStav = 0;         // 0 klid, 1 bajt se posouva, 2 posunuty, ceka se na dalsi
   int serOdpocet = 0;
   uint32_t rngState = 0x2A5C1D7B;
+
+  // BUILD2SB52: POKEY zvuk (FAZE 1) - viz nap_atari_pokey.h pro
+  // generovani vzorku. Tady jen registry, presne jak je cte/zapisuje
+  // ROM (AUDF1,AUDC1,AUDF2,AUDC2,AUDF3,AUDC3,AUDF4,AUDC4,AUDCTL).
+  int audf[4] = {0,0,0,0};
+  int audc[4] = {0,0,0,0};
+  int audctl = 0;
+  PokeyAudioState pokeyAudio;
 
   const uint8_t *osRom = nullptr;
   const uint8_t *basRom = nullptr;
@@ -162,6 +171,22 @@ struct Machine {
     }
     if (page == 0xD200) {                       // POKEY
       const int r = a & 0x0F;
+      // BUILD2SB52: AUDF1,AUDC1,AUDF2,AUDC2,AUDF3,AUDC3,AUDF4,AUDC4 -
+      // presne stejne rozlozeni jako v JS referenci ("if(p<=0x07){
+      // if(p&1) audc[p>>1]=v; else audf[p>>1]=v;}").
+      if (r <= 0x07) {
+        if (r & 1) audc[r >> 1] = v & 0xFF;
+        else       audf[r >> 1] = v & 0xFF;
+        return;
+      }
+      if (r == 0x08) { audctl = v & 0xFF; return; }   // AUDCTL
+      if (r == 0x09) {                                // STIMER - viz JS "timersReload()"
+        // BUILD2SB52: FAZE 1 se soustredi na zvuk, ne na POKEY casovace
+        // 1/2/4 (ty uz castecne resi jina cast IRQ logiky vyse) - STIMER
+        // navic podle reference vynuluje i vystupni citadla kanalu.
+        cnt0Reset();
+        return;
+      }
       if (r == 0x0D) {                          // SEROUT
         // POKEY hlasi DVE ruzne veci a NE naraz:
         //   bit4 = "posunul jsem bajt, dej dalsi"
@@ -221,6 +246,23 @@ struct Machine {
 
   void obnovIrq() {
     cpu.c.irqLine = (((~irqst) & irqen) & 0xFF) ? 1 : 0;
+  }
+
+  // BUILD2SB52: STIMER (zapis do $D209) na skutecnem POKEY vynuluje
+  // vystupni citadla vsech kanalu - bez tohohle by po STIMER hrál
+  // kazdy ton s nahodnou fazi misto od zacatku.
+  void cnt0Reset() {
+    pokeyAudio.cnt[0] = pokeyAudio.cnt[1] = pokeyAudio.cnt[2] = pokeyAudio.cnt[3] = 0;
+  }
+
+  // BUILD2SB52: vygeneruje 'n' vzorku zvuku (mono float, -1..1) z
+  // AKTUALNIHO stavu registru - viz nap_atari_pokey.h pro cely
+  // algoritmus (preklad z JS reference).
+  void genAudio(float *out, int n, double sampleRateHz) {
+    // 1773447 Hz - presne stejna konstanta jako v JS referenci
+    // ("CPS=1773447/ac.sampleRate", komentar tam "cyklu na vzorek (PAL)").
+    const double cyklu_na_vzorek = 1773447.0 / sampleRateHz;
+    nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out, n, cyklu_na_vzorek);
   }
 
   /** Stisk klavesy: OS ji prevezme pres preruseni z POKEY. */

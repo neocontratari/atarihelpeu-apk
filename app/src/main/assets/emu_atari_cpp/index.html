@@ -58,6 +58,10 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
      presne to, co ty." Prubezne vykreslovani (misto jen statickych
      snimku po kliku) + volna poznamka do stejneho logu. -->
 <button id="btnZive" type="button" style="background:#1e5c33">▶ SPUSTIT ŽIVĚ (jako skutečné Atari)</button>
+<!-- BUILD2SB52: POKEY zvuk (FAZE 1) - precte AKTUALNI stav registru,
+     vygeneruje zvuk a prehraje ho primo v prohlizeci pres Web Audio API.
+     Zadne predstirani - je to skutecny vystup z jadra. -->
+<button id="btnZvuk" type="button" style="background:#5c3d1e">🔊 PŘEHRÁT ZVUK (2 s, aktuální POKEY registry)</button>
 <div class="btny" style="margin-bottom:6px">
   <input id="poznamkaText" type="text" placeholder="Co teď testuješ? (např. OPTION -> SOUND TEST)"
          style="flex:1;padding:11px;font-size:14px;border-radius:8px;border:1px solid #262931;background:#0f1013;color:#dfe3e8">
@@ -268,6 +272,36 @@ $('btnZive').addEventListener('click',function(){
     if(zivaTimer)clearTimeout(zivaTimer);
     obnovLog();
   }
+});
+/* BUILD2SB52: POKEY zvuk (FAZE 1). Precte skutecny vygenerovany zvuk
+   z jadra (base64 PCM16, 44100 Hz mono) a prehraje ho pres Web Audio
+   API - zadne predstirani, je to presne to, co by hralo repro. */
+var zvukCtx=null;
+function prehrajPcm16(b64, sr){
+  try{
+    if(!zvukCtx){ var AC=window.AudioContext||window.webkitAudioContext; zvukCtx=new AC(); }
+    if(zvukCtx.state==='suspended') zvukCtx.resume();
+    var bin=atob(b64), n=bin.length/2;
+    var buf=zvukCtx.createBuffer(1, n, sr);
+    var ch=buf.getChannelData(0);
+    for(var i=0,p=0;i<n;i++,p+=2){
+      var lo=bin.charCodeAt(p), hi=bin.charCodeAt(p+1);
+      var v=(hi<<8)|lo; if(v>=32768)v-=65536;
+      ch[i]=v/32768;
+    }
+    var src=zvukCtx.createBufferSource();
+    src.buffer=buf; src.connect(zvukCtx.destination); src.start();
+  }catch(e){ try{AHATARICPP.atariPoznamka('ZVUK_PREHRANI_CHYBA '+(e&&e.message));}catch(_e){} obnovLog(); }
+}
+$('btnZvuk').addEventListener('click',function(){
+  var j=volej('atariAudio',100);
+  if(j.chyba){ try{AHATARICPP.atariPoznamka('ZVUK chyba='+j.chyba);}catch(_e){} obnovLog(); return; }
+  var stav='AUDF='+JSON.stringify(j.audf)+' AUDC='+JSON.stringify(j.audc)
+    +' AUDCTL='+j.audctl+' spicka='+j.spicka.toFixed(3)+' rms='+j.rms.toFixed(3);
+  $('stavAtari').textContent=stav;
+  if(j.spicka<0.001){ try{AHATARICPP.atariPoznamka('ZVUK_POZNAMKA vsechny kanaly ticho (AUDC hlasitost=0, nebo self-test zrovna zvuk nehraje)');}catch(_e){} }
+  prehrajPcm16(j.pcm16, j.sr);
+  obnovLog();
 });
 
 function nactiCesty(){

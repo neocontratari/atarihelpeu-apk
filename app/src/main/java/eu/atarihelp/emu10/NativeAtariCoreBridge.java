@@ -50,6 +50,9 @@ public final class NativeAtariCoreBridge {
     private static native void   consolNative(int maska, int snimku);
     private static native void   runNative(int snimku);
     private static native String screenNative();
+    // BUILD2SB52: POKEY zvuk (FAZE 1) - vraci JSON s base64 PCM16 (44100 Hz,
+    // mono) + statistikou (spicka/RMS) z AKTUALNIHO stavu registru.
+    private static native String audioNative(int snimku);
 
     /** KBCODE pro pismena a RETURN - potrebne, aby slo napsat BYE. */
     public static int kbcode(char c) {
@@ -89,6 +92,13 @@ public final class NativeAtariCoreBridge {
     public static String screenSafe() {
         if (!loaded) return "{\"chyba\":\"knihovna napatari se nenacetla\"}";
         try { String r = screenNative(); return r == null ? "{\"chyba\":\"nic\"}" : r; }
+        catch (Throwable t) { return "{\"chyba\":\"" + String.valueOf(t.getMessage()).replace('"','\'') + "\"}"; }
+    }
+
+    /** BUILD2SB52: POKEY zvuk - stejny bezpecny vzor jako screenSafe. */
+    public static String audioSafe(int snimku) {
+        if (!loaded) return "{\"chyba\":\"knihovna napatari se nenacetla\"}";
+        try { String r = audioNative(snimku); return r == null ? "{\"chyba\":\"nic\"}" : r; }
         catch (Throwable t) { return "{\"chyba\":\"" + String.valueOf(t.getMessage()).replace('"','\'') + "\"}"; }
     }
 

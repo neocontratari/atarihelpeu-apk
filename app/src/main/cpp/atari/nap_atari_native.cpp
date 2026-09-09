@@ -18,7 +18,9 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <cmath>
 #include <map>
+#include <vector>
 #include <string>
 #include "nap_atari_cpu.h"
 #include "nap_atari_mem.h"
@@ -290,5 +292,55 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_screenNative(JNIEnv *env, jclass) 
     + ",\"snimku\":" + std::to_string(g_stroj->frame)
     + ",\"jam\":" + std::string(g_stroj->cpu.c.jam ? "true" : "false")
     + ",\"rgb\":\"" + b64 + "\"}";
+  return env->NewStringUTF(out.c_str());
+}
+
+// BUILD2SB52: POKEY zvuk (FAZE 1). Vygeneruje 'snimku'*(SR/50) vzorku
+// (44100 Hz, mono, 16bit) z AKTUALNIHO stavu registru - viz
+// nap_atari_pokey.h pro cely algoritmus. Vraci base64 PCM16 + statistiku
+// (spicka, RMS) primo v JSON, aby se dalo overit i bez prehravani zvuku.
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioNative(JNIEnv *env, jclass, jint snimku) {
+  if (!g_stroj) return env->NewStringUTF("{\"chyba\":\"stroj nebezi\"}");
+  const double SR = 44100.0;
+  const int n = (int)((double)(snimku > 0 ? snimku : 1) * (SR / 50.0));
+  std::vector<float> tmp(n);
+  g_stroj->genAudio(tmp.data(), n, SR);
+
+  double soucetCtverecu = 0.0, spicka = 0.0;
+  std::string raw; raw.reserve((size_t)n * 2);
+  for (int i = 0; i < n; i++) {
+    float f = tmp[i];
+    if (f > 1.0f) f = 1.0f; else if (f < -1.0f) f = -1.0f;
+    double af = std::fabs((double)f);
+    if (af > spicka) spicka = af;
+    soucetCtverecu += (double)f * (double)f;
+    int16_t v = (int16_t)std::lround(f * 32767.0);
+    raw.push_back((char)(v & 0xFF));
+    raw.push_back((char)((v >> 8) & 0xFF));
+  }
+  double rms = n > 0 ? std::sqrt(soucetCtverecu / n) : 0.0;
+
+  std::string b64; b64.reserve((raw.size() + 2) / 3 * 4);
+  for (size_t i = 0; i < raw.size(); i += 3) {
+    const unsigned a0 = (unsigned char)raw[i];
+    const unsigned a1 = (i + 1 < raw.size()) ? (unsigned char)raw[i + 1] : 0;
+    const unsigned a2 = (i + 2 < raw.size()) ? (unsigned char)raw[i + 2] : 0;
+    const unsigned t = (a0 << 16) | (a1 << 8) | a2;
+    b64.push_back(B64[(t >> 18) & 63]); b64.push_back(B64[(t >> 12) & 63]);
+    b64.push_back((i + 1 < raw.size()) ? B64[(t >> 6) & 63] : '=');
+    b64.push_back((i + 2 < raw.size()) ? B64[t & 63] : '=');
+  }
+  char stat[192];
+  snprintf(stat, sizeof(stat), "\"vzorku\":%d,\"sr\":44100,\"spicka\":%.4f,\"rms\":%.4f,"
+           "\"audf\":[%d,%d,%d,%d],\"audc\":[%d,%d,%d,%d],\"audctl\":%d",
+           n, spicka, rms,
+           g_stroj->audf[0], g_stroj->audf[1], g_stroj->audf[2], g_stroj->audf[3],
+           g_stroj->audc[0], g_stroj->audc[1], g_stroj->audc[2], g_stroj->audc[3],
+           g_stroj->audctl);
+  std::string out = std::string("{") + stat + ",\"pcm16\":\"" + b64 + "\"}";
+  ALOG("BUILD2SB52 ATARI_AUDIO vzorku=%d spicka=%.4f rms=%.4f audf=[%d,%d,%d,%d] audc=[%d,%d,%d,%d] audctl=%d",
+       n, spicka, rms, g_stroj->audf[0], g_stroj->audf[1], g_stroj->audf[2], g_stroj->audf[3],
+       g_stroj->audc[0], g_stroj->audc[1], g_stroj->audc[2], g_stroj->audc[3], g_stroj->audctl);
   return env->NewStringUTF(out.c_str());
 }

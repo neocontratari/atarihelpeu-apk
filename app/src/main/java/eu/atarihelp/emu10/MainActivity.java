@@ -4044,7 +4044,7 @@ public class MainActivity extends Activity {
                 synchronized (nativeLog) { cely = nativeLog.toString(); }
                 StringBuilder sb = new StringBuilder();
                 for (String r : cely.split("\n")) {
-                    if (r.contains("BUILD2SA14") || r.contains("BUILD2SB49") || r.contains("VERZE APKY")
+                    if (r.contains("BUILD2SA14") || r.contains("BUILD2SB49") || r.contains("BUILD2SB52") || r.contains("VERZE APKY")
                             || r.contains("napatari") || r.contains("ATARI_CPP")) {
                         sb.append(r).append('\n');
                     }
@@ -4131,6 +4131,19 @@ public class MainActivity extends Activity {
             String bezp = text == null ? "" : text.replace('\n', ' ').trim();
             if (bezp.isEmpty()) return;
             appendNativeLog("BUILD2SB49 ATARI_POZNAMKA_RENE: " + bezp);
+        }
+        /** BUILD2SB52: POKEY zvuk (FAZE 1) - vraci JSON s base64 PCM16 pro
+         *  prehrani v JS + statistikou. Loguje se jen statistika (bez
+         *  velkeho base64 nakladu), at log zustane citelny. */
+        @JavascriptInterface public String atariAudio(int snimku) {
+            String r = NativeAtariCoreBridge.audioSafe(snimku);
+            String bezPcm = r;
+            try {
+                int i = r.indexOf("\"pcm16\"");
+                if (i > 0) bezPcm = r.substring(0, i) + "...}";
+            } catch (Throwable ignored) {}
+            appendNativeLog("BUILD2SB52 ATARI_AKCE=ZVUK " + bezPcm);
+            return r;
         }
 
         /** Vysledek jednoho kroku testu. Rene klepne, ja to mam v logu. */

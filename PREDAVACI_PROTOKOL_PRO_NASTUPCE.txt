@@ -779,6 +779,35 @@
      fungujicich tlacitek na uvodni obrazovce - ten zustal zcela
      nedotceny. Zadna zmena ukladaciho mechanismu/cesty/formatu.
 
+   B248: Rene otestoval Atari C++ (log potvrdil vse OK, self-test
+     dosahl skutecne ROM diagnostiky, kontrolni soucet sedi, mips=54.87
+     realtimeX=30.9 - jadro NENI pomale, dojem pomalosti byl z omezene
+     90ms testovaci smycky, ne z jadra). Mimochodem (Sega, ne Atari):
+     "SAVE/LOAD GAME nejsou behem hrani videt." Posunuty vys (bottom
+     1.8/2.3vh -> 3.2/3.7vh) + vyrazne silnejsi barevne okraje (SAVE
+     zelena, LOAD zlata, 2.5px/85% krytí misto 1.5px/32%). Ciste CSS,
+     zadna JS zmena.
+
+   B249: FAZE 1 z Atari planu - POKEY zvuk. Presny preklad z JS
+     reference (poly4/5/9/17, AUDCTL bity, vzorec periody, DC-blocker)
+     do noveho nap_atari_pokey.h. DULEZITY ARCHITEKTONICKY ROZDIL OD
+     REFERENCE: JS generuje async (fronta udalosti pro vzorkove presne
+     casovani), C++ generuje SYNCHRONNE (cte aktualni registry, stejny
+     vzor jako video pres runFrame()) - pro self-test staci, pro
+     hudbu/efekty v pozdejsich fazich mozna bude nutne frontu doplnit
+     (poznamenano v komentari primo v kodu). OVERENO SKUTECNOU
+     KOMPILACI A BEHEM (izolovany test proti realnemu Machine, 5
+     kontrol vc. frekvence presne na 0.4% podle vzorce) + cely
+     nap_atari_native.cpp zkompilovan s JNI stubem. Nova funkce
+     audioNative() (PCM16+statistika), Java audioSafe()+atariAudio(),
+     JS tlacitko "PREHRAT ZVUK" prehraje skutecny zvuk pres Web Audio
+     API. POUCKA: pri kontrole zavorek v MainActivity.java narazil
+     naivni pocitac znaku na FALESNY POPLACH kvuli '}' UVNITR
+     retezcoveho literalu (napr. "...}") - napsan chytrejsi kontrolor
+     (preskakuje retezce/komentare), ktery by se mel pouzivat misto
+     prosteho .count('{')/.count('}') VZDY, kdyz novy kod obsahuje
+     '{' nebo '}' v textovem retezci.
+
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
      patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most

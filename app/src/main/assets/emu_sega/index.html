@@ -197,7 +197,7 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
     56vh) - ted uprostred dole, mezi D-padem (vlevo) a sloupcem A/B/C
     (vpravo), zarovnane na stejnou spodni hranu (bottom:1.8vh) jako
     ony - viditelne mezi nimi, nic neprekryva. */
- #btnStart{display:flex!important;align-items:center;justify-content:center;pointer-events:auto!important;left:50%;right:auto;top:auto;bottom:1.8vh;transform:translateX(-50%);width:11vw;height:5vh;border-radius:999px;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.28),rgba(50,150,235,.16) 40%,rgba(4,16,34,.38) 80%);border:2px solid rgba(165,225,255,.38);box-shadow:0 0 14px rgba(0,140,255,.26),inset 0 0 12px rgba(0,0,0,.32);opacity:.6;}
+ #btnStart{display:flex!important;align-items:center;justify-content:center;pointer-events:auto!important;left:50%;right:auto;top:auto;bottom:3.2vh;transform:translateX(-50%);width:11vw;height:5vh;border-radius:999px;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.28),rgba(50,150,235,.16) 40%,rgba(4,16,34,.38) 80%);border:2px solid rgba(165,225,255,.38);box-shadow:0 0 14px rgba(0,140,255,.26),inset 0 0 12px rgba(0,0,0,.32);opacity:.6;}
  #btnStart:before{content:"START";font:900 1.55vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 6px #000,0 0 10px rgba(0,180,255,.55);letter-spacing:.05em;}
  #btnStart.on{opacity:1;border-color:rgba(255,240,180,.85);background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.4),rgba(230,170,60,.28) 40%,rgba(60,30,4,.4) 80%);box-shadow:0 0 20px rgba(255,190,60,.5),inset 0 0 12px rgba(0,0,0,.28);}
  /* BUILD2SB39: Rene - "to ukladani bych dal viditelne jako tlacitka
@@ -207,12 +207,19 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
     dve dalsi po stranach). Bezpecna mezera spocitana od stredu -
     zadny prekryv s D-padem (konci kolem 1.8vw+43vh) ani sloupcem
     A/B/C (zacina kolem 2.2vw+17.5vh od prava). */
- #segaBottomSave,#segaBottomLoad{display:flex!important;align-items:center;justify-content:center;pointer-events:auto!important;top:auto;bottom:2.3vh;width:9vw;height:4.2vh;border-radius:999px;font-size:0!important;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.22),rgba(50,150,235,.14) 40%,rgba(4,16,34,.34) 80%);border:1.5px solid rgba(165,225,255,.32);box-shadow:0 0 10px rgba(0,140,255,.2),inset 0 0 10px rgba(0,0,0,.28);opacity:.55;}
- #segaBottomSave{left:calc(50% - 16vw);right:auto;}
- #segaBottomLoad{left:calc(50% + 7vw);right:auto;}
- #segaBottomSave:before{content:"SAVE";font:900 1.35vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 6px #000,0 0 9px rgba(0,180,255,.5);letter-spacing:.04em;}
- #segaBottomLoad:before{content:"LOAD GAME";font:900 1.15vh/1 Arial,sans-serif;color:rgba(240,250,255,.72);text-shadow:0 0 6px #000,0 0 9px rgba(0,180,255,.5);letter-spacing:.02em;}
- #segaBottomSave:active,#segaBottomLoad:active{opacity:1;border-color:rgba(255,240,180,.85);}
+ /* BUILD2SB51: Rene - "posun trosicku vys a save/load nejsou vidy videt
+    behem hrani." Zvednuto vys (bottom 2.3vh->3.7vh, stejny odstup od
+    START jako drive) a barevne okraje vyrazne zesileny (silnejsi cara,
+    vyssi krytí, zretelna zarivka) - navic kazde jinou barvou (SAVE
+    zelena, LOAD zlata), at jsou od sebe i od START na prvni pohled
+    rozeznatelna i uprostred pestre hry v pozadi, ne jen tenka temer
+    neviditelna modra jako drive. */
+ #segaBottomSave,#segaBottomLoad{display:flex!important;align-items:center;justify-content:center;pointer-events:auto!important;top:auto;bottom:3.7vh;width:9vw;height:4.4vh;border-radius:999px;font-size:0!important;opacity:.85;}
+ #segaBottomSave{left:calc(50% - 16vw);right:auto;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.3),rgba(50,190,110,.22) 40%,rgba(4,26,14,.5) 80%);border:2.5px solid rgba(140,240,150,.85);box-shadow:0 0 14px rgba(60,220,110,.5),inset 0 0 10px rgba(0,0,0,.3);}
+ #segaBottomLoad{left:calc(50% + 7vw);right:auto;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.3),rgba(230,175,50,.22) 40%,rgba(30,20,4,.5) 80%);border:2.5px solid rgba(255,214,110,.85);box-shadow:0 0 14px rgba(255,190,50,.5),inset 0 0 10px rgba(0,0,0,.3);}
+ #segaBottomSave:before{content:"SAVE";font:900 1.35vh/1 Arial,sans-serif;color:rgba(245,255,248,.92);text-shadow:0 0 6px #000,0 0 9px rgba(60,220,110,.65);letter-spacing:.04em;}
+ #segaBottomLoad:before{content:"LOAD GAME";font:900 1.15vh/1 Arial,sans-serif;color:rgba(255,250,240,.92);text-shadow:0 0 6px #000,0 0 9px rgba(255,190,50,.65);letter-spacing:.02em;}
+ #segaBottomSave:active,#segaBottomLoad:active{opacity:1;border-color:#fff;}
  /* BUILD2RV: no top labels over mobile game. Invisible hit zones only; C++ CORE removed. */
  #btnCollection{left:1.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
  #btnSaves{left:12.0vw;top:1.2vh;width:10.5vw;height:7.0vh;}
