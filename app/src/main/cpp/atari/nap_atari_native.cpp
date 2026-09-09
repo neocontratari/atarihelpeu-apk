@@ -304,6 +304,14 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioNative(JNIEnv *env, jclass, j
   if (!g_stroj) return env->NewStringUTF("{\"chyba\":\"stroj nebezi\"}");
   const double SR = 44100.0;
   const int n = (int)((double)(snimku > 0 ? snimku : 1) * (SR / 50.0));
+  // BUILD2SB53: kazdy stisk tlacitka ZVUK na testovaci strance je
+  // NEZAVISLY snimek "co se deje PRAVE TED", ne pokracovani predchoziho
+  // (na rozdil od skutecneho prubezneho prehravani, ktere prijde
+  // pozdeji). Bez vynulovani stavu generatoru pred kazdym volanim
+  // zustava v DC-blockeru (a citadlech) zbytek z PREDCHOZIHO, casove
+  // uplne nesouvisejiciho stisku - v logu se pak objevi maly "dozvuk"
+  // i kdyz jsou vsechny kanaly UZ ticho, coz zbytecne plete diagnostiku.
+  g_stroj->pokeyAudio = nap::PokeyAudioState();
   std::vector<float> tmp(n);
   g_stroj->genAudio(tmp.data(), n, SR);
 

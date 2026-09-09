@@ -808,6 +808,23 @@
      prosteho .count('{')/.count('}') VZDY, kdyz novy kod obsahuje
      '{' nebo '}' v textovem retezci.
 
+   B250: Rene: "se pokey mas problemy, zvuk nefunguje." DULEZITA
+     POUCKA - log NEUKAZAL problem v generovani (17:28:30 dokazal
+     spravny, smysluplny nenulovy zaznam - spicka=0.1333, AUDF=60,
+     AUDC=168=cisty ton hlasitost 8), takze diagnoza spravne smerovala
+     na PREHRAVANI, ne na POKEY algoritmus samotny - presny opak
+     hadani, presne diky tomu, ze uz B249 logovala statistiku
+     generovani. Chybelo ale logovani PREHRAVANI (stav AudioContext,
+     jestli resume() uspel, jestli start() probehl) - to hlavni
+     prilepseni. Druhe: vol/60 vzorec POKEY dava jen max ~0.25 hlasitost
+     - pridan GainNode 4x JEN pro prehravani (cisla v logu zustavaji
+     hardwarove presna). VEDLEJSI NALEZ pri psani rozsireneho testu:
+     zbytkovy dozvuk DC-blockeru mezi nesouvisejicimi stisky tlacitka -
+     pridan reset generatoroveho stavu na zacatku audioNative(). PRI
+     PSANI TESTU JSEM NARAZIL NA CHYBU VE SVEM VLASTNIM TESTU (zapomenuty
+     kanal z predchoziho testu) - chyceno a opraveno pred tim, nez jsem
+     cokoli prohlasil za hotove - presne tak, jak se to ma delat.
+
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
      patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most

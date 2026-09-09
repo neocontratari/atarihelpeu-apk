@@ -277,10 +277,15 @@ $('btnZive').addEventListener('click',function(){
    z jadra (base64 PCM16, 44100 Hz mono) a prehraje ho pres Web Audio
    API - zadne predstirani, je to presne to, co by hralo repro. */
 var zvukCtx=null;
+function napPoznamka(t){ try{AHATARICPP.atariPoznamka(t);}catch(_e){} }
 function prehrajPcm16(b64, sr){
   try{
-    if(!zvukCtx){ var AC=window.AudioContext||window.webkitAudioContext; zvukCtx=new AC(); }
-    if(zvukCtx.state==='suspended') zvukCtx.resume();
+    if(!zvukCtx){
+      var AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC){ napPoznamka('ZVUK_PREHRANI_CHYBA AudioContext neni v tomhle WebView k dispozici'); obnovLog(); return; }
+      zvukCtx=new AC();
+    }
+    var stavPred=zvukCtx.state;
     var bin=atob(b64), n=bin.length/2;
     var buf=zvukCtx.createBuffer(1, n, sr);
     var ch=buf.getChannelData(0);
@@ -290,16 +295,46 @@ function prehrajPcm16(b64, sr){
       ch[i]=v/32768;
     }
     var src=zvukCtx.createBufferSource();
-    src.buffer=buf; src.connect(zvukCtx.destination); src.start();
-  }catch(e){ try{AHATARICPP.atariPoznamka('ZVUK_PREHRANI_CHYBA '+(e&&e.message));}catch(_e){} obnovLog(); }
+    // BUILD2SB53: Rene - "zvuk dle me nefunguje." Log ukazal, ze
+    // generovani FUNGUJE (17:28:30 spicka=0.1333) - podezreni padlo na
+    // (a) AudioContext "suspended" na Androidu (znamy problem, ktery uz
+    // resila i JS reference - "BUILD2KF") a (b) hlasitost je z principu
+    // tiche (vol/60 v POKEY vzorci znamena max cca 0.25, u tohohle
+    // konkretniho zaznamu jen 0.133) - lehce prehlednutelne na malem
+    // repro telefonu. Pridan GainNode (zesileni x4, jen pro PREHRAVANI -
+    // cisla ve statistice/logu zustavaji nezmenena, hardwarove presna)
+    // + podrobne logovani stavu AudioContext PRED/PO resume a potvrzeni
+    // ze prehravani doopravdy zacalo/skoncilo - at priste nemusim hadat,
+    // jestli je problem v generovani, nebo v prehravani.
+    var gain=zvukCtx.createGain(); gain.gain.value=4.0;
+    src.buffer=buf; src.connect(gain); gain.connect(zvukCtx.destination);
+    var hotovo=false;
+    src.onended=function(){ hotovo=true; napPoznamka('ZVUK_PREHRANI_KONEC doehralo=true delkaS='+(n/sr).toFixed(2)); obnovLog(); };
+    function spustit(){
+      try{
+        src.start();
+        napPoznamka('ZVUK_PREHRANI_START stavPred='+stavPred+' stavPo='+zvukCtx.state+' vzorku='+n+' sr='+sr+' zesileni=4x');
+      }catch(e2){ napPoznamka('ZVUK_PREHRANI_START_CHYBA '+(e2&&e2.message)); }
+      obnovLog();
+    }
+    if(zvukCtx.state==='suspended'){
+      napPoznamka('ZVUK_KONTEXT_BYL_USPANY - volam resume()...');
+      zvukCtx.resume().then(spustit).catch(function(e3){
+        napPoznamka('ZVUK_RESUME_CHYBA '+(e3&&e3.message)+' - zkousim prehrat i tak');
+        spustit();
+      });
+    } else {
+      spustit();
+    }
+  }catch(e){ napPoznamka('ZVUK_PREHRANI_CHYBA '+(e&&e.message)); obnovLog(); }
 }
 $('btnZvuk').addEventListener('click',function(){
   var j=volej('atariAudio',100);
-  if(j.chyba){ try{AHATARICPP.atariPoznamka('ZVUK chyba='+j.chyba);}catch(_e){} obnovLog(); return; }
+  if(j.chyba){ napPoznamka('ZVUK chyba='+j.chyba); obnovLog(); return; }
   var stav='AUDF='+JSON.stringify(j.audf)+' AUDC='+JSON.stringify(j.audc)
     +' AUDCTL='+j.audctl+' spicka='+j.spicka.toFixed(3)+' rms='+j.rms.toFixed(3);
   $('stavAtari').textContent=stav;
-  if(j.spicka<0.001){ try{AHATARICPP.atariPoznamka('ZVUK_POZNAMKA vsechny kanaly ticho (AUDC hlasitost=0, nebo self-test zrovna zvuk nehraje)');}catch(_e){} }
+  if(j.spicka<0.001){ napPoznamka('ZVUK_POZNAMKA vsechny kanaly ticho (AUDC hlasitost=0, nebo self-test zrovna zvuk nehraje)'); }
   prehrajPcm16(j.pcm16, j.sr);
   obnovLog();
 });
