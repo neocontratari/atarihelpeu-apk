@@ -74,6 +74,10 @@ struct PokeyAudioState {
     int out[4] = {0,0,0,0};
     unsigned p4 = 0, p5 = 0, p9 = 0, p17 = 0;
     double dcx = 0.0, dcy = 0.0;
+    // BUILD2SB56: GTIA "klik reproduktoru" (CONSOL bit3) - presne
+    // stejna dvojice jako v JS referenci (st.spkLevel/st.spkDecay).
+    int spkLevel = 0;
+    long spkDecay = 0;
 };
 
 // BUILD2SB52: vygeneruje 'n' vzorku (mono, -1..1 jako float) z AKTUALNIHO
@@ -124,6 +128,13 @@ inline void pokeyGenSamples(const int audf[4], const int audc[4], int audctl,
             }
             s += st.out[ch] ? (vol / 60.0) : 0.0;
         }
+
+        // BUILD2SB56: GTIA klik reproduktoru - presne stejny vzorec
+        // jako reference ("if(st.spkDecay>0){st.spkDecay--; s+=st.spkLevel*0.25;}").
+        // Kratky napet'ovy skok (~4ms), ne skutecny tón - to je presne
+        // to "klap", co dela realne Atari behem bootu a co appce
+        // chybelo.
+        if (st.spkDecay > 0) { st.spkDecay--; s += st.spkLevel * 0.25; }
 
         // DC-blocker (stejny vzorec jako reference: y[n] = x[n]-x[n-1]+0.995*y[n-1])
         double dcout = s - st.dcx + 0.995 * st.dcy;

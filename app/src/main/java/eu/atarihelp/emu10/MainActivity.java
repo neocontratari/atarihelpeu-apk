@@ -4096,6 +4096,24 @@ public class MainActivity extends Activity {
             appendNativeLog("BUILD2SB49 ATARI_AKCE=NAPSANO_BYE " + napAtariRegShrnuti(r));
             return r;
         }
+        // BUILD2SB58: Rene - "po napsani CSAVE/CLOAD a odmacknuti RETURN
+        // Atari udela specificky potvrzovaci zvuk (tu tu), driv nez
+        // kazetak vubec neco dela - je to jen dalsi zapis do POKEY, ktery
+        // uz mame overene funkcni (self-test)." Cela abeceda uz v
+        // kbcode() byla hotova (jen se predtim vyuzivala jen pro BYE) -
+        // tady jen obecna moznost napsat COKOLI, ne jen napevno "BYE".
+        @JavascriptInterface public String atariNapisText(String text) {
+            if (text == null) text = "";
+            for (int i = 0; i < text.length(); i++) {
+                int kod = NativeAtariCoreBridge.kbcode(text.charAt(i));
+                if (kod >= 0) NativeAtariCoreBridge.keySafe(kod, 8);
+            }
+            NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode('\n'), 8);
+            NativeAtariCoreBridge.runSafe(60);
+            String r = NativeAtariCoreBridge.screenSafe();
+            appendNativeLog("BUILD2SB58 ATARI_AKCE=NAPSANO_TEXT:" + text + " " + napAtariRegShrnuti(r));
+            return r;
+        }
         @JavascriptInterface public String atariObraz(int snimku) {
             if (snimku > 0) NativeAtariCoreBridge.runSafe(snimku);
             String r = NativeAtariCoreBridge.screenSafe();

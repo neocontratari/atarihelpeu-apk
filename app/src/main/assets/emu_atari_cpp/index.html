@@ -53,6 +53,20 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
 <div class="btny" style="margin-bottom:6px">
   <button id="btnHelpKey" style="background:#2a2d34">HELP</button>
 </div>
+<!-- BUILD2SB58: Rene - "po napsani CSAVE/CLOAD a RETURN Atari udela
+     specificky potvrzovaci zvuk (tu tu), driv nez kazetak vubec neco
+     dela." Tlacitka pro napsani prikazu primo - presne stejny druh
+     akce jako SELECT/START/HELP nahore (skutecna vec, ktera se da
+     zmacknout na realnem stroji), ne testovaci pomucka. -->
+<div class="btny" style="margin-bottom:6px">
+  <button id="btnCsave" style="background:#2a2d34">NAPSAT: CSAVE</button>
+  <button id="btnCload" style="background:#2a2d34">NAPSAT: CLOAD</button>
+</div>
+<div class="btny" style="margin-bottom:6px">
+  <input id="prikazText" type="text" placeholder="Vlastni prikaz (napr. PRINT 1+1)"
+         style="flex:1;padding:11px;font-size:14px;border-radius:8px;border:1px solid #262931;background:#0f1013;color:#dfe3e8">
+  <button id="btnNapisPrikaz" style="width:auto;padding:11px 16px;background:#2a2d34">NAPSAT</button>
+</div>
 <!-- BUILD2SB55: Rene - "zrus pomocna tlacitka zvuku a grafiky. Po
      botovani nabehne okamzite realne atari s opravdovym snimkovanim.
      Po BYE self test - a tam v testu zvuku pobezi zvuk presne tak jak
@@ -248,6 +262,13 @@ $('btnSel').addEventListener('click',function(){ volej('atariKonzole','select');
 $('btnStart').addEventListener('click',function(){ volej('atariKonzole','start'); obnovLog(); });
 $('btnOpt').addEventListener('click',function(){ volej('atariKonzole','option'); obnovLog(); });
 $('btnHelpKey').addEventListener('click',function(){ volej('atariHelp'); obnovLog(); });
+$('btnCsave').addEventListener('click',function(){ volej('atariNapisText','CSAVE'); obnovLog(); });
+$('btnCload').addEventListener('click',function(){ volej('atariNapisText','CLOAD'); obnovLog(); });
+$('btnNapisPrikaz').addEventListener('click',function(){
+  var t=$('prikazText'); if(!t||!t.value.trim())return;
+  volej('atariNapisText',t.value.trim().toUpperCase());
+  t.value=''; obnovLog();
+});
 $('btnPoznamka').addEventListener('click',function(){
   var t=$('poznamkaText'); if(!t||!t.value.trim())return;
   try{ AHATARICPP.atariPoznamka(t.value.trim()); }catch(e){}
@@ -273,18 +294,44 @@ function pripravZvuk(){
   dalsiZvukStart=0;
   return true;
 }
-function zarazZvukovyKousek(b64){
-  if(!zvukCtx || !b64) return;
+// BUILD2SB57: Rene - "do toho cisteho zvuku mas nejaky podzvuk
+// turuturuturu." Pricina: kazdy videosnimek (50x/s) se rovnou
+// planoval JAKO SAMOSTATNY web-audio buffer (882 vzorku, ~20ms) - 50
+// hranic bufferu za vterinu spada presne do slysitelneho pasma a
+// znely jako rychle vrceni/tremolo, i kdyz byl SIGNAL uvnitr spravny
+// (proto "melodie je spravna"). I Reneho vlastni JS reference na to
+// narazila - ma komentar "WebView nestiha 2048 -> chrastim" a pouziva
+// bloky 4096 vzorku. Reseni: MALE kousky (882 vzorku/snimek, spravna
+// granularita pro synchronizaci s obrazem) se ted HROMADI do vetsiho
+// bufferu, a teprve kdyz nahromadeny dosahne >=4096 vzorku (~93ms,
+// stejna velikost jako fungujici reference), naplanuje se JAKO JEDEN
+// web-audio buffer. Hranic bufferu tak klesne z 50/s na ~10/s - pod
+// slysitelnou hranici.
+var zvukHromada=new Float32Array(0);
+var ZVUK_BUFFER_VZORKU=4096; // stejna velikost jako overena JS reference
+function pridejVzorkyDoHromady(b64){
+  if(!b64) return;
+  var bin=atob(b64), n=bin.length/2;
+  if(n<=0) return;
+  var stara=zvukHromada;
+  zvukHromada=new Float32Array(stara.length+n);
+  zvukHromada.set(stara,0);
+  for(var i=0,p=0;i<n;i++,p+=2){
+    var lo=bin.charCodeAt(p), hi=bin.charCodeAt(p+1);
+    var v=(hi<<8)|lo; if(v>=32768)v-=65536;
+    zvukHromada[stara.length+i]=v/32768;
+  }
+  while(zvukHromada.length>=ZVUK_BUFFER_VZORKU){
+    naplanujZvukovyBuffer(zvukHromada.subarray(0,ZVUK_BUFFER_VZORKU));
+    zvukHromada=zvukHromada.slice(ZVUK_BUFFER_VZORKU);
+  }
+}
+function naplanujZvukovyBuffer(vzorky){
+  if(!zvukCtx) return;
   try{
-    var bin=atob(b64), n=bin.length/2;
-    if(n<=0) return;
+    var n=vzorky.length;
     var buf=zvukCtx.createBuffer(1, n, 44100);
-    var ch=buf.getChannelData(0);
-    for(var i=0,p=0;i<n;i++,p+=2){
-      var lo=bin.charCodeAt(p), hi=bin.charCodeAt(p+1);
-      var v=(hi<<8)|lo; if(v>=32768)v-=65536;
-      ch[i]=v/32768;
-    }
+    buf.getChannelData(0).set(vzorky);
     var src=zvukCtx.createBufferSource();
     var gain=zvukCtx.createGain(); gain.gain.value=4.0; // vol/60 vzorec v POKEY dava max ~0.25 - zesileni pro slysitelnost na repro telefonu
     src.buffer=buf; src.connect(gain); gain.connect(zvukCtx.destination);
@@ -292,7 +339,7 @@ function zarazZvukovyKousek(b64){
     if(dalsiZvukStart<ted) dalsiZvukStart=ted; // pozadu (napr. po pauze karty) - srovnat na "ted", nehonit se dozadu
     src.start(dalsiZvukStart);
     dalsiZvukStart+=buf.duration;
-  }catch(e){ napPoznamka('ZVUK_KOUSEK_CHYBA '+(e&&e.message)); }
+  }catch(e){ napPoznamka('ZVUK_BUFFER_CHYBA '+(e&&e.message)); }
 }
 var smyckaBezi=false, posledniCas=null, zbytekCasu=0;
 var SNIMEK_S=1/50; // PAL Atari = presne 50 snimku za vterinu, stejne jako skutecny stroj
@@ -317,7 +364,7 @@ function smyckaTik(ted){
   var kroku=0, posledniObraz=null;
   while(zbytekCasu>=SNIMEK_S && kroku<10){ // strop 10 snimku/tik - i kdyby prohlizec chvili zadrhl, nedohanet donekonecna
     posledniObraz=volej('atariObraz',1); // posune presne 1 snimek A vrati obraz v jednom volani (samostatne runNative pres most neni)
-    if(zvukCtx) zarazZvukovyKousek(volej0('atariAudioChunk',VZORKU_NA_SNIMEK));
+    if(zvukCtx) pridejVzorkyDoHromady(volej0('atariAudioChunk',VZORKU_NA_SNIMEK));
     zbytekCasu-=SNIMEK_S;
     kroku++;
   }

@@ -867,6 +867,48 @@
      joystick/kazeta, mely by jit do TEHOZ tiku smycky, ne dalsi
      samostatne tlacitko.
 
+   B253: Rene potvrdil zaklad ("bezi to rychle jako atari 130xe") a
+     nasel dve konkretni zvukove veci: chybejici boot klik + artefakt
+     "turuturuturu" (pritom vyslovne rekl "melodie je spravne" - cenna
+     informace, ze SIGNAL byl v poradku, jen neco RUSILO poslech).
+     (1) Boot klik: kod uz mel komentar u zapisu do GTIA CONSOL
+     ($D01F bit3) vysvetlujici presne tenhle mechanismus ("OS sem pise
+     KAZDY SNIMEK pro klapnuti reproduktoru") - ale zapis se jen
+     zahazoval. POUCKA: kdyz komentar v kodu uz VYSVETLUJE chybejici
+     chovani, je to jasny navod, co implementovat, ne nova investigace.
+     (2) Turuturuturu: 50 web-audio bufferu/s (1 na kazdy 882-vzorkovy
+     videosnimek) spada do slysitelneho pasma jako tremolo - i JS
+     reference na tohle narazila (komentar "WebView nestiha 2048" ->
+     pouziva bloky 4096). Male kousky se ted HROMADI pred naplanovanim
+     (4096 vzorku najednou, ~10 bufferu/s misto 50). POUCKA PRO
+     NASTUPCE: kdyz uzivatel rekne "spravny signal, ale rusivy
+     artefakt", hledat CASOVANI/GRANULARITU doruceni zvuku, ne
+     algoritmus generovani samotny - a VZDY zkontrolovat, jestli
+     fungujici reference uz na presne tenhle problem nenarazila (byl
+     tam rovnou komentar s hotovym reseni - velikost 4096).
+
+   B254: Rene pred dalsim testem pripomenul VSECHNY atari zvuky (boot,
+     boot bez basicu START+OPTION, CSAVE/CLOAD potvrzovaci "tu tu",
+     klavesnice po kazdem stisku) a rekl "pokud uz to mas podchyceny v
+     poradku, pokud ne radeji to jeste jednou projed." DULEZITA
+     POUCKA: TRI ze CTYR jmenovanych zvuku uz byly pokryte STEJNYM
+     mechanismem z B253 (GTIA CONSOL bit3 je univerzalni - ROM ho
+     zapisuje pri bootu i pri kazdem stisku klavesy, appka na
+     KAZDY takovy zapis reaguje stejne, bez ohledu na DUVOD zapisu) -
+     nebylo potreba nic delat znovu, jen si to uvedomit a vysvetlit.
+     CTVRTY (CSAVE/CLOAD) se ukazal byt JINY nez jsem si nejdriv
+     myslel - Rene upresnil, ze NEJDE o emulaci kazety (cteni/zapis
+     dat kodovanych zvukem - to porad chybi a je to velka prace), ale
+     jen o KRATKY POTVRZOVACI TON, ktery BASIC prehraje HNED po
+     napsani prikazu, jeste PRED jakoukoli praci s kazetou. DALSI
+     POUCKA: kdyz uzivatel upresni/opravi tvoje pochopeni pozadavku,
+     nova informace muze VYRAZNE zmensit rozsah prace (z "postavit
+     celou kazetovou emulaci" na "umoznit napsat CSAVE/CLOAD" - uz
+     fungujici POKEY se postara o zbytek). Zkontrolovano PROGRAMOVE
+     (ne okem) - cela abeceda A-Z v kbcode() uz byla hotova, presna
+     shoda s tabulkou v JS referenci na vsech 26 pismenech. Pridana
+     jen obecna atariNapisText(text) + tlacitka CSAVE/CLOAD.
+
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
      patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most

@@ -58,6 +58,15 @@ struct Machine {
   int audc[4] = {0,0,0,0};
   int audctl = 0;
   PokeyAudioState pokeyAudio;
+  // BUILD2SB56: Rene - "pri bootovani ma atari svuj specificky zvuk,
+  // klik pri startu. V self-testu je to lepsi nez v Java Atari, ale
+  // ma to podzvuk." Prvni cast: GTIA "klik reproduktoru" (CONSOL bit3,
+  // $D01F) - OS na to piše KAZDY SNIMEK behem bootu (viz komentar u
+  // hwWrite nize) a presne TOHLE je ten chybejici "boot zvuk". Stejny
+  // mechanismus jako v JS referenci (M.onSpeaker) - kratky (~4ms)
+  // napet'ovy skok, ne skutecny tón.
+  int gtiaSpeakerBit = 0;      // aktualni stav bitu (0/1), zapisuje ho hwWrite
+  int gtiaSpeakerVidenaAudioGen = 0; // co naposledy videl genAudio() - pro detekci ZMENY
 
   const uint8_t *osRom = nullptr;
   const uint8_t *basRom = nullptr;
@@ -165,6 +174,13 @@ struct Machine {
         // NESMI mazat stav tlacitek - OS sem pise pri KAZDEM snimku
         // (pro klapnuti reproduktoru), takze by tim smazal kazdy stisk
         // START/SELECT/OPTION driv, nez si ho program stihne precist.
+        //
+        // BUILD2SB56: presne TADY vznika chybejici "boot zvuk" - bit3
+        // je vystup na reproduktor. Jen ULOZIT aktualni stav bitu,
+        // genAudio() pak sam pozna ZMENU a spusti kratky "klik" (viz
+        // Machine::genAudio nize) - presne jako skutecny hardware a
+        // jako JS reference (M.onSpeaker).
+        gtiaSpeakerBit = (v >> 3) & 1;
         return;
       }
       return;
@@ -258,7 +274,18 @@ struct Machine {
   // BUILD2SB52: vygeneruje 'n' vzorku zvuku (mono float, -1..1) z
   // AKTUALNIHO stavu registru - viz nap_atari_pokey.h pro cely
   // algoritmus (preklad z JS reference).
+  //
+  // BUILD2SB56: pred samotnym generovanim zkontrolovat, jestli se od
+  // POSLEDNIHO volani zmenil bit reproduktoru (CONSOL bit3, $D01F) -
+  // pokud ano, spustit kratky "klik" presne jako skutecny hardware
+  // (viz PokeyAudioState::spkLevel/spkDecay a jejich pouziti v
+  // nap_atari_pokey.h).
   void genAudio(float *out, int n, double sampleRateHz) {
+    if (gtiaSpeakerBit != gtiaSpeakerVidenaAudioGen) {
+      pokeyAudio.spkLevel = gtiaSpeakerBit ? 1 : -1;
+      pokeyAudio.spkDecay = (long)(sampleRateHz * 0.004); // ~4ms, presne jako JS reference
+      gtiaSpeakerVidenaAudioGen = gtiaSpeakerBit;
+    }
     // 1773447 Hz - presne stejna konstanta jako v JS referenci
     // ("CPS=1773447/ac.sampleRate", komentar tam "cyklu na vzorek (PAL)").
     const double cyklu_na_vzorek = 1773447.0 / sampleRateHz;
