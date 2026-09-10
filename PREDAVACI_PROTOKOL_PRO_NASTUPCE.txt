@@ -909,6 +909,35 @@
      shoda s tabulkou v JS referenci na vsech 26 pismenech. Pridana
      jen obecna atariNapisText(text) + tlacitka CSAVE/CLOAD.
 
+   B255: KRITICKY NALEZ - Rene otestoval a rekl "neni to spravne -
+     self test zvuk neni cisty, bootovaci zvuk neni spravny, csave mas
+     asi ve smycce... atari musi byt stoprocentni, jinak se sesype
+     jako domecek z karet." Z LOGU vyplynulo (PC=$C02C misto $F312,
+     PORTB=255 misto 253 pri druhem bootu), ze bootNative() NEDELAL
+     skutecny studeny start - Machine::reset() cistil jen CPU+PIA,
+     ale ANTIC/GTIA/POKEY stav (vc. celeho zvukoveho generatoru)
+     PRETRVAVAL napric volanimi bootNative(), protoze g_stroj je
+     STATICKY ukazatel zijici po celou dobu behu appky. KAZDY dalsi
+     boot tak jel s cizim stavem po predchozi relaci (self-test,
+     zaseknute CSAVE) - presne to zpusobovalo "zelenou obrazovku".
+     OPRAVA: bootNative() ted SMAZE A ZNOVU POSTAVI cely Machine
+     objekt (ne rucni vyjmenovavani poli - riziko zapomenuti pri
+     pristim rozsireni). DULEZITA POUCKA PRO NASTUPCE: kdyz je
+     hlavni stav (Machine, nebo cokoli analogickeho v budoucich
+     jadrech) STATICKY/PERZISTENTNI napric volanimi, "reset/boot"
+     funkce MUSI explicitne prochazet VSECHNY podsystemy (CPU, PIA,
+     ANTIC, GTIA, POKEY, a cokoli pribude - VBXE, joystick, kazeta) -
+     jinak se jakykoli "spinavy" stav z JEDNE relace tise prenese do
+     DALSI, a bug se objevi az na "druhem pokusu", ne na prvnim, coz
+     se tezko hleda. Pri rozsirovani KAZDE nove hardwarove casti je
+     nutne se VZDY zeptat "resetuje se tohle pri studenem startu?"
+     Pridano i RESET tlacitko (Machine::reset() - nemaze pamet, presne
+     jako skutecne Atari RESET, i zachranna brzda pri zaseknuti) a
+     RETURN tlacitko (samotna klavesa). CSAVE zaseknuti (registry
+     nezmenene 16 vterin v kuse v logu) STALE NEVYRESENO - podezreni
+     na cekani na kazetovy port/SIO handshake, ktery appka neposkytuje -
+     potrebuje dalsi diagnostiku, az bude na rade skutecna kazeta.
+
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
      patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most

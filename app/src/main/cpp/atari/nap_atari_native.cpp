@@ -213,14 +213,34 @@ static void zaloz() {
   g_stroj->view    = g_view;      // obraz vznika radek po radku behem emulace
 }
 
-/** Studeny start: reset a nechat OS nabehnout. */
+/** Studeny start: reset a nechat OS nabehnout.
+ *
+ * BUILD2SB59: Rene - "po znovu nabootovani po self-testu skoci zelena
+ * obrazovka - atari musi byt stoprocentni, jinak se nam to sesype jako
+ * domecek z karet." NALEZENO: puvodni reset() cistil jen CPU a PIA
+ * (kvuli PORTB bankovani pameti) - ale ANTIC (rozpracovany display
+ * list, dlPc/dlMode/dlKroku...), GTIA (barvy, PRIOR) a POKEY
+ * (AUDF/AUDC/AUDCTL, cely zvukovy generator vcetne "kliku
+ * reproduktoru") ZUSTAVALY z PREDCHOZI relace - takze druhy boot
+ * NEBYL skutecny studeny start, jel dal s cizim, nesouvisejicim
+ * stavem po sobe (self-test, zaseknuty CSAVE...). Nejbezpecnejsi
+ * oprava neni rucne vyjmenovavat KAZDE pole zvlast (snadno se na
+ * neco zapomene a bug se vrati pri pristim rozsireni) - je SMAZAT A
+ * ZNOVU POSTAVIT cely stroj, presne jako skutecne vypnuti a zapnuti
+ * napajeni. g_view se stavi znovu tak, protoze drzi svuj vlastni
+ * stav (rozkreslena obrazovka, DLI fronta).
+ */
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, jint snimku) {
+  delete g_stroj; g_stroj = nullptr;
+  delete g_view;  g_view  = nullptr;
   zaloz();
+  // BUILD2SB59: ram[] nema v deklaraci vychozi inicializator - `new
+  // Machine()` sama o sobe NEZARUCUJE vynulovanou pamet (na rozdil od
+  // polí s '={}'), takze rucni vycisteni tu porad musi zustat, i kdyz
+  // uz mame cerstvy objekt.
   std::memset(g_stroj->mem.ram, 0, sizeof(g_stroj->mem.ram));
-  g_stroj->reset();
   g_stroj->consol = 7;
-  g_stroj->line = 0; g_stroj->frame = 0;
   for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
   char buf[256];
   snprintf(buf, sizeof(buf),
@@ -254,6 +274,20 @@ extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runNative(JNIEnv *, jclass, jint snimku) {
   if (!g_stroj) return;
   for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
+}
+
+// BUILD2SB59: Rene - "pridej tlacitko RESET." Skutecne Atari RESET
+// tlacitko NEMAZE pamet ani hardwarove registry (na rozdil od
+// bootNative(), ktery ted dela poradny STUDENY start - viz komentar
+// tam) - jen znovu nahodi procesor na reset vektor, presne jako
+// Machine::reset() uz dela. Uzitecne i jako zachranna brzda, kdyz se
+// ROM nekde zasekne (napr. cekani na kazetovy port, ktery appka
+// zatim neemuluje).
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_resetNative(JNIEnv *, jclass) {
+  if (!g_stroj) return;
+  g_stroj->reset();
+  g_stroj->consol = 7;
 }
 
 static const char B64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -313,11 +347,11 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_screenNative(JNIEnv *env, jclass) 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_regsNative(JNIEnv *env, jclass) {
   if (!g_stroj) return env->NewStringUTF("?");
-  char buf[96];
-  snprintf(buf, sizeof(buf), "%d,%d,%d,%d|%d,%d,%d,%d|%d",
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%d,%d,%d,%d|%d,%d,%d,%d|%d|spk=%d|kliku=%lld",
            g_stroj->audf[0], g_stroj->audf[1], g_stroj->audf[2], g_stroj->audf[3],
            g_stroj->audc[0], g_stroj->audc[1], g_stroj->audc[2], g_stroj->audc[3],
-           g_stroj->audctl);
+           g_stroj->audctl, g_stroj->gtiaSpeakerBit, g_stroj->gtiaKlikPocitadlo);
   return env->NewStringUTF(buf);
 }
 

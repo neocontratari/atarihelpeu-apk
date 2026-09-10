@@ -49,6 +49,10 @@ public final class NativeAtariCoreBridge {
     private static native void   keyNative(int kod, int snimku);
     private static native void   consolNative(int maska, int snimku);
     private static native void   runNative(int snimku);
+    // BUILD2SB59: RESET tlacitko - nemaze pamet/hardware, jen znovu
+    // nahodi procesor (na rozdil od BOOT, ktery ted dela poradny
+    // studeny start).
+    private static native void   resetNative();
     private static native String screenNative();
     // BUILD2SB55: Rene - "zadne pomocne testovaci tlacitko - zvuk ma
     // bezet prubezne presne jak na realnem atari." Vraci JEN holy
@@ -86,6 +90,10 @@ public final class NativeAtariCoreBridge {
     public static void keySafe(int kod, int snimku) {
         if (!loaded || kod < 0) return;
         try { keyNative(kod, snimku); } catch (Throwable ignored) {}
+    }
+    public static void resetSafe() {
+        if (!loaded) return;
+        try { resetNative(); } catch (Throwable ignored) {}
     }
     public static void consolSafe(int maska, int snimku) {
         if (!loaded) return;

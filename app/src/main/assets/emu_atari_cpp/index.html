@@ -52,6 +52,14 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
 </div>
 <div class="btny" style="margin-bottom:6px">
   <button id="btnHelpKey" style="background:#2a2d34">HELP</button>
+  <button id="btnReturnKey" style="background:#2a2d34">RETURN</button>
+  <!-- BUILD2SB59: Rene - "pridej tlacitko reset a return." RESET =
+       skutecne Atari RESET tlacitko (nemaze pamet/hardware, jen
+       znovu nahodi procesor) - i zachranna brzda pri zaseknuti (napr.
+       CSAVE cekajici na kazetovy port). RETURN = samotna klavesa
+       Enter, bez psani textu (uzitecne napr. po CSAVE vyzve "stiskni
+       PLAY+RECORD a RETURN"). -->
+  <button id="btnResetKey" style="background:#5c1e1e">RESET</button>
 </div>
 <!-- BUILD2SB58: Rene - "po napsani CSAVE/CLOAD a RETURN Atari udela
      specificky potvrzovaci zvuk (tu tu), driv nez kazetak vubec neco
@@ -262,6 +270,8 @@ $('btnSel').addEventListener('click',function(){ volej('atariKonzole','select');
 $('btnStart').addEventListener('click',function(){ volej('atariKonzole','start'); obnovLog(); });
 $('btnOpt').addEventListener('click',function(){ volej('atariKonzole','option'); obnovLog(); });
 $('btnHelpKey').addEventListener('click',function(){ volej('atariHelp'); obnovLog(); });
+$('btnReturnKey').addEventListener('click',function(){ volej('atariNapisText',''); obnovLog(); });
+$('btnResetKey').addEventListener('click',function(){ volej('atariReset'); obnovLog(); });
 $('btnCsave').addEventListener('click',function(){ volej('atariNapisText','CSAVE'); obnovLog(); });
 $('btnCload').addEventListener('click',function(){ volej('atariNapisText','CLOAD'); obnovLog(); });
 $('btnNapisPrikaz').addEventListener('click',function(){

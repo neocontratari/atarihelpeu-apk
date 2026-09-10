@@ -67,6 +67,12 @@ struct Machine {
   // napet'ovy skok, ne skutecny tón.
   int gtiaSpeakerBit = 0;      // aktualni stav bitu (0/1), zapisuje ho hwWrite
   int gtiaSpeakerVidenaAudioGen = 0; // co naposledy videl genAudio() - pro detekci ZMENY
+  // BUILD2SB60: Rene - "bootovaci zvuk neni spravny." Puvodni logovani
+  // (regsNative) ukazovalo jen AUDF/AUDC/AUDCTL - ale klik jede pres
+  // UPLNE JINA pole (spkLevel/spkDecay v PokeyAudioState), takze z
+  // logu neslo poznat, jestli se kliky VUBEC spoustely. Pocitadlo
+  // pro viditelnost - ne pro zvuk samotny.
+  long long gtiaKlikPocitadlo = 0;
 
   const uint8_t *osRom = nullptr;
   const uint8_t *basRom = nullptr;
@@ -285,6 +291,7 @@ struct Machine {
       pokeyAudio.spkLevel = gtiaSpeakerBit ? 1 : -1;
       pokeyAudio.spkDecay = (long)(sampleRateHz * 0.004); // ~4ms, presne jako JS reference
       gtiaSpeakerVidenaAudioGen = gtiaSpeakerBit;
+      gtiaKlikPocitadlo++;
     }
     // 1773447 Hz - presne stejna konstanta jako v JS referenci
     // ("CPS=1773447/ac.sampleRate", komentar tam "cyklu na vzorek (PAL)").

@@ -4114,6 +4114,18 @@ public class MainActivity extends Activity {
             appendNativeLog("BUILD2SB58 ATARI_AKCE=NAPSANO_TEXT:" + text + " " + napAtariRegShrnuti(r));
             return r;
         }
+        // BUILD2SB59: Rene - "pridej tlacitko reset a return." RESET =
+        // skutecne Atari RESET tlacitko (nemaze pamet, jen znovu
+        // nahodi procesor) - i zachranna brzda, kdyz se ROM nekde
+        // zasekne. RETURN samotny (bez psani textu) jde uz jen
+        // volanim atariNapisText("") - prazdny text + return na konci.
+        @JavascriptInterface public String atariReset() {
+            NativeAtariCoreBridge.resetSafe();
+            NativeAtariCoreBridge.runSafe(60);
+            String r = NativeAtariCoreBridge.screenSafe();
+            appendNativeLog("BUILD2SB59 ATARI_AKCE=RESET " + napAtariRegShrnuti(r));
+            return r;
+        }
         @JavascriptInterface public String atariObraz(int snimku) {
             if (snimku > 0) NativeAtariCoreBridge.runSafe(snimku);
             String r = NativeAtariCoreBridge.screenSafe();
