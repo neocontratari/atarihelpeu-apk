@@ -4132,17 +4132,20 @@ public class MainActivity extends Activity {
             if (bezp.isEmpty()) return;
             appendNativeLog("BUILD2SB49 ATARI_POZNAMKA_RENE: " + bezp);
         }
-        /** BUILD2SB52: POKEY zvuk (FAZE 1) - vraci JSON s base64 PCM16 pro
-         *  prehrani v JS + statistikou. Loguje se jen statistika (bez
-         *  velkeho base64 nakladu), at log zustane citelny. */
-        @JavascriptInterface public String atariAudio(int snimku) {
-            String r = NativeAtariCoreBridge.audioSafe(snimku);
-            String bezPcm = r;
-            try {
-                int i = r.indexOf("\"pcm16\"");
-                if (i > 0) bezPcm = r.substring(0, i) + "...}";
-            } catch (Throwable ignored) {}
-            appendNativeLog("BUILD2SB52 ATARI_AKCE=ZVUK " + bezPcm);
+        // BUILD2SB55: pocitadlo pro ridke logovani prubezneho zvuku -
+        // vola se ~50x/s, logovat KAZDE volani by log okamzite zahltilo.
+        private int atariZvukPocitadlo = 0;
+        /** BUILD2SB55: prubezny zvuk (misto jednorazoveho "snimku na
+         *  pozadani" z B249/B250) - vola se opakovane z JS smycky,
+         *  presne v tempu videa. Loguje se jen kazdych ~100 volani
+         *  (cca 2s pri 50 Hz), at zustane videt aktualni stav registru,
+         *  ale log se nezahlti. */
+        @JavascriptInterface public String atariAudioChunk(int pocetVzorku) {
+            String r = NativeAtariCoreBridge.audioChunkSafe(pocetVzorku);
+            atariZvukPocitadlo++;
+            if (atariZvukPocitadlo % 100 == 1) {
+                appendNativeLog("BUILD2SB55 ATARI_ZVUK_PRUBEZNE registry(audf|audc|audctl)=" + NativeAtariCoreBridge.regsSafe());
+            }
             return r;
         }
 

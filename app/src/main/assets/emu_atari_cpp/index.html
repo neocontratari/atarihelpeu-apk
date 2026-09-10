@@ -43,7 +43,7 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
         style="width:100%;image-rendering:pixelated;background:#000;
                border:1px solid #262931;border-radius:8px;display:block"></canvas>
 <div id="stavAtari" class="hot" style="margin:6px 0 10px">Nespusteno</div>
-<button id="btnBoot" type="button">1. NABOOTOVAT OS</button>
+<button id="btnBoot" type="button">1. NABOOTOVAT OS (pak uz bezi samo, presne jako skutecne Atari)</button>
 <button id="btnSt" type="button" style="background:#2a2d34">2. DO SELF-TESTU (BYE)</button>
 <div class="btny" style="margin-bottom:6px">
   <button id="btnSel" style="background:#2a2d34">SELECT</button>
@@ -52,16 +52,15 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
 </div>
 <div class="btny" style="margin-bottom:6px">
   <button id="btnHelpKey" style="background:#2a2d34">HELP</button>
-  <button id="btnRun" style="background:#2a2d34">+2 s (jeden krok)</button>
 </div>
-<!-- BUILD2SB49: Rene - "nachystej si log primo v C++ Atari, at vidim
-     presne to, co ty." Prubezne vykreslovani (misto jen statickych
-     snimku po kliku) + volna poznamka do stejneho logu. -->
-<button id="btnZive" type="button" style="background:#1e5c33">▶ SPUSTIT ŽIVĚ (jako skutečné Atari)</button>
-<!-- BUILD2SB52: POKEY zvuk (FAZE 1) - precte AKTUALNI stav registru,
-     vygeneruje zvuk a prehraje ho primo v prohlizeci pres Web Audio API.
-     Zadne predstirani - je to skutecny vystup z jadra. -->
-<button id="btnZvuk" type="button" style="background:#5c3d1e">🔊 PŘEHRÁT ZVUK (2 s, aktuální POKEY registry)</button>
+<!-- BUILD2SB55: Rene - "zrus pomocna tlacitka zvuku a grafiky. Po
+     botovani nabehne okamzite realne atari s opravdovym snimkovanim.
+     Po BYE self test - a tam v testu zvuku pobezi zvuk presne tak jak
+     na realnem atari." Zadna testovaci pomocna tlacitka - appka po
+     kliknuti na NABOOTOVAT jede sama, presnym tempem 50 snimku/s
+     (skutecny PAL Atari takt), s prubeznym zvukem. Nic se neda
+     "spustit" ani "prehrat" navic - bud appka bezi presne jako
+     skutecne Atari, nebo nebezi vubec. -->
 <div class="btny" style="margin-bottom:6px">
   <input id="poznamkaText" type="text" placeholder="Co teď testuješ? (např. OPTION -> SOUND TEST)"
          style="flex:1;padding:11px;font-size:14px;border-radius:8px;border:1px solid #262931;background:#0f1013;color:#dfe3e8">
@@ -229,65 +228,57 @@ $('btnBoot').addEventListener('click',function(){
   this.textContent='BOOTUJI...'; var b=this;
   setTimeout(function(){
     volej('atariBoot'); kresli(volej('atariObraz',0));
-    b.textContent='1. NABOOTOVAT OS'; obnovLog();
+    b.textContent='1. NABOOTOVAT OS (pak uz bezi samo, presne jako skutecne Atari)';
+    obnovLog();
+    // BUILD2SB55: Rene - "po botovani nabehne okamzite realne atari s
+    // opravdovym snimkovanim." Zadne dalsi tlacitko - jakmile OS
+    // nabootuje, appka SAMA jede dal presnym tempem, at to Rene proste
+    // sleduje/poslouchá jako skutecny stroj.
+    spustSmycku();
   },50);
 });
 $('btnSt').addEventListener('click',function(){
   this.textContent='PISI BYE...'; var b=this;
   setTimeout(function(){
-    kresli(volej('atariDoSelfTestu'));
+    volej('atariDoSelfTestu');
     b.textContent='2. DO SELF-TESTU (BYE)'; obnovLog();
   },50);
 });
-$('btnSel').addEventListener('click',function(){ kresli(volej('atariKonzole','select')); obnovLog(); });
-$('btnStart').addEventListener('click',function(){ kresli(volej('atariKonzole','start')); obnovLog(); });
-$('btnOpt').addEventListener('click',function(){ kresli(volej('atariKonzole','option')); obnovLog(); });
-$('btnHelpKey').addEventListener('click',function(){ kresli(volej('atariHelp')); obnovLog(); });
-$('btnRun').addEventListener('click',function(){ kresli(volej('atariObraz',100)); });
+$('btnSel').addEventListener('click',function(){ volej('atariKonzole','select'); obnovLog(); });
+$('btnStart').addEventListener('click',function(){ volej('atariKonzole','start'); obnovLog(); });
+$('btnOpt').addEventListener('click',function(){ volej('atariKonzole','option'); obnovLog(); });
+$('btnHelpKey').addEventListener('click',function(){ volej('atariHelp'); obnovLog(); });
 $('btnPoznamka').addEventListener('click',function(){
   var t=$('poznamkaText'); if(!t||!t.value.trim())return;
   try{ AHATARICPP.atariPoznamka(t.value.trim()); }catch(e){}
   t.value=''; obnovLog();
 });
-/* BUILD2SB49: prubezne vykreslovani - misto jen statickych snimku po
-   kliku, jako skutecne Atari bezici pred Reneho ocima. Zamerne NEbezi
-   60x/s (kazde volani je JNI prechod + base64 obrazu) - par snimku
-   najednou kazdych ~90ms je pro diagnostiku dost plynule a min zatezi
-   telefon. Kdykoli jde zastavit a udelat rucni krok. */
-var zivaBezi=false, zivaTimer=null;
-function zivaKrok(){
-  if(!zivaBezi)return;
-  kresli(volej('atariObraz',3));
-  zivaTimer=setTimeout(zivaKrok,90);
-}
-$('btnZive').addEventListener('click',function(){
-  zivaBezi=!zivaBezi;
-  if(zivaBezi){
-    this.textContent='■ ZASTAVIT (teď běží živě)';
-    this.style.background='#5c1e1e';
-    zivaKrok();
-  } else {
-    this.textContent='▶ SPUSTIT ŽIVĚ (jako skutečné Atari)';
-    this.style.background='#1e5c33';
-    if(zivaTimer)clearTimeout(zivaTimer);
-    obnovLog();
-  }
-});
-/* BUILD2SB52: POKEY zvuk (FAZE 1). Precte skutecny vygenerovany zvuk
-   z jadra (base64 PCM16, 44100 Hz mono) a prehraje ho pres Web Audio
-   API - zadne predstirani, je to presne to, co by hralo repro. */
-var zvukCtx=null;
+/* BUILD2SB55: Rene - "zrus pomocna tlacitka zvuku a grafiky. Po
+   botovani nabehne okamzite realne atari s opravdovym snimkovanim. Po
+   BYE self test - a tam v testu zvuku pobezi zvuk presne tak jak na
+   realnem atari. Tam ja uvidim jestli to slape ci nikoli."
+   Zadna testovaci pomocna tlacitka, zadne rucni kroky, zadne "prehrat
+   2 vteriny zvuku na pozadani". JEDNA souvisla smycka, ktera bezi
+   PRESNYM TEMPEM skutecneho Atari (50 snimku/s, PAL) - ne rychleji,
+   ne pomaleji - dokud appka bezi. Video a zvuk se advancuji SPOLU,
+   snimek po snimku, takze zustavaji synchronizovane presne tak, jak
+   by byly na skutecnem stroji. */
+var zvukCtx=null, dalsiZvukStart=0;
 function napPoznamka(t){ try{AHATARICPP.atariPoznamka(t);}catch(_e){} }
-function prehrajPcm16(b64, sr){
+function pripravZvuk(){
+  if(zvukCtx) return true;
+  var AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC){ napPoznamka('ZVUK_CHYBA AudioContext neni v tomhle WebView k dispozici'); return false; }
+  zvukCtx=new AC();
+  dalsiZvukStart=0;
+  return true;
+}
+function zarazZvukovyKousek(b64){
+  if(!zvukCtx || !b64) return;
   try{
-    if(!zvukCtx){
-      var AC=window.AudioContext||window.webkitAudioContext;
-      if(!AC){ napPoznamka('ZVUK_PREHRANI_CHYBA AudioContext neni v tomhle WebView k dispozici'); obnovLog(); return; }
-      zvukCtx=new AC();
-    }
-    var stavPred=zvukCtx.state;
     var bin=atob(b64), n=bin.length/2;
-    var buf=zvukCtx.createBuffer(1, n, sr);
+    if(n<=0) return;
+    var buf=zvukCtx.createBuffer(1, n, 44100);
     var ch=buf.getChannelData(0);
     for(var i=0,p=0;i<n;i++,p+=2){
       var lo=bin.charCodeAt(p), hi=bin.charCodeAt(p+1);
@@ -295,49 +286,51 @@ function prehrajPcm16(b64, sr){
       ch[i]=v/32768;
     }
     var src=zvukCtx.createBufferSource();
-    // BUILD2SB53: Rene - "zvuk dle me nefunguje." Log ukazal, ze
-    // generovani FUNGUJE (17:28:30 spicka=0.1333) - podezreni padlo na
-    // (a) AudioContext "suspended" na Androidu (znamy problem, ktery uz
-    // resila i JS reference - "BUILD2KF") a (b) hlasitost je z principu
-    // tiche (vol/60 v POKEY vzorci znamena max cca 0.25, u tohohle
-    // konkretniho zaznamu jen 0.133) - lehce prehlednutelne na malem
-    // repro telefonu. Pridan GainNode (zesileni x4, jen pro PREHRAVANI -
-    // cisla ve statistice/logu zustavaji nezmenena, hardwarove presna)
-    // + podrobne logovani stavu AudioContext PRED/PO resume a potvrzeni
-    // ze prehravani doopravdy zacalo/skoncilo - at priste nemusim hadat,
-    // jestli je problem v generovani, nebo v prehravani.
-    var gain=zvukCtx.createGain(); gain.gain.value=4.0;
+    var gain=zvukCtx.createGain(); gain.gain.value=4.0; // vol/60 vzorec v POKEY dava max ~0.25 - zesileni pro slysitelnost na repro telefonu
     src.buffer=buf; src.connect(gain); gain.connect(zvukCtx.destination);
-    var hotovo=false;
-    src.onended=function(){ hotovo=true; napPoznamka('ZVUK_PREHRANI_KONEC doehralo=true delkaS='+(n/sr).toFixed(2)); obnovLog(); };
-    function spustit(){
-      try{
-        src.start();
-        napPoznamka('ZVUK_PREHRANI_START stavPred='+stavPred+' stavPo='+zvukCtx.state+' vzorku='+n+' sr='+sr+' zesileni=4x');
-      }catch(e2){ napPoznamka('ZVUK_PREHRANI_START_CHYBA '+(e2&&e2.message)); }
-      obnovLog();
-    }
-    if(zvukCtx.state==='suspended'){
-      napPoznamka('ZVUK_KONTEXT_BYL_USPANY - volam resume()...');
-      zvukCtx.resume().then(spustit).catch(function(e3){
-        napPoznamka('ZVUK_RESUME_CHYBA '+(e3&&e3.message)+' - zkousim prehrat i tak');
-        spustit();
-      });
-    } else {
-      spustit();
-    }
-  }catch(e){ napPoznamka('ZVUK_PREHRANI_CHYBA '+(e&&e.message)); obnovLog(); }
+    var ted=zvukCtx.currentTime;
+    if(dalsiZvukStart<ted) dalsiZvukStart=ted; // pozadu (napr. po pauze karty) - srovnat na "ted", nehonit se dozadu
+    src.start(dalsiZvukStart);
+    dalsiZvukStart+=buf.duration;
+  }catch(e){ napPoznamka('ZVUK_KOUSEK_CHYBA '+(e&&e.message)); }
 }
-$('btnZvuk').addEventListener('click',function(){
-  var j=volej('atariAudio',100);
-  if(j.chyba){ napPoznamka('ZVUK chyba='+j.chyba); obnovLog(); return; }
-  var stav='AUDF='+JSON.stringify(j.audf)+' AUDC='+JSON.stringify(j.audc)
-    +' AUDCTL='+j.audctl+' spicka='+j.spicka.toFixed(3)+' rms='+j.rms.toFixed(3);
-  $('stavAtari').textContent=stav;
-  if(j.spicka<0.001){ napPoznamka('ZVUK_POZNAMKA vsechny kanaly ticho (AUDC hlasitost=0, nebo self-test zrovna zvuk nehraje)'); }
-  prehrajPcm16(j.pcm16, j.sr);
-  obnovLog();
-});
+var smyckaBezi=false, posledniCas=null, zbytekCasu=0;
+var SNIMEK_S=1/50; // PAL Atari = presne 50 snimku za vterinu, stejne jako skutecny stroj
+var VZORKU_NA_SNIMEK=Math.round(44100/50);
+// BUILD2SB55: volej() ocekava JSON odpoved (pouziva JSON.parse) - ale
+// audioChunk vraci HOLY base64 retezec (viz duvod v nap_atari_native.cpp -
+// vola se ~50x/s, JSON obal by byl zbytecna rezie). Proto samostatna
+// varianta bez JSON.parse.
+function volej0(f,arg){
+  try{ return AHATARICPP[f](arg); }catch(e){ return ''; }
+}
+function smyckaTik(ted){
+  if(!smyckaBezi) return;
+  if(posledniCas===null) posledniCas=ted;
+  var delta=(ted-posledniCas)/1000;
+  posledniCas=ted;
+  // BUILD2SB55: kdyz appka byla na chvili na pozadi (zamceny telefon,
+  // prepnuta karta...), "delta" muze byt obrovska - orezat, at se
+  // appka nesnazi "dohnat" minuty naraz (zamrzla by na chvili uplne).
+  if(delta>0.25) delta=0.25;
+  zbytekCasu+=delta;
+  var kroku=0, posledniObraz=null;
+  while(zbytekCasu>=SNIMEK_S && kroku<10){ // strop 10 snimku/tik - i kdyby prohlizec chvili zadrhl, nedohanet donekonecna
+    posledniObraz=volej('atariObraz',1); // posune presne 1 snimek A vrati obraz v jednom volani (samostatne runNative pres most neni)
+    if(zvukCtx) zarazZvukovyKousek(volej0('atariAudioChunk',VZORKU_NA_SNIMEK));
+    zbytekCasu-=SNIMEK_S;
+    kroku++;
+  }
+  if(posledniObraz) kresli(posledniObraz);
+  requestAnimationFrame(smyckaTik);
+}
+function spustSmycku(){
+  if(smyckaBezi) return;
+  pripravZvuk();
+  smyckaBezi=true;
+  posledniCas=null; zbytekCasu=0;
+  requestAnimationFrame(smyckaTik);
+}
 
 function nactiCesty(){
   try{

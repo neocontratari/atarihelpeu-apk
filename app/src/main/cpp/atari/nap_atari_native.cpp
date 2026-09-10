@@ -295,40 +295,48 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_screenNative(JNIEnv *env, jclass) 
   return env->NewStringUTF(out.c_str());
 }
 
-// BUILD2SB52: POKEY zvuk (FAZE 1). Vygeneruje 'snimku'*(SR/50) vzorku
-// (44100 Hz, mono, 16bit) z AKTUALNIHO stavu registru - viz
-// nap_atari_pokey.h pro cely algoritmus. Vraci base64 PCM16 + statistiku
-// (spicka, RMS) primo v JSON, aby se dalo overit i bez prehravani zvuku.
+// BUILD2SB55: Rene - "zrus pomocna tlacitka zvuku a grafiky. Po
+// botovani nabehne okamzite realne atari s opravdovym snimkovanim. Po
+// BYE self test - a tam v testu zvuku pobezi zvuk presne tak jak na
+// realnem atari." Cely jednorazovy "snimek zvuku na pozadani" pristup
+// (puvodni audioNative, B249/B250) je pryc - misto neho PRUBEZNY,
+// NEUSTALE STREAMOVANY zvuk, volany znovu a znovu z JS smycky (~50x/s,
+// stejne tempo jako video), presne 1 snimek zvuku na 1 snimek obrazu.
+//
+// KLICOVY ROZDIL od stareho audioNative(): TADY se stav generatoru
+// (pokeyAudio) NIKDY NEVYNULUJE - prubezne navazuje tam, kde skoncil
+// predchozi snimek, presne jak to dela skutecny POKEY. Vynulovani
+// davalo smysl jen pro "nezavisly snimek na pozadani" (B253), ne pro
+// opravdove prubezne prehravani.
+// BUILD2SB55: lehke cteni AUDF/AUDC/AUDCTL jen pro ridke logovani
+// (viz atariAudioChunk v Jave) - kompaktni text, zadny JSON navic.
 extern "C" JNIEXPORT jstring JNICALL
-Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioNative(JNIEnv *env, jclass, jint snimku) {
-  if (!g_stroj) return env->NewStringUTF("{\"chyba\":\"stroj nebezi\"}");
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_regsNative(JNIEnv *env, jclass) {
+  if (!g_stroj) return env->NewStringUTF("?");
+  char buf[96];
+  snprintf(buf, sizeof(buf), "%d,%d,%d,%d|%d,%d,%d,%d|%d",
+           g_stroj->audf[0], g_stroj->audf[1], g_stroj->audf[2], g_stroj->audf[3],
+           g_stroj->audc[0], g_stroj->audc[1], g_stroj->audc[2], g_stroj->audc[3],
+           g_stroj->audctl);
+  return env->NewStringUTF(buf);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioChunkNative(JNIEnv *env, jclass, jint pocetVzorku) {
+  if (!g_stroj) return env->NewStringUTF("");
   const double SR = 44100.0;
-  const int n = (int)((double)(snimku > 0 ? snimku : 1) * (SR / 50.0));
-  // BUILD2SB53: kazdy stisk tlacitka ZVUK na testovaci strance je
-  // NEZAVISLY snimek "co se deje PRAVE TED", ne pokracovani predchoziho
-  // (na rozdil od skutecneho prubezneho prehravani, ktere prijde
-  // pozdeji). Bez vynulovani stavu generatoru pred kazdym volanim
-  // zustava v DC-blockeru (a citadlech) zbytek z PREDCHOZIHO, casove
-  // uplne nesouvisejiciho stisku - v logu se pak objevi maly "dozvuk"
-  // i kdyz jsou vsechny kanaly UZ ticho, coz zbytecne plete diagnostiku.
-  g_stroj->pokeyAudio = nap::PokeyAudioState();
+  const int n = pocetVzorku > 0 ? pocetVzorku : 1;
   std::vector<float> tmp(n);
   g_stroj->genAudio(tmp.data(), n, SR);
 
-  double soucetCtverecu = 0.0, spicka = 0.0;
   std::string raw; raw.reserve((size_t)n * 2);
   for (int i = 0; i < n; i++) {
     float f = tmp[i];
     if (f > 1.0f) f = 1.0f; else if (f < -1.0f) f = -1.0f;
-    double af = std::fabs((double)f);
-    if (af > spicka) spicka = af;
-    soucetCtverecu += (double)f * (double)f;
     int16_t v = (int16_t)std::lround(f * 32767.0);
     raw.push_back((char)(v & 0xFF));
     raw.push_back((char)((v >> 8) & 0xFF));
   }
-  double rms = n > 0 ? std::sqrt(soucetCtverecu / n) : 0.0;
-
   std::string b64; b64.reserve((raw.size() + 2) / 3 * 4);
   for (size_t i = 0; i < raw.size(); i += 3) {
     const unsigned a0 = (unsigned char)raw[i];
@@ -339,16 +347,5 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioNative(JNIEnv *env, jclass, j
     b64.push_back((i + 1 < raw.size()) ? B64[(t >> 6) & 63] : '=');
     b64.push_back((i + 2 < raw.size()) ? B64[t & 63] : '=');
   }
-  char stat[192];
-  snprintf(stat, sizeof(stat), "\"vzorku\":%d,\"sr\":44100,\"spicka\":%.4f,\"rms\":%.4f,"
-           "\"audf\":[%d,%d,%d,%d],\"audc\":[%d,%d,%d,%d],\"audctl\":%d",
-           n, spicka, rms,
-           g_stroj->audf[0], g_stroj->audf[1], g_stroj->audf[2], g_stroj->audf[3],
-           g_stroj->audc[0], g_stroj->audc[1], g_stroj->audc[2], g_stroj->audc[3],
-           g_stroj->audctl);
-  std::string out = std::string("{") + stat + ",\"pcm16\":\"" + b64 + "\"}";
-  ALOG("BUILD2SB52 ATARI_AUDIO vzorku=%d spicka=%.4f rms=%.4f audf=[%d,%d,%d,%d] audc=[%d,%d,%d,%d] audctl=%d",
-       n, spicka, rms, g_stroj->audf[0], g_stroj->audf[1], g_stroj->audf[2], g_stroj->audf[3],
-       g_stroj->audc[0], g_stroj->audc[1], g_stroj->audc[2], g_stroj->audc[3], g_stroj->audctl);
-  return env->NewStringUTF(out.c_str());
+  return env->NewStringUTF(b64.c_str());
 }
