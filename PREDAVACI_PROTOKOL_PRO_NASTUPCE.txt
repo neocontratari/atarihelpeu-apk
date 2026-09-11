@@ -938,6 +938,33 @@
      na cekani na kazetovy port/SIO handshake, ktery appka neposkytuje -
      potrebuje dalsi diagnostiku, az bude na rade skutecna kazeta.
 
+   B256: MOJE CHYBA, PLNE PRIZNANA - po B255 Rene otestoval a napsal
+     "ted nenabehlo vubec nic... to musi byt vyborny, zacinas delat
+     chyby." Pri prepisu bootNative() v B255 (smaz+postav znovu) jsem
+     OMYLEM VYNECHAL radek g_stroj->reset() - bez nej CPU nikdy
+     nenacte reset vektor z ROM a zustane na PC=0, 600 snimku bezelo
+     naprazdno. Byla to REGRESE, ne oprava, a proslo to protoze test
+     v B255 testoval jen Machine/zvuk IZOLOVANE, nikdy celou
+     bootNative() cestu od zacatku do konce se SKUTECNYMI ROM daty.
+     KRITICKA POUCKA PRO NASTUPCE: "kompiluje se cistě" NENI totez co
+     "funguje" - u KAZDE zmeny funkce, kterou appka vola PRI STARTU
+     (nebo cokoli podobne zasadniho jako bootNative), NESTACI
+     izolovane testy vnitrnich casti. MUSI existovat test, ktery
+     projde CELOU tou cestou presne tak, jak to dela produkcni kod
+     (stejne volani, stejne poradi, SKUTECNA data - ne mock), a
+     overi KONKRETNI, SMYSLUPLNE ocekavane hodnoty (napr. "PC se
+     musi shodovat s tim, co je fyzicky v ROM na adrese reset
+     vektoru" - ne jen "PC != 0"). Pridan trvaly test
+     (test_atari_boot.cpp) presne tohoto typu - cte reset vektor
+     PRIMO z ROM dat nezavisle na kodu jadra, overuje reset() dava
+     presne tuhle adresu, overuje ze 600 snimku (presna posloupnost
+     bootNative()) da smysluplny PC/DMACTL/DLIST bez zaseknuti, a
+     overuje ze DVA nezavisle "studene starty" davaji IDENTICKY
+     vysledek. Rene ma pravdu - "dostatecne" nestaci, musi to byt
+     vyborne. Tenhle typ end-to-end testu (skutecna ROM, presna
+     produkcni posloupnost volani) by mel byt STANDARDEM pro kazdou
+     zmenu bootNative/resetNative do budoucna, ne vyjimkou.
+
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
      patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most

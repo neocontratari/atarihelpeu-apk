@@ -240,6 +240,14 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, ji
   // polí s '={}'), takze rucni vycisteni tu porad musi zustat, i kdyz
   // uz mame cerstvy objekt.
   std::memset(g_stroj->mem.ram, 0, sizeof(g_stroj->mem.ram));
+  // BUILD2SB61: KRITICKA CHYBA Z B255 - pri prepisu na "smaz a postav
+  // znovu" jsem omylem VYNECHAL tenhle radek. `new Machine()` SAMA
+  // O SOBE nenacte reset vektor ($FFFC/$FFFD) a neskoci tam - to dela
+  // AZ cpu.reset() uvnitr Machine::reset(). Bez nej CPU zustane na
+  // PC=0 (vychozi CpuState()) a 600 snimku bezi uplne naprazdno -
+  // presne to Rene videl (PC=0, DMACTL=0, DLIST=0 v logu). Rene mel
+  // pravdu, ze "dostatecne" nestacilo - tohle byla regrese, ne oprava.
+  g_stroj->reset();
   g_stroj->consol = 7;
   for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
   char buf[256];
