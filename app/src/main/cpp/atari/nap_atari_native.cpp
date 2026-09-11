@@ -355,21 +355,37 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_screenNative(JNIEnv *env, jclass) 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_regsNative(JNIEnv *env, jclass) {
   if (!g_stroj) return env->NewStringUTF("?");
-  char buf[128];
-  snprintf(buf, sizeof(buf), "%d,%d,%d,%d|%d,%d,%d,%d|%d|spk=%d|kliku=%lld",
+  char buf[144];
+  snprintf(buf, sizeof(buf), "%d,%d,%d,%d|%d,%d,%d,%d|%d|spk=%d|kliku=%lld|jam=%d|pc=%d",
            g_stroj->audf[0], g_stroj->audf[1], g_stroj->audf[2], g_stroj->audf[3],
            g_stroj->audc[0], g_stroj->audc[1], g_stroj->audc[2], g_stroj->audc[3],
-           g_stroj->audctl, g_stroj->gtiaSpeakerBit, g_stroj->gtiaKlikPocitadlo);
+           g_stroj->audctl, g_stroj->gtiaSpeakerBit, g_stroj->gtiaKlikPocitadlo,
+           g_stroj->cpu.c.jam ? 1 : 0, g_stroj->cpu.c.pc);
   return env->NewStringUTF(buf);
 }
 
+// BUILD2SB62: Rene - "po CSAVE a RETURN je zvuk ve smycce nesmyslene."
+// NALEZENO: kdyz procesor ZASEKNE (JAM - narazi na neplatnou/
+// neimplementovanou instrukci, coz je presne to, co se stava behem
+// CSAVE, protoze appka jeste neemuluje kazetovy port a OS rutina se s
+// tim neumi vyporadat), runNative()/bootNative() prestanou volat
+// runFrame() (spravne), ALE audioChunkNative() na to NEBRALA OHLED -
+// dal cetla posledni, ZAMRZLE registry a poctive je porad dokola
+// prehravala jako "spravny" tón. Realny hardware, kdyz spadne, prestane
+// hrat - nezacykli se na poslednim tonu donekonecna. Dokud neni
+// kazetovy port hotovy (a CSAVE tim padem nezaseknuty), tohle aspon
+// zajisti, ze vysledek zaseknuti je TICHO, ne nesmyslny bzukot.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioChunkNative(JNIEnv *env, jclass, jint pocetVzorku) {
   if (!g_stroj) return env->NewStringUTF("");
   const double SR = 44100.0;
   const int n = pocetVzorku > 0 ? pocetVzorku : 1;
   std::vector<float> tmp(n);
-  g_stroj->genAudio(tmp.data(), n, SR);
+  if (g_stroj->cpu.c.jam) {
+    std::memset(tmp.data(), 0, tmp.size() * sizeof(float));
+  } else {
+    g_stroj->genAudio(tmp.data(), n, SR);
+  }
 
   std::string raw; raw.reserve((size_t)n * 2);
   for (int i = 0; i < n; i++) {

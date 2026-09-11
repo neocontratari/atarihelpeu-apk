@@ -942,8 +942,24 @@ static void nap_upload_vram_rect(int x, int y, int w, int h)
   // neznamou zavislost na gpuDraw.c.
   nap_gles_apply_fixed_display();
   {
+    // BUILD2SB66: puvodni "prvnich 40 logu CELKEM" se vycerpalo uz behem
+    // BIOS/menu obrazovek, driv nez se Doom vubec dostal do prokladaneho
+    // rezimu behem hrani - takze presne data, ktera potrebuji, se nikdy
+    // nezalogovala. Ted se pocita zvlast "prvnich 40 PO tom, co se
+    // interlace zapnul" - i kdyby se to prvnich 40 nevratne utratilo v
+    // menu, jakmile Doom prepne na interlace, zacne novych 40 od nuly.
     static int nap_upload_logs = 0;
-    if (nap_upload_logs < 40) {
+    static int nap_upload_logs_il = 0;
+    static int nap_bylo_interlace = 0;
+    if (nap_disp_interlace && !nap_bylo_interlace) nap_upload_logs_il = 0;
+    nap_bylo_interlace = nap_disp_interlace;
+    if (nap_disp_interlace) {
+      if (nap_upload_logs_il < 40) {
+        nap_upload_logs_il++;
+        nap_diag_log("BUILD2SB66 GLES_VRAM_WRITE_UPLOAD_IL rect=[%d,%d %dx%d] rgb24=%d disp=[%d,%d %dx%d] vres=%d",
+                     px, yy0, pw, yy1 - yy0, nap_disp_rgb24, dsx, dsy, dw, dh, (int)gpu.screen.vres);
+      }
+    } else if (nap_upload_logs < 40) {
       nap_upload_logs++;
       nap_diag_log("BUILD2SK153 GLES_VRAM_WRITE_UPLOAD rect=[%d,%d %dx%d] rgb24=%d disp=[%d,%d %dx%d]", px, yy0, pw, yy1 - yy0, nap_disp_rgb24, dsx, dsy, dw, dh);
     }
@@ -1260,7 +1276,23 @@ void GPUwriteStatus_ext(unsigned int gdata)
   unsigned int nap_cmd = (gdata >> 24) & 0xff;
   if (nap_cmd == 0x08) {
    int new_rgb24 = (gdata & 0x10) ? 1 : 0;
-   nap_disp_interlace = (gdata & 0x20) ? 1 : 0;
+   int new_interlace = (gdata & 0x20) ? 1 : 0;
+   // BUILD2SB66: Rene se vydesil z Doom rozsypane grafiky - "atari c++
+   // je cist muj problem, tak to poradne udelej" plati i tady jako
+   // pripominka NEDELAT rychlou nedokazatelnou opravu. Na rozdil od
+   // Atari (ciste C++, jde spustit a zmerit bez telefonu) je tenhle
+   // OpenGL/Android render kod NEOVERITELNY v tomhle prostredi - zadne
+   // GPU, zadny Android. Misto hadani: nejdriv SKUTECNA DATA z Reneho
+   // dalsiho testu. Predtim se interlace zmena logovala JEN kdyz se
+   // ZAROVEN zmenilo RGB24 (ridky, snadno se to prehlédne) - ted se
+   // loguje VZDY, kdyz se preplo, a rovnou i s gpu.screen.vres/hres
+   // (autoritativni vyska/sirka z jadra), at se hned potvrdi/vyvrati,
+   // jestli Doom interlace vubec zapina a jakou vysku pri tom jadro hlasi.
+   if (new_interlace != nap_disp_interlace) {
+    nap_diag_log("BUILD2SB66 GLES_INTERLACE_ZMENA interlace=%d vres=%d hres=%d dsy=%d",
+                 new_interlace, (int)gpu.screen.vres, (int)gpu.screen.hres, (int)gpu.screen.src_y);
+   }
+   nap_disp_interlace = new_interlace;
    if (new_rgb24 != nap_disp_rgb24) {
     nap_disp_rgb24 = new_rgb24;
     // stejny minimalni prechod, jaky delal updateDisplayIfChanged pri zmene

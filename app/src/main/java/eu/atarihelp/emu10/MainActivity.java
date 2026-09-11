@@ -10393,14 +10393,36 @@ public class MainActivity extends Activity {
         }
     }
 
+    // BUILD2SB63: Rene - "po zmacknuti 2x zpet tlacitko apka spadne."
+    // Nemam stack trace (Rene nema ADB), takze nemuzu ukazat presnou
+    // radku, kde to padalo - ale dve nezavisle opatreni misto hadani:
+    // (1) OCHRANA PROTI RYCHLEMU DVOJITEMU STISKU - stejny vzor, jaky
+    // uz appka ma u RESET tlacitka ("PROTI OPAKOVANEMU VOLANI") - druhy
+    // stisk v ramci 400ms se ignoruje, at nezacnou bezet dve prechodove
+    // sekvence (stopNativeInPlaceHard/stopPs1SessionHard/goBack) pres
+    // sebe. (2) BEZPECNOSTNI SIT - cely obsah v try/catch, takze i
+    // kdyby neco NEOCEKAVANE selhalo, appka se aspon nezhroubi tvrde -
+    // v nejhorsim padu se back tlacitko ten jeden stisk ignoruje misto
+    // pádu cele appky.
+    private long backPosledniStisk = 0;
     @Override
     public void onBackPressed() {
-        if (web != null && web.canGoBack()) {
-            stopNativeInPlaceHard("backPressedBeforeGoBack");
-            stopPs1SessionHard("backPressedBeforeGoBack");
-            web.goBack();
+        long ted = System.currentTimeMillis();
+        if (ted - backPosledniStisk < 400) {
+            try { appendNativeLog("BUILD2SB63 BACK_IGNOROVAN_RYCHLY_DVOJITY_STISK"); } catch (Throwable ignored) {}
+            return;
         }
-        else super.onBackPressed();
+        backPosledniStisk = ted;
+        try {
+            if (web != null && web.canGoBack()) {
+                stopNativeInPlaceHard("backPressedBeforeGoBack");
+                stopPs1SessionHard("backPressedBeforeGoBack");
+                web.goBack();
+            }
+            else super.onBackPressed();
+        } catch (Throwable t) {
+            try { appendNativeLog("BUILD2SB63 BACK_CHYBA_ZACHYCENA " + safeMsg(t)); } catch (Throwable ignored) {}
+        }
     }
 
     /**

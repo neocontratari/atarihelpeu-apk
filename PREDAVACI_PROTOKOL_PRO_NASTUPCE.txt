@@ -965,6 +965,96 @@
      produkcni posloupnost volani) by mel byt STANDARDEM pro kazdou
      zmenu bootNative/resetNative do budoucna, ne vyjimkou.
 
+   B257: Rene po ostrem testu: "zvuk se seka, po CSAVE+RETURN
+     nesmyslna smycka, self test se kouse, 2x zpet spadne appka, ps1
+     doom rozsypana grafika - nechci rozbitou appku!!" CTYRI VECI
+     NARAZ. (1) CSAVE smycka - pridan JAM status do regsNative(),
+     potvrzeno ze CPU se behem CSAVE ZASEKAVA (nejspis chybejici
+     kazetovy port). KLICOVY NALEZ: audioChunkNative() BEZ OHLEDU na
+     JAM porad cetla zamrzle registry a hrala donekonecna stejny ton -
+     opraveno na ticho pri JAM=true (zakladni pricina zaseknuti
+     zustava nevyresena, to je vetsi prace na pozdeji - kazetovy
+     port). (2) Pad po 2x zpet - BEZ stack trace (Rene nema ADB)
+     pridana ochrana proti rychlemu dvojitemu stisku (400ms, stejny
+     vzor jako RESET tlacitko) + cely onBackPressed v try/catch jako
+     bezpecnostni sit. (3) Self-test "kouse se" - pridana diagnostika
+     PODTEKANI zvukoveho bufferu (kdyz appka nestiha generovat zvuk
+     dost rychle), hlasi se do logu misto tiche automaticke opravy.
+     (4) PS1 Doom rozsypana grafika - OVERENO ze PS1 kod (nap_ps1_native.cpp,
+     core_ps1.c, pcsx_rearmed) jsem behem CELE Atari prace nedotkl.
+     Nalezen komentar s MNOHEM STARSIMI build znackami (SK103/106/107,
+     predchazeji me zapojeni) rikajici "nas interlaced vetev, kterou
+     nepouzivame" - predexistujici, zamerne obejita mezera v
+     prokladanem zobrazeni, nesouvisi s Atari praci. POUCKA PRO
+     NASTUPCE: kdyz Rene nahlasi VICE nesouvisejicich problemu naraz
+     (ruzne emulatory, ruzne symptomy), NEHADAT jednu spolecnou
+     pricinu - projit KAZDY zvlast, u kazdeho najit/pridat konkretni
+     dukaz (JAM status, stack trace pokud dostupny, git historie
+     zmenenych souboru), a byt HONEST kdyz neco NENI moje zmena (jako
+     PS1 pripad) misto aby se to tise opravovalo/omlouvalo bez duvodu.
+
+   B258: Rene opravil moji domnenku - "CSAVE neni kazetovy port, i
+     bez kazetaku udela dva kratke tony, to bylo vyresene v java
+     atari, udelej to presne podle atari jadra." Reprodukce presne
+     jeho sekvence (boot->napsat CSAVE->cekat->RETURN) s trasovanim
+     PC krok po kroku odhalila: CPU se VUBEC NEZASEKAVA (JAM=false
+     porad) - uvizne v LEGITIMNI polling smycce na $FD6C cekajici na
+     PRERUSENI OD POKEY (ne na fyzicky kazetak - Rene mel pravdu).
+     DVA CHYBEJICI KUSY, oba presny preklad z fungujici JS reference:
+     (1) casovace 1/2/4 (timerPeriod/timersReload/timersTick) vubec
+     neexistovaly - STIMER resetoval jen zvukova citadla, ne IRQ
+     odpocty. (2) IRQEN zapis s bitem "serialovy vystup potrebuje
+     bajt" PRI KLIDNEM portu musi OKAMZITE signalizovat pripraveno
+     (realny POKEY) - appka to drive delala jen PO PRVNIM zapisu do
+     SEROUT, slepa ulicka (OS cekal na IRQ driv, nez mohl prvni bajt
+     poslat). KRITICKA POUCKA PRO NASTUPCE: kdyz uzivatel REKNE
+     "tohle uz bylo vyreseno v [fungujici reference]", NEHADAT dal -
+     jit primo REPRODUKOVAT tu presnou sekvenci s trasovanim stavu
+     (PC, IRQEN, IRQST, registry) krok po kroku, najit KONKRETNI
+     adresu/instrukci, kde se to zasekava, a pak hledat v referenci
+     PRESNE tenhle mechanismus. Nehadat "asi ceka na hardware" -
+     OVERIT co presne. Take: kdyz uzivatel rekne "nekopiruj, udelej
+     to podle jadra" - znamena to POROZUMET mechanismu (proc kazdy
+     radek dela to, co dela) a prelozit ho spravne, ne jen zkopirovat
+     JS syntax do C++. Overeno: pred opravou PC zamrzle 2000+ snimku,
+     po oprave aktivne se meni. Konsolidovany test (6 kontrol vc.
+     kriticke "dva nezavisle boot davaji identicky vysledek" z B256
+     poucky, aby se hluboka zmena v IRQ/casovacich nedotkla bootu).
+     Zadne Java zmeny - cela oprava v nap_atari_machine.h.
+
+     VEDLEJSI TEMA (PS1): Rene se vydesil z formulace "interlaced
+     vetev, kterou nepouzivame" u PS1 Doom rozsypane grafiky - bral
+     to jako znak "obchazeni/fake", coz vyslovne nechce NIKDE, obzvlast
+     ne u Atari, kde jsem "cist ja zodpovedny". Potvrzeno: PS1 kod
+     (mnohem starsi build znacky, pred mym zapojenim) jsem nezmenil,
+     nevyreseno, ceka na rozhodnuti o prioritach - ale bráno jako
+     jasny signal: Atari C++ MUSI byt delane poradne, zadne zkratky,
+     presne podle skutecneho jadra, i kdyz je to slozitejsi/pomalejsi.
+
+   B259: Rene explicitne pozadal opravit PS1 Doom rozsypanou grafiku -
+     "opravdu me to vydesilo." DULEZITA POUCKA PRO NASTUPCE: narazil
+     jsem na ZASADNI ROZDIL mezi Atari a PS1 praci - Atari C++ (ciste,
+     bez zavislosti na Android/GPU) jde ZKOMPILOVAT A SPUSTIT primo v
+     tomhle sandboxu, takze KAZDA oprava se da overit skutecnym behem
+     pred odeslanim. PS1 render kod (vendor PCSX-ReARMed gpu-gles
+     plugin, OpenGL ES + Android) NEJDE v tomhle prostredi zkompilovat
+     ani spustit vubec - zadne GPU, zadny NDK/Android build retez.
+     Dukladne prozkoumano (gpulib_if.c): nalezena promenna
+     nap_disp_interlace (GP1 08h bit 5, prokladany rezim), ktera se
+     ZAPISUJE ale NIKDE neovlivnuje vykreslovani - vlastni komentar v
+     kodu to priznava ("jen diagnostika; kreslime vzdy progresivne v
+     plne vysce"). Silny kandidat na pricinu, ale BEZ MOZNOSTI TO
+     OVERIT jsem se ROZHODL NEHADAT opravu narychlo - misto toho
+     pridana CILENA DIAGNOSTIKA (vzdy-log pri zmene interlace bitu +
+     autoritativni gpu.screen.vres/hres z jadra + opravene pocitadlo
+     VRAM-upload logu, ktere se drive vycerpalo behem BIOS/menu driv,
+     nez Doom vubec zapnul interlace). Zadna zmena vykreslovaci
+     logiky. KRITICKA POUCKA: kdyz zmena NEJDE overit stejne duveryhodne
+     jako u Atari (kompilace+beh), NEPOSILAT ji jako "opravu" - poslat
+     ji jako DIAGNOSTIKU a byt EXPLICITNE upřímny o limitu, presne
+     tak, jak si to Rene vyslovne pral ("nechci fake, chci overene").
+     Dalsi krok az po Reneho GitHub Actions testu s timhle logem.
+
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
      patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most

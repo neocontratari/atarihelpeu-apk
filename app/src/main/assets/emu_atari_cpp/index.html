@@ -346,11 +346,24 @@ function naplanujZvukovyBuffer(vzorky){
     var gain=zvukCtx.createGain(); gain.gain.value=4.0; // vol/60 vzorec v POKEY dava max ~0.25 - zesileni pro slysitelnost na repro telefonu
     src.buffer=buf; src.connect(gain); gain.connect(zvukCtx.destination);
     var ted=zvukCtx.currentTime;
-    if(dalsiZvukStart<ted) dalsiZvukStart=ted; // pozadu (napr. po pauze karty) - srovnat na "ted", nehonit se dozadu
+    // BUILD2SB64: Rene - "v self testu se to kouse." Kdyz "dalsiZvukStart"
+    // (kam se ma naplanovat DALSI kousek) uz je V MINULOSTI vuci
+    // aktualnimu casu prehravace, znamena to, ze appka NESTIHA generovat
+    // zvuk dost rychle - vznikla MEZERA (underrun), presne to zni jako
+    // "kousani". Predtim se to potichu opravilo (srovnat na "ted") bez
+    // zaznamu - ted se to POCITA a hlasi, at je videt, jestli je to
+    // skutecna pricina, ne dohad.
+    if(dalsiZvukStart<ted){
+      zvukPodtekaniPocet++;
+      var mezeraMs=(ted-dalsiZvukStart)*1000;
+      if(mezeraMs>zvukNejvetsiMezeraMs) zvukNejvetsiMezeraMs=mezeraMs;
+      dalsiZvukStart=ted;
+    }
     src.start(dalsiZvukStart);
     dalsiZvukStart+=buf.duration;
   }catch(e){ napPoznamka('ZVUK_BUFFER_CHYBA '+(e&&e.message)); }
 }
+var zvukPodtekaniPocet=0, zvukNejvetsiMezeraMs=0, zvukHlaseniPocitadlo=0;
 var smyckaBezi=false, posledniCas=null, zbytekCasu=0;
 var SNIMEK_S=1/50; // PAL Atari = presne 50 snimku za vterinu, stejne jako skutecny stroj
 var VZORKU_NA_SNIMEK=Math.round(44100/50);
@@ -379,6 +392,13 @@ function smyckaTik(ted){
     kroku++;
   }
   if(posledniObraz) kresli(posledniObraz);
+  // BUILD2SB64: hlasit stav podtekani zvuku kazdych ~5s (250 tiku pri
+  // ~50/s), at je videt primo z logu, jestli appka na tomhle telefonu
+  // stiha generovat zvuk dost rychle.
+  zvukHlaseniPocitadlo++;
+  if(zvukHlaseniPocitadlo%250===0 && zvukPodtekaniPocet>0){
+    napPoznamka('ZVUK_PODTEKANI pocet='+zvukPodtekaniPocet+' nejvetsi_mezera='+zvukNejvetsiMezeraMs.toFixed(1)+'ms');
+  }
   requestAnimationFrame(smyckaTik);
 }
 function spustSmycku(){

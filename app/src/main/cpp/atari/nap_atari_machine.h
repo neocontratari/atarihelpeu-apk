@@ -58,6 +58,17 @@ struct Machine {
   int audc[4] = {0,0,0,0};
   int audctl = 0;
   PokeyAudioState pokeyAudio;
+  // BUILD2SB65: Rene - "csave neni kazetovy port... to bylo vyreseno
+  // v jave emu atari, udelej to presne podle atari jadra." Nalezeno:
+  // CSAVE po druhem RETURN vstoupi do smycky, ktera ceka na hodnotu
+  // nastavovanou PRERUSENIM OD POKEY CASOVACE 1/2 (presne to, co se
+  // pouziva pro casovani kazetovych bitu I BEZ pripojeneho kazetaku -
+  // Rene mel pravdu, ze to s fyzickym zarizenim nema nic spolecneho,
+  // je to cisty vnitrni casovac cipu). Predtim appka mela POKEY jen
+  // "tak akorat, aby ROM nezustala viset" - casovace 1/2/4 vubec
+  // nebyly. Ted presny preklad z Reneho fungujici JS reference
+  // (timerPeriod/timersReload/timersTick).
+  long timer1Cyc = 0, timer2Cyc = 0, timer4Cyc = 0;
   // BUILD2SB56: Rene - "pri bootovani ma atari svuj specificky zvuk,
   // klik pri startu. V self-testu je to lepsi nez v Java Atari, ale
   // ma to podzvuk." Prvni cast: GTIA "klik reproduktoru" (CONSOL bit3,
@@ -203,10 +214,13 @@ struct Machine {
       }
       if (r == 0x08) { audctl = v & 0xFF; return; }   // AUDCTL
       if (r == 0x09) {                                // STIMER - viz JS "timersReload()"
-        // BUILD2SB52: FAZE 1 se soustredi na zvuk, ne na POKEY casovace
-        // 1/2/4 (ty uz castecne resi jina cast IRQ logiky vyse) - STIMER
-        // navic podle reference vynuluje i vystupni citadla kanalu.
+        // BUILD2SB65: STIMER ted opravdu ZNOVUNABIJI casovace 1/2/4
+        // (drive to komentar sliboval, ale kod to nedelal - presne to
+        // zpusobovalo, ze CSAVE po druhem RETURN cekala na preruseni,
+        // ktere nikdy neprislo). STIMER navic podle reference vynuluje
+        // i vystupni citadla zvukovych kanalu.
         cnt0Reset();
+        timersReload();
         return;
       }
       if (r == 0x0D) {                          // SEROUT
@@ -221,8 +235,19 @@ struct Machine {
         return;
       }
       if (r == 0x0E) {                          // IRQEN
+        // BUILD2SB65: Rene - "csave neni kazetovy port, udelej to
+        // presne podle atari jadra." Nalezena PRAVA pricina zaseknuti:
+        // kdyz CSAVE povoli preruseni "seriovy vystup potrebuje bajt"
+        // (bit 0x10) zatimco je seriovy port JESTE V KLIDU (nic se
+        // neposila), skutecny POKEY OKAMZITE oznami "jsem pripraven"
+        // (registr je prazdny, cekal jen na povoleni). Predtim appka
+        // tenhle priznak nastavovala JEN po prvnim zapisu do SEROUT -
+        // slepa ulicka, protoze OS cekal na IRQ drive, nez vubec mohl
+        // prvni bajt poslat. Ted se to spravne signalizuje hned.
         irqen = v;
         irqst |= (~v) & 0xFF;                   // zakazane se rovnou zahodi
+        if (serStav == 0 && (v & 0x10)) irqst &= ~0x10; // seriovy vystup v klidu + prave povoleno = hned pripraven
+        if (serStav == 0 && (v & 0x08)) irqst &= ~0x08; // totez pro "posuvny registr prazdny"
         obnovIrq();
         return;
       }
@@ -297,6 +322,59 @@ struct Machine {
     // ("CPS=1773447/ac.sampleRate", komentar tam "cyklu na vzorek (PAL)").
     const double cyklu_na_vzorek = 1773447.0 / sampleRateHz;
     nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out, n, cyklu_na_vzorek);
+  }
+
+  // BUILD2SB65: POKEY casovace 1/2/4 - presny preklad z JS reference
+  // (timerPeriod/timersReload/timersTick). Perioda v CPU cyklech
+  // (1,79 MHz), stejny vzorec jako pouziva samotna syntéza zvuku
+  // (viz nap_atari_pokey.h) - je to STEJNY hardware, jen jiny ucel
+  // (tady odpocet do preruseni, tam generovani tonu).
+  long timerPeriod(int ch) const {
+    const int ac = audctl;
+    if (ch == 0) {
+      if (ac & 0x10) return 0;                              // 1+2 spojene: ridi kanal 2
+      const int d = (ac & 0x40) ? 1 : ((ac & 1) ? 114 : 28);
+      return (long)(audf[0] + ((ac & 0x40) ? 4 : 1)) * d;
+    }
+    if (ch == 1) {
+      if (ac & 0x10) {
+        const int d = (ac & 0x40) ? 1 : ((ac & 1) ? 114 : 28);
+        return (long)((audf[1] << 8) + audf[0] + ((ac & 0x40) ? 7 : 1)) * d;
+      }
+      const int d = (ac & 1) ? 114 : 28;
+      return (long)(audf[1] + 1) * d;
+    }
+    if (ch == 3) {
+      if (ac & 8) {
+        const int d = (ac & 0x20) ? 1 : ((ac & 1) ? 114 : 28);
+        return (long)((audf[3] << 8) + audf[2] + ((ac & 0x20) ? 7 : 1)) * d;
+      }
+      const int d = (ac & 1) ? 114 : 28;
+      return (long)(audf[3] + 1) * d;
+    }
+    return 0;
+  }
+  /** Zapis do STIMER ($D209) znovunabiji vsechny tri casovace. */
+  void timersReload() {
+    timer1Cyc = timerPeriod(0);
+    timer2Cyc = timerPeriod(1);
+    timer4Cyc = timerPeriod(3);
+  }
+  /** Vola se jednou za radku (114 cyklu) - presne jak to dela reference. */
+  void timersTick(int cyk) {
+    if (!(irqen & 0x07)) return; // nikdo neposlouchá, netreba pocitat
+    if (timer1Cyc > 0) {
+      timer1Cyc -= cyk;
+      if (timer1Cyc <= 0) { long p = timerPeriod(0); timer1Cyc += (p > 0 ? p : 1000000000L); irqst &= ~0x01; obnovIrq(); }
+    }
+    if (timer2Cyc > 0) {
+      timer2Cyc -= cyk;
+      if (timer2Cyc <= 0) { long p = timerPeriod(1); timer2Cyc += (p > 0 ? p : 1000000000L); irqst &= ~0x02; obnovIrq(); }
+    }
+    if (timer4Cyc > 0) {
+      timer4Cyc -= cyk;
+      if (timer4Cyc <= 0) { long p = timerPeriod(3); timer4Cyc += (p > 0 ? p : 1000000000L); irqst &= ~0x04; obnovIrq(); }
+    }
   }
 
   /** Stisk klavesy: OS ji prevezme pres preruseni z POKEY. */
@@ -425,6 +503,9 @@ struct Machine {
       else              { irqst &= ~0x08; serStav = 0; }
       obnovIrq();
     }
+    // BUILD2SB65: POKEY casovace 1/2/4 - jednou za radku (114 cyklu),
+    // presne jak to dela JS reference ("vola se kazdou scanline").
+    timersTick(114);
     line++;
     if (line == 248) {
       nmist = (nmist & 0x3F) | 0x40;
