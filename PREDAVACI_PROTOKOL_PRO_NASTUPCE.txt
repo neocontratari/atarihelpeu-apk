@@ -1055,6 +1055,63 @@
      tak, jak si to Rene vyslovne pral ("nechci fake, chci overene").
      Dalsi krok az po Reneho GitHub Actions testu s timhle logem.
 
+   B260: MOJE DALSI REGRESE (druha v rade) - Rene: "atari nejde
+     nabootovat, modra obrazovka se ctverečkem, neustale se opakujici
+     zvuk." B258 pridal DVE veci naraz - (1) POKEY casovace (bezpecne)
+     a (2) "instant ready" signal pri IRQEN zapisu behem klidoveho
+     serialoveho portu (RIZIKOVE, ale v tu chvili se to nezdalo byt
+     riskantni). KRITICKA POUCKA PRO NASTUPCE: kdyz jedna oprava
+     pridava VICE NEZ JEDNU zmenu naraz, a jedna z nich je "hrat si s
+     realnym hardwarovym mechanismem zpusobem, ktery nejde overit"
+     (zde: kdy presne POKEY genuinne signalizuje "pripraveno" - to
+     jsem si domyslel, ne overil), NUTNE SROVNAVACI TEST se VSEMI
+     kombinacemi zmen (0 zmen / jen zmena A / jen zmena B / obe), NE
+     jen test "funguje pozadovany pripad" (CSAVE). Presne tenhle
+     srovnavaci test (3 varianty) ODHALIL, ze SAMOTNE CASOVACE STACI
+     na odblokovani CSAVE (do ~3500 snimku navrat do normalni klidove
+     smycky, ticho) - riskantni cast NEBYLA VUBEC POTREBA a navic
+     kazila normalni boot (OS behem UPLNE NORMALNIHO bootu dostal
+     neocekavany IRQ signal a odklonil se z klidove smycky $F302-$F310
+     do jine oblasti se stale hrajicim tonem). OPRAVA: riskantni cast
+     odstranena, ponechany jen bezpecne overene casovace. Aktualizovan
+     i test 6 v konsolidovane sade (drive testoval PRAVE tu odstranenou
+     vlastnost - takovy test MUSI byt bud smazan, nebo prevraceny na
+     overeni NEPRITOMNOSTI, jinak trvale lze v sade zustane test, ktery
+     ocekava spatne chovani). PS1: BUILD2SB66 diagnostika (zmena
+     interlace bitu) se v Reneho Doom logu VUBEC NEOBJEVILA - hypoteza
+     "interlace se ignoruje" NENI potvrzena, potrebuje dalsi praci.
+     Vsimnuto: zdrojove rozliseni SE meni behem hrani (640x480,
+     320x240, 512x480) - mozny novy smer vysetrovani (obecne prepinani
+     rozliseni, ne konkretne interlace bit).
+
+   B261: SKUTECNA PRICINA PS1 Doom problemu nalezena - a odhalila
+     KRITICKY OMYL v B259. Zkoumal jsem plugins/gpu-gles/gpulib_if.c,
+     ale ten se od B82 VUBEC NEKOMPILUJE (CMakeLists.txt komentar to
+     rika primo - "19377 radku proverenehogpu_neon lezelo nepouzitych"
+     zatimco se prekladal rucne psany gpu_naples2/gpu-gles). CELA B259
+     DIAGNOSTIKA SLA DO MRTVEHO KODU - proto se v Reneho logu nic
+     neobjevilo (ne proto, ze by hypoteza byla spatna, ale protoze
+     jsem menil kod, ktery se vubec nepouzival). KRITICKA POUCKA PRO
+     NASTUPCE: PRED investigaci konkretniho .c/.cpp souboru VZDY
+     NEJDRIV overit v CMakeLists.txt/Android.mk, jestli se ten soubor
+     VUBEC KOMPILUJE - jinak muze hodiny dlouha investigace smerovat
+     do mrtveho kodu. SKUTECNY aktivni vykreslovac je gpu_neon. V nem
+     (plugins/gpulib/gpu.c, GPUvBlank()) je interlace podmineny TREMI
+     vecmi: allow_interlace (nastaveni FRONTENDU) && hra chce interlace
+     && hra chce dvojnasobnou vysku. Jadro se na allow_interlace pta
+     pres RETRO_ENVIRONMENT_GET_VARIABLE s klicem
+     "pcsx_rearmed_neon_interlace_enable_v2" - a nap_core_option_value()
+     (seznam vsech nastaveni, na ktera appka odpovida - bios, region,
+     memcard...) tenhle klic VUBEC NEMELA. OPRAVA: pridan jeden radek
+     do existujiciho seznamu, presne stejnym vzorem jako vsech ~7
+     ostatnich jiz fungujicich polozek. Hodnota "auto" (ne "enabled")
+     zamerne - sam gpu.c vysvetluje proc ("interlace nevypada dobre na
+     progresivnich displejich", telefon JE progresivni). STEJNE
+     OMEZENI jako u vsech PS1 zmen: nejde zkompilovat/spustit v tomto
+     sandboxu (OpenGL/Android) - overena jen syntaxe a shoda s uz
+     zavedenym vzorem, ne skutecny beh. Ceka na Reneho GitHub Actions
+     test.
+
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
      patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most

@@ -235,19 +235,22 @@ struct Machine {
         return;
       }
       if (r == 0x0E) {                          // IRQEN
-        // BUILD2SB65: Rene - "csave neni kazetovy port, udelej to
-        // presne podle atari jadra." Nalezena PRAVA pricina zaseknuti:
-        // kdyz CSAVE povoli preruseni "seriovy vystup potrebuje bajt"
-        // (bit 0x10) zatimco je seriovy port JESTE V KLIDU (nic se
-        // neposila), skutecny POKEY OKAMZITE oznami "jsem pripraven"
-        // (registr je prazdny, cekal jen na povoleni). Predtim appka
-        // tenhle priznak nastavovala JEN po prvnim zapisu do SEROUT -
-        // slepa ulicka, protoze OS cekal na IRQ drive, nez vubec mohl
-        // prvni bajt poslat. Ted se to spravne signalizuje hned.
+        // BUILD2SB67: Rene - "atari nejde nabootovat, modra obrazovka
+        // se ctverečkem, porad se opakujici zvuk." NALEZENO: predchozi
+        // B258 "instant ready" oprava (kdyz je serialovy port v klidu
+        // a IRQEN prave povoli bit 0x10/0x08, hned ohlasit pripraveno)
+        // byla PRILIS SIROKA - OS ji spousti i behem UPLNE NORMALNIHO
+        // bootu (ne jen behem CSAVE), coz appku odklonilo z normalni
+        // klidove smycky ($F302-$F310) do jineho, spatneho stavu se
+        // stale hrajicim tónem. OVERENO srovnavacim testem: SAMOTNE
+        // casovace (nize, timersTick) CSAVE odblokuji stejne spolehlive
+        // (do par tisic snimku se vrati do normalni klidove smycky,
+        // ticho) BEZ POTREBY tohohle rizikoveho "instant ready" kroku -
+        // a normalni boot pri tom zustane presne stejny jako pred B258.
+        // Bezpecnejsi oprava = odstranit riskantni cast, nechat jen tu,
+        // co je overene bezpecna.
         irqen = v;
         irqst |= (~v) & 0xFF;                   // zakazane se rovnou zahodi
-        if (serStav == 0 && (v & 0x10)) irqst &= ~0x10; // seriovy vystup v klidu + prave povoleno = hned pripraven
-        if (serStav == 0 && (v & 0x08)) irqst &= ~0x08; // totez pro "posuvny registr prazdny"
         obnovIrq();
         return;
       }

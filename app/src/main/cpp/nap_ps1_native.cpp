@@ -330,6 +330,27 @@ static const char *nap_core_option_value(const char *key) {
   // souboru na hru. Bez teto radky byl cely ten system pripojeny na nic.
   if (strcmp(key, "pcsx_rearmed_memcard1") == 0) return "libretro";
   if (strcmp(key, "pcsx_rearmed_memcard2") == 0) return "libretro";
+  // BUILD2SB68: Rene - "doom rozsypana grafika me vydesila... atari je
+  // to muj problem, oprav to poradne." NALEZENA SKUTECNA PRICINA - a
+  // je jinde, nez jsem si drive myslel (predtim jsem zkoumal gpu-gles,
+  // ktery se ale od B82 vubec nekompiluje - viz CMakeLists.txt
+  // komentar). SKUTECNY aktivni vykreslovac je gpu_neon, a ten ma
+  // interlace zavisly na TETO promenne (viz plugins/gpulib/gpu.c,
+  // GPUvBlank() - "interlace = gpu.state.allow_interlace && STATUS_
+  // INTERLACE && STATUS_DHEIGHT" - VSECHNY TRI podminky musi platit).
+  // Jadro se na tuhle hodnotu PTA pres RETRO_ENVIRONMENT_GET_VARIABLE
+  // (frontend/libretro.c, klic "pcsx_rearmed_neon_interlace_enable_v2"),
+  // ale nase nap_core_option_value() na ni NEODPOVIDALA - jadro dostalo
+  // "nenalezeno" a allow_interlace zustal na vychozi 0 = VYPNUTO. Takze
+  // ZADNA hra, at pozaduje interlace jakkoli usilovne, ho nikdy
+  // nedostala - presne to vysvetluje Doom "rozsypanou" grafiku (ocekava
+  // prokladane pole, dostava misto toho neco jineho/nekonzistentniho).
+  // Hodnota "auto" (ne "enabled") zamerne - gpu.c sam vysvetluje proc:
+  // "interlace doesn't look nice on progressive displays" (a telefon
+  // JE progresivni displej) - auto navic ma vestavenou ochranu proti
+  // hrám, ktere bit nastavi ale VRAM aktivne necte (needely by z
+  // interlace nic, jen riziko artefaktu).
+  if (strcmp(key, "pcsx_rearmed_neon_interlace_enable_v2") == 0) return "auto";
   return nullptr;
 }
 static bool nap_env(unsigned cmd, void *data) {
