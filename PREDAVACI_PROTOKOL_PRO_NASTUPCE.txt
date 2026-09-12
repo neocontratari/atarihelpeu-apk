@@ -1239,6 +1239,42 @@
      nelze overit odsud) - riziko omezene na max. zvukovy posun, ne
      poskozeni dat. Zadny zasah do Atari souboru. Ceka na Reneho dalsi
      test s vicestopou hrou.
+   B267: PRELOMOVY NALEZ - Rene vysvetlil, ze "dva returny" jsou
+     SPRAVNE, ocekavane chovani (prvni = varovny signal/otazka, druhy
+     = potvrzeni) a rekl "nebud liny a nehadej, u atari nestrpim
+     zadny fake." Dukladnym PRIMYM TRASOVANIM procesoru (ne odhadem)
+     potvrzeno: appka SPRAVNE prochazi pipaci smyckou v ROM ($FE00-
+     $FE36) hned po prvnim RETURN - logika prikazu NENI rozbita.
+     SKUTECNA PRICINA byla jinde a zavaznejsi, nez cokoli predtim
+     zkoumane: ROM pipaci smycka NEPOUZIVA POKEY tón, ale primo
+     softwarove RYCHLE PREPINA reproduktorovy bit (GTIA CONSOL bit3,
+     stejna cesta jako boot klik) - vytvari tón cistym bit-bangingem.
+     Appka ale genAudio() vola JEDNOU ZA SNIMEK a kontroluje jen "je
+     bit ted jiny nez naposledy" - ROM smycka ale prepina bit
+     MNOHOKRAT BEHEM JEDNOHO SNIMKU. Vzorkovani jen na konci snimku
+     ztratilo VSECHNY mezilehle prechody - zustal jen posledni stav.
+     KRITICKA POUCKA PRO NASTUPCE: "vzorkovat stav jen na konci
+     periody" je NEBEZPECNY VZOR pro cokoli, co se muze zmenit
+     VICEKRAT behem jedne periody - plati to obecne (nejen pro
+     zvuk), kdykoli neco generuje vystup na ZAKLADE ZMENY stavu
+     mezi dvema kontrolnimi body, MUSI zaznamenavat KAZDOU zmenu s
+     presnym casem, ne jen posledni hodnotu. OPRAVA: kazdy zapis do
+     CONSOL bit3 se zaznamena s presnym CPU cyklem (male pole
+     speakerPrechody[], max 96 prechodu mezi volanimi genAudio) -
+     genAudio() zpracuje VSECHNY prechody na jejich spravnych
+     pozicich (vola pokeyGenSamples po castech mezi prechody misto
+     jednou pro cely buffer). DULEZITE: pri RESET tlacitku (ktere
+     NEpostavi cely stroj znovu, na rozdil od BOOT) musi
+     audioCyklusPocatek zustat synchronizovany s cpu.c.cycles (obojí
+     vynulovano v reset()) - jinak by prechody po resetu vysly se
+     zapornym cyklem. OVERENO: 4 nove testy (rychle prepinani v
+     bufferu -> spravny pocet zmen ve vystupu; ticho zustava ticho;
+     jednotlivy klik stale spravne dozni; navaznost mezi snimky) +
+     KRITICKY end-to-end test se SKUTECNOU ROM presne stejnym
+     zpusobem volani jako produkcni kod - po CSAVE+RETURN nyni
+     SKUTECNA zvukova energie v 52 z 90 snimku (predtim 0). Vsech 10
+     testu (6 puvodnich + 4 nove) prochazi.
+
 
 
 

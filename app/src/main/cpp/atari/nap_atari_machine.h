@@ -85,6 +85,23 @@ struct Machine {
   // pro viditelnost - ne pro zvuk samotny.
   long long gtiaKlikPocitadlo = 0;
 
+  // BUILD2SB74: Rene - "u atari nestrim zadny fake, nebud liny a nehadej."
+  // Dukladnym trasovanim (ne hadanim, ani domnenkou) zjisteno: appka
+  // SPRAVNE prochazi "pipaci" smyckou v ROM ($FE00-$FE36 - rychle
+  // opakovane prepinani CONSOL bit3, presny stejny mechanismus jako
+  // klik pri bootu, jen mnohem castejsi) hned po prvnim RETURN - jadro
+  // NENI rozbite. Skutecny problem: genAudio() se vola JEDNOU ZA
+  // SNIMEK a kontroluje jen "je bit ted jiny nez naposledy?" - jenze
+  // tahle ROM smycka prepina bit MNOHOKRAT BEHEM JEDNOHO SNIMKU (tón,
+  // ne jednotlivy klik). Vzorkovani jen na konci snimku ztrati VSECHNY
+  // mezilehle prechody. Oprava: zaznamenat KAZDY prechod s presnym
+  // CPU cyklem primo pri zapisu, genAudio() je pak zpracuje vsechny na
+  // spravnych pozicich v ramci bufferu.
+  static const int MAX_SPEAKER_PRECHODU = 96;
+  struct SpeakerPrechod { long long cyklus; int novaHodnota; };
+  SpeakerPrechod speakerPrechody[MAX_SPEAKER_PRECHODU];
+  int pocetSpeakerPrechodu = 0;
+
   const uint8_t *osRom = nullptr;
   const uint8_t *basRom = nullptr;
 
@@ -211,11 +228,18 @@ struct Machine {
         // START/SELECT/OPTION driv, nez si ho program stihne precist.
         //
         // BUILD2SB56: presne TADY vznika chybejici "boot zvuk" - bit3
-        // je vystup na reproduktor. Jen ULOZIT aktualni stav bitu,
-        // genAudio() pak sam pozna ZMENU a spusti kratky "klik" (viz
-        // Machine::genAudio nize) - presne jako skutecny hardware a
-        // jako JS reference (M.onSpeaker).
-        gtiaSpeakerBit = (v >> 3) & 1;
+        // je vystup na reproduktor.
+        // BUILD2SB74: zaznamenat KAZDY prechod s cyklem, ne jen ulozit
+        // posledni stav - viz komentar u pole speakerPrechody vyse.
+        int novyBit = (v >> 3) & 1;
+        if (novyBit != gtiaSpeakerBit) {
+          if (pocetSpeakerPrechodu < MAX_SPEAKER_PRECHODU) {
+            speakerPrechody[pocetSpeakerPrechodu].cyklus = cpu.c.cycles;
+            speakerPrechody[pocetSpeakerPrechodu].novaHodnota = novyBit;
+            pocetSpeakerPrechodu++;
+          }
+          gtiaSpeakerBit = novyBit;
+        }
         return;
       }
       return;
@@ -332,17 +356,44 @@ struct Machine {
   // pokud ano, spustit kratky "klik" presne jako skutecny hardware
   // (viz PokeyAudioState::spkLevel/spkDecay a jejich pouziti v
   // nap_atari_pokey.h).
+  // BUILD2SB74: sleduje CPU cyklus odpovidajici ZACATKU pristiho
+  // zvukoveho bufferu - potreba, aby sel spocitat, na KTEROU pozici
+  // (vzorek) uvnitr bufferu jednotlive zaznamenane prechody pripadaji.
+  long long audioCyklusPocatek = 0;
+
   void genAudio(float *out, int n, double sampleRateHz) {
-    if (gtiaSpeakerBit != gtiaSpeakerVidenaAudioGen) {
-      pokeyAudio.spkLevel = gtiaSpeakerBit ? 1 : -1;
-      pokeyAudio.spkDecay = (long)(sampleRateHz * 0.004); // ~4ms, presne jako JS reference
-      gtiaSpeakerVidenaAudioGen = gtiaSpeakerBit;
-      gtiaKlikPocitadlo++;
-    }
     // 1773447 Hz - presne stejna konstanta jako v JS referenci
     // ("CPS=1773447/ac.sampleRate", komentar tam "cyklu na vzorek (PAL)").
     const double cyklu_na_vzorek = 1773447.0 / sampleRateHz;
-    nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out, n, cyklu_na_vzorek);
+
+    // BUILD2SB74: zpracovat VSECHNY zaznamenane prechody na jejich
+    // SPRAVNYCH pozicich uvnitr bufferu - misto jedine kontroly "je bit
+    // ted jiny nez naposledy?" na zacatku. Bez tohohle se rychle
+    // opakovane prepinani (skutecny tón z ROM pipaci smycky, ne jen
+    // jednotlivy klik) ztratilo - zustal jen posledni stav na konci
+    // snimku. Viz komentar u pole speakerPrechody.
+    int zapsanoVzorku = 0;
+    for (int i = 0; i < pocetSpeakerPrechodu; i++) {
+      long long delta = speakerPrechody[i].cyklus - audioCyklusPocatek;
+      int pozice = (int)(delta / cyklu_na_vzorek);
+      if (pozice < zapsanoVzorku) pozice = zapsanoVzorku;   // poradi zachovano zapisem, jen pojistka
+      if (pozice > n) pozice = n;
+      if (pozice > zapsanoVzorku) {
+        nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + zapsanoVzorku, pozice - zapsanoVzorku, cyklu_na_vzorek);
+        zapsanoVzorku = pozice;
+      }
+      // prave TADY, na spravne pozici, spustit klik/tón - presne jako
+      // predtim delalo genAudio() jen jednou za cely buffer.
+      pokeyAudio.spkLevel = speakerPrechody[i].novaHodnota ? 1 : -1;
+      pokeyAudio.spkDecay = (long)(sampleRateHz * 0.004); // ~4ms, presne jako JS reference
+      gtiaKlikPocitadlo++;
+    }
+    gtiaSpeakerVidenaAudioGen = gtiaSpeakerBit;
+    pocetSpeakerPrechodu = 0;
+    if (zapsanoVzorku < n) {
+      nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + zapsanoVzorku, n - zapsanoVzorku, cyklu_na_vzorek);
+    }
+    audioCyklusPocatek += (long long)((double)n * cyklu_na_vzorek);
   }
 
   // BUILD2SB65: POKEY casovace 1/2/4 - presny preklad z JS reference
@@ -411,6 +462,14 @@ struct Machine {
     mem.pia = Pia();
     cpu.c = CpuState();
     cpu.reset();
+    // BUILD2SB74: cpu.c.cycles se vynuluje uvnitr CpuState() vyse -
+    // audioCyklusPocatek MUSI zustat synchronizovany, jinak by po
+    // pouziti RESET tlacitka (ktere NEpostavi cely stroj znovu, na
+    // rozdil od BOOT) vysly vsechny nove zaznamenane prechody s
+    // absurdne velkym zapornym rozdilem cyklu a genAudio() by je
+    // spatne zaradila.
+    audioCyklusPocatek = 0;
+    pocetSpeakerPrechodu = 0;
   }
 
   void dalsiDlInstrukce() {
