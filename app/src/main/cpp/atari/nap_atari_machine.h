@@ -147,7 +147,27 @@ struct Machine {
       if (r == 0x09) return kbcode;             // KBCODE
       if (r == 0x0A) return rnd();              // RANDOM
       if (r == 0x0E) return irqst;              // IRQST
-      if (r == 0x0F) return 0xFF;               // SKSTAT - klid
+      if (r == 0x0F) {                          // SKSTAT
+        // BUILD2SB69: Rene - "csave neni kazetovy port... projdi si
+        // poradne core a biosy." Dukladna disassemblace ROM ($ED44-
+        // $ED96) odhalila: po uvodnim (spravnem, ocekavanem) ~5s
+        // zpozdeni na "priprav se" nasleduje DALSI smycka, ktera ceka
+        // na PRECHODY (zmeny) v bitu 4 SKSTAT - to je skutecny obvod
+        // detekce signalu z kazetoveho vstupu. Appka predtim vracela
+        // VZDY presne $FF - dokonale, umele ticho bez jedineho
+        // prechodu. Na SKUTECNEM hardwaru by NEZAPOJENY kazetovy
+        // vstup nebyl "dokonale ticho" - byl by na nem elektricky sum
+        // (plovouci/nezapojeny vstup), takze by ROM tuhle smycku
+        // rychle prosla (par prechodu staci). Bez sumu ROM nikdy
+        // zadny prechod nevidi a spadne az do dlouhy zalozni
+        // casovy limit - presne to vysvetluje "zasekla se smycka a
+        // pak to skoci do ready" a tu dlouho hrajici spatnou smes
+        // tonu behem cekani. Bit 4 ted simuluje tenhle sum (stejny
+        // rnd() jako RANDOM registr) - ostatni bity zustavaji beze
+        // zmeny (idle stav).
+        int sumBit4 = (rnd() & 1) << 4;
+        return (0xFF & ~0x10) | sumBit4;
+      }
       return 0xFF;
     }
     if (page == 0xD300) {                       // PIA

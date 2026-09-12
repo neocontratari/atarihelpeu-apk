@@ -374,6 +374,27 @@ static bool nap_env(unsigned cmd, void *data) {
 static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
   if (!data) { g_dupe_frames.fetch_add(1); g_frames.fetch_add(1); return; }
   std::lock_guard<std::mutex> lock(g_frame_mutex);
+  // BUILD2SB70: Rene - "doom furt spatna grafika, super hratelny."
+  // Interlace enable (B261) zadnou zmenu nepřinesl - hypoteza NENI
+  // potvrzena. Misto dalsiho hadani (enhancement resolution? dithering?
+  // stride?) - cilena diagnostika PRESNE tady, kde snimek od gpu_neon
+  // skutecne prichazi. Zaznamena w/h/pitch/format KAZDE ZMENY (ne
+  // kazdy snimek - to by log zahltilo) - i ocekavany pitch (w*bpp) pro
+  // prime srovnani, jestli sedi. Da mi to tvrda data pro dalsi krok,
+  // misto dalsi neoverene domnenky.
+  {
+    static unsigned nap_video_posl_w = 0, nap_video_posl_h = 0;
+    static size_t nap_video_posl_pitch = 0;
+    static int nap_video_posl_fmt = -1;
+    const int fmtNyni = g_pixfmt.load();
+    if (w != nap_video_posl_w || h != nap_video_posl_h || pitch != nap_video_posl_pitch || fmtNyni != nap_video_posl_fmt) {
+      const int bpp = (fmtNyni == PIXFMT_XRGB8888) ? 4 : 2;
+      const size_t ocekavanyPitch = (size_t)w * bpp;
+      NAPDIAG("BUILD2SB70 PS1_VIDEO_ZMENA w=%u h=%u pitch=%zu ocekavanyPitch=%zu fmt=%d bpp=%d shoda_pitch=%s",
+              w, h, pitch, ocekavanyPitch, fmtNyni, bpp, (pitch == ocekavanyPitch) ? "ANO" : "NE_MOZNA_PADDING");
+      nap_video_posl_w = w; nap_video_posl_h = h; nap_video_posl_pitch = pitch; nap_video_posl_fmt = fmtNyni;
+    }
+  }
   g_frame_argb.resize((size_t)w * h);
   // ===== TADY BYL DVOJITY OBRAZ A ZELENOFIALOVE BARVY =====
   // Drive tu stalo:  if (g_gles_ready) g_pixfmt.store(PIXFMT_XRGB8888);

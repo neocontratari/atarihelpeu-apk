@@ -1112,6 +1112,52 @@
      zavedenym vzorem, ne skutecny beh. Ceka na Reneho GitHub Actions
      test.
 
+   B262: Rene: "opravdu si projdi poradne core a biosy atari." Napsan
+     VLASTNI 6502 DISASSEMBLER (Python, ~150 radku) a POPRVE precten
+     SKUTECNY ROM kod (ne jen odhady z hodnot registru). Nalezeno:
+     CSAVE ma DVE FAZE. FAZE 1 ($FD34-$FD79): ceka na softwarovy
+     VBLANK-odpocitavany OS casovac ($022A/CDTMV5) - 255 snimku ~5s.
+     TOHLE JE SPRAVNE, OCEKAVANE chovani (Reneho "priprava"), potvrzeno
+     testem ze funguje samo. FAZE 2 ($ED44-$ED96), volana AZ PO fazi 1:
+     skutecne cte SKSTAT bit4 (POKEY obvod detekce kazetoveho signalu)
+     a ceka na PRECHODY - appka vracela VZDY $FF (dokonale umele
+     ticho). OPRAVENO: SKSTAT bit4 ted simuluje elektricky sum
+     nezapojeneho vstupu (stejny rnd() jako RANDOM). UPRIMNE PRIZNANO
+     Renemu: tahle oprava cili na FAZI 2, kterou testovane okno (5s od
+     druheho RETURN) jeste ani nedosahuje - PROC BEHEM SPRAVNE,
+     OCEKAVANE faze 1 pauzy hraje appka nepretrzity spatny zvuk (misto
+     kratkeho pipnuti) JESTE NENI VYRESENO - potreba najit, kdo
+     nastavuje AUDC (hlasitost) pro dotcene kanaly a proc chybi/
+     nefunguje envelope/umlceni po kratke dobe. DULEZITA POUCKA PRO
+     NASTUPCE: kdyz register-level pozorovani (jen ctu hodnoty pred/po)
+     nestaci k pochopeni PROC se neco deje, DALSI KROK je napsat
+     jednoduchy disassembler a precist SKUTECNY ROM kod - u projektu
+     jako je tenhle (skutecna, autenticka ROM k dispozici) je to
+     rychlejsi a spolehlivejsi nez dalsi kolo hadani z chovani.
+
+   B263: Rene: "co ten doom a grafika v ps1?" B261 interlace-enable
+     oprava ZADNOU ZMENU nepřinesla ("zadna zmena Partaku") - hypoteza
+     tedy NENI potvrzena, Doom pravdepodobne skutecny interlace pro
+     hlavni hrani vubec nepouziva. DULEZITA POUCKA: i DOBRE ODUVODNENA
+     hypoteza (nasel jsem KONKRETNI chybejici core-option, presne
+     odpovidajici mechanismu popsanem v gpu.c) muze byt SPRAVNA co do
+     principu, ale NETYKAT SE aktualne pozorovaneho problemu - fix byl
+     genuinne opravny (appka ted SPRAVNE odpovida na tenhle dotaz), jen
+     to neni pricina TOHOTO konkretniho symptomu. Prozkoumany dalsi dva
+     kandidati: (1) Enhanced Resolution - ma rozsahlou historii jiz
+     overenou samotnym Renem drive (stary komentar "nedotknutelne") -
+     NESAHAT bez tvrdych dukazu, riziko rozbiti funkcniho. (2) stride/
+     pitch mismatch v nap_video() - pri cteni kodu vypada spravne
+     (pouziva se skutecny pitch parametr, ne odhad w*bpp), ale nejde to
+     overit bez behu. MISTO DALSIHO HADANI pridana cilena diagnostika
+     primo v nap_video() (kam snimek od gpu_neon SKUTECNE prichazi) -
+     zaznamena KAZDOU ZMENU w/h/pitch/format + OCEKAVANY pitch pro
+     prime srovnani. Loguje se jen pri zmene, ne kazdy snimek. Stejne
+     omezeni jako u vsech PS1 zmen (nejde zkompilovat/spustit zde) -
+     overena jen syntaxe a rovnovaha zavorek. Ceka na Reneho dalsi test
+     s timhle logem.
+
+
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika
      patri do C++. Java jen tam, kde to jinak fyzicky nejde (JS most
