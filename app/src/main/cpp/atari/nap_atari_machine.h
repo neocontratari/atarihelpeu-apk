@@ -361,6 +361,30 @@ struct Machine {
   // (vzorek) uvnitr bufferu jednotlive zaznamenane prechody pripadaji.
   long long audioCyklusPocatek = 0;
 
+  // BUILD2SB75: Rene - "pri nabootovani mas kratky zvuk po resetu
+  // dlouhy zvuk, presne obracene... nesmyslne to lupne i po prejiti
+  // do self testu." Nalezena SPOLECNA pricina obou hlaseni: kdykoli
+  // appka posune MNOHO snimku najednou synchronne (boot=600, self-
+  // test=400) BEZ prubezneho volani genAudio() (to zacne az POTOM,
+  // v hlavni smycce), VSECHNY zaznamenane prechody z tehle doby maji
+  // cyklus VZDALENY od "audioCyklusPocatek" (ktery zustava na stare
+  // hodnote, dokud genAudio() konecne neprobehne) - genAudio() je pak
+  // VSECHNY namacka na konec prvniho bufferu (bezpecnostni orezani
+  // pozice na max. n), misto aby byly rozlozene v case jak doopravdy
+  // zazněly. Vysledek: bud "zmacknuty" kratky zvuk (misto rozlozeneho
+  // dlouheho), nebo naopak nesmyslne velky pocet "kliku" najednou
+  // (self-test). Oprava: po KAZDEM takovem velkem bloku snimku
+  // (bootNative, self-test vstup, napsani textu+RETURN, reset)
+  // srovnat sledovani zvuku s aktualnim stavem procesoru - zahodi to
+  // presne prehrani zvuku BEHEM synchronniho bloku (nejde jinak bez
+  // vetsi prestavby cele smycky), ale zabrani to spatnym, zmacknutym
+  // nebo umele vysokym artefaktum v zaznamu HNED PO bloku.
+  void srovnatSledovaniZvuku() {
+    audioCyklusPocatek = cpu.c.cycles;
+    pocetSpeakerPrechodu = 0;
+    gtiaSpeakerVidenaAudioGen = gtiaSpeakerBit;
+  }
+
   void genAudio(float *out, int n, double sampleRateHz) {
     // 1773447 Hz - presne stejna konstanta jako v JS referenci
     // ("CPS=1773447/ac.sampleRate", komentar tam "cyklu na vzorek (PAL)").

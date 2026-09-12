@@ -4114,6 +4114,78 @@ public class MainActivity extends Activity {
             appendNativeLog("BUILD2SB58 ATARI_AKCE=NAPSANO_TEXT:" + text + " " + napAtariRegShrnuti(r));
             return r;
         }
+        // BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na
+        // skutecnem stroji, ne na Altirre - te neverim." Napise CSAVE,
+        // oba RETURN presne jako atariNapisText (stejne 8-snimkove
+        // zpozdeni na klavesu - KRITICKE, viz B268 poucka o tom, ze
+        // jina casovani = jina vetev v ROM), a POTOM zachyti VESKERY
+        // zvuk po dobu cele operace (45s = bezpecna rezerva i pro
+        // delsi programy - zmereno 100 radku ~28s) - presne ten zvuk,
+        // co genAudio() vyrobi z opravdu bezicich POKEY registru, ne
+        // zadna zvlast psana FSK simulace. Ulozi jako .wav do
+        // verejneho uloziste (prezije i odinstalaci appky).
+        @JavascriptInterface public String atariCsaveDoWav(String nazevSouboru) {
+            for (int i = 0; i < 5; i++) {
+                int kod = NativeAtariCoreBridge.kbcode("CSAVE".charAt(i));
+                if (kod >= 0) NativeAtariCoreBridge.keySafe(kod, 8);
+            }
+            NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode('\n'), 8);
+            NativeAtariCoreBridge.runSafe(68); // 8 (return) + 60, presne jako atariNapisText
+            NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode('\n'), 8);
+            NativeAtariCoreBridge.runSafe(60);
+
+            final int SR = 44100;
+            final int celkemSnimku = 45 * 50; // 45s pri PAL 50 Hz - bezpecna rezerva
+            String b64 = NativeAtariCoreBridge.zachytitCsaveZvukSafe(celkemSnimku);
+            if (b64 == null || b64.isEmpty()) {
+                appendNativeLog("BUILD2SB76 CSAVE_WAV chyba=prazdna_data");
+                return "{\"chyba\":\"zadna zvukova data\"}";
+            }
+            byte[] pcm;
+            try { pcm = android.util.Base64.decode(b64, android.util.Base64.DEFAULT); }
+            catch (Throwable t) {
+                appendNativeLog("BUILD2SB76 CSAVE_WAV chyba=base64:" + t.getMessage());
+                return "{\"chyba\":\"spatny base64\"}";
+            }
+
+            try {
+                File dir = new File(getPublicAtariHelpDownloadsDir(), "Atari_emu");
+                if (!dir.exists()) dir.mkdirs();
+                String jmeno = safeFileName((nazevSouboru == null || nazevSouboru.isEmpty()) ? "csave_vystup.wav" : nazevSouboru);
+                if (!jmeno.toLowerCase().endsWith(".wav")) jmeno = jmeno + ".wav";
+                File f = new File(dir, jmeno);
+                try (FileOutputStream fos = new FileOutputStream(f, false)) {
+                    fos.write(wavHlavicka(pcm.length, SR, 1, 16));
+                    fos.write(pcm);
+                }
+                appendNativeLog("BUILD2SB76 CSAVE_WAV ulozeno=" + f.getAbsolutePath() + " bajtu=" + pcm.length);
+                return "{\"cesta\":\"" + f.getAbsolutePath().replace("\\", "\\\\").replace("\"", "\\\"") + "\"}";
+            } catch (Throwable t) {
+                appendNativeLog("BUILD2SB76 CSAVE_WAV chyba=zapis:" + t.getMessage());
+                return "{\"chyba\":\"zapis selhal: " + String.valueOf(t.getMessage()).replace("\"", "'") + "\"}";
+            }
+        }
+
+        /** Standardni 44-bajtova WAV hlavicka (PCM, mono/stereo, 16-bit). */
+        private byte[] wavHlavicka(int datByteCount, int sampleRate, int channels, int bitsPerSample) {
+            int byteRate = sampleRate * channels * bitsPerSample / 8;
+            int blockAlign = channels * bitsPerSample / 8;
+            java.nio.ByteBuffer b = java.nio.ByteBuffer.allocate(44).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+            b.put(new byte[]{'R','I','F','F'});
+            b.putInt(36 + datByteCount);
+            b.put(new byte[]{'W','A','V','E'});
+            b.put(new byte[]{'f','m','t',' '});
+            b.putInt(16);
+            b.putShort((short)1); // PCM
+            b.putShort((short)channels);
+            b.putInt(sampleRate);
+            b.putInt(byteRate);
+            b.putShort((short)blockAlign);
+            b.putShort((short)bitsPerSample);
+            b.put(new byte[]{'d','a','t','a'});
+            b.putInt(datByteCount);
+            return b.array();
+        }
         // BUILD2SB59: Rene - "pridej tlacitko reset a return." RESET =
         // skutecne Atari RESET tlacitko (nemaze pamet, jen znovu
         // nahodi procesor) - i zachranna brzda, kdyz se ROM nekde

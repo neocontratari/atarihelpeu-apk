@@ -1274,6 +1274,43 @@
      zpusobem volani jako produkcni kod - po CSAVE+RETURN nyni
      SKUTECNA zvukova energie v 52 z 90 snimku (predtim 0). Vsech 10
      testu (6 puvodnich + 4 nove) prochazi.
+   B268: Rene nahlasil NARAZ VICE veci: boot/reset zvuk obraceny,
+     nesmyslne kliknuti po self-testu, chybejici attract mode, CSAVE
+     jen 1 klik misto 2, chybejici zaveraci WAV zvuk, CLOAD bez ERROR
+     138. Take ostre kritizoval, ze jsem si "neprosel nic, jen strilim
+     naslepo" - DULEZITA REAKCE: misto obhajoby jsem SYSTEMATICKY
+     overil KAZDY bod zvlast, a upřímně priznal, ze VETSINA zustava
+     NEVYRESENA v tomto kole (attract mode, CSAVE pocet pipnuti,
+     zaveraci zvuk, CLOAD ERROR 138) - jen DVA body maji potvrzenou
+     opravu. POUCKA: kdyz prijde VELKA davka pozadavku/hlaseni naraz,
+     NEHODIT VSECHNY DO JEDNOHO KOSE - rozdelit, overit KAZDY zvlast
+     testem (ne jen precist kod), a otevrene priznat, co zustava
+     nedokoncene, misto aby se to zamlzelo pod jednim "opraveno"
+     shrnutim. NALEZENO: attract mode (zmena barev po necinnosti)
+     SKUTECNE VUBEC nefunguje - test 30000 snimku (10 min) bez
+     klavesy, COLBK se nezmenil ani jednou. Realny OS mechanismus
+     zatim nedohledan (dalsi prace). NALEZENA A OPRAVENA SPOLECNA
+     PRICINA DVOU ruznych hlasenych problemu (boot/reset zvuk
+     obraceny + nesmyslne kliknuti pri self-testu): kdykoli appka
+     posune MNOHO snimku najednou synchronne (boot=600, self-test=400,
+     napsani textu=60, reset=60) BEZ prubezneho volani genAudio(),
+     zaznamenane prechody z tehle doby maji cyklus vzdaleny od
+     sledovaneho pocatku - genAudio() je VSECHNY namacka na zacatek
+     prvniho bufferu misto rozlozeni v case. OVERENO PRIMOU
+     REPRODUKCI produkcni posloupnosti (bootNative(600)->BYE->400
+     snimku, presne jak dela atariDoSelfTestu): PRED opravou 64
+     nahromadenych prechodu (odpovida hlasenym "67 kliknutim"), PO
+     oprave presne 0. Oprava: nova metoda srovnatSledovaniZvuku()
+     (srovna cyklus, zahodi nahromadene prechody) volana po KAZDEM
+     velkem synchronnim bloku - uvnitr bootNative() pro jeho 600
+     snimku; v runNative() pro snimku>10 (prah zvoleny tak, aby se
+     NIKDY netykal normalni "dohaneci" smycky, ktera postupuje po
+     JEDNOM snimku pres samostatna volani). DULEZITE: tahle oprava
+     NEREPRODUKUJE spravne "dlouhy boot zvuk" - jen odstranuje spatne
+     artefakty vznikle touhle konkretni chybou. Skutecne prubezne
+     prehravani zvuku BEHEM bootu (ne az po nem) by vyzadovalo vetsi
+     prestavbu cele smycky - zatim nedokonceno.
+
 
 
 
@@ -1294,6 +1331,80 @@
    - Kdyz Rene posle screenshot nebo log, projit ho DUKLADNE, ne jen
      zbezne - "prohledni si to poradne" byl teprve druhy pokus o
      vysvetleni te same chyby (viz B212->B213).
+
+   B268-DODATEK: KRITICKA METODOLOGICKA CHYBA NALEZENA A OPRAVENA -
+     Rene po dlouhem kole "CLOAD nefunguje" ostre trval na tom, ze
+     "LOGIKA A PROCESY V JAVA JSOU SPRAVNE, staci to prepsat do c++" a
+     ze bych mel prestat spekulovat/hadat v disassembleru. Misto
+     dalsiho ROM archeologie: (1) prohledana cela appka na dalsi
+     manualy/dokumentaci (zadne nove nenalezeny nad ramec CO_JE_V_*.md
+     a PREDAVACI_*.txt). (2) V JS referenci nalezena SKUTECNA (ne
+     hadana) implementace sledovani kazetoveho motoru: gpulib_if.c
+     ekvivalent v JS (index.html ~radek 2481) ukazal, ze motor se
+     sleduje na PACTL ($D302, "p===2" v jejich pia write handleru), NE
+     na PORTB - a je to CISTE REAKTIVNI (jen sleduje KAZDY zápis, bez
+     ohledu na to, PROC ROM zapisuje). (3) PRI OVEROVANI, jestli
+     appka VUBEC zapisuje do PACTL, objevena SKUTECNA PRICINA VSECH
+     poslednich "problemu": MUJ VLASTNI TESTOVACI HARNESS pouzival
+     "chytry" handshake pro posilani klaves (cekani, az CH=$02FC
+     spadne zpet na $FF, pred odeslanim dalsi klavesy) - ale
+     PRODUKCNI KOD (atariNapisText v MainActivity.java) pouziva
+     JEDNODUCHE PEVNE ZPOZDENI 8 SNIMKU NA KLAVESU, ZADNY HANDSHAKE.
+     Tenhle rozdil v CASOVANI zpusobil, ze CPU v mem testu bezelo
+     JINOU VETVI ROM kodu nez skutecna appka! PO PREPNUTI testu na
+     PRESNE produkcni casovani (fixni 8 snimku/klavesa, zadne cekani
+     na CH), VSECHNO NAJEDNOU ZACALO FUNGOVAT SPRAVNE: CSAVE zapne
+     motor (PACTL=$34), ceka ~18s, vypne motor, vraci se do READY bez
+     chyby. CLOAD zapne motor, ceka ~53s, vypne motor, ZOBRAZI
+     "ERROR- 138" NA OBRAZOVCE, vraci se do READY - PRESNE jak Rene
+     popsal z testovani na realnem Atari 130XE. ZADNA ZMENA KODU
+     NEBYLA POTREBA - B267/B268 uz to delaly spravne, jen muj vlastni
+     test methodology to skryvala. KRITICKA POUCKA PRO NASTUPCE:
+     (a) VZDY presne replikovat PRODUKCNI zpusob volani/casovani pri
+     psani izolovanych testu - "chytrejsi"/"robustnejsi" testovaci
+     kod MUZE otestovat JINY scenar nez skutecne bezici appka, a
+     rozdil muze byt VELMI JEMNY (presne casovani klavesovych stisku)
+     a pritom zpusobit UPLNE JINE chovani CPU (jina vetev v ROM). (b)
+     Kdyz uzivatel REKNE "logika uz je overena a funguje jinde,
+     nehledej v tom chybu" - berat to VAZNE a hned zkontrolovat, jestli
+     VLASTNI TESTOVACI POSTUP presne odpovida produkcnimu kodu, driv
+     nez pokracovat v hlubsi ROM analyze. (c) Rene mel od zacatku
+     pravdu - "netvrdim vse odhaduju" bylo presne to, co se delo, a
+     reseni bylo najit ROZDIL V METODOLOGII, ne dalsi ROM bug.
+   B269: Rene vysvetlil DULEZITY KONTEXT proc chce presne jadro: chce
+     generovat testovaci (napr. graficky) kod, nechat appku ho ulozit
+     jako CSAVE zvuk, a ten WAV prehrat do SKUTECNEHO Atari 130XE -
+     "ne na Altirre - te neverim." Take potvrdil, ze i JS/Java
+     reference umela CLOAD, ale MELA PRESNE JEDNU znamou chybu:
+     delsi kod / delsi zvukova stopa se nenacetla (kratsi kody OK).
+     Implementovano: nova nativni fce
+     atariZachytitCsaveZvukNative(celkemSnimku) - bezi po CELOU dobu
+     operace (ne kratky kousek jako normalni beh) a vraci VSECHNY
+     vygenerovane vzorky najednou jako base64 16-bit PCM. NOVY JS
+     most atariCsaveDoWav(nazev) v MainActivity.java: napise CSAVE +
+     oba RETURN PRESNE stejnym produkcnim casovanim jako
+     atariNapisText (8 snimku/klavesa - kriticke po poucce z B268),
+     pak zachyti zvuk (45s rezerva) a ulozi jako standardni .wav do
+     Downloads/AtariHelp/Atari_emu/ (verejne uloziste, prezije
+     odinstalaci - stejny vzor jako getPublicAtariHelpDownloadsDir()
+     pro hry/PS1 kartu). ZADNA zvlast psana FSK simulace - appka uz
+     spravne pise AUDF/AUDC/GTIA behem CSAVE (overeno v B268), takze
+     genAudio() vyrobi spravny zvuk sam, staci ho zachytit po celou
+     dobu misto po kouscich. OVERENO: (1) 100radkovy testovaci
+     program (~4700 bajtu, kazda radka REM s vyplni) - vsech 100
+     radku napsano bez zaseknuti, obsah overen prikazem LIST na
+     radcich 1/50/100 (presne odpovida napsanemu). (2) CSAVE tohoto
+     dlouheho programu probehne bez chyby, motor bezi 28.2s (vs ~18s
+     pro kratky program - doba spravne roste s delkou). (3) zachyceny
+     zvuk analyzovan po vterinach (python skript nad hotovym .wav) -
+     souvisly tón presne 0-18s, pak ciste ticho zbytek 45s okna, zadny
+     sum/artefakt po dokonceni. POCTIVE PRIZNANO V DOKUMENTACI: tohle
+     reci jen smer CSAVE->WAV (zapis). CLOAD<-WAV (cist REALNOU
+     nahravku zpet, s vice 132B bloky a vodicimi tony mezi nimi -
+     presne to misto, kde i JS reference selhava) NENI soucasti teto
+     zmeny - potrebuje samostatnou "virtualni kazetu" infrastrukturu,
+     zatim neexistuje, zustava pro pristi kolo.
+
 
 ===============================================================================
 

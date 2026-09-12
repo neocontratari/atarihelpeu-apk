@@ -60,6 +60,11 @@ public final class NativeAtariCoreBridge {
     // musi byt lehke). Stav generatoru se MEZI VOLANIMI NEVYNULUJE -
     // navazuje presne tam, kde skoncil predchozi snimek.
     private static native String audioChunkNative(int pocetVzorku);
+    // BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na
+    // skutecnem Atari, ne na Altirre." Bezi po CELOU dobu operace
+    // (ne jen kratky kousek jako normalni beh) a vraci VSECHNY
+    // vygenerovane vzorky najednou jako base64 16-bit PCM.
+    private static native String atariZachytitCsaveZvukNative(int celkemSnimku);
     // BUILD2SB55: kompaktni text "audf0,1,2,3|audc0,1,2,3|audctl" jen
     // pro ridke logovani (viz atariAudioChunk v MainActivity).
     private static native String regsNative();
@@ -114,6 +119,13 @@ public final class NativeAtariCoreBridge {
     public static String audioChunkSafe(int pocetVzorku) {
         if (!loaded) return "";
         try { String r = audioChunkNative(pocetVzorku); return r == null ? "" : r; }
+        catch (Throwable t) { return ""; }
+    }
+    /** BUILD2SB76: bezpecny wrapper - zachyti VSECHNY vzorky behem
+     *  cele operace (napr. celeho CSAVE) najednou. */
+    public static String zachytitCsaveZvukSafe(int celkemSnimku) {
+        if (!loaded) return "";
+        try { String r = atariZachytitCsaveZvukNative(celkemSnimku); return r == null ? "" : r; }
         catch (Throwable t) { return ""; }
     }
     /** BUILD2SB55: bezpecny wrapper pro ridke logovani registru. */

@@ -70,6 +70,13 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
   <button id="btnCsave" style="background:#2a2d34">NAPSAT: CSAVE</button>
   <button id="btnCload" style="background:#2a2d34">NAPSAT: CLOAD</button>
 </div>
+<!-- BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na
+     skutecnem stroji, ne na Altirre." Samostatne tlacitko - dela
+     CELOU CSAVE operaci (napsani + oba RETURN + zachyceni zvuku po
+     celou dobu) a ulozi vysledek jako .wav do verejneho uloziste. -->
+<div class="btny" style="margin-bottom:6px">
+  <button id="btnCsaveWav" style="background:#3a2d1a">CSAVE -&gt; ULOZIT JAKO WAV</button>
+</div>
 <div class="btny" style="margin-bottom:6px">
   <input id="prikazText" type="text" placeholder="Vlastni prikaz (napr. PRINT 1+1)"
          style="flex:1;padding:11px;font-size:14px;border-radius:8px;border:1px solid #262931;background:#0f1013;color:#dfe3e8">
@@ -274,6 +281,21 @@ $('btnReturnKey').addEventListener('click',function(){ volej('atariNapisText',''
 $('btnResetKey').addEventListener('click',function(){ volej('atariReset'); obnovLog(); });
 $('btnCsave').addEventListener('click',function(){ volej('atariNapisText','CSAVE'); obnovLog(); });
 $('btnCload').addEventListener('click',function(){ volej('atariNapisText','CLOAD'); obnovLog(); });
+// BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na skutecnem
+// stroji." Cela operace (napsani CSAVE + oba RETURN + zachyceni 45s
+// zvuku) bezi jako JEDNO volani - kratky vizualni feedback, at je
+// jasne, ze appka neco pocita, ne ze zamrzla.
+$('btnCsaveWav').addEventListener('click',function(){
+  var b=this; var puvodniText=b.textContent;
+  b.textContent='UKLADAM (chvili trva)...'; b.disabled=true;
+  setTimeout(function(){
+    var vysledek=volej('atariCsaveDoWav','');
+    b.textContent=puvodniText; b.disabled=false;
+    obnovLog();
+    if(vysledek && vysledek.cesta){ alert('Ulozeno: '+vysledek.cesta); }
+    else if(vysledek && vysledek.chyba){ alert('Chyba: '+vysledek.chyba); }
+  },50);
+});
 $('btnNapisPrikaz').addEventListener('click',function(){
   var t=$('prikazText'); if(!t||!t.value.trim())return;
   volej('atariNapisText',t.value.trim().toUpperCase());

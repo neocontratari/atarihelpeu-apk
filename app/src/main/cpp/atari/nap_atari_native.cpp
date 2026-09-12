@@ -250,6 +250,10 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, ji
   g_stroj->reset();
   g_stroj->consol = 7;
   for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
+  // BUILD2SB75: viz komentar u srovnatSledovaniZvuku() - po tomhle
+  // velkem synchronnim bloku snimku srovnat sledovani zvuku, at
+  // dalsi genAudio() nedostane zastarala/namackana data.
+  g_stroj->srovnatSledovaniZvuku();
   char buf[256];
   snprintf(buf, sizeof(buf),
     "{\"pc\":%d,\"jam\":%s,\"dmactl\":%d,\"dlist\":%d,\"portb\":%d,\"snimku\":%lld}",
@@ -282,6 +286,15 @@ extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runNative(JNIEnv *, jclass, jint snimku) {
   if (!g_stroj) return;
   for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
+  // BUILD2SB75: viz komentar u srovnatSledovaniZvuku() v machine.h.
+  // POZOR: tenhle prah (>10) je zamerne NAD strop normalni "dohaneci"
+  // smycky (max 10 snimku/tik, a ty se navic posouvaji po JEDNOM
+  // snimku pres samostatna volani, ne jednim runNative(10)) - takze
+  // normalni beh (1 snimek + genAudio hned po nem) se tenhle blok
+  // NIKDY netyka. Zasahuje jen SKUTECNE velke synchronni bloky
+  // (self-test=400, napsani textu=60, reset=60), kde genAudio() beha
+  // az POTOM.
+  if (snimku > 10) g_stroj->srovnatSledovaniZvuku();
 }
 
 // BUILD2SB59: Rene - "pridej tlacitko RESET." Skutecne Atari RESET
@@ -369,6 +382,53 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_regsNative(JNIEnv *env, jclass) {
 // neimplementovanou instrukci, coz je presne to, co se stava behem
 // CSAVE, protoze appka jeste neemuluje kazetovy port a OS rutina se s
 // tim neumi vyporadat), runNative()/bootNative() prestanou volat
+// BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na skutecnem
+// Atari, ne na Altirre - te neverim." Cely smysl: pokud jadro
+// SPRAVNE emuluje CPU+ROM+POKEY (a to uz je overeno testy vyse -
+// beep pocty, motor timing, ERROR 138 vse sedi presne), pak zvuk,
+// ktery genAudio() BEHEM CSAVE vyrobi, JE TA SPRAVNA KAZETOVA
+// NAHRAVKA - zadny zvlastni "FSK enkoder" psat nemusim, ROM sam
+// pise spravne hodnoty do AUDF/AUDC/GTIA behem cele operace presne
+// jako na realnem hardwaru, staci to jen ZACHYTIT PO CELOU DOBU,
+// misto jen v kratkych kouscich jako normalni beh.
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariZachytitCsaveZvukNative(JNIEnv *env, jclass, jint celkemSnimku) {
+  if (!g_stroj) return env->NewStringUTF("");
+  const double SR = 44100.0;
+  const int vzorkuNaSnimek = 882; // 44100/50 - presne 1 PAL snimek
+  const int n = celkemSnimku > 0 ? celkemSnimku : 1;
+
+  std::vector<float> buf((size_t)n * vzorkuNaSnimek);
+  for (int f = 0; f < n; f++) {
+    if (!g_stroj->cpu.c.jam) g_stroj->runFrame();
+    float *cil = buf.data() + (size_t)f * vzorkuNaSnimek;
+    if (g_stroj->cpu.c.jam) {
+      std::memset(cil, 0, vzorkuNaSnimek * sizeof(float));
+    } else {
+      g_stroj->genAudio(cil, vzorkuNaSnimek, SR);
+    }
+  }
+
+  std::string raw; raw.reserve(buf.size() * 2);
+  for (float f : buf) {
+    if (f > 1.0f) f = 1.0f; else if (f < -1.0f) f = -1.0f;
+    int16_t v = (int16_t)std::lround(f * 32767.0);
+    raw.push_back((char)(v & 0xFF));
+    raw.push_back((char)((v >> 8) & 0xFF));
+  }
+  std::string b64; b64.reserve((raw.size() + 2) / 3 * 4);
+  for (size_t i = 0; i < raw.size(); i += 3) {
+    const unsigned a0 = (unsigned char)raw[i];
+    const unsigned a1 = (i + 1 < raw.size()) ? (unsigned char)raw[i + 1] : 0;
+    const unsigned a2 = (i + 2 < raw.size()) ? (unsigned char)raw[i + 2] : 0;
+    const unsigned t = (a0 << 16) | (a1 << 8) | a2;
+    b64.push_back(B64[(t >> 18) & 63]); b64.push_back(B64[(t >> 12) & 63]);
+    b64.push_back(i + 1 < raw.size() ? B64[(t >> 6) & 63] : '=');
+    b64.push_back(i + 2 < raw.size() ? B64[t & 63] : '=');
+  }
+  return env->NewStringUTF(b64.c_str());
+}
+
 // runFrame() (spravne), ALE audioChunkNative() na to NEBRALA OHLED -
 // dal cetla posledni, ZAMRZLE registry a poctive je porad dokola
 // prehravala jako "spravny" tón. Realny hardware, kdyz spadne, prestane
