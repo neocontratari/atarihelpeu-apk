@@ -1177,6 +1177,9 @@ static void nap_publish_frame_for_app(const uint8_t* rgba, int w, int h) {
 // ===================================================================
 extern "C" const void* nap_ps1_egl_grab_pixels(int* w, int* h);
 extern "C" int nap_ps1_kopiruj_snimek(std::vector<unsigned char> &kam, int *w, int *h);
+// BUILD2SB72: viz frontend/libretro.c - cte Config.PsxRegion/PsxType/Bios[]
+// bez nutnosti sem tahat celou psxconf.h definici Config struktury.
+extern "C" int nap_zjisti_psx_region(char *biosNameOut, int bufSize);
 
 static ANativeWindow      *g_disp_win  = nullptr;
 static std::thread         g_disp_thread;
@@ -1808,6 +1811,17 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootDoMonitoru(JNIEnv *env, jclas
   g_core_thread = std::thread(nap_core_thread_fn);
 
   nap_diag_log("PS1 START DO MONITORU OK: bezi %s, fps=%.2f", jeHra ? "HRA" : "BIOS", g_fps);
+  // BUILD2SB72: Rene - "muze to byt treba i PAL vs SECAM." Zalogovat
+  // PRESNE jaky BIOS soubor a jaky PsxType (0=NTSC,1=PAL) jadro
+  // skutecne pouziva - misto hadani, at je videt z logu primo.
+  {
+    char biosJmeno[64] = {0};
+    int kod = nap_zjisti_psx_region(biosJmeno, sizeof(biosJmeno));
+    int psxRegion = (kod >> 8) & 0xFF;
+    int psxType = kod & 0xFF;
+    nap_diag_log("BUILD2SB72 PS1_REGION bios=%s psxRegion=%d psxType=%s(%d)",
+                 biosJmeno, psxRegion, psxType == 1 ? "PAL" : "NTSC", psxType);
+  }
   return env->NewStringUTF(jeHra ? "PS1_HRA_OK" : "PS1_BIOS_OK");
 }
 

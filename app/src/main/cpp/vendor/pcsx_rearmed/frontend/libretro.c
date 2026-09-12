@@ -3582,6 +3582,26 @@ static void print_internal_fps(void)
    }
 }
 
+// BUILD2SB72: Rene - "opravdu sem udelal kontrolu na realnem ps1...
+// muze to byt treba i PAL vs SECAM." Appka umi radu ruznych BIOS
+// souboru (US/NTSC scph5501/scph1001, EU/PAL scph5502/scph7502,
+// Japan scph5500...) a jadro si vybira konkretni soubor podle
+// Config.PsxRegion (0/1/2 - Japan/US/Europe). Pokud je nahrany BIOS
+// jineho regionu, nez jaky ma disk hry, hodiny/casovani GPU muzou
+// byt nesouhlasny presne zpusobem, jaky Rene popsal ("jako spatna
+// graficka karta"). Mala pomocna funkce - jen CTE existujici
+// nastaveni, nic nemeni - at appka muze zalogovat, co se SKUTECNE
+// pouzilo, misto abychom to jen hadali.
+int nap_zjisti_psx_region(char *biosNameOut, int bufSize) {
+   if (biosNameOut && bufSize > 0) {
+      if (Config.PsxRegion >= 0 && (size_t)Config.PsxRegion < ARRAY_SIZE(Config.Bios) && Config.Bios[Config.PsxRegion][0])
+         snprintf(biosNameOut, bufSize, "%s", Config.Bios[Config.PsxRegion]);
+      else
+         snprintf(biosNameOut, bufSize, "?");
+   }
+   return (Config.PsxRegion << 8) | (Config.PsxType & 0xFF);
+}
+
 static bool get_bios_config_hle(void);
 static void prepare_bios(bool use_hle);
 

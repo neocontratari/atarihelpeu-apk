@@ -386,10 +386,18 @@ function smyckaTik(ted){
   zbytekCasu+=delta;
   var kroku=0, posledniObraz=null;
   while(zbytekCasu>=SNIMEK_S && kroku<10){ // strop 10 snimku/tik - i kdyby prohlizec chvili zadrhl, nedohanet donekonecna
-    posledniObraz=volej('atariObraz',1); // posune presne 1 snimek A vrati obraz v jednom volani (samostatne runNative pres most neni)
+    kroku++;
+    var jePosledni = (zbytekCasu-SNIMEK_S < SNIMEK_S || kroku===10);
+    // BUILD2SB71: drahy atariObraz() (JSON parse + base64 obrazek) jen
+    // pro POSLEDNI snimek davky - ten jediny se stejne vykresli. Ostatni
+    // snimky jen posunout levnym atariAdvance() (zadny navrat dat).
+    if(jePosledni){
+      posledniObraz=volej('atariObraz',1);
+    } else {
+      volej0('atariAdvance');
+    }
     if(zvukCtx) pridejVzorkyDoHromady(volej0('atariAudioChunk',VZORKU_NA_SNIMEK));
     zbytekCasu-=SNIMEK_S;
-    kroku++;
   }
   if(posledniObraz) kresli(posledniObraz);
   // BUILD2SB64: hlasit stav podtekani zvuku kazdych ~5s (250 tiku pri

@@ -1157,6 +1157,92 @@
      overena jen syntaxe a rovnovaha zavorek. Ceka na Reneho dalsi test
      s timhle logem.
 
+   B264: KRITICKA LEKCE - Rene: "to atari a pokey a logika ti evidentne
+     nejde... podivej se do kodu atari emu 130xe vbxe JAVA - tam je
+     navod. Nehodlam neustale testovat ty same chyby dokola." Mel
+     pravdu - misto dalsi vlastni disassemblaze ROM od nuly jsem
+     KONECNE dukladne precetl JS referencni kod (emu_vbxe/index.html),
+     ktery uz CSAVE/CLOAD ma vyreseny (ne dokonale, ale funkcne).
+     NASLEDEK: (1) NASEL JSEM VLASTNI CHYBU - B262 "SKSTAT sum" (nahodny
+     sum na bitu 4 pri kazdem cteni) byl SPATNY krok. Reference ma
+     PRIMO V KODU komentar popisujici presne tenhle pristup ("chaos do
+     SKSTAT") jako uz drive vyzkouseny a VYSLOVNE ZAVRZENY ("Zasada
+     BUILD2BR"). Skutecne SKSTAT chovani: bit4 zustava na vychozi
+     hodnote (1) POKUD neni aktivni SKUTECNY kazetovy tón/PCM A nebezi
+     motor - presne odpovida tomu, co appka delala PRED mou chybnou
+     opravou. Vraceno zpet na SKSTAT=0xFF. (2) Overeno rovnou i
+     timerPeriod/timersReload/timersTick radek po radku proti referenci
+     - TADY zadna chyba nebyla, presna shoda. (3) NOVY, SKUTECNY
+     VYKONOVY BUG nalezen (nesouvisi s POKEY vubec) - "dohaneci" smycka
+     v JS (az 10 snimku/tik pri zpozdeni) volala drahy atariObraz()
+     (JSON+base64) PRO KAZDY snimek v davce, i kdyz se vykresli jen
+     POSLEDNI - vysvetluje 4.2s vypadky zvuku z Reneho logu (bludny
+     kruh: zpozdeni -> vic zbytecne prace -> vetsi zpozdeni). Pridana
+     levna atariAdvance() pro vsechny snimky KROME posledniho v davce;
+     zvuk se pritom generuje pro KAZDY snimek beze zmeny. KLICOVA
+     POUCKA PRO NASTUPCE: kdyz existuje FUNGUJICI REFERENCNI
+     IMPLEMENTACE (i nedokonala), VZDY ji nejdriv dukladne precist cely
+     relevantni useky (ne jen hledat klicova slova) PRED zapocetim
+     vlastni disassemblaze/hadani od nuly - usetri to cas a zabrani to
+     opakovani chyb, ktere uz nekdo v minulosti udelal a zdokumentoval
+     jako spatne. Reneho frustrace ("nehodlam testovat dokola") byla
+     opravnena - rychlost bez duslednosti vytvari vic prace pro obe
+     strany.
+
+   B265: Rene otestoval Doom na SKUTECNEM PS1 a potvrdil rozdil oproti
+     nasi emulaci - dal konkretni hypotezu: "muze to byt treba i PAL
+     vs SECAM." DOBRA, TESTOVATELNA STOPA: appka podporuje radu BIOS
+     souboru ruznych regionu (NTSC scph5501/scph1001, PAL scph5502/
+     scph7502, Japan scph5500...) a jadro vybira KONKRETNI soubor
+     podle Config.PsxRegion. BIOS jineho regionu nez disk hry by
+     zpusobil presne ten typ nesouhlasneho casovani, jaky Rene popsal.
+     PROBLEM: appka nelogovala VUBEC, ktery BIOS soubor a jaky
+     PsxType (NTSC/PAL) jadro skutecne pouziva. Pridana mala pomocna
+     funkce primo v libretro.c (nap_zjisti_psx_region - jen CTE
+     Config.PsxRegion/PsxType/Bios[], nic nemeni) volana z nasi
+     wrapper vrstvy hned po startu, loguje presne jmeno BIOS souboru +
+     detekovany region. Vzor cteni presne odpovida uz existujicimu
+     kodu ve stejnem souboru. POUCKA: kdyz uzivatel s pristupem ke
+     SKUTECNEMU hardwaru da KONKRETNI, testovatelnou hypotezu (ne jen
+     "je to spatne"), prioritizovat OVERENI teto hypotezy pres
+     diagnostiku pred dalsim vlastnim hadanim - jeho hypoteza (region/
+     BIOS mismatch) je fyzikalne smysluplna a snadno overitelna, na
+     rozdil od nekterych mych drivejsich domnenek (interlace, stride).
+     Stejne omezeni jako vzdy u PS1 (nejde zkompilovat/spustit zde) -
+     overena jen syntaxe a rovnovaha zavorek. Ceka na Reneho dalsi
+     test s timhle logem.
+   B266: Rene: "tato hra je skladana z nekolika souboru... mate me
+     na tom, ze duke nuke 3d funguje bez problemu." Tahle stopa vedla
+     PRIMO ke KONKRETNI, potvrzene chybe (na rozdil od predchozich
+     domnenek u PS1). Appka ma kod na syntezu .cue pro vicestope CD
+     bez vlastniho .cue (_ps1_synth.cue, presne to z Reneho logu). PS1
+     Doom ma (na rozdil od PC MIDI verze) CD soundtrack = vic audio
+     stop nez napr. Duke Nukem 3D - proto jedna hra selhava a druha
+     ne. NALEZENA CHYBA: stopy se radily OBYCEJNYM abecednim
+     porovnanim retezcu - "track10.bin" < "track2.bin" abecedne
+     (znak '1'<'2'), takze 10+ stop se serazovalo SPATNE. OPRAVA:
+     "prirozene razeni" (cisla v nazvu se porovnavaji jako cisla).
+     DULEZITE: TOHLE SE DALO SKUTECNE ZKOMPILOVAT A SPUSTIT (na rozdil
+     od zbytku PS1 kodu) - Java 21 umoznuje spustit .java soubor
+     primo bez javac (ktery v tomto sandboxu chybi, jen JRE je
+     nainstalovane, ne plny JDK). Vytazena PRESNE ta stejna metoda do
+     samostatneho testovaciho souboru, spustena - potvrzeno ze stare
+     razeni SKUTECNE selhavalo (track10 pred track2) a nove ho
+     opravuje. POUCKA PRO NASTUPCE: i kdyz VETSINA PS1 kodu (C/C++,
+     OpenGL) nejde v tomto sandboxu overit, CISTA JAVA LOGIKA (bez
+     Android-specifickych zavislosti jako Context/View/atd.) CASTO
+     JDE vytahnout do samostatneho souboru a skutecne spustit pres
+     `java Soubor.java` (Java 21+ jednosouborove spousteni) - vzdy
+     zkusit, nez se spokojit jen s kontrolou syntaxe. Pridan i
+     standardni 2s pregap pred audio stopy (Red Book norma) - TOHLE
+     JE S MENSI JISTOTOU (zavisi na konvenci extrahovanych souboru,
+     nelze overit odsud) - riziko omezene na max. zvukovy posun, ne
+     poskozeni dat. Zadny zasah do Atari souboru. Ceka na Reneho dalsi
+     test s vicestopou hrou.
+
+
+
+
 
  CO RENE OPAKOVANE PRIPOMINAL A PLATI DO BUDOUCNA:
    - "Zapomen na Javu, vse se predelava do C++." Nova herni logika

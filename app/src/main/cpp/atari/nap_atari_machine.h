@@ -148,25 +148,23 @@ struct Machine {
       if (r == 0x0A) return rnd();              // RANDOM
       if (r == 0x0E) return irqst;              // IRQST
       if (r == 0x0F) {                          // SKSTAT
-        // BUILD2SB69: Rene - "csave neni kazetovy port... projdi si
-        // poradne core a biosy." Dukladna disassemblace ROM ($ED44-
-        // $ED96) odhalila: po uvodnim (spravnem, ocekavanem) ~5s
-        // zpozdeni na "priprav se" nasleduje DALSI smycka, ktera ceka
-        // na PRECHODY (zmeny) v bitu 4 SKSTAT - to je skutecny obvod
-        // detekce signalu z kazetoveho vstupu. Appka predtim vracela
-        // VZDY presne $FF - dokonale, umele ticho bez jedineho
-        // prechodu. Na SKUTECNEM hardwaru by NEZAPOJENY kazetovy
-        // vstup nebyl "dokonale ticho" - byl by na nem elektricky sum
-        // (plovouci/nezapojeny vstup), takze by ROM tuhle smycku
-        // rychle prosla (par prechodu staci). Bez sumu ROM nikdy
-        // zadny prechod nevidi a spadne az do dlouhy zalozni
-        // casovy limit - presne to vysvetluje "zasekla se smycka a
-        // pak to skoci do ready" a tu dlouho hrajici spatnou smes
-        // tonu behem cekani. Bit 4 ted simuluje tenhle sum (stejny
-        // rnd() jako RANDOM registr) - ostatni bity zustavaji beze
-        // zmeny (idle stav).
-        int sumBit4 = (rnd() & 1) << 4;
-        return (0xFF & ~0x10) | sumBit4;
+        // BUILD2SB71: Rene - "to atari a pokey a logika ti evidentne
+        // nejde... podivej se do kodu atari emu 130xe vbxe JAVA - tam
+        // je navod." MEL PRAVDU a ja jsem ho neposlechl vcas - moje
+        // predchozi "sum" oprava (BUILD2SB69) byla SPATNE, a presne
+        // takovou chybu uz nekdo v minulosti zkusil a ZAVRHL primo v
+        // JS referenci: "Zasada BUILD2BR - zadny fake CLOAD, zadny RAM
+        // inject... vlastni CSAVE nepousti datovy chaos do SKSTAT."
+        // SKUTECNA reference (index.html, cteni $D20F) ukazuje: bit4
+        // se meni JEN kdyz existuje SKUTECNY kazetovy tón/PCM signal A
+        // bezi motor ("if((cassTone||cassPcm||cassRecordLead) &&
+        // cassMotor)") - jinak zustava na VYCHOZI hodnote (1, od
+        // v=0xFF) - presne to, co appka delala PRED mou chybnou
+        // opravou! Bez nahrane kazety ROM smycka SPRAVNE ceka a pak
+        // spadne do zalozniho casoveho limitu - to NENI bug, to je
+        // spravne chovani pro "CSAVE bez pripojeneho kazetaku". Vraceno
+        // zpet na puvodni, referenci odpovidajici hodnotu.
+        return 0xFF;
       }
       return 0xFF;
     }

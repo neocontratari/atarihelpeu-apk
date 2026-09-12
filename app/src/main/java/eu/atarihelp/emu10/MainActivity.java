@@ -4137,6 +4137,18 @@ public class MainActivity extends Activity {
             }
             return r;
         }
+        // BUILD2SB71: Rene - "zvuk se kouse" - v logu bylo videt AZ 4.2
+        // vteriny mezera najednou a stovky vypadku za par minut. Nalezeno:
+        // "dohaneci" smycka v JS (az 10 snimku v jednom ticku, kdyz appka
+        // chvili zaostava) volala PRO KAZDY snimek plne atariObraz() -
+        // JSON parse + base64 obrazek - i kdyz se stejne vykresli jen ten
+        // POSLEDNI snimek z cele davky! Zbytecna prace pri zaostavani
+        // appku jeste VIC zpomalovala - presny bludny kruh. Tahle funkce
+        // jen posune snimek, BEZ drahe prace okolo obrazku - pouziva se
+        // pro vsechny snimky KROME posledniho v davce.
+        @JavascriptInterface public void atariAdvance() {
+            NativeAtariCoreBridge.runSafe(1);
+        }
         @JavascriptInterface public String atariKonzole(String ktera) {
             int maska = 7;
             if ("start".equals(ktera))  maska = 6;   // bit0 dolu
@@ -8865,6 +8877,38 @@ public class MainActivity extends Activity {
         return slash >= 0 ? n.substring(slash + 1) : n;
     }
 
+    // BUILD2SB73: Rene - "tato hra je skladana z nekolika souboru...
+    // mate me na tom, ze duke nuke 3d funguje bez problemu." Nalezena
+    // KONKRETNI chyba v synteze .cue pro vicestopa CD (_ps1_synth.cue,
+    // BUILD2SA7): stopy se radily OBYCEJNYM abecednim porovnanim
+    // retezcu (compareToIgnoreCase) - "track10.bin" abecedne predchazi
+    // "track2.bin" (znak '1' < '2'), takze u her s 10+ stopami (jako
+    // PS1 Doom se svym CD soundtrackem) by se stopy serialy ve SPATNEM
+    // poradi. "Prirozene" razeni - porovnava vlozena cisla jako CISLA,
+    // ne jako text - presne to, co ocekava kazdy file manager/prehravac.
+    private static int prirozeneRazeni(String a, String b) {
+        int i = 0, j = 0;
+        while (i < a.length() && j < b.length()) {
+            char ca = a.charAt(i), cb = b.charAt(j);
+            if (Character.isDigit(ca) && Character.isDigit(cb)) {
+                int zi = i, zj = j;
+                while (zi < a.length() && Character.isDigit(a.charAt(zi))) zi++;
+                while (zj < b.length() && Character.isDigit(b.charAt(zj))) zj++;
+                String da = a.substring(i, zi).replaceFirst("^0+(?=.)", "");
+                String db = b.substring(j, zj).replaceFirst("^0+(?=.)", "");
+                if (da.length() != db.length()) return da.length() - db.length();
+                int cmp = da.compareTo(db);
+                if (cmp != 0) return cmp;
+                i = zi; j = zj;
+            } else {
+                int cmp = Character.toLowerCase(ca) - Character.toLowerCase(cb);
+                if (cmp != 0) return cmp;
+                i++; j++;
+            }
+        }
+        return (a.length() - i) - (b.length() - j);
+    }
+
     private boolean isPs1ZipPayloadName(String name) {
         if (name == null) return false;
         String n = name.toLowerCase(Locale.US);
@@ -9065,7 +9109,7 @@ public class MainActivity extends Activity {
                     final java.util.zip.ZipEntry dataTrack = primary;
                     java.util.Collections.sort(bins, (a, b) -> {
                         if (a == dataTrack) return -1; if (b == dataTrack) return 1;
-                        return zipLeafName(a.getName()).compareToIgnoreCase(zipLeafName(b.getName()));
+                        return prirozeneRazeni(zipLeafName(a.getName()), zipLeafName(b.getName()));
                     });
                     StringBuilder cueSb = new StringBuilder();
                     int trackNo = 1;
@@ -9074,7 +9118,16 @@ public class MainActivity extends Activity {
                         extractZipEntryToFile(zip, bz, dir, leaf);
                         cueSb.append("FILE \"").append(leaf).append("\" BINARY\n");
                         if (trackNo == 1) cueSb.append("  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n");
-                        else cueSb.append(String.format(Locale.US, "  TRACK %02d AUDIO\n    INDEX 01 00:00:00\n", trackNo));
+                        else {
+                            // BUILD2SB73: standardni 2-vterinovy pregap pred audio
+                            // stopou (Red Book CD-DA norma - kazda audio stopa po
+                            // datove/jine stope ho ma mit). Predtim appka psala
+                            // rovnou INDEX 01 00:00:00 bez pregapu - u vicestopych
+                            // disku (presne Reneho pripad) to posouva vsechny
+                            // nasledujici stopy o 150 sektoru, coz kumulativne roste
+                            // s kazdou dalsi stopou.
+                            cueSb.append(String.format(Locale.US, "  TRACK %02d AUDIO\n    INDEX 00 00:00:00\n    INDEX 01 00:02:00\n", trackNo));
+                        }
                         trackNo++;
                     }
                     File synth = new File(dir, "_ps1_synth.cue");
