@@ -60,6 +60,28 @@ struct Machine {
   // "chrceni" rozlozene v case.
   int outBusy = 0;   // scanline do "vystupni registr prazdny, dej dalsi" (bit4/0x10)
   int shiftBusy = 0; // scanline do "cely prenos bajtu dokoncen" (bit3/0x08)
+
+  // BUILD2SB85: Rene - "reset/power/self-test presne jak ma, CSAVE
+  // piska spravne, ale na konci pisknuti chybi to puvodni chrapteni -
+  // ten datovy zvuk." PRESNE OVERENO (ne odhad): behem cele 42-
+  // vterinove tonove faze v realnem logu appka NIKDY nemeni AUDF,
+  // Timer4 preruseni je po celou dobu VYPNUTE (0 vyvolani) - zadny
+  // softwarovy mechanismus v ROM nepřepisuje AUDF bit po bitu.
+  // Overeno i v JS referenci - genericka POKEY syntéza (AUDF/AUDC/
+  // AUDCTL), ZADNA zminka o SKCTL/dvoutonovem rezimu/sériovem bitu
+  // v syntéze zvuku vubec. Zavěr: skutecny POKEY hardware v
+  // "dvoutonovem" rezimu (SKCTL bit3, primo overeno jako rozlisujici
+  // bit CSAVE/CLOAD v B274) dela vyber mezi dvema frekvencemi SAM,
+  // v kremiku, podle AKTUALNIHO BITU v posuvnem registru sériovych
+  // dat - software jen NALOZI bajt (STA SEROUT) a hardware uz sam
+  // "odsype" bity, prepinaje frekvenci. Tenhle mechanismus v me
+  // emulaci CHYBEL UPLNE - proto zvuk zustaval konstantni. Nize
+  // pridany stav simuluje presne tohle: 10-bitovy ramec (start+8
+  // datovych bitu LSB prvni+stop) pro kazdy zapsany bajt, s
+  // casovanim podle 600 baudu (~2956 CPU cyklu/bit, presne cyklu_na_
+  // vzorek konstanta CPS/600 jako v JS referenci pro CTENÍ pasky).
+  int serRamec = 0;              // 10 bitu: bit0=start(0), 1-8=data LSB, 9=stop(1)
+  long long serRamecStart = 0;   // CPU cyklus, kdy byl ramec nalozen
   uint32_t rngState = 0x2A5C1D7B;
 
   // BUILD2SB52: POKEY zvuk (FAZE 1) - viz nap_atari_pokey.h pro
@@ -284,6 +306,12 @@ struct Machine {
         serout = v;
         outBusy = 10;
         shiftBusy = 30;
+        // BUILD2SB85: nalozit 10-bitovy sériovy ramec pro dvouton
+        // (start=0, 8 datovych bitu LSB prvni, stop=1) - genAudio()
+        // nize podle tohohle vybira, kterou ze dvou frekvenci prave
+        // hrat.
+        serRamec = 0x200 | (v << 1); // bit0=0(start), bity1-8=data, bit9 uz je 1 z 0x200
+        serRamecStart = cpu.c.cycles;
         return;
       }
       if (r == 0x0E) {                          // IRQEN
@@ -458,7 +486,7 @@ struct Machine {
       if (pozice < zapsanoVzorku) pozice = zapsanoVzorku;   // poradi zachovano zapisem, jen pojistka
       if (pozice > n) pozice = n;
       if (pozice > zapsanoVzorku) {
-        nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + zapsanoVzorku, pozice - zapsanoVzorku, cyklu_na_vzorek);
+        zapisUsekSDvoutonem(out, zapsanoVzorku, pozice - zapsanoVzorku, cyklu_na_vzorek, pocatekBufferu);
         zapsanoVzorku = pozice;
       }
       // prave TADY, na spravne pozici, spustit klik/tón - presne jako
@@ -470,7 +498,53 @@ struct Machine {
     gtiaSpeakerVidenaAudioGen = gtiaSpeakerBit;
     pocetSpeakerPrechodu = 0;
     if (zapsanoVzorku < n) {
-      nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + zapsanoVzorku, n - zapsanoVzorku, cyklu_na_vzorek);
+      zapisUsekSDvoutonem(out, zapsanoVzorku, n - zapsanoVzorku, cyklu_na_vzorek, pocatekBufferu);
+    }
+  }
+
+  // BUILD2SB85: pomocna funkce - zapise usek zvuku, ale pokud je
+  // prave aktivni dvoutonovy rezim (SKCTL bit3) A prave bezi platny
+  // sériovy ramec (posledních 10 bitu od serRamecStart), rozdeli
+  // usek na castecky podle HRANIC JEDNOTLIVYCH BITU a pro kazdou
+  // pouzije spravnou frekvenci (bit=1 nastavena perioda, bit=0
+  // dvojnasobna frekvence/poloviční perioda - standardni chovani
+  // POKEY dvoutonoveho obvodu). Mimo aktivni ramec (zadna data prave
+  // neplynou) se pouzije normalni, nezmenena perioda - to je presne
+  // ta "uvodni piskot" faze, co uz funguje spravne.
+  void zapisUsekSDvoutonem(float *out, int odkud, int pocet, double cyklu_na_vzorek, long long pocatekBufferu) {
+    if (pocet <= 0) return;
+    const bool dvouton = (skctl & 0x08) != 0;
+    if (!dvouton) { nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + odkud, pocet, cyklu_na_vzorek); return; }
+    const double cyklu_na_bit = 1773447.0 / 600.0; // 600 baudu, presne jako JS reference pro cteni pasky
+    int zapsano = 0;
+    while (zapsano < pocet) {
+      long long cykl = pocatekBufferu + (long long)((double)(odkud + zapsano) * cyklu_na_vzorek);
+      long long odBitu = cykl - serRamecStart;
+      int bitIndex = odBitu >= 0 ? (int)(odBitu / cyklu_na_bit) : -1;
+      int bit = 1; // mimo platny ramec (nebo po jeho konci) = klidova "1" uroven linky
+      if (bitIndex >= 0 && bitIndex < 10) bit = (serRamec >> bitIndex) & 1;
+      // najit, kolik vzorku odsud jeste patri do STEJNEHO bitu (nebo do konce pozadovaneho useku)
+      long long konecTohotoBituCyklus = (bitIndex >= 0 && bitIndex < 10)
+          ? serRamecStart + (long long)((double)(bitIndex + 1) * cyklu_na_bit)
+          : (long long)1e18; // mimo ramec - zadna dalsi hranice, jede az do konce pozadovaneho useku
+      int vzorkuDoHranice = (int)((double)(konecTohotoBituCyklus - cykl) / cyklu_na_vzorek);
+      if (vzorkuDoHranice < 1) vzorkuDoHranice = 1;
+      int kolikTeď = pocet - zapsano;
+      if (kolikTeď > vzorkuDoHranice) kolikTeď = vzorkuDoHranice;
+
+      int audfDvouton[4] = {audf[0], audf[1], audf[2], audf[3]};
+      if (bit == 0) {
+        // "space" = dvojnasobna frekvence = poloviční perioda 16-bit
+        // spojeneho citace CH3+4 (presne chovani POKEY dvoutonoveho
+        // obvodu - serioovy bit 0 pridava dalsi preklopeni uprostred
+        // periody).
+        int spojeno = audf[2] + (audf[3] << 8);
+        int pulka = spojeno / 2;
+        audfDvouton[2] = pulka & 0xFF;
+        audfDvouton[3] = (pulka >> 8) & 0xFF;
+      }
+      nap::pokeyGenSamples(audfDvouton, audc, audctl, pokeyAudio, out + odkud + zapsano, kolikTeď, cyklu_na_vzorek);
+      zapsano += kolikTeď;
     }
   }
 

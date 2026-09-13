@@ -1757,6 +1757,72 @@
      "logicky spravna, ale casove 140x zrychlena" - a to vypada
      navenek stejne jako "nic se neposila", dokud se nezmeri PRESNY
      cas, ne jen "probehlo to/neprobehlo to".
+   B276: Pokracovani B275 tematu. Rene poslal REALNY LOG ze zarizeni
+     (ne jen popis) - "reset/power/self-test presne jak ma, CSAVE
+     piska spravne, ale na konci pisknuti chybi to puvodni chrapteni -
+     ten datovy zvuk." Z LOGU PRIMO VIDET: AUDF=[5,7,204,5] KONSTANTNI
+     po celych 42 vteřin (22:37:23 az 22:38:05), pak naráz ticho
+     (AUDC=0) - presne odpovida B275 opravenemu casovani (delsi
+     realisticka doba), ale porad ZADNA zmena BEHEM te doby. VYSETRENI:
+     (1) primo overeno testem, ze Timer4 IRQ (typicky spojovany s
+     bit-po-bitu prekreslovanim v OBECNE 6502 architekture) je behem
+     cele teto faze VYPNUTY v IRQEN (0 vyvolani za 50s pozorovani -
+     zadny softwarovy "bit-banging" mechanismus). (2) Zkontrolovana
+     JS reference - GENERICKA POKEY syntéza (audf/audc/audctl),
+     ZADNA zminka o SKCTL, dvoutonovem rezimu, ani sériovem bitu v
+     CELE syntéze zvuku. ZAVĚR: skutecny POKEY hardware v "dvoutonovem"
+     rezimu (SKCTL bit3 - v B274 primo overeno jako rozlisujici bit
+     mezi CSAVE=$2B a CLOAD=$23) dela VYBER MEZI DVEMA FREKVENCEMI SAM,
+     V KREMIKU, podle AKTUALNIHO BITU aktualne se posunujiciho v
+     internim posuvnem registru sériovych dat - SOFTWARE jen NALOZI
+     bajt (STA SEROUT), HARDWARE uz sam "odsype" bity a prepina
+     frekvenci. Tenhle mechanismus v emulaci CHYBEL UPLNE - proto
+     zvuk zustaval po celou dobu prenosu konstantni. IMPLEMENTOVANO:
+     pridan stav "serRamec" (int, 10 bitu: bit0=start(0), bity1-8=
+     data LSB prvni, bit9=stop(1)) a "serRamecStart" (CPU cyklus
+     nalozeni) - SEROUT write handler NYNI naklada tenhle ramec pri
+     kazdem zapisu bajtu. Nova pomocna funkce zapisUsekSDvoutonem()
+     (volana z genAudio() MISTO primeho pokeyGenSamples() volani) -
+     kdyz SKCTL bit3 (dvouton) je aktivni, rozdeli pozadovany usek
+     bufferu na CASTI PODLE HRANIC JEDNOTLIVYCH BITU (timing podle
+     600 baudu, cyklu_na_bit=1773447/600), a pro KAZDOU cast spocita
+     bitIndex = (aktualni_cyklus - serRamecStart)/cyklu_na_bit,
+     precte prislusny bit z serRamec, a POKUD je bit==0, POUZIJE
+     poloviční periodu spojeneho 16-bit citace kanalu 3+4 (spojeno=
+     audf[2]+(audf[3]<<8); pulka=spojeno/2; rozdeleno zpet do
+     docasne audfDvouton[2]/[3] kopie) - presne dvojnasobna frekvence
+     oproti bit=1 (nezmenena, puvodni perioda). METODOLOGICKA CHYBA
+     BEHEM VYVOJE (zapsano, at se neopakuje): PRVNI izolovany
+     jednotkovy test (rucne nastavit serRamec+serRamecStart a HNED
+     zavolat genAudio()) davil NESMYSLNE/OBRACENE vysledky (pomer
+     0.95 místo ocekavaneho ~2.0). PRICINA nalezena presnym
+     rozborem: genAudio() pocita "pocatekBufferu = aktualni_cyklus -
+     n*cyklu_na_vzorek" (buffer reprezentuje POSLEDNICH n vzorku
+     KONCICICH ted) - kdyz test nastavi serRamecStart=aktualni_cyklus
+     a HNED zavola genAudio(), CELY vygenerovany buffer vychazi
+     CASOVE PRED serRamecStart (protoze genAudio pocita zpetne od
+     "ted"), takze bitIndex vysel -1 (mimo ramec) pro VSECHNY vzorky -
+     zadna souvislost s testovanym bitem VUBEC. OPRAVA TESTU: mezi
+     nastavenim serRamecStart a volanim genAudio() je nutne nechat
+     CPU BEZET (cpu.step() v smycce) o PRESNE tolik cyklu, kolik
+     bude testovany buffer dlouhy - pak genAudio() spravne pocita
+     buffer ZACINAJICI PRESNE na serRamecStart. Po teto oprave testu
+     PRIMO ZMERENO: pomer rychlosti prechodu nulou (odraz frekvence)
+     mezi bit=0 a bit=1 regiony bajtu $00 (start=0,8x data=0,stop=1)
+     = 1.91 - VELMI BLIZKO ocekavanemu 2.0 pro genuinni dvoutonovy
+     2:1 frekvencni pomer. Tenhle presny numericky test JE overeny
+     primo na produkcnim (neupravenem) kodu, ne na docasne testovaci
+     kopii s odlisnou logikou. OVERENO: vsech 9 predchozich testu
+     prochazi beze zmeny + CLOAD regrese-test (ERROR 138) potvrzuje
+     zadnou zmenu v CLOAD chovani (CLOAD pouziva SERIN cestu, tato
+     zmena zasahuje jen SEROUT/vystupni cestu). Kompletni
+     prekompilace nap_atari_native.cpp, zavorky vyvazeny. POCTIVE
+     NEOVERENO: presny PERCEPCNI charakter zvuku (jestli to na
+     zivem uchu opravdu zni jako puvodni "chrceni") - numericky
+     overeny 2:1 frekvencni pomer je NUTNA, ale ne SAMA O SOBE
+     DOSTATECNA podminka pro "spravny zvuk" - potvrdit muze jen
+     test na realnem 130XE.
+
 
 
 
