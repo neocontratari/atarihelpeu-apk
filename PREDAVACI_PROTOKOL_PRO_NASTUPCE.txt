@@ -1822,6 +1822,73 @@
      overeny 2:1 frekvencni pomer je NUTNA, ale ne SAMA O SOBE
      DOSTATECNA podminka pro "spravny zvuk" - potvrdit muze jen
      test na realnem 130XE.
+   B277: KRITICKA OPRAVA PRISTUPU (zapsano jako trvale poucení, at se
+     neopakuje): Rene VYSLOVNE a OPAKOVANE zduraznil - "ja nic na
+     realnem atari netestuji!!!! Testuji v apce tvoje jadro... Vsechno
+     testuji v apce na mobilu v emu c++ atari." Predchozi opakovane
+     zminovani "presny percepcni charakter/rytmus muze potvrdit jen
+     test na realnem 130XE" (viz konce B275, B276) bylo ZBYTECNE A
+     MATOUCI - Rene VZDY testuje PRIMO appku (CLI harness zde, NEBO
+     appku na mobilu), NIKDY realne Atari. Nastupce NESMI opakovat
+     tuhle formulaci - Reneho zpetna vazba JE primo z testovani jadra,
+     ne z odhadu "jak by to melo znit na originalu".
+     ---
+     Rene poslal HLASOVOU NAHRAVKU (m4a) - "presne takhle to dela
+     realne Atari, dokonce i Altirra to umi. Cca 20s trva piskani,
+     datovy tok cca 4-5s." (zvukovy soubor nelze primo poslouchat/
+     zpracovat timto nastrojem - textovy popis od Rene byl klicovy a
+     postacujici). VYSETRENI cekaci faze (drive nalezene v B274-85
+     jako $037C/892 snimku): PRESNE OVERENO prepoctem, ze 892/50fps=
+     17.84s - PRESNE odpovida Reneho popsanym ~20s piskani. Tenhle
+     dlouhy pisklavy uvod tedy NENI bug - je to autenticka hodnota
+     PRIMO z originalniho OS ROM (appka cte hodnotu z tabulky na
+     $FE8D/$FE8F podle IOCB indexu $62, presne emulovana). NEMENIT
+     tohle cekani v budoucnu bez presneho duvodu - je SPRAVNE.
+     SKUTECNY PROBLEM byl v DATOVEM TOKU PO cekani: predchozi hodnoty
+     outBusy=10/shiftBusy=30 scanline (z B275, prevzate DOSLOVA z JS
+     reference "byte opusti vystupni registr za ~10 radek, posuv
+     dobehne za ~30") predstavuji v REFERENCI zjevne jen "kdy je
+     vystupni registr pripraven na dalsi bajt" (jako dvojite-
+     bufferovany UART), NE skutecnou fyzickou dobu 600-baudoveho
+     prenosu na drate (10 bitu = 16.67ms = ~260 scanline pri 312
+     scanline/snimek, 50fps). CPU tak dostavalo "pripraveno na dalsi
+     bajt" AZ 26x driv, nez predchozi bajt stihl doopravdy DOHRAT
+     svych 10 bitu FSK zvuku (viz B276 dvouton) - kazdy novy zapis do
+     SEROUT PREPSAL serRamecStart UPROSTRED prehravani predchoziho
+     bajtu, takze se cely 264-bajtovy datovy blok ZMACKL do necelé
+     vteřiny (primo zmereno v B276: ~0.3-1s) misto realnych ~4-5s.
+     OPRAVA: SCANLINE_NA_BAJT = round((1773447/600)*10/114) ≈ 260,
+     outBusy i shiftBusy prepocitany na tuhle hodnotu (misto 10/30).
+     KRITICKA POJISTKA (ZNOVUOBJEVENY puvodni B268 problem, primo
+     overeno testem): outBusy A shiftBusy NESMI byt STEJNE - PRVNI
+     pokus nastavil OBE na presne SCANLINE_NA_BAJT, coz ZPUSOBILO
+     REGRESI (obrazovka se PRIMO overene ZASEKLA - "?" misto READY,
+     PC uvizl v $EAA0 oblasti) - PRESNE ten problem, co puvodni B268
+     komentar v kodu VAROVAL: "Kdyz se nastavi obe zaroven, SIO
+     rutina si mysli, ze je hotovo hned po prvnim bajtu, a zustane
+     viset." OPRAVA POJISTKY: outBusy = SCANLINE_NA_BAJT - 2 (o
+     kousek KRATSI, jako dvojite-bufferovany UART), shiftBusy =
+     SCANLINE_NA_BAJT (plna doba) - nikdy nevystrely soucasne. PO
+     OPRAVE PRIMO OVERENO na produkcnim (neupravenem) kodu: datovy
+     tok (264 bajtu, od okamziku kdy 892-snimkove cekani skonci do
+     vypnuti motoru) trva PRESNE 4.86s - PRESNE v ocekavanem rozsahu
+     "~4-5s" z Reneho popisu. Prumerne 18.4ms/bajt (teoreticky
+     16.67ms - rozdil odpovida CPU rezii na obsluhu preruseni,
+     rozumne). Obrazovka SPRAVNE konci READY (ne rozbita jako pri
+     prvnim pokusu se stejnymi outBusy/shiftBusy). Dvouton kodovani
+     (B276) OVERENO beze zmeny (pomer 1.91 - nezavisle na timhle
+     casovani, protoze pouziva vlastni cyklu_na_bit vypocet z
+     serRamecStart, nedotcene touto zmenou). CLOAD regrese-test
+     (ERROR 138) OVERENO beze zmeny. Vsech 9 predchozich testu
+     prochazi beze zmeny. Kompletni prekompilace nap_atari_native.cpp,
+     zavorky vyvazeny. POUCKA: kdyz PREBIRAS KONKRETNI CISLA Z
+     REFERENCE (jako "10/30 scanline"), OVERIT NEJDRIV CO PRESNE TA
+     CISLA REPREZENTUJI (fyzikalni dobu prenosu? nebo jen internal
+     latency nejakeho bufferu?), NE JEN ZKOPIROVAT HODNOTU A
+     PREDPOKLADAT SPRAVNOST - reference muze modelovat NEKTERE
+     aspekty ZJEDNODUSENE/JINAK, nez odpovida SKUTECNE FYZICE, kterou
+     Rene primo overuje sluchem/casomirou.
+
 
 
 

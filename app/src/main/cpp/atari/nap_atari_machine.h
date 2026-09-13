@@ -299,13 +299,38 @@ struct Machine {
         return;
       }
       if (r == 0x0D) {                          // SEROUT
-        // BUILD2SB84: presna hodnota z JS reference - "byte opusti
-        // vystupni registr za ~10 radek, posuv dobehne za ~30".
-        // DVA NEZAVISLE citace (viz obnovSeriovehoVystupu() nize),
-        // ne spolecny stavovy automat jako predtim.
+        // BUILD2SB86: Rene - "piskani ~20s, datovy tok ~4-5s - to na
+        // realnem Atari (i s Altirrou) takhle zni." PRESNE OVERENO:
+        // 17.84s cekani (viz $037C/892 snimku nalezene v B274-85)
+        // OPRAVDU odpovida realnym ~20s piskotu - TOHLE JE SPRAVNE.
+        // Ale samotny DATOVY TOK byl AZ 10x kratsi nez ma byt: puvodni
+        // "outBusy=10, shiftBusy=30" (z JS reference - hodnoty tam
+        // zjevne predstavuji jen "kdy je vystupni registr pripraven
+        // na dalsi bajt", NE "za jak dlouho doopravdy dobehne cele
+        // vysilani na drate") delaly, ze appka prijala DALSI bajt
+        // DRIV, nez stihl predchozi bajt DOHRAT svych 10 bitu zvuku -
+        // kazdy novy zapis PREPSAL serRamecStart uprostred prehravani
+        // predchoziho bajtu, takze se cely 260+ bajtovy blok zmackl
+        // do necelé vteřiny místo spravnych ~4-5s. OPRAVA: outBusy a
+        // shiftBusy ted odpovidaji SKUTECNE dobe potrebne na odeslani
+        // 10 bitu pri 600 baudech (10/600s = 16.67ms = presne
+        // cyklu_na_bit*10/114 scanline, ~260 scanline) - appka tak
+        // dostane "pripraveno na dalsi" AZ KDYZ predchozi bajt
+        // doopravdy cely dohral, presne jako na skutecnem hardwaru.
         serout = v;
-        outBusy = 10;
-        shiftBusy = 30;
+        const int SCANLINE_NA_BAJT = (int)((1773447.0/600.0)*10.0/114.0 + 0.5); // ~260
+        // BUILD2SB86 KRITICKA POJISTKA (znovuobjeveny puvodni problem
+        // z B268 komentare vyse): outBusy a shiftBusy NESMI byt
+        // STEJNE - kdyz obe preruseni (bit4 "pripraven na dalsi" a
+        // bit3 "cely prenos hotov") vystrely na STEJNE scanline, SIO
+        // rutina si mysli, ze je hotovo hned po prvnim bajtu a
+        // ZUSTANE VISET (presne overeno - obrazovka se zasekla,
+        // PC uvizl v $EAA0 oblasti). outBusy zustava o kousek KRATSI
+        // (jako by dvojite-bufferovany UART prijal dalsi bajt TESNE
+        // pred dokoncenim stop bitu predchoziho) - shiftBusy o 2
+        // scanline delsi, at nikdy nevystrely soucasne.
+        outBusy = SCANLINE_NA_BAJT - 2;
+        shiftBusy = SCANLINE_NA_BAJT;
         // BUILD2SB85: nalozit 10-bitovy sériovy ramec pro dvouton
         // (start=0, 8 datovych bitu LSB prvni, stop=1) - genAudio()
         // nize podle tohohle vybira, kterou ze dvou frekvenci prave
