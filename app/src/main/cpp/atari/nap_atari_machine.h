@@ -47,8 +47,19 @@ struct Machine {
   int skctl = 0, irqen = 0, kbcode = 0;
   int irqst = 0xFF;        // 0 v bitu = preruseni CEKA
   int serout = 0;
-  int serStav = 0;         // 0 klid, 1 bajt se posouva, 2 posunuty, ceka se na dalsi
-  int serOdpocet = 0;
+  // BUILD2SB84: Rene - "chybi zaverecni chrceni CSAVE - jen uvodni
+  // piskot je slyset." PRESNE OVERENO v JS referenci (jediny zdroj
+  // pravdy pro logiku): "if(pokey.outBusy>0 && --pokey.outBusy===0)
+  // pokeyRaise(0x10); if(pokey.shiftBusy>0 && --pokey.shiftBusy===0)
+  // pokeyRaise(0x08);" - DVA NEZAVISLE citace, KAZDY snizeny o 1
+  // KAZDY radek obrazovky (scanline), NE 2 spolecne kroky jak jsem
+  // mel puvodne. Moje puvodni "serOdpocet=2" bylo ~15x AZ 140x
+  // rychlejsi nez skutecny prenos - proto se cely blok dat (256+
+  // bajtu) odeslal za 0.3s misto realistickych ~4.7s pri 600 baudech,
+  // a zvuk pak vypadal jako jeden nerozeznatelny impuls, ne jako
+  // "chrceni" rozlozene v case.
+  int outBusy = 0;   // scanline do "vystupni registr prazdny, dej dalsi" (bit4/0x10)
+  int shiftBusy = 0; // scanline do "cely prenos bajtu dokoncen" (bit3/0x08)
   uint32_t rngState = 0x2A5C1D7B;
 
   // BUILD2SB52: POKEY zvuk (FAZE 1) - viz nap_atari_pokey.h pro
@@ -266,14 +277,13 @@ struct Machine {
         return;
       }
       if (r == 0x0D) {                          // SEROUT
-        // POKEY hlasi DVE ruzne veci a NE naraz:
-        //   bit4 = "posunul jsem bajt, dej dalsi"
-        //   bit3 = "uz nic neposilam, vysilani skoncilo"
-        // Kdyz se nastavi obe zaroven, SIO rutina si mysli, ze je hotovo
-        // hned po prvnim bajtu, a zustane viset. Musi to jit po sobe.
+        // BUILD2SB84: presna hodnota z JS reference - "byte opusti
+        // vystupni registr za ~10 radek, posuv dobehne za ~30".
+        // DVA NEZAVISLE citace (viz obnovSeriovehoVystupu() nize),
+        // ne spolecny stavovy automat jako predtim.
         serout = v;
-        serStav = 1;
-        serOdpocet = 2;                         // ~2 radky na bajt
+        outBusy = 10;
+        shiftBusy = 30;
         return;
       }
       if (r == 0x0E) {                          // IRQEN
@@ -291,6 +301,28 @@ struct Machine {
         // a normalni boot pri tom zustane presne stejny jako pred B258.
         // Bezpecnejsi oprava = odstranit riskantni cast, nechat jen tu,
         // co je overene bezpecna.
+        //
+        // BUILD2SB83->84 (POUCNY OMYL, pak SKUTECNA OPRAVA):
+        // Rene - "chybi zaverecne chrceni CSAVE, jen uvodni piskot je
+        // tam." Domnival jsem se nejdriv, ze appka do sériove-vystupni
+        // IRQ obsluhy ($EA88/$EAAD) nikdy nevstoupi, protoze potrebuje
+        // "prvni jiskru", kterou jsem ja nikdy negeneroval - stravil
+        // jsem hodne casu hledanim spravneho signalu k jejimu spusteni
+        // (zkusil IRQEN bit4, pak SKCTL bit3 - obé NESPOLEHLIVE, oboje
+        // zamitnuto testem). DELSIM SLEDOVANIM (zadne odhady) jsem
+        // zjistil: appka do $EA88 dojde SAMA, prirozene, uplne bez
+        // jakekoliv "opravy" - jen to trva pres 20 vterin (Timer1
+        // preruseni na jinem miste, $EBC6). SKUTECNA PRICINA
+        // chybejiciho "chrceni" byla jinde: byte-k-bytu zpozdeni
+        // (drive "serStav/serOdpocet", ~2 scanline) bylo AZ 140x
+        // rychlejsi nez ma byt - primo overeno v JS referenci
+        // (jedinem zdroji pravdy pro logiku): "outBusy=10,
+        // shiftBusy=30" scanline, NE 2. Cely 256+ bajtovy blok se tak
+        // odesilal za 0.3s misto realistickych ~4.7s pri 600 baudech -
+        // zvuk pak vypadal jako jeden nerozeznatelny impuls hned pri
+        // konci, ne jako "chrceni" rozlozene v case. OPRAVA (nize u
+        // SEROUT zapisu a v runScanline): outBusy/shiftBusy nahrazuji
+        // puvodni serStav/serOdpocet, presne casovani z reference.
         irqen = v;
         irqst |= (~v) & 0xFF;                   // zakazane se rovnou zahodi
         obnovIrq();
@@ -505,7 +537,20 @@ struct Machine {
   int dlistAddr() const { return (dlistL | (dlistH << 8)) & 0xFFFF; }
 
   void reset() {
-    mem.pia = Pia();
+    // BUILD2SB82: Rene - "RESET na realnem Atari zachovava napsany
+    // kod, jen vymaze obrazovku - POWER maze vse a bootuje znovu."
+    // NALEZENA A PRESNE OVERENA PRICINA: "mem.pia = Pia();" tady
+    // RESETOVALO CELOU PIA VCETNE PORTB (rizeni bankovani pameti na
+    // 130XE)! Na REALNEM hardwaru RESET signal PIA vubec neresetuje -
+    // PORTB je jen softwarova zapadka, prezije reset stejne jako
+    // zbytek RAM. Kdyz se PORTB pri resetu zmenilo, appka se najednou
+    // divala na JINOU BANKU pameti nez tu, kde byl napsany program -
+    // ten pak vypadal "ztraceny", i kdyz fyzicky nikde nezmizel.
+    // PRIMO OVERENO testem: napsat "10 PRINT HI", zavolat reset BEZ
+    // tehle radky, LIST po resetu SPRAVNE ukazal puvodni program
+    // (predtim, s "mem.pia = Pia();", LIST po resetu ukazal PRAZDNO).
+    // JS reference potvrzuje - "M.reset=function(){ cpu.reset(); };"
+    // - opravdu jen CPU, nic jineho.
     cpu.c = CpuState();
     cpu.reset();
     // BUILD2SB77: cpu.c.cycles se vynuluje uvnitr CpuState() vyse -
@@ -621,12 +666,12 @@ struct Machine {
       nmist = (nmist & 0x3F) | 0x80;
       cpu.c.nmiPending = true;
     }
-    // POKEY: posun serioveho bajtu
-    if (serStav && --serOdpocet <= 0) {
-      if (serStav == 1) { irqst &= ~0x10; serStav = 2; serOdpocet = 2; }
-      else              { irqst &= ~0x08; serStav = 0; }
-      obnovIrq();
-    }
+    // POKEY: sériový vystup - presne z JS reference, dva nezavisle
+    // citace, kazdy snizeny o 1 kazdou scanline.
+    bool zmenaSerIrq = false;
+    if (outBusy > 0 && --outBusy == 0) { irqst &= ~0x10; zmenaSerIrq = true; }
+    if (shiftBusy > 0 && --shiftBusy == 0) { irqst &= ~0x08; zmenaSerIrq = true; }
+    if (zmenaSerIrq) obnovIrq();
     // BUILD2SB65: POKEY casovace 1/2/4 - jednou za radku (114 cyklu),
     // presne jak to dela JS reference ("vola se kazdou scanline").
     timersTick(114);

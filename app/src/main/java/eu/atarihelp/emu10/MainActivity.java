@@ -4197,30 +4197,31 @@ public class MainActivity extends Activity {
         // co genAudio() vyrobi z opravdu bezicich POKEY registru, ne
         // zadna zvlast psana FSK simulace. Ulozi jako .wav do
         // verejneho uloziste (prezije i odinstalaci appky).
-        @JavascriptInterface public String atariCsaveDoWav(String nazevSouboru) {
-            for (int i = 0; i < 5; i++) {
-                int kod = NativeAtariCoreBridge.kbcode("CSAVE".charAt(i));
-                if (kod >= 0) NativeAtariCoreBridge.keySafe(kod, 8);
-            }
-            NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode('\n'), 8);
-            NativeAtariCoreBridge.runSafe(68); // 8 (return) + 60, presne jako atariNapisText
-            NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode('\n'), 8);
-            NativeAtariCoreBridge.runSafe(60);
-
-            final int SR = 44100;
-            final int celkemSnimku = 45 * 50; // 45s pri PAL 50 Hz - bezpecna rezerva
-            String b64 = NativeAtariCoreBridge.zachytitCsaveZvukSafe(celkemSnimku);
-            if (b64 == null || b64.isEmpty()) {
-                appendNativeLog("BUILD2SB76 CSAVE_WAV chyba=prazdna_data");
+        // BUILD2SB81: Rene - "z prikaz sam o sobe CSAVE musi ihned
+        // ukladat na mobil zvuk ve wav - zadne jine pomocne tlacitko
+        // neni treba." Puvodni atariCsaveDoWav() delala VLASTNI
+        // "velky blok" (napsat CSAVE + capture) - ale ted uz appka
+        // CSAVE zpracovava PRIROZENE, po snimcich, pres frontu klaves
+        // (B272) - zvuk se generuje PRUBEZNE v normalni smycce. Misto
+        // dalsiho zvlastniho volani appka teda proste SBIRA kopii
+        // zvuku, co uz generuje, po dobu, co CSAVE bezi, a na konci ji
+        // posle sem k ulozeni - zadne opakovane spousteni operace.
+        @JavascriptInterface public String atariUlozitZvukJakoWav(String pcmB64, String nazevSouboru) {
+            if (pcmB64 == null || pcmB64.isEmpty()) {
+                appendNativeLog("BUILD2SB81 CSAVE_WAV chyba=prazdna_data");
                 return "{\"chyba\":\"zadna zvukova data\"}";
             }
             byte[] pcm;
-            try { pcm = android.util.Base64.decode(b64, android.util.Base64.DEFAULT); }
+            try { pcm = android.util.Base64.decode(pcmB64, android.util.Base64.DEFAULT); }
             catch (Throwable t) {
-                appendNativeLog("BUILD2SB76 CSAVE_WAV chyba=base64:" + t.getMessage());
+                appendNativeLog("BUILD2SB81 CSAVE_WAV chyba=base64:" + t.getMessage());
                 return "{\"chyba\":\"spatny base64\"}";
             }
-
+            return ulozitPcmJakoWavSoubor(pcm, nazevSouboru);
+        }
+        /** BUILD2SB81: sdilena logika ulozeni - vytazeno z puvodni atariCsaveDoWav(). */
+        private String ulozitPcmJakoWavSoubor(byte[] pcm, String nazevSouboru) {
+            final int SR = 44100;
             try {
                 File dir = new File(getPublicAtariHelpDownloadsDir(), "Atari_emu");
                 if (!dir.exists()) dir.mkdirs();
@@ -4231,10 +4232,10 @@ public class MainActivity extends Activity {
                     fos.write(wavHlavicka(pcm.length, SR, 1, 16));
                     fos.write(pcm);
                 }
-                appendNativeLog("BUILD2SB76 CSAVE_WAV ulozeno=" + f.getAbsolutePath() + " bajtu=" + pcm.length);
+                appendNativeLog("BUILD2SB81 CSAVE_WAV ulozeno=" + f.getAbsolutePath() + " bajtu=" + pcm.length);
                 return "{\"cesta\":\"" + f.getAbsolutePath().replace("\\", "\\\\").replace("\"", "\\\"") + "\"}";
             } catch (Throwable t) {
-                appendNativeLog("BUILD2SB76 CSAVE_WAV chyba=zapis:" + t.getMessage());
+                appendNativeLog("BUILD2SB81 CSAVE_WAV chyba=zapis:" + t.getMessage());
                 return "{\"chyba\":\"zapis selhal: " + String.valueOf(t.getMessage()).replace("\"", "'") + "\"}";
             }
         }

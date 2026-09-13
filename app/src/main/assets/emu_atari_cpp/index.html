@@ -53,13 +53,16 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
 <div class="btny" style="margin-bottom:6px">
   <button id="btnHelpKey" style="background:#2a2d34">HELP</button>
   <button id="btnReturnKey" style="background:#2a2d34">RETURN</button>
-  <!-- BUILD2SB59: Rene - "pridej tlacitko reset a return." RESET =
-       skutecne Atari RESET tlacitko (nemaze pamet/hardware, jen
-       znovu nahodi procesor) - i zachranna brzda pri zaseknuti (napr.
-       CSAVE cekajici na kazetovy port). RETURN = samotna klavesa
-       Enter, bez psani textu (uzitecne napr. po CSAVE vyzve "stiskni
-       PLAY+RECORD a RETURN"). -->
+  <!-- BUILD2SB82: Rene - "RESET na realnem Atari zachovava napsany
+       kod, jen vymaze obrazovku - POWER maze vse a bootuje znovu."
+       RESET = skutecne Atari RESET tlacitko (nemaze pamet/hardware,
+       jen znovu nahodi procesor - opraveno, aby nemazalo ani PORTB
+       bankovani, tim byl program po resetu ztraceny) - i zachranna
+       brzda pri zaseknuti. POWER = fyzicky vypinac - vymaze VSE a
+       zavede system od zacatku, presne jako bootNative(). RETURN =
+       samotna klavesa Enter bez psani textu. -->
   <button id="btnResetKey" style="background:#5c1e1e">RESET</button>
+  <button id="btnPowerKey" style="background:#5c1e1e">POWER</button>
 </div>
 <!-- BUILD2SB78: Rene - "poradny test musi byt takovy, ze se vypise
      jen CSAVE/CLOAD BEZ tveho return - ten musim dat ja ne ty. Tam
@@ -71,13 +74,12 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
   <button id="btnCsave" style="background:#2a2d34">NAPSAT: CSAVE (bez RETURN)</button>
   <button id="btnCload" style="background:#2a2d34">NAPSAT: CLOAD (bez RETURN)</button>
 </div>
-<!-- BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na
-     skutecnem stroji, ne na Altirre." Samostatne tlacitko - dela
-     CELOU CSAVE operaci (napsani + oba RETURN + zachyceni zvuku po
-     celou dobu) a ulozi vysledek jako .wav do verejneho uloziste. -->
-<div class="btny" style="margin-bottom:6px">
-  <button id="btnCsaveWav" style="background:#3a2d1a">CSAVE -&gt; ULOZIT JAKO WAV</button>
-</div>
+<!-- BUILD2SB81: Rene - "z prikaz sam o sobe CSAVE musi ihned
+     ukladat na mobil zvuk ve wav - zadne jine pomocne tlacitko
+     neni treba." Samostatne "CSAVE -> ULOZIT WAV" tlacitko ZMIZELO -
+     samotne psani "CSAVE" (tlacitko vyse) ted SAMO automaticky
+     zaznamenava zvuk po celou dobu operace a uklada ho, viz
+     zahajNahravaniPriCsave() v hlavni smycce nize. -->
 <div class="btny" style="margin-bottom:6px">
   <input id="prikazText" type="text" placeholder="Vlastni prikaz (napr. PRINT 1+1)"
          style="flex:1;padding:11px;font-size:14px;border-radius:8px;border:1px solid #262931;background:#0f1013;color:#dfe3e8">
@@ -295,27 +297,26 @@ $('btnOpt').addEventListener('click',function(){ volej('atariKonzole','option');
 $('btnHelpKey').addEventListener('click',function(){ volej('atariHelp'); obnovLog(); });
 $('btnReturnKey').addEventListener('click',function(){ zaraditReturn(); obnovLog(); });
 $('btnResetKey').addEventListener('click',function(){ volej('atariReset'); obnovLog(); });
-$('btnCsave').addEventListener('click',function(){ zaraditText('CSAVE'); obnovLog(); });
-$('btnCload').addEventListener('click',function(){ zaraditText('CLOAD'); obnovLog(); });
-// BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na skutecnem
-// stroji." Cela operace (napsani CSAVE + oba RETURN + zachyceni 45s
-// zvuku) bezi jako JEDNO volani - kratky vizualni feedback, at je
-// jasne, ze appka neco pocita, ne ze zamrzla. BUILD2SB80 POZNAMKA:
-// tohle ZUSTAVA jako "velky blok" schvalne - jde o export do
-// souboru na pozadi, ne o zive sledovanou akci, takze zpozdeni mezi
-// obrazem a zvukem tu nikoho neruší (zadny obraz/zvuk se v tu chvíli
-// vubec neprehrava).
-$('btnCsaveWav').addEventListener('click',function(){
-  var b=this; var puvodniText=b.textContent;
-  b.textContent='UKLADAM (chvili trva)...'; b.disabled=true;
+// BUILD2SB82: Rene - "POWER maze vse a bootuje znovu - pridej
+// tlacitko power." Presne stejna logika jako hlavni BOOT tlacitko -
+// kompletni obnova stroje od nuly, pak normalni smycka prirozene
+// odehraje cely start.
+$('btnPowerKey').addEventListener('click',function(){
+  var b=this; var puvodni=b.textContent;
+  b.textContent='VYPINAM A ZAPINAM...';
   setTimeout(function(){
-    var vysledek=volej('atariCsaveDoWav','');
-    b.textContent=puvodniText; b.disabled=false;
-    obnovLog();
-    if(vysledek && vysledek.cesta){ alert('Ulozeno: '+vysledek.cesta); }
-    else if(vysledek && vysledek.chyba){ alert('Chyba: '+vysledek.chyba); }
+    volej('atariBootReset');
+    b.textContent=puvodni; obnovLog();
   },50);
 });
+// BUILD2SB81: Rene - "z prikaz sam o sobe CSAVE musi ihned ukladat
+// na mobil zvuk ve wav - zadne jine pomocne tlacitko neni treba."
+// Napsani "CSAVE" ted SAMO zahaji nahravani zvuku, ktery appka uz
+// beztak generuje pri normalnim behu (viz zahajNahravani nize a
+// hlavni smycka, kde se kazdy kousek zvuku KOPIRUJE i do nahravky,
+// kdyz bezi).
+$('btnCsave').addEventListener('click',function(){ zaraditText('CSAVE'); zahajNahravani('csave_vystup'); obnovLog(); });
+$('btnCload').addEventListener('click',function(){ zaraditText('CLOAD'); obnovLog(); });
 $('btnNapisPrikaz').addEventListener('click',function(){
   var t=$('prikazText'); if(!t||!t.value.trim())return;
   zaraditText(t.value.trim().toUpperCase()); zaraditReturn();
@@ -457,6 +458,51 @@ function zaraditReturn(){
   frontaKlaves.push(kbcodeJs('\n'));
   for(var f=0;f<7;f++) frontaKlaves.push(-1);
 }
+// BUILD2SB81: Rene - "z prikaz sam o sobe CSAVE musi ihned ukladat
+// na mobil zvuk ve wav." Appka uz beztak generuje zvuk KAZDY snimek
+// v hlavni smycce (viz nize) - staci kdyz se, dokud "nahravkaBezi"
+// je true, KAZDY takovy kousek TAKE ulozi do pole, misto jen
+// prehravat. Po urcite dobe (bezpecna rezerva i pro delsi programy)
+// se vsechny kousky slozi dohromady a posle k ulozeni jako .wav -
+// presne to same, co uz overene fungovalo v puvodni atariCsaveDoWav,
+// jen ted BEZ zvlastniho vyvolavani operace - jen sbira, co uz beztak
+// probiha.
+var nahravkaBezi=false, nahravkaKousky=[], nahravkaNazev='csave_vystup';
+function zahajNahravani(nazev){
+  nahravkaBezi=true; nahravkaKousky=[]; nahravkaNazev=nazev||'csave_vystup';
+  clearTimeout(window._nahravkaTimeout);
+  // 50s bezpecna rezerva - zmereno ~28s pro 100radkovy program, tohle
+  // dava prostor i pro podstatne delsi.
+  window._nahravkaTimeout=setTimeout(ukoncitNahravani, 50000);
+}
+function pripojKeNahravce(b64){
+  if(!b64) return;
+  var bin=atob(b64), n=bin.length;
+  var bajty=new Uint8Array(n);
+  for(var i=0;i<n;i++) bajty[i]=bin.charCodeAt(i);
+  nahravkaKousky.push(bajty);
+}
+function ukoncitNahravani(){
+  if(!nahravkaBezi) return;
+  nahravkaBezi=false;
+  var celkem=0;
+  for(var i=0;i<nahravkaKousky.length;i++) celkem+=nahravkaKousky[i].length;
+  var spojene=new Uint8Array(celkem);
+  var pozice=0;
+  for(var i=0;i<nahravkaKousky.length;i++){ spojene.set(nahravkaKousky[i],pozice); pozice+=nahravkaKousky[i].length; }
+  nahravkaKousky=[];
+  // Uint8Array -> base64 (bez atob/btoa limitu na velikost - po castech)
+  var b64=''; var KUS=8192;
+  for(var i=0;i<spojene.length;i+=KUS){
+    var podpole=spojene.subarray(i,Math.min(i+KUS,spojene.length));
+    b64+=btoa(String.fromCharCode.apply(null,podpole));
+  }
+  var vysledek;
+  try{ vysledek=JSON.parse(AHATARICPP.atariUlozitZvukJakoWav(b64, nahravkaNazev)); }
+  catch(e){ vysledek={chyba:String(e.message||e)}; }
+  if(vysledek && vysledek.cesta){ napPoznamka('CSAVE_WAV_ULOZENO '+vysledek.cesta); }
+  else if(vysledek && vysledek.chyba){ napPoznamka('CSAVE_WAV_CHYBA '+vysledek.chyba); }
+}
 // BUILD2SB55: volej() ocekava JSON odpoved (pouziva JSON.parse) - ale
 // audioChunk vraci HOLY base64 retezec (viz duvod v nap_atari_native.cpp -
 // vola se ~50x/s, JSON obal by byl zbytecna rezie). Proto samostatna
@@ -492,7 +538,14 @@ function smyckaTik(ted){
     } else {
       volej0('atariKrokSKlavesou', kod);
     }
-    if(zvukCtx) pridejVzorkyDoHromady(volej0('atariAudioChunk',VZORKU_NA_SNIMEK));
+    if(zvukCtx){
+      var kousekZvuku=volej0('atariAudioChunk',VZORKU_NA_SNIMEK);
+      pridejVzorkyDoHromady(kousekZvuku);
+      // BUILD2SB81: kdyz nahravani bezi (po napsani CSAVE), stejny
+      // kousek se navic ulozi i do nahravky - zadne dalsi volani
+      // navic, jen kopie toho, co uz stejne vzniklo.
+      if(nahravkaBezi) pripojKeNahravce(kousekZvuku);
+    }
     zbytekCasu-=SNIMEK_S;
   }
   if(posledniObraz) kresli(posledniObraz);

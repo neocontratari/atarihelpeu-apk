@@ -1578,6 +1578,188 @@
      prubezne 75% nenulovych vzorku, motor spravne zapnuty $34 po 2.
      RETURN). Kompletni prekompilace nap_atari_native.cpp i
      MainActivity.java, oboji zavorky vyvazeny (0).
+   B273: Rene potvrdil, ze B272 (sync obrazu a zvuku) FUNGUJE - "SLAVA
+     mas to - mame to, lepsi nez Java emu ted." Zbyle 0.1-0.3s lag
+     oznacil jako pravdepodobne nedosazitelny (realne zelezo reaguje
+     "ihned"). Dal DVE zbyvajici chyby + JEDEN dulezity architektonicky
+     pozadavek: (1) RESET je napojeny jako POWER - mel by byt teply
+     start (jen resetuje obrazovku), POWER by mel resetovat vse a
+     bootovat od zacatku. (2) na konci CSAVE chybi zaveraci "chrcici"
+     zvuk kodu programu (jen uvodni piskot je tam). (3) DULEZITE:
+     "z prikaz sam o sobe CSAVE musi ihned ukladat na mobil zvuk ve
+     wav - zadne jine pomocne tlacitko neni treba." PRIORITIZOVAN bod
+     (3) jako hlavni pozadavek tohoto kola, s POCTIVYM priznanim, ze
+     body (1) a (2) NEBYLY vyreseny (ne zaplatovany, proste otevrene).
+     IMPLEMENTOVANO (3): samotne napsani "CSAVE" (existujici tlacitko)
+     ted AUTOMATICKY zahaji nahravani zvuku - vyuziva SKUTECNOST, ze
+     appka uz od B272 generuje zvuk KAZDY snimek v hlavni JS smycce,
+     takze staci pridat "kdyz nahravkaBezi, kopiruj tenhle uz beztak
+     vznikajici kousek TAKE do pole" - ZADNE dalsi volani operace
+     navic, zadny zvlastni "velky blok". Po 50s bezpecne rezervy
+     (zmereno drive ~28s pro 100radkovy testovaci program) se vsechny
+     kousky slozi (Uint8Array concat v JS) a posle novemu sdilenemu
+     Java mostu atariUlozitZvukJakoWav(pcmB64, nazev), ktery pouziva
+     STEJNOU wavHlavicka()+zapis logiku jako predtim (vytazeno z
+     puvodni atariCsaveDoWav do sdilene privatni metody
+     ulozitPcmJakoWavSoubor). Samostatne "CSAVE -> ULOZIT WAV"
+     tlacitko i puvodni atariCsaveDoWav() funkce ODSTRANENY - presne
+     podle Reneho pozadavku "zadne jine pomocne tlacitko neni treba."
+     RESET vs POWER (1) - PRESNE VYSETRENO (ne odhadnuto, testem):
+     napsal jsem "10 PRINT HI" do BASICu, zavolal m.reset() (presne
+     to, co dela RESET tlacitko - NEmaze RAM, jen CPU+PIA), pockal
+     600 snimku, pak zkusil LIST - VYSLEDEK: program byl PRYC (LOMEM
+     ukazuje na vynulovanou oblast, LIST nic neukazal), A appka
+     dosla do STEJNE PC=$F302 idle pozice za STEJNYCH 600 snimku
+     jako po plnem bootu - RESET a BOOT jsou v soucasnem jadru
+     nerozeznatelne navzdory tomu, ze RESET explicitne NEmaze RAM.
+     Z TOHOTO vyplyva: OS ROM's vlastni reset-vektorovy kod (spolecny
+     pro cold i warm start na 6502 - je to STEJNA adresa) musi VZDY
+     provadet plnou reinicializaci BASIC prostredi (vcetne vymazani
+     programove oblasti) BEZ OHLEDU na obsah pameti - realny Atari
+     pravdepodobne pouziva COLDST ($244) nebo podobny mechanismus k
+     ROZLISENI drah v OS kodu, a bud (a) tenhle mechanismus v realite
+     NEDELA to, co jsem ocekaval (moje mentalni model "RESET
+     zachovava program" muze byt spatny predpoklad, ne overeny fakt),
+     nebo (b) emulace ma genuinly mezeru v tom, jak spravne
+     simulovat tenhle mechanismus. VYZADUJE DALSI ROM disassemblazi
+     (COLDST kontrola, kde presne se vetvi cold/warm draha) - NEBYLO
+     opraveno v tomto kole, oznaceno jako otevrene, NE zaplatovano
+     nejistou domnenkou. CSAVE zaveraci zvuk (2): vubec nezkoumano
+     v tomto kole (prioritizovan bod 3). OVERENO: vsech 14 predchozich
+     testu prochazi beze zmeny (zmena vyhradne JS/Java, C++ jadro
+     nedotceno touto konkretni zmenou). Kompletni prekompilace
+     nap_atari_native.cpp i MainActivity.java, oboji zavorky
+     vyvazeny (0).
+   B274: Rene vysvetlil PRESNY rozdil RESET vs POWER (jeste pred
+     testovanim B273): "RESET v BASICU zustava kod, jen vymaze
+     obrazovku - LIST po resetu kod porad ukaze. POWER (fyzicky
+     vypinac) mate vse a znovu bootuje system." Rekl at overim logiku
+     a pridam POWER tlacitko - "hlavne JAVA emu toto UMI SPRAVNE,
+     staci se tam znova podivat" - ZNOVU zduraznil pristup "over
+     v referenci, nehadej." NALEZENA A PRESNE OVERENA SKUTECNA
+     PRICINA: v JS referenci "M.reset=function(){ cpu.reset(); };" -
+     VYHRADNE reset procesoru, NIC JINEHO. Muj C++ Machine::reset()
+     ale navic delal "mem.pia = Pia();" - resetoval CELOU PIA VCETNE
+     PORTB (rizeni bankovani pameti na 130XE)! Na realnem hardwaru
+     RESET signal PIA vubec neresetuje - PORTB je jen softwarova
+     zapadka (nastavuje ji jen software zapisem), prezije reset
+     presne jako zbytek RAM. Kdyz se PORTB pri resetu zmenilo na
+     jinou hodnotu nez byla aktivni behem psani programu, appka se
+     najednou divala na JINOU BANKU pameti - program pak vypadal
+     "ztraceny", i kdyz fyzicky nikde nezmizel (zustal v PUVODNI
+     bance, jen uz nebyla namapovana). VEDLEJSI, DUKLADNE OVERENA
+     STOPA (nakonec NEBYLA problem, ale stoji za zapis pro pristi
+     podobne pripady): disassemblazi OS ROM nalezen SKUTECNY
+     mechanismus warm/cold start rozliseni - kontrola signatury na
+     $033D-$033F (musi byt $5C,$93,$25) + COLDST ($244, musi byt 0).
+     PRIMYM testem overeno, ze appka po bootu tuhle signaturu SPRAVNE
+     zapisuje a ze zustava NETKNUTA po celou dobu (psani programu,
+     prikaz LIST) az do resetu - takze tenhle mechanismus FUNGOVAL
+     spravne, skutecny problem byl JINDE (PIA/PORTB). POUCKA: kdyz
+     najdes JEDEN spravny mechanismus behem vysetrovani, neznamena to
+     automaticky, ze je to TA PRICINA - pokracovat v hledani, dokud
+     symptom skutecne nezmizi (coz se v tomhle pripade taky stalo -
+     nasel jsem spravnou signaturu, ale bug byl "o patro niz", v PIA).
+     PRIMO OVERENO na SKUTECNE opravene produkcni Machine::reset()
+     funkci (ne rucni simulaci nekde jinde): napsat "10 PRINT HI" ->
+     m.reset() -> 600 snimku -> "LIST" -> VYSLEDEK spravne ukazuje
+     puvodni radek programu (PRED opravou LIST po resetu ukazal
+     prazdno - primo srovnano, oba behy ve stejnem testovacim
+     souboru). OPRAVA: radek "mem.pia = Pia();" ODSTRANEN z
+     Machine::reset() - RESET ted dela VYHRADNE cpu.c=CpuState()
+     + cpu.reset(), presne jako overena JS reference. PRIDANO: nove
+     tlacitko POWER (vedle RESET, JS handler btnPowerKey) - dela
+     presne to, co drive delalo hlavni BOOT tlacitko (uplna obnova
+     stroje od nuly pres atariBootReset - jiz existujici z B272,
+     zadna nova nativni funkce nebyla potreba), zatimco RESET ted
+     zachovava pamet/program presne jako na realnem 130XE. OVERENO:
+     vsech 9 predchozich testu prochazi beze zmeny (zmena izolovana
+     jen na reset(), zadny jiny mechanismus dotcen - bootNative()
+     stavi CELY novy Machine objekt pred volanim reset(), takze
+     cerstva PIA uz existuje driv, nez se reset() vubec zavola,
+     zadna regrese pro boot) + novy specificky test primo proti
+     opravene produkcni funkci potvrzuje zachovani programu po
+     resetu. Kompletni prekompilace nap_atari_native.cpp i
+     MainActivity.java, oboji zavorky vyvazeny (0). POCTIVE
+     NEVYRESENO: CSAVE zaveraci "chrcici" zvuk kodu programu (jen
+     uvodni piskot je pritomny) - vubec nezkoumano v tomto kole,
+     zustava pro pristi.
+   B275: Pokracovani B274 tematu (CSAVE chybejici "chrcici" zvuk).
+     PRVNI POKUS TOHOTO KOLA (B283, ODSTRANEN - poucny omyl, zapsano
+     at nikdo neopakuje): domnenka, ze appka do sériove-vystupni IRQ
+     obsluhy ($EA88/$EAAD - cte bajt z bufferu pres ($32),Y, zapisuje
+     do SEROUT) nikdy nevstoupi, protoze potrebuje "prvni jiskru" od
+     mne. Zkusil jsem TRI ruzne spustece: (1) IRQEN bit4 (0x10)
+     prechazejici z 0 na 1 - primo testem zjisteno, ze DISPECER
+     PRERUSENI v OS ROM ($C052-$C08F) BEZNE docasne VYPNE A ZASE
+     ZAPNE libovolny bit v IRQEN jako soucast SVE VLASTNI rezie pri
+     KAZDEM zpracovavanem preruseni (i pri obycejnem stisku klavesy!)
+     - takze "bit4 nove zapnuty" se deje OPAKOVANE a nahodile po
+     celou dobu psani textu, u CSAVE i CLOAD stejne - ROZBILO CLOAD
+     ERROR 138 test. (2) IRQEN bit4 + SOUCASNE SKCTL bit3 (0x08,
+     primo overeno jako rozlisujici bit mezi CSAVE=$2B a CLOAD=$23) -
+     OPRAVILO CLOAD, ale primo testem zjisteno, ze v okamziku, kdy
+     appka POPRVE zapina IRQEN bit4, SKCTL JESTE nema bit3 nastaveny
+     (SKCTL na $2B prejde AZ POZDEJI, jako soucast BASICovy CSAVE
+     obsluhy) - TOTO ZABLOKOVALO CSAVE UPLNE (0 zapisu do SEROUT). (3)
+     JEN SKCTL bit3 samotny (bez IRQEN podminky) - STEJNY problem,
+     porad 0 zapisu, protoze i SAMOTNY bit3 prechod na chvíli spadl
+     do stejne pasti (kdyz zrovna probihalo psani/klavesy, serStav
+     nebyl 0). VSECHNY TRI POKUSY PRIMO TESTEM ZAMITNUTY. DELSIM,
+     TRPELIVYM SLEDOVANIM (presne to, co Rene opakovane zduraznuje -
+     "zadne odhady, presne vypocty") KONECNE ZJISTENO: appka BEZ
+     JAKEKOLIV z techto "oprav" dojde k $EA88 SAMA, PRIROZENE - jen
+     to trva pres 20 vterin (ceka se na Timer1 preruseni na UPLNE
+     JINEM miste, $EBC6 - wait loop na $0317, nesouvisejici s SEROUT
+     ani IRQEN bit4/SKCTL bit3 VUBEC). PRIMO ZMERENO na skutecne
+     produkcni (neupravene) funkci: 701 zapisu do SEROUT behem
+     40-vterinoveho pozorovani. VSECHNY TRI POKUSY ODSTRANENY z
+     produkcniho kodu - jen zbytecne riskovaly regrese bez jakekoliv
+     realne potreby (existujici reaktivni mechanismus uz funguje
+     spravne sam o sobe). SKUTECNA PRICINA "chybejiciho chrceni"
+     nalezena AZ POTE primym srovnanim s JS referenci (jedinym
+     zdrojem pravdy pro logiku, presne podle zavedene metodiky):
+     jemne meritko ukazalo, ze 256 bajtu se odeslalo za pouhych 0.3s
+     (mereno pres genAudio() RMS + pocet SEROUT udalosti v 0.1s
+     oknech) - pri 600 baudech by 256 bajtu melo trvat ~4.7s minimum.
+     PRICINA: puvodni "serStav/serOdpocet" mechanismus (z drivejsiho
+     B-kola) pouzival JEN 2 SCANLINE zpozdeni mezi "bajt zapsan" a
+     "pripraven na dalsi" - AZ 140x rychlejsi nez skutecny 600-baud
+     prenos. JS reference ("jediny zdroj pravdy pro logiku", presny
+     citovany komentar primo v ni: "SEROUT: byte opusti vystupni
+     registr za ~10 radek, posuv dobehne za ~30") pouziva DVA
+     NEZAVISLE citace - "pokey.outBusy=10; pokey.shiftBusy=30;" pri
+     zapisu, pak KAZDOU scanline nezavisle: "if(outBusy>0 &&
+     --outBusy===0) pokeyRaise(0x10); if(shiftBusy>0 &&
+     --shiftBusy===0) pokeyRaise(0x08);" - DVA PARALELNI citace, NE
+     sekvencni stavovy automat 1->2 jako mel muj puvodni kod. OPRAVA:
+     "serStav"+"serOdpocet" (2 promenne, sekvencni stavovy automat)
+     nahrazeny "outBusy"+"shiftBusy" (2 nezavisle citace, presne
+     hodnoty a logika z reference: 10 a 30 scanline). SEROUT write
+     handler nastavuje outBusy=10, shiftBusy=30 (misto puvodniho
+     serStav=1, serOdpocet=2). Per-scanline logika (v runScanline())
+     nezavisle snizuje OBA citace kazdou scanline, zvedne PRISLUSNY
+     IRQ bit (0x10 pro outBusy, 0x08 pro shiftBusy), KDYZ prislusny
+     citac dosahne 0 - zadna zavislost mezi nimi, presne jako v
+     referenci. OVERENO primo na produkcni (opravene) funkci: celych
+     701 bajtu (stejny scenar jako predtim) se ted odesle za ~31.8s
+     (~45ms/bajt) - RADOVE SPRAVNY VYSLEDEK oproti teoretickym ~18ms/
+     bajt pri 600 baudech (11 bitu/bajt), i kdyz ne dokonale presny -
+     presny rytmus/charakter zvuku muze potvrdit jen realny test na
+     130XE, ne CLI. CLOAD regrese-test (ERROR 138) OVERENO beze zmeny
+     - CLOAD pouziva SERIN, ne SEROUT, tato zmena se ho vubec netyka.
+     OVERENO: vsech 9 predchozich testu prochazi beze zmeny.
+     Kompletni prekompilace nap_atari_native.cpp, zavorky vyvazeny.
+     POUCKA PRO PRISTE: kdyz "logicka" cast neceho funguje (data SE
+     posilaji), ale VYSLEDEK (zvuk, chovani) porad nesedi, nehledat
+     hned "chybejici spoustec" - zkontrolovat NEJDRIV, jestli casovani
+     (KOLIK TO MA TRVAT) sedi s referenci. Casova osa muze byt
+     "logicky spravna, ale casove 140x zrychlena" - a to vypada
+     navenek stejne jako "nic se neposila", dokud se nezmeri PRESNY
+     cas, ne jen "probehlo to/neprobehlo to".
+
+
+
 
 
 
