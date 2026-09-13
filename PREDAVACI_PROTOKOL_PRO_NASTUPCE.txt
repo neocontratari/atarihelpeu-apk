@@ -1507,6 +1507,78 @@
      vyresene, jen za pravdepodobne vysvetleni. Self-test
      zvuk/rychlost a attract mode v praxi zustavaji NEVYRESENE -
      oddelene vykonnostni otazky, ne soucast teto opravy.
+   B272: Rene testoval B271 na REALNEM telefonu - "zvuky jsou lepsi
+     nez Java, ciste, ale hrozne zpozdeni 5-15s - obraz uz je hotovy
+     (READY, kurzor), zvuk hraje az pozdeji, a tak to mas u vseho."
+     SKUTECNA PRICINA: B271 opravila "zvuk se zahazuje" tim, ze
+     zacala zvuk PRUBEZNE ZACHYTAVAT behem velkych synchronnich bloku
+     (psani textu, self-test vstup, boot) - ALE porad delala CELY
+     blok (stovky snimku) BLESKOVE v jednom volani a vratila HOTOVY
+     obraz OKAMZITE, zatimco zachyceny zvuk (nekolik SIMULOVANYCH
+     vterin) se pak MUSEL prehrat REALNOU rychlosti (zvuk nejde
+     zrychlit, 44100 vzorku=1 vterina realneho casu, vzdy) - vznikla
+     fronta "zvuku z minulosti" dohanejici uz hotovy obraz. Cim vic
+     takovych akci za sebou, tim vetsi zpozdeni - presne to Rene
+     pozoroval jako rostouci 5-15s po nekolika akcich. KRITICKA OBECNA
+     POUCKA: kdyz VIZUALNI stav muze "preskocit dopredu" (simulace N
+     snimku BLESKOVE v jednom volani, mnohem rychleji nez by trvalo v
+     realnem case), ale ZVUK PRO STEJNE OBDOBI MUSI hrat realnou
+     rychlosti (fyzikalni omezeni audio prehravani, nejde obejit) -
+     VZNIKA NEVYHNUTELNY nesoulad, bez ohledu na to, jak presne se
+     zvuk POCITA. Tohle NENI chyba v audio-generujicim kodu (ten uz
+     byl spravny od B270) - je to CHYBA V TOM, KDY/JAK CASTO se
+     zvuk+obraz aktualizuji vuci sobe navzajem. Oprava MUSI byt na
+     urovni "jak castokrat/v jakych davkach appka postupuje casem",
+     ne na urovni "jak presne se pocita jeden vzorek zvuku." SKUTECNA
+     OPRAVA (architekturni, ne zaplata): appka ted KAZDY stisk
+     klavesy (psani CSAVE/CLOAD/vlastni prikaz, RETURN, BYE pro self-
+     test, i cely boot) zpracovava PRESNE stejnym zpusobem jako
+     normalni beh - jeden snimek najednou, v prirozenem tempu hlavni
+     JS smycky (smyckaTik), presne jako drzeni START/SELECT tlacitka.
+     Nova JS fronta klaves (frontaKlaves): kazdy znak/RETURN se
+     zaradi jako sekvence polozek do fronty, kterou hlavni smycka
+     odbavuje PO JEDNOM za tik - obraz i zvuk vznikaji SOUCASNE,
+     snimek po snimku, zadna fronta k dohaneni MUZE VZNIKNOUT.
+     KRITICKA TECHNICKA POJISTKA (overeno PRIMYM TESTEM, ne
+     predpokladem - presne podle Reneho opakovaneho pozadavku "zadne
+     odhady, presne vypocty"): jadro (Machine::klavesa()) pri KAZDEM
+     volani ZNOVU vyvolava preruseni klavesnice (irqst &= ~0x40;
+     obnovIrq();) - kdyby fronta poslala STEJNY kod 8x (jednou za
+     kazdy z 8 drzenych snimku, jak by byl NAIVNI navrh), appka by to
+     videla jako OSM SAMOSTATNYCH stisknuti misto JEDNOHO drzeneho -
+     mohlo by to rozbit cele psani textu. OPRAVA: kod se posila JEN
+     na PRVNIM snimku drzeni (frontaKlaves.push(kod)), zbylych 7
+     snimku se posle -1 (nesahat na klavesnici vubec, jen bezet dal -
+     klavesa() se VUBEC nevola) - klavesa zustane "drzena" sama od
+     sebe (kbcode je clenska promenna, prezije mezi snimky beze
+     zmeny), presne jako drzeny prst na klavesnici. Napsany a spusteny
+     specificky test porovnavajici PRESNY POCET volani klavesa() a
+     vysledny IRQST mezi (a) puvodnim pristupem [klavesa 1x, pak 8
+     snimku beze zmeny] a (b) NOVYM opravenym pristupem [fronta
+     kod,-1,-1,-1,-1,-1,-1,-1] - VYSLEDEK IDENTICKY (1x volani,
+     IRQST=$FF v obou), CHYBNY pristup (8x klavesa() v ramci fronty)
+     BY vyvolal 8 IRQ - primo overeno a zamitnuto jako spatny navrh.
+     Boot a RESET (Java) ted TAKE NEBEZI stovky snimku najednou - jen
+     resetuji stroj (bleskove, bez zvuku, bootNative(0) korektne
+     vraci prazdny zvuk a spravnou PC=reset-vektor pozici - overeno
+     testem) a hned spusti/pokracuji normalni smycku, ktera zbytek
+     (OS test pri startu atd.) odehraje prirozenym tempem presne jako
+     cokoli jineho. VYJIMKA (zamerna, zduvodnena): atariCsaveDoWav
+     (export do WAV souboru) ZUSTAVA jako "velky blok" schvalne - jde
+     o export na pozadi, ne o zive sledovanou akci, zpozdeni mezi
+     obrazem a zvukem tam nikoho nerusi (nic se neprehrava naziv v tu
+     chvili). VEDLEJSI ZJISTENI (mimo rozsah teto opravy, nezaznamenano
+     jako bug): produkcni NativeAtariCoreBridge.kbcode() (Java) zatim
+     NEPODPORUJE cislice (jen A-Z, RETURN, mezera) - JS tabulka
+     kbcodeJs() postavena jako PRESNA kopie teto (neuplne) tabulky
+     pro konzistenci, nerozsirovano v tomto kole (mimo pozadovany
+     rozsah). OVERENO: vsech 12 predchozich testu prochazi beze zmeny
+     + 3 nove (IRQ pocet - identicky se starym pristupem; kompletni
+     end-to-end simulace nove architektury pro CSAVE - zvuk pritomen
+     prubezne 75% nenulovych vzorku, motor spravne zapnuty $34 po 2.
+     RETURN). Kompletni prekompilace nap_atari_native.cpp i
+     MainActivity.java, oboji zavorky vyvazeny (0).
+
 
 
 

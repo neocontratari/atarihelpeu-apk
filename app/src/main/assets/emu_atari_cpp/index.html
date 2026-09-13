@@ -268,20 +268,24 @@ function volej(f,arg){
 $('btnBoot').addEventListener('click',function(){
   this.textContent='BOOTUJI...'; var b=this;
   setTimeout(function(){
-    volej('atariBoot'); kresli(volej('atariObraz',0));
+    // BUILD2SB80: Rene - "obraz uz hotovy, zvuk dohani o 5-15s
+    // pozdeji." Boot uz NEBEZI 600 snimku najednou - jen resetuje
+    // stroj (bleskove, bez zvuku) a hned spusti normalni smycku,
+    // ktera "boot animaci" (OS pocitaci test atd.) proste ODEHRAJE
+    // PRIROZENYM TEMPEM presne jako cokoli jineho - zvuk i obraz
+    // spolu, snimek po snimku, zadna fronta k dohaneni.
+    volej('atariBootReset');
     b.textContent='1. NABOOTOVAT OS (pak uz bezi samo, presne jako skutecne Atari)';
     obnovLog();
-    // BUILD2SB55: Rene - "po botovani nabehne okamzite realne atari s
-    // opravdovym snimkovanim." Zadne dalsi tlacitko - jakmile OS
-    // nabootuje, appka SAMA jede dal presnym tempem, at to Rene proste
-    // sleduje/poslouchá jako skutecny stroj.
     spustSmycku();
   },50);
 });
 $('btnSt').addEventListener('click',function(){
   this.textContent='PISI BYE...'; var b=this;
   setTimeout(function(){
-    volej('atariDoSelfTestu');
+    // BUILD2SB80: fronta klaves misto velkeho bloku - viz komentar
+    // u frontaKlaves vyse.
+    zaraditText('BYE'); zaraditReturn();
     b.textContent='2. DO SELF-TESTU (BYE)'; obnovLog();
   },50);
 });
@@ -289,14 +293,18 @@ $('btnSel').addEventListener('click',function(){ volej('atariKonzole','select');
 $('btnStart').addEventListener('click',function(){ volej('atariKonzole','start'); obnovLog(); });
 $('btnOpt').addEventListener('click',function(){ volej('atariKonzole','option'); obnovLog(); });
 $('btnHelpKey').addEventListener('click',function(){ volej('atariHelp'); obnovLog(); });
-$('btnReturnKey').addEventListener('click',function(){ volej('atariNapisText',''); obnovLog(); });
+$('btnReturnKey').addEventListener('click',function(){ zaraditReturn(); obnovLog(); });
 $('btnResetKey').addEventListener('click',function(){ volej('atariReset'); obnovLog(); });
-$('btnCsave').addEventListener('click',function(){ volej('atariNapisTextBezReturn','CSAVE'); obnovLog(); });
-$('btnCload').addEventListener('click',function(){ volej('atariNapisTextBezReturn','CLOAD'); obnovLog(); });
+$('btnCsave').addEventListener('click',function(){ zaraditText('CSAVE'); obnovLog(); });
+$('btnCload').addEventListener('click',function(){ zaraditText('CLOAD'); obnovLog(); });
 // BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na skutecnem
 // stroji." Cela operace (napsani CSAVE + oba RETURN + zachyceni 45s
 // zvuku) bezi jako JEDNO volani - kratky vizualni feedback, at je
-// jasne, ze appka neco pocita, ne ze zamrzla.
+// jasne, ze appka neco pocita, ne ze zamrzla. BUILD2SB80 POZNAMKA:
+// tohle ZUSTAVA jako "velky blok" schvalne - jde o export do
+// souboru na pozadi, ne o zive sledovanou akci, takze zpozdeni mezi
+// obrazem a zvukem tu nikoho neruší (zadny obraz/zvuk se v tu chvíli
+// vubec neprehrava).
 $('btnCsaveWav').addEventListener('click',function(){
   var b=this; var puvodniText=b.textContent;
   b.textContent='UKLADAM (chvili trva)...'; b.disabled=true;
@@ -310,7 +318,7 @@ $('btnCsaveWav').addEventListener('click',function(){
 });
 $('btnNapisPrikaz').addEventListener('click',function(){
   var t=$('prikazText'); if(!t||!t.value.trim())return;
-  volej('atariNapisText',t.value.trim().toUpperCase());
+  zaraditText(t.value.trim().toUpperCase()); zaraditReturn();
   t.value=''; obnovLog();
 });
 $('btnPoznamka').addEventListener('click',function(){
@@ -401,6 +409,54 @@ var zvukPodtekaniPocet=0, zvukNejvetsiMezeraMs=0, zvukHlaseniPocitadlo=0;
 var smyckaBezi=false, posledniCas=null, zbytekCasu=0;
 var SNIMEK_S=1/50; // PAL Atari = presne 50 snimku za vterinu, stejne jako skutecny stroj
 var VZORKU_NA_SNIMEK=Math.round(44100/50);
+// BUILD2SB80: Rene - "obraz uz je hotovy, zvuk hraje az za 5-15s -
+// delay." PRICINA byla, ze psani textu/self-test/boot delalo VELKY
+// blok stovek snimku bleskove v jednom volani a pak vratilo hotovy
+// obraz OKAMZITE - ale zvuk pro tech nekolik simulovanych vterin se
+// MUSEL prehrat realnou rychlosti, takze vznikla fronta "zvuku z
+// minulosti" dohanejici uz hotovy obraz. OPRAVA: fronta klaves -
+// KAZDY stisk se ted odbavi presne stejnym tempem jako normalni beh,
+// jeden snimek za tik hlavni smycky, misto zvlastniho velkeho bloku.
+var frontaKlaves=[];
+// BUILD2SB80: presna kopie NativeAtariCoreBridge.kbcode() (Java) -
+// musi zustat DOSLOVA stejna, jinak by fronta klaves posilala jine
+// kody nez co appka doopravdy ocekava.
+function kbcodeJs(c){
+  switch((c||'').toUpperCase()){
+    case 'A': return 0x3F; case 'B': return 0x15; case 'C': return 0x12;
+    case 'D': return 0x3A; case 'E': return 0x2A; case 'F': return 0x38;
+    case 'G': return 0x3D; case 'H': return 0x39; case 'I': return 0x0D;
+    case 'J': return 0x01; case 'K': return 0x05; case 'L': return 0x00;
+    case 'M': return 0x25; case 'N': return 0x23; case 'O': return 0x08;
+    case 'P': return 0x0A; case 'Q': return 0x2F; case 'R': return 0x28;
+    case 'S': return 0x3E; case 'T': return 0x2D; case 'U': return 0x0B;
+    case 'V': return 0x10; case 'W': return 0x2E; case 'X': return 0x16;
+    case 'Y': return 0x2B; case 'Z': return 0x17;
+    case '\n': return 0x0C;
+    case ' ': return 0x21;
+    default: return -1;
+  }
+}
+function zaraditText(text){
+  if(!text) return;
+  for(var i=0;i<text.length;i++){
+    var kod=kbcodeJs(text[i]);
+    if(kod<0) continue;
+    // BUILD2SB80 KRITICKE: klavesa(kod) v jadru KAZDYM volanim
+    // znovu vyvola preruseni klavesnice (IRQ) - kdybychom kod poslali
+    // 8x (jednou za snimek), appka by to videla jako OSM
+    // SAMOSTATNYCH stisknuti, ne jedno drzene po dobu 8 snimku!
+    // Kod se proto posle jen NA PRVNIM snimku drzeni - zbylych 7
+    // snimku jen bezi dal (-1 = nesahat na klavesnici), a klavesa
+    // zustane "drzena" sama od sebe, presne jako pri drzeni prstu.
+    frontaKlaves.push(kod);
+    for(var f=0;f<7;f++) frontaKlaves.push(-1);
+  }
+}
+function zaraditReturn(){
+  frontaKlaves.push(kbcodeJs('\n'));
+  for(var f=0;f<7;f++) frontaKlaves.push(-1);
+}
 // BUILD2SB55: volej() ocekava JSON odpoved (pouziva JSON.parse) - ale
 // audioChunk vraci HOLY base64 retezec (viz duvod v nap_atari_native.cpp -
 // vola se ~50x/s, JSON obal by byl zbytecna rezie). Proto samostatna
@@ -422,13 +478,19 @@ function smyckaTik(ted){
   while(zbytekCasu>=SNIMEK_S && kroku<10){ // strop 10 snimku/tik - i kdyby prohlizec chvili zadrhl, nedohanet donekonecna
     kroku++;
     var jePosledni = (zbytekCasu-SNIMEK_S < SNIMEK_S || kroku===10);
+    // BUILD2SB80: pokud fronta kláves neco ceka (psani textu, RETURN,
+    // BYE pro self-test...), tenhle snimek "drzi" prave TU klavesu -
+    // presne stejnym zpusobem, jakym by ji drzel prst na skutecne
+    // klavesnici, jeden snimek soucasneho normalniho behu po druhem.
+    var kod = frontaKlaves.length>0 ? frontaKlaves.shift() : -1;
     // BUILD2SB71: drahy atariObraz() (JSON parse + base64 obrazek) jen
     // pro POSLEDNI snimek davky - ten jediny se stejne vykresli. Ostatni
     // snimky jen posunout levnym atariAdvance() (zadny navrat dat).
     if(jePosledni){
-      posledniObraz=volej('atariObraz',1);
+      volej0('atariKrokSKlavesou', kod);
+      posledniObraz=volej('atariObraz',0); // uz NEadvancuje - krok uz probehl vyse
     } else {
-      volej0('atariAdvance');
+      volej0('atariKrokSKlavesou', kod);
     }
     if(zvukCtx) pridejVzorkyDoHromady(volej0('atariAudioChunk',VZORKU_NA_SNIMEK));
     zbytekCasu-=SNIMEK_S;

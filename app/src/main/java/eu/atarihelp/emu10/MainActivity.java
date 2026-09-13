@@ -4265,8 +4265,11 @@ public class MainActivity extends Activity {
         // zasekne. RETURN samotny (bez psani textu) jde uz jen
         // volanim atariNapisText("") - prazdny text + return na konci.
         @JavascriptInterface public String atariReset() {
+            // BUILD2SB80: stejna oprava jako u bootu - RESET uz
+            // NEBEZI 60 snimku najednou (to zpusobovalo tu samou
+            // "obraz hotovy, zvuk dohani" chybu). Jen resetuje stroj
+            // (bleskove), zbytek prirozene odehraje normalni smycka.
             NativeAtariCoreBridge.resetSafe();
-            NativeAtariCoreBridge.runSafe(60);
             String r = NativeAtariCoreBridge.screenSafe();
             appendNativeLog("BUILD2SB59 ATARI_AKCE=RESET " + napAtariRegShrnuti(r));
             return r;
@@ -4293,6 +4296,37 @@ public class MainActivity extends Activity {
         // pro vsechny snimky KROME posledniho v davce.
         @JavascriptInterface public void atariAdvance() {
             NativeAtariCoreBridge.runSafe(1);
+        }
+        // BUILD2SB80: Rene - "zvuky jsou lepsi nez java, ale je tam
+        // hrozne zpozdeni - obraz uz je hotovy, zvuk hraje az za
+        // 5-15s." PRICINA: predchozi oprava (B271) delala psani
+        // textu/self-test/boot jako VELKY blok (stovky snimku)
+        // BLESKOVE v jednom volani, pak vratila FINALNI obraz OKAMZITE
+        // - ale zvuk pro tech nekolik VTERIN simulovaneho casu se
+        // MUSI prehrat REALNOU rychlosti (zvuk nejde zrychlit), takze
+        // se nahromadila fronta zvuku "z minulosti", ktera dohanela
+        // uz hotovy obraz. SKUTECNA OPRAVA: misto zvlastniho "velkeho
+        // bloku" appka teraz KAZDY stisk klavesy zpracuje PRESNE
+        // stejnym zpusobem jako normalni beh - jeden snimek najednou,
+        // v prirozenem tempu hlavni smycky (viz JS fronta klaves).
+        // Tahle funkce je levny "krok o 1 snimek s volitelnym
+        // stiskem klavesy" - presny ekvivalent atariAdvance(), jen s
+        // moznosti soucasne drzet klavesu, pouziva se z JS smycky
+        // KAZDY tik, misto zvlastniho velkeho volani.
+        @JavascriptInterface public void atariKrokSKlavesou(int kod) {
+            if (kod >= 0) NativeAtariCoreBridge.keySafe(kod, 1);
+            else NativeAtariCoreBridge.runSafe(1);
+        }
+        // BUILD2SB80: boot ted dela JEN reset stroje (bez behu
+        // stovek snimku najednou) - samotne "bootovani" (OS pocitaci
+        // test, atd.) probehne PRIROZENE pres normalni hlavni smycku,
+        // presne stejnym tempem jako cokoli jineho. Zadny zvuk tu
+        // nevznika (0 snimku), takze zvuk_b64 vyjde prazdny - to je v
+        // poradku, nic se neztraci.
+        @JavascriptInterface public String atariBootReset() {
+            String r = NativeAtariCoreBridge.bootSafe(0);
+            appendNativeLog("BUILD2SB80 ATARI_AKCE=BOOT_RESET " + napAtariRegShrnuti(r));
+            return r;
         }
         @JavascriptInterface public String atariKonzole(String ktera) {
             int maska = 7;
