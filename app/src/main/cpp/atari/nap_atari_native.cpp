@@ -29,6 +29,11 @@
 #include "nap_atari_roms.h"
 #include <string>
 
+// BUILD2SB79: presunuto sem (z puvodniho mista dale v souboru) - musi
+// byt dostupne uz pro bootNative() vyse, ktera ted take zachytava a
+// koduje zvuk do base64 (stejny duvod jako atariZachytitCsaveZvukNative).
+static const char B64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
 #define ALOG(...) __android_log_print(ANDROID_LOG_INFO, "NAPATARI", __VA_ARGS__)
 
 using namespace nap;
@@ -249,20 +254,50 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, ji
   // pravdu, ze "dostatecne" nestacilo - tohle byla regrese, ne oprava.
   g_stroj->reset();
   g_stroj->consol = 7;
-  for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
-  // BUILD2SB75: viz komentar u srovnatSledovaniZvuku() - po tomhle
-  // velkem synchronnim bloku snimku srovnat sledovani zvuku, at
-  // dalsi genAudio() nedostane zastarala/namackana data.
-  g_stroj->srovnatSledovaniZvuku();
+  // BUILD2SB79: stejna oprava jako u atariNapisText/self-testu -
+  // misto tiseho behu 600 snimku a nasledneho zahozeni (B268 fix)
+  // ZACHYTIT zvuk PO CELOU DOBU bootu, at je "dlouhy boot zvuk"
+  // (Rene: "pri startu ma dlouhy zvuk, jen se ctvereckem, pak READY")
+  // SKUTECNE slyset, misto zahozeny driv, nez ho appka stihne prehrat.
+  const double SR_BOOT = 44100.0;
+  const int vzorkuNaSnimekBoot = 882;
+  std::vector<float> zvukBoot((size_t)snimku * vzorkuNaSnimekBoot);
+  for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) {
+    g_stroj->runFrame();
+    float *cil = zvukBoot.data() + (size_t)f * vzorkuNaSnimekBoot;
+    if (g_stroj->cpu.c.jam) std::memset(cil, 0, vzorkuNaSnimekBoot * sizeof(float));
+    else g_stroj->genAudio(cil, vzorkuNaSnimekBoot, SR_BOOT);
+  }
+  std::string zvukRaw; zvukRaw.reserve(zvukBoot.size() * 2);
+  for (float f : zvukBoot) {
+    if (f > 1.0f) f = 1.0f; else if (f < -1.0f) f = -1.0f;
+    int16_t v = (int16_t)std::lround(f * 32767.0);
+    zvukRaw.push_back((char)(v & 0xFF));
+    zvukRaw.push_back((char)((v >> 8) & 0xFF));
+  }
+  std::string zvukB64; zvukB64.reserve((zvukRaw.size() + 2) / 3 * 4);
+  for (size_t i = 0; i < zvukRaw.size(); i += 3) {
+    const unsigned a0 = (unsigned char)zvukRaw[i];
+    const unsigned a1 = (i + 1 < zvukRaw.size()) ? (unsigned char)zvukRaw[i + 1] : 0;
+    const unsigned a2 = (i + 2 < zvukRaw.size()) ? (unsigned char)zvukRaw[i + 2] : 0;
+    const unsigned t = (a0 << 16) | (a1 << 8) | a2;
+    zvukB64.push_back(B64[(t >> 18) & 63]); zvukB64.push_back(B64[(t >> 12) & 63]);
+    zvukB64.push_back(i + 1 < zvukRaw.size() ? B64[(t >> 6) & 63] : '=');
+    zvukB64.push_back(i + 2 < zvukRaw.size() ? B64[t & 63] : '=');
+  }
   char buf[256];
   snprintf(buf, sizeof(buf),
-    "{\"pc\":%d,\"jam\":%s,\"dmactl\":%d,\"dlist\":%d,\"portb\":%d,\"snimku\":%lld}",
+    "{\"pc\":%d,\"jam\":%s,\"dmactl\":%d,\"dlist\":%d,\"portb\":%d,\"snimku\":%lld,\"zvuk_b64\":\"",
     g_stroj->cpu.c.pc, g_stroj->cpu.c.jam ? "true" : "false",
     g_stroj->dmactl, g_stroj->dlistAddr(), g_stroj->mem.portB(), g_stroj->frame);
   ALOG("BUILD2SA18 ATARI_BOOT PC=$%04X DMACTL=$%02X DLIST=$%04X PORTB=$%02X snimku=%lld",
        g_stroj->cpu.c.pc, g_stroj->dmactl, g_stroj->dlistAddr(),
        g_stroj->mem.portB(), g_stroj->frame);
-  return env->NewStringUTF(buf);
+  // BUILD2SB79: char buf[256] je PRILIS MALY pro zvukova data (mohou
+  // byt megabajty) - slozit finalni JSON jako std::string, ne
+  // snprintf do pevneho bufferu.
+  std::string vysledek = std::string(buf) + zvukB64 + "\"}";
+  return env->NewStringUTF(vysledek.c_str());
 }
 
 /** Stisk klavesy (kod KBCODE) a nekolik snimku, aby ji OS prevzal. */
@@ -310,8 +345,6 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_resetNative(JNIEnv *, jclass) {
   g_stroj->reset();
   g_stroj->consol = 7;
 }
-
-static const char B64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /** Vykresli aktualni obraz a vrati ho jako base64 RGB. */
 extern "C" JNIEXPORT jstring JNICALL

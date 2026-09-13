@@ -61,14 +61,15 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
        PLAY+RECORD a RETURN"). -->
   <button id="btnResetKey" style="background:#5c1e1e">RESET</button>
 </div>
-<!-- BUILD2SB58: Rene - "po napsani CSAVE/CLOAD a RETURN Atari udela
-     specificky potvrzovaci zvuk (tu tu), driv nez kazetak vubec neco
-     dela." Tlacitka pro napsani prikazu primo - presne stejny druh
-     akce jako SELECT/START/HELP nahore (skutecna vec, ktera se da
-     zmacknout na realnem stroji), ne testovaci pomucka. -->
+<!-- BUILD2SB78: Rene - "poradny test musi byt takovy, ze se vypise
+     jen CSAVE/CLOAD BEZ tveho return - ten musim dat ja ne ty. Tam
+     muze byt chyba." Tlacitka NAPISI jen text, RETURN posila
+     uzivatel sam pres samostatne RETURN tlacitko nahore - presne
+     jako na realnem stroji (napsat prikaz, pockat, rozhodnout se
+     kdy stisknout RETURN, sledovat pipnuti). -->
 <div class="btny" style="margin-bottom:6px">
-  <button id="btnCsave" style="background:#2a2d34">NAPSAT: CSAVE</button>
-  <button id="btnCload" style="background:#2a2d34">NAPSAT: CLOAD</button>
+  <button id="btnCsave" style="background:#2a2d34">NAPSAT: CSAVE (bez RETURN)</button>
+  <button id="btnCload" style="background:#2a2d34">NAPSAT: CLOAD (bez RETURN)</button>
 </div>
 <!-- BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na
      skutecnem stroji, ne na Altirre." Samostatne tlacitko - dela
@@ -250,7 +251,18 @@ function kresli(j){
   }catch(e){ $('stavAtari').textContent='kresleni selhalo: '+e.message; }
 }
 function volej(f,arg){
-  try{ return JSON.parse(arg===undefined?AHATARICPP[f]():AHATARICPP[f](arg)); }
+  try{
+    var vysledek=JSON.parse(arg===undefined?AHATARICPP[f]():AHATARICPP[f](arg));
+    // BUILD2SB79: Rene testoval na realnem telefonu - pipnuti po
+    // psani CSAVE/CLOAD chybelo, protoze appka behem psani bezela
+    // dlouhy synchronni blok BEZ prehravani zvuku, a nasledne
+    // srovnani (B268, kvuli JINE chybe) ho zahodilo. Teto funkce
+    // (atariNapisText/atariNapisTextBezReturn) ted misto zahozeni
+    // zvuk PO CELOU DOBU zachyti a posle zpatky jako "zvuk_b64" -
+    // tady se SKUTECNE prehraje, misto aby zustal nevyuzity v JSON.
+    if(vysledek && vysledek.zvuk_b64 && pripravZvuk()) pridejVzorkyDoHromady(vysledek.zvuk_b64);
+    return vysledek;
+  }
   catch(e){ return {chyba:String(e.message||e)}; }
 }
 $('btnBoot').addEventListener('click',function(){
@@ -279,8 +291,8 @@ $('btnOpt').addEventListener('click',function(){ volej('atariKonzole','option');
 $('btnHelpKey').addEventListener('click',function(){ volej('atariHelp'); obnovLog(); });
 $('btnReturnKey').addEventListener('click',function(){ volej('atariNapisText',''); obnovLog(); });
 $('btnResetKey').addEventListener('click',function(){ volej('atariReset'); obnovLog(); });
-$('btnCsave').addEventListener('click',function(){ volej('atariNapisText','CSAVE'); obnovLog(); });
-$('btnCload').addEventListener('click',function(){ volej('atariNapisText','CLOAD'); obnovLog(); });
+$('btnCsave').addEventListener('click',function(){ volej('atariNapisTextBezReturn','CSAVE'); obnovLog(); });
+$('btnCload').addEventListener('click',function(){ volej('atariNapisTextBezReturn','CLOAD'); obnovLog(); });
 // BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na skutecnem
 // stroji." Cela operace (napsani CSAVE + oba RETURN + zachyceni 45s
 // zvuku) bezi jako JEDNO volani - kratky vizualni feedback, at je

@@ -1456,6 +1456,58 @@
      minut "atari casu" trva v realnem case podstatne dele - Rene
      mozna nedockal dost dlouho, NEBO je tam dalsi, jeste nenalezeny
      problem). Tyhle tri zustavaji OTEVRENE.
+   B271: Rene testoval B270 na REALNEM telefonu, dal PRECIZNI navod
+     na dalsi test: "poradny test musi byt takovy, ze se vypise jen
+     CSAVE/CLOAD BEZ tveho return - ten musim dat ja ne ty." Take
+     "zvuk klapne az na konci, ale na zacatku po vypsani ne." NALEZENA
+     PRESNA PRICINA (cislama, ne odhadem): po napsani CSAVE+RETURN se
+     BEHEM synchronniho 60-snimkoveho bloku (soucast atariNapisText,
+     kvuli vykonu spusteneho vsemi snimky najednou) nahromadi 96
+     zvukovych prechodu (overeno primym pocitanim v CLI testu) -
+     PRESNE to hledane pipnuti! ALE nasledny B268 fix (resil JINY bug
+     - 67 kliku pri vstupu do self-testu) tyhle prechody VZDY zahodi
+     pres srovnatSledovaniZvuku() driv, nez je normalni per-snimkova
+     smycka genAudio() uvidi - DVE VLASTNI OPRAVY SI PRIMO ODPOROVALY
+     (jedna zachytava zvuk, druha ho maze). KRITICKA OBECNA POUCKA:
+     kdyz oprava A (zachytit prechody s presnym casem) a oprava B
+     (zahodit nahromadene prechody po velkych blocich) resi RUZNE
+     symptomy STEJNE architektury (velke synchronni bloky bez
+     prubezneho genAudio), je TREBA zkontrolovat, jestli se
+     NEPOTIRAJI navzajem - tady se to zjistilo az po 4 kolech
+     hlaseni od Rene, prestoze oba mechanismy existovaly v jednom
+     souboru vedle sebe. SKUTECNA OPRAVA (u koreni, ne zaplata):
+     misto "tise bezet + pak zahodit" VSECHNA 4 postizena mista
+     (atariNapisText, nova atariNapisTextBezReturn, atariDoSelfTestu,
+     bootNative v C++) ted PRUBEZNE zachytavaji zvuk PO CELOU DOBU
+     operace (stejny vzor jako uz overeny atariZachytitCsaveZvukNative
+     pro WAV export) a posilaji ho zpet jako "zvuk_b64" pole v JSON -
+     JS strana (upravena centralni funkce volej()) ho SKUTECNE
+     prehraje pres existujici pipeline (pridejVzorkyDoHromady). Zadny
+     konflikt s B268 fix nemuze vzniknout, protoze genAudio() se ted
+     vola KAZDY SNIMEK prubezne - zadne "stare nahromadene prechody" k
+     zahozeni uz nikdy nevzniknou. NOVA TLACITKA "NAPSAT: CSAVE/CLOAD
+     (bez RETURN)" presne podle Reneho navodu - pisi jen text, RETURN
+     posila uzivatel sam samostatnym tlacitkem (nova metoda
+     atariNapisTextBezReturn). bootNative (C++) upravena stejne -
+     "dlouhy boot zvuk" by ted mel byt SKUTECNE slyset. TECHNICKA
+     POZNAMKA: B64 tabulka (base64 abeceda) presunuta z puvodniho
+     mista (radek ~344) na ZACATEK souboru (hned po include), protoze
+     upravena bootNative() ji ted take potrebuje a puvodne byla
+     definovana AZ ZA ni. OVERENO: vsech 10 predchozich testu prochazi
+     beze zmeny + 2 nove (end-to-end simulace CSAVE pipnuti s novym
+     vzorem - RMS 0.176/59% nenulovych, jasne slysitelne; zachyceni
+     zvuku behem 600-snimkoveho bootu - RMS 0.036/28% nenulovych,
+     appka nespadne). Kompletni prekompilace nap_atari_native.cpp i
+     MainActivity.java, obe zavorky vyvazeny. POCTIVE NEOVERENO S
+     JISTOTOU: Rene take zminil "po CLOAD->READY, pak CSAVE, appka
+     sla do RESETU" - v poskytnutem logu je RESET zalogovan jako
+     VYSLOVNA, samostatna akce TESNE PRED napsanim CSAVE (ne jako
+     vedlejsi efekt CSAVE) - vypada na nahodne zmacknuti tlacitka v
+     UI, ale bez dalsiho potvrzeni od Reneho to NENI oznaceno za
+     vyresene, jen za pravdepodobne vysvetleni. Self-test
+     zvuk/rychlost a attract mode v praxi zustavaji NEVYRESENE -
+     oddelene vykonnostni otazky, ne soucast teto opravy.
+
 
 
 

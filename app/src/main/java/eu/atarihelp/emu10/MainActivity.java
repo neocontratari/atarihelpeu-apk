@@ -4088,14 +4088,23 @@ public class MainActivity extends Activity {
             return r;
         }
         @JavascriptInterface public String atariDoSelfTestu() {
-            // BYE + RETURN -> OS predа rizeni self-testu v ROM
-            for (char c : new char[]{'B','Y','E','\n'})
-                NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode(c), 8);
-            NativeAtariCoreBridge.runSafe(400);
+            // BYE + RETURN -> OS preda rizeni self-testu v ROM
+            // BUILD2SB79: stejna oprava jako u atariNapisText - misto
+            // tiseho behu (a nasledneho zahozeni pres B268 fix)
+            // zachytit zvuk PO CELOU DOBU vstupu do self-testu, at je
+            // slyset cokoli, co appka behem prechodu skutecne udela.
+            java.io.ByteArrayOutputStream zvuk = new java.io.ByteArrayOutputStream();
+            for (char c : new char[]{'B','Y','E','\n'}) {
+                NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode(c), 0);
+                pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(8));
+            }
+            pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(400));
             String r = NativeAtariCoreBridge.screenSafe();
+            String zvukB64 = android.util.Base64.encodeToString(zvuk.toByteArray(), android.util.Base64.NO_WRAP);
             appendNativeLog("BUILD2SB49 ATARI_AKCE=NAPSANO_BYE " + napAtariRegShrnuti(r));
-            return r;
+            return vlozZvukDoJson(r, zvukB64);
         }
+
         // BUILD2SB58: Rene - "po napsani CSAVE/CLOAD a odmacknuti RETURN
         // Atari udela specificky potvrzovaci zvuk (tu tu), driv nez
         // kazetak vubec neco dela - je to jen dalsi zapis do POKEY, ktery
@@ -4104,15 +4113,79 @@ public class MainActivity extends Activity {
         // tady jen obecna moznost napsat COKOLI, ne jen napevno "BYE".
         @JavascriptInterface public String atariNapisText(String text) {
             if (text == null) text = "";
+            // BUILD2SB79: Rene testoval na REALNEM telefonu - "nejde
+            // zvuk pri csave/cload pipnuti na zacatku." PRESNE
+            // ZMERENO (ne odhad): tahle funkce dela cely beh (psani
+            // znaku + RETURN + 60 snimku "usadit se") JAKO JEDEN
+            // synchronni blok BEZ jedineho volani genAudio() behem
+            // nej - a B268 fix (kvuli JINE chybe - 67 kliku pri
+            // self-testu) pak VSECHNY nahromadene zvukove prechody
+            // Z TOHOTO BLOKU zahodi, driv nez je normalni smycka
+            // vubec uvidi. Prave TADY (pipnuti po prvnim RETURN u
+            // CSAVE/CLOAD) je presne takovy blok - vysledek: pipnuti
+            // se STALO (potvrzeno testem: 96 zaznamenanych prechodu),
+            // ale bylo zahozeno driv, nez ho appka stihla prehrat.
+            // OPRAVA: misto tise bezicich snimku ZACHYTIT zvuk PO
+            // CELOU DOBU (presne jako u atariCsaveDoWav) a poslat ho
+            // zpatky, at ho JS SKUTECNE prehraje - misto zahozeni.
+            java.io.ByteArrayOutputStream zvuk = new java.io.ByteArrayOutputStream();
             for (int i = 0; i < text.length(); i++) {
                 int kod = NativeAtariCoreBridge.kbcode(text.charAt(i));
-                if (kod >= 0) NativeAtariCoreBridge.keySafe(kod, 8);
+                if (kod >= 0) {
+                    NativeAtariCoreBridge.keySafe(kod, 0); // jen nastavit klavesu, 0 snimku
+                    pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(8));
+                }
             }
-            NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode('\n'), 8);
-            NativeAtariCoreBridge.runSafe(60);
+            NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.kbcode('\n'), 0);
+            pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(8));
+            pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(60));
             String r = NativeAtariCoreBridge.screenSafe();
+            String zvukB64 = android.util.Base64.encodeToString(zvuk.toByteArray(), android.util.Base64.NO_WRAP);
             appendNativeLog("BUILD2SB58 ATARI_AKCE=NAPSANO_TEXT:" + text + " " + napAtariRegShrnuti(r));
-            return r;
+            return vlozZvukDoJson(r, zvukB64);
+        }
+        /** BUILD2SB79: prevede base64 16-bit PCM kousek na syrove bajty a pripoji do sberneho proudu. */
+        private void pripojZvuk(java.io.ByteArrayOutputStream cil, String b64kousek) {
+            if (b64kousek == null || b64kousek.isEmpty()) return;
+            try { cil.write(android.util.Base64.decode(b64kousek, android.util.Base64.DEFAULT)); }
+            catch (Throwable ignored) {}
+        }
+        /** BUILD2SB79: vlozi "zvuk_b64" pole do existujiciho JSON objektu ze screenSafe(). */
+        private String vlozZvukDoJson(String screenJson, String zvukB64) {
+            if (screenJson == null || screenJson.isEmpty() || !screenJson.trim().startsWith("{"))
+                return "{\"zvuk_b64\":\"" + zvukB64 + "\"}";
+            String trimmed = screenJson.trim();
+            // vlozit pred posledni uzaviraci slozenou zavorku
+            int posledni = trimmed.lastIndexOf('}');
+            if (posledni < 0) return trimmed;
+            String pred = trimmed.substring(0, posledni);
+            boolean potrebaCarky = pred.trim().length() > 1; // vic nez jen "{"
+            return pred + (potrebaCarky ? "," : "") + "\"zvuk_b64\":\"" + zvukB64 + "\"}";
+        }
+        // BUILD2SB78: Rene - "poradny test musi byt takovy, ze se
+        // vypise jen CSAVE/CLOAD BEZ tveho return - ten musim dat ja
+        // ne ty. Tam muze byt chyba." Presne stejna logika jako
+        // atariNapisText, jen BEZ automatickeho RETURN na konci -
+        // uzivatel ho pak posle sam pres samostatne RETURN tlacitko,
+        // presne jako na realnem stroji (napsat prikaz, pockat,
+        // rozhodnout se, kdy stisknout RETURN). Take zachytava zvuk
+        // po cele psani (BUILD2SB79) - stejny duvod jako u
+        // atariNapisText.
+        @JavascriptInterface public String atariNapisTextBezReturn(String text) {
+            if (text == null) text = "";
+            java.io.ByteArrayOutputStream zvuk = new java.io.ByteArrayOutputStream();
+            for (int i = 0; i < text.length(); i++) {
+                int kod = NativeAtariCoreBridge.kbcode(text.charAt(i));
+                if (kod >= 0) {
+                    NativeAtariCoreBridge.keySafe(kod, 0);
+                    pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(8));
+                }
+            }
+            pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(20));
+            String r = NativeAtariCoreBridge.screenSafe();
+            String zvukB64 = android.util.Base64.encodeToString(zvuk.toByteArray(), android.util.Base64.NO_WRAP);
+            appendNativeLog("BUILD2SB78 ATARI_AKCE=NAPSANO_BEZ_RETURN:" + text + " " + napAtariRegShrnuti(r));
+            return vlozZvukDoJson(r, zvukB64);
         }
         // BUILD2SB76: Rene - "udelej realny WAV, budu ho testovat na
         // skutecnem stroji, ne na Altirre - te neverim." Napise CSAVE,
