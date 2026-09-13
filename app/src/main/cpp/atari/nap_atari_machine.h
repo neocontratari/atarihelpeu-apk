@@ -356,10 +356,10 @@ struct Machine {
   // pokud ano, spustit kratky "klik" presne jako skutecny hardware
   // (viz PokeyAudioState::spkLevel/spkDecay a jejich pouziti v
   // nap_atari_pokey.h).
-  // BUILD2SB74: sleduje CPU cyklus odpovidajici ZACATKU pristiho
-  // zvukoveho bufferu - potreba, aby sel spocitat, na KTEROU pozici
-  // (vzorek) uvnitr bufferu jednotlive zaznamenane prechody pripadaji.
-  long long audioCyklusPocatek = 0;
+  // BUILD2SB77: puvodne tady byl "audioCyklusPocatek" (akumulator) -
+  // ODSTRANEN, byl to presne ten drift popsany v komentari u
+  // genAudio() nize. Pozice se ted pocita VZDY cerstve z aktualniho
+  // cpu.c.cycles, zadny mezistav k udrzovani.
 
   // BUILD2SB75: Rene - "pri nabootovani mas kratky zvuk po resetu
   // dlouhy zvuk, presne obracene... nesmyslne to lupne i po prejiti
@@ -380,15 +380,38 @@ struct Machine {
   // vetsi prestavby cele smycky), ale zabrani to spatnym, zmacknutym
   // nebo umele vysokym artefaktum v zaznamu HNED PO bloku.
   void srovnatSledovaniZvuku() {
-    audioCyklusPocatek = cpu.c.cycles;
     pocetSpeakerPrechodu = 0;
     gtiaSpeakerVidenaAudioGen = gtiaSpeakerBit;
   }
 
+  // BUILD2SB77: Rene testoval na REALNEM zarizeni - "nejde zvuk pri
+  // nabootovani, nejde zvuk pri csave/cload pipnuti." V CLI testu
+  // (presne 882 vzorku/snimek, presne 1 genAudio() volani na 1
+  // runFrame()) vsechno fungovalo. Na REALNEM telefonu to ale NEBEZI
+  // v takhle dokonalem rytmu - JS smycka vola audioChunkNative() s
+  // velikostmi podle SKUTECNEHO ubehleho casu (Web Audio API), ne
+  // podle pevneho poctu snimku. SKUTECNA PRICINA: audioCyklusPocatek
+  // (B268) byl AKUMULATOR - kazde volani genAudio() k nemu jen
+  // PRICITALO "n*cyklu_na_vzorek", v predpokladu, ze presne tolik
+  // CPU cyklu SKUTECNE ubehlo od minuleho volani. Na realnem
+  // zarizeni tenhle predpoklad NEPLATI presne - drobne odchylky se
+  // KAZDYM volanim SCITAJI (drift), az zaznamenane prechody
+  // reproduktoru vypocitane vuci tomuhle "ujizdenemu" pocatku vyjdou
+  // MIMO aktualni buffer a orezavaci pojistka (pozice<0 -> 0,
+  // pozice>n -> n) je vsechny namacka na kraj - misto skutecneho
+  // tónu jen umlcnuty/zkresleny vysledek. OPRAVA: NEAKUMULOVAT nic -
+  // pocatek bufferu pocitat VZDY ZNOVU primo z aktualniho
+  // cpu.c.cycles (jedine VZDY spravne, autoritativni cislo), ne z
+  // odhadu postaveneho na predchozich volanich. Zadny drift nemuze
+  // vzniknout, protoze se nikdy nic nesklada z minulosti.
   void genAudio(float *out, int n, double sampleRateHz) {
     // 1773447 Hz - presne stejna konstanta jako v JS referenci
     // ("CPS=1773447/ac.sampleRate", komentar tam "cyklu na vzorek (PAL)").
     const double cyklu_na_vzorek = 1773447.0 / sampleRateHz;
+    // BUILD2SB77: pocatek TOHOTO KONKRETNIHO bufferu = aktualni cyklus
+    // MINUS kolik cyklu zabira n vzorku - vzdy cerstve spocitano,
+    // zadny akumulovany stav z minula.
+    const long long pocatekBufferu = cpu.c.cycles - (long long)((double)n * cyklu_na_vzorek);
 
     // BUILD2SB74: zpracovat VSECHNY zaznamenane prechody na jejich
     // SPRAVNYCH pozicich uvnitr bufferu - misto jedine kontroly "je bit
@@ -398,7 +421,7 @@ struct Machine {
     // snimku. Viz komentar u pole speakerPrechody.
     int zapsanoVzorku = 0;
     for (int i = 0; i < pocetSpeakerPrechodu; i++) {
-      long long delta = speakerPrechody[i].cyklus - audioCyklusPocatek;
+      long long delta = speakerPrechody[i].cyklus - pocatekBufferu;
       int pozice = (int)(delta / cyklu_na_vzorek);
       if (pozice < zapsanoVzorku) pozice = zapsanoVzorku;   // poradi zachovano zapisem, jen pojistka
       if (pozice > n) pozice = n;
@@ -417,7 +440,6 @@ struct Machine {
     if (zapsanoVzorku < n) {
       nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + zapsanoVzorku, n - zapsanoVzorku, cyklu_na_vzorek);
     }
-    audioCyklusPocatek += (long long)((double)n * cyklu_na_vzorek);
   }
 
   // BUILD2SB65: POKEY casovace 1/2/4 - presny preklad z JS reference
@@ -486,13 +508,11 @@ struct Machine {
     mem.pia = Pia();
     cpu.c = CpuState();
     cpu.reset();
-    // BUILD2SB74: cpu.c.cycles se vynuluje uvnitr CpuState() vyse -
-    // audioCyklusPocatek MUSI zustat synchronizovany, jinak by po
-    // pouziti RESET tlacitka (ktere NEpostavi cely stroj znovu, na
-    // rozdil od BOOT) vysly vsechny nove zaznamenane prechody s
-    // absurdne velkym zapornym rozdilem cyklu a genAudio() by je
-    // spatne zaradila.
-    audioCyklusPocatek = 0;
+    // BUILD2SB77: cpu.c.cycles se vynuluje uvnitr CpuState() vyse -
+    // stare zaznamenane prechody (z PRED resetem, s VELKYMI cyklovymi
+    // hodnotami) by vuci novemu, vynulovanemu cpu.c.cycles vysly jako
+    // "daleko v budoucnosti" - zahodit je, at genAudio() nezacne
+    // spatne.
     pocetSpeakerPrechodu = 0;
   }
 

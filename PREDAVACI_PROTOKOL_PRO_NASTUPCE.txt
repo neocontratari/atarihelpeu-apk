@@ -1404,6 +1404,59 @@
      presne to misto, kde i JS reference selhava) NENI soucasti teto
      zmeny - potrebuje samostatnou "virtualni kazetu" infrastrukturu,
      zatim neexistuje, zustava pro pristi kolo.
+   B270: Rene testoval B269 na REALNEM telefonu (kriticky dulezity
+     krok - CLI testy tohle nikdy neodhali) - nahlasil "zadny zvuk
+     pri bootu/csave/cload pipnuti, self-test pomaly, RESET zni jako
+     cold hard reset." ALE take POTVRDIL, ze CLOAD->ERROR 138 logika
+     (B268) FUNGUJE SPRAVNE na realnem zarizeni - jen trvalo dele nez
+     54s (telefon nebezi presne v CLI testovacim tempu). NALEZENA
+     SKUTECNA PRICINA vsech audio hlaseni: genAudio() (B267/B268)
+     pocitalo pozici prechodu v bufferu vuci "audioCyklusPocatek" -
+     AKUMULATORU, ktery se kazdym volanim jen PRICITAL "n *
+     cyklu_na_vzorek" V PREDPOKLADU, ze presne tolik CPU cyklu
+     SKUTECNE uplynulo od minuleho volani. V CLI testu (genAudio
+     volano PRESNE 882 vzorku PRESNE jednou na kazdy runFrame())
+     tenhle predpoklad platil dokonale - zadny drift, vse fungovalo.
+     Na REALNEM zarizeni JS smycka vola audioChunkNative() s
+     velikostmi podle SKUTECNE ubehleho realneho casu (Web Audio API
+     scheduling), NE podle pevneho poctu snimku - drobne odchylky se
+     KAZDYM volanim SCITALY (drift), az zaznamenane prechody
+     vypocitane vuci timhle "ujizdejicimu" pocatku vysly MIMO
+     aktualni buffer a orezavaci pojistka (pozice<0->0, pozice>n->n)
+     je vsechny namackala na kraj bufferu - misto skutecneho tónu bud
+     nic, nebo nesmyslne skrabnuti na kraji. KRITICKA OBECNA POUCKA:
+     JAKYKOLI kod, ktery predpoklada "presne tolik X uplynulo od
+     minuleho volani" a AKUMULUJE tenhle predpoklad pres cas (misto
+     aby si to overil vuci autoritativnimu zdroji pravdy), je
+     NACHYLNY K DRIFTU, kdyz se predpoklad v realnem provozu byt i
+     jen NEPATRNE nesplni presne. CLI testy s DOKONALE pravidelnym
+     volanim tenhle druh chyby NIKDY neodhali - je potreba bud (a)
+     testovat s UMYSLNE nepravidelnym/simulovanym-realistickym
+     casovanim, nebo (b) navrhovat kod tak, aby se VZDY odvozoval z
+     aktualniho autoritativniho stavu, ne z akumulovaneho odhadu.
+     OPRAVA: NEAKUMULOVAT nic - pocatek KAZDEHO audio bufferu se ted
+     pocita VZDY ZNOVU primo z aktualniho cpu.c.cycles (jedine vzdy
+     spravne cislo pro "kde jsme ted v case"), nikdy z odhadu
+     postaveneho na predchozich volanich. audioCyklusPocatek (clenska
+     promenna z B268) ODSTRANENA - uz neni potreba. OVERENO: vsech 6
+     puvodnich + 4 predchozi (B267) testy prochazi (jeden upraven -
+     simuloval nerealisticky scenar, ktery v NOVEM spravnem modelu
+     dava jiny, ale spravny vysledek). NOVY test specificky simulujici
+     REALNE NEPRAVIDELNE casovani (1-3 snimky najednou, velikost
+     bufferu nahodne 800-950 vzorku misto pevnych 882) - zvuk
+     detekovan ve VSECH 90 sledovanych "ticich", presne ten druh
+     testu, co by MEL byt soucasti kazde podobne opravy od tehle
+     chvile dal. POCTIVE NEVYRESENO (zustava pro pristi kolo): (1)
+     self-test zvuk/rychlost - vykonnostni otazka, nezkoumana. (2)
+     CSAVE chybejici zaverecna "uvodni stopa" (typicky zvuk na konci
+     na realnem HW) - nezkoumano. (3) attract mode v PRAXI na
+     telefonu nefunguje, i kdyz izolovany CLI test ukazal spravne
+     chovani po ~11 min - pravdepodobne STEJNA vykonnostni pricina
+     (self-test pomaly = appka bezi < 50fps na realnem HW, takze 11
+     minut "atari casu" trva v realnem case podstatne dele - Rene
+     mozna nedockal dost dlouho, NEBO je tam dalsi, jeste nenalezeny
+     problem). Tyhle tri zustavaji OTEVRENE.
+
 
 
 ===============================================================================
