@@ -91,6 +91,17 @@ struct Machine {
   int audc[4] = {0,0,0,0};
   int audctl = 0;
   PokeyAudioState pokeyAudio;
+  // BUILD2SB89: dva SAMOSTATNE, VZDY BEZICI stavy pro dvouton (mark=
+  // kanal1, space=kanal2) - NUTNE oddelene od hlavniho pokeyAudio,
+  // protoze pokeyGenSamples() ma optimalizaci "if (!vol) continue;",
+  // ktera PRESKOCI aktualizaci citace, kdyz je hlasitost 0 - kdybych
+  // pouzival JEDEN stav a jen prepinal audc[0]/audc[1] mezi 0 a
+  // plnou hlasitosti, citac by se pri "ztlumeni" ZASTAVIL (zamrzl),
+  // a po znovu-zapnuti by pokracoval ze SPATNE faze - presne overeno
+  // testem (davalo to nesmyslnych 1764Hz misto ocekavanych 5278Hz).
+  // Oprava: oba kanaly bezí VZDY na plnou hlasitost, nezavisle,
+  // NEPRETRZITE - jen se PO VZORCICH VYBIRA, KTERY VYSTUP POUZIT.
+  PokeyAudioState pokeyAudioMark, pokeyAudioSpace;
   // BUILD2SB65: Rene - "csave neni kazetovy port... to bylo vyreseno
   // v jave emu atari, udelej to presne podle atari jadra." Nalezeno:
   // CSAVE po druhem RETURN vstoupi do smycky, ktera ceka na hodnotu
@@ -527,53 +538,72 @@ struct Machine {
     }
   }
 
-  // BUILD2SB88: Rene poslal SKUTECNOU nahravku (wav) realneho Atari
-  // dvoutonoveho vysilani - PRIMO ZMERENO (autokorelace, ne odhad):
-  // behem "piskotu" appka strida MEZI 594.0 Hz A 5278.0 Hz (ne mala
-  // odchylka - obrovsky skok!). 594.0 Hz PRESNE odpovida spojenemu
-  // kanalu 3+4 (audf3=204,audf4=5: (204+5*256+7)*1 cyklu -> 594.7 Hz
-  // vypocteno). 5278.0 Hz PRESNE odpovida SAMOSTATNEMU kanalu 1
-  // (audf1=5, standardni delic 28: (5+1)*28 cyklu -> 5278.1 Hz
-  // vypocteno) - SHODA NA DESETINY Hz! Behem "datoveho toku" (skutecna
-  // data) autokorelace ukazuje RYCHLE stridani 565/4009 Hz - stejny
-  // MECHANISMUS (dva nezavisle kanaly), jen prepinane BIT PO BITU
-  // misto zridkavych "urovnovych" bloku jako v piskotu.
-  // ZAVĚR: skutecny POKEY dvoutonovy obvod NEMENI periodu jednoho
-  // kanalu (predchozi B276 "pulena perioda" pristup byl SPATNY,
-  // odstranen) - PREPINA, KTERY ZE DVOU NEZAVISLE BEZICICH OSCILATORU
-  // (kanal 1 samostatne, VERSUS kanal 3+4 spojene) je prave "pripojen
-  // na vystup" - presne jako multiplexer/gate. Oba oscilatory pritom
-  // beží CELOU DOBU na svych vlastnich, NEZMENENYCH frekvencich -
-  // meni se jen HLASITOST/GATING, ne frekvence.
+  // BUILD2SB89: Rene - "prestan odhadovat, projdi si internet, jak
+  // ten zvuk opravdu funguje - zjisti, ze CSAVE se neuklada." Nasel
+  // jsem OFICIALNI, DEFINITIVNI specifikaci primo v De Re Atari
+  // (dodatek C, oficialni Atari technicka dokumentace): "POKEY
+  // recognizes each data byte: 1 start bit (space), 8 data bits
+  // (0=space, 1=mark), then one stop bit (mark). The frequency used
+  // to represent a mark is 5327 Hz. For a space, the frequency is
+  // 3995 Hz." PRESNY VYPOCET (NTSC hodiny 1789790Hz, standardni
+  // 28-cyklovy delic pro 8-bit kanal): audf=5 -> perioda=168 cyklu
+  // -> 5326.8Hz (PRESNA SHODA s "mark"!). audf=7 -> perioda=224
+  // cyklu -> 3995.1Hz (PRESNA SHODA se "space"!). TOHLE JSOU PRESNE
+  // HODNOTY AUDF1=5 A AUDF2=7, KTERE UZ APPKA CELOU DOBU LOGOVALA
+  // ("AUDF=[5,7,204,5]") - jen jsem si jich nevsimnul! MARK = KANAL
+  // 1 SAMOSTATNE, SPACE = KANAL 2 SAMOSTATNE - NE kanal1/kanal3+4
+  // jak jsem se domnival v B278 na zaklade analyzy jedne konkretni
+  // nahravky (594Hz spojeny kanal3+4 tam sice BYL pritomny, ale
+  // zjevne slouzi necemu JINEMU - mozna uvodnimu synchronizacnimu
+  // tonu pred samotnymi daty - NE samotnemu MARK/SPACE FSK kodovani
+  // dat, ktere definuje oficialni specifikace). OPRAVA: dvouton ted
+  // pouziva KANAL 1 (mark, bit=1) VERSUS KANAL 2 (space, bit=0) -
+  // presne podle oficialni De Re Atari specifikace, ne podle
+  // odvozovani z jedne nahravky. Kanal 3+4 pri dvoutonu VZDY
+  // ztlumen (nesouvisi s FSK daty).
+  // DODATECNA OPRAVA (behem testovani): PRVNI pokus prepinal jen
+  // AUDC (hlasitost) na JEDNOM sdilenem stavu - ale pokeyGenSamples()
+  // ma optimalizaci "if (!vol) continue", ktera pri hlasitosti 0
+  // PRESKOCI aktualizaci citace kanalu (zamrzne ho) - po znovu-
+  // zapnuti pak citac pokracoval ze SPATNE faze, davalo to
+  // nesmyslnych 1764Hz misto 5278Hz (primo overeno testem, chyba
+  // nalezena a opravena). SKUTECNA oprava: dva SAMOSTATNE stavy
+  // (pokeyAudioMark, pokeyAudioSpace), OBA VZDY na plnou hlasitost,
+  // NEPRETRZITE bezici - jen se PO VZORCICH vybira, KTERY VYSTUP se
+  // pouzije do vysledneho bufferu.
   void zapisUsekSDvoutonem(float *out, int odkud, int pocet, double cyklu_na_vzorek, long long pocatekBufferu) {
     if (pocet <= 0) return;
     const bool dvouton = (skctl & 0x08) != 0;
     if (!dvouton) { nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + odkud, pocet, cyklu_na_vzorek); return; }
+
+    // Oba kanaly generovat NEZAVISLE, VZDY na plnou hlasitost (zadne
+    // "if (!vol) continue" zamrznuti citace) - do docasnych bufferu
+    // na zasobniku (pocet je vzdy v ramci jednoho audio bufferu,
+    // max. nekolik tisic vzorku, bezpecne pod 8192).
+    static const int MAX_VZORKU_DVOUTON = 8192;
+    float bufMark[MAX_VZORKU_DVOUTON], bufSpace[MAX_VZORKU_DVOUTON];
+    int n = pocet > MAX_VZORKU_DVOUTON ? MAX_VZORKU_DVOUTON : pocet;
+    int audfMark[4]  = {audf[0], 0, 0, 0};
+    int audcMark[4]  = {audc[0], 0, 0, 0};
+    int audfSpace[4] = {0, audf[1], 0, 0};
+    int audcSpace[4] = {0, audc[1], 0, 0};
+    nap::pokeyGenSamples(audfMark,  audcMark,  audctl, pokeyAudioMark,  bufMark,  n, cyklu_na_vzorek);
+    nap::pokeyGenSamples(audfSpace, audcSpace, audctl, pokeyAudioSpace, bufSpace, n, cyklu_na_vzorek);
+
     const double cyklu_na_bit = 1773447.0 / 600.0; // 600 baudu, presne jako JS reference pro cteni pasky
-    int zapsano = 0;
-    while (zapsano < pocet) {
-      long long cykl = pocatekBufferu + (long long)((double)(odkud + zapsano) * cyklu_na_vzorek);
+    for (int i = 0; i < n; i++) {
+      long long cykl = pocatekBufferu + (long long)((double)(odkud + i) * cyklu_na_vzorek);
       long long odBitu = cykl - serRamecStart;
       int bitIndex = odBitu >= 0 ? (int)(odBitu / cyklu_na_bit) : -1;
-      int bit = 1; // mimo platny ramec (nebo po jeho konci) = klidova "1" uroven linky (kanal 1)
+      int bit = 1; // mimo platny ramec (nebo po jeho konci) = klidova "mark" uroven linky (kanal 1)
       if (bitIndex >= 0 && bitIndex < 10) bit = (serRamec >> bitIndex) & 1;
-      long long konecTohotoBituCyklus = (bitIndex >= 0 && bitIndex < 10)
-          ? serRamecStart + (long long)((double)(bitIndex + 1) * cyklu_na_bit)
-          : (long long)1e18;
-      int vzorkuDoHranice = (int)((double)(konecTohotoBituCyklus - cykl) / cyklu_na_vzorek);
-      if (vzorkuDoHranice < 1) vzorkuDoHranice = 1;
-      int kolikTeď = pocet - zapsano;
-      if (kolikTeď > vzorkuDoHranice) kolikTeď = vzorkuDoHranice;
-
-      // AUDF zustava NEZMENENE (oba oscilatory beží porad) - meni se
-      // jen AUDC (hlasitost/gating): bit=1 -> slyset kanal 1 SAMOTNY
-      // (5278Hz), kanal 2/3/4 ztlumeny; bit=0 -> slyset kanal 3+4
-      // SPOJENY (594Hz), kanal 1/2 ztlumeny.
-      int audcDvouton[4];
-      if (bit) { audcDvouton[0]=audc[0]; audcDvouton[1]=0; audcDvouton[2]=0; audcDvouton[3]=0; }
-      else     { audcDvouton[0]=0; audcDvouton[1]=0; audcDvouton[2]=audc[2]; audcDvouton[3]=audc[3]; }
-      nap::pokeyGenSamples(audf, audcDvouton, audctl, pokeyAudio, out + odkud + zapsano, kolikTeď, cyklu_na_vzorek);
-      zapsano += kolikTeď;
+      out[odkud + i] = bit ? bufMark[i] : bufSpace[i];
+    }
+    // pokud pocet > MAX_VZORKU_DVOUTON (nemelo by nastat pri normalnim
+    // 882 vzorku/snimek), zbytek jen doplnit standardni syntézou, at
+    // appka nikdy neselze (jen teoreticka pojistka).
+    if (pocet > n) {
+      nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + odkud + n, pocet - n, cyklu_na_vzorek);
     }
   }
 

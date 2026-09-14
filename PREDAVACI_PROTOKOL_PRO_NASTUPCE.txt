@@ -1966,6 +1966,160 @@
      SPATNA pro tenhle konkretni pripad (bylo to 8.9:1, prepinani
      kanalu, ne pulena perioda) - jen PRIME zmereni skutecnych dat to
      odhalilo.
+   B279: DULEZITA OPRAVA B278 ZAVERU. Rene - "furt to neni ono...
+     Proste ten zvuk musi byt v biosech v jadrech a v manualech ktere
+     mas v apce. Prosim te prestan odhadovat -+ projdi si internet
+     podivej se jak ten zvuk opravdu funguje... Napis si kod treba o
+     10 radcich a pak se podivej poslechni co to dela za zvuk." Take
+     zminil: "csave se neuklada" a "na zacatku se to opravdu dyl
+     loguje" (delsi boot - jiz drive oznaceno jako mensi problem,
+     stale nezkoumano).
+     PROHLEDAL JSEM INTERNET (presne podle pozadavku - web_search)
+     MISTO DALSIHO ODHADOVANI NEBO SPOLEHANI SE JEN NA JEDNU
+     NAHRAVKU. Nalezena OFICIALNI, DEFINITIVNI specifikace primo v
+     De Re Atari (dodatek C - oficialni technicka dokumentace Atari,
+     ne forum ani neoficialni zdroj): "POKEY recognizes each data
+     byte in this order: 1 start bit (space), 8 data bits (0=space,
+     1=mark), then one stop bit (mark). A byte is sent/received
+     least significant bit first. The frequency used to represent a
+     mark is 5327 Hz. For a space, the frequency is 3995 Hz. Records
+     are 132 bytes long: 2 marker characters (0x55 each) for speed
+     measurement, a control byte, 128 data bytes, and checksum."
+     PRESNY VYPOCET (NTSC hodiny 1789790Hz - De Re Atari pocita s
+     NTSC, standardni 28-cyklovy delic pro 8-bit kanal): audf=5 ->
+     perioda=(5+1)*28=168 -> 1789790/(2*168)=5326.8Hz (PRESNA SHODA s
+     oficialnim "mark"=5327Hz!). audf=7 -> perioda=(7+1)*28=224 ->
+     1789790/(2*224)=3995.1Hz (PRESNA SHODA s oficialnim "space"=
+     3995Hz!). TOHLE JSOU PRESNE HODNOTY AUDF1=5 A AUDF2=7 - APPKA
+     JE CELOU DOBU LOGOVALA ("AUDF=[5,7,204,5]" ve VSECH predchozich
+     logach) - jen jsem si predtim nevsimnul, ze KANAL 2 (ne kanal
+     3+4) je ta druha polovina mark/space paru!
+     OPRAVA PREDCHOZIHO (B278) ZAVERU: B278 usoudil (z ANALYZY JEDNE
+     KONKRETNI NAHRAVKY, autokorelaci) ze dvouton pouziva "kanal 1
+     SAMOSTATNE versus kanal 3+4 SPOJENE" (594Hz a 5278Hz namereno v
+     TE nahravce) - TOHLE BYL OMYL. Skutecny mechanismus (podle
+     OFICIALNI DOKUMENTACE, ne odvozeny z jedne nahravky) je KANAL 1
+     (mark) VERSUS KANAL 2 (space) - DVA JEDNOTLIVE KANALY, NE kanal
+     3+4 spojene vubec! To 594Hz co B278 zmeril v nahravce
+     PRAVDEPODOBNE patrilo NECEMU JINEMU (mozna uvodnimu
+     synchronizacnimu/attention tonu PRED zapocetim FSK dat, nebo
+     jine casti nahravky, kterou jsem si nespravne priradil k
+     samotnemu MARK/SPACE kodovani) - NEBYLO dale zkoumano PROC presne
+     bylo v te nahravce pritomno, protoze OFICIALNI SPECIFIKACE dava
+     JASNOU, PRESNOU, OVERITELNOU odpoved bez potreby dale hadat.
+     OPRAVA KODU: zapisUsekSDvoutonem() prepracovana na KANAL1(mark,
+     bit=1) VERSUS KANAL2(space, bit=0), presne podle specifikace.
+     Kanal 3+4 pri dvoutonu VZDY ztlumen (nesouvisi s FSK daty).
+     DALSI CHYBA NALEZENA A OPRAVENA BEHEM TESTOVANI TETO ZMENY
+     (poucny detail): PRVNI pokus implementace prepinal jen AUDC
+     (hlasitost) na JEDNOM SDILENEM stavu (pokeyAudio) mezi kanal1 a
+     kanal2 - ale pokeyGenSamples() ma OPTIMALIZACI "if (!vol)
+     continue;" (v nap_atari_pokey.h), KTERA PRESKOCI AKTUALIZACI
+     CITACE KANALU CELKEM, KDYZ JE HLASITOST 0 - to znamena, ze
+     "ztlumeny" kanal PRESTANE POCITAT SVOJI FAZI (zamrzne), a po
+     ZNOVU-zapnuti POKRACUJE ZE SPATNE, NAHODNE FAZE - PRIMO OVERENO
+     TESTEM: davalo to nesmyslnych 1764Hz misto ocekavanych 5278Hz
+     (test s autokorelaci - navíc DODATECNE zjisteno, ze celociselna
+     autokorelace je NEPRESNA pro tak kratke periody jako 168 cyklu/
+     ~4 vzorky, presnejsi zero-crossing metoda pak SPRAVNE zmerila
+     5236.9Hz PO oprave - poucka: pro VYSOKE frekvence blizko Nyquist
+     limitu POUZIVAT zero-crossing, NE celociselnou autokorelaci).
+     SKUTECNA OPRAVA: DVA SAMOSTATNE PokeyAudioState (pokeyAudioMark,
+     pokeyAudioSpace) - OBA VZDY na PLNOU hlasitost, NEPRETRZITE
+     bezici, NIKDY neztlumene - jen se PO VZORCICH (ne po kanalech)
+     vybira, KTERY Z PREDPOCITANYCH VYSTUPU (bufMark[i] nebo
+     bufSpace[i]) se ulozi do vysledneho bufferu podle AKTUALNIHO
+     BITU. Tohle zarucuje OBA oscilatory VZDY spravne, kontinualne
+     pocitaji svou fazi, bez ohledu na to, ktery je "vybrany".
+     OVERENO NA SKUTECNEM PROGRAMU (presne podle Reneho navrhu
+     "napis si kod treba o 10 radcich"): napsal jsem 5-radkovy BASIC
+     program (vcetne "10 PRINT HELLO"), spustil CSAVE, a PRIMO
+     ZAZNAMENAL SKUTECNE ODESILANE SEROUT BAJTY: "55 55 FA 00 00 00
+     01 06 01 07 01 17 01 57 01 5D 01 48 45 4C 4C CF C9 00..." - TOHLE
+     PRESNE ODPOVIDA OFICIALNI SPECIFIKACI: "55 55" = DVA MARKER
+     BAJTY (presne "0x55 each" z dokumentace), "FA" = CONTROL BYTE
+     (presne odpovida "$FA indicates partially full data record" z
+     dokumentace), a POZDEJI "48 45 4C 4C" = ASCII "HELL" - DOSLOVA
+     KUS TEXTU "HELLO" Z MEHO PROGRAMU! 49 RUZNYCH HODNOT BAJTU V
+     CELEM PRENOSU - SKUTECNA DATA PROGRAMU SE SPRAVNE KODUJI, NE JEN
+     NULY. OVERENO: vsech 9 predchozich testu prochazi beze zmeny.
+     CLOAD regrese-test (ERROR 138) potvrzen beze zmeny (CLOAD
+     nepouziva SEROUT/dvouton). Obrazovka spravne konci READY.
+     Kompletni prekompilace nap_atari_native.cpp, zavorky vyvazeny.
+     POCTIVE OTEVRENO PRO PRISTE: (1) Rene zminil "csave se neuklada"
+     - appka ted SPRAVNE KODUJE zvuk (overeno vyse proti oficialni
+     specifikaci a REALNYM datum programu), ale NEMA implementovanou
+     PERZISTENTNI "virtualni kazetu" - neexistuje zpusob, jak by
+     appka SAMA NACETLA zpet to, co CSAVE "poslal" (napr. pro
+     nasledny CLOAD test primo v appce, bez externiho WAV exportu a
+     poslechu). Tohle je SAMOSTATNA, VETSI funkce (implementovat
+     virtualni kazetovy "pasek" v pameti/souboru, na ktery CSAVE
+     zapisuje a ze ktereho CLOAD cte), NEIMPLEMENTOVANO v tomto kole.
+     (2) Delsi bootovani na zacatku - Rene sam oznacil jako "neni to
+     zas takovej problem", zustava NEZKOUMANO.
+     KLICOVA METODOLOGICKA POUCKA (aktualizace B278 pouceni): I
+     KDYZ mame PRIME namerene udaje ze SKUTECNE nahravky, je TREBA
+     je OVERIT PROTI OFICIALNI DOKUMENTACI, pokud existuje - jedna
+     nahravka muze obsahovat VICE RUZNYCH TONU/FAZI (napr. uvodni
+     synchronizacni tón ODLISNY od skutecneho MARK/SPACE FSK
+     kodovani dat), a NESPRAVNE PRIRAZENI namerenych frekvenci ke
+     SPRAVNEMU MECHANISMU muze vest k presvedcivemu, ale NESPRAVNEMU
+     zaveru (B278 "kanal1 vs kanal3+4" bylo ciselne presvedcive -
+     shoda na desetiny Hz! - ale STEJNE spatne, protoze to bylo
+     spravne cislo pro SPATNY ucel). Oficialni technicka dokumentace
+     (kdyz existuje) je SILNEJSI zdroj pravdy nez vlastni analyza
+     jedne nahravky s nejasnym puvodem/kontextem.
+   B280: Rene opravil MOU CHYBU v B279 zaveru: "Jak to ze ne to uz
+     sme meli a nekam si to asi zakopal pamatujes atarihelp /
+     emuatari nebo tak nejak - tam ukladame s csave format wav!!"
+     MEL PRAVDU - B279 chybne tvrdilo "appka nema perzistentni
+     virtualni kazetu", ALE automaticke ukladani WAV pri napsani
+     CSAVE (implementovano v B273: zahajNahravani/ukoncitNahravani/
+     atariUlozitZvukJakoWav) V KODU STALE EXISTUJE - jen jsem si na
+     NEJ VLASTNI DRIVEJSI PRACI nevzpomnel pri psani B279 zaveru.
+     POUCKA: pred tvrzenim "tohle jeste neni implementovano" VZDY
+     PRESNE PROHLEDAT KOD (grep), ne spolehat na PAMET/dojem z
+     predchozich kol.
+     SKUTECNA PRICINA "csave se neuklada" nalezena PO OVERENI KODU:
+     v REALNYCH LOZICH (vicekrat, napr. orca_share_media...
+     1789338574920 aj.) se opakovane objevovalo "BUILD2SB81
+     CSAVE_WAV chyba=base64:bad base-64" - PRIMO OVERENO V PYTHONU
+     (presne simulovana stejna logika, ne odhad): JS kod (v
+     ukoncitNahravani()) delil zaznamenana surova PCM data na kusy
+     po "KUS=8192" bajtech PRED prevodem KAZDEHO kusu na base64
+     (kvuli obchazeni limitu btoa() na velikost vstupu) - ALE 8192
+     NENI DELITELNE TREMI. Base64 kóduje PRESNE po skupinach 3
+     bajtu -> 4 znaky bez vycpavky; POKUD kus NENI delitelny tremi,
+     btoa() zakonci TENTO KUS vycpavkovymi znaky "=" (1 nebo 2, podle
+     zbytku po deleni 3) - a kdyz se VICE TAKOVYCH KUSU (kazdy s
+     VLASTNI vycpavkou na konci) POUZE ZRETEZI (String concatenation,
+     "b64+=..."), vysledny retezec ma vycpavku "=" NA VICE MISTECH
+     UPROSTRED, NE JEN NA UPLNEM KONCI CELEHO RETEZCE - coz je
+     STRUKTURALNE NEPLATNY base64 (validni base64 smi mit vycpavku
+     JEN na uplnem konci CELE zpravy). Java-stranovy dekoder
+     (android.util.Base64.decode) tohle SPRAVNE odmita s presne tou
+     hlasenou chybou. PRIMO OVERENO V PYTHONU na simulovanych datech
+     (25600 nahodnych bajtu, presne stejna cyklicka logika jako v
+     JS): puvodni KUS=8192 -> vysledny retezec OBSAHUJE "=" i MIMO
+     posledni 4 znaky, dekodovani SELHAVA presne s "Excess data after
+     padding" (STEJNA TRIDA chyby jako "bad base-64" hlasena appkou).
+     OPRAVA: KUS zmeneno na 8190 (=2730*3, cistne delitelne tremi) -
+     PRIMO OVERENO, ze STEJNA simulace s KUS=8190 dava validni base64
+     (zadna vycpavka mimo posledni 4 znaky) a UPLNE SPRAVNE
+     dekoduje zpet na PUVODNI data (bajt po bajtu shoda potvrzena).
+     ROZSAH ZMENY: jednoradkova oprava v index.html (JS), C++ jadro
+     VUBEC NEDOTCENO - vsech 9 predchozich testu prochazi beze zmeny
+     (zkontrolovano jako pojistka, tato zmena se jich vecne netyka).
+     DALSI SOUVISEJICI KONTEXT (pro upresneni Reneho druheho bodu z
+     minule zpravy - "dvouton data pri prazdnem CSAVE, HELL na konci
+     zvuku pred READY"): Rene potvrdil, ze sekvence "piskot -> data
+     -> konec -> READY" (presne to, co jsem zmeril a nahlasil v B279)
+     JE spravny, ocekavany vzor - zadna dalsi akce netreba na tomhle
+     bode, jen potvrzeni spravnosti.
+     Kompletni prekompilace nap_atari_native.cpp (nezmeneno touto
+     zmenou), zavorky index.html vyvazeny.
+
+
 
 
 

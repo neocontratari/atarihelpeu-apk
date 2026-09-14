@@ -492,7 +492,16 @@ function ukoncitNahravani(){
   for(var i=0;i<nahravkaKousky.length;i++){ spojene.set(nahravkaKousky[i],pozice); pozice+=nahravkaKousky[i].length; }
   nahravkaKousky=[];
   // Uint8Array -> base64 (bez atob/btoa limitu na velikost - po castech)
-  var b64=''; var KUS=8192;
+  // BUILD2SB90: Rene - "csave se neuklada." NALEZENA PRESNA PRICINA
+  // (primo overeno v Pythonu, ne odhad): 8192 NENI delitelne tremi -
+  // base64 kóduje po skupinach 3 bajtu -> 4 znaky, takze KAZDY kus o
+  // velikosti nedelitelne 3 dostane VLASTNI vycpavkove znaky "="
+  // UPROSTRED vysledneho retezce (ne jen na konci) - presne to
+  // zpusobuje "bad base-64"/"Excess data after padding" chybu, co
+  // se objevovala v logu. Oprava: KUS musi byt delitelny 3, aby
+  // KAZDY kus (krome posledniho) vysel jako "cely" base64 blok bez
+  // vycpavky uprostred.
+  var b64=''; var KUS=8190; // 8190 = 2730*3, delitelne tremi
   for(var i=0;i<spojene.length;i+=KUS){
     var podpole=spojene.subarray(i,Math.min(i+KUS,spojene.length));
     b64+=btoa(String.fromCharCode.apply(null,podpole));
