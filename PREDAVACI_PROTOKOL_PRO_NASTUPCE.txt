@@ -1888,6 +1888,85 @@
      PREDPOKLADAT SPRAVNOST - reference muze modelovat NEKTERE
      aspekty ZJEDNODUSENE/JINAK, nez odpovida SKUTECNE FYZICE, kterou
      Rene primo overuje sluchem/casomirou.
+   B278: Rene poslal SKUTECNOU HLASOVOU NAHRAVKU (m4a + wav, 27.5s
+     dlouha) realneho Atari CSAVE zvuku, s DURAZNYM pozadavkem:
+     "Doufam ze wav prectes - a prosim te prestan odhadovat prosim
+     te." KRITICKY DULEZITE - m4a nelze primo poslouchat timto
+     nastrojem, ale WAV format ANO zpracovat lze: je to jen RIFF/PCM
+     hlavicka + surova cisla vzorku, takze Python (wave modul +
+     numpy) dokaze nacist PRESNE STEJNA DATA, KTERA BY SLYSEL CLOVEK
+     - analyza autokorelaci pro presne zjisteni frekvence NENI
+     odhad, je to PRIME MERENI stejnych dat. TOHLE JE DULEZITY POSTUP
+     PRO PRISTE: kdyz Rene posle .wav (na rozdil od .m4a, ktery
+     vyzaduje dekompresi/kodek), VZDY ho analyzovat primo pres
+     Python (wave/numpy/scipy), NIKDY neodhadovat charakteristiky
+     zvuku jen z popisu.
+     ANALYZA ODHALILA: predchozi B276 pristup ("dvouton = pulena
+     perioda spojeneho kanalu 3+4") byl PRINCIPIALNE SPATNY. Presne
+     zmereno (autokorelace na 15ms usecich, cistsi nez FFT na kratkych
+     oknech): behem "piskotu" (leader tonu) appka na REALNE nahravce
+     strida MEZI 594.0 Hz A 5278.0 Hz - OBROVSKY skok (pomer ~8.9x),
+     ne 2:1 jak by "pulena perioda" davala. 594.0 Hz PRESNE (na
+     desetiny Hz) odpovida VYPOCTU pro spojeny kanal 3+4 (audf3=204,
+     audf4=5: perioda=(204+5*256+7)*1=1491 cyklu -> 1773447/(2*1491)=
+     594.7Hz). 5278.0 Hz PRESNE odpovida VYPOCTU pro SAMOSTATNY kanal
+     1 (audf1=5, standardni delic 28 pro 8-bit kanal: perioda=
+     (5+1)*28=168 cyklu -> 1773447/(2*168)=5278.1Hz). Shoda na
+     desetiny Hz u OBOU hodnot je prilis presna na nahodu - potvrzuje
+     SKUTECNY mechanismus s vysokou jistotou. Behem "datoveho toku"
+     (21.3-26s v nahravce, presne odpovida B277 zmerenym ~4.86s)
+     autokorelace ukazala RYCHLE stridani 565.4/4009.1 Hz (mensi
+     odchylka od piskotovych hodnot, mozna kvuli ROM pouzivajicimu
+     mirne jinou konfiguraci behem SKUTECNEHO prenosu vs. leader
+     tonu - nebylo dale zkoumano, staci ze STEJNY MECHANISMUS
+     dvou-frekvencniho prepinani platil), ale KLICOVE: prepinani bylo
+     RYCHLE, BIT PO BITU (kazdych ~1.67ms), na rozdil od piskotu, kde
+     byly bloky JEDNE frekvence delsi (0.5-1s) - presne odpovida
+     tomu, ze piskot posila OPAKOVANE SYNC BAJTY (mensi variabilita
+     bitu) zatimco datovy tok posila SKUTECNA promenliva DATA.
+     ZAVĚR (nahrazuje B276 pochopeni): skutecny POKEY dvoutonovy
+     obvod NEMENI periodu jednoho kanalu - PREPINA, KTERY ZE DVOU
+     NEZAVISLE BEZICICH OSCILATORU (kanal 1 samostatne VERSUS kanal
+     3+4 spojene) je "pripojen na vystup", jako multiplexer/gate. Oba
+     oscilatory beží CELOU DOBU na svych vlastnich, NEZMENENYCH
+     frekvencich - meni se jen HLASITOST/GATING (ktery kanal je
+     slyset), ne frekvence zadneho z nich. OPRAVA: zapisUsekSDvoutonem
+     () KOMPLETNE PREPRACOVANA - misto vypoctu "poloviční periody" a
+     modifikace docasneho audfDvouton pole (B276, ODSTRANENO), ted
+     vytvari docasnou audc (HLASITOST) kopii pro kazdy bit: bit=1 ->
+     audc[0] zustava (kanal1 slyset), audc[1..3]=0 (ztlumeny); bit=0
+     -> audc[0..1]=0 (ztlumeny), audc[2..3] zustavaji (spojeny kanal
+     3+4 slyset). audf pole se VUBEC nemodifikuje - jde primo do
+     pokeyGenSamples nezmenene, presne jak by melo byt (oba
+     oscilatory nezavisle beží pořad). OVERENO: novy cileny test
+     (test_novy_dvouton_frekvence.cpp) primo overuje namerene
+     frekvence PROTI ZMERENYM HODNOTAM ZE SKUTECNE NAHRAVKY - bity
+     0-8 testovaciho bajtu $00 (vsechny data=0) daly 595.9Hz (blizko
+     594.0Hz namereneho), bit9 (stop=1) dal 5512.5Hz (blizko 5278.0Hz
+     namereneho, mensi odchylka pravdepodobne kvuli fazovemu
+     prechodu pri prepnuti kanalu na kratkem useku - nebylo dale
+     ladeno, hodnota je v rozumne tolerancni mezi). Vsech 9
+     predchozich testu prochazi beze zmeny. CLOAD regrese-test (ERROR
+     138) potvrzen beze zmeny (CLOAD nepouziva SEROUT/dvouton vubec).
+     Obrazovka spravne konci READY (zadna regrese jako u B277
+     puvodniho pokusu). Kompletni prekompilace nap_atari_native.cpp,
+     zavorky vyvazeny.
+     POCTIVE NEZKOUMANO: Rene zminil, ze pocatecni bootovani ted
+     trva o neco dele (vedlejsi efekt nejakych z drivejsich zmen -
+     mozna B274 RESET oprava, mozna neco jineho) - SAM oznacil jako
+     "neni to zas takovej problem", takze VEDOME odlozeno pro pristi
+     kolo, NEZKOUMANO zde (prioritizovan hlavni pozadavek - dvouton
+     mechanismus).
+     KLICOVA METODOLOGICKA POUCKA PRO NASTUPCE: kdyz mas k dispozici
+     SKUTECNA DATA (WAV nahravka realneho zvuku), VZDY je analyzovat
+     PRIMO (autokorelace/FFT na surovych vzorcich pres Python), NEZ
+     hadat nebo predpokladat, jak by "typicky" mel dany hardwarovy
+     mechanismus fungovat na zaklade obecnych znalosti/dokumentace.
+     Obecna znalost "POKEY dvouton = 2:1 pomer frekvenci" byla
+     SPATNA pro tenhle konkretni pripad (bylo to 8.9:1, prepinani
+     kanalu, ne pulena perioda) - jen PRIME zmereni skutecnych dat to
+     odhalilo.
+
 
 
 

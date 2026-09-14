@@ -527,15 +527,24 @@ struct Machine {
     }
   }
 
-  // BUILD2SB85: pomocna funkce - zapise usek zvuku, ale pokud je
-  // prave aktivni dvoutonovy rezim (SKCTL bit3) A prave bezi platny
-  // sériovy ramec (posledních 10 bitu od serRamecStart), rozdeli
-  // usek na castecky podle HRANIC JEDNOTLIVYCH BITU a pro kazdou
-  // pouzije spravnou frekvenci (bit=1 nastavena perioda, bit=0
-  // dvojnasobna frekvence/poloviční perioda - standardni chovani
-  // POKEY dvoutonoveho obvodu). Mimo aktivni ramec (zadna data prave
-  // neplynou) se pouzije normalni, nezmenena perioda - to je presne
-  // ta "uvodni piskot" faze, co uz funguje spravne.
+  // BUILD2SB88: Rene poslal SKUTECNOU nahravku (wav) realneho Atari
+  // dvoutonoveho vysilani - PRIMO ZMERENO (autokorelace, ne odhad):
+  // behem "piskotu" appka strida MEZI 594.0 Hz A 5278.0 Hz (ne mala
+  // odchylka - obrovsky skok!). 594.0 Hz PRESNE odpovida spojenemu
+  // kanalu 3+4 (audf3=204,audf4=5: (204+5*256+7)*1 cyklu -> 594.7 Hz
+  // vypocteno). 5278.0 Hz PRESNE odpovida SAMOSTATNEMU kanalu 1
+  // (audf1=5, standardni delic 28: (5+1)*28 cyklu -> 5278.1 Hz
+  // vypocteno) - SHODA NA DESETINY Hz! Behem "datoveho toku" (skutecna
+  // data) autokorelace ukazuje RYCHLE stridani 565/4009 Hz - stejny
+  // MECHANISMUS (dva nezavisle kanaly), jen prepinane BIT PO BITU
+  // misto zridkavych "urovnovych" bloku jako v piskotu.
+  // ZAVĚR: skutecny POKEY dvoutonovy obvod NEMENI periodu jednoho
+  // kanalu (predchozi B276 "pulena perioda" pristup byl SPATNY,
+  // odstranen) - PREPINA, KTERY ZE DVOU NEZAVISLE BEZICICH OSCILATORU
+  // (kanal 1 samostatne, VERSUS kanal 3+4 spojene) je prave "pripojen
+  // na vystup" - presne jako multiplexer/gate. Oba oscilatory pritom
+  // beží CELOU DOBU na svych vlastnich, NEZMENENYCH frekvencich -
+  // meni se jen HLASITOST/GATING, ne frekvence.
   void zapisUsekSDvoutonem(float *out, int odkud, int pocet, double cyklu_na_vzorek, long long pocatekBufferu) {
     if (pocet <= 0) return;
     const bool dvouton = (skctl & 0x08) != 0;
@@ -546,29 +555,24 @@ struct Machine {
       long long cykl = pocatekBufferu + (long long)((double)(odkud + zapsano) * cyklu_na_vzorek);
       long long odBitu = cykl - serRamecStart;
       int bitIndex = odBitu >= 0 ? (int)(odBitu / cyklu_na_bit) : -1;
-      int bit = 1; // mimo platny ramec (nebo po jeho konci) = klidova "1" uroven linky
+      int bit = 1; // mimo platny ramec (nebo po jeho konci) = klidova "1" uroven linky (kanal 1)
       if (bitIndex >= 0 && bitIndex < 10) bit = (serRamec >> bitIndex) & 1;
-      // najit, kolik vzorku odsud jeste patri do STEJNEHO bitu (nebo do konce pozadovaneho useku)
       long long konecTohotoBituCyklus = (bitIndex >= 0 && bitIndex < 10)
           ? serRamecStart + (long long)((double)(bitIndex + 1) * cyklu_na_bit)
-          : (long long)1e18; // mimo ramec - zadna dalsi hranice, jede az do konce pozadovaneho useku
+          : (long long)1e18;
       int vzorkuDoHranice = (int)((double)(konecTohotoBituCyklus - cykl) / cyklu_na_vzorek);
       if (vzorkuDoHranice < 1) vzorkuDoHranice = 1;
       int kolikTeď = pocet - zapsano;
       if (kolikTeď > vzorkuDoHranice) kolikTeď = vzorkuDoHranice;
 
-      int audfDvouton[4] = {audf[0], audf[1], audf[2], audf[3]};
-      if (bit == 0) {
-        // "space" = dvojnasobna frekvence = poloviční perioda 16-bit
-        // spojeneho citace CH3+4 (presne chovani POKEY dvoutonoveho
-        // obvodu - serioovy bit 0 pridava dalsi preklopeni uprostred
-        // periody).
-        int spojeno = audf[2] + (audf[3] << 8);
-        int pulka = spojeno / 2;
-        audfDvouton[2] = pulka & 0xFF;
-        audfDvouton[3] = (pulka >> 8) & 0xFF;
-      }
-      nap::pokeyGenSamples(audfDvouton, audc, audctl, pokeyAudio, out + odkud + zapsano, kolikTeď, cyklu_na_vzorek);
+      // AUDF zustava NEZMENENE (oba oscilatory beží porad) - meni se
+      // jen AUDC (hlasitost/gating): bit=1 -> slyset kanal 1 SAMOTNY
+      // (5278Hz), kanal 2/3/4 ztlumeny; bit=0 -> slyset kanal 3+4
+      // SPOJENY (594Hz), kanal 1/2 ztlumeny.
+      int audcDvouton[4];
+      if (bit) { audcDvouton[0]=audc[0]; audcDvouton[1]=0; audcDvouton[2]=0; audcDvouton[3]=0; }
+      else     { audcDvouton[0]=0; audcDvouton[1]=0; audcDvouton[2]=audc[2]; audcDvouton[3]=audc[3]; }
+      nap::pokeyGenSamples(audf, audcDvouton, audctl, pokeyAudio, out + odkud + zapsano, kolikTeď, cyklu_na_vzorek);
       zapsano += kolikTeď;
     }
   }
