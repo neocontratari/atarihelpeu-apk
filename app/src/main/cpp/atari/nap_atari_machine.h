@@ -573,7 +573,28 @@ struct Machine {
   // pouzije do vysledneho bufferu.
   void zapisUsekSDvoutonem(float *out, int odkud, int pocet, double cyklu_na_vzorek, long long pocatekBufferu) {
     if (pocet <= 0) return;
-    const bool dvouton = (skctl & 0x08) != 0;
+    // BUILD2SB91: Rene - "ted tam mas dalsi problem po tom csave -
+    // jsou zase lagy delaji zpozdeni zvuku." PRESNE OVERENO (ne
+    // odhad): SKCTL bit3 (dvouton) ZUSTAVA ZAPNUTY NAVZDY po dokonceni
+    // CSAVE (primo zmereno testem - i 30s po konci CSAVE, bez
+    // jakekoliv dalsi aktivity, bit3 stale $2B/ZAPNUTY) - to je
+    // pravdepodobne autenticke chovani ROM (OS neuklizi SKCTL po
+    // kazetove operaci), NE chyba emulace. PROBLEM byl, ze appka
+    // kontrolovala JEN "je SKCTL bit3 zapnuty?" a pokud ano, VZDY
+    // pouzila drazsi dvoukanalovy vypocet (dve volani pokeyGenSamples
+    // + vyberova smycka) - i KDYZ zadny prenos dat uz dlouho neprobiha
+    // - to zpusobovalo TRVALE zvysenou zatez CPU po KAZDEM CSAVE,
+    // narustajici podtekani zvukoveho bufferu (primo potvrzeno v
+    // logu: podtekani ~9 behem CSAVE, ale EXPLOZE na 364+ v
+    // nasledujicich minutach). OPRAVA: dvoukanalovy vypocet pouzit
+    // JEN kdyz je SOUCASNE (a) SKCTL bit3 zapnuty A (b) jsme
+    // GENUINNE V RAMCI aktivniho, NEDAVNEHO prenosu (serRamecStart
+    // neni starsi nez ~1 vterina) - jinak (stary/zadny prenos) se
+    // pouzije levny, standardni jednokanalovy vypocet, i kdyz SKCTL
+    // bit3 zustava (stale) zapnuty.
+    const long long CYKLU_NA_1S = 1773447;
+    const bool nedavnyPrenos = (cpu.c.cycles - serRamecStart) < CYKLU_NA_1S;
+    const bool dvouton = (skctl & 0x08) != 0 && nedavnyPrenos;
     if (!dvouton) { nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + odkud, pocet, cyklu_na_vzorek); return; }
 
     // Oba kanaly generovat NEZAVISLE, VZDY na plnou hlasitost (zadne

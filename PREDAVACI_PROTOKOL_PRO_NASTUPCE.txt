@@ -2118,6 +2118,80 @@
      bode, jen potvrzeni spravnosti.
      Kompletni prekompilace nap_atari_native.cpp (nezmeneno touto
      zmenou), zavorky index.html vyvazeny.
+   B281: Rene - "Uz tam na konci tu datovou stopu mas... Ale ted tam
+     mas dasi problem po tom csave - jsou zase lagy dealy spozdeni
+     zvuku." (dvouton mechanismus z B279 potvrzen jako FUNGUJICI, ale
+     PO CSAVE se objevil NOVY, samostatny problem s vykonem).
+     ANALYZA REALNEHO LOGU (orca_share_media1789394572166...) ukazala
+     PRESNY VZOR: "ZVUK_PODTEKANI pocet=X" (citac podtekani
+     zvukoveho bufferu) zustava STABILNI kolem 9-10 BEHEM CSAVE
+     operace, ale PO jejim dokonceni (motor off, cca 15:58:33 v logu)
+     citac EXPLODUJE v nasledujicich MINUTACH: 10 (15:58:54) -> 123
+     (15:59:58, +113 za ~1 minutu) -> 323 (16:00:51, +200 za dalsich
+     ~53s) -> 364 (ustali se). Toto NAROSTAJICI, POKRACUJICI
+     podtekani JASNE ukazovalo na TRVALY, NE JEDNORAZOVY vykonovy
+     problem po CSAVE, ne na chvilkovy zavan pri samotnem prenosu.
+     VYSETRENI A PRESNE OVERENI (primo testem, ne odhad): SKCTL bit3
+     (dvouton priznak, zavedeny v B274 jako rozlisujici bit CSAVE/
+     CLOAD) ZUSTAVA ZAPNUTY NAVZDY po dokonceni CSAVE - primo
+     zmereno testem: i 30 SEKUND PO KONCI CSAVE, BEZ JAKEKOLIV DALSI
+     AKTIVITY, SKCTL zustava $2B (bit3 stale nastaveny), pocet zmen
+     bitu3 za tuhle dobu = 0. Tohle je PRAVDEPODOBNE AUTENTICKE
+     chovani realneho OS ROM (neuklizi SKCTL po dokonceni kazetove
+     operace, jelikoz to obvykle neni potreba az do PRISTI kazetove
+     operace) - NE chyba emulace, NEMENIT tohle v budoucnu.
+     SKUTECNA PRICINA VYKONOVEHO PROBLEMU: B279/B280 implementace
+     "zapisUsekSDvoutonem()" kontrolovala VYHRADNE "je SKCTL bit3
+     zapnuty?" (bez ohledu na to, JAK DAVNO byl posledni SEROUT bajt
+     odeslan) - POKUD ANO, VZDY pouzila DRAZSI dvoukanalovy vypocet
+     (DVE NEZAVISLA volani pokeyGenSamples() - jedno pro "mark" kanal
+     1, jedno pro "space" kanal 2 - PLUS vyberova smycka po
+     JEDNOTLIVYCH VZORCICH, ktera rozhoduje, KTERY z obou
+     predpocitanych vystupu pouzit) - TOHLE SE DELO PRO KAZDY JEDNY
+     genAudio() VOLANI NAVZDY PO CSAVE, protoze SKCTL bit3 uz nikdy
+     nezmizi. Dvoukanalovy vypocet je ZHRUBA DVAKRAT NAROCNEJSI (dve
+     plnohodnotna volani syntezy MISTO jednoho) - tohle TRVALE
+     ZVYSENE ZATIZENI CPU (po KAZDEM CSAVE, navzdy, dokud appka
+     nebezela znovu od zacatku) presne odpovida NAROSTAJICIMU
+     podtekani zvukoveho bufferu pozorovanemu v logu - appka
+     jednoduse nestihala generovat zvuk v realnem case pri
+     TRVALE zvysenych narocich, coz se postupne HROMADILO.
+     OPRAVA: pridana DODATECNA PODMINKA "nedavnyPrenos" - dvoukanalovy
+     (drahy) vypocet se POUZIJE JEN KDYZ je SOUCASNE (a) SKCTL bit3
+     zapnuty A (b) cpu.c.cycles - serRamecStart < 1773447 (cca 1
+     vterina CPU cyklu) - tedy POUZE POKUD byl POSLEDNI SEROUT bajt
+     odeslan PRED MENE NEZ ~1 VTERINOU (genuinne AKTIVNI, PROBIHAJICI
+     prenos). Jakmile tenhle CAS uplyne (zadna nova SEROUT aktivita),
+     appka se AUTOMATICKY VRATI k levnemu, standardnimu
+     jednokanalovemu vypoctu, I KDYZ SKCTL bit3 ZUSTAVA (stale, jak
+     ma byt autenticky) zapnuty. OVERENO PRIMO na produkcnim kodu
+     (nove pocitadlo "g_pocetDvoutonVolani"/"g_pocetLevnychVolani" v
+     testovaci kopii): behem CELEHO 24-vterinoveho prubehu CSAVE
+     (cekani + prenos) - 280 volani spravne SLA drahou cestou
+     (dvouton), 1521 levnou (mimo aktivni bitovy ramec, i BEHEM
+     CSAVE - matches ocekavani, protoze VETSINA casu behem 24s je
+     CEKACI faze, ne aktivni prenos). V NASLEDUJICICH 30 SEKUNDACH PO
+     CSAVE: PRESNE 0 NOVYCH drahych volani (predtim by JICH BYLO
+     STEJNE MNOHO jako celkovy pocet genAudio() volani za tu dobu,
+     jelikoz SKCTL bit3 zustaval STALE zapnuty) - OPRAVA PRIMO
+     POTVRZENA FUNKCNI. Vsech 9 predchozich testu prochazi beze
+     zmeny. Dvouton frekvence (oficialni De Re Atari specifikace,
+     B279) OVERENY beze zmeny (5236.9Hz mark, 4009.1Hz space -
+     zmena v B281 NEOVLIVNILA presnost/spravnost SAMOTNEHO dvoutonu
+     BEHEM aktivniho prenosu, jen pridala SPRAVNE VYPNUTI po jeho
+     konci). CLOAD regrese-test (ERROR 138) potvrzen beze zmeny.
+     Obrazovka spravne konci READY. Kompletni prekompilace
+     nap_atari_native.cpp, zavorky vyvazeny.
+     POUCKA PRO PRISTE: kdyz PRIDAVAS "drazsi/alternativni" vypocetni
+     cestu podminenou hardwarovym REGISTREM (jako SKCTL bit3), VZDY
+     zvazit: "muze tenhle registr ZUSTAT ve stavu, ktery aktivuje
+     drazsi cestu, i PO TOM, co UZITECNA CINNOST, pro kterou byl
+     TATO cesta navrzena, uz DAVNO skoncila?" - pokud ANO (jako zde),
+     PRIDAT DODATECNOU, CASOVE ZALOZENOU PODMINKU (napr. "nedavna
+     aktivita"), NE spolehat JEN na stav registru samotneho, jinak
+     riskujes TRVALE zvysenou zatez systemu daleko za hranice
+     puvodne zamyslene operace.
+
 
 
 
