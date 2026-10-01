@@ -9,52 +9,60 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 332
-        versionName "EMU10-B286-WAV-KODOVANI-NEBLOKUJE"  // Rene po B285
-        // (poslal novy log): "sakra lepsi, synchron je lepsi, ale furt to
-        // neni 1ku1... projed si to dukladne a podivej se na jadro a klidne
-        // si projed i www stranky - myslim ze jsme cca 95 procent, ale v
-        // c++ chci atari stoprocent." B285 OREZAN mechanismus funguje
-        // spravne (v logu videt presne 3x, presne pri self-testu, zahlceni
-        // uz nenastava - Rene sam potvrdil). Zbyvajici rozdil: v logu dal
-        // roste ZVUK_PODTEKANI (underrun) pocitadlo, oddelene od OREZAN,
-        // hlavne TESNE PO KONZOLE:start+OREZAN udalostech (+22, +10) a v
-        // mensi mire kolem kazdeho ulozeni CSAVE_WAV (+1 az +5). DVA NALEZY
-        // (oba primo zmerene, ne odhadnute):
-        // (1) ukoncitNahravani() (CSAVE -> .wav soubor, bezi presne kdyz
-        // motor kazety zhasne) delala CELE base64-kodovani (~2.5MB zvuku,
-        // presne Reneho velikosti z logu) JEDNIM souvislym synchronnim
-        // behem - novy Node test (test_b286_wav_blokovani.js, presna kopie
-        // algoritmu) zmeril ~20-26ms na rychlem stolnim stroji (realny
-        // telefon muze byt pomalejsi), z toho samotne SPOJENI kousku jen
-        // ~1.7ms - temer cela rezie je v String.fromCharCode.apply() base64
-        // kodovani. OPRAVA: stejny vysledek (OVERENO bajt-za-bajtem
-        // identicky vystup na 10 ruznych velikostech vc. hranicnich
-        // pripadu), ale rozdelene na davky po 40 kouscich zpracovane PRES
-        // VICE TIKU UDALOSTNI SMYCKY (setTimeout 0) - hlavni vlakno uz
-        // neni blokovane vic nez pár ms najednou.
-        // (2) OREZAN (B285) sam nastavoval "dalsiZvukStart" BEZ REZERVY
-        // presne na "ted" - kdyz naplanujZvukovyBuffer() hned pote znovu
-        // (cerstve) cte zvukCtx.currentTime, muze uz byt o kousek dal (rezie
-        // samotneho orezani), takze prvni nasledujici kousek(y) nahlasi
-        // "podtekani", i kdyz jde jen o rezii orezani, ne skutecne
-        // nestihani (tohle zduvodneno, ne zmereno se stejnou jistotou jako
-        // (1) - jde o rezii v ramci behu prohlizece/WebView, CLI testy na
-        // ni nedosahnou). OPRAVA: +50ms rezerva pri kazdem orezani.
-        // TAKE OVERENO (Reneho opakovany pozadavek na jistotu o C++):
-        // novy CLI test (test_b286_rychlost_behem_csave.cpp) meri
-        // wall-clock cas KAZDEHO JEDNOTLIVEHO snimku zvlast behem klidu,
-        // CSAVE LEADER faze a CSAVE DATA/dvouton faze (ne jen pred/po jako
-        // B285, ale primo BEHEM realne audio aktivity) - prumery prakticky
-        // shodne (3.17-3.41ms/snimek, pomer DATA/KLID 0.957-0.971x,
-        // opakovane mereno), nejhorsi jednotlivy snimek 11.35ms = 56.8% z
-        // 20ms realneho rozpoctu na snimek (PAL 50fps) - pohodlna rezerva,
-        // zadny snimek se ani nepriblizuje limitu. C++ jadro tedy NENI
-        // pomalejsi ani PO CSAVE (B285) ani BEHEM aktivniho prenosu (B286) -
-        // dve nezavisla mereni, stejny zaver. Cela existujici C++ sada
-        // (23/23) beze zmeny prochazi dal - tahle oprava je zase cela jen
-        // v JS prehravani/ukladani (index.html), do jadra se nesahalo.
-        // NEOVERENO JESTE skutecnym poslechem/testem na telefonu.
+        versionCode 333
+        versionName "EMU10-B287-ATARI-ZVUK-NATIVNI-OPENSL"  // Rene po B286:
+        // "Ne - tu kontrolu udelej jeste pred testem - chci ciste jadro
+        // atari emu v c++ - Java odhaduje a to je problem - Partaku
+        // nelakuj me - atari emu v jave je v aplikaci. Proto ted delame
+        // atari emu v c++ !!!" KONTROLA PROVEDENA PRED DALSIM TESTEM (jak
+        // pozadoval), primo v kodu, ne odhadem: appka SKUTECNE obsahuje
+        // DVE ODDELENE Atari jadra. (1) emu_vbxe/index.html - stary,
+        // kompletni, cely v JS napsany 6502 emulator (vlastni opcode
+        // tabulka, vlastni zvuk pres ScriptProcessorNode) - PRESNE tohle
+        // je zavesene na HLAVNI tlacitko menu appky "ATARI 130XE
+        // EMULATOR" (viz app/src/main/assets/index.html). V gitu ma
+        // presne 1 commit - od zacatku viditelne historie nedotcene. (2)
+        // emu_atari_cpp/index.html - nase C++ jadro (na kterem delame
+        // B282-B286) - zavesene na tlacitko "HELP" (v help panelu appky
+        // dokonce ani nevysvetlene). Reneho vlastni log (ZVUK_PREDSTIH_OREZAN,
+        // existuje jen v C++ jadru) potvrzuje, ze celou dobu testoval
+        // spravne pres HELP - nic z prace B282-B286 nebylo nazmar.
+        // Rene po nahlaseni rozhodl: "ne za 1 [tj. nemenit hlavni menu]
+        // nez bude pod tlacitkem help atari emu v c++ kompletne hotove na
+        // java atari nechytej. Ale vyzaduji aby na tom co delame bylo
+        // opravdu emu atari pod tlacitkem HELP ciste v c++." Tenhle build
+        // je presne to: posledni zbyvajici JS vrstva (Web Audio API
+        // planovani/odhadovani - AudioContext, dalsiZvukStart,
+        // orezavani fronty z B285/B286) je pryc. Zvuk ted hraje PRIMO z
+        // C++ jadra pres nativni OpenSL ES - stejny, uz overeny a v
+        // produkci bezici vzor jako ma PS1 jadro teto appky ("CESTA A:
+        // zvuk bez Javy", funguje od API 9, sedi s minSdk 24). Nove:
+        // nap_atari_audio_ring.h (cisty C++, bez JNI/SLES - kruhovy buffer
+        // + 4x zisk/oriznuti/int16 prevod, presne nahrazujici drivejsi JS
+        // GainNode hodnotu) + OpenSL kod v nap_atari_native.cpp, napojene
+        // na VSECHNY 3 existujici genAudio() mista (bootNative,
+        // atariZachytitCsaveZvukNative, audioChunkNative) - genAudio()
+        // samotne se NEMENI (stejny pocet volani jako driv), jen se navic
+        // vysledek posila do nativni fronty. Start/stop navazano na
+        // zivotni cyklus obrazovky HELP (jeNactene/onPageStarted-Finished/
+        // onPause/onDestroy/onResume - presny vzor isPs1OwnerUrl/
+        // stopPs1IfLeaving), aby se predeslo stejne "hadajici se jadra"
+        // chybe, jaka uz jednou vznikla mezi Segou a Atari. V index.html
+        // zcela ODSTRANENO (ne jen vypnuto): zvukCtx/pripravZvuk/
+        // zvukHromada/naplanovaneZdroje/zkratitPrilisDlouhouFrontu/
+        // pridejVzorkyDoHromady/naplanujZvukovyBuffer - zadna JS
+        // "odhadovaci" vrstva uz v zivem prehravani neexistuje. CSAVE->WAV
+        // nahravka (pripojKeNahravce) zustava beze zmeny - porad bere ze
+        // stejnych bajtu, co uz atariAudioChunk vracel, jen uz se tyhle
+        // bajty navic neprehravaji pres JS. OVERENO: novy CLI test
+        // (test_b287_atari_audio_ring.cpp, 21 kontrol) overuje kruhovy
+        // buffer (zapis/cteni, zabaleni pres konec, preteceni = zahozeni
+        // nejstarsiho, ne nejnovejsiho) a zisk/oriznuti/int16 prevod
+        // (vcetne shody se stavajicim gain-less prevodem pri gain=1.0).
+        // CELA existujici CLI sada (16 ze 16 souboru, vsechny beze zmeny)
+        // prochazi dal - do CPU/pameti/POKEY jadra se vubec nesahalo.
+        // Samotne OpenSL ES volani (realny Android audio hardware) CLI
+        // test overit NEUMI - to muze potvrdit jen Reneho telefon.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64

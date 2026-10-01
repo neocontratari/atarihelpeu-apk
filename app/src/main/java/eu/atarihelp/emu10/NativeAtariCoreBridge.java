@@ -82,6 +82,17 @@ public final class NativeAtariCoreBridge {
     // index.html a komentar u C++ funkce.
     private static native int motorZapnutyNative();
 
+    // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
+    // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
+    // HELP ciste v c++." Zvuk uz nehraje JS Web Audio API (odhad/orezavani
+    // fronty v index.html), ale primo jadro pres OpenSL ES (presne vzor
+    // jako PS1 - "CESTA A: zvuk bez Javy"). Start/stop se vola ze
+    // zivotniho cyklu obrazovky (viz MainActivity), diag je kratky
+    // stavovy radek PRIMO z nativni fronty, zadny JS odhad.
+    private static native void   atariAudioStartNative();
+    private static native void   atariAudioStopNative();
+    private static native String atariZvukDiagNative();
+
     /** KBCODE pro pismena a RETURN - potrebne, aby slo napsat BYE. */
     public static int kbcode(char c) {
         switch (Character.toUpperCase(c)) {
@@ -156,6 +167,24 @@ public final class NativeAtariCoreBridge {
         if (!loaded) return "?";
         try { String r = regsNative(); return r == null ? "?" : r; }
         catch (Throwable t) { return "?"; }
+    }
+
+    /** B287: bezpecne zapnuti/vypnuti nativniho OpenSL zvuku. Idempotentni
+     *  (jadro samo hlida, jestli uz bezi/je zavrene) - bezpecne volat
+     *  vicekrat za sebou z ruznych mist zivotniho cyklu obrazovky. */
+    public static void audioStartSafe() {
+        if (!loaded) return;
+        try { atariAudioStartNative(); } catch (Throwable ignored) {}
+    }
+    public static void audioStopSafe() {
+        if (!loaded) return;
+        try { atariAudioStopNative(); } catch (Throwable ignored) {}
+    }
+    /** B287: kratky stav nativni zvukove fronty (podtekani/zpozdeni/stav) -
+     *  nahrazuje stary JS odhad ZVUK_PODTEKANI. */
+    public static String zvukDiagSafe() {
+        if (!loaded) return null;
+        try { return atariZvukDiagNative(); } catch (Throwable t) { return null; }
     }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */

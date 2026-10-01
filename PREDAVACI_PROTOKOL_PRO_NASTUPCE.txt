@@ -2673,4 +2673,113 @@
      ODLISNY prispevatel se stejnym vyslednym symptomem, ne predpoklad,
      ze prvni oprava byla neuplna/spatna.
 
+
+   B287: DVE ATARI JADRA (NOVY NALEZ) + ODSTRANENI JS WEB AUDIO,
+     NATIVNI OPENSL ES ZVUK (2026-10-01) - Rene po B286 zopakoval
+     pozadavek jeste durazneji: "Ne - tu kontrolu udelej jeste pred
+     testem - chci ciste jadro atari emu v c++ - Java odhaduje a to je
+     problem - Partaku nelakej me - atari emu v jave je v aplikaci.
+     Proto ted delame atari emu v c++ !!!" NEJDRIV OVERENO (ne
+     predpokladano), co presne "atari emu v jave je v aplikaci"
+     znamena - a vyslo najevo neco, co v zadnem drivejsim buildu
+     zaznamenane nebylo: appka obsahuje DVE UPLNE ODDELENE Atari 130XE
+     jadra. (1) emu_vbxe/index.html - stary, kompletni, cely v JS
+     rucne napsany 6502 emulator (vlastni opcode tabulka, vlastni zvuk
+     pres ScriptProcessorNode, 7245 radku) - presne tohle je zavesene
+     na HLAVNI tlacitko menu appky "ATARI 130XE EMULATOR" (index.html,
+     href="emu_vbxe/index.html"). Grep potvrdil NULA volani AHATARICPP
+     mostu odtud. (2) emu_atari_cpp/index.html - nase C++ jadro, na
+     kterem se delalo B282-B286 - zavesene na tlacitko "HELP" (v help
+     panelu appky nikde ani nevysvetlene, proc tam je). DUKAZ, ze jde o
+     dve SKUTECNE oddelene cesty, ne jen o dva nazvy: git log --follow
+     na emu_vbxe/index.html ukazuje PRESNE JEDEN commit (stejny jako
+     nejstarsi commit emu_atari_cpp) - od zacatku viditelne historie
+     nedotcene, zatimco emu_atari_cpp ma 4 commity aktivniho vyvoje.
+     OHLASENO Renemu JAKO KONTROLNI BOD pred pokracovanim (presne podle
+     jeho vlastniho stavajiciho pravidla "overovat pred testem"), s
+     poznamkou, ze Reneho vlastni testovaci log (ZVUK_PREDSTIH_OREZAN
+     existuje JEN v C++ jadru) potvrzuje, ze celou dobu testoval
+     spravne pres HELP - prace B282-B286 nebyla nazmar. RENE ROZHODL:
+     "ne za 1 nez bude pod tlacitkem help atari emu v c++ kompletne
+     hotove na java atari nechytej. Ale vyzaduji aby na tom co delame
+     bylo opravdu emu atari pod tlacitkem HELP ciste v c++" - tedy
+     hlavni menu/stare JS jadro se PROZATIM NEMENI (zadna zmena v
+     emu_vbxe ani v hlavnim menu v tomhle buildu), ale C++ jadro pod
+     HELP musi byt DOSLOVA ciste C++, bez jakekoli JS/Java "odhadovaci"
+     vrstvy.
+
+     Posledni takova vrstva byla zvukova: index.html (emu_atari_cpp)
+     dosud prehravalo zvuk pres JS Web Audio API s rucnim planovanim
+     (promenna "dalsiZvukStart", presne to, co B285/B286 opakovane
+     opravovaly). TOHLE CELE V TOMHLE BUILDU ZMIZELO - ne vypnuto,
+     SMAZANO (~140 radku: zvukCtx/pripravZvuk/zvukHromada/
+     naplanovaneZdroje/MAX_PREDSTIH_S/zkratitPrilisDlouhouFrontu/
+     pridejVzorkyDoHromady/naplanujZvukovyBuffer). Zvuk ted hraje PRIMO
+     z C++ jadra pres nativni OpenSL ES - stejny, uz overeny a v
+     produkci bezici vzor jako ma PS1 jadro teto appky ("CESTA A: zvuk
+     bez Javy", OpenSL funguje od API 9, appka ma minSdk 24). NOVY
+     SOUBOR nap_atari_audio_ring.h (cisty C++, ZADNE JNI/SLES
+     zavislosti - zamerne, aby sel testovat i na tomhle (ne-Android,
+     bez-NDK) pocitaci): lock-free jednosmerny kruhovy buffer (atomic
+     zapis/cteni index, bez mutexu, staticka velikost, preteceni =
+     zahozeni NEJSTARSIHO vzorku) + funkce na 4x zisk/oriznuti/prevod
+     na int16 stereo (presne nahrazuje drivejsi JS GainNode hodnotu
+     4.0 - PLATI JEN pro zivou frontu k prehravani, CSAVE->WAV nahravka
+     zustava beze zisku/beze zmeny, jak uz byla). KRITICKE OMEZENI
+     DODRZENO: genAudio() se MUSI volat PRESNE jednou za kazdy "snimek"
+     generatoru - jinak by se rozjelo tempo generovani zvuku vuci
+     CPU/obrazu. Novy kod se tedy NAPOJIL na vsechny 3 JIZ EXISTUJICI
+     mista volani genAudio() (bootNative, atariZachytitCsaveZvukNative,
+     audioChunkNative) - zadne nove volani genAudio() nepribylo, jen se
+     vysledek navic posila do nativni fronty. POKEY zvuk je mono, pro
+     OpenSL zdvojen na L=R stereo (presne format, jaky uz ma PS1 -
+     zamerne nejnizsi riziko, mono konfigurace OpenSL by byla
+     netestovana). Zivotni cyklus (start/stop nativniho zvuku) navazan
+     presne na vzor isPs1OwnerUrl/stopPs1IfLeaving (jeNactene/
+     onPageStarted/onPageFinished/onPause/onDestroy) - DUVOD: uz jednou
+     v projektu vznikla chyba "hadajici se jadra" (zvuk Segy bezel pres
+     Atari kvuli chybejicimu resetu cisla generace), stejnemu vzoru je
+     potreba se vyhnout tady predem, ne az po nahlaseni. NOVY NALEZ
+     BEHEM NAVRHU (ne jen kopie PS1 vzoru): Atari obrazovka na rozdil
+     od PS1/Segy NEMA zadne znovunacitani stranky pri navratu z pozadi
+     - jeji smycka (pres requestAnimationFrame) po navratu z pozadi
+     sama pokracuje dal. Kdyby se nativni zvuk jen zastavoval v onPause
+     a nikdy nerestartoval v onResume (jak to ma PS1 - PS1 totiz tenhle
+     gap nema, protoze jeho obrazovka se jinak chova), zustal by zvuk
+     ticho NAVZDY po prvnim prepnuti do pozadi a zpet, i kdyz by
+     emulator viditelne bezel dal. Pridana uzka, zduvodnena vyjimka v
+     onResume() specificky pro tenhle pripad.
+
+     OVERENO: novy CLI test test_b287_atari_audio_ring.cpp (21
+     kontrol, vsechny prochazeji) - kruhovy buffer (poradi FIFO,
+     castecne cteni, zabaleni pres konec bufferu, preteceni VZDY
+     zahodi nejstarsi, ne nejnovejsi, i pri opakovanych mensich
+     zapisech, clear(), nulova delka), zisk/oriznuti/prevod (ticho, bez
+     oriznuti, kladne i zaporne oriznuti, L==R stereo, shoda se
+     stavajicim gain-less vzorcem pri gain=1.0). CELA existujici CLI
+     sada (16 ze 16 souboru) beze zmeny prochazi dal - do
+     CPU/pameti/POKEY jadra (nap_atari_machine.h, nap_atari_cpu.cpp) se
+     vubec nesahalo. NEOVERENO a OVERIT SE TADY NEDA: samotne OpenSL
+     ES/JNI volani (nap_atari_native.cpp) - na tomhle pocitaci neni
+     Android NDK (overeno: ndk-build, OpenSLES.h, $ANDROID_NDK_HOME/
+     $ANDROID_NDK_ROOT - vse chybi), takze tenhle soubor nejde lokalne
+     ani zkompilovat, natoz spustit. Jedine mozne overeni je (1) uspech
+     kroku "Sestaveni APK" v CI a (2) Reneho realny telefon - zda zvuk
+     vubec hraje, zda nehraje DVAKRAT (echo), zda hlasitost odpovida
+     predchozimu JS prehravani.
+
+     POUCKA PRO NASTUPCE: kdyz uzivatel rekne "to uz v aplikaci je"
+     nebo odkazuje na existujici funkcnost tlacitkem/nazvem,
+     NEPREDPOKLADAT, kam tlacitko skutecne vede - overit SKUTECNY
+     href/cestu v kodu (ne nazev tlacitka, ne vlastni pamet z
+     drivejsich buildu). Tady se tak odhalilo cele druhe, uplne
+     nezavisle jadro, o kterem zadny z predchozich zaznamu v tomhle
+     souboru nevedel. A DRUHA POUCKA: kdyz neco NEJDE lokalne overit
+     (tady OpenSL ES/JNI bez NDK), nejlip to jde omezit tim, ze se nova
+     logika s realnym rizikem (kruhovy buffer, zisk/prevod) VYTAHNE do
+     samostatneho, cisteho C++ souboru BEZ platformnich zavislosti -
+     presne jako uz davno existuje pro zbytek jadra - takze aspon TAHLE
+     cast jde otestovat poctive, a jen tenky zbytek (skutecne
+     OpenSL/JNI volani) zustane cekat na realne zarizeni.
+
 ===============================================================================

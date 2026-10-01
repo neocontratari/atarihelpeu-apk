@@ -301,7 +301,10 @@ if(NAP_ENABLE_ATARI)
     target_compile_features(napatari PRIVATE cxx_std_17)
     target_compile_options(napatari PRIVATE ${NAP_CORE_OPT_FLAGS})
     target_include_directories(napatari PRIVATE ${CMAKE_CURRENT_LIST_DIR}/atari)
-    target_link_libraries(napatari ${log-lib})
+    # B287: nativni OpenSL ES zvuk (CESTA A, stejne jako napps1core vyse) -
+    # ciste C++ jadro uz Atari zvuk neprehrava pres JS/Java, ale primo pres
+    # OpenSL ES (funguje od API 9, takze sedi s minSdk 24).
+    target_link_libraries(napatari ${log-lib} OpenSLES)
     # stejna prisnost jako NDK: chybejici symbol shodi build, ne az appku
     target_link_options(napatari PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif()

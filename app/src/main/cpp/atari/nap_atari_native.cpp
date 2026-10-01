@@ -22,11 +22,15 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <atomic>           // B287: nativni OpenSL zvuk (kruhovy buffer)
+#include <SLES/OpenSLES.h>  // B287: CESTA A - zvuk primo z jadra, bez JS/Java
+#include <SLES/OpenSLES_Android.h>
 #include "nap_atari_cpu.h"
 #include "nap_atari_mem.h"
 #include "nap_atari_video.h"
 #include "nap_atari_machine.h"
 #include "nap_atari_roms.h"
+#include "nap_atari_audio_ring.h"  // B287: cista (bez JNI) cast - viz test_b287
 #include <string>
 
 // BUILD2SB79: presunuto sem (z puvodniho mista dale v souboru) - musi
@@ -218,6 +222,148 @@ static void zaloz() {
   g_stroj->view    = g_view;      // obraz vznika radek po radku behem emulace
 }
 
+// ===================================================================
+//  B287: NATIVNI ZVUK (OpenSL ES) - "CESTA A" I PRO ATARI
+//
+//  Rene po B286 (log pak jeste jednou dukladne overeno primo v kodu -
+//  viz PREDAVACI_PROTOKOL): appka ma dve ODDELENE Atari jadra - stare
+//  cisto-JS (emu_vbxe, hlavni tlacitko menu appky) a tohle C++
+//  (emu_atari_cpp, pod tlacitkem HELP). Rene: "chci ciste jadro atari emu
+//  v c++ - Java odhaduje a to je problem... vyzaduji aby... bylo opravdu
+//  emu atari pod tlacitkem HELP ciste v c++." Driv i tohle C++ jadro
+//  prehravalo zvuk OKLIKOU pres JS Web Audio API (index.html:
+//  dalsiZvukStart + rucni odhad/orezavani fronty, zavedeno B285/B286) -
+//  presne ta "odhadovaci" vrstva, co Rene nechtel. Ted hraje PRIMO z
+//  jadra pres OpenSL ES - stejnym, uz overenym a v produkci bezicim
+//  vzorem jako PS1 (nap_ps1_native.cpp, "CESTA A: zvuk bez Javy").
+//  OpenSL ES funguje od API 9 (na rozdil od AAudio, ktere chce API 26+),
+//  takze jede i na minSdk 24 teto appky.
+//
+//  POKEY/genAudio() vraci MONO vzorky <-1,1> - OpenSL tu hraje stereo
+//  (L=R duplikovano), aby sel pouzit presne stejny, uz overeny format
+//  (44100Hz, 16-bit, 2 kanaly) jako u PS1, beze zmeny formatu.
+//
+//  Kruhovy buffer + zisk/oriznuti/int16 prevod jsou SCHVALNE vytazene do
+//  nap_atari_audio_ring.h (zadna JNI/SLES zavislost) - overeno CLI testem
+//  (test_b287_atari_audio_ring.cpp), ne jen odhadnuto. Samotne OpenSL ES
+//  volani nize uz CLI test neumi overit - to umi jen realny telefon.
+// ===================================================================
+#define NAP_ATARI_ARING_SHORTS (1u << 17)  // ~1.49s stereo @44100Hz - stejna kapacita jako overeny PS1 vzor
+static AtariAudioRing<NAP_ATARI_ARING_SHORTS> g_atariRing;
+static std::atomic<long long> g_atariPodtekani{0};  // kolikrat OpenSL callback nemel dost vzorku k dispozici
+
+// Zesili (4x - presne jako drive JS GainNode), orizne a preda kruhovemu
+// bufferu. Vola se ze VSECH mist, kde jadro genAudio() pouziva (bootNative,
+// atariZachytitCsaveZvukNative, audioChunkNative) - genAudio() samotne se
+// timhle NIJAK nemeni (stejny pocet volani, stejne tempo jako driv), jen
+// se navic vzorky, co uz tak jako tak vznikly, posilaji do fronty pro
+// nativni prehravani misto do JS.
+static void nap_atari_audio_push(const float *mono, int n) {
+  if (!mono || n <= 0) return;
+  std::vector<int16_t> stereo((size_t)n * 2);
+  nap::atariGainClampToStereoInt16(mono, n, 4.0f, stereo.data());
+  g_atariRing.write(stereo.data(), (unsigned)stereo.size());
+}
+
+#define NAP_ATARI_SL_BLOCK_FRAMES 1024
+#define NAP_ATARI_SL_BLOCKS 4  // 4 x ~23ms = ~93ms rezervy - presne jako u PS1
+
+static SLObjectItf s_atariSlEngineObj = nullptr;
+static SLEngineItf s_atariSlEngine = nullptr;
+static SLObjectItf s_atariSlMixObj = nullptr;
+static SLObjectItf s_atariSlPlayerObj = nullptr;
+static SLPlayItf   s_atariSlPlay = nullptr;
+static SLAndroidSimpleBufferQueueItf s_atariSlQueue = nullptr;
+static bool s_atariSlReady = false;
+static int16_t s_atariSlBlocks[NAP_ATARI_SL_BLOCKS][NAP_ATARI_SL_BLOCK_FRAMES * 2];
+static int     s_atariSlNext = 0;
+
+// OpenSL si rekne o dalsi blok - naplnime ho z kruhove fronty.
+static void nap_atari_sl_callback(SLAndroidSimpleBufferQueueItf bq, void*) {
+  size_t need = NAP_ATARI_SL_BLOCK_FRAMES * 2;  // shortu (stereo)
+  int16_t *blk = s_atariSlBlocks[s_atariSlNext];
+  s_atariSlNext = (s_atariSlNext + 1) % NAP_ATARI_SL_BLOCKS;  // dalsi blok - nikdy neprepisujeme ten, co prave hraje
+  size_t take = g_atariRing.read(blk, (unsigned)need);
+  if (take < need) {
+    g_atariPodtekani.fetch_add(1);
+    // Misto tvrdeho ticha (lupanec) dozniva posledni vzorek - pri kratkem
+    // vypadku je to slyset mnohem min (presne stejny trik jako u PS1).
+    int16_t lastL = take >= 2 ? blk[take - 2] : 0;
+    int16_t lastR = take >= 1 ? blk[take - 1] : 0;
+    for (size_t i = take; i + 1 < need; i += 2) {
+      lastL = (int16_t)(lastL * 7 / 8);
+      lastR = (int16_t)(lastR * 7 / 8);
+      blk[i] = lastL; blk[i + 1] = lastR;
+    }
+  }
+  (*bq)->Enqueue(bq, blk, need * sizeof(int16_t));
+}
+
+static void nap_atari_sl_open(void) {
+  if (s_atariSlReady) return;
+  if (slCreateEngine(&s_atariSlEngineObj, 0, nullptr, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) return;
+  if ((*s_atariSlEngineObj)->Realize(s_atariSlEngineObj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return;
+  if ((*s_atariSlEngineObj)->GetInterface(s_atariSlEngineObj, SL_IID_ENGINE, &s_atariSlEngine) != SL_RESULT_SUCCESS) return;
+  if ((*s_atariSlEngine)->CreateOutputMix(s_atariSlEngine, &s_atariSlMixObj, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) return;
+  if ((*s_atariSlMixObj)->Realize(s_atariSlMixObj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return;
+  SLDataLocator_AndroidSimpleBufferQueue locBufq = { SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, NAP_ATARI_SL_BLOCKS };
+  SLDataFormat_PCM fmt = { SL_DATAFORMAT_PCM, 2, SL_SAMPLINGRATE_44_1,
+    SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
+    SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT, SL_BYTEORDER_LITTLEENDIAN };
+  SLDataSource src = { &locBufq, &fmt };
+  SLDataLocator_OutputMix locMix = { SL_DATALOCATOR_OUTPUTMIX, s_atariSlMixObj };
+  SLDataSink sink = { &locMix, nullptr };
+  const SLInterfaceID ids[1] = { SL_IID_ANDROIDSIMPLEBUFFERQUEUE };
+  const SLboolean req[1] = { SL_BOOLEAN_TRUE };
+  if ((*s_atariSlEngine)->CreateAudioPlayer(s_atariSlEngine, &s_atariSlPlayerObj, &src, &sink, 1, ids, req) != SL_RESULT_SUCCESS) return;
+  if ((*s_atariSlPlayerObj)->Realize(s_atariSlPlayerObj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return;
+  if ((*s_atariSlPlayerObj)->GetInterface(s_atariSlPlayerObj, SL_IID_PLAY, &s_atariSlPlay) != SL_RESULT_SUCCESS) return;
+  if ((*s_atariSlPlayerObj)->GetInterface(s_atariSlPlayerObj, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &s_atariSlQueue) != SL_RESULT_SUCCESS) return;
+  (*s_atariSlQueue)->RegisterCallback(s_atariSlQueue, nap_atari_sl_callback, nullptr);
+  (*s_atariSlPlay)->SetPlayState(s_atariSlPlay, SL_PLAYSTATE_PLAYING);
+  memset(s_atariSlBlocks, 0, sizeof(s_atariSlBlocks));
+  for (int i = 0; i < NAP_ATARI_SL_BLOCKS; i++)
+    (*s_atariSlQueue)->Enqueue(s_atariSlQueue, s_atariSlBlocks[i], sizeof(s_atariSlBlocks[i]));
+  s_atariSlNext = 0;
+  g_atariRing.clear();
+  s_atariSlReady = true;
+  ALOG("B287 ATARI_ZVUK_NATIVNI OpenSL ES otevren (44100/stereo/i16, ciste C++, bez JS/Java)");
+}
+
+static void nap_atari_sl_close(void) {
+  if (s_atariSlPlayerObj) { (*s_atariSlPlayerObj)->Destroy(s_atariSlPlayerObj); s_atariSlPlayerObj = nullptr; }
+  if (s_atariSlMixObj)    { (*s_atariSlMixObj)->Destroy(s_atariSlMixObj);       s_atariSlMixObj = nullptr; }
+  if (s_atariSlEngineObj) { (*s_atariSlEngineObj)->Destroy(s_atariSlEngineObj); s_atariSlEngineObj = nullptr; }
+  s_atariSlEngine = nullptr; s_atariSlPlay = nullptr; s_atariSlQueue = nullptr;
+  bool bylOtevreny = s_atariSlReady;
+  s_atariSlReady = false;
+  g_atariRing.clear();
+  if (bylOtevreny) ALOG("B287 ATARI_ZVUK_NATIVNI OpenSL ES zavren");
+}
+
+/** Start/stop nativniho zvuku - volano ze zivotniho cyklu obrazovky HELP
+ *  (MainActivity: jeNactene()/onPageStarted-Finished/onPause/onDestroy/
+ *  onResume), presne jako u PS1. idempotentni (bezpecne volat vicekrat). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariAudioStartNative(JNIEnv*, jclass) {
+  nap_atari_sl_open();
+}
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariAudioStopNative(JNIEnv*, jclass) {
+  nap_atari_sl_close();
+}
+/** Kratky diagnosticky radek PRIMO ze stavu nativni fronty (zadny JS
+ *  odhad) - nahrazuje stary JS vypocet ZVUK_PODTEKANI. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariZvukDiagNative(JNIEnv *env, jclass) {
+  char buf[128];
+  unsigned fillShorts = g_atariRing.avail();
+  int fillMs = (int)((fillShorts / 2) * 1000 / 44100);
+  snprintf(buf, sizeof(buf), "ZVUK_NATIVNI podtekani=%lld fronta=%dms otevreno=%s",
+           (long long)g_atariPodtekani.load(), fillMs, s_atariSlReady ? "ano" : "ne");
+  return env->NewStringUTF(buf);
+}
+
 /** Studeny start: reset a nechat OS nabehnout.
  *
  * BUILD2SB59: Rene - "po znovu nabootovani po self-testu skoci zelena
@@ -268,6 +414,10 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, ji
     if (g_stroj->cpu.c.jam) std::memset(cil, 0, vzorkuNaSnimekBoot * sizeof(float));
     else g_stroj->genAudio(cil, vzorkuNaSnimekBoot, SR_BOOT);
   }
+  // B287: stejne vzorky, co uz vznikly vyse, navic posilame do nativni
+  // OpenSL fronty (zesilene+oriznute+int16 - viz nap_atari_audio_push) -
+  // genAudio() samotne se timhle NEMENI (stejny pocet volani jako driv).
+  nap_atari_audio_push(zvukBoot.data(), (int)zvukBoot.size());
   std::string zvukRaw; zvukRaw.reserve(zvukBoot.size() * 2);
   for (float f : zvukBoot) {
     if (f > 1.0f) f = 1.0f; else if (f < -1.0f) f = -1.0f;
@@ -463,6 +613,8 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariZachytitCsaveZvukNative(JNIEn
       g_stroj->genAudio(cil, vzorkuNaSnimek, SR);
     }
   }
+  // B287: viz komentar u bootNative() vyse - stejny princip.
+  nap_atari_audio_push(buf.data(), (int)buf.size());
 
   std::string raw; raw.reserve(buf.size() * 2);
   for (float f : buf) {
@@ -534,6 +686,12 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioChunkNative(JNIEnv *env, jcla
   } else {
     g_stroj->genAudio(tmp.data(), n, SR);
   }
+  // B287: hlavni, prubezny zvuk (~50x/s) - tohle je JEDINE misto, odkud
+  // nativni fronta dostava zvuk BEHEM normalniho behu (self-test, hrani,
+  // cokoli). JS uz tenhle vracena b64 NEPREHRAVA (viz index.html) - jen
+  // ho porad vola (musi, kvuli genAudio() tempu) a vraceny base64 pouziva
+  // VYHRADNE pro CSAVE->WAV nahravku, kdyz bezi.
+  nap_atari_audio_push(tmp.data(), n);
 
   std::string raw; raw.reserve((size_t)n * 2);
   for (int i = 0; i < n; i++) {

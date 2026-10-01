@@ -255,14 +255,12 @@ function kresli(j){
 function volej(f,arg){
   try{
     var vysledek=JSON.parse(arg===undefined?AHATARICPP[f]():AHATARICPP[f](arg));
-    // BUILD2SB79: Rene testoval na realnem telefonu - pipnuti po
-    // psani CSAVE/CLOAD chybelo, protoze appka behem psani bezela
-    // dlouhy synchronni blok BEZ prehravani zvuku, a nasledne
-    // srovnani (B268, kvuli JINE chybe) ho zahodilo. Teto funkce
-    // (atariNapisText/atariNapisTextBezReturn) ted misto zahozeni
-    // zvuk PO CELOU DOBU zachyti a posle zpatky jako "zvuk_b64" -
-    // tady se SKUTECNE prehraje, misto aby zustal nevyuzity v JSON.
-    if(vysledek && vysledek.zvuk_b64 && pripravZvuk()) pridejVzorkyDoHromady(vysledek.zvuk_b64);
+    // B287: driv se tu z "zvuk_b64" v odpovedi rovnou prehravalo pres JS
+    // Web Audio API (BUILD2SB79) - ted uz hraje primo jadro pres nativni
+    // OpenSL ES (viz atariZachytitCsaveZvukNative + nap_atari_audio_push
+    // v C++), takze JS uz nic prehravat nema. Pole "zvuk_b64" v JSON
+    // odpovedi tu z techhle volani (atariKonzole/atariHelp/atariBootReset)
+    // porad muze byt (Java strana se nemenila), proste se jen ignoruje.
     return vysledek;
   }
   catch(e){ return {chyba:String(e.message||e)}; }
@@ -337,150 +335,20 @@ $('btnPoznamka').addEventListener('click',function(){
    ne pomaleji - dokud appka bezi. Video a zvuk se advancuji SPOLU,
    snimek po snimku, takze zustavaji synchronizovane presne tak, jak
    by byly na skutecnem stroji. */
-var zvukCtx=null, dalsiZvukStart=0;
 function napPoznamka(t){ try{AHATARICPP.atariPoznamka(t);}catch(_e){} }
-function pripravZvuk(){
-  if(zvukCtx) return true;
-  var AC=window.AudioContext||window.webkitAudioContext;
-  if(!AC){ napPoznamka('ZVUK_CHYBA AudioContext neni v tomhle WebView k dispozici'); return false; }
-  zvukCtx=new AC();
-  dalsiZvukStart=0;
-  return true;
-}
-// BUILD2SB57: Rene - "do toho cisteho zvuku mas nejaky podzvuk
-// turuturuturu." Pricina: kazdy videosnimek (50x/s) se rovnou
-// planoval JAKO SAMOSTATNY web-audio buffer (882 vzorku, ~20ms) - 50
-// hranic bufferu za vterinu spada presne do slysitelneho pasma a
-// znely jako rychle vrceni/tremolo, i kdyz byl SIGNAL uvnitr spravny
-// (proto "melodie je spravna"). I Reneho vlastni JS reference na to
-// narazila - ma komentar "WebView nestiha 2048 -> chrastim" a pouziva
-// bloky 4096 vzorku. Reseni: MALE kousky (882 vzorku/snimek, spravna
-// granularita pro synchronizaci s obrazem) se ted HROMADI do vetsiho
-// bufferu, a teprve kdyz nahromadeny dosahne >=4096 vzorku (~93ms,
-// stejna velikost jako fungujici reference), naplanuje se JAKO JEDEN
-// web-audio buffer. Hranic bufferu tak klesne z 50/s na ~10/s - pod
-// slysitelnou hranici.
-var zvukHromada=new Float32Array(0);
-var ZVUK_BUFFER_VZORKU=4096; // stejna velikost jako overena JS reference
-// BUILD2SB93: Rene - "pri nastartovani apky self test funguje bez
-// lagu, ale po csave se to postupne zacne zase zahlcovat a po dalsim
-// spusteni self testu se zacne totalne rozjizdet zvuk od grafiky...
-// projed si kod - a hlavne pamatuj, ze tohle emu atari je ciste c++."
-// OVERENO (ne odhadnuto): C++ jadro samo NENI pomalejsi po CSAVE
-// (test_b285_rychlost_pred_po_csave.cpp: 2000 snimku pred/po 3x CSAVE,
-// pomer 1.015x = v mezich mereni, zadne zpomaleni jadra). Pricina je
-// tady v JS prehravani: atariKonzole()/atariHelp() (presne SELECT/
-// START/OPTION/HELP - tlacitka, kterymi se self-test ovlada) od B284
-// posilaji davku az 42 snimku zvuku NARAZ (viz zachytitCsaveZvukSafe
-// v Jave) a "volej()" ji hned cele preda sem. "dalsiZvukStart" nize
-// ale nemelo ZADNY strop - kazdy stisk tlacitka ho posunul o dalsich
-// ~0.84s DAL DO BUDOUCNA, i kdyz realny cas mezitim sotva uplynul.
-// Vysledek: po par stiscich pri prochazeni self-testu uz bylo
-// naplanovano nekolik vterin zvuku dopredu - obraz se porad kresli
-// OKAMZITE (na tehle fronte vubec nezavisi), ale zvuk k nemu dorazi
-// az o tech nekolik vterin pozdeji = presne to, co Rene popsal jako
-// "zvuk ujizdi od obrazu", a cim vic stisku (cim delsi test), tim vic
-// se to "zahlcuje", protoze fronta jen rostla a nikdy se sama
-// neoriznuty (zkraceni existovalo jen pro OPACNY pripad - podtekani).
-// CSAVE samo o sobe uz davno (B272/B281) bezi po snimcich pres
-// hlavni smycku a zadnou frontu nehromadi - jen ji MUSI spolknout,
-// pokud uz tam byla z predchoziho mackani tlacitek pred/po nem.
-// OPRAVA: strop na to, o kolik smi byt zvuk naplanovany pred
-// aktualnim casem prehravace (MAX_PREDSTIH_S). Kdyz se prekroci, vse
-// za stropem, co jeste nezacalo hrat, se zastavi a fronta "zkrati"
-// zpatky blizko k "ted" - misto aby rostla bez konce. Overeno
-// simulaci (test_b285_js_fronta_zvuku.js - Node nema Web Audio API,
-// takze tohle overuje LOGIKU naplanovani, ne skutecny zvuk z
-// reproduktoru): 20 stisku po 0.3s BEZ opravy -> predstih 10.8s;
-// STEJNA posloupnost S opravou -> predstih zustane pod stropem
-// (1.08s); bezne pomale pouzivani (1 stisk/2s) opravou vubec
-// nedotceno; jeden jediny stisk se sam o sobe nikdy neorizne
-// (0.84s < strop). Skutecne znejici vysledek (hladce, bez cvakani)
-// uz muze potvrdit jen poslech na telefonu.
-var naplanovaneZdroje=[]; // {src, start, konec} - pro orezani fronty, kdyz naroste moc daleko dopredu
-var MAX_PREDSTIH_S=1.2; // > nejvetsi jednorazova davka (KONZOLE/HELP ~0.84s) s rezervou, ale dost malo, aby zpozdeni nebylo slyset/videt
-var zvukPredstihOrezanPocet=0;
-// BUILD2SB94: Rene po B285 (log): "lepsi, uz se nezahlcuje, ale furt to
-// neni 1ku1." V logu roste ZVUK_PODTEKANI (underrun) hlavne TESNE PO
-// kazdem OREZAN (orezani fronty) - nejvetsi skoky (+22, +10) presne u
-// KONZOLE:start+OREZAN udalosti. DUVOD (zduvodneno, ne same o sobe
-// zmereno stejnou jistotou jako CLI testy - jde o rezii v ramci
-// jednoho behu prohlizece): orezani samo (filtrovani pole, volani
-// .stop() na nekolika zdrojich) zabere nejaky drobny skutecny cas, a
-// predtim nastavi "dalsiZvukStart" BEZ ZADNE REZERVY presne na konec
-// prave hrajiciho bufferu - takze kdyz naplanujZvukovyBuffer() hned
-// pote znovu cte zvukCtx.currentTime (cerstve, vlastni cteni), muze uz
-// byt o kousek dal, nez kolik orezani stihlo predpokladat, a prvni
-// nasledujici kousek(y) tak nahlasi "podtekani", i kdyz ve skutecnosti
-// jde jen o rezii samotneho orezani, ne o skutecne nestihani generovat
-// zvuk. OPRAVA: mala rezerva (50ms) navic pri kazdem orezani - poradne
-// pod hranici slysitelnosti jako "zpozdeni", ale dost na to, aby
-// pohltila tuhle rezii.
-var OREZANI_REZERVA_S=0.05;
-function zkratitPrilisDlouhouFrontu(ted){
-  // prubezne zahodit zaznamy o bufferech, co uz davno dohraly
-  naplanovaneZdroje=naplanovaneZdroje.filter(function(z){ return z.konec>ted; });
-  if(dalsiZvukStart-ted<=MAX_PREDSTIH_S) return;
-  // strop prekrocen - zastavit vse naplanovane za nim (jeste nezacalo
-  // hrat) a naplanovat dal zase blizko "ted", misto stale rostouci fronty
-  var novyKonec=ted;
-  naplanovaneZdroje=naplanovaneZdroje.filter(function(z){
-    if(z.start>ted){ try{ z.src.stop(); }catch(e){} return false; }
-    if(z.konec>novyKonec) novyKonec=z.konec; // prave hrajici buffer nechat dohrat normalne
-    return true;
-  });
-  dalsiZvukStart=novyKonec+OREZANI_REZERVA_S; // BUILD2SB94: +rezerva, viz komentar vyse
-  zvukPredstihOrezanPocet++;
-  napPoznamka('ZVUK_PREDSTIH_OREZAN pocet='+zvukPredstihOrezanPocet);
-}
-function pridejVzorkyDoHromady(b64){
-  if(!b64) return;
-  var bin=atob(b64), n=bin.length/2;
-  if(n<=0) return;
-  if(zvukCtx) zkratitPrilisDlouhouFrontu(zvukCtx.currentTime);
-  var stara=zvukHromada;
-  zvukHromada=new Float32Array(stara.length+n);
-  zvukHromada.set(stara,0);
-  for(var i=0,p=0;i<n;i++,p+=2){
-    var lo=bin.charCodeAt(p), hi=bin.charCodeAt(p+1);
-    var v=(hi<<8)|lo; if(v>=32768)v-=65536;
-    zvukHromada[stara.length+i]=v/32768;
-  }
-  while(zvukHromada.length>=ZVUK_BUFFER_VZORKU){
-    naplanujZvukovyBuffer(zvukHromada.subarray(0,ZVUK_BUFFER_VZORKU));
-    zvukHromada=zvukHromada.slice(ZVUK_BUFFER_VZORKU);
-  }
-}
-function naplanujZvukovyBuffer(vzorky){
-  if(!zvukCtx) return;
-  try{
-    var n=vzorky.length;
-    var buf=zvukCtx.createBuffer(1, n, 44100);
-    buf.getChannelData(0).set(vzorky);
-    var src=zvukCtx.createBufferSource();
-    var gain=zvukCtx.createGain(); gain.gain.value=4.0; // vol/60 vzorec v POKEY dava max ~0.25 - zesileni pro slysitelnost na repro telefonu
-    src.buffer=buf; src.connect(gain); gain.connect(zvukCtx.destination);
-    var ted=zvukCtx.currentTime;
-    // BUILD2SB64: Rene - "v self testu se to kouse." Kdyz "dalsiZvukStart"
-    // (kam se ma naplanovat DALSI kousek) uz je V MINULOSTI vuci
-    // aktualnimu casu prehravace, znamena to, ze appka NESTIHA generovat
-    // zvuk dost rychle - vznikla MEZERA (underrun), presne to zni jako
-    // "kousani". Predtim se to potichu opravilo (srovnat na "ted") bez
-    // zaznamu - ted se to POCITA a hlasi, at je videt, jestli je to
-    // skutecna pricina, ne dohad.
-    if(dalsiZvukStart<ted){
-      zvukPodtekaniPocet++;
-      var mezeraMs=(ted-dalsiZvukStart)*1000;
-      if(mezeraMs>zvukNejvetsiMezeraMs) zvukNejvetsiMezeraMs=mezeraMs;
-      dalsiZvukStart=ted;
-    }
-    var zacatek=dalsiZvukStart;
-    src.start(zacatek);
-    dalsiZvukStart+=buf.duration;
-    naplanovaneZdroje.push({src:src, start:zacatek, konec:dalsiZvukStart}); // BUILD2SB93: pro moznost orezu, viz zkratitPrilisDlouhouFrontu
-  }catch(e){ napPoznamka('ZVUK_BUFFER_CHYBA '+(e&&e.message)); }
-}
-var zvukPodtekaniPocet=0, zvukNejvetsiMezeraMs=0, zvukHlaseniPocitadlo=0;
+// B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to je
+// problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem HELP
+// ciste v c++." Az do B286 appka prehravala zvuk OKLIKOU: JS Web Audio
+// API s rucnim odhadem/orezavanim fronty (AudioContext, dalsiZvukStart,
+// MAX_PREDSTIH_S/OREZANI_REZERVA_S...) - cela historie B257 az B286 (vc.
+// puvodniho "zahlcovani" a jeho postupnych oprav) je v gitu a
+// PREDAVACI_PROTOKOL, kdyby bylo treba se vratit. Ted uz nic z toho tady
+// neni: zvuk hraje PRIMO jadro pres nativni OpenSL ES (viz
+// nap_atari_audio_push + nap_atari_sl_* v nap_atari_native.cpp) - presne
+// vzor, jaky uz pouziva a ma overeny v produkci PS1 jadro teto appky.
+// Stav zvukove fronty (podtekani, zpozdeni) uz se taky NEODHADUJE v JS -
+// cte se primo z jadra (viz atariZvukDiag() nize ve smyckaTik).
+var zvukHlaseniPocitadlo=0;
 var smyckaBezi=false, posledniCas=null, zbytekCasu=0;
 var SNIMEK_S=1/50; // PAL Atari = presne 50 snimku za vterinu, stejne jako skutecny stroj
 var VZORKU_NA_SNIMEK=Math.round(44100/50);
@@ -674,42 +542,42 @@ function smyckaTik(ted){
     } else {
       volej0('atariKrokSKlavesou', kod);
     }
-    if(zvukCtx){
-      var kousekZvuku=volej0('atariAudioChunk',VZORKU_NA_SNIMEK);
-      pridejVzorkyDoHromady(kousekZvuku);
-      // BUILD2SB81: kdyz nahravani bezi (po napsani CSAVE), stejny
-      // kousek se navic ulozi i do nahravky - zadne dalsi volani
-      // navic, jen kopie toho, co uz stejne vzniklo.
-      if(nahravkaBezi){
-        pripojKeNahravce(kousekZvuku);
-        // BUILD2SB92: skutecny konec CSAVE = motor byl videt ZAPNUTY
-        // a ted je VYPNUTY. Nez appka motor aspon jednou uvidi bezet,
-        // nic neukoncuje (kdyby nahodou SEROUT/PACTL zapis prisel az
-        // o snimek pozdeji nez zahajNahravani()). Volano PRIMO (ne
-        // pres volej0) - je to bezargumentove volani vracejici cislo,
-        // presne jako ostatni bezargumentove AHATARICPP.* metody v
-        // tomhle souboru, zadny JSON obal netreba.
-        var motorTed=0;
-        try{ motorTed=AHATARICPP.atariMotorZapnuty(); }catch(e){}
-        if(motorTed) nahravkaVidelaZapnutyMotor=true;
-        if(nahravkaVidelaZapnutyMotor && !motorTed) ukoncitNahravani();
-      }
+    // B287: atariAudioChunk se MUSI volat KAZDY snimek, bez podminky -
+    // je to jedine misto, kde jadro krokuje svuj zvukovy generator
+    // (genAudio) pro prubezny beh, a ten musi jet presne 1x za snimek,
+    // at zvuk nezrychli/nezpomali (viz nap_atari_native.cpp). Vracena
+    // data uz JS NEPREHRAVA (hraje primo jadro pres OpenSL ES) - pouziva
+    // se VYHRADNE pro CSAVE->WAV nahravku, kdyz bezi.
+    var kousekZvuku=volej0('atariAudioChunk',VZORKU_NA_SNIMEK);
+    if(nahravkaBezi){
+      pripojKeNahravce(kousekZvuku);
+      // BUILD2SB92: skutecny konec CSAVE = motor byl videt ZAPNUTY
+      // a ted je VYPNUTY. Nez appka motor aspon jednou uvidi bezet,
+      // nic neukoncuje (kdyby nahodou SEROUT/PACTL zapis prisel az
+      // o snimek pozdeji nez zahajNahravani()). Volano PRIMO (ne
+      // pres volej0) - je to bezargumentove volani vracejici cislo,
+      // presne jako ostatni bezargumentove AHATARICPP.* metody v
+      // tomhle souboru, zadny JSON obal netreba.
+      var motorTed=0;
+      try{ motorTed=AHATARICPP.atariMotorZapnuty(); }catch(e){}
+      if(motorTed) nahravkaVidelaZapnutyMotor=true;
+      if(nahravkaVidelaZapnutyMotor && !motorTed) ukoncitNahravani();
     }
     zbytekCasu-=SNIMEK_S;
   }
   if(posledniObraz) kresli(posledniObraz);
-  // BUILD2SB64: hlasit stav podtekani zvuku kazdych ~5s (250 tiku pri
-  // ~50/s), at je videt primo z logu, jestli appka na tomhle telefonu
-  // stiha generovat zvuk dost rychle.
+  // B287: hlasit stav zvukove fronty kazdych ~5s (250 tiku pri ~50/s) -
+  // stejna kadence jako drive (BUILD2SB64), ale zdroj pravdy je ted
+  // PRIMO nativni (C++/OpenSL) fronta, zadny JS odhad (viz
+  // atariZvukDiagNative v C++).
   zvukHlaseniPocitadlo++;
-  if(zvukHlaseniPocitadlo%250===0 && zvukPodtekaniPocet>0){
-    napPoznamka('ZVUK_PODTEKANI pocet='+zvukPodtekaniPocet+' nejvetsi_mezera='+zvukNejvetsiMezeraMs.toFixed(1)+'ms');
+  if(zvukHlaseniPocitadlo%250===0){
+    try{ var diag=AHATARICPP.atariZvukDiag(); if(diag) napPoznamka(diag); }catch(e){}
   }
   requestAnimationFrame(smyckaTik);
 }
 function spustSmycku(){
   if(smyckaBezi) return;
-  pripravZvuk();
   smyckaBezi=true;
   posledniCas=null; zbytekCasu=0;
   requestAnimationFrame(smyckaTik);

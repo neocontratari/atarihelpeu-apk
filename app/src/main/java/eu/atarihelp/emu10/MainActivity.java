@@ -3995,6 +3995,15 @@ public class MainActivity extends Activity {
             try { err = NativeAtariCoreBridge.loadError(); } catch (Throwable ignored) {}
             appendNativeLog("BUILD2SA14 ATARI_CPP_OTEVRENO knihovna="
                     + (ok ? "NACTENA" : "CHYBI") + (err == null ? "" : " duvod=" + err));
+            // B287: tahle obrazovka (HELP) se prave otevrela (cerstve
+            // nactena stranka) - spustit nativni OpenSL zvuk HNED, ne az
+            // na prvni genAudio() volani. Idempotentni, takze ani
+            // opakovane volani jeNactene() nevadi.
+            if (ok) {
+                NativeAtariCoreBridge.audioStartSafe();
+                atariNativeAudioActive = true;
+                appendNativeLog("B287 ATARI_ZVUK_NATIVNI_START (OpenSL ES, ciste C++)");
+            }
             return ok;
         }
         @JavascriptInterface public String samotest() {
@@ -4393,6 +4402,14 @@ public class MainActivity extends Activity {
          *  ukonci WAV nahravani hned - viz PREDAVACI_PROTOKOL, B282. */
         @JavascriptInterface public int atariMotorZapnuty() {
             return NativeAtariCoreBridge.motorZapnutySafe();
+        }
+
+        /** B287: kratky stav nativni (OpenSL) zvukove fronty - nahrazuje
+         *  stary JS odhad ZVUK_PODTEKANI. Volano ridce (viz index.html,
+         *  stejna kadence jako drive) primo ze smyckaTik. */
+        @JavascriptInterface public String atariZvukDiag() {
+            try { return NativeAtariCoreBridge.zvukDiagSafe(); }
+            catch (Throwable t) { return null; }
         }
 
         /** Vysledek jednoho kroku testu. Rene klepne, ja to mam v logu. */
@@ -6494,6 +6511,36 @@ public class MainActivity extends Activity {
         stopPs1SessionHard(source + ":" + compactUrl(url));
     }
 
+    // B287: stejny vzor jako isPs1OwnerUrl/stopPs1IfLeaving vyse - ted i
+    // Atari C++ jadro (pod tlacitkem HELP) ma vlastni nativni zvuk
+    // (OpenSL ES), ktery se MUSI zastavit pri odchodu z jeho obrazovky.
+    // Bez tohohle by (presne jako u historickeho "hadajici se jadra" bugu
+    // u Segy, viz jinde v tomhle souboru) mohl Atari zvuk hrat dal i na
+    // jine obrazovce, nebo se prekryvat se zvukem jineho jadra.
+    //
+    // atariNativeAudioActive: lehke Java-side pripominadlo (ne zdroj
+    // pravdy - ten je v C++, viz s_atariSlReady), jen aby se
+    // stopAtariNativeAudioIfLeaving() nevolal/nelogoval na KAZDE
+    // navigaci po appce (Sega, PS1, Player...), ale jen kdyz zvuk
+    // skutecne mohl bezet - presne jako ma PS1 svoje
+    // ps1SessionActive/ps1BootActive guardy pred vlastnim stopPs1IfLeaving.
+    private boolean atariNativeAudioActive = false;
+
+    private boolean isAtariCppOwnerUrl(String url) {
+        if (url == null) return false;
+        String u = url.toLowerCase(Locale.US);
+        return u.startsWith("file:///android_asset/emu_atari_cpp/index.html")
+                || u.startsWith("file:///android_asset/emu_atari_cpp/");
+    }
+
+    private void stopAtariNativeAudioIfLeaving(String url, String source) {
+        if (!atariNativeAudioActive) return;
+        if (isAtariCppOwnerUrl(url)) return;
+        NativeAtariCoreBridge.audioStopSafe();
+        atariNativeAudioActive = false;
+        appendNativeLog("B287 ATARI_ZVUK_NATIVNI_STOP duvod=" + source + ":" + compactUrl(url));
+    }
+
     // BUILD2SK31: sdilena obranna JS-cistici funkce - volana z KAZDEHO mista, kde
     // se PS1 jadro zastavuje (hlavni odchod ze stranky, mazani cache behem hry,
     // "boot dokoncen az po odchodu" edge-case), aby se predesla stara PS1
@@ -8151,6 +8198,7 @@ public class MainActivity extends Activity {
                 applyWebViewVisualMode(url, "onPageStarted");
                 stopNativeIfLeavingSega(url, "onPageStarted");
                 stopPs1IfLeaving(url, "onPageStarted");
+                stopAtariNativeAudioIfLeaving(url, "onPageStarted");
             }
 
             @Override
@@ -8178,6 +8226,7 @@ public class MainActivity extends Activity {
                 applyWebViewVisualMode(url, "onPageFinished");
                 stopNativeIfLeavingSega(url, "onPageFinished");
                 stopPs1IfLeaving(url, "onPageFinished");
+                stopAtariNativeAudioIfLeaving(url, "onPageFinished");
                 if (isYoutubeUrl(url)) napTvWebScheduleYoutubeAudioBridge("onPageFinished");
                 if (pendingGame != null && url != null && url.startsWith(EMU_URL)) {
                     schedulePendingAtariGameInjection("onPageFinished");
@@ -10714,6 +10763,14 @@ public class MainActivity extends Activity {
             stopNativeInPlaceHard("activityPause");
             stopPs1SessionHard("activityPause");
         }
+        // B287: appka jde na pozadi - nativni Atari zvuk (OpenSL) se
+        // MUSI zastavit stejne jako Sega/PS1 vyse, jinak by hral dal
+        // (nebo zbytecne zral baterii) i kdyz uzivatel appku nevidi.
+        if (atariNativeAudioActive) {
+            NativeAtariCoreBridge.audioStopSafe();
+            atariNativeAudioActive = false;
+            appendNativeLog("B287 ATARI_ZVUK_NATIVNI_STOP duvod=activityPause");
+        }
         if (web != null) web.onPause();
     }
 
@@ -10725,6 +10782,8 @@ public class MainActivity extends Activity {
         try { if (napDisplayManager != null) napDisplayManager.unregisterDisplayListener(napTvListener); } catch (Throwable ignored) {}
         stopNativeInPlaceHard("activityDestroy");
         stopPs1SessionHard("activityDestroy");
+        NativeAtariCoreBridge.audioStopSafe();  // B287
+        atariNativeAudioActive = false;
         super.onDestroy();
     }
 
@@ -10762,6 +10821,19 @@ public class MainActivity extends Activity {
         } else if (ps1SessionActive || ps1BootActive) {
             appendNativeLog("PS1_UKLID_PO_NAVRATU duvod=zbyla relace appky");
             try { stopPs1SessionHard("uklid pri navratu"); } catch (Throwable ignored) {}
+        }
+        // B287: navrat z pozadi (telefon odemcen, appka prepnuta zpet...).
+        // onPause() zvuk vzdy zastavil - WebView stranka se ale NEnacita
+        // znovu (zadne onPageStarted/Finished, zadne nove jeNactene()
+        // volani z JS), takze bez tohohle by Atari na obrazovce HELP
+        // zustal nemy do konce relace. Hlavni smycka (smyckaTik) sama
+        // beh obnovi (requestAnimationFrame se po navratu z pozadi sam
+        // znovu rozjede) - tady jen znovu otevreme nativni zvuk, pokud
+        // jsme se vratili prave na tuhle obrazovku.
+        if (!atariNativeAudioActive && web != null && isAtariCppOwnerUrl(web.getUrl())) {
+            NativeAtariCoreBridge.audioStartSafe();
+            atariNativeAudioActive = true;
+            appendNativeLog("B287 ATARI_ZVUK_NATIVNI_START duvod=activityResume");
         }
         // ====== OTACENI SE NESMI ZAMYKAT ======
         // Drive jsem tady vynucoval portret (aby se po navratu z hry PS1
