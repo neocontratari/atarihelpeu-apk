@@ -2491,5 +2491,96 @@
      tlacitka) potrebuje STEJNOU opravu zvlast - neni to automaticky
      sdilene jen proto, ze podobny kod uz nekde opraven byl.
 
-===============================================================================
 
+   B285: ZAHLCOVANI ZVUKU PO CSAVE - PRICINA V JS FRONTE, NE V C++
+     (2026-10-01) - Rene po B284 (appku vymazal z telefonu BEZ testovani,
+     "nerad testuji neco o cem vim ze je spatne"): "Proste se ti tam furt
+     zahlcuje pamet. Pri nastartovani apky self test funguje bez problemu
+     bez lagu. Ale po csave se to postupne zacne zase zahlcovat a po
+     dalsim spusteni self testu se zacne totalne rozjizdet zvuk od
+     grafiky. A to uz v tom logu musis videt co jsem ti poslal - Projed
+     si kod - projed si internet a hlavne pamatuj toto emu atari ciste
+     c++." VYSLOVNY POKYN byl soustredit se na C++ jadro - presny postup
+     "zmerit, ne hadat" byl ale pouzit NEJDRIV na overeni TOHOTO
+     predpokladu samotneho, drive nez na hledani konkretni C++ chyby.
+     KROK 1 - OVERENI, ZE JADRO SAMO JE V PORADKU: novy CLI test
+     (test_b285_rychlost_pred_po_csave.cpp) meri SKUTECNY wall-clock cas
+     (std::chrono::steady_clock, ne emulovany cas) na provedeni 2000
+     "idle" snimku PRED jakymkoli CSAVE a znovu PO 3x CSAVE za sebou
+     (presne Reneho popsany vzorec opakovaneho pouzivani). VYSLEDEK
+     (opakovane mereno): pomer B/A = 1,005-1,015x - v mezich sumu mereni,
+     ZADNE zpomaleni jadra. Dale grep cele nap_atari_machine.h na
+     std::vector/string/map/deque/list/push_back/emplace_back - NULA
+     vysledku, zadny STL kontejner v jadre vubec neexistuje, tedy neni
+     kam by se mohla "hromadit" C++ pamet. g_ovl mapa (nap_atari_
+     native.cpp) prozkoumana a potvrzena nesouvisejici (patri jinemu,
+     ohraniceenemu x86-vs-ARM64 self-testu). ZAVER KROKU 1: C++ jadro
+     NENI pricina - Reneho instinkt o "ciste C++" byl pochopitelny (jeho
+     vlastni popis zni jako "pamet se zahlcuje"), ale neopiral se o
+     zmereny dukaz, a merenim se nepotvrdil. DULEZITE PRO NASTUPCE: i
+     kdyz uzivatel REKNE, kde si mysli, ze je chyba, zasada "overovat,
+     ne hadat" plati i na jeho vlastni hypotezu - overit JI prvni, driv
+     nez se do ni zacne kopat naslepo.
+     KROK 2 - SKUTECNA PRICINA (nalezena primo v kodu index.html, az
+     po vyvraceni C++ hypotezy): atariKonzole() a atariHelp() (presne
+     tlacitka SELECT/START/OPTION/HELP, kterymi se self-test ovlada) od
+     B284 posilaji svych 42 snimku zvuku (~0,84s) jako JEDEN kus naraz
+     pres "volej()" -> pridejVzorkyDoHromady() -> naplanujZvukovyBuffer().
+     Tahle funkce planuje prehravani pres promennou "dalsiZvukStart"
+     (Web Audio API gapless scheduling: src.start(dalsiZvukStart);
+     dalsiZvukStart+=buf.duration). Existovala POUZE jednostranna
+     ochrana - BUILD2SB64 "if(dalsiZvukStart<ted) dalsiZvukStart=ted"
+     resici PODTEKANI (fronta prazdna/pozadu) - ale ZADNA ochrana proti
+     OPACNEMU pripadu (fronta prehnane plna/napred). Kazdy stisk
+     SELECT/START/OPTION/HELP posune "dalsiZvukStart" o dalsich ~0,84s
+     DAL DO BUDOUCNA OKAMZITE (synchronni JNI volani, realny cas mezitim
+     sotva uplyne) - a nic to nikdy nevraci zpatky. Obraz (kresli()) na
+     teto fronte vubec nezavisi, kresli se OKAMZITE pri kazdem volani -
+     takze po par stiscich pri prochazeni self-testu uz bylo naplanovano
+     nekolik vterin zvuku dopredu = presne Reneho "zvuk ujizdi od
+     obrazu", a cim delsi/castejsi testovani (vic stisku), tim vic
+     "zahlcovani", protoze fronta jen rostla bez jakekoli zpetne vazby.
+     CSAVE samo o sobe (B272/B281 - bezi po snimcich pres hlavni
+     smycku/frontaKlaves) zadnou frontu nehromadi - ale MUSI spolknout
+     frontu nahromadenou z mackani tlacitek kolem sebe, takze se jevi
+     jako "spoustec", i kdyz skutecny zdroj je self-test navigace sama.
+     OPRAVA (jen index.html, zadny zasah do C++ jadra ani Java/JNI):
+     pridan strop MAX_PREDSTIH_S=1,2s (vic nez nejvetsi jednorazova davka
+     ~0,84s, aby se jeden stisk sam o sobe nikdy neoriznul) + pole
+     naplanovaneZdroje sledujici {src,start,konec} kazdeho naplanovaneho
+     bufferu. Nova funkce zkratitPrilisDlouhouFrontu(ted), volana na
+     zacatku pridejVzorkyDoHromady(): prubezne zahazuje zaznamy o jiz
+     dohranych bufferech, a kdyz (dalsiZvukStart-ted) prekroci strop,
+     zastavi (AudioBufferSourceNode.stop() - standardni, dokumentovane
+     chovani i pred planovanym startem) vse, co jeste nezacalo hrat a je
+     za stropem, a "dalsiZvukStart" vrati zpatky na konec prave hrajiciho
+     bufferu (ne tvrde na "ted", aby se nerozstrihl aktualne znejici
+     zvuk). OVERENO LOGICKY (test_b285_js_fronta_zvuku.js, Node.js -
+     POZOR: Node NEMA Web Audio API, tenhle test overuje jen ARITMETIKU
+     planovani s falesnymi hodinami/falesnym AudioContext, NE skutecny
+     zvuk z reproduktoru): scenar "20 stisku SELECT po 0,3s" BEZ opravy
+     -> predstih narostl na 10,8s; STEJNY scenar SE opravou -> predstih
+     zustal pod 1,1s (6x orezano); scenar "bezne pomale pouzivani (1
+     stisk/2s)" -> oprava se vubec neaktivovala (0 orezu, 0 vedlejsich
+     ucinku na normalni beh); scenar "jeden jediny stisk" -> cela davka
+     0,84s naplanovana vcelku, strop ji nikdy nerozdeli. Cela existujici
+     C++ sada (B282: 10/10+7/7, B283: 6/6, B285 rychlost) beze zmeny
+     prochazi dal. NEOVERENO SKUTECNYM POSLECHEM (jen Rene muze, na
+     realnem telefonu/WebView): zda orezani fronty pri dlouhem/rychlem
+     testovani zpusobi slysitelne "cvaknuti" (ocekavane a v poradku -
+     mnohem lepsi nez narustajici zpozdeni v radu vterin) nebo jestli to
+     bude rusit natolik, ze to bude potreba jeste vyhladit (napr. kratky
+     gain-rampdown pred zastavenim mista tvrdeho stop()).
+     POUCKA PRO NASTUPCE: "zahlceni/lag" nemusi byt vzdy C++/pamet/
+     vykon - tady slo o CHYBEJICI STROP V PLANOVANI WEB AUDIO FRONTY
+     (jen jednostranna ochrana proti podtekani, zadna proti prebytku),
+     kterou spustily batch-JNI funkce (zachytitCsaveZvukSafe) pridane
+     v B284 presne pro JINY, legitimni ucel (aby se zvuk z konzolovych
+     tlacitek vubec slysel) - oprava jedne chyby (ztraceny zvuk) tak
+     nahodou znovu-otevrela TVAR starsi, uz drive opravene chyby (BUILD2-
+     SB80 "obraz hotovy, zvuk dohani o 5-15s pozdeji") v nove casti kodu.
+     Kdyz pridavas davkove/synchronni generovani zvuku KAMKOLI do teto
+     appky, vzdy si over, jak se to chova vuci "dalsiZvukStart" fronte,
+     ne jen jestli zvuk vubec vznikne.
+
+===============================================================================

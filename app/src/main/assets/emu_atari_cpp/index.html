@@ -362,10 +362,65 @@ function pripravZvuk(){
 // slysitelnou hranici.
 var zvukHromada=new Float32Array(0);
 var ZVUK_BUFFER_VZORKU=4096; // stejna velikost jako overena JS reference
+// BUILD2SB93: Rene - "pri nastartovani apky self test funguje bez
+// lagu, ale po csave se to postupne zacne zase zahlcovat a po dalsim
+// spusteni self testu se zacne totalne rozjizdet zvuk od grafiky...
+// projed si kod - a hlavne pamatuj, ze tohle emu atari je ciste c++."
+// OVERENO (ne odhadnuto): C++ jadro samo NENI pomalejsi po CSAVE
+// (test_b285_rychlost_pred_po_csave.cpp: 2000 snimku pred/po 3x CSAVE,
+// pomer 1.015x = v mezich mereni, zadne zpomaleni jadra). Pricina je
+// tady v JS prehravani: atariKonzole()/atariHelp() (presne SELECT/
+// START/OPTION/HELP - tlacitka, kterymi se self-test ovlada) od B284
+// posilaji davku az 42 snimku zvuku NARAZ (viz zachytitCsaveZvukSafe
+// v Jave) a "volej()" ji hned cele preda sem. "dalsiZvukStart" nize
+// ale nemelo ZADNY strop - kazdy stisk tlacitka ho posunul o dalsich
+// ~0.84s DAL DO BUDOUCNA, i kdyz realny cas mezitim sotva uplynul.
+// Vysledek: po par stiscich pri prochazeni self-testu uz bylo
+// naplanovano nekolik vterin zvuku dopredu - obraz se porad kresli
+// OKAMZITE (na tehle fronte vubec nezavisi), ale zvuk k nemu dorazi
+// az o tech nekolik vterin pozdeji = presne to, co Rene popsal jako
+// "zvuk ujizdi od obrazu", a cim vic stisku (cim delsi test), tim vic
+// se to "zahlcuje", protoze fronta jen rostla a nikdy se sama
+// neoriznuty (zkraceni existovalo jen pro OPACNY pripad - podtekani).
+// CSAVE samo o sobe uz davno (B272/B281) bezi po snimcich pres
+// hlavni smycku a zadnou frontu nehromadi - jen ji MUSI spolknout,
+// pokud uz tam byla z predchoziho mackani tlacitek pred/po nem.
+// OPRAVA: strop na to, o kolik smi byt zvuk naplanovany pred
+// aktualnim casem prehravace (MAX_PREDSTIH_S). Kdyz se prekroci, vse
+// za stropem, co jeste nezacalo hrat, se zastavi a fronta "zkrati"
+// zpatky blizko k "ted" - misto aby rostla bez konce. Overeno
+// simulaci (test_b285_js_fronta_zvuku.js - Node nema Web Audio API,
+// takze tohle overuje LOGIKU naplanovani, ne skutecny zvuk z
+// reproduktoru): 20 stisku po 0.3s BEZ opravy -> predstih 10.8s;
+// STEJNA posloupnost S opravou -> predstih zustane pod stropem
+// (1.08s); bezne pomale pouzivani (1 stisk/2s) opravou vubec
+// nedotceno; jeden jediny stisk se sam o sobe nikdy neorizne
+// (0.84s < strop). Skutecne znejici vysledek (hladce, bez cvakani)
+// uz muze potvrdit jen poslech na telefonu.
+var naplanovaneZdroje=[]; // {src, start, konec} - pro orezani fronty, kdyz naroste moc daleko dopredu
+var MAX_PREDSTIH_S=1.2; // > nejvetsi jednorazova davka (KONZOLE/HELP ~0.84s) s rezervou, ale dost malo, aby zpozdeni nebylo slyset/videt
+var zvukPredstihOrezanPocet=0;
+function zkratitPrilisDlouhouFrontu(ted){
+  // prubezne zahodit zaznamy o bufferech, co uz davno dohraly
+  naplanovaneZdroje=naplanovaneZdroje.filter(function(z){ return z.konec>ted; });
+  if(dalsiZvukStart-ted<=MAX_PREDSTIH_S) return;
+  // strop prekrocen - zastavit vse naplanovane za nim (jeste nezacalo
+  // hrat) a naplanovat dal zase blizko "ted", misto stale rostouci fronty
+  var novyKonec=ted;
+  naplanovaneZdroje=naplanovaneZdroje.filter(function(z){
+    if(z.start>ted){ try{ z.src.stop(); }catch(e){} return false; }
+    if(z.konec>novyKonec) novyKonec=z.konec; // prave hrajici buffer nechat dohrat normalne
+    return true;
+  });
+  dalsiZvukStart=novyKonec;
+  zvukPredstihOrezanPocet++;
+  napPoznamka('ZVUK_PREDSTIH_OREZAN pocet='+zvukPredstihOrezanPocet);
+}
 function pridejVzorkyDoHromady(b64){
   if(!b64) return;
   var bin=atob(b64), n=bin.length/2;
   if(n<=0) return;
+  if(zvukCtx) zkratitPrilisDlouhouFrontu(zvukCtx.currentTime);
   var stara=zvukHromada;
   zvukHromada=new Float32Array(stara.length+n);
   zvukHromada.set(stara,0);
@@ -402,8 +457,10 @@ function naplanujZvukovyBuffer(vzorky){
       if(mezeraMs>zvukNejvetsiMezeraMs) zvukNejvetsiMezeraMs=mezeraMs;
       dalsiZvukStart=ted;
     }
-    src.start(dalsiZvukStart);
+    var zacatek=dalsiZvukStart;
+    src.start(zacatek);
     dalsiZvukStart+=buf.duration;
+    naplanovaneZdroje.push({src:src, start:zacatek, konec:dalsiZvukStart}); // BUILD2SB93: pro moznost orezu, viz zkratitPrilisDlouhouFrontu
   }catch(e){ napPoznamka('ZVUK_BUFFER_CHYBA '+(e&&e.message)); }
 }
 var zvukPodtekaniPocet=0, zvukNejvetsiMezeraMs=0, zvukHlaseniPocitadlo=0;
