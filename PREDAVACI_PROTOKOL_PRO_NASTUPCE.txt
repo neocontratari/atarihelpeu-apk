@@ -2336,5 +2336,39 @@
      hardwarove referenci). "Prestan odhadovat" plati i vuci vlastnim
      drivejsim poznamkam, ne jen vuci novym ukolum.
 
+   DORUCOVANI BALICKU PRES 30MB - NOVA ZASADA (2026-10-01, po B282):
+     Rene se zeptal "projed si nas chat, zapomels jak skladat buildy a
+     vubec nevis skym pracujes" - DUVOD: balicek B282 mel ~41MB, ale
+     SendUserFile (odesilani souboru v chatu) ma TVRDY LIMIT 30MB, takze
+     puvodni zavedena zasada "vzdy cely balicek najednou" (bezvyjimecne
+     od B267 do B281) se poprve nedala dodrzet doslovne - Rene dostal
+     jen delta-zip se zmenenymi soubory, coz vyvolalo pochybnost, jestli
+     Claude porad rozumi zavedenemu postupu. RESENI: Rene propojil svuj
+     GitHub ucet s Claude (claude.ai Nastaveni -> Konektory) a povolil
+     GitHub App zapis do tohoto repozitare (neocontratari/atarihelpeu-apk).
+     FUNKCNOST OVERENA PRIMYM TESTEM, ne jen kontrolou opravneni: zkusebni
+     vetev s prazdnym commitem (claude-test-pristupu) se uspesne pushla
+     (git push origin uspel) - az pak oznaceno za funkcni. Rene pak sam
+     vybral z nabidnutych moznosti NOVOU ZASADU DORUCOVANI: BEZNY pripad
+     (balicek pod ~30MB) ZUSTAVA BEZE ZMENY - cely zip poslany v chatu,
+     Rene ho sam rozbali, prekopiruje a pushne pres GitHub Desktop presne
+     jak delal od B267 dal. JEDINA zmena: kdyz se cely balicek NEVEJDE
+     pod 30MB, MISTO delta-zipu s jen zmenenymi soubory Claude rovnou
+     commitne a pushne zmeny primo do tohoto repa (na branch main) - Rene
+     uvidi prichozi zmeny pres fetch/pull v GitHub Desktopu, podobne jako
+     si drive prohlizel rozbaleny zip pred prekopirovanim. DULEZITE
+     OMEZENI zjistene primym testem: Claude muze pushovat nove commity a
+     vetve, ale NEMUZE mazat vetve na GitHubu (`git push origin --delete`
+     skoncilo HTTP 403) - to je zamerne nastavene opravneni (bezpecnostni
+     pojistka), ne chyba. Pripadny uklid (napr. testovaci vetve) musi
+     udelat Rene sam, jedno kliknuti v GitHub Desktopu nebo na
+     githubu.com. POUCKA PRO NASTUPCE: pred jakymkoliv tvrzenim o tom,
+     "jak to vzdy delame", radeji over zavedenou konvenci primo v tomhle
+     souboru nebo v historii repa, nez na ni spolehnout jen z pameti
+     shrnuti konverzace - presne tahle situace (30MB limit) ukazala, ze i
+     dlouho zavedena zasada muze narazit na novy, dřív nepotkany limit, a
+     je potreba to Renovi rict primo a navrhnout reseni, ne to tajit nebo
+     hadat.
+
 ===============================================================================
 
