@@ -68,6 +68,12 @@ public final class NativeAtariCoreBridge {
     // BUILD2SB55: kompaktni text "audf0,1,2,3|audc0,1,2,3|audctl" jen
     // pro ridke logovani (viz atariAudioChunk v MainActivity).
     private static native String regsNative();
+    // BUILD2SB92: velmi lehke - jen 1 bit (PACTL/$D302 bit3, oficialne
+    // zdokumentovany "Motor Control"). JS s tim pozna SKUTECNY konec
+    // CSAVE (motor ZAPNUTY->VYPNUTY prechod) a ukonci WAV nahravani
+    // hned, misto cekani na pevnych 50s - viz zahajNahravani() v
+    // index.html a komentar u C++ funkce.
+    private static native int motorZapnutyNative();
 
     /** KBCODE pro pismena a RETURN - potrebne, aby slo napsat BYE. */
     public static int kbcode(char c) {
@@ -120,6 +126,12 @@ public final class NativeAtariCoreBridge {
         if (!loaded) return "";
         try { String r = audioChunkNative(pocetVzorku); return r == null ? "" : r; }
         catch (Throwable t) { return ""; }
+    }
+    /** BUILD2SB92: bezpecny wrapper - 1=motor bezi (kazeta aktivni),
+     *  0=motor stoji nebo knihovna neni nactena/chyba. */
+    public static int motorZapnutySafe() {
+        if (!loaded) return 0;
+        try { return motorZapnutyNative(); } catch (Throwable t) { return 0; }
     }
     /** BUILD2SB76: bezpecny wrapper - zachyti VSECHNY vzorky behem
      *  cele operace (napr. celeho CSAVE) najednou. */

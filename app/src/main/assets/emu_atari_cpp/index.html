@@ -468,11 +468,26 @@ function zaraditReturn(){
 // jen ted BEZ zvlastniho vyvolavani operace - jen sbira, co uz beztak
 // probiha.
 var nahravkaBezi=false, nahravkaKousky=[], nahravkaNazev='csave_vystup';
+// BUILD2SB92: Rene - "cim vic csave tim se lag zvetsuje...vyhazuj
+// nepotrebne veci z pameti za chodu." Predtim se nahravani VZDY
+// ukoncilo az po pevnych 50000ms, bez ohledu na to, ze skutecne
+// CSAVE davno doiehalo (~24s) - kazde spusteni tak drzelo v pameti
+// desitky vterin zvuku navic (primo overeno logem appky: ulozeny WAV
+// mel VZDY presne 4418820 bajtu = 50,1s). OPRAVA: sledovat SKUTECNY
+// kazetovy motor (novy most atariMotorZapnuty->PACTL bit3) - jakmile
+// appka jednou uvidi motor BEZET a pak ho uvidi STAT, je to skutecny
+// konec CSAVE prenosu a nahravani se ukonci HNED. Pevnych 50s
+// zustava jen jako zalozni pojistka pro pripad, ze by motor z
+// nejakeho duvodu nikdy nezhasl.
+var nahravkaVidelaZapnutyMotor=false;
 function zahajNahravani(nazev){
   nahravkaBezi=true; nahravkaKousky=[]; nahravkaNazev=nazev||'csave_vystup';
+  nahravkaVidelaZapnutyMotor=false;
   clearTimeout(window._nahravkaTimeout);
   // 50s bezpecna rezerva - zmereno ~28s pro 100radkovy program, tohle
-  // dava prostor i pro podstatne delsi.
+  // dava prostor i pro podstatne delsi. Za normalnich okolnosti uz
+  // ukonci nahravani drive primo detekce prechodu motoru (viz vyse) -
+  // tenhle timeout uz je jen zalozni pojistka.
   window._nahravkaTimeout=setTimeout(ukoncitNahravani, 50000);
 }
 function pripojKeNahravce(b64){
@@ -484,6 +499,7 @@ function pripojKeNahravce(b64){
 }
 function ukoncitNahravani(){
   if(!nahravkaBezi) return;
+  clearTimeout(window._nahravkaTimeout); // BUILD2SB92: at uz konci z detekce motoru nebo z timeoutu, nikdy obojí
   nahravkaBezi=false;
   var celkem=0;
   for(var i=0;i<nahravkaKousky.length;i++) celkem+=nahravkaKousky[i].length;
@@ -553,7 +569,20 @@ function smyckaTik(ted){
       // BUILD2SB81: kdyz nahravani bezi (po napsani CSAVE), stejny
       // kousek se navic ulozi i do nahravky - zadne dalsi volani
       // navic, jen kopie toho, co uz stejne vzniklo.
-      if(nahravkaBezi) pripojKeNahravce(kousekZvuku);
+      if(nahravkaBezi){
+        pripojKeNahravce(kousekZvuku);
+        // BUILD2SB92: skutecny konec CSAVE = motor byl videt ZAPNUTY
+        // a ted je VYPNUTY. Nez appka motor aspon jednou uvidi bezet,
+        // nic neukoncuje (kdyby nahodou SEROUT/PACTL zapis prisel az
+        // o snimek pozdeji nez zahajNahravani()). Volano PRIMO (ne
+        // pres volej0) - je to bezargumentove volani vracejici cislo,
+        // presne jako ostatni bezargumentove AHATARICPP.* metody v
+        // tomhle souboru, zadny JSON obal netreba.
+        var motorTed=0;
+        try{ motorTed=AHATARICPP.atariMotorZapnuty(); }catch(e){}
+        if(motorTed) nahravkaVidelaZapnutyMotor=true;
+        if(nahravkaVidelaZapnutyMotor && !motorTed) ukoncitNahravani();
+      }
     }
     zbytekCasu-=SNIMEK_S;
   }

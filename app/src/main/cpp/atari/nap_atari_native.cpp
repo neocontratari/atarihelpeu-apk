@@ -462,6 +462,39 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariZachytitCsaveZvukNative(JNIEn
   return env->NewStringUTF(b64.c_str());
 }
 
+// BUILD2SB92: Rene - "cim vic csave tim se lag zvetsuje...doporuceni
+// vyhazuj nepotrebne veci z pameti za chodu." SKUTECNA PRICINA nebyla
+// primo v C++ jadru, ale v JS strance (index.html): kazde CSAVE
+// spustilo nahravani WAV na PEVNYCH 50 vterin
+// (setTimeout(ukoncitNahravani,50000)) BEZ OHLEDU na to, jak dlouho
+// SKUTECNE CSAVE trva (~24s, primo zmereno v logu) - PRIMO POTVRZENO
+// v logu Reneho appky: ulozeny WAV soubor mel VZDY presne 4418820
+// bajtu = presne 50,1s zvuku, i kdyz skutecny prenos skoncil davno
+// pred tim. Kazde dalsi CSAVE tak drzelo v pameti o desitky vterin
+// zvuku NAVIC nez bylo potreba (~26s x 44100 x 2 bajty = pres 2MB
+// navic KAZDE spusteni) - u opakovaneho pouzivani appky bez restartu
+// tohle POSTUPNE zaplnovalo dostupnou pamet presne jak Rene tusil
+// (pozdejsi log primo ukazal "pametVolna=0MB pametMax=256MB").
+// OPRAVA: pridana tahle lehounka funkce, aby JS strana mohla primo
+// zjistit, jestli kazetovy motor PRAVE BEZI - podle OFICIALNE
+// zdokumentovaneho PACTL bitu (De Re Atari / PIA registry: $D302
+// bit3 = "Motor Control" - 1=motor VYPNUTY, 0=motor ZAPNUTY,
+// overeno na nezavislem hardwarovem referencnim zdroji, ne jen
+// odhadem). POZOR: NENI to totez jako PORTB bit3 (ten uz je v tomhle
+// jadru pouzity pro 130XE bankovani rozsirene pameti - viz
+// xe130Bank()/rambo320Bank() v nap_atari_mem.h) - motor control je
+// VYHRADNE v PACTL (pia.ctlA), ne v PORTB. JS pak sleduje PRECHOD
+// motoru ze zapnuteho na vypnuty (skutecny konec CSAVE prenosu) a
+// ukonci nahravani OKAMZITE misto cekani na pevny 50s limit - ten
+// zustava jen jako zalozni pojistka, kdyby motor z nejakeho duvodu
+// nikdy nezhasl.
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_motorZapnutyNative(JNIEnv *, jclass) {
+  if (!g_stroj) return 0;
+  const bool motorVypnuty = (g_stroj->mem.pia.ctlA >> 3) & 1; // bit3=1 -> OFF
+  return motorVypnuty ? 0 : 1;
+}
+
 // runFrame() (spravne), ALE audioChunkNative() na to NEBRALA OHLED -
 // dal cetla posledni, ZAMRZLE registry a poctive je porad dokola
 // prehravala jako "spravny" tón. Realny hardware, kdyz spadne, prestane

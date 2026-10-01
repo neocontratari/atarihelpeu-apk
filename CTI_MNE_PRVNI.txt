@@ -1,0 +1,33 @@
+B282 - JAK POUZIT TENHLE BALICEK
+=================================
+
+Tenhle balicek NENI cely projekt (ten uz mas z B281 - vsechno ostatni
+- PS1, Sega, atd. - zustava beze zmeny). Cely balicek s VSIM by mel
+pres 39 MB a to se sem nevejde do chatu (limit je 30 MB), tak posilam
+jen ZMENENE/NOVE soubory, presne ve stejne slozkove strukture jako ve
+tve slozce.
+
+CO UDELAT:
+1. Rozbal tenhle zip.
+2. Zkopiruj vsech 6 souboru (+ tenhle navod muzes smazat) DO sve
+   existujici slozky projektu B281 - kazdy na stejne misto, presne
+   podle cesty, ve ktere je v tomhle zipu (napr.
+   "app/src/main/cpp/atari/nap_atari_machine.h" jde presne tam, kde uz
+   mas soubor se stejnym jmenem - proste ho prepis).
+3. Konkretne se meni/pridava:
+   - app/build.gradle                                     (cislo verze)
+   - app/src/main/cpp/atari/nap_atari_machine.h            (oprava zvuku)
+   - app/src/main/cpp/atari/nap_atari_native.cpp           (nova funkce pro pamet)
+   - app/src/main/java/.../NativeAtariCoreBridge.java      (nova funkce pro pamet)
+   - app/src/main/java/.../MainActivity.java               (nova funkce pro pamet)
+   - app/src/main/assets/emu_atari_cpp/index.html           (oprava pameti)
+   - CO_JE_V_B282.md                                        (novy soubor, popis zmen)
+   - PREDAVACI_PROTOKOL_PRO_NASTUPCE.txt                    (aktualizovany, cely)
+4. V Android Studiu udelej "Rebuild Project" (nebo Clean + Build), at
+   se C++ cast urcite prelozi znovu s novymi soubory.
+
+Popis toho, co presne B282 opravuje, je v CO_JE_V_B282.md.
+
+Kdybys chtel misto tohohle radeji CELY balicek najednou (kdyby ti
+nekde jinde nez v chatu 39 MB nevadilo), staci rict a poslu ho jinou
+cestou.

@@ -604,10 +604,25 @@ struct Machine {
     static const int MAX_VZORKU_DVOUTON = 8192;
     float bufMark[MAX_VZORKU_DVOUTON], bufSpace[MAX_VZORKU_DVOUTON];
     int n = pocet > MAX_VZORKU_DVOUTON ? MAX_VZORKU_DVOUTON : pocet;
-    int audfMark[4]  = {audf[0], 0, 0, 0};
-    int audcMark[4]  = {audc[0], 0, 0, 0};
-    int audfSpace[4] = {0, audf[1], 0, 0};
-    int audcSpace[4] = {0, audc[1], 0, 0};
+    // BUILD2SB92: Rene - "ten piskajici zvuk je i dal v tom datovem
+    // toku zvuku jako podkres na originale...datovy tok zvuk se o
+    // neco stisi." B279/B282-puvodni kod ZTLUMIL kanal 3+4 UPLNE po
+    // celou dobu dvoutonu (audfMark/audfSpace mely na pozicich 2,3
+    // nuly) - na REALNEM Atari ale kanal 3+4 (pisklavy "leader" tón)
+    // BEZI NEZAVISLE na kanalu 1/2 (POKEY ma 4 SOUBEZNE kanaly, SIO
+    // rutina v ROM nastavuje kanal 3+4 na zacatku a NEVYPINA ho pro
+    // prenos dat - jen kanal 1/2 prepina mark/space). Ztlumenim
+    // kanalu 3+4 zmizel piskajici podkres BEHEM dat A SOUCASNE to
+    // snizilo celkovy soucet slozek = tisi zvuk oproti leader fazi
+    // (kde kanal 3+4 hraje samo, na plno). OPRAVA: kanal 3+4 (audf[2],
+    // audf[3], audc[2], audc[3]) prevzit BEZE ZMENY do OBOU (mark i
+    // space) docasnych poli - hraje ted NEPRETRZITE jako podkres bez
+    // ohledu na to, jestli se prave vybira mark-buffer nebo space-
+    // buffer, presne jako na realnem hardwaru.
+    int audfMark[4]  = {audf[0], 0, audf[2], audf[3]};
+    int audcMark[4]  = {audc[0], 0, audc[2], audc[3]};
+    int audfSpace[4] = {0, audf[1], audf[2], audf[3]};
+    int audcSpace[4] = {0, audc[1], audc[2], audc[3]};
     nap::pokeyGenSamples(audfMark,  audcMark,  audctl, pokeyAudioMark,  bufMark,  n, cyklu_na_vzorek);
     nap::pokeyGenSamples(audfSpace, audcSpace, audctl, pokeyAudioSpace, bufSpace, n, cyklu_na_vzorek);
 

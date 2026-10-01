@@ -2205,5 +2205,136 @@
 
 
 
+
+   B282: Rene po B281 (presny puvodni text): "Ten piskajici zvuk je i
+     dal v tom datovem toku zvuku jako podkres na originale. Dale pak
+     si myslim ze datovy tok zvuk se o neco stisi... Podivej se poradne
+     na ty lagy a to komplexne v celem emu c++ a jeste jednou si
+     poradne projed ten zvuk csave. A cim vic csave tim se lag
+     zvetsuje. Me doporuceni vyhazuj nepotrebne veci z pameti za
+     chodu - podobne jak to dela sega emu." DVE NEZAVISLE PRICINY,
+     resene oddelene.
+     (1) PAMET/LAG PO OPAKOVANEM CSAVE: NEBYLA to chyba C++ jadra (B281
+     uz opravil skutecny CPU-zatezovy lag), ale JS strana appky
+     (index.html): funkce zahajNahravani()/ukoncitNahravani() spoustela
+     WAV nahravani na PEVNYCH 50000ms (setTimeout) UPLNE BEZ OHLEDU na
+     skutecnou delku CSAVE prenosu (~24s, opakovane zmereno napric
+     predchozimi buildy) - kazde spusteni tak drzelo v pameti pole
+     nahravkaKousky[] s DESITKAMI VTERIN zvuku navic (~26s x 44100Hz x
+     2 bajty = pres 2,2 MB navic PRI KAZDEM CSAVE), coz se pri
+     opakovanem pouzivani appky bez restartu postupne hromadilo -
+     presne to Rene tusil a navrhoval reseni analogicke Sega emu
+     (uvolnovat nepotrebne za chodu). OPRAVA: pridana nova, velmi
+     lehka native funkce motorZapnutyNative() (C++ JNI) ->
+     motorZapnutySafe() (Java wrapper) -> atariMotorZapnuty() (JS
+     interface metoda), ktera cte PACTL ($D302) bit3 - OFICIALNE
+     zdokumentovany jako "Motor Control" (1=motor OFF, 0=motor ON).
+     DULEZITE - OVERENO, NE PREVZATO Z ODHADU: jeden z drivejsich
+     screenshotu (Reneho vlastni Google vyhledavani) tvrdil "PORTB
+     $D301 bit3 = motor" - to je NESPRAVNE/matouci pro TENHLE kod,
+     protoze PORTB je v tomhle jadru (a na realnem 130XE) uz plne
+     vyuzity pro bankovani rozsirene pameti (xe130Bank()/rambo320Bank()
+     v nap_atari_mem.h pouzivaji PRAVE bity 2-3 a dalsi PORTB) - skutecny
+     motor-control bit je VYHRADNE v PACTL (samostatny registr,
+     $D302, ctlA v kodu), NE v PORTB. Overeno nezavisle na
+     specializovane referencni strance PIA registru (bit-po-bitu
+     tabulka PACTL, bit3="Motor Control", "If set, motor OFF; if
+     clear, motor ON") - presne odpovida i tomu, co uz v B281/drivejsich
+     poznamkach oznacovalo pia.ctlA jako spravny zdroj. JS strana
+     (index.html) ted v hlavni smycce sleduje prechod motoru
+     ZAPNUTY->VYPNUTY (nova promenna nahravkaVidelaZapnutyMotor) a
+     ukonci nahravani OKAMZITE pri detekci konce - puvodni pevny 50s
+     timeout zustava JEN jako zalozni pojistka (kdyby motor z nejakeho
+     duvodu nikdy nezhasl), a ukoncitNahravani() ted na zacatku vola
+     clearTimeout(), aby nemohly nastat DVE soubezna ukonceni.
+     (2) ZVUKOVY MIX BEHEM DVOUTONU: B279 (kdyz byla objevena oficialni
+     De Re Atari specifikace pro mark/space) implementovala prepinani
+     MEZI kanalem 1 (mark) a kanalem 2 (space) - ale ZAROVEN behem
+     CELE doby dvoutonu UPLNE VYNULOVALA kanal 3+4 v obou docasnych
+     polich (audfMark/audfSpace mely na indexech 2,3 pevne 0). To je
+     PRICINA OBOU castí Reneho hlaseni NARAZ: (a) zmizeni piskajiciho
+     "podkresu" behem datove casti prenosu - na REALNEM Atari kanal
+     3+4 (leader/pilot ton) bezi NEZAVISLE na kanalu 1/2 (POKEY ma 4
+     SOUBEZNE kanaly; SIO rutina v OS ROM kanal 3+4 pro prenos dat
+     NEVYPINA, jen prepina kanal 1/2 mezi mark/space) - ztlumenim
+     kanalu 3+4 v teto emulaci tak podkres behem dat zmizel, presne
+     jak Rene popsal "je i dal v tom datovem toku zvuku jako podkres
+     na originale [a u nas zmizi]"; (b) soucasny pokles celkove
+     hlasitosti datove casti - drive hral behem dat jen JEDEN kanal
+     (1 nebo 2) misto DVOU soucasnych (1n3+4 nebo 2+3+4), takze celkovy
+     soucet slozek byl nizsi nez behem cisteho leaderu (kde kanal 3+4
+     hraje samostatne naplno) - presne "datovy tok zvuk se o neco
+     stisi", co Rene popsal. OPRAVA: v zapisUsekSDvoutonem()
+     (nap_atari_machine.h) audfMark/audcMark a audfSpace/audcSpace ted
+     preberou audf[2]/audf[3]/audc[2]/audc[3] BEZE ZMENY (misto pevnych
+     nul) - kanal 3+4 tak hraje NEPRETRZITE jako podkres v OBOU
+     docasnych bufferech (bufMark i bufSpace), bez ohledu na to, ktery
+     z nich se pro dany vzorek nakonec vybere podle aktualniho
+     mark/space bitu.
+     POZNAMKA K OBNOVE KONTEJNERU BEHEM TETO PRACE: puvodni CLI test
+     harness (/home/claude/work/test_atari_pokey) i cely pracovni
+     adresar se behem teto relace ztratily (obnova/recyklace
+     kontejneru mezi tahy) VCETNE UZ HOTOVYCH, ale jeste NEZABALENYCH
+     zmen. Zotaveno rozbalenim POSLEDNIHO SKUTECNE ODESLANEHO balicku
+     (emu10_B281_DVOUTON_VYKON_OPRAVA.zip z /mnt/attach/outputs/) jako
+     cisteho zakladu a KOMPLETNIM znovu-postavenim CLI test harness od
+     nuly - obe opravy (motor-detekce i zvukovy mix) tak prosly
+     DRUHYM, nezavislym overenim na cerstve kopii, ne jen "obnovenim"
+     stareho vysledku. VEDLEJSI, ale DULEZITY NALEZ behem stavby
+     noveho testu: puvodni holy pokus o CLI reprodukci CSAVE (napsat
+     "CSAVE"+RETURN a cekat) NIKDY nespustil motor ani zvuk - PC
+     zustaval v ID smycce, zadna chyba na obrazovce. Az podrobna
+     diagnostika (trasovani PC/PIA/SKCTL po snimcich, primy disassembly
+     ROM bajtu na zaseknute adrese - ukazalo se, ze jde o OS rutinu
+     "klavesovy klik", ne o chybu) odhalila: realny Atari CSAVE ceka
+     na DVE RETURN - prvni odesle prikaz, ROM vypise vyzvu ("PRESS
+     PLAY & RECORD, THEN RETURN") a AZ DRUHY stisk RETURN skutecne
+     spusti motor. S timhle doplnkem: pia.ctlA $3C->$34 (motor ON),
+     skctl->$2B, PC->$FD6C (PRESNE odpovida uz drive zdokumentovanemu
+     nalezu z B258 - "legitimni polling smycka cekajici na preruseni
+     od POKEY"), audf=[5,7,...] presne odpovida oficialni specifikaci
+     z B279. POUCKA PRO NASTUPCE: kdyz CLI reprodukce necha CPU
+     "nesmyslne idlovat" bez chyby/jam, NEHADAT proc - primo
+     disassemblovat ROM bajty na zaseknute adrese (jsou primo v
+     nap_atari_roms.h, zadny externi nastroj netreba) a najit skutecny
+     mechanismus, presne jak uz radil B258 zaznam vyse v tomhle
+     protokolu. Tady to byl chybejici KROK V UZIVATELSKE INTERAKCI
+     (druhe RETURN), ne bug v jadru.
+     OVERENO (kompletne novy test harness, 17/17 testu, ne odhad):
+     (a) end-to-end pres SKUTECNOU BASIC/ROM (napsat "10 PRINT HELLO",
+     RETURN, napsat "CSAVE", RETURN, cekat, DRUHE RETURN) - motor
+     spravne VYPNUTY po bootu i po 1. RETURN (jen ceka na potvrzeni),
+     SPRAVNE SE ZAPNE po 2. RETURN, bezi 23,9s (odpovida historicky
+     zmerenym ~24s) a pak se SPRAVNE VYPNE; (b) FFT analyza zvuku
+     zachyceneho BEHEM aktivniho prenosu ukazala SOUCASNE ~594,9Hz
+     (kanal3+4 podkres) A ~5278,3Hz/~3959,4Hz (mark/space datovy tón,
+     v pasmu oficialni De Re Atari specifikace 5327/3995Hz) - podkres
+     uz NENI ztlumeny; (c) diferencni test (stejny zachyceny stav
+     stroje, jednou se skutecnym kanalem 3+4, podruhe s kanalem 3+4
+     rucne umlcenym jako pred opravou) ukazal soucet |rozdilu| 273,61
+     mezi vystupy - pred opravou by byl 0 (kanal 3+4 na vysledek
+     nemel zadny vliv, ted ma); (d) primy test B281 podminky
+     "nedavnyPrenos" na registrech ZE SKUTECNE PROBEHLE CSAVE (ne
+     rucne vymyslenych) - 4s po dokonceni CSAVE cpu.c.cycles-
+     serRamecStart = 7242376 cyklu (4,1s) >> 1773447 (1s prah), tedy
+     nedavnyPrenos=0 spravne, i kdyz SKCTL bit3 zustava trvale $2B -
+     B281 lag-fix funguje beze zmeny; (e) obrazovka po CSAVE obsahuje
+     "READY" a NEOBSAHUJE "?" (uspesny navrat do prompt rezimu); (f)
+     CLOAD bez kazety po 60s simulace porad NEZPUSOBI CPU JAM (legitimni
+     cekaci/timeout smycka beze zmeny). Boot, self-test a zakladni
+     CPU/POKEY regresni chovani beze zmeny (zadny zasah do techto
+     casti kodu v tomhle buildu).
+     POUCKA PRO PRISTE (obecna, ne jen pro tenhle build): kdyz se
+     pracovni prostredi/kontejner necekane obnovi uprostred prace,
+     NEPANIKARIT a NESPOLEHAT na to, co si "pamatuji" z shrnuti
+     predchozi konverzace jako na uz hotove/overene - kazde tvrzeni
+     (i vlastni drivejsi) znovu OVERIT primo na kodu/testu, protoze
+     shrnuti muze obsahovat detaily, ktere se ukazi jako nepresne (v
+     tomhle pripade: puvodni popis "PORTB bit3=motor" v poznamkach k
+     screenshotu byl zavadejici pro TOHLE konkretni jadro, presna
+     pravda - PACTL bit3 - se potvrdila az nezavislym overenim na
+     hardwarove referenci). "Prestan odhadovat" plati i vuci vlastnim
+     drivejsim poznamkam, ne jen vuci novym ukolum.
+
 ===============================================================================
 

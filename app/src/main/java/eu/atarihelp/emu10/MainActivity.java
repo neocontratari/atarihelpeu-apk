@@ -4371,6 +4371,13 @@ public class MainActivity extends Activity {
             return r;
         }
 
+        /** BUILD2SB92: 1=kazetovy motor prave bezi, 0=stoji. JS s tim
+         *  pozna SKUTECNY konec CSAVE (misto pevneho 50s limitu) a
+         *  ukonci WAV nahravani hned - viz PREDAVACI_PROTOKOL, B282. */
+        @JavascriptInterface public int atariMotorZapnuty() {
+            return NativeAtariCoreBridge.motorZapnutySafe();
+        }
+
         /** Vysledek jednoho kroku testu. Rene klepne, ja to mam v logu. */
         @JavascriptInterface public String zapisKrok(int cislo, String popis, boolean ok) {
             try {
