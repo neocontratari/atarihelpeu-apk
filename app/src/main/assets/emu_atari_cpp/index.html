@@ -484,10 +484,21 @@ function zahajNahravani(nazev){
   nahravkaBezi=true; nahravkaKousky=[]; nahravkaNazev=nazev||'csave_vystup';
   nahravkaVidelaZapnutyMotor=false;
   clearTimeout(window._nahravkaTimeout);
-  // 50s bezpecna rezerva - zmereno ~28s pro 100radkovy program, tohle
-  // dava prostor i pro podstatne delsi. Za normalnich okolnosti uz
-  // ukonci nahravani drive primo detekce prechodu motoru (viz vyse) -
-  // tenhle timeout uz je jen zalozni pojistka.
+  // OPRAVA B283: puvodni komentar tvrdil "zmereno ~28s pro 100radkovy
+  // program" - PO KONTROLE to NEBYLO skutecne zmereno (CLI test pouziva
+  // stejnou zaraditText()/kbcodeJs() jako appka - viz vyse - ktera umi
+  // jen pismena/mezeru/RETURN, takze cislice radkovych cisel by v ni
+  // zmizely a zadny skutecny 100radkovy program by tak nikdy nevznikl).
+  // OPRAVENO na pravdive tvrzeni: skutecne zmereno je jen CSAVE
+  // minimalniho programu (~24s), 50s tomu dava ~2x rezervu. Delsi
+  // programy nejsou touhle cestou zmeritelne a samostatne zmereny
+  // nejsou. Nevadi to ale na bezpecnosti - tohle je POUZE zalozni
+  // pojistka pro pripad, ze by detekce konce motoru (viz vyse) selhala;
+  // za normalnich okolnosti ukonci nahravani VZDY drive ona, nezavisle
+  // na delce programu (sleduje skutecny stav motoru, ne pevny cas). I
+  // kdyby tahle pojistka musela zasahnout, vysledek je presne stejny
+  // jako puvodni chovani appky pred B282 (pevnych 50s) - zadna regrese,
+  // jen uz to neni JEDINY mechanismus ukonceni.
   window._nahravkaTimeout=setTimeout(ukoncitNahravani, 50000);
 }
 function pripojKeNahravce(b64){

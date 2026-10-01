@@ -2370,5 +2370,50 @@
      je potreba to Renovi rict primo a navrhnout reseni, ne to tajit nebo
      hadat.
 
+   B283: PRVNI BUILD PUSHNUTY PRIMO, NE ZIPEM (2026-10-01) - Rene po
+     zprovozneni push pristupu rekl "udelej balicek b283 s nejakou
+     malou zmenou a pusni to sam a se podivam jak to dopadlo" - cilem
+     bylo otestovat CELY novy pipeline (kod -> verze -> changelog ->
+     protokol -> commit -> push -> zeleny CI build), ne vyresit
+     konkretni nahlaseny bug (zadny novy nebyl). PRI HLEDANI VHODNE
+     MALE ZMENY (nechtel jsem vymyslet umely/predstirany "fix" jen
+     kvuli ukazce) jsem si zpetne overil vlastni tvrzeni z B282 - a
+     nasel skutecnou nepresnost: komentar u 50s zalozni pojistky v
+     zahajNahravani() (index.html) tvrdil "zmereno ~28s pro 100radkovy
+     program". OVERENO, ZE TO NEBYLA PRAVDA: produkcni funkce
+     zaraditText()/kbcodeJs() (pouzivana appkou pro rychla tlacitka
+     jako CSAVE/CLOAD/BYE - viz komentar u ni "cela abeceda... jen
+     pismena") i CLI test, ktery ji kopiruje, umi psat VYHRADNE
+     pismena/mezeru/RETURN - zadne cislice. Tedy "10 PRINT X" by v teto
+     ceste ztratilo "1" a "0" a provedlo by se jako okamzity prikaz
+     "PRINT X" (zadny radek by se neulozil) - 100radkovy ulozeny
+     program takhle NIKDY nemohl vzniknout, natoz byt zmeren. (Skutecna
+     uzivatelska klavesnice pro psani BASIC programu je jina cesta, ne
+     tahle - tahle funkce je vyhradne pro kratka klicova slova.)
+     ZAVER: cislo "~28s pro 100radkovy program" bylo pravdepodobne moje
+     vlastni neoverene tvrzeni napsane behem psani B282 komentare, ne
+     skutecny vysledek testu. OPRAVA (pouze komentar, ZADNA zmena
+     chovani): prepsano na pravdive tvrzeni - skutecne zmereno je jen
+     CSAVE minimalniho/prazdneho programu (~24s, totez cislo jako v
+     B282 testech), 50s tomu dava ~2x rezervu, a i kdyby tahle zalozni
+     pojistka musela zasahnout, vysledek je identicky s chovanim appky
+     PRED B282 (zadna regrese - jen uz neni jedinym mechanismem
+     ukonceni, protoze primarni je detekce vypnuti motoru). Syntaxe
+     zmeneneho <script> bloku overena primo (node -e s new Function()
+     nad kazdym <script> blokem v index.html) - zadna chyba. C++ jadro
+     se v tomhle buildu VUBEC nezmenilo, takze B282 testovaci sada
+     (17/17) zustava platna beze zmeny.
+     DORUCENI: tohle je PRVNI skutecny test zasady z predchoziho zaznamu
+     (push primo pri balicku nad 30MB nebo na vyzadani) - versionCode
+     329 commitnuty a pushnuty primo do neocontratari/atarihelpeu-apk
+     (branch main), bez zipu v chatu. Rene sleduje vysledek primo v
+     GitHub Actions a GitHub Desktopu.
+     POUCKA PRO NASTUPCE: kdyz je treba "nejaka mala zmena" a zadny
+     konkretni bug neni nahlaseny, NEVYMYSLET umely/kosmeticky fix bez
+     obsahu - radeji si zpetne overit VLASTNI drivejsi tvrzeni v kodu/
+     komentarich (presne jak uz radil zaznam k B282 vyse) - je sance,
+     ze se tam najde skutecna, byt mala, neoverena vec k oprave. Tady
+     to vyslo napoprve.
+
 ===============================================================================
 

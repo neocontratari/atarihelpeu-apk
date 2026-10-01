@@ -9,8 +9,23 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 328
-        versionName "EMU10-B282-CSAVE-PAMET-A-ZVUKOVY-MIX"  // Rene po B281: "cim vic csave tim se lag zvetsuje...vyhazuj nepotrebne veci z pameti za chodu" + "ten piskajici zvuk je i dal v tom datovem toku zvuku jako podkres na originale...datovy tok zvuk se o neco stisi." DVE NEZAVISLE OPRAVY. (1) PAMET: skutecna PRICINA rustouciho lagu NEBYLA v C++ jadru, ale v JS strance - kazde CSAVE spoustelo WAV nahravani na PEVNYCH 50000ms bez ohledu na skutecnou delku prenosu (~24s, primo zmereno), takze appka drzela v pameti desitky vterin zvuku navic pri KAZDEM spusteni (primo potvrzeno logem: ulozeny WAV VZDY presne 4418820 bajtu=50,1s, a pozdejsi log ukazal appku doslova bez volne pameti). OPRAVA: nova lehka native funkce (motorZapnutyNative, cte oficialne zdokumentovany PACTL/$D302 bit3 "Motor Control", overeno na nezavislem hardwarovem referencnim zdroji - NE PORTB jak naznacoval jeden screenshot, to je JINY registr) - JS ted sleduje skutecny prechod motoru ZAPNUTY->VYPNUTY a ukonci nahravani OKAMZITE, pevny 50s timeout zustava jen jako zalozni pojistka. (2) ZVUKOVY MIX: B279/B282-puvodni kod behem cele doby dvoutonu (mark/space FSK dat) UPLNE ZTLUMIL kanal 3+4 (jen kanal 1 NEBO 2 hral) - to je PRICINA OBOU hlaseni najednou: zmizeni piskajiciho podkresu BEHEM dat (na realu bezi kanal 3+4 NEZAVISLE a NEPRETRZITE, SIO rutina v ROM ho pro prenos dat nevypina) A soucasny pokles celkove hlasitosti (drive hral jen 1 kanal misto 2 soucasnych). OPRAVA: kanal 3+4 (audf[2]/audf[3]/audc[2]/audc[3]) ted BEZE ZMENY soucasti OBOU (mark i space) docasnych poli v zapisUsekSDvoutonem() - hraje nepretrzite jako podkres bez ohledu na aktualni mark/space bit. OVERENO KOMPLETNE ZNOVA (puvodni CLI test harness se ztratil pri obnove kontejneru, cely znovu postaven a vsechny testy zbehnuty ZNOVA na cerstve rozbalene B281 kopii): 17/17 testu preslo, VCETNE REALNEHO end-to-end prubehu pres skutecnou BASIC/OS ROM (napsani programu, CSAVE, DVE RETURN presne jak na realnem HW - prvni odesle prikaz, druhe potvrdi "PRESS PLAY&RECORD" vyzvu), FFT analyza zachyceneho zvuku BEHEM aktivniho prenosu prokazala SOUCASNOU pritomnost ~595Hz podkresu a ~5278/3959Hz mark/space dat, motor bezel presne 23.9s (odpovida historicky zmerenym ~24s), B281 lag-fix podminka primo overena stale funkcni (nedavnyPrenos=0 4s po CSAVE i kdyz SKCTL bit3 zustava trvale $2B), CLOAD bez kazety nezpusobi JAM, obrazovka spravne konci READY bez '?'.
+        versionCode 329
+        versionName "EMU10-B283-OPRAVA-NEOVERENEHO-KOMENTARE"  // Po B282 Rene propojil GitHub s Claude a povolil pusho-
+        // vani primo do tohoto repa (misto jen zipu v chatu, kvuli 30MB limitu
+        // na odesilani souboru) - tohle je PRVNI build pushnuty touhle novou
+        // cestou, na Reneho vyslovnou zadost "udelej balicek s nejakou malou
+        // zmenou a pusni to sam, at se podivam jak to dopadlo." ZMENA: pri
+        // hledani vhodne male zmeny jsem si overoval vlastni komentar z B282 u
+        // 50s zalozni pojistky v zahajNahravani() (index.html) - tvrdil
+        // "zmereno ~28s pro 100radkovy program". PO KONTROLE to NEBYLO
+        // skutecne zmereno - CLI test (i produkcni zaraditText/kbcodeJs,
+        // ktere kopiruje) umi psat jen pismena/mezeru/RETURN, cislice
+        // radkovych cisel by v nem zmizely, takze zadny skutecny 100radkovy
+        // ulozeny program takhle nikdy nevznikl. OPRAVA: komentar prepsan na
+        // pravdive tvrzeni (skutecne zmereno je jen CSAVE minimalniho
+        // programu, ~24s) - zadna zmena CHOVANI, jen oprava nepravdiveho
+        // tvrzeni v komentari, presne v duchu "neodhadovat, overovat", co
+        // plati i pro moje vlastni drivejsi poznamky.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
