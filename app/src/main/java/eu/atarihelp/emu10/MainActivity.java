@@ -4329,24 +4329,41 @@ public class MainActivity extends Activity {
             appendNativeLog("BUILD2SB80 ATARI_AKCE=BOOT_RESET " + napAtariRegShrnuti(r));
             return r;
         }
+        // B283: Rene - "v self testu ti ujizdi grafika od zvuku...mozna
+        // furt lagy??" + log ukazal ZVUK_PODTEKANI skok o 165 presne pri
+        // KONZOLE:start. PRICINA: tahle funkce drive drzela tlacitko
+        // pres consolSafe(maska,12)+runSafe(30) - 42 snimku BEZ zachyceni
+        // zvuku (stejna nemoc, co BUILD2SB79/80 uz opravily jinde - viz
+        // srovnatSledovaniZvuku() v nap_atari_machine.h). OPRAVA: presne
+        // stejny, uz overeny vzorec jako atariDoSelfTestu/atariNapisText -
+        // zachytit zvuk PO CELOU DOBU pres zachytitCsaveZvukSafe(), misto
+        // zahozeni.
         @JavascriptInterface public String atariKonzole(String ktera) {
             int maska = 7;
             if ("start".equals(ktera))  maska = 6;   // bit0 dolu
             if ("select".equals(ktera)) maska = 5;   // bit1 dolu
             if ("option".equals(ktera)) maska = 3;   // bit2 dolu
-            NativeAtariCoreBridge.consolSafe(maska, 12);
-            NativeAtariCoreBridge.runSafe(30);
+            java.io.ByteArrayOutputStream zvuk = new java.io.ByteArrayOutputStream();
+            NativeAtariCoreBridge.consolSetSafe(maska);
+            pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(12));
+            NativeAtariCoreBridge.consolSetSafe(7);
+            pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(30));
             String r = NativeAtariCoreBridge.screenSafe();
+            String zvukB64 = android.util.Base64.encodeToString(zvuk.toByteArray(), android.util.Base64.NO_WRAP);
             appendNativeLog("BUILD2SB49 ATARI_AKCE=KONZOLE:" + ktera + " " + napAtariRegShrnuti(r));
-            return r;
+            return vlozZvukDoJson(r, zvukB64);
         }
-        /** BUILD2SB49: HELP - na 130XE klavesnicova matice, ne konzole. */
+        /** BUILD2SB49: HELP - na 130XE klavesnicova matice, ne konzole.
+         *  B283: stejna oprava zachyceni zvuku jako u atariKonzole vyse. */
         @JavascriptInterface public String atariHelp() {
-            NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.KBCODE_HELP, 12);
-            NativeAtariCoreBridge.runSafe(30);
+            java.io.ByteArrayOutputStream zvuk = new java.io.ByteArrayOutputStream();
+            NativeAtariCoreBridge.keySafe(NativeAtariCoreBridge.KBCODE_HELP, 0); // jen nastavit klavesu, 0 snimku
+            pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(12));
+            pripojZvuk(zvuk, NativeAtariCoreBridge.zachytitCsaveZvukSafe(30));
             String r = NativeAtariCoreBridge.screenSafe();
+            String zvukB64 = android.util.Base64.encodeToString(zvuk.toByteArray(), android.util.Base64.NO_WRAP);
             appendNativeLog("BUILD2SB49 ATARI_AKCE=KLAVESA:HELP " + napAtariRegShrnuti(r));
-            return r;
+            return vlozZvukDoJson(r, zvukB64);
         }
         /** BUILD2SB49: volna poznamka od Reneho primo do stejneho logu. */
         @JavascriptInterface public void atariPoznamka(String text) {

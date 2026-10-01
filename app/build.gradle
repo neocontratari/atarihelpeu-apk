@@ -9,8 +9,35 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 329
-        versionName "EMU10-B283-OPRAVA-NEOVERENEHO-KOMENTARE"  // Po B282 Rene propojil GitHub s Claude a povolil pusho-
+        versionCode 330
+        versionName "EMU10-B284-KONZOLE-ZVUK-VYPADKY"  // Rene po proslechu B283 na telefonu (log priloha): "v self
+        // testu ti ujizdi grafika od zvuku - zvuk je uz cisty - mozna furt
+        // lagy??" a pak "pri delsim testu se opravdu zacne emu c++ atari
+        // lagovat a zahlcovat se... je tam proste neco furt spatne."
+        // PRICINA (nalezena primo v kodu, ne odhadnuta): atariKonzole()
+        // (SELECT/START/OPTION) a atariHelp() (MainActivity.java) drzely
+        // tlacitko pres 42 snimku (12+30) BEZE VSEHO volani genAudio() -
+        // presne ta stejna nemoc, co BUILD2SB79/80 uz davno opravily u
+        // psani textu/self-testu-pres-BYE/bootu (viz
+        // srovnatSledovaniZvuku() v nap_atari_machine.h a komentar u
+        // BUILD2SB64 "v self testu se to kouse" v index.html - ZVUK_POD-
+        // TEKANI pocitadlo tam uz existovalo, ale jen MERILO problem, ne
+        // ho resilo). Primo v Reneho logu: pocitadlo vypadku leze na 13 a
+        // pak PRESNE pri "KONZOLE:start" (vstup do self-testu) vyskoci na
+        // 178 - 165 novych ~200ms der najednou. OPRAVA: novy
+        // consolSetNative() (jen DRZI masku, bez automatickeho beh/pusteni)
+        // + Java strana ted pouziva uz overeny vzorec
+        // zachytitCsaveZvukSafe() (stejny jako atariDoSelfTestu) - zvuk z
+        // celeho useku SELECT/START/OPTION/HELP uz dojde do JS poctive,
+        // misto aby se tise ztratil. OVERENO: novy CLI test (6/6) potvrzuje
+        // spravny pocet zachycenych vzorku (drive 0) a ze CPU/konzole stav
+        // zustavaji v poradku; cela existujici sada (B282 10/10 + 7/7)
+        // beze zmeny prochazi dal - zadny zasah do jadra, jen do Java/JNI
+        // vrstvy volani zvuku. NEOVERENO JESTE: jestli tohle vysvetluje
+        // CELE Reneho "zahlcovani" pri delsim testu, nebo jestli jde o
+        // opakovane vypadky pri kazdem stisku tlacitka behem navigace v
+        // self-testu (ktere by takhle zmizely) - pozadano o znovu-otestovani
+        // delsiho behu po teto oprave.
         // vani primo do tohoto repa (misto jen zipu v chatu, kvuli 30MB limitu
         // na odesilani souboru) - tohle je PRVNI build pushnuty touhle novou
         // cestou, na Reneho vyslovnou zadost "udelej balicek s nejakou malou

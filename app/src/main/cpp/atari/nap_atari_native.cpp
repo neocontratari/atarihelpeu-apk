@@ -308,6 +308,28 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_keyNative(JNIEnv *, jclass, jint k
   for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
 }
 
+// B283: Rene - "v self testu ti ujizdi grafika od zvuku...mozna furt
+// lagy??" PRICINA: atariKonzole()/atariHelp() (Java) drzely tlacitko
+// pres consolNative(maska,N)/keyNative(kod,N), ktere N snimku odbehnou
+// SYNCHRONNE BEZ volani genAudio() (presne ta stejna nemoc, co
+// BUILD2SB79/80 uz opravily u psani textu/self-testu-pres-BYE/bootu -
+// viz srovnatSledovaniZvuku() vyse) - zvuk z tech snimku se proste
+// ztratil, misto aby se poslal do JS, coz zpusobovalo ZVUK_PODTEKANI
+// presne v okamziku stisku SELECT/START/OPTION/HELP (primo potvrzeno
+// Reneho logem - pocet vyskocil o 165 prave pri KONZOLE:start). Tenhle
+// setter ODDELUJE "drzet tlacitko" od "odbehnout snimky" (puvodni
+// consolNative dela obojí najednou a na konci VZDY sama pusti tlacitko
+// zpet na 7 - nejde tak z Javy "drzet pres vice volani"), aby Java
+// strana (atariKonzole) mohla mezitim pouzit JIZ existujici
+// zachytitCsaveZvukSafe() - presne stejny, uz overeny vzorec jako u
+// atariDoSelfTestu/atariNapisText - a zvuk z celeho useku tak dojde do
+// JS stejne poctive jako cokoli jineho.
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_consolSetNative(JNIEnv *, jclass, jint maska) {
+  if (!g_stroj) return;
+  g_stroj->consol = maska & 7;
+}
+
 /** Konzolove klavesy: bit0 START, bit1 SELECT, bit2 OPTION. 0 = stisknuto. */
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_consolNative(JNIEnv *, jclass, jint maska, jint snimku) {

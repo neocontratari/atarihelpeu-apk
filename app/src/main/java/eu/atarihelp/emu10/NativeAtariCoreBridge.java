@@ -48,6 +48,13 @@ public final class NativeAtariCoreBridge {
     private static native String bootNative(int snimku);
     private static native void   keyNative(int kod, int snimku);
     private static native void   consolNative(int maska, int snimku);
+    // B283: jen DRZI konzolovou masku (bez beh snimku, bez automatickeho
+    // pusteni zpet na 7 na konci) - viz komentar u konsolSetNative v
+    // nap_atari_native.cpp. Umoznuje Jave rozdelit puvodni jeden
+    // "drz+odbehni+pust" blok na "drz" / "odbehni SE ZACHYCENIM ZVUKU
+    // (zachytitCsaveZvukSafe)" / "pust", misto aby se zvuk z odbehnuti
+    // tise ztratil jako driv.
+    private static native void   consolSetNative(int maska);
     private static native void   runNative(int snimku);
     // BUILD2SB59: RESET tlacitko - nemaze pamet/hardware, jen znovu
     // nahodi procesor (na rozdil od BOOT, ktery ted dela poradny
@@ -109,6 +116,10 @@ public final class NativeAtariCoreBridge {
     public static void consolSafe(int maska, int snimku) {
         if (!loaded) return;
         try { consolNative(maska, snimku); } catch (Throwable ignored) {}
+    }
+    public static void consolSetSafe(int maska) {
+        if (!loaded) return;
+        try { consolSetNative(maska); } catch (Throwable ignored) {}
     }
     public static void runSafe(int snimku) {
         if (!loaded) return;

@@ -2415,5 +2415,81 @@
      ze se tam najde skutecna, byt mala, neoverena vec k oprave. Tady
      to vyslo napoprve.
 
+   B284: VYPADKY ZVUKU U KONZOLOVYCH TLACITEK (2026-10-01) - Rene po
+     proslechu B283 na telefonu, s prilozenym logem appky: "zavadeci
+     stopa piska hodne nahlas a datovej zvuk je krapet potichu...v
+     self testu ti ujizdi grafika od zvuku...mozna furt lagy??" a
+     nasledne (po me zadosti o potvrzeni) "chci at to opravis...pri
+     delsim testu se opravdu zacne emu c++ atari lagovat a zahlcovat
+     se...je tam proste neco furt spatne." DVE SAMOSTATNE VYSETROVANE
+     VECI:
+     (1) HLASITOST LEADER VS DATA - OVERENO PRIMO MERENIM (ne jen
+     poslechem): novy CLI test (test_b283_hlasitost_leader_vs_data.cpp)
+     zachytava zvlast LEADER fazi (pred prvnim datovym zapisem,
+     detekovano stejnou podminkou "dvouton aktivni" jako pouziva
+     zapisUsekSDvoutonem - skctl bit3 && nedavnyPrenos) a DATA fazi
+     (dvouton aktivni) a pocita RMS. VYSLEDEK na realne CSAVE (10
+     PRINT HELLO): LEADER 19,28s na RMS 0,1157, DATA 4,62s na RMS
+     0,0944 - SKUTECNY rozdil -1,77 dB, DATA JE SKUTECNE TISSI. Reneho
+     sluch neklamal. NEOPRAVENO v tomhle buildu - 1,77dB je mala
+     hodnota, co muze byt prirozeny dusledek soucasneho mixovani 2-3
+     kanalu ruznych frekvenci (ne nutne chyba), a rozliseni bug-vs-
+     prirozene by vyzadovalo hlubsi analyzu vlnoveho tvaru proti
+     oficialni POKEY specifikaci - Rene o tom informovan, ceka se na
+     rozhodnuti, jestli do toho jit hloubeji.
+     (2) VYPADKY ZVUKU PRI KONZOLOVYCH TLACITKACH - PRICINA NALEZENA
+     PRIMO V KODU (ne odhadnuta): Reneho log ukazal ZVUK_PODTEKANI
+     pocitadlo drzici se na 13 po celou dobu necinnosti, ALE presne
+     pri "ATARI_AKCE=KONZOLE:start" (vstup do self-testu pres
+     SELECT+START) vyskoci NA 178 - 165 novych ~200ms vypadku
+     prakticky najednou, zadne postupne zhorsovani pred tim. Primo v
+     kodu (MainActivity.java) nalezeno: atariKonzole() volala
+     consolSafe(maska,12) + runSafe(30) = 42 snimku BEZE VSEHO volani
+     genAudio() behem nich (zvuk proste zahozen) - PRESNE STEJNA
+     NEMOC, jakou uz davno (BUILD2SB79/80) opravily psani textu/self-
+     test-pres-BYE/boot (viz komentar u srovnatSledovaniZvuku() v
+     nap_atari_machine.h, kde je "self-test=400" vyslovne zminen jako
+     jeden z puvodne opravenych pripadu - ale TEN se tyka JINE,
+     nepouzivane cesty atariDoSelfTestu()/"BYE" pres klavesnici, ne
+     teto cesty pres konzolova tlacitka). atariHelp() mela identickou
+     chybu (take 12+30 snimku bez zvuku). DULEZITY VEDLEJSI NALEZ:
+     atariDoSelfTestu() (Java) UZ MA spravnou opravu (zachytitCsaveZvuk-
+     Safe(400)) - ale je to MRTVY KOD, nic v index.html ji nevola
+     (soucasne UI vstupuje do self-testu bud tlacitkem "BYE" pres
+     frontaKlaves - spravne tempovane - nebo tlacitky SELECT/START pres
+     atariKonzole - BYLA to ta chybna cesta). OPRAVA: novy
+     consolSetNative() (C++, nap_atari_native.cpp) - jen NASTAVI
+     g_stroj->consol, bez beh snimku a bez automatickeho pusteni zpet
+     (na rozdil od puvodniho consolNative, ktery obe dela najednou a
+     nejde tak "drzet pres vice volani zvenku"). Java strana
+     (atariKonzole, atariHelp) ted POUZE drzi stav pres consolSetSafe(),
+     a samotny beh snimku dela pres UZ OVERENY vzorec
+     zachytitCsaveZvukSafe() (stejny, jaky uz pouziva atariNapisText/
+     atariDoSelfTestu) - zvuk ze vsech 42 snimku se tak sklada do JSON
+     odpovedi (vlozZvukDoJson) a JS strana (uz existujici obecna logika
+     v volej()) ho automaticky prehraje, presne jako u ostatnich
+     "napis text" akci - ZADNA zmena na JS strane nebyla treba.
+     OVERENO (novy CLI test test_b283_konzole_zvuk.cpp, 6/6, simuluje
+     STEJNOU posloupnost na urovni jadra - m.consol=5, 12 snimku se
+     zachycenim, m.consol=7, 30 snimku se zachycenim): zadny CPU jam,
+     presne 42*882 vzorku zachyceno (drive 0), konzole spravne pustena
+     na konci, normalni beh pokracuje dal bez problemu. Cela existujici
+     sada (B282: 10/10 + 7/7) beze zmeny prochazi dal - zadny zasah do
+     jadra (nap_atari_machine.h), jen do Java/JNI vrstvy volani zvuku.
+     NEOVERENO/OTEVRENO: jestli tohle vysvetluje CELE Reneho hlaseni
+     "zahlcovani pri delsim testu" - je dost pravdepodobne, ze ano
+     (opakovane mackani tlacitek behem navigace v self-testu by kazde
+     zpusobilo dalsi vypadek, coz by se subjektivne jevilo jako
+     "postupne horsi"), ale bez noveho delsiho logu PO teto oprave to
+     nejde tvrdit jiste - pozadano Rene o otestovani delsiho behu.
+     POUCKA PRO NASTUPCE: kdyz log ukazuje pocitadlo, co skokem naroste
+     presne v okamziku konkretni uzivatelske akce (ne postupne), hledej
+     VELKY SYNCHRONNI BLOK KODU svazany s touhle akci (runSafe/
+     consolSafe s vysokym poctem snimku) - presne tenhle vzorec uz byl
+     v projektu NEKOLIKRAT opraven (BUILD2SB79, BUILD2SB80) pro jine
+     akce, ale kazda NOVA akce se stejnou strukturou (tady: konzolova
+     tlacitka) potrebuje STEJNOU opravu zvlast - neni to automaticky
+     sdilene jen proto, ze podobny kod uz nekde opraven byl.
+
 ===============================================================================
 
