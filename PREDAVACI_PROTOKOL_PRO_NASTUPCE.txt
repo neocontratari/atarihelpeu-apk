@@ -2583,4 +2583,94 @@
      appky, vzdy si over, jak se to chova vuci "dalsiZvukStart" fronte,
      ne jen jestli zvuk vubec vznikne.
 
+
+   B286: ZBYVAJICI DESYNC PO B285 - WAV-ENCODE BLOKOVANI + OREZANI BEZ
+     REZERVY (2026-10-01) - Rene otestoval B285 na telefonu a poslal
+     novy log: "sakra lepsi synchron je lepsi ale furt to neni 1ku1 ale
+     uz se pamet nezahlcuje... myslim si ze jsme hodne blizko cca 95
+     procent ale furt to neni to prave... v c++ chci atari stoprocent."
+     NEJPRV OVERENO Z LOGU: B285 OREZAN mechanismus funguje spravne -
+     3x spusten, presne pri KONZOLE:start (vstup do self-testu), zadny
+     neomezeny rust - "zahlcovani" je PRAVE POTVRZENE VYRESENO Reneho
+     vlastnimi slovy. Toto NENI stejny bug jako B285 - je to DALSI,
+     MENSI, oddeleny zdroj desynchronizace, analyzovany z téhož logu
+     pres korelaci casovych znacek ZVUK_PODTEKANI (underrun pocitadlo,
+     existuje od BUILD2SB64) vuci KONZOLE/CSAVE_WAV/RESET udalostem.
+     DVA NALEZY, OBA PRIMO V KODU + ZMERENE (ne odhadnute):
+     (1) ukoncitNahravani() (index.html) - spousti se presne kdyz
+     kazetovy motor zhasne (CSAVE "konci" vizualne) - delala CELE
+     base64 kodovani cele nahravky (~2,5MB, presne Reneho velikosti z
+     logu "bajtu=2589552" atd.) JEDNIM synchronnim behem
+     (String.fromCharCode.apply po 8190 bajtech, ~300x za sebou+druhe
+     kolo dekodovani+zapis souboru na Java strane). Zmereno (Node,
+     presna kopie algoritmu, test_b286_wav_blokovani.js): spojeni
+     kousku ~1,7ms (zanedbatelne), ale samotne base64 kodovani ~20-
+     26ms na rychlem stolnim stroji - realny telefon muze byt
+     pomalejsi. Tohle presne vysvetluje mensi +1 az +5 skoky
+     ZVUK_PODTEKANI pocitadla kolem kazdeho CSAVE_WAV_ULOZENO v logu.
+     OPRAVA: stejny vysledny soubor (OVERENO bajt-za-bajtem identicky
+     vystup na 10 ruznych velikostech vcetne hranicnich pripadu -
+     presny nasobek KUS, +-1, nula, davka presne na hranici tiku), ale
+     kodovani rozdelene na davky po 40 kouscich (~328KB) zpracovane
+     PRES VICE TIKU UDALOSTNI SMYCKY (setTimeout(fn,0) mezi davkami)
+     misto jednoho souvisleho bloku.
+     (2) zkratitPrilisDlouhouFrontu() (B285, index.html) nastavovala
+     "dalsiZvukStart" BEZ REZERVY presne na konec prave hrajiciho
+     bufferu. Protoze samotne orezani (filtrovani pole
+     naplanovaneZdroje, volani .stop() na nekolika zdrojich) zabere
+     realny, i kdyz maly, cas, a naplanujZvukovyBuffer() hned pote
+     CERSTVE cte zvukCtx.currentTime, muze byt "ted" uz o kousek dal,
+     nez orezani predpokladalo - prvni nasledujici kousek(y) tak
+     nahlasi "podtekani", i kdyz jde jen o rezii orezani samotneho, ne
+     o skutecne nestihani generovat zvuk. Tohle presne vysvetluje PROC
+     byly VELKE skoky ZVUK_PODTEKANI (+22, +10) prave u KONZOLE:start+
+     OREZAN udalosti, mnohem vetsi nez u CSAVE_WAV udalosti samotnych.
+     DULEZITE PRO NASTUPCE: tenhle konkretni mechanismus (2) je
+     ZDUVODNENY logicky (rezie v ramci behu prohlizece/WebView mezi
+     dvema blizkymi cteni currentTime), NE zmereny se stejnou jistotou
+     jako (1) - CLI testy (cisty C++, zadny prohlizec) na tohle
+     nemohou dosahnout, jde o real-world JS engine/WebView chovani.
+     Oznaceno jako "zduvodnene, ne jiste zmerene" v komentari v kodu i
+     v CO_JE_V_B286.md - NEPRESOUVAT tohle tise do kategorie "overeno"
+     bez skutecneho dukazu z telefonu. OPRAVA: +50ms rezerva
+     (OREZANI_REZERVA_S) pridana k "dalsiZvukStart" pri kazdem
+     orezani - hluboko pod hranici slysitelnosti, ale dost na to, aby
+     pohltila rezii. Overeno simulaci (uprava test_b285_js_fronta_
+     zvuku.js), ze pridani rezervy neporusi zakladni vlastnost "fronta
+     nikdy neroste bez konce" (strop se jen posune z 1,2s na ~1,25s).
+     TAKE PROVEDENO (Reneho OPAKOVANY pozadavek na jistotu o C++ -
+     druhy nezavisly test, ne recyklace B285 zaveru): novy CLI test
+     test_b286_rychlost_behem_csave.cpp meri wall-clock cas KAZDEHO
+     JEDNOTLIVEHO snimku zvlast (ne jen souhrn pred/po jako B285) ve
+     TREH stavech - KLID (zadny zvuk), CSAVE LEADER faze, CSAVE DATA
+     faze (dvouton aktivni, vsechny POKEY kanaly mohou hrat soucasne).
+     VYSLEDEK (opakovane mereno): prumery prakticky shodne (3,17-
+     3,41ms/snimek napric vsemi tremi stavy, pomer DATA/KLID 0,957-
+     0,971x - DATA faze je pokud neco LEHCE levnejsi, ne drazsi),
+     nejhorsi jednotlivy snimek v celem testu 11,35ms = 56,8% z 20ms
+     realneho rozpoctu na snimek (PAL 50fps) - pohodlna rezerva i v
+     nejhorsim pripade, zadny snimek se ani nepriblizuje limitu, kde
+     by hrozilo skutecne zpozdeni. ZAVER: C++ jadro NENI pomalejsi ani
+     PO CSAVE (B285 test) ani BEHEM aktivniho prenosu/dvoutonu (B286
+     test) - DVA NEZAVISLA mereni ruznych aspektu, STEJNY zaver. Cela
+     existujici C++ sada (23/23) beze zmeny prochazi dal - do jadra
+     (nap_atari_machine.h) se v B286 vubec nesahalo, cela oprava je
+     opet jen v JS vrstve (index.html).
+     NEOVERENO SKUTECNYM POSLECHEM/POUZITIM NA TELEFONU: jestli tyhle
+     dve opravy spolu dorovnaji zbyvajicich ~5%, nebo jestli zustava
+     jeste neco dalsiho. Rene byl pozadan dat vedet, jestli se gap
+     zmensil/zustal/zmenil charakter (zahlcovani vs. drobne zaskob-
+     rtnuti) - NEPREDPOKLADAT fix bez jeho potvrzeni, presne podle
+     jeho vlastniho pravidla "nerad testuji neco o cem vim ze je
+     spatne" (= tim spis nehlasit "opraveno" predcasne).
+     POUCKA PRO NASTUPCE: i po "hlavni" oprave (B285) muze zustat
+     DRUHOTNY, MENSI zdroj stejne kategorie problemu (zde: desync
+     zvuku) - a muze byt dokonce CASTECNE ODHALEN/ZESILEN samotnou
+     predchozi opravou (orezani odstranilo nahodnou "rezervu", kterou
+     drive nechtene poskytoval sam bug, cimz odkrylo uz existujici,
+     drive maskovany underrun jev). Kdyz uzivatel rekne "lepsi, ale
+     furt ne 100%", neopakovat stejnou diagnozu - hledat DALSI,
+     ODLISNY prispevatel se stejnym vyslednym symptomem, ne predpoklad,
+     ze prvni oprava byla neuplna/spatna.
+
 ===============================================================================

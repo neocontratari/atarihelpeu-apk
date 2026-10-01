@@ -400,6 +400,23 @@ var ZVUK_BUFFER_VZORKU=4096; // stejna velikost jako overena JS reference
 var naplanovaneZdroje=[]; // {src, start, konec} - pro orezani fronty, kdyz naroste moc daleko dopredu
 var MAX_PREDSTIH_S=1.2; // > nejvetsi jednorazova davka (KONZOLE/HELP ~0.84s) s rezervou, ale dost malo, aby zpozdeni nebylo slyset/videt
 var zvukPredstihOrezanPocet=0;
+// BUILD2SB94: Rene po B285 (log): "lepsi, uz se nezahlcuje, ale furt to
+// neni 1ku1." V logu roste ZVUK_PODTEKANI (underrun) hlavne TESNE PO
+// kazdem OREZAN (orezani fronty) - nejvetsi skoky (+22, +10) presne u
+// KONZOLE:start+OREZAN udalosti. DUVOD (zduvodneno, ne same o sobe
+// zmereno stejnou jistotou jako CLI testy - jde o rezii v ramci
+// jednoho behu prohlizece): orezani samo (filtrovani pole, volani
+// .stop() na nekolika zdrojich) zabere nejaky drobny skutecny cas, a
+// predtim nastavi "dalsiZvukStart" BEZ ZADNE REZERVY presne na konec
+// prave hrajiciho bufferu - takze kdyz naplanujZvukovyBuffer() hned
+// pote znovu cte zvukCtx.currentTime (cerstve, vlastni cteni), muze uz
+// byt o kousek dal, nez kolik orezani stihlo predpokladat, a prvni
+// nasledujici kousek(y) tak nahlasi "podtekani", i kdyz ve skutecnosti
+// jde jen o rezii samotneho orezani, ne o skutecne nestihani generovat
+// zvuk. OPRAVA: mala rezerva (50ms) navic pri kazdem orezani - poradne
+// pod hranici slysitelnosti jako "zpozdeni", ale dost na to, aby
+// pohltila tuhle rezii.
+var OREZANI_REZERVA_S=0.05;
 function zkratitPrilisDlouhouFrontu(ted){
   // prubezne zahodit zaznamy o bufferech, co uz davno dohraly
   naplanovaneZdroje=naplanovaneZdroje.filter(function(z){ return z.konec>ted; });
@@ -412,7 +429,7 @@ function zkratitPrilisDlouhouFrontu(ted){
     if(z.konec>novyKonec) novyKonec=z.konec; // prave hrajici buffer nechat dohrat normalne
     return true;
   });
-  dalsiZvukStart=novyKonec;
+  dalsiZvukStart=novyKonec+OREZANI_REZERVA_S; // BUILD2SB94: +rezerva, viz komentar vyse
   zvukPredstihOrezanPocet++;
   napPoznamka('ZVUK_PREDSTIH_OREZAN pocet='+zvukPredstihOrezanPocet);
 }
@@ -565,16 +582,31 @@ function pripojKeNahravce(b64){
   for(var i=0;i<n;i++) bajty[i]=bin.charCodeAt(i);
   nahravkaKousky.push(bajty);
 }
+// BUILD2SB94: Rene po B285 (log): "furt to neni 1ku1." Zmereno (Node,
+// presna kopie algoritmu nize, ~2.5MB - presne Reneho velikost WAV):
+// samotne SPOJENI kousku je levne (~1.7ms), ale base64 KODOVANI
+// (String.fromCharCode.apply po 8190 bajtech, ~300x za sebou) stoji
+// ~20-25ms na rychlem stolnim stroji - na realnem (pomalejsim)
+// telefonu to muze byt klidne vic. Tahle cela prace drive bezela
+// NARAZ, JEDNIM synchronnim behem, presne v okamziku, kdy motor
+// kazety zhasne (= CSAVE "konci") - tedy presne kdyz appka normalne
+// pokracuje dal (napr. do self-testu) - a blokovala hlavni vlakno
+// (a tim i hlavni smycku/generovani zvuku) po celou tu dobu najednou.
+// OPRAVA: stejne kodovani, stejny vysledny soubor (zadna zmena
+// vystupu), ale rozdelene na male davky po KUSU_NA_TIK kousku,
+// zpracovane PRES VICE TIKU UDALOSTNI SMYCKY (setTimeout 0) - takze
+// hlavni vlakno nikdy neni blokovane vic nez cca jeden maly kousek
+// najednou, misto cele davky v jednom kuse.
 function ukoncitNahravani(){
   if(!nahravkaBezi) return;
   clearTimeout(window._nahravkaTimeout); // BUILD2SB92: at uz konci z detekce motoru nebo z timeoutu, nikdy obojí
   nahravkaBezi=false;
+  var kousky=nahravkaKousky; nahravkaKousky=[];
   var celkem=0;
-  for(var i=0;i<nahravkaKousky.length;i++) celkem+=nahravkaKousky[i].length;
+  for(var i=0;i<kousky.length;i++) celkem+=kousky[i].length;
   var spojene=new Uint8Array(celkem);
   var pozice=0;
-  for(var i=0;i<nahravkaKousky.length;i++){ spojene.set(nahravkaKousky[i],pozice); pozice+=nahravkaKousky[i].length; }
-  nahravkaKousky=[];
+  for(var i=0;i<kousky.length;i++){ spojene.set(kousky[i],pozice); pozice+=kousky[i].length; }
   // Uint8Array -> base64 (bez atob/btoa limitu na velikost - po castech)
   // BUILD2SB90: Rene - "csave se neuklada." NALEZENA PRESNA PRICINA
   // (primo overeno v Pythonu, ne odhad): 8192 NENI delitelne tremi -
@@ -585,16 +617,27 @@ function ukoncitNahravani(){
   // se objevovala v logu. Oprava: KUS musi byt delitelny 3, aby
   // KAZDY kus (krome posledniho) vysel jako "cely" base64 blok bez
   // vycpavky uprostred.
-  var b64=''; var KUS=8190; // 8190 = 2730*3, delitelne tremi
-  for(var i=0;i<spojene.length;i+=KUS){
-    var podpole=spojene.subarray(i,Math.min(i+KUS,spojene.length));
-    b64+=btoa(String.fromCharCode.apply(null,podpole));
+  var KUS=8190; // 8190 = 2730*3, delitelne tremi
+  var KUSU_NA_TIK=40; // ~40*8190=~328KB/tik - male davky, zadna jednotliva nezpusobi vlastni mezeru
+  var b64Casti=[], i=0;
+  function pokracovatKodovani(){
+    var zpracovano=0;
+    while(i<spojene.length && zpracovano<KUSU_NA_TIK){
+      var podpole=spojene.subarray(i,Math.min(i+KUS,spojene.length));
+      b64Casti.push(btoa(String.fromCharCode.apply(null,podpole)));
+      i+=KUS; zpracovano++;
+    }
+    if(i<spojene.length){ setTimeout(pokracovatKodovani,0); return; }
+    ulozitDokonceny(b64Casti.join(''));
   }
-  var vysledek;
-  try{ vysledek=JSON.parse(AHATARICPP.atariUlozitZvukJakoWav(b64, nahravkaNazev)); }
-  catch(e){ vysledek={chyba:String(e.message||e)}; }
-  if(vysledek && vysledek.cesta){ napPoznamka('CSAVE_WAV_ULOZENO '+vysledek.cesta); }
-  else if(vysledek && vysledek.chyba){ napPoznamka('CSAVE_WAV_CHYBA '+vysledek.chyba); }
+  function ulozitDokonceny(b64){
+    var vysledek;
+    try{ vysledek=JSON.parse(AHATARICPP.atariUlozitZvukJakoWav(b64, nahravkaNazev)); }
+    catch(e){ vysledek={chyba:String(e.message||e)}; }
+    if(vysledek && vysledek.cesta){ napPoznamka('CSAVE_WAV_ULOZENO '+vysledek.cesta); }
+    else if(vysledek && vysledek.chyba){ napPoznamka('CSAVE_WAV_CHYBA '+vysledek.chyba); }
+  }
+  pokracovatKodovani();
 }
 // BUILD2SB55: volej() ocekava JSON odpoved (pouziva JSON.parse) - ale
 // audioChunk vraci HOLY base64 retezec (viz duvod v nap_atari_native.cpp -

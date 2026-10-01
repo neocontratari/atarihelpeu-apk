@@ -9,51 +9,52 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 331
-        versionName "EMU10-B285-ZVUK-PREDSTIH-OREZAN"  // Rene po B284: "furt
-        // zahlcuje... pri nastartovani apky self test funguje bez lagu, ale
-        // po csave se to postupne zacne zase zahlcovat a po dalsim spusteni
-        // self testu se zacne totalne rozjizdet zvuk od grafiky... projed si
-        // kod - projed si internet a hlavne pamatuj toto emu atari ciste c++."
-        // NEJPRV OVERENO, NE ODHADNUTO: napsan novy CLI test
-        // (test_b285_rychlost_pred_po_csave.cpp) merici SKUTECNY wall-clock
-        // cas jadra na 2000 snimku pred/po 3x CSAVE - pomer 1.005-1.015x
-        // (opakovane mereno), tedy C++ jadro NENI po CSAVE pomalejsi. Take
-        // provereno (grep) - v nap_atari_machine.h nejsou zadne STL
-        // kontejnery (vector/map/string/deque/list), takze tam neni kam by
-        // mohla C++ pamet "zahlcovat". PRICINA je v JS prehravani
-        // (index.html): atariKonzole()/atariHelp() (SELECT/START/OPTION/HELP
-        // - presne tlacitka pro ovladani self-testu) posilaji od B284 davku
-        // az 42 snimku zvuku NARAZ a "volej()" ji hned cele preda do fronty.
-        // "dalsiZvukStart" (kdy se ma prehrat DALSI kousek) nemel ZADNY
-        // strop - kazdy stisk tlacitka ho posunul o dalsich ~0.84s DAL DO
-        // BUDOUCNA, i kdyz realny cas mezitim sotva uplynul. Obraz se ale
-        // porad kresli OKAMZITE (na fronte zvuku vubec nezavisi) - takze po
-        // par stiscich pri prochazeni self-testu uz bylo naplanovano
-        // nekolik vterin zvuku dopredu = presne "zvuk ujizdi od obrazu", a
-        // cim delsi test (vic stisku), tim vic "zahlcovani", protoze fronta
-        // jen rostla, nikdy se sama neoriznyla (zkraceni existovalo jen pro
-        // OPACNY pripad - podtekani/kousani, BUILD2SB64). CSAVE samo o sobe
-        // zadnou frontu nehromadi (bezi po snimcich pres hlavni smycku,
-        // B272/B281) - jen MUSI spolknout frontu z mackani tlacitek kolem
-        // sebe. OPRAVA: strop na to, o kolik smi byt zvuk naplanovany pred
-        // aktualnim casem prehravace (MAX_PREDSTIH_S=1.2s, vic nez
-        // nejvetsi jednorazova davka ~0.84s, aby se jeden stisk sam o sobe
-        // nikdy neoriznul). Pri prekroceni se vse za stropem (jeste
-        // nezacalo hrat) zastavi a fronta "zkrati" zpatky blizko k "ted".
-        // OVERENO simulaci v Node (test_b285_js_fronta_zvuku.js - Node nema
-        // Web Audio API, takze tohle overuje LOGIKU naplanovani, ne
-        // skutecny zvuk z reproduktoru): 20 stisku po 0.3s BEZE stropu ->
-        // predstih narostl na 10.8s; STEJNA posloupnost SE stropem ->
-        // predstih zustal pod 1.1s (6x orezano); bezne pomale pouzivani (1
-        // stisk/2s) stropem vubec nedotceno (0 orezu); jeden jediny stisk
-        // nikdy sam o sobe neorizne (0.84s<1.2s). Cela existujici C++ sada
-        // (B282 10/10 + 7/7, B283 6/6) beze zmeny prochazi dal - do jadra
-        // ani do Java/JNI vrstvy se tentokrat vubec nesahalo, cela oprava je
-        // jen v JS prehravani (index.html). NEOVERENO JESTE skutecnym
-        // poslechem: zda je prechod pri orezani fronty slyset jako jemne
-        // "cvaknuti" (ocekavatelne a v poradku - lepsi nez vteriny zpozdeni)
-        // nebo zda je potreba to jeste vyhladit.
+        versionCode 332
+        versionName "EMU10-B286-WAV-KODOVANI-NEBLOKUJE"  // Rene po B285
+        // (poslal novy log): "sakra lepsi, synchron je lepsi, ale furt to
+        // neni 1ku1... projed si to dukladne a podivej se na jadro a klidne
+        // si projed i www stranky - myslim ze jsme cca 95 procent, ale v
+        // c++ chci atari stoprocent." B285 OREZAN mechanismus funguje
+        // spravne (v logu videt presne 3x, presne pri self-testu, zahlceni
+        // uz nenastava - Rene sam potvrdil). Zbyvajici rozdil: v logu dal
+        // roste ZVUK_PODTEKANI (underrun) pocitadlo, oddelene od OREZAN,
+        // hlavne TESNE PO KONZOLE:start+OREZAN udalostech (+22, +10) a v
+        // mensi mire kolem kazdeho ulozeni CSAVE_WAV (+1 az +5). DVA NALEZY
+        // (oba primo zmerene, ne odhadnute):
+        // (1) ukoncitNahravani() (CSAVE -> .wav soubor, bezi presne kdyz
+        // motor kazety zhasne) delala CELE base64-kodovani (~2.5MB zvuku,
+        // presne Reneho velikosti z logu) JEDNIM souvislym synchronnim
+        // behem - novy Node test (test_b286_wav_blokovani.js, presna kopie
+        // algoritmu) zmeril ~20-26ms na rychlem stolnim stroji (realny
+        // telefon muze byt pomalejsi), z toho samotne SPOJENI kousku jen
+        // ~1.7ms - temer cela rezie je v String.fromCharCode.apply() base64
+        // kodovani. OPRAVA: stejny vysledek (OVERENO bajt-za-bajtem
+        // identicky vystup na 10 ruznych velikostech vc. hranicnich
+        // pripadu), ale rozdelene na davky po 40 kouscich zpracovane PRES
+        // VICE TIKU UDALOSTNI SMYCKY (setTimeout 0) - hlavni vlakno uz
+        // neni blokovane vic nez pár ms najednou.
+        // (2) OREZAN (B285) sam nastavoval "dalsiZvukStart" BEZ REZERVY
+        // presne na "ted" - kdyz naplanujZvukovyBuffer() hned pote znovu
+        // (cerstve) cte zvukCtx.currentTime, muze uz byt o kousek dal (rezie
+        // samotneho orezani), takze prvni nasledujici kousek(y) nahlasi
+        // "podtekani", i kdyz jde jen o rezii orezani, ne skutecne
+        // nestihani (tohle zduvodneno, ne zmereno se stejnou jistotou jako
+        // (1) - jde o rezii v ramci behu prohlizece/WebView, CLI testy na
+        // ni nedosahnou). OPRAVA: +50ms rezerva pri kazdem orezani.
+        // TAKE OVERENO (Reneho opakovany pozadavek na jistotu o C++):
+        // novy CLI test (test_b286_rychlost_behem_csave.cpp) meri
+        // wall-clock cas KAZDEHO JEDNOTLIVEHO snimku zvlast behem klidu,
+        // CSAVE LEADER faze a CSAVE DATA/dvouton faze (ne jen pred/po jako
+        // B285, ale primo BEHEM realne audio aktivity) - prumery prakticky
+        // shodne (3.17-3.41ms/snimek, pomer DATA/KLID 0.957-0.971x,
+        // opakovane mereno), nejhorsi jednotlivy snimek 11.35ms = 56.8% z
+        // 20ms realneho rozpoctu na snimek (PAL 50fps) - pohodlna rezerva,
+        // zadny snimek se ani nepriblizuje limitu. C++ jadro tedy NENI
+        // pomalejsi ani PO CSAVE (B285) ani BEHEM aktivniho prenosu (B286) -
+        // dve nezavisla mereni, stejny zaver. Cela existujici C++ sada
+        // (23/23) beze zmeny prochazi dal - tahle oprava je zase cela jen
+        // v JS prehravani/ukladani (index.html), do jadra se nesahalo.
+        // NEOVERENO JESTE skutecnym poslechem/testem na telefonu.
 
         ndk {
             abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
