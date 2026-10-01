@@ -44,6 +44,18 @@ jobs:
 
       - name: Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # OPRAVA: v3 ma ve vychozim seznamu balicku i stary "tools" balicek,
+          # ktery Google uz ze svych serveru odstranil - sdkmanager ho nenajde
+          # a cely krok skonci chybou ("Failed to find package 'tools'", exit
+          # code 1), i kdyz vsechno ostatni, co skutecne potrebujeme, uz stejne
+          # instaluje explicitne dalsi krok nize ("Instalace SDK komponent").
+          # Prazdny retezec rika akci, at vubec nezkousi instalovat svuj
+          # vychozi seznam balicku - jen pripravi cmdline-tools/sdkmanager
+          # samotny, zbytek uz je na dalsim kroku. (Oprava az ve verzi v4 teto
+          # akce, ale prechod na v4 by zaroven zmenil i jine vychozi hodnoty -
+          # radeji jen tohle jedno konkretni misto.)
+          packages: ''
 
       - name: Instalace SDK komponent (pripnute verze)
         run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.3.11579264" "cmake;3.22.1"
