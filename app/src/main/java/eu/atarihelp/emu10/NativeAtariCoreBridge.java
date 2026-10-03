@@ -82,6 +82,16 @@ public final class NativeAtariCoreBridge {
     // index.html a komentar u C++ funkce.
     private static native int motorZapnutyNative();
 
+    // BUILD2SC1: klavesnice+konzole v C++ (viz nap_atari_keyboard.h). Stejny
+    // tvar jako screenNative() - C++ vykresli cely obrazek klavesnice jako
+    // RGB a vrati base64, zadne HTML/CSS tlacitko. kbdTouchNative dostane
+    // jen ID klavesy/tlacitka (jak ho vratil hitTest v JS - viz index.html)
+    // a jestli je dole(1)/nahoru(0) - samo si v C++ poradi se SHIFT/CTRL
+    // zamky, konzolovym drzenim i jednorazovymi akcemi (HELP, RESET, BREAK).
+    private static native String kbdScreenNative();
+    private static native int    kbdHitTestNative(int x, int y);
+    private static native void   kbdTouchNative(int id, int dolu);
+
     // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
     // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
     // HELP ciste v c++." Zvuk uz nehraje JS Web Audio API (odhad/orezavani
@@ -185,6 +195,21 @@ public final class NativeAtariCoreBridge {
     public static String zvukDiagSafe() {
         if (!loaded) return null;
         try { return atariZvukDiagNative(); } catch (Throwable t) { return null; }
+    }
+
+    /** BUILD2SC1: bezpecne wrappery pro klavesnici+konzoli v C++. */
+    public static String kbdScreenSafe() {
+        if (!loaded) return "{\"chyba\":\"knihovna napatari se nenacetla\"}";
+        try { String r = kbdScreenNative(); return r == null ? "{\"chyba\":\"nic\"}" : r; }
+        catch (Throwable t) { return "{\"chyba\":\"" + String.valueOf(t.getMessage()).replace('"','\'') + "\"}"; }
+    }
+    public static void kbdTouchSafe(int id, int dolu) {
+        if (!loaded) return;
+        try { kbdTouchNative(id, dolu); } catch (Throwable ignored) {}
+    }
+    public static int kbdHitTestSafe(int x, int y) {
+        if (!loaded) return -1;
+        try { return kbdHitTestNative(x, y); } catch (Throwable t) { return -1; }
     }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */

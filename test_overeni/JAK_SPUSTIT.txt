@@ -20,3 +20,18 @@ overoval architekturu "kazda hra ma svou kartu", o ktere se zjistilo,
 ze je spatne. Se soucasnym nap_srm_functions_REAL.cpp uz neprojde (a
 je to spravne - dokazuje presne tu zmenu). Necham ho jako zaznam
 predchozi uvahy, ne jako aktualni test.
+
+Ctvrty test (BUILD2SC1, klavesnice+konzole atari 130XE v C++):
+  g++ -std=c++14 -Wall -Wextra -o test_b2sc1_klavesnice test_b2sc1_klavesnice.cpp
+  ./test_b2sc1_klavesnice
+
+Presny vystup z posledniho spusteni je v VYSTUP_TESTU_B2SC1.txt.
+
+Tenhle test navic ulozi syrovy obrazek klavesnice (co by normalne videl
+telefon) do /tmp/kbd_render.rgb (+ *_pressed.rgb pro zmacknuty/zamceny
+stav) - prevod na PNG pro skutecne vizualni prohlednuti:
+  python3 -c "from PIL import Image; Image.frombytes('RGB',(471,836), \
+    open('/tmp/kbd_render.rgb','rb').read()).save('/tmp/kbd_render.png')"
+Tohle je JEDINY zpusob, jak se na vysledek vykreslovani podivat bez
+realneho telefonu (zadny NDK/Android build neni v tomto kontejneru
+k dispozici - skutecny arm64 preklad dela az GitHub Actions).

@@ -1,0 +1,28 @@
+info  klaves celkem=57 realnych_scankodu=53 specialnich(ctrl/shift/break)=4
+OK    vsechny scankody klasifikovany (realny 0-63, nebo -1/-2/-3)
+OK    render() vyrobil neco jineho nez jednu plochou barvu
+OK    hitTest() trefuje presny stred VSECH 57 klaves + 5 konzolovych tlacitek
+OK    hitTest() v levem hornim rohu (mimo klavesy) vraci -1
+OK    index 30 v tabulce je skutecne klavesa 'A' (sanity select)
+OK    tuknuti na 'A' bez SHIFT/CTRL posle scankod 63 (KLAVESA)
+OK    index 43 je skutecne SHIFT (sanity select)
+OK    kratke tuknuti SHIFT: zamek SE ZAPNE
+OK    po zamceném SHIFT dá 'A' scankod s bitem 0x40 (127)
+OK    druhe kratke tuknuti SHIFT: zamek SE VYPNE
+OK    drzeni SHIFT > 320ms aktivuje docasny rezim (bez nutnosti pustit)
+OK    puseni po DRZENI SHIFT zamek VYPNE (ne prepne)
+OK    index 29 je skutecne CTRL (sanity select)
+OK    CTRL se prepne OKAMZITE pri stisku
+OK    CTRL puseni samo o sobe nic nemeni (jen dalsi stisk prepne zpet)
+OK    po zamceném CTRL da 'A' scankod s bitem 0x80
+OK    druhy stisk CTRL zamek vypne
+OK    START dolu: maska bez bitu0 (6)
+OK    START+OPTION soucasne drzene: maska bez bitu0+bitu2 (2)
+OK    po puseni START (OPTION stale drzen): maska bez bitu2 (3)
+OK    po puseni obou: maska zpet na 7 (nic drzeno)
+OK    HELP posila scankod 17 (KBCODE_HELP) jako normalni klavesu, NE konzolovy prepinac
+OK    puseni HELP nic nedela (jednorazove, stejne jako realna matice)
+OK    RESET tlacitko posila RESET akci
+OK    BREAK (id14) posila BREAK akci
+
+VSECHNY KONTROLY PROSLY (0 chyb)

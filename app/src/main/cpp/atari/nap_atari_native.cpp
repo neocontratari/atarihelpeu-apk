@@ -31,6 +31,7 @@
 #include "nap_atari_machine.h"
 #include "nap_atari_roms.h"
 #include "nap_atari_audio_ring.h"  // B287: cista (bez JNI) cast - viz test_b287
+#include "nap_atari_keyboard.h"    // BUILD2SC1: klavesnice+konzole v C++, cista (bez JNI) cast - viz test_b2sc1
 #include <string>
 
 // BUILD2SB79: presunuto sem (z puvodniho mista dale v souboru) - musi
@@ -213,6 +214,10 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runSelfTest(JNIEnv *env, jclass) {
 // ---------------------------------------------------------------
 static Machine   *g_stroj = nullptr;
 static AnticView *g_view  = nullptr;
+// BUILD2SC1: klavesnice+konzole - viz nap_atari_keyboard.h. Staticka,
+// stejny duvod jako g_mem vyse (zadny Android thread hazard, appka ji
+// pouziva jen z JNI volani z JS smycky).
+static KbdDeck g_kbd;
 
 static void zaloz() {
   if (!g_stroj) g_stroj = new Machine();
@@ -712,4 +717,80 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioChunkNative(JNIEnv *env, jcla
     b64.push_back((i + 2 < raw.size()) ? B64[t & 63] : '=');
   }
   return env->NewStringUTF(b64.c_str());
+}
+
+// ===================================================================
+// BUILD2SC1: KLAVESNICE + KONZOLE V C++ - viz nap_atari_keyboard.h.
+//
+// Rene: "preved do apky sekce help atari c++ a dej si pozor at mame emu
+// atari 130xe v HELP ciste v c++." C++ vykresli CELY obrazek klavesnice
+// (stejny princip jako screenNative() vyse - surovy RGB framebuffer ->
+// base64), WebView ho jen zobrazi a posle zpet souradnice doteku.
+// Zadne HTML/CSS tlacitko - presne jako u hlavniho Atari obrazu.
+// ===================================================================
+static long long nap_kbd_ted_ms() {
+  timespec t{};
+  clock_gettime(CLOCK_MONOTONIC, &t);
+  return (long long)t.tv_sec * 1000 + t.tv_nsec / 1000000;
+}
+
+/** Vykresli aktualni stav klavesnice a vrati jako base64 RGB (stejny tvar jako screenNative). */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_kbdScreenNative(JNIEnv *env, jclass) {
+  g_kbd.render(nap_kbd_ted_ms());
+  const int W = KbdDeck::W, H = KbdDeck::H, PX = W * H;
+  std::string raw; raw.reserve((size_t)PX * 3);
+  for (int i = 0; i < PX * 3; i++) raw.push_back((char)g_kbd.fb[i]);
+  std::string b64; b64.reserve((raw.size() + 2) / 3 * 4);
+  for (size_t i = 0; i < raw.size(); i += 3) {
+    const unsigned a0 = (unsigned char)raw[i];
+    const unsigned a1 = (i + 1 < raw.size()) ? (unsigned char)raw[i + 1] : 0;
+    const unsigned a2 = (i + 2 < raw.size()) ? (unsigned char)raw[i + 2] : 0;
+    const unsigned t = (a0 << 16) | (a1 << 8) | a2;
+    b64.push_back(B64[(t >> 18) & 63]); b64.push_back(B64[(t >> 12) & 63]);
+    b64.push_back((i + 1 < raw.size()) ? B64[(t >> 6) & 63] : '=');
+    b64.push_back((i + 2 < raw.size()) ? B64[t & 63] : '=');
+  }
+  std::string out = "{\"w\":" + std::to_string(W) + ",\"h\":" + std::to_string(H)
+    + ",\"rgb\":\"" + b64 + "\"}";
+  return env->NewStringUTF(out.c_str());
+}
+
+/**
+ * Ktera klavesa/tlacitko je na souradnicich (x,y) v obrazku klavesnice
+ * (0..470, 0..835 - viz KbdDeck::W/H). JS si pri polozeni prstu (pointer-
+ * down) zavola tohle JEDNOU, vysledne ID si sam pamatuje (podle pointerId,
+ * kvuli vicero prstum najednou - napr. drzet SHIFT a tuknout pismeno) a
+ * PRESNE TOHLE ID pak posila do kbdTouchNative - geometrie klaves tak
+ * zije jen na JEDNOM miste (C++), JS zadnou kopii souradnic nema.
+ * Vraci -1 kdyz dotek netrefil nic.
+ */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_kbdHitTestNative(JNIEnv *, jclass, jint x, jint y) {
+  return (jint)g_kbd.hitTest((int)x, (int)y);
+}
+
+/**
+ * Dotek na klavesnici/konzole. id je vysledek kbdHitTestNative (z
+ * pointerdown, JS si ho pamatuje pro dany prst) - ne souradnice. dolu:
+ * 1=dotek dolu (prst polozen), 0=dotek nahoru (prst zvednut).
+ *
+ * BUILD2SC1 KRITICKE (poucka z BUILD2SB80 vyse): KbdDeck sama NIKDY
+ * nevola klavesa() opakovane pro jeden drzeny dotek (viz touchDown -
+ * pulzuje jen jednou pri polozeni prstu) - presne ten bug, co by
+ * zpusobil "osm stisku misto jednoho drzeneho", uz je osetren v
+ * KbdDeck samotne, ne tady.
+ */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_kbdTouchNative(JNIEnv *, jclass, jint id, jint dolu) {
+  if (!g_stroj) return;
+  KbdEvent ev = dolu ? g_kbd.touchDown((int)id, nap_kbd_ted_ms())
+                     : g_kbd.touchUp((int)id, nap_kbd_ted_ms());
+  switch (ev.typ) {
+    case KbdEvent::KLAVESA:      g_stroj->klavesa(ev.scan); break;
+    case KbdEvent::KONZOLE_MASK: g_stroj->consol = ev.konzoleMask & 7; break;
+    case KbdEvent::RESET:        g_stroj->reset(); g_stroj->consol = 7; break;
+    case KbdEvent::BREAK:        g_stroj->breakKey(); break;
+    default: break;
+  }
 }

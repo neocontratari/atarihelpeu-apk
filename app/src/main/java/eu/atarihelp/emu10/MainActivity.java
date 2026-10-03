@@ -4412,6 +4412,27 @@ public class MainActivity extends Activity {
             catch (Throwable t) { return null; }
         }
 
+        // BUILD2SC1: klavesnice + konzolova tlacitka atari 130XE - CISTE V
+        // C++ (viz nap_atari_keyboard.h). Presne stejny vzorec jako
+        // atariObraz() vyse - C++ vykresli hotovy obrazek, Java/JS ho jen
+        // predava dal. Zadne z techto treti metod nic neloguje (zadny
+        // appendNativeLog) - dotek prstem se dost casto opakuje a kazdy
+        // jednotlivy by log zahltil (stejny duvod jako u atariObraz, ktery
+        // ale na rozdil od techto treti ma svuj vlastni dulezity pripad -
+        // jam=true - ktery stoji za zalogovani). Selhani nacteni knihovny
+        // je stejne uz videt v logAtari z jeNactene(), neni potreba duplikovat.
+        @JavascriptInterface public String kbdObraz() {
+            return NativeAtariCoreBridge.kbdScreenSafe();
+        }
+        /** Souradnice v obrazku klavesnice (0..470,0..835) -> id klavesy/tlacitka, nebo -1. */
+        @JavascriptInterface public int kbdHitTest(int x, int y) {
+            return NativeAtariCoreBridge.kbdHitTestSafe(x, y);
+        }
+        /** id: 0-56 klavesa, 100-104 konzolovy pas (HELP/START/SELECT/OPTION/RESET) - z kbdHitTest. dolu: 1=prst dolu, 0=prst nahoru. */
+        @JavascriptInterface public void kbdDotek(int id, int dolu) {
+            NativeAtariCoreBridge.kbdTouchSafe(id, dolu);
+        }
+
         /** Vysledek jednoho kroku testu. Rene klepne, ja to mam v logu. */
         @JavascriptInterface public String zapisKrok(int cislo, String popis, boolean ok) {
             try {

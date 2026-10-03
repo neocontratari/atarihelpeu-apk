@@ -703,6 +703,17 @@ struct Machine {
     obnovIrq();
   }
 
+  // BUILD2SC1: BREAK klavesa pro novou klavesnici v C++ (nap_atari_keyboard.h).
+  // Na realnem Atari BREAK NENI soucasti klavesnicove matice (zadny scankod
+  // v KBCODE) - jde primo na vlastni bit POKEY preruseni. Primo overeno v
+  // JS referenci (jedinem zdroji pravdy pro logiku): "M.breakKey=function()
+  // { pokeyRaise(0x80); };" - jen zvedne IRQST bit 0x80, nic vic (zadna
+  // zmena kbcode). Stejny vzorec jako klavesa() vyse, jen jiny bit.
+  void breakKey() {
+    irqst &= ~0x80;
+    obnovIrq();
+  }
+
   int dlistAddr() const { return (dlistL | (dlistH << 8)) & 0xFFFF; }
 
   void reset() {

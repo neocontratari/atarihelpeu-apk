@@ -43,6 +43,22 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
         style="width:100%;image-rendering:pixelated;background:#000;
                border:1px solid #262931;border-radius:8px;display:block"></canvas>
 <div id="stavAtari" class="hot" style="margin:6px 0 10px">Nespusteno</div>
+
+<!-- BUILD2SC1: Rene - "preved do apky sekce help atari c++ a dej si pozor
+     at mame emu atari 130xe v HELP ciste v c++." Klavesnice+konzole NEJSOU
+     HTML/CSS tlacitka - je to DRUHY obrazek, ktery si C++ sam vykresli
+     (nap_atari_keyboard.h) presne stejnym principem jako obraz atari
+     obrazovky vyse (surovy RGB -> base64 -> putImageData). Tahle stranka
+     jen zobrazi hotovy obrazek a posle zpatky, kam jsi sahl prstem -
+     zadna vlastni HTML logika tlacitek. Zatim jen klavesnice+konzolovy pas
+     (HELP/START/SELECT/OPTION/RESET) - kazetak a servisni tlacitka jsou
+     dalsi kolo. -->
+<canvas id="kbdplat" width="471" height="836"
+        style="width:100%;max-width:420px;display:block;margin:0 auto;
+               image-rendering:pixelated;background:#444;touch-action:none;
+               border:1px solid #262931;border-radius:8px"></canvas>
+<div id="stavKbd" class="hot" style="margin:6px 0 10px;text-align:center">Klavesnice (C++)</div>
+
 <button id="btnBoot" type="button">1. NABOOTOVAT OS (pak uz bezi samo, presne jako skutecne Atari)</button>
 <button id="btnSt" type="button" style="background:#2a2d34">2. DO SELF-TESTU (BYE)</button>
 <div class="btny" style="margin-bottom:6px">
@@ -265,6 +281,69 @@ function volej(f,arg){
   }
   catch(e){ return {chyba:String(e.message||e)}; }
 }
+
+// ====================================================================
+// BUILD2SC1: KLAVESNICE + KONZOLE - viz komentar u <canvas id="kbdplat">
+// vyse. Stejny atob()+putImageData() vzorec jako kresli() pro atari
+// obrazovku, jen na druhem platne. Prekresluje se JEN po doteku (kbd
+// obrazek ~1,6 MB base64 - 50x/s by appku zbytecne zatezovalo; staci
+// prekreslit, kdyz se nejake tlacitko/klavesa doopravdy zmeni).
+// ====================================================================
+var kbdCtx=null;
+function kresliKbd(j){
+  try{
+    if(!kbdCtx) kbdCtx=document.getElementById('kbdplat').getContext('2d');
+    if(!j||j.chyba){ $('stavKbd').textContent='Chyba: '+(j&&j.chyba||'?'); return; }
+    var bin=atob(j.rgb), img=kbdCtx.createImageData(j.w,j.h), d=img.data;
+    for(var i=0,p=0,q=0;i<j.w*j.h;i++){
+      d[q++]=bin.charCodeAt(p++); d[q++]=bin.charCodeAt(p++);
+      d[q++]=bin.charCodeAt(p++); d[q++]=255;
+    }
+    kbdCtx.putImageData(img,0,0);
+  }catch(e){ $('stavKbd').textContent='kresleni klavesnice selhalo: '+e.message; }
+}
+function obnovKbdObraz(){
+  try{ kresliKbd(JSON.parse(AHATARICPP.kbdObraz())); }
+  catch(e){ $('stavKbd').textContent='nelze precist obraz klavesnice: '+e.message; }
+}
+// Souradnice doteku na <canvas> (CSS pixely, muze byt zmensene/zvetsene
+// proti skutecnym 471x836) prevedeme na souradnice PRIMO v obrazku -
+// presne tak, jak to ocekava kbdHitTest v C++.
+function kbdSouradnice(e){
+  var r=document.getElementById('kbdplat').getBoundingClientRect();
+  var x=(e.clientX-r.left)*(471/r.width), y=(e.clientY-r.top)*(836/r.height);
+  return [Math.round(x), Math.round(y)];
+}
+// Kazdy prst (pointerId) si drzi SVOJE id klavesy od pointerdown do
+// pointerup/cancel - umoznuje drzet SHIFT jednim prstem a tuknout
+// pismeno druhym (viz komentar u kbdHitTestNative v C++).
+var kbdDotekId={};
+function kbdPointerDown(e){
+  e.preventDefault();
+  var xy=kbdSouradnice(e), id=-1;
+  try{ id=AHATARICPP.kbdHitTest(xy[0],xy[1]); }catch(_e){}
+  if(id<0) return;
+  kbdDotekId[e.pointerId]=id;
+  try{ AHATARICPP.kbdDotek(id,1); }catch(_e){}
+  obnovKbdObraz();
+}
+function kbdPointerUp(e){
+  e.preventDefault();
+  var id=kbdDotekId[e.pointerId];
+  if(id===undefined) return;
+  delete kbdDotekId[e.pointerId];
+  try{ AHATARICPP.kbdDotek(id,0); }catch(_e){}
+  obnovKbdObraz();
+}
+(function(){
+  var c=document.getElementById('kbdplat');
+  c.addEventListener('pointerdown',kbdPointerDown,{passive:false});
+  c.addEventListener('pointerup',kbdPointerUp,{passive:false});
+  c.addEventListener('pointercancel',kbdPointerUp,{passive:false});
+  c.addEventListener('pointerleave',kbdPointerUp,{passive:false});
+})();
+setTimeout(obnovKbdObraz,250); // pocatecni (nezmacknuty) obrazek klavesnice
+
 $('btnBoot').addEventListener('click',function(){
   this.textContent='BOOTUJI...'; var b=this;
   setTimeout(function(){
