@@ -31,7 +31,21 @@
 #include "nap_atari_machine.h"
 #include "nap_atari_roms.h"
 #include "nap_atari_audio_ring.h"  // B287: cista (bez JNI) cast - viz test_b287
-#include "nap_atari_keyboard.h"    // BUILD2SC1: klavesnice+konzole v C++, cista (bez JNI) cast - viz test_b2sc1
+// BUILD2SC2: skutecny font (Chakra Petch, presne jako schvaleny navrh) pres
+// stb_truetype.h - jediny .cpp v projektu, kde se STB_TRUETYPE_IMPLEMENTATION
+// skutecne preklada (standardni vzorec pro "single header" knihovny: vsude
+// jinde, vcetne nap_atari_keyboard.h, se jen deklaruje bez teto makro -
+// overeno primo ve zdroji stb_truetype.h, ze implementace NENI zavisla na
+// poradi/vicenasobnem includu deklaraci, jen na tomhle makru).
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "../vendor/stb/stb_truetype.h"
+// KRITICKE: nap_atari_keyboard.h nize taky dela #include stb_truetype.h
+// (jen pro deklarace). Kdyby STB_TRUETYPE_IMPLEMENTATION zustalo
+// definovane, tenhle druhy #include by znovu zkompiloval CELOU
+// implementaci -> "redefinition" chyby (chyceno primo v test_b2sc1 -
+// standalone g++ build to odhalil driv, nez by to zkazilo NDK/CI build).
+#undef STB_TRUETYPE_IMPLEMENTATION
+#include "nap_atari_keyboard.h"    // BUILD2SC1+SC2: klavesnice+konzole v C++, cista (bez JNI) cast - viz test_b2sc1
 #include <string>
 
 // BUILD2SB79: presunuto sem (z puvodniho mista dale v souboru) - musi
@@ -758,7 +772,8 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_kbdScreenNative(JNIEnv *env, jclas
 
 /**
  * Ktera klavesa/tlacitko je na souradnicich (x,y) v obrazku klavesnice
- * (0..470, 0..835 - viz KbdDeck::W/H). JS si pri polozeni prstu (pointer-
+ * (0..KbdDeck::W-1, 0..KbdDeck::H-1 - BUILD2SC2: rozliseni uz neni napevno
+ * 471x836, viz komentar u KbdDeck::W/H). JS si pri polozeni prstu (pointer-
  * down) zavola tohle JEDNOU, vysledne ID si sam pamatuje (podle pointerId,
  * kvuli vicero prstum najednou - napr. drzet SHIFT a tuknout pismeno) a
  * PRESNE TOHLE ID pak posila do kbdTouchNative - geometrie klaves tak

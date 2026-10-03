@@ -19,10 +19,25 @@
  *    opravdove vykreslovani na obrazovku, jen pocitani pixelu do
  *    pameti), ani realny NDK/arm64 preklad (ten dela az GitHub
  *    Actions - zadny NDK v tomhle kontejneru neni).
+ *
+ * BUILD2SC2 (oprava vzhledu - viz hlavicka nap_atari_keyboard.h): tenhle
+ * .cpp je (stejne jako nap_atari_native.cpp v produkci) ten JEDEN preklad,
+ * kde se skutecne zkompiluje telo stb_truetype.h (STB_TRUETYPE_IMPLEMENTATION) -
+ * nap_atari_keyboard.h sam od sebe jen DEKLARUJE.
  */
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "../app/src/main/cpp/vendor/stb/stb_truetype.h"
+// KRITICKE: nap_atari_keyboard.h nize taky dela #include stb_truetype.h
+// (jinou relativni cestou - z pohledu preprocesoru RUZNY retezec, takze
+// ho makro-guard #ifndef na deklaracni cast sice odchyti, ale IMPLEMENTACNI
+// cast je hlidana JEN "#ifdef STB_TRUETYPE_IMPLEMENTATION" - kdyby makro
+// zustalo definovane, druhy #include by celou implementaci zkompiloval
+// ZNOVU -> "redefinition" chyby. #undef hned po prvnim (jedinem spravnem)
+// pouziti presne tomu zabrani (stejny vzorec v nap_atari_native.cpp).
+#undef STB_TRUETYPE_IMPLEMENTATION
 #include "../app/src/main/cpp/atari/nap_atari_keyboard.h"
 
 using namespace nap;
@@ -73,7 +88,7 @@ int main() {
     const KbdKeyDef &k = NAP_KBD_KEYS[i];
     int cx = KbdDeck::X(k.x + k.w/2), cy = KbdDeck::Y(k.y + k.h/2);
     int got = d.hitTest(cx, cy);
-    if (got != i) { printf("FAIL  hitTest klavesa %d (scan=%d lab=%s): stred (%d,%d) vratil %d\n", i, k.scan, k.lab, cx, cy, got); hitFail++; }
+    if (got != i) { printf("FAIL  hitTest klavesa %d (scan=%d l2=%s): stred (%d,%d) vratil %d\n", i, k.scan, k.l2, cx, cy, got); hitFail++; }
   }
   for (int i = 0; i < 5; i++) {
     const KbdConsoleDef &c = NAP_KBD_CONSOLE[i];
@@ -88,7 +103,7 @@ int main() {
   // rada0=15(id0-14), rada1=14(id15-28)... pozor, 'A' je PRVNI klavesa rady 2 (po CTRL).
   // rada0: id 0-14 (15 klaves), rada1: id 15-28 (14 klaves), rada2 zacina id 29 (CTRL), 'A'=id 30.
   int idA = 30;
-  OK(strcmp(NAP_KBD_KEYS[idA].lab, "A") == 0, "index 30 v tabulce je skutecne klavesa 'A' (sanity select)");
+  OK(strcmp(NAP_KBD_KEYS[idA].l2, "A") == 0, "index 30 v tabulce je skutecne klavesa 'A' (sanity select)");
   KbdEvent ev = d.touchDown(idA, 2000);
   OK(ev.typ == KbdEvent::KLAVESA && ev.scan == 63, "tuknuti na 'A' bez SHIFT/CTRL posle scankod 63 (KLAVESA)");
   d.touchUp(idA, 2001);
@@ -146,6 +161,70 @@ int main() {
   OK(ev.typ == KbdEvent::RESET, "RESET tlacitko posila RESET akci");
   ev = d.touchDown(14, 7200);  // BREAK je posledni klavesa rady0 (id14)
   OK(NAP_KBD_KEYS[14].scan == -3 && ev.typ == KbdEvent::BREAK, "BREAK (id14) posila BREAK akci");
+
+  // ====================================================================
+  // BUILD2SC2: Rene - "to vubec neodpovida tomu co jsme tady celou tu
+  // dobu delali" - oprava vzhledu (skutecny font Chakra Petch misto ROM
+  // fontu, gradienty/stiny/zaobleni, plne popisky l1/l2). Tyhle kontroly
+  // jsou NOVE pro tuhle opravu - puvodni kontroly vyse (scankody, hitTest,
+  // SHIFT/CTRL/konzole) se vubec nezmenily, protoze dotekova logika se
+  // vzhledem neopravovala.
+  // ====================================================================
+
+  // ---- 10) fonty (vlozene jako bajtova pole) se skutecne nactou ----
+  OK(KbdDeck::fSemiBold().ok, "font Chakra Petch SemiBold (NAP_FONT_CHAKRA_SEMIBOLD_TTF) se nacte");
+  OK(KbdDeck::fBold().ok, "font Chakra Petch Bold (NAP_FONT_CHAKRA_BOLD_TTF) se nacte");
+  OK(KbdDeck::fBoldItalic().ok, "font Chakra Petch BoldItalic (NAP_FONT_CHAKRA_BOLDITALIC_TTF) se nacte");
+
+  // ---- 11) rozliseni zvysene 0.5x->0.75x (ostrejsi pismo) ----
+  OK(KbdDeck::W == 706 && KbdDeck::H == 1254, "vystupni rozliseni 706x1254 (0.75x SRC, drive 471x836/0.5x)");
+
+  // ---- 12) obsah popisku (l1/l2) bodove overeny PRIMO proti rowLabels
+  // ze schvaleneho navrhu (Main.dc.html radky 411-414) - cely 57-radkovy
+  // prepis byl delany rucne, tohle je pojistka proti preklepu, ne nahrada
+  // za to, ze zdroj uz byl primo porovnan (viz komentar u tabulky). ----
+  OK(strcmp(NAP_KBD_KEYS[1].l1,"!")==0 && strcmp(NAP_KBD_KEYS[1].l2,"1")==0, "klavesa '1': l1=! l2=1 (rowLabels[0][1])");
+  OK(strcmp(NAP_KBD_KEYS[13].l1,"Delete")==0 && strcmp(NAP_KBD_KEYS[13].l2,"BkSp")==0, "klavesa BkSp: l1=Delete l2=BkSp (plna slova, ne zkratka)");
+  OK(strcmp(NAP_KBD_KEYS[14].l2,"Break")==0, "BREAK: l2=Break (plne slovo, drive zkratka BRK)");
+  OK(strcmp(NAP_KBD_KEYS[15].l1,"Clr Set")==0 && strcmp(NAP_KBD_KEYS[15].l2,"Tab")==0, "TAB: l1='Clr Set' l2=Tab");
+  OK(strcmp(NAP_KBD_KEYS[26].l1,"\xE2\x86\x91")==0 && strcmp(NAP_KBD_KEYS[26].l2,"-")==0, "klavesa '-': l1=sipka nahoru (realny Atari CTRL+- = kurzor nahoru)");
+  OK(strcmp(NAP_KBD_KEYS[27].l1,"\xE2\x86\x93")==0 && strcmp(NAP_KBD_KEYS[27].l2,"=")==0, "klavesa '=': l1=sipka dolu");
+  OK(strcmp(NAP_KBD_KEYS[28].l2,"Return")==0, "RETURN: l2=Return (plne slovo, drive zkratka RET)");
+  OK(strcmp(NAP_KBD_KEYS[29].l2,"Control")==0, "CONTROL: l2=Control (plne slovo, drive zkratka CTRL)");
+  OK(strcmp(NAP_KBD_KEYS[40].l1,"\xE2\x86\x90")==0 && strcmp(NAP_KBD_KEYS[41].l1,"\xE2\x86\x92")==0, "klavesy '+'/'*': sipky vlevo/vpravo");
+  OK(strcmp(NAP_KBD_KEYS[42].l2,"Caps")==0, "CAPS beze zmeny");
+  OK(strcmp(NAP_KBD_KEYS[43].l2,"Shift")==0 && strcmp(NAP_KBD_KEYS[54].l2,"Shift")==0, "obe SHIFT (id43,id54): l2=Shift (plne slovo)");
+  OK(strcmp(NAP_KBD_KEYS[51].l1,"[")==0 && strcmp(NAP_KBD_KEYS[51].l2,"/")==0, "byvala ',' klavesa (id51): presne z navrhu l1=[ l2=/ (ANO, stejne '/' jako id53 - takhle je to v navrhu, NEOPRAVOVANO, viz komentar u tabulky)");
+  OK(strcmp(NAP_KBD_KEYS[52].l1,"]")==0 && strcmp(NAP_KBD_KEYS[52].l2,".")==0, "byvala '.' klavesa (id52): l1=] l2=.");
+  OK(strcmp(NAP_KBD_KEYS[53].l1,"?")==0 && strcmp(NAP_KBD_KEYS[53].l2,"/")==0, "byvala '/' klavesa (id53): l1=? l2=/");
+  OK(strcmp(NAP_KBD_KEYS[55].l1,"Fuji")==0 && strcmp(NAP_KBD_KEYS[55].l2,"Inverse")==0, "posledni klavesa (id55): l1=Fuji l2=Inverse");
+
+  // ---- 13) SKUTECNA CHYBA nalezena BUILD2SC2 vizualni kontrolou PNG:
+  // render() cetlo consoleHeld[i] primo indexem z NAP_KBD_CONSOLE (0..4=
+  // HELP/START/SELECT/OPTION/RESET), ale touchDown() uklada jen do
+  // consoleHeld[0..2]=START/SELECT/OPTION (viz vyse) - HELP se tak
+  // vizualne tvarilo zmacknute MISTO START a SELECT MISTO OPTION. Tahle
+  // kontrola testuje opravenou consoleIsHeld() primo (ne pixely), takze
+  // uz se to nemuze tise vratit. ----
+  {
+    KbdDeck d4;
+    d4.touchDown(101, 9500); // START
+    d4.touchDown(103, 9501); // OPTION
+    OK(!d4.consoleIsHeld(0) && d4.consoleIsHeld(1) && !d4.consoleIsHeld(2) && d4.consoleIsHeld(3) && !d4.consoleIsHeld(4),
+       "BUILD2SC2: START+OPTION drzene -> vizualne 'held' jen START(i=1)+OPTION(i=3), NE HELP(i=0)/SELECT(i=2)/RESET(i=4)");
+    d4.touchUp(101, 9600); d4.touchUp(103, 9601);
+    OK(!d4.consoleIsHeld(1) && !d4.consoleIsHeld(3), "po puseni: zadne tlacitko uz neni vizualne 'held'");
+  }
+
+  // ---- 14) render() s novym vzhledem porad nespadne a neni jednobarevny
+  // (stejna kontrola jako puvodne, jen znovu po kompletni prestavbe render()) ----
+  KbdDeck d3;
+  d3.render(10000);
+  int ruznychBarev3 = 0; uint8_t prvni3[3] = { d3.fb[0], d3.fb[1], d3.fb[2] };
+  for (int i = 0; i < KbdDeck::W * KbdDeck::H; i++) {
+    if (d3.fb[i*3]!=prvni3[0] || d3.fb[i*3+1]!=prvni3[1] || d3.fb[i*3+2]!=prvni3[2]) { ruznychBarev3=1; break; }
+  }
+  OK(ruznychBarev3 == 1, "render() s novym vzhledem (font+gradienty+stiny) porad nespadne a neni jednobarevny");
 
   printf(g_fail ? "\n%d CHYB(A) - NEOPRAVIT, NEZAMLCET\n" : "\nVSECHNY KONTROLY PROSLY (%d chyb)\n", g_fail);
   return g_fail ? 1 : 0;

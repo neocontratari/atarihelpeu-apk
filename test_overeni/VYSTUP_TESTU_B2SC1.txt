@@ -24,5 +24,27 @@ OK    HELP posila scankod 17 (KBCODE_HELP) jako normalni klavesu, NE konzolovy p
 OK    puseni HELP nic nedela (jednorazove, stejne jako realna matice)
 OK    RESET tlacitko posila RESET akci
 OK    BREAK (id14) posila BREAK akci
+OK    font Chakra Petch SemiBold (NAP_FONT_CHAKRA_SEMIBOLD_TTF) se nacte
+OK    font Chakra Petch Bold (NAP_FONT_CHAKRA_BOLD_TTF) se nacte
+OK    font Chakra Petch BoldItalic (NAP_FONT_CHAKRA_BOLDITALIC_TTF) se nacte
+OK    vystupni rozliseni 706x1254 (0.75x SRC, drive 471x836/0.5x)
+OK    klavesa '1': l1=! l2=1 (rowLabels[0][1])
+OK    klavesa BkSp: l1=Delete l2=BkSp (plna slova, ne zkratka)
+OK    BREAK: l2=Break (plne slovo, drive zkratka BRK)
+OK    TAB: l1='Clr Set' l2=Tab
+OK    klavesa '-': l1=sipka nahoru (realny Atari CTRL+- = kurzor nahoru)
+OK    klavesa '=': l1=sipka dolu
+OK    RETURN: l2=Return (plne slovo, drive zkratka RET)
+OK    CONTROL: l2=Control (plne slovo, drive zkratka CTRL)
+OK    klavesy '+'/'*': sipky vlevo/vpravo
+OK    CAPS beze zmeny
+OK    obe SHIFT (id43,id54): l2=Shift (plne slovo)
+OK    byvala ',' klavesa (id51): presne z navrhu l1=[ l2=/ (ANO, stejne '/' jako id53 - takhle je to v navrhu, NEOPRAVOVANO, viz komentar u tabulky)
+OK    byvala '.' klavesa (id52): l1=] l2=.
+OK    byvala '/' klavesa (id53): l1=? l2=/
+OK    posledni klavesa (id55): l1=Fuji l2=Inverse
+OK    BUILD2SC2: START+OPTION drzene -> vizualne 'held' jen START(i=1)+OPTION(i=3), NE HELP(i=0)/SELECT(i=2)/RESET(i=4)
+OK    po puseni: zadne tlacitko uz neni vizualne 'held'
+OK    render() s novym vzhledem (font+gradienty+stiny) porad nespadne a neni jednobarevny
 
 VSECHNY KONTROLY PROSLY (0 chyb)

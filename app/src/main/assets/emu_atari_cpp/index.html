@@ -53,9 +53,16 @@ napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
      zadna vlastni HTML logika tlacitek. Zatim jen klavesnice+konzolovy pas
      (HELP/START/SELECT/OPTION/RESET) - kazetak a servisni tlacitka jsou
      dalsi kolo. -->
-<canvas id="kbdplat" width="471" height="836"
+<!-- BUILD2SC2: image-rendering:pixelated ZAMERNE ODSTRANENO - puvodne tu
+     bylo, aby "sedelo" k hranatemu ROM fontu z prvni verze. Ted uz C++
+     kresli skutecny vyhlazeny font a gradienty (viz nap_atari_keyboard.h),
+     takze nearest-neighbor zmenseni by to naopak kazilo (zubate hrany) -
+     normalni (smooth) zmenseni prohlizece sedi lip. Atari OBRAZOVKY
+     (kresli()/plat vyse) se to netyka - tam je "pixelated" spravne,
+     protoze tam ma byt videt skutecny hranaty pixel emulovaneho Atari. -->
+<canvas id="kbdplat" width="706" height="1254"
         style="width:100%;max-width:420px;display:block;margin:0 auto;
-               image-rendering:pixelated;background:#444;touch-action:none;
+               background:#444;touch-action:none;
                border:1px solid #262931;border-radius:8px"></canvas>
 <div id="stavKbd" class="hot" style="margin:6px 0 10px;text-align:center">Klavesnice (C++)</div>
 
@@ -283,11 +290,13 @@ function volej(f,arg){
 }
 
 // ====================================================================
-// BUILD2SC1: KLAVESNICE + KONZOLE - viz komentar u <canvas id="kbdplat">
+// BUILD2SC1+SC2: KLAVESNICE + KONZOLE - viz komentar u <canvas id="kbdplat">
 // vyse. Stejny atob()+putImageData() vzorec jako kresli() pro atari
 // obrazovku, jen na druhem platne. Prekresluje se JEN po doteku (kbd
-// obrazek ~1,6 MB base64 - 50x/s by appku zbytecne zatezovalo; staci
-// prekreslit, kdyz se nejake tlacitko/klavesa doopravdy zmeni).
+// obrazek ~3,6 MB base64 pri rozliseni 706x1254 - BUILD2SC2 zvyseno z
+// puvodnich 471x836/~1,6 MB kvuli ostrejsimu pismu, viz KbdDeck::W/H -
+// porad OK, protoze na rozdil od atari obrazovky se nekresli 50x/s, jen
+// kdyz se nejake tlacitko/klavesa doopravdy zmeni).
 // ====================================================================
 var kbdCtx=null;
 function kresliKbd(j){
@@ -307,11 +316,12 @@ function obnovKbdObraz(){
   catch(e){ $('stavKbd').textContent='nelze precist obraz klavesnice: '+e.message; }
 }
 // Souradnice doteku na <canvas> (CSS pixely, muze byt zmensene/zvetsene
-// proti skutecnym 471x836) prevedeme na souradnice PRIMO v obrazku -
-// presne tak, jak to ocekava kbdHitTest v C++.
+// proti skutecnym 706x1254 - BUILD2SC2, drive 471x836, viz KbdDeck::W/H)
+// prevedeme na souradnice PRIMO v obrazku - presne tak, jak to ocekava
+// kbdHitTest v C++.
 function kbdSouradnice(e){
   var r=document.getElementById('kbdplat').getBoundingClientRect();
-  var x=(e.clientX-r.left)*(471/r.width), y=(e.clientY-r.top)*(836/r.height);
+  var x=(e.clientX-r.left)*(706/r.width), y=(e.clientY-r.top)*(1254/r.height);
   return [Math.round(x), Math.round(y)];
 }
 // Kazdy prst (pointerId) si drzi SVOJE id klavesy od pointerdown do
