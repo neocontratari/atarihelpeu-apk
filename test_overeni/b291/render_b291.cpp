@@ -1,6 +1,6 @@
 // B291: vykresli zarizeni (nap_atari_device.h) do PPM pro vizualni kontrolu
 // proti Chromium renderu schvaleneho navrhu. Volitelne: stav (stisky).
-//   g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o render_b291 render_b291.cpp ../../app/src/main/cpp/atari/nap_atari_cpu.cpp
+//   g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o render_b291 render_b291.cpp
 //   ./render_b291 vystup.ppm sirka [scenar]
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "../../app/src/main/cpp/vendor/stb/stb_truetype.h"
@@ -8,9 +8,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <chrono>
-#include "nap_atari_cpu.h"
-#include "nap_atari_mem.h"
-#include "nap_atari_video.h"
 #include "nap_atari_machine.h"
 #include "nap_atari_roms.h"
 #include "nap_atari_device.h"

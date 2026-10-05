@@ -1,6 +1,6 @@
 OK     po startu je na obrazovce READY
 OK     text prevedeny na klavesy (zadny neznamy znak)
---- obrazovka po LIST (104 snimku psani) ---
+--- obrazovka po LIST (116 snimku psani) ---
 
   READY
   10 PRINT "HELLO 1000"
@@ -29,14 +29,14 @@ OK     text prevedeny na klavesy (zadny neznamy znak)
 OK     fronta klaves se vyprazdnila
 OK     LIST ukazuje radek 10 PRESNE (vc. LL a 000)
 OK     LIST ukazuje radek 20
-LOG: B291 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam zvuk z jadra
-LOG: B291 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=264, zvuk=24.1s -> ukladam WAV
+LOG: B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
+LOG: B292 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=264, zvuk=24.1s -> ukladam WAV
 OK     po CSAVE se zapnul kazetovy motor
 OK     po vypnuti motoru je hotovy WAV zaznam
 OK     presne jeden CSAVE zaznam (zadny falesny pri startu)
-CSAVE trvalo 1203 snimku, WAV 24.1 s, SEROUT celkem 701
+CSAVE trvalo 1206 snimku, WAV 24.1 s, SEROUT celkem 701
 OK     delka WAV odpovida CSAVE (10-60 s)
-pruchodu nulou: 187231 (7775 za s)
+pruchodu nulou: 155317 (6434 za s)
 OK     WAV obsahuje kazetove tony (tisice pruchodu nulou za s)
 
 VYSLEDEK: 10 kontrol, 0 chyb

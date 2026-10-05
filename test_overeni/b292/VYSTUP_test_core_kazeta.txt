@@ -1,0 +1,30 @@
+B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
+B292 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=264, zvuk=24.1s -> ukladam WAV
+CSAVE hotovo za 1528 snimku, 1064574 vzorku (24.1 s), SEROUT=701
+PASKA: 24.1 s, 44100 Hz, kanalu 1 (FSK v kanalu 0), pri 600 Bd: 264 bajtu, 2 zaznamu, 0 chyb ramce
+CLOAD: snimek 1440, prijato bajtu 131, chyb ramce 0, pozice pasky 21.7 s
+                                        
+  READY                                 
+  CLOAD                                 
+                                        
+  READY                                 
+  LIST                                  
+                                        
+  10 PRINT "ATARIHELP B292"             
+  20 FOR I=1 TO 3:? I*7:NEXT I          
+  30 GOTO 10                            
+                                        
+  READY                                 
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+KAZETA OK: program po CLOAD souhlasi

@@ -6,7 +6,7 @@
 // do pristroje "saha prstem" (devTouchNative) presne jako Java.
 //   g++ -std=c++17 -O2 -pthread -Istub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux
 //       -I../../app/src/main/cpp/atari -o test_b291_jni_host test_b291_jni_host.cpp
-//       ../../app/src/main/cpp/atari/nap_atari_cpu.cpp      (vse na jednom radku)
+//            (vse na jednom radku)
 //   ./test_b291_jni_host            (rychly test, ~20 s)
 //   ./test_b291_jni_host - csave    (dlouhy test CSAVE pres vlakna, ~35 s)
 #include "../../app/src/main/cpp/atari/nap_atari_native.cpp"

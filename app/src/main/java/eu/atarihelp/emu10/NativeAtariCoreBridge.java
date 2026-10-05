@@ -15,8 +15,12 @@ package eu.atarihelp.emu10;
 public final class NativeAtariCoreBridge {
 
     // Cisla, ktera vysla na pocitaci. Telefon musi dat stejna.
-    public static final String OCEKAVANY_CPU_HASH = "51154C46";
-    public static final String OCEKAVANY_MEM_HASH = "D3949DC5";
+    // B292: nove jadro presne po cyklech (nap_atari_6502.h + nap_atari_machine.h,
+    // samokontrola v nap_atari_selftest.h) - cisla z test_overeni/b292/
+    // test_b292_jni_host (x86_64): procesor vcetne poctu cyklu na sbernici,
+    // pamet 130XE pres vsech 256 hodnot PORTB (CPU i ANTIC).
+    public static final String OCEKAVANY_CPU_HASH = "29C55806";
+    public static final String OCEKAVANY_MEM_HASH = "8CD99DC5";
     public static final long   OCEKAVANO_INSTRUKCI = 51200L;
     public static final long   OCEKAVANO_CTENI     = 16252928L;
 
@@ -98,6 +102,10 @@ public final class NativeAtariCoreBridge {
     private static native String  devPollLogNative();
     private static native byte[]  devTakeWavNative();
     private static native String  devInfoNative();
+    // B292: kazeta (CLOAD) - WAV se v C++ demoduluje (FSK 5327/3995 Hz) a
+    // stroj ho cte pri zapnutem motoru a PLAY, bajty sklada POKEY.
+    private static native String  devLoadTapeNative(byte[] wav, String jmeno);
+    private static native void    devEjectTapeNative();
 
     // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
     // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
@@ -245,6 +253,17 @@ public final class NativeAtariCoreBridge {
     public static String devInfoSafe() {
         if (!loaded) return "B291 PRISTROJ knihovna napatari neni nactena";
         try { return devInfoNative(); } catch (Throwable t) { return "B291 PRISTROJ stav: chyba " + t.getMessage(); }
+    }
+    /** B292: vlozit kazetu (WAV) do magnetofonu. Vraci "OK ..." / "CHYBA ...". */
+    public static String devLoadTapeSafe(byte[] wav, String jmeno) {
+        if (!loaded) return "CHYBA knihovna napatari neni nactena";
+        if (wav == null) return "CHYBA zadna data";
+        try { String r = devLoadTapeNative(wav, jmeno); return r == null ? "CHYBA nic" : r; }
+        catch (Throwable t) { return "CHYBA " + t.getMessage(); }
+    }
+    public static void devEjectTapeSafe() {
+        if (!loaded) return;
+        try { devEjectTapeNative(); } catch (Throwable ignored) {}
     }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */

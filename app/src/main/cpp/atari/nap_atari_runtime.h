@@ -7,12 +7,13 @@
 //                  JS jadro (emu_vbxe queueText/typeStep): dalsi klavesa az
 //                  kdyz OS prevzal predchozi (CH $02FC = $FF), RETURN dostane
 //                  vic casu. Zadny zapis do RAM ("RAM inject") - jen klavesy.
-//  2) CsaveRecorder - CSAVE -> WAV primo v C++. Nahrava se presne to, co jde
-//                  z jadra do reproduktoru, ale JEN kdyz bezi kazetovy motor
-//                  (PACTL bit3 = 0) - presne jako skutecny magnetofon, ktery
-//                  pasku tahne jen se zapnutym motorem. Ulozi se jen kdyz
-//                  behem behu motoru opravdu odesla data (SEROUT) - CLOAD
-//                  (cteni) tak WAV nevytvori.
+//  2) CsaveRecorder - CSAVE -> WAV primo v C++. B292: nahrava se linka
+//                  SIO DATA OUT (to, co POKEY posila do magnetofonu - FSK
+//                  5327/3995 Hz v dvoutonovem rezimu), NE zvuk z reproduktoru
+//                  (ten zavisi na SOUNDR a michaji se do nej dalsi kanaly).
+//                  Jen kdyz bezi kazetovy motor (PACTL bit3 = 0) - presne jako
+//                  skutecny magnetofon. Ulozi se jen kdyz behem behu motoru
+//                  opravdu odesla data (SEROUT) - CLOAD (cteni) WAV nevytvori.
 //  3) XexLoader  - spusteni XEX souboru (tlacitka XEX/MOBIL, TURBO/BASIC):
 //                  studeny start s drzenym OPTION (BASIC vypnuty), pak se
 //                  segmenty nahraji az ve chvili, kdy OS po startu odpocava,
@@ -88,9 +89,11 @@ struct TypeQueue {
     if (q.empty()) return false;
     const int sc = q.front();
     // minimalni odstup: RETURN necha BASIC radek zpracovat; STEJNA klavesa
-    // hned po sobe se v OS do 3 snimku ignoruje (KEYDEL), proto 5
+    // hned po sobe: OS ji ignoruje, dokud KEYDEL (3) neodpocita - a ten
+    // odpocitava jen ve VBI, kdyz uz je klavesa PUSTENA (OS $C1A1: SKSTAT
+    // bit 2). Klavesa je drzena 4 snimky + 3 snimky KEYDEL -> 9 (rezerva).
     int gap = (last == 12) ? 12 : 2;
-    if (sc == last) gap = std::max(gap, 5);
+    if (sc == last) gap = std::max(gap, 9);
     if (odPosledni < gap) return false;
     // OS jeste nevyzvedl predchozi klavesu (CH $02FC != $FF) - pockat
     if (m.mem.ram[0x2FC] != 0xFF) return false;
@@ -113,7 +116,7 @@ struct CsaveRecorder {
   bool maHotovo = false;
   std::vector<std::string> log;
   static const size_t MAX_VZORKU = (size_t)44100 * 60 * 10;   // pojistka 10 minut
-  static bool motor(const Machine &m) { return ((m.mem.pia.ctlA >> 3) & 1) == 0; }
+  static bool motor(const Machine &m) { return m.motorOn(); }
   // po studenem startu / vypnuti: zacit znovu "nenatazeny"
   void reset() { armed = false; active = false; pcm.clear(); }
   // vola se po kazdem snimku s presne temi vzorky, co sly do reproduktoru
@@ -122,7 +125,7 @@ struct CsaveRecorder {
     if (!armed) { if (!mot) armed = true; return; }
     if (mot && !active) {
       active = true; pcm.clear(); serout0 = m.seroutPocet;
-      log.push_back("B291 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam zvuk z jadra");
+      log.push_back("B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT");
     }
     if (active) {
       if (pcm.size() + (size_t)n <= MAX_VZORKU) {
@@ -141,10 +144,10 @@ struct CsaveRecorder {
       // skutecny CSAVE posle aspon jeden 132-bajtovy zaznam a trva vteriny
       if (bajtu >= 100 && sek >= 2.0) {
         hotovo.swap(pcm); pcm.clear(); maHotovo = true;
-        std::snprintf(b, sizeof(b), "B291 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=%lld, zvuk=%.1fs -> ukladam WAV", bajtu, sek);
+        std::snprintf(b, sizeof(b), "B292 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=%lld, zvuk=%.1fs -> ukladam WAV", bajtu, sek);
       } else {
         pcm.clear();
-        std::snprintf(b, sizeof(b), "B291 KAZETA motor VYPNUT (SEROUT bajtu=%lld, %.1fs) - neni to CSAVE, WAV se nevytvari", bajtu, sek);
+        std::snprintf(b, sizeof(b), "B292 KAZETA motor VYPNUT (SEROUT bajtu=%lld, %.1fs) - neni to CSAVE, WAV se nevytvari", bajtu, sek);
       }
       log.push_back(b);
     }
@@ -196,9 +199,9 @@ struct XexLoader {
 
   static void jsr(Machine &m, int adr) {
     const int navrat = PARK - 1;     // RTS -> $0100
-    m.mem.ram[0x100 | m.cpu.c.sp] = (navrat >> 8) & 0xFF; m.cpu.c.sp = (m.cpu.c.sp - 1) & 0xFF;
-    m.mem.ram[0x100 | m.cpu.c.sp] = navrat & 0xFF;        m.cpu.c.sp = (m.cpu.c.sp - 1) & 0xFF;
-    m.cpu.c.pc = adr & 0xFFFF;
+    m.mem.ram[0x100 | m.cpu.s] = (navrat >> 8) & 0xFF; m.cpu.s = (uint8_t)(m.cpu.s - 1);
+    m.mem.ram[0x100 | m.cpu.s] = navrat & 0xFF;        m.cpu.s = (uint8_t)(m.cpu.s - 1);
+    m.cpu.pc = (uint16_t)(adr & 0xFFFF);
   }
   static void parkKod(Machine &m) { m.mem.ram[PARK] = 0x4C; m.mem.ram[PARK + 1] = PARK & 0xFF; m.mem.ram[PARK + 2] = PARK >> 8; }
 
@@ -211,7 +214,7 @@ struct XexLoader {
       parkKod(m);
       int dv = m.mem.ram[0x0A] | (m.mem.ram[0x0B] << 8);
       if (dv != 0 && dv != PARK) { m.mem.ram[0x0A] = PARK & 0xFF; m.mem.ram[0x0B] = PARK >> 8; }
-      if (m.cpu.c.pc == PARK && snimku > 10) {
+      if (m.cpu.pc == PARK && snimku > 10) {
         m.sioRychlyTimeout = false;
         m.consol = 7;                                  // OPTION pustit (hry ho ctou na titulce)
         m.mem.ram[0x2E0] = 0; m.mem.ram[0x2E1] = 0;    // RUNAD
@@ -225,7 +228,7 @@ struct XexLoader {
       } else return;
     }
     if (stav == INIT) {
-      if (m.cpu.c.pc != PARK) {
+      if (m.cpu.pc != PARK) {
         initSnimku++;
         // INIT, ktery se nevrati, SPUSTIL program sam (napr. Turbo-BASIC XL,
         // Decathlon) - presne tak by to dopadlo i s DOSem. Zavadec konci.

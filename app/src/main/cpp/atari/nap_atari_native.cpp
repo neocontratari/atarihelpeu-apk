@@ -25,11 +25,14 @@
 #include <atomic>           // B287: nativni OpenSL zvuk (kruhovy buffer)
 #include <SLES/OpenSLES.h>  // B287: CESTA A - zvuk primo z jadra, bez JS/Java
 #include <SLES/OpenSLES_Android.h>
-#include "nap_atari_cpu.h"
-#include "nap_atari_mem.h"
-#include "nap_atari_video.h"
+// B292: NOVE JADRO presne po cyklech (6502 + ANTIC + GTIA + POKEY + PIA,
+// nap_atari_6502.h + nap_atari_machine.h). Stare jadro (nap_atari_cpu.*,
+// nap_atari_mem.h, nap_atari_video.h, nap_atari_pokey.h, nap_atari_xex.h)
+// je z appky odstranene - viz komentar na zacatku nap_atari_machine.h.
 #include "nap_atari_machine.h"
 #include "nap_atari_roms.h"
+#include "nap_atari_selftest.h"
+#include "nap_atari_tape.h"
 #include "nap_atari_audio_ring.h"  // B287: cista (bez JNI) cast - viz test_b287
 // BUILD2SC2: skutecny font (Chakra Petch, presne jako schvaleny navrh) pres
 // stb_truetype.h - jediny .cpp v projektu, kde se STB_TRUETYPE_IMPLEMENTATION
@@ -68,148 +71,34 @@ static const char B64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0
 using namespace nap;
 
 // ---------------------------------------------------------------
-//  Spolecny generator - MUSI byt shodny s tim na pocitaci (dt2.cpp)
+//  SAMOKONTROLA JADRA (B292: nove jadro - viz nap_atari_selftest.h)
+//  Telefon musi dat presne stejna cisla jako pocitac.
 // ---------------------------------------------------------------
-static uint32_t g_salt;
-static std::map<int,int> g_ovl;
-
-static inline uint32_t genb(uint32_t a) {
-  uint32_t h = (a * 0x9E3779B1u) ^ (g_salt * 0x85EBCA6Bu);
-  h ^= h >> 15; h *= 0xC2B2AE35u; h ^= h >> 13;
-  return h & 0xFF;
-}
-static int  T_RD(int a) { auto it = g_ovl.find(a); return it != g_ovl.end() ? it->second : (int)genb((uint32_t)a); }
-static void T_WR(int a, int v) { g_ovl[a] = v; }
-
-static uint32_t g_rs;
-static inline uint32_t rnd() { g_rs ^= g_rs << 13; g_rs ^= g_rs >> 17; g_rs ^= g_rs << 5; return g_rs; }
-
-static inline void mix(uint32_t &h, uint32_t v) { h ^= v; h *= 16777619u; }
-
-// ---------------------------------------------------------------
-//  TEST 1: procesor 6502
-// ---------------------------------------------------------------
-static uint32_t cpuSelfTest(int perOp, uint32_t seed, long long *outInstr) {
-  g_rs = seed;
-  Cpu6502 cpu(T_RD, T_WR);
-  uint32_t h = 2166136261u;
-  long long n = 0;
-  for (int op = 0; op < 256; op++) {
-    for (int k = 0; k < perOp; k++) {
-      g_salt = rnd(); g_ovl.clear();
-      cpu.c.a = rnd() & 0xFF; cpu.c.x = rnd() & 0xFF; cpu.c.y = rnd() & 0xFF;
-      cpu.c.sp = rnd() & 0xFF; cpu.c.pc = rnd() & 0xFFFF;
-      cpu.c.nf = rnd() & 1; cpu.c.vf = rnd() & 1; cpu.c.df = rnd() & 1;
-      cpu.c.if_ = rnd() & 1; cpu.c.zf = rnd() & 1; cpu.c.cf = rnd() & 1;
-      cpu.c.jam = false; cpu.c.nmiPending = false; cpu.c.irqLine = 0; cpu.c.cycles = 0;
-      g_ovl[cpu.c.pc] = op;
-      cpu.step();
-      mix(h, (uint32_t)op);      mix(h, (uint32_t)cpu.c.a);
-      mix(h, (uint32_t)cpu.c.x); mix(h, (uint32_t)cpu.c.y);
-      mix(h, (uint32_t)cpu.c.sp);mix(h, (uint32_t)cpu.c.pc);
-      mix(h, (uint32_t)(cpu.c.nf | (cpu.c.vf<<1) | (cpu.c.df<<2) |
-                        (cpu.c.if_<<3) | (cpu.c.zf<<4) | (cpu.c.cf<<5)));
-      mix(h, (uint32_t)cpu.c.cycles);
-      mix(h, (uint32_t)(cpu.c.jam ? 1 : 0));
-      for (auto &kv : g_ovl) { mix(h, (uint32_t)kv.first); mix(h, (uint32_t)kv.second); }
-      n++;
-    }
-  }
-  *outInstr = n;
-  return h;
-}
-
-// ---------------------------------------------------------------
-//  TEST 2: pamet a bankovani
-// ---------------------------------------------------------------
-static uint8_t g_os[16384], g_bas[8192];
-static inline int patRam(int i) { return (i*7 + 11) & 0xFF; }
-static inline int patExt(int i) { return (i*13 + 29) & 0xFF; }
-static inline int patOs (int i) { return (i*31 + 5)  & 0xFF; }
-static inline int patBas(int i) { return (i*17 + 91) & 0xFF; }
-
-// AtariMem ma pres 380 kB (RAM 64 kB + rozsirena pamet 320 kB). Na zasobniku
-// vlakna, ktere obsluhuje @JavascriptInterface, by to byl hazard - proto je
-// staticka. Test bezi jen jednou a nikdo jiny ji nesaha.
-static AtariMem g_mem;
-
-static uint32_t memSelfTest(long long *outReads) {
-  for (int i = 0; i < 16384; i++) g_os[i]  = (uint8_t)patOs(i);
-  for (int i = 0; i < 8192;  i++) g_bas[i] = (uint8_t)patBas(i);
-  AtariMem &m = g_mem;
-  std::memset(m.ram, 0, sizeof(m.ram));
-  std::memset(m.ext, 0, sizeof(m.ext));
-  m.pia = Pia();
-  m.os = g_os; m.bas = g_bas;
-  for (int i = 0; i < 65536; i++) m.ram[i] = (uint8_t)patRam(i);
-  auto setPortB = [&](int v) {
-    m.piaWrite(3, 0x00); m.piaWrite(1, 0xFF);
-    m.piaWrite(3, 0x04); m.piaWrite(1, v & 0xFF);
-  };
-  for (int b = 0; b < 16; b++) {
-    int pb = ((b & 1) << 2) | (((b >> 1) & 1) << 3) | (((b >> 2) & 1) << 5) | (((b >> 3) & 1) << 6);
-    setPortB(pb);
-    int bank = ((pb & 0x40) == 0) ? AtariMem::rambo320Bank(pb) : AtariMem::xe130Bank(pb);
-    int base = (bank << 14) & (AtariMem::EXT_SIZE - 1);
-    for (int o = 0; o < 16384; o++) m.cpuWrite(0x4000 + o, patExt(base + o));
-  }
-  for (int i = 0; i < 65536; i++) m.ram[i] = (uint8_t)patRam(i);
-
-  uint32_t h = 2166136261u; long long n = 0;
-  for (int pb = 0; pb < 256; pb++) {
-    setPortB(pb);
-    for (int a = 0; a < 65536; a++) {
-      if (a >= 0xD000 && a < 0xD800) continue;
-      mix(h, (uint32_t)m.cpuRead(a));
-      mix(h, (uint32_t)m.anticRead(a));
-      n++;
-    }
-  }
-  *outReads = n;
-  return h;
-}
-
-// ---------------------------------------------------------------
-//  TEST 3: jak rychle to na tomhle telefonu bezi
-// ---------------------------------------------------------------
-static double speedTest(long long *outInstr) {
-  g_salt = 12345; g_ovl.clear();
-  Cpu6502 cpu(T_RD, T_WR);
-  cpu.c.pc = 0x2000; cpu.c.sp = 0xFF;
-  // maly program v pameti: smycka INX / BNE
-  g_ovl[0x2000] = 0xE8;                       // INX
-  g_ovl[0x2001] = 0xD0; g_ovl[0x2002] = 0xFD; // BNE -3
-  timespec t0{}, t1{};
-  clock_gettime(CLOCK_MONOTONIC, &t0);
-  const long long N = 20000000;
-  for (long long i = 0; i < N; i++) cpu.step();
-  clock_gettime(CLOCK_MONOTONIC, &t1);
-  double sec = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) / 1e9;
-  *outInstr = N;
-  return sec;
-}
+static std::mutex g_mSelfTest;
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runSelfTest(JNIEnv *env, jclass) {
+  std::lock_guard<std::mutex> zamekTestu(g_mSelfTest);
   char buf[1024];
   long long instr = 0, reads = 0, sInstr = 0;
 
   timespec a{}, b{};
   clock_gettime(CLOCK_MONOTONIC, &a);
-  uint32_t hCpu = cpuSelfTest(200, 7u, &instr);
+  uint32_t hCpu = nap::selftest::cpuHash(200, 7u, &instr);
   clock_gettime(CLOCK_MONOTONIC, &b);
   double cpuSec = (b.tv_sec - a.tv_sec) + (b.tv_nsec - a.tv_nsec) / 1e9;
 
   clock_gettime(CLOCK_MONOTONIC, &a);
-  uint32_t hMem = memSelfTest(&reads);
+  uint32_t hMem = nap::selftest::memHash(&reads);
   clock_gettime(CLOCK_MONOTONIC, &b);
   double memSec = (b.tv_sec - a.tv_sec) + (b.tv_nsec - a.tv_nsec) / 1e9;
 
-  double spdSec = speedTest(&sInstr);
+  // rychlost: 150 snimku skutecneho startu OS (cely stroj po cyklech)
+  double atariSec = 0;
+  double spdSec = nap::selftest::speed(NAP_OS_ROM, NAP_BASIC_ROM, &sInstr, &atariSec);
   double mips = (spdSec > 0) ? (sInstr / spdSec / 1e6) : 0.0;
-
-  // 6502 v Atari bezi na 1,77 MHz -> kolik "Atari" zvladne tenhle telefon
-  double realtimeX = mips * 1e6 / 1773447.0;
+  // kolikrat rychleji nez skutecne Atari (1 = presne realny cas)
+  double realtimeX = (spdSec > 0) ? atariSec / spdSec : 0.0;
 
   snprintf(buf, sizeof(buf),
     "{\"cpuHash\":\"%08X\",\"cpuInstr\":%lld,\"cpuSec\":%.2f,"
@@ -226,7 +115,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runSelfTest(JNIEnv *env, jclass) {
 #endif
     ((char)-1 < 0) ? 1 : 0);
 
-  ALOG("BUILD2SA14 ATARI_SELFTEST cpu=%08X instr=%lld %.2fs | mem=%08X reads=%lld %.2fs | %.2f MIPS = %.1fx Atari",
+  ALOG("B292 ATARI_SELFTEST cpu=%08X instr=%lld %.2fs | mem=%08X reads=%lld %.2fs | %.2f MIPS = %.1fx realny cas Atari (cely stroj po cyklech)",
        hCpu, instr, cpuSec, hMem, reads, memSec, mips, realtimeX);
   return env->NewStringUTF(buf);
 }
@@ -249,6 +138,7 @@ static void zaloz() {
   g_stroj->mem.os  = NAP_OS_ROM;
   g_stroj->mem.bas = NAP_BASIC_ROM;
   g_stroj->view    = g_view;      // obraz vznika radek po radku behem emulace
+  g_stroj->tapeCapture = true;    // B292: linka SIO DATA OUT pro CSAVE -> WAV
 }
 
 // ===================================================================
@@ -444,10 +334,10 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, ji
   const double SR_BOOT = 44100.0;
   const int vzorkuNaSnimekBoot = 882;
   std::vector<float> zvukBoot((size_t)snimku * vzorkuNaSnimekBoot);
-  for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) {
+  for (int f = 0; f < snimku && !g_stroj->cpu.jam; f++) {
     g_stroj->runFrame();
     float *cil = zvukBoot.data() + (size_t)f * vzorkuNaSnimekBoot;
-    if (g_stroj->cpu.c.jam) std::memset(cil, 0, vzorkuNaSnimekBoot * sizeof(float));
+    if (g_stroj->cpu.jam) std::memset(cil, 0, vzorkuNaSnimekBoot * sizeof(float));
     else g_stroj->genAudio(cil, vzorkuNaSnimekBoot, SR_BOOT);
   }
   // B287: stejne vzorky, co uz vznikly vyse, navic posilame do nativni
@@ -474,10 +364,10 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, ji
   char buf[256];
   snprintf(buf, sizeof(buf),
     "{\"pc\":%d,\"jam\":%s,\"dmactl\":%d,\"dlist\":%d,\"portb\":%d,\"snimku\":%lld,\"zvuk_b64\":\"",
-    g_stroj->cpu.c.pc, g_stroj->cpu.c.jam ? "true" : "false",
-    g_stroj->dmactl, g_stroj->dlistAddr(), g_stroj->mem.portB(), g_stroj->frame);
+    g_stroj->cpu.pc, g_stroj->cpu.jam ? "true" : "false",
+    g_stroj->dmactl(), g_stroj->dlistAddr(), g_stroj->mem.portB(), g_stroj->frame);
   ALOG("BUILD2SA18 ATARI_BOOT PC=$%04X DMACTL=$%02X DLIST=$%04X PORTB=$%02X snimku=%lld",
-       g_stroj->cpu.c.pc, g_stroj->dmactl, g_stroj->dlistAddr(),
+       g_stroj->cpu.pc, g_stroj->dmactl(), g_stroj->dlistAddr(),
        g_stroj->mem.portB(), g_stroj->frame);
   // BUILD2SB79: char buf[256] je PRILIS MALY pro zvukova data (mohou
   // byt megabajty) - slozit finalni JSON jako std::string, ne
@@ -492,7 +382,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_keyNative(JNIEnv *, jclass, jint k
   std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return;
   g_stroj->klavesa(kod);
-  for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
+  for (int f = 0; f < snimku && !g_stroj->cpu.jam; f++) g_stroj->runFrame();
 }
 
 // B283: Rene - "v self testu ti ujizdi grafika od zvuku...mozna furt
@@ -524,7 +414,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_consolNative(JNIEnv *, jclass, jin
   std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return;
   g_stroj->consol = maska & 7;
-  for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
+  for (int f = 0; f < snimku && !g_stroj->cpu.jam; f++) g_stroj->runFrame();
   g_stroj->consol = 7;
 }
 
@@ -532,7 +422,7 @@ extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runNative(JNIEnv *, jclass, jint snimku) {
   std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return;
-  for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
+  for (int f = 0; f < snimku && !g_stroj->cpu.jam; f++) g_stroj->runFrame();
   // BUILD2SB75: viz komentar u srovnatSledovaniZvuku() v machine.h.
   // POZOR: tenhle prah (>10) je zamerne NAD strop normalni "dohaneci"
   // smycky (max 10 snimku/tik, a ty se navic posouvaji po JEDNOM
@@ -587,12 +477,12 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_screenNative(JNIEnv *env, jclass) 
   }
   std::string out = "{\"w\":" + std::to_string(W) + ",\"h\":" + std::to_string(H)
     + ",\"dlKroku\":" + std::to_string(kroku)
-    + ",\"pc\":" + std::to_string(g_stroj->cpu.c.pc)
-    + ",\"dmactl\":" + std::to_string(g_stroj->dmactl)
+    + ",\"pc\":" + std::to_string(g_stroj->cpu.pc)
+    + ",\"dmactl\":" + std::to_string(g_stroj->dmactl())
     + ",\"dlist\":" + std::to_string(g_stroj->dlistAddr())
     + ",\"portb\":" + std::to_string(g_stroj->mem.portB())
     + ",\"snimku\":" + std::to_string(g_stroj->frame)
-    + ",\"jam\":" + std::string(g_stroj->cpu.c.jam ? "true" : "false")
+    + ",\"jam\":" + std::string(g_stroj->cpu.jam ? "true" : "false")
     + ",\"rgb\":\"" + b64 + "\"}";
   return env->NewStringUTF(out.c_str());
 }
@@ -621,7 +511,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_regsNative(JNIEnv *env, jclass) {
            g_stroj->audf[0], g_stroj->audf[1], g_stroj->audf[2], g_stroj->audf[3],
            g_stroj->audc[0], g_stroj->audc[1], g_stroj->audc[2], g_stroj->audc[3],
            g_stroj->audctl, g_stroj->gtiaSpeakerBit, g_stroj->gtiaKlikPocitadlo,
-           g_stroj->cpu.c.jam ? 1 : 0, g_stroj->cpu.c.pc);
+           g_stroj->cpu.jam ? 1 : 0, g_stroj->cpu.pc);
   return env->NewStringUTF(buf);
 }
 
@@ -649,9 +539,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariZachytitCsaveZvukNative(JNIEn
 
   std::vector<float> buf((size_t)n * vzorkuNaSnimek);
   for (int f = 0; f < n; f++) {
-    if (!g_stroj->cpu.c.jam) g_stroj->runFrame();
+    if (!g_stroj->cpu.jam) g_stroj->runFrame();
     float *cil = buf.data() + (size_t)f * vzorkuNaSnimek;
-    if (g_stroj->cpu.c.jam) {
+    if (g_stroj->cpu.jam) {
       std::memset(cil, 0, vzorkuNaSnimek * sizeof(float));
     } else {
       g_stroj->genAudio(cil, vzorkuNaSnimek, SR);
@@ -710,8 +600,10 @@ extern "C" JNIEXPORT jint JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_motorZapnutyNative(JNIEnv *, jclass) {
   std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return 0;
-  const bool motorVypnuty = (g_stroj->mem.pia.ctlA >> 3) & 1; // bit3=1 -> OFF
-  return motorVypnuty ? 0 : 1;
+  // B292: motor bezi jen kdyz je CA2 vystup (PACTL bit5=1, bit4=1) a v nule
+  // (bit3=0) - presne jako Machine::motorOn() (po zapnuti je PACTL=0 a motor
+  // na skutecnem Atari stoji)
+  return g_stroj->motorOn() ? 1 : 0;
 }
 
 // runFrame() (spravne), ALE audioChunkNative() na to NEBRALA OHLED -
@@ -727,7 +619,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioChunkNative(JNIEnv *env, jcla
   const double SR = 44100.0;
   const int n = pocetVzorku > 0 ? pocetVzorku : 1;
   std::vector<float> tmp(n);
-  if (g_stroj->cpu.c.jam) {
+  if (g_stroj->cpu.jam) {
     std::memset(tmp.data(), 0, tmp.size() * sizeof(float));
   } else {
     g_stroj->genAudio(tmp.data(), n, SR);
@@ -857,13 +749,20 @@ static void pokeRender() {
 }
 // Studeny start - smazat a postavit cely stroj znovu (jako bootNative).
 // POZOR: volat jen pod g_mStroj.
+static bool g_shiftZamek = false;                  // SHIFT zamceny na pristroji (pod g_mStroj)
 static void studenyStartLocked(int consol) {
+  // B292: kazeta v magnetofonu zustava i pri vypnuti/zapnuti pocitace
+  nap::TapeDeck paska;
+  if (g_stroj) paska = std::move(g_stroj->tape);
   delete g_stroj; g_stroj = nullptr;
   delete g_view;  g_view  = nullptr;
   zaloz();
   std::memset(g_stroj->mem.ram, 0, sizeof(g_stroj->mem.ram));
   g_stroj->reset();
   g_stroj->consol = consol & 7;
+  g_stroj->tape = std::move(paska);
+  g_stroj->tape.line = 1; g_stroj->tape.rxPhase = 0;
+  g_stroj->shiftDrzen(g_shiftZamek);
   g_typeQ.clear();
   g_rec.reset();
 }
@@ -882,7 +781,7 @@ static void vyzvednoutVystupyLocked() {
 }
 
 static void emuVlaknoMain() {
-  std::vector<float> zvuk(882);
+  std::vector<float> zvuk(882), pasek(882);
   long long dalsi = nap_ted_ns();
   devLog("B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)");
   nastavPriorituVlakna(-8, "EMULACE_VLAKNO");
@@ -907,7 +806,41 @@ static void emuVlaknoMain() {
             devLog("B291 POWER VYPNUTO");
             break;
           case nap::dev::Ev::KEY:
-            if (g_stroj && g_strojBezi) g_stroj->klavesa(e.v);
+            // B292: klavesa drzena, dokud je na ni prst (OS ji pak opakuje)
+            if (g_stroj && g_strojBezi) g_stroj->klavesa(e.v, true);
+            break;
+          case nap::dev::Ev::KEYUP:
+            if (g_stroj) g_stroj->klavesaPustena();
+            break;
+          case nap::dev::Ev::SHIFT:
+            g_shiftZamek = e.v != 0;
+            if (g_stroj) g_stroj->shiftDrzen(g_shiftZamek);
+            break;
+          case nap::dev::Ev::TAPE:
+            if (g_stroj) {
+              g_stroj->tape.play = (e.v & 1) != 0;
+              char b[200];
+              snprintf(b, sizeof(b), "B292 KAZETAK %s%s - kazeta: %s, pozice %.1f s",
+                       (e.v & 1) ? "PLAY" : "STOP", (e.v & 2) ? "+REC" : "",
+                       g_stroj->tape.loaded ? g_stroj->tape.name.c_str() : "ZADNA",
+                       g_stroj->tape.loaded ? g_stroj->tape.pos / g_stroj->tape.img.rate : 0.0);
+              devLog(b);
+            }
+            break;
+          case nap::dev::Ev::REWIND:
+            if (g_stroj && g_stroj->tape.loaded) {
+              g_stroj->tape.pos = 0; g_stroj->tape.rxPhase = 0;
+              devLog("B292 KAZETAK REW - pasek pretocen na zacatek");
+            }
+            break;
+          case nap::dev::Ev::FFWD:
+            if (g_stroj && g_stroj->tape.loaded) {
+              nap::TapeDeck &t = g_stroj->tape;
+              t.pos = std::min((double)t.img.n, t.pos + 10.0 * t.img.rate); t.rxPhase = 0;
+              char b[120];
+              snprintf(b, sizeof(b), "B292 KAZETAK FWD - pasek +10 s (pozice %.1f / %.1f s)", t.pos / t.img.rate, t.img.seconds());
+              devLog(b);
+            }
             break;
           case nap::dev::Ev::CONSOL: {
             int nove = e.v & 7;
@@ -957,11 +890,15 @@ static void emuVlaknoMain() {
       if (!g_stroj) studenyStartLocked(7);
       if (!g_xex.aktivni()) g_stroj->consol = consolEfektivni();   // pri zavadeni XEX drzi OPTION zavadec
       g_typeQ.step(*g_stroj);
-      if (!g_stroj->cpu.c.jam) g_stroj->runFrame();
-      if (g_stroj->cpu.c.jam) std::fill(zvuk.begin(), zvuk.end(), 0.f);
+      if (!g_stroj->cpu.jam) g_stroj->runFrame();
+      if (g_stroj->cpu.jam) std::fill(zvuk.begin(), zvuk.end(), 0.f);
       else g_stroj->genAudio(zvuk.data(), 882, 44100.0);
       nap_atari_audio_push(zvuk.data(), 882);
-      g_rec.snimek(*g_stroj, zvuk.data(), 882);
+      // B292: CSAVE nahrava linku SIO DATA OUT (signal pro magnetofon), ne
+      // reproduktor - presne to, co by zapsal skutecny Atari 410/1010
+      g_stroj->genTape(pasek.data(), 882);
+      for (float &v : pasek) v *= 0.8f;
+      g_rec.snimek(*g_stroj, pasek.data(), 882);
       g_xex.poSnimku(*g_stroj);
       g_motorOn = nap::CsaveRecorder::motor(*g_stroj);
       {
@@ -1230,6 +1167,65 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadXexNative(JNIEnv *env, jcla
   return ok ? JNI_TRUE : JNI_FALSE;
 }
 
+/** B292: vlozit kazetu (WAV) do magnetofonu - CLOAD. Vraci text pro log
+ *  (zacina "OK " nebo "CHYBA "). Demodulace FSK probehne hned (nap_atari_tape.h),
+ *  stroj pak pasku cte v realnem case pri zapnutem motoru a PLAY. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jclass, jbyteArray data, jstring jmeno) {
+  std::string nm = "kazeta.wav";
+  if (jmeno) { const char *c = env->GetStringUTFChars(jmeno, nullptr); if (c) { nm = c; env->ReleaseStringUTFChars(jmeno, c); } }
+  for (auto &ch : nm) if ((unsigned char)ch >= 0x80) ch = '?';
+  if (!data) return env->NewStringUTF("CHYBA zadna data");
+  jsize n = env->GetArrayLength(data);
+  std::vector<uint8_t> buf((size_t)n);
+  if (n > 0) env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
+  nap::TapeImage img; std::string err;
+  const long long t0 = nap_ted_ms();
+  const bool ok = nap::napTapeFromWav(buf.data(), buf.size(), img, err);
+  const long long ms = nap_ted_ms() - t0;
+  char b[400];
+  if (!ok) {
+    snprintf(b, sizeof(b), "CHYBA %s: %s", nm.c_str(), err.c_str());
+    devLog(std::string("B292 KAZETA ") + b);
+    std::lock_guard<std::mutex> dl(g_mDev);
+    devGet().setStatusMessage(("KAZETA NEJDE NACIST: " + err).c_str(), nap_ted_ms(), 7000);
+    pokeRender();
+    return env->NewStringUTF(b);
+  }
+  snprintf(b, sizeof(b), "OK %s: %.1f s, %d Hz, %d kanal(y) (FSK v kanalu %d), %d bit; pri 600 Bd %lld bajtu v %lld zaznamech, %lld chyb ramce; demodulace %lld ms",
+           nm.c_str(), img.seconds(), img.srcRate, img.channels, img.usedChannel + 1, img.bitsPerSample,
+           img.bytes600, img.records600, img.framing600, ms);
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (!g_stroj) zaloz();
+    nap::TapeDeck &t = g_stroj->tape;
+    const bool play = t.play;
+    t.eject();
+    t.img = std::move(img); t.loaded = true; t.name = nm; t.play = play; t.pos = 0;
+  }
+  devLog(std::string("B292 KAZETA VLOZENA ") + b);
+  {
+    std::lock_guard<std::mutex> dl(g_mDev);
+    nap::dev::Device &d = devGet();
+    d.setDoor(false, nap_ted_ms());
+    d.counter = 0; d.counterAcc = 0; d.markCounter();
+    std::string zprava = "KAZETA: " + nm + " - CLOAD, RETURN, PLAY, RETURN";
+    d.setStatusMessage(zprava.c_str(), nap_ted_ms(), 9000);
+  }
+  pokeRender();
+  return env->NewStringUTF(b);
+}
+
+/** B292: vyjmout kazetu (EJECT bez vyberu). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devEjectTapeNative(JNIEnv *, jclass) {
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (g_stroj) { const bool play = g_stroj->tape.play; g_stroj->tape.eject(); g_stroj->tape.play = play; }
+  }
+  devLog("B292 KAZETA vyjmuta");
+}
+
 /** Kratka zprava ve stavovem radku pod pristrojem (napr. "CSAVE ULOZENO"). */
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStatusNative(JNIEnv *env, jclass, jstring msg, jint ms) {
@@ -1283,7 +1279,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devInfoNative(JNIEnv *env, jclass)
   int pc = -1; bool jam = false; size_t fronta;
   {
     std::lock_guard<std::mutex> l(g_mStroj);
-    if (g_stroj) { pc = g_stroj->cpu.c.pc; jam = g_stroj->cpu.c.jam; }
+    if (g_stroj) { pc = g_stroj->cpu.pc; jam = g_stroj->cpu.jam; }
     fronta = g_typeQ.q.size();
   }
   snprintf(b, sizeof(b), "B291 PRISTROJ stav: bezi=%s power=%s snimku=%lld pc=$%04X%s motor=%s klaves_ve_fronte=%u zvuk_fronta=%ums",

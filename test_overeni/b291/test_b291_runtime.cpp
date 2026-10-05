@@ -3,14 +3,11 @@
 //    (overeno prectenim obrazovky Atari po LIST)
 //  - CSAVE -> WAV (CsaveRecorder) - zaznam jen pri bezicim motoru a jen
 //    kdyz odesla data (SEROUT)
-//   g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_b291_runtime test_b291_runtime.cpp ../../app/src/main/cpp/atari/nap_atari_cpu.cpp
+//   g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_b291_runtime test_b291_runtime.cpp
 #include <cstdio>
 #include <cstdlib>
 #include <string>
 #include <vector>
-#include "nap_atari_cpu.h"
-#include "nap_atari_mem.h"
-#include "nap_atari_video.h"
 #include "nap_atari_machine.h"
 #include "nap_atari_roms.h"
 #include "nap_atari_runtime.h"
@@ -49,7 +46,7 @@ int main() {
   auto snimek = [&](TypeQueue *tq) {
     if (tq) tq->step(*m);
     m->runFrame();
-    if (m->cpu.c.jam) std::fill(a.begin(), a.end(), 0.f); else m->genAudio(a.data(), 882, 44100.0);
+    if (m->cpu.jam) std::fill(a.begin(), a.end(), 0.f); else m->genAudio(a.data(), 882, 44100.0);
     rec.snimek(*m, a.data(), 882);
   };
   int f = 0;

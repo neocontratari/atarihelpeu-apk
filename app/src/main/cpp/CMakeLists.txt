@@ -295,8 +295,10 @@ if(ANDROID AND NOT (ANDROID_ABI STREQUAL "arm64-v8a"))
     message(STATUS "BUILD2SA14: Atari core preskocen pro ABI '${ANDROID_ABI}'")
 endif()
 if(NAP_ENABLE_ATARI)
+    # B292: nove jadro presne po cyklech je cele v hlavickach
+    # (nap_atari_6502.h, nap_atari_machine.h, nap_atari_tape.h) - stary
+    # nap_atari_cpu.cpp je pryc.
     add_library(napatari SHARED
-            ${CMAKE_CURRENT_LIST_DIR}/atari/nap_atari_cpu.cpp
             ${CMAKE_CURRENT_LIST_DIR}/atari/nap_atari_native.cpp)
     target_compile_features(napatari PRIVATE cxx_std_17)
     target_compile_options(napatari PRIVATE ${NAP_CORE_OPT_FLAGS})

@@ -1,896 +1,1641 @@
 // nap_atari_machine.h
-// BUILD2SA17: stroj - hardwarove registry a snimkova smycka.
+// B292: Atari 130XE (PAL) - NOVE JADRO PRESNE PO CYKLECH.
 //
-// Ucel: rozbehnout SELF-TEST Z ROM ATARI ($5000-$57FF). Je to Reneho vlastni
-// ROM a jeho vlastni diagnostika - neni to nic, co bych si vymyslel.
-// Self-test si sam nastavi display list, obrazovku i barvy a sam si otestuje
-// pamet. Kdyz to nase jadro rozbehne a ukaze totez co skutecne Atari,
-// je to dukaz. Kdyz ne, je videt PRESNE kde to skonci.
+// Rene po B291: "nektere hry maji chybu v grafice ... pro jistotu udelej
+// dukladnou kontrolu jadra". Kontrola starsiho jadra (B287-B291) nasla:
+//  - ANTIC nebral procesoru zadne cykly (na skutecnem Atari si pro obraz
+//    bere az ~70 % cyklu na radku) - casovani her bylo jine,
+//  - preruseni DLI chodilo o radek pozde (az po celem radku),
+//  - bity svisleho a vodorovneho rolovani v display listu byly PROHOZENE
+//    (bit 5 = svisle, bit 4 = vodorovne) a konec svisleho rolovani chybel,
+//  - kolize hracu a strel vracely vzdy "srazka se vsim" ($0F),
+//  - priority PRIOR, ctvrty/paty hrac, vicebarevni hraci a rezimy GTIA
+//    9/10/11 chybely, CHACTL (inverze/blikani) se ignoroval,
+//  - zapis do registru se pocital od ZACATKU instrukce, ne od cyklu zapisu.
 //
-// Co uz tu je: ANTIC (DMACTL, DLIST, CHBASE, NMIEN/NMIST, VCOUNT, WSYNC),
-//              GTIA (barvy, CONSOL, TRIG, PAL), PIA, POKEY jen tolik,
-//              aby se ROM nezasekla (RANDOM, SKSTAT, IRQST, KBCODE).
-// Co tu NENI: zvuk, hraci a strely, kolize, skrolovani, ostatni graficke
-//              rezimy. Nebudu predstirat opak.
+// Tohle jadro je postavene znovu podle chovani skutecneho hardwaru
+// (Altirra Hardware Reference Manual a zdrojovy kod emulatoru Altirra jako
+// zdroj FAKTU o casovani - kod je napsany znovu a jednoduse):
+//  - 6502 (nap_atari_6502.h): kazdy pristup na sbernici = 1 cyklus,
+//    overeno 2 560 000 testy SingleStepTests,
+//  - ANTIC: DMA po jednotlivych cyklech (strely 0, DL 1, hraci 2-5, LMS
+//    6-7, obnova pameti 25..57, hraci pole podle rezimu/sirky/HSCROL),
+//    NMI na cyklu 8 (DLI/VBI), WSYNC uvolni na cyklu 105, VCOUNT,
+//  - GTIA: kresli po barevnych taktech (228 na radek), zmena registru
+//    se projevi presne na taktu, kdy ji procesor zapsal (+zpozdeni
+//    GTIA), hraci/strely jako posuvne registry (HPOS, SIZE, VDELAY),
+//    prioritni logika rovnicemi z GTIA, kolize, rezimy 9/10/11,
+//  - POKEY: citace kanalu po cyklech (1,79 MHz / 64 kHz / 15 kHz, 16bit
+//    spojeni, 3 cykly "borrow"), preruseni casovacu, seriovy port
+//    (SEROUT po bitech podle casovace, dvoutonovy rezim pro kazetu,
+//    prijem SERIN), klavesnice (KBCODE, SKSTAT), RANDOM z poly17/9,
+//  - PIA (PORTA/PORTB, PACTL - motor kazety, PBCTL), MMU 130XE
+//    (OS/BASIC/self-test ROM, 4 rozsirene banky, oddelene CPU/ANTIC).
 #pragma once
 #include <cstdint>
 #include <cstring>
-#include "nap_atari_cpu.h"
-#include "nap_atari_mem.h"
-#include "nap_atari_video.h"
-#include "nap_atari_pokey.h"
+#include <cmath>
+#include <vector>
+#include <string>
+#include <cstdio>
+#include "nap_atari_6502.h"
+#include "nap_atari_tape.h"
 
 namespace nap {
 
-struct Machine {
-  AtariMem mem;
-  Cpu6502  cpu;
-
-  // ANTIC
-  int dmactl = 0, chactl = 0, dlistL = 0, dlistH = 0;
-  int hscrol = 0, vscrol = 0, pmbase = 0, chbase = 0;
-  int nmien = 0, nmist = 0x1F;
-  int line = 0;            // scanline 0..311 (PAL)
-  long long frame = 0;
-  // B291: pocet zapisu do SEROUT ($D20D) - zarizeni v HELP podle nej pozna,
-  // ze behem behu kazetoveho motoru doopravdy odchazela data (CSAVE), a ne
-  // jen cteni (CLOAD). Jen pocitadlo, na emulaci samotnou nema vliv.
-  long long seroutPocet = 0;
-  // B291: viz runScanline - zkratka SIO jen pro zavadeni XEX (vychozi VYPNUTO)
-  bool sioRychlyTimeout = false;
-  long long sioZkratek = 0;
-  void sioHnedTimeout() {
-    // Navrat ze SIOV ($E459) se stavem 138 (timeout = zarizeni neodpovida):
-    // DSTATS=138, Y=138 (N=1), a RTS na volajiciho - presne to, co by OS
-    // dostal po vyprseni casu bez pripojene mechaniky.
-    mem.ram[0x303] = 138;
-    cpu.c.y = 138; cpu.c.nf = 1; cpu.c.zf = 0;
-    cpu.c.sp = (cpu.c.sp + 1) & 0xFF; int lo = mem.ram[0x100 | cpu.c.sp];
-    cpu.c.sp = (cpu.c.sp + 1) & 0xFF; int hi = mem.ram[0x100 | cpu.c.sp];
-    cpu.c.pc = (((hi << 8) | lo) + 1) & 0xFFFF;
-    cpu.c.cycles += 6;
-    sioZkratek++;
+// ---------------------------------------------------------------------
+//  Paleta (beze zmeny od B287 - viz komentar tam; Rene ji nerozporoval)
+// ---------------------------------------------------------------------
+inline uint32_t napAtariPalette(int v) {
+  v &= 0xFE;
+  const int hue = (v >> 4) & 15;
+  const int lum = v & 15;
+  const double Y = (lum / 14.0) * 0.93;
+  double r, g, b;
+  if (hue == 0) {
+    r = g = b = Y;
+  } else {
+    const double PI = 3.14159265358979323846;
+    const double faze = (190.0 - 27.0 * hue) * PI / 180.0;
+    const double SYTOST = 0.30;
+    const double U = SYTOST * std::cos(faze);
+    const double V = SYTOST * std::sin(faze);
+    r = Y + 1.140 * V;
+    g = Y - 0.395 * U - 0.581 * V;
+    b = Y + 2.032 * U;
   }
+  auto cl = [](double x) { int t = (int)(x * 255.0 + 0.5); return t < 0 ? 0 : (t > 255 ? 255 : t); };
+  return 0xFF000000u | ((uint32_t)cl(b) << 16) | ((uint32_t)cl(g) << 8) | (uint32_t)cl(r);
+}
 
-  // GTIA
-  int hposp[4] = {0,0,0,0}, hposm[4] = {0,0,0,0};
-  int sizep[4] = {0,0,0,0}, sizem = 0;
-  int grafp[4] = {0,0,0,0}, grafm = 0;
-  int colpm[4] = {0,0,0,0};
-  int colpf[4] = {0,0,0,0};
-  int colbk = 0, prior = 0, gractl = 0, vdelay = 0;
-  int consol = 7;          // 0 = stisknuto; 7 = nic
-  int trig[4] = {1,1,1,1};
+// Obraz: 384 x 240 bodu (pul barevneho taktu = 1 bod), barevne takty 32..223
+// a radky 8..247 - stejny vyrez jako Screen_atari v emulatoru atari800.
+struct AnticView {
+  static const int W = 384;
+  static const int H = 240;
+  uint32_t fb[W * H];      // RGBA (A<<24 | B<<16 | G<<8 | R)
+  uint8_t idx[W * H];      // barevny kod Atari (pred paletou) - pro testy
+  void vymaz(int c) { uint32_t v = napAtariPalette(c); for (int i = 0; i < W * H; i++) { fb[i] = v; idx[i] = (uint8_t)c; } }
+};
 
-  // POKEY - jen tolik, aby ROM nezustala viset
-  int skctl = 0, irqen = 0, kbcode = 0;
-  int irqst = 0xFF;        // 0 v bitu = preruseni CEKA
-  int serout = 0;
-  // BUILD2SB84: Rene - "chybi zaverecni chrceni CSAVE - jen uvodni
-  // piskot je slyset." PRESNE OVERENO v JS referenci (jediny zdroj
-  // pravdy pro logiku): "if(pokey.outBusy>0 && --pokey.outBusy===0)
-  // pokeyRaise(0x10); if(pokey.shiftBusy>0 && --pokey.shiftBusy===0)
-  // pokeyRaise(0x08);" - DVA NEZAVISLE citace, KAZDY snizeny o 1
-  // KAZDY radek obrazovky (scanline), NE 2 spolecne kroky jak jsem
-  // mel puvodne. Moje puvodni "serOdpocet=2" bylo ~15x AZ 140x
-  // rychlejsi nez skutecny prenos - proto se cely blok dat (256+
-  // bajtu) odeslal za 0.3s misto realistickych ~4.7s pri 600 baudech,
-  // a zvuk pak vypadal jako jeden nerozeznatelny impuls, ne jako
-  // "chrceni" rozlozene v case.
-  int outBusy = 0;   // scanline do "vystupni registr prazdny, dej dalsi" (bit4/0x10)
-  int shiftBusy = 0; // scanline do "cely prenos bajtu dokoncen" (bit3/0x08)
+struct Pia { int orA = 0, ddrA = 0, orB = 0, ddrB = 0, ctlA = 0, ctlB = 0; };
 
-  // BUILD2SB85: Rene - "reset/power/self-test presne jak ma, CSAVE
-  // piska spravne, ale na konci pisknuti chybi to puvodni chrapteni -
-  // ten datovy zvuk." PRESNE OVERENO (ne odhad): behem cele 42-
-  // vterinove tonove faze v realnem logu appka NIKDY nemeni AUDF,
-  // Timer4 preruseni je po celou dobu VYPNUTE (0 vyvolani) - zadny
-  // softwarovy mechanismus v ROM nepřepisuje AUDF bit po bitu.
-  // Overeno i v JS referenci - genericka POKEY syntéza (AUDF/AUDC/
-  // AUDCTL), ZADNA zminka o SKCTL/dvoutonovem rezimu/sériovem bitu
-  // v syntéze zvuku vubec. Zavěr: skutecny POKEY hardware v
-  // "dvoutonovem" rezimu (SKCTL bit3, primo overeno jako rozlisujici
-  // bit CSAVE/CLOAD v B274) dela vyber mezi dvema frekvencemi SAM,
-  // v kremiku, podle AKTUALNIHO BITU v posuvnem registru sériovych
-  // dat - software jen NALOZI bajt (STA SEROUT) a hardware uz sam
-  // "odsype" bity, prepinaje frekvenci. Tenhle mechanismus v me
-  // emulaci CHYBEL UPLNE - proto zvuk zustaval konstantni. Nize
-  // pridany stav simuluje presne tohle: 10-bitovy ramec (start+8
-  // datovych bitu LSB prvni+stop) pro kazdy zapsany bajt, s
-  // casovanim podle 600 baudu (~2956 CPU cyklu/bit, presne cyklu_na_
-  // vzorek konstanta CPS/600 jako v JS referenci pro CTENÍ pasky).
-  int serRamec = 0;              // 10 bitu: bit0=start(0), 1-8=data LSB, 9=stop(1)
-  long long serRamecStart = 0;   // CPU cyklus, kdy byl ramec nalozen
-  uint32_t rngState = 0x2A5C1D7B;
+struct AtariMem {
+  uint8_t ram[65536];
+  uint8_t ext[65536];                 // 130XE: 4 banky po 16 kB ($4000-$7FFF)
+  const uint8_t *os = nullptr;        // 16 kB OS ROM
+  const uint8_t *bas = nullptr;       // 8 kB BASIC ROM
+  Pia pia;
+  AtariMem() { std::memset(ram, 0, sizeof ram); std::memset(ext, 0, sizeof ext); }
+  inline int portB() const { return (pia.orB | (~pia.ddrB)) & 0xFF; }
+};
 
-  // BUILD2SB52: POKEY zvuk (FAZE 1) - viz nap_atari_pokey.h pro
-  // generovani vzorku. Tady jen registry, presne jak je cte/zapisuje
-  // ROM (AUDF1,AUDC1,AUDF2,AUDC2,AUDF3,AUDC3,AUDF4,AUDC4,AUDCTL).
-  int audf[4] = {0,0,0,0};
-  int audc[4] = {0,0,0,0};
-  int audctl = 0;
-  PokeyAudioState pokeyAudio;
-  // BUILD2SB89: dva SAMOSTATNE, VZDY BEZICI stavy pro dvouton (mark=
-  // kanal1, space=kanal2) - NUTNE oddelene od hlavniho pokeyAudio,
-  // protoze pokeyGenSamples() ma optimalizaci "if (!vol) continue;",
-  // ktera PRESKOCI aktualizaci citace, kdyz je hlasitost 0 - kdybych
-  // pouzival JEDEN stav a jen prepinal audc[0]/audc[1] mezi 0 a
-  // plnou hlasitosti, citac by se pri "ztlumeni" ZASTAVIL (zamrzl),
-  // a po znovu-zapnuti by pokracoval ze SPATNE faze - presne overeno
-  // testem (davalo to nesmyslnych 1764Hz misto ocekavanych 5278Hz).
-  // Oprava: oba kanaly bezí VZDY na plnou hlasitost, nezavisle,
-  // NEPRETRZITE - jen se PO VZORCICH VYBIRA, KTERY VYSTUP POUZIT.
-  PokeyAudioState pokeyAudioMark, pokeyAudioSpace;
-  // BUILD2SB65: Rene - "csave neni kazetovy port... to bylo vyreseno
-  // v jave emu atari, udelej to presne podle atari jadra." Nalezeno:
-  // CSAVE po druhem RETURN vstoupi do smycky, ktera ceka na hodnotu
-  // nastavovanou PRERUSENIM OD POKEY CASOVACE 1/2 (presne to, co se
-  // pouziva pro casovani kazetovych bitu I BEZ pripojeneho kazetaku -
-  // Rene mel pravdu, ze to s fyzickym zarizenim nema nic spolecneho,
-  // je to cisty vnitrni casovac cipu). Predtim appka mela POKEY jen
-  // "tak akorat, aby ROM nezustala viset" - casovace 1/2/4 vubec
-  // nebyly. Ted presny preklad z Reneho fungujici JS reference
-  // (timerPeriod/timersReload/timersTick).
-  long timer1Cyc = 0, timer2Cyc = 0, timer4Cyc = 0;
-  // BUILD2SB56: Rene - "pri bootovani ma atari svuj specificky zvuk,
-  // klik pri startu. V self-testu je to lepsi nez v Java Atari, ale
-  // ma to podzvuk." Prvni cast: GTIA "klik reproduktoru" (CONSOL bit3,
-  // $D01F) - OS na to piše KAZDY SNIMEK behem bootu (viz komentar u
-  // hwWrite nize) a presne TOHLE je ten chybejici "boot zvuk". Stejny
-  // mechanismus jako v JS referenci (M.onSpeaker) - kratky (~4ms)
-  // napet'ovy skok, ne skutecny tón.
-  int gtiaSpeakerBit = 0;      // aktualni stav bitu (0/1), zapisuje ho hwWrite
-  int gtiaSpeakerVidenaAudioGen = 0; // co naposledy videl genAudio() - pro detekci ZMENY
-  // BUILD2SB60: Rene - "bootovaci zvuk neni spravny." Puvodni logovani
-  // (regsNative) ukazovalo jen AUDF/AUDC/AUDCTL - ale klik jede pres
-  // UPLNE JINA pole (spkLevel/spkDecay v PokeyAudioState), takze z
-  // logu neslo poznat, jestli se kliky VUBEC spoustely. Pocitadlo
-  // pro viditelnost - ne pro zvuk samotny.
-  long long gtiaKlikPocitadlo = 0;
+// ---------------------------------------------------------------------
+//  ATR disketa (pro mechaniku D1: - SIO na urovni prikazu)
+// ---------------------------------------------------------------------
+struct AtrDisk {
+  std::vector<uint8_t> data;          // cely obraz bez 16B hlavicky
+  int sectorSize = 128;
+  int sectors = 0;
+  bool mounted = false;
+  bool writeProtect = false;
+  std::string name;
+  long long reads = 0, writes = 0;
+  bool load(const uint8_t *d, size_t n, const std::string &nm) {
+    mounted = false; data.clear();
+    if (!d || n < 16 + 128 || d[0] != 0x96 || d[1] != 0x02) return false;
+    size_t paras = (size_t)(d[2] | (d[3] << 8)) | ((size_t)d[6] << 16);
+    sectorSize = d[4] | (d[5] << 8);
+    if (sectorSize != 128 && sectorSize != 256) sectorSize = 128;
+    size_t bytes = paras * 16;
+    if (bytes > n - 16) bytes = n - 16;
+    data.assign(d + 16, d + 16 + bytes);
+    // sektory 1-3 jsou vzdy 128 B (i u dvojite hustoty)
+    if (sectorSize == 256) sectors = (int)(bytes >= 384 ? (bytes - 384) / 256 + 3 : bytes / 128);
+    else sectors = (int)(bytes / 128);
+    name = nm; mounted = true; reads = writes = 0;
+    return sectors > 0;
+  }
+  // offset a delka sektoru (1..n)
+  bool sec(int s, size_t &off, int &len) const {
+    if (s < 1 || s > sectors) return false;
+    if (sectorSize == 256) {
+      if (s <= 3) { off = (size_t)(s - 1) * 128; len = 128; }
+      else { off = 384 + (size_t)(s - 4) * 256; len = 256; }
+    } else { off = (size_t)(s - 1) * 128; len = 128; }
+    if (off + (size_t)len > data.size()) return false;
+    return true;
+  }
+};
 
-  // BUILD2SB74: Rene - "u atari nestrim zadny fake, nebud liny a nehadej."
-  // Dukladnym trasovanim (ne hadanim, ani domnenkou) zjisteno: appka
-  // SPRAVNE prochazi "pipaci" smyckou v ROM ($FE00-$FE36 - rychle
-  // opakovane prepinani CONSOL bit3, presny stejny mechanismus jako
-  // klik pri bootu, jen mnohem castejsi) hned po prvnim RETURN - jadro
-  // NENI rozbite. Skutecny problem: genAudio() se vola JEDNOU ZA
-  // SNIMEK a kontroluje jen "je bit ted jiny nez naposledy?" - jenze
-  // tahle ROM smycka prepina bit MNOHOKRAT BEHEM JEDNOHO SNIMKU (tón,
-  // ne jednotlivy klik). Vzorkovani jen na konci snimku ztrati VSECHNY
-  // mezilehle prechody. Oprava: zaznamenat KAZDY prechod s presnym
-  // CPU cyklem primo pri zapisu, genAudio() je pak zpracuje vsechny na
-  // spravnych pozicich v ramci bufferu.
-  static const int MAX_SPEAKER_PRECHODU = 96;
-  struct SpeakerPrechod { long long cyklus; int novaHodnota; };
-  SpeakerPrechod speakerPrechody[MAX_SPEAKER_PRECHODU];
-  int pocetSpeakerPrechodu = 0;
+// ---------------------------------------------------------------------
+//  Kazetovy magnetofon (CLOAD): na pasce jsou urovne linky SIO DATA IN
+//  (mark=1 / space=0) ziskane z WAV demodulaci FSK (nap_atari_tape.h).
+//  Pasek se posouva jen pri zapnutem motoru (PACTL) a stisknutem PLAY.
+// ---------------------------------------------------------------------
+struct TapeDeck {
+  TapeImage img;
+  double pos = 0;                     // pozice ve vzorcich pasky
+  bool loaded = false;
+  bool play = false;                  // tlacitko PLAY na kazetaku
+  std::string name;
+  int line = 1;                       // aktualni uroven linky DATA IN
+  // prijimac POKEY (seriovy vstup) - rychlost z AUDF3/AUDF4 jako na Atari
+  int rxPhase = 0;                    // 0 ceka na start bit, 1 start, 2..9 data, 10 stop
+  double rxNext = 0;                  // cyklus dalsiho vzorkovani bitu
+  int rxByte = 0;
+  long long bytes = 0, framing = 0;   // diagnostika
+  void eject() { img = TapeImage(); pos = 0; loaded = false; name.clear(); line = 1; rxPhase = 0; bytes = framing = 0; }
+};
 
-  const uint8_t *osRom = nullptr;
+class Machine {
+public:
+  AtariMem mem;
+  Cpu6502T<Machine> cpu;
+  AnticView *view = nullptr;
+  const uint8_t *osRom = nullptr;     // jen pro kompatibilitu
   const uint8_t *basRom = nullptr;
 
-  // Prubezne cteni display listu - ANTIC ho nezpracuje najednou, ale
-  // postupne, jak sjizdi obrazovku. Bez toho by DLI nemely kdy zabrat.
-  AnticView *view = nullptr;
+  // ---------------- casovani ----------------
+  uint64_t cyc = 0;                   // absolutni cyklus
+  int x = 0;                          // cyklus v radku 0..113
+  int line = 0;                       // radek 0..311
+  long long frame = 0;
+  static const int LINES = 312;
+  static const int CYCLES_PER_LINE = 114;
 
-  // SLEDOVANI PAPRSKU
-  // Program meni registry GTIA UPROSTRED radky (typicky hned po WSYNC).
-  // Kdyz se pro cely radek vezme jedna hodnota, multiplexovany kernel se
-  // rozsype - u Decathlonu se z atletu stanou svisle bloky.
-  // Proto se kazdy zapis zaznamena i s cyklem, ve kterem prisel, a pri
-  // kresleni se pro kazdy bod pouzije to, co v tu chvili platilo.
-  long long lineCyc0 = 0;
-  static const int SEG_MAX = 192;
-  int segN = 0;
-  int segCyk[SEG_MAX], segReg[SEG_MAX], segHod[SEG_MAX];
-  // 0x00-0x1B registry GTIA, 0x20-0x2F registry ANTIC
-  int segZac[0x30];                       // stav na ZACATKU radky
-  int dlPc = 0, dlScreen = -1, dlMode = 0, dlZbyva = 0, dlRadek = 0, dlKroku = 0;
-  bool dlDli = false;
-  bool dlKonec = false;
-  bool dlHskrol = false, dlVskrol = false;
-  bool stopa=false; int stopaMode[240]={0}, stopaScr[240]={0}, stopaRad[240]={0};
+  // ---------------- vstupy (konzole, joysticky) ----------------
+  int consol = 7;                     // stisknuto = 0 v bitu (START=1, SELECT=2, OPTION=4)
+  int trig[4] = {1, 1, 1, 1};
+  int porta = 0xFF;                   // joysticky (1 = nestisknuto)
 
-  Machine()
-    : cpu([this](int a){ return this->read(a); },
-          [this](int a,int v){ this->write(a,v); }) {}
+  // ---------------- kompatibilita se starym API ----------------
+  long long seroutPocet = 0;
+  bool sioRychlyTimeout = false;
+  long long sioZkratek = 0;
+  int gtiaSpeakerBit = 1;
+  long long gtiaKlikPocitadlo = 0;
+  int dlKroku = 0;
+  int audf[4] = {0, 0, 0, 0};
+  int audc[4] = {0, 0, 0, 0};
+  int audctl = 0;
+  AtrDisk disk;
+  TapeDeck tape;
+  long long sioPrikazu = 0;
 
-  inline int rnd() {
-    rngState ^= rngState << 13; rngState ^= rngState >> 17; rngState ^= rngState << 5;
-    return (int)(rngState >> 16) & 0xFF;
+  Machine() { cpu.bus = this; coldInit(); }
+
+  // =================================================================
+  //  SBERNICE PRO PROCESOR - kazde volani = jeden cyklus
+  // =================================================================
+  inline uint8_t rd(uint16_t a) {
+    beginCpuCycle(false);
+    uint8_t v = cpuRead(a);
+    busData = v;
+    endCycle();
+    return v;
+  }
+  inline void wr(uint16_t a, uint8_t v) {
+    beginCpuCycle(true);
+    busData = v;
+    cpuWrite(a, v);
+    endCycle();
+  }
+  inline bool nmiPending() const { return nmiLatch; }
+  inline void nmiAck() { nmiLatch = false; }
+  inline bool irqActive() const { return irqLine; }
+  inline void traceNmi() { if (traceFrame == frame) std::fprintf(stderr, "NMI y=%d x=%d\n", line, x); }
+
+  // stara jmena (runtime/XEX/testy)
+  int read(int a) { return peek((uint16_t)a); }
+  void write(int a, int v) { pokeMem((uint16_t)a, (uint8_t)v); }
+  int dmactl() const { return dmactlReg; }
+  int dlistAddr() const { return dlist; }
+
+  // =================================================================
+  //  START / RESET
+  // =================================================================
+  void coldInit() {
+    cyc = 0; x = 0; line = 0; frame = 0;
+    std::memset(&mem.pia, 0, sizeof mem.pia);
+    // ANTIC
+    dmactlReg = 0; chactl = 0; dlist = 0; hscrol = 0; vscrol = 0; pmbase = 0; chbase = 0; chbaseReg = 0;
+    nmien = 0; nmist = 0x1F; nmiLatch = false;
+    dlControl = dlControlPrev = 0; rowCounter = 0; rowCount = 1; rowStopUseVScroll = false;
+    latchedVScroll = latchedVScroll2 = 0; dlActive = false; dlExtraLoads = false; dlDmaInTime = false;
+    pfBase = 0; pfOffset = 0; pfDmaEnabled = pfDmaActive = false; hscrollEnabled = hscrollDelay = false; hscrollDmaOffset = 0;
+    pfWidth = 0; wsyncPending = 0; rdyHalt = false; chbaseDelay = 0;
+    pendingNMIs = 0; earlyNMIEN = 0; lateNMI = false; charInvert = 0; charBlink = 0xFF;
+    std::memset(dmaPat, 0, sizeof dmaPat);
+    updatePlayfieldTiming();
+    // GTIA
+    std::memset(gReg, 0, sizeof gReg);
+    for (int i = 0; i < 8; i++) { spr[i] = Sprite(); sprPos[i] = 0; }
+    prior = 0; vdelay = 0; gractl = 0; consolOut = 8; gtiaSpeakerBit = 1;
+    std::memset(collP, 0, sizeof collP); std::memset(collM, 0, sizeof collM);
+    for (int i = 0; i < 4; i++) { colpm[i] = colpf[i] = 0; }
+    colbk = 0; rcN = 0; lastSyncCc = 0;
+    // POKEY
+    pokeyCold();
+    // CPU
+    cpu.powerOn();
+    irqLine = false;
   }
 
-  int read(int a) {
-    a &= 0xFFFF;
-    if (a >= 0xD000 && a < 0xD800) return hwRead(a);
-    return mem.cpuRead(a);
-  }
-  void write(int a, int v) {
-    a &= 0xFFFF; v &= 0xFF;
-    if (a >= 0xD000 && a < 0xD800) { hwWrite(a, v); return; }
-    mem.cpuWrite(a, v);
+  // Studeny start (POWER) - volajici uz nastavil mem.os/mem.bas
+  void reset() {
+    // RESET na XL: procesor + ANTIC (DMACTL, NMIEN, citace paprsku).
+    // PIA (PORTB) zustava - na skutecnem stroji ji RESET nemaze.
+    dmactlReg = 0; nmien = 0; updatePlayfieldTiming();
+    wsyncPending = 0; rdyHalt = false; nmiLatch = false;
+    cpu.reset();
   }
 
-  int hwRead(int a) {
-    const int page = a & 0xFF00;
-    if (page == 0xD000) {                       // GTIA
-      const int r = a & 0x1F;
-      if (r == 0x10) return trig[0];            // TRIG0
-      if (r == 0x11) return trig[1];
-      if (r == 0x12) return trig[2];
-      if (r == 0x13) return trig[3];
-      if (r == 0x14) return 0x01;               // PAL: 1 = PAL stroj
-      if (r == 0x1F) return consol & 7;         // CONSOL
-      return 0x0F;                              // kolize - zatim nic
+  void breakKey() { if (irqen & 0x80) { irqst &= ~0x80; updateIrq(); } }
+  // stisk klavesy (scankod 0-63 + $40 SHIFT + $80 CONTROL)
+  // drzet=true: klavesa zustane stisknuta az do klavesaPustena() (prst na
+  // displeji - OS pak sam opakuje znak jako na skutecne klavesnici);
+  // jinak se pusti sama po ~4 snimcich (psani textu z TXT).
+  void klavesa(int kod, bool drzet = false) {
+    kbcode = kod & 0xFF;
+    skstat &= ~0x04;                    // klavesa drzena
+    keyHoldFrames = drzet ? -1 : 4;
+    if (irqen & 0x40) { irqst &= ~0x40; updateIrq(); }
+  }
+  void klavesaPustena() { skstat |= 0x04; keyHoldFrames = 0; }
+  void shiftDrzen(bool d) { if (d) skstat &= ~0x08; else skstat |= 0x08; }
+
+  // je motor kazety zapnuty? (PACTL CA2 vystup = 0)
+  bool motorOn() const { return (mem.pia.ctlA & 0x38) == 0x30; }
+
+  // =================================================================
+  //  BEH
+  // =================================================================
+  void runFrame() {
+    const long long f = frame;
+    while (frame == f) {
+      if (cpu.pc == 0xE459 && !cpu.jam && (disk.mounted || sioRychlyTimeout) && !cpu.takeNmi && !cpu.takeIrq) { sioPatch(); continue; }
+      cpu.step();
     }
-    if (page == 0xD200) {                       // POKEY
-      const int r = a & 0x0F;
-      if (r == 0x09) return kbcode;             // KBCODE
-      if (r == 0x0A) return rnd();              // RANDOM
-      if (r == 0x0E) return irqst;              // IRQST
-      if (r == 0x0F) {                          // SKSTAT
-        // BUILD2SB71: Rene - "to atari a pokey a logika ti evidentne
-        // nejde... podivej se do kodu atari emu 130xe vbxe JAVA - tam
-        // je navod." MEL PRAVDU a ja jsem ho neposlechl vcas - moje
-        // predchozi "sum" oprava (BUILD2SB69) byla SPATNE, a presne
-        // takovou chybu uz nekdo v minulosti zkusil a ZAVRHL primo v
-        // JS referenci: "Zasada BUILD2BR - zadny fake CLOAD, zadny RAM
-        // inject... vlastni CSAVE nepousti datovy chaos do SKSTAT."
-        // SKUTECNA reference (index.html, cteni $D20F) ukazuje: bit4
-        // se meni JEN kdyz existuje SKUTECNY kazetovy tón/PCM signal A
-        // bezi motor ("if((cassTone||cassPcm||cassRecordLead) &&
-        // cassMotor)") - jinak zustava na VYCHOZI hodnote (1, od
-        // v=0xFF) - presne to, co appka delala PRED mou chybnou
-        // opravou! Bez nahrane kazety ROM smycka SPRAVNE ceka a pak
-        // spadne do zalozniho casoveho limitu - to NENI bug, to je
-        // spravne chovani pro "CSAVE bez pripojeneho kazetaku". Vraceno
-        // zpet na puvodni, referenci odpovidajici hodnotu.
-        return 0xFF;
-      }
-      return 0xFF;
-    }
-    if (page == 0xD300) {                       // PIA
-      const int r = a & 0x03;
-      if (r == 0) return (mem.pia.ctlA & 4) ? 0xFF : mem.pia.ddrA;
-      if (r == 1) return (mem.pia.ctlB & 4) ? mem.portB() : mem.pia.ddrB;
-      if (r == 2) return mem.pia.ctlA;
-      return mem.pia.ctlB;
-    }
-    if (page == 0xD400) {                       // ANTIC
-      const int r = a & 0x0F;
-      if (r == 0x0B) return (line >> 1) & 0xFF; // VCOUNT
-      if (r == 0x0F) return nmist;              // NMIST
-      return 0xFF;
-    }
-    return 0xFF;
+    if (keyHoldFrames > 0 && --keyHoldFrames == 0) skstat |= 0x04;
   }
+  void runScanline() { const int l = line; while (line == l) cpu.step(); }
 
-  void hwWrite(int a, int v) {
-    const int page = a & 0xFF00;
-    if (page == 0xD000) {                       // GTIA
-      const int r = a & 0x1F;
-      if (r < 0x1C && segN < SEG_MAX) {         // poznamenat CYKLUS zapisu
-        segCyk[segN] = (int)(cpu.c.cycles - lineCyc0);
-        segReg[segN] = r; segHod[segN] = v & 0xFF; segN++;
-      }
-      if (r <= 0x03) { hposp[r] = v; return; }
-      if (r <= 0x07) { hposm[r - 4] = v; return; }
-      if (r <= 0x0B) { sizep[r - 8] = v; return; }
-      if (r == 0x0C) { sizem = v; return; }
-      if (r >= 0x0D && r <= 0x10) { grafp[r - 0x0D] = v; return; }
-      if (r == 0x11) { grafm = v; return; }
-      if (r >= 0x12 && r <= 0x15) { colpm[r - 0x12] = v; return; }
-      if (r >= 0x16 && r <= 0x19) { colpf[r - 0x16] = v; return; }
-      if (r == 0x1A) { colbk = v; return; }
-      if (r == 0x1B) { prior = v; return; }
-      if (r == 0x1C) { vdelay = v; return; }
-      if (r == 0x1D) { gractl = v & 7; return; }
-      if (r == 0x1F) {
-        // POZOR: zapis do CONSOL ovlada REPRODUKTOR a vystupni zapadku.
-        // NESMI mazat stav tlacitek - OS sem pise pri KAZDEM snimku
-        // (pro klapnuti reproduktoru), takze by tim smazal kazdy stisk
-        // START/SELECT/OPTION driv, nez si ho program stihne precist.
-        //
-        // BUILD2SB56: presne TADY vznika chybejici "boot zvuk" - bit3
-        // je vystup na reproduktor.
-        // BUILD2SB74: zaznamenat KAZDY prechod s cyklem, ne jen ulozit
-        // posledni stav - viz komentar u pole speakerPrechody vyse.
-        int novyBit = (v >> 3) & 1;
-        if (novyBit != gtiaSpeakerBit) {
-          if (pocetSpeakerPrechodu < MAX_SPEAKER_PRECHODU) {
-            speakerPrechody[pocetSpeakerPrechodu].cyklus = cpu.c.cycles;
-            speakerPrechody[pocetSpeakerPrechodu].novaHodnota = novyBit;
-            pocetSpeakerPrechodu++;
-          }
-          gtiaSpeakerBit = novyBit;
-        }
-        return;
-      }
-      return;
-    }
-    if (page == 0xD200) {                       // POKEY
-      const int r = a & 0x0F;
-      // BUILD2SB52: AUDF1,AUDC1,AUDF2,AUDC2,AUDF3,AUDC3,AUDF4,AUDC4 -
-      // presne stejne rozlozeni jako v JS referenci ("if(p<=0x07){
-      // if(p&1) audc[p>>1]=v; else audf[p>>1]=v;}").
-      if (r <= 0x07) {
-        if (r & 1) audc[r >> 1] = v & 0xFF;
-        else       audf[r >> 1] = v & 0xFF;
-        return;
-      }
-      if (r == 0x08) { audctl = v & 0xFF; return; }   // AUDCTL
-      if (r == 0x09) {                                // STIMER - viz JS "timersReload()"
-        // BUILD2SB65: STIMER ted opravdu ZNOVUNABIJI casovace 1/2/4
-        // (drive to komentar sliboval, ale kod to nedelal - presne to
-        // zpusobovalo, ze CSAVE po druhem RETURN cekala na preruseni,
-        // ktere nikdy neprislo). STIMER navic podle reference vynuluje
-        // i vystupni citadla zvukovych kanalu.
-        cnt0Reset();
-        timersReload();
-        return;
-      }
-      if (r == 0x0D) {                          // SEROUT
-        // BUILD2SB86: Rene - "piskani ~20s, datovy tok ~4-5s - to na
-        // realnem Atari (i s Altirrou) takhle zni." PRESNE OVERENO:
-        // 17.84s cekani (viz $037C/892 snimku nalezene v B274-85)
-        // OPRAVDU odpovida realnym ~20s piskotu - TOHLE JE SPRAVNE.
-        // Ale samotny DATOVY TOK byl AZ 10x kratsi nez ma byt: puvodni
-        // "outBusy=10, shiftBusy=30" (z JS reference - hodnoty tam
-        // zjevne predstavuji jen "kdy je vystupni registr pripraven
-        // na dalsi bajt", NE "za jak dlouho doopravdy dobehne cele
-        // vysilani na drate") delaly, ze appka prijala DALSI bajt
-        // DRIV, nez stihl predchozi bajt DOHRAT svych 10 bitu zvuku -
-        // kazdy novy zapis PREPSAL serRamecStart uprostred prehravani
-        // predchoziho bajtu, takze se cely 260+ bajtovy blok zmackl
-        // do necelé vteřiny místo spravnych ~4-5s. OPRAVA: outBusy a
-        // shiftBusy ted odpovidaji SKUTECNE dobe potrebne na odeslani
-        // 10 bitu pri 600 baudech (10/600s = 16.67ms = presne
-        // cyklu_na_bit*10/114 scanline, ~260 scanline) - appka tak
-        // dostane "pripraveno na dalsi" AZ KDYZ predchozi bajt
-        // doopravdy cely dohral, presne jako na skutecnem hardwaru.
-        serout = v;
-        seroutPocet++;
-        const int SCANLINE_NA_BAJT = (int)((1773447.0/600.0)*10.0/114.0 + 0.5); // ~260
-        // BUILD2SB86 KRITICKA POJISTKA (znovuobjeveny puvodni problem
-        // z B268 komentare vyse): outBusy a shiftBusy NESMI byt
-        // STEJNE - kdyz obe preruseni (bit4 "pripraven na dalsi" a
-        // bit3 "cely prenos hotov") vystrely na STEJNE scanline, SIO
-        // rutina si mysli, ze je hotovo hned po prvnim bajtu a
-        // ZUSTANE VISET (presne overeno - obrazovka se zasekla,
-        // PC uvizl v $EAA0 oblasti). outBusy zustava o kousek KRATSI
-        // (jako by dvojite-bufferovany UART prijal dalsi bajt TESNE
-        // pred dokoncenim stop bitu predchoziho) - shiftBusy o 2
-        // scanline delsi, at nikdy nevystrely soucasne.
-        outBusy = SCANLINE_NA_BAJT - 2;
-        shiftBusy = SCANLINE_NA_BAJT;
-        // BUILD2SB85: nalozit 10-bitovy sériovy ramec pro dvouton
-        // (start=0, 8 datovych bitu LSB prvni, stop=1) - genAudio()
-        // nize podle tohohle vybira, kterou ze dvou frekvenci prave
-        // hrat.
-        serRamec = 0x200 | (v << 1); // bit0=0(start), bity1-8=data, bit9 uz je 1 z 0x200
-        serRamecStart = cpu.c.cycles;
-        return;
-      }
-      if (r == 0x0E) {                          // IRQEN
-        // BUILD2SB67: Rene - "atari nejde nabootovat, modra obrazovka
-        // se ctverečkem, porad se opakujici zvuk." NALEZENO: predchozi
-        // B258 "instant ready" oprava (kdyz je serialovy port v klidu
-        // a IRQEN prave povoli bit 0x10/0x08, hned ohlasit pripraveno)
-        // byla PRILIS SIROKA - OS ji spousti i behem UPLNE NORMALNIHO
-        // bootu (ne jen behem CSAVE), coz appku odklonilo z normalni
-        // klidove smycky ($F302-$F310) do jineho, spatneho stavu se
-        // stale hrajicim tónem. OVERENO srovnavacim testem: SAMOTNE
-        // casovace (nize, timersTick) CSAVE odblokuji stejne spolehlive
-        // (do par tisic snimku se vrati do normalni klidove smycky,
-        // ticho) BEZ POTREBY tohohle rizikoveho "instant ready" kroku -
-        // a normalni boot pri tom zustane presne stejny jako pred B258.
-        // Bezpecnejsi oprava = odstranit riskantni cast, nechat jen tu,
-        // co je overene bezpecna.
-        //
-        // BUILD2SB83->84 (POUCNY OMYL, pak SKUTECNA OPRAVA):
-        // Rene - "chybi zaverecne chrceni CSAVE, jen uvodni piskot je
-        // tam." Domnival jsem se nejdriv, ze appka do sériove-vystupni
-        // IRQ obsluhy ($EA88/$EAAD) nikdy nevstoupi, protoze potrebuje
-        // "prvni jiskru", kterou jsem ja nikdy negeneroval - stravil
-        // jsem hodne casu hledanim spravneho signalu k jejimu spusteni
-        // (zkusil IRQEN bit4, pak SKCTL bit3 - obé NESPOLEHLIVE, oboje
-        // zamitnuto testem). DELSIM SLEDOVANIM (zadne odhady) jsem
-        // zjistil: appka do $EA88 dojde SAMA, prirozene, uplne bez
-        // jakekoliv "opravy" - jen to trva pres 20 vterin (Timer1
-        // preruseni na jinem miste, $EBC6). SKUTECNA PRICINA
-        // chybejiciho "chrceni" byla jinde: byte-k-bytu zpozdeni
-        // (drive "serStav/serOdpocet", ~2 scanline) bylo AZ 140x
-        // rychlejsi nez ma byt - primo overeno v JS referenci
-        // (jedinem zdroji pravdy pro logiku): "outBusy=10,
-        // shiftBusy=30" scanline, NE 2. Cely 256+ bajtovy blok se tak
-        // odesilal za 0.3s misto realistickych ~4.7s pri 600 baudech -
-        // zvuk pak vypadal jako jeden nerozeznatelny impuls hned pri
-        // konci, ne jako "chrceni" rozlozene v case. OPRAVA (nize u
-        // SEROUT zapisu a v runScanline): outBusy/shiftBusy nahrazuji
-        // puvodni serStav/serOdpocet, presne casovani z reference.
-        irqen = v;
-        irqst |= (~v) & 0xFF;                   // zakazane se rovnou zahodi
-        obnovIrq();
-        return;
-      }
-      if (r == 0x0F) { skctl = v; return; }
-      return;
-    }
-    if (page == 0xD300) { mem.piaWrite(a, v); return; }
-    if (page == 0xD400) {                       // ANTIC
-      {
-        // CHBASE, HSCROL a VSCROL se meni PRES DLI uprostred obrazu.
-        // Kdyz se ctou az na konci snimku, cte se znakova sada z mista,
-        // kde uz zadna neni - u Decathlonu vyslo CHBASE=$00 a misto
-        // tabule byla kase ze systemovych promennych.
-        const int r = 0x20 + (a & 0x0F);
-        if (segN < SEG_MAX) {
-          segCyk[segN] = (int)(cpu.c.cycles - lineCyc0);
-          segReg[segN] = r; segHod[segN] = v & 0xFF; segN++;
-        }
-      }
-      switch (a & 0x0F) {
-        case 0x00: dmactl = v; return;
-        case 0x01: chactl = v; return;
-        case 0x02: dlistL = v; return;
-        case 0x03: dlistH = v; return;
-        case 0x04: hscrol = v; return;
-        case 0x05: vscrol = v; return;
-        case 0x07: pmbase = v; return;
-        case 0x09: chbase = v; return;
-        case 0x0A: {                            // WSYNC
-          // Zapis do WSYNC ZASTAVI procesor az do konce radky. Bez toho
-          // se rozsype casovani vsech kernelu, ktere synchronizuji na
-          // paprsek - a to je skoro kazda hra.
-          const long long cyk = cpu.c.cycles - lineCyc0;
-          if (cyk < 105) cpu.c.cycles = lineCyc0 + 105;
-          return;
-        }
-        case 0x0E: nmien = v; return;
-        case 0x0F: nmist = 0x1F; return;        // NMIRES
-      }
-      return;
-    }
-  }
-
-  void obnovIrq() {
-    cpu.c.irqLine = (((~irqst) & irqen) & 0xFF) ? 1 : 0;
-  }
-
-  // BUILD2SB52: STIMER (zapis do $D209) na skutecnem POKEY vynuluje
-  // vystupni citadla vsech kanalu - bez tohohle by po STIMER hrál
-  // kazdy ton s nahodnou fazi misto od zacatku.
-  void cnt0Reset() {
-    pokeyAudio.cnt[0] = pokeyAudio.cnt[1] = pokeyAudio.cnt[2] = pokeyAudio.cnt[3] = 0;
-  }
-
-  // BUILD2SB52: vygeneruje 'n' vzorku zvuku (mono float, -1..1) z
-  // AKTUALNIHO stavu registru - viz nap_atari_pokey.h pro cely
-  // algoritmus (preklad z JS reference).
-  //
-  // BUILD2SB56: pred samotnym generovanim zkontrolovat, jestli se od
-  // POSLEDNIHO volani zmenil bit reproduktoru (CONSOL bit3, $D01F) -
-  // pokud ano, spustit kratky "klik" presne jako skutecny hardware
-  // (viz PokeyAudioState::spkLevel/spkDecay a jejich pouziti v
-  // nap_atari_pokey.h).
-  // BUILD2SB77: puvodne tady byl "audioCyklusPocatek" (akumulator) -
-  // ODSTRANEN, byl to presne ten drift popsany v komentari u
-  // genAudio() nize. Pozice se ted pocita VZDY cerstve z aktualniho
-  // cpu.c.cycles, zadny mezistav k udrzovani.
-
-  // BUILD2SB75: Rene - "pri nabootovani mas kratky zvuk po resetu
-  // dlouhy zvuk, presne obracene... nesmyslne to lupne i po prejiti
-  // do self testu." Nalezena SPOLECNA pricina obou hlaseni: kdykoli
-  // appka posune MNOHO snimku najednou synchronne (boot=600, self-
-  // test=400) BEZ prubezneho volani genAudio() (to zacne az POTOM,
-  // v hlavni smycce), VSECHNY zaznamenane prechody z tehle doby maji
-  // cyklus VZDALENY od "audioCyklusPocatek" (ktery zustava na stare
-  // hodnote, dokud genAudio() konecne neprobehne) - genAudio() je pak
-  // VSECHNY namacka na konec prvniho bufferu (bezpecnostni orezani
-  // pozice na max. n), misto aby byly rozlozene v case jak doopravdy
-  // zazněly. Vysledek: bud "zmacknuty" kratky zvuk (misto rozlozeneho
-  // dlouheho), nebo naopak nesmyslne velky pocet "kliku" najednou
-  // (self-test). Oprava: po KAZDEM takovem velkem bloku snimku
-  // (bootNative, self-test vstup, napsani textu+RETURN, reset)
-  // srovnat sledovani zvuku s aktualnim stavem procesoru - zahodi to
-  // presne prehrani zvuku BEHEM synchronniho bloku (nejde jinak bez
-  // vetsi prestavby cele smycky), ale zabrani to spatnym, zmacknutym
-  // nebo umele vysokym artefaktum v zaznamu HNED PO bloku.
-  void srovnatSledovaniZvuku() {
-    pocetSpeakerPrechodu = 0;
-    gtiaSpeakerVidenaAudioGen = gtiaSpeakerBit;
-  }
-
-  // BUILD2SB77: Rene testoval na REALNEM zarizeni - "nejde zvuk pri
-  // nabootovani, nejde zvuk pri csave/cload pipnuti." V CLI testu
-  // (presne 882 vzorku/snimek, presne 1 genAudio() volani na 1
-  // runFrame()) vsechno fungovalo. Na REALNEM telefonu to ale NEBEZI
-  // v takhle dokonalem rytmu - JS smycka vola audioChunkNative() s
-  // velikostmi podle SKUTECNEHO ubehleho casu (Web Audio API), ne
-  // podle pevneho poctu snimku. SKUTECNA PRICINA: audioCyklusPocatek
-  // (B268) byl AKUMULATOR - kazde volani genAudio() k nemu jen
-  // PRICITALO "n*cyklu_na_vzorek", v predpokladu, ze presne tolik
-  // CPU cyklu SKUTECNE ubehlo od minuleho volani. Na realnem
-  // zarizeni tenhle predpoklad NEPLATI presne - drobne odchylky se
-  // KAZDYM volanim SCITAJI (drift), az zaznamenane prechody
-  // reproduktoru vypocitane vuci tomuhle "ujizdenemu" pocatku vyjdou
-  // MIMO aktualni buffer a orezavaci pojistka (pozice<0 -> 0,
-  // pozice>n -> n) je vsechny namacka na kraj - misto skutecneho
-  // tónu jen umlcnuty/zkresleny vysledek. OPRAVA: NEAKUMULOVAT nic -
-  // pocatek bufferu pocitat VZDY ZNOVU primo z aktualniho
-  // cpu.c.cycles (jedine VZDY spravne, autoritativni cislo), ne z
-  // odhadu postaveneho na predchozich volanich. Zadny drift nemuze
-  // vzniknout, protoze se nikdy nic nesklada z minulosti.
+  // =================================================================
+  //  ZVUK: vzorky za posledni usek behu (volat po runFrame)
+  // =================================================================
   void genAudio(float *out, int n, double sampleRateHz) {
-    // 1773447 Hz - presne stejna konstanta jako v JS referenci
-    // ("CPS=1773447/ac.sampleRate", komentar tam "cyklu na vzorek (PAL)").
-    const double cyklu_na_vzorek = 1773447.0 / sampleRateHz;
-    // BUILD2SB77: pocatek TOHOTO KONKRETNIHO bufferu = aktualni cyklus
-    // MINUS kolik cyklu zabira n vzorku - vzdy cerstve spocitano,
-    // zadny akumulovany stav z minula.
-    const long long pocatekBufferu = cpu.c.cycles - (long long)((double)n * cyklu_na_vzorek);
+    (void)sampleRateHz;
+    integrate(audEv, audLevelStart, audFrom, cyc, out, n, true);
+    audLevelStart = audLevel;
+    audFrom = cyc;
+    audEv.clear();
+  }
+  // kazetovy vystup (SIO DATA OUT v dvoutonovem rezimu) - pro CSAVE WAV.
+  // Sbira se jen pri tapeCapture=true (jinak by fronta zmen rostla).
+  bool tapeCapture = false;
+  void genTape(float *out, int n) {
+    integrate(tapeEv, tapeLevelStart, tapeFrom, cyc, out, n, false);
+    tapeLevelStart = tapeLevel;
+    tapeFrom = cyc;
+    tapeEv.clear();
+  }
+  void srovnatSledovaniZvuku() { audEv.clear(); audFrom = cyc; audLevelStart = audLevel; tapeEv.clear(); tapeFrom = cyc; tapeLevelStart = tapeLevel; }
 
-    // BUILD2SB74: zpracovat VSECHNY zaznamenane prechody na jejich
-    // SPRAVNYCH pozicich uvnitr bufferu - misto jedine kontroly "je bit
-    // ted jiny nez naposledy?" na zacatku. Bez tohohle se rychle
-    // opakovane prepinani (skutecny tón z ROM pipaci smycky, ne jen
-    // jednotlivy klik) ztratilo - zustal jen posledni stav na konci
-    // snimku. Viz komentar u pole speakerPrechody.
-    int zapsanoVzorku = 0;
-    for (int i = 0; i < pocetSpeakerPrechodu; i++) {
-      long long delta = speakerPrechody[i].cyklus - pocatekBufferu;
-      int pozice = (int)(delta / cyklu_na_vzorek);
-      if (pozice < zapsanoVzorku) pozice = zapsanoVzorku;   // poradi zachovano zapisem, jen pojistka
-      if (pozice > n) pozice = n;
-      if (pozice > zapsanoVzorku) {
-        zapisUsekSDvoutonem(out, zapsanoVzorku, pozice - zapsanoVzorku, cyklu_na_vzorek, pocatekBufferu);
-        zapsanoVzorku = pozice;
-      }
-      // prave TADY, na spravne pozici, spustit klik/tón - presne jako
-      // predtim delalo genAudio() jen jednou za cely buffer.
-      pokeyAudio.spkLevel = speakerPrechody[i].novaHodnota ? 1 : -1;
-      pokeyAudio.spkDecay = (long)(sampleRateHz * 0.004); // ~4ms, presne jako JS reference
-      gtiaKlikPocitadlo++;
+  // =================================================================
+  //  PAMET
+  // =================================================================
+  // cteni bez vedlejsich ucinku (zavadec, testy)
+  uint8_t peek(uint16_t a) {
+    if (a >= 0xD000 && a < 0xD800) return 0xFF;
+    return memRead(a, false);
+  }
+  void pokeMem(uint16_t a, uint8_t v) {
+    if (a >= 0xD000 && a < 0xD800) { ioWrite(a, v); return; }
+    memWrite(a, v);
+  }
+
+  // =================================================================
+  //  INTERNI STAV
+  // =================================================================
+  // ---- sbernice / preruseni ----
+  uint8_t busData = 0xFF;
+  bool nmiLatch = false;
+  bool irqLine = false;
+
+  // ---- ANTIC ----
+  uint8_t dmactlReg = 0, chactl = 0, hscrol = 0, vscrol = 0, pmbase = 0, chbase = 0, chbaseReg = 0, nmien = 0, nmist = 0x1F;
+  uint16_t dlist = 0, dlistLatch = 0;
+  uint8_t dlControl = 0, dlControlPrev = 0, dlNext = 0;
+  int rowCounter = 0, rowCount = 1; bool rowStopUseVScroll = false; int latchedVScroll = 0, latchedVScroll2 = 0;
+  bool dlActive = false, dlExtraLoads = false, dlDmaInTime = false;
+  uint16_t pfBase = 0, pfOffset = 0;
+  bool pfDmaEnabled = false, pfDmaActive = false, hscrollEnabled = false, hscrollDelay = false; int hscrollDmaOffset = 0;
+  int pfWidth = 0, pfFetchWidth = 0;
+  int pfDmaStart = 114, pfDmaEnd = 114, pfDmaVEnd = 114, pfDisplayStart = 110, pfDisplayEnd = 110;
+  uint8_t dmaPat[116];
+  uint8_t pfData[128], pfChar[128]; int pfDataW = 0, pfDataR = 0, pfCharW = 0;
+  uint16_t charBase128 = 0, charBase64 = 0, charFetchPtr = 0; uint8_t charMask = 0x7F, charInvert = 0, charBlink = 0xFF;
+  int pushMode = 0;                    // 0 prazdne, 1 = 160 bodu, 2 = 320 bodu (hires)
+  int displayDone = 0;                 // do ktereho cyklu uz bylo hraci pole predano GTIA
+  uint8_t pendingNMIs = 0, earlyNMIEN = 0; bool lateNMI = false;
+  int wsyncPending = 0; bool rdyHalt = false, rdyStalled = false;
+  int chbaseDelay = 0; uint8_t chbaseNew = 0;
+
+  // ---- GTIA ----
+  enum : uint8_t { PF0 = 1, PF1 = 2, PF2 = 4, PF3 = 8, P0 = 16, P1 = 32, P2 = 64, P3 = 128 };
+  struct Sprite { uint8_t shift = 0, latch = 0, size = 0, state = 0; };
+  Sprite spr[8];                       // 0-3 hraci, 4-7 strely
+  int sprPos[8] = {0};
+  uint8_t gReg[32];
+  uint8_t colpm[4] = {0}, colpf[4] = {0}, colbk = 0, prior = 0, vdelay = 0, gractl = 0, consolOut = 8;
+  uint8_t collP[4], collM[4];
+  uint8_t merge[240];                  // na barevny takt: PF/P bity
+  uint8_t anData[240];                 // na barevny takt: 2 bity (hires / GTIA rezimy)
+  uint8_t lineOut[480];                // vystup radku (pul taktu = bod)
+  bool lineHires = false, vblankLine = true;
+  int lastSyncCc = 0;
+  struct RegChange { int pos; uint8_t reg, val; };
+  RegChange rc[256]; int rcN = 0;
+
+  // ---- POKEY ----
+  uint8_t audfP1[4] = {1, 1, 1, 1};
+  int pcnt[4] = {1, 1, 1, 1}, pborrow[4] = {0, 0, 0, 0};
+  uint8_t chOut[4] = {0, 0, 0, 0};     // vystupni klopne obvody kanalu
+  uint8_t hpf[2] = {0, 0};             // horni propust (AUDCTL bity 2,1)
+  uint8_t irqen = 0, irqst = 0xFF, skctl = 0, skstat = 0xFF, kbcode = 0xFF, serin = 0xFF, serout = 0;
+  uint64_t last64 = 0, last15 = 0, polyBase = 0, polyShutOff = 0;
+  int stimerDelay = 0;
+  int serOutCounter = 0; bool serOutValid = false, serOutState = true; uint8_t serOutShift = 0;
+  int serOutTickDelay = 0;
+  int keyHoldFrames = 0;
+  double audLevel = 0, audLevelStart = 0, tapeLevel = 0, tapeLevelStart = 0;
+  uint64_t audFrom = 0, tapeFrom = 0;
+  std::vector<std::pair<uint64_t, float>> audEv, tapeEv;
+  double tapeTickFrac = 0;
+
+  // =================================================================
+  //  CYKLUS: ANTIC/DMA -> (procesor) -> konec cyklu
+  // =================================================================
+  inline void beginCpuCycle(bool isWrite) {
+    for (;;) {
+      bool busy = anticCycle();
+      if (!busy && !(rdyHalt && !isWrite)) return;
+      if (!busy) rdyStalled = true;         // procesor stoji na RDY (WSYNC)
+      endCycle();
     }
-    gtiaSpeakerVidenaAudioGen = gtiaSpeakerBit;
-    pocetSpeakerPrechodu = 0;
-    if (zapsanoVzorku < n) {
-      zapisUsekSDvoutonem(out, zapsanoVzorku, n - zapsanoVzorku, cyklu_na_vzorek, pocatekBufferu);
+  }
+  inline void endCycle() {
+    pokeyTick();
+    ++cyc;
+    if (++x >= CYCLES_PER_LINE) endScanline();
+  }
+
+  // ---------------------------------------------------------------
+  //  ANTIC - jeden cyklus (pred pripadnym pristupem procesoru).
+  //  Vraci true, kdyz si cyklus vzal ANTIC (procesor ceka).
+  // ---------------------------------------------------------------
+  bool anticCycle() {
+    // zpozdene CHBASE (+2 cykly) a WSYNC (RDY od 2. cyklu po zapisu)
+    if (chbaseDelay && --chbaseDelay == 0) { syncGtia(0); chbase = chbaseNew; updateFont(); updateCurrentCharRow(); }
+    if (wsyncPending && --wsyncPending == 0) rdyHalt = true;
+    bool busy = false;
+    if (x < 11 || x == 16 || x == 105) busy = anticSpecial();
+    const uint8_t pat = dmaPat[x];
+    if (pat & 0x06) {
+      if (pat & 0x02) {                                   // jmeno znaku / bajt grafiky
+        uint8_t v = anticRead((uint16_t)(pfBase | (pfOffset & 0x0FFF)));
+        pfOffset = (uint16_t)((pfOffset + 1) & 0x0FFF);
+        if (pfDataW < 120) pfData[pfDataW++] = v;
+      }
+      if (pat & 0x04) {                                   // data znaku ze znakove sady
+        uint8_t c = pfDataR < pfDataW ? pfData[pfDataR] : 0;
+        pfDataR++;
+        uint8_t v = anticRead((uint16_t)(charFetchPtr + ((c & charMask) << 3)));
+        if (pfCharW < 120) pfChar[pfCharW++] = v;
+      }
+    }
+    if (pat & 0x01) busy = true;
+    return busy;
+  }
+
+  bool anticSpecial() {
+    bool busy = false;
+    const bool zobrazeni = (unsigned)(line - 8) < 240;
+    switch (x) {
+      case 0: {
+        // strely - DMA hracu zapina i strely
+        if ((dmactlReg & 0x0C) && zobrazeni) {
+          uint8_t b;
+          if (dmactlReg & 0x10) b = anticRead((uint16_t)(((pmbase & 0xF8) << 8) + 0x300 + line));
+          else b = anticRead((uint16_t)(((pmbase & 0xFC) << 8) + 0x180 + (line >> 1)));
+          busy = true;
+          gtiaMissileDma(b);
+        }
+        dlDmaInTime = (dmactlReg & 0x20) != 0;
+        dlistLatch = dlist;
+        break;
+      }
+      case 1: {
+        pfDmaEnabled = false; pfDmaActive = false;
+        if (line == 8) {
+          dlActive = true; rowCounter = 0; rowCount = 1; rowStopUseVScroll = false;
+          dlControl = dlControlPrev;
+        }
+        int rowStop = rowStopUseVScroll ? latchedVScroll : ((rowCount - 1) & 15);
+        latchedVScroll = vscrol;
+        if (rowCounter != rowStop) {
+          rowCounter = (rowCounter + 1) & 15;
+          pfDmaActive = true;
+          if ((dlControl & 15) != 1) dlExtraLoads = false;
+        } else {
+          rowCounter = 0;
+          rowStopUseVScroll = false;
+          if (dlActive) {
+            dlExtraLoads = false;
+            dlControlPrev = dlControl;
+            if (dlDmaInTime) {
+              dlControl = anticRead(dlistLatch);
+              busy = true;
+              dlist = (uint16_t)((dlist & 0xFC00) | ((dlist + 1) & 0x03FF));
+              dlKroku++;
+            }
+            const uint8_t mode = dlControl & 15;
+            if (mode == 1 || (mode >= 2 && (dlControl & 0x40))) dlExtraLoads = true;
+            rowCounter = 0;
+            pushMode = 1; lineHiresAntic = false;
+            switch (mode) {
+              case 0: rowCount = ((dlControl >> 4) & 7) + 1; pushMode = 0; break;
+              case 1: rowCount = 1; pushMode = 0; break;
+              case 2: rowCount = 8; pushMode = 2; lineHiresAntic = true; break;
+              case 3: rowCount = 10; pushMode = 2; lineHiresAntic = true; break;
+              case 4: rowCount = 8; break;
+              case 5: rowCount = 16; break;
+              case 6: rowCount = 8; break;
+              case 7: rowCount = 16; break;
+              case 8: rowCount = 8; break;
+              case 9: rowCount = 4; break;
+              case 10: rowCount = 4; break;
+              case 11: rowCount = 2; break;
+              case 12: rowCount = 1; break;
+              case 13: rowCount = 2; break;
+              case 14: rowCount = 1; break;
+              case 15: rowCount = 1; pushMode = 2; lineHiresAntic = true; break;
+            }
+            // svisle rolovani: bit 5 ($20). Zacatek oblasti -> start na VSCROL,
+            // konec oblasti -> radek s koncem podle VSCROL.
+            uint8_t sp = dlControlPrev, sc = dlControl;
+            if ((sp & 15) < 2) sp = 0;
+            if ((sc & 15) < 2) sc = 0;
+            if ((sc ^ sp) & 0x20) {
+              if (sc & 0x20) rowCounter = vscrol & 15;
+              else rowStopUseVScroll = true;
+            }
+            // vodorovne rolovani: bit 4 ($10)
+            hscrollEnabled = (mode != 1 && (sc & 0x10));
+            pfDmaEnabled = true; pfDmaActive = true;
+          }
+        }
+        hscrollDmaOffset = 0; hscrollDelay = false;
+        if (hscrollEnabled) { hscrollDmaOffset = (hscrol & 14) >> 1; hscrollDelay = (hscrol & 1) != 0; }
+        updateCurrentCharRow();
+        updatePlayfieldTiming();
+        break;
+      }
+      case 2: case 3: case 4: case 5: {
+        if ((dmactlReg & 0x08) && zobrazeni) {
+          int i = x - 2; uint8_t b;
+          if (dmactlReg & 0x10) b = anticRead((uint16_t)(((pmbase & 0xF8) << 8) + 0x400 + 0x100 * i + line));
+          else b = anticRead((uint16_t)(((pmbase & 0xFC) << 8) + 0x200 + 0x80 * i + (line >> 1)));
+          busy = true;
+          gtiaPlayerDma(i, b);
+        }
+        break;
+      }
+      case 6: {
+        if (dlExtraLoads && (dmactlReg & 0x20)) {
+          dlNext = anticRead(dlist); busy = true;
+          dlist = (uint16_t)((dlist & 0xFC00) | ((dlist + 1) & 0x03FF));
+        }
+        latchedVScroll2 = vscrol;
+        break;
+      }
+      case 7: {
+        if (dlExtraLoads && (dmactlReg & 0x20)) {
+          uint8_t hi = anticRead(dlist); busy = true;
+          dlist = (uint16_t)((dlist & 0xFC00) | ((dlist + 1) & 0x03FF));
+          uint16_t ad = (uint16_t)(dlNext | (hi << 8));
+          if ((dlControl & 15) == 1) {
+            dlist = ad;
+            if (dlControl & 0x40) {              // JVB: konec display listu do VBLANK
+              dlActive = false; dlExtraLoads = false;
+              dlControl &= ~0x4F; rowCount = 1;
+            }
+          } else {                                // LMS
+            pfBase = ad & 0xF000; pfOffset = ad & 0x0FFF;
+            dlExtraLoads = false;
+          }
+        }
+        earlyNMIEN = nmien;
+        pendingNMIs = 0;
+        if (line == 248) {
+          pendingNMIs = 0x40; nmist |= 0x40; nmist &= ~0x80;
+          dlControlPrev = dlControl; dlControl &= 0x20;
+        } else {
+          int rowStop = rowStopUseVScroll ? latchedVScroll2 : ((rowCount - 1) & 15);
+          if ((dlControl & 0x80) && rowCounter == rowStop) { pendingNMIs = 0x80; nmist &= ~0x40; nmist |= 0x80; }
+        }
+        pfDataR = 0; pfCharW = 0;
+        if (pfDmaEnabled) pfDataW = 0;
+        break;
+      }
+      case 8: {
+        uint8_t now = pendingNMIs & earlyNMIEN;
+        uint8_t late = pendingNMIs & nmien & ~earlyNMIEN;
+        lateNMI = false;
+        if (now) nmiLatch = true;
+        else if (late) lateNMI = true;
+        break;
+      }
+      case 9: if (lateNMI) { nmiLatch = true; lateNMI = false; } break;
+      case 10: {
+        vblankLine = !zobrazeni;
+        break;
+      }
+      case 16: {
+        // GTIA: zacatek viditelne casti - 40znakovy rezim (hires) se nastavi v HBLANK
+        syncGtia(-1);
+        lineHires = lineHiresAntic && !(prior & 0xC0);
+        break;
+      }
+      case 105:
+        // konec WSYNC. NMI, ktere prislo, kdyz procesor stal na RDY uz PO
+        // svem dotazu na preruseni (stoji na poslednim cyklu instrukce),
+        // se bere hned po teto instrukci - 6502 uvolneni RDY vidi jako
+        // "NMI aktivni 1 cyklus pred uvolnenim" (Altirra NegateRDY).
+        if (rdyHalt && rdyStalled && cpu.polled && nmiLatch && !cpu.takeNmi) { cpu.takeNmi = true; cpu.takeIrq = false; }
+        rdyHalt = false; rdyStalled = false;
+        break;
+    }
+    return busy;
+  }
+  bool lineHiresAntic = false;
+
+  void updateFont() { charBase128 = (uint16_t)((chbase & 0xFC) << 8); charBase64 = (uint16_t)((chbase & 0xFE) << 8); }
+  void updateCurrentCharRow() {
+    charMask = 0x7F;
+    const int inv = (chactl & 4) ? 7 : 0;
+    switch (dlControl & 15) {
+      case 2: case 3: case 4: charFetchPtr = (uint16_t)(charBase128 + (inv ^ (rowCounter & 7))); break;
+      case 5: charFetchPtr = (uint16_t)(charBase128 + (inv ^ (rowCounter >> 1))); break;
+      case 6: charFetchPtr = (uint16_t)(charBase64 + (inv ^ (rowCounter & 7))); charMask = 0x3F; break;
+      case 7: charFetchPtr = (uint16_t)(charBase64 + (inv ^ (rowCounter >> 1))); charMask = 0x3F; break;
+      default: break;
     }
   }
 
-  // BUILD2SB89: Rene - "prestan odhadovat, projdi si internet, jak
-  // ten zvuk opravdu funguje - zjisti, ze CSAVE se neuklada." Nasel
-  // jsem OFICIALNI, DEFINITIVNI specifikaci primo v De Re Atari
-  // (dodatek C, oficialni Atari technicka dokumentace): "POKEY
-  // recognizes each data byte: 1 start bit (space), 8 data bits
-  // (0=space, 1=mark), then one stop bit (mark). The frequency used
-  // to represent a mark is 5327 Hz. For a space, the frequency is
-  // 3995 Hz." PRESNY VYPOCET (NTSC hodiny 1789790Hz, standardni
-  // 28-cyklovy delic pro 8-bit kanal): audf=5 -> perioda=168 cyklu
-  // -> 5326.8Hz (PRESNA SHODA s "mark"!). audf=7 -> perioda=224
-  // cyklu -> 3995.1Hz (PRESNA SHODA se "space"!). TOHLE JSOU PRESNE
-  // HODNOTY AUDF1=5 A AUDF2=7, KTERE UZ APPKA CELOU DOBU LOGOVALA
-  // ("AUDF=[5,7,204,5]") - jen jsem si jich nevsimnul! MARK = KANAL
-  // 1 SAMOSTATNE, SPACE = KANAL 2 SAMOSTATNE - NE kanal1/kanal3+4
-  // jak jsem se domnival v B278 na zaklade analyzy jedne konkretni
-  // nahravky (594Hz spojeny kanal3+4 tam sice BYL pritomny, ale
-  // zjevne slouzi necemu JINEMU - mozna uvodnimu synchronizacnimu
-  // tonu pred samotnymi daty - NE samotnemu MARK/SPACE FSK kodovani
-  // dat, ktere definuje oficialni specifikace). OPRAVA: dvouton ted
-  // pouziva KANAL 1 (mark, bit=1) VERSUS KANAL 2 (space, bit=0) -
-  // presne podle oficialni De Re Atari specifikace, ne podle
-  // odvozovani z jedne nahravky. Kanal 3+4 pri dvoutonu VZDY
-  // ztlumen (nesouvisi s FSK daty).
-  // DODATECNA OPRAVA (behem testovani): PRVNI pokus prepinal jen
-  // AUDC (hlasitost) na JEDNOM sdilenem stavu - ale pokeyGenSamples()
-  // ma optimalizaci "if (!vol) continue", ktera pri hlasitosti 0
-  // PRESKOCI aktualizaci citace kanalu (zamrzne ho) - po znovu-
-  // zapnuti pak citac pokracoval ze SPATNE faze, davalo to
-  // nesmyslnych 1764Hz misto 5278Hz (primo overeno testem, chyba
-  // nalezena a opravena). SKUTECNA oprava: dva SAMOSTATNE stavy
-  // (pokeyAudioMark, pokeyAudioSpace), OBA VZDY na plnou hlasitost,
-  // NEPRETRZITE bezici - jen se PO VZORCICH vybira, KTERY VYSTUP se
-  // pouzije do vysledneho bufferu.
-  void zapisUsekSDvoutonem(float *out, int odkud, int pocet, double cyklu_na_vzorek, long long pocatekBufferu) {
-    if (pocet <= 0) return;
-    // BUILD2SB91: Rene - "ted tam mas dalsi problem po tom csave -
-    // jsou zase lagy delaji zpozdeni zvuku." PRESNE OVERENO (ne
-    // odhad): SKCTL bit3 (dvouton) ZUSTAVA ZAPNUTY NAVZDY po dokonceni
-    // CSAVE (primo zmereno testem - i 30s po konci CSAVE, bez
-    // jakekoliv dalsi aktivity, bit3 stale $2B/ZAPNUTY) - to je
-    // pravdepodobne autenticke chovani ROM (OS neuklizi SKCTL po
-    // kazetove operaci), NE chyba emulace. PROBLEM byl, ze appka
-    // kontrolovala JEN "je SKCTL bit3 zapnuty?" a pokud ano, VZDY
-    // pouzila drazsi dvoukanalovy vypocet (dve volani pokeyGenSamples
-    // + vyberova smycka) - i KDYZ zadny prenos dat uz dlouho neprobiha
-    // - to zpusobovalo TRVALE zvysenou zatez CPU po KAZDEM CSAVE,
-    // narustajici podtekani zvukoveho bufferu (primo potvrzeno v
-    // logu: podtekani ~9 behem CSAVE, ale EXPLOZE na 364+ v
-    // nasledujicich minutach). OPRAVA: dvoukanalovy vypocet pouzit
-    // JEN kdyz je SOUCASNE (a) SKCTL bit3 zapnuty A (b) jsme
-    // GENUINNE V RAMCI aktivniho, NEDAVNEHO prenosu (serRamecStart
-    // neni starsi nez ~1 vterina) - jinak (stary/zadny prenos) se
-    // pouzije levny, standardni jednokanalovy vypocet, i kdyz SKCTL
-    // bit3 zustava (stale) zapnuty.
-    const long long CYKLU_NA_1S = 1773447;
-    const bool nedavnyPrenos = (cpu.c.cycles - serRamecStart) < CYKLU_NA_1S;
-    const bool dvouton = (skctl & 0x08) != 0 && nedavnyPrenos;
-    if (!dvouton) { nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + odkud, pocet, cyklu_na_vzorek); return; }
+  static int fetchRate(int mode) {           // cyklu na bajt
+    static const uint8_t r[16] = {0, 0, 2, 2, 2, 2, 4, 4, 8, 8, 4, 4, 4, 2, 2, 2};
+    return r[mode & 15];
+  }
 
-    // Oba kanaly generovat NEZAVISLE, VZDY na plnou hlasitost (zadne
-    // "if (!vol) continue" zamrznuti citace) - do docasnych bufferu
-    // na zasobniku (pocet je vzdy v ramci jednoho audio bufferu,
-    // max. nekolik tisic vzorku, bezpecne pod 8192).
-    static const int MAX_VZORKU_DVOUTON = 8192;
-    float bufMark[MAX_VZORKU_DVOUTON], bufSpace[MAX_VZORKU_DVOUTON];
-    int n = pocet > MAX_VZORKU_DVOUTON ? MAX_VZORKU_DVOUTON : pocet;
-    // BUILD2SB92: Rene - "ten piskajici zvuk je i dal v tom datovem
-    // toku zvuku jako podkres na originale...datovy tok zvuk se o
-    // neco stisi." B279/B282-puvodni kod ZTLUMIL kanal 3+4 UPLNE po
-    // celou dobu dvoutonu (audfMark/audfSpace mely na pozicich 2,3
-    // nuly) - na REALNEM Atari ale kanal 3+4 (pisklavy "leader" tón)
-    // BEZI NEZAVISLE na kanalu 1/2 (POKEY ma 4 SOUBEZNE kanaly, SIO
-    // rutina v ROM nastavuje kanal 3+4 na zacatku a NEVYPINA ho pro
-    // prenos dat - jen kanal 1/2 prepina mark/space). Ztlumenim
-    // kanalu 3+4 zmizel piskajici podkres BEHEM dat A SOUCASNE to
-    // snizilo celkovy soucet slozek = tisi zvuk oproti leader fazi
-    // (kde kanal 3+4 hraje samo, na plno). OPRAVA: kanal 3+4 (audf[2],
-    // audf[3], audc[2], audc[3]) prevzit BEZE ZMENY do OBOU (mark i
-    // space) docasnych poli - hraje ted NEPRETRZITE jako podkres bez
-    // ohledu na to, jestli se prave vybira mark-buffer nebo space-
-    // buffer, presne jako na realnem hardwaru.
-    int audfMark[4]  = {audf[0], 0, audf[2], audf[3]};
-    int audcMark[4]  = {audc[0], 0, audc[2], audc[3]};
-    int audfSpace[4] = {0, audf[1], audf[2], audf[3]};
-    int audcSpace[4] = {0, audc[1], audc[2], audc[3]};
-    nap::pokeyGenSamples(audfMark,  audcMark,  audctl, pokeyAudioMark,  bufMark,  n, cyklu_na_vzorek);
-    nap::pokeyGenSamples(audfSpace, audcSpace, audctl, pokeyAudioSpace, bufSpace, n, cyklu_na_vzorek);
-
-    const double cyklu_na_bit = 1773447.0 / 600.0; // 600 baudu, presne jako JS reference pro cteni pasky
-    for (int i = 0; i < n; i++) {
-      long long cykl = pocatekBufferu + (long long)((double)(odkud + i) * cyklu_na_vzorek);
-      long long odBitu = cykl - serRamecStart;
-      int bitIndex = odBitu >= 0 ? (int)(odBitu / cyklu_na_bit) : -1;
-      int bit = 1; // mimo platny ramec (nebo po jeho konci) = klidova "mark" uroven linky (kanal 1)
-      if (bitIndex >= 0 && bitIndex < 10) bit = (serRamec >> bitIndex) & 1;
-      out[odkud + i] = bit ? bufMark[i] : bufSpace[i];
+  void updatePlayfieldTiming() {
+    pfWidth = dmactlReg & 3;
+    pfFetchWidth = pfWidth;
+    if (hscrollEnabled && pfFetchWidth != 0 && pfFetchWidth != 3) pfFetchWidth++;
+    switch (pfWidth) {
+      case 0: pfDisplayStart = 110; pfDisplayEnd = 110; break;
+      case 1: pfDisplayStart = 32; pfDisplayEnd = 96; break;
+      case 2: pfDisplayStart = 24; pfDisplayEnd = 104; break;
+      case 3: pfDisplayStart = 22; pfDisplayEnd = 112; break;
     }
-    // pokud pocet > MAX_VZORKU_DVOUTON (nemelo by nastat pri normalnim
-    // 882 vzorku/snimek), zbytek jen doplnit standardni syntézou, at
-    // appka nikdy neselze (jen teoreticka pojistka).
-    if (pocet > n) {
-      nap::pokeyGenSamples(audf, audc, audctl, pokeyAudio, out + odkud + n, pocet - n, cyklu_na_vzorek);
+    pfDmaStart = pfDmaEnd = pfDmaVEnd = 114;
+    const int mode = dlControl & 15;
+    if (mode >= 2) {
+      switch (pfFetchWidth) {
+        case 0: break;
+        case 1: pfDmaStart = mode < 8 ? 26 : 28; pfDmaEnd = pfDmaStart + 64; break;
+        case 2: pfDmaStart = mode < 8 ? 18 : 20; pfDmaEnd = pfDmaStart + 80; break;
+        case 3: pfDmaStart = mode < 8 ? 10 : 12; pfDmaEnd = pfDmaStart + 96; break;
+      }
+      if (pfFetchWidth) {
+        pfDmaStart += hscrollDmaOffset; pfDmaEnd += hscrollDmaOffset;
+        pfDmaVEnd = pfDmaEnd;
+        if (pfDmaEnd > 106) pfDmaEnd = 106;
+      }
+    }
+    if (!(pfDmaActive && x <= std::max(10, pfDmaStart - (mode < 8 ? 2 : 4)))) {
+      // DMA zacatek uz probehl (zmena DMACTL uprostred radku) - nic dalsiho
+      if (x > 10 && pfFetchWidth == 0) pfDmaActive = false;
+    }
+    updateDmaPattern();
+  }
+
+  void updateDmaPattern() {
+    // od aktualniho cyklu dal (zmena uprostred radku nesmi prepsat minulost)
+    const int from = (x < 11) ? 0 : x + 1;
+    for (int i = from; i < 115; i++) dmaPat[i] = 0;
+    const int mode = dlControl & 15;
+    if (mode >= 2 && pfDmaActive && pfDmaStart < pfDmaVEnd && pfFetchWidth) {
+      const int r = fetchRate(mode);
+      const bool text = mode < 8;
+      // bajt grafiky / jmeno znaku jen na 1. radku rezimu (pfDmaEnabled)
+      if (pfDmaEnabled) {
+        for (int c = pfDmaStart; c < pfDmaVEnd && c < 115; c += r) if (c >= from) dmaPat[c] |= 0x02 | (c < 106 ? 0x01 : 0);
+      }
+      if (text) {
+        for (int c = pfDmaStart + 3; c < pfDmaVEnd + 3 && c < 115; c += r) if (c >= from) dmaPat[c] |= 0x04 | (c < 106 ? 0x01 : 0);
+      }
+    }
+    // obnova pameti: 9x po 4 cyklech od 25; obsazeny cyklus -> nejblizsi volny
+    {
+      int rr = 24;
+      for (int c = 25; c < 61; c += 4) {
+        if (rr >= c) continue;
+        rr = c;
+        while (rr < 107) { if (!(dmaPat[rr] & 1)) { if (rr >= from) dmaPat[rr] |= 0x01 | 0x08; rr++; break; } rr++; }
+      }
+    }
+    dmaPat[0] &= 0x08; // cyklus 0 resi anticSpecial (strely)
+  }
+
+  // ---------------------------------------------------------------
+  //  Konec radku
+  // ---------------------------------------------------------------
+  void endScanline() {
+    syncGtia(1000);                      // dokreslit cely radek
+    gtiaEndLine();
+    if (tape.loaded) tapeAdvance();      // kazeta bezi v realnem case (motor + PLAY)
+    x = 0;
+    if (++line >= LINES) {
+      line = 0; frame++;
+      dlActive = false;
+    } else if (line >= 248) {
+      if (line == 248) frameDone();
+      dlActive = false; dlExtraLoads = false;
+    }
+    pfDataR = 0; pfCharW = 0;
+    displayDone = 0;
+  }
+
+  void frameDone() {
+    if (!view) return;
+    static uint32_t lut[256]; static bool lutOk = false;
+    if (!lutOk) { for (int i = 0; i < 256; i++) lut[i] = napAtariPalette(i); lutOk = true; }
+    for (int i = 0; i < AnticView::W * AnticView::H; i++) view->fb[i] = lut[view->idx[i]];
+  }
+
+  // =================================================================
+  //  ANTIC -> GTIA: dekodovani hraciho pole po cyklech
+  // =================================================================
+  // Vyplni merge[]/anData[] pro cykly [displayDone, xEnd) - hodnota v bunce
+  // cyklu c patri barevnym taktum 2c a 2c+1.
+  void pushPlayfield(int xEnd) {
+    if (xEnd > pfDisplayEnd) xEnd = pfDisplayEnd;
+    int c0 = displayDone; if (c0 < pfDisplayStart) c0 = pfDisplayStart;
+    if (c0 >= xEnd) { if (displayDone < xEnd) displayDone = xEnd; return; }
+    const int mode = dlControl & 15;
+    const bool active = pushMode != 0 && pfWidth != 0 && (dmactlReg & 3);
+    for (int c = c0; c < xEnd; c++) {
+      uint8_t a0 = 0, a1 = 0;     // merge (PF bity) pro takt 2c, 2c+1
+      uint8_t h0 = 0, h1 = 0;     // 2 bity (hires/AN) pro takt 2c, 2c+1
+      if (active) {
+        if (hscrollDelay) {
+          uint8_t pa0, pa1, ph0, ph1, qa0, qa1, qh0, qh1;
+          decodeCycle(mode, c - 1, pa0, pa1, ph0, ph1);
+          decodeCycle(mode, c, qa0, qa1, qh0, qh1);
+          a0 = pa1; a1 = qa0; h0 = ph1; h1 = qh0;
+        } else decodeCycle(mode, c, a0, a1, h0, h1);
+      }
+      const int cc = c * 2;
+      if (pushMode == 2) {
+        merge[cc] = merge[cc + 1] = PF2;
+        anData[cc] = h0; anData[cc + 1] = h1;
+      } else {
+        merge[cc] = a0; merge[cc + 1] = a1;
+        anData[cc] = h0; anData[cc + 1] = h1;
+      }
+    }
+    displayDone = xEnd;
+  }
+
+  // Dekodovani jednoho cyklu c (2 barevne takty).
+  // a0/a1: PF bity (lores), h0/h1: 2bitove AN hodnoty (hires bity / GTIA)
+  void decodeCycle(int mode, int c, uint8_t &a0, uint8_t &a1, uint8_t &h0, uint8_t &h1) {
+    a0 = a1 = 0; h0 = h1 = 0;
+    const int D = (mode < 8) ? 6 : 4;
+    const int r = fetchRate(mode);
+    if (!r) return;
+    const int rel = c - D - pfDmaStart;
+    if (rel < 0 || c - D >= pfDmaVEnd) return;
+    const int k = rel / r, s = rel % r;
+    if (k >= 120) return;
+    static const uint8_t onehot[4] = {0, PF0, PF1, PF2};
+    switch (mode) {
+      case 2: case 3: {
+        uint8_t ch = pfData[k], d = pfChar[k];
+        uint8_t himask = (ch & 0x80) ? 0xFF : 0;
+        uint8_t inv = himask & charInvert;
+        if (mode == 2) {
+          if ((rowCounter & 14) == 8 && (ch & 0x60) != 0x60) d = 0;
+          d &= (uint8_t)(~himask | charBlink);
+          d ^= inv;
+        } else {
+          uint8_t mask = rowCounter >= 2 ? 0xFF : 0x00;
+          if ((rowCounter & 6) == 0) { if ((ch & 0x60) != 0x60) mask ^= 0xFF; }
+          d &= (uint8_t)(~himask | charBlink);
+          d = (uint8_t)(inv ^ (mask & d));
+        }
+        uint8_t nib = s ? (d & 15) : (d >> 4);
+        h0 = (nib >> 2) & 3; h1 = nib & 3;
+        break;
+      }
+      case 4: case 5: {
+        uint8_t ch = pfData[k], d = pfChar[k];
+        uint8_t nib = s ? (d & 15) : (d >> 4);
+        uint8_t p0 = (nib >> 2) & 3, p1 = nib & 3;
+        a0 = (p0 == 3 && (ch & 0x80)) ? PF3 : onehot[p0];
+        a1 = (p1 == 3 && (ch & 0x80)) ? PF3 : onehot[p1];
+        h0 = p0; h1 = p1;
+        break;
+      }
+      case 6: case 7: {
+        uint8_t ch = pfData[k], d = pfChar[k];
+        uint8_t col = (uint8_t)(PF0 << (ch >> 6));
+        uint8_t b0 = (d >> (7 - s * 2)) & 1, b1 = (d >> (6 - s * 2)) & 1;
+        a0 = b0 ? col : 0; a1 = b1 ? col : 0;
+        h0 = b0 ? (uint8_t)((ch >> 6) + 1 > 3 ? 3 : (ch >> 6) + 1) : 0; h1 = b1 ? h0 : 0;
+        break;
+      }
+      case 8: {   // 4 body po 4 taktech, 2 bity
+        uint8_t d = pfData[k];
+        uint8_t p = (d >> (6 - (s >> 1) * 2)) & 3;
+        a0 = a1 = onehot[p]; h0 = h1 = p;
+        break;
+      }
+      case 9: {   // 8 bodu po 2 taktech, 1 bit
+        uint8_t d = pfData[k];
+        uint8_t b = (d >> (7 - s)) & 1;
+        a0 = a1 = b ? PF0 : 0; h0 = h1 = b;
+        break;
+      }
+      case 10: {  // 4 body po 2 taktech, 2 bity
+        uint8_t d = pfData[k];
+        uint8_t p = (d >> (6 - s * 2)) & 3;
+        a0 = a1 = onehot[p]; h0 = h1 = p;
+        break;
+      }
+      case 11: case 12: {  // 8 bodu po 1 taktu, 1 bit
+        uint8_t d = pfData[k];
+        uint8_t b0 = (d >> (7 - s * 2)) & 1, b1 = (d >> (6 - s * 2)) & 1;
+        a0 = b0 ? PF0 : 0; a1 = b1 ? PF0 : 0; h0 = b0; h1 = b1;
+        break;
+      }
+      case 13: case 14: {  // 4 body po 1 taktu, 2 bity
+        uint8_t d = pfData[k];
+        uint8_t nib = s ? (d & 15) : (d >> 4);
+        uint8_t p0 = (nib >> 2) & 3, p1 = nib & 3;
+        a0 = onehot[p0]; a1 = onehot[p1]; h0 = p0; h1 = p1;
+        break;
+      }
+      case 15: {  // 8 hires bodu
+        uint8_t d = pfData[k];
+        uint8_t nib = s ? (d & 15) : (d >> 4);
+        h0 = (nib >> 2) & 3; h1 = nib & 3;
+        break;
+      }
     }
   }
 
-  // BUILD2SB65: POKEY casovace 1/2/4 - presny preklad z JS reference
-  // (timerPeriod/timersReload/timersTick). Perioda v CPU cyklech
-  // (1,79 MHz), stejny vzorec jako pouziva samotna syntéza zvuku
-  // (viz nap_atari_pokey.h) - je to STEJNY hardware, jen jiny ucel
-  // (tady odpocet do preruseni, tam generovani tonu).
-  long timerPeriod(int ch) const {
-    const int ac = audctl;
-    if (ch == 0) {
-      if (ac & 0x10) return 0;                              // 1+2 spojene: ridi kanal 2
-      const int d = (ac & 0x40) ? 1 : ((ac & 1) ? 114 : 28);
-      return (long)(audf[0] + ((ac & 0x40) ? 4 : 1)) * d;
+  // =================================================================
+  //  GTIA
+  // =================================================================
+  inline int xclock() const { return x * 2; }
+
+  void gtiaAddChange(int pos, uint8_t reg, uint8_t val) {
+    if (rcN >= 256) syncGtia(1000);
+    int i = rcN;
+    while (i > 0 && rc[i - 1].pos > pos) { rc[i] = rc[i - 1]; i--; }
+    rc[i].pos = pos; rc[i].reg = reg; rc[i].val = val; rcN++;
+  }
+
+  void gtiaPlayerDma(int i, uint8_t b) {
+    if (gractl & 2) {
+      if ((line & 1) || !(vdelay & (0x10 << i))) gtiaAddChange(xclock() + 3, (uint8_t)(0x0D + i), b);
     }
-    if (ch == 1) {
-      if (ac & 0x10) {
-        const int d = (ac & 0x40) ? 1 : ((ac & 1) ? 114 : 28);
-        return (long)((audf[1] << 8) + audf[0] + ((ac & 0x40) ? 7 : 1)) * d;
+  }
+  void gtiaMissileDma(uint8_t b) {
+    if (gractl & 1) gtiaAddChange(xclock() + 3, 0x20, b);
+  }
+
+  // Dokreslit radek do barevneho taktu (x*2 + offset + 2)
+  void syncGtia(int offset) {
+    int xEnd = (offset >= 1000) ? 114 : x + offset + 1;
+    if (xEnd > 114) xEnd = 114;
+    if (xEnd < 0) xEnd = 0;
+    pushPlayfield(xEnd);
+    int ccEnd = (offset >= 1000) ? 228 : x * 2 + offset * 2 + 2;
+    if (ccEnd > 228) ccEnd = 228;
+    renderTo(ccEnd);
+  }
+
+  void applyChange(const RegChange &c) {
+    const uint8_t v = c.val;
+    switch (c.reg) {
+      case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07: sprPos[c.reg] = v; break;
+      case 0x08: case 0x09: case 0x0A: case 0x0B: spr[c.reg & 3].size = v & 3; break;
+      case 0x0C: for (int i = 0; i < 4; i++) spr[4 + i].size = (v >> (2 * i)) & 3; break;
+      case 0x0D: case 0x0E: case 0x0F: case 0x10: spr[c.reg - 0x0D].latch = v; break;
+      case 0x11:
+        spr[4].latch = (uint8_t)((v << 6) & 0xC0); spr[5].latch = (uint8_t)((v << 4) & 0xC0);
+        spr[6].latch = (uint8_t)((v << 2) & 0xC0); spr[7].latch = (uint8_t)(v & 0xC0);
+        break;
+      case 0x12: case 0x13: case 0x14: case 0x15: colpm[c.reg - 0x12] = v & 0xFE; break;
+      case 0x16: case 0x17: case 0x18: case 0x19: colpf[c.reg - 0x16] = v & 0xFE; break;
+      case 0x1A: colbk = v & 0xFE; break;
+      case 0x1B: prior = v; if (v & 0xC0) lineHires = false; break;
+      case 0x1E: std::memset(collP, 0, 4); std::memset(collM, 0, 4); break;
+      case 0x20: {   // strely z DMA (VDELAY po strelach)
+        uint8_t mask = 0x0F;
+        if (!(line & 1)) mask = (uint8_t)~vdelay;
+        if (mask & 1) spr[4].latch = (uint8_t)((v << 6) & 0xC0);
+        if (mask & 2) spr[5].latch = (uint8_t)((v << 4) & 0xC0);
+        if (mask & 4) spr[6].latch = (uint8_t)((v << 2) & 0xC0);
+        if (mask & 8) spr[7].latch = (uint8_t)(v & 0xC0);
+        break;
       }
-      const int d = (ac & 1) ? 114 : 28;
-      return (long)(audf[1] + 1) * d;
     }
-    if (ch == 3) {
-      if (ac & 8) {
-        const int d = (ac & 0x20) ? 1 : ((ac & 1) ? 114 : 28);
-        return (long)((audf[3] << 8) + audf[2] + ((ac & 0x20) ? 7 : 1)) * d;
+  }
+
+  // barva vystupu: prioritni logika GTIA (rovnice z GTIA, viz Altirra gtiatables)
+  static uint8_t priorityDecode(int prior5, uint8_t m, uint8_t col[9]) {
+    // col: 0-3 P0..P3, 4-7 PF0..PF3, 8 BAK
+    static const uint8_t kPfPri[8] = {0, 1, 2, 2, 4, 4, 4, 4};
+    const uint8_t v = kPfPri[m & 7];
+    const bool pf0 = v & 1, pf1 = (v & 2) != 0, pf2 = (v & 4) != 0, pf3 = (m & 8) != 0;
+    const bool p0 = (m & 16) != 0, p1 = (m & 32) != 0, p2 = (m & 64) != 0, p3 = (m & 128) != 0;
+    const bool multi = (prior5 & 16) != 0;
+    const bool pri0 = prior5 & 1, pri1 = (prior5 & 2) != 0, pri2 = (prior5 & 4) != 0, pri3 = (prior5 & 8) != 0;
+    const bool pri01 = pri0 | pri1, pri12 = pri1 | pri2, pri23 = pri2 | pri3, pri03 = pri0 | pri3;
+    const bool p01 = p0 | p1, p23 = p2 | p3, pf01 = pf0 | pf1, pf23 = pf2 | pf3;
+    const bool sp0 = p0 && !(pf01 && pri23) && !(pri2 && pf23);
+    const bool sp1 = p1 && !(pf01 && pri23) && !(pri2 && pf23) && (!p0 || multi);
+    const bool sp2 = p2 && !p01 && !(pf23 && pri12) && !(pf01 && !pri0);
+    const bool sp3 = p3 && !p01 && !(pf23 && pri12) && !(pf01 && !pri0) && (!p2 || multi);
+    const bool sf3 = pf3 && !(p23 && pri03) && !(p01 && !pri2);
+    const bool sf2 = pf2 && !(p23 && pri03) && !(p01 && !pri2) && !sf3;
+    const bool sf1 = pf1 && !(p23 && pri0) && !(p01 && pri01) && !sf3;
+    const bool sf0 = pf0 && !(p23 && pri0) && !(p01 && pri01) && !sf3;
+    const bool sb = !p01 && !p23 && !pf01 && !pf23;
+    uint8_t c = 0;
+    if (sf0) c |= col[4];
+    if (sf1) c |= col[5];
+    if (sf2) c |= col[6];
+    if (sf3) c |= col[7];
+    if (sp0) c |= col[0];
+    if (sp1) c |= col[1];
+    if (sp2) c |= col[2];
+    if (sp3) c |= col[3];
+    if (sb) c |= col[8];
+    return c;
+  }
+
+  // Vykresleni barevnych taktu [lastSyncCc, ccEnd)
+  void renderTo(int ccEnd) {
+    int cc = lastSyncCc;
+    if (cc >= ccEnd) return;
+    int ri = 0;
+    while (cc < ccEnd) {
+      while (ri < rcN && rc[ri].pos <= cc) { applyChange(rc[ri]); ri++; }
+      renderCc(cc);
+      cc++;
+    }
+    while (ri < rcN && rc[ri].pos <= cc) { applyChange(rc[ri]); ri++; }
+    if (ri) { for (int i = ri; i < rcN; i++) rc[i - ri] = rc[i]; rcN -= ri; }
+    lastSyncCc = cc;
+  }
+
+  inline void sprStep(Sprite &s) {
+    static const uint8_t tr[4][4] = {{0, 0, 0, 0}, {1, 0, 1, 0}, {0, 2, 2, 0}, {1, 2, 3, 0}};
+    s.state = tr[s.size][s.state];
+    if (s.state == 0) s.shift <<= 1;
+  }
+
+  void renderCc(int cc) {
+    // spousteni hracu/strel na pozici HPOS (i v okrajich - posuvny registr bezi)
+    for (int i = 0; i < 8; i++) {
+      Sprite &s = spr[i];
+      if (sprPos[i] == cc && (s.latch | s.shift)) {
+        if (s.state) { s.state = 0; s.shift <<= 1; }
+        s.shift |= s.latch;
       }
-      const int d = (ac & 1) ? 114 : 28;
-      return (long)(audf[3] + 1) * d;
+    }
+    if (vblankLine || cc < 34 || cc >= 222) {
+      for (int i = 0; i < 8; i++) if (spr[i].shift) sprStep(spr[i]);
+      if (cc >= 32 && cc < 224) lineOut[cc * 2] = lineOut[cc * 2 + 1] = 0;
+      return;
+    }
+    uint8_t m = 0;
+    const bool inPf = (cc >> 1) >= pfDisplayStart && (cc >> 1) < pfDisplayEnd && pushMode != 0;
+    uint8_t hb = 0;
+    if (inPf) { m = merge[cc]; hb = anData[cc]; }
+    const int gmode = prior & 0xC0;
+    // "pseudo rezim E": ANTIC posila hires (rezim 2/3/F), ale klopny obvod
+    // 40 sloupcu v GTIA uz byl na tomto radku shozen zapnutim GTIA rezimu
+    // (PRIOR bit 6/7) - nahodit ho umi jen HBLANK. GTIA pak cte dvojice
+    // hires bitu jako lores: 00..11 = PF0..PF3 (Altirra HW Reference;
+    // pouziva napr. Postcard - obrazky v ramecich).
+    if (gmode == 0 && pushMode == 2 && !lineHires && (m & PF2)) m = (uint8_t)(1 << hb);
+    uint8_t pfColl = m & 15;
+    if (gmode == 0 && lineHires && inPf) pfColl = hb ? PF2 : 0;   // kolize v hires: PF2 kdyz bit
+    if (gmode == 0x40 || gmode == 0xC0) { m = 0; pfColl = 0; }
+    if (gmode == 0x80) {
+      // rezim 10: dvojice taktu -> 4bitovy index; hraci barvy z hraciho pole
+      int base = (cc - 1) & ~1;
+      uint8_t l = (uint8_t)(((base >= 0 ? anData[base] : 0) << 2) | anData[base + 1]);
+      static const uint8_t k10[16] = {P0, P1, P2, P3, PF0, PF1, PF2, PF3, 0, 0, 0, 0, PF0, PF1, PF2, PF3};
+      if (!inPf) l = 8;
+      m = k10[l];
+      pfColl = m & 15;
+    }
+    // hraci
+    uint8_t pm = 0;
+    for (int i = 0; i < 4; i++) {
+      Sprite &s = spr[i];
+      if (s.shift & 0x80) {
+        collP[i] |= (uint8_t)(pfColl | pm);
+        pm |= (uint8_t)(P0 << i);
+      }
+      if (s.shift) sprStep(s);
+    }
+    // P->P kolize oboustranne
+    for (int i = 0; i < 4; i++) if (pm & (P0 << i)) collP[i] |= (uint8_t)(pm & ~(P0 << i));
+    // strely
+    uint8_t mm = 0;
+    for (int i = 0; i < 4; i++) {
+      Sprite &s = spr[4 + i];
+      if (s.shift & 0x80) { collM[i] |= (uint8_t)(pfColl | pm); mm |= (uint8_t)(1 << i); }
+      if (s.shift) sprStep(s);
+    }
+    uint8_t all = (uint8_t)(m | pm);
+    if (mm) {
+      if (prior & 0x10) all |= PF3;                 // paty hrac
+      else for (int i = 0; i < 4; i++) if (mm & (1 << i)) all |= (uint8_t)(P0 << i);
+    }
+    uint8_t col[9] = {colpm[0], colpm[1], colpm[2], colpm[3], colpf[0], colpf[1], colpf[2], colpf[3], colbk};
+    uint8_t c0, c1;
+    if (gmode == 0) {
+      uint8_t c = priorityDecode(prior & 0x1F, all, col);
+      if (lineHires && inPf) {
+        // 40znakovy rezim: PF2 pozadi, nastaveny bit = jas PF1 (i pres hrace)
+        c0 = (hb & 2) ? (uint8_t)((c & 0xF0) | (colpf[1] & 0x0F)) : c;
+        c1 = (hb & 1) ? (uint8_t)((c & 0xF0) | (colpf[1] & 0x0F)) : c;
+      } else c0 = c1 = c;
+    } else if (gmode == 0x40) {
+      uint8_t c = priorityDecode(prior & 0x1F, (uint8_t)(all & (P0 | P1 | P2 | P3 | PF3)), col);
+      int base = cc & ~1;
+      uint8_t l = inPf ? (uint8_t)((anData[base] << 2) | anData[base + 1]) : 0;
+      if (!(all & 0xF0)) c |= l;
+      c0 = c1 = c;
+    } else if (gmode == 0xC0) {
+      uint8_t c = priorityDecode(prior & 0x1F, (uint8_t)(all & (P0 | P1 | P2 | P3 | PF3)), col);
+      int base = cc & ~1;
+      uint8_t l0 = inPf ? (uint8_t)((anData[base] << 6) | (anData[base + 1] << 4)) : 0;
+      if (!(all & 0xF0)) { c |= l0; if (l0 == 0) c &= 0xF0; }
+      c0 = c1 = c;
+    } else {
+      uint8_t c = priorityDecode(prior & 0x1F, all, col);
+      c0 = c1 = c;
+    }
+    if (cc >= 32 && cc < 224) { lineOut[cc * 2] = c0; lineOut[cc * 2 + 1] = c1; }
+  }
+
+  void gtiaEndLine() {
+    // zbyle zmeny registru (s pozici za koncem radku) posunout do dalsiho radku
+    for (int i = 0; i < rcN; i++) rc[i].pos -= 228;
+    int k = 0;
+    for (int i = 0; i < rcN; i++) { if (rc[i].pos < 0) applyChange(rc[i]); else rc[k++] = rc[i]; }
+    rcN = k;
+    lastSyncCc = 0;
+    if (view && line >= 8 && line < 248) {
+      std::memcpy(&view->idx[(line - 8) * AnticView::W], &lineOut[64], AnticView::W);
+    }
+    std::memset(merge, 0, sizeof merge);
+    std::memset(anData, 0, sizeof anData);
+  }
+
+  // =================================================================
+  //  I/O
+  // =================================================================
+  inline uint8_t cpuRead(uint16_t a) {
+    if ((a & 0xF800) == 0xD000) return ioRead(a);
+    return memRead(a, false);
+  }
+  inline void cpuWrite(uint16_t a, uint8_t v) {
+    if ((a & 0xF800) == 0xD000) { ioWrite(a, v); return; }
+    memWrite(a, v);
+  }
+  inline uint8_t memRead(uint16_t a, bool antic) {
+    const int pb = mem.portB();
+    if (a >= 0xC000) { if ((pb & 1) && mem.os) return mem.os[a - 0xC000]; return mem.ram[a]; }
+    if (a >= 0xA000) { if (!(pb & 2) && mem.bas) return mem.bas[a - 0xA000]; return mem.ram[a]; }
+    if (a >= 0x4000 && a < 0x8000) {
+      if (!antic && a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1) && mem.os) return mem.os[a - 0x5000 + 0x1000];
+      if (!(pb & (antic ? 0x20 : 0x10))) return mem.ext[((pb >> 2) & 3) * 0x4000 + (a - 0x4000)];
+    }
+    return mem.ram[a];
+  }
+  inline uint8_t anticRead(uint16_t a) {
+    if ((a & 0xF800) == 0xD000) return 0xFF;
+    return memRead(a, true);
+  }
+  inline void memWrite(uint16_t a, uint8_t v) {
+    const int pb = mem.portB();
+    if (a >= 0xC000) { if (pb & 1) return; mem.ram[a] = v; return; }
+    if (a >= 0xA000) { if (!(pb & 2) && mem.bas) return; mem.ram[a] = v; return; }
+    if (a >= 0x4000 && a < 0x8000) {
+      if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1)) return;
+      if (!(pb & 0x10)) { mem.ext[((pb >> 2) & 3) * 0x4000 + (a - 0x4000)] = v; return; }
+    }
+    mem.ram[a] = v;
+  }
+
+  uint8_t ioRead(uint16_t a) {
+    switch (a & 0xFF00) {
+      case 0xD000: return gtiaRead(a & 0x1F);
+      case 0xD200: return pokeyRead(a & 0x0F);
+      case 0xD300: return piaRead(a & 3);
+      case 0xD400: return anticRegRead(a & 0x0F);
+      default: return 0xFF;
+    }
+  }
+  void ioWrite(uint16_t a, uint8_t v) {
+    switch (a & 0xFF00) {
+      case 0xD000: gtiaWrite(a & 0x1F, v); break;
+      case 0xD200: pokeyWrite(a & 0x0F, v); break;
+      case 0xD300: piaWrite(a & 3, v); break;
+      case 0xD400: anticRegWrite(a & 0x0F, v); break;
+      default: break;
+    }
+  }
+
+  // ---------------- ANTIC registry ----------------
+  uint8_t anticRegRead(int r) {
+    switch (r) {
+      case 0x0B: {
+        int y = line;
+        if (x >= 111) { y++; if (x >= 112 && y >= LINES) y = 0; }
+        return (uint8_t)(y >> 1);
+      }
+      case 0x0C: return 0;       // PENH
+      case 0x0D: return 0xFF;    // PENV
+      case 0x0E: return 0xFF;
+      case 0x0F: return nmist;
+      default: return 0xFF;
+    }
+  }
+  void anticRegWrite(int r, uint8_t v) {
+    if (traceFrame == frame) std::fprintf(stderr, "A y=%d x=%d reg=%02X v=%02X\n", line, x, r, v);
+    switch (r) {
+      case 0x00:
+        v &= 0x3F;
+        if (v != dmactlReg) { syncGtia(0); dmactlReg = v; updatePlayfieldTiming(); }
+        break;
+      case 0x01:
+        v &= 7;
+        if (v != chactl) { syncGtia(0); chactl = v; charInvert = (chactl & 2) ? 0xFF : 0; charBlink = (chactl & 1) ? 0 : 0xFF; updateCurrentCharRow(); }
+        break;
+      case 0x02: dlist = (uint16_t)((dlist & 0xFF00) | v); break;
+      case 0x03: dlist = (uint16_t)((dlist & 0x00FF) | (v << 8)); break;
+      case 0x04: {
+        v &= 15;
+        if (v != hscrol) {
+          if (hscrollEnabled) {
+            uint8_t d = (uint8_t)(hscrol ^ v);
+            if (d & 1) { syncGtia(0); hscrollDelay = (v & 1) != 0; }
+            if (d & 14) { hscrollDmaOffset = (v & 14) >> 1; hscrol = v; updatePlayfieldTiming(); }
+          }
+          hscrol = v;
+        }
+        break;
+      }
+      case 0x05: vscrol = v & 15; if (x >= 1 && x < 109) latchedVScroll = vscrol; break;
+      case 0x07: pmbase = v & 0xFC; break;
+      case 0x09: chbaseNew = v; chbaseReg = v; chbaseDelay = 2; break;
+      case 0x0A:
+        if (!wsyncPending || (wsyncPending == 1 && x == 104)) wsyncPending = 2;
+        break;
+      case 0x0E: nmien = v & 0xC0; break;
+      case 0x0F:
+        nmist = 0x1F;
+        if (x == 7 && pendingNMIs) nmist |= pendingNMIs;
+        break;
+    }
+  }
+
+  // ---------------- GTIA registry ----------------
+  uint8_t gtiaRead(int r) {
+    switch (r) {
+      case 0x10: case 0x11: case 0x12: case 0x13: return (uint8_t)(trig[r - 0x10] & 1);
+      case 0x14: return 0x01;                       // PAL
+      case 0x1F: {
+        uint8_t in = (uint8_t)(0x08 | (consol & 7));
+        return (uint8_t)((~consolOut) & in & 0x0F);
+      }
+      default: break;
+    }
+    if (r >= 0x15) return 0x0F;
+    syncGtia(0);
+    switch (r) {
+      case 0x00: case 0x01: case 0x02: case 0x03: return collM[r] & 15;
+      case 0x04: case 0x05: case 0x06: case 0x07: return collP[r - 4] & 15;
+      case 0x08: case 0x09: case 0x0A: case 0x0B: return (collM[r - 8] >> 4) & 15;
+      case 0x0C: case 0x0D: case 0x0E: case 0x0F: return (uint8_t)((collP[r - 0x0C] >> 4) & 15 & ~(1 << (r - 0x0C)));
     }
     return 0;
   }
-  /** Zapis do STIMER ($D209) znovunabiji vsechny tri casovace. */
-  void timersReload() {
-    timer1Cyc = timerPeriod(0);
-    timer2Cyc = timerPeriod(1);
-    timer4Cyc = timerPeriod(3);
-  }
-  /** Vola se jednou za radku (114 cyklu) - presne jak to dela reference. */
-  void timersTick(int cyk) {
-    if (!(irqen & 0x07)) return; // nikdo neposlouchá, netreba pocitat
-    if (timer1Cyc > 0) {
-      timer1Cyc -= cyk;
-      if (timer1Cyc <= 0) { long p = timerPeriod(0); timer1Cyc += (p > 0 ? p : 1000000000L); irqst &= ~0x01; obnovIrq(); }
+  long long traceFrame = -1;          // testy: vypis zapisu barev / NMI v tomto snimku
+  void gtiaWrite(int r, uint8_t v) {
+    gReg[r] = v;
+    if (traceFrame == frame && r >= 0x12 && r <= 0x1B) std::fprintf(stderr, "W y=%d x=%d reg=%02X v=%02X\n", line, x, r, v);
+    const int xp = xclock();
+    switch (r) {
+      case 0x12: case 0x13: case 0x14: case 0x15:
+      case 0x16: case 0x17: case 0x18: case 0x19: case 0x1A:
+        gtiaAddChange(xp + 1, (uint8_t)r, v); return;
+      case 0x1B: gtiaAddChange(xp + 1, (uint8_t)r, v); return;
+      case 0x1C: vdelay = v; return;
+      case 0x1D: gractl = v; return;
+      case 0x1F: {
+        uint8_t n = v & 0x0F;
+        if ((n ^ consolOut) & 8) setSpeaker((n & 8) != 0);
+        consolOut = n;
+        return;
+      }
+      case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07:
+        gtiaAddChange(xp + 5, (uint8_t)r, v); return;
+      case 0x08: case 0x09: case 0x0A: case 0x0B: case 0x0C:
+      case 0x0D: case 0x0E: case 0x0F: case 0x10: case 0x11:
+        gtiaAddChange(xp + 3, (uint8_t)r, v); return;
+      case 0x1E: gtiaAddChange(xp + 3, (uint8_t)r, v); return;
     }
-    if (timer2Cyc > 0) {
-      timer2Cyc -= cyk;
-      if (timer2Cyc <= 0) { long p = timerPeriod(1); timer2Cyc += (p > 0 ? p : 1000000000L); irqst &= ~0x02; obnovIrq(); }
+  }
+
+  // ---------------- PIA ----------------
+  uint8_t piaRead(int r) {
+    switch (r) {
+      case 0: if (mem.pia.ctlA & 4) return (uint8_t)((porta & ~mem.pia.ddrA) | (mem.pia.orA & mem.pia.ddrA)); return (uint8_t)mem.pia.ddrA;
+      case 1: if (mem.pia.ctlB & 4) return (uint8_t)mem.portB(); return (uint8_t)mem.pia.ddrB;
+      case 2: return (uint8_t)(mem.pia.ctlA & 0x3F);
+      default: return (uint8_t)(mem.pia.ctlB & 0x3F);
     }
-    if (timer4Cyc > 0) {
-      timer4Cyc -= cyk;
-      if (timer4Cyc <= 0) { long p = timerPeriod(3); timer4Cyc += (p > 0 ? p : 1000000000L); irqst &= ~0x04; obnovIrq(); }
+  }
+  void piaWrite(int r, uint8_t v) {
+    switch (r) {
+      case 0: if (mem.pia.ctlA & 4) mem.pia.orA = v; else mem.pia.ddrA = v; break;
+      case 1: if (mem.pia.ctlB & 4) mem.pia.orB = v; else mem.pia.ddrB = v; break;
+      case 2: mem.pia.ctlA = v & 0x3F; break;
+      default: mem.pia.ctlB = v & 0x3F; break;
     }
   }
 
-  /** Stisk klavesy: OS ji prevezme pres preruseni z POKEY. */
-  void klavesa(int kod) {
-    kbcode = kod & 0xFF;
-    irqst &= ~0x40;
-    obnovIrq();
+  // =================================================================
+  //  POKEY
+  // =================================================================
+  void pokeyCold() {
+    for (int i = 0; i < 4; i++) { audf[i] = 0; audc[i] = 0; audfP1[i] = 1; pcnt[i] = 1; pborrow[i] = 0; chOut[i] = 0; }
+    audctl = 0; irqen = 0; irqst = 0xFF; skctl = 0; skstat = 0xFF; kbcode = 0xFF; serin = 0xFF;
+    hpf[0] = hpf[1] = 0; stimerDelay = 0;
+    serOutCounter = 0; serOutValid = false; serOutState = true; serOutShift = 0; serOutTickDelay = 0;
+    last64 = last15 = polyBase = polyShutOff = 0;
+    audLevel = audLevelStart = 0; audEv.clear(); audFrom = 0;
+    tapeLevel = tapeLevelStart = 0; tapeEv.clear(); tapeFrom = 0;
   }
+  void updateIrq() { irqLine = ((~irqst) & irqen & 0xFF) != 0; }
 
-  // BUILD2SC1: BREAK klavesa pro novou klavesnici v C++ (nap_atari_keyboard.h).
-  // Na realnem Atari BREAK NENI soucasti klavesnicove matice (zadny scankod
-  // v KBCODE) - jde primo na vlastni bit POKEY preruseni. Primo overeno v
-  // JS referenci (jedinem zdroji pravdy pro logiku): "M.breakKey=function()
-  // { pokeyRaise(0x80); };" - jen zvedne IRQST bit 0x80, nic vic (zadna
-  // zmena kbcode). Stejny vzorec jako klavesa() vyse, jen jiny bit.
-  void breakKey() {
-    irqst &= ~0x80;
-    obnovIrq();
+  // Polynomialni citace POKEY (fakta o hardwaru - Altirra HW Reference):
+  // vsechny jsou typu XNOR (stav "same nuly" je platny, init je nuluje),
+  // 4bit: zpetna vazba z bitu 2^3, 5bit: 2^4, 9bit: 8^3, 17bit: 16^11;
+  // RANDOM cte INVERTOVANE bity 17bit registru (bity 8..15) resp. 9bit.
+  // Tabulka: bit3 = poly4, bit2 = poly5, bit1 = poly9, bit0 = poly17,
+  // 2x 131071 polozek (aby slo cist 8 po sobe jdoucich bez preteceni).
+  static const uint8_t *polyBuf() {
+    static uint8_t *t = nullptr;
+    if (!t) {
+      t = new uint8_t[131071 * 2];
+      uint32_t p4 = 0, p5 = 0, p9 = 0, p17 = 0;
+      for (int i = 0; i < 131071; i++) {
+        p4 = (p4 >> 1) + (~((p4 << 2) ^ (p4 << 3)) & 8);
+        p5 = (p5 >> 1) + (~((p5 << 2) ^ (p5 << 4)) & 16);
+        p9 = (p9 >> 1) + (~((p9 << 8) ^ (p9 << 3)) & 0x100);
+        p17 = (p17 >> 1) + (~((p17 << 16) ^ (p17 << 11)) & 0x10000);
+        t[i] = (uint8_t)(((p4 & 1) << 3) | ((p5 & 1) << 2) | ((p9 & 1) << 1) | ((p17 >> 8) & 1));
+      }
+      std::memcpy(t + 131071, t, 131071);
+    }
+    return t;
   }
-
-  int dlistAddr() const { return (dlistL | (dlistH << 8)) & 0xFFFF; }
-
-  void reset() {
-    // BUILD2SB82: Rene - "RESET na realnem Atari zachovava napsany
-    // kod, jen vymaze obrazovku - POWER maze vse a bootuje znovu."
-    // NALEZENA A PRESNE OVERENA PRICINA: "mem.pia = Pia();" tady
-    // RESETOVALO CELOU PIA VCETNE PORTB (rizeni bankovani pameti na
-    // 130XE)! Na REALNEM hardwaru RESET signal PIA vubec neresetuje -
-    // PORTB je jen softwarova zapadka, prezije reset stejne jako
-    // zbytek RAM. Kdyz se PORTB pri resetu zmenilo, appka se najednou
-    // divala na JINOU BANKU pameti nez tu, kde byl napsany program -
-    // ten pak vypadal "ztraceny", i kdyz fyzicky nikde nezmizel.
-    // PRIMO OVERENO testem: napsat "10 PRINT HI", zavolat reset BEZ
-    // tehle radky, LIST po resetu SPRAVNE ukazal puvodni program
-    // (predtim, s "mem.pia = Pia();", LIST po resetu ukazal PRAZDNO).
-    // JS reference potvrzuje - "M.reset=function(){ cpu.reset(); };"
-    // - opravdu jen CPU, nic jineho.
-    cpu.c = CpuState();
-    cpu.reset();
-    // BUILD2SB77: cpu.c.cycles se vynuluje uvnitr CpuState() vyse -
-    // stare zaznamenane prechody (z PRED resetem, s VELKYMI cyklovymi
-    // hodnotami) by vuci novemu, vynulovanemu cpu.c.cycles vysly jako
-    // "daleko v budoucnosti" - zahodit je, at genAudio() nezacne
-    // spatne.
-    pocetSpeakerPrechodu = 0;
+  // pozice poly citacu v cyklu (citace bezi od posledniho opusteni init rezimu)
+  inline uint32_t polyPos(uint32_t period) const {
+    int64_t d = (int64_t)(cyc - polyBase);
+    int64_t m = d % (int64_t)period;
+    if (m < 0) m += period;
+    return (uint32_t)m;
   }
+  inline int polyBit4() const { return (polyBuf()[polyPos(15)] >> 3) & 1; }
+  inline int polyBit5() const { return (polyBuf()[polyPos(31)] >> 2) & 1; }
+  inline int polyBit9() const { return (polyBuf()[polyPos(511)] >> 1) & 1; }
+  inline int polyBit17() const { return polyBuf()[polyPos(131071)] & 1; }
 
-  void dalsiDlInstrukce() {
-    for (int ochrana = 0; ochrana < 8; ochrana++) {
-      if (++dlKroku > 300) { dlMode = 0; dlZbyva = 240; dlDli = false; return; }
-      const int op = mem.cpuRead(dlPc); dlPc = (dlPc + 1) & 0xFFFF;
-      const int m = op & 0x0F;
-      dlDli = (op & 0x80) != 0;
-      if (m == 0) { dlMode = 0; dlZbyva = ((op >> 4) & 7) + 1; dlRadek = 0;
-                    dlHskrol = false; dlVskrol = false; return; }
-      // POZOR NA PORADI: bit4 je SVISLE, bit5 je VODOROVNE skrolovani.
-      // Mel jsem to prohozene, takze se u rezimu s vodorovnym skrolem
-      // menil pocatecni radek znaku misto sirsiho nataceni z pameti.
-      dlVskrol = (op & 0x10) != 0;      // bit4 = svisle
-      dlHskrol = (op & 0x20) != 0;      // bit5 = vodorovne
-
-      if (m == 1) {
-        // Skok. Adresa je u OBOU variant - to jsem drive u $01 vubec necetl.
-        const int lo = mem.cpuRead(dlPc); dlPc = (dlPc + 1) & 0xFFFF;
-        const int hi = mem.cpuRead(dlPc); dlPc = (dlPc + 1) & 0xFFFF;
-        dlPc = lo | (hi << 8);
-        if (op & 0x40) {                            // $41 = JVB: KONEC SNIMKU
-          dlKonec = true; dlMode = 0; dlZbyva = 240; dlRadek = 0;
-          return;                                   // dal uz se nekresli
+  uint8_t pokeyRead(int r) {
+    switch (r) {
+      case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07: return 228; // paddle: bez paddlu
+      case 0x08: return 0;          // ALLPOT
+      case 0x09: return kbcode;
+      case 0x0A: {
+        // init rezim: posuvny registr se plni jednickami (do 10 cyklu), pak $FF
+        uint8_t force = 0;
+        if (!(skctl & 3)) {
+          const uint64_t off = cyc - polyShutOff;
+          if (off > 10) return 0xFF;
+          if (off) force = (uint8_t)(0xFFE00 >> (int)off);
         }
-        continue;                                   // $01 = JMP: cti dal
+        const uint8_t *pb = polyBuf();
+        uint8_t v = 0;
+        if (audctl & 0x80) { const uint32_t o = polyPos(511); for (int i = 7; i >= 0; i--) v = (uint8_t)((v << 1) | ((pb[o + i] >> 1) & 1)); }
+        else { const uint32_t o = polyPos(131071); for (int i = 7; i >= 0; i--) v = (uint8_t)((v << 1) | (pb[o + i] & 1)); }
+        return (uint8_t)(~v | force);
       }
-      if (op & 0x40) {                              // LMS
-        const int lo = mem.cpuRead(dlPc); dlPc = (dlPc + 1) & 0xFFFF;
-        const int hi = mem.cpuRead(dlPc); dlPc = (dlPc + 1) & 0xFFFF;
-        dlScreen = lo | (hi << 8);
+      case 0x0D: return serin;
+      case 0x0E: return irqst;
+      case 0x0F: {
+        // bit 4 = primy stav seriove vstupni linky (kazeta: demodulovana FSK)
+        uint8_t s = skstat;
+        if (tapeDataLevel()) s |= 0x10; else s &= ~0x10;
+        return s;
       }
-      dlMode = m; dlRadek = dlVskrol ? (vscrol & 15) : 0;
-      dlZbyva = AnticView::popisRezimu(m).scanline - dlRadek;
-      if (dlZbyva <= 0) dlZbyva = 1;
+      default: return 0xFF;
+    }
+  }
+
+  void pokeyWrite(int r, uint8_t v) {
+    switch (r) {
+      case 0x00: case 0x02: case 0x04: case 0x06: {
+        int ch = r >> 1;
+        audfMark();
+        audf[ch] = v; audfP1[ch] = (uint8_t)(v + 1);
+        break;
+      }
+      case 0x01: case 0x03: case 0x05: case 0x07: audfMark(); audc[r >> 1] = v; updateAudioLevel(); break;
+      case 0x08: audfMark(); audctl = v; updateAudioLevel(); break;
+      case 0x09: stimerDelay = 4; break;            // STIMER: restart citacu za 4 cykly
+      case 0x0A: skstat |= 0xE0; break;             // SKRES
+      case 0x0B: break;                             // POTGO
+      case 0x0D:
+        serout = v; seroutPocet++;
+        if (!serOutCounter) serOutCounter = 1;
+        serOutValid = true;
+        break;
+      case 0x0E:
+        irqen = v;
+        irqst |= (uint8_t)(~v & 0xF7);
+        updateIrq();
+        break;
+      case 0x0F: {
+        const bool prvInit = (skctl & 3) == 0, newInit = (v & 3) == 0;
+        if (prvInit != newInit) {
+          if (!newInit) { last15 = cyc + 81 - 114; last64 = cyc + 22 - 28; polyBase = cyc + 1; }
+          else polyShutOff = cyc;     // poly citace bezi dal (dobeh posuvu), pak RANDOM = $FF
+          serOutCounter = 0; serOutValid = false; serOutState = false;
+          // zmena init rezimu nuluje i prijimaci posuvny registr - rozpracovany
+          // bajt z kazety se zahodi (OS tim po zmereni rychlosti zahodi druhy $55)
+          tape.rxPhase = 0;
+          skstat |= 0x02;
+          irqst &= ~0x08; updateIrq();
+        }
+        if ((skctl ^ v) & 0x02) { if (!(v & 2)) skstat |= 0x04; }
+        skctl = v;
+        updateAudioLevel();
+        break;
+      }
+    }
+  }
+
+  inline bool slowTick15() const { return (int64_t)(cyc - last15) >= 0 && ((cyc - last15) % 114) == 0; }
+  inline bool slowTick64() const { return (int64_t)(cyc - last64) >= 0 && ((cyc - last64) % 28) == 0; }
+
+  // jeden cyklus POKEY
+  inline void pokeyTick() {
+    if (stimerDelay && --stimerDelay == 0) {
+      for (int i = 0; i < 4; i++) { pcnt[i] = audfP1[i]; pborrow[i] = 0; }
+      if (audctl & 0x10) pcnt16[0] = (audf[1] << 8 | audf[0]) + 1;
+      if (audctl & 0x08) pcnt16[1] = (audf[3] << 8 | audf[2]) + 1;
+    }
+    // init rezim (SKCTL bity 0-1 = 0): stoji jen delicky 64/15 kHz (a poly
+    // citace) - kanaly na 1,79 MHz bezi dal (Altirra HW Reference)
+    const bool fast1 = audctl & 0x40, fast3 = audctl & 0x20, link12 = audctl & 0x10, link34 = audctl & 0x08;
+    const bool slow = (skctl & 3) ? ((audctl & 1) ? slowTick15() : slowTick64()) : false;
+    // kanaly 1+2
+    if (link12) tickLinked(0, fast1 || slow, fast1);
+    else { tickCh(0, fast1 || slow); tickCh(1, slow); }
+    if (link34) tickLinked(1, fast3 || slow, fast3);
+    else { tickCh(2, fast3 || slow); tickCh(3, slow); }
+    serialTickDelayed();
+  }
+  int pcnt16[2] = {1, 1}, pborrow16[2] = {0, 0};
+
+  inline void tickCh(int ch, bool clk) {
+    if (pborrow[ch]) { if (--pborrow[ch] == 0) { pcnt[ch] = audfP1[ch]; timerFire(ch); } return; }
+    if (clk && --pcnt[ch] == 0) pborrow[ch] = 3;
+  }
+  inline void tickLinked(int pair, bool clk, bool fast) {
+    (void)fast;
+    if (pborrow16[pair]) {
+      if (--pborrow16[pair] == 0) {
+        pcnt16[pair] = (pair == 0 ? ((audf[1] << 8) | audf[0]) : ((audf[3] << 8) | audf[2])) + 1;
+        timerFire(pair * 2 + 1);
+      }
       return;
     }
-    dlMode = 0; dlZbyva = 240; dlDli = false;
+    if (clk) {
+      --pcnt16[pair];
+      if ((pcnt16[pair] & 0xFF) == 0) timerFire(pair * 2, true);   // nizsi kanal (jen zvuk)
+      if (pcnt16[pair] == 0) pborrow16[pair] = 6;
+    }
   }
 
-  /** Hodnota registru r v okamziku, kdy paprsek prochazel bodem x. */
-  int regNaX(int r, int x) const {
-    // 1 cyklus procesoru = 2 barvove takty = 4 body ve framebufferu,
-    // a bod x=0 odpovida barvovemu taktu 32
-    int v = segZac[r];
-    for (int i = 0; i < segN; i++) {
-      if (segReg[i] != r) continue;
-      const int xz = segCyk[i] * 4 - 64;
-      if (x >= xz) v = segHod[i];
+  void timerFire(int ch, bool lowOfLinked = false) {
+    // vystup kanalu (zvuk)
+    const int ac = audc[ch];
+    bool change = false;
+    const bool init = !(skctl & 3);         // init: vystupy poly citacu = 1
+    if ((ac & 0x80) || init || polyBit5()) {
+      uint8_t o;
+      if (ac & 0x20) o = chOut[ch] ^ 1;
+      else if (init) o = 1;
+      else if (ac & 0x40) o = (uint8_t)polyBit4();
+      else o = (uint8_t)((audctl & 0x80) ? polyBit9() : polyBit17());
+      if (o != chOut[ch]) { chOut[ch] = o; change = true; }
     }
-    return v;
+    // horni propusti: kanal 3 vzorkuje kanal 1, kanal 4 kanal 2
+    if (ch == 2 && (audctl & 0x04)) { hpf[0] = chOut[0]; change = true; }
+    if (ch == 3 && (audctl & 0x02)) { hpf[1] = chOut[1]; change = true; }
+    if (lowOfLinked) { if (change) updateAudioLevel(); return; }
+    // preruseni casovacu 1, 2, 4
+    if (ch == 0 && (irqen & 0x01)) { irqst &= ~0x01; updateIrq(); }
+    if (ch == 1 && (irqen & 0x02)) { irqst &= ~0x02; updateIrq(); }
+    if (ch == 3 && (irqen & 0x04)) { irqst &= ~0x04; updateIrq(); }
+    // dvoutonovy rezim: tony se srovnaji
+    if ((skctl & 0x08) && ((ch == 0 && serOutState) || ch == 1)) twoToneReset = 2;
+    // seriovy vystup: hodiny = casovac 4 (SKCTL $20/$40) nebo 2 ($60)
+    if (serOutCounter) {
+      const int m = skctl & 0x60;
+      if ((ch == 3 && (m == 0x20 || m == 0x40)) || (ch == 1 && m == 0x60)) serOutTickDelay = 2;
+    }
+    if (change) updateAudioLevel();
+  }
+  int twoToneReset = 0;
+
+  inline void serialTickDelayed() {
+    if (twoToneReset && --twoToneReset == 0) {
+      pcnt[0] = audfP1[0]; pcnt[1] = audfP1[1]; pborrow[0] = pborrow[1] = 0;
+    }
+    if (serOutTickDelay && --serOutTickDelay == 0) serialOutTick();
   }
 
-  // Jedna scanline. PAL: 312 radku po 114 cyklech.
-  void runScanline() {
-    lineCyc0 = cpu.c.cycles;
-    segN = 0;
-    for (int p = 0; p < 4; p++) {
-      segZac[p] = hposp[p]; segZac[4+p] = hposm[p];
-      segZac[8+p] = sizep[p]; segZac[0x0D+p] = grafp[p];
-      segZac[0x12+p] = colpm[p]; segZac[0x16+p] = colpf[p];
-    }
-    segZac[0x0C] = sizem; segZac[0x11] = grafm;
-    segZac[0x1A] = colbk; segZac[0x1B] = prior;
-    segZac[0x20] = dmactl; segZac[0x21] = chactl;
-    segZac[0x24] = hscrol; segZac[0x25] = vscrol;
-    segZac[0x27] = pmbase; segZac[0x29] = chbase;
-
-    bool dliTed = false;
-    if (line == 8) {
-      dlPc = dlistAddr(); dlScreen = -1; dlZbyva = 0; dlKroku = 0; dlRadek = 0; dlKonec = false;
-      if (view) view->vymaz(colbk);
-    }
-    // ANTIC si nacte instrukci display listu na zacatku radky
-    int mode = 0, screen = -1, radek = 0;
-    const bool viditelna = (line >= 8 && line < 248 && view);
-    if (viditelna && (dmactl & 3) && !dlKonec) {
-      if (dlZbyva == 0) dalsiDlInstrukce();
-      mode = dlMode; screen = dlScreen; radek = dlRadek;
-    }
-
-    // TEPRVE TED procesor - behem nej se zaznamenavaji zapisy do GTIA
-    const long long konec = lineCyc0 + 114;
-    while (cpu.c.cycles < konec && !cpu.c.jam) {
-      // B291: jen behem zavadeni XEX v HELP (viz XexLoader v nap_atari_runtime.h):
-      // OS se pri startu snazi zavest disk D1:, ktery tu neni - misto ~10 s
-      // cekani na odpoved SIO hned vratit "zarizeni neodpovida" (138).
-      // Mimo zavadeni XEX je priznak vypnuty a beh je PRESNE jako driv.
-      if (sioRychlyTimeout && cpu.c.pc == 0xE459) { sioHnedTimeout(); continue; }
-      cpu.step();
-    }
-
-    if (viditelna) {
-      const int y = line - 8;
-      // ANTIC vyrobi proud kodu, GTIA z nej udela obraz
-      if (stopa && y < 240) { stopaMode[y] = mode; stopaScr[y] = screen; stopaRad[y] = radek; }
-      if ((dmactl & 3) && !dlKonec && mode != 0)
-        view->anRadek(mem, mode, screen, radek, segZac[0x20], segZac[0x29],
-                      dlHskrol, segZac[0x24]);
-      else
-        view->anPozadi();
-      view->gtiaRadek(mem, y, line, *this);
-      if ((dmactl & 3) && !dlKonec) {
-        dlRadek++;
-        if (--dlZbyva == 0) {
-          if (dlMode != 0 && dlScreen >= 0) dlScreen += AnticView::bajtuNaRadek(dlMode, dmactl, dlHskrol);
-          dliTed = dlDli;
-        }
+  void serialOutTick() {
+    if (!serOutCounter) return;
+    --serOutCounter;
+    // 20 pul-bitu: start (0), 8 datovych LSB napred, stop (1)
+    if (serOutCounter) {
+      int half = 20 - serOutCounter;       // 1..19
+      int bit = half / 2;                  // 0 start, 1-8 data, 9 stop
+      bool st = bit == 0 ? false : (bit <= 8 ? ((serOutShift >> (bit - 1)) & 1) != 0 : true);
+      if (st != serOutState) { serOutState = st; updateAudioLevel(); }
+    } else {
+      if (serOutValid) {
+        serOutCounter = 20;
+        serOutShift = serout;
+        serOutValid = false;
+        bool st = false;                   // start bit
+        if (st != serOutState) { serOutState = st; updateAudioLevel(); }
+        irqst |= 0x08;
+        if (irqen & 0x10) irqst &= ~0x10;
+      } else {
+        if (!serOutState) { serOutState = true; updateAudioLevel(); }
+        irqst &= ~0x08;
       }
+      updateIrq();
     }
-    if (dliTed && (nmien & 0x80)) {
-      nmist = (nmist & 0x3F) | 0x80;
-      cpu.c.nmiPending = true;
-    }
-    // POKEY: sériový vystup - presne z JS reference, dva nezavisle
-    // citace, kazdy snizeny o 1 kazdou scanline.
-    bool zmenaSerIrq = false;
-    if (outBusy > 0 && --outBusy == 0) { irqst &= ~0x10; zmenaSerIrq = true; }
-    if (shiftBusy > 0 && --shiftBusy == 0) { irqst &= ~0x08; zmenaSerIrq = true; }
-    if (zmenaSerIrq) obnovIrq();
-    // BUILD2SB65: POKEY casovace 1/2/4 - jednou za radku (114 cyklu),
-    // presne jak to dela JS reference ("vola se kazdou scanline").
-    timersTick(114);
-    line++;
-    if (line == 248) {
-      nmist = (nmist & 0x3F) | 0x40;
-      if (nmien & 0x40) cpu.c.nmiPending = true;
-    }
-    if (line >= 312) { line = 0; frame++; }
   }
 
-  void runFrame() { const long long f = frame; while (frame == f) runScanline(); }
+  // prijem bajtu z kazety/SIO zarizeni (na konci stop bitu). cyclesPerBit=0:
+  // rychlost se nekontroluje (kazeta uz bajt slozila rychlosti POKEY).
+  std::vector<int> *serinLog = nullptr;     // testy: zaznam prijatych bajtu
+  void receiveSerialByte(uint8_t c, double cyclesPerBit, bool framingError = false) {
+    if (serinLog) serinLog->push_back((int)c | (framingError ? 0x100 : 0) | (!(skctl & 3) ? 0x200 : 0) | ((irqen & 0x20) ? 0x400 : 0));
+    if (!(skctl & 3)) return;                 // init rezim: POKEY nic neprijima
+    if (framingError) skstat &= ~0x80;
+    if (cyclesPerBit > 0) {
+      const double expect = 2.0 * serialHalfBitCycles();
+      const double margin = expect / 8.0;
+      if (cyclesPerBit < expect - margin || cyclesPerBit > expect + margin) { c = 0xFF; skstat &= ~0x80; }
+    }
+    if (irqen & 0x20) {
+      if (!(irqst & 0x20)) skstat &= ~0x20;   // predchozi bajt nikdo nevyzvedl -> preteceni
+      irqst &= ~0x20; updateIrq();
+    }
+    serin = c;
+  }
+
+  // ---------------- zvukovy vystup ----------------
+  void setSpeaker(bool on) { audfMark(); gtiaSpeakerBit = on ? 1 : 0; gtiaKlikPocitadlo++; updateAudioLevel(); }
+  void audfMark() {}
+  void updateAudioLevel() {
+    double s = 0;
+    for (int ch = 0; ch < 4; ch++) {
+      const int ac = audc[ch];
+      const int vol = ac & 15;
+      if (!vol) continue;
+      if (ac & 0x10) { s += vol / 60.0; continue; }
+      if ((ch == 0 && (audctl & 0x10)) || (ch == 2 && (audctl & 0x08))) { /* nizsi kanal 16bit */ }
+      uint8_t o = chOut[ch];
+      if (ch == 0 && (audctl & 0x04)) o ^= hpf[0];
+      if (ch == 1 && (audctl & 0x02)) o ^= hpf[1];
+      if (o) s += vol / 60.0;
+    }
+    s += gtiaSpeakerBit ? 0.25 : 0.0;
+    if (s != audLevel) {
+      audLevel = s; audEv.emplace_back(cyc, (float)s);
+      if (audEv.size() > 400000) { audEv.clear(); audFrom = cyc; audLevelStart = audLevel; }   // nikdo zvuk neodebira
+    }
+    // kazetovy vystup (SIO DATA OUT): dvoutonovy rezim = vystup casovace 1/2
+    double tl;
+    if (skctl & 0x08) tl = (serOutState ? chOut[0] : chOut[1]) ? 1.0 : -1.0;
+    else tl = serOutState ? 1.0 : -1.0;
+    if (tl != tapeLevel) {
+      tapeLevel = tl;
+      if (tapeCapture) tapeEv.emplace_back(cyc, (float)tl);
+      if (tapeEv.size() > 400000) { tapeEv.clear(); tapeFrom = cyc; tapeLevelStart = tapeLevel; }
+    }
+  }
+
+  // Integrace urovni do n vzorku za usek [from, to)
+  static void integrate(const std::vector<std::pair<uint64_t, float>> &ev, double levelStart, uint64_t from, uint64_t to,
+                        float *out, int n, bool dc) {
+    if (n <= 0) return;
+    if (to <= from) { for (int i = 0; i < n; i++) out[i] = 0; return; }
+    const double span = (double)(to - from);
+    const double per = span / n;
+    size_t ei = 0;
+    double level = levelStart;
+    double tcur = (double)from;
+    static double dcx = 0, dcy = 0;
+    for (int i = 0; i < n; i++) {
+      const double tEnd = (double)from + per * (i + 1);
+      double acc = 0;
+      while (ei < ev.size() && (double)ev[ei].first < tEnd) {
+        double te = (double)ev[ei].first;
+        if (te > tcur) { acc += level * (te - tcur); tcur = te; }
+        level = ev[ei].second; ei++;
+      }
+      acc += level * (tEnd - tcur); tcur = tEnd;
+      double s = acc / per;
+      if (dc) { double y = s - dcx + 0.995 * dcy; dcx = s; dcy = y; s = y; }
+      out[i] = (float)s;
+    }
+  }
+
+  // ---------------- kazeta -> datova linka -> POKEY ----------------
+  // Volano na konci kazdeho radku a pri cteni SKSTAT: posune pasku o ubehly
+  // cas (jen motor ZAP + PLAY) a prijimac POKEY vzorkuje uroven linky
+  // uprostred bitu rychlosti z AUDF3/AUDF4 (jak ji nastavil OS po zmereni
+  // uvodnich $55 $55) - start bit, 8 datovych bitu (LSB napred), stop bit.
+  int tapeDataLevel() { tapeAdvance(); return tape.line; }
+  uint64_t tapeLastCyc = 0;
+  // pul bitu v cyklech = perioda casovace 4 (seriovy vstup)
+  double serialHalfBitCycles() const {
+    double per;
+    if (audctl & 0x08) {
+      const int f = (audf[3] << 8) | audf[2];
+      per = (audctl & 0x20) ? (double)(f + 7) : (double)(f + 1) * ((audctl & 1) ? 114 : 28);
+    } else per = (double)(audf[3] + 1) * ((audctl & 1) ? 114 : 28);
+    if (per < 20) per = 1478;                         // nesmysl -> 600 baudu
+    return per;
+  }
+  void tapeAdvance() {
+    const uint64_t now = cyc;
+    const uint64_t d = now - tapeLastCyc; tapeLastCyc = now;
+    const bool bezi = tape.loaded && tape.play && motorOn();
+    if (!bezi || d == 0) {
+      if (!bezi) { tape.line = 1; tape.rxPhase = 0; }
+      return;
+    }
+    const double perCyc = tape.img.rate / 1773447.0;   // vzorku pasky za cyklus
+    const double p0 = tape.pos, p1 = tape.pos + d * perCyc;
+    const double c0 = (double)(now - d);               // cyklus odpovidajici p0
+    // projit hranice vzorku pasky v [p0, p1) a vzorkovani UART mezi nimi
+    size_t i = (size_t)std::floor(p0) + 1;
+    const size_t iEnd = (size_t)std::floor(p1);
+    for (;;) {
+      if (i > iEnd) {                                  // zbytek useku do "ted"
+        while (tape.rxPhase && tape.rxNext <= (double)now) tapeUartSample();
+        break;
+      }
+      const double tSeg = c0 + ((double)i - p0) / perCyc;
+      // vzorkovani prijimace pred zmenou urovne
+      while (tape.rxPhase && tape.rxNext <= tSeg) tapeUartSample();
+      const int lvl = tape.img.bit(i);
+      if (lvl != tape.line) {
+        if (tape.line == 1 && lvl == 0 && tape.rxPhase == 0) {
+          // hrana start bitu: stred start bitu za pul bitu
+          tape.rxPhase = 1; tape.rxByte = 0;
+          tape.rxNext = tSeg + serialHalfBitCycles();
+          skstat &= ~0x02;                             // seriovy vstup prijima
+        }
+        tape.line = lvl;
+      }
+      i++;
+    }
+    tape.pos = p1;
+    if ((size_t)tape.pos >= tape.img.n) tape.line = 1; // konec pasky
+  }
+  void tapeUartSample() {
+    const int v = tape.line;
+    const double bit = 2.0 * serialHalfBitCycles();
+    if (tape.rxPhase == 1) {
+      if (v == 0) { tape.rxPhase = 2; tape.rxNext += bit; }
+      else { tape.rxPhase = 0; skstat |= 0x02; }       // jen zakmit
+      return;
+    }
+    if (tape.rxPhase <= 9) {
+      if (v) tape.rxByte |= 1 << (tape.rxPhase - 2);
+      tape.rxPhase++; tape.rxNext += bit;
+      return;
+    }
+    // stop bit
+    tape.rxPhase = 0; skstat |= 0x02;
+    if (v) tape.bytes++; else tape.framing++;
+    receiveSerialByte((uint8_t)tape.rxByte, 0, !v);
+  }
+
+  // =================================================================
+  //  SIO D1: na urovni prikazu (jako "SIO patch" v emulatorech)
+  // =================================================================
+  void sioPatch() {
+    sioPrikazu++;
+    const uint8_t ddevic = mem.ram[0x300], dunit = mem.ram[0x301], dcomnd = mem.ram[0x302];
+    const uint16_t dbuf = (uint16_t)(mem.ram[0x304] | (mem.ram[0x305] << 8));
+    const int dbyt = mem.ram[0x308] | (mem.ram[0x309] << 8);
+    const int daux = mem.ram[0x30A] | (mem.ram[0x30B] << 8);
+    uint8_t st = 138;                         // timeout = zarizeni neodpovida
+    const int dev = (ddevic + dunit - 1) & 0xFF;
+    if (dev == 0x31 && disk.mounted) {
+      switch (dcomnd) {
+        case 0x52: {                          // READ SECTOR
+          size_t off; int len;
+          if (disk.sec(daux, off, len)) {
+            for (int i = 0; i < dbyt; i++) pokeMem((uint16_t)(dbuf + i), i < len ? disk.data[off + i] : 0);
+            st = 1; disk.reads++;
+          } else st = 144;
+          break;
+        }
+        case 0x57: case 0x50: {               // WRITE (with verify)
+          size_t off; int len;
+          if (disk.writeProtect) st = 144;
+          else if (disk.sec(daux, off, len)) {
+            for (int i = 0; i < len && i < dbyt; i++) disk.data[off + i] = peek((uint16_t)(dbuf + i));
+            st = 1; disk.writes++;
+          } else st = 144;
+          break;
+        }
+        case 0x53: {                          // STATUS
+          uint8_t s[4] = {(uint8_t)(0x10 | (disk.sectorSize == 256 ? 0x20 : 0) | (disk.writeProtect ? 0x08 : 0)), 0xFF, 0xE0, 0x00};
+          for (int i = 0; i < dbyt && i < 4; i++) pokeMem((uint16_t)(dbuf + i), s[i]);
+          st = 1;
+          break;
+        }
+        case 0x21: case 0x22: {               // FORMAT
+          if (disk.writeProtect) st = 144;
+          else { std::fill(disk.data.begin(), disk.data.end(), 0); for (int i = 0; i < dbyt; i++) pokeMem((uint16_t)(dbuf + i), 0xFF); st = 1; }
+          break;
+        }
+        default: st = 139; break;             // NAK
+      }
+    } else if (!sioRychlyTimeout) {
+      st = 138;
+    }
+    mem.ram[0x303] = st;
+    cpu.y = st;
+    cpu.p = (uint8_t)((cpu.p & ~(F_N | F_Z)) | (st & 0x80) | (st ? 0 : F_Z));
+    if (st == 1) cpu.p &= ~F_C;
+    // RTS (navrat na volajiciho SIOV) - zaroven nekolik cyklu "behu"
+    cpu.s++; uint8_t lo = mem.ram[0x100 | cpu.s];
+    cpu.s++; uint8_t hi = mem.ram[0x100 | cpu.s];
+    cpu.pc = (uint16_t)(((hi << 8) | lo) + 1);
+    for (int i = 0; i < 6; i++) { beginCpuCycle(false); endCycle(); }
+    if (sioRychlyTimeout) sioZkratek++;
+  }
 };
 
 } // namespace nap

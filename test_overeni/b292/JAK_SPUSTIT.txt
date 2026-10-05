@@ -1,0 +1,24 @@
+B292 - nove jadro Atari 130XE presne po cyklech (testy na obycejnem Linuxu s g++)
+==================================================================================
+
+Spoustet z adresare test_overeni/b292. Prekladaji se jen hlavicky jadra
+(nap_atari_6502.h, nap_atari_machine.h, nap_atari_tape.h, nap_atari_runtime.h).
+
+1) Jadro na PC (boot, Acid800, XEX, kazeta):
+   g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_core test_core.cpp
+   ./test_core boot                         -> start OS s BASICem, READY
+   ./test_core acid acid800.atr             -> Acid800 (DETAIL=1 / TEXTLOG=1)
+   ./test_core xex hra.xex 1500 prefix 300,600  -> snimky obrazu (*.idx 384x240)
+   ./test_core kazeta [vystup.wav] [vstup.wav]  -> CSAVE -> WAV -> CLOAD -> LIST
+   acid800.atr je v repozitari emulatoru atari800 (test/acid800.atr).
+
+2) Procesor proti SingleStepTests (github.com/SingleStepTests/65x02, 6502/v1):
+   g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_6502_sst test_6502_sst.cpp
+   ./test_6502_sst 00.json a9.json ...      (256 souboru = 2 560 000 testu)
+
+3) SKUTECNY nap_atari_native.cpp se skutecnymi vlakny (Android nahrazen
+   stuby z ../b291/stub), JAVA_HOME = JDK kvuli jni.h:
+   g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include \
+       -I$JAVA_HOME/include/linux -I../../app/src/main/cpp/atari \
+       -o test_b292_jni_host test_b292_jni_host.cpp
+   ./test_b292_jni_host                     -> VYSTUP_test_b292_jni_host.txt

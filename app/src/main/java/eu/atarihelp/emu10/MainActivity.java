@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
     private static final int PICK_AUDIO_PERMISSION = 14; // BUILD2SA13C14: local MP3/WAV library permissions
     private static final int PICK_TV_WEB_SCREEN = 13; // BUILD2SA13C9: whole-phone MediaProjection mirror
     private static final int PICK_ATARI_CPP_XEX = 21; // B291: XEX/MOBIL na pristroji Atari 130XE v HELP
+    private static final int PICK_ATARI_CPP_WAV = 22; // B292: EJECT -> kazeta (WAV) z telefonu pro CLOAD
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
@@ -6574,6 +6575,12 @@ public class MainActivity extends Activity {
     private volatile boolean atariCppNetCil = false;      // NET HRY spustene z pristroje
     private byte[] atariCppCekajiciHra = null;            // hra z NET HRY cekajici na pristroj
     private String atariCppCekajiciJmeno = null;
+    // B292: posledni hra z NET HRY (zahozeni dvojiteho vyberu) a zpozdene
+    // spusteni cekajici hry (zrusi se, kdyz se pristroj mezitim vypne)
+    private String atariCppPosledniJmeno = null;
+    private int atariCppPosledniDelka = -1;
+    private long atariCppPosledniCas = 0;
+    private Runnable atariCppSpustCekajici = null;
 
     private final Runnable atariZarizeniTik = new Runnable() {
         @Override public void run() {
@@ -6624,7 +6631,18 @@ public class MainActivity extends Activity {
                 final String n = atariCppCekajiciJmeno;
                 atariCppCekajiciHra = null;
                 atariCppCekajiciJmeno = null;
-                ui.postDelayed(() -> atariCppSpustProgram(d, n, "NET_HRY"), 700);
+                if (atariCppSpustCekajici != null) ui.removeCallbacks(atariCppSpustCekajici);
+                atariCppSpustCekajici = () -> {
+                    atariCppSpustCekajici = null;
+                    // B292: jen kdyz pristroj porad bezi (v B291 se hra "spustila"
+                    // i po odchodu z HELP - do zastaveneho stroje)
+                    if (atariZarizeni == null) {
+                        appendNativeLog("B292 NET_HRY " + n + " - pristroj mezitim vypnut, nespoustim");
+                        return;
+                    }
+                    atariCppSpustProgram(d, n, "NET_HRY");
+                };
+                ui.postDelayed(atariCppSpustCekajici, 700);
             }
         } catch (Throwable t) {
             appendNativeLog("B291 PRISTROJ_CHYBA_ZAPNUTI " + safeMsg(t));
@@ -6637,6 +6655,7 @@ public class MainActivity extends Activity {
         atariZarizeni = null;
         atariZarizeniSkryte = false;
         ui.removeCallbacks(atariZarizeniTik);
+        if (atariCppSpustCekajici != null) { ui.removeCallbacks(atariCppSpustCekajici); atariCppSpustCekajici = null; }
         try { NativeAtariCoreBridge.devStopSafe(); } catch (Throwable ignored) {}
         try { if (v.getParent() instanceof ViewGroup) ((ViewGroup) v.getParent()).removeView(v); } catch (Throwable ignored) {}
         atariZarizeniVyzvedni();
@@ -6665,10 +6684,13 @@ public class MainActivity extends Activity {
             }
             final byte[] pcm = NativeAtariCoreBridge.devTakeWavSafe();
             if (pcm != null && pcm.length > 0) {
+                // B292: kazdy CSAVE do vlastniho souboru (datum a cas) - EJECT je
+                // pak nabidne jako kazety pro CLOAD; driv se prepisoval jeden
+                final String jmeno = "csave_" + new java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(new java.util.Date()) + ".wav";
                 new Thread(() -> {
-                    String r = ulozitAtariPcmWav(pcm, "csave_vystup");
+                    String r = ulozitAtariPcmWav(pcm, jmeno);
                     NativeAtariCoreBridge.devStatusSafe(r.startsWith("/")
-                            ? "CSAVE ULOZENO: Download/AtariHelp/Atari_emu/csave_vystup.wav"
+                            ? "CSAVE ULOZENO: Atari_emu/" + jmeno
                             : "CSAVE WAV SE NEULOZIL: " + r, 7000);
                 }, "b291-csave-wav").start();
             }
@@ -6706,7 +6728,7 @@ public class MainActivity extends Activity {
 
     /** Servisni tlacitka pristroje (kod z C++ po PUSTENI tlacitka). */
     private void atariZarizeniAkce(int kod) {
-        final String[] jmena = {"?", "NET_HRY", "XEX_MOBIL", "ATR_DISK", "TURBO_BASIC", "BASIC_TBXL_TXT", "LOG_CHYBA", "HELP", "MENU"};
+        final String[] jmena = {"?", "NET_HRY", "XEX_MOBIL", "ATR_DISK", "TURBO_BASIC", "BASIC_TBXL_TXT", "LOG_CHYBA", "HELP", "MENU", "EJECT_KAZETA"};
         appendNativeLog("B291 SERVISNI_TLACITKO " + (kod > 0 && kod < jmena.length ? jmena[kod] : String.valueOf(kod)));
         try {
             switch (kod) {
@@ -6744,12 +6766,84 @@ public class MainActivity extends Activity {
                 case 8:   // MENU
                     if (web != null) web.loadUrl("file:///android_asset/index.html");
                     break;
+                case 9:   // B292: EJECT na kazetaku -> vyber kazety (WAV)
+                    atariCppKazetaDialog();
+                    break;
                 default:
                     break;
             }
         } catch (Throwable t) {
             appendNativeLog("B291 SERVISNI_TLACITKO_CHYBA " + safeMsg(t));
         }
+    }
+
+    /** B292: EJECT = vyber kazety. Nabidne WAV z Download/AtariHelp/Atari_emu
+     *  (tam uklada CSAVE), libovolny WAV z telefonu (systemovy vyber souboru)
+     *  a vyjmuti kazety. Vybrany WAV se v C++ demoduluje (FSK) a vlozi do
+     *  magnetofonu - CLOAD ho cte pri zapnutem motoru a PLAY. */
+    private void atariCppKazetaDialog() {
+        final java.util.List<File> wavy = new java.util.ArrayList<>();
+        try {
+            File dir = new File(getPublicAtariHelpDownloadsDir(), "Atari_emu");
+            File[] fs = dir.listFiles();
+            if (fs != null) for (File f : fs) {
+                if (f.isFile() && f.getName().toLowerCase(Locale.US).endsWith(".wav") && f.length() > 44) wavy.add(f);
+            }
+            java.util.Collections.sort(wavy, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+        } catch (Throwable t) {
+            appendNativeLog("B292 KAZETA seznam WAV chyba " + safeMsg(t));
+        }
+        final java.util.List<String> polozky = new java.util.ArrayList<>();
+        for (File f : wavy) {
+            double sek = Math.max(0, f.length() - 44) / 88200.0;      // CSAVE WAV: 44100 Hz mono 16 bit
+            polozky.add(f.getName() + String.format(Locale.US, "  (%.0f s)", sek));
+        }
+        final int jiny = polozky.size();
+        polozky.add("JINY WAV Z TELEFONU...");
+        final int vyjmout = polozky.size();
+        polozky.add("VYJMOUT KAZETU");
+        appendNativeLog("B292 KAZETA EJECT - nabidka: " + wavy.size() + " WAV v Download/AtariHelp/Atari_emu");
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("KAZETA → Atari 130XE (CLOAD)")
+                .setItems(polozky.toArray(new String[0]), (dlg, kt) -> {
+                    if (kt == jiny) {
+                        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                        i.addCategory(Intent.CATEGORY_OPENABLE);
+                        i.setType("*/*");
+                        i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/wav", "audio/x-wav", "audio/wave", "audio/*", "application/octet-stream"});
+                        try {
+                            startActivityForResult(Intent.createChooser(i, "WAV kazeta pro Atari 130XE (C++)"), PICK_ATARI_CPP_WAV);
+                        } catch (Throwable t) {
+                            appendNativeLog("B292 KAZETA vyber souboru nejde otevrit " + safeMsg(t));
+                        }
+                    } else if (kt == vyjmout) {
+                        NativeAtariCoreBridge.devEjectTapeSafe();
+                        NativeAtariCoreBridge.devStatusSafe("KAZETA VYJMUTA", 4000);
+                    } else if (kt >= 0 && kt < wavy.size()) {
+                        final File f = wavy.get(kt);
+                        new Thread(() -> {
+                            try {
+                                byte[] d = readUriBytes(Uri.fromFile(f), 200 * 1024 * 1024);
+                                atariCppVlozKazetu(d, f.getName());
+                            } catch (Throwable t) {
+                                appendNativeLog("B292 KAZETA_CHYBA cteni " + f.getName() + ": " + safeMsg(t));
+                                NativeAtariCoreBridge.devStatusSafe("KAZETU NELZE PRECIST: " + f.getName(), 6000);
+                            }
+                        }, "b292-kazeta").start();
+                    }
+                })
+                .setNegativeButton("ZAVRIT", null)
+                .show();
+    }
+
+    /** B292: WAV -> magnetofon v C++ (vola se mimo UI vlakno). */
+    private void atariCppVlozKazetu(byte[] wav, String jmeno) {
+        if (wav == null || wav.length == 0) {
+            NativeAtariCoreBridge.devStatusSafe("KAZETA JE PRAZDNA", 5000);
+            return;
+        }
+        String r = NativeAtariCoreBridge.devLoadTapeSafe(wav, jmeno);
+        appendNativeLog("B292 KAZETA " + jmeno + " bajtu=" + wav.length + " -> " + r);
     }
 
     private byte[] atariCppAsset(String cesta) {
@@ -6815,10 +6909,14 @@ public class MainActivity extends Activity {
               + "RESET - jako na skutecnem Atari: program v pameti zustane.\n\n"
               + "HELP, START, SELECT, OPTION - konzolova tlacitka, drzi se po dobu stisku.\n\n"
               + "SHIFT a CONTROL - tuknuti = zamceno (zlate), dalsi tuknuti = odemceno.\n\n"
-              + "Kazetak: REC a PLAY drzi, STOP je pusti, EJECT otevre dvirka - zavres je tuknutim na okenko. "
-              + "Male tlacitko vedle pocitadla ho vynuluje. REW / FWD pretaci pocitadlo.\n\n"
+              + "Kazetak: REC a PLAY drzi, STOP je pusti. EJECT otevre dvirka a nabidne kazety (WAV ulozene CSAVE "
+              + "nebo jakykoli WAV z telefonu) - po vyberu se kazeta vlozi a dvirka zavrou. REW = pasek na zacatek, "
+              + "FWD = pasek o 10 s dal. Male tlacitko vedle pocitadla ho vynuluje.\n\n"
               + "CSAVE: napis CSAVE, RETURN, po pipnuti znovu RETURN. Po skonceni nahravani se WAV sam ulozi do "
-              + "Download/AtariHelp/Atari_emu/csave_vystup.wav.\n\n"
+              + "Download/AtariHelp/Atari_emu/csave_<datum>_<cas>.wav (nahrava se linka SIO DATA OUT - presne signal "
+              + "pro skutecny magnetofon).\n\n"
+              + "CLOAD: EJECT a vyber kazetu, napis CLOAD, RETURN, po pipnuti stiskni PLAY a RETURN. Atari si samo "
+              + "zmeri rychlost pasky a nahraje program (READY).\n\n"
               + "XEX/MOBIL - spusti XEX nebo ZIP z telefonu. TURBO/BASIC - Turbo-BASIC XL 1.5. "
               + "NET/HRY - hry z atarihelp.eu (spusti se tady v C++).\n\n"
               + "BASIC/TBXL TXT - vlozeni vypisu programu (pise se klavesnici Atari).\n\n"
@@ -10668,11 +10766,30 @@ public class MainActivity extends Activity {
     private void queueAtariGameFor130xe(String name, byte[] data, String reason) {
         // B291: NET/HRY stisknute na pristroji v HELP -> hra jde do C++ Atari,
         // ne do stareho JS emulatoru (ten se tim nijak nemeni).
+        // B292: Rene - "pri spusteni nejake hry to skocilo do java emu atari".
+        // Z logu: vyber hry prisel DVAKRAT (38 ms od sebe). B291 cil "C++" po
+        // prvni hre hned zrusil, takze druhe stazeni slo starou cestou do JS
+        // emulatoru. Ted cil plati po celou dobu prochazeni her (zrusi se az
+        // odchodem jinam, viz atariZarizeniPodleUrl) a stejny pozadavek do
+        // 5 s se zahodi.
         if (atariCppNetCil && data != null && data.length > 0 && web != null) {
-            atariCppNetCil = false;
+            final String nm = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
+            final long ted = android.os.SystemClock.uptimeMillis();
+            if (nm.equals(atariCppPosledniJmeno) && data.length == atariCppPosledniDelka && ted - atariCppPosledniCas < 5000) {
+                appendNativeLog("B292 NET_HRY duplicitni pozadavek zahozen: " + nm + " bajtu=" + data.length + " (stejna hra pred " + (ted - atariCppPosledniCas) + " ms)");
+                return;
+            }
+            atariCppPosledniJmeno = nm;
+            atariCppPosledniDelka = data.length;
+            atariCppPosledniCas = ted;
+            appendNativeLog("B292 NET_HRY -> C++ HELP: " + nm + " bajtu=" + data.length + " reason=" + reason);
+            if (atariZarizeni != null && isAtariCppOwnerUrl(web.getUrl())) {
+                // pristroj uz bezi - rovnou spustit, zadne nove nacitani stranky
+                atariCppSpustProgram(data, nm, "NET_HRY");
+                return;
+            }
             atariCppCekajiciHra = data;
-            atariCppCekajiciJmeno = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
-            appendNativeLog("B291 NET_HRY -> C++ HELP: " + atariCppCekajiciJmeno + " bajtu=" + data.length + " reason=" + reason);
+            atariCppCekajiciJmeno = nm;
             web.loadUrl(ATARI_CPP_URL);
             return;
         }
@@ -10887,6 +11004,24 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == PICK_ATARI_CPP_WAV) { // B292: EJECT -> WAV z telefonu jako kazeta
+            if (res != RESULT_OK || data == null || data.getData() == null) {
+                appendNativeLog("B292 KAZETA vyber WAV zrusen");
+                return;
+            }
+            final Uri uri = data.getData();
+            final String nm = safeFileName(getDisplayName(uri));
+            new Thread(() -> {
+                try {
+                    byte[] d = readUriBytes(uri, 200 * 1024 * 1024);
+                    atariCppVlozKazetu(d, nm);
+                } catch (Throwable t) {
+                    appendNativeLog("B292 KAZETA_CHYBA cteni " + nm + ": " + safeMsg(t));
+                    NativeAtariCoreBridge.devStatusSafe("KAZETU NELZE PRECIST: " + nm, 6000);
+                }
+            }, "b292-kazeta-wav").start();
+            return;
+        }
         if (req == PICK_ATARI_CPP_XEX) { // B291: XEX/MOBIL na pristroji v HELP
             if (res != RESULT_OK || data == null || data.getData() == null) {
                 appendNativeLog("B291 XEX_MOBIL vyber zrusen");

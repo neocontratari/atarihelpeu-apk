@@ -432,11 +432,15 @@ enum : int {
 // Servisni akce (vraci se Jave - otevreni vyberu souboru, dialogu, menu...)
 enum : int {
   SVC_NET = 1, SVC_XEX = 2, SVC_ATR = 3, SVC_TBXL = 4, SVC_TXT = 5, SVC_LOG = 6, SVC_HELP = 7, SVC_MENU = 8,
+  SVC_EJECT = 9,   // B292: EJECT na kazetaku -> Java nabidne ulozene WAV (kazety)
 };
 
 // Udalost pro skutecny stroj (zpracuje ji emulacni vlakno)
+// B292: KEYUP (pusteni klavesy - OS pak klavesu opakuje jako skutecna
+// klavesnice, dokud je drzena), SHIFT (zamek SHIFT = SKSTAT bit 3),
+// TAPE (v: bit0 PLAY, bit1 REC), REWIND/FFWD (pretoceni pasky).
 struct Ev {
-  enum T { NONE, KEY, CONSOL, RESET, BREAK, POWER_ON, POWER_OFF } t = NONE;
+  enum T { NONE, KEY, CONSOL, RESET, BREAK, POWER_ON, POWER_OFF, KEYUP, SHIFT, TAPE, REWIND, FFWD } t = NONE;
   int v = 0;
 };
 
@@ -607,6 +611,7 @@ public:
       if (d.scan == -2) {                            // SHIFT: tuknuti = zamek / odemknuti
         shiftLatched = !shiftLatched;
         for (int q = 0; q < 57; q++) if (KEYS[q].scan == -2) markKey(q);   // obe klavesy SHIFT
+        push(Ev::SHIFT, shiftLatched ? 1 : 0);
         return n;
       }
       if (d.scan == -1) { ctrlLatched = !ctrlLatched; markKey(k); return n; }
@@ -629,6 +634,7 @@ public:
     if (id >= ID_TAPE0 && id < ID_TAPE0 + 6) {
       int t = id - ID_TAPE0;
       tapeAt[t] = now;
+      const bool pr = play, rr = rec;
       if (t == 0) { rec = !rec; if (rec) counterAcc = 0; }
       else if (t == 2) { play = !play; if (play) counterAcc = 0; }
       else {
@@ -636,7 +642,10 @@ public:
         if (t == 4) { rec = false; play = false; }                       // STOP
         if (t == 5) { rec = false; play = false; setDoor(true, now); }  // EJECT
         if (t == 1 || t == 3) fastAcc = 0;
+        if (t == 1) push(Ev::REWIND, 0);
+        if (t == 3) push(Ev::FFWD, 0);
       }
+      if (pr != play || rr != rec) push(Ev::TAPE, (play ? 1 : 0) | (rec ? 2 : 0));
       markTape(); markWindow(); markCounter(); markLegend();
       return n;
     }
@@ -654,13 +663,24 @@ public:
     if (pid >= 0 && pid < 16) pidElem[pid] = ID_NONE;
     if (id == ID_NONE) return 0;
     auto push = [&](Ev::T t, int v) { if (n < maxOut) { out[n].t = t; out[n].v = v; n++; } };
-    if (id >= ID_KEY0 && id < ID_KEY0 + 57) { int k = id - ID_KEY0; keyHeld[k] = false; markKey(k); return n; }
+    if (id >= ID_KEY0 && id < ID_KEY0 + 57) {
+      int k = id - ID_KEY0; keyHeld[k] = false; markKey(k);
+      // pusteni klavesy - jen kdyz uz zadna jina klavesa (ani HELP) neni drzena
+      if (KEYS[k].scan >= 0 && !anyKeyHeld()) push(Ev::KEYUP, 0);
+      return n;
+    }
     if (id >= ID_CON0 && id < ID_CON0 + 5) {
       int ci = id - ID_CON0; conHeld[ci] = false; markCon(ci);
       if (ci >= 1 && ci <= 3) push(Ev::CONSOL, consolMask());
+      if (ci == 0 && !anyKeyHeld()) push(Ev::KEYUP, 0);     // HELP = klavesa matice
       return n;
     }
-    if (id >= ID_TAPE0 && id < ID_TAPE0 + 6) { tapeHeld[id - ID_TAPE0] = false; markTape(); markWindow(); return n; }
+    if (id >= ID_TAPE0 && id < ID_TAPE0 + 6) {
+      tapeHeld[id - ID_TAPE0] = false; markTape(); markWindow();
+      // EJECT pusten nad tlacitkem -> Java nabidne kazety (ulozene WAV)
+      if (id == ID_TAPE0 + 5 && hitTest(x, y) == id && svcAction) *svcAction = SVC_EJECT;
+      return n;
+    }
     if (id == ID_CNTRST) { swHeld = false; markCounter(); return n; }
     if (id >= ID_SVC0 && id < ID_SVC0 + 8) {
       int i = id - ID_SVC0; svcHeld[i] = false; markSvc(i);
@@ -677,6 +697,11 @@ public:
       int dummy = 0; n += pointerUp(p, -1e6f, -1e6f, now, out + n, maxOut - n, &dummy);
     }
     return n;
+  }
+  // drzi prst jeste nejakou klavesu matice (vcetne HELP)?
+  bool anyKeyHeld() const {
+    for (int i = 0; i < 57; i++) if (keyHeld[i] && KEYS[i].scan >= 0) return true;
+    return conHeld[0];
   }
   int consolMask() const {
     int m = 0;

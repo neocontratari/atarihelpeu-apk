@@ -1,0 +1,125 @@
+PASS	CPU: Basic instructions
+PASS	CPU: Flags
+PASS	CPU: Decimal mode
+PASS	CPU: Timing
+PASS	CPU: Bugs
+PASS	CPU: CLI/SEI timing
+PASS	CPU: Illegal instructions
+PASS	CPU: Illegal insn timing
+SKIP	CPU: 65C816 tests
+PASS	ANTIC: Default value
+PASS	ANTIC: NMIST/NMIRES test
+FAIL	ANTIC: Hires bug
+      |   CPU: 65C816 tests...Skipped           
+      |   No 65C816 present.                    
+      |   ANTIC: Default value...Pass           
+      |   ANTIC: NMIST/NMIRES test...Pass       
+      |   ANTIC: Hires bug...FAIL.              
+PASS	ANTIC: VCOUNT timing
+PASS	ANTIC: WSYNC timing
+PASS	ANTIC: Address wrapping
+PASS	ANTIC: Display list wrapping
+PASS	ANTIC: DLI timing
+PASS	ANTIC: Address mirroring
+PASS	ANTIC: P/M graphics DMA
+PASS	ANTIC: Character control
+PASS	ANTIC: DMA pattern
+PASS	ANTIC: Blocked NMIs
+FAIL	ANTIC: HSCROL bug
+      |   ANTIC: P/M graphics DMA...Pass        
+      |   ANTIC: Character control...Pass       
+      |   ANTIC: DMA pattern...Pass             
+      |   ANTIC: Blocked NMIs...Pass            
+      |   ANTIC: HSCROL bug...FAIL.             
+FAIL	ANTIC: Virtual DMA
+      |   ANTIC: DMA pattern...Pass             
+      |   ANTIC: Blocked NMIs...Pass            
+      |   ANTIC: HSCROL bug...FAIL.             
+      |   Unstopped PF DMA test failed: cl=02   
+      |   ANTIC: Virtual DMA...FAIL             
+PASS	ANTIC: Vertical scrolling
+PASS	ANTIC: VSCROL+NMI timing
+FAIL	ANTIC: Playfield start timing
+      |   ANTIC: Virtual DMA...FAIL.            
+      |   Pattern #2 was not correct: 00 != $05 
+      |   ANTIC: Vertical scrolling...Pass      
+      |   ANTIC: VSCROL+NMI timing...Pass       
+      |   ANTIC: Playfield start timing...FAIL. 
+FAIL	ANTIC: Playfield stop timing
+      |   ANTIC: VSCROL+NMI timing...Pass       
+      |   ANTIC: Playfield start timing...FAIL. 
+      |   Character mode DMACTL late test failed
+      |   : stride=16                           
+      |   ANTIC: Playfield stop timing...FAIL.  
+FAIL	ANTIC: Line buffering
+      |   : stride=16                           
+      |   ANTIC: Playfield stop timing...FAIL.  
+      |   Character mode DMACTL late test failed
+      |   : stride=17                           
+      |   ANTIC: Line buffering...FAIL.         
+PASS	POKEY: Default value
+PASS	POKEY: Noise generators
+FAIL	POKEY: IRQ timing
+      |   Readout incorrect for mid-interrupted 
+      |   mode 8/right: 00000000                
+      |   POKEY: Default value...Pass           
+      |   POKEY: Noise generators...Pass        
+      |   POKEY: IRQ timing...FAIL.             
+PASS	POKEY: Timer IRQs
+FAIL	POKEY: Timer timing
+      |   POKEY: IRQ timing...FAIL.             
+      |   Incorrect timer IRQ delay count (even)
+      |   : $05                                 
+      |   POKEY: Timer IRQs...Pass              
+      |   POKEY: Timer timing...FAIL.           
+PASS	POKEY: Two-tone mode
+PASS	POKEY: Serial clocking modes
+FAIL	POKEY: Direct serial input
+      |   POKEY: Two-tone mode...Pass           
+      |   POKEY: Serial output complete IRQ...Pa
+      |   ss                                    
+      |   POKEY: Serial clocking modes...Pass   
+      |   POKEY: Direct serial input...FAIL     
+FAIL	POKEY: Serial port timing
+      |   ss                                    
+      |   POKEY: Serial clocking modes...Pass   
+      |   POKEY: Direct serial input...FAIL.    
+      |   Timeout while waiting for NAK.        
+      |   POKEY: Serial port timing...FAIL.     
+FAIL	POKEY: Serial status
+      |   Timeout while waiting for NAK.        
+      |   POKEY: Serial port timing...FAIL.     
+      |   Serial output register was loaded too 
+      |   early.                                
+      |   POKEY: Serial status...FAIL.          
+PASS	POKEY: Address mirroring
+FAIL	POKEY: Init timing
+      |   Timer #4 IRQ fired with async recv mod
+      |   e activ4 IRQ fired with async recv mod
+      |   e active.                             
+      |   POKEY: Address mirroring...Pass       
+      |   POKEY: Init timing...FAIL.            
+PASS	PIA: Basic test
+FAIL	PIA: Interrupt control test
+      |   POKEY: Init timing...FAIL.            
+      |   15KHz IRQ fired too late after exiting
+      |    init mode.                           
+      |   PIA: Basic test...Pass                
+      |   PIA: Interrupt control test...FAIL    
+PASS	GTIA: Default value
+FAIL	GTIA: Phantom PMG DMA
+      |   PIA: Interrupt control test...FAIL.   
+      |   Unable to turn on port A control bit 6
+      |    (14).                                
+      |   GTIA: Default value...Pass            
+      |   GTIA: Phantom PMG DMA...FAIL.         
+PASS	GTIA: CONSOL test
+PASS	GTIA: Vertical delay
+PASS	GTIA: Collision test
+PASS	GTIA: P/M retriggering
+PASS	GTIA: Player resizing
+PASS	GTIA: Player overlap
+PASS	GTIA: Psuedo mode E
+PASS	GTIA: Address mirroring
+PASS	MMU: XL banking
+KONEC snimek 1368: pass 39 fail 14 skip 1 | Acid800: Passed: 42  Failed                    
