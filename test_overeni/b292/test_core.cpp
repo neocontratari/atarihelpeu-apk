@@ -112,6 +112,20 @@ int main(int argc, char **argv) {
     printf("TIMEOUT: pass %d fail %d skip %d\n%s", pass, fail, skip, obrazovka(*m).c_str());
     return 4;
   }
+  if (mode == "basic") {
+    // ./test_core basic "prikazy"  - napise prikazy do BASICu (\n = RETURN) a vypise obrazovku
+    Machine *m = novy(true);
+    TypeQueue tq; int f = 0;
+    for (; f < 400; f++) { m->runFrame(); if (f > 30 && obrazovka(*m).find("READY") != std::string::npos) break; }
+    std::string t = argc > 2 ? argv[2] : "?FRE(0)";
+    for (size_t i = 0; (i = t.find("\\n", i)) != std::string::npos; ) t.replace(i, 2, "\n");
+    tq.addText(t);
+    int cekej = argc > 3 ? atoi(argv[3]) : 300;
+    for (f = 0; f < 20000 && !tq.empty(); f++) { tq.step(*m); m->runFrame(); }
+    for (int k = 0; k < cekej; k++) m->runFrame();
+    printf("%s", obrazovka(*m).c_str());
+    return 0;
+  }
   if (mode == "xe130") {
     // Kontrola veci, ktere ma 130XE jinak nez Atari 800 / 800XL
     int chyb = 0, kontrol = 0;

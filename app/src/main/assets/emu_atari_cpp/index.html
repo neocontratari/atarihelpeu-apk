@@ -113,8 +113,9 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
-B291: v C++ zatim chybi disketova mechanika (ATR) a cteni z pasky (CLOAD) -
-tlacitko ATR/DISK to na pristroji poctive napise, nic se nepredstira.
+B294: kazeta uz funguje (CSAVE do WAV, CLOAD z WAV pres EJECT). V C++ zatim
+chybi disketova mechanika (ATR) - tlacitko ATR/DISK to na pristroji poctive
+napise, nic se nepredstira.
 </p>
 
 <p><a href="../index.html">&larr; Zpet do nabidky</a></p>
@@ -131,31 +132,41 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
- {n:1,co:'Build v GitHub Actions',
-  ok:'Build je zeleny.',
-  ne:'Build je cerveny -> posli mi log z Actions.'},
- {n:2,co:'HELP v hlavni nabidce',
-  ok:'Naskoci cele Atari 130XE presne jako schvaleny navrh: obrazovka, klavesnice, konzole, kazetak, POWER, N&P logo, servisni tlacitka. Atari se samo zapne a nastartuje do READY.',
-  ne:'Chybi cokoli z navrhu, je to jinak, nebo appka spadne.'},
- {n:3,co:'Zmackni par klaves a tlacitek (i rychle tuknuti)',
-  ok:'KAZDA klavesa i tlacitko se viditelne zamackne a pusti. Pismena se pisou na obrazovku Atari.',
-  ne:'Nektera klavesa/tlacitko se nezamackne nebo nepise.'},
- {n:4,co:'SHIFT (i CONTROL)',
-  ok:'Tuknuti = zlate a zustane zamcene, dalsi tuknuti = odemceno. SHIFT+1 napise !',
-  ne:'Nezustane zamcene nebo nepise velke znaky.'},
- {n:5,co:'Kazetak: PLAY, REC, STOP, EJECT, nulovani',
-  ok:'PLAY/REC drzi, civky se toci, pocitadlo bezi; STOP pusti; EJECT otevre dvirka, tuknuti na okenko je zavre; male tlacitko vynuluje pocitadlo.',
-  ne:'Cokoli z toho nefunguje.'},
- {n:6,co:'CSAVE: napis CSAVE, RETURN, po pipnuti RETURN',
-  ok:'Slyset piskani a data, civky se toci; po konci je pod pristrojem CSAVE ULOZENO a soubor csave_vystup.wav v Download/AtariHelp/Atari_emu.',
+ // B294: testy pro B293/B294 (nove jadro 130XE po cyklech, kazeta, kontrola 130XE)
+ {n:1,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
+  ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
+  ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
+ {n:2,co:'HELP: start Atari',
+  ok:'Atari nabehne do READY se startovnim zvukem. V logu je radek B293 JADRO = ATARI 130XE PAL.',
+  ne:'Nenabehne, je ticho, nebo zvuk zadrhava.'},
+ {n:3,co:'Self-test: napis BYE, RETURN, pak AUDIO-VISUAL',
+  ok:'Obraz i zvuk sedi jako v B291 (100 procent), nic necuka.',
+  ne:'Zvuk ujizdi od obrazu, cuka, nebo je grafika jinak.'},
+ {n:4,co:'Klavesnice: drz prst na klavese, pak pust; SHIFT, CONTROL, HELP',
+  ok:'Drzena klavesa se po cca 1 s zacne opakovat, po pusteni prestane. SHIFT/CONTROL zamek funguje, HELP reaguje.',
+  ne:'Neopakuje se, nebo se opakuje i po pusteni.'},
+ {n:5,co:'BASIC/TBXL TXT: 10 ? "HELLO 1000" -> VLOZIT + RUN',
+  ok:'Vypise HELLO 1000 - zadne zdvojene pismeno ani nula se neztrati.',
+  ne:'Vypise HELO 10 nebo jinak.'},
+ {n:6,co:'RESET s programem v pameti (napr. po bodu 5)',
+  ok:'Atari skoci do READY a LIST ukaze program (pamet zustala).',
+  ne:'Program zmizel, Atari zamrzne nebo se restartuje cele.'},
+ {n:7,co:'NET/HRY: nekolik her (hlavne ty, co mely chybu v grafice)',
+  ok:'Kazda hra se spusti tady v HELP (C++), nikdy ve starem emulatoru. Hry s chybou zapis poznamkou ZAPSAT (jmeno + co je spatne).',
+  ne:'Nekde skoci do stareho ATARI 130XE EMULATORU, nebo hra nejede.'},
+ {n:8,co:'CSAVE: kratky program, CSAVE, RETURN, po pipnuti RETURN',
+  ok:'Civky se toci, pod pristrojem CSAVE ULOZENO: Atari_emu/csave_datum_cas.wav.',
   ne:'Zadny WAV, nebo hlaska o chybe.'},
- {n:7,co:'POWER (zeleny vypinac vlevo)',
-  ok:'Vypnuti: pristroj ztmavne, obrazovka zhasne, nic jineho nereaguje. Zapnuti: Atari nastartuje od zacatku.',
-  ne:'Nezhasne, nebo po zapnuti nenastartuje.'},
- {n:8,co:'Servisni tlacitka: TURBO/BASIC, XEX/MOBIL, BASIC/TBXL TXT, HELP, MENU',
-  ok:'TURBO/BASIC spusti Turbo-BASIC XL; XEX/MOBIL vybere a spusti XEX/ZIP; TXT napise program; HELP ukaze napovedu; MENU vrati do nabidky.',
-  ne:'Nektere nereaguje nebo dela neco jineho.'},
- {n:9,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
+ {n:9,co:'CLOAD: EJECT -> vyber WAV z bodu 8 -> CLOAD, RETURN, PLAY, RETURN',
+  ok:'Dvirka se zavrou, po PLAY a RETURN bezi motor, pak READY a LIST ukaze program.',
+  ne:'Nenahraje se (ERROR, zamrzne, nebo se nic nedeje).'},
+ {n:10,co:'Skutecne 130XE: WAV z bodu 8 prehraj do skutecneho Atari (CLOAD)',
+  ok:'Skutecne Atari program nahraje.',
+  ne:'Nenahraje (napis poznamkou, jakou chybu ukazalo).'},
+ {n:11,co:'Skutecne 130XE vs emulator - stejne prikazy na obou (BASIC po zapnuti)',
+  ok:'Vyjdou stejna cisla. V emulatoru: ?FRE(0) = 37902 | POKE 20,0:FOR I=1 TO 2000:NEXT I:?PEEK(20) = 184 | POKE 559,0:POKE 20,0:FOR I=1 TO 2000:NEXT I:POKE 559,34:?PEEK(20) = 136. Cisla ze skutecneho Atari zapis poznamkou.',
+  ne:'Skutecne Atari ukaze jina cisla (zapis je poznamkou ZAPSAT).'},
+ {n:12,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
   ok:'Bezi UPLNE STEJNE jako dosud.',
   ne:'Jakakoli zmena proti minule verzi.'}
 ];
